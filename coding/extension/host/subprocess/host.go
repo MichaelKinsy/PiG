@@ -3183,7 +3183,14 @@ func (h *Host) connectExt(ctx, extCtx context.Context, cancel context.CancelFunc
 		cancel()
 		return nil, newLoadError(me.config.Name, "spawn", "socket_dir_failed", fmt.Errorf("write harness arguments: %w", err))
 	}
-	var cmd = buildExtCommandSelected(extCtx, binPath, me.config.RuntimeLanguage, runtime.GOOS, exec.LookPath, tsSelection)
+	cmd, err := h.lispCommand(ctx, extCtx, me.config.RuntimeLanguage, binPath)
+	if err != nil {
+		cancel()
+		return nil, newLoadError(me.config.Name, "spawn", "build_failed", err)
+	}
+	if cmd == nil {
+		cmd = buildExtCommandSelected(extCtx, binPath, me.config.RuntimeLanguage, runtime.GOOS, exec.LookPath, tsSelection)
+	}
 	nodeOutput := usesNodeRuntime(binPath, me.config.RuntimeLanguage)
 	cmd.Env = append(append(os.Environ(), harnessEnv...),
 		fmt.Sprintf("PIG_EXT_SOCKET=%s", address),

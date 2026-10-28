@@ -904,7 +904,7 @@ Why: PiG is not Pi; providers, diagnostics, and their logs should distinguish Pi
 Observable effect: every default provider `User-Agent` (Anthropic Messages, OpenAI Completions, OpenAI/Azure/Codex Responses, Google Generative AI/Vertex, Mistral Conversations) and the `report.json` environment identity in an exported bug report read `pig/...` instead of one of Pi's `pi...` forms. A user-configured provider `User-Agent` header overrides the default, including for OpenAI Codex Responses (`buildBaseCodexHeaders` sets `originator` and `User-Agent` first, #10429). An Anthropic OAuth (subscription-token) request keeps sending `claude-cli/2.1.280` regardless (D63's sibling decision, Q3): that identity is not `getPiUserAgent()`'s output and is untouched by this divergence.
 
 Call sites:
-- `ai/identity.go`: `FormatUserAgent` (detailed `pig/<version> (<platform> <release>; <arch>)`, short `pig`). `ai/anthropic_client.go`: `anthropicIdentityHeaders` (seeds the `User-Agent` key below the other client headers; an Anthropic OAuth request sends the Claude Code identity instead, as upstream). `ai/bedrock.go`: `bedrockUserAgent` adds `pig/<version>` to the AWS SDK for Go user agent, where Pi adds `pi/<version>` to the SDK for JavaScript.
+- `ai/identity.go`: `FormatUserAgent` (detailed `pig/<version> (<platform> <release>; <arch>)`, short `pig`). `ai/anthropic_client.go`: `anthropicIdentityHeaders` (seeds the `User-Agent` key below the other client headers; an Anthropic OAuth request sends the Claude Code identity instead, as upstream). `ai/providers/bedrock/bedrock.go`: `bedrockUserAgent` adds `pig/<version>` to the AWS SDK for Go user agent, where Pi adds `pi/<version>` to the SDK for JavaScript.
 - `ai/openai.go`, `ai/openai_responses.go` (also reached by `ai/azure_openai_responses.go` and `ai/openai_codex_responses.go`, which delegate to the same request builder), `ai/google.go` (also reached by `ai/google_vertex.go`), `ai/mistral.go`: the `User-Agent` header construction. Model and request headers override the default, as upstream; Codex sets its `originator` and `User-Agent` defaults before them (`buildBaseCodexHeaders`, Pi 1.4.0).
 - `internal/codingagent/bug_report.go`: `codingAgentUserAgent`, used for the local bug-report metadata field retained by D62.
 - `internal/codingagent/selfupdate.go`: `FetchUpdateManifest`, which sends the identity with the update-manifest request as upstream `getLatestPiRelease` sends its `User-Agent` and `accept` headers to the version-check API.
@@ -1606,13 +1606,13 @@ Pi bug: Pi's Bedrock Converse request can put two user messages side by side, fo
 
 Why: the Converse API requires the roles of a conversation to alternate and rejects two consecutive messages of one role with a ValidationException (HTTP 400). The shape is common: aborting a turn while tools run and then sending a new prompt gives `assistant(toolUse), user(toolResult...), user(prompt)`, and every later turn of the session then fails.
 
-Scope: `convertBedrockMessages` in `ai/bedrock.go`, for every Bedrock Converse model. An already alternating conversation produces Pi's request byte for byte. The final cache point still goes on the last user message.
+Scope: `convertBedrockMessages` in `ai/providers/bedrock/bedrock.go`, for every Bedrock Converse model. An already alternating conversation produces Pi's request byte for byte. The final cache point still goes on the last user message.
 
 Owner decision: 2026-10-10, owner rule "fix every confirmed bug now, Pi's included", relayed by the lead; number assigned by the lead.
 
-Call-site markers: `ai/bedrock.go` (`push` in `convertBedrockMessages`).
+Call-site markers: `ai/providers/bedrock/bedrock.go` (`push` in `convertBedrockMessages`).
 
-Evidence: `TestBedrockMergesAdjacentSameRoleMessagesD116` (`ai/bedrock_alternation_d116_test.go`, red before the fix: roles [user assistant user user]), `TestBedrockConvertMessages_SkipsEmptyAssistant`, the Pi-derived `TestBedrockUpstreamConvertMessages` case, and `TestBedrockConversePayloadMatchesPi` (Pi's payload rewritten by `piBedrockPayloadWithD116`).
+Evidence: `TestBedrockMergesAdjacentSameRoleMessagesD116` (`ai/providers/bedrock/bedrock_alternation_d116_test.go`, red before the fix: roles [user assistant user user]), `TestBedrockConvertMessages_SkipsEmptyAssistant`, the Pi-derived `TestBedrockUpstreamConvertMessages` case, and `TestBedrockConversePayloadMatchesPi` (Pi's payload rewritten by `piBedrockPayloadWithD116`).
 
 Parity allowance: `test/parity/scenarios/providers-faux-streaming/29-bedrock-ecmascript-whitespace.toml` runs a Bedrock conversation that starts with two user messages. Its Pi probe (`test/parity/testdata/bedrock-whitespace-pi.mjs`) merges adjacent same-role messages in the captured Pi request, content blocks in order. The scenario compares the complete captured message arrays with `json_output_equal`, so block contents, order and presence still have to match.
 
@@ -2545,9 +2545,9 @@ Workaround: none needed in PiG. In Pi, unset the variable instead of exporting i
 
 Owner decision: approved by owner Michael Kinsy on 2026-10-24 (record the difference, do not mirror the SDK's presence check: a stray empty variable must not break a working credential setup).
 
-Call-site markers: `ai/bedrock.go` (`loadBedrockConfig`, the bearer token selection).
+Call-site markers: `ai/providers/bedrock/bedrock.go` (`loadBedrockConfig`, the bearer token selection).
 
-Evidence: `TestBedrockBearerTokenDivergencesFromPi` (`ai/bedrock_bearer_divergence_test.go`) runs Pi's `bedrock-converse-stream` through the Node oracle and PiG's provider against a loopback server with the variable empty, under skip-auth and under static keys: Pi sends nothing and ends with the signing error, PiG sends a SigV4 request; its controls (variable unset, with keys) agree. The test fails when either side changes.
+Evidence: `TestBedrockBearerTokenDivergencesFromPi` (`ai/providers/bedrock/bedrock_bearer_divergence_test.go`) runs Pi's `bedrock-converse-stream` through the Node oracle and PiG's provider against a loopback server with the variable empty, under skip-auth and under static keys: Pi sends nothing and ends with the signing error, PiG sends a SigV4 request; its controls (variable unset, with keys) agree. The test fails when either side changes.
 
 Parity allowance: none needed beyond that test. The paired Bedrock oracles (`TestBedrockRequestBodyMatchesPi` and the others) scrub every `AWS_*` variable before they run Pi, so they do not see the difference.
 
@@ -2569,9 +2569,9 @@ Workaround: none needed in PiG. Use an `https://` endpoint, or unset the variabl
 
 Owner decision: approved by owner Michael Kinsy on 2026-10-24 (record the difference, do not mirror: PiG keeps the Go SDK's HTTPS-only bearer guard where skip-auth leaves the token to the SDK).
 
-Call-site markers: `ai/bedrock.go` (`loadBedrockConfig`, the bearer token selection; `bedrockClientOptions`, the bearer signer).
+Call-site markers: `ai/providers/bedrock/bedrock.go` (`loadBedrockConfig`, the bearer token selection; `bedrockClientOptions`, the bearer signer).
 
-Evidence: `TestBedrockBearerTokenDivergencesFromPi` (`ai/bedrock_bearer_divergence_test.go`) runs Pi through the Node oracle and PiG's provider against an `http://` loopback server with skip-auth and a token: Pi's request arrives with `Authorization: Bearer tok`, PiG sends nothing and ends with the HTTPS error; its control (a token without skip-auth over `http://`) sends `Bearer tok` in both. The test fails when either side changes.
+Evidence: `TestBedrockBearerTokenDivergencesFromPi` (`ai/providers/bedrock/bedrock_bearer_divergence_test.go`) runs Pi through the Node oracle and PiG's provider against an `http://` loopback server with skip-auth and a token: Pi's request arrives with `Authorization: Bearer tok`, PiG sends nothing and ends with the HTTPS error; its control (a token without skip-auth over `http://`) sends `Bearer tok` in both. The test fails when either side changes.
 
 Parity allowance: none needed beyond that test. The paired Bedrock oracles scrub every `AWS_*` variable before they run Pi.
 
@@ -2684,5 +2684,27 @@ Evidence: `TestRegisterProviderWithEmptyAPIKeyIsNotConfigured` (`coding/register
 Parity allowance: no parity scenario registers a provider with an empty `apiKey`.
 
 Remove when: Pi treats `""` as missing in `configuredApiKey`, or the SDK API gains explicit presence for `apiKey` (a pointer or an option) and an owner decision asks for Pi's behaviour; then the three markers, the test and this record go.
+
+SCRUTINIZED:approved
+
+## D204 The Go, Rust and Python SDKs do not yet export TuiAltScreen, Pi's alternate-screen TUI host, where the Node SDK does
+
+What: Pi's `pi-tui` exports `TuiAltScreen` (the alternate-screen, viewport-scrolling host that `createInteractiveTui` constructs beside `TuiMainScreen`) and its members. The Node SDK serves it, as Pi's own module. The Go, Rust and Python SDKs export no `TuiAltScreen` and none of its members (`mode`, `scrollBy`, `scrollToTop`, `scrollToBottom`, `viewportTop`, `isFollowingOutput`, `flash`, selection and copy-on-select calls, overlay and render members); a Go, Rust or Python extension cannot construct one. PiG's own interactive mode paints through its own alternate-screen renderer and is not affected.
+
+Why: the host is a terminal-bound renderer whose members only make sense together with the rest of the `pi-tui` helper port (`TuiMainScreen`, `Terminal`, the component base), which the SdkTuiHelpers lane ports as one unit. Landing the export in all three SDKs needs that unit and its vector tests; it is not part of 0.6.0.
+
+Pi bug: none claimed.
+
+Scope: the 46 `pi-tui: TuiAltScreen` rows of `test/parity/sdk-exports.toml` (the class and each member) carry `divergence:D204` in the `go`, `rust` and `python` cells in place of `gap:SdkTuiHelpers`; `docs/extension-sdk-exports.md` is generated from that file. The Node cells are unchanged. No SDK source changes: the divergence is the absence of the export.
+
+Owner decision: approved by owner Michael Kinsy on 2026-10-26 (record the missing `TuiAltScreen` export as a divergence for 0.6.0 so the `sdk-exports-release` gate does not block on a high-use gap; the export ships in 0.6.1).
+
+Call-site markers: none in code; the ledger rows named in Scope are the declaration `make sdk-surface-drift` and `make sdk-exports-release` read.
+
+Evidence: `make sdk-surface-drift` and `make sdk-exports-release` read the rows: a `divergence:D204` cell needs this record, and the release gate no longer counts the high-use `TuiAltScreen` export (6 scanned packages in `test/parity/extension-import-usage.json`) as a gap.
+
+Parity allowance: the `divergence:D204` cells are the allowance; no paired Pi corpus constructs `TuiAltScreen` through an SDK, so none changes.
+
+Remove when: the 0.6.1 export of `TuiAltScreen` lands in the Go, Rust and Python SDKs; then the 46 cells become `native:` cells with their conformance or vector reach, and this record goes.
 
 SCRUTINIZED:approved

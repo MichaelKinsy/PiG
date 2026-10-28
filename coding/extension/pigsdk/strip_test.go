@@ -1,4 +1,4 @@
-//go:build !pig_strip_extension_sdk_go && !pig_strip_extension_sdk_rust && !pig_strip_extension_sdk_python
+//go:build !pig_strip_extension_sdk_go && !pig_strip_extension_sdk_rust && !pig_strip_extension_sdk_python && !pig_strip_extension_sdk_lisp
 
 package pigsdk
 
@@ -22,6 +22,7 @@ func TestStripExtensionSDKRuntimeReportsStrip(t *testing.T) {
 		{"go", pigstrip.ExtensionSDKGo, "The Go extension SDK", "sdk"},
 		{"python", pigstrip.ExtensionSDKPython, "The Python extension SDK", "sdk-py"},
 		{"rust", pigstrip.ExtensionSDKRust, "The Rust extension SDK", "sdk-rs"},
+		{"lisp", pigstrip.ExtensionSDKLisp, "The Lisp extension SDK", "sdk-lisp"},
 	} {
 		t.Run(tc.lang, func(t *testing.T) {
 			root := t.TempDir()
@@ -66,8 +67,8 @@ func TestStripExtensionSDKRuntimeReportsStrip(t *testing.T) {
 					t.Errorf("%s SDK not staged beside the stripped %s", st.Lang, tc.lang)
 				}
 			}
-			if len(langs) != 2 || slices.Contains(langs, tc.lang) {
-				t.Fatalf("Status languages = %v, want the two unstripped ones", langs)
+			if len(langs) != 3 || slices.Contains(langs, tc.lang) {
+				t.Fatalf("Status languages = %v, want the three unstripped ones", langs)
 			}
 		})
 	}

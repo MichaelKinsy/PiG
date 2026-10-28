@@ -24,6 +24,7 @@ import (
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/internal/codingagent"
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
+	"github.com/MichaelKinsy/PiG/internal/jsstring/localecompare"
 )
 
 // ToolName is the name of the tool.
@@ -221,7 +222,7 @@ func CreateDescription(tools []extension.AgentTool, options DescriptionOptions) 
 		case b.namespace == nil:
 			return 1
 		}
-		return jsstring.LocaleCompare(a.namespace.Name, b.namespace.Name)
+		return localecompare.Compare(a.namespace.Name, b.namespace.Name)
 	})
 	shown := selectCatalog(ordered, options.InlineBudget)
 

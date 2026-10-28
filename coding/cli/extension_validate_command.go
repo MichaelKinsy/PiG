@@ -685,7 +685,7 @@ func (m placementMetadata) strategy() string {
 	if m.isolation == "isolated" || m.isolation == "required" || m.isolation == "strict" {
 		return "isolated"
 	}
-	if m.runtime == "subprocess" && (m.language == "go" || m.language == "rust" || m.language == "python") && m.entrypoint == "factory" {
+	if m.runtime == "subprocess" && (m.language == "go" || m.language == "rust" || m.language == "python" || m.language == "lisp") && m.entrypoint == "factory" {
 		return "pack-candidate"
 	}
 	return "isolated"

@@ -8,25 +8,29 @@ Use counts (`uses`) are the number of the 255 scanned npm packages that import t
 
 ## Summary
 
-| Module | Rows | type-only (identity by kind) | Node served | Go gaps | Rust gaps | Python gaps |
-|---|---|---|---|---|---|---|
-| `pi-coding-agent` | 920 | 306 | 910 | 319 | 319 | 319 |
-| `pi-tui` | 366 | 85 | 365 | 102 | 102 | 102 |
-| `pi-ai` | 105 | 199 | 105 | 73 | 73 | 73 |
-| `pi-ai/compat` | 164 | 206 | 164 | 129 | 129 | 129 |
-| `pi-agent-core` | 45 | 34 | 45 | 45 | 45 | 45 |
+| Module | Rows | type-only (identity by kind) | Node served | Go gaps | Rust gaps | Python gaps | Lisp gaps |
+|---|---|---|---|---|---|---|---|
+| `pi-coding-agent` | 920 | 306 | 910 | 319 | 319 | 319 | 319 |
+| `pi-tui` | 366 | 85 | 365 | 102 | 102 | 102 | 102 |
+| `pi-ai` | 105 | 199 | 105 | 73 | 73 | 73 | 73 |
+| `pi-ai/compat` | 164 | 206 | 164 | 129 | 129 | 129 | 129 |
+| `pi-agent-core` | 45 | 34 | 45 | 45 | 45 | 45 | 45 |
 
 ## Lanes that own gaps
 
 | Lane | Owner | Opened | Gap cells | Closing row |
 |---|---|---|---|---|
-| C2Sessions | C2Sessions lane (createAgentSession family, E1/E6) | 0.5.2 | 351 | Conformance rows for createAgentSession, createAgentSessionRuntime and the pi-agent-core Agent loop in all four SDKs (branch feat/sdk-child-agent-sessions) |
-| SdkExportsLedger | SdkExportsLedger lane (Pi application internals no extension scan imports) | 0.5.2 | 1161 | Owner decision per export, listed with usage counts in handoffs/0.5.2/sdk-exports-internals.md: a numbered divergence in docs/parity/DIVERGENCES.md (cells become divergence:D<n>), or a real lane with a port and a conformance row |
-| SdkPiAiHelpers | SdkPiAiHelpers lane (pi-ai pure helpers, StringEnum, host getters, E17-E22) | 0.5.2 | 192 | Pure helpers with vector tests from Pi at the pin; host getters and the pi-ai compat calls with a conformance row per SDK |
-| SdkSessionGraph | SdkSessionGraph lane (SessionManager/SettingsManager/ModelRuntime/resource loader, E2-E5) | 0.5.2 | 189 | Host calls for session open/list/inMemory, scoped settings, standalone model runtime, resource loader and package manager, with a conformance row per SDK |
-| SdkTuiHelpers | SdkTuiHelpers lane (pi-tui helpers, keys, keybindings, theme and rendering helpers, E8-E16) | 0.5.2 | 111 | Pure helpers ported per SDK with vector tests from Pi at the pin (test/parity/sdk-vectors), keybinding and theme helpers with a conformance row per SDK |
+| C2Sessions | C2Sessions lane (createAgentSession family, E1/E6) | 0.5.2 | 468 | Conformance rows for createAgentSession, createAgentSessionRuntime and the pi-agent-core Agent loop in all four SDKs (branch feat/sdk-child-agent-sessions) |
+| SdkExportsLedger | SdkExportsLedger lane (Pi application internals no extension scan imports) | 0.5.2 | 1548 | Owner decision per export, listed with usage counts in handoffs/0.5.2/sdk-exports-internals.md: a numbered divergence in docs/parity/DIVERGENCES.md (cells become divergence:D<n>), or a real lane with a port and a conformance row |
+| SdkPiAiHelpers | SdkPiAiHelpers lane (pi-ai pure helpers, StringEnum, host getters, E17-E22) | 0.5.2 | 256 | Pure helpers with vector tests from Pi at the pin; host getters and the pi-ai compat calls with a conformance row per SDK |
+| SdkSessionGraph | SdkSessionGraph lane (SessionManager/SettingsManager/ModelRuntime/resource loader, E2-E5) | 0.5.2 | 252 | Host calls for session open/list/inMemory, scoped settings, standalone model runtime, resource loader and package manager, with a conformance row per SDK |
+| SdkTuiHelpers | SdkTuiHelpers lane (pi-tui helpers, keys, keybindings, theme and rendering helpers, E8-E16) | 0.5.2 | 148 | Pure helpers ported per SDK with vector tests from Pi at the pin (test/parity/sdk-vectors), keybinding and theme helpers with a conformance row per SDK |
 
 ## High-use gaps (block the release gate)
+
+None.
+
+## Exempt gaps (the first train of a new SDK)
 
 None.
 
@@ -36,1625 +40,1625 @@ None.
 
 ## pi-coding-agent
 
-| Export | uses | Node | Go | Rust | Python |
-|---|---|---|---|---|---|
-| `AgentSession` | 4 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.abort` | 0 | served | native:AgentSession.Abort | native:AgentSession::abort | native:AgentSession.abort |
-| `AgentSession.abortBash` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.abortBranchSummary` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.abortCompaction` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.abortRetry` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.agent` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.autoCompactionEnabled` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.autoRetryEnabled` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.bindExtensions` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.cacheWarmingStatus` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.clearQueue` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.compact` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.createReplacedSessionContext` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.cycleModel` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.cycleThinkingLevel` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.dispose` | 0 | served | native:AgentSession.Dispose | native:AgentSession::dispose | native:AgentSession.dispose |
-| `AgentSession.executeBash` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.exportToHtml` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.exportToJsonl` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.extensionRunner` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.followUp` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.followUpMode` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.getActiveToolNames` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.getAllTools` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.getAvailableThinkingLevels` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.getCallableToolNames` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.getContextUsage` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.getFollowUpMessages` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.getLastAssistantText` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.getSessionStats` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.getSteeringMessages` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.getToolDefinition` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.getUserMessagesForForking` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.hasExtensionHandlers` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.hasPendingBashMessages` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.isBashRunning` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.isCompacting` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.isIdle` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.isRetrying` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.isStreaming` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.messages` | 0 | served | native:AgentSession.Messages | native:AgentSession::messages | native:AgentSession.messages |
-| `AgentSession.model` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.modelRuntime` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.navigateTree` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.pendingMessageCount` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.prompt` | 0 | served | native:AgentSession.Prompt | native:AgentSession::prompt | native:AgentSession.prompt |
-| `AgentSession.promptTemplates` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.recordBashResult` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.refreshContext` | 0 | served | native:AgentSession.RefreshContext | native:AgentSession::refresh_context | native:AgentSession.refresh_context |
-| `AgentSession.reload` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.resourceLoader` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.retryAttempt` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.routedModel` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.scopedModels` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.sendCustomMessage` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.sendUserMessage` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.sessionFile` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.sessionId` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.sessionManager` | 0 | served | native:AgentSession.SessionManager | native:AgentSession::session_manager | native:AgentSession.session_manager |
-| `AgentSession.sessionName` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.setActiveToolsByName` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.setAutoCompactionEnabled` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.setAutoRetryEnabled` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.setCacheWarmingMode` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.setFollowUpMode` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.setModel` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.setScopedModels` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.setSessionName` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.setSteeringMode` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.setThinkingLevel` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.settingsManager` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.state` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.steer` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.steeringMode` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.subscribe` | 0 | served | native:AgentSession.Subscribe | native:AgentSession::subscribe | native:AgentSession.subscribe |
-| `AgentSession.summarizeForBugReport` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.supportsThinking` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.systemPrompt` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.thinkingLevel` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSession.waitForIdle` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `AgentSessionRuntime` | 1 | served | native:AgentSessionRuntime | native:AgentSessionRuntime | native:AgentSessionRuntime |
-| `AgentSessionRuntime.cwd` | 0 | served | native:AgentSessionRuntime.Cwd | native:AgentSessionRuntime::cwd | native:AgentSessionRuntime.cwd |
-| `AgentSessionRuntime.diagnostics` | 0 | served | native:AgentSessionRuntime.Diagnostics | native:AgentSessionRuntime::diagnostics | native:AgentSessionRuntime.diagnostics |
-| `AgentSessionRuntime.dispose` | 0 | served | native:AgentSessionRuntime.Dispose | native:AgentSessionRuntime::dispose | native:AgentSessionRuntime.dispose |
-| `AgentSessionRuntime.fork` | 0 | served | native:AgentSessionRuntime.Fork | native:AgentSessionRuntime::fork | native:AgentSessionRuntime.fork |
-| `AgentSessionRuntime.importFromJsonl` | 0 | served | native:AgentSessionRuntime.ImportFromJsonl | native:AgentSessionRuntime::import_from_jsonl | native:AgentSessionRuntime.import_from_jsonl |
-| `AgentSessionRuntime.modelFallbackMessage` | 0 | served | native:AgentSessionRuntime.ModelFallbackMessage | native:AgentSessionRuntime::model_fallback_message | native:AgentSessionRuntime.model_fallback_message |
-| `AgentSessionRuntime.newSession` | 0 | served | native:AgentSessionRuntime.NewSession | native:AgentSessionRuntime::new_session | native:AgentSessionRuntime.new_session |
-| `AgentSessionRuntime.services` | 0 | served | native:AgentSessionRuntime.Services | native:AgentSessionRuntime::services | native:AgentSessionRuntime.services |
-| `AgentSessionRuntime.session` | 0 | served | native:AgentSessionRuntime.Session | native:AgentSessionRuntime::session | native:AgentSessionRuntime.session |
-| `AgentSessionRuntime.setBeforeSessionInvalidate` | 0 | served | native:AgentSessionRuntime.SetBeforeSessionInvalidate | native:AgentSessionRuntime::set_before_session_invalidate | native:AgentSessionRuntime.set_before_session_invalidate |
-| `AgentSessionRuntime.setRebindSession` | 0 | served | native:AgentSessionRuntime.SetRebindSession | native:AgentSessionRuntime::set_rebind_session | native:AgentSessionRuntime.set_rebind_session |
-| `AgentSessionRuntime.switchSession` | 0 | served | native:AgentSessionRuntime.SwitchSession | native:AgentSessionRuntime::switch_session | native:AgentSessionRuntime.switch_session |
-| `ArminComponent` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `ArminComponent.dispose` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `ArminComponent.invalidate` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `ArminComponent.render` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `AssistantMessageComponent` | 6 | served | kit:AssistantMessage | kit:AssistantMessage | kit:AssistantMessage |
-| `AssistantMessageComponent.addChild` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
-| `AssistantMessageComponent.children` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
-| `AssistantMessageComponent.clear` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
-| `AssistantMessageComponent.handleMouse` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
-| `AssistantMessageComponent.invalidate` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
-| `AssistantMessageComponent.removeChild` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
-| `AssistantMessageComponent.render` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
-| `AssistantMessageComponent.setHiddenThinkingLabel` | 0 | served | kit:AssistantMessage | kit:AssistantMessage | kit:AssistantMessage |
-| `AssistantMessageComponent.setHideThinkingBlock` | 0 | served | kit:AssistantMessage | kit:AssistantMessage | kit:AssistantMessage |
-| `AssistantMessageComponent.setOutputPad` | 0 | served | kit:AssistantMessage | kit:AssistantMessage | kit:AssistantMessage |
-| `AssistantMessageComponent.updateContent` | 0 | served | kit:AssistantMessage | kit:AssistantMessage | kit:AssistantMessage |
-| `BashExecutionComponent` | 1 | served | kit:BashExecution | kit:BashExecution | kit:BashExecution |
-| `BashExecutionComponent.addChild` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
-| `BashExecutionComponent.appendOutput` | 0 | served | kit:BashExecution | kit:BashExecution | kit:BashExecution |
-| `BashExecutionComponent.children` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
-| `BashExecutionComponent.clear` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
-| `BashExecutionComponent.getCommand` | 0 | served | kit:BashExecution | kit:BashExecution | kit:BashExecution |
-| `BashExecutionComponent.getOutput` | 0 | served | kit:BashExecution | kit:BashExecution | kit:BashExecution |
-| `BashExecutionComponent.handleMouse` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
-| `BashExecutionComponent.invalidate` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
-| `BashExecutionComponent.removeChild` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
-| `BashExecutionComponent.render` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
-| `BashExecutionComponent.setComplete` | 0 | served | kit:BashExecution | kit:BashExecution | kit:BashExecution |
-| `BashExecutionComponent.setExpanded` | 0 | served | kit:BashExecution | kit:BashExecution | kit:BashExecution |
-| `BashExecutionComponent.setOutputPad` | 0 | served | kit:BashExecution | kit:BashExecution | kit:BashExecution |
-| `BorderedLoader` | 6 | served | kit:BorderedLoader | kit:BorderedLoader | kit:BorderedLoader |
-| `BorderedLoader.addChild` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
-| `BorderedLoader.children` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
-| `BorderedLoader.clear` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
-| `BorderedLoader.dispose` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
-| `BorderedLoader.handleInput` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
-| `BorderedLoader.handleMouse` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
-| `BorderedLoader.invalidate` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
-| `BorderedLoader.onAbort` | 0 | served | kit:BorderedLoader | kit:BorderedLoader | kit:BorderedLoader |
-| `BorderedLoader.removeChild` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
-| `BorderedLoader.render` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
-| `BorderedLoader.signal` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
-| `BranchSummaryMessageComponent` | 3 | served | kit:BranchSummary | kit:BranchSummary | kit:BranchSummary |
-| `BranchSummaryMessageComponent.addChild` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
-| `BranchSummaryMessageComponent.children` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
-| `BranchSummaryMessageComponent.clear` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
-| `BranchSummaryMessageComponent.handleMouse` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
-| `BranchSummaryMessageComponent.invalidate` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
-| `BranchSummaryMessageComponent.removeChild` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
-| `BranchSummaryMessageComponent.render` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
-| `BranchSummaryMessageComponent.setBgFn` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
-| `BranchSummaryMessageComponent.setExpanded` | 0 | served | kit:BranchSummary | kit:BranchSummary | kit:BranchSummary |
-| `BranchSummaryMessageComponent.setOutputPad` | 0 | served | kit:BranchSummary | kit:BranchSummary | kit:BranchSummary |
-| `BranchSummaryMessageComponent.setPaddingX` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
-| `CONFIG_DIR_NAME` | 20 | served | native:ConfigDirName | native:get_config_dir_name | native:get_config_dir_name |
-| `CURRENT_SESSION_VERSION` | 2 | served | native:CurrentSessionVersion | native:CURRENT_SESSION_VERSION | native:CURRENT_SESSION_VERSION |
-| `CompactionSummaryMessageComponent` | 3 | served | kit:CompactionSummary | kit:CompactionSummary | kit:CompactionSummary |
-| `CompactionSummaryMessageComponent.addChild` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
-| `CompactionSummaryMessageComponent.children` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
-| `CompactionSummaryMessageComponent.clear` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
-| `CompactionSummaryMessageComponent.handleMouse` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
-| `CompactionSummaryMessageComponent.invalidate` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
-| `CompactionSummaryMessageComponent.removeChild` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
-| `CompactionSummaryMessageComponent.render` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
-| `CompactionSummaryMessageComponent.setBgFn` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
-| `CompactionSummaryMessageComponent.setExpanded` | 0 | served | kit:CompactionSummary | kit:CompactionSummary | kit:CompactionSummary |
-| `CompactionSummaryMessageComponent.setOutputPad` | 0 | served | kit:CompactionSummary | kit:CompactionSummary | kit:CompactionSummary |
-| `CompactionSummaryMessageComponent.setPaddingX` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
-| `CredentialSynchronizationError` | 1 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `CredentialSynchronizationError.cause` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `CredentialSynchronizationError.credential` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `CredentialSynchronizationError.message` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `CredentialSynchronizationError.name` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `CredentialSynchronizationError.operation` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `CredentialSynchronizationError.providerId` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `CredentialSynchronizationError.stack` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `CustomEditor` | 13 | served | native:EditorComponent | native:EditorComponent | native:EditorComponent |
-| `CustomEditor.actionHandlers` | 0 | served | native:Editor.ActionHandlers | native:EditorBase::action_handlers | native:EditorBase.action_handlers |
-| `CustomEditor.addToHistory` | 0 | served | native:EditorComponent.AddToHistory | native:EditorComponent::add_to_history | native:EditorComponent.add_to_history |
-| `CustomEditor.borderColor` | 0 | served | native:Editor.BorderColor | native:EditorBase::border_color | native:EditorBase.border_color |
-| `CustomEditor.disableSubmit` | 0 | served | native:Editor.DisableSubmit | native:EditorBase::disable_submit | native:EditorBase.disable_submit |
-| `CustomEditor.embedWorkingStatus` | 0 | served | native:EditorStatusEmbedder.EmbedWorkingStatus | native:EditorComponent::embed_working_status | native:EditorComponent.embed_working_status |
-| `CustomEditor.focused` | 0 | served | native:Editor.Focused | native:EditorBase::focused | native:EditorBase.focused |
-| `CustomEditor.getAutocompleteMaxVisible` | 0 | served | native:Editor.GetAutocompleteMaxVisible | native:EditorBase::get_autocomplete_max_visible | native:EditorBase.get_autocomplete_max_visible |
-| `CustomEditor.getCursor` | 0 | served | native:Editor.GetCursor | native:EditorBase::get_cursor | native:EditorBase.get_cursor |
-| `CustomEditor.getExpandedText` | 0 | served | native:Editor.GetExpandedText | native:EditorBase::get_expanded_text | native:EditorBase.get_expanded_text |
-| `CustomEditor.getLines` | 0 | served | native:Editor.GetLines | native:EditorBase::get_lines | native:EditorBase.get_lines |
-| `CustomEditor.getPaddingX` | 0 | served | native:Editor.GetPaddingX | native:EditorBase::get_padding_x | native:EditorBase.get_padding_x |
-| `CustomEditor.getText` | 0 | served | native:Editor.GetText | native:EditorBase::get_text | native:EditorBase.get_text |
-| `CustomEditor.handleInput` | 0 | served | native:EditorComponent.HandleInput | native:EditorComponent::handle_input | native:EditorComponent.handle_input |
-| `CustomEditor.handleMouse` | 0 | served | native:EditorComponent.HandleMouse | native:EditorComponent::handle_mouse | native:EditorComponent.handle_mouse |
-| `CustomEditor.insertTextAtCursor` | 0 | served | native:EditorComponent.InsertTextAtCursor | native:EditorComponent::insert_text_at_cursor | native:EditorComponent.insert_text_at_cursor |
-| `CustomEditor.invalidate` | 0 | served | native:Editor.Invalidate | native:EditorComponent::invalidate | native:EditorComponent.invalidate |
-| `CustomEditor.isShowingAutocomplete` | 0 | served | native:Editor.IsShowingAutocomplete | native:EditorBase::is_showing_autocomplete | native:EditorBase.is_showing_autocomplete |
-| `CustomEditor.onAction` | 0 | served | native:Editor.OnAction | native:EditorBase::on_action | native:EditorBase.on_action |
-| `CustomEditor.onChange` | 0 | served | native:Editor.OnChange | native:EditorBase::on_change | native:EditorBase.on_change |
-| `CustomEditor.onCtrlD` | 0 | served | native:Editor.SetOnCtrlD | native:EditorBase::set_on_ctrl_d | native:EditorBase.on_ctrl_d |
-| `CustomEditor.onEscape` | 0 | served | native:Editor.SetOnEscape | native:EditorBase::set_on_escape | native:EditorBase.on_escape |
-| `CustomEditor.onExtensionShortcut` | 0 | served | native:Editor.SetOnExtensionShortcut | native:EditorBase::set_on_extension_shortcut | native:EditorBase.on_extension_shortcut |
-| `CustomEditor.onPasteImage` | 0 | served | native:Editor.SetOnPasteImage | native:EditorBase::set_on_paste_image | native:EditorBase.on_paste_image |
-| `CustomEditor.onSubmit` | 0 | served | native:Editor.OnSubmit | native:EditorBase::on_submit | native:EditorBase.on_submit |
-| `CustomEditor.render` | 0 | served | native:EditorComponent.Render | native:EditorComponent::render | native:EditorComponent.render |
-| `CustomEditor.setAutocompleteMaxVisible` | 0 | served | native:Editor.SetAutocompleteMaxVisible | native:EditorBase::set_autocomplete_max_visible | native:EditorBase.set_autocomplete_max_visible |
-| `CustomEditor.setAutocompleteProvider` | 0 | served | native:Editor.SetAutocompleteProvider | native:EditorBase::set_autocomplete_provider | native:EditorBase.set_autocomplete_provider |
-| `CustomEditor.setPaddingX` | 0 | served | native:Editor.SetPaddingX | native:EditorBase::set_padding_x | native:EditorBase.set_padding_x |
-| `CustomEditor.setText` | 0 | served | native:EditorComponent.SetText | native:EditorComponent::set_text | native:EditorComponent.set_text |
-| `CustomEditor.setWorkingStatusIndicator` | 0 | served | native:Editor.SetWorkingStatusIndicator | native:EditorComponent::set_working_status_indicator | native:EditorComponent.set_working_status_indicator |
-| `CustomMessageComponent` | 0 | served | kit:CustomMessage | kit:CustomMessage | kit:CustomMessage |
-| `CustomMessageComponent.addChild` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
-| `CustomMessageComponent.children` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
-| `CustomMessageComponent.clear` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
-| `CustomMessageComponent.handleMouse` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
-| `CustomMessageComponent.invalidate` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
-| `CustomMessageComponent.removeChild` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
-| `CustomMessageComponent.render` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
-| `CustomMessageComponent.setExpanded` | 0 | served | kit:CustomMessage | kit:CustomMessage | kit:CustomMessage |
-| `CustomMessageComponent.setOutputPad` | 0 | served | kit:CustomMessage | kit:CustomMessage | kit:CustomMessage |
-| `DEFAULT_COMPACTION_SETTINGS` | 4 | served | native:DefaultCompactionSettings | native:DEFAULT_COMPACTION_SETTINGS | native:DEFAULT_COMPACTION_SETTINGS |
-| `DEFAULT_MAX_BYTES` | 17 | served | native:DefaultMaxBytes | native:DEFAULT_MAX_BYTES | native:DEFAULT_MAX_BYTES |
-| `DEFAULT_MAX_LINES` | 14 | served | native:DefaultMaxLines | native:DEFAULT_MAX_LINES | native:DEFAULT_MAX_LINES |
-| `DefaultPackageManager` | 12 | served | native:NewDefaultPackageManager | native:DefaultPackageManager::new | native:DefaultPackageManager |
-| `DefaultPackageManager.addSourceToSettings` | 0 | served | native:DefaultPackageManager.AddSourceToSettings | native:DefaultPackageManager::add_source_to_settings | native:DefaultPackageManager.add_source_to_settings |
-| `DefaultPackageManager.checkForAvailableUpdates` | 0 | served | native:DefaultPackageManager.CheckForAvailableUpdates | native:DefaultPackageManager::check_for_available_updates | native:DefaultPackageManager.check_for_available_updates |
-| `DefaultPackageManager.getInstalledPath` | 0 | served | native:DefaultPackageManager.GetInstalledPath | native:DefaultPackageManager::get_installed_path | native:DefaultPackageManager.get_installed_path |
-| `DefaultPackageManager.install` | 0 | served | native:DefaultPackageManager.Install | native:DefaultPackageManager::install | native:DefaultPackageManager.install |
-| `DefaultPackageManager.installAndPersist` | 0 | served | native:DefaultPackageManager.InstallAndPersist | native:DefaultPackageManager::install_and_persist | native:DefaultPackageManager.install_and_persist |
-| `DefaultPackageManager.listConfiguredPackages` | 0 | served | native:DefaultPackageManager.ListConfiguredPackages | native:DefaultPackageManager::list_configured_packages | native:DefaultPackageManager.list_configured_packages |
-| `DefaultPackageManager.remove` | 0 | served | native:DefaultPackageManager.Remove | native:DefaultPackageManager::remove | native:DefaultPackageManager.remove |
-| `DefaultPackageManager.removeAndPersist` | 0 | served | native:DefaultPackageManager.RemoveAndPersist | native:DefaultPackageManager::remove_and_persist | native:DefaultPackageManager.remove_and_persist |
-| `DefaultPackageManager.removeSourceFromSettings` | 0 | served | native:DefaultPackageManager.RemoveSourceFromSettings | native:DefaultPackageManager::remove_source_from_settings | native:DefaultPackageManager.remove_source_from_settings |
-| `DefaultPackageManager.resolve` | 0 | served | native:DefaultPackageManager.Resolve | native:DefaultPackageManager::resolve | native:DefaultPackageManager.resolve |
-| `DefaultPackageManager.resolveExtensionSources` | 0 | served | native:DefaultPackageManager.ResolveExtensionSources | native:DefaultPackageManager::resolve_extension_sources | native:DefaultPackageManager.resolve_extension_sources |
-| `DefaultPackageManager.setProgressCallback` | 0 | served | native:DefaultPackageManager.SetProgressCallback | native:DefaultPackageManager::set_progress_callback | native:DefaultPackageManager.set_progress_callback |
-| `DefaultPackageManager.update` | 0 | served | native:DefaultPackageManager.Update | native:DefaultPackageManager::update | native:DefaultPackageManager.update |
-| `DefaultResourceLoader` | 18 | served | native:NewDefaultResourceLoader | native:DefaultResourceLoader::new | native:DefaultResourceLoader |
-| `DefaultResourceLoader.extendResources` | 0 | served | native:DefaultResourceLoader.ExtendResources | native:DefaultResourceLoader::extend_resources | native:DefaultResourceLoader.extend_resources |
-| `DefaultResourceLoader.getAgentsFiles` | 0 | served | native:DefaultResourceLoader.GetAgentsFiles | native:DefaultResourceLoader::get_agents_files | native:DefaultResourceLoader.get_agents_files |
-| `DefaultResourceLoader.getAppendSystemPrompt` | 0 | served | native:DefaultResourceLoader.GetAppendSystemPrompt | native:DefaultResourceLoader::get_append_system_prompt | native:DefaultResourceLoader.get_append_system_prompt |
-| `DefaultResourceLoader.getAppendSystemPromptSources` | 0 | served | native:DefaultResourceLoader.GetAppendSystemPromptSources | native:DefaultResourceLoader::get_append_system_prompt_sources | native:DefaultResourceLoader.get_append_system_prompt_sources |
-| `DefaultResourceLoader.getExtensions` | 0 | served | native:DefaultResourceLoader.GetExtensions | native:DefaultResourceLoader::get_extensions | native:DefaultResourceLoader.get_extensions |
-| `DefaultResourceLoader.getPrompts` | 0 | served | native:DefaultResourceLoader.GetPrompts | native:DefaultResourceLoader::get_prompts | native:DefaultResourceLoader.get_prompts |
-| `DefaultResourceLoader.getSkills` | 0 | served | native:DefaultResourceLoader.GetSkills | native:DefaultResourceLoader::get_skills | native:DefaultResourceLoader.get_skills |
-| `DefaultResourceLoader.getSystemPrompt` | 0 | served | native:DefaultResourceLoader.GetSystemPrompt | native:DefaultResourceLoader::get_system_prompt | native:DefaultResourceLoader.get_system_prompt |
-| `DefaultResourceLoader.getSystemPromptSource` | 0 | served | native:DefaultResourceLoader.GetSystemPromptSource | native:DefaultResourceLoader::get_system_prompt_source | native:DefaultResourceLoader.get_system_prompt_source |
-| `DefaultResourceLoader.getThemes` | 0 | served | native:DefaultResourceLoader.GetThemes | native:DefaultResourceLoader::get_themes | native:DefaultResourceLoader.get_themes |
-| `DefaultResourceLoader.loadProjectTrustExtensions` | 0 | served | native:DefaultResourceLoader.LoadProjectTrustExtensions | native:DefaultResourceLoader::load_project_trust_extensions | native:DefaultResourceLoader.load_project_trust_extensions |
-| `DefaultResourceLoader.reload` | 0 | served | native:DefaultResourceLoader.Reload | native:DefaultResourceLoader::reload | native:DefaultResourceLoader.reload |
-| `DynamicBorder` | 22 | served | kit:DynamicBorder | kit:DynamicBorder | kit:DynamicBorder |
-| `DynamicBorder.invalidate` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
-| `DynamicBorder.render` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
-| `ExtensionEditorComponent` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `ExtensionEditorComponent.addChild` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `ExtensionEditorComponent.children` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `ExtensionEditorComponent.clear` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `ExtensionEditorComponent.focused` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `ExtensionEditorComponent.handleInput` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `ExtensionEditorComponent.handleMouse` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `ExtensionEditorComponent.invalidate` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `ExtensionEditorComponent.removeChild` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `ExtensionEditorComponent.render` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `ExtensionInputComponent` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `ExtensionInputComponent.addChild` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `ExtensionInputComponent.children` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `ExtensionInputComponent.clear` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `ExtensionInputComponent.dispose` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `ExtensionInputComponent.focused` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `ExtensionInputComponent.handleInput` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `ExtensionInputComponent.handleMouse` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `ExtensionInputComponent.invalidate` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `ExtensionInputComponent.removeChild` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `ExtensionInputComponent.render` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `ExtensionRunner` | 5 | served | native:ExtensionRunner | native:ExtensionRunner | native:ExtensionRunner |
-| `ExtensionRunner.bindCommandContext` | 0 | served | native:ExtensionRunner.BindCommandContext | native:ExtensionRunner::bind_command_context | native:ExtensionRunner.bind_command_context |
-| `ExtensionRunner.bindCore` | 0 | served | native:ExtensionRunner.BindCore | native:ExtensionRunner::bind_core | native:ExtensionRunner.bind_core |
-| `ExtensionRunner.createCommandContext` | 0 | served | native:ExtensionRunner.CreateCommandContext | native:ExtensionRunner::create_command_context | native:ExtensionRunner.create_command_context |
-| `ExtensionRunner.createContext` | 0 | served | native:ExtensionRunner.CreateContext | native:ExtensionRunner::create_context | native:ExtensionRunner.create_context |
-| `ExtensionRunner.createToolContext` | 0 | served | native:ExtensionRunner.CreateToolContext | native:ExtensionRunner::create_tool_context | native:ExtensionRunner.create_tool_context |
-| `ExtensionRunner.emit` | 0 | served | native:ExtensionRunner.Emit | native:ExtensionRunner::emit | native:ExtensionRunner.emit |
-| `ExtensionRunner.emitBeforeAgentStart` | 0 | served | native:ExtensionRunner.EmitBeforeAgentStart | native:ExtensionRunner::emit_before_agent_start | native:ExtensionRunner.emit_before_agent_start |
-| `ExtensionRunner.emitBeforeProviderHeaders` | 0 | served | native:ExtensionRunner.EmitBeforeProviderHeaders | native:ExtensionRunner::emit_before_provider_headers | native:ExtensionRunner.emit_before_provider_headers |
-| `ExtensionRunner.emitBeforeProviderRequest` | 0 | served | native:ExtensionRunner.EmitBeforeProviderRequest | native:ExtensionRunner::emit_before_provider_request | native:ExtensionRunner.emit_before_provider_request |
-| `ExtensionRunner.emitBoundary` | 0 | served | native:ExtensionRunner.EmitBoundary | native:ExtensionRunner::emit_boundary | native:ExtensionRunner.emit_boundary |
-| `ExtensionRunner.emitCacheWarmingDecision` | 0 | served | native:ExtensionRunner.EmitCacheWarmingDecision | native:ExtensionRunner::emit_cache_warming_decision | native:ExtensionRunner.emit_cache_warming_decision |
-| `ExtensionRunner.emitContext` | 0 | served | native:ExtensionRunner.EmitContext | native:ExtensionRunner::emit_context | native:ExtensionRunner.emit_context |
-| `ExtensionRunner.emitError` | 0 | served | native:ExtensionRunner.EmitError | native:ExtensionRunner::emit_error | native:ExtensionRunner.emit_error |
-| `ExtensionRunner.emitInput` | 0 | served | native:ExtensionRunner.EmitInput | native:ExtensionRunner::emit_input | native:ExtensionRunner.emit_input |
-| `ExtensionRunner.emitMessageEnd` | 0 | served | native:ExtensionRunner.EmitMessageEnd | native:ExtensionRunner::emit_message_end | native:ExtensionRunner.emit_message_end |
-| `ExtensionRunner.emitResourcesDiscover` | 0 | served | native:ExtensionRunner.EmitResourcesDiscover | native:ExtensionRunner::emit_resources_discover | native:ExtensionRunner.emit_resources_discover |
-| `ExtensionRunner.emitToolCall` | 0 | served | native:ExtensionRunner.EmitToolCall | native:ExtensionRunner::emit_tool_call | native:ExtensionRunner.emit_tool_call |
-| `ExtensionRunner.emitToolResult` | 0 | served | native:ExtensionRunner.EmitToolResult | native:ExtensionRunner::emit_tool_result | native:ExtensionRunner.emit_tool_result |
-| `ExtensionRunner.emitUserBash` | 0 | served | native:ExtensionRunner.EmitUserBash | native:ExtensionRunner::emit_user_bash | native:ExtensionRunner.emit_user_bash |
-| `ExtensionRunner.getActiveTools` | 0 | served | native:ExtensionRunner.GetActiveTools | native:ExtensionRunner::get_active_tools | native:ExtensionRunner.get_active_tools |
-| `ExtensionRunner.getAllRegisteredTools` | 0 | served | native:ExtensionRunner.GetAllRegisteredTools | native:ExtensionRunner::get_all_registered_tools | native:ExtensionRunner.get_all_registered_tools |
-| `ExtensionRunner.getCommand` | 0 | served | native:ExtensionRunner.GetCommand | native:ExtensionRunner::get_command | native:ExtensionRunner.get_command |
-| `ExtensionRunner.getCommandDiagnostics` | 0 | served | native:ExtensionRunner.GetCommandDiagnostics | native:ExtensionRunner::get_command_diagnostics | native:ExtensionRunner.get_command_diagnostics |
-| `ExtensionRunner.getEntryRenderer` | 0 | served | native:ExtensionRunner.GetEntryRenderer | native:ExtensionRunner::get_entry_renderer | native:ExtensionRunner.get_entry_renderer |
-| `ExtensionRunner.getExtensionPaths` | 0 | served | native:ExtensionRunner.GetExtensionPaths | native:ExtensionRunner::get_extension_paths | native:ExtensionRunner.get_extension_paths |
-| `ExtensionRunner.getFlagValues` | 0 | served | native:ExtensionRunner.GetFlagValues | native:ExtensionRunner::get_flag_values | native:ExtensionRunner.get_flag_values |
-| `ExtensionRunner.getFlags` | 0 | served | native:ExtensionRunner.GetFlags | native:ExtensionRunner::get_flags | native:ExtensionRunner.get_flags |
-| `ExtensionRunner.getMarkdownTransformers` | 0 | served | native:ExtensionRunner.GetMarkdownTransformers | native:ExtensionRunner::get_markdown_transformers | native:ExtensionRunner.get_markdown_transformers |
-| `ExtensionRunner.getMessageRenderer` | 0 | served | native:ExtensionRunner.GetMessageRenderer | native:ExtensionRunner::get_message_renderer | native:ExtensionRunner.get_message_renderer |
-| `ExtensionRunner.getModelRegistry` | 0 | served | native:ExtensionRunner.GetModelRegistry | native:ExtensionRunner::get_model_registry | native:ExtensionRunner.get_model_registry |
-| `ExtensionRunner.getRegisteredCommands` | 0 | served | native:ExtensionRunner.GetRegisteredCommands | native:ExtensionRunner::get_registered_commands | native:ExtensionRunner.get_registered_commands |
-| `ExtensionRunner.getShortcutDiagnostics` | 0 | served | native:ExtensionRunner.GetShortcutDiagnostics | native:ExtensionRunner::get_shortcut_diagnostics | native:ExtensionRunner.get_shortcut_diagnostics |
-| `ExtensionRunner.getShortcuts` | 0 | served | native:ExtensionRunner.GetShortcuts | native:ExtensionRunner::get_shortcuts | native:ExtensionRunner.get_shortcuts |
-| `ExtensionRunner.getToolDefinition` | 0 | served | native:ExtensionRunner.GetToolDefinition | native:ExtensionRunner::get_tool_definition | native:ExtensionRunner.get_tool_definition |
-| `ExtensionRunner.getUIContext` | 0 | served | native:ExtensionRunner.GetUIContext | native:ExtensionRunner::get_ui_context | native:ExtensionRunner.get_ui_context |
-| `ExtensionRunner.hasHandlers` | 0 | served | native:ExtensionRunner.HasHandlers | native:ExtensionRunner::has_handlers | native:ExtensionRunner.has_handlers |
-| `ExtensionRunner.hasUI` | 0 | served | native:ExtensionRunner.HasUI | native:ExtensionRunner::has_ui | native:ExtensionRunner.has_ui |
-| `ExtensionRunner.invalidate` | 0 | served | native:ExtensionRunner.Invalidate | native:ExtensionRunner::invalidate | native:ExtensionRunner.invalidate |
-| `ExtensionRunner.onError` | 0 | served | native:ExtensionRunner.OnError | native:ExtensionRunner::on_error | native:ExtensionRunner.on_error |
-| `ExtensionRunner.reportUnhandledMcpServers` | 0 | served | native:ExtensionRunner.ReportUnhandledMcpServers | native:ExtensionRunner::report_unhandled_mcp_servers | native:ExtensionRunner.report_unhandled_mcp_servers |
-| `ExtensionRunner.resolveToolRenderers` | 0 | served | native:ExtensionRunner.ResolveToolRenderers | native:ExtensionRunner::resolve_tool_renderers | native:ExtensionRunner.resolve_tool_renderers |
-| `ExtensionRunner.setFlagValue` | 0 | served | native:ExtensionRunner.SetFlagValue | native:ExtensionRunner::set_flag_value | native:ExtensionRunner.set_flag_value |
-| `ExtensionRunner.setUIContext` | 0 | served | native:ExtensionRunner.SetUIContext | native:ExtensionRunner::set_ui_context | native:ExtensionRunner.set_ui_context |
-| `ExtensionRunner.shutdown` | 0 | served | native:ExtensionRunner.Shutdown | native:ExtensionRunner::shutdown | native:ExtensionRunner.shutdown |
-| `ExtensionSelectorComponent` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `ExtensionSelectorComponent.addChild` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `ExtensionSelectorComponent.children` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `ExtensionSelectorComponent.clear` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `ExtensionSelectorComponent.dispose` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `ExtensionSelectorComponent.handleInput` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `ExtensionSelectorComponent.handleMouse` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `ExtensionSelectorComponent.invalidate` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `ExtensionSelectorComponent.removeChild` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `ExtensionSelectorComponent.render` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `FooterComponent` | 1 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `FooterComponent.dispose` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `FooterComponent.invalidate` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `FooterComponent.render` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `FooterComponent.setAutoCompactEnabled` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `FooterComponent.setSession` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `InteractiveMode` | 4 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `InteractiveMode.clearEditor` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `InteractiveMode.getUserInput` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `InteractiveMode.init` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `InteractiveMode.renderInitialMessages` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `InteractiveMode.run` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `InteractiveMode.showError` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `InteractiveMode.showNewVersionNotification` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `InteractiveMode.showPackageUpdateNotification` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `InteractiveMode.showWarning` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `InteractiveMode.stop` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `KeybindingsManager` | 0 | identity | identity | identity | identity |
-| `KeybindingsManager.getConflicts` | 0 | identity | identity | identity | identity |
-| `KeybindingsManager.getDefinition` | 0 | identity | identity | identity | identity |
-| `KeybindingsManager.getEffectiveConfig` | 0 | identity | identity | identity | identity |
-| `KeybindingsManager.getKeys` | 0 | identity | identity | identity | identity |
-| `KeybindingsManager.getResolvedBindings` | 0 | identity | identity | identity | identity |
-| `KeybindingsManager.getUserBindings` | 0 | identity | identity | identity | identity |
-| `KeybindingsManager.matches` | 0 | identity | identity | identity | identity |
-| `KeybindingsManager.reload` | 0 | identity | identity | identity | identity |
-| `KeybindingsManager.setUserBindings` | 0 | identity | identity | identity | identity |
-| `LoginDialogComponent` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `LoginDialogComponent.addChild` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `LoginDialogComponent.children` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `LoginDialogComponent.clear` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `LoginDialogComponent.focused` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `LoginDialogComponent.handleInput` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `LoginDialogComponent.handleMouse` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `LoginDialogComponent.invalidate` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `LoginDialogComponent.removeChild` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `LoginDialogComponent.render` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `LoginDialogComponent.showAuth` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `LoginDialogComponent.showDetails` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `LoginDialogComponent.showDeviceCode` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `LoginDialogComponent.showInfo` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `LoginDialogComponent.showManualInput` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `LoginDialogComponent.showProgress` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `LoginDialogComponent.showPrompt` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `LoginDialogComponent.showWaiting` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `LoginDialogComponent.signal` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `ModelRegistry` | 5 | served | native:NewModelRegistry | native:ModelRegistry::new | native:ModelRegistry |
-| `ModelRegistry.classify` | 0 | served | native:ModelRegistry.Classify | native:ModelRegistry::classify | native:ModelRegistry.classify |
-| `ModelRegistry.complete` | 0 | served | native:ModelRegistry.Complete | native:ModelRegistry::complete | native:ModelRegistry.complete |
-| `ModelRegistry.find` | 0 | served | native:ModelRegistry.Find | native:ModelRegistry::find | native:ModelRegistry.find |
-| `ModelRegistry.findOfType` | 0 | served | native:ModelRegistry.FindOfType | native:ModelRegistry::find_of_type | native:ModelRegistry.find_of_type |
-| `ModelRegistry.generateImages` | 0 | served | native:ModelRegistry.GenerateImages | native:ModelRegistry::generate_images | native:ModelRegistry.generate_images |
-| `ModelRegistry.getAll` | 0 | served | native:ModelRegistry.GetAll | native:ModelRegistry::get_all | native:ModelRegistry.get_all |
-| `ModelRegistry.getApiKeyAndHeaders` | 0 | served | native:ModelRegistry.GetApiKeyAndHeaders | native:ModelRegistry::get_api_key_and_headers | native:ModelRegistry.get_api_key_and_headers |
-| `ModelRegistry.getApiKeyForProvider` | 0 | served | native:ModelRegistry.GetApiKeyForProvider | native:ModelRegistry::get_api_key_for_provider | native:ModelRegistry.get_api_key_for_provider |
-| `ModelRegistry.getAvailable` | 0 | served | native:ModelRegistry.GetAvailable | native:ModelRegistry::get_available | native:ModelRegistry.get_available |
-| `ModelRegistry.getAvailableOfType` | 0 | served | native:ModelRegistry.GetAvailableOfType | native:ModelRegistry::get_available_of_type | native:ModelRegistry.get_available_of_type |
-| `ModelRegistry.getError` | 0 | served | native:ModelRegistry.GetError | native:ModelRegistry::get_error | native:ModelRegistry.get_error |
-| `ModelRegistry.getModelOfType` | 0 | served | native:ModelRegistry.GetModelOfType | native:ModelRegistry::get_model_of_type | native:ModelRegistry.get_model_of_type |
-| `ModelRegistry.getModelsOfType` | 0 | served | native:ModelRegistry.GetModelsOfType | native:ModelRegistry::get_models_of_type | native:ModelRegistry.get_models_of_type |
-| `ModelRegistry.getProvider` | 0 | served | native:ModelRegistry.GetProvider | native:ModelRegistry::get_provider | native:ModelRegistry.get_provider |
-| `ModelRegistry.getProviderAuth` | 0 | served | native:ModelRegistry.GetProviderAuth | native:ModelRegistry::get_provider_auth | native:ModelRegistry.get_provider_auth |
-| `ModelRegistry.getProviderAuthStatus` | 0 | served | native:ModelRegistry.GetProviderAuthStatus | native:ModelRegistry::get_provider_auth_status | native:ModelRegistry.get_provider_auth_status |
-| `ModelRegistry.getProviderDisplayName` | 0 | served | native:ModelRegistry.GetProviderDisplayName | native:ModelRegistry::get_provider_display_name | native:ModelRegistry.get_provider_display_name |
-| `ModelRegistry.getRegisteredNativeProvider` | 0 | served | native:ModelRegistry.GetRegisteredNativeProvider | native:ModelRegistry::get_registered_native_provider | native:ModelRegistry.get_registered_native_provider |
-| `ModelRegistry.getRegisteredProviderConfig` | 0 | served | native:ModelRegistry.GetRegisteredProviderConfig | native:ModelRegistry::get_registered_provider_config | native:ModelRegistry.get_registered_provider_config |
-| `ModelRegistry.getRegisteredProviderIds` | 0 | served | native:ModelRegistry.GetRegisteredProviderIDs | native:ModelRegistry::get_registered_provider_ids | native:ModelRegistry.get_registered_provider_ids |
-| `ModelRegistry.hasConfiguredAuth` | 0 | served | native:ModelRegistry.HasConfiguredAuth | native:ModelRegistry::has_configured_auth | native:ModelRegistry.has_configured_auth |
-| `ModelRegistry.isUsingOAuth` | 0 | served | native:ModelRegistry.IsUsingOAuth | native:ModelRegistry::is_using_oauth | native:ModelRegistry.is_using_oauth |
-| `ModelRegistry.refresh` | 0 | served | native:ModelRegistry.Refresh | native:ModelRegistry::refresh | native:ModelRegistry.refresh |
-| `ModelRegistry.registerProvider` | 0 | served | native:ModelRegistry.RegisterProvider | native:ModelRegistry::register_provider | native:ModelRegistry.register_provider |
-| `ModelRegistry.registerVirtualModel` | 0 | served | native:ModelRegistry.RegisterVirtualModel | native:ModelRegistry::register_virtual_model | native:ModelRegistry.register_virtual_model |
-| `ModelRegistry.stream` | 0 | served | native:ModelRegistry.Stream | native:ModelRegistry::stream | native:ModelRegistry.stream |
-| `ModelRegistry.streamSimple` | 0 | served | native:ModelRegistry.StreamSimple | native:ModelRegistry::stream_simple | native:ModelRegistry.stream_simple |
-| `ModelRegistry.unregisterProvider` | 0 | served | native:ModelRegistry.UnregisterProvider | native:ModelRegistry::unregister_provider | native:ModelRegistry.unregister_provider |
-| `ModelRegistry.unregisterVirtualModel` | 0 | served | native:ModelRegistry.UnregisterVirtualModel | native:ModelRegistry::unregister_virtual_model | native:ModelRegistry.unregister_virtual_model |
-| `ModelRuntime` | 18 | served | native:ModelRuntime | native:ModelRuntime | native:ModelRuntime |
-| `ModelRuntime.cancelDeferred` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `ModelRuntime.checkAuth` | 0 | served | native:ModelRuntime.CheckAuth | native:ModelRuntime::check_auth | native:ModelRuntime.check_auth |
-| `ModelRuntime.classify` | 0 | served | native:ModelRuntime.Classify | native:ModelRuntime::classify | native:ModelRuntime.classify |
-| `ModelRuntime.complete` | 0 | served | native:ModelRuntime.Complete | native:ModelRuntime::complete | native:ModelRuntime.complete |
-| `ModelRuntime.completeSimple` | 0 | served | native:ModelRuntime.CompleteSimple | native:ModelRuntime::complete_simple | native:ModelRuntime.complete_simple |
-| `ModelRuntime.fetchDeferred` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `ModelRuntime.generateImages` | 0 | served | native:ModelRuntime.GenerateImages | native:ModelRuntime::generate_images | native:ModelRuntime.generate_images |
-| `ModelRuntime.getAllAvailable` | 0 | served | native:ModelRuntime.GetAllAvailable | native:ModelRuntime::get_all_available | native:ModelRuntime.get_all_available |
-| `ModelRuntime.getAllModels` | 0 | served | native:ModelRuntime.GetAllModels | native:ModelRuntime::get_all_models | native:ModelRuntime.get_all_models |
-| `ModelRuntime.getAuth` | 0 | served | native:ModelRuntime.GetAuth | native:ModelRuntime::get_auth | native:ModelRuntime.get_auth |
-| `ModelRuntime.getAvailable` | 0 | served | native:ModelRuntime.GetAvailable | native:ModelRuntime::get_available | native:ModelRuntime.get_available |
-| `ModelRuntime.getAvailableOfType` | 0 | served | native:ModelRuntime.GetAvailableOfType | native:ModelRuntime::get_available_of_type | native:ModelRuntime.get_available_of_type |
-| `ModelRuntime.getAvailableSnapshot` | 0 | served | native:ModelRuntime.GetAvailableSnapshot | native:ModelRuntime::get_available_snapshot | native:ModelRuntime.get_available_snapshot |
-| `ModelRuntime.getCompatibilityRequestConfig` | 0 | served | native:ModelRuntime.GetCompatibilityRequestConfig | native:ModelRuntime::get_compatibility_request_config | native:ModelRuntime.get_compatibility_request_config |
-| `ModelRuntime.getError` | 0 | served | native:ModelRuntime.GetError | native:ModelRuntime::get_error | native:ModelRuntime.get_error |
-| `ModelRuntime.getModel` | 0 | served | native:ModelRuntime.GetModel | native:ModelRuntime::get_model | native:ModelRuntime.get_model |
-| `ModelRuntime.getModelOfType` | 0 | served | native:ModelRuntime.GetModelOfType | native:ModelRuntime::get_model_of_type | native:ModelRuntime.get_model_of_type |
-| `ModelRuntime.getModels` | 0 | served | native:ModelRuntime.GetModels | native:ModelRuntime::get_models | native:ModelRuntime.get_models |
-| `ModelRuntime.getModelsOfType` | 0 | served | native:ModelRuntime.GetModelsOfType | native:ModelRuntime::get_models_of_type | native:ModelRuntime.get_models_of_type |
-| `ModelRuntime.getPhysicalModel` | 0 | served | native:ModelRuntime.GetPhysicalModel | native:ModelRuntime::get_physical_model | native:ModelRuntime.get_physical_model |
-| `ModelRuntime.getProvider` | 0 | served | native:ModelRuntime.GetProvider | native:ModelRuntime::get_provider | native:ModelRuntime.get_provider |
-| `ModelRuntime.getProviderAuthStatus` | 0 | served | native:ModelRuntime.GetProviderAuthStatus | native:ModelRuntime::get_provider_auth_status | native:ModelRuntime.get_provider_auth_status |
-| `ModelRuntime.getProviders` | 0 | served | native:ModelRuntime.GetProviders | native:ModelRuntime::get_providers | native:ModelRuntime.get_providers |
-| `ModelRuntime.getRegisteredNativeProvider` | 0 | served | native:ModelRuntime.GetRegisteredNativeProvider | native:ModelRuntime::get_registered_native_provider | native:ModelRuntime.get_registered_native_provider |
-| `ModelRuntime.getRegisteredProviderConfig` | 0 | served | native:ModelRuntime.GetRegisteredProviderConfig | native:ModelRuntime::get_registered_provider_config | native:ModelRuntime.get_registered_provider_config |
-| `ModelRuntime.getRegisteredProviderIds` | 0 | served | native:ModelRuntime.GetRegisteredProviderIDs | native:ModelRuntime::get_registered_provider_ids | native:ModelRuntime.get_registered_provider_ids |
-| `ModelRuntime.hasConfiguredAuth` | 0 | served | native:ModelRuntime.HasConfiguredAuth | native:ModelRuntime::has_configured_auth | native:ModelRuntime.has_configured_auth |
-| `ModelRuntime.isUsingOAuth` | 0 | served | native:ModelRuntime.IsUsingOAuth | native:ModelRuntime::is_using_oauth | native:ModelRuntime.is_using_oauth |
-| `ModelRuntime.isUsingSubscription` | 0 | served | native:ModelRuntime.IsUsingSubscription | native:ModelRuntime::is_using_subscription | native:ModelRuntime.is_using_subscription |
-| `ModelRuntime.listCredentials` | 0 | served | native:ModelRuntime.ListCredentials | native:ModelRuntime::list_credentials | native:ModelRuntime.list_credentials |
-| `ModelRuntime.login` | 0 | served | native:ModelRuntime.Login | native:ModelRuntime::login | native:ModelRuntime.login |
-| `ModelRuntime.logout` | 0 | served | native:ModelRuntime.Logout | native:ModelRuntime::logout | native:ModelRuntime.logout |
-| `ModelRuntime.refresh` | 0 | served | native:ModelRuntime.Refresh | native:ModelRuntime::refresh | native:ModelRuntime.refresh |
-| `ModelRuntime.registerNativeProvider` | 0 | served | native:ModelRuntime.RegisterNativeProvider | native:ModelRuntime::register_native_provider | native:ModelRuntime.register_native_provider |
-| `ModelRuntime.registerProvider` | 0 | served | native:ModelRuntime.RegisterProvider | native:ModelRuntime::register_provider | native:ModelRuntime.register_provider |
-| `ModelRuntime.registerVirtualModel` | 0 | served | native:ModelRuntime.RegisterVirtualModel | native:ModelRuntime::register_virtual_model | native:ModelRuntime.register_virtual_model |
-| `ModelRuntime.removeRuntimeApiKey` | 0 | served | native:ModelRuntime.RemoveRuntimeAPIKey | native:ModelRuntime::remove_runtime_api_key | native:ModelRuntime.remove_runtime_api_key |
-| `ModelRuntime.resolveModel` | 0 | served | native:ModelRuntime.ResolveModel | native:ModelRuntime::resolve_model | native:ModelRuntime.resolve_model |
-| `ModelRuntime.setRuntimeApiKey` | 0 | served | native:ModelRuntime.SetRuntimeAPIKey | native:ModelRuntime::set_runtime_api_key | native:ModelRuntime.set_runtime_api_key |
-| `ModelRuntime.stream` | 0 | served | native:ModelRuntime.Stream | native:ModelRuntime::stream | native:ModelRuntime.stream |
-| `ModelRuntime.streamDeferred` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `ModelRuntime.streamSimple` | 0 | served | native:ModelRuntime.StreamSimple | native:ModelRuntime::stream_simple | native:ModelRuntime.stream_simple |
-| `ModelRuntime.unregisterProvider` | 0 | served | native:ModelRuntime.UnregisterProvider | native:ModelRuntime::unregister_provider | native:ModelRuntime.unregister_provider |
-| `ModelRuntime.unregisterVirtualModel` | 0 | served | native:ModelRuntime.UnregisterVirtualModel | native:ModelRuntime::unregister_virtual_model | native:ModelRuntime.unregister_virtual_model |
-| `ModelSelectorComponent` | 3 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `ModelSelectorComponent.addChild` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `ModelSelectorComponent.children` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `ModelSelectorComponent.clear` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `ModelSelectorComponent.dispose` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `ModelSelectorComponent.focused` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `ModelSelectorComponent.getSearchInput` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `ModelSelectorComponent.handleInput` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `ModelSelectorComponent.handleMouse` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `ModelSelectorComponent.invalidate` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `ModelSelectorComponent.removeChild` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `ModelSelectorComponent.render` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `OAuthSelectorComponent` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `OAuthSelectorComponent.addChild` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `OAuthSelectorComponent.children` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `OAuthSelectorComponent.clear` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `OAuthSelectorComponent.focused` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `OAuthSelectorComponent.handleInput` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `OAuthSelectorComponent.handleMouse` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `OAuthSelectorComponent.invalidate` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `OAuthSelectorComponent.removeChild` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `OAuthSelectorComponent.render` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `ProjectTrustStore` | 6 | served | native:ProjectTrustStore | native:ProjectTrustStore | native:ProjectTrustStore |
-| `ProjectTrustStore.get` | 0 | served | native:ProjectTrustStore.Get | native:ProjectTrustStore::get | native:ProjectTrustStore.get |
-| `ProjectTrustStore.getEntry` | 0 | served | native:ProjectTrustStore.GetEntry | native:ProjectTrustStore::get_entry | native:ProjectTrustStore.get_entry |
-| `ProjectTrustStore.set` | 0 | served | native:ProjectTrustStore.Set | native:ProjectTrustStore::set | native:ProjectTrustStore.set |
-| `ProjectTrustStore.setMany` | 0 | served | native:ProjectTrustStore.SetMany | native:ProjectTrustStore::set_many | native:ProjectTrustStore.set_many |
-| `RpcClient` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `RpcClient.abort` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `RpcClient.abortBash` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `RpcClient.abortRetry` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `RpcClient.bash` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `RpcClient.clearQueue` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `RpcClient.clone` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `RpcClient.collectEvents` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `RpcClient.compact` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `RpcClient.cycleModel` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `RpcClient.cycleThinkingLevel` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `RpcClient.exportHtml` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `RpcClient.followUp` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `RpcClient.fork` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `RpcClient.getAvailableModels` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `RpcClient.getAvailableThinkingLevels` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `RpcClient.getCommands` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `RpcClient.getEntries` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `RpcClient.getForkMessages` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `RpcClient.getLastAssistantText` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `RpcClient.getMessages` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `RpcClient.getSessionStats` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `RpcClient.getState` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `RpcClient.getStderr` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `RpcClient.getTree` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `RpcClient.newSession` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `RpcClient.onEvent` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `RpcClient.prompt` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `RpcClient.promptAndWait` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `RpcClient.setAutoCompaction` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `RpcClient.setAutoRetry` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `RpcClient.setFollowUpMode` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `RpcClient.setModel` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `RpcClient.setSessionName` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `RpcClient.setSteeringMode` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `RpcClient.setThinkingLevel` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `RpcClient.start` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `RpcClient.steer` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `RpcClient.stop` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `RpcClient.switchSession` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `RpcClient.waitForIdle` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `SessionManager` | 37 | served | native:SessionManager | native:SessionManager | native:SessionManager |
-| `SessionManager._persist` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `SessionManager.appendCompaction` | 0 | served | native:SessionManager.AppendCompaction | native:SessionManager::append_compaction | native:SessionManager.append_compaction |
-| `SessionManager.appendContextEdit` | 0 | served | native:SessionManager.AppendContextEdit | native:SessionManager::append_context_edit | native:SessionManager.append_context_edit |
-| `SessionManager.appendCustomEntry` | 0 | served | native:SessionManager.AppendCustomEntry | native:SessionManager::append_custom_entry | native:SessionManager.append_custom_entry |
-| `SessionManager.appendCustomMessageEntry` | 0 | served | native:SessionManager.AppendCustomMessageEntry | native:SessionManager::append_custom_message_entry | native:SessionManager.append_custom_message_entry |
-| `SessionManager.appendLabelChange` | 0 | served | native:SessionManager.AppendLabelChange | native:SessionManager::append_label_change | native:SessionManager.append_label_change |
-| `SessionManager.appendMessage` | 0 | served | native:SessionManager.AppendMessage | native:SessionManager::append_message | native:SessionManager.append_message |
-| `SessionManager.appendModelChange` | 0 | served | native:SessionManager.AppendModelChange | native:SessionManager::append_model_change | native:SessionManager.append_model_change |
-| `SessionManager.appendSessionInfo` | 0 | served | native:SessionManager.AppendSessionInfo | native:SessionManager::append_session_info | native:SessionManager.append_session_info |
-| `SessionManager.appendThinkingLevelChange` | 0 | served | native:SessionManager.AppendThinkingLevelChange | native:SessionManager::append_thinking_level_change | native:SessionManager.append_thinking_level_change |
-| `SessionManager.appendUsage` | 0 | served | native:SessionManager.AppendUsage | native:SessionManager::append_usage | native:SessionManager.append_usage |
-| `SessionManager.branch` | 0 | served | native:SessionManager.Branch | native:SessionManager::branch | native:SessionManager.branch |
-| `SessionManager.branchWithSummary` | 0 | served | native:SessionManager.BranchWithSummary | native:SessionManager::branch_with_summary | native:SessionManager.branch_with_summary |
-| `SessionManager.buildContextEntries` | 0 | served | native:SessionManager.BuildContextEntries | native:SessionManager::build_context_entries | native:SessionManager.build_context_entries |
-| `SessionManager.buildSessionContext` | 0 | served | native:SessionManager.BuildSessionContext | native:SessionManager::build_session_context | native:SessionManager.build_session_context |
-| `SessionManager.buildSessionProjection` | 0 | served | native:SessionManager.BuildSessionProjection | native:SessionManager::build_session_projection | native:SessionManager.build_session_projection |
-| `SessionManager.createBranchedSession` | 0 | served | native:SessionManager.CreateBranchedSession | native:SessionManager::create_branched_session | native:SessionManager.create_branched_session |
-| `SessionManager.getBranch` | 0 | served | native:SessionManager.GetBranch | native:SessionManager::get_branch | native:SessionManager.get_branch |
-| `SessionManager.getChildren` | 0 | served | native:SessionManager.GetChildren | native:SessionManager::get_children | native:SessionManager.get_children |
-| `SessionManager.getCwd` | 0 | served | native:SessionManager.GetCwd | native:SessionManager::get_cwd | native:SessionManager.get_cwd |
-| `SessionManager.getEntries` | 0 | served | native:SessionManager.GetEntries | native:SessionManager::get_entries | native:SessionManager.get_entries |
-| `SessionManager.getEntry` | 0 | served | native:SessionManager.GetEntry | native:SessionManager::get_entry | native:SessionManager.get_entry |
-| `SessionManager.getEntryCount` | 0 | served | native:SessionManager.GetEntryCount | native:SessionManager::get_entry_count | native:SessionManager.get_entry_count |
-| `SessionManager.getHeader` | 0 | served | native:SessionManager.GetHeader | native:SessionManager::get_header | native:SessionManager.get_header |
-| `SessionManager.getLabel` | 0 | served | native:SessionManager.GetLabel | native:SessionManager::get_label | native:SessionManager.get_label |
-| `SessionManager.getLeafEntry` | 0 | served | native:SessionManager.GetLeafEntry | native:SessionManager::get_leaf_entry | native:SessionManager.get_leaf_entry |
-| `SessionManager.getLeafId` | 0 | served | native:SessionManager.GetLeafID | native:SessionManager::get_leaf_id | native:SessionManager.get_leaf_id |
-| `SessionManager.getSessionDir` | 0 | served | native:SessionManager.GetSessionDir | native:SessionManager::get_session_dir | native:SessionManager.get_session_dir |
-| `SessionManager.getSessionFile` | 0 | served | native:SessionManager.GetSessionFile | native:SessionManager::get_session_file | native:SessionManager.get_session_file |
-| `SessionManager.getSessionId` | 0 | served | native:SessionManager.GetSessionID | native:SessionManager::get_session_id | native:SessionManager.get_session_id |
-| `SessionManager.getSessionName` | 0 | served | native:SessionManager.GetSessionName | native:SessionManager::get_session_name | native:SessionManager.get_session_name |
-| `SessionManager.getTree` | 0 | served | native:SessionManager.GetTree | native:SessionManager::get_tree | native:SessionManager.get_tree |
-| `SessionManager.isPersisted` | 0 | served | native:SessionManager.IsPersisted | native:SessionManager::is_persisted | native:SessionManager.is_persisted |
-| `SessionManager.newSession` | 0 | served | native:SessionManager.NewSession | native:SessionManager::new_session | native:SessionManager.new_session |
-| `SessionManager.resetLeaf` | 0 | served | native:SessionManager.ResetLeaf | native:SessionManager::reset_leaf | native:SessionManager.reset_leaf |
-| `SessionManager.setSessionFile` | 0 | served | native:SessionManager.SetSessionFile | native:SessionManager::set_session_file | native:SessionManager.set_session_file |
-| `SessionManager.usesDefaultSessionDir` | 0 | served | native:SessionManager.UsesDefaultSessionDir | native:SessionManager::uses_default_session_dir | native:SessionManager.uses_default_session_dir |
-| `SessionSelectorComponent` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `SessionSelectorComponent.addChild` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `SessionSelectorComponent.children` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `SessionSelectorComponent.clear` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `SessionSelectorComponent.focused` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `SessionSelectorComponent.getSessionList` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `SessionSelectorComponent.handleInput` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `SessionSelectorComponent.handleMouse` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `SessionSelectorComponent.invalidate` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `SessionSelectorComponent.removeChild` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `SessionSelectorComponent.render` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `SettingsManager` | 39 | served | native:SettingsManager | native:SettingsManager | native:SettingsManager |
-| `SettingsManager.applyOverrides` | 0 | served | native:SettingsManager.ApplyOverrides | native:SettingsManager::apply_overrides | native:SettingsManager.apply_overrides |
-| `SettingsManager.drainErrors` | 0 | served | native:SettingsManager.DrainErrors | native:SettingsManager::drain_errors | native:SettingsManager.drain_errors |
-| `SettingsManager.flush` | 0 | served | native:SettingsManager.Flush | native:SettingsManager::flush | native:SettingsManager.flush |
-| `SettingsManager.getAllModelThinkingLevels` | 0 | served | native:SettingsManager.GetAllModelThinkingLevels | native:SettingsManager::get_all_model_thinking_levels | native:SettingsManager.get_all_model_thinking_levels |
-| `SettingsManager.getAutocompleteMaxVisible` | 0 | served | native:SettingsManager.GetAutocompleteMaxVisible | native:SettingsManager::get_autocomplete_max_visible | native:SettingsManager.get_autocomplete_max_visible |
-| `SettingsManager.getBlockImages` | 0 | served | native:SettingsManager.GetBlockImages | native:SettingsManager::get_block_images | native:SettingsManager.get_block_images |
-| `SettingsManager.getBranchSummarySettings` | 0 | served | native:SettingsManager.GetBranchSummarySettings | native:SettingsManager::get_branch_summary_settings | native:SettingsManager.get_branch_summary_settings |
-| `SettingsManager.getBranchSummarySkipPrompt` | 0 | served | native:SettingsManager.GetBranchSummarySkipPrompt | native:SettingsManager::get_branch_summary_skip_prompt | native:SettingsManager.get_branch_summary_skip_prompt |
-| `SettingsManager.getCacheWarmingMode` | 0 | served | native:SettingsManager.GetCacheWarmingMode | native:SettingsManager::get_cache_warming_mode | native:SettingsManager.get_cache_warming_mode |
-| `SettingsManager.getClearOnShrink` | 0 | served | native:SettingsManager.GetClearOnShrink | native:SettingsManager::get_clear_on_shrink | native:SettingsManager.get_clear_on_shrink |
-| `SettingsManager.getCodeBlockIndent` | 0 | served | native:SettingsManager.GetCodeBlockIndent | native:SettingsManager::get_code_block_indent | native:SettingsManager.get_code_block_indent |
-| `SettingsManager.getCollapseChangelog` | 0 | served | native:SettingsManager.GetCollapseChangelog | native:SettingsManager::get_collapse_changelog | native:SettingsManager.get_collapse_changelog |
-| `SettingsManager.getCompactionEnabled` | 0 | served | native:SettingsManager.GetCompactionEnabled | native:SettingsManager::get_compaction_enabled | native:SettingsManager.get_compaction_enabled |
-| `SettingsManager.getCompactionKeepRecentTokens` | 0 | served | native:SettingsManager.GetCompactionKeepRecentTokens | native:SettingsManager::get_compaction_keep_recent_tokens | native:SettingsManager.get_compaction_keep_recent_tokens |
-| `SettingsManager.getCompactionReserveTokens` | 0 | served | native:SettingsManager.GetCompactionReserveTokens | native:SettingsManager::get_compaction_reserve_tokens | native:SettingsManager.get_compaction_reserve_tokens |
-| `SettingsManager.getCompactionSettings` | 0 | served | native:SettingsManager.GetCompactionSettings | native:SettingsManager::get_compaction_settings | native:SettingsManager.get_compaction_settings |
-| `SettingsManager.getDefaultModel` | 0 | served | native:SettingsManager.GetDefaultModel | native:SettingsManager::get_default_model | native:SettingsManager.get_default_model |
-| `SettingsManager.getDefaultProjectTrust` | 0 | served | native:SettingsManager.GetDefaultProjectTrust | native:SettingsManager::get_default_project_trust | native:SettingsManager.get_default_project_trust |
-| `SettingsManager.getDefaultProvider` | 0 | served | native:SettingsManager.GetDefaultProvider | native:SettingsManager::get_default_provider | native:SettingsManager.get_default_provider |
-| `SettingsManager.getDefaultThinkingLevel` | 0 | served | native:SettingsManager.GetDefaultThinkingLevel | native:SettingsManager::get_default_thinking_level | native:SettingsManager.get_default_thinking_level |
-| `SettingsManager.getDefaultTools` | 0 | served | native:SettingsManager.GetDefaultTools | native:SettingsManager::get_default_tools | native:SettingsManager.get_default_tools |
-| `SettingsManager.getDoubleEscapeAction` | 0 | served | native:SettingsManager.GetDoubleEscapeAction | native:SettingsManager::get_double_escape_action | native:SettingsManager.get_double_escape_action |
-| `SettingsManager.getEditorPaddingX` | 0 | served | native:SettingsManager.GetEditorPaddingX | native:SettingsManager::get_editor_padding_x | native:SettingsManager.get_editor_padding_x |
-| `SettingsManager.getEnableAnalytics` | 0 | served | native:SettingsManager.GetEnableAnalytics | native:SettingsManager::get_enable_analytics | native:SettingsManager.get_enable_analytics |
-| `SettingsManager.getEnableInstallTelemetry` | 0 | served | native:SettingsManager.GetEnableInstallTelemetry | native:SettingsManager::get_enable_install_telemetry | native:SettingsManager.get_enable_install_telemetry |
-| `SettingsManager.getEnableSkillCommands` | 0 | served | native:SettingsManager.GetEnableSkillCommands | native:SettingsManager::get_enable_skill_commands | native:SettingsManager.get_enable_skill_commands |
-| `SettingsManager.getEnabledModels` | 0 | served | native:SettingsManager.GetEnabledModels | native:SettingsManager::get_enabled_models | native:SettingsManager.get_enabled_models |
-| `SettingsManager.getExtensionPaths` | 0 | served | native:SettingsManager.GetExtensionPaths | native:SettingsManager::get_extension_paths | native:SettingsManager.get_extension_paths |
-| `SettingsManager.getExternalEditorCommand` | 0 | served | native:SettingsManager.GetExternalEditorCommand | native:SettingsManager::get_external_editor_command | native:SettingsManager.get_external_editor_command |
-| `SettingsManager.getFollowUpMode` | 0 | served | native:SettingsManager.GetFollowUpMode | native:SettingsManager::get_follow_up_mode | native:SettingsManager.get_follow_up_mode |
-| `SettingsManager.getFullscreenCopyOnSelect` | 0 | served | native:SettingsManager.GetFullscreenCopyOnSelect | native:SettingsManager::get_fullscreen_copy_on_select | native:SettingsManager.get_fullscreen_copy_on_select |
-| `SettingsManager.getFullscreenExitOutput` | 0 | served | native:SettingsManager.GetFullscreenExitOutput | native:SettingsManager::get_fullscreen_exit_output | native:SettingsManager.get_fullscreen_exit_output |
-| `SettingsManager.getFullscreenScrollbar` | 0 | served | native:SettingsManager.GetFullscreenScrollbar | native:SettingsManager::get_fullscreen_scrollbar | native:SettingsManager.get_fullscreen_scrollbar |
-| `SettingsManager.getFullscreenWheelScrollLines` | 0 | served | native:SettingsManager.GetFullscreenWheelScrollLines | native:SettingsManager::get_fullscreen_wheel_scroll_lines | native:SettingsManager.get_fullscreen_wheel_scroll_lines |
-| `SettingsManager.getGlobalSettings` | 0 | served | native:SettingsManager.GetGlobalSettings | native:SettingsManager::get_global_settings | native:SettingsManager.get_global_settings |
-| `SettingsManager.getHideThinkingBlock` | 0 | served | native:SettingsManager.GetHideThinkingBlock | native:SettingsManager::get_hide_thinking_block | native:SettingsManager.get_hide_thinking_block |
-| `SettingsManager.getHttpIdleTimeoutMs` | 0 | served | native:SettingsManager.GetHttpIdleTimeoutMs | native:SettingsManager::get_http_idle_timeout_ms | native:SettingsManager.get_http_idle_timeout_ms |
-| `SettingsManager.getImageAutoResize` | 0 | served | native:SettingsManager.GetImageAutoResize | native:SettingsManager::get_image_auto_resize | native:SettingsManager.get_image_auto_resize |
-| `SettingsManager.getImageWidthCells` | 0 | served | native:SettingsManager.GetImageWidthCells | native:SettingsManager::get_image_width_cells | native:SettingsManager.get_image_width_cells |
-| `SettingsManager.getLastChangelogVersion` | 0 | served | native:SettingsManager.GetLastChangelogVersion | native:SettingsManager::get_last_changelog_version | native:SettingsManager.get_last_changelog_version |
-| `SettingsManager.getMermaidRenderingMode` | 0 | served | native:SettingsManager.GetMermaidRenderingMode | native:SettingsManager::get_mermaid_rendering_mode | native:SettingsManager.get_mermaid_rendering_mode |
-| `SettingsManager.getModelThinkingLevel` | 0 | served | native:SettingsManager.GetModelThinkingLevel | native:SettingsManager::get_model_thinking_level | native:SettingsManager.get_model_thinking_level |
-| `SettingsManager.getNpmCommand` | 0 | served | native:SettingsManager.GetNpmCommand | native:SettingsManager::get_npm_command | native:SettingsManager.get_npm_command |
-| `SettingsManager.getOrCreateDeviceId` | 0 | served | native:SettingsManager.GetOrCreateDeviceID | native:SettingsManager::get_or_create_device_id | native:SettingsManager.get_or_create_device_id |
-| `SettingsManager.getOutputPad` | 0 | served | native:SettingsManager.GetOutputPad | native:SettingsManager::get_output_pad | native:SettingsManager.get_output_pad |
-| `SettingsManager.getPackages` | 0 | served | native:SettingsManager.GetPackages | native:SettingsManager::get_packages | native:SettingsManager.get_packages |
-| `SettingsManager.getProjectSettings` | 0 | served | native:SettingsManager.GetProjectSettings | native:SettingsManager::get_project_settings | native:SettingsManager.get_project_settings |
-| `SettingsManager.getPromptTemplatePaths` | 0 | served | native:SettingsManager.GetPromptTemplatePaths | native:SettingsManager::get_prompt_template_paths | native:SettingsManager.get_prompt_template_paths |
-| `SettingsManager.getProviderRetrySettings` | 0 | served | native:SettingsManager.GetProviderRetrySettings | native:SettingsManager::get_provider_retry_settings | native:SettingsManager.get_provider_retry_settings |
-| `SettingsManager.getQuietStartup` | 0 | served | native:SettingsManager.GetQuietStartup | native:SettingsManager::get_quiet_startup | native:SettingsManager.get_quiet_startup |
-| `SettingsManager.getRetryEnabled` | 0 | served | native:SettingsManager.GetRetryEnabled | native:SettingsManager::get_retry_enabled | native:SettingsManager.get_retry_enabled |
-| `SettingsManager.getRetrySettings` | 0 | served | native:SettingsManager.GetRetrySettings | native:SettingsManager::get_retry_settings | native:SettingsManager.get_retry_settings |
-| `SettingsManager.getSessionDir` | 0 | served | native:SettingsManager.GetSessionDir | native:SettingsManager::get_session_dir | native:SettingsManager.get_session_dir |
-| `SettingsManager.getSessionShareDestination` | 0 | served | native:SettingsManager.GetSessionShareDestination | native:SettingsManager::get_session_share_destination | native:SettingsManager.get_session_share_destination |
-| `SettingsManager.getSettings` | 0 | served | native:SettingsManager.GetSettings | native:SettingsManager::get_settings | native:SettingsManager.get_settings |
-| `SettingsManager.getShellCommandPrefix` | 0 | served | native:SettingsManager.GetShellCommandPrefix | native:SettingsManager::get_shell_command_prefix | native:SettingsManager.get_shell_command_prefix |
-| `SettingsManager.getShellPath` | 0 | served | native:SettingsManager.GetShellPath | native:SettingsManager::get_shell_path | native:SettingsManager.get_shell_path |
-| `SettingsManager.getShowCacheMissNotices` | 0 | served | native:SettingsManager.GetShowCacheMissNotices | native:SettingsManager::get_show_cache_miss_notices | native:SettingsManager.get_show_cache_miss_notices |
-| `SettingsManager.getShowHardwareCursor` | 0 | served | native:SettingsManager.GetShowHardwareCursor | native:SettingsManager::get_show_hardware_cursor | native:SettingsManager.get_show_hardware_cursor |
-| `SettingsManager.getShowImages` | 0 | served | native:SettingsManager.GetShowImages | native:SettingsManager::get_show_images | native:SettingsManager.get_show_images |
-| `SettingsManager.getShowTerminalProgress` | 0 | served | native:SettingsManager.GetShowTerminalProgress | native:SettingsManager::get_show_terminal_progress | native:SettingsManager.get_show_terminal_progress |
-| `SettingsManager.getSkillPaths` | 0 | served | native:SettingsManager.GetSkillPaths | native:SettingsManager::get_skill_paths | native:SettingsManager.get_skill_paths |
-| `SettingsManager.getSteeringMode` | 0 | served | native:SettingsManager.GetSteeringMode | native:SettingsManager::get_steering_mode | native:SettingsManager.get_steering_mode |
-| `SettingsManager.getTerminalCapabilityOverrides` | 0 | served | native:SettingsManager.GetTerminalCapabilityOverrides | native:SettingsManager::get_terminal_capability_overrides | native:SettingsManager.get_terminal_capability_overrides |
-| `SettingsManager.getTheme` | 0 | served | native:SettingsManager.GetTheme | native:SettingsManager::get_theme | native:SettingsManager.get_theme |
-| `SettingsManager.getThemePaths` | 0 | served | native:SettingsManager.GetThemePaths | native:SettingsManager::get_theme_paths | native:SettingsManager.get_theme_paths |
-| `SettingsManager.getThemeSetting` | 0 | served | native:SettingsManager.GetThemeSetting | native:SettingsManager::get_theme_setting | native:SettingsManager.get_theme_setting |
-| `SettingsManager.getThinkingBudgets` | 0 | served | native:SettingsManager.GetThinkingBudgets | native:SettingsManager::get_thinking_budgets | native:SettingsManager.get_thinking_budgets |
-| `SettingsManager.getTrackingId` | 0 | served | native:SettingsManager.GetTrackingID | native:SettingsManager::get_tracking_id | native:SettingsManager.get_tracking_id |
-| `SettingsManager.getTransport` | 0 | served | native:SettingsManager.GetTransport | native:SettingsManager::get_transport | native:SettingsManager.get_transport |
-| `SettingsManager.getTreeFilterMode` | 0 | served | native:SettingsManager.GetTreeFilterMode | native:SettingsManager::get_tree_filter_mode | native:SettingsManager.get_tree_filter_mode |
-| `SettingsManager.getTuiMode` | 0 | served | native:SettingsManager.GetTuiMode | native:SettingsManager::get_tui_mode | native:SettingsManager.get_tui_mode |
-| `SettingsManager.getWarnings` | 0 | served | native:SettingsManager.GetWarnings | native:SettingsManager::get_warnings | native:SettingsManager.get_warnings |
-| `SettingsManager.getWebSocketConnectTimeoutMs` | 0 | served | native:SettingsManager.GetWebSocketConnectTimeoutMs | native:SettingsManager::get_web_socket_connect_timeout_ms | native:SettingsManager.get_web_socket_connect_timeout_ms |
-| `SettingsManager.isProjectTrusted` | 0 | served | native:SettingsManager.IsProjectTrusted | native:SettingsManager::is_project_trusted | native:SettingsManager.is_project_trusted |
-| `SettingsManager.reload` | 0 | served | native:SettingsManager.Reload | native:SettingsManager::reload | native:SettingsManager.reload |
-| `SettingsManager.removeModelThinkingLevel` | 0 | served | native:SettingsManager.RemoveModelThinkingLevel | native:SettingsManager::remove_model_thinking_level | native:SettingsManager.remove_model_thinking_level |
-| `SettingsManager.setAutocompleteMaxVisible` | 0 | served | native:SettingsManager.SetAutocompleteMaxVisible | native:SettingsManager::set_autocomplete_max_visible | native:SettingsManager.set_autocomplete_max_visible |
-| `SettingsManager.setBlockImages` | 0 | served | native:SettingsManager.SetBlockImages | native:SettingsManager::set_block_images | native:SettingsManager.set_block_images |
-| `SettingsManager.setCacheWarmingMode` | 0 | served | native:SettingsManager.SetCacheWarmingMode | native:SettingsManager::set_cache_warming_mode | native:SettingsManager.set_cache_warming_mode |
-| `SettingsManager.setClearOnShrink` | 0 | served | native:SettingsManager.SetClearOnShrink | native:SettingsManager::set_clear_on_shrink | native:SettingsManager.set_clear_on_shrink |
-| `SettingsManager.setCollapseChangelog` | 0 | served | native:SettingsManager.SetCollapseChangelog | native:SettingsManager::set_collapse_changelog | native:SettingsManager.set_collapse_changelog |
-| `SettingsManager.setCompactionEnabled` | 0 | served | native:SettingsManager.SetCompactionEnabled | native:SettingsManager::set_compaction_enabled | native:SettingsManager.set_compaction_enabled |
-| `SettingsManager.setDefaultModel` | 0 | served | native:SettingsManager.SetDefaultModel | native:SettingsManager::set_default_model | native:SettingsManager.set_default_model |
-| `SettingsManager.setDefaultModelAndProvider` | 0 | served | native:SettingsManager.SetDefaultModelAndProvider | native:SettingsManager::set_default_model_and_provider | native:SettingsManager.set_default_model_and_provider |
-| `SettingsManager.setDefaultProjectTrust` | 0 | served | native:SettingsManager.SetDefaultProjectTrust | native:SettingsManager::set_default_project_trust | native:SettingsManager.set_default_project_trust |
-| `SettingsManager.setDefaultProvider` | 0 | served | native:SettingsManager.SetDefaultProvider | native:SettingsManager::set_default_provider | native:SettingsManager.set_default_provider |
-| `SettingsManager.setDefaultThinkingLevel` | 0 | served | native:SettingsManager.SetDefaultThinkingLevel | native:SettingsManager::set_default_thinking_level | native:SettingsManager.set_default_thinking_level |
-| `SettingsManager.setDoubleEscapeAction` | 0 | served | native:SettingsManager.SetDoubleEscapeAction | native:SettingsManager::set_double_escape_action | native:SettingsManager.set_double_escape_action |
-| `SettingsManager.setEditorPaddingX` | 0 | served | native:SettingsManager.SetEditorPaddingX | native:SettingsManager::set_editor_padding_x | native:SettingsManager.set_editor_padding_x |
-| `SettingsManager.setEnableAnalytics` | 0 | served | native:SettingsManager.SetEnableAnalytics | native:SettingsManager::set_enable_analytics | native:SettingsManager.set_enable_analytics |
-| `SettingsManager.setEnableInstallTelemetry` | 0 | served | native:SettingsManager.SetEnableInstallTelemetry | native:SettingsManager::set_enable_install_telemetry | native:SettingsManager.set_enable_install_telemetry |
-| `SettingsManager.setEnableSkillCommands` | 0 | served | native:SettingsManager.SetEnableSkillCommands | native:SettingsManager::set_enable_skill_commands | native:SettingsManager.set_enable_skill_commands |
-| `SettingsManager.setEnabledModels` | 0 | served | native:SettingsManager.SetEnabledModels | native:SettingsManager::set_enabled_models | native:SettingsManager.set_enabled_models |
-| `SettingsManager.setExtensionPaths` | 0 | served | native:SettingsManager.SetExtensionPaths | native:SettingsManager::set_extension_paths | native:SettingsManager.set_extension_paths |
-| `SettingsManager.setFollowUpMode` | 0 | served | native:SettingsManager.SetFollowUpMode | native:SettingsManager::set_follow_up_mode | native:SettingsManager.set_follow_up_mode |
-| `SettingsManager.setFullscreenCopyOnSelect` | 0 | served | native:SettingsManager.SetFullscreenCopyOnSelect | native:SettingsManager::set_fullscreen_copy_on_select | native:SettingsManager.set_fullscreen_copy_on_select |
-| `SettingsManager.setFullscreenExitOutput` | 0 | served | native:SettingsManager.SetFullscreenExitOutput | native:SettingsManager::set_fullscreen_exit_output | native:SettingsManager.set_fullscreen_exit_output |
-| `SettingsManager.setFullscreenScrollbar` | 0 | served | native:SettingsManager.SetFullscreenScrollbar | native:SettingsManager::set_fullscreen_scrollbar | native:SettingsManager.set_fullscreen_scrollbar |
-| `SettingsManager.setFullscreenWheelScrollLines` | 0 | served | native:SettingsManager.SetFullscreenWheelScrollLines | native:SettingsManager::set_fullscreen_wheel_scroll_lines | native:SettingsManager.set_fullscreen_wheel_scroll_lines |
-| `SettingsManager.setHideThinkingBlock` | 0 | served | native:SettingsManager.SetHideThinkingBlock | native:SettingsManager::set_hide_thinking_block | native:SettingsManager.set_hide_thinking_block |
-| `SettingsManager.setHttpIdleTimeoutMs` | 0 | served | native:SettingsManager.SetHttpIdleTimeoutMs | native:SettingsManager::set_http_idle_timeout_ms | native:SettingsManager.set_http_idle_timeout_ms |
-| `SettingsManager.setImageAutoResize` | 0 | served | native:SettingsManager.SetImageAutoResize | native:SettingsManager::set_image_auto_resize | native:SettingsManager.set_image_auto_resize |
-| `SettingsManager.setImageWidthCells` | 0 | served | native:SettingsManager.SetImageWidthCells | native:SettingsManager::set_image_width_cells | native:SettingsManager.set_image_width_cells |
-| `SettingsManager.setLastChangelogVersion` | 0 | served | native:SettingsManager.SetLastChangelogVersion | native:SettingsManager::set_last_changelog_version | native:SettingsManager.set_last_changelog_version |
-| `SettingsManager.setMermaidRenderingMode` | 0 | served | native:SettingsManager.SetMermaidRenderingMode | native:SettingsManager::set_mermaid_rendering_mode | native:SettingsManager.set_mermaid_rendering_mode |
-| `SettingsManager.setModelThinkingLevel` | 0 | served | native:SettingsManager.SetModelThinkingLevel | native:SettingsManager::set_model_thinking_level | native:SettingsManager.set_model_thinking_level |
-| `SettingsManager.setNpmCommand` | 0 | served | native:SettingsManager.SetNpmCommand | native:SettingsManager::set_npm_command | native:SettingsManager.set_npm_command |
-| `SettingsManager.setOutputPad` | 0 | served | native:SettingsManager.SetOutputPad | native:SettingsManager::set_output_pad | native:SettingsManager.set_output_pad |
-| `SettingsManager.setPackages` | 0 | served | native:SettingsManager.SetPackages | native:SettingsManager::set_packages | native:SettingsManager.set_packages |
-| `SettingsManager.setProjectExtensionPaths` | 0 | served | native:SettingsManager.SetProjectExtensionPaths | native:SettingsManager::set_project_extension_paths | native:SettingsManager.set_project_extension_paths |
-| `SettingsManager.setProjectPackages` | 0 | served | native:SettingsManager.SetProjectPackages | native:SettingsManager::set_project_packages | native:SettingsManager.set_project_packages |
-| `SettingsManager.setProjectPromptTemplatePaths` | 0 | served | native:SettingsManager.SetProjectPromptTemplatePaths | native:SettingsManager::set_project_prompt_template_paths | native:SettingsManager.set_project_prompt_template_paths |
-| `SettingsManager.setProjectSkillPaths` | 0 | served | native:SettingsManager.SetProjectSkillPaths | native:SettingsManager::set_project_skill_paths | native:SettingsManager.set_project_skill_paths |
-| `SettingsManager.setProjectThemePaths` | 0 | served | native:SettingsManager.SetProjectThemePaths | native:SettingsManager::set_project_theme_paths | native:SettingsManager.set_project_theme_paths |
-| `SettingsManager.setProjectTrusted` | 0 | served | native:SettingsManager.SetProjectTrusted | native:SettingsManager::set_project_trusted | native:SettingsManager.set_project_trusted |
-| `SettingsManager.setPromptTemplatePaths` | 0 | served | native:SettingsManager.SetPromptTemplatePaths | native:SettingsManager::set_prompt_template_paths | native:SettingsManager.set_prompt_template_paths |
-| `SettingsManager.setQuietStartup` | 0 | served | native:SettingsManager.SetQuietStartup | native:SettingsManager::set_quiet_startup | native:SettingsManager.set_quiet_startup |
-| `SettingsManager.setRetryEnabled` | 0 | served | native:SettingsManager.SetRetryEnabled | native:SettingsManager::set_retry_enabled | native:SettingsManager.set_retry_enabled |
-| `SettingsManager.setSessionShareDestination` | 0 | served | native:SettingsManager.SetSessionShareDestination | native:SettingsManager::set_session_share_destination | native:SettingsManager.set_session_share_destination |
-| `SettingsManager.setShellCommandPrefix` | 0 | served | native:SettingsManager.SetShellCommandPrefix | native:SettingsManager::set_shell_command_prefix | native:SettingsManager.set_shell_command_prefix |
-| `SettingsManager.setShellPath` | 0 | served | native:SettingsManager.SetShellPath | native:SettingsManager::set_shell_path | native:SettingsManager.set_shell_path |
-| `SettingsManager.setShowCacheMissNotices` | 0 | served | native:SettingsManager.SetShowCacheMissNotices | native:SettingsManager::set_show_cache_miss_notices | native:SettingsManager.set_show_cache_miss_notices |
-| `SettingsManager.setShowHardwareCursor` | 0 | served | native:SettingsManager.SetShowHardwareCursor | native:SettingsManager::set_show_hardware_cursor | native:SettingsManager.set_show_hardware_cursor |
-| `SettingsManager.setShowImages` | 0 | served | native:SettingsManager.SetShowImages | native:SettingsManager::set_show_images | native:SettingsManager.set_show_images |
-| `SettingsManager.setShowTerminalProgress` | 0 | served | native:SettingsManager.SetShowTerminalProgress | native:SettingsManager::set_show_terminal_progress | native:SettingsManager.set_show_terminal_progress |
-| `SettingsManager.setSkillPaths` | 0 | served | native:SettingsManager.SetSkillPaths | native:SettingsManager::set_skill_paths | native:SettingsManager.set_skill_paths |
-| `SettingsManager.setSteeringMode` | 0 | served | native:SettingsManager.SetSteeringMode | native:SettingsManager::set_steering_mode | native:SettingsManager.set_steering_mode |
-| `SettingsManager.setTheme` | 0 | served | native:SettingsManager.SetTheme | native:SettingsManager::set_theme | native:SettingsManager.set_theme |
-| `SettingsManager.setThemePaths` | 0 | served | native:SettingsManager.SetThemePaths | native:SettingsManager::set_theme_paths | native:SettingsManager.set_theme_paths |
-| `SettingsManager.setTransport` | 0 | served | native:SettingsManager.SetTransport | native:SettingsManager::set_transport | native:SettingsManager.set_transport |
-| `SettingsManager.setTreeFilterMode` | 0 | served | native:SettingsManager.SetTreeFilterMode | native:SettingsManager::set_tree_filter_mode | native:SettingsManager.set_tree_filter_mode |
-| `SettingsManager.setTuiMode` | 0 | served | native:SettingsManager.SetTuiMode | native:SettingsManager::set_tui_mode | native:SettingsManager.set_tui_mode |
-| `SettingsManager.setWarnings` | 0 | served | native:SettingsManager.SetWarnings | native:SettingsManager::set_warnings | native:SettingsManager.set_warnings |
-| `SettingsSelectorComponent` | 1 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `SettingsSelectorComponent.addChild` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `SettingsSelectorComponent.children` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `SettingsSelectorComponent.clear` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `SettingsSelectorComponent.getSettingsList` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `SettingsSelectorComponent.handleMouse` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `SettingsSelectorComponent.invalidate` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `SettingsSelectorComponent.removeChild` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `SettingsSelectorComponent.render` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `ShowImagesSelectorComponent` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `ShowImagesSelectorComponent.addChild` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `ShowImagesSelectorComponent.children` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `ShowImagesSelectorComponent.clear` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `ShowImagesSelectorComponent.getSelectList` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `ShowImagesSelectorComponent.handleMouse` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `ShowImagesSelectorComponent.invalidate` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `ShowImagesSelectorComponent.removeChild` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `ShowImagesSelectorComponent.render` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `SkillInvocationMessageComponent` | 3 | served | kit:SkillInvocation | kit:SkillInvocation | kit:SkillInvocation |
-| `SkillInvocationMessageComponent.addChild` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
-| `SkillInvocationMessageComponent.children` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
-| `SkillInvocationMessageComponent.clear` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
-| `SkillInvocationMessageComponent.handleMouse` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
-| `SkillInvocationMessageComponent.invalidate` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
-| `SkillInvocationMessageComponent.removeChild` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
-| `SkillInvocationMessageComponent.render` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
-| `SkillInvocationMessageComponent.setBgFn` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
-| `SkillInvocationMessageComponent.setExpanded` | 0 | served | kit:SkillInvocation | kit:SkillInvocation | kit:SkillInvocation |
-| `SkillInvocationMessageComponent.setOutputPad` | 0 | served | kit:SkillInvocation | kit:SkillInvocation | kit:SkillInvocation |
-| `SkillInvocationMessageComponent.setPaddingX` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
-| `Theme` | 2 | served | native:UITheme | native:Theme | native:Theme |
-| `Theme.appearance` | 0 | served | native:UITheme.Appearance | native:Theme::appearance | native:Theme.appearance |
-| `Theme.bg` | 0 | served | native:UITheme.Bg | native:Theme::bg | native:Theme.bg |
-| `Theme.bold` | 0 | served | native:UITheme.Bold | native:Theme::bold | native:Theme.bold |
-| `Theme.colors` | 0 | served | native:UITheme.Colors | native:Theme::colors | native:Theme.colors |
-| `Theme.fg` | 0 | served | native:UITheme.Fg | native:Theme::fg | native:Theme.fg |
-| `Theme.getBashModeBorderColor` | 0 | served | native:UITheme.GetBashModeBorderColor | native:Theme::get_bash_mode_border_color | native:Theme.get_bash_mode_border_color |
-| `Theme.getBgAnsi` | 0 | served | native:UITheme.GetBgAnsi | native:Theme::get_bg_ansi | native:Theme.get_bg_ansi |
-| `Theme.getColorMode` | 0 | served | native:UITheme.GetColorMode | native:Theme::get_color_mode | native:Theme.get_color_mode |
-| `Theme.getFgAnsi` | 0 | served | native:UITheme.GetFgAnsi | native:Theme::get_fg_ansi | native:Theme.get_fg_ansi |
-| `Theme.getThinkingBorderColor` | 0 | served | native:UITheme.GetThinkingBorderColor | native:Theme::get_thinking_border_color | native:Theme.get_thinking_border_color |
-| `Theme.inverse` | 0 | served | native:UITheme.Inverse | native:Theme::inverse | native:Theme.inverse |
-| `Theme.italic` | 0 | served | native:UITheme.Italic | native:Theme::italic | native:Theme.italic |
-| `Theme.name` | 0 | served | native:UITheme.Name | native:Theme.name | native:Theme.name |
-| `Theme.sourceInfo` | 0 | served | native:UITheme.SourceInfo | native:Theme.source_info | native:Theme.source_info |
-| `Theme.sourcePath` | 0 | served | native:UITheme.SourcePath | native:Theme.source_path | native:Theme.source_path |
-| `Theme.strikethrough` | 0 | served | native:UITheme.Strikethrough | native:Theme::strikethrough | native:Theme.strikethrough |
-| `Theme.style` | 0 | served | native:UITheme.Style | native:Theme::style | native:Theme.style |
-| `Theme.underline` | 0 | served | native:UITheme.Underline | native:Theme::underline | native:Theme.underline |
-| `ThemeSelectorComponent` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `ThemeSelectorComponent.addChild` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `ThemeSelectorComponent.children` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `ThemeSelectorComponent.clear` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `ThemeSelectorComponent.getSelectList` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `ThemeSelectorComponent.handleMouse` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `ThemeSelectorComponent.invalidate` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `ThemeSelectorComponent.removeChild` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `ThemeSelectorComponent.render` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `ThinkingSelectorComponent` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `ThinkingSelectorComponent.addChild` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `ThinkingSelectorComponent.children` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `ThinkingSelectorComponent.clear` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `ThinkingSelectorComponent.focused` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `ThinkingSelectorComponent.getSelectList` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `ThinkingSelectorComponent.handleInput` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `ThinkingSelectorComponent.handleMouse` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `ThinkingSelectorComponent.invalidate` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `ThinkingSelectorComponent.removeChild` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `ThinkingSelectorComponent.render` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `ToolExecutionComponent` | 5 | served | kit:ToolExecution | kit:ToolExecution | kit:ToolExecution |
-| `ToolExecutionComponent.addChild` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
-| `ToolExecutionComponent.children` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
-| `ToolExecutionComponent.clear` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
-| `ToolExecutionComponent.handleMouse` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
-| `ToolExecutionComponent.invalidate` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
-| `ToolExecutionComponent.markExecutionStarted` | 0 | served | kit:ToolExecution | kit:ToolExecution | kit:ToolExecution |
-| `ToolExecutionComponent.removeChild` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
-| `ToolExecutionComponent.render` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
-| `ToolExecutionComponent.setArgsComplete` | 0 | served | kit:ToolExecution | kit:ToolExecution | kit:ToolExecution |
-| `ToolExecutionComponent.setExpanded` | 0 | served | kit:ToolExecution | kit:ToolExecution | kit:ToolExecution |
-| `ToolExecutionComponent.setImageWidthCells` | 0 | served | kit:ToolExecution | kit:ToolExecution | kit:ToolExecution |
-| `ToolExecutionComponent.setOutputPad` | 0 | served | kit:ToolExecution | kit:ToolExecution | kit:ToolExecution |
-| `ToolExecutionComponent.setShowImages` | 0 | served | kit:ToolExecution | kit:ToolExecution | kit:ToolExecution |
-| `ToolExecutionComponent.updateArgs` | 0 | served | kit:ToolExecution | kit:ToolExecution | kit:ToolExecution |
-| `ToolExecutionComponent.updateResult` | 0 | served | kit:ToolExecution | kit:ToolExecution | kit:ToolExecution |
-| `TreeSelectorComponent` | 1 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `TreeSelectorComponent.addChild` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `TreeSelectorComponent.children` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `TreeSelectorComponent.clear` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `TreeSelectorComponent.focused` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `TreeSelectorComponent.getTreeList` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `TreeSelectorComponent.handleInput` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `TreeSelectorComponent.handleMouse` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `TreeSelectorComponent.invalidate` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `TreeSelectorComponent.onCopy` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `TreeSelectorComponent.removeChild` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `TreeSelectorComponent.render` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `UserMessageComponent` | 7 | served | kit:UserMessage | kit:UserMessage | kit:UserMessage |
-| `UserMessageComponent.addChild` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
-| `UserMessageComponent.children` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
-| `UserMessageComponent.clear` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
-| `UserMessageComponent.handleMouse` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
-| `UserMessageComponent.invalidate` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
-| `UserMessageComponent.removeChild` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
-| `UserMessageComponent.render` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
-| `UserMessageComponent.setOutputPad` | 0 | served | kit:UserMessage | kit:UserMessage | kit:UserMessage |
-| `UserMessageSelectorComponent` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `UserMessageSelectorComponent.addChild` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `UserMessageSelectorComponent.children` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `UserMessageSelectorComponent.clear` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `UserMessageSelectorComponent.getMessageList` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `UserMessageSelectorComponent.handleMouse` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `UserMessageSelectorComponent.invalidate` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `UserMessageSelectorComponent.removeChild` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `UserMessageSelectorComponent.render` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `VERSION` | 13 | served | native:Version | native:get_version | native:get_version |
-| `VIRTUAL_MODEL_STATE_ENTRY` | 0 | served | native:VirtualModelStateEntry | native:VIRTUAL_MODEL_STATE_ENTRY | native:VIRTUAL_MODEL_STATE_ENTRY |
-| `buildContextEntries` | 1 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `buildSessionContext` | 19 | served | native:BuildSessionContext | native:build_session_context | native:build_session_context |
-| `buildSessionProjection` | 2 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `calculateContextTokens` | 2 | served | native:CalculateContextTokens | native:calculate_context_tokens | native:calculate_context_tokens |
-| `collectEntriesForBranchSummary` | 0 | served | native:CollectEntriesForBranchSummary | native:collect_entries_for_branch_summary | native:collect_entries_for_branch_summary |
-| `compact` | 2 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `convertToLlm` | 17 | served | native:ConvertToLlm | native:convert_to_llm | native:convert_to_llm |
-| `convertToPng` | 2 | served | native:ConvertToPng | native:convert_to_png | native:convert_to_png |
-| `copyToClipboard` | 8 | served | native:CopyToClipboard | native:copy_to_clipboard | native:copy_to_clipboard |
-| `createAgentSession` | 20 | served | host:Context.CreateAgentSession | host:Context::create_agent_session | host:Context.create_agent_session |
-| `createAgentSessionFromServices` | 8 | served | native:CreateAgentSessionFromServices | native:create_agent_session_from_services | native:create_agent_session_from_services |
-| `createAgentSessionRuntime` | 6 | served | native:CreateAgentSessionRuntime | native:create_agent_session_runtime | native:create_agent_session_runtime |
-| `createAgentSessionServices` | 9 | served | native:CreateAgentSessionServices | native:create_agent_session_services | native:create_agent_session_services |
-| `createBashTool` | 2 | served | native:CreateBashTool | native:create_bash_tool | native:create_bash_tool |
-| `createBashToolDefinition` | 12 | served | native:CreateBashToolDefinition | native:create_bash_tool_definition | native:create_bash_tool_definition |
-| `createCodemodeExtension` | 8 | served | native:CreateCodemodeExtension | native:create_codemode_extension | native:create_codemode_extension |
-| `createCodingTools` | 3 | served | native:CreateCodingTools | native:create_coding_tools | native:create_coding_tools |
-| `createEditTool` | 3 | served | native:CreateEditTool | native:create_edit_tool | native:create_edit_tool |
-| `createEditToolDefinition` | 12 | served | native:CreateEditToolDefinition | native:create_edit_tool_definition | native:create_edit_tool_definition |
-| `createEventBus` | 4 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
-| `createExtensionRuntime` | 6 | served | native:CreateExtensionRuntime | native:create_extension_runtime | native:create_extension_runtime |
-| `createFindTool` | 4 | served | native:CreateFindTool | native:create_find_tool | native:create_find_tool |
-| `createFindToolDefinition` | 10 | served | native:CreateFindToolDefinition | native:create_find_tool_definition | native:create_find_tool_definition |
-| `createGrepTool` | 3 | served | native:CreateGrepTool | native:create_grep_tool | native:create_grep_tool |
-| `createGrepToolDefinition` | 12 | served | native:CreateGrepToolDefinition | native:create_grep_tool_definition | native:create_grep_tool_definition |
-| `createLocalBashOperations` | 6 | served | native:CreateLocalBashOperations | native:create_local_bash_operations | native:create_local_bash_operations |
-| `createLocalPowerShellOperations` | 1 | served | native:CreateLocalPowerShellOperations | native:create_local_powershell_operations | native:create_local_powershell_operations |
-| `createLsTool` | 4 | served | native:CreateLsTool | native:create_ls_tool | native:create_ls_tool |
-| `createLsToolDefinition` | 10 | served | native:CreateLsToolDefinition | native:create_ls_tool_definition | native:create_ls_tool_definition |
-| `createMcpExtension` | 6 | served | native:CreateMcpExtension | native:create_mcp_extension | native:create_mcp_extension |
-| `createPowerShellTool` | 0 | served | native:CreatePowerShellTool | native:create_powershell_tool | native:create_powershell_tool |
-| `createPowerShellToolDefinition` | 1 | served | native:CreatePowerShellToolDefinition | native:create_powershell_tool_definition | native:create_powershell_tool_definition |
-| `createReadOnlyTools` | 3 | served | native:CreateReadOnlyTools | native:create_read_only_tools | native:create_read_only_tools |
-| `createReadTool` | 3 | served | native:CreateReadTool | native:create_read_tool | native:create_read_tool |
-| `createReadToolDefinition` | 12 | served | native:CreateReadToolDefinition | native:create_read_tool_definition | native:create_read_tool_definition |
-| `createSyntheticSourceInfo` | 2 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `createToolSearchExtension` | 7 | served | native:CreateToolSearchExtension | native:create_tool_search_extension | native:create_tool_search_extension |
-| `createWriteTool` | 4 | served | native:CreateWriteTool | native:create_write_tool | native:create_write_tool |
-| `createWriteToolDefinition` | 13 | served | native:CreateWriteToolDefinition | native:create_write_tool_definition | native:create_write_tool_definition |
-| `defineTool` | 23 | served | identity | identity | identity |
-| `detectSupportedImageMimeTypeFromFile` | 0 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
-| `discoverAndLoadExtensions` | 3 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `estimateTokens` | 9 | served | native:EstimateTokens | native:estimate_tokens | native:estimate_tokens |
-| `findCutPoint` | 2 | served | native:FindCutPoint | native:find_cut_point | native:find_cut_point |
-| `findTurnStartIndex` | 0 | served | native:FindTurnStartIndex | native:find_turn_start_index | native:find_turn_start_index |
-| `formatDimensionNote` | 2 | served | native:FormatDimensionNote | native:format_dimension_note | native:format_dimension_note |
-| `formatReadLineRange` | 1 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
-| `formatSize` | 16 | served | native:FormatSize | native:format_size | native:format_size |
-| `formatSkillsForPrompt` | 5 | served | native:FormatSkillsForPrompt | native:format_skills_for_prompt | native:format_skills_for_prompt |
-| `generateBranchSummary` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `generateDiffString` | 5 | served | native:GenerateDiffString | native:generate_diff_string | native:generate_diff_string |
-| `generateSummary` | 1 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `generateSummaryWithUsage` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `generateUnifiedPatch` | 6 | served | native:GenerateUnifiedPatch | native:generate_unified_patch | native:generate_unified_patch |
-| `getAgentDir` | 85 | served | native:AgentDir | native:get_agent_dir | native:get_agent_dir |
-| `getDocsPath` | 0 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
-| `getExamplesPath` | 0 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
-| `getLanguageFromPath` | 11 | served | native:GetLanguageFromPath | native:get_language_from_path | native:get_language_from_path |
-| `getLastAssistantUsage` | 1 | served | native:GetLastAssistantUsage | native:get_last_assistant_usage | native:get_last_assistant_usage |
-| `getLatestCompactionEntry` | 0 | served | native:GetLatestCompactionEntry | native:get_latest_compaction_entry | native:get_latest_compaction_entry |
-| `getMarkdownTheme` | 30 | served | native:GetMarkdownTheme | native:get_markdown_theme | native:get_markdown_theme |
-| `getPackageDir` | 4 | served | native:PackageDir | native:get_package_dir | native:get_package_dir |
-| `getPowerShellConfig` | 0 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
-| `getReadmePath` | 2 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
-| `getSelectListTheme` | 7 | served | native:GetSelectListTheme | native:get_select_list_theme | native:get_select_list_theme |
-| `getSettingsListTheme` | 16 | served | native:GetSettingsListTheme | native:get_settings_list_theme | native:get_settings_list_theme |
-| `getShellConfig` | 4 | served | native:GetShellConfig | native:get_shell_config | native:get_shell_config |
-| `hasTrustRequiringProjectResources` | 4 | served | native:HasTrustRequiringProjectResources | native:has_trust_requiring_project_resources | native:has_trust_requiring_project_resources |
-| `highlightCode` | 12 | served | native:HighlightCode | native:highlight_code | native:highlight_code |
-| `initTheme` | 6 | served | native:InitTheme | native:init_theme | native:init_theme |
-| `isBashToolResult` | 3 | served | native:IsBashToolResult | native:is_bash_tool_result | native:is_bash_tool_result |
-| `isEditToolResult` | 1 | served | native:IsEditToolResult | native:is_edit_tool_result | native:is_edit_tool_result |
-| `isFindToolResult` | 0 | served | native:IsFindToolResult | native:is_find_tool_result | native:is_find_tool_result |
-| `isGrepToolResult` | 0 | served | native:IsGrepToolResult | native:is_grep_tool_result | native:is_grep_tool_result |
-| `isLsToolResult` | 0 | served | native:IsLsToolResult | native:is_ls_tool_result | native:is_ls_tool_result |
-| `isPowerShellToolResult` | 0 | served | native:IsPowerShellToolResult | native:is_powershell_tool_result | native:is_powershell_tool_result |
-| `isReadToolResult` | 0 | served | native:IsReadToolResult | native:is_read_tool_result | native:is_read_tool_result |
-| `isToolCallEventType` | 7 | served | native:IsToolCallEventType | native:is_tool_call_event_type | native:is_tool_call_event_type |
-| `isWriteToolResult` | 1 | served | native:IsWriteToolResult | native:is_write_tool_result | native:is_write_tool_result |
-| `keyHint` | 13 | served | native:KeyHint | native:key_hint | native:key_hint |
-| `keyText` | 4 | served | native:KeyText | native:key_text | native:key_text |
-| `loadProjectContextFiles` | 3 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `loadSkills` | 4 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `loadSkillsFromDir` | 1 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `main` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `migrateSessionEntries` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `parseArgs` | 3 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `parseFrontmatter` | 14 | served | native:ParseFrontmatter | native:parse_frontmatter | native:parse_frontmatter |
-| `parseSessionEntries` | 3 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `parseSkillBlock` | 1 | served | native:ParseSkillBlock | native:parse_skill_block | native:parse_skill_block |
-| `prepareBranchEntries` | 1 | served | native:PrepareBranchEntries | native:prepare_branch_entries | native:prepare_branch_entries |
-| `rawKeyHint` | 2 | served | native:RawKeyHint | native:raw_key_hint | native:raw_key_hint |
-| `readStoredCredential` | 10 | served | native:ReadStoredCredential | native:read_stored_credential | native:read_stored_credential |
-| `renderDiff` | 2 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
-| `resizeImage` | 6 | served | native:ResizeImage | native:resize_image | native:resize_image |
-| `resolveCliModel` | 3 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `resolveModelScopeWithDiagnostics` | 3 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `runPrintMode` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `runRpcMode` | 1 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `serializeConversation` | 3 | served | native:SerializeConversation | native:serialize_conversation | native:serialize_conversation |
-| `sessionEntryToContextMessages` | 4 | served | native:SessionEntryToContextMessages | native:session_entry_to_context_messages | native:session_entry_to_context_messages |
-| `shouldCompact` | 0 | served | native:ShouldCompact | native:should_compact | native:should_compact |
-| `stripFrontmatter` | 3 | served | native:StripFrontmatter | native:strip_frontmatter | native:strip_frontmatter |
-| `truncateHead` | 16 | served | native:TruncateHead | native:truncate_head | native:truncate_head |
-| `truncateLine` | 4 | served | native:TruncateLine | native:truncate_line | native:truncate_line |
-| `truncateTail` | 5 | served | native:TruncateTail | native:truncate_tail | native:truncate_tail |
-| `truncateToVisualLines` | 4 | served | native:TruncateToVisualLines | native:truncate_to_visual_lines | native:truncate_to_visual_lines |
-| `withFileMutationQueue` | 14 | served | native:WithFileMutationQueue | native:with_file_mutation_queue | native:with_file_mutation_queue |
-| `wrapRegisteredTool` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `wrapRegisteredTools` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
+| Export | uses | Node | Go | Rust | Python | Lisp |
+|---|---|---|---|---|---|---|
+| `AgentSession` | 4 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `AgentSession.abort` | 0 | served | native:AgentSession.Abort | native:AgentSession::abort | native:AgentSession.abort | native:pig:agent-session-abort |
+| `AgentSession.abortBash` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `AgentSession.abortBranchSummary` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `AgentSession.abortCompaction` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `AgentSession.abortRetry` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `AgentSession.agent` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `AgentSession.autoCompactionEnabled` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `AgentSession.autoRetryEnabled` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `AgentSession.bindExtensions` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `AgentSession.cacheWarmingStatus` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `AgentSession.clearQueue` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `AgentSession.compact` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `AgentSession.createReplacedSessionContext` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `AgentSession.cycleModel` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `AgentSession.cycleThinkingLevel` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `AgentSession.dispose` | 0 | served | native:AgentSession.Dispose | native:AgentSession::dispose | native:AgentSession.dispose | native:pig:agent-session-dispose |
+| `AgentSession.executeBash` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `AgentSession.exportToHtml` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `AgentSession.exportToJsonl` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `AgentSession.extensionRunner` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `AgentSession.followUp` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `AgentSession.followUpMode` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `AgentSession.getActiveToolNames` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `AgentSession.getAllTools` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `AgentSession.getAvailableThinkingLevels` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `AgentSession.getCallableToolNames` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `AgentSession.getContextUsage` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `AgentSession.getFollowUpMessages` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `AgentSession.getLastAssistantText` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `AgentSession.getSessionStats` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `AgentSession.getSteeringMessages` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `AgentSession.getToolDefinition` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `AgentSession.getUserMessagesForForking` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `AgentSession.hasExtensionHandlers` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `AgentSession.hasPendingBashMessages` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `AgentSession.isBashRunning` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `AgentSession.isCompacting` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `AgentSession.isIdle` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `AgentSession.isRetrying` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `AgentSession.isStreaming` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `AgentSession.messages` | 0 | served | native:AgentSession.Messages | native:AgentSession::messages | native:AgentSession.messages | native:pig:agent-session-messages |
+| `AgentSession.model` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `AgentSession.modelRuntime` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `AgentSession.navigateTree` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `AgentSession.pendingMessageCount` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `AgentSession.prompt` | 0 | served | native:AgentSession.Prompt | native:AgentSession::prompt | native:AgentSession.prompt | native:pig:agent-session-prompt |
+| `AgentSession.promptTemplates` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `AgentSession.recordBashResult` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `AgentSession.refreshContext` | 0 | served | native:AgentSession.RefreshContext | native:AgentSession::refresh_context | native:AgentSession.refresh_context | native:pig:agent-session-refresh-context |
+| `AgentSession.reload` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `AgentSession.resourceLoader` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `AgentSession.retryAttempt` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `AgentSession.routedModel` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `AgentSession.scopedModels` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `AgentSession.sendCustomMessage` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `AgentSession.sendUserMessage` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `AgentSession.sessionFile` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `AgentSession.sessionId` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `AgentSession.sessionManager` | 0 | served | native:AgentSession.SessionManager | native:AgentSession::session_manager | native:AgentSession.session_manager | native:pig:agent-session-session-manager |
+| `AgentSession.sessionName` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `AgentSession.setActiveToolsByName` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `AgentSession.setAutoCompactionEnabled` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `AgentSession.setAutoRetryEnabled` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `AgentSession.setCacheWarmingMode` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `AgentSession.setFollowUpMode` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `AgentSession.setModel` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `AgentSession.setScopedModels` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `AgentSession.setSessionName` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `AgentSession.setSteeringMode` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `AgentSession.setThinkingLevel` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `AgentSession.settingsManager` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `AgentSession.state` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `AgentSession.steer` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `AgentSession.steeringMode` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `AgentSession.subscribe` | 0 | served | native:AgentSession.Subscribe | native:AgentSession::subscribe | native:AgentSession.subscribe | native:pig:agent-session-subscribe |
+| `AgentSession.summarizeForBugReport` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `AgentSession.supportsThinking` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `AgentSession.systemPrompt` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `AgentSession.thinkingLevel` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `AgentSession.waitForIdle` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `AgentSessionRuntime` | 1 | served | native:AgentSessionRuntime | native:AgentSessionRuntime | native:AgentSessionRuntime | native:pig:agent-session-runtime |
+| `AgentSessionRuntime.cwd` | 0 | served | native:AgentSessionRuntime.Cwd | native:AgentSessionRuntime::cwd | native:AgentSessionRuntime.cwd | native:pig:agent-session-runtime-cwd |
+| `AgentSessionRuntime.diagnostics` | 0 | served | native:AgentSessionRuntime.Diagnostics | native:AgentSessionRuntime::diagnostics | native:AgentSessionRuntime.diagnostics | native:pig:agent-session-runtime-diagnostics |
+| `AgentSessionRuntime.dispose` | 0 | served | native:AgentSessionRuntime.Dispose | native:AgentSessionRuntime::dispose | native:AgentSessionRuntime.dispose | native:pig:agent-session-runtime-dispose |
+| `AgentSessionRuntime.fork` | 0 | served | native:AgentSessionRuntime.Fork | native:AgentSessionRuntime::fork | native:AgentSessionRuntime.fork | native:pig:agent-session-runtime-fork |
+| `AgentSessionRuntime.importFromJsonl` | 0 | served | native:AgentSessionRuntime.ImportFromJsonl | native:AgentSessionRuntime::import_from_jsonl | native:AgentSessionRuntime.import_from_jsonl | native:pig:agent-session-runtime-import-from-jsonl |
+| `AgentSessionRuntime.modelFallbackMessage` | 0 | served | native:AgentSessionRuntime.ModelFallbackMessage | native:AgentSessionRuntime::model_fallback_message | native:AgentSessionRuntime.model_fallback_message | native:pig:agent-session-runtime-model-fallback-message |
+| `AgentSessionRuntime.newSession` | 0 | served | native:AgentSessionRuntime.NewSession | native:AgentSessionRuntime::new_session | native:AgentSessionRuntime.new_session | native:pig:agent-session-runtime-new-session |
+| `AgentSessionRuntime.services` | 0 | served | native:AgentSessionRuntime.Services | native:AgentSessionRuntime::services | native:AgentSessionRuntime.services | native:pig:agent-session-runtime-services |
+| `AgentSessionRuntime.session` | 0 | served | native:AgentSessionRuntime.Session | native:AgentSessionRuntime::session | native:AgentSessionRuntime.session | native:pig:agent-session-runtime-session |
+| `AgentSessionRuntime.setBeforeSessionInvalidate` | 0 | served | native:AgentSessionRuntime.SetBeforeSessionInvalidate | native:AgentSessionRuntime::set_before_session_invalidate | native:AgentSessionRuntime.set_before_session_invalidate | native:pig:agent-session-runtime-set-before-session-invalidate |
+| `AgentSessionRuntime.setRebindSession` | 0 | served | native:AgentSessionRuntime.SetRebindSession | native:AgentSessionRuntime::set_rebind_session | native:AgentSessionRuntime.set_rebind_session | native:pig:agent-session-runtime-set-rebind-session |
+| `AgentSessionRuntime.switchSession` | 0 | served | native:AgentSessionRuntime.SwitchSession | native:AgentSessionRuntime::switch_session | native:AgentSessionRuntime.switch_session | native:pig:agent-session-runtime-switch-session |
+| `ArminComponent` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `ArminComponent.dispose` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `ArminComponent.invalidate` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `ArminComponent.render` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `AssistantMessageComponent` | 6 | served | kit:AssistantMessage | kit:AssistantMessage | kit:AssistantMessage | kit:pig:kit-assistant-message |
+| `AssistantMessageComponent.addChild` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
+| `AssistantMessageComponent.children` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
+| `AssistantMessageComponent.clear` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
+| `AssistantMessageComponent.handleMouse` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
+| `AssistantMessageComponent.invalidate` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
+| `AssistantMessageComponent.removeChild` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
+| `AssistantMessageComponent.render` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
+| `AssistantMessageComponent.setHiddenThinkingLabel` | 0 | served | kit:AssistantMessage | kit:AssistantMessage | kit:AssistantMessage | kit:pig:kit-assistant-message |
+| `AssistantMessageComponent.setHideThinkingBlock` | 0 | served | kit:AssistantMessage | kit:AssistantMessage | kit:AssistantMessage | kit:pig:kit-assistant-message |
+| `AssistantMessageComponent.setOutputPad` | 0 | served | kit:AssistantMessage | kit:AssistantMessage | kit:AssistantMessage | kit:pig:kit-assistant-message |
+| `AssistantMessageComponent.updateContent` | 0 | served | kit:AssistantMessage | kit:AssistantMessage | kit:AssistantMessage | kit:pig:kit-assistant-message |
+| `BashExecutionComponent` | 1 | served | kit:BashExecution | kit:BashExecution | kit:BashExecution | kit:pig:kit-bash-execution |
+| `BashExecutionComponent.addChild` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
+| `BashExecutionComponent.appendOutput` | 0 | served | kit:BashExecution | kit:BashExecution | kit:BashExecution | kit:pig:kit-bash-execution |
+| `BashExecutionComponent.children` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
+| `BashExecutionComponent.clear` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
+| `BashExecutionComponent.getCommand` | 0 | served | kit:BashExecution | kit:BashExecution | kit:BashExecution | kit:pig:kit-bash-execution |
+| `BashExecutionComponent.getOutput` | 0 | served | kit:BashExecution | kit:BashExecution | kit:BashExecution | kit:pig:kit-bash-execution |
+| `BashExecutionComponent.handleMouse` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
+| `BashExecutionComponent.invalidate` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
+| `BashExecutionComponent.removeChild` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
+| `BashExecutionComponent.render` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
+| `BashExecutionComponent.setComplete` | 0 | served | kit:BashExecution | kit:BashExecution | kit:BashExecution | kit:pig:kit-bash-execution |
+| `BashExecutionComponent.setExpanded` | 0 | served | kit:BashExecution | kit:BashExecution | kit:BashExecution | kit:pig:kit-bash-execution |
+| `BashExecutionComponent.setOutputPad` | 0 | served | kit:BashExecution | kit:BashExecution | kit:BashExecution | kit:pig:kit-bash-execution |
+| `BorderedLoader` | 6 | served | kit:BorderedLoader | kit:BorderedLoader | kit:BorderedLoader | kit:pig:kit-bordered-loader |
+| `BorderedLoader.addChild` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
+| `BorderedLoader.children` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
+| `BorderedLoader.clear` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
+| `BorderedLoader.dispose` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
+| `BorderedLoader.handleInput` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
+| `BorderedLoader.handleMouse` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
+| `BorderedLoader.invalidate` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
+| `BorderedLoader.onAbort` | 0 | served | kit:BorderedLoader | kit:BorderedLoader | kit:BorderedLoader | kit:pig:kit-bordered-loader |
+| `BorderedLoader.removeChild` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
+| `BorderedLoader.render` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
+| `BorderedLoader.signal` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
+| `BranchSummaryMessageComponent` | 3 | served | kit:BranchSummary | kit:BranchSummary | kit:BranchSummary | kit:pig:kit-branch-summary |
+| `BranchSummaryMessageComponent.addChild` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
+| `BranchSummaryMessageComponent.children` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
+| `BranchSummaryMessageComponent.clear` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
+| `BranchSummaryMessageComponent.handleMouse` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
+| `BranchSummaryMessageComponent.invalidate` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
+| `BranchSummaryMessageComponent.removeChild` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
+| `BranchSummaryMessageComponent.render` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
+| `BranchSummaryMessageComponent.setBgFn` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
+| `BranchSummaryMessageComponent.setExpanded` | 0 | served | kit:BranchSummary | kit:BranchSummary | kit:BranchSummary | kit:pig:kit-branch-summary |
+| `BranchSummaryMessageComponent.setOutputPad` | 0 | served | kit:BranchSummary | kit:BranchSummary | kit:BranchSummary | kit:pig:kit-branch-summary |
+| `BranchSummaryMessageComponent.setPaddingX` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
+| `CONFIG_DIR_NAME` | 20 | served | native:ConfigDirName | native:get_config_dir_name | native:get_config_dir_name | native:pig:host-config-dir-name |
+| `CURRENT_SESSION_VERSION` | 2 | served | native:CurrentSessionVersion | native:CURRENT_SESSION_VERSION | native:CURRENT_SESSION_VERSION | native:pig:+current-session-version+ |
+| `CompactionSummaryMessageComponent` | 3 | served | kit:CompactionSummary | kit:CompactionSummary | kit:CompactionSummary | kit:pig:kit-compaction-summary |
+| `CompactionSummaryMessageComponent.addChild` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
+| `CompactionSummaryMessageComponent.children` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
+| `CompactionSummaryMessageComponent.clear` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
+| `CompactionSummaryMessageComponent.handleMouse` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
+| `CompactionSummaryMessageComponent.invalidate` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
+| `CompactionSummaryMessageComponent.removeChild` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
+| `CompactionSummaryMessageComponent.render` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
+| `CompactionSummaryMessageComponent.setBgFn` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
+| `CompactionSummaryMessageComponent.setExpanded` | 0 | served | kit:CompactionSummary | kit:CompactionSummary | kit:CompactionSummary | kit:pig:kit-compaction-summary |
+| `CompactionSummaryMessageComponent.setOutputPad` | 0 | served | kit:CompactionSummary | kit:CompactionSummary | kit:CompactionSummary | kit:pig:kit-compaction-summary |
+| `CompactionSummaryMessageComponent.setPaddingX` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
+| `CredentialSynchronizationError` | 1 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
+| `CredentialSynchronizationError.cause` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
+| `CredentialSynchronizationError.credential` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
+| `CredentialSynchronizationError.message` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
+| `CredentialSynchronizationError.name` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
+| `CredentialSynchronizationError.operation` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
+| `CredentialSynchronizationError.providerId` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
+| `CredentialSynchronizationError.stack` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
+| `CustomEditor` | 13 | served | native:EditorComponent | native:EditorComponent | native:EditorComponent | native:pig:make-editor-component |
+| `CustomEditor.actionHandlers` | 0 | served | native:Editor.ActionHandlers | native:EditorBase::action_handlers | native:EditorBase.action_handlers | native:pig:editor-base-action-handlers |
+| `CustomEditor.addToHistory` | 0 | served | native:EditorComponent.AddToHistory | native:EditorComponent::add_to_history | native:EditorComponent.add_to_history | native:pig:editor-component-add-to-history |
+| `CustomEditor.borderColor` | 0 | served | native:Editor.BorderColor | native:EditorBase::border_color | native:EditorBase.border_color | native:pig:editor-base-border-color |
+| `CustomEditor.disableSubmit` | 0 | served | native:Editor.DisableSubmit | native:EditorBase::disable_submit | native:EditorBase.disable_submit | native:pig:editor-base-disable-submit |
+| `CustomEditor.embedWorkingStatus` | 0 | served | native:EditorStatusEmbedder.EmbedWorkingStatus | native:EditorComponent::embed_working_status | native:EditorComponent.embed_working_status | native:pig:editor-component-embed-working-status |
+| `CustomEditor.focused` | 0 | served | native:Editor.Focused | native:EditorBase::focused | native:EditorBase.focused | native:pig:editor-base-focused |
+| `CustomEditor.getAutocompleteMaxVisible` | 0 | served | native:Editor.GetAutocompleteMaxVisible | native:EditorBase::get_autocomplete_max_visible | native:EditorBase.get_autocomplete_max_visible | native:pig:editor-base-get-autocomplete-max-visible |
+| `CustomEditor.getCursor` | 0 | served | native:Editor.GetCursor | native:EditorBase::get_cursor | native:EditorBase.get_cursor | native:pig:editor-base-get-cursor |
+| `CustomEditor.getExpandedText` | 0 | served | native:Editor.GetExpandedText | native:EditorBase::get_expanded_text | native:EditorBase.get_expanded_text | native:pig:editor-base-get-expanded-text |
+| `CustomEditor.getLines` | 0 | served | native:Editor.GetLines | native:EditorBase::get_lines | native:EditorBase.get_lines | native:pig:editor-base-get-lines |
+| `CustomEditor.getPaddingX` | 0 | served | native:Editor.GetPaddingX | native:EditorBase::get_padding_x | native:EditorBase.get_padding_x | native:pig:editor-base-get-padding-x |
+| `CustomEditor.getText` | 0 | served | native:Editor.GetText | native:EditorBase::get_text | native:EditorBase.get_text | native:pig:editor-base-get-text |
+| `CustomEditor.handleInput` | 0 | served | native:EditorComponent.HandleInput | native:EditorComponent::handle_input | native:EditorComponent.handle_input | native:pig:editor-component-handle-input |
+| `CustomEditor.handleMouse` | 0 | served | native:EditorComponent.HandleMouse | native:EditorComponent::handle_mouse | native:EditorComponent.handle_mouse | native:pig:editor-component-handle-mouse |
+| `CustomEditor.insertTextAtCursor` | 0 | served | native:EditorComponent.InsertTextAtCursor | native:EditorComponent::insert_text_at_cursor | native:EditorComponent.insert_text_at_cursor | native:pig:editor-component-insert-text-at-cursor |
+| `CustomEditor.invalidate` | 0 | served | native:Editor.Invalidate | native:EditorComponent::invalidate | native:EditorComponent.invalidate | native:pig:editor-component-invalidate |
+| `CustomEditor.isShowingAutocomplete` | 0 | served | native:Editor.IsShowingAutocomplete | native:EditorBase::is_showing_autocomplete | native:EditorBase.is_showing_autocomplete | native:pig:editor-base-is-showing-autocomplete-p |
+| `CustomEditor.onAction` | 0 | served | native:Editor.OnAction | native:EditorBase::on_action | native:EditorBase.on_action | native:pig:editor-base-on-action |
+| `CustomEditor.onChange` | 0 | served | native:Editor.OnChange | native:EditorBase::on_change | native:EditorBase.on_change | native:pig:editor-base-on-change |
+| `CustomEditor.onCtrlD` | 0 | served | native:Editor.SetOnCtrlD | native:EditorBase::set_on_ctrl_d | native:EditorBase.on_ctrl_d | native:pig:editor-base-on-ctrl-d |
+| `CustomEditor.onEscape` | 0 | served | native:Editor.SetOnEscape | native:EditorBase::set_on_escape | native:EditorBase.on_escape | native:pig:editor-base-on-escape |
+| `CustomEditor.onExtensionShortcut` | 0 | served | native:Editor.SetOnExtensionShortcut | native:EditorBase::set_on_extension_shortcut | native:EditorBase.on_extension_shortcut | native:pig:editor-base-on-extension-shortcut |
+| `CustomEditor.onPasteImage` | 0 | served | native:Editor.SetOnPasteImage | native:EditorBase::set_on_paste_image | native:EditorBase.on_paste_image | native:pig:editor-base-on-paste-image |
+| `CustomEditor.onSubmit` | 0 | served | native:Editor.OnSubmit | native:EditorBase::on_submit | native:EditorBase.on_submit | native:pig:editor-base-on-submit |
+| `CustomEditor.render` | 0 | served | native:EditorComponent.Render | native:EditorComponent::render | native:EditorComponent.render | native:pig:editor-component-render |
+| `CustomEditor.setAutocompleteMaxVisible` | 0 | served | native:Editor.SetAutocompleteMaxVisible | native:EditorBase::set_autocomplete_max_visible | native:EditorBase.set_autocomplete_max_visible | native:pig:editor-base-set-autocomplete-max-visible |
+| `CustomEditor.setAutocompleteProvider` | 0 | served | native:Editor.SetAutocompleteProvider | native:EditorBase::set_autocomplete_provider | native:EditorBase.set_autocomplete_provider | native:pig:editor-base-set-autocomplete-provider |
+| `CustomEditor.setPaddingX` | 0 | served | native:Editor.SetPaddingX | native:EditorBase::set_padding_x | native:EditorBase.set_padding_x | native:pig:editor-base-set-padding-x |
+| `CustomEditor.setText` | 0 | served | native:EditorComponent.SetText | native:EditorComponent::set_text | native:EditorComponent.set_text | native:pig:editor-component-set-text |
+| `CustomEditor.setWorkingStatusIndicator` | 0 | served | native:Editor.SetWorkingStatusIndicator | native:EditorComponent::set_working_status_indicator | native:EditorComponent.set_working_status_indicator | native:pig:editor-component-set-working-status-indicator |
+| `CustomMessageComponent` | 0 | served | kit:CustomMessage | kit:CustomMessage | kit:CustomMessage | kit:pig:kit-custom-message |
+| `CustomMessageComponent.addChild` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
+| `CustomMessageComponent.children` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
+| `CustomMessageComponent.clear` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
+| `CustomMessageComponent.handleMouse` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
+| `CustomMessageComponent.invalidate` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
+| `CustomMessageComponent.removeChild` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
+| `CustomMessageComponent.render` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
+| `CustomMessageComponent.setExpanded` | 0 | served | kit:CustomMessage | kit:CustomMessage | kit:CustomMessage | kit:pig:kit-custom-message |
+| `CustomMessageComponent.setOutputPad` | 0 | served | kit:CustomMessage | kit:CustomMessage | kit:CustomMessage | kit:pig:kit-custom-message |
+| `DEFAULT_COMPACTION_SETTINGS` | 4 | served | native:DefaultCompactionSettings | native:DEFAULT_COMPACTION_SETTINGS | native:DEFAULT_COMPACTION_SETTINGS | native:pig:*default-compaction-settings* |
+| `DEFAULT_MAX_BYTES` | 17 | served | native:DefaultMaxBytes | native:DEFAULT_MAX_BYTES | native:DEFAULT_MAX_BYTES | native:pig:+default-max-bytes+ |
+| `DEFAULT_MAX_LINES` | 14 | served | native:DefaultMaxLines | native:DEFAULT_MAX_LINES | native:DEFAULT_MAX_LINES | native:pig:+default-max-lines+ |
+| `DefaultPackageManager` | 12 | served | native:NewDefaultPackageManager | native:DefaultPackageManager::new | native:DefaultPackageManager | native:pig:make-package-manager |
+| `DefaultPackageManager.addSourceToSettings` | 0 | served | native:DefaultPackageManager.AddSourceToSettings | native:DefaultPackageManager::add_source_to_settings | native:DefaultPackageManager.add_source_to_settings | native:pig:pkgmgr-add-source-to-settings |
+| `DefaultPackageManager.checkForAvailableUpdates` | 0 | served | native:DefaultPackageManager.CheckForAvailableUpdates | native:DefaultPackageManager::check_for_available_updates | native:DefaultPackageManager.check_for_available_updates | native:pig:pkgmgr-check-for-available-updates |
+| `DefaultPackageManager.getInstalledPath` | 0 | served | native:DefaultPackageManager.GetInstalledPath | native:DefaultPackageManager::get_installed_path | native:DefaultPackageManager.get_installed_path | native:pig:pkgmgr-get-installed-path |
+| `DefaultPackageManager.install` | 0 | served | native:DefaultPackageManager.Install | native:DefaultPackageManager::install | native:DefaultPackageManager.install | native:pig:pkgmgr-install |
+| `DefaultPackageManager.installAndPersist` | 0 | served | native:DefaultPackageManager.InstallAndPersist | native:DefaultPackageManager::install_and_persist | native:DefaultPackageManager.install_and_persist | native:pig:pkgmgr-install-and-persist |
+| `DefaultPackageManager.listConfiguredPackages` | 0 | served | native:DefaultPackageManager.ListConfiguredPackages | native:DefaultPackageManager::list_configured_packages | native:DefaultPackageManager.list_configured_packages | native:pig:pkgmgr-list-configured-packages |
+| `DefaultPackageManager.remove` | 0 | served | native:DefaultPackageManager.Remove | native:DefaultPackageManager::remove | native:DefaultPackageManager.remove | native:pig:pkgmgr-remove |
+| `DefaultPackageManager.removeAndPersist` | 0 | served | native:DefaultPackageManager.RemoveAndPersist | native:DefaultPackageManager::remove_and_persist | native:DefaultPackageManager.remove_and_persist | native:pig:pkgmgr-remove-and-persist |
+| `DefaultPackageManager.removeSourceFromSettings` | 0 | served | native:DefaultPackageManager.RemoveSourceFromSettings | native:DefaultPackageManager::remove_source_from_settings | native:DefaultPackageManager.remove_source_from_settings | native:pig:pkgmgr-remove-source-from-settings |
+| `DefaultPackageManager.resolve` | 0 | served | native:DefaultPackageManager.Resolve | native:DefaultPackageManager::resolve | native:DefaultPackageManager.resolve | native:pig:pkgmgr-resolve |
+| `DefaultPackageManager.resolveExtensionSources` | 0 | served | native:DefaultPackageManager.ResolveExtensionSources | native:DefaultPackageManager::resolve_extension_sources | native:DefaultPackageManager.resolve_extension_sources | native:pig:pkgmgr-resolve-extension-sources |
+| `DefaultPackageManager.setProgressCallback` | 0 | served | native:DefaultPackageManager.SetProgressCallback | native:DefaultPackageManager::set_progress_callback | native:DefaultPackageManager.set_progress_callback | native:pig:pkgmgr-set-progress-callback |
+| `DefaultPackageManager.update` | 0 | served | native:DefaultPackageManager.Update | native:DefaultPackageManager::update | native:DefaultPackageManager.update | native:pig:pkgmgr-update |
+| `DefaultResourceLoader` | 18 | served | native:NewDefaultResourceLoader | native:DefaultResourceLoader::new | native:DefaultResourceLoader | native:pig:make-resource-loader |
+| `DefaultResourceLoader.extendResources` | 0 | served | native:DefaultResourceLoader.ExtendResources | native:DefaultResourceLoader::extend_resources | native:DefaultResourceLoader.extend_resources | native:pig:loader-extend-resources |
+| `DefaultResourceLoader.getAgentsFiles` | 0 | served | native:DefaultResourceLoader.GetAgentsFiles | native:DefaultResourceLoader::get_agents_files | native:DefaultResourceLoader.get_agents_files | native:pig:loader-get-agents-files |
+| `DefaultResourceLoader.getAppendSystemPrompt` | 0 | served | native:DefaultResourceLoader.GetAppendSystemPrompt | native:DefaultResourceLoader::get_append_system_prompt | native:DefaultResourceLoader.get_append_system_prompt | native:pig:loader-get-append-system-prompt |
+| `DefaultResourceLoader.getAppendSystemPromptSources` | 0 | served | native:DefaultResourceLoader.GetAppendSystemPromptSources | native:DefaultResourceLoader::get_append_system_prompt_sources | native:DefaultResourceLoader.get_append_system_prompt_sources | native:pig:loader-get-append-system-prompt-sources |
+| `DefaultResourceLoader.getExtensions` | 0 | served | native:DefaultResourceLoader.GetExtensions | native:DefaultResourceLoader::get_extensions | native:DefaultResourceLoader.get_extensions | native:pig:loader-get-extensions |
+| `DefaultResourceLoader.getPrompts` | 0 | served | native:DefaultResourceLoader.GetPrompts | native:DefaultResourceLoader::get_prompts | native:DefaultResourceLoader.get_prompts | native:pig:loader-get-prompts |
+| `DefaultResourceLoader.getSkills` | 0 | served | native:DefaultResourceLoader.GetSkills | native:DefaultResourceLoader::get_skills | native:DefaultResourceLoader.get_skills | native:pig:loader-get-skills |
+| `DefaultResourceLoader.getSystemPrompt` | 0 | served | native:DefaultResourceLoader.GetSystemPrompt | native:DefaultResourceLoader::get_system_prompt | native:DefaultResourceLoader.get_system_prompt | native:pig:loader-get-system-prompt |
+| `DefaultResourceLoader.getSystemPromptSource` | 0 | served | native:DefaultResourceLoader.GetSystemPromptSource | native:DefaultResourceLoader::get_system_prompt_source | native:DefaultResourceLoader.get_system_prompt_source | native:pig:loader-get-system-prompt-source |
+| `DefaultResourceLoader.getThemes` | 0 | served | native:DefaultResourceLoader.GetThemes | native:DefaultResourceLoader::get_themes | native:DefaultResourceLoader.get_themes | native:pig:loader-get-themes |
+| `DefaultResourceLoader.loadProjectTrustExtensions` | 0 | served | native:DefaultResourceLoader.LoadProjectTrustExtensions | native:DefaultResourceLoader::load_project_trust_extensions | native:DefaultResourceLoader.load_project_trust_extensions | native:pig:loader-load-project-trust-extensions |
+| `DefaultResourceLoader.reload` | 0 | served | native:DefaultResourceLoader.Reload | native:DefaultResourceLoader::reload | native:DefaultResourceLoader.reload | native:pig:loader-reload |
+| `DynamicBorder` | 22 | served | kit:DynamicBorder | kit:DynamicBorder | kit:DynamicBorder | kit:pig:kit-dynamic-border |
+| `DynamicBorder.invalidate` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
+| `DynamicBorder.render` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
+| `ExtensionEditorComponent` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `ExtensionEditorComponent.addChild` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `ExtensionEditorComponent.children` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `ExtensionEditorComponent.clear` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `ExtensionEditorComponent.focused` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `ExtensionEditorComponent.handleInput` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `ExtensionEditorComponent.handleMouse` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `ExtensionEditorComponent.invalidate` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `ExtensionEditorComponent.removeChild` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `ExtensionEditorComponent.render` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `ExtensionInputComponent` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `ExtensionInputComponent.addChild` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `ExtensionInputComponent.children` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `ExtensionInputComponent.clear` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `ExtensionInputComponent.dispose` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `ExtensionInputComponent.focused` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `ExtensionInputComponent.handleInput` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `ExtensionInputComponent.handleMouse` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `ExtensionInputComponent.invalidate` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `ExtensionInputComponent.removeChild` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `ExtensionInputComponent.render` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `ExtensionRunner` | 5 | served | native:ExtensionRunner | native:ExtensionRunner | native:ExtensionRunner | native:pig:make-extension-runner |
+| `ExtensionRunner.bindCommandContext` | 0 | served | native:ExtensionRunner.BindCommandContext | native:ExtensionRunner::bind_command_context | native:ExtensionRunner.bind_command_context | native:pig:runner-bind-command-context |
+| `ExtensionRunner.bindCore` | 0 | served | native:ExtensionRunner.BindCore | native:ExtensionRunner::bind_core | native:ExtensionRunner.bind_core | native:pig:runner-bind-core |
+| `ExtensionRunner.createCommandContext` | 0 | served | native:ExtensionRunner.CreateCommandContext | native:ExtensionRunner::create_command_context | native:ExtensionRunner.create_command_context | native:pig:runner-create-command-context |
+| `ExtensionRunner.createContext` | 0 | served | native:ExtensionRunner.CreateContext | native:ExtensionRunner::create_context | native:ExtensionRunner.create_context | native:pig:runner-create-context |
+| `ExtensionRunner.createToolContext` | 0 | served | native:ExtensionRunner.CreateToolContext | native:ExtensionRunner::create_tool_context | native:ExtensionRunner.create_tool_context | native:pig:runner-create-tool-context |
+| `ExtensionRunner.emit` | 0 | served | native:ExtensionRunner.Emit | native:ExtensionRunner::emit | native:ExtensionRunner.emit | native:pig:runner-emit |
+| `ExtensionRunner.emitBeforeAgentStart` | 0 | served | native:ExtensionRunner.EmitBeforeAgentStart | native:ExtensionRunner::emit_before_agent_start | native:ExtensionRunner.emit_before_agent_start | native:pig:runner-emit-before-agent-start |
+| `ExtensionRunner.emitBeforeProviderHeaders` | 0 | served | native:ExtensionRunner.EmitBeforeProviderHeaders | native:ExtensionRunner::emit_before_provider_headers | native:ExtensionRunner.emit_before_provider_headers | native:pig:runner-emit-before-provider-headers |
+| `ExtensionRunner.emitBeforeProviderRequest` | 0 | served | native:ExtensionRunner.EmitBeforeProviderRequest | native:ExtensionRunner::emit_before_provider_request | native:ExtensionRunner.emit_before_provider_request | native:pig:runner-emit-before-provider-request |
+| `ExtensionRunner.emitBoundary` | 0 | served | native:ExtensionRunner.EmitBoundary | native:ExtensionRunner::emit_boundary | native:ExtensionRunner.emit_boundary | native:pig:runner-emit-boundary |
+| `ExtensionRunner.emitCacheWarmingDecision` | 0 | served | native:ExtensionRunner.EmitCacheWarmingDecision | native:ExtensionRunner::emit_cache_warming_decision | native:ExtensionRunner.emit_cache_warming_decision | native:pig:runner-emit-cache-warming-decision |
+| `ExtensionRunner.emitContext` | 0 | served | native:ExtensionRunner.EmitContext | native:ExtensionRunner::emit_context | native:ExtensionRunner.emit_context | native:pig:runner-emit-context |
+| `ExtensionRunner.emitError` | 0 | served | native:ExtensionRunner.EmitError | native:ExtensionRunner::emit_error | native:ExtensionRunner.emit_error | native:pig:runner-emit-error |
+| `ExtensionRunner.emitInput` | 0 | served | native:ExtensionRunner.EmitInput | native:ExtensionRunner::emit_input | native:ExtensionRunner.emit_input | native:pig:runner-emit-input |
+| `ExtensionRunner.emitMessageEnd` | 0 | served | native:ExtensionRunner.EmitMessageEnd | native:ExtensionRunner::emit_message_end | native:ExtensionRunner.emit_message_end | native:pig:runner-emit-message-end |
+| `ExtensionRunner.emitResourcesDiscover` | 0 | served | native:ExtensionRunner.EmitResourcesDiscover | native:ExtensionRunner::emit_resources_discover | native:ExtensionRunner.emit_resources_discover | native:pig:runner-emit-resources-discover |
+| `ExtensionRunner.emitToolCall` | 0 | served | native:ExtensionRunner.EmitToolCall | native:ExtensionRunner::emit_tool_call | native:ExtensionRunner.emit_tool_call | native:pig:runner-emit-tool-call |
+| `ExtensionRunner.emitToolResult` | 0 | served | native:ExtensionRunner.EmitToolResult | native:ExtensionRunner::emit_tool_result | native:ExtensionRunner.emit_tool_result | native:pig:runner-emit-tool-result |
+| `ExtensionRunner.emitUserBash` | 0 | served | native:ExtensionRunner.EmitUserBash | native:ExtensionRunner::emit_user_bash | native:ExtensionRunner.emit_user_bash | native:pig:runner-emit-user-bash |
+| `ExtensionRunner.getActiveTools` | 0 | served | native:ExtensionRunner.GetActiveTools | native:ExtensionRunner::get_active_tools | native:ExtensionRunner.get_active_tools | native:pig:runner-get-active-tools |
+| `ExtensionRunner.getAllRegisteredTools` | 0 | served | native:ExtensionRunner.GetAllRegisteredTools | native:ExtensionRunner::get_all_registered_tools | native:ExtensionRunner.get_all_registered_tools | native:pig:runner-get-all-registered-tools |
+| `ExtensionRunner.getCommand` | 0 | served | native:ExtensionRunner.GetCommand | native:ExtensionRunner::get_command | native:ExtensionRunner.get_command | native:pig:runner-get-command |
+| `ExtensionRunner.getCommandDiagnostics` | 0 | served | native:ExtensionRunner.GetCommandDiagnostics | native:ExtensionRunner::get_command_diagnostics | native:ExtensionRunner.get_command_diagnostics | native:pig:runner-get-command-diagnostics |
+| `ExtensionRunner.getEntryRenderer` | 0 | served | native:ExtensionRunner.GetEntryRenderer | native:ExtensionRunner::get_entry_renderer | native:ExtensionRunner.get_entry_renderer | native:pig:runner-get-entry-renderer-p |
+| `ExtensionRunner.getExtensionPaths` | 0 | served | native:ExtensionRunner.GetExtensionPaths | native:ExtensionRunner::get_extension_paths | native:ExtensionRunner.get_extension_paths | native:pig:runner-get-extension-paths |
+| `ExtensionRunner.getFlagValues` | 0 | served | native:ExtensionRunner.GetFlagValues | native:ExtensionRunner::get_flag_values | native:ExtensionRunner.get_flag_values | native:pig:runner-get-flag-values |
+| `ExtensionRunner.getFlags` | 0 | served | native:ExtensionRunner.GetFlags | native:ExtensionRunner::get_flags | native:ExtensionRunner.get_flags | native:pig:runner-get-flags |
+| `ExtensionRunner.getMarkdownTransformers` | 0 | served | native:ExtensionRunner.GetMarkdownTransformers | native:ExtensionRunner::get_markdown_transformers | native:ExtensionRunner.get_markdown_transformers | native:pig:runner-get-markdown-transformers |
+| `ExtensionRunner.getMessageRenderer` | 0 | served | native:ExtensionRunner.GetMessageRenderer | native:ExtensionRunner::get_message_renderer | native:ExtensionRunner.get_message_renderer | native:pig:runner-get-message-renderer-p |
+| `ExtensionRunner.getModelRegistry` | 0 | served | native:ExtensionRunner.GetModelRegistry | native:ExtensionRunner::get_model_registry | native:ExtensionRunner.get_model_registry | native:pig:runner-get-model-registry |
+| `ExtensionRunner.getRegisteredCommands` | 0 | served | native:ExtensionRunner.GetRegisteredCommands | native:ExtensionRunner::get_registered_commands | native:ExtensionRunner.get_registered_commands | native:pig:runner-get-registered-commands |
+| `ExtensionRunner.getShortcutDiagnostics` | 0 | served | native:ExtensionRunner.GetShortcutDiagnostics | native:ExtensionRunner::get_shortcut_diagnostics | native:ExtensionRunner.get_shortcut_diagnostics | native:pig:runner-get-shortcut-diagnostics |
+| `ExtensionRunner.getShortcuts` | 0 | served | native:ExtensionRunner.GetShortcuts | native:ExtensionRunner::get_shortcuts | native:ExtensionRunner.get_shortcuts | native:pig:runner-get-shortcuts |
+| `ExtensionRunner.getToolDefinition` | 0 | served | native:ExtensionRunner.GetToolDefinition | native:ExtensionRunner::get_tool_definition | native:ExtensionRunner.get_tool_definition | native:pig:runner-get-tool-definition |
+| `ExtensionRunner.getUIContext` | 0 | served | native:ExtensionRunner.GetUIContext | native:ExtensionRunner::get_ui_context | native:ExtensionRunner.get_ui_context | native:pig:runner-get-ui-context |
+| `ExtensionRunner.hasHandlers` | 0 | served | native:ExtensionRunner.HasHandlers | native:ExtensionRunner::has_handlers | native:ExtensionRunner.has_handlers | native:pig:runner-has-handlers-p |
+| `ExtensionRunner.hasUI` | 0 | served | native:ExtensionRunner.HasUI | native:ExtensionRunner::has_ui | native:ExtensionRunner.has_ui | native:pig:runner-has-ui-p |
+| `ExtensionRunner.invalidate` | 0 | served | native:ExtensionRunner.Invalidate | native:ExtensionRunner::invalidate | native:ExtensionRunner.invalidate | native:pig:runner-invalidate |
+| `ExtensionRunner.onError` | 0 | served | native:ExtensionRunner.OnError | native:ExtensionRunner::on_error | native:ExtensionRunner.on_error | native:pig:runner-on-error |
+| `ExtensionRunner.reportUnhandledMcpServers` | 0 | served | native:ExtensionRunner.ReportUnhandledMcpServers | native:ExtensionRunner::report_unhandled_mcp_servers | native:ExtensionRunner.report_unhandled_mcp_servers | native:pig:runner-report-unhandled-mcp-servers |
+| `ExtensionRunner.resolveToolRenderers` | 0 | served | native:ExtensionRunner.ResolveToolRenderers | native:ExtensionRunner::resolve_tool_renderers | native:ExtensionRunner.resolve_tool_renderers | native:pig:runner-resolve-tool-renderers |
+| `ExtensionRunner.setFlagValue` | 0 | served | native:ExtensionRunner.SetFlagValue | native:ExtensionRunner::set_flag_value | native:ExtensionRunner.set_flag_value | native:pig:runner-set-flag-value |
+| `ExtensionRunner.setUIContext` | 0 | served | native:ExtensionRunner.SetUIContext | native:ExtensionRunner::set_ui_context | native:ExtensionRunner.set_ui_context | native:pig:runner-set-ui-context |
+| `ExtensionRunner.shutdown` | 0 | served | native:ExtensionRunner.Shutdown | native:ExtensionRunner::shutdown | native:ExtensionRunner.shutdown | native:pig:runner-shutdown |
+| `ExtensionSelectorComponent` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `ExtensionSelectorComponent.addChild` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `ExtensionSelectorComponent.children` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `ExtensionSelectorComponent.clear` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `ExtensionSelectorComponent.dispose` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `ExtensionSelectorComponent.handleInput` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `ExtensionSelectorComponent.handleMouse` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `ExtensionSelectorComponent.invalidate` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `ExtensionSelectorComponent.removeChild` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `ExtensionSelectorComponent.render` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `FooterComponent` | 1 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `FooterComponent.dispose` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `FooterComponent.invalidate` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `FooterComponent.render` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `FooterComponent.setAutoCompactEnabled` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `FooterComponent.setSession` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `InteractiveMode` | 4 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `InteractiveMode.clearEditor` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `InteractiveMode.getUserInput` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `InteractiveMode.init` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `InteractiveMode.renderInitialMessages` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `InteractiveMode.run` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `InteractiveMode.showError` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `InteractiveMode.showNewVersionNotification` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `InteractiveMode.showPackageUpdateNotification` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `InteractiveMode.showWarning` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `InteractiveMode.stop` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `KeybindingsManager` | 0 | identity | identity | identity | identity | identity |
+| `KeybindingsManager.getConflicts` | 0 | identity | identity | identity | identity | identity |
+| `KeybindingsManager.getDefinition` | 0 | identity | identity | identity | identity | identity |
+| `KeybindingsManager.getEffectiveConfig` | 0 | identity | identity | identity | identity | identity |
+| `KeybindingsManager.getKeys` | 0 | identity | identity | identity | identity | identity |
+| `KeybindingsManager.getResolvedBindings` | 0 | identity | identity | identity | identity | identity |
+| `KeybindingsManager.getUserBindings` | 0 | identity | identity | identity | identity | identity |
+| `KeybindingsManager.matches` | 0 | identity | identity | identity | identity | identity |
+| `KeybindingsManager.reload` | 0 | identity | identity | identity | identity | identity |
+| `KeybindingsManager.setUserBindings` | 0 | identity | identity | identity | identity | identity |
+| `LoginDialogComponent` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `LoginDialogComponent.addChild` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `LoginDialogComponent.children` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `LoginDialogComponent.clear` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `LoginDialogComponent.focused` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `LoginDialogComponent.handleInput` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `LoginDialogComponent.handleMouse` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `LoginDialogComponent.invalidate` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `LoginDialogComponent.removeChild` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `LoginDialogComponent.render` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `LoginDialogComponent.showAuth` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `LoginDialogComponent.showDetails` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `LoginDialogComponent.showDeviceCode` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `LoginDialogComponent.showInfo` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `LoginDialogComponent.showManualInput` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `LoginDialogComponent.showProgress` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `LoginDialogComponent.showPrompt` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `LoginDialogComponent.showWaiting` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `LoginDialogComponent.signal` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `ModelRegistry` | 5 | served | native:NewModelRegistry | native:ModelRegistry::new | native:ModelRegistry | native:pig:ctx-model-registry |
+| `ModelRegistry.classify` | 0 | served | native:ModelRegistry.Classify | native:ModelRegistry::classify | native:ModelRegistry.classify | native:pig:registry-classify |
+| `ModelRegistry.complete` | 0 | served | native:ModelRegistry.Complete | native:ModelRegistry::complete | native:ModelRegistry.complete | native:pig:registry-complete |
+| `ModelRegistry.find` | 0 | served | native:ModelRegistry.Find | native:ModelRegistry::find | native:ModelRegistry.find | native:pig:registry-find |
+| `ModelRegistry.findOfType` | 0 | served | native:ModelRegistry.FindOfType | native:ModelRegistry::find_of_type | native:ModelRegistry.find_of_type | native:pig:registry-find-of-type |
+| `ModelRegistry.generateImages` | 0 | served | native:ModelRegistry.GenerateImages | native:ModelRegistry::generate_images | native:ModelRegistry.generate_images | native:pig:registry-generate-images |
+| `ModelRegistry.getAll` | 0 | served | native:ModelRegistry.GetAll | native:ModelRegistry::get_all | native:ModelRegistry.get_all | native:pig:registry-get-all |
+| `ModelRegistry.getApiKeyAndHeaders` | 0 | served | native:ModelRegistry.GetApiKeyAndHeaders | native:ModelRegistry::get_api_key_and_headers | native:ModelRegistry.get_api_key_and_headers | native:pig:registry-get-api-key-and-headers |
+| `ModelRegistry.getApiKeyForProvider` | 0 | served | native:ModelRegistry.GetApiKeyForProvider | native:ModelRegistry::get_api_key_for_provider | native:ModelRegistry.get_api_key_for_provider | native:pig:registry-get-api-key-for-provider |
+| `ModelRegistry.getAvailable` | 0 | served | native:ModelRegistry.GetAvailable | native:ModelRegistry::get_available | native:ModelRegistry.get_available | native:pig:registry-get-available |
+| `ModelRegistry.getAvailableOfType` | 0 | served | native:ModelRegistry.GetAvailableOfType | native:ModelRegistry::get_available_of_type | native:ModelRegistry.get_available_of_type | native:pig:registry-get-available-of-type |
+| `ModelRegistry.getError` | 0 | served | native:ModelRegistry.GetError | native:ModelRegistry::get_error | native:ModelRegistry.get_error | native:pig:registry-get-error |
+| `ModelRegistry.getModelOfType` | 0 | served | native:ModelRegistry.GetModelOfType | native:ModelRegistry::get_model_of_type | native:ModelRegistry.get_model_of_type | native:pig:registry-get-model-of-type |
+| `ModelRegistry.getModelsOfType` | 0 | served | native:ModelRegistry.GetModelsOfType | native:ModelRegistry::get_models_of_type | native:ModelRegistry.get_models_of_type | native:pig:registry-get-models-of-type |
+| `ModelRegistry.getProvider` | 0 | served | native:ModelRegistry.GetProvider | native:ModelRegistry::get_provider | native:ModelRegistry.get_provider | native:pig:registry-get-provider |
+| `ModelRegistry.getProviderAuth` | 0 | served | native:ModelRegistry.GetProviderAuth | native:ModelRegistry::get_provider_auth | native:ModelRegistry.get_provider_auth | native:pig:registry-get-provider-auth |
+| `ModelRegistry.getProviderAuthStatus` | 0 | served | native:ModelRegistry.GetProviderAuthStatus | native:ModelRegistry::get_provider_auth_status | native:ModelRegistry.get_provider_auth_status | native:pig:registry-get-provider-auth-status |
+| `ModelRegistry.getProviderDisplayName` | 0 | served | native:ModelRegistry.GetProviderDisplayName | native:ModelRegistry::get_provider_display_name | native:ModelRegistry.get_provider_display_name | native:pig:registry-get-provider-display-name |
+| `ModelRegistry.getRegisteredNativeProvider` | 0 | served | native:ModelRegistry.GetRegisteredNativeProvider | native:ModelRegistry::get_registered_native_provider | native:ModelRegistry.get_registered_native_provider | native:pig:registry-get-registered-native-provider |
+| `ModelRegistry.getRegisteredProviderConfig` | 0 | served | native:ModelRegistry.GetRegisteredProviderConfig | native:ModelRegistry::get_registered_provider_config | native:ModelRegistry.get_registered_provider_config | native:pig:registry-get-registered-provider-config |
+| `ModelRegistry.getRegisteredProviderIds` | 0 | served | native:ModelRegistry.GetRegisteredProviderIDs | native:ModelRegistry::get_registered_provider_ids | native:ModelRegistry.get_registered_provider_ids | native:pig:registry-get-registered-provider-ids |
+| `ModelRegistry.hasConfiguredAuth` | 0 | served | native:ModelRegistry.HasConfiguredAuth | native:ModelRegistry::has_configured_auth | native:ModelRegistry.has_configured_auth | native:pig:registry-has-configured-auth |
+| `ModelRegistry.isUsingOAuth` | 0 | served | native:ModelRegistry.IsUsingOAuth | native:ModelRegistry::is_using_oauth | native:ModelRegistry.is_using_oauth | native:pig:registry-is-using-oauth |
+| `ModelRegistry.refresh` | 0 | served | native:ModelRegistry.Refresh | native:ModelRegistry::refresh | native:ModelRegistry.refresh | native:pig:registry-refresh |
+| `ModelRegistry.registerProvider` | 0 | served | native:ModelRegistry.RegisterProvider | native:ModelRegistry::register_provider | native:ModelRegistry.register_provider | native:pig:registry-register-provider |
+| `ModelRegistry.registerVirtualModel` | 0 | served | native:ModelRegistry.RegisterVirtualModel | native:ModelRegistry::register_virtual_model | native:ModelRegistry.register_virtual_model | native:pig:registry-register-virtual-model |
+| `ModelRegistry.stream` | 0 | served | native:ModelRegistry.Stream | native:ModelRegistry::stream | native:ModelRegistry.stream | native:pig:registry-stream |
+| `ModelRegistry.streamSimple` | 0 | served | native:ModelRegistry.StreamSimple | native:ModelRegistry::stream_simple | native:ModelRegistry.stream_simple | native:pig:registry-stream-simple |
+| `ModelRegistry.unregisterProvider` | 0 | served | native:ModelRegistry.UnregisterProvider | native:ModelRegistry::unregister_provider | native:ModelRegistry.unregister_provider | native:pig:registry-unregister-provider |
+| `ModelRegistry.unregisterVirtualModel` | 0 | served | native:ModelRegistry.UnregisterVirtualModel | native:ModelRegistry::unregister_virtual_model | native:ModelRegistry.unregister_virtual_model | native:pig:registry-unregister-virtual-model |
+| `ModelRuntime` | 18 | served | native:ModelRuntime | native:ModelRuntime | native:ModelRuntime | native:pig:runtime-create |
+| `ModelRuntime.cancelDeferred` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
+| `ModelRuntime.checkAuth` | 0 | served | native:ModelRuntime.CheckAuth | native:ModelRuntime::check_auth | native:ModelRuntime.check_auth | native:pig:runtime-check-auth |
+| `ModelRuntime.classify` | 0 | served | native:ModelRuntime.Classify | native:ModelRuntime::classify | native:ModelRuntime.classify | native:pig:runtime-classify |
+| `ModelRuntime.complete` | 0 | served | native:ModelRuntime.Complete | native:ModelRuntime::complete | native:ModelRuntime.complete | native:pig:runtime-complete |
+| `ModelRuntime.completeSimple` | 0 | served | native:ModelRuntime.CompleteSimple | native:ModelRuntime::complete_simple | native:ModelRuntime.complete_simple | native:pig:runtime-complete-simple |
+| `ModelRuntime.fetchDeferred` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
+| `ModelRuntime.generateImages` | 0 | served | native:ModelRuntime.GenerateImages | native:ModelRuntime::generate_images | native:ModelRuntime.generate_images | native:pig:runtime-generate-images |
+| `ModelRuntime.getAllAvailable` | 0 | served | native:ModelRuntime.GetAllAvailable | native:ModelRuntime::get_all_available | native:ModelRuntime.get_all_available | native:pig:runtime-get-all-available |
+| `ModelRuntime.getAllModels` | 0 | served | native:ModelRuntime.GetAllModels | native:ModelRuntime::get_all_models | native:ModelRuntime.get_all_models | native:pig:runtime-get-all-models |
+| `ModelRuntime.getAuth` | 0 | served | native:ModelRuntime.GetAuth | native:ModelRuntime::get_auth | native:ModelRuntime.get_auth | native:pig:runtime-get-auth |
+| `ModelRuntime.getAvailable` | 0 | served | native:ModelRuntime.GetAvailable | native:ModelRuntime::get_available | native:ModelRuntime.get_available | native:pig:runtime-get-available |
+| `ModelRuntime.getAvailableOfType` | 0 | served | native:ModelRuntime.GetAvailableOfType | native:ModelRuntime::get_available_of_type | native:ModelRuntime.get_available_of_type | native:pig:runtime-get-available-of-type |
+| `ModelRuntime.getAvailableSnapshot` | 0 | served | native:ModelRuntime.GetAvailableSnapshot | native:ModelRuntime::get_available_snapshot | native:ModelRuntime.get_available_snapshot | native:pig:runtime-get-available-snapshot |
+| `ModelRuntime.getCompatibilityRequestConfig` | 0 | served | native:ModelRuntime.GetCompatibilityRequestConfig | native:ModelRuntime::get_compatibility_request_config | native:ModelRuntime.get_compatibility_request_config | native:pig:runtime-get-compatibility-request-config |
+| `ModelRuntime.getError` | 0 | served | native:ModelRuntime.GetError | native:ModelRuntime::get_error | native:ModelRuntime.get_error | native:pig:runtime-get-error |
+| `ModelRuntime.getModel` | 0 | served | native:ModelRuntime.GetModel | native:ModelRuntime::get_model | native:ModelRuntime.get_model | native:pig:runtime-get-model |
+| `ModelRuntime.getModelOfType` | 0 | served | native:ModelRuntime.GetModelOfType | native:ModelRuntime::get_model_of_type | native:ModelRuntime.get_model_of_type | native:pig:runtime-get-model-of-type |
+| `ModelRuntime.getModels` | 0 | served | native:ModelRuntime.GetModels | native:ModelRuntime::get_models | native:ModelRuntime.get_models | native:pig:runtime-get-models |
+| `ModelRuntime.getModelsOfType` | 0 | served | native:ModelRuntime.GetModelsOfType | native:ModelRuntime::get_models_of_type | native:ModelRuntime.get_models_of_type | native:pig:runtime-get-models-of-type |
+| `ModelRuntime.getPhysicalModel` | 0 | served | native:ModelRuntime.GetPhysicalModel | native:ModelRuntime::get_physical_model | native:ModelRuntime.get_physical_model | native:pig:runtime-get-physical-model |
+| `ModelRuntime.getProvider` | 0 | served | native:ModelRuntime.GetProvider | native:ModelRuntime::get_provider | native:ModelRuntime.get_provider | native:pig:runtime-get-provider |
+| `ModelRuntime.getProviderAuthStatus` | 0 | served | native:ModelRuntime.GetProviderAuthStatus | native:ModelRuntime::get_provider_auth_status | native:ModelRuntime.get_provider_auth_status | native:pig:runtime-get-provider-auth-status |
+| `ModelRuntime.getProviders` | 0 | served | native:ModelRuntime.GetProviders | native:ModelRuntime::get_providers | native:ModelRuntime.get_providers | native:pig:runtime-get-providers |
+| `ModelRuntime.getRegisteredNativeProvider` | 0 | served | native:ModelRuntime.GetRegisteredNativeProvider | native:ModelRuntime::get_registered_native_provider | native:ModelRuntime.get_registered_native_provider | native:pig:runtime-get-registered-native-provider |
+| `ModelRuntime.getRegisteredProviderConfig` | 0 | served | native:ModelRuntime.GetRegisteredProviderConfig | native:ModelRuntime::get_registered_provider_config | native:ModelRuntime.get_registered_provider_config | native:pig:runtime-get-registered-provider-config |
+| `ModelRuntime.getRegisteredProviderIds` | 0 | served | native:ModelRuntime.GetRegisteredProviderIDs | native:ModelRuntime::get_registered_provider_ids | native:ModelRuntime.get_registered_provider_ids | native:pig:runtime-get-registered-provider-ids |
+| `ModelRuntime.hasConfiguredAuth` | 0 | served | native:ModelRuntime.HasConfiguredAuth | native:ModelRuntime::has_configured_auth | native:ModelRuntime.has_configured_auth | native:pig:runtime-has-configured-auth-p |
+| `ModelRuntime.isUsingOAuth` | 0 | served | native:ModelRuntime.IsUsingOAuth | native:ModelRuntime::is_using_oauth | native:ModelRuntime.is_using_oauth | native:pig:runtime-is-using-oauth-p |
+| `ModelRuntime.isUsingSubscription` | 0 | served | native:ModelRuntime.IsUsingSubscription | native:ModelRuntime::is_using_subscription | native:ModelRuntime.is_using_subscription | native:pig:runtime-is-using-subscription-p |
+| `ModelRuntime.listCredentials` | 0 | served | native:ModelRuntime.ListCredentials | native:ModelRuntime::list_credentials | native:ModelRuntime.list_credentials | native:pig:runtime-list-credentials |
+| `ModelRuntime.login` | 0 | served | native:ModelRuntime.Login | native:ModelRuntime::login | native:ModelRuntime.login | native:pig:runtime-login |
+| `ModelRuntime.logout` | 0 | served | native:ModelRuntime.Logout | native:ModelRuntime::logout | native:ModelRuntime.logout | native:pig:runtime-logout |
+| `ModelRuntime.refresh` | 0 | served | native:ModelRuntime.Refresh | native:ModelRuntime::refresh | native:ModelRuntime.refresh | native:pig:runtime-refresh |
+| `ModelRuntime.registerNativeProvider` | 0 | served | native:ModelRuntime.RegisterNativeProvider | native:ModelRuntime::register_native_provider | native:ModelRuntime.register_native_provider | native:pig:runtime-register-native-provider |
+| `ModelRuntime.registerProvider` | 0 | served | native:ModelRuntime.RegisterProvider | native:ModelRuntime::register_provider | native:ModelRuntime.register_provider | native:pig:runtime-register-provider |
+| `ModelRuntime.registerVirtualModel` | 0 | served | native:ModelRuntime.RegisterVirtualModel | native:ModelRuntime::register_virtual_model | native:ModelRuntime.register_virtual_model | native:pig:runtime-register-virtual-model |
+| `ModelRuntime.removeRuntimeApiKey` | 0 | served | native:ModelRuntime.RemoveRuntimeAPIKey | native:ModelRuntime::remove_runtime_api_key | native:ModelRuntime.remove_runtime_api_key | native:pig:runtime-remove-runtime-api-key |
+| `ModelRuntime.resolveModel` | 0 | served | native:ModelRuntime.ResolveModel | native:ModelRuntime::resolve_model | native:ModelRuntime.resolve_model | native:pig:runtime-resolve-model |
+| `ModelRuntime.setRuntimeApiKey` | 0 | served | native:ModelRuntime.SetRuntimeAPIKey | native:ModelRuntime::set_runtime_api_key | native:ModelRuntime.set_runtime_api_key | native:pig:runtime-set-runtime-api-key |
+| `ModelRuntime.stream` | 0 | served | native:ModelRuntime.Stream | native:ModelRuntime::stream | native:ModelRuntime.stream | native:pig:runtime-stream |
+| `ModelRuntime.streamDeferred` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
+| `ModelRuntime.streamSimple` | 0 | served | native:ModelRuntime.StreamSimple | native:ModelRuntime::stream_simple | native:ModelRuntime.stream_simple | native:pig:runtime-stream-simple |
+| `ModelRuntime.unregisterProvider` | 0 | served | native:ModelRuntime.UnregisterProvider | native:ModelRuntime::unregister_provider | native:ModelRuntime.unregister_provider | native:pig:runtime-unregister-provider |
+| `ModelRuntime.unregisterVirtualModel` | 0 | served | native:ModelRuntime.UnregisterVirtualModel | native:ModelRuntime::unregister_virtual_model | native:ModelRuntime.unregister_virtual_model | native:pig:runtime-unregister-virtual-model |
+| `ModelSelectorComponent` | 3 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `ModelSelectorComponent.addChild` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `ModelSelectorComponent.children` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `ModelSelectorComponent.clear` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `ModelSelectorComponent.dispose` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `ModelSelectorComponent.focused` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `ModelSelectorComponent.getSearchInput` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `ModelSelectorComponent.handleInput` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `ModelSelectorComponent.handleMouse` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `ModelSelectorComponent.invalidate` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `ModelSelectorComponent.removeChild` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `ModelSelectorComponent.render` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `OAuthSelectorComponent` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `OAuthSelectorComponent.addChild` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `OAuthSelectorComponent.children` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `OAuthSelectorComponent.clear` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `OAuthSelectorComponent.focused` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `OAuthSelectorComponent.handleInput` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `OAuthSelectorComponent.handleMouse` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `OAuthSelectorComponent.invalidate` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `OAuthSelectorComponent.removeChild` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `OAuthSelectorComponent.render` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `ProjectTrustStore` | 6 | served | native:ProjectTrustStore | native:ProjectTrustStore | native:ProjectTrustStore | native:pig:make-project-trust-store |
+| `ProjectTrustStore.get` | 0 | served | native:ProjectTrustStore.Get | native:ProjectTrustStore::get | native:ProjectTrustStore.get | native:pig:trust-store-get |
+| `ProjectTrustStore.getEntry` | 0 | served | native:ProjectTrustStore.GetEntry | native:ProjectTrustStore::get_entry | native:ProjectTrustStore.get_entry | native:pig:trust-store-get-entry |
+| `ProjectTrustStore.set` | 0 | served | native:ProjectTrustStore.Set | native:ProjectTrustStore::set | native:ProjectTrustStore.set | native:pig:trust-store-set |
+| `ProjectTrustStore.setMany` | 0 | served | native:ProjectTrustStore.SetMany | native:ProjectTrustStore::set_many | native:ProjectTrustStore.set_many | native:pig:trust-store-set-many |
+| `RpcClient` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `RpcClient.abort` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `RpcClient.abortBash` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `RpcClient.abortRetry` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `RpcClient.bash` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `RpcClient.clearQueue` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `RpcClient.clone` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `RpcClient.collectEvents` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `RpcClient.compact` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `RpcClient.cycleModel` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `RpcClient.cycleThinkingLevel` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `RpcClient.exportHtml` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `RpcClient.followUp` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `RpcClient.fork` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `RpcClient.getAvailableModels` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `RpcClient.getAvailableThinkingLevels` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `RpcClient.getCommands` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `RpcClient.getEntries` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `RpcClient.getForkMessages` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `RpcClient.getLastAssistantText` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `RpcClient.getMessages` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `RpcClient.getSessionStats` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `RpcClient.getState` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `RpcClient.getStderr` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `RpcClient.getTree` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `RpcClient.newSession` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `RpcClient.onEvent` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `RpcClient.prompt` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `RpcClient.promptAndWait` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `RpcClient.setAutoCompaction` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `RpcClient.setAutoRetry` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `RpcClient.setFollowUpMode` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `RpcClient.setModel` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `RpcClient.setSessionName` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `RpcClient.setSteeringMode` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `RpcClient.setThinkingLevel` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `RpcClient.start` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `RpcClient.steer` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `RpcClient.stop` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `RpcClient.switchSession` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `RpcClient.waitForIdle` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `SessionManager` | 37 | served | native:SessionManager | native:SessionManager | native:SessionManager | native:pig:sm |
+| `SessionManager._persist` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
+| `SessionManager.appendCompaction` | 0 | served | native:SessionManager.AppendCompaction | native:SessionManager::append_compaction | native:SessionManager.append_compaction | native:pig:sm-append-compaction |
+| `SessionManager.appendContextEdit` | 0 | served | native:SessionManager.AppendContextEdit | native:SessionManager::append_context_edit | native:SessionManager.append_context_edit | native:pig:sm-append-context-edit |
+| `SessionManager.appendCustomEntry` | 0 | served | native:SessionManager.AppendCustomEntry | native:SessionManager::append_custom_entry | native:SessionManager.append_custom_entry | native:pig:sm-append-custom-entry |
+| `SessionManager.appendCustomMessageEntry` | 0 | served | native:SessionManager.AppendCustomMessageEntry | native:SessionManager::append_custom_message_entry | native:SessionManager.append_custom_message_entry | native:pig:sm-append-custom-message-entry |
+| `SessionManager.appendLabelChange` | 0 | served | native:SessionManager.AppendLabelChange | native:SessionManager::append_label_change | native:SessionManager.append_label_change | native:pig:sm-append-label-change |
+| `SessionManager.appendMessage` | 0 | served | native:SessionManager.AppendMessage | native:SessionManager::append_message | native:SessionManager.append_message | native:pig:sm-append-message |
+| `SessionManager.appendModelChange` | 0 | served | native:SessionManager.AppendModelChange | native:SessionManager::append_model_change | native:SessionManager.append_model_change | native:pig:sm-append-model-change |
+| `SessionManager.appendSessionInfo` | 0 | served | native:SessionManager.AppendSessionInfo | native:SessionManager::append_session_info | native:SessionManager.append_session_info | native:pig:sm-append-session-info |
+| `SessionManager.appendThinkingLevelChange` | 0 | served | native:SessionManager.AppendThinkingLevelChange | native:SessionManager::append_thinking_level_change | native:SessionManager.append_thinking_level_change | native:pig:sm-append-thinking-level-change |
+| `SessionManager.appendUsage` | 0 | served | native:SessionManager.AppendUsage | native:SessionManager::append_usage | native:SessionManager.append_usage | native:pig:sm-append-usage |
+| `SessionManager.branch` | 0 | served | native:SessionManager.Branch | native:SessionManager::branch | native:SessionManager.branch | native:pig:sm-branch |
+| `SessionManager.branchWithSummary` | 0 | served | native:SessionManager.BranchWithSummary | native:SessionManager::branch_with_summary | native:SessionManager.branch_with_summary | native:pig:sm-branch-with-summary |
+| `SessionManager.buildContextEntries` | 0 | served | native:SessionManager.BuildContextEntries | native:SessionManager::build_context_entries | native:SessionManager.build_context_entries | native:pig:sm-build-context-entries |
+| `SessionManager.buildSessionContext` | 0 | served | native:SessionManager.BuildSessionContext | native:SessionManager::build_session_context | native:SessionManager.build_session_context | native:pig:sm-build-session-context |
+| `SessionManager.buildSessionProjection` | 0 | served | native:SessionManager.BuildSessionProjection | native:SessionManager::build_session_projection | native:SessionManager.build_session_projection | native:pig:sm-build-session-projection |
+| `SessionManager.createBranchedSession` | 0 | served | native:SessionManager.CreateBranchedSession | native:SessionManager::create_branched_session | native:SessionManager.create_branched_session | native:pig:sm-create-branched-session |
+| `SessionManager.getBranch` | 0 | served | native:SessionManager.GetBranch | native:SessionManager::get_branch | native:SessionManager.get_branch | native:pig:session-get-branch |
+| `SessionManager.getChildren` | 0 | served | native:SessionManager.GetChildren | native:SessionManager::get_children | native:SessionManager.get_children | native:pig:session-get-children |
+| `SessionManager.getCwd` | 0 | served | native:SessionManager.GetCwd | native:SessionManager::get_cwd | native:SessionManager.get_cwd | native:pig:session-get-cwd |
+| `SessionManager.getEntries` | 0 | served | native:SessionManager.GetEntries | native:SessionManager::get_entries | native:SessionManager.get_entries | native:pig:session-get-entries |
+| `SessionManager.getEntry` | 0 | served | native:SessionManager.GetEntry | native:SessionManager::get_entry | native:SessionManager.get_entry | native:pig:session-get-entry |
+| `SessionManager.getEntryCount` | 0 | served | native:SessionManager.GetEntryCount | native:SessionManager::get_entry_count | native:SessionManager.get_entry_count | native:pig:sm-get-entry-count |
+| `SessionManager.getHeader` | 0 | served | native:SessionManager.GetHeader | native:SessionManager::get_header | native:SessionManager.get_header | native:pig:session-get-header |
+| `SessionManager.getLabel` | 0 | served | native:SessionManager.GetLabel | native:SessionManager::get_label | native:SessionManager.get_label | native:pig:session-get-label |
+| `SessionManager.getLeafEntry` | 0 | served | native:SessionManager.GetLeafEntry | native:SessionManager::get_leaf_entry | native:SessionManager.get_leaf_entry | native:pig:session-get-leaf-entry |
+| `SessionManager.getLeafId` | 0 | served | native:SessionManager.GetLeafID | native:SessionManager::get_leaf_id | native:SessionManager.get_leaf_id | native:pig:session-get-leaf-id |
+| `SessionManager.getSessionDir` | 0 | served | native:SessionManager.GetSessionDir | native:SessionManager::get_session_dir | native:SessionManager.get_session_dir | native:pig:session-get-session-dir |
+| `SessionManager.getSessionFile` | 0 | served | native:SessionManager.GetSessionFile | native:SessionManager::get_session_file | native:SessionManager.get_session_file | native:pig:session-get-session-file |
+| `SessionManager.getSessionId` | 0 | served | native:SessionManager.GetSessionID | native:SessionManager::get_session_id | native:SessionManager.get_session_id | native:pig:session-get-session-id |
+| `SessionManager.getSessionName` | 0 | served | native:SessionManager.GetSessionName | native:SessionManager::get_session_name | native:SessionManager.get_session_name | native:pig:session-get-session-name |
+| `SessionManager.getTree` | 0 | served | native:SessionManager.GetTree | native:SessionManager::get_tree | native:SessionManager.get_tree | native:pig:session-get-tree |
+| `SessionManager.isPersisted` | 0 | served | native:SessionManager.IsPersisted | native:SessionManager::is_persisted | native:SessionManager.is_persisted | native:pig:sm-is-persisted |
+| `SessionManager.newSession` | 0 | served | native:SessionManager.NewSession | native:SessionManager::new_session | native:SessionManager.new_session | native:pig:sm-new-session |
+| `SessionManager.resetLeaf` | 0 | served | native:SessionManager.ResetLeaf | native:SessionManager::reset_leaf | native:SessionManager.reset_leaf | native:pig:sm-reset-leaf |
+| `SessionManager.setSessionFile` | 0 | served | native:SessionManager.SetSessionFile | native:SessionManager::set_session_file | native:SessionManager.set_session_file | native:pig:sm-set-session-file |
+| `SessionManager.usesDefaultSessionDir` | 0 | served | native:SessionManager.UsesDefaultSessionDir | native:SessionManager::uses_default_session_dir | native:SessionManager.uses_default_session_dir | native:pig:sm-uses-default-session-dir |
+| `SessionSelectorComponent` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `SessionSelectorComponent.addChild` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `SessionSelectorComponent.children` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `SessionSelectorComponent.clear` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `SessionSelectorComponent.focused` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `SessionSelectorComponent.getSessionList` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `SessionSelectorComponent.handleInput` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `SessionSelectorComponent.handleMouse` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `SessionSelectorComponent.invalidate` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `SessionSelectorComponent.removeChild` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `SessionSelectorComponent.render` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `SettingsManager` | 39 | served | native:SettingsManager | native:SettingsManager | native:SettingsManager | native:pig:settings-manager |
+| `SettingsManager.applyOverrides` | 0 | served | native:SettingsManager.ApplyOverrides | native:SettingsManager::apply_overrides | native:SettingsManager.apply_overrides | native:pig:settings-apply-overrides |
+| `SettingsManager.drainErrors` | 0 | served | native:SettingsManager.DrainErrors | native:SettingsManager::drain_errors | native:SettingsManager.drain_errors | native:pig:settings-drain-errors |
+| `SettingsManager.flush` | 0 | served | native:SettingsManager.Flush | native:SettingsManager::flush | native:SettingsManager.flush | native:pig:settings-flush |
+| `SettingsManager.getAllModelThinkingLevels` | 0 | served | native:SettingsManager.GetAllModelThinkingLevels | native:SettingsManager::get_all_model_thinking_levels | native:SettingsManager.get_all_model_thinking_levels | native:pig:settings-get-all-model-thinking-levels |
+| `SettingsManager.getAutocompleteMaxVisible` | 0 | served | native:SettingsManager.GetAutocompleteMaxVisible | native:SettingsManager::get_autocomplete_max_visible | native:SettingsManager.get_autocomplete_max_visible | native:pig:settings-get-autocomplete-max-visible |
+| `SettingsManager.getBlockImages` | 0 | served | native:SettingsManager.GetBlockImages | native:SettingsManager::get_block_images | native:SettingsManager.get_block_images | native:pig:settings-get-block-images |
+| `SettingsManager.getBranchSummarySettings` | 0 | served | native:SettingsManager.GetBranchSummarySettings | native:SettingsManager::get_branch_summary_settings | native:SettingsManager.get_branch_summary_settings | native:pig:settings-get-branch-summary-settings |
+| `SettingsManager.getBranchSummarySkipPrompt` | 0 | served | native:SettingsManager.GetBranchSummarySkipPrompt | native:SettingsManager::get_branch_summary_skip_prompt | native:SettingsManager.get_branch_summary_skip_prompt | native:pig:settings-get-branch-summary-skip-prompt |
+| `SettingsManager.getCacheWarmingMode` | 0 | served | native:SettingsManager.GetCacheWarmingMode | native:SettingsManager::get_cache_warming_mode | native:SettingsManager.get_cache_warming_mode | native:pig:settings-get-cache-warming-mode |
+| `SettingsManager.getClearOnShrink` | 0 | served | native:SettingsManager.GetClearOnShrink | native:SettingsManager::get_clear_on_shrink | native:SettingsManager.get_clear_on_shrink | native:pig:settings-get-clear-on-shrink |
+| `SettingsManager.getCodeBlockIndent` | 0 | served | native:SettingsManager.GetCodeBlockIndent | native:SettingsManager::get_code_block_indent | native:SettingsManager.get_code_block_indent | native:pig:settings-get-code-block-indent |
+| `SettingsManager.getCollapseChangelog` | 0 | served | native:SettingsManager.GetCollapseChangelog | native:SettingsManager::get_collapse_changelog | native:SettingsManager.get_collapse_changelog | native:pig:settings-get-collapse-changelog |
+| `SettingsManager.getCompactionEnabled` | 0 | served | native:SettingsManager.GetCompactionEnabled | native:SettingsManager::get_compaction_enabled | native:SettingsManager.get_compaction_enabled | native:pig:settings-get-compaction-enabled |
+| `SettingsManager.getCompactionKeepRecentTokens` | 0 | served | native:SettingsManager.GetCompactionKeepRecentTokens | native:SettingsManager::get_compaction_keep_recent_tokens | native:SettingsManager.get_compaction_keep_recent_tokens | native:pig:settings-get-compaction-keep-recent-tokens |
+| `SettingsManager.getCompactionReserveTokens` | 0 | served | native:SettingsManager.GetCompactionReserveTokens | native:SettingsManager::get_compaction_reserve_tokens | native:SettingsManager.get_compaction_reserve_tokens | native:pig:settings-get-compaction-reserve-tokens |
+| `SettingsManager.getCompactionSettings` | 0 | served | native:SettingsManager.GetCompactionSettings | native:SettingsManager::get_compaction_settings | native:SettingsManager.get_compaction_settings | native:pig:settings-get-compaction-settings |
+| `SettingsManager.getDefaultModel` | 0 | served | native:SettingsManager.GetDefaultModel | native:SettingsManager::get_default_model | native:SettingsManager.get_default_model | native:pig:settings-get-default-model |
+| `SettingsManager.getDefaultProjectTrust` | 0 | served | native:SettingsManager.GetDefaultProjectTrust | native:SettingsManager::get_default_project_trust | native:SettingsManager.get_default_project_trust | native:pig:settings-get-default-project-trust |
+| `SettingsManager.getDefaultProvider` | 0 | served | native:SettingsManager.GetDefaultProvider | native:SettingsManager::get_default_provider | native:SettingsManager.get_default_provider | native:pig:settings-get-default-provider |
+| `SettingsManager.getDefaultThinkingLevel` | 0 | served | native:SettingsManager.GetDefaultThinkingLevel | native:SettingsManager::get_default_thinking_level | native:SettingsManager.get_default_thinking_level | native:pig:settings-get-default-thinking-level |
+| `SettingsManager.getDefaultTools` | 0 | served | native:SettingsManager.GetDefaultTools | native:SettingsManager::get_default_tools | native:SettingsManager.get_default_tools | native:pig:settings-get-default-tools |
+| `SettingsManager.getDoubleEscapeAction` | 0 | served | native:SettingsManager.GetDoubleEscapeAction | native:SettingsManager::get_double_escape_action | native:SettingsManager.get_double_escape_action | native:pig:settings-get-double-escape-action |
+| `SettingsManager.getEditorPaddingX` | 0 | served | native:SettingsManager.GetEditorPaddingX | native:SettingsManager::get_editor_padding_x | native:SettingsManager.get_editor_padding_x | native:pig:settings-get-editor-padding-x |
+| `SettingsManager.getEnableAnalytics` | 0 | served | native:SettingsManager.GetEnableAnalytics | native:SettingsManager::get_enable_analytics | native:SettingsManager.get_enable_analytics | native:pig:settings-get-enable-analytics |
+| `SettingsManager.getEnableInstallTelemetry` | 0 | served | native:SettingsManager.GetEnableInstallTelemetry | native:SettingsManager::get_enable_install_telemetry | native:SettingsManager.get_enable_install_telemetry | native:pig:settings-get-enable-install-telemetry |
+| `SettingsManager.getEnableSkillCommands` | 0 | served | native:SettingsManager.GetEnableSkillCommands | native:SettingsManager::get_enable_skill_commands | native:SettingsManager.get_enable_skill_commands | native:pig:settings-get-enable-skill-commands |
+| `SettingsManager.getEnabledModels` | 0 | served | native:SettingsManager.GetEnabledModels | native:SettingsManager::get_enabled_models | native:SettingsManager.get_enabled_models | native:pig:settings-get-enabled-models |
+| `SettingsManager.getExtensionPaths` | 0 | served | native:SettingsManager.GetExtensionPaths | native:SettingsManager::get_extension_paths | native:SettingsManager.get_extension_paths | native:pig:settings-get-extension-paths |
+| `SettingsManager.getExternalEditorCommand` | 0 | served | native:SettingsManager.GetExternalEditorCommand | native:SettingsManager::get_external_editor_command | native:SettingsManager.get_external_editor_command | native:pig:settings-get-external-editor-command |
+| `SettingsManager.getFollowUpMode` | 0 | served | native:SettingsManager.GetFollowUpMode | native:SettingsManager::get_follow_up_mode | native:SettingsManager.get_follow_up_mode | native:pig:settings-get-follow-up-mode |
+| `SettingsManager.getFullscreenCopyOnSelect` | 0 | served | native:SettingsManager.GetFullscreenCopyOnSelect | native:SettingsManager::get_fullscreen_copy_on_select | native:SettingsManager.get_fullscreen_copy_on_select | native:pig:settings-get-fullscreen-copy-on-select |
+| `SettingsManager.getFullscreenExitOutput` | 0 | served | native:SettingsManager.GetFullscreenExitOutput | native:SettingsManager::get_fullscreen_exit_output | native:SettingsManager.get_fullscreen_exit_output | native:pig:settings-get-fullscreen-exit-output |
+| `SettingsManager.getFullscreenScrollbar` | 0 | served | native:SettingsManager.GetFullscreenScrollbar | native:SettingsManager::get_fullscreen_scrollbar | native:SettingsManager.get_fullscreen_scrollbar | native:pig:settings-get-fullscreen-scrollbar |
+| `SettingsManager.getFullscreenWheelScrollLines` | 0 | served | native:SettingsManager.GetFullscreenWheelScrollLines | native:SettingsManager::get_fullscreen_wheel_scroll_lines | native:SettingsManager.get_fullscreen_wheel_scroll_lines | native:pig:settings-get-fullscreen-wheel-scroll-lines |
+| `SettingsManager.getGlobalSettings` | 0 | served | native:SettingsManager.GetGlobalSettings | native:SettingsManager::get_global_settings | native:SettingsManager.get_global_settings | native:pig:settings-get-global-settings |
+| `SettingsManager.getHideThinkingBlock` | 0 | served | native:SettingsManager.GetHideThinkingBlock | native:SettingsManager::get_hide_thinking_block | native:SettingsManager.get_hide_thinking_block | native:pig:settings-get-hide-thinking-block |
+| `SettingsManager.getHttpIdleTimeoutMs` | 0 | served | native:SettingsManager.GetHttpIdleTimeoutMs | native:SettingsManager::get_http_idle_timeout_ms | native:SettingsManager.get_http_idle_timeout_ms | native:pig:settings-get-http-idle-timeout-ms |
+| `SettingsManager.getImageAutoResize` | 0 | served | native:SettingsManager.GetImageAutoResize | native:SettingsManager::get_image_auto_resize | native:SettingsManager.get_image_auto_resize | native:pig:settings-get-image-auto-resize |
+| `SettingsManager.getImageWidthCells` | 0 | served | native:SettingsManager.GetImageWidthCells | native:SettingsManager::get_image_width_cells | native:SettingsManager.get_image_width_cells | native:pig:settings-get-image-width-cells |
+| `SettingsManager.getLastChangelogVersion` | 0 | served | native:SettingsManager.GetLastChangelogVersion | native:SettingsManager::get_last_changelog_version | native:SettingsManager.get_last_changelog_version | native:pig:settings-get-last-changelog-version |
+| `SettingsManager.getMermaidRenderingMode` | 0 | served | native:SettingsManager.GetMermaidRenderingMode | native:SettingsManager::get_mermaid_rendering_mode | native:SettingsManager.get_mermaid_rendering_mode | native:pig:settings-get-mermaid-rendering-mode |
+| `SettingsManager.getModelThinkingLevel` | 0 | served | native:SettingsManager.GetModelThinkingLevel | native:SettingsManager::get_model_thinking_level | native:SettingsManager.get_model_thinking_level | native:pig:settings-get-model-thinking-level |
+| `SettingsManager.getNpmCommand` | 0 | served | native:SettingsManager.GetNpmCommand | native:SettingsManager::get_npm_command | native:SettingsManager.get_npm_command | native:pig:settings-get-npm-command |
+| `SettingsManager.getOrCreateDeviceId` | 0 | served | native:SettingsManager.GetOrCreateDeviceID | native:SettingsManager::get_or_create_device_id | native:SettingsManager.get_or_create_device_id | native:pig:settings-get-or-create-device-id |
+| `SettingsManager.getOutputPad` | 0 | served | native:SettingsManager.GetOutputPad | native:SettingsManager::get_output_pad | native:SettingsManager.get_output_pad | native:pig:settings-get-output-pad |
+| `SettingsManager.getPackages` | 0 | served | native:SettingsManager.GetPackages | native:SettingsManager::get_packages | native:SettingsManager.get_packages | native:pig:settings-get-packages |
+| `SettingsManager.getProjectSettings` | 0 | served | native:SettingsManager.GetProjectSettings | native:SettingsManager::get_project_settings | native:SettingsManager.get_project_settings | native:pig:settings-get-project-settings |
+| `SettingsManager.getPromptTemplatePaths` | 0 | served | native:SettingsManager.GetPromptTemplatePaths | native:SettingsManager::get_prompt_template_paths | native:SettingsManager.get_prompt_template_paths | native:pig:settings-get-prompt-template-paths |
+| `SettingsManager.getProviderRetrySettings` | 0 | served | native:SettingsManager.GetProviderRetrySettings | native:SettingsManager::get_provider_retry_settings | native:SettingsManager.get_provider_retry_settings | native:pig:settings-get-provider-retry-settings |
+| `SettingsManager.getQuietStartup` | 0 | served | native:SettingsManager.GetQuietStartup | native:SettingsManager::get_quiet_startup | native:SettingsManager.get_quiet_startup | native:pig:settings-get-quiet-startup |
+| `SettingsManager.getRetryEnabled` | 0 | served | native:SettingsManager.GetRetryEnabled | native:SettingsManager::get_retry_enabled | native:SettingsManager.get_retry_enabled | native:pig:settings-get-retry-enabled |
+| `SettingsManager.getRetrySettings` | 0 | served | native:SettingsManager.GetRetrySettings | native:SettingsManager::get_retry_settings | native:SettingsManager.get_retry_settings | native:pig:settings-get-retry-settings |
+| `SettingsManager.getSessionDir` | 0 | served | native:SettingsManager.GetSessionDir | native:SettingsManager::get_session_dir | native:SettingsManager.get_session_dir | native:pig:settings-get-session-dir |
+| `SettingsManager.getSessionShareDestination` | 0 | served | native:SettingsManager.GetSessionShareDestination | native:SettingsManager::get_session_share_destination | native:SettingsManager.get_session_share_destination | native:pig:settings-get-session-share-destination |
+| `SettingsManager.getSettings` | 0 | served | native:SettingsManager.GetSettings | native:SettingsManager::get_settings | native:SettingsManager.get_settings | native:pig:settings-get-settings |
+| `SettingsManager.getShellCommandPrefix` | 0 | served | native:SettingsManager.GetShellCommandPrefix | native:SettingsManager::get_shell_command_prefix | native:SettingsManager.get_shell_command_prefix | native:pig:settings-get-shell-command-prefix |
+| `SettingsManager.getShellPath` | 0 | served | native:SettingsManager.GetShellPath | native:SettingsManager::get_shell_path | native:SettingsManager.get_shell_path | native:pig:settings-get-shell-path |
+| `SettingsManager.getShowCacheMissNotices` | 0 | served | native:SettingsManager.GetShowCacheMissNotices | native:SettingsManager::get_show_cache_miss_notices | native:SettingsManager.get_show_cache_miss_notices | native:pig:settings-get-show-cache-miss-notices |
+| `SettingsManager.getShowHardwareCursor` | 0 | served | native:SettingsManager.GetShowHardwareCursor | native:SettingsManager::get_show_hardware_cursor | native:SettingsManager.get_show_hardware_cursor | native:pig:settings-get-show-hardware-cursor |
+| `SettingsManager.getShowImages` | 0 | served | native:SettingsManager.GetShowImages | native:SettingsManager::get_show_images | native:SettingsManager.get_show_images | native:pig:settings-get-show-images |
+| `SettingsManager.getShowTerminalProgress` | 0 | served | native:SettingsManager.GetShowTerminalProgress | native:SettingsManager::get_show_terminal_progress | native:SettingsManager.get_show_terminal_progress | native:pig:settings-get-show-terminal-progress |
+| `SettingsManager.getSkillPaths` | 0 | served | native:SettingsManager.GetSkillPaths | native:SettingsManager::get_skill_paths | native:SettingsManager.get_skill_paths | native:pig:settings-get-skill-paths |
+| `SettingsManager.getSteeringMode` | 0 | served | native:SettingsManager.GetSteeringMode | native:SettingsManager::get_steering_mode | native:SettingsManager.get_steering_mode | native:pig:settings-get-steering-mode |
+| `SettingsManager.getTerminalCapabilityOverrides` | 0 | served | native:SettingsManager.GetTerminalCapabilityOverrides | native:SettingsManager::get_terminal_capability_overrides | native:SettingsManager.get_terminal_capability_overrides | native:pig:settings-get-terminal-capability-overrides |
+| `SettingsManager.getTheme` | 0 | served | native:SettingsManager.GetTheme | native:SettingsManager::get_theme | native:SettingsManager.get_theme | native:pig:settings-get-theme |
+| `SettingsManager.getThemePaths` | 0 | served | native:SettingsManager.GetThemePaths | native:SettingsManager::get_theme_paths | native:SettingsManager.get_theme_paths | native:pig:settings-get-theme-paths |
+| `SettingsManager.getThemeSetting` | 0 | served | native:SettingsManager.GetThemeSetting | native:SettingsManager::get_theme_setting | native:SettingsManager.get_theme_setting | native:pig:settings-get-theme-setting |
+| `SettingsManager.getThinkingBudgets` | 0 | served | native:SettingsManager.GetThinkingBudgets | native:SettingsManager::get_thinking_budgets | native:SettingsManager.get_thinking_budgets | native:pig:settings-get-thinking-budgets |
+| `SettingsManager.getTrackingId` | 0 | served | native:SettingsManager.GetTrackingID | native:SettingsManager::get_tracking_id | native:SettingsManager.get_tracking_id | native:pig:settings-get-tracking-id |
+| `SettingsManager.getTransport` | 0 | served | native:SettingsManager.GetTransport | native:SettingsManager::get_transport | native:SettingsManager.get_transport | native:pig:settings-get-transport |
+| `SettingsManager.getTreeFilterMode` | 0 | served | native:SettingsManager.GetTreeFilterMode | native:SettingsManager::get_tree_filter_mode | native:SettingsManager.get_tree_filter_mode | native:pig:settings-get-tree-filter-mode |
+| `SettingsManager.getTuiMode` | 0 | served | native:SettingsManager.GetTuiMode | native:SettingsManager::get_tui_mode | native:SettingsManager.get_tui_mode | native:pig:settings-get-tui-mode |
+| `SettingsManager.getWarnings` | 0 | served | native:SettingsManager.GetWarnings | native:SettingsManager::get_warnings | native:SettingsManager.get_warnings | native:pig:settings-get-warnings |
+| `SettingsManager.getWebSocketConnectTimeoutMs` | 0 | served | native:SettingsManager.GetWebSocketConnectTimeoutMs | native:SettingsManager::get_web_socket_connect_timeout_ms | native:SettingsManager.get_web_socket_connect_timeout_ms | native:pig:settings-get-web-socket-connect-timeout-ms |
+| `SettingsManager.isProjectTrusted` | 0 | served | native:SettingsManager.IsProjectTrusted | native:SettingsManager::is_project_trusted | native:SettingsManager.is_project_trusted | native:pig:settings-is-project-trusted |
+| `SettingsManager.reload` | 0 | served | native:SettingsManager.Reload | native:SettingsManager::reload | native:SettingsManager.reload | native:pig:settings-reload |
+| `SettingsManager.removeModelThinkingLevel` | 0 | served | native:SettingsManager.RemoveModelThinkingLevel | native:SettingsManager::remove_model_thinking_level | native:SettingsManager.remove_model_thinking_level | native:pig:settings-remove-model-thinking-level |
+| `SettingsManager.setAutocompleteMaxVisible` | 0 | served | native:SettingsManager.SetAutocompleteMaxVisible | native:SettingsManager::set_autocomplete_max_visible | native:SettingsManager.set_autocomplete_max_visible | native:pig:settings-set-autocomplete-max-visible |
+| `SettingsManager.setBlockImages` | 0 | served | native:SettingsManager.SetBlockImages | native:SettingsManager::set_block_images | native:SettingsManager.set_block_images | native:pig:settings-set-block-images |
+| `SettingsManager.setCacheWarmingMode` | 0 | served | native:SettingsManager.SetCacheWarmingMode | native:SettingsManager::set_cache_warming_mode | native:SettingsManager.set_cache_warming_mode | native:pig:settings-set-cache-warming-mode |
+| `SettingsManager.setClearOnShrink` | 0 | served | native:SettingsManager.SetClearOnShrink | native:SettingsManager::set_clear_on_shrink | native:SettingsManager.set_clear_on_shrink | native:pig:settings-set-clear-on-shrink |
+| `SettingsManager.setCollapseChangelog` | 0 | served | native:SettingsManager.SetCollapseChangelog | native:SettingsManager::set_collapse_changelog | native:SettingsManager.set_collapse_changelog | native:pig:settings-set-collapse-changelog |
+| `SettingsManager.setCompactionEnabled` | 0 | served | native:SettingsManager.SetCompactionEnabled | native:SettingsManager::set_compaction_enabled | native:SettingsManager.set_compaction_enabled | native:pig:settings-set-compaction-enabled |
+| `SettingsManager.setDefaultModel` | 0 | served | native:SettingsManager.SetDefaultModel | native:SettingsManager::set_default_model | native:SettingsManager.set_default_model | native:pig:settings-set-default-model |
+| `SettingsManager.setDefaultModelAndProvider` | 0 | served | native:SettingsManager.SetDefaultModelAndProvider | native:SettingsManager::set_default_model_and_provider | native:SettingsManager.set_default_model_and_provider | native:pig:settings-set-default-model-and-provider |
+| `SettingsManager.setDefaultProjectTrust` | 0 | served | native:SettingsManager.SetDefaultProjectTrust | native:SettingsManager::set_default_project_trust | native:SettingsManager.set_default_project_trust | native:pig:settings-set-default-project-trust |
+| `SettingsManager.setDefaultProvider` | 0 | served | native:SettingsManager.SetDefaultProvider | native:SettingsManager::set_default_provider | native:SettingsManager.set_default_provider | native:pig:settings-set-default-provider |
+| `SettingsManager.setDefaultThinkingLevel` | 0 | served | native:SettingsManager.SetDefaultThinkingLevel | native:SettingsManager::set_default_thinking_level | native:SettingsManager.set_default_thinking_level | native:pig:settings-set-default-thinking-level |
+| `SettingsManager.setDoubleEscapeAction` | 0 | served | native:SettingsManager.SetDoubleEscapeAction | native:SettingsManager::set_double_escape_action | native:SettingsManager.set_double_escape_action | native:pig:settings-set-double-escape-action |
+| `SettingsManager.setEditorPaddingX` | 0 | served | native:SettingsManager.SetEditorPaddingX | native:SettingsManager::set_editor_padding_x | native:SettingsManager.set_editor_padding_x | native:pig:settings-set-editor-padding-x |
+| `SettingsManager.setEnableAnalytics` | 0 | served | native:SettingsManager.SetEnableAnalytics | native:SettingsManager::set_enable_analytics | native:SettingsManager.set_enable_analytics | native:pig:settings-set-enable-analytics |
+| `SettingsManager.setEnableInstallTelemetry` | 0 | served | native:SettingsManager.SetEnableInstallTelemetry | native:SettingsManager::set_enable_install_telemetry | native:SettingsManager.set_enable_install_telemetry | native:pig:settings-set-enable-install-telemetry |
+| `SettingsManager.setEnableSkillCommands` | 0 | served | native:SettingsManager.SetEnableSkillCommands | native:SettingsManager::set_enable_skill_commands | native:SettingsManager.set_enable_skill_commands | native:pig:settings-set-enable-skill-commands |
+| `SettingsManager.setEnabledModels` | 0 | served | native:SettingsManager.SetEnabledModels | native:SettingsManager::set_enabled_models | native:SettingsManager.set_enabled_models | native:pig:settings-set-enabled-models |
+| `SettingsManager.setExtensionPaths` | 0 | served | native:SettingsManager.SetExtensionPaths | native:SettingsManager::set_extension_paths | native:SettingsManager.set_extension_paths | native:pig:settings-set-extension-paths |
+| `SettingsManager.setFollowUpMode` | 0 | served | native:SettingsManager.SetFollowUpMode | native:SettingsManager::set_follow_up_mode | native:SettingsManager.set_follow_up_mode | native:pig:settings-set-follow-up-mode |
+| `SettingsManager.setFullscreenCopyOnSelect` | 0 | served | native:SettingsManager.SetFullscreenCopyOnSelect | native:SettingsManager::set_fullscreen_copy_on_select | native:SettingsManager.set_fullscreen_copy_on_select | native:pig:settings-set-fullscreen-copy-on-select |
+| `SettingsManager.setFullscreenExitOutput` | 0 | served | native:SettingsManager.SetFullscreenExitOutput | native:SettingsManager::set_fullscreen_exit_output | native:SettingsManager.set_fullscreen_exit_output | native:pig:settings-set-fullscreen-exit-output |
+| `SettingsManager.setFullscreenScrollbar` | 0 | served | native:SettingsManager.SetFullscreenScrollbar | native:SettingsManager::set_fullscreen_scrollbar | native:SettingsManager.set_fullscreen_scrollbar | native:pig:settings-set-fullscreen-scrollbar |
+| `SettingsManager.setFullscreenWheelScrollLines` | 0 | served | native:SettingsManager.SetFullscreenWheelScrollLines | native:SettingsManager::set_fullscreen_wheel_scroll_lines | native:SettingsManager.set_fullscreen_wheel_scroll_lines | native:pig:settings-set-fullscreen-wheel-scroll-lines |
+| `SettingsManager.setHideThinkingBlock` | 0 | served | native:SettingsManager.SetHideThinkingBlock | native:SettingsManager::set_hide_thinking_block | native:SettingsManager.set_hide_thinking_block | native:pig:settings-set-hide-thinking-block |
+| `SettingsManager.setHttpIdleTimeoutMs` | 0 | served | native:SettingsManager.SetHttpIdleTimeoutMs | native:SettingsManager::set_http_idle_timeout_ms | native:SettingsManager.set_http_idle_timeout_ms | native:pig:settings-set-http-idle-timeout-ms |
+| `SettingsManager.setImageAutoResize` | 0 | served | native:SettingsManager.SetImageAutoResize | native:SettingsManager::set_image_auto_resize | native:SettingsManager.set_image_auto_resize | native:pig:settings-set-image-auto-resize |
+| `SettingsManager.setImageWidthCells` | 0 | served | native:SettingsManager.SetImageWidthCells | native:SettingsManager::set_image_width_cells | native:SettingsManager.set_image_width_cells | native:pig:settings-set-image-width-cells |
+| `SettingsManager.setLastChangelogVersion` | 0 | served | native:SettingsManager.SetLastChangelogVersion | native:SettingsManager::set_last_changelog_version | native:SettingsManager.set_last_changelog_version | native:pig:settings-set-last-changelog-version |
+| `SettingsManager.setMermaidRenderingMode` | 0 | served | native:SettingsManager.SetMermaidRenderingMode | native:SettingsManager::set_mermaid_rendering_mode | native:SettingsManager.set_mermaid_rendering_mode | native:pig:settings-set-mermaid-rendering-mode |
+| `SettingsManager.setModelThinkingLevel` | 0 | served | native:SettingsManager.SetModelThinkingLevel | native:SettingsManager::set_model_thinking_level | native:SettingsManager.set_model_thinking_level | native:pig:settings-set-model-thinking-level |
+| `SettingsManager.setNpmCommand` | 0 | served | native:SettingsManager.SetNpmCommand | native:SettingsManager::set_npm_command | native:SettingsManager.set_npm_command | native:pig:settings-set-npm-command |
+| `SettingsManager.setOutputPad` | 0 | served | native:SettingsManager.SetOutputPad | native:SettingsManager::set_output_pad | native:SettingsManager.set_output_pad | native:pig:settings-set-output-pad |
+| `SettingsManager.setPackages` | 0 | served | native:SettingsManager.SetPackages | native:SettingsManager::set_packages | native:SettingsManager.set_packages | native:pig:settings-set-packages |
+| `SettingsManager.setProjectExtensionPaths` | 0 | served | native:SettingsManager.SetProjectExtensionPaths | native:SettingsManager::set_project_extension_paths | native:SettingsManager.set_project_extension_paths | native:pig:settings-set-project-extension-paths |
+| `SettingsManager.setProjectPackages` | 0 | served | native:SettingsManager.SetProjectPackages | native:SettingsManager::set_project_packages | native:SettingsManager.set_project_packages | native:pig:settings-set-project-packages |
+| `SettingsManager.setProjectPromptTemplatePaths` | 0 | served | native:SettingsManager.SetProjectPromptTemplatePaths | native:SettingsManager::set_project_prompt_template_paths | native:SettingsManager.set_project_prompt_template_paths | native:pig:settings-set-project-prompt-template-paths |
+| `SettingsManager.setProjectSkillPaths` | 0 | served | native:SettingsManager.SetProjectSkillPaths | native:SettingsManager::set_project_skill_paths | native:SettingsManager.set_project_skill_paths | native:pig:settings-set-project-skill-paths |
+| `SettingsManager.setProjectThemePaths` | 0 | served | native:SettingsManager.SetProjectThemePaths | native:SettingsManager::set_project_theme_paths | native:SettingsManager.set_project_theme_paths | native:pig:settings-set-project-theme-paths |
+| `SettingsManager.setProjectTrusted` | 0 | served | native:SettingsManager.SetProjectTrusted | native:SettingsManager::set_project_trusted | native:SettingsManager.set_project_trusted | native:pig:settings-set-project-trusted |
+| `SettingsManager.setPromptTemplatePaths` | 0 | served | native:SettingsManager.SetPromptTemplatePaths | native:SettingsManager::set_prompt_template_paths | native:SettingsManager.set_prompt_template_paths | native:pig:settings-set-prompt-template-paths |
+| `SettingsManager.setQuietStartup` | 0 | served | native:SettingsManager.SetQuietStartup | native:SettingsManager::set_quiet_startup | native:SettingsManager.set_quiet_startup | native:pig:settings-set-quiet-startup |
+| `SettingsManager.setRetryEnabled` | 0 | served | native:SettingsManager.SetRetryEnabled | native:SettingsManager::set_retry_enabled | native:SettingsManager.set_retry_enabled | native:pig:settings-set-retry-enabled |
+| `SettingsManager.setSessionShareDestination` | 0 | served | native:SettingsManager.SetSessionShareDestination | native:SettingsManager::set_session_share_destination | native:SettingsManager.set_session_share_destination | native:pig:settings-set-session-share-destination |
+| `SettingsManager.setShellCommandPrefix` | 0 | served | native:SettingsManager.SetShellCommandPrefix | native:SettingsManager::set_shell_command_prefix | native:SettingsManager.set_shell_command_prefix | native:pig:settings-set-shell-command-prefix |
+| `SettingsManager.setShellPath` | 0 | served | native:SettingsManager.SetShellPath | native:SettingsManager::set_shell_path | native:SettingsManager.set_shell_path | native:pig:settings-set-shell-path |
+| `SettingsManager.setShowCacheMissNotices` | 0 | served | native:SettingsManager.SetShowCacheMissNotices | native:SettingsManager::set_show_cache_miss_notices | native:SettingsManager.set_show_cache_miss_notices | native:pig:settings-set-show-cache-miss-notices |
+| `SettingsManager.setShowHardwareCursor` | 0 | served | native:SettingsManager.SetShowHardwareCursor | native:SettingsManager::set_show_hardware_cursor | native:SettingsManager.set_show_hardware_cursor | native:pig:settings-set-show-hardware-cursor |
+| `SettingsManager.setShowImages` | 0 | served | native:SettingsManager.SetShowImages | native:SettingsManager::set_show_images | native:SettingsManager.set_show_images | native:pig:settings-set-show-images |
+| `SettingsManager.setShowTerminalProgress` | 0 | served | native:SettingsManager.SetShowTerminalProgress | native:SettingsManager::set_show_terminal_progress | native:SettingsManager.set_show_terminal_progress | native:pig:settings-set-show-terminal-progress |
+| `SettingsManager.setSkillPaths` | 0 | served | native:SettingsManager.SetSkillPaths | native:SettingsManager::set_skill_paths | native:SettingsManager.set_skill_paths | native:pig:settings-set-skill-paths |
+| `SettingsManager.setSteeringMode` | 0 | served | native:SettingsManager.SetSteeringMode | native:SettingsManager::set_steering_mode | native:SettingsManager.set_steering_mode | native:pig:settings-set-steering-mode |
+| `SettingsManager.setTheme` | 0 | served | native:SettingsManager.SetTheme | native:SettingsManager::set_theme | native:SettingsManager.set_theme | native:pig:settings-set-theme |
+| `SettingsManager.setThemePaths` | 0 | served | native:SettingsManager.SetThemePaths | native:SettingsManager::set_theme_paths | native:SettingsManager.set_theme_paths | native:pig:settings-set-theme-paths |
+| `SettingsManager.setTransport` | 0 | served | native:SettingsManager.SetTransport | native:SettingsManager::set_transport | native:SettingsManager.set_transport | native:pig:settings-set-transport |
+| `SettingsManager.setTreeFilterMode` | 0 | served | native:SettingsManager.SetTreeFilterMode | native:SettingsManager::set_tree_filter_mode | native:SettingsManager.set_tree_filter_mode | native:pig:settings-set-tree-filter-mode |
+| `SettingsManager.setTuiMode` | 0 | served | native:SettingsManager.SetTuiMode | native:SettingsManager::set_tui_mode | native:SettingsManager.set_tui_mode | native:pig:settings-set-tui-mode |
+| `SettingsManager.setWarnings` | 0 | served | native:SettingsManager.SetWarnings | native:SettingsManager::set_warnings | native:SettingsManager.set_warnings | native:pig:settings-set-warnings |
+| `SettingsSelectorComponent` | 1 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `SettingsSelectorComponent.addChild` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `SettingsSelectorComponent.children` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `SettingsSelectorComponent.clear` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `SettingsSelectorComponent.getSettingsList` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `SettingsSelectorComponent.handleMouse` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `SettingsSelectorComponent.invalidate` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `SettingsSelectorComponent.removeChild` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `SettingsSelectorComponent.render` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `ShowImagesSelectorComponent` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `ShowImagesSelectorComponent.addChild` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `ShowImagesSelectorComponent.children` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `ShowImagesSelectorComponent.clear` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `ShowImagesSelectorComponent.getSelectList` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `ShowImagesSelectorComponent.handleMouse` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `ShowImagesSelectorComponent.invalidate` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `ShowImagesSelectorComponent.removeChild` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `ShowImagesSelectorComponent.render` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `SkillInvocationMessageComponent` | 3 | served | kit:SkillInvocation | kit:SkillInvocation | kit:SkillInvocation | kit:pig:kit-skill-invocation |
+| `SkillInvocationMessageComponent.addChild` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
+| `SkillInvocationMessageComponent.children` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
+| `SkillInvocationMessageComponent.clear` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
+| `SkillInvocationMessageComponent.handleMouse` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
+| `SkillInvocationMessageComponent.invalidate` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
+| `SkillInvocationMessageComponent.removeChild` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
+| `SkillInvocationMessageComponent.render` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
+| `SkillInvocationMessageComponent.setBgFn` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
+| `SkillInvocationMessageComponent.setExpanded` | 0 | served | kit:SkillInvocation | kit:SkillInvocation | kit:SkillInvocation | kit:pig:kit-skill-invocation |
+| `SkillInvocationMessageComponent.setOutputPad` | 0 | served | kit:SkillInvocation | kit:SkillInvocation | kit:SkillInvocation | kit:pig:kit-skill-invocation |
+| `SkillInvocationMessageComponent.setPaddingX` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
+| `Theme` | 2 | served | native:UITheme | native:Theme | native:Theme | native:pig:theme |
+| `Theme.appearance` | 0 | served | native:UITheme.Appearance | native:Theme::appearance | native:Theme.appearance | native:pig:theme-appearance |
+| `Theme.bg` | 0 | served | native:UITheme.Bg | native:Theme::bg | native:Theme.bg | native:pig:theme-bg |
+| `Theme.bold` | 0 | served | native:UITheme.Bold | native:Theme::bold | native:Theme.bold | native:pig:theme-bold |
+| `Theme.colors` | 0 | served | native:UITheme.Colors | native:Theme::colors | native:Theme.colors | native:pig:theme-colors |
+| `Theme.fg` | 0 | served | native:UITheme.Fg | native:Theme::fg | native:Theme.fg | native:pig:theme-fg |
+| `Theme.getBashModeBorderColor` | 0 | served | native:UITheme.GetBashModeBorderColor | native:Theme::get_bash_mode_border_color | native:Theme.get_bash_mode_border_color | native:pig:theme-get-bash-mode-border-color |
+| `Theme.getBgAnsi` | 0 | served | native:UITheme.GetBgAnsi | native:Theme::get_bg_ansi | native:Theme.get_bg_ansi | native:pig:theme-get-bg-ansi |
+| `Theme.getColorMode` | 0 | served | native:UITheme.GetColorMode | native:Theme::get_color_mode | native:Theme.get_color_mode | native:pig:theme-get-color-mode |
+| `Theme.getFgAnsi` | 0 | served | native:UITheme.GetFgAnsi | native:Theme::get_fg_ansi | native:Theme.get_fg_ansi | native:pig:theme-get-fg-ansi |
+| `Theme.getThinkingBorderColor` | 0 | served | native:UITheme.GetThinkingBorderColor | native:Theme::get_thinking_border_color | native:Theme.get_thinking_border_color | native:pig:theme-get-thinking-border-color |
+| `Theme.inverse` | 0 | served | native:UITheme.Inverse | native:Theme::inverse | native:Theme.inverse | native:pig:theme-inverse |
+| `Theme.italic` | 0 | served | native:UITheme.Italic | native:Theme::italic | native:Theme.italic | native:pig:theme-italic |
+| `Theme.name` | 0 | served | native:UITheme.Name | native:Theme.name | native:Theme.name | native:pig:theme-name |
+| `Theme.sourceInfo` | 0 | served | native:UITheme.SourceInfo | native:Theme.source_info | native:Theme.source_info | native:pig:theme-source-info |
+| `Theme.sourcePath` | 0 | served | native:UITheme.SourcePath | native:Theme.source_path | native:Theme.source_path | native:pig:theme-source-path |
+| `Theme.strikethrough` | 0 | served | native:UITheme.Strikethrough | native:Theme::strikethrough | native:Theme.strikethrough | native:pig:theme-strikethrough |
+| `Theme.style` | 0 | served | native:UITheme.Style | native:Theme::style | native:Theme.style | native:pig:theme-style |
+| `Theme.underline` | 0 | served | native:UITheme.Underline | native:Theme::underline | native:Theme.underline | native:pig:theme-underline |
+| `ThemeSelectorComponent` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `ThemeSelectorComponent.addChild` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `ThemeSelectorComponent.children` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `ThemeSelectorComponent.clear` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `ThemeSelectorComponent.getSelectList` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `ThemeSelectorComponent.handleMouse` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `ThemeSelectorComponent.invalidate` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `ThemeSelectorComponent.removeChild` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `ThemeSelectorComponent.render` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `ThinkingSelectorComponent` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `ThinkingSelectorComponent.addChild` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `ThinkingSelectorComponent.children` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `ThinkingSelectorComponent.clear` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `ThinkingSelectorComponent.focused` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `ThinkingSelectorComponent.getSelectList` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `ThinkingSelectorComponent.handleInput` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `ThinkingSelectorComponent.handleMouse` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `ThinkingSelectorComponent.invalidate` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `ThinkingSelectorComponent.removeChild` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `ThinkingSelectorComponent.render` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `ToolExecutionComponent` | 5 | served | kit:ToolExecution | kit:ToolExecution | kit:ToolExecution | kit:pig:kit-tool-execution |
+| `ToolExecutionComponent.addChild` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
+| `ToolExecutionComponent.children` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
+| `ToolExecutionComponent.clear` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
+| `ToolExecutionComponent.handleMouse` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
+| `ToolExecutionComponent.invalidate` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
+| `ToolExecutionComponent.markExecutionStarted` | 0 | served | kit:ToolExecution | kit:ToolExecution | kit:ToolExecution | kit:pig:kit-tool-execution |
+| `ToolExecutionComponent.removeChild` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
+| `ToolExecutionComponent.render` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
+| `ToolExecutionComponent.setArgsComplete` | 0 | served | kit:ToolExecution | kit:ToolExecution | kit:ToolExecution | kit:pig:kit-tool-execution |
+| `ToolExecutionComponent.setExpanded` | 0 | served | kit:ToolExecution | kit:ToolExecution | kit:ToolExecution | kit:pig:kit-tool-execution |
+| `ToolExecutionComponent.setImageWidthCells` | 0 | served | kit:ToolExecution | kit:ToolExecution | kit:ToolExecution | kit:pig:kit-tool-execution |
+| `ToolExecutionComponent.setOutputPad` | 0 | served | kit:ToolExecution | kit:ToolExecution | kit:ToolExecution | kit:pig:kit-tool-execution |
+| `ToolExecutionComponent.setShowImages` | 0 | served | kit:ToolExecution | kit:ToolExecution | kit:ToolExecution | kit:pig:kit-tool-execution |
+| `ToolExecutionComponent.updateArgs` | 0 | served | kit:ToolExecution | kit:ToolExecution | kit:ToolExecution | kit:pig:kit-tool-execution |
+| `ToolExecutionComponent.updateResult` | 0 | served | kit:ToolExecution | kit:ToolExecution | kit:ToolExecution | kit:pig:kit-tool-execution |
+| `TreeSelectorComponent` | 1 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `TreeSelectorComponent.addChild` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `TreeSelectorComponent.children` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `TreeSelectorComponent.clear` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `TreeSelectorComponent.focused` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `TreeSelectorComponent.getTreeList` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `TreeSelectorComponent.handleInput` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `TreeSelectorComponent.handleMouse` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `TreeSelectorComponent.invalidate` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `TreeSelectorComponent.onCopy` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `TreeSelectorComponent.removeChild` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `TreeSelectorComponent.render` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `UserMessageComponent` | 7 | served | kit:UserMessage | kit:UserMessage | kit:UserMessage | kit:pig:kit-user-message |
+| `UserMessageComponent.addChild` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
+| `UserMessageComponent.children` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
+| `UserMessageComponent.clear` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
+| `UserMessageComponent.handleMouse` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
+| `UserMessageComponent.invalidate` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
+| `UserMessageComponent.removeChild` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
+| `UserMessageComponent.render` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
+| `UserMessageComponent.setOutputPad` | 0 | served | kit:UserMessage | kit:UserMessage | kit:UserMessage | kit:pig:kit-user-message |
+| `UserMessageSelectorComponent` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `UserMessageSelectorComponent.addChild` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `UserMessageSelectorComponent.children` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `UserMessageSelectorComponent.clear` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `UserMessageSelectorComponent.getMessageList` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `UserMessageSelectorComponent.handleMouse` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `UserMessageSelectorComponent.invalidate` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `UserMessageSelectorComponent.removeChild` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `UserMessageSelectorComponent.render` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `VERSION` | 13 | served | native:Version | native:get_version | native:get_version | native:pig:host-version |
+| `VIRTUAL_MODEL_STATE_ENTRY` | 0 | served | native:VirtualModelStateEntry | native:VIRTUAL_MODEL_STATE_ENTRY | native:VIRTUAL_MODEL_STATE_ENTRY | native:pig:*virtual-model-state-entry* |
+| `buildContextEntries` | 1 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
+| `buildSessionContext` | 19 | served | native:BuildSessionContext | native:build_session_context | native:build_session_context | native:pig:build-session-context |
+| `buildSessionProjection` | 2 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
+| `calculateContextTokens` | 2 | served | native:CalculateContextTokens | native:calculate_context_tokens | native:calculate_context_tokens | native:pig:calculate-context-tokens |
+| `collectEntriesForBranchSummary` | 0 | served | native:CollectEntriesForBranchSummary | native:collect_entries_for_branch_summary | native:collect_entries_for_branch_summary | native:pig:collect-entries-for-branch-summary |
+| `compact` | 2 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
+| `convertToLlm` | 17 | served | native:ConvertToLlm | native:convert_to_llm | native:convert_to_llm | native:pig:convert-to-llm |
+| `convertToPng` | 2 | served | native:ConvertToPng | native:convert_to_png | native:convert_to_png | native:pig:convert-to-png |
+| `copyToClipboard` | 8 | served | native:CopyToClipboard | native:copy_to_clipboard | native:copy_to_clipboard | native:pig:copy-to-clipboard |
+| `createAgentSession` | 20 | served | host:Context.CreateAgentSession | host:Context::create_agent_session | host:Context.create_agent_session | host:pig:ctx-create-agent-session |
+| `createAgentSessionFromServices` | 8 | served | native:CreateAgentSessionFromServices | native:create_agent_session_from_services | native:create_agent_session_from_services | native:pig:create-agent-session-from-services |
+| `createAgentSessionRuntime` | 6 | served | native:CreateAgentSessionRuntime | native:create_agent_session_runtime | native:create_agent_session_runtime | native:pig:create-agent-session-runtime |
+| `createAgentSessionServices` | 9 | served | native:CreateAgentSessionServices | native:create_agent_session_services | native:create_agent_session_services | native:pig:create-agent-session-services |
+| `createBashTool` | 2 | served | native:CreateBashTool | native:create_bash_tool | native:create_bash_tool | native:pig:create-bash-tool |
+| `createBashToolDefinition` | 12 | served | native:CreateBashToolDefinition | native:create_bash_tool_definition | native:create_bash_tool_definition | native:pig:create-bash-tool-definition |
+| `createCodemodeExtension` | 8 | served | native:CreateCodemodeExtension | native:create_codemode_extension | native:create_codemode_extension | native:pig:create-codemode-extension |
+| `createCodingTools` | 3 | served | native:CreateCodingTools | native:create_coding_tools | native:create_coding_tools | native:pig:create-coding-tools |
+| `createEditTool` | 3 | served | native:CreateEditTool | native:create_edit_tool | native:create_edit_tool | native:pig:create-edit-tool |
+| `createEditToolDefinition` | 12 | served | native:CreateEditToolDefinition | native:create_edit_tool_definition | native:create_edit_tool_definition | native:pig:create-edit-tool-definition |
+| `createEventBus` | 4 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
+| `createExtensionRuntime` | 6 | served | native:CreateExtensionRuntime | native:create_extension_runtime | native:create_extension_runtime | native:pig:create-extension-runtime |
+| `createFindTool` | 4 | served | native:CreateFindTool | native:create_find_tool | native:create_find_tool | native:pig:create-find-tool |
+| `createFindToolDefinition` | 10 | served | native:CreateFindToolDefinition | native:create_find_tool_definition | native:create_find_tool_definition | native:pig:create-find-tool-definition |
+| `createGrepTool` | 3 | served | native:CreateGrepTool | native:create_grep_tool | native:create_grep_tool | native:pig:create-grep-tool |
+| `createGrepToolDefinition` | 12 | served | native:CreateGrepToolDefinition | native:create_grep_tool_definition | native:create_grep_tool_definition | native:pig:create-grep-tool-definition |
+| `createLocalBashOperations` | 6 | served | native:CreateLocalBashOperations | native:create_local_bash_operations | native:create_local_bash_operations | native:pig:create-local-bash-operations |
+| `createLocalPowerShellOperations` | 1 | served | native:CreateLocalPowerShellOperations | native:create_local_powershell_operations | native:create_local_powershell_operations | native:pig:create-local-powershell-operations |
+| `createLsTool` | 4 | served | native:CreateLsTool | native:create_ls_tool | native:create_ls_tool | native:pig:create-ls-tool |
+| `createLsToolDefinition` | 10 | served | native:CreateLsToolDefinition | native:create_ls_tool_definition | native:create_ls_tool_definition | native:pig:create-ls-tool-definition |
+| `createMcpExtension` | 6 | served | native:CreateMcpExtension | native:create_mcp_extension | native:create_mcp_extension | native:pig:create-mcp-extension |
+| `createPowerShellTool` | 0 | served | native:CreatePowerShellTool | native:create_powershell_tool | native:create_powershell_tool | native:pig:create-powershell-tool |
+| `createPowerShellToolDefinition` | 1 | served | native:CreatePowerShellToolDefinition | native:create_powershell_tool_definition | native:create_powershell_tool_definition | native:pig:create-powershell-tool-definition |
+| `createReadOnlyTools` | 3 | served | native:CreateReadOnlyTools | native:create_read_only_tools | native:create_read_only_tools | native:pig:create-read-only-tools |
+| `createReadTool` | 3 | served | native:CreateReadTool | native:create_read_tool | native:create_read_tool | native:pig:create-read-tool |
+| `createReadToolDefinition` | 12 | served | native:CreateReadToolDefinition | native:create_read_tool_definition | native:create_read_tool_definition | native:pig:create-read-tool-definition |
+| `createSyntheticSourceInfo` | 2 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
+| `createToolSearchExtension` | 7 | served | native:CreateToolSearchExtension | native:create_tool_search_extension | native:create_tool_search_extension | native:pig:create-tool-search-extension |
+| `createWriteTool` | 4 | served | native:CreateWriteTool | native:create_write_tool | native:create_write_tool | native:pig:create-write-tool |
+| `createWriteToolDefinition` | 13 | served | native:CreateWriteToolDefinition | native:create_write_tool_definition | native:create_write_tool_definition | native:pig:create-write-tool-definition |
+| `defineTool` | 23 | served | identity | identity | identity | identity |
+| `detectSupportedImageMimeTypeFromFile` | 0 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
+| `discoverAndLoadExtensions` | 3 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
+| `estimateTokens` | 9 | served | native:EstimateTokens | native:estimate_tokens | native:estimate_tokens | native:pig:estimate-tokens |
+| `findCutPoint` | 2 | served | native:FindCutPoint | native:find_cut_point | native:find_cut_point | native:pig:find-cut-point |
+| `findTurnStartIndex` | 0 | served | native:FindTurnStartIndex | native:find_turn_start_index | native:find_turn_start_index | native:pig:find-turn-start-index |
+| `formatDimensionNote` | 2 | served | native:FormatDimensionNote | native:format_dimension_note | native:format_dimension_note | native:pig:format-dimension-note |
+| `formatReadLineRange` | 1 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
+| `formatSize` | 16 | served | native:FormatSize | native:format_size | native:format_size | native:pig:format-size |
+| `formatSkillsForPrompt` | 5 | served | native:FormatSkillsForPrompt | native:format_skills_for_prompt | native:format_skills_for_prompt | native:pig:format-skills-for-prompt |
+| `generateBranchSummary` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
+| `generateDiffString` | 5 | served | native:GenerateDiffString | native:generate_diff_string | native:generate_diff_string | native:pig:generate-diff-string |
+| `generateSummary` | 1 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
+| `generateSummaryWithUsage` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
+| `generateUnifiedPatch` | 6 | served | native:GenerateUnifiedPatch | native:generate_unified_patch | native:generate_unified_patch | native:pig:generate-unified-patch |
+| `getAgentDir` | 85 | served | native:AgentDir | native:get_agent_dir | native:get_agent_dir | native:pig:host-agent-dir |
+| `getDocsPath` | 0 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
+| `getExamplesPath` | 0 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
+| `getLanguageFromPath` | 11 | served | native:GetLanguageFromPath | native:get_language_from_path | native:get_language_from_path | native:pig:get-language-from-path |
+| `getLastAssistantUsage` | 1 | served | native:GetLastAssistantUsage | native:get_last_assistant_usage | native:get_last_assistant_usage | native:pig:get-last-assistant-usage |
+| `getLatestCompactionEntry` | 0 | served | native:GetLatestCompactionEntry | native:get_latest_compaction_entry | native:get_latest_compaction_entry | native:pig:get-latest-compaction-entry |
+| `getMarkdownTheme` | 30 | served | native:GetMarkdownTheme | native:get_markdown_theme | native:get_markdown_theme | native:pig:get-markdown-theme |
+| `getPackageDir` | 4 | served | native:PackageDir | native:get_package_dir | native:get_package_dir | native:pig:host-package-dir |
+| `getPowerShellConfig` | 0 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
+| `getReadmePath` | 2 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
+| `getSelectListTheme` | 7 | served | native:GetSelectListTheme | native:get_select_list_theme | native:get_select_list_theme | native:pig:get-select-list-theme |
+| `getSettingsListTheme` | 16 | served | native:GetSettingsListTheme | native:get_settings_list_theme | native:get_settings_list_theme | native:pig:get-settings-list-theme |
+| `getShellConfig` | 4 | served | native:GetShellConfig | native:get_shell_config | native:get_shell_config | native:pig:host-shell-config |
+| `hasTrustRequiringProjectResources` | 4 | served | native:HasTrustRequiringProjectResources | native:has_trust_requiring_project_resources | native:has_trust_requiring_project_resources | native:pig:has-trust-requiring-project-resources |
+| `highlightCode` | 12 | served | native:HighlightCode | native:highlight_code | native:highlight_code | native:pig:highlight-code |
+| `initTheme` | 6 | served | native:InitTheme | native:init_theme | native:init_theme | native:pig:init-theme |
+| `isBashToolResult` | 3 | served | native:IsBashToolResult | native:is_bash_tool_result | native:is_bash_tool_result | native:pig:bash-tool-result-p |
+| `isEditToolResult` | 1 | served | native:IsEditToolResult | native:is_edit_tool_result | native:is_edit_tool_result | native:pig:edit-tool-result-p |
+| `isFindToolResult` | 0 | served | native:IsFindToolResult | native:is_find_tool_result | native:is_find_tool_result | native:pig:find-tool-result-p |
+| `isGrepToolResult` | 0 | served | native:IsGrepToolResult | native:is_grep_tool_result | native:is_grep_tool_result | native:pig:grep-tool-result-p |
+| `isLsToolResult` | 0 | served | native:IsLsToolResult | native:is_ls_tool_result | native:is_ls_tool_result | native:pig:ls-tool-result-p |
+| `isPowerShellToolResult` | 0 | served | native:IsPowerShellToolResult | native:is_powershell_tool_result | native:is_powershell_tool_result | native:pig:powershell-tool-result-p |
+| `isReadToolResult` | 0 | served | native:IsReadToolResult | native:is_read_tool_result | native:is_read_tool_result | native:pig:read-tool-result-p |
+| `isToolCallEventType` | 7 | served | native:IsToolCallEventType | native:is_tool_call_event_type | native:is_tool_call_event_type | native:pig:tool-call-event-type-p |
+| `isWriteToolResult` | 1 | served | native:IsWriteToolResult | native:is_write_tool_result | native:is_write_tool_result | native:pig:write-tool-result-p |
+| `keyHint` | 13 | served | native:KeyHint | native:key_hint | native:key_hint | native:pig:key-hint |
+| `keyText` | 4 | served | native:KeyText | native:key_text | native:key_text | native:pig:key-text |
+| `loadProjectContextFiles` | 3 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
+| `loadSkills` | 4 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
+| `loadSkillsFromDir` | 1 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
+| `main` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `migrateSessionEntries` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
+| `parseArgs` | 3 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `parseFrontmatter` | 14 | served | native:ParseFrontmatter | native:parse_frontmatter | native:parse_frontmatter | native:pig:parse-frontmatter |
+| `parseSessionEntries` | 3 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
+| `parseSkillBlock` | 1 | served | native:ParseSkillBlock | native:parse_skill_block | native:parse_skill_block | native:pig:parse-skill-block |
+| `prepareBranchEntries` | 1 | served | native:PrepareBranchEntries | native:prepare_branch_entries | native:prepare_branch_entries | native:pig:prepare-branch-entries |
+| `rawKeyHint` | 2 | served | native:RawKeyHint | native:raw_key_hint | native:raw_key_hint | native:pig:raw-key-hint |
+| `readStoredCredential` | 10 | served | native:ReadStoredCredential | native:read_stored_credential | native:read_stored_credential | native:pig:read-stored-credential |
+| `renderDiff` | 2 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
+| `resizeImage` | 6 | served | native:ResizeImage | native:resize_image | native:resize_image | native:pig:resize-image |
+| `resolveCliModel` | 3 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
+| `resolveModelScopeWithDiagnostics` | 3 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
+| `runPrintMode` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `runRpcMode` | 1 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `serializeConversation` | 3 | served | native:SerializeConversation | native:serialize_conversation | native:serialize_conversation | native:pig:serialize-conversation |
+| `sessionEntryToContextMessages` | 4 | served | native:SessionEntryToContextMessages | native:session_entry_to_context_messages | native:session_entry_to_context_messages | native:pig:session-entry-to-context-messages |
+| `shouldCompact` | 0 | served | native:ShouldCompact | native:should_compact | native:should_compact | native:pig:should-compact |
+| `stripFrontmatter` | 3 | served | native:StripFrontmatter | native:strip_frontmatter | native:strip_frontmatter | native:pig:strip-frontmatter |
+| `truncateHead` | 16 | served | native:TruncateHead | native:truncate_head | native:truncate_head | native:pig:truncate-head |
+| `truncateLine` | 4 | served | native:TruncateLine | native:truncate_line | native:truncate_line | native:pig:truncate-line |
+| `truncateTail` | 5 | served | native:TruncateTail | native:truncate_tail | native:truncate_tail | native:pig:truncate-tail |
+| `truncateToVisualLines` | 4 | served | native:TruncateToVisualLines | native:truncate_to_visual_lines | native:truncate_to_visual_lines | native:pig:truncate-to-visual-lines |
+| `withFileMutationQueue` | 14 | served | native:WithFileMutationQueue | native:with_file_mutation_queue | native:with_file_mutation_queue | native:pig:with-file-mutation-queue |
+| `wrapRegisteredTool` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
+| `wrapRegisteredTools` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
 
 ## pi-tui
 
-| Export | uses | Node | Go | Rust | Python |
-|---|---|---|---|---|---|
-| `Box` | 24 | served | kit:Box | kit:Box | kit:Box |
-| `Box.addChild` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
-| `Box.children` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
-| `Box.clear` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
-| `Box.handleMouse` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
-| `Box.invalidate` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
-| `Box.removeChild` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
-| `Box.render` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
-| `Box.setBgFn` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
-| `Box.setPaddingX` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
-| `CURSOR_MARKER` | 13 | served | native:tui.CursorMarker | native:tui::CURSOR_MARKER | native:tui.CURSOR_MARKER |
-| `CancellableLoader` | 1 | served | kit:CancellableLoader | kit:CancellableLoader | kit:CancellableLoader |
-| `CancellableLoader.aborted` | 0 | served | kit:CancellableLoader | kit:CancellableLoader | kit:CancellableLoader |
-| `CancellableLoader.dispose` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
-| `CancellableLoader.handleInput` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
-| `CancellableLoader.invalidate` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
-| `CancellableLoader.onAbort` | 0 | served | kit:CancellableLoader | kit:CancellableLoader | kit:CancellableLoader |
-| `CancellableLoader.render` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
-| `CancellableLoader.setCustomBgFn` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
-| `CancellableLoader.setIndicator` | 0 | served | kit:CancellableLoader | kit:CancellableLoader | kit:CancellableLoader |
-| `CancellableLoader.setMessage` | 0 | served | kit:CancellableLoader | kit:CancellableLoader | kit:CancellableLoader |
-| `CancellableLoader.setPaddingX` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
-| `CancellableLoader.setText` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
-| `CancellableLoader.signal` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
-| `CancellableLoader.start` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
-| `CancellableLoader.stop` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
-| `CombinedAutocompleteProvider` | 1 | served | kit:Autocomplete | kit:Autocomplete | kit:Autocomplete |
-| `CombinedAutocompleteProvider.applyCompletion` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
-| `CombinedAutocompleteProvider.getSuggestions` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
-| `CombinedAutocompleteProvider.shouldTriggerFileCompletion` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
-| `Container` | 53 | served | kit:Container | kit:Container | kit:Container |
-| `Container.addChild` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
-| `Container.children` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
-| `Container.clear` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
-| `Container.handleMouse` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
-| `Container.invalidate` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
-| `Container.removeChild` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
-| `Container.render` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
-| `Editor` | 20 | served | native:Editor | native:EditorBase | native:EditorBase |
-| `Editor.addToHistory` | 0 | served | native:Editor.AddToHistory | native:EditorBase::add_to_history | native:EditorBase.add_to_history |
-| `Editor.borderColor` | 0 | served | kit:Editor | kit:Editor | kit:Editor |
-| `Editor.disableSubmit` | 0 | served | kit:Editor | kit:Editor | kit:Editor |
-| `Editor.focused` | 0 | served | kit:Editor | kit:Editor | kit:Editor |
-| `Editor.getAutocompleteMaxVisible` | 0 | served | kit:Editor | kit:Editor | kit:Editor |
-| `Editor.getCursor` | 0 | served | native:Editor.GetCursor | native:EditorBase::get_cursor | native:EditorBase.get_cursor |
-| `Editor.getExpandedText` | 0 | served | native:Editor.GetExpandedText | native:EditorBase::get_expanded_text | native:EditorBase.get_expanded_text |
-| `Editor.getLines` | 0 | served | native:Editor.GetLines | native:EditorBase::get_lines | native:EditorBase.get_lines |
-| `Editor.getPaddingX` | 0 | served | kit:Editor | kit:Editor | kit:Editor |
-| `Editor.getText` | 0 | served | native:Editor.GetText | native:EditorBase::get_text | native:EditorBase.get_text |
-| `Editor.handleInput` | 0 | served | native:Editor.HandleInput | native:EditorBase::handle_input | native:EditorBase.handle_input |
-| `Editor.handleMouse` | 0 | served | native:Editor.HandleMouse | native:EditorBase::handle_mouse | native:EditorBase.handle_mouse |
-| `Editor.insertTextAtCursor` | 0 | served | native:Editor.InsertTextAtCursor | native:EditorBase::insert_text_at_cursor | native:EditorBase.insert_text_at_cursor |
-| `Editor.invalidate` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
-| `Editor.isShowingAutocomplete` | 0 | served | native:Editor.IsShowingAutocomplete | native:EditorBase::is_showing_autocomplete | native:EditorBase.is_showing_autocomplete |
-| `Editor.onChange` | 0 | served | kit:Editor | kit:Editor | kit:Editor |
-| `Editor.onSubmit` | 0 | served | kit:Editor | kit:Editor | kit:Editor |
-| `Editor.render` | 0 | served | native:Editor.Render | native:EditorBase::render | native:EditorBase.render |
-| `Editor.setAutocompleteMaxVisible` | 0 | served | native:Editor.SetAutocompleteMaxVisible | native:EditorBase::set_autocomplete_max_visible | native:EditorBase.set_autocomplete_max_visible |
-| `Editor.setAutocompleteProvider` | 0 | served | kit:Editor | kit:Editor | kit:Editor |
-| `Editor.setPaddingX` | 0 | served | native:Editor.SetPaddingX | native:EditorBase::set_padding_x | native:EditorBase.set_padding_x |
-| `Editor.setText` | 0 | served | native:Editor.SetText | native:EditorBase::set_text | native:EditorBase.set_text |
-| `HStack` | 2 | served | kit:HStack | kit:HStack | kit:HStack |
-| `HStack.[Symbol.LAYOUT_NODE]` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
-| `HStack.addChild` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
-| `HStack.children` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
-| `HStack.clear` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
-| `HStack.handleMouse` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
-| `HStack.invalidate` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
-| `HStack.removeChild` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
-| `HStack.render` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
-| `Image` | 7 | served | kit:Image | kit:Image | kit:Image |
-| `Image.getImageId` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
-| `Image.invalidate` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
-| `Image.render` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
-| `Input` | 30 | served | kit:Input | kit:Input | kit:Input |
-| `Input.focused` | 0 | served | kit:Input | kit:Input | kit:Input |
-| `Input.getValue` | 0 | served | kit:Input | kit:Input | kit:Input |
-| `Input.handleInput` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
-| `Input.handleMouse` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
-| `Input.invalidate` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
-| `Input.onEscape` | 0 | served | kit:Input | kit:Input | kit:Input |
-| `Input.onSubmit` | 0 | served | kit:Input | kit:Input | kit:Input |
-| `Input.render` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
-| `Input.setValue` | 0 | served | kit:Input | kit:Input | kit:Input |
-| `Key` | 60 | served | native:tui.Key | native:tui::Key | native:tui.Key |
-| `KeybindingsManager` | 5 | served | native:tui.KeybindingsManager | native:tui::KeybindingsManager | native:tui.KeybindingsManager |
-| `KeybindingsManager.getConflicts` | 0 | served | native:tui.KeybindingsManager.GetConflicts | native:tui::KeybindingsManager::get_conflicts | native:tui.KeybindingsManager.get_conflicts |
-| `KeybindingsManager.getDefinition` | 0 | served | native:tui.KeybindingsManager.GetDefinition | native:tui::KeybindingsManager::get_definition | native:tui.KeybindingsManager.get_definition |
-| `KeybindingsManager.getKeys` | 0 | served | native:tui.KeybindingsManager.GetKeys | native:tui::KeybindingsManager::get_keys | native:tui.KeybindingsManager.get_keys |
-| `KeybindingsManager.getResolvedBindings` | 0 | served | native:tui.KeybindingsManager.GetResolvedBindings | native:tui::KeybindingsManager::get_resolved_bindings | native:tui.KeybindingsManager.get_resolved_bindings |
-| `KeybindingsManager.getUserBindings` | 0 | served | native:tui.KeybindingsManager.GetUserBindings | native:tui::KeybindingsManager::get_user_bindings | native:tui.KeybindingsManager.get_user_bindings |
-| `KeybindingsManager.matches` | 0 | served | native:tui.KeybindingsManager.Matches | native:tui::KeybindingsManager::matches | native:tui.KeybindingsManager.matches |
-| `KeybindingsManager.setUserBindings` | 0 | served | native:tui.KeybindingsManager.SetUserBindings | native:tui::KeybindingsManager::set_user_bindings | native:tui.KeybindingsManager.set_user_bindings |
-| `Loader` | 4 | served | kit:Loader | kit:Loader | kit:Loader |
-| `Loader.invalidate` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
-| `Loader.render` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
-| `Loader.setCustomBgFn` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
-| `Loader.setIndicator` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
-| `Loader.setMessage` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
-| `Loader.setPaddingX` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
-| `Loader.setText` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
-| `Loader.start` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
-| `Loader.stop` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
-| `Markdown` | 35 | served | kit:Markdown | kit:Markdown | kit:Markdown |
-| `Markdown.invalidate` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
-| `Markdown.render` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
-| `Markdown.setText` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
-| `Marked` | 1 | served | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers |
-| `MouseRegion` | 6 | served | kit:MouseRegion | kit:MouseRegion | kit:MouseRegion |
-| `MouseRegion.handleMouse` | 0 | served | kit:MouseRegion | kit:MouseRegion | kit:MouseRegion |
-| `MouseRegion.invalidate` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
-| `MouseRegion.render` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
-| `ProcessTerminal` | 2 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `ProcessTerminal.clearFromCursor` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `ProcessTerminal.clearLine` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `ProcessTerminal.clearScreen` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `ProcessTerminal.columns` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `ProcessTerminal.drainInput` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `ProcessTerminal.hideCursor` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `ProcessTerminal.kittyProtocolActive` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `ProcessTerminal.modifyOtherKeysActive` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `ProcessTerminal.moveBy` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `ProcessTerminal.restoreOnExit` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `ProcessTerminal.rows` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `ProcessTerminal.setProgramStatus` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `ProcessTerminal.setProgress` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `ProcessTerminal.setTitle` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `ProcessTerminal.showCursor` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `ProcessTerminal.start` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `ProcessTerminal.stop` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `ProcessTerminal.write` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `ScrollView` | 8 | served | kit:ScrollView | kit:ScrollView | kit:ScrollView |
-| `ScrollView.[Symbol.LAYOUT_NODE]` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
-| `ScrollView.addChild` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
-| `ScrollView.children` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
-| `ScrollView.clear` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
-| `ScrollView.followEnd` | 0 | served | kit:ScrollView | kit:ScrollView | kit:ScrollView |
-| `ScrollView.getContentWidth` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
-| `ScrollView.handleMouse` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
-| `ScrollView.invalidate` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
-| `ScrollView.isFollowingEnd` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
-| `ScrollView.isScrollbarActive` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
-| `ScrollView.isScrollbarVisible` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
-| `ScrollView.overscroll` | 0 | served | kit:ScrollView | kit:ScrollView | kit:ScrollView |
-| `ScrollView.primary` | 0 | served | kit:ScrollView | kit:ScrollView | kit:ScrollView |
-| `ScrollView.removeChild` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
-| `ScrollView.render` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
-| `ScrollView.scrollBy` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
-| `ScrollView.scrollTo` | 0 | served | kit:ScrollView | kit:ScrollView | kit:ScrollView |
-| `ScrollView.scrollToEnd` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
-| `ScrollView.scrollToStart` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
-| `ScrollView.scrollTop` | 0 | served | kit:ScrollView | kit:ScrollView | kit:ScrollView |
-| `ScrollView.scrollbar` | 0 | served | kit:ScrollView | kit:ScrollView | kit:ScrollView |
-| `ScrollView.scrollbarThumbStyle` | 0 | served | kit:ScrollView | kit:ScrollView | kit:ScrollView |
-| `ScrollView.scrollbarTrackStyle` | 0 | served | kit:ScrollView | kit:ScrollView | kit:ScrollView |
-| `ScrollView.setScrollbar` | 0 | served | kit:ScrollView | kit:ScrollView | kit:ScrollView |
-| `ScrollView.setScrollbarActive` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
-| `ScrollView.updateLayout` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
-| `ScrollView.viewportHeight` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
-| `SelectList` | 28 | served | kit:SelectList | kit:SelectList | kit:SelectList |
-| `SelectList.getSelectedItem` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
-| `SelectList.handleInput` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
-| `SelectList.handleMouse` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
-| `SelectList.invalidate` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
-| `SelectList.onCancel` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
-| `SelectList.onSelect` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
-| `SelectList.onSelectionChange` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
-| `SelectList.render` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
-| `SelectList.setFilter` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
-| `SelectList.setSelectedIndex` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
-| `SettingsList` | 24 | served | kit:SettingsList | kit:SettingsList | kit:SettingsList |
-| `SettingsList.handleInput` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
-| `SettingsList.handleMouse` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
-| `SettingsList.invalidate` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
-| `SettingsList.render` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
-| `SettingsList.selectItem` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
-| `SettingsList.updateValue` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
-| `Spacer` | 30 | served | kit:Spacer | kit:Spacer | kit:Spacer |
-| `Spacer.invalidate` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
-| `Spacer.render` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
-| `Spacer.setLines` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
-| `StdinBuffer` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `StdinBuffer.[Symbol.captureRejectionSymbol]` | 0 | identity | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `StdinBuffer.addListener` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `StdinBuffer.clear` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `StdinBuffer.destroy` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `StdinBuffer.emit` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `StdinBuffer.eventNames` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `StdinBuffer.flush` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `StdinBuffer.getBuffer` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `StdinBuffer.getMaxListeners` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `StdinBuffer.listenerCount` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `StdinBuffer.listeners` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `StdinBuffer.off` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `StdinBuffer.on` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `StdinBuffer.once` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `StdinBuffer.prependListener` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `StdinBuffer.prependOnceListener` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `StdinBuffer.process` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `StdinBuffer.rawListeners` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `StdinBuffer.removeAllListeners` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `StdinBuffer.removeListener` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `StdinBuffer.setMaxListeners` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `TUI_KEYBINDINGS` | 6 | served | native:tui.TUIKeybindings | native:tui::tui_keybindings | native:tui.TUI_KEYBINDINGS |
-| `Text` | 90 | served | kit:Text | kit:Text | kit:Text |
-| `Text.invalidate` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
-| `Text.render` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
-| `Text.setCustomBgFn` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
-| `Text.setPaddingX` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
-| `Text.setText` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
-| `TruncatedText` | 4 | served | kit:TruncatedText | kit:TruncatedText | kit:TruncatedText |
-| `TruncatedText.invalidate` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
-| `TruncatedText.render` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
-| `TuiAltScreen` | 6 | served | native:TuiAltScreen | native:TuiAltScreen | native:TuiAltScreen |
-| `TuiAltScreen.[Symbol.VIEWPORT_TUI]` | 0 | served | native:TuiAltScreen.ViewportTui | native:TuiAltScreen::viewport_tui | native:TuiAltScreen.viewport_tui |
-| `TuiAltScreen.addChild` | 0 | served | native:TuiAltScreen.AddChild | native:TuiAltScreen::add_child | native:TuiAltScreen.add_child |
-| `TuiAltScreen.addInputListener` | 0 | served | native:TuiAltScreen.AddInputListener | native:TuiAltScreen::add_input_listener | native:TuiAltScreen.add_input_listener |
-| `TuiAltScreen.children` | 0 | served | native:TuiAltScreen.Children | native:TuiAltScreen::children | native:TuiAltScreen.children |
-| `TuiAltScreen.clear` | 0 | served | native:TuiAltScreen.Clear | native:TuiAltScreen::clear | native:TuiAltScreen.clear |
-| `TuiAltScreen.copyActiveSelectionToClipboard` | 0 | served | native:TuiAltScreen.CopyActiveSelectionToClipboard | native:TuiAltScreen::copy_active_selection_to_clipboard | native:TuiAltScreen.copy_active_selection_to_clipboard |
-| `TuiAltScreen.flash` | 0 | served | native:TuiAltScreen.Flash | native:TuiAltScreen::flash | native:TuiAltScreen.flash |
-| `TuiAltScreen.fullRedraws` | 0 | served | native:TuiAltScreen.FullRedraws | native:TuiAltScreen::full_redraws | native:TuiAltScreen.full_redraws |
-| `TuiAltScreen.getClearOnShrink` | 0 | served | native:TuiAltScreen.GetClearOnShrink | native:TuiAltScreen::get_clear_on_shrink | native:TuiAltScreen.get_clear_on_shrink |
-| `TuiAltScreen.getCopyOnSelect` | 0 | served | native:TuiAltScreen.GetCopyOnSelect | native:TuiAltScreen::get_copy_on_select | native:TuiAltScreen.get_copy_on_select |
-| `TuiAltScreen.getFocusedComponent` | 0 | served | native:TuiAltScreen.GetFocusedComponent | native:TuiAltScreen::get_focused_component | native:TuiAltScreen.get_focused_component |
-| `TuiAltScreen.getScreenLines` | 0 | served | native:TuiAltScreen.GetScreenLines | native:TuiAltScreen::get_screen_lines | native:TuiAltScreen.get_screen_lines |
-| `TuiAltScreen.getShowHardwareCursor` | 0 | served | native:TuiAltScreen.GetShowHardwareCursor | native:TuiAltScreen::get_show_hardware_cursor | native:TuiAltScreen.get_show_hardware_cursor |
-| `TuiAltScreen.handleMouse` | 0 | served | native:TuiAltScreen.HandleMouse | native:TuiAltScreen::handle_mouse | native:TuiAltScreen.handle_mouse |
-| `TuiAltScreen.hasActiveSelection` | 0 | served | native:TuiAltScreen.HasActiveSelection | native:TuiAltScreen::has_active_selection | native:TuiAltScreen.has_active_selection |
-| `TuiAltScreen.hasOverlay` | 0 | served | native:TuiAltScreen.HasOverlay | native:TuiAltScreen::has_overlay | native:TuiAltScreen.has_overlay |
-| `TuiAltScreen.hasOverlayEntries` | 0 | served | native:TuiAltScreen.HasOverlayEntries | native:TuiAltScreen::has_overlay_entries | native:TuiAltScreen.has_overlay_entries |
-| `TuiAltScreen.hideOverlay` | 0 | served | native:TuiAltScreen.HideOverlay | native:TuiAltScreen::hide_overlay | native:TuiAltScreen.hide_overlay |
-| `TuiAltScreen.invalidate` | 0 | served | native:TuiAltScreen.Invalidate | native:TuiAltScreen::invalidate | native:TuiAltScreen.invalidate |
-| `TuiAltScreen.isFollowingOutput` | 0 | served | native:TuiAltScreen.IsFollowingOutput | native:TuiAltScreen::is_following_output | native:TuiAltScreen.is_following_output |
-| `TuiAltScreen.mode` | 0 | served | native:TuiAltScreen.Mode | native:TuiAltScreen::mode | native:TuiAltScreen.mode |
-| `TuiAltScreen.onDebug` | 0 | served | native:TuiAltScreen.SetOnDebug | native:TuiAltScreen::set_on_debug | native:TuiAltScreen.on_debug |
-| `TuiAltScreen.onTerminalColorSchemeChange` | 0 | served | native:TuiAltScreen.OnTerminalColorSchemeChange | native:TuiAltScreen::on_terminal_color_scheme_change | native:TuiAltScreen.on_terminal_color_scheme_change |
-| `TuiAltScreen.queryTerminalColors` | 0 | served | native:TuiAltScreen.QueryTerminalColors | native:TuiAltScreen::query_terminal_colors | native:TuiAltScreen.query_terminal_colors |
-| `TuiAltScreen.removeChild` | 0 | served | native:TuiAltScreen.RemoveChild | native:TuiAltScreen::remove_child | native:TuiAltScreen.remove_child |
-| `TuiAltScreen.removeInputListener` | 0 | served | native:TuiAltScreen.RemoveInputListener | native:TuiAltScreen::remove_input_listener | native:TuiAltScreen.remove_input_listener |
-| `TuiAltScreen.render` | 0 | served | native:TuiAltScreen.Render | native:TuiAltScreen::render | native:TuiAltScreen.render |
-| `TuiAltScreen.renderNow` | 0 | served | native:TuiAltScreen.RenderNow | native:TuiAltScreen::render_now | native:TuiAltScreen.render_now |
-| `TuiAltScreen.requestRender` | 0 | served | native:TuiAltScreen.RequestRender | native:TuiAltScreen::request_render | native:TuiAltScreen.request_render |
-| `TuiAltScreen.resetTextSelection` | 0 | served | native:TuiAltScreen.ResetTextSelection | native:TuiAltScreen::reset_text_selection | native:TuiAltScreen.reset_text_selection |
-| `TuiAltScreen.scrollBy` | 0 | served | native:TuiAltScreen.ScrollBy | native:TuiAltScreen::scroll_by | native:TuiAltScreen.scroll_by |
-| `TuiAltScreen.scrollToBottom` | 0 | served | native:TuiAltScreen.ScrollToBottom | native:TuiAltScreen::scroll_to_bottom | native:TuiAltScreen.scroll_to_bottom |
-| `TuiAltScreen.scrollToTop` | 0 | served | native:TuiAltScreen.ScrollToTop | native:TuiAltScreen::scroll_to_top | native:TuiAltScreen.scroll_to_top |
-| `TuiAltScreen.setClearOnShrink` | 0 | served | native:TuiAltScreen.SetClearOnShrink | native:TuiAltScreen::set_clear_on_shrink | native:TuiAltScreen.set_clear_on_shrink |
-| `TuiAltScreen.setCopyOnSelect` | 0 | served | native:TuiAltScreen.SetCopyOnSelect | native:TuiAltScreen::set_copy_on_select | native:TuiAltScreen.set_copy_on_select |
-| `TuiAltScreen.setFocus` | 0 | served | native:TuiAltScreen.SetFocus | native:TuiAltScreen::set_focus | native:TuiAltScreen.set_focus |
-| `TuiAltScreen.setLayoutRoot` | 0 | served | native:TuiAltScreen.SetLayoutRoot | native:TuiAltScreen::set_layout_root | native:TuiAltScreen.set_layout_root |
-| `TuiAltScreen.setShowHardwareCursor` | 0 | served | native:TuiAltScreen.SetShowHardwareCursor | native:TuiAltScreen::set_show_hardware_cursor | native:TuiAltScreen.set_show_hardware_cursor |
-| `TuiAltScreen.setTerminalColorSchemeNotifications` | 0 | served | native:TuiAltScreen.SetTerminalColorSchemeNotifications | native:TuiAltScreen::set_terminal_color_scheme_notifications | native:TuiAltScreen.set_terminal_color_scheme_notifications |
-| `TuiAltScreen.setWheelScrollLines` | 0 | served | native:TuiAltScreen.SetWheelScrollLines | native:TuiAltScreen::set_wheel_scroll_lines | native:TuiAltScreen.set_wheel_scroll_lines |
-| `TuiAltScreen.showOverlay` | 0 | served | native:TuiAltScreen.ShowOverlay | native:TuiAltScreen::show_overlay | native:TuiAltScreen.show_overlay |
-| `TuiAltScreen.start` | 0 | served | native:TuiAltScreen.Start | native:TuiAltScreen::start | native:TuiAltScreen.start |
-| `TuiAltScreen.stop` | 0 | served | native:TuiAltScreen.Stop | native:TuiAltScreen::stop | native:TuiAltScreen.stop |
-| `TuiAltScreen.terminal` | 0 | served | native:TuiAltScreen.Terminal | native:TuiAltScreen::terminal | native:TuiAltScreen.terminal |
-| `TuiAltScreen.viewportTop` | 0 | served | native:TuiAltScreen.ViewportTop | native:TuiAltScreen::viewport_top | native:TuiAltScreen.viewport_top |
-| `TuiMainScreen` | 4 | served | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers |
-| `TuiMainScreen.addChild` | 0 | served | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers |
-| `TuiMainScreen.addInputListener` | 0 | served | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers |
-| `TuiMainScreen.captureRenderState` | 0 | served | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers |
-| `TuiMainScreen.children` | 0 | served | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers |
-| `TuiMainScreen.clear` | 0 | served | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers |
-| `TuiMainScreen.fullRedraws` | 0 | served | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers |
-| `TuiMainScreen.getClearOnShrink` | 0 | served | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers |
-| `TuiMainScreen.getFocusedComponent` | 0 | served | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers |
-| `TuiMainScreen.getShowHardwareCursor` | 0 | served | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers |
-| `TuiMainScreen.handleMouse` | 0 | served | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers |
-| `TuiMainScreen.hasOverlay` | 0 | served | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers |
-| `TuiMainScreen.hasOverlayEntries` | 0 | served | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers |
-| `TuiMainScreen.hideOverlay` | 0 | served | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers |
-| `TuiMainScreen.invalidate` | 0 | served | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers |
-| `TuiMainScreen.mode` | 0 | served | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers |
-| `TuiMainScreen.onDebug` | 0 | served | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers |
-| `TuiMainScreen.onTerminalColorSchemeChange` | 0 | served | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers |
-| `TuiMainScreen.queryTerminalColors` | 0 | served | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers |
-| `TuiMainScreen.removeChild` | 0 | served | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers |
-| `TuiMainScreen.removeInputListener` | 0 | served | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers |
-| `TuiMainScreen.render` | 0 | served | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers |
-| `TuiMainScreen.renderNow` | 0 | served | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers |
-| `TuiMainScreen.requestRender` | 0 | served | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers |
-| `TuiMainScreen.restoreRenderState` | 0 | served | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers |
-| `TuiMainScreen.setClearOnShrink` | 0 | served | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers |
-| `TuiMainScreen.setFocus` | 0 | served | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers |
-| `TuiMainScreen.setShowHardwareCursor` | 0 | served | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers |
-| `TuiMainScreen.setTerminalColorSchemeNotifications` | 0 | served | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers |
-| `TuiMainScreen.showOverlay` | 0 | served | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers |
-| `TuiMainScreen.start` | 0 | served | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers |
-| `TuiMainScreen.stop` | 0 | served | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers |
-| `TuiMainScreen.terminal` | 0 | served | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers |
-| `VStack` | 4 | served | kit:VStack | kit:VStack | kit:VStack |
-| `VStack.[Symbol.LAYOUT_NODE]` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
-| `VStack.addChild` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
-| `VStack.children` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
-| `VStack.clear` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
-| `VStack.handleMouse` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
-| `VStack.invalidate` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
-| `VStack.removeChild` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
-| `VStack.render` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 |
-| `allocateImageId` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `backgroundAnsi` | 1 | served | native:tui.BackgroundAnsi | native:tui::background_ansi | native:tui.background_ansi |
-| `calculateImageRows` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `colorToHex` | 1 | served | native:tui.ColorToHex | native:tui::color_to_hex | native:tui.color_to_hex |
-| `colorToOkhsl` | 1 | served | native:tui.ColorToOkhsl | native:tui::color_to_okhsl | native:tui.color_to_okhsl |
-| `colorToOklch` | 1 | served | native:tui.ColorToOklch | native:tui::color_to_oklch | native:tui.color_to_oklch |
-| `colorToRgb` | 3 | served | native:tui.ColorToRgb | native:tui::color_to_rgb | native:tui.color_to_rgb |
-| `compositeTuiLine` | 3 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `decodeKittyPrintable` | 5 | served | native:tui.DecodeKittyPrintable | native:tui::decode_kitty_printable | native:tui.decode_kitty_printable |
-| `deleteAllKittyImages` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `deleteKittyImage` | 2 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `detectCapabilities` | 1 | served | native:tui.DetectCapabilities | native:tui::detect_capabilities | native:tui.detect_capabilities |
-| `encodeITerm2` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `encodeKitty` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `foregroundAnsi` | 1 | served | native:tui.ForegroundAnsi | native:tui::foreground_ansi | native:tui.foreground_ansi |
-| `formatProgramStatus` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `fuzzyFilter` | 13 | served | native:tui.FuzzyFilter | native:tui::fuzzy_filter | native:tui.fuzzy_filter |
-| `fuzzyMatch` | 4 | served | native:tui.FuzzyMatch | native:tui::fuzzy_match | native:tui.fuzzy_match |
-| `getCapabilities` | 7 | served | native:tui.GetCapabilities | native:tui::get_capabilities | native:tui.get_capabilities |
-| `getCellDimensions` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `getGifDimensions` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `getImageDimensions` | 3 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `getJpegDimensions` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `getKeybindings` | 13 | served | native:tui.GetKeybindings | native:tui::get_keybindings | native:tui.get_keybindings |
-| `getNativeClipboard` | 1 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `getOsc8LinkAtColumn` | 0 | served | native:tui.GetOsc8LinkAtColumn | native:tui::get_osc8_link_at_column | native:tui.get_osc8_link_at_column |
-| `getPngDimensions` | 1 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `getTerminalColorMode` | 1 | served | native:tui.GetTerminalColorMode | native:tui::get_terminal_color_mode | native:tui.get_terminal_color_mode |
-| `getWebpDimensions` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `hyperlink` | 3 | served | native:tui.Hyperlink | native:tui::hyperlink | native:tui.hyperlink |
-| `imageFallback` | 3 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `indexedColor` | 1 | served | native:tui.NewIndexedColor | native:tui::indexed_color | native:tui.indexed_color |
-| `isAppleTerminalSession` | 1 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `isFocusable` | 1 | served | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers |
-| `isKeyRelease` | 16 | served | native:tui.IsKeyRelease | native:tui::is_key_release | native:tui.is_key_release |
-| `isKeyRepeat` | 5 | served | native:tui.IsKeyRepeat | native:tui::is_key_repeat | native:tui.is_key_repeat |
-| `isKittyProtocolActive` | 1 | served | native:tui.IsKittyProtocolActive | native:tui::is_kitty_protocol_active | native:tui.is_kitty_protocol_active |
-| `isViewportTUI` | 0 | served | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers |
-| `matchesKey` | 79 | served | native:tui.MatchesKey | native:tui::matches_key | native:tui.matches_key |
-| `mixColors` | 1 | served | native:tui.MixColors | native:tui::mix_colors | native:tui.mix_colors |
-| `okhslColor` | 1 | served | native:tui.NewOkhslColor | native:tui::okhsl_color | native:tui.okhsl_color |
-| `oklabToOkhslLightness` | 1 | served | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers |
-| `oklchColor` | 1 | served | native:tui.NewOklchColor | native:tui::oklch_color | native:tui.oklch_color |
-| `parseColor` | 2 | served | native:tui.ParseColor | native:tui::parse_color | native:parse_color |
-| `parseKey` | 7 | served | native:tui.ParseKey | native:tui::parse_key | native:tui.parse_key |
-| `parseTerminalColorSchemeReport` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `renderFakeCursor` | 1 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `renderImage` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `renderLatex` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `replaceControlCharacters` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `resetCapabilitiesCache` | 1 | served | native:tui.ResetCapabilitiesCache | native:tui::reset_capabilities_cache | native:tui.reset_capabilities_cache |
-| `rgbColor` | 3 | served | native:tui.NewRgbColor | native:tui::rgb_color | native:tui.rgb_color |
-| `setCapabilities` | 1 | served | native:tui.SetCapabilities | native:tui::set_capabilities | native:tui.set_capabilities |
-| `setCapabilityOverrides` | 1 | served | native:tui.SetCapabilityOverrides | native:tui::set_capability_overrides | native:tui.set_capability_overrides |
-| `setCellDimensions` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `setImageTranscoder` | 1 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `setKeybindings` | 4 | served | native:tui.SetKeybindings | native:tui::set_keybindings | native:tui.set_keybindings |
-| `setKittyProtocolActive` | 0 | served | native:tui.SetKittyProtocolActive | native:tui::set_kitty_protocol_active | native:tui.set_kitty_protocol_active |
-| `sliceByColumn` | 8 | served | native:tui.SliceByColumn | native:tui::slice_by_column | native:tui.slice_by_column |
-| `stripTerminalSequences` | 12 | served | native:tui.StripTerminalSequences | native:tui::strip_terminal_sequences | native:tui.strip_terminal_sequences |
-| `styleText` | 0 | served | native:tui.StyleText | native:tui::style_text | native:tui.style_text |
-| `styleTextWithAnsi` | 1 | served | native:tui.StyleTextWithAnsi | native:tui::style_text_with_ansi | native:style_text_with_ansi |
-| `truncateToWidth` | 91 | served | native:tui.TruncateToWidth | native:tui::truncate_to_width | native:tui.truncate_to_width |
-| `visibleWidth` | 75 | served | native:tui.VisibleWidth | native:tui::visible_width | native:tui.visible_width |
-| `wrapTextWithAnsi` | 45 | served | native:tui.WrapTextWithAnsi | native:tui::wrap_text_with_ansi | native:tui.wrap_text_with_ansi |
+| Export | uses | Node | Go | Rust | Python | Lisp |
+|---|---|---|---|---|---|---|
+| `Box` | 24 | served | kit:Box | kit:Box | kit:Box | kit:pig:kit-box |
+| `Box.addChild` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
+| `Box.children` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
+| `Box.clear` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
+| `Box.handleMouse` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
+| `Box.invalidate` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
+| `Box.removeChild` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
+| `Box.render` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
+| `Box.setBgFn` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
+| `Box.setPaddingX` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
+| `CURSOR_MARKER` | 13 | served | native:tui.CursorMarker | native:tui::CURSOR_MARKER | native:tui.CURSOR_MARKER | native:pig:+tui-cursor-marker+ |
+| `CancellableLoader` | 1 | served | kit:CancellableLoader | kit:CancellableLoader | kit:CancellableLoader | kit:pig:kit-cancellable-loader |
+| `CancellableLoader.aborted` | 0 | served | kit:CancellableLoader | kit:CancellableLoader | kit:CancellableLoader | kit:pig:kit-cancellable-loader |
+| `CancellableLoader.dispose` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
+| `CancellableLoader.handleInput` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
+| `CancellableLoader.invalidate` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
+| `CancellableLoader.onAbort` | 0 | served | kit:CancellableLoader | kit:CancellableLoader | kit:CancellableLoader | kit:pig:kit-cancellable-loader |
+| `CancellableLoader.render` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
+| `CancellableLoader.setCustomBgFn` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
+| `CancellableLoader.setIndicator` | 0 | served | kit:CancellableLoader | kit:CancellableLoader | kit:CancellableLoader | kit:pig:kit-cancellable-loader |
+| `CancellableLoader.setMessage` | 0 | served | kit:CancellableLoader | kit:CancellableLoader | kit:CancellableLoader | kit:pig:kit-cancellable-loader |
+| `CancellableLoader.setPaddingX` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
+| `CancellableLoader.setText` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
+| `CancellableLoader.signal` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
+| `CancellableLoader.start` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
+| `CancellableLoader.stop` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
+| `CombinedAutocompleteProvider` | 1 | served | kit:Autocomplete | kit:Autocomplete | kit:Autocomplete | kit:pig:kit-autocomplete |
+| `CombinedAutocompleteProvider.applyCompletion` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
+| `CombinedAutocompleteProvider.getSuggestions` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
+| `CombinedAutocompleteProvider.shouldTriggerFileCompletion` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
+| `Container` | 53 | served | kit:Container | kit:Container | kit:Container | kit:pig:kit-container |
+| `Container.addChild` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
+| `Container.children` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
+| `Container.clear` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
+| `Container.handleMouse` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
+| `Container.invalidate` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
+| `Container.removeChild` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
+| `Container.render` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
+| `Editor` | 20 | served | native:Editor | native:EditorBase | native:EditorBase | native:pig:editor-base |
+| `Editor.addToHistory` | 0 | served | native:Editor.AddToHistory | native:EditorBase::add_to_history | native:EditorBase.add_to_history | native:pig:editor-base-add-to-history |
+| `Editor.borderColor` | 0 | served | kit:Editor | kit:Editor | kit:Editor | kit:pig:kit-editor |
+| `Editor.disableSubmit` | 0 | served | kit:Editor | kit:Editor | kit:Editor | kit:pig:kit-editor |
+| `Editor.focused` | 0 | served | kit:Editor | kit:Editor | kit:Editor | kit:pig:kit-editor |
+| `Editor.getAutocompleteMaxVisible` | 0 | served | kit:Editor | kit:Editor | kit:Editor | kit:pig:kit-editor |
+| `Editor.getCursor` | 0 | served | native:Editor.GetCursor | native:EditorBase::get_cursor | native:EditorBase.get_cursor | native:pig:editor-base-get-cursor |
+| `Editor.getExpandedText` | 0 | served | native:Editor.GetExpandedText | native:EditorBase::get_expanded_text | native:EditorBase.get_expanded_text | native:pig:editor-base-get-expanded-text |
+| `Editor.getLines` | 0 | served | native:Editor.GetLines | native:EditorBase::get_lines | native:EditorBase.get_lines | native:pig:editor-base-get-lines |
+| `Editor.getPaddingX` | 0 | served | kit:Editor | kit:Editor | kit:Editor | kit:pig:kit-editor |
+| `Editor.getText` | 0 | served | native:Editor.GetText | native:EditorBase::get_text | native:EditorBase.get_text | native:pig:editor-base-get-text |
+| `Editor.handleInput` | 0 | served | native:Editor.HandleInput | native:EditorBase::handle_input | native:EditorBase.handle_input | native:pig:editor-base-handle-input |
+| `Editor.handleMouse` | 0 | served | native:Editor.HandleMouse | native:EditorBase::handle_mouse | native:EditorBase.handle_mouse | native:pig:editor-base-handle-mouse |
+| `Editor.insertTextAtCursor` | 0 | served | native:Editor.InsertTextAtCursor | native:EditorBase::insert_text_at_cursor | native:EditorBase.insert_text_at_cursor | native:pig:editor-base-insert-text-at-cursor |
+| `Editor.invalidate` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
+| `Editor.isShowingAutocomplete` | 0 | served | native:Editor.IsShowingAutocomplete | native:EditorBase::is_showing_autocomplete | native:EditorBase.is_showing_autocomplete | native:pig:editor-base-is-showing-autocomplete-p |
+| `Editor.onChange` | 0 | served | kit:Editor | kit:Editor | kit:Editor | kit:pig:kit-editor |
+| `Editor.onSubmit` | 0 | served | kit:Editor | kit:Editor | kit:Editor | kit:pig:kit-editor |
+| `Editor.render` | 0 | served | native:Editor.Render | native:EditorBase::render | native:EditorBase.render | native:pig:editor-base-render |
+| `Editor.setAutocompleteMaxVisible` | 0 | served | native:Editor.SetAutocompleteMaxVisible | native:EditorBase::set_autocomplete_max_visible | native:EditorBase.set_autocomplete_max_visible | native:pig:editor-base-set-autocomplete-max-visible |
+| `Editor.setAutocompleteProvider` | 0 | served | kit:Editor | kit:Editor | kit:Editor | kit:pig:kit-editor |
+| `Editor.setPaddingX` | 0 | served | native:Editor.SetPaddingX | native:EditorBase::set_padding_x | native:EditorBase.set_padding_x | native:pig:editor-base-set-padding-x |
+| `Editor.setText` | 0 | served | native:Editor.SetText | native:EditorBase::set_text | native:EditorBase.set_text | native:pig:editor-base-set-text |
+| `HStack` | 2 | served | kit:HStack | kit:HStack | kit:HStack | kit:pig:kit-hstack |
+| `HStack.[Symbol.LAYOUT_NODE]` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
+| `HStack.addChild` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
+| `HStack.children` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
+| `HStack.clear` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
+| `HStack.handleMouse` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
+| `HStack.invalidate` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
+| `HStack.removeChild` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
+| `HStack.render` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
+| `Image` | 7 | served | kit:Image | kit:Image | kit:Image | kit:pig:kit-image |
+| `Image.getImageId` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
+| `Image.invalidate` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
+| `Image.render` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
+| `Input` | 30 | served | kit:Input | kit:Input | kit:Input | kit:pig:kit-input |
+| `Input.focused` | 0 | served | kit:Input | kit:Input | kit:Input | kit:pig:kit-input |
+| `Input.getValue` | 0 | served | kit:Input | kit:Input | kit:Input | kit:pig:kit-input |
+| `Input.handleInput` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
+| `Input.handleMouse` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
+| `Input.invalidate` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
+| `Input.onEscape` | 0 | served | kit:Input | kit:Input | kit:Input | kit:pig:kit-input |
+| `Input.onSubmit` | 0 | served | kit:Input | kit:Input | kit:Input | kit:pig:kit-input |
+| `Input.render` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
+| `Input.setValue` | 0 | served | kit:Input | kit:Input | kit:Input | kit:pig:kit-input |
+| `Key` | 60 | served | native:tui.Key | native:tui::Key | native:tui.Key | native:pig:tui-key |
+| `KeybindingsManager` | 5 | served | native:tui.KeybindingsManager | native:tui::KeybindingsManager | native:tui.KeybindingsManager | native:pig:tui-make-keybindings-manager |
+| `KeybindingsManager.getConflicts` | 0 | served | native:tui.KeybindingsManager.GetConflicts | native:tui::KeybindingsManager::get_conflicts | native:tui.KeybindingsManager.get_conflicts | native:pig:tui-keybindings-get-conflicts |
+| `KeybindingsManager.getDefinition` | 0 | served | native:tui.KeybindingsManager.GetDefinition | native:tui::KeybindingsManager::get_definition | native:tui.KeybindingsManager.get_definition | native:pig:tui-keybindings-get-definition |
+| `KeybindingsManager.getKeys` | 0 | served | native:tui.KeybindingsManager.GetKeys | native:tui::KeybindingsManager::get_keys | native:tui.KeybindingsManager.get_keys | native:pig:tui-keybindings-get-keys |
+| `KeybindingsManager.getResolvedBindings` | 0 | served | native:tui.KeybindingsManager.GetResolvedBindings | native:tui::KeybindingsManager::get_resolved_bindings | native:tui.KeybindingsManager.get_resolved_bindings | native:pig:tui-keybindings-get-resolved-bindings |
+| `KeybindingsManager.getUserBindings` | 0 | served | native:tui.KeybindingsManager.GetUserBindings | native:tui::KeybindingsManager::get_user_bindings | native:tui.KeybindingsManager.get_user_bindings | native:pig:tui-keybindings-get-user-bindings |
+| `KeybindingsManager.matches` | 0 | served | native:tui.KeybindingsManager.Matches | native:tui::KeybindingsManager::matches | native:tui.KeybindingsManager.matches | native:pig:tui-keybindings-matches |
+| `KeybindingsManager.setUserBindings` | 0 | served | native:tui.KeybindingsManager.SetUserBindings | native:tui::KeybindingsManager::set_user_bindings | native:tui.KeybindingsManager.set_user_bindings | native:pig:tui-keybindings-set-user-bindings |
+| `Loader` | 4 | served | kit:Loader | kit:Loader | kit:Loader | kit:pig:kit-loader |
+| `Loader.invalidate` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
+| `Loader.render` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
+| `Loader.setCustomBgFn` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
+| `Loader.setIndicator` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
+| `Loader.setMessage` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
+| `Loader.setPaddingX` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
+| `Loader.setText` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
+| `Loader.start` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
+| `Loader.stop` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
+| `Markdown` | 35 | served | kit:Markdown | kit:Markdown | kit:Markdown | kit:pig:kit-markdown |
+| `Markdown.invalidate` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
+| `Markdown.render` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
+| `Markdown.setText` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
+| `Marked` | 1 | served | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers |
+| `MouseRegion` | 6 | served | kit:MouseRegion | kit:MouseRegion | kit:MouseRegion | kit:pig:kit-mouse-region |
+| `MouseRegion.handleMouse` | 0 | served | kit:MouseRegion | kit:MouseRegion | kit:MouseRegion | kit:pig:kit-mouse-region |
+| `MouseRegion.invalidate` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
+| `MouseRegion.render` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
+| `ProcessTerminal` | 2 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `ProcessTerminal.clearFromCursor` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `ProcessTerminal.clearLine` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `ProcessTerminal.clearScreen` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `ProcessTerminal.columns` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `ProcessTerminal.drainInput` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `ProcessTerminal.hideCursor` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `ProcessTerminal.kittyProtocolActive` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `ProcessTerminal.modifyOtherKeysActive` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `ProcessTerminal.moveBy` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `ProcessTerminal.restoreOnExit` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `ProcessTerminal.rows` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `ProcessTerminal.setProgramStatus` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `ProcessTerminal.setProgress` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `ProcessTerminal.setTitle` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `ProcessTerminal.showCursor` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `ProcessTerminal.start` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `ProcessTerminal.stop` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `ProcessTerminal.write` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `ScrollView` | 8 | served | kit:ScrollView | kit:ScrollView | kit:ScrollView | kit:pig:kit-scroll-view |
+| `ScrollView.[Symbol.LAYOUT_NODE]` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
+| `ScrollView.addChild` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
+| `ScrollView.children` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
+| `ScrollView.clear` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
+| `ScrollView.followEnd` | 0 | served | kit:ScrollView | kit:ScrollView | kit:ScrollView | kit:pig:kit-scroll-view |
+| `ScrollView.getContentWidth` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
+| `ScrollView.handleMouse` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
+| `ScrollView.invalidate` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
+| `ScrollView.isFollowingEnd` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
+| `ScrollView.isScrollbarActive` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
+| `ScrollView.isScrollbarVisible` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
+| `ScrollView.overscroll` | 0 | served | kit:ScrollView | kit:ScrollView | kit:ScrollView | kit:pig:kit-scroll-view |
+| `ScrollView.primary` | 0 | served | kit:ScrollView | kit:ScrollView | kit:ScrollView | kit:pig:kit-scroll-view |
+| `ScrollView.removeChild` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
+| `ScrollView.render` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
+| `ScrollView.scrollBy` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
+| `ScrollView.scrollTo` | 0 | served | kit:ScrollView | kit:ScrollView | kit:ScrollView | kit:pig:kit-scroll-view |
+| `ScrollView.scrollToEnd` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
+| `ScrollView.scrollToStart` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
+| `ScrollView.scrollTop` | 0 | served | kit:ScrollView | kit:ScrollView | kit:ScrollView | kit:pig:kit-scroll-view |
+| `ScrollView.scrollbar` | 0 | served | kit:ScrollView | kit:ScrollView | kit:ScrollView | kit:pig:kit-scroll-view |
+| `ScrollView.scrollbarThumbStyle` | 0 | served | kit:ScrollView | kit:ScrollView | kit:ScrollView | kit:pig:kit-scroll-view |
+| `ScrollView.scrollbarTrackStyle` | 0 | served | kit:ScrollView | kit:ScrollView | kit:ScrollView | kit:pig:kit-scroll-view |
+| `ScrollView.setScrollbar` | 0 | served | kit:ScrollView | kit:ScrollView | kit:ScrollView | kit:pig:kit-scroll-view |
+| `ScrollView.setScrollbarActive` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
+| `ScrollView.updateLayout` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
+| `ScrollView.viewportHeight` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
+| `SelectList` | 28 | served | kit:SelectList | kit:SelectList | kit:SelectList | kit:pig:kit-select-list |
+| `SelectList.getSelectedItem` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
+| `SelectList.handleInput` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
+| `SelectList.handleMouse` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
+| `SelectList.invalidate` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
+| `SelectList.onCancel` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
+| `SelectList.onSelect` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
+| `SelectList.onSelectionChange` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
+| `SelectList.render` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
+| `SelectList.setFilter` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
+| `SelectList.setSelectedIndex` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
+| `SettingsList` | 24 | served | kit:SettingsList | kit:SettingsList | kit:SettingsList | kit:pig:kit-settings-list |
+| `SettingsList.handleInput` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
+| `SettingsList.handleMouse` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
+| `SettingsList.invalidate` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
+| `SettingsList.render` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
+| `SettingsList.selectItem` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
+| `SettingsList.updateValue` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
+| `Spacer` | 30 | served | kit:Spacer | kit:Spacer | kit:Spacer | kit:pig:kit-spacer |
+| `Spacer.invalidate` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
+| `Spacer.render` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
+| `Spacer.setLines` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
+| `StdinBuffer` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `StdinBuffer.[Symbol.captureRejectionSymbol]` | 0 | identity | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `StdinBuffer.addListener` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `StdinBuffer.clear` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `StdinBuffer.destroy` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `StdinBuffer.emit` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `StdinBuffer.eventNames` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `StdinBuffer.flush` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `StdinBuffer.getBuffer` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `StdinBuffer.getMaxListeners` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `StdinBuffer.listenerCount` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `StdinBuffer.listeners` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `StdinBuffer.off` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `StdinBuffer.on` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `StdinBuffer.once` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `StdinBuffer.prependListener` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `StdinBuffer.prependOnceListener` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `StdinBuffer.process` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `StdinBuffer.rawListeners` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `StdinBuffer.removeAllListeners` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `StdinBuffer.removeListener` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `StdinBuffer.setMaxListeners` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `TUI_KEYBINDINGS` | 6 | served | native:tui.TUIKeybindings | native:tui::tui_keybindings | native:tui.TUI_KEYBINDINGS | native:pig:*tui-keybindings* |
+| `Text` | 90 | served | kit:Text | kit:Text | kit:Text | kit:pig:kit-text |
+| `Text.invalidate` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
+| `Text.render` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
+| `Text.setCustomBgFn` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
+| `Text.setPaddingX` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
+| `Text.setText` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
+| `TruncatedText` | 4 | served | kit:TruncatedText | kit:TruncatedText | kit:TruncatedText | kit:pig:kit-truncated-text |
+| `TruncatedText.invalidate` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
+| `TruncatedText.render` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
+| `TuiAltScreen` | 6 | served | divergence:D204 | divergence:D204 | divergence:D204 | divergence:D204 |
+| `TuiAltScreen.[Symbol.VIEWPORT_TUI]` | 0 | served | divergence:D204 | divergence:D204 | divergence:D204 | divergence:D204 |
+| `TuiAltScreen.addChild` | 0 | served | divergence:D204 | divergence:D204 | divergence:D204 | divergence:D204 |
+| `TuiAltScreen.addInputListener` | 0 | served | divergence:D204 | divergence:D204 | divergence:D204 | divergence:D204 |
+| `TuiAltScreen.children` | 0 | served | divergence:D204 | divergence:D204 | divergence:D204 | divergence:D204 |
+| `TuiAltScreen.clear` | 0 | served | divergence:D204 | divergence:D204 | divergence:D204 | divergence:D204 |
+| `TuiAltScreen.copyActiveSelectionToClipboard` | 0 | served | divergence:D204 | divergence:D204 | divergence:D204 | divergence:D204 |
+| `TuiAltScreen.flash` | 0 | served | divergence:D204 | divergence:D204 | divergence:D204 | divergence:D204 |
+| `TuiAltScreen.fullRedraws` | 0 | served | divergence:D204 | divergence:D204 | divergence:D204 | divergence:D204 |
+| `TuiAltScreen.getClearOnShrink` | 0 | served | divergence:D204 | divergence:D204 | divergence:D204 | divergence:D204 |
+| `TuiAltScreen.getCopyOnSelect` | 0 | served | divergence:D204 | divergence:D204 | divergence:D204 | divergence:D204 |
+| `TuiAltScreen.getFocusedComponent` | 0 | served | divergence:D204 | divergence:D204 | divergence:D204 | divergence:D204 |
+| `TuiAltScreen.getScreenLines` | 0 | served | divergence:D204 | divergence:D204 | divergence:D204 | divergence:D204 |
+| `TuiAltScreen.getShowHardwareCursor` | 0 | served | divergence:D204 | divergence:D204 | divergence:D204 | divergence:D204 |
+| `TuiAltScreen.handleMouse` | 0 | served | divergence:D204 | divergence:D204 | divergence:D204 | divergence:D204 |
+| `TuiAltScreen.hasActiveSelection` | 0 | served | divergence:D204 | divergence:D204 | divergence:D204 | divergence:D204 |
+| `TuiAltScreen.hasOverlay` | 0 | served | divergence:D204 | divergence:D204 | divergence:D204 | divergence:D204 |
+| `TuiAltScreen.hasOverlayEntries` | 0 | served | divergence:D204 | divergence:D204 | divergence:D204 | divergence:D204 |
+| `TuiAltScreen.hideOverlay` | 0 | served | divergence:D204 | divergence:D204 | divergence:D204 | divergence:D204 |
+| `TuiAltScreen.invalidate` | 0 | served | divergence:D204 | divergence:D204 | divergence:D204 | divergence:D204 |
+| `TuiAltScreen.isFollowingOutput` | 0 | served | divergence:D204 | divergence:D204 | divergence:D204 | divergence:D204 |
+| `TuiAltScreen.mode` | 0 | served | divergence:D204 | divergence:D204 | divergence:D204 | divergence:D204 |
+| `TuiAltScreen.onDebug` | 0 | served | divergence:D204 | divergence:D204 | divergence:D204 | divergence:D204 |
+| `TuiAltScreen.onTerminalColorSchemeChange` | 0 | served | divergence:D204 | divergence:D204 | divergence:D204 | divergence:D204 |
+| `TuiAltScreen.queryTerminalColors` | 0 | served | divergence:D204 | divergence:D204 | divergence:D204 | divergence:D204 |
+| `TuiAltScreen.removeChild` | 0 | served | divergence:D204 | divergence:D204 | divergence:D204 | divergence:D204 |
+| `TuiAltScreen.removeInputListener` | 0 | served | divergence:D204 | divergence:D204 | divergence:D204 | divergence:D204 |
+| `TuiAltScreen.render` | 0 | served | divergence:D204 | divergence:D204 | divergence:D204 | divergence:D204 |
+| `TuiAltScreen.renderNow` | 0 | served | divergence:D204 | divergence:D204 | divergence:D204 | divergence:D204 |
+| `TuiAltScreen.requestRender` | 0 | served | divergence:D204 | divergence:D204 | divergence:D204 | divergence:D204 |
+| `TuiAltScreen.resetTextSelection` | 0 | served | divergence:D204 | divergence:D204 | divergence:D204 | divergence:D204 |
+| `TuiAltScreen.scrollBy` | 0 | served | divergence:D204 | divergence:D204 | divergence:D204 | divergence:D204 |
+| `TuiAltScreen.scrollToBottom` | 0 | served | divergence:D204 | divergence:D204 | divergence:D204 | divergence:D204 |
+| `TuiAltScreen.scrollToTop` | 0 | served | divergence:D204 | divergence:D204 | divergence:D204 | divergence:D204 |
+| `TuiAltScreen.setClearOnShrink` | 0 | served | divergence:D204 | divergence:D204 | divergence:D204 | divergence:D204 |
+| `TuiAltScreen.setCopyOnSelect` | 0 | served | divergence:D204 | divergence:D204 | divergence:D204 | divergence:D204 |
+| `TuiAltScreen.setFocus` | 0 | served | divergence:D204 | divergence:D204 | divergence:D204 | divergence:D204 |
+| `TuiAltScreen.setLayoutRoot` | 0 | served | divergence:D204 | divergence:D204 | divergence:D204 | divergence:D204 |
+| `TuiAltScreen.setShowHardwareCursor` | 0 | served | divergence:D204 | divergence:D204 | divergence:D204 | divergence:D204 |
+| `TuiAltScreen.setTerminalColorSchemeNotifications` | 0 | served | divergence:D204 | divergence:D204 | divergence:D204 | divergence:D204 |
+| `TuiAltScreen.setWheelScrollLines` | 0 | served | divergence:D204 | divergence:D204 | divergence:D204 | divergence:D204 |
+| `TuiAltScreen.showOverlay` | 0 | served | divergence:D204 | divergence:D204 | divergence:D204 | divergence:D204 |
+| `TuiAltScreen.start` | 0 | served | divergence:D204 | divergence:D204 | divergence:D204 | divergence:D204 |
+| `TuiAltScreen.stop` | 0 | served | divergence:D204 | divergence:D204 | divergence:D204 | divergence:D204 |
+| `TuiAltScreen.terminal` | 0 | served | divergence:D204 | divergence:D204 | divergence:D204 | divergence:D204 |
+| `TuiAltScreen.viewportTop` | 0 | served | divergence:D204 | divergence:D204 | divergence:D204 | divergence:D204 |
+| `TuiMainScreen` | 4 | served | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers |
+| `TuiMainScreen.addChild` | 0 | served | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers |
+| `TuiMainScreen.addInputListener` | 0 | served | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers |
+| `TuiMainScreen.captureRenderState` | 0 | served | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers |
+| `TuiMainScreen.children` | 0 | served | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers |
+| `TuiMainScreen.clear` | 0 | served | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers |
+| `TuiMainScreen.fullRedraws` | 0 | served | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers |
+| `TuiMainScreen.getClearOnShrink` | 0 | served | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers |
+| `TuiMainScreen.getFocusedComponent` | 0 | served | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers |
+| `TuiMainScreen.getShowHardwareCursor` | 0 | served | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers |
+| `TuiMainScreen.handleMouse` | 0 | served | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers |
+| `TuiMainScreen.hasOverlay` | 0 | served | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers |
+| `TuiMainScreen.hasOverlayEntries` | 0 | served | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers |
+| `TuiMainScreen.hideOverlay` | 0 | served | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers |
+| `TuiMainScreen.invalidate` | 0 | served | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers |
+| `TuiMainScreen.mode` | 0 | served | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers |
+| `TuiMainScreen.onDebug` | 0 | served | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers |
+| `TuiMainScreen.onTerminalColorSchemeChange` | 0 | served | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers |
+| `TuiMainScreen.queryTerminalColors` | 0 | served | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers |
+| `TuiMainScreen.removeChild` | 0 | served | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers |
+| `TuiMainScreen.removeInputListener` | 0 | served | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers |
+| `TuiMainScreen.render` | 0 | served | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers |
+| `TuiMainScreen.renderNow` | 0 | served | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers |
+| `TuiMainScreen.requestRender` | 0 | served | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers |
+| `TuiMainScreen.restoreRenderState` | 0 | served | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers |
+| `TuiMainScreen.setClearOnShrink` | 0 | served | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers |
+| `TuiMainScreen.setFocus` | 0 | served | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers |
+| `TuiMainScreen.setShowHardwareCursor` | 0 | served | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers |
+| `TuiMainScreen.setTerminalColorSchemeNotifications` | 0 | served | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers |
+| `TuiMainScreen.showOverlay` | 0 | served | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers |
+| `TuiMainScreen.start` | 0 | served | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers |
+| `TuiMainScreen.stop` | 0 | served | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers |
+| `TuiMainScreen.terminal` | 0 | served | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers |
+| `VStack` | 4 | served | kit:VStack | kit:VStack | kit:VStack | kit:pig:kit-vstack |
+| `VStack.[Symbol.LAYOUT_NODE]` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
+| `VStack.addChild` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
+| `VStack.children` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
+| `VStack.clear` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
+| `VStack.handleMouse` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
+| `VStack.invalidate` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
+| `VStack.removeChild` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
+| `VStack.render` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
+| `allocateImageId` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `backgroundAnsi` | 1 | served | native:tui.BackgroundAnsi | native:tui::background_ansi | native:tui.background_ansi | native:pig:tui-background-ansi |
+| `calculateImageRows` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `colorToHex` | 1 | served | native:tui.ColorToHex | native:tui::color_to_hex | native:tui.color_to_hex | native:pig:tui-color-to-hex |
+| `colorToOkhsl` | 1 | served | native:tui.ColorToOkhsl | native:tui::color_to_okhsl | native:tui.color_to_okhsl | native:pig:tui-color-to-okhsl |
+| `colorToOklch` | 1 | served | native:tui.ColorToOklch | native:tui::color_to_oklch | native:tui.color_to_oklch | native:pig:tui-color-to-oklch |
+| `colorToRgb` | 3 | served | native:tui.ColorToRgb | native:tui::color_to_rgb | native:tui.color_to_rgb | native:pig:tui-color-to-rgb |
+| `compositeTuiLine` | 3 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `decodeKittyPrintable` | 5 | served | native:tui.DecodeKittyPrintable | native:tui::decode_kitty_printable | native:tui.decode_kitty_printable | native:pig:tui-decode-kitty-printable |
+| `deleteAllKittyImages` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `deleteKittyImage` | 2 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `detectCapabilities` | 1 | served | native:tui.DetectCapabilities | native:tui::detect_capabilities | native:tui.detect_capabilities | native:pig:tui-detect-capabilities |
+| `encodeITerm2` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `encodeKitty` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `foregroundAnsi` | 1 | served | native:tui.ForegroundAnsi | native:tui::foreground_ansi | native:tui.foreground_ansi | native:pig:tui-foreground-ansi |
+| `formatProgramStatus` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `fuzzyFilter` | 13 | served | native:tui.FuzzyFilter | native:tui::fuzzy_filter | native:tui.fuzzy_filter | native:pig:tui-fuzzy-filter |
+| `fuzzyMatch` | 4 | served | native:tui.FuzzyMatch | native:tui::fuzzy_match | native:tui.fuzzy_match | native:pig:tui-fuzzy-match |
+| `getCapabilities` | 7 | served | native:tui.GetCapabilities | native:tui::get_capabilities | native:tui.get_capabilities | native:pig:tui-get-capabilities |
+| `getCellDimensions` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `getGifDimensions` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `getImageDimensions` | 3 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `getJpegDimensions` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `getKeybindings` | 13 | served | native:tui.GetKeybindings | native:tui::get_keybindings | native:tui.get_keybindings | native:pig:tui-get-keybindings |
+| `getNativeClipboard` | 1 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `getOsc8LinkAtColumn` | 0 | served | native:tui.GetOsc8LinkAtColumn | native:tui::get_osc8_link_at_column | native:tui.get_osc8_link_at_column | native:pig:tui-get-osc8-link-at-column |
+| `getPngDimensions` | 1 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `getTerminalColorMode` | 1 | served | native:tui.GetTerminalColorMode | native:tui::get_terminal_color_mode | native:tui.get_terminal_color_mode | native:pig:tui-get-terminal-color-mode |
+| `getWebpDimensions` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `hyperlink` | 3 | served | native:tui.Hyperlink | native:tui::hyperlink | native:tui.hyperlink | native:pig:tui-hyperlink |
+| `imageFallback` | 3 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `indexedColor` | 1 | served | native:tui.NewIndexedColor | native:tui::indexed_color | native:tui.indexed_color | native:pig:tui-indexed-color |
+| `isAppleTerminalSession` | 1 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `isFocusable` | 1 | served | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers |
+| `isKeyRelease` | 16 | served | native:tui.IsKeyRelease | native:tui::is_key_release | native:tui.is_key_release | native:pig:tui-key-release-p |
+| `isKeyRepeat` | 5 | served | native:tui.IsKeyRepeat | native:tui::is_key_repeat | native:tui.is_key_repeat | native:pig:tui-key-repeat-p |
+| `isKittyProtocolActive` | 1 | served | native:tui.IsKittyProtocolActive | native:tui::is_kitty_protocol_active | native:tui.is_kitty_protocol_active | native:pig:tui-kitty-protocol-active-p |
+| `isViewportTUI` | 0 | served | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers |
+| `matchesKey` | 79 | served | native:tui.MatchesKey | native:tui::matches_key | native:tui.matches_key | native:pig:tui-matches-key |
+| `mixColors` | 1 | served | native:tui.MixColors | native:tui::mix_colors | native:tui.mix_colors | native:pig:tui-mix-colors |
+| `okhslColor` | 1 | served | native:tui.NewOkhslColor | native:tui::okhsl_color | native:tui.okhsl_color | native:pig:tui-okhsl-color |
+| `oklabToOkhslLightness` | 1 | served | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers | gap:SdkTuiHelpers |
+| `oklchColor` | 1 | served | native:tui.NewOklchColor | native:tui::oklch_color | native:tui.oklch_color | native:pig:tui-oklch-color |
+| `parseColor` | 2 | served | native:tui.ParseColor | native:tui::parse_color | native:parse_color | native:pig:tui-parse-color |
+| `parseKey` | 7 | served | native:tui.ParseKey | native:tui::parse_key | native:tui.parse_key | native:pig:tui-parse-key |
+| `parseTerminalColorSchemeReport` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `renderFakeCursor` | 1 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `renderImage` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `renderLatex` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `replaceControlCharacters` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `resetCapabilitiesCache` | 1 | served | native:tui.ResetCapabilitiesCache | native:tui::reset_capabilities_cache | native:tui.reset_capabilities_cache | native:pig:tui-reset-capabilities-cache |
+| `rgbColor` | 3 | served | native:tui.NewRgbColor | native:tui::rgb_color | native:tui.rgb_color | native:pig:tui-rgb-color |
+| `setCapabilities` | 1 | served | native:tui.SetCapabilities | native:tui::set_capabilities | native:tui.set_capabilities | native:pig:tui-set-capabilities |
+| `setCapabilityOverrides` | 1 | served | native:tui.SetCapabilityOverrides | native:tui::set_capability_overrides | native:tui.set_capability_overrides | native:pig:tui-set-capability-overrides |
+| `setCellDimensions` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `setImageTranscoder` | 1 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `setKeybindings` | 4 | served | native:tui.SetKeybindings | native:tui::set_keybindings | native:tui.set_keybindings | native:pig:tui-set-keybindings |
+| `setKittyProtocolActive` | 0 | served | native:tui.SetKittyProtocolActive | native:tui::set_kitty_protocol_active | native:tui.set_kitty_protocol_active | native:pig:tui-set-kitty-protocol-active |
+| `sliceByColumn` | 8 | served | native:tui.SliceByColumn | native:tui::slice_by_column | native:tui.slice_by_column | native:pig:tui-slice-by-column |
+| `stripTerminalSequences` | 12 | served | native:tui.StripTerminalSequences | native:tui::strip_terminal_sequences | native:tui.strip_terminal_sequences | native:pig:tui-strip-terminal-sequences |
+| `styleText` | 0 | served | native:tui.StyleText | native:tui::style_text | native:tui.style_text | native:pig:tui-style-text |
+| `styleTextWithAnsi` | 1 | served | native:tui.StyleTextWithAnsi | native:tui::style_text_with_ansi | native:style_text_with_ansi | native:pig:tui-style-text-with-ansi |
+| `truncateToWidth` | 91 | served | native:tui.TruncateToWidth | native:tui::truncate_to_width | native:tui.truncate_to_width | native:pig:tui-truncate-to-width |
+| `visibleWidth` | 75 | served | native:tui.VisibleWidth | native:tui::visible_width | native:tui.visible_width | native:pig:tui-visible-width |
+| `wrapTextWithAnsi` | 45 | served | native:tui.WrapTextWithAnsi | native:tui::wrap_text_with_ansi | native:tui.wrap_text_with_ansi | native:pig:tui-wrap-text-with-ansi |
 
 ## pi-ai
 
-| Export | uses | Node | Go | Rust | Python |
-|---|---|---|---|---|---|
-| `AI_TELEMETRY_SCHEMA` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `AssistantMessageEventStream` | 1 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
-| `AssistantMessageEventStream.[Symbol.asyncIterator]` | 0 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
-| `AssistantMessageEventStream.end` | 0 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
-| `AssistantMessageEventStream.push` | 0 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
-| `AssistantMessageEventStream.result` | 0 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
-| `DEFAULT_MAX_AGENT_RETRY_DELAY_MS` | 0 | served | native:DefaultMaxAgentRetryDelayMs | native:DEFAULT_MAX_AGENT_RETRY_DELAY_MS | native:DEFAULT_MAX_AGENT_RETRY_DELAY_MS |
-| `EventStream` | 0 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
-| `EventStream.[Symbol.asyncIterator]` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `EventStream.end` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `EventStream.push` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `EventStream.result` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `InMemoryCredentialStore` | 1 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `InMemoryCredentialStore.delete` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `InMemoryCredentialStore.list` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `InMemoryCredentialStore.modify` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `InMemoryCredentialStore.read` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `InMemoryModelsStore` | 1 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `InMemoryModelsStore.delete` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `InMemoryModelsStore.read` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `InMemoryModelsStore.write` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `ModelsError` | 1 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `ModelsError.cause` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `ModelsError.code` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `ModelsError.message` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `ModelsError.name` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `ModelsError.stack` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `PI_AI_VERSION` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `PI_ATTRIBUTION` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `StreamingJsonParser` | 0 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
-| `StreamingJsonParser.append` | 0 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
-| `StreamingJsonParser.snapshot` | 0 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
-| `StringEnum` | 28 | served | native:StringEnum | native:string_enum | native:string_enum |
-| `ToolCallArgumentsStream` | 0 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
-| `ToolCallArgumentsStream.append` | 0 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
-| `ToolCallArgumentsStream.finish` | 0 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
-| `ToolCallArgumentsStream.replace` | 0 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
-| `ToolCallArgumentsStream.text` | 0 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
-| `Type` | 14 | served | native:Type | native:Type | native:Type |
-| `appendAssistantMessageDiagnostic` | 1 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `calculateCost` | 8 | served | native:CalculateCost | native:calculate_cost | native:calculate_cost |
-| `clampThinkingLevel` | 12 | served | native:ClampThinkingLevel | native:clamp_thinking_level | native:clamp_thinking_level |
-| `cleanupSessionResources` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `collapseSystemMessages` | 2 | served | native:CollapseSystemMessages | native:collapse_system_messages | native:collapse_system_messages |
-| `contentText` | 7 | served | native:ContentText | native:content_text | native:content_text |
-| `createAssistantMessageDiagnostic` | 1 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `createAssistantMessageEventStream` | 14 | served | native:CreateAssistantMessageEventStream | native:create_assistant_message_event_stream | native:create_assistant_message_event_stream |
-| `createFauxCore` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `createInitialSystemMessage` | 0 | served | native:CreateInitialSystemMessage | native:create_initial_system_message | native:create_initial_system_message |
-| `createModels` | 4 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `createProvider` | 6 | served | native:CreateProvider | native:create_provider | native:create_provider |
-| `declarationsEqual` | 2 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `defaultProviderAuthContext` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `envApiKeyAuth` | 4 | served | native:EnvAPIKeyAuth | native:env_api_key_auth | native:env_api_key_auth |
-| `extractDiagnosticError` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `fauxAssistantMessage` | 1 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `fauxProvider` | 1 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `fauxText` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `fauxThinking` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `fauxToolCall` | 1 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `formatThrownValue` | 1 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `formatUserAgent` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `getAttributionHeaders` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `getClientVersion` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `getCurrentSystemMessage` | 6 | served | native:GetCurrentSystemMessage | native:get_current_system_message | native:get_current_system_message |
-| `getCurrentSystemPrompt` | 5 | served | native:GetCurrentSystemPrompt | native:get_current_system_prompt | native:get_current_system_prompt |
-| `getCurrentTools` | 8 | served | native:GetCurrentTools | native:get_current_tools | native:get_current_tools |
-| `getDeclaredTools` | 1 | served | native:GetDeclaredTools | native:get_declared_tools | native:get_declared_tools |
-| `getIdentityHeaders` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `getInitialSystemMessage` | 1 | served | native:GetInitialSystemMessage | native:get_initial_system_message | native:get_initial_system_message |
-| `getModelType` | 1 | served | native:GetModelType | native:get_model_type | native:get_model_type |
-| `getOpenCodeSessionHeaders` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `getOverflowPatterns` | 0 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
-| `getSupportedThinkingLevels` | 10 | served | native:GetSupportedThinkingLevels | native:get_supported_thinking_levels | native:get_supported_thinking_levels |
-| `getSystemMessageText` | 2 | served | native:GetSystemMessageText | native:get_system_message_text | native:get_system_message_text |
-| `getToolStateChanges` | 1 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
-| `hasApi` | 1 | served | native:HasApi | native:has_api | native:has_api |
-| `hasNonAdditiveToolChanges` | 0 | served | native:HasNonAdditiveToolChanges | native:has_non_additive_tool_changes | native:has_non_additive_tool_changes |
-| `hasToolRedefinitions` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `isContextOverflow` | 3 | served | native:IsContextOverflow | native:is_context_overflow | native:is_context_overflow |
-| `isModelType` | 2 | served | native:IsModelType | native:is_model_type | native:is_model_type |
-| `isRecoverableLength` | 0 | served | native:IsRecoverableLength | native:is_recoverable_length | native:is_recoverable_length |
-| `isRetryableAssistantError` | 5 | served | native:IsRetryableAssistantError | native:is_retryable_assistant_error | native:is_retryable_assistant_error |
-| `lazyApi` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `lazyOAuth` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `lazyStream` | 1 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `mergeClientIdentity` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `modelsAreEqual` | 2 | served | native:ModelsAreEqual | native:models_are_equal | native:models_are_equal |
-| `normalizeContext` | 6 | served | native:NormalizeContext | native:normalize_context | native:normalize_context |
-| `parseJsonWithRepair` | 0 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
-| `parseStreamingJson` | 1 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
-| `parseToolCallArguments` | 1 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
-| `registerSessionResourceCleanup` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `renderSystemMessageUpdate` | 1 | served | native:RenderSystemMessageUpdate | native:render_system_message_update | native:render_system_message_update |
-| `repairJson` | 0 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
-| `resolveTranscript` | 1 | served | native:ResolveTranscript | native:resolve_transcript | native:resolve_transcript |
-| `resolveTranscriptTools` | 1 | served | native:ResolveTranscriptTools | native:resolve_transcript_tools | native:resolve_transcript_tools |
-| `retryAssistantCall` | 1 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
-| `retryDelayMs` | 1 | served | native:RetryDelayMs | native:retry_delay_ms | native:retry_delay_ms |
-| `toToolDeclaration` | 3 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
-| `uuidv7` | 2 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
-| `validateToolArguments` | 1 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
-| `validateToolCall` | 0 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
-| `withClientIdentity` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `withoutInitialSystemMessage` | 1 | served | native:WithoutInitialSystemMessage | native:without_initial_system_message | native:without_initial_system_message |
+| Export | uses | Node | Go | Rust | Python | Lisp |
+|---|---|---|---|---|---|---|
+| `AI_TELEMETRY_SCHEMA` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `AssistantMessageEventStream` | 1 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
+| `AssistantMessageEventStream.[Symbol.asyncIterator]` | 0 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
+| `AssistantMessageEventStream.end` | 0 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
+| `AssistantMessageEventStream.push` | 0 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
+| `AssistantMessageEventStream.result` | 0 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
+| `DEFAULT_MAX_AGENT_RETRY_DELAY_MS` | 0 | served | native:DefaultMaxAgentRetryDelayMs | native:DEFAULT_MAX_AGENT_RETRY_DELAY_MS | native:DEFAULT_MAX_AGENT_RETRY_DELAY_MS | native:pig:+default-max-agent-retry-delay-ms+ |
+| `EventStream` | 0 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
+| `EventStream.[Symbol.asyncIterator]` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `EventStream.end` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `EventStream.push` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `EventStream.result` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `InMemoryCredentialStore` | 1 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
+| `InMemoryCredentialStore.delete` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
+| `InMemoryCredentialStore.list` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
+| `InMemoryCredentialStore.modify` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
+| `InMemoryCredentialStore.read` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
+| `InMemoryModelsStore` | 1 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
+| `InMemoryModelsStore.delete` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
+| `InMemoryModelsStore.read` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
+| `InMemoryModelsStore.write` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
+| `ModelsError` | 1 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
+| `ModelsError.cause` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
+| `ModelsError.code` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
+| `ModelsError.message` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
+| `ModelsError.name` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
+| `ModelsError.stack` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
+| `PI_AI_VERSION` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `PI_ATTRIBUTION` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `StreamingJsonParser` | 0 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
+| `StreamingJsonParser.append` | 0 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
+| `StreamingJsonParser.snapshot` | 0 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
+| `StringEnum` | 28 | served | native:StringEnum | native:string_enum | native:string_enum | native:pig:string-enum |
+| `ToolCallArgumentsStream` | 0 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
+| `ToolCallArgumentsStream.append` | 0 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
+| `ToolCallArgumentsStream.finish` | 0 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
+| `ToolCallArgumentsStream.replace` | 0 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
+| `ToolCallArgumentsStream.text` | 0 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
+| `Type` | 14 | served | native:Type | native:Type | native:Type | native:pig:type-object |
+| `appendAssistantMessageDiagnostic` | 1 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `calculateCost` | 8 | served | native:CalculateCost | native:calculate_cost | native:calculate_cost | native:pig:calculate-cost |
+| `clampThinkingLevel` | 12 | served | native:ClampThinkingLevel | native:clamp_thinking_level | native:clamp_thinking_level | native:pig:clamp-thinking-level |
+| `cleanupSessionResources` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `collapseSystemMessages` | 2 | served | native:CollapseSystemMessages | native:collapse_system_messages | native:collapse_system_messages | native:pig:collapse-system-messages |
+| `contentText` | 7 | served | native:ContentText | native:content_text | native:content_text | native:pig:content-text |
+| `createAssistantMessageDiagnostic` | 1 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `createAssistantMessageEventStream` | 14 | served | native:CreateAssistantMessageEventStream | native:create_assistant_message_event_stream | native:create_assistant_message_event_stream | native:pig:create-assistant-message-event-stream |
+| `createFauxCore` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `createInitialSystemMessage` | 0 | served | native:CreateInitialSystemMessage | native:create_initial_system_message | native:create_initial_system_message | native:pig:create-initial-system-message |
+| `createModels` | 4 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
+| `createProvider` | 6 | served | native:CreateProvider | native:create_provider | native:create_provider | native:pig:create-provider |
+| `declarationsEqual` | 2 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `defaultProviderAuthContext` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
+| `envApiKeyAuth` | 4 | served | native:EnvAPIKeyAuth | native:env_api_key_auth | native:env_api_key_auth | native:pig:env-api-key-auth |
+| `extractDiagnosticError` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `fauxAssistantMessage` | 1 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `fauxProvider` | 1 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `fauxText` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `fauxThinking` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `fauxToolCall` | 1 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `formatThrownValue` | 1 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `formatUserAgent` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `getAttributionHeaders` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `getClientVersion` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `getCurrentSystemMessage` | 6 | served | native:GetCurrentSystemMessage | native:get_current_system_message | native:get_current_system_message | native:pig:get-current-system-message |
+| `getCurrentSystemPrompt` | 5 | served | native:GetCurrentSystemPrompt | native:get_current_system_prompt | native:get_current_system_prompt | native:pig:get-current-system-prompt |
+| `getCurrentTools` | 8 | served | native:GetCurrentTools | native:get_current_tools | native:get_current_tools | native:pig:get-current-tools |
+| `getDeclaredTools` | 1 | served | native:GetDeclaredTools | native:get_declared_tools | native:get_declared_tools | native:pig:get-declared-tools |
+| `getIdentityHeaders` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `getInitialSystemMessage` | 1 | served | native:GetInitialSystemMessage | native:get_initial_system_message | native:get_initial_system_message | native:pig:get-initial-system-message |
+| `getModelType` | 1 | served | native:GetModelType | native:get_model_type | native:get_model_type | native:pig:get-model-type |
+| `getOpenCodeSessionHeaders` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `getOverflowPatterns` | 0 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
+| `getSupportedThinkingLevels` | 10 | served | native:GetSupportedThinkingLevels | native:get_supported_thinking_levels | native:get_supported_thinking_levels | native:pig:get-supported-thinking-levels |
+| `getSystemMessageText` | 2 | served | native:GetSystemMessageText | native:get_system_message_text | native:get_system_message_text | native:pig:get-system-message-text |
+| `getToolStateChanges` | 1 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
+| `hasApi` | 1 | served | native:HasApi | native:has_api | native:has_api | native:pig:has-api-p |
+| `hasNonAdditiveToolChanges` | 0 | served | native:HasNonAdditiveToolChanges | native:has_non_additive_tool_changes | native:has_non_additive_tool_changes | native:pig:has-non-additive-tool-changes-p |
+| `hasToolRedefinitions` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `isContextOverflow` | 3 | served | native:IsContextOverflow | native:is_context_overflow | native:is_context_overflow | native:pig:context-overflow-p |
+| `isModelType` | 2 | served | native:IsModelType | native:is_model_type | native:is_model_type | native:pig:model-type-p |
+| `isRecoverableLength` | 0 | served | native:IsRecoverableLength | native:is_recoverable_length | native:is_recoverable_length | native:pig:recoverable-length-p |
+| `isRetryableAssistantError` | 5 | served | native:IsRetryableAssistantError | native:is_retryable_assistant_error | native:is_retryable_assistant_error | native:pig:retryable-assistant-error-p |
+| `lazyApi` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `lazyOAuth` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `lazyStream` | 1 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `mergeClientIdentity` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `modelsAreEqual` | 2 | served | native:ModelsAreEqual | native:models_are_equal | native:models_are_equal | native:pig:models-are-equal-p |
+| `normalizeContext` | 6 | served | native:NormalizeContext | native:normalize_context | native:normalize_context | native:pig:normalize-context |
+| `parseJsonWithRepair` | 0 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
+| `parseStreamingJson` | 1 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
+| `parseToolCallArguments` | 1 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
+| `registerSessionResourceCleanup` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `renderSystemMessageUpdate` | 1 | served | native:RenderSystemMessageUpdate | native:render_system_message_update | native:render_system_message_update | native:pig:render-system-message-update |
+| `repairJson` | 0 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
+| `resolveTranscript` | 1 | served | native:ResolveTranscript | native:resolve_transcript | native:resolve_transcript | native:pig:resolve-transcript |
+| `resolveTranscriptTools` | 1 | served | native:ResolveTranscriptTools | native:resolve_transcript_tools | native:resolve_transcript_tools | native:pig:resolve-transcript-tools |
+| `retryAssistantCall` | 1 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
+| `retryDelayMs` | 1 | served | native:RetryDelayMs | native:retry_delay_ms | native:retry_delay_ms | native:pig:retry-delay-ms |
+| `toToolDeclaration` | 3 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
+| `uuidv7` | 2 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
+| `validateToolArguments` | 1 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
+| `validateToolCall` | 0 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
+| `withClientIdentity` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `withoutInitialSystemMessage` | 1 | served | native:WithoutInitialSystemMessage | native:without_initial_system_message | native:without_initial_system_message | native:pig:without-initial-system-message |
 
 ## pi-ai/compat
 
-| Export | uses | Node | Go | Rust | Python |
-|---|---|---|---|---|---|
-| `AI_TELEMETRY_SCHEMA` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `ANTHROPIC_API_KEY_ENV` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `ANTHROPIC_AUTH_TOKEN_ENV` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `ANTHROPIC_FEDERATION_RULE_ID_ENV` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `ANTHROPIC_IDENTITY_TOKEN_FILE_ENV` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `ANTHROPIC_OAUTH_TOKEN_ENV` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `ANTHROPIC_ORGANIZATION_ID_ENV` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `ANTHROPIC_SERVICE_ACCOUNT_ID_ENV` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `ANTHROPIC_WORKSPACE_ID_ENV` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `AssistantMessageEventStream` | 1 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
-| `AssistantMessageEventStream.[Symbol.asyncIterator]` | 0 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
-| `AssistantMessageEventStream.end` | 0 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
-| `AssistantMessageEventStream.push` | 0 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
-| `AssistantMessageEventStream.result` | 0 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
-| `DEFAULT_MAX_AGENT_RETRY_DELAY_MS` | 0 | served | native:DefaultMaxAgentRetryDelayMs | native:DEFAULT_MAX_AGENT_RETRY_DELAY_MS | native:DEFAULT_MAX_AGENT_RETRY_DELAY_MS |
-| `EventStream` | 0 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
-| `EventStream.[Symbol.asyncIterator]` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `EventStream.end` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `EventStream.push` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `EventStream.result` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `InMemoryCredentialStore` | 1 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `InMemoryCredentialStore.delete` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `InMemoryCredentialStore.list` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `InMemoryCredentialStore.modify` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `InMemoryCredentialStore.read` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `InMemoryModelsStore` | 1 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `InMemoryModelsStore.delete` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `InMemoryModelsStore.read` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `InMemoryModelsStore.write` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `ModelsError` | 1 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `ModelsError.cause` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `ModelsError.code` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `ModelsError.message` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `ModelsError.name` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `ModelsError.stack` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `PI_AI_VERSION` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `PI_ATTRIBUTION` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `StreamingJsonParser` | 0 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
-| `StreamingJsonParser.append` | 0 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
-| `StreamingJsonParser.snapshot` | 0 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
-| `StringEnum` | 28 | served | native:StringEnum | native:string_enum | native:string_enum |
-| `ToolCallArgumentsStream` | 0 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
-| `ToolCallArgumentsStream.append` | 0 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
-| `ToolCallArgumentsStream.finish` | 0 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
-| `ToolCallArgumentsStream.replace` | 0 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
-| `ToolCallArgumentsStream.text` | 0 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
-| `Type` | 14 | served | native:Type | native:Type | native:Type |
-| `anthropicMessagesApi` | 3 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `appendAssistantMessageDiagnostic` | 1 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `azureOpenAIResponsesApi` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `bedrockConverseStreamApi` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `calculateCost` | 8 | served | native:CalculateCost | native:calculate_cost | native:calculate_cost |
-| `clampThinkingLevel` | 16 | served | native:ClampThinkingLevel | native:clamp_thinking_level | native:clamp_thinking_level |
-| `cleanupSessionResources` | 1 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `collapseSystemMessages` | 2 | served | native:CollapseSystemMessages | native:collapse_system_messages | native:collapse_system_messages |
-| `complete` | 2 | served | host:Context.Complete | host:Context::complete | host:Context.complete |
-| `completeSimple` | 3 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
-| `contentText` | 7 | served | native:ContentText | native:content_text | native:content_text |
-| `createAssistantMessageDiagnostic` | 1 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `createAssistantMessageEventStream` | 16 | served | native:CreateAssistantMessageEventStream | native:create_assistant_message_event_stream | native:create_assistant_message_event_stream |
-| `createFauxCore` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `createInitialSystemMessage` | 0 | served | native:CreateInitialSystemMessage | native:create_initial_system_message | native:create_initial_system_message |
-| `createModels` | 4 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `createProvider` | 6 | served | native:CreateProvider | native:create_provider | native:create_provider |
-| `declarationsEqual` | 2 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `defaultProviderAuthContext` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
-| `envApiKeyAuth` | 4 | served | native:EnvAPIKeyAuth | native:env_api_key_auth | native:env_api_key_auth |
-| `extractDiagnosticError` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `fauxAssistantMessage` | 2 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `fauxProvider` | 1 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `fauxText` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `fauxThinking` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `fauxToolCall` | 1 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `findEnvKeys` | 0 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
-| `formatThrownValue` | 1 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `formatUserAgent` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `generateImages` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `generateImagesOpenRouter` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `getApiProvider` | 1 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `getApiProviders` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `getAttributionHeaders` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `getClientVersion` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `getCurrentSystemMessage` | 6 | served | native:GetCurrentSystemMessage | native:get_current_system_message | native:get_current_system_message |
-| `getCurrentSystemPrompt` | 5 | served | native:GetCurrentSystemPrompt | native:get_current_system_prompt | native:get_current_system_prompt |
-| `getCurrentTools` | 8 | served | native:GetCurrentTools | native:get_current_tools | native:get_current_tools |
-| `getDeclaredTools` | 1 | served | native:GetDeclaredTools | native:get_declared_tools | native:get_declared_tools |
-| `getEnvApiKey` | 1 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
-| `getIdentityHeaders` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `getImageModel` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `getImageModels` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `getImageProviders` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `getImagesApiProvider` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `getInitialSystemMessage` | 1 | served | native:GetInitialSystemMessage | native:get_initial_system_message | native:get_initial_system_message |
-| `getModel` | 2 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
-| `getModelType` | 1 | served | native:GetModelType | native:get_model_type | native:get_model_type |
-| `getModels` | 2 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
-| `getOpenCodeSessionHeaders` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `getOverflowPatterns` | 0 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
-| `getProviders` | 1 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
-| `getSupportedThinkingLevels` | 12 | served | native:GetSupportedThinkingLevels | native:get_supported_thinking_levels | native:get_supported_thinking_levels |
-| `getSystemMessageText` | 2 | served | native:GetSystemMessageText | native:get_system_message_text | native:get_system_message_text |
-| `getToolStateChanges` | 1 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
-| `googleGenerativeAIApi` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `googleVertexApi` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `hasApi` | 1 | served | native:HasApi | native:has_api | native:has_api |
-| `hasNonAdditiveToolChanges` | 0 | served | native:HasNonAdditiveToolChanges | native:has_non_additive_tool_changes | native:has_non_additive_tool_changes |
-| `hasToolRedefinitions` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `isContextOverflow` | 4 | served | native:IsContextOverflow | native:is_context_overflow | native:is_context_overflow |
-| `isModelType` | 2 | served | native:IsModelType | native:is_model_type | native:is_model_type |
-| `isRecoverableLength` | 1 | served | native:IsRecoverableLength | native:is_recoverable_length | native:is_recoverable_length |
-| `isRetryableAssistantError` | 6 | served | native:IsRetryableAssistantError | native:is_retryable_assistant_error | native:is_retryable_assistant_error |
-| `lazyApi` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `lazyOAuth` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `lazyStream` | 1 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `mergeClientIdentity` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `mistralConversationsApi` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `modelsAreEqual` | 3 | served | native:ModelsAreEqual | native:models_are_equal | native:models_are_equal |
-| `normalizeContext` | 6 | served | native:NormalizeContext | native:normalize_context | native:normalize_context |
-| `openAICodexResponsesApi` | 1 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `openAICompletionsApi` | 1 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `openAIResponsesApi` | 3 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `parseJsonWithRepair` | 0 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
-| `parseStreamingJson` | 1 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
-| `parseToolCallArguments` | 1 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
-| `piMessagesApi` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `registerApiProvider` | 3 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `registerBuiltInApiProviders` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `registerBuiltInImagesApiProviders` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `registerFauxProvider` | 1 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `registerImagesApiProvider` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `registerSessionResourceCleanup` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `renderSystemMessageUpdate` | 1 | served | native:RenderSystemMessageUpdate | native:render_system_message_update | native:render_system_message_update |
-| `repairJson` | 0 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
-| `resetApiProviders` | 1 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `resolveTranscript` | 1 | served | native:ResolveTranscript | native:resolve_transcript | native:resolve_transcript |
-| `resolveTranscriptTools` | 1 | served | native:ResolveTranscriptTools | native:resolve_transcript_tools | native:resolve_transcript_tools |
-| `retryAssistantCall` | 1 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
-| `retryDelayMs` | 1 | served | native:RetryDelayMs | native:retry_delay_ms | native:retry_delay_ms |
-| `setBedrockProviderModule` | 1 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `stream` | 2 | served | host:ModelRegistry.Stream | host:ModelRegistry::stream | host:ModelRegistry.stream |
-| `streamAnthropic` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `streamAzureOpenAIResponses` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `streamGoogle` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `streamGoogleVertex` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `streamMistral` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `streamOpenAICodexResponses` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `streamOpenAICompletions` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `streamOpenAIResponses` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `streamSimple` | 6 | served | host:ModelRegistry.StreamSimple | host:ModelRegistry::stream_simple | host:ModelRegistry.stream_simple |
-| `streamSimpleAnthropic` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `streamSimpleAzureOpenAIResponses` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `streamSimpleGoogle` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `streamSimpleGoogleVertex` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `streamSimpleMistral` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `streamSimpleOpenAICodexResponses` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `streamSimpleOpenAICompletions` | 1 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `streamSimpleOpenAIResponses` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `toToolDeclaration` | 3 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
-| `unregisterApiProviders` | 2 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `uuidv7` | 2 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
-| `validateToolArguments` | 1 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
-| `validateToolCall` | 0 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
-| `withClientIdentity` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `withoutInitialSystemMessage` | 1 | served | native:WithoutInitialSystemMessage | native:without_initial_system_message | native:without_initial_system_message |
+| Export | uses | Node | Go | Rust | Python | Lisp |
+|---|---|---|---|---|---|---|
+| `AI_TELEMETRY_SCHEMA` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `ANTHROPIC_API_KEY_ENV` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `ANTHROPIC_AUTH_TOKEN_ENV` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `ANTHROPIC_FEDERATION_RULE_ID_ENV` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `ANTHROPIC_IDENTITY_TOKEN_FILE_ENV` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `ANTHROPIC_OAUTH_TOKEN_ENV` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `ANTHROPIC_ORGANIZATION_ID_ENV` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `ANTHROPIC_SERVICE_ACCOUNT_ID_ENV` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `ANTHROPIC_WORKSPACE_ID_ENV` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `AssistantMessageEventStream` | 1 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
+| `AssistantMessageEventStream.[Symbol.asyncIterator]` | 0 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
+| `AssistantMessageEventStream.end` | 0 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
+| `AssistantMessageEventStream.push` | 0 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
+| `AssistantMessageEventStream.result` | 0 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
+| `DEFAULT_MAX_AGENT_RETRY_DELAY_MS` | 0 | served | native:DefaultMaxAgentRetryDelayMs | native:DEFAULT_MAX_AGENT_RETRY_DELAY_MS | native:DEFAULT_MAX_AGENT_RETRY_DELAY_MS | native:pig:+default-max-agent-retry-delay-ms+ |
+| `EventStream` | 0 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
+| `EventStream.[Symbol.asyncIterator]` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `EventStream.end` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `EventStream.push` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `EventStream.result` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `InMemoryCredentialStore` | 1 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
+| `InMemoryCredentialStore.delete` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
+| `InMemoryCredentialStore.list` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
+| `InMemoryCredentialStore.modify` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
+| `InMemoryCredentialStore.read` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
+| `InMemoryModelsStore` | 1 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
+| `InMemoryModelsStore.delete` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
+| `InMemoryModelsStore.read` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
+| `InMemoryModelsStore.write` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
+| `ModelsError` | 1 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
+| `ModelsError.cause` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
+| `ModelsError.code` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
+| `ModelsError.message` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
+| `ModelsError.name` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
+| `ModelsError.stack` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
+| `PI_AI_VERSION` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `PI_ATTRIBUTION` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `StreamingJsonParser` | 0 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
+| `StreamingJsonParser.append` | 0 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
+| `StreamingJsonParser.snapshot` | 0 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
+| `StringEnum` | 28 | served | native:StringEnum | native:string_enum | native:string_enum | native:pig:string-enum |
+| `ToolCallArgumentsStream` | 0 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
+| `ToolCallArgumentsStream.append` | 0 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
+| `ToolCallArgumentsStream.finish` | 0 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
+| `ToolCallArgumentsStream.replace` | 0 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
+| `ToolCallArgumentsStream.text` | 0 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
+| `Type` | 14 | served | native:Type | native:Type | native:Type | native:pig:type-object |
+| `anthropicMessagesApi` | 3 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `appendAssistantMessageDiagnostic` | 1 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `azureOpenAIResponsesApi` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `bedrockConverseStreamApi` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `calculateCost` | 8 | served | native:CalculateCost | native:calculate_cost | native:calculate_cost | native:pig:calculate-cost |
+| `clampThinkingLevel` | 16 | served | native:ClampThinkingLevel | native:clamp_thinking_level | native:clamp_thinking_level | native:pig:clamp-thinking-level |
+| `cleanupSessionResources` | 1 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `collapseSystemMessages` | 2 | served | native:CollapseSystemMessages | native:collapse_system_messages | native:collapse_system_messages | native:pig:collapse-system-messages |
+| `complete` | 2 | served | host:Context.Complete | host:Context::complete | host:Context.complete | host:pig:ctx-complete |
+| `completeSimple` | 3 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
+| `contentText` | 7 | served | native:ContentText | native:content_text | native:content_text | native:pig:content-text |
+| `createAssistantMessageDiagnostic` | 1 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `createAssistantMessageEventStream` | 16 | served | native:CreateAssistantMessageEventStream | native:create_assistant_message_event_stream | native:create_assistant_message_event_stream | native:pig:create-assistant-message-event-stream |
+| `createFauxCore` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `createInitialSystemMessage` | 0 | served | native:CreateInitialSystemMessage | native:create_initial_system_message | native:create_initial_system_message | native:pig:create-initial-system-message |
+| `createModels` | 4 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
+| `createProvider` | 6 | served | native:CreateProvider | native:create_provider | native:create_provider | native:pig:create-provider |
+| `declarationsEqual` | 2 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `defaultProviderAuthContext` | 0 | served | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph | gap:SdkSessionGraph |
+| `envApiKeyAuth` | 4 | served | native:EnvAPIKeyAuth | native:env_api_key_auth | native:env_api_key_auth | native:pig:env-api-key-auth |
+| `extractDiagnosticError` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `fauxAssistantMessage` | 2 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `fauxProvider` | 1 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `fauxText` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `fauxThinking` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `fauxToolCall` | 1 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `findEnvKeys` | 0 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
+| `formatThrownValue` | 1 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `formatUserAgent` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `generateImages` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `generateImagesOpenRouter` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `getApiProvider` | 1 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `getApiProviders` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `getAttributionHeaders` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `getClientVersion` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `getCurrentSystemMessage` | 6 | served | native:GetCurrentSystemMessage | native:get_current_system_message | native:get_current_system_message | native:pig:get-current-system-message |
+| `getCurrentSystemPrompt` | 5 | served | native:GetCurrentSystemPrompt | native:get_current_system_prompt | native:get_current_system_prompt | native:pig:get-current-system-prompt |
+| `getCurrentTools` | 8 | served | native:GetCurrentTools | native:get_current_tools | native:get_current_tools | native:pig:get-current-tools |
+| `getDeclaredTools` | 1 | served | native:GetDeclaredTools | native:get_declared_tools | native:get_declared_tools | native:pig:get-declared-tools |
+| `getEnvApiKey` | 1 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
+| `getIdentityHeaders` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `getImageModel` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `getImageModels` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `getImageProviders` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `getImagesApiProvider` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `getInitialSystemMessage` | 1 | served | native:GetInitialSystemMessage | native:get_initial_system_message | native:get_initial_system_message | native:pig:get-initial-system-message |
+| `getModel` | 2 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
+| `getModelType` | 1 | served | native:GetModelType | native:get_model_type | native:get_model_type | native:pig:get-model-type |
+| `getModels` | 2 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
+| `getOpenCodeSessionHeaders` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `getOverflowPatterns` | 0 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
+| `getProviders` | 1 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
+| `getSupportedThinkingLevels` | 12 | served | native:GetSupportedThinkingLevels | native:get_supported_thinking_levels | native:get_supported_thinking_levels | native:pig:get-supported-thinking-levels |
+| `getSystemMessageText` | 2 | served | native:GetSystemMessageText | native:get_system_message_text | native:get_system_message_text | native:pig:get-system-message-text |
+| `getToolStateChanges` | 1 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
+| `googleGenerativeAIApi` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `googleVertexApi` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `hasApi` | 1 | served | native:HasApi | native:has_api | native:has_api | native:pig:has-api-p |
+| `hasNonAdditiveToolChanges` | 0 | served | native:HasNonAdditiveToolChanges | native:has_non_additive_tool_changes | native:has_non_additive_tool_changes | native:pig:has-non-additive-tool-changes-p |
+| `hasToolRedefinitions` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `isContextOverflow` | 4 | served | native:IsContextOverflow | native:is_context_overflow | native:is_context_overflow | native:pig:context-overflow-p |
+| `isModelType` | 2 | served | native:IsModelType | native:is_model_type | native:is_model_type | native:pig:model-type-p |
+| `isRecoverableLength` | 1 | served | native:IsRecoverableLength | native:is_recoverable_length | native:is_recoverable_length | native:pig:recoverable-length-p |
+| `isRetryableAssistantError` | 6 | served | native:IsRetryableAssistantError | native:is_retryable_assistant_error | native:is_retryable_assistant_error | native:pig:retryable-assistant-error-p |
+| `lazyApi` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `lazyOAuth` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `lazyStream` | 1 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `mergeClientIdentity` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `mistralConversationsApi` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `modelsAreEqual` | 3 | served | native:ModelsAreEqual | native:models_are_equal | native:models_are_equal | native:pig:models-are-equal-p |
+| `normalizeContext` | 6 | served | native:NormalizeContext | native:normalize_context | native:normalize_context | native:pig:normalize-context |
+| `openAICodexResponsesApi` | 1 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `openAICompletionsApi` | 1 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `openAIResponsesApi` | 3 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `parseJsonWithRepair` | 0 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
+| `parseStreamingJson` | 1 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
+| `parseToolCallArguments` | 1 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
+| `piMessagesApi` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `registerApiProvider` | 3 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `registerBuiltInApiProviders` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `registerBuiltInImagesApiProviders` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `registerFauxProvider` | 1 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `registerImagesApiProvider` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `registerSessionResourceCleanup` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `renderSystemMessageUpdate` | 1 | served | native:RenderSystemMessageUpdate | native:render_system_message_update | native:render_system_message_update | native:pig:render-system-message-update |
+| `repairJson` | 0 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
+| `resetApiProviders` | 1 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `resolveTranscript` | 1 | served | native:ResolveTranscript | native:resolve_transcript | native:resolve_transcript | native:pig:resolve-transcript |
+| `resolveTranscriptTools` | 1 | served | native:ResolveTranscriptTools | native:resolve_transcript_tools | native:resolve_transcript_tools | native:pig:resolve-transcript-tools |
+| `retryAssistantCall` | 1 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
+| `retryDelayMs` | 1 | served | native:RetryDelayMs | native:retry_delay_ms | native:retry_delay_ms | native:pig:retry-delay-ms |
+| `setBedrockProviderModule` | 1 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `stream` | 2 | served | host:ModelRegistry.Stream | host:ModelRegistry::stream | host:ModelRegistry.stream | host:pig:registry-stream |
+| `streamAnthropic` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `streamAzureOpenAIResponses` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `streamGoogle` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `streamGoogleVertex` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `streamMistral` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `streamOpenAICodexResponses` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `streamOpenAICompletions` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `streamOpenAIResponses` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `streamSimple` | 6 | served | host:ModelRegistry.StreamSimple | host:ModelRegistry::stream_simple | host:ModelRegistry.stream_simple | host:pig:registry-stream-simple |
+| `streamSimpleAnthropic` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `streamSimpleAzureOpenAIResponses` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `streamSimpleGoogle` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `streamSimpleGoogleVertex` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `streamSimpleMistral` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `streamSimpleOpenAICodexResponses` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `streamSimpleOpenAICompletions` | 1 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `streamSimpleOpenAIResponses` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `toToolDeclaration` | 3 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
+| `unregisterApiProviders` | 2 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `uuidv7` | 2 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
+| `validateToolArguments` | 1 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
+| `validateToolCall` | 0 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
+| `withClientIdentity` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `withoutInitialSystemMessage` | 1 | served | native:WithoutInitialSystemMessage | native:without_initial_system_message | native:without_initial_system_message | native:pig:without-initial-system-message |
 
 ## pi-agent-core
 
-| Export | uses | Node | Go | Rust | Python |
-|---|---|---|---|---|---|
-| `Agent` | 4 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `Agent.abort` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `Agent.afterToolCall` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `Agent.beforeToolCall` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `Agent.clearAllQueues` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `Agent.clearFollowUpQueue` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `Agent.clearSteeringQueue` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `Agent.continue` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `Agent.convertToLlm` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `Agent.finishTurn` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `Agent.followUp` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `Agent.followUpMode` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `Agent.getApiKey` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `Agent.hasQueuedMessages` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `Agent.identity` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `Agent.maxRetryDelayMs` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `Agent.onPayload` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `Agent.onProviderStreamEvent` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `Agent.onResponse` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `Agent.peekQueuedMessages` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `Agent.prepareNextTurn` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `Agent.prepareNextTurnWithContext` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `Agent.prepareRequest` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `Agent.prompt` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `Agent.reset` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `Agent.sessionId` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `Agent.signal` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `Agent.state` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `Agent.steer` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `Agent.steeringMode` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `Agent.streamFunction` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `Agent.subscribe` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `Agent.thinkingBudgets` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `Agent.toolExecution` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `Agent.transformContext` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `Agent.transport` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `Agent.waitForIdle` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `DEFAULT_AGENT_IDENTITY` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
-| `agentLoop` | 2 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `agentLoopContinue` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `runAgentLoop` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `runAgentLoopContinue` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `runToolCall` | 2 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `setDefaultStreamFn` | 1 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
-| `streamProxy` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| Export | uses | Node | Go | Rust | Python | Lisp |
+|---|---|---|---|---|---|---|
+| `Agent` | 4 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `Agent.abort` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `Agent.afterToolCall` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `Agent.beforeToolCall` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `Agent.clearAllQueues` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `Agent.clearFollowUpQueue` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `Agent.clearSteeringQueue` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `Agent.continue` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `Agent.convertToLlm` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `Agent.finishTurn` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `Agent.followUp` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `Agent.followUpMode` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `Agent.getApiKey` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `Agent.hasQueuedMessages` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `Agent.identity` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `Agent.maxRetryDelayMs` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `Agent.onPayload` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `Agent.onProviderStreamEvent` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `Agent.onResponse` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `Agent.peekQueuedMessages` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `Agent.prepareNextTurn` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `Agent.prepareNextTurnWithContext` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `Agent.prepareRequest` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `Agent.prompt` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `Agent.reset` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `Agent.sessionId` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `Agent.signal` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `Agent.state` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `Agent.steer` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `Agent.steeringMode` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `Agent.streamFunction` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `Agent.subscribe` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `Agent.thinkingBudgets` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `Agent.toolExecution` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `Agent.transformContext` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `Agent.transport` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `Agent.waitForIdle` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `DEFAULT_AGENT_IDENTITY` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `agentLoop` | 2 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `agentLoopContinue` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `runAgentLoop` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `runAgentLoopContinue` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `runToolCall` | 2 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `setDefaultStreamFn` | 1 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |
+| `streamProxy` | 0 | served | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions | gap:C2Sessions |

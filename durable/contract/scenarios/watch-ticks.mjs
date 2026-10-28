@@ -1,4 +1,4 @@
-// The tick cost of attaching an observer (rows F-ticks-watch-<profile>): how many microtask passes `watchEvents` and `viewState` take to
+// The tick cost of attaching an observer (rows F-ticks-watch-<profile>): how many microtask passes `watchEvents` and `Conversation.watch` take to
 // settle on an idle conversation. An observer that attaches in fewer passes than Pi lands before a submit's commit Pi orders first
 // (F-gate-175: two event streams on one conversation, the later one attached after the submit in Pi and before it here). The count is
 // exact; every wait is a tick or a detenv virtual timer. Run by lib/run.mjs under the hooks.
@@ -29,8 +29,8 @@ const measure = async (name, call) => {
 
 const stream = await measure("watchEvents (idle)", () => watchEvents(harness, root.id, context))
 await stream.stop()
-const view = await measure("viewState (idle)", () => root.viewState(context))
-view.dispose()
+const view = await measure("watch (idle)", () => root.watch(context))
+await view.stop()
 
 // The same attach on a conversation with entries: the bounds read the head marker and activeEntries scans the range (view.ts #build,
 // context.ts captureContextBounds/activeEntries). A virtual timer lets the turn's jobs finish before the count starts.
@@ -39,17 +39,17 @@ await turn.wait(context)
 await new Promise(resolve => setTimeout(resolve, 1000))
 const later = await measure("watchEvents (entries)", () => watchEvents(harness, root.id, context))
 await later.stop()
-const view2 = await measure("viewState (entries)", () => root.viewState(context))
-view2.dispose()
+const view2 = await measure("watch (entries)", () => root.watch(context))
+await view2.stop()
 
 // An observer attaching to a view another observer holds: nothing is built, the line job only creates the observer
 // (view.ts attach finds the mount; watchEvents' create scans the completing generations). F-gate-175 is this case.
-const holder = await root.viewState(context)
+const holder = await root.watch(context)
 const joinedEvents = await measure("watchEvents (mounted)", () => watchEvents(harness, root.id, context))
 await joinedEvents.stop()
-const joinedState = await measure("viewState (mounted)", () => root.viewState(context))
-joinedState.dispose()
-holder.dispose()
+const joinedState = await measure("watch (mounted)", () => root.watch(context))
+await joinedState.stop()
+await holder.stop()
 
 await harness.close(context)
 
@@ -60,6 +60,6 @@ await new Promise(resolve => setTimeout(resolve, 1000))
 const again = await measure("watchEvents (reopened)", () => watchEvents(reopened, root.id, context))
 await again.stop()
 const found = await reopened.conversation(root.id, context)
-const view3 = await measure("viewState (reopened)", () => found.viewState(context))
-view3.dispose()
+const view3 = await measure("watch (reopened)", () => found.watch(context))
+await view3.stop()
 await reopened.close(context)

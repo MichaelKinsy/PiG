@@ -14,6 +14,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws/protocol/eventstream"
 
 	"github.com/MichaelKinsy/PiG/ai"
+	"github.com/MichaelKinsy/PiG/ai/providers/bedrock"
 )
 
 type fixture struct {
@@ -70,7 +71,7 @@ func probe(row fixture) error {
 		_, _ = w.Write(wire.Bytes())
 	}))
 	defer server.Close()
-	provider := ai.NewBedrockProvider("global.openai.gpt-5.6-terra", server.URL)
+	provider := bedrock.NewBedrockProvider("global.openai.gpt-5.6-terra", server.URL)
 	defer func() { _ = provider.Close() }()
 	stream, err := provider.Stream(context.Background(), ai.NormalizeContext(ai.Context{Messages: []ai.Message{ai.UserMessage{Content: ai.UserText("hello"), Timestamp: 1}}}), ai.StreamOptions{CacheRetention: ai.CacheRetentionNone, Env: ai.ProviderEnv{"AWS_BEDROCK_SKIP_AUTH": "1", "AWS_REGION": "us-east-1"}})
 	if err != nil {

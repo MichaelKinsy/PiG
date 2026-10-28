@@ -356,7 +356,7 @@ func buildLeafProviderForEntry(providerID, modelID string, apiKind ai.API, entry
 		// AWS SDK resolves credentials at request time. The selected model
 		// carries the configured provider identity (bedrock-converse-stream.ts:130
 		// reports model.provider), the base URL and the limits.
-		return ai.NewBedrockAPIProvider(*modelFromEntry(entry, nil))
+		return ai.NewOptionalAPIProvider(ai.APIBedrockConverseStream, *modelFromEntry(entry, nil))
 	case ai.APIMistralConversations:
 		return ai.NewMistralAPIProvider(ai.MistralConfig{
 			ModelMetadata: modelFromEntry(entry, nil),

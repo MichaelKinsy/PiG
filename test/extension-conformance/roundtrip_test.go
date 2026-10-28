@@ -111,11 +111,11 @@ func envInt(name string, fallback int) int {
 // it until the budget is lowered, so a latency win is kept.
 var (
 	roundTripP50BudgetMS = map[sdkscenarios.SDK]float64{
-		sdkscenarios.Go: 10, sdkscenarios.Node: 10, sdkscenarios.Python: 10, sdkscenarios.Rust: 10,
+		sdkscenarios.Go: 10, sdkscenarios.Node: 10, sdkscenarios.Python: 10, sdkscenarios.Rust: 10, sdkscenarios.Lisp: 10,
 	}
 	roundTripP99GrossMS  = 1000.0
 	roundTripP99StrictMS = map[sdkscenarios.SDK]float64{
-		sdkscenarios.Go: 25, sdkscenarios.Node: 25, sdkscenarios.Python: 25, sdkscenarios.Rust: 25,
+		sdkscenarios.Go: 25, sdkscenarios.Node: 25, sdkscenarios.Python: 25, sdkscenarios.Rust: 25, sdkscenarios.Lisp: 25,
 	}
 )
 

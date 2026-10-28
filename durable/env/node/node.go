@@ -20,6 +20,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
 	"github.com/MichaelKinsy/PiG/internal/nodeerrno"
+	"github.com/MichaelKinsy/PiG/internal/nodefs"
 	"github.com/MichaelKinsy/PiG/internal/nodespawn"
 )
 
@@ -137,7 +138,7 @@ func (env *NodeExecutionEnv) OpenTextLineReader(ctx context.Context, path string
 	if err := abortedFileError(ctx, resolved); err != nil {
 		return nil, err
 	}
-	file, err := os.Open(resolved)
+	file, err := nodefs.OpenFile(resolved, os.O_RDONLY, 0)
 	if err != nil {
 		return nil, toFileError(err, fsCall{syscall: "open", path: resolved})
 	}
@@ -192,7 +193,7 @@ func (env *NodeExecutionEnv) ReadBinaryFile(ctx context.Context, path string) ([
 	if err := abortedFileError(ctx, resolved); err != nil {
 		return nil, err
 	}
-	data, err := os.ReadFile(resolved)
+	data, err := nodefs.ReadFile(resolved)
 	if err != nil {
 		return nil, toFileError(err, fsCall{syscall: "open", path: resolved})
 	}
@@ -237,7 +238,7 @@ func (env *NodeExecutionEnv) writeWithParents(ctx context.Context, resolved stri
 	if err := abortedFileError(ctx, resolved); err != nil {
 		return err
 	}
-	file, err := os.OpenFile(resolved, flags, 0o666)
+	file, err := nodefs.OpenFile(resolved, flags, 0o666)
 	if err != nil {
 		return toFileError(err, fsCall{syscall: "open", path: resolved})
 	}

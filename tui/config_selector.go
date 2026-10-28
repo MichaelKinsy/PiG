@@ -17,6 +17,7 @@ import (
 	"strings"
 
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
+	"github.com/MichaelKinsy/PiG/internal/jsstring/localecompare"
 	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
 
@@ -651,7 +652,7 @@ func sortGroups(groups []*ResourceGroup) {
 		// Sort items by name.
 		for _, sg := range g.Subgroups {
 			for i := 1; i < len(sg.Items); i++ {
-				for j := i; j > 0 && jsstring.LocaleCompare(sg.Items[j].DisplayName, sg.Items[j-1].DisplayName) < 0; j-- {
+				for j := i; j > 0 && localecompare.Compare(sg.Items[j].DisplayName, sg.Items[j-1].DisplayName) < 0; j-- {
 					sg.Items[j], sg.Items[j-1] = sg.Items[j-1], sg.Items[j]
 				}
 			}
@@ -666,5 +667,5 @@ func groupLess(a, b *ResourceGroup) bool {
 	if a.Scope != b.Scope {
 		return a.Scope == "user"
 	}
-	return jsstring.LocaleCompare(a.Source, b.Source) < 0
+	return localecompare.Compare(a.Source, b.Source) < 0
 }

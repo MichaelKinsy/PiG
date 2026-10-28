@@ -71,6 +71,15 @@ pub fn new_extension()->Extension {
  e.command(%q,"",|ctx,_|{match ctx.scoped_models(){Ok(models)=>{ctx.notify(&Schema::Array(models).to_string(),"info");CommandResult::Ok},Err(error)=>CommandResult::Error(error.to_string())}});
  e
 }`, name, command)
+	case "lisp":
+		path = filepath.Join(cfg.Source, name+".lisp")
+		code = fmt.Sprintf(`(defpackage %q (:use "COMMON-LISP"))
+(in-package %q)
+(defun new-extension ()
+  (let ((e (pig:make-extension %q)))
+    (pig:command e %q "" (lambda (ctx args) (declare (ignore args)) (pig:ctx-notify ctx (pig:to-json (pig:ctx-get-scoped-models ctx)) "info")))
+    e))
+`, name, name, name, command)
 	}
 	if err := os.WriteFile(path, []byte(code), 0o600); err != nil {
 		t.Fatal(err)

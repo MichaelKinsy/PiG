@@ -191,11 +191,19 @@
     "package": "./ai",
     "tests": [
       "TestAnthropicCacheRetentionEnvironmentDefaults",
-      "TestBedrockForcedCacheUsesProviderEnvironment",
       "TestAnthropicFederationEnv"
     ],
     "upstream_reference": "packages/ai/src/utils/provider-env.ts getProviderEnvValue",
     "mutation": "ai/provider_env.go: accept an empty option-env value ('v, ok := env[name]; ok') or read a different process variable name in getProviderEnvValue; go test -overlay -run 'ProviderEnv|Env' ./ai fails TestAnthropicCacheRetentionEnvironmentDefaults, TestBedrockForcedCacheUsesProviderEnvironment and TestAnthropicFederationEnv."
+  },
+  {
+    "upstream": "packages/ai/src/utils/provider-env.ts",
+    "package": "./ai/providers/bedrock",
+    "tests": [
+      "TestBedrockForcedCacheUsesProviderEnvironment"
+    ],
+    "upstream_reference": "packages/ai/src/utils/provider-env.ts getProviderEnvValue",
+    "mutation": "ai/provider_env.go: accept an empty option-env value ('v, ok := env[name]; ok') or read a different process variable name in getProviderEnvValue; go test -overlay -run 'ProviderEnv|Env' ./ai fails TestAnthropicCacheRetentionEnvironmentDefaults, TestBedrockForcedCacheUsesProviderEnvironment and TestAnthropicFederationEnv. The tests TestBedrockForcedCacheUsesProviderEnvironment run in ./ai/providers/bedrock (go test -overlay -run <test> ./ai/providers/bedrock)."
   },
   {
     "upstream": "packages/ai/src/utils/hash.ts",
@@ -211,12 +219,20 @@
     "upstream": "packages/ai/src/utils/sanitize-unicode.ts",
     "package": "./ai",
     "tests": [
-      "TestProviderSurrogateSanitizationPreservesValidScalars",
-      "TestBedrockSanitizesBeforeCheckingAssistantEmptiness",
       "TestSanitizeSurrogatesPairsTheWholeHighSurrogateRange"
     ],
     "upstream_reference": "packages/ai/src/utils/sanitize-unicode.ts sanitizeSurrogates",
     "mutation": "ai/sanitize_unicode.go: narrow the high-surrogate bound 'unit < 0xdc00' to 'unit < 0xdb00' (fails TestSanitizeSurrogatesPairsTheWholeHighSurrogateRange, added with this evidence: the mutant survived every earlier test); advance 2 instead of 3 bytes after an unpaired surrogate (fails TestProviderSurrogateSanitizationPreservesValidScalars and TestBedrockSanitizesBeforeCheckingAssistantEmptiness). go test -overlay -run <test> ./ai each time."
+  },
+  {
+    "upstream": "packages/ai/src/utils/sanitize-unicode.ts",
+    "package": "./ai/providers/bedrock",
+    "tests": [
+      "TestProviderSurrogateSanitizationPreservesValidScalars",
+      "TestBedrockSanitizesBeforeCheckingAssistantEmptiness"
+    ],
+    "upstream_reference": "packages/ai/src/utils/sanitize-unicode.ts sanitizeSurrogates",
+    "mutation": "ai/sanitize_unicode.go: narrow the high-surrogate bound 'unit < 0xdc00' to 'unit < 0xdb00' (fails TestSanitizeSurrogatesPairsTheWholeHighSurrogateRange, added with this evidence: the mutant survived every earlier test); advance 2 instead of 3 bytes after an unpaired surrogate (fails TestProviderSurrogateSanitizationPreservesValidScalars and TestBedrockSanitizesBeforeCheckingAssistantEmptiness). go test -overlay -run <test> ./ai each time. The tests TestProviderSurrogateSanitizationPreservesValidScalars, TestBedrockSanitizesBeforeCheckingAssistantEmptiness run in ./ai/providers/bedrock (go test -overlay -run <test> ./ai/providers/bedrock)."
   },
   {
     "upstream": "packages/ai/src/providers/radius-config.ts",
@@ -282,11 +298,19 @@
     "upstream": "packages/ai/src/utils/text.ts",
     "package": "./ai",
     "tests": [
-      "TestContentTextUpstream",
-      "TestBedrockFoldsMidConversationSystemMessagesUpstream"
+      "TestContentTextUpstream"
     ],
     "upstream_reference": "packages/ai/src/utils/text.ts contentText",
     "mutation": "ai/text.go: change ContentText's default separator from newline to a space (fails TestContentTextUpstream, TestTranscriptReplayMatchesPi and TestBedrockFoldsMidConversationSystemMessagesUpstream); return the empty string for SystemText content (fails TestBedrockFoldsMidConversationSystemMessagesUpstream). go test -overlay -run 'Transcript|Text|Content|System' ./ai each time."
+  },
+  {
+    "upstream": "packages/ai/src/utils/text.ts",
+    "package": "./ai/providers/bedrock",
+    "tests": [
+      "TestBedrockFoldsMidConversationSystemMessagesUpstream"
+    ],
+    "upstream_reference": "packages/ai/src/utils/text.ts contentText",
+    "mutation": "ai/text.go: change ContentText's default separator from newline to a space (fails TestContentTextUpstream, TestTranscriptReplayMatchesPi and TestBedrockFoldsMidConversationSystemMessagesUpstream); return the empty string for SystemText content (fails TestBedrockFoldsMidConversationSystemMessagesUpstream). go test -overlay -run 'Transcript|Text|Content|System' ./ai each time. The tests TestBedrockFoldsMidConversationSystemMessagesUpstream run in ./ai/providers/bedrock (go test -overlay -run <test> ./ai/providers/bedrock)."
   },
   {
     "upstream": "packages/ai/src/utils/diagnostics.ts",

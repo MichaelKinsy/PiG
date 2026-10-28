@@ -306,8 +306,6 @@
   "upstream": "packages/ai/src/utils/retry.ts",
   "package": "./ai",
   "tests": [
-   "TestBedrockMidStreamTransportFailureMatchesTerminated",
-   "TestBedrockRequestTransportFailureMatchesFetchFailure",
    "TestIsRetryableAssistantErrorClassification",
    "TestMistralFinishReasonErrorIsRetryable",
    "TestMistralRawStopReasonsUpstream",
@@ -322,6 +320,16 @@
   ],
   "upstream_reference": "packages/ai/src/utils/retry.ts",
   "mutation": "ai/assistant_retry.go:249: replace `if message.StopReason != StopReasonError || message.ErrorMessage == \"\" {` with `if message.StopReason != StopReasonError || message.ErrorMessage != \"\" {`; compiling `go test -overlay -run` the listed tests fails each of them (exact tests, one site)."
+ },
+ {
+  "upstream": "packages/ai/src/utils/retry.ts",
+  "package": "./ai/providers/bedrock",
+  "tests": [
+   "TestBedrockMidStreamTransportFailureMatchesTerminated",
+   "TestBedrockRequestTransportFailureMatchesFetchFailure"
+  ],
+  "upstream_reference": "packages/ai/src/utils/retry.ts",
+  "mutation": "ai/assistant_retry.go:249: replace `if message.StopReason != StopReasonError || message.ErrorMessage == \"\" {` with `if message.StopReason != StopReasonError || message.ErrorMessage != \"\" {`; compiling `go test -overlay -run` the listed tests fails each of them (exact tests, one site). The tests TestBedrockMidStreamTransportFailureMatchesTerminated, TestBedrockRequestTransportFailureMatchesFetchFailure run in ./ai/providers/bedrock (go test -overlay -run <test> ./ai/providers/bedrock)."
  },
  {
   "upstream": "packages/ai/src/utils/retry.ts",

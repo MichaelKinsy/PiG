@@ -106,6 +106,8 @@ func derivedSDKName(definition extsource.Definition) string {
 		return "pig-sdk-rs"
 	case "python":
 		return "pig-sdk-py"
+	case "lisp":
+		return "pig-sdk-lisp"
 	case "node":
 		return "pi-node"
 	default:

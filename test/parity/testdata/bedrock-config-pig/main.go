@@ -11,6 +11,7 @@ import (
 	"regexp"
 
 	"github.com/MichaelKinsy/PiG/ai"
+	"github.com/MichaelKinsy/PiG/ai/providers/bedrock"
 )
 
 func main() {
@@ -50,7 +51,7 @@ func run() error {
 		w.Header().Set("Content-Type", "application/vnd.amazon.eventstream")
 	}))
 	defer server.Close()
-	provider := ai.NewBedrockProvider("us.anthropic.claude-opus-4-8", server.URL)
+	provider := bedrock.NewBedrockProvider("us.anthropic.claude-opus-4-8", server.URL)
 	defer func() { _ = provider.Close() }()
 	scope := regexp.MustCompile(`Credential=([^/]+)/[^/]+/([^/]+)/`)
 	for _, tc := range []struct {

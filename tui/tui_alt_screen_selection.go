@@ -114,8 +114,15 @@ func (t *TuiAltScreen) getSelectionSourceLine(point selectionPoint) string {
 	return ""
 }
 
-// terminalWordSelectionJoiners are the characters iTerm2 considers part of a word by default (tui-alt-screen.ts TERMINAL_WORD_SELECTION_JOINERS).
-var terminalWordSelectionJoiners = map[string]bool{"/": true, "-": true, "+": true, "\\": true, "~": true, "_": true, ".": true}
+// isTerminalWordSelectionJoiner reports whether segment is one of the characters iTerm2 considers part of a word by default (tui-alt-screen.ts
+// TERMINAL_WORD_SELECTION_JOINERS).
+func isTerminalWordSelectionJoiner(segment string) bool {
+	switch segment {
+	case "/", "-", "+", "\\", "~", "_", ".":
+		return true
+	}
+	return false
+}
 
 type wordSegment struct {
 	start, end int
@@ -132,7 +139,7 @@ func wordSegments(line string) []wordSegment {
 		// Regular mode delegates double-click selection to the terminal
 		// emulator. Fullscreen owns mouse selection, so it uses iTerm2's default
 		// "characters considered part of a word" set (Pi ff6896471, #10980).
-		joiner := terminalWordSelectionJoiners[segment.Segment]
+		joiner := isTerminalWordSelectionJoiner(segment.Segment)
 		segments = append(segments, wordSegment{start: start, end: end, selectable: segment.IsWordLike || joiner, joiner: joiner})
 		start = end
 	}
