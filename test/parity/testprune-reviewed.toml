@@ -452,19 +452,19 @@ reason = "Pi 38ff99177 makes finishToolRound append the last handoff's reset (ge
 path = "coding/piglet/scope_mcp_test.go"
 commit = "d3adcfebef205ccb7b80baa600a973e66e7b4aea"
 class = "CITE"
-cite = "packages/coding-agent/src/core/agent-session.ts:3457"
-reason = "A Piglet's tool scope now bounds the Session's tool registry as Pi's _isAllowedTool bounds it for --tools and --exclude-tools (agent-session.ts:3457-3521). codemode and tool_search are ordinary tools that reach what the registry keeps, so the table no longer expects them hidden when no MCP tool stays visible; the MCP resource tools follow the pig-mcp-adapter entry by name."
+cite = "packages/coding-agent/src/core/agent-session.ts:1557"
+reason = "A Piglet's tool scope now bounds the Session's tool registry as Pi's _isAllowedTool bounds it for --tools and --exclude-tools (agent-session.ts:1557-1561, 3571-3574). codemode and tool_search are ordinary tools that reach what the registry keeps, so the table no longer expects them hidden when no MCP tool stays visible; the MCP resource tools follow the pig-mcp-adapter entry by name."
 
 [[entry]]
 path = "coding/extension/tool_filter_test.go"
 commit = "14378701855dadfdcd44cfcb960c03dc1d83a7ce"
 class = "CITE"
-cite = "packages/coding-agent/src/core/agent-session.ts:3457"
-reason = "The test is this range's own test of the Piglet scope in the registry filter (ToolFilter.WithScope, AllowsTool), written against Pi's _isAllowedTool intersection (agent-session.ts:3457-3521); the commit replaces the predicate form of the scope with the data form the filter holds, and the expectations are the same intersection."
+cite = "packages/coding-agent/src/core/agent-session.ts:1557"
+reason = "The test is this range's own test of the Piglet scope in the registry filter (ToolFilter.WithScope, AllowsTool), written against Pi's _isAllowedTool intersection (agent-session.ts:1557-1561, 3571-3574); the commit replaces the predicate form of the scope with the data form the filter holds, and the expectations are the same intersection."
 
 [[entry]]
 path = "coding/session_tool_scope_test.go"
 commit = "14378701855dadfdcd44cfcb960c03dc1d83a7ce"
 class = "CITE"
-cite = "packages/coding-agent/src/core/agent-session.ts:3457"
-reason = "The test is this range's own test that the Session registry admits the intersection of --tools/--exclude-tools and the Piglet scope (Pi's _isAllowedTool, agent-session.ts:3457-3521); the commit replaces the predicate form of the scope with the data form, and the expectations are the same intersection."
+cite = "packages/coding-agent/src/core/agent-session.ts:1557"
+reason = "The test is this range's own test that the Session registry admits the intersection of --tools/--exclude-tools and the Piglet scope (Pi's _isAllowedTool, agent-session.ts:1557-1561, 3571-3574); the commit replaces the predicate form of the scope with the data form, and the expectations are the same intersection."
