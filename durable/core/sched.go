@@ -313,7 +313,6 @@ func (h *handler) afterFailedRun() string {
 
 // contextRetentionMs is settings.contextRetentionMs, ten minutes unless the host set it (harness/agent.ts).
 func (h *handler) contextRetentionMs() float64 {
-	h.settingsReads++
 	if v, ok := valueOf(objOf(h.open, "settings"), "contextRetentionMs").(float64); ok {
 		return v
 	}
