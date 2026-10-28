@@ -2695,9 +2695,9 @@ Why: the Lisp SDK's pi-tui helper lane has not ported the `Terminal` and `Compon
 
 Pi bug: none claimed.
 
-Scope: the 46 `pi-tui: TuiAltScreen` rows of `test/parity/sdk-exports.toml` (the class and each member) carry `divergence:D204` in the `lisp` cell; their Node, Go, Rust and Python cells are `native:` cells with conformance reach (`TestTuiAltScreenAcrossSDKs`, `TestTuiAltScreenFrameReadsAcrossSDKs`). `docs/extension-sdk-exports.md` is generated from that file. No SDK source changes: the divergence is the absence of the export.
+Scope: the 46 `pi-tui: TuiAltScreen` rows of `test/parity/sdk-exports.toml` (the class and each member) carry `divergence:D204` in the `lisp` cell; their Node, Go, Rust and Python cells are `native:` cells with conformance reach (`TestTuiAltScreenAcrossSDKs`, `TestTuiAltScreenFrameReadsAcrossSDKs`, `TestTuiAltScreenChildrenAcrossSDKs`). `docs/extension-sdk-exports.md` is generated from that file. No SDK source changes: the divergence is the absence of the export.
 
-Owner decision: approved by owner Michael Kinsy on 2026-10-26 for the Go, Rust and Python SDKs, which now export `TuiAltScreen`; the Lisp cells carried this id when the Lisp SDK landed on the batch, and the owner confirms that scope when this record is merged.
+Owner decision: approved by owner Michael Kinsy on 2026-10-26 for the Go, Rust and Python SDKs, which now export `TuiAltScreen`; the Lisp cells carried this id when the Lisp SDK landed on the batch, and the owner confirms that scope when this record is merged. Approved again on 2026-10-28 for the Lisp SDK until its `TuiAltScreen` port lands (lane LispTuiAlt).
 
 Call-site markers: none in code; the ledger rows named in Scope are the declaration `make sdk-surface-drift` and `make sdk-exports-release` read.
 
@@ -2730,5 +2730,49 @@ Fallback evidence: `TestAltScreenScrollFallsBackToPisBytes` (`tui/alt_screen_ora
 Parity allowance: the fullscreen parity scenarios compare the captured screen, which is the same, and the alternate-screen oracle compares Pi's bytes with scrolling off and Pi's screens with it on.
 
 Remove when: Pi scrolls the rows that moved, or an owner decision reverses this one. Then every changed row is drawn again, and the markers, `tui/tui_alt_screen_scroll.go` and this record go.
+
+SCRUTINIZED:approved
+
+## D207 TuiAltScreen.children is a copy in the Go, Rust and Python SDKs, where Pi's is a live array
+
+What: Pi's `TuiAltScreen.children` is the container's own array: a caller that holds it sees every later change of the screen's children, and can change them by writing to it. The Go (`TuiAltScreen.Children`), Rust (`TuiAltScreen::children`) and Python (`TuiAltScreen.children`) SDKs return a snapshot of the children as the SDK knows them after its last `addChild`, `removeChild` or `clear`. Writing to the snapshot changes nothing, and the snapshot does not follow later changes: read `children` again after the call that changed it. `addChild`, `removeChild` and `clear` are the only ways to change the children; the SDKs have no `setChildren`.
+
+Why: the renderer, with the screen's child list, runs in the host process and the extension's components in the extension's process, so an array in the extension cannot be the renderer's array. The SDKs keep the children they sent to the host and update that list after each call returns; a list a caller could write to would need a call to the host on every write and a way for the host to change the extension's list, which Pi's array is not.
+
+Pi bug: none claimed.
+
+Scope: `TuiAltScreen.children` of the Go, Rust and Python SDKs. Every other member behaves as Pi's, and a read after `addChild`, `removeChild` or `clear` returns what Pi's `children` holds then, in order, with equal-content components kept distinct and a duplicate child kept twice.
+
+Owner decision: approved by owner Michael Kinsy on 2026-10-28.
+
+Call-site markers: `extensions/sdk/tui_alt_screen.go` (`Children`), `extensions/sdk-rs/src/tui_alt_screen.rs` (`children`), `extensions/sdk-py/pig_sdk/tui_alt_screen.py` (the `children` property).
+
+Evidence: `TestTuiAltScreenChildrenAcrossSDKs` (`test/extension-conformance/tui_alt_screen_test.go`) reads `children` after each `addChild`, `removeChild` (of a child and of a component that is not one), a duplicate `addChild`, `removeChild` of the first of two equal entries and `clear`, with three components of equal content, and requires the order Pi's own class reports in the Node cell, in every isolated and packed SDK cell.
+
+Parity allowance: no paired Pi corpus holds `TuiAltScreen.children` across a change of the children, so none changes.
+
+Remove when: Pi's `children` stops being a public live array, or an owner decision asks for a live view across the process boundary; then the three markers, the evidence note and this record go.
+
+SCRUTINIZED:approved
+
+## D208 From inside a component's render, a TuiAltScreen of the Go, Rust and Python SDKs fails the calls that re-enter its frame
+
+What: Pi runs a component's `render` on the one thread that draws the frame, so a render that calls a member of its screen is a nested call, and Pi lets it recurse or re-enter: `renderNow()` and `render()` render the document again inside the frame, `start()` and `stop()` nest a terminal start or stop, `copyActiveSelectionToClipboard()` and `queryTerminalColors()` start Promise-returning work from inside the frame, and the `onInput` callback that `Terminal.start` received dispatches input from inside it. In the Go, Rust and Python SDKs every other call a render makes to its screen runs at once, while the host holds the frame lock for that render, and a later read in the same render sees it, as in Pi. These six calls and the input callback would take the frame lock again, which the frame holds and does not release for the render it waits on: from inside a callback the frame waits for (a component's render, an overlay's `visible` callback, a style callback, an `invalidate` or focus change the frame triggered) they return the host's error `tui.alt: <op> cannot run while a component renders`, and the screen goes on. Called from any other thread they wait for the frame, as before.
+
+Why: the renderer takes one non-reentrant lock for the whole frame, and a re-entered frame would need it while the frame waits for the render that re-enters it, which is a deadlock; supporting Pi's recursion needs a frame that renders again inside itself, which the renderer's single pass and its differential state do not allow.
+
+Pi bug: none claimed.
+
+Scope: the calls `render`, `renderNow`, `start`, `stop`, `copyActiveSelectionToClipboard`, `queryTerminalColors` and the terminal's `onInput` callback, made from a callback the frame waits for, in the Go, Rust and Python SDKs (the host serves `tui.alt` calls; the SDKs report the host's error as the call's error). The Node SDK serves Pi's own class and recurses as Pi does.
+
+Owner decision: approved by owner Michael Kinsy on 2026-10-28.
+
+Call-site markers: `coding/extension/host/subprocess/tui_alt_bridge.go` (`run`).
+
+Evidence: `TestTuiAltScreenFrameReentryAcrossSDKs` (`test/extension-conformance/tui_alt_screen_test.go`) calls each of the six from inside a render in every isolated and packed Go, Rust and Python cell, requires the error for each, and requires the screen to answer the next call in the same render (`setShowHardwareCursor` then `getShowHardwareCursor`).
+
+Parity allowance: no paired Pi corpus constructs `TuiAltScreen` through an SDK and recurses in a render, so none changes.
+
+Remove when: the host's frame can be entered again from inside a render and these calls run as Pi's do; then the call-site marker, the error and this record go.
 
 SCRUTINIZED:approved
