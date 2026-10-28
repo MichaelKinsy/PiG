@@ -24,15 +24,23 @@ Read the one row that matches the task, then follow only its direct links.
 | install or share capabilities | [Packages](packages.md) | [Extensions](extensions.md) or [Skills](skills.md) |
 | publish a Package or Piglet to npm | [Publishing](publishing.md) | [Packages](packages.md) or [Piglets](piglets.md) |
 | shape, launch, build, or hand off an agent | [Piglets](piglets.md) | [Runtime cells](runtime-cells.md) for internals |
+| learn why extension cells are packed into host processes | [Runtime cells](runtime-cells.md) | [Extensions](extensions.md) |
 | write an extension | [Extensions](extensions.md) | [Extension API](extension-api.md) |
+| look up a host API call, the wire protocol, or an SDK quickstart | [Extension API](extension-api.md) | [Message types](message-types.md) |
 | configure models and credentials | [Providers](providers.md) | [Models](models.md) |
+| choose a model, scope the model cycle, or add my own model to `models.json` | [Models](models.md) | [Providers](providers.md) |
 | look up a command or path | [Commands](commands.md) | [Config](config.md) |
+| find a configuration directory, project directory, or context file | [Configuration](config.md) | [Settings](settings.md) |
 | run PiG in CI or a container | [Environment variables](environment-variables.md) | [Config](config.md) |
 | change a setting | [Settings](settings.md) | [Project trust](trust.md) |
+| decide whether to trust a project's Resources | [Project trust](trust.md) | [Security](security.md) |
 | resume, branch, or export work | [Sessions](sessions.md) | [Compaction](compaction.md) |
+| understand when PiG compacts a long session and tune it | [Compaction](compaction.md) | [Settings](settings.md) |
 | change or look up a key | [Keybindings](keybindings.md) | [Terminal setup](terminal-setup.md) |
+| fix keys or images that fail in my terminal | [Terminal setup](terminal-setup.md) | [Troubleshooting](troubleshooting.md) |
 | understand hooks/events | [Events](events.md) | [Extensions](extensions.md) |
 | write reusable prompts | [Prompt templates](prompt-templates.md) | [Skills](skills.md) |
+| write a skill | [Skills](skills.md) | [Packages](packages.md) |
 | connect an MCP server | [MCP servers](mcp.md) | [Codemode](codemode.md) |
 | run scripts that call tools | [Codemode](codemode.md) | [MCP servers](mcp.md) |
 | route requests to different models | [Virtual models](virtual-models.md) | [Extensions](extensions.md) |
@@ -41,10 +49,14 @@ Read the one row that matches the task, then follow only its direct links.
 | embed PiG in a program | [SDK](sdk.md) | [Extensions](extensions.md) |
 | add a provider or model endpoint | [Custom providers](custom-provider.md) | [Models](models.md) |
 | understand Stock Pig and explicit compositions | [Stock Pig and PiG Standard](built-in-extensions.md) | [Divergences](divergences.md) |
+| check whether PiG differs from upstream Pi before assuming a Pi behavior | [Divergences](divergences.md) | [Concepts](concepts.md) |
 | map entities, paths, and the command that inspects each | [Knowledge graph](knowledge-graph.md) | [Concepts](concepts.md) |
 | run PiG from a script or another program | [CLI integration](cli-integration.md) | [JSON mode](json.md) or [RPC](rpc.md) |
 | use JSON mode or RPC | [JSON mode](json.md), [RPC](rpc.md) | [RPC commands](rpc-commands.md), [RPC extension UI](rpc-extension-ui.md) |
+| send or look up an RPC command | [RPC commands](rpc-commands.md) | [RPC](rpc.md) |
+| answer extension UI requests from an RPC client | [RPC extension UI](rpc-extension-ui.md) | [RPC](rpc.md) |
 | read the file and message formats | [Session format](session-format.md) | [Message types](message-types.md) |
+| look up a message or content block shape | [Message types](message-types.md) | [Session format](session-format.md) |
 | run a local llama.cpp model | [llama.cpp](llama-cpp.md) | [Models](models.md) |
 | check what PiG can reach and run | [Security](security.md) | [Project trust](trust.md) |
 | see usage and cost | [Usage](usage.md) | [Settings](settings.md) |
