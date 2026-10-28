@@ -352,6 +352,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-5bf0d4a-2](#bf-5bf0d4a-2) | An append op whose text starts with the low half of a surrogate pair joins the high half that ends the string… | PiG's own defect | All platforms | Unreleased |
 | [BF-5c4167a](#bf-5c4167a) | fix(extension): hold the theme colors map the wire palette memo is keyed on | PiG's own defect | All platforms | Unreleased |
 | [BF-5c9d23f](#bf-5c9d23f) | A provider object's OAuth login receives Pi's login options, as `oauth.login(interaction, options)` does in Pi | PiG's own defect | All platforms | 0.5.0 |
+| [BF-5cc630e](#bf-5cc630e) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
 | [BF-5d36a58](#bf-5d36a58) | fix(agent): end the tool flow at custom user messages and hold system messages mid-flow | PiG's own defect | All platforms | Unreleased |
 | [BF-5d6bb25](#bf-5d6bb25) | The request-string walk that splices cached strings into a request body finds a cycle by the pointer, map or… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-5d8eda1](#bf-5d8eda1) | `pig auth check` and `pig auth print-api-key` no longer reject `--api-key` that another option takes as its… | PiG's own defect | All platforms | 0.5.0 |
@@ -378,6 +379,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-626dccc](#bf-626dccc) | OpenAI-compatible Chat Completions requests resolve `chat_template_args` (the `baseten` thinking format) and… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-62a1c87](#bf-62a1c87) | The `ExtensionSelector` and `ExtensionInput` oracles also run with the Kitty keyboard protocol active (CSI-u… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-62ae30d](#bf-62ae30d) | Durable: reading the history of a conversation whose parent conversation is not stored now fails with Pi's… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-62b009c](#bf-62b009c) | fix: relocate the transcript wire encoders' perf annotations; raise the headless default size ceilings for… | PiG's own defect | All platforms | Unreleased |
 | [BF-62c3691](#bf-62c3691) | `grep` with a large `context` no longer holds every context line in memory: its memory is bounded by the 50KB… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-6323c8e](#bf-6323c8e) | fix(ai): a Bedrock model outside the catalog is a bedrock-converse-stream model of amazon-bedrock, so its own… | PiG's own defect | All platforms | Unreleased |
 | [BF-633152d](#bf-633152d) | Starting a Go extension no longer fails with `hash <dir> after its build: open …/release/deps/rmeta…: no… | PiG's own defect | All platforms | Unreleased |
@@ -5864,6 +5866,19 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** `ai/oauth_credential_members_test.go::TestOAuthBuildersWriteCredentialMembersInPiOrder`, `ai/oauth_credential_members_test.go::TestRefreshFirstOAuthBuildersWriteCredentialMembersInPiOrder`, `coding/cli/strip_app_features_test.go::TestStripExportHTMLBuildOmitsExportPackage`, `coding/extension/host/subprocess/native_provider_login_test.go::TestNativeAuthInteractionAnswersTheLoginDialog`, `coding/extension/host/subprocess/native_provider_oauth_test.go::TestNativeProviderOAuthLoginCallbacks`, `coding/extension/host/subprocess/native_provider_oauth_test.go::TestNativeProviderOAuthLoginGetsTheDeviceID`, `test/extension-conformance/provider_object_test.go::TestNodeRemoteProviderObjectCarrier`, `test/extension-conformance/provider_object_test.go::TestProviderObjectsAcrossSDKs` and 1 more in docs/bug-ledger.json
 - **Release note:** A provider object's OAuth login receives Pi's login options, as `oauth.login(interaction, options)` does in Pi. `options.getDeviceId()` returns the app's device ID, and the app creates that ID only when a flow first calls it. `options.agentName` is passed when the app sets it. Before, a provider object's flow got no options, so a flow that needs the device ID could not get it.
 
+### BF-5cc630e
+
+**Fix in shipped code**
+
+- **Source:** PiG's own defect
+- **Symptom:** Fix in shipped code
+- **Root cause:** Mark the Bedrock fallback diagnostic's Date.now() and the node:sqlite RunCounted context with the Pi lines they port, make the changes() count conversion explicit, type the cutoff-ticks harness, and split the browser target out of LoginDialogComponent.ShowAuth so it returns nothing as Pi's showAuth does.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `5cc630eba0` (2026-10-27)
+- **Tests:** `tui/login_dialog_device_code_test.go::TestLoginURLsOpenOnlyHTTPSignInURLs`, `tui/login_dialog_device_code_test.go::TestLoginURLsReplaceControlCharactersInURLsThatAreNotWebURLs`
+
 ### BF-5d36a58
 
 **fix(agent): end the tool flow at custom user messages and hold system messages mid-flow**
@@ -6226,6 +6241,19 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `0ae4683246` (2026-10-08), `97e178f7f6` (2026-10-09), `1dcaef738b` (2026-10-10), `62ae30d413` (2026-10-10), `749840b14d` (2026-10-10), `752c93fb19` (2026-10-10), `f71185dc7a` (2026-10-10)
 - **Tests:** `ai/constrained_sampling_oracle_test.go::TestConstrainedSamplingMatchesPi`, `ai/streaming_json_oracle_test.go::TestStreamingJSONMatchesPiOnSeededInput`, `durable/storage/jsonl/recovery_rewrite_test.go::TestJsonlRecoveryIgnoresALeadingByteOrderMarkOnEachLine`, `durable/storage/jsonl/recovery_rewrite_test.go::TestJsonlRecoveryRewritesReclaimedSidecarRecordsCanonically`, `durable/storage/jsonl_pi_oracle_test.go::TestJsonlStorageMatchesPiOnSeededPrograms`, `durable/storage/jsonl_recovery_pi_oracle_test.go::TestJsonlRecoveryMatchesPiOnDamagedDirectories`, `durable/storage/memory_dangling_parent_test.go::TestMemoryStorageLineageThroughAMissingParentConversationFails`, `durable/storage/memory_pi_oracle_test.go::TestMemoryStorageMatchesPiOnSeededPrograms` and 2 more in docs/bug-ledger.json
 - **Release note:** Durable: reading the history of a conversation whose parent conversation is not stored now fails with Pi's error ("Cannot read properties of undefined (reading 'parent')") at the point where Pi's lineage walk reaches the missing record, instead of returning a truncated history. The SQLite storage reports the same failure with Pi's SQLite error ("Cannot read properties of undefined (reading 'id')") instead of "Fork parent conversation is missing".
+
+### BF-62b009c
+
+**fix: relocate the transcript wire encoders' perf annotations; raise the headless default size ceilings for…**
+
+- **Source:** PiG's own defect
+- **Symptom:** fix: relocate the transcript wire encoders' perf annotations; raise the headless default size ceilings for the Pi pin
+- **Root cause:** The transcript items' MarshalJSON encode one small wire object each (Pi's { kind, ... The headless default linux_amd64 and darwin_arm64 ceilings move to the measured size rounded up to 8 KiB, owner-approved 2026-10-27.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `62b009c7e6` (2026-10-27)
+- **Tests:** None recorded.
 
 ### BF-62c3691
 

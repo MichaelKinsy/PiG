@@ -10509,6 +10509,28 @@
       ]
     },
     {
+      "id": "BF-5cc630e",
+      "title": "Fix in shipped code",
+      "symptom": "Fix in shipped code",
+      "rootCause": "Mark the Bedrock fallback diagnostic's Date.now() and the node:sqlite RunCounted context with the Pi lines they port, make the changes() count conversion explicit, type the cutoff-ticks harness, and split the browser target out of LoginDialogComponent.ShowAuth so it returns nothing as Pi's showAuth does.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "5cc630eba0",
+          "date": "2026-10-27"
+        }
+      ],
+      "tests": [
+        "tui/login_dialog_device_code_test.go::TestLoginURLsOpenOnlyHTTPSignInURLs",
+        "tui/login_dialog_device_code_test.go::TestLoginURLsReplaceControlCharactersInURLsThatAreNotWebURLs"
+      ]
+    },
+    {
       "id": "BF-5d36a58",
       "title": "fix(agent): end the tool flow at custom user messages and hold system messages mid-flow",
       "symptom": "fix(agent): end the tool flow at custom user messages and hold system messages mid-flow",
@@ -11377,6 +11399,25 @@
         "durable/storage/memory_status_test.go::TestMemoryStorageRejectsAnUnknownTaskOrSubmissionStatus",
         "durable/storage/sqlite_pi_oracle_test.go::TestSqliteStorageMatchesPiOnSeededPrograms"
       ]
+    },
+    {
+      "id": "BF-62b009c",
+      "title": "fix: relocate the transcript wire encoders' perf annotations; raise the headless default size ceilings for…",
+      "symptom": "fix: relocate the transcript wire encoders' perf annotations; raise the headless default size ceilings for the Pi pin",
+      "rootCause": "The transcript items' MarshalJSON encode one small wire object each (Pi's { kind, ... The headless default linux_amd64 and darwin_arm64 ceilings move to the measured size rounded up to 8 KiB, owner-approved 2026-10-27.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "62b009c7e6",
+          "date": "2026-10-27"
+        }
+      ],
+      "tests": []
     },
     {
       "id": "BF-62c3691",

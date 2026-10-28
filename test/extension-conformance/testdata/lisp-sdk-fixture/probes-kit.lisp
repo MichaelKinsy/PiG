@@ -484,6 +484,12 @@ kit-widget-event=<type>:<value> (a change report is not one). It never closes it
                        (percent-width (pig:ctx-custom ctx (kp-width-probe-component)
                                                       :options (pig:obj "overlay" t "overlayOptions" (pig:obj "width" "50%")))))
                    (kp-notify ctx (format nil "overlay-width default=~A percent=~A" default-width percent-width)))))
+  (pig:command ext "blocked-custom-probe" "Open inline custom components with and without the blocked option"
+               (lambda (ctx args) (declare (ignore args))
+                 (pig:ctx-custom ctx (kp-width-probe-component)
+                                 :options (pig:obj "blocked" (pig:obj "kind" "permission" "message" "Approve?")))
+                 (pig:ctx-custom ctx (kp-width-probe-component))
+                 (kp-notify ctx "blocked-custom done")))
   (pig:command ext "overlay-handle-probe" "Exercise the overlay handle ui.custom hands to on_handle"
                (lambda (ctx args) (declare (ignore args))
                  (let ((failures '()))
