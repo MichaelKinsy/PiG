@@ -170737,6 +170737,17 @@
       "shapeHash": "sha256:19f02b8665baaeede17f726a388bd13cc7ca5db9f11a9c568b7996aaf6ac6b07"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/piglet#followsMCPServers",
+      "package": "github.com/MichaelKinsy/PiG/coding/piglet",
+      "name": "followsMCPServers",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(piglet *Piglet, tool ToolInfo) bool"
+      },
+      "shapeHash": "sha256:89c58367d4a5f5a0947ab269eb7d1a11cb9dffd0a4b617a0b0a9629aac64852b"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/piglet#formatActivePiglet",
       "package": "github.com/MichaelKinsy/PiG/coding/piglet",
       "name": "formatActivePiglet",
@@ -170834,6 +170845,17 @@
         "type": "func(nameOrPath string) bool"
       },
       "shapeHash": "sha256:3795e4051ae1653a8f787e8353d10494865ab18a303f7bb11962301b80a3b49d"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/piglet#isMCPTool",
+      "package": "github.com/MichaelKinsy/PiG/coding/piglet",
+      "name": "isMCPTool",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(tool ToolInfo) bool"
+      },
+      "shapeHash": "sha256:0ea1facaddb8197cf5eff2ee3a6b90b70f320d77d0fcfd392ac9b24418c79dd4"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/piglet#isWithin",
@@ -171065,6 +171087,28 @@
         "type": "untyped int"
       },
       "shapeHash": "sha256:e464e6de3ad35418f6e6dfe34abdf0de696ea4b2b49704e3c41e4184b74f805f"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/piglet#mcpAllowed",
+      "package": "github.com/MichaelKinsy/PiG/coding/piglet",
+      "name": "mcpAllowed",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(piglet *Piglet, extensionTools map[string]*[]string, name string) bool"
+      },
+      "shapeHash": "sha256:e8c6f617651c3ca9d4de5f8c66f3e1ef6864d2ce3ba6b85bb9b9d28a38bf3efa"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/piglet#mcpNamespacePrefix",
+      "package": "github.com/MichaelKinsy/PiG/coding/piglet",
+      "name": "mcpNamespacePrefix",
+      "kind": "variable",
+      "exported": false,
+      "shape": {
+        "type": "string"
+      },
+      "shapeHash": "sha256:00404e686415370f1711c4d7acfa2905444d3cf23cef2e10c47d445ebe690f96"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/piglet#mergeKeywords",
@@ -172385,6 +172429,17 @@
         "type": "func(ctx context.Context, commands runtimeCommands, requested string, imageReference string) (string, inspectedRuntimeImage, error)"
       },
       "shapeHash": "sha256:ca6025dc9ba08240c60a4530f9248e7a7ad037d25d054af39b0ed1d307def684"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/piglet#selectsOrigin",
+      "package": "github.com/MichaelKinsy/PiG/coding/piglet",
+      "name": "selectsOrigin",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(piglet *Piglet, origin string) bool"
+      },
+      "shapeHash": "sha256:0bc408cf2824391aa47c63b608d83e127e0081acd7157588e4fa625db2aa19c3"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/piglet#setMetadata",
