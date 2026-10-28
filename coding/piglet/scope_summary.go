@@ -78,9 +78,33 @@ func ToolScopeSummary(p *Piglet) string {
 	return strings.Join(parts, "; ")
 }
 
-// AgentToolScopeLine is the line the agent gets when a Piglet is active, so it knows what it can and cannot reach.
+// AgentToolScopeLine is the line the agent gets when a Piglet is active, so it knows what it can and cannot reach: the
+// Piglet (and the Piglet Binary it overlays), the most its tool scope lets it reach, what the strip lists removed, and
+// where to read the details. A Piglet Binary has no docs section, so this line is all its agent learns.
 func AgentToolScopeLine(p *Piglet) string {
-	return fmt.Sprintf("Active Piglet: %s. Tool scope, at most: %s.", p.Name, ToolScopeSummary(p))
+	var line strings.Builder
+	line.WriteString("Active Piglet: " + p.Name)
+	if len(p.lineage) > 0 {
+		if binary, ok := strings.CutPrefix(p.lineage[0].Source, "binary:"); ok {
+			line.WriteString(" (overlay " + p.SourcePath() + " on Piglet Binary " + binary + ")")
+		}
+	}
+	line.WriteString(". Tool scope, at most: " + ToolScopeSummary(p) + ".")
+	var stripped []string
+	for _, list := range pigstrip.Lists() {
+		if ids := pigstrip.IDs(list); len(ids) > 0 {
+			stripped = append(stripped, list+" "+strings.Join(ids, ", "))
+		}
+	}
+	if len(stripped) > 0 {
+		line.WriteString(" Stripped: " + strings.Join(stripped, "; ") + ".")
+	}
+	details := p.SourcePath()
+	if details == "" {
+		details = p.Name
+	}
+	line.WriteString(" Details: pig piglet show " + details + ".")
+	return line.String()
 }
 
 // ToolScopeNotice lists the tools the Piglet's scope removed from the registry, grouped by MCP server or owning

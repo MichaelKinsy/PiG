@@ -455,8 +455,9 @@ session runs.
 The stock system prompt points at this build's bundle so the agent can inspect
 the exact extension, Package, and Piglet contracts implemented by its binary.
 While a Piglet is active, its "When asked about" list adds one topic after Pi's last
-one, "Piglets and their tool scope (docs/piglets.md)" (owner-approved 2026-10-28; the
-`/piglet` strip ID removes it). Without a Piglet the section is Pi's text, byte for byte.
+one, "Piglets and their tool scope (docs/piglets.md)" (owner-approved 2026-10-28). The
+`docs` feature owns it, as it owns the whole section. Without a Piglet the section is
+Pi's text, byte for byte.
 The `codemode` description and the argument errors of its `models` globals name
 the bundle's `codemode.md` where Pi names `CODEMODE_DOCS_PATH` in its package.
 When the config root cannot be written and holds no bundle of the running
@@ -546,7 +547,10 @@ through `codemode` and `tool_search`). `followsMCPServers` (hiding `codemode` an
 that reach only what the registry keeps. The scope records the tools it removed;
 the piglet extension notifies the user once per change (server, tools and reason)
 and `pig piglet show` prints the MCP scope line, and the agent gets one
-line naming the active piglet and its tool scope (`AgentToolScopeLine`). The rule
+line naming the active piglet (and the Binary an overlay sits on), the most its tool
+scope lets it reach, what the strip lists removed and `pig piglet show <source>`
+(`AgentToolScopeLine`; a Piglet Binary has no docs section, so this line is all its
+agent learns). The rule
 table in `internal/pigdocs/content/piglets.md` and `mcp.md` is computed from the code
 (`coding/piglet/scope_table.go`) and a test keeps it equal.
 

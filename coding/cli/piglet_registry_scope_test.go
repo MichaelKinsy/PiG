@@ -327,3 +327,43 @@ func TestPigletToolScopeRulesInTheFirstRequest(t *testing.T) {
 		})
 	}
 }
+
+// The stock rows of the rule table, without a Piglet: a bare `--tools` list keeps MCP tools registered for codemode and
+// tool_search but does not offer them to the model, and an `mcp__` entry filters them.
+func TestStockToolsFlagRowsOfTheScopeTable(t *testing.T) {
+	if testing.Short() {
+		t.Skip("builds the pig binary and starts Node extensions")
+	}
+	t.Parallel()
+	t.Run("--tools read offers no MCP tool", func(t *testing.T) {
+		t.Parallel()
+		result := runPigWithMCP(t, mcpBinaryRun{mode: "rpc", prompt: "go", servers: []mcpBinaryServer{docsServer("direct")}, steps: []chatStep{chatText("done")}, args: []string{"--tools", "read", "-e", "builtin:mcp"}})
+		requests := result.chat.recorded()
+		if len(requests) == 0 {
+			t.Fatalf("no model request\n%s", result.output)
+		}
+		if tools := requests[0].Tools; slices.ContainsFunc(tools, func(name string) bool { return strings.HasPrefix(name, "mcp__docs__") }) || slices.Contains(tools, "codemode") {
+			t.Errorf("first request tools = %v, want no MCP tool and no codemode", tools)
+		}
+	})
+	t.Run("--tools with codemode keeps MCP tools reachable", func(t *testing.T) {
+		t.Parallel()
+		result := runPigWithMCP(t, mcpBinaryRun{mode: "rpc", prompt: "go", servers: []mcpBinaryServer{docsServer("codemode")},
+			steps: []chatStep{codemodeCall("mcp__docs__a"), codemodeCall("mcp__docs__b"), chatText("done")},
+			args:  []string{"--tools", "read,codemode", "-e", "builtin:mcp", "-e", "builtin:codemode"}})
+		requests := result.chat.recorded()
+		if len(requests) != 3 || !resultsMention(requests[1].Results, "q guide") || !resultsMention(requests[2].Results, "q guide") {
+			t.Fatalf("requests = %d, results = %v\n%s", len(requests), requests, result.output)
+		}
+	})
+	t.Run("--tools with an mcp__ entry filters MCP tools", func(t *testing.T) {
+		t.Parallel()
+		result := runPigWithMCP(t, mcpBinaryRun{mode: "rpc", prompt: "go", servers: []mcpBinaryServer{docsServer("codemode")},
+			steps: []chatStep{codemodeCall("mcp__docs__b"), chatText("done")},
+			args:  []string{"--tools", "read,codemode,mcp__docs__a", "-e", "builtin:mcp", "-e", "builtin:codemode"}})
+		requests := result.chat.recorded()
+		if len(requests) != 2 || !resultsMention(requests[1].Results, "mcp__docs__b does not exist") {
+			t.Fatalf("requests = %d\n%s", len(requests), result.output)
+		}
+	})
+}
