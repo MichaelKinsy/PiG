@@ -1,16 +1,41 @@
 package rssdk
 
 import (
+	"bytes"
+	"compress/gzip"
+	"io"
 	"io/fs"
+	"os"
 	"path/filepath"
 	"slices"
 	"strings"
 	"testing"
 )
 
+// embeddedName is the name the bundle embeds path under: path + ".gz" when a compressed copy of it sits beside it, which holds the same text, otherwise path.
+func embeddedName(path string) string {
+	if hasCompressedCopy(path) {
+		return path + ".gz"
+	}
+	return path
+}
+
+// embeddedText is the file the stager writes for an embedded name: the text of a .gz name's gzip, the bytes of any other.
+func embeddedText(name string) ([]byte, error) {
+	data, err := Source.ReadFile(name)
+	if err != nil || !strings.HasSuffix(name, ".gz") {
+		return data, err
+	}
+	reader, err := gzip.NewReader(bytes.NewReader(data))
+	if err != nil {
+		return nil, err
+	}
+	return io.ReadAll(reader)
+}
+
 func TestSourceReadable(t *testing.T) {
 	for _, name := range BundledFiles() {
-		data, err := Source.ReadFile(name)
+		data, err := embeddedText(name)
 		if err != nil {
 			t.Fatalf("embedded %s: %v", name, err)
 		}
@@ -19,16 +44,15 @@ func TestSourceReadable(t *testing.T) {
 		}
 	}
 	for _, required := range []string{"Cargo.toml", "src/lib.rs", "src/login.rs"} {
-		if !slices.Contains(BundledFiles(), required) {
+		if !slices.Contains(BundledFiles(), embeddedName(required)) {
 			t.Fatalf("BundledFiles must include %s so the staged crate builds", required)
 		}
 	}
-	data, err := Source.ReadFile("Cargo.toml")
+	data, err := embeddedText(embeddedName("Cargo.toml"))
 	if err != nil || !strings.Contains(string(data), "pig-sdk") {
 		t.Fatalf("embedded Cargo.toml is not the SDK crate: err=%v", err)
 	}
 }
-
 // The staged crate builds only if every module source is bundled: lib.rs
 // declares each src/*.rs file as a module.
 func TestBundledFilesIncludeEveryCrateSource(t *testing.T) {
