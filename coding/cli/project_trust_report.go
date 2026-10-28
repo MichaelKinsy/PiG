@@ -36,7 +36,7 @@ func reportProjectTrust(cwd, agentDir string) projectTrustReport {
 	globalSettings := codingagent.NewSettingsManagerWithOptions(cwd, agentDir, codingagent.SettingsManagerCreateOptions{ProjectTrusted: new(false)})
 	defaultTrust := string(globalSettings.GetDefaultProjectTrust())
 	store := codingagent.NewProjectTrustStore(agentDir)
-	trusted, err := resolveProjectTrusted(context.Background(), projectTrustResolutionOptions{
+	trusted, err := resolveProjectTrusted(context.Background(), projectTrustResolutionOptions{ //portlint:allow ctxbackground status and diagnose are one-shot CLI reports; the trust read has no caller context and no prompt
 		CWD: cwd, Store: store, Default: defaultTrust, UI: extension.NoopUIContext,
 	})
 	if err != nil {
