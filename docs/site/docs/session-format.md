@@ -2,7 +2,7 @@
 
 PiG stores each Session as JSON Lines. Line 1 is a Session header. Each later line is one entry in a tree.
 
-The format is the Session format of Pi 1.4.0 ([Pi's session file format](https://github.com/earendil-works/pi/blob/v1.2.0/packages/coding-agent/docs/session-format.md)). PiG keeps each entry's JSON as it was read, so unknown fields, unknown entry types and the member order survive when PiG loads and rewrites a Session file, as in Pi.
+The format is the Session format of Pi 1.4.0 ([Pi's session file format](https://github.com/earendil-works/pi/blob/main/packages/coding-agent/docs/session-format.md)). PiG keeps each entry's JSON as it was read, so unknown fields, unknown entry types and the member order survive when PiG loads and rewrites a Session file, as in Pi.
 
 ## File location
 
@@ -258,5 +258,5 @@ PiG implementation:
 
 Pi reference (1.2.0):
 
-- [Pi Session manager](https://github.com/earendil-works/pi/blob/v1.2.0/packages/coding-agent/src/core/session-manager.ts)
-- [Pi coding-agent messages](https://github.com/earendil-works/pi/blob/v1.2.0/packages/coding-agent/src/core/messages.ts)
+- [Pi Session manager](https://github.com/earendil-works/pi/blob/main/packages/coding-agent/src/core/session-manager.ts)
+- [Pi coding-agent messages](https://github.com/earendil-works/pi/blob/main/packages/coding-agent/src/core/messages.ts)

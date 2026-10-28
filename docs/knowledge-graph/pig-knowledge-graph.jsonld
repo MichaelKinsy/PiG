@@ -20,7 +20,7 @@
       "name": "PiG",
       "description": "The Go implementation; executable pig.",
       "pig:kind": "project",
-      "pig:where": ".upstream/pin pins Pi",
+      "pig:where": "the pig executable",
       "pig:inspect": "pig verify"
     },
     {
@@ -29,7 +29,7 @@
       "name": "Stock PiG",
       "description": "Product-neutral pig binary with no Piglet selected.",
       "pig:kind": "artifact",
-      "pig:where": "cmd/pig",
+      "pig:where": "the pig executable",
       "pig:inspect": "pig version"
     },
     {
@@ -47,7 +47,7 @@
       "name": "Model Runtime",
       "description": "Session-owned model lookup, auth, completion, and streaming used by every mode.",
       "pig:kind": "runtime",
-      "pig:where": "coding/",
+      "pig:where": "inside the pig executable",
       "pig:inspect": "/model, pig --list-models"
     },
     {
@@ -56,7 +56,7 @@
       "name": "Provider",
       "description": "Turns a Transcript into one Event Stream for one API.",
       "pig:kind": "runtime",
-      "pig:where": "ai/",
+      "pig:where": "inside the pig executable",
       "pig:inspect": "pig --list-models"
     },
     {
@@ -65,7 +65,7 @@
       "name": "Mode",
       "description": "Interactive TUI, print, JSON event stream, or RPC over stdin/stdout.",
       "pig:kind": "runtime",
-      "pig:where": "cmd/pig",
+      "pig:where": "pig flags: -p, --mode json, --mode rpc",
       "pig:inspect": "pig --mode rpc"
     },
     {
@@ -83,7 +83,7 @@
       "name": "Extension",
       "description": "Code Resource in Go, Rust, Python, or Node/TypeScript that registers tools, commands, events, and UI.",
       "pig:kind": "resource",
-      "pig:where": "extensions/sdk*, ~/.pig/agent/extensions",
+      "pig:where": "~/.pig/agent/extensions, .pig/ in a project",
       "pig:inspect": "pig install --validate-only <dir>"
     },
     {
@@ -92,7 +92,7 @@
       "name": "Extension SDK",
       "description": "One extension contract per language: Go, Rust, Python, TypeScript declarations.",
       "pig:kind": "library",
-      "pig:where": "extensions/sdk, sdk-rs, sdk-py, sdk-ts",
+      "pig:where": "scaffolded per language by pig extension init",
       "pig:inspect": "pig extension init"
     },
     {
@@ -101,7 +101,7 @@
       "name": "Extension realization",
       "description": "How an extension runs: isolated process, packed runtime cell, or fused into a Piglet Binary (Go only).",
       "pig:kind": "concept",
-      "pig:where": "coding/extension/host",
+      "pig:where": "inside the pig executable",
       "pig:inspect": "pig status --json"
     },
     {
@@ -110,7 +110,7 @@
       "name": "Extension Host",
       "description": "Loads, isolates, reloads, and shuts down extension realizations over one wire contract.",
       "pig:kind": "runtime",
-      "pig:where": "coding/extension/host/subprocess",
+      "pig:where": "inside the pig executable",
       "pig:inspect": "/reload"
     },
     {
@@ -137,8 +137,8 @@
       "name": "PiG Standard",
       "description": "The optional curated Piglet: login identity, PiG Runner, Angry Pigs.",
       "pig:kind": "composition",
-      "pig:where": "piglets/standard/pig-standard.yaml",
-      "pig:inspect": "pig piglet validate piglets/standard/pig-standard.yaml"
+      "pig:where": "an installed Piglet",
+      "pig:inspect": "pig piglet list"
     },
     {
       "@id": "pig:piglet_release",
@@ -153,7 +153,7 @@
       "@id": "pig:piglet_binary",
       "@type": "DefinedTerm",
       "name": "Piglet Binary",
-      "description": "Target-native pig executable for one Piglet release; verifies its closure at startup.",
+      "description": "Target-native pig executable for one Piglet release; verifies its closure at startup and compiles out the built-ins its strip lists name.",
       "pig:kind": "artifact",
       "pig:where": "pig piglet build --format binary",
       "pig:inspect": "pig verify"
@@ -164,17 +164,35 @@
       "name": "Builder",
       "description": "Produces Piglet Binaries: native (needs Go and PiG source) or container (needs Docker or Podman).",
       "pig:kind": "tool",
-      "pig:where": "coding/pigletbuild",
+      "pig:where": "pig piglet build",
       "pig:inspect": "pig setup"
     },
     {
-      "@id": "pig:porter",
+      "@id": "pig:slot",
       "@type": "DefinedTerm",
-      "name": "Pig Porter",
-      "description": "Parity workbench Piglet Resource; proposes ports, never accepts its own work.",
-      "pig:kind": "resource",
-      "pig:where": "piglets/porter",
-      "pig:inspect": "make porter-check (source checkout)"
+      "name": "Slot",
+      "description": "A part of PiG that a Piglet can change: keep PiG's own part, replace it with a fused member (today the frontend), or strip it.",
+      "pig:kind": "concept",
+      "pig:where": "slots: and strip: in the Piglet file",
+      "pig:inspect": "pig piglet show <name>"
+    },
+    {
+      "@id": "pig:strip",
+      "@type": "DefinedTerm",
+      "name": "Strip list",
+      "description": "Disables built-in tools, commands, extensions, APIs, or features by stable ID; tools: is a ceiling, strip removes.",
+      "pig:kind": "composition",
+      "pig:where": "strip: in the Piglet file",
+      "pig:inspect": "pig piglet schema, pig piglet show <name>"
+    },
+    {
+      "@id": "pig:overlay",
+      "@type": "DefinedTerm",
+      "name": "Overlay Piglet",
+      "description": "A Piglet chosen at launch on a Piglet Binary that sets build.allowOverlays; it can undo runtime strips but not compiled-out ones.",
+      "pig:kind": "composition",
+      "pig:where": "--piglet, PIG_PIGLET_PATH, PIG_PIGLET_NAME",
+      "pig:inspect": "/piglet"
     },
     {
       "@id": "pig:divergence",
@@ -182,7 +200,7 @@
       "name": "Divergence",
       "description": "A numbered, approved, user-visible difference from pinned Pi.",
       "pig:kind": "record",
-      "pig:where": "docs/parity/DIVERGENCES.md",
+      "pig:where": "divergences.md in this bundle",
       "pig:inspect": "pig docs show divergences"
     },
     {
@@ -292,10 +310,38 @@
     },
     {
       "@type": "pig:Relation",
-      "pig:from": "pig:porter",
+      "pig:from": "pig:piglet",
+      "pig:relation": "declares",
+      "pig:to": "pig:strip",
+      "description": "tools is a ceiling; strip removes built-ins"
+    },
+    {
+      "@type": "pig:Relation",
+      "pig:from": "pig:strip",
+      "pig:relation": "disables",
+      "pig:to": "pig:slot",
+      "description": "by stable ID, in runtime or binary"
+    },
+    {
+      "@type": "pig:Relation",
+      "pig:from": "pig:piglet",
+      "pig:relation": "replaces",
+      "pig:to": "pig:slot",
+      "description": "slots.frontend"
+    },
+    {
+      "@type": "pig:Relation",
+      "pig:from": "pig:overlay",
       "pig:relation": "is_a",
-      "pig:to": "pig:resource",
-      "description": "selected by the Porter Piglet"
+      "pig:to": "pig:piglet",
+      "description": "accepted only by a Binary with build.allowOverlays"
+    },
+    {
+      "@type": "pig:Relation",
+      "pig:from": "pig:overlay",
+      "pig:relation": "applies_to",
+      "pig:to": "pig:piglet_binary",
+      "description": "at launch"
     },
     {
       "@type": "pig:Relation",

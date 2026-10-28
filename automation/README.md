@@ -37,6 +37,8 @@ Run `make generate` from the repository root after changing exported Go API, CLI
 | `model-catalogs` | Text and image model catalogs |
 | `help-text` | `coding/cli/help_upstream.txt` |
 | `knowledge-graph` | Knowledge-graph pages, JSON-LD, Mermaid, and the troubleshooting docs mirror |
+| `additive-list` | The agent docs page `additive-features.md` |
+| `docs-bundle` | The shared pages of the agent docs bundle, `glossary.md` (site and bundle), and the customize chooser blocks |
 
 Review and commit the output. Never hand-edit generated files. `make generate` does not change reviewed mappings, dispositions, or evidence. A contract review failure still needs review; regeneration cannot accept a port. It ignores transient parity results for deterministic coverage. Use `make coverage RESULTS=<path>` separately to include a measured run.
 
@@ -120,6 +122,8 @@ The automation writes only where the environment allows. Set these when the defa
 | `generate-model-catalogs.sh` | Regenerates model catalogs from the pinned published Pi package. |
 | `gen-help.sh` | Renders Pi's own `--help` with PiG's identity. |
 | `gen-knowledge-graph.py` | Renders `docs/knowledge-graph/pig.graph.json` into its published forms. |
+| `gen-docs-bundle.py` | Copies the shared site pages into the agent docs bundle with bundle-local links, as `internal/pigdocs/bundle-manifest.json` directs. Renders `glossary.md` from `docs/project/CONTEXT.md` and the customize chooser from `docs/site/fragments/`. `--check` fails on a stale or unclassified page. |
+| `gen-additive-list.py` | Renders `docs/additive-features.md` into the agent docs page `additive-features.md`, filtered by each record's `Audience:` line. |
 | `vendor-pi-dist.sh`, `vendor-typebox.sh` | Vendor the pinned Pi release's pure modules, the third-party packages they import, and TypeBox for the Node extension runtime. |
 
 ## release

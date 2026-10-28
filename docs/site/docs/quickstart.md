@@ -1,6 +1,6 @@
 # Quickstart
 
-PiG is under active development. Install it on macOS or Linux with `curl -fsSL https://pi-in-go.dev/install.sh | sh`, on any supported platform with `npm install -g @pi-in-go/pig` or `go install github.com/MichaelKinsy/PiG/cmd/pig@latest`, or download an archive from [GitHub Releases](https://github.com/MichaelKinsy/PiG/releases). Windows support is a preview. To build from source instead, follow the steps below. Pi 1.4.0 documents its own install routes in [Pi's quickstart](https://github.com/earendil-works/pi/blob/v1.2.0/packages/coding-agent/docs/quickstart.md).
+PiG is under active development. Install it on macOS or Linux with `curl -fsSL https://pi-in-go.dev/install.sh | sh`, on any supported platform with `npm install -g @pi-in-go/pig` or `go install github.com/MichaelKinsy/PiG/cmd/pig@latest`, or download an archive from [GitHub Releases](https://github.com/MichaelKinsy/PiG/releases). Windows support is a preview. To build from source instead, follow the steps below. Pi 1.4.0 documents its own install routes in [Pi's quickstart](https://github.com/earendil-works/pi/blob/main/packages/coding-agent/docs/quickstart.md).
 
 If you have not used a terminal before, start with [Your first ten minutes](/docs/latest/first-run). It explains each step.
 
@@ -233,6 +233,24 @@ make check
 ```
 
 Use the toolchain versions declared by the repository. A green build does not replace parity review, vulnerability review, artifact inventory, or release authorization.
+
+## Choose how to customize PiG
+
+Start with the least powerful mechanism that meets your need. Move to the next rung only when the rung before it cannot do the task. The table shows where the files go and how to check each result.
+
+<!-- gen:begin customize-chooser -->
+| Rung | Pick it when | Where files go | Verify | If you know Pi |
+|---|---|---|---|---|
+| 1. [Context files](/docs/latest/configuration#context-files), [settings](/docs/latest/settings) and [keybindings](/docs/latest/keybindings) | You want standing instructions for a folder, or a built-in behavior needs a different value or key. | `AGENTS.md` in the folder or a parent, or `<agent-dir>/AGENTS.md` for every project. `~/.pig/agent/settings.json` and `~/.pig/agent/keybindings.json`. A project file `.pig/settings.json` loads only in a trusted project. | The `[Context]` line of the startup banner. `/settings` and `/hotkeys`. `pig status --json` and `pig diagnose` show the trust decision as a print run resolves it (`trust.state`, `ignored`). `pig status` has no `--approve`, so pass the same flag to the real run. | `~/.pi` and `.pi/` are never read (D2). |
+| 2. [Prompt templates](/docs/latest/prompt-templates), [skills](/docs/latest/skills) and [themes](/docs/latest/themes) | The task needs a saved prompt, task instructions with supporting files, or colors, and no code. | `~/.pig/agent/prompts/`; `~/.pig/agent/skills/<name>/SKILL.md` or `~/.agents/skills/<name>/SKILL.md`; `~/.pig/agent/themes/`. | `pig status --json`: the resource has `enabled: true`, no `ignored` and an empty `health`. Then `/reload`. | `~/.pig/skills/` is not scanned. |
+| 3. [Extensions](/docs/latest/extensions), [terminal UI](/docs/latest/tui) and [custom providers](/docs/latest/custom-provider) | The task needs a new tool, command, hook, terminal component, provider, or UI. | A project folder from `pig extension init <dir> --lang go\|python\|rust\|lisp`. Load it with `pig -e <dir>` or `pig install <dir>`. | `pig install <dir> --validate-only --json`, then `pig -e <dir>` and `/reload`. | Pi extensions are TypeScript files. Prefer Go, then Rust, then Python. |
+| 4. [Packages](/docs/latest/packages) | Other people or projects need the same Resources. | A folder with `package.json`; install with `pig install <source>`. | `pig list`, `pig package validate`. | A Package never activates a Piglet. |
+| 5. [Piglets](/docs/latest/piglets) | One named agent needs its own tools, skills, prompt, or built-in limits. | One YAML file anywhere; `pig piglet add <file>` registers it. | `pig piglet validate`, `pig piglet show`, `pig --piglet <file>`. | `tools:` is a ceiling, not a list to turn on ([strip built-ins](/docs/latest/piglets#strip-built-ins)). |
+| 6. [Piglet Binaries](/docs/latest/piglet-binaries) | Someone must run the agent as one executable. | `pig piglet build <name> --format binary --out <path>`. | `pig piglet verify`, then run the executable. | A Binary is not always self-contained: see its prerequisites. |
+| 7. PiG source | A generic host feature is missing and no lower rung can supply it. | The PiG source repository, under its own `AGENTS.md`. | The repository gates. | Do not fork PiG to register an extension. |
+<!-- gen:end customize-chooser -->
+
+[Applied use cases](/docs/latest/applied-use-cases) and [How PiG works](/docs/latest/how-pig-works) explain the pieces. [Concepts](/docs/latest/concepts) names the Resources a rung adds.
 
 ## Next steps
 

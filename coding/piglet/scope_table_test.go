@@ -8,11 +8,11 @@ import (
 )
 
 // The docs carry the tool scope rule table, which is computed from the code (scope_table.go). Run the test with
-// PIG_UPDATE_TOOL_SCOPE_DOCS=1 to rewrite the table in both files.
+// PIG_UPDATE_TOOL_SCOPE_DOCS=1 to rewrite the table in both files. The MCP page is generated from the site page, so the test edits the site page; run `make docs-bundle` afterwards.
 func TestToolScopeTableMatchesDocs(t *testing.T) {
 	want := ToolScopeTableMarkdown()
-	for _, name := range []string{"piglets.md", "mcp.md"} {
-		path := filepath.Join("..", "..", "internal", "pigdocs", "content", name)
+	for _, name := range []string{"internal/pigdocs/content/piglets.md", "docs/site/docs/mcp.md"} {
+		path := filepath.Join("..", "..", filepath.FromSlash(name))
 		data, err := os.ReadFile(path)
 		if err != nil {
 			t.Fatal(err)

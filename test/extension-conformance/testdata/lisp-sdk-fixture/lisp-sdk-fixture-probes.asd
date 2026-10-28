@@ -9,6 +9,9 @@
                ;; ==== lane H ====
                (:file "probes-tui")
                ;; ==== end lane H ====
+               ;; ==== lane TA ====
+               (:file "probes-tui-alt")
+               ;; ==== end lane TA ====
                ;; ==== lane C ====
                (:file "probes-coding")
                ;; ==== end lane C ====

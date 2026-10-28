@@ -178780,7 +178780,7 @@
       "evidence": [
         "test:internal/codingagent/trust_store_multi_oracle_test.go#TestProjectTrustStoreMultiEntryFilesMatchPi",
         "test:internal/codingagent/trust_store_oracle_test.go#TestProjectTrustStoreMatchesPi",
-        "test:coding/cli/configured_resources_test.go#TestResourceLoaderUpstreamPreTrustExtensions"
+        "test:coding/cli/config_command_test.go#TestProjectPackageDeltaDrivesStartupStatusAndResourceCollectors"
       ]
     },
     {
@@ -178802,7 +178802,7 @@
       "evidence": [
         "test:internal/codingagent/trust_store_multi_oracle_test.go#TestProjectTrustStoreMultiEntryFilesMatchPi",
         "test:internal/codingagent/trust_store_oracle_test.go#TestProjectTrustStoreMatchesPi",
-        "test:coding/cli/configured_resources_test.go#TestResourceLoaderUpstreamPreTrustExtensions"
+        "test:coding/cli/config_command_test.go#TestProjectPackageDeltaDrivesStartupStatusAndResourceCollectors"
       ]
     },
     {
@@ -178908,7 +178908,7 @@
       "evidence": [
         "test:internal/codingagent/trust_store_multi_oracle_test.go#TestProjectTrustStoreMultiEntryFilesMatchPi",
         "test:internal/codingagent/trust_store_oracle_test.go#TestProjectTrustStoreMatchesPi",
-        "test:coding/cli/package_npm_trust_test.go#TestPackageContextNpmCommandRespectsDeniedTrust"
+        "test:coding/cli/config_command_test.go#TestProjectPackageDeltaDrivesStartupStatusAndResourceCollectors"
       ]
     },
     {
@@ -178930,7 +178930,7 @@
       "evidence": [
         "test:internal/codingagent/trust_store_multi_oracle_test.go#TestProjectTrustStoreMultiEntryFilesMatchPi",
         "test:internal/codingagent/trust_store_oracle_test.go#TestProjectTrustStoreMatchesPi",
-        "test:coding/cli/package_npm_trust_test.go#TestPackageContextNpmCommandRespectsDeniedTrust"
+        "test:coding/cli/config_command_test.go#TestProjectPackageDeltaDrivesStartupStatusAndResourceCollectors"
       ]
     },
     {
@@ -281844,7 +281844,7 @@
       "evidence": [
         "test:internal/codingagent/interactive_teardown_test.go#TestOnSettingAppliedFullscreenCopyOnSelectAppliesLive",
         "test:tui/spacer_truncated_stack_test.go#TestAltScreenSetCopyOnSelectTogglesAutomaticCopy",
-        "test:tui/tui_alt_screen_new_test.go#TestNewTuiAltScreenDrawsOnItsTerminalAndTakesItsSize"
+        "test:tui/tui_alt_frame_test.go#TestAltScreenFrameMembersApplyAtOnce"
       ]
     },
     {
@@ -281866,7 +281866,7 @@
       "evidence": [
         "test:internal/codingagent/interactive_teardown_test.go#TestOnSettingAppliedFullscreenCopyOnSelectAppliesLive",
         "test:tui/spacer_truncated_stack_test.go#TestAltScreenSetCopyOnSelectTogglesAutomaticCopy",
-        "test:tui/tui_alt_screen_new_test.go#TestNewTuiAltScreenDrawsOnItsTerminalAndTakesItsSize"
+        "test:tui/tui_alt_frame_test.go#TestAltScreenFrameMembersApplyAtOnce"
       ]
     },
     {
@@ -281973,8 +281973,8 @@
       ],
       "evidence": [
         "test:coding/cli/config_theme_test.go#TestConfigSelectorUIAppliesTheCursorAndClearOnShrinkSettings",
-        "test:tui/tui_alt_screen_new_test.go#TestNewTuiAltScreenDrawsOnItsTerminalAndTakesItsSize",
-        "test:tui/tui_main_screen_new_test.go#TestNewTuiMainScreenDrawsOnItsTerminalAndTakesItsSize"
+        "test:tui/tui_alt_frame_test.go#TestAltScreenFrameMembersApplyAtOnce",
+        "test:tui/tui_alt_screen_new_test.go#TestNewTuiAltScreenDrawsOnItsTerminalAndTakesItsSize"
       ]
     },
     {
@@ -281995,8 +281995,8 @@
       ],
       "evidence": [
         "test:coding/cli/config_theme_test.go#TestConfigSelectorUIAppliesTheCursorAndClearOnShrinkSettings",
-        "test:tui/tui_alt_screen_new_test.go#TestNewTuiAltScreenDrawsOnItsTerminalAndTakesItsSize",
-        "test:tui/tui_main_screen_new_test.go#TestNewTuiMainScreenDrawsOnItsTerminalAndTakesItsSize"
+        "test:tui/tui_alt_frame_test.go#TestAltScreenFrameMembersApplyAtOnce",
+        "test:tui/tui_alt_screen_new_test.go#TestNewTuiAltScreenDrawsOnItsTerminalAndTakesItsSize"
       ]
     },
     {
@@ -283926,8 +283926,8 @@
       ],
       "evidence": [
         "test:coding/cli/config_theme_test.go#TestConfigSelectorUIAppliesTheCursorAndClearOnShrinkSettings",
-        "test:tui/tui_alt_screen_new_test.go#TestNewTuiAltScreenDrawsOnItsTerminalAndTakesItsSize",
-        "test:tui/tui_main_screen_new_test.go#TestNewTuiMainScreenDrawsOnItsTerminalAndTakesItsSize"
+        "test:tui/tui_alt_frame_test.go#TestAltScreenFrameMembersApplyAtOnce",
+        "test:tui/tui_alt_screen_new_test.go#TestNewTuiAltScreenDrawsOnItsTerminalAndTakesItsSize"
       ]
     },
     {
@@ -283948,8 +283948,8 @@
       ],
       "evidence": [
         "test:coding/cli/config_theme_test.go#TestConfigSelectorUIAppliesTheCursorAndClearOnShrinkSettings",
-        "test:tui/tui_alt_screen_new_test.go#TestNewTuiAltScreenDrawsOnItsTerminalAndTakesItsSize",
-        "test:tui/tui_main_screen_new_test.go#TestNewTuiMainScreenDrawsOnItsTerminalAndTakesItsSize"
+        "test:tui/tui_alt_frame_test.go#TestAltScreenFrameMembersApplyAtOnce",
+        "test:tui/tui_alt_screen_new_test.go#TestNewTuiAltScreenDrawsOnItsTerminalAndTakesItsSize"
       ]
     },
     {
