@@ -650,7 +650,7 @@ export default function (pi) {
       
     },
   });
-  // A component's render reads the screen, an overlay's visible callback decides its visibility, and invalidate reaches the overlays (Pi's own class here).
+  // A component's render reads the screen, an overlay's visible callback decides its visibility, invalidate reaches the overlays, and a render that changes the screen reads its own changes back: Pi runs each call at once (Pi's own class here).
   pi.registerCommand("tui-alt-frame-probe", {
     description: "Read a TuiAltScreen from a component's render and exercise overlay visibility",
     handler: async (_args, ctx) => {
@@ -672,9 +672,55 @@ export default function (pi) {
       const ov2=screen.showOverlay(ov,{width:8});
       docInv=0;ovInv=0;screen.invalidate();
       f.push(`invalidate=${docInv>0}/${ovInv>0}`);
+      ov2.hide();
+      const mutLog=[];let armed=false,mutInv=0;
+      const extra={render:()=>["EXTRA"],invalidate(){}},target={render:()=>["TARGET"],invalidate(){}},popup={render:()=>["POP"],invalidate(){}};
+      const mut={render(w){
+        if(!armed)return ["MUT"];
+        armed=false;
+        const flags=()=>`${screen.getShowHardwareCursor()}/${screen.getClearOnShrink()}/${screen.getCopyOnSelect()}`;
+        const r=[`flags=${flags()}`];
+        screen.setShowHardwareCursor(true);screen.setClearOnShrink(true);screen.setCopyOnSelect(false);r.push(`set=${flags()}`);
+        screen.addChild(extra);r.push(`add=${screen.children.length}`);screen.removeChild(extra);r.push(`remove=${screen.children.length}`);
+        screen.setFocus(target);r.push(`focus=${screen.getFocusedComponent()===target}`);
+        let first;const h=screen.showOverlay(popup,{width:8,visible:()=>{first??=String(screen.getShowHardwareCursor());return true}});
+        r.push(`overlay=${screen.hasOverlay()}/${screen.hasOverlayEntries}/${h.isFocused()}/${first}`);
+        h.hide();r.push(`hidden=${screen.hasOverlayEntries}`);
+        screen.scrollBy(-2);r.push(`scroll=${screen.viewportTop}/${screen.isFollowingOutput}`);
+        mutInv=0;screen.invalidate();r.push(`invalidate=${mutInv>0}`);
+        r.push(`lines=${screen.getScreenLines().length}`);
+        mutLog.push(r.join(","));
+        return ["MUT"];
+      },invalidate(){mutInv++}};
+      screen.addChild(mut);screen.renderNow();armed=true;screen.renderNow();
+      f.push(`mutate=${mutLog.join("|")}`,`after=${screen.getShowHardwareCursor()}/${screen.getClearOnShrink()}/${screen.getCopyOnSelect()}/${screen.children.length}`);
       screen.stop();
       ctx.ui.notify("tui-alt-frame: "+f.join("; "), "info");
       
+    },
+  });
+  // TuiAltScreen.children after addChild, removeChild and clear, with components of equal content (D207: the Go, Rust and Python SDKs return a copy of Pi's live array, so each read follows the call that changed the list).
+  pi.registerCommand("tui-alt-children-probe", {
+    description: "Read TuiAltScreen children after addChild, removeChild and clear, with components of equal content",
+    handler: async (_args, ctx) => {
+      const { TuiAltScreen } = piTui;
+      const term={columns:20,rows:6,kittyProtocolActive:false,start(){},stop(){},async drainInput(){},write(){},moveBy(){},hideCursor(){},showCursor(){},clearLine(){},clearFromCursor(){},clearScreen(){},setTitle(){},setProgress(){},setProgramStatus(){}};
+      const screen=new TuiAltScreen(term,false,undefined,{mouse:false});
+      const mk=()=>({render:()=>["same"],invalidate(){}});
+      const a=mk(),b=mk(),c=mk();
+      const name=k=>k===a?"a":k===b?"b":k===c?"c":"?";
+      const order=()=>screen.children.map(name).join("")||"-";
+      const f=[`empty=${order()}`];
+      screen.addChild(a);screen.addChild(b);screen.addChild(c);f.push(`added=${order()}`);
+      screen.removeChild(b);f.push(`removeB=${order()}`);
+      screen.removeChild(b);f.push(`removeAbsent=${order()}`);
+      screen.addChild(a);f.push(`duplicate=${order()}`);
+      screen.removeChild(a);f.push(`removeFirst=${order()}`);
+      screen.addChild(b);f.push(`readd=${order()}`);
+      f.push(`render=${screen.render(10).join("|")}`);
+      screen.setFocus(b);f.push(`focus=${name(screen.getFocusedComponent())}`);
+      screen.clear();f.push(`cleared=${order()}`);
+      ctx.ui.notify("tui-alt-children: "+f.join("; "), "info");
     },
   });
   // Pi hands a ui.custom factory its TUI: tui.showOverlay shows a raw panel whose handle works inside the factory (tui.ts:729-826).

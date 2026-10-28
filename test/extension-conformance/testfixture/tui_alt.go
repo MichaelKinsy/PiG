@@ -261,16 +261,260 @@ func tuiAltFrameProbe(ctx sdk.Context, _ string) error {
 	must(err)
 	f = append(f, fmt.Sprintf("visibleOff=%t/%t", val(screen.HasOverlay()), val(screen.HasOverlayEntries())))
 	must(hOff.Hide())
-	_, err = screen.ShowOverlay(ov, &sdk.TuiOverlayOptions{OverlayOptions: sdk.OverlayOptions{Width: sdk.OverlayCells(8)}})
+	ov2, err := screen.ShowOverlay(ov, &sdk.TuiOverlayOptions{OverlayOptions: sdk.OverlayOptions{Width: sdk.OverlayCells(8)}})
 	must(err)
 	docInv, ovInv = 0, 0
 	must(screen.Invalidate())
 	f = append(f, fmt.Sprintf("invalidate=%t/%t", docInv > 0, ovInv > 0))
+	must(ov2.Hide())
+	var mutLog []string
+	armed, mutInv := false, 0
+	extra := &tuiAltCounting{invalidated: new(int), render: func(int) []string { return []string{"EXTRA"} }}
+	target := &tuiAltCounting{invalidated: new(int), render: func(int) []string { return []string{"TARGET"} }}
+	popup := &tuiAltCounting{invalidated: new(int), render: func(int) []string { return []string{"POP"} }}
+	mut := &tuiAltCounting{invalidated: &mutInv}
+	mut.render = func(int) []string {
+		if !armed {
+			return []string{"MUT"}
+		}
+		armed = false
+		flags := func() string {
+			return fmt.Sprintf("%t/%t/%t", val(screen.GetShowHardwareCursor()), val(screen.GetClearOnShrink()), val(screen.GetCopyOnSelect()))
+		}
+		r := []string{"flags=" + flags()}
+		must(screen.SetShowHardwareCursor(true))
+		must(screen.SetClearOnShrink(true))
+		must(screen.SetCopyOnSelect(false))
+		r = append(r, "set="+flags())
+		must(screen.AddChild(extra))
+		r = append(r, fmt.Sprintf("add=%d", len(screen.Children())))
+		must(screen.RemoveChild(extra))
+		r = append(r, fmt.Sprintf("remove=%d", len(screen.Children())))
+		must(screen.SetFocus(target))
+		r = append(r, fmt.Sprintf("focus=%t", val(screen.GetFocusedComponent()) == sdk.Component(target)))
+		var first string
+		h, err := screen.ShowOverlay(popup, &sdk.TuiOverlayOptions{OverlayOptions: sdk.OverlayOptions{Width: sdk.OverlayCells(8)}, Visible: func(int, int) bool {
+			if first == "" {
+				first = fmt.Sprintf("%t", val(screen.GetShowHardwareCursor()))
+			}
+			return true
+		}})
+		must(err)
+		r = append(r, fmt.Sprintf("overlay=%t/%t/%t/%s", val(screen.HasOverlay()), val(screen.HasOverlayEntries()), val(h.IsFocused()), first))
+		must(h.Hide())
+		r = append(r, fmt.Sprintf("hidden=%t", val(screen.HasOverlayEntries())))
+		must(screen.ScrollBy(-2))
+		r = append(r, fmt.Sprintf("scroll=%d/%t", val(screen.ViewportTop()), val(screen.IsFollowingOutput())))
+		mutInv = 0
+		must(screen.Invalidate())
+		r = append(r, fmt.Sprintf("invalidate=%t", mutInv > 0))
+		r = append(r, fmt.Sprintf("lines=%d", len(val(screen.GetScreenLines()).([]string))))
+		mutLog = append(mutLog, strings.Join(r, ","))
+		return []string{"MUT"}
+	}
+	must(screen.AddChild(mut))
+	must(screen.RenderNow(false))
+	armed = true
+	must(screen.RenderNow(false))
+	f = append(f, "mutate="+strings.Join(mutLog, "|"),
+		fmt.Sprintf("after=%t/%t/%t/%d", val(screen.GetShowHardwareCursor()), val(screen.GetClearOnShrink()), val(screen.GetCopyOnSelect()), len(screen.Children())))
 	must(screen.Stop(false))
 	if failure != nil {
 		return failure
 	}
 	ctx.Notify("tui-alt-frame: "+strings.Join(f, "; "), "info")
+	return nil
+}
+
+// tuiAltChildrenProbe reads children after each change, with three distinct components of equal content.
+func tuiAltChildrenProbe(ctx sdk.Context, _ string) error {
+	var failure error
+	must := func(err error) {
+		if err != nil && failure == nil {
+			failure = err
+		}
+	}
+	term := &tuiAltTerminal{}
+	hardware, mouse := false, false
+	screen, err := sdk.NewTuiAltScreen(ctx, term, &hardware, "", sdk.TuiAltScreenOptions{Mouse: &mouse})
+	if err != nil {
+		return err
+	}
+	a, b, c := &tuiAltSame{}, &tuiAltSame{}, &tuiAltSame{}
+	name := func(k sdk.Component) string {
+		switch k {
+		case sdk.Component(a):
+			return "a"
+		case sdk.Component(b):
+			return "b"
+		case sdk.Component(c):
+			return "c"
+		}
+		return "?"
+	}
+	order := func() string {
+		var s string
+		for _, k := range screen.Children() {
+			s += name(k)
+		}
+		if s == "" {
+			return "-"
+		}
+		return s
+	}
+	f := []string{"empty=" + order()}
+	must(screen.AddChild(a))
+	must(screen.AddChild(b))
+	must(screen.AddChild(c))
+	f = append(f, "added="+order())
+	must(screen.RemoveChild(b))
+	f = append(f, "removeB="+order())
+	must(screen.RemoveChild(b))
+	f = append(f, "removeAbsent="+order())
+	must(screen.AddChild(a))
+	f = append(f, "duplicate="+order())
+	must(screen.RemoveChild(a))
+	f = append(f, "removeFirst="+order())
+	must(screen.AddChild(b))
+	f = append(f, "readd="+order())
+	lines, err := screen.Render(10)
+	must(err)
+	f = append(f, "render="+strings.Join(lines, "|"))
+	must(screen.SetFocus(b))
+	focused, err := screen.GetFocusedComponent()
+	must(err)
+	f = append(f, "focus="+name(focused))
+	must(screen.Clear())
+	f = append(f, "cleared="+order())
+	if failure != nil {
+		return failure
+	}
+	ctx.Notify("tui-alt-children: "+strings.Join(f, "; "), "info")
+	return nil
+}
+
+// tuiAltSame is a component whose every instance has equal content.
+type tuiAltSame struct{ _ byte }
+
+func (c *tuiAltSame) Render(int) []string { return []string{"same"} }
+func (c *tuiAltSame) Invalidate()         {}
+
+// tuiAltReentryProbe calls the frame's own members from a component's render and reports that they fail.
+func tuiAltReentryProbe(ctx sdk.Context, _ string) error {
+	var failure error
+	must := func(err error) {
+		if err != nil && failure == nil {
+			failure = err
+		}
+	}
+	term := &tuiAltTerminal{}
+	hardware, mouse := false, false
+	screen, err := sdk.NewTuiAltScreen(ctx, term, &hardware, "", sdk.TuiAltScreenOptions{Mouse: &mouse})
+	if err != nil {
+		return err
+	}
+	armed := false
+	var facts []string
+	fact := func(name string, err error) {
+		switch {
+		case err == nil:
+			facts = append(facts, name+"=ok")
+		case strings.Contains(err.Error(), "cannot run while a component renders"):
+			facts = append(facts, name+"=err")
+		default:
+			facts = append(facts, name+"=other")
+		}
+	}
+	doc := &tuiAltCounting{invalidated: new(int)}
+	doc.render = func(int) []string {
+		if armed {
+			armed = false
+			_, err := screen.Render(10)
+			fact("render", err)
+			fact("renderNow", screen.RenderNow(false))
+			fact("start", screen.Start())
+			fact("stop", screen.Stop(false))
+			_, err = screen.CopyActiveSelectionToClipboard()
+			fact("copy", err)
+			_, err = screen.QueryTerminalColors(20, nil)
+			fact("colors", err)
+			must(screen.SetShowHardwareCursor(true))
+			on, err := screen.GetShowHardwareCursor()
+			must(err)
+			facts = append(facts, fmt.Sprintf("after=%t", on))
+		}
+		return []string{"one", "two", "three"}
+	}
+	must(screen.AddChild(doc))
+	must(screen.Start())
+	must(screen.RenderNow(false))
+	armed = true
+	must(screen.RenderNow(false))
+	must(screen.Stop(false))
+	if failure != nil {
+		return failure
+	}
+	ctx.Notify("tui-alt-reentry: "+strings.Join(facts, "; "), "info")
+	return nil
+}
+
+// tuiAltValueLine has value receivers: the SDK must reject it.
+type tuiAltValueLine struct{ text string }
+
+func (c tuiAltValueLine) Render(int) []string { return []string{c.text} }
+func (c tuiAltValueLine) Invalidate()         {}
+
+// tuiAltPtrLine has pointer receivers.
+type tuiAltPtrLine struct{ text string }
+
+func (c *tuiAltPtrLine) Render(int) []string { return []string{c.text} }
+func (c *tuiAltPtrLine) Invalidate()         {}
+
+// tuiAltGoIdentityProbe passes component values and equal-content pointers to a TuiAltScreen.
+func tuiAltGoIdentityProbe(ctx sdk.Context, _ string) error {
+	var failure error
+	must := func(err error) {
+		if err != nil && failure == nil {
+			failure = err
+		}
+	}
+	term := &tuiAltTerminal{}
+	hardware, mouse := false, false
+	screen, err := sdk.NewTuiAltScreen(ctx, term, &hardware, "", sdk.TuiAltScreenOptions{Mouse: &mouse})
+	if err != nil {
+		return err
+	}
+	verdict := func(err error) string {
+		if err != nil && strings.Contains(err.Error(), "pointer") {
+			return "rejected"
+		}
+		return "accepted"
+	}
+	value := tuiAltValueLine{"same"}
+	f := []string{"add=" + verdict(screen.AddChild(value))}
+	f = append(f, "remove="+verdict(screen.RemoveChild(value)))
+	f = append(f, "focus="+verdict(screen.SetFocus(value)))
+	f = append(f, "root="+verdict(screen.SetLayoutRoot(value)))
+	_, err = screen.ShowOverlay(value, nil)
+	f = append(f, "overlay="+verdict(err))
+	handle, err := screen.ShowOverlay(&tuiAltPtrLine{"ov"}, nil)
+	must(err)
+	f = append(f, "unfocus="+verdict(handle.Unfocus(sdk.UnfocusOptions{Target: value})))
+	f = append(f, fmt.Sprintf("children=%d", len(screen.Children())))
+	a, b := &tuiAltPtrLine{"same"}, &tuiAltPtrLine{"same"}
+	must(screen.AddChild(a))
+	must(screen.AddChild(b))
+	must(screen.RemoveChild(b))
+	kids := screen.Children()
+	which := "?"
+	if len(kids) == 1 && kids[0] == sdk.Component(a) {
+		which = "a"
+	}
+	f = append(f, fmt.Sprintf("distinct=%s/%d", which, len(kids)))
+	if failure != nil {
+		return failure
+	}
+	ctx.Notify("tui-alt-go-identity: "+strings.Join(f, "; "), "info")
 	return nil
 }
 
