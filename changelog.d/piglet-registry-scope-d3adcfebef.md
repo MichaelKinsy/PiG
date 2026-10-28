@@ -4,7 +4,7 @@
 
 ### Added
 
-- When a Piglet hides tools, PiG tells you at the first prompt which MCP servers and extension tools it hid and why, `pig piglet show` prints why the Piglet hides MCP tools, and the agent gets one line that names the active Piglet and its tool scope. The Piglet documentation and the MCP documentation have a table of the tool scope rules that the code computes, and a test keeps the table equal to the code.
+- When a Piglet hides tools, PiG tells you at the first prompt which MCP servers and extension tools it hid and why, `pig piglet show` prints why the Piglet hides MCP tools and which built-in tools a run activates by default (the `tools` list limits tools and does not activate them), and the agent gets one line that names the active Piglet and its tool scope. The Piglet documentation and the MCP documentation have a table of the tool scope rules that the code computes, and a test keeps the table equal to the code.
 
 ### Changed
 

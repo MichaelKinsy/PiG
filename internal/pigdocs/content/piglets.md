@@ -83,7 +83,9 @@ Columns 2 and 3 are the tools in the registry, where `codemode` and `tool_search
 
 <!-- tool-scope-table:end -->
 
-If a Piglet hides MCP tools, `pig piglet show` prints a line that gives the reason. When the first prompt starts, PiG also tells you which servers and tools the Piglet hid, and why. The agent gets one short line with the name of the Piglet and the most that its tool scope lets it reach. The line leaves out the tools that the strip lists remove.
+If a Piglet hides MCP tools, `pig piglet show` prints a line that gives the reason. When the first prompt starts, PiG also tells you which servers and tools the Piglet hid, and why. The agent gets one short line with the name of the Piglet and the most that its tool scope lets it reach. The line leaves out the tools that the strip lists remove. If the project is not trusted, the line also says so.
+
+The root `tools` list limits the built-in tools. It does not activate them. A run activates only the default tools (`read`, `bash`, `edit`, `write`) that the list keeps. `pig piglet show` prints both: `Built-in tools` is the limit, and `Active by default` is what a run activates.
 
 ## Piglet schema
 

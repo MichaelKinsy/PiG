@@ -548,7 +548,7 @@ that reach only what the registry keeps. The scope records the tools it removed;
 the piglet extension notifies the user once per change (server, tools and reason)
 and `pig piglet show` prints the MCP scope line, and the agent gets one
 line naming the active piglet (and the Binary an overlay sits on), the most its tool
-scope lets it reach, what the strip lists removed and `pig piglet show <source>`
+scope lets it reach, what the strip lists removed, an untrusted project and `pig piglet show <source>`
 (`AgentToolScopeLine`; a Piglet Binary has no docs section, so this line is all its
 agent learns). The rule
 table in `internal/pigdocs/content/piglets.md` and `mcp.md` is computed from the code

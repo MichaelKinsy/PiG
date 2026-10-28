@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/MichaelKinsy/PiG/coding/extension"
+	"github.com/MichaelKinsy/PiG/internal/codingagent"
 	"github.com/MichaelKinsy/PiG/internal/pigstrip"
 )
 
@@ -78,10 +79,19 @@ func ToolScopeSummary(p *Piglet) string {
 	return strings.Join(parts, "; ")
 }
 
+// ActiveByDefaultTools are the built-in tools a run with this Piglet activates before settings and `--tools` change the
+// selection: Pi's default active tools that the root `tools` list keeps and the strip lists leave. The root `tools` list
+// limits what can be active; it does not activate a tool, so `tools: [read, grep]` activates only read.
+func ActiveByDefaultTools(p *Piglet) []string {
+	return slices.DeleteFunc(codingagent.DefaultToolNames(), func(name string) bool {
+		return p.BuiltinTools != nil && !slices.Contains(*p.BuiltinTools, name) || pigstrip.Has(pigstrip.ListTools, name)
+	})
+}
+
 // AgentToolScopeLine is the line the agent gets when a Piglet is active, so it knows what it can and cannot reach: the
 // Piglet (and the Piglet Binary it overlays), the most its tool scope lets it reach, what the strip lists removed, and
-// where to read the details. A Piglet Binary has no docs section, so this line is all its agent learns.
-func AgentToolScopeLine(p *Piglet) string {
+// the trust of the project when it is untrusted, and where to read the details. A Piglet Binary has no docs section, so this line is all its agent learns.
+func AgentToolScopeLine(p *Piglet, untrustedProject bool) string {
 	var line strings.Builder
 	line.WriteString("Active Piglet: " + p.Name)
 	if len(p.lineage) > 0 {
@@ -98,6 +108,9 @@ func AgentToolScopeLine(p *Piglet) string {
 	}
 	if len(stripped) > 0 {
 		line.WriteString(" Stripped: " + strings.Join(stripped, "; ") + ".")
+	}
+	if untrustedProject {
+		line.WriteString(" Trust: untrusted project (project resources not loaded).")
 	}
 	details := p.SourcePath()
 	if details == "" {
