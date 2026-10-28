@@ -14,9 +14,9 @@ import (
 	"slices"
 )
 
-// bundle_embed.go lists the crate's files without its unit-test modules (src/*tests.rs, each declared under #[cfg(test)], which cargo does not load in a build): go:embed cannot leave files out of a directory, so the list is generated. A file of 32 KiB or more is embedded as its gzip, <name>.gz, which go generate writes beside it and staging writes back under the name without .gz (coding/extension/pigsdk): the sources are most of the weight the bundle adds to every binary that stages it. The unicode property tables (src/tui/tables.rs) are the largest of them. TestBundledFilesMatchRustSourceTree fails when it and the source tree disagree.
+// bundle_embed.go lists the crate's files without its unit-test modules (src/*tests.rs, each declared under #[cfg(test)], which cargo does not load in a build): go:embed cannot leave files out of a directory, so the list is generated. Every source file is embedded as its gzip, <name>.gz, which go generate writes beside it and staging writes back under the name without .gz (coding/extension/pigsdk): the sources are most of the weight the bundle adds to every binary that stages it. The unicode property tables (src/tui/tables.rs) are the largest of them. TestBundledFilesMatchRustSourceTree fails when it and the source tree disagree.
 //
-//go:generate go run ../../automation/gen/embed-bundle.go -pkg rssdk -out bundle_embed.go -gzip-over 32768 -skip tests.rs -skip bundle.go -skip bundle_embed.go -walk src LICENSE Cargo.toml Cargo.lock
+//go:generate go run ../../automation/gen/embed-bundle.go -pkg rssdk -out bundle_embed.go -gzip-over 1 -skip tests.rs -skip bundle.go -skip bundle_embed.go -walk src LICENSE Cargo.toml Cargo.lock
 
 // BundledFiles lists the embedded files, relative to the crate root, in a stable
 // order. Paths use forward slashes; a stager recreates subdirectories. A name

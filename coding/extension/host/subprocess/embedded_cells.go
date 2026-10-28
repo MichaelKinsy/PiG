@@ -175,37 +175,14 @@ func (h *Host) stageEmbeddedCell(ctx context.Context, cell EmbeddedCell) ([]stag
 			return nil, nil, err
 		}
 		return staged, registered, nil
-	case string(CellStrategyPackedRust):
-		exts := make([]runtimecell.RustExtension, len(cell.Extensions))
+	case string(CellStrategyPackedRust), string(CellStrategyPackedPython), string(CellStrategyPackedLisp):
+		// The start path of these languages reads the name of each member alone, as every runner image is a Go-shaped packed cell to the host.
+		exts := make([]runtimecell.GoExtension, len(cell.Extensions))
 		for i, e := range cell.Extensions {
-			exts[i] = runtimecell.RustExtension{Name: e.Name, Hash: e.Hash}
+			exts[i] = runtimecell.GoExtension{Name: e.Name}
 		}
-		packed := &runtimecell.RustPackedCell{Key: cell.Key, Hash: "embedded:" + filepath.Base(cell.BinaryPath), CacheDir: filepath.Dir(cell.BinaryPath), BinaryPath: cell.BinaryPath, Cached: true, Extensions: exts}
-		staged, registered, err := h.startRustPackedCell(ctx, packed)
-		if err != nil {
-			h.rollbackEmbeddedAcceptError(staged, err)
-			return nil, nil, err
-		}
-		return staged, registered, nil
-	case string(CellStrategyPackedPython):
-		exts := make([]runtimecell.PythonExtension, len(cell.Extensions))
-		for i, e := range cell.Extensions {
-			exts[i] = runtimecell.PythonExtension{Name: e.Name, Hash: e.Hash}
-		}
-		packed := &runtimecell.PythonPackedCell{Key: cell.Key, Hash: "embedded:" + filepath.Base(cell.BinaryPath), CacheDir: filepath.Dir(cell.BinaryPath), BinaryPath: cell.BinaryPath, Cached: true, Extensions: exts}
-		staged, registered, err := h.startPythonPackedCell(ctx, packed)
-		if err != nil {
-			h.rollbackEmbeddedAcceptError(staged, err)
-			return nil, nil, err
-		}
-		return staged, registered, nil
-	case string(CellStrategyPackedLisp):
-		exts := make([]runtimecell.LispExtension, len(cell.Extensions))
-		for i, e := range cell.Extensions {
-			exts[i] = runtimecell.LispExtension{Name: e.Name, Hash: e.Hash}
-		}
-		packed := &runtimecell.LispPackedCell{Key: cell.Key, Hash: "embedded:" + filepath.Base(cell.BinaryPath), CacheDir: filepath.Dir(cell.BinaryPath), BinaryPath: cell.BinaryPath, Cached: true, Extensions: exts}
-		staged, registered, err := h.startLispPackedCell(ctx, packed)
+		packed := &runtimecell.GoPackedCell{Key: cell.Key, Hash: "embedded:" + filepath.Base(cell.BinaryPath), CacheDir: filepath.Dir(cell.BinaryPath), BinaryPath: cell.BinaryPath, Cached: true, Extensions: exts}
+		staged, registered, err := h.startGoPackedCell(ctx, packed)
 		if err != nil {
 			h.rollbackEmbeddedAcceptError(staged, err)
 			return nil, nil, err
