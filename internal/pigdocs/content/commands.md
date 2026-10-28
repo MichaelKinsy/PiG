@@ -51,7 +51,7 @@ Product distributions may contribute additional top-level or nested command path
 | `pig package list [--json]` | Inspect configured Package state without starting runtimes. |
 | `pig package validate <dir> [--json]` | Validate ordinary Package source and Resource membership without installing. |
 | `pig package publish [<dir>] --to npm [--yes] [--tag <dist-tag>] [--access public\|restricted] [--otp <code>]` | Optional sugar over `npm publish` for a Package: validate it, check the catalog fields and that `name@version` is free, show npm's dry run, and publish only with `--yes`. PiG never handles an npm token. |
-| `pig status [--json]` | Side-effect-free Package/Resource/Piglet health and canonical path overview; invalid state exits non-zero. |
+| `pig status [--json]` | Side-effect-free Package/Resource/Piglet health and canonical path overview; invalid state exits non-zero. It shows the project trust decision, marks resources that a run ignores (`ignored: untrusted` or `ignored: piglet-discovery`), and gives a skill or theme that the loader rejects a `health` text. |
 | `pig login --list [--json]` | List generic built-in and contributed authentication targets without reading credentials. |
 | `pig piglet list\|show\|validate\|schema\|add\|pull\|update\|publish\|remove\|prune\|build\|keygen\|verify\|tree\|lineage\|trust` | Current Piglet source, signed release distribution, inspection, build, and Binary-signing surface (D18). Owned verbs use full words. |
 | `pig piglet prune [--keep <n>] [--max-size <size>] [--dry-run]` | Remove old built Piglet Binaries, keeping the newest `n` of each Piglet and target (default 2). Pulled installs always remain. |

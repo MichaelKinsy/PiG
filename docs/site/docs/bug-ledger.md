@@ -208,6 +208,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-369b1e1](#bf-369b1e1) | `grep` with `context` no longer loads each matched file into memory | PiG's own defect | All platforms | 0.5.0 |
 | [BF-36e192b](#bf-36e192b) | fix(lint): port Kitty chunking in UTF-16 units; clear the codemode, terminal image and exit-restore lint hits | PiG's own defect | All platforms | Unreleased |
 | [BF-36e82ad](#bf-36e82ad) | fix(durable): a non-finite number is a strict JSON error whichever JSON package a value's own encoder used | PiG's own defect | All platforms | Unreleased |
+| [BF-36fe3a6](#bf-36fe3a6) | `pig install <path> --validate-only` called a `.mjs` file, or a directory with only `index.mjs`, a valid… | PiG's own defect | All platforms | Unreleased |
 | [BF-37c6048](#bf-37c6048) | fix(tui): a streamed Markdown never resumes past a paragraph clipped before a LaTeX start | PiG's own defect | All platforms | Unreleased |
 | [BF-37d2daa](#bf-37d2daa) | An extension's `ctx.model` and model lists keep a model's `cost.tiers` when the model's record has it as an… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-3804a5a](#bf-3804a5a) | The pi-messages and classifier (System One, decisions) requests are sent to the URL as written and a URL with… | PiG's own defect | All platforms | 0.5.0 |
@@ -603,6 +604,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-7b92429](#bf-7b92429) | `find` and `grep` trim like JavaScript: `FindTool` trimmed each fd output line with `strings.TrimSpace` where… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-7ba3211](#bf-7ba3211) | A resumed session no longer holds its whole file in memory | PiG's own defect | macOS | 0.5.0 |
 | [BF-7bcd404](#bf-7bcd404) | fix(durable): state the lifetime of the goroutine that publishes an adopted commit | PiG's own defect | All platforms | Unreleased |
+| [BF-7bf1cbb](#bf-7bf1cbb) | `pig status` now gives a skill without a `description` the health `not loaded: description is required`, and… | PiG's own defect | All platforms | Unreleased |
 | [BF-7c59949](#bf-7c59949) | fix(codingagent): session selector keeps Pi's out-of-range selected index | PiG's own defect | All platforms | Unreleased |
 | [BF-7cca5ee](#bf-7cca5ee) | A Node extension can default-import TypeBox (`import Type from "typebox"`, and likewise `typebox/value`… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-7d0621f](#bf-7d0621f) | fix(extension): keep Pi's three-parameter EmitBeforeAgentStart (prompt, images, options); a custom run's… | PiG's own defect | All platforms | Unreleased |
@@ -940,6 +942,9 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-bd3e8ab-2](#bf-bd3e8ab-2) | On arm64 and other CPUs with a fused multiply-add, the cache-warming expected savings (shown by `/session`… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-bdb7ad8](#bf-bdb7ad8) | A single server-sent-event line larger than 32 MiB (for example a base64 image chunk) no longer fails the… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-be6803c](#bf-be6803c) | The /tree "Summarize branch?" selector and "Custom summarization instructions" editor, the /import… | PiG's own defect | All platforms | 0.5.2 |
+| [BF-bede0f0](#bf-bede0f0) | `pig status` no longer lists the resources of an untrusted project as enabled | PiG's own defect | All platforms | Unreleased |
+| [BF-bede0f0-2](#bf-bede0f0-2) | `pig diagnose` no longer reports the `defaultModel` of an untrusted project, which the session does not use | PiG's own defect | All platforms | Unreleased |
+| [BF-bede0f0-3](#bf-bede0f0-3) | `pig status` run from the agent's shell no longer lists ambient extensions and skills that the active… | PiG's own defect | All platforms | Unreleased |
 | [BF-beeb36a](#bf-beeb36a) | Running with no home directory now fails the way Pi's package manager does, instead of reading the project's… | PiG's own defect | All platforms | Unreleased |
 | [BF-bf45320](#bf-bf45320) | Go embedding hosts can bind extension appends through `coding.Session.AppendExtensionEntry`, retaining… | PiG's own defect | All platforms | Unreleased |
 | [BF-bf73e77](#bf-bf73e77) | fix(durable/core): join split surrogates through jv.AppendConcat, not byte slices | PiG's own defect | All platforms | Unreleased |
@@ -3898,6 +3903,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `36e82ade57` (2026-10-24)
 - **Tests:** None recorded.
+
+### BF-36fe3a6
+
+**`pig install <path> --validate-only` called a `.mjs` file, or a directory with only `index.mjs`, a valid…**
+
+- **Source:** PiG's own defect
+- **Symptom:** `pig install <path> --validate-only` called a `.mjs` file, or a directory with only `index.mjs`, a valid extension without saying that auto-discovery ignores it.
+- **Root cause:** A top-level .mjs file or a directory with only index.mjs validated as a valid extension, and auto-discovery of an extensions directory ignores both, as Pi's does (.ts and .js only). The report keeps valid: true, because -e and a settings path load the source, and now adds autoDiscovered and a warning that names the rule.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `36fe3a67b3` (2026-10-28)
+- **Tests:** `coding/cli/config_command_test.go::TestProjectPackageDeltaDrivesStartupStatusAndResourceCollectors`, `coding/cli/introspection_truth_test.go::TestInstallValidateOnlyReportsWhatDiscoveryWouldLoad`, `coding/cli/introspection_truth_test.go::TestNotAutoDiscoveredWarningFollowsPiDiscovery`
+- **Release note:** `pig install <path> --validate-only` called a `.mjs` file, or a directory with only `index.mjs`, a valid extension without saying that auto-discovery ignores it. Pi discovers only `.ts` and `.js` files in an extensions directory. The report stays valid, because `-e` and a settings path load the source, and now says what discovery does.
 
 ### BF-37c6048
 
@@ -9365,6 +9384,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `7bcd404f4b` (2026-10-26)
 - **Tests:** None recorded.
 
+### BF-7bf1cbb
+
+**`pig status` now gives a skill without a `description` the health `not loaded: description is required`, and…**
+
+- **Source:** PiG's own defect
+- **Symptom:** `pig status` now gives a skill without a `description` the health `not loaded: description is required`, and a theme with an unknown color role or another schema error an `invalid:` health, with a warning for each.
+- **Root cause:** Pi leaves out a skill with no description and rejects a theme with an unknown color role, with a warning. Status listed both as enabled with empty health. Status now runs the loader on each enabled skill and theme and reports the verdict as health and a warning. An open Piglet Binary applies its Piglet's discovery; a Binary other than the running pig is named, not guessed.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `7bf1cbb246` (2026-10-28)
+- **Tests:** `coding/cli/introspection_truth_test.go::TestStatusNamesAPigletBinaryItCannotApply`
+- **Release note:** `pig status` now gives a skill without a `description` the health `not loaded: description is required`, and a theme with an unknown color role or another schema error an `invalid:` health, with a warning for each. Pi leaves out the skill and rejects the theme; status listed both as enabled with no health problem.
+
 ### BF-7c59949
 
 **fix(codingagent): session selector keeps Pi's out-of-range selected index**
@@ -14063,6 +14096,48 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `be6803c903` (2026-10-20)
 - **Tests:** `internal/codingagent/owner_dialog_stack_test.go::TestBugReportPromptsStayOutsideTheDialogStackAndReportNoStatus`, `internal/codingagent/owner_dialog_stack_test.go::TestExtensionDialogOpenedDuringATreeSummaryPromptTakesTheKeys`, `internal/codingagent/owner_dialog_stack_test.go::TestMissingCwdConfirmationStacksWithAnOpenExtensionDialog`, `internal/codingagent/owner_dialog_stack_test.go::TestSessionReplacementDismissesAnOpenTreeSummaryPrompt`, `internal/codingagent/owner_dialog_stack_test.go::TestStackedPromptsReportTheirBlockedStatus`
 - **Release note:** The /tree "Summarize branch?" selector and "Custom summarization instructions" editor, the /import confirmation and the missing-session-cwd confirmation of /resume and /import are dialogs on the same stack as an extension's, as in Pi. A dialog an extension opens while one of them is shown takes the keys, closing the prompt shows the earlier dialog again instead of hiding it, each reports its blocked status to the terminal, and a session replacement or `/reload` removes the prompt with the other dialogs. `/bug` keeps its own prompts outside the stack and no longer reports a blocked status for its description editor, as in Pi (Pi 38847563, bug-report.ts).
+
+### BF-bede0f0
+
+**`pig status` no longer lists the resources of an untrusted project as enabled**
+
+- **Source:** PiG's own defect
+- **Symptom:** `pig status` no longer lists the resources of an untrusted project as enabled.
+- **Root cause:** pig status listed an untrusted project's resources as enabled and ignored the active Piglet's discovery; pig diagnose reported an untrusted project's defaultModel and printed a provider-qualified defaultModel as provider/provider/id. A skill without a description and a theme with an unknown color role showed no health.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `bede0f0edf` (2026-10-28)
+- **Tests:** `coding/cli/introspection_truth_test.go::TestDefaultModelResolutionDoesNotSplitAProviderPrefix`, `coding/cli/introspection_truth_test.go::TestDiagnoseDefaultModelWithoutProviderIsIgnoredLikePi`, `coding/cli/introspection_truth_test.go::TestDiagnoseIgnoresUntrustedProjectDefaultModel`, `coding/cli/introspection_truth_test.go::TestDiagnoseNamesTheActivePiglet`, `coding/cli/introspection_truth_test.go::TestDiagnoseQualifiedDefaultModelFallsBackAsPiDoes`, `coding/cli/introspection_truth_test.go::TestDiagnoseReportsTrustedProjectDefaultModelAndItsFile`, `coding/cli/introspection_truth_test.go::TestExportActivePigletSourceReachesToolProcesses`, `coding/cli/introspection_truth_test.go::TestReportProjectTrustNamesTheDeciding` and 10 more in docs/bug-ledger.json
+- **Release note:** `pig status` no longer lists the resources of an untrusted project as enabled. It resolves project trust as a print run does (saved decision, then `defaultProjectTrust`, else untrusted), shows the decision, and marks each project extension, skill, prompt and theme `ignored: untrusted` and not enabled. The settings and Packages of an untrusted project no longer count.
+
+### BF-bede0f0-2
+
+**`pig diagnose` no longer reports the `defaultModel` of an untrusted project, which the session does not use**
+
+- **Source:** PiG's own defect
+- **Symptom:** `pig diagnose` no longer reports the `defaultModel` of an untrusted project, which the session does not use.
+- **Root cause:** pig status listed an untrusted project's resources as enabled and ignored the active Piglet's discovery; pig diagnose reported an untrusted project's defaultModel and printed a provider-qualified defaultModel as provider/provider/id. A skill without a description and a theme with an unknown color role showed no health.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `bede0f0edf` (2026-10-28)
+- **Tests:** `coding/cli/introspection_truth_test.go::TestDefaultModelResolutionDoesNotSplitAProviderPrefix`, `coding/cli/introspection_truth_test.go::TestDiagnoseDefaultModelWithoutProviderIsIgnoredLikePi`, `coding/cli/introspection_truth_test.go::TestDiagnoseIgnoresUntrustedProjectDefaultModel`, `coding/cli/introspection_truth_test.go::TestDiagnoseNamesTheActivePiglet`, `coding/cli/introspection_truth_test.go::TestDiagnoseQualifiedDefaultModelFallsBackAsPiDoes`, `coding/cli/introspection_truth_test.go::TestDiagnoseReportsTrustedProjectDefaultModelAndItsFile`, `coding/cli/introspection_truth_test.go::TestExportActivePigletSourceReachesToolProcesses`, `coding/cli/introspection_truth_test.go::TestReportProjectTrustNamesTheDeciding` and 10 more in docs/bug-ledger.json
+- **Release note:** `pig diagnose` no longer reports the `defaultModel` of an untrusted project, which the session does not use. It reports the effective default model and the settings file of each part. A provider-qualified `defaultModel` such as `"bench/bench-2"` was printed as `bench/bench/bench-2`. Pi reads `defaultModel` as a model id and does not split it, so startup falls back to the first available model, as before; diagnose now says so and names the fix.
+
+### BF-bede0f0-3
+
+**`pig status` run from the agent's shell no longer lists ambient extensions and skills that the active…**
+
+- **Source:** PiG's own defect
+- **Symptom:** `pig status` run from the agent's shell no longer lists ambient extensions and skills that the active Piglet's `discovery` excludes.
+- **Root cause:** pig status listed an untrusted project's resources as enabled and ignored the active Piglet's discovery; pig diagnose reported an untrusted project's defaultModel and printed a provider-qualified defaultModel as provider/provider/id. A skill without a description and a theme with an unknown color role showed no health.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `bede0f0edf` (2026-10-28)
+- **Tests:** `coding/cli/introspection_truth_test.go::TestDefaultModelResolutionDoesNotSplitAProviderPrefix`, `coding/cli/introspection_truth_test.go::TestDiagnoseDefaultModelWithoutProviderIsIgnoredLikePi`, `coding/cli/introspection_truth_test.go::TestDiagnoseIgnoresUntrustedProjectDefaultModel`, `coding/cli/introspection_truth_test.go::TestDiagnoseNamesTheActivePiglet`, `coding/cli/introspection_truth_test.go::TestDiagnoseQualifiedDefaultModelFallsBackAsPiDoes`, `coding/cli/introspection_truth_test.go::TestDiagnoseReportsTrustedProjectDefaultModelAndItsFile`, `coding/cli/introspection_truth_test.go::TestExportActivePigletSourceReachesToolProcesses`, `coding/cli/introspection_truth_test.go::TestReportProjectTrustNamesTheDeciding` and 10 more in docs/bug-ledger.json
+- **Release note:** `pig status` run from the agent's shell no longer lists ambient extensions and skills that the active Piglet's `discovery` excludes. Such resources show `ignored: piglet-discovery`.
 
 ### BF-beeb36a
 
