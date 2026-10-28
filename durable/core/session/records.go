@@ -79,6 +79,21 @@ func obj(kv ...any) *jv.Object {
 // spread returns a shallow copy of o, as {...o} does.
 func spread(o *jv.Object) *jv.Object { return o.Shallow() }
 
+// shared returns *last when v is the same value as it, member order included, and else v, which becomes *last: the tasks a commit
+// creates mostly start from one checkpoint and the tasks that end together carry one outcome, and a record never changes a nested
+// value in place, so they may share it (a 20,000-task graph would hold twenty thousand of each).
+func shared(last **jv.Object, v any) any {
+	o, ok := v.(*jv.Object)
+	if !ok {
+		return v
+	}
+	if *last != nil && jv.SameOrdered(*last, o) {
+		return *last
+	}
+	*last = o
+	return o
+}
+
 // with returns {...o, k: v}: an existing key keeps its position.
 func with(o *jv.Object, kv ...any) *jv.Object {
 	c := o.Shallow()

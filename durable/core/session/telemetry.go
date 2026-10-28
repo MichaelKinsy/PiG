@@ -47,15 +47,17 @@ type PhaseInfo struct {
 // the tasks the phase creates inherit as their trace. The invocation runs its phase as the call returns.
 func (p *PhaseInfo) Started(span uint32, carrier any) {
 	inv := p.inv
-	inv.span, inv.carrier = span, carrier
+	inv.span = span
+	tel := inv.telemetry()
+	tel.carrier = carrier
 	inv.signal.Span = span
 	p.inv = nil
-	start := inv.start
-	inv.start = nil
+	start := tel.start
+	tel.start = nil
 	if start == nil {
 		// An abort handler: the span was asked for before it ran.
-		a := inv.abort
-		inv.abort = abortRun{}
+		a := tel.abort
+		tel.abort = abortRun{}
 		inv.s.abortHandler(a.r, a.rt, a.current, a.after)
 		return
 	}
@@ -103,14 +105,14 @@ type Telemetry interface {
 func (s *Scheduler) startPhase(inv *invocation) {
 	task := inv.record
 	cp := getObj(getObj(task, "state"), "checkpoint")
-	info := &inv.info
+	info := &inv.telemetry().info
 	*info = PhaseInfo{Task: inv.taskID, Kind: inv.kind, Abort: inv.abortMode, Resumed: s.wasResumed(inv.taskID), inv: inv}
 	info.Phase, _ = getStr(cp, "phase")
 	if v, ok := cp.Get("attempt"); ok {
 		info.Attempt, info.HasAttempt = v.(float64)
 	}
 	info.Trace, _ = task.Get("trace")
-	info.Links = inv.links
+	info.Links = inv.telemetry().links
 	s.env.Telemetry.StartPhase(info)
 }
 
@@ -128,13 +130,19 @@ func (s *Scheduler) wasResumed(id ID) bool {
 // endPhase ends the span of the phase the invocation ran, after its decision step (scheduler.ts #phase, its `finally`).
 func (s *Scheduler) endPhase(inv *invocation) {
 	span := inv.span
-	inv.span, inv.carrier = 0, nil
+	inv.span = 0
+	if inv.tel != nil {
+		inv.tel.carrier = nil
+	}
 	inv.signal.Span = 0
 	if span == 0 || s.env.Telemetry == nil {
 		return
 	}
 	// The terminal outcome of the task, when it has one: the scheduler's own fault, else what the task committed.
-	terminal := inv.fault
+	var terminal *jv.Object
+	if inv.tel != nil {
+		terminal = inv.tel.fault
+	}
 	state := getObj(inv.record, "state")
 	st, _ := getStr(state, "status")
 	if terminal == nil && (st == StatusTerminal || st == StatusCompleting) {

@@ -14,13 +14,12 @@ import (
 type Runtime struct {
 	s     *Scheduler
 	inv   *invocation
-	task  func() *TaskImpl
-	snap  func() Snapshot
+	snap  *Snapshot
 	agent any
 }
 
-func (s *Scheduler) newRuntime(inv *invocation, task func() *TaskImpl, snap func() Snapshot) *Runtime {
-	return &Runtime{s: s, inv: inv, task: task, snap: snap}
+func (s *Scheduler) newRuntime(inv *invocation, snap *Snapshot) *Runtime {
+	return &Runtime{s: s, inv: inv, snap: snap}
 }
 
 func (r *Runtime) agentReset() { r.agent = nil }
@@ -46,10 +45,10 @@ func (r *Runtime) ConversationID() ID { return r.inv.conversationID }
 
 // Signal is aborted when the run is signalled by AbortTask, the Harness closes
 // or the invocation ends.
-func (r *Runtime) Signal() *Cancel { return r.inv.signal }
+func (r *Runtime) Signal() *Cancel { return &r.inv.signal }
 
 // Snapshot is the registry snapshot of the current phase.
-func (r *Runtime) Snapshot() Snapshot { return r.snap() }
+func (r *Runtime) Snapshot() Snapshot { return *r.snap }
 
 // Now is the Harness clock.
 func (r *Runtime) Now() (float64, error) {
@@ -204,7 +203,7 @@ func (r *Runtime) gatedWith(late, deferred bool, change func(tx *Tx, current *jv
 			return errorf("Task %d has a durable abort mark", inv.taskID)
 		}
 		return change(tx, found)
-	}, TxScope{ConversationID: inv.conversationID, TaskID: inv.taskID, Deferred: deferred, WithinMs: -1, Span: inv.span, Trace: inv.carrier}, then)
+	}, TxScope{ConversationID: inv.conversationID, TaskID: inv.taskID, Deferred: deferred, WithinMs: -1, Span: inv.span, Trace: inv.carrier()}, then)
 }
 
 // Memo stores candidate unless a memo of that name exists and returns the
@@ -264,7 +263,7 @@ func (r *Runtime) WaitForTask(id ID, then func(rec *jv.Object, err error, waited
 		r.s.loop.Defer(func() { then(nil, endedError(r.inv), false) })
 		return
 	}
-	r.s.WaitForTaskFound(id, r.inv.signal, then)
+	r.s.WaitForTaskFound(id, &r.inv.signal, then)
 }
 
 // AbortOwned aborts a task this task owns and calls then once it is terminal (scheduler.ts abortOwned).
@@ -286,7 +285,7 @@ func (r *Runtime) AbortOwned(id ID, then func(error)) {
 			then(nil)
 			return
 		}
-		r.s.Abort(id, true, r.inv.signal, func(_ string, err error) {
+		r.s.Abort(id, true, &r.inv.signal, func(_ string, err error) {
 			if err != nil {
 				then(err)
 				return

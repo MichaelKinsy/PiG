@@ -23,7 +23,7 @@ func TestPhaseAnsweredTakesOnlyAUint32SpanHandle(t *testing.T) {
 		{"absent", nil, 0},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			inv := &invocation{start: func() {}, signal: &Cancel{}}
+			inv := &invocation{tel: &invTel{start: func() {}}}
 			p := &PhaseInfo{inv: inv}
 			answer := jv.NewObject()
 			if tc.span != nil {

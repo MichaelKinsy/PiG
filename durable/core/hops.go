@@ -373,7 +373,7 @@ func (h *handler) parkChain(c abi.Hops, p parkedHops) bool {
 		id = h.b.EffectBare(abi.EffectHops, abi.AppendHops(make([]byte, 0, size), c))
 	default:
 		var payload abi.Chunks
-		abi.AppendHopsChunks(&payload, c)
+		abi.ConsumeHopsChunks(&payload, c)
 		id = h.b.EffectChunksBare(abi.EffectHops, payload)
 	}
 	due := 0
