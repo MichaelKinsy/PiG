@@ -53,6 +53,7 @@ var bundledFiles = []string{
 	"src/tool-order.lisp",
 	"src/tool-schema.lisp",
 	"src/truncate.lisp",
+	"src/tui-alt-screen.lisp",
 	"src/tui-colors.lisp",
 	"src/tui-fuzzy.lisp",
 	"src/tui-keybindings.lisp",
@@ -72,4 +73,4 @@ var bundledFiles = []string{
 }
 
 // stagedHash is the staging hash of the files, as pigsdk computes it from them: the first 16 hex digits.
-const stagedHash = "8c8045cb8a527093"
+const stagedHash = "ec95e7a0d6ce098b"
