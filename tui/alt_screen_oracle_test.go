@@ -209,7 +209,7 @@ func checkAltScreenOracleIn(t *testing.T, screens bool, env map[string]string, t
 	// the images earlier tests or an earlier -count run registered, and leave none behind.
 	resetKittyRegistry(t)
 	t.Cleanup(func() { resetKittyRegistry(t) })
-	recordOnly := tap != nil && tap.recordOnly
+	recordOnly, closeClipped := tap != nil && tap.recordOnly, tap != nil && tap.closeClipped
 	failures, scrolledSteps := 0, 0
 	report := func(format string, args ...any) {
 		if failures++; failures <= 6 {
@@ -283,7 +283,7 @@ func checkAltScreenOracleIn(t *testing.T, screens bool, env map[string]string, t
 				cols = spec.Resize[0]
 			}
 			closed := func(lines []string) []string {
-				if tap == nil || !tap.closeClipped {
+				if !closeClipped {
 					return lines
 				}
 				result := make([]string, len(lines))
@@ -385,14 +385,14 @@ func checkAltScreenOracleIn(t *testing.T, screens bool, env map[string]string, t
 				if out.String() != sc.Log[step].Out {
 					scrolledSteps++
 				}
-			} else if got, want := out.String(), sc.Log[step].Out; !screens && !(tap != nil && tap.closeClipped) && got != want {
+			} else if got, want := out.String(), sc.Log[step].Out; !screens && !closeClipped && got != want {
 				report("scenario %d (%dx%d, images %q) step %d %+v\n got %q\nwant %q", index, sc.Cols, sc.Rows, sc.Images, step, spec, got, want)
 				break
 			}
 		}
 		out.Reset()
 		ui.StopWithOptions(StopOptions{PreserveScreen: sc.Preserve})
-		if got, want := out.String(), strings.ReplaceAll(sc.StopOut, altScreenOracleStopMarker, ""); !(tap != nil && tap.closeClipped) && got != want {
+		if got, want := out.String(), strings.ReplaceAll(sc.StopOut, altScreenOracleStopMarker, ""); !closeClipped && got != want {
 			report("scenario %d (%dx%d, images %q, preserve %v) stop\n got %q\nwant %q", index, sc.Cols, sc.Rows, sc.Images, sc.Preserve, got, want)
 		}
 		if got := string(GetCapabilities().Images); got != sc.ImagesAfterStop {
