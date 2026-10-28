@@ -588,12 +588,14 @@ func (s *tuiAltScreenState) op(call *tuiAltCall) (*CallResultPayload, error) {
 	case "invalidate":
 		screen.Invalidate()
 		// Pi's invalidate reaches the mounted roots (the layout root, else the children) and every overlay's component, each of the extension.
+		// The renderer's container lock is taken before s.mu: a frame holds it while it waits on a component's render, which calls back into s.
+		children := screen.Children()
 		s.mu.Lock()
 		var targets []tui.Component
 		if s.layoutRoot != nil {
 			targets = append(targets, s.layoutRoot)
 		} else {
-			targets = screen.Children()
+			targets = children
 		}
 		for key := range s.overlays {
 			targets = append(targets, s.components[key])
