@@ -461,3 +461,10 @@ commit = "d94328677410f7437d3bc0371fcf84e0b9b323d0"
 class = "CITE"
 cite = "packages/durable/src/harness/generation.ts:729"
 reason = "Pi 38ff99177 makes finishToolRound append the last handoff's reset (generation.ts:728-739) and end the run only when the round also terminates (generation.ts:741-744); otherwise the run continues at the postTools boundary in the reset's context. The handoff test expects another model request after a handoff alone and none after a terminating round, with the reset entry carrying the last handoff."
+
+[[entry]]
+path = "durable/core/view_test.go"
+commit = "4fb7dc6de718961fbde2ea69cee2efba70436323"
+class = "CITE"
+cite = "packages/durable/src/harness/view.ts:114"
+reason = "Pi f3255de7's resolveWindow throws a RangeError for a window bound that is not an integer or a max below min (view.ts:114-121): the core rejects such a window as a Rejection named RangeError, which the host rebuilds as the RangeError, where it returned a plain error. The test asserts the rejection's name and message."
