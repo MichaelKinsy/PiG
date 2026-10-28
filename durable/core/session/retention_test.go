@@ -204,7 +204,9 @@ func TestTheSweepRunsAsALineJobStartedByAMicrotaskOrATimer(t *testing.T) {
 			if len(jobs) != 1 || rig.s.SweepJobs != 1 {
 				t.Fatalf("jobs %d, SweepJobs %d, want one", len(jobs), rig.s.SweepJobs)
 			}
-			jobs[0]()
+			if err := jobs[0](); err != nil {
+				t.Fatal(err)
+			}
 			if cached, idle := rig.cached(); cached != 0 || idle != 0 {
 				t.Fatalf("after the sweep job: cached %d idle %d, want none", cached, idle)
 			}
