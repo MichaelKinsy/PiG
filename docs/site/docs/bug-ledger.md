@@ -374,6 +374,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-61300bb](#bf-61300bb) | MCP OAuth reads a non-HTTP redirect or server URL as Node's `new URL` does: dot segments are removed, a… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-61300bb-2](#bf-61300bb-2) | Sorting names with `localeCompare` (MCP servers, sessions, login providers, codemode namespaces, model lists… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-6132277](#bf-6132277) | An MCP OAuth authorization response with an `iss` parameter is now rejected when no authorization server… | A fix Pi shipped that PiG ported | All platforms | 0.5.0 |
+| [BF-618ca75](#bf-618ca75) | The agent docs bundle no longer contradicts the site | PiG's own defect | All platforms | Unreleased |
 | [BF-619443a](#bf-619443a) | MCP sign-in now rejects authorization endpoints and other OAuth metadata URLs that are not `http:` or… | A fix Pi shipped that PiG ported | All platforms | Unreleased |
 | [BF-61af4af](#bf-61af4af) | fix(durable/core): an api read that stores held changes ends with the Storage's answer; the host forgets what… | PiG's own defect | All platforms | Unreleased |
 | [BF-61fc01d](#bf-61fc01d) | `list_mcp_resources`, `list_mcp_resource_templates` and `read_mcp_resource` return every member a server sent… | PiG's own defect | All platforms | 0.5.0 |
@@ -6174,6 +6175,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `61322774f1` (2026-10-10)
 - **Tests:** `mcp/oauth/absent_test.go::TestOAuthIssuerMismatchErrorNamesAMissingIssAsNone`, `mcp/oauth/absent_test.go::TestOAuthIssuerMismatchErrorQuotesIssuersAsJSONStringify`, `mcp/oauth/behavior_test.go::TestOAuthErrorMessagesAreTheOnesErrorsTSBuilds`, `mcp/oauth/error_constructors_upstream_test.go::TestOAuthErrorConstructorsMatchErrorsTs`, `mcp/oauth/errors_class_test.go::TestOAuthErrorClassesCarryTheirNameAndMessage`
 - **Release note:** An MCP OAuth authorization response with an `iss` parameter is now rejected when no authorization server metadata was discovered, so a malicious MCP server cannot receive a code another authorization server issued (as Pi c5f5b328 does).
+
+### BF-618ca75
+
+**The agent docs bundle no longer contradicts the site**
+
+- **Source:** PiG's own defect
+- **Symptom:** The agent docs bundle no longer contradicts the site.
+- **Root cause:** Not recorded.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `618ca75612` (2026-10-28)
+- **Tests:** `test/docs-drift/bundle_generated_test.go::TestBundleLinksStayInsideTheFlatBundle`, `test/docs-drift/bundle_generated_test.go::TestEveryBundlePageHasOneOwner`, `test/docs-drift/bundle_generated_test.go::TestGeneratedBlockEditedByHandFails`, `test/docs-drift/bundle_generated_test.go::TestGeneratedBundlePageEditedByHandFails`, `test/docs-drift/bundle_generated_test.go::TestGeneratedBundlePagesAreCurrent`, `test/docs-drift/bundle_generated_test.go::TestGeneratedBundlePagesCarryTheDoNotEditHeader`, `test/docs-drift/bundle_generated_test.go::TestGlossaryHasEveryContextTerm`, `test/docs-drift/bundle_generated_test.go::TestNoLinkPinsAStalePiTag` and 7 more in docs/bug-ledger.json
+- **Release note:** The agent docs bundle no longer contradicts the site. `/fork` continues from before an earlier user message, the `PIG_HOME` default names `XDG_CONFIG_HOME`, `defaultThinkingLevel` defaults to `medium`, the site lists all nine Resource kinds, the bundle's Package page documents `pig update --models`, and the Piglet Image is marked as planned.
 
 ### BF-619443a
 
