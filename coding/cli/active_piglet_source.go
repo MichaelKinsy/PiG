@@ -27,8 +27,11 @@ type inspectedPiglet struct {
 	// Source is the Piglet file path, or the Piglet Binary's name.
 	Source string
 	Name   string
-	// Baked marks a Piglet Binary's Piglet, which excludes every ambient extension and skill.
+	// Baked marks a Piglet Binary's Piglet.
 	Baked bool
+	// Open marks a Piglet Binary that accepts overlays (D202), whose Piglet discovery applies as for a Piglet file. The
+	// discovery of any other Binary excludes every ambient extension and skill.
+	Open bool
 	// Piglet is nil when a Binary's Piglet is not this process's own or when the source could not load; Err says why.
 	Piglet *piglet.Piglet
 	Err    error
@@ -41,14 +44,17 @@ func inspectActivePiglet(cwd string) *inspectedPiglet {
 	source := piglet.ActiveSourceFromEnv()
 	if source == "" {
 		if baked := binarypiglet.Default(); baked != nil {
-			return &inspectedPiglet{Source: baked.Name, Name: baked.Name, Baked: true, Piglet: baked}
+			return &inspectedPiglet{Source: baked.Name, Name: baked.Name, Baked: true, Open: binarypiglet.OverlayBase() != nil, Piglet: baked}
 		}
 		return nil
 	}
 	if !piglet.ActiveSourceIsPath(source) {
 		inspected := &inspectedPiglet{Source: source, Name: source, Baked: true}
 		if baked := binarypiglet.Default(); baked != nil && baked.Name == source {
-			inspected.Piglet = baked
+			inspected.Piglet, inspected.Open = baked, binarypiglet.OverlayBase() != nil
+		} else {
+			// Only the Binary itself knows whether it accepts overlays, and so which discovery applies.
+			inspected.Err = fmt.Errorf("the active Piglet %q is a Piglet Binary and this pig is not that Binary, so status cannot apply its discovery", source)
 		}
 		return inspected
 	}
@@ -68,7 +74,7 @@ func (i *inspectedPiglet) ambientScopes(kind string) *[]string {
 	if i == nil || i.Err != nil {
 		return nil
 	}
-	if i.Baked {
+	if i.Baked && !i.Open {
 		empty := []string{}
 		return &empty
 	}

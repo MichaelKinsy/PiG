@@ -201,7 +201,9 @@ func TestStatusAppliesTheActivePigletDiscovery(t *testing.T) {
 	}
 }
 
-func TestStatusActivePigletBinaryExcludesEveryAmbientExtensionAndSkill(t *testing.T) {
+// Only a Piglet Binary knows whether it accepts overlays, so another pig names the Binary and says it cannot apply its discovery
+// instead of guessing which resources it excluded.
+func TestStatusNamesAPigletBinaryItCannotApply(t *testing.T) {
 	f := newIntrospectionFixture(t)
 	f.setTrust(t, true)
 	t.Setenv(piglet.ActiveSourceEnv, "tern")
@@ -209,9 +211,12 @@ func TestStatusActivePigletBinaryExcludesEveryAmbientExtensionAndSkill(t *testin
 	if status.ActivePiglet == nil || status.ActivePiglet.Name != "tern" || !status.ActivePiglet.Binary {
 		t.Fatalf("activePiglet = %#v", status.ActivePiglet)
 	}
+	if len(status.Warnings) != 1 || !strings.Contains(status.Warnings[0], `"tern" is a Piglet Binary`) {
+		t.Fatalf("warnings = %v", status.Warnings)
+	}
 	for _, want := range []struct{ kind, name string }{{"extensions", "proj"}, {"skills", "myskill"}, {"skills", "gskill"}} {
-		if item := statusItem(t, status, want.kind, want.name); item.Ignored != statusIgnoredPiglet || item.Enabled {
-			t.Errorf("%s %s = %#v", want.kind, want.name, item)
+		if item := statusItem(t, status, want.kind, want.name); item.Ignored != "" {
+			t.Errorf("%s %s = %#v: no discovery was applied", want.kind, want.name, item)
 		}
 	}
 }
