@@ -253,6 +253,8 @@ type pigletShowOutput struct {
 	Records   []pigletRecordJSON `json:"records"`
 	//portlint:allow emptydrop PiG-only format with no Pi counterpart (Pi has no Piglets or runtime slot)
 	StripDelta []string `json:"stripDelta,omitempty"`
+	//portlint:allow emptydrop PiG-only format with no Pi counterpart (Pi has no Piglets)
+	MCPScope string `json:"mcpScope,omitempty"`
 }
 
 type pigletRecordJSON struct {
@@ -418,7 +420,7 @@ func cmdShow(args []string, stdout, stderr io.Writer) int {
 			_, _ = fmt.Fprintf(stderr, "error: encode Piglet JSON: %v\n", err)
 			return 1
 		}
-		return renderPigletShowJSON(pigletShowOutput{Name: p.Name, Source: resolved, Piglet: pigletValue, Effective: effectiveMode, Records: recordJSON(records), StripDelta: stripDelta}, stdout, stderr)
+		return renderPigletShowJSON(pigletShowOutput{Name: p.Name, Source: resolved, Piglet: pigletValue, Effective: effectiveMode, Records: recordJSON(records), StripDelta: stripDelta, MCPScope: MCPScopeLine(p)}, stdout, stderr)
 	}
 
 	// Human-readable output
@@ -434,7 +436,15 @@ func cmdShow(args []string, stdout, stderr io.Writer) int {
 	case len(*p.BuiltinTools) == 0:
 		_, _ = fmt.Fprintln(stdout, "Built-in tools: none")
 	default:
-		_, _ = fmt.Fprintf(stdout, "Built-in tools: %s\n", strings.Join(*p.BuiltinTools, ", "))
+		_, _ = fmt.Fprintf(stdout, "Built-in tools: %s (a limit; it does not activate a tool)\n", strings.Join(*p.BuiltinTools, ", "))
+	}
+	if active := ActiveByDefaultTools(p); len(active) > 0 {
+		_, _ = fmt.Fprintf(stdout, "Active by default: %s\n", strings.Join(active, ", "))
+	} else {
+		_, _ = fmt.Fprintln(stdout, "Active by default: none")
+	}
+	if line := MCPScopeLine(p); line != "" {
+		_, _ = fmt.Fprintln(stdout, line)
 	}
 	// pig additive (D91, D92): slots and strip read as one model; see renderSlots.
 	frontend := ""
@@ -1662,14 +1672,20 @@ func BuildExtensionWithPiglet(initial *Piglet) extension.Extension {
 // BuildExtensionWithPigletTools is BuildExtensionWithPiglet with the owner of extension-registered tools: owner names
 // the Piglet extension entry whose `tools` allowlist scopes a tool, or "" when no loaded extension registered it.
 func BuildExtensionWithPigletTools(initial *Piglet, owner func(extension.ToolInfo) string) extension.Extension {
-	return buildExtensionWithOwner(initial, owner)
+	return buildExtensionWithOwner(initial, owner, nil)
+}
+
+// BuildExtensionWithToolScope is BuildExtensionWithPigletTools with the compiled scope the Session's registry filter
+// also uses, so the extension reports the tools that very scope removed.
+func BuildExtensionWithToolScope(initial *Piglet, scope *extension.ToolScope) extension.Extension {
+	return buildExtensionWithOwner(initial, nil, scope)
 }
 
 func buildExtension(initial *Piglet) extension.Extension {
-	return buildExtensionWithOwner(initial, nil)
+	return buildExtensionWithOwner(initial, nil, nil)
 }
 
-func buildExtensionWithOwner(initial *Piglet, owner func(extension.ToolInfo) string) extension.Extension {
+func buildExtensionWithOwner(initial *Piglet, owner func(extension.ToolInfo) string, shared *extension.ToolScope) extension.Extension {
 	activePiglet := initial
 	var resolvedSystemPrompt string // cached after first resolution
 
@@ -1732,33 +1748,28 @@ func buildExtensionWithOwner(initial *Piglet, owner func(extension.ToolInfo) str
 		}
 	}
 
-	// Convert extension.ToolInfo (from GetAllTools) to piglet.ToolInfo
-	convertTools := func(tools []extension.ToolInfo) []ToolInfo {
-		out := make([]ToolInfo, len(tools))
-		for i, t := range tools {
-			// ToolInfo.Source is the per-tool source attribution (D23).
-			source := t.Source
-			// The session reports an extension tool's provenance object (path, source, scope, origin), which names no
-			// Piglet entry; the owner resolves the entry that registered the tool.
-			if source == "" && owner != nil {
-				source = owner(t)
-			}
-			// Real extension tools carry codingagent.PiSourceInfo (value or pointer). When no owner names the entry, such a
-			// tool is still an extension's: never govern it by root `tools` as a built-in.
-			if source == "" {
-				if info := t.SourceInfo; info.Source != "builtin" && (info.Source != "" || info.Path != "") {
-					source = info.Source
-					if source == "" {
-						source = info.Path
-					}
-				}
-			}
-			if source == "" {
-				source = "builtin"
-			}
-			out[i] = ToolInfo{Name: t.Name, Source: source}
+	scope := func() *extension.ToolScope {
+		if shared != nil {
+			return shared
 		}
-		return out
+		return CompileToolScope(activePiglet, owner)
+	}
+	// reported is the last notice of hidden tools the user saw; the notice repeats only when it changes.
+	var reported string
+	notifyHidden := func(ctx *extension.Context) {
+		if activePiglet == nil || shared == nil {
+			return
+		}
+		notice := ToolScopeNotice(activePiglet, shared.Hidden())
+		if notice == "" || notice == reported {
+			return
+		}
+		reported = notice
+		if ui, err := ctx.UI(); err == nil {
+			ui.Notify(notice, "info")
+			return
+		}
+		_, _ = fmt.Fprintln(os.Stderr, notice)
 	}
 
 	applyScoping := func(ctx *extension.Context, reason string) {
@@ -1772,8 +1783,13 @@ func buildExtensionWithOwner(initial *Piglet, owner func(extension.ToolInfo) str
 			return
 		}
 
-		converted := convertTools(allTools)
-		pigletScoped := ScopeTools(activePiglet, converted)
+		compiled := scope()
+		pigletScoped := make([]string, 0, len(allTools))
+		for _, tool := range allTools {
+			if compiled.Keeps(tool) {
+				pigletScoped = append(pigletScoped, tool.Name)
+			}
+		}
 
 		// The Piglet scope only narrows the session's current selection (the startup default, --tools, or an earlier extension's SetActiveTools, including a selection of no tools) and never activates a tool that selection left inactive. A nil list means no tool-scoping action is wired, so the Piglet scope applies alone, in registry order.
 		active := narrowSelection(ctx.GetActiveTools(), pigletScoped)
@@ -1847,6 +1863,17 @@ func buildExtensionWithOwner(initial *Piglet, owner func(extension.ToolInfo) str
 			flagVal := extCtx.GetFlagValue("piglet")
 			resolvePiglet(flagVal)
 			applyScoping(extCtx, "before_agent_start")
+			notifyHidden(extCtx)
+			// The agent learns the Piglet and its tool scope in one line.
+			if activePiglet != nil {
+				if options := extension.BeforeAgentStartOptions(ctx); options != nil {
+					trusted, err := extCtx.IsProjectTrusted()
+					line := AgentToolScopeLine(activePiglet, err == nil && !trusted)
+					if !strings.Contains(options.AppendSystemPrompt, line) {
+						options.AppendSystemPrompt = strings.TrimSpace(options.AppendSystemPrompt + "\n\n" + line)
+					}
+				}
+			}
 
 			// Return system prompt override if the piglet declares one.
 			if resolvedSystemPrompt != "" {
