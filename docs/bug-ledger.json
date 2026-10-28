@@ -29858,7 +29858,6 @@
         "coding/cli/piglet_mcp_tool_scope_test.go::TestPigletScopesBuiltinMCPToolsInRPCMode",
         "coding/extension/tool_filter_test.go::TestToolFilterScopeIntersects",
         "coding/piglet/scope_mcp_test.go::TestScopeToolsScopesBuiltinMCPNamespaceLikeMCPSource",
-        "coding/piglet/scope_mcp_test.go::TestToolRegistryScopeKeepsToolsPerSourceAndNamespace",
         "coding/session_tool_scope_test.go::TestNilToolScopeLeavesTheRegistryUnchanged",
         "coding/session_tool_scope_test.go::TestToolScopeIntersectsWithToolsFlags",
         "coding/session_tool_scope_test.go::TestToolScopeRemovesToolsFromTheRegistry"
