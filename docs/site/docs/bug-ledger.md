@@ -135,6 +135,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-24872ab](#bf-24872ab) | Extensions receive each model (`ctx.model`, `model_select`, `ctx.modelRegistry` reads, scoped models… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-24a821d](#bf-24a821d) | The openai stream decoder follows openai 7.19.0, the version packages/ai declares: the stream ends at [DONE]… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-24a9b69](#bf-24a9b69) | fix(hljs): a resumed run counts the scan iterations before its checkpoint | PiG's own defect | All platforms | Unreleased |
+| [BF-25a90ea](#bf-25a90ea) | fix(tui): scroll regions only where the terminal is trusted with them (D205 approved) | PiG's own defect | All platforms | Unreleased |
 | [BF-25aa7fd](#bf-25aa7fd) | A subprocess extension's markdown transform that was busy past the five-second renderer inactivity boundary… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-25c854d](#bf-25c854d) | Session directories (the agent directory, `sessions` and each project's directory) are created owner-only… | A Pi defect that PiG fixed first | All platforms | 0.5.0 |
 | [BF-2699291](#bf-2699291) | The serializeConversation parity row records that Rust session entries still read an unpaired surrogate as… | PiG's own defect | All platforms | 0.5.0 |
@@ -806,7 +807,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-D198](#bf-d198) | The Go, Rust and Python `Type` has no Codec family (`Codec`, `Decode`, `Encode`, `DecodeBuilder`… | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D200](#bf-d200) | With no home directory PiG still runs the commands that load no resources, where Pi crashes at import, and… | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D203](#bf-d203) | registerProvider with an empty `apiKey` leaves the provider unconfigured where Pi treats the empty string as… | A Pi defect that PiG fixed first | All platforms | Unreleased |
-| [BF-D204](#bf-d204) | The Lisp SDK does not yet export TuiAltScreen, Pi's alternate-screen TUI host, where the Node, Go, Rust and… | A Pi defect that PiG fixed first | All platforms | Unreleased |
+| [BF-D204](#bf-d204) | The Go, Rust and Python SDKs do not yet export TuiAltScreen, Pi's alternate-screen TUI host, where the Node… | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-a076a50](#bf-a076a50) | A model request on a reused connection gets the full HTTP idle timeout to receive its first response bytes… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-a09da26](#bf-a09da26) | `pi.getSettings()` in a subprocess extension lists the settings in Pi's order: the global settings file's… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-a09da26-2](#bf-a09da26-2) | A bash or PowerShell tool card reads the result's `truncation` details by their exact keys, as Pi does: a… | PiG's own defect | Windows | 0.5.0 |
@@ -2854,6 +2855,19 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `24a9b69c2e` (2026-10-11)
 - **Tests:** `tui/highlight_resume_test.go::TestStreamedHighlightEqualsAWholeRun`, `tui/internal/hljs/resume_test.go::TestHighlightResumableEqualsAFreshRun`, `tui/internal/hljs/resume_test.go::TestHighlightResumableFollowsLaterText`, `tui/internal/hljs/resume_test.go::TestResumedRunCountsTheIterationsOfAWholeRun`
+
+### BF-25a90ea
+
+**fix(tui): scroll regions only where the terminal is trusted with them (D205 approved)**
+
+- **Source:** PiG's own defect
+- **Symptom:** fix(tui): scroll regions only where the terminal is trusted with them (D205 approved)
+- **Root cause:** Zellij, a missing, dumb, unknown or vt52 TERM and PIG_TUI_SCROLL_ROWS=0 get Pi's bytes. D205 is owner-approved 2026-10-27.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `25a90ea440` (2026-10-27)
+- **Tests:** `tui/alt_screen_oracle_test.go::TestAltScreenScrollFallsBackToPisBytes`, `tui/alt_screen_oracle_test.go::TestScrollRegionsUsableIn`
 
 ### BF-25aa7fd
 
@@ -12182,18 +12196,18 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 
 ### BF-D204
 
-**The Lisp SDK does not yet export TuiAltScreen, Pi's alternate-screen TUI host, where the Node, Go, Rust and…**
+**The Go, Rust and Python SDKs do not yet export TuiAltScreen, Pi's alternate-screen TUI host, where the Node…**
 
 - **Source:** A Pi defect that PiG fixed first (divergence D204)
 - **Symptom:** none claimed.
-- **Root cause:** Not recorded.
+- **Root cause:** Landing the export in all three SDKs needs that unit and its vector tests; it is not part of 0.6.0.
 - **User impact:** Behavior differed from Pi
 - **Platform:** All platforms
 - **Fixed in:** Unreleased
 - **Pi issue:** none recorded
-- **Removed when Pi fixes it:** the Lisp SDK exports `TuiAltScreen` over the `tui.alt` wire; then the 46 `lisp` cells become `native:` cells with their conformance reach, and this record goes.
-- **Fix commits:** `26bbbe6a80` (2026-10-26), `f67a7da98e` (2026-10-26), `084f8094e6` (2026-10-27), `97571ba165` (2026-10-27)
-- **Tests:** `test/extension-conformance/tui_alt_screen_test.go::TestTuiAltScreenAcrossSDKs`, `test/extension-conformance/tui_alt_screen_test.go::TestTuiAltScreenFrameReadsAcrossSDKs`
+- **Removed when Pi fixes it:** the 0.6.1 export of `TuiAltScreen` lands in the Go, Rust and Python SDKs; then the 46 cells become `native:` cells with their conformance or vector reach, and this record goes.
+- **Fix commits:** `26bbbe6a80` (2026-10-26), `f67a7da98e` (2026-10-26)
+- **Tests:** None recorded.
 
 ### BF-a076a50
 
@@ -18419,7 +18433,8 @@ Each divergence record is accounted for here. A divergence that fixes a Pi defec
 | D199 | PiG lists OpenRouter's :nitro and :floor routing variants beside every OpenRouter model, where Pi lists only… | deliberate difference |
 | D200 | With no home directory PiG still runs the commands that load no resources, where Pi crashes at import, and… | [BF-D200](#bf-d200) |
 | D203 | registerProvider with an empty `apiKey` leaves the provider unconfigured where Pi treats the empty string as… | [BF-D203](#bf-d203) |
-| D204 | The Lisp SDK does not yet export TuiAltScreen, Pi's alternate-screen TUI host, where the Node, Go, Rust and… | [BF-D204](#bf-d204) |
+| D204 | The Go, Rust and Python SDKs do not yet export TuiAltScreen, Pi's alternate-screen TUI host, where the Node… | [BF-D204](#bf-d204) |
+| D205 | Fullscreen frames scroll the rows that only moved | deliberate difference |
 
 ## Fix-titled commits that are not bugs in a release
 

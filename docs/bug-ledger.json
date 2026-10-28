@@ -3699,6 +3699,28 @@
       ]
     },
     {
+      "id": "BF-25a90ea",
+      "title": "fix(tui): scroll regions only where the terminal is trusted with them (D205 approved)",
+      "symptom": "fix(tui): scroll regions only where the terminal is trusted with them (D205 approved)",
+      "rootCause": "Zellij, a missing, dumb, unknown or vt52 TERM and PIG_TUI_SCROLL_ROWS=0 get Pi's bytes. D205 is owner-approved 2026-10-27.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "25a90ea440",
+          "date": "2026-10-27"
+        }
+      ],
+      "tests": [
+        "tui/alt_screen_oracle_test.go::TestAltScreenScrollFallsBackToPisBytes",
+        "tui/alt_screen_oracle_test.go::TestScrollRegionsUsableIn"
+      ]
+    },
+    {
       "id": "BF-25aa7fd",
       "title": "A subprocess extension's markdown transform that was busy past the five-second renderer inactivity boundary…",
       "symptom": "A subprocess extension's markdown transform that was busy past the five-second renderer inactivity boundary no longer leaves the message untransformed until something else draws it again: the host asks again once the extension answers the abandoned transform, or after a backoff that starts at five seconds and doubles to one minute for an extension that keeps missing the boundary, and the message transforms again on its next frame.",
@@ -38583,6 +38605,10 @@
       "id": "D204",
       "title": "The Lisp SDK does not yet export TuiAltScreen, Pi's alternate-screen TUI host, where the Node, Go, Rust and…",
       "entry": "BF-D204"
+    },
+    {
+      "id": "D205",
+      "title": "Fullscreen frames scroll the rows that only moved"
     }
   ],
   "exemptCommits": {
