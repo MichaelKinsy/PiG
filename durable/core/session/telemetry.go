@@ -1,5 +1,7 @@
 // Ports packages/durable/src/harness/scheduler.ts (the telemetry of #phase, #countActive and #resumed, Pi 2ec55d80 "Durable and
 // pi-ai telemetry").
+// Ports packages/durable/src/harness/telemetry.ts (the span, event and metric names of DURABLE_TELEMETRY_SCHEMA that Telemetry
+// carries to the host).
 
 package session
 
