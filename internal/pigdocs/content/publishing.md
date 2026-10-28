@@ -113,7 +113,7 @@ The npm package is the Piglet's source. A signed per-platform Binary is a separa
 pig piglet publish ./agents/reviewer.yaml --to github --repo acme/reviewer --sign-key ./reviewer-signing.key --yes
 ```
 
-See [Piglet Binaries](https://pi-in-go.dev/docs/latest/piglet-binaries#publish-to-github-releases) for the release layout. When you then publish the source to npm, PiG records the signed release in `package.json`, so a catalog can show how to pull the Binary beside how to add the source:
+See [Piglet Binaries](piglets.md#monorepo-publication-and-named-binary-updates) for the release layout. When you then publish the source to npm, PiG records the signed release in `package.json`, so a catalog can show how to pull the Binary beside how to add the source:
 
 ```json
 "pig": {

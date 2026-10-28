@@ -4,7 +4,7 @@
 
 A Piglet goes through nine stages, from a YAML file you write to an agent that other people install and update. This page names each stage. It gives one command for each stage and states what the command changes.
 
-[Piglets](piglets.md) explain the file. [Piglet Binaries](https://pi-in-go.dev/docs/latest/piglet-binaries) explain the executable. [Publish a Package or Piglet](publishing.md) explains npm publication.
+[Piglets](piglets.md) explain the file. [Piglet Binaries](piglets.md#piglet-binary) explain the executable. [Publish a Package or Piglet](publishing.md) explains npm publication.
 
 ```text
 author -> validate -> run -> inspect -> register -> build -> sign and verify -> publish -> install and update
@@ -121,7 +121,7 @@ pig piglet add npm:@acme/review@^1.0.0
 pig piglet add git:https://github.com/acme/review.git@v2.0.0
 ```
 
-A remote source writes `<name>.origin.json` next to the Piglet. The file records the exact version or commit and the digest. See [Validate and register](https://pi-in-go.dev/docs/latest/piglets#validate-and-register).
+A remote source writes `<name>.origin.json` next to the Piglet. The file records the exact version or commit and the digest. See [Validate and register](piglets.md#commands).
 
 ## 6. Build
 
@@ -141,7 +141,7 @@ Piglet Binaries:
     artifact=~/.pig/artifacts/piglets/reviewer/<source digest>/0.1.0/linux-amd64/<digest>/pig-reviewer
 ```
 
-The native builder compiles PiG with the Go toolchain on your computer. See [Build outputs](https://pi-in-go.dev/docs/latest/piglets#build-outputs) for the builders and their prerequisites.
+The native builder compiles PiG with the Go toolchain on your computer. See [Build outputs](piglets.md#commands) for the builders and their prerequisites.
 
 ### Overlay Piglets
 
@@ -178,7 +178,7 @@ remove.strip.extensions: "mcp" is absent
 strip.extensions: "mcp" is compiled out of Piglet Binary "pig-nomcp" (build tag pig_strip_mcp), so its code is not in the Binary; an overlay cannot re-enable it
 ```
 
-The first message means that the Binary does not strip `mcp`, so the overlay has nothing to remove. The second message means that the build removed the `mcp` code from the executable. An overlay cannot bring that code back. See [Accept overlay Piglets](https://pi-in-go.dev/docs/latest/piglet-binaries#accept-overlay-piglets) for the full rules.
+The first message means that the Binary does not strip `mcp`, so the overlay has nothing to remove. The second message means that the build removed the `mcp` code from the executable. An overlay cannot bring that code back. See [Accept overlay Piglets](piglets.md#accept-overlay-piglets) for the full rules.
 
 `build.allowOverlays` is part of the baked Piglet. A change to it changes the Piglet digest in the record.
 
@@ -225,7 +225,7 @@ pig piglet trust list
 pig piglet trust require on
 ```
 
-See [Sign a Binary](https://pi-in-go.dev/docs/latest/piglet-binaries#sign-a-binary).
+See [Sign a Binary](piglets.md#sign-and-verify-a-piglet-binary).
 
 ## What changes the release record
 
@@ -267,7 +267,7 @@ Would run: npm publish /tmp/pig-piglet-npm-<id> --ignore-scripts
 Dry run only; rerun with --yes to publish.
 ```
 
-npm refuses a version that exists. Raise `release.version` before you publish again. See [Publish to GitHub Releases](https://pi-in-go.dev/docs/latest/piglet-binaries#publish-to-github-releases) and [Publish a Package or Piglet](publishing.md).
+npm refuses a version that exists. Raise `release.version` before you publish again. See [Publish to GitHub Releases](piglets.md#monorepo-publication-and-named-binary-updates) and [Publish a Package or Piglet](publishing.md).
 
 ## 9. Install and update
 
@@ -281,7 +281,7 @@ pig piglet update reviewer
 
 `pig piglet pull` verifies the signed release index, the signature of the Binary and the checksums before it installs anything. The first pull pins the signer. A later signer change needs `--accept-signer <key-id>`.
 
-`pig piglet update <name>` updates a signed GitHub Binary that `pig piglet pull` installed. It stays inside the signed namespace of that Binary. It does not update a source Piglet. See [Pull a published Binary](https://pi-in-go.dev/docs/latest/piglet-binaries#pull-a-published-binary).
+`pig piglet update <name>` updates a signed GitHub Binary that `pig piglet pull` installed. It stays inside the signed namespace of that Binary. It does not update a source Piglet. See [Pull a published Binary](piglets.md#monorepo-publication-and-named-binary-updates).
 
 ## Planned stages
 

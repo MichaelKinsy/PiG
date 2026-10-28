@@ -157,6 +157,6 @@ Do not open a public issue for an undisclosed vulnerability. Follow the private 
 - [Extensions](extensions.md)
 - [Packages](packages.md)
 - [Piglets](piglets.md)
-- [Piglet Binaries](https://pi-in-go.dev/docs/latest/piglet-binaries)
+- [Piglet Binaries](piglets.md#piglet-binary)
 - [Containerization](https://pi-in-go.dev/docs/latest/containerization)
 - [upstream Pi's security documentation](https://pi.dev/docs/latest/security)

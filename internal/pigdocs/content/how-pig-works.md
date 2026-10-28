@@ -72,7 +72,7 @@ Extensions can add tools and can replace built-in tools. PiG sends every active 
 
 Here PiG differs most from Pi. Pi loads TypeScript extensions into its own Node.js process. PiG does not embed a JavaScript runtime and does not load Go plugins. PiG instead starts each source extension as a separate process and talks to it over a local socket. Extensions can be written in Go, Rust, Python or Node.
 
-PiG can run one extension per process, or pack compatible extensions of one language into a shared process. A [Piglet Binary](https://pi-in-go.dev/docs/latest/piglet-binaries) can also compile Go extensions into the `pig` executable. Each extension registers the same way in every form. See [extensions](extensions.md).
+PiG can run one extension per process, or pack compatible extensions of one language into a shared process. A [Piglet Binary](piglets.md#piglet-binary) can also compile Go extensions into the `pig` executable. Each extension registers the same way in every form. See [extensions](extensions.md).
 
 Because extensions run in other processes, PiG checks that each process still responds while it has work in flight. When an extension process stops responding, PiG fails that extension's pending work and keeps the others running. Pi has no equivalent check. This difference is D56.
 

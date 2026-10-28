@@ -74,7 +74,7 @@ A Piglet Binary is a target-native PiG executable built for one immutable Piglet
 
 Where you meet it: `pig piglet build --format binary` writes one.
 
-Read more: [Piglet Binaries](https://pi-in-go.dev/docs/latest/piglet-binaries)
+Read more: [Piglet Binaries](piglets.md#piglet-binary)
 
 ## Piglet Image
 
