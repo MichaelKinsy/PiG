@@ -2701,6 +2701,15 @@ func resolveExtensionEntries(dir string, python bool) []string {
 	return nil
 }
 
+// DiscoversExtensionRoot reports whether auto-discovery loads dir as an extension when it sits in an extensions directory: Pi's
+// package.json "pi.extensions", index.ts or index.js rule, or one of PiG's Go, Rust, Python or Lisp roots. A directory that holds only
+// other entry files, such as index.mjs, loads when a path names it but is not found by discovery.
+//
+// pig additive (D28): `pig install --validate-only` states what discovery would load.
+func DiscoversExtensionRoot(dir string) bool {
+	return len(resolveExtensionEntries(dir, true)) > 0
+}
+
 // isPythonFactoryRoot reports whether source.Resolve classifies dir as a Python extension by its one new_extension factory module or executable main.py.
 func isPythonFactoryRoot(dir string) bool {
 	definition, err := extsource.Resolve(dir)
