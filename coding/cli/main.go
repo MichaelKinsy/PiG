@@ -1309,6 +1309,12 @@ func Main(args []string, options *MainOptions) {
 	agentToolNames := build.AgentToolNames
 	allowed, activeBuiltin, excludedTools, skipBuiltinTools := build.Allowed, build.ActiveBuiltin, build.ExcludedTools, build.SkipBuiltinTools
 	projectCtxFiles, resolvedPrompts := build.ContextFiles, build.ResolvedPrompts
+	// pig divergence (D210): print, JSON and RPC runs have no transcript to hold the notice, so it goes to stderr.
+	if runMode != appModeInteractive && !projectTrusted && !flags.NoContextFiles {
+		if withheld := codingagent.WithheldProjectContextFiles(build.CWD, agentDir); len(withheld) > 0 {
+			fmt.Fprintln(os.Stderr, codingagent.ContextFilesWithheldMessage(withheld))
+		}
+	}
 	systemPrompt, systemPromptOptions := build.SystemPrompt, build.SystemPromptOptions
 	// No agent-defined beforeToolCall hooks: agent persona system is
 	// a pig-extension concern, not built into core.

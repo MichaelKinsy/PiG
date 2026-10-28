@@ -92610,9 +92610,9 @@
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func(cwd string, agentDir string, disabled bool) []github.com/MichaelKinsy/PiG/internal/codingagent.ContextFile"
+        "type": "func(cwd string, agentDir string, disabled bool, projectTrusted bool) []github.com/MichaelKinsy/PiG/internal/codingagent.ContextFile"
       },
-      "shapeHash": "sha256:3a0a31abe005a95009dab2b40d04c92aafc5a3a133d0c99a41e579177b1e38b3"
+      "shapeHash": "sha256:c578ea557185fca7c28fbbb5edd99c063e7ac7642cb785dcafc65dece2eeb405"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/cli#loadDeclaredAuthProvider",
@@ -234955,6 +234955,17 @@
       "shapeHash": "sha256:e6aab433848965afc23cae5a4ef99a91b89fc0863b71e40d8a84b61d41ac803a"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#ContextFilesWithheldMessage",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "ContextFilesWithheldMessage",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(paths []string) string"
+      },
+      "shapeHash": "sha256:b8c53f2da8328555b0e67f5392e7922ab7608e7bff766059fe0516b1f7091723"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#ConvertImageBytesToPng",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
       "name": "ConvertImageBytesToPng",
@@ -250394,9 +250405,9 @@
       "kind": "function",
       "exported": true,
       "shape": {
-        "type": "func(cwd string, agentDir string) []ContextFile"
+        "type": "func(cwd string, agentDir string, projectTrusted bool) []ContextFile"
       },
-      "shapeHash": "sha256:a7427702e505df29b2573df337ae415aa970bfd61cf3c1e99afb0f41a5551332"
+      "shapeHash": "sha256:9067b50bb6979df139b25796fa176306c1160ce211de3043989eb46cd9bf7121"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#LoadPromptTemplates",
@@ -264149,6 +264160,17 @@
       "shapeHash": "sha256:8320fdef4bf27ca16d8bf10138acaae728f58828b6faf40272e3043933cb7fde"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#WithheldProjectContextFiles",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "WithheldProjectContextFiles",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(cwd string, agentDir string) []string"
+      },
+      "shapeHash": "sha256:b1eeb495867c011a9cf82cd9de2a63cb1ef829181a411f4a4d2acc76873e03db"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#WriteBugReportArchive",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
       "name": "WriteBugReportArchive",
@@ -270903,6 +270925,17 @@
       "shapeHash": "sha256:451b0d543749447787c9a569018000fef5d03bb4235deb5a55dbf6b58d4ae8a5"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#discoverContextFiles",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "discoverContextFiles",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(cwd string, agentDir string, projectTrusted bool) (loaded []ContextFile, withheld []string)"
+      },
+      "shapeHash": "sha256:ffc88b21f038dd738191d10b676a22accafc690b0e4d6790200546f43be30402"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#dispatchModalInput",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
       "name": "dispatchModalInput",
@@ -273464,6 +273497,17 @@
         "type": "func(path string, infos map[string]*PiSourceInfo) *PiSourceInfo"
       },
       "shapeHash": "sha256:e2bbcde3839526f7705076c94fae400583f1c4a56648f29d0938920168cad009"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#firstContextFilePath",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "firstContextFilePath",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(dir string) string"
+      },
+      "shapeHash": "sha256:7dec8db0ac0cf691c1e0d5b9aa813102a848cd55b19ad90e0b05922ff22488d6"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#firstLine",
@@ -298324,6 +298368,17 @@
         "type": "userBashTask"
       },
       "shapeHash": "sha256:9cbe30c6fb9a50d84987994356317a2a413ce69eff0be73c1bea305d6bddd672"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#userHomeDir",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "userHomeDir",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func() string"
+      },
+      "shapeHash": "sha256:31cac5b359d9888bdbe3fe08c486b2e404a728edce6e0aaaa60e59ceafc92fb5"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#userMessageImages",

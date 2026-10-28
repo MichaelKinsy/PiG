@@ -154,7 +154,7 @@ emit(input.map((q) => mod.loadProjectContextFiles({ cwd: q.cwd, agentDir: q.agen
 		if c.Agent != "" {
 			agent = c.Agent
 		}
-		files := LoadProjectContextFiles(filepath.Join(trees[i].pig, c.Cwd), filepath.Join(trees[i].pig, agent))
+		files := LoadProjectContextFiles(filepath.Join(trees[i].pig, c.Cwd), filepath.Join(trees[i].pig, agent), true)
 		got := make([][2]string, len(files))
 		for j, f := range files {
 			got[j] = [2]string{strings.Replace(f.Path, trees[i].pig, "{root}", 1), f.Content}

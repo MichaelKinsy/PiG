@@ -19,7 +19,7 @@ func TestLoadProjectContextFiles_PrefersOverridePerDirectory(t *testing.T) {
 	writeContextFile(t, filepath.Join(service, "AGENTS.md"), "service regular")
 	writeContextFile(t, filepath.Join(service, "AGENTS.override.md"), "service override")
 
-	files := LoadProjectContextFiles(service, "")
+	files := LoadProjectContextFiles(service, "", true)
 	if len(files) != 2 || files[0].Content != "root override" || files[1].Content != "service override" {
 		t.Fatalf("context files = %+v", files)
 	}
@@ -31,7 +31,7 @@ func TestLoadProjectContextFiles_SkipsOverrideDirectory(t *testing.T) {
 		t.Fatal(err)
 	}
 	writeContextFile(t, filepath.Join(dir, "AGENTS.md"), "regular")
-	files := LoadProjectContextFiles(dir, "")
+	files := LoadProjectContextFiles(dir, "", true)
 	if len(files) != 1 || files[0].Content != "regular" {
 		t.Fatalf("context files = %+v", files)
 	}
@@ -50,7 +50,7 @@ func TestLoadProjectContextFiles_CwdOnly(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(dir, "AGENTS.md"), []byte(content), 0644); err != nil {
 		t.Fatal(err)
 	}
-	files := LoadProjectContextFiles(dir, "")
+	files := LoadProjectContextFiles(dir, "", true)
 	if len(files) != 1 {
 		t.Fatalf("got %d files, want 1", len(files))
 	}
@@ -67,7 +67,7 @@ func TestLoadProjectContextFiles_PrefersAGENTSOverCLAUDE(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(dir, "CLAUDE.md"), []byte("claude"), 0644); err != nil {
 		t.Fatal(err)
 	}
-	files := LoadProjectContextFiles(dir, "")
+	files := LoadProjectContextFiles(dir, "", true)
 	if len(files) != 1 {
 		t.Fatalf("got %d files, want 1", len(files))
 	}
@@ -81,7 +81,7 @@ func TestLoadProjectContextFiles_AcceptsUppercaseVariants(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(dir, "AGENTS.MD"), []byte("agents-upper"), 0644); err != nil {
 		t.Fatal(err)
 	}
-	files := LoadProjectContextFiles(dir, "")
+	files := LoadProjectContextFiles(dir, "", true)
 	if len(files) != 1 {
 		t.Fatalf("got %d files, want 1", len(files))
 	}
@@ -104,7 +104,7 @@ func TestLoadProjectContextFiles_AncestorWalk(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(sub, "CLAUDE.md"), []byte("sub"), 0644); err != nil {
 		t.Fatal(err)
 	}
-	files := LoadProjectContextFiles(sub, "")
+	files := LoadProjectContextFiles(sub, "", true)
 	if len(files) != 2 {
 		t.Fatalf("got %d files, want 2 (root + sub)", len(files))
 	}
@@ -126,7 +126,7 @@ func TestLoadProjectContextFiles_AgentDirFirst(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(cwd, "AGENTS.md"), []byte("project"), 0644); err != nil {
 		t.Fatal(err)
 	}
-	files := LoadProjectContextFiles(cwd, agentDir)
+	files := LoadProjectContextFiles(cwd, agentDir, true)
 	if len(files) != 2 {
 		t.Fatalf("got %d files, want 2", len(files))
 	}
@@ -144,7 +144,7 @@ func TestLoadProjectContextFiles_NoDuplicates(t *testing.T) {
 		t.Fatal(err)
 	}
 	// agentDir == cwd: same file should appear only once
-	files := LoadProjectContextFiles(dir, dir)
+	files := LoadProjectContextFiles(dir, dir, true)
 	if len(files) != 1 {
 		t.Fatalf("got %d files, want 1 (deduped)", len(files))
 	}
@@ -169,7 +169,7 @@ func TestLoadProjectContextFilesNestedWorktreeSkipsMainDuplicate(t *testing.T) {
 	writeContextFile(t, filepath.Join(mainDir, "AGENTS.md"), "main")
 	writeContextFile(t, filepath.Join(worktree, "AGENTS.md"), "worktree")
 
-	files := LoadProjectContextFiles(leaf, "")
+	files := LoadProjectContextFiles(leaf, "", true)
 	if len(files) != 1 || files[0].Content != "worktree" {
 		t.Fatalf("context files = %#v", files)
 	}
@@ -193,7 +193,7 @@ func TestLoadProjectContextFilesNestedWorktreeKeepsDifferentFilename(t *testing.
 	writeContextFile(t, filepath.Join(mainDir, "CLAUDE.md"), "main")
 	writeContextFile(t, filepath.Join(worktree, "AGENTS.md"), "worktree")
 
-	files := LoadProjectContextFiles(worktree, "")
+	files := LoadProjectContextFiles(worktree, "", true)
 	if len(files) != 2 || files[0].Content != "main" || files[1].Content != "worktree" {
 		t.Fatalf("context files = %#v", files)
 	}
@@ -205,7 +205,7 @@ func TestLoadProjectContextFiles_DeduplicatesByLoadedPath(t *testing.T) {
 	aliasParent := t.TempDir()
 	alias := filepath.Join(aliasParent, "alias")
 	testenv.RequireDirectoryLink(t, realDir, alias)
-	files := LoadProjectContextFiles(realDir, alias)
+	files := LoadProjectContextFiles(realDir, alias, true)
 	if len(files) != 2 || files[0].Path != filepath.Join(alias, "AGENTS.md") || files[1].Path != filepath.Join(realDir, "AGENTS.md") {
 		t.Fatalf("context files = %#v", files)
 	}
@@ -213,7 +213,7 @@ func TestLoadProjectContextFiles_DeduplicatesByLoadedPath(t *testing.T) {
 
 func TestLoadProjectContextFiles_Empty(t *testing.T) {
 	dir := t.TempDir()
-	files := LoadProjectContextFiles(dir, "")
+	files := LoadProjectContextFiles(dir, "", true)
 	if len(files) != 0 {
 		t.Fatalf("got %d files, want 0", len(files))
 	}

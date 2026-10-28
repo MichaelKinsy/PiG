@@ -76,7 +76,7 @@ func TestBestEffortPathPortsKeepTheirInputWithoutAWorkingDirectory(t *testing.T)
 	if got := absCleanDir("rel/../rel2"); got != "rel2" {
 		t.Errorf("absCleanDir = %q, want the cleaned input", got)
 	}
-	if got := LoadProjectContextFiles("rel", ""); got != nil {
+	if got := LoadProjectContextFiles("rel", "", true); got != nil {
 		t.Errorf("LoadProjectContextFiles = %v", got)
 	}
 }

@@ -40,7 +40,7 @@ func TestLoadProjectContextFilesNestedWorktreeSymlinkedContext(t *testing.T) {
 		_, mainDir, worktree, leaf := setup(t)
 		writeContextFile(t, filepath.Join(mainDir, "AGENTS.md"), "main repo instructions")
 		testenv.Symlink(t, filepath.Join(mainDir, "AGENTS.md"), filepath.Join(worktree, "AGENTS.md"))
-		got := paths(LoadProjectContextFiles(leaf, ""))
+		got := paths(LoadProjectContextFiles(leaf, "", true))
 		if want := []string{filepath.Join(worktree, "AGENTS.md")}; !reflect.DeepEqual(got, want) {
 			t.Fatalf("paths = %v, want %v", got, want)
 		}
@@ -52,7 +52,7 @@ func TestLoadProjectContextFilesNestedWorktreeSymlinkedContext(t *testing.T) {
 		for _, dir := range []string{mainDir, worktree} {
 			testenv.Symlink(t, shared, filepath.Join(dir, "AGENTS.md"))
 		}
-		got := paths(LoadProjectContextFiles(leaf, ""))
+		got := paths(LoadProjectContextFiles(leaf, "", true))
 		if want := []string{filepath.Join(worktree, "AGENTS.md")}; !reflect.DeepEqual(got, want) {
 			t.Fatalf("paths = %v, want %v", got, want)
 		}

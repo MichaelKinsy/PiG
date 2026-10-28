@@ -82,7 +82,7 @@ Other resources work as in Pi. Skills provide instructions and supporting files.
 
 ## Trust and permissions
 
-PiG asks whether you trust a project before it loads the project's settings and resources. After that decision, PiG loads the context files, which do not need trust. See [configuration](config.md).
+PiG asks whether you trust a project before it loads the project's settings and resources. After that decision, PiG loads the context files of a trusted project. A project that you do not trust loads no context file of its own. See [configuration](config.md).
 
 Tools run with the operating-system permissions of the `pig` process. Extension processes run as the same user. A separate process isolates crashes. It is not a security sandbox. See [security](security.md).
 
