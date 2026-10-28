@@ -141,65 +141,59 @@ func TestOverlayChainResolvesOnTheBinary(t *testing.T) {
 	}
 }
 
-// Every refusal names the field and the Binary, and a refused overlay yields no Piglet.
+// overlayBaseWithFrontend is overlayBase for a Binary with a frontend member compiled in, as binarypiglet.OverlayBase names it.
+func overlayBaseWithFrontend(t *testing.T) *OverlayBase {
+	t.Helper()
+	base := overlayBase(t)
+	base.Piglet.Slots = &Slots{Frontend: &SlotMember{Member: "compiled-in"}}
+	return base
+}
+
+func resolveOverlayFiles(t *testing.T, base *OverlayBase, files map[string]string) (*EffectiveResolution, string, error) {
+	t.Helper()
+	dir := t.TempDir()
+	for name, body := range files {
+		writePigletSource(t, dir, name, body)
+	}
+	path := filepath.Join(dir, "overlay.yaml")
+	resolved, err := ResolveEffectiveWithOptions(path, ResolveOptions{Base: base})
+	return resolved, path, err
+}
+
+// The overlay refuses only what is compiled into the Binary. Each message names the field and the Binary, and says why.
 func TestOverlayRefusesWhatChangesTheBinary(t *testing.T) {
 	const binary = `Piglet Binary "pig-base"`
 	for _, tc := range []struct {
-		name  string
-		files map[string]string
-		want  []string
+		name     string
+		frontend bool
+		files    map[string]string
+		want     []string
 	}{
-		{"replaces a baked extension", map[string]string{"overlay": "name: x\nextensions:\n  - name: core\n    origins: [local:./other]\n"},
+		{"sets a frontend on a Binary built without one", false, map[string]string{"overlay": "name: x\nslots:\n  frontend:\n    member: ./tern\n"},
+			[]string{"slots.frontend", binary, "built without a frontend member", "compiled into the Binary"}},
+		{"replaces the frontend the Binary compiled in", true, map[string]string{"overlay": "name: x\nslots:\n  frontend:\n    member: ./tern\n"},
+			[]string{"slots.frontend", binary, "compiled in", "cannot replace it", "extends.remove.slots"}},
+		{"replaces a fused member with another under its name", false, map[string]string{"overlay": "name: x\nextends:\n  allowWiden: true\nextensions:\n  - name: core\n    origins: [local:./other]\n"},
+			[]string{"extensions[core]", binary, "compiled in (fused or embedded)", "cannot replace it with another one under the same name"}},
+		{"removes a fused member and adds another under its name", false, map[string]string{"overlay": "name: x\nextends:\n  allowWiden: true\n  remove:\n    extensions: [core]\nextensions:\n  - name: core\n    origins: [local:./other]\n"},
 			[]string{"extensions[core]", binary, "cannot replace it"}},
-		{"narrows a baked extension's tools by replacing it", map[string]string{"overlay": "name: x\nextensions:\n  - name: core\n    tools: []\n"},
+		{"replaces a fused member through its chain", false, map[string]string{
+			"mid":     "name: mid\nextends:\n  allowWiden: true\nextensions:\n  - name: core\n    origins: [local:./other]\n",
+			"overlay": "name: x\nextends:\n  source: local:./mid.yaml\n"},
 			[]string{"extensions[core]", binary, "cannot replace it"}},
-		{"replaces a baked skill", map[string]string{"overlay": "name: x\nskills:\n  - name: guide\n    content: other\n"},
-			[]string{"skills[guide]", binary, "cannot replace it"}},
-		{"removes a baked extension through its chain", map[string]string{
-			"mid":     "name: mid\n",
-			"overlay": "name: x\nextends:\n  source: local:./mid.yaml\n  remove:\n    extensions: [core]\n"},
-			[]string{"extensions[core]", binary, "cannot remove it"}},
-		{"removes a baked skill through its chain", map[string]string{
-			"mid":     "name: mid\n",
-			"overlay": "name: x\nextends:\n  source: local:./mid.yaml\n  remove:\n    skills: [guide]\n"},
-			[]string{"skills[guide]", binary, "cannot remove it"}},
-		{"sets the frontend slot", map[string]string{"overlay": "name: x\nslots:\n  frontend:\n    member: ./tern\n"},
-			[]string{"slots.frontend", binary, "cannot set a frontend member"}},
-		{"sets the system prompt", map[string]string{"overlay": "name: x\nsystemPrompt:\n  text: other\n"},
-			[]string{"systemPrompt", binary, "--append-system-prompt"}},
-		{"widens the built-in tools", map[string]string{"overlay": "name: x\ntools: [read, write]\n"},
-			[]string{"tools: an overlay cannot widen", binary, "read, bash, grep"}},
-		{"widens the built-in tools through its chain", map[string]string{"overlay": "name: x\nextends:\n  source: local:./mid.yaml\n  allowWiden: true\n", "mid": "name: mid\ntools: [read, bash, grep, edit]\n"},
-			[]string{"tools: an overlay cannot widen", binary}},
-		{"widens ambient discovery", map[string]string{"overlay": "name: x\ndiscovery:\n  extensions: [workspace]\n"},
-			[]string{"discovery: an overlay cannot add", binary}},
-		{"re-enables a stripped built-in through its chain", map[string]string{
-			"mid":     "name: mid\n",
-			"overlay": "name: x\nextends:\n  source: local:./mid.yaml\n  allowWiden: true\n  remove:\n    strip:\n      tools: [edit]\n"},
-			[]string{`strip.tools: "edit" is stripped by`, binary, "cannot re-enable it"}},
-		{"re-enables a stripped extension through its chain", map[string]string{
+		{"re-enables an extension a build tag compiled out", false, map[string]string{"overlay": "name: x\nextends:\n  allowWiden: true\n  remove:\n    strip:\n      extensions: [mcp]\n"},
+			[]string{`strip.extensions: "mcp"`, binary, "compiled out", "pig_strip_mcp", "cannot re-enable it"}},
+		{"re-enables a compiled-out extension through its chain", false, map[string]string{
 			"mid":     "name: mid\n",
 			"overlay": "name: x\nextends:\n  source: local:./mid.yaml\n  allowWiden: true\n  remove:\n    strip:\n      extensions: [mcp]\n"},
-			[]string{`strip.extensions: "mcp" is stripped by`, binary, "cannot re-enable it"}},
-		{"re-enables a stripped built-in without allowWiden", map[string]string{
-			"mid":     "name: mid\n",
-			"overlay": "name: x\nextends:\n  source: local:./mid.yaml\n  remove:\n    strip:\n      tools: [edit]\n"},
-			[]string{"strip.tools/edit", binary}},
-		{"removes a slot the Binary does not have", map[string]string{
-			"mid":     "name: mid\n",
-			"overlay": "name: x\nextends:\n  source: local:./mid.yaml\n  remove:\n    slots: [frontend]\n"},
-			[]string{"remove.slots", binary}},
-		{"names the Binary's own source", map[string]string{
-			"mid":     "name: pig-base\nextensions:\n  - name: core\n    origins: [local:./core]\n",
-			"overlay": "name: x\nextends:\n  source: local:./mid.yaml\n"},
-			[]string{"extensions[core]", binary}},
+			[]string{`strip.extensions: "mcp"`, binary, "cannot re-enable it"}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			dir := t.TempDir()
-			for name, body := range tc.files {
-				writePigletSource(t, dir, name, body)
+			base := overlayBase(t)
+			if tc.frontend {
+				base = overlayBaseWithFrontend(t)
 			}
-			resolved, err := ResolveEffectiveWithOptions(filepath.Join(dir, "overlay.yaml"), ResolveOptions{Base: overlayBase(t)})
+			resolved, path, err := resolveOverlayFiles(t, base, tc.files)
 			if err == nil {
 				t.Fatalf("overlay was accepted: %#v", resolved.Piglet)
 			}
@@ -208,10 +202,140 @@ func TestOverlayRefusesWhatChangesTheBinary(t *testing.T) {
 					t.Fatalf("error %q lacks %q", err, want)
 				}
 			}
-			if !strings.Contains(err.Error(), "overlay "+filepath.Join(dir, "overlay.yaml")) && !strings.Contains(err.Error(), "overlay "+evalDir(t, dir)) {
+			if !strings.Contains(err.Error(), "overlay "+path) && !strings.Contains(err.Error(), "overlay "+filepath.Join(evalDir(t, filepath.Dir(path)), "overlay.yaml")) {
 				t.Fatalf("error %q does not name the overlay file", err)
 			}
 		})
+	}
+}
+
+// An overlay merges onto the Binary as an extends child merges onto its base, so what extends allows an overlay does too.
+func TestOverlayMergesAsAnExtendsChild(t *testing.T) {
+	for _, tc := range []struct {
+		name     string
+		frontend bool
+		files    map[string]string
+		check    func(t *testing.T, p *Piglet)
+	}{
+		{"replaces the system prompt", false, map[string]string{"overlay": "name: x\nsystemPrompt:\n  text: overlay prompt\n"}, func(t *testing.T, p *Piglet) {
+			if p.SystemPrompt == nil || p.SystemPrompt.Text != "overlay prompt" {
+				t.Fatalf("system prompt = %#v", p.SystemPrompt)
+			}
+		}},
+		{"removes a baked extension", false, map[string]string{"overlay": "name: x\nextends:\n  remove:\n    extensions: [core]\n"}, func(t *testing.T, p *Piglet) {
+			if len(p.Extensions) != 0 {
+				t.Fatalf("extensions = %v", extensionNames(p.Extensions))
+			}
+		}},
+		{"removes a baked extension through its chain", false, map[string]string{
+			"mid":     "name: mid\n",
+			"overlay": "name: x\nextends:\n  source: local:./mid.yaml\n  remove:\n    extensions: [core]\n"}, func(t *testing.T, p *Piglet) {
+			if len(p.Extensions) != 0 {
+				t.Fatalf("extensions = %v", extensionNames(p.Extensions))
+			}
+		}},
+		{"removes a baked skill", false, map[string]string{"overlay": "name: x\nextends:\n  remove:\n    skills: [guide]\n"}, func(t *testing.T, p *Piglet) {
+			if len(p.Skills) != 0 {
+				t.Fatalf("skills = %v", skillNames(p.Skills))
+			}
+		}},
+		{"replaces a baked skill", false, map[string]string{"overlay": "name: x\nskills:\n  - name: guide\n    content: other\n"}, func(t *testing.T, p *Piglet) {
+			if len(p.Skills) != 1 || p.Skills[0].Content != "other" {
+				t.Fatalf("skills = %#v", p.Skills)
+			}
+		}},
+		{"removes the frontend slot", true, map[string]string{"overlay": "name: x\nextends:\n  remove:\n    slots: [frontend]\n"}, func(t *testing.T, p *Piglet) {
+			if p.HasFrontend() {
+				t.Fatalf("slots = %#v", p.Slots)
+			}
+		}},
+		{"keeps the frontend it does not remove", true, map[string]string{"overlay": "name: x\nsystemPrompt:\n  text: other\n"}, func(t *testing.T, p *Piglet) {
+			if !p.HasFrontend() {
+				t.Fatal("the compiled-in frontend is gone")
+			}
+		}},
+		{"widens the built-in tools", false, map[string]string{"overlay": "name: x\nextends:\n  allowWiden: true\ntools: [read, write, edit]\n"}, func(t *testing.T, p *Piglet) {
+			if p.BuiltinTools == nil || len(*p.BuiltinTools) != 3 {
+				t.Fatalf("tools = %v", p.BuiltinTools)
+			}
+		}},
+		{"widens ambient discovery", false, map[string]string{"overlay": "name: x\nextends:\n  allowWiden: true\ndiscovery:\n  extensions: [workspace]\n  skills: [user]\n"}, func(t *testing.T, p *Piglet) {
+			if p.Discovery == nil || len(p.Discovery.Extensions) != 1 || len(p.Discovery.Skills) != 1 {
+				t.Fatalf("discovery = %#v", p.Discovery)
+			}
+		}},
+		{"widens a baked extension's tools without replacing it", false, map[string]string{"overlay": "name: x\nextends:\n  allowWiden: true\nextensions:\n  - name: core\n    tools: [core_tool, more]\n"}, func(t *testing.T, p *Piglet) {
+			if len(p.Extensions) != 1 || p.Extensions[0].Tools == nil || len(*p.Extensions[0].Tools) != 2 || len(p.Extensions[0].Origins) != 0 {
+				t.Fatalf("extensions = %#v", p.Extensions)
+			}
+		}},
+		{"re-enables a runtime strip entry", false, map[string]string{"overlay": "name: x\nextends:\n  allowWiden: true\n  remove:\n    strip:\n      tools: [edit]\n"}, func(t *testing.T, p *Piglet) {
+			if len(p.Strip.Tools) != 0 || len(p.Strip.Extensions) != 1 {
+				t.Fatalf("strip = %#v", p.Strip)
+			}
+		}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			base := overlayBase(t)
+			if tc.frontend {
+				base = overlayBaseWithFrontend(t)
+			}
+			resolved, _, err := resolveOverlayFiles(t, base, tc.files)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if resolved.Piglet.Name != "pig-base" {
+				t.Fatalf("name = %q", resolved.Piglet.Name)
+			}
+			tc.check(t, resolved.Piglet)
+		})
+	}
+}
+
+// What extends refuses without allowWiden an overlay refuses too, with the extends message.
+func TestOverlayWideningNeedsAllowWidenAsExtendsDoes(t *testing.T) {
+	for name, body := range map[string]string{
+		"tools":     "name: x\ntools: [read, write]\n",
+		"discovery": "name: x\ndiscovery:\n  extensions: [workspace]\n",
+		"strip":     "name: x\nextends:\n  remove:\n    strip:\n      tools: [edit]\n",
+	} {
+		t.Run(name, func(t *testing.T) {
+			_, _, err := resolveOverlayFiles(t, overlayBase(t), map[string]string{"overlay": body})
+			if err == nil || !strings.Contains(err.Error(), "requires extends.allowWiden: true") {
+				t.Fatalf("err = %v", err)
+			}
+		})
+	}
+}
+
+func TestOverlayRemovesOnlyWhatTheBinaryHas(t *testing.T) {
+	_, _, err := resolveOverlayFiles(t, overlayBase(t), map[string]string{"overlay": "name: x\nextends:\n  remove:\n    slots: [frontend]\n"})
+	if err == nil || !strings.Contains(err.Error(), "remove.slots") || !strings.Contains(err.Error(), `Piglet Binary "pig-base"`) {
+		t.Fatalf("err = %v", err)
+	}
+}
+
+// An extends block without a source extends the Piglet Binary; stock pig has none, so it refuses the Piglet by name.
+func TestExtendsWithoutSourceNeedsAPigletBinary(t *testing.T) {
+	path := writePigletSource(t, t.TempDir(), "overlay", "name: x\nextends:\n  remove:\n    extensions: [core]\n")
+	if _, err := ResolveEffective(path); err == nil || !strings.Contains(err.Error(), "extends.source is required unless a Piglet Binary") {
+		t.Fatalf("err = %v", err)
+	}
+	if _, err := ParseBytes([]byte("name: x\nextends:\n  version: '>=1'\n")); err == nil || !strings.Contains(err.Error(), "extends.version requires extends.source") {
+		t.Fatalf("err = %v", err)
+	}
+}
+
+func TestOverlayRecordsItsPigletBinary(t *testing.T) {
+	resolved, _, err := resolveOverlayFiles(t, overlayBase(t), map[string]string{"overlay": "name: x\n"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if binary, ok := resolved.Piglet.OverlayOf(); !ok || binary != "pig-base" {
+		t.Fatalf("OverlayOf = %q, %v", binary, ok)
+	}
+	if _, ok := overlayBase(t).Piglet.OverlayOf(); ok {
+		t.Fatal("a baked Piglet is no overlay")
 	}
 }
 
@@ -224,41 +348,41 @@ func evalDir(t *testing.T, dir string) string {
 	return resolved
 }
 
-func TestOverlayChecksAgentEnvironmentSecretsAndKeepModeOnTheFinalPiglet(t *testing.T) {
-	read := &[]string{"read"}
-	base := &Piglet{
-		Name:     "pig-base",
-		AgentEnv: &AgentEnvironment{Policy: &AgentEnvironmentPolicy{Preset: "minimal"}},
-		Secrets:  []SecretDeclaration{{Name: "token", From: SecretSource{Env: "TOKEN"}}},
-		Strip:    &StripSpec{Tools: []string{"edit"}},
+// checkOverlay judges the final Piglet: a compiled-out API or feature cannot come back, a runtime one can.
+func TestCheckOverlayStripDispositions(t *testing.T) {
+	apis := knownStripIDs("apis")
+	features := knownStripIDs("features")
+	if len(apis) == 0 || len(features) == 0 {
+		t.Skip("no strip table")
 	}
-	effective := func(change func(*Piglet)) *Piglet {
+	var runtimeFeature string
+	for _, id := range features {
+		if _, binary := stripBuildTag(StripKindFeature, id); !binary {
+			runtimeFeature = id
+			break
+		}
+	}
+	var binaryFeature string
+	for _, id := range features {
+		if _, binary := stripBuildTag(StripKindFeature, id); binary {
+			binaryFeature = id
+			break
+		}
+	}
+	base := &Piglet{Name: "pig-base", Strip: &StripSpec{APIs: []string{apis[0]}, Features: []string{binaryFeature, runtimeFeature}}}
+	reEnable := func(change func(*StripSpec)) *Piglet {
 		p := Clone(base)
-		p.BuiltinTools = read
-		change(p)
+		change(p.Strip)
 		return p
 	}
-	for _, tc := range []struct {
-		name   string
-		change func(*Piglet)
-		want   string
-	}{
-		{"agentEnv", func(p *Piglet) { p.AgentEnv = &AgentEnvironment{Policy: &AgentEnvironmentPolicy{Preset: "elevated"}} }, "agentEnv: an overlay cannot widen the agent environment of Piglet Binary \"pig-base\""},
-		{"dropped secret", func(p *Piglet) { p.Secrets = nil }, "secrets[token]: Piglet Binary \"pig-base\" requires it"},
-		{"changed secret", func(p *Piglet) { p.Secrets = []SecretDeclaration{{Name: "token", From: SecretSource{Env: "OTHER"}}} }, "secrets[token]"},
-		{"re-enabled tool", func(p *Piglet) { p.Strip = nil }, `strip.tools: "edit" is stripped by Piglet Binary "pig-base"`},
-	} {
-		t.Run(tc.name, func(t *testing.T) {
-			if err := checkOverlay(base, effective(tc.change)); err == nil || !strings.Contains(err.Error(), tc.want) {
-				t.Fatalf("checkOverlay = %v, want %q", err, tc.want)
-			}
-		})
+	if err := checkOverlay(base, reEnable(func(s *StripSpec) { s.APIs = nil })); err == nil || !strings.Contains(err.Error(), "strip.apis: "+`"`+apis[0]+`"`) {
+		t.Fatalf("a compiled-out API came back: %v", err)
 	}
-	if err := checkOverlay(base, effective(func(p *Piglet) {
-		p.AgentEnv = &AgentEnvironment{Policy: &AgentEnvironmentPolicy{Preset: "minimal"}}
-		p.Strip = &StripSpec{Tools: []string{"edit", "grep"}}
-	})); err != nil {
-		t.Fatalf("an unchanged environment and a longer strip list are allowed: %v", err)
+	if err := checkOverlay(base, reEnable(func(s *StripSpec) { s.Features = []string{runtimeFeature} })); err == nil || !strings.Contains(err.Error(), binaryFeature) {
+		t.Fatalf("a compiled-out feature came back: %v", err)
+	}
+	if err := checkOverlay(base, reEnable(func(s *StripSpec) { s.Features = []string{binaryFeature} })); err != nil {
+		t.Fatalf("a runtime-only feature may come back: %v", err)
 	}
 }
 
@@ -408,4 +532,12 @@ func TestProvenanceCoversAllowOverlays(t *testing.T) {
 	if code, stdout, _ := runSigningCommand(t, "verify", binary, "--source", source); code != 1 || !strings.Contains(stdout, "Piglet digest:") {
 		t.Fatalf("a source that changed allowOverlays must fail the Piglet digest: code=%d stdout=%q", code, stdout)
 	}
+}
+
+func skillNames(entries []SkillEntry) []string {
+	names := make([]string, len(entries))
+	for i, entry := range entries {
+		names[i] = entry.Name
+	}
+	return names
 }
