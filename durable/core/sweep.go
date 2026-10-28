@@ -4,7 +4,6 @@
 package core
 
 import (
-	"encoding/binary"
 	"strconv"
 
 	"github.com/MichaelKinsy/PiG/durable/core/abi"
@@ -62,7 +61,6 @@ func (h *handler) runSessionSweeps() {
 //
 //go:noinline
 func (h *handler) publishDocCache() {
-	h.publishSettingsReads()
 	h.publishIndexSizes()
 	if h.sess == nil {
 		return
@@ -117,21 +115,4 @@ func (h *handler) publishIndexSizes() {
 		body = append(append(append(append(body, '"'), name...), `":`...), strconv.Itoa(sizes[i])...)
 	}
 	h.b.Notice(abi.NoticeIndexSizes, append(body, '}'))
-}
-
-// publishSettingsReads tells the host how many times the core resolved the Harness settings while it handled the event. Pi resolves
-// HarnessOptions.settings at each use (scheduler.ts, generation.ts, harness.ts resolveAgent): a host's settings callback sees every
-// resolution, and harness-restart-failure.test.ts counts them (49 for a round of one generation with one tool call). The core reads
-// the settings the host last sent, so the host resolves them as often as the core did, and sends them again when they changed.
-// Out of line for the reason publishDocCache is.
-//
-//go:noinline
-func (h *handler) publishSettingsReads() {
-	if h.settingsReads == 0 {
-		return
-	}
-	buf := binary.LittleEndian.AppendUint32(h.payloadBuffer(4), h.settingsReads)
-	h.settingsReads = 0
-	h.b.Notice(abi.NoticeSettings, buf)
-	h.keepPayload(buf)
 }

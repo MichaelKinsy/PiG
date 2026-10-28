@@ -86,7 +86,6 @@ func (h *handler) newTurnHost() *turn.Host {
 
 // turnSettings reads the Harness settings the host resolved over their defaults (open payload, resolveSettings).
 func (h *handler) turnSettings() turn.Settings {
-	h.settingsReads++
 	s := objOf(h.open, "settings")
 	retry, compaction, progress := objOf(s, "retry"), objOf(s, "compaction"), objOf(s, "progress")
 	out := turn.Settings{
