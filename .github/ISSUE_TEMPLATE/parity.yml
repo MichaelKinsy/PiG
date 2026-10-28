@@ -19,7 +19,7 @@ body:
     id: pi-version
     attributes:
       label: Pi version compared against
-      placeholder: "0.87.1"
+      placeholder: "The pinned Pi release that pig verify prints"
     validations:
       required: true
   - type: textarea
