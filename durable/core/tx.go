@@ -357,7 +357,13 @@ func (h *handler) txCommitted(t *hostTx, pubs []*session.Publication) {
 	t.tx = nil
 	total := max(h.jobHops()-t.elapsed, 0)
 	h.job = jobStats{mintStart: h.sess.NextID()}
-	answer := func() { h.txResult(t.id, nil) }
+	answer := func() {
+		// The host's end() returns to the task: a task that ended for crashes is reported (scheduler.ts runtime.commit).
+		if t.rt != nil {
+			t.rt.ReportEnded()
+		}
+		h.txResult(t.id, nil)
+	}
 	publish := func() {
 		for _, pub := range pubs {
 			h.sess.Publish(pub)

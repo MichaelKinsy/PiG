@@ -80,12 +80,11 @@ func (r *run) commitEnding() {
 		if e.retry {
 			return r.sleepRetry(live)
 		}
-		r.markEnded(current, e.reason, e.text)
 		if err := r.endFailedRun(tx, live, failed, UnansweredWith(e.reason, e.text)); err != nil {
 			return nil, err
 		}
 		return failedTerminal(e.text, e.reason), nil
-	}, r.reportEnded)
+	}, r.finished)
 }
 
 // sleepRetry records the failed attempt in pi.live and sleeps the backoff; the retry phase then prepares the next attempt, or
