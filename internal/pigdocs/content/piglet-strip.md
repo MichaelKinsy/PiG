@@ -2,7 +2,7 @@
 
 > **Differs from Pi, or easy to get wrong**
 > - Pi has no Piglets. A Piglet's `tools:` is a ceiling: it removes tools but never turns one on.
-> - `pig piglet show` prints the ceiling (`Built-in tools: ...`), not the tools that are active.
+> - `pig piglet show` prints the ceiling (`Built-in tools: ...`) and the tools a run activates (`Active by default: ...`).
 > - A Piglet has no field for the default active tools. Pass `--tools`, set `defaultTools`, or build a script that passes the option.
 > - Pi's `--tools read,grep,find,ls` works with a Piglet only inside the ceiling.
 
@@ -76,9 +76,11 @@ set `extends.allowWiden: true`. Without `allowWiden`, resolution fails.
 
 - `/piglet` prints the active Piglet. A Piglet that strips `/piglet` has no such
   command.
-- `pig piglet show <name>` lists every changed slot and the scope. It prints
-  `MCP tools: hidden, because ...` when the Piglet hides MCP tools, and it names
-  the reason.
+- `pig piglet show <name>` prints the scope and every changed slot:
+  - `Built-in tools: read, grep, find (a limit; it does not activate a tool)` is the ceiling.
+  - `Active by default: read` is what a run activates.
+  - `MCP tools: hidden, because ...` appears when the Piglet hides MCP tools. It names the reason. Example: ``MCP tools: hidden, because the Piglet lists `extensions:` but not `pig-mcp-adapter` ``.
+  The MCP rules and the scope table are in [Tool scope and MCP](piglets.md#tool-scope-and-mcp).
 - A strip row ends in `stripped(runtime)` or `stripped(binary)`. `runtime`
   means a Piglet Binary links the built-in and disables it at start. `binary`
   means the Binary does not contain it. Tools, commands, `themes`, `skills`,
