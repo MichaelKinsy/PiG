@@ -6,9 +6,7 @@ SPDX-License-Identifier: MIT
 
 ## Supported versions
 
-No PiG version is supported until the first public release.
-
-After that release, the latest released version receives security fixes. The `main` branch is development code. Older releases can require an upgrade to receive a fix.
+The latest released version receives security fixes. The `main` branch is development code. Older releases can require an upgrade to receive a fix.
 
 ## Security boundary
 
