@@ -312,6 +312,7 @@ func (h *handler) afterFailedRun() string {
 }
 
 // contextRetentionMs is settings.contextRetentionMs, ten minutes unless the host set it (harness/agent.ts).
+// pig divergence (D206): read from the settings the host sent before the event, not resolved at this use as in Pi.
 func (h *handler) contextRetentionMs() float64 {
 	if v, ok := valueOf(objOf(h.open, "settings"), "contextRetentionMs").(float64); ok {
 		return v

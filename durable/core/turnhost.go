@@ -85,6 +85,7 @@ func (h *handler) newTurnHost() *turn.Host {
 }
 
 // turnSettings reads the Harness settings the host resolved over their defaults (open payload, resolveSettings).
+// pig divergence (D206): these are the settings the host sent before the event, not a resolution of the callback at this use as in Pi.
 func (h *handler) turnSettings() turn.Settings {
 	s := objOf(h.open, "settings")
 	retry, compaction, progress := objOf(s, "retry"), objOf(s, "compaction"), objOf(s, "progress")

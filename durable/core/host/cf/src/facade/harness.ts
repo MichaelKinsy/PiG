@@ -481,7 +481,10 @@ export class Harness {
     return { ...settings, progress: { ...settings.progress, persistWithinMs: persistWithinWire(settings.progress.persistWithinMs) } }
   }
 
-  /** The core reads settings from what it was last sent: send them again before an event when the caller changed them. */
+  /**
+   * The core reads settings from what it was last sent: send them again before an event when the caller changed them.
+   * pig divergence (D206): the callback `HarnessOptions.settings` is resolved here once before each event, where Pi resolves it at each use.
+   */
   private syncSettings = () => {
     // A Storage method assigned after open (an instance override, a test's counting wrapper) joins the gate: Pi calls it dynamically.
     const gate = overriddenMethods(this.storage)
@@ -562,9 +565,6 @@ export class Harness {
       return
     }
     if (kind === NOTICE.telemetry) { this.telemetry.notice(JSON.parse(decoder.decode(payload))); return }
-    // The core resolved the Harness settings n times while it handled the event, where Pi resolves HarnessOptions.settings (harness.ts: at each use);
-    // the host's callback sees as many resolutions. The values need no use here: the next send syncs what changed (syncSettings).
-    if (kind === NOTICE.settings) { for (let uses = new DataView(payload.buffer, payload.byteOffset, 4).getUint32(0, true); uses > 0; uses--) void this.settings; return }
     if (kind !== NOTICE.published) return
     const body = JSON.parse(decoder.decode(payload)) as PublishedNotice
     // A commit adopted in memory only (session.ts ObservedCommit `memory`): only the Session's own components observe it. It stored nothing, resolves no wait and settles no submission.

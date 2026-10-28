@@ -22,8 +22,17 @@ export function validateCorpus(corpus) {
 		if (!s.runner) problems.push(`${s.id}: no runner`)
 		if (["skipped", "pending"].includes(s.status) && !s.reason) problems.push(`${s.id}: status ${s.status} needs a reason`)
 		// No row relaxes its comparison: a numbered divergence is recorded in docs/parity/DIVERGENCES.md and fixed in the core, never
-		// encoded as a weaker level, a masked column or an excused test here (the owner revoked D106 on 2026-10-12).
+		// encoded as a weaker level, a masked column or an excused test here (the owner revoked D106 on 2026-10-12). The one thing a row
+		// may carry is the measured value of an approved divergence (measured_test, measured_failure, measured_divergence): the
+		// candidate must fail that test of a vitest row with that failure, so the number is asserted, not allowed (gate.mjs).
 		for (const key of ["divergence", "divergence_levels", "divergence_tests", "not_core_tests"]) if (s[key] !== undefined) problems.push(`${s.id}: ${key} relaxes the row's comparison; the gate has no such field`)
+		const measured = ["measured_test", "measured_failure", "measured_divergence"].filter(k => s[k] !== undefined)
+		if (measured.length) {
+			for (const k of ["measured_test", "measured_failure", "measured_divergence"]) if (typeof s[k] !== "string" || !s[k]) problems.push(`${s.id}: a measured divergence needs ${k}`)
+			if (s.runner !== "vitest") problems.push(`${s.id}: a measured divergence is a test of a vitest row`)
+			const record = typeof s.measured_divergence === "string" ? join(REPO, "docs", "parity", "divergences", `${s.measured_divergence}.md`) : undefined
+			if (record && !(existsSync(record) && readFileSync(record, "utf8").includes("SCRUTINIZED:approved"))) problems.push(`${s.id}: ${s.measured_divergence} has no approved record in docs/parity/divergences`)
+		}
 		if (s.levels?.includes("order") && !["example", "interop", "diff"].includes(s.runner)) problems.push(`${s.id}: the order level needs a scenario program (an example, interop or diff row)`)
 		if (s.runner === "diff" && (!Number.isInteger(s.seed) || !["gate", "node"].includes(s.profile))) problems.push(`${s.id}: a diff row names an integer seed and a storage profile (gate or node)`)
 		if (s.normalisers?.length) problems.push(`${s.id}: normalisers are not allowed in acceptance runs (CONTRACT 2.2)`)

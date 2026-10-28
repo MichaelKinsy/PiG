@@ -111,10 +111,21 @@ const REAL_TIME = {
 		`real_time_tests = ["tool progress and lifetime answers an aborted tool with only its durable output"]`,
 	],
 }
+// A row's measured value of an approved divergence (gate.mjs reads measured_*): the candidate fails the test with this failure, and only with it.
+const MEASURED = {
+	"harness-restart-failure": [
+		"# D206 (owner approved 2026-10-28): the core resolves HarnessOptions.settings from the snapshot the host sends before each event, so the",
+		"# test's count of the reads of `extensions` (Pi: 49 a round, one per resolution at each use) is the 6 agent resolutions of the host in a round.",
+		"# The candidate must fail this test with this failure: a pass means D206 is over (gate.mjs), another failure fails the row.",
+		`measured_test = ${q("the restart limit on the normal path (#11139) resolves the settings no more often than before: only a task that was cut off reads the limit")}`,
+		`measured_failure = "expected 6 to be 49"`,
+		`measured_divergence = "D206"`,
+	],
+}
 for (const f of readdirSync(join(pi, "packages/durable/test")).filter(f => f.endsWith(".test.ts")).sort()) {
 	const name = f.replace(/\.test\.ts$/, "")
 	emit("[[scenario]]", `id = ${q("U-" + name)}`, `family = "upstream-test"`, `runner = "vitest"`, `source = ${q("packages/durable/test/" + f)}`, `sha256 = ${q(sha("packages/durable/test/" + f))}`,
-		`owner = ${q("dcore-" + U[name])}`, `levels = ["tests"]`, ...(NOT_THE_CORE[name] ? [`status = "skipped"`, `reason = ${q(NOT_THE_CORE[name])}`] : [`status = "ready"`]), ...(REAL_TIME[name] ?? []))
+		`owner = ${q("dcore-" + U[name])}`, `levels = ["tests"]`, ...(NOT_THE_CORE[name] ? [`status = "skipped"`, `reason = ${q(NOT_THE_CORE[name])}`] : [`status = "ready"`]), ...(REAL_TIME[name] ?? []), ...(MEASURED[name] ?? []))
 }
 emit("[[scenario]]", `id = "SC"`, `family = "storage-conformance"`, `runner = "storage-conformance"`, `source = "packages/durable/src/testing/storage-conformance.ts"`, `sha256 = ${q(sha("packages/durable/src/testing/storage-conformance.ts"))}`,
 	`owner = "dcore-store"`, `about = "the core's write encoder wrapped as a Storage passes the upstream storage conformance suite (CONTRACT 3.10): the suite registered by memory-storage, jsonl-storage, sqlite-storage, sqlite-cloudflare, sqlite-facade and indexeddb-storage"`, `levels = ["tests"]`, `status = "ready"`)

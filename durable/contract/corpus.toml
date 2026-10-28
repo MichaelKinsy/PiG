@@ -767,6 +767,12 @@ sha256 = "91a5324a0a55e0a14d5e7258857b81c64d6e944d1b6037afb0b871590bdb2a96"
 owner = "dcore-session"
 levels = ["tests"]
 status = "ready"
+# D206 (owner approved 2026-10-28): the core resolves HarnessOptions.settings from the snapshot the host sends before each event, so the
+# test's count of the reads of `extensions` (Pi: 49 a round, one per resolution at each use) is the 6 agent resolutions of the host in a round.
+# The candidate must fail this test with this failure: a pass means D206 is over (gate.mjs), another failure fails the row.
+measured_test = "the restart limit on the normal path (#11139) resolves the settings no more often than before: only a task that was cut off reads the limit"
+measured_failure = "expected 6 to be 49"
+measured_divergence = "D206"
 
 [[scenario]]
 id = "U-harness-run-failure"

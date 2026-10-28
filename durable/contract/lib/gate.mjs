@@ -176,7 +176,17 @@ export async function runVitestRow(row, impl, ctx) {
 	const r = ref.get(file), c = cand.get(file)
 	if (!r) return failed({ problem: `the reference did not run ${file}` })
 	if (!c) return failed({ problem: "the file did not run", reference: r.status })
-	const bad = [...r.tests].filter(([name, st]) => st === "passed" && c.tests.get(name) !== "passed").map(([name]) => `${name}: ${c.tests.get(name) ?? "missing"}`)
+	let bad = [...r.tests].filter(([name, st]) => st === "passed" && c.tests.get(name) !== "passed").map(([name]) => `${name}: ${c.tests.get(name) ?? "missing"}`)
+	// The measured value of a numbered divergence (corpus measured_*): the candidate fails this test with the stated failure, and only
+	// with it. A pass means the divergence is over, so the entry goes; another failure is a failure of the row like any other.
+	let measured
+	if (row.measured_test && !impl.control) {
+		const name = [...r.tests.keys()].find(n => n.startsWith(row.measured_test))
+		const failure = name === undefined ? undefined : c.failures.get(name)
+		if (name === undefined || r.tests.get(name) !== "passed") return failed({ problem: `the reference does not pass the measured test ${row.measured_test}` })
+		if (c.tests.get(name) === "passed") return failed({ problem: `${row.measured_divergence} (${row.measured_failure}) passes ${name}: the divergence is over; delete the row's measured_* fields and the record` })
+		if (failure?.includes(row.measured_failure)) { bad = bad.filter(b => !b.startsWith(`${name}: `)); measured = `${row.measured_divergence}: ${name} fails with "${row.measured_failure}"` }
+	}
 	if (c.status === "failed" && !c.tests.size) return failed({ problem: "the file failed to load", message: c.message?.slice(0, 400) })
 	// A test whose assertion depends on a real-time window the reference shares (corpus `real_time_tests`: a throttle interval
 	// against a setTimeout of the test itself) fails in the reference too when the process stalls for longer than the window
@@ -193,10 +203,11 @@ export async function runVitestRow(row, impl, ctx) {
 	if (bad.length) return failed({ problem: `${bad.length} test(s) the reference passes did not pass`, first: bad.slice(0, 5), ...(detail.length ? { detail } : {}) })
 	const count = [...r.tests.values()].filter(s => s === "passed").length
 	const refFailed = [...r.tests].filter(([, st]) => st === "failed").map(([name]) => name)
+	const stated = measured ? `; ${measured}` : ""
 	const alongside = refFailed.length ? `; the reference failed ${refFailed.length} alongside: ${refFailed.slice(0, 5).join("; ")}` : ""
-	if (retried.length) return passed(`${count} tests${alongside}; retried once (real-time window shared with the reference): ${retried.join("; ")}`)
+	if (retried.length) return passed(`${count} tests${alongside}${stated}; retried once (real-time window shared with the reference): ${retried.join("; ")}`)
 	// A file whose every test the reference skips (a missing key) proves nothing about the candidate.
-	return count ? passed(`${count} tests${alongside}`) : { status: "skipped", detail: `the reference passes no test of ${file} here (${r.tests.size} not passed${alongside})` }
+	return count ? passed(`${count} tests${alongside}${stated}`) : { status: "skipped", detail: `the reference passes no test of ${file} here (${r.tests.size} not passed${alongside})` }
 }
 
 /** W rows: the bench scenario on a copy of the fixture, reference against implementation. */

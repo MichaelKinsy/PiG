@@ -70,3 +70,26 @@ test("a test only the candidate fails still fails the row", { skip }, async () =
 	assert.equal(r.status, "fail", JSON.stringify(r))
 	assert.deepEqual(r.detail.first, ["answers: failed"])
 })
+
+// A numbered divergence whose measured value the row states (corpus measured_test, measured_failure, measured_divergence): the
+// candidate must fail that test with the stated failure. It is no excuse: a pass, or another failure, fails the row.
+const measured = { name: "wrong", vitest: true, candidateDir: wrong, env: {} }
+const measuredRow = (failure, test = "answers") => ({ ...row("second"), measured_test: test, measured_failure: failure, measured_divergence: "D206" })
+
+test("a test the row states as a measured divergence passes the row when the candidate fails it with the stated failure", { skip }, async () => {
+	const r = await gate.runVitestRow(measuredRow("expected 41 to be 42"), measured, { out: join(work, "out-measured-ok") })
+	assert.equal(r.status, "pass", JSON.stringify(r))
+	assert.match(r.detail, /D206: answers fails with "expected 41 to be 42"/)
+})
+
+test("a measured divergence fails the row when the candidate fails the test with another failure", { skip }, async () => {
+	const r = await gate.runVitestRow(measuredRow("expected 40 to be 42"), measured, { out: join(work, "out-measured-other") })
+	assert.equal(r.status, "fail", JSON.stringify(r))
+	assert.deepEqual(r.detail.first, ["answers: failed"])
+})
+
+test("a measured divergence fails the row when the candidate passes the test, so the entry cannot outlive the divergence", { skip }, async () => {
+	const r = await gate.runVitestRow(measuredRow("expected 41 to be 42"), { name: "right", vitest: true, candidateDir: candidate, env: {} }, { out: join(work, "out-measured-pass") })
+	assert.equal(r.status, "fail", JSON.stringify(r))
+	assert.match(r.detail.problem, /D206 .* passes answers/)
+})
