@@ -333,6 +333,14 @@ jobs:
         with:
           path: ~/.cache/pig-sdk-py
           key: sdk-py-${{ runner.os }}-${{ steps.python.outputs.python-version }}-${{ hashFiles('extensions/sdk-py/requirements-dev.txt') }}
+      # make test-term-engines builds libvterm, the Rust engine runners and the pyte venv under $PIG_CACHE_HOME/pig-term-engines (~/.cache here), each
+      # in a directory named for the lock or pin that produced it, so this key changes exactly when something there would be rebuilt.
+      - name: Restore the terminal-engine builds
+        if: matrix.shard == 'toolchains'
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/pig-term-engines
+          key: term-engines-${{ runner.os }}-${{ runner.arch }}-${{ steps.python.outputs.python-version }}-${{ env.RUST_VERSION }}-${{ hashFiles('test/term-engines/alacritty/Cargo.lock', 'test/term-engines/alacritty/Cargo.toml', 'test/term-engines/alacritty/src/**', 'test/term-engines/wezterm/Cargo.lock', 'test/term-engines/wezterm/Cargo.toml', 'test/term-engines/wezterm/src/**', 'test/term-engines/libvterm/run.c', 'test/term-engines/pyte/requirements.txt', 'automation/dev/toolchains.lock', 'automation/ci/test-term-engines.sh') }}
       # An unresponsive package mirror fails this step within its timeout instead of holding the job.
       - name: Install native test packages
         shell: bash
