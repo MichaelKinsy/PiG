@@ -49,6 +49,8 @@ selection wins, then consumer default. Do not write `model: any` or
 
 A present model is a preference under PiG's normal CLI-over-Piglet precedence.
 
+<a id="tool-scope"></a>
+
 ## Tool scope and MCP
 
 A Piglet scope removes tools from the tool registry of the session. This is the same registry that `--tools` and `--exclude-tools` filter.

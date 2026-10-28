@@ -96,7 +96,7 @@ In an interactive session, an active Piglet adds the read-only command `/piglet`
 
 The `tools` list is a ceiling. The Piglet keeps at most the tools in the list. A run activates only the default tools that the list keeps. In the example, `Active by default` is `read`, because `grep` and `find` are not default tools.
 
-The Piglet scope removes tools from the tool registry of the Session. This is the registry that `--tools` and `--exclude-tools` also filter. A tool that the scope removes is gone. The model cannot call it. A `codemode` script cannot call it. `tool_search` cannot find it. See [Tool scope](https://pi-in-go.dev/docs/latest/piglets#tool-scope) for the rules for extension tools and MCP tools.
+The Piglet scope removes tools from the tool registry of the Session. This is the registry that `--tools` and `--exclude-tools` also filter. A tool that the scope removes is gone. The model cannot call it. A `codemode` script cannot call it. `tool_search` cannot find it. See [Tool scope](piglets.md#tool-scope) for the rules for extension tools and MCP tools.
 
 ## 5. Register
 
