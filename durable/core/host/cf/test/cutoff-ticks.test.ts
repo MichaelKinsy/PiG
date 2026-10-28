@@ -110,7 +110,7 @@ async function crashWhileStreaming(): Promise<Crash> {
 }
 
 // A request the host stopped during, under `retry: { enabled: false }`: the run ends interrupted at once (generation.ts interrupted).
-test("a generation whose request the host died during ends the run interrupted in Pi's passes", { todo: "measured against Pi b3a29f11: the core spends 162 passes to the run end where Pi spends 164; Harness.open 67 against 56" }, async () => {
+test("a generation whose request the host died during ends the run interrupted in Pi's passes", { todo: "measured at the merge with the batch's Durable core (Pi b3a29f11, Go build): Harness.open over the crashed store spends 68 passes where Pi spends 56 (12 more), and the run end 162 where Pi spends 164 (2 fewer); the open and the interrupted attempt's charge are not yet found" }, async () => {
   const crash = await crashWhileStreaming()
   const result = await counts("interrupted", crash, (_api, setup) => { setup.settings.retry = { enabled: false } })
   assert.deepEqual(result.core, result.pi, "the core's passes of the interrupted request equal the reference's")
@@ -118,7 +118,7 @@ test("a generation whose request the host died during ends the run interrupted i
 })
 
 // A generation cut off restartLimit times before its request (generation.ts endCutOff): the run ends restart_limit.
-test("a generation cut off restartLimit times ends the run restart_limit in Pi's passes", { skip: "unmeasured: no pass count came out of the first run" }, async () => {
+test("a generation cut off restartLimit times ends the run restart_limit in Pi's passes", { todo: "measured at the merge with the batch's Durable core (Pi b3a29f11, Go build): the run end spends Pi's 123 passes; Harness.open over the crashed store spends 63 where Pi spends 56 (7 more); the open's recovery of a running task is not yet found" }, async () => {
   const path = join(tempDir("cutoff-limit"), "store.sqlite")
   const setup = setupOf(piApi)
   setup.settings.restartLimit = 1
@@ -139,7 +139,7 @@ test("a generation cut off restartLimit times ends the run restart_limit in Pi's
 })
 
 // A crash during a deferred response's poll, with no retry left: the poll is cut off and the run ends interrupted (generation.ts poll).
-test("a generation whose poll the host died during ends the run interrupted in Pi's passes", { todo: "measured against Pi b3a29f11: 128 against 129 passes to the run end; Harness.open 62 against 56" }, async () => {
+test("a generation whose poll the host died during ends the run interrupted in Pi's passes", { todo: "measured at the merge with the batch's Durable core (Pi b3a29f11, Go build): Harness.open spends 63 passes where Pi spends 56 (7 more) and the run end 128 where Pi spends 129 (1 fewer); the open and the poll's charge are not yet found" }, async () => {
   const path = join(tempDir("cutoff-poll"), "store.sqlite")
   const setup = setupOf(piApi, { deferred: { pollAfterMs: 10 } })
   setup.settings.stream = { deferred: true }
@@ -161,7 +161,7 @@ test("a generation whose poll the host died during ends the run interrupted in P
 })
 
 // A tool call cut off restartLimit times is not run again (tool.ts endCutOff).
-test("a tool call cut off restartLimit times ends with an error result in Pi's passes", { skip: "the store builder hangs (the second crash is never reached)" }, async () => {
+test("a tool call cut off restartLimit times ends with an error result in Pi's passes", { skip: "the store builder hangs: with the reference Harness alone (no core involved) the tool of the second open never reaches its execute inside 120 s, so the second crash is never reached; the hang is not yet explained and may be a bug of the build, not of the test" }, async () => {
   const path = join(tempDir("cutoff-tool"), "store.sqlite")
   const heavy = (api: Api, running?: { resolve: () => void }) => api.defineTool({ name: "heavy", description: "Never finishes", parameters: Type.Object({}), replay: "safe", execute: async (_args: unknown, api2: any, ctx: any) => { api2.output("partial\n"); running?.resolve(); return aborted(ctx.abortSignal) } })
   const make = (api: Api, running?: { resolve: () => void }) => {
@@ -192,7 +192,7 @@ test("a tool call cut off restartLimit times ends with an error result in Pi's p
 })
 
 // A compaction cut off restartLimit times fails into compactionFailure (compaction.ts).
-test("a compaction cut off restartLimit times fails in Pi's passes", { todo: "measured against Pi b3a29f11: the core spends 199 passes to the cut-off end where Pi spends 111; Harness.open 62 against 56" }, async () => {
+test("a compaction cut off restartLimit times fails in Pi's passes", { todo: "measured at the merge with the batch's Durable core (Pi b3a29f11, Go build): the cut-off end spends Pi's 111 passes (the earlier 199 came from the build before the merge); Harness.open over the crashed store spends 63 where Pi spends 56 (7 more); the open's recovery of a running task is not yet found" }, async () => {
   const path = join(tempDir("cutoff-compaction"), "store.sqlite")
   const setup = setupOf(piApi)
   setup.settings.restartLimit = 1
