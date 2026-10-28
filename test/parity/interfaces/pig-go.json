@@ -136648,6 +136648,17 @@
       "shapeHash": "sha256:027b4f46c47262105096af44d3077ae3066ee08700e56b6be4edd3c90d0a874e"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#UIBridge.tuiAlt",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "UIBridge.tuiAlt",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func() *tuiAltRegistry"
+      },
+      "shapeHash": "sha256:09b23c22f1fcf739915961ad1437cf26cad2a9bfc2e331c68a6337c63ef0f589"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#UIBridge.tuiAltCreate",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
       "name": "UIBridge.tuiAltCreate",
