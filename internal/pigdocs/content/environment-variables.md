@@ -10,7 +10,7 @@ Variables named `PI_*` are read for compatibility with upstream Pi. Directory va
 
 | Variable | Effect |
 |---|---|
-| `PIG_HOME` | Configuration root. Default `~/.pig` |
+| `PIG_HOME` | Configuration root. Default `$XDG_CONFIG_HOME/pig` when `XDG_CONFIG_HOME` is set, else `~/.pig`. An empty value is ignored |
 | `XDG_CONFIG_HOME` | When `PIG_HOME` is not set, the configuration root is `$XDG_CONFIG_HOME/pig` |
 | `PIG_CODING_AGENT_DIR` | Agent directory alone in default mode. Default `$PIG_HOME/agent` |
 | `PIG_USE_PI_DIRS` | Exact value `1` selects Pi's agent directory and project `.pi` resources (D2). Off by default |
