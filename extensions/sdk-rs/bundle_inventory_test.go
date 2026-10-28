@@ -13,13 +13,13 @@ import (
 
 // Every source file Cargo can consume in a build must ship with the staged SDK, including newly added modules. The unit-test modules (src/*tests.rs) do not: lib.rs and the modules that declare them do so under #[cfg(test)].
 func TestBundledFilesMatchRustSourceTree(t *testing.T) {
-	want := []string{"LICENSE", "Cargo.toml", "Cargo.lock"}
+	want := []string{embeddedName("LICENSE"), embeddedName("Cargo.toml"), embeddedName("Cargo.lock")}
 	err := fs.WalkDir(os.DirFS("."), "src", func(path string, entry fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
-		if !entry.IsDir() && !isTestModule(path) && !hasCompressedCopy(path) {
-			want = append(want, path)
+		if !entry.IsDir() && !isTestModule(path) && !strings.HasSuffix(path, ".gz") {
+			want = append(want, embeddedName(path))
 		}
 		return nil
 	})
@@ -32,17 +32,19 @@ func TestBundledFilesMatchRustSourceTree(t *testing.T) {
 	if !slices.Equal(got, want) {
 		t.Fatalf("staged Rust sources=%v, want filesystem inventory=%v; run go generate in extensions/sdk-rs", got, want)
 	}
-	for _, path := range want {
+	// The stager writes each file under the name without .gz: that text is the source tree's.
+	for _, name := range want {
+		path := strings.TrimSuffix(name, ".gz")
 		source, err := os.ReadFile(path)
 		if err != nil {
 			t.Fatal(err)
 		}
-		embedded, err := Source.ReadFile(path)
+		embedded, err := embeddedText(name)
 		if err != nil {
 			t.Fatal(err)
 		}
 		if !bytes.Equal(source, embedded) {
-			t.Fatalf("staged Rust source %s differs from its current source", path)
+			t.Fatalf("staged Rust source %s differs from its current source; run go generate in extensions/sdk-rs", path)
 		}
 	}
 }

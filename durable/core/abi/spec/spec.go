@@ -71,6 +71,7 @@ var noticeRows = []kindRow{
 	{"index_sizes", uint8(abi.NoticeIndexSizes), "JSON {live, settled, edges, below, roots, unloaded, dropQueue}: a harness-mode core's scheduler ownership index sizes, whenever they change"},
 	{"wake", uint8(abi.NoticeWake), "JSON {active, at?}: a harness-mode core's Harness.wake value (HarnessOptions.onWake), published when it changed; the core arms no timer for sleeping tasks then"},
 	{"origin_free", uint8(abi.NoticeOriginFree), "u32 n, u32 origin{n}: the origins the core holds no work for any more; the host drops their async contexts (ABI section 5.4); the host consumes it and its listeners never see it"},
+	{"telemetry", uint8(abi.NoticeTelemetry), "JSON op: a span event or end, a span's attributes, or an active-task count of Pi's telemetry (DURABLE_TELEMETRY_SCHEMA); spans are the host's, named by the handles it assigned"},
 }
 
 var statusRows = []kindRow{
