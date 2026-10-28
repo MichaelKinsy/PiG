@@ -36,7 +36,7 @@ func TestConformance_PackedRefinedToolArgumentsAcrossSDKs(t *testing.T) {
 	if len(cases) == 0 {
 		t.Fatal("no packed cases in validateToolArguments.json")
 	}
-	for _, language := range []string{"go", "python", "rust"} {
+	for _, language := range []string{"go", "python", "rust", "lisp"} {
 		t.Run(language, func(t *testing.T) {
 			t.Parallel()
 			h := subprocess.NewHostWithConfigRoot(t.TempDir(), t.TempDir())
@@ -158,6 +158,23 @@ def new_extension():
  e.command("refine_log", "", report)
  return e
 `, name)
+	case "lisp":
+		path = filepath.Join(cfg.Source, name+".lisp")
+		code = fmt.Sprintf(`(defpackage %q (:use "COMMON-LISP"))
+(in-package %q)
+(defun new-extension ()
+  (let ((e (pig:make-extension %q)) (log '()))
+    (pig:tool e "refine-packed" ""
+              (pig:type-object (pig:obj "a" (pig:type-refine (pig:type-string)
+                                                             (lambda (v) (push "check:p" log) (and (stringp v) (>= (length v) 3)))
+                                                             (lambda (v) (declare (ignore v)) (push "error:pm" log) "a is too short"))))
+              (lambda (ctx args) (declare (ignore ctx args)) (pig:tool-result "ok")))
+    (pig:command e "refine_log" "" (lambda (ctx args) (declare (ignore args))
+                                      (let ((calls (coerce (reverse log) 'simple-vector)))
+                                        (setf log '())
+                                        (pig:ctx-notify ctx (format nil "~A:~A" %q (pig:to-json calls)) "info"))))
+    e))
+`, name, name, name, name)
 	case "rust":
 		path = filepath.Join(cfg.Source, "src", "lib.rs")
 		code = fmt.Sprintf(`use pig_sdk::{Extension,Schema,ToolResult,CommandResult,Type};
