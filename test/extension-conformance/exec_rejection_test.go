@@ -59,7 +59,7 @@ func TestExecRejectionsAcrossSDKs(t *testing.T) {
 		t.Fatalf("reference outcomes = %q, want spawn EINVAL for batch files", want)
 	}
 	cases := sdkHarnessCases()
-	for _, language := range []string{"go", "rust", "python"} {
+	for _, language := range []string{"go", "rust", "python", "lisp"} {
 		cases = append(cases, harnessCase{name: "packed-" + language, make: func(t *testing.T) *harness { return makePackedUIHarness(t, language) }})
 	}
 	for _, tc := range cases {

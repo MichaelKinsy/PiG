@@ -24922,7 +24922,7 @@
       "id": "pkg:ai/.#OAuthDeviceCodeInfo::property:copyCodeOnConfirm",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:dde88e931d7274ea63a1e9c2e20bcb7c987cc278f9a345279ee2c9bb8f4bb201",
-      "rationale": "Derived by the interface gap detector: OAuthDeviceCodeInfo::property:copyCodeOnConfirm is Go ai/oauth_types.go#OAuthDeviceCodeInfo.CopyCodeOnConfirm (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: OAuthDeviceCodeInfo::property:copyCodeOnConfirm is Go ai/oauth_types.go#OAuthDeviceCodeInfo.CopyCodeOnConfirm (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "ai/oauth_types.go#OAuthDeviceCodeInfo.CopyCodeOnConfirm"
       ],
@@ -24935,7 +24935,7 @@
         "call:coding/extension/host/subprocess/oauth_bridge.go#Host.handleOAuthCallback"
       ],
       "evidence": [
-        "reach:coding/extension/host/subprocess/oauth_bridge.go#Host.handleOAuthCallback"
+        "test:test/extension-conformance/lisp_provider_api_test.go#TestLispOAuthLoginCallbacksReachTheHost"
       ]
     },
     {
@@ -24984,7 +24984,7 @@
       "id": "pkg:ai/.#OAuthDeviceCodeInfo::property:openBrowserOnConfirm",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:27bf330b0426999dd1c906738f0861c3554ff638e0286b082e47c7d6b4bffb54",
-      "rationale": "Derived by the interface gap detector: OAuthDeviceCodeInfo::property:openBrowserOnConfirm is Go ai/oauth_types.go#OAuthDeviceCodeInfo.OpenBrowserOnConfirm (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: OAuthDeviceCodeInfo::property:openBrowserOnConfirm is Go ai/oauth_types.go#OAuthDeviceCodeInfo.OpenBrowserOnConfirm (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "ai/oauth_types.go#OAuthDeviceCodeInfo.OpenBrowserOnConfirm"
       ],
@@ -24997,7 +24997,7 @@
         "call:coding/extension/host/subprocess/oauth_bridge.go#Host.handleOAuthCallback"
       ],
       "evidence": [
-        "reach:coding/extension/host/subprocess/oauth_bridge.go#Host.handleOAuthCallback"
+        "test:test/extension-conformance/lisp_provider_api_test.go#TestLispOAuthLoginCallbacksReachTheHost"
       ]
     },
     {
@@ -25127,8 +25127,8 @@
       ],
       "evidence": [
         "test:ai/oauth_openai_codex_upstream_test.go#TestOpenAICodexOAuthUpstream",
-        "test:test/extension-conformance/node_oauth_test.go#TestNodeOAuthBridge",
-        "test:ai/oauth_kimi_test.go#TestKimiOAuthLoginContextCancellation"
+        "test:test/extension-conformance/lisp_provider_api_test.go#TestLispOAuthLoginCallbacksReachTheHost",
+        "test:test/extension-conformance/node_oauth_test.go#TestNodeOAuthBridge"
       ]
     },
     {
@@ -25149,8 +25149,8 @@
       ],
       "evidence": [
         "test:ai/oauth_openai_codex_upstream_test.go#TestOpenAICodexOAuthUpstream",
-        "test:test/extension-conformance/node_oauth_test.go#TestNodeOAuthBridge",
-        "test:ai/oauth_kimi_test.go#TestKimiOAuthLoginContextCancellation"
+        "test:test/extension-conformance/lisp_provider_api_test.go#TestLispOAuthLoginCallbacksReachTheHost",
+        "test:test/extension-conformance/node_oauth_test.go#TestNodeOAuthBridge"
       ]
     },
     {
@@ -25193,9 +25193,9 @@
         "call:ai/auth_native_login.go#oauthNativeLogin"
       ],
       "evidence": [
+        "test:test/extension-conformance/lisp_provider_api_test.go#TestLispOAuthLoginCallbacksReachTheHost",
         "test:ai/oauth_meta_test.go#TestMetaOAuthLogsInWithDeviceFlowAndMintsModelAPIKey",
-        "test:ai/oauth_openai_codex_login_test.go#TestLoginOpenAICodexUsesManualCodeWhenCallbackPortBusy",
-        "test:ai/oauth_openrouter_test.go#TestOpenRouterOAuthAlreadyCancelledUpstream"
+        "test:ai/oauth_openai_codex_login_test.go#TestLoginOpenAICodexUsesManualCodeWhenCallbackPortBusy"
       ]
     },
     {
@@ -25216,8 +25216,8 @@
       ],
       "evidence": [
         "test:ai/oauth_openai_codex_upstream_test.go#TestOpenAICodexOAuthUpstream",
-        "test:test/extension-conformance/node_oauth_test.go#TestNodeOAuthBridge",
-        "test:ai/githubcopilot_test.go#TestCopilotLoginReportsTheVerificationURLAndUserCode"
+        "test:test/extension-conformance/lisp_provider_api_test.go#TestLispOAuthLoginCallbacksReachTheHost",
+        "test:test/extension-conformance/node_oauth_test.go#TestNodeOAuthBridge"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -25239,8 +25239,8 @@
       ],
       "evidence": [
         "test:ai/oauth_openai_codex_upstream_test.go#TestOpenAICodexOAuthUpstream",
-        "test:test/extension-conformance/node_oauth_test.go#TestNodeOAuthBridge",
-        "test:ai/githubcopilot_test.go#TestCopilotLoginReportsTheVerificationURLAndUserCode"
+        "test:test/extension-conformance/lisp_provider_api_test.go#TestLispOAuthLoginCallbacksReachTheHost",
+        "test:test/extension-conformance/node_oauth_test.go#TestNodeOAuthBridge"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -69289,7 +69289,7 @@
       "id": "pkg:ai/compat#OAuthDeviceCodeInfo::property:copyCodeOnConfirm",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:dde88e931d7274ea63a1e9c2e20bcb7c987cc278f9a345279ee2c9bb8f4bb201",
-      "rationale": "Derived by the interface gap detector: OAuthDeviceCodeInfo::property:copyCodeOnConfirm is Go ai/oauth_types.go#OAuthDeviceCodeInfo.CopyCodeOnConfirm (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: OAuthDeviceCodeInfo::property:copyCodeOnConfirm is Go ai/oauth_types.go#OAuthDeviceCodeInfo.CopyCodeOnConfirm (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "ai/oauth_types.go#OAuthDeviceCodeInfo.CopyCodeOnConfirm"
       ],
@@ -69302,7 +69302,7 @@
         "call:coding/extension/host/subprocess/oauth_bridge.go#Host.handleOAuthCallback"
       ],
       "evidence": [
-        "reach:coding/extension/host/subprocess/oauth_bridge.go#Host.handleOAuthCallback"
+        "test:test/extension-conformance/lisp_provider_api_test.go#TestLispOAuthLoginCallbacksReachTheHost"
       ]
     },
     {
@@ -69351,7 +69351,7 @@
       "id": "pkg:ai/compat#OAuthDeviceCodeInfo::property:openBrowserOnConfirm",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:27bf330b0426999dd1c906738f0861c3554ff638e0286b082e47c7d6b4bffb54",
-      "rationale": "Derived by the interface gap detector: OAuthDeviceCodeInfo::property:openBrowserOnConfirm is Go ai/oauth_types.go#OAuthDeviceCodeInfo.OpenBrowserOnConfirm (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: OAuthDeviceCodeInfo::property:openBrowserOnConfirm is Go ai/oauth_types.go#OAuthDeviceCodeInfo.OpenBrowserOnConfirm (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "ai/oauth_types.go#OAuthDeviceCodeInfo.OpenBrowserOnConfirm"
       ],
@@ -69364,7 +69364,7 @@
         "call:coding/extension/host/subprocess/oauth_bridge.go#Host.handleOAuthCallback"
       ],
       "evidence": [
-        "reach:coding/extension/host/subprocess/oauth_bridge.go#Host.handleOAuthCallback"
+        "test:test/extension-conformance/lisp_provider_api_test.go#TestLispOAuthLoginCallbacksReachTheHost"
       ]
     },
     {
@@ -69494,8 +69494,8 @@
       ],
       "evidence": [
         "test:ai/oauth_openai_codex_upstream_test.go#TestOpenAICodexOAuthUpstream",
-        "test:test/extension-conformance/node_oauth_test.go#TestNodeOAuthBridge",
-        "test:ai/oauth_kimi_test.go#TestKimiOAuthLoginContextCancellation"
+        "test:test/extension-conformance/lisp_provider_api_test.go#TestLispOAuthLoginCallbacksReachTheHost",
+        "test:test/extension-conformance/node_oauth_test.go#TestNodeOAuthBridge"
       ]
     },
     {
@@ -69516,8 +69516,8 @@
       ],
       "evidence": [
         "test:ai/oauth_openai_codex_upstream_test.go#TestOpenAICodexOAuthUpstream",
-        "test:test/extension-conformance/node_oauth_test.go#TestNodeOAuthBridge",
-        "test:ai/oauth_kimi_test.go#TestKimiOAuthLoginContextCancellation"
+        "test:test/extension-conformance/lisp_provider_api_test.go#TestLispOAuthLoginCallbacksReachTheHost",
+        "test:test/extension-conformance/node_oauth_test.go#TestNodeOAuthBridge"
       ]
     },
     {
@@ -69560,9 +69560,9 @@
         "call:ai/auth_native_login.go#oauthNativeLogin"
       ],
       "evidence": [
+        "test:test/extension-conformance/lisp_provider_api_test.go#TestLispOAuthLoginCallbacksReachTheHost",
         "test:ai/oauth_meta_test.go#TestMetaOAuthLogsInWithDeviceFlowAndMintsModelAPIKey",
-        "test:ai/oauth_openai_codex_login_test.go#TestLoginOpenAICodexUsesManualCodeWhenCallbackPortBusy",
-        "test:ai/oauth_openrouter_test.go#TestOpenRouterOAuthAlreadyCancelledUpstream"
+        "test:ai/oauth_openai_codex_login_test.go#TestLoginOpenAICodexUsesManualCodeWhenCallbackPortBusy"
       ]
     },
     {
@@ -69583,8 +69583,8 @@
       ],
       "evidence": [
         "test:ai/oauth_openai_codex_upstream_test.go#TestOpenAICodexOAuthUpstream",
-        "test:test/extension-conformance/node_oauth_test.go#TestNodeOAuthBridge",
-        "test:ai/githubcopilot_test.go#TestCopilotLoginReportsTheVerificationURLAndUserCode"
+        "test:test/extension-conformance/lisp_provider_api_test.go#TestLispOAuthLoginCallbacksReachTheHost",
+        "test:test/extension-conformance/node_oauth_test.go#TestNodeOAuthBridge"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -69606,8 +69606,8 @@
       ],
       "evidence": [
         "test:ai/oauth_openai_codex_upstream_test.go#TestOpenAICodexOAuthUpstream",
-        "test:test/extension-conformance/node_oauth_test.go#TestNodeOAuthBridge",
-        "test:ai/githubcopilot_test.go#TestCopilotLoginReportsTheVerificationURLAndUserCode"
+        "test:test/extension-conformance/lisp_provider_api_test.go#TestLispOAuthLoginCallbacksReachTheHost",
+        "test:test/extension-conformance/node_oauth_test.go#TestNodeOAuthBridge"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -85246,7 +85246,7 @@
       "id": "pkg:ai/oauth#OAuthDeviceCodeInfo::property:copyCodeOnConfirm",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:dde88e931d7274ea63a1e9c2e20bcb7c987cc278f9a345279ee2c9bb8f4bb201",
-      "rationale": "Derived by the interface gap detector: OAuthDeviceCodeInfo::property:copyCodeOnConfirm is Go ai/oauth_types.go#OAuthDeviceCodeInfo.CopyCodeOnConfirm (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: OAuthDeviceCodeInfo::property:copyCodeOnConfirm is Go ai/oauth_types.go#OAuthDeviceCodeInfo.CopyCodeOnConfirm (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "ai/oauth_types.go#OAuthDeviceCodeInfo.CopyCodeOnConfirm"
       ],
@@ -85259,7 +85259,7 @@
         "call:coding/extension/host/subprocess/oauth_bridge.go#Host.handleOAuthCallback"
       ],
       "evidence": [
-        "reach:coding/extension/host/subprocess/oauth_bridge.go#Host.handleOAuthCallback"
+        "test:test/extension-conformance/lisp_provider_api_test.go#TestLispOAuthLoginCallbacksReachTheHost"
       ]
     },
     {
@@ -85308,7 +85308,7 @@
       "id": "pkg:ai/oauth#OAuthDeviceCodeInfo::property:openBrowserOnConfirm",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:27bf330b0426999dd1c906738f0861c3554ff638e0286b082e47c7d6b4bffb54",
-      "rationale": "Derived by the interface gap detector: OAuthDeviceCodeInfo::property:openBrowserOnConfirm is Go ai/oauth_types.go#OAuthDeviceCodeInfo.OpenBrowserOnConfirm (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: OAuthDeviceCodeInfo::property:openBrowserOnConfirm is Go ai/oauth_types.go#OAuthDeviceCodeInfo.OpenBrowserOnConfirm (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "ai/oauth_types.go#OAuthDeviceCodeInfo.OpenBrowserOnConfirm"
       ],
@@ -85321,7 +85321,7 @@
         "call:coding/extension/host/subprocess/oauth_bridge.go#Host.handleOAuthCallback"
       ],
       "evidence": [
-        "reach:coding/extension/host/subprocess/oauth_bridge.go#Host.handleOAuthCallback"
+        "test:test/extension-conformance/lisp_provider_api_test.go#TestLispOAuthLoginCallbacksReachTheHost"
       ]
     },
     {
@@ -85451,8 +85451,8 @@
       ],
       "evidence": [
         "test:ai/oauth_openai_codex_upstream_test.go#TestOpenAICodexOAuthUpstream",
-        "test:test/extension-conformance/node_oauth_test.go#TestNodeOAuthBridge",
-        "test:ai/oauth_kimi_test.go#TestKimiOAuthLoginContextCancellation"
+        "test:test/extension-conformance/lisp_provider_api_test.go#TestLispOAuthLoginCallbacksReachTheHost",
+        "test:test/extension-conformance/node_oauth_test.go#TestNodeOAuthBridge"
       ]
     },
     {
@@ -85473,8 +85473,8 @@
       ],
       "evidence": [
         "test:ai/oauth_openai_codex_upstream_test.go#TestOpenAICodexOAuthUpstream",
-        "test:test/extension-conformance/node_oauth_test.go#TestNodeOAuthBridge",
-        "test:ai/oauth_kimi_test.go#TestKimiOAuthLoginContextCancellation"
+        "test:test/extension-conformance/lisp_provider_api_test.go#TestLispOAuthLoginCallbacksReachTheHost",
+        "test:test/extension-conformance/node_oauth_test.go#TestNodeOAuthBridge"
       ]
     },
     {
@@ -85517,9 +85517,9 @@
         "call:ai/auth_native_login.go#oauthNativeLogin"
       ],
       "evidence": [
+        "test:test/extension-conformance/lisp_provider_api_test.go#TestLispOAuthLoginCallbacksReachTheHost",
         "test:ai/oauth_meta_test.go#TestMetaOAuthLogsInWithDeviceFlowAndMintsModelAPIKey",
-        "test:ai/oauth_openai_codex_login_test.go#TestLoginOpenAICodexUsesManualCodeWhenCallbackPortBusy",
-        "test:ai/oauth_openrouter_test.go#TestOpenRouterOAuthAlreadyCancelledUpstream"
+        "test:ai/oauth_openai_codex_login_test.go#TestLoginOpenAICodexUsesManualCodeWhenCallbackPortBusy"
       ]
     },
     {
@@ -85540,8 +85540,8 @@
       ],
       "evidence": [
         "test:ai/oauth_openai_codex_upstream_test.go#TestOpenAICodexOAuthUpstream",
-        "test:test/extension-conformance/node_oauth_test.go#TestNodeOAuthBridge",
-        "test:ai/githubcopilot_test.go#TestCopilotLoginReportsTheVerificationURLAndUserCode"
+        "test:test/extension-conformance/lisp_provider_api_test.go#TestLispOAuthLoginCallbacksReachTheHost",
+        "test:test/extension-conformance/node_oauth_test.go#TestNodeOAuthBridge"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -85563,8 +85563,8 @@
       ],
       "evidence": [
         "test:ai/oauth_openai_codex_upstream_test.go#TestOpenAICodexOAuthUpstream",
-        "test:test/extension-conformance/node_oauth_test.go#TestNodeOAuthBridge",
-        "test:ai/githubcopilot_test.go#TestCopilotLoginReportsTheVerificationURLAndUserCode"
+        "test:test/extension-conformance/lisp_provider_api_test.go#TestLispOAuthLoginCallbacksReachTheHost",
+        "test:test/extension-conformance/node_oauth_test.go#TestNodeOAuthBridge"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -137231,7 +137231,7 @@
       "evidence": [
         "test:test/extension-conformance/event_payload_test.go#TestConformance_EventPayloadsReachEverySDKUnchanged",
         "test:test/extension-conformance/extension_api_go_test.go#TestExtensionAPIToolEventsCarryParentAndStructuredContentGo",
-        "test:test/extension-conformance/node_extension_api_test.go#TestNodeToolEventsAndNewEvents"
+        "test:test/extension-conformance/lisp_extension_api_test.go#TestLispSDKToolEventsAndNewEvents"
       ]
     },
     {
@@ -149974,7 +149974,7 @@
       "evidence": [
         "test:test/extension-conformance/event_payload_test.go#TestConformance_EventPayloadsReachEverySDKUnchanged",
         "test:test/extension-conformance/extension_api_go_test.go#TestExtensionAPIToolEventsCarryParentAndStructuredContentGo",
-        "test:test/extension-conformance/node_extension_api_test.go#TestNodeToolEventsAndNewEvents"
+        "test:test/extension-conformance/lisp_extension_api_test.go#TestLispSDKToolEventsAndNewEvents"
       ]
     },
     {
@@ -150800,9 +150800,9 @@
         "call:coding/extension/builtin/codemode/run.go#run.nestedCall"
       ],
       "evidence": [
-        "test:test/extension-conformance/node_extension_api_fidelity_test.go#TestNodeExecuteToolOnUpdateThrowRejectsTheNestedCall",
-        "test:test/extension-conformance/node_extension_api_fidelity_test.go#TestNodeExecuteToolOutcomeCarriesDuration",
-        "test:test/extension-conformance/node_extension_api_test.go#TestNodeExecuteToolAndCallableTools"
+        "test:test/extension-conformance/lisp_extension_api_test.go#TestLispSDKExecuteToolAndCallableTools",
+        "test:test/extension-conformance/lisp_extension_api_test.go#TestLispSDKExecuteToolOnUpdateErrorRejectsTheNestedCall",
+        "test:test/extension-conformance/lisp_extension_api_test.go#TestLispSDKExecuteToolOutcomeCarriesDuration"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -150823,9 +150823,9 @@
         "call:coding/extension/host/subprocess/host_extension_api.go#Host.handleExecuteToolCall"
       ],
       "evidence": [
-        "test:test/extension-conformance/node_extension_api_fidelity_test.go#TestNodeExecuteToolOnUpdateThrowRejectsTheNestedCall",
-        "test:test/extension-conformance/node_extension_api_test.go#TestNodeExecuteToolAndCallableTools",
-        "test:test/extension-conformance/python_extension_api_fidelity_test.go#TestPythonSDKExecuteToolOnUpdateRaiseRejectsTheNestedCall"
+        "test:test/extension-conformance/lisp_extension_api_test.go#TestLispSDKExecuteToolAndCallableTools",
+        "test:test/extension-conformance/lisp_extension_api_test.go#TestLispSDKExecuteToolOnUpdateErrorRejectsTheNestedCall",
+        "test:test/extension-conformance/node_extension_api_fidelity_test.go#TestNodeExecuteToolOnUpdateThrowRejectsTheNestedCall"
       ]
     },
     {
@@ -150845,9 +150845,9 @@
         "call:coding/extension/builtin/codemode/run.go#run.nestedCall"
       ],
       "evidence": [
-        "test:test/extension-conformance/node_extension_api_fidelity_test.go#TestNodeExecuteToolOnUpdateThrowRejectsTheNestedCall",
-        "test:test/extension-conformance/node_extension_api_fidelity_test.go#TestNodeExecuteToolOutcomeCarriesDuration",
-        "test:test/extension-conformance/node_extension_api_test.go#TestNodeExecuteToolAndCallableTools"
+        "test:test/extension-conformance/lisp_extension_api_test.go#TestLispSDKExecuteToolAndCallableTools",
+        "test:test/extension-conformance/lisp_extension_api_test.go#TestLispSDKExecuteToolOnUpdateErrorRejectsTheNestedCall",
+        "test:test/extension-conformance/lisp_extension_api_test.go#TestLispSDKExecuteToolOutcomeCarriesDuration"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -160658,8 +160658,8 @@
       ],
       "evidence": [
         "test:coding/extension/host/inproc/upstream_provider_queue_test.go#TestUpstreamRunnerProviderRegistration",
-        "test:test/extension-conformance/node_extension_api_test.go#TestNodeProviderConfigWithImageAndClassifierModels",
-        "test:test/extension-conformance/provider_registration_diagnostic_test.go#TestProviderRegistrationFailureIsADiagnosticAcrossSDKs"
+        "test:test/extension-conformance/lisp_provider_api_test.go#TestLispSDKProviderConfigWithImageAndClassifierModels",
+        "test:test/extension-conformance/node_extension_api_test.go#TestNodeProviderConfigWithImageAndClassifierModels"
       ]
     },
     {
@@ -163847,9 +163847,9 @@
         "call:coding/extension/host/subprocess/host_extension_api.go#Host.virtualModelDefinition"
       ],
       "evidence": [
+        "test:test/extension-conformance/lisp_provider_api_test.go#TestLispSDKVirtualModelRegistrationAndRouting",
         "test:test/extension-conformance/node_extension_api_test.go#TestNodeVirtualModelRegistrationAndRouting",
-        "test:test/extension-conformance/python_extension_api_test.go#TestPythonSDKVirtualModelRegistrationAndRouting",
-        "test:coding/extension/host/subprocess/extension_api_wire_test.go#TestVirtualModelDeclarationRoutesThroughTheExtension"
+        "test:test/extension-conformance/python_extension_api_test.go#TestPythonSDKVirtualModelRegistrationAndRouting"
       ]
     },
     {
@@ -163871,7 +163871,7 @@
       "evidence": [
         "test:coding/extension/host/subprocess/upstream_jev_router_test.go#TestJevRouterExampleRegistersTheVirtualModel",
         "test:test/extension-conformance/extension_api_go_test.go#TestExtensionAPIRegistrationsAtLoadGo",
-        "test:test/extension-conformance/node_extension_api_test.go#TestNodeVirtualModelRegistrationAndRouting"
+        "test:test/extension-conformance/lisp_provider_api_test.go#TestLispSDKVirtualModelRegistrationAndRouting"
       ]
     },
     {
@@ -163983,7 +163983,7 @@
       "evidence": [
         "test:coding/extension/host/subprocess/upstream_jev_router_test.go#TestJevRouterExampleRegistersTheVirtualModel",
         "test:test/extension-conformance/extension_api_go_test.go#TestExtensionAPIRegistrationsAtLoadGo",
-        "test:test/extension-conformance/node_extension_api_test.go#TestNodeVirtualModelRegistrationAndRouting"
+        "test:test/extension-conformance/lisp_provider_api_test.go#TestLispSDKVirtualModelRegistrationAndRouting"
       ]
     },
     {
@@ -164354,7 +164354,7 @@
       "evidence": [
         "test:test/extension-conformance/event_payload_test.go#TestConformance_EventPayloadsReachEverySDKUnchanged",
         "test:test/extension-conformance/extension_api_go_test.go#TestExtensionAPIToolEventsCarryParentAndStructuredContentGo",
-        "test:test/extension-conformance/node_extension_api_test.go#TestNodeToolEventsAndNewEvents"
+        "test:test/extension-conformance/lisp_extension_api_test.go#TestLispSDKToolEventsAndNewEvents"
       ]
     },
     {
@@ -166253,7 +166253,7 @@
       "evidence": [
         "test:test/extension-conformance/event_payload_test.go#TestConformance_EventPayloadsReachEverySDKUnchanged",
         "test:test/extension-conformance/extension_api_go_test.go#TestExtensionAPIToolEventsCarryParentAndStructuredContentGo",
-        "test:test/extension-conformance/node_extension_api_test.go#TestNodeToolEventsAndNewEvents"
+        "test:test/extension-conformance/lisp_extension_api_test.go#TestLispSDKToolEventsAndNewEvents"
       ]
     },
     {
@@ -170110,7 +170110,7 @@
       "evidence": [
         "test:test/extension-conformance/event_payload_test.go#TestConformance_EventPayloadsReachEverySDKUnchanged",
         "test:test/extension-conformance/extension_api_go_test.go#TestExtensionAPIToolEventsCarryParentAndStructuredContentGo",
-        "test:test/extension-conformance/node_extension_api_test.go#TestNodeToolEventsAndNewEvents"
+        "test:test/extension-conformance/lisp_extension_api_test.go#TestLispSDKToolEventsAndNewEvents"
       ]
     },
     {
@@ -173241,7 +173241,7 @@
       "evidence": [
         "test:test/extension-conformance/extension_api_go_test.go#TestExtensionAPIVirtualModelRouteRunsInTheExtensionGo",
         "test:test/extension-conformance/extension_api_rust_test.go#TestRustSDKVirtualModelRoute",
-        "test:test/extension-conformance/node_extension_api_test.go#TestNodeVirtualModelRegistrationAndRouting"
+        "test:test/extension-conformance/lisp_provider_api_test.go#TestLispSDKVirtualModelRegistrationAndRouting"
       ]
     },
     {
@@ -173374,7 +173374,7 @@
       "evidence": [
         "test:test/extension-conformance/extension_api_go_test.go#TestExtensionAPIVirtualModelRouteRunsInTheExtensionGo",
         "test:test/extension-conformance/extension_api_rust_test.go#TestRustSDKVirtualModelRoute",
-        "test:test/extension-conformance/node_extension_api_test.go#TestNodeVirtualModelRegistrationAndRouting"
+        "test:test/extension-conformance/lisp_provider_api_test.go#TestLispSDKVirtualModelRegistrationAndRouting"
       ]
     },
     {
@@ -177875,7 +177875,7 @@
       "evidence": [
         "test:test/extension-conformance/event_payload_test.go#TestConformance_EventPayloadsReachEverySDKUnchanged",
         "test:test/extension-conformance/extension_api_go_test.go#TestExtensionAPIToolEventsCarryParentAndStructuredContentGo",
-        "test:test/extension-conformance/node_extension_api_test.go#TestNodeToolEventsAndNewEvents"
+        "test:test/extension-conformance/lisp_extension_api_test.go#TestLispSDKToolEventsAndNewEvents"
       ]
     },
     {
@@ -180134,7 +180134,7 @@
       "evidence": [
         "test:test/extension-conformance/event_payload_test.go#TestConformance_EventPayloadsReachEverySDKUnchanged",
         "test:test/extension-conformance/extension_api_go_test.go#TestExtensionAPIToolEventsCarryParentAndStructuredContentGo",
-        "test:test/extension-conformance/node_extension_api_test.go#TestNodeToolEventsAndNewEvents"
+        "test:test/extension-conformance/lisp_extension_api_test.go#TestLispSDKToolEventsAndNewEvents"
       ]
     },
     {
@@ -202367,7 +202367,7 @@
       "evidence": [
         "test:test/extension-conformance/extension_api_go_test.go#TestExtensionAPIRegistrationsAtLoadGo",
         "test:test/extension-conformance/extension_api_rust_test.go#TestRustSDKToolDefinitionFields",
-        "test:test/extension-conformance/node_extension_api_test.go#TestNodeToolExposureFieldsAndPrepareLoadout"
+        "test:test/extension-conformance/lisp_extension_api_test.go#TestLispSDKToolExposureFieldsAndPrepareLoadout"
       ]
     },
     {
@@ -202589,7 +202589,7 @@
       "evidence": [
         "test:test/extension-conformance/extension_api_go_test.go#TestExtensionAPIRegistrationsAtLoadGo",
         "test:test/extension-conformance/extension_api_rust_test.go#TestRustSDKToolDefinitionFields",
-        "test:test/extension-conformance/node_extension_api_test.go#TestNodeToolExposureFieldsAndPrepareLoadout"
+        "test:test/extension-conformance/lisp_extension_api_test.go#TestLispSDKToolExposureFieldsAndPrepareLoadout"
       ]
     },
     {
@@ -202611,7 +202611,7 @@
       "evidence": [
         "test:test/extension-conformance/extension_api_go_test.go#TestExtensionAPIRegistrationsAtLoadGo",
         "test:test/extension-conformance/extension_api_rust_test.go#TestRustSDKToolDefinitionFields",
-        "test:test/extension-conformance/node_extension_api_test.go#TestNodeToolExposureFieldsAndPrepareLoadout"
+        "test:test/extension-conformance/lisp_extension_api_test.go#TestLispSDKToolExposureFieldsAndPrepareLoadout"
       ]
     },
     {
@@ -202677,7 +202677,7 @@
       "evidence": [
         "test:test/extension-conformance/extension_api_go_test.go#TestExtensionAPIExecuteToolOrchestrationGo",
         "test:test/extension-conformance/extension_api_rust_test.go#TestRustSDKPrepareLoadout",
-        "test:test/extension-conformance/node_extension_api_test.go#TestNodeToolExposureFieldsAndPrepareLoadout"
+        "test:test/extension-conformance/lisp_extension_api_test.go#TestLispSDKToolExposureFieldsAndPrepareLoadout"
       ]
     },
     {
@@ -202743,7 +202743,7 @@
       "evidence": [
         "test:test/extension-conformance/extension_api_go_test.go#TestExtensionAPIRegistrationsAtLoadGo",
         "test:test/extension-conformance/extension_api_rust_test.go#TestRustSDKToolDefinitionFields",
-        "test:test/extension-conformance/node_extension_api_test.go#TestNodeToolExposureFieldsAndPrepareLoadout"
+        "test:test/extension-conformance/lisp_extension_api_test.go#TestLispSDKToolExposureFieldsAndPrepareLoadout"
       ]
     },
     {
@@ -204384,7 +204384,7 @@
       "evidence": [
         "test:test/extension-conformance/extension_api_go_test.go#TestExtensionAPIRegistrationsAtLoadGo",
         "test:test/extension-conformance/extension_api_rust_test.go#TestRustSDKToolDefinitionFields",
-        "test:test/extension-conformance/node_extension_api_test.go#TestNodeToolExposureFieldsAndPrepareLoadout"
+        "test:test/extension-conformance/lisp_extension_api_test.go#TestLispSDKToolExposureFieldsAndPrepareLoadout"
       ]
     },
     {
@@ -207598,7 +207598,7 @@
       "evidence": [
         "test:coding/extension/host/subprocess/upstream_jev_router_test.go#TestJevRouterExampleRegistersTheVirtualModel",
         "test:test/extension-conformance/extension_api_go_test.go#TestExtensionAPIRegistrationsAtLoadGo",
-        "test:test/extension-conformance/node_extension_api_test.go#TestNodeVirtualModelRegistrationAndRouting"
+        "test:test/extension-conformance/lisp_provider_api_test.go#TestLispSDKVirtualModelRegistrationAndRouting"
       ]
     },
     {
@@ -208135,7 +208135,7 @@
       "evidence": [
         "test:test/extension-conformance/event_payload_test.go#TestConformance_EventPayloadsReachEverySDKUnchanged",
         "test:test/extension-conformance/extension_api_go_test.go#TestExtensionAPIToolEventsCarryParentAndStructuredContentGo",
-        "test:test/extension-conformance/node_extension_api_test.go#TestNodeToolEventsAndNewEvents"
+        "test:test/extension-conformance/lisp_extension_api_test.go#TestLispSDKToolEventsAndNewEvents"
       ]
     },
     {

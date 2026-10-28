@@ -126,7 +126,7 @@
 
 (defun frame-octets (envelope)
   "The header and body of ENVELOPE in one vector, so a frame is one write."
-  (let* ((octets (encode-json envelope :reserve 4))
+  (let* ((octets (let ((*encode-limit* (+ +max-frame-size+ 4))) (encode-json envelope :reserve 4)))
          (size (- (length octets) 4)))
     (when (> size +max-frame-size+)
       (error 'host-call-error :message (format nil "frame too large: ~D bytes exceeds ~D" size +max-frame-size+)))
