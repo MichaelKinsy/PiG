@@ -76434,6 +76434,17 @@
       "shapeHash": "sha256:63ff953bca30b78e10e2330ac756b14cabfe25c6f34152dadfbb7fbd4abfecf8"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding#Session.ToolScope",
+      "package": "github.com/MichaelKinsy/PiG/coding",
+      "name": "Session.ToolScope",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() github.com/MichaelKinsy/PiG/coding/extension.ToolScope"
+      },
+      "shapeHash": "sha256:3f5a4d59f7b66a502a129c887cc2fdcec1850444cbcac10f8377457ce674c75b"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding#Session.Tools",
       "package": "github.com/MichaelKinsy/PiG/coding",
       "name": "Session.Tools",
@@ -83639,6 +83650,17 @@
       "shapeHash": "sha256:c6463f20fac4bec5e722dbe5e4e30dae6ed7b8c5d1b21317b818278fedd566d4"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding#scopeInfo",
+      "package": "github.com/MichaelKinsy/PiG/coding",
+      "name": "scopeInfo",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(entry sessionToolEntry) github.com/MichaelKinsy/PiG/coding/extension.ToolInfo"
+      },
+      "shapeHash": "sha256:877871c6be4599643031480d9944cea0fa8762b68108d49c1ad6b87d4c38d6f2"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding#scopedModelsOf",
       "package": "github.com/MichaelKinsy/PiG/coding",
       "name": "scopedModelsOf",
@@ -84286,6 +84308,17 @@
         "type": "sessionToolRegistry"
       },
       "shapeHash": "sha256:57fc782b7832c191e63f568328da6b2e78044579393218ba59f0619e1d22ae80"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding#sessionToolRegistry.compileFilter",
+      "package": "github.com/MichaelKinsy/PiG/coding",
+      "name": "sessionToolRegistry.compileFilter",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func() github.com/MichaelKinsy/PiG/coding/extension.ToolFilter"
+      },
+      "shapeHash": "sha256:a3f988eed41f53e15acef408b949cc75681cfd363ce16a8c8850f61944794112"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding#sessionToolRegistry.entry",
@@ -110391,6 +110424,17 @@
       "shapeHash": "sha256:99b2f0daea2fa02fc914a648e106daded5256ebd450a525affbca76e1bb1f7d3"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension#ToolFilter.AllowsTool",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension",
+      "name": "ToolFilter.AllowsTool",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(info ToolInfo) bool"
+      },
+      "shapeHash": "sha256:0ea6721cabd5c233d407561d4be6f65793ed219e385d0a7c4672e96d978c864f"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension#ToolFilter.HasAllowlist",
       "package": "github.com/MichaelKinsy/PiG/coding/extension",
       "name": "ToolFilter.HasAllowlist",
@@ -110422,6 +110466,17 @@
         "type": "func(name string) bool"
       },
       "shapeHash": "sha256:99b2f0daea2fa02fc914a648e106daded5256ebd450a525affbca76e1bb1f7d3"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension#ToolFilter.WithScope",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension",
+      "name": "ToolFilter.WithScope",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(scope ToolScope) ToolFilter"
+      },
+      "shapeHash": "sha256:5ede68749249aa334cce33165319251c02cb9bcc04671b6c669890a5cfcc3d00"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension#ToolInfo",
@@ -110697,6 +110752,17 @@
         "type": "ToolResultMessage"
       },
       "shapeHash": "sha256:123b4c1c555b15053f504fa669cdcd2866987352822b41c82a5bb942a4733427"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension#ToolScope",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension",
+      "name": "ToolScope",
+      "kind": "type",
+      "exported": true,
+      "shape": {
+        "type": "ToolScope"
+      },
+      "shapeHash": "sha256:df979b4a48e82721224390192b4d2afa4f8ba9d28f4c1351da4dd97e6bb7f009"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension#TreePreparation",
@@ -168724,6 +168790,17 @@
       "shapeHash": "sha256:57afbc3d68079df504146a6c519d1fc9a7066527446a656bb5cb1df2f8bdb610"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/piglet#NewScope",
+      "package": "github.com/MichaelKinsy/PiG/coding/piglet",
+      "name": "NewScope",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(piglet *Piglet) *Scope"
+      },
+      "shapeHash": "sha256:b4479e024c4f979b52dc5130fca59853632a293e1d799c566c0605f0d58a9549"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/piglet#OverlayBase",
       "package": "github.com/MichaelKinsy/PiG/coding/piglet",
       "name": "OverlayBase",
@@ -169230,6 +169307,28 @@
       "shapeHash": "sha256:6d55d0c9770af7ada1cf392843d5abf369b412ff1cfc3fd6ee539f4d68a3d9ed"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/piglet#Scope",
+      "package": "github.com/MichaelKinsy/PiG/coding/piglet",
+      "name": "Scope",
+      "kind": "type",
+      "exported": true,
+      "shape": {
+        "type": "Scope"
+      },
+      "shapeHash": "sha256:64176320b3b364d53c31fc65fbb84bb60dac412cc5f3f4668ec9c098ace4871e"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/piglet#Scope.Visible",
+      "package": "github.com/MichaelKinsy/PiG/coding/piglet",
+      "name": "Scope.Visible",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(tool ToolInfo) bool"
+      },
+      "shapeHash": "sha256:0ea1facaddb8197cf5eff2ee3a6b90b70f320d77d0fcfd392ac9b24418c79dd4"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/piglet#ScopeTools",
       "package": "github.com/MichaelKinsy/PiG/coding/piglet",
       "name": "ScopeTools",
@@ -169712,6 +169811,17 @@
         "type": "ToolInfo"
       },
       "shapeHash": "sha256:073b2e4af2ac5569d4193921f47c465a1f093e5fe65d3cbd8b816a9f923bd2e1"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/piglet#ToolRegistryScope",
+      "package": "github.com/MichaelKinsy/PiG/coding/piglet",
+      "name": "ToolRegistryScope",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(p *Piglet, owner func(github.com/MichaelKinsy/PiG/coding/extension.ToolInfo) string) github.com/MichaelKinsy/PiG/coding/extension.ToolScope"
+      },
+      "shapeHash": "sha256:fe0110c3be05bc270447a4f9c3073a29ecda54ee23656db386b7a888f75817ed"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/piglet#TreeNode",
@@ -170735,17 +170845,6 @@
         "type": "func(values ...string) string"
       },
       "shapeHash": "sha256:19f02b8665baaeede17f726a388bd13cc7ca5db9f11a9c568b7996aaf6ac6b07"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/piglet#followsMCPServers",
-      "package": "github.com/MichaelKinsy/PiG/coding/piglet",
-      "name": "followsMCPServers",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func(piglet *Piglet, tool ToolInfo) bool"
-      },
-      "shapeHash": "sha256:89c58367d4a5f5a0947ab269eb7d1a11cb9dffd0a4b617a0b0a9629aac64852b"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/piglet#formatActivePiglet",
@@ -172376,6 +172475,17 @@
       "shapeHash": "sha256:074d7bc2b2ed5a6af8a5fda887ce97ce6910ac75d69d22f17910baa3afe66de6"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/piglet#scopeToolInfo",
+      "package": "github.com/MichaelKinsy/PiG/coding/piglet",
+      "name": "scopeToolInfo",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(t github.com/MichaelKinsy/PiG/coding/extension.ToolInfo, owner func(github.com/MichaelKinsy/PiG/coding/extension.ToolInfo) string) ToolInfo"
+      },
+      "shapeHash": "sha256:5daa216056acd0865849ec524cfb321cb8ba45f908f9be54b4489aab053b3c41"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/piglet#searchPaths",
       "package": "github.com/MichaelKinsy/PiG/coding/piglet",
       "name": "searchPaths",
@@ -172429,17 +172539,6 @@
         "type": "func(ctx context.Context, commands runtimeCommands, requested string, imageReference string) (string, inspectedRuntimeImage, error)"
       },
       "shapeHash": "sha256:ca6025dc9ba08240c60a4530f9248e7a7ad037d25d054af39b0ed1d307def684"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/piglet#selectsOrigin",
-      "package": "github.com/MichaelKinsy/PiG/coding/piglet",
-      "name": "selectsOrigin",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func(piglet *Piglet, origin string) bool"
-      },
-      "shapeHash": "sha256:0bc408cf2824391aa47c63b608d83e127e0081acd7157588e4fa625db2aa19c3"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/piglet#setMetadata",
@@ -236988,6 +237087,17 @@
         "type": "func(runner ExtensionToolLister, allowed map[string]struct{}, excluded map[string]struct{}) []github.com/MichaelKinsy/PiG/coding/extension/host/subprocess.ToolInfo"
       },
       "shapeHash": "sha256:58d72b854add3b1c347b777557fb3a70600ecbf4afff9cfd49dba52e4d8259cb"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#ExtensionToolInfosScoped",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "ExtensionToolInfosScoped",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(runner ExtensionToolLister, allowed map[string]struct{}, excluded map[string]struct{}, scope github.com/MichaelKinsy/PiG/coding/extension.ToolScope) []github.com/MichaelKinsy/PiG/coding/extension/host/subprocess.ToolInfo"
+      },
+      "shapeHash": "sha256:9b83bb5416026e66776355adb7c2e1235f5da53e97daa994c602c7e0b955560d"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#ExtensionToolLister",
