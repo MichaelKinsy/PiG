@@ -1,11 +1,14 @@
 {"k":">","name":"harness.root","tick":194}
 {"k":"#","seq":1,"summary":"conversations:i document_revisions:i documents:i","tick":359,"begin":299}
-{"k":">","name":"harness.root().submit","tick":419}
-{"k":"#","seq":2,"summary":"document_revisions:d document_revisions:i entries:i submissions:i tasks:i","tick":511,"begin":483}
-{"k":">","name":"harness.root().submit().wait","tick":521}
-{"k":"#","seq":3,"summary":"tasks:u","tick":551,"begin":540}
-{"k":"#","seq":4,"summary":"entries:i tasks:u","tick":711,"begin":695}
-{"k":"#","seq":5,"summary":"document_revisions:i","tick":761,"begin":748}
+{"k":">","name":"harness.conversation","tick":368}
+{"k":">","name":"harness.conversation().watch","tick":382}
+{"k":">","name":"harness.conversation().watch().start","tick":421}
+{"k":">","name":"harness.root().submit","tick":422}
+{"k":"#","seq":2,"summary":"document_revisions:d document_revisions:i entries:i submissions:i tasks:i","tick":514,"begin":486}
+{"k":">","name":"harness.root().submit().wait","tick":524}
+{"k":"#","seq":3,"summary":"tasks:u","tick":554,"begin":543}
+{"k":"#","seq":4,"summary":"entries:i tasks:u","tick":714,"begin":698}
+{"k":"#","seq":5,"summary":"document_revisions:i","tick":764,"begin":751}
 {"k":"#","seq":6,"summary":"document_revisions:d document_revisions:i entries:i tasks:i tasks:u","tick":1000001,"begin":1000001}
 {"k":"#","seq":7,"summary":"tasks:u","tick":1000001,"begin":1000001}
 {"k":"#","seq":8,"summary":"document_revisions:i tasks:u","tick":1000001,"begin":1000001}
@@ -163,6 +166,9 @@
 {"k":">","name":"harness.close","tick":1000001}
 {"k":"#","seq":102,"summary":"tasks:u","tick":1000001,"begin":1000001}
 {"k":">","name":"harness.root","tick":1000001}
+{"k":">","name":"harness.conversation","tick":1000001}
+{"k":">","name":"harness.conversation().watch","tick":1000001}
+{"k":">","name":"harness.conversation().watch().start","tick":1000001}
 {"k":">","name":"harness.snapshot","tick":1000001}
 {"k":">","name":"harness.waitForTask","tick":1000001}
 {"k":">","name":"harness.waitForTask","tick":1000001}

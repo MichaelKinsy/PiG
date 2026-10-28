@@ -47,6 +47,7 @@ const E = {
 	"28-sandbox-per-conversation": ["loop", "one sandbox per conversation"],
 	"29-tool-override": ["loop", "replace and decorate a tool"],
 	"30-reload-and-restart": ["session", "reload an extension while a call runs, then restart"],
+	"31-transcript": ["session", "a client keeps a conversation's transcript over the windowed view"],
 }
 const U = {
 	"codemode-checkpoints": "loop", "harness-blocked": "session", "harness-deferred-progress": "session", "harness-failed-run-inbox": "session", "harness-host-inputs": "session",
@@ -55,7 +56,7 @@ const U = {
 	"codemode-describe": "loop", "codemode-models": "loop", "codemode": "loop", "tool-search": "loop", "env-line-scan": "host", "env-node-conformance": "host", "env-node-spill": "host", "env-node": "host", "env-truncate": "host",
 	"images-wasm-module": "host", "tools-images": "loop", "harness-callers": "loop", "harness-cancellation-barrier": "session", "harness-scheduler-indexes": "session", "harness-scheduler-retention": "session", "harness-nested-tools-restart": "loop", "harness-nested-tools": "loop",
 	"harness-storage-failure": "session", "harness-structured-output": "loop",
-	"harness-compaction": "store", "harness-context": "store", "harness-conversations": "session", "harness-events": "session", "harness-generation-recovery": "loop",
+	"harness-compaction": "store", "harness-context": "store", "harness-conversations": "session", "harness-generation-recovery": "loop", "conversation-transcript": "session", "harness-restart-failure": "session", "harness-run-failure": "session", "harness-view-run": "session",
 	"harness-generation": "loop", "harness-inbox": "session", "harness-input-entries": "session", "session-document-retention": "session", "harness-inspect": "session", "harness-lifecycle": "session", "harness-live-deltas": "loop",
 	"harness-ownership": "session", "harness-prompt": "loop", "harness-registry": "loop",
 	"harness-structured": "session", "harness-submissions": "session", "harness-task-graph": "session", "harness-tasks-recovery": "session", "harness-tasks": "session",
@@ -78,7 +79,7 @@ emit(
 	"# status: ready (a runner exists and the reference capture is deterministic), pending (no candidate can run it yet, with the",
 	"# reason and the owner; `--strict` fails on it), skipped (nobody can run it here, with the reason).",
 	"",
-	"[pin]", `reference = ${q("earendil-works/pi")}`, `commit = ${q("6c384aa30f619d7b28963f2bab24d8dacbe73cb6")}`, `release = ${q("1.0.4")}`,
+	"[pin]", `reference = ${q("earendil-works/pi")}`, `commit = ${q("b3a29f1111114fac696e2cfcd65acdb382a6ed5e")}`, `release = ${q("1.0.4")}`,
 )
 for (const f of readdirSync(join(pi, "packages/durable/test/examples")).filter(f => /^\d\d-.*\.ts$/.test(f)).sort()) {
 	const name = f.replace(/\.ts$/, "")

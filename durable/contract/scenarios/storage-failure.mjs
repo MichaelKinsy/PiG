@@ -1,7 +1,7 @@
 // A failed Storage call fails the Session (Pi 42a, types.ts SessionEnd; test/harness-storage-failure.test.ts): the first error wins,
 // the call that hit it rejects with the storage error itself, later calls reject `SessionFailed` with it as cause, waits end, and the
-// watch and event stream close `session_failed` with the error. The scenario runs one conversation (a submit with a tool call, an
-// event stream attached, a follow-up) on a Storage whose `commit` number --fail <k> throws, and prints what each caller saw. The
+// watch closes `failed` with the error. The scenario runs one conversation (a submit with a tool call, a
+// conversation view attached, a follow-up) on a Storage whose `commit` number --fail <k> throws, and prints what each caller saw. The
 // store file left behind is compared by the gate like any other run, so a commit the failure must not have written differs too.
 // Run by lib/run.mjs under the hooks:  storage-failure.mjs --fail <k>   (k = 0: no failure, prints the commit count)
 import { join } from "node:path"
@@ -9,7 +9,7 @@ import { BACKGROUND_CONTEXT as context } from "@earendil-works/chord/context"
 import { Type } from "@earendil-works/pi-ai"
 import { createModels } from "@earendil-works/pi-ai/models"
 import { fauxAssistantMessage, fauxProvider, fauxToolCall } from "@earendil-works/pi-ai/providers/faux"
-import { createRegistry, defineExtension, defineTool, Harness, watchEvents } from "@earendil-works/pi-durable"
+import { createRegistry, defineExtension, defineTool, Harness } from "@earendil-works/pi-durable"
 import { openNodeSqliteStorage } from "@earendil-works/pi-durable/storage/sqlite/node"
 
 const argv = process.argv.slice(2)
@@ -47,7 +47,7 @@ const ending = e => (e.reason === "failed" ? `failed(${e.error === failure ? "th
 
 const harness = await Harness.open(failing, { models, registry }, context)
 const root = await harness.root(context, { agent: { model: { provider: "faux", modelId: "faux-1" } } })
-const stream = await watchEvents(harness, root.id, context)
+const stream = await root.watch(context)
 let batches = 0
 stream.start(async () => { batches++ })
 await outcome("first submit", root.submit({ type: "input", content: "lookup please" }, context))
@@ -58,5 +58,5 @@ await outcome("get task", harness.getTask("t1", context))
 const quiet = new Promise(r => setTimeout(() => r({ reason: "open" }), 20))
 log("stream:", ending(await Promise.race([stream.closed.catch(e => ({ reason: `threw ${describe(e)}` })), quiet])))
 log("harness:", ending(await Promise.race([harness.closed, quiet])))
-log("commits seen:", failAt === 0 ? commits : "n/a", "events delivered:", batches > 0 ? "some" : "none")
+log("commits seen:", failAt === 0 ? commits : "n/a", "changes delivered:", batches > 0 ? "some" : "none")
 await outcome("close", harness.close(context))

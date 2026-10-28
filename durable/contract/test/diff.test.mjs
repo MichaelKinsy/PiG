@@ -8,6 +8,7 @@ import { join } from "node:path"
 import test from "node:test"
 import { loadCorpus, validateCorpus } from "../lib/corpus.mjs"
 import { piSource } from "../lib/run.mjs"
+import { lateListenerSource } from "./late-listener.mjs"
 
 const work = mkdtempSync(join(tmpdir(), "contract-diff-"))
 test.after(() => rmSync(work, { recursive: true, force: true }))
@@ -18,7 +19,7 @@ const candidates = {
 	// Identical to the reference: the candidate-directory path itself must not change a verdict.
 	same: `export * from "${index}"\n`,
 	// An observer's listener is called two microtasks late: the lines it prints move relative to the lines other work prints (output level).
-	"late-listener": `import * as real from "${index}"\nexport * from "${index}"\nexport const watchEvents = async (...args: any[]) => {\n\tconst stream = await (real.watchEvents as any)(...args)\n\treturn { ...stream, start: (listener: any) => stream.start(async (events: any, context: any) => { await Promise.resolve(); await Promise.resolve(); return listener(events, context) }) }\n}\n`,
+	"late-listener": lateListenerSource(index),
 	// One tool starts 3 virtual ms late: its stored durationMs and its place among concurrent tools change (commit level).
 	"slow-tool": `import * as real from "${index}"\nexport * from "${index}"\nexport const defineTool = (tool: any) => real.defineTool({ ...tool, execute: async (...args: any[]) => { if (tool.name === "commitwork") await new Promise(r => setTimeout(r, 3)); return tool.execute(...args) } })\n`,
 }
