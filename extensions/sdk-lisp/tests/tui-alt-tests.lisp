@@ -470,12 +470,10 @@ error; the extension's nested calls are answered meanwhile. Runs on the host thr
             (scroll (alt-find "scrollBy" calls))
             (outside (car (last (remove "state" calls :key #'alt-op :test-not #'equal)))))
         (check-equal 4 (length states) "three reads from callbacks and the one outside")
-        (check-equal '(t t t) (mapcar (lambda (call) (alt-arg call "inFrame")) (subseq states 0 3)) "a render's or option's calls are marked in frame")
+        (check (notany (lambda (call) (alt-has call "inFrame")) calls) "no call carries an inFrame field: the parent request is the signal")
         (check-equal '("t1" "t1" "t2") (mapcar (lambda (call) (alt-arg call "id")) (subseq states 0 3)))
         (check (every (lambda (call) (and (stringp (cdr call)) (search "cb" (cdr call)))) (subseq states 0 3)) "a call made inside a callback is a child of its request")
-        (check (not (alt-has scroll "inFrame")) "an input handler's call is not a frame callback's")
-        (check (and (stringp (cdr scroll)) (search "cb" (cdr scroll))) "but it is a child of the callback's request")
-        (check (not (alt-has outside "inFrame")))
+        (check (and (stringp (cdr scroll)) (search "cb" (cdr scroll))) "an input handler's call is a child of its request")
         (check-equal "" (or (cdr outside) "") "a call from outside any callback is the extension's own")))))
 
 (deftest tui-alt-a-callback-is-answered-while-an-on-loaded-handler-runs

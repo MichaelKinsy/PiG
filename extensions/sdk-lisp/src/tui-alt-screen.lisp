@@ -70,11 +70,9 @@ The host is never asked to deliver input or mouse to a component that has no han
   (options '()))                                ; (name . function) of the option callbacks
 
 (defvar *tas-callback-ctx* nil
-  "The context of the tui.alt.cb request this thread is answering, if any. Host calls are ordered per parent request, and a tui.alt call made while
-the host waits for this very callback would queue behind the call that waits: while a callback runs, the thread's calls are children of its request.")
-
-(defvar *tas-frames* '()
-  "The screens whose frame callbacks (render, an overlay's visible callback, the style options) this thread is running: its calls to them say so (inFrame).")
+  "The context of the tui.alt.cb request this thread is answering, if any. The host runs a call made while a callback that its frame waits on (a
+component's render, an overlay's visible callback, an option's style function) is served, at once under the frame lock, so the call must be a child
+of that callback's request, and the host orders calls per parent request: while a callback runs, the thread's calls are children of its request.")
 
 (defun tas-find (ext id)
   (let ((registry (tas-registry-of ext)))
@@ -103,16 +101,11 @@ the host waits for this very callback would queue behind the call that waits: wh
   (let ((args (obj "id" (tas-id screen) "op" op)))
     (loop for (key value) on fields by #'cddr do (setf (gethash key args) value))
     (setf (gethash "terminal" args) (tas-terminal-block screen))
-    (when (member screen *tas-frames* :test #'eq) (setf (gethash "inFrame" args) t))
     (let ((result (ctx-call-host ctx "tui.alt" args)))
       (if (hash-table-p result) result (obj)))))
 
 (defun tas-call (screen op &rest fields)
   (tas-invoke screen (or *tas-callback-ctx* (make-ctx (tas-extension screen))) op fields))
-
-(defmacro tas-in-frame ((screen) &body body)
-  "Run BODY as one of SCREEN's frame callbacks: its calls to SCREEN say so."
-  `(let ((*tas-frames* (cons ,screen *tas-frames*))) ,@body))
 
 (defmacro tas-on-failure ((cleanup) &body body)
   "BODY's values; CLEANUP runs when BODY does not return (a condition, a throw)."
@@ -197,6 +190,7 @@ an error message string to display, or NIL for a generic error. An omitted flag 
 
 (defun tui-alt-screen-children (screen)
   "The children added with TUI-ALT-SCREEN-ADD-CHILD, in order. A copy: change the screen with add-child, remove-child and clear."
+  ;; pig divergence (D207): a snapshot the SDK updates after add-child, remove-child and clear return, not Pi's live array; there is no setter
   (sb-thread:with-mutex ((tas-lock screen)) (copy-list (tas-children screen))))
 
 (defun tui-alt-screen-viewport-top (screen) (tas-int (jget (tas-state screen) "viewportTop")))
@@ -502,7 +496,7 @@ Returns the function that unsubscribes."
 
 (defun tas-render-callback (screen args)
   (let* ((component (tas-component screen args))
-         (lines (tas-in-frame (screen) (funcall (tui-component-render component) (tas-int (jget args "width"))))))
+         (lines (funcall (tui-component-render component) (tas-int (jget args "width")))))
     (when (and (vectorp lines) (not (stringp lines))) (setf lines (coerce lines 'list)))
     (unless (and (listp lines) (every #'stringp lines)) (error "render must return a list of strings"))
     (obj "lines" (coerce lines 'simple-vector))))
@@ -535,10 +529,9 @@ Returns the function that unsubscribes."
              (obj "value" (if (stringp value) value (tas-bool value)))))
           ((equal name "openUrl") (funcall callback (tas-text (first call-args))) (obj "value" nil))
           ((equal name "onRightClickPaste") (funcall callback) (obj "value" nil))
-          (t (tas-in-frame (screen)
-               (obj "value" (tas-text (cond ((equal name "searchNavigationButtonStyle") (funcall callback (tas-text (first call-args)) (eq (second call-args) t)))
-                                            ((equal name "scrollToEndIndicator") (funcall callback))
-                                            (t (funcall callback (tas-text (first call-args))))))))))))
+          (t (obj "value" (tas-text (cond ((equal name "searchNavigationButtonStyle") (funcall callback (tas-text (first call-args)) (eq (second call-args) t)))
+                                          ((equal name "scrollToEndIndicator") (funcall callback))
+                                          (t (funcall callback (tas-text (first call-args)))))))))))
 
 (defun tas-callback (screen args)
   (let ((kind (jget args "kind")))
@@ -563,8 +556,7 @@ Returns the function that unsubscribes."
       ((equal kind "visible")
        (let ((visible (sb-thread:with-mutex ((tas-lock screen)) (gethash (tas-text (jget args "key")) (tas-visible screen)))))
          (unless visible (error "no visible callback for component ~A" (jget args "key")))
-         (tas-in-frame (screen)
-           (obj "value" (tas-bool (funcall visible (tas-int (jget args "termWidth")) (tas-int (jget args "termHeight"))))))))
+         (obj "value" (tas-bool (funcall visible (tas-int (jget args "termWidth")) (tas-int (jget args "termHeight")))))))
       ((equal kind "listener") (tas-listener-callback screen args))
       ((equal kind "debug")
        (let ((callback (tas-on-debug screen))) (when callback (funcall callback)) (obj)))
