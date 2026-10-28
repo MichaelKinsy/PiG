@@ -34,5 +34,6 @@ func ActiveSourceIsPath(value string) bool {
 
 // ActiveSourceFromEnv returns the [ActiveSourceEnv] value of this process, or "".
 func ActiveSourceFromEnv() string {
+	//perf:ok read once per status, diagnose or show command
 	return strings.TrimSpace(os.Getenv(ActiveSourceEnv))
 }
