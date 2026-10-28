@@ -821,6 +821,21 @@ export default function (pi) {
       });
     },
   });
+  pi.registerCommand("rw_idle_background", {
+    description: "Poll isIdle from a background callback after agent_end",
+    handler: async () => {
+      pi.on("agent_end", async (_event, ctx) => {
+        let idle = false;
+        const deadline = Date.now() + 3000;
+        const poll = () => {
+          idle = ctx.isIdle();
+          if (idle || Date.now() >= deadline) ctx.ui.notify(`rw_idle_background=${idle}`, "info");
+          else setTimeout(poll, 10);
+        };
+        setTimeout(poll, 10);
+      });
+    },
+  });
   pi.registerCommand("set_model", {
     description: "Switch to the model in the arguments",
     handler: async (args, ctx) => {

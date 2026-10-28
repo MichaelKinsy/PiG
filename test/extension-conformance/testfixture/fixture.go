@@ -1074,6 +1074,20 @@ func Extension() *sdk.Extension {
 		return nil
 	})
 
+	// rw_idle_background subscribes to agent_end and, from a background goroutine the handler leaves running, polls isIdle with the handler's Context until the Session reports idle (or 3s pass), then reports the last answer. No event reaches the extension after agent_end, which fires while the run is still busy.
+	ext.Command("rw_idle_background", "Poll isIdle from a background callback after agent_end", func(sdk.Context, string) error {
+		ext.OnEvent("agent_end", func(hctx sdk.Context, _ map[string]any) (any, error) {
+			go func() {
+				idle := false
+				for deadline := time.Now().Add(3 * time.Second); !idle && time.Now().Before(deadline); time.Sleep(10 * time.Millisecond) {
+					idle, _ = hctx.IsIdle()
+				}
+				hctx.Notify(fmt.Sprintf("rw_idle_background=%t", idle), "info")
+			}()
+			return nil, nil
+		})
+		return nil
+	})
 	ext.Command("set_model", "Switch to the model in the arguments", func(ctx sdk.Context, args string) error {
 		ok, err := ctx.SetModel(args)
 		if err != nil {
