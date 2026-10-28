@@ -61,6 +61,15 @@ type ResolveOptions struct {
 	Base *OverlayBase
 }
 
+// OverlayOf names the Piglet Binary this Piglet is an overlay of (D202), or reports false when it is not one. A Piglet Binary's
+// baked Piglet is no overlay; one that resolved a Piglet selected at launch is.
+func (p *Piglet) OverlayOf() (binary string, ok bool) {
+	if p == nil || len(p.lineage) == 0 {
+		return "", false
+	}
+	return strings.CutPrefix(p.lineage[0].Source, "binary:")
+}
+
 // ResolveEffective resolves with no workspace anchor. Piglets that require a
 // workspace:-anchored field fail until the caller supplies one explicitly.
 func ResolveEffective(path string) (*EffectiveResolution, error) {
@@ -135,7 +144,12 @@ func resolveEffective(path, sourceIdentity string, visits []lineageVisit, depth 
 	}
 	visits = append(slices.Clone(visits), lineageVisit{path: path, digest: digest})
 
-	if p.Extends == nil {
+	// pig additive (D202): an extends block that names no source extends the Piglet Binary the Piglet is selected on, so an
+	// overlay can spell extends.remove and extends.allowWiden without another Piglet to name.
+	if p.Extends != nil && p.Extends.Source == "" && options.Base == nil {
+		return nil, fmt.Errorf("Piglet %s: extends.source is required unless a Piglet Binary that sets build.allowOverlays runs the Piglet as an overlay", path)
+	}
+	if p.Extends == nil || p.Extends.Source == "" {
 		if options.Base != nil {
 			return resolveOverlayRoot(p, entry, digest, options.Base)
 		}
