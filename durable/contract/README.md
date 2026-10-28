@@ -1,10 +1,10 @@
 # Durable core conformance gate
 
-The gate every lane of the Durable core uses ([CONTRACT.md](../../docs/plan/durable-core/CONTRACT.md) sections 5-7). It runs the corpus (E00-E30, U, SC, I, W1-W4, X1, H) against pi-durable at the pinned reference commit (`PIN` `main`, Pi 1.4.0 `6c384aa3`, the commit PiG pins) and against a candidate, and compares the two at the store, commit, context, output and order levels (order: the scenario's API calls and the commits in one sequence, CONTRACT 5.8). One Pi commit is one row of `commit` lines, so a difference names the first divergent commit seq, the table, the column and whether the text differs in value, key order or number format.
+The gate every lane of the Durable core uses ([CONTRACT.md](../../docs/plan/durable-core/CONTRACT.md) sections 5-7). It runs the corpus (E00-E31, U, SC, I, W1-W4, X1, H) against pi-durable at the pinned reference commit (`PIN` `main`, Pi 1.4.0 `b3a29f11`, the commit PiG pins) and against a candidate, and compares the two at the store, commit, context, output and order levels (order: the scenario's API calls and the commits in one sequence, CONTRACT 5.8). One Pi commit is one row of `commit` lines, so a difference names the first divergent commit seq, the table, the column and whether the text differs in value, key order or number format.
 
 ## References
 
-`PIN` names the reference: `main` is Pi 1.4.0 `6c384aa3` (the commit PiG pins), the reference of every E, U, SC, I, W, X, H and F row (the tick rows F-ticks-*, F-split-* and `tools/gen-hopticks.mjs` included); the candidate runs over the same checkout. `release` names v1.0.4, whose stores the R rows read.
+`PIN` names the reference: `main` is Pi 1.4.0 `b3a29f11` (the commit PiG pins), the reference of every E, U, SC, I, W, X, H and F row (the tick rows F-ticks-*, F-split-* and `tools/gen-hopticks.mjs` included); the candidate runs over the same checkout. `release` names v1.0.4, whose stores the R rows read.
 
 ## Run it
 

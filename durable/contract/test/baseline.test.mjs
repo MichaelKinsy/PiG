@@ -9,6 +9,7 @@ import test from "node:test"
 import { describe, judge, loadBaseline, stale, validateBaseline } from "../lib/baseline.mjs"
 import { loadCorpus } from "../lib/corpus.mjs"
 import { piSource } from "../lib/run.mjs"
+import { lateListenerSource } from "./late-listener.mjs"
 
 const work = mkdtempSync(join(tmpdir(), "contract-baseline-"))
 test.after(() => rmSync(work, { recursive: true, force: true }))
@@ -52,7 +53,7 @@ const reference = piSource()
 const index = `file://${reference}/packages/durable/src/index.ts?real`
 const dirs = {
 	same: `export * from "${index}"\n`,
-	late: `import * as real from "${index}"\nexport * from "${index}"\nexport const watchEvents = async (...args: any[]) => {\n\tconst stream = await (real.watchEvents as any)(...args)\n\treturn { ...stream, start: (listener: any) => stream.start(async (events: any, context: any) => { await Promise.resolve(); await Promise.resolve(); return listener(events, context) }) }\n}\n`,
+	late: lateListenerSource(index),
 }
 const toml = []
 for (const [name, source] of Object.entries(dirs)) { mkdirSync(join(work, name)); writeFileSync(join(work, name, "index.ts"), source); toml.push(`[[impl]]\nname = "${name}"\ncandidate_dir = "${join(work, name)}"\n`) }

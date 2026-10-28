@@ -1,13 +1,13 @@
 // The split tick counts (rows F-split-<part>-<profile>): where client-ticks.mjs prints one total per client call, this prints the
 // microtask passes between observable points inside one call, so two Go-side tick errors that cancel in a total fail a row apart.
 // `--seed` picks the part:
-//   1 generation: one turn's points measured from the submission's publication (the first agent event of the turn): the model
-//     call (the faux respond function) and the turn's last events. Between them run the prepare phase's context read (a scan) and
+//   1 generation: one turn's points measured from the submission's publication (the first view change of the turn): the model
+//     call (the faux respond function) and the turn's last view changes. Between them run the prepare phase's context read (a scan) and
 //     the request phase's read of the same range (`at: cutoff`, the kept range: context.ts readContextFrom :81), so a read that
 //     spends other passes than Pi moves the model call.
 //   2 client: the same turn measured from the client's side: the submission's publication relative to the call of `submit` (its line
 //     job starts a tick after the call, whatever resolves the call) and to `submit` resolving, and `wait` resolving relative to the
-//     turn's last events (submissions.ts wait :75-86).
+//     turn's last view change (submissions.ts wait :75-86).
 //   3 context: after one turn, a custom task's runtime.context, from the call to the phase's resumption, for a first read (scan), the same read
 //     again and a cut (the kept range) and a read after a commit (an extending scan) (scheduler.ts :1229-1256).
 // Every wait is a tick or a detenv virtual timer, so the counts are exact. Run by lib/run.mjs under the hooks.
@@ -15,7 +15,7 @@ import { join } from "node:path"
 import { BACKGROUND_CONTEXT as context } from "@earendil-works/chord/context"
 import { createModels } from "@earendil-works/pi-ai/models"
 import { fauxAssistantMessage, fauxProvider } from "@earendil-works/pi-ai/providers/faux"
-import { createRegistry, defineExtension, defineTask, Harness, watchEvents } from "@earendil-works/pi-durable"
+import { createRegistry, defineExtension, defineTask, Harness } from "@earendil-works/pi-durable"
 import { openNodeSqliteStorage } from "@earendil-works/pi-durable/storage/sqlite/node"
 
 const argv = process.argv.slice(2)
@@ -72,8 +72,8 @@ root = await harness.root(context, { agent: { model: { provider: "faux", modelId
 const settle = () => new Promise(resolve => setTimeout(resolve, 1000))
 
 if (part === 1 || part === 2) {
-	const stream = await watchEvents(harness, root.id, context)
-	stream.start(({ value: events }) => { for (const e of events) marks.push([`event ${e.type}`, passes]) })
+	const view = await root.watch(context)
+	view.start(({ value }) => { const live = value.docs["pi.live"]; marks.push([`view ${live?.run === undefined ? "idle" : live.generation?.message === undefined ? "run" : "streaming"} ${value.entries.length} entries`, passes]) })
 	for (const label of ["cold", "idle"]) {
 		marks.length = 0
 		start()
@@ -81,18 +81,18 @@ if (part === 1 || part === 2) {
 		const submitted = passes
 		const record = await submission.wait(context)
 		const waited = stop()
-		const published = marks.find(m => m[0].startsWith("event "))[1]
+		const published = marks[0][1]
 		const last = marks.at(-1)[1]
 		if (part === 1) {
 			for (const [what, n] of marks) console.log(`${label} ${what}: ${n - published} after the publication`)
 		} else {
 			console.log(`${label} publication: ${published} after the call to submit (the line job's start tick: #enqueue starts it through this.#tail.then(job), session.ts :530-531)`)
 			console.log(`${label} publication: ${submitted - published} before submit resolves`)
-			console.log(`${label} wait (${record.status}): ${waited - last} after the turn's last event`)
+			console.log(`${label} wait (${record.status}): ${waited - last} after the turn's last view change`)
 		}
 		await settle()
 	}
-	await stream.stop()
+	await view.stop()
 } else {
 	// One turn first, so the reads have a range to scan, keep and cut.
 	await (await root.submit({ type: "input", content: "first" }, context)).wait(context)

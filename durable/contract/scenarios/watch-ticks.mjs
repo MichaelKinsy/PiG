@@ -1,12 +1,13 @@
-// The tick cost of attaching an observer (rows F-ticks-watch-<profile>): how many microtask passes `watchEvents` and `Conversation.watch` take to
-// settle on an idle conversation. An observer that attaches in fewer passes than Pi lands before a submit's commit Pi orders first
-// (F-gate-175: two event streams on one conversation, the later one attached after the submit in Pi and before it here). The count is
+// The tick cost of attaching an observer (rows F-ticks-watch-<profile>): how many microtask passes `Conversation.watch` takes to settle on an
+// idle conversation, on an empty one, one with a turn, a mounted view, a reopened Harness and a window that starts at an entry. An observer that attaches
+// in fewer passes than Pi lands before a submit's commit Pi orders first (F-gate-175: two observers on one conversation, the later one attached
+// after the submit in Pi and before it here). The count is
 // exact; every wait is a tick or a detenv virtual timer. Run by lib/run.mjs under the hooks.
 import { join } from "node:path"
 import { BACKGROUND_CONTEXT as context } from "@earendil-works/chord/context"
 import { createModels } from "@earendil-works/pi-ai/models"
 import { fauxAssistantMessage, fauxProvider } from "@earendil-works/pi-ai/providers/faux"
-import { createRegistry, Harness, watchEvents } from "@earendil-works/pi-durable"
+import { createRegistry, Harness } from "@earendil-works/pi-durable"
 import { openNodeSqliteStorage } from "@earendil-works/pi-durable/storage/sqlite/node"
 
 const faux = fauxProvider({ tokenSize: { min: 1e9, max: 1e9 } })
@@ -27,8 +28,9 @@ const measure = async (name, call) => {
 	return result
 }
 
-const stream = await measure("watchEvents (idle)", () => watchEvents(harness, root.id, context))
-await stream.stop()
+const window = { min: 1, max: 2 }
+const windowed = await measure("watch window (idle)", () => root.watch(context, window))
+await windowed.stop()
 const view = await measure("watch (idle)", () => root.watch(context))
 await view.stop()
 
@@ -37,16 +39,16 @@ await view.stop()
 const turn = await root.submit({ type: "input", content: "first" }, context)
 await turn.wait(context)
 await new Promise(resolve => setTimeout(resolve, 1000))
-const later = await measure("watchEvents (entries)", () => watchEvents(harness, root.id, context))
+const later = await measure("watch window (entries)", () => root.watch(context, window))
 await later.stop()
 const view2 = await measure("watch (entries)", () => root.watch(context))
 await view2.stop()
 
 // An observer attaching to a view another observer holds: nothing is built, the line job only creates the observer
-// (view.ts attach finds the mount; watchEvents' create scans the completing generations). F-gate-175 is this case.
+// (view.ts attach finds the mount). F-gate-175 is this case.
 const holder = await root.watch(context)
-const joinedEvents = await measure("watchEvents (mounted)", () => watchEvents(harness, root.id, context))
-await joinedEvents.stop()
+const joinedWindow = await measure("watch window (mounted)", () => root.watch(context, window))
+await joinedWindow.stop()
 const joinedState = await measure("watch (mounted)", () => root.watch(context))
 await joinedState.stop()
 await holder.stop()
@@ -57,9 +59,9 @@ await harness.close(context)
 // finds it absent (session.ts #loadDocument).
 const reopened = await Harness.open(await openNodeSqliteStorage(join(process.env.TMPDIR ?? "/tmp", "watch-ticks.sqlite")), { models, registry: createRegistry() }, context)
 await new Promise(resolve => setTimeout(resolve, 1000))
-const again = await measure("watchEvents (reopened)", () => watchEvents(reopened, root.id, context))
-await again.stop()
 const found = await reopened.conversation(root.id, context)
+const again = await measure("watch window (reopened)", () => found.watch(context, window))
+await again.stop()
 const view3 = await measure("watch (reopened)", () => found.watch(context))
 await view3.stop()
 await reopened.close(context)

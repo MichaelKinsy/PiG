@@ -12,7 +12,7 @@ import { BACKGROUND_CONTEXT as context } from "@earendil-works/chord/context"
 import { Type } from "@earendil-works/pi-ai"
 import { createModels } from "@earendil-works/pi-ai/models"
 import { fauxAssistantMessage, fauxProvider, fauxText, fauxToolCall } from "@earendil-works/pi-ai/providers/faux"
-import { createRegistry, defineDoc, defineExtension, defineTool, GenerationTask, Harness, hook, ToolTask, watchEvents } from "@earendil-works/pi-durable"
+import { createRegistry, defineDoc, defineExtension, defineTool, GenerationTask, Harness, hook, ToolTask } from "@earendil-works/pi-durable"
 import { openNodeSqliteStorage } from "@earendil-works/pi-durable/storage/sqlite/node"
 
 const argv = process.argv.slice(2)
@@ -69,7 +69,7 @@ const plan = {
 	arrivals: [],
 }
 for (let c = 0; c < conversationCount; c++) plan.inputs.push({ ...inputPlan(c, "start"), start: waitSpec(4, [0, 0, 1, 5, 20]) })
-for (let o = 0, n = int(0, 3); o < n; o++) plan.observers.push({ kind: pick(["events", "view"]), conv: int(0, conversationCount - 1), at: waitSpec(6, [0, 1, 5, 20, 100, 300]), listener: waitSpec(4, [0, 0, 5, 30]) })
+for (let o = 0, n = int(0, 3); o < n; o++) plan.observers.push({ kind: pick(["window", "view"]), conv: int(0, conversationCount - 1), at: waitSpec(6, [0, 1, 5, 20, 100, 300]), listener: waitSpec(4, [0, 0, 5, 30]) })
 for (let a = 0, n = int(0, 5); a < n; a++) {
 	const kind = pick(["followUp", "followUp", "steer", "write", "reject"])
 	plan.arrivals.push({ ...inputPlan(int(0, conversationCount - 1), kind), at: waitSpec(6, [0, 1, 5, 10, 25, 50, 100, 200, 400]), withdraw: chance(0.25) ? waitSpec(4, [0, 0, 1, 10]) : undefined })
@@ -214,11 +214,12 @@ const observers = []
 const observe = async o => {
 	await pause(o.at)
 	const conversation = conversations[o.conv]
-	if (o.kind === "events") {
-		const stream = await watchEvents(harness, conversation.id, context)
-		log("events attached", o.conv, stream.snapshot.entries.length)
-		stream.start(async ({ value: events }) => { for (const e of events) log("event", o.conv, e.type); await pause(o.listener) })
-		observers.push(() => stream.stop())
+	if (o.kind === "window") {
+		// A view with its own small window (Pi f3255de7): the first value holds the newest two entries, and more than four leave in one splice.
+		const view = await conversation.watch(context, { min: 2, max: 4 })
+		log("window attached", o.conv, view.value.entries.length, view.value.before ?? "-")
+		view.start(async ({ value, ops }) => { log("window", o.conv, value.entries.length, value.before ?? "-", ops.length); await pause(o.listener) })
+		observers.push(() => view.stop())
 	} else {
 		const view = await conversation.watch(context)
 		log("view attached", o.conv, view.value.entries.length)
