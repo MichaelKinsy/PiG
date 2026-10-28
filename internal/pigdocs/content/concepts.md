@@ -55,7 +55,7 @@ A Piglet may have these execution carriers:
 |---|---|
 | Host Piglet | PiG resolves and runs Piglet source on the host or inside its required environment |
 | Piglet Binary | target-native PiG executable built for one immutable Piglet composition |
-| Piglet Image | OCI artifact materializing the Piglet and required runtime environment |
+| Piglet Image | planned, not in this release: an OCI artifact that would materialize the Piglet and its runtime environment |
 
 Binary and image are build outputs, not files you author or peer management
 namespaces. Piglet source and several target artifacts may coexist in one
@@ -90,8 +90,8 @@ from `PATH` or ambient Package discovery.
 realization:
 
 - no `agentEnv`: run on the current compatible host;
-- required `agentEnv`: Host Piglet, Piglet Binary, Piglet Image, and managed deployments
-  enter or verify it before startup;
+- required `agentEnv`: Host Piglet, Piglet Binary, and managed deployments
+  enter or verify it before startup (a Piglet Image is planned);
 - only explicit local one-run `--unsafe-host` may bypass it.
 
 The code-execution sandbox is separate from the whole-agent environment.

@@ -1,6 +1,6 @@
 # Command line
 
-This page lists the `pig` command-line verbs and subcommands, and the `pig docs` commands for the embedded reference bundle. [Command line by example](/docs/latest/cli-examples) runs the common ones and shows their output. PiG follows the command line of Pi 1.4.0 ([Pi's command line reference](https://github.com/earendil-works/pi/blob/v1.2.0/packages/coding-agent/docs/cli.md)). Run `pig --help` or append `--help` to a command for the exact interface of the installed binary.
+This page lists the `pig` command-line verbs and subcommands, and the `pig docs` commands for the embedded reference bundle. [Command line by example](/docs/latest/cli-examples) runs the common ones and shows their output. PiG follows the command line of Pi 1.4.0 ([Pi's command line reference](https://github.com/earendil-works/pi/blob/main/packages/coding-agent/docs/cli.md)). Run `pig --help` or append `--help` to a command for the exact interface of the installed binary.
 
 ## CLI verbs
 

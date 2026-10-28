@@ -1,6 +1,6 @@
 # Terminal setup
 
-PiG runs in any terminal. Some features need terminal support, and PiG turns each one on only when it detects that support. This page lists what PiG detects, and what to change when a key or an image does not work. The terminal setup is the same as for Pi 1.4.0 ([Pi's terminal guide](https://github.com/earendil-works/pi/blob/v1.2.0/packages/coding-agent/docs/terminal-setup.md)), apart from the differences named below.
+PiG runs in any terminal. Some features need terminal support, and PiG turns each one on only when it detects that support. This page lists what PiG detects, and what to change when a key or an image does not work. The terminal setup is the same as for Pi 1.4.0 ([Pi's terminal guide](https://github.com/earendil-works/pi/blob/main/packages/coding-agent/docs/terminal-setup.md)), apart from the differences named below.
 
 ## Troubleshooting
 

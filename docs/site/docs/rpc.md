@@ -1,6 +1,6 @@
 # RPC mode
 
-RPC mode runs PiG as a headless JSON Lines process. A client writes commands to standard input and reads responses and events from standard output. The protocol is the RPC protocol of Pi 1.4.0 ([Pi's RPC protocol reference](https://github.com/earendil-works/pi/blob/v1.2.0/packages/coding-agent/docs/rpc.md)), apart from the differences named on this page.
+RPC mode runs PiG as a headless JSON Lines process. A client writes commands to standard input and reads responses and events from standard output. The protocol is the RPC protocol of Pi 1.4.0 ([Pi's RPC protocol reference](https://github.com/earendil-works/pi/blob/main/packages/coding-agent/docs/rpc.md)), apart from the differences named on this page.
 
 Use the [PiG Go SDK](/docs/latest/sdk) when your Go application does not need a process boundary. Use RPC mode for another language, an IDE, or a separate process.
 
@@ -241,5 +241,5 @@ PiG implementation:
 
 Pi reference (1.2.0):
 
-- [RPC mode](https://github.com/earendil-works/pi/blob/v1.2.0/packages/coding-agent/src/modes/rpc/rpc-mode.ts)
-- [RPC types](https://github.com/earendil-works/pi/blob/v1.2.0/packages/coding-agent/src/modes/rpc/rpc-types.ts)
+- [RPC mode](https://github.com/earendil-works/pi/blob/main/packages/coding-agent/src/modes/rpc/rpc-mode.ts)
+- [RPC types](https://github.com/earendil-works/pi/blob/main/packages/coding-agent/src/modes/rpc/rpc-types.ts)

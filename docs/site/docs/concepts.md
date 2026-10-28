@@ -22,7 +22,7 @@ Stock PiG does not activate PiG Standard or another product composition. It has 
 
 ## Resources
 
-A Resource contributes one focused part of an agent application.
+A Resource contributes one focused part of an agent application. PiG has nine kinds of Resource.
 
 | Resource | Purpose |
 |---|---|
@@ -32,6 +32,8 @@ A Resource contributes one focused part of an agent application.
 | Theme | Change terminal appearance. |
 | Hook | Describe an event command. |
 | MCP definition | Describe an external tool service. |
+| Compatible agent declaration | Expose an agent that a compatible plugin root declares. See [Packages](/docs/latest/packages). |
+| Context input | Add standing instructions for the model, such as an `AGENTS.md` context file. See [Configure PiG](/docs/latest/configuration#context-files). |
 | Agent environment | Define the environment required by the whole agent. |
 
 A Resource does not activate itself.

@@ -207,6 +207,7 @@ pig update --self
 pig update <source>
 pig update --extension <source>
 pig update --extensions
+pig update --models
 pig update --all
 pig update --force
 pig remove <source>
@@ -223,7 +224,17 @@ npm updates batch eligible Packages by scope. Git updates reconcile the configur
 Bare update, `--self`, and the `self`/`pig` positional targets update PiG.
 `--extensions` updates installed Packages only; `--all` updates Packages before
 PiG. `--extension` names one Package and `--force` reinstalls the current PiG
-release. Conflicting targets fail before either update path starts.
+release. `--models` forces a model-catalog refresh through the shared model
+runtime without updating PiG or installed Packages. It cannot be combined with
+another update target. Conflicting targets fail before either update path starts.
+
+At startup, an npm Package needs an installed manifest version that satisfies its
+configured pin or range. If installation fails or offline mode prevents it, the
+old installation does not supply Resources.
+
+With the global `extensionsAutoUpgrade` setting on, `pig update` also runs the
+`pig extension upgrade` rules on Go extensions written for an older SDK
+([Extensions](extensions.md)).
 
 PiG's owned management surface uses full-word noun/verb commands such as
 `pig package list`, while retaining upstream-compatible install, remove, and

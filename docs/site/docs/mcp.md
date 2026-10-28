@@ -29,7 +29,7 @@ Use `/mcp` inside an interactive session to inspect connections, sign in, reconn
 
 ## Configure servers
 
-PiG reads user-level servers from `~/.pig/agent/mcp.json` and project servers from `.pig/mcp.json`. Project configuration is read only after [project trust](security.md#project-trust) is granted. A project entry replaces a user-level entry with the same name.
+PiG reads user-level servers from `~/.pig/agent/mcp.json` and project servers from `.pig/mcp.json`. Project configuration is read only after [project trust](/docs/latest/trust) is granted. A project entry replaces a user-level entry with the same name.
 
 A project entry without `command`, `url`, or `type` overrides only `enabled`, `exposure`, and `toolExposure` of the user-level server with the same name and keeps the rest, including `env`, `headers`, and `auth`. For example, this turns off a user-level server in one project:
 
