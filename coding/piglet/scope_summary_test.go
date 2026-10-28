@@ -58,8 +58,8 @@ func TestToolScopeNoticeNamesServersToolsAndReasons(t *testing.T) {
 	if got := ToolScopeNotice(p, nil); got != "" {
 		t.Errorf("notice without hidden tools = %q", got)
 	}
-	if !strings.Contains(AgentToolScopeLine(p), "Active Piglet: demo.") {
-		t.Errorf("agent line = %q", AgentToolScopeLine(p))
+	if !strings.Contains(AgentToolScopeLine(p, false), "Active Piglet: demo.") {
+		t.Errorf("agent line = %q", AgentToolScopeLine(p, false))
 	}
 }
 
@@ -109,11 +109,41 @@ func TestAgentToolScopeLineNamesStripsAndDetails(t *testing.T) {
 	defer undoExt()
 	p := &Piglet{Name: "demo", sourcePath: "/p/demo.yaml"}
 	want := "Active Piglet: demo. Tool scope, at most: all built-in tools except bash; no MCP tools. Stripped: tools bash; extensions mcp. Details: pig piglet show /p/demo.yaml."
-	if got := AgentToolScopeLine(p); got != want {
+	if got := AgentToolScopeLine(p, false); got != want {
 		t.Errorf("line = %q, want %q", got, want)
 	}
 	p.lineage = []LineageEntry{{Source: "binary:base"}}
-	if got := AgentToolScopeLine(p); !strings.HasPrefix(got, "Active Piglet: demo (overlay /p/demo.yaml on Piglet Binary base). ") {
+	if got := AgentToolScopeLine(p, false); !strings.HasPrefix(got, "Active Piglet: demo (overlay /p/demo.yaml on Piglet Binary base). ") {
 		t.Errorf("overlay line = %q", got)
+	}
+}
+
+// An untrusted project is one short clause of the agent line, and only then.
+func TestAgentToolScopeLineNamesAnUntrustedProject(t *testing.T) {
+	p := &Piglet{Name: "demo"}
+	if line := AgentToolScopeLine(p, false); strings.Contains(line, "Trust:") {
+		t.Errorf("trusted line = %q", line)
+	}
+	if line := AgentToolScopeLine(p, true); !strings.Contains(line, " Trust: untrusted project (project resources not loaded). Details:") {
+		t.Errorf("untrusted line = %q", line)
+	}
+}
+
+// `tools` limits and does not activate: show prints what a run activates beside the limit.
+func TestShowPrintsTheToolsActiveByDefault(t *testing.T) {
+	t.Setenv("PIG_HOME", t.TempDir())
+	t.Chdir(t.TempDir())
+	path := t.TempDir() + "/r.yaml"
+	if err := os.WriteFile(path, []byte("name: r\ntools: [read, grep, find, ls]\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	var stdout, stderr strings.Builder
+	if code := cmdShow([]string{path}, &stdout, &stderr); code != 0 {
+		t.Fatalf("show exit %d\n%s%s", code, stdout.String(), stderr.String())
+	}
+	for _, want := range []string{"Built-in tools: read, grep, find, ls (a limit; it does not activate a tool)\n", "Active by default: read\n"} {
+		if !strings.Contains(stdout.String(), want) {
+			t.Errorf("show output lacks %q:\n%s", want, stdout.String())
+		}
 	}
 }

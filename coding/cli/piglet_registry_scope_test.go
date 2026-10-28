@@ -27,6 +27,7 @@ type pigletRegistryRun struct {
 	// `-e builtin:tool-search` off the command line.
 	noExtensionsSection bool
 	withoutCodemode     bool
+	trustProject        bool
 	servers             []mcpBinaryServer
 	steps               []chatStep
 	args                []string
@@ -59,11 +60,12 @@ func runPigletRegistry(t *testing.T, run pigletRegistryRun) mcpBinaryResult {
 		launch = append(launch, "-e", "builtin:codemode", "-e", "builtin:tool-search")
 	}
 	return runPigWithMCP(t, mcpBinaryRun{
-		mode:    "rpc",
-		prompt:  "go",
-		servers: run.servers,
-		steps:   run.steps,
-		args:    append(launch, run.args...),
+		mode:         "rpc",
+		prompt:       "go",
+		trustProject: run.trustProject,
+		servers:      run.servers,
+		steps:        run.steps,
+		args:         append(launch, run.args...),
 	})
 }
 
@@ -368,4 +370,25 @@ func TestStockToolsFlagRowsOfTheScopeTable(t *testing.T) {
 			t.Fatalf("requests = %d\n%s", len(requests), result.output)
 		}
 	})
+}
+
+// The agent line says when the project is untrusted, and only then.
+func TestPigletAgentLineTrust(t *testing.T) {
+	if testing.Short() {
+		t.Skip("builds the pig binary and starts Node extensions")
+	}
+	t.Parallel()
+	for _, trusted := range []bool{false, true} {
+		t.Run(map[bool]string{false: "untrusted", true: "trusted"}[trusted], func(t *testing.T) {
+			t.Parallel()
+			result := runPigletRegistry(t, pigletRegistryRun{trustProject: trusted, noExtensionsSection: true, steps: []chatStep{chatText("done")}})
+			requests := result.chat.recorded()
+			if len(requests) == 0 {
+				t.Fatalf("no model request\n%s", result.output)
+			}
+			if got := strings.Contains(requests[0].System, "Trust: untrusted project (project resources not loaded)."); got == trusted {
+				t.Errorf("system prompt has the untrusted-project clause = %t, want %t", got, !trusted)
+			}
+		})
+	}
 }

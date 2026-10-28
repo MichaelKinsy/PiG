@@ -436,7 +436,12 @@ func cmdShow(args []string, stdout, stderr io.Writer) int {
 	case len(*p.BuiltinTools) == 0:
 		_, _ = fmt.Fprintln(stdout, "Built-in tools: none")
 	default:
-		_, _ = fmt.Fprintf(stdout, "Built-in tools: %s\n", strings.Join(*p.BuiltinTools, ", "))
+		_, _ = fmt.Fprintf(stdout, "Built-in tools: %s (a limit; it does not activate a tool)\n", strings.Join(*p.BuiltinTools, ", "))
+	}
+	if active := ActiveByDefaultTools(p); len(active) > 0 {
+		_, _ = fmt.Fprintf(stdout, "Active by default: %s\n", strings.Join(active, ", "))
+	} else {
+		_, _ = fmt.Fprintln(stdout, "Active by default: none")
 	}
 	if line := MCPScopeLine(p); line != "" {
 		_, _ = fmt.Fprintln(stdout, line)
@@ -1862,7 +1867,8 @@ func buildExtensionWithOwner(initial *Piglet, owner func(extension.ToolInfo) str
 			// The agent learns the Piglet and its tool scope in one line.
 			if activePiglet != nil {
 				if options := extension.BeforeAgentStartOptions(ctx); options != nil {
-					line := AgentToolScopeLine(activePiglet)
+					trusted, err := extCtx.IsProjectTrusted()
+					line := AgentToolScopeLine(activePiglet, err == nil && !trusted)
 					if !strings.Contains(options.AppendSystemPrompt, line) {
 						options.AppendSystemPrompt = strings.TrimSpace(options.AppendSystemPrompt + "\n\n" + line)
 					}
