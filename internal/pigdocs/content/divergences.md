@@ -1,6 +1,6 @@
 # Divergences
 
-Pig preserves upstream pi-coding-agent's observable behavior unless an entry below records an intentional exception. Numbers are stable identifiers; do not reuse a retired one. The authoritative records, with call sites and evidence, are `docs/parity/DIVERGENCES.md` (behavior differences) and `docs/additive-features.md` (PiG-only additions) in the pig source tree. This page lists every active divergence and the additive features an agent is most likely to meet.
+Pig preserves upstream pi-coding-agent's observable behavior unless an entry below records an intentional exception. Numbers are stable identifiers; do not reuse a retired one. Read this page with `pig docs show divergences`. The call sites and evidence for each entry are in the PiG source repository. This page lists every active divergence and every additive feature.
 
 ## Behavior differences
 
@@ -85,6 +85,7 @@ Pig preserves upstream pi-coding-agent's observable behavior unless an entry bel
 | D156 | MCP server `url` expands environment references | PiG expands `$VAR`, `${VAR}` and `$$` in an MCP server's `url` as it does for `headers` and `env` (Pi #10654). A URL with an unset variable or a `!command` is used as written, and the `/mcp` server menu shows a `connects to:` line with the expansion. Pi always uses the URL as written. |
 | D157 | PiG's startup additions stay quiet when the config root cannot be written | PiG prints no `extension SDK staging failed` warning and no `write Piglet verification cache` warning when the write into the config root fails with a read-only file system or a permission denial (`EROFS`, `EACCES`, `EPERM`). Every other failure of either write still warns. Pi has neither write. A signed Piglet Binary then checks itself in full at every start, and `pig diagnose` says so. |
 | D158 | A setting of the wrong JSON type is ignored | PiG drops a `settings.json` value whose JSON type does not match the setting and applies the rest of the file. Pi 1.4.0 exits 1 for `{"skills":5}`, `{"extensions":{}}` and `{"enabledModels":[5]}`, and warns once per character for `{"enabledModels":"ab"}`. PiG prints one warning per settings file that names each ignored setting and its expected type. |
+| D159 | A single grapheme wider than the editor's wrap width stays one chunk | Pi's editor re-wraps a segment wider than the wrap width by calling itself on it, so a one-grapheme segment (a tab at a width of 2 or less, a double-width character at width 1) recurses until a `RangeError`. A Go stack overflow kills the process, so PiG keeps such a grapheme as one chunk that overflows the width and re-wraps only segments of several graphemes. |
 | D165 | The durable image processor is native Go | `images.CreatePhotonImages()` (`durable/images`, `images/node`, `images/cloudflare`) follows Pi's pipeline step for step in Go instead of running Photon's WebAssembly. The image the model receives has Pi's format, dimensions, `resized` and `convertedFrom` records and the same notes, but its encoded bytes and resampled pixels differ slightly from Photon's. Its `wasm` argument has no Go counterpart. |
 | D167 | A history longer than the model's context window is summarized in chunks | Pi sends the whole history of a compaction in one summary request, so a session already longer than the model's context window is refused with the provider's overflow error and can never be compacted. PiG splits such a history into window-sized chunks, each updating the summary of the one before (Pi's own previous-summary update prompt), and halves a chunk the provider still refuses. A split turn whose prefix is longer than the window moves all but the prefix's last window-sized part into that chunked history. `/tree` branch summarization retries with the newest half of a request the provider refuses, always keeping the newest message. A history that fits is one request, identical to Pi's. |
 | D173 | Tool search matches Chinese, Japanese and Korean queries | Pi's tool-search tokenizer splits on `/[^a-z0-9]+/` and so drops every Chinese, Japanese and Korean character: `tokenize("记录")` is empty and `tool_search` and codemode `searchTools()` never match a query in those scripts (Pi #10816). PiG makes each Han, Hiragana, Katakana or Hangul character a search term of its own; text without those characters tokenizes as in Pi. |
@@ -118,18 +119,52 @@ RPC33 retains complete JSON and stderr comparison and three declared runs. Its r
 
 ## Additive features
 
-These add PiG-only capability without changing a Pi behavior. The additive ledger lists the rest.
+These add PiG-only capability without changing a Pi behavior. The table lists every additive feature with its ID, title, and first sentence. Search it with `grep -n -i <word>`.
+
+<!-- additive-list:start -->
 
 | ID | Title | Summary |
 |---|---|---|
-| D18 | Piglet management and build dispatch | Generic Piglet source, runtime, and artifact commands. Stock PiG selects no product composition. |
-| D19 | Multi-language subprocess SDK bridges | First-party Go, Rust, Python SDKs target the same wire and capability surface. |
-| D20 | Packed runtime cells | Host-side factory-extension packing; observationally identical to isolated mode. See [Runtime cells](runtime-cells.md). |
-| D21 | Reload report telemetry | Pull-only `LastReloadReport()` + `Metrics()`. No background samplers or external push. |
-| D22 | Stock documentation | `pig docs` materializes the reference bundle that matches the running binary. |
-| D67 | Windows container build user | Piglet container builds use the image default user on Windows and the invoking uid/gid on Unix. This is additive builder policy, not a Pi divergence. |
-| D69 | Windows Piglet scripts | Piglet script builds emit a quoted CRLF cmd.exe launcher on Windows and a POSIX launcher on Unix. Name Windows output `.cmd`. |
-| D159 | A single grapheme wider than the editor's wrap width stays one chunk | Pi's editor re-wraps a segment wider than the wrap width by calling itself on it, so a one-grapheme segment (a tab at a width of 2 or less, a double-width character at width 1) recurses until a `RangeError`. A Go stack overflow kills the process, so PiG keeps such a grapheme as one chunk that overflows the width and re-wraps only segments of several graphemes. |
+| D18 | Piglet management and build dispatch | Pig adds product-neutral Piglet source management, validation, execution, and build commands. |
+| D19 | Multi-language subprocess SDK bridges | Embedding hosts bind HostCallbacks.AppendEntry through coding.Session.AppendExtensionEntry. |
+| D20 | Packed runtime-cell substrate for factory extensions | Generated Go cells read requirements, SDK pins, local replacements, and checksums from both extension roots and their workspace modules. |
+| D21 | Reload placement report | Pig records the latest subprocess reload decision for /reload --explain. |
+| D22 | Stock documentation materialization | Stock Pig embeds its public documentation and materializes it under <ConfigRoot>/docs/bundle-<hash>/, one content-addressed directory per build. |
+| D23 | Per-tool source metadata and piglet-scoped active-tool Context API | Pig adds four methods to extension.Context (GetAllTools, GetActiveTools, SetActiveTools, GetFlagValue) and a per-tool Source field on the subprocess wire protocol's ToolDecl / SDK toolDef. |
+| D28 | Extension validation report surface (pig install --validate-only --json) | Pig adds pig install --validate-only [--json] (alias --check): it loads, builds, and starts one or more extension package refs without installing them, then emits a structured extensionValidationReport. |
+| D31 | Fused in-process extension runtime for Piglet Binaries | An additive extension load path, subprocess.Host.LoadInProcess (coding/extension/host/subprocess/host.go), that runs an extension's factory inside the host process over an in-memory connection (fusedConn ... |
+| D36 | Insecure TLS opt-in for OpenAI-compatible providers | Pig adds an Insecure bool field to ai.OpenAIConfig, extension.ProviderConfig, the model registry's providerConfig, and ModelEntry. |
+| D40 | Extension-contributed authentication targets | Pig keeps upstream-compatible built-in OAuth login/logout behavior and adds pig login --list [--json]. |
+| D41 | Additive typed status and Piglet inventory | Pig retains upstream-compatible pig list Package output and adds machine-readable Package details through pig package list --json, typed Package/Resource/Piglet health through pig status --json, and independent ... |
+| D52 | Extension terminal-geometry context (ctx.width / ctx.height) | Pig exposes the current terminal width and height to every extension SDK through the runtime context, and notifies extensions when either changes. |
+| D60 | Typed native login extension API | Pig adds typed UIContext.SetLogin and the direct ui.setLogin wire call. |
+| D67 | Windows container builds use the image default user | Linux and macOS container builds pass --user <uid>:<gid> for the invoking user. |
+| D69 | Windows Piglet scripts are cmd.exe launchers | pig piglet build --format script emits a POSIX launcher on Unix and a two-line CRLF cmd.exe launcher on Windows: @setlocal DisableDelayedExpansion, then @pig --piglet "<source>" %*. |
+| D81 | Same-manager helper download coalescing | Pi starts one download per overlapping caller. |
+| D91 | Piglet frontend members draw the interactive mode | A Piglet Binary can fuse one Go frontend member (slots.frontend.member, a directory of a Go module whose root package exports func Frontend() frontend.Frontend from ... |
+| D92 | Piglet strip lists disable built-ins and compile them out of a Piglet Binary | A Piglet's strip key lists stable IDs in five lists: tools (built-in tools), commands (built-in slash commands with the leading slash, and /piglet, the active Piglet's inspection command), extensions (built-in ... |
+| D95 | Install-change restart warning for a running native executable | Pi 1.4.0 (since 1.0.4, #10439) warns when an update or removal replaced the install a running process loads code from. |
+| D97 | Packaged remote execution daemons live next to the pig executable | Pi resolves the daemon of @earendil-works/pi-env from bin/pi-env-<platform>-<arch>/pi-env[.exe] inside its npm package (ssh.ts). |
+| D100 | Crash attribution reads Go panic traces | internal/codingagent/crash_log.go (isStackFrame) accepts, in a stack that holds a Go goroutine header (goroutine N [...]:), a tab-indented <file>:<line>[ +0x<offset>] line as a stack frame. |
+| D101 | The get_extensions RPC command lists the loaded extensions | Pi's RPC protocol has no command that lists loaded extensions. |
+| D102 | Exit log, crash-output markers and uncaught-goroutine handling for interactive sessions | Pi 1.4.0 leaves a trace for one unrequested ending, an uncaught JavaScript exception (crashes.json). |
+| D104 | Durable read path | Pi Durable re-reads and re-decodes the stored transcript for every context read (pi-durable 1.0.4 reads about 212,000 rows per eight-tool turn at 3,500 turns). |
+| D107 | Extension component kit | An extension surface (ctx.ui.custom, widgets, header, footer, tool, message and entry renderers) may carry a view: a tree of Pi's tui components (container, box, text, truncated text, markdown, spacer, dynamic border ... |
+| D109 | Extension SDK upgrade | PiG compiles a Go extension against the SDK of the running pig, so an SDK release can break an extension written for an earlier one. |
+| D112 | Bounded performance caches and pooled buffers | Four hot paths keep reusable state with a fixed bound, and Pi keeps none of it. |
+| D160 | Tool results carry a collapsed-view preview | A tool result from a subprocess extension can carry preview, a short text the TUI shows while the result is collapsed, in place of the default tail of the output. |
+| D170 | Piglet tree, lineage and provenance diagnostics | pig piglet tree [name] [--depth <n>] [--json] arranges the installed Piglets by extends with box-drawing characters; * marks the Piglet the environment selects (PIG_PIGLET_NAME, PIG_PIGLET_PATH), [installed] ... |
+| D172 | Idle spinner parking and idle heap return | The interactive spinner ticker parks when a tick finds the session idle with no status indicator, and resumes when an owner-loop task is posted, a throttled frame runs on the owner loop, or an indicator is shown or ... |
+| D174 | GOMAXPROCS 2 runtime policy (1 in rpc mode); loaders the user waits on run at the default width | When the environment does not set GOMAXPROCS, cli.Main caps it at min(2, the runtime default) before anything else runs, in every mode. |
+| D175 | Print, json and rpc runs collect at GOGC 400 until the live heap passes 64 MiB | When the environment does not set GOGC, cli.Main sets the GC percent to 400 for a print (-p, or a stdin or stdout that is not a terminal), json (--mode json) or rpc (--mode rpc) run, before the session loads. |
+| D176 | A running bash block keeps only the output window it shows | Pi's BashExecutionComponent.appendOutput keeps every streamed line in outputLines, and updateDisplay draws truncateTail(outputLines.join("\n")) at the bash tool's context limits (2000 lines, 50 KB). |
+| D189 | Host calls made by deferred work carry a timer mark, and the host holds them for Pi's loop turn | Pi runs an extension's setTimeout, setImmediate and process.nextTick callbacks on the thread that runs the agent, so such a callback runs only when the agent's run awaits real work or the loop is idle after ... |
+| D191 | Outbound TLS refuses chains through the compromised eMudhra intermediates and the roots NSS removed after them | On 2026-10-17 the private keys of eight eMudhra intermediate CAs (EM DV, OV and EV TLS CA G3B and G3C, EM OV CS CA G3B and G3C) were reported compromised: each is a P-384 key whose private scalar is below 256 ... |
+| D194 | Piglet resolution installs npm and Git Packages with lifecycle scripts disabled unless the command opts in | Resolving a Piglet installs each npm Package, each Git Package's dependencies, and the npm or Git package of a Piglet source that pig piglet add npm:<name> or git:<repo> fetches, with --ignore-scripts, so no ... |
+| D201 | The SDK resource loader takes the runtime its extensions register against | The DefaultResourceLoader of the Go, Rust and Python SDKs takes an optional runtime (Go Runtime, Rust runtime, Python runtime), a value createExtensionRuntime() returned. |
+| D202 | A Piglet Binary can declare that it accepts overlay Piglets (build.allowOverlays) | A Piglet Binary refused --piglet, PIG_PIGLET_PATH and PIG_PIGLET_NAME (enforcePigletBinaryScope), so a custom base Piglet (Pigpen's pig-tern, any fused base) could not be combined with another Piglet without ... |
+
+<!-- additive-list:end -->
 
 ## Non-divergences
 

@@ -1,15 +1,10 @@
 # PiG docs
 
 This is PiG's user manual and the canonical local reference for coding agents
-helping users manage PiG. It is embedded in the binary and materialized under
-`~/.pig/docs/bundle-<hash>/` by `pig docs`, one directory per build, named by
-the content hash of its pages. PiG also checks the bundle marker at startup.
-Two PiG builds that share a config root each keep their own bundle, so neither
-rewrites the other's. `pig docs path` prints this build's directory. Do not edit
-the materialized copy; edit the bundled source and sync again.
+helping users manage PiG.
 
 PiG is the Go-native port of upstream Pi. Numbered differences are summarized in
-[divergences](divergences.md).
+[divergences](divergences.md). `divergences.md` has one row per line, so search it with `grep -n -i <word>` instead of reading it whole.
 
 ## Start by task
 
@@ -17,6 +12,10 @@ Read the one row that matches the task, then follow only its direct links.
 
 | I want to... | Start here | Then read |
 |---|---|---|
+| a tool, command, extension, or model is missing | [Strip built-ins and limit tools](piglet-strip.md) | [Commands](commands.md#tools) |
+| which Piglet is active and what it limits | [Strip built-ins and limit tools](piglet-strip.md#inspect-the-active-piglet) | [Piglets](piglets.md) |
+| check whether PiG differs from upstream Pi (`grep -n -i <word> divergences.md`) | [Divergences](divergences.md) | [Concepts](concepts.md) |
+| find what is PiG-only | [Divergences](divergences.md#additive-features) | [Knowledge graph](knowledge-graph.md) |
 | start from zero, guided | [Onboarding](onboarding.md) | [Install](install.md) |
 | do everyday work for a user who does not program (PDFs, spreadsheets, documents, reports, files) | [Applied use cases](applied-use-cases.md) | [Sessions](sessions.md) |
 | install PiG and run a first session | [Install](install.md) | [Providers](providers.md) |
@@ -49,7 +48,6 @@ Read the one row that matches the task, then follow only its direct links.
 | embed PiG in a program | [SDK](sdk.md) | [Extensions](extensions.md) |
 | add a provider or model endpoint | [Custom providers](custom-provider.md) | [Models](models.md) |
 | understand Stock Pig and explicit compositions | [Stock Pig and PiG Standard](built-in-extensions.md) | [Divergences](divergences.md) |
-| check whether PiG differs from upstream Pi before assuming a Pi behavior | [Divergences](divergences.md) | [Concepts](concepts.md) |
 | map entities, paths, and the command that inspects each | [Knowledge graph](knowledge-graph.md) | [Concepts](concepts.md) |
 | run PiG from a script or another program | [CLI integration](cli-integration.md) | [JSON mode](json.md) or [RPC](rpc.md) |
 | use JSON mode or RPC | [JSON mode](json.md), [RPC](rpc.md) | [RPC commands](rpc-commands.md), [RPC extension UI](rpc-extension-ui.md) |
@@ -63,6 +61,15 @@ Read the one row that matches the task, then follow only its direct links.
 | fix an install, trust, toolchain, or display problem | [Troubleshooting](troubleshooting.md) | [Install](install.md) |
 
 The platform pages on the site (tmux, Termux, Windows, containerization, shell aliases) are not in this bundle on purpose. They are setup guides for a particular terminal or host, not behavior of the program, and the site keeps them. `troubleshooting.md` and `terminal-setup.md` link them. This is a documentation choice, not a numbered divergence.
+
+## Where this bundle lives
+
+It is embedded in the binary and materialized under
+`~/.pig/docs/bundle-<hash>/` by `pig docs`, one directory per build, named by
+the content hash of its pages. PiG also checks the bundle marker at startup.
+Two PiG builds that share a config root each keep their own bundle, so neither
+rewrites the other's. `pig docs path` prints this build's directory. Do not edit
+the materialized copy; edit the bundled source and sync again.
 
 ## The model in one table
 
