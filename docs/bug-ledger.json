@@ -4944,6 +4944,25 @@
       "tests": []
     },
     {
+      "id": "BF-3296eb9",
+      "title": "fix(durable/core): match the rejected step with errors.AsType",
+      "symptom": "fix(durable/core): match the rejected step with errors.AsType",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "3296eb98a9",
+          "date": "2026-10-27"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-32ae04c",
       "title": "Durable (Pi 89e5c2c0): a generation waiting on a blocking threshold compaction fails with `model_error`…",
       "symptom": "Durable (Pi 89e5c2c0): a generation waiting on a blocking threshold compaction fails with `model_error` (`Compaction failed: \u003cerror\u003e`) when that compaction failed, faulted, was orphaned, or was aborted directly, instead of sending a request over a context it judged too large; a compaction that found nothing to compact or was declined still lets the request go ahead.",
@@ -5088,6 +5107,28 @@
       ],
       "tests": [
         "test/extension-conformance/theme_test.go::TestThemeQueriesAcrossSDKs"
+      ]
+    },
+    {
+      "id": "BF-32fe8c4",
+      "title": "The Durable core's Session opens a document watch, a conversation view and the task graph as a job on the…",
+      "symptom": "The Durable core's Session opens a document watch, a conversation view and the task graph as a job on the Session line, so an attachment made after a commit was queued starts at that commit's value; `watchDoc` and `observeDoc` reject on a closed Session with `Session is closed`; a watch keeps its Session alive while it runs and, once stopped or retired, no earlier incarnation's value; a Session subclass's `report(error, info)` receives the reports of its watches and observers.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "The Durable core's Session opens a document watch, a conversation view and the task graph as a job on the Session line, so an attachment made after a commit was queued starts at that commit's value; `watchDoc` and `observeDoc` reject on a closed Session with `Session is closed`; a watch keeps its Session alive while it runs and, once stopped or retired, no earlier incarnation's value; a Session subclass's `report(error, info)` receives the reports of its watches and observers.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "32fe8c41e7",
+          "date": "2026-10-27"
+        }
+      ],
+      "tests": [
+        "durable/core/driver/docs_core_watches_test.go::TestCoreWatchOpenWaitsBehindTheTransactionHoldingTheLine"
       ]
     },
     {
@@ -5749,6 +5790,27 @@
         "coding/session_settled_idle_test.go::TestCustomMessageRunSettledHandlerAwaitsCompaction",
         "coding/session_settled_idle_test.go::TestWaitForIdleStaysPendingThroughEveryDeferredPrompt",
         "tui/terminal_split_reply_test.go::TestForwardTerminalConsumesAnOwedReplySplitAcrossSlowReads"
+      ]
+    },
+    {
+      "id": "BF-3602f48",
+      "title": "fix(durable/core): scheduler microtasks of the commit observer run behind the host listeners' dispatch; a…",
+      "symptom": "fix(durable/core): scheduler microtasks of the commit observer run behind the host listeners' dispatch; a foreign Storage runs through the gate; the JsonlStorage keeps the reference's memory.ts",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "3602f483f9",
+          "date": "2026-10-27"
+        }
+      ],
+      "tests": [
+        "durable/contract/test/vitest-candidate-plugin.test.mjs"
       ]
     },
     {
@@ -6941,6 +7003,25 @@
       ]
     },
     {
+      "id": "BF-4273a6a",
+      "title": "fix(durable/core): the run's abort resumes on its invocation's own resumer",
+      "symptom": "fix(durable/core): the run's abort resumes on its invocation's own resumer",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "4273a6a6bd",
+          "date": "2026-10-27"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-42c059a",
       "title": "fix(tui): bash block strips ANSI with Pi's utils/ansi.ts rule",
       "symptom": "fix(tui): bash block strips ANSI with Pi's utils/ansi.ts rule",
@@ -7001,6 +7082,29 @@
         }
       ],
       "tests": []
+    },
+    {
+      "id": "BF-4327756",
+      "title": "Durable core: a Harness opened through the TypeScript host honours `HarnessOptions.setTimer` and `onWake`…",
+      "symptom": "Durable core: a Harness opened through the TypeScript host honours `HarnessOptions.setTimer` and `onWake` (sleeping tasks arm host timers or wake the host once per change, a background timer the host declines is dropped, a foreground one it declines or throws on falls back to `setTimeout` and is reported once, `TaskRuntime.setTimer` timers end with their invocation) and `settings.restartLimit` (including `Infinity`) reaches the core, so a crash-looping task parks.",
+      "rootCause": "The facade honours HarnessOptions.setTimer (foreground timers fall back to setTimeout and are reported once, background ones may be declined, TaskRuntime.setTimer ends with the invocation) and onWake, sends settings.restartLimit, and rejects a non-finite sleepUntil. The reservation pass keeps the decision of its first run when a Storage gate runs it again after close sealed.",
+      "rootCauseSource": "commit",
+      "userImpact": "Crash, hang or runaway process",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Durable core: a Harness opened through the TypeScript host honours `HarnessOptions.setTimer` and `onWake` (sleeping tasks arm host timers or wake the host once per change, a background timer the host declines is dropped, a foreground one it declines or throws on falls back to `setTimeout` and is reported once, `TaskRuntime.setTimer` timers end with their invocation) and `settings.restartLimit` (including `Infinity`) reaches the core, so a crash-looping task parks. A reservation commit that the host's Storage holds while `close()` seals the Harness now lands and is written back as pending instead of being dropped, and a `sleepUntil` of `NaN` or an infinity is rejected as Pi rejects it.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "432775653a",
+          "date": "2026-10-27"
+        }
+      ],
+      "tests": [
+        "durable/core/host/cf/test/settimer-timers.test.ts",
+        "durable/core/session/sched_close_reserve_test.go::TestAGatedReservationCommitLandsWhenCloseSealsWhileTheStorageHoldsIt"
+      ]
     },
     {
       "id": "BF-432ab7f",
@@ -8124,6 +8228,25 @@
       ]
     },
     {
+      "id": "BF-4a0d619",
+      "title": "fix(durable/core): drop the reportWrap the RPT and TKS merges both declared",
+      "symptom": "fix(durable/core): drop the reportWrap the RPT and TKS merges both declared",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "4a0d619a07",
+          "date": "2026-10-27"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-4ac21c8",
       "title": "fix(jsloop): run a tick whose tool call already ended at once, though no wait is open",
       "symptom": "fix(jsloop): run a tick whose tool call already ended at once, though no wait is open",
@@ -9047,6 +9170,25 @@
         {
           "hash": "5144418192",
           "date": "2026-10-21"
+        }
+      ],
+      "tests": []
+    },
+    {
+      "id": "BF-5229b7d",
+      "title": "fix(durable/core): unloadDocuments with held changes is an api read job, memory notice shares the publish…",
+      "symptom": "fix(durable/core): unloadDocuments with held changes is an api read job, memory notice shares the publish buffer, host fail op",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "5229b7d551",
+          "date": "2026-10-27"
         }
       ],
       "tests": []
@@ -10381,6 +10523,27 @@
       ]
     },
     {
+      "id": "BF-5bf8461",
+      "title": "fix(durable/core): a phase span answer that is no uint32 handle names no span",
+      "symptom": "fix(durable/core): a phase span answer that is no uint32 handle names no span",
+      "rootCause": "The host's answer to the phaseSpan hook was converted from float64 without a range check, so a negative or out-of-range value became an implementation-defined handle.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "5bf8461a52",
+          "date": "2026-10-27"
+        }
+      ],
+      "tests": [
+        "durable/core/session/phase_answered_test.go::TestPhaseAnsweredTakesOnlyAUint32SpanHandle"
+      ]
+    },
+    {
       "id": "BF-5c4167a",
       "title": "fix(extension): hold the theme colors map the wire palette memo is keyed on",
       "symptom": "fix(extension): hold the theme colors map the wire palette memo is keyed on",
@@ -10760,6 +10923,25 @@
       "tests": []
     },
     {
+      "id": "BF-5f4a0b2",
+      "title": "fix(durable/core): a Session's reports reach its report(error, info)",
+      "symptom": "fix(durable/core): a Session's reports reach its report(error, info)",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "5f4a0b297f",
+          "date": "2026-10-27"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-60c4c6f",
       "title": "A tool call whose finished arguments are not a valid JSON object no longer runs with the parsed prefix: its…",
       "symptom": "A tool call whose finished arguments are not a valid JSON object no longer runs with the parsed prefix: its arguments are `{}` and `argumentsError` holds the reason and the text the model sent, which tool validation reports back to the model.",
@@ -10979,6 +11161,25 @@
       "tests": [
         "mcp/oauth/oauth_test.go::TestMCPOAuthRejectsNonHTTPAuthorizationEndpointsWhichThePlatformURLHandlerWouldLaunch"
       ]
+    },
+    {
+      "id": "BF-61af4af",
+      "title": "fix(durable/core): an api read that stores held changes ends with the Storage's answer; the host forgets what…",
+      "symptom": "fix(durable/core): an api read that stores held changes ends with the Storage's answer; the host forgets what it holds of a document the core's cache dropped; snapshots are weak",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "61af4af9ce",
+          "date": "2026-10-27"
+        }
+      ],
+      "tests": []
     },
     {
       "id": "BF-61fc01d",
@@ -14719,6 +14920,25 @@
       ]
     },
     {
+      "id": "BF-6996de6",
+      "title": "fix(durable/core): keep the reservation decision in a scheduler field, not two closure variables (TinyGo heap…",
+      "symptom": "fix(durable/core): keep the reservation decision in a scheduler field, not two closure variables (TinyGo heap sites)",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "6996de6375",
+          "date": "2026-10-27"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-69b9811",
       "title": "Two PiG builds that share a config root (two installed versions, or stock PiG beside a Piglet Binary) no…",
       "symptom": "Two PiG builds that share a config root (two installed versions, or stock PiG beside a Piglet Binary) no longer rewrite each other's documentation at every start.",
@@ -15181,6 +15401,27 @@
         "internal/codingagent/clipboard_read_text_test.go::TestReadClipboardTextAndroidSkipsLinuxCommands",
         "internal/codingagent/clipboard_read_text_test.go::TestReadClipboardTextTermuxReadsOnAndroid",
         "internal/codingagent/selfupdate_test.go::TestSelfReplaceAtWithCommitKeepsOnlyTheNewExecutable"
+      ]
+    },
+    {
+      "id": "BF-6acf6a0",
+      "title": "fix(durable/core): keep telemetry out of the hot publish body; report type; trace test",
+      "symptom": "fix(durable/core): keep telemetry out of the hot publish body; report type; trace test",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "6acf6a0da0",
+          "date": "2026-10-27"
+        }
+      ],
+      "tests": [
+        "durable/core/session/telemetry_test.go::TestCreateTaskTraceAndLinks"
       ]
     },
     {
@@ -16840,6 +17081,25 @@
       ]
     },
     {
+      "id": "BF-776b600",
+      "title": "fix(durable/core): the scheduler's reconcile and drain microtasks run behind the host listeners' dispatch of…",
+      "symptom": "fix(durable/core): the scheduler's reconcile and drain microtasks run behind the host listeners' dispatch of the commit they observe",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "776b600064",
+          "date": "2026-10-27"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-779318a",
       "title": "OpenAI-compatible streams where one chunk carries reasoning and content (LiteLLM and similar proxies) now…",
       "symptom": "OpenAI-compatible streams where one chunk carries reasoning and content (LiteLLM and similar proxies) now place the thinking block before the text.",
@@ -18258,6 +18518,25 @@
       ]
     },
     {
+      "id": "BF-854c355",
+      "title": "fix(durable/core): the facade Session reads persistWithinMs and documentRetentionMs live, not once through a…",
+      "symptom": "fix(durable/core): the facade Session reads persistWithinMs and documentRetentionMs live, not once through a spread",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "854c355e21",
+          "date": "2026-10-27"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-85618d9",
       "title": "fix(rpc): a failed switch_session answers before the replacement ahead of it; prompt compaction checks…",
       "symptom": "fix(rpc): a failed switch_session answers before the replacement ahead of it; prompt compaction checks resolve in order",
@@ -19368,6 +19647,29 @@
         "chord/delta/path_ref_test.go::TestNonEmptyPathAndPathRefMatchPi",
         "chord/delta/retention_upstream_test.go::TestDeltaTrackerRetentionAcrossGCJobs",
         "chord/delta/tracker_lifecycle_upstream_test.go::TestTrackerOverlayLifecycle"
+      ]
+    },
+    {
+      "id": "BF-8c829e2",
+      "title": "Closing a Durable Harness while a tool waited on a nested call could leave an abort mark on that nested call…",
+      "symptom": "Closing a Durable Harness while a tool waited on a nested call could leave an abort mark on that nested call in the store, so the next Harness reported it `aborted` instead of `interrupted` (it had started) or `abandoned` (it had not).",
+      "rootCause": "Harness.close() runs the scheduler's seal and the close listeners in one synchronous pass, so nothing a listener frees can reach the scheduler ahead of the seal. coreSession.Close posted the seal event after the listeners. The listeners cancel the waits of calls in flight (closeAware), and the goroutine such a cancel frees posts its completion at once: a tool whose nested call the close cancelled returned and posted toolDone before the seal, the core settled the caller as if the Harness stayed open and aborted its nested calls with a plain request, and the store kept those marks for the next Harness. After a restart the nested call reported `aborted` where Pi reports `interrupted` or…",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Closing a Durable Harness while a tool waited on a nested call could leave an abort mark on that nested call in the store, so the next Harness reported it `aborted` instead of `interrupted` (it had started) or `abandoned` (it had not). The native core driver ran the close listeners, which cancel the waits in flight, before it told the core it was closing. The tool that the cancel freed could report its end first, and the core then aborted the nested calls of a caller the close had interrupted. The core is now told first. It failed once in a CI run under load (the nested-call restart test).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "8c829e2c62",
+          "date": "2026-10-27"
+        }
+      ],
+      "tests": [
+        "durable/core/driver/session_test.go::TestCloseSealsTheCoreBeforeTheEventsItsCloseListenersFree",
+        "durable/core/driver/tool_nested_restart_core_test.go::TestCoreAbandonedNestedCallsAfterARestartSettleInterruptedOrAbandoned"
       ]
     },
     {
@@ -22233,6 +22535,28 @@
       ]
     },
     {
+      "id": "BF-98666df",
+      "title": "Closing a Harness over the TypeScript host no longer rejects when the write-back of the tasks the close…",
+      "symptom": "Closing a Harness over the TypeScript host no longer rejects when the write-back of the tasks the close stopped fails, for example because another process advanced the store.",
+      "rootCause": "Closing a Harness over the TypeScript host no longer rejects when the write-back of the tasks the close stopped fails, for example because another process advanced the store.",
+      "rootCauseSource": "release note",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Closing a Harness over the TypeScript host no longer rejects when the write-back of the tasks the close stopped fails, for example because another process advanced the store. Pi catches that write and the Session reports the failure, so the close resolves.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "98666dfd10",
+          "date": "2026-10-27"
+        }
+      ],
+      "tests": [
+        "durable/core/driver/harness_read_only_core_test.go::TestReadOnlyHarnessCore"
+      ]
+    },
+    {
       "id": "BF-992f3cb",
       "title": "A `before_provider_request` replacement that is not an object leaves Anthropic Messages as Pi's `{ ...value…",
       "symptom": "A `before_provider_request` replacement that is not an object leaves Anthropic Messages as Pi's `{ ...value, stream: true }` (`null`, a number or a boolean send `{\"stream\":true}`, an array or string its index members), `\"betas\": null` sends no `anthropic-beta` header, array-index keys lead a replacement body as in JavaScript, and a Codex WebSocket body's own `type` keeps the first position; a Codex payload hook that returns `null` no longer crashes PiG.",
@@ -22870,6 +23194,25 @@
       "tests": [
         "ai/google_convert_tools_upstream_test.go::TestGoogleSharedConvertToolsConstHandlingUpstream"
       ]
+    },
+    {
+      "id": "BF-9d2095f",
+      "title": "fix(durable/core): fewer TinyGo heap sites for deferred commits; a read or host operation that stores held…",
+      "symptom": "fix(durable/core): fewer TinyGo heap sites for deferred commits; a read or host operation that stores held changes waits for a gated Storage; changelog fragment named for a commit",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "9d2095f0ce",
+          "date": "2026-10-27"
+        }
+      ],
+      "tests": []
     },
     {
       "id": "BF-9d4fe9c",
@@ -24389,6 +24732,26 @@
       ]
     },
     {
+      "id": "BF-a9264aa",
+      "title": "A tool running under the Durable core's Cloudflare host and `pi-durable` facade now has `api.now()`, the…",
+      "symptom": "A tool running under the Durable core's Cloudflare host and `pi-durable` facade now has `api.now()`, the Harness clock (`HarnessOptions.now`, the wall clock when none is given), which throws once the tool call's invocation has ended, as Pi 1.4's `ToolExecutionApi.now` does.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A tool running under the Durable core's Cloudflare host and `pi-durable` facade now has `api.now()`, the Harness clock (`HarnessOptions.now`, the wall clock when none is given), which throws once the tool call's invocation has ended, as Pi 1.4's `ToolExecutionApi.now` does. Code mode reads its start time, journaled clock and deadline through it, so every code mode call, and every `models.*` call from a script, failed with `api.now is not a function` before.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "a9264aabbb",
+          "date": "2026-10-27"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-a94455c",
       "title": "The durable code mode joins the text items of a script's output in linear time (Pi f11e50f7…",
       "symptom": "The durable code mode joins the text items of a script's output in linear time (Pi f11e50f7, [#10678](https://github.com/earendil-works/pi/issues/10678)): 100,000 items took about 3 s because every item read the end of the growing joined text.",
@@ -24813,6 +25176,25 @@
         "internal/codingagent/extension_ui_phase_shutdown_test.go::TestShutdownDuringAwaitedReloadStepEndsTheSession",
         "test/parity/scenarios/extensions-runtime/73-shutdown-from-session-start-reload.toml"
       ]
+    },
+    {
+      "id": "BF-ac7e3e9",
+      "title": "fix(durable/core): the observer's abort and microtasks wait a hop without new heap sites",
+      "symptom": "fix(durable/core): the observer's abort and microtasks wait a hop without new heap sites",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "ac7e3e9885",
+          "date": "2026-10-27"
+        }
+      ],
+      "tests": []
     },
     {
       "id": "BF-aca35e7",
@@ -25742,6 +26124,25 @@
         "tui/tree_label_timestamp_oracle_test.go::TestFormatLabelTimestampMatchesPi",
         "tui/tree_select_test.go::TestFormatLabelTimestampForms"
       ]
+    },
+    {
+      "id": "BF-b59b9db",
+      "title": "fix(durable/core): a Session-mode read that stored held changes answers when the Storage settles the commit…",
+      "symptom": "fix(durable/core): a Session-mode read that stored held changes answers when the Storage settles the commit it adopted, with that call's failure",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "b59b9db8f9",
+          "date": "2026-10-27"
+        }
+      ],
+      "tests": []
     },
     {
       "id": "BF-b5b7b43",
@@ -26790,6 +27191,27 @@
       ]
     },
     {
+      "id": "BF-bf73e77",
+      "title": "fix(durable/core): join split surrogates through jv.AppendConcat, not byte slices",
+      "symptom": "fix(durable/core): join split surrogates through jv.AppendConcat, not byte slices",
+      "rootCause": "The pending-op fold sliced a JS string at byte offsets 3. The join of a trailing high and a leading low surrogate now lives in jv beside Concat, on bytes.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "bf73e77f83",
+          "date": "2026-10-27"
+        }
+      ],
+      "tests": [
+        "durable/core/jv/append_concat_test.go::TestAppendConcatJoinsSurrogatesAtTheBoundary"
+      ]
+    },
+    {
       "id": "BF-bfae6a0",
       "title": "Fullscreen double-click selection no longer splits paths and tokens at `~`, `.`, `\\`, `+` and `_`: the word…",
       "symptom": "Fullscreen double-click selection no longer splits paths and tokens at `~`, `.`, `\\`, `+` and `_`: the word characters are iTerm2 defaults.",
@@ -26994,6 +27416,27 @@
         "durable/harness/harness_tasks_scheduling_test.go::TestTaskClose",
         "durable/harness/tool_nested_test.go::TestANestedCallKeepsTheCallersArgumentOrder",
         "durable/harness/tool_nested_test.go::TestANestedCallSlotShowsTheArgumentsItRunsWith"
+      ]
+    },
+    {
+      "id": "BF-c1524ce",
+      "title": "fix(durable/core): a registry change tells the task graph its blocked reasons may have changed",
+      "symptom": "fix(durable/core): a registry change tells the task graph its blocked reasons may have changed",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "c1524cec9d",
+          "date": "2026-10-27"
+        }
+      ],
+      "tests": [
+        "durable/core/session/sched_registry_blocked_test.go::TestRegistryChangeNotifiesBlockedListenersBeforeThePass"
       ]
     },
     {
@@ -28055,6 +28498,25 @@
         "tui/tui_surface_test.go::TestTuiSurfaceSendsMessagesAsMarkdown",
         "tui/tui_surface_test.go::TestTuiSurfaceSendsThinkingRuns"
       ]
+    },
+    {
+      "id": "BF-cb3eb3b",
+      "title": "fix(durable/core): memory-held commits record no telemetry events",
+      "symptom": "fix(durable/core): memory-held commits record no telemetry events",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "cb3eb3bea2",
+          "date": "2026-10-27"
+        }
+      ],
+      "tests": []
     },
     {
       "id": "BF-cc9370b",
@@ -30235,6 +30697,52 @@
         "tui/markdown_blockquote_style_test.go::TestMarkdownEmphasisAndSetextMatchUpstreamBytes",
         "tui/markdown_blockquote_style_test.go::TestMarkdownParagraphSpacingBeforeInterruptingBlockMatchesUpstream",
         "tui/word_dictionary_navigation_test.go::TestEditor_WordBoundaryDictionary"
+      ]
+    },
+    {
+      "id": "BF-d943286",
+      "title": "A tool's `handoff` control now continues the run in the new context in the Durable core as it does in Pi: the…",
+      "symptom": "The core used to end the run at the handoff and answer it without another model request.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A tool's `handoff` control now continues the run in the new context in the Durable core as it does in Pi: the handoff's reset is written first, queued writes and selected steers land after it and join the continuing run, a follow-up queued across the handoff waits for the continuing run's final boundary, and a queued reset ends the handed-off run. The core used to end the run at the handoff and answer it without another model request.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "d943286774",
+          "date": "2026-10-27"
+        }
+      ],
+      "tests": [
+        "durable/core/driver/harness_inbox_core_test.go::TestInboxHandoff",
+        "durable/core/turn/tool_round_controls_pi_test.go::TestToolRoundHandoffAppendsAResetAndContinuesTheRunUnlessItTerminates"
+      ]
+    },
+    {
+      "id": "BF-d943286-2",
+      "title": "`HarnessSettings.afterFailedRun` reaches the Durable core from the TypeScript host, so inputs queued behind a…",
+      "symptom": "`HarnessSettings.afterFailedRun` reaches the Durable core from the TypeScript host, so inputs queued behind a failed run start the next run with `continue` and settle `run_failed` with `withdraw`.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`HarnessSettings.afterFailedRun` reaches the Durable core from the TypeScript host, so inputs queued behind a failed run start the next run with `continue` and settle `run_failed` with `withdraw`.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "d943286774",
+          "date": "2026-10-27"
+        }
+      ],
+      "tests": [
+        "durable/core/driver/harness_inbox_core_test.go::TestInboxHandoff",
+        "durable/core/turn/tool_round_controls_pi_test.go::TestToolRoundHandoffAppendsAResetAndContinuesTheRunUnlessItTerminates"
       ]
     },
     {
@@ -33122,6 +33630,25 @@
         "ai/openai_completions_member_type_oracle_test.go::TestOpenAICompletionsMistypedMembersMatchPi",
         "ai/openai_responses_member_type_oracle_test.go::TestOpenAIResponsesMistypedMembersMatchPi"
       ]
+    },
+    {
+      "id": "BF-e09d2bc",
+      "title": "fix(durable/core): Session.fail, a failing store of held changes at close rejects close, observers see a…",
+      "symptom": "fix(durable/core): Session.fail, a failing store of held changes at close rejects close, observers see a storing commit's own changes only, Session-mode gate retries after adoption",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "e09d2bc369",
+          "date": "2026-10-27"
+        }
+      ],
+      "tests": []
     },
     {
       "id": "BF-e16cbba",

@@ -1,9 +1,8 @@
 #!/bin/sh
-# Check out the references the corpus is captured from (PIN: `main` for the rows, `ticks` for the tick rows) into the cache and
+# Check out the references the corpus is captured from (PIN: `main` for the rows, `release` for the R rows) into the cache and
 # install their dependencies. Idempotent.
 #   DURABLE_CONTRACT_CACHE   cache directory (default durable/contract/.cache)
 #   CONTRACT_PI_SOURCE       use an existing checkout instead (must be at the pinned `main` commit)
-#   CONTRACT_PI_TICKS_SOURCE the same for the `ticks` commit
 set -eu
 here=$(cd "$(dirname "$0")/.." && pwd)
 cache=${DURABLE_CONTRACT_CACHE:-$here/.cache}
@@ -36,18 +35,6 @@ install_deps() {
 	fi
 }
 install_deps "$dir"
-# The reference of the tick rows (PIN `ticks`): a worktree of the same clone at its own commit, with its own dependencies.
-ticks=$(awk '$1 == "ticks" { print $2 }' "$here/PIN")
-tdir=${CONTRACT_PI_TICKS_SOURCE:-$cache/pi-ticks}
-if [ ! -d "$tdir" ]; then
-	git -C "$dir" fetch --quiet origin "$ticks" 2>/dev/null || true
-	git -C "$dir" worktree add --force --detach "$tdir" "$ticks" >/dev/null
-fi
-if [ "$(git -C "$tdir" rev-parse HEAD 2>/dev/null || true)" != "$ticks" ]; then
-	git -C "$tdir" fetch --quiet origin "$ticks" 2>/dev/null || true
-	git -C "$tdir" checkout --quiet "$ticks"
-fi
-install_deps "$tdir"
 # The release the corpus keeps readable (PIN release): a worktree of the same clone with the reference's dependencies shared.
 rel=$(awk '$1 == "release" { print $2 }' "$here/PIN")
 old=${CONTRACT_PI_104_SOURCE:-$cache/pi-1.0.4}

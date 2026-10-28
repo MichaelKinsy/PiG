@@ -7372,9 +7372,10 @@
       "disposition": "ported",
       "upstreamTestHash": "sha256:18a7cb17058c1129effa37e03e9a5157396defb49057b304291a1061fe4291d7",
       "evidence": [
-        "durable/harness/harness_read_only_test.go#TestReadOnlyHarness"
+        "durable/harness/harness_read_only_test.go#TestReadOnlyHarness",
+        "durable/core/driver/harness_read_only_core_test.go#TestReadOnlyHarnessCore"
       ],
-      "rationale": "Pi be14d9732 (HarnessOptions.readOnly): the 4 cases are the subtests of TestReadOnlyHarness under Pi's names, with Pi's inputs and expectations: a viewer of a session with a running generation reads it, leaves the running task as committed, writes nothing (next_seq unchanged), reports an inactive wake, paused scheduling and no onWake call; commits with writes, submit, abort, createConversation and waitForIdle reject with ReadOnlySession and resume() throws it (a panic in Go), while a commit that writes nothing succeeds and nothing is reported; the root of an empty storage is refused; the next writable open recovers the task once (pending, restarts 1). The core (durable/core) refuses ReadOnly with ErrUnsupported; the reference Harness serves it."
+      "rationale": "Pi be14d9732 (HarnessOptions.readOnly): the 4 cases are the subtests of TestReadOnlyHarness under Pi's names, with Pi's inputs and expectations: a viewer of a session with a running generation reads it, leaves the running task as committed, writes nothing (next_seq unchanged), reports an inactive wake, paused scheduling and no onWake call; commits with writes, submit, abort, createConversation and waitForIdle reject with ReadOnlySession and resume() throws it (a panic in Go), while a commit that writes nothing succeeds and nothing is reported; the root of an empty storage is refused; the next writable open recovers the task once (pending, restarts 1). The same four cases run again over the core (durable/core/driver TestReadOnlyHarnessCore, on the reference Harness and on the core): the core opens read-only with the open payload's readOnly flag, refuses a commit with writes with ReadOnlySession before the store, loads live tasks as committed, and its scheduler reconciles, wakes and resumes nothing."
     },
     {
       "path": "packages/durable/test/harness-registry.test.ts",

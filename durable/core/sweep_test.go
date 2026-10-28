@@ -17,7 +17,7 @@ func TestASessionModeSweepWaitsForTheHostTransaction(t *testing.T) {
 	h := &handler{b: abi.NewBuilder(), mode: "session"}
 	ran := 0
 	h.holder = 7
-	h.enqueueSweep(func() { ran++ })
+	h.enqueueSweep(func() error { ran++; return nil })
 	h.sweepMicrotask(func() { ran += 10 })
 	h.runSessionSweeps()
 	if ran != 0 {
@@ -37,7 +37,7 @@ func TestASessionModeCorePublishesTheDocumentCacheSizesWhenTheyChange(t *testing
 	notices := func() []abi.Notice { return append([]abi.Notice(nil), h.b.Step().Notices...) }
 	h.publishDocCache()
 	got := notices()
-	if len(got) != 1 || got[0].Kind != abi.NoticeDocCache || string(got[0].Payload) != `{"cached":0,"idle":0,"attached":0,"sweeps":0}` {
+	if len(got) != 1 || got[0].Kind != abi.NoticeDocCache || string(got[0].Payload) != `{"cached":0,"idle":0,"attached":0,"sweeps":0,"held":0}` {
 		t.Fatalf("first notice %+v", got)
 	}
 	h.publishDocCache()
@@ -47,7 +47,7 @@ func TestASessionModeCorePublishesTheDocumentCacheSizesWhenTheyChange(t *testing
 	h.sess.SweepJobs = 2
 	h.publishDocCache()
 	got = notices()
-	if len(got) != 2 || string(got[1].Payload) != `{"cached":0,"idle":0,"attached":0,"sweeps":2}` {
+	if len(got) != 2 || string(got[1].Payload) != `{"cached":0,"idle":0,"attached":0,"sweeps":2,"held":0}` {
 		t.Fatalf("after a sweep job: %+v", got)
 	}
 	harness := &handler{b: abi.NewBuilder(), mode: "harness", sess: h.sess}
