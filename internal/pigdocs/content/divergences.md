@@ -1,6 +1,6 @@
 # Divergences
 
-Pig preserves upstream pi-coding-agent's observable behavior unless an entry below records an intentional exception. Numbers are stable identifiers; do not reuse a retired one. The authoritative records, with call sites and evidence, are `docs/parity/DIVERGENCES.md` (behavior differences) and `docs/additive-features.md` (PiG-only additions) in the pig source tree. This page lists every active divergence and the additive features an agent is most likely to meet.
+Pig preserves upstream pi-coding-agent's observable behavior unless an entry below records an intentional exception. Numbers are stable identifiers; do not reuse a retired one. Read this page with `pig docs show divergences`. The call sites and evidence for each entry are in the PiG source repository. This page lists every active divergence. [Additive features](additive-features.md) lists the PiG-only features an author needs.
 
 ## Behavior differences
 
@@ -85,6 +85,7 @@ Pig preserves upstream pi-coding-agent's observable behavior unless an entry bel
 | D156 | MCP server `url` expands environment references | PiG expands `$VAR`, `${VAR}` and `$$` in an MCP server's `url` as it does for `headers` and `env` (Pi #10654). A URL with an unset variable or a `!command` is used as written, and the `/mcp` server menu shows a `connects to:` line with the expansion. Pi always uses the URL as written. |
 | D157 | PiG's startup additions stay quiet when the config root cannot be written | PiG prints no `extension SDK staging failed` warning and no `write Piglet verification cache` warning when the write into the config root fails with a read-only file system or a permission denial (`EROFS`, `EACCES`, `EPERM`). Every other failure of either write still warns. Pi has neither write. A signed Piglet Binary then checks itself in full at every start, and `pig diagnose` says so. |
 | D158 | A setting of the wrong JSON type is ignored | PiG drops a `settings.json` value whose JSON type does not match the setting and applies the rest of the file. Pi 1.4.0 exits 1 for `{"skills":5}`, `{"extensions":{}}` and `{"enabledModels":[5]}`, and warns once per character for `{"enabledModels":"ab"}`. PiG prints one warning per settings file that names each ignored setting and its expected type. |
+| D159 | A single grapheme wider than the editor's wrap width stays one chunk | Pi's editor re-wraps a segment wider than the wrap width by calling itself on it, so a one-grapheme segment (a tab at a width of 2 or less, a double-width character at width 1) recurses until a `RangeError`. A Go stack overflow kills the process, so PiG keeps such a grapheme as one chunk that overflows the width and re-wraps only segments of several graphemes. |
 | D165 | The durable image processor is native Go | `images.CreatePhotonImages()` (`durable/images`, `images/node`, `images/cloudflare`) follows Pi's pipeline step for step in Go instead of running Photon's WebAssembly. The image the model receives has Pi's format, dimensions, `resized` and `convertedFrom` records and the same notes, but its encoded bytes and resampled pixels differ slightly from Photon's. Its `wasm` argument has no Go counterpart. |
 | D167 | A history longer than the model's context window is summarized in chunks | Pi sends the whole history of a compaction in one summary request, so a session already longer than the model's context window is refused with the provider's overflow error and can never be compacted. PiG splits such a history into window-sized chunks, each updating the summary of the one before (Pi's own previous-summary update prompt), and halves a chunk the provider still refuses. A split turn whose prefix is longer than the window moves all but the prefix's last window-sized part into that chunked history. `/tree` branch summarization retries with the newest half of a request the provider refuses, always keeping the newest message. A history that fits is one request, identical to Pi's. |
 | D173 | Tool search matches Chinese, Japanese and Korean queries | Pi's tool-search tokenizer splits on `/[^a-z0-9]+/` and so drops every Chinese, Japanese and Korean character: `tokenize("记录")` is empty and `tool_search` and codemode `searchTools()` never match a query in those scripts (Pi #10816). PiG makes each Han, Hiragana, Katakana or Hangul character a search term of its own; text without those characters tokenizes as in Pi. |
@@ -120,18 +121,7 @@ RPC33 retains complete JSON and stderr comparison and three declared runs. Its r
 
 ## Additive features
 
-These add PiG-only capability without changing a Pi behavior. The additive ledger lists the rest.
-
-| ID | Title | Summary |
-|---|---|---|
-| D18 | Piglet management and build dispatch | Generic Piglet source, runtime, and artifact commands. Stock PiG selects no product composition. |
-| D19 | Multi-language subprocess SDK bridges | First-party Go, Rust, Python SDKs target the same wire and capability surface. |
-| D20 | Packed runtime cells | Host-side factory-extension packing; observationally identical to isolated mode. See [Runtime cells](runtime-cells.md). |
-| D21 | Reload report telemetry | Pull-only `LastReloadReport()` + `Metrics()`. No background samplers or external push. |
-| D22 | Stock documentation | `pig docs` materializes the reference bundle that matches the running binary. |
-| D67 | Windows container build user | Piglet container builds use the image default user on Windows and the invoking uid/gid on Unix. This is additive builder policy, not a Pi divergence. |
-| D69 | Windows Piglet scripts | Piglet script builds emit a quoted CRLF cmd.exe launcher on Windows and a POSIX launcher on Unix. Name Windows output `.cmd`. |
-| D159 | A single grapheme wider than the editor's wrap width stays one chunk | Pi's editor re-wraps a segment wider than the wrap width by calling itself on it, so a one-grapheme segment (a tab at a width of 2 or less, a double-width character at width 1) recurses until a `RangeError`. A Go stack overflow kills the process, so PiG keeps such a grapheme as one chunk that overflows the width and re-wraps only segments of several graphemes. |
+PiG-only features that change how you extend or modify PiG are listed in [Additive features](additive-features.md).
 
 ## Non-divergences
 

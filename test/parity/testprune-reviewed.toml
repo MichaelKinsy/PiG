@@ -475,3 +475,10 @@ commit = "c267f5a15e5e1254ba83842de0c5a26b64ca6181"
 class = "NOBEHAVIOR"
 cite = ""
 reason = "Overlay Piglets on a Piglet Binary are PiG-additive (D202) and have no Pi counterpart, so no Pi line governs the test. The owner approved the D202 redesign on 2026-10-28: an overlay merges as an extends child of the Binary's baked Piglet, and only what the Binary compiled in is refused (setting a frontend, re-enabling a build-tag strip, naming a fused or embedded member again with origins). TestOverlayRefusesWhatChangesTheBinary moves from the old refusal list (baked extension or skill replaced or removed, systemPrompt set, ceilings widened, runtime strips re-enabled) to those three refusals, each message naming the field, the Binary and the reason; the newly allowed cases have their own tests in the same commit range."
+
+[[entry]]
+path = "internal/codingagent/prompts/piglet_topic_test.go"
+commit = "0b15a5cdf6adb8a34c553465103c8e3676dc2876"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "The Piglets topic of the docs section is PiG-additive (D23): Pi has no Piglets, so no Pi line governs the test. The commit adds the bundle page piglet-strip.md to the topic text, so the expected topic string names two pages. Pi's own topics (system-prompt.ts:166-169) and the stock prompt bytes are unchanged, and the test still asserts that the stock section never names the Piglet docs."

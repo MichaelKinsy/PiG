@@ -197,6 +197,17 @@ func TestEveryPageIsReachableFromTheIndex(t *testing.T) {
 	}
 }
 
+// A root-absolute link such as /docs/latest/tui resolves on the website only.
+// The materialized bundle is a directory of files, so such a link is dead there.
+func TestBundlePagesHaveNoRootAbsoluteLinks(t *testing.T) {
+	rootLink := regexp.MustCompile(`\]\((/[^)\s]*)\)`)
+	for name, body := range docFiles(t) {
+		for _, match := range rootLink.FindAllStringSubmatch(body, -1) {
+			t.Errorf("%s links %s; link the bundle page as <page>.md or use the full site URL", name, match[1])
+		}
+	}
+}
+
 func TestInternalLinksResolve(t *testing.T) {
 	files := docFiles(t)
 	link := regexp.MustCompile(`\]\(([A-Za-z0-9_.-]+\.md)(?:#[^)]*)?\)`)

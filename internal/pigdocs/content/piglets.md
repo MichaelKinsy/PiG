@@ -39,6 +39,8 @@ remains the Host Piglet carrier. Piglet Binaries execute directly.
 | environment | optional required image, Dev Container, or typed source |
 | release/build | release SemVer and portable target/output defaults |
 
+To limit tools or to strip built-ins, read [Strip built-ins and limit tools](piglet-strip.md).
+
 ### Model can be unconstrained
 
 Leave `model` out when any consumer-enabled model is acceptable. Explicit/current
@@ -207,12 +209,16 @@ extends:
       tools: [bash]
 ```
 
+A name in `extends.remove` must exist in the Binary. Naming a member the Binary does not have fails with `remove.extensions: "codegraph" is absent`. The `tern-lite` overlay above needs a Binary that has an extension named `codegraph`.
+
+To test an overlay, start the Binary with the overlay as its Piglet, for example `./pig-base --piglet ./tern-lite.yaml`. Stock `pig piglet validate` rejects an overlay file by design, because an `extends` block without a `source` has no base to extend.
+
 Three things stay fixed, because they are compiled into the Binary. Each refusal names the field, the Binary and the reason:
 
 | The overlay | Why it is refused |
 |---|---|
 | sets `slots.frontend` (a new one, or another under the Binary's) | A frontend is Go code linked into the Binary. Removing the Binary's frontend with `extends.remove.slots: [frontend]` is allowed. |
-| removes a `strip` entry whose built-in a build tag compiled out: `strip.extensions` (`mcp`, `codemode`, `docs` and the other built-in extensions), `strip.apis`, and the compile-out `strip.features` | The code is not in the executable. `pig piglet show` marks these `stripped(binary)`. |
+| removes a `strip` entry whose built-in a build tag compiled out: `strip.extensions` (`mcp`, `codemode` and the other built-in extensions), `strip.apis`, and the compile-out `strip.features` (`docs` is one) | The code is not in the executable. `pig piglet show` marks these `stripped(binary)`. |
 | names a fused or embedded extension again with `origins` | The Binary selects its own members by name and cannot build another at run time under that name. Remove it with `extends.remove.extensions` and add the new one under another name. |
 
 An overlay can undo runtime strips: `strip.tools`, `strip.commands` and the runtime-only features (`themes`, `skills`, `prompt-templates`), which `pig piglet show` marks `stripped(runtime)`. It cannot undo a `stripped(binary)` entry.

@@ -35,7 +35,7 @@ The TUI uses the current working directory, settings, model selection, trusted R
 - Press Ctrl+C to clear the editor. Press it again within 500 ms to exit.
 - Press Ctrl+D on an empty editor to exit.
 
-See [Keybindings](/docs/latest/keybindings) for the complete binding list.
+See [Keybindings](keybindings.md) for the complete binding list.
 
 ## Modes
 
@@ -116,7 +116,7 @@ pig extension preview-login ./my-login-extension
 
 Use `/settings` to select the active theme. PiG can load additional theme Resources from trusted user, project, Package, and Piglet sources.
 
-See [Themes](/docs/latest/themes).
+See [Themes](themes.md).
 
 ## Rendering failures
 
@@ -128,7 +128,7 @@ A failed extension must not perform blocking IPC on the TUI render loop. Connect
 
 PiG supports keyboard operation for its interactive surfaces. Theme and extension authors must preserve readable contrast, focus indication, terminal-cell width, and reduced-motion expectations.
 
-Use a supported terminal and verify behavior at narrow and wide widths. See [Terminal setup](/docs/latest/terminal-setup).
+Use a supported terminal and verify behavior at narrow and wide widths. See [Terminal setup](terminal-setup.md).
 
 ## Upstream distinction
 
@@ -138,7 +138,7 @@ Use the [upstream TUI documentation](https://pi.dev/docs/latest/tui) when you ar
 
 ## Related documentation
 
-- [Using PiG](/docs/latest/usage)
-- [Extensions](/docs/latest/extensions)
-- [Keybindings](/docs/latest/keybindings)
-- [Terminal setup](/docs/latest/terminal-setup)
+- [Using PiG](usage.md)
+- [Extensions](extensions.md)
+- [Keybindings](keybindings.md)
+- [Terminal setup](terminal-setup.md)
