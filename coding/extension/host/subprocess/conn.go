@@ -845,6 +845,8 @@ func (c *Conn) requestWithOrder(ctx context.Context, env *Envelope, inactivity t
 	}
 	// Wait for response or meaningful request activity.
 	cancelled := ctx.Done()
+	// A caller that must serve the calls the request's handler makes on its own goroutine (withRequestInterjections) receives them here, while it waits.
+	interjected := requestInterjections(ctx)
 	var abortGraceC <-chan time.Time
 	suspensionApplied := false
 	for {
@@ -876,6 +878,8 @@ func (c *Conn) requestWithOrder(ctx context.Context, env *Envelope, inactivity t
 				}
 			}
 			return resp, nil
+		case run := <-interjected:
+			run()
 		case state := <-stateCh:
 			suspensionApplied = suspensionApplied || state.State == "suspended"
 			applyRequestSuspension(ctx, state)
@@ -2262,6 +2266,20 @@ func withRequestWindow(ctx context.Context, window requestWindowHandle) context.
 func requestWindow(ctx context.Context) requestWindowHandle {
 	window, _ := ctx.Value(requestWindowKey{}).(requestWindowHandle)
 	return window
+}
+
+type requestInterjectionsKey struct{}
+
+// withRequestInterjections has request run each function sent on runs, on the goroutine that waits for the response, while it waits. A host call made by
+// the request's handler is a child of the request (CallPayload.ParentRequestID); the waiting goroutine runs it itself when it holds what the call needs,
+// as the goroutine that renders a TuiAltScreen frame holds the frame's locks while it waits for a component's render.
+func withRequestInterjections(ctx context.Context, runs <-chan func()) context.Context {
+	return context.WithValue(ctx, requestInterjectionsKey{}, runs)
+}
+
+func requestInterjections(ctx context.Context) <-chan func() {
+	runs, _ := ctx.Value(requestInterjectionsKey{}).(<-chan func())
+	return runs
 }
 
 type requestHostCallsKey struct{}
