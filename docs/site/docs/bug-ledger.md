@@ -827,7 +827,9 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-D198](#bf-d198) | The Go, Rust and Python `Type` has no Codec family (`Codec`, `Decode`, `Encode`, `DecodeBuilder`… | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D200](#bf-d200) | With no home directory PiG still runs the commands that load no resources, where Pi crashes at import, and… | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D203](#bf-d203) | registerProvider with an empty `apiKey` leaves the provider unconfigured where Pi treats the empty string as… | A Pi defect that PiG fixed first | All platforms | Unreleased |
-| [BF-D204](#bf-d204) | The Go, Rust and Python SDKs do not yet export TuiAltScreen, Pi's alternate-screen TUI host, where the Node… | A Pi defect that PiG fixed first | All platforms | Unreleased |
+| [BF-D204](#bf-d204) | The Lisp SDK does not yet export TuiAltScreen, Pi's alternate-screen TUI host, where the Node, Go, Rust and… | A Pi defect that PiG fixed first | All platforms | Unreleased |
+| [BF-D207](#bf-d207) | TuiAltScreen.children is a copy in the Go, Rust and Python SDKs, where Pi's is a live array | A Pi defect that PiG fixed first | All platforms | Unreleased |
+| [BF-D208](#bf-d208) | From inside a component's render, a TuiAltScreen of the Go, Rust and Python SDKs fails the calls that… | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-a076a50](#bf-a076a50) | A model request on a reused connection gets the full HTTP idle timeout to receive its first response bytes… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-a09da26](#bf-a09da26) | `pi.getSettings()` in a subprocess extension lists the settings in Pi's order: the global settings file's… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-a09da26-2](#bf-a09da26-2) | A bash or PowerShell tool card reads the result's `truncation` details by their exact keys, as Pi does: a… | PiG's own defect | Windows | 0.5.0 |
@@ -1026,6 +1028,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-d37c769](#bf-d37c769) | A replacement request body from a `before_provider_request` hook on Anthropic Messages, and every OpenAI… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-d38f3be](#bf-d38f3be) | fix(durable): record the requested thinking level without boxing a string in the turn package | PiG's own defect | All platforms | Unreleased |
 | [BF-d39069d](#bf-d39069d) | Tool cards rebuilt when a session is resumed now follow the `showImages` and `imageWidthCells` settings | PiG's own defect | All platforms | 0.5.0 |
+| [BF-d3adcfe](#bf-d3adcfe) | A Piglet's tool scope now bounds the Session's tool registry, not only its active tools | PiG's own defect | All platforms | Unreleased |
 | [BF-d3b3618](#bf-d3b3618) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
 | [BF-d42aebb](#bf-d42aebb) | `ai.ValidateToolArguments` and `ai.ValidateToolCall` list a failed validation's errors in the order the… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-d449f74](#bf-d449f74) | `tool_search` and the Durable `searchTools()` ranker compute the same BM25 scores as Pi on arm64: the length… | PiG's own defect | All platforms | 0.5.0 |
@@ -1274,6 +1277,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-fce99d3](#bf-fce99d3) | The "Your first ten minutes" and Quickstart pages now describe the first-time setup screen (theme, sprite and… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-fce99d4](#bf-fce99d4) | An npm or git `-e` source that fails to install stops startup and `/reload` before any extension factory… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-fd4be86](#bf-fd4be86) | OpenAI-compatible Chat Completions keeps the `"text":""` member of a user text part whose text is only a lone… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-fd68cf8](#bf-fd68cf8) | A Piglet's tool scope now covers the built-in MCP tools | PiG's own defect | All platforms | Unreleased |
 | [BF-fd7f660](#bf-fd7f660) | A resumed session keeps the tools that were active when it was saved (an optional or deferred tool a command… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-fdbd6ca](#bf-fdbd6ca) | Automatic `fd` and `rg` downloads no longer fetch x86-64 binaries on ARM32 and other architectures without a… | PiG's own defect | All platforms | Unreleased |
 | [BF-fdfb748](#bf-fdfb748) | A surrogate pair split across two concatenated string halves is written as its character in session files… | PiG's own defect | All platforms | 0.5.0 |
@@ -12495,18 +12499,48 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 
 ### BF-D204
 
-**The Go, Rust and Python SDKs do not yet export TuiAltScreen, Pi's alternate-screen TUI host, where the Node…**
+**The Lisp SDK does not yet export TuiAltScreen, Pi's alternate-screen TUI host, where the Node, Go, Rust and…**
 
 - **Source:** A Pi defect that PiG fixed first (divergence D204)
 - **Symptom:** none claimed.
-- **Root cause:** Landing the export in all three SDKs needs that unit and its vector tests; it is not part of 0.6.0.
+- **Root cause:** Not recorded.
 - **User impact:** Behavior differed from Pi
 - **Platform:** All platforms
 - **Fixed in:** Unreleased
 - **Pi issue:** none recorded
-- **Removed when Pi fixes it:** the 0.6.1 export of `TuiAltScreen` lands in the Go, Rust and Python SDKs; then the 46 cells become `native:` cells with their conformance or vector reach, and this record goes.
-- **Fix commits:** `26bbbe6a80` (2026-10-26), `f67a7da98e` (2026-10-26)
-- **Tests:** None recorded.
+- **Removed when Pi fixes it:** the Lisp SDK exports `TuiAltScreen` over the `tui.alt` wire; then the 46 `lisp` cells become `native:` cells with their conformance reach, and this record goes.
+- **Fix commits:** `26bbbe6a80` (2026-10-26), `f67a7da98e` (2026-10-26), `084f8094e6` (2026-10-27), `97571ba165` (2026-10-27)
+- **Tests:** `test/extension-conformance/tui_alt_screen_test.go::TestTuiAltScreenAcrossSDKs`, `test/extension-conformance/tui_alt_screen_test.go::TestTuiAltScreenFrameReadsAcrossSDKs`
+
+### BF-D207
+
+**TuiAltScreen.children is a copy in the Go, Rust and Python SDKs, where Pi's is a live array**
+
+- **Source:** A Pi defect that PiG fixed first (divergence D207)
+- **Symptom:** none claimed.
+- **Root cause:** the renderer, with the screen's child list, runs in the host process and the extension's components in the extension's process, so an array in the extension cannot be the renderer's array. The SDKs keep the children they sent to the host and update that list after each call returns; a list a caller could write to would need a call to the host on every write and a way for the host to change the extension's list, which Pi's array is not.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Pi issue:** none recorded
+- **Removed when Pi fixes it:** Pi's `children` stops being a public live array, or an owner decision asks for a live view across the process boundary; then the three markers, the evidence note and this record go.
+- **Fix commits:** `109a3bd9f4` (2026-10-28)
+- **Tests:** `test/extension-conformance/tui_alt_screen_test.go::TestTuiAltScreenChildrenAcrossSDKs`
+
+### BF-D208
+
+**From inside a component's render, a TuiAltScreen of the Go, Rust and Python SDKs fails the calls that…**
+
+- **Source:** A Pi defect that PiG fixed first (divergence D208)
+- **Symptom:** none claimed.
+- **Root cause:** the renderer takes one non-reentrant lock for the whole frame, and a re-entered frame would need it while the frame waits for the render that re-enters it, which is a deadlock; supporting Pi's recursion needs a frame that renders again inside itself, which the renderer's single pass and its differential state do not allow.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Pi issue:** none recorded
+- **Removed when Pi fixes it:** the host's frame can be entered again from inside a render and these calls run as Pi's do; then the call-site marker, the error and this record go.
+- **Fix commits:** `1d6732bee8` (2026-10-28), `be8abc8c03` (2026-10-28)
+- **Tests:** `test/extension-conformance/tui_alt_screen_test.go::TestTuiAltScreenFrameReentryAcrossSDKs`
 
 ### BF-a076a50
 
@@ -15253,6 +15287,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `d39069da65` (2026-10-06)
 - **Tests:** `internal/codingagent/interactive_tool_execution_options_test.go::TestResumedToolCardsUseTheImageSettings`, `internal/codingagent/interactive_tool_execution_options_test.go::TestToolExecutionOptionsDefaultWhenUndefined`, `internal/imageprocessing/image_processing_upstream_test.go::TestFormatDimensionNoteUpstream`, `internal/imageprocessing/input_limits_test.go::TestResizeModelProfileJPEGQualityAndSizeOnlyHint`
 - **Release note:** Tool cards rebuilt when a session is resumed now follow the `showImages` and `imageWidthCells` settings.
+
+### BF-d3adcfe
+
+**A Piglet's tool scope now bounds the Session's tool registry, not only its active tools**
+
+- **Source:** PiG's own defect
+- **Symptom:** A Piglet's tool scope now bounds the Session's tool registry, not only its active tools.
+- **Root cause:** A Piglet that allowed some MCP tools, or hid some tools of an extension, still left the others callable from a `codemode` script (the MCP server logged the call) and loadable with `tool_search`, because both read the registry.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `d3adcfebef` (2026-10-28)
+- **Tests:** `coding/cli/piglet_mcp_tool_scope_test.go::TestPigletScopesBuiltinMCPToolsInRPCMode`, `coding/extension/tool_filter_test.go::TestToolFilterScopeIntersects`, `coding/piglet/scope_mcp_test.go::TestScopeToolsScopesBuiltinMCPNamespaceLikeMCPSource`, `coding/session_tool_scope_test.go::TestNilToolScopeLeavesTheRegistryUnchanged`, `coding/session_tool_scope_test.go::TestToolScopeIntersectsWithToolsFlags`, `coding/session_tool_scope_test.go::TestToolScopeRemovesToolsFromTheRegistry`
+- **Release note:** A Piglet's tool scope now bounds the Session's tool registry, not only its active tools. A Piglet that allowed some MCP tools, or hid some tools of an extension, still left the others callable from a `codemode` script (the MCP server logged the call) and loadable with `tool_search`, because both read the registry. The Piglet scope now composes with `--tools` and `--exclude-tools` as an intersection wherever Pi applies its allowlist: definitions, the registry, `getAllTools`, activation and the refresh after a late registration. A hidden tool fails in `codemode` as it does under `--tools` (`tools.<name> does not exist`) and `tool_search` cannot find it. `codemode` and `tool_search` are no longer hidden when a Piglet leaves no MCP tool visible; they just reach nothing hidden. The MCP resource tools (`list_mcp_resources`, `list_mcp_resource_templates`, `read_mcp_resource`) are governed by the `pig-mcp-adapter` entry by name. Stock PiG without a Piglet is unchanged.
 
 ### BF-d3b3618
 
@@ -18713,6 +18761,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** `ai/openai_completions_empty_sanitized_text_test.go::TestCompletionsUserTextThatSanitizesToNothingKeepsItsEmptyTextMember`
 - **Release note:** OpenAI-compatible Chat Completions keeps the `"text":""` member of a user text part whose text is only a lone UTF-16 surrogate, as Pi writes it after sanitizing (a part that is empty to begin with is still dropped). Found by widening the payload oracles' random transcripts with lone surrogates and decoding and encoding them with the SDK-compatible JSON package.
 
+### BF-fd68cf8
+
+**A Piglet's tool scope now covers the built-in MCP tools**
+
+- **Source:** PiG's own defect
+- **Symptom:** A Piglet's tool scope now covers the built-in MCP tools.
+- **Root cause:** Not recorded.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `fd68cf8c38` (2026-10-27)
+- **Tests:** `coding/cli/piglet_mcp_tool_scope_test.go::TestPigletScopesBuiltinMCPToolsInRPCMode`, `coding/piglet/scope_mcp_test.go::TestScopeToolsScopesBuiltinMCPNamespaceLikeMCPSource`
+- **Release note:** A Piglet's tool scope now covers the built-in MCP tools. A Piglet with an `extensions:` section that does not list `pig-mcp-adapter` still offered `mcp__<server>__<tool>` from `builtin:mcp`, and `codemode` with them. `ScopeTools` now treats a tool in namespace `mcp__<server>` like the adapter's `mcp:<server>` source: the `pig-mcp-adapter` entry and its `tools` list govern it, and the MCP resource tools follow the same entry by name. Stock PiG without a Piglet is unchanged.
+
 ### BF-fd7f660
 
 **A resumed session keeps the tools that were active when it was saved (an optional or deferred tool a command…**
@@ -18894,8 +18956,10 @@ Each divergence record is accounted for here. A divergence that fixes a Pi defec
 | D199 | PiG lists OpenRouter's :nitro and :floor routing variants beside every OpenRouter model, where Pi lists only… | deliberate difference |
 | D200 | With no home directory PiG still runs the commands that load no resources, where Pi crashes at import, and… | [BF-D200](#bf-d200) |
 | D203 | registerProvider with an empty `apiKey` leaves the provider unconfigured where Pi treats the empty string as… | [BF-D203](#bf-d203) |
-| D204 | The Go, Rust and Python SDKs do not yet export TuiAltScreen, Pi's alternate-screen TUI host, where the Node… | [BF-D204](#bf-d204) |
+| D204 | The Lisp SDK does not yet export TuiAltScreen, Pi's alternate-screen TUI host, where the Node, Go, Rust and… | [BF-D204](#bf-d204) |
 | D205 | Fullscreen frames scroll the rows that only moved | deliberate difference |
+| D207 | TuiAltScreen.children is a copy in the Go, Rust and Python SDKs, where Pi's is a live array | [BF-D207](#bf-d207) |
+| D208 | From inside a component's render, a TuiAltScreen of the Go, Rust and Python SDKs fails the calls that… | [BF-D208](#bf-d208) |
 
 ## Fix-titled commits that are not bugs in a release
 
