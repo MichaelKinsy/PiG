@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/MichaelKinsy/PiG/coding/extension"
+	"github.com/MichaelKinsy/PiG/internal/pigstrip"
 )
 
 // mcpScope says what the Piglet does to MCP tools: a short summary and the reason, both "" when it keeps all of them. The
@@ -36,21 +37,32 @@ func MCPScopeLine(p *Piglet) string {
 	return "MCP tools: " + summary + ", because " + reason
 }
 
-// ToolScopeSummary is the one-line tool scope of a Piglet for the agent's context: the built-in tools it keeps, the MCP
-// tools it keeps and the extensions whose tools it narrows.
+// ToolScopeSummary is the one-line tool scope of a Piglet for the agent's context. It states the most the agent can
+// reach: the root `tools` list is a ceiling over the default active tools, and the strip lists remove tools in this
+// process, so the line leaves out stripped built-in tools and says no MCP tools when MCP is stripped. The agent line says
+// "at most" for that reason.
 func ToolScopeSummary(p *Piglet) string {
 	var parts []string
+	stripped := slices.DeleteFunc(pigstrip.Known(pigstrip.ListTools), func(name string) bool { return !pigstrip.Has(pigstrip.ListTools, name) })
 	switch {
-	case p.BuiltinTools == nil:
+	case p.BuiltinTools == nil && len(stripped) == 0:
 		parts = append(parts, "all built-in tools")
-	case len(*p.BuiltinTools) == 0:
-		parts = append(parts, "no built-in tools")
+	case p.BuiltinTools == nil:
+		parts = append(parts, "all built-in tools except "+strings.Join(stripped, ", "))
 	default:
-		parts = append(parts, "built-in tools "+strings.Join(*p.BuiltinTools, ", "))
+		kept := slices.DeleteFunc(slices.Clone(*p.BuiltinTools), func(name string) bool { return slices.Contains(stripped, name) })
+		if len(kept) == 0 {
+			parts = append(parts, "no built-in tools")
+		} else {
+			parts = append(parts, "built-in tools "+strings.Join(kept, ", "))
+		}
 	}
-	if summary, _ := mcpScope(p); summary == "" {
+	switch summary, _ := mcpScope(p); {
+	case pigstrip.Has(pigstrip.ListExtensions, "mcp"):
+		parts = append(parts, "no MCP tools")
+	case summary == "":
 		parts = append(parts, "all MCP tools")
-	} else {
+	default:
 		parts = append(parts, "MCP tools "+summary)
 	}
 	for _, entry := range p.Extensions {
@@ -68,7 +80,7 @@ func ToolScopeSummary(p *Piglet) string {
 
 // AgentToolScopeLine is the line the agent gets when a Piglet is active, so it knows what it can and cannot reach.
 func AgentToolScopeLine(p *Piglet) string {
-	return fmt.Sprintf("Active Piglet: %s. Tool scope: %s.", p.Name, ToolScopeSummary(p))
+	return fmt.Sprintf("Active Piglet: %s. Tool scope, at most: %s.", p.Name, ToolScopeSummary(p))
 }
 
 // ToolScopeNotice lists the tools the Piglet's scope removed from the registry, grouped by MCP server or owning
