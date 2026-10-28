@@ -14,12 +14,16 @@ import (
 	"time"
 )
 
-// pig divergence (D210): an untrusted project does not load its project context files, and says so. The agent directory's file and the file in the user's home directory stay. The real binary, a scripted model and each mode report the first request's system prompt.
-func TestUntrustedProjectLoadsNoProjectContextFilesInEveryMode(t *testing.T) {
+// pig additive (D211): a Piglet with contextFiles: trusted-only withholds an untrusted project's context files and says so; stock pig, and a trusted project, load them all. The agent directory's file and the file in the user's home directory stay. The real binary, a scripted model and each mode report the first request's system prompt.
+func TestTrustedOnlyPigletWithholdsProjectContextFilesInEveryMode(t *testing.T) {
 	binary := buildPigBinaryForSignalTest(t)
 	for _, mode := range []string{"print", "json", "rpc", "interactive"} {
-		for _, trust := range []string{"never", "always"} {
-			t.Run(mode+"/"+trust, func(t *testing.T) {
+		for _, variant := range []string{"stock", "piglet-never", "piglet-always"} {
+			trust, withheld, usePiglet := "never", variant == "piglet-never", variant != "stock"
+			if variant == "piglet-always" {
+				trust = "always"
+			}
+			t.Run(mode+"/"+variant, func(t *testing.T) {
 				home := t.TempDir()
 				cwd := filepath.Join(home, "work", "project")
 				agentDir := filepath.Join(home, "pig")
@@ -46,6 +50,11 @@ func TestUntrustedProjectLoadsNoProjectContextFilesInEveryMode(t *testing.T) {
 				}}})
 				write(filepath.Join(agentDir, "models.json"), string(models))
 				args := []string{"--model", "fixture/test", "--no-skills", "--no-prompt-templates", "--session-dir", t.TempDir()}
+				if usePiglet {
+					pigletPath := filepath.Join(t.TempDir(), "trusted-only.yaml")
+					write(pigletPath, "name: trusted-only\ncontextFiles: trusted-only\n")
+					args = append(args, "--piglet", pigletPath)
+				}
 				switch mode {
 				case "print":
 					args = append(args, "--print", "hello")
@@ -90,20 +99,20 @@ func TestUntrustedProjectLoadsNoProjectContextFilesInEveryMode(t *testing.T) {
 					t.Fatalf("no request reached the model\n%s", notices.String())
 				}
 				system := requests[0].System
-				t.Logf("system prompt bytes with trust %s: %d", trust, len(system))
+				t.Logf("system prompt bytes for %s: %d", variant, len(system))
 				for _, want := range []string{"GLOBAL-CONTEXT-MARK", "HOME-CONTEXT-MARK"} {
 					if !strings.Contains(system, want) {
 						t.Errorf("system prompt lacks %q, which stays loaded", want)
 					}
 				}
 				for _, mark := range []string{"PARENT-CONTEXT-MARK", "PROJECT-CONTEXT-MARK"} {
-					if got := strings.Contains(system, mark); got != (trust == "always") {
-						t.Errorf("trust %s: system prompt holds %q = %v", trust, mark, got)
+					if got := strings.Contains(system, mark); got != !withheld {
+						t.Errorf("%s: system prompt holds %q = %v", variant, mark, got)
 					}
 				}
 				said := strings.Contains(notices.String(), "its context files were not loaded")
-				if said != (trust == "never") {
-					t.Errorf("trust %s: notice present = %v\n%s", trust, said, notices.String())
+				if said != withheld {
+					t.Errorf("%s: notice present = %v\n%s", variant, said, notices.String())
 				}
 			})
 		}
