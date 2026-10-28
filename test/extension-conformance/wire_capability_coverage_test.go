@@ -84,55 +84,11 @@ var hostOnlyCapabilities = map[string]string{
 // deleting its entry here, which the gate enforces by failing when a listed SDK
 // has since gained the call.
 var knownCapabilityGaps = map[string]map[string]string{
-	"cancelModelStream": {
-		"lisp": "the Lisp SDK does not serve model streams yet (gap lane SdkLispPhase2, test/extension-conformance/sdkscenarios/lisp.go and test/parity/sdk-exports.toml)",
-	},
-	"modelStream": {
-		"lisp": "the Lisp SDK does not serve model streams yet (gap lane SdkLispPhase2, test/extension-conformance/sdkscenarios/lisp.go and test/parity/sdk-exports.toml)",
-	},
-	"classify": {
-		"lisp": "the Lisp SDK does not serve host model calls yet (gap lane SdkLispPhase2, test/extension-conformance/sdkscenarios/lisp.go and test/parity/sdk-exports.toml)",
-	},
-	"generateImages": {
-		"lisp": "the Lisp SDK does not serve host model calls yet (gap lane SdkLispPhase2, test/extension-conformance/sdkscenarios/lisp.go and test/parity/sdk-exports.toml)",
-	},
-	"fork": {
-		"lisp": "the Lisp SDK does not serve session replacement yet (gap lane SdkLispPhase2, test/extension-conformance/sdkscenarios/lisp.go and test/parity/sdk-exports.toml)",
-	},
-	"navigateTree": {
-		"lisp": "the Lisp SDK does not serve session replacement yet (gap lane SdkLispPhase2, test/extension-conformance/sdkscenarios/lisp.go and test/parity/sdk-exports.toml)",
-	},
-	"newSession": {
-		"lisp": "the Lisp SDK does not serve session replacement yet (gap lane SdkLispPhase2, test/extension-conformance/sdkscenarios/lisp.go and test/parity/sdk-exports.toml)",
-	},
-	"switchSession": {
-		"lisp": "the Lisp SDK does not serve session replacement yet (gap lane SdkLispPhase2, test/extension-conformance/sdkscenarios/lisp.go and test/parity/sdk-exports.toml)",
-	},
-	"watchSessionLog": {
-		"lisp": "the Lisp SDK does not serve the session log watcher yet (gap lane SdkLispPhase2, test/extension-conformance/sdkscenarios/lisp.go and test/parity/sdk-exports.toml)",
-	},
-	"ui.addAutocompleteProvider": {
-		"lisp": "the Lisp SDK does not serve autocomplete providers yet (gap lane SdkLispPhase2, test/extension-conformance/sdkscenarios/lisp.go and test/parity/sdk-exports.toml)",
-	},
-	"ui.autocomplete.invoke": {
-		"lisp": "the Lisp SDK does not serve autocomplete providers yet (gap lane SdkLispPhase2, test/extension-conformance/sdkscenarios/lisp.go and test/parity/sdk-exports.toml)",
-	},
-	"ui.onTerminalInput": {
-		"lisp": "the Lisp SDK does not serve terminal input listeners yet (gap lane SdkLispPhase2, test/extension-conformance/sdkscenarios/lisp.go and test/parity/sdk-exports.toml)",
-	},
-	"ui.offTerminalInput": {
-		"lisp": "the Lisp SDK does not serve terminal input listeners yet (gap lane SdkLispPhase2, test/extension-conformance/sdkscenarios/lisp.go and test/parity/sdk-exports.toml)",
-	},
-	"ui.setEditorComponent": {
-		"lisp": "the Lisp SDK does not serve editor components yet (gap lane SdkLispPhase2, test/extension-conformance/sdkscenarios/lisp.go and test/parity/sdk-exports.toml)",
-	},
 	"complete": {
 		"node": "host-backed completion is unavailable to Node extensions",
-		"lisp": "the Lisp SDK does not serve host model calls yet (gap lane SdkLispPhase2)",
 	},
 	"ui.editor.base": {
 		"node": "a Node editor component runs Pi's own pi-tui Editor in the extension process, so its super needs no host call",
-		"lisp": "the Lisp SDK does not serve editor components yet (gap lane SdkLispPhase2)",
 	},
 }
 
@@ -150,14 +106,14 @@ var hostNotifyCapabilities = map[string]struct {
 		"go":   "case notifyUIViewEvent:",
 		"rust": `"ui.view.event" => {`,
 		"py":   `if method == "ui.view.event":`,
-		"lisp": `(string= method "ui.view.event")`,
+		"lisp": `def-notify "ui.view.event"`,
 	}},
 	"ui.view.evicted": {hostConst: "NotifyUIViewEvicted", symbols: map[string]string{
 		"go":   "case notifyUIViewEvicted:",
 		"rust": `"ui.view.evicted" => {`,
 		"py":   `if method == "ui.view.evicted":`,
 		"node": `case "ui.view.evicted": {`,
-		"lisp": `(string= method "ui.view.evicted")`,
+		"lisp": `def-notify "ui.view.evicted"`,
 	}},
 	// Fullscreen mouse events for a ui.custom component that takes the
 	// mouse, as Pi's renderer calls handleMouse.
@@ -166,7 +122,7 @@ var hostNotifyCapabilities = map[string]struct {
 		"rust": `"ui.custom.mouse" => {`,
 		"py":   `if method == "ui.custom.mouse":`,
 		"node": `case "ui.custom.mouse": {`,
-		"lisp": `(string= method "ui.custom.mouse")`,
+		"lisp": `def-notify "ui.custom.mouse"`,
 	}},
 }
 
@@ -180,11 +136,7 @@ var undeliveredNotifies = map[string]map[string]string{
 
 // knownNotifyGaps records SDKs that do not receive a host notify yet, each
 // naming the lane that lands it. An entry fails once its SDK has the symbol.
-var knownNotifyGaps = map[string]map[string]string{
-	"ui.view.event":   {"lisp": "the Lisp SDK has no component kit yet (gap lane SdkLispPhase2)"},
-	"ui.view.evicted": {"lisp": "the Lisp SDK has no component kit yet (gap lane SdkLispPhase2)"},
-	"ui.custom.mouse": {"lisp": "the Lisp SDK has no ui.custom components yet (gap lane SdkLispPhase2)"},
-}
+var knownNotifyGaps = map[string]map[string]string{}
 
 // TestEverySDKReceivesEveryHostNotifyCapability is the notify counterpart of
 // TestEverySDKCanReachEveryWireCapability: the host sends each notify, and

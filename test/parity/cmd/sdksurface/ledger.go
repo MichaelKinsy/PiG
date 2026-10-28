@@ -245,8 +245,9 @@ type ledgerInput struct {
 	Release bool
 }
 
-// kitPrefix qualifies a component kit view in an SDK's symbols.
-var kitPrefix = map[string]string{"go": "kit.", "rust": "kit::", "python": "kit.", "lisp": "kit."}
+// kitPrefix qualifies a component kit view in an SDK's symbols. The Lisp SDK has no kit namespace: a Lisp kit view is the exported symbol
+// that builds it, named as kit:pig:<symbol> (kit:pig:kit-box), and looked up and reached like a native pig:<symbol> cell.
+var kitPrefix = map[string]string{"go": "kit.", "rust": "kit::", "python": "kit."}
 
 var lastIdent = regexp.MustCompile(`[A-Za-z_][A-Za-z0-9_]*$`)
 
@@ -255,7 +256,7 @@ var lastIdent = regexp.MustCompile(`[A-Za-z_][A-Za-z0-9_]*$`)
 // view, called or constructed. A kit view must be named through the kit.
 func reachPatterns(c ledgerCell) []*regexp.Regexp {
 	// A Lisp cell names a symbol of the pig package as pig:<symbol>; a fixture reaches it by that qualified name.
-	if symbol, ok := strings.CutPrefix(c.Value, "pig:"); ok && c.Kind != cellKit {
+	if symbol, ok := strings.CutPrefix(c.Value, "pig:"); ok {
 		return []*regexp.Regexp{regexp.MustCompile(`(?i)\bpig:` + regexp.QuoteMeta(symbol) + `(?:[\s)]|$)`)}
 	}
 	name := lastIdent.FindString(c.Value)
@@ -407,7 +408,7 @@ func checkLedger(in ledgerInput) []string {
 					break
 				}
 				sym := c.Value
-				if c.Kind == cellKit {
+				if c.Kind == cellKit && sdk != "lisp" {
 					sym = kitPrefix[sdk] + sym
 				}
 				if !in.Symbols[sdk].has(sym) {

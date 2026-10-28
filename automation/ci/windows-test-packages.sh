@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-# Print the import path of every package that has a test file built only for
-# Windows (a _windows_test.go name or a windows build constraint). The
+# Print the import path of every package that has a test file a Windows build
+# selects and a Linux build does not (a _windows_test.go name, or a constraint
+# such as windows, !unix or !unix || darwin). The
 # toolchain decides, by comparing the test files each GOOS selects, so the
 # native Windows job runs exactly the packages that carry Windows tests.
 # Test files that also need a custom build tag (integration, parity) and
