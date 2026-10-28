@@ -468,7 +468,8 @@ commit = "14378701855dadfdcd44cfcb960c03dc1d83a7ce"
 class = "CITE"
 cite = "packages/coding-agent/src/core/agent-session.ts:1557"
 reason = "The test is this range's own test that the Session registry admits the intersection of --tools/--exclude-tools and the Piglet scope (Pi's _isAllowedTool, agent-session.ts:1557-1561, 3571-3574); the commit replaces the predicate form of the scope with the data form, and the expectations are the same intersection."
-||||||| 9980a611f1
+
+[[entry]]
 path = "coding/piglet/overlay_test.go"
 commit = "c267f5a15e5e1254ba83842de0c5a26b64ca6181"
 class = "NOBEHAVIOR"
