@@ -11141,6 +11141,42 @@
       ]
     },
     {
+      "id": "BF-618ca75",
+      "title": "The agent docs bundle no longer contradicts the site",
+      "symptom": "The agent docs bundle no longer contradicts the site.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "The agent docs bundle no longer contradicts the site. `/fork` continues from before an earlier user message, the `PIG_HOME` default names `XDG_CONFIG_HOME`, `defaultThinkingLevel` defaults to `medium`, the site lists all nine Resource kinds, the bundle's Package page documents `pig update --models`, and the Piglet Image is marked as planned.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "618ca75612",
+          "date": "2026-10-28"
+        }
+      ],
+      "tests": [
+        "test/docs-drift/bundle_generated_test.go::TestBundleLinksStayInsideTheFlatBundle",
+        "test/docs-drift/bundle_generated_test.go::TestEveryBundlePageHasOneOwner",
+        "test/docs-drift/bundle_generated_test.go::TestGeneratedBlockEditedByHandFails",
+        "test/docs-drift/bundle_generated_test.go::TestGeneratedBundlePageEditedByHandFails",
+        "test/docs-drift/bundle_generated_test.go::TestGeneratedBundlePagesAreCurrent",
+        "test/docs-drift/bundle_generated_test.go::TestGeneratedBundlePagesCarryTheDoNotEditHeader",
+        "test/docs-drift/bundle_generated_test.go::TestGlossaryHasEveryContextTerm",
+        "test/docs-drift/bundle_generated_test.go::TestNoLinkPinsAStalePiTag",
+        "test/docs-drift/bundle_generated_test.go::TestSiteEditOfASharedPageStalesTheBundle",
+        "test/docs-drift/docs_contradictions_test.go::TestDefaultThinkingLevelIsMedium",
+        "test/docs-drift/docs_contradictions_test.go::TestForkIsDescribedAsAnEarlierUserMessage",
+        "test/docs-drift/docs_contradictions_test.go::TestPigHomeDefaultNamesXDG",
+        "test/docs-drift/docs_contradictions_test.go::TestPigletImageIsPlanned",
+        "test/docs-drift/docs_contradictions_test.go::TestResourceKindListHasNineKinds",
+        "test/docs-drift/docs_contradictions_test.go::TestUpdateModelsIsDocumentedWhereUpdateIs"
+      ]
+    },
+    {
       "id": "BF-619443a",
       "title": "MCP sign-in now rejects authorization endpoints and other OAuth metadata URLs that are not `http:` or…",
       "symptom": "MCP sign-in now rejects authorization endpoints and other OAuth metadata URLs that are not `http:` or `https:`, so a malicious server cannot make pig launch a `file:` or custom protocol URL.",

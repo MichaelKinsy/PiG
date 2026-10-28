@@ -162,6 +162,7 @@ paths = [
   "docs/site/docs/configuration.md",
   "internal/pigdocs/content/compaction.md",
   "internal/pigdocs/content/json.md",
+  "internal/pigdocs/content/mcp.md",
   "internal/pigdocs/content/rpc-commands.md",
   "docs/site/docs/extensions.md",
   "docs/site/docs/keybindings.md",
