@@ -447,3 +447,10 @@ commit = "d94328677410f7437d3bc0371fcf84e0b9b323d0"
 class = "CITE"
 cite = "packages/durable/src/harness/generation.ts:729"
 reason = "Pi 38ff99177 makes finishToolRound append the last handoff's reset (generation.ts:728-739) and end the run only when the round also terminates (generation.ts:741-744); otherwise the run continues at the postTools boundary in the reset's context. The handoff test expects another model request after a handoff alone and none after a terminating round, with the reset entry carrying the last handoff."
+
+[[entry]]
+path = "coding/piglet/overlay_test.go"
+commit = "c267f5a15e5e1254ba83842de0c5a26b64ca6181"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "Overlay Piglets on a Piglet Binary are PiG-additive (D202) and have no Pi counterpart, so no Pi line governs the test. The owner approved the D202 redesign on 2026-10-28: an overlay merges as an extends child of the Binary's baked Piglet, and only what the Binary compiled in is refused (setting a frontend, re-enabling a build-tag strip, naming a fused or embedded member again with origins). TestOverlayRefusesWhatChangesTheBinary moves from the old refusal list (baked extension or skill replaced or removed, systemPrompt set, ceilings widened, runtime strips re-enabled) to those three refusals, each message naming the field, the Binary and the reason; the newly allowed cases have their own tests in the same commit range."
