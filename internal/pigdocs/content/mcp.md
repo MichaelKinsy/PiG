@@ -237,7 +237,7 @@ A [Piglet](piglets.md#tool-scope-and-mcp) scope removes tools from the same regi
 | Piglet with `extensions:` but without `pig-mcp-adapter` | removed | removed | kept |
 | Piglet with `pig-mcp-adapter` and no `tools:` | kept | kept | kept |
 | Piglet with `pig-mcp-adapter` and `tools: [mcp__docs__a]` | only the tools it names | removed | kept |
-| Piglet that selects `builtin:codemode` and `builtin:tool-search`, without `pig-mcp-adapter` | removed | removed | kept |
+| Piglet run with `-e builtin:codemode` and `-e builtin:tool-search`, without `pig-mcp-adapter` | removed | removed | kept |
 | Stock `--tools read` | kept | kept | removed |
 | Stock `--tools read,codemode,tool_search,mcp__docs__a` | only the tools it names | removed | kept |
 | Stock `--exclude-tools mcp__docs__b` | only the tools it names | kept | kept |
