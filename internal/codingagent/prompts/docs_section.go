@@ -9,6 +9,7 @@ package prompts
 
 import (
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"github.com/MichaelKinsy/PiG/internal/configroot"
@@ -60,6 +61,11 @@ var docsTopics = []docsTopic{
 	{text: "codemode scripts and non-LLM models such as classifiers and image models (docs/codemode.md)", list: pigstrip.ListExtensions, id: "codemode"},
 }
 
+// pigletTopic is the topic a Piglet adds. Like every topic it goes with the docs section: the `docs` feature owns it, so
+// stripping the `/piglet` command, which is only the inspection UI, does not remove the Piglet docs.
+// pig additive (D23, D92): Pi has no Piglets.
+var pigletTopic = docsTopic{text: "Piglets and their tool scope (docs/piglets.md)"}
+
 // docsSectionAt points the model at PiG's documentation in upstream's format, with the README and examples locations given; an
 // empty readme is README.md inside root and empty examples is [PigExamplesLocation].
 // pig additive (D92): a topic the process strips is not named.
@@ -71,7 +77,11 @@ func docsSectionAt(root, readme, examples string) string {
 		examples = PigExamplesLocation
 	}
 	var topics, header []string
-	for _, topic := range docsTopics {
+	all := docsTopics
+	if pigletDocsTopic.Load() {
+		all = append(slices.Clone(docsTopics), pigletTopic)
+	}
+	for _, topic := range all {
 		if topic.list != "" && pigstrip.Has(topic.list, topic.id) {
 			continue
 		}
