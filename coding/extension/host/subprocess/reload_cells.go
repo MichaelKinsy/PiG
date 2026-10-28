@@ -144,7 +144,7 @@ func (h *Host) stageCell(ctx context.Context, cell CellSpec, oldByName map[strin
 			staged, err := h.stagePackedPython(ctx, cell, oldByName, &rep)
 			return stageOutcome{staged: staged, report: rep}, err
 		case CellStrategyPackedLisp:
-			staged, err := h.stagePackedLisp(ctx, cell, oldByName, &rep)
+			staged, err := h.stageLisp(ctx, cell, oldByName, &rep)
 			return stageOutcome{staged: staged, report: rep}, err
 		case CellStrategyPackedNode:
 			staged, err := h.stagePackedNode(ctx, cell, oldByName, &rep)
@@ -174,7 +174,7 @@ func (h *Host) stageIsolated(ctx context.Context, cfg ExtConfig, oldByName map[s
 		return h.stageIsolatedPythonFactory(ctx, cfg, oldByName, rep)
 	}
 	if isLispFactoryConfig(cfg) {
-		return h.stageIsolatedLispFactory(ctx, cfg, oldByName, rep)
+		return h.stageLisp(ctx, isolatedCell(cfg, "factory"), oldByName, rep)
 	}
 	resolved := cfg
 	h.markExtension(cfg.Name, "build-check-start")
@@ -206,25 +206,7 @@ func (h *Host) stageIsolatedGoFactory(ctx context.Context, cfg ExtConfig, oldByN
 	if err != nil {
 		return nil, err
 	}
-	cacheRoot := filepath.Dir(h.builder.cacheDir)
-	cellKey := isolatedCell(cfg, "factory").Key
-	h.markExtension(cfg.Name, "build-check-start")
-	packed, err := runtimecell.BuildGoPackedCellWithSDKRoot(ctx, cacheRoot, cellKey, []runtimecell.GoExtension{goExt}, h.stagedGoSDKRoot())
-	if err != nil {
-		return nil, fmt.Errorf("build isolated factory %s: %w", cfg.Name, err)
-	}
-	h.markExtension(cfg.Name, "build-check-done")
-	rep.Hash = packed.Hash
-	rep.BinaryPath = packed.BinaryPath
-	rep.Cached = packed.Cached
-	rep.BuildDuration = packed.BuildDuration
-	old := oldByName[cfg.Name]
-	staged, _, err := h.startGoPackedCell(ctx, packed)
-	if err != nil {
-		return nil, fmt.Errorf("reload isolated factory %s: %w", cfg.Name, err)
-	}
-	rep.Replaced = old != nil
-	return staged, nil
+	return h.stageBuilt(ctx, isolatedCell(cfg, "factory"), oldByName, rep, "", h.goCellBuild(ctx, []runtimecell.GoExtension{goExt}))
 }
 
 func (h *Host) stageIsolatedRustFactory(ctx context.Context, cfg ExtConfig, oldByName map[string]*managedExt, rep *ReloadCellReport) ([]stagedManagedExt, error) {
@@ -232,25 +214,7 @@ func (h *Host) stageIsolatedRustFactory(ctx context.Context, cfg ExtConfig, oldB
 	if err != nil {
 		return nil, err
 	}
-	cacheRoot := filepath.Dir(h.builder.cacheDir)
-	cellKey := isolatedCell(cfg, "factory").Key
-	h.markExtension(cfg.Name, "build-check-start")
-	packed, err := runtimecell.BuildRustPackedCell(ctx, cacheRoot, cellKey, []runtimecell.RustExtension{rustExt})
-	if err != nil {
-		return nil, fmt.Errorf("build isolated Rust factory %s: %w", cfg.Name, err)
-	}
-	h.markExtension(cfg.Name, "build-check-done")
-	rep.Hash = packed.Hash
-	rep.BinaryPath = packed.BinaryPath
-	rep.Cached = packed.Cached
-	rep.BuildDuration = packed.BuildDuration
-	old := oldByName[cfg.Name]
-	staged, _, err := h.startRustPackedCell(ctx, packed)
-	if err != nil {
-		return nil, fmt.Errorf("reload isolated Rust factory %s: %w", cfg.Name, err)
-	}
-	rep.Replaced = old != nil
-	return staged, nil
+	return h.stageBuilt(ctx, isolatedCell(cfg, "factory"), oldByName, rep, "Rust ", rustCellBuild(ctx, []runtimecell.RustExtension{rustExt}))
 }
 
 func (h *Host) stageIsolatedPythonFactory(ctx context.Context, cfg ExtConfig, oldByName map[string]*managedExt, rep *ReloadCellReport) ([]stagedManagedExt, error) {
@@ -258,25 +222,7 @@ func (h *Host) stageIsolatedPythonFactory(ctx context.Context, cfg ExtConfig, ol
 	if err != nil {
 		return nil, err
 	}
-	cacheRoot := filepath.Dir(h.builder.cacheDir)
-	cellKey := isolatedCell(cfg, "factory").Key
-	h.markExtension(cfg.Name, "build-check-start")
-	packed, err := runtimecell.BuildPythonPackedCell(ctx, cacheRoot, cellKey, []runtimecell.PythonExtension{pyExt})
-	if err != nil {
-		return nil, fmt.Errorf("build isolated Python factory %s: %w", cfg.Name, err)
-	}
-	h.markExtension(cfg.Name, "build-check-done")
-	rep.Hash = packed.Hash
-	rep.BinaryPath = packed.BinaryPath
-	rep.Cached = packed.Cached
-	rep.BuildDuration = packed.BuildDuration
-	old := oldByName[cfg.Name]
-	staged, _, err := h.startPythonPackedCell(ctx, packed)
-	if err != nil {
-		return nil, fmt.Errorf("reload isolated Python factory %s: %w", cfg.Name, err)
-	}
-	rep.Replaced = old != nil
-	return staged, nil
+	return h.stageBuilt(ctx, isolatedCell(cfg, "factory"), oldByName, rep, "Python ", pythonCellBuild(ctx, []runtimecell.PythonExtension{pyExt}))
 }
 
 func (h *Host) stagePackedGo(ctx context.Context, cell CellSpec, oldByName map[string]*managedExt, rep *ReloadCellReport) ([]stagedManagedExt, error) {
@@ -284,11 +230,49 @@ func (h *Host) stagePackedGo(ctx context.Context, cell CellSpec, oldByName map[s
 	if err != nil {
 		return nil, err
 	}
-	cacheRoot := filepath.Dir(h.builder.cacheDir)
+	return h.stageBuilt(ctx, cell, oldByName, rep, "", h.goCellBuild(ctx, goExts))
+}
+
+// cellBuild builds, or reuses from the cache, the runner image of the members of the cell key names, and returns it as the cell the host starts.
+type cellBuild func(cacheRoot, key string) (*runtimecell.GoPackedCell, error)
+
+func (h *Host) goCellBuild(ctx context.Context, exts []runtimecell.GoExtension) cellBuild {
+	return func(cacheRoot, key string) (*runtimecell.GoPackedCell, error) {
+		return runtimecell.BuildGoPackedCellWithSDKRoot(ctx, cacheRoot, key, exts, h.stagedGoSDKRoot())
+	}
+}
+
+func rustCellBuild(ctx context.Context, exts []runtimecell.RustExtension) cellBuild {
+	return func(cacheRoot, key string) (*runtimecell.GoPackedCell, error) {
+		packed, err := runtimecell.BuildRustPackedCell(ctx, cacheRoot, key, exts)
+		if err != nil {
+			return nil, err
+		}
+		return rustStartCell(packed)
+	}
+}
+
+func pythonCellBuild(ctx context.Context, exts []runtimecell.PythonExtension) cellBuild {
+	return func(cacheRoot, key string) (*runtimecell.GoPackedCell, error) {
+		packed, err := runtimecell.BuildPythonPackedCell(ctx, cacheRoot, key, exts)
+		if err != nil {
+			return nil, err
+		}
+		return pythonStartCell(packed)
+	}
+}
+
+// stageBuilt builds the runner image of the members of cell, a packed cell or the one-member cell of an isolated factory, and starts it. label names the language in an error and is empty for Go.
+func (h *Host) stageBuilt(ctx context.Context, cell CellSpec, oldByName map[string]*managedExt, rep *ReloadCellReport, label string, build cellBuild) ([]stagedManagedExt, error) {
+	isolated := cell.Strategy == CellStrategyIsolated
+	what := "packed " + label + "cell " + cell.Key
+	if isolated {
+		what = "isolated " + label + "factory " + cell.Extensions[0].Name
+	}
 	h.markCellExtensions(cell, "build-check-start")
-	packed, err := runtimecell.BuildGoPackedCellWithSDKRoot(ctx, cacheRoot, cell.Key, goExts, h.stagedGoSDKRoot())
+	packed, err := build(filepath.Dir(h.builder.cacheDir), cell.Key)
 	if err != nil {
-		return nil, fmt.Errorf("build packed cell %s: %w", cell.Key, err)
+		return nil, fmt.Errorf("build %s: %w", what, err)
 	}
 	h.markCellExtensions(cell, "build-check-done")
 	rep.Hash = packed.Hash
@@ -297,7 +281,7 @@ func (h *Host) stagePackedGo(ctx context.Context, cell CellSpec, oldByName map[s
 	rep.BuildDuration = packed.BuildDuration
 	staged, _, err := h.startGoPackedCell(ctx, packed)
 	if err != nil {
-		if acceptErr, ok := errors.AsType[*packedAcceptError](err); ok {
+		if acceptErr, ok := errors.AsType[*packedAcceptError](err); ok && !isolated {
 			// One or more members failed to register, but the shared
 			// process and any already-accepted siblings are already
 			// running: keep staged and propagate acceptErr unwrapped, so
@@ -307,7 +291,7 @@ func (h *Host) stagePackedGo(ctx context.Context, cell CellSpec, oldByName map[s
 			rep.Replaced = anyExisting(cell.Extensions, oldByName)
 			return staged, acceptErr
 		}
-		return nil, fmt.Errorf("reload packed cell %s: %w", cell.Key, err)
+		return nil, fmt.Errorf("reload %s: %w", what, err)
 	}
 	rep.Replaced = anyExisting(cell.Extensions, oldByName)
 	return staged, nil
@@ -327,27 +311,7 @@ func (h *Host) stagePackedRust(ctx context.Context, cell CellSpec, oldByName map
 	if err != nil {
 		return nil, err
 	}
-	cacheRoot := filepath.Dir(h.builder.cacheDir)
-	h.markCellExtensions(cell, "build-check-start")
-	packed, err := runtimecell.BuildRustPackedCell(ctx, cacheRoot, cell.Key, rustExts)
-	if err != nil {
-		return nil, fmt.Errorf("build packed Rust cell %s: %w", cell.Key, err)
-	}
-	h.markCellExtensions(cell, "build-check-done")
-	rep.Hash = packed.Hash
-	rep.BinaryPath = packed.BinaryPath
-	rep.Cached = packed.Cached
-	rep.BuildDuration = packed.BuildDuration
-	staged, _, err := h.startRustPackedCell(ctx, packed)
-	if err != nil {
-		if acceptErr, ok := errors.AsType[*packedAcceptError](err); ok {
-			rep.Replaced = anyExisting(cell.Extensions, oldByName)
-			return staged, acceptErr
-		}
-		return nil, fmt.Errorf("reload packed Rust cell %s: %w", cell.Key, err)
-	}
-	rep.Replaced = anyExisting(cell.Extensions, oldByName)
-	return staged, nil
+	return h.stageBuilt(ctx, cell, oldByName, rep, "Rust ", rustCellBuild(ctx, rustExts))
 }
 
 type packedConfigsKey struct{}
@@ -387,81 +351,7 @@ func (h *Host) stagePackedPython(ctx context.Context, cell CellSpec, oldByName m
 	if err != nil {
 		return nil, err
 	}
-	cacheRoot := filepath.Dir(h.builder.cacheDir)
-	h.markCellExtensions(cell, "build-check-start")
-	packed, err := runtimecell.BuildPythonPackedCell(ctx, cacheRoot, cell.Key, pyExts)
-	if err != nil {
-		return nil, fmt.Errorf("build packed Python cell %s: %w", cell.Key, err)
-	}
-	h.markCellExtensions(cell, "build-check-done")
-	rep.Hash = packed.Hash
-	rep.BinaryPath = packed.BinaryPath
-	rep.Cached = packed.Cached
-	rep.BuildDuration = packed.BuildDuration
-	staged, _, err := h.startPythonPackedCell(ctx, packed)
-	if err != nil {
-		if acceptErr, ok := errors.AsType[*packedAcceptError](err); ok {
-			rep.Replaced = anyExisting(cell.Extensions, oldByName)
-			return staged, acceptErr
-		}
-		return nil, fmt.Errorf("reload packed Python cell %s: %w", cell.Key, err)
-	}
-	rep.Replaced = anyExisting(cell.Extensions, oldByName)
-	return staged, nil
-}
-
-func (h *Host) stagePackedLisp(ctx context.Context, cell CellSpec, oldByName map[string]*managedExt, rep *ReloadCellReport) ([]stagedManagedExt, error) {
-	lispExts, err := cell.LispExtensions()
-	if err != nil {
-		return nil, err
-	}
-	cacheRoot := filepath.Dir(h.builder.cacheDir)
-	h.markCellExtensions(cell, "build-check-start")
-	packed, err := runtimecell.BuildLispPackedCell(ctx, cacheRoot, cell.Key, lispExts)
-	if err != nil {
-		return nil, fmt.Errorf("build packed Lisp cell %s: %w", cell.Key, err)
-	}
-	h.markCellExtensions(cell, "build-check-done")
-	rep.Hash = packed.Hash
-	rep.BinaryPath = packed.BinaryPath
-	rep.Cached = packed.Cached
-	rep.BuildDuration = packed.BuildDuration
-	staged, _, err := h.startLispPackedCell(ctx, packed)
-	if err != nil {
-		if acceptErr, ok := errors.AsType[*packedAcceptError](err); ok {
-			rep.Replaced = anyExisting(cell.Extensions, oldByName)
-			return staged, acceptErr
-		}
-		return nil, fmt.Errorf("reload packed Lisp cell %s: %w", cell.Key, err)
-	}
-	rep.Replaced = anyExisting(cell.Extensions, oldByName)
-	return staged, nil
-}
-
-func (h *Host) stageIsolatedLispFactory(ctx context.Context, cfg ExtConfig, oldByName map[string]*managedExt, rep *ReloadCellReport) ([]stagedManagedExt, error) {
-	lispExt, err := lispExtensionFromConfig(cfg)
-	if err != nil {
-		return nil, err
-	}
-	cacheRoot := filepath.Dir(h.builder.cacheDir)
-	cellKey := isolatedCell(cfg, "factory").Key
-	h.markExtension(cfg.Name, "build-check-start")
-	packed, err := runtimecell.BuildLispPackedCell(ctx, cacheRoot, cellKey, []runtimecell.LispExtension{lispExt})
-	if err != nil {
-		return nil, fmt.Errorf("build isolated Lisp factory %s: %w", cfg.Name, err)
-	}
-	h.markExtension(cfg.Name, "build-check-done")
-	rep.Hash = packed.Hash
-	rep.BinaryPath = packed.BinaryPath
-	rep.Cached = packed.Cached
-	rep.BuildDuration = packed.BuildDuration
-	old := oldByName[cfg.Name]
-	staged, _, err := h.startLispPackedCell(ctx, packed)
-	if err != nil {
-		return nil, fmt.Errorf("reload isolated Lisp factory %s: %w", cfg.Name, err)
-	}
-	rep.Replaced = old != nil
-	return staged, nil
+	return h.stageBuilt(ctx, cell, oldByName, rep, "Python ", pythonCellBuild(ctx, pyExts))
 }
 
 func anyExisting(cfgs []ExtConfig, oldByName map[string]*managedExt) bool {
@@ -487,20 +377,6 @@ func isPythonFactoryConfig(cfg ExtConfig) bool {
 
 func isLispFactoryConfig(cfg ExtConfig) bool {
 	return cfg.RuntimeKind == "subprocess" && cfg.RuntimeLanguage == "lisp" && cfg.EntrypointKind == "factory" && cfg.Source != "" && cfg.Package != "" && cfg.Factory == "new-extension"
-}
-
-func lispExtensionFromConfig(cfg ExtConfig) (runtimecell.LispExtension, error) {
-	if !isLispFactoryConfig(cfg) {
-		return runtimecell.LispExtension{}, fmt.Errorf("extension %q is not a Lisp factory extension", cfg.Name)
-	}
-	return runtimecell.LispExtension{
-		Name:    cfg.Name,
-		Root:    cfg.Source,
-		Package: cfg.Package,
-		Factory: cfg.Factory,
-		Hash:    valueOr(cfg.ContentHash, cfg.Source),
-		Verify:  cfg.sourceCheck,
-	}, nil
 }
 
 func goExtensionFromConfig(cfg ExtConfig) (runtimecell.GoExtension, error) {

@@ -1,0 +1,76 @@
+package extensionconformance
+
+import (
+	"context"
+	"os/exec"
+	"path/filepath"
+	"runtime"
+	"testing"
+
+	"github.com/MichaelKinsy/PiG/coding/extension/host/inproc"
+	"github.com/MichaelKinsy/PiG/coding/extension/host/subprocess"
+	"github.com/MichaelKinsy/PiG/internal/toolchain"
+)
+
+// lispFixtureName is the extension name of the Lisp SDK harness fixture (testdata/lisp-sdk-fixture), which every lane of the Lisp SDK
+// extends with the probe commands of its family (probes-*.lisp), as the Python and Rust fixtures carry theirs.
+const lispFixtureName = "lisp-sdk-fixture"
+
+// lispFixtureConfig loads testdata/<dir> as the factory extension named name through the Lisp SDK.
+func lispFixtureConfig(t testing.TB, dir, name string) subprocess.ExtConfig {
+	t.Helper()
+	return subprocess.ExtConfig{
+		Name: name, Enabled: true, Isolation: "strict",
+		Source:      filepath.Join(findModuleRoot(t), "test", "extension-conformance", "testdata", dir),
+		Factory:     "new-extension",
+		SDKName:     "pig-sdk-lisp",
+		Package:     dir,
+		RuntimeKind: "subprocess", RuntimeLanguage: "lisp", EntrypointKind: "factory",
+	}
+}
+
+// lispSurfaceFixtureConfig loads the surface extension of the same directory: the harness probes plus the tools of the model-types, pi-tui and host-surface rows,
+// which the harness extension leaves out because TestConformance_TransportsMatch compares its registered tools with the other SDKs'.
+func lispSurfaceFixtureConfig(t testing.TB) subprocess.ExtConfig {
+	t.Helper()
+	cfg := lispFixtureConfig(t, "lisp-sdk-fixture", lispFixtureName)
+	cfg.Package = "lisp-sdk-fixture-surface"
+	cfg.SourceInfo = hostSurfaceSource
+	return cfg
+}
+
+// requireSBCL fails the test when no SBCL is available: the Lisp rows cannot be skipped, as the Python rows cannot without an interpreter.
+func requireSBCL(t testing.TB) {
+	t.Helper()
+	if _, err := exec.LookPath(toolchain.SBCLExecutable(runtime.GOOS, exec.LookPath)); err != nil {
+		t.Fatalf("sbcl is required for SDK conformance: %v", err)
+	}
+}
+
+func makeSubprocessLispHarness(t *testing.T) *harness {
+	t.Helper()
+	requireSBCL(t)
+	notify := &[]string{}
+	status := &[]string{}
+	actions := &[]string{}
+	ui := newRecordingUI(notify, status)
+	bridge := subprocess.NewUIBridge(hostEffects.notify)
+	bridge.SetUIContext(ui)
+	bridge.SetNotifyFunc(ui.RecordNotify)
+	bridge.SetActions(conformanceActions(actions))
+
+	h := subprocess.NewHost(t.TempDir())
+	h.SetMode(harnessHostMode())
+	h.SetHostInfo(conformanceHostInfo)
+	h.SetUIBridge(bridge)
+	wire := observeWire(t, h)
+
+	// Host.Load builds from source with the Go and Rust toolchains only; the Lisp image is built through the cell loader.
+	loaded, errs := h.LoadAll(context.Background(), []subprocess.ExtConfig{lispFixtureConfig(t, "lisp-sdk-fixture", lispFixtureName)})
+	if len(errs) > 0 || len(loaded) != 1 {
+		t.Fatalf("lisp subprocess load: %d extensions, errors %v", len(loaded), errs)
+	}
+	runner := inproc.NewRunner(loaded, t.TempDir())
+	bridge.SetUIPromptScope(runner)
+	return &harness{runner: runner, host: h, notify: notify, status: status, actions: actions, ui: ui, bridge: bridge, wire: wire}
+}

@@ -312,6 +312,7 @@ func modelTypesSDKs() []modelTypesSDK {
 		{"rust", map[string]modelTypesLoader{"isolated": loadModelTypesRust(false), "packed": loadModelTypesRust(true)}},
 		{"python", map[string]modelTypesLoader{"strict": loadModelTypesPython("strict"), "shared-ok": loadModelTypesPython("shared-ok")}},
 		{"node", map[string]modelTypesLoader{"isolated": loadModelTypesNode(false), "packed": loadModelTypesNode(true)}},
+		{"lisp", map[string]modelTypesLoader{"isolated": loadModelTypesLisp}},
 	}
 }
 

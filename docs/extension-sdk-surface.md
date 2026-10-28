@@ -2,15 +2,15 @@
 
 # Extension SDK surface matrix
 
-Every extension-facing surface of Pi 1.4.0+b3a29f11's extension API, and how each PiG extension runtime realizes it. The rows come from Pi's `packages/coding-agent/src/core/extensions/types.ts` and the declarations it re-exports or exposes through its members (`EventBus`, `ExecOptions`/`ExecResult`, `CacheWarmingDecisionEvent`, `ReadonlySessionManager`, `ModelRegistry`, `Theme`, `AgentToolResult`), read from `.upstream/v1.4.0+b3a29f11`.
+Every extension-facing surface of Pi 1.4.0+6c384aa3's extension API, and how each PiG extension runtime realizes it. The rows come from Pi's `packages/coding-agent/src/core/extensions/types.ts` and the declarations it re-exports or exposes through its members (`EventBus`, `ExecOptions`/`ExecResult`, `CacheWarmingDecisionEvent`, `ReadonlySessionManager`, `ModelRegistry`, `Theme`, `AgentToolResult`), read from `.upstream/v1.4.0+6c384aa3`.
 
-A cell's status comes from the runtime itself: the Go SDK's exported identifiers, the Rust SDK's `pub` items and the Python SDK's classes, members and parameters, read from their source, and the Node runtime's objects, read by instantiating the runtime in Node (`test/parity/cmd/sdksurface/probe.mjs`), plus the properties it reads from an extension's definitions. [`test/parity/sdk-surface.toml`](../test/parity/sdk-surface.toml) names the symbol where a language's naming differs from the default rule and says why a realization is a stand-in; a named symbol that does not exist is `missing`. Payload, result and option fields that cross the subprocess wire are also checked against the host's Go decoding type, so a field an SDK sends but the host drops is `missing`. The PiG additive sections list surfaces PiG adds where Pi has none, such as the component kit (D107); the map names each one's symbols, and its cells are classified the same way.
+A cell's status comes from the runtime itself: the Go SDK's exported identifiers, the Rust SDK's `pub` items, the Python SDK's classes, members and parameters and the Lisp SDK's exported symbols and the keyword and optional parameters of its exported functions, read from their source, and the Node runtime's objects, read by instantiating the runtime in Node (`test/parity/cmd/sdksurface/probe.mjs`), plus the properties it reads from an extension's definitions. [`test/parity/sdk-surface.toml`](../test/parity/sdk-surface.toml) names the symbol where a language's naming differs from the default rule and says why a realization is a stand-in; a named symbol that does not exist is `missing`. Payload, result and option fields that cross the subprocess wire are also checked against the host's Go decoding type, so a field an SDK sends but the host drops is `missing`. The PiG additive sections list surfaces PiG adds where Pi has none, such as the component kit (D107); the map names each one's symbols, and its cells are classified the same way.
 
 - `implemented`: the symbol and any checked wire fields exist; this is not behavioral proof. See `docs/extension-api-parity.md` and the conformance tests.
 - `stand-in/partial`: the symbol exists; the note says what differs and why.
 - `missing`: no symbol. Each missing cell is listed in [`test/parity/sdk-surface-exceptions.toml`](../test/parity/sdk-surface-exceptions.toml) with its reviewed reason, and `go test ./test/parity/cmd/sdksurface` fails on any other.
 
-The package sections list every runtime export of the modules Pi serves to extensions (`pi-coding-agent`, `pi-tui`, `pi-ai`, `pi-ai/compat`, `pi-ai/models`, `pi-ai/providers/all`, `pi-agent-core`), from the compiler-derived inventory of Pi's `.d.ts` files (`test/parity/interfaces/upstream-v1.4.0+b3a29f11.json`), and every public instance member of each exported class represented by that inventory. Static factories and overload-specific reachability are outside this probe. Only the Node runtime imports these modules. The probe loads each module the runtime serves and classifies every value by where its code lives, using the V8 inspector's function locations:
+The package sections list every runtime export of the modules Pi serves to extensions (`pi-coding-agent`, `pi-tui`, `pi-ai`, `pi-ai/compat`, `pi-ai/models`, `pi-ai/providers/all`, `pi-agent-core`), from the compiler-derived inventory of Pi's `.d.ts` files (`test/parity/interfaces/upstream-v1.4.0+6c384aa3.json`), and every public instance member of each exported class represented by that inventory. Static factories and overload-specific reachability are outside this probe. Only the Node runtime imports these modules. The probe loads each module the runtime serves and classifies every value by where its code lives, using the V8 inspector's function locations:
 
 - `Pi's own code`: the function originates in the vendored pinned modules or their dependencies; host import rewrites can still affect behavior (D73).
 - `bridged`: PiG's implementation in the extension runtime, a line-for-line port or a host bridge, locked by the D73 tests (`TestNodeRuntimeShimsExportEveryPinnedPiValue`, `TestPiTuiComponentsMatchThePinnedPackage`, `TestPiAiUtilitiesMatchThePinnedPackage`, `TestPiThemeHelpersMatchThePinnedPackage`).
@@ -21,14 +21,15 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 
 ## Summary
 
-521 extension API surfaces:
+520 extension API surfaces:
 
 | Runtime | implemented | stand-in/partial | missing (all with a reviewed exception) |
 |---|---|---|---|
-| Node runtime | 483 | 27 | 11 |
-| Go | 485 | 26 | 10 |
-| Rust | 485 | 26 | 10 |
-| Python | 485 | 26 | 10 |
+| Node runtime | 482 | 27 | 11 |
+| Go | 484 | 26 | 10 |
+| Rust | 484 | 26 | 10 |
+| Python | 484 | 26 | 10 |
+| Lisp | 491 | 19 | 10 |
 
 31 PiG-only surfaces:
 
@@ -38,6 +39,7 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 | Go | 31 | 0 | 0 |
 | Rust | 31 | 0 | 0 |
 | Python | 31 | 0 | 0 |
+| Lisp | 31 | 0 | 0 |
 
 1628 package exports and class members, Node runtime:
 
@@ -53,1365 +55,1364 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 
 ## pi (ExtensionAPI)
 
-| Surface | Pi declaration | Node runtime | Go | Rust | Python |
-|---|---|---|---|---|---|
-| `pi.registerTool` | `ExtensionAPI.registerTool` | implemented `api.registerTool` | implemented `Extension.RegisterTool` | implemented `Extension::register_tool` | implemented `Extension.register_tool` |
-| `pi.registerCommand` | `ExtensionAPI.registerCommand` | implemented `api.registerCommand` | implemented `Extension.RegisterCommand` | implemented `Extension::command` | implemented `Extension.command` |
-| `pi.registerShortcut` | `ExtensionAPI.registerShortcut` | implemented `api.registerShortcut` | implemented `Extension.Shortcut` | implemented `Extension::shortcut` | implemented `Extension.shortcut` |
+| Surface | Pi declaration | Node runtime | Go | Rust | Python | Lisp |
+|---|---|---|---|---|---|---|
+| `pi.registerTool` | `ExtensionAPI.registerTool` | implemented `api.registerTool` | implemented `Extension.RegisterTool` | implemented `Extension::register_tool` | implemented `Extension.register_tool` | implemented `pig:register-tool` |
+| `pi.registerCommand` | `ExtensionAPI.registerCommand` | implemented `api.registerCommand` | implemented `Extension.RegisterCommand` | implemented `Extension::command` | implemented `Extension.command` | implemented `pig:command` |
+| `pi.registerShortcut` | `ExtensionAPI.registerShortcut` | implemented `api.registerShortcut` | implemented `Extension.Shortcut` | implemented `Extension::shortcut` | implemented `Extension.shortcut` | implemented `pig:shortcut` |
 
 ## pi (ExtensionAPI) arguments
 
-| Surface | Pi declaration | Node runtime | Go | Rust | Python |
-|---|---|---|---|---|---|
-| `pi.registerShortcut(options.description)` | `ExtensionAPI.registerShortcut(options.description)` | implemented `read:s.description` | implemented `Extension.Shortcut` | implemented `Extension::shortcut` | implemented `Extension.shortcut(description)` |
-| `pi.registerShortcut(options.handler)` | `ExtensionAPI.registerShortcut(options.handler)` | implemented `read:shortcut.handler` | implemented `ShortcutFunc` | implemented `ShortcutHandler` | implemented `Extension.shortcut(handler)` |
+| Surface | Pi declaration | Node runtime | Go | Rust | Python | Lisp |
+|---|---|---|---|---|---|---|
+| `pi.registerShortcut(options.description)` | `ExtensionAPI.registerShortcut(options.description)` | implemented `read:s.description` | implemented `Extension.Shortcut` | implemented `Extension::shortcut` | implemented `Extension.shortcut(description)` | implemented `pig:shortcut(description)` |
+| `pi.registerShortcut(options.handler)` | `ExtensionAPI.registerShortcut(options.handler)` | implemented `read:shortcut.handler` | implemented `ShortcutFunc` | implemented `ShortcutHandler` | implemented `Extension.shortcut(handler)` | implemented `pig:shortcut(handler)` |
 
 ## pi (ExtensionAPI)
 
-| Surface | Pi declaration | Node runtime | Go | Rust | Python |
-|---|---|---|---|---|---|
-| `pi.registerFlag` | `ExtensionAPI.registerFlag` | implemented `api.registerFlag` | implemented `Extension.Flag` | implemented `Extension::flag` | implemented `Extension.flag` |
+| Surface | Pi declaration | Node runtime | Go | Rust | Python | Lisp |
+|---|---|---|---|---|---|---|
+| `pi.registerFlag` | `ExtensionAPI.registerFlag` | implemented `api.registerFlag` | implemented `Extension.Flag` | implemented `Extension::flag` | implemented `Extension.flag` | implemented `pig:flag` |
 
 ## pi (ExtensionAPI) arguments
 
-| Surface | Pi declaration | Node runtime | Go | Rust | Python |
-|---|---|---|---|---|---|
-| `pi.registerFlag(options.description)` | `ExtensionAPI.registerFlag(options.description)` | implemented `read:f.description` | implemented `FlagOptions.Description` | implemented `FlagOptions.description` | implemented `Extension.flag(description)` |
-| `pi.registerFlag(options.type)` | `ExtensionAPI.registerFlag(options.type)` | implemented `read:f.type` | implemented `FlagOptions.Type` | implemented `FlagOptions.flag_type` | implemented `Extension.flag(flag_type)` |
-| `pi.registerFlag(options.default)` | `ExtensionAPI.registerFlag(options.default)` | implemented `read:f.default` | implemented `FlagOptions.Default` | implemented `FlagOptions.default` | implemented `Extension.flag(default)` |
+| Surface | Pi declaration | Node runtime | Go | Rust | Python | Lisp |
+|---|---|---|---|---|---|---|
+| `pi.registerFlag(options.description)` | `ExtensionAPI.registerFlag(options.description)` | implemented `read:f.description` | implemented `FlagOptions.Description` | implemented `FlagOptions.description` | implemented `Extension.flag(description)` | implemented `pig:flag(description)` |
+| `pi.registerFlag(options.type)` | `ExtensionAPI.registerFlag(options.type)` | implemented `read:f.type` | implemented `FlagOptions.Type` | implemented `FlagOptions.flag_type` | implemented `Extension.flag(flag_type)` | implemented `pig:flag(type)` |
+| `pi.registerFlag(options.default)` | `ExtensionAPI.registerFlag(options.default)` | implemented `read:f.default` | implemented `FlagOptions.Default` | implemented `FlagOptions.default` | implemented `Extension.flag(default)` | implemented `pig:flag(default)` |
 
 ## pi (ExtensionAPI)
 
-| Surface | Pi declaration | Node runtime | Go | Rust | Python |
-|---|---|---|---|---|---|
-| `pi.getFlag` | `ExtensionAPI.getFlag` | implemented `api.getFlag` | implemented `Context.GetFlag` | implemented `Context::get_flag` | implemented `Context.get_flag` |
-| `pi.registerMessageRenderer` | `ExtensionAPI.registerMessageRenderer` | stand-in/partial `api.registerMessageRenderer`: the renderer's Component renders to lines at the requested width inside the extension process | stand-in/partial `Extension.MessageRenderer`: renders lines at the requested width: a Pi Component cannot cross the process boundary | stand-in/partial `Extension::message_renderer`: renders lines at the requested width: a Pi Component cannot cross the process boundary | stand-in/partial `Extension.message_renderer`: renders lines at the requested width: a Pi Component cannot cross the process boundary |
-| `pi.registerMarkdownTransformer` | `ExtensionAPI.registerMarkdownTransformer` | implemented `api.registerMarkdownTransformer` | implemented `Extension.MarkdownTransformer` | implemented `Extension::markdown_transformer` | implemented `Extension.markdown_transformer` |
-| `pi.registerEntryRenderer` | `ExtensionAPI.registerEntryRenderer` | stand-in/partial `api.registerEntryRenderer`: the renderer's Component renders to lines at the requested width inside the extension process | stand-in/partial `Extension.EntryRenderer`: renders lines at the requested width: a Pi Component cannot cross the process boundary | stand-in/partial `Extension::entry_renderer`: renders lines at the requested width: a Pi Component cannot cross the process boundary | stand-in/partial `Extension.entry_renderer`: renders lines at the requested width: a Pi Component cannot cross the process boundary |
-| `pi.registerToolRenderer` | `ExtensionAPI.registerToolRenderer` | implemented `api.registerToolRenderer` | implemented `Extension.ToolRenderer` | implemented `Extension::tool_renderer` | implemented `Extension.tool_renderer` |
-| `pi.sendMessage` | `ExtensionAPI.sendMessage` | implemented `api.sendMessage` | implemented `Context.SendMessage` | implemented `Context::send_message` | implemented `Context.send_message` |
+| Surface | Pi declaration | Node runtime | Go | Rust | Python | Lisp |
+|---|---|---|---|---|---|---|
+| `pi.getFlag` | `ExtensionAPI.getFlag` | implemented `api.getFlag` | implemented `Context.GetFlag` | implemented `Context::get_flag` | implemented `Context.get_flag` | implemented `pig:flag` |
+| `pi.registerMessageRenderer` | `ExtensionAPI.registerMessageRenderer` | stand-in/partial `api.registerMessageRenderer`: the renderer's Component renders to lines at the requested width inside the extension process | stand-in/partial `Extension.MessageRenderer`: renders lines at the requested width: a Pi Component cannot cross the process boundary | stand-in/partial `Extension::message_renderer`: renders lines at the requested width: a Pi Component cannot cross the process boundary | stand-in/partial `Extension.message_renderer`: renders lines at the requested width: a Pi Component cannot cross the process boundary | stand-in/partial `pig:message-renderer`: renders lines at the requested width: a Pi Component cannot cross the process boundary |
+| `pi.registerMarkdownTransformer` | `ExtensionAPI.registerMarkdownTransformer` | implemented `api.registerMarkdownTransformer` | implemented `Extension.MarkdownTransformer` | implemented `Extension::markdown_transformer` | implemented `Extension.markdown_transformer` | implemented `pig:markdown-transformer` |
+| `pi.registerEntryRenderer` | `ExtensionAPI.registerEntryRenderer` | stand-in/partial `api.registerEntryRenderer`: the renderer's Component renders to lines at the requested width inside the extension process | stand-in/partial `Extension.EntryRenderer`: renders lines at the requested width: a Pi Component cannot cross the process boundary | stand-in/partial `Extension::entry_renderer`: renders lines at the requested width: a Pi Component cannot cross the process boundary | stand-in/partial `Extension.entry_renderer`: renders lines at the requested width: a Pi Component cannot cross the process boundary | stand-in/partial `pig:entry-renderer`: renders lines at the requested width: a Pi Component cannot cross the process boundary |
+| `pi.registerToolRenderer` | `ExtensionAPI.registerToolRenderer` | implemented `api.registerToolRenderer` | implemented `Extension.ToolRenderer` | implemented `Extension::tool_renderer` | implemented `Extension.tool_renderer` | implemented `pig:tool-renderer` |
+| `pi.sendMessage` | `ExtensionAPI.sendMessage` | implemented `api.sendMessage` | implemented `Context.SendMessage` | implemented `Context::send_message` | implemented `Context.send_message` | implemented `pig:ctx-send-message` |
 
 ## pi (ExtensionAPI) arguments
 
-| Surface | Pi declaration | Node runtime | Go | Rust | Python |
-|---|---|---|---|---|---|
-| `pi.sendMessage(message.customType)` | `ExtensionAPI.sendMessage(message.customType)` | implemented `api.sendMessage` | implemented `CustomMessage.CustomType` | implemented `CustomMessage.custom_type` | implemented `Context.send_message(custom_type)` |
-| `pi.sendMessage(message.content)` | `ExtensionAPI.sendMessage(message.content)` | implemented `api.sendMessage` | implemented `CustomMessage.Content` | implemented `CustomMessage.content` | implemented `Context.send_message(content)` |
-| `pi.sendMessage(message.display)` | `ExtensionAPI.sendMessage(message.display)` | implemented `api.sendMessage` | implemented `CustomMessage.Display` | implemented `CustomMessage.display` | implemented `Context.send_message(display)` |
-| `pi.sendMessage(message.details)` | `ExtensionAPI.sendMessage(message.details)` | implemented `api.sendMessage` | implemented `CustomMessage.Details` | implemented `CustomMessage.details` | implemented `Context.send_message(details)` |
-| `pi.sendMessage(options.triggerTurn)` | `ExtensionAPI.sendMessage(options.triggerTurn)` | implemented `api.sendMessage` | implemented `SendMessageOptions.TriggerTurn` | implemented `SendMessageOptions.trigger_turn` | implemented `Context.send_message(trigger_turn)` |
-| `pi.sendMessage(options.deliverAs)` | `ExtensionAPI.sendMessage(options.deliverAs)` | implemented `api.sendMessage` | implemented `SendMessageOptions.DeliverAs` | implemented `SendMessageOptions.deliver_as` | implemented `Context.send_message(deliver_as)` |
+| Surface | Pi declaration | Node runtime | Go | Rust | Python | Lisp |
+|---|---|---|---|---|---|---|
+| `pi.sendMessage(message.customType)` | `ExtensionAPI.sendMessage(message.customType)` | implemented `api.sendMessage` | implemented `CustomMessage.CustomType` | implemented `CustomMessage.custom_type` | implemented `Context.send_message(custom_type)` | implemented `pig:ctx-send-message(custom-type)` |
+| `pi.sendMessage(message.content)` | `ExtensionAPI.sendMessage(message.content)` | implemented `api.sendMessage` | implemented `CustomMessage.Content` | implemented `CustomMessage.content` | implemented `Context.send_message(content)` | implemented `pig:ctx-send-message(content)` |
+| `pi.sendMessage(message.display)` | `ExtensionAPI.sendMessage(message.display)` | implemented `api.sendMessage` | implemented `CustomMessage.Display` | implemented `CustomMessage.display` | implemented `Context.send_message(display)` | implemented `pig:ctx-send-message(display)` |
+| `pi.sendMessage(message.details)` | `ExtensionAPI.sendMessage(message.details)` | implemented `api.sendMessage` | implemented `CustomMessage.Details` | implemented `CustomMessage.details` | implemented `Context.send_message(details)` | implemented `pig:ctx-send-message(details)` |
+| `pi.sendMessage(options.triggerTurn)` | `ExtensionAPI.sendMessage(options.triggerTurn)` | implemented `api.sendMessage` | implemented `SendMessageOptions.TriggerTurn` | implemented `SendMessageOptions.trigger_turn` | implemented `Context.send_message(trigger_turn)` | implemented `pig:ctx-send-message(trigger-turn)` |
+| `pi.sendMessage(options.deliverAs)` | `ExtensionAPI.sendMessage(options.deliverAs)` | implemented `api.sendMessage` | implemented `SendMessageOptions.DeliverAs` | implemented `SendMessageOptions.deliver_as` | implemented `Context.send_message(deliver_as)` | implemented `pig:ctx-send-message(deliver-as)` |
 
 ## pi (ExtensionAPI)
 
-| Surface | Pi declaration | Node runtime | Go | Rust | Python |
-|---|---|---|---|---|---|
-| `pi.sendUserMessage` | `ExtensionAPI.sendUserMessage` | implemented `api.sendUserMessage` | implemented `Context.SendUserMessage` | implemented `Context::send_user_message` | implemented `Context.send_user_message` |
+| Surface | Pi declaration | Node runtime | Go | Rust | Python | Lisp |
+|---|---|---|---|---|---|---|
+| `pi.sendUserMessage` | `ExtensionAPI.sendUserMessage` | implemented `api.sendUserMessage` | implemented `Context.SendUserMessage` | implemented `Context::send_user_message` | implemented `Context.send_user_message` | implemented `pig:ctx-send-user-message` |
 
 ## pi (ExtensionAPI) arguments
 
-| Surface | Pi declaration | Node runtime | Go | Rust | Python |
-|---|---|---|---|---|---|
-| `pi.sendUserMessage(options.deliverAs)` | `ExtensionAPI.sendUserMessage(options.deliverAs)` | implemented `api.sendUserMessage` | implemented `Context.SendUserMessage` | implemented `Context::send_user_message` | implemented `Context.send_user_message(deliver_as)` |
-| `pi.sendUserMessage(options.expandPromptTemplates)` | `ExtensionAPI.sendUserMessage(options.expandPromptTemplates)` | missing (`api.sendUserMessage`: the host drops `expandPromptTemplates` (subprocess.SendUserMessageOptions)) [exception](#exceptions) | missing [exception](#exceptions) | missing [exception](#exceptions) | missing [exception](#exceptions) |
+| Surface | Pi declaration | Node runtime | Go | Rust | Python | Lisp |
+|---|---|---|---|---|---|---|
+| `pi.sendUserMessage(options.deliverAs)` | `ExtensionAPI.sendUserMessage(options.deliverAs)` | implemented `api.sendUserMessage` | implemented `Context.SendUserMessage` | implemented `Context::send_user_message` | implemented `Context.send_user_message(deliver_as)` | implemented `pig:ctx-send-user-message(deliver-as)` |
+| `pi.sendUserMessage(options.expandPromptTemplates)` | `ExtensionAPI.sendUserMessage(options.expandPromptTemplates)` | missing (`api.sendUserMessage`: the host drops `expandPromptTemplates` (subprocess.SendUserMessageOptions)) [exception](#exceptions) | missing [exception](#exceptions) | missing [exception](#exceptions) | missing [exception](#exceptions) | missing [exception](#exceptions) |
 
 ## pi (ExtensionAPI)
 
-| Surface | Pi declaration | Node runtime | Go | Rust | Python |
-|---|---|---|---|---|---|
-| `pi.appendEntry` | `ExtensionAPI.appendEntry` | implemented `api.appendEntry` | implemented `Context.AppendEntry` | implemented `Context::append_entry` | implemented `Context.append_entry` |
-| `pi.setSessionName` | `ExtensionAPI.setSessionName` | implemented `api.setSessionName` | implemented `Context.SetSessionName` | implemented `Context::set_session_name` | implemented `Context.set_session_name` |
-| `pi.getSessionName` | `ExtensionAPI.getSessionName` | implemented `api.getSessionName` | implemented `Context.GetSessionName` | implemented `Context::get_session_name` | implemented `Context.get_session_name` |
-| `pi.setLabel` | `ExtensionAPI.setLabel` | implemented `api.setLabel` | implemented `Context.SetLabel` | implemented `Context::set_label` | implemented `Context.set_label` |
-| `pi.exec` | `ExtensionAPI.exec` | implemented `api.exec` | implemented `Context.ExecWithOptions` | implemented `Context::exec_with_options` | implemented `Context.exec` |
+| Surface | Pi declaration | Node runtime | Go | Rust | Python | Lisp |
+|---|---|---|---|---|---|---|
+| `pi.appendEntry` | `ExtensionAPI.appendEntry` | implemented `api.appendEntry` | implemented `Context.AppendEntry` | implemented `Context::append_entry` | implemented `Context.append_entry` | implemented `pig:ctx-append-entry` |
+| `pi.setSessionName` | `ExtensionAPI.setSessionName` | implemented `api.setSessionName` | implemented `Context.SetSessionName` | implemented `Context::set_session_name` | implemented `Context.set_session_name` | implemented `pig:ctx-set-session-name` |
+| `pi.getSessionName` | `ExtensionAPI.getSessionName` | implemented `api.getSessionName` | implemented `Context.GetSessionName` | implemented `Context::get_session_name` | implemented `Context.get_session_name` | implemented `pig:ctx-get-session-name` |
+| `pi.setLabel` | `ExtensionAPI.setLabel` | implemented `api.setLabel` | implemented `Context.SetLabel` | implemented `Context::set_label` | implemented `Context.set_label` | implemented `pig:ctx-set-label` |
+| `pi.exec` | `ExtensionAPI.exec` | implemented `api.exec` | implemented `Context.ExecWithOptions` | implemented `Context::exec_with_options` | implemented `Context.exec` | implemented `pig:ctx-exec` |
 
 ## pi (ExtensionAPI) arguments
 
-| Surface | Pi declaration | Node runtime | Go | Rust | Python |
-|---|---|---|---|---|---|
-| `pi.exec(options.signal)` | `ExtensionAPI.exec(options.signal)` | implemented `api.exec` | implemented `ExecOptions.Signal` | implemented `ExecOptions.signal` | implemented `Context.exec(signal)` |
-| `pi.exec(options.timeout)` | `ExtensionAPI.exec(options.timeout)` | implemented `api.exec` | implemented `ExecOptions.Timeout` | implemented `ExecOptions.timeout` | implemented `Context.exec(timeout)` |
-| `pi.exec(options.cwd)` | `ExtensionAPI.exec(options.cwd)` | implemented `api.exec` | implemented `ExecOptions.Cwd` | implemented `ExecOptions.cwd` | implemented `Context.exec(cwd)` |
-| `pi.exec → stdout` | `ExtensionAPI.exec → stdout` | implemented `api.exec` | implemented `ExecResult.Stdout` | implemented `ExecResult.stdout` | implemented `ExecResult.stdout` |
-| `pi.exec → stderr` | `ExtensionAPI.exec → stderr` | implemented `api.exec` | implemented `ExecResult.Stderr` | implemented `ExecResult.stderr` | implemented `ExecResult.stderr` |
-| `pi.exec → code` | `ExtensionAPI.exec → code` | implemented `api.exec` | implemented `ExecResult.ExitCode` | implemented `ExecResult.exit_code` | implemented `ExecResult.exit_code` |
-| `pi.exec → killed` | `ExtensionAPI.exec → killed` | implemented `api.exec` | implemented `ExecResult.Killed` | implemented `ExecResult.killed` | implemented `ExecResult.killed` |
+| Surface | Pi declaration | Node runtime | Go | Rust | Python | Lisp |
+|---|---|---|---|---|---|---|
+| `pi.exec(options.signal)` | `ExtensionAPI.exec(options.signal)` | implemented `api.exec` | implemented `ExecOptions.Signal` | implemented `ExecOptions.signal` | implemented `Context.exec(signal)` | implemented `pig:ctx-exec(signal)` |
+| `pi.exec(options.timeout)` | `ExtensionAPI.exec(options.timeout)` | implemented `api.exec` | implemented `ExecOptions.Timeout` | implemented `ExecOptions.timeout` | implemented `Context.exec(timeout)` | implemented `pig:ctx-exec(timeout)` |
+| `pi.exec(options.cwd)` | `ExtensionAPI.exec(options.cwd)` | implemented `api.exec` | implemented `ExecOptions.Cwd` | implemented `ExecOptions.cwd` | implemented `Context.exec(cwd)` | implemented `pig:ctx-exec(cwd)` |
+| `pi.exec → stdout` | `ExtensionAPI.exec → stdout` | implemented `api.exec` | implemented `ExecResult.Stdout` | implemented `ExecResult.stdout` | implemented `ExecResult.stdout` | implemented `pig:exec-result-stdout` |
+| `pi.exec → stderr` | `ExtensionAPI.exec → stderr` | implemented `api.exec` | implemented `ExecResult.Stderr` | implemented `ExecResult.stderr` | implemented `ExecResult.stderr` | implemented `pig:exec-result-stderr` |
+| `pi.exec → code` | `ExtensionAPI.exec → code` | implemented `api.exec` | implemented `ExecResult.ExitCode` | implemented `ExecResult.exit_code` | implemented `ExecResult.exit_code` | implemented `pig:exec-result-exit-code` |
+| `pi.exec → killed` | `ExtensionAPI.exec → killed` | implemented `api.exec` | implemented `ExecResult.Killed` | implemented `ExecResult.killed` | implemented `ExecResult.killed` | implemented `pig:exec-result-killed` |
 
 ## pi (ExtensionAPI)
 
-| Surface | Pi declaration | Node runtime | Go | Rust | Python |
-|---|---|---|---|---|---|
-| `pi.getActiveTools` | `ExtensionAPI.getActiveTools` | implemented `api.getActiveTools` | implemented `Context.GetActiveTools` | implemented `Context::get_active_tools` | implemented `Context.get_active_tools` |
-| `pi.getAllTools` | `ExtensionAPI.getAllTools` | implemented `api.getAllTools` | implemented `Context.GetAllTools` | implemented `Context::get_all_tools` | implemented `Context.get_all_tools` |
+| Surface | Pi declaration | Node runtime | Go | Rust | Python | Lisp |
+|---|---|---|---|---|---|---|
+| `pi.getActiveTools` | `ExtensionAPI.getActiveTools` | implemented `api.getActiveTools` | implemented `Context.GetActiveTools` | implemented `Context::get_active_tools` | implemented `Context.get_active_tools` | implemented `pig:ctx-get-active-tools` |
+| `pi.getAllTools` | `ExtensionAPI.getAllTools` | implemented `api.getAllTools` | implemented `Context.GetAllTools` | implemented `Context::get_all_tools` | implemented `Context.get_all_tools` | implemented `pig:ctx-get-all-tools` |
 
 ## pi (ExtensionAPI) arguments
 
-| Surface | Pi declaration | Node runtime | Go | Rust | Python |
-|---|---|---|---|---|---|
-| `pi.getAllTools → name` | `ExtensionAPI.getAllTools → name` | implemented `api.getAllTools` | implemented `ToolInfo.Name` | implemented `ToolInfo.name` | implemented `Context.get_all_tools` |
-| `pi.getAllTools → description` | `ExtensionAPI.getAllTools → description` | implemented `api.getAllTools` | implemented `ToolInfo.Description` | implemented `ToolInfo.description` | implemented `Context.get_all_tools` |
-| `pi.getAllTools → promptGuidelines` | `ExtensionAPI.getAllTools → promptGuidelines` | implemented `api.getAllTools` | implemented `ToolInfo.PromptGuidelines` | implemented `ToolInfo.prompt_guidelines` | implemented `Context.get_all_tools` |
-| `pi.getAllTools → parameters` | `ExtensionAPI.getAllTools → parameters` | implemented `api.getAllTools` | implemented `ToolInfo.Parameters` | implemented `ToolInfo.parameters` | implemented `Context.get_all_tools` |
-| `pi.getAllTools → reachesTools` | `ExtensionAPI.getAllTools → reachesTools` | implemented `api.getAllTools` | implemented `ToolInfo.ReachesTools` | implemented `ToolInfo.reaches_tools` | implemented `Context.get_all_tools` |
-| `pi.getAllTools → exposure` | `ExtensionAPI.getAllTools → exposure` | implemented `api.getAllTools` | implemented `ToolInfo.Exposure` | implemented `ToolInfo.exposure` | implemented `Context.get_all_tools` |
-| `pi.getAllTools → namespace` | `ExtensionAPI.getAllTools → namespace` | implemented `api.getAllTools` | implemented `ToolInfo.Namespace` | implemented `ToolInfo.namespace` | implemented `Context.get_all_tools` |
-| `pi.getAllTools → annotations` | `ExtensionAPI.getAllTools → annotations` | implemented `api.getAllTools` | implemented `ToolInfo.Annotations` | implemented `ToolInfo.annotations` | implemented `Context.get_all_tools` |
-| `pi.getAllTools → sourceInfo` | `ExtensionAPI.getAllTools → sourceInfo` | implemented `api.getAllTools` | implemented `ToolInfo.SourceInfo` | implemented `ToolInfo.source_info` | implemented `Context.get_all_tools` |
+| Surface | Pi declaration | Node runtime | Go | Rust | Python | Lisp |
+|---|---|---|---|---|---|---|
+| `pi.getAllTools → name` | `ExtensionAPI.getAllTools → name` | implemented `api.getAllTools` | implemented `ToolInfo.Name` | implemented `ToolInfo.name` | implemented `Context.get_all_tools` | implemented `pig:ctx-get-all-tools` |
+| `pi.getAllTools → description` | `ExtensionAPI.getAllTools → description` | implemented `api.getAllTools` | implemented `ToolInfo.Description` | implemented `ToolInfo.description` | implemented `Context.get_all_tools` | implemented `pig:ctx-get-all-tools` |
+| `pi.getAllTools → promptGuidelines` | `ExtensionAPI.getAllTools → promptGuidelines` | implemented `api.getAllTools` | implemented `ToolInfo.PromptGuidelines` | implemented `ToolInfo.prompt_guidelines` | implemented `Context.get_all_tools` | implemented `pig:ctx-get-all-tools` |
+| `pi.getAllTools → parameters` | `ExtensionAPI.getAllTools → parameters` | implemented `api.getAllTools` | implemented `ToolInfo.Parameters` | implemented `ToolInfo.parameters` | implemented `Context.get_all_tools` | implemented `pig:ctx-get-all-tools` |
+| `pi.getAllTools → reachesTools` | `ExtensionAPI.getAllTools → reachesTools` | implemented `api.getAllTools` | implemented `ToolInfo.ReachesTools` | implemented `ToolInfo.reaches_tools` | implemented `Context.get_all_tools` | implemented `pig:ctx-get-all-tools` |
+| `pi.getAllTools → exposure` | `ExtensionAPI.getAllTools → exposure` | implemented `api.getAllTools` | implemented `ToolInfo.Exposure` | implemented `ToolInfo.exposure` | implemented `Context.get_all_tools` | implemented `pig:ctx-get-all-tools` |
+| `pi.getAllTools → namespace` | `ExtensionAPI.getAllTools → namespace` | implemented `api.getAllTools` | implemented `ToolInfo.Namespace` | implemented `ToolInfo.namespace` | implemented `Context.get_all_tools` | implemented `pig:ctx-get-all-tools` |
+| `pi.getAllTools → annotations` | `ExtensionAPI.getAllTools → annotations` | implemented `api.getAllTools` | implemented `ToolInfo.Annotations` | implemented `ToolInfo.annotations` | implemented `Context.get_all_tools` | implemented `pig:ctx-get-all-tools` |
+| `pi.getAllTools → sourceInfo` | `ExtensionAPI.getAllTools → sourceInfo` | implemented `api.getAllTools` | implemented `ToolInfo.SourceInfo` | implemented `ToolInfo.source_info` | implemented `Context.get_all_tools` | implemented `pig:ctx-get-all-tools` |
 
 ## pi (ExtensionAPI)
 
-| Surface | Pi declaration | Node runtime | Go | Rust | Python |
-|---|---|---|---|---|---|
-| `pi.getSettings` | `ExtensionAPI.getSettings` | implemented `api.getSettings` | implemented `Context.GetSettings` | implemented `Context::get_settings` | implemented `Context.get_settings` |
-| `pi.setActiveTools` | `ExtensionAPI.setActiveTools` | implemented `api.setActiveTools` | implemented `Context.SetActiveTools` | implemented `Context::set_active_tools` | implemented `Context.set_active_tools` |
-| `pi.getCommands` | `ExtensionAPI.getCommands` | implemented `api.getCommands` | implemented `Context.GetCommands` | implemented `Context::get_commands` | implemented `Context.get_commands` |
+| Surface | Pi declaration | Node runtime | Go | Rust | Python | Lisp |
+|---|---|---|---|---|---|---|
+| `pi.getSettings` | `ExtensionAPI.getSettings` | implemented `api.getSettings` | implemented `Context.GetSettings` | implemented `Context::get_settings` | implemented `Context.get_settings` | implemented `pig:ctx-get-settings` |
+| `pi.setActiveTools` | `ExtensionAPI.setActiveTools` | implemented `api.setActiveTools` | implemented `Context.SetActiveTools` | implemented `Context::set_active_tools` | implemented `Context.set_active_tools` | implemented `pig:ctx-set-active-tools` |
+| `pi.getCommands` | `ExtensionAPI.getCommands` | implemented `api.getCommands` | implemented `Context.GetCommands` | implemented `Context::get_commands` | implemented `Context.get_commands` | implemented `pig:ctx-get-commands` |
 
 ## pi (ExtensionAPI) arguments
 
-| Surface | Pi declaration | Node runtime | Go | Rust | Python |
-|---|---|---|---|---|---|
-| `pi.getCommands → name` | `ExtensionAPI.getCommands → name` | implemented `api.getCommands` | implemented `CommandInfo.Name` | implemented `CommandInfo.name` | implemented `Context.get_commands` |
-| `pi.getCommands → description` | `ExtensionAPI.getCommands → description` | implemented `api.getCommands` | implemented `CommandInfo.Description` | implemented `CommandInfo.description` | implemented `Context.get_commands` |
-| `pi.getCommands → source` | `ExtensionAPI.getCommands → source` | implemented `api.getCommands` | implemented `CommandInfo.Source` | implemented `CommandInfo.source` | implemented `Context.get_commands` |
-| `pi.getCommands → sourceInfo` | `ExtensionAPI.getCommands → sourceInfo` | implemented `api.getCommands` | implemented `CommandInfo.SourceInfo` | implemented `CommandInfo.source_info` | implemented `Context.get_commands` |
+| Surface | Pi declaration | Node runtime | Go | Rust | Python | Lisp |
+|---|---|---|---|---|---|---|
+| `pi.getCommands → name` | `ExtensionAPI.getCommands → name` | implemented `api.getCommands` | implemented `CommandInfo.Name` | implemented `CommandInfo.name` | implemented `Context.get_commands` | implemented `pig:ctx-get-commands` |
+| `pi.getCommands → description` | `ExtensionAPI.getCommands → description` | implemented `api.getCommands` | implemented `CommandInfo.Description` | implemented `CommandInfo.description` | implemented `Context.get_commands` | implemented `pig:ctx-get-commands` |
+| `pi.getCommands → source` | `ExtensionAPI.getCommands → source` | implemented `api.getCommands` | implemented `CommandInfo.Source` | implemented `CommandInfo.source` | implemented `Context.get_commands` | implemented `pig:ctx-get-commands` |
+| `pi.getCommands → sourceInfo` | `ExtensionAPI.getCommands → sourceInfo` | implemented `api.getCommands` | implemented `CommandInfo.SourceInfo` | implemented `CommandInfo.source_info` | implemented `Context.get_commands` | implemented `pig:ctx-get-commands` |
 
 ## pi (ExtensionAPI)
 
-| Surface | Pi declaration | Node runtime | Go | Rust | Python |
-|---|---|---|---|---|---|
-| `pi.setModel` | `ExtensionAPI.setModel` | implemented `api.setModel` | implemented `Context.SetModel` | implemented `Context::set_model` | implemented `Context.set_model` |
-| `pi.getThinkingLevel` | `ExtensionAPI.getThinkingLevel` | implemented `api.getThinkingLevel` | implemented `Context.GetThinkingLevel` | implemented `Context::get_thinking_level` | implemented `Context.get_thinking_level` |
-| `pi.setThinkingLevel` | `ExtensionAPI.setThinkingLevel` | implemented `api.setThinkingLevel` | implemented `Context.SetThinkingLevel` | implemented `Context::set_thinking_level` | implemented `Context.set_thinking_level` |
-| `pi.registerProvider` | `ExtensionAPI.registerProvider` | stand-in/partial `api.registerProvider`: config registration reaches the host; native callback providers remain process-local | stand-in/partial `Extension.RegisterProvider`: registration declaration is applied at load; use ModelRegistry.RegisterProvider for live config registration | stand-in/partial `Extension::register_provider`: registration declaration is applied at load; use ModelRegistry.register_provider for live config registration | stand-in/partial `Extension.register_provider`: registration declaration is applied at load; use ModelRegistry.register_provider for live config registration |
-| `pi.unregisterProvider` | `ExtensionAPI.unregisterProvider` | stand-in/partial `api.unregisterProvider`: config removal reaches the host; native providers remain process-local | stand-in/partial `Extension.UnregisterProvider`: registration declarations are removed at load; live config removal is exposed by ModelRegistry.UnregisterProvider | stand-in/partial `Extension::unregister_provider`: registration declarations are removed at load; live config removal is exposed by ModelRegistry.unregister_provider | stand-in/partial `Extension.unregister_provider`: registration declarations are removed at load; live config removal is exposed by ModelRegistry.unregister_provider |
-| `pi.registerMcpServer` | `ExtensionAPI.registerMcpServer` | implemented `api.registerMcpServer` | implemented `Extension.RegisterMcpServer` | implemented `Extension::register_mcp_server` | implemented `Extension.register_mcp_server` |
-| `pi.unregisterMcpServer` | `ExtensionAPI.unregisterMcpServer` | implemented `api.unregisterMcpServer` | implemented `Extension.UnregisterMcpServer` | implemented `Extension::unregister_mcp_server` | implemented `Extension.unregister_mcp_server` |
-| `pi.getMcpServers` | `ExtensionAPI.getMcpServers` | implemented `api.getMcpServers` | implemented `Context.GetMcpServers` | implemented `Context::get_mcp_servers` | implemented `Context.get_mcp_servers` |
-| `pi.registerVirtualModel` | `ExtensionAPI.registerVirtualModel` | implemented `api.registerVirtualModel` | implemented `Extension.RegisterVirtualModel` | implemented `Extension::register_virtual_model` | implemented `Extension.register_virtual_model` |
-| `pi.unregisterVirtualModel` | `ExtensionAPI.unregisterVirtualModel` | implemented `api.unregisterVirtualModel` | implemented `Extension.UnregisterVirtualModel` | implemented `Extension::unregister_virtual_model` | implemented `Extension.unregister_virtual_model` |
+| Surface | Pi declaration | Node runtime | Go | Rust | Python | Lisp |
+|---|---|---|---|---|---|---|
+| `pi.setModel` | `ExtensionAPI.setModel` | implemented `api.setModel` | implemented `Context.SetModel` | implemented `Context::set_model` | implemented `Context.set_model` | implemented `pig:ctx-set-model` |
+| `pi.getThinkingLevel` | `ExtensionAPI.getThinkingLevel` | implemented `api.getThinkingLevel` | implemented `Context.GetThinkingLevel` | implemented `Context::get_thinking_level` | implemented `Context.get_thinking_level` | implemented `pig:ctx-get-thinking-level` |
+| `pi.setThinkingLevel` | `ExtensionAPI.setThinkingLevel` | implemented `api.setThinkingLevel` | implemented `Context.SetThinkingLevel` | implemented `Context::set_thinking_level` | implemented `Context.set_thinking_level` | implemented `pig:ctx-set-thinking-level` |
+| `pi.registerProvider` | `ExtensionAPI.registerProvider` | stand-in/partial `api.registerProvider`: config registration reaches the host; native callback providers remain process-local | stand-in/partial `Extension.RegisterProvider`: registration declaration is applied at load; use ModelRegistry.RegisterProvider for live config registration | stand-in/partial `Extension::register_provider`: registration declaration is applied at load; use ModelRegistry.register_provider for live config registration | stand-in/partial `Extension.register_provider`: registration declaration is applied at load; use ModelRegistry.register_provider for live config registration | implemented `pig:register-provider` |
+| `pi.unregisterProvider` | `ExtensionAPI.unregisterProvider` | stand-in/partial `api.unregisterProvider`: config removal reaches the host; native providers remain process-local | stand-in/partial `Extension.UnregisterProvider`: registration declarations are removed at load; live config removal is exposed by ModelRegistry.UnregisterProvider | stand-in/partial `Extension::unregister_provider`: registration declarations are removed at load; live config removal is exposed by ModelRegistry.unregister_provider | stand-in/partial `Extension.unregister_provider`: registration declarations are removed at load; live config removal is exposed by ModelRegistry.unregister_provider | implemented `pig:unregister-provider` |
+| `pi.registerMcpServer` | `ExtensionAPI.registerMcpServer` | implemented `api.registerMcpServer` | implemented `Extension.RegisterMcpServer` | implemented `Extension::register_mcp_server` | implemented `Extension.register_mcp_server` | implemented `pig:register-mcp-server` |
+| `pi.unregisterMcpServer` | `ExtensionAPI.unregisterMcpServer` | implemented `api.unregisterMcpServer` | implemented `Extension.UnregisterMcpServer` | implemented `Extension::unregister_mcp_server` | implemented `Extension.unregister_mcp_server` | implemented `pig:unregister-mcp-server` |
+| `pi.getMcpServers` | `ExtensionAPI.getMcpServers` | implemented `api.getMcpServers` | implemented `Context.GetMcpServers` | implemented `Context::get_mcp_servers` | implemented `Context.get_mcp_servers` | implemented `pig:ctx-get-mcp-servers` |
+| `pi.registerVirtualModel` | `ExtensionAPI.registerVirtualModel` | implemented `api.registerVirtualModel` | implemented `Extension.RegisterVirtualModel` | implemented `Extension::register_virtual_model` | implemented `Extension.register_virtual_model` | implemented `pig:register-virtual-model` |
+| `pi.unregisterVirtualModel` | `ExtensionAPI.unregisterVirtualModel` | implemented `api.unregisterVirtualModel` | implemented `Extension.UnregisterVirtualModel` | implemented `Extension::unregister_virtual_model` | implemented `Extension.unregister_virtual_model` | implemented `pig:unregister-virtual-model` |
 
 ## pi.events (EventBus)
 
-| Surface | Pi declaration | Node runtime | Go | Rust | Python |
-|---|---|---|---|---|---|
-| `pi.events.emit` | `EventBus.emit` | implemented `api.events.emit` | implemented `EventBus.Emit` | implemented `EventBus::emit` | implemented `EventBus.emit` |
-| `pi.events.on` | `EventBus.on` | implemented `api.events.on` | implemented `EventBus.On` | implemented `EventBus::on` | implemented `EventBus.on` |
+| Surface | Pi declaration | Node runtime | Go | Rust | Python | Lisp |
+|---|---|---|---|---|---|---|
+| `pi.events.emit` | `EventBus.emit` | implemented `api.events.emit` | implemented `EventBus.Emit` | implemented `EventBus::emit` | implemented `EventBus.emit` | implemented `pig:events-emit` |
+| `pi.events.on` | `EventBus.on` | implemented `api.events.on` | implemented `EventBus.On` | implemented `EventBus::on` | implemented `EventBus.on` | implemented `pig:events-on` |
 
 ## Events
 
-| Surface | Pi declaration | Node runtime | Go | Rust | Python |
-|---|---|---|---|---|---|
-| `pi.on("project_trust")` | `ExtensionAPI.on` | implemented `api.on` | implemented `EventProjectTrust` | implemented `EVENT_PROJECT_TRUST` | implemented `EVENT_PROJECT_TRUST` |
+| Surface | Pi declaration | Node runtime | Go | Rust | Python | Lisp |
+|---|---|---|---|---|---|---|
+| `pi.on("project_trust")` | `ExtensionAPI.on` | implemented `api.on` | implemented `EventProjectTrust` | implemented `EVENT_PROJECT_TRUST` | implemented `EVENT_PROJECT_TRUST` | implemented `pig:on` |
 
 ## Event payloads
 
-| Surface | Pi declaration | Node runtime | Go | Rust | Python |
-|---|---|---|---|---|---|
-| `project_trust event.cwd` | `ProjectTrustEvent.cwd` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
+| Surface | Pi declaration | Node runtime | Go | Rust | Python | Lisp |
+|---|---|---|---|---|---|---|
+| `project_trust event.cwd` | `ProjectTrustEvent.cwd` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` | implemented `pig:on` |
 
 ## Event results
 
-| Surface | Pi declaration | Node runtime | Go | Rust | Python |
-|---|---|---|---|---|---|
-| `project_trust return.trusted` | `ProjectTrustEventResult.trusted` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
-| `project_trust return.remember` | `ProjectTrustEventResult.remember` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
+| Surface | Pi declaration | Node runtime | Go | Rust | Python | Lisp |
+|---|---|---|---|---|---|---|
+| `project_trust return.trusted` | `ProjectTrustEventResult.trusted` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` | implemented `pig:on` |
+| `project_trust return.remember` | `ProjectTrustEventResult.remember` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` | implemented `pig:on` |
 
 ## Events
 
-| Surface | Pi declaration | Node runtime | Go | Rust | Python |
-|---|---|---|---|---|---|
-| `pi.on("resources_discover")` | `ExtensionAPI.on` | implemented `api.on` | implemented `EventResourcesDiscover` | implemented `EVENT_RESOURCES_DISCOVER` | implemented `EVENT_RESOURCES_DISCOVER` |
+| Surface | Pi declaration | Node runtime | Go | Rust | Python | Lisp |
+|---|---|---|---|---|---|---|
+| `pi.on("resources_discover")` | `ExtensionAPI.on` | implemented `api.on` | implemented `EventResourcesDiscover` | implemented `EVENT_RESOURCES_DISCOVER` | implemented `EVENT_RESOURCES_DISCOVER` | implemented `pig:on` |
 
 ## Event payloads
 
-| Surface | Pi declaration | Node runtime | Go | Rust | Python |
-|---|---|---|---|---|---|
-| `resources_discover event.cwd` | `ResourcesDiscoverEvent.cwd` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
-| `resources_discover event.reason` | `ResourcesDiscoverEvent.reason` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
+| Surface | Pi declaration | Node runtime | Go | Rust | Python | Lisp |
+|---|---|---|---|---|---|---|
+| `resources_discover event.cwd` | `ResourcesDiscoverEvent.cwd` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` | implemented `pig:on` |
+| `resources_discover event.reason` | `ResourcesDiscoverEvent.reason` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` | implemented `pig:on` |
 
 ## Event results
 
-| Surface | Pi declaration | Node runtime | Go | Rust | Python |
-|---|---|---|---|---|---|
-| `resources_discover return.skillPaths` | `ResourcesDiscoverResult.skillPaths` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
-| `resources_discover return.promptPaths` | `ResourcesDiscoverResult.promptPaths` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
-| `resources_discover return.themePaths` | `ResourcesDiscoverResult.themePaths` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
+| Surface | Pi declaration | Node runtime | Go | Rust | Python | Lisp |
+|---|---|---|---|---|---|---|
+| `resources_discover return.skillPaths` | `ResourcesDiscoverResult.skillPaths` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` | implemented `pig:on` |
+| `resources_discover return.promptPaths` | `ResourcesDiscoverResult.promptPaths` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` | implemented `pig:on` |
+| `resources_discover return.themePaths` | `ResourcesDiscoverResult.themePaths` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` | implemented `pig:on` |
 
 ## Events
 
-| Surface | Pi declaration | Node runtime | Go | Rust | Python |
-|---|---|---|---|---|---|
-| `pi.on("session_start")` | `ExtensionAPI.on` | implemented `api.on` | implemented `EventSessionStart` | implemented `EVENT_SESSION_START` | implemented `EVENT_SESSION_START` |
+| Surface | Pi declaration | Node runtime | Go | Rust | Python | Lisp |
+|---|---|---|---|---|---|---|
+| `pi.on("session_start")` | `ExtensionAPI.on` | implemented `api.on` | implemented `EventSessionStart` | implemented `EVENT_SESSION_START` | implemented `EVENT_SESSION_START` | implemented `pig:on` |
 
 ## Event payloads
 
-| Surface | Pi declaration | Node runtime | Go | Rust | Python |
-|---|---|---|---|---|---|
-| `session_start event.reason` | `SessionStartEvent.reason` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
-| `session_start event.previousSessionFile` | `SessionStartEvent.previousSessionFile` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
+| Surface | Pi declaration | Node runtime | Go | Rust | Python | Lisp |
+|---|---|---|---|---|---|---|
+| `session_start event.reason` | `SessionStartEvent.reason` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` | implemented `pig:on` |
+| `session_start event.previousSessionFile` | `SessionStartEvent.previousSessionFile` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` | implemented `pig:on` |
 
 ## Events
 
-| Surface | Pi declaration | Node runtime | Go | Rust | Python |
-|---|---|---|---|---|---|
-| `pi.on("session_info_changed")` | `ExtensionAPI.on` | implemented `api.on` | implemented `EventSessionInfoChanged` | implemented `EVENT_SESSION_INFO_CHANGED` | implemented `EVENT_SESSION_INFO_CHANGED` |
+| Surface | Pi declaration | Node runtime | Go | Rust | Python | Lisp |
+|---|---|---|---|---|---|---|
+| `pi.on("session_info_changed")` | `ExtensionAPI.on` | implemented `api.on` | implemented `EventSessionInfoChanged` | implemented `EVENT_SESSION_INFO_CHANGED` | implemented `EVENT_SESSION_INFO_CHANGED` | implemented `pig:on` |
 
 ## Event payloads
 
-| Surface | Pi declaration | Node runtime | Go | Rust | Python |
-|---|---|---|---|---|---|
-| `session_info_changed event.name` | `SessionInfoChangedEvent.name` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
+| Surface | Pi declaration | Node runtime | Go | Rust | Python | Lisp |
+|---|---|---|---|---|---|---|
+| `session_info_changed event.name` | `SessionInfoChangedEvent.name` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` | implemented `pig:on` |
 
 ## Events
 
-| Surface | Pi declaration | Node runtime | Go | Rust | Python |
-|---|---|---|---|---|---|
-| `pi.on("session_before_switch")` | `ExtensionAPI.on` | implemented `api.on` | implemented `EventSessionBeforeSwitch` | implemented `EVENT_SESSION_BEFORE_SWITCH` | implemented `EVENT_SESSION_BEFORE_SWITCH` |
+| Surface | Pi declaration | Node runtime | Go | Rust | Python | Lisp |
+|---|---|---|---|---|---|---|
+| `pi.on("session_before_switch")` | `ExtensionAPI.on` | implemented `api.on` | implemented `EventSessionBeforeSwitch` | implemented `EVENT_SESSION_BEFORE_SWITCH` | implemented `EVENT_SESSION_BEFORE_SWITCH` | implemented `pig:on` |
 
 ## Event payloads
 
-| Surface | Pi declaration | Node runtime | Go | Rust | Python |
-|---|---|---|---|---|---|
-| `session_before_switch event.reason` | `SessionBeforeSwitchEvent.reason` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
-| `session_before_switch event.targetSessionFile` | `SessionBeforeSwitchEvent.targetSessionFile` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
+| Surface | Pi declaration | Node runtime | Go | Rust | Python | Lisp |
+|---|---|---|---|---|---|---|
+| `session_before_switch event.reason` | `SessionBeforeSwitchEvent.reason` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` | implemented `pig:on` |
+| `session_before_switch event.targetSessionFile` | `SessionBeforeSwitchEvent.targetSessionFile` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` | implemented `pig:on` |
 
 ## Event results
 
-| Surface | Pi declaration | Node runtime | Go | Rust | Python |
-|---|---|---|---|---|---|
-| `session_before_switch return.cancel` | `SessionBeforeSwitchResult.cancel` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
+| Surface | Pi declaration | Node runtime | Go | Rust | Python | Lisp |
+|---|---|---|---|---|---|---|
+| `session_before_switch return.cancel` | `SessionBeforeSwitchResult.cancel` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` | implemented `pig:on` |
 
 ## Events
 
-| Surface | Pi declaration | Node runtime | Go | Rust | Python |
-|---|---|---|---|---|---|
-| `pi.on("session_before_fork")` | `ExtensionAPI.on` | implemented `api.on` | implemented `EventSessionBeforeFork` | implemented `EVENT_SESSION_BEFORE_FORK` | implemented `EVENT_SESSION_BEFORE_FORK` |
+| Surface | Pi declaration | Node runtime | Go | Rust | Python | Lisp |
+|---|---|---|---|---|---|---|
+| `pi.on("session_before_fork")` | `ExtensionAPI.on` | implemented `api.on` | implemented `EventSessionBeforeFork` | implemented `EVENT_SESSION_BEFORE_FORK` | implemented `EVENT_SESSION_BEFORE_FORK` | implemented `pig:on` |
 
 ## Event payloads
 
-| Surface | Pi declaration | Node runtime | Go | Rust | Python |
-|---|---|---|---|---|---|
-| `session_before_fork event.entryId` | `SessionBeforeForkEvent.entryId` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
-| `session_before_fork event.position` | `SessionBeforeForkEvent.position` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
+| Surface | Pi declaration | Node runtime | Go | Rust | Python | Lisp |
+|---|---|---|---|---|---|---|
+| `session_before_fork event.entryId` | `SessionBeforeForkEvent.entryId` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` | implemented `pig:on` |
+| `session_before_fork event.position` | `SessionBeforeForkEvent.position` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` | implemented `pig:on` |
 
 ## Event results
 
-| Surface | Pi declaration | Node runtime | Go | Rust | Python |
-|---|---|---|---|---|---|
-| `session_before_fork return.cancel` | `SessionBeforeForkResult.cancel` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
-| `session_before_fork return.skipConversationRestore` | `SessionBeforeForkResult.skipConversationRestore` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
+| Surface | Pi declaration | Node runtime | Go | Rust | Python | Lisp |
+|---|---|---|---|---|---|---|
+| `session_before_fork return.cancel` | `SessionBeforeForkResult.cancel` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` | implemented `pig:on` |
+| `session_before_fork return.skipConversationRestore` | `SessionBeforeForkResult.skipConversationRestore` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` | implemented `pig:on` |
 
 ## Events
 
-| Surface | Pi declaration | Node runtime | Go | Rust | Python |
-|---|---|---|---|---|---|
-| `pi.on("session_before_compact")` | `ExtensionAPI.on` | implemented `api.on` | implemented `EventSessionBeforeCompact` | implemented `EVENT_SESSION_BEFORE_COMPACT` | implemented `EVENT_SESSION_BEFORE_COMPACT` |
+| Surface | Pi declaration | Node runtime | Go | Rust | Python | Lisp |
+|---|---|---|---|---|---|---|
+| `pi.on("session_before_compact")` | `ExtensionAPI.on` | implemented `api.on` | implemented `EventSessionBeforeCompact` | implemented `EVENT_SESSION_BEFORE_COMPACT` | implemented `EVENT_SESSION_BEFORE_COMPACT` | implemented `pig:on` |
 
 ## Event payloads
 
-| Surface | Pi declaration | Node runtime | Go | Rust | Python |
-|---|---|---|---|---|---|
-| `session_before_compact event.preparation` | `SessionBeforeCompactEvent.preparation` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
-| `session_before_compact event.branchEntries` | `SessionBeforeCompactEvent.branchEntries` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
-| `session_before_compact event.customInstructions` | `SessionBeforeCompactEvent.customInstructions` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
-| `session_before_compact event.reason` | `SessionBeforeCompactEvent.reason` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
-| `session_before_compact event.willRetry` | `SessionBeforeCompactEvent.willRetry` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
-| `session_before_compact event.signal` | `SessionBeforeCompactEvent.signal` | stand-in/partial `read:event.signal`: event.signal is the handler request's AbortSignal, aborted when the host cancels the request | stand-in/partial `Context.Done`: the handler's request cancellation stands in for the AbortSignal, which cannot cross the process boundary | stand-in/partial `Context::is_cancelled`: the handler's request cancellation stands in for the AbortSignal, which cannot cross the process boundary | stand-in/partial `Context.is_cancelled`: the handler's request cancellation stands in for the AbortSignal, which cannot cross the process boundary |
+| Surface | Pi declaration | Node runtime | Go | Rust | Python | Lisp |
+|---|---|---|---|---|---|---|
+| `session_before_compact event.preparation` | `SessionBeforeCompactEvent.preparation` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` | implemented `pig:on` |
+| `session_before_compact event.branchEntries` | `SessionBeforeCompactEvent.branchEntries` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` | implemented `pig:on` |
+| `session_before_compact event.customInstructions` | `SessionBeforeCompactEvent.customInstructions` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` | implemented `pig:on` |
+| `session_before_compact event.reason` | `SessionBeforeCompactEvent.reason` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` | implemented `pig:on` |
+| `session_before_compact event.willRetry` | `SessionBeforeCompactEvent.willRetry` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` | implemented `pig:on` |
+| `session_before_compact event.signal` | `SessionBeforeCompactEvent.signal` | stand-in/partial `read:event.signal`: event.signal is the handler request's AbortSignal, aborted when the host cancels the request | stand-in/partial `Context.Done`: the handler's request cancellation stands in for the AbortSignal, which cannot cross the process boundary | stand-in/partial `Context::is_cancelled`: the handler's request cancellation stands in for the AbortSignal, which cannot cross the process boundary | stand-in/partial `Context.is_cancelled`: the handler's request cancellation stands in for the AbortSignal, which cannot cross the process boundary | stand-in/partial `pig:ctx-cancelled-p`: the handler's request cancellation stands in for the AbortSignal, which cannot cross the process boundary |
 
 ## Event results
 
-| Surface | Pi declaration | Node runtime | Go | Rust | Python |
-|---|---|---|---|---|---|
-| `session_before_compact return.cancel` | `SessionBeforeCompactResult.cancel` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
-| `session_before_compact return.compaction` | `SessionBeforeCompactResult.compaction` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
+| Surface | Pi declaration | Node runtime | Go | Rust | Python | Lisp |
+|---|---|---|---|---|---|---|
+| `session_before_compact return.cancel` | `SessionBeforeCompactResult.cancel` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` | implemented `pig:on` |
+| `session_before_compact return.compaction` | `SessionBeforeCompactResult.compaction` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` | implemented `pig:on` |
 
 ## Events
 
-| Surface | Pi declaration | Node runtime | Go | Rust | Python |
-|---|---|---|---|---|---|
-| `pi.on("session_compact")` | `ExtensionAPI.on` | implemented `api.on` | implemented `EventSessionCompact` | implemented `EVENT_SESSION_COMPACT` | implemented `EVENT_SESSION_COMPACT` |
+| Surface | Pi declaration | Node runtime | Go | Rust | Python | Lisp |
+|---|---|---|---|---|---|---|
+| `pi.on("session_compact")` | `ExtensionAPI.on` | implemented `api.on` | implemented `EventSessionCompact` | implemented `EVENT_SESSION_COMPACT` | implemented `EVENT_SESSION_COMPACT` | implemented `pig:on` |
 
 ## Event payloads
 
-| Surface | Pi declaration | Node runtime | Go | Rust | Python |
-|---|---|---|---|---|---|
-| `session_compact event.compactionEntry` | `SessionCompactEvent.compactionEntry` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
-| `session_compact event.fromExtension` | `SessionCompactEvent.fromExtension` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
-| `session_compact event.reason` | `SessionCompactEvent.reason` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
-| `session_compact event.willRetry` | `SessionCompactEvent.willRetry` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
+| Surface | Pi declaration | Node runtime | Go | Rust | Python | Lisp |
+|---|---|---|---|---|---|---|
+| `session_compact event.compactionEntry` | `SessionCompactEvent.compactionEntry` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` | implemented `pig:on` |
+| `session_compact event.fromExtension` | `SessionCompactEvent.fromExtension` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` | implemented `pig:on` |
+| `session_compact event.reason` | `SessionCompactEvent.reason` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` | implemented `pig:on` |
+| `session_compact event.willRetry` | `SessionCompactEvent.willRetry` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` | implemented `pig:on` |
 
 ## Events
 
-| Surface | Pi declaration | Node runtime | Go | Rust | Python |
-|---|---|---|---|---|---|
-| `pi.on("session_compact_failed")` | `ExtensionAPI.on` | implemented `api.on` | implemented `EventSessionCompactFailed` | implemented `EVENT_SESSION_COMPACT_FAILED` | implemented `EVENT_SESSION_COMPACT_FAILED` |
+| Surface | Pi declaration | Node runtime | Go | Rust | Python | Lisp |
+|---|---|---|---|---|---|---|
+| `pi.on("session_compact_failed")` | `ExtensionAPI.on` | implemented `api.on` | implemented `EventSessionCompactFailed` | implemented `EVENT_SESSION_COMPACT_FAILED` | implemented `EVENT_SESSION_COMPACT_FAILED` | implemented `pig:on` |
 
 ## Event payloads
 
-| Surface | Pi declaration | Node runtime | Go | Rust | Python |
-|---|---|---|---|---|---|
-| `session_compact_failed event.reason` | `SessionCompactFailedEvent.reason` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
-| `session_compact_failed event.errorMessage` | `SessionCompactFailedEvent.errorMessage` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
-| `session_compact_failed event.aborted` | `SessionCompactFailedEvent.aborted` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
-| `session_compact_failed event.willRetry` | `SessionCompactFailedEvent.willRetry` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
-| `session_compact_failed event.fromExtension` | `SessionCompactFailedEvent.fromExtension` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
+| Surface | Pi declaration | Node runtime | Go | Rust | Python | Lisp |
+|---|---|---|---|---|---|---|
+| `session_compact_failed event.reason` | `SessionCompactFailedEvent.reason` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` | implemented `pig:on` |
+| `session_compact_failed event.errorMessage` | `SessionCompactFailedEvent.errorMessage` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` | implemented `pig:on` |
+| `session_compact_failed event.aborted` | `SessionCompactFailedEvent.aborted` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` | implemented `pig:on` |
+| `session_compact_failed event.willRetry` | `SessionCompactFailedEvent.willRetry` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` | implemented `pig:on` |
+| `session_compact_failed event.fromExtension` | `SessionCompactFailedEvent.fromExtension` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` | implemented `pig:on` |
 
 ## Events
 
-| Surface | Pi declaration | Node runtime | Go | Rust | Python |
-|---|---|---|---|---|---|
-| `pi.on("session_shutdown")` | `ExtensionAPI.on` | implemented `api.on` | implemented `EventSessionShutdown` | implemented `EVENT_SESSION_SHUTDOWN` | implemented `EVENT_SESSION_SHUTDOWN` |
+| Surface | Pi declaration | Node runtime | Go | Rust | Python | Lisp |
+|---|---|---|---|---|---|---|
+| `pi.on("session_shutdown")` | `ExtensionAPI.on` | implemented `api.on` | implemented `EventSessionShutdown` | implemented `EVENT_SESSION_SHUTDOWN` | implemented `EVENT_SESSION_SHUTDOWN` | implemented `pig:on` |
 
 ## Event payloads
 
-| Surface | Pi declaration | Node runtime | Go | Rust | Python |
-|---|---|---|---|---|---|
-| `session_shutdown event.reason` | `SessionShutdownEvent.reason` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
-| `session_shutdown event.targetSessionFile` | `SessionShutdownEvent.targetSessionFile` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
+| Surface | Pi declaration | Node runtime | Go | Rust | Python | Lisp |
+|---|---|---|---|---|---|---|
+| `session_shutdown event.reason` | `SessionShutdownEvent.reason` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` | implemented `pig:on` |
+| `session_shutdown event.targetSessionFile` | `SessionShutdownEvent.targetSessionFile` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` | implemented `pig:on` |
 
 ## Events
 
-| Surface | Pi declaration | Node runtime | Go | Rust | Python |
-|---|---|---|---|---|---|
-| `pi.on("mcp_servers_change")` | `ExtensionAPI.on` | implemented `api.on` | implemented `EventMcpServersChange` | implemented `EVENT_MCP_SERVERS_CHANGE` | implemented `EVENT_MCP_SERVERS_CHANGE` |
+| Surface | Pi declaration | Node runtime | Go | Rust | Python | Lisp |
+|---|---|---|---|---|---|---|
+| `pi.on("mcp_servers_change")` | `ExtensionAPI.on` | implemented `api.on` | implemented `EventMcpServersChange` | implemented `EVENT_MCP_SERVERS_CHANGE` | implemented `EVENT_MCP_SERVERS_CHANGE` | implemented `pig:on` |
 
 ## Event payloads
 
-| Surface | Pi declaration | Node runtime | Go | Rust | Python |
-|---|---|---|---|---|---|
-| `mcp_servers_change event.servers` | `McpServersChangeEvent.servers` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
+| Surface | Pi declaration | Node runtime | Go | Rust | Python | Lisp |
+|---|---|---|---|---|---|---|
+| `mcp_servers_change event.servers` | `McpServersChangeEvent.servers` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` | implemented `pig:on` |
 
 ## Events
 
-| Surface | Pi declaration | Node runtime | Go | Rust | Python |
-|---|---|---|---|---|---|
-| `pi.on("session_before_tree")` | `ExtensionAPI.on` | implemented `api.on` | implemented `EventSessionBeforeTree` | implemented `EVENT_SESSION_BEFORE_TREE` | implemented `EVENT_SESSION_BEFORE_TREE` |
+| Surface | Pi declaration | Node runtime | Go | Rust | Python | Lisp |
+|---|---|---|---|---|---|---|
+| `pi.on("session_before_tree")` | `ExtensionAPI.on` | implemented `api.on` | implemented `EventSessionBeforeTree` | implemented `EVENT_SESSION_BEFORE_TREE` | implemented `EVENT_SESSION_BEFORE_TREE` | implemented `pig:on` |
 
 ## Event payloads
 
-| Surface | Pi declaration | Node runtime | Go | Rust | Python |
-|---|---|---|---|---|---|
-| `session_before_tree event.preparation` | `SessionBeforeTreeEvent.preparation` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
-| `session_before_tree event.signal` | `SessionBeforeTreeEvent.signal` | stand-in/partial `read:event.signal`: event.signal is the handler request's AbortSignal, aborted when the host cancels the request | stand-in/partial `Context.Done`: the handler's request cancellation stands in for the AbortSignal, which cannot cross the process boundary | stand-in/partial `Context::is_cancelled`: the handler's request cancellation stands in for the AbortSignal, which cannot cross the process boundary | stand-in/partial `Context.is_cancelled`: the handler's request cancellation stands in for the AbortSignal, which cannot cross the process boundary |
+| Surface | Pi declaration | Node runtime | Go | Rust | Python | Lisp |
+|---|---|---|---|---|---|---|
+| `session_before_tree event.preparation` | `SessionBeforeTreeEvent.preparation` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` | implemented `pig:on` |
+| `session_before_tree event.signal` | `SessionBeforeTreeEvent.signal` | stand-in/partial `read:event.signal`: event.signal is the handler request's AbortSignal, aborted when the host cancels the request | stand-in/partial `Context.Done`: the handler's request cancellation stands in for the AbortSignal, which cannot cross the process boundary | stand-in/partial `Context::is_cancelled`: the handler's request cancellation stands in for the AbortSignal, which cannot cross the process boundary | stand-in/partial `Context.is_cancelled`: the handler's request cancellation stands in for the AbortSignal, which cannot cross the process boundary | stand-in/partial `pig:ctx-cancelled-p`: the handler's request cancellation stands in for the AbortSignal, which cannot cross the process boundary |
 
 ## Event results
 
-| Surface | Pi declaration | Node runtime | Go | Rust | Python |
-|---|---|---|---|---|---|
-| `session_before_tree return.cancel` | `SessionBeforeTreeResult.cancel` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
-| `session_before_tree return.summary` | `SessionBeforeTreeResult.summary` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
-| `session_before_tree return.customInstructions` | `SessionBeforeTreeResult.customInstructions` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
-| `session_before_tree return.replaceInstructions` | `SessionBeforeTreeResult.replaceInstructions` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
-| `session_before_tree return.label` | `SessionBeforeTreeResult.label` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
+| Surface | Pi declaration | Node runtime | Go | Rust | Python | Lisp |
+|---|---|---|---|---|---|---|
+| `session_before_tree return.cancel` | `SessionBeforeTreeResult.cancel` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` | implemented `pig:on` |
+| `session_before_tree return.summary` | `SessionBeforeTreeResult.summary` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` | implemented `pig:on` |
+| `session_before_tree return.customInstructions` | `SessionBeforeTreeResult.customInstructions` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` | implemented `pig:on` |
+| `session_before_tree return.replaceInstructions` | `SessionBeforeTreeResult.replaceInstructions` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` | implemented `pig:on` |
+| `session_before_tree return.label` | `SessionBeforeTreeResult.label` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` | implemented `pig:on` |
 
 ## Events
 
-| Surface | Pi declaration | Node runtime | Go | Rust | Python |
-|---|---|---|---|---|---|
-| `pi.on("session_tree")` | `ExtensionAPI.on` | implemented `api.on` | implemented `EventSessionTree` | implemented `EVENT_SESSION_TREE` | implemented `EVENT_SESSION_TREE` |
+| Surface | Pi declaration | Node runtime | Go | Rust | Python | Lisp |
+|---|---|---|---|---|---|---|
+| `pi.on("session_tree")` | `ExtensionAPI.on` | implemented `api.on` | implemented `EventSessionTree` | implemented `EVENT_SESSION_TREE` | implemented `EVENT_SESSION_TREE` | implemented `pig:on` |
 
 ## Event payloads
 
-| Surface | Pi declaration | Node runtime | Go | Rust | Python |
-|---|---|---|---|---|---|
-| `session_tree event.newLeafId` | `SessionTreeEvent.newLeafId` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
-| `session_tree event.oldLeafId` | `SessionTreeEvent.oldLeafId` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
-| `session_tree event.summaryEntry` | `SessionTreeEvent.summaryEntry` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
-| `session_tree event.fromExtension` | `SessionTreeEvent.fromExtension` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
+| Surface | Pi declaration | Node runtime | Go | Rust | Python | Lisp |
+|---|---|---|---|---|---|---|
+| `session_tree event.newLeafId` | `SessionTreeEvent.newLeafId` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` | implemented `pig:on` |
+| `session_tree event.oldLeafId` | `SessionTreeEvent.oldLeafId` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` | implemented `pig:on` |
+| `session_tree event.summaryEntry` | `SessionTreeEvent.summaryEntry` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` | implemented `pig:on` |
+| `session_tree event.fromExtension` | `SessionTreeEvent.fromExtension` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` | implemented `pig:on` |
 
 ## Events
 
-| Surface | Pi declaration | Node runtime | Go | Rust | Python |
-|---|---|---|---|---|---|
-| `pi.on("context")` | `ExtensionAPI.on` | implemented `api.on` | implemented `EventContext` | implemented `EVENT_CONTEXT` | implemented `EVENT_CONTEXT` |
+| Surface | Pi declaration | Node runtime | Go | Rust | Python | Lisp |
+|---|---|---|---|---|---|---|
+| `pi.on("context")` | `ExtensionAPI.on` | implemented `api.on` | implemented `EventContext` | implemented `EVENT_CONTEXT` | implemented `EVENT_CONTEXT` | implemented `pig:on` |
 
 ## Event payloads
 
-| Surface | Pi declaration | Node runtime | Go | Rust | Python |
-|---|---|---|---|---|---|
-| `context event.messages` | `ContextEvent.messages` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
+| Surface | Pi declaration | Node runtime | Go | Rust | Python | Lisp |
+|---|---|---|---|---|---|---|
+| `context event.messages` | `ContextEvent.messages` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` | implemented `pig:on` |
 
 ## Event results
 
-| Surface | Pi declaration | Node runtime | Go | Rust | Python |
-|---|---|---|---|---|---|
-| `context return.messages` | `ContextEventResult.messages` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
+| Surface | Pi declaration | Node runtime | Go | Rust | Python | Lisp |
+|---|---|---|---|---|---|---|
+| `context return.messages` | `ContextEventResult.messages` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` | implemented `pig:on` |
 
 ## Events
 
-| Surface | Pi declaration | Node runtime | Go | Rust | Python |
-|---|---|---|---|---|---|
-| `pi.on("context_with_system")` | `ExtensionAPI.on` | implemented `api.on` | implemented `EventContextWithSystem` | implemented `EVENT_CONTEXT_WITH_SYSTEM` | implemented `EVENT_CONTEXT_WITH_SYSTEM` |
+| Surface | Pi declaration | Node runtime | Go | Rust | Python | Lisp |
+|---|---|---|---|---|---|---|
+| `pi.on("context_with_system")` | `ExtensionAPI.on` | implemented `api.on` | implemented `EventContextWithSystem` | implemented `EVENT_CONTEXT_WITH_SYSTEM` | implemented `EVENT_CONTEXT_WITH_SYSTEM` | implemented `pig:on` |
 
 ## Event payloads
 
-| Surface | Pi declaration | Node runtime | Go | Rust | Python |
-|---|---|---|---|---|---|
-| `context_with_system event.messages` | `ContextWithSystemEvent.messages` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
+| Surface | Pi declaration | Node runtime | Go | Rust | Python | Lisp |
+|---|---|---|---|---|---|---|
+| `context_with_system event.messages` | `ContextWithSystemEvent.messages` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` | implemented `pig:on` |
 
 ## Event results
 
-| Surface | Pi declaration | Node runtime | Go | Rust | Python |
-|---|---|---|---|---|---|
-| `context_with_system return.messages` | `ContextEventResult.messages` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
+| Surface | Pi declaration | Node runtime | Go | Rust | Python | Lisp |
+|---|---|---|---|---|---|---|
+| `context_with_system return.messages` | `ContextEventResult.messages` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` | implemented `pig:on` |
 
 ## Events
 
-| Surface | Pi declaration | Node runtime | Go | Rust | Python |
-|---|---|---|---|---|---|
-| `pi.on("cache_warming_decision")` | `ExtensionAPI.on` | implemented `api.on` | implemented `EventCacheWarmingDecision` | implemented `EVENT_CACHE_WARMING_DECISION` | implemented `EVENT_CACHE_WARMING_DECISION` |
+| Surface | Pi declaration | Node runtime | Go | Rust | Python | Lisp |
+|---|---|---|---|---|---|---|
+| `pi.on("cache_warming_decision")` | `ExtensionAPI.on` | implemented `api.on` | implemented `EventCacheWarmingDecision` | implemented `EVENT_CACHE_WARMING_DECISION` | implemented `EVENT_CACHE_WARMING_DECISION` | implemented `pig:on` |
 
 ## Event payloads
 
-| Surface | Pi declaration | Node runtime | Go | Rust | Python |
-|---|---|---|---|---|---|
-| `cache_warming_decision event.warmCost` | `CacheWarmingDecisionEvent.warmCost` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
-| `cache_warming_decision event.missCost` | `CacheWarmingDecisionEvent.missCost` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
-| `cache_warming_decision event.continuationProbability` | `CacheWarmingDecisionEvent.continuationProbability` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
-| `cache_warming_decision event.action` | `CacheWarmingDecisionEvent.action` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
+| Surface | Pi declaration | Node runtime | Go | Rust | Python | Lisp |
+|---|---|---|---|---|---|---|
+| `cache_warming_decision event.warmCost` | `CacheWarmingDecisionEvent.warmCost` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` | implemented `pig:on` |
+| `cache_warming_decision event.missCost` | `CacheWarmingDecisionEvent.missCost` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` | implemented `pig:on` |
+| `cache_warming_decision event.continuationProbability` | `CacheWarmingDecisionEvent.continuationProbability` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` | implemented `pig:on` |
+| `cache_warming_decision event.action` | `CacheWarmingDecisionEvent.action` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` | implemented `pig:on` |
 
 ## Event results
 
-| Surface | Pi declaration | Node runtime | Go | Rust | Python |
-|---|---|---|---|---|---|
-| `cache_warming_decision return.action` | `CacheWarmingDecisionEventResult.action` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
+| Surface | Pi declaration | Node runtime | Go | Rust | Python | Lisp |
+|---|---|---|---|---|---|---|
+| `cache_warming_decision return.action` | `CacheWarmingDecisionEventResult.action` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` | implemented `pig:on` |
 
 ## Events
 
-| Surface | Pi declaration | Node runtime | Go | Rust | Python |
-|---|---|---|---|---|---|
-| `pi.on("before_provider_request")` | `ExtensionAPI.on` | implemented `api.on` | implemented `EventBeforeProviderRequest` | implemented `EVENT_BEFORE_PROVIDER_REQUEST` | implemented `EVENT_BEFORE_PROVIDER_REQUEST` |
+| Surface | Pi declaration | Node runtime | Go | Rust | Python | Lisp |
+|---|---|---|---|---|---|---|
+| `pi.on("before_provider_request")` | `ExtensionAPI.on` | implemented `api.on` | implemented `EventBeforeProviderRequest` | implemented `EVENT_BEFORE_PROVIDER_REQUEST` | implemented `EVENT_BEFORE_PROVIDER_REQUEST` | implemented `pig:on` |
 
 ## Event payloads
 
-| Surface | Pi declaration | Node runtime | Go | Rust | Python |
-|---|---|---|---|---|---|
-| `before_provider_request event.payload` | `BeforeProviderRequestEvent.payload` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
+| Surface | Pi declaration | Node runtime | Go | Rust | Python | Lisp |
+|---|---|---|---|---|---|---|
+| `before_provider_request event.payload` | `BeforeProviderRequestEvent.payload` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` | implemented `pig:on` |
 
 ## Event results
 
-| Surface | Pi declaration | Node runtime | Go | Rust | Python |
-|---|---|---|---|---|---|
-| `before_provider_request return value` | `BeforeProviderRequestEventResult` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
+| Surface | Pi declaration | Node runtime | Go | Rust | Python | Lisp |
+|---|---|---|---|---|---|---|
+| `before_provider_request return value` | `BeforeProviderRequestEventResult` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` | implemented `pig:on` |
 
 ## Events
 
-| Surface | Pi declaration | Node runtime | Go | Rust | Python |
-|---|---|---|---|---|---|
-| `pi.on("before_provider_headers")` | `ExtensionAPI.on` | implemented `api.on` | implemented `EventBeforeProviderHeaders` | implemented `EVENT_BEFORE_PROVIDER_HEADERS` | implemented `EVENT_BEFORE_PROVIDER_HEADERS` |
+| Surface | Pi declaration | Node runtime | Go | Rust | Python | Lisp |
+|---|---|---|---|---|---|---|
+| `pi.on("before_provider_headers")` | `ExtensionAPI.on` | implemented `api.on` | implemented `EventBeforeProviderHeaders` | implemented `EVENT_BEFORE_PROVIDER_HEADERS` | implemented `EVENT_BEFORE_PROVIDER_HEADERS` | implemented `pig:on` |
 
 ## Event payloads
 
-| Surface | Pi declaration | Node runtime | Go | Rust | Python |
-|---|---|---|---|---|---|
-| `before_provider_headers event.headers` | `BeforeProviderHeadersEvent.headers` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
+| Surface | Pi declaration | Node runtime | Go | Rust | Python | Lisp |
+|---|---|---|---|---|---|---|
+| `before_provider_headers event.headers` | `BeforeProviderHeadersEvent.headers` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` | implemented `pig:on` |
 
 ## Events
 
-| Surface | Pi declaration | Node runtime | Go | Rust | Python |
-|---|---|---|---|---|---|
-| `pi.on("after_provider_response")` | `ExtensionAPI.on` | stand-in/partial `api.on`: subscribable, but PiG's host does not emit after_provider_response yet (host gap shared with in-process extensions) | stand-in/partial `EventAfterProviderResponse`: subscribable, but PiG's host does not emit after_provider_response yet (host gap shared with in-process extensions) | stand-in/partial `EVENT_AFTER_PROVIDER_RESPONSE`: subscribable, but PiG's host does not emit after_provider_response yet (host gap shared with in-process extensions) | stand-in/partial `EVENT_AFTER_PROVIDER_RESPONSE`: subscribable, but PiG's host does not emit after_provider_response yet (host gap shared with in-process extensions) |
+| Surface | Pi declaration | Node runtime | Go | Rust | Python | Lisp |
+|---|---|---|---|---|---|---|
+| `pi.on("after_provider_response")` | `ExtensionAPI.on` | stand-in/partial `api.on`: subscribable, but PiG's host does not emit after_provider_response yet (host gap shared with in-process extensions) | stand-in/partial `EventAfterProviderResponse`: subscribable, but PiG's host does not emit after_provider_response yet (host gap shared with in-process extensions) | stand-in/partial `EVENT_AFTER_PROVIDER_RESPONSE`: subscribable, but PiG's host does not emit after_provider_response yet (host gap shared with in-process extensions) | stand-in/partial `EVENT_AFTER_PROVIDER_RESPONSE`: subscribable, but PiG's host does not emit after_provider_response yet (host gap shared with in-process extensions) | stand-in/partial `pig:on`: subscribable, but PiG's host does not emit after_provider_response yet (host gap shared with in-process extensions) |
 
 ## Event payloads
 
-| Surface | Pi declaration | Node runtime | Go | Rust | Python |
-|---|---|---|---|---|---|
-| `after_provider_response event.status` | `AfterProviderResponseEvent.status` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
-| `after_provider_response event.headers` | `AfterProviderResponseEvent.headers` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
+| Surface | Pi declaration | Node runtime | Go | Rust | Python | Lisp |
+|---|---|---|---|---|---|---|
+| `after_provider_response event.status` | `AfterProviderResponseEvent.status` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` | implemented `pig:on` |
+| `after_provider_response event.headers` | `AfterProviderResponseEvent.headers` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` | implemented `pig:on` |
 
 ## Events
 
-| Surface | Pi declaration | Node runtime | Go | Rust | Python |
-|---|---|---|---|---|---|
-| `pi.on("provider_stream_event")` | `ExtensionAPI.on` | implemented `api.on` | implemented `EventProviderStreamEvent` | implemented `EVENT_PROVIDER_STREAM_EVENT` | implemented `EVENT_PROVIDER_STREAM_EVENT` |
+| Surface | Pi declaration | Node runtime | Go | Rust | Python | Lisp |
+|---|---|---|---|---|---|---|
+| `pi.on("provider_stream_event")` | `ExtensionAPI.on` | implemented `api.on` | implemented `EventProviderStreamEvent` | implemented `EVENT_PROVIDER_STREAM_EVENT` | implemented `EVENT_PROVIDER_STREAM_EVENT` | implemented `pig:on` |
 
 ## Event payloads
 
-| Surface | Pi declaration | Node runtime | Go | Rust | Python |
-|---|---|---|---|---|---|
-| `provider_stream_event event.provider` | `ProviderStreamEvent.provider` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
-| `provider_stream_event event.api` | `ProviderStreamEvent.api` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
-| `provider_stream_event event.model` | `ProviderStreamEvent.model` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
-| `provider_stream_event event.data` | `ProviderStreamEvent.data` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
+| Surface | Pi declaration | Node runtime | Go | Rust | Python | Lisp |
+|---|---|---|---|---|---|---|
+| `provider_stream_event event.provider` | `ProviderStreamEvent.provider` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` | implemented `pig:on` |
+| `provider_stream_event event.api` | `ProviderStreamEvent.api` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` | implemented `pig:on` |
+| `provider_stream_event event.model` | `ProviderStreamEvent.model` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` | implemented `pig:on` |
+| `provider_stream_event event.data` | `ProviderStreamEvent.data` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` | implemented `pig:on` |
 
 ## Events
 
-| Surface | Pi declaration | Node runtime | Go | Rust | Python |
-|---|---|---|---|---|---|
-| `pi.on("before_agent_start")` | `ExtensionAPI.on` | implemented `api.on` | implemented `EventBeforeAgentStart` | implemented `EVENT_BEFORE_AGENT_START` | implemented `EVENT_BEFORE_AGENT_START` |
+| Surface | Pi declaration | Node runtime | Go | Rust | Python | Lisp |
+|---|---|---|---|---|---|---|
+| `pi.on("before_agent_start")` | `ExtensionAPI.on` | implemented `api.on` | implemented `EventBeforeAgentStart` | implemented `EVENT_BEFORE_AGENT_START` | implemented `EVENT_BEFORE_AGENT_START` | implemented `pig:on` |
 
 ## Event payloads
 
-| Surface | Pi declaration | Node runtime | Go | Rust | Python |
-|---|---|---|---|---|---|
-| `before_agent_start event.messageType` | `BeforeAgentStartEvent.messageType` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
-| `before_agent_start event.prompt` | `BeforeAgentStartEvent.prompt` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
-| `before_agent_start event.images` | `BeforeAgentStartEvent.images` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
-| `before_agent_start event.systemPrompt` | `BeforeAgentStartEvent.systemPrompt` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
-| `before_agent_start event.systemPromptOptions` | `BeforeAgentStartEvent.systemPromptOptions` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
-| `before_agent_start event.message` | `BeforeAgentStartEvent.message` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
+| Surface | Pi declaration | Node runtime | Go | Rust | Python | Lisp |
+|---|---|---|---|---|---|---|
+| `before_agent_start event.messageType` | `BeforeAgentStartEvent.messageType` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` | implemented `pig:on` |
+| `before_agent_start event.prompt` | `BeforeAgentStartEvent.prompt` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` | implemented `pig:on` |
+| `before_agent_start event.images` | `BeforeAgentStartEvent.images` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` | implemented `pig:on` |
+| `before_agent_start event.systemPrompt` | `BeforeAgentStartEvent.systemPrompt` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` | implemented `pig:on` |
+| `before_agent_start event.systemPromptOptions` | `BeforeAgentStartEvent.systemPromptOptions` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` | implemented `pig:on` |
+| `before_agent_start event.message` | `BeforeAgentStartEvent.message` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` | implemented `pig:on` |
 
 ## Event results
 
-| Surface | Pi declaration | Node runtime | Go | Rust | Python |
-|---|---|---|---|---|---|
-| `before_agent_start return.message` | `BeforeAgentStartEventResult.message` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
-| `before_agent_start return.systemPrompt` | `BeforeAgentStartEventResult.systemPrompt` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
+| Surface | Pi declaration | Node runtime | Go | Rust | Python | Lisp |
+|---|---|---|---|---|---|---|
+| `before_agent_start return.message` | `BeforeAgentStartEventResult.message` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` | implemented `pig:on` |
+| `before_agent_start return.systemPrompt` | `BeforeAgentStartEventResult.systemPrompt` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` | implemented `pig:on` |
 
 ## Events
 
-| Surface | Pi declaration | Node runtime | Go | Rust | Python |
-|---|---|---|---|---|---|
-| `pi.on("agent_start")` | `ExtensionAPI.on` | implemented `api.on` | implemented `EventAgentStart` | implemented `EVENT_AGENT_START` | implemented `EVENT_AGENT_START` |
-| `pi.on("agent_end")` | `ExtensionAPI.on` | implemented `api.on` | implemented `EventAgentEnd` | implemented `EVENT_AGENT_END` | implemented `EVENT_AGENT_END` |
+| Surface | Pi declaration | Node runtime | Go | Rust | Python | Lisp |
+|---|---|---|---|---|---|---|
+| `pi.on("agent_start")` | `ExtensionAPI.on` | implemented `api.on` | implemented `EventAgentStart` | implemented `EVENT_AGENT_START` | implemented `EVENT_AGENT_START` | implemented `pig:on` |
+| `pi.on("agent_end")` | `ExtensionAPI.on` | implemented `api.on` | implemented `EventAgentEnd` | implemented `EVENT_AGENT_END` | implemented `EVENT_AGENT_END` | implemented `pig:on` |
 
 ## Event payloads
 
-| Surface | Pi declaration | Node runtime | Go | Rust | Python |
-|---|---|---|---|---|---|
-| `agent_end event.messages` | `AgentEndEvent.messages` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
+| Surface | Pi declaration | Node runtime | Go | Rust | Python | Lisp |
+|---|---|---|---|---|---|---|
+| `agent_end event.messages` | `AgentEndEvent.messages` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` | implemented `pig:on` |
 
 ## Events
 
-| Surface | Pi declaration | Node runtime | Go | Rust | Python |
-|---|---|---|---|---|---|
-| `pi.on("agent_before_settle")` | `ExtensionAPI.on` | implemented `api.on` | implemented `EventAgentBeforeSettle` | implemented `EVENT_AGENT_BEFORE_SETTLE` | implemented `EVENT_AGENT_BEFORE_SETTLE` |
+| Surface | Pi declaration | Node runtime | Go | Rust | Python | Lisp |
+|---|---|---|---|---|---|---|
+| `pi.on("agent_before_settle")` | `ExtensionAPI.on` | implemented `api.on` | implemented `EventAgentBeforeSettle` | implemented `EVENT_AGENT_BEFORE_SETTLE` | implemented `EVENT_AGENT_BEFORE_SETTLE` | implemented `pig:on` |
 
 ## Event payloads
 
-| Surface | Pi declaration | Node runtime | Go | Rust | Python |
-|---|---|---|---|---|---|
-| `agent_before_settle event.entries` | `AgentBeforeSettleEvent.entries` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
-| `agent_before_settle event.continue` | `AgentBeforeSettleEvent.continue` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
-| `agent_before_settle event.context` | `AgentBeforeSettleEvent.context` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
-| `agent_before_settle event.outcome` | `AgentBeforeSettleEvent.outcome` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
+| Surface | Pi declaration | Node runtime | Go | Rust | Python | Lisp |
+|---|---|---|---|---|---|---|
+| `agent_before_settle event.entries` | `AgentBeforeSettleEvent.entries` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` | implemented `pig:on` |
+| `agent_before_settle event.continue` | `AgentBeforeSettleEvent.continue` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` | implemented `pig:on` |
+| `agent_before_settle event.context` | `AgentBeforeSettleEvent.context` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` | implemented `pig:on` |
+| `agent_before_settle event.outcome` | `AgentBeforeSettleEvent.outcome` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` | implemented `pig:on` |
 
 ## Event results
 
-| Surface | Pi declaration | Node runtime | Go | Rust | Python |
-|---|---|---|---|---|---|
-| `agent_before_settle return.entries` | `AgentBeforeSettleEventResult.entries` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
-| `agent_before_settle return.continue` | `AgentBeforeSettleEventResult.continue` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
+| Surface | Pi declaration | Node runtime | Go | Rust | Python | Lisp |
+|---|---|---|---|---|---|---|
+| `agent_before_settle return.entries` | `AgentBeforeSettleEventResult.entries` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` | implemented `pig:on` |
+| `agent_before_settle return.continue` | `AgentBeforeSettleEventResult.continue` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` | implemented `pig:on` |
 
 ## Events
 
-| Surface | Pi declaration | Node runtime | Go | Rust | Python |
-|---|---|---|---|---|---|
-| `pi.on("agent_settled")` | `ExtensionAPI.on` | implemented `api.on` | implemented `EventAgentSettled` | implemented `EVENT_AGENT_SETTLED` | implemented `EVENT_AGENT_SETTLED` |
+| Surface | Pi declaration | Node runtime | Go | Rust | Python | Lisp |
+|---|---|---|---|---|---|---|
+| `pi.on("agent_settled")` | `ExtensionAPI.on` | implemented `api.on` | implemented `EventAgentSettled` | implemented `EVENT_AGENT_SETTLED` | implemented `EVENT_AGENT_SETTLED` | implemented `pig:on` |
 
 ## Event payloads
 
-| Surface | Pi declaration | Node runtime | Go | Rust | Python |
-|---|---|---|---|---|---|
-| `agent_settled event.aborted` | `AgentSettledEvent.aborted` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
+| Surface | Pi declaration | Node runtime | Go | Rust | Python | Lisp |
+|---|---|---|---|---|---|---|
+| `agent_settled event.aborted` | `AgentSettledEvent.aborted` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` | implemented `pig:on` |
 
 ## Events
 
-| Surface | Pi declaration | Node runtime | Go | Rust | Python |
-|---|---|---|---|---|---|
-| `pi.on("ui_prompt_start")` | `ExtensionAPI.on` | implemented `api.on` | implemented `EventUIPromptStart` | implemented `EVENT_UI_PROMPT_START` | implemented `EVENT_UI_PROMPT_START` |
+| Surface | Pi declaration | Node runtime | Go | Rust | Python | Lisp |
+|---|---|---|---|---|---|---|
+| `pi.on("ui_prompt_start")` | `ExtensionAPI.on` | implemented `api.on` | implemented `EventUIPromptStart` | implemented `EVENT_UI_PROMPT_START` | implemented `EVENT_UI_PROMPT_START` | implemented `pig:on` |
 
 ## Event payloads
 
-| Surface | Pi declaration | Node runtime | Go | Rust | Python |
-|---|---|---|---|---|---|
-| `ui_prompt_start event.reason` | `UIPromptStartEvent.reason` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
-| `ui_prompt_start event.kind` | `UIPromptStartEvent.kind` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
-| `ui_prompt_start event.title` | `UIPromptStartEvent.title` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
+| Surface | Pi declaration | Node runtime | Go | Rust | Python | Lisp |
+|---|---|---|---|---|---|---|
+| `ui_prompt_start event.reason` | `UIPromptStartEvent.reason` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` | implemented `pig:on` |
+| `ui_prompt_start event.kind` | `UIPromptStartEvent.kind` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` | implemented `pig:on` |
+| `ui_prompt_start event.title` | `UIPromptStartEvent.title` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` | implemented `pig:on` |
 
 ## Events
 
-| Surface | Pi declaration | Node runtime | Go | Rust | Python |
-|---|---|---|---|---|---|
-| `pi.on("ui_prompt_end")` | `ExtensionAPI.on` | implemented `api.on` | implemented `EventUIPromptEnd` | implemented `EVENT_UI_PROMPT_END` | implemented `EVENT_UI_PROMPT_END` |
+| Surface | Pi declaration | Node runtime | Go | Rust | Python | Lisp |
+|---|---|---|---|---|---|---|
+| `pi.on("ui_prompt_end")` | `ExtensionAPI.on` | implemented `api.on` | implemented `EventUIPromptEnd` | implemented `EVENT_UI_PROMPT_END` | implemented `EVENT_UI_PROMPT_END` | implemented `pig:on` |
 
 ## Event payloads
 
-| Surface | Pi declaration | Node runtime | Go | Rust | Python |
-|---|---|---|---|---|---|
-| `ui_prompt_end event.reason` | `UIPromptEndEvent.reason` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
-| `ui_prompt_end event.kind` | `UIPromptEndEvent.kind` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
-| `ui_prompt_end event.title` | `UIPromptEndEvent.title` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
+| Surface | Pi declaration | Node runtime | Go | Rust | Python | Lisp |
+|---|---|---|---|---|---|---|
+| `ui_prompt_end event.reason` | `UIPromptEndEvent.reason` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` | implemented `pig:on` |
+| `ui_prompt_end event.kind` | `UIPromptEndEvent.kind` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` | implemented `pig:on` |
+| `ui_prompt_end event.title` | `UIPromptEndEvent.title` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` | implemented `pig:on` |
 
 ## Events
 
-| Surface | Pi declaration | Node runtime | Go | Rust | Python |
-|---|---|---|---|---|---|
-| `pi.on("turn_start")` | `ExtensionAPI.on` | implemented `api.on` | implemented `EventTurnStart` | implemented `EVENT_TURN_START` | implemented `EVENT_TURN_START` |
+| Surface | Pi declaration | Node runtime | Go | Rust | Python | Lisp |
+|---|---|---|---|---|---|---|
+| `pi.on("turn_start")` | `ExtensionAPI.on` | implemented `api.on` | implemented `EventTurnStart` | implemented `EVENT_TURN_START` | implemented `EVENT_TURN_START` | implemented `pig:on` |
 
 ## Event payloads
 
-| Surface | Pi declaration | Node runtime | Go | Rust | Python |
-|---|---|---|---|---|---|
-| `turn_start event.turnIndex` | `TurnStartEvent.turnIndex` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
-| `turn_start event.timestamp` | `TurnStartEvent.timestamp` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
+| Surface | Pi declaration | Node runtime | Go | Rust | Python | Lisp |
+|---|---|---|---|---|---|---|
+| `turn_start event.turnIndex` | `TurnStartEvent.turnIndex` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` | implemented `pig:on` |
+| `turn_start event.timestamp` | `TurnStartEvent.timestamp` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` | implemented `pig:on` |
 
 ## Events
 
-| Surface | Pi declaration | Node runtime | Go | Rust | Python |
-|---|---|---|---|---|---|
-| `pi.on("turn_end")` | `ExtensionAPI.on` | implemented `api.on` | implemented `EventTurnEnd` | implemented `EVENT_TURN_END` | implemented `EVENT_TURN_END` |
+| Surface | Pi declaration | Node runtime | Go | Rust | Python | Lisp |
+|---|---|---|---|---|---|---|
+| `pi.on("turn_end")` | `ExtensionAPI.on` | implemented `api.on` | implemented `EventTurnEnd` | implemented `EVENT_TURN_END` | implemented `EVENT_TURN_END` | implemented `pig:on` |
 
 ## Event payloads
 
-| Surface | Pi declaration | Node runtime | Go | Rust | Python |
-|---|---|---|---|---|---|
-| `turn_end event.turnIndex` | `TurnEndEvent.turnIndex` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
-| `turn_end event.message` | `TurnEndEvent.message` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
-| `turn_end event.toolResults` | `TurnEndEvent.toolResults` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
-| `turn_end event.messageEntryId` | `TurnEndEvent.messageEntryId` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
-| `turn_end event.toolResultEntryIds` | `TurnEndEvent.toolResultEntryIds` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
-| `turn_end event.entries` | `TurnEndEvent.entries` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
-| `turn_end event.continue` | `TurnEndEvent.continue` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
-| `turn_end event.context` | `TurnEndEvent.context` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
-| `turn_end event.outcome` | `TurnEndEvent.outcome` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
+| Surface | Pi declaration | Node runtime | Go | Rust | Python | Lisp |
+|---|---|---|---|---|---|---|
+| `turn_end event.turnIndex` | `TurnEndEvent.turnIndex` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` | implemented `pig:on` |
+| `turn_end event.message` | `TurnEndEvent.message` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` | implemented `pig:on` |
+| `turn_end event.toolResults` | `TurnEndEvent.toolResults` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` | implemented `pig:on` |
+| `turn_end event.messageEntryId` | `TurnEndEvent.messageEntryId` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` | implemented `pig:on` |
+| `turn_end event.toolResultEntryIds` | `TurnEndEvent.toolResultEntryIds` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` | implemented `pig:on` |
+| `turn_end event.entries` | `TurnEndEvent.entries` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` | implemented `pig:on` |
+| `turn_end event.continue` | `TurnEndEvent.continue` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` | implemented `pig:on` |
+| `turn_end event.context` | `TurnEndEvent.context` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` | implemented `pig:on` |
+| `turn_end event.outcome` | `TurnEndEvent.outcome` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` | implemented `pig:on` |
 
 ## Event results
 
-| Surface | Pi declaration | Node runtime | Go | Rust | Python |
-|---|---|---|---|---|---|
-| `turn_end return.entries` | `TurnEndEventResult.entries` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
-| `turn_end return.continue` | `TurnEndEventResult.continue` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
+| Surface | Pi declaration | Node runtime | Go | Rust | Python | Lisp |
+|---|---|---|---|---|---|---|
+| `turn_end return.entries` | `TurnEndEventResult.entries` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` | implemented `pig:on` |
+| `turn_end return.continue` | `TurnEndEventResult.continue` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` | implemented `pig:on` |
 
 ## Events
 
-| Surface | Pi declaration | Node runtime | Go | Rust | Python |
-|---|---|---|---|---|---|
-| `pi.on("message_start")` | `ExtensionAPI.on` | implemented `api.on` | implemented `EventMessageStart` | implemented `EVENT_MESSAGE_START` | implemented `EVENT_MESSAGE_START` |
+| Surface | Pi declaration | Node runtime | Go | Rust | Python | Lisp |
+|---|---|---|---|---|---|---|
+| `pi.on("message_start")` | `ExtensionAPI.on` | implemented `api.on` | implemented `EventMessageStart` | implemented `EVENT_MESSAGE_START` | implemented `EVENT_MESSAGE_START` | implemented `pig:on` |
 
 ## Event payloads
 
-| Surface | Pi declaration | Node runtime | Go | Rust | Python |
-|---|---|---|---|---|---|
-| `message_start event.message` | `MessageStartEvent.message` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
+| Surface | Pi declaration | Node runtime | Go | Rust | Python | Lisp |
+|---|---|---|---|---|---|---|
+| `message_start event.message` | `MessageStartEvent.message` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` | implemented `pig:on` |
 
 ## Events
 
-| Surface | Pi declaration | Node runtime | Go | Rust | Python |
-|---|---|---|---|---|---|
-| `pi.on("message_update")` | `ExtensionAPI.on` | implemented `api.on` | implemented `EventMessageUpdate` | implemented `EVENT_MESSAGE_UPDATE` | implemented `EVENT_MESSAGE_UPDATE` |
+| Surface | Pi declaration | Node runtime | Go | Rust | Python | Lisp |
+|---|---|---|---|---|---|---|
+| `pi.on("message_update")` | `ExtensionAPI.on` | implemented `api.on` | implemented `EventMessageUpdate` | implemented `EVENT_MESSAGE_UPDATE` | implemented `EVENT_MESSAGE_UPDATE` | implemented `pig:on` |
 
 ## Event payloads
 
-| Surface | Pi declaration | Node runtime | Go | Rust | Python |
-|---|---|---|---|---|---|
-| `message_update event.message` | `MessageUpdateEvent.message` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
-| `message_update event.assistantMessageEvent` | `MessageUpdateEvent.assistantMessageEvent` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
+| Surface | Pi declaration | Node runtime | Go | Rust | Python | Lisp |
+|---|---|---|---|---|---|---|
+| `message_update event.message` | `MessageUpdateEvent.message` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` | implemented `pig:on` |
+| `message_update event.assistantMessageEvent` | `MessageUpdateEvent.assistantMessageEvent` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` | implemented `pig:on` |
 
 ## Events
 
-| Surface | Pi declaration | Node runtime | Go | Rust | Python |
-|---|---|---|---|---|---|
-| `pi.on("message_end")` | `ExtensionAPI.on` | implemented `api.on` | implemented `EventMessageEnd` | implemented `EVENT_MESSAGE_END` | implemented `EVENT_MESSAGE_END` |
+| Surface | Pi declaration | Node runtime | Go | Rust | Python | Lisp |
+|---|---|---|---|---|---|---|
+| `pi.on("message_end")` | `ExtensionAPI.on` | implemented `api.on` | implemented `EventMessageEnd` | implemented `EVENT_MESSAGE_END` | implemented `EVENT_MESSAGE_END` | implemented `pig:on` |
 
 ## Event payloads
 
-| Surface | Pi declaration | Node runtime | Go | Rust | Python |
-|---|---|---|---|---|---|
-| `message_end event.message` | `MessageEndEvent.message` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
+| Surface | Pi declaration | Node runtime | Go | Rust | Python | Lisp |
+|---|---|---|---|---|---|---|
+| `message_end event.message` | `MessageEndEvent.message` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` | implemented `pig:on` |
 
 ## Event results
 
-| Surface | Pi declaration | Node runtime | Go | Rust | Python |
-|---|---|---|---|---|---|
-| `message_end return.message` | `MessageEndEventResult.message` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
+| Surface | Pi declaration | Node runtime | Go | Rust | Python | Lisp |
+|---|---|---|---|---|---|---|
+| `message_end return.message` | `MessageEndEventResult.message` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` | implemented `pig:on` |
 
 ## Events
 
-| Surface | Pi declaration | Node runtime | Go | Rust | Python |
-|---|---|---|---|---|---|
-| `pi.on("tool_execution_start")` | `ExtensionAPI.on` | implemented `api.on` | implemented `EventToolExecutionStart` | implemented `EVENT_TOOL_EXECUTION_START` | implemented `EVENT_TOOL_EXECUTION_START` |
+| Surface | Pi declaration | Node runtime | Go | Rust | Python | Lisp |
+|---|---|---|---|---|---|---|
+| `pi.on("tool_execution_start")` | `ExtensionAPI.on` | implemented `api.on` | implemented `EventToolExecutionStart` | implemented `EVENT_TOOL_EXECUTION_START` | implemented `EVENT_TOOL_EXECUTION_START` | implemented `pig:on` |
 
 ## Event payloads
 
-| Surface | Pi declaration | Node runtime | Go | Rust | Python |
-|---|---|---|---|---|---|
-| `tool_execution_start event.toolCallId` | `ToolExecutionStartEvent.toolCallId` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
-| `tool_execution_start event.toolName` | `ToolExecutionStartEvent.toolName` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
-| `tool_execution_start event.args` | `ToolExecutionStartEvent.args` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
-| `tool_execution_start event.parentToolCallId` | `ToolExecutionStartEvent.parentToolCallId` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
+| Surface | Pi declaration | Node runtime | Go | Rust | Python | Lisp |
+|---|---|---|---|---|---|---|
+| `tool_execution_start event.toolCallId` | `ToolExecutionStartEvent.toolCallId` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` | implemented `pig:on` |
+| `tool_execution_start event.toolName` | `ToolExecutionStartEvent.toolName` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` | implemented `pig:on` |
+| `tool_execution_start event.args` | `ToolExecutionStartEvent.args` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` | implemented `pig:on` |
+| `tool_execution_start event.parentToolCallId` | `ToolExecutionStartEvent.parentToolCallId` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` | implemented `pig:on` |
 
 ## Events
 
-| Surface | Pi declaration | Node runtime | Go | Rust | Python |
-|---|---|---|---|---|---|
-| `pi.on("tool_execution_update")` | `ExtensionAPI.on` | implemented `api.on` | implemented `EventToolExecutionUpdate` | implemented `EVENT_TOOL_EXECUTION_UPDATE` | implemented `EVENT_TOOL_EXECUTION_UPDATE` |
+| Surface | Pi declaration | Node runtime | Go | Rust | Python | Lisp |
+|---|---|---|---|---|---|---|
+| `pi.on("tool_execution_update")` | `ExtensionAPI.on` | implemented `api.on` | implemented `EventToolExecutionUpdate` | implemented `EVENT_TOOL_EXECUTION_UPDATE` | implemented `EVENT_TOOL_EXECUTION_UPDATE` | implemented `pig:on` |
 
 ## Event payloads
 
-| Surface | Pi declaration | Node runtime | Go | Rust | Python |
-|---|---|---|---|---|---|
-| `tool_execution_update event.toolCallId` | `ToolExecutionUpdateEvent.toolCallId` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
-| `tool_execution_update event.toolName` | `ToolExecutionUpdateEvent.toolName` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
-| `tool_execution_update event.args` | `ToolExecutionUpdateEvent.args` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
-| `tool_execution_update event.partialResult` | `ToolExecutionUpdateEvent.partialResult` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
-| `tool_execution_update event.parentToolCallId` | `ToolExecutionUpdateEvent.parentToolCallId` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
+| Surface | Pi declaration | Node runtime | Go | Rust | Python | Lisp |
+|---|---|---|---|---|---|---|
+| `tool_execution_update event.toolCallId` | `ToolExecutionUpdateEvent.toolCallId` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` | implemented `pig:on` |
+| `tool_execution_update event.toolName` | `ToolExecutionUpdateEvent.toolName` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` | implemented `pig:on` |
+| `tool_execution_update event.args` | `ToolExecutionUpdateEvent.args` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` | implemented `pig:on` |
+| `tool_execution_update event.partialResult` | `ToolExecutionUpdateEvent.partialResult` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` | implemented `pig:on` |
+| `tool_execution_update event.parentToolCallId` | `ToolExecutionUpdateEvent.parentToolCallId` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` | implemented `pig:on` |
 
 ## Events
 
-| Surface | Pi declaration | Node runtime | Go | Rust | Python |
-|---|---|---|---|---|---|
-| `pi.on("tool_execution_end")` | `ExtensionAPI.on` | implemented `api.on` | implemented `EventToolExecutionEnd` | implemented `EVENT_TOOL_EXECUTION_END` | implemented `EVENT_TOOL_EXECUTION_END` |
+| Surface | Pi declaration | Node runtime | Go | Rust | Python | Lisp |
+|---|---|---|---|---|---|---|
+| `pi.on("tool_execution_end")` | `ExtensionAPI.on` | implemented `api.on` | implemented `EventToolExecutionEnd` | implemented `EVENT_TOOL_EXECUTION_END` | implemented `EVENT_TOOL_EXECUTION_END` | implemented `pig:on` |
 
 ## Event payloads
 
-| Surface | Pi declaration | Node runtime | Go | Rust | Python |
-|---|---|---|---|---|---|
-| `tool_execution_end event.toolCallId` | `ToolExecutionEndEvent.toolCallId` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
-| `tool_execution_end event.toolName` | `ToolExecutionEndEvent.toolName` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
-| `tool_execution_end event.result` | `ToolExecutionEndEvent.result` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
-| `tool_execution_end event.isError` | `ToolExecutionEndEvent.isError` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
-| `tool_execution_end event.durationMs` | `ToolExecutionEndEvent.durationMs` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
-| `tool_execution_end event.parentToolCallId` | `ToolExecutionEndEvent.parentToolCallId` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
+| Surface | Pi declaration | Node runtime | Go | Rust | Python | Lisp |
+|---|---|---|---|---|---|---|
+| `tool_execution_end event.toolCallId` | `ToolExecutionEndEvent.toolCallId` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` | implemented `pig:on` |
+| `tool_execution_end event.toolName` | `ToolExecutionEndEvent.toolName` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` | implemented `pig:on` |
+| `tool_execution_end event.result` | `ToolExecutionEndEvent.result` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` | implemented `pig:on` |
+| `tool_execution_end event.isError` | `ToolExecutionEndEvent.isError` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` | implemented `pig:on` |
+| `tool_execution_end event.durationMs` | `ToolExecutionEndEvent.durationMs` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` | implemented `pig:on` |
+| `tool_execution_end event.parentToolCallId` | `ToolExecutionEndEvent.parentToolCallId` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` | implemented `pig:on` |
 
 ## Events
 
-| Surface | Pi declaration | Node runtime | Go | Rust | Python |
-|---|---|---|---|---|---|
-| `pi.on("model_select")` | `ExtensionAPI.on` | implemented `api.on` | implemented `EventModelSelect` | implemented `EVENT_MODEL_SELECT` | implemented `EVENT_MODEL_SELECT` |
+| Surface | Pi declaration | Node runtime | Go | Rust | Python | Lisp |
+|---|---|---|---|---|---|---|
+| `pi.on("model_select")` | `ExtensionAPI.on` | implemented `api.on` | implemented `EventModelSelect` | implemented `EVENT_MODEL_SELECT` | implemented `EVENT_MODEL_SELECT` | implemented `pig:on` |
 
 ## Event payloads
 
-| Surface | Pi declaration | Node runtime | Go | Rust | Python |
-|---|---|---|---|---|---|
-| `model_select event.model` | `ModelSelectEvent.model` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
-| `model_select event.previousModel` | `ModelSelectEvent.previousModel` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
-| `model_select event.source` | `ModelSelectEvent.source` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
+| Surface | Pi declaration | Node runtime | Go | Rust | Python | Lisp |
+|---|---|---|---|---|---|---|
+| `model_select event.model` | `ModelSelectEvent.model` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` | implemented `pig:on` |
+| `model_select event.previousModel` | `ModelSelectEvent.previousModel` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` | implemented `pig:on` |
+| `model_select event.source` | `ModelSelectEvent.source` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` | implemented `pig:on` |
 
 ## Events
 
-| Surface | Pi declaration | Node runtime | Go | Rust | Python |
-|---|---|---|---|---|---|
-| `pi.on("thinking_level_select")` | `ExtensionAPI.on` | implemented `api.on` | implemented `EventThinkingLevelSelect` | implemented `EVENT_THINKING_LEVEL_SELECT` | implemented `EVENT_THINKING_LEVEL_SELECT` |
+| Surface | Pi declaration | Node runtime | Go | Rust | Python | Lisp |
+|---|---|---|---|---|---|---|
+| `pi.on("thinking_level_select")` | `ExtensionAPI.on` | implemented `api.on` | implemented `EventThinkingLevelSelect` | implemented `EVENT_THINKING_LEVEL_SELECT` | implemented `EVENT_THINKING_LEVEL_SELECT` | implemented `pig:on` |
 
 ## Event payloads
 
-| Surface | Pi declaration | Node runtime | Go | Rust | Python |
-|---|---|---|---|---|---|
-| `thinking_level_select event.level` | `ThinkingLevelSelectEvent.level` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
-| `thinking_level_select event.previousLevel` | `ThinkingLevelSelectEvent.previousLevel` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
+| Surface | Pi declaration | Node runtime | Go | Rust | Python | Lisp |
+|---|---|---|---|---|---|---|
+| `thinking_level_select event.level` | `ThinkingLevelSelectEvent.level` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` | implemented `pig:on` |
+| `thinking_level_select event.previousLevel` | `ThinkingLevelSelectEvent.previousLevel` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` | implemented `pig:on` |
 
 ## Events
 
-| Surface | Pi declaration | Node runtime | Go | Rust | Python |
-|---|---|---|---|---|---|
-| `pi.on("tool_call")` | `ExtensionAPI.on` | implemented `api.on` | implemented `EventToolCall` | implemented `EVENT_TOOL_CALL` | implemented `EVENT_TOOL_CALL` |
+| Surface | Pi declaration | Node runtime | Go | Rust | Python | Lisp |
+|---|---|---|---|---|---|---|
+| `pi.on("tool_call")` | `ExtensionAPI.on` | implemented `api.on` | implemented `EventToolCall` | implemented `EVENT_TOOL_CALL` | implemented `EVENT_TOOL_CALL` | implemented `pig:on` |
 
 ## Event payloads
 
-| Surface | Pi declaration | Node runtime | Go | Rust | Python |
-|---|---|---|---|---|---|
-| `tool_call event.toolName` | `ToolCallEvent.toolName` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
-| `tool_call event.input` | `ToolCallEvent.input` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
-| `tool_call event.toolCallId` | `ToolCallEvent.toolCallId` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
-| `tool_call event.parentToolCallId` | `ToolCallEvent.parentToolCallId` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
+| Surface | Pi declaration | Node runtime | Go | Rust | Python | Lisp |
+|---|---|---|---|---|---|---|
+| `tool_call event.toolName` | `ToolCallEvent.toolName` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` | implemented `pig:on` |
+| `tool_call event.input` | `ToolCallEvent.input` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` | implemented `pig:on` |
+| `tool_call event.toolCallId` | `ToolCallEvent.toolCallId` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` | implemented `pig:on` |
+| `tool_call event.parentToolCallId` | `ToolCallEvent.parentToolCallId` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` | implemented `pig:on` |
 
 ## Event results
 
-| Surface | Pi declaration | Node runtime | Go | Rust | Python |
-|---|---|---|---|---|---|
-| `tool_call return.block` | `ToolCallEventResult.block` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
-| `tool_call return.reason` | `ToolCallEventResult.reason` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
-| `tool_call return.terminate` | `ToolCallEventResult.terminate` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
+| Surface | Pi declaration | Node runtime | Go | Rust | Python | Lisp |
+|---|---|---|---|---|---|---|
+| `tool_call return.block` | `ToolCallEventResult.block` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` | implemented `pig:on` |
+| `tool_call return.reason` | `ToolCallEventResult.reason` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` | implemented `pig:on` |
+| `tool_call return.terminate` | `ToolCallEventResult.terminate` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` | implemented `pig:on` |
 
 ## Events
 
-| Surface | Pi declaration | Node runtime | Go | Rust | Python |
-|---|---|---|---|---|---|
-| `pi.on("tool_result")` | `ExtensionAPI.on` | implemented `api.on` | implemented `EventToolResult` | implemented `EVENT_TOOL_RESULT` | implemented `EVENT_TOOL_RESULT` |
+| Surface | Pi declaration | Node runtime | Go | Rust | Python | Lisp |
+|---|---|---|---|---|---|---|
+| `pi.on("tool_result")` | `ExtensionAPI.on` | implemented `api.on` | implemented `EventToolResult` | implemented `EVENT_TOOL_RESULT` | implemented `EVENT_TOOL_RESULT` | implemented `pig:on` |
 
 ## Event payloads
 
-| Surface | Pi declaration | Node runtime | Go | Rust | Python |
-|---|---|---|---|---|---|
-| `tool_result event.toolName` | `ToolResultEvent.toolName` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
-| `tool_result event.details` | `ToolResultEvent.details` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
-| `tool_result event.toolCallId` | `ToolResultEvent.toolCallId` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
-| `tool_result event.parentToolCallId` | `ToolResultEvent.parentToolCallId` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
-| `tool_result event.input` | `ToolResultEvent.input` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
-| `tool_result event.content` | `ToolResultEvent.content` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
-| `tool_result event.structuredContent` | `ToolResultEvent.structuredContent` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
-| `tool_result event.isError` | `ToolResultEvent.isError` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
-| `tool_result event.usage` | `ToolResultEvent.usage` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
+| Surface | Pi declaration | Node runtime | Go | Rust | Python | Lisp |
+|---|---|---|---|---|---|---|
+| `tool_result event.toolName` | `ToolResultEvent.toolName` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` | implemented `pig:on` |
+| `tool_result event.details` | `ToolResultEvent.details` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` | implemented `pig:on` |
+| `tool_result event.toolCallId` | `ToolResultEvent.toolCallId` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` | implemented `pig:on` |
+| `tool_result event.parentToolCallId` | `ToolResultEvent.parentToolCallId` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` | implemented `pig:on` |
+| `tool_result event.input` | `ToolResultEvent.input` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` | implemented `pig:on` |
+| `tool_result event.content` | `ToolResultEvent.content` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` | implemented `pig:on` |
+| `tool_result event.structuredContent` | `ToolResultEvent.structuredContent` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` | implemented `pig:on` |
+| `tool_result event.isError` | `ToolResultEvent.isError` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` | implemented `pig:on` |
+| `tool_result event.usage` | `ToolResultEvent.usage` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` | implemented `pig:on` |
 
 ## Event results
 
-| Surface | Pi declaration | Node runtime | Go | Rust | Python |
-|---|---|---|---|---|---|
-| `tool_result return.content` | `ToolResultEventResult.content` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
-| `tool_result return.details` | `ToolResultEventResult.details` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
-| `tool_result return.structuredContent` | `ToolResultEventResult.structuredContent` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
-| `tool_result return.isError` | `ToolResultEventResult.isError` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
-| `tool_result return.usage` | `ToolResultEventResult.usage` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
+| Surface | Pi declaration | Node runtime | Go | Rust | Python | Lisp |
+|---|---|---|---|---|---|---|
+| `tool_result return.content` | `ToolResultEventResult.content` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` | implemented `pig:on` |
+| `tool_result return.details` | `ToolResultEventResult.details` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` | implemented `pig:on` |
+| `tool_result return.structuredContent` | `ToolResultEventResult.structuredContent` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` | implemented `pig:on` |
+| `tool_result return.isError` | `ToolResultEventResult.isError` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` | implemented `pig:on` |
+| `tool_result return.usage` | `ToolResultEventResult.usage` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` | implemented `pig:on` |
 
 ## Events
 
-| Surface | Pi declaration | Node runtime | Go | Rust | Python |
-|---|---|---|---|---|---|
-| `pi.on("user_bash")` | `ExtensionAPI.on` | implemented `api.on` | implemented `EventUserBash` | implemented `EVENT_USER_BASH` | implemented `EVENT_USER_BASH` |
+| Surface | Pi declaration | Node runtime | Go | Rust | Python | Lisp |
+|---|---|---|---|---|---|---|
+| `pi.on("user_bash")` | `ExtensionAPI.on` | implemented `api.on` | implemented `EventUserBash` | implemented `EVENT_USER_BASH` | implemented `EVENT_USER_BASH` | implemented `pig:on` |
 
 ## Event payloads
 
-| Surface | Pi declaration | Node runtime | Go | Rust | Python |
-|---|---|---|---|---|---|
-| `user_bash event.command` | `UserBashEvent.command` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
-| `user_bash event.excludeFromContext` | `UserBashEvent.excludeFromContext` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
-| `user_bash event.cwd` | `UserBashEvent.cwd` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
+| Surface | Pi declaration | Node runtime | Go | Rust | Python | Lisp |
+|---|---|---|---|---|---|---|
+| `user_bash event.command` | `UserBashEvent.command` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` | implemented `pig:on` |
+| `user_bash event.excludeFromContext` | `UserBashEvent.excludeFromContext` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` | implemented `pig:on` |
+| `user_bash event.cwd` | `UserBashEvent.cwd` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` | implemented `pig:on` |
 
 ## Event results
 
-| Surface | Pi declaration | Node runtime | Go | Rust | Python |
-|---|---|---|---|---|---|
-| `user_bash return.operations` | `UserBashEventResult.operations` | missing [exception](#exceptions) | missing [exception](#exceptions) | missing [exception](#exceptions) | missing [exception](#exceptions) |
-| `user_bash return.result` | `UserBashEventResult.result` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
+| Surface | Pi declaration | Node runtime | Go | Rust | Python | Lisp |
+|---|---|---|---|---|---|---|
+| `user_bash return.operations` | `UserBashEventResult.operations` | missing [exception](#exceptions) | missing [exception](#exceptions) | missing [exception](#exceptions) | missing [exception](#exceptions) | missing [exception](#exceptions) |
+| `user_bash return.result` | `UserBashEventResult.result` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` | implemented `pig:on` |
 
 ## Events
 
-| Surface | Pi declaration | Node runtime | Go | Rust | Python |
-|---|---|---|---|---|---|
-| `pi.on("input")` | `ExtensionAPI.on` | implemented `api.on` | implemented `EventInput` | implemented `EVENT_INPUT` | implemented `EVENT_INPUT` |
+| Surface | Pi declaration | Node runtime | Go | Rust | Python | Lisp |
+|---|---|---|---|---|---|---|
+| `pi.on("input")` | `ExtensionAPI.on` | implemented `api.on` | implemented `EventInput` | implemented `EVENT_INPUT` | implemented `EVENT_INPUT` | implemented `pig:on` |
 
 ## Event payloads
 
-| Surface | Pi declaration | Node runtime | Go | Rust | Python |
-|---|---|---|---|---|---|
-| `input event.text` | `InputEvent.text` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
-| `input event.images` | `InputEvent.images` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
-| `input event.source` | `InputEvent.source` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
-| `input event.streamingBehavior` | `InputEvent.streamingBehavior` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
+| Surface | Pi declaration | Node runtime | Go | Rust | Python | Lisp |
+|---|---|---|---|---|---|---|
+| `input event.text` | `InputEvent.text` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` | implemented `pig:on` |
+| `input event.images` | `InputEvent.images` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` | implemented `pig:on` |
+| `input event.source` | `InputEvent.source` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` | implemented `pig:on` |
+| `input event.streamingBehavior` | `InputEvent.streamingBehavior` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` | implemented `pig:on` |
 
 ## Event results
 
-| Surface | Pi declaration | Node runtime | Go | Rust | Python |
-|---|---|---|---|---|---|
-| `input return.action` | `InputEventResult.action` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
-| `input return.text` | `InputEventResult.text` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
-| `input return.images` | `InputEventResult.images` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` |
+| Surface | Pi declaration | Node runtime | Go | Rust | Python | Lisp |
+|---|---|---|---|---|---|---|
+| `input return.action` | `InputEventResult.action` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` | implemented `pig:on` |
+| `input return.text` | `InputEventResult.text` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` | implemented `pig:on` |
+| `input return.images` | `InputEventResult.images` | implemented `api.on` | implemented `EventFunc` | implemented `EventHandler` | implemented `Extension.on_event` | implemented `pig:on` |
 
 ## ctx (ExtensionContext)
 
-| Surface | Pi declaration | Node runtime | Go | Rust | Python |
-|---|---|---|---|---|---|
-| `ctx.mode` | `ExtensionContext.mode` | implemented `RuntimeContext.mode` | implemented `Context.Mode` | implemented `Context::mode` | implemented `Context.mode` |
-| `ctx.hasUI` | `ExtensionContext.hasUI` | implemented `RuntimeContext.hasUI` | implemented `Context.HasUI` | implemented `Context::has_ui` | implemented `Context.has_ui` |
-| `ctx.cwd` | `ExtensionContext.cwd` | implemented `RuntimeContext.cwd` | implemented `Context.Cwd` | implemented `Context::cwd` | implemented `Context.cwd` |
-| `ctx.sessionManager` | `ExtensionContext.sessionManager` | implemented `RuntimeContext.sessionManager` | implemented `Context.SessionManager` | implemented `Context::session_manager` | implemented `Context.session_manager` |
+| Surface | Pi declaration | Node runtime | Go | Rust | Python | Lisp |
+|---|---|---|---|---|---|---|
+| `ctx.mode` | `ExtensionContext.mode` | implemented `RuntimeContext.mode` | implemented `Context.Mode` | implemented `Context::mode` | implemented `Context.mode` | implemented `pig:ctx-mode` |
+| `ctx.hasUI` | `ExtensionContext.hasUI` | implemented `RuntimeContext.hasUI` | implemented `Context.HasUI` | implemented `Context::has_ui` | implemented `Context.has_ui` | implemented `pig:ctx-has-ui-p` |
+| `ctx.cwd` | `ExtensionContext.cwd` | implemented `RuntimeContext.cwd` | implemented `Context.Cwd` | implemented `Context::cwd` | implemented `Context.cwd` | implemented `pig:ctx-cwd` |
+| `ctx.sessionManager` | `ExtensionContext.sessionManager` | implemented `RuntimeContext.sessionManager` | implemented `Context.SessionManager` | implemented `Context::session_manager` | implemented `Context.session_manager` | implemented `pig:ctx-session-manager` |
 
 ## ctx.sessionManager (ReadonlySessionManager)
 
-| Surface | Pi declaration | Node runtime | Go | Rust | Python |
-|---|---|---|---|---|---|
-| `ctx.sessionManager.getCwd` | `ReadonlySessionManager.getCwd` | implemented `RuntimeSessionManager.getCwd` | implemented `ReadonlySessionManager.GetCwd` | implemented `ReadonlySessionManager::get_cwd` | implemented `ReadonlySessionManager.get_cwd` |
-| `ctx.sessionManager.getSessionDir` | `ReadonlySessionManager.getSessionDir` | implemented `RuntimeSessionManager.getSessionDir` | implemented `ReadonlySessionManager.GetSessionDir` | implemented `ReadonlySessionManager::get_session_dir` | implemented `ReadonlySessionManager.get_session_dir` |
-| `ctx.sessionManager.getSessionId` | `ReadonlySessionManager.getSessionId` | implemented `RuntimeSessionManager.getSessionId` | implemented `ReadonlySessionManager.GetSessionID` | implemented `ReadonlySessionManager::get_session_id` | implemented `ReadonlySessionManager.get_session_id` |
-| `ctx.sessionManager.getSessionFile` | `ReadonlySessionManager.getSessionFile` | implemented `RuntimeSessionManager.getSessionFile` | implemented `ReadonlySessionManager.GetSessionFile` | implemented `ReadonlySessionManager::get_session_file` | implemented `ReadonlySessionManager.get_session_file` |
-| `ctx.sessionManager.getSessionName` | `ReadonlySessionManager.getSessionName` | implemented `RuntimeSessionManager.getSessionName` | implemented `ReadonlySessionManager.GetSessionName` | implemented `ReadonlySessionManager::get_session_name` | implemented `ReadonlySessionManager.get_session_name` |
-| `ctx.sessionManager.getLeafId` | `ReadonlySessionManager.getLeafId` | implemented `RuntimeSessionManager.getLeafId` | implemented `ReadonlySessionManager.GetLeafID` | implemented `ReadonlySessionManager::get_leaf_id` | implemented `ReadonlySessionManager.get_leaf_id` |
-| `ctx.sessionManager.getLeafEntry` | `ReadonlySessionManager.getLeafEntry` | implemented `RuntimeSessionManager.getLeafEntry` | implemented `ReadonlySessionManager.GetLeafEntry` | implemented `ReadonlySessionManager::get_leaf_entry` | implemented `ReadonlySessionManager.get_leaf_entry` |
-| `ctx.sessionManager.getEntry` | `ReadonlySessionManager.getEntry` | implemented `RuntimeSessionManager.getEntry` | implemented `ReadonlySessionManager.GetEntry` | implemented `ReadonlySessionManager::get_entry` | implemented `ReadonlySessionManager.get_entry` |
-| `ctx.sessionManager.getLabel` | `ReadonlySessionManager.getLabel` | implemented `RuntimeSessionManager.getLabel` | implemented `ReadonlySessionManager.GetLabel` | implemented `ReadonlySessionManager::get_label` | implemented `ReadonlySessionManager.get_label` |
-| `ctx.sessionManager.getBranch` | `ReadonlySessionManager.getBranch` | implemented `RuntimeSessionManager.getBranch` | implemented `ReadonlySessionManager.GetBranch` | implemented `ReadonlySessionManager::get_branch` | implemented `ReadonlySessionManager.get_branch` |
-| `ctx.sessionManager.buildContextEntries` | `ReadonlySessionManager.buildContextEntries` | implemented `RuntimeSessionManager.buildContextEntries` | implemented `ReadonlySessionManager.BuildContextEntries` | implemented `ReadonlySessionManager::build_context_entries` | implemented `ReadonlySessionManager.build_context_entries` |
-| `ctx.sessionManager.buildSessionProjection` | `ReadonlySessionManager.buildSessionProjection` | implemented `RuntimeSessionManager.buildSessionProjection` | implemented `ReadonlySessionManager.BuildSessionProjection` | implemented `ReadonlySessionManager::build_session_projection` | implemented `ReadonlySessionManager.build_session_projection` |
-| `ctx.sessionManager.getHeader` | `ReadonlySessionManager.getHeader` | implemented `RuntimeSessionManager.getHeader` | implemented `ReadonlySessionManager.GetHeader` | implemented `ReadonlySessionManager::get_header` | implemented `ReadonlySessionManager.get_header` |
-| `ctx.sessionManager.getEntries` | `ReadonlySessionManager.getEntries` | implemented `RuntimeSessionManager.getEntries` | implemented `ReadonlySessionManager.GetEntries` | implemented `ReadonlySessionManager::get_entries` | implemented `ReadonlySessionManager.get_entries` |
-| `ctx.sessionManager.getTree` | `ReadonlySessionManager.getTree` | implemented `RuntimeSessionManager.getTree` | implemented `ReadonlySessionManager.GetTree` | implemented `ReadonlySessionManager::get_tree` | implemented `ReadonlySessionManager.get_tree` |
+| Surface | Pi declaration | Node runtime | Go | Rust | Python | Lisp |
+|---|---|---|---|---|---|---|
+| `ctx.sessionManager.getCwd` | `ReadonlySessionManager.getCwd` | implemented `RuntimeSessionManager.getCwd` | implemented `ReadonlySessionManager.GetCwd` | implemented `ReadonlySessionManager::get_cwd` | implemented `ReadonlySessionManager.get_cwd` | implemented `pig:session-get-cwd` |
+| `ctx.sessionManager.getSessionDir` | `ReadonlySessionManager.getSessionDir` | implemented `RuntimeSessionManager.getSessionDir` | implemented `ReadonlySessionManager.GetSessionDir` | implemented `ReadonlySessionManager::get_session_dir` | implemented `ReadonlySessionManager.get_session_dir` | implemented `pig:session-get-session-dir` |
+| `ctx.sessionManager.getSessionId` | `ReadonlySessionManager.getSessionId` | implemented `RuntimeSessionManager.getSessionId` | implemented `ReadonlySessionManager.GetSessionID` | implemented `ReadonlySessionManager::get_session_id` | implemented `ReadonlySessionManager.get_session_id` | implemented `pig:session-get-session-id` |
+| `ctx.sessionManager.getSessionFile` | `ReadonlySessionManager.getSessionFile` | implemented `RuntimeSessionManager.getSessionFile` | implemented `ReadonlySessionManager.GetSessionFile` | implemented `ReadonlySessionManager::get_session_file` | implemented `ReadonlySessionManager.get_session_file` | implemented `pig:session-get-session-file` |
+| `ctx.sessionManager.getSessionName` | `ReadonlySessionManager.getSessionName` | implemented `RuntimeSessionManager.getSessionName` | implemented `ReadonlySessionManager.GetSessionName` | implemented `ReadonlySessionManager::get_session_name` | implemented `ReadonlySessionManager.get_session_name` | implemented `pig:session-get-session-name` |
+| `ctx.sessionManager.getLeafId` | `ReadonlySessionManager.getLeafId` | implemented `RuntimeSessionManager.getLeafId` | implemented `ReadonlySessionManager.GetLeafID` | implemented `ReadonlySessionManager::get_leaf_id` | implemented `ReadonlySessionManager.get_leaf_id` | implemented `pig:session-get-leaf-id` |
+| `ctx.sessionManager.getLeafEntry` | `ReadonlySessionManager.getLeafEntry` | implemented `RuntimeSessionManager.getLeafEntry` | implemented `ReadonlySessionManager.GetLeafEntry` | implemented `ReadonlySessionManager::get_leaf_entry` | implemented `ReadonlySessionManager.get_leaf_entry` | implemented `pig:session-get-leaf-entry` |
+| `ctx.sessionManager.getEntry` | `ReadonlySessionManager.getEntry` | implemented `RuntimeSessionManager.getEntry` | implemented `ReadonlySessionManager.GetEntry` | implemented `ReadonlySessionManager::get_entry` | implemented `ReadonlySessionManager.get_entry` | implemented `pig:session-get-entry` |
+| `ctx.sessionManager.getLabel` | `ReadonlySessionManager.getLabel` | implemented `RuntimeSessionManager.getLabel` | implemented `ReadonlySessionManager.GetLabel` | implemented `ReadonlySessionManager::get_label` | implemented `ReadonlySessionManager.get_label` | implemented `pig:session-get-label` |
+| `ctx.sessionManager.getBranch` | `ReadonlySessionManager.getBranch` | implemented `RuntimeSessionManager.getBranch` | implemented `ReadonlySessionManager.GetBranch` | implemented `ReadonlySessionManager::get_branch` | implemented `ReadonlySessionManager.get_branch` | implemented `pig:session-get-branch` |
+| `ctx.sessionManager.buildContextEntries` | `ReadonlySessionManager.buildContextEntries` | implemented `RuntimeSessionManager.buildContextEntries` | implemented `ReadonlySessionManager.BuildContextEntries` | implemented `ReadonlySessionManager::build_context_entries` | implemented `ReadonlySessionManager.build_context_entries` | implemented `pig:session-build-context-entries` |
+| `ctx.sessionManager.buildSessionProjection` | `ReadonlySessionManager.buildSessionProjection` | implemented `RuntimeSessionManager.buildSessionProjection` | implemented `ReadonlySessionManager.BuildSessionProjection` | implemented `ReadonlySessionManager::build_session_projection` | implemented `ReadonlySessionManager.build_session_projection` | implemented `pig:session-build-session-projection` |
+| `ctx.sessionManager.getHeader` | `ReadonlySessionManager.getHeader` | implemented `RuntimeSessionManager.getHeader` | implemented `ReadonlySessionManager.GetHeader` | implemented `ReadonlySessionManager::get_header` | implemented `ReadonlySessionManager.get_header` | implemented `pig:session-get-header` |
+| `ctx.sessionManager.getEntries` | `ReadonlySessionManager.getEntries` | implemented `RuntimeSessionManager.getEntries` | implemented `ReadonlySessionManager.GetEntries` | implemented `ReadonlySessionManager::get_entries` | implemented `ReadonlySessionManager.get_entries` | implemented `pig:session-get-entries` |
+| `ctx.sessionManager.getTree` | `ReadonlySessionManager.getTree` | implemented `RuntimeSessionManager.getTree` | implemented `ReadonlySessionManager.GetTree` | implemented `ReadonlySessionManager::get_tree` | implemented `ReadonlySessionManager.get_tree` | implemented `pig:session-get-tree` |
 
 ## ctx (ExtensionContext)
 
-| Surface | Pi declaration | Node runtime | Go | Rust | Python |
-|---|---|---|---|---|---|
-| `ctx.modelRegistry` | `ExtensionContext.modelRegistry` | implemented `RuntimeContext.modelRegistry` | implemented `Context.ModelRegistry` | implemented `Context::model_registry` | implemented `Context.model_registry` |
+| Surface | Pi declaration | Node runtime | Go | Rust | Python | Lisp |
+|---|---|---|---|---|---|---|
+| `ctx.modelRegistry` | `ExtensionContext.modelRegistry` | implemented `RuntimeContext.modelRegistry` | implemented `Context.ModelRegistry` | implemented `Context::model_registry` | implemented `Context.model_registry` | implemented `pig:ctx-model-registry` |
 
 ## ctx.modelRegistry (ModelRegistry)
 
-| Surface | Pi declaration | Node runtime | Go | Rust | Python |
-|---|---|---|---|---|---|
-| `ctx.modelRegistry.refresh` | `ModelRegistry.refresh` | implemented `RuntimeModelRegistry.refresh` | implemented `ModelRegistry.Refresh` | implemented `ModelRegistry::refresh` | implemented `ModelRegistry.refresh` |
-| `ctx.modelRegistry.getError` | `ModelRegistry.getError` | implemented `RuntimeModelRegistry.getError` | implemented `ModelRegistry.GetError` | implemented `ModelRegistry::get_error` | implemented `ModelRegistry.get_error` |
-| `ctx.modelRegistry.getAll` | `ModelRegistry.getAll` | implemented `RuntimeModelRegistry.getAll` | implemented `ModelRegistry.GetAll` | implemented `ModelRegistry::get_all` | implemented `ModelRegistry.get_all` |
-| `ctx.modelRegistry.getAvailable` | `ModelRegistry.getAvailable` | stand-in/partial `RuntimeModelRegistry.getAvailable`: host snapshot filters configured auth; Pi's checked-auth availability snapshot remains unported | stand-in/partial `ModelRegistry.GetAvailable`: host snapshot filters configured auth; Pi's checked-auth availability snapshot remains unported | stand-in/partial `ModelRegistry::get_available`: host snapshot filters configured auth; Pi's checked-auth availability snapshot remains unported | stand-in/partial `ModelRegistry.get_available`: host snapshot filters configured auth; Pi's checked-auth availability snapshot remains unported |
-| `ctx.modelRegistry.find` | `ModelRegistry.find` | implemented `RuntimeModelRegistry.find` | implemented `ModelRegistry.Find` | implemented `ModelRegistry::find` | implemented `ModelRegistry.find` |
-| `ctx.modelRegistry.findOfType` | `ModelRegistry.findOfType` | implemented `RuntimeModelRegistry.findOfType` | implemented `ModelRegistry.FindOfType` | implemented `ModelRegistry::find_of_type` | implemented `ModelRegistry.find_of_type` |
-| `ctx.modelRegistry.hasConfiguredAuth` | `ModelRegistry.hasConfiguredAuth` | implemented `RuntimeModelRegistry.hasConfiguredAuth` | implemented `ModelRegistry.HasConfiguredAuth` | implemented `ModelRegistry::has_configured_auth` | implemented `ModelRegistry.has_configured_auth` |
-| `ctx.modelRegistry.getApiKeyAndHeaders` | `ModelRegistry.getApiKeyAndHeaders` | implemented `RuntimeModelRegistry.getApiKeyAndHeaders` | implemented `ModelRegistry.GetApiKeyAndHeaders` | implemented `ModelRegistry::get_api_key_and_headers` | implemented `ModelRegistry.get_api_key_and_headers` |
-| `ctx.modelRegistry.getProviderAuthStatus` | `ModelRegistry.getProviderAuthStatus` | implemented `RuntimeModelRegistry.getProviderAuthStatus` | implemented `ModelRegistry.GetProviderAuthStatus` | implemented `ModelRegistry::get_provider_auth_status` | implemented `ModelRegistry.get_provider_auth_status` |
-| `ctx.modelRegistry.getProvider` | `ModelRegistry.getProvider` | implemented `RuntimeModelRegistry.getProvider` | implemented `ModelRegistry.GetProvider` | implemented `ModelRegistry::get_provider` | implemented `ModelRegistry.get_provider` |
-| `ctx.modelRegistry.stream` | `ModelRegistry.stream` | implemented `RuntimeModelRegistry.stream` | implemented `ModelRegistry.Stream` | implemented `ModelRegistry::stream` | implemented `ModelRegistry.stream` |
-| `ctx.modelRegistry.streamSimple` | `ModelRegistry.streamSimple` | implemented `RuntimeModelRegistry.streamSimple` | implemented `ModelRegistry.StreamSimple` | implemented `ModelRegistry::stream_simple` | implemented `ModelRegistry.stream_simple` |
-| `ctx.modelRegistry.complete` | `ModelRegistry.complete` | implemented `RuntimeModelRegistry.complete` | implemented `ModelRegistry.Complete` | implemented `ModelRegistry::complete` | implemented `ModelRegistry.complete` |
-| `ctx.modelRegistry.getModelsOfType` | `ModelRegistry.getModelsOfType` | implemented `RuntimeModelRegistry.getModelsOfType` | implemented `ModelRegistry.GetModelsOfType` | implemented `ModelRegistry::get_models_of_type` | implemented `ModelRegistry.get_models_of_type` |
-| `ctx.modelRegistry.getAvailableOfType` | `ModelRegistry.getAvailableOfType` | implemented `RuntimeModelRegistry.getAvailableOfType` | implemented `ModelRegistry.GetAvailableOfType` | implemented `ModelRegistry::get_available_of_type` | implemented `ModelRegistry.get_available_of_type` |
-| `ctx.modelRegistry.getModelOfType` | `ModelRegistry.getModelOfType` | implemented `RuntimeModelRegistry.getModelOfType` | implemented `ModelRegistry.GetModelOfType` | implemented `ModelRegistry::get_model_of_type` | implemented `ModelRegistry.get_model_of_type` |
-| `ctx.modelRegistry.classify` | `ModelRegistry.classify` | implemented `RuntimeModelRegistry.classify` | implemented `ModelRegistry.Classify` | implemented `ModelRegistry::classify` | implemented `ModelRegistry.classify` |
-| `ctx.modelRegistry.generateImages` | `ModelRegistry.generateImages` | implemented `RuntimeModelRegistry.generateImages` | implemented `ModelRegistry.GenerateImages` | implemented `ModelRegistry::generate_images` | implemented `ModelRegistry.generate_images` |
-| `ctx.modelRegistry.getProviderDisplayName` | `ModelRegistry.getProviderDisplayName` | implemented `RuntimeModelRegistry.getProviderDisplayName` | implemented `ModelRegistry.GetProviderDisplayName` | implemented `ModelRegistry::get_provider_display_name` | implemented `ModelRegistry.get_provider_display_name` |
-| `ctx.modelRegistry.getProviderAuth` | `ModelRegistry.getProviderAuth` | implemented `RuntimeModelRegistry.getProviderAuth` | implemented `ModelRegistry.GetProviderAuth` | implemented `ModelRegistry::get_provider_auth` | implemented `ModelRegistry.get_provider_auth` |
-| `ctx.modelRegistry.getApiKeyForProvider` | `ModelRegistry.getApiKeyForProvider` | implemented `RuntimeModelRegistry.getApiKeyForProvider` | implemented `ModelRegistry.GetApiKeyForProvider` | implemented `ModelRegistry::get_api_key_for_provider` | implemented `ModelRegistry.get_api_key_for_provider` |
-| `ctx.modelRegistry.isUsingOAuth` | `ModelRegistry.isUsingOAuth` | implemented `RuntimeModelRegistry.isUsingOAuth` | implemented `ModelRegistry.IsUsingOAuth` | implemented `ModelRegistry::is_using_oauth` | implemented `ModelRegistry.is_using_oauth` |
-| `ctx.modelRegistry.registerProvider` | `ModelRegistry.registerProvider` | stand-in/partial `RuntimeModelRegistry.registerProvider`: config registration reaches the host; native callback providers remain process-local | stand-in/partial `ModelRegistry.RegisterProvider`: config overload only; native Provider callback objects are not implemented | stand-in/partial `ModelRegistry::register_provider`: config overload only; native Provider callback objects are not implemented | stand-in/partial `ModelRegistry.register_provider`: config overload only; native Provider callback objects are not implemented |
-| `ctx.modelRegistry.unregisterProvider` | `ModelRegistry.unregisterProvider` | implemented `RuntimeModelRegistry.unregisterProvider` | implemented `ModelRegistry.UnregisterProvider` | implemented `ModelRegistry::unregister_provider` | implemented `ModelRegistry.unregister_provider` |
-| `ctx.modelRegistry.registerVirtualModel` | `ModelRegistry.registerVirtualModel` | implemented `RuntimeModelRegistry.registerVirtualModel` | implemented `ModelRegistry.RegisterVirtualModel` | implemented `ModelRegistry::register_virtual_model` | implemented `ModelRegistry.register_virtual_model` |
-| `ctx.modelRegistry.unregisterVirtualModel` | `ModelRegistry.unregisterVirtualModel` | implemented `RuntimeModelRegistry.unregisterVirtualModel` | implemented `ModelRegistry.UnregisterVirtualModel` | implemented `ModelRegistry::unregister_virtual_model` | implemented `ModelRegistry.unregister_virtual_model` |
-| `ctx.modelRegistry.getRegisteredProviderConfig` | `ModelRegistry.getRegisteredProviderConfig` | implemented `RuntimeModelRegistry.getRegisteredProviderConfig` | implemented `ModelRegistry.GetRegisteredProviderConfig` | implemented `ModelRegistry::get_registered_provider_config` | implemented `ModelRegistry.get_registered_provider_config` |
-| `ctx.modelRegistry.getRegisteredNativeProvider` | `ModelRegistry.getRegisteredNativeProvider` | implemented `RuntimeModelRegistry.getRegisteredNativeProvider` | implemented `ModelRegistry.GetRegisteredNativeProvider` | implemented `ModelRegistry::get_registered_native_provider` | implemented `ModelRegistry.get_registered_native_provider` |
-| `ctx.modelRegistry.getRegisteredProviderIds` | `ModelRegistry.getRegisteredProviderIds` | implemented `RuntimeModelRegistry.getRegisteredProviderIds` | implemented `ModelRegistry.GetRegisteredProviderIDs` | implemented `ModelRegistry::get_registered_provider_ids` | implemented `ModelRegistry.get_registered_provider_ids` |
+| Surface | Pi declaration | Node runtime | Go | Rust | Python | Lisp |
+|---|---|---|---|---|---|---|
+| `ctx.modelRegistry.refresh` | `ModelRegistry.refresh` | implemented `RuntimeModelRegistry.refresh` | implemented `ModelRegistry.Refresh` | implemented `ModelRegistry::refresh` | implemented `ModelRegistry.refresh` | implemented `pig:registry-refresh` |
+| `ctx.modelRegistry.getError` | `ModelRegistry.getError` | implemented `RuntimeModelRegistry.getError` | implemented `ModelRegistry.GetError` | implemented `ModelRegistry::get_error` | implemented `ModelRegistry.get_error` | implemented `pig:registry-get-error` |
+| `ctx.modelRegistry.getAll` | `ModelRegistry.getAll` | implemented `RuntimeModelRegistry.getAll` | implemented `ModelRegistry.GetAll` | implemented `ModelRegistry::get_all` | implemented `ModelRegistry.get_all` | implemented `pig:registry-get-all` |
+| `ctx.modelRegistry.getAvailable` | `ModelRegistry.getAvailable` | stand-in/partial `RuntimeModelRegistry.getAvailable`: host snapshot filters configured auth; Pi's checked-auth availability snapshot remains unported | stand-in/partial `ModelRegistry.GetAvailable`: host snapshot filters configured auth; Pi's checked-auth availability snapshot remains unported | stand-in/partial `ModelRegistry::get_available`: host snapshot filters configured auth; Pi's checked-auth availability snapshot remains unported | stand-in/partial `ModelRegistry.get_available`: host snapshot filters configured auth; Pi's checked-auth availability snapshot remains unported | stand-in/partial `pig:registry-get-available`: host snapshot filters configured auth; Pi's checked-auth availability snapshot remains unported |
+| `ctx.modelRegistry.find` | `ModelRegistry.find` | implemented `RuntimeModelRegistry.find` | implemented `ModelRegistry.Find` | implemented `ModelRegistry::find` | implemented `ModelRegistry.find` | implemented `pig:registry-find` |
+| `ctx.modelRegistry.findOfType` | `ModelRegistry.findOfType` | implemented `RuntimeModelRegistry.findOfType` | implemented `ModelRegistry.FindOfType` | implemented `ModelRegistry::find_of_type` | implemented `ModelRegistry.find_of_type` | implemented `pig:registry-find-of-type` |
+| `ctx.modelRegistry.hasConfiguredAuth` | `ModelRegistry.hasConfiguredAuth` | implemented `RuntimeModelRegistry.hasConfiguredAuth` | implemented `ModelRegistry.HasConfiguredAuth` | implemented `ModelRegistry::has_configured_auth` | implemented `ModelRegistry.has_configured_auth` | implemented `pig:registry-has-configured-auth` |
+| `ctx.modelRegistry.getApiKeyAndHeaders` | `ModelRegistry.getApiKeyAndHeaders` | implemented `RuntimeModelRegistry.getApiKeyAndHeaders` | implemented `ModelRegistry.GetApiKeyAndHeaders` | implemented `ModelRegistry::get_api_key_and_headers` | implemented `ModelRegistry.get_api_key_and_headers` | implemented `pig:registry-get-api-key-and-headers` |
+| `ctx.modelRegistry.getProviderAuthStatus` | `ModelRegistry.getProviderAuthStatus` | implemented `RuntimeModelRegistry.getProviderAuthStatus` | implemented `ModelRegistry.GetProviderAuthStatus` | implemented `ModelRegistry::get_provider_auth_status` | implemented `ModelRegistry.get_provider_auth_status` | implemented `pig:registry-get-provider-auth-status` |
+| `ctx.modelRegistry.getProvider` | `ModelRegistry.getProvider` | implemented `RuntimeModelRegistry.getProvider` | implemented `ModelRegistry.GetProvider` | implemented `ModelRegistry::get_provider` | implemented `ModelRegistry.get_provider` | implemented `pig:registry-get-provider` |
+| `ctx.modelRegistry.stream` | `ModelRegistry.stream` | implemented `RuntimeModelRegistry.stream` | implemented `ModelRegistry.Stream` | implemented `ModelRegistry::stream` | implemented `ModelRegistry.stream` | implemented `pig:registry-stream` |
+| `ctx.modelRegistry.streamSimple` | `ModelRegistry.streamSimple` | implemented `RuntimeModelRegistry.streamSimple` | implemented `ModelRegistry.StreamSimple` | implemented `ModelRegistry::stream_simple` | implemented `ModelRegistry.stream_simple` | implemented `pig:registry-stream-simple` |
+| `ctx.modelRegistry.complete` | `ModelRegistry.complete` | implemented `RuntimeModelRegistry.complete` | implemented `ModelRegistry.Complete` | implemented `ModelRegistry::complete` | implemented `ModelRegistry.complete` | implemented `pig:registry-complete` |
+| `ctx.modelRegistry.getModelsOfType` | `ModelRegistry.getModelsOfType` | implemented `RuntimeModelRegistry.getModelsOfType` | implemented `ModelRegistry.GetModelsOfType` | implemented `ModelRegistry::get_models_of_type` | implemented `ModelRegistry.get_models_of_type` | implemented `pig:registry-get-models-of-type` |
+| `ctx.modelRegistry.getAvailableOfType` | `ModelRegistry.getAvailableOfType` | implemented `RuntimeModelRegistry.getAvailableOfType` | implemented `ModelRegistry.GetAvailableOfType` | implemented `ModelRegistry::get_available_of_type` | implemented `ModelRegistry.get_available_of_type` | implemented `pig:registry-get-available-of-type` |
+| `ctx.modelRegistry.getModelOfType` | `ModelRegistry.getModelOfType` | implemented `RuntimeModelRegistry.getModelOfType` | implemented `ModelRegistry.GetModelOfType` | implemented `ModelRegistry::get_model_of_type` | implemented `ModelRegistry.get_model_of_type` | implemented `pig:registry-get-model-of-type` |
+| `ctx.modelRegistry.classify` | `ModelRegistry.classify` | implemented `RuntimeModelRegistry.classify` | implemented `ModelRegistry.Classify` | implemented `ModelRegistry::classify` | implemented `ModelRegistry.classify` | implemented `pig:registry-classify` |
+| `ctx.modelRegistry.generateImages` | `ModelRegistry.generateImages` | implemented `RuntimeModelRegistry.generateImages` | implemented `ModelRegistry.GenerateImages` | implemented `ModelRegistry::generate_images` | implemented `ModelRegistry.generate_images` | implemented `pig:registry-generate-images` |
+| `ctx.modelRegistry.getProviderDisplayName` | `ModelRegistry.getProviderDisplayName` | implemented `RuntimeModelRegistry.getProviderDisplayName` | implemented `ModelRegistry.GetProviderDisplayName` | implemented `ModelRegistry::get_provider_display_name` | implemented `ModelRegistry.get_provider_display_name` | implemented `pig:registry-get-provider-display-name` |
+| `ctx.modelRegistry.getProviderAuth` | `ModelRegistry.getProviderAuth` | implemented `RuntimeModelRegistry.getProviderAuth` | implemented `ModelRegistry.GetProviderAuth` | implemented `ModelRegistry::get_provider_auth` | implemented `ModelRegistry.get_provider_auth` | implemented `pig:registry-get-provider-auth` |
+| `ctx.modelRegistry.getApiKeyForProvider` | `ModelRegistry.getApiKeyForProvider` | implemented `RuntimeModelRegistry.getApiKeyForProvider` | implemented `ModelRegistry.GetApiKeyForProvider` | implemented `ModelRegistry::get_api_key_for_provider` | implemented `ModelRegistry.get_api_key_for_provider` | implemented `pig:registry-get-api-key-for-provider` |
+| `ctx.modelRegistry.isUsingOAuth` | `ModelRegistry.isUsingOAuth` | implemented `RuntimeModelRegistry.isUsingOAuth` | implemented `ModelRegistry.IsUsingOAuth` | implemented `ModelRegistry::is_using_oauth` | implemented `ModelRegistry.is_using_oauth` | implemented `pig:registry-is-using-oauth` |
+| `ctx.modelRegistry.registerProvider` | `ModelRegistry.registerProvider` | stand-in/partial `RuntimeModelRegistry.registerProvider`: config registration reaches the host; native callback providers remain process-local | stand-in/partial `ModelRegistry.RegisterProvider`: config overload only; native Provider callback objects are not implemented | stand-in/partial `ModelRegistry::register_provider`: config overload only; native Provider callback objects are not implemented | stand-in/partial `ModelRegistry.register_provider`: config overload only; native Provider callback objects are not implemented | implemented `pig:registry-register-provider` |
+| `ctx.modelRegistry.unregisterProvider` | `ModelRegistry.unregisterProvider` | implemented `RuntimeModelRegistry.unregisterProvider` | implemented `ModelRegistry.UnregisterProvider` | implemented `ModelRegistry::unregister_provider` | implemented `ModelRegistry.unregister_provider` | implemented `pig:registry-unregister-provider` |
+| `ctx.modelRegistry.registerVirtualModel` | `ModelRegistry.registerVirtualModel` | implemented `RuntimeModelRegistry.registerVirtualModel` | implemented `ModelRegistry.RegisterVirtualModel` | implemented `ModelRegistry::register_virtual_model` | implemented `ModelRegistry.register_virtual_model` | implemented `pig:registry-register-virtual-model` |
+| `ctx.modelRegistry.unregisterVirtualModel` | `ModelRegistry.unregisterVirtualModel` | implemented `RuntimeModelRegistry.unregisterVirtualModel` | implemented `ModelRegistry.UnregisterVirtualModel` | implemented `ModelRegistry::unregister_virtual_model` | implemented `ModelRegistry.unregister_virtual_model` | implemented `pig:registry-unregister-virtual-model` |
+| `ctx.modelRegistry.getRegisteredProviderConfig` | `ModelRegistry.getRegisteredProviderConfig` | implemented `RuntimeModelRegistry.getRegisteredProviderConfig` | implemented `ModelRegistry.GetRegisteredProviderConfig` | implemented `ModelRegistry::get_registered_provider_config` | implemented `ModelRegistry.get_registered_provider_config` | implemented `pig:registry-get-registered-provider-config` |
+| `ctx.modelRegistry.getRegisteredNativeProvider` | `ModelRegistry.getRegisteredNativeProvider` | implemented `RuntimeModelRegistry.getRegisteredNativeProvider` | implemented `ModelRegistry.GetRegisteredNativeProvider` | implemented `ModelRegistry::get_registered_native_provider` | implemented `ModelRegistry.get_registered_native_provider` | implemented `pig:registry-get-registered-native-provider` |
+| `ctx.modelRegistry.getRegisteredProviderIds` | `ModelRegistry.getRegisteredProviderIds` | implemented `RuntimeModelRegistry.getRegisteredProviderIds` | implemented `ModelRegistry.GetRegisteredProviderIDs` | implemented `ModelRegistry::get_registered_provider_ids` | implemented `ModelRegistry.get_registered_provider_ids` | implemented `pig:registry-get-registered-provider-ids` |
 
 ## ctx (ExtensionContext)
 
-| Surface | Pi declaration | Node runtime | Go | Rust | Python |
-|---|---|---|---|---|---|
-| `ctx.model` | `ExtensionContext.model` | implemented `RuntimeContext.model` | stand-in/partial `Context.Model`: the model's id, replicated from the host's state (Pi's ctx.model.id); the provider through ModelProvider, the rest of the Model object through GetModelInfo | stand-in/partial `Context::model`: the model's id, replicated from the host's state (Pi's ctx.model.id); the provider through model_provider, the rest of the Model object through get_model_info | stand-in/partial `Context.model`: the model's id, replicated from the host's state (Pi's ctx.model.id); the provider through model_provider, the rest of the Model object through get_model_info |
-| `ctx.scopedModels` | `ExtensionContext.scopedModels` | implemented `RuntimeContext.scopedModels` | implemented `Context.ScopedModels` | implemented `Context::scoped_models` | implemented `Context.scoped_models` |
-| `ctx.thinkingLevel` | `ExtensionContext.thinkingLevel` | implemented `RuntimeContext.thinkingLevel` | implemented `Context.GetThinkingLevel` | implemented `Context::get_thinking_level` | implemented `Context.get_thinking_level` |
-| `ctx.isIdle` | `ExtensionContext.isIdle` | implemented `RuntimeContext.isIdle` | implemented `Context.IsIdle` | implemented `Context::is_idle` | implemented `Context.is_idle` |
-| `ctx.isProjectTrusted` | `ExtensionContext.isProjectTrusted` | implemented `RuntimeContext.isProjectTrusted` | implemented `Context.IsProjectTrusted` | implemented `Context::is_project_trusted` | implemented `Context.is_project_trusted` |
-| `ctx.signal` | `ExtensionContext.signal` | implemented `RuntimeContext.signal` | implemented `Context.Signal` | implemented `Context::signal` | implemented `Context.signal` |
-| `ctx.abort` | `ExtensionContext.abort` | implemented `RuntimeContext.abort` | implemented `Context.Abort` | implemented `Context::abort` | implemented `Context.abort` |
-| `ctx.hasPendingMessages` | `ExtensionContext.hasPendingMessages` | implemented `RuntimeContext.hasPendingMessages` | implemented `Context.HasPendingMessages` | implemented `Context::has_pending_messages` | implemented `Context.has_pending_messages` |
-| `ctx.shutdown` | `ExtensionContext.shutdown` | implemented `RuntimeContext.shutdown` | implemented `Context.Shutdown` | implemented `Context::shutdown` | implemented `Context.shutdown` |
-| `ctx.getContextUsage` | `ExtensionContext.getContextUsage` | implemented `RuntimeContext.getContextUsage` | implemented `Context.GetContextUsage` | implemented `Context::get_context_usage` | implemented `Context.get_context_usage` |
+| Surface | Pi declaration | Node runtime | Go | Rust | Python | Lisp |
+|---|---|---|---|---|---|---|
+| `ctx.model` | `ExtensionContext.model` | implemented `RuntimeContext.model` | stand-in/partial `Context.Model`: the model's id, replicated from the host's state (Pi's ctx.model.id); the provider through ModelProvider, the rest of the Model object through GetModelInfo | stand-in/partial `Context::model`: the model's id, replicated from the host's state (Pi's ctx.model.id); the provider through model_provider, the rest of the Model object through get_model_info | stand-in/partial `Context.model`: the model's id, replicated from the host's state (Pi's ctx.model.id); the provider through model_provider, the rest of the Model object through get_model_info | implemented `pig:ctx-model` |
+| `ctx.scopedModels` | `ExtensionContext.scopedModels` | implemented `RuntimeContext.scopedModels` | implemented `Context.ScopedModels` | implemented `Context::scoped_models` | implemented `Context.scoped_models` | implemented `pig:ctx-get-scoped-models` |
+| `ctx.thinkingLevel` | `ExtensionContext.thinkingLevel` | implemented `RuntimeContext.thinkingLevel` | implemented `Context.GetThinkingLevel` | implemented `Context::get_thinking_level` | implemented `Context.get_thinking_level` | implemented `pig:ctx-get-thinking-level` |
+| `ctx.isIdle` | `ExtensionContext.isIdle` | implemented `RuntimeContext.isIdle` | implemented `Context.IsIdle` | implemented `Context::is_idle` | implemented `Context.is_idle` | implemented `pig:ctx-is-idle-p` |
+| `ctx.isProjectTrusted` | `ExtensionContext.isProjectTrusted` | implemented `RuntimeContext.isProjectTrusted` | implemented `Context.IsProjectTrusted` | implemented `Context::is_project_trusted` | implemented `Context.is_project_trusted` | implemented `pig:ctx-project-trusted-p` |
+| `ctx.signal` | `ExtensionContext.signal` | implemented `RuntimeContext.signal` | implemented `Context.Signal` | implemented `Context::signal` | implemented `Context.signal` | implemented `pig:ctx-signal` |
+| `ctx.abort` | `ExtensionContext.abort` | implemented `RuntimeContext.abort` | implemented `Context.Abort` | implemented `Context::abort` | implemented `Context.abort` | implemented `pig:ctx-abort` |
+| `ctx.hasPendingMessages` | `ExtensionContext.hasPendingMessages` | implemented `RuntimeContext.hasPendingMessages` | implemented `Context.HasPendingMessages` | implemented `Context::has_pending_messages` | implemented `Context.has_pending_messages` | implemented `pig:ctx-has-pending-messages-p` |
+| `ctx.shutdown` | `ExtensionContext.shutdown` | implemented `RuntimeContext.shutdown` | implemented `Context.Shutdown` | implemented `Context::shutdown` | implemented `Context.shutdown` | implemented `pig:ctx-shutdown` |
+| `ctx.getContextUsage` | `ExtensionContext.getContextUsage` | implemented `RuntimeContext.getContextUsage` | implemented `Context.GetContextUsage` | implemented `Context::get_context_usage` | implemented `Context.get_context_usage` | implemented `pig:ctx-get-context-usage` |
 
 ## ctx (ExtensionContext) arguments
 
-| Surface | Pi declaration | Node runtime | Go | Rust | Python |
-|---|---|---|---|---|---|
-| `ctx.getContextUsage → tokens` | `ExtensionContext.getContextUsage → tokens` | implemented `RuntimeContext.getContextUsage` | implemented `ContextUsage.Tokens` | implemented `ContextUsage.tokens` | implemented `Context.get_context_usage` |
-| `ctx.getContextUsage → contextWindow` | `ExtensionContext.getContextUsage → contextWindow` | implemented `RuntimeContext.getContextUsage` | implemented `ContextUsage.ContextWindow` | implemented `ContextUsage.context_window` | implemented `Context.get_context_usage` |
-| `ctx.getContextUsage → percent` | `ExtensionContext.getContextUsage → percent` | implemented `RuntimeContext.getContextUsage` | implemented `ContextUsage.Percent` | implemented `ContextUsage.percent` | implemented `Context.get_context_usage` |
+| Surface | Pi declaration | Node runtime | Go | Rust | Python | Lisp |
+|---|---|---|---|---|---|---|
+| `ctx.getContextUsage → tokens` | `ExtensionContext.getContextUsage → tokens` | implemented `RuntimeContext.getContextUsage` | implemented `ContextUsage.Tokens` | implemented `ContextUsage.tokens` | implemented `Context.get_context_usage` | implemented `pig:ctx-get-context-usage` |
+| `ctx.getContextUsage → contextWindow` | `ExtensionContext.getContextUsage → contextWindow` | implemented `RuntimeContext.getContextUsage` | implemented `ContextUsage.ContextWindow` | implemented `ContextUsage.context_window` | implemented `Context.get_context_usage` | implemented `pig:ctx-get-context-usage` |
+| `ctx.getContextUsage → percent` | `ExtensionContext.getContextUsage → percent` | implemented `RuntimeContext.getContextUsage` | implemented `ContextUsage.Percent` | implemented `ContextUsage.percent` | implemented `Context.get_context_usage` | implemented `pig:ctx-get-context-usage` |
 
 ## ctx (ExtensionContext)
 
-| Surface | Pi declaration | Node runtime | Go | Rust | Python |
-|---|---|---|---|---|---|
-| `ctx.compact` | `ExtensionContext.compact` | implemented `RuntimeContext.compact` | implemented `Context.Compact` | implemented `Context::compact` | implemented `Context.compact` |
+| Surface | Pi declaration | Node runtime | Go | Rust | Python | Lisp |
+|---|---|---|---|---|---|---|
+| `ctx.compact` | `ExtensionContext.compact` | implemented `RuntimeContext.compact` | implemented `Context.Compact` | implemented `Context::compact` | implemented `Context.compact` | implemented `pig:ctx-compact` |
 
 ## ctx (ExtensionContext) arguments
 
-| Surface | Pi declaration | Node runtime | Go | Rust | Python |
-|---|---|---|---|---|---|
-| `ctx.compact(options.customInstructions)` | `ExtensionContext.compact(options.customInstructions)` | implemented `RuntimeContext.compact` | implemented `CompactOptions.CustomInstructions` | implemented `CompactOptions.custom_instructions` | implemented `Context.compact(custom_instructions)` |
-| `ctx.compact(options.onComplete)` | `ExtensionContext.compact(options.onComplete)` | implemented `RuntimeContext.compact` | implemented `CompactOptions.OnComplete` | implemented `CompactOptions.on_complete` | implemented `Context.compact(on_complete)` |
-| `ctx.compact(options.onError)` | `ExtensionContext.compact(options.onError)` | implemented `RuntimeContext.compact` | implemented `CompactOptions.OnError` | implemented `CompactOptions.on_error` | implemented `Context.compact(on_error)` |
+| Surface | Pi declaration | Node runtime | Go | Rust | Python | Lisp |
+|---|---|---|---|---|---|---|
+| `ctx.compact(options.customInstructions)` | `ExtensionContext.compact(options.customInstructions)` | implemented `RuntimeContext.compact` | implemented `CompactOptions.CustomInstructions` | implemented `CompactOptions.custom_instructions` | implemented `Context.compact(custom_instructions)` | implemented `pig:ctx-compact(custom-instructions)` |
+| `ctx.compact(options.onComplete)` | `ExtensionContext.compact(options.onComplete)` | implemented `RuntimeContext.compact` | implemented `CompactOptions.OnComplete` | implemented `CompactOptions.on_complete` | implemented `Context.compact(on_complete)` | implemented `pig:ctx-compact(on-complete)` |
+| `ctx.compact(options.onError)` | `ExtensionContext.compact(options.onError)` | implemented `RuntimeContext.compact` | implemented `CompactOptions.OnError` | implemented `CompactOptions.on_error` | implemented `Context.compact(on_error)` | implemented `pig:ctx-compact(on-error)` |
 
 ## ctx (ExtensionContext)
 
-| Surface | Pi declaration | Node runtime | Go | Rust | Python |
-|---|---|---|---|---|---|
-| `ctx.getSystemPrompt` | `ExtensionContext.getSystemPrompt` | implemented `RuntimeContext.getSystemPrompt` | implemented `Context.GetSystemPrompt` | implemented `Context::get_system_prompt` | implemented `Context.get_system_prompt` |
+| Surface | Pi declaration | Node runtime | Go | Rust | Python | Lisp |
+|---|---|---|---|---|---|---|
+| `ctx.getSystemPrompt` | `ExtensionContext.getSystemPrompt` | implemented `RuntimeContext.getSystemPrompt` | implemented `Context.GetSystemPrompt` | implemented `Context::get_system_prompt` | implemented `Context.get_system_prompt` | implemented `pig:ctx-get-system-prompt` |
 
 ## ctx (ExtensionCommandContext, command handlers)
 
-| Surface | Pi declaration | Node runtime | Go | Rust | Python |
-|---|---|---|---|---|---|
-| `ctx.getSystemPromptOptions` | `ExtensionCommandContext.getSystemPromptOptions` | implemented `RuntimeContext.getSystemPromptOptions` | implemented `Context.GetSystemPromptOptions` | implemented `Context::get_system_prompt_options` | implemented `Context.get_system_prompt_options` |
-| `ctx.waitForIdle` | `ExtensionCommandContext.waitForIdle` | implemented `RuntimeContext.waitForIdle` | implemented `Context.WaitForIdle` | implemented `Context::wait_for_idle` | implemented `Context.wait_for_idle` |
-| `ctx.newSession` | `ExtensionCommandContext.newSession` | implemented `RuntimeContext.newSession` | implemented `Context.NewSession` | implemented `Context::new_session` | implemented `Context.new_session` |
+| Surface | Pi declaration | Node runtime | Go | Rust | Python | Lisp |
+|---|---|---|---|---|---|---|
+| `ctx.getSystemPromptOptions` | `ExtensionCommandContext.getSystemPromptOptions` | implemented `RuntimeContext.getSystemPromptOptions` | implemented `Context.GetSystemPromptOptions` | implemented `Context::get_system_prompt_options` | implemented `Context.get_system_prompt_options` | implemented `pig:ctx-get-system-prompt-options` |
+| `ctx.waitForIdle` | `ExtensionCommandContext.waitForIdle` | implemented `RuntimeContext.waitForIdle` | implemented `Context.WaitForIdle` | implemented `Context::wait_for_idle` | implemented `Context.wait_for_idle` | implemented `pig:ctx-wait-for-idle` |
+| `ctx.newSession` | `ExtensionCommandContext.newSession` | implemented `RuntimeContext.newSession` | implemented `Context.NewSession` | implemented `Context::new_session` | implemented `Context.new_session` | implemented `pig:ctx-new-session` |
 
 ## ctx (ExtensionCommandContext, command handlers) arguments
 
-| Surface | Pi declaration | Node runtime | Go | Rust | Python |
-|---|---|---|---|---|---|
-| `ctx.newSession(options.parentSession)` | `ExtensionCommandContext.newSession(options.parentSession)` | implemented `RuntimeContext.newSession` | implemented `Context.NewSession` | implemented `Context::new_session` | implemented `Context.new_session` |
-| `ctx.newSession(options.setup)` | `ExtensionCommandContext.newSession(options.setup)` | missing [exception](#exceptions) | missing [exception](#exceptions) | missing [exception](#exceptions) | missing [exception](#exceptions) |
-| `ctx.newSession(options.withSession)` | `ExtensionCommandContext.newSession(options.withSession)` | implemented `read:entry.callback` | implemented `WithSessionFunc` | implemented `Context::new_session_with` | implemented `ReplacedSessionContext` |
-| `ctx.newSession → cancelled` | `ExtensionCommandContext.newSession → cancelled` | implemented `RuntimeContext.newSession` | implemented `CancelledResult.Cancelled` | implemented `Context::new_session` | implemented `Context.new_session` |
+| Surface | Pi declaration | Node runtime | Go | Rust | Python | Lisp |
+|---|---|---|---|---|---|---|
+| `ctx.newSession(options.parentSession)` | `ExtensionCommandContext.newSession(options.parentSession)` | implemented `RuntimeContext.newSession` | implemented `Context.NewSession` | implemented `Context::new_session` | implemented `Context.new_session` | implemented `pig:ctx-new-session` |
+| `ctx.newSession(options.setup)` | `ExtensionCommandContext.newSession(options.setup)` | missing [exception](#exceptions) | missing [exception](#exceptions) | missing [exception](#exceptions) | missing [exception](#exceptions) | missing [exception](#exceptions) |
+| `ctx.newSession(options.withSession)` | `ExtensionCommandContext.newSession(options.withSession)` | implemented `read:entry.callback` | implemented `WithSessionFunc` | implemented `Context::new_session_with` | implemented `ReplacedSessionContext` | implemented `pig:ctx-new-session(with-session)` |
+| `ctx.newSession → cancelled` | `ExtensionCommandContext.newSession → cancelled` | implemented `RuntimeContext.newSession` | implemented `CancelledResult.Cancelled` | implemented `Context::new_session` | implemented `Context.new_session` | implemented `pig:ctx-new-session` |
 
 ## ctx (ExtensionCommandContext, command handlers)
 
-| Surface | Pi declaration | Node runtime | Go | Rust | Python |
-|---|---|---|---|---|---|
-| `ctx.fork` | `ExtensionCommandContext.fork` | implemented `RuntimeContext.fork` | implemented `Context.Fork` | implemented `Context::fork` | implemented `Context.fork` |
+| Surface | Pi declaration | Node runtime | Go | Rust | Python | Lisp |
+|---|---|---|---|---|---|---|
+| `ctx.fork` | `ExtensionCommandContext.fork` | implemented `RuntimeContext.fork` | implemented `Context.Fork` | implemented `Context::fork` | implemented `Context.fork` | implemented `pig:ctx-fork` |
 
 ## ctx (ExtensionCommandContext, command handlers) arguments
 
-| Surface | Pi declaration | Node runtime | Go | Rust | Python |
-|---|---|---|---|---|---|
-| `ctx.fork(options.position)` | `ExtensionCommandContext.fork(options.position)` | implemented `RuntimeContext.fork` | implemented `Context.Fork` | implemented `Context::fork` | implemented `Context.fork` |
-| `ctx.fork(options.withSession)` | `ExtensionCommandContext.fork(options.withSession)` | implemented `read:entry.callback` | implemented `WithSessionFunc` | implemented `Context::fork_with` | implemented `ReplacedSessionContext` |
-| `ctx.fork → cancelled` | `ExtensionCommandContext.fork → cancelled` | implemented `RuntimeContext.fork` | implemented `CancelledResult.Cancelled` | implemented `Context::fork` | implemented `Context.fork` |
+| Surface | Pi declaration | Node runtime | Go | Rust | Python | Lisp |
+|---|---|---|---|---|---|---|
+| `ctx.fork(options.position)` | `ExtensionCommandContext.fork(options.position)` | implemented `RuntimeContext.fork` | implemented `Context.Fork` | implemented `Context::fork` | implemented `Context.fork` | implemented `pig:ctx-fork` |
+| `ctx.fork(options.withSession)` | `ExtensionCommandContext.fork(options.withSession)` | implemented `read:entry.callback` | implemented `WithSessionFunc` | implemented `Context::fork_with` | implemented `ReplacedSessionContext` | implemented `pig:ctx-fork(with-session)` |
+| `ctx.fork → cancelled` | `ExtensionCommandContext.fork → cancelled` | implemented `RuntimeContext.fork` | implemented `CancelledResult.Cancelled` | implemented `Context::fork` | implemented `Context.fork` | implemented `pig:ctx-fork` |
 
 ## ctx (ExtensionCommandContext, command handlers)
 
-| Surface | Pi declaration | Node runtime | Go | Rust | Python |
-|---|---|---|---|---|---|
-| `ctx.navigateTree` | `ExtensionCommandContext.navigateTree` | implemented `RuntimeContext.navigateTree` | implemented `Context.NavigateTree` | implemented `Context::navigate_tree` | implemented `Context.navigate_tree` |
+| Surface | Pi declaration | Node runtime | Go | Rust | Python | Lisp |
+|---|---|---|---|---|---|---|
+| `ctx.navigateTree` | `ExtensionCommandContext.navigateTree` | implemented `RuntimeContext.navigateTree` | implemented `Context.NavigateTree` | implemented `Context::navigate_tree` | implemented `Context.navigate_tree` | implemented `pig:ctx-navigate-tree` |
 
 ## ctx (ExtensionCommandContext, command handlers) arguments
 
-| Surface | Pi declaration | Node runtime | Go | Rust | Python |
-|---|---|---|---|---|---|
-| `ctx.navigateTree(options.summarize)` | `ExtensionCommandContext.navigateTree(options.summarize)` | implemented `RuntimeContext.navigateTree` | implemented `Context.NavigateTree` | implemented `Context::navigate_tree` | implemented `Context.navigate_tree` |
-| `ctx.navigateTree(options.customInstructions)` | `ExtensionCommandContext.navigateTree(options.customInstructions)` | implemented `RuntimeContext.navigateTree` | implemented `Context.NavigateTree` | implemented `Context::navigate_tree` | implemented `Context.navigate_tree` |
-| `ctx.navigateTree(options.replaceInstructions)` | `ExtensionCommandContext.navigateTree(options.replaceInstructions)` | implemented `RuntimeContext.navigateTree` | implemented `Context.NavigateTree` | implemented `Context::navigate_tree` | implemented `Context.navigate_tree` |
-| `ctx.navigateTree(options.label)` | `ExtensionCommandContext.navigateTree(options.label)` | implemented `RuntimeContext.navigateTree` | implemented `Context.NavigateTree` | implemented `Context::navigate_tree` | implemented `Context.navigate_tree` |
-| `ctx.navigateTree → cancelled` | `ExtensionCommandContext.navigateTree → cancelled` | implemented `RuntimeContext.navigateTree` | implemented `CancelledResult.Cancelled` | implemented `Context::navigate_tree` | implemented `Context.navigate_tree` |
+| Surface | Pi declaration | Node runtime | Go | Rust | Python | Lisp |
+|---|---|---|---|---|---|---|
+| `ctx.navigateTree(options.summarize)` | `ExtensionCommandContext.navigateTree(options.summarize)` | implemented `RuntimeContext.navigateTree` | implemented `Context.NavigateTree` | implemented `Context::navigate_tree` | implemented `Context.navigate_tree` | implemented `pig:ctx-navigate-tree` |
+| `ctx.navigateTree(options.customInstructions)` | `ExtensionCommandContext.navigateTree(options.customInstructions)` | implemented `RuntimeContext.navigateTree` | implemented `Context.NavigateTree` | implemented `Context::navigate_tree` | implemented `Context.navigate_tree` | implemented `pig:ctx-navigate-tree` |
+| `ctx.navigateTree(options.replaceInstructions)` | `ExtensionCommandContext.navigateTree(options.replaceInstructions)` | implemented `RuntimeContext.navigateTree` | implemented `Context.NavigateTree` | implemented `Context::navigate_tree` | implemented `Context.navigate_tree` | implemented `pig:ctx-navigate-tree` |
+| `ctx.navigateTree(options.label)` | `ExtensionCommandContext.navigateTree(options.label)` | implemented `RuntimeContext.navigateTree` | implemented `Context.NavigateTree` | implemented `Context::navigate_tree` | implemented `Context.navigate_tree` | implemented `pig:ctx-navigate-tree` |
+| `ctx.navigateTree → cancelled` | `ExtensionCommandContext.navigateTree → cancelled` | implemented `RuntimeContext.navigateTree` | implemented `CancelledResult.Cancelled` | implemented `Context::navigate_tree` | implemented `Context.navigate_tree` | implemented `pig:ctx-navigate-tree` |
 
 ## ctx (ExtensionCommandContext, command handlers)
 
-| Surface | Pi declaration | Node runtime | Go | Rust | Python |
-|---|---|---|---|---|---|
-| `ctx.switchSession` | `ExtensionCommandContext.switchSession` | implemented `RuntimeContext.switchSession` | implemented `Context.SwitchSession` | implemented `Context::switch_session` | implemented `Context.switch_session` |
+| Surface | Pi declaration | Node runtime | Go | Rust | Python | Lisp |
+|---|---|---|---|---|---|---|
+| `ctx.switchSession` | `ExtensionCommandContext.switchSession` | implemented `RuntimeContext.switchSession` | implemented `Context.SwitchSession` | implemented `Context::switch_session` | implemented `Context.switch_session` | implemented `pig:ctx-switch-session` |
 
 ## ctx (ExtensionCommandContext, command handlers) arguments
 
-| Surface | Pi declaration | Node runtime | Go | Rust | Python |
-|---|---|---|---|---|---|
-| `ctx.switchSession(options.withSession)` | `ExtensionCommandContext.switchSession(options.withSession)` | implemented `read:entry.callback` | implemented `WithSessionFunc` | implemented `Context::switch_session_with` | implemented `ReplacedSessionContext` |
-| `ctx.switchSession → cancelled` | `ExtensionCommandContext.switchSession → cancelled` | implemented `RuntimeContext.switchSession` | implemented `CancelledResult.Cancelled` | implemented `Context::switch_session` | implemented `Context.switch_session` |
+| Surface | Pi declaration | Node runtime | Go | Rust | Python | Lisp |
+|---|---|---|---|---|---|---|
+| `ctx.switchSession(options.withSession)` | `ExtensionCommandContext.switchSession(options.withSession)` | implemented `read:entry.callback` | implemented `WithSessionFunc` | implemented `Context::switch_session_with` | implemented `ReplacedSessionContext` | implemented `pig:ctx-switch-session(with-session)` |
+| `ctx.switchSession → cancelled` | `ExtensionCommandContext.switchSession → cancelled` | implemented `RuntimeContext.switchSession` | implemented `CancelledResult.Cancelled` | implemented `Context::switch_session` | implemented `Context.switch_session` | implemented `pig:ctx-switch-session` |
 
 ## ctx (ExtensionCommandContext, command handlers)
 
-| Surface | Pi declaration | Node runtime | Go | Rust | Python |
-|---|---|---|---|---|---|
-| `ctx.reload` | `ExtensionCommandContext.reload` | implemented `RuntimeContext.reload` | implemented `Context.Reload` | implemented `Context::reload` | implemented `Context.reload` |
+| Surface | Pi declaration | Node runtime | Go | Rust | Python | Lisp |
+|---|---|---|---|---|---|---|
+| `ctx.reload` | `ExtensionCommandContext.reload` | implemented `RuntimeContext.reload` | implemented `Context.Reload` | implemented `Context::reload` | implemented `Context.reload` | implemented `pig:ctx-reload` |
 
 ## ctx (ReplacedSessionContext, withSession callbacks)
 
-| Surface | Pi declaration | Node runtime | Go | Rust | Python |
-|---|---|---|---|---|---|
-| `withSession ctx.sendMessage` | `ReplacedSessionContext.sendMessage` | implemented `read:context.sendMessage` | implemented `Context.SendMessage` | implemented `Context::send_message` | implemented `Context.send_message` |
+| Surface | Pi declaration | Node runtime | Go | Rust | Python | Lisp |
+|---|---|---|---|---|---|---|
+| `withSession ctx.sendMessage` | `ReplacedSessionContext.sendMessage` | implemented `read:context.sendMessage` | implemented `Context.SendMessage` | implemented `Context::send_message` | implemented `Context.send_message` | implemented `pig:ctx-send-message` |
 
 ## ctx (ReplacedSessionContext, withSession callbacks) arguments
 
-| Surface | Pi declaration | Node runtime | Go | Rust | Python |
-|---|---|---|---|---|---|
-| `withSession ctx.sendMessage(message.customType)` | `ReplacedSessionContext.sendMessage(message.customType)` | implemented `read:context.sendMessage` | implemented `CustomMessage.CustomType` | implemented `CustomMessage.custom_type` | implemented `Context.send_message(custom_type)` |
-| `withSession ctx.sendMessage(message.content)` | `ReplacedSessionContext.sendMessage(message.content)` | implemented `read:context.sendMessage` | implemented `CustomMessage.Content` | implemented `CustomMessage.content` | implemented `Context.send_message(content)` |
-| `withSession ctx.sendMessage(message.display)` | `ReplacedSessionContext.sendMessage(message.display)` | implemented `read:context.sendMessage` | implemented `CustomMessage.Display` | implemented `CustomMessage.display` | implemented `Context.send_message(display)` |
-| `withSession ctx.sendMessage(message.details)` | `ReplacedSessionContext.sendMessage(message.details)` | implemented `read:context.sendMessage` | implemented `CustomMessage.Details` | implemented `CustomMessage.details` | implemented `Context.send_message(details)` |
-| `withSession ctx.sendMessage(options.triggerTurn)` | `ReplacedSessionContext.sendMessage(options.triggerTurn)` | implemented `read:context.sendMessage` | implemented `SendMessageOptions.TriggerTurn` | implemented `SendMessageOptions.trigger_turn` | implemented `Context.send_message(trigger_turn)` |
-| `withSession ctx.sendMessage(options.deliverAs)` | `ReplacedSessionContext.sendMessage(options.deliverAs)` | implemented `read:context.sendMessage` | implemented `SendMessageOptions.DeliverAs` | implemented `SendMessageOptions.deliver_as` | implemented `Context.send_message(deliver_as)` |
+| Surface | Pi declaration | Node runtime | Go | Rust | Python | Lisp |
+|---|---|---|---|---|---|---|
+| `withSession ctx.sendMessage(message.customType)` | `ReplacedSessionContext.sendMessage(message.customType)` | implemented `read:context.sendMessage` | implemented `CustomMessage.CustomType` | implemented `CustomMessage.custom_type` | implemented `Context.send_message(custom_type)` | implemented `pig:ctx-send-message(custom-type)` |
+| `withSession ctx.sendMessage(message.content)` | `ReplacedSessionContext.sendMessage(message.content)` | implemented `read:context.sendMessage` | implemented `CustomMessage.Content` | implemented `CustomMessage.content` | implemented `Context.send_message(content)` | implemented `pig:ctx-send-message(content)` |
+| `withSession ctx.sendMessage(message.display)` | `ReplacedSessionContext.sendMessage(message.display)` | implemented `read:context.sendMessage` | implemented `CustomMessage.Display` | implemented `CustomMessage.display` | implemented `Context.send_message(display)` | implemented `pig:ctx-send-message(display)` |
+| `withSession ctx.sendMessage(message.details)` | `ReplacedSessionContext.sendMessage(message.details)` | implemented `read:context.sendMessage` | implemented `CustomMessage.Details` | implemented `CustomMessage.details` | implemented `Context.send_message(details)` | implemented `pig:ctx-send-message(details)` |
+| `withSession ctx.sendMessage(options.triggerTurn)` | `ReplacedSessionContext.sendMessage(options.triggerTurn)` | implemented `read:context.sendMessage` | implemented `SendMessageOptions.TriggerTurn` | implemented `SendMessageOptions.trigger_turn` | implemented `Context.send_message(trigger_turn)` | implemented `pig:ctx-send-message(trigger-turn)` |
+| `withSession ctx.sendMessage(options.deliverAs)` | `ReplacedSessionContext.sendMessage(options.deliverAs)` | implemented `read:context.sendMessage` | implemented `SendMessageOptions.DeliverAs` | implemented `SendMessageOptions.deliver_as` | implemented `Context.send_message(deliver_as)` | implemented `pig:ctx-send-message(deliver-as)` |
 
 ## ctx (ReplacedSessionContext, withSession callbacks)
 
-| Surface | Pi declaration | Node runtime | Go | Rust | Python |
-|---|---|---|---|---|---|
-| `withSession ctx.sendUserMessage` | `ReplacedSessionContext.sendUserMessage` | implemented `read:context.sendUserMessage` | implemented `Context.SendUserMessage` | implemented `Context::send_user_message` | implemented `Context.send_user_message` |
+| Surface | Pi declaration | Node runtime | Go | Rust | Python | Lisp |
+|---|---|---|---|---|---|---|
+| `withSession ctx.sendUserMessage` | `ReplacedSessionContext.sendUserMessage` | implemented `read:context.sendUserMessage` | implemented `Context.SendUserMessage` | implemented `Context::send_user_message` | implemented `Context.send_user_message` | implemented `pig:ctx-send-user-message` |
 
 ## ctx (ReplacedSessionContext, withSession callbacks) arguments
 
-| Surface | Pi declaration | Node runtime | Go | Rust | Python |
-|---|---|---|---|---|---|
-| `withSession ctx.sendUserMessage(options.deliverAs)` | `ReplacedSessionContext.sendUserMessage(options.deliverAs)` | implemented `read:context.sendUserMessage` | implemented `Context.SendUserMessage` | implemented `Context::send_user_message` | implemented `Context.send_user_message(deliver_as)` |
-| `withSession ctx.sendUserMessage(options.expandPromptTemplates)` | `ReplacedSessionContext.sendUserMessage(options.expandPromptTemplates)` | missing (`read:context.sendUserMessage`: the host drops `expandPromptTemplates` (subprocess.SendUserMessageOptions)) [exception](#exceptions) | missing [exception](#exceptions) | missing [exception](#exceptions) | missing [exception](#exceptions) |
+| Surface | Pi declaration | Node runtime | Go | Rust | Python | Lisp |
+|---|---|---|---|---|---|---|
+| `withSession ctx.sendUserMessage(options.deliverAs)` | `ReplacedSessionContext.sendUserMessage(options.deliverAs)` | implemented `read:context.sendUserMessage` | implemented `Context.SendUserMessage` | implemented `Context::send_user_message` | implemented `Context.send_user_message(deliver_as)` | implemented `pig:ctx-send-user-message(deliver-as)` |
+| `withSession ctx.sendUserMessage(options.expandPromptTemplates)` | `ReplacedSessionContext.sendUserMessage(options.expandPromptTemplates)` | missing (`read:context.sendUserMessage`: the host drops `expandPromptTemplates` (subprocess.SendUserMessageOptions)) [exception](#exceptions) | missing [exception](#exceptions) | missing [exception](#exceptions) | missing [exception](#exceptions) | missing [exception](#exceptions) |
 
 ## ctx.ui (ExtensionUIContext)
 
-| Surface | Pi declaration | Node runtime | Go | Rust | Python |
-|---|---|---|---|---|---|
-| `ctx.ui.select` | `ExtensionUIContext.select` | implemented `RuntimeUI.select` | implemented `Context.Select` | implemented `Context::select` | implemented `Context.select` |
+| Surface | Pi declaration | Node runtime | Go | Rust | Python | Lisp |
+|---|---|---|---|---|---|---|
+| `ctx.ui.select` | `ExtensionUIContext.select` | implemented `RuntimeUI.select` | implemented `Context.Select` | implemented `Context::select` | implemented `Context.select` | implemented `pig:ctx-select` |
 
 ## ctx.ui arguments
 
-| Surface | Pi declaration | Node runtime | Go | Rust | Python |
-|---|---|---|---|---|---|
-| `ctx.ui.select(opts.signal)` | `ExtensionUIContext.select(opts.signal)` | implemented `RuntimeUI.select` | stand-in/partial `Context.Done`: the dialog closes when the calling request is cancelled; an AbortSignal of its own cannot cross the process boundary | stand-in/partial `Context::is_cancelled`: the dialog closes when the calling request is cancelled; an AbortSignal of its own cannot cross the process boundary | stand-in/partial `Context.is_cancelled`: the dialog closes when the calling request is cancelled; an AbortSignal of its own cannot cross the process boundary |
-| `ctx.ui.select(opts.timeout)` | `ExtensionUIContext.select(opts.timeout)` | stand-in/partial `RuntimeUI.select`: RPC mode honors the timeout; PiG's interactive dialogs ignore it for every extension (host gap shared with in-process extensions) | stand-in/partial `DialogOptions.Timeout`: RPC mode honors the timeout; PiG's interactive dialogs ignore it for every extension (host gap shared with in-process extensions) | stand-in/partial `DialogOptions.timeout`: RPC mode honors the timeout; PiG's interactive dialogs ignore it for every extension (host gap shared with in-process extensions) | stand-in/partial `Context.select(timeout)`: RPC mode honors the timeout; PiG's interactive dialogs ignore it for every extension (host gap shared with in-process extensions) |
+| Surface | Pi declaration | Node runtime | Go | Rust | Python | Lisp |
+|---|---|---|---|---|---|---|
+| `ctx.ui.select(opts.signal)` | `ExtensionUIContext.select(opts.signal)` | implemented `RuntimeUI.select` | stand-in/partial `Context.Done`: the dialog closes when the calling request is cancelled; an AbortSignal of its own cannot cross the process boundary | stand-in/partial `Context::is_cancelled`: the dialog closes when the calling request is cancelled; an AbortSignal of its own cannot cross the process boundary | stand-in/partial `Context.is_cancelled`: the dialog closes when the calling request is cancelled; an AbortSignal of its own cannot cross the process boundary | implemented `pig:ctx-cancelled-p` |
+| `ctx.ui.select(opts.timeout)` | `ExtensionUIContext.select(opts.timeout)` | stand-in/partial `RuntimeUI.select`: RPC mode honors the timeout; PiG's interactive dialogs ignore it for every extension (host gap shared with in-process extensions) | stand-in/partial `DialogOptions.Timeout`: RPC mode honors the timeout; PiG's interactive dialogs ignore it for every extension (host gap shared with in-process extensions) | stand-in/partial `DialogOptions.timeout`: RPC mode honors the timeout; PiG's interactive dialogs ignore it for every extension (host gap shared with in-process extensions) | stand-in/partial `Context.select(timeout)`: RPC mode honors the timeout; PiG's interactive dialogs ignore it for every extension (host gap shared with in-process extensions) | stand-in/partial `pig:ctx-select(timeout)`: RPC mode honors the timeout; PiG's interactive dialogs ignore it for every extension (host gap shared with in-process extensions) |
 
 ## ctx.ui (ExtensionUIContext)
 
-| Surface | Pi declaration | Node runtime | Go | Rust | Python |
-|---|---|---|---|---|---|
-| `ctx.ui.confirm` | `ExtensionUIContext.confirm` | implemented `RuntimeUI.confirm` | implemented `Context.Confirm` | implemented `Context::confirm` | implemented `Context.confirm` |
+| Surface | Pi declaration | Node runtime | Go | Rust | Python | Lisp |
+|---|---|---|---|---|---|---|
+| `ctx.ui.confirm` | `ExtensionUIContext.confirm` | implemented `RuntimeUI.confirm` | implemented `Context.Confirm` | implemented `Context::confirm` | implemented `Context.confirm` | implemented `pig:ctx-confirm` |
 
 ## ctx.ui arguments
 
-| Surface | Pi declaration | Node runtime | Go | Rust | Python |
-|---|---|---|---|---|---|
-| `ctx.ui.confirm(opts.signal)` | `ExtensionUIContext.confirm(opts.signal)` | implemented `RuntimeUI.confirm` | stand-in/partial `Context.Done`: the dialog closes when the calling request is cancelled; an AbortSignal of its own cannot cross the process boundary | stand-in/partial `Context::is_cancelled`: the dialog closes when the calling request is cancelled; an AbortSignal of its own cannot cross the process boundary | stand-in/partial `Context.is_cancelled`: the dialog closes when the calling request is cancelled; an AbortSignal of its own cannot cross the process boundary |
-| `ctx.ui.confirm(opts.timeout)` | `ExtensionUIContext.confirm(opts.timeout)` | stand-in/partial `RuntimeUI.confirm`: RPC mode honors the timeout; PiG's interactive dialogs ignore it for every extension (host gap shared with in-process extensions) | stand-in/partial `DialogOptions.Timeout`: RPC mode honors the timeout; PiG's interactive dialogs ignore it for every extension (host gap shared with in-process extensions) | stand-in/partial `DialogOptions.timeout`: RPC mode honors the timeout; PiG's interactive dialogs ignore it for every extension (host gap shared with in-process extensions) | stand-in/partial `Context.confirm(timeout)`: RPC mode honors the timeout; PiG's interactive dialogs ignore it for every extension (host gap shared with in-process extensions) |
+| Surface | Pi declaration | Node runtime | Go | Rust | Python | Lisp |
+|---|---|---|---|---|---|---|
+| `ctx.ui.confirm(opts.signal)` | `ExtensionUIContext.confirm(opts.signal)` | implemented `RuntimeUI.confirm` | stand-in/partial `Context.Done`: the dialog closes when the calling request is cancelled; an AbortSignal of its own cannot cross the process boundary | stand-in/partial `Context::is_cancelled`: the dialog closes when the calling request is cancelled; an AbortSignal of its own cannot cross the process boundary | stand-in/partial `Context.is_cancelled`: the dialog closes when the calling request is cancelled; an AbortSignal of its own cannot cross the process boundary | implemented `pig:ctx-cancelled-p` |
+| `ctx.ui.confirm(opts.timeout)` | `ExtensionUIContext.confirm(opts.timeout)` | stand-in/partial `RuntimeUI.confirm`: RPC mode honors the timeout; PiG's interactive dialogs ignore it for every extension (host gap shared with in-process extensions) | stand-in/partial `DialogOptions.Timeout`: RPC mode honors the timeout; PiG's interactive dialogs ignore it for every extension (host gap shared with in-process extensions) | stand-in/partial `DialogOptions.timeout`: RPC mode honors the timeout; PiG's interactive dialogs ignore it for every extension (host gap shared with in-process extensions) | stand-in/partial `Context.confirm(timeout)`: RPC mode honors the timeout; PiG's interactive dialogs ignore it for every extension (host gap shared with in-process extensions) | stand-in/partial `pig:ctx-confirm(timeout)`: RPC mode honors the timeout; PiG's interactive dialogs ignore it for every extension (host gap shared with in-process extensions) |
 
 ## ctx.ui (ExtensionUIContext)
 
-| Surface | Pi declaration | Node runtime | Go | Rust | Python |
-|---|---|---|---|---|---|
-| `ctx.ui.input` | `ExtensionUIContext.input` | implemented `RuntimeUI.input` | implemented `Context.Input` | implemented `Context::input` | implemented `Context.input` |
+| Surface | Pi declaration | Node runtime | Go | Rust | Python | Lisp |
+|---|---|---|---|---|---|---|
+| `ctx.ui.input` | `ExtensionUIContext.input` | implemented `RuntimeUI.input` | implemented `Context.Input` | implemented `Context::input` | implemented `Context.input` | implemented `pig:ctx-input` |
 
 ## ctx.ui arguments
 
-| Surface | Pi declaration | Node runtime | Go | Rust | Python |
-|---|---|---|---|---|---|
-| `ctx.ui.input(opts.signal)` | `ExtensionUIContext.input(opts.signal)` | implemented `RuntimeUI.input` | stand-in/partial `Context.Done`: the dialog closes when the calling request is cancelled; an AbortSignal of its own cannot cross the process boundary | stand-in/partial `Context::is_cancelled`: the dialog closes when the calling request is cancelled; an AbortSignal of its own cannot cross the process boundary | stand-in/partial `Context.is_cancelled`: the dialog closes when the calling request is cancelled; an AbortSignal of its own cannot cross the process boundary |
-| `ctx.ui.input(opts.timeout)` | `ExtensionUIContext.input(opts.timeout)` | stand-in/partial `RuntimeUI.input`: RPC mode honors the timeout; PiG's interactive dialogs ignore it for every extension (host gap shared with in-process extensions) | stand-in/partial `DialogOptions.Timeout`: RPC mode honors the timeout; PiG's interactive dialogs ignore it for every extension (host gap shared with in-process extensions) | stand-in/partial `DialogOptions.timeout`: RPC mode honors the timeout; PiG's interactive dialogs ignore it for every extension (host gap shared with in-process extensions) | stand-in/partial `Context.input(timeout)`: RPC mode honors the timeout; PiG's interactive dialogs ignore it for every extension (host gap shared with in-process extensions) |
+| Surface | Pi declaration | Node runtime | Go | Rust | Python | Lisp |
+|---|---|---|---|---|---|---|
+| `ctx.ui.input(opts.signal)` | `ExtensionUIContext.input(opts.signal)` | implemented `RuntimeUI.input` | stand-in/partial `Context.Done`: the dialog closes when the calling request is cancelled; an AbortSignal of its own cannot cross the process boundary | stand-in/partial `Context::is_cancelled`: the dialog closes when the calling request is cancelled; an AbortSignal of its own cannot cross the process boundary | stand-in/partial `Context.is_cancelled`: the dialog closes when the calling request is cancelled; an AbortSignal of its own cannot cross the process boundary | implemented `pig:ctx-cancelled-p` |
+| `ctx.ui.input(opts.timeout)` | `ExtensionUIContext.input(opts.timeout)` | stand-in/partial `RuntimeUI.input`: RPC mode honors the timeout; PiG's interactive dialogs ignore it for every extension (host gap shared with in-process extensions) | stand-in/partial `DialogOptions.Timeout`: RPC mode honors the timeout; PiG's interactive dialogs ignore it for every extension (host gap shared with in-process extensions) | stand-in/partial `DialogOptions.timeout`: RPC mode honors the timeout; PiG's interactive dialogs ignore it for every extension (host gap shared with in-process extensions) | stand-in/partial `Context.input(timeout)`: RPC mode honors the timeout; PiG's interactive dialogs ignore it for every extension (host gap shared with in-process extensions) | stand-in/partial `pig:ctx-input(timeout)`: RPC mode honors the timeout; PiG's interactive dialogs ignore it for every extension (host gap shared with in-process extensions) |
 
 ## ctx.ui (ExtensionUIContext)
 
-| Surface | Pi declaration | Node runtime | Go | Rust | Python |
-|---|---|---|---|---|---|
-| `ctx.ui.notify` | `ExtensionUIContext.notify` | implemented `RuntimeUI.notify` | implemented `Context.Notify` | implemented `Context::notify` | implemented `Context.notify` |
-| `ctx.ui.onTerminalInput` | `ExtensionUIContext.onTerminalInput` | implemented `RuntimeUI.onTerminalInput` | implemented `Context.OnTerminalInput` | implemented `Context::on_terminal_input` | implemented `Context.on_terminal_input` |
-| `ctx.ui.setStatus` | `ExtensionUIContext.setStatus` | implemented `RuntimeUI.setStatus` | implemented `Context.SetStatus` | implemented `Context::set_status` | implemented `Context.set_status` |
-| `ctx.ui.setWorkingMessage` | `ExtensionUIContext.setWorkingMessage` | implemented `RuntimeUI.setWorkingMessage` | implemented `Context.SetWorkingMessage` | implemented `Context::set_working_message` | implemented `Context.set_working_message` |
-| `ctx.ui.setWorkingVisible` | `ExtensionUIContext.setWorkingVisible` | implemented `RuntimeUI.setWorkingVisible` | implemented `Context.SetWorkingVisible` | implemented `Context::set_working_visible` | implemented `Context.set_working_visible` |
-| `ctx.ui.setWorkingIndicator` | `ExtensionUIContext.setWorkingIndicator` | implemented `RuntimeUI.setWorkingIndicator` | implemented `Context.SetWorkingIndicator` | implemented `Context::set_working_indicator` | implemented `Context.set_working_indicator` |
+| Surface | Pi declaration | Node runtime | Go | Rust | Python | Lisp |
+|---|---|---|---|---|---|---|
+| `ctx.ui.notify` | `ExtensionUIContext.notify` | implemented `RuntimeUI.notify` | implemented `Context.Notify` | implemented `Context::notify` | implemented `Context.notify` | implemented `pig:ctx-notify` |
+| `ctx.ui.onTerminalInput` | `ExtensionUIContext.onTerminalInput` | implemented `RuntimeUI.onTerminalInput` | implemented `Context.OnTerminalInput` | implemented `Context::on_terminal_input` | implemented `Context.on_terminal_input` | implemented `pig:ctx-on-terminal-input` |
+| `ctx.ui.setStatus` | `ExtensionUIContext.setStatus` | implemented `RuntimeUI.setStatus` | implemented `Context.SetStatus` | implemented `Context::set_status` | implemented `Context.set_status` | implemented `pig:ctx-set-status` |
+| `ctx.ui.setWorkingMessage` | `ExtensionUIContext.setWorkingMessage` | implemented `RuntimeUI.setWorkingMessage` | implemented `Context.SetWorkingMessage` | implemented `Context::set_working_message` | implemented `Context.set_working_message` | implemented `pig:ctx-set-working-message` |
+| `ctx.ui.setWorkingVisible` | `ExtensionUIContext.setWorkingVisible` | implemented `RuntimeUI.setWorkingVisible` | implemented `Context.SetWorkingVisible` | implemented `Context::set_working_visible` | implemented `Context.set_working_visible` | implemented `pig:ctx-set-working-visible` |
+| `ctx.ui.setWorkingIndicator` | `ExtensionUIContext.setWorkingIndicator` | implemented `RuntimeUI.setWorkingIndicator` | implemented `Context.SetWorkingIndicator` | implemented `Context::set_working_indicator` | implemented `Context.set_working_indicator` | implemented `pig:ctx-set-working-indicator` |
 
 ## ctx.ui arguments
 
-| Surface | Pi declaration | Node runtime | Go | Rust | Python |
-|---|---|---|---|---|---|
-| `ctx.ui.setWorkingIndicator(options.frames)` | `ExtensionUIContext.setWorkingIndicator(options.frames)` | implemented `RuntimeUI.setWorkingIndicator` | implemented `Context.SetWorkingIndicator` | implemented `Context::set_working_indicator` | implemented `Context.set_working_indicator` |
-| `ctx.ui.setWorkingIndicator(options.intervalMs)` | `ExtensionUIContext.setWorkingIndicator(options.intervalMs)` | implemented `RuntimeUI.setWorkingIndicator` | implemented `Context.SetWorkingIndicator` | implemented `Context::set_working_indicator` | implemented `Context.set_working_indicator` |
+| Surface | Pi declaration | Node runtime | Go | Rust | Python | Lisp |
+|---|---|---|---|---|---|---|
+| `ctx.ui.setWorkingIndicator(options.frames)` | `ExtensionUIContext.setWorkingIndicator(options.frames)` | implemented `RuntimeUI.setWorkingIndicator` | implemented `Context.SetWorkingIndicator` | implemented `Context::set_working_indicator` | implemented `Context.set_working_indicator` | implemented `pig:ctx-set-working-indicator` |
+| `ctx.ui.setWorkingIndicator(options.intervalMs)` | `ExtensionUIContext.setWorkingIndicator(options.intervalMs)` | implemented `RuntimeUI.setWorkingIndicator` | implemented `Context.SetWorkingIndicator` | implemented `Context::set_working_indicator` | implemented `Context.set_working_indicator` | implemented `pig:ctx-set-working-indicator` |
 
 ## ctx.ui (ExtensionUIContext)
 
-| Surface | Pi declaration | Node runtime | Go | Rust | Python |
-|---|---|---|---|---|---|
-| `ctx.ui.setHiddenThinkingLabel` | `ExtensionUIContext.setHiddenThinkingLabel` | implemented `RuntimeUI.setHiddenThinkingLabel` | implemented `Context.SetHiddenThinkingLabel` | implemented `Context::set_hidden_thinking_label` | implemented `Context.set_hidden_thinking_label` |
-| `ctx.ui.setWidget` | `ExtensionUIContext.setWidget` | stand-in/partial `RuntimeUI.setWidget`: a component factory renders to lines inside the extension process and is re-rendered on invalidate and resize | stand-in/partial `Context.SetWidget`: string lines, or undefined to clear; a component factory cannot cross the process boundary | stand-in/partial `Context::set_widget_value`: string lines, or undefined to clear; a component factory cannot cross the process boundary | stand-in/partial `Context.set_widget`: string lines, or undefined to clear; a component factory cannot cross the process boundary |
+| Surface | Pi declaration | Node runtime | Go | Rust | Python | Lisp |
+|---|---|---|---|---|---|---|
+| `ctx.ui.setHiddenThinkingLabel` | `ExtensionUIContext.setHiddenThinkingLabel` | implemented `RuntimeUI.setHiddenThinkingLabel` | implemented `Context.SetHiddenThinkingLabel` | implemented `Context::set_hidden_thinking_label` | implemented `Context.set_hidden_thinking_label` | implemented `pig:ctx-set-hidden-thinking-label` |
+| `ctx.ui.setWidget` | `ExtensionUIContext.setWidget` | stand-in/partial `RuntimeUI.setWidget`: a component factory renders to lines inside the extension process and is re-rendered on invalidate and resize | stand-in/partial `Context.SetWidget`: string lines, or undefined to clear; a component factory cannot cross the process boundary | stand-in/partial `Context::set_widget_value`: string lines, or undefined to clear; a component factory cannot cross the process boundary | stand-in/partial `Context.set_widget`: string lines, or undefined to clear; a component factory cannot cross the process boundary | stand-in/partial `pig:ctx-set-widget`: string lines, or undefined to clear; a component factory cannot cross the process boundary |
 
 ## ctx.ui arguments
 
-| Surface | Pi declaration | Node runtime | Go | Rust | Python |
-|---|---|---|---|---|---|
-| `ctx.ui.setWidget(options.placement)` | `ExtensionUIContext.setWidget(options.placement)` | implemented `RuntimeUI.setWidget` | implemented `Context.SetWidget` | implemented `Context::set_widget_value` | implemented `Context.set_widget` |
+| Surface | Pi declaration | Node runtime | Go | Rust | Python | Lisp |
+|---|---|---|---|---|---|---|
+| `ctx.ui.setWidget(options.placement)` | `ExtensionUIContext.setWidget(options.placement)` | implemented `RuntimeUI.setWidget` | implemented `Context.SetWidget` | implemented `Context::set_widget_value` | implemented `Context.set_widget` | implemented `pig:ctx-set-widget` |
 
 ## ctx.ui (ExtensionUIContext)
 
-| Surface | Pi declaration | Node runtime | Go | Rust | Python |
-|---|---|---|---|---|---|
-| `ctx.ui.setFooter` | `ExtensionUIContext.setFooter` | stand-in/partial `RuntimeUI.setFooter`: the factory's component renders to lines inside the extension process, with Pi's footer data provider | stand-in/partial `Context.SetFooter`: a render(width) callback the SDK renders at the host width and again after every resize, or pre-rendered lines tagged with the SDK's width; nil restores the built-in footer; a live component factory cannot cross the process boundary | stand-in/partial `Context::set_footer`: a render(width) callback the SDK renders at the host width and again after every resize, or pre-rendered lines tagged with the SDK's width; nil restores the built-in footer; a live component factory cannot cross the process boundary | stand-in/partial `Context.set_footer`: a render(width) callback the SDK renders at the host width and again after every resize, or pre-rendered lines tagged with the SDK's width; nil restores the built-in footer; a live component factory cannot cross the process boundary |
+| Surface | Pi declaration | Node runtime | Go | Rust | Python | Lisp |
+|---|---|---|---|---|---|---|
+| `ctx.ui.setFooter` | `ExtensionUIContext.setFooter` | stand-in/partial `RuntimeUI.setFooter`: the factory's component renders to lines inside the extension process, with Pi's footer data provider | stand-in/partial `Context.SetFooter`: a render(width) callback the SDK renders at the host width and again after every resize, or pre-rendered lines tagged with the SDK's width; nil restores the built-in footer; a live component factory cannot cross the process boundary | stand-in/partial `Context::set_footer`: a render(width) callback the SDK renders at the host width and again after every resize, or pre-rendered lines tagged with the SDK's width; nil restores the built-in footer; a live component factory cannot cross the process boundary | stand-in/partial `Context.set_footer`: a render(width) callback the SDK renders at the host width and again after every resize, or pre-rendered lines tagged with the SDK's width; nil restores the built-in footer; a live component factory cannot cross the process boundary | stand-in/partial `pig:ctx-set-footer`: a render(width) callback the SDK renders at the host width and again after every resize, or pre-rendered lines tagged with the SDK's width; nil restores the built-in footer; a live component factory cannot cross the process boundary |
 
 ## callback parameters
 
-| Surface | Pi declaration | Node runtime | Go | Rust | Python |
-|---|---|---|---|---|---|
-| `ReadonlyFooterDataProvider.getGitBranch` | `ExtensionUIContext.setFooter(factory: … ReadonlyFooterDataProvider).getGitBranch` | implemented `FooterDataProvider.getGitBranch` | implemented `FooterData.GitBranch` | implemented `FooterData::git_branch` | implemented `FooterData.get_git_branch` |
-| `ReadonlyFooterDataProvider.getExtensionStatuses` | `ExtensionUIContext.setFooter(factory: … ReadonlyFooterDataProvider).getExtensionStatuses` | implemented `FooterDataProvider.getExtensionStatuses` | implemented `FooterData.ExtensionStatuses` | implemented `FooterData::extension_statuses` | implemented `FooterData.get_extension_statuses` |
-| `ReadonlyFooterDataProvider.onBranchChange` | `ExtensionUIContext.setFooter(factory: … ReadonlyFooterDataProvider).onBranchChange` | implemented `FooterDataProvider.onBranchChange` | implemented `FooterData.OnBranchChange` | implemented `FooterData::on_branch_change` | implemented `FooterData.on_branch_change` |
-| `ReadonlyFooterDataProvider.getAvailableProviderCount` | `ExtensionUIContext.setFooter(factory: … ReadonlyFooterDataProvider).getAvailableProviderCount` | implemented `FooterDataProvider.getAvailableProviderCount` | implemented `FooterData.AvailableProviderCount` | implemented `FooterData::available_provider_count` | implemented `FooterData.get_available_provider_count` |
+| Surface | Pi declaration | Node runtime | Go | Rust | Python | Lisp |
+|---|---|---|---|---|---|---|
+| `ReadonlyFooterDataProvider.getGitBranch` | `ExtensionUIContext.setFooter(factory: … ReadonlyFooterDataProvider).getGitBranch` | implemented `FooterDataProvider.getGitBranch` | implemented `FooterData.GitBranch` | implemented `FooterData::git_branch` | implemented `FooterData.get_git_branch` | implemented `pig:footer-get-git-branch` |
+| `ReadonlyFooterDataProvider.getExtensionStatuses` | `ExtensionUIContext.setFooter(factory: … ReadonlyFooterDataProvider).getExtensionStatuses` | implemented `FooterDataProvider.getExtensionStatuses` | implemented `FooterData.ExtensionStatuses` | implemented `FooterData::extension_statuses` | implemented `FooterData.get_extension_statuses` | implemented `pig:footer-get-extension-statuses` |
+| `ReadonlyFooterDataProvider.onBranchChange` | `ExtensionUIContext.setFooter(factory: … ReadonlyFooterDataProvider).onBranchChange` | implemented `FooterDataProvider.onBranchChange` | implemented `FooterData.OnBranchChange` | implemented `FooterData::on_branch_change` | implemented `FooterData.on_branch_change` | implemented `pig:footer-on-branch-change` |
+| `ReadonlyFooterDataProvider.getAvailableProviderCount` | `ExtensionUIContext.setFooter(factory: … ReadonlyFooterDataProvider).getAvailableProviderCount` | implemented `FooterDataProvider.getAvailableProviderCount` | implemented `FooterData.AvailableProviderCount` | implemented `FooterData::available_provider_count` | implemented `FooterData.get_available_provider_count` | implemented `pig:footer-get-available-provider-count` |
 
 ## ctx.ui (ExtensionUIContext)
 
-| Surface | Pi declaration | Node runtime | Go | Rust | Python |
-|---|---|---|---|---|---|
-| `ctx.ui.setHeader` | `ExtensionUIContext.setHeader` | stand-in/partial `RuntimeUI.setHeader`: the factory's component renders to lines inside the extension process | stand-in/partial `Context.SetHeader`: a render(width) callback the SDK renders at the host width and again after every resize, or pre-rendered lines tagged with the SDK's width; nil restores the built-in header; a live component factory cannot cross the process boundary | stand-in/partial `Context::set_header`: a render(width) callback the SDK renders at the host width and again after every resize, or pre-rendered lines tagged with the SDK's width; nil restores the built-in header; a live component factory cannot cross the process boundary | stand-in/partial `Context.set_header`: a render(width) callback the SDK renders at the host width and again after every resize, or pre-rendered lines tagged with the SDK's width; nil restores the built-in header; a live component factory cannot cross the process boundary |
-| `ctx.ui.setTitle` | `ExtensionUIContext.setTitle` | implemented `RuntimeUI.setTitle` | implemented `Context.SetTitle` | implemented `Context::set_title` | implemented `Context.set_title` |
-| `ctx.ui.custom` | `ExtensionUIContext.custom` | stand-in/partial `RuntimeUI.custom`: the factory's component runs inside the extension process and renders lines into a host overlay | stand-in/partial `Context.Custom`: a RemoteComponent renders lines and handles input inside the extension; the host overlay owns focus | stand-in/partial `Context::custom_component`: a RemoteComponent renders lines and handles input inside the extension; the host overlay owns focus | stand-in/partial `Context.custom`: a RemoteComponent renders lines and handles input inside the extension; the host overlay owns focus |
+| Surface | Pi declaration | Node runtime | Go | Rust | Python | Lisp |
+|---|---|---|---|---|---|---|
+| `ctx.ui.setHeader` | `ExtensionUIContext.setHeader` | stand-in/partial `RuntimeUI.setHeader`: the factory's component renders to lines inside the extension process | stand-in/partial `Context.SetHeader`: a render(width) callback the SDK renders at the host width and again after every resize, or pre-rendered lines tagged with the SDK's width; nil restores the built-in header; a live component factory cannot cross the process boundary | stand-in/partial `Context::set_header`: a render(width) callback the SDK renders at the host width and again after every resize, or pre-rendered lines tagged with the SDK's width; nil restores the built-in header; a live component factory cannot cross the process boundary | stand-in/partial `Context.set_header`: a render(width) callback the SDK renders at the host width and again after every resize, or pre-rendered lines tagged with the SDK's width; nil restores the built-in header; a live component factory cannot cross the process boundary | stand-in/partial `pig:ctx-set-header`: a render(width) callback the SDK renders at the host width and again after every resize, or pre-rendered lines tagged with the SDK's width; nil restores the built-in header; a live component factory cannot cross the process boundary |
+| `ctx.ui.setTitle` | `ExtensionUIContext.setTitle` | implemented `RuntimeUI.setTitle` | implemented `Context.SetTitle` | implemented `Context::set_title` | implemented `Context.set_title` | implemented `pig:ctx-set-title` |
+| `ctx.ui.custom` | `ExtensionUIContext.custom` | stand-in/partial `RuntimeUI.custom`: the factory's component runs inside the extension process and renders lines into a host overlay | stand-in/partial `Context.Custom`: a RemoteComponent renders lines and handles input inside the extension; the host overlay owns focus | stand-in/partial `Context::custom_component`: a RemoteComponent renders lines and handles input inside the extension; the host overlay owns focus | stand-in/partial `Context.custom`: a RemoteComponent renders lines and handles input inside the extension; the host overlay owns focus | stand-in/partial `pig:ctx-custom`: a RemoteComponent renders lines and handles input inside the extension; the host overlay owns focus |
 
 ## ctx.ui arguments
 
-| Surface | Pi declaration | Node runtime | Go | Rust | Python |
-|---|---|---|---|---|---|
-| `ctx.ui.custom(options.overlay)` | `ExtensionUIContext.custom(options.overlay)` | implemented `RuntimeUI.custom` | implemented `RemoteOverlayOptions.Overlay` | implemented `Context::custom_component` | implemented `Context.custom` |
-| `ctx.ui.custom(options.overlayOptions)` | `ExtensionUIContext.custom(options.overlayOptions)` | stand-in/partial `RuntimeUI.custom`: the serializable layout fields; a dynamic overlayOptions function and the visible callback cannot cross the process boundary | stand-in/partial `RemoteOverlayOptions.OverlayOptions`: the serializable layout fields; a dynamic overlayOptions function and the visible callback cannot cross the process boundary | stand-in/partial `Context::custom_component`: the serializable layout fields; a dynamic overlayOptions function and the visible callback cannot cross the process boundary | stand-in/partial `Context.custom`: the serializable layout fields; a dynamic overlayOptions function and the visible callback cannot cross the process boundary |
-| `ctx.ui.custom(options.onHandle)` | `ExtensionUIContext.custom(options.onHandle)` | stand-in/partial `RuntimeUI.custom`: mounted visibility/focus/bounds controls use synchronous host acknowledgement; explicit main-process unfocus targets remain D73 | implemented `RemoteOverlayOptions.OnHandle` | implemented `Context::custom_component_with_handle` | implemented `_RemoteOverlayState.on_handle` |
-| `ctx.ui.custom(options.blocked)` | `ExtensionUIContext.custom(options.blocked)` | implemented `RuntimeUI.custom` | implemented `RemoteOverlayOptions.Blocked` | implemented `Context::custom_component` | implemented `Context.custom` |
+| Surface | Pi declaration | Node runtime | Go | Rust | Python | Lisp |
+|---|---|---|---|---|---|---|
+| `ctx.ui.custom(options.overlay)` | `ExtensionUIContext.custom(options.overlay)` | implemented `RuntimeUI.custom` | implemented `RemoteOverlayOptions.Overlay` | implemented `Context::custom_component` | implemented `Context.custom` | implemented `pig:ctx-custom` |
+| `ctx.ui.custom(options.overlayOptions)` | `ExtensionUIContext.custom(options.overlayOptions)` | stand-in/partial `RuntimeUI.custom`: the serializable layout fields; a dynamic overlayOptions function and the visible callback cannot cross the process boundary | stand-in/partial `RemoteOverlayOptions.OverlayOptions`: the serializable layout fields; a dynamic overlayOptions function and the visible callback cannot cross the process boundary | stand-in/partial `Context::custom_component`: the serializable layout fields; a dynamic overlayOptions function and the visible callback cannot cross the process boundary | stand-in/partial `Context.custom`: the serializable layout fields; a dynamic overlayOptions function and the visible callback cannot cross the process boundary | stand-in/partial `pig:ctx-custom`: the serializable layout fields; a dynamic overlayOptions function and the visible callback cannot cross the process boundary |
+| `ctx.ui.custom(options.onHandle)` | `ExtensionUIContext.custom(options.onHandle)` | stand-in/partial `RuntimeUI.custom`: mounted visibility/focus/bounds controls use synchronous host acknowledgement; explicit main-process unfocus targets remain D73 | implemented `RemoteOverlayOptions.OnHandle` | implemented `Context::custom_component_with_handle` | implemented `_RemoteOverlayState.on_handle` | implemented `pig:ctx-custom(on-handle)` |
 
 ## ctx.ui (ExtensionUIContext)
 
-| Surface | Pi declaration | Node runtime | Go | Rust | Python |
-|---|---|---|---|---|---|
-| `ctx.ui.pasteToEditor` | `ExtensionUIContext.pasteToEditor` | implemented `RuntimeUI.pasteToEditor` | implemented `Context.PasteToEditor` | implemented `Context::paste_to_editor` | implemented `Context.paste_to_editor` |
-| `ctx.ui.setEditorText` | `ExtensionUIContext.setEditorText` | implemented `RuntimeUI.setEditorText` | implemented `Context.SetEditorText` | implemented `Context::set_editor_text` | implemented `Context.set_editor_text` |
-| `ctx.ui.getEditorText` | `ExtensionUIContext.getEditorText` | implemented `RuntimeUI.getEditorText` | implemented `Context.GetEditorText` | implemented `Context::get_editor_text` | implemented `Context.get_editor_text` |
-| `ctx.ui.editor` | `ExtensionUIContext.editor` | implemented `RuntimeUI.editor` | implemented `Context.Editor` | implemented `Context::editor` | implemented `Context.editor` |
-| `ctx.ui.addAutocompleteProvider` | `ExtensionUIContext.addAutocompleteProvider` | implemented `RuntimeUI.addAutocompleteProvider` | implemented `Context.AddAutocompleteProvider` | implemented `Context::add_autocomplete_provider` | implemented `Context.add_autocomplete_provider` |
-| `ctx.ui.setEditorComponent` | `ExtensionUIContext.setEditorComponent` | stand-in/partial `RuntimeUI.setEditorComponent`: the factory runs once inside the extension; its CustomEditor decoration (border color, mode label, history) is forwarded to PiG's editor (D73) | implemented `Context.SetEditorComponent` | implemented `Context::set_editor_component` | implemented `Context.set_editor_component` |
-| `ctx.ui.getEditorComponent` | `ExtensionUIContext.getEditorComponent` | stand-in/partial `RuntimeUI.getEditorComponent`: returns the factory this extension last set | implemented `Context.GetEditorComponent` | implemented `Context::get_editor_component` | implemented `Context.get_editor_component` |
-| `ctx.ui.theme` | `ExtensionUIContext.theme` | implemented `RuntimeUI.theme` | implemented `Context.UITheme` | implemented `Context::theme` | implemented `Context.theme` |
+| Surface | Pi declaration | Node runtime | Go | Rust | Python | Lisp |
+|---|---|---|---|---|---|---|
+| `ctx.ui.pasteToEditor` | `ExtensionUIContext.pasteToEditor` | implemented `RuntimeUI.pasteToEditor` | implemented `Context.PasteToEditor` | implemented `Context::paste_to_editor` | implemented `Context.paste_to_editor` | implemented `pig:ctx-paste-to-editor` |
+| `ctx.ui.setEditorText` | `ExtensionUIContext.setEditorText` | implemented `RuntimeUI.setEditorText` | implemented `Context.SetEditorText` | implemented `Context::set_editor_text` | implemented `Context.set_editor_text` | implemented `pig:ctx-set-editor-text` |
+| `ctx.ui.getEditorText` | `ExtensionUIContext.getEditorText` | implemented `RuntimeUI.getEditorText` | implemented `Context.GetEditorText` | implemented `Context::get_editor_text` | implemented `Context.get_editor_text` | implemented `pig:ctx-get-editor-text` |
+| `ctx.ui.editor` | `ExtensionUIContext.editor` | implemented `RuntimeUI.editor` | implemented `Context.Editor` | implemented `Context::editor` | implemented `Context.editor` | implemented `pig:ctx-editor` |
+| `ctx.ui.addAutocompleteProvider` | `ExtensionUIContext.addAutocompleteProvider` | implemented `RuntimeUI.addAutocompleteProvider` | implemented `Context.AddAutocompleteProvider` | implemented `Context::add_autocomplete_provider` | implemented `Context.add_autocomplete_provider` | implemented `pig:ctx-add-autocomplete-provider` |
+| `ctx.ui.setEditorComponent` | `ExtensionUIContext.setEditorComponent` | stand-in/partial `RuntimeUI.setEditorComponent`: the factory runs once inside the extension; its CustomEditor decoration (border color, mode label, history) is forwarded to PiG's editor (D73) | implemented `Context.SetEditorComponent` | implemented `Context::set_editor_component` | implemented `Context.set_editor_component` | implemented `pig:ctx-set-editor-component` |
+| `ctx.ui.getEditorComponent` | `ExtensionUIContext.getEditorComponent` | stand-in/partial `RuntimeUI.getEditorComponent`: returns the factory this extension last set | implemented `Context.GetEditorComponent` | implemented `Context::get_editor_component` | implemented `Context.get_editor_component` | implemented `pig:ctx-get-editor-component` |
+| `ctx.ui.theme` | `ExtensionUIContext.theme` | implemented `RuntimeUI.theme` | implemented `Context.UITheme` | implemented `Context::theme` | implemented `Context.theme` | implemented `pig:ctx-theme` |
 
 ## ctx.ui.theme (Theme)
 
-| Surface | Pi declaration | Node runtime | Go | Rust | Python |
-|---|---|---|---|---|---|
-| `ctx.ui.theme.name` | `Theme.name` | implemented `ThemeShim.name` | implemented `UITheme.Name` | implemented `Theme.name` | implemented `Theme.name` |
-| `ctx.ui.theme.sourcePath` | `Theme.sourcePath` | implemented `ThemeShim.sourcePath` | implemented `UITheme.SourcePath` | implemented `Theme.source_path` | implemented `Theme.source_path` |
-| `ctx.ui.theme.sourceInfo` | `Theme.sourceInfo` | missing [exception](#exceptions) | missing [exception](#exceptions) | missing [exception](#exceptions) | missing [exception](#exceptions) |
-| `ctx.ui.theme.appearance` | `Theme.appearance` | implemented `ThemeShim.appearance` | implemented `UITheme.Appearance` | implemented `Theme::appearance` | implemented `Theme.appearance` |
-| `ctx.ui.theme.colors` | `Theme.colors` | implemented `ThemeShim.colors` | implemented `UITheme.Colors` | implemented `Theme::colors` | implemented `Theme.colors` |
-| `ctx.ui.theme.style` | `Theme.style` | implemented `ThemeShim.style` | implemented `UITheme.Style` | implemented `Theme::style` | implemented `Theme.style` |
-| `ctx.ui.theme.fg` | `Theme.fg` | implemented `ThemeShim.fg` | implemented `UITheme.Fg` | implemented `Theme::fg` | implemented `Theme.fg` |
-| `ctx.ui.theme.bg` | `Theme.bg` | implemented `ThemeShim.bg` | implemented `UITheme.Bg` | implemented `Theme::bg` | implemented `Theme.bg` |
-| `ctx.ui.theme.bold` | `Theme.bold` | implemented `ThemeShim.bold` | implemented `UITheme.Bold` | implemented `Theme::bold` | implemented `Theme.bold` |
-| `ctx.ui.theme.italic` | `Theme.italic` | implemented `ThemeShim.italic` | implemented `UITheme.Italic` | implemented `Theme::italic` | implemented `Theme.italic` |
-| `ctx.ui.theme.underline` | `Theme.underline` | implemented `ThemeShim.underline` | implemented `UITheme.Underline` | implemented `Theme::underline` | implemented `Theme.underline` |
-| `ctx.ui.theme.inverse` | `Theme.inverse` | implemented `ThemeShim.inverse` | implemented `UITheme.Inverse` | implemented `Theme::inverse` | implemented `Theme.inverse` |
-| `ctx.ui.theme.strikethrough` | `Theme.strikethrough` | implemented `ThemeShim.strikethrough` | implemented `UITheme.Strikethrough` | implemented `Theme::strikethrough` | implemented `Theme.strikethrough` |
-| `ctx.ui.theme.getFgAnsi` | `Theme.getFgAnsi` | implemented `ThemeShim.getFgAnsi` | implemented `UITheme.GetFgAnsi` | implemented `Theme::get_fg_ansi` | implemented `Theme.get_fg_ansi` |
-| `ctx.ui.theme.getBgAnsi` | `Theme.getBgAnsi` | implemented `ThemeShim.getBgAnsi` | implemented `UITheme.GetBgAnsi` | implemented `Theme::get_bg_ansi` | implemented `Theme.get_bg_ansi` |
-| `ctx.ui.theme.getColorMode` | `Theme.getColorMode` | implemented `ThemeShim.getColorMode` | implemented `UITheme.GetColorMode` | implemented `Theme::get_color_mode` | implemented `Theme.get_color_mode` |
-| `ctx.ui.theme.getThinkingBorderColor` | `Theme.getThinkingBorderColor` | implemented `ThemeShim.getThinkingBorderColor` | implemented `UITheme.GetThinkingBorderColor` | implemented `Theme::get_thinking_border_color` | implemented `Theme.get_thinking_border_color` |
-| `ctx.ui.theme.getBashModeBorderColor` | `Theme.getBashModeBorderColor` | implemented `ThemeShim.getBashModeBorderColor` | implemented `UITheme.GetBashModeBorderColor` | implemented `Theme::get_bash_mode_border_color` | implemented `Theme.get_bash_mode_border_color` |
+| Surface | Pi declaration | Node runtime | Go | Rust | Python | Lisp |
+|---|---|---|---|---|---|---|
+| `ctx.ui.theme.name` | `Theme.name` | implemented `ThemeShim.name` | implemented `UITheme.Name` | implemented `Theme.name` | implemented `Theme.name` | implemented `pig:theme-name` |
+| `ctx.ui.theme.sourcePath` | `Theme.sourcePath` | implemented `ThemeShim.sourcePath` | implemented `UITheme.SourcePath` | implemented `Theme.source_path` | implemented `Theme.source_path` | implemented `pig:theme-source-path` |
+| `ctx.ui.theme.sourceInfo` | `Theme.sourceInfo` | missing [exception](#exceptions) | missing [exception](#exceptions) | missing [exception](#exceptions) | missing [exception](#exceptions) | missing [exception](#exceptions) |
+| `ctx.ui.theme.appearance` | `Theme.appearance` | implemented `ThemeShim.appearance` | implemented `UITheme.Appearance` | implemented `Theme::appearance` | implemented `Theme.appearance` | implemented `pig:theme-appearance` |
+| `ctx.ui.theme.colors` | `Theme.colors` | implemented `ThemeShim.colors` | implemented `UITheme.Colors` | implemented `Theme::colors` | implemented `Theme.colors` | implemented `pig:theme-colors` |
+| `ctx.ui.theme.style` | `Theme.style` | implemented `ThemeShim.style` | implemented `UITheme.Style` | implemented `Theme::style` | implemented `Theme.style` | implemented `pig:theme-style` |
+| `ctx.ui.theme.fg` | `Theme.fg` | implemented `ThemeShim.fg` | implemented `UITheme.Fg` | implemented `Theme::fg` | implemented `Theme.fg` | implemented `pig:theme-fg` |
+| `ctx.ui.theme.bg` | `Theme.bg` | implemented `ThemeShim.bg` | implemented `UITheme.Bg` | implemented `Theme::bg` | implemented `Theme.bg` | implemented `pig:theme-bg` |
+| `ctx.ui.theme.bold` | `Theme.bold` | implemented `ThemeShim.bold` | implemented `UITheme.Bold` | implemented `Theme::bold` | implemented `Theme.bold` | implemented `pig:theme-bold` |
+| `ctx.ui.theme.italic` | `Theme.italic` | implemented `ThemeShim.italic` | implemented `UITheme.Italic` | implemented `Theme::italic` | implemented `Theme.italic` | implemented `pig:theme-italic` |
+| `ctx.ui.theme.underline` | `Theme.underline` | implemented `ThemeShim.underline` | implemented `UITheme.Underline` | implemented `Theme::underline` | implemented `Theme.underline` | implemented `pig:theme-underline` |
+| `ctx.ui.theme.inverse` | `Theme.inverse` | implemented `ThemeShim.inverse` | implemented `UITheme.Inverse` | implemented `Theme::inverse` | implemented `Theme.inverse` | implemented `pig:theme-inverse` |
+| `ctx.ui.theme.strikethrough` | `Theme.strikethrough` | implemented `ThemeShim.strikethrough` | implemented `UITheme.Strikethrough` | implemented `Theme::strikethrough` | implemented `Theme.strikethrough` | implemented `pig:theme-strikethrough` |
+| `ctx.ui.theme.getFgAnsi` | `Theme.getFgAnsi` | implemented `ThemeShim.getFgAnsi` | implemented `UITheme.GetFgAnsi` | implemented `Theme::get_fg_ansi` | implemented `Theme.get_fg_ansi` | implemented `pig:theme-get-fg-ansi` |
+| `ctx.ui.theme.getBgAnsi` | `Theme.getBgAnsi` | implemented `ThemeShim.getBgAnsi` | implemented `UITheme.GetBgAnsi` | implemented `Theme::get_bg_ansi` | implemented `Theme.get_bg_ansi` | implemented `pig:theme-get-bg-ansi` |
+| `ctx.ui.theme.getColorMode` | `Theme.getColorMode` | implemented `ThemeShim.getColorMode` | implemented `UITheme.GetColorMode` | implemented `Theme::get_color_mode` | implemented `Theme.get_color_mode` | implemented `pig:theme-get-color-mode` |
+| `ctx.ui.theme.getThinkingBorderColor` | `Theme.getThinkingBorderColor` | implemented `ThemeShim.getThinkingBorderColor` | implemented `UITheme.GetThinkingBorderColor` | implemented `Theme::get_thinking_border_color` | implemented `Theme.get_thinking_border_color` | implemented `pig:theme-get-thinking-border-color` |
+| `ctx.ui.theme.getBashModeBorderColor` | `Theme.getBashModeBorderColor` | implemented `ThemeShim.getBashModeBorderColor` | implemented `UITheme.GetBashModeBorderColor` | implemented `Theme::get_bash_mode_border_color` | implemented `Theme.get_bash_mode_border_color` | implemented `pig:theme-get-bash-mode-border-color` |
 
 ## ctx.ui (ExtensionUIContext)
 
-| Surface | Pi declaration | Node runtime | Go | Rust | Python |
-|---|---|---|---|---|---|
-| `ctx.ui.getAllThemes` | `ExtensionUIContext.getAllThemes` | implemented `RuntimeUI.getAllThemes` | implemented `Context.GetAllThemes` | implemented `Context::get_all_themes` | implemented `Context.get_all_themes` |
+| Surface | Pi declaration | Node runtime | Go | Rust | Python | Lisp |
+|---|---|---|---|---|---|---|
+| `ctx.ui.getAllThemes` | `ExtensionUIContext.getAllThemes` | implemented `RuntimeUI.getAllThemes` | implemented `Context.GetAllThemes` | implemented `Context::get_all_themes` | implemented `Context.get_all_themes` | implemented `pig:ctx-get-all-themes` |
 
 ## ctx.ui arguments
 
-| Surface | Pi declaration | Node runtime | Go | Rust | Python |
-|---|---|---|---|---|---|
-| `ctx.ui.getAllThemes → name` | `ExtensionUIContext.getAllThemes → name` | implemented `RuntimeUI.getAllThemes` | implemented `ThemeMeta.Name` | implemented `Context::get_all_themes` | implemented `Context.get_all_themes` |
-| `ctx.ui.getAllThemes → path` | `ExtensionUIContext.getAllThemes → path` | implemented `RuntimeUI.getAllThemes` | implemented `ThemeMeta.Path` | implemented `Context::get_all_themes` | implemented `Context.get_all_themes` |
+| Surface | Pi declaration | Node runtime | Go | Rust | Python | Lisp |
+|---|---|---|---|---|---|---|
+| `ctx.ui.getAllThemes → name` | `ExtensionUIContext.getAllThemes → name` | implemented `RuntimeUI.getAllThemes` | implemented `ThemeMeta.Name` | implemented `Context::get_all_themes` | implemented `Context.get_all_themes` | implemented `pig:ctx-get-all-themes` |
+| `ctx.ui.getAllThemes → path` | `ExtensionUIContext.getAllThemes → path` | implemented `RuntimeUI.getAllThemes` | implemented `ThemeMeta.Path` | implemented `Context::get_all_themes` | implemented `Context.get_all_themes` | implemented `pig:ctx-get-all-themes` |
 
 ## ctx.ui (ExtensionUIContext)
 
-| Surface | Pi declaration | Node runtime | Go | Rust | Python |
-|---|---|---|---|---|---|
-| `ctx.ui.getTheme` | `ExtensionUIContext.getTheme` | implemented `RuntimeUI.getTheme` | implemented `Context.GetTheme` | implemented `Context::get_theme` | implemented `Context.get_theme` |
-| `ctx.ui.setTheme` | `ExtensionUIContext.setTheme` | stand-in/partial `RuntimeUI.setTheme`: by name only: a Theme object cannot cross the process boundary | stand-in/partial `Context.SetTheme`: by name only: a Theme object cannot cross the process boundary | stand-in/partial `Context::set_theme`: by name only: a Theme object cannot cross the process boundary | stand-in/partial `Context.set_theme`: by name only: a Theme object cannot cross the process boundary |
+| Surface | Pi declaration | Node runtime | Go | Rust | Python | Lisp |
+|---|---|---|---|---|---|---|
+| `ctx.ui.getTheme` | `ExtensionUIContext.getTheme` | implemented `RuntimeUI.getTheme` | implemented `Context.GetTheme` | implemented `Context::get_theme` | implemented `Context.get_theme` | implemented `pig:ctx-get-theme` |
+| `ctx.ui.setTheme` | `ExtensionUIContext.setTheme` | stand-in/partial `RuntimeUI.setTheme`: by name only: a Theme object cannot cross the process boundary | stand-in/partial `Context.SetTheme`: by name only: a Theme object cannot cross the process boundary | stand-in/partial `Context::set_theme`: by name only: a Theme object cannot cross the process boundary | stand-in/partial `Context.set_theme`: by name only: a Theme object cannot cross the process boundary | stand-in/partial `pig:ctx-set-theme`: by name only: a Theme object cannot cross the process boundary |
 
 ## ctx.ui arguments
 
-| Surface | Pi declaration | Node runtime | Go | Rust | Python |
-|---|---|---|---|---|---|
-| `ctx.ui.setTheme → success` | `ExtensionUIContext.setTheme → success` | stand-in/partial `RuntimeUI.setTheme`: returns { success: true } before the host applies the theme | implemented `Context.SetTheme` | implemented `Context::set_theme` | implemented `Context.set_theme` |
-| `ctx.ui.setTheme → error` | `ExtensionUIContext.setTheme → error` | missing [exception](#exceptions) | implemented `Context.SetTheme` | implemented `Context::set_theme` | implemented `Context.set_theme` |
+| Surface | Pi declaration | Node runtime | Go | Rust | Python | Lisp |
+|---|---|---|---|---|---|---|
+| `ctx.ui.setTheme → success` | `ExtensionUIContext.setTheme → success` | stand-in/partial `RuntimeUI.setTheme`: returns { success: true } before the host applies the theme | implemented `Context.SetTheme` | implemented `Context::set_theme` | implemented `Context.set_theme` | implemented `pig:ctx-set-theme` |
+| `ctx.ui.setTheme → error` | `ExtensionUIContext.setTheme → error` | missing [exception](#exceptions) | implemented `Context.SetTheme` | implemented `Context::set_theme` | implemented `Context.set_theme` | implemented `pig:ctx-set-theme` |
 
 ## ctx.ui (ExtensionUIContext)
 
-| Surface | Pi declaration | Node runtime | Go | Rust | Python |
-|---|---|---|---|---|---|
-| `ctx.ui.getToolsExpanded` | `ExtensionUIContext.getToolsExpanded` | implemented `RuntimeUI.getToolsExpanded` | implemented `Context.GetToolsExpanded` | implemented `Context::get_tools_expanded` | implemented `Context.get_tools_expanded` |
-| `ctx.ui.setToolsExpanded` | `ExtensionUIContext.setToolsExpanded` | implemented `RuntimeUI.setToolsExpanded` | implemented `Context.SetToolsExpanded` | implemented `Context::set_tools_expanded` | implemented `Context.set_tools_expanded` |
+| Surface | Pi declaration | Node runtime | Go | Rust | Python | Lisp |
+|---|---|---|---|---|---|---|
+| `ctx.ui.getToolsExpanded` | `ExtensionUIContext.getToolsExpanded` | implemented `RuntimeUI.getToolsExpanded` | implemented `Context.GetToolsExpanded` | implemented `Context::get_tools_expanded` | implemented `Context.get_tools_expanded` | implemented `pig:ctx-tools-expanded-p` |
+| `ctx.ui.setToolsExpanded` | `ExtensionUIContext.setToolsExpanded` | implemented `RuntimeUI.setToolsExpanded` | implemented `Context.SetToolsExpanded` | implemented `Context::set_tools_expanded` | implemented `Context.set_tools_expanded` | implemented `pig:ctx-set-tools-expanded` |
 
 ## Tool definition (registerTool)
 
-| Surface | Pi declaration | Node runtime | Go | Rust | Python |
-|---|---|---|---|---|---|
-| `tool.name` | `ToolDefinition.name` | implemented `read:tool.name` | implemented `ToolDefinition.Name` | implemented `ToolDefinition.name` | implemented `ToolDefinition.name` |
-| `tool.label` | `ToolDefinition.label` | implemented `read:tool.label` | implemented `ToolDefinition.Label` | implemented `ToolDefinition.label` | implemented `ToolDefinition.label` |
-| `tool.description` | `ToolDefinition.description` | implemented `read:tool.description` | implemented `ToolDefinition.Description` | implemented `ToolDefinition.description` | implemented `ToolDefinition.description` |
-| `tool.promptSnippet` | `ToolDefinition.promptSnippet` | stand-in/partial `read:tool.promptSnippet`: reaches the host's tool definition, but PiG's system prompt does not yet list extension tools' snippets (host gap shared with in-process extensions) | stand-in/partial `ToolDefinition.PromptSnippet`: reaches the host's tool definition, but PiG's system prompt does not yet list extension tools' snippets (host gap shared with in-process extensions) | stand-in/partial `ToolDefinition.prompt_snippet`: reaches the host's tool definition, but PiG's system prompt does not yet list extension tools' snippets (host gap shared with in-process extensions) | stand-in/partial `ToolDefinition.prompt_snippet`: reaches the host's tool definition, but PiG's system prompt does not yet list extension tools' snippets (host gap shared with in-process extensions) |
-| `tool.promptGuidelines` | `ToolDefinition.promptGuidelines` | implemented `read:tool.promptGuidelines` | implemented `ToolDefinition.PromptGuidelines` | implemented `ToolDefinition.prompt_guidelines` | implemented `ToolDefinition.prompt_guidelines` |
-| `tool.parameters` | `ToolDefinition.parameters` | implemented `read:tool.parameters` | implemented `ToolDefinition.Parameters` | implemented `ToolDefinition.parameters` | implemented `ToolDefinition.parameters` |
-| `tool.constrainedSampling` | `ToolDefinition.constrainedSampling` | implemented `read:tool.constrainedSampling` | implemented `ToolDefinition.ConstrainedSampling` | implemented `ToolDefinition.constrained_sampling` | implemented `ToolDefinition.constrained_sampling` |
-| `tool.renderShell` | `ToolDefinition.renderShell` | implemented `read:tool.renderShell` | implemented `ToolDefinition.RenderShell` | implemented `ToolDefinition.render_shell` | implemented `ToolDefinition.render_shell` |
-| `tool.prepareArguments` | `ToolDefinition.prepareArguments` | implemented `read:tool.prepareArguments` | implemented `ToolDefinition.PrepareArguments` | implemented `ToolDefinition.prepare_arguments` | implemented `ToolDefinition.prepare_arguments` |
-| `tool.outputSchema` | `ToolDefinition.outputSchema` | implemented `read:tool.outputSchema` | implemented `ToolDefinition.OutputSchema` | implemented `ToolDefinition.output_schema` | implemented `ToolDefinition.output_schema` |
-| `tool.exposure` | `ToolDefinition.exposure` | implemented `read:tool.exposure` | implemented `ToolDefinition.Exposure` | implemented `ToolDefinition.exposure` | implemented `ToolDefinition.exposure` |
-| `tool.namespace` | `ToolDefinition.namespace` | implemented `read:tool.namespace` | implemented `ToolDefinition.Namespace` | implemented `ToolDefinition.namespace` | implemented `ToolDefinition.namespace` |
-| `tool.reachesTools` | `ToolDefinition.reachesTools` | implemented `read:tool.reachesTools` | implemented `ToolDefinition.ReachesTools` | implemented `ToolDefinition.reaches_tools` | implemented `ToolDefinition.reaches_tools` |
-| `tool.annotations` | `ToolDefinition.annotations` | implemented `read:tool.annotations` | implemented `ToolDefinition.Annotations` | implemented `ToolDefinition.annotations` | implemented `ToolDefinition.annotations` |
-| `tool.defaultActive` | `ToolDefinition.defaultActive` | implemented `read:tool.defaultActive` | implemented `ToolDefinition.DefaultActive` | implemented `ToolDefinition.default_active` | implemented `ToolDefinition.default_active` |
-| `tool.prepareLoadout` | `ToolDefinition.prepareLoadout` | implemented `read:tool.prepareLoadout` | implemented `ToolDefinition.PrepareLoadout` | implemented `ToolDefinition.prepare_loadout` | implemented `ToolDefinition.prepare_loadout` |
-| `tool.executionMode` | `ToolDefinition.executionMode` | implemented `read:tool.executionMode` | implemented `ToolDefinition.ExecutionMode` | implemented `ToolDefinition.execution_mode` | implemented `ToolDefinition.execution_mode` |
-| `tool.execute` | `ToolDefinition.execute` | stand-in/partial `read:tool.execute`: the AbortSignal is the tool request's, aborted when the host cancels it | stand-in/partial `ToolDefinition.Execute`: params arrive as JSON; onUpdate is ctx.OnUpdate/on_update and the AbortSignal is the request's cancellation | stand-in/partial `ToolDefinition.execute`: params arrive as JSON; onUpdate is ctx.OnUpdate/on_update and the AbortSignal is the request's cancellation | stand-in/partial `ToolDefinition.execute`: params arrive as JSON; onUpdate is ctx.OnUpdate/on_update and the AbortSignal is the request's cancellation |
-| `tool.renderCall` | `ToolDefinition.renderCall` | stand-in/partial `read:tool.renderCall`: the returned Component renders to lines inside the extension process | stand-in/partial `ToolDefinition.RenderCall`: returns lines at the requested width: a Pi Component cannot cross the process boundary | stand-in/partial `ToolDefinition.render_call`: returns lines at the requested width: a Pi Component cannot cross the process boundary | stand-in/partial `ToolDefinition.render_call`: returns lines at the requested width: a Pi Component cannot cross the process boundary |
-| `tool.renderResult` | `ToolDefinition.renderResult` | stand-in/partial `read:tool.renderResult`: the returned Component renders to lines inside the extension process | stand-in/partial `ToolDefinition.RenderResult`: returns lines at the requested width: a Pi Component cannot cross the process boundary | stand-in/partial `ToolDefinition.render_result`: returns lines at the requested width: a Pi Component cannot cross the process boundary | stand-in/partial `ToolDefinition.render_result`: returns lines at the requested width: a Pi Component cannot cross the process boundary |
-| `tool execute result.content` | `AgentToolResult.content` | implemented `read:result.content` | implemented `ToolResult.Content` | implemented `ToolResult::json` | implemented `Extension.tool` |
-| `tool execute result.details` | `AgentToolResult.details` | implemented `read:result.details` | implemented `ToolResult.Details` | implemented `ToolResult::json` | implemented `Extension.tool` |
-| `tool execute result.structuredContent` | `AgentToolResult.structuredContent` | implemented `read:result.structuredContent` | implemented `ToolResult.StructuredContent` | implemented `ToolResult::with_structured_content` | implemented `Extension.tool` |
-| `tool execute result.usage` | `AgentToolResult.usage` | implemented `read:result.usage` | implemented `ToolResult.Usage` | implemented `ToolResult::json` | implemented `Extension.tool` |
-| `tool execute result.isError` | `AgentToolResult.isError` | implemented `read:result.isError` | implemented `ToolResult.IsError` | implemented `ToolResult::with_is_error` | implemented `Extension.tool` |
-| `tool execute result.terminate` | `AgentToolResult.terminate` | implemented `read:result.terminate` | implemented `ToolResult.Terminate` | implemented `ToolResult::json` | implemented `Extension.tool` |
-| `tool render context.args` | `ToolRenderContext.args` | implemented `read:payload.args` | implemented `ToolRenderContext.Args` | implemented `ToolRenderContext.args` | implemented `ToolRenderContext.args` |
-| `tool render context.toolCallId` | `ToolRenderContext.toolCallId` | implemented `read:payload.context` | implemented `ToolRenderContext.ToolCallID` | implemented `ToolRenderContext.tool_call_id` | implemented `ToolRenderContext.tool_call_id` |
-| `tool render context.invalidate` | `ToolRenderContext.invalidate` | implemented `read:payload.card` | implemented `ToolRenderContext.Invalidate` | implemented `ToolRenderContext::invalidate` | implemented `ToolRenderContext.invalidate` |
-| `tool render context.lastComponent` | `ToolRenderContext.lastComponent` | stand-in/partial `read:card.state`: the component this card's renderer last returned, kept inside the extension process | missing [exception](#exceptions) | missing [exception](#exceptions) | missing [exception](#exceptions) |
-| `tool render context.state` | `ToolRenderContext.state` | implemented `read:card.state` | implemented `ToolRenderContext.State` | implemented `ToolRenderContext.state` | implemented `ToolRenderContext.state` |
-| `tool render context.cwd` | `ToolRenderContext.cwd` | implemented `read:payload.context` | implemented `ToolRenderContext.Cwd` | implemented `ToolRenderContext.cwd` | implemented `ToolRenderContext.cwd` |
-| `tool render context.executionStarted` | `ToolRenderContext.executionStarted` | implemented `read:payload.context` | implemented `ToolRenderContext.ExecutionStarted` | implemented `ToolRenderContext.execution_started` | implemented `ToolRenderContext.execution_started` |
-| `tool render context.argsComplete` | `ToolRenderContext.argsComplete` | implemented `read:payload.context` | implemented `ToolRenderContext.ArgsComplete` | implemented `ToolRenderContext.args_complete` | implemented `ToolRenderContext.args_complete` |
-| `tool render context.isPartial` | `ToolRenderContext.isPartial` | implemented `read:payload.context` | implemented `ToolRenderContext.IsPartial` | implemented `ToolRenderContext.is_partial` | implemented `ToolRenderContext.is_partial` |
-| `tool render context.expanded` | `ToolRenderContext.expanded` | implemented `read:payload.context` | implemented `ToolRenderContext.Expanded` | implemented `ToolRenderContext.expanded` | implemented `ToolRenderContext.expanded` |
-| `tool render context.showImages` | `ToolRenderContext.showImages` | implemented `read:payload.context` | implemented `ToolRenderContext.ShowImages` | implemented `ToolRenderContext.show_images` | implemented `ToolRenderContext.show_images` |
-| `tool render context.isError` | `ToolRenderContext.isError` | implemented `read:payload.context` | implemented `ToolRenderContext.IsError` | implemented `ToolRenderContext.is_error` | implemented `ToolRenderContext.is_error` |
-| `tool render context.durationMs` | `ToolRenderContext.durationMs` | missing [exception](#exceptions) | implemented `ToolRenderContext.DurationMs` | implemented `ToolRenderContext.duration_ms` | implemented `ToolRenderContext.duration_ms` |
-| `tool render context.outputPad` | `ToolRenderContext.outputPad` | implemented `read:payload.context` | implemented `ToolRenderContext.OutputPad` | implemented `ToolRenderContext.output_pad` | implemented `ToolRenderContext.output_pad` |
-| `tool renderResult options.expanded` | `ToolRenderResultOptions.expanded` | implemented `read:payload.options` | implemented `ToolRenderResultOptions.Expanded` | implemented `ToolRenderResultOptions.expanded` | implemented `Extension.tool_renderers(render_result)` |
-| `tool renderResult options.isPartial` | `ToolRenderResultOptions.isPartial` | implemented `read:payload.options` | implemented `ToolRenderResultOptions.IsPartial` | implemented `ToolRenderResultOptions.is_partial` | implemented `Extension.tool_renderers(render_result)` |
+| Surface | Pi declaration | Node runtime | Go | Rust | Python | Lisp |
+|---|---|---|---|---|---|---|
+| `tool.name` | `ToolDefinition.name` | implemented `read:tool.name` | implemented `ToolDefinition.Name` | implemented `ToolDefinition.name` | implemented `ToolDefinition.name` | implemented `pig:register-tool(name)` |
+| `tool.label` | `ToolDefinition.label` | implemented `read:tool.label` | implemented `ToolDefinition.Label` | implemented `ToolDefinition.label` | implemented `ToolDefinition.label` | implemented `pig:register-tool(label)` |
+| `tool.description` | `ToolDefinition.description` | implemented `read:tool.description` | implemented `ToolDefinition.Description` | implemented `ToolDefinition.description` | implemented `ToolDefinition.description` | implemented `pig:register-tool(description)` |
+| `tool.promptSnippet` | `ToolDefinition.promptSnippet` | stand-in/partial `read:tool.promptSnippet`: reaches the host's tool definition, but PiG's system prompt does not yet list extension tools' snippets (host gap shared with in-process extensions) | stand-in/partial `ToolDefinition.PromptSnippet`: reaches the host's tool definition, but PiG's system prompt does not yet list extension tools' snippets (host gap shared with in-process extensions) | stand-in/partial `ToolDefinition.prompt_snippet`: reaches the host's tool definition, but PiG's system prompt does not yet list extension tools' snippets (host gap shared with in-process extensions) | stand-in/partial `ToolDefinition.prompt_snippet`: reaches the host's tool definition, but PiG's system prompt does not yet list extension tools' snippets (host gap shared with in-process extensions) | stand-in/partial `pig:register-tool(prompt-snippet)`: reaches the host's tool definition, but PiG's system prompt does not yet list extension tools' snippets (host gap shared with in-process extensions) |
+| `tool.promptGuidelines` | `ToolDefinition.promptGuidelines` | implemented `read:tool.promptGuidelines` | implemented `ToolDefinition.PromptGuidelines` | implemented `ToolDefinition.prompt_guidelines` | implemented `ToolDefinition.prompt_guidelines` | implemented `pig:register-tool(prompt-guidelines)` |
+| `tool.parameters` | `ToolDefinition.parameters` | implemented `read:tool.parameters` | implemented `ToolDefinition.Parameters` | implemented `ToolDefinition.parameters` | implemented `ToolDefinition.parameters` | implemented `pig:register-tool(parameters)` |
+| `tool.constrainedSampling` | `ToolDefinition.constrainedSampling` | implemented `read:tool.constrainedSampling` | implemented `ToolDefinition.ConstrainedSampling` | implemented `ToolDefinition.constrained_sampling` | implemented `ToolDefinition.constrained_sampling` | implemented `pig:register-tool(constrained-sampling)` |
+| `tool.renderShell` | `ToolDefinition.renderShell` | implemented `read:tool.renderShell` | implemented `ToolDefinition.RenderShell` | implemented `ToolDefinition.render_shell` | implemented `ToolDefinition.render_shell` | implemented `pig:register-tool(render-shell)` |
+| `tool.prepareArguments` | `ToolDefinition.prepareArguments` | implemented `read:tool.prepareArguments` | implemented `ToolDefinition.PrepareArguments` | implemented `ToolDefinition.prepare_arguments` | implemented `ToolDefinition.prepare_arguments` | implemented `pig:register-tool(prepare-arguments)` |
+| `tool.outputSchema` | `ToolDefinition.outputSchema` | implemented `read:tool.outputSchema` | implemented `ToolDefinition.OutputSchema` | implemented `ToolDefinition.output_schema` | implemented `ToolDefinition.output_schema` | implemented `pig:register-tool(output-schema)` |
+| `tool.exposure` | `ToolDefinition.exposure` | implemented `read:tool.exposure` | implemented `ToolDefinition.Exposure` | implemented `ToolDefinition.exposure` | implemented `ToolDefinition.exposure` | implemented `pig:register-tool(exposure)` |
+| `tool.namespace` | `ToolDefinition.namespace` | implemented `read:tool.namespace` | implemented `ToolDefinition.Namespace` | implemented `ToolDefinition.namespace` | implemented `ToolDefinition.namespace` | implemented `pig:register-tool(namespace)` |
+| `tool.reachesTools` | `ToolDefinition.reachesTools` | implemented `read:tool.reachesTools` | implemented `ToolDefinition.ReachesTools` | implemented `ToolDefinition.reaches_tools` | implemented `ToolDefinition.reaches_tools` | implemented `pig:register-tool(reaches-tools)` |
+| `tool.annotations` | `ToolDefinition.annotations` | implemented `read:tool.annotations` | implemented `ToolDefinition.Annotations` | implemented `ToolDefinition.annotations` | implemented `ToolDefinition.annotations` | implemented `pig:register-tool(annotations)` |
+| `tool.defaultActive` | `ToolDefinition.defaultActive` | implemented `read:tool.defaultActive` | implemented `ToolDefinition.DefaultActive` | implemented `ToolDefinition.default_active` | implemented `ToolDefinition.default_active` | implemented `pig:register-tool(default-active)` |
+| `tool.prepareLoadout` | `ToolDefinition.prepareLoadout` | implemented `read:tool.prepareLoadout` | implemented `ToolDefinition.PrepareLoadout` | implemented `ToolDefinition.prepare_loadout` | implemented `ToolDefinition.prepare_loadout` | implemented `pig:register-tool(prepare-loadout)` |
+| `tool.executionMode` | `ToolDefinition.executionMode` | implemented `read:tool.executionMode` | implemented `ToolDefinition.ExecutionMode` | implemented `ToolDefinition.execution_mode` | implemented `ToolDefinition.execution_mode` | implemented `pig:register-tool(execution-mode)` |
+| `tool.execute` | `ToolDefinition.execute` | stand-in/partial `read:tool.execute`: the AbortSignal is the tool request's, aborted when the host cancels it | stand-in/partial `ToolDefinition.Execute`: params arrive as JSON; onUpdate is ctx.OnUpdate/on_update and the AbortSignal is the request's cancellation | stand-in/partial `ToolDefinition.execute`: params arrive as JSON; onUpdate is ctx.OnUpdate/on_update and the AbortSignal is the request's cancellation | stand-in/partial `ToolDefinition.execute`: params arrive as JSON; onUpdate is ctx.OnUpdate/on_update and the AbortSignal is the request's cancellation | stand-in/partial `pig:register-tool(execute)`: params arrive as JSON; onUpdate is ctx.OnUpdate/on_update and the AbortSignal is the request's cancellation |
+| `tool.renderCall` | `ToolDefinition.renderCall` | stand-in/partial `read:tool.renderCall`: the returned Component renders to lines inside the extension process | stand-in/partial `ToolDefinition.RenderCall`: returns lines at the requested width: a Pi Component cannot cross the process boundary | stand-in/partial `ToolDefinition.render_call`: returns lines at the requested width: a Pi Component cannot cross the process boundary | stand-in/partial `ToolDefinition.render_call`: returns lines at the requested width: a Pi Component cannot cross the process boundary | stand-in/partial `pig:register-tool(render-call)`: returns lines at the requested width: a Pi Component cannot cross the process boundary |
+| `tool.renderResult` | `ToolDefinition.renderResult` | stand-in/partial `read:tool.renderResult`: the returned Component renders to lines inside the extension process | stand-in/partial `ToolDefinition.RenderResult`: returns lines at the requested width: a Pi Component cannot cross the process boundary | stand-in/partial `ToolDefinition.render_result`: returns lines at the requested width: a Pi Component cannot cross the process boundary | stand-in/partial `ToolDefinition.render_result`: returns lines at the requested width: a Pi Component cannot cross the process boundary | stand-in/partial `pig:register-tool(render-result)`: returns lines at the requested width: a Pi Component cannot cross the process boundary |
+| `tool execute result.content` | `AgentToolResult.content` | implemented `read:result.content` | implemented `ToolResult.Content` | implemented `ToolResult::json` | implemented `Extension.tool` | implemented `pig:tool` |
+| `tool execute result.details` | `AgentToolResult.details` | implemented `read:result.details` | implemented `ToolResult.Details` | implemented `ToolResult::json` | implemented `Extension.tool` | implemented `pig:tool` |
+| `tool execute result.structuredContent` | `AgentToolResult.structuredContent` | implemented `read:result.structuredContent` | implemented `ToolResult.StructuredContent` | implemented `ToolResult::with_structured_content` | implemented `Extension.tool` | implemented `pig:tool` |
+| `tool execute result.usage` | `AgentToolResult.usage` | implemented `read:result.usage` | implemented `ToolResult.Usage` | implemented `ToolResult::json` | implemented `Extension.tool` | implemented `pig:tool` |
+| `tool execute result.isError` | `AgentToolResult.isError` | implemented `read:result.isError` | implemented `ToolResult.IsError` | implemented `ToolResult::with_is_error` | implemented `Extension.tool` | implemented `pig:tool` |
+| `tool execute result.terminate` | `AgentToolResult.terminate` | implemented `read:result.terminate` | implemented `ToolResult.Terminate` | implemented `ToolResult::json` | implemented `Extension.tool` | implemented `pig:tool` |
+| `tool render context.args` | `ToolRenderContext.args` | implemented `read:payload.args` | implemented `ToolRenderContext.Args` | implemented `ToolRenderContext.args` | implemented `ToolRenderContext.args` | implemented `pig:tool-render-context-args` |
+| `tool render context.toolCallId` | `ToolRenderContext.toolCallId` | implemented `read:payload.context` | implemented `ToolRenderContext.ToolCallID` | implemented `ToolRenderContext.tool_call_id` | implemented `ToolRenderContext.tool_call_id` | implemented `pig:tool-render-context-tool-call-id` |
+| `tool render context.invalidate` | `ToolRenderContext.invalidate` | implemented `read:payload.card` | implemented `ToolRenderContext.Invalidate` | implemented `ToolRenderContext::invalidate` | implemented `ToolRenderContext.invalidate` | implemented `pig:tool-render-context-invalidate` |
+| `tool render context.lastComponent` | `ToolRenderContext.lastComponent` | stand-in/partial `read:card.state`: the component this card's renderer last returned, kept inside the extension process | missing [exception](#exceptions) | missing [exception](#exceptions) | missing [exception](#exceptions) | missing [exception](#exceptions) |
+| `tool render context.state` | `ToolRenderContext.state` | implemented `read:card.state` | implemented `ToolRenderContext.State` | implemented `ToolRenderContext.state` | implemented `ToolRenderContext.state` | implemented `pig:tool-render-context-state` |
+| `tool render context.cwd` | `ToolRenderContext.cwd` | implemented `read:payload.context` | implemented `ToolRenderContext.Cwd` | implemented `ToolRenderContext.cwd` | implemented `ToolRenderContext.cwd` | implemented `pig:tool-render-context-cwd` |
+| `tool render context.executionStarted` | `ToolRenderContext.executionStarted` | implemented `read:payload.context` | implemented `ToolRenderContext.ExecutionStarted` | implemented `ToolRenderContext.execution_started` | implemented `ToolRenderContext.execution_started` | implemented `pig:tool-render-context-execution-started` |
+| `tool render context.argsComplete` | `ToolRenderContext.argsComplete` | implemented `read:payload.context` | implemented `ToolRenderContext.ArgsComplete` | implemented `ToolRenderContext.args_complete` | implemented `ToolRenderContext.args_complete` | implemented `pig:tool-render-context-args-complete` |
+| `tool render context.isPartial` | `ToolRenderContext.isPartial` | implemented `read:payload.context` | implemented `ToolRenderContext.IsPartial` | implemented `ToolRenderContext.is_partial` | implemented `ToolRenderContext.is_partial` | implemented `pig:tool-render-context-is-partial` |
+| `tool render context.expanded` | `ToolRenderContext.expanded` | implemented `read:payload.context` | implemented `ToolRenderContext.Expanded` | implemented `ToolRenderContext.expanded` | implemented `ToolRenderContext.expanded` | implemented `pig:tool-render-context-expanded` |
+| `tool render context.showImages` | `ToolRenderContext.showImages` | implemented `read:payload.context` | implemented `ToolRenderContext.ShowImages` | implemented `ToolRenderContext.show_images` | implemented `ToolRenderContext.show_images` | implemented `pig:tool-render-context-show-images` |
+| `tool render context.isError` | `ToolRenderContext.isError` | implemented `read:payload.context` | implemented `ToolRenderContext.IsError` | implemented `ToolRenderContext.is_error` | implemented `ToolRenderContext.is_error` | implemented `pig:tool-render-context-is-error` |
+| `tool render context.durationMs` | `ToolRenderContext.durationMs` | missing [exception](#exceptions) | implemented `ToolRenderContext.DurationMs` | implemented `ToolRenderContext.duration_ms` | implemented `ToolRenderContext.duration_ms` | implemented `pig:tool-render-context-duration-ms` |
+| `tool render context.outputPad` | `ToolRenderContext.outputPad` | implemented `read:payload.context` | implemented `ToolRenderContext.OutputPad` | implemented `ToolRenderContext.output_pad` | implemented `ToolRenderContext.output_pad` | implemented `pig:tool-render-context-output-pad` |
+| `tool renderResult options.expanded` | `ToolRenderResultOptions.expanded` | implemented `read:payload.options` | implemented `ToolRenderResultOptions.Expanded` | implemented `ToolRenderResultOptions.expanded` | implemented `Extension.tool_renderers(render_result)` | implemented `pig:tool-renderers(render-result)` |
+| `tool renderResult options.isPartial` | `ToolRenderResultOptions.isPartial` | implemented `read:payload.options` | implemented `ToolRenderResultOptions.IsPartial` | implemented `ToolRenderResultOptions.is_partial` | implemented `Extension.tool_renderers(render_result)` | implemented `pig:tool-renderers(render-result)` |
 
 ## Command definition (registerCommand)
 
-| Surface | Pi declaration | Node runtime | Go | Rust | Python |
-|---|---|---|---|---|---|
-| `command.description` | `RegisteredCommand.description` | implemented `read:cmd.description` | implemented `CommandOptions.Description` | implemented `Extension::command` | implemented `Extension.command(description)` |
-| `command.getArgumentCompletions` | `RegisteredCommand.getArgumentCompletions` | implemented `read:cmd.getArgumentCompletions` | implemented `CommandOptions.GetArgumentCompletions` | implemented `Extension::command_argument_completions` | implemented `Extension.command(get_argument_completions)` |
-| `command.handler` | `RegisteredCommand.handler` | implemented `read:cmd.handler` | implemented `CommandOptions.Handler` | implemented `CommandHandler` | implemented `Extension.command(handler)` |
+| Surface | Pi declaration | Node runtime | Go | Rust | Python | Lisp |
+|---|---|---|---|---|---|---|
+| `command.description` | `RegisteredCommand.description` | implemented `read:cmd.description` | implemented `CommandOptions.Description` | implemented `Extension::command` | implemented `Extension.command(description)` | implemented `pig:command(description)` |
+| `command.getArgumentCompletions` | `RegisteredCommand.getArgumentCompletions` | implemented `read:cmd.getArgumentCompletions` | implemented `CommandOptions.GetArgumentCompletions` | implemented `Extension::command_argument_completions` | implemented `Extension.command(get_argument_completions)` | implemented `pig:command(get-argument-completions)` |
+| `command.handler` | `RegisteredCommand.handler` | implemented `read:cmd.handler` | implemented `CommandOptions.Handler` | implemented `CommandHandler` | implemented `Extension.command(handler)` | implemented `pig:command(handler)` |
 
 ## Provider definition (registerProvider)
 
-| Surface | Pi declaration | Node runtime | Go | Rust | Python |
-|---|---|---|---|---|---|
-| `provider.name` | `ProviderConfig.name` | implemented `api.registerProvider` | implemented `Extension.RegisterProvider` | implemented `Extension::register_provider` | implemented `Extension.register_provider` |
-| `provider.baseUrl` | `ProviderConfig.baseUrl` | implemented `api.registerProvider` | implemented `Extension.RegisterProvider` | implemented `Extension::register_provider` | implemented `Extension.register_provider` |
-| `provider.apiKey` | `ProviderConfig.apiKey` | implemented `api.registerProvider` | implemented `Extension.RegisterProvider` | implemented `Extension::register_provider` | implemented `Extension.register_provider` |
-| `provider.api` | `ProviderConfig.api` | implemented `api.registerProvider` | implemented `Extension.RegisterProvider` | implemented `Extension::register_provider` | implemented `Extension.register_provider` |
-| `provider.streamSimple` | `ProviderConfig.streamSimple` | missing [exception](#exceptions) | missing [exception](#exceptions) | missing [exception](#exceptions) | missing [exception](#exceptions) |
-| `provider.images` | `ProviderConfig.images` | implemented `read:config.images` | implemented `ProviderImagesFunc` | implemented `ProviderOperations.images` | implemented `Extension.register_provider` |
-| `provider.classifiers` | `ProviderConfig.classifiers` | implemented `read:config.classifiers` | implemented `ProviderClassifyFunc` | implemented `ProviderOperations.classifiers` | implemented `Extension.register_provider` |
-| `provider.headers` | `ProviderConfig.headers` | implemented `api.registerProvider` | implemented `Extension.RegisterProvider` | implemented `Extension::register_provider` | implemented `Extension.register_provider` |
-| `provider.authHeader` | `ProviderConfig.authHeader` | implemented `api.registerProvider` | implemented `Extension.RegisterProvider` | implemented `Extension::register_provider` | implemented `Extension.register_provider` |
-| `provider.models` | `ProviderConfig.models` | implemented `api.registerProvider` | implemented `Extension.RegisterProvider` | implemented `Extension::register_provider` | implemented `Extension.register_provider` |
-| `provider.refreshModels` | `ProviderConfig.refreshModels` | missing [exception](#exceptions) | missing [exception](#exceptions) | missing [exception](#exceptions) | missing [exception](#exceptions) |
-| `provider.oauth` | `ProviderConfig.oauth` | implemented `api.registerProvider` | implemented `OAuthProvider` | implemented `Extension::register_oauth_provider` | implemented `Extension.register_oauth_provider` |
-| `provider.oauth.name` | `ProviderConfig.oauth.name` | implemented `read:oauth.name` | implemented `OAuthProvider.Name` | implemented `OAuthProvider.name` | implemented `OAuthProvider.name` |
-| `provider.oauth.isSubscription` | `ProviderConfig.oauth.isSubscription` | implemented `read:oauth.isSubscription` | implemented `OAuthProvider.IsSubscription` | implemented `OAuthProvider.is_subscription` | implemented `OAuthProvider.is_subscription` |
-| `provider.oauth.usesCallbackServer` | `ProviderConfig.oauth.usesCallbackServer` | missing [exception](#exceptions) | missing [exception](#exceptions) | missing [exception](#exceptions) | missing [exception](#exceptions) |
-| `provider.oauth.login` | `ProviderConfig.oauth.login` | implemented `read:oauth.login` | implemented `OAuthProvider.Login` | implemented `OAuthProvider.login` | implemented `OAuthProvider.login` |
-| `provider.oauth.refreshToken` | `ProviderConfig.oauth.refreshToken` | implemented `read:oauth.refreshToken` | implemented `OAuthProvider.RefreshToken` | implemented `OAuthProvider.refresh_token` | implemented `OAuthProvider.refresh_token` |
-| `provider.oauth.getApiKey` | `ProviderConfig.oauth.getApiKey` | implemented `read:oauth.getApiKey` | implemented `OAuthProvider.GetAPIKey` | implemented `OAuthProvider.get_api_key` | implemented `OAuthProvider.get_api_key` |
-| `provider.oauth.modifyModels` | `ProviderConfig.oauth.modifyModels` | missing [exception](#exceptions) | missing [exception](#exceptions) | missing [exception](#exceptions) | missing [exception](#exceptions) |
-| `provider model.type` | `ProviderModelConfig.type` | implemented `api.registerProvider` | implemented `Extension.RegisterProvider` | implemented `Extension::register_provider` | implemented `Extension.register_provider` |
-| `provider model.api` | `ProviderModelConfig.api` | implemented `api.registerProvider` | implemented `Extension.RegisterProvider` | implemented `Extension::register_provider` | implemented `Extension.register_provider` |
-| `provider model.reasoning` | `ProviderModelConfig.reasoning` | implemented `api.registerProvider` | implemented `Extension.RegisterProvider` | implemented `Extension::register_provider` | implemented `Extension.register_provider` |
-| `provider model.thinkingLevelMap` | `ProviderModelConfig.thinkingLevelMap` | implemented `api.registerProvider` | implemented `Extension.RegisterProvider` | implemented `Extension::register_provider` | implemented `Extension.register_provider` |
-| `provider model.promptCache` | `ProviderModelConfig.promptCache` | implemented `api.registerProvider` | implemented `Extension.RegisterProvider` | implemented `Extension::register_provider` | implemented `Extension.register_provider` |
-| `provider model.contextWindow` | `ProviderModelConfig.contextWindow` | implemented `api.registerProvider` | implemented `Extension.RegisterProvider` | implemented `Extension::register_provider` | implemented `Extension.register_provider` |
-| `provider model.maxTokens` | `ProviderModelConfig.maxTokens` | implemented `api.registerProvider` | implemented `Extension.RegisterProvider` | implemented `Extension::register_provider` | implemented `Extension.register_provider` |
-| `provider model.samplingParams` | `ProviderModelConfig.samplingParams` | implemented `api.registerProvider` | implemented `Extension.RegisterProvider` | implemented `Extension::register_provider` | implemented `Extension.register_provider` |
-| `provider model.compat` | `ProviderModelConfig.compat` | implemented `api.registerProvider` | implemented `Extension.RegisterProvider` | implemented `Extension::register_provider` | implemented `Extension.register_provider` |
-| `provider model.id` | `ProviderModelConfig.id` | implemented `api.registerProvider` | implemented `Extension.RegisterProvider` | implemented `Extension::register_provider` | implemented `Extension.register_provider` |
-| `provider model.name` | `ProviderModelConfig.name` | implemented `api.registerProvider` | implemented `Extension.RegisterProvider` | implemented `Extension::register_provider` | implemented `Extension.register_provider` |
-| `provider model.baseUrl` | `ProviderModelConfig.baseUrl` | implemented `api.registerProvider` | implemented `Extension.RegisterProvider` | implemented `Extension::register_provider` | implemented `Extension.register_provider` |
-| `provider model.input` | `ProviderModelConfig.input` | implemented `api.registerProvider` | implemented `Extension.RegisterProvider` | implemented `Extension::register_provider` | implemented `Extension.register_provider` |
-| `provider model.inputLimits` | `ProviderModelConfig.inputLimits` | implemented `api.registerProvider` | implemented `Extension.RegisterProvider` | implemented `Extension::register_provider` | implemented `Extension.register_provider` |
-| `provider model.cost` | `ProviderModelConfig.cost` | implemented `api.registerProvider` | implemented `Extension.RegisterProvider` | implemented `Extension::register_provider` | implemented `Extension.register_provider` |
-| `provider model.headers` | `ProviderModelConfig.headers` | implemented `api.registerProvider` | implemented `Extension.RegisterProvider` | implemented `Extension::register_provider` | implemented `Extension.register_provider` |
-| `provider model.output` | `ProviderModelConfig.output` | implemented `api.registerProvider` | implemented `Extension.RegisterProvider` | implemented `Extension::register_provider` | implemented `Extension.register_provider` |
+| Surface | Pi declaration | Node runtime | Go | Rust | Python | Lisp |
+|---|---|---|---|---|---|---|
+| `provider.name` | `ProviderConfig.name` | implemented `api.registerProvider` | implemented `Extension.RegisterProvider` | implemented `Extension::register_provider` | implemented `Extension.register_provider` | implemented `pig:register-provider` |
+| `provider.baseUrl` | `ProviderConfig.baseUrl` | implemented `api.registerProvider` | implemented `Extension.RegisterProvider` | implemented `Extension::register_provider` | implemented `Extension.register_provider` | implemented `pig:register-provider` |
+| `provider.apiKey` | `ProviderConfig.apiKey` | implemented `api.registerProvider` | implemented `Extension.RegisterProvider` | implemented `Extension::register_provider` | implemented `Extension.register_provider` | implemented `pig:register-provider` |
+| `provider.api` | `ProviderConfig.api` | implemented `api.registerProvider` | implemented `Extension.RegisterProvider` | implemented `Extension::register_provider` | implemented `Extension.register_provider` | implemented `pig:register-provider` |
+| `provider.streamSimple` | `ProviderConfig.streamSimple` | missing [exception](#exceptions) | missing [exception](#exceptions) | missing [exception](#exceptions) | missing [exception](#exceptions) | missing [exception](#exceptions) |
+| `provider.images` | `ProviderConfig.images` | implemented `read:config.images` | implemented `ProviderImagesFunc` | implemented `ProviderOperations.images` | implemented `Extension.register_provider` | implemented `pig:register-provider` |
+| `provider.classifiers` | `ProviderConfig.classifiers` | implemented `read:config.classifiers` | implemented `ProviderClassifyFunc` | implemented `ProviderOperations.classifiers` | implemented `Extension.register_provider` | implemented `pig:register-provider` |
+| `provider.headers` | `ProviderConfig.headers` | implemented `api.registerProvider` | implemented `Extension.RegisterProvider` | implemented `Extension::register_provider` | implemented `Extension.register_provider` | implemented `pig:register-provider` |
+| `provider.authHeader` | `ProviderConfig.authHeader` | implemented `api.registerProvider` | implemented `Extension.RegisterProvider` | implemented `Extension::register_provider` | implemented `Extension.register_provider` | implemented `pig:register-provider` |
+| `provider.models` | `ProviderConfig.models` | implemented `api.registerProvider` | implemented `Extension.RegisterProvider` | implemented `Extension::register_provider` | implemented `Extension.register_provider` | implemented `pig:register-provider` |
+| `provider.refreshModels` | `ProviderConfig.refreshModels` | missing [exception](#exceptions) | missing [exception](#exceptions) | missing [exception](#exceptions) | missing [exception](#exceptions) | missing [exception](#exceptions) |
+| `provider.oauth` | `ProviderConfig.oauth` | implemented `api.registerProvider` | implemented `OAuthProvider` | implemented `Extension::register_oauth_provider` | implemented `Extension.register_oauth_provider` | implemented `pig:register-oauth-provider` |
+| `provider.oauth.name` | `ProviderConfig.oauth.name` | implemented `read:oauth.name` | implemented `OAuthProvider.Name` | implemented `OAuthProvider.name` | implemented `OAuthProvider.name` | implemented `pig:oauth-provider-name` |
+| `provider.oauth.isSubscription` | `ProviderConfig.oauth.isSubscription` | implemented `read:oauth.isSubscription` | implemented `OAuthProvider.IsSubscription` | implemented `OAuthProvider.is_subscription` | implemented `OAuthProvider.is_subscription` | implemented `pig:oauth-provider-is-subscription` |
+| `provider.oauth.usesCallbackServer` | `ProviderConfig.oauth.usesCallbackServer` | missing [exception](#exceptions) | missing [exception](#exceptions) | missing [exception](#exceptions) | missing [exception](#exceptions) | missing [exception](#exceptions) |
+| `provider.oauth.login` | `ProviderConfig.oauth.login` | implemented `read:oauth.login` | implemented `OAuthProvider.Login` | implemented `OAuthProvider.login` | implemented `OAuthProvider.login` | implemented `pig:oauth-provider-login` |
+| `provider.oauth.refreshToken` | `ProviderConfig.oauth.refreshToken` | implemented `read:oauth.refreshToken` | implemented `OAuthProvider.RefreshToken` | implemented `OAuthProvider.refresh_token` | implemented `OAuthProvider.refresh_token` | implemented `pig:oauth-provider-refresh-token` |
+| `provider.oauth.getApiKey` | `ProviderConfig.oauth.getApiKey` | implemented `read:oauth.getApiKey` | implemented `OAuthProvider.GetAPIKey` | implemented `OAuthProvider.get_api_key` | implemented `OAuthProvider.get_api_key` | implemented `pig:oauth-provider-get-api-key` |
+| `provider.oauth.modifyModels` | `ProviderConfig.oauth.modifyModels` | missing [exception](#exceptions) | missing [exception](#exceptions) | missing [exception](#exceptions) | missing [exception](#exceptions) | missing [exception](#exceptions) |
+| `provider model.type` | `ProviderModelConfig.type` | implemented `api.registerProvider` | implemented `Extension.RegisterProvider` | implemented `Extension::register_provider` | implemented `Extension.register_provider` | implemented `pig:register-provider` |
+| `provider model.api` | `ProviderModelConfig.api` | implemented `api.registerProvider` | implemented `Extension.RegisterProvider` | implemented `Extension::register_provider` | implemented `Extension.register_provider` | implemented `pig:register-provider` |
+| `provider model.reasoning` | `ProviderModelConfig.reasoning` | implemented `api.registerProvider` | implemented `Extension.RegisterProvider` | implemented `Extension::register_provider` | implemented `Extension.register_provider` | implemented `pig:register-provider` |
+| `provider model.thinkingLevelMap` | `ProviderModelConfig.thinkingLevelMap` | implemented `api.registerProvider` | implemented `Extension.RegisterProvider` | implemented `Extension::register_provider` | implemented `Extension.register_provider` | implemented `pig:register-provider` |
+| `provider model.promptCache` | `ProviderModelConfig.promptCache` | implemented `api.registerProvider` | implemented `Extension.RegisterProvider` | implemented `Extension::register_provider` | implemented `Extension.register_provider` | implemented `pig:register-provider` |
+| `provider model.contextWindow` | `ProviderModelConfig.contextWindow` | implemented `api.registerProvider` | implemented `Extension.RegisterProvider` | implemented `Extension::register_provider` | implemented `Extension.register_provider` | implemented `pig:register-provider` |
+| `provider model.maxTokens` | `ProviderModelConfig.maxTokens` | implemented `api.registerProvider` | implemented `Extension.RegisterProvider` | implemented `Extension::register_provider` | implemented `Extension.register_provider` | implemented `pig:register-provider` |
+| `provider model.samplingParams` | `ProviderModelConfig.samplingParams` | implemented `api.registerProvider` | implemented `Extension.RegisterProvider` | implemented `Extension::register_provider` | implemented `Extension.register_provider` | implemented `pig:register-provider` |
+| `provider model.compat` | `ProviderModelConfig.compat` | implemented `api.registerProvider` | implemented `Extension.RegisterProvider` | implemented `Extension::register_provider` | implemented `Extension.register_provider` | implemented `pig:register-provider` |
+| `provider model.id` | `ProviderModelConfig.id` | implemented `api.registerProvider` | implemented `Extension.RegisterProvider` | implemented `Extension::register_provider` | implemented `Extension.register_provider` | implemented `pig:register-provider` |
+| `provider model.name` | `ProviderModelConfig.name` | implemented `api.registerProvider` | implemented `Extension.RegisterProvider` | implemented `Extension::register_provider` | implemented `Extension.register_provider` | implemented `pig:register-provider` |
+| `provider model.baseUrl` | `ProviderModelConfig.baseUrl` | implemented `api.registerProvider` | implemented `Extension.RegisterProvider` | implemented `Extension::register_provider` | implemented `Extension.register_provider` | implemented `pig:register-provider` |
+| `provider model.input` | `ProviderModelConfig.input` | implemented `api.registerProvider` | implemented `Extension.RegisterProvider` | implemented `Extension::register_provider` | implemented `Extension.register_provider` | implemented `pig:register-provider` |
+| `provider model.inputLimits` | `ProviderModelConfig.inputLimits` | implemented `api.registerProvider` | implemented `Extension.RegisterProvider` | implemented `Extension::register_provider` | implemented `Extension.register_provider` | implemented `pig:register-provider` |
+| `provider model.cost` | `ProviderModelConfig.cost` | implemented `api.registerProvider` | implemented `Extension.RegisterProvider` | implemented `Extension::register_provider` | implemented `Extension.register_provider` | implemented `pig:register-provider` |
+| `provider model.headers` | `ProviderModelConfig.headers` | implemented `api.registerProvider` | implemented `Extension.RegisterProvider` | implemented `Extension::register_provider` | implemented `Extension.register_provider` | implemented `pig:register-provider` |
+| `provider model.output` | `ProviderModelConfig.output` | implemented `api.registerProvider` | implemented `Extension.RegisterProvider` | implemented `Extension::register_provider` | implemented `Extension.register_provider` | implemented `pig:register-provider` |
 
 ## Renderers
 
-| Surface | Pi declaration | Node runtime | Go | Rust | Python |
-|---|---|---|---|---|---|
-| `message renderer options.expanded` | `MessageRenderOptions.expanded` | implemented `read:payload.options` | implemented `MessageRenderOptions.Expanded` | implemented `MessageRenderOptions.expanded` | implemented `Extension.message_renderer` |
-| `message renderer options.outputPad` | `MessageRenderOptions.outputPad` | implemented `read:payload.options` | implemented `MessageRenderOptions.OutputPad` | implemented `MessageRenderOptions.output_pad` | implemented `Extension.message_renderer` |
-| `entry renderer options.expanded` | `EntryRenderOptions.expanded` | implemented `read:payload.options` | implemented `EntryRenderOptions.Expanded` | implemented `EntryRenderOptions.expanded` | implemented `Extension.entry_renderer` |
-| `markdown transform context.messageType` | `MarkdownTransformContext.messageType` | implemented `api.registerMarkdownTransformer` | implemented `MarkdownTransformContext.MessageType` | implemented `MarkdownTransformContext.message_type` | implemented `Extension.markdown_transformer` |
-| `markdown transform context.isStreaming` | `MarkdownTransformContext.isStreaming` | implemented `api.registerMarkdownTransformer` | implemented `MarkdownTransformContext.IsStreaming` | implemented `MarkdownTransformContext.is_streaming` | implemented `Extension.markdown_transformer` |
-| `markdown transform context.availableWidth` | `MarkdownTransformContext.availableWidth` | implemented `api.registerMarkdownTransformer` | implemented `MarkdownTransformContext.AvailableWidth` | implemented `MarkdownTransformContext.available_width` | implemented `Extension.markdown_transformer` |
-| `markdown transform context.messageId` | `MarkdownTransformContext.messageId` | implemented `api.registerMarkdownTransformer` | implemented `MarkdownTransformContext.MessageID` | implemented `MarkdownTransformContext.message_id` | implemented `Extension.markdown_transformer` |
-| `markdown transform context.timestamp` | `MarkdownTransformContext.timestamp` | implemented `api.registerMarkdownTransformer` | implemented `MarkdownTransformContext.Timestamp` | implemented `MarkdownTransformContext.timestamp` | implemented `Extension.markdown_transformer` |
+| Surface | Pi declaration | Node runtime | Go | Rust | Python | Lisp |
+|---|---|---|---|---|---|---|
+| `message renderer options.expanded` | `MessageRenderOptions.expanded` | implemented `read:payload.options` | implemented `MessageRenderOptions.Expanded` | implemented `MessageRenderOptions.expanded` | implemented `Extension.message_renderer` | implemented `pig:message-renderer` |
+| `message renderer options.outputPad` | `MessageRenderOptions.outputPad` | implemented `read:payload.options` | implemented `MessageRenderOptions.OutputPad` | implemented `MessageRenderOptions.output_pad` | implemented `Extension.message_renderer` | implemented `pig:message-renderer` |
+| `entry renderer options.expanded` | `EntryRenderOptions.expanded` | implemented `read:payload.options` | implemented `EntryRenderOptions.Expanded` | implemented `EntryRenderOptions.expanded` | implemented `Extension.entry_renderer` | implemented `pig:entry-renderer` |
+| `markdown transform context.messageType` | `MarkdownTransformContext.messageType` | implemented `api.registerMarkdownTransformer` | implemented `MarkdownTransformContext.MessageType` | implemented `MarkdownTransformContext.message_type` | implemented `Extension.markdown_transformer` | implemented `pig:markdown-transformer` |
+| `markdown transform context.isStreaming` | `MarkdownTransformContext.isStreaming` | implemented `api.registerMarkdownTransformer` | implemented `MarkdownTransformContext.IsStreaming` | implemented `MarkdownTransformContext.is_streaming` | implemented `Extension.markdown_transformer` | implemented `pig:markdown-transformer` |
+| `markdown transform context.availableWidth` | `MarkdownTransformContext.availableWidth` | implemented `api.registerMarkdownTransformer` | implemented `MarkdownTransformContext.AvailableWidth` | implemented `MarkdownTransformContext.available_width` | implemented `Extension.markdown_transformer` | implemented `pig:markdown-transformer` |
+| `markdown transform context.messageId` | `MarkdownTransformContext.messageId` | implemented `api.registerMarkdownTransformer` | implemented `MarkdownTransformContext.MessageID` | implemented `MarkdownTransformContext.message_id` | implemented `Extension.markdown_transformer` | implemented `pig:markdown-transformer` |
+| `markdown transform context.timestamp` | `MarkdownTransformContext.timestamp` | implemented `api.registerMarkdownTransformer` | implemented `MarkdownTransformContext.Timestamp` | implemented `MarkdownTransformContext.timestamp` | implemented `Extension.markdown_transformer` | implemented `pig:markdown-transformer` |
 
 ## PiG additive: component kit (D107)
 
-| Surface | PiG declaration | Node runtime | Go | Rust | Python |
-|---|---|---|---|---|---|
-| `kit node Container` | `view node kind, Pi's Container (spec §2)` | implemented `read:Container.prototype` | implemented `kit.NewContainer` | implemented `kit::Container::new` | implemented `kit.Container` |
-| `kit node Box` | `view node kind, Pi's Box (spec §2)` | implemented `read:tui.Box` | implemented `kit.NewBox` | implemented `kit::Box::new` | implemented `kit.Box` |
-| `kit node Text` | `view node kind, Pi's Text (spec §2)` | implemented `read:tui.Text` | implemented `kit.NewText` | implemented `kit::Text::new` | implemented `kit.Text` |
-| `kit node TruncatedText` | `view node kind, Pi's TruncatedText (spec §2)` | implemented `read:tui.TruncatedText` | implemented `kit.NewTruncatedText` | implemented `kit::TruncatedText::new` | implemented `kit.TruncatedText` |
-| `kit node Markdown` | `view node kind, Pi's Markdown (spec §2)` | implemented `read:tui.Markdown` | implemented `kit.NewMarkdown` | implemented `kit::Markdown::new` | implemented `kit.Markdown` |
-| `kit node Spacer` | `view node kind, Pi's Spacer (spec §2)` | implemented `read:tui.Spacer` | implemented `kit.NewSpacer` | implemented `kit::Spacer::new` | implemented `kit.Spacer` |
-| `kit node DynamicBorder` | `view node kind, Pi's DynamicBorder (spec §2)` | implemented `read:codingAgent.DynamicBorder` | implemented `kit.NewDynamicBorder` | implemented `kit::DynamicBorder::new` | implemented `kit.DynamicBorder` |
-| `kit node SelectList` | `view node kind, Pi's SelectList (spec §2)` | implemented `read:tui.SelectList` | implemented `kit.NewSelectList` | implemented `kit::SelectList::new` | implemented `kit.SelectList` |
-| `kit node SettingsList` | `view node kind, Pi's SettingsList (spec §2)` | implemented `read:tui.SettingsList` | implemented `kit.NewSettingsList` | implemented `kit::SettingsList::new` | implemented `kit.SettingsList` |
-| `kit node Image` | `view node kind, Pi's Image (spec §2)` | implemented `read:tui.Image` | implemented `kit.NewImage` | implemented `kit::Image::new` | implemented `kit.Image` |
-| `kit node Loader` | `view node kind, Pi's Loader (spec §2)` | implemented `read:tui.Loader` | implemented `kit.NewLoader` | implemented `kit::Loader::new` | implemented `kit.Loader` |
-| `kit node HStack` | `view node kind, Pi's HStack (spec §2)` | implemented `read:tui.HStack` | implemented `kit.NewHStack` | implemented `kit::HStack::new` | implemented `kit.HStack` |
-| `kit node VStack` | `view node kind, Pi's VStack (spec §2)` | implemented `read:tui.VStack` | implemented `kit.NewVStack` | implemented `kit::VStack::new` | implemented `kit.VStack` |
-| `kit node Lines` | `view node kind lines (spec §2)` | implemented `read:component.viewLines` | implemented `kit.NewLines` | implemented `kit::Lines::new` | implemented `kit.Lines` |
-| `kit node UserMessage` | `view node kind user-message, Pi's UserMessageComponent (spec §2.1)` | implemented `read:codingAgent.UserMessageComponent` | implemented `kit.NewUserMessage` | implemented `kit::UserMessage::new` | implemented `kit.UserMessage` |
-| `kit node AssistantMessage` | `view node kind assistant-message, Pi's AssistantMessageComponent (spec §2.1)` | implemented `read:codingAgent.AssistantMessageComponent` | implemented `kit.NewAssistantMessage` | implemented `kit::AssistantMessage::new` | implemented `kit.AssistantMessage` |
-| `kit node ToolExecution` | `view node kind tool-execution, Pi's ToolExecutionComponent (spec §2.1)` | implemented `read:codingAgent.ToolExecutionComponent` | implemented `kit.NewToolExecution` | implemented `kit::ToolExecution::new` | implemented `kit.ToolExecution` |
-| `kit node BashExecution` | `view node kind bash-execution, Pi's BashExecutionComponent (spec §2.1)` | implemented `read:codingAgent.BashExecutionComponent` | implemented `kit.NewBashExecution` | implemented `kit::BashExecution::new` | implemented `kit.BashExecution` |
-| `kit node Diff` | `view node kind diff, Pi's renderDiff in a Text (spec §2.1)` | implemented `read:diff.filePath` | implemented `kit.NewDiff` | implemented `kit::Diff::new` | implemented `kit.Diff` |
-| `kit view` | `a view: root, focus, theme overrides (spec §2, §6)` | implemented `read:component.viewTheme` | implemented `kit.View` | implemented `kit::View` | implemented `kit.View` |
-| `kit ctx.ui.custom(view)` | `ui.custom drawn from a view (spec §4)` | implemented `RuntimeUI.custom` | implemented `ViewComponent.View` | implemented `ViewComponent::view` | implemented `kit.ViewComponent.view` |
-| `kit view events` | `a focused list's events (spec §4, ui.view.event)` | missing [exception](#exceptions) | implemented `ViewEventHandler.HandleViewEvent` | implemented `ViewComponent::handle_view_event` | implemented `kit.ViewEventHandler.handle_view_event` |
-| `kit event` | `a view event (spec §4)` | missing [exception](#exceptions) | implemented `kit.Event` | implemented `kit::Event` | implemented `kit.Event` |
-| `kit ctx.ui.setWidget(view)` | `a widget drawn from a view (spec §9)` | implemented `RuntimeUI.setWidget` | implemented `Context.SetWidget` | implemented `Context::set_widget_view` | implemented `Context.set_widget` |
-| `kit ctx.ui.setHeader(view)` | `the header drawn from a view (spec §9)` | implemented `RuntimeUI.setHeader` | implemented `Context.SetHeaderView` | implemented `Context::set_header_view` | implemented `Context.set_header_view` |
-| `kit ctx.ui.setFooter(view)` | `the footer drawn from a view (spec §9)` | implemented `RuntimeUI.setFooter` | implemented `Context.SetFooterView` | implemented `Context::set_footer_view` | implemented `Context.set_footer_view` |
-| `kit tool renderCall(view)` | `a tool call card drawn from a view (spec §9)` | implemented `read:tool.renderCall` | implemented `ToolRenderers.CallView` | implemented `ToolRendererSet.call_view` | implemented `ToolRenderers.call_view` |
-| `kit tool renderResult(view)` | `a tool result card drawn from a view (spec §9)` | implemented `read:tool.renderResult` | implemented `ToolRenderers.ResultView` | implemented `ToolRendererSet.result_view` | implemented `ToolRenderers.result_view` |
-| `kit message renderer(view)` | `a custom message drawn from a view (spec §9)` | implemented `api.registerMessageRenderer` | implemented `Extension.MessageViewRenderer` | implemented `Extension::message_view_renderer` | implemented `Extension.message_view_renderer` |
-| `kit entry renderer(view)` | `a custom session entry drawn from a view (spec §9)` | implemented `api.registerEntryRenderer` | implemented `Extension.EntryViewRenderer` | implemented `Extension::entry_view_renderer` | implemented `Extension.entry_view_renderer` |
-| `kit lines list annotation` | `a lines node's frontend-only list (spec §2, §13.2)` | implemented `read:list.selectedIndex` | implemented `kit.Lines.List` | implemented `kit::List` | implemented `kit.List` |
+| Surface | PiG declaration | Node runtime | Go | Rust | Python | Lisp |
+|---|---|---|---|---|---|---|
+| `kit node Container` | `view node kind, Pi's Container (spec §2)` | implemented `read:Container.prototype` | implemented `kit.NewContainer` | implemented `kit::Container::new` | implemented `kit.Container` | implemented `pig:kit-container` |
+| `kit node Box` | `view node kind, Pi's Box (spec §2)` | implemented `read:tui.Box` | implemented `kit.NewBox` | implemented `kit::Box::new` | implemented `kit.Box` | implemented `pig:kit-box` |
+| `kit node Text` | `view node kind, Pi's Text (spec §2)` | implemented `read:tui.Text` | implemented `kit.NewText` | implemented `kit::Text::new` | implemented `kit.Text` | implemented `pig:kit-text` |
+| `kit node TruncatedText` | `view node kind, Pi's TruncatedText (spec §2)` | implemented `read:tui.TruncatedText` | implemented `kit.NewTruncatedText` | implemented `kit::TruncatedText::new` | implemented `kit.TruncatedText` | implemented `pig:kit-truncated-text` |
+| `kit node Markdown` | `view node kind, Pi's Markdown (spec §2)` | implemented `read:tui.Markdown` | implemented `kit.NewMarkdown` | implemented `kit::Markdown::new` | implemented `kit.Markdown` | implemented `pig:kit-markdown` |
+| `kit node Spacer` | `view node kind, Pi's Spacer (spec §2)` | implemented `read:tui.Spacer` | implemented `kit.NewSpacer` | implemented `kit::Spacer::new` | implemented `kit.Spacer` | implemented `pig:kit-spacer` |
+| `kit node DynamicBorder` | `view node kind, Pi's DynamicBorder (spec §2)` | implemented `read:codingAgent.DynamicBorder` | implemented `kit.NewDynamicBorder` | implemented `kit::DynamicBorder::new` | implemented `kit.DynamicBorder` | implemented `pig:kit-dynamic-border` |
+| `kit node SelectList` | `view node kind, Pi's SelectList (spec §2)` | implemented `read:tui.SelectList` | implemented `kit.NewSelectList` | implemented `kit::SelectList::new` | implemented `kit.SelectList` | implemented `pig:kit-select-list` |
+| `kit node SettingsList` | `view node kind, Pi's SettingsList (spec §2)` | implemented `read:tui.SettingsList` | implemented `kit.NewSettingsList` | implemented `kit::SettingsList::new` | implemented `kit.SettingsList` | implemented `pig:kit-settings-list` |
+| `kit node Image` | `view node kind, Pi's Image (spec §2)` | implemented `read:tui.Image` | implemented `kit.NewImage` | implemented `kit::Image::new` | implemented `kit.Image` | implemented `pig:kit-image` |
+| `kit node Loader` | `view node kind, Pi's Loader (spec §2)` | implemented `read:tui.Loader` | implemented `kit.NewLoader` | implemented `kit::Loader::new` | implemented `kit.Loader` | implemented `pig:kit-loader` |
+| `kit node HStack` | `view node kind, Pi's HStack (spec §2)` | implemented `read:tui.HStack` | implemented `kit.NewHStack` | implemented `kit::HStack::new` | implemented `kit.HStack` | implemented `pig:kit-hstack` |
+| `kit node VStack` | `view node kind, Pi's VStack (spec §2)` | implemented `read:tui.VStack` | implemented `kit.NewVStack` | implemented `kit::VStack::new` | implemented `kit.VStack` | implemented `pig:kit-vstack` |
+| `kit node Lines` | `view node kind lines (spec §2)` | implemented `read:component.viewLines` | implemented `kit.NewLines` | implemented `kit::Lines::new` | implemented `kit.Lines` | implemented `pig:kit-lines` |
+| `kit node UserMessage` | `view node kind user-message, Pi's UserMessageComponent (spec §2.1)` | implemented `read:codingAgent.UserMessageComponent` | implemented `kit.NewUserMessage` | implemented `kit::UserMessage::new` | implemented `kit.UserMessage` | implemented `pig:kit-user-message` |
+| `kit node AssistantMessage` | `view node kind assistant-message, Pi's AssistantMessageComponent (spec §2.1)` | implemented `read:codingAgent.AssistantMessageComponent` | implemented `kit.NewAssistantMessage` | implemented `kit::AssistantMessage::new` | implemented `kit.AssistantMessage` | implemented `pig:kit-assistant-message` |
+| `kit node ToolExecution` | `view node kind tool-execution, Pi's ToolExecutionComponent (spec §2.1)` | implemented `read:codingAgent.ToolExecutionComponent` | implemented `kit.NewToolExecution` | implemented `kit::ToolExecution::new` | implemented `kit.ToolExecution` | implemented `pig:kit-tool-execution` |
+| `kit node BashExecution` | `view node kind bash-execution, Pi's BashExecutionComponent (spec §2.1)` | implemented `read:codingAgent.BashExecutionComponent` | implemented `kit.NewBashExecution` | implemented `kit::BashExecution::new` | implemented `kit.BashExecution` | implemented `pig:kit-bash-execution` |
+| `kit node Diff` | `view node kind diff, Pi's renderDiff in a Text (spec §2.1)` | implemented `read:diff.filePath` | implemented `kit.NewDiff` | implemented `kit::Diff::new` | implemented `kit.Diff` | implemented `pig:kit-diff` |
+| `kit view` | `a view: root, focus, theme overrides (spec §2, §6)` | implemented `read:component.viewTheme` | implemented `kit.View` | implemented `kit::View` | implemented `kit.View` | implemented `pig:kit-view` |
+| `kit ctx.ui.custom(view)` | `ui.custom drawn from a view (spec §4)` | implemented `RuntimeUI.custom` | implemented `ViewComponent.View` | implemented `ViewComponent::view` | implemented `kit.ViewComponent.view` | implemented `pig:make-custom-component(view)` |
+| `kit view events` | `a focused list's events (spec §4, ui.view.event)` | missing [exception](#exceptions) | implemented `ViewEventHandler.HandleViewEvent` | implemented `ViewComponent::handle_view_event` | implemented `kit.ViewEventHandler.handle_view_event` | implemented `pig:make-custom-component(handle-view-event)` |
+| `kit event` | `a view event (spec §4)` | missing [exception](#exceptions) | implemented `kit.Event` | implemented `kit::Event` | implemented `kit.Event` | implemented `pig:kit-event-type` |
+| `kit ctx.ui.setWidget(view)` | `a widget drawn from a view (spec §9)` | implemented `RuntimeUI.setWidget` | implemented `Context.SetWidget` | implemented `Context::set_widget_view` | implemented `Context.set_widget` | implemented `pig:ctx-set-widget` |
+| `kit ctx.ui.setHeader(view)` | `the header drawn from a view (spec §9)` | implemented `RuntimeUI.setHeader` | implemented `Context.SetHeaderView` | implemented `Context::set_header_view` | implemented `Context.set_header_view` | implemented `pig:ctx-set-header-view` |
+| `kit ctx.ui.setFooter(view)` | `the footer drawn from a view (spec §9)` | implemented `RuntimeUI.setFooter` | implemented `Context.SetFooterView` | implemented `Context::set_footer_view` | implemented `Context.set_footer_view` | implemented `pig:ctx-set-footer-view` |
+| `kit tool renderCall(view)` | `a tool call card drawn from a view (spec §9)` | implemented `read:tool.renderCall` | implemented `ToolRenderers.CallView` | implemented `ToolRendererSet.call_view` | implemented `ToolRenderers.call_view` | implemented `pig:register-tool(call-view)` |
+| `kit tool renderResult(view)` | `a tool result card drawn from a view (spec §9)` | implemented `read:tool.renderResult` | implemented `ToolRenderers.ResultView` | implemented `ToolRendererSet.result_view` | implemented `ToolRenderers.result_view` | implemented `pig:register-tool(result-view)` |
+| `kit message renderer(view)` | `a custom message drawn from a view (spec §9)` | implemented `api.registerMessageRenderer` | implemented `Extension.MessageViewRenderer` | implemented `Extension::message_view_renderer` | implemented `Extension.message_view_renderer` | implemented `pig:message-view-renderer` |
+| `kit entry renderer(view)` | `a custom session entry drawn from a view (spec §9)` | implemented `api.registerEntryRenderer` | implemented `Extension.EntryViewRenderer` | implemented `Extension::entry_view_renderer` | implemented `Extension.entry_view_renderer` | implemented `pig:entry-view-renderer` |
+| `kit lines list annotation` | `a lines node's frontend-only list (spec §2, §13.2)` | implemented `read:list.selectedIndex` | implemented `kit.Lines.List` | implemented `kit::List` | implemented `kit.List` | implemented `pig:kit-list` |
 
 ## Package exports: pi-coding-agent
 
@@ -3080,16 +3081,16 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 
 | Surface | Runtimes | Reason |
 |---|---|---|
-| `pi.sendUserMessage(options.expandPromptTemplates)` | Node runtime, Go, Rust, Python | The host SendUserMessageOptions carries deliverAs only; expandPromptTemplates would be dropped. Requires host prompt-expansion control. |
-| `ctx.newSession(options.setup)` | Node runtime, Go, Rust, Python | The wire has no writable replacement SessionManager callback handle. Requires replacement callback ownership in the Pi runner bridge (0.3.0), not JSON serialization of a function. |
-| `withSession ctx.sendUserMessage(options.expandPromptTemplates)` | Node runtime, Go, Rust, Python | The host SendUserMessageOptions carries deliverAs only; expandPromptTemplates would be dropped. Requires host prompt-expansion control. |
-| `ctx.ui.theme.sourceInfo` | Node runtime, Go, Rust, Python | The theme snapshot carries sourcePath but no SourceInfo. Requires theme resource provenance publication. |
-| `user_bash return.operations` | Node runtime, Go, Rust, Python | The wire has no host-invoked streaming BashOperations executor callback. Returning a completed result works; operations requires callback/stream ownership. |
-| `tool render context.lastComponent` | Go, Rust, Python | Native renderers return lines rather than Components (D56), so no previous component is returned. Card state persists separately in context.state/State. |
-| `provider.streamSimple` | Node runtime, Go, Rust, Python | The host cannot invoke an extension-served provider EventStream. Requires provider callback and streaming transport, not the existing host-served modelStream direction. |
-| `provider.refreshModels` | Node runtime, Go, Rust, Python | The provider bridge has no host-to-extension refreshModels request or publication callback handles. |
-| `provider.oauth.usesCallbackServer` | Node runtime, Go, Rust, Python | Deprecated and ignored by upstream 0.99.2 canonical auth flows (core/extensions/types.ts); runtimes do not forward this inert legacy metadata. |
-| `provider.oauth.modifyModels` | Node runtime, Go, Rust, Python | The host OAuth bridge has no credential-dependent modify-models callback request. |
+| `pi.sendUserMessage(options.expandPromptTemplates)` | Node runtime, Go, Rust, Python, Lisp | The host SendUserMessageOptions carries deliverAs only; expandPromptTemplates would be dropped. Requires host prompt-expansion control. |
+| `ctx.newSession(options.setup)` | Node runtime, Go, Rust, Python, Lisp | The wire has no writable replacement SessionManager callback handle. Requires replacement callback ownership in the Pi runner bridge (0.3.0), not JSON serialization of a function. |
+| `withSession ctx.sendUserMessage(options.expandPromptTemplates)` | Node runtime, Go, Rust, Python, Lisp | The host SendUserMessageOptions carries deliverAs only; expandPromptTemplates would be dropped. Requires host prompt-expansion control. |
+| `ctx.ui.theme.sourceInfo` | Node runtime, Go, Rust, Python, Lisp | The theme snapshot carries sourcePath but no SourceInfo. Requires theme resource provenance publication. |
+| `user_bash return.operations` | Node runtime, Go, Rust, Python, Lisp | The wire has no host-invoked streaming BashOperations executor callback. Returning a completed result works; operations requires callback/stream ownership. |
+| `tool render context.lastComponent` | Go, Rust, Python, Lisp | Native renderers return lines rather than Components (D56), so no previous component is returned. Card state persists separately in context.state/State. |
+| `provider.streamSimple` | Node runtime, Go, Rust, Python, Lisp | The host cannot invoke an extension-served provider EventStream. Requires provider callback and streaming transport, not the existing host-served modelStream direction. |
+| `provider.refreshModels` | Node runtime, Go, Rust, Python, Lisp | The provider bridge has no host-to-extension refreshModels request or publication callback handles. |
+| `provider.oauth.usesCallbackServer` | Node runtime, Go, Rust, Python, Lisp | Deprecated and ignored by upstream 0.99.2 canonical auth flows (core/extensions/types.ts); runtimes do not forward this inert legacy metadata. |
+| `provider.oauth.modifyModels` | Node runtime, Go, Rust, Python, Lisp | The host OAuth bridge has no credential-dependent modify-models callback request. |
 | `ctx.ui.setTheme → error` | Node runtime | Node returns synchronously before host theme validation, so it cannot report host errors. Requires synchronous validation/state acknowledgement rather than optimistic success. |
 | `pi-coding-agent: KeybindingsManager` | Node runtime | Pi's published root index.d.ts re-exports KeybindingsManager as a type only. Both actual runtime namespaces omit it (TestNodeCodingAgentTypeOnlyExportsMatchPi). |
 | `pi-coding-agent: KeybindingsManager.*` | Node runtime | Members of the type-only root re-export have no runtime receiver. Both Pi and PiG omit the value; the actual class remains in the private core/keybindings module. |

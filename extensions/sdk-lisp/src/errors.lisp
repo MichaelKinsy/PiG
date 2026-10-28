@@ -21,7 +21,7 @@
 
 (define-condition unsupported-capability (pig-error)
   ((member :initarg :member :reader unsupported-capability-member)
-   (lane :initarg :lane :initform "SdkLispPhase2" :reader unsupported-capability-lane))
+   (lane :initarg :lane :reader unsupported-capability-lane))
   (:report (lambda (c s)
              (format s "~A is not served by the Lisp SDK yet (gap lane ~A; see docs/extension-api-parity.md)"
                      (unsupported-capability-member c) (unsupported-capability-lane c))))

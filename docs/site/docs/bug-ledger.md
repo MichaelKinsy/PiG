@@ -136,6 +136,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-24872ab](#bf-24872ab) | Extensions receive each model (`ctx.model`, `model_select`, `ctx.modelRegistry` reads, scoped models… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-24a821d](#bf-24a821d) | The openai stream decoder follows openai 7.19.0, the version packages/ai declares: the stream ends at [DONE]… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-24a9b69](#bf-24a9b69) | fix(hljs): a resumed run counts the scan iterations before its checkpoint | PiG's own defect | All platforms | Unreleased |
+| [BF-25a90ea](#bf-25a90ea) | fix(tui): scroll regions only where the terminal is trusted with them (D205 approved) | PiG's own defect | All platforms | Unreleased |
 | [BF-25aa7fd](#bf-25aa7fd) | A subprocess extension's markdown transform that was busy past the five-second renderer inactivity boundary… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-25c854d](#bf-25c854d) | Session directories (the agent directory, `sessions` and each project's directory) are created owner-only… | A Pi defect that PiG fixed first | All platforms | 0.5.0 |
 | [BF-2699291](#bf-2699291) | The serializeConversation parity row records that Rust session entries still read an unpaired surrogate as… | PiG's own defect | All platforms | 0.5.0 |
@@ -2884,6 +2885,19 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `24a9b69c2e` (2026-10-11)
 - **Tests:** `tui/highlight_resume_test.go::TestStreamedHighlightEqualsAWholeRun`, `tui/internal/hljs/resume_test.go::TestHighlightResumableEqualsAFreshRun`, `tui/internal/hljs/resume_test.go::TestHighlightResumableFollowsLaterText`, `tui/internal/hljs/resume_test.go::TestResumedRunCountsTheIterationsOfAWholeRun`
+
+### BF-25a90ea
+
+**fix(tui): scroll regions only where the terminal is trusted with them (D205 approved)**
+
+- **Source:** PiG's own defect
+- **Symptom:** fix(tui): scroll regions only where the terminal is trusted with them (D205 approved)
+- **Root cause:** Zellij, a missing, dumb, unknown or vt52 TERM and PIG_TUI_SCROLL_ROWS=0 get Pi's bytes. D205 is owner-approved 2026-10-27.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `25a90ea440` (2026-10-27)
+- **Tests:** `tui/alt_screen_oracle_test.go::TestAltScreenScrollFallsBackToPisBytes`, `tui/alt_screen_oracle_test.go::TestScrollRegionsUsableIn`
 
 ### BF-25aa7fd
 
@@ -18658,6 +18672,7 @@ Each divergence record is accounted for here. A divergence that fixes a Pi defec
 | D200 | With no home directory PiG still runs the commands that load no resources, where Pi crashes at import, and… | [BF-D200](#bf-d200) |
 | D203 | registerProvider with an empty `apiKey` leaves the provider unconfigured where Pi treats the empty string as… | [BF-D203](#bf-d203) |
 | D204 | The Go, Rust and Python SDKs do not yet export TuiAltScreen, Pi's alternate-screen TUI host, where the Node… | [BF-D204](#bf-d204) |
+| D205 | Fullscreen frames scroll the rows that only moved | deliberate difference |
 
 ## Fix-titled commits that are not bugs in a release
 

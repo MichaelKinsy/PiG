@@ -25,3 +25,7 @@ sbcl-source	2.6.9	any	any	sbcl.org	http://prdownloads.sourceforge.net/sbcl/sbcl-
 sbcl	2.6.9	linux	amd64	sbcl.org	http://prdownloads.sourceforge.net/sbcl/sbcl-2.6.9-x86-64-linux-binary.tar.bz2?download	39fac28407405841003e4c2abfbe0d96abd93b7701e8b61cdd35e713943b46d6
 sbcl	2.4.0	darwin	arm64	sbcl.org	http://prdownloads.sourceforge.net/sbcl/sbcl-2.4.0-arm64-darwin-binary.tar.bz2?download	1d01fac2d9748f769c9246a0a11a2c011d7843337f8f06ca144f5a500e10c117
 sbcl	2.6.9	windows	amd64	sbcl.org	http://prdownloads.sourceforge.net/sbcl/sbcl-2.6.9-x86-64-windows-binary.msi?download	2be695e44a69ff29f01cf7980f67472cb383e75e9292d5fcd27cf5418b871226
+#
+# libvterm (the terminal library of Neovim and Vim) is built from this release source by automation/ci/test-term-engines.sh for the
+# terminal-engine A/B test (make test-term-engines). The tarball is checked against its digest before it is unpacked.
+libvterm	0.3.3	any	any	leonerd.org.uk	https://www.leonerd.org.uk/code/libvterm/libvterm-0.3.3.tar.gz	09156f43dd2128bd347cbeebe50d9a571d32c64e0cf18d211197946aff7226e0
