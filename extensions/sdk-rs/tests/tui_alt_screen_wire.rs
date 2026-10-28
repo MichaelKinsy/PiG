@@ -1,6 +1,6 @@
 #![cfg(unix)]
 
-//! The wire of `TuiAltScreen` (D204): `tui.alt` calls carry the terminal block and the component caps, and the host's `tui.alt.cb`
+//! The wire of `TuiAltScreen`: `tui.alt` calls carry the terminal block and the component caps, and the host's `tui.alt.cb`
 //! requests are answered on their own request threads while the extension's thread is blocked in a `tui.alt` call.
 
 use pig_sdk::{
