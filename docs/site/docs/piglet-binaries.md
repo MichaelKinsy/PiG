@@ -477,6 +477,8 @@ An overlay merges onto the Binary's Piglet exactly as an `extends` child merges 
 - `extends.allowWiden: true` allows what widens the Binary's ceilings: `tools`, `discovery`, `agentEnv`, an extension's `tools`, and removing a strip entry. Without it resolution fails with `capability widening [...] requires extends.allowWiden: true`, as for any `extends` child.
 - An `extends` block with no `source` extends the Binary itself. It carries only `remove`, `allowWiden` and nothing else; a Piglet file with such a block resolves only as an overlay on a Piglet Binary that sets `allowOverlays`, and stock pig refuses it by name.
 
+Every name under `remove` must exist in the Binary: removing a member it does not carry fails with `remove.extensions: "<name>" is absent` (or `remove.slots` for a slot it lacks). This example is for a Binary with a frontend, a `codegraph` extension and `bash` stripped at run time:
+
 ```yaml
 name: tern-lite
 systemPrompt:
@@ -495,8 +497,10 @@ Three things stay fixed, because they are compiled into the Binary. Each refusal
 | The overlay | Why it is refused |
 |---|---|
 | sets `slots.frontend` (a new one, or another under the Binary's) | A frontend is Go code linked into the Binary. Removing the Binary's frontend with `extends.remove.slots: [frontend]` is allowed. |
-| removes a `strip` entry whose built-in a build tag compiled out: `strip.extensions` (`mcp`, `codemode`, `docs` and the other built-in extensions), `strip.apis`, and the compile-out `strip.features` | The code is not in the executable. `pig piglet show` marks these `stripped(binary)`. |
+| removes a `strip` entry whose built-in a build tag compiled out: `strip.extensions` (`mcp`, `codemode` and the other built-in extensions), `strip.apis`, and the compile-out `strip.features` (such as `docs`) | The code is not in the executable. `pig piglet show` marks these `stripped(binary)`. |
 | names a fused or embedded extension again with `origins` | The Binary selects its own members by name and cannot build another at run time under that name. Remove it with `extends.remove.extensions` and add the new one under another name. |
+
+To test an overlay, start the Binary with it (`./pig-base --piglet ./tern-lite.yaml`). `pig piglet validate` always fails a Piglet with a source-less `extends`, because stock pig has no Binary to extend, so the Binary's own startup is the check; a refused overlay stops the start and names the field.
 
 An overlay can undo runtime strips: `strip.tools`, `strip.commands` and the runtime-only features (`themes`, `skills`, `prompt-templates`), which `pig piglet show` marks `stripped(runtime)`. It cannot undo a `stripped(binary)` entry.
 
