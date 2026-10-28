@@ -54,11 +54,14 @@ jobs:
         run: |
           set -euo pipefail
           automation/ci/install-apt-packages.sh tmux fd-find ripgrep
-          rustup toolchain install 1.97.1 --profile minimal
-          rustup default 1.97.1
+          # ci.yml names the Rust and npm pins once; read them there as nightly.yml does.
+          RUST_VERSION="$(awk '/^  RUST_VERSION:/ { print $2; exit }' .github/workflows/ci.yml)"
+          NPM_VERSION="$(awk '/^  NPM_VERSION:/ { print $2; exit }' .github/workflows/ci.yml)"
+          rustup toolchain install "$RUST_VERSION" --profile minimal
+          rustup default "$RUST_VERSION"
           automation/ci/install-npm-toolchain.sh
           export PATH="$PWD/automation/ci/npm-toolchain/node_modules/.bin:$PATH"
-          test "$(npm --version)" = 12.1.0
+          test "$(npm --version)" = "$NPM_VERSION"
           test "$(go env GOVERSION)" = "go$(tr -d '\r\n' < .go-version)"
           make upstream-mirror
       - name: Test summary aggregation
