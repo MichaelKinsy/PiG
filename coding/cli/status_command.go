@@ -285,9 +285,12 @@ func collectStatus() statusOutput {
 				seenIdentities[identity] = resource.Path
 			}
 			// pig additive (D41): health is what the loader says about a resource this run would load, not only whether the file exists.
+			// A resource the loader rejects is not enabled, so one field answers whether the session has it.
 			health := resource.Health
-			if health == "" && resource.Enabled && entry.ignored == "" {
+			enabled := resource.Enabled && entry.ignored == ""
+			if health == "" && enabled {
 				if health = statusLoadHealth(kind, resource.Path, cwd, agentDir); health != "" {
+					enabled = false
 					//perf:ok one message per rejected resource, in a one-shot status command
 					status.Warnings = append(status.Warnings, fmt.Sprintf("%s %s: %s", kind, name, health))
 				}
@@ -295,13 +298,13 @@ func collectStatus() statusOutput {
 			status.Resources.Items = append(status.Resources.Items, statusResourceItem{
 				Kind: string(resource.ResourceType), Name: name, Path: canonicalStatusPath(resource.Path),
 				Scope: resource.Scope, Origin: resource.Origin, Source: resource.Source,
-				Enabled: resource.Enabled && entry.ignored == "", Ignored: entry.ignored, Health: health,
+				Enabled: enabled, Ignored: entry.ignored, Health: health,
 			})
 			status.Resources.ByKind[string(resource.ResourceType)]++
 			switch {
 			case entry.ignored != "":
 				status.Resources.Ignored++
-			case resource.Enabled:
+			case enabled:
 				status.Resources.Enabled++
 			default:
 				status.Resources.Disabled++
