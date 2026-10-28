@@ -128,6 +128,8 @@ func newSubprocessExtensionHost(cwd string, mode extension.ExtensionMode, regist
 	bridge.SetThemeFunc(codingagent.ActiveExtensionThemeWire)
 	// The pig command draws the editors an extension's view holds in every mode; an embedder that does not leaves the call out and does not link the terminal editor.
 	subprocess.EnableEditorViews()
+	// Likewise the pig command serves the TuiAltScreens an extension constructs; an embedder that does not leaves the call out and does not link their renderer.
+	subprocess.EnableTuiAltScreens()
 	subprocess.SetThemeLoader(codingagent.LoadExtensionTheme)
 	host.SetUIBridge(bridge)
 	host.SetSessionGraph(coding.NewSessionGraph())
