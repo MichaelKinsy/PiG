@@ -81,7 +81,7 @@ func sourceChain(path string) ([]chainLink, error) {
 			return nil, fmt.Errorf("Piglet %s: %w", path, err)
 		}
 		links = append(links, chainLink{path: path, identity: identity, digest: digestPigletBytes(data), piglet: p})
-		if p.Extends == nil {
+		if p.Extends == nil || p.Extends.Source == "" {
 			break
 		}
 		path, identity, err = resolveExtendsSource(path, p.Extends.Source)
