@@ -4,7 +4,9 @@ import (
 	"bytes"
 	"encoding/json"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"runtime"
 	"slices"
 	"strings"
 	"testing"
@@ -394,7 +396,8 @@ func TestDiagnoseNamesTheActivePiglet(t *testing.T) {
 
 func writeThemeFixture(t *testing.T, path string, mutate func(colors map[string]any)) {
 	t.Helper()
-	data, err := os.ReadFile(filepath.Join("..", "..", "tui", "theme_dark.json"))
+	_, thisFile, _, _ := runtime.Caller(0)
+	data, err := os.ReadFile(filepath.Join(filepath.Dir(thisFile), "..", "..", "tui", "theme_dark.json"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -453,5 +456,92 @@ func TestStatusReportsAThemeWithAnUnknownColorRoleAsInvalid(t *testing.T) {
 	}
 	if !status.Healthy {
 		t.Errorf("Pi only warns about it: errors=%v", status.Errors)
+	}
+}
+
+// Bug 5: `pig install <path> --validate-only` called a .mjs extension valid, and auto-discovery silently ignores .mjs, as Pi's does
+// (loader.ts isExtensionFile, package-manager.ts collectAutoExtensionEntries: only .ts and .js). The path itself still loads when a
+// -e flag or a settings entry names it, so the report stays valid and says what discovery does.
+func TestNotAutoDiscoveredWarningFollowsPiDiscovery(t *testing.T) {
+	root := t.TempDir()
+	write := func(rel, content string) string {
+		path := filepath.Join(root, rel)
+		writeResourceFixture(t, path, content)
+		return path
+	}
+	const body = "export default function () {}\n"
+	for _, tc := range []struct {
+		name string
+		path string
+		warn bool
+	}{
+		{"top-level .mjs file", write("a/ext.mjs", body), true},
+		{"top-level .cjs file", write("b/ext.cjs", body), true},
+		{"top-level .js file", write("c/ext.js", body), false},
+		{"top-level .ts file", write("d/ext.ts", body), false},
+		{"directory with index.mjs", filepath.Dir(write("e/index.mjs", body)), true},
+		{"directory with main.js", filepath.Dir(write("f/main.js", body)), true},
+		{"directory with index.js", filepath.Dir(write("g/index.js", body)), false},
+		{"directory with index.ts", filepath.Dir(write("h/index.ts", body)), false},
+		{"directory with a pi manifest", filepath.Dir(write("i/package.json", `{"pi":{"extensions":["./x.js"]}}`)), false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if tc.name == "directory with a pi manifest" {
+				write("i/x.js", body)
+			}
+			got := notAutoDiscoveredWarning(tc.path)
+			if (got != "") != tc.warn {
+				t.Fatalf("notAutoDiscoveredWarning(%s) = %q, want a warning: %v", tc.path, got, tc.warn)
+			}
+		})
+	}
+}
+
+func TestInstallValidateOnlyReportsWhatDiscoveryWouldLoad(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping extension load in short mode")
+	}
+	if _, err := exec.LookPath("node"); err != nil {
+		t.Skip("node is not installed")
+	}
+	t.Setenv("PIG_HOME", t.TempDir())
+	t.Setenv("PIG_CODING_AGENT_DIR", filepath.Join(t.TempDir(), "agent"))
+	dir := t.TempDir()
+	const body = "export default function (pi) { pi.registerCommand('hello', { description: 'hi', handler: async () => {} }); }\n"
+	mjs := filepath.Join(dir, "hello.mjs")
+	js := filepath.Join(dir, "hello.js")
+	writeResourceFixture(t, mjs, body)
+	writeResourceFixture(t, js, body)
+	validate := func(path string) (report struct {
+		Valid          bool     `json:"valid"`
+		AutoDiscovered *bool    `json:"autoDiscovered"`
+		Warnings       []string `json:"warnings"`
+	}, stderr string) {
+		t.Helper()
+		stdout, stderr, code := captureStdoutStderr(t, func() int {
+			return runPackageCommand([]string{"install", path, "--validate-only", "--json"})
+		})
+		if code != 0 {
+			t.Fatalf("validate %s: code=%d stdout=%s stderr=%s", path, code, stdout, stderr)
+		}
+		if err := json.Unmarshal([]byte(stdout), &report); err != nil {
+			t.Fatalf("parse %s: %v", stdout, err)
+		}
+		return report, stderr
+	}
+	report, _ := validate(mjs)
+	if !report.Valid || report.AutoDiscovered == nil || *report.AutoDiscovered || len(report.Warnings) != 1 || !strings.Contains(report.Warnings[0], "loads only .ts and .js files") {
+		t.Errorf(".mjs report = %#v", report)
+	}
+	report, _ = validate(js)
+	if !report.Valid || report.AutoDiscovered == nil || !*report.AutoDiscovered || len(report.Warnings) != 0 {
+		t.Errorf(".js report = %#v", report)
+	}
+	_, stderr := func() (struct{}, string) {
+		_, stderr, _ := captureStdoutStderr(t, func() int { return runPackageCommand([]string{"install", mjs, "--validate-only"}) })
+		return struct{}{}, stderr
+	}()
+	if !strings.Contains(stderr, "Warning: auto-discovery does not load hello.mjs") {
+		t.Errorf("human output has no warning: %q", stderr)
 	}
 }
