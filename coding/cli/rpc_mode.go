@@ -199,7 +199,10 @@ func rpcResolvedSkills(skills []*codingagent.SkillDef, activePiglet *piglet.Pigl
 		if copy.FilePath == "" && activePiglet != nil {
 			// pig additive (D18): the synthesized path identifies the inline skill's manifest, not a file to reload as Markdown.
 			copy.SourceInfo.Source = "inline"
-			copy.FilePath = activePiglet.SourcePath()
+			// pig additive (D202): a skill the Binary baked has no file even when an overlay file is the Piglet's source.
+			if !activePiglet.BakedSkill(copy.Name) {
+				copy.FilePath = activePiglet.SourcePath()
+			}
 			if copy.FilePath == "" {
 				copy.FilePath = "builtin:piglet"
 			}
