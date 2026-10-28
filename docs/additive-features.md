@@ -1658,9 +1658,13 @@ SCRUTINIZED:approved
 
 ## D209 A session exports its active Piglet to its tool processes (`PIG_ACTIVE_PIGLET_SOURCE`)
 
+Summary: A running session sets PIG_ACTIVE_PIGLET_SOURCE for its tools, so pig status, pig diagnose, and pig piglet show can name the active Piglet.
+
+Audience: author
+
 Stock disposition: product-neutral diagnostics. The variable is informational. No run selects a Piglet from it, and a run with no Piglet clears it.
 
-What: A pig session that runs a Piglet sets `PIG_ACTIVE_PIGLET_SOURCE` in its own environment, so every process its tools start inherits it, including the `bash` tool. The value is the path of the Piglet file, or the Piglet's name for a Piglet Binary, whose Piglet has no source file. A session with no Piglet removes the variable, so a nested pig never reports its parent's Piglet. Three read-only commands read it. `pig status` marks the extensions and skills that the Piglet's `discovery` excludes as `ignored: piglet-discovery` and reports the Piglet in `activePiglet`. `pig diagnose` prints an `active Piglet:` line and the model the Piglet sets. `pig piglet show` with no argument shows the Piglet. A process that is itself a Piglet Binary needs no variable: `status` and `diagnose` use its baked Piglet.
+What: A pig session that runs a Piglet sets `PIG_ACTIVE_PIGLET_SOURCE` in its own environment, so every process its tools start inherits it, including the `bash` tool. The value is the path of the Piglet file, or the Piglet's name for a Piglet Binary, whose Piglet has no source file. A session with no Piglet removes the variable, so a nested pig never reports its parent's Piglet. Three read-only commands read it. `pig status` marks the extensions and skills that the Piglet's `discovery` excludes as `ignored: piglet-discovery` and reports the Piglet in `activePiglet`. `pig diagnose` prints an `active Piglet:` line and the model the Piglet sets. `pig piglet show` with no argument shows the Piglet. A process that is itself a Piglet Binary needs no variable: `status` and `diagnose` use its baked Piglet, whose discovery excludes every ambient extension and skill unless the Binary accepts overlays (D202). When the variable names a Piglet Binary and the pig that runs is another executable, `status` warns that it cannot apply the Binary's discovery.
 
 Pi source: none. Pi has no Piglet.
 
@@ -1668,7 +1672,7 @@ Why: the agent runs `pig status` from `bash` to learn what its session loaded. W
 
 Call-site markers: `coding/piglet/active_source.go` (`ActiveSourceEnv`), `coding/cli/active_piglet_source.go` (`exportActivePigletSource`, `inspectActivePiglet`), `coding/cli/main.go` (the call to `exportActivePigletSource`), `coding/piglet/main.go` (`cmdShow`).
 
-Locked by: `TestExportActivePigletSourceReachesToolProcesses`, `TestStatusAppliesTheActivePigletDiscovery`, `TestStatusActivePigletBinaryExcludesEveryAmbientExtensionAndSkill`, `TestStatusWarnsWhenTheActivePigletSourceDoesNotLoad`, `TestDiagnoseNamesTheActivePiglet` (`coding/cli/introspection_truth_test.go`); `TestActiveSourceValue`, `TestShowWithoutAnArgumentUsesTheActivePigletSource` (`coding/piglet/active_source_test.go`).
+Locked by: `TestExportActivePigletSourceReachesToolProcesses`, `TestStatusAppliesTheActivePigletDiscovery`, `TestStatusNamesAPigletBinaryItCannotApply`, `TestStatusWarnsWhenTheActivePigletSourceDoesNotLoad`, `TestDiagnoseNamesTheActivePiglet` (`coding/cli/introspection_truth_test.go`); `TestActiveSourceValue`, `TestShowWithoutAnArgumentUsesTheActivePigletSource` (`coding/piglet/active_source_test.go`).
 
 Remove when: PiG drops Piglets, or a session passes its Piglet to the commands that report on it by another route.
 
