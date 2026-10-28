@@ -121,8 +121,13 @@ func TestRecoverPartialNeverStoredLeavesNoAbortedEntry(t *testing.T) {
 	if got := lastEntryOf(r, "pi.assistant"); got != "" {
 		t.Fatalf("a partial that was never stored became an entry: %s", got)
 	}
+	// The request the host died during is a charged attempt (generation.ts:236 interrupted): the next one waits for the retry backoff.
+	if len(r.requests) != 0 {
+		t.Fatalf("the interrupted request was sent again on open: requests = %d", len(r.requests))
+	}
+	r.advance(2000)
 	if len(r.requests) != 1 {
-		t.Fatalf("requests = %d", len(r.requests))
+		t.Fatalf("requests = %d after the backoff", len(r.requests))
 	}
 }
 
