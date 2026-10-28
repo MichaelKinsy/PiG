@@ -1,0 +1,7 @@
+# Hash-locked: pyte and its one dependency, wheels only (automation/ci/test-term-engines.sh installs with --require-hashes).
+# Regenerate with: uv pip compile --generate-hashes --python-version 3.11 --universal -o test/term-engines/pyte/requirements.txt <(echo pyte==0.8.2)
+pyte==0.8.2 \
+    --hash=sha256:85db42a35798a5aafa96ac4d8da78b090b2c933248819157fc0e6f78876a0135
+wcwidth==0.2.14 \
+    --hash=sha256:a7bb560c8aee30f9957e5f9895805edd20602f2d7f720186dfd906e82b4982e1
+    # via pyte
