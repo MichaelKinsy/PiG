@@ -103,6 +103,8 @@ type job struct {
 	// client: done answers a host caller (ClientReadLine) and runs at Settle, a hop before the job's end.
 	client  bool
 	settled bool // done already ran at Settle
+	// ended: the job's commit ended this runtime's task for crashes, which Resume reports before done (Runtime.Commit).
+	ended *Runtime
 }
 
 // Resume delivers done: in the microtask the Loop queued for it, or, for a late job, a tick after that.
@@ -112,8 +114,14 @@ func (j *job) Resume() {
 		j.l.NextTickResumer(j)
 		return
 	}
+	if j.ended != nil && j.err == nil {
+		j.ended.ReportEnded()
+	}
 	j.done(j.err)
 }
+
+// endedBy marks the running line job as the commit that ended rt's task for crashes.
+func (l *Loop) endedBy(rt *Runtime) { l.jobs[l.jhead].ended = rt }
 
 // DeferResumer queues r.Resume as a microtask.
 func (l *Loop) DeferResumer(r Resumer) { l.deferItem(queued{r: r}) }

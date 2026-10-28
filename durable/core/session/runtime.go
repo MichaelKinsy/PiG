@@ -17,6 +17,8 @@ type Runtime struct {
 	task  func() *TaskImpl
 	snap  func() Snapshot
 	agent any
+	// ended is what the commit that last ended the task for crashes ended it for, until ReportEnded reports it.
+	ended interruption
 }
 
 func (s *Scheduler) newRuntime(inv *invocation, task func() *TaskImpl, snap func() Snapshot) *Runtime {
@@ -109,6 +111,13 @@ func (r *Runtime) Commit(change func(tx *Tx, current *jv.Object) (next *jv.Objec
 		overlay := stagedTasks(tx)
 		err = r.s.commitState(tx, r.inv, current, next)
 		tx.ticks = hopcost.RuntimeCommit(u, true, commitStateTicks(next, overlay))
+		if err == nil {
+			// A task that ends for crashes says so (task_interrupted), so a host keeps a crash-loop signal: reported once the
+			// commit resolved, before its caller resumes (scheduler.ts runtime.commit).
+			if r.ended = interruptionOf(current, next); r.ended.reason != nil {
+				r.s.loop.endedBy(r)
+			}
+		}
 		return err
 	}, then)
 }
@@ -141,6 +150,7 @@ func (r *Runtime) BeginHost() (tx *Tx, current *jv.Object, err error) {
 // FinishHost commits the host transaction of BeginHost: next, when not nil, is the state the task commits for itself.
 func (r *Runtime) FinishHost(tx *Tx, current, next *jv.Object) (*Publication, error) {
 	u := tx.ticks
+	r.ended = interruption{}
 	if next != nil {
 		overlay := stagedTasks(tx)
 		if err := r.s.commitState(tx, r.inv, current, next); err != nil {
@@ -148,6 +158,7 @@ func (r *Runtime) FinishHost(tx *Tx, current, next *jv.Object) (*Publication, er
 			return nil, err
 		}
 		tx.ticks = hopcost.RuntimeCommit(u, true, commitStateTicks(next, overlay))
+		r.ended = interruptionOf(current, next)
 	} else {
 		tx.ticks = hopcost.RuntimeCommit(u, false, 0)
 	}

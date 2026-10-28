@@ -3,11 +3,7 @@
 
 package turn
 
-import (
-	"errors"
-
-	"github.com/MichaelKinsy/PiG/durable/core/jv"
-)
+import "github.com/MichaelKinsy/PiG/durable/core/jv"
 
 // The restart limit of the built-in tasks (src/harness/live.ts cutOffTooOften, salvageable, cutOffCount, LIMITS_RESTARTS): a
 // task cut off settings.restartLimit times in a row (the task record's `restarts`) ends itself visibly in its phase instead of
@@ -48,18 +44,6 @@ func strIn(o *jv.Object, key string) string {
 	return str(o, key)
 }
 
-// markEnded records, in the commit that ends the task for crashes (a terminal failure whose detail is restart_limit or
-// interrupted), what reportEnded reports as task_interrupted: the reason, the message and the task's restart count
-// (scheduler.ts commit).
-func (r *run) markEnded(current *jv.Object, reason, message string) {
-	r.endReason, r.endMessage = reason, message
-	r.endRestarts, _ = current.Get("restarts")
-}
-
-// reportEnded is the continuation of the commit that ended the task: it reports a task that ended for crashes, then ends the phase.
-func (r *run) reportEnded() {
-	if r.endReason != "" {
-		_ = r.rt.ReportInterrupted(errors.New(r.endMessage), r.endReason, r.endRestarts)
-	}
-	r.done(nil)
-}
+// finished ends the phase after the commit that ended the task. A task that ended for crashes is reported by that commit
+// (session.Runtime.Commit), as scheduler.ts does for every task.
+func (r *run) finished() { r.done(nil) }
