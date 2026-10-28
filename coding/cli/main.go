@@ -57,6 +57,7 @@ import (
 	piglet "github.com/MichaelKinsy/PiG/coding/piglet"
 	"github.com/MichaelKinsy/PiG/coding/pigletbuild/binarypiglet"
 	"github.com/MichaelKinsy/PiG/internal/codingagent"
+	"github.com/MichaelKinsy/PiG/internal/codingagent/prompts"
 	"github.com/MichaelKinsy/PiG/internal/codingagent/timings"
 	"github.com/MichaelKinsy/PiG/internal/frontendpack"
 	"github.com/MichaelKinsy/PiG/internal/gcpolicy"
@@ -875,6 +876,8 @@ func Main(args []string, options *MainOptions) {
 	var activePigletBaked bool
 	enforcePigletBinaryScope(flags.UnknownFlags)
 	activePiglet, activePigletBaked = resolvePiglet(flags.UnknownFlags, flags.ProjectTrustOverride)
+	// pig additive (D23): an active Piglet adds the Piglets topic to the docs section of the system prompt.
+	prompts.SetPigletDocsTopic(activePiglet != nil)
 	if activePigletBaked && flags.SystemPrompt != "" {
 		fmt.Fprintln(os.Stderr, "pig: a Piglet Binary's baseline system prompt cannot be replaced; use --append-system-prompt for an additive prompt")
 		exitProcess(1)

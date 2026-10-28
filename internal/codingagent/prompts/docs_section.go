@@ -9,6 +9,7 @@ package prompts
 
 import (
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"github.com/MichaelKinsy/PiG/internal/configroot"
@@ -58,9 +59,11 @@ var docsTopics = []docsTopic{
 	{text: "environment variables (docs/environment-variables.md)"},
 	{text: "MCP servers (docs/mcp.md)", list: pigstrip.ListExtensions, id: "mcp"},
 	{text: "codemode scripts and non-LLM models such as classifiers and image models (docs/codemode.md)", list: pigstrip.ListExtensions, id: "codemode"},
-	// pig additive (D23, D92): the Piglets topic belongs to the `/piglet` command's strip ID, so a Piglet that strips it names no Piglet docs.
-	{text: "Piglets and their tool scope (docs/piglets.md)", list: pigstrip.ListCommands, id: "/piglet"},
 }
+
+// pigletTopic is the topic a Piglet adds, owned by the `/piglet` command's strip ID so a Piglet that strips it names no Piglet docs.
+// pig additive (D23, D92): Pi has no Piglets.
+var pigletTopic = docsTopic{text: "Piglets and their tool scope (docs/piglets.md)", list: pigstrip.ListCommands, id: "/piglet"}
 
 // docsSectionAt points the model at PiG's documentation in upstream's format, with the README and examples locations given; an
 // empty readme is README.md inside root and empty examples is [PigExamplesLocation].
@@ -73,7 +76,11 @@ func docsSectionAt(root, readme, examples string) string {
 		examples = PigExamplesLocation
 	}
 	var topics, header []string
-	for _, topic := range docsTopics {
+	all := docsTopics
+	if pigletDocsTopic.Load() {
+		all = append(slices.Clone(docsTopics), pigletTopic)
+	}
+	for _, topic := range all {
 		if topic.list != "" && pigstrip.Has(topic.list, topic.id) {
 			continue
 		}
