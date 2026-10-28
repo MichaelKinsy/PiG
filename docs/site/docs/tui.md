@@ -227,7 +227,7 @@ Use a supported terminal and verify behavior at narrow and wide widths. See [Ter
 
 The package `@earendil-works/pi-tui` is the TypeScript TUI package for Pi. It is not PiG's Go API.
 
-Use [Pi's TUI documentation](https://github.com/earendil-works/pi/blob/v1.2.0/packages/coding-agent/docs/tui.md) when you are writing an in-process TypeScript extension for Pi itself.
+Use [Pi's TUI documentation](https://github.com/earendil-works/pi/blob/main/packages/coding-agent/docs/tui.md) when you are writing an in-process TypeScript extension for Pi itself.
 
 A Piglet can name a Go frontend member that draws the interactive mode in place of the ANSI renderer (D91). Stock PiG has no frontend member. See "Frontend members" in [Piglet Binaries](/docs/latest/piglet-binaries).
 

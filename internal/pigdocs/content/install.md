@@ -66,7 +66,7 @@ After the project publishes a release, you can also download an artifact from
 its release page. Verify the published checksum before you place `pig` on
 `PATH`.
 
-PiG stores user state under `~/.pig`. Set `PIG_HOME` only for an isolated config
+PiG stores user state under `~/.pig`, or under `$XDG_CONFIG_HOME/pig` when `XDG_CONFIG_HOME` is set. Set `PIG_HOME` only for an isolated config
 root, tests, or CI.
 
 ### Change what the install script does
@@ -77,7 +77,7 @@ root, tests, or CI.
 |---|---|
 | `PIG_VERSION` | Install this release (for example `0.5.0`) instead of the latest. |
 | `PIG_INSTALL_DIR` | Directory that receives `pig`. The default is `$HOME/.local/bin`, or `$PREFIX/bin` in Termux. |
-| `PIG_HOME` | PiG's settings directory, where the install receipt goes. The default is `~/.pig`. |
+| `PIG_HOME` | PiG's settings directory, where the install receipt goes. The default is `$XDG_CONFIG_HOME/pig` when `XDG_CONFIG_HOME` is set, else `~/.pig`. |
 | `PIG_API_BASE` | The API that names the latest release. The default is `https://pi-in-go.dev/api`. |
 | `PIG_LATEST_RELEASE_URL` | The page that redirects to the latest release, used when the API does not answer. |
 | `PIG_DOWNLOAD_BASE` | The release download root. The default is the GitHub Releases download URL of this repository. |
@@ -187,8 +187,8 @@ Piglet release records where each component comes from: binary, release
 closure, required `agentEnv`, or external mapping. Subprocess use does not create
 a different binary kind.
 
-Piglet Image is the OCI carrier when the Piglet needs an environment-complete
-runtime. Artifact startup never silently installs, pulls, logs in, or substitutes
+Piglet Image is the planned OCI carrier for a Piglet that needs an environment-complete
+runtime. It is not in this release; no command produces one. Artifact startup never silently installs, pulls, logs in, or substitutes
 an origin.
 
 ## 7. Set up an extension toolchain only when authoring/building
