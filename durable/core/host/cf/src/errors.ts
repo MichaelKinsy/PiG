@@ -76,6 +76,7 @@ export function reviveError(body: WireErrorBody, failure?: Error): Error {
     case "ReadOnlySession": error = Object.assign(new ReadOnlySession("a commit with writes"), { message }); break
     case "ReadAfterWrite": error = Object.assign(new ReadAfterWrite("doc"), { message }); break
     case "StorageRequestError": error = new StorageRequestError(message); break
+    case "RangeError": error = new RangeError(message); break
     default: {
       error = new Error(message)
       // An Error keeps its prototype's name; only another name becomes an own property.

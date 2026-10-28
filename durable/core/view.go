@@ -24,8 +24,9 @@ import (
 // when there is one, and the mounted built-in documents. The watch does not hold it: a frame is the ops of one commit, and the host
 // applies them to the view it holds. The watch keeps only what choosing those ops reads: the IDs of its window's entries.
 type viewWatch struct {
-	conv     session.ID
-	min, max int
+	conv         session.ID
+	conversation *jv.Object // the conversation record the mount was built with, which later observers of the mount are given
+	min, max     int
 	ids      []float64 // the IDs of the window's entries, oldest first
 	docs     map[string]viewDoc
 }
@@ -57,7 +58,7 @@ func resolveWindow(target *jv.Object) (windowBounds, error) {
 		value, _ := object.Get(key)
 		number, ok := value.(float64)
 		if !ok || number != math.Trunc(number) || math.Abs(number) > 1<<53-1 {
-			return 0, false, errors.New("Window " + key + " must be an integer, got " + jv.Stringify(value))
+			return 0, false, &Rejection{"RangeError", "Window " + key + " must be an integer, got " + jv.Stringify(value)}
 		}
 		return number, true, nil
 	}
@@ -69,7 +70,7 @@ func resolveWindow(target *jv.Object) (windowBounds, error) {
 		minimum = defaultWindowMin
 	}
 	if minimum < 1 {
-		return windowBounds{}, errors.New("Window min must be an integer >= 1, got " + jv.Stringify(minimum))
+		return windowBounds{}, &Rejection{"RangeError", "Window min must be an integer >= 1, got " + jv.Stringify(minimum)}
 	}
 	maximum, hasMax, err := bound("max")
 	if err != nil {
@@ -79,7 +80,7 @@ func resolveWindow(target *jv.Object) (windowBounds, error) {
 		maximum = 2 * minimum
 	}
 	if maximum < minimum {
-		return windowBounds{}, errors.New("Window max must be an integer >= min (" + jv.Stringify(minimum) + "), got " + jv.Stringify(maximum))
+		return windowBounds{}, &Rejection{"RangeError", "Window max must be an integer >= min (" + jv.Stringify(minimum) + "), got " + jv.Stringify(maximum)}
 	}
 	from, hasFrom, err := bound("from")
 	if err != nil {
@@ -109,34 +110,56 @@ func (h *handler) viewOpen(req *jv.Object, target *jv.Object) (any, error) {
 		return nil, err
 	}
 	conv := session.ID(numOf(target, "conversationId"))
-	h.read(hopcost.ReadRow)
-	record, err := h.mir.Conversation(conv)
-	if err != nil {
-		return nil, err
-	}
-	if record == nil {
-		return nil, errors.New("Conversation " + itoa(int64(conv)) + " does not exist")
-	}
+	var record *jv.Object
 	docObject := jv.NewObject()
 	mounted := map[string]viewDoc{}
-	for _, def := range h.mountedDefs() {
-		args := session.DocArgs{Owner: conv}
-		value, err := h.sess.Snapshot(def, args)
+	if mount := h.mountOf(conv); mount != nil {
+		// An observer of a mount another holds only loads its window (view.ts attach: `this.#mounts.get(id) ?? build`).
+		record = mount.conversation
+		for _, def := range h.mountedDefs() {
+			at, ok := mount.docs[def.Kind]
+			if !ok {
+				continue
+			}
+			value, err := h.sess.Snapshot(def, session.DocArgs{Owner: conv})
+			if err != nil {
+				return nil, err
+			}
+			if value == nil {
+				continue
+			}
+			docObject.Set(def.Kind, value)
+			mounted[def.Kind] = at
+		}
+	} else {
+		h.read(hopcost.ReadRow)
+		var err error
+		record, err = h.mir.Conversation(conv)
 		if err != nil {
 			return nil, err
 		}
-		h.chargeViewDoc()
-		if value == nil {
-			continue
+		if record == nil {
+			return nil, errors.New("Conversation " + itoa(int64(conv)) + " does not exist")
 		}
-		rec, err := h.mir.FindDocument(session.DocumentAddress(def, args), session.Current)
-		if err != nil {
-			return nil, err
+		for _, def := range h.mountedDefs() {
+			args := session.DocArgs{Owner: conv}
+			value, err := h.sess.Snapshot(def, args)
+			if err != nil {
+				return nil, err
+			}
+			h.chargeViewDoc()
+			if value == nil {
+				continue
+			}
+			rec, err := h.mir.FindDocument(session.DocumentAddress(def, args), session.Current)
+			if err != nil {
+				return nil, err
+			}
+			docObject.Set(def.Kind, value)
+			mounted[def.Kind] = viewDoc{id: session.ID(numOf(rec, "id")), version: def.Version}
 		}
-		docObject.Set(def.Kind, value)
-		mounted[def.Kind] = viewDoc{id: session.ID(numOf(rec, "id")), version: def.Version}
+		h.job.change += hopcost.ViewBuildReturn
 	}
-	h.job.change += hopcost.ViewBuildReturn
 	records, before, err := h.loadWindow(conv, bounds)
 	if err != nil {
 		return nil, err
@@ -157,10 +180,23 @@ func (h *handler) viewOpen(req *jv.Object, target *jv.Object) (any, error) {
 	if h.views == nil {
 		h.views = map[uint32]*viewWatch{}
 	}
-	h.views[uint32(numOf(req, "watchId"))] = &viewWatch{conv: conv, min: bounds.min, max: bounds.max, ids: ids, docs: mounted}
+	h.views[uint32(numOf(req, "watchId"))] = &viewWatch{conv: conv, conversation: record, min: bounds.min, max: bounds.max, ids: ids, docs: mounted}
 	answer := jv.NewObject()
 	answer.Set("value", value)
 	return answer, nil
+}
+
+// mountOf is the mount of a conversation's view: the watch of an observer that holds it, or nil when no observer does (the mount is
+// dropped with its last observer, view.ts attach). Every observer of the conversation holds the same documents.
+func (h *handler) mountOf(conv session.ID) *viewWatch {
+	var found *viewWatch
+	var at uint32
+	for id, w := range h.views {
+		if w.conv == conv && (found == nil || id < at) {
+			found, at = w, id
+		}
+	}
+	return found
 }
 
 // loadWindow is view.ts loadWindow: a new observer's window, read with bounded scans: the entries from bounds.from when at most
