@@ -264,8 +264,9 @@ export class Core {
     const l = this.promptChars, prompt = ceil4(l)
     const u: Usage = { input: 0, output: ceil4(outputChars), cacheRead: 0, cacheWrite: 0, total: 0 }
     if (this.hasPrev) {
-      u.cacheRead = ceil4(this.prevChars); u.cacheWrite = ceil4(l - this.prevChars); u.input = Math.max(0, prompt - u.cacheRead)
-    } else { u.input = prompt; u.cacheWrite = prompt }
+      u.cacheRead = ceil4(this.prevChars); u.cacheWrite = Math.max(0, prompt - u.cacheRead)
+    } else u.cacheWrite = prompt
+    // Every prompt token is either read from or written to the simulated cache; input stays 0 (pi-ai f3fa8bd9).
     this.prevChars = l; this.hasPrev = true
     u.total = u.input + u.output + u.cacheRead + u.cacheWrite
     return u
@@ -305,6 +306,11 @@ export class Core {
 
   /** Replace the task's state and write the task. */
   private putTask(o: Rec, state: Rec) {
+    // A state the task commits that differs from its current one is progress: its restart count starts over, and an outcome drops it.
+    // The scheduler's change of a pending task to running with the same checkpoint is not (scheduler.ts withState, progressed).
+    const cur = o.state
+    const started = state.status === "running" && cur.status === "pending" && JSON.stringify(cur.checkpoint) === JSON.stringify(state.checkpoint)
+    if (!started) delete o.restarts
     o.state = state
     this.writeTask(o)
   }
@@ -399,7 +405,7 @@ export class Core {
     this.recordUsage(u)
 
     t.asst = this.alloc()
-    const rec = `{"model":[{"role":"assistant","content":${content},"api":${JSON.stringify(this.api)},"provider":"faux","model":"scripted-1","usage":${usageJSON(u)},"stopReason":"${stop}","timestamp":${now}${this.head && durationMs !== undefined ? `,"durationMs":${durationMs}` : ""}}],"kind":"pi.assistant","id":${t.asst},"conversationId":${this.conv},"byTaskId":${t.gen}}`
+    const rec = `{"model":[{"role":"assistant","content":${content},"api":${JSON.stringify(this.api)},"provider":"faux","model":"scripted-1","usage":${usageJSON(u)},"stopReason":"${stop}","timestamp":${now}${this.head && durationMs !== undefined ? `,"durationMs":${durationMs},"thinkingLevel":"off"` : ""}}],"kind":"pi.assistant","id":${t.asst},"conversationId":${this.conv},"byTaskId":${t.gen}}`
     this.addMessage(ROLE_ASSISTANT, "assistant".length + 1 + outChars, 0)
 
     if (call < 0) {
@@ -545,7 +551,8 @@ export class Core {
     const cp = gen.state.checkpoint ?? {}
     t.asst = cp.assistant ?? 0
 
-    const setStatus = (r: Rec, status: string) => this.commit(() => { r.state.status = status; this.writeTask(r) })
+    // A task persisted as running is pending again with one more restart (scheduler.ts open); the scheduler's start keeps the count.
+    const setStatus = (r: Rec, status: string) => this.commit(() => { r.state.status = status; if (status === "pending") r.restarts = (r.restarts ?? 0) + 1; this.writeTask(r) })
     const reset = (r: Rec) => setStatus(r, "pending")
     const run = (r: Rec) => setStatus(r, "running")
 

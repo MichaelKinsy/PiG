@@ -7,7 +7,7 @@ import (
 	"github.com/MichaelKinsy/PiG/durable"
 )
 
-// As lets errors.As find the typed Pi error a remote error names: Pi's Session throws ReadAfterWrite, StorageRequestError, SessionFailed and
+// As lets errors.As find the typed Pi error a remote error names: Pi's Session throws ReadAfterWrite, StorageRequestError, SessionFailed, ReadOnlySession and
 // ConversationBusy instances and callers match them with instanceof (errors.ts), so a caller of the driver matches the same
 // Go types the in-process Session returns. ConversationBusy carries its id in the structured conversationId field; ReadAfterWrite is message-only in Pi (errors.ts keeps no method property), so its method comes from the message.
 func (e *CoreError) As(target any) bool {
@@ -31,6 +31,17 @@ func (e *CoreError) As(target any) bool {
 			return false
 		}
 		*t = durable.NewSessionFailed(nil)
+		return true
+	case **durable.ReadOnlySession:
+		if e.Name != "ReadOnlySession" {
+			return false
+		}
+		what, ok := strings.CutPrefix(e.Message, "Read-only Harness: ")
+		if !ok {
+			return false
+		}
+		what, _ = strings.CutSuffix(what, " refused")
+		*t = durable.NewReadOnlySession(what)
 		return true
 	case **durable.ConversationBusy:
 		if e.Name != "ConversationBusy" {
