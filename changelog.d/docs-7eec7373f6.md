@@ -1,0 +1,3 @@
+### Changed
+
+- The security page states what a Piglet Binary guarantees (fused extensions, no overlay or ambient Resource selection, tool ceilings enforced in the tool registry, strips an overlay cannot undo, signed Binaries, the declared agent container), what it does not guarantee (a Binary still loads `-e` extensions, runs the package commands and MCP configuration, and does not pin `PATH`; revocation is local; builds are not locked), what needs the planned Piglet Image, and how each enterprise control maps to a Piglet setting. It no longer says a Piglet is not a security boundary, and it states that session files and `trust.json` are created with mode 0644. `.github/SECURITY.md` links to it and no longer says that no version is supported.
