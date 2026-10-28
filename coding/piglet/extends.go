@@ -61,6 +61,10 @@ type ResolveOptions struct {
 	Base *OverlayBase
 }
 
+// BakedSkill reports whether the skill is one the Piglet Binary baked and the overlay left as it was: it has no file, so its
+// location is the Binary's, not the overlay's. It is false for a Piglet that is no overlay.
+func (p *Piglet) BakedSkill(name string) bool { return p != nil && p.bakedSkills[name] }
+
 // OverlayOf names the Piglet Binary this Piglet is an overlay of (D202), or reports false when it is not one. A Piglet Binary's
 // baked Piglet is no overlay; one that resolved a Piglet selected at launch is.
 func (p *Piglet) OverlayOf() (binary string, ok bool) {
@@ -95,6 +99,9 @@ func resolveEffectiveRoot(canonical string, options ResolveOptions) (*EffectiveR
 	if err == nil && options.Base != nil {
 		err = checkOverlay(options.Base.Piglet, resolved.Piglet)
 		resolved.Piglet.Name = options.Base.Piglet.Name
+		if err == nil {
+			resolved.Piglet.bakedSkills = unchangedBakedSkills(options.Base.Piglet, resolved.Piglet)
+		}
 	}
 	if err != nil {
 		if options.Base != nil {

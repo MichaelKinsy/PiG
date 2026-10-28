@@ -238,3 +238,42 @@ func TestAmbientScopesOfAPigletBinary(t *testing.T) {
 		t.Fatalf("an untrusted project keeps the trusted scopes only: %v %v", *ext, *skills)
 	}
 }
+
+func TestOverlaySkillsKeepDeclarationOrderAndBakedSkillsKeepTheirLocation(t *testing.T) {
+	clearPigletEnv(t)
+	binary := bakedPigletBinary(t, "pig-tern", "name: pig-tern\nskills:\n  - name: baked\n    description: baked skill\n    content: baked body\nbuild:\n  allowOverlays: true\n")
+	dir := t.TempDir()
+	skillDir := filepath.Join(dir, "skills", "ov-skill")
+	if err := os.MkdirAll(skillDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(skillDir, "SKILL.md"), []byte("---\nname: ov-skill\ndescription: overlay skill\n---\nbody\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	overlay := filepath.Join(dir, "overlay.yaml")
+	if err := os.WriteFile(overlay, []byte("name: ov\nskills:\n  - name: ov-skill\n    origins: [local:./skills/ov-skill]\n  - name: ov-inline\n    description: inline\n    content: inline body\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	p, _ := resolvePigletOn(map[string]any{"piglet": overlay}, nil, binary)
+	if p == nil {
+		t.Fatal("overlay did not resolve")
+	}
+	result, err := resolveAndLoadSkills(p, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var names []string
+	for _, d := range result.Defs {
+		names = append(names, d.Name)
+	}
+	if strings.Join(names, ",") != "baked,ov-skill,ov-inline" {
+		t.Fatalf("skill order = %v, want the declaration order", names)
+	}
+	if !p.BakedSkill("baked") || p.BakedSkill("ov-inline") || p.BakedSkill("ov-skill") {
+		t.Fatal("only the Binary's own skill is baked")
+	}
+	resolved := rpcResolvedSkills(result.Defs, p)
+	if resolved[0].FilePath != "builtin:piglet" || resolved[2].FilePath != p.SourcePath() {
+		t.Fatalf("locations = %q, %q", resolved[0].FilePath, resolved[2].FilePath)
+	}
+}

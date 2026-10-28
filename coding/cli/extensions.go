@@ -216,7 +216,11 @@ func loadSubprocessExtensions(ctx context.Context, cwd string, mode extension.Ex
 }
 
 func loadFinalSubprocessExtensions(ctx context.Context, cwd string, mode extension.ExtensionMode, registry *codingagent.ModelRegistry, configs []subprocess.ExtConfig, embedded []subprocess.EmbeddedCell, reloadConfigs func() []subprocess.ExtConfig, preloaded *startupExtensionSet, beforeStart func()) ([]extension.Extension, *subprocess.Host, *subprocess.UIBridge, []error) {
-	configs = normalizeRuntimeExtensionConfigs(configs)
+	return loadSubprocessExtensionSet(ctx, cwd, mode, registry, normalizeRuntimeExtensionConfigs(configs), embedded, reloadConfigs, preloaded, beforeStart)
+}
+
+// loadSubprocessExtensionSet loads configs as given, without adding the Binary's fused extensions.
+func loadSubprocessExtensionSet(ctx context.Context, cwd string, mode extension.ExtensionMode, registry *codingagent.ModelRegistry, configs []subprocess.ExtConfig, embedded []subprocess.EmbeddedCell, reloadConfigs func() []subprocess.ExtConfig, preloaded *startupExtensionSet, beforeStart func()) ([]extension.Extension, *subprocess.Host, *subprocess.UIBridge, []error) {
 	if len(configs) == 0 && len(embedded) == 0 && (preloaded == nil || preloaded.host == nil) {
 		return nil, nil, nil, nil
 	}

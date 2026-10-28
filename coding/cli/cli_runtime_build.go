@@ -599,6 +599,8 @@ func (b *cliRuntimeBuilder) loadPromptResources(build *cliBuild, agentToolNames 
 	if err != nil {
 		return cliCLIError("%v", err)
 	}
+	// An inline Piglet skill has no file; every mode names the Piglet it comes from, so its invocation block carries a location.
+	slr.Defs = rpcResolvedSkills(slr.Defs, b.activePiglet)
 	build.SkillLoad = slr
 	build.SkillInputs = slr.Paths
 	build.SkillCatalog = codingagent.SlashCommandCatalog{CWD: cwd, AgentDir: b.agentDir, SourceInfo: sourceInfo}

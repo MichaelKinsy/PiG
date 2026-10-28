@@ -96,3 +96,14 @@ func findNamed[T any](items []T, name string, identity func(T) string) T {
 	var zero T
 	return zero
 }
+
+// unchangedBakedSkills names the baked skills the effective Piglet carries unchanged.
+func unchangedBakedSkills(base, effective *Piglet) map[string]bool {
+	out := map[string]bool{}
+	for _, skill := range base.Skills {
+		if got := findNamed(effective.Skills, skill.Name, func(v SkillEntry) string { return v.Name }); got.Name != "" && got.Content == skill.Content && got.Description == skill.Description && len(got.Origins) == 0 {
+			out[skill.Name] = true
+		}
+	}
+	return out
+}
