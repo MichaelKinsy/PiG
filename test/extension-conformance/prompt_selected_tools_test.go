@@ -97,7 +97,7 @@ func TestPromptSelectedToolsMutationsAcrossSDKs(t *testing.T) {
 		}
 		assertPromptSelectedTools(t, []extension.Extension{*loaded}, []string{"first"})
 	})
-	for _, language := range []string{"go", "python", "rust", "node"} {
+	for _, language := range []string{"go", "python", "rust", "node", "lisp"} {
 		t.Run(language, func(t *testing.T) {
 			for _, placement := range []string{"isolated", "packed"} {
 				t.Run(placement, func(t *testing.T) {
@@ -256,6 +256,27 @@ def new_extension():
   if data["prompt"]=="result": return {"systemPrompt":"Exact prompt."}
  e.on_event("before_agent_start",handler)
  return e
+`, name)
+	case "lisp":
+		path = filepath.Join(cfg.Source, name+".lisp")
+		source = fmt.Sprintf(`(defpackage %[1]q (:use "COMMON-LISP"))
+(in-package %[1]q)
+(defun new-extension ()
+  (let ((e (pig:make-extension %[1]q)))
+    (pig:on e "before_agent_start"
+      (lambda (ctx data) (declare (ignore ctx))
+        (let ((options (pig:jget data "systemPromptOptions")) (prompt (pig:jget data "prompt")))
+          (sleep 0.02)
+          (flet ((selected () (gethash "selectedTools" options)))
+            (cond ((equal prompt "repair") (setf (gethash "selectedTools" options) (if (eq (selected) :null) (vector %[1]q) :null)) nil)
+                  ((equal prompt "null") (setf (gethash "selectedTools" options) :null) nil)
+                  ((equal prompt "mixed") (setf (gethash "selectedTools" options) (vector :null 17 %[1]q)) nil)
+                  (t (if (equal prompt "replace")
+                         (setf (gethash "selectedTools" options) (vector %[1]q))
+                         (setf (gethash "selectedTools" options) (concatenate 'simple-vector (selected) (vector %[1]q))))
+                     (cond ((equal prompt "error") (error "selected tools failure"))
+                           ((equal prompt "result") (pig:obj "systemPrompt" "Exact prompt.")))))))))
+    e))
 `, name)
 	case "rust":
 		path = filepath.Join(cfg.Source, "src", "lib.rs")

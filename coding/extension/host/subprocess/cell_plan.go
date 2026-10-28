@@ -95,7 +95,7 @@ func PlanCells(configs []ExtConfig, quarantined map[string]string) []CellSpec {
 			node.configs = append(node.configs, indexedConfig{config: cfg, index: index})
 			continue
 		}
-		if isPackableGoFactory(cfg) || isPackableRustFactory(cfg) || isPackablePythonFactory(cfg) || isPackableLispFactory(cfg) {
+		if isPackableFactory(cfg) {
 			key := packGroupKey(cfg)
 			compatible := current != nil && current.key == key
 			if compatible && cfg.RuntimeLanguage == "go" {
@@ -107,21 +107,11 @@ func PlanCells(configs []ExtConfig, quarantined map[string]string) []CellSpec {
 					}
 				}
 			}
-			if compatible && cfg.RuntimeLanguage == "python" {
-				module, _, _ := strings.Cut(cfg.Package, ".")
+			if compatible && (cfg.RuntimeLanguage == "python" || cfg.RuntimeLanguage == "lisp") {
+				namespace := packageNamespace(cfg)
 				for _, previous := range current.configs {
-					other, _, _ := strings.Cut(previous.config.Package, ".")
-					// pig additive (D20): Python caches imports by module name, so independent roots for one module need separate interpreters.
-					if module == other && cfg.Source != previous.config.Source {
-						compatible = false
-						break
-					}
-				}
-			}
-			if compatible && cfg.RuntimeLanguage == "lisp" {
-				for _, previous := range current.configs {
-					// pig additive (D20): the members of one image share its package namespace and its ASDF system names, so two roots that name the same system or file cannot share it.
-					if cfg.Package == previous.config.Package && cfg.Source != previous.config.Source {
+					// pig additive (D20): Python caches imports by module name, so independent roots for one module need separate interpreters. The members of one Lisp image share its package namespace and its ASDF system names, so two roots that name the same system or file cannot share it.
+					if namespace == packageNamespace(previous.config) && cfg.Source != previous.config.Source {
 						compatible = false
 						break
 					}
@@ -164,28 +154,33 @@ func isShareableIsolation(isolation string) bool {
 	return isolation == "" || strings.EqualFold(isolation, "shared-ok")
 }
 
-func isPackableLispFactory(cfg ExtConfig) bool {
-	return isShareableIsolation(cfg.Isolation) &&
-		cfg.RuntimeKind == "subprocess" && cfg.RuntimeLanguage == "lisp" &&
-		cfg.EntrypointKind == "factory" && cfg.Source != "" && cfg.Package != "" && cfg.Factory == "new-extension"
+// conventionalFactory is the name of the factory function a runner image of language hosts, or "" for a language that has none.
+func conventionalFactory(language string) string {
+	switch language {
+	case "go":
+		return "Extension"
+	case "rust", "python":
+		return "new_extension"
+	case "lisp":
+		return "new-extension"
+	}
+	return ""
 }
 
-func isPackableGoFactory(cfg ExtConfig) bool {
-	return isShareableIsolation(cfg.Isolation) &&
-		cfg.RuntimeKind == "subprocess" && cfg.RuntimeLanguage == "go" &&
-		cfg.EntrypointKind == "factory" && cfg.Source != "" && cfg.Package != "" && cfg.Factory == "Extension"
+// isPackableFactory reports whether cfg is the conventional Go, Rust, Python or Lisp factory of a package of its source, and may share a runner image.
+func isPackableFactory(cfg ExtConfig) bool {
+	factory := conventionalFactory(cfg.RuntimeLanguage)
+	return isShareableIsolation(cfg.Isolation) && factory != "" && cfg.Factory == factory &&
+		cfg.RuntimeKind == "subprocess" && cfg.EntrypointKind == "factory" && cfg.Source != "" && cfg.Package != ""
 }
 
-func isPackableRustFactory(cfg ExtConfig) bool {
-	return isShareableIsolation(cfg.Isolation) &&
-		cfg.RuntimeKind == "subprocess" && cfg.RuntimeLanguage == "rust" &&
-		cfg.EntrypointKind == "factory" && cfg.Source != "" && cfg.Package != "" && cfg.Factory == "new_extension"
-}
-
-func isPackablePythonFactory(cfg ExtConfig) bool {
-	return isShareableIsolation(cfg.Isolation) &&
-		cfg.RuntimeKind == "subprocess" && cfg.RuntimeLanguage == "python" &&
-		cfg.EntrypointKind == "factory" && cfg.Source != "" && cfg.Package != "" && cfg.Factory == "new_extension"
+// packageNamespace is the name the members of one runner process share: the top-level module of a Python package, the system or file name of a Lisp extension.
+func packageNamespace(cfg ExtConfig) string {
+	if cfg.RuntimeLanguage == "python" {
+		module, _, _ := strings.Cut(cfg.Package, ".")
+		return module
+	}
+	return cfg.Package
 }
 
 // isPackableNode reports whether cfg is a TS/JS extension the Node cell can
@@ -402,21 +397,6 @@ func (c CellSpec) PythonExtensions() ([]runtimecell.PythonExtension, error) {
 			Factory: factory,
 			Hash:    valueOr(cfg.ContentHash, cfg.Source),
 		})
-	}
-	return out, nil
-}
-
-func (c CellSpec) LispExtensions() ([]runtimecell.LispExtension, error) {
-	if c.Strategy != CellStrategyPackedLisp {
-		return nil, fmt.Errorf("cell %s is %s, not packed-lisp", c.Key, c.Strategy)
-	}
-	out := make([]runtimecell.LispExtension, 0, len(c.Extensions))
-	for _, cfg := range c.Extensions {
-		ext, err := lispExtensionFromConfig(cfg)
-		if err != nil {
-			return nil, err
-		}
-		out = append(out, ext)
 	}
 	return out, nil
 }
