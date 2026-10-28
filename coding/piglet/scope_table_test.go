@@ -40,11 +40,11 @@ func TestToolScopeTableMatchesDocs(t *testing.T) {
 func TestToolScopeTableRows(t *testing.T) {
 	table := ToolScopeTableMarkdown()
 	for _, row := range []string{
-		"| Piglet with no `extensions:` section | kept | kept | kept |",
-		"| Piglet with `extensions:` but without `pig-mcp-adapter` | removed | removed | kept |",
-		"| Piglet with `pig-mcp-adapter` and `tools: [mcp__docs__a]` | only the tools it names | removed | kept |",
-		"| Stock `--tools read` | kept | kept | removed |",
-		"| Stock `--no-tools` | removed | removed | removed |",
+		"| Piglet with no `extensions:` section | all | all | all | all |",
+		"| Piglet with `extensions:` but without `pig-mcp-adapter` | none | none | none | all |",
+		"| Piglet with `pig-mcp-adapter` and `tools: [mcp__docs__a]` | only the tools it names | none | only the tools it names | all |",
+		"| Stock `--tools read` | all | all | none | none |",
+		"| Stock `--no-tools` | none | none | none | none |",
 	} {
 		if !strings.Contains(table, row) {
 			t.Errorf("table lacks row %q:\n%s", row, table)

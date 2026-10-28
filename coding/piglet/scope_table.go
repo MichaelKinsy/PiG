@@ -24,8 +24,10 @@ var (
 
 type scopeRow struct {
 	name string
-	// keeps reports whether the row keeps a probe tool in the registry.
+	// keeps reports whether the row keeps a probe tool in the registry, where codemode and tool_search reach it.
 	keeps func(extension.ToolInfo) bool
+	// offered reports whether the model is offered a probe tool of `direct` exposure at start.
+	offered func(extension.ToolInfo) bool
 }
 
 func pigletRow(name string, p *Piglet) scopeRow {
@@ -38,7 +40,9 @@ func pigletRow(name string, p *Piglet) scopeRow {
 		}
 		return ""
 	}
-	return scopeRow{name: name, keeps: CompileToolScope(p, owner).Keeps}
+	keeps := CompileToolScope(p, owner).Keeps
+	// A Piglet scope only removes tools: what stays is offered like any registered tool.
+	return scopeRow{name: name, keeps: keeps, offered: keeps}
 }
 
 func filterRow(name string, allowed, excluded []string) scopeRow {
@@ -53,7 +57,11 @@ func filterRow(name string, allowed, excluded []string) scopeRow {
 		return out
 	}
 	filter := extension.NewToolFilter(set(allowed), set(excluded))
-	return scopeRow{name: name, keeps: filter.AllowsTool}
+	// A bare `--tools` list keeps MCP tools registered for codemode and tool_search, but offers the model only the tools it names.
+	offered := func(info extension.ToolInfo) bool {
+		return filter.AllowsTool(info) && filter.MayBeActive(info.Name, extension.ToolExposureDirect, false)
+	}
+	return scopeRow{name: name, keeps: filter.AllowsTool, offered: offered}
 }
 
 func scopeRows() []scopeRow {
@@ -80,18 +88,18 @@ func probe(name string) extension.ToolInfo {
 	return info
 }
 
-func verdict(row scopeRow, names []string) string {
+func verdict(keeps func(extension.ToolInfo) bool, names []string) string {
 	kept := 0
 	for _, name := range names {
-		if row.keeps(probe(name)) {
+		if keeps(probe(name)) {
 			kept++
 		}
 	}
 	switch {
 	case kept == len(names):
-		return "kept"
+		return "all"
 	case kept == 0:
-		return "removed"
+		return "none"
 	}
 	return "only the tools it names"
 }
@@ -100,9 +108,10 @@ func verdict(row scopeRow, names []string) string {
 func ToolScopeTableMarkdown() string {
 	var out strings.Builder
 	out.WriteString(ToolScopeTableStart + "\n\n")
-	out.WriteString("| Case | MCP server tools | MCP resource tools | `codemode` and `tool_search` |\n|---|---|---|---|\n")
+	out.WriteString("Columns 2 and 3 are the tools in the registry, where `codemode` and `tool_search` can reach them. Column 4 is what the model sees at start for a server with `direct` exposure.\n\n")
+	out.WriteString("| Case | MCP server tools in the registry | MCP resource tools in the registry | MCP server tools offered to the model | `codemode` and `tool_search` in the registry |\n|---|---|---|---|---|\n")
 	for _, row := range scopeRows() {
-		out.WriteString("| " + row.name + " | " + verdict(row, probeServerTools) + " | " + verdict(row, probeResourceTools) + " | " + verdict(row, probeReachTools) + " |\n")
+		out.WriteString("| " + row.name + " | " + verdict(row.keeps, probeServerTools) + " | " + verdict(row.keeps, probeResourceTools) + " | " + verdict(row.offered, probeServerTools) + " | " + verdict(row.keeps, probeReachTools) + " |\n")
 	}
 	out.WriteString("\n" + ToolScopeTableEnd)
 	return out.String()

@@ -100,3 +100,20 @@ func TestToolScopeSummaryLeavesOutStrippedTools(t *testing.T) {
 		t.Errorf("summary = %q, want %q", got, want)
 	}
 }
+
+// The agent line names the Piglet, the most it can reach, what the strip lists removed and where the details are.
+func TestAgentToolScopeLineNamesStripsAndDetails(t *testing.T) {
+	undo := pigstrip.Strip(pigstrip.ListTools, "bash")
+	defer undo()
+	undoExt := pigstrip.Strip(pigstrip.ListExtensions, "mcp")
+	defer undoExt()
+	p := &Piglet{Name: "demo", sourcePath: "/p/demo.yaml"}
+	want := "Active Piglet: demo. Tool scope, at most: all built-in tools except bash; no MCP tools. Stripped: tools bash; extensions mcp. Details: pig piglet show /p/demo.yaml."
+	if got := AgentToolScopeLine(p); got != want {
+		t.Errorf("line = %q, want %q", got, want)
+	}
+	p.lineage = []LineageEntry{{Source: "binary:base"}}
+	if got := AgentToolScopeLine(p); !strings.HasPrefix(got, "Active Piglet: demo (overlay /p/demo.yaml on Piglet Binary base). ") {
+		t.Errorf("overlay line = %q", got)
+	}
+}
