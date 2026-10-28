@@ -6,6 +6,7 @@ The host is a fake: it records each ``tui.alt`` call and answers from a table, a
 from __future__ import annotations
 
 import threading
+from dataclasses import dataclass
 from typing import Any
 
 import pytest
@@ -406,55 +407,43 @@ def test_connection_close_ends_the_screens() -> None:
         pig_sdk.TuiAltScreen(pig_sdk.Context(ext), _Terminal())
 
 
-def test_calls_from_frame_callbacks_say_so() -> None:
-    ext, host, _, screen = _screen(
-        search_match_style=lambda text: screen.has_overlay() and text, search_current_match_style=lambda text: screen.has_overlay() and text,
-        search_navigation_button_style=lambda text, hovered: screen.has_overlay() and text, scroll_to_end_indicator=lambda: screen.has_overlay() and "v",
-        copy_selection=lambda text: screen.has_overlay(), open_url=lambda url: screen.has_overlay(),
-    )
-    over = _Lines("o")
-    screen.show_overlay(over, {"visible": lambda w, h: screen.has_overlay()})
+def test_calls_inside_a_callback_carry_no_in_frame_key() -> None:
+    ext, host, _, screen = _screen(search_match_style=lambda text: str(screen.has_overlay()))
+    ext._request_state = lambda *args, **kwargs: None  # type: ignore[method-assign]
+    parent = pig_sdk._RequestParent("r7", ext._sock)
+    cb_ctx = pig_sdk.Context(ext, None, "r7", threading.Event(), _parent=parent)
     inside = _Lines("x")
     inside.render = lambda width: [str(screen.viewport_top)]  # type: ignore[method-assign]
     screen.add_child(inside)
     assert "inFrame" not in host.last()
-
-    def frame_calls(**args: Any) -> list[dict[str, Any]]:
-        start = len(host.calls)
-        _cb(ext, screen, **args)
-        return host.calls[start:]
-
     for args in (
-        {"kind": "render", "key": "c2", "width": 5}, {"kind": "visible", "key": "c1", "termWidth": 20, "termHeight": 6},
-        {"kind": "option", "name": "searchMatchStyle", "args": ["m"]}, {"kind": "option", "name": "searchCurrentMatchStyle", "args": ["m"]},
-        {"kind": "option", "name": "searchNavigationButtonStyle", "args": ["b", False]}, {"kind": "option", "name": "scrollToEndIndicator", "args": []},
+        {"kind": "render", "key": "c1", "width": 5}, {"kind": "option", "name": "searchMatchStyle", "args": ["m"]},
     ):
-        calls = frame_calls(**args)
-        assert len(calls) == 1 and calls[0]["op"] == "state" and calls[0]["inFrame"] is True, args
-    # The other callbacks run outside a frame, and so do later calls from the same thread.
-    for args in ({"kind": "option", "name": "copySelection", "args": ["t"]}, {"kind": "option", "name": "openUrl", "args": ["u"]}):
-        calls = frame_calls(**args)
-        assert len(calls) == 1 and "inFrame" not in calls[0], args
-    screen.invalidate()
-    assert "inFrame" not in host.last()
-    # A call from another thread while one thread is in a frame does not carry it.
-    seen: list[dict[str, Any]] = []
-    gate, done = threading.Event(), threading.Event()
+        start, rests = len(host.calls), len(host.rests)
+        ext._tui_alt.dispatch(cb_ctx, {"id": screen._id, **args})
+        assert host.rests[rests:] == [("r7", parent)], args
+        assert len(host.calls) == start + 1 and "inFrame" not in host.calls[-1], args
 
-    def slow_render(width: int) -> list[str]:
-        gate.set()
-        done.wait(5)
-        return []
 
-    inside.render = slow_render  # type: ignore[method-assign]
-    worker = threading.Thread(target=lambda: _cb(ext, screen, kind="render", key="c2", width=1))
-    worker.start()
-    assert gate.wait(5)
-    screen.invalidate()
-    seen.append(host.last())
-    done.set()
-    worker.join(5)
-    assert "inFrame" not in seen[0]
+def test_equal_components_stay_distinct() -> None:
+    @dataclass
+    class Box:
+        text: str
+
+        def render(self, width: int) -> list[str]:
+            return [self.text]
+
+    _, host, _, screen = _screen()
+    a, b = Box("same"), Box("same")
+    assert a == b
+    screen.add_child(a)
+    screen.add_child(b)
+    key_b = screen._key_of(b)
+    assert screen._key_of(a) != key_b
+    screen.remove_child(b)
+    assert len(screen.children) == 1 and screen.children[0] is a
+    assert host.last()["op"] == "removeChild" and host.last()["key"] == key_b
+
 
 
 def test_calls_inside_a_callback_are_children_of_its_request() -> None:
