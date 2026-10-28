@@ -5,7 +5,6 @@ import (
 	"compress/gzip"
 	"io"
 	"io/fs"
-	"os"
 	"path/filepath"
 	"slices"
 	"strings"
