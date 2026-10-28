@@ -11,7 +11,7 @@ import (
 )
 
 // A Piglet's tool scope bounds the Session's tool registry, as `--tools` and `--exclude-tools` do (Pi's _isAllowedTool,
-// agent-session.ts:1557-1561, 3571-3574; pig additive D23). A tool the Piglet hides is not only inactive: codemode cannot call it and
+// agent-session.ts:1557-1561, 3571-3574; pig additive (D23)). A tool the Piglet hides is not only inactive: codemode cannot call it and
 // tool_search cannot find it. The observation is the real binary in RPC mode against a scripted model and a stub stdio
 // MCP server, with an isolated home, agent directory, working directory and session directory.
 
