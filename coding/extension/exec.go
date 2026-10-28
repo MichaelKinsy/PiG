@@ -83,7 +83,8 @@ func ExecCommand(ctx context.Context, cwd, command string, args []string, opts *
 		_ = stdoutWrite.Close()
 		return ExecResult{Code: 1}, nil
 	}
-	cmd := exec.Command(command, args...) //nolint:gosec // G204: the program and arguments come from the user, the project config, or PiG's own toolchain lookup; the CLI runs as the user with no sandbox and launches them as Pi's child_process.spawn does
+	//nolint:gosec // G204: the program and arguments come from the user, the project config, or PiG's own toolchain lookup; the CLI runs as the user with no sandbox and launches them as Pi's child_process.spawn does
+	cmd := exec.Command(command, args...)
 	cmd.Dir = dir
 	cmd.Stdout = stdoutWrite
 	cmd.Stderr = stderrWrite

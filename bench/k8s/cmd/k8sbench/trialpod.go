@@ -163,8 +163,8 @@ func trialModelsJSON(tp trialPlan) ([]byte, error) {
 		"cost":   map[string]int{"input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0},
 		"compat": map[string]any{"supportsDeveloperRole": false, "supportsStore": false, "maxTokensField": "max_tokens"},
 	}
-	//portlint:allow jsonescape models.json for the agent under test; its JSON parser decodes \u003c and < alike
 	//nolint:gosec // G101: the value is a name, URL, or identifier of a public protocol, not a credential value
+	//portlint:allow jsonescape models.json for the agent under test; its JSON parser decodes \u003c and < alike
 	return json.MarshalIndent(map[string]any{"providers": map[string]any{"k8sbench": map[string]any{ //portlint:allow mapkeyorder models.json for the agent under test, whose model registry reads members by name; Go-only bench tool
 		"baseUrl": tp.BaseURL, "api": "openai-completions", "apiKey": "k8sbench-no-key", "models": []any{model},
 	}}}, "", "  ")
