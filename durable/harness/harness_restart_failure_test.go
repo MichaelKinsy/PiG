@@ -1,6 +1,7 @@
 // Ports the part of packages/durable/test/harness-restart-failure.test.ts (Pi b3a29f11) that stays with the reference Harness:
-// what a settings source resolves on the normal path. Every other case runs over both engines in
-// durable/core/driver (harness_restart_failure_core_test.go).
+// what a settings source resolves on the normal path, which is Pi's 49 a round. Over the core the count is D206's: it is asserted by
+// TestCoreTheRestartLimitOnTheNormalPath in durable/core/driver (harness_restart_failure_core_test.go), which also runs every other
+// case over both engines.
 
 package harness
 
