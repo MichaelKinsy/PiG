@@ -49,6 +49,8 @@ type handler struct {
 	payloadFree, payloadUsed [][]byte
 	// telPayload is the phaseSpan hook's payload being handed to hookEffect (telemetry.go), which copies it at once.
 	telPayload jv.Raw
+	// settingsReads counts the resolutions of the Harness settings made while handling the event; publishSettingsReads tells the host.
+	settingsReads uint32
 
 	b *abi.Builder
 	// sent is the documents whose value the host holds (tx.go sentValues).

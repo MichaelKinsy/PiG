@@ -106,21 +106,14 @@ export class SentSettings {
     this.progress = keys(sent.progress).length
   }
 
-  /** True only when `resolveSettings(raw)` (with the extensions as names) serialises to the text last sent. */
+  /**
+   * True only when `resolveSettings(raw)` without `extensions` serialises to the text last sent. The core never reads the extensions (the
+   * host's resolveAgent does), so they are neither sent nor read here: the host resolves the settings where Pi does.
+   */
   unchanged(raw: any): boolean {
     try {
       const sent = this.sent, top = this.top
       let i = 0
-      const extensions = raw?.extensions
-      if (extensions !== undefined) {
-        if (!Array.isArray(extensions) || top[i++] !== "extensions") return false
-        const names = sent.extensions
-        if (!Array.isArray(names) || names.length !== extensions.length) return false
-        for (let n = 0; n < extensions.length; n++) {
-          const e = extensions[n]
-          if (typeof e !== "object" || e === null || typeof e.name !== "string" || e.name !== names[n]) return false
-        }
-      }
       if (top[i++] !== "stream" || !merged(NO_DEFAULTS, raw?.stream, this.stream, sent.stream)) return false
       if (top[i++] !== "retry" || !merged(RETRY, raw?.retry, this.retry, sent.retry)) return false
       if (top[i++] !== "compaction" || !merged(COMPACTION, raw?.compaction, this.compaction, sent.compaction)) return false

@@ -71,6 +71,7 @@ const (
 	NoticeWake
 	NoticeOriginFree
 	NoticeTelemetry
+	NoticeSettings
 )
 
 // Status is the outcome of a step (ABI section 4.4).
