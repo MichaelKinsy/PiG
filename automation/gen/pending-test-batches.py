@@ -7,6 +7,10 @@ import hashlib
 import json
 from pathlib import Path
 import subprocess
+import sys
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "pin"))
+import pinlib  # noqa: E402
 
 
 def group_for(path, area):
@@ -103,7 +107,7 @@ def baseline_mapping(commit, mapping_path):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--baseline-commit", required=True)
-    parser.add_argument("--version", default="0.87.1")
+    parser.add_argument("--version", default=pinlib.committed().version)
     parser.add_argument("--out", default="docs/parity/pending-tests-batches.md")
     args = parser.parse_args()
     mapping_path = f"test/parity/interfaces/test-mapping-v{args.version}.json"

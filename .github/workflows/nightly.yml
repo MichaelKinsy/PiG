@@ -127,7 +127,7 @@ jobs:
         with:
           go-version-file: .go-version
           cache: true
-      # The Node-cell, Node-host and clipboard benchmarks start node; Pi requires Node >= 22.19.0 and the runner image's Node is not pinned, so the job uses .node-version like the other Node jobs.
+      # The Node-cell, Node-host and clipboard benchmarks start node; Pi requires at least the Node floor in minimumNodeRuntimeVersion (coding/extension/host/subprocess/builder_node.go) and the runner image's Node is not pinned, so the job uses .node-version like the other Node jobs.
       # The subprocess host benchmarks start Node extension runtimes; their baseline entries were measured on the pinned Node.
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:

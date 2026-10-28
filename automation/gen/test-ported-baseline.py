@@ -6,6 +6,10 @@ import json
 import re
 from pathlib import Path
 import subprocess
+import sys
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "pin"))
+import pinlib  # noqa: E402
 
 
 # The release squashes onto public main, so the anchor must be a commit every clone of it can fetch; keep this equal to defaultPublicMainRef in test/parity/cmd/testinventorycheck/release_policy.go. A clone that names the public remote differently passes its own remote-tracking ref with --public-main-ref. The name is fully qualified because Git's short-name lookup prefers a local tag or branch named origin/main over the remote-tracking ref.
@@ -36,7 +40,7 @@ def previous_mapping(commit, version):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--commit", required=True)
-    parser.add_argument("--policy", default="test/parity/interfaces/test-porting-policy-v0.87.1.json")
+    parser.add_argument("--policy", default=f"test/parity/interfaces/test-porting-policy-v{pinlib.committed().version}.json")
     parser.add_argument("--public-main-ref", default=PUBLIC_MAIN_REF, help="local ref holding public main; the commit must be its ancestor")
     args = parser.parse_args()
     path = Path(args.policy)
