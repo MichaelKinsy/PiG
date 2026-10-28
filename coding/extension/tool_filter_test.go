@@ -67,3 +67,21 @@ func TestToolFilterKeepsMCPToolsUnlessTheAllowlistFiltersThem(t *testing.T) {
 		t.Error("a non-MCP tool may always be active")
 	}
 }
+
+// Without a scope AllowsTool is Allows for the tool's name, so stock PiG without a Piglet registers what it always did; a
+// scope intersects with the allowlist and the denylist.
+func TestToolFilterScopeIntersects(t *testing.T) {
+	allowed := map[string]struct{}{"read": {}, "mcp__a__*": {}}
+	excluded := map[string]struct{}{"mcp__a__x": {}}
+	plain := NewToolFilter(allowed, excluded)
+	hideY := plain.WithScope(func(info ToolInfo) bool { return info.Name != "mcp__a__y" })
+	for _, name := range []string{"read", "bash", "mcp__a__x", "mcp__a__y", "mcp__b__z", "list_mcp_resources"} {
+		info := ToolInfo{Name: name}
+		if plain.AllowsTool(info) != plain.Allows(name) {
+			t.Errorf("without a scope AllowsTool(%q) differs from Allows", name)
+		}
+		if want := plain.Allows(name) && name != "mcp__a__y"; hideY.AllowsTool(info) != want {
+			t.Errorf("scoped AllowsTool(%q) = %t, want %t", name, !want, want)
+		}
+	}
+}

@@ -61,6 +61,27 @@ type ToolFilter struct {
 	excluded func(string) bool
 	// filtersMcp is whether the allowlist filters MCP tools: it is empty or names an MCP tool (`mcp__*`).
 	filtersMcp bool
+	// scope is the consumer's registry predicate; nil places no restriction.
+	scope ToolScope
+}
+
+// ToolScope is a registry predicate its consumer supplies (pig additive, D23: a Piglet's tool scope). It sees one
+// registered tool's info (name, source attribution, source info, namespace) and reports whether the tool stays in the
+// Session's tool registry. A tool it rejects is unregistered: it is not listed, declared, activated or callable by
+// codemode, tool_search or a nested call, as a tool `--tools` or `--exclude-tools` removes is not.
+type ToolScope func(ToolInfo) bool
+
+// WithScope returns the filter that also requires scope to admit a tool: the registry admits the intersection of
+// `--tools`/`--exclude-tools` and the scope. A nil scope returns the filter unchanged.
+func (f ToolFilter) WithScope(scope ToolScope) ToolFilter {
+	f.scope = scope
+	return f
+}
+
+// AllowsTool reports whether the registry keeps a tool: [ToolFilter.Allows] for its name, and the scope for its info.
+// Without a scope it is exactly Allows.
+func (f ToolFilter) AllowsTool(info ToolInfo) bool {
+	return f.Allows(info.Name) && (f.scope == nil || f.scope(info))
 }
 
 // NewToolFilter compiles an allowlist (nil: none) and a denylist (nil or empty: none).

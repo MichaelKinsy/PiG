@@ -298,12 +298,20 @@ type ExtensionToolLister interface {
 // allowed is nil when no allowlist is in force; an empty allowlist admits
 // nothing, as --no-tools does.
 func ExtensionToolInfos(runner ExtensionToolLister, allowed, excluded map[string]struct{}) []subprocess.ToolInfo {
+	return ExtensionToolInfosScoped(runner, allowed, excluded, nil)
+}
+
+// ExtensionToolInfosScoped is [ExtensionToolInfos] with the consumer's registry predicate (pig additive, D23): a tool
+// the scope rejects is unregistered, so it is not listed. A nil scope lists exactly what ExtensionToolInfos lists.
+func ExtensionToolInfosScoped(runner ExtensionToolLister, allowed, excluded map[string]struct{}, scope extension.ToolScope) []subprocess.ToolInfo {
 	// Entries are names or `*` patterns, and MCP tools stay registered unless the allowlist filters them (agent-session.ts _isAllowedTool).
-	admitted := extension.NewToolFilter(allowed, excluded).Allows
+	filter := extension.NewToolFilter(allowed, excluded).WithScope(scope)
+	admitted := func(info extension.ToolInfo) bool { return filter.AllowsTool(info) }
 	out := make([]subprocess.ToolInfo, 0)
 	index := make(map[string]int)
 	for _, schema := range tools.BuiltinToolSchemas() {
-		if !admitted(schema.Name) {
+		sourceInfo := CreateSyntheticSourceInfo(BuiltinPathPrefix+schema.Name, SyntheticSourceInfoOptions{Source: "builtin"})
+		if !admitted(extension.ToolInfo{Name: schema.Name, SourceInfo: sourceInfo, Source: "builtin"}) {
 			continue
 		}
 		parameters, err := schema.ParametersJSON()
@@ -315,7 +323,7 @@ func ExtensionToolInfos(runner ExtensionToolLister, allowed, excluded map[string
 		out = append(out, subprocess.ToolInfo{
 			Name: schema.Name, Description: schema.Description, Parameters: parameters,
 			PromptGuidelines: schema.PromptGuidelines,
-			SourceInfo:       CreateSyntheticSourceInfo(BuiltinPathPrefix+schema.Name, SyntheticSourceInfoOptions{Source: "builtin"}),
+			SourceInfo:       sourceInfo,
 			Exposure:         extension.ToolExposureDirect,
 			Source:           "builtin",
 		})
@@ -325,10 +333,10 @@ func ExtensionToolInfos(runner ExtensionToolLister, allowed, excluded map[string
 	}
 	for _, tool := range runner.Tools() {
 		name := tool.Definition.Name
-		if !admitted(name) {
+		sourceInfo, _ := runner.ToolSourceInfo(name)
+		if !admitted(extension.ToolInfo{Name: name, SourceInfo: PiSourceInfoValue(sourceInfo), Source: tool.Source, Namespace: tool.Definition.Namespace}) {
 			continue
 		}
-		sourceInfo, _ := runner.ToolSourceInfo(name)
 		info := subprocess.ToolInfo{
 			Name: name, Description: tool.Definition.Description, Parameters: tool.Definition.Parameters,
 			PromptGuidelines: tool.Definition.PromptGuidelines, SourceInfo: PiSourceInfoValue(sourceInfo),

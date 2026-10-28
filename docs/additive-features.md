@@ -516,15 +516,26 @@ surprises):
   `mcp__<server>__<tool>`) are scoped exactly like the adapter's `mcp:<server>`
   source, by the same entry (step 2 of `docs/design/builtin-mcp.md`). Choice where
   the design was silent, taking the conservative reading: a positive-only piglet
-  that does not name the adapter hides every MCP server's tools, and `codemode`,
-  `tool_search` and the MCP resource tools (`list_mcp_resources`,
-  `list_mcp_resource_templates`, `read_mcp_resource`) follow the servers they
-  expose, so they are hidden when no MCP tool stays visible, unless the piglet
-  selects `builtin:codemode` / `builtin:tool-search` itself. Stock pig without a
-  piglet is unchanged. This closes a prior
-  leak where a positive-only piglet that omitted the adapter still exposed all
-  MCP tools, and makes `extensions: [pig-mcp-adapter]` meaningful rather than a
-  no-op.
+  that does not name the adapter hides every MCP server's tools and the MCP
+  resource tools (`list_mcp_resources`, `list_mcp_resource_templates`,
+  `read_mcp_resource`), which the same entry governs by name. Stock pig without a
+  piglet is unchanged.
+
+Registry scope (owner-approved 2026-10-28): a piglet's tool scope bounds the
+Session's tool registry, not only its active set. Pi's `--tools` and
+`--exclude-tools` remove tools from the registry itself (`agent-session.ts:3457-3521`,
+`_isAllowedTool`; PiG ports it as `extension.ToolFilter`); a piglet scope that only
+narrowed the active set left a hidden tool callable from `codemode` and findable by
+`tool_search`, which read the registry. `coding.SessionOptions.ToolScope`
+(`extension.ToolScope`, a source-aware predicate over one tool's info) is composed
+with `ToolFilter` as an intersection wherever `_isAllowedTool` applies: the
+definitions, the registry, `getAllTools`, activation and the refresh after a late
+registration. The CLI supplies `piglet.ToolRegistryScope` (keyed on extension name,
+source and namespace) when a piglet is active; without one the scope is nil and the
+registry is exactly what `--tools` and `--exclude-tools` leave. `ScopeTools`'
+former `followsMCPServers` rule (hiding `codemode` and `tool_search` when no MCP
+tool stayed visible) is deleted: they are ordinary tools that now reach only what
+the registry keeps.
 
 Upstream pi stamps `sourceInfo` automatically in the in-process extension loader
 (`loader.ts:221 sourceInfo: extension.sourceInfo`). Pig's subprocess host must
@@ -555,6 +566,10 @@ Call-site markers:
 - `coding/extension/context.go`: `GetAllTools`, `GetActiveTools`,
   `SetActiveTools`, `GetFlagValue`
 - `coding/extension/context_actions.go`: `ContextActions` struct
+- `coding/extension/tool_filter.go`: `ToolScope`, `ToolFilter.WithScope`, `ToolFilter.AllowsTool`
+- `coding/session.go`: `SessionOptions.ToolScope`
+- `coding/session_tool_registry.go`: `sessionToolRegistry.compileFilter`, `Session.ToolScope`
+- `coding/piglet/main.go`: `ToolRegistryScope`
 - `coding/extension/host/subprocess/protocol.go`: `ToolDecl.Source`
 - `extensions/sdk/protocol.go`: `toolDef.Source`
 - `extensions/sdk/extension.go`: `ToolWithSource()`

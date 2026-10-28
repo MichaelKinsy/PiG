@@ -9,8 +9,9 @@ import (
 
 // A Piglet scopes the built-in MCP extension's tools as it scopes the pig-mcp-adapter's (additive feature D23,
 // docs/design/builtin-mcp.md step 2): a positive-only Piglet that does not list the adapter entry hides every
-// `mcp__<server>__<tool>` tool and the tools that reach servers (codemode, tool_search, the MCP resource tools), and an
-// adapter entry brings them back, narrowed by its `tools` list. The first model request is the observation, in RPC mode,
+// `mcp__<server>__<tool>` tool and the MCP resource tools, and an adapter entry brings them back, narrowed by its `tools`
+// list. codemode and tool_search are ordinary tools; what they reach is bounded by the registry (see
+// piglet_registry_scope_test.go). The first model request is the observation, in RPC mode,
 // with a stub stdio MCP server and an isolated home and working directory. The launch loads builtin:codemode and
 // builtin:tool-search, which a Piglet's own extension list does not select.
 func TestPigletScopesBuiltinMCPToolsInRPCMode(t *testing.T) {
@@ -24,9 +25,9 @@ func TestPigletScopesBuiltinMCPToolsInRPCMode(t *testing.T) {
 			// want and absent are tools of the first request.
 			want, absent []string
 		}{
-			{"a positive-only Piglet that omits the adapter hides the server", "", []string{"read", "scoped_tool"}, []string{"mcp__docs__search", "codemode", "tool_search", "list_mcp_resources", "read_mcp_resource"}},
+			{"a positive-only Piglet that omits the adapter hides the server", "", []string{"read", "scoped_tool"}, []string{"mcp__docs__search", "list_mcp_resources", "read_mcp_resource"}},
 			{"the adapter entry keeps the server", "  - name: pig-mcp-adapter\n", nil, nil},
-			{"the adapter entry's tools list narrows the server", "  - name: pig-mcp-adapter\n    tools: [other_tool]\n", []string{"read", "scoped_tool"}, []string{"mcp__docs__search", "codemode", "tool_search", "list_mcp_resources", "read_mcp_resource"}},
+			{"the adapter entry's tools list narrows the server", "  - name: pig-mcp-adapter\n    tools: [other_tool]\n", []string{"read", "scoped_tool"}, []string{"mcp__docs__search", "list_mcp_resources", "read_mcp_resource"}},
 		} {
 			t.Run(exposure+"/"+test.name, func(t *testing.T) {
 				root := t.TempDir()

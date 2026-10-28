@@ -1665,6 +1665,43 @@ func BuildExtensionWithPigletTools(initial *Piglet, owner func(extension.ToolInf
 	return buildExtensionWithOwner(initial, owner)
 }
 
+// ToolRegistryScope is the Session's registry predicate for a Piglet (pig additive, D23): it keeps a registered tool only
+// when the Piglet's scope keeps it. owner names the Piglet extension entry that registered an extension tool, or "" when
+// no loaded extension did, as in [BuildExtensionWithPigletTools].
+func ToolRegistryScope(p *Piglet, owner func(extension.ToolInfo) string) extension.ToolScope {
+	scope := NewScope(p)
+	return func(tool extension.ToolInfo) bool { return scope.Visible(scopeToolInfo(tool, owner)) }
+}
+
+// scopeToolInfo converts an extension.ToolInfo (from GetAllTools or the registry) to the ToolInfo Piglet scoping reads.
+func scopeToolInfo(t extension.ToolInfo, owner func(extension.ToolInfo) string) ToolInfo {
+	// ToolInfo.Source is the per-tool source attribution (D23).
+	source := t.Source
+	// The session reports an extension tool's provenance object (path, source, scope, origin), which names no
+	// Piglet entry; the owner resolves the entry that registered the tool.
+	if source == "" && owner != nil {
+		source = owner(t)
+	}
+	// Real extension tools carry codingagent.PiSourceInfo (value or pointer). When no owner names the entry, such a
+	// tool is still an extension's: never govern it by root `tools` as a built-in.
+	if source == "" {
+		if info := t.SourceInfo; info.Source != "builtin" && (info.Source != "" || info.Path != "") {
+			source = info.Source
+			if source == "" {
+				source = info.Path
+			}
+		}
+	}
+	if source == "" {
+		source = "builtin"
+	}
+	namespace := ""
+	if t.Namespace != nil {
+		namespace = t.Namespace.Name
+	}
+	return ToolInfo{Name: t.Name, Source: source, Namespace: namespace}
+}
+
 func buildExtension(initial *Piglet) extension.Extension {
 	return buildExtensionWithOwner(initial, nil)
 }
@@ -1732,35 +1769,10 @@ func buildExtensionWithOwner(initial *Piglet, owner func(extension.ToolInfo) str
 		}
 	}
 
-	// Convert extension.ToolInfo (from GetAllTools) to piglet.ToolInfo
 	convertTools := func(tools []extension.ToolInfo) []ToolInfo {
 		out := make([]ToolInfo, len(tools))
 		for i, t := range tools {
-			// ToolInfo.Source is the per-tool source attribution (D23).
-			source := t.Source
-			// The session reports an extension tool's provenance object (path, source, scope, origin), which names no
-			// Piglet entry; the owner resolves the entry that registered the tool.
-			if source == "" && owner != nil {
-				source = owner(t)
-			}
-			// Real extension tools carry codingagent.PiSourceInfo (value or pointer). When no owner names the entry, such a
-			// tool is still an extension's: never govern it by root `tools` as a built-in.
-			if source == "" {
-				if info := t.SourceInfo; info.Source != "builtin" && (info.Source != "" || info.Path != "") {
-					source = info.Source
-					if source == "" {
-						source = info.Path
-					}
-				}
-			}
-			if source == "" {
-				source = "builtin"
-			}
-			namespace := ""
-			if t.Namespace != nil {
-				namespace = t.Namespace.Name
-			}
-			out[i] = ToolInfo{Name: t.Name, Source: source, Namespace: namespace}
+			out[i] = scopeToolInfo(t, owner)
 		}
 		return out
 	}
