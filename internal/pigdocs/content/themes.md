@@ -80,7 +80,7 @@ See [upstream Pi's theme documentation](https://pi.dev/docs/latest/themes) for t
 
 ## Related documentation
 
-- [Settings](/docs/latest/settings)
-- [Packages](/docs/latest/packages)
-- [Piglets](/docs/latest/piglets)
-- [Terminal UI](/docs/latest/tui)
+- [Settings](settings.md)
+- [Packages](packages.md)
+- [Piglets](piglets.md)
+- [Terminal UI](tui.md)

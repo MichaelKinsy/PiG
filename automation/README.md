@@ -37,6 +37,7 @@ Run `make generate` from the repository root after changing exported Go API, CLI
 | `model-catalogs` | Text and image model catalogs |
 | `help-text` | `coding/cli/help_upstream.txt` |
 | `knowledge-graph` | Knowledge-graph pages, JSON-LD, Mermaid, and the troubleshooting docs mirror |
+| `additive-list` | The Additive features table in the agent docs page `divergences.md` |
 
 Review and commit the output. Never hand-edit generated files. `make generate` does not change reviewed mappings, dispositions, or evidence. A contract review failure still needs review; regeneration cannot accept a port. It ignores transient parity results for deterministic coverage. Use `make coverage RESULTS=<path>` separately to include a measured run.
 
@@ -120,6 +121,7 @@ The automation writes only where the environment allows. Set these when the defa
 | `generate-model-catalogs.sh` | Regenerates model catalogs from the pinned published Pi package. |
 | `gen-help.sh` | Renders Pi's own `--help` with PiG's identity. |
 | `gen-knowledge-graph.py` | Renders `docs/knowledge-graph/pig.graph.json` into its published forms. |
+| `gen-additive-list.py` | Renders `docs/additive-features.md` into the Additive features table of the agent docs page `divergences.md`. |
 | `vendor-pi-dist.sh`, `vendor-typebox.sh` | Vendor the pinned Pi release's pure modules, the third-party packages they import, and TypeBox for the Node extension runtime. |
 
 ## release
