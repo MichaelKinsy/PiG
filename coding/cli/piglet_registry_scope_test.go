@@ -28,9 +28,11 @@ type pigletRegistryRun struct {
 	noExtensionsSection bool
 	withoutCodemode     bool
 	trustProject        bool
-	servers             []mcpBinaryServer
-	steps               []chatStep
-	args                []string
+	// projectConfig puts mcp.json in the project's config directory, which gives the project resources to trust.
+	projectConfig bool
+	servers       []mcpBinaryServer
+	steps         []chatStep
+	args          []string
 }
 
 func runPigletRegistry(t *testing.T, run pigletRegistryRun) mcpBinaryResult {
@@ -60,11 +62,10 @@ func runPigletRegistry(t *testing.T, run pigletRegistryRun) mcpBinaryResult {
 		launch = append(launch, "-e", "builtin:codemode", "-e", "builtin:tool-search")
 	}
 	return runPigWithMCP(t, mcpBinaryRun{
-		mode:         "rpc",
-		prompt:       "go",
-		trustProject: run.trustProject,
-		// The project config directory makes the project one that has resources to trust.
-		projectConfig: true,
+		mode:          "rpc",
+		prompt:        "go",
+		trustProject:  run.trustProject,
+		projectConfig: run.projectConfig,
 		servers:       run.servers,
 		steps:         run.steps,
 		args:          append(launch, run.args...),
@@ -383,7 +384,7 @@ func TestPigletAgentLineTrust(t *testing.T) {
 	for _, trusted := range []bool{false, true} {
 		t.Run(map[bool]string{false: "untrusted", true: "trusted"}[trusted], func(t *testing.T) {
 			t.Parallel()
-			result := runPigletRegistry(t, pigletRegistryRun{trustProject: trusted, noExtensionsSection: true, steps: []chatStep{chatText("done")}})
+			result := runPigletRegistry(t, pigletRegistryRun{trustProject: trusted, projectConfig: true, noExtensionsSection: true, steps: []chatStep{chatText("done")}})
 			requests := result.chat.recorded()
 			if len(requests) == 0 {
 				t.Fatalf("no model request\n%s", result.output)
