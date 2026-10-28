@@ -511,7 +511,17 @@ surprises):
   (`scope.MCPAdapterExtensionName`). Listing the adapter enables its MCP tools
   (optionally filtered by that entry's `tools` scope); omitting it from a
   positive-only piglet hides them. A piglet with no `extensions:` section at
-  all keeps the permissive default (all MCP tools visible). This closes a prior
+  all keeps the permissive default (all MCP tools visible).
+- Built-in MCP tools (`builtin:mcp`; namespace `mcp__<server>`, names
+  `mcp__<server>__<tool>`) are scoped exactly like the adapter's `mcp:<server>`
+  source, by the same entry (step 2 of `docs/design/builtin-mcp.md`). Choice where
+  the design was silent, taking the conservative reading: a positive-only piglet
+  that does not name the adapter hides every MCP server's tools, and `codemode`,
+  `tool_search` and the MCP resource tools (`list_mcp_resources`,
+  `list_mcp_resource_templates`, `read_mcp_resource`) follow the servers they
+  expose, so they are hidden when no MCP tool stays visible, unless the piglet
+  selects `builtin:codemode` / `builtin:tool-search` itself. Stock pig without a
+  piglet is unchanged. This closes a prior
   leak where a positive-only piglet that omitted the adapter still exposed all
   MCP tools, and makes `extensions: [pig-mcp-adapter]` meaningful rather than a
   no-op.

@@ -153,7 +153,7 @@ Omitted `model` means unconstrained consumer selection. Present model is a simpl
 
 ## MCP boundary
 
-Piglet source contains no MCP endpoint, command, args, headers, credentials, or config path. MCP clients and portable definitions are Resources selected through extensions and Packages. A deployment can supply MCP bindings, authorization, and credentials at runtime. MCP tools are scoped through their owning adapter extension's `tools` list.
+Piglet source contains no MCP endpoint, command, args, headers, credentials, or config path. MCP clients and portable definitions are Resources selected through extensions and Packages. A deployment can supply MCP bindings, authorization, and credentials at runtime. MCP tools are scoped through the `pig-mcp-adapter` extension entry's `tools` list, whether the tool comes from the adapter (source `mcp:<server>`) or from the built-in MCP extension (namespace `mcp__<server>`, tool names `mcp__<server>__<tool>`). A Piglet with an `extensions:` section that does not list `pig-mcp-adapter` hides every MCP tool, and with it `codemode`, `tool_search` and the MCP resource tools (`list_mcp_resources`, `list_mcp_resource_templates`, `read_mcp_resource`) when no MCP tool stays visible. A Piglet that selects `builtin:codemode` or `builtin:tool-search` itself keeps that tool. A Piglet without an `extensions:` section keeps every MCP tool. Stock PiG, without a Piglet, scopes nothing.
 
 ## Product bindings
 
