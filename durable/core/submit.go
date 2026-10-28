@@ -73,6 +73,7 @@ func (h *handler) onSubmit(ev *abi.Event) error {
 			return err
 		}
 		_, err := h.sess.RunCommit(func(tx *session.Tx) error {
+			h.settingsReads++
 			return inbox.AdmitStatus(tx, turn.Runs{}, conversationID, draft, h.now, h.queueModes(), &admitted)
 		}, session.TxScope{Span: draft.Span, Trace: draft.Trace})
 		return err

@@ -72,6 +72,7 @@ var noticeRows = []kindRow{
 	{"wake", uint8(abi.NoticeWake), "JSON {active, at?}: a harness-mode core's Harness.wake value (HarnessOptions.onWake), published when it changed; the core arms no timer for sleeping tasks then"},
 	{"origin_free", uint8(abi.NoticeOriginFree), "u32 n, u32 origin{n}: the origins the core holds no work for any more; the host drops their async contexts (ABI section 5.4); the host consumes it and its listeners never see it"},
 	{"telemetry", uint8(abi.NoticeTelemetry), "JSON op: a span event or end, a span's attributes, or an active-task count of Pi's telemetry (DURABLE_TELEMETRY_SCHEMA); spans are the host's, named by the handles it assigned"},
+	{"settings", uint8(abi.NoticeSettings), "u32 n: how many times the core resolved the Harness settings while it handled the event (Pi resolves HarnessOptions.settings at each use, and a host's settings callback sees each resolution); the host resolves them as often"},
 }
 
 var statusRows = []kindRow{
