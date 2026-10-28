@@ -1,6 +1,7 @@
 package core
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/durable/core/abi"
@@ -154,8 +155,10 @@ func TestResolveWindow(t *testing.T) {
 	} {
 		got, err := resolveWindow(target(c.target))
 		if c.err != "" {
-			if err == nil || err.Error() != c.err {
-				t.Fatalf("window %s: error %v, want %q", c.target, err, c.err)
+			// The host rebuilds view.ts's RangeError from the rejection's name.
+			var rejection *Rejection
+			if !errors.As(err, &rejection) || rejection.Name != "RangeError" || rejection.Text() != c.err {
+				t.Fatalf("window %s: error %v, want a RangeError %q", c.target, err, c.err)
 			}
 			continue
 		}

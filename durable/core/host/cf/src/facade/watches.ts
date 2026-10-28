@@ -75,10 +75,28 @@ export class WatchHub {
     const revision = target?.kind === "doc" ? revisionAt(this.client, target.address as never) : undefined
     const value = revision !== undefined && frame.value !== undefined && frame.value !== null && sameContent(frame.value, revision.value) ? revision.value : frame.value
     const ops = revision !== undefined && sameContent(frameOps, revision.ops) ? revision.ops as never[] : frameOps
-    const after = value !== undefined ? value : ops.length > 0 ? applyImmutable(before as never, ops as never) : before
+    const after = this.shareDocs(watchId, target, value !== undefined ? value : ops.length > 0 ? applyImmutable(before as never, ops as never) : before)
     this.values.set(watchId, after)
     if (target?.kind === "doc" && after !== undefined && after !== null ) rememberSnapshot(this.client, target.address, target.def as { kind?: unknown } | undefined, after)
     if (ops.length > 0 || value !== undefined) sink.advance({ value: after, ops, retired: false }, context)
+  }
+
+  /**
+   * The documents of a conversation view are the mount's: the observers of one conversation, each with its own window over the
+   * entries, hold one `docs` object (view.ts). The core keeps a watch per observer, so a value whose documents equal those another
+   * observer of the conversation holds takes that object; the observer that applies a revision second adopts the first's.
+   */
+  private shareDocs<V>(watchId: number, target: WatchTarget | undefined, value: V): V {
+    const docs = target?.kind === "view" ? (value as { docs?: unknown } | undefined)?.docs : undefined
+    if (target?.kind !== "view" || docs === undefined) return value
+    for (const [id, other] of this.targets) {
+      if (id === watchId || other.kind !== "view" || other.conversationId !== target.conversationId) continue
+      const held = (this.values.get(id) as { docs?: unknown } | undefined)?.docs
+      if (held === undefined) continue
+      if (held === docs) return value
+      if (sameContent(held, docs)) return { ...(value as object), docs: held } as V
+    }
+    return value
   }
 
   /**
@@ -178,6 +196,7 @@ export class WatchHub {
     // Absent: nothing to observe. The core opened no watch to close.
     if (first.value === null) return mount.result = undefined
     if (target.kind === "doc") first.value = shareSnapshot(this.client, target.address, target.def as { kind?: unknown } | undefined, first.value) as T
+    else first.value = this.shareDocs(watchId, target, first.value)
     this.values.set(watchId, first.value)
     this.targets.set(watchId, target)
     this.sinks.set(watchId, this.fanOut(mount))
