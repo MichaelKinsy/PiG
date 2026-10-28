@@ -39,6 +39,9 @@ type TaskOptions struct {
 	// Submissions are the input submissions of a run (transaction.ts TaskCreationOptions.submissionIds): the first one's
 	// carrier is the task's trace, and the carriers of the others are its links.
 	Submissions []ID
+	// Owned says the input and the initial checkpoint belong to the transaction (a host's operation parsed them for it and nothing
+	// else holds them), so the record keeps them instead of copies: a 20,000-task commit would hold two more objects per task.
+	Owned bool
 }
 
 // Ownership is how a created conversation is attributed.
@@ -553,7 +556,12 @@ func (tx *Tx) CreateTask(def *TaskDef, input any, opts TaskOptions) (ID, error) 
 	}
 	checkpoint := def.Initial(input)
 	id := tx.mint()
-	rec := obj("id", idv(id), "conversationId", idv(conv), "kind", def.Name, "version", float64(def.Version), "input", jv.Clone(input))
+	if opts.Owned {
+		checkpoint = shared(&tx.s.lastCheckpoint, checkpoint)
+	} else {
+		input, checkpoint = jv.Clone(input), jv.Clone(checkpoint)
+	}
+	rec := obj("id", idv(id), "conversationId", idv(conv), "kind", def.Name, "version", float64(def.Version), "input", input)
 	// transaction.ts createTask: `trace: "root"` stores none; an omitted one is the creating Context's carrier.
 	trace := opts.Trace
 	if trace == nil && !opts.NoTrace {
@@ -573,7 +581,7 @@ func (tx *Tx) CreateTask(def *TaskDef, input any, opts TaskOptions) (ID, error) 
 	if opts.AbandonOnRestart {
 		rec.Set("abandonOnRestart", true)
 	}
-	rec.Set("state", obj("status", StatusPending, "checkpoint", jv.Clone(checkpoint)))
+	rec.Set("state", obj("status", StatusPending, "checkpoint", checkpoint))
 	t := tx.taskEntry(id)
 	t.write, t.writeIsNew = rec, true
 	return id, nil
@@ -657,7 +665,7 @@ func (tx *Tx) PlaceSubmission(id, entry ID) error {
 // SetTask stages a replacement of a task record, stamping start and end times. The staged record is a deep copy, as Pi's
 // copyJson makes it, so the caller's value stays its own.
 func (tx *Tx) SetTask(value *jv.Object) error {
-	_, err := tx.setTask(value, true)
+	_, err := tx.setTask(value, true, false)
 	return err
 }
 
@@ -666,12 +674,19 @@ func (tx *Tx) SetTask(value *jv.Object) error {
 // record itself, stamped. The copy SetTask makes would be the second record of each task a transaction writes: a finalize
 // that ends a 20,000-deep chain in one transaction held both, about 1 KB per task on the TinyGo core.
 func (tx *Tx) stageTask(value *jv.Object) error {
-	_, err := tx.setTask(value, false)
+	_, err := tx.setTask(value, false, false)
+	return err
+}
+
+// stageFresh is stageTask for a record whose top level nothing else holds (the copy with, withState or withAbortMark returned, not
+// a live record): stamping its times sets them on it instead of on a copy of it.
+func (tx *Tx) stageFresh(value *jv.Object) error {
+	_, err := tx.setTask(value, false, true)
 	return err
 }
 
 // setTask stages value, a deep copy of it when clone is set, and returns the staged record.
-func (tx *Tx) setTask(value *jv.Object, clone bool) (*jv.Object, error) {
+func (tx *Tx) setTask(value *jv.Object, clone, fresh bool) (*jv.Object, error) {
 	if err := tx.assertOpen(); err != nil {
 		return nil, err
 	}
@@ -685,7 +700,7 @@ func (tx *Tx) setTask(value *jv.Object, clone bool) (*jv.Object, error) {
 	if candidate != nil && mustInt(candidate, "conversationId") != mustInt(value, "conversationId") {
 		return nil, errorf("Task %d cannot change conversations", id)
 	}
-	staged := tx.stampTimes(value, candidate)
+	staged := tx.stampTimes(value, candidate, fresh)
 	if clone {
 		staged = jv.Clone(staged).(*jv.Object)
 	}
@@ -694,7 +709,7 @@ func (tx *Tx) setTask(value *jv.Object, clone bool) (*jv.Object, error) {
 	return staged, nil
 }
 
-func (tx *Tx) stampTimes(value, candidate *jv.Object) *jv.Object {
+func (tx *Tx) stampTimes(value, candidate *jv.Object, fresh bool) *jv.Object {
 	status := taskStatus(value)
 	pick := func(key string, stamps bool) (any, bool) {
 		if candidate != nil {
@@ -717,7 +732,12 @@ func (tx *Tx) stampTimes(value, candidate *jv.Object) *jv.Object {
 	if hasStarted == curHas1 && hasEnded == curHas2 && (!hasStarted || curStarted == started) && (!hasEnded || curEnded == ended) {
 		return value
 	}
-	out := spread(value)
+	// A record the scheduler built for this write is stamped in place: a copy would be the second record of each task the
+	// transaction writes.
+	out := value
+	if !fresh {
+		out = spread(value)
+	}
 	if hasStarted {
 		out.Set("startedAt", started)
 	}

@@ -83,3 +83,78 @@ func TestAGatedReservationCommitLandsWhenCloseSealsWhileTheStorageHoldsIt(t *tes
 		t.Fatalf("close writes %d records, want the reserved task %d written back", len(writes), id)
 	}
 }
+
+// A host's createTask operation hands the transaction the input and the initial checkpoint it parsed for it: with Owned the record
+// keeps those objects, where a Go caller's values are copied (a 20,000-task commit would hold two more objects per task).
+func TestACreatedTaskKeepsAnOwnedInputAndCopiesAnotherInput(t *testing.T) {
+	for _, owned := range []bool{false, true} {
+		mem := sessiontest.New()
+		s := newSession(mem, mem.NextID())
+		input, checkpoint := obj("name", "a"), obj("phase", "run")
+		def := &session.TaskDef{Name: "t.owned", Version: 1, Initial: func(any) any { return checkpoint }}
+		var id session.ID
+		if _, err := s.Commit(func(tx *session.Tx) error {
+			root, err := tx.CreateRootConversation()
+			if err != nil {
+				return err
+			}
+			id, err = tx.CreateTask(def, input, session.TaskOptions{ConversationID: idOf(root), Owned: owned})
+			return err
+		}, session.TxScope{}); err != nil {
+			t.Fatal(err)
+		}
+		rec, err := mem.Task(id)
+		if err != nil {
+			t.Fatal(err)
+		}
+		gotInput, _ := rec.Get("input")
+		state, _ := rec.Get("state")
+		gotCheckpoint, _ := state.(*jv.Object).Get("checkpoint")
+		if kept := gotInput == any(input) && gotCheckpoint == any(checkpoint); kept != owned {
+			t.Fatalf("owned %v: the record keeps the caller's objects %v", owned, kept)
+		}
+		if !jv.Equal(gotInput, input) || !jv.Equal(gotCheckpoint, checkpoint) {
+			t.Fatalf("owned %v: input %v checkpoint %v, want %v and %v", owned, gotInput, gotCheckpoint, input, checkpoint)
+		}
+	}
+}
+
+// The tasks a commit creates from equal checkpoints share one object, and a checkpoint with its members in another order is another
+// value, since the record serializes them as given.
+func TestOwnedTasksCreatedTogetherShareEqualCheckpoints(t *testing.T) {
+	mem := sessiontest.New()
+	s := newSession(mem, mem.NextID())
+	def := &session.TaskDef{Name: "t.share", Version: 1, Initial: func(input any) any { return input }}
+	var ids []session.ID
+	if _, err := s.Commit(func(tx *session.Tx) error {
+		root, err := tx.CreateRootConversation()
+		if err != nil {
+			return err
+		}
+		for _, cp := range []*jv.Object{obj("phase", "run", "n", 1.0), obj("phase", "run", "n", 1.0), obj("n", 1.0, "phase", "run")} {
+			id, err := tx.CreateTask(def, cp, session.TaskOptions{ConversationID: idOf(root), Owned: true})
+			if err != nil {
+				return err
+			}
+			ids = append(ids, id)
+		}
+		return nil
+	}, session.TxScope{}); err != nil {
+		t.Fatal(err)
+	}
+	checkpointOf := func(id session.ID) any {
+		rec, err := mem.Task(id)
+		if err != nil {
+			t.Fatal(err)
+		}
+		state, _ := rec.Get("state")
+		cp, _ := state.(*jv.Object).Get("checkpoint")
+		return cp
+	}
+	if checkpointOf(ids[0]) != checkpointOf(ids[1]) {
+		t.Fatal("equal checkpoints are two objects")
+	}
+	if checkpointOf(ids[1]) == checkpointOf(ids[2]) {
+		t.Fatal("a checkpoint with its members in another order shares the object of one in the first order")
+	}
+}

@@ -111,6 +111,9 @@ type Session struct {
 	// conversation, after the conversation record is staged. A plain Session
 	// stages nothing; a Harness stages its built-in documents.
 	ConversationCreated func(tx *Tx, record *jv.Object) error
+
+	// lastCheckpoint and lastOutcome are the latest initial checkpoint a created task took and outcome a task committed (shared).
+	lastCheckpoint, lastOutcome *jv.Object
 }
 
 // New returns a Session over a store. nextID is the next unminted record ID
