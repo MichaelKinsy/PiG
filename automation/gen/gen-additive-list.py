@@ -1,17 +1,16 @@
 #!/usr/bin/env python3
-"""Render the Additive features table of the agent docs page divergences.md.
+"""Render the agent docs page additive-features.md.
 
-Source: docs/additive-features.md, one `## D<N> <title>` record per feature. Each row is
-the ID, the heading, and the record's one-sentence `Summary:` line.
-The table sits between the additive-list markers in internal/pigdocs/content/divergences.md.
---check fails when the table is stale.
+Source: docs/additive-features.md, one `## D<N> <title>` record per feature. Each record
+carries a one-sentence `Summary:` line and an `Audience: author|runtime` line. The page
+lists the `author` records (how to extend or modify PiG) as ID, title, and summary.
+--check fails when the page is stale.
 """
 import pathlib, re, sys
 
 root = pathlib.Path(__file__).resolve().parents[2]
 ledger = (root / "docs/additive-features.md").read_text().split("\n")
-page = root / "internal/pigdocs/content/divergences.md"
-START, END = "<!-- additive-list:start -->", "<!-- additive-list:end -->"
+page = root / "internal/pigdocs/content/additive-features.md"
 
 
 def plain(text):
@@ -19,29 +18,41 @@ def plain(text):
     return text.replace("`", "").replace("|", "\\|")
 
 
+def field(ident, lines, name):
+    values = [line[len(name) + 2:].strip() for line in lines if line.startswith(name + ": ")]
+    if len(values) != 1:
+        sys.exit(f"{ident}: docs/additive-features.md needs exactly one '{name}: ...' line, found {len(values)}")
+    return values[0]
+
+
 def records():
     heads = [i for i, line in enumerate(ledger) if re.match(r"## D\d+ ", line)]
     for start, end in zip(heads, heads[1:] + [len(ledger)]):
         ident, title = ledger[start][3:].split(" ", 1)
-        summaries = [line[len("Summary: "):].strip() for line in ledger[start + 1:end] if line.startswith("Summary: ")]
-        if len(summaries) != 1:
-            sys.exit(f"{ident}: docs/additive-features.md needs exactly one 'Summary: <sentence>' line, found {len(summaries)}")
-        yield ident, plain(title), plain(summaries[0])
+        lines = ledger[start + 1:end]
+        audience = field(ident, lines, "Audience")
+        if audience not in ("author", "runtime"):
+            sys.exit(f"{ident}: Audience must be 'author' or 'runtime', not {audience!r}")
+        yield ident, plain(title), plain(field(ident, lines, "Summary")), audience
 
 
+all_records = list(records())
+author = [r for r in all_records if r[3] == "author"]
+runtime = len(all_records) - len(author)
 rows = ["| ID | Title | Summary |", "|---|---|---|"]
-rows += [f"| {ident} | {title} | {summary} |" for ident, title, summary in records()]
-block = START + "\n\n" + "\n".join(rows) + "\n\n" + END
-
-text = page.read_text()
-if START not in text or END not in text:
-    sys.exit(f"{page.relative_to(root)} has no additive-list markers")
-head, rest = text.split(START, 1)
-rest = rest.split(END, 1)[1]
-new = head + block + rest
+rows += [f"| {ident} | {title} | {summary} |" for ident, title, summary, _ in author]
+text = (
+    "# Additive features\n\n"
+    "These PiG-only features have no Pi equivalent. This page lists the ones that matter when you extend or modify PiG: "
+    "extensions and SDKs, Piglets and Binaries, and diagnostic commands. "
+    f"{runtime} more additive records cover performance, crash handling, security, and platform details; they do not change how you author. "
+    "Search this page with `grep -n -i <word>`. "
+    "[Divergences](divergences.md) lists the places where PiG behaves differently from Pi.\n\n"
+    + "\n".join(rows) + "\n"
+)
 if "--check" in sys.argv:
-    if new != text:
-        sys.exit("stale additive list in internal/pigdocs/content/divergences.md; run: make generate (or: make additive-list), then commit the result")
+    if not page.exists() or page.read_text() != text:
+        sys.exit("stale internal/pigdocs/content/additive-features.md; run: make generate (or: make additive-list), then commit the result")
     sys.exit(0)
-page.write_text(new)
+page.write_text(text)
 print("wrote", page.relative_to(root))

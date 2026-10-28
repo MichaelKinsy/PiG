@@ -1,5 +1,11 @@
 # Strip built-ins and limit tools
 
+> **Differs from Pi, or easy to get wrong**
+> - Pi has no Piglets. A Piglet's `tools:` is a ceiling: it removes tools but never turns one on.
+> - `pig piglet show` prints the ceiling (`Built-in tools: ...`), not the tools that are active.
+> - A Piglet has no field for the default active tools. Pass `--tools`, set `defaultTools`, or build a script that passes the option.
+> - Pi's `--tools read,grep,find,ls` works with a Piglet only inside the ceiling.
+
 Use this page when a tool, command, extension, or model is missing, or when you
 write a Piglet that must offer less than PiG offers by default. It is the
 reference for the `tools` and `strip` fields in [Piglets](piglets.md).
