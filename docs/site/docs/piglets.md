@@ -224,6 +224,20 @@ extends:
       tools: [bash]
 ```
 
+A Piglet Binary that sets `build.allowOverlays` accepts a Piglet selected at launch as a child of its own Piglet. In that Piglet an `extends` block may omit `source`: it then extends the Binary and carries only `remove` and `allowWiden`. Stock pig refuses such a Piglet by name, because it has no Binary to extend.
+
+```yaml
+name: tern-lite
+extends:
+  allowWiden: true
+  remove:
+    slots: [frontend]
+    strip:
+      tools: [bash]
+```
+
+An overlay can re-enable a `stripped(runtime)` entry (a tool, a command, `themes`, `skills`, `prompt-templates`). It cannot re-enable a `stripped(binary)` entry, because a build tag left that code out of the Binary. See [Accept overlay Piglets](piglet-binaries.md#accept-overlay-piglets).
+
 `pig piglet show` lists the changed slots in one `Slots` section, each named by its manifest path. A keep-mode list shows its kept IDs above the expanded rows:
 
 ```text

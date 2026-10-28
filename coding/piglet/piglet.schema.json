@@ -154,9 +154,6 @@
     "extendsSpec": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "source"
-      ],
       "properties": {
         "source": {
           "type": "string",

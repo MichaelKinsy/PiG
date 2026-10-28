@@ -97,8 +97,17 @@ func (m appMode) extensionMode() extension.ExtensionMode {
 }
 
 func normalizeRuntimeExtensionConfigs(configs []subprocess.ExtConfig) []subprocess.ExtConfig {
-	all := make([]subprocess.ExtConfig, 0, len(configs)+len(fusepack.FusedConfigs()))
-	all = append(all, fusepack.FusedConfigs()...)
+	return withFusedExtensionConfigs(fusepack.FusedConfigs(), configs)
+}
+
+// withFusedExtensionConfigs puts the Binary's fused extensions ahead of configs, less the ones an overlay removed (D202).
+func withFusedExtensionConfigs(fused, configs []subprocess.ExtConfig) []subprocess.ExtConfig {
+	all := make([]subprocess.ExtConfig, 0, len(configs)+len(fused))
+	for _, cfg := range fused {
+		if !droppedBinaryMembers[cfg.Name] {
+			all = append(all, cfg)
+		}
+	}
 	all = append(all, configs...)
 	return mergeExtConfigs(all)
 }
@@ -207,7 +216,11 @@ func loadSubprocessExtensions(ctx context.Context, cwd string, mode extension.Ex
 }
 
 func loadFinalSubprocessExtensions(ctx context.Context, cwd string, mode extension.ExtensionMode, registry *codingagent.ModelRegistry, configs []subprocess.ExtConfig, embedded []subprocess.EmbeddedCell, reloadConfigs func() []subprocess.ExtConfig, preloaded *startupExtensionSet, beforeStart func()) ([]extension.Extension, *subprocess.Host, *subprocess.UIBridge, []error) {
-	configs = normalizeRuntimeExtensionConfigs(configs)
+	return loadSubprocessExtensionSet(ctx, cwd, mode, registry, normalizeRuntimeExtensionConfigs(configs), embedded, reloadConfigs, preloaded, beforeStart)
+}
+
+// loadSubprocessExtensionSet loads configs as given, without adding the Binary's fused extensions.
+func loadSubprocessExtensionSet(ctx context.Context, cwd string, mode extension.ExtensionMode, registry *codingagent.ModelRegistry, configs []subprocess.ExtConfig, embedded []subprocess.EmbeddedCell, reloadConfigs func() []subprocess.ExtConfig, preloaded *startupExtensionSet, beforeStart func()) ([]extension.Extension, *subprocess.Host, *subprocess.UIBridge, []error) {
 	if len(configs) == 0 && len(embedded) == 0 && (preloaded == nil || preloaded.host == nil) {
 		return nil, nil, nil, nil
 	}
