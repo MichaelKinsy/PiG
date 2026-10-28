@@ -208,7 +208,7 @@ parity-bin: parity-deps node-runtime
 # require-parity-ran is the loud-fail counterpart to TestParity's quiet
 # skips. ResolvePigBin/ResolveUpstreamPiBin (test/parity/runner/binaries.go) call
 # t.Skip with an explicit reason when PIG_PARITY_PIG_BIN/PIG_BIN is unset, or
-# when tmux or the pinned Pi 0.87.1 binary is missing - and that skip happens
+# when tmux or the pinned Pi binary is missing - and that skip happens
 # before TestParity runs a single scenario or writes RESULTS, so `go test`
 # still exits 0. A results file with zero outcomes (or no results file at
 # all - the two are equivalent here) means nothing was actually compared
