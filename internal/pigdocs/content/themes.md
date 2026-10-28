@@ -76,7 +76,7 @@ A color can have one of six forms:
 | Variable reference | `"primary"` | The value of an entry in `vars`. |
 | Terminal default | `""` | The foreground or background color of the terminal. |
 
-A missing variable or a circular reference makes the theme invalid. PiG reports an invalid theme at startup and at `/reload`. If colors look wrong, check the terminal color support in [Terminal setup](terminal-setup.md).
+A missing variable or a circular reference makes the theme invalid. The interactive screen reports an invalid theme at startup and at `/reload`. Print mode and `pig status --json` do not check theme files, so open `pig` and select the theme to test it. If colors look wrong, check the terminal color support in [Terminal setup](terminal-setup.md).
 
 ## Find the color to change
 

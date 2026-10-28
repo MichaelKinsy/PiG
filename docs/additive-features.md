@@ -126,7 +126,7 @@ PORT_MAP path: n/a.
 SCRUTINIZED:approved
 ## D19 Multi-language subprocess SDK bridges
 
-Summary: PiG ships extension SDKs for Go, Rust, and Python that use the same wire protocol and the same features.
+Summary: PiG ships extension SDKs for Go, Rust, Python, and Lisp that use the same wire protocol and the same features.
 
 Audience: author
 

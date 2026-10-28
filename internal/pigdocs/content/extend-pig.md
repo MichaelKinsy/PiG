@@ -49,6 +49,8 @@ This is the linear recipe for an application built on PiG.
      file: ./prompts/review.md
    ```
 
+   `tools` is a ceiling. With this Piglet only `read` is active unless the run passes `--tools read,grep,find` ([piglet-strip](piglet-strip.md)).
+
 3. Run it from source while you develop. Source execution gives normal validation, process isolation, and reload:
 
    ```bash
