@@ -44,14 +44,14 @@ func LoadProjectContextFiles(cwd, agentDir string) []ContextFile {
 
 // LoadProjectContextFilesScoped is LoadProjectContextFiles for a run that may withhold the project's context files.
 // With loadProject false it loads only the context file in the agent directory and the one in the user's home directory, when that directory is a strict ancestor of cwd. Every other file the walk finds is project context and is skipped without a read.
-// pig divergence (D210).
+// pig additive (D211).
 func LoadProjectContextFilesScoped(cwd, agentDir string, loadProject bool) []ContextFile {
 	loaded, _ := discoverContextFiles(cwd, agentDir, loadProject)
 	return loaded
 }
 
 // WithheldProjectContextFiles lists the paths of the project context files that LoadProjectContextFilesScoped skips with loadProject false, root-first.
-// pig divergence (D210).
+// pig additive (D211).
 func WithheldProjectContextFiles(cwd, agentDir string) []string {
 	_, withheld := discoverContextFiles(cwd, agentDir, false)
 	return withheld
@@ -137,7 +137,7 @@ func discoverContextFiles(cwd, agentDir string, loadProject bool) (loaded []Cont
 }
 
 // firstContextFilePathProbed returns the path of the first context candidate in dir that is a regular file, or "". It reads nothing.
-// pig divergence (D210).
+// pig additive (D211).
 func firstContextFilePathProbed(probe *nodefs.PathProbe, dir string) string {
 	for _, name := range contextCandidates {
 		if !probe.Set(dir, name).Exists() {

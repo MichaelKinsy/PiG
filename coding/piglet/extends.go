@@ -286,6 +286,9 @@ func mergePiglets(base, child *Piglet) (*Piglet, error) {
 	if child.present["discovery"] {
 		result.Discovery = child.Discovery
 	}
+	if child.present["contextFiles"] {
+		result.ContextFiles = child.ContextFiles
+	}
 	if child.present["systemPrompt"] {
 		result.SystemPrompt = child.SystemPrompt
 	}
@@ -472,6 +475,9 @@ func rejectUnsafeWidening(base, child *Piglet) error {
 	}
 	if child.present["discovery"] && discoveryWidens(base.Discovery, child.Discovery) {
 		widened = append(widened, "discovery")
+	}
+	if child.present["contextFiles"] && base.ContextFiles == ContextFilesTrustedOnly && child.ContextFiles != ContextFilesTrustedOnly {
+		widened = append(widened, "contextFiles")
 	}
 	if child.present["agentEnv"] && agentEnvironmentWidens(base.AgentEnv, child.AgentEnv) {
 		widened = append(widened, "agentEnv")
@@ -861,7 +867,7 @@ func clonePiglet(p *Piglet) *Piglet {
 	return &Piglet{
 		Name: p.Name, Description: p.Description,
 		Extends: extends, BuiltinTools: cloneStringList(p.BuiltinTools), Packages: maps.Clone(p.Packages), Extensions: extensions, Skills: skills,
-		Discovery: discovery, SystemPrompt: prompt, AgentEnv: environment, Model: model, Slots: slots,
+		Discovery: discovery, ContextFiles: p.ContextFiles, SystemPrompt: prompt, AgentEnv: environment, Model: model, Slots: slots,
 		Build: build, Release: release, Secrets: slices.Clone(p.Secrets), Strip: cloneStrip(p.Strip),
 		sourceDir: p.sourceDir, sourcePath: p.sourcePath, present: maps.Clone(p.present), nullFields: maps.Clone(p.nullFields),
 		lineage: slices.Clone(p.lineage), effectiveDigest: p.effectiveDigest, graphDigest: p.graphDigest,

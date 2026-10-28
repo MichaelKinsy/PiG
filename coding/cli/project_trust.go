@@ -27,6 +27,8 @@ type projectTrustResolutionOptions struct {
 	OnExtensionError func(string)
 	// ShadowedPiglet names a Piglet the project defines under the name this run selected and that project trust withheld.
 	ShadowedPiglet string
+	// ContextFilesTrustedOnly is set when the Piglet withholds an untrusted project's context files (D211).
+	ContextFilesTrustedOnly bool
 }
 
 func resolveProjectTrusted(ctx context.Context, opts projectTrustResolutionOptions) (bool, error) {
@@ -34,6 +36,10 @@ func resolveProjectTrusted(ctx context.Context, opts projectTrustResolutionOptio
 		return *opts.Override, nil
 	}
 	hasTrustResources := codingagent.HasTrustRequiringProjectResources(opts.CWD)
+	// pig additive (D211): a Piglet that withholds an untrusted project's context files makes a project that has one need a decision.
+	if !hasTrustResources && opts.ContextFilesTrustedOnly {
+		hasTrustResources = len(codingagent.WithheldProjectContextFiles(opts.CWD, "")) > 0
+	}
 	if !hasTrustResources {
 		return true, nil
 	}

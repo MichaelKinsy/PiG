@@ -185,6 +185,10 @@ func (b *cliRuntimeBuilder) buildResources(ctx context.Context, in cliBuildInput
 	}
 	build := &cliBuild{CWD: cwd, ResourceFlags: resourceFlags}
 	hasTrustResources := codingagent.HasTrustRequiringProjectResources(cwd)
+	// pig additive (D211): a Piglet that withholds an untrusted project's context files makes a project that has one need a decision.
+	if !hasTrustResources && flags.ContextFilesTrustedOnly {
+		hasTrustResources = len(codingagent.WithheldProjectContextFiles(cwd, "")) > 0
+	}
 	projectTrusted := flags.ProjectTrustOverride != nil && *flags.ProjectTrustOverride
 	if flags.ProjectTrustOverride == nil && !hasTrustResources {
 		projectTrusted = true
@@ -320,15 +324,16 @@ func (b *cliRuntimeBuilder) buildResources(ctx context.Context, in cliBuildInput
 		}
 		trustMode, trustHasUI, trustLiveUI := projectTrustPromptMode(b.mode, flags.Help || flags.ListModels != "" || flags.ListModelsAll, interactiveTrust, in.ProjectTrustUI != nil)
 		projectTrusted, err = resolveProjectTrusted(ctx, projectTrustResolutionOptions{
-			CWD:            cwd,
-			Store:          b.trustStore,
-			Default:        globalDefaultTrust,
-			ShadowedPiglet: b.shadowedPiglet,
-			Runner:         trustRunner,
-			UI:             trustUI,
-			Mode:           trustMode,
-			HasUI:          trustHasUI,
-			LiveUI:         trustLiveUI,
+			CWD:                     cwd,
+			Store:                   b.trustStore,
+			Default:                 globalDefaultTrust,
+			ShadowedPiglet:          b.shadowedPiglet,
+			ContextFilesTrustedOnly: flags.ContextFilesTrustedOnly,
+			Runner:                  trustRunner,
+			UI:                      trustUI,
+			Mode:                    trustMode,
+			HasUI:                   trustHasUI,
+			LiveUI:                  trustLiveUI,
 			OnExtensionError: func(message string) {
 				fmt.Fprintln(os.Stderr, "warning:", message)
 			},
@@ -620,7 +625,7 @@ func (b *cliRuntimeBuilder) loadPromptResources(build *cliBuild, agentToolNames 
 		promptSkills = append(promptSkills, prompts.Skill{Name: s.Name, Description: s.Description, Path: s.FilePath, DisableModelInvocation: s.DisableModelInvocation})
 	}
 	trace.Mark("pre-system-prompt")
-	projectCtxFiles := loadContextFiles(cwd, b.agentDir, build.Flags.NoContextFiles, build.ProjectTrusted)
+	projectCtxFiles := loadContextFiles(cwd, b.agentDir, build.Flags.NoContextFiles, loadsProjectContextFiles(build.Flags, build.ProjectTrusted))
 	promptCtxFiles := toPromptContextFiles(projectCtxFiles)
 	resolvedPrompts := resolvePromptInputs(cwd, b.agentDir, build.Flags, build.ProjectTrusted)
 	promptOptions := prompts.Options{

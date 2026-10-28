@@ -831,7 +831,6 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-D203](#bf-d203) | registerProvider with an empty `apiKey` leaves the provider unconfigured where Pi treats the empty string as… | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D207](#bf-d207) | TuiAltScreen.children is a copy in the Go, Rust, Python and Lisp SDKs, where Pi's is a live array | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D208](#bf-d208) | From inside a component's render, a TuiAltScreen of the Go, Rust, Python and Lisp SDKs fails the calls that… | A Pi defect that PiG fixed first | All platforms | Unreleased |
-| [BF-D210](#bf-d210) | An untrusted project loads none of its project context files, and pig says so | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-a076a50](#bf-a076a50) | A model request on a reused connection gets the full HTTP idle timeout to receive its first response bytes… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-a09da26](#bf-a09da26) | `pi.getSettings()` in a subprocess extension lists the settings in Pi's order: the global settings file's… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-a09da26-2](#bf-a09da26-2) | A bash or PowerShell tool card reads the result's `truncation` details by their exact keys, as Pi does: a… | PiG's own defect | Windows | 0.5.0 |
@@ -12557,21 +12556,6 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `1d6732bee8` (2026-10-28), `395ad20127` (2026-10-28), `5a671a6be6` (2026-10-28), `be8abc8c03` (2026-10-28)
 - **Tests:** `test/extension-conformance/tui_alt_screen_test.go::TestTuiAltScreenFrameReentryAcrossSDKs`
 
-### BF-D210
-
-**An untrusted project loads none of its project context files, and pig says so**
-
-- **Source:** A Pi defect that PiG fixed first (divergence D210)
-- **Symptom:** none claimed. Pi's trust list is a design choice.
-- **Root cause:** a repository can carry an `AGENTS.md` that tells the agent what to do. The file reaches the system prompt before the user has made any trust decision, while the settings, `mcp.json`, extensions, skills, prompts and `SYSTEM.md` of the same project wait for trust. Without this change the one project resource that steers the model needs no trust.
-- **User impact:** Behavior differed from Pi
-- **Platform:** All platforms
-- **Fixed in:** Unreleased
-- **Pi issue:** none recorded
-- **Removed when Pi fixes it:** Pi puts context files in its trust list, or an owner decision moves this check to the Piglet layer (a Piglet setting) and stock pig goes back to Pi's behaviour.
-- **Fix commits:** Not yet committed.
-- **Tests:** `internal/codingagent/context_files_trust_test.go::TestContextFileAloneIsTrustRequiringProjectResource`, `internal/codingagent/context_files_trust_test.go::TestUntrustedHomeProjectWithholdsItsOwnContextFile`, `internal/codingagent/context_files_trust_test.go::TestUntrustedProjectKeepsGlobalAndHomeContextFilesOnly`
-
 ### BF-a076a50
 
 **A model request on a reused connection gets the full HTTP idle timeout to receive its first response bytes…**
@@ -18989,7 +18973,6 @@ Each divergence record is accounted for here. A divergence that fixes a Pi defec
 | D205 | Fullscreen frames scroll the rows that only moved | deliberate difference |
 | D207 | TuiAltScreen.children is a copy in the Go, Rust, Python and Lisp SDKs, where Pi's is a live array | [BF-D207](#bf-d207) |
 | D208 | From inside a component's render, a TuiAltScreen of the Go, Rust, Python and Lisp SDKs fails the calls that… | [BF-D208](#bf-d208) |
-| D210 | An untrusted project loads none of its project context files, and pig says so | [BF-D210](#bf-d210) |
 
 ## Fix-titled commits that are not bugs in a release
 

@@ -100,7 +100,7 @@ A project keeps its configuration in `.pig` inside the working directory. PiG re
 
 ### Project trust
 
-A project directory can contain code that runs on your machine. PiG therefore asks whether you trust a project before it reads `.pig/settings.json`, `.pig/mcp.json`, `SYSTEM.md`, `APPEND_SYSTEM.md`, extensions, skills, prompt templates, themes or context files (`AGENTS.md`, `CLAUDE.md`) from it. If you do not trust the project, PiG ignores all of them. PiG still loads the context file in the agent directory and the one in your home directory. A Piglet that `--piglet <name>` finds in `.pig/piglets/` is used only when the project has a saved trust decision, `defaultProjectTrust` is `"always"`, or the run passes `--approve`. PiG selects a Piglet before it can ask, so it uses your own Piglet of that name for the run, and the trust prompt, when one appears, names the project's Piglet.
+A project directory can contain code that runs on your machine. PiG therefore asks whether you trust a project before it reads `.pig/settings.json`, `.pig/mcp.json`, `SYSTEM.md`, `APPEND_SYSTEM.md`, extensions, skills, prompt templates or themes from it. If you do not trust the project, PiG ignores all of them. A Piglet that `--piglet <name>` finds in `.pig/piglets/` is used only when the project has a saved trust decision, `defaultProjectTrust` is `"always"`, or the run passes `--approve`. PiG selects a Piglet before it can ask, so it uses your own Piglet of that name for the run, and the trust prompt, when one appears, names the project's Piglet.
 
 One setting is an exception. PiG reads `sessionDir` from the project settings before it asks, because it must locate the project's sessions first.
 
@@ -123,8 +123,6 @@ PiG looks for context files in the agent directory, in the working directory, an
 3. `AGENTS.MD`
 4. `CLAUDE.md`
 5. `CLAUDE.MD`
-
-PiG loads the files of the working directory and its parents only when the project is trusted. See [project trust](/docs/latest/trust). The file in the agent directory and the file in your home directory load in every project.
 
 A directory contributes at most one file. `AGENTS.override.md` therefore replaces `AGENTS.md` or `CLAUDE.md` in its own directory only. It does not hide files in the agent directory or in other directories.
 

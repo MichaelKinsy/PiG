@@ -2754,25 +2754,3 @@ Parity allowance: no paired Pi corpus constructs `TuiAltScreen` through an SDK a
 Remove when: the host's frame can be entered again from inside a render and these calls run as Pi's do; then the call-site marker, the error and this record go.
 
 SCRUTINIZED:approved
-
-## D210 An untrusted project loads none of its project context files, and pig says so
-
-What: Pi loads `AGENTS.md`, `AGENTS.override.md` and `CLAUDE.md` from the agent directory and from every directory between the filesystem root and the working directory, with no trust check. Pi's list of resources that need trust has no context file, so a project whose only resource is an `AGENTS.md` starts trusted with no question. pig adds each project context file to the resources that need trust. A project context file is every context file of that walk except the one in the user's home directory, when the home directory is a strict ancestor of the working directory. While the project is not trusted, pig loads only the file in the agent directory and the file in the home directory. It does not read the other files. The system prompt of print, JSON, RPC and interactive runs then has no project context. Print, JSON and RPC runs write one line to stderr that names the skipped files. Interactive mode adds the same names to the project-trust warning. A trusted project, `--no-context-files`, and an SDK `NoContextFiles` option work as in Pi. A project that is the home directory itself has its own file skipped.
-
-Why: a repository can carry an `AGENTS.md` that tells the agent what to do. The file reaches the system prompt before the user has made any trust decision, while the settings, `mcp.json`, extensions, skills, prompts and `SYSTEM.md` of the same project wait for trust. Without this change the one project resource that steers the model needs no trust.
-
-Pi bug: none claimed. Pi's trust list is a design choice.
-
-Scope: the `pig` command: startup, `/reload` and the interactive reload of context files, and `HasTrustRequiringProjectResources`. The SDK `DefaultResourceLoader` is unchanged and loads context files whatever the trust, as Pi's `resource-loader.test.ts` expects; an embedder that wants the check calls `LoadProjectContextFilesScoped`. Every other resource loads as in Pi. Because a context file now needs trust, a project with an `AGENTS.md` and no saved decision asks for trust in interactive mode and is untrusted in print, JSON and RPC runs, unless `defaultProjectTrust` is `always`, `--approve` is set, or the project has a saved decision.
-
-Owner decision: pending. This record is a draft for owner sign-off; the change is not approved.
-
-Call-site markers: `internal/codingagent/context_files.go` (`LoadProjectContextFilesScoped`, `WithheldProjectContextFiles`, `discoverContextFiles`), `coding/cli/resource_prompts.go` (`loadContextFiles`), `internal/codingagent/trust_manager.go` (`HasTrustRequiringProjectResources`), `internal/codingagent/project_trust_warning.go` (`renderProjectTrustWarningIfNeeded`, `ContextFilesWithheldMessage`), `coding/cli/main.go` (the stderr notice).
-
-Evidence: `TestUntrustedProjectLoadsNoProjectContextFilesInEveryMode` (`coding/cli/context_files_trust_binary_test.go`) runs the binary in print, JSON, RPC and interactive mode, with a trusted and an untrusted project, and reads the system prompt that reaches the model and the notice. `TestUntrustedProjectKeepsGlobalAndHomeContextFilesOnly`, `TestUntrustedHomeProjectWithholdsItsOwnContextFile` and `TestContextFileAloneIsTrustRequiringProjectResource` (`internal/codingagent/context_files_trust_test.go`) hold the walk and the trust rule.
-
-Parity allowance: no paired Pi corpus holds a context file in an untrusted project, so none changes.
-
-Remove when: Pi puts context files in its trust list, or an owner decision moves this check to the Piglet layer (a Piglet setting) and stock pig goes back to Pi's behaviour.
-
-SCRUTINIZED:pending

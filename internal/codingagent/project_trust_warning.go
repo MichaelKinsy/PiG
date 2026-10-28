@@ -8,23 +8,34 @@ import (
 
 // Ports packages/coding-agent/src/modes/interactive/interactive-mode.ts:renderProjectTrustWarningIfNeeded.
 func (m *InteractiveMode) renderProjectTrustWarningIfNeeded() {
-	if m.projectTrusted() || !HasTrustRequiringProjectResources(m.opts.CWD) {
+	if m.projectTrusted() {
+		return
+	}
+	// pig additive (D211): a run that withholds an untrusted project's context files also warns when the context files are the only project input.
+	var withheld []string
+	if m.opts.ContextFilesTrustedOnly {
+		withheld = WithheldProjectContextFiles(m.opts.CWD, m.opts.AgentDir)
+	}
+	needsTrust := HasTrustRequiringProjectResources(m.opts.CWD)
+	if !needsTrust && len(withheld) == 0 {
 		return
 	}
 	if !m.chatContainer.IsEmpty() {
 		m.chatContainer.Add(tui.NewSpacer(1))
 	}
-	// pig divergence (D2): the warning names PiG's configuration directory and restart command.
-	message := "This project is not trusted. Project " + ConfigDirName() + " resources and packages are ignored. Use /trust to save a trust decision, then restart pig."
-	// pig divergence (D210): the warning also names the project context files that were not loaded.
-	if withheld := WithheldProjectContextFiles(m.opts.CWD, m.opts.AgentDir); len(withheld) > 0 {
-		message += " " + ContextFilesWithheldMessage(withheld)
+	var message string
+	if needsTrust {
+		// pig divergence (D2): the warning names PiG's configuration directory and restart command.
+		message = "This project is not trusted. Project " + ConfigDirName() + " resources and packages are ignored. Use /trust to save a trust decision, then restart pig."
+	}
+	if len(withheld) > 0 {
+		message = strings.TrimSpace(message + " " + ContextFilesWithheldMessage(withheld))
 	}
 	m.chatContainer.Add(themedNotice("warning", message, 1))
 }
 
 // ContextFilesWithheldMessage says which project context files an untrusted project did not load, and how to load them.
-// pig divergence (D210).
+// pig additive (D211).
 func ContextFilesWithheldMessage(paths []string) string {
 	return "This project is not trusted, so its context files were not loaded: " + strings.Join(paths, ", ") + ". Use /trust to save a trust decision, then restart pig."
 }
