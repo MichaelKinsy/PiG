@@ -21,10 +21,14 @@ type AltScreenFrame struct {
 	baseHeld bool
 }
 
+// EnableFrameAccess has the renderer record which goroutine runs a frame and which renders the base container (Frame): a goroutine id costs an allocation or
+// a stack read, so a screen whose components never call back into it does not pay for it. The subprocess extension host enables it for the screens it serves.
+func (t *TuiAltScreen) EnableFrameAccess() { t.frameAccess.Store(true) }
+
 // Frame returns the frame the calling goroutine is running, which holds the screen's frame lock, and false for any other goroutine, including one that
-// waits for the frame to end.
+// waits for the frame to end, and for a screen that did not EnableFrameAccess.
 func (t *TuiAltScreen) Frame() (AltScreenFrame, bool) {
-	if !t.frameActive.Load() {
+	if !t.frameActive.Load() || !t.frameAccess.Load() {
 		return AltScreenFrame{}, false
 	}
 	me := goroutineid.Current()
@@ -37,10 +41,12 @@ func (t *TuiAltScreen) Frame() (AltScreenFrame, bool) {
 // renderBase renders the base container, which holds its own lock across its children's Render: baseOwner tells a child's call back into the renderer
 // (Frame) that the goroutine holds it. The goroutine runs a frame, so mu is held as well.
 func (t *tuiBase) renderBase(width int, borrowed bool) []string {
-	t.baseOwner.Store(goroutineid.Current())
-	defer t.baseOwner.Store(0)
+	if t.frameAccess.Load() {
+		t.baseOwner.Store(goroutineid.Current())
+		defer t.baseOwner.Store(0)
+	}
 	if borrowed {
-		return t.Container.renderBorrowed(width)
+		return t.renderBorrowed(width)
 	}
 	return t.Container.Render(width)
 }
@@ -97,36 +103,36 @@ func (f AltScreenFrame) SetFocus(component Component) { f.t.setFocus(component, 
 // AddChild is TuiAltScreen.AddChild. Pi's render reads its children live, so a child added while the base children render is rendered by the frame in progress.
 func (f AltScreenFrame) AddChild(component Component) {
 	if f.baseHeld {
-		f.t.Container.addLocked(component)
+		f.t.addLocked(component)
 		return
 	}
-	f.t.Container.Add(component)
+	f.t.Add(component)
 }
 
 // RemoveChild is TuiAltScreen.RemoveChild.
 func (f AltScreenFrame) RemoveChild(component Component) {
 	if f.baseHeld {
-		f.t.Container.removeLocked(component)
+		f.t.removeLocked(component)
 		return
 	}
-	f.t.Container.Remove(component)
+	f.t.Remove(component)
 }
 
 // Clear is TuiAltScreen.Clear.
 func (f AltScreenFrame) Clear() {
 	if f.baseHeld {
-		f.t.Container.clearLocked(true)
+		f.t.clearLocked(true)
 		return
 	}
 	f.t.Container.Clear()
 }
 
 // Children is TuiAltScreen.Children.
-func (f AltScreenFrame) Children() []Component { return f.t.Container.cloneChildren(f.baseHeld) }
+func (f AltScreenFrame) Children() []Component { return f.t.cloneChildren(f.baseHeld) }
 
 // HandleMouse is TuiAltScreen.HandleMouse.
 func (f AltScreenFrame) HandleMouse(event TuiMouseEvent) *TuiMouseDispatchResult {
-	return f.t.Container.handleMouse(event, f.baseHeld)
+	return f.t.handleMouse(event, f.baseHeld)
 }
 
 // CancelPendingRender is TuiAltScreen.CancelPendingRender.

@@ -251,7 +251,7 @@ count = 1
 
 [[hit]]
 file = "coding/extension/host/subprocess/autocomplete_bridge.go"
-func = "autocompleteRequest"
+func = "requestWithID"
 call = "sdkjson.Unmarshal"
 dest = "any"
 count = 1

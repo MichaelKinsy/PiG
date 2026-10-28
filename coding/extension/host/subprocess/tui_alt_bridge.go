@@ -513,6 +513,8 @@ func (b *UIBridge) tuiAltCreate(owner *Conn, call *tuiAltCall) (*CallResultPaylo
 		s.bindCallbacks(&options, o.Callbacks)
 	}
 	s.screen = tui.NewTuiAltScreen(s.term, call.ShowHardwareCursor, call.LogDirectory, options)
+	// The components are the extension's: their render calls back into the screen, from the goroutine that runs the frame (callback).
+	s.screen.EnableFrameAccess()
 	s.screen.OnTerminalColorSchemeChange(func(scheme tui.TerminalColorScheme) {
 		_ = s.callback("colorScheme", map[string]any{"scheme": string(scheme)}, nil)
 	})
