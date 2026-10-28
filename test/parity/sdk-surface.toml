@@ -914,6 +914,7 @@ node = "RuntimeUI.custom"
 go = "RemoteOverlayOptions.Blocked"
 rust = "Context::custom_component"
 python = "Context.custom"
+lisp = "pig:ctx-custom|pig:ctx-custom-p"
 wire = "subprocess.RemoteOverlayOpenPayload.blocked"
 
 [[row]]
