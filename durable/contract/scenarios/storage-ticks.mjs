@@ -31,6 +31,8 @@ async function measure(name, call) {
 	return result
 }
 
+// Storage.commit(writes, adopt, context) calls `adopt` once the batch is durable (Pi 6c384aa3); the measurement has nothing to adopt.
+const adopt = () => {}
 const conversation = id => ({ type: "conversation", value: { id } })
 const entry = (id, conversationId) => ({ type: "entry", value: { model: [{ role: "user", content: "x", timestamp: 1 }], kind: "pi.user", id, conversationId } })
 const task = (id, conversationId) => ({ type: "task", value: { id, conversationId, kind: "pi.generation", version: 1, input: {}, background: false, abortRequested: false, state: { status: "running", checkpoint: { phase: "prepare", attempt: 1 } }, startedAt: 1 } })
@@ -38,14 +40,14 @@ const submission = (id, conversationId) => ({ type: "submission", value: { id, c
 
 await measure("mintId", () => storage.mintId())
 // The commit shapes the core charges (hopcost.Writes with Tables only): the number of table writes decides the cost.
-await measure("commit[conversation]", () => storage.commit([conversation(1)], context))
-await measure("commit[entry]", () => storage.commit([entry(2, 1)], context))
-await measure("commit[task]", () => storage.commit([task(3, 1)], context))
-await measure("commit[submission]", () => storage.commit([submission(4, 1)], context))
-await measure("commit[task,task]", () => storage.commit([task(5, 1), task(6, 1)], context))
-await measure("commit[entry,task]", () => storage.commit([entry(7, 1), task(8, 1)], context))
-await measure("commit[entry,submission,task]", () => storage.commit([entry(9, 1), submission(10, 1), task(11, 1)], context))
-await measure("commit[entry,entry,submission,task]", () => storage.commit([entry(12, 1), entry(13, 1), submission(14, 1), task(15, 1)], context))
+await measure("commit[conversation]", () => storage.commit([conversation(1)], adopt, context))
+await measure("commit[entry]", () => storage.commit([entry(2, 1)], adopt, context))
+await measure("commit[task]", () => storage.commit([task(3, 1)], adopt, context))
+await measure("commit[submission]", () => storage.commit([submission(4, 1)], adopt, context))
+await measure("commit[task,task]", () => storage.commit([task(5, 1), task(6, 1)], adopt, context))
+await measure("commit[entry,task]", () => storage.commit([entry(7, 1), task(8, 1)], adopt, context))
+await measure("commit[entry,submission,task]", () => storage.commit([entry(9, 1), submission(10, 1), task(11, 1)], adopt, context))
+await measure("commit[entry,entry,submission,task]", () => storage.commit([entry(12, 1), entry(13, 1), submission(14, 1), task(15, 1)], adopt, context))
 // The reads (hopcost.Read).
 await measure("conversation", () => storage.conversation(1, context))
 await measure("task", () => storage.task(3, context))

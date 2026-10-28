@@ -24,6 +24,7 @@ var notifySubscriptions = map[string]map[string]string{
 		"rust": "pub fn on_width_change<F>(",
 		"py":   "def on_width_change(",
 		"node": "onWidthChange(handler)",
+		"lisp": "(defun ctx-on-width-change (",
 	},
 }
 

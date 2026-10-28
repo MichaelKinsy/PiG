@@ -16,6 +16,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/durable/env"
 	"github.com/MichaelKinsy/PiG/durable/storage/jsonl"
+	"github.com/MichaelKinsy/PiG/internal/nodefs"
 	"github.com/MichaelKinsy/PiG/internal/nodepath"
 	"github.com/MichaelKinsy/PiG/internal/nodeurl"
 )
@@ -136,7 +137,7 @@ func (fileSystem *NodeFileSystem) ReadBinaryFile(ctx context.Context, path strin
 	if err := aborted(ctx, resolved); err != nil {
 		return nil, err
 	}
-	content, err := os.ReadFile(resolved)
+	content, err := nodefs.ReadFile(resolved)
 	if err != nil {
 		return nil, toFileError(err, resolved)
 	}

@@ -120,8 +120,9 @@ Stock disposition: required substrate. PiG Standard selects extensions but does 
 
 Embedding hosts bind `HostCallbacks.AppendEntry` through `coding.Session.AppendExtensionEntry`. It preserves the subprocess-assigned ID and timestamp, validates the identity and appends under the native Session mutation lock, and emits `entry_appended` only for `pi.appendEntry`. `TestAppendExtensionEntryThroughNodeHost` exercises isolated and packed Node extensions through the public host API; rejection and concurrent native appends are covered in `coding/session_custom_entries_test.go`.
 
-What: pig ships SDKs in three languages: Go (`extensions/sdk`), Rust
-(`extensions/sdk-rs`), and Python (`extensions/sdk-py`): that all author
+What: pig ships SDKs in four languages: Go (`extensions/sdk`), Rust
+(`extensions/sdk-rs`), Python (`extensions/sdk-py`), and Common Lisp on SBCL
+(`extensions/sdk-lisp`): that all author
 into the **same** pig subprocess extension API. Upstream pi ships a single
 TypeScript SDK and loads extensions in-process.
 
@@ -158,6 +159,16 @@ the SDKs send the list as a `ui.setWidget` call instead, so the host writes
 one request per call in call order, as `rpc-mode.ts` does.
 The wire has no independent version or compatibility
 negotiation; it changes atomically with the running Pig binary and staged SDKs.
+
+The Common Lisp SDK (`extensions/sdk-lisp`, package `pig`) is an inert capability: Stock PiG ships its source, stages it like the
+Python SDK (`pig_strip_extension_sdk_lisp` removes it), and runs it only when an extension resolves to `language == "lisp"`. Pig builds a
+Lisp factory (an ASDF system or one file defining `new-extension`) into a cached executable SBCL image through the runtime-cell build
+and cache machinery (`runtimecell.BuildLispPackedCell`), and starts it with the packed-cell runner protocol, one socket and one register
+handshake per member. The Lisp image build, the Quicklisp resolver, the Lisp staging of the extension host and the Lisp source resolver are linked only
+into a program that imports `coding/extension/host/lispcell` (`cmd/pig` does), which calls `subprocess.EnableLisp` and `source.EnableLisp` from its `init`;
+the host reaches them only through the hooks those functions install, so the linker drops them from an embedding program such as `examples/headless`, and a
+Lisp extension does not load there: its source resolves as an unsupported language, and a Lisp cell fails with "this program was built without Lisp extension support". It serves the same extension API as the other SDKs (`extensions/sdk-lisp/README.md`); a member it does not serve
+signals `unsupported-capability` naming the lane that owns it, the same `gap:` lanes as the other SDKs' cells in `test/parity/sdk-exports.toml`.
 
 Transport: each extension process connects to one host socket named by `PIG_EXT_SOCKET` (a packed cell gets one variable per member). The socket is AF_UNIX. On Windows, a Node extension instead gets a named pipe with an unguessable name that only the current user can open, because Node's `net` module treats every Windows path as a named pipe. The Python SDK reaches AF_UNIX on Windows through Winsock, because CPython does not expose `socket.AF_UNIX` there; the Rust SDK does the same. Framing and handshake are identical on both carriers, and extension code never names the transport.
 
@@ -1130,7 +1141,7 @@ Build tags (`pigstrip.Tag`: `pig_strip_` plus the ID with non-alphanumerics as `
 | `extensions: tool-search` | `pig_strip_tool_search` | its registration (`builtin/toolsearch` with codemode) | not loaded |
 | `extensions: pig-login` | `pig_strip_pig_login` | its registration (`/sprite`) | not loaded |
 | `extensions: llama.cpp` | `pig_strip_llama_cpp` | `internal/codingagent/llama` | no llama host, `/llama` or llama.cpp login |
-| `apis: bedrock-converse-stream` | `pig_strip_bedrock_converse_stream` | the AWS SDK and smithy (89 packages) | its models are offered nowhere (see below); naming or building one fails with the strip message; a `models.json` custom model under its provider still takes its base URL from the full generated catalog, so the strip adds no `"baseUrl" is required` error |
+| `apis: bedrock-converse-stream` | `pig_strip_bedrock_converse_stream` | the AWS SDK and smithy (89 packages); `ai/providers/bedrock` compiles to the strip registration, and a program that does not import the package links none of them | its models are offered nowhere (see below); naming or building one fails with the strip message; a `models.json` custom model under its provider still takes its base URL from the full generated catalog, so the strip adds no `"baseUrl" is required` error |
 | `apis: google-vertex` | `pig_strip_google_vertex` | `golang.org/x/oauth2`, `compute/metadata` | same |
 | `apis: mistral-conversations` | `pig_strip_mistral_conversations` | the Mistral provider files | same |
 | `features: node-extensions` | `pig_strip_node_extensions` | the embedded Node runtime (10.5 MB), zstd | a TypeScript or JavaScript extension fails to load with the message |
@@ -1143,6 +1154,8 @@ Build tags (`pigstrip.Tag`: `pig_strip_` plus the ID with non-alphanumerics as `
 | `features: changelog` | `pig_strip_changelog` | the root package (`CHANGELOG.md`) | no `/changelog` (it leaves `BuiltinSlashCommands`, `featureCommands`); no What's New, so no update telemetry ping |
 | `features: docs` | `pig_strip_docs` | `internal/pigdocs` | `pig docs` reports the message; no docs prompt section |
 | `features: piglet-builder` | `pig_strip_piglet_builder` | `coding/pigletbuild` | `pig piglet build` and `publish` report the message |
+
+Provider packages: `bedrock-converse-stream` is implemented in `ai/providers/bedrock`, not in `ai`, so a program that imports `ai` alone does not link the AWS SDK. The package registers itself from `init` (`ai.RegisterOptionalAPI`), `ai/all` imports every provider package, and `cmd/pig` imports `ai/all`. With the tag `pig_strip_bedrock_converse_stream` every file of the package but `bedrock_stripped.go` is compiled out, and that file records the strip from `init`, so the OFF shim stays in the package that the ON shim lives in. A model of an optional API that no package registered fails with `Provider <id>: API <api> is not linked into this program; import <package>` (`ai.NewOptionalAPIProvider`); a runtime strip (`strip.apis`) takes precedence and reports the strip message. This is a PiG-internal layout change: Pi has no counterpart and the `pig` command's providers, models and errors are unchanged.
 
 A stripped API's models are offered nowhere: not by `--list-models`, `/model` and the model selector, model cycling, the `--models` scope, startup's saved-default and provider-default fallback, RPC `get_available_models`, or the extension model registry (`getAll`, `getAvailable`, the replicated catalog). The filter is one predicate, `ai.OfferedModels`, applied where the catalog leaves its sources: the generated catalog listing (`ai.ListModels`), every read of an `ai.Models` collection (`GetModels`, `GetAllModels`, `GetAvailable`, `GetAllAvailable`), and the composed per-provider catalog (`ModelRegistry.GetProviderModelData`, which also covers `models.json` and extension definitions on a stripped API, and `GetAll`). `/model <provider>/<id>` naming one opens the model selector with no match, as for any model the selector does not offer. An exact catalog lookup (`ai.LookupModel`, `ai.LookupModelExact`) still finds such a model, so building one reports the strip. `--model` and `--provider` name the strip too: when resolution finds no offered model, `ai.StrippedModelError` reports the strip of the named catalog model, or of a provider whose catalog models are all on stripped APIs, instead of `Model ... not found` or `Unknown provider`. A `models.json` model on a stripped API under a provider of its own is not a catalog model, so `--model` naming it reports `Model ... not found`.
 
@@ -1562,7 +1575,7 @@ Why: the keys can be recovered by anyone from the public certificates, so a forg
 
 Source of every digest: `internal/tlsdistrust/tlsdistrust.go`. The eight intermediates come from the `emudhra-attestation.zip` and `emudhra-attestation-aaa-cross.zip` attachments of Mozilla bug 2083449 (their certificate SHA-256 fingerprints equal the ones the bug lists, `TestFingerprintsMatchTheBug`), with the CCADB IDs the bug gives (direct A012294 to A012308, cross-signed A012333 to A012354). The three roots come from `lib/ckfw/builtins/certdata.txt` at NSS_3_131_RTM, the last tag that carries them (the serial of `emSign ECC Root CA - G3`, `3cf607a968700eda8b84`, is the one in Mozilla bug 2084101).
 
-Call-site markers: `internal/tlsdistrust/tlsdistrust.go`, `ai/http_transport.go` (`newStreamingTransport`, `dialStreamingTLS`), `ai/http_proxy.go` (`proxyOriginTransport`), `ai/openai_codex_websocket.go` (`codexWebSocketTLSConfig`), `ai/bedrock.go` (`newBedrockHTTPClient`), `internal/codingagent/selfupdate.go` (`clientWithUpdateTransportCA`), and the package imports of the clients that use `http.DefaultTransport`.
+Call-site markers: `internal/tlsdistrust/tlsdistrust.go`, `ai/http_transport.go` (`newStreamingTransport`, `dialStreamingTLS`), `ai/http_proxy.go` (`proxyOriginTransport`), `ai/openai_codex_websocket.go` (`codexWebSocketTLSConfig`), `ai/providers/bedrock/bedrock.go` (`newBedrockHTTPClient`), `internal/codingagent/selfupdate.go` (`clientWithUpdateTransportCA`), and the package imports of the clients that use `http.DefaultTransport`.
 
 Locked by: `TestForgedCertificateIsRefused` (a server certificate signed with the recovered key of each of the six TLS intermediates, issued and cross-signed, never completes a handshake with the hardened client), `TestHookRefusesWhatGoAccepts` (a synthetic CA that Go's verifier accepts is refused by the hook alone, in a real handshake, once its key is on the blocklist), `TestVerifyRejectsEveryCompromisedIntermediateOnBothPaths`, `TestVerifyRejectsTheRemovedRootsAndKeepsG1`, `TestBlocklist` and `TestFingerprintsMatchTheBug` (digests re-derived from the public certificates), `TestDefaultTransportRefusesAForgedServer`, `TestStreamingTransportRefusesACompromisedCA` (`ai`), `TestCodexWebSocketTLSConfigChecksTheChain`, `TestBedrockHTTPClientsCheckTheChain`, `TestSelfUpdateRefusesACompromisedCAEvenWhenTheSidecarTrustsIt` (`internal/codingagent`), and the two coverage guards above. The test certificate is signed in memory with a key recovered from a public certificate, and `TestNoProductionCodeImportsTheTestHelper` keeps that code out of production.
 

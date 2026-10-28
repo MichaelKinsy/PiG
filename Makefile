@@ -347,7 +347,14 @@ test-sdk-py: ## Run the Python extension SDK's pytest suite with its hash-locked
 
 .PHONY: test-sdk-py
 
-# The SDK scenario table (test/extension-conformance/sdkscenarios) runs once per SDK through the real host, with the Go, Node, Python and Rust scenario drivers, and each SDK must produce the observation the table gives. A row in a scenario's Red map must still produce exactly its recorded Got, so the lane that fixes it deletes the entry and a regression inside a red row still fails. CI runs it in the test-conformance shard and in the Windows and macOS extension-conformance shards, because it is a test of ./test/extension-conformance; this target runs it alone, with the wiring checks that tie the table to the wire methods the code derives.
+# The Lisp SDK's own tests (JSON vectors, the wire against an in-process fake host), run by the pinned SBCL that
+# automation/ci/install-sbcl.sh builds; PIG_SBCL names it. A missing SBCL fails: it is an environment failure, never a skip.
+test-sdk-lisp: ## Run the Lisp extension SDK's own tests with the pinned SBCL
+	@./automation/ci/test-sdk-lisp.sh
+
+.PHONY: test-sdk-lisp
+
+# The SDK scenario table (test/extension-conformance/sdkscenarios) runs once per SDK through the real host, with the Go, Node, Python, Rust and Lisp scenario drivers, and each SDK must produce the observation the table gives. A row in a scenario's Red map must still produce exactly its recorded Got, so the lane that fixes it deletes the entry and a regression inside a red row still fails. CI runs it in the test-conformance shard and in the Windows and macOS extension-conformance shards, because it is a test of ./test/extension-conformance; this target runs it alone, with the wiring checks that tie the table to the wire methods the code derives.
 test-sdk-conformance: ## Run the SDK conformance scenario table against every extension SDK through the real host
 	@go test ./test/extension-conformance -run '^TestSDKScenarios$$' $(GO_TEST_CI_COUNT)
 	@go test ./test/wiring -run 'TestScenarioCoversNameRealWireMethods|TestEveryAuthObjectMethodIsExercisedByAScenario' $(GO_TEST_CI_COUNT)
@@ -382,11 +389,12 @@ test-prereqs: ## Require every toolchain the core suite exercises
 	for tool in go git node npm python3 cargo rustc tmux; do \
 		command -v "$$tool" >/dev/null 2>&1 || missing="$$missing $$tool"; \
 	done; \
+	command -v "$${PIG_SBCL:-sbcl}" >/dev/null 2>&1 || missing="$$missing sbcl(PIG_SBCL)"; \
 	if [ -n "$$missing" ]; then \
 		echo "missing required Pig test toolchains:$$missing" >&2; \
 		exit 1; \
 	fi
-	@echo "test prerequisites: go, git, node, npm, python3, cargo, rustc, tmux"
+	@echo "test prerequisites: go, git, node, npm, python3, cargo, rustc, tmux, sbcl"
 
 test-fixtures: ## Build the Go and Rust extension fixtures that tests load
 	@./automation/ci/test-fixtures.sh
@@ -555,7 +563,7 @@ standard-check: ## Verify PiG Standard requires and resolves only fused extensio
 
 ##@ Gates
 
-check-core: startup-proxies build vet lint test test-go-modules test-sdk-rs test-sdk-py test-sdk-ts typescript-extension-corpus examples-check test-race test-integration lint-scenarios port-map-drift coverage-drift standard-check go-fix-clean divergence-consistency divergence-quality divergence-guard divergences-drift autofix-check port-lint any-trap perf-lint race-coverage check-contracts-fast source-hygiene test-provenance docs-drift bug-ledger-check perf-scoreboard-check module-size ## All deterministic build, lint, unit, race, and drift gates
+check-core: startup-proxies build vet lint test test-go-modules test-sdk-rs test-sdk-py test-sdk-lisp test-sdk-ts typescript-extension-corpus examples-check test-race test-integration lint-scenarios port-map-drift coverage-drift standard-check go-fix-clean divergence-consistency divergence-quality divergence-guard divergences-drift autofix-check port-lint any-trap perf-lint race-coverage check-contracts-fast source-hygiene test-provenance docs-drift bug-ledger-check perf-scoreboard-check module-size ## All deterministic build, lint, unit, race, and drift gates
 
 check: module-publication check-core parity-fast ## Pre-commit gate: published dependencies, check-core and parity-fast
 	@echo

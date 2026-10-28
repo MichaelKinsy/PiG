@@ -11,7 +11,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/coding/source"
 	"github.com/MichaelKinsy/PiG/internal/changeobservers"
-	"github.com/MichaelKinsy/PiG/internal/jsstring"
+	"github.com/MichaelKinsy/PiG/internal/jsstring/localecompare"
 	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
 
@@ -677,7 +677,7 @@ func (r *ThemeRegistry) Names() []string {
 	names := slices.Clone(r.names)
 	r.mu.RUnlock()
 	// The system theme comes first: it is the default and adapts to every terminal. The others follow in localeCompare order (theme.ts getAvailableThemesWithPaths).
-	collator := jsstring.NewCollator()
+	collator := localecompare.NewCollator()
 	slices.SortStableFunc(names, func(a, b string) int {
 		switch {
 		case a == SystemThemeName:

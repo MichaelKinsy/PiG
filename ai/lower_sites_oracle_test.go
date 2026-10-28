@@ -1,9 +1,6 @@
-//go:build !pig_strip_bedrock_converse_stream
-
 package ai
 
 // pi: packages/ai/src/api/anthropic-messages.ts
-// pi: packages/ai/src/api/bedrock-converse-stream.ts
 // pi: packages/ai/src/providers/opencode-headers.ts
 // pi: packages/ai/src/api/openai-completions.ts
 
@@ -73,7 +70,6 @@ func lowerSiteProbes() []lowerSiteProbe {
 		probes = append(probes,
 			lowerSiteProbe{Op: "toCC", Name: name},
 			lowerSiteProbe{Op: "fromCC", Name: name, Names: names[:1+random.Intn(3)]},
-			lowerSiteProbe{Op: "reserved", Name: name},
 			lowerSiteProbe{Op: "hasHeader", Name: name, Names: names[:1+random.Intn(3)]},
 			lowerSiteProbe{Op: "deepseek", Name: name, Provider: []string{"", "deepseek", "openai"}[random.Intn(3)]})
 	}
@@ -89,7 +85,7 @@ func TestJSLowerCaseSitesMatchPi(t *testing.T) {
 	}
 	src := filepath.Join(testenv.ModuleRoot(t), ".upstream", "current", "packages", "ai", "src")
 	cmd := exec.CommandContext(t.Context(), "node", "--disable-warning=ExperimentalWarning", "testdata/lower_sites.mjs",
-		filepath.Join(src, "api", "anthropic-messages.ts"), filepath.Join(src, "api", "bedrock-converse-stream.ts"), filepath.Join(src, "providers", "opencode-headers.ts"), filepath.Join(src, "api", "openai-completions.ts"))
+		filepath.Join(src, "api", "anthropic-messages.ts"), filepath.Join(src, "providers", "opencode-headers.ts"), filepath.Join(src, "api", "openai-completions.ts"))
 	cmd.Stdin = bytes.NewReader(payload)
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr
@@ -116,8 +112,6 @@ func TestJSLowerCaseSitesMatchPi(t *testing.T) {
 				tools[j] = ToolSchema{Name: name}
 			}
 			got = fromClaudeCodeName(probe.Name, tools)
-		case "reserved":
-			got = isReservedBedrockHeader(probe.Name)
 		case "hasHeader":
 			headers := ProviderHeaders{}
 			for _, name := range probe.Names {
@@ -145,7 +139,7 @@ func TestJSLowerCaseSitesMatchPi(t *testing.T) {
 	if differing > 12 {
 		t.Errorf("%d of %d probes differ from Pi", differing, len(probes))
 	}
-	for _, op := range []string{"toCC", "fromCC", "reserved", "hasHeader", "deepseek"} {
+	for _, op := range []string{"toCC", "fromCC", "hasHeader", "deepseek"} {
 		if positives[op] < 20 {
 			t.Errorf("%s probes are one-sided: %d positive answers", op, positives[op])
 		}

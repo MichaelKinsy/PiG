@@ -57,7 +57,7 @@ The flow in `label` mode: push; the light run reports `CI result` red with the m
 | Changed paths, Bookkeeping, Project documents, CI result, Linux verification, Prune superseded caches | always | 5 | |
 | Linux / preflight | always | 20 | Build, and vet natively, for both Windows architectures and for Android, and `go fix` |
 | Linux / test-fast-sharded | pr | 31 | |
-| Linux / test-fast | pr | 26 | |
+| Linux / test-fast | pr | 26 | Packages the pull request does not affect: it runs `make ci-test-changed`, the fast packages that `automation/ci/changed-packages.py` selects against the base branch (direct, affected and the pigfault tests of the durable driver), and the whole of `ci-test-fast` when the change touches `go.mod`, `go.sum`, `go.work` or `go.work.sum`, or a file no package test reads. The sharded, cmd/pig and extension host packages stay in their own rows. The run summary lists the selection (direct, affected, tagged, unmapped and module-wide counts and lists) and says whether the run fell back to the whole shard and why. |
 | Linux / test-cli-1 | pr | 15 | |
 | Linux / test-cli-2 | pr | 12 | |
 | Linux / test-subprocess | pr | 12 | |

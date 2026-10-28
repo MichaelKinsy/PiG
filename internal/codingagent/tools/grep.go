@@ -16,6 +16,7 @@ import (
 	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
+	"github.com/MichaelKinsy/PiG/internal/nodefs"
 	"github.com/MichaelKinsy/PiG/internal/nodespawn"
 )
 
@@ -73,7 +74,7 @@ func (t *GrepTool) operations() GrepOperations {
 // readFile does.
 func (t *GrepTool) openFile(path string) (io.ReadCloser, error) {
 	if t.Operations == nil || t.Operations.ReadFile == nil {
-		return os.Open(path)
+		return nodefs.OpenFile(path, os.O_RDONLY, 0)
 	}
 	text, err := t.Operations.ReadFile(path)
 	if err != nil {

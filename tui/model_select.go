@@ -13,6 +13,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/extensions/sdk/frontend"
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
+	"github.com/MichaelKinsy/PiG/internal/jsstring/localecompare"
 )
 
 // ModelScope discriminates the two views of the picker.
@@ -147,7 +148,7 @@ func sortModelItems(items []ModelSelectorItem, current, defaultModel string) []M
 			}
 			return 1
 		}
-		return jsstring.LocaleCompare(a.Provider, b.Provider)
+		return localecompare.Compare(a.Provider, b.Provider)
 	})
 	return out
 }

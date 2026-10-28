@@ -44,7 +44,7 @@ registry.install(defineExtension({ name: "output-ticks", tools: [streamer] }))
 const harness = await Harness.open(await openNodeSqliteStorage(join(process.env.TMPDIR ?? "/tmp", "output-ticks.sqlite")), { models, registry }, context)
 const root = await harness.root(context, { agent: { model: { provider: "faux", modelId: "faux-1" } } })
 const stream = await watchEvents(harness, root.id, context)
-stream.start(async events => {
+stream.start(async ({ value: events }) => {
 	for (const e of events) if (counting) { log(`event ${e.type}${e.toolName ? ` ${e.toolName}` : ""} +${since()}`); counting = false }
 })
 const submission = await root.submit({ type: "input", content: "go" }, context)

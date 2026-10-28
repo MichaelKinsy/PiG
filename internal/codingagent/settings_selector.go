@@ -8,7 +8,7 @@ import (
 	"strconv"
 
 	"github.com/MichaelKinsy/PiG/ai"
-	"github.com/MichaelKinsy/PiG/internal/jsstring"
+	"github.com/MichaelKinsy/PiG/internal/jsstring/localecompare"
 	"github.com/MichaelKinsy/PiG/tui"
 )
 
@@ -406,7 +406,7 @@ func newModelThinkingSubmenu(config SettingsConfig, overrides map[string]string,
 			Description: func(map[string]string) string { return "Select a model to configure" },
 			Options: func(map[string]string) []tui.SelectItem {
 				sorted := slices.Clone(config.AvailableDefaultModels)
-				collator := jsstring.NewCollator()
+				collator := localecompare.NewCollator()
 				slices.SortStableFunc(sorted, func(a, b *ai.Model) int {
 					aKey, bKey := modelSpec(a), modelSpec(b)
 					if aKey == currentModelKey {

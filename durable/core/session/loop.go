@@ -35,15 +35,21 @@ type Loop struct {
 	// waits one tick for it: it returns true after it parked start. session.ts #enqueue :530-531 starts a job through
 	// `this.#tail.then(job)`, a tick after the call when the tail is already resolved.
 	Begin func(start func()) bool
+	// Hops, when set, parks r on a chain of n hops and returns true; r.Resume runs once the chain ran, at once in the host's hopped step.
+	// The host keeps r itself, not a closure over it, so a continuation that carries its own state (a job, an invocation) costs the
+	// host no allocation.
+	Hops func(n int, r Resumer) bool
 	// Answered is set while a Tail is asked after a ClientReadLine job answered its caller a hop before its end (Settle): the tail
 	// then holds the line for the hop it gave up, so the next job starts where Pi's does.
 	Answered bool
 	// StartDelay is the ticks an idle-line job waited for its start (Begin) that its Hold adds to the job's duration: Hold takes it
 	// with TakeStartDelay.
 	StartDelay int
+	// lateNext is set by LateNext until the next job is queued.
+	lateNext bool
 	// tailFresh is set from the Tail asked as a job finishes until the loop drains: a NextTick asked then joins the tail's chain.
 	tailFresh bool
-	afterTail []func()
+	afterTail []queued
 	// Origin is the host async context of the code that is running (ABI section 5.4): Defer and the line capture it, and the
 	// Loop makes it current again when it runs the item or job. 0 is none. Retain and Release, when set, are told of every
 	// origin the line holds a job for, from the job's queuing to the end of its run.
@@ -72,22 +78,55 @@ type Loop struct {
 	after []func()
 }
 
-// queued is a microtask and the origin it was queued in, which is current again when it runs.
+// Resumer is a continuation that keeps its own state: the Loop runs it as a microtask (DeferResumer) or the host after a chain of
+// hops (Loop.Hops) without a closure made for each use.
+type Resumer interface{ Resume() }
+
+// queued is a microtask and the origin it was queued in, which is current again when it runs. It runs fn, or resumes r when fn is nil.
 type queued struct {
 	fn     func()
+	r      Resumer
 	origin uint32
 }
 
 type job struct {
+	l      *Loop
 	origin uint32       // the origin the job was queued in: the line runs it, and its completion, in it
 	run    func() error // returns a *NeedRead to park, any other error is the job's own
 	done   func(error)  // continuation, enqueued as a microtask after the job
-	bare   bool         // the job takes no time of its own: Hold is not asked (a host transaction's turn on the line)
-	read   bool         // a Session.readOnLine job: no change callback, settle or commit
-	idle   bool         // queued while the line was idle: it starts a tick later (Begin)
+	err    error        // what done receives
+	// late: done resumes a tick after its microtask, as the caller of an async function that returned the job's promise does.
+	late bool
+	bare bool // the job takes no time of its own: Hold is not asked (a host transaction's turn on the line)
+	read bool // a Session.readOnLine job: no change callback, settle or commit
+	idle bool // queued while the line was idle: it starts a tick later (Begin)
 	// client: done answers a host caller (ClientReadLine) and runs at Settle, a hop before the job's end.
 	client  bool
 	settled bool // done already ran at Settle
+}
+
+// Resume delivers done: in the microtask the Loop queued for it, or, for a late job, a tick after that.
+func (j *job) Resume() {
+	if j.late {
+		j.late = false
+		j.l.NextTickResumer(j)
+		return
+	}
+	j.done(j.err)
+}
+
+// DeferResumer queues r.Resume as a microtask.
+func (l *Loop) DeferResumer(r Resumer) { l.deferItem(queued{r: r}) }
+
+// NextTickResumer is NextTick for a continuation that keeps its own state.
+func (l *Loop) NextTickResumer(r Resumer) {
+	if l.tailFresh {
+		l.afterTail = append(l.afterTail, queued{r: r})
+		return
+	}
+	if l.Hops == nil || !l.Hops(1, r) {
+		r.Resume()
+	}
 }
 
 // NextTick runs fn one tick later: the resumption of an `await` of an async function that returned in the tick the line job it
@@ -102,7 +141,7 @@ func (l *Loop) OnComplete(fn func()) { l.after = append(l.after, fn) }
 
 func (l *Loop) NextTick(fn func()) {
 	if l.tailFresh {
-		l.afterTail = append(l.afterTail, fn)
+		l.afterTail = append(l.afterTail, queued{fn: fn})
 		return
 	}
 	if l.Begin == nil || !l.Begin(fn) {
@@ -120,13 +159,16 @@ func (l *Loop) TakeStartDelay() int {
 // Defer queues fn as a microtask. When the array is full and at least half of it is spent front, the queued items move to the
 // front instead of the array growing: the array stays proportional to what is queued, and each move is paid for by the items
 // that ran since the last one.
-func (l *Loop) Defer(fn func()) {
+func (l *Loop) Defer(fn func()) { l.deferItem(queued{fn: fn}) }
+
+func (l *Loop) deferItem(q queued) {
 	if l.qhead > 0 && len(l.queue) == cap(l.queue) && 2*l.qhead >= len(l.queue) {
 		n := copy(l.queue, l.queue[l.qhead:])
 		clear(l.queue[n:])
 		l.queue, l.qhead = l.queue[:n], 0
 	}
-	l.queue = append(l.queue, queued{fn, l.Origin})
+	q.origin = l.Origin
+	l.queue = append(l.queue, q)
 }
 
 // QueuedOrigins calls f with the origin of every microtask still queued: a Loop parked on a host answer keeps them across steps.
@@ -158,66 +200,57 @@ func (l *Loop) pushJob(j *job) {
 // waiting is the number of line jobs queued and not yet started.
 func (l *Loop) waiting() int { return len(l.jobs) - l.jhead }
 
+// enqueue queues j on the line, or, when the Admit check rejects it, delivers its done with the error as a microtask. A job queued
+// through LateNext is late.
+func (l *Loop) enqueue(j *job) {
+	j.l = l
+	j.late, l.lateNext = l.lateNext, false
+	if l.Admit != nil {
+		if err := l.Admit(); err != nil {
+			if j.done != nil {
+				j.err = err
+				l.DeferResumer(j)
+			}
+			return
+		}
+	}
+	l.pushJob(j)
+	l.kickLine()
+}
+
+// DeferDone delivers done(err) as a microtask, a tick later when late, as the done of a job the Admit check rejected.
+func (l *Loop) DeferDone(done func(error), err error, late bool) {
+	l.DeferResumer(&job{l: l, done: done, err: err, late: late})
+}
+
+// LateNext makes the next job queued through a Line method late: its done runs a tick after its microtask. runtime.commit is an async
+// function that returns the promise of the commit, and its caller resumes a tick after the commit's resolution.
+func (l *Loop) LateNext() { l.lateNext = true }
+
 // Line queues a job on the Session line. run is the job body; it restarts from
 // scratch after a NeedRead. done receives the job's final error (nil on
 // success) as a microtask.
 func (l *Loop) Line(run func() error, done func(error)) {
-	if l.Admit != nil {
-		if err := l.Admit(); err != nil {
-			if done != nil {
-				l.Defer(func() { done(err) })
-			}
-			return
-		}
-	}
-	l.pushJob(&job{run: run, done: done})
-	l.kickLine()
+	l.enqueue(&job{run: run, done: done})
 }
 
-// LineAfterTail is Line for a commit job queued through `#enqueue` (session.ts :530-531): on an idle line it starts a tick later
-// (Begin), as `this.#tail.then(job)` does on an already resolved tail.
+// LineAfterTail is Line for a commit job queued through `#enqueue` (session.ts :530-531): on an idle line it starts a tick later (Begin),
+// as `this.#tail.then(job)` does on an already resolved tail.
 func (l *Loop) LineAfterTail(run func() error, done func(error)) {
-	if l.Admit != nil {
-		if err := l.Admit(); err != nil {
-			if done != nil {
-				l.Defer(func() { done(err) })
-			}
-			return
-		}
-	}
-	l.pushJob(&job{run: run, done: done, idle: !l.Busy()})
-	l.kickLine()
+	l.enqueue(&job{run: run, done: done, idle: !l.Busy()})
 }
 
 // ReadLine queues a Session.readOnLine job (session.ts:105-115): a read-only job on the line, whose duration is its reads
 // plus the three ticks of the return through #enqueue (hopcost.ReadOnLine).
 func (l *Loop) ReadLine(run func() error, done func(error)) {
-	if l.Admit != nil {
-		if err := l.Admit(); err != nil {
-			if done != nil {
-				l.Defer(func() { done(err) })
-			}
-			return
-		}
-	}
-	l.pushJob(&job{run: run, done: done, read: true, idle: !l.Busy()})
-	l.kickLine()
+	l.enqueue(&job{run: run, done: done, read: true, idle: !l.Busy()})
 }
 
 // ClientReadLine is ReadLine for a job a host call queues and whose done answers that caller (an api_result). The caller awaits the
 // `run` promise of #enqueue, which settles a hop before the line tail resolves, so Hold calls Settle a hop before the job's end and
 // the tail holds the line one hop longer (session.ts :105-115, :530-537).
 func (l *Loop) ClientReadLine(run func() error, done func(error)) {
-	if l.Admit != nil {
-		if err := l.Admit(); err != nil {
-			if done != nil {
-				l.Defer(func() { done(err) })
-			}
-			return
-		}
-	}
-	l.pushJob(&job{run: run, done: done, read: true, idle: !l.Busy(), client: true})
-	l.kickLine()
+	l.enqueue(&job{run: run, done: done, read: true, idle: !l.Busy(), client: true})
 }
 
 // Settle answers the finished job's host caller now when the job came through ClientReadLine: Hold calls it a hop before the
@@ -228,7 +261,8 @@ func (l *Loop) Settle() bool {
 		return false
 	}
 	j.settled = true
-	l.Defer(func() { j.done(err) })
+	j.err = err
+	l.DeferResumer(j)
 	return true
 }
 
@@ -357,7 +391,8 @@ func (l *Loop) complete() {
 	}
 	l.ending, l.endErr = nil, nil
 	if j.done != nil && !j.settled {
-		l.Defer(func() { j.done(err) })
+		j.err = err
+		l.DeferResumer(j)
 	}
 	l.Answered = j.settled
 	tailed := (l.waiting() != 0 || !j.bare) && l.Tail != nil && l.Tail(l.fns().tailFn)
@@ -377,8 +412,8 @@ func (l *Loop) tailDone() {
 	l.kickLine()
 	after := l.afterTail
 	l.afterTail = nil
-	for _, fn := range after {
-		l.Defer(fn)
+	for _, q := range after {
+		l.deferItem(q)
 	}
 }
 
@@ -453,7 +488,11 @@ func (l *Loop) Run() error {
 			l.queue, l.qhead = l.queue[:0], 0
 		}
 		l.Origin = q.origin
-		q.fn()
+		if q.r != nil {
+			q.r.Resume()
+		} else {
+			q.fn()
+		}
 	}
 	l.tailFresh = false
 	if l.parked != nil {
