@@ -79,7 +79,9 @@ junction spelled out), so the translation must match both."
     (labels ((visit-component (component)
                (dolist (spec (asdf:component-sideway-dependencies component))
                  (let ((name (dependency-name spec)))
-                   (when name (visit-name name))))
+                   ;; a serial system names the component before as a dependency: a sibling, not a system to find
+                   (when (and name (not (and (asdf:component-parent component) (asdf:find-component (asdf:component-parent component) name))))
+                     (visit-name name))))
                (when (typep component 'asdf:parent-component)
                  (mapc #'visit-component (asdf:component-children component))))
              (visit-name (name)
