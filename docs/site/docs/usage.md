@@ -1,6 +1,6 @@
 # Using PiG
 
-Run `pig` in the directory you want to work in to start the interactive TUI. PiG uses that directory to discover files, instructions and configuration, and to group saved sessions. PiG commands include top-level CLI verbs, slash commands inside the TUI, and keyboard shortcuts. The interactive use follows Pi 1.4.0 ([Pi's terminal usage guide](https://github.com/earendil-works/pi/blob/v1.2.0/packages/coding-agent/docs/usage.md)).
+Run `pig` in the directory you want to work in to start the interactive TUI. PiG uses that directory to discover files, instructions and configuration, and to group saved sessions. PiG commands include top-level CLI verbs, slash commands inside the TUI, and keyboard shortcuts. The interactive use follows Pi 1.4.0 ([Pi's terminal usage guide](https://github.com/earendil-works/pi/blob/main/packages/coding-agent/docs/usage.md)).
 
 - [Command line](/docs/latest/cli) lists the CLI verbs, the generic subcommands, and the `pig docs` commands for the embedded reference bundle.
 - [Slash commands](/docs/latest/slash-commands) lists the commands you type in the TUI editor.
