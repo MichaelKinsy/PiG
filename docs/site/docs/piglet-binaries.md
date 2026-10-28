@@ -468,18 +468,55 @@ A Binary that accepts overlays takes the same selectors stock PiG does and resol
 PIG_PIGLET_PATH=./extra.yaml ./pig-base
 ```
 
-The overlay is an ordinary Piglet file with its own `name`; its own `extends` chain works as usual. PiG merges it onto the Binary's Piglet as `extends` merges a child onto its base. Its extensions and skills follow the Binary's, its Packages and `strip` lists add, `model` and `description` replace, and the Binary keeps its name for `/piglet` and for strip messages. `/piglet` also prints `Overlay of: <Binary>`. A Binary starts exactly as before when you select no Piglet: it installs nothing and resolves nothing.
+The overlay is an ordinary Piglet file with its own `name`; its own `extends` chain works as usual. The Binary keeps its name for `/piglet` and for strip messages, and `/piglet` also prints `Overlay of: <Binary>`. A Binary starts exactly as before when you select no Piglet: it installs nothing and resolves nothing.
 
-The Binary's own contents stay what was verified. An overlay can add and narrow; it cannot change what the Binary baked. Each refusal names the field and the Binary and stops the start; the Binary never falls back to its own Piglet when an overlay fails:
+An overlay merges onto the Binary's Piglet exactly as an `extends` child merges onto its base, so a Binary that sets `allowOverlays: true` behaves like stock pig started with a different Piglet.
 
-| The overlay | Result |
+- `systemPrompt` replaces the Binary's prompt. `--system-prompt` is accepted with stock precedence (the flag wins over the Piglet's prompt); a Binary without `allowOverlays` still refuses it.
+- `extends.remove` removes Binary members: `extensions`, `skills`, `packages`, `slots: [frontend]` (the Binary then starts without its compiled-in frontend) and `strip` entries.
+- `extends.allowWiden: true` allows what widens the Binary's ceilings: `tools`, `discovery`, `agentEnv`, an extension's `tools`, and removing a strip entry. Without it resolution fails with `capability widening [...] requires extends.allowWiden: true`, as for any `extends` child.
+- An `extends` block with no `source` extends the Binary itself. It carries only `remove`, `allowWiden` and nothing else; a Piglet file with such a block resolves only as an overlay on a Piglet Binary that sets `allowOverlays`, and stock pig refuses it by name.
+
+```yaml
+name: tern-lite
+systemPrompt:
+  text: You answer in one paragraph.
+extends:
+  allowWiden: true
+  remove:
+    slots: [frontend]
+    extensions: [codegraph]
+    strip:
+      tools: [bash]
+```
+
+A name in `extends.remove` must exist in the Binary. Naming a member the Binary does not have fails with `remove.extensions: "codegraph" is absent`. The `tern-lite` overlay above needs a Binary that has an extension named `codegraph`.
+
+To test an overlay, start the Binary with the overlay as its Piglet, for example `./pig-base --piglet ./tern-lite.yaml`. Stock `pig piglet validate` rejects an overlay file by design, because an `extends` block without a `source` has no base to extend.
+
+Three things stay fixed, because they are compiled into the Binary. Each refusal names the field, the Binary and the reason:
+
+| The overlay | Why it is refused |
 |---|---|
-| adds extensions, skills or Packages with origins; sets `model`; strips more built-ins; narrows `tools` | Allowed. Its extensions resolve at run time as under stock PiG, so a `local:` origin runs as a subprocess extension. |
-| names an extension or skill the Binary carries, or removes one through its own `extends.remove` | Refused: `extensions[<name>]: Piglet Binary "<name>" already carries one with this name; an overlay cannot replace it`. Baked members are fused or embedded and checked at startup. |
-| sets `slots.frontend` | Refused: a frontend member is Go code compiled into the Binary. |
-| sets `systemPrompt` | Refused, as `--system-prompt` is: use `--append-system-prompt`. |
-| widens `tools`, `discovery`, `agentEnv` or an extension's `tools` | Refused. An overlay has no `allowWiden`; rebuild the Binary's Piglet to widen. |
-| re-enables a stripped built-in or slot | Refused: `strip.tools: "bash" is stripped by Piglet Binary "<name>"; an overlay cannot re-enable it`. |
+| sets `slots.frontend` (a new one, or another under the Binary's) | A frontend is Go code linked into the Binary. Removing the Binary's frontend with `extends.remove.slots: [frontend]` is allowed. |
+| removes a `strip` entry whose built-in a build tag compiled out: `strip.extensions` (`mcp`, `codemode` and the other built-in extensions), `strip.apis`, and the compile-out `strip.features` (`docs` is one) | The code is not in the executable. `pig piglet show` marks these `stripped(binary)`. |
+| names a fused or embedded extension again with `origins` | The Binary selects its own members by name and cannot build another at run time under that name. Remove it with `extends.remove.extensions` and add the new one under another name. |
+
+An overlay can undo runtime strips: `strip.tools`, `strip.commands` and the runtime-only features (`themes`, `skills`, `prompt-templates`), which `pig piglet show` marks `stripped(runtime)`. It cannot undo a `stripped(binary)` entry.
+
+A Binary that accepts overlays otherwise behaves as stock pig running the same Piglet: every CLI flag, environment variable, setting, Package and `pig install`, `-e` source, `/reload` and discovery of extensions, skills, prompts and themes was compared against `pig --piglet`. Ambient discovery follows the Piglet's `discovery` list, as it does for stock pig; a Binary without `allowOverlays` discovers no ambient extensions or skills. These differences remain, each with its reason:
+
+| Difference from stock pig | Reason |
+|---|---|
+| The compiled-in frontend, fused extensions and prebuilt cells start from the executable, not from source: no build, no `cells/go` or toolchain cache files. | They are linked into the Binary. |
+| `strip` entries marked `stripped(binary)` stay off, and `pig mcp` or `pig docs` say they are stripped. | A build tag removed the code. |
+| `pig update` refuses with the immutable-Binary message when the Piglet sets `release.version`. | The Binary's release owns its updates. |
+| `pig version` and `pig diagnose` report the Binary's build identity. | The artifact is built by `pig piglet build`, not stamped from the PiG checkout. |
+| A baked skill or fused extension has no file, so its location in `/skill:` blocks, `get_commands` and `sourceInfo` is `builtin:piglet` or the extension name. | Nothing exists on disk to point at. |
+| `/piglet` prints the Binary's name, and `Overlay of: <Binary>` when an overlay is selected. | Stock pig has no Binary. |
+| A standalone overlay file inherits the Binary's members; stock `--piglet` starts from nothing. `PIG_PIGLET_NAME` and `PIG_PIGLET_PATH` select the overlay without `--piglet`, as they select the Piglet for stock pig. | The Binary's Piglet is the base the overlay extends. |
+| An overlay load error names the overlay and the Binary: `overlay <path> on Piglet Binary "<name>": ...`. | The Binary is the base of the derivation. |
+| `pig login`, `pig mcp` and the other subcommands run before any overlay is resolved and see the Binary's Piglet. | Subcommands never read `--piglet`, on stock pig either. |
 
 Without `allowOverlays`, the Binary refuses the selector and names itself:
 

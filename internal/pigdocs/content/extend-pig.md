@@ -85,7 +85,7 @@ A Binary is the heaviest delivery form. Try the lighter forms first:
 - `pig piglet add <file>` copies only local Resources inside the Piglet directory. A relative origin such as `local:./x.mjs` is refused. Use a Resource directory.
 - Fused extensions share the process of the application. A panic or leak in one can stop the whole application.
 - A Binary can still need things it does not contain: MCP services, Node 22.13 or newer for TypeScript extensions, secrets, and credentials. Do not call it self-contained when it has such requirements.
-- Strips that name a compiled-in built-in cannot be undone by an overlay: see [piglets](piglets.md#piglet-binary).
+- Strips that name a compiled-in built-in cannot be undone by an overlay: see [piglets](piglets.md#accept-overlay-piglets).
 
 ## Change PiG source
 

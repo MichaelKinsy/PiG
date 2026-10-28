@@ -28,8 +28,8 @@ Write commits as `type(scope): summary`. Keep the summary under 72 chars.
 Explain *why* in the body, not what. Never mention tooling.
 ```
 
-- **`name`** - the skill's identifier (defaults to the directory name).
-- **`description`** - what the skill does and when it applies. The model uses it to decide when to read the skill, so write both parts.
+- **`name`** - the skill's identifier (defaults to the directory name). Use lowercase letters, digits, and hyphens, at most 64 characters, with no leading, trailing, or doubled hyphen.
+- **`description`** - required. It says what the skill does and when it applies. The model uses it to decide when to read the skill, so write both parts. A skill with no description, or an empty one, is left out of the prompt, and the session still starts. Keep it to 1024 characters or fewer.
 - **body** - the instructions. PiG does not put the body in the system prompt. The model reads this file when the description matches the task.
 
 ## Load a skill
