@@ -330,6 +330,11 @@ func Extension() *sdk.Extension {
 	ext.Flag("flag-string", sdk.FlagOptions{Type: sdk.FlagString, Default: "default"})
 	ext.Flag("flag-empty", sdk.FlagOptions{Type: sdk.FlagString, Default: ""})
 	ext.Flag("flag-unset", sdk.FlagOptions{Type: sdk.FlagString})
+	ext.Command("tui-alt-frame-probe", "Read a TuiAltScreen from a component's render and exercise overlay visibility", tuiAltFrameProbe)
+	ext.Command("tui-alt-children-probe", "Read TuiAltScreen children after addChild, removeChild and clear, with components of equal content", tuiAltChildrenProbe)
+	ext.Command("tui-alt-reentry-probe", "Call the frame's own members from a component's render and report that they fail", tuiAltReentryProbe)
+	ext.Command("tui-alt-go-identity-probe", "Pass component values and equal-content pointers to a TuiAltScreen", tuiAltGoIdentityProbe)
+	ext.Command("tui-alt-screen-probe", "Drive a TuiAltScreen over a recording terminal", tuiAltProbe)
 	ext.Command("flag-probe", "Report registered flag values", func(ctx sdk.Context, _ string) error {
 		values := []any{}
 		for _, name := range []string{"flag-true", "flag-false", "flag-string", "flag-empty", "flag-unset", "unregistered"} {

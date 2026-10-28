@@ -454,6 +454,10 @@ file until it exits, so the pages its system prompt names stay for as long as th
 session runs.
 The stock system prompt points at this build's bundle so the agent can inspect
 the exact extension, Package, and Piglet contracts implemented by its binary.
+While a Piglet is active, its "When asked about" list adds one topic after Pi's last
+one, "Piglets and their tool scope (docs/piglets.md)" (owner-approved 2026-10-28). The
+`docs` feature owns it, as it owns the whole section. Without a Piglet the section is
+Pi's text, byte for byte.
 The `codemode` description and the argument errors of its `models` globals name
 the bundle's `codemode.md` where Pi names `CODEMODE_DOCS_PATH` in its package.
 When the config root cannot be written and holds no bundle of the running
@@ -511,10 +515,44 @@ surprises):
   (`scope.MCPAdapterExtensionName`). Listing the adapter enables its MCP tools
   (optionally filtered by that entry's `tools` scope); omitting it from a
   positive-only piglet hides them. A piglet with no `extensions:` section at
-  all keeps the permissive default (all MCP tools visible). This closes a prior
-  leak where a positive-only piglet that omitted the adapter still exposed all
-  MCP tools, and makes `extensions: [pig-mcp-adapter]` meaningful rather than a
-  no-op.
+  all keeps the permissive default (all MCP tools visible).
+- Built-in MCP tools (`builtin:mcp`; namespace `mcp__<server>`, names
+  `mcp__<server>__<tool>`) are scoped exactly like the adapter's `mcp:<server>`
+  source, by the same entry (step 2 of `docs/design/builtin-mcp.md`). Choice where
+  the design was silent, taking the conservative reading: a positive-only piglet
+  that does not name the adapter hides every MCP server's tools and the MCP
+  resource tools (`list_mcp_resources`, `list_mcp_resource_templates`,
+  `read_mcp_resource`), which the same entry governs by name. Stock pig without a
+  piglet is unchanged.
+
+Registry scope (owner-approved 2026-10-28): a piglet's tool scope bounds the
+Session's tool registry, not only its active set. Pi's `--tools` and
+`--exclude-tools` remove tools from the registry itself (`agent-session.ts:1557-1561, 3571-3574`,
+`_isAllowedTool`; PiG ports it as `extension.ToolFilter`); a piglet scope that only
+narrowed the active set left a hidden tool callable from `codemode` and findable by
+`tool_search`, which read the registry. There is one mechanism: the piglet compiles
+into `extension.ToolScope` (`piglet.CompileToolScope`), which `ToolFilter.WithScope`
+holds, so `ToolFilter.AllowsTool` keeps a tool only when `--tools`/`--exclude-tools`
+and the scope both keep it. It applies wherever `_isAllowedTool` applies: the
+definitions, the registry, `getAllTools` (in-process and the extension host's),
+activation and the refresh after a late registration. The rules are on
+`extension.ToolScope`: a built-in tool follows the root `tools` list, an extension's
+tool follows its entry's `tools` list, and an MCP tool (source `mcp:<server>`,
+namespace `mcp__<server>`, or an MCP resource tool) follows the `pig-mcp-adapter`
+entry. `coding.SessionOptions.ToolScope` carries the scope; without a piglet it is
+nil and the registry is exactly what `--tools` and `--exclude-tools` leave (stock
+pig keeps Pi's `--tools` semantics: a bare allowlist keeps MCP tools reachable
+through `codemode` and `tool_search`). `followsMCPServers` (hiding `codemode` and
+`tool_search` when no MCP tool stayed visible) is deleted: they are ordinary tools
+that reach only what the registry keeps. The scope records the tools it removed;
+the piglet extension notifies the user once per change (server, tools and reason)
+and `pig piglet show` prints the MCP scope line, and the agent gets one
+line naming the active piglet (and the Binary an overlay sits on), the most its tool
+scope lets it reach, what the strip lists removed, an untrusted project and `pig piglet show <source>`
+(`AgentToolScopeLine`; a Piglet Binary has no docs section, so this line is all its
+agent learns). The rule
+table in `internal/pigdocs/content/piglets.md` and `mcp.md` is computed from the code
+(`coding/piglet/scope_table.go`) and a test keeps it equal.
 
 Upstream pi stamps `sourceInfo` automatically in the in-process extension loader
 (`loader.ts:221 sourceInfo: extension.sourceInfo`). Pig's subprocess host must
@@ -545,6 +583,15 @@ Call-site markers:
 - `coding/extension/context.go`: `GetAllTools`, `GetActiveTools`,
   `SetActiveTools`, `GetFlagValue`
 - `coding/extension/context_actions.go`: `ContextActions` struct
+- `coding/extension/tool_filter.go`: `ToolScope`, `ToolFilter.WithScope`, `ToolFilter.AllowsTool`
+- `coding/session.go`: `SessionOptions.ToolScope`
+- `coding/session_tool_registry.go`: `sessionToolRegistry.compileFilter`, `Session.ToolScope`
+- `coding/piglet/scope.go`: `CompileToolScope`
+- `coding/piglet/scope_summary.go`: `MCPScopeLine`, `ToolScopeNotice`, `AgentToolScopeLine`
+- `coding/piglet/scope_table.go`: `ToolScopeTableMarkdown`
+- `internal/codingagent/prompts/docs_section.go`: `pigletTopic`
+- `internal/codingagent/prompts/piglet_topic.go`: `SetPigletDocsTopic`
+- `coding/cli/main.go`: the `prompts.SetPigletDocsTopic` call
 - `coding/extension/host/subprocess/protocol.go`: `ToolDecl.Source`
 - `extensions/sdk/protocol.go`: `toolDef.Source`
 - `extensions/sdk/extension.go`: `ToolWithSource()`
@@ -554,7 +601,7 @@ Call-site markers:
 - `coding/extension/host/subprocess/host.go`: `buildExtension()` reads
   `ToolDecl.Source` into `RegisteredTool.SourceInfo`
 - `internal/codingagent/interactive_extensions.go`: wires `ContextActions`
-- `coding/piglet/scope.go`: `ScopeTools()` MCP branch
+- `coding/piglet/scope.go`: `CompileToolScope()`, `extension.ToolScope` MCP branch (coding/extension/tool_filter.go)
 - `coding/piglet/main.go`: `BuildExtension()` calls
   `SetActiveTools`
 
@@ -1624,21 +1671,25 @@ SCRUTINIZED:approved
 
 ## D202 A Piglet Binary can declare that it accepts overlay Piglets (`build.allowOverlays`)
 
-Stock disposition: inert capability. Stock PiG runs one Piglet per process and has no baked Piglet, so `build.allowOverlays` does nothing for `pig --piglet`; it only changes what a Piglet Binary built from the Piglet does with a Piglet selected at launch. The default is off, and a Binary built without it behaves exactly as before.
+Stock disposition: inert capability. Stock PiG runs one Piglet per process and has no baked Piglet, so `build.allowOverlays` does nothing for `pig --piglet`; it only changes what a Piglet Binary built from the Piglet does with a Piglet selected at launch. The default is off, and a Binary built without it behaves exactly as before. One more stock-visible effect: `extends.source` is optional in the schema and parser, because an overlay's `extends` block without a source extends the Binary; stock resolution of such a Piglet fails with `extends.source is required unless a Piglet Binary that sets build.allowOverlays runs the Piglet as an overlay`.
 
-What: A Piglet Binary refused `--piglet`, `PIG_PIGLET_PATH` and `PIG_PIGLET_NAME` (`enforcePigletBinaryScope`), so a custom base Piglet (Pigpen's `pig-tern`, any fused base) could not be combined with another Piglet without building a third Binary for each pair. `build.allowOverlays: true` in the Piglet you build lets its Binary take those selectors. The selected Piglet resolves through the same code as on stock PiG (`piglet.ResolveWithTrust`: project trust for workspace names, the user and system Piglet directories, no bare name read from the working directory; then `ResolveEffectiveWithOptions`, so its Packages install by the D194 flow and its own `extends` chain works) with the Binary's baked Piglet as the implicit base of the chain root (`ResolveOptions.Base`, merged by `mergePiglets` as `extends` merges a child). The setting is one boolean of `build`, so like all of `build` it belongs to the Piglet that is built and is not inherited through `extends`. `piglet.Bake` keeps `build.allowOverlays` and no other `build` key in the baked Piglet, so the digest of the baked Piglet (the effective digest of the resolution record, the `pigletDigest` of the signed manifest) covers it; no record field, no version field and no reader branch were added. `pig piglet verify --source` and the container builder's localized Piglet bake it the same way.
+What: A Piglet Binary refused `--piglet`, `PIG_PIGLET_PATH` and `PIG_PIGLET_NAME` (`enforcePigletBinaryScope`), so a custom base Piglet (Pigpen's `pig-tern`, any fused base) could not be combined with another Piglet without building a third Binary for each pair. `build.allowOverlays: true` in the Piglet you build lets its Binary take those selectors, and the Binary is then a base harness that feels like vanilla pig with a different starting Piglet. The selected Piglet resolves through the same code as on stock PiG (`piglet.ResolveWithTrust`, then `ResolveEffectiveWithOptions`, so its Packages install by the D194 flow and its own `extends` chain works) with the Binary's baked Piglet as the implicit base of the chain root (`ResolveOptions.Base`, `resolveOverlayRoot`). The root merges exactly as an `extends` child merges onto its base (`mergePiglets`): `systemPrompt` replaces; `extends.remove` removes extensions, skills, Packages, the `frontend` slot and strip entries; `extends.allowWiden: true` widens `tools`, `discovery`, `agentEnv`, an extension's `tools` and the runtime strip lists, and without it the extends error `capability widening [...] requires extends.allowWiden: true` applies. A root overlay with no `extends` block, or one whose block has no `source`, is a child of the Binary; an `extends` block without `source` carries only `remove` and `allowWiden`. The effective Piglet keeps the Binary's name, its lineage starts with `binary:<name>` (`Piglet.OverlayOf`) and `/piglet` adds `Overlay of: <name> (Piglet Binary)`.
 
-The effective Piglet keeps the Binary's name, its lineage starts with `binary:<name>` (the baked digest) and `/piglet` adds `Overlay of: <name> (Piglet Binary)`. The Binary's own contents stay what was verified: after merging, `checkOverlay` compares the effective Piglet with the baked one and refuses, naming the field and the Binary, an overlay that replaces or removes a baked extension or skill, sets `slots.frontend` (a frontend member is Go compiled in at build time), sets `systemPrompt` (as `--system-prompt` is refused on a Binary), widens `tools`, `discovery`, `agentEnv` or an extension's `tools`, drops or changes a declared secret, or re-enables a stripped built-in. An overlay can add extensions, skills and Packages with origins (resolved at run time like a stock `--piglet`), set `model`, narrow `tools` and strip more. The checks run on the final Piglet, so a later link of the overlay's own `extends` chain cannot undo them, and a Piglet that was requested and fails never falls back to the Binary's own Piglet, including an unresolvable `PIG_PIGLET_NAME`. A Binary without the setting refuses the selectors with `pig: this Piglet Binary (<name>) runs only its built-in Piglet and does not accept --piglet overlays ...`, naming the setting. Signature, baked Piglet and component closure verification, the update ownership tiers and the startup without a selector are unchanged.
+Refused, because it is compiled into the Binary (`checkOverlay`; each message names the field, the Binary and the reason): (1) setting `slots.frontend`, whether the Binary has none (a frontend is Go linked in at build time) or has its own (removing it with `extends.remove.slots: [frontend]` is allowed, and the Binary then starts without its frontend: `overlayRemovedFrontend`, `frontendpack.SelectedIf`); (2) removing a strip entry whose built-in a build tag compiled out (`stripBuildTag`: built-in extensions, APIs and the compile-out features, `stripped(binary)`), while runtime entries (tools, commands, runtime-only features, `stripped(runtime)`) can be re-enabled, and the Binary's recorded strip is undone before the overlay's list applies (`undoBinaryStrip`); (3) naming a fused or embedded extension again with `origins`. Removing such an extension is allowed: `droppedBinaryMembers` keeps the Binary from starting the fused config (`withFusedExtensionConfigs`, `/reload` included) and the embedded cell member (`withoutDroppedMembers`). A declared secret, `agentEnv`, a skill and a system prompt are not compiled in and follow the extends rules.
+
+`--system-prompt` on a Binary with `allowOverlays` is accepted with stock precedence; a Binary without it keeps refusing it (`pigletBinarySystemPromptRefusal`). A Binary with `allowOverlays` discovers ambient extensions and skills from its Piglet's `discovery`, as stock PiG running a Piglet does (`cliRuntimeBuilder.ambientScopes`); a Binary without it discovers none.
+
+Audit against stock `pig --piglet` (about 1,100 pairs on xd670: every `--help` flag, subcommands, environment variables, settings, Packages and `pig install`, `-e`, `/reload`, `/piglet`, discovery of extensions, skills, prompts and themes; Binaries with and without a fused extension and a frontend). Differences fixed: an overlay's skill location for a baked skill (`Piglet.BakedSkill`), the interactive `/skill:` block of an inline skill having no location, Piglet skill order (`orderPigletSkills`), the package-command trust load starting the Binary's fused configs (`loadSubprocessExtensionSet`), and an unresolvable `PIG_PIGLET_NAME` printing an extra warning. Differences kept, each with its reason: fused extensions, prebuilt cells and the frontend start from the executable (no build caches); `stripped(binary)` entries stay off and their subcommands say so (build tag); `pig update` refuses a Binary whose Piglet sets `release.version` (update ownership); `pig version`/`pig diagnose` build identity; a baked skill or fused extension has no file location (`builtin:piglet`); `/piglet` names the Binary; a standalone overlay file inherits the Binary's members and `PIG_PIGLET_NAME`/`PIG_PIGLET_PATH` select the overlay without `--piglet` (the Binary's Piglet is the base); an overlay load error names the overlay and the Binary; subcommands run before any overlay resolves.
 
 Pi source: none. Pi has no Piglet, no Piglet Binary and no overlay.
 
-Why: a fused base such as `pig-tern` is the right place for the compiled parts (a frontend slot, stripped built-ins, fused extensions), but users also layer ordinary Piglets (an extra extension, a model, a stricter strip list) on top of stock PiG with `--piglet`. Without this, every pair needs its own fused Piglet. The overlay is user input outside the verified closure, so the Binary's author opts in, and what the Binary baked cannot be changed by it.
+Why: a fused base such as `pig-tern` is the right place for the compiled parts (a frontend slot, stripped built-ins, fused extensions), but users also layer ordinary Piglets on top of stock PiG with `--piglet`, and want the Binary to behave like stock with a different starting Piglet: replace the prompt, drop the compiled frontend, drop a member. Without this, every pair needs its own fused Piglet. Only what is physically in the executable cannot change.
 
-Call-site markers: `coding/piglet/types.go` (`BuildSpec.AllowOverlays`), `coding/piglet/overlay.go` (`OverlayBase`, `resolveOverlayRoot`, `checkOverlay`), `coding/piglet/extends.go` (`ResolveOptions.Base`), `coding/piglet/bake.go`, `coding/piglet/lineage_cli.go`, `coding/pigletbuild/container_builder.go`, `coding/pigletbuild/binarypiglet/binarypiglet.go` (`OverlayBase`, `Name`), `coding/cli/main.go` (`pigletBinaryOverlayRefusal`, `resolvePiglet`) and `coding/cli/cli_runtime_build.go`.
+Call-site markers: `coding/piglet/types.go` (`BuildSpec.AllowOverlays`, `ExtendsSpec.Source` optional), `coding/piglet/overlay.go` (`OverlayBase`, `resolveOverlayRoot`, `checkOverlay`, `unchangedBakedSkills`), `coding/piglet/extends.go` (`ResolveOptions.Base`, `Piglet.OverlayOf`, `Piglet.BakedSkill`), `coding/piglet/lineage.go`, `coding/piglet/piglet.schema.json`, `coding/piglet/bake.go`, `coding/piglet/lineage_cli.go`, `coding/pigletbuild/container_builder.go`, `coding/pigletbuild/binarypiglet/binarypiglet.go` (`OverlayBase`, `CompiledFrontendMember`, `Name`), `internal/frontendpack/frontendpack.go` (`Fused`, `SelectedIf`), `coding/cli/main.go` (`pigletBinaryOverlayRefusal`, `pigletBinarySystemPromptRefusal`, `resolvePiglet`, `undoBinaryStrip`, `droppedBinaryMembers`, `overlayRemovedFrontend`), `coding/cli/extensions.go` (`withFusedExtensionConfigs`, `loadSubprocessExtensionSet`), `coding/cli/cli_runtime_build.go` (`ambientScopes`), `coding/cli/piglet_skills.go` (`orderPigletSkills`) and `coding/cli/rpc_mode.go` (`rpcResolvedSkills`).
 
-Locked by: `TestOverlayAddsToTheBinaryPigletAndKeepsItsIdentity`, `TestOverlayResolutionLeavesTheBakedPigletUnchanged`, `TestOverlayChainResolvesOnTheBinary`, `TestOverlayRefusesWhatChangesTheBinary` (one case for each refusal above, each asserting the field and the Binary in the message), `TestOverlayChecksAgentEnvironmentSecretsAndKeepModeOnTheFinalPiglet`, `TestBuildAllowOverlaysIsStrictDefaultOffAndNotInherited`, `TestBakeKeepsOnlyAllowOverlaysFromBuild`, `TestProvenanceCoversAllowOverlays`, `TestAC1SchemaParserAgreement` (the schema takes a boolean `allowOverlays`), `TestOverlayBase`, `TestContainerLocalizedPigletKeepsAllowOverlays`, `TestPigletBinaryWithoutAllowOverlaysRefusesEverySelector`, `TestPigletBinaryWithAllowOverlaysAcceptsEverySelector`, `TestResolvePigletLaysAnOverlayOnAnAcceptingBinary`, `TestResolvePigletNeverFallsBackToTheBinaryWhenAnOverlayDoesNotResolve`, and `TestPigletBinaryAcceptsOverlaysOnlyWhenItsPigletSaysSo` (builds a signed accepting Binary and a closed one with a fused extension, launches each with `--piglet`, `PIG_PIGLET_PATH` and `PIG_PIGLET_NAME`, asserts the overlay's extension flag and strip list apply, the closed Binary's refusal, and each forbidden override's refusal).
+Locked by: `TestOverlayAddsToTheBinaryPigletAndKeepsItsIdentity`, `TestOverlayResolutionLeavesTheBakedPigletUnchanged`, `TestOverlayChainResolvesOnTheBinary`, `TestOverlayRefusesWhatChangesTheBinary` (one case for each of the three refusals), `TestOverlayMergesAsAnExtendsChild`, `TestOverlayWideningNeedsAllowWidenAsExtendsDoes`, `TestOverlayRemovesOnlyWhatTheBinaryHas`, `TestExtendsWithoutSourceNeedsAPigletBinary`, `TestOverlayRecordsItsPigletBinary`, `TestCheckOverlayStripDispositions`, `TestBuildAllowOverlaysIsStrictDefaultOffAndNotInherited`, `TestBakeKeepsOnlyAllowOverlaysFromBuild`, `TestProvenanceCoversAllowOverlays`, `TestAC1SchemaParserAgreement`, `TestOverlayBase`, `TestContainerLocalizedPigletKeepsAllowOverlays`, `TestPigletBinaryWithoutAllowOverlaysRefusesEverySelector`, `TestPigletBinaryWithAllowOverlaysAcceptsEverySelector`, `TestResolvePigletOverlayReplacesPromptAndRemovesMembers`, `TestOverlayRemovesFrontendWhenTheBinaryHasOne`, `TestOverlayDropsRemovedCompiledInMembers`, `TestOverlaySkillsKeepDeclarationOrderAndBakedSkillsKeepTheirLocation`, `TestSystemPromptOnAPigletBinary`, `TestAmbientScopesOfAPigletBinary` and the real-Binary `TestPigletBinaryAcceptsOverlaysOnlyWhenItsPigletSaysSo`.
 
 Remove when: upstream Pi provides Piglet composition and immutable build artifacts that accept an overlay, or PiG drops Piglet Binaries.
 
-Approval: owner request (Nicholas Recht's feedback on the Tern renderer, 2026-10-25) for PiG 0.6.0; design reviewed and approved by the release lead 2026-10-25.
+Approval: owner request (Nicholas Recht's feedback on the Tern renderer, 2026-10-25) for PiG 0.6.0; redesign to extends-child semantics approved by the owner 2026-10-28.
 SCRUTINIZED:approved

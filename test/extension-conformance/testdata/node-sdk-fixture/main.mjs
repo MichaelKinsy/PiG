@@ -595,6 +595,134 @@ export default function (pi) {
       ctx.ui.notify("overlay-focus=ok", "info");
     },
   });
+  // Pi's TuiAltScreen is served as Pi's own class; the Go, Rust and Python SDKs reach the host's port of it, and every SDK must report this text.
+  pi.registerCommand("tui-alt-screen-probe", {
+    description: "Drive a TuiAltScreen over a recording terminal",
+    handler: async (_args, ctx) => {
+      const { TuiAltScreen } = piTui;
+      const log=[]; let onInput, onResize, started=false;
+      const term={columns:20,rows:6,kittyProtocolActive:false,
+       start(i,r){onInput=i;onResize=r;started=true;log.push("start")},stop(){started=false;log.push("stop")},
+       async drainInput(){},write(d){log.push(d)},moveBy(){},hideCursor(){},showCursor(){},clearLine(){},clearFromCursor(){},clearScreen(){},setTitle(){},setProgress(){},setProgramStatus(){}};
+      const vis=s=>s.replace(/\x1b\[[0-9;?]*[A-Za-z]|\x1b\]8;;[^\x07\x1b]*(?:\x07|\x1b\\)?/g,"");
+      const lines=(name,fn)=>({name,render:fn,invalidate(){}});
+      const screen=new TuiAltScreen(term,false,undefined,{mouse:false,wheelScrollLines:3,copyOnSelect:true});
+      const doc=lines("doc",w=>Array.from({length:12},(_,i)=>`row ${i+1} w=${w}`));
+      screen.addChild(doc);
+      const f=[];
+      f.push(`mode=${screen.mode}`,`children=${screen.children.length}`,`terminal=${screen.terminal===term}`);
+      screen.start(); screen.renderNow();
+      const sl=()=>screen.getScreenLines().map(s=>vis(s).trimEnd());
+      f.push(`viewport=${screen.viewportTop}/${screen.isFollowingOutput}`,`first=${sl()[0]}`,`last=${sl()[5]}`,`redraws=${screen.fullRedraws>0}`,`entered=${log.some(l=>l.includes("\x1b[?1049h"))}`);
+      screen.scrollBy(-2);screen.renderNow();f.push(`up=${screen.viewportTop}/${screen.isFollowingOutput}`);
+      screen.scrollToTop();screen.renderNow();f.push(`top=${screen.viewportTop}/${screen.isFollowingOutput}`,`topfirst=${sl()[0]}`);
+      screen.scrollToBottom();screen.renderNow();f.push(`bottom=${screen.viewportTop}/${screen.isFollowingOutput}`);
+      screen.flash("hello",500);screen.renderNow();f.push(`flash=${sl().some(l=>l.includes("hello"))}`);
+      const ov=lines("ov",w=>["OVER"]);
+      const h=screen.showOverlay(ov,{width:8,anchor:"center"});screen.renderNow();
+      f.push(`overlay=${screen.hasOverlay()}/${screen.hasOverlayEntries}/${h.isFocused()}/${h.getBounds()?.width}`);
+      h.setHidden(true);f.push(`hidden=${h.isHidden()}`);h.setHidden(false);
+      screen.hideOverlay();f.push(`afterHide=${screen.hasOverlay()}/${screen.hasOverlayEntries}`);
+      const inputs=[];const foc={focused:false,render:()=>["foc"],invalidate(){},handleInput(d){inputs.push(d)}};
+      screen.setFocus(foc);f.push(`focus=${screen.getFocusedComponent()===foc}/${foc.focused}`);
+      onInput("k");
+      const lst=d=>d==="c"?{consume:true}:undefined;
+      const rm=screen.addInputListener(lst);onInput("c");rm();onInput("c");
+      screen.addInputListener(lst);screen.removeInputListener(lst);
+      f.push(`inputs=${inputs.join(",")}`);
+      let dbg=0;screen.onDebug=()=>{dbg++};onInput("\x1b[100;6u");f.push(`debug=${dbg}`);
+      screen.setShowHardwareCursor(true);screen.setClearOnShrink(true);
+      f.push(`flags=${screen.getShowHardwareCursor()}/${screen.getClearOnShrink()}`);
+      screen.setWheelScrollLines(2);screen.setCopyOnSelect(false);
+      f.push(`copy=${screen.getCopyOnSelect()}/${screen.hasActiveSelection()}/${await screen.copyActiveSelectionToClipboard()}`);screen.resetTextSelection();
+      const schemes=[];screen.onTerminalColorSchemeChange(s=>schemes.push(s));
+      screen.setTerminalColorSchemeNotifications(true);onInput("\x1b[?997;1n");onInput("\x1b[?997;2n");
+      f.push(`schemes=${schemes.join(",")}`);
+      const colors=await screen.queryTerminalColors({timeoutMs:20});f.push(`colors=${JSON.stringify(colors)}`);
+      const mr=screen.handleMouse?.({type:"wheel",button:"none",x:0,y:0,screenX:0,screenY:0,width:20,height:6,shift:false,alt:false,ctrl:false,wheelDelta:1});
+      f.push(`mouse=${JSON.stringify(mr??null)}`);
+      f.push(`render=${screen.render(10).slice(0,2).join("|")}`);
+      screen.invalidate();screen.requestRender();
+      const root=lines("root",w=>["ROOT"]);screen.setLayoutRoot(root);screen.renderNow();f.push(`root=${sl()[0].startsWith("ROOT")}`);screen.setLayoutRoot(undefined);
+      screen.removeChild(doc);f.push(`removed=${screen.children.length}`);screen.addChild(doc);screen.clear();f.push(`cleared=${screen.children.length}`);
+      screen.stop();f.push(`stopped=${!started}`);
+      ctx.ui.notify("tui-alt: "+f.join("; "), "info");
+      
+    },
+  });
+  // A component's render reads the screen, an overlay's visible callback decides its visibility, invalidate reaches the overlays, and a render that changes the screen reads its own changes back: Pi runs each call at once (Pi's own class here).
+  pi.registerCommand("tui-alt-frame-probe", {
+    description: "Read a TuiAltScreen from a component's render and exercise overlay visibility",
+    handler: async (_args, ctx) => {
+      const { TuiAltScreen } = piTui;
+      const term={columns:20,rows:6,kittyProtocolActive:false,start(){},stop(){},async drainInput(){},write(){},moveBy(){},hideCursor(){},showCursor(){},clearLine(){},clearFromCursor(){},clearScreen(){},setTitle(){},setProgress(){},setProgramStatus(){}};
+      const screen=new TuiAltScreen(term,false,undefined,{mouse:false});
+      const seen=[];let docInv=0,ovInv=0;
+      const doc={render(w){seen.push(`${screen.viewportTop}/${screen.isFollowingOutput}/${screen.getScreenLines().length}/${screen.hasActiveSelection()}/${screen.hasOverlay()}/${screen.getShowHardwareCursor()}`);return Array.from({length:12},(_,i)=>`row ${i+1}`)},invalidate(){docInv++}};
+      screen.addChild(doc);screen.start();screen.renderNow();screen.renderNow();
+      const f=[`frame1=${seen[0]}`,`frame2=${seen[seen.length-1]}`];
+      const widths=[];
+      const ov={render:()=>["OVER"],invalidate(){ovInv++}};
+      const hOn=screen.showOverlay(ov,{width:8,visible:(w,h)=>{widths.push(`${w}x${h}`);return w>=20}});
+      screen.renderNow();
+      f.push(`visibleOn=${screen.hasOverlay()}/${screen.hasOverlayEntries}/${widths.includes("20x6")}`);
+      hOn.hide();
+      const hOff=screen.showOverlay({render:()=>["X"],invalidate(){}},{visible:()=>false});
+      f.push(`visibleOff=${screen.hasOverlay()}/${screen.hasOverlayEntries}`);hOff.hide();
+      const ov2=screen.showOverlay(ov,{width:8});
+      docInv=0;ovInv=0;screen.invalidate();
+      f.push(`invalidate=${docInv>0}/${ovInv>0}`);
+      ov2.hide();
+      const mutLog=[];let armed=false,mutInv=0;
+      const extra={render:()=>["EXTRA"],invalidate(){}},target={render:()=>["TARGET"],invalidate(){}},popup={render:()=>["POP"],invalidate(){}};
+      const mut={render(w){
+        if(!armed)return ["MUT"];
+        armed=false;
+        const flags=()=>`${screen.getShowHardwareCursor()}/${screen.getClearOnShrink()}/${screen.getCopyOnSelect()}`;
+        const r=[`flags=${flags()}`];
+        screen.setShowHardwareCursor(true);screen.setClearOnShrink(true);screen.setCopyOnSelect(false);r.push(`set=${flags()}`);
+        screen.addChild(extra);r.push(`add=${screen.children.length}`);screen.removeChild(extra);r.push(`remove=${screen.children.length}`);
+        screen.setFocus(target);r.push(`focus=${screen.getFocusedComponent()===target}`);
+        let first;const h=screen.showOverlay(popup,{width:8,visible:()=>{first??=String(screen.getShowHardwareCursor());return true}});
+        r.push(`overlay=${screen.hasOverlay()}/${screen.hasOverlayEntries}/${h.isFocused()}/${first}`);
+        h.hide();r.push(`hidden=${screen.hasOverlayEntries}`);
+        screen.scrollBy(-2);r.push(`scroll=${screen.viewportTop}/${screen.isFollowingOutput}`);
+        mutInv=0;screen.invalidate();r.push(`invalidate=${mutInv>0}`);
+        r.push(`lines=${screen.getScreenLines().length}`);
+        mutLog.push(r.join(","));
+        return ["MUT"];
+      },invalidate(){mutInv++}};
+      screen.addChild(mut);screen.renderNow();armed=true;screen.renderNow();
+      f.push(`mutate=${mutLog.join("|")}`,`after=${screen.getShowHardwareCursor()}/${screen.getClearOnShrink()}/${screen.getCopyOnSelect()}/${screen.children.length}`);
+      screen.stop();
+      ctx.ui.notify("tui-alt-frame: "+f.join("; "), "info");
+      
+    },
+  });
+  // TuiAltScreen.children after addChild, removeChild and clear, with components of equal content (D207: the Go, Rust and Python SDKs return a copy of Pi's live array, so each read follows the call that changed the list).
+  pi.registerCommand("tui-alt-children-probe", {
+    description: "Read TuiAltScreen children after addChild, removeChild and clear, with components of equal content",
+    handler: async (_args, ctx) => {
+      const { TuiAltScreen } = piTui;
+      const term={columns:20,rows:6,kittyProtocolActive:false,start(){},stop(){},async drainInput(){},write(){},moveBy(){},hideCursor(){},showCursor(){},clearLine(){},clearFromCursor(){},clearScreen(){},setTitle(){},setProgress(){},setProgramStatus(){}};
+      const screen=new TuiAltScreen(term,false,undefined,{mouse:false});
+      const mk=()=>({render:()=>["same"],invalidate(){}});
+      const a=mk(),b=mk(),c=mk();
+      const name=k=>k===a?"a":k===b?"b":k===c?"c":"?";
+      const order=()=>screen.children.map(name).join("")||"-";
+      const f=[`empty=${order()}`];
+      screen.addChild(a);screen.addChild(b);screen.addChild(c);f.push(`added=${order()}`);
+      screen.removeChild(b);f.push(`removeB=${order()}`);
+      screen.removeChild(b);f.push(`removeAbsent=${order()}`);
+      screen.addChild(a);f.push(`duplicate=${order()}`);
+      screen.removeChild(a);f.push(`removeFirst=${order()}`);
+      screen.addChild(b);f.push(`readd=${order()}`);
+      f.push(`render=${screen.render(10).join("|")}`);
+      screen.setFocus(b);f.push(`focus=${name(screen.getFocusedComponent())}`);
+      screen.clear();f.push(`cleared=${order()}`);
+      ctx.ui.notify("tui-alt-children: "+f.join("; "), "info");
+    },
+  });
   // Pi hands a ui.custom factory its TUI: tui.showOverlay shows a raw panel whose handle works inside the factory (tui.ts:729-826).
   pi.registerCommand("overlay-show-probe", {
     description: "Show and focus a raw overlay from a ui.custom factory's tui",

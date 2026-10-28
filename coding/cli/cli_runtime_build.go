@@ -44,14 +44,33 @@ func cliPigError(format string, args ...any) *cliStartupFailure {
 	return &cliStartupFailure{message: fmt.Sprintf(format, args...), report: func(message string) { fmt.Fprintf(os.Stderr, "pig: %s\n", message) }}
 }
 
+// ambientScopes returns the ambient scopes extensions and skills are discovered from. A Piglet Binary discovers none, because its
+// extensions and skills are baked in, unless it accepts overlays (D202): then, as for stock pig running a Piglet, the Piglet's own discovery
+// decides.
+func (b *cliRuntimeBuilder) ambientScopes(projectTrusted bool) (extensions, skills *[]string) {
+	extensions = pigletAmbientSources(b.activePiglet, "extensions")
+	skills = pigletAmbientSources(b.activePiglet, "skills")
+	if !projectTrusted {
+		extensions = trustedAmbientScopes(extensions)
+		skills = trustedAmbientScopes(skills)
+	}
+	if b.activePigletBaked && !b.activePigletOpen {
+		empty := []string{}
+		extensions, skills = &empty, &empty
+	}
+	return extensions, skills
+}
+
 // cliRuntimeBuilder holds the process-fixed inputs of Pi's createRuntime closure and builds the cwd-bound state of one Session runtime: services, resources, extension host, model, tools and system prompt.
 type cliRuntimeBuilder struct {
-	mode                appMode
-	flags               Args
-	agentDir            string
-	launchCWD           string
-	activePiglet        *piglet.Piglet
-	activePigletBaked   bool
+	mode              appMode
+	flags             Args
+	agentDir          string
+	launchCWD         string
+	activePiglet      *piglet.Piglet
+	activePigletBaked bool
+	// activePigletOpen is true for a Piglet Binary that accepts overlays (D202): it behaves as stock pig running a Piglet except for what it compiled in.
+	activePigletOpen    bool
 	shadowedPiglet      string
 	settingsManager     *codingagent.SettingsManager
 	settingsDiagnostics []codingagent.AgentSessionRuntimeDiagnostic
@@ -139,7 +158,9 @@ type cliBuild struct {
 	// InitialActiveToolNames are the Session's initial active tools in order (sdk.ts:274-276).
 	InitialActiveToolNames []string
 	ExcludedTools          map[string]struct{}
-	SkipBuiltinTools       bool
+	// ToolScope is the active Piglet's tool scope; nil without a Piglet.
+	ToolScope        *extension.ToolScope
+	SkipBuiltinTools bool
 	// DefaultToolModifiers are the --tools +name/-name entries (sdk.ts:285).
 	DefaultToolModifiers []string
 	// NoTools is "builtin" for --no-builtin-tools with +name/-name entries: the entries name built-in tools, which stay registered, and the Session does not treat the selection as the defaultTools setting (sdk.ts:472 usesDefaultTools).
@@ -351,17 +372,7 @@ func (b *cliRuntimeBuilder) buildResources(ctx context.Context, in cliBuildInput
 	}
 	build.PromptPaths = collectPromptPaths(cwd, b.agentDir, services.SettingsManager(), resourceFlags, projectTrusted, resolver.Resolve)
 	build.ThemePaths = collectThemePaths(cwd, b.agentDir, services.SettingsManager(), resourceFlags, projectTrusted, resolver.Resolve)
-	extensionScopes := pigletAmbientSources(b.activePiglet, "extensions")
-	skillScopes := pigletAmbientSources(b.activePiglet, "skills")
-	if !projectTrusted {
-		extensionScopes = trustedAmbientScopes(extensionScopes)
-		skillScopes = trustedAmbientScopes(skillScopes)
-	}
-	if b.activePigletBaked {
-		empty := []string{}
-		extensionScopes = &empty
-		skillScopes = &empty
-	}
+	extensionScopes, skillScopes := b.ambientScopes(projectTrusted)
 	build.ExtensionScopes, build.SkillScopes = extensionScopes, skillScopes
 	if err := validateConfiguredPackagesForStartup(cwd, services.SettingsManager(), func(scope string) bool {
 		return !resourceFlags.NoExtensions && packagemanager.PackageScopeEnabled(extensionScopes, scope)
@@ -412,7 +423,7 @@ func (b *cliRuntimeBuilder) buildResources(ctx context.Context, in cliBuildInput
 
 	var embeddedCells []subprocess.EmbeddedCell
 	if b.activePigletBaked {
-		embeddedCells = embeddedCellsFromCellpack(cellpack.LoadedCells())
+		embeddedCells = withoutDroppedMembers(embeddedCellsFromCellpack(cellpack.LoadedCells()))
 	}
 	build.EmbeddedCells = embeddedCells
 	activePiglet := b.activePiglet
@@ -504,12 +515,16 @@ func (b *cliRuntimeBuilder) buildResources(ctx context.Context, in cliBuildInput
 	}
 	builtinExtensions, builtinErrs, replacementWarnings := loadBuiltins(preTrustInline)
 	builtinErrs = append(inlineErrs, builtinErrs...)
+	owner := pigletToolOwner(func() []extension.Extension { return build.Extensions })
+	if activePiglet != nil {
+		// The Piglet's tool scope bounds the Session's tool registry, not only its active tools (pig additive, D23).
+		build.ToolScope = piglet.CompileToolScope(activePiglet, owner)
+	}
 	withPiglet := func(builtins []extension.Extension) []extension.Extension {
 		if activePiglet == nil {
 			return builtins
 		}
-		owner := pigletToolOwner(func() []extension.Extension { return build.Extensions })
-		return append([]extension.Extension{piglet.BuildExtensionWithPigletTools(activePiglet, owner)}, builtins...)
+		return append([]extension.Extension{piglet.BuildExtensionWithToolScope(activePiglet, build.ToolScope)}, builtins...)
 	}
 	// The program's own factories load even when every built-in is stripped (D92).
 	if activePiglet != nil || len(builtInExtensions) > 0 || extensionset.HasInline(b.extensionFactories) {
@@ -590,6 +605,8 @@ func (b *cliRuntimeBuilder) loadPromptResources(build *cliBuild, agentToolNames 
 	if err != nil {
 		return cliCLIError("%v", err)
 	}
+	// An inline Piglet skill has no file; every mode names the Piglet it comes from, so its invocation block carries a location.
+	slr.Defs = rpcResolvedSkills(slr.Defs, b.activePiglet)
 	build.SkillLoad = slr
 	build.SkillInputs = slr.Paths
 	build.SkillCatalog = codingagent.SlashCommandCatalog{CWD: cwd, AgentDir: b.agentDir, SourceInfo: sourceInfo}

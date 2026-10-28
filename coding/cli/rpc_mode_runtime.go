@@ -51,6 +51,7 @@ func (b *cliRuntimeBuilder) rpcInputs(owner context.Context, build *cliBuild, st
 		ThinkingLevel:  ai.ModelThinkingLevel(flags.Thinking),
 		// The tool selection is the build's, the one print, JSON and interactive modes start their Sessions with (main.ts:822-830 passes the same tools, excludeTools and noTools to every mode).
 		AllowedTools:           build.Allowed,
+		ToolScope:              build.ToolScope,
 		InitialActiveToolNames: build.InitialActiveToolNames,
 		DefaultToolModifiers:   build.DefaultToolModifiers,
 		NoTools:                build.NoTools,
@@ -451,7 +452,7 @@ func (h *rpcHost) bindExtensionActions(session *coding.Session, st *rpcModeSessi
 		}
 		registryAllowed, registryExcluded := toolRegistryFilters(h.flags)
 		bridge.SetHostAction("getAllTools", func() []subprocess.ToolInfo {
-			return codingagent.ExtensionToolInfos(runner, registryAllowed, registryExcluded)
+			return codingagent.ExtensionToolInfosScoped(runner, registryAllowed, registryExcluded, current().ToolScope())
 		})
 		bridge.SetHostAction("getCommands", func() []subprocess.CommandInfo {
 			return st.published.Load().slashCatalog().SubprocessCommands()

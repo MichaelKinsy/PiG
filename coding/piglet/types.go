@@ -119,14 +119,17 @@ type Piglet struct {
 	lineage          []LineageEntry  // exact resolved lineage; never serialized
 	effectiveDigest  string
 	graphDigest      string
-	workspaceRoot    string // invocation-selected workspace; never serialized
-	devContainerPath string // resolved workspace-anchored path; never serialized
+	workspaceRoot    string          // invocation-selected workspace; never serialized
+	bakedSkills      map[string]bool // skills a Piglet Binary baked that an overlay left unchanged; never serialized
+	devContainerPath string          // resolved workspace-anchored path; never serialized
 }
 
 // ExtendsSpec selects one base Piglet source plus an optional author version
-// constraint. Resolution pins the exact content digest in lineage.
+// constraint. Resolution pins the exact content digest in lineage. A block
+// without a source extends the Piglet Binary that runs the Piglet as an
+// overlay (D202), so it carries only remove and allowWiden.
 type ExtendsSpec struct {
-	Source     string      `yaml:"source"`
+	Source     string      `yaml:"source,omitempty"`
 	Version    string      `yaml:"version,omitempty"`
 	AllowWiden bool        `yaml:"allowWiden,omitempty"`
 	Remove     *RemoveSpec `yaml:"remove,omitempty"`
@@ -492,12 +495,19 @@ func (p *Piglet) Validate() error {
 		return err
 	}
 	if p.Extends != nil {
-		ref, err := validateTypedSource(p.Extends.Source, sourceref.BareReject)
-		if err != nil {
-			return fmt.Errorf("extends.source: %w", err)
-		}
-		if ref.Kind == sourceref.KindContributed && !installresolver.SupportsSourceScheme(ref.Scheme) {
-			return fmt.Errorf("extends.source: source scheme %q has no installed resolver", ref.Scheme)
+		// pig additive (D202): no source means the Piglet Binary that runs this Piglet as an overlay. Resolution refuses it anywhere else.
+		if p.Extends.Source == "" {
+			if p.Extends.Version != "" {
+				return fmt.Errorf("extends.version requires extends.source: an extends block without a source extends a Piglet Binary, which has no release version to constrain")
+			}
+		} else {
+			ref, err := validateTypedSource(p.Extends.Source, sourceref.BareReject)
+			if err != nil {
+				return fmt.Errorf("extends.source: %w", err)
+			}
+			if ref.Kind == sourceref.KindContributed && !installresolver.SupportsSourceScheme(ref.Scheme) {
+				return fmt.Errorf("extends.source: source scheme %q has no installed resolver", ref.Scheme)
+			}
 		}
 		if p.Extends.Version != strings.TrimSpace(p.Extends.Version) {
 			return fmt.Errorf("extends.version must not have surrounding whitespace")

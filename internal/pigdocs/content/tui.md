@@ -43,6 +43,19 @@ PiG supports regular and fullscreen terminal modes. Configure `tuiMode` in setti
 
 The TUI responds to terminal resize. It calculates width in terminal cells and preserves Unicode and ANSI rendering boundaries.
 
+## Choose an integration point
+
+An extension author picks the smallest UI mechanism that fits. The [Extension API](extension-api.md) lists the calls for each one.
+
+| Need | Use |
+|---|---|
+| Select, confirm, input, or multi-line editor | `ui.select`, `ui.confirm`, `ui.input`, `ui.editor` ([UI bridge](extension-api.md#ui-bridge)) |
+| Non-blocking feedback | `ui.notify` or `ui.setStatus` ([UI bridge](extension-api.md#ui-bridge)) |
+| Persistent content above the editor, or a custom header or footer | `setWidget`, `setHeader`, `setFooter` ([Widgets, headers, footers](extension-api.md#widgets-headers-footers)) |
+| Own rendering, keyboard input, and focus | `ui.custom` ([Focused custom components](extension-api.md#focused-custom-components)) |
+| Custom sign-in in the header | `ui.setLogin` ([Native login](extension-api.md#native-login)) |
+| Completion or terminal input handling | [Autocomplete, terminal input, editor component](extension-api.md#autocomplete-terminal-input-editor-component) |
+
 ## Extension UI
 
 Extensions can contribute:

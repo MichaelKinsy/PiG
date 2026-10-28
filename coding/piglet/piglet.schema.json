@@ -44,6 +44,7 @@
     },
     "tools": {
       "type": "array",
+      "description": "Built-in tools the Piglet keeps. The list limits the tools; it does not activate them. A run activates only the default active tools (read, bash, edit, write) that the list keeps.",
       "items": {
         "type": "string",
         "enum": [
@@ -154,9 +155,6 @@
     "extendsSpec": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "source"
-      ],
       "properties": {
         "source": {
           "type": "string",

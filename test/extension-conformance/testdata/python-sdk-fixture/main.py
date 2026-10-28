@@ -4,6 +4,7 @@ from __future__ import annotations
 import dataclasses
 import json
 import pathlib
+import re
 import struct
 import sys
 import threading
@@ -2904,6 +2905,10 @@ def new_extension() -> pig_sdk.Extension:
     _register_conformance_oauth_large(ext)
     _register_state_push_probe(ext)
     _register_signal_abort(ext)
+    _register_tui_alt_screen_probe(ext)
+    _register_tui_alt_frame_probe(ext)
+    _register_tui_alt_children_probe(ext)
+    _register_tui_alt_reentry_probe(ext)
     return ext
 
 
@@ -3063,6 +3068,399 @@ def _register_signal_abort(ext: pig_sdk.Extension) -> None:
         ctx.notify("abort:" + state(held) + ":" + state(ctx.signal), "info")
 
     ext.command("signal-abort", "Abort the run and report ctx.signal", signal_abort)
+
+
+class _AltTerminal:
+    """A recording pig_sdk.Terminal: 20x6, no kitty protocol; start keeps the callbacks, write appends to the log."""
+
+    columns = 20
+    rows = 6
+    kitty_protocol_active = False
+
+    def __init__(self) -> None:
+        self.log: list[str] = []
+        self.on_input = None
+        self.on_resize = None
+        self.started = False
+
+    def start(self, on_input, on_resize) -> None:
+        self.on_input, self.on_resize, self.started = on_input, on_resize, True
+        self.log.append("start")
+
+    def stop(self) -> None:
+        self.started = False
+        self.log.append("stop")
+
+    def drain_input(self, max_ms=None, idle_ms=None) -> None:
+        pass
+
+    def write(self, data: str) -> None:
+        self.log.append(data)
+
+    def move_by(self, lines: int) -> None:
+        pass
+
+    def hide_cursor(self) -> None:
+        pass
+
+    def show_cursor(self) -> None:
+        pass
+
+    def clear_line(self) -> None:
+        pass
+
+    def clear_from_cursor(self) -> None:
+        pass
+
+    def clear_screen(self) -> None:
+        pass
+
+    def set_title(self, title: str) -> None:
+        pass
+
+    def set_progress(self, active: bool) -> None:
+        pass
+
+    def set_program_status(self, status) -> None:
+        pass
+
+
+class _AltLines:
+    """A plain component: render(width) returns fn(width)."""
+
+    def __init__(self, fn) -> None:
+        self.fn = fn
+
+    def render(self, width: int) -> list[str]:
+        return self.fn(width)
+
+    def invalidate(self) -> None:
+        pass
+
+
+class _AltFocusable(_AltLines):
+    """A Focusable component that records its input."""
+
+    def __init__(self, inputs: list[str]) -> None:
+        super().__init__(lambda _w: ["foc"])
+        self.focused = False
+        self.inputs = inputs
+
+    def handle_input(self, data: str) -> None:
+        self.inputs.append(data)
+
+
+_ALT_ANSI = re.compile(r"\x1b\[[0-9;?]*[A-Za-z]|\x1b\]8;;[^\x07\x1b]*(?:\x07|\x1b\\)?")
+
+
+def _register_tui_alt_screen_probe(ext: pig_sdk.Extension) -> None:
+    """Drive the 46 members of pig_sdk.TuiAltScreen over a recording terminal and report one line of facts. Every SDK fixture runs the same steps
+    as the Pi oracle probe (Pi's own TuiAltScreen) and must print its exact text."""
+
+    def b(value: bool) -> str:
+        return "true" if value else "false"
+
+    def tui_alt_screen_probe(ctx: pig_sdk.Context, _args: str) -> None:
+        term = _AltTerminal()
+        screen = pig_sdk.TuiAltScreen(ctx, term, False, None, pig_sdk.TuiAltScreenOptions(mouse=False, wheel_scroll_lines=3, copy_on_select=True))
+        doc = _AltLines(lambda w: [f"row {i + 1} w={w}" for i in range(12)])
+        screen.add_child(doc)
+        if screen.viewport_tui is not True:
+            raise AssertionError("TuiAltScreen.viewport_tui must be True")
+        facts = [f"mode={screen.mode}", f"children={len(screen.children)}", f"terminal={b(screen.terminal is term)}"]
+        screen.start()
+        screen.render_now()
+
+        def sl() -> list[str]:
+            return [_ALT_ANSI.sub("", line).rstrip() for line in screen.get_screen_lines()]
+
+        facts += [
+            f"viewport={screen.viewport_top}/{b(screen.is_following_output)}", f"first={sl()[0]}", f"last={sl()[5]}", f"redraws={b(screen.full_redraws > 0)}",
+            f"entered={b(any(chunk.find(chr(27) + '[?1049h') >= 0 for chunk in term.log))}",
+        ]
+        screen.scroll_by(-2)
+        screen.render_now()
+        facts.append(f"up={screen.viewport_top}/{b(screen.is_following_output)}")
+        screen.scroll_to_top()
+        screen.render_now()
+        facts += [f"top={screen.viewport_top}/{b(screen.is_following_output)}", f"topfirst={sl()[0]}"]
+        screen.scroll_to_bottom()
+        screen.render_now()
+        facts.append(f"bottom={screen.viewport_top}/{b(screen.is_following_output)}")
+        screen.flash("hello", 500)
+        screen.render_now()
+        facts.append(f"flash={b(any('hello' in line for line in sl()))}")
+        over = _AltLines(lambda _w: ["OVER"])
+        handle = screen.show_overlay(over, {"width": 8, "anchor": "center"})
+        screen.render_now()
+        bounds = handle.get_bounds()
+        facts.append(f"overlay={b(screen.has_overlay())}/{b(screen.has_overlay_entries)}/{b(handle.is_focused())}/{bounds['width'] if bounds else 'undefined'}")
+        handle.set_hidden(True)
+        facts.append(f"hidden={b(handle.is_hidden())}")
+        handle.set_hidden(False)
+        screen.hide_overlay()
+        facts.append(f"afterHide={b(screen.has_overlay())}/{b(screen.has_overlay_entries)}")
+        inputs: list[str] = []
+        foc = _AltFocusable(inputs)
+        screen.set_focus(foc)
+        facts.append(f"focus={b(screen.get_focused_component() is foc)}/{b(foc.focused)}")
+        term.on_input("k")
+
+        def listener(data: str):
+            return {"consume": True} if data == "c" else None
+
+        remove = screen.add_input_listener(listener)
+        term.on_input("c")
+        remove()
+        term.on_input("c")
+        screen.add_input_listener(listener)
+        screen.remove_input_listener(listener)
+        facts.append("inputs=" + ",".join(inputs))
+        debug: list[int] = []
+        screen.on_debug = lambda: debug.append(1)
+        term.on_input("\x1b[100;6u")
+        facts.append(f"debug={len(debug)}")
+        screen.set_show_hardware_cursor(True)
+        screen.set_clear_on_shrink(True)
+        facts.append(f"flags={b(screen.get_show_hardware_cursor())}/{b(screen.get_clear_on_shrink())}")
+        screen.set_wheel_scroll_lines(2)
+        screen.set_copy_on_select(False)
+        facts.append(f"copy={b(screen.get_copy_on_select())}/{b(screen.has_active_selection())}/{b(screen.copy_active_selection_to_clipboard())}")
+        screen.reset_text_selection()
+        schemes: list[str] = []
+        screen.on_terminal_color_scheme_change(schemes.append)
+        screen.set_terminal_color_scheme_notifications(True)
+        term.on_input("\x1b[?997;1n")
+        term.on_input("\x1b[?997;2n")
+        facts.append("schemes=" + ",".join(schemes))
+        facts.append("colors=" + json.dumps(screen.query_terminal_colors(20), separators=(",", ":")))
+        mouse = screen.handle_mouse(pig_sdk.MouseEvent(type="wheel", button="none", width=20, height=6, wheel_delta=1))
+        facts.append("mouse=" + json.dumps(mouse, separators=(",", ":")))
+        facts.append("render=" + "|".join(screen.render(10)[:2]))
+        screen.invalidate()
+        screen.request_render()
+        root = _AltLines(lambda _w: ["ROOT"])
+        screen.set_layout_root(root)
+        screen.render_now()
+        facts.append(f"root={b(sl()[0].startswith('ROOT'))}")
+        screen.set_layout_root(None)
+        screen.remove_child(doc)
+        facts.append(f"removed={len(screen.children)}")
+        screen.add_child(doc)
+        screen.clear()
+        facts.append(f"cleared={len(screen.children)}")
+        screen.stop()
+        facts.append(f"stopped={b(not term.started)}")
+        ctx.notify("tui-alt: " + "; ".join(facts), "info")
+
+    ext.command("tui-alt-screen-probe", "Drive every TuiAltScreen member over a recording terminal", tui_alt_screen_probe)
+
+
+class _AltCounted(_AltLines):
+    """A plain component that counts its invalidate calls."""
+
+    def __init__(self, fn) -> None:
+        super().__init__(fn)
+        self.invalidated = 0
+
+    def invalidate(self) -> None:
+        self.invalidated += 1
+
+
+def _register_tui_alt_frame_probe(ext: pig_sdk.Extension) -> None:
+    """Read the screen from inside a component's render, and drive an overlay's visible callback, over a recording terminal. Every SDK fixture runs the
+    same steps as the Pi oracle probe and must print its exact text."""
+
+    def b(value: bool) -> str:
+        return "true" if value else "false"
+
+    def tui_alt_frame_probe(ctx: pig_sdk.Context, _args: str) -> None:
+        term = _AltTerminal()
+        screen = pig_sdk.TuiAltScreen(ctx, term, False, None, pig_sdk.TuiAltScreenOptions(mouse=False))
+        seen: list[str] = []
+
+        def render_doc(_width: int) -> list[str]:
+            seen.append(
+                f"{screen.viewport_top}/{b(screen.is_following_output)}/{len(screen.get_screen_lines())}/{b(screen.has_active_selection())}"
+                f"/{b(screen.has_overlay())}/{b(screen.get_show_hardware_cursor())}"
+            )
+            return [f"row {i + 1}" for i in range(12)]
+
+        doc = _AltCounted(render_doc)
+        screen.add_child(doc)
+        screen.start()
+        screen.render_now()
+        screen.render_now()
+        facts = [f"frame1={seen[0]}", f"frame2={seen[-1]}"]
+        widths: list[str] = []
+        over = _AltCounted(lambda _w: ["OVER"])
+
+        def visible_on(width: int, height: int) -> bool:
+            widths.append(f"{width}x{height}")
+            return width >= 20
+
+        hide_on = screen.show_overlay(over, {"width": 8, "visible": visible_on})
+        screen.render_now()
+        facts.append(f"visibleOn={b(screen.has_overlay())}/{b(screen.has_overlay_entries)}/{b('20x6' in widths)}")
+        hide_on.hide()
+        hide_off = screen.show_overlay(_AltCounted(lambda _w: ["X"]), {"visible": lambda _w, _h: False})
+        facts.append(f"visibleOff={b(screen.has_overlay())}/{b(screen.has_overlay_entries)}")
+        hide_off.hide()
+        hide_two = screen.show_overlay(over, {"width": 8})
+        doc.invalidated = over.invalidated = 0
+        screen.invalidate()
+        facts.append(f"invalidate={b(doc.invalidated > 0)}/{b(over.invalidated > 0)}")
+        hide_two.hide()
+        mut_log: list[str] = []
+        armed = False
+        extra = _AltCounted(lambda _w: ["EXTRA"])
+        target = _AltCounted(lambda _w: ["TARGET"])
+        popup = _AltCounted(lambda _w: ["POP"])
+
+        def flags() -> str:
+            return f"{b(screen.get_show_hardware_cursor())}/{b(screen.get_clear_on_shrink())}/{b(screen.get_copy_on_select())}"
+
+        def render_mut(_width: int) -> list[str]:
+            nonlocal armed
+            if not armed:
+                return ["MUT"]
+            armed = False
+            r = [f"flags={flags()}"]
+            screen.set_show_hardware_cursor(True)
+            screen.set_clear_on_shrink(True)
+            screen.set_copy_on_select(False)
+            r.append(f"set={flags()}")
+            screen.add_child(extra)
+            r.append(f"add={len(screen.children)}")
+            screen.remove_child(extra)
+            r.append(f"remove={len(screen.children)}")
+            screen.set_focus(target)
+            r.append(f"focus={b(screen.get_focused_component() is target)}")
+            first: list[str] = []
+
+            def visible_popup(_w: int, _h: int) -> bool:
+                if not first:
+                    first.append(b(screen.get_show_hardware_cursor()))
+                return True
+
+            h = screen.show_overlay(popup, {"width": 8, "visible": visible_popup})
+            r.append(f"overlay={b(screen.has_overlay())}/{b(screen.has_overlay_entries)}/{b(h.is_focused())}/{first[0] if first else 'undefined'}")
+            h.hide()
+            r.append(f"hidden={b(screen.has_overlay_entries)}")
+            screen.scroll_by(-2)
+            r.append(f"scroll={screen.viewport_top}/{b(screen.is_following_output)}")
+            mut.invalidated = 0
+            screen.invalidate()
+            r.append(f"invalidate={b(mut.invalidated > 0)}")
+            r.append(f"lines={len(screen.get_screen_lines())}")
+            mut_log.append(",".join(r))
+            return ["MUT"]
+
+        mut = _AltCounted(render_mut)
+        screen.add_child(mut)
+        screen.render_now()
+        armed = True
+        screen.render_now()
+        facts.append(f"mutate={'|'.join(mut_log)}")
+        facts.append(f"after={flags()}/{len(screen.children)}")
+        screen.stop()
+        ctx.notify("tui-alt-frame: " + "; ".join(facts), "info")
+
+    ext.command("tui-alt-frame-probe", "Read the screen from a component's render and drive an overlay's visible callback", tui_alt_frame_probe)
+
+
+@dataclasses.dataclass
+class _AltSame:
+    """Components of equal fields: value equality would conflate them, identity must not."""
+
+    text: str = "same"
+
+    def render(self, _width: int) -> list[str]:
+        return [self.text]
+
+    def invalidate(self) -> None:
+        pass
+
+
+def _register_tui_alt_children_probe(ext: pig_sdk.Extension) -> None:
+    """TuiAltScreen.children after add_child, remove_child and clear, with components of equal content (D207: a copy, so each read follows the call that changed the list)."""
+
+    def tui_alt_children_probe(ctx: pig_sdk.Context, _args: str) -> None:
+        term = _AltTerminal()
+        screen = pig_sdk.TuiAltScreen(ctx, term, False, None, pig_sdk.TuiAltScreenOptions(mouse=False))
+        a, b_, c = _AltSame(), _AltSame(), _AltSame()
+
+        def name(k: Any) -> str:
+            return "a" if k is a else "b" if k is b_ else "c" if k is c else "?"
+
+        def order() -> str:
+            return "".join(name(k) for k in screen.children) or "-"
+
+        facts = [f"empty={order()}"]
+        screen.add_child(a)
+        screen.add_child(b_)
+        screen.add_child(c)
+        facts.append(f"added={order()}")
+        screen.remove_child(b_)
+        facts.append(f"removeB={order()}")
+        screen.remove_child(b_)
+        facts.append(f"removeAbsent={order()}")
+        screen.add_child(a)
+        facts.append(f"duplicate={order()}")
+        screen.remove_child(a)
+        facts.append(f"removeFirst={order()}")
+        screen.add_child(b_)
+        facts.append(f"readd={order()}")
+        facts.append(f"render={'|'.join(screen.render(10))}")
+        screen.set_focus(b_)
+        facts.append(f"focus={name(screen.get_focused_component())}")
+        screen.clear()
+        facts.append(f"cleared={order()}")
+        ctx.notify("tui-alt-children: " + "; ".join(facts), "info")
+
+    ext.command("tui-alt-children-probe", "Read TuiAltScreen children after addChild, removeChild and clear, with components of equal content", tui_alt_children_probe)
+
+
+def _register_tui_alt_reentry_probe(ext: pig_sdk.Extension) -> None:
+    """Call the frame's own members from a component's render: the six that cannot run there fail, the screen goes on working."""
+
+    def tui_alt_reentry_probe(ctx: pig_sdk.Context, _args: str) -> None:
+        term = _AltTerminal()
+        screen = pig_sdk.TuiAltScreen(ctx, term, False, None, pig_sdk.TuiAltScreenOptions(mouse=False))
+        facts: list[str] = []
+        armed = False
+
+        def attempt(call) -> str:
+            try:
+                call()
+            except Exception as error:  # noqa: BLE001
+                return "err" if "cannot run while a component renders" in str(error) else "other"
+            return "ok"
+
+        def render_doc(_width: int) -> list[str]:
+            nonlocal armed
+            if armed:
+                armed = False
+                facts.append(f"render={attempt(lambda: screen.render(10))}")
+                facts.append(f"renderNow={attempt(lambda: screen.render_now(False))}")
+                facts.append(f"start={attempt(screen.start)}")
+                facts.append(f"stop={attempt(lambda: screen.stop(False))}")
+                facts.append(f"copy={attempt(screen.copy_active_selection_to_clipboard)}")
+                facts.append(f"colors={attempt(lambda: screen.query_terminal_colors(20))}")
+                screen.set_show_hardware_cursor(True)
+                facts.append(f"after={str(screen.get_show_hardware_cursor()).lower()}")
+            return ["l1", "l2", "l3"]
+
+        doc = _AltLines(render_doc)
+        screen.add_child(doc)
+        screen.start()
+        screen.render_now()
+        armed = True
+        screen.render_now()
+        screen.stop(False)
+        ctx.notify("tui-alt-reentry: " + "; ".join(facts), "info")
+
+    ext.command("tui-alt-reentry-probe", "Call the frame's own members from a component's render and report that they fail", tui_alt_reentry_probe)
 
 
 if __name__ == "__main__":

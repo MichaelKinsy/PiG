@@ -468,3 +468,31 @@ commit = "4fb7dc6de718961fbde2ea69cee2efba70436323"
 class = "CITE"
 cite = "packages/durable/src/harness/view.ts:114"
 reason = "Pi f3255de7's resolveWindow throws a RangeError for a window bound that is not an integer or a max below min (view.ts:114-121): the core rejects such a window as a Rejection named RangeError, which the host rebuilds as the RangeError, where it returned a plain error. The test asserts the rejection's name and message."
+
+[[entry]]
+path = "coding/piglet/scope_mcp_test.go"
+commit = "d3adcfebef205ccb7b80baa600a973e66e7b4aea"
+class = "CITE"
+cite = "packages/coding-agent/src/core/agent-session.ts:1557"
+reason = "A Piglet's tool scope now bounds the Session's tool registry as Pi's _isAllowedTool bounds it for --tools and --exclude-tools (agent-session.ts:1557-1561, 3571-3574). codemode and tool_search are ordinary tools that reach what the registry keeps, so the table no longer expects them hidden when no MCP tool stays visible; the MCP resource tools follow the pig-mcp-adapter entry by name."
+
+[[entry]]
+path = "coding/extension/tool_filter_test.go"
+commit = "14378701855dadfdcd44cfcb960c03dc1d83a7ce"
+class = "CITE"
+cite = "packages/coding-agent/src/core/agent-session.ts:1557"
+reason = "The test is this range's own test of the Piglet scope in the registry filter (ToolFilter.WithScope, AllowsTool), written against Pi's _isAllowedTool intersection (agent-session.ts:1557-1561, 3571-3574); the commit replaces the predicate form of the scope with the data form the filter holds, and the expectations are the same intersection."
+
+[[entry]]
+path = "coding/session_tool_scope_test.go"
+commit = "14378701855dadfdcd44cfcb960c03dc1d83a7ce"
+class = "CITE"
+cite = "packages/coding-agent/src/core/agent-session.ts:1557"
+reason = "The test is this range's own test that the Session registry admits the intersection of --tools/--exclude-tools and the Piglet scope (Pi's _isAllowedTool, agent-session.ts:1557-1561, 3571-3574); the commit replaces the predicate form of the scope with the data form, and the expectations are the same intersection."
+
+[[entry]]
+path = "coding/piglet/overlay_test.go"
+commit = "c267f5a15e5e1254ba83842de0c5a26b64ca6181"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "Overlay Piglets on a Piglet Binary are PiG-additive (D202) and have no Pi counterpart, so no Pi line governs the test. The owner approved the D202 redesign on 2026-10-28: an overlay merges as an extends child of the Binary's baked Piglet, and only what the Binary compiled in is refused (setting a frontend, re-enabling a build-tag strip, naming a fused or embedded member again with origins). TestOverlayRefusesWhatChangesTheBinary moves from the old refusal list (baked extension or skill replaced or removed, systemPrompt set, ceilings widened, runtime strips re-enabled) to those three refusals, each message naming the field, the Binary and the reason; the newly allowed cases have their own tests in the same commit range."
