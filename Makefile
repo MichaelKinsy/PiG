@@ -208,6 +208,7 @@ generate: ## Regenerate committed inventories, coverage, catalogs, help, and doc
 	@$(MAKE) help-text
 	@$(MAKE) knowledge-graph
 	@$(MAKE) additive-list
+	@$(MAKE) docs-bundle
 	@$(MAKE) interface-proposals
 	@$(MAKE) test-inventory-generate
 	@$(MAKE) known-gaps
@@ -531,6 +532,7 @@ alloc-baseline: ## Fail when a hot-path benchmark's allocs/op rises or falls fro
 docs-drift: ## Fail when generated documentation no longer matches its source
 	@python3 automation/gen/gen-knowledge-graph.py --check
 	@python3 automation/gen/gen-additive-list.py --check
+	@python3 automation/gen/gen-docs-bundle.py --check
 	@# -count=1: public_claims_test.go runs check-public-claims.py, whose file reads the go test cache cannot see.
 	@go test ./test/docs-drift/ -count=1
 
@@ -733,6 +735,9 @@ bench-report: ## Re-render report.md and summary.csv from a raw.json: make bench
 
 additive-list: ## Regenerate the agent docs page additive-features.md from docs/additive-features.md
 	@python3 automation/gen/gen-additive-list.py
+
+docs-bundle: ## Regenerate the shared pages of the agent docs bundle, the glossary and the customize chooser from the site pages (internal/pigdocs/bundle-manifest.json)
+	@python3 automation/gen/gen-docs-bundle.py
 
 knowledge-graph: ## Regenerate the knowledge graph page, JSON-LD, and Mermaid from docs/knowledge-graph/pig.graph.json
 	@python3 automation/gen/gen-knowledge-graph.py

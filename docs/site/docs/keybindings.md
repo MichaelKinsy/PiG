@@ -1,6 +1,6 @@
 # Keybindings
 
-PiG reads keybindings from `~/.pig/agent/keybindings.json`. The file is optional. If it is absent, PiG uses the defaults in this page. The action names and defaults are those of Pi 1.4.0 ([Pi's keybindings reference](https://github.com/earendil-works/pi/blob/v1.2.0/packages/coding-agent/docs/keybindings.md)).
+PiG reads keybindings from `~/.pig/agent/keybindings.json`. The file is optional. If it is absent, PiG uses the defaults in this page. The action names and defaults are those of Pi 1.4.0 ([Pi's keybindings reference](https://github.com/earendil-works/pi/blob/main/packages/coding-agent/docs/keybindings.md)).
 
 Each entry maps one action to one key or a list of keys. To change a binding, write the action name and the keys you want:
 

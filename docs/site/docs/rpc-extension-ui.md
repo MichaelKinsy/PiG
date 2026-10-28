@@ -1,6 +1,6 @@
 # RPC extension UI
 
-Extensions request user interaction through `ctx.ui`. In RPC mode, PiG turns the supported calls into a request and response subprotocol beside the normal [RPC commands](/docs/latest/rpc-commands) and [session events](/docs/latest/json). The subprotocol is the one of Pi 1.4.0 ([Pi's RPC extension UI reference](https://github.com/earendil-works/pi/blob/v1.2.0/packages/coding-agent/docs/rpc-extension-ui.md)).
+Extensions request user interaction through `ctx.ui`. In RPC mode, PiG turns the supported calls into a request and response subprotocol beside the normal [RPC commands](/docs/latest/rpc-commands) and [session events](/docs/latest/json). The subprotocol is the one of Pi 1.4.0 ([Pi's RPC extension UI reference](https://github.com/earendil-works/pi/blob/main/packages/coding-agent/docs/rpc-extension-ui.md)).
 
 There are two kinds of methods:
 
@@ -125,4 +125,4 @@ When standard input closes, PiG cancels every open dialog before it exits.
 ## Source references
 
 - `coding/cli/rpc_ui.go` defines the requests, the responses and the reduced methods.
-- [Pi RPC types](https://github.com/earendil-works/pi/blob/v1.2.0/packages/coding-agent/src/modes/rpc/rpc-types.ts) defines the request and response unions.
+- [Pi RPC types](https://github.com/earendil-works/pi/blob/main/packages/coding-agent/src/modes/rpc/rpc-types.ts) defines the request and response unions.
