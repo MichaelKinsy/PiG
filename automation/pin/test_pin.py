@@ -82,6 +82,21 @@ class PigVersionTests(unittest.TestCase):
 
 
 class RepositoryTests(unittest.TestCase):
+    def test_only_active_interface_snapshots_are_tracked(self):
+        reviewed = re.search(r'^const UpstreamReviewedVersion = "([^"]+)"', (pinlib.ROOT / "coding/upstream.go").read_text(), re.M).group(1)
+        suffixes = tuple(f"-v{version}.json" for version in {pinlib.committed().version, reviewed})
+        paths = subprocess.check_output(["git", "ls-files", "test/parity/interfaces"], cwd=pinlib.ROOT, text=True).splitlines()
+        obsolete = [path for path in paths if re.search(r"-v\d.*\.json$", path) and not path.endswith(suffixes)]
+        self.assertEqual(obsolete, [], "Remove outgoing interface snapshots after carrying the new pin's reviewed ledgers; Git history keeps the earlier copies")
+
+    def test_only_active_interface_snapshots_are_unignored(self):
+        pin = pinlib.committed()
+        current = f"test/parity/interfaces/mapping-v{pin.version}.json"
+        old = "test/parity/interfaces/mapping-v0.0.0.json"
+        result = subprocess.run(["git", "check-ignore", "--no-index", "--stdin"], input=f"{current}\n{old}\n", cwd=pinlib.ROOT, text=True, capture_output=True, check=False)
+        self.assertEqual(result.stdout.splitlines(), [old])
+        self.assertEqual(result.returncode, 0, result.stderr)
+
     def test_committed_derivations_match_the_pin(self):
         stale = [rel for rel, text in pin_tool.derived(pinlib.committed()).items() if (pinlib.ROOT / rel).read_text(encoding="utf-8") != text]
         self.assertEqual(stale, [])
@@ -92,6 +107,7 @@ class RepositoryTests(unittest.TestCase):
         changed = {rel for rel in base if base[rel] != moved[rel]}
         for rel in (
             "internal/coding/pigversion/pigversion.go",
+            ".gitignore",
             "README.md",
             "docs/site/docs/index.md",
             "test/parity/known-gaps.toml",
