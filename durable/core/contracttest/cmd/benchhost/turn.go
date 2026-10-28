@@ -179,9 +179,29 @@ func (e *engine) tool() *rec.Task {
 	return e.task(t.tool, "pi.tool", obj("kind", "model", "assistant", num(t.asst), "callId", "call-"+strconv.Itoa(t.call)), t.gen)
 }
 
-// putTask replaces a task's state, stamps its times as Pi's Session does, and stages the write.
+// putTask replaces a task's state, stamps its times as Pi's Session does, and stages the write. A state the task commits that
+// differs from its current one is progress and its restart count starts over; the scheduler's change of a pending task to
+// running with the same checkpoint is not, and an outcome always drops the count (scheduler.ts withState, progressed).
 func (e *engine) putTask(tx *store.Tx, t *rec.Task, state *jv.Object) {
-	n := t.WithState(state).StampTimes(nil, e.now)
+	n := t.WithState(state)
+	if n.V.Has("restarts") {
+		cur := t.State()
+		started := str(state, "status") == "running" && str(cur, "status") == "pending" && jv.Equal(mustGet(cur, "checkpoint"), mustGet(state, "checkpoint"))
+		if !started || str(state, "status") == "terminal" || str(state, "status") == "completing" {
+			n.V.Delete("restarts")
+		}
+	}
+	e.stageTask(tx, n.StampTimes(nil, e.now))
+}
+
+// requeueTask is the scheduler's recovery of a task persisted as running: pending again, one more restart.
+func (e *engine) requeueTask(tx *store.Tx, t *rec.Task, state *jv.Object) {
+	n := t.WithState(state)
+	n.V.Set("restarts", num(intOf(t.V, "restarts")+1))
+	e.stageTask(tx, n.StampTimes(nil, e.now))
+}
+
+func (e *engine) stageTask(tx *store.Tx, n *rec.Task) {
 	tx.Task(n, n.Append(nil))
 	if n.Terminal() {
 		delete(e.tasks, n.ID())
@@ -293,11 +313,11 @@ func (e *engine) fauxUsage(outputChars int) (in, out, cacheRead, cacheWrite, tot
 	out = ceil4(outputChars)
 	if e.hasPrev {
 		cacheRead = ceil4(e.prevChars)
-		cacheWrite = ceil4(l - e.prevChars)
-		in = max(0, prompt-cacheRead)
+		cacheWrite = max(0, prompt-cacheRead)
 	} else {
-		in, cacheWrite = prompt, prompt
+		cacheWrite = prompt
 	}
+	// Every prompt token is either read from or written to the simulated cache; input stays 0 (pi-ai f3fa8bd9).
 	e.prevChars, e.hasPrev = l, true
 	total = in + out + cacheRead + cacheWrite
 	return
@@ -351,7 +371,7 @@ func (e *engine) model(trace *contracttest.Writer) error {
 	e.recordUsage(in, out, cr, cw, total)
 	t.asst = e.st.MintID()
 	draft := `{"model":[{"role":"assistant","content":` + content + `,"api":` + quote(e.api) + `,"provider":"faux","model":"scripted-1","usage":` +
-		usageJSON(in, out, cr, cw, total) + `,"stopReason":"` + stop + `","timestamp":` + num2(e.now) + `,"durationMs":0}],"kind":"pi.assistant"}`
+		usageJSON(in, out, cr, cw, total) + `,"stopReason":"` + stop + `","timestamp":` + num2(e.now) + `,"durationMs":0,"thinkingLevel":"off"}],"kind":"pi.assistant"}`
 	m, err := info([]byte(`{"role":"assistant","content":` + content + `}`))
 	if err != nil {
 		return err
@@ -497,7 +517,7 @@ func (e *engine) afterTool(resumed bool) error {
 		return state(status, obj("phase", "tools", "assistant", num(t.asst), "tools", []any{num(t.tool)}, "pending", []any{}))
 	}
 	if resumed {
-		if _, err := e.commit(func(tx *store.Tx) error { e.putTask(tx, g, running("pending")); return nil }); err != nil {
+		if _, err := e.commit(func(tx *store.Tx) error { e.requeueTask(tx, g, running("pending")); return nil }); err != nil {
 			return err
 		}
 	}
@@ -557,12 +577,20 @@ func intOf(o *jv.Object, key string) int64 {
 	return int64(f)
 }
 
-// setStatus rewrites the task with only its status changed, as scheduler recovery does.
+// setStatus rewrites the task with only its status changed, as scheduler recovery does: a running task becomes pending and
+// counts a restart; a pending one becomes running and keeps its count.
 func (e *engine) setStatus(id int64, status string) error {
 	t := e.tasks[id]
 	s := jv.Clone(t.State()).(*jv.Object)
 	s.Set("status", status)
-	_, err := e.commit(func(tx *store.Tx) error { e.putTask(tx, t, s); return nil })
+	_, err := e.commit(func(tx *store.Tx) error {
+		if status == "pending" {
+			e.requeueTask(tx, t, s)
+		} else {
+			e.putTask(tx, t, s)
+		}
+		return nil
+	})
 	return err
 }
 

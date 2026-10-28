@@ -217,13 +217,13 @@ const observe = async o => {
 	if (o.kind === "events") {
 		const stream = await watchEvents(harness, conversation.id, context)
 		log("events attached", o.conv, stream.snapshot.entries.length)
-		stream.start(async events => { for (const e of events) log("event", o.conv, e.type); await pause(o.listener) })
+		stream.start(async ({ value: events }) => { for (const e of events) log("event", o.conv, e.type); await pause(o.listener) })
 		observers.push(() => stream.stop())
 	} else {
-		const view = await conversation.viewState(context)
+		const view = await conversation.watch(context)
 		log("view attached", o.conv, view.value.entries.length)
-		view.subscribe(value => log("view", o.conv, value.entries.length))
-		observers.push(() => view.dispose())
+		view.start(async ({ value }) => log("view", o.conv, value.entries.length))
+		observers.push(() => view.stop())
 	}
 }
 const start = async p => {
