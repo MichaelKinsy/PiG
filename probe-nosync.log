@@ -1,0 +1,167 @@
+01:40:47.421 pid=6512 write n=8 dur=320.6µs err=<nil> sync_h=0 sync_l=0 head="\x1b[?2004h"
+01:40:47.480 pid=6512 write n=22 dur=0s err=<nil> sync_h=0 sync_l=0 head="\x1b[>7u\x1b[?u\x1b]7501;?\x1b\\\x1b[c"
+01:40:47.481 pid=6512 probe start sync=false frames=40 interval=100ms rows=30 cols=110
+01:40:47.481 pid=6512 write n=26 dur=0s err=<nil> sync_h=0 sync_l=0 head="\x1b[?1049h\x1b[?7l\x1b[2J\x1b[H\x1b[?25l"
+01:40:47.481 pid=6512 probe frame 1
+01:40:47.481 pid=6512 write n=464 dur=0s err=<nil> sync_h=0 sync_l=0 head="\x1b[1;1H\x1b[2KPROBE FRAME 001 of 040  t=0ms "
+01:40:47.431 pid=9140 watch start child=6512 args=["D:\\a\\PiG\\PiG\\winpaintprobe.exe" "-sync=false" "-frames=40" "-interval=100ms" "-hold=2s"]
+01:40:47.516 pid=9140 first non-blank screen:
+01:40:47.516 pid=9140   row 00 | PROBE FRAME 001 of 040  t=0ms sync=false
+01:40:47.516 pid=9140   row 01 | line 001 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+01:40:47.516 pid=9140 screen hash=5483d51cfb7a4b0b nonblank=143 size=110x30 window=(0,0)-(109,29) cursor=(0,29) first="PROBE FRAME 001 of 040  t=0ms sync=false" last="line 001 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+01:40:47.582 pid=6512 probe frame 2
+01:40:47.582 pid=6512 write n=569 dur=0s err=<nil> sync_h=0 sync_l=0 head="\x1b[1;1H\x1b[2KPROBE FRAME 002 of 040  t=101m"
+01:40:47.598 pid=9140 screen hash=81b3013ceac2cb26 nonblank=248 size=110x30 window=(0,0)-(109,29) cursor=(0,29) first="PROBE FRAME 002 of 040  t=101ms sync=false" last="line 002 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+01:40:47.682 pid=6512 probe frame 3
+01:40:47.682 pid=6512 write n=672 dur=0s err=<nil> sync_h=0 sync_l=0 head="\x1b[1;1H\x1b[2KPROBE FRAME 003 of 040  t=201m"
+01:40:47.708 pid=9140 screen hash=3082b3c1a2f53fbb nonblank=351 size=110x30 window=(0,0)-(109,29) cursor=(0,29) first="PROBE FRAME 003 of 040  t=201ms sync=false" last="line 003 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+01:40:47.782 pid=6512 probe frame 4
+01:40:47.782 pid=6512 write n=775 dur=0s err=<nil> sync_h=0 sync_l=0 head="\x1b[1;1H\x1b[2KPROBE FRAME 004 of 040  t=301m"
+01:40:47.789 pid=9140 screen hash=646164393d8ccadd nonblank=454 size=110x30 window=(0,0)-(109,29) cursor=(0,29) first="PROBE FRAME 004 of 040  t=301ms sync=false" last="line 004 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+01:40:47.883 pid=6512 probe frame 5
+01:40:47.883 pid=6512 write n=878 dur=0s err=<nil> sync_h=0 sync_l=0 head="\x1b[1;1H\x1b[2KPROBE FRAME 005 of 040  t=401m"
+01:40:47.898 pid=9140 screen hash=f04ef1be918889ec nonblank=557 size=110x30 window=(0,0)-(109,29) cursor=(0,29) first="PROBE FRAME 005 of 040  t=401ms sync=false" last="line 005 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+01:40:47.983 pid=6512 probe frame 6
+01:40:47.983 pid=6512 write n=981 dur=0s err=<nil> sync_h=0 sync_l=0 head="\x1b[1;1H\x1b[2KPROBE FRAME 006 of 040  t=502m"
+01:40:48.007 pid=9140 screen hash=e192720a79339259 nonblank=660 size=110x30 window=(0,0)-(109,29) cursor=(0,29) first="PROBE FRAME 006 of 040  t=502ms sync=false" last="line 006 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+01:40:48.083 pid=6512 probe frame 7
+01:40:48.084 pid=6512 write n=1084 dur=418.1µs err=<nil> sync_h=0 sync_l=0 head="\x1b[1;1H\x1b[2KPROBE FRAME 007 of 040  t=602m"
+01:40:48.089 pid=9140 screen hash=01b508468d4448d6 nonblank=763 size=110x30 window=(0,0)-(109,29) cursor=(0,29) first="PROBE FRAME 007 of 040  t=602ms sync=false" last="line 007 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+01:40:48.184 pid=6512 probe frame 8
+01:40:48.184 pid=6512 write n=1187 dur=0s err=<nil> sync_h=0 sync_l=0 head="\x1b[1;1H\x1b[2KPROBE FRAME 008 of 040  t=703m"
+01:40:48.198 pid=9140 screen hash=0751df841fbadd8b nonblank=866 size=110x30 window=(0,0)-(109,29) cursor=(0,29) first="PROBE FRAME 008 of 040  t=703ms sync=false" last="line 008 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+01:40:48.285 pid=6512 probe frame 9
+01:40:48.285 pid=6512 write n=1290 dur=0s err=<nil> sync_h=0 sync_l=0 head="\x1b[1;1H\x1b[2KPROBE FRAME 009 of 040  t=803m"
+01:40:48.306 pid=9140 screen hash=5b52db8e6c1c3e72 nonblank=969 size=110x30 window=(0,0)-(109,29) cursor=(0,29) first="PROBE FRAME 009 of 040  t=803ms sync=false" last="line 009 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+01:40:48.385 pid=6512 probe frame 10
+01:40:48.386 pid=6512 write n=1393 dur=323.1µs err=<nil> sync_h=0 sync_l=0 head="\x1b[1;1H\x1b[2KPROBE FRAME 010 of 040  t=904m"
+01:40:48.388 pid=9140 screen hash=fd97f1a21dccc153 nonblank=1072 size=110x30 window=(0,0)-(109,29) cursor=(0,29) first="PROBE FRAME 010 of 040  t=904ms sync=false" last="line 010 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+01:40:48.486 pid=6512 probe frame 11
+01:40:48.486 pid=6512 write n=1497 dur=0s err=<nil> sync_h=0 sync_l=0 head="\x1b[1;1H\x1b[2KPROBE FRAME 011 of 040  t=1005"
+01:40:48.497 pid=9140 screen hash=4d6a26b2cf197523 nonblank=1176 size=110x30 window=(0,0)-(109,29) cursor=(0,29) first="PROBE FRAME 011 of 040  t=1005ms sync=false" last="line 011 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+01:40:48.587 pid=6512 probe frame 12
+01:40:48.587 pid=6512 write n=1600 dur=0s err=<nil> sync_h=0 sync_l=0 head="\x1b[1;1H\x1b[2KPROBE FRAME 012 of 040  t=1106"
+01:40:48.607 pid=9140 screen hash=3d8a9eb518e4e6f9 nonblank=1279 size=110x30 window=(0,0)-(109,29) cursor=(0,29) first="PROBE FRAME 012 of 040  t=1106ms sync=false" last="line 012 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+01:40:48.687 pid=6512 probe frame 13
+01:40:48.687 pid=6512 write n=1703 dur=0s err=<nil> sync_h=0 sync_l=0 head="\x1b[1;1H\x1b[2KPROBE FRAME 013 of 040  t=1206"
+01:40:48.689 pid=9140 screen hash=b0ceb6bcdcb77385 nonblank=1382 size=110x30 window=(0,0)-(109,29) cursor=(0,29) first="PROBE FRAME 012 of 040  t=1106ms sync=false" last="line 013 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+01:40:48.717 pid=9140 screen hash=27f614bde0b85f79 nonblank=1382 size=110x30 window=(0,0)-(109,29) cursor=(0,29) first="PROBE FRAME 013 of 040  t=1206ms sync=false" last="line 013 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+01:40:48.788 pid=6512 probe frame 14
+01:40:48.788 pid=6512 write n=1806 dur=0s err=<nil> sync_h=0 sync_l=0 head="\x1b[1;1H\x1b[2KPROBE FRAME 014 of 040  t=1307"
+01:40:48.799 pid=9140 screen hash=b5fe56da8c9ad787 nonblank=1485 size=110x30 window=(0,0)-(109,29) cursor=(0,29) first="PROBE FRAME 014 of 040  t=1307ms sync=false" last="line 014 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+01:40:48.889 pid=6512 probe frame 15
+01:40:48.889 pid=6512 write n=1909 dur=0s err=<nil> sync_h=0 sync_l=0 head="\x1b[1;1H\x1b[2KPROBE FRAME 015 of 040  t=1407"
+01:40:48.908 pid=9140 screen hash=0116497269a8cfbd nonblank=1588 size=110x30 window=(0,0)-(109,29) cursor=(0,29) first="PROBE FRAME 015 of 040  t=1407ms sync=false" last="line 015 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+01:40:48.989 pid=6512 probe frame 16
+01:40:48.989 pid=6512 write n=2012 dur=0s err=<nil> sync_h=0 sync_l=0 head="\x1b[1;1H\x1b[2KPROBE FRAME 016 of 040  t=1508"
+01:40:49.018 pid=9140 screen hash=0096e21d45282d43 nonblank=1691 size=110x30 window=(0,0)-(109,29) cursor=(0,29) first="PROBE FRAME 016 of 040  t=1508ms sync=false" last="line 016 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+01:40:49.090 pid=6512 probe frame 17
+01:40:49.090 pid=6512 write n=2115 dur=0s err=<nil> sync_h=0 sync_l=0 head="\x1b[1;1H\x1b[2KPROBE FRAME 017 of 040  t=1608"
+01:40:49.100 pid=9140 screen hash=bc2734df6cb09143 nonblank=1794 size=110x30 window=(0,0)-(109,29) cursor=(0,29) first="PROBE FRAME 017 of 040  t=1608ms sync=false" last="line 017 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+01:40:49.190 pid=6512 probe frame 18
+01:40:49.190 pid=6512 write n=2218 dur=0s err=<nil> sync_h=0 sync_l=0 head="\x1b[1;1H\x1b[2KPROBE FRAME 018 of 040  t=1709"
+01:40:49.209 pid=9140 screen hash=a4eacdf0622820d5 nonblank=1897 size=110x30 window=(0,0)-(109,29) cursor=(0,29) first="PROBE FRAME 018 of 040  t=1709ms sync=false" last="line 018 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+01:40:49.291 pid=6512 probe frame 19
+01:40:49.291 pid=6512 write n=2321 dur=0s err=<nil> sync_h=0 sync_l=0 head="\x1b[1;1H\x1b[2KPROBE FRAME 019 of 040  t=1810"
+01:40:49.318 pid=9140 screen hash=ff6d66ee157b4ea5 nonblank=2000 size=110x30 window=(0,0)-(109,29) cursor=(0,29) first="PROBE FRAME 019 of 040  t=1810ms sync=false" last="line 019 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+01:40:49.392 pid=6512 probe frame 20
+01:40:49.392 pid=6512 write n=2424 dur=0s err=<nil> sync_h=0 sync_l=0 head="\x1b[1;1H\x1b[2KPROBE FRAME 020 of 040  t=1911"
+01:40:49.400 pid=9140 screen hash=de6e5f03a8e668ef nonblank=2103 size=110x30 window=(0,0)-(109,29) cursor=(0,29) first="PROBE FRAME 020 of 040  t=1911ms sync=false" last="line 020 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+01:40:49.493 pid=6512 probe frame 21
+01:40:49.493 pid=6512 write n=2527 dur=365.6µs err=<nil> sync_h=0 sync_l=0 head="\x1b[1;1H\x1b[2KPROBE FRAME 021 of 040  t=2011"
+01:40:49.509 pid=9140 screen hash=f140171941714803 nonblank=2206 size=110x30 window=(0,0)-(109,29) cursor=(0,29) first="PROBE FRAME 021 of 040  t=2011ms sync=false" last="line 021 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+01:40:49.594 pid=6512 probe frame 22
+01:40:49.594 pid=6512 write n=2630 dur=0s err=<nil> sync_h=0 sync_l=0 head="\x1b[1;1H\x1b[2KPROBE FRAME 022 of 040  t=2112"
+01:40:49.617 pid=9140 screen hash=9c086e7224380ef8 nonblank=2309 size=110x30 window=(0,0)-(109,29) cursor=(0,29) first="PROBE FRAME 022 of 040  t=2112ms sync=false" last="line 022 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+01:40:49.694 pid=6512 probe frame 23
+01:40:49.694 pid=6512 write n=2733 dur=0s err=<nil> sync_h=0 sync_l=0 head="\x1b[1;1H\x1b[2KPROBE FRAME 023 of 040  t=2213"
+01:40:49.699 pid=9140 screen hash=79bdef84439e7156 nonblank=2412 size=110x30 window=(0,0)-(109,29) cursor=(0,29) first="PROBE FRAME 023 of 040  t=2213ms sync=false" last="line 023 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+01:40:49.795 pid=6512 probe frame 24
+01:40:49.795 pid=6512 write n=2836 dur=0s err=<nil> sync_h=0 sync_l=0 head="\x1b[1;1H\x1b[2KPROBE FRAME 024 of 040  t=2313"
+01:40:49.808 pid=9140 screen hash=c118d1bb231a93b2 nonblank=2515 size=110x30 window=(0,0)-(109,29) cursor=(0,29) first="PROBE FRAME 024 of 040  t=2313ms sync=false" last="line 024 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+01:40:49.895 pid=6512 probe frame 25
+01:40:49.895 pid=6512 write n=2939 dur=0s err=<nil> sync_h=0 sync_l=0 head="\x1b[1;1H\x1b[2KPROBE FRAME 025 of 040  t=2414"
+01:40:49.917 pid=9140 screen hash=dd527fd442923980 nonblank=2618 size=110x30 window=(0,0)-(109,29) cursor=(0,29) first="PROBE FRAME 025 of 040  t=2414ms sync=false" last="line 025 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+01:40:49.996 pid=6512 probe frame 26
+01:40:49.996 pid=6512 write n=3042 dur=0s err=<nil> sync_h=0 sync_l=0 head="\x1b[1;1H\x1b[2KPROBE FRAME 026 of 040  t=2515"
+01:40:49.999 pid=9140 screen hash=5f022412318d1dd7 nonblank=2721 size=110x30 window=(0,0)-(109,29) cursor=(0,29) first="PROBE FRAME 026 of 040  t=2515ms sync=false" last="line 026 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+01:40:50.096 pid=6512 probe frame 27
+01:40:50.096 pid=6512 write n=3145 dur=0s err=<nil> sync_h=0 sync_l=0 head="\x1b[1;1H\x1b[2KPROBE FRAME 027 of 040  t=2615"
+01:40:50.110 pid=9140 screen hash=f215f93ce416a3c4 nonblank=2824 size=110x30 window=(0,0)-(109,29) cursor=(0,29) first="PROBE FRAME 027 of 040  t=2615ms sync=false" last="line 027 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+01:40:50.197 pid=6512 probe frame 28
+01:40:50.197 pid=6512 write n=3248 dur=0s err=<nil> sync_h=0 sync_l=0 head="\x1b[1;1H\x1b[2KPROBE FRAME 028 of 040  t=2716"
+01:40:50.218 pid=9140 screen hash=1906fc0c159d99d3 nonblank=2927 size=110x30 window=(0,0)-(109,29) cursor=(0,29) first="PROBE FRAME 028 of 040  t=2716ms sync=false" last="line 028 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+01:40:50.298 pid=6512 probe frame 29
+01:40:50.298 pid=6512 write n=3248 dur=0s err=<nil> sync_h=0 sync_l=0 head="\x1b[1;1H\x1b[2KPROBE FRAME 029 of 040  t=2817"
+01:40:50.301 pid=9140 screen hash=49e01d2a0c936b72 nonblank=2927 size=110x30 window=(0,0)-(109,29) cursor=(0,29) first="PROBE FRAME 029 of 040  t=2817ms sync=false" last="line 028 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+01:40:50.398 pid=6512 probe frame 30
+01:40:50.398 pid=6512 write n=3248 dur=0s err=<nil> sync_h=0 sync_l=0 head="\x1b[1;1H\x1b[2KPROBE FRAME 030 of 040  t=2917"
+01:40:50.410 pid=9140 screen hash=021d38895bce2cb9 nonblank=2927 size=110x30 window=(0,0)-(109,29) cursor=(0,29) first="PROBE FRAME 030 of 040  t=2917ms sync=false" last="line 028 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+01:40:50.499 pid=6512 probe frame 31
+01:40:50.499 pid=6512 write n=3248 dur=0s err=<nil> sync_h=0 sync_l=0 head="\x1b[1;1H\x1b[2KPROBE FRAME 031 of 040  t=3018"
+01:40:50.519 pid=9140 screen hash=1d15ba9c792a2343 nonblank=2927 size=110x30 window=(0,0)-(109,29) cursor=(0,29) first="PROBE FRAME 031 of 040  t=3018ms sync=false" last="line 028 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+01:40:50.600 pid=6512 probe frame 32
+01:40:50.600 pid=6512 write n=3248 dur=738.1µs err=<nil> sync_h=0 sync_l=0 head="\x1b[1;1H\x1b[2KPROBE FRAME 032 of 040  t=3118"
+01:40:50.629 pid=9140 screen hash=f8248e91faa4ff13 nonblank=2927 size=110x30 window=(0,0)-(109,29) cursor=(0,29) first="PROBE FRAME 032 of 040  t=3118ms sync=false" last="line 028 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+01:40:50.701 pid=6512 probe frame 33
+01:40:50.701 pid=6512 write n=3248 dur=0s err=<nil> sync_h=0 sync_l=0 head="\x1b[1;1H\x1b[2KPROBE FRAME 033 of 040  t=3220"
+01:40:50.711 pid=9140 screen hash=ef4087a15b217376 nonblank=2927 size=110x30 window=(0,0)-(109,29) cursor=(0,29) first="PROBE FRAME 033 of 040  t=3220ms sync=false" last="line 028 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+01:40:50.802 pid=6512 probe frame 34
+01:40:50.802 pid=6512 write n=3248 dur=0s err=<nil> sync_h=0 sync_l=0 head="\x1b[1;1H\x1b[2KPROBE FRAME 034 of 040  t=3321"
+01:40:50.819 pid=9140 screen hash=0dd9b123fa6d502f nonblank=2927 size=110x30 window=(0,0)-(109,29) cursor=(0,29) first="PROBE FRAME 034 of 040  t=3321ms sync=false" last="line 028 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+01:40:50.902 pid=6512 probe frame 35
+01:40:50.902 pid=6512 write n=3248 dur=0s err=<nil> sync_h=0 sync_l=0 head="\x1b[1;1H\x1b[2KPROBE FRAME 035 of 040  t=3421"
+01:40:50.929 pid=9140 screen hash=f7280bdbd60830c3 nonblank=2927 size=110x30 window=(0,0)-(109,29) cursor=(0,29) first="PROBE FRAME 035 of 040  t=3421ms sync=false" last="line 028 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+01:40:51.003 pid=6512 probe frame 36
+01:40:51.003 pid=6512 write n=3248 dur=0s err=<nil> sync_h=0 sync_l=0 head="\x1b[1;1H\x1b[2KPROBE FRAME 036 of 040  t=3521"
+01:40:51.010 pid=9140 screen hash=9cdc3d5312d55593 nonblank=2927 size=110x30 window=(0,0)-(109,29) cursor=(0,29) first="PROBE FRAME 036 of 040  t=3521ms sync=false" last="line 028 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+01:40:51.103 pid=6512 probe frame 37
+01:40:51.103 pid=6512 write n=3248 dur=0s err=<nil> sync_h=0 sync_l=0 head="\x1b[1;1H\x1b[2KPROBE FRAME 037 of 040  t=3622"
+01:40:51.119 pid=9140 screen hash=1905e4bd70804c64 nonblank=2927 size=110x30 window=(0,0)-(109,29) cursor=(0,29) first="PROBE FRAME 037 of 040  t=3622ms sync=false" last="line 028 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+01:40:51.204 pid=6512 probe frame 38
+01:40:51.204 pid=6512 write n=3248 dur=0s err=<nil> sync_h=0 sync_l=0 head="\x1b[1;1H\x1b[2KPROBE FRAME 038 of 040  t=3723"
+01:40:51.227 pid=9140 screen hash=a44f27935565936d nonblank=2927 size=110x30 window=(0,0)-(109,29) cursor=(0,29) first="PROBE FRAME 038 of 040  t=3723ms sync=false" last="line 028 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+01:40:51.305 pid=6512 probe frame 39
+01:40:51.305 pid=6512 write n=3248 dur=0s err=<nil> sync_h=0 sync_l=0 head="\x1b[1;1H\x1b[2KPROBE FRAME 039 of 040  t=3823"
+01:40:51.308 pid=9140 screen hash=ba1a53fd5f61cca9 nonblank=2927 size=110x30 window=(0,0)-(109,29) cursor=(0,29) first="PROBE FRAME 039 of 040  t=3823ms sync=false" last="line 028 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+01:40:51.405 pid=6512 probe frame 40
+01:40:51.405 pid=6512 write n=3248 dur=0s err=<nil> sync_h=0 sync_l=0 head="\x1b[1;1H\x1b[2KPROBE FRAME 040 of 040  t=3924"
+01:40:51.417 pid=9140 screen hash=c47b6476b67aed4f nonblank=2927 size=110x30 window=(0,0)-(109,29) cursor=(0,29) first="PROBE FRAME 040 of 040  t=3924ms sync=false" last="line 028 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+01:40:51.506 pid=6512 probe last frame drawn; holding 2s
+01:40:52.439 pid=9140 screen hash=c47b6476b67aed4f nonblank=2927 size=110x30 window=(0,0)-(109,29) cursor=(0,29) first="PROBE FRAME 040 of 040  t=3924ms sync=false" last="line 028 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+01:40:53.461 pid=9140 screen hash=c47b6476b67aed4f nonblank=2927 size=110x30 window=(0,0)-(109,29) cursor=(0,29) first="PROBE FRAME 040 of 040  t=3924ms sync=false" last="line 028 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+01:40:53.507 pid=6512 write n=19 dur=0s err=<nil> sync_h=0 sync_l=0 head="\x1b[?25h\x1b[?7h\x1b[?1049l"
+01:40:53.507 pid=6512 write n=4 dur=0s err=<nil> sync_h=0 sync_l=0 head="\x1b[<u"
+01:40:53.507 pid=6512 write n=8 dur=0s err=<nil> sync_h=0 sync_l=0 head="\x1b[?2004l"
+01:40:53.507 pid=6512 probe done
+01:40:53.510 pid=9140 watch child exited code=0
+01:40:53.510 pid=9140 final screen:
+01:40:53.510 pid=9140   row 00 | PROBE FRAME 040 of 040  t=3924ms sync=false
+01:40:53.510 pid=9140   row 01 | line 001 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+01:40:53.510 pid=9140   row 02 | line 002 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+01:40:53.510 pid=9140   row 03 | line 003 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+01:40:53.510 pid=9140   row 04 | line 004 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+01:40:53.510 pid=9140   row 05 | line 005 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+01:40:53.510 pid=9140   row 06 | line 006 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+01:40:53.510 pid=9140   row 07 | line 007 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+01:40:53.510 pid=9140   row 08 | line 008 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+01:40:53.510 pid=9140   row 09 | line 009 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+01:40:53.510 pid=9140   row 10 | line 010 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+01:40:53.510 pid=9140   row 11 | line 011 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+01:40:53.510 pid=9140   row 12 | line 012 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+01:40:53.510 pid=9140   row 13 | line 013 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+01:40:53.510 pid=9140   row 14 | line 014 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+01:40:53.510 pid=9140   row 15 | line 015 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+01:40:53.510 pid=9140   row 16 | line 016 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+01:40:53.510 pid=9140   row 17 | line 017 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+01:40:53.510 pid=9140   row 18 | line 018 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+01:40:53.510 pid=9140   row 19 | line 019 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+01:40:53.510 pid=9140   row 20 | line 020 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+01:40:53.510 pid=9140   row 21 | line 021 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+01:40:53.510 pid=9140   row 22 | line 022 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+01:40:53.510 pid=9140   row 23 | line 023 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+01:40:53.510 pid=9140   row 24 | line 024 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+01:40:53.510 pid=9140   row 25 | line 025 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+01:40:53.510 pid=9140   row 26 | line 026 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+01:40:53.510 pid=9140   row 27 | line 027 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+01:40:53.510 pid=9140   row 28 | line 028 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx

@@ -1,0 +1,5 @@
+01:41:59.423 pid=1484 pty start child=7460 size=120x40 args=["D:\\a\\PiG\\PiG\\pig-diag.exe" "--no-extensions" "--no-session" "--model" "test-faux/faux-1" "TUI_LIVE_STREAM_PAUSE"]
+01:41:59.470 pid=1484 pty out n=16 total=16 head="\x1b[?9001h\x1b[?1004h"
+01:42:01.448 pid=1484 pty child exited code=0
+01:42:01.449 pid=1484 pty out n=68 total=84 head="\x1b[?25l\x1b[?9001l\x1b[?1004l\x1b[2J\x1b[m\x1b[H\x1b]0;D:\\a\\PiG\\PiG"
+01:42:01.451 pid=1484 pty output ended err=The pipe has been ended. total=84

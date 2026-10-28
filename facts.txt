@@ -1,0 +1,4 @@
+os: Microsoft Windows NT 10.0.26100.0
+conhost: 10.0.26100.1 (WinBuild.160101.0800)
+go: go version go1.27.3 windows/amd64
+sha: 831c672b7f7dc4af067074fd4cbfd0fac6b55021

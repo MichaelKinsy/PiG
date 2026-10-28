@@ -1,0 +1,5 @@
+01:42:05.566 pid=3956 pty start child=2032 size=120x40 args=["D:\\a\\PiG\\PiG\\pig-diag.exe" "--no-extensions" "--no-session" "--model" "mock/m1" "go"]
+01:42:05.611 pid=3956 pty out n=16 total=16 head="\x1b[?9001h\x1b[?1004h"
+01:42:25.767 pid=3956 pty child exited code=0
+01:42:25.767 pid=3956 pty out n=68 total=84 head="\x1b[?25l\x1b[?9001l\x1b[?1004l\x1b[2J\x1b[m\x1b[H\x1b]0;D:\\a\\PiG\\PiG"
+01:42:25.770 pid=3956 pty output ended err=The pipe has been ended. total=84

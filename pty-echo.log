@@ -1,0 +1,5 @@
+01:41:59.236 pid=4880 pty start child=5132 size=120x40 args=["cmd" "/c" "echo" "hello-from-pty"]
+01:41:59.285 pid=4880 pty child exited code=0
+01:41:59.285 pid=4880 pty out n=16 total=16 head="\x1b[?9001h\x1b[?1004h"
+01:41:59.285 pid=4880 pty out n=70 total=86 head="\x1b[?25l\x1b[?9001l\x1b[?1004l\x1b[2J\x1b[m\x1b[H\x1b]0;C:\\Windows\\S"
+01:41:59.287 pid=4880 pty output ended err=The pipe has been ended. total=86
