@@ -89,6 +89,9 @@
                (:file "autocomplete")
                (:file "terminal-input")
                ;; ==== end lane U2 ====
+               ;; ==== lane TA ====
+               (:file "tui-alt-screen")
+               ;; ==== end lane TA ====
                (:file "runner")))
 
 (asdf:defsystem "pig-sdk/tests"
@@ -129,5 +132,8 @@
                 ;; ==== lane U2 ====
                 (:file "editor-tests")
                 ;; ==== end lane U2 ====
+                ;; ==== lane TA ====
+                (:file "tui-alt-tests")
+                ;; ==== end lane TA ====
                 )
   :perform (asdf:test-op (op c) (declare (ignore op c)) (uiop:symbol-call :pig-tests :run-all)))
