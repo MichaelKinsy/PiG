@@ -1,15 +1,17 @@
 # PiG docs
 
 This is PiG's user manual and the canonical local reference for coding agents
-helping users manage PiG. It is embedded in the binary and materialized under
-`~/.pig/docs/bundle-<hash>/` by `pig docs`, one directory per build, named by
-the content hash of its pages. PiG also checks the bundle marker at startup.
-Two PiG builds that share a config root each keep their own bundle, so neither
-rewrites the other's. `pig docs path` prints this build's directory. Do not edit
-the materialized copy; edit the bundled source and sync again.
+helping users manage PiG.
+
+> **Differs from Pi, or easy to get wrong**
+> - Config lives in `~/.pig` and `.pig/`, never `~/.pi` or `.pi/` (D2).
+> - Project files load only in a trusted project. With `-p` there is no prompt and PiG skips them: pass `--approve` ([trust](trust.md)).
+> - A Piglet's `tools:` is a ceiling, not a list to turn on ([strip built-ins](piglet-strip.md)).
+> - Skills load from `~/.pig/agent/skills/` and `~/.agents/skills/`, not `~/.pig/skills/` ([skills](skills.md)).
+> - Only top-level `.ts` or `.js` files load from an extensions folder. Go, Rust, Python, and Lisp are the main languages ([extensions](extensions.md)).
 
 PiG is the Go-native port of upstream Pi. Numbered differences are summarized in
-[divergences](divergences.md).
+[divergences](divergences.md). `divergences.md` has one row per line, so search it with `grep -n -i <word>` instead of reading it whole.
 
 ## Start by task
 
@@ -17,13 +19,20 @@ Read the one row that matches the task, then follow only its direct links.
 
 | I want to... | Start here | Then read |
 |---|---|---|
+| make PiG do something it does not do, or choose how to customize it | [Extend and modify PiG](extend-pig.md) (the customize chooser) | [Extensions](extensions.md) or [Piglets](piglets.md) |
+| a tool, command, extension, or model is missing | [Strip built-ins and limit tools](piglet-strip.md) | [Commands](commands.md#tools) |
+| which Piglet is active and what it limits | [Strip built-ins and limit tools](piglet-strip.md#inspect-the-active-piglet) | [Piglets](piglets.md) |
+| check a Pi behavior before assuming it in an area PiG changed (config paths, trust, tools, extensions) | [Divergences](divergences.md) (`grep -n -i <word> divergences.md`) | The "Differs from Pi" boxes in [Settings](settings.md), [Extensions](extensions.md), and [Skills](skills.md) |
 | start from zero, guided | [Onboarding](onboarding.md) | [Install](install.md) |
 | do everyday work for a user who does not program (PDFs, spreadsheets, documents, reports, files) | [Applied use cases](applied-use-cases.md) | [Sessions](sessions.md) |
 | install PiG and run a first session | [Install](install.md) | [Providers](providers.md) |
+| learn how PiG runs a turn: the agent loop, context, sessions, tools, and interfaces | [How PiG works](how-pig-works.md) | [Concepts](concepts.md) |
+| look up what a PiG term means (Resource, Package, Piglet, Piglet Binary, Provider, ...) | [Glossary](glossary.md) | [Concepts](concepts.md) |
 | understand the small mental model | [Concepts](concepts.md) | [Packages](packages.md) or [Piglets](piglets.md) |
 | install or share capabilities | [Packages](packages.md) | [Extensions](extensions.md) or [Skills](skills.md) |
 | publish a Package or Piglet to npm | [Publishing](publishing.md) | [Packages](packages.md) or [Piglets](piglets.md) |
 | shape, launch, build, or hand off an agent | [Piglets](piglets.md) | [Runtime cells](runtime-cells.md) for internals |
+| take a Piglet from a file to an installed, signed, published agent (author, validate, run, inspect, register, build, sign, publish, install, update) | [Piglet lifecycle](piglet-lifecycle.md) | [Piglets](piglets.md) |
 | learn why extension cells are packed into host processes | [Runtime cells](runtime-cells.md) | [Extensions](extensions.md) |
 | write an extension | [Extensions](extensions.md) | [Extension API](extension-api.md) |
 | look up a host API call, the wire protocol, or an SDK quickstart | [Extension API](extension-api.md) | [Message types](message-types.md) |
@@ -48,8 +57,8 @@ Read the one row that matches the task, then follow only its direct links.
 | build terminal UI for an extension | [TUI components](tui.md) | [Extension API](extension-api.md) |
 | embed PiG in a program | [SDK](sdk.md) | [Extensions](extensions.md) |
 | add a provider or model endpoint | [Custom providers](custom-provider.md) | [Models](models.md) |
+| look up a PiG-only feature for authors by its D number | [Additive features](additive-features.md) | [Divergences](divergences.md) |
 | understand Stock Pig and explicit compositions | [Stock Pig and PiG Standard](built-in-extensions.md) | [Divergences](divergences.md) |
-| check whether PiG differs from upstream Pi before assuming a Pi behavior | [Divergences](divergences.md) | [Concepts](concepts.md) |
 | map entities, paths, and the command that inspects each | [Knowledge graph](knowledge-graph.md) | [Concepts](concepts.md) |
 | run PiG from a script or another program | [CLI integration](cli-integration.md) | [JSON mode](json.md) or [RPC](rpc.md) |
 | use JSON mode or RPC | [JSON mode](json.md), [RPC](rpc.md) | [RPC commands](rpc-commands.md), [RPC extension UI](rpc-extension-ui.md) |
@@ -64,6 +73,15 @@ Read the one row that matches the task, then follow only its direct links.
 
 The platform pages on the site (tmux, Termux, Windows, containerization, shell aliases) are not in this bundle on purpose. They are setup guides for a particular terminal or host, not behavior of the program, and the site keeps them. `troubleshooting.md` and `terminal-setup.md` link them. This is a documentation choice, not a numbered divergence.
 
+## Where this bundle lives
+
+It is embedded in the binary and materialized under
+`~/.pig/docs/bundle-<hash>/` by `pig docs`, one directory per build, named by
+the content hash of its pages. PiG also checks the bundle marker at startup.
+Two PiG builds that share a config root each keep their own bundle, so neither
+rewrites the other's. `pig docs path` prints this build's directory. Do not edit
+the materialized copy; edit the bundled source and sync again.
+
 ## The model in one table
 
 | Pole | Job | Example |
@@ -71,9 +89,9 @@ The platform pages on the site (tmux, Termux, Windows, containerization, shell a
 | Resource | add one capability or instruction set | extension, skill, prompt, hook, MCP definition, theme, environment |
 | Package | distribute available Resources | install from local/git/npm or a contributed resolver |
 | Piglet | select/scope Resources and define one named agent | `pig --piglet research` |
-| Piglet release | pin exact Resource closure and executable component plan plus optional artifacts | source plus Piglet Binary/Piglet Image facets |
+| Piglet release | pin exact Resource closure and executable component plan plus optional artifacts | source plus Piglet Binary facets (a Piglet Image facet is planned) |
 | Piglet Binary | target-native PiG executable for one immutable Piglet composition | may use fused, subprocess, and external components |
-| Piglet Image | OCI materialization of Piglet component/environment closure | environment-complete carrier |
+| Piglet Image | planned, not in this release: OCI materialization of Piglet component/environment closure; no producer exists | none yet |
 
 The two authored management concepts to remember are **Package** and **Piglet**.
 Read [Concepts](concepts.md) before operational pages to keep authored entities,
@@ -81,8 +99,8 @@ carriers, component realization, materialization, and environments distinct.
 
 ## Authoritative summary
 
-PiG is one Go binary whose config root defaults to `~/.pig` and can be overridden
-with `PIG_HOME`. Normal extensions run as subprocesses over the current subprocess wire; compatible
+PiG is one Go binary whose config root is `PIG_HOME`, else `$XDG_CONFIG_HOME/pig`,
+else `~/.pig` (`configroot.Resolve`). Normal extensions run as subprocesses over the current subprocess wire; compatible
 Go factories may also fuse into a Piglet Binary. These are per-component
 execution choices, not different binary kinds. Piglet releases record exact
 Resource origins and whether each component is fused, subprocess-hosted, or
@@ -99,7 +117,7 @@ resolvers, and publishing commands without becoming part of raw PiG.
 - `~` means the user's home directory.
 - Shell examples assume bash/zsh and `pig` on `PATH`.
 - "Upstream" means upstream Pi; "PiG" means this Go binary.
-- "Carrier" means Host Piglet, Piglet Binary, or Piglet Image.
+- "Carrier" means Host Piglet, Piglet Binary, or Piglet Image (planned).
 - "Realization" means fused, subprocess, or external component execution.
 - "Materialization" means binary, release, environment, or external delivery.
 - "Cell" is an internal extension-host scheduling/process unit, not a user entity.

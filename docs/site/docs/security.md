@@ -39,6 +39,8 @@ Print, JSON and RPC modes cannot show the trust prompt. Without an override, ext
 
 Use `/trust` to manage the current project decision. The selector shows the saved decision and the current session's trust state separately. A checkmark stays on the saved choice while you browse. Select **Trust parent folder** to trust the parent and clear the current project's override. Restart PiG after changing trust so startup discovery runs under the new decision.
 
+[Project trust](/docs/latest/trust) explains each step of the decision and compares it with Pi.
+
 ## Sessions and credentials
 
 Sessions can contain prompts, tool arguments, command output, file contents and credentials that appeared in the conversation. Review a session before you export or share it.

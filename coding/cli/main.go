@@ -950,6 +950,7 @@ func Main(args []string, options *MainOptions) {
 	var activePigletBaked bool
 	enforcePigletBinaryScope(flags.UnknownFlags)
 	activePiglet, activePigletBaked = resolvePiglet(flags.UnknownFlags, flags.ProjectTrustOverride)
+	exportActivePigletSource(activePiglet, activePigletBaked)
 	// pig additive (D23): an active Piglet adds the Piglets topic to the docs section of the system prompt.
 	prompts.SetPigletDocsTopic(activePiglet != nil)
 	// pig additive (D202): a Piglet Binary that accepts overlays takes --system-prompt as stock pig does, so the flag replaces the

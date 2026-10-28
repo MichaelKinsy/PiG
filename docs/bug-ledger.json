@@ -6013,6 +6013,30 @@
       "tests": []
     },
     {
+      "id": "BF-36fe3a6",
+      "title": "`pig install \u003cpath\u003e --validate-only` called a `.mjs` file, or a directory with only `index.mjs`, a valid…",
+      "symptom": "`pig install \u003cpath\u003e --validate-only` called a `.mjs` file, or a directory with only `index.mjs`, a valid extension without saying that auto-discovery ignores it.",
+      "rootCause": "A top-level .mjs file or a directory with only index.mjs validated as a valid extension, and auto-discovery of an extensions directory ignores both, as Pi's does (.ts and .js only). The report keeps valid: true, because -e and a settings path load the source, and now adds autoDiscovered and a warning that names the rule.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`pig install \u003cpath\u003e --validate-only` called a `.mjs` file, or a directory with only `index.mjs`, a valid extension without saying that auto-discovery ignores it. Pi discovers only `.ts` and `.js` files in an extensions directory. The report stays valid, because `-e` and a settings path load the source, and now says what discovery does.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "36fe3a67b3",
+          "date": "2026-10-28"
+        }
+      ],
+      "tests": [
+        "coding/cli/config_command_test.go::TestProjectPackageDeltaDrivesStartupStatusAndResourceCollectors",
+        "coding/cli/introspection_truth_test.go::TestInstallValidateOnlyReportsWhatDiscoveryWouldLoad",
+        "coding/cli/introspection_truth_test.go::TestNotAutoDiscoveredWarningFollowsPiDiscovery"
+      ]
+    },
+    {
       "id": "BF-37c6048",
       "title": "fix(tui): a streamed Markdown never resumes past a paragraph clipped before a LaTeX start",
       "symptom": "fix(tui): a streamed Markdown never resumes past a paragraph clipped before a LaTeX start",
@@ -11311,6 +11335,42 @@
       ]
     },
     {
+      "id": "BF-618ca75",
+      "title": "The agent docs bundle no longer contradicts the site",
+      "symptom": "The agent docs bundle no longer contradicts the site.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "The agent docs bundle no longer contradicts the site. `/fork` continues from before an earlier user message, the `PIG_HOME` default names `XDG_CONFIG_HOME`, `defaultThinkingLevel` defaults to `medium`, the site lists all nine Resource kinds, the bundle's Package page documents `pig update --models`, and the Piglet Image is marked as planned.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "618ca75612",
+          "date": "2026-10-28"
+        }
+      ],
+      "tests": [
+        "test/docs-drift/bundle_generated_test.go::TestBundleLinksStayInsideTheFlatBundle",
+        "test/docs-drift/bundle_generated_test.go::TestEveryBundlePageHasOneOwner",
+        "test/docs-drift/bundle_generated_test.go::TestGeneratedBlockEditedByHandFails",
+        "test/docs-drift/bundle_generated_test.go::TestGeneratedBundlePageEditedByHandFails",
+        "test/docs-drift/bundle_generated_test.go::TestGeneratedBundlePagesAreCurrent",
+        "test/docs-drift/bundle_generated_test.go::TestGeneratedBundlePagesCarryTheDoNotEditHeader",
+        "test/docs-drift/bundle_generated_test.go::TestGlossaryHasEveryContextTerm",
+        "test/docs-drift/bundle_generated_test.go::TestNoLinkPinsAStalePiTag",
+        "test/docs-drift/bundle_generated_test.go::TestSiteEditOfASharedPageStalesTheBundle",
+        "test/docs-drift/docs_contradictions_test.go::TestDefaultThinkingLevelIsMedium",
+        "test/docs-drift/docs_contradictions_test.go::TestForkIsDescribedAsAnEarlierUserMessage",
+        "test/docs-drift/docs_contradictions_test.go::TestPigHomeDefaultNamesXDG",
+        "test/docs-drift/docs_contradictions_test.go::TestPigletImageIsPlanned",
+        "test/docs-drift/docs_contradictions_test.go::TestResourceKindListHasNineKinds",
+        "test/docs-drift/docs_contradictions_test.go::TestUpdateModelsIsDocumentedWhereUpdateIs"
+      ]
+    },
+    {
       "id": "BF-619443a",
       "title": "MCP sign-in now rejects authorization endpoints and other OAuth metadata URLs that are not `http:` or…",
       "symptom": "MCP sign-in now rejects authorization endpoints and other OAuth metadata URLs that are not `http:` or `https:`, so a malicious server cannot make pig launch a `file:` or custom protocol URL.",
@@ -15659,6 +15719,30 @@
       ]
     },
     {
+      "id": "BF-6b85cb7",
+      "title": "`pig status --json` now gives a skill without a `description` and a theme that fails the theme schema…",
+      "symptom": "`pig status --json` now gives a skill without a `description` and a theme that fails the theme schema `enabled: false` as well as the `health` text and the warning, so one field says whether the session has the resource.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`pig status --json` now gives a skill without a `description` and a theme that fails the theme schema `enabled: false` as well as the `health` text and the warning, so one field says whether the session has the resource. They were `enabled: true` before. They count as disabled in `resources`.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "6b85cb7e8b",
+          "date": "2026-10-28"
+        }
+      ],
+      "tests": [
+        "coding/cli/introspection_truth_test.go::TestStatusReportsASkillWithoutDescriptionAsNotLoaded",
+        "coding/cli/introspection_truth_test.go::TestStatusReportsAThemeWithAnUnknownColorRoleAsInvalid",
+        "coding/piglet/active_source_test.go::TestActiveSourceValue"
+      ]
+    },
+    {
       "id": "BF-6b97207",
       "title": "An extension that overrides the `edit` tool with a definition built by the Go, Rust or Python SDK's…",
       "symptom": "An extension that overrides the `edit` tool with a definition built by the Go, Rust or Python SDK's `createEditToolDefinition` now has the model's legacy edit shapes normalised, as Pi's `{ ...createEditToolDefinition(cwd), execute }` does.",
@@ -17672,6 +17756,28 @@
         }
       ],
       "tests": []
+    },
+    {
+      "id": "BF-7bf1cbb",
+      "title": "`pig status` now gives a skill without a `description` the health `not loaded: description is required`, and…",
+      "symptom": "`pig status` now gives a skill without a `description` the health `not loaded: description is required`, and a theme with an unknown color role or another schema error an `invalid:` health, with a warning for each.",
+      "rootCause": "Pi leaves out a skill with no description and rejects a theme with an unknown color role, with a warning. Status listed both as enabled with empty health. Status now runs the loader on each enabled skill and theme and reports the verdict as health and a warning. An open Piglet Binary applies its Piglet's discovery; a Binary other than the running pig is named, not guessed.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`pig status` now gives a skill without a `description` the health `not loaded: description is required`, and a theme with an unknown color role or another schema error an `invalid:` health, with a warning for each. Pi leaves out the skill and rejects the theme; status listed both as enabled with no health problem.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "7bf1cbb246",
+          "date": "2026-10-28"
+        }
+      ],
+      "tests": [
+        "coding/cli/introspection_truth_test.go::TestStatusNamesAPigletBinaryItCannotApply"
+      ]
     },
     {
       "id": "BF-7c59949",
@@ -23971,44 +24077,8 @@
       ]
     },
     {
-      "id": "BF-D204",
-      "title": "The Lisp SDK does not yet export TuiAltScreen, Pi's alternate-screen TUI host, where the Node, Go, Rust and…",
-      "symptom": "none claimed.",
-      "rootCause": "",
-      "rootCauseSource": "divergence record",
-      "userImpact": "Behavior differed from Pi",
-      "platform": "All platforms",
-      "class": "ahead-of-pi",
-      "divergence": "D204",
-      "removeWhen": "the Lisp SDK exports `TuiAltScreen` over the `tui.alt` wire; then the 46 `lisp` cells become `native:` cells with their conformance reach, and this record goes.",
-      "fixedIn": "Unreleased",
-      "origin": "divergence",
-      "commits": [
-        {
-          "hash": "26bbbe6a80",
-          "date": "2026-10-26"
-        },
-        {
-          "hash": "f67a7da98e",
-          "date": "2026-10-26"
-        },
-        {
-          "hash": "084f8094e6",
-          "date": "2026-10-27"
-        },
-        {
-          "hash": "97571ba165",
-          "date": "2026-10-27"
-        }
-      ],
-      "tests": [
-        "test/extension-conformance/tui_alt_screen_test.go::TestTuiAltScreenAcrossSDKs",
-        "test/extension-conformance/tui_alt_screen_test.go::TestTuiAltScreenFrameReadsAcrossSDKs"
-      ]
-    },
-    {
       "id": "BF-D207",
-      "title": "TuiAltScreen.children is a copy in the Go, Rust and Python SDKs, where Pi's is a live array",
+      "title": "TuiAltScreen.children is a copy in the Go, Rust, Python and Lisp SDKs, where Pi's is a live array",
       "symptom": "none claimed.",
       "rootCause": "the renderer, with the screen's child list, runs in the host process and the extension's components in the extension's process, so an array in the extension cannot be the renderer's array. The SDKs keep the children they sent to the host and update that list after each call returns; a list a caller could write to would need a call to the host on every write and a way for the host to change the extension's list, which Pi's array is not.",
       "rootCauseSource": "divergence record",
@@ -24016,12 +24086,32 @@
       "platform": "All platforms",
       "class": "ahead-of-pi",
       "divergence": "D207",
-      "removeWhen": "Pi's `children` stops being a public live array, or an owner decision asks for a live view across the process boundary; then the three markers, the evidence note and this record go.",
+      "removeWhen": "Pi's `children` stops being a public live array, or an owner decision asks for a live view across the process boundary; then the four markers, the evidence note and this record go.",
       "fixedIn": "Unreleased",
       "origin": "divergence",
       "commits": [
         {
           "hash": "109a3bd9f4",
+          "date": "2026-10-28"
+        },
+        {
+          "hash": "1d6732bee8",
+          "date": "2026-10-28"
+        },
+        {
+          "hash": "395ad20127",
+          "date": "2026-10-28"
+        },
+        {
+          "hash": "5a671a6be6",
+          "date": "2026-10-28"
+        },
+        {
+          "hash": "af97c34f84",
+          "date": "2026-10-28"
+        },
+        {
+          "hash": "be8abc8c03",
           "date": "2026-10-28"
         }
       ],
@@ -24031,7 +24121,7 @@
     },
     {
       "id": "BF-D208",
-      "title": "From inside a component's render, a TuiAltScreen of the Go, Rust and Python SDKs fails the calls that…",
+      "title": "From inside a component's render, a TuiAltScreen of the Go, Rust, Python and Lisp SDKs fails the calls that…",
       "symptom": "none claimed.",
       "rootCause": "the renderer takes one non-reentrant lock for the whole frame, and a re-entered frame would need it while the frame waits for the render that re-enters it, which is a deadlock; supporting Pi's recursion needs a frame that renders again inside itself, which the renderer's single pass and its differential state do not allow.",
       "rootCauseSource": "divergence record",
@@ -24045,6 +24135,14 @@
       "commits": [
         {
           "hash": "1d6732bee8",
+          "date": "2026-10-28"
+        },
+        {
+          "hash": "395ad20127",
+          "date": "2026-10-28"
+        },
+        {
+          "hash": "5a671a6be6",
           "date": "2026-10-28"
         },
         {
@@ -27532,6 +27630,123 @@
         "internal/codingagent/owner_dialog_stack_test.go::TestMissingCwdConfirmationStacksWithAnOpenExtensionDialog",
         "internal/codingagent/owner_dialog_stack_test.go::TestSessionReplacementDismissesAnOpenTreeSummaryPrompt",
         "internal/codingagent/owner_dialog_stack_test.go::TestStackedPromptsReportTheirBlockedStatus"
+      ]
+    },
+    {
+      "id": "BF-bede0f0",
+      "title": "`pig status` no longer lists the resources of an untrusted project as enabled",
+      "symptom": "`pig status` no longer lists the resources of an untrusted project as enabled.",
+      "rootCause": "pig status listed an untrusted project's resources as enabled and ignored the active Piglet's discovery; pig diagnose reported an untrusted project's defaultModel and printed a provider-qualified defaultModel as provider/provider/id. A skill without a description and a theme with an unknown color role showed no health.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`pig status` no longer lists the resources of an untrusted project as enabled. It resolves project trust as a print run does (saved decision, then `defaultProjectTrust`, else untrusted), shows the decision, and marks each project extension, skill, prompt and theme `ignored: untrusted` and not enabled. The settings and Packages of an untrusted project no longer count.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "bede0f0edf",
+          "date": "2026-10-28"
+        }
+      ],
+      "tests": [
+        "coding/cli/introspection_truth_test.go::TestDefaultModelResolutionDoesNotSplitAProviderPrefix",
+        "coding/cli/introspection_truth_test.go::TestDiagnoseDefaultModelWithoutProviderIsIgnoredLikePi",
+        "coding/cli/introspection_truth_test.go::TestDiagnoseIgnoresUntrustedProjectDefaultModel",
+        "coding/cli/introspection_truth_test.go::TestDiagnoseNamesTheActivePiglet",
+        "coding/cli/introspection_truth_test.go::TestDiagnoseQualifiedDefaultModelFallsBackAsPiDoes",
+        "coding/cli/introspection_truth_test.go::TestDiagnoseReportsTrustedProjectDefaultModelAndItsFile",
+        "coding/cli/introspection_truth_test.go::TestExportActivePigletSourceReachesToolProcesses",
+        "coding/cli/introspection_truth_test.go::TestReportProjectTrustNamesTheDeciding",
+        "coding/cli/introspection_truth_test.go::TestStatusAppliesTheActivePigletDiscovery",
+        "coding/cli/introspection_truth_test.go::TestStatusHumanOutputNamesTrustAndIgnoredResources",
+        "coding/cli/introspection_truth_test.go::TestStatusMarksUntrustedProjectResourcesIgnored",
+        "coding/cli/introspection_truth_test.go::TestStatusReportsASkillWithoutDescriptionAsNotLoaded",
+        "coding/cli/introspection_truth_test.go::TestStatusReportsAThemeWithAnUnknownColorRoleAsInvalid",
+        "coding/cli/introspection_truth_test.go::TestStatusTrustedProjectResourcesApply",
+        "coding/cli/introspection_truth_test.go::TestStatusWarnsWhenTheActivePigletSourceDoesNotLoad",
+        "coding/piglet/active_source_test.go::TestActiveSourceIsPath",
+        "coding/piglet/active_source_test.go::TestActiveSourceValue",
+        "coding/piglet/active_source_test.go::TestShowWithoutAnArgumentUsesTheActivePigletSource"
+      ]
+    },
+    {
+      "id": "BF-bede0f0-2",
+      "title": "`pig diagnose` no longer reports the `defaultModel` of an untrusted project, which the session does not use",
+      "symptom": "`pig diagnose` no longer reports the `defaultModel` of an untrusted project, which the session does not use.",
+      "rootCause": "pig status listed an untrusted project's resources as enabled and ignored the active Piglet's discovery; pig diagnose reported an untrusted project's defaultModel and printed a provider-qualified defaultModel as provider/provider/id. A skill without a description and a theme with an unknown color role showed no health.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`pig diagnose` no longer reports the `defaultModel` of an untrusted project, which the session does not use. It reports the effective default model and the settings file of each part. A provider-qualified `defaultModel` such as `\"bench/bench-2\"` was printed as `bench/bench/bench-2`. Pi reads `defaultModel` as a model id and does not split it, so startup falls back to the first available model, as before; diagnose now says so and names the fix.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "bede0f0edf",
+          "date": "2026-10-28"
+        }
+      ],
+      "tests": [
+        "coding/cli/introspection_truth_test.go::TestDefaultModelResolutionDoesNotSplitAProviderPrefix",
+        "coding/cli/introspection_truth_test.go::TestDiagnoseDefaultModelWithoutProviderIsIgnoredLikePi",
+        "coding/cli/introspection_truth_test.go::TestDiagnoseIgnoresUntrustedProjectDefaultModel",
+        "coding/cli/introspection_truth_test.go::TestDiagnoseNamesTheActivePiglet",
+        "coding/cli/introspection_truth_test.go::TestDiagnoseQualifiedDefaultModelFallsBackAsPiDoes",
+        "coding/cli/introspection_truth_test.go::TestDiagnoseReportsTrustedProjectDefaultModelAndItsFile",
+        "coding/cli/introspection_truth_test.go::TestExportActivePigletSourceReachesToolProcesses",
+        "coding/cli/introspection_truth_test.go::TestReportProjectTrustNamesTheDeciding",
+        "coding/cli/introspection_truth_test.go::TestStatusAppliesTheActivePigletDiscovery",
+        "coding/cli/introspection_truth_test.go::TestStatusHumanOutputNamesTrustAndIgnoredResources",
+        "coding/cli/introspection_truth_test.go::TestStatusMarksUntrustedProjectResourcesIgnored",
+        "coding/cli/introspection_truth_test.go::TestStatusReportsASkillWithoutDescriptionAsNotLoaded",
+        "coding/cli/introspection_truth_test.go::TestStatusReportsAThemeWithAnUnknownColorRoleAsInvalid",
+        "coding/cli/introspection_truth_test.go::TestStatusTrustedProjectResourcesApply",
+        "coding/cli/introspection_truth_test.go::TestStatusWarnsWhenTheActivePigletSourceDoesNotLoad",
+        "coding/piglet/active_source_test.go::TestActiveSourceIsPath",
+        "coding/piglet/active_source_test.go::TestActiveSourceValue",
+        "coding/piglet/active_source_test.go::TestShowWithoutAnArgumentUsesTheActivePigletSource"
+      ]
+    },
+    {
+      "id": "BF-bede0f0-3",
+      "title": "`pig status` run from the agent's shell no longer lists ambient extensions and skills that the active…",
+      "symptom": "`pig status` run from the agent's shell no longer lists ambient extensions and skills that the active Piglet's `discovery` excludes.",
+      "rootCause": "pig status listed an untrusted project's resources as enabled and ignored the active Piglet's discovery; pig diagnose reported an untrusted project's defaultModel and printed a provider-qualified defaultModel as provider/provider/id. A skill without a description and a theme with an unknown color role showed no health.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`pig status` run from the agent's shell no longer lists ambient extensions and skills that the active Piglet's `discovery` excludes. Such resources show `ignored: piglet-discovery`.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "bede0f0edf",
+          "date": "2026-10-28"
+        }
+      ],
+      "tests": [
+        "coding/cli/introspection_truth_test.go::TestDefaultModelResolutionDoesNotSplitAProviderPrefix",
+        "coding/cli/introspection_truth_test.go::TestDiagnoseDefaultModelWithoutProviderIsIgnoredLikePi",
+        "coding/cli/introspection_truth_test.go::TestDiagnoseIgnoresUntrustedProjectDefaultModel",
+        "coding/cli/introspection_truth_test.go::TestDiagnoseNamesTheActivePiglet",
+        "coding/cli/introspection_truth_test.go::TestDiagnoseQualifiedDefaultModelFallsBackAsPiDoes",
+        "coding/cli/introspection_truth_test.go::TestDiagnoseReportsTrustedProjectDefaultModelAndItsFile",
+        "coding/cli/introspection_truth_test.go::TestExportActivePigletSourceReachesToolProcesses",
+        "coding/cli/introspection_truth_test.go::TestReportProjectTrustNamesTheDeciding",
+        "coding/cli/introspection_truth_test.go::TestStatusAppliesTheActivePigletDiscovery",
+        "coding/cli/introspection_truth_test.go::TestStatusHumanOutputNamesTrustAndIgnoredResources",
+        "coding/cli/introspection_truth_test.go::TestStatusMarksUntrustedProjectResourcesIgnored",
+        "coding/cli/introspection_truth_test.go::TestStatusReportsASkillWithoutDescriptionAsNotLoaded",
+        "coding/cli/introspection_truth_test.go::TestStatusReportsAThemeWithAnUnknownColorRoleAsInvalid",
+        "coding/cli/introspection_truth_test.go::TestStatusTrustedProjectResourcesApply",
+        "coding/cli/introspection_truth_test.go::TestStatusWarnsWhenTheActivePigletSourceDoesNotLoad",
+        "coding/piglet/active_source_test.go::TestActiveSourceIsPath",
+        "coding/piglet/active_source_test.go::TestActiveSourceValue",
+        "coding/piglet/active_source_test.go::TestShowWithoutAnArgumentUsesTheActivePigletSource"
       ]
     },
     {
@@ -39830,11 +40045,6 @@
       "entry": "BF-D203"
     },
     {
-      "id": "D204",
-      "title": "The Lisp SDK does not yet export TuiAltScreen, Pi's alternate-screen TUI host, where the Node, Go, Rust and…",
-      "entry": "BF-D204"
-    },
-    {
       "id": "D205",
       "title": "Fullscreen frames scroll the rows that only moved"
     },
@@ -39844,12 +40054,12 @@
     },
     {
       "id": "D207",
-      "title": "TuiAltScreen.children is a copy in the Go, Rust and Python SDKs, where Pi's is a live array",
+      "title": "TuiAltScreen.children is a copy in the Go, Rust, Python and Lisp SDKs, where Pi's is a live array",
       "entry": "BF-D207"
     },
     {
       "id": "D208",
-      "title": "From inside a component's render, a TuiAltScreen of the Go, Rust and Python SDKs fails the calls that…",
+      "title": "From inside a component's render, a TuiAltScreen of the Go, Rust, Python and Lisp SDKs fails the calls that…",
       "entry": "BF-D208"
     }
   ],

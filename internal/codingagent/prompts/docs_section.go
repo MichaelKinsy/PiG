@@ -64,7 +64,7 @@ var docsTopics = []docsTopic{
 // pigletTopic is the topic a Piglet adds. Like every topic it goes with the docs section: the `docs` feature owns it, so
 // stripping the `/piglet` command, which is only the inspection UI, does not remove the Piglet docs.
 // pig additive (D23, D92): Pi has no Piglets.
-var pigletTopic = docsTopic{text: "Piglets and their tool scope (docs/piglets.md)"}
+var pigletTopic = docsTopic{text: "Piglets and their tool scope (docs/piglets.md, docs/piglet-strip.md)"}
 
 // docsSectionAt points the model at PiG's documentation in upstream's format, with the README and examples locations given; an
 // empty readme is README.md inside root and empty examples is [PigExamplesLocation].
