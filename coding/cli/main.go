@@ -57,6 +57,7 @@ import (
 	piglet "github.com/MichaelKinsy/PiG/coding/piglet"
 	"github.com/MichaelKinsy/PiG/coding/pigletbuild/binarypiglet"
 	"github.com/MichaelKinsy/PiG/internal/codingagent"
+	"github.com/MichaelKinsy/PiG/internal/codingagent/prompts"
 	"github.com/MichaelKinsy/PiG/internal/codingagent/timings"
 	"github.com/MichaelKinsy/PiG/internal/frontendpack"
 	"github.com/MichaelKinsy/PiG/internal/gcpolicy"
@@ -949,6 +950,8 @@ func Main(args []string, options *MainOptions) {
 	var activePigletBaked bool
 	enforcePigletBinaryScope(flags.UnknownFlags)
 	activePiglet, activePigletBaked = resolvePiglet(flags.UnknownFlags, flags.ProjectTrustOverride)
+	// pig additive (D23): an active Piglet adds the Piglets topic to the docs section of the system prompt.
+	prompts.SetPigletDocsTopic(activePiglet != nil)
 	// pig additive (D202): a Piglet Binary that accepts overlays takes --system-prompt as stock pig does, so the flag replaces the
 	// Piglet's own prompt; every other Piglet Binary keeps its baseline.
 	activePigletOpen := activePigletBaked && runningPigletBinary().OverlayBase() != nil
