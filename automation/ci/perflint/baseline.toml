@@ -3572,22 +3572,6 @@ count = 1
 class = "hot-kept: durable store per record; needs its own byte oracle, not attempted"
 
 [[hit]]
-file = "durable/harness/events.go"
-func = "MessageChange.MarshalJSON"
-pattern = "nested-marshal"
-detail = "json.Marshal"
-count = 4
-class = "hot-kept: a MarshalJSON re-encodes a nested value the outer encoder compacts again; lw-json (S5) and lw-request (S11) move hot encoders to append-style, shrink-only"
-
-[[hit]]
-file = "durable/harness/events.go"
-func = "decodeAssistant"
-pattern = "decode-own-encode"
-detail = "json.Marshal->durable.DecodeMessage"
-count = 1
-class = "hot-kept: durable store per record; needs its own byte oracle, not attempted"
-
-[[hit]]
 file = "durable/harness/task_graph.go"
 func = "TaskGraphState.MarshalJSON"
 pattern = "nested-marshal"

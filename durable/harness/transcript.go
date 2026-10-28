@@ -47,7 +47,7 @@ func (TranscriptEarlier) Kind() string { return "earlier" }
 
 // MarshalJSON writes Pi's { kind: "entry", entry }.
 func (item TranscriptEntry) MarshalJSON() ([]byte, error) {
-	return json.Marshal(struct {
+	return json.Marshal(struct { //perf:ok one wire object per transcript item the client reads; the discriminator is Pi's { kind, entry } shape (transcript.ts), not a re-encode of a value the outer encoder compacts again
 		Kind  string              `json:"kind"`
 		Entry durable.EntryRecord `json:"entry"`
 	}{item.Kind(), item.Entry})
@@ -55,7 +55,7 @@ func (item TranscriptEntry) MarshalJSON() ([]byte, error) {
 
 // MarshalJSON writes Pi's { kind: "gap", after, upTo }.
 func (item TranscriptGap) MarshalJSON() ([]byte, error) {
-	return json.Marshal(struct {
+	return json.Marshal(struct { //perf:ok one two-id wire object per gap of a transcript; Pi's { kind, after, upTo } shape
 		Kind  string          `json:"kind"`
 		After durable.EntryId `json:"after"`
 		UpTo  durable.EntryId `json:"upTo"`
@@ -64,7 +64,7 @@ func (item TranscriptGap) MarshalJSON() ([]byte, error) {
 
 // MarshalJSON writes Pi's { kind: "earlier" }.
 func (item TranscriptEarlier) MarshalJSON() ([]byte, error) {
-	return json.Marshal(struct {
+	return json.Marshal(struct { //perf:ok a one-field wire object, at most once per transcript; Pi's { kind: "earlier" } shape
 		Kind string `json:"kind"`
 	}{item.Kind()})
 }
