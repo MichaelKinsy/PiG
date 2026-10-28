@@ -290,7 +290,7 @@ func detectBuildType(src string) (string, error) {
 	if hasNodeSource(src) {
 		return "node", nil
 	}
-	if hasLispSource(src) {
+	if lisp.hasSource != nil && lisp.hasSource(src) {
 		return "lisp", nil
 	}
 	return "", fmt.Errorf("cannot detect build type in %s: need go.mod, Cargo.toml, package.json, a .ts/.js entrypoint, or an ASDF .asd/.lisp factory", src)

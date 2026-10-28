@@ -23,6 +23,8 @@ func TestRequiredSDKToolsFailWhenMissing(t *testing.T) {
 		case "rust":
 			t.Setenv("PIG_TEST_RUST_SDK_FIXTURE_BIN", "")
 			buildRustSDKFixture(t)
+		case "lisp":
+			makeSubprocessLispHarness(t)
 		default:
 			t.Fatalf("unknown missing-tool helper: %q", helper)
 		}
@@ -33,11 +35,13 @@ func TestRequiredSDKToolsFailWhenMissing(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Setenv("PATH", t.TempDir())
+	t.Setenv("PIG_SBCL", "")
 	for _, tc := range []struct{ name, tool string }{
 		{"node-isolated", "node"},
 		{"node-packed", "node"},
 		{"python", testPythonExecutable()},
 		{"rust", "cargo"},
+		{"lisp", "sbcl"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Setenv(helperEnv, tc.name)

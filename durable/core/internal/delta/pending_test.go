@@ -1,6 +1,7 @@
 package delta
 
 import (
+	"bytes"
 	"strings"
 	"testing"
 
@@ -26,7 +27,7 @@ func apply(t *testing.T, value any, ops []Op) any {
 	return out
 }
 
-func sameValue(a, b any) bool { return string(jv.Append(nil, a)) == string(jv.Append(nil, b)) }
+func sameValue(a, b any) bool { return bytes.Equal(jv.Append(nil, a), jv.Append(nil, b)) }
 
 func TestPendingFoldIsInvisibleToAReplica(t *testing.T) {
 	batches := [][]Op{

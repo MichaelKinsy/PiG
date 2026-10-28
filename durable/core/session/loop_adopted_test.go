@@ -36,7 +36,7 @@ func TestLoopPublishesAnAdoptedJobAtOnceAndCompletesItAtTheAnswer(t *testing.T) 
 	if err := loop.Run(); err != nil {
 		t.Fatal(err)
 	}
-	if fmt.Sprint(order) != "[run done next]" || got != failure {
+	if fmt.Sprint(order) != "[run done next]" || !errors.Is(got, failure) {
 		t.Fatalf("order %v, done got %v: a failure after adoption is the job's error and the next job runs after it", order, got)
 	}
 	if loop.Answer(nil) {

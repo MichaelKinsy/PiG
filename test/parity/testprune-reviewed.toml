@@ -412,3 +412,38 @@ commit = "dcc5ef43ee75a3d4110b5159424fa0ab4d016428"
 class = "CITE"
 cite = "packages/durable/src/harness/harness.ts:193"
 reason = "Pi adc5fa9f80 and 04a93bad8f give the Harness a view of the host's Models that adds the Harness identity, withClientIdentity (harness.ts:193-197 currentModels; identity.ts:154), shared by the tools and the hooks (harness-tools.test.ts: seen[0] is seen[1]): the models a tool reads are no longer the host's own value, so the test expects a view that lists the same models and returns the same model for faux/faux-1."
+
+[[entry]]
+path = "internal/jsstring/localecompare/localecompare_test.go"
+commit = "40b9b1829f2cc3afb197746fa40d7412d31e6cf5"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "The commit moves the root-locale collator from internal/jsstring into internal/jsstring/localecompare and renames LocaleCompare to Compare, so the three changed lines are the oracle tests' calls and failure messages (got := Compare(a, b) against the Node localeCompare answer, and the Errorf that names the function). The expected values are Node's own localeCompare results computed in each test, and they are unchanged: no Pi line moves, the ordering stays the one Pi's localeCompare call sites get."
+
+[[entry]]
+path = "coding/extension/pigsdk/strip_test.go"
+commit = "2eec1d23fb5778618c8cdd80dcce6905738c645c"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "The multi-language extension SDK bridges are PiG-only (docs/additive-features.md D19), so no Pi line governs them. The commit adds the Lisp SDK as a fourth strippable SDK language: the strip test gains its Lisp row, and the count of SDKs left unstripped after stripping one language is three where it was two. The expectation follows the number of SDK languages the build carries."
+
+[[entry]]
+path = "durable/core/sweep_test.go"
+commit = "1fa0792e5db2dae1fd5dc5b523188e35d98c96b9"
+class = "CITE"
+cite = "packages/durable/src/session/session.ts:736"
+reason = "Pi 6c2fd73b0 adds `held`, the number of documents with held changes, to documentCacheSizes (session.ts:722-737), so the core's doc-cache notice carries `\"held\":0` after `sweeps`, and a sweep job is the async function `#enqueue` runs and whose rejection is caught (session.ts:777-781), so the core's EnqueueSweep job returns an error."
+
+[[entry]]
+path = "durable/core/turn/generation_test.go"
+commit = "1fa0792e5db2dae1fd5dc5b523188e35d98c96b9"
+class = "CITE"
+cite = "packages/durable/src/harness/live.ts:143"
+reason = "Pi 6c2fd73b0 commits a streamed partial with PROGRESS_COMMIT, a deferred commit (live.ts:138-143, generation.ts:484): memory has each partial at once and Storage the folded ops of them all within persistWithinMs. The partial test expects no stored commit when the second partial arrives, memory holding it, and one stored commit at the deadline whose last op appends the new text."
+
+[[entry]]
+path = "durable/core/turn/tool_round_controls_pi_test.go"
+commit = "d94328677410f7437d3bc0371fcf84e0b9b323d0"
+class = "CITE"
+cite = "packages/durable/src/harness/generation.ts:729"
+reason = "Pi 38ff99177 makes finishToolRound append the last handoff's reset (generation.ts:728-739) and end the run only when the round also terminates (generation.ts:741-744); otherwise the run continues at the postTools boundary in the reset's context. The handoff test expects another model request after a handoff alone and none after a terminating round, with the reset entry carrying the last handoff."

@@ -21,6 +21,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	_ "github.com/MichaelKinsy/PiG/internal/tlsdistrust" // hardens http.DefaultTransport, which the dist download uses (pig additive (D191))
 )
 
 // pig additive (D-1): Lisp extensions may depend on Quicklisp systems. The set is closed over one pinned dist: the two index files below are

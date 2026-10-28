@@ -34,7 +34,7 @@ func TestDynamicToolRegistrationAcrossSDKs(t *testing.T) {
 	requireAPIMember(t, "SetActiveTools", extension.API.SetActiveTools)
 	t.Parallel()
 	root := findModuleRoot(t)
-	for _, language := range []string{"go", "python", "rust", "node", "fused-go"} {
+	for _, language := range []string{"go", "python", "rust", "node", "fused-go", "lisp"} {
 		for _, isolation := range []string{"strict", "shared-ok"} {
 			if language == "fused-go" && isolation == "shared-ok" {
 				continue
@@ -327,6 +327,55 @@ def new_extension():
  e.command("burst","",burst)
  return e
 `, name)
+	case "lisp":
+		path = filepath.Join(cfg.Source, name+".lisp")
+		code = fmt.Sprintf(`(defpackage %q (:use "COMMON-LISP"))
+(in-package %q)
+(defparameter *schema* (pig:from-json "{\"type\":\"object\",\"properties\":{\"message\":{\"type\":\"string\"}},\"required\":[\"message\"]}"))
+(defun define-tool (ext name value)
+  (pig:register-tool ext name :label (format nil "Label ~A ~A" name value) :description value
+                     :prompt-snippet (format nil "summary ~A" value) :prompt-guidelines (list (format nil "Use ~A ~A" name value))
+                     :parameters *schema* :execute (lambda (ctx args) (declare (ignore ctx)) (format nil "~A:~A" value (pig:jget args "message")))))
+(defun active (ctx) (coerce (pig:ctx-get-active-tools ctx) 'list))
+(defun check (ctx names active described)
+  (let ((tools (pig:ctx-get-all-tools ctx)))
+    (unless (equal (map 'list (lambda (tool) (pig:jget tool "name")) tools) names)
+      (error "getAllTools=~S, want ~S" (map 'list (lambda (tool) (pig:jget tool "name")) tools) names))
+    (loop for tool across tools
+          do (let ((want (cdr (assoc (pig:jget tool "name") described :test #'string=))))
+               (when (and want (string/= (pig:jget tool "description") want))
+                 (error "~A description=~S, want ~S" (pig:jget tool "name") (pig:jget tool "description") want))))
+    (unless (equal (active ctx) active) (error "getActiveTools=~S, want ~S" (active ctx) active))))
+(defun new-extension ()
+  (let ((e (pig:make-extension %q)))
+    (pig:tool e "stable" "stable" (pig:obj "type" "object") (lambda (ctx args) (declare (ignore ctx args)) "stable"))
+    (pig:on e "session_start" (lambda (ctx data) (declare (ignore ctx data)) (define-tool e "late" "v1") nil))
+    (pig:command e "change" ""
+      (lambda (ctx args) (declare (ignore args))
+        (pig:ctx-set-active-tools ctx '("stable"))
+        (pig:ctx-register-tool ctx "late" :label "Label late v2" :description "v2" :prompt-snippet "summary v2" :prompt-guidelines '("Use late v2")
+                               :parameters *schema* :execute (lambda (ctx args) (declare (ignore ctx)) (format nil "v2:~A" (pig:jget args "message"))))
+        (pig:ctx-register-tool ctx "shout" :label "Label shout new" :description "new" :prompt-snippet "summary new" :prompt-guidelines '("Use shout new")
+                               :parameters *schema* :execute (lambda (ctx args) (declare (ignore ctx)) (format nil "new:~A" (pig:jget args "message"))))
+        (unless (equal (active ctx) '("stable" "shout")) (error "immediate active tools=~S" (active ctx)))))
+    (pig:command e "burst" ""
+      (lambda (ctx args) (declare (ignore args))
+        (let ((names (list "stable" "late" "shout")) (active (list "stable" "shout")) (described '()))
+          (dotimes (i 8)
+            (let* ((name (format nil "b~D" i)) (value (format nil "d~A" name)))
+              (push (cons name value) described)
+              (pig:ctx-register-tool ctx name :label (format nil "Label ~A ~A" name value) :description value :prompt-snippet (format nil "summary ~A" value)
+                                              :prompt-guidelines (list (format nil "Use ~A ~A" name value)) :parameters *schema*
+                                              :execute (lambda (ctx args) (declare (ignore ctx)) (format nil "~A:~A" value (pig:jget args "message"))))
+              (setf names (append names (list name)) active (append active (list name)))
+              (check ctx names active described)
+              (when (= i 3)
+                (push (cons "b0" "d0x") described)
+                (pig:ctx-register-tool ctx "b0" :label "Label b0 d0x" :description "d0x" :prompt-snippet "summary d0x" :prompt-guidelines '("Use b0 d0x")
+                                                :parameters *schema* :execute (lambda (ctx args) (declare (ignore ctx)) (format nil "d0x:~A" (pig:jget args "message"))))
+                (check ctx names active described)))))))
+    e))
+`, name, name, name)
 	case "rust":
 		path = filepath.Join(cfg.Source, "src", "lib.rs")
 		code = fmt.Sprintf(`use pig_sdk::{Extension,ToolDefinition,ToolResult,CommandResult,Schema};
