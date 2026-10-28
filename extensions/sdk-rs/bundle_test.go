@@ -52,6 +52,7 @@ func TestSourceReadable(t *testing.T) {
 		t.Fatalf("embedded Cargo.toml is not the SDK crate: err=%v", err)
 	}
 }
+
 // The staged crate builds only if every module source is bundled: lib.rs
 // declares each src/*.rs file as a module.
 func TestBundledFilesIncludeEveryCrateSource(t *testing.T) {
