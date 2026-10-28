@@ -23691,44 +23691,8 @@
       ]
     },
     {
-      "id": "BF-D204",
-      "title": "The Lisp SDK does not yet export TuiAltScreen, Pi's alternate-screen TUI host, where the Node, Go, Rust and…",
-      "symptom": "none claimed.",
-      "rootCause": "",
-      "rootCauseSource": "divergence record",
-      "userImpact": "Behavior differed from Pi",
-      "platform": "All platforms",
-      "class": "ahead-of-pi",
-      "divergence": "D204",
-      "removeWhen": "the Lisp SDK exports `TuiAltScreen` over the `tui.alt` wire; then the 46 `lisp` cells become `native:` cells with their conformance reach, and this record goes.",
-      "fixedIn": "Unreleased",
-      "origin": "divergence",
-      "commits": [
-        {
-          "hash": "26bbbe6a80",
-          "date": "2026-10-26"
-        },
-        {
-          "hash": "f67a7da98e",
-          "date": "2026-10-26"
-        },
-        {
-          "hash": "084f8094e6",
-          "date": "2026-10-27"
-        },
-        {
-          "hash": "97571ba165",
-          "date": "2026-10-27"
-        }
-      ],
-      "tests": [
-        "test/extension-conformance/tui_alt_screen_test.go::TestTuiAltScreenAcrossSDKs",
-        "test/extension-conformance/tui_alt_screen_test.go::TestTuiAltScreenFrameReadsAcrossSDKs"
-      ]
-    },
-    {
       "id": "BF-D207",
-      "title": "TuiAltScreen.children is a copy in the Go, Rust and Python SDKs, where Pi's is a live array",
+      "title": "TuiAltScreen.children is a copy in the Go, Rust, Python and Lisp SDKs, where Pi's is a live array",
       "symptom": "none claimed.",
       "rootCause": "the renderer, with the screen's child list, runs in the host process and the extension's components in the extension's process, so an array in the extension cannot be the renderer's array. The SDKs keep the children they sent to the host and update that list after each call returns; a list a caller could write to would need a call to the host on every write and a way for the host to change the extension's list, which Pi's array is not.",
       "rootCauseSource": "divergence record",
@@ -23736,12 +23700,32 @@
       "platform": "All platforms",
       "class": "ahead-of-pi",
       "divergence": "D207",
-      "removeWhen": "Pi's `children` stops being a public live array, or an owner decision asks for a live view across the process boundary; then the three markers, the evidence note and this record go.",
+      "removeWhen": "Pi's `children` stops being a public live array, or an owner decision asks for a live view across the process boundary; then the four markers, the evidence note and this record go.",
       "fixedIn": "Unreleased",
       "origin": "divergence",
       "commits": [
         {
           "hash": "109a3bd9f4",
+          "date": "2026-10-28"
+        },
+        {
+          "hash": "1d6732bee8",
+          "date": "2026-10-28"
+        },
+        {
+          "hash": "395ad20127",
+          "date": "2026-10-28"
+        },
+        {
+          "hash": "5a671a6be6",
+          "date": "2026-10-28"
+        },
+        {
+          "hash": "af97c34f84",
+          "date": "2026-10-28"
+        },
+        {
+          "hash": "be8abc8c03",
           "date": "2026-10-28"
         }
       ],
@@ -23751,7 +23735,7 @@
     },
     {
       "id": "BF-D208",
-      "title": "From inside a component's render, a TuiAltScreen of the Go, Rust and Python SDKs fails the calls that…",
+      "title": "From inside a component's render, a TuiAltScreen of the Go, Rust, Python and Lisp SDKs fails the calls that…",
       "symptom": "none claimed.",
       "rootCause": "the renderer takes one non-reentrant lock for the whole frame, and a re-entered frame would need it while the frame waits for the render that re-enters it, which is a deadlock; supporting Pi's recursion needs a frame that renders again inside itself, which the renderer's single pass and its differential state do not allow.",
       "rootCauseSource": "divergence record",
@@ -23765,6 +23749,14 @@
       "commits": [
         {
           "hash": "1d6732bee8",
+          "date": "2026-10-28"
+        },
+        {
+          "hash": "395ad20127",
+          "date": "2026-10-28"
+        },
+        {
+          "hash": "5a671a6be6",
           "date": "2026-10-28"
         },
         {
@@ -39287,22 +39279,17 @@
       "entry": "BF-D203"
     },
     {
-      "id": "D204",
-      "title": "The Lisp SDK does not yet export TuiAltScreen, Pi's alternate-screen TUI host, where the Node, Go, Rust and…",
-      "entry": "BF-D204"
-    },
-    {
       "id": "D205",
       "title": "Fullscreen frames scroll the rows that only moved"
     },
     {
       "id": "D207",
-      "title": "TuiAltScreen.children is a copy in the Go, Rust and Python SDKs, where Pi's is a live array",
+      "title": "TuiAltScreen.children is a copy in the Go, Rust, Python and Lisp SDKs, where Pi's is a live array",
       "entry": "BF-D207"
     },
     {
       "id": "D208",
-      "title": "From inside a component's render, a TuiAltScreen of the Go, Rust and Python SDKs fails the calls that…",
+      "title": "From inside a component's render, a TuiAltScreen of the Go, Rust, Python and Lisp SDKs fails the calls that…",
       "entry": "BF-D208"
     }
   ],

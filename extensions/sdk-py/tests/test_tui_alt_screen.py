@@ -1,4 +1,4 @@
-"""TuiAltScreen's wire encoding (the contract of the D204 lane): the ``tui.alt`` calls it sends and the ``tui.alt.cb`` requests it answers.
+"""TuiAltScreen's wire encoding: the ``tui.alt`` calls it sends and the ``tui.alt.cb`` requests it answers.
 
 The host is a fake: it records each ``tui.alt`` call and answers from a table, and the tests send the host's callbacks through the connection's dispatcher.
 """
