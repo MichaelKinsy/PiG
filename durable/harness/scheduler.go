@@ -3077,31 +3077,46 @@ func (s *TaskScheduler) keepContext(runtime *taskRuntime, conversationId durable
 		return
 	}
 	now := s.options.Now()
-	// Read outside the lock, which the settings source must not run under; Pi reads it only for an idle conversation, so
-	// only that branch reports a failure, and a failure keeps nothing, as a retention of 0.
-	retention, retentionErr := s.contextRetention()
+	// kept is the range this read leaves: nothing when the invocation ended, the Harness is sealing or a concurrent read already kept a
+	// newer one. Under the lock; a conversation that is not idle keeps it without a retention period.
 	s.mu.Lock()
 	kept := s.contexts[conversationId]
 	if s.sealing.Load() || runtime.invocation.ended.Load() || (kept != nil && kept.rng.bounds.Tail > rng.bounds.Tail) {
 		s.mu.Unlock()
 		return
 	}
-	idle := s.idleLocked(&conversationId)
-	switch {
-	case !idle:
+	if !s.idleLocked(&conversationId) {
 		s.contexts[conversationId] = &keptContext{rng: rng}
-	case retentionErr == nil && retention > 0:
-		idleSince := now
-		if kept != nil && kept.idleSince != nil {
-			idleSince = *kept.idleSince
-		}
-		s.contexts[conversationId] = &keptContext{rng: rng, idleSince: &idleSince}
-		s.scheduleExpiryLocked(now, retention)
+		s.mu.Unlock()
+		return
 	}
 	s.mu.Unlock()
-	if idle && retentionErr != nil {
+	// Pi reads the retention only for an idle conversation (scheduler.ts runtime.context), so a run's own context reads resolve no settings.
+	// The settings source must not run under the lock; a failure is reported and keeps nothing, as a retention of 0.
+	retention, retentionErr := s.contextRetention()
+	if retentionErr != nil {
 		s.options.Report(context.Background(), retentionErr, settingsInfo)
+		return
 	}
+	if retention <= 0 {
+		return
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	kept = s.contexts[conversationId]
+	if s.sealing.Load() || runtime.invocation.ended.Load() || (kept != nil && kept.rng.bounds.Tail > rng.bounds.Tail) {
+		return
+	}
+	if !s.idleLocked(&conversationId) {
+		s.contexts[conversationId] = &keptContext{rng: rng}
+		return
+	}
+	idleSince := now
+	if kept != nil && kept.idleSince != nil {
+		idleSince = *kept.idleSince
+	}
+	s.contexts[conversationId] = &keptContext{rng: rng, idleSince: &idleSince}
+	s.scheduleExpiryLocked(now, retention)
 }
 
 // Now returns the Harness clock; after the invocation ended it panics, as upstream's now() throws.
