@@ -8785,6 +8785,28 @@
       "tests": []
     },
     {
+      "id": "BF-4fb7dc6",
+      "title": "The Durable core's conversation view follows Pi f3255de7's mount: a second observer of a conversation only…",
+      "symptom": "The Durable core's conversation view follows Pi f3255de7's mount: a second observer of a conversation only loads its own window and takes the one `docs` object of the mount, so attaching to a mounted view spends Pi's microtask passes and the observers of one conversation share their documents; a window the core rejects (a bound that is not an integer, `max` below `min`) reaches the host as the `RangeError` Pi throws.",
+      "rootCause": "A second observer of a mounted view only loads its window (view.ts attach: the mount exists), so its attach spends Pi's passes (F-ticks-watch: 21, not 39); the facade gives every observer of a conversation the one docs object of the mount (U-harness-view shares one mount between concurrent observers; gives each observer its own window over one mount); a window the core rejects reaches the host as the RangeError view.ts throws (U-harness-view rejects window bounds that are not integers). TestResolveWindow checks the rejection's name.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "The Durable core's conversation view follows Pi f3255de7's mount: a second observer of a conversation only loads its own window and takes the one `docs` object of the mount, so attaching to a mounted view spends Pi's microtask passes and the observers of one conversation share their documents; a window the core rejects (a bound that is not an integer, `max` below `min`) reaches the host as the `RangeError` Pi throws.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "4fb7dc6de7",
+          "date": "2026-10-27"
+        }
+      ],
+      "tests": [
+        "durable/core/view_test.go::TestResolveWindow"
+      ]
+    },
+    {
       "id": "BF-4fc8c2e",
       "title": "With an active Piglet, an extension that denies every tool with `SetActiveTools([])` is no longer widened…",
       "symptom": "With an active Piglet, an extension that denies every tool with `SetActiveTools([])` is no longer widened back to the Piglet's full tool scope.",
@@ -22501,6 +22523,26 @@
         "test/longsession/session_oracle_test.go::TestSessionManagerMatchesPi",
         "test/parity/scenarios/rpc/58-rpc-session-wrong-typed-members.toml"
       ]
+    },
+    {
+      "id": "BF-970c503",
+      "title": "The Cloudflare host's report spans record the reason, extension and task of a `task_interrupted` report, as…",
+      "symptom": "The Cloudflare host's report spans record the reason, extension and task of a `task_interrupted` report, as Pi b3a29f11's telemetry does (`task_parked` no longer exists).",
+      "rootCause": "task_parked is gone from ReportInfo; task_interrupted records reason, extension and task.id like task_faulted and task_outdated.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "The Cloudflare host's report spans record the reason, extension and task of a `task_interrupted` report, as Pi b3a29f11's telemetry does (`task_parked` no longer exists).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "970c503b05",
+          "date": "2026-10-27"
+        }
+      ],
+      "tests": []
     },
     {
       "id": "BF-9721c48",

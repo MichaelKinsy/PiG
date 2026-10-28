@@ -304,6 +304,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-4f6992d](#bf-4f6992d) | Durable: a tool's `PrepareArguments` result of a typed object (a struct, or a map of another element type)… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-4f6992d-2](#bf-4f6992d-2) | Durable: a `PrepareArguments` result that is not an object fails validation as an `invalid_arguments` tool… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-4fab2ef](#bf-4fab2ef) | Durable error values (FileError, ExecutionError, JsonlCorruptionError, ReadAfterWrite, StorageRejected… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-4fb7dc6](#bf-4fb7dc6) | The Durable core's conversation view follows Pi f3255de7's mount: a second observer of a conversation only… | PiG's own defect | All platforms | Unreleased |
 | [BF-4fc8c2e](#bf-4fc8c2e) | With an active Piglet, an extension that denies every tool with `SetActiveTools([])` is no longer widened… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-4fd80d1](#bf-4fd80d1) | On Windows, PiG finds PowerShell in its installation directories when it is not on `PATH`: PowerShell 7 under… | PiG's own defect | Windows | 0.5.2 |
 | [BF-4fd80d1-2](#bf-4fd80d1-2) | On Windows, the legacy WSL `bash.exe` launcher is recognized under the actual Windows directory in… | PiG's own defect | Windows, WSL | 0.5.2 |
@@ -793,6 +794,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-958e80d](#bf-958e80d) | A tool call whose arguments hold a number out of float64 range (`1e999`, `-1e999`) no longer ends the session… | PiG's own defect | All platforms | Unreleased |
 | [BF-95a5f79](#bf-95a5f79) | RPC mode starts the `--tools` list active in its own order when it names extension tools, as Pi does | PiG's own defect | All platforms | 0.5.0 |
 | [BF-95eefe2](#bf-95eefe2) | openai-completions thinking formats now match Pi (`ai/openai.go`, openai-completions.ts:885-985 and… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-970c503](#bf-970c503) | The Cloudflare host's report spans record the reason, extension and task of a `task_interrupted` report, as… | PiG's own defect | All platforms | Unreleased |
 | [BF-9721c48](#bf-9721c48) | An auto, manual or overflow compaction status shown in the editor's top border now takes the editor border… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-9740507](#bf-9740507) | `pig extension upgrade` now rewrites a `Context.ConfigHome()` call in an `if` or `switch` init statement and… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-9740507-2](#bf-9740507-2) | `pig extension upgrade` no longer discards the error of `Context.ConfigHome` with `home, _ :=… | PiG's own defect | All platforms | 0.5.0 |
@@ -5228,6 +5230,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `4fab2efaa0` (2026-10-07)
 - **Tests:** None recorded.
 - **Release note:** Durable error values (FileError, ExecutionError, JsonlCorruptionError, ReadAfterWrite, StorageRejected, ConversationBusy) report Pi's `name` and a V8-style `stack` when built by their constructors; the JSONL corruption constructor is now exported as NewJsonlCorruptionError.
+
+### BF-4fb7dc6
+
+**The Durable core's conversation view follows Pi f3255de7's mount: a second observer of a conversation only…**
+
+- **Source:** PiG's own defect
+- **Symptom:** The Durable core's conversation view follows Pi f3255de7's mount: a second observer of a conversation only loads its own window and takes the one `docs` object of the mount, so attaching to a mounted view spends Pi's microtask passes and the observers of one conversation share their documents; a window the core rejects (a bound that is not an integer, `max` below `min`) reaches the host as the `RangeError` Pi throws.
+- **Root cause:** A second observer of a mounted view only loads its window (view.ts attach: the mount exists), so its attach spends Pi's passes (F-ticks-watch: 21, not 39); the facade gives every observer of a conversation the one docs object of the mount (U-harness-view shares one mount between concurrent observers; gives each observer its own window over one mount); a window the core rejects reaches the host as the RangeError view.ts throws (U-harness-view rejects window bounds that are not integers). TestResolveWindow checks the rejection's name.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `4fb7dc6de7` (2026-10-27)
+- **Tests:** `durable/core/view_test.go::TestResolveWindow`
+- **Release note:** The Durable core's conversation view follows Pi f3255de7's mount: a second observer of a conversation only loads its own window and takes the one `docs` object of the mount, so attaching to a mounted view spends Pi's microtask passes and the observers of one conversation share their documents; a window the core rejects (a bound that is not an integer, `max` below `min`) reaches the host as the `RangeError` Pi throws.
 
 ### BF-4fc8c2e
 
@@ -12020,6 +12036,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `6a6fffa638` (2026-10-10), `95eefe293a` (2026-10-11)
 - **Tests:** `agent/message_json_number_spelling_test.go::TestAgentMessageDecodeKeepsANonNumberWhereAnIntegerIsExpected`, `agent/message_json_test.go::TestAgentMessageJSONRejectsInvalidUnion`, `agent/message_type_mismatch_test.go::TestDecodedMessageKeepsMembersOfAnyType`, `agent/provider_content_block_decode_test.go::TestUnknownContentBlockCostsOnlyThatBlock`, `ai/openai_completions_thinking_format_oracle_test.go::TestOpenAICompletionsThinkingFormatsPayloadMatchesPi`, `ai/openai_reasoning_effort_test.go::TestResolveChatTemplateValuesMapsEveryOtherObjectToTheEffort`, `internal/codingagent/session_context_settings_test.go::TestGetSessionContextSettingsBoundaries`, `internal/codingagent/session_messagefor_cache_test.go::TestMessageForReportsAnUnparseableEntryWithoutParsingItAgain` and 2 more in docs/bug-ledger.json
 - **Release note:** openai-completions thinking formats now match Pi (`ai/openai.go`, openai-completions.ts:885-985 and 1034-1075), found by the new live-Pi oracle `TestOpenAICompletionsThinkingFormatsPayloadMatchesPi` (3,000 probes: every `thinkingFormat`, `compat.chatTemplateKwargs`/`chatTemplateArgs` with scalars, null, `$var` placeholders, `omitWhenOff`, arrays, and model `thinkingLevelMap` entries; 32 of 1,200 probes differed before any fix, 4 more after widening the corpus). Fixes: (1) `chat-template` with no resolved value sent `"chat_template_kwargs": null` (a typed nil map in an `any` field defeated `omitempty`) where Pi omits the member; (2) `resolveChatTemplateValues` dropped a placeholder whose `$var` is not `thinking.enabled`/`thinking.budget` or a `thinking.effort` that resolves, where Pi maps every other object (unknown `$var`, `{}`, arrays) to the mapped effort; (3) the `baseten` format sent `reasoning_effort: "none"` when the model had no `off` mapping (Pi sends nothing) and sent the clamped level for a level mapped to `null` (Pi sends nothing), now `templateEffort`; (4) the `ant-ling` format with no requested effort ignored Pi's fall-through to the off-value `reasoning_effort` (:970-975); (5) a `thinkingLevelMap` value of `""` was dropped by `omitempty` where Pi sends `reasoning_effort: ""`, so the request field is now `*string`. Regressions: the oracle plus `TestResolveChatTemplateValuesMapsEveryOtherObjectToTheEffort`; 8 mutations red, 1 not applicable. `./ai -race` green except the env-only `TestSDKProvidersRequestURLMatchesSDK` and `TestOpenAIStreamDecoderMatchesSDK` (need `npm ci` in `ai/testdata/sdk`). Hot file: `ai/openai.go` belongs to go-idioms.
+
+### BF-970c503
+
+**The Cloudflare host's report spans record the reason, extension and task of a `task_interrupted` report, as…**
+
+- **Source:** PiG's own defect
+- **Symptom:** The Cloudflare host's report spans record the reason, extension and task of a `task_interrupted` report, as Pi b3a29f11's telemetry does (`task_parked` no longer exists).
+- **Root cause:** task_parked is gone from ReportInfo; task_interrupted records reason, extension and task.id like task_faulted and task_outdated.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `970c503b05` (2026-10-27)
+- **Tests:** None recorded.
+- **Release note:** The Cloudflare host's report spans record the reason, extension and task of a `task_interrupted` report, as Pi b3a29f11's telemetry does (`task_parked` no longer exists).
 
 ### BF-9721c48
 
