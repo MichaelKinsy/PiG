@@ -454,9 +454,9 @@ file until it exits, so the pages its system prompt names stay for as long as th
 session runs.
 The stock system prompt points at this build's bundle so the agent can inspect
 the exact extension, Package, and Piglet contracts implemented by its binary.
-Its "When asked about" list adds one topic after Pi's last one, "Piglets and their
-tool scope (docs/piglets.md)" (owner-approved 2026-10-28); the `/piglet` strip ID
-removes it.
+While a Piglet is active, its "When asked about" list adds one topic after Pi's last
+one, "Piglets and their tool scope (docs/piglets.md)" (owner-approved 2026-10-28; the
+`/piglet` strip ID removes it). Without a Piglet the section is Pi's text, byte for byte.
 The `codemode` description and the argument errors of its `models` globals name
 the bundle's `codemode.md` where Pi names `CODEMODE_DOCS_PATH` in its package.
 When the config root cannot be written and holds no bundle of the running
@@ -585,7 +585,9 @@ Call-site markers:
 - `coding/piglet/scope.go`: `CompileToolScope`
 - `coding/piglet/scope_summary.go`: `MCPScopeLine`, `ToolScopeNotice`, `AgentToolScopeLine`
 - `coding/piglet/scope_table.go`: `ToolScopeTableMarkdown`
-- `internal/codingagent/prompts/docs_section.go`: the Piglets topic
+- `internal/codingagent/prompts/docs_section.go`: `pigletTopic`
+- `internal/codingagent/prompts/piglet_topic.go`: `SetPigletDocsTopic`
+- `coding/cli/main.go`: the `prompts.SetPigletDocsTopic` call
 - `coding/extension/host/subprocess/protocol.go`: `ToolDecl.Source`
 - `extensions/sdk/protocol.go`: `toolDef.Source`
 - `extensions/sdk/extension.go`: `ToolWithSource()`

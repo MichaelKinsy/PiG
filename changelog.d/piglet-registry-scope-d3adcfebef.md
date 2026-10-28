@@ -8,4 +8,4 @@
 
 ### Changed
 
-- The "When asked about" list in the system prompt names the Piglet documentation (`docs/piglets.md`). A Piglet that strips `/piglet` does not name it.
+- While a Piglet is active, the "When asked about" list in the system prompt names the Piglet documentation (`docs/piglets.md`). Without a Piglet the docs section is unchanged, and a Piglet that strips `/piglet` does not name it.
