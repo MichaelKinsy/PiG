@@ -124,7 +124,7 @@ func (f AltScreenFrame) Clear() {
 		f.t.clearLocked(true)
 		return
 	}
-	f.t.Container.Clear()
+	f.t.Clear()
 }
 
 // Children is TuiAltScreen.Children.

@@ -307,8 +307,7 @@ func tuiAltFrameProbe(ctx sdk.Context, _ string) error {
 		r = append(r, fmt.Sprintf("scroll=%d/%t", val(screen.ViewportTop()), val(screen.IsFollowingOutput())))
 		mutInv = 0
 		must(screen.Invalidate())
-		r = append(r, fmt.Sprintf("invalidate=%t", mutInv > 0))
-		r = append(r, fmt.Sprintf("lines=%d", len(val(screen.GetScreenLines()).([]string))))
+		r = append(r, fmt.Sprintf("invalidate=%t", mutInv > 0), fmt.Sprintf("lines=%d", len(val(screen.GetScreenLines()).([]string))))
 		mutLog = append(mutLog, strings.Join(r, ","))
 		return []string{"MUT"}
 	}
@@ -491,16 +490,17 @@ func tuiAltGoIdentityProbe(ctx sdk.Context, _ string) error {
 		return "accepted"
 	}
 	value := tuiAltValueLine{"same"}
-	f := []string{"add=" + verdict(screen.AddChild(value))}
-	f = append(f, "remove="+verdict(screen.RemoveChild(value)))
-	f = append(f, "focus="+verdict(screen.SetFocus(value)))
-	f = append(f, "root="+verdict(screen.SetLayoutRoot(value)))
+	f := []string{
+		"add=" + verdict(screen.AddChild(value)),
+		"remove=" + verdict(screen.RemoveChild(value)),
+		"focus=" + verdict(screen.SetFocus(value)),
+		"root=" + verdict(screen.SetLayoutRoot(value)),
+	}
 	_, err = screen.ShowOverlay(value, nil)
 	f = append(f, "overlay="+verdict(err))
 	handle, err := screen.ShowOverlay(&tuiAltPtrLine{"ov"}, nil)
 	must(err)
-	f = append(f, "unfocus="+verdict(handle.Unfocus(sdk.UnfocusOptions{Target: value})))
-	f = append(f, fmt.Sprintf("children=%d", len(screen.Children())))
+	f = append(f, "unfocus="+verdict(handle.Unfocus(sdk.UnfocusOptions{Target: value})), fmt.Sprintf("children=%d", len(screen.Children())))
 	a, b := &tuiAltPtrLine{"same"}, &tuiAltPtrLine{"same"}
 	must(screen.AddChild(a))
 	must(screen.AddChild(b))
