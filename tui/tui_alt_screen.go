@@ -210,9 +210,9 @@ type altScreenDocument struct {
 	base *tuiBase
 }
 
-func (d *altScreenDocument) Render(width int) []string { return d.base.Container.Render(width) }
+func (d *altScreenDocument) Render(width int) []string { return d.base.renderBase(width, false) }
 func (d *altScreenDocument) renderBorrowed(width int) []string {
-	return d.base.renderBorrowed(width)
+	return d.base.renderBase(width, true)
 }
 
 // HandleMouse dispatches to the base children. Mirrors upstream
@@ -367,28 +367,6 @@ func (t *TuiAltScreen) CopyActiveSelectionToClipboard() bool {
 	return t.copyTextToClipboard(text)
 }
 
-// AltScreenFrameState is what a component reads from the screen while its Render runs inside a frame.
-type AltScreenFrameState struct {
-	ScreenLines        []string
-	HasActiveSelection bool
-	CopyOnSelect       bool
-	ShowHardwareCursor bool
-	ClearOnShrink      bool
-}
-
-// FrameState reads the state a component's Render may ask the screen for, without taking the frame lock, which the frame's own goroutine holds
-// (Pi's single thread lets render read these members). It reports false outside a frame, and is only for a Render the frame is running.
-func (t *TuiAltScreen) FrameState() (AltScreenFrameState, bool) {
-	if !t.frameActive.Load() {
-		return AltScreenFrameState{}, false
-	}
-	_, _, selected := t.getSelectionBounds()
-	return AltScreenFrameState{
-		ScreenLines: slices.Clone(t.previousScreen), HasActiveSelection: selected, CopyOnSelect: t.copyOnSelect,
-		ShowHardwareCursor: t.showHardwareCursor, ClearOnShrink: t.clearOnShrink,
-	}, true
-}
-
 // GetScreenLines returns the lines of the last rendered frame, one per terminal row, as written to the terminal. The slice is a copy (tui-alt-screen.ts:315-318).
 func (t *TuiAltScreen) GetScreenLines() []string {
 	t.mu.Lock()
@@ -401,14 +379,21 @@ func (t *TuiAltScreen) GetScreenLines() []string {
 // document. Mirrors upstream setLayoutRoot.
 func (t *TuiAltScreen) SetLayoutRoot(component Component) {
 	t.mu.Lock()
+	changed := t.setLayoutRootLocked(component)
+	t.mu.Unlock()
+	if changed {
+		t.RequestRender()
+	}
+}
+
+// setLayoutRootLocked installs component and reports whether it replaced another. t.mu must be held.
+func (t *TuiAltScreen) setLayoutRootLocked(component Component) bool {
 	if t.layoutRoot == component {
-		t.mu.Unlock()
-		return
+		return false
 	}
 	t.layoutRoot = component
 	t.currentLayout = nil
-	t.mu.Unlock()
-	t.RequestRender()
+	return true
 }
 
 func (t *TuiAltScreen) getPrimaryScrollView() *ScrollView {
@@ -595,11 +580,11 @@ func (t *TuiAltScreen) StopWithOptions(options StopOptions) {
 		}
 		return
 	}
-	// The exit dump renders the components under mu as a frame does: a component's Render that asks the screen for state is answered from FrameState,
-	// and a render request it makes is dropped (the renderer is stopped).
-	t.frameActive.Store(true)
+	// The exit dump renders the components under mu as a frame does: a call a component's Render makes back to the renderer runs on this goroutine
+	// (Frame), and a render request it makes is dropped (the renderer is stopped).
+	t.enterFrame()
 	document := t.renderDocument(width)
-	t.frameActive.Store(false)
+	t.leaveFrame()
 	var buf strings.Builder
 	buf.WriteString(altBeginSynchronizedOutput + exit + altDisableAutowrap)
 	for row := range document {
@@ -631,7 +616,7 @@ func (t *TuiAltScreen) renderDocument(width int) []string {
 	if t.layoutRoot != nil {
 		frameLines = t.layoutRoot.Render(width)
 	} else {
-		frameLines = t.Container.Render(width)
+		frameLines = t.renderBase(width, false)
 	}
 	frameLines = t.resolveFakeCursors(frameLines)
 	lines := make([]string, len(frameLines))
@@ -744,7 +729,7 @@ func (t *TuiAltScreen) RenderSnapshot(width int) []string {
 	if t.layoutRoot != nil {
 		return t.layoutRoot.Render(width)
 	}
-	return t.Container.Render(width)
+	return t.renderBase(width, false)
 }
 
 // SetShowHardwareCursor toggles the hardware cursor and requests a frame, as
@@ -752,13 +737,25 @@ func (t *TuiAltScreen) RenderSnapshot(width int) []string {
 // changes made together share one). Mirrors TUI.SetShowHardwareCursor.
 func (t *TuiAltScreen) SetShowHardwareCursor(enabled bool) {
 	t.mu.Lock()
+	changed, hasRendered := t.setShowHardwareCursorLocked(enabled)
+	t.mu.Unlock()
+	t.showHardwareCursorChanged(enabled, changed, hasRendered)
+}
+
+// setShowHardwareCursorLocked records enabled and reports whether it changed the setting and whether a frame was drawn. t.mu must be held.
+func (t *TuiAltScreen) setShowHardwareCursorLocked(enabled bool) (changed, hasRendered bool) {
 	if t.showHardwareCursor == enabled {
-		t.mu.Unlock()
-		return
+		return false, false
 	}
 	t.showHardwareCursor = enabled
-	hasRendered := len(t.previousScreen) > 0
-	t.mu.Unlock()
+	return true, len(t.previousScreen) > 0
+}
+
+// showHardwareCursorChanged is what follows a change of the setting: the cursor is hidden when it was turned off, and a frame is requested once one was drawn.
+func (t *TuiAltScreen) showHardwareCursorChanged(enabled, changed, hasRendered bool) {
+	if !changed {
+		return
+	}
 	if !enabled {
 		t.HideCursor()
 	}
