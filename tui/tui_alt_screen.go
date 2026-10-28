@@ -91,6 +91,9 @@ type TuiAltScreen struct {
 	// wezTerm is isWezTermSession as Start read it. Upstream reads process.env each frame, a property read; a Windows
 	// environment read allocates its UTF-16 key and value, so the alt screen reads it once per start, with the capabilities.
 	wezTerm bool
+	// scrollRows is whether a frame scrolls the rows that only moved (findMovedRows): PIG_TUI_SCROLL_ROWS=0 or a terminal not trusted with scroll regions (scrollRegionsUsable) turns it off.
+	// Start reads it, as it reads wezTerm.
+	scrollRows bool
 
 	// savedCapabilities holds the pre-enter terminal capabilities when the
 	// alt-screen suppressed iTerm2 inline images (they do not render correctly in
@@ -448,6 +451,7 @@ func (t *TuiAltScreen) enterAltScreen() {
 	caps := GetCapabilities()
 	t.imageProtocol = caps.Images
 	t.wezTerm = t.imageProtocol == "kitty" && isWezTermSession()
+	t.scrollRows = scrollRegionsUsable()
 	clear(t.uploadedKittyImages)
 	t.uploadedKittyImagesOrder = nil
 	t.lastDocument = nil
@@ -999,12 +1003,25 @@ func (t *TuiAltScreen) doRender() {
 			}
 		}
 	} else {
+		// pig divergence (D205): rows that only moved are scrolled by the terminal, and only the rows that differ afterwards are drawn.
+		moved, scrolled := movedRows{}, false
+		if t.scrollRows && !repaintAll {
+			moved, scrolled = findMovedRows(screen, t.previousScreen, height)
+		}
+		if scrolled {
+			writeRowsMove(&buf, moved)
+		}
 		for row := range height {
-			if repaint(row) {
-				writeCursorTo(&buf, row+1, 1)
-				buf.WriteString("\x1b[2K")
-				buf.WriteString(altScreenRow(preparedLines, row))
+			if scrolled {
+				if shown, known := moved.shownAfter(t.previousScreen, row); known && altScreenRow(screen, row) == shown {
+					continue
+				}
+			} else if !repaint(row) {
+				continue
 			}
+			writeCursorTo(&buf, row+1, 1)
+			buf.WriteString("\x1b[2K")
+			buf.WriteString(altScreenRow(preparedLines, row))
 		}
 	}
 

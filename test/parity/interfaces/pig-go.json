@@ -351665,6 +351665,17 @@
       "shapeHash": "sha256:c1f5e62c046a3890a218805dbb9817e75c76785483920a44b0b85f6622169fab"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#findMovedRows",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "findMovedRows",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(screen []string, previous []string, height int) (moved movedRows, ok bool)"
+      },
+      "shapeHash": "sha256:6dc4d22b38ecc36fd9fc0b0b5586b23b5ac7af2169317d08d11fbcaaf3718a54"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/tui#findSearchCorpusMatches",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "findSearchCorpusMatches",
@@ -357649,6 +357660,17 @@
       "shapeHash": "sha256:2dfd215036b14c3898ddd16ce618fec9fa6ba141357d49869e3171fbf3801867"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#minRowsSavedByScrolling",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "minRowsSavedByScrolling",
+      "kind": "constant",
+      "exported": false,
+      "shape": {
+        "type": "untyped int"
+      },
+      "shapeHash": "sha256:e464e6de3ad35418f6e6dfe34abdf0de696ea4b2b49704e3c41e4184b74f805f"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/tui#minVisibleAnchorContentWidth",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "minVisibleAnchorContentWidth",
@@ -358120,6 +358142,28 @@
         "type": "func(previous Component, next Component)"
       },
       "shapeHash": "sha256:3374fc47345b4ff5e327197c02ab8f0b32eba70dbe3548a15e2761b355cc2a87"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#movedRows",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "movedRows",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "movedRows"
+      },
+      "shapeHash": "sha256:1bcb19834421ad35f35994878bd5604924581536832c5497d331575bebd0ef1f"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#movedRows.shownAfter",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "movedRows.shownAfter",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(previous []string, row int) (shown string, known bool)"
+      },
+      "shapeHash": "sha256:08a621bb4c4baab546589fec891c2fc7e43ec035637fbce71dec449d37ddd265"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui#mustLoadBuiltinTheme",
@@ -362201,6 +362245,28 @@
         "type": "func(filePath string, query string, isDirectory bool) int"
       },
       "shapeHash": "sha256:9105d10b68b0ed5031593e27977fd6ac01aeca174596b0b5a40a1aa6eae4ea1d"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#scrollRegionsUsable",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "scrollRegionsUsable",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func() bool"
+      },
+      "shapeHash": "sha256:f632619397f10a7f0e472ad47d2824ec7e080d15ac9eb0994e24800757b3fb96"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#scrollRegionsUsableIn",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "scrollRegionsUsableIn",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(getenv func(string) string) bool"
+      },
+      "shapeHash": "sha256:77d7486f9f7adabaffb7539d48921e3c1efb79550ea01ac0d422c98c8a28b907"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui#scrollToEndIndicatorRect",
@@ -368504,6 +368570,17 @@
         "type": "func(buf *strings.Builder, row int, col int)"
       },
       "shapeHash": "sha256:1050991ea33d7aed3419ad4273cbd0f270cef742c1dd3bb92829328c9a251862"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#writeRowsMove",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "writeRowsMove",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(buf *strings.Builder, moved movedRows)"
+      },
+      "shapeHash": "sha256:9e9565d26d0b007d9b4fe3b8204f484857db7ce4813a8f72a77652b868c5e1c6"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui#xterm256CubeLevels",
