@@ -3,7 +3,7 @@
 > **Differs from Pi, or easy to get wrong**
 > - Settings live in `~/.pig/agent/settings.json` and `<project>/.pig/settings.json`, never `~/.pi` or `.pi/` (D2).
 > - The project file loads only in a trusted project. With `-p` there is no prompt and PiG ignores it: pass `--approve` ([project trust](trust.md)).
-> - `pig diagnose` does not show trust. It can print a default model from an untrusted project's file as if it applied.
+> - `pig status` shows the project trust decision and marks resources that an untrusted project's run ignores.
 
 PiG reads settings from `~/.pig/agent/settings.json`. The file is optional. Every
 key is optional, and a key you leave out keeps its default.
