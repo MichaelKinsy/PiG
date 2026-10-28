@@ -423,12 +423,15 @@ func TestStatusReportsASkillWithoutDescriptionAsNotLoaded(t *testing.T) {
 	status := runStatusJSON(t)
 	for _, name := range []string{"nodesc", "blank"} {
 		item := statusItem(t, status, "skills", name)
-		if item.Health != "not loaded: description is required" {
-			t.Errorf("%s health = %q", name, item.Health)
+		if item.Health != "not loaded: description is required" || item.Enabled {
+			t.Errorf("%s = %#v, want that health and enabled false: the session does not have the skill", name, item)
 		}
 	}
-	if item := statusItem(t, status, "skills", "gskill"); item.Health != "" {
-		t.Errorf("a skill with a description reports health %q", item.Health)
+	if item := statusItem(t, status, "skills", "gskill"); item.Health != "" || !item.Enabled {
+		t.Errorf("a skill with a description = %#v, want it enabled with no health", item)
+	}
+	if status.Resources.Disabled != 2 {
+		t.Errorf("disabled = %d, want the two skills the loader rejects", status.Resources.Disabled)
 	}
 	if !status.Healthy || len(status.Errors) != 0 {
 		t.Errorf("Pi only warns about it: healthy=%v errors=%v", status.Healthy, status.Errors)
@@ -447,12 +450,12 @@ func TestStatusReportsAThemeWithAnUnknownColorRoleAsInvalid(t *testing.T) {
 	writeThemeFixture(t, filepath.Join(f.agentDir, "themes", "good.json"), func(map[string]any) {})
 	writeThemeFixture(t, filepath.Join(f.agentDir, "themes", "bad.json"), func(colors map[string]any) { colors["notARole"] = "#ffffff" })
 	status := runStatusJSON(t)
-	if item := statusItem(t, status, "themes", "good"); item.Health != "" {
-		t.Errorf("a valid theme reports health %q", item.Health)
+	if item := statusItem(t, status, "themes", "good"); item.Health != "" || !item.Enabled {
+		t.Errorf("a valid theme = %#v, want it enabled with no health", item)
 	}
 	bad := statusItem(t, status, "themes", "bad")
-	if !strings.HasPrefix(bad.Health, "invalid: ") || !strings.Contains(bad.Health, "notARole") {
-		t.Errorf("bad theme health = %q", bad.Health)
+	if !strings.HasPrefix(bad.Health, "invalid: ") || !strings.Contains(bad.Health, "notARole") || bad.Enabled {
+		t.Errorf("bad theme = %#v, want an invalid health and enabled false", bad)
 	}
 	if !status.Healthy {
 		t.Errorf("Pi only warns about it: errors=%v", status.Errors)

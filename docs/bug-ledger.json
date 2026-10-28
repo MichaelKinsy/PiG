@@ -15485,6 +15485,30 @@
       ]
     },
     {
+      "id": "BF-6b85cb7",
+      "title": "`pig status --json` now gives a skill without a `description` and a theme that fails the theme schema…",
+      "symptom": "`pig status --json` now gives a skill without a `description` and a theme that fails the theme schema `enabled: false` as well as the `health` text and the warning, so one field says whether the session has the resource.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`pig status --json` now gives a skill without a `description` and a theme that fails the theme schema `enabled: false` as well as the `health` text and the warning, so one field says whether the session has the resource. They were `enabled: true` before. They count as disabled in `resources`.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "6b85cb7e8b",
+          "date": "2026-10-28"
+        }
+      ],
+      "tests": [
+        "coding/cli/introspection_truth_test.go::TestStatusReportsASkillWithoutDescriptionAsNotLoaded",
+        "coding/cli/introspection_truth_test.go::TestStatusReportsAThemeWithAnUnknownColorRoleAsInvalid",
+        "coding/piglet/active_source_test.go::TestActiveSourceValue"
+      ]
+    },
+    {
       "id": "BF-6b97207",
       "title": "An extension that overrides the `edit` tool with a definition built by the Go, Rust or Python SDK's…",
       "symptom": "An extension that overrides the `edit` tool with a definition built by the Go, Rust or Python SDK's `createEditToolDefinition` now has the model's legacy edit shapes normalised, as Pi's `{ ...createEditToolDefinition(cwd), execute }` does.",

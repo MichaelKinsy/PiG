@@ -903,7 +903,7 @@ envelopes use one strict current unversioned shape. `--no-input` never prompts.
 `pig status` and `pig diagnose` report the project trust decision a
 non-interactive run makes (saved decision, then `defaultProjectTrust`, else
 untrusted). A project resource of an untrusted project stays in the status
-inventory with `enabled: false` and `ignored: untrusted`, and the project's
+inventory with `enabled: false` and `ignored: untrusted`, a skill or theme that the loader rejects has `enabled: false` and a `health` text, and the project's
 settings and Packages do not count. `pig diagnose` reports the effective default
 model by Pi's `findInitialModel` rule and the settings file that each of
 `defaultProvider` and `defaultModel` came from. It does not split a

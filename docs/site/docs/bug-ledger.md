@@ -537,6 +537,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-6a6fffa-9](#bf-6a6fffa-9) | `TestSettingsSelectorMatchesPi` opens each row under the Kitty keyboard protocol with CSI-u keys; no… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-6ac4c8c](#bf-6ac4c8c) | Ctrl+V pastes clipboard text in Termux | A fix Pi shipped that PiG ported | Linux, Android and Termux | 0.5.0 |
 | [BF-6acf6a0](#bf-6acf6a0) | fix(durable/core): keep telemetry out of the hot publish body; report type; trace test | PiG's own defect | All platforms | Unreleased |
+| [BF-6b85cb7](#bf-6b85cb7) | `pig status --json` now gives a skill without a `description` and a theme that fails the theme schema… | PiG's own defect | All platforms | Unreleased |
 | [BF-6b97207](#bf-6b97207) | An extension that overrides the `edit` tool with a definition built by the Go, Rust or Python SDK's… | PiG's own defect | All platforms | Unreleased |
 | [BF-6c26be3](#bf-6c26be3) | A submission's `Wait` no longer fails with "Harness is closed" when a close begins before the wait wakes: a… | PiG's own defect | All platforms | Unreleased |
 | [BF-6cb29f0](#bf-6cb29f0) | Started from a directory reached through a symlink, `pig install`/`remove`/`list`/`update` resolve local… | PiG's own defect | All platforms | 0.5.0 |
@@ -8458,6 +8459,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `6acf6a0da0` (2026-10-27)
 - **Tests:** `durable/core/session/telemetry_test.go::TestCreateTaskTraceAndLinks`
+
+### BF-6b85cb7
+
+**`pig status --json` now gives a skill without a `description` and a theme that fails the theme schema…**
+
+- **Source:** PiG's own defect
+- **Symptom:** `pig status --json` now gives a skill without a `description` and a theme that fails the theme schema `enabled: false` as well as the `health` text and the warning, so one field says whether the session has the resource.
+- **Root cause:** Not recorded.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `6b85cb7e8b` (2026-10-28)
+- **Tests:** `coding/cli/introspection_truth_test.go::TestStatusReportsASkillWithoutDescriptionAsNotLoaded`, `coding/cli/introspection_truth_test.go::TestStatusReportsAThemeWithAnUnknownColorRoleAsInvalid`, `coding/piglet/active_source_test.go::TestActiveSourceValue`
+- **Release note:** `pig status --json` now gives a skill without a `description` and a theme that fails the theme schema `enabled: false` as well as the `health` text and the warning, so one field says whether the session has the resource. They were `enabled: true` before. They count as disabled in `resources`.
 
 ### BF-6b97207
 
