@@ -615,7 +615,7 @@ func (e *engine) interruptedRequest(id int64, cp *jv.Object) error {
 	if attempt > retryMaxRetries {
 		return errors.New("recovery: an interrupted request without a retry left is outside this host's workload")
 	}
-	until := e.now + retryBaseDelayMs*float64(int64(1)<<(attempt-1))
+	until := e.now + float64(retryBaseDelayMs*float64(int64(1)<<(attempt-1)))
 	retryCheckpoint := obj("phase", "retry", "attempt", num(attempt), "until", until)
 	text := "The host stopped while the model was answering, on attempt " + strconv.FormatInt(attempt, 10)
 	retry := `,"retry":{"at":` + num2(until) + `,"error":` + quote(text) + `}`

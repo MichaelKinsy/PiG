@@ -192,7 +192,7 @@ test("a tool call cut off restartLimit times ends with an error result in Pi's p
   let opened = await open(piApi, path, make(piApi, { resolve: () => running.resolve() }))
   opened.harness.resume()
   await opened.root.submit({ type: "input", content: "go" }, context)
-  let taskId = 0
+  let taskId = undefined as unknown as Pi.TaskId
   for (let crash = 1; crash <= 2; crash++) {
     await running.promise
     running = deferred()
