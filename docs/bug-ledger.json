@@ -37998,6 +37998,30 @@
       ]
     },
     {
+      "id": "BF-fd68cf8",
+      "title": "A Piglet's tool scope now covers the built-in MCP tools",
+      "symptom": "A Piglet's tool scope now covers the built-in MCP tools.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A Piglet's tool scope now covers the built-in MCP tools. A Piglet with an `extensions:` section that does not list `pig-mcp-adapter` still offered `mcp__\u003cserver\u003e__\u003ctool\u003e` from `builtin:mcp`, and `codemode` with them. `ScopeTools` now treats a tool in namespace `mcp__\u003cserver\u003e` like the adapter's `mcp:\u003cserver\u003e` source: the `pig-mcp-adapter` entry and its `tools` list govern it, and `codemode`, `tool_search` and the MCP resource tools are hidden when no MCP tool stays visible. Stock PiG without a Piglet is unchanged.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "fd68cf8c38",
+          "date": "2026-10-27"
+        }
+      ],
+      "tests": [
+        "coding/cli/piglet_mcp_tool_scope_test.go::TestPigletScopesBuiltinMCPToolsInRPCMode",
+        "coding/piglet/scope_mcp_test.go::TestScopeToolsKeepsCodemodeWhenNoMCPToolIsRegistered",
+        "coding/piglet/scope_mcp_test.go::TestScopeToolsScopesBuiltinMCPNamespaceLikeMCPSource"
+      ]
+    },
+    {
       "id": "BF-fd7f660",
       "title": "A resumed session keeps the tools that were active when it was saved (an optional or deferred tool a command…",
       "symptom": "A resumed session keeps the tools that were active when it was saved (an optional or deferred tool a command or extension had enabled no longer drops out and gets recorded as removed on the next turn); an explicit `--tools` list, `--no-tools` or `--no-builtin-tools` still wins (pi-mono #10785).",
