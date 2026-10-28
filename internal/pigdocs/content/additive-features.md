@@ -22,3 +22,4 @@ These PiG-only features have no Pi equivalent. This page lists the ones that mat
 | D194 | Piglet resolution installs npm and Git Packages with lifecycle scripts disabled unless the command opts in | Resolving a Piglet installs npm and Git Packages with lifecycle scripts turned off unless the command allows them. |
 | D201 | The SDK resource loader takes the runtime its extensions register against | The SDK resource loader accepts a runtime, so the extensions it loads register against the runtime that you supply. |
 | D202 | A Piglet Binary can declare that it accepts overlay Piglets (build.allowOverlays) | A Piglet Binary built with build.allowOverlays accepts a Piglet that you choose at launch as an overlay. |
+| D209 | A session exports its active Piglet to its tool processes (PIG_ACTIVE_PIGLET_SOURCE) | A running session sets PIG_ACTIVE_PIGLET_SOURCE for its tools, so pig status, pig diagnose, and pig piglet show can name the active Piglet. |
