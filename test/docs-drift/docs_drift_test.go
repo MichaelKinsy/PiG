@@ -161,19 +161,38 @@ func TestListableSlashCommandsAreDocumented(t *testing.T) {
 	}
 }
 
-// A page nothing links to is a page nobody finds. README.md is the bundle index.
+// A page nothing routes to is a page nobody finds. README.md is the bundle index.
+// Its "Start by task" table names the page that answers each task in the "Start
+// here" cell, so a file name in prose or in a "Then read" cell is not enough.
 func TestEveryPageIsReachableFromTheIndex(t *testing.T) {
 	files := docFiles(t)
 	index, ok := files["README.md"]
 	if !ok {
 		t.Fatal("bundle has no README.md index")
 	}
+	_, table, ok := strings.Cut(index, "\n## Start by task\n")
+	if !ok {
+		t.Fatal("README.md has no \"Start by task\" section")
+	}
+	table, _, _ = strings.Cut(table, "\n## ")
+	link := regexp.MustCompile(`\]\(([A-Za-z0-9_.-]+\.md)(?:#[^)]*)?\)`)
+	routed := map[string]bool{}
+	for _, row := range strings.Split(table, "\n") {
+		cells := strings.Split(row, "|")
+		// A row is "| task | Start here | Then read |": three cells between four bars.
+		if len(cells) != 5 || !strings.HasPrefix(row, "|") {
+			continue
+		}
+		for _, match := range link.FindAllStringSubmatch(cells[2], -1) {
+			routed[match[1]] = true
+		}
+	}
 	for name := range files {
 		if name == "README.md" {
 			continue
 		}
-		if !strings.Contains(index, name) {
-			t.Errorf("README.md does not link %s; the page is unreachable from the index", name)
+		if !routed[name] {
+			t.Errorf("README.md has no \"Start by task\" row that names %s in its \"Start here\" cell; the page is not routed from the index", name)
 		}
 	}
 }
