@@ -180145,7 +180145,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:durable/errors.go#ErrorMessage"
+        "call:durable/core/session/errorf.go#appendArg"
       ],
       "evidence": [
         "test:internal/codingagent/settings_structured_getters_oracle_test.go#TestSettingsManagerStructuredGettersMatchPi",

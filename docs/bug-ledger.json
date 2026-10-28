@@ -2,6 +2,25 @@
   "since": "0.4.1",
   "entries": [
     {
+      "id": "BF-0021db7",
+      "title": "fix(durable/harness): a run's own context reads resolve no settings; the retention is read only for an idle…",
+      "symptom": "fix(durable/harness): a run's own context reads resolve no settings; the retention is read only for an idle conversation (Pi scheduler.ts runtime.context)",
+      "rootCause": "keepContext read settings.contextRetentionMs before it looked at the conversation: four resolutions in every round of one generation with a tool call, where Pi resolves the retention only in the idle branch.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "0021db7cfc",
+          "date": "2026-10-28"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-003f6f0",
       "title": "Ctrl+U, Ctrl+K and the word-delete keys leave an open autocomplete list open, as Pi's editor does",
       "symptom": "Ctrl+U, Ctrl+K and the word-delete keys leave an open autocomplete list open, as Pi's editor does.",
@@ -3986,6 +4005,27 @@
         "internal/codingagent/native_provider_login_test.go::TestNativeProviderLoginOffersDeclaredMethods",
         "internal/codingagent/native_provider_login_test.go::TestNativeProviderLoginRejectsUnknownInteractionTypes",
         "internal/codingagent/native_provider_login_test.go::TestNativeProviderOAuthLoginSelectPrompt"
+      ]
+    },
+    {
+      "id": "BF-26d3370",
+      "title": "fix(durable/core): the host resolves the Harness settings as often as the core did (Pi resolves…",
+      "symptom": "fix(durable/core): the host resolves the Harness settings as often as the core did (Pi resolves HarnessOptions.settings at each use)",
+      "rootCause": "The core counts its resolutions of the settings it was sent (a turn phase's settings, the context retention checks, the submission's queue modes) and publishes the count in a settings notice (ABI 12) at the end of the event; the host resolves them as often, as Pi's callback is seen to (harness-restart-failure.test.ts counts 49 for a round of one generation with one tool call). U-harness-restart-failure passes on native (18 tests).",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "26d33706d4",
+          "date": "2026-10-28"
+        }
+      ],
+      "tests": [
+        "durable/core/abi/spec/spec_test.go::TestTablesUnchanged"
       ]
     },
     {
