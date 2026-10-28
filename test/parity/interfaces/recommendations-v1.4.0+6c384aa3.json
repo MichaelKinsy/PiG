@@ -139549,7 +139549,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "9 normalized-name Pig candidates are ambiguous."
+        "10 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -139567,6 +139567,7 @@
         "go:github.com/MichaelKinsy/PiG/extensions/sdk/frontend#Frame",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent#componentEditor.frame",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent/llama#frame",
+        "go:github.com/MichaelKinsy/PiG/tui#TuiAltScreen.Frame",
         "go:github.com/MichaelKinsy/PiG/tui/internal/hljs#frame"
       ],
       "missingClosure": [
@@ -151240,24 +151241,22 @@
     {
       "id": "pkg:chord/delta#Op",
       "upstreamShapeHash": "sha256:9c42e574da621604ecb01879956dbdccdef1c10183753333ec2aa8e5dea06aa6",
-      "recommendedDisposition": "pending",
+      "recommendedDisposition": "partial",
       "confidence": "low",
       "basis": [
-        "2 normalized-name Pig candidates are ambiguous."
+        "Exactly one normalized declared Go symbol name matches; package context, semantic shape, and production closure remain unverified."
       ],
       "alternatives": [
         "ported",
-        "partial",
+        "pending",
         "deferred",
         "designed-out",
         "divergence"
       ],
       "pigCandidates": [
-        "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#tuiAltScreenState.op",
         "go:github.com/MichaelKinsy/PiG/extensions/sdk/frontend#Op"
       ],
       "missingClosure": [
-        "candidate-disambiguation",
         "shape-translation-review",
         "production-reachability",
         "required-layers",
