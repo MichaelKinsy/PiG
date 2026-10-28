@@ -185,6 +185,10 @@ const scopedToolsExtension = `export default function (pi) {
       pi.registerTool({ name, label: name, description: "a " + name + " registry probe", exposure, parameters: { type: "object", properties: {} }, execute: async () => ({ content: [{ type: "text", text: "ran " + name }] }) });
     }
   }
+  // codemode and tool_search are registered inactive; the model needs them declared to reach the tools above.
+  pi.on("session_start", async () => {
+    pi.setActiveTools([...new Set([...pi.getActiveTools(), "codemode", "tool_search"])]);
+  });
 }
 `
 
@@ -195,12 +199,10 @@ func TestPigletRemovesHiddenExtensionToolsFromTheRegistry(t *testing.T) {
 	}
 	t.Parallel()
 	const scopedTools = "    tools: [shown_codemode, shown_deferred]\n"
-	// The allowlist names every tool of the extension, so only the Piglet hides some.
-	scopedToolsFlag := []string{"--tools", "read,codemode,tool_search,shown_codemode,shown_deferred,hidden_codemode,hidden_deferred"}
 	t.Run("codemode exposure", func(t *testing.T) {
 		t.Parallel()
 		result := runPigletRegistry(t, pigletRegistryRun{
-			scopedExtension: scopedToolsExtension, scopedTools: scopedTools, args: scopedToolsFlag,
+			scopedExtension: scopedToolsExtension, scopedTools: scopedTools,
 			steps: []chatStep{codemodeCallJSON("hidden_codemode"), codemodeCallJSON("shown_codemode"), chatText("done")},
 		})
 		requests := result.chat.recorded()
@@ -217,7 +219,7 @@ func TestPigletRemovesHiddenExtensionToolsFromTheRegistry(t *testing.T) {
 	t.Run("deferred exposure", func(t *testing.T) {
 		t.Parallel()
 		result := runPigletRegistry(t, pigletRegistryRun{
-			scopedExtension: scopedToolsExtension, scopedTools: scopedTools, args: scopedToolsFlag,
+			scopedExtension: scopedToolsExtension, scopedTools: scopedTools,
 			steps: []chatStep{chatCall("tool_search", map[string]any{"query": "deferred", "limit": 10}), chatText("done")},
 		})
 		requests := result.chat.recorded()
