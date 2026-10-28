@@ -287,7 +287,7 @@ func (p *BedrockProvider) streamResponse(ctx, requestContext context.Context, co
 		disablePreferredStrictTools = true
 		ai.AppendAssistantMessageDiagnostic(builder.Partial(), ai.AssistantMessageDiagnostic{
 			Type:      "bedrock_strict_tools_fallback",
-			Timestamp: time.Now().UnixMilli(),
+			Timestamp: time.Now().UnixMilli(), //portlint:allow clock Pi stamps the fallback diagnostic with Date.now() (bedrock-converse-stream.ts:321)
 			Error:     &ai.DiagnosticErrorInfo{Message: limitMessage},
 			Details:   map[string]any{"reason": "strict_tool_limits_exceeded"},
 		})

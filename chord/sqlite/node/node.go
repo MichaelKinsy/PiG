@@ -163,7 +163,7 @@ func (statement *StatementSync) RunCounted(params ...any) (int64, error) {
 	if err := statement.open(); err != nil {
 		return 0, err
 	}
-	result, err := statement.statement.ExecContext(context.Background(), params...)
+	result, err := statement.statement.ExecContext(context.Background(), params...) //portlint:allow ctxbackground node:sqlite StatementSync.run (node.ts:102) is synchronous and takes no signal; no caller context exists, as in Run
 	if err != nil {
 		return 0, err
 	}

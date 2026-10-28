@@ -321712,6 +321712,17 @@
       "shapeHash": "sha256:dcdd88cab122a759a3f9ed8d7c3a4e63073cd09ab07469bba75d36b9e0423a68"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#LoginBrowserTarget",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "LoginBrowserTarget",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(url string) string"
+      },
+      "shapeHash": "sha256:cb313333a36189049c22e2815489cf137f8cc2069a4b9c31bd8fcc7c93170e54"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/tui#LoginDialogComponent",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "LoginDialogComponent",
@@ -322037,9 +322048,9 @@
       "kind": "function",
       "exported": true,
       "shape": {
-        "type": "func(url string, instructions string) (browserTarget string)"
+        "type": "func(url string, instructions string)"
       },
-      "shapeHash": "sha256:001b560cd9a2f928e80bcedf9288c03265149c21d7227501d4381ebfe24b261e"
+      "shapeHash": "sha256:95a83688a38173bd6d4f396fc77161826847d711fc46914de0ce32f2850dbfd3"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui#LoginDialogComponent.ShowDetails",
