@@ -39,6 +39,8 @@ remains the Host Piglet carrier. Piglet Binaries execute directly.
 | environment | optional required image, Dev Container, or typed source |
 | release/build | release SemVer and portable target/output defaults |
 
+To limit tools or to strip built-ins, read [Strip built-ins and limit tools](piglet-strip.md).
+
 ### Model can be unconstrained
 
 Leave `model` out when any consumer-enabled model is acceptable. Explicit/current
