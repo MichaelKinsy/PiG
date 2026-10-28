@@ -46,7 +46,7 @@ type pendingLeaf struct {
 // except after an ancestor primitive "s", after which the descendant cannot be written until a structural op clears the
 // index. Past MaxPendingOps only "replace with the current value" stays pending.
 //
-// Ops are only those of the tracker, DiffRevisions and AppendText; received op slices are never mutated (they feed other
+// Ops are only those of the tracker and DiffRevisions; received op slices are never mutated (they feed other
 // consumers too), a merge makes a new op. The zero value is an empty queue.
 type PendingOps struct {
 	kind pendingKind
@@ -225,21 +225,9 @@ func (pending *PendingOps) mergeLeaf(op Op) bool {
 		}
 		leaf.buf, leaf.growing = append(leaf.buf[:0], text...), true
 	}
-	leaf.buf = AppendText(leaf.buf, op.Text)
+	leaf.buf = jv.AppendConcat(leaf.buf, op.Text)
 	pending.leaves[key] = leaf
 	return true
-}
-
-// AppendText appends text to buf as UTF-16 concatenation does: a trailing high surrogate of buf (a lone one, in its
-// three-byte generalized form) and a leading low surrogate of text join into one code point.
-func AppendText(buf []byte, text string) []byte {
-	if len(buf) >= 3 && len(text) >= 3 {
-		tail := string(buf[len(buf)-3:])
-		if joined := jv.Concat(tail, text[:3]); len(joined) != len(tail)+3 {
-			return append(append(buf[:len(buf)-3], joined...), text[3:]...)
-		}
-	}
-	return append(buf, text...)
 }
 
 // pathKey is the key of a path in the leaf index. It is injective, as merging two distinct paths would lose a write:
