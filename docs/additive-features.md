@@ -1883,3 +1883,26 @@ Remove when: PiG drops Piglets, or a session passes its Piglet to the commands t
 
 Approval: owner request (self-inspection review, section 9.2, item 4), assigned by Main for PiG 0.6.0.
 SCRUTINIZED:approved
+
+## D211 A Piglet can withhold a project's context files until the project is trusted (`contextFiles: trusted-only`)
+
+Summary: A Piglet with `contextFiles: trusted-only` loads no AGENTS.md or CLAUDE.md of a project that is not trusted, and says which files it skipped.
+
+Audience: author
+
+Stock disposition: product-neutral. A run with no Piglet, and a Piglet without the field or with `contextFiles: all`, loads context files as Pi does, with no trust check.
+
+What: The Piglet field `contextFiles` takes `all` (the default, Pi's behaviour) or `trusted-only`. With `trusted-only`, a project that has a context file (`AGENTS.override.md`, `AGENTS.md` or `CLAUDE.md` in the working directory or a parent directory) needs a trust decision, as a project with `.pig/settings.json` does. While the project is not trusted, the run loads only the context file in the agent directory and the one in the user's home directory, when that directory is a strict ancestor of the working directory. It does not read the other files. Print, JSON and RPC runs write one line to stderr that names the skipped files. Interactive mode adds the names to the project-trust warning. A trusted project, `--no-context-files` and the SDK `NoContextFiles` option work as before. A Piglet that extends a `trusted-only` Piglet and sets `contextFiles: all` widens the base, so it needs `allowWiden`, as a wider `tools` or `discovery` does.
+
+Pi source: `packages/coding-agent/src/core/trust-manager.ts` lists the resources that need trust. It has no context file, and `resource-loader.ts` loads context files with no trust check. Pi has no Piglet.
+
+Why: a repository can carry an `AGENTS.md` that steers the model before the user has made a trust decision. An enterprise Piglet needs a way to close that path without a change to stock pig.
+
+Call-site markers: `coding/piglet/types.go` (`Piglet.ContextFiles`, `validateContextFiles`, `WithholdsUntrustedContextFiles`), `coding/piglet/extends.go` (`mergePiglets`, `rejectUnsafeWidening`, `clonePiglet`), `coding/piglet/lineage.go`, `coding/piglet/piglet.schema.json`, `coding/pigletbuild/binarypiglet/binarypiglet.go` (`parse`), `internal/codingagent/context_files.go` (`LoadProjectContextFiles`, `WithheldProjectContextFiles`), `internal/codingagent/project_trust_warning.go`, `internal/codingagent/interactive.go` (`ContextFilesTrustedOnly`), `coding/cli/resource_prompts.go` (`loadsProjectContextFiles`), `coding/cli/cli_runtime_build.go`, `coding/cli/project_trust.go`, `coding/cli/args.go` (`ContextFilesTrustedOnly`), `coding/cli/main.go`.
+
+Locked by: `TestTrustedOnlyPigletWithholdsProjectContextFilesInEveryMode` (`coding/cli/context_files_trust_binary_test.go`); `TestWithheldProjectKeepsGlobalAndHomeContextFilesOnly`, `TestWithheldHomeProjectWithholdsItsOwnContextFile`, `TestContextFileAloneIsNotTrustRequiringProjectResource` (`internal/codingagent/context_files_trust_test.go`); `TestParse_ContextFiles`, `TestContextFilesWideningNeedsAllowWiden` (`coding/piglet/context_files_test.go`).
+
+Remove when: Pi puts context files in its trust list, or PiG drops Piglets.
+
+Approval: pending. Drafted for owner decision between this record (variant B) and the stock divergence D210 (variant A); the two are alternatives.
+SCRUTINIZED:pending

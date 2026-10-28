@@ -811,7 +811,7 @@ func (m *InteractiveMode) buildSlashContext(ctx context.Context) *SlashContext {
 			// the project tree for context files.
 			if m.opts.ReloadResourceProvider == nil {
 				m.opts.ContextFiles = LoadProjectContextFiles(
-					m.opts.CWD, m.opts.AgentDir, m.projectTrusted())
+					m.opts.CWD, m.opts.AgentDir, m.projectTrusted() || !m.opts.ContextFilesTrustedOnly)
 			}
 
 			// 6b. Reload skills.

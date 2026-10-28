@@ -19,8 +19,8 @@ func writeTrustContextFile(t *testing.T, dir, content string) string {
 	return path
 }
 
-// pig divergence (D210): an untrusted project keeps the agent directory's file and the home directory's file, and skips every other file the walk finds.
-func TestUntrustedProjectKeepsGlobalAndHomeContextFilesOnly(t *testing.T) {
+// pig additive (D211): a run that withholds the project keeps the agent directory's file and the home directory's file, and skips every other file the walk finds.
+func TestWithheldProjectKeepsGlobalAndHomeContextFilesOnly(t *testing.T) {
 	home := CanonicalizePath(t.TempDir())
 	t.Setenv("HOME", home)
 	agentDir := filepath.Join(home, ".pig", "agent")
@@ -49,8 +49,8 @@ func TestUntrustedProjectKeepsGlobalAndHomeContextFilesOnly(t *testing.T) {
 	}
 }
 
-// pig divergence (D210): a project that is the home directory itself has its own file withheld.
-func TestUntrustedHomeProjectWithholdsItsOwnContextFile(t *testing.T) {
+// pig additive (D211): a project that is the home directory itself has its own file withheld.
+func TestWithheldHomeProjectWithholdsItsOwnContextFile(t *testing.T) {
 	home := CanonicalizePath(t.TempDir())
 	t.Setenv("HOME", home)
 	own := writeTrustContextFile(t, home, "home project")
@@ -62,28 +62,13 @@ func TestUntrustedHomeProjectWithholdsItsOwnContextFile(t *testing.T) {
 	}
 }
 
-// pig divergence (D210): a project whose only resource is a context file needs a trust decision, so it is not trusted without one.
-func TestContextFileAloneIsTrustRequiringProjectResource(t *testing.T) {
+// Stock pig is unchanged (D211): a project whose only resource is a context file needs no trust decision, as in Pi.
+func TestContextFileAloneIsNotTrustRequiringProjectResource(t *testing.T) {
 	home := CanonicalizePath(t.TempDir())
 	t.Setenv("HOME", home)
 	cwd := filepath.Join(home, "work")
-	if HasTrustRequiringProjectResources(cwd) {
-		t.Fatal("an empty project needs no trust")
-	}
 	writeTrustContextFile(t, cwd, "project")
-	if !HasTrustRequiringProjectResources(cwd) {
-		t.Error("a project with AGENTS.md needs a trust decision")
-	}
-	// The user's home directory file alone is the user's own.
-	other := filepath.Join(home, "other")
-	if err := os.MkdirAll(other, 0o700); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.Remove(filepath.Join(cwd, "AGENTS.md")); err != nil {
-		t.Fatal(err)
-	}
-	writeTrustContextFile(t, home, "home")
-	if HasTrustRequiringProjectResources(other) {
-		t.Error("the home directory's file alone needs no trust")
+	if HasTrustRequiringProjectResources(cwd) {
+		t.Error("a project with only AGENTS.md needs no trust decision in stock pig")
 	}
 }

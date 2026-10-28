@@ -38,14 +38,14 @@ var contextCandidates = []string{"AGENTS.override.md", "AGENTS.md", "AGENTS.MD",
 // worktree, the main checkout's same-named context file is skipped when the
 // worktree root supplies its own copy. Nonempty input paths resolve against the process working directory before discovery.
 //
-// pig divergence (D210): when projectTrusted is false, only the global file in the agent config dir and the file in the user's home directory (when that directory is a strict ancestor of cwd) load. Every other file the walk finds is project context and is skipped.
-func LoadProjectContextFiles(cwd, agentDir string, projectTrusted bool) []ContextFile {
-	loaded, _ := discoverContextFiles(cwd, agentDir, projectTrusted)
+// pig additive (D211): when loadProject is false, only the global file in the agent config dir and the file in the user's home directory (when that directory is a strict ancestor of cwd) load. Every other file the walk finds is project context and is skipped.
+func LoadProjectContextFiles(cwd, agentDir string, loadProject bool) []ContextFile {
+	loaded, _ := discoverContextFiles(cwd, agentDir, loadProject)
 	return loaded
 }
 
-// WithheldProjectContextFiles lists the paths of the project context files that LoadProjectContextFiles skips while the project is untrusted, nearest directory last.
-// pig divergence (D210).
+// WithheldProjectContextFiles lists the paths of the project context files that LoadProjectContextFiles skips when loadProject is false, nearest directory last.
+// pig additive (D211).
 func WithheldProjectContextFiles(cwd, agentDir string) []string {
 	_, withheld := discoverContextFiles(cwd, agentDir, false)
 	return withheld
@@ -59,8 +59,8 @@ func userHomeDir() string {
 	return ""
 }
 
-// discoverContextFiles is the walk behind LoadProjectContextFiles. withheld holds the paths it skipped for an untrusted project; their content is never read.
-func discoverContextFiles(cwd, agentDir string, projectTrusted bool) (loaded []ContextFile, withheld []string) {
+// discoverContextFiles is the walk behind LoadProjectContextFiles. withheld holds the paths it skipped when loadProject is false; their content is never read.
+func discoverContextFiles(cwd, agentDir string, loadProject bool) (loaded []ContextFile, withheld []string) {
 	if cwd != "" {
 		if absolute, err := ResolvePath(cwd, ""); err == nil {
 			cwd = absolute
@@ -91,13 +91,13 @@ func discoverContextFiles(cwd, agentDir string, projectTrusted bool) (loaded []C
 		var skipped []string
 		shadowed := findShadowedContextFile(cwd)
 		home := ""
-		if !projectTrusted {
+		if !loadProject {
 			home = userHomeDir()
 		}
 		dir := cwd
 		for {
-			// The home directory's file is the user's own, not the project's: an untrusted project keeps it unless the project is the home directory itself.
-			isProject := !projectTrusted && !(home != "" && dir != cwd && canonicalPath(dir) == home)
+			// The home directory's file is the user's own, not the project's: a run that withholds the project keeps it unless the project is the home directory itself.
+			isProject := !loadProject && !(home != "" && dir != cwd && canonicalPath(dir) == home)
 			if isProject {
 				if path := firstContextFilePath(dir); path != "" {
 					isShadowed := shadowed != "" && canonicalPath(path) == shadowed

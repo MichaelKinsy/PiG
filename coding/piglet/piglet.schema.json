@@ -72,6 +72,14 @@
     "discovery": {
       "$ref": "#/$defs/discovery"
     },
+    "contextFiles": {
+      "type": "string",
+      "enum": [
+        "all",
+        "trusted-only"
+      ],
+      "description": "Which project context files (AGENTS.md, CLAUDE.md) load. all is Pi's behaviour. trusted-only withholds the project's context files until the project is trusted, and makes a project that has one need a trust decision."
+    },
     "agentEnv": {
       "$ref": "#/$defs/agentEnvironment"
     },

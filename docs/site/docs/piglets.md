@@ -93,6 +93,7 @@ build:
 | `model` | Set a provider, model, context, or thinking preference. |
 | `systemPrompt` | Select one inline or file-based system prompt. |
 | `discovery` | Permit or reject ambient workspace and user Resources. |
+| `contextFiles` | Set `trusted-only` to load no project `AGENTS.md` or `CLAUDE.md` until the project is trusted. |
 | `secrets` | Declare logical secret requirements without storing values. |
 | `agentEnv` | Require an image, Dev Container, or typed environment source. |
 | `slots` | Replace a part of PiG with a fused Go member. `frontend` is the only slot (D91); see [Piglet Binaries](piglet-binaries.md#frontend-members). |
@@ -282,6 +283,16 @@ discovery:
 Explicit entries always load when their origins resolve. An entry whose origins do not resolve is an extension load error: PiG reports each one and exits with status 1, as it does for any extension that fails to load. Like an explicit `-e` path, a Piglet entry still loads with `-ne`, so fix or remove the entry to start. In an active Piglet, omitted or empty discovery lists mean no ambient Resources of that type. Bare Stock PiG keeps its normal discovery behavior.
 
 Use explicit discovery policy to prevent installed or workspace Resources from changing an application unexpectedly.
+
+## Context files
+
+By default, PiG loads `AGENTS.md` and `CLAUDE.md` files from the agent directory, the working directory and every parent directory, whether or not the project is trusted. A Piglet can change this:
+
+```yaml
+contextFiles: trusted-only
+```
+
+With `trusted-only`, a project that has a context file needs a trust decision. Until the project is trusted, PiG loads only the context file in the agent directory and the one in your home directory. PiG prints a notice that names each file it skipped. `contextFiles: all` is the default. A Piglet that extends a `trusted-only` Piglet and sets `all` widens its base, so it needs `allowWiden`.
 
 ## Origins
 

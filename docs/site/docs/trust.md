@@ -21,13 +21,12 @@ PiG asks when the project contains one of these inputs. Most inputs are under `.
 | `.pig/SYSTEM.md` | the system prompt |
 | `.pig/APPEND_SYSTEM.md` | text appended to the system prompt |
 | `.agents/skills` in the working directory or an ancestor directory | instructions given to the model |
-| `AGENTS.md`, `AGENTS.override.md` or `CLAUDE.md` in the working directory or an ancestor directory | instructions given to the model |
 
 A bare `.pig` directory needs no decision. A project with none of these inputs needs no decision, and PiG does not ask. Your own `~/.agents/skills` is global input and never needs trust.
 
 Until you trust a project, PiG uses your global configuration alone.
 
-Until you trust a project, PiG does not load its context files. It loads the context file in the agent directory. It also loads the context file in your home directory, when that directory is above the working directory. PiG prints a notice that names each file it skipped. Use `--no-context-files` to skip context files in every project. Your own `AGENTS.md` in the home directory never needs trust, unless the home directory is the project.
+Context files such as `AGENTS.md` and `CLAUDE.md` load whatever the decision is, unless you disable context loading. Treat instructions in a folder as untrusted input even when you decline trust.
 
 A Piglet in `.pig/piglets/` is project input too, but PiG selects a Piglet before it can ask. `--piglet <name>` uses the project's Piglet only when the project has a saved trust decision, `defaultProjectTrust` is `"always"`, or the run passes `--approve`. Otherwise it uses your own Piglet of that name, and the trust prompt names the project's Piglet. A bare name is never read as a file in the working directory.
 

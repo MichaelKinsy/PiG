@@ -57,11 +57,17 @@ func resolvePromptInputs(cwd, agentDir string, flags Args, projectTrusted bool) 
 	}
 }
 
-func loadContextFiles(cwd, agentDir string, disabled, projectTrusted bool) []codingagent.ContextFile {
+// loadsProjectContextFiles reports whether a run reads the project's context files.
+// pig additive (D211): a Piglet with contextFiles: trusted-only withholds them until the project is trusted.
+func loadsProjectContextFiles(flags Args, projectTrusted bool) bool {
+	return projectTrusted || !flags.ContextFilesTrustedOnly
+}
+
+func loadContextFiles(cwd, agentDir string, disabled, loadProject bool) []codingagent.ContextFile {
 	if disabled {
 		return nil
 	}
-	return codingagent.LoadProjectContextFiles(cwd, agentDir, projectTrusted)
+	return codingagent.LoadProjectContextFiles(cwd, agentDir, loadProject)
 }
 
 func discoverPromptFile(cwd, agentDir, name string, projectTrusted bool) string {

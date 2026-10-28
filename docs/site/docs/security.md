@@ -24,7 +24,7 @@ Trust-sensitive project paths include:
 .agents/skills/
 ```
 
-A bare `.pig` directory does not require project trust. Context files such as `AGENTS.override.md`, `AGENTS.md` and `CLAUDE.md` need trust, so a project with one asks for a decision. Until you trust the project, PiG does not load its context files. It still loads the context file in the agent directory and the one in your home directory. Treat instructions in a folder as untrusted input even after you trust the project.
+A bare `.pig` directory does not require project trust. Context files such as `AGENTS.override.md`, `AGENTS.md` and `CLAUDE.md` load whatever the trust decision is, unless you disable context loading. Treat instructions in a folder as untrusted input even when you decline project trust.
 
 A Piglet in `.pig/piglets/` is also project input. `--piglet <name>` uses it only with a saved trust decision, `defaultProjectTrust: "always"` or `--approve`, and a bare name is never read from the working directory.
 
