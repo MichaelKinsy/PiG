@@ -127243,6 +127243,17 @@
       "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#EnableTuiAltScreens",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "EnableTuiAltScreens",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#EntryRendererDecl",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
       "name": "EntryRendererDecl",
@@ -135295,6 +135306,17 @@
       "shapeHash": "sha256:be9ddfab70aecb2e81ca645e446d9bc8fba399d7c9b1445afd00e0f010f5f705"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#UIBridge.callTuiAlt",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "UIBridge.callTuiAlt",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(owner *Conn, parent string, args github.com/MichaelKinsy/PiG/extensions/sdk/json.RawMessage) (*CallResultPayload, error)"
+      },
+      "shapeHash": "sha256:a5219d802fb2b674c4e40baea42cb610ed21fc4b64e1cd67a3444b4f2158dd39"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#UIBridge.clearEditorConn",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
       "name": "UIBridge.clearEditorConn",
@@ -135309,6 +135331,17 @@
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#UIBridge.clearExtension",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
       "name": "UIBridge.clearExtension",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(extName string, owner *Conn, ownerOnly bool)"
+      },
+      "shapeHash": "sha256:f32cf3890e51b437fc43507dbf82e562bcfc7fbc47fcb482ccde563ef39f1ea4"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#UIBridge.clearTuiAlt",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "UIBridge.clearTuiAlt",
       "kind": "function",
       "exported": false,
       "shape": {
@@ -151080,6 +151113,61 @@
       "shapeHash": "sha256:f632619397f10a7f0e472ad47d2824ec7e080d15ac9eb0994e24800757b3fb96"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#tuiAltEnabled",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "tuiAltEnabled",
+      "kind": "variable",
+      "exported": false,
+      "shape": {
+        "type": "sync/atomic.Pointer[tuiAltServer]"
+      },
+      "shapeHash": "sha256:19d5737f60f0c498cbad6b8912b088cd2d87cdc8523ac777ae2651126f360405"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#tuiAltEnabled.CompareAndSwap",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "tuiAltEnabled.CompareAndSwap",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(old *tuiAltServer, new *tuiAltServer) (swapped bool)"
+      },
+      "shapeHash": "sha256:de59ef288949def8d2a8b6707aa031626bdd6fad69ee564300cb394352a56f61"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#tuiAltEnabled.Load",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "tuiAltEnabled.Load",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() *tuiAltServer"
+      },
+      "shapeHash": "sha256:ba922b6278db3a9fa5c8d76f9ff5c4fc06a6e13dd2f3e0ba2c481d88dd6497d9"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#tuiAltEnabled.Store",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "tuiAltEnabled.Store",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(val *tuiAltServer)"
+      },
+      "shapeHash": "sha256:5dace229e0ccb63690afec22935d803a75e2d25c73aaee66003b3fb4aae8d3f5"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#tuiAltEnabled.Swap",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "tuiAltEnabled.Swap",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(new *tuiAltServer) (old *tuiAltServer)"
+      },
+      "shapeHash": "sha256:b7c80607180c1f7580343d0cccbfc1420241df58a53b94c0209959a3cf6373ad"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#tuiAltKey",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
       "name": "tuiAltKey",
@@ -151276,6 +151364,17 @@
         "type": "func(parent string, fn func(frame github.com/MichaelKinsy/PiG/tui.AltScreenFrame)) bool"
       },
       "shapeHash": "sha256:04eef7a5ef532853d1bd1ed5f6d9f92919773cd690dcaddc7d8391052510f5ca"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#tuiAltServer",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "tuiAltServer",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "tuiAltServer"
+      },
+      "shapeHash": "sha256:f8c60099205a54bac21642cfb03a972b75c73e5bf2720e68d8956e461c17c101"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#tuiAltTerminal",
