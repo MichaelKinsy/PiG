@@ -162,8 +162,10 @@ type sessionToolRegistry struct {
 	// wrapped holds the tool of each registered extension tool by name, so a refresh builds a tool, which decodes the definition's schema, only for a registration it has not wrapped.
 	wrapped           map[string]wrappedTool
 	allowed, excluded map[string]struct{}
-	// filter is the compiled `--tools` and `--exclude-tools` entries, names or `*` patterns.
-	filter         extension.ToolFilter
+	// filter is the compiled `--tools` and `--exclude-tools` entries, names or `*` patterns, intersected with scope.
+	filter extension.ToolFilter
+	// scope is the consumer's registry predicate (SessionOptions.ToolScope); nil places no restriction.
+	scope          extension.ToolScope
 	skipExtensions bool
 	// usesDefaultTools reports that the initial tools come from the defaultTools setting, so a reload activates tools newly added to it.
 	// upstream: agent-session.ts:263-267 (usesDefaultTools), sdk.ts:448
@@ -219,7 +221,7 @@ func toolDefinition(tool agent.AgentTool) (extension.ToolDefinition, error) {
 }
 
 func createSessionToolRegistry(services *AgentSessionServices, opts SessionOptions) (sessionToolRegistry, []agent.AgentTool, error) {
-	registry := sessionToolRegistry{allowed: maps.Clone(opts.AllowedTools), excluded: maps.Clone(opts.ExcludedTools), skipExtensions: opts.skipExtensionTools,
+	registry := sessionToolRegistry{allowed: maps.Clone(opts.AllowedTools), excluded: maps.Clone(opts.ExcludedTools), scope: opts.ToolScope, skipExtensions: opts.skipExtensionTools,
 		usesDefaultTools: usesDefaultTools(opts), defaultToolModifiers: slices.Clone(opts.DefaultToolModifiers)}
 	if opts.toolRegistry != nil {
 		registry = *opts.toolRegistry
@@ -230,7 +232,7 @@ func createSessionToolRegistry(services *AgentSessionServices, opts SessionOptio
 		registry.wrapped = maps.Clone(registry.wrapped)
 		registry.allowed = maps.Clone(registry.allowed)
 		registry.excluded = maps.Clone(registry.excluded)
-		registry.filter = extension.NewToolFilter(registry.allowed, registry.excluded)
+		registry.filter = registry.compileFilter()
 		return registry, registry.tools(), nil
 	}
 	// upstream: sdk.ts:280-281; the tools option that changes the default selection is DefaultToolModifiers here.
@@ -263,7 +265,7 @@ func createSessionToolRegistry(services *AgentSessionServices, opts SessionOptio
 			registry.allowed[name] = struct{}{}
 		}
 	}
-	registry.filter = extension.NewToolFilter(registry.allowed, registry.excluded)
+	registry.filter = registry.compileFilter()
 	var activeNames []string
 	if !opts.SkipBuiltinTools {
 		var baseTools []agent.AgentTool
@@ -342,6 +344,21 @@ func createSessionToolRegistry(services *AgentSessionServices, opts SessionOptio
 	return registry, registry.selectTools(activeNames), nil
 }
 
+// compileFilter compiles `--tools` and `--exclude-tools` with the consumer's scope.
+func (r *sessionToolRegistry) compileFilter() extension.ToolFilter {
+	return extension.NewToolFilter(r.allowed, r.excluded).WithScope(r.scope)
+}
+
+// scopeInfo is the part of a tool's info the registry scope reads.
+func scopeInfo(entry sessionToolEntry) extension.ToolInfo {
+	definition := entry.registration.Definition
+	info := extension.ToolInfo{Name: entry.tool.Name(), SourceInfo: entry.registration.SourceInfo, Exposure: toolExposureOf(definition)}
+	if definition.Namespace != nil {
+		info.Namespace = definition.Namespace
+	}
+	return info
+}
+
 func (r *sessionToolRegistry) refresh(runner *inproc.Runner) error {
 	entries := slices.Clone(r.base)
 	var wrapped map[string]wrappedTool
@@ -369,7 +386,7 @@ func (r *sessionToolRegistry) refresh(runner *inproc.Runner) error {
 	var admitted []sessionToolEntry
 	for _, entry := range entries {
 		name := entry.tool.Name()
-		if !r.filter.Allows(name) {
+		if !r.filter.AllowsTool(scopeInfo(entry)) {
 			continue
 		}
 		if index, exists := indexes[name]; exists {
@@ -455,6 +472,13 @@ func (s *Session) GetAllTools() []extension.ToolInfo {
 		result = append(result, info)
 	}
 	return result
+}
+
+// ToolScope is the consumer's registry predicate the Session was created with (SessionOptions.ToolScope), nil without one.
+func (s *Session) ToolScope() extension.ToolScope {
+	s.toolRegistryMu.RLock()
+	defer s.toolRegistryMu.RUnlock()
+	return s.toolRegistry.scope
 }
 
 // GetToolDefinition returns the admitted definition for name.

@@ -82,6 +82,9 @@ type SessionStartOptions struct {
 	// AllowedTools restricts which tools may execute.
 	AllowedTools map[string]struct{}
 
+	// ToolScope is the consumer's registry predicate; see SessionOptions.ToolScope.
+	ToolScope extension.ToolScope
+
 	// InitialActiveToolNames are the tools active at start, in this order;
 	// see SessionOptions.InitialActiveToolNames (sdk.ts:274-276).
 	InitialActiveToolNames []string
@@ -313,6 +316,7 @@ func (rt *Runtime) startSessionWithFactory(opts SessionStartOptions, create func
 		NoTools:                opts.NoTools,
 		skipExtensionTools:     opts.SkipExtensionTools,
 		AllowedTools:           opts.AllowedTools,
+		ToolScope:              opts.ToolScope,
 		InitialActiveToolNames: opts.InitialActiveToolNames,
 		DefaultToolModifiers:   opts.DefaultToolModifiers,
 		ExcludedTools:          opts.ExcludedTools,
