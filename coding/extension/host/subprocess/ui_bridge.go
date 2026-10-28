@@ -1411,7 +1411,7 @@ func (b *UIBridge) handleCall(ctx context.Context, extName string, owner *Conn, 
 	case CallUICustomControl:
 		return b.handleCustomControl(ctx, extName, owner, call.Args)
 	case CallTuiAlt:
-		return b.handleTuiAlt(owner, call.Args)
+		return b.handleTuiAlt(owner, call.ParentRequestID, call.Args)
 	case CallUICustomShowOverlay:
 		return b.handleCustomShowOverlay(ctx, extName, owner, ui, call.Args)
 	case CallUICustomHideOverlay:
