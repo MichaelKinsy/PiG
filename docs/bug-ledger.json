@@ -3,15 +3,16 @@
   "entries": [
     {
       "id": "BF-0021db7",
-      "title": "fix(durable/harness): a run's own context reads resolve no settings; the retention is read only for an idle…",
-      "symptom": "fix(durable/harness): a run's own context reads resolve no settings; the retention is read only for an idle conversation (Pi scheduler.ts runtime.context)",
+      "title": "The Go Durable SDK's scheduler no longer resolves the Harness settings for the context a run itself reads…",
+      "symptom": "The Go Durable SDK's scheduler no longer resolves the Harness settings for the context a run itself reads: `contextRetentionMs` is read only when the conversation is idle, as Pi's `runtime.context` does, which removes four settings resolutions from every round of one generation with a tool call.",
       "rootCause": "keepContext read settings.contextRetentionMs before it looked at the conversation: four resolutions in every round of one generation with a tool call, where Pi resolves the retention only in the idle branch.",
       "rootCauseSource": "commit",
       "userImpact": "Behavior differed from Pi",
       "platform": "All platforms",
       "class": "own",
       "fixedIn": "Unreleased",
-      "origin": "commit",
+      "releaseNote": "The Go Durable SDK's scheduler no longer resolves the Harness settings for the context a run itself reads: `contextRetentionMs` is read only when the conversation is idle, as Pi's `runtime.context` does, which removes four settings resolutions from every round of one generation with a tool call.",
+      "origin": "release note",
       "commits": [
         {
           "hash": "0021db7cfc",
@@ -4009,15 +4010,16 @@
     },
     {
       "id": "BF-26d3370",
-      "title": "fix(durable/core): the host resolves the Harness settings as often as the core did (Pi resolves…",
-      "symptom": "fix(durable/core): the host resolves the Harness settings as often as the core did (Pi resolves HarnessOptions.settings at each use)",
+      "title": "The Durable core's host calls `HarnessOptions.settings` as often as Pi does: the core reports how many times…",
+      "symptom": "The Durable core's host calls `HarnessOptions.settings` as often as Pi does: the core reports how many times it resolved the settings while it handled an event (a settings notice, ABI 12) and the host resolves them as often, so a settings callback sees the 49 resolutions Pi makes for a round of one generation with one tool call, not the 193 reads of the extensions the host made before every send.",
       "rootCause": "The core counts its resolutions of the settings it was sent (a turn phase's settings, the context retention checks, the submission's queue modes) and publishes the count in a settings notice (ABI 12) at the end of the event; the host resolves them as often, as Pi's callback is seen to (harness-restart-failure.test.ts counts 49 for a round of one generation with one tool call). U-harness-restart-failure passes on native (18 tests).",
       "rootCauseSource": "commit",
       "userImpact": "Behavior differed from Pi",
       "platform": "All platforms",
       "class": "own",
       "fixedIn": "Unreleased",
-      "origin": "commit",
+      "releaseNote": "The Durable core's host calls `HarnessOptions.settings` as often as Pi does: the core reports how many times it resolved the settings while it handled an event (a settings notice, ABI 12) and the host resolves them as often, so a settings callback sees the 49 resolutions Pi makes for a round of one generation with one tool call, not the 193 reads of the extensions the host made before every send.",
+      "origin": "release note",
       "commits": [
         {
           "hash": "26d33706d4",
