@@ -1,6 +1,6 @@
 {
 	"source": "durable/contract/scenarios/storage-ticks.mjs",
-	"pin": "6c384aa30f619d7b28963f2bab24d8dacbe73cb6",
+	"pin": "b3a29f1111114fac696e2cfcd65acdb382a6ed5e",
 	"profiles": {
 		"gate": {
 			"mintId": 4,
