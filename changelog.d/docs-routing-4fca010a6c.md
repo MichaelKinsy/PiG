@@ -1,0 +1,3 @@
+### Changed
+
+- The docs bundle README now has a "Start by task" row for each of the 12 pages that had none (compaction, config, divergences, extension-api, message-types, models, rpc-commands, rpc-extension-ui, runtime-cells, skills, terminal-setup, trust), and the docs-drift reachability test requires such a row for every page. `models.md` now opens with how to choose a connection, as Pi's models page does, and its "Adding a model" section is now "Add a custom provider" with the contributor steps under it. `tui.md` now has a "Choose an integration point" table that links the extension UI calls.
