@@ -827,6 +827,7 @@ func (h *handler) createTaskWith(tx *session.Tx, def *session.TaskDef, op *jv.Ob
 		to.Links, _ = links.([]any)
 	}
 	input, _ := op.Get("input")
+	to.Owned = true
 	id, err := tx.CreateTask(def, input, to)
 	if err != nil {
 		return nil, err

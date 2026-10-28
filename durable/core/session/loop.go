@@ -109,6 +109,35 @@ type job struct {
 	// client: done answers a host caller (ClientReadLine) and runs at Settle, a hop before the job's end.
 	client  bool
 	settled bool // done already ran at Settle
+	// rn, when set instead of run and done, is the job's own run and done (jobRunner): a struct that embeds its job holds the
+	// job's state in one allocation where closures would take several (20,000 queued jobs of a task graph's commits).
+	rn jobRunner
+}
+
+// jobRunner is a line job that is its own run and done.
+type jobRunner interface {
+	runJob() error
+	doneJob(err error)
+}
+
+// hasDone reports whether the job has a done.
+func (j *job) hasDone() bool { return j.done != nil || j.rn != nil }
+
+// exec runs the job's body.
+func (j *job) exec() error {
+	if j.run != nil {
+		return j.run()
+	}
+	return j.rn.runJob()
+}
+
+// finish delivers err to the job's done.
+func (j *job) finish(err error) {
+	if j.done != nil {
+		j.done(err)
+		return
+	}
+	j.rn.doneJob(err)
 }
 
 // Resume delivers done: in the microtask the Loop queued for it, or, for a late job, a tick after that.
@@ -118,7 +147,7 @@ func (j *job) Resume() {
 		j.l.NextTickResumer(j)
 		return
 	}
-	j.done(j.err)
+	j.finish(j.err)
 }
 
 // DeferResumer queues r.Resume as a microtask.
@@ -213,7 +242,7 @@ func (l *Loop) enqueue(j *job) {
 	j.late, l.lateNext = l.lateNext, false
 	if l.Admit != nil {
 		if err := l.Admit(); err != nil {
-			if j.done != nil {
+			if j.hasDone() {
 				j.err = err
 				l.DeferResumer(j)
 			}
@@ -246,6 +275,12 @@ func (l *Loop) LineAfterTail(run func() error, done func(error)) {
 	l.enqueue(&job{run: run, done: done, idle: !l.Busy()})
 }
 
+// QueueAfterTail is LineAfterTail for a job that is its own run and done: j.rn is set, and the job is queued by address.
+func (l *Loop) QueueAfterTail(j *job) {
+	j.idle = !l.Busy()
+	l.enqueue(j)
+}
+
 // ReadLine queues a Session.readOnLine job (session.ts:105-115): a read-only job on the line, whose duration is its reads
 // plus the three ticks of the return through #enqueue (hopcost.ReadOnLine).
 func (l *Loop) ReadLine(run func() error, done func(error)) {
@@ -263,7 +298,7 @@ func (l *Loop) ClientReadLine(run func() error, done func(error)) {
 // job's end. It reports whether it answered.
 func (l *Loop) Settle() bool {
 	j, err := l.ending, l.endErr
-	if j == nil || !j.client || j.settled || j.done == nil {
+	if j == nil || !j.client || j.settled || !j.hasDone() {
 		return false
 	}
 	j.settled = true
@@ -273,7 +308,7 @@ func (l *Loop) Settle() bool {
 }
 
 // EndingClient reports whether the job whose completion Hold holds answers a host caller (ClientReadLine).
-func (l *Loop) EndingClient() bool { return l.ending != nil && l.ending.client && l.ending.done != nil }
+func (l *Loop) EndingClient() bool { return l.ending != nil && l.ending.client && l.ending.hasDone() }
 
 // LineBare queues a job that only takes the line for someone else, a host transaction that holds it until Blocked reports
 // false: it keeps its place in the line's order and takes no job duration of its own.
@@ -339,7 +374,7 @@ func (l *Loop) runJob() {
 	}
 	l.Reading = j.read
 	l.after = l.after[:0]
-	err := j.run()
+	err := j.exec()
 	var pubs []*Publication
 	if sess != nil {
 		sess.holdPubs, sess.inJob = false, false
@@ -404,7 +439,7 @@ func (l *Loop) complete() {
 		}
 	}
 	l.ending, l.endErr = nil, nil
-	if j.done != nil && !j.settled {
+	if j.hasDone() && !j.settled {
 		j.err = err
 		l.DeferResumer(j)
 	}
@@ -449,7 +484,7 @@ func (l *Loop) HasPubs() bool { return len(l.pubs) != 0 }
 // own between them: the line stays held from the job's last tick to the tail's and QuietRelease frees it there.
 func (l *Loop) QuietEnd() bool {
 	j := l.ending
-	return j != nil && j.done == nil && !j.bare && !j.client && l.Tail != nil && len(l.pubs) == 0 && len(l.after) == 0 &&
+	return j != nil && !j.hasDone() && !j.bare && !j.client && l.Tail != nil && len(l.pubs) == 0 && len(l.after) == 0 &&
 		(l.Session == nil || !l.Session.HasUnrevealedLoads())
 }
 

@@ -27,7 +27,7 @@ type invocation struct {
 	extension      string
 	conversationID ID
 	abortMode      bool
-	signal         *Cancel
+	signal         Cancel
 	ended          bool
 	finished       bool
 	doneWaiters    []func()
@@ -38,24 +38,47 @@ type invocation struct {
 	stage spanStage
 	tick  bool
 
-	// span is the host's handle of the span of the phase running, and carrier its carrier, which the tasks the phase creates
-	// inherit; span is zero outside a phase (invocation.context). record is the latest committed record of the task (#track),
-	// and fault the outcome the scheduler's own step gave a task that threw. info and start are a phase's span start waiting for
-	// the host.
-	span    uint32
-	carrier any
-	record  *jv.Object
-	fault   *jv.Object
-	info    PhaseInfo
-	start   func()
+	// span is the host's handle of the span of the phase running; it is zero outside a phase (invocation.context) and without a
+	// Telemetry. record is the latest committed record of the task (#track).
+	span   uint32
+	record *jv.Object
 	// spanFirst makes the next afterSpan continuation start with the host's span for the phase (ask), which then runs the phase.
 	spanFirst bool
 	// spanAsk makes the phase continuation ask the host for the span first (start is that continuation, run again when the host answered).
 	spanAsk bool
 	s       *Scheduler
+	// tel is what only a Harness with a Telemetry keeps of an invocation; nil without one, so an invocation is a fraction of the size
+	// (a 20,000-task chain holds one each).
+	tel *invTel
+}
+
+// invTel is the part of an invocation a Telemetry uses: carrier is the span's carrier, which the tasks the phase creates inherit as
+// their trace; fault is the outcome the scheduler's own step gave a task that threw; info and start are a phase's span start waiting
+// for the host (start is run when it answers, abort for an abort handler); links are the record's creation-time carriers, kept for
+// the invocation that finds the task unstarted.
+type invTel struct {
+	carrier any
+	fault   *jv.Object
+	info    PhaseInfo
+	start   func()
 	abort   abortRun
-	// links are the record's creation-time carriers, kept for the invocation that finds the task unstarted (invocation.links).
-	links any
+	links   any
+}
+
+// telemetry is the invocation's invTel, made when it is first needed.
+func (inv *invocation) telemetry() *invTel {
+	if inv.tel == nil {
+		inv.tel = &invTel{}
+	}
+	return inv.tel
+}
+
+// carrier is the carrier of the span of the phase running, nil outside a phase.
+func (inv *invocation) carrier() any {
+	if inv.tel == nil {
+		return nil
+	}
+	return inv.tel.carrier
 }
 
 type spanStage uint8
@@ -90,7 +113,7 @@ func (inv *invocation) Resume() {
 	inv.next, inv.stage = nil, 0
 	if inv.spanFirst {
 		inv.spanFirst = false
-		inv.start, inv.spanAsk = then, true
+		inv.telemetry().start, inv.spanAsk = then, true
 	}
 	if inv.tick {
 		inv.loop.NextTick(then)
@@ -356,20 +379,11 @@ func (s *Scheduler) commitQueued(late bool, change func(tx *Tx) error, scope TxS
 }
 
 func (s *Scheduler) commitJob(line func(func() error, func(error)), cancel *Cancel, change func(tx *Tx) error, scope TxScope, then func(error)) {
-	s.commitJobAfter(line, cancel, change, scope, nil, then)
-}
-
-// commitJobAfter is commitJob that also runs after, when the commit succeeded, as the job completes: right after the commit's
-// publication, before the line's next job.
-func (s *Scheduler) commitJobAfter(line func(func() error, func(error)), cancel *Cancel, change func(tx *Tx) error, scope TxScope, after func(), then func(error)) {
 	line(func() error {
 		if err := cancel.Err(); err != nil {
 			return err
 		}
 		_, err := s.sess.RunCommit(change, scope)
-		if err == nil && after != nil {
-			s.loop.OnComplete(after)
-		}
 		return err
 	}, then)
 }
@@ -842,7 +856,7 @@ func (s *Scheduler) AbortConversation(conversationID ID, background bool, cancel
 // task without a running invocation yields a signal already aborted as ended.
 func (s *Scheduler) Bound(taskID ID) *Cancel {
 	if inv := s.invocations[taskID]; inv != nil {
-		return inv.signal
+		return &inv.signal
 	}
 	c := &Cancel{}
 	c.AbortWith(errorf("Task %d invocation has ended", taskID))
