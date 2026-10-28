@@ -11,6 +11,11 @@
         (if (stringp message) message "host call failed"))
       "host call failed"))
 
+(defvar *call-settle-slot* nil "The tool-order slot HOST-CALL gives the call it makes: the reader settles it when it reads the answer.")
+
+(defvar *after-call-sent* nil
+  "When a function, HOST-CALL calls it once the call's frame is written, before it waits (the caller's order point).")
+
 (defun host-call (ext method &optional args parent (request-id ""))
   "Call METHOD on the host and wait for the answer; the result value (NIL for null).
 PARENT is the request that owns the call. Signals HOST-CALL-ERROR when the host answers with an error."
@@ -29,6 +34,7 @@ PARENT is the request that owns the call. Signals HOST-CALL-ERROR when the host 
               (t (setf request-id (request-id parent)))))
           (setf id (format nil "c~D" (incf (extension-call-counter ext)))
                 slot (make-call-slot method request-id))
+          (setf (call-slot-settle slot) *call-settle-slot*)
           (setf (gethash id (extension-pending ext)) slot))
         (let ((call (obj "method" method "args" args)))
           (when (plusp (length request-id)) (setf (gethash "parent_request_id" call) request-id))
@@ -38,6 +44,7 @@ PARENT is the request that owns the call. Signals HOST-CALL-ERROR when the host 
         (error (e)
           (sb-thread:with-mutex ((extension-state-lock ext)) (remhash id (extension-pending ext)))
           (error e))))
+    (when *after-call-sent* (funcall *after-call-sent*))
     (wait-call ext id slot)))
 
 (defun wait-call (ext id slot)
@@ -67,7 +74,10 @@ PARENT is the request that owns the call. Signals HOST-CALL-ERROR when the host 
   (let ((slot (sb-thread:with-mutex ((extension-state-lock ext))
                 (let ((slot (gethash (jget env "id" "") (extension-pending ext))))
                   slot))))
-    (when slot (finish-slot slot (or (jget env "call_result") (obj))))))
+    ;; Pi resumes the handlers whose dialogs were answered in the order the answers arrived: this reader reads them in that order
+    (when slot
+      (when (call-slot-settle slot) (settle-slot-settle (call-slot-settle slot)))
+      (finish-slot slot (or (jget env "call_result") (obj))))))
 
 (defun notify-host (ext method &optional args)
   (send-frame (extension-conn ext) (obj "type" "notify" "notify" (obj "method" method "args" args))))
@@ -105,14 +115,17 @@ PARENT is the request that owns the call. Signals HOST-CALL-ERROR when the host 
 
 ;;; ---------------------------------------------------------------- the context
 
-(defstruct (ctx (:constructor %make-ctx (extension request tool-call-id request-id tool-context-p tool-args)))
+(defstruct (ctx (:constructor %make-ctx (extension request tool-call-id request-id tool-context-p tool-args tool-index)))
   extension
   request
   tool-call-id
   (request-id "")
   tool-context-p
   tool-args
-  (system-prompt nil))
+  tool-index
+  (tool-start nil)              ; the request's place in its batch's orders (tool-order.lisp)
+  (system-prompt nil)
+  (replacement nil))             ; (:cwd c :mode m :has-ui b) of a withSession context, which answers for the replacement Session
 
 (defun ctx-cancel (ctx)
   (and (ctx-request ctx) (request-signal (ctx-request ctx))))
@@ -123,12 +136,14 @@ PARENT is the request that owns the call. Signals HOST-CALL-ERROR when the host 
                (and req (jget req "tool_call_id"))
                (if request (request-id request) "")
                (and req (equal (jget req "method") "tool_call"))
-               (and req (jget req "args")))))
+               (and req (equal (jget req "method") "tool_call") (jget req "args"))
+               (let ((index (and req (jget req "tool_call_index")))) (and (integerp index) index)))))
 
 (defun assert-active (ctx)
-  (let ((message (sb-thread:with-mutex ((extension-state-lock (ctx-extension ctx)))
-                   (extension-stale-message (ctx-extension ctx)))))
-    (when message (error "~A" message))))
+  (unless (ctx-replacement ctx)
+    (let ((message (sb-thread:with-mutex ((extension-state-lock (ctx-extension ctx)))
+                     (extension-stale-message (ctx-extension ctx)))))
+      (when message (error "~A" message)))))
 
 (defparameter *dialog-methods* '("ui.select" "ui.confirm" "ui.input" "ui.editor" "ui.custom"))
 (defparameter *rpc-synchronous-ui-effects*
@@ -145,8 +160,14 @@ PARENT is the request that owns the call. Signals HOST-CALL-ERROR when the host 
                        (not (and rpc (member method *rpc-synchronous-ui-effects* :test #'string=))))))
     (when (and reports (not (member method *dialog-methods* :test #'string=)))
       (send-request-state ext request-id "blocked" "host_call" (ctx-request ctx)))
-    (unwind-protect (host-call ext method args (ctx-request ctx) request-id)
-      (when reports (send-request-state ext request-id "progress" nil (ctx-request ctx))))))
+    (let ((start (ctx-tool-start ctx)))
+      (unwind-protect
+           (progn
+             (when start (tool-start-before-call start))
+             (let ((*after-call-sent* (and start (lambda () (tool-start-after-call start))))
+                   (*call-settle-slot* (and start (member method *dialog-methods* :test #'string=) (tool-start-response-slot start))))
+               (host-call ext method args (ctx-request ctx) request-id)))
+        (when reports (send-request-state ext request-id "progress" nil (ctx-request ctx)))))))
 
 (defun block-for-user (ctx)
   (when (plusp (length (ctx-request-id ctx)))
@@ -169,17 +190,22 @@ PARENT is the request that owns the call. Signals HOST-CALL-ERROR when the host 
 
 (defun ctx-cwd (ctx)
   (assert-active ctx)
-  (sb-thread:with-mutex ((extension-state-lock (ctx-extension ctx))) (extension-cwd (ctx-extension ctx))))
+  (if (ctx-replacement ctx)
+      (getf (ctx-replacement ctx) :cwd)
+      (sb-thread:with-mutex ((extension-state-lock (ctx-extension ctx))) (extension-cwd (ctx-extension ctx)))))
 
 (defun ctx-mode (ctx)
   "\"tui\", \"rpc\", \"json\" or \"print\" (the default when the host sent none)."
   (assert-active ctx)
-  (let ((mode (sb-thread:with-mutex ((extension-state-lock (ctx-extension ctx))) (extension-mode (ctx-extension ctx)))))
+  (let ((mode (or (and (ctx-replacement ctx) (plusp (length (getf (ctx-replacement ctx) :mode))) (getf (ctx-replacement ctx) :mode))
+                  (sb-thread:with-mutex ((extension-state-lock (ctx-extension ctx))) (extension-mode (ctx-extension ctx))))))
     (if (plusp (length mode)) mode "print")))
 
 (defun ctx-has-ui-p (ctx)
   (assert-active ctx)
-  (sb-thread:with-mutex ((extension-state-lock (ctx-extension ctx))) (extension-has-ui (ctx-extension ctx))))
+  (if (ctx-replacement ctx)
+      (getf (ctx-replacement ctx) :has-ui)
+      (sb-thread:with-mutex ((extension-state-lock (ctx-extension ctx))) (extension-has-ui (ctx-extension ctx)))))
 
 (defun ctx-signal (ctx)
   "The cancellation signal of the run in progress, or NIL while no run is active (Pi's ctx.signal)."
@@ -241,10 +267,12 @@ PARENT is the request that owns the call. Signals HOST-CALL-ERROR when the host 
                 "selected"))
 
 (defun ctx-confirm (ctx title message &key timeout)
-  "Ask the user to confirm: true only when the user confirmed."
+  "Ask the user to confirm. (values confirmed-p confirmed): CONFIRMED-P is true only when the user confirmed; CONFIRMED is the JSON
+value the client answered with (RPC clients may send any), :false when it sent none."
   (block-for-user ctx)
-  (let ((result (ctx-call-host ctx "ui.confirm" (dialog-args (obj "title" title "message" message) timeout))))
-    (eq (and (hash-table-p result) (jget result "confirmed")) t)))
+  (let* ((result (ctx-call-host ctx "ui.confirm" (dialog-args (obj "title" title "message" message) timeout)))
+         (confirmed (if (hash-table-p result) (multiple-value-bind (v found) (gethash "confirmed" result) (if found v :false)) :false)))
+    (values (eq confirmed t) confirmed)))
 
 (defun ctx-input (ctx title &key placeholder timeout)
   "Ask the user for a line of text. (values text answered-p)."
@@ -265,15 +293,18 @@ PARENT is the request that owns the call. Signals HOST-CALL-ERROR when the host 
 (defstruct (exec-result (:constructor make-exec-result (stdout stderr exit-code killed)))
   stdout stderr exit-code killed)
 
+(declaim (ftype function core-exec-with-signal tool-start-before-call tool-start-after-call tool-start-response-slot settle-slot-settle))
+
 (defun ctx-exec (ctx command &key args timeout cwd signal)
-  "Run COMMAND through the host's executor. TIMEOUT is in milliseconds; a command it kills reports KILLED."
-  (when signal (error 'unsupported-capability :member "ctx-exec :signal"))
+  "Run COMMAND through the host's executor. TIMEOUT is in milliseconds; a command it kills reports KILLED.
+SIGNAL, an abort-signal, ends the command when it is set (SIGTERM to the command alone): the call returns the output so far, killed, code 0.
+It replaces the cancellation of the calling request."
   (let ((call-args (obj "command" command "args" (coerce args 'simple-vector)))
         (options (obj)))
     (when timeout (setf (gethash "timeout" options) timeout))
     (when cwd (setf (gethash "cwd" options) cwd))
     (when (plusp (hash-table-count options)) (setf (gethash "options" call-args) options))
-    (let ((result (or (ctx-call-host ctx "exec" call-args) (obj))))
+    (let ((result (or (if signal (core-exec-with-signal ctx call-args signal) (ctx-call-host ctx "exec" call-args)) (obj))))
       (flet ((text (key) (let ((v (jget result key))) (if (stringp v) v "")))
              (truth (key) (eq (jget result key) t)))
         (make-exec-result (text "stdout") (text "stderr")
@@ -288,11 +319,18 @@ PARENT is the request that owns the call. Signals HOST-CALL-ERROR when the host 
 (defun ctx-shutdown (ctx) (ctx-call-host ctx "shutdown") nil)
 (defun ctx-reload (ctx) (ctx-call-host ctx "reload") nil)
 
-(defun ctx-compact (ctx &key custom-instructions)
-  "Compact the session and wait for the outcome."
+(declaim (ftype function core-compact-async))
+
+(defun ctx-compact (ctx &key options custom-instructions on-complete on-error)
+  "Compact the session. OPTIONS is a hash-table of compact options. Without ON-COMPLETE and ON-ERROR it waits for the outcome;
+with either it returns at once and a background thread owned by the extension waits: ON-COMPLETE receives the CompactionResult,
+ON-ERROR the condition."
   (let ((args (obj)))
+    (when (hash-table-p options) (maphash (lambda (k v) (setf (gethash k args) v)) options))
     (when custom-instructions (setf (gethash "customInstructions" args) custom-instructions))
-    (ctx-call-host ctx "compact" args)
+    (if (or on-complete on-error)
+        (core-compact-async ctx args on-complete on-error)
+        (ctx-call-host ctx "compact" args))
     nil))
 
 (defun ctx-get-flag (ctx name)
@@ -312,20 +350,23 @@ PARENT is the request that owns the call. Signals HOST-CALL-ERROR when the host 
       (reply-field ctx "getSystemPrompt" "prompt")))
 
 (defun ctx-get-all-tools (ctx)
-  "Every tool in the session's registry, as a vector of ToolInfo hash-tables."
+  "Every tool in the session's registry, as a vector of ToolInfo hash-tables. A tool with a reachesTools hook carries it as a
+function of the call's input (a hash-table) returning \"all\" or the words that may name the tools the call reaches; the host runs it."
   (let ((tools (reply-field ctx "getAllTools" "tools")))
     (loop for tool across tools
           do (when (and (hash-table-p tool) (eq (jget tool "reachesTools") t))
-               (error 'unsupported-capability :member "ctx-get-all-tools of a tool with a reachesTools hook")))
+               (let ((name (let ((n (jget tool "name"))) (if (stringp n) n ""))))
+                 (setf (gethash "reachesTools" tool)
+                       (lambda (input)
+                         (call-result ctx "tool.reachesTools" (obj "tool" name "input" (or input (obj)))))))))
     tools))
 
 (defun ctx-get-active-tools (ctx) (reply-field ctx "getActiveTools" "tools"))
 ;;; thin host calls: one wire method each, the member names Pi's API gives them -------
 
 (defun call-result (ctx method &optional args)
-  "The \"result\" member of METHOD's reply (NIL for an absent or null member)."
-  (let* ((reply (ctx-call-host ctx method args))
-         (value (and (hash-table-p reply) (jget reply "result"))))
+  "The result of METHOD's reply (NIL for null): Python's `_call(method).get(\"result\")`."
+  (let ((value (ctx-call-host ctx method args)))
     (if (eq value :null) nil value)))
 
 (defun nonempty-object (value) (and (hash-table-p value) (plusp (hash-table-count value)) value))
@@ -361,7 +402,10 @@ PARENT is the request that owns the call. Signals HOST-CALL-ERROR when the host 
 (defun ctx-get-session-id (ctx) (reply-field ctx "getSessionID" "sessionId"))
 (defun ctx-get-leaf-id (ctx) (optional-string-field ctx "getLeafID" "leafId"))
 (defun ctx-get-all-themes (ctx) (reply-field ctx "ui.getAllThemes" "themes"))
-(defun ctx-get-theme (ctx name) (let ((r (call-result ctx "ui.getTheme" (obj "name" name)))) (and (hash-table-p r) (jget r "theme"))))
+(defun ctx-get-theme (ctx name)
+  "The theme named NAME as the host describes it, or NIL when there is none."
+  (let* ((r (call-result ctx "ui.getTheme" (obj "name" name))) (theme (and (hash-table-p r) (jget r "theme"))))
+    (if (eq theme :null) nil theme)))
 (defun ctx-set-theme (ctx name) (success-and-error ctx "ui.setTheme" (obj "theme" name)))
 (defun ctx-get-editor-text (ctx) (reply-field ctx "ui.getEditorText" "text"))
 (defun ctx-tools-expanded-p (ctx) (eq (reply-field ctx "ui.getToolsExpanded" "expanded") t))
@@ -370,7 +414,7 @@ PARENT is the request that owns the call. Signals HOST-CALL-ERROR when the host 
 (defun ctx-send-message (ctx custom-type content &key (display t) trigger-turn deliver-as details)
   (let ((options (obj))
         (message (obj "customType" custom-type "content" content "display" (if display t :false))))
-    (when trigger-turn (setf (gethash "triggerTurn" options) t))
+    (when trigger-turn (setf (gethash "triggerTurn" options) (if (eq trigger-turn :false) :false t)))
     (when deliver-as (setf (gethash "deliverAs" options) deliver-as))
     (when details (setf (gethash "details" message) details))
     (ctx-call-host ctx "sendMessage" (obj "message" message "options" options))
@@ -410,8 +454,13 @@ PARENT is the request that owns the call. Signals HOST-CALL-ERROR when the host 
   (session-read m "getBranch" (obj "fromId" (or from-id :null))))
 (defun session-get-children (m parent-id) (session-read m "getChildren" (obj "parentId" (or parent-id :null))))
 (defun session-get-tree (m) (session-read m "getTree"))
+(defun session-build-context-entries (m) (session-read m "buildContextEntries"))
+(defun session-build-session-projection (m) (session-read m "buildSessionProjection"))
+(defun session-build-session-context (m) (session-read m "buildSessionContext"))
+(defun session-is-persisted (m) (session-read m "isPersisted"))
+(defun session-uses-default-session-dir (m) (session-read m "usesDefaultSessionDir"))
 
-;;; model registry reads ---------------------------------------------------------
+;;; model registry (Python ModelRegistry) -----------------------------------------------
 
 (defstruct (model-registry (:constructor make-model-registry (ctx))) ctx)
 
@@ -420,10 +469,33 @@ PARENT is the request that owns the call. Signals HOST-CALL-ERROR when the host 
 (defun registry-state (registry)
   (ctx-call-host (model-registry-ctx registry) "getModelRegistryState"))
 
+(defun registry-provider-states (registry)
+  (let ((providers (jget (registry-state registry) "providers")))
+    (if (hash-table-p providers) providers (obj))))
+
 (defun registry-provider-state (registry model)
-  (let* ((providers (jget (registry-state registry) "providers"))
-         (provider (and (hash-table-p model) (jget model "provider"))))
-    (or (and (stringp provider) (hash-table-p providers) (jget providers provider)) (obj))))
+  "The registry state of MODEL's provider. A model with no string provider has none (model-runtime.ts:543-553)."
+  (let ((provider (and (hash-table-p model) (jget model "provider"))))
+    (or (and (stringp provider) (jget (registry-provider-states registry) provider)) (obj))))
+
+(defun registry-get-all (registry)
+  "Every model the registry knows, a vector."
+  (jget (registry-state registry) "models"))
+
+(defun registry-get-available (registry)
+  "The models whose provider has credentials and, where the provider lists them, whose id it offers."
+  (let* ((state (registry-state registry))
+         (providers (jget state "providers")))
+    (coerce (loop for model across (jget state "models")
+                  for provider = (let ((p (jget providers (jget model "provider")))) (if (hash-table-p p) p (obj)))
+                  for ids = (jget provider "availableModelIds")
+                  when (and (eq (jget provider "configured") t)
+                            (or (not (simple-vector-p ids)) (find (jget model "id") ids :test #'equal)))
+                    collect model)
+            'simple-vector)))
+
+(defun registry-get-error (registry)
+  (let ((error-text (jget (registry-state registry) "error"))) (and (stringp error-text) error-text)))
 
 (defun registry-has-configured-auth (registry model)
   "Whether MODEL's provider has configured credentials."
@@ -433,12 +505,36 @@ PARENT is the request that owns the call. Signals HOST-CALL-ERROR when the host 
   (eq (jget (registry-provider-state registry model) "usingOAuth") t))
 
 (defun registry-get-registered-native-provider (registry provider)
-  (declare (ignore registry provider))
-  (error 'unsupported-capability :member "registry-get-registered-native-provider (Provider objects)"))
+  "The Provider object registered under the provider name PROVIDER, or NIL: this extension's own, else a proxy of the extension's that registered it."
+  (let ((ctx (model-registry-ctx registry)))
+    (loop for entry across (or (jget (registry-state registry) "registered") (vector))
+          do (when (and (equal (jget entry "name") provider) (hash-table-p (jget entry "native")))
+               (return (provider-from-declaration ctx (jget entry "native")))))))
+
+(defun registry-get-provider (registry provider)
+  "The Provider object of the provider name PROVIDER, or NIL. A builtin or composed provider has no Provider object here: that signals."
+  (or (registry-get-registered-native-provider registry provider)
+      (let ((providers (jget (registry-state registry) "providers")))
+        (when (and (hash-table-p providers) (nth-value 1 (gethash provider providers)))
+          (error "builtin/composed Provider object carrier is unavailable (D78)")))))
 
 (defun registry-get-provider-name (registry provider)
-  (declare (ignore registry provider))
-  (error 'unsupported-capability :member "registry-get-provider-name (Provider objects)"))
+  "The name of the Provider object of PROVIDER, or NIL."
+  (let ((found (registry-get-provider registry provider))) (and found (provider-name found))))
+
+(defun registry-get-provider-auth-status (registry provider)
+  (or (jget (jget (registry-provider-states registry) provider) "authStatus") (obj "configured" :false)))
+
+(defun registry-get-provider-display-name (registry provider)
+  (or (jget (jget (registry-provider-states registry) provider) "name") provider))
+
+(defun registry-get-registered-provider-ids (registry)
+  (map 'simple-vector (lambda (entry) (jget entry "name")) (jget (registry-state registry) "registered")))
+
+(defun registry-get-registered-provider-config (registry provider)
+  "The config the extension registered PROVIDER with, or NIL."
+  (let ((entry (find provider (jget (registry-state registry) "registered") :key (lambda (e) (jget e "name")) :test #'equal)))
+    (and entry (let ((config (jget entry "config"))) (and (hash-table-p config) config)))))
 
 ;;; model registry host calls
 
@@ -450,9 +546,25 @@ PARENT is the request that owns the call. Signals HOST-CALL-ERROR when the host 
 (defun registry-get-provider-auth (registry provider-id)
   (call-result (model-registry-ctx registry) "getProviderAuth" (obj "provider" provider-id)))
 
+(defun registry-get-api-key-for-provider (registry provider-id)
+  "The API key of PROVIDER-ID, or NIL when it has none or resolving it failed (Pi's getApiKeyForProvider catches that)."
+  (handler-case (let ((auth (registry-get-provider-auth registry provider-id)))
+                  (and (hash-table-p auth) (jget (jget auth "auth") "apiKey")))
+    (error () nil)))
+
+(defun registry-get-api-key-and-headers (registry model)
+  "The request authentication of MODEL: ok, apiKey, headers, baseUrl and env as the host resolved them."
+  (flet ((text (value) (if (stringp value) value "")))
+    (let* ((provider (jget model "provider"))
+           (model-id (let ((id (text (jget model "modelId")))) (if (plusp (length id)) id (text (jget model "id"))))))
+      (or (call-result (model-registry-ctx registry) "getModelAuth"
+                       (obj "provider" (text (if (hash-table-p provider) (jget provider "id") provider)) "modelId" model-id))
+          (obj)))))
+
 (defun registry-refresh (registry &optional options)
-  "Refresh the registry; the result carries aborted and errors."
-  (call-result (model-registry-ctx registry) "refreshModelRegistry" (or options (obj))))
+  "Refresh the registry; (aborted, errors) of the host's answer."
+  (let ((result (call-result (model-registry-ctx registry) "refreshModelRegistry" (or options (obj)))))
+    (obj "aborted" (jget result "aborted") "errors" (jget result "errors"))))
 
 (defun registry-get-available-of-type (registry model-type &optional provider)
   "The models of MODEL-TYPE whose provider has working credentials."

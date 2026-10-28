@@ -32,17 +32,25 @@
   "A JSON array."
   (coerce items 'simple-vector))
 
+(defstruct (lazy-value (:constructor make-lazy-value (thunk)))
+  "A member whose value is computed when read through JGET, JREF or the JSON writer (a before_agent_start event's systemPrompt)."
+  thunk)
+
+(declaim (inline force-lazy))
+(defun force-lazy (value)
+  (if (lazy-value-p value) (funcall (lazy-value-thunk value)) value))
+
 (defun jget (object key &optional default)
   "Member KEY of a JSON object, or DEFAULT when absent. A JSON null reads as :NULL."
   (if (hash-table-p object)
-      (gethash key object default)
+      (force-lazy (gethash key object default))
       default))
 
 (defun jref (value &rest path)
   "Follow PATH (string keys and integer indexes) into VALUE; NIL when a step is missing."
   (dolist (step path value)
     (setf value
-          (cond ((and (stringp step) (hash-table-p value)) (gethash step value))
+          (cond ((and (stringp step) (hash-table-p value)) (force-lazy (gethash step value)))
                 ((and (integerp step) (vectorp value) (not (stringp value)) (< -1 step (length value)))
                  (aref value step))
                 (t (return nil))))))
@@ -295,6 +303,8 @@ which JSON.stringify writes as null)."
 
 ;;; ------------------------------------------------------------------ writer
 
+(defvar *encode-limit* nil "When an integer, the most octets ENCODE-JSON may write: a larger value signals frame-too-large without allocating it.")
+
 (defstruct (obuf (:constructor make-obuf ()))
   (data (make-array 512 :element-type '(unsigned-byte 8)) :type octets)
   (fill 0 :type fixnum))
@@ -304,7 +314,14 @@ which JSON.stringify writes as null)."
   (declare (type obuf b) (type (unsigned-byte 8) byte))
   (let ((data (obuf-data b)) (fill (obuf-fill b)))
     (when (= fill (length data))
-      (let ((bigger (make-array (* 2 (length data)) :element-type '(unsigned-byte 8))))
+      (let ((bigger (make-array (let ((size (* 2 (length data))))
+                                  (if *encode-limit*
+                                      (let ((capped (min size (1+ *encode-limit*))))
+                                        (when (<= capped (length data))
+                                          (error 'host-call-error :message (format nil "frame too large: exceeds ~D bytes" (1- *encode-limit*))))
+                                        capped)
+                                      size))
+                                :element-type '(unsigned-byte 8))))
         (replace bigger data)
         (setf (obuf-data b) bigger data bigger)))
     (setf (aref data fill) byte)
@@ -399,6 +416,7 @@ SBCL's FLONUM-TO-DIGITS is shortest for normal doubles; for denormals it is not,
 
 (defun write-json-value (b value)
   (cond
+    ((lazy-value-p value) (write-json-value b (force-lazy value)))
     ((eq value t) (obuf-ascii b "true"))
     ((eq value :false) (obuf-ascii b "false"))
     ((or (null value) (eq value :null)) (obuf-ascii b "null"))

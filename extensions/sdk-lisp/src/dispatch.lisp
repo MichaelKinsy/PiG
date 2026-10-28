@@ -41,12 +41,14 @@
 
 (defun register-payload (ext)
   (flet ((vec (list) (coerce list 'simple-vector)))
-    (obj "name" (extension-name ext)
-         "tools" (vec (extension-tools ext))
-         "commands" (vec (extension-commands ext))
-         "shortcuts" (vec (extension-shortcuts ext))
-         "handlers" (vec (extension-handlers ext))
-         "flags" (vec (extension-flags ext)))))
+    (let ((payload (obj "name" (extension-name ext)
+                        "tools" (vec (extension-tools ext))
+                        "commands" (vec (extension-commands ext))
+                        "shortcuts" (vec (extension-shortcuts ext))
+                        "handlers" (vec (extension-handlers ext))
+                        "flags" (vec (extension-flags ext)))))
+      (dolist (entry *register-contributors*) (funcall (cdr entry) ext payload))
+      payload)))
 
 ;;; ---------------------------------------------------------------- state from the host
 
@@ -100,6 +102,7 @@
            (apply-ui-state ext state)
            (when (and footer-changed branch-changed)
              (setf callbacks (mapcar #'cdr (extension-branch-subscribers ext)))))
+         (run-hooks '*state-hooks* ext state)
          (dolist (callback callbacks)
            (handler-case (funcall callback)
              (error (e) (ignore-errors (notify-host ext "ui.notify"
@@ -112,7 +115,10 @@
            (dispatch-width-change ext w))))
       ((equal method "height_change")
        (let ((h (jget args "height"))) (when (and (integerp h) (plusp h)) (sb-thread:with-mutex ((extension-state-lock ext)) (setf (extension-height ext) h)))))
-      (t nil))))
+      (t (let ((handler (gethash method *notify-handlers*)))
+           (when handler
+             (handler-case (funcall handler ext args)
+               (error (e) (format *error-output* "~A: notify ~A failed: ~A~%" (extension-name ext) method e)))))))))
 
 ;;; ---------------------------------------------------------------- event stream replicas
 
@@ -220,6 +226,8 @@
           reply))
       value))
 
+(declaim (ftype function user-bash-operations-reply tool-start-begin tool-start-respond tool-start-end tool-start-release tool-batches-reserve))
+
 (defun messages-encoding (messages)
   (handler-case (to-json messages) (error () nil)))
 
@@ -234,12 +242,13 @@
     (let ((data (let ((d (jget req "args"))) (if (hash-table-p d) d (or d (obj))))))
       (cond
         ((member event '("agent_before_settle" "turn_end") :test #'equal)
-         (let ((entries (let ((e (jget data "entries"))) (or e (vector)))) result error-message)
+         (let (result error-message)
            (handler-case
                (progn (ticket-begin (request-ticket (ctx-request ctx)))
                       (setf result (funcall handler ctx data)))
              (serious-condition (c) (setf error-message (condition-message c))))
-           (values (obj "_pigBoundaryEntries" entries "_pigBoundaryResult" result) error-message)))
+           ;; the handler appends to the event's entries: the reply carries the list it left
+           (values (obj "_pigBoundaryEntries" (or (jget data "entries") (vector)) "_pigBoundaryResult" result) error-message)))
         ((equal event "tool_call")
          (let* ((input (jget data "input")) (before (to-json input)) result error-message)
            (handler-case
@@ -258,7 +267,10 @@
              (default "promptGuidelines" (vector)) (default "contextFiles" (vector)) (default "skills" (vector)))
            (let ((sp (make-system-prompt ctx options (let ((p (jget data "systemPrompt"))) (if (stringp p) p "")))))
              (setf (system-prompt-key sp) (to-json options))
-             (setf (ctx-system-prompt ctx) sp))
+             (setf (ctx-system-prompt ctx) sp)
+             ;; Pi's event.systemPrompt is a getter over the shared options: reading it through jget renders them now
+             (when (nth-value 1 (gethash "systemPrompt" data))
+               (setf (gethash "systemPrompt" data) (make-lazy-value (lambda () (system-prompt-get ctx))))))
            (handler-case
                (progn (ticket-begin (request-ticket (ctx-request ctx)))
                       (setf result (funcall handler ctx data)))
@@ -276,9 +288,7 @@
            (ticket-begin (request-ticket (ctx-request ctx)))
            (let ((result (funcall handler ctx data)))
              (when (equal event "user_bash")
-               (when (and (hash-table-p result) (jget result "operations"))
-                 (error 'unsupported-capability :member "user_bash operations"))
-               (setf result (user-bash-event-result result)))
+               (setf result (or (user-bash-operations-reply result) (user-bash-event-result result))))
              (when (and context-event snapshot)
                (let* ((returned (let ((r (and (hash-table-p result) (jget result "messages")))) (or r messages)))
                       (unchanged (and (vectorp returned) (= (length returned) (length snapshot))
@@ -289,6 +299,9 @@
                            (obj "messages" returned "_pigContextUnchanged" (if unchanged t :false))))))
              (values result nil))))))))
 
+(defvar *child-tool-handler* nil
+  "(lambda (ext session-id name)) -> the handler of a custom tool of a child session (child-session.lisp), or NIL.")
+
 (defun handle-request (ext env ctx)
   (let* ((id (jget env "id" "")) (req (or (jget env "request") (obj)))
          (method (jget req "method")) (request (ctx-request ctx)))
@@ -296,10 +309,16 @@
         (cond
           ((equal method "tool_call")
            (let* ((name (jget req "tool" "")) (params (let ((a (jget req "args"))) (if (hash-table-p a) a (obj))))
-                  (handler (gethash name (extension-tool-handlers ext))))
+                  (child (let ((c (jget req "child_session"))) (and (stringp c) (plusp (length c)) c)))
+                  (handler (if child
+                               (and *child-tool-handler* (funcall *child-tool-handler* ext child name))
+                               (gethash name (extension-tool-handlers ext)))))
              (unless handler (error "unknown tool ~S" name))
              (ticket-begin (request-ticket request))
-             (respond ext id (normalize-tool-result (funcall handler ctx params)) nil)))
+             (when (ctx-tool-start ctx) (tool-start-begin (ctx-tool-start ctx)))
+             ;; a handler whose dialog was answered before another's responds after it, as Pi's continuations run in the order of the answers
+             (let ((payload (normalize-tool-result (funcall handler ctx params))))
+               (tool-start-respond (ctx-tool-start ctx) (lambda () (respond ext id payload nil))))))
           ((equal method "command")
            (let* ((name (jget req "tool" "")) (args (jget req "args" ""))
                   (handler (gethash name (extension-command-handlers ext))))
@@ -315,11 +334,15 @@
           ((equal method "event")
            (multiple-value-bind (result error-message) (run-event-handler ext ctx req)
              (respond ext id result error-message)))
+          ((gethash method *request-handlers*)
+           (ticket-begin (request-ticket request))
+           (respond ext id (funcall (gethash method *request-handlers*) ext ctx req) nil))
           (t (respond ext id nil (format nil "unknown method: ~A" method))))
       (serious-condition (c)
-        (handler-case (respond ext id nil (condition-message c))
+        (handler-case (tool-start-respond (ctx-tool-start ctx) (lambda () (respond ext id nil (condition-message c))))
           (error () nil))))
-    (when request (ticket-begin (request-ticket request)))))
+    (when request (ticket-begin (request-ticket request)))
+    (tool-start-end (ctx-tool-start ctx))))
 
 (defun handle-request-thread (ext env ctx)
   (unwind-protect
@@ -335,6 +358,10 @@
     (sb-thread:with-mutex ((extension-state-lock ext))
       (setf (gethash id (extension-active ext)) request))
     (let ((ctx (make-ctx ext request env)))
+      (let ((batch (jget req "batch")))
+        ;; only the calls of one parallel batch take part in the dialog and continuation orders
+        (when (and (equal (jget req "method") "tool_call") (stringp batch) (plusp (length batch)))
+          (setf (ctx-tool-start ctx) (tool-batches-reserve ext batch))))
       (when (starts-in-arrival-order-p (jget req "method"))
         (setf (request-ticket request) (reserve-ticket ext)))
       (send-request-state ext id "started")
@@ -345,6 +372,7 @@
               (push thread (extension-request-threads ext))))
         (error (e)
           (when (request-ticket request) (latch-set (start-ticket-done (request-ticket request))))
+          (when (ctx-tool-start ctx) (tool-start-release (ctx-tool-start ctx)))
           (respond ext id nil (format nil "start extension handler: ~A" e)))))))
 
 (defun handle-cancel (ext env)
@@ -366,6 +394,7 @@
 (defun stop-runtime (ext)
   "End every pending call and request; wait up to two seconds for handler threads. True when they all stopped."
   (let (pending signals threads)
+    (run-hooks '*stop-hooks* ext)
     (sb-thread:with-mutex ((extension-state-lock ext))
       (setf (extension-shutdown ext) t)
       (maphash (lambda (k v) (declare (ignore k)) (push v pending)) (extension-pending ext))
@@ -432,7 +461,8 @@ True when every handler thread stopped in time."
                        (extension-height ext) (let ((h (jget data "height"))) (if (integerp h) h 0)))
                  (let ((state (or (jget data "state") (obj))))
                    (apply-footer-data ext (jget state "footerData"))
-                   (apply-ui-state ext state)))))
+                   (apply-ui-state ext state)))
+               (run-hooks '*ready-hooks* ext data)))
            (run-loaded-handlers ext)
            (loop
              (let ((env (handler-case (read-frame conn) (error () :eof))))

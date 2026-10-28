@@ -412,3 +412,17 @@ commit = "dcc5ef43ee75a3d4110b5159424fa0ab4d016428"
 class = "CITE"
 cite = "packages/durable/src/harness/harness.ts:193"
 reason = "Pi adc5fa9f80 and 04a93bad8f give the Harness a view of the host's Models that adds the Harness identity, withClientIdentity (harness.ts:193-197 currentModels; identity.ts:154), shared by the tools and the hooks (harness-tools.test.ts: seen[0] is seen[1]): the models a tool reads are no longer the host's own value, so the test expects a view that lists the same models and returns the same model for faux/faux-1."
+
+[[entry]]
+path = "internal/jsstring/localecompare/localecompare_test.go"
+commit = "40b9b1829f2cc3afb197746fa40d7412d31e6cf5"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "The commit moves the root-locale collator from internal/jsstring into internal/jsstring/localecompare and renames LocaleCompare to Compare, so the three changed lines are the oracle tests' calls and failure messages (got := Compare(a, b) against the Node localeCompare answer, and the Errorf that names the function). The expected values are Node's own localeCompare results computed in each test, and they are unchanged: no Pi line moves, the ordering stays the one Pi's localeCompare call sites get."
+
+[[entry]]
+path = "coding/extension/pigsdk/strip_test.go"
+commit = "2eec1d23fb5778618c8cdd80dcce6905738c645c"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "The multi-language extension SDK bridges are PiG-only (docs/additive-features.md D19), so no Pi line governs them. The commit adds the Lisp SDK as a fourth strippable SDK language: the strip test gains its Lisp row, and the count of SDKs left unstripped after stripping one language is three where it was two. The expectation follows the number of SDK languages the build carries."

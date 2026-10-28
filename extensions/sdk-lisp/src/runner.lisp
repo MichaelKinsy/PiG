@@ -8,7 +8,7 @@
 The standalone entry point: (pig:run-extension (new-extension)) in an executable main.lisp."
   (unless (and socket (plusp (length socket)))
     (error "PIG_EXT_SOCKET not set: the extension must be launched by pig"))
-  (serve extension (connect-unix socket)))
+  (serve extension (helper-take-conn socket)))
 
 ;;; ---------------------------------------------------------------- the generated runner
 
@@ -57,7 +57,7 @@ The standalone entry point: (pig:run-extension (new-extension)) in an executable
   (format *error-output* "~A: ~A~%" (car member) (condition-message condition))
   (finish-output *error-output*)
   (when (and socket (plusp (length socket)))
-    (ignore-errors (conn-close (connect-unix socket)))))
+    (unless (helper-drop-conn socket) (ignore-errors (conn-close (connect-unix socket))))))
 
 (defun runner-main ()
   "The toplevel of a generated image: serve every baked member on its own socket and thread, admit further
@@ -81,7 +81,7 @@ generations on the host's control lines, and exit once none is live (unless the 
                                  (error "~A not set for ~A" (socket-env-name (car member)) (car member)))
                                (let ((ext (build-member member socket)))
                                  (latch-set built)
-                                 (unless (serve ext (connect-unix socket))
+                                 (unless (serve ext (helper-take-conn socket))
                                    (setf failed t)
                                    (format *error-output* "~A: extension handlers did not stop before the shutdown deadline~%" (car member)))))
                            (serious-condition (c)
