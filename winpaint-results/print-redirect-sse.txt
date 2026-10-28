@@ -1,0 +1,13 @@
+args: --no-extensions --no-session --model mock/m1 go
+t=2s size=0
+t=4s size=0
+t=6s size=0
+t=8s size=0
+t=10s size=0
+t=12s size=0
+t=14s size=0
+t=16s size=0
+t=18s size=0
+t=20s size=0
+t=22s size=20001
+exited=True final size=20001

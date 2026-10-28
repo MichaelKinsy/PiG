@@ -1,0 +1,284 @@
+01:40:13.138 pid=1044 watch start child=5944 args=["D:\\a\\PiG\\PiG\\pig-diag.exe" "--no-extensions" "--no-session" "--model" "test-faux/faux-1" "TUI_LIVE_STREAM_PAUSE"]
+01:40:13.186 pid=1044 screen hash=98b1abd472432b75 nonblank=0 size=120x9001 window=(0,0)-(119,29) cursor=(0,0) first="" last=""
+01:40:13.199 pid=5944 write n=8 dur=0s err=<nil> sync_h=0 sync_l=0 head="\x1b[?2004h"
+01:40:13.199 pid=5944 write n=22 dur=0s err=<nil> sync_h=0 sync_l=0 head="\x1b[>7u\x1b[?u\x1b]7501;?\x1b\\\x1b[c"
+01:40:13.199 pid=5944 write n=6 dur=0s err=<nil> sync_h=0 sync_l=0 head="\x1b[?25l"
+01:40:13.209 pid=5944 write n=7 dur=0s err=<nil> sync_h=0 sync_l=0 head="\x1b[>4;2m"
+01:40:13.214 pid=5944 arm-frame-timer in=0s
+01:40:13.214 pid=5944 write n=75 dur=0s err=<nil> sync_h=0 sync_l=0 head="\x1b[<u\x1b[?1049h\x1b[>7u\x1b[?7l\x1b[?1000h\x1b[?1002h\x1b["
+01:40:13.214 pid=5944 arm-frame-timer in=0s
+01:40:13.214 pid=5944 write n=8 dur=0s err=<nil> sync_h=0 sync_l=0 head="\x1b[?2031h"
+01:40:13.214 pid=5944 write n=151 dur=0s err=<nil> sync_h=0 sync_l=0 head="\x1b]10;?\a\x1b]11;?\a\x1b]4;0;?\a\x1b]4;1;?\a\x1b]4;2;?\a\x1b]"
+01:40:13.214 pid=5944 frame-timer-fired
+01:40:13.214 pid=5944 write n=1732 dur=0s err=<nil> sync_h=1 sync_l=1 head="\x1b[?2026h\x1b[2J\x1b[1;1H\x1b[2K\x1b[0m\x1b]8;;\a\x1b[2;1H\x1b["
+01:40:13.214 pid=5944 arm-frame-timer in=16ms
+01:40:13.214 pid=5944 frame-timer-fired
+01:40:13.219 pid=5944 write n=4552 dur=0s err=<nil> sync_h=1 sync_l=1 head="\x1b[?2026h\x1b[2;1H\x1b[2K    \x1b[38;2;24;21;29m\xe2\x96"
+01:40:13.219 pid=5944 write n=187 dur=0s err=<nil> sync_h=1 sync_l=1 head="\x1b[?2026h\x1b[12;1H\x1b[2K \x1b[39m\x1b[2mripgrep not"
+01:40:13.257 pid=1044 first non-blank screen:
+01:40:13.257 pid=1044   row 01 |     ▄▄▄▄  ▄▄▄▄    v0.5.3+1.4.0.6c384aa3
+01:40:13.257 pid=1044   row 02 |    ▄▀▀▀▀▄▄▀▀▀▀▄   escape interrupt · ctrl+c/ctrl+d clear/exit · / commands · ! bash · ctrl+o more
+01:40:13.257 pid=1044   row 03 |   ▀▀▀▀▀▀▀▀▀▀▀▀▀▀  Press ctrl+o to show full startup help and loaded resources.
+01:40:13.257 pid=1044   row 04 |   ▀▀▀▀▀▀▀▀▀▀▀▀▀▀
+01:40:13.257 pid=1044   row 05 |   ▀▀▀▀▀▀▀▀▀▀▀▀▀▀  PiG can explain its own features and look up its docs. Ask it how to use or extend PiG.
+01:40:13.257 pid=1044   row 06 |   ▀▀▀▀▀▀▀▀▀▀▀▀▀▀
+01:40:13.257 pid=1044   row 07 |     ▀▀▀▀▀▀▀▀▀▀
+01:40:13.257 pid=1044   row 10 |  fd not found. Downloading...
+01:40:13.257 pid=1044   row 11 |  ripgrep not found. Downloading...
+01:40:13.257 pid=1044   row 25 | ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+01:40:13.257 pid=1044   row 27 | ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+01:40:13.257 pid=1044   row 28 | D:\a\_temp\winpaint-work
+01:40:13.257 pid=1044   row 29 | 0.0%/128k (auto)                                                                                      (test-faux) faux-1
+01:40:13.257 pid=1044 screen hash=b8257c33f37f5670 nonblank=1468 size=120x30 window=(0,0)-(119,29) cursor=(0,26) first="    ▄▄▄▄  ▄▄▄▄    v0.5.3+1.4.0.6c384aa3" last="0.0%/128k (auto)                                                      "
+01:40:13.527 pid=5944 write n=187 dur=0s err=<nil> sync_h=1 sync_l=1 head="\x1b[?2026h\x1b[13;1H\x1b[2K \x1b[39m\x1b[2mfd installe"
+01:40:13.553 pid=1044 screen hash=fd73e335823e1ff2 nonblank=1514 size=120x30 window=(0,0)-(119,29) cursor=(0,26) first="    ▄▄▄▄  ▄▄▄▄    v0.5.3+1.4.0.6c384aa3" last="0.0%/128k (auto)                                                      "
+01:40:13.587 pid=5944 write n=187 dur=0s err=<nil> sync_h=1 sync_l=1 head="\x1b[?2026h\x1b[14;1H\x1b[2K \x1b[39m\x1b[2mripgrep ins"
+01:40:13.587 pid=5944 write n=24 dur=0s err=<nil> sync_h=0 sync_l=0 head="\x1b]0;pig - winpaint-work\a"
+01:40:13.587 pid=5944 write n=29 dur=0s err=<nil> sync_h=1 sync_l=1 head="\x1b[?2026h\x1b[27;1H\x1b[?25l\x1b[?2026l"
+01:40:13.587 pid=5944 write n=29 dur=0s err=<nil> sync_h=1 sync_l=1 head="\x1b[?2026h\x1b[27;1H\x1b[?25l\x1b[?2026l"
+01:40:13.593 pid=5944 event agent.AgentStartEvent
+01:40:13.593 pid=5944 arm-frame-timer in=9.9283ms
+01:40:13.593 pid=5944 write n=24 dur=0s err=<nil> sync_h=0 sync_l=0 head="\x1b]0;pig - winpaint-work\a"
+01:40:13.593 pid=5944 event agent.TurnStartEvent
+01:40:13.593 pid=5944 event agent.MessageStartEvent
+01:40:13.593 pid=5944 event agent.MessageEndEvent
+01:40:13.593 pid=5944 event agent.MessageStartEvent
+01:40:13.593 pid=5944 arm-frame-timer in=9.9283ms
+01:40:13.593 pid=5944 write n=1091 dur=0s err=<nil> sync_h=1 sync_l=1 head="\x1b[?2026h\x1b[16;1H\x1b[2K\x1b[49m                "
+01:40:13.593 pid=5944 event agent.MessageEndEvent
+01:40:13.593 pid=5944 event agent.MessageStartEvent
+01:40:13.593 pid=5944 arm-frame-timer in=16ms
+01:40:13.593 pid=5944 event agent.MessageUpdateEvent
+01:40:13.593 pid=5944 event agent.MessageUpdateEvent
+01:40:13.618 pid=5944 frame-timer-fired
+01:40:13.653 pid=5944 write n=170 dur=0s err=<nil> sync_h=1 sync_l=1 head="\x1b[?2026h\x1b[20;1H\x1b[2K LIVE-STREAM-01      "
+01:40:13.653 pid=5944 event agent.MessageUpdateEvent
+01:40:13.653 pid=5944 arm-frame-timer in=0s
+01:40:13.653 pid=5944 frame-timer-fired
+01:40:13.653 pid=5944 write n=170 dur=0s err=<nil> sync_h=1 sync_l=1 head="\x1b[?2026h\x1b[21;1H\x1b[2K LIVE-STREAM-02      "
+01:40:13.654 pid=1044 screen hash=b08b33c33425fc3a nonblank=1597 size=120x30 window=(0,0)-(119,29) cursor=(0,26) first="    ▄▄▄▄  ▄▄▄▄    v0.5.3+1.4.0.6c384aa3" last="1.1%/128k (auto)                                                      "
+01:40:13.674 pid=5944 arm-frame-timer in=0s
+01:40:13.674 pid=5944 write n=458 dur=0s err=<nil> sync_h=1 sync_l=1 head="\x1b[?2026h\x1b[26;1H\x1b[2K\x1b[39m\x1b[2m── \x1b[22;"
+01:40:13.674 pid=5944 event agent.MessageUpdateEvent
+01:40:13.674 pid=5944 arm-frame-timer in=15.8665ms
+01:40:13.681 pid=1044 screen hash=e15633a8a6137f84 nonblank=1597 size=120x30 window=(0,0)-(119,29) cursor=(0,26) first="    ▄▄▄▄  ▄▄▄▄    v0.5.3+1.4.0.6c384aa3" last="1.1%/128k (auto)                                                      "
+01:40:13.690 pid=5944 frame-timer-fired
+01:40:13.690 pid=5944 write n=170 dur=0s err=<nil> sync_h=1 sync_l=1 head="\x1b[?2026h\x1b[22;1H\x1b[2K LIVE-STREAM-03      "
+01:40:13.708 pid=1044 screen hash=823d22932a3bb213 nonblank=1612 size=120x30 window=(0,0)-(119,29) cursor=(0,26) first="    ▄▄▄▄  ▄▄▄▄    v0.5.3+1.4.0.6c384aa3" last="1.1%/128k (auto)                                                      "
+01:40:13.714 pid=5944 event agent.MessageUpdateEvent
+01:40:13.714 pid=5944 arm-frame-timer in=0s
+01:40:13.714 pid=5944 frame-timer-fired
+01:40:13.714 pid=5944 write n=170 dur=0s err=<nil> sync_h=1 sync_l=1 head="\x1b[?2026h\x1b[23;1H\x1b[2K LIVE-STREAM-04      "
+01:40:13.734 pid=1044 screen hash=cbc8cda00e610cc5 nonblank=1627 size=120x30 window=(0,0)-(119,29) cursor=(0,26) first="    ▄▄▄▄  ▄▄▄▄    v0.5.3+1.4.0.6c384aa3" last="1.1%/128k (auto)                                                      "
+01:40:13.754 pid=5944 arm-frame-timer in=0s
+01:40:13.754 pid=5944 write n=458 dur=0s err=<nil> sync_h=1 sync_l=1 head="\x1b[?2026h\x1b[26;1H\x1b[2K\x1b[39m\x1b[2m── \x1b[22;"
+01:40:13.754 pid=5944 event agent.MessageUpdateEvent
+01:40:13.754 pid=5944 arm-frame-timer in=15.8162ms
+01:40:13.761 pid=1044 screen hash=993d86b0be2719a5 nonblank=1627 size=120x30 window=(0,0)-(119,29) cursor=(0,26) first="    ▄▄▄▄  ▄▄▄▄    v0.5.3+1.4.0.6c384aa3" last="1.1%/128k (auto)                                                      "
+01:40:13.771 pid=5944 frame-timer-fired
+01:40:13.771 pid=5944 write n=170 dur=0s err=<nil> sync_h=1 sync_l=1 head="\x1b[?2026h\x1b[24;1H\x1b[2K LIVE-STREAM-05      "
+01:40:13.788 pid=1044 screen hash=12fd648ecb87291a nonblank=1642 size=120x30 window=(0,0)-(119,29) cursor=(0,26) first="    ▄▄▄▄  ▄▄▄▄    v0.5.3+1.4.0.6c384aa3" last="1.1%/128k (auto)                                                      "
+01:40:13.794 pid=5944 event agent.MessageUpdateEvent
+01:40:13.795 pid=5944 arm-frame-timer in=0s
+01:40:13.795 pid=5944 frame-timer-fired
+01:40:13.795 pid=5944 write n=6392 dur=536.8µs err=<nil> sync_h=1 sync_l=1 head="\x1b[?2026h\x1b[1;1H\x1b[2K    \x1b[38;2;24;21;29m\xe2\x96"
+01:40:13.814 pid=1044 screen hash=63ea2d0d17e0274e nonblank=1657 size=120x30 window=(0,0)-(119,29) cursor=(0,26) first="    ▄▄▄▄  ▄▄▄▄    v0.5.3+1.4.0.6c384aa3" last="1.1%/128k (auto)                                                      "
+01:40:13.835 pid=5944 arm-frame-timer in=0s
+01:40:13.835 pid=5944 write n=458 dur=0s err=<nil> sync_h=1 sync_l=1 head="\x1b[?2026h\x1b[26;1H\x1b[2K\x1b[39m\x1b[2m── \x1b[22;"
+01:40:13.835 pid=5944 event agent.MessageUpdateEvent
+01:40:13.835 pid=5944 arm-frame-timer in=15.8944ms
+01:40:13.841 pid=1044 screen hash=16751e316ef875cb nonblank=1657 size=120x30 window=(0,0)-(119,29) cursor=(0,26) first="    ▄▄▄▄  ▄▄▄▄    v0.5.3+1.4.0.6c384aa3" last="1.1%/128k (auto)                                                      "
+01:40:13.851 pid=5944 frame-timer-fired
+01:40:13.852 pid=5944 write n=6199 dur=560.5µs err=<nil> sync_h=1 sync_l=1 head="\x1b[?2026h\x1b[1;1H\x1b[2K   \x1b[38;2;24;21;29m▄"
+01:40:13.867 pid=1044 screen hash=fc8fc03bd71fb42d nonblank=1617 size=120x30 window=(0,0)-(119,29) cursor=(0,26) first="   ▄▀▀▀▀▄▄▀▀▀▀▄   escape interrupt · ctrl+c/c" last="1.1%/128k (auto)                                                      "
+01:40:13.875 pid=5944 event agent.MessageUpdateEvent
+01:40:13.875 pid=5944 arm-frame-timer in=0s
+01:40:13.875 pid=5944 frame-timer-fired
+01:40:13.875 pid=5944 write n=5537 dur=548.5µs err=<nil> sync_h=1 sync_l=1 head="\x1b[?2026h\x1b[1;1H\x1b[2K  \x1b[38;2;24;21;29m\x1b[48"
+01:40:13.894 pid=1044 screen hash=42c086230c489c23 nonblank=1507 size=120x30 window=(0,0)-(119,29) cursor=(0,26) first="  ▀▀▀▀▀▀▀▀▀▀▀▀▀▀  Press ctrl+o to show ful" last="1.1%/128k (auto)                                                      "
+01:40:13.915 pid=5944 arm-frame-timer in=0s
+01:40:13.915 pid=5944 write n=458 dur=0s err=<nil> sync_h=1 sync_l=1 head="\x1b[?2026h\x1b[26;1H\x1b[2K\x1b[39m\x1b[2m── \x1b[22;"
+01:40:13.921 pid=1044 screen hash=fe1d9b7134c12c6f nonblank=1507 size=120x30 window=(0,0)-(119,29) cursor=(0,26) first="  ▀▀▀▀▀▀▀▀▀▀▀▀▀▀  Press ctrl+o to show ful" last="1.1%/128k (auto)                                                      "
+01:40:13.995 pid=5944 arm-frame-timer in=0s
+01:40:13.995 pid=5944 write n=458 dur=0s err=<nil> sync_h=1 sync_l=1 head="\x1b[?2026h\x1b[26;1H\x1b[2K\x1b[39m\x1b[2m── \x1b[22;"
+01:40:14.001 pid=1044 screen hash=91bf03b99bd23cb7 nonblank=1507 size=120x30 window=(0,0)-(119,29) cursor=(0,26) first="  ▀▀▀▀▀▀▀▀▀▀▀▀▀▀  Press ctrl+o to show ful" last="1.1%/128k (auto)                                                      "
+01:40:14.076 pid=5944 arm-frame-timer in=0s
+01:40:14.076 pid=5944 write n=458 dur=0s err=<nil> sync_h=1 sync_l=1 head="\x1b[?2026h\x1b[26;1H\x1b[2K\x1b[39m\x1b[2m── \x1b[22;"
+01:40:14.081 pid=1044 screen hash=84ae0119a2d4a959 nonblank=1507 size=120x30 window=(0,0)-(119,29) cursor=(0,26) first="  ▀▀▀▀▀▀▀▀▀▀▀▀▀▀  Press ctrl+o to show ful" last="1.1%/128k (auto)                                                      "
+01:40:14.156 pid=5944 arm-frame-timer in=0s
+01:40:14.156 pid=5944 write n=458 dur=0s err=<nil> sync_h=1 sync_l=1 head="\x1b[?2026h\x1b[26;1H\x1b[2K\x1b[39m\x1b[2m── \x1b[22;"
+01:40:14.161 pid=1044 screen hash=a246fdcc83dfcc74 nonblank=1507 size=120x30 window=(0,0)-(119,29) cursor=(0,26) first="  ▀▀▀▀▀▀▀▀▀▀▀▀▀▀  Press ctrl+o to show ful" last="1.1%/128k (auto)                                                      "
+01:40:14.236 pid=5944 arm-frame-timer in=0s
+01:40:14.236 pid=5944 write n=458 dur=0s err=<nil> sync_h=1 sync_l=1 head="\x1b[?2026h\x1b[26;1H\x1b[2K\x1b[39m\x1b[2m── \x1b[22;"
+01:40:14.241 pid=1044 screen hash=13b61d99d9931e94 nonblank=1507 size=120x30 window=(0,0)-(119,29) cursor=(0,26) first="  ▀▀▀▀▀▀▀▀▀▀▀▀▀▀  Press ctrl+o to show ful" last="1.1%/128k (auto)                                                      "
+01:40:14.317 pid=5944 arm-frame-timer in=0s
+01:40:14.317 pid=5944 write n=458 dur=0s err=<nil> sync_h=1 sync_l=1 head="\x1b[?2026h\x1b[26;1H\x1b[2K\x1b[39m\x1b[2m── \x1b[22;"
+01:40:14.321 pid=1044 screen hash=f986d449fc6ab34c nonblank=1507 size=120x30 window=(0,0)-(119,29) cursor=(0,26) first="  ▀▀▀▀▀▀▀▀▀▀▀▀▀▀  Press ctrl+o to show ful" last="1.1%/128k (auto)                                                      "
+01:40:14.397 pid=5944 arm-frame-timer in=0s
+01:40:14.397 pid=5944 write n=458 dur=0s err=<nil> sync_h=1 sync_l=1 head="\x1b[?2026h\x1b[26;1H\x1b[2K\x1b[39m\x1b[2m── \x1b[22;"
+01:40:14.401 pid=1044 screen hash=622ea10f0428e310 nonblank=1507 size=120x30 window=(0,0)-(119,29) cursor=(0,26) first="  ▀▀▀▀▀▀▀▀▀▀▀▀▀▀  Press ctrl+o to show ful" last="1.1%/128k (auto)                                                      "
+01:40:14.478 pid=5944 arm-frame-timer in=0s
+01:40:14.478 pid=5944 write n=458 dur=0s err=<nil> sync_h=1 sync_l=1 head="\x1b[?2026h\x1b[26;1H\x1b[2K\x1b[39m\x1b[2m── \x1b[22;"
+01:40:14.480 pid=1044 screen hash=097ec6b15b8caae6 nonblank=1507 size=120x30 window=(0,0)-(119,29) cursor=(0,26) first="  ▀▀▀▀▀▀▀▀▀▀▀▀▀▀  Press ctrl+o to show ful" last="1.1%/128k (auto)                                                      "
+01:40:14.558 pid=5944 arm-frame-timer in=0s
+01:40:14.558 pid=5944 write n=458 dur=0s err=<nil> sync_h=1 sync_l=1 head="\x1b[?2026h\x1b[26;1H\x1b[2K\x1b[39m\x1b[2m── \x1b[22;"
+01:40:14.560 pid=1044 screen hash=b61cc5f340bfcec6 nonblank=1507 size=120x30 window=(0,0)-(119,29) cursor=(0,26) first="  ▀▀▀▀▀▀▀▀▀▀▀▀▀▀  Press ctrl+o to show ful" last="1.1%/128k (auto)                                                      "
+01:40:14.638 pid=5944 arm-frame-timer in=0s
+01:40:14.639 pid=5944 write n=458 dur=530.6µs err=<nil> sync_h=1 sync_l=1 head="\x1b[?2026h\x1b[26;1H\x1b[2K\x1b[39m\x1b[2m── \x1b[22;"
+01:40:14.640 pid=1044 screen hash=42c086230c489c23 nonblank=1507 size=120x30 window=(0,0)-(119,29) cursor=(0,26) first="  ▀▀▀▀▀▀▀▀▀▀▀▀▀▀  Press ctrl+o to show ful" last="1.1%/128k (auto)                                                      "
+01:40:14.719 pid=5944 arm-frame-timer in=0s
+01:40:14.719 pid=5944 write n=458 dur=0s err=<nil> sync_h=1 sync_l=1 head="\x1b[?2026h\x1b[26;1H\x1b[2K\x1b[39m\x1b[2m── \x1b[22;"
+01:40:14.720 pid=1044 screen hash=fe1d9b7134c12c6f nonblank=1507 size=120x30 window=(0,0)-(119,29) cursor=(0,26) first="  ▀▀▀▀▀▀▀▀▀▀▀▀▀▀  Press ctrl+o to show ful" last="1.1%/128k (auto)                                                      "
+01:40:14.799 pid=5944 arm-frame-timer in=0s
+01:40:14.799 pid=5944 write n=458 dur=0s err=<nil> sync_h=1 sync_l=1 head="\x1b[?2026h\x1b[26;1H\x1b[2K\x1b[39m\x1b[2m── \x1b[22;"
+01:40:14.800 pid=1044 screen hash=91bf03b99bd23cb7 nonblank=1507 size=120x30 window=(0,0)-(119,29) cursor=(0,26) first="  ▀▀▀▀▀▀▀▀▀▀▀▀▀▀  Press ctrl+o to show ful" last="1.1%/128k (auto)                                                      "
+01:40:14.875 pid=5944 event agent.MessageUpdateEvent
+01:40:14.875 pid=5944 arm-frame-timer in=0s
+01:40:14.875 pid=5944 frame-timer-fired
+01:40:14.876 pid=5944 write n=4934 dur=577.6µs err=<nil> sync_h=1 sync_l=1 head="\x1b[?2026h\x1b[1;1H\x1b[2K  \x1b[38;2;24;21;29m\x1b[48"
+01:40:14.880 pid=5944 arm-frame-timer in=11.7196ms
+01:40:14.880 pid=5944 write n=458 dur=0s err=<nil> sync_h=1 sync_l=1 head="\x1b[?2026h\x1b[26;1H\x1b[2K\x1b[39m\x1b[2m── \x1b[22;"
+01:40:14.880 pid=1044 screen hash=6a15bb46b4408b42 nonblank=1416 size=120x30 window=(0,0)-(119,29) cursor=(0,26) first="  ▀▀▀▀▀▀▀▀▀▀▀▀▀▀" last="1.1%/128k (auto)                                                      "
+01:40:14.916 pid=5944 event agent.MessageUpdateEvent
+01:40:14.916 pid=5944 arm-frame-timer in=0s
+01:40:14.916 pid=5944 frame-timer-fired
+01:40:14.916 pid=5944 write n=4356 dur=574.6µs err=<nil> sync_h=1 sync_l=1 head="\x1b[?2026h\x1b[1;1H\x1b[2K  \x1b[38;2;24;21;29m\x1b[48"
+01:40:14.934 pid=1044 screen hash=12d0c2d66f76af1b nonblank=1387 size=120x30 window=(0,0)-(119,29) cursor=(0,26) first="  ▀▀▀▀▀▀▀▀▀▀▀▀▀▀  PiG can explain its own " last="1.1%/128k (auto)                                                      "
+01:40:14.956 pid=5944 event agent.MessageUpdateEvent
+01:40:14.956 pid=5944 arm-frame-timer in=0s
+01:40:14.956 pid=5944 frame-timer-fired
+01:40:14.957 pid=5944 write n=3771 dur=580µs err=<nil> sync_h=1 sync_l=1 head="\x1b[?2026h\x1b[1;1H\x1b[2K  \x1b[38;2;24;21;29m▀\x1b"
+01:40:14.960 pid=5944 arm-frame-timer in=12.2645ms
+01:40:14.960 pid=5944 write n=458 dur=0s err=<nil> sync_h=1 sync_l=1 head="\x1b[?2026h\x1b[26;1H\x1b[2K\x1b[39m\x1b[2m── \x1b[22;"
+01:40:14.960 pid=1044 screen hash=0851b90d2d23242b nonblank=1269 size=120x30 window=(0,0)-(119,29) cursor=(0,26) first="  ▀▀▀▀▀▀▀▀▀▀▀▀▀▀" last="1.1%/128k (auto)                                                      "
+01:40:14.996 pid=5944 event agent.MessageUpdateEvent
+01:40:14.996 pid=5944 arm-frame-timer in=0s
+01:40:14.996 pid=5944 frame-timer-fired
+01:40:14.997 pid=5944 write n=3227 dur=607.4µs err=<nil> sync_h=1 sync_l=1 head="\x1b[?2026h\x1b[1;1H\x1b[2K    \x1b[38;2;24;21;29m\xe2\x96"
+01:40:15.014 pid=1044 screen hash=7204bdc32756f54c nonblank=1240 size=120x30 window=(0,0)-(119,29) cursor=(0,26) first="    ▀▀▀▀▀▀▀▀▀▀" last="1.1%/128k (auto)                                                      "
+01:40:15.037 pid=5944 event agent.MessageUpdateEvent
+01:40:15.037 pid=5944 arm-frame-timer in=0s
+01:40:15.037 pid=5944 frame-timer-fired
+01:40:15.037 pid=5944 write n=3007 dur=516µs err=<nil> sync_h=1 sync_l=1 head="\x1b[?2026h\x1b[1;1H\x1b[2K\x1b[0m\x1b]8;;\a\x1b[3;1H\x1b[2K \x1b"
+01:40:15.040 pid=5944 arm-frame-timer in=12.8642ms
+01:40:15.040 pid=5944 write n=458 dur=0s err=<nil> sync_h=1 sync_l=1 head="\x1b[?2026h\x1b[26;1H\x1b[2K\x1b[39m\x1b[2m── \x1b[22;"
+01:40:15.041 pid=1044 screen hash=c1447767f6b56eae nonblank=1221 size=120x30 window=(0,0)-(119,29) cursor=(0,26) first=" fd not found. Downloading..." last="1.1%/128k (auto)                                                      "
+01:40:15.077 pid=5944 event agent.MessageUpdateEvent
+01:40:15.077 pid=5944 arm-frame-timer in=0s
+01:40:15.077 pid=5944 frame-timer-fired
+01:40:15.078 pid=5944 write n=3127 dur=585.5µs err=<nil> sync_h=1 sync_l=1 head="\x1b[?2026h\x1b[2;1H\x1b[2K \x1b[39m\x1b[2mfd not found"
+01:40:15.094 pid=1044 screen hash=3f02eb95ddaa8edb nonblank=1236 size=120x30 window=(0,0)-(119,29) cursor=(0,26) first=" fd not found. Downloading..." last="1.1%/128k (auto)                                                      "
+01:40:15.117 pid=5944 event agent.MessageUpdateEvent
+01:40:15.117 pid=5944 arm-frame-timer in=0s
+01:40:15.118 pid=5944 frame-timer-fired
+01:40:15.118 pid=5944 write n=3267 dur=546.5µs err=<nil> sync_h=1 sync_l=1 head="\x1b[?2026h\x1b[1;1H\x1b[2K \x1b[39m\x1b[2mfd not found"
+01:40:15.120 pid=5944 arm-frame-timer in=13.3714ms
+01:40:15.120 pid=5944 write n=458 dur=0s err=<nil> sync_h=1 sync_l=1 head="\x1b[?2026h\x1b[26;1H\x1b[2K\x1b[39m\x1b[2m── \x1b[22;"
+01:40:15.121 pid=1044 screen hash=11df99f91b321c9b nonblank=1251 size=120x30 window=(0,0)-(119,29) cursor=(0,26) first=" fd not found. Downloading..." last="1.1%/128k (auto)                                                      "
+01:40:15.158 pid=5944 event agent.MessageUpdateEvent
+01:40:15.158 pid=5944 arm-frame-timer in=0s
+01:40:15.158 pid=5944 frame-timer-fired
+01:40:15.159 pid=5944 write n=3250 dur=543.7µs err=<nil> sync_h=1 sync_l=1 head="\x1b[?2026h\x1b[1;1H\x1b[2K \x1b[39m\x1b[2mripgrep not "
+01:40:15.174 pid=1044 screen hash=5f6ff3213c4ca3e5 nonblank=1237 size=120x30 window=(0,0)-(119,29) cursor=(0,26) first=" ripgrep not found. Downloading..." last="1.1%/128k (auto)                                                      "
+01:40:15.198 pid=5944 event agent.MessageUpdateEvent
+01:40:15.198 pid=5944 arm-frame-timer in=0s
+01:40:15.198 pid=5944 frame-timer-fired
+01:40:15.199 pid=5944 write n=3233 dur=608.3µs err=<nil> sync_h=1 sync_l=1 head="\x1b[?2026h\x1b[1;1H\x1b[2K \x1b[39m\x1b[2mfd installed"
+01:40:15.201 pid=5944 arm-frame-timer in=13.8072ms
+01:40:15.201 pid=5944 write n=458 dur=0s err=<nil> sync_h=1 sync_l=1 head="\x1b[?2026h\x1b[26;1H\x1b[2K\x1b[39m\x1b[2m── \x1b[22;"
+01:40:15.201 pid=1044 screen hash=27d5a96ba7045d99 nonblank=1218 size=120x30 window=(0,0)-(119,29) cursor=(0,26) first=" fd installed to D:\\a\\PiG\\PiG\\agent\\bin\\fd.exe" last="1.1%/128k (auto)                                                      "
+01:40:15.239 pid=5944 event agent.MessageUpdateEvent
+01:40:15.239 pid=5944 arm-frame-timer in=0s
+01:40:15.239 pid=5944 frame-timer-fired
+01:40:15.240 pid=5944 write n=3216 dur=586.1µs err=<nil> sync_h=1 sync_l=1 head="\x1b[?2026h\x1b[1;1H\x1b[2K \x1b[39m\x1b[2mripgrep inst"
+01:40:15.255 pid=1044 screen hash=5e3000e97609e70e nonblank=1187 size=120x30 window=(0,0)-(119,29) cursor=(0,26) first=" ripgrep installed to D:\\a\\PiG\\PiG\\agent\\bin\\rg.exe" last="1.1%/128k (auto)                                                      "
+01:40:15.279 pid=5944 event agent.MessageUpdateEvent
+01:40:15.279 pid=5944 arm-frame-timer in=0s
+01:40:15.279 pid=5944 frame-timer-fired
+01:40:15.280 pid=5944 write n=3199 dur=633.6µs err=<nil> sync_h=1 sync_l=1 head="\x1b[?2026h\x1b[1;1H\x1b[2K\x1b[0m\x1b]8;;\a\x1b[2;1H\x1b[2K\x1b["
+01:40:15.281 pid=5944 arm-frame-timer in=14.3074ms
+01:40:15.281 pid=5944 write n=458 dur=0s err=<nil> sync_h=1 sync_l=1 head="\x1b[?2026h\x1b[26;1H\x1b[2K\x1b[39m\x1b[2m── \x1b[22;"
+01:40:15.282 pid=1044 screen hash=4256baa724e1a362 nonblank=1151 size=120x30 window=(0,0)-(119,29) cursor=(0,26) first=" TUI_LIVE_STREAM_PAUSE" last="1.1%/128k (auto)                                                      "
+01:40:15.319 pid=5944 event agent.MessageUpdateEvent
+01:40:15.320 pid=5944 arm-frame-timer in=0s
+01:40:15.320 pid=5944 frame-timer-fired
+01:40:15.320 pid=5944 write n=3319 dur=589.4µs err=<nil> sync_h=1 sync_l=1 head="\x1b[?2026h\x1b[1;1H\x1b[2K\x1b[49m                 "
+01:40:15.336 pid=1044 screen hash=fb5b600a0d85da96 nonblank=1166 size=120x30 window=(0,0)-(119,29) cursor=(0,26) first=" TUI_LIVE_STREAM_PAUSE" last="1.1%/128k (auto)                                                      "
+01:40:15.360 pid=5944 event agent.MessageUpdateEvent
+01:40:15.360 pid=5944 arm-frame-timer in=0s
+01:40:15.360 pid=5944 frame-timer-fired
+01:40:15.361 pid=5944 write n=3309 dur=564.3µs err=<nil> sync_h=1 sync_l=1 head="\x1b[?2026h\x1b[1;1H\x1b[2K\x1b[49m \x1b[39mTUI_LIVE_ST"
+01:40:15.361 pid=5944 arm-frame-timer in=14.6025ms
+01:40:15.362 pid=5944 write n=458 dur=0s err=<nil> sync_h=1 sync_l=1 head="\x1b[?2026h\x1b[26;1H\x1b[2K\x1b[39m\x1b[2m── \x1b[22;"
+01:40:15.363 pid=1044 screen hash=9db7ad7fa976840f nonblank=1181 size=120x30 window=(0,0)-(119,29) cursor=(0,26) first=" TUI_LIVE_STREAM_PAUSE" last="1.1%/128k (auto)                                                      "
+01:40:15.400 pid=5944 event agent.MessageUpdateEvent
+01:40:15.400 pid=5944 arm-frame-timer in=0s
+01:40:15.400 pid=5944 frame-timer-fired
+01:40:15.400 pid=5944 write n=3294 dur=535µs err=<nil> sync_h=1 sync_l=1 head="\x1b[?2026h\x1b[1;1H\x1b[2K\x1b[49m                 "
+01:40:15.417 pid=1044 screen hash=c7a8dc517588cf88 nonblank=1174 size=120x30 window=(0,0)-(119,29) cursor=(0,26) first=" LIVE-STREAM-01" last="1.1%/128k (auto)                                                      "
+01:40:15.441 pid=5944 event agent.MessageUpdateEvent
+01:40:15.441 pid=5944 arm-frame-timer in=0s
+01:40:15.441 pid=5944 frame-timer-fired
+01:40:15.441 pid=5944 write n=3284 dur=544.2µs err=<nil> sync_h=1 sync_l=1 head="\x1b[?2026h\x1b[1;1H\x1b[2K\x1b[0m\x1b]8;;\a\x1b[2;1H\x1b[2K L"
+01:40:15.442 pid=5944 arm-frame-timer in=14.9225ms
+01:40:15.442 pid=5944 write n=458 dur=0s err=<nil> sync_h=1 sync_l=1 head="\x1b[?2026h\x1b[26;1H\x1b[2K\x1b[39m\x1b[2m── \x1b[22;"
+01:40:15.443 pid=1044 screen hash=15b8047fd76ffcee nonblank=1189 size=120x30 window=(0,0)-(119,29) cursor=(0,26) first=" LIVE-STREAM-01" last="1.1%/128k (auto)                                                      "
+01:40:15.481 pid=5944 event agent.MessageUpdateEvent
+01:40:15.481 pid=5944 arm-frame-timer in=0s
+01:40:15.481 pid=5944 frame-timer-fired
+01:40:15.482 pid=5944 write n=3404 dur=543.5µs err=<nil> sync_h=1 sync_l=1 head="\x1b[?2026h\x1b[1;1H\x1b[2K LIVE-STREAM-01       "
+01:40:15.497 pid=1044 screen hash=38877d1a32f1a1ae nonblank=1204 size=120x30 window=(0,0)-(119,29) cursor=(0,26) first=" LIVE-STREAM-01" last="1.1%/128k (auto)                                                      "
+01:40:15.521 pid=5944 event agent.MessageUpdateEvent
+01:40:15.521 pid=5944 arm-frame-timer in=0s
+01:40:15.521 pid=5944 frame-timer-fired
+01:40:15.521 pid=5944 write n=29 dur=0s err=<nil> sync_h=1 sync_l=1 head="\x1b[?2026h\x1b[27;1H\x1b[?25l\x1b[?2026l"
+01:40:15.521 pid=5944 event agent.MessageEndEvent
+01:40:15.522 pid=5944 arm-frame-timer in=15.4334ms
+01:40:15.522 pid=5944 write n=633 dur=0s err=<nil> sync_h=1 sync_l=1 head="\x1b[?2026h\x1b[26;1H\x1b[2K\x1b[39m\x1b[2m── \x1b[22;"
+01:40:15.522 pid=5944 event agent.TurnEndEvent
+01:40:15.522 pid=5944 event agent.AgentEndEvent
+01:40:15.522 pid=5944 arm-frame-timer in=15.4827ms
+01:40:15.523 pid=5944 write n=427 dur=0s err=<nil> sync_h=1 sync_l=1 head="\x1b[?2026h\x1b[26;1H\x1b[2K\x1b[39m\x1b[2m────"
+01:40:15.523 pid=5944 write n=29 dur=0s err=<nil> sync_h=1 sync_l=1 head="\x1b[?2026h\x1b[27;1H\x1b[?25l\x1b[?2026l"
+01:40:15.523 pid=5944 write n=29 dur=0s err=<nil> sync_h=1 sync_l=1 head="\x1b[?2026h\x1b[27;1H\x1b[?25l\x1b[?2026l"
+01:40:15.523 pid=1044 screen hash=c4d8c507e554d946 nonblank=1224 size=120x30 window=(0,0)-(119,29) cursor=(0,26) first=" LIVE-STREAM-01" last="1.2%/128k (auto)                                                      "
+01:40:16.537 pid=1044 screen hash=c4d8c507e554d946 nonblank=1224 size=120x30 window=(0,0)-(119,29) cursor=(0,26) first=" LIVE-STREAM-01" last="1.2%/128k (auto)                                                      "
+01:40:17.550 pid=1044 screen hash=c4d8c507e554d946 nonblank=1224 size=120x30 window=(0,0)-(119,29) cursor=(0,26) first=" LIVE-STREAM-01" last="1.2%/128k (auto)                                                      "
+01:40:18.576 pid=1044 screen hash=c4d8c507e554d946 nonblank=1224 size=120x30 window=(0,0)-(119,29) cursor=(0,26) first=" LIVE-STREAM-01" last="1.2%/128k (auto)                                                      "
+01:40:19.589 pid=1044 screen hash=c4d8c507e554d946 nonblank=1224 size=120x30 window=(0,0)-(119,29) cursor=(0,26) first=" LIVE-STREAM-01" last="1.2%/128k (auto)                                                      "
+01:40:20.601 pid=1044 screen hash=c4d8c507e554d946 nonblank=1224 size=120x30 window=(0,0)-(119,29) cursor=(0,26) first=" LIVE-STREAM-01" last="1.2%/128k (auto)                                                      "
+01:40:21.613 pid=1044 screen hash=c4d8c507e554d946 nonblank=1224 size=120x30 window=(0,0)-(119,29) cursor=(0,26) first=" LIVE-STREAM-01" last="1.2%/128k (auto)                                                      "
+01:40:22.625 pid=1044 screen hash=c4d8c507e554d946 nonblank=1224 size=120x30 window=(0,0)-(119,29) cursor=(0,26) first=" LIVE-STREAM-01" last="1.2%/128k (auto)                                                      "
+01:40:23.638 pid=1044 screen hash=c4d8c507e554d946 nonblank=1224 size=120x30 window=(0,0)-(119,29) cursor=(0,26) first=" LIVE-STREAM-01" last="1.2%/128k (auto)                                                      "
+01:40:24.650 pid=1044 screen hash=c4d8c507e554d946 nonblank=1224 size=120x30 window=(0,0)-(119,29) cursor=(0,26) first=" LIVE-STREAM-01" last="1.2%/128k (auto)                                                      "
+01:40:25.165 pid=1044 watch timeout after 12s: terminating child
+01:40:25.166 pid=1044 watch child exited code=1
+01:40:25.166 pid=1044 final screen:
+01:40:25.166 pid=1044   row 00 |  LIVE-STREAM-01
+01:40:25.166 pid=1044   row 01 |  LIVE-STREAM-02
+01:40:25.166 pid=1044   row 02 |  LIVE-STREAM-03
+01:40:25.166 pid=1044   row 03 |  LIVE-STREAM-04
+01:40:25.166 pid=1044   row 04 |  LIVE-STREAM-05
+01:40:25.166 pid=1044   row 05 |  LIVE-STREAM-06
+01:40:25.166 pid=1044   row 06 |  LIVE-STREAM-07
+01:40:25.166 pid=1044   row 07 |  LIVE-STREAM-08
+01:40:25.166 pid=1044   row 08 |  LIVE-STREAM-09
+01:40:25.166 pid=1044   row 09 |  LIVE-STREAM-10
+01:40:25.166 pid=1044   row 10 |  LIVE-STREAM-11
+01:40:25.166 pid=1044   row 11 |  LIVE-STREAM-12
+01:40:25.166 pid=1044   row 12 |  LIVE-STREAM-13
+01:40:25.166 pid=1044   row 13 |  LIVE-STREAM-14
+01:40:25.166 pid=1044   row 14 |  LIVE-STREAM-15
+01:40:25.166 pid=1044   row 15 |  LIVE-STREAM-16
+01:40:25.166 pid=1044   row 16 |  LIVE-STREAM-17
+01:40:25.166 pid=1044   row 17 |  LIVE-STREAM-18
+01:40:25.166 pid=1044   row 18 |  LIVE-STREAM-19
+01:40:25.166 pid=1044   row 19 |  LIVE-STREAM-20
+01:40:25.166 pid=1044   row 20 |  LIVE-STREAM-21
+01:40:25.166 pid=1044   row 21 |  LIVE-STREAM-22
+01:40:25.166 pid=1044   row 22 |  LIVE-STREAM-23
+01:40:25.166 pid=1044   row 23 |  LIVE-STREAM-24
+01:40:25.166 pid=1044   row 25 | ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+01:40:25.166 pid=1044   row 27 | ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+01:40:25.166 pid=1044   row 28 | D:\a\_temp\winpaint-work
+01:40:25.166 pid=1044   row 29 | 1.2%/128k (auto)                                                                                      (test-faux) faux-1
