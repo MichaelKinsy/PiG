@@ -1881,7 +1881,7 @@ Locked by: `TestExportActivePigletSourceReachesToolProcesses`, `TestStatusApplie
 
 Remove when: PiG drops Piglets, or a session passes its Piglet to the commands that report on it by another route.
 
-Approval: owner request (self-inspection review, section 9.2, item 4), assigned by Main for PiG 0.6.0.
+Approval: owner request (self-inspection review, section 9.2, item 4), approved by owner Michael Kinsy on 2026-10-28, for PiG 0.6.0.
 SCRUTINIZED:approved
 
 ## D211 A Piglet can withhold a project's context files until the project is trusted (`contextFiles: trusted-only`)
