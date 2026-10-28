@@ -900,6 +900,14 @@ preserves independently configured user and project entries. `pig status
 matched by canonical identity across settings scopes, and a matching project
 filter entry is applied as a delta over the inherited user Package. The JSON
 envelopes use one strict current unversioned shape. `--no-input` never prompts.
+`pig status` and `pig diagnose` report the project trust decision a
+non-interactive run makes (saved decision, then `defaultProjectTrust`, else
+untrusted). A project resource of an untrusted project stays in the status
+inventory with `enabled: false` and `ignored: untrusted`, and the project's
+settings and Packages do not count. `pig diagnose` reports the effective default
+model by Pi's `findInitialModel` rule and the settings file that each of
+`defaultProvider` and `defaultModel` came from. It does not split a
+provider-qualified `defaultModel`, as Pi does not.
 
 Why: upstream Pi has no independent Piglet entity, Piglet Binary/Image records,
 or machine-readable aggregate health and provenance. Resource filtering remains
@@ -911,11 +919,12 @@ Pig removes its Piglet and Package-health additions.
 
 Call-site markers:
 - `coding/cli/package_inventory.go`: additive Package JSON inventory.
-- `coding/cli/status_command.go`: typed aggregate inventory, health, and paths.
+- `coding/cli/status_command.go`: typed aggregate inventory, health, paths, project trust and ignored resources.
+- `coding/cli/project_trust_report.go`, `coding/cli/diagnose_default_model.go`: the trust decision and the effective default model that `pig status` and `pig diagnose` report.
 - `coding/piglet/resolve.go`: source/Piglet Binary inventory
   and record/artifact validation.
 
-Locked by: `coding/cli/package_inventory_test.go`, `coding/cli/status_command_test.go`,
+Locked by: `coding/cli/introspection_truth_test.go` (the trust, ignored-resource and default-model cases), `coding/cli/package_inventory_test.go`, `coding/cli/status_command_test.go`,
 `coding/cli/configured_resources_test.go`
 (`TestProjectConfigPackageOverrideIsDeltaOverInheritedGlobalPackage` and
 canonical cross-scope source identity cases), and
@@ -1850,4 +1859,27 @@ Locked by: `TestOverlayAddsToTheBinaryPigletAndKeepsItsIdentity`, `TestOverlayRe
 Remove when: upstream Pi provides Piglet composition and immutable build artifacts that accept an overlay, or PiG drops Piglet Binaries.
 
 Approval: owner request (Nicholas Recht's feedback on the Tern renderer, 2026-10-25) for PiG 0.6.0; redesign to extends-child semantics approved by the owner 2026-10-28.
+SCRUTINIZED:approved
+
+## D209 A session exports its active Piglet to its tool processes (`PIG_ACTIVE_PIGLET_SOURCE`)
+
+Summary: A running session sets PIG_ACTIVE_PIGLET_SOURCE for its tools, so pig status, pig diagnose, and pig piglet show can name the active Piglet.
+
+Audience: author
+
+Stock disposition: product-neutral diagnostics. The variable is informational. No run selects a Piglet from it, and a run with no Piglet clears it.
+
+What: A pig session that runs a Piglet sets `PIG_ACTIVE_PIGLET_SOURCE` in its own environment, so every process its tools start inherits it, including the `bash` tool. The value is the path of the Piglet file, or the Piglet's name for a Piglet Binary, whose Piglet has no source file. A session with no Piglet removes the variable, so a nested pig never reports its parent's Piglet. Three read-only commands read it. `pig status` marks the extensions and skills that the Piglet's `discovery` excludes as `ignored: piglet-discovery` and reports the Piglet in `activePiglet`. `pig diagnose` prints an `active Piglet:` line and the model the Piglet sets. `pig piglet show` with no argument shows the Piglet. A process that is itself a Piglet Binary needs no variable: `status` and `diagnose` use its baked Piglet, whose discovery excludes every ambient extension and skill unless the Binary accepts overlays (D202). When the variable names a Piglet Binary and the pig that runs is another executable, `status` warns that it cannot apply the Binary's discovery.
+
+Pi source: none. Pi has no Piglet.
+
+Why: the agent runs `pig status` from `bash` to learn what its session loaded. Without the variable those commands could not see the Piglet, so `pig status` listed ambient resources that the Piglet's `discovery` excluded, and `pig piglet show` had no way to name the Piglet of the session.
+
+Call-site markers: `coding/piglet/active_source.go` (`ActiveSourceEnv`), `coding/cli/active_piglet_source.go` (`exportActivePigletSource`, `inspectActivePiglet`), `coding/cli/main.go` (the call to `exportActivePigletSource`), `coding/piglet/main.go` (`cmdShow`).
+
+Locked by: `TestExportActivePigletSourceReachesToolProcesses`, `TestStatusAppliesTheActivePigletDiscovery`, `TestStatusNamesAPigletBinaryItCannotApply`, `TestStatusWarnsWhenTheActivePigletSourceDoesNotLoad`, `TestDiagnoseNamesTheActivePiglet` (`coding/cli/introspection_truth_test.go`); `TestActiveSourceValue`, `TestShowWithoutAnArgumentUsesTheActivePigletSource` (`coding/piglet/active_source_test.go`).
+
+Remove when: PiG drops Piglets, or a session passes its Piglet to the commands that report on it by another route.
+
+Approval: owner request (self-inspection review, section 9.2, item 4), assigned by Main for PiG 0.6.0.
 SCRUTINIZED:approved

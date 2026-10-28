@@ -54,7 +54,11 @@ type extensionValidationReport struct {
 	Code           string                           `json:"code,omitempty"`
 	StderrLog      string                           `json:"stderrLog,omitempty"`
 	Warnings       []string                         `json:"warnings,omitempty"`
-	Error          string                           `json:"error,omitempty"`
+	// AutoDiscovered says whether auto-discovery, as Pi does it, would load this extension from an extensions directory. A source
+	// that it does not find there still loads by an explicit path (-e, a settings entry), so Valid does not depend on it. Only a
+	// valid report has it.
+	AutoDiscovered *bool  `json:"autoDiscovered,omitempty"`
+	Error          string `json:"error,omitempty"`
 }
 
 // toolDetailReport is the scannable text surface of one registered tool.
@@ -171,6 +175,7 @@ func validateInstallSources(cwd string, sm *codingagent.SettingsManager, sources
 		}
 		_, _ = fmt.Fprintf(os.Stdout, "valid extension: %s\n", report.Name)
 		_, _ = fmt.Fprintf(os.Stdout, "registered: tools=%d commands=%d handlers=%d flags=%d shortcuts=%d\n", len(report.Tools), len(report.Commands), len(report.Handlers), len(report.Flags), len(report.Shortcuts))
+		printValidationWarnings(report)
 		return 0
 	}
 
@@ -191,6 +196,7 @@ func validateInstallSources(cwd string, sm *codingagent.SettingsManager, sources
 		for _, report := range reports {
 			if report.Valid {
 				_, _ = fmt.Fprintf(os.Stdout, "valid extension: %s\n", report.Name)
+				printValidationWarnings(report)
 				continue
 			}
 			_, _ = fmt.Fprintf(os.Stderr, "error validating %s: %s\n", report.Name, report.Error)
@@ -292,6 +298,12 @@ func validateExtensionRuntimes(input string) ([]extensionValidationReport, error
 	for i := range loaded {
 		byName[loaded[i].Name] = &loaded[i]
 	}
+	// pig additive (D28): the report says whether auto-discovery would load the source from an extensions directory. A Package
+	// root lists the entries discovery found, so only a path that is itself the extension can differ.
+	discoveryWarning := ""
+	if !packagecontent.DescribesResources(abs) {
+		discoveryWarning = notAutoDiscoveredWarning(abs)
+	}
 	reports := make([]extensionValidationReport, 0, len(configs))
 	for i, cfg := range configs {
 		ext := byName[cfg.Name]
@@ -302,15 +314,44 @@ func validateExtensionRuntimes(input string) ([]extensionValidationReport, error
 		if err != nil {
 			return nil, err
 		}
-		reports = append(reports, extensionValidationReport{
+		report := extensionValidationReport{
 			Valid: true, Name: cfg.Name, Source: cfg.Source, Path: cfg.Path, Hash: hash,
 			Tools: mapKeys(ext.Tools), Commands: sortedNames(ext.RegisteredCommands(), func(c extension.RegisteredCommand) string { return c.Name }), Handlers: mapKeys(ext.Handlers),
 			Flags: sortedNames(ext.RegisteredFlags(), func(f extension.ExtensionFlag) string { return f.Name }), Shortcuts: sortedNames(ext.RegisteredShortcuts(), func(s extension.ExtensionShortcut) string { return string(s.Shortcut) }), Providers: host.ProviderNames(cfg.Name),
 			ToolDetails: toolDetailsFromExtension(ext), CommandDetails: commandDetailsFromExtension(ext),
-			Registered: true, Definition: definitionReports[i],
-		})
+			Registered: true, AutoDiscovered: new(discoveryWarning == ""), Definition: definitionReports[i],
+		}
+		if discoveryWarning != "" {
+			report.Warnings = append(report.Warnings, discoveryWarning)
+		}
+		reports = append(reports, report)
 	}
 	return reports, nil
+}
+
+// notAutoDiscoveredWarning explains why auto-discovery would not load the extension at path from an extensions directory, or returns
+// "" when it would. Pi's discovery loads a .ts or .js file and a directory with package.json "pi.extensions", index.ts or index.js
+// (core/extensions/loader.ts discoverExtensionsInDir, package-manager.ts collectAutoExtensionEntries); PiG adds Go, Rust, Python and
+// Lisp roots. A path named in settings or with -e loads without that rule, which is why the report is still valid.
+//
+// pig additive (D28): `pig install --validate-only` states what discovery would load.
+func notAutoDiscoveredWarning(path string) string {
+	//perf:ok once per validated source, in a one-shot validate command
+	info, err := os.Stat(path)
+	if err != nil {
+		return ""
+	}
+	const advice = "A path named with -e or in a settings extensions entry loads it; to place it in an extensions directory, use a .js or .ts file, or a directory with index.js, index.ts or a package.json pi.extensions entry."
+	if info.IsDir() {
+		if packagecontent.DiscoversExtensionRoot(path) {
+			return ""
+		}
+		return "auto-discovery does not load this directory from an extensions directory: it has no package.json pi.extensions, index.ts or index.js. " + advice
+	}
+	if name := filepath.Base(path); strings.HasSuffix(name, ".ts") || strings.HasSuffix(name, ".js") {
+		return ""
+	}
+	return fmt.Sprintf("auto-discovery does not load %s from an extensions directory: it loads only .ts and .js files there. %s", filepath.Base(path), advice)
 }
 
 // toolDetailsFromExtension projects each registered tool's model-facing text
@@ -741,4 +782,11 @@ func sortedNames[V any](values []V, name func(V) string) []string {
 	}
 	slices.Sort(out)
 	return out
+}
+
+// printValidationWarnings writes the warnings of a valid report to stderr, so stdout keeps the lines scripts read.
+func printValidationWarnings(report extensionValidationReport) {
+	for _, warning := range report.Warnings {
+		_, _ = fmt.Fprintf(os.Stderr, "Warning: %s\n", warning)
+	}
 }

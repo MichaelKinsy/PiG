@@ -5948,6 +5948,30 @@
       "tests": []
     },
     {
+      "id": "BF-36fe3a6",
+      "title": "`pig install \u003cpath\u003e --validate-only` called a `.mjs` file, or a directory with only `index.mjs`, a valid…",
+      "symptom": "`pig install \u003cpath\u003e --validate-only` called a `.mjs` file, or a directory with only `index.mjs`, a valid extension without saying that auto-discovery ignores it.",
+      "rootCause": "A top-level .mjs file or a directory with only index.mjs validated as a valid extension, and auto-discovery of an extensions directory ignores both, as Pi's does (.ts and .js only). The report keeps valid: true, because -e and a settings path load the source, and now adds autoDiscovered and a warning that names the rule.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`pig install \u003cpath\u003e --validate-only` called a `.mjs` file, or a directory with only `index.mjs`, a valid extension without saying that auto-discovery ignores it. Pi discovers only `.ts` and `.js` files in an extensions directory. The report stays valid, because `-e` and a settings path load the source, and now says what discovery does.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "36fe3a67b3",
+          "date": "2026-10-28"
+        }
+      ],
+      "tests": [
+        "coding/cli/config_command_test.go::TestProjectPackageDeltaDrivesStartupStatusAndResourceCollectors",
+        "coding/cli/introspection_truth_test.go::TestInstallValidateOnlyReportsWhatDiscoveryWouldLoad",
+        "coding/cli/introspection_truth_test.go::TestNotAutoDiscoveredWarningFollowsPiDiscovery"
+      ]
+    },
+    {
       "id": "BF-37c6048",
       "title": "fix(tui): a streamed Markdown never resumes past a paragraph clipped before a LaTeX start",
       "symptom": "fix(tui): a streamed Markdown never resumes past a paragraph clipped before a LaTeX start",
@@ -17399,6 +17423,28 @@
       "tests": []
     },
     {
+      "id": "BF-7bf1cbb",
+      "title": "`pig status` now gives a skill without a `description` the health `not loaded: description is required`, and…",
+      "symptom": "`pig status` now gives a skill without a `description` the health `not loaded: description is required`, and a theme with an unknown color role or another schema error an `invalid:` health, with a warning for each.",
+      "rootCause": "Pi leaves out a skill with no description and rejects a theme with an unknown color role, with a warning. Status listed both as enabled with empty health. Status now runs the loader on each enabled skill and theme and reports the verdict as health and a warning. An open Piglet Binary applies its Piglet's discovery; a Binary other than the running pig is named, not guessed.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`pig status` now gives a skill without a `description` the health `not loaded: description is required`, and a theme with an unknown color role or another schema error an `invalid:` health, with a warning for each. Pi leaves out the skill and rejects the theme; status listed both as enabled with no health problem.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "7bf1cbb246",
+          "date": "2026-10-28"
+        }
+      ],
+      "tests": [
+        "coding/cli/introspection_truth_test.go::TestStatusNamesAPigletBinaryItCannotApply"
+      ]
+    },
+    {
       "id": "BF-7c59949",
       "title": "fix(codingagent): session selector keeps Pi's out-of-range selected index",
       "symptom": "fix(codingagent): session selector keeps Pi's out-of-range selected index",
@@ -27186,6 +27232,123 @@
         "internal/codingagent/owner_dialog_stack_test.go::TestMissingCwdConfirmationStacksWithAnOpenExtensionDialog",
         "internal/codingagent/owner_dialog_stack_test.go::TestSessionReplacementDismissesAnOpenTreeSummaryPrompt",
         "internal/codingagent/owner_dialog_stack_test.go::TestStackedPromptsReportTheirBlockedStatus"
+      ]
+    },
+    {
+      "id": "BF-bede0f0",
+      "title": "`pig status` no longer lists the resources of an untrusted project as enabled",
+      "symptom": "`pig status` no longer lists the resources of an untrusted project as enabled.",
+      "rootCause": "pig status listed an untrusted project's resources as enabled and ignored the active Piglet's discovery; pig diagnose reported an untrusted project's defaultModel and printed a provider-qualified defaultModel as provider/provider/id. A skill without a description and a theme with an unknown color role showed no health.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`pig status` no longer lists the resources of an untrusted project as enabled. It resolves project trust as a print run does (saved decision, then `defaultProjectTrust`, else untrusted), shows the decision, and marks each project extension, skill, prompt and theme `ignored: untrusted` and not enabled. The settings and Packages of an untrusted project no longer count.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "bede0f0edf",
+          "date": "2026-10-28"
+        }
+      ],
+      "tests": [
+        "coding/cli/introspection_truth_test.go::TestDefaultModelResolutionDoesNotSplitAProviderPrefix",
+        "coding/cli/introspection_truth_test.go::TestDiagnoseDefaultModelWithoutProviderIsIgnoredLikePi",
+        "coding/cli/introspection_truth_test.go::TestDiagnoseIgnoresUntrustedProjectDefaultModel",
+        "coding/cli/introspection_truth_test.go::TestDiagnoseNamesTheActivePiglet",
+        "coding/cli/introspection_truth_test.go::TestDiagnoseQualifiedDefaultModelFallsBackAsPiDoes",
+        "coding/cli/introspection_truth_test.go::TestDiagnoseReportsTrustedProjectDefaultModelAndItsFile",
+        "coding/cli/introspection_truth_test.go::TestExportActivePigletSourceReachesToolProcesses",
+        "coding/cli/introspection_truth_test.go::TestReportProjectTrustNamesTheDeciding",
+        "coding/cli/introspection_truth_test.go::TestStatusAppliesTheActivePigletDiscovery",
+        "coding/cli/introspection_truth_test.go::TestStatusHumanOutputNamesTrustAndIgnoredResources",
+        "coding/cli/introspection_truth_test.go::TestStatusMarksUntrustedProjectResourcesIgnored",
+        "coding/cli/introspection_truth_test.go::TestStatusReportsASkillWithoutDescriptionAsNotLoaded",
+        "coding/cli/introspection_truth_test.go::TestStatusReportsAThemeWithAnUnknownColorRoleAsInvalid",
+        "coding/cli/introspection_truth_test.go::TestStatusTrustedProjectResourcesApply",
+        "coding/cli/introspection_truth_test.go::TestStatusWarnsWhenTheActivePigletSourceDoesNotLoad",
+        "coding/piglet/active_source_test.go::TestActiveSourceIsPath",
+        "coding/piglet/active_source_test.go::TestActiveSourceValue",
+        "coding/piglet/active_source_test.go::TestShowWithoutAnArgumentUsesTheActivePigletSource"
+      ]
+    },
+    {
+      "id": "BF-bede0f0-2",
+      "title": "`pig diagnose` no longer reports the `defaultModel` of an untrusted project, which the session does not use",
+      "symptom": "`pig diagnose` no longer reports the `defaultModel` of an untrusted project, which the session does not use.",
+      "rootCause": "pig status listed an untrusted project's resources as enabled and ignored the active Piglet's discovery; pig diagnose reported an untrusted project's defaultModel and printed a provider-qualified defaultModel as provider/provider/id. A skill without a description and a theme with an unknown color role showed no health.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`pig diagnose` no longer reports the `defaultModel` of an untrusted project, which the session does not use. It reports the effective default model and the settings file of each part. A provider-qualified `defaultModel` such as `\"bench/bench-2\"` was printed as `bench/bench/bench-2`. Pi reads `defaultModel` as a model id and does not split it, so startup falls back to the first available model, as before; diagnose now says so and names the fix.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "bede0f0edf",
+          "date": "2026-10-28"
+        }
+      ],
+      "tests": [
+        "coding/cli/introspection_truth_test.go::TestDefaultModelResolutionDoesNotSplitAProviderPrefix",
+        "coding/cli/introspection_truth_test.go::TestDiagnoseDefaultModelWithoutProviderIsIgnoredLikePi",
+        "coding/cli/introspection_truth_test.go::TestDiagnoseIgnoresUntrustedProjectDefaultModel",
+        "coding/cli/introspection_truth_test.go::TestDiagnoseNamesTheActivePiglet",
+        "coding/cli/introspection_truth_test.go::TestDiagnoseQualifiedDefaultModelFallsBackAsPiDoes",
+        "coding/cli/introspection_truth_test.go::TestDiagnoseReportsTrustedProjectDefaultModelAndItsFile",
+        "coding/cli/introspection_truth_test.go::TestExportActivePigletSourceReachesToolProcesses",
+        "coding/cli/introspection_truth_test.go::TestReportProjectTrustNamesTheDeciding",
+        "coding/cli/introspection_truth_test.go::TestStatusAppliesTheActivePigletDiscovery",
+        "coding/cli/introspection_truth_test.go::TestStatusHumanOutputNamesTrustAndIgnoredResources",
+        "coding/cli/introspection_truth_test.go::TestStatusMarksUntrustedProjectResourcesIgnored",
+        "coding/cli/introspection_truth_test.go::TestStatusReportsASkillWithoutDescriptionAsNotLoaded",
+        "coding/cli/introspection_truth_test.go::TestStatusReportsAThemeWithAnUnknownColorRoleAsInvalid",
+        "coding/cli/introspection_truth_test.go::TestStatusTrustedProjectResourcesApply",
+        "coding/cli/introspection_truth_test.go::TestStatusWarnsWhenTheActivePigletSourceDoesNotLoad",
+        "coding/piglet/active_source_test.go::TestActiveSourceIsPath",
+        "coding/piglet/active_source_test.go::TestActiveSourceValue",
+        "coding/piglet/active_source_test.go::TestShowWithoutAnArgumentUsesTheActivePigletSource"
+      ]
+    },
+    {
+      "id": "BF-bede0f0-3",
+      "title": "`pig status` run from the agent's shell no longer lists ambient extensions and skills that the active…",
+      "symptom": "`pig status` run from the agent's shell no longer lists ambient extensions and skills that the active Piglet's `discovery` excludes.",
+      "rootCause": "pig status listed an untrusted project's resources as enabled and ignored the active Piglet's discovery; pig diagnose reported an untrusted project's defaultModel and printed a provider-qualified defaultModel as provider/provider/id. A skill without a description and a theme with an unknown color role showed no health.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`pig status` run from the agent's shell no longer lists ambient extensions and skills that the active Piglet's `discovery` excludes. Such resources show `ignored: piglet-discovery`.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "bede0f0edf",
+          "date": "2026-10-28"
+        }
+      ],
+      "tests": [
+        "coding/cli/introspection_truth_test.go::TestDefaultModelResolutionDoesNotSplitAProviderPrefix",
+        "coding/cli/introspection_truth_test.go::TestDiagnoseDefaultModelWithoutProviderIsIgnoredLikePi",
+        "coding/cli/introspection_truth_test.go::TestDiagnoseIgnoresUntrustedProjectDefaultModel",
+        "coding/cli/introspection_truth_test.go::TestDiagnoseNamesTheActivePiglet",
+        "coding/cli/introspection_truth_test.go::TestDiagnoseQualifiedDefaultModelFallsBackAsPiDoes",
+        "coding/cli/introspection_truth_test.go::TestDiagnoseReportsTrustedProjectDefaultModelAndItsFile",
+        "coding/cli/introspection_truth_test.go::TestExportActivePigletSourceReachesToolProcesses",
+        "coding/cli/introspection_truth_test.go::TestReportProjectTrustNamesTheDeciding",
+        "coding/cli/introspection_truth_test.go::TestStatusAppliesTheActivePigletDiscovery",
+        "coding/cli/introspection_truth_test.go::TestStatusHumanOutputNamesTrustAndIgnoredResources",
+        "coding/cli/introspection_truth_test.go::TestStatusMarksUntrustedProjectResourcesIgnored",
+        "coding/cli/introspection_truth_test.go::TestStatusReportsASkillWithoutDescriptionAsNotLoaded",
+        "coding/cli/introspection_truth_test.go::TestStatusReportsAThemeWithAnUnknownColorRoleAsInvalid",
+        "coding/cli/introspection_truth_test.go::TestStatusTrustedProjectResourcesApply",
+        "coding/cli/introspection_truth_test.go::TestStatusWarnsWhenTheActivePigletSourceDoesNotLoad",
+        "coding/piglet/active_source_test.go::TestActiveSourceIsPath",
+        "coding/piglet/active_source_test.go::TestActiveSourceValue",
+        "coding/piglet/active_source_test.go::TestShowWithoutAnArgumentUsesTheActivePigletSource"
       ]
     },
     {

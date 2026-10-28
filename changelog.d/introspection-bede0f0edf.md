@@ -1,0 +1,13 @@
+### Added
+
+- A session that runs a Piglet now sets `PIG_ACTIVE_PIGLET_SOURCE` in the environment of its tools: the path of the Piglet file, or the name of a Piglet Binary. `pig status`, `pig diagnose` and `pig piglet show` (with no argument) read it, so they work from the agent's shell. The variable is informational and selects no Piglet. A run with no Piglet removes it (D209).
+- `pig status --json` has a `trust` object, an `activePiglet` object when a Piglet is active, an `ignored` count in `resources`, and an `ignored` field on each resource item. `pig diagnose` prints the project trust decision, the active Piglet, the effective default model and the settings file each default-model setting came from.
+- `pig install <path> --validate-only` adds `autoDiscovered` to the report of a valid extension and a warning when auto-discovery would not load it from an extensions directory.
+
+### Fixed
+
+- `pig status` no longer lists the resources of an untrusted project as enabled. It resolves project trust as a print run does (saved decision, then `defaultProjectTrust`, else untrusted), shows the decision, and marks each project extension, skill, prompt and theme `ignored: untrusted` and not enabled. The settings and Packages of an untrusted project no longer count. <!-- fix: bede0f0edf -->
+- `pig diagnose` no longer reports the `defaultModel` of an untrusted project, which the session does not use. It reports the effective default model and the settings file of each part. A provider-qualified `defaultModel` such as `"bench/bench-2"` was printed as `bench/bench/bench-2`. Pi reads `defaultModel` as a model id and does not split it, so startup falls back to the first available model, as before; diagnose now says so and names the fix. <!-- fix: bede0f0edf -->
+- `pig status` run from the agent's shell no longer lists ambient extensions and skills that the active Piglet's `discovery` excludes. Such resources show `ignored: piglet-discovery`. <!-- fix: bede0f0edf -->
+- `pig status` now gives a skill without a `description` the health `not loaded: description is required`, and a theme with an unknown color role or another schema error an `invalid:` health, with a warning for each. Pi leaves out the skill and rejects the theme; status listed both as enabled with no health problem. <!-- fix: 7bf1cbb246 -->
+- `pig install <path> --validate-only` called a `.mjs` file, or a directory with only `index.mjs`, a valid extension without saying that auto-discovery ignores it. Pi discovers only `.ts` and `.js` files in an extensions directory. The report stays valid, because `-e` and a settings path load the source, and now says what discovery does. <!-- fix: 36fe3a67b3 -->
