@@ -594,6 +594,60 @@ func (e *engine) setStatus(id int64, status string) error {
 	return err
 }
 
+// settings.retry's defaults (harness/agent.ts): enabled, three retries, a base delay of 2 s that doubles with each attempt (generation.ts retryDelayMs).
+const (
+	retryMaxRetries  = 3
+	retryBaseDelayMs = 2000
+)
+
+// generationDelta is a delta that sets pi.live's `generation`: the attempt, and the retry a failed attempt waits for.
+func generationDelta(attempt int64, retry string) []byte {
+	return []byte(`[["s",["generation"],{"attempt":` + strconv.FormatInt(attempt, 10) + retry + `}]]`)
+}
+
+// interruptedRequest is Pi b3a29f11's generation.ts `interrupted`: the request of attempt n was in flight when the host stopped, so it is a
+// failed attempt. With a retry left the generation sleeps until the backoff (a sleeping commit with the retry's checkpoint and pi.live's
+// `generation.retry`); the wake runs the retry phase (running, then prepare of attempt n + 1 with its delta, then the request checkpoint), and
+// the model is asked again. No partial is stored here, so convertPartial has nothing to convert. Pi's virtual clock moves to the wake time and
+// stays there, so every later commit is stamped with it.
+func (e *engine) interruptedRequest(id int64, cp *jv.Object) error {
+	attempt := intOf(cp, "attempt")
+	if attempt > retryMaxRetries {
+		return errors.New("recovery: an interrupted request without a retry left is outside this host's workload")
+	}
+	until := e.now + retryBaseDelayMs*float64(int64(1)<<(attempt-1))
+	retryCheckpoint := obj("phase", "retry", "attempt", num(attempt), "until", until)
+	text := "The host stopped while the model was answering, on attempt " + strconv.FormatInt(attempt, 10)
+	retry := `,"retry":{"at":` + num2(until) + `,"error":` + quote(text) + `}`
+	if _, err := e.commit(func(tx *store.Tx) error {
+		e.live.Set("generation", obj("attempt", num(attempt), "retry", obj("at", until, "error", text)))
+		e.putTask(tx, e.tasks[id], state("sleeping", retryCheckpoint, "until", until))
+		tx.DocumentDelta(e.liveDoc, e.liveVer, generationDelta(attempt, retry))
+		return nil
+	}); err != nil {
+		return err
+	}
+	// The scheduler wakes the generation once the clock reaches `until`.
+	e.now = until
+	if _, err := e.commit(func(tx *store.Tx) error { e.putTask(tx, e.tasks[id], state("running", retryCheckpoint)); return nil }); err != nil {
+		return err
+	}
+	if _, err := e.commit(func(tx *store.Tx) error {
+		e.live.Set("generation", obj("attempt", num(attempt+1)))
+		e.putTask(tx, e.tasks[id], state("running", obj("phase", "prepare", "attempt", num(attempt+1))))
+		tx.DocumentDelta(e.liveDoc, e.liveVer, generationDelta(attempt+1, ""))
+		return nil
+	}); err != nil {
+		return err
+	}
+	_, err := e.commit(func(tx *store.Tx) error {
+		e.putTask(tx, e.tasks[id], state("running", obj("phase", "request", "attempt", num(attempt+1), "model", mustGet(cp, "model"),
+			"thinkingLevel", mustGet(cp, "thinkingLevel"), "streamOptions", mustGet(cp, "streamOptions"), "cutoff", mustGet(cp, "cutoff"))))
+		return nil
+	})
+	return err
+}
+
 // recover resumes a turn from the persisted task states the way pi-durable's recovery does: a running task is re-queued as
 // pending, then each task continues from its checkpoint phase. A tool that reached its execute phase may have run, so it
 // settles as interrupted instead of running again.
@@ -700,6 +754,10 @@ func (e *engine) recover(live *store.Live) error {
 		}
 		if err := e.setStatus(gen.ID(), "running"); err != nil {
 			return err
+		}
+		// The host stopped while this request was in flight: a failed attempt under settings.retry, not a resend (generation.ts request, interrupted).
+		if e.tasks[gen.ID()].V.Has("restarts") {
+			return e.interruptedRequest(gen.ID(), cp)
 		}
 		if _, ok := e.live.Get("generation"); !ok {
 			_, err := e.commit(func(tx *store.Tx) error {

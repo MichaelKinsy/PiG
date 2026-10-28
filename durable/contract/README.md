@@ -110,6 +110,10 @@ A facade candidate also names `wasm` (the core module its build produces, passed
 
 A U row may name tests whose assertion depends on a real-time window the reference shares, for example a test that sleeps 20 ms inside the 100 ms output throttle window. A process stall longer than the window fails such a test in the reference as well as in the candidate. When the candidate fails only tests named in `real_time_tests`, the row reruns the file once and passes only if those tests pass the second time. The row's detail then says `retried once`. A second failure fails the row. Add a test to the list only after measuring that the reference fails it at the same stall.
 
+## Measured divergences (`measured_test`, `measured_failure`, `measured_divergence`)
+
+A U row may state the measured value of an approved divergence in a test of the reference's own file. `measured_test` names the test (a prefix of its full name), `measured_failure` the text the candidate's failure carries, and `measured_divergence` the divergence whose record (`docs/parity/divergences/D<N>.md`, `SCRUTINIZED:approved`) the corpus check requires. The row passes only when the candidate fails that test with that failure: a pass fails the row (the divergence is over; delete the fields and the record), and any other failure fails it like every other test. The control never takes it. `U-harness-restart-failure` carries D206: Pi's test counts 49 reads of `extensions` for a round, and the core's host reads them 6 times (`expected 6 to be 49`).
+
 ## Count budgets (`cli/counts.mjs`)
 
 What a turn costs in work that does not depend on the machine, compared exactly with a committed baseline (`counts.json`). Build the cores first, as for the robustness proofs.
