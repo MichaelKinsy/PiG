@@ -1,9 +1,13 @@
 package pigletbuild
 
 import (
+	"io"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 
 	piglet "github.com/MichaelKinsy/PiG/coding/piglet"
@@ -221,19 +225,56 @@ func TestPigletBinaryAcceptsOverlaysOnlyWhenItsPigletSaysSo(t *testing.T) {
 		}
 	})
 	t.Run("an overlay narrows a fused member's tools by naming it without origins", func(t *testing.T) {
-		t.Setenv("PIG_TEST_FAUX", "1")
-		t.Setenv("PIG_OFFLINE", "1")
-		code, output := startPigletBinary(t, accepting, "--help")
-		if code != 0 || !strings.Contains(output, "hello_tool") {
-			t.Fatalf("the fused extension's tool is not listed: exit %d\n%s", code, output)
-		}
-		overlay := filepath.Join(root, "overlays", "narrow.yaml")
-		if err := os.WriteFile(overlay, []byte("name: narrow\nextensions:\n  - name: hello\n    tools: []\n"), 0o644); err != nil {
+		var mu sync.Mutex
+		var requests []string
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			body, _ := io.ReadAll(r.Body)
+			mu.Lock()
+			requests = append(requests, string(body))
+			mu.Unlock()
+			w.Header().Set("Content-Type", "text/event-stream")
+			_, _ = io.WriteString(w, "data: {\"choices\":[{\"index\":0,\"delta\":{\"role\":\"assistant\",\"content\":\"pong\"}}]}\n\n"+
+				"data: {\"choices\":[{\"index\":0,\"delta\":{},\"finish_reason\":\"stop\"}],\"usage\":{\"prompt_tokens\":1,\"completion_tokens\":1,\"total_tokens\":2}}\n\ndata: [DONE]\n\n")
+		}))
+		defer server.Close()
+		home := t.TempDir()
+		agentDir := filepath.Join(home, ".pig", "agent")
+		if err := os.MkdirAll(agentDir, 0o755); err != nil {
 			t.Fatal(err)
 		}
-		code, output = startPigletBinary(t, accepting, "--piglet", overlay, "--help")
-		if code != 0 || !strings.Contains(output, "--base-flag") || strings.Contains(output, "hello_tool") {
-			t.Fatalf("narrowed fused member: exit %d\n%s", code, output)
+		models := `{"providers":{"mock":{"baseUrl":"` + server.URL + `/v1","api":"openai-completions","apiKey":"x","models":[{"id":"m1","name":"m1","reasoning":false,"input":["text"],"contextWindow":8000,"maxTokens":1000}]}}}`
+		if err := os.WriteFile(filepath.Join(agentDir, "models.json"), []byte(models), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		t.Setenv("PIG_OFFLINE", "1")
+		overlay := filepath.Join(root, "overlays", "narrow.yaml")
+		write := func(body string) {
+			if err := os.WriteFile(overlay, []byte(body), 0o644); err != nil {
+				t.Fatal(err)
+			}
+		}
+		toolsOf := func(extra ...string) string {
+			mu.Lock()
+			requests = nil
+			mu.Unlock()
+			code, output := startPigletBinaryHome(t, home, accepting, append([]string{"--no-session", "-p", "ping"}, extra...)...)
+			if code != 0 {
+				t.Fatalf("exit %d\n%s", code, output)
+			}
+			mu.Lock()
+			defer mu.Unlock()
+			if len(requests) != 1 {
+				t.Fatalf("provider requests = %d\n%s", len(requests), output)
+			}
+			return requests[0]
+		}
+		write("name: mock\nmodel:\n  provider: mock\n  name: m1\n")
+		if request := toolsOf("--piglet", overlay); !strings.Contains(request, "hello_tool") {
+			t.Fatalf("the fused extension's tool is not offered:\n%s", request)
+		}
+		write("name: narrow\nmodel:\n  provider: mock\n  name: m1\nextensions:\n  - name: hello\n    tools: []\n")
+		if request := toolsOf("--piglet", overlay); strings.Contains(request, "hello_tool") {
+			t.Fatalf("the overlay's empty tool list for the fused extension was ignored:\n%s", request)
 		}
 	})
 	t.Run("--system-prompt is accepted by a Binary that accepts overlays and refused by one that does not", func(t *testing.T) {
