@@ -186,11 +186,11 @@ An enterprise review asks for a set of controls. This table maps each to a Pigle
 
 | Control | Piglet setting | What it gives | Limit |
 |---|---|---|---|
-| C1/D4: run untrusted tools and extensions inside an operating-system boundary, with a low-privilege account | `agentEnv.image` with `pigRuntime.mode: image`, on a source Piglet. For a Binary, run it in a container or virtual machine that you provide. | The agent runs in a container as the invoking user, with no capabilities, no new privileges and a read-only root file system. | Not available inside a Binary. `--unsafe-host` skips it. The network is not restricted. |
-| C2/D2: run model-chosen commands as an argument array, never through a shell | `tools` without `bash` or `powershell`, or `strip.tools`. | The model has no shell tool. | No setting makes the `bash` tool use an argument array. It always runs `shell -c <command>`. |
-| C2/D3: allow only listed commands and arguments | No setting. | None. Omit `bash` as above, and give the model a fused extension tool that runs only the commands you accept. | A fused extension tool is code you review. PiG does not check it. |
-| C3/D5a: children get a minimal environment and a secrets broker | `agentEnv.secrets` with `secretRef`, and `secrets` declarations. | The container receives only the bound secrets, not the host environment. | A command that the `bash` tool runs inherits the whole container environment. No per-tool filter or broker exists. |
-| D5b: pin an absolute `PATH` | No setting. | None. Set `PATH` in the image. | Node, Python and Lisp source extensions find their runtimes on `PATH`. |
+| C1: run untrusted tools and extensions inside an operating-system boundary, with a low-privilege account | `agentEnv.image` with `pigRuntime.mode: image`, on a source Piglet. For a Binary, run it in a container or virtual machine that you provide. | The agent runs in a container as the invoking user, with no capabilities, no new privileges and a read-only root file system. | Not available inside a Binary. `--unsafe-host` skips it. The network is not restricted. |
+| C2a: run model-chosen commands as an argument array, never through a shell | `tools` without `bash` or `powershell`, or `strip.tools`. | The model has no shell tool. | No setting makes the `bash` tool use an argument array. It always runs `shell -c <command>`. |
+| C2b: allow only listed commands and arguments | No setting. | None. Omit `bash` as above, and give the model a fused extension tool that runs only the commands you accept. | A fused extension tool is code you review. PiG does not check it. |
+| C3a: children get a minimal environment and a secrets broker | `agentEnv.secrets` with `secretRef`, and `secrets` declarations. | The container receives only the bound secrets, not the host environment. | A command that the `bash` tool runs inherits the whole container environment. No per-tool filter or broker exists. |
+| C3b: pin an absolute `PATH` | No setting. | None. Set `PATH` in the image. | Node, Python and Lisp source extensions find their runtimes on `PATH`. |
 
 Build a controlled Binary in these steps:
 
