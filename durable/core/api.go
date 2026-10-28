@@ -300,6 +300,7 @@ func (h *handler) api(op string, req *jv.Object) (any, error) {
 		return h.usage()
 	case "commits":
 		h.changes, _ = boolOf(req, "on")
+		h.sess.TrackDropped = h.changes
 		if !h.changes {
 			h.sent = h.sent[:0]
 		}

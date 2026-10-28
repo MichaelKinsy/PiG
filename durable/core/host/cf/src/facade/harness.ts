@@ -10,7 +10,7 @@ import { lazyValue, Revision } from "./valuechain.ts"
 import type { ConversationId, ReportInfo } from "@earendil-works/pi-durable"
 import { EVENT, NOTICE } from "../abi.ts"
 import { CoreClient } from "../client.ts"
-import { forgetSnapshots, substitutePublished, substituteWrite } from "./snapshots.ts"
+import { forgetSnapshots, forgetTrackers, substitutePublished, substituteWrite } from "./snapshots.ts"
 import { createEffectHandlers, type EffectRuntime, type ModelsLike } from "../effects.ts"
 import { FatalError, HostSession, RejectedError, type CoreHandle, type Renewal } from "../host.ts"
 import { HostRegistry, type HostRegistrySource } from "../registry.ts"
@@ -27,7 +27,7 @@ import { WatchHub } from "./watches.ts"
 import type { Observer } from "./watch-types.ts"
 import { runCommit, TxProxy, wireDefinition } from "./tx.ts"
 import type { CommitOptions } from "./hostapi.ts"
-import { recordPublication } from "./publications.ts"
+import { forgetPublished, recordPublication } from "./publications.ts"
 import { adaptStorage, overriddenMethods, SqlStorage, type Storage, type StorageProfile } from "./storage.ts"
 import { coreFromEnvironment } from "./core-env.ts"
 import { customTaskRunner } from "./taskruntime.ts"
@@ -803,6 +803,7 @@ export class Harness {
   }
   private setCommitChanges(on: boolean) {
     if (!on) this.documentValues.clear()
+    this.client.onDropped = on ? documents => { for (const { id } of documents) this.documentValues.delete(id); forgetPublished(this.client, documents.map(d => d.id)); forgetTrackers(this.client, documents.map(d => d.address)) } : undefined
     if (!this.shut) this.client.api("commits", { on }).catch(() => {})
   }
 
