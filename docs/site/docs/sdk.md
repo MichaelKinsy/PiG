@@ -365,7 +365,7 @@ A program that embeds PiG without a terminal still links everything the session 
 CGO_ENABLED=0 go build -trimpath -ldflags "-s -w" -o headless ./examples/headless
 ```
 
-On linux/amd64 this is 36.7 MB, against 69.7 MB for the `pig` command. Four things are already left out of such a program without any option: the Amazon Bedrock provider and the AWS SDK behind it (3.3 MB, package `ai/providers/bedrock`, which only `ai/all` and the `pig` command import), the terminal MCP view and tool renderers (package `mcptui`, see below), the terminal editor with the word dictionaries behind it (6.3 MB), and the announcement image of the interactive mode (0.5 MB). The rest is features you can remove with build tags.
+On linux/amd64 this is 36.7 MB, against 69.7 MB for the `pig` command. Five things are already left out of such a program without any option: the Lisp extension support (the SBCL image build, the Quicklisp resolver and the Lisp source resolver, 78 KB, package `coding/extension/host/lispcell`, which only the `pig` command imports; a program that imports it for its side effect, `import _ "github.com/MichaelKinsy/PiG/coding/extension/host/lispcell"`, can load Lisp extensions, and in any other program a Lisp extension does not load), the Amazon Bedrock provider and the AWS SDK behind it (3.3 MB, package `ai/providers/bedrock`, which only `ai/all` and the `pig` command import), the terminal MCP view and tool renderers (package `mcptui`, see below), the terminal editor with the word dictionaries behind it (6.3 MB), and the announcement image of the interactive mode (0.5 MB). The rest is features you can remove with build tags.
 
 ### Strip tags
 
