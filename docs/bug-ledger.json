@@ -10479,6 +10479,27 @@
       ]
     },
     {
+      "id": "BF-5bf8461",
+      "title": "fix(durable/core): a phase span answer that is no uint32 handle names no span",
+      "symptom": "fix(durable/core): a phase span answer that is no uint32 handle names no span",
+      "rootCause": "The host's answer to the phaseSpan hook was converted from float64 without a range check, so a negative or out-of-range value became an implementation-defined handle.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "5bf8461a52",
+          "date": "2026-10-27"
+        }
+      ],
+      "tests": [
+        "durable/core/session/phase_answered_test.go::TestPhaseAnsweredTakesOnlyAUint32SpanHandle"
+      ]
+    },
+    {
       "id": "BF-5c4167a",
       "title": "fix(extension): hold the theme colors map the wire palette memo is keyed on",
       "symptom": "fix(extension): hold the theme colors map the wire palette memo is keyed on",
