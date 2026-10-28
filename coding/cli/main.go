@@ -382,8 +382,7 @@ func resolvePigletOn(unknownFlags map[string]any, trustOverride *bool, binary pi
 			if err == nil {
 				pigletPath = resolved
 			} else if base != nil {
-				// An overlay that does not resolve never falls back to the Binary's own Piglet silently.
-				fmt.Fprintf(os.Stderr, "warning: piglet %q: %v\n", name, err)
+				// An overlay that does not resolve never falls back to the Binary's own Piglet; the caller reports the Piglet as not loaded, as for stock pig.
 				return nil, false
 			}
 		}

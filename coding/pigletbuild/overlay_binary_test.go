@@ -17,6 +17,7 @@ import sdk "github.com/MichaelKinsy/PiG/extensions/sdk"
 
 func Extension() *sdk.Extension {
 	ext := sdk.New("hello")
+	ext.Tool("hello_tool", "Tool of the Binary's own extension", sdk.Schema{"type": "object"}, func(sdk.Context, map[string]any) (any, error) { return "ok", nil })
 	ext.Flag("base-flag", sdk.FlagOptions{Description: "Flag of the Binary's own extension", Type: sdk.FlagBoolean})
 	return ext
 }
@@ -217,6 +218,20 @@ func TestPigletBinaryAcceptsOverlaysOnlyWhenItsPigletSaysSo(t *testing.T) {
 		}
 		if !strings.Contains(output, "  ls         - ") {
 			t.Fatalf("the re-enabled runtime strip entry stays stripped:\n%s", output)
+		}
+	})
+	t.Run("an overlay narrows a fused member's tools by naming it without origins", func(t *testing.T) {
+		code, output := startPigletBinary(t, accepting, "--help")
+		if code != 0 || !strings.Contains(output, "hello_tool") {
+			t.Fatalf("the fused extension's tool is not listed: exit %d\n%s", code, output)
+		}
+		overlay := filepath.Join(root, "overlays", "narrow.yaml")
+		if err := os.WriteFile(overlay, []byte("name: narrow\nextensions:\n  - name: hello\n    tools: []\n"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		code, output = startPigletBinary(t, accepting, "--piglet", overlay, "--help")
+		if code != 0 || !strings.Contains(output, "--base-flag") || strings.Contains(output, "hello_tool") {
+			t.Fatalf("narrowed fused member: exit %d\n%s", code, output)
 		}
 	})
 	t.Run("--system-prompt is accepted by a Binary that accepts overlays and refused by one that does not", func(t *testing.T) {

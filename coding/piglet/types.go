@@ -119,8 +119,9 @@ type Piglet struct {
 	lineage          []LineageEntry  // exact resolved lineage; never serialized
 	effectiveDigest  string
 	graphDigest      string
-	workspaceRoot    string // invocation-selected workspace; never serialized
-	devContainerPath string // resolved workspace-anchored path; never serialized
+	workspaceRoot    string          // invocation-selected workspace; never serialized
+	bakedSkills      map[string]bool // skills a Piglet Binary baked that an overlay left unchanged; never serialized
+	devContainerPath string          // resolved workspace-anchored path; never serialized
 }
 
 // ExtendsSpec selects one base Piglet source plus an optional author version
