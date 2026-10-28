@@ -303,7 +303,7 @@ func TestPigletToolScopeRulesInTheFirstRequest(t *testing.T) {
 					t.Errorf("first request tools = %v, want no %q", first.Tools, name)
 				}
 			}
-			if line := "Active Piglet: registry-scope. Tool scope: all built-in tools; " + test.scopeLine; !strings.Contains(first.System, line) {
+			if line := "Active Piglet: registry-scope. Tool scope, at most: all built-in tools; " + test.scopeLine; !strings.Contains(first.System, line) {
 				t.Errorf("system prompt lacks %q", line)
 			}
 			if test.notice == "" {

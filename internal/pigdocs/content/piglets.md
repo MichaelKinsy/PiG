@@ -81,7 +81,7 @@ The table below shows the result. The code computes the table. A test fails if t
 
 <!-- tool-scope-table:end -->
 
-If a Piglet hides MCP tools, `pig piglet show` prints a line that gives the reason. When the first prompt starts, PiG also tells you which servers and tools the Piglet hid, and why. The agent gets one short line with the name of the Piglet and its tool scope.
+If a Piglet hides MCP tools, `pig piglet show` prints a line that gives the reason. When the first prompt starts, PiG also tells you which servers and tools the Piglet hid, and why. The agent gets one short line with the name of the Piglet and the most that its tool scope lets it reach. The line leaves out the tools that the strip lists remove.
 
 ## Piglet schema
 

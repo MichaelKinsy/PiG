@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/coding/extension"
+	"github.com/MichaelKinsy/PiG/internal/pigstrip"
 )
 
 func TestMCPScopeLineAndSummary(t *testing.T) {
@@ -82,5 +83,20 @@ func TestShowPrintsTheMCPScopeLine(t *testing.T) {
 		if got := strings.Contains(stdout.String(), "MCP tools:"); got != (test.want != "") || test.want != "" && !strings.Contains(stdout.String(), test.want) {
 			t.Errorf("%s: show output\n%s\nwant line %q", name, stdout.String(), test.want)
 		}
+	}
+}
+
+// The agent line states the most the agent can reach in this process: it leaves out what the strip lists remove.
+func TestToolScopeSummaryLeavesOutStrippedTools(t *testing.T) {
+	list := []string{"read", "bash"}
+	undoTool := pigstrip.Strip(pigstrip.ListTools, "bash")
+	defer undoTool()
+	undoMCP := pigstrip.Strip(pigstrip.ListExtensions, "mcp")
+	defer undoMCP()
+	if got, want := ToolScopeSummary(&Piglet{BuiltinTools: &list}), "built-in tools read; no MCP tools"; got != want {
+		t.Errorf("summary = %q, want %q", got, want)
+	}
+	if got, want := ToolScopeSummary(&Piglet{}), "all built-in tools except bash; no MCP tools"; got != want {
+		t.Errorf("summary = %q, want %q", got, want)
 	}
 }
