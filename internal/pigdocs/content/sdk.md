@@ -201,5 +201,5 @@ See the [upstream Pi SDK documentation](https://pi.dev/docs/latest/sdk) when you
 
 - [Extensions](extensions.md)
 - [Piglets](piglets.md)
-- [Derivative harnesses](https://pi-in-go.dev/docs/latest/derivative-harnesses)
+- [Extend and modify PiG](extend-pig.md)
 - [RPC mode](rpc.md)

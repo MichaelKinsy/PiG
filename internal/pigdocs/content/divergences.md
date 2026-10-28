@@ -1,6 +1,6 @@
 # Divergences
 
-Pig preserves upstream pi-coding-agent's observable behavior unless an entry below records an intentional exception. Numbers are stable identifiers; do not reuse a retired one. Read this page with `pig docs show divergences`. The call sites and evidence for each entry are in the PiG source repository. This page lists every active divergence and every additive feature.
+Pig preserves upstream pi-coding-agent's observable behavior unless an entry below records an intentional exception. Numbers are stable identifiers; do not reuse a retired one. Read this page with `pig docs show divergences`. The call sites and evidence for each entry are in the PiG source repository. This page lists every active divergence. [Additive features](additive-features.md) lists the PiG-only features an author needs.
 
 ## Behavior differences
 
@@ -119,52 +119,7 @@ RPC33 retains complete JSON and stderr comparison and three declared runs. Its r
 
 ## Additive features
 
-These add PiG-only capability without changing a Pi behavior. The table lists every additive feature with its ID, title, and first sentence. Search it with `grep -n -i <word>`.
-
-<!-- additive-list:start -->
-
-| ID | Title | Summary |
-|---|---|---|
-| D18 | Piglet management and build dispatch | PiG manages, validates, runs, and builds Piglets with generic commands, and Pi has no Piglets. |
-| D19 | Multi-language subprocess SDK bridges | PiG ships extension SDKs for Go, Rust, and Python that use the same wire protocol and the same features. |
-| D20 | Packed runtime-cell substrate for factory extensions | PiG can pack several Go factory extensions into one host process, and the result looks the same as separate processes. |
-| D21 | Reload placement report | The /reload --explain command shows how the last reload placed, built, and replaced each extension. |
-| D22 | Stock documentation materialization | PiG carries its own manual, and the pig docs command writes it to the config directory so no source checkout is needed. |
-| D23 | Per-tool source metadata and piglet-scoped active-tool Context API | Extensions can list all tools with their source, read and change the active tools, and read flag values. |
-| D28 | Extension validation report surface (pig install --validate-only --json) | The pig install --validate-only command loads and starts an extension without installing it and prints a machine-readable report. |
-| D31 | Fused in-process extension runtime for Piglet Binaries | A Piglet Binary can run a Go extension inside the host process instead of in a separate process. |
-| D36 | Insecure TLS opt-in for OpenAI-compatible providers | A provider entry can turn off TLS certificate checks for an OpenAI-compatible endpoint that uses a self-signed or internal certificate. |
-| D40 | Extension-contributed authentication targets | The pig login --list command shows every sign-in method, including the methods that extensions add. |
-| D41 | Additive typed status and Piglet inventory | The pig package list, pig status, and pig piglet list commands can print Packages, Resources, and Piglets as JSON. |
-| D52 | Extension terminal-geometry context (ctx.width / ctx.height) | Extensions can read the terminal width and height and learn when either one changes. |
-| D60 | Typed native login extension API | An extension can replace the header with a native login screen by calling ui.setLogin. |
-| D67 | Windows container builds use the image default user | Container builds on Windows use the default user of the image because Windows has no numeric user ID. |
-| D69 | Windows Piglet scripts are cmd.exe launchers | The Piglet script build writes a cmd.exe launcher on Windows and a shell launcher on other systems. |
-| D81 | Same-manager helper download coalescing | When two requests need the same missing helper tool, PiG downloads it only once. |
-| D91 | Piglet frontend members draw the interactive mode | A Piglet Binary can include a Go frontend member that draws the interactive screen. |
-| D92 | Piglet strip lists disable built-ins and compile them out of a Piglet Binary | A Piglet can strip built-in tools, commands, extensions, APIs, and features, and a Piglet Binary compiles out what the Piglet strips. |
-| D95 | Install-change restart warning for a running native executable | PiG warns you to restart when an update or removal replaced the pig executable that is running. |
-| D97 | Packaged remote execution daemons live next to the pig executable | PiG finds the remote execution daemons in a pi-env folder next to the pig executable, or in the folder that PI_ENV_DAEMON_DIR names. |
-| D100 | Crash attribution reads Go panic traces | The crash log recognizes Go panic stack traces and names the code that crashed. |
-| D101 | The get_extensions RPC command lists the loaded extensions | The get_extensions RPC command returns the list of loaded extensions. |
-| D102 | Exit log, crash-output markers and uncaught-goroutine handling for interactive sessions | PiG writes an exit log and crash markers when a signal, a dead terminal, or a Go panic ends an interactive session. |
-| D104 | Durable read path | Durable storage keeps a bounded working set of decoded entries, so it does not re-read the whole transcript for each context read. |
-| D107 | Extension component kit | An extension can describe its screen as a tree of standard UI components that the host renders. |
-| D109 | Extension SDK upgrade | When a Go extension fails to build because the SDK changed, PiG says that it was written for an older SDK and shows each changed API. |
-| D112 | Bounded performance caches and pooled buffers | PiG caches compiled tool schemas and reuses buffers within fixed limits to save time and memory. |
-| D160 | Tool results carry a collapsed-view preview | A tool result can carry a short preview that the TUI shows while the result is collapsed. |
-| D170 | Piglet tree, lineage and provenance diagnostics | The pig piglet tree and pig piglet lineage commands show how installed Piglets extend each other and where each one comes from. |
-| D172 | Idle spinner parking and idle heap return | An idle interactive session stops its spinner timer and returns unused memory after 500 ms without input. |
-| D174 | GOMAXPROCS 2 runtime policy (1 in rpc mode); loaders the user waits on run at the default width | PiG limits GOMAXPROCS to 2, or to 1 in RPC mode, unless you set it yourself. |
-| D175 | Print, json and rpc runs collect at GOGC 400 until the live heap passes 64 MiB | Print, JSON, and RPC runs use a garbage-collection percent of 400 until the live heap passes 64 MiB, unless you set GOGC. |
-| D176 | A running bash block keeps only the output window it shows | A running bash block keeps only the last part of the output that it shows, about 50 KB. |
-| D189 | Host calls made by deferred work carry a timer mark, and the host holds them for Pi's loop turn | A call that an extension timer makes waits for the same loop turn as in Pi, so timer order matches Pi. |
-| D191 | Outbound TLS refuses chains through the compromised eMudhra intermediates and the roots NSS removed after them | PiG refuses TLS connections whose certificate chain uses the compromised eMudhra intermediate certificates or the roots that NSS removed. |
-| D194 | Piglet resolution installs npm and Git Packages with lifecycle scripts disabled unless the command opts in | Resolving a Piglet installs npm and Git Packages with lifecycle scripts turned off unless the command allows them. |
-| D201 | The SDK resource loader takes the runtime its extensions register against | The SDK resource loader accepts a runtime, so the extensions it loads register against the runtime that you supply. |
-| D202 | A Piglet Binary can declare that it accepts overlay Piglets (build.allowOverlays) | A Piglet Binary built with build.allowOverlays accepts a Piglet that you choose at launch as an overlay. |
-
-<!-- additive-list:end -->
+PiG-only features that change how you extend or modify PiG are listed in [Additive features](additive-features.md).
 
 ## Non-divergences
 

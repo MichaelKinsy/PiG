@@ -3,6 +3,13 @@
 This is PiG's user manual and the canonical local reference for coding agents
 helping users manage PiG.
 
+> **Differs from Pi, or easy to get wrong**
+> - Config lives in `~/.pig` and `.pig/`, never `~/.pi` or `.pi/` (D2).
+> - Project files load only in a trusted project. With `-p` there is no prompt and PiG skips them: pass `--approve` ([trust](trust.md)).
+> - A Piglet's `tools:` is a ceiling, not a list to turn on ([strip built-ins](piglet-strip.md)).
+> - Skills load from `~/.pig/agent/skills/` and `~/.agents/skills/`, not `~/.pig/skills/` ([skills](skills.md)).
+> - Only top-level `.ts` or `.js` files load from an extensions folder. Go, Rust, Python, and Lisp are the main languages ([extensions](extensions.md)).
+
 PiG is the Go-native port of upstream Pi. Numbered differences are summarized in
 [divergences](divergences.md). `divergences.md` has one row per line, so search it with `grep -n -i <word>` instead of reading it whole.
 
@@ -12,10 +19,10 @@ Read the one row that matches the task, then follow only its direct links.
 
 | I want to... | Start here | Then read |
 |---|---|---|
+| make PiG do something it does not do | [Extend and modify PiG](extend-pig.md) | [Extensions](extensions.md) or [Piglets](piglets.md) |
 | a tool, command, extension, or model is missing | [Strip built-ins and limit tools](piglet-strip.md) | [Commands](commands.md#tools) |
 | which Piglet is active and what it limits | [Strip built-ins and limit tools](piglet-strip.md#inspect-the-active-piglet) | [Piglets](piglets.md) |
-| check whether PiG differs from upstream Pi (`grep -n -i <word> divergences.md`) | [Divergences](divergences.md) | [Concepts](concepts.md) |
-| find what is PiG-only | [Divergences](divergences.md#additive-features) | [Knowledge graph](knowledge-graph.md) |
+| check a Pi behavior before assuming it in an area PiG changed (config paths, trust, tools, extensions) | [Divergences](divergences.md) (`grep -n -i <word> divergences.md`) | The "Differs from Pi" boxes in [Settings](settings.md), [Extensions](extensions.md), and [Skills](skills.md) |
 | start from zero, guided | [Onboarding](onboarding.md) | [Install](install.md) |
 | do everyday work for a user who does not program (PDFs, spreadsheets, documents, reports, files) | [Applied use cases](applied-use-cases.md) | [Sessions](sessions.md) |
 | install PiG and run a first session | [Install](install.md) | [Providers](providers.md) |
@@ -47,6 +54,7 @@ Read the one row that matches the task, then follow only its direct links.
 | build terminal UI for an extension | [TUI components](tui.md) | [Extension API](extension-api.md) |
 | embed PiG in a program | [SDK](sdk.md) | [Extensions](extensions.md) |
 | add a provider or model endpoint | [Custom providers](custom-provider.md) | [Models](models.md) |
+| look up a PiG-only feature for authors by its D number | [Additive features](additive-features.md) | [Divergences](divergences.md) |
 | understand Stock Pig and explicit compositions | [Stock Pig and PiG Standard](built-in-extensions.md) | [Divergences](divergences.md) |
 | map entities, paths, and the command that inspects each | [Knowledge graph](knowledge-graph.md) | [Concepts](concepts.md) |
 | run PiG from a script or another program | [CLI integration](cli-integration.md) | [JSON mode](json.md) or [RPC](rpc.md) |

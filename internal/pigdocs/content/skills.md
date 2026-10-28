@@ -1,6 +1,10 @@
 # Skills
 
-A skill is a block of task-specific instructions you load into a session. An extension adds a *capability* (a tool, a command); a skill adds *knowledge*: how to do a particular job well, in your own words, without writing code. When a skill is loaded, its instructions become part of the agent's guidance for that session.
+> **Differs from Pi, or easy to get wrong**
+> - User skills live in `~/.pig/agent/skills/` or `~/.agents/skills/`. PiG does not scan `~/.pig/skills/` or `~/.pi`.
+> - Project skills (`.pig/skills/`, `.agents/skills/`) load only in a trusted project. With `-p` pass `--approve`.
+
+A skill is a block of task-specific instructions for a session. An extension adds a *capability* (a tool, a command); a skill adds *knowledge*: how to do a particular job well, in your own words, without writing code. PiG tells the model each skill's name, description, and path. The model reads the full instructions only when the task needs them.
 
 Use a skill when the thing you want to reuse is a procedure or a convention, not a new tool: your commit-message format, how to run this repo's tests, the steps for cutting a release.
 
@@ -9,7 +13,7 @@ Use a skill when the thing you want to reuse is a procedure or a convention, not
 A skill is a directory named for the skill, containing a `SKILL.md` file:
 
 ```text
-~/.pig/skills/commit/SKILL.md
+~/.pig/agent/skills/commit/SKILL.md
 ```
 
 `SKILL.md` is markdown with a YAML frontmatter header:
@@ -25,8 +29,8 @@ Explain *why* in the body, not what. Never mention tooling.
 ```
 
 - **`name`** - the skill's identifier (defaults to the directory name).
-- **`description`** - a one-line summary.
-- **body** - the instructions, appended to the agent's system prompt under a `## Skills` heading when the skill is loaded.
+- **`description`** - what the skill does and when it applies. The model uses it to decide when to read the skill, so write both parts.
+- **body** - the instructions. PiG does not put the body in the system prompt. The model reads this file when the description matches the task.
 
 ## Load a skill
 
@@ -49,7 +53,7 @@ skills:
 For a portable Piglet, use ordered typed `origins`, usually a declared
 `package:<alias>` member or `local:<relative-path>`. A bare name is convenient
 on your machine but depends on a local skill already being installed under the
-config tree (`~/.pig/skills/<name>/SKILL.md`).
+config tree (`~/.pig/agent/skills/<name>/SKILL.md`).
 
 ## Discovery
 
@@ -57,9 +61,12 @@ Beyond explicit `--skill` and piglet entries, pig can discover skills already si
 
 PiG scans:
 
+- `~/.pig/agent/skills/` for user-level skills,
+- `~/.agents/skills/` for user-level skills in the Agent Skills location,
 - `.agents/skills/` at each directory from the workspace up to its root,
-- `~/.agents/skills/` for user-level skills,
 - `.pig/skills/` in the workspace.
+
+PiG does not scan `~/.pig/skills/`. Project locations load only in a trusted project ([project trust](trust.md)).
 
 A piglet controls whether this scan runs, so a locked-down agent picks up nothing it did not declare:
 

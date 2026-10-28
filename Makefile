@@ -731,7 +731,7 @@ bench-report: ## Re-render report.md and summary.csv from a raw.json: make bench
 
 ##@ Docs
 
-additive-list: ## Regenerate the Additive features table in the agent docs page divergences.md from docs/additive-features.md
+additive-list: ## Regenerate the agent docs page additive-features.md from docs/additive-features.md
 	@python3 automation/gen/gen-additive-list.py
 
 knowledge-graph: ## Regenerate the knowledge graph page, JSON-LD, and Mermaid from docs/knowledge-graph/pig.graph.json
