@@ -10,6 +10,12 @@ import (
 // framePart is a component whose Render is a function, so a test can call the screen from inside it as a subprocess extension's component does.
 type framePart struct{ render func(width int) []string }
 
+// newFrameScreenForTest is a screen whose renderer records the goroutine that runs a frame, as the extension host asks.
+func newFrameScreenForTest(out *bytes.Buffer, width, height int) *TuiAltScreen {
+	screen := newAltScreenForTest(out, width, height, TuiAltScreenOptions{})
+	screen.EnableFrameAccess()
+	return screen
+}
 func (p *framePart) Render(width int) []string { return p.render(width) }
 func (p *framePart) Invalidate()               {}
 
@@ -27,7 +33,7 @@ func screenRows(screen *TuiAltScreen, n int) []string {
 // Frame is how the goroutine that runs the frame says so: no other goroutine, including one a render starts and waits for, is the frame.
 func TestAltScreenFrameBelongsToTheRenderingGoroutine(t *testing.T) {
 	var out bytes.Buffer
-	screen := newAltScreenForTest(&out, 20, 4, TuiAltScreenOptions{})
+	screen := newFrameScreenForTest(&out, 20, 4)
 	if _, ok := screen.Frame(); ok {
 		t.Fatal("Frame reports a frame outside one")
 	}
@@ -58,7 +64,7 @@ func TestAltScreenFrameBelongsToTheRenderingGoroutine(t *testing.T) {
 // The exit dump of Stop renders the components as a frame does, under the same lock.
 func TestAltScreenFrameCoversTheExitDump(t *testing.T) {
 	var out bytes.Buffer
-	screen := newAltScreenForTest(&out, 20, 4, TuiAltScreenOptions{})
+	screen := newFrameScreenForTest(&out, 20, 4)
 	stopping, inDump := false, false
 	screen.Add(&framePart{render: func(int) []string {
 		if stopping {
@@ -77,7 +83,7 @@ func TestAltScreenFrameCoversTheExitDump(t *testing.T) {
 // A render that changes the screen reads its own change back: the members of the frame apply at once.
 func TestAltScreenFrameMembersApplyAtOnce(t *testing.T) {
 	var out bytes.Buffer
-	screen := newAltScreenForTest(&out, 20, 4, TuiAltScreenOptions{})
+	screen := newFrameScreenForTest(&out, 20, 4)
 	focus := &framePart{render: func(int) []string { return nil }}
 	var before, after, lines1 string
 	var focused bool
@@ -135,7 +141,7 @@ func boolText(b bool) string {
 // reuses it, draws the same rows.
 func TestAltScreenFrameChangesTheChildrenDuringTheirRender(t *testing.T) {
 	var out bytes.Buffer
-	screen := newAltScreenForTest(&out, 20, 6, TuiAltScreenOptions{})
+	screen := newFrameScreenForTest(&out, 20, 6)
 	line := func(text string) *framePart { return &framePart{render: func(int) []string { return []string{text} }} }
 	tail, middle := line("C"), line("B")
 	var adds, removes, clears int
@@ -206,7 +212,7 @@ func TestAltScreenFrameChangesTheChildrenDuringTheirRender(t *testing.T) {
 // With a layout root the base container is not rendering, so the frame takes its lock like any caller.
 func TestAltScreenFrameChangesTheChildrenFromALayoutRoot(t *testing.T) {
 	var out bytes.Buffer
-	screen := newAltScreenForTest(&out, 20, 4, TuiAltScreenOptions{})
+	screen := newFrameScreenForTest(&out, 20, 4)
 	child := &framePart{render: func(int) []string { return []string{"child"} }}
 	var children int
 	armed := true
