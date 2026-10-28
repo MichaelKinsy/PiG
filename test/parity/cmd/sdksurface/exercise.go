@@ -38,8 +38,8 @@ var conformanceCorpus = map[string]struct {
 	"go":     {dirs: []string{"test/extension-conformance"}, exts: []string{".go"}},
 	"rust":   {dirs: []string{"test/extension-conformance"}, exts: []string{".rs", "_test.go"}},
 	"python": {dirs: []string{"test/extension-conformance"}, exts: []string{".py", "_test.go"}},
-	// The Lisp corpus is its scenario driver and the SDK's own wire tests: a Lisp cell is reached by pig:<symbol> in either.
-	"lisp": {dirs: []string{"test/extension-conformance/testdata/scenario-driver-lisp", "extensions/sdk-lisp/tests"}, exts: []string{".lisp"}},
+	// The Lisp corpus is every Lisp fixture of the conformance suite (the scenario driver, the harness fixture and the family fixtures) and the SDK's own tests: a Lisp cell is reached by pig:<symbol> in any.
+	"lisp": {dirs: []string{"test/extension-conformance/testdata", "extensions/sdk-lisp/tests"}, exts: []string{".lisp"}},
 }
 
 // gapSpec is one reviewed conformance hole: a surface an SDK implements that no
@@ -155,6 +155,14 @@ func exerciseTokens(r matrixRow, c cell) []*regexp.Regexp {
 		if isRead && !genericNames[identPart.FindString(alt)] {
 			// A property the runtime reads is handed over in an object literal, so the key names it as much as a member access does.
 			out = append(out, regexp.MustCompile(`[{,]\s*`+regexp.QuoteMeta(identPart.FindString(alt))+`\s*:`))
+		}
+		if lisp, ok := strings.CutPrefix(alt, "pig:"); ok {
+			// A Lisp fixture reaches an exported symbol by its package-qualified name (pig: or pig::), followed by whitespace or a closing parenthesis.
+			if i := strings.IndexByte(lisp, '('); i >= 0 {
+				lisp = lisp[:i]
+			}
+			out = append(out, regexp.MustCompile(`\bpig::?`+regexp.QuoteMeta(lisp)+`[\s)]`))
+			continue
 		}
 		name := identPart.FindString(alt)
 		if name == "" {

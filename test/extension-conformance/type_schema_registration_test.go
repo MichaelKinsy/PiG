@@ -46,7 +46,7 @@ func typeVectorParameters(caseName string) json.RawMessage {
 	panic("the vector \"" + caseName + "\" is missing")
 }
 
-// TestConformance_TypeSchemaToolParametersAgreeAcrossSDKs: every SDK registers the tool "type-schema-tool" with parameters built by pi-ai's Type (Go sdk.Type, Python Type, Rust Type; the
+// TestConformance_TypeSchemaToolParametersAgreeAcrossSDKs: every SDK registers the tool "type-schema-tool" with parameters built by pi-ai's Type (Go sdk.Type, Python Type, Rust Type, Lisp type-object and its siblings; the
 // Node runtime runs Pi's own), and the host holds the schema Pi's Type returns for the same calls: the vector "conformance tool parameters" of test/parity/sdk-vectors/pi-ai/Type.json.
 // An SDK whose Type returned another schema (an Optional property listed as required, a Record without its pattern, a changed key order, the root's included) fails here.
 func TestConformance_TypeSchemaToolParametersAgreeAcrossSDKs(t *testing.T) {
