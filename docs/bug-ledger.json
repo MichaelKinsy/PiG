@@ -23726,7 +23726,16 @@
       "removeWhen": "the host's frame can be entered again from inside a render and these calls run as Pi's do; then the call-site marker, the error and this record go.",
       "fixedIn": "Unreleased",
       "origin": "divergence",
-      "commits": [],
+      "commits": [
+        {
+          "hash": "1d6732bee8",
+          "date": "2026-10-28"
+        },
+        {
+          "hash": "be8abc8c03",
+          "date": "2026-10-28"
+        }
+      ],
       "tests": [
         "test/extension-conformance/tui_alt_screen_test.go::TestTuiAltScreenFrameReentryAcrossSDKs"
       ]

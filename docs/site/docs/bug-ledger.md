@@ -12504,7 +12504,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Pi issue:** none recorded
 - **Removed when Pi fixes it:** the host's frame can be entered again from inside a render and these calls run as Pi's do; then the call-site marker, the error and this record go.
-- **Fix commits:** Not yet committed.
+- **Fix commits:** `1d6732bee8` (2026-10-28), `be8abc8c03` (2026-10-28)
 - **Tests:** `test/extension-conformance/tui_alt_screen_test.go::TestTuiAltScreenFrameReentryAcrossSDKs`
 
 ### BF-a076a50

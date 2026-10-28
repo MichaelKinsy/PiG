@@ -1312,7 +1312,7 @@ func (t *tuiBase) componentMounted(target Component, held bool) bool {
 	if overlayID != 0 {
 		return true
 	}
-	roots := t.Container.cloneChildren(held)
+	roots := t.cloneChildren(held)
 	for _, root := range roots {
 		if componentTreeContains(root, target) {
 			return true
