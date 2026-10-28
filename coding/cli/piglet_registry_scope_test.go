@@ -23,9 +23,11 @@ type pigletRegistryRun struct {
 	// origins, such as a `tools` list.
 	scopedExtension string
 	scopedTools     string
-	servers         []mcpBinaryServer
-	steps           []chatStep
-	args            []string
+	// noExtensionsSection writes a Piglet with no `extensions:` section.
+	noExtensionsSection bool
+	servers             []mcpBinaryServer
+	steps               []chatStep
+	args                []string
 }
 
 func runPigletRegistry(t *testing.T, run pigletRegistryRun) mcpBinaryResult {
@@ -42,7 +44,11 @@ func runPigletRegistry(t *testing.T, run pigletRegistryRun) mcpBinaryResult {
 	if err := os.WriteFile(filepath.Join(piglet, "scoped.mjs"), []byte(source), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	yaml := "name: registry-scope\nrelease:\n  version: 0.1.0\nextensions:\n  - name: scoped\n    origins: [local:./scoped.mjs]\n" + run.scopedTools + run.entries + "skills: []\ndiscovery:\n  extensions: []\n  skills: []\n"
+	extensions := "extensions:\n  - name: scoped\n    origins: [local:./scoped.mjs]\n" + run.scopedTools + run.entries
+	if run.noExtensionsSection {
+		extensions = ""
+	}
+	yaml := "name: registry-scope\nrelease:\n  version: 0.1.0\n" + extensions + "skills: []\ndiscovery:\n  extensions: []\n  skills: []\n"
 	if err := os.WriteFile(filepath.Join(piglet, "piglet.yaml"), []byte(yaml), 0o600); err != nil {
 		t.Fatal(err)
 	}
@@ -250,6 +256,62 @@ func TestPigletScopeComposesWithToolsFlag(t *testing.T) {
 			}
 			if len(result.log) != 1 || !strings.HasPrefix(result.log[0], "docs:"+strings.TrimPrefix(test.kept, "mcp__docs__")+":") {
 				t.Errorf("server calls = %q, want only the kept tool", result.log)
+			}
+		})
+	}
+}
+
+// The five rules of the tool scope table, observed as the first model request of the real binary in RPC mode: the declared
+// tools, the one line the agent gets about the Piglet, and the notice of the hidden tools.
+func TestPigletToolScopeRulesInTheFirstRequest(t *testing.T) {
+	if testing.Short() {
+		t.Skip("builds the pig binary and starts Node extensions")
+	}
+	t.Parallel()
+	for _, test := range []struct {
+		name string
+		run  pigletRegistryRun
+		// declared and absent are tools of the first request; scopeLine is in its system prompt; notice is in the output, or empty when nothing is hidden.
+		declared, absent []string
+		scopeLine        string
+		notice           string
+	}{
+		{"no extensions section", pigletRegistryRun{noExtensionsSection: true}, []string{"mcp__docs__a", "mcp__docs__b"}, nil, "all MCP tools", ""},
+		{"extensions without the adapter", pigletRegistryRun{}, nil, []string{"mcp__docs__a", "mcp__docs__b"}, "MCP tools hidden", "the Piglet lists `extensions:` but not `pig-mcp-adapter`"},
+		{"the adapter without tools", pigletRegistryRun{entries: "  - name: pig-mcp-adapter\n"}, []string{"mcp__docs__a", "mcp__docs__b"}, nil, "all MCP tools", ""},
+		{"the adapter with a tools list", pigletRegistryRun{entries: "  - name: pig-mcp-adapter\n    tools: [mcp__docs__a]\n"}, []string{"mcp__docs__a"}, []string{"mcp__docs__b"}, "MCP tools only mcp__docs__a", "mcp__docs__b"},
+		{"builtin:codemode and builtin:tool-search selected", pigletRegistryRun{entries: "  - name: codemode\n    origins: [builtin:codemode]\n  - name: tool-search\n    origins: [builtin:tool-search]\n"}, nil, []string{"mcp__docs__a", "mcp__docs__b"}, "MCP tools hidden", "the Piglet lists `extensions:` but not `pig-mcp-adapter`"},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			run := test.run
+			run.servers = []mcpBinaryServer{docsServer("direct")}
+			run.steps = []chatStep{chatText("done")}
+			result := runPigletRegistry(t, run)
+			requests := result.chat.recorded()
+			if len(requests) == 0 {
+				t.Fatalf("no model request\n%s", result.output)
+			}
+			first := requests[0]
+			for _, name := range test.declared {
+				if !slices.Contains(first.Tools, name) {
+					t.Errorf("first request tools = %v, want %q", first.Tools, name)
+				}
+			}
+			for _, name := range test.absent {
+				if slices.Contains(first.Tools, name) {
+					t.Errorf("first request tools = %v, want no %q", first.Tools, name)
+				}
+			}
+			if line := "Active Piglet: registry-scope. Tool scope: all built-in tools; " + test.scopeLine; !strings.Contains(first.System, line) {
+				t.Errorf("system prompt lacks %q", line)
+			}
+			if test.notice == "" {
+				if strings.Contains(result.output, "hid ") && strings.Contains(result.output, "from the registry") {
+					t.Errorf("output has a hidden-tools notice, want none\n%s", result.output)
+				}
+			} else if !strings.Contains(result.output, "Piglet registry-scope hid") || !strings.Contains(result.output, test.notice) {
+				t.Errorf("output lacks the hidden-tools notice with %q\n%s", test.notice, result.output)
 			}
 		})
 	}

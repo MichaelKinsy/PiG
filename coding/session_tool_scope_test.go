@@ -20,8 +20,9 @@ func scopeProbeTools(_ *Session, registered map[string]extension.RegisteredTool)
 // The Session's tool registry admits the intersection of `--tools`/`--exclude-tools` and the consumer's scope (pig additive,
 // D23: a Piglet's tool scope), so a tool the scope hides is not listed, defined, active or reachable after a refresh.
 func TestToolScopeRemovesToolsFromTheRegistry(t *testing.T) {
-	hideB := func(info extension.ToolInfo) bool { return info.Name != "mcp__docs__b" }
-	session := newRegistryPortSession(t, nil, SessionOptions{ToolScope: hideB}, nil, scopeProbeTools)
+	keepA := []string{"mcp__docs__a"}
+	scope := &extension.ToolScope{Extensions: map[string]*[]string{extension.McpAdapterEntry: &keepA}}
+	session := newRegistryPortSession(t, nil, SessionOptions{ToolScope: scope}, nil, scopeProbeTools)
 	bindRegistryPort(t, session)
 	all := allRegistryNames(session)
 	if slices.Contains(all, "mcp__docs__b") || !slices.Contains(all, "mcp__docs__a") || !slices.Contains(all, "dynamic_tool") {
@@ -43,17 +44,18 @@ func TestToolScopeRemovesToolsFromTheRegistry(t *testing.T) {
 	}
 }
 
-// The scope sees the namespace and source of a tool, and composes with `--tools` and `--exclude-tools` as an intersection.
+// The scope sees the namespace and source of a tool (here: only the MCP tools of the adapter entry), and composes with `--tools` and `--exclude-tools` as an intersection.
 func TestToolScopeIntersectsWithToolsFlags(t *testing.T) {
-	inDocs := func(info extension.ToolInfo) bool { return info.Namespace != nil && info.Namespace.Name == "mcp__docs" }
+	keep := []string{"mcp__docs__a"}
+	scope := &extension.ToolScope{Extensions: map[string]*[]string{extension.McpAdapterEntry: &keep}}
 	session := newRegistryPortSession(t, nil, SessionOptions{
-		ToolScope:     inDocs,
+		ToolScope:     scope,
 		AllowedTools:  map[string]struct{}{"mcp__docs__a": {}, "mcp__docs__b": {}, "dynamic_tool": {}},
-		ExcludedTools: map[string]struct{}{"mcp__docs__b": {}},
+		ExcludedTools: map[string]struct{}{"dynamic_tool": {}},
 	}, nil, scopeProbeTools)
 	bindRegistryPort(t, session)
 	if all := allRegistryNames(session); !slices.Equal(all, []string{"mcp__docs__a"}) {
-		t.Fatalf("registry = %v, want only the tool the scope, --tools and --exclude-tools all admit", all)
+		t.Fatalf("registry = %v, want only the tool the scope, --tools and --exclude-tools all admit (the scope drops b, --exclude-tools drops dynamic_tool)", all)
 	}
 }
 
@@ -69,7 +71,7 @@ func TestNilToolScopeLeavesTheRegistryUnchanged(t *testing.T) {
 		stock := newRegistryPortSession(t, nil, base, nil, scopeProbeTools)
 		bindRegistryPort(t, stock)
 		scoped := base
-		scoped.ToolScope = func(extension.ToolInfo) bool { return true }
+		scoped.ToolScope = &extension.ToolScope{}
 		admitting := newRegistryPortSession(t, nil, scoped, nil, scopeProbeTools)
 		bindRegistryPort(t, admitting)
 		if a, b := allRegistryNames(stock), allRegistryNames(admitting); !slices.Equal(a, b) {

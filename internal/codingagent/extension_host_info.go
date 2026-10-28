@@ -303,7 +303,7 @@ func ExtensionToolInfos(runner ExtensionToolLister, allowed, excluded map[string
 
 // ExtensionToolInfosScoped is [ExtensionToolInfos] with the consumer's registry predicate (pig additive, D23): a tool
 // the scope rejects is unregistered, so it is not listed. A nil scope lists exactly what ExtensionToolInfos lists.
-func ExtensionToolInfosScoped(runner ExtensionToolLister, allowed, excluded map[string]struct{}, scope extension.ToolScope) []subprocess.ToolInfo {
+func ExtensionToolInfosScoped(runner ExtensionToolLister, allowed, excluded map[string]struct{}, scope *extension.ToolScope) []subprocess.ToolInfo {
 	// Entries are names or `*` patterns, and MCP tools stay registered unless the allowlist filters them (agent-session.ts _isAllowedTool).
 	filter := extension.NewToolFilter(allowed, excluded).WithScope(scope)
 	admitted := func(info extension.ToolInfo) bool { return filter.AllowsTool(info) }

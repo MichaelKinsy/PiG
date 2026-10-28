@@ -82,8 +82,8 @@ type SessionStartOptions struct {
 	// AllowedTools restricts which tools may execute.
 	AllowedTools map[string]struct{}
 
-	// ToolScope is the consumer's registry predicate; see SessionOptions.ToolScope.
-	ToolScope extension.ToolScope
+	// ToolScope is the Piglet tool scope; see SessionOptions.ToolScope.
+	ToolScope *extension.ToolScope
 
 	// InitialActiveToolNames are the tools active at start, in this order;
 	// see SessionOptions.InitialActiveToolNames (sdk.ts:274-276).

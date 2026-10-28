@@ -516,8 +516,8 @@ func (m *InteractiveMode) wireSubprocessHostCallbacks() func() {
 		if m.newRunner != nil {
 			runner = m.newRunner
 		}
-		var scope extension.ToolScope
-		if session, ok := m.opts.SessionHandle.(interface{ ToolScope() extension.ToolScope }); ok {
+		var scope *extension.ToolScope
+		if session, ok := m.opts.SessionHandle.(interface{ ToolScope() *extension.ToolScope }); ok {
 			scope = session.ToolScope()
 		}
 		return ExtensionToolInfosScoped(runner, m.opts.ToolRegistryAllowed, m.opts.ExcludedTools, scope)

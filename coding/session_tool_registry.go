@@ -164,8 +164,8 @@ type sessionToolRegistry struct {
 	allowed, excluded map[string]struct{}
 	// filter is the compiled `--tools` and `--exclude-tools` entries, names or `*` patterns, intersected with scope.
 	filter extension.ToolFilter
-	// scope is the consumer's registry predicate (SessionOptions.ToolScope); nil places no restriction.
-	scope          extension.ToolScope
+	// scope is the Piglet tool scope (SessionOptions.ToolScope); nil places no restriction.
+	scope          *extension.ToolScope
 	skipExtensions bool
 	// usesDefaultTools reports that the initial tools come from the defaultTools setting, so a reload activates tools newly added to it.
 	// upstream: agent-session.ts:263-267 (usesDefaultTools), sdk.ts:448
@@ -344,7 +344,7 @@ func createSessionToolRegistry(services *AgentSessionServices, opts SessionOptio
 	return registry, registry.selectTools(activeNames), nil
 }
 
-// compileFilter compiles `--tools` and `--exclude-tools` with the consumer's scope.
+// compileFilter compiles `--tools` and `--exclude-tools` with the Piglet tool scope.
 func (r *sessionToolRegistry) compileFilter() extension.ToolFilter {
 	return extension.NewToolFilter(r.allowed, r.excluded).WithScope(r.scope)
 }
@@ -384,9 +384,17 @@ func (r *sessionToolRegistry) refresh(runner *inproc.Runner) error {
 	entries = append(entries, r.custom...)
 	indexes := make(map[string]int)
 	var admitted []sessionToolEntry
+	var hidden []extension.HiddenTool
 	for _, entry := range entries {
 		name := entry.tool.Name()
-		if !r.filter.AllowsTool(scopeInfo(entry)) {
+		info := scopeInfo(entry)
+		if !r.filter.AllowsTool(info) {
+			// The scope's own removals are the startup notice's subject; `--tools` and `--exclude-tools` removals are not.
+			if r.scope != nil && r.filter.Allows(name) {
+				if tool, ok := r.scope.HiddenInfo(info); ok {
+					hidden = append(hidden, tool)
+				}
+			}
 			continue
 		}
 		if index, exists := indexes[name]; exists {
@@ -395,6 +403,9 @@ func (r *sessionToolRegistry) refresh(runner *inproc.Runner) error {
 			indexes[name] = len(admitted)
 			admitted = append(admitted, entry)
 		}
+	}
+	if r.scope != nil {
+		r.scope.SetHidden(hidden)
 	}
 	r.entries = admitted
 	r.index = make(map[string]int, len(admitted))
@@ -474,8 +485,8 @@ func (s *Session) GetAllTools() []extension.ToolInfo {
 	return result
 }
 
-// ToolScope is the consumer's registry predicate the Session was created with (SessionOptions.ToolScope), nil without one.
-func (s *Session) ToolScope() extension.ToolScope {
+// ToolScope is the Piglet tool scope the Session was created with (SessionOptions.ToolScope), nil without one.
+func (s *Session) ToolScope() *extension.ToolScope {
 	s.toolRegistryMu.RLock()
 	defer s.toolRegistryMu.RUnlock()
 	return s.toolRegistry.scope

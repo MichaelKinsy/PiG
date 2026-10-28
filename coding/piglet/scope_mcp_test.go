@@ -46,9 +46,9 @@ func TestScopeToolsScopesBuiltinMCPNamespaceLikeMCPSource(t *testing.T) {
 	}
 }
 
-// The registry predicate decides per tool from the extension.ToolInfo the Session reports: the namespace and the owning
+// The compiled scope decides per tool from the extension.ToolInfo the Session reports: the namespace and the owning
 // extension entry, as ScopeTools does for the names GetAllTools lists.
-func TestToolRegistryScopeKeepsToolsPerSourceAndNamespace(t *testing.T) {
+func TestCompiledToolScopeKeepsToolsPerSourceAndNamespace(t *testing.T) {
 	allow := []string{"mcp__docs__a"}
 	only := []string{"shown"}
 	p := &Piglet{Extensions: []ExtensionEntry{{Name: MCPAdapterExtensionName, Tools: &allow}, {Name: "scoped", Tools: &only}}}
@@ -58,7 +58,7 @@ func TestToolRegistryScopeKeepsToolsPerSourceAndNamespace(t *testing.T) {
 		}
 		return ""
 	}
-	scope := ToolRegistryScope(p, owner)
+	compiled := CompileToolScope(p, owner)
 	docs := &extension.ToolNamespace{Name: "mcp__docs"}
 	for _, test := range []struct {
 		tool extension.ToolInfo
@@ -72,7 +72,7 @@ func TestToolRegistryScopeKeepsToolsPerSourceAndNamespace(t *testing.T) {
 		{extension.ToolInfo{Name: "codemode"}, true},
 		{extension.ToolInfo{Name: "read_mcp_resource"}, false},
 	} {
-		if got := scope(test.tool); got != test.want {
+		if got := compiled.Keeps(test.tool); got != test.want {
 			t.Errorf("scope(%q) = %t, want %t", test.tool.Name, got, test.want)
 		}
 	}
