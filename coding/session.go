@@ -306,11 +306,11 @@ type SessionOptions struct {
 	// (sdk.ts tools, agent-session.ts allowedToolNames).
 	AllowedTools map[string]struct{}
 
-	// ToolScope, when non-nil, is the consumer's registry predicate (pig additive, D23: a Piglet's tool scope). The
+	// ToolScope, when non-nil, is a Piglet's tool scope (pig additive, D23), compiled into the registry filter. The
 	// registry admits a tool only when AllowedTools and ExcludedTools (Pi's _isAllowedTool) and ToolScope all admit it,
 	// at every place _isAllowedTool applies: the definitions, the registry, getAllTools, activation and the refresh after
 	// a late registration. nil leaves the registry exactly as `--tools` and `--exclude-tools` leave it.
-	ToolScope extension.ToolScope
+	ToolScope *extension.ToolScope
 
 	// InitialActiveToolNames, when non-nil, are the tools active at start, in
 	// this order (agent-session.ts initialActiveToolNames). The active list

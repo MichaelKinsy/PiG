@@ -58,6 +58,8 @@ var docsTopics = []docsTopic{
 	{text: "environment variables (docs/environment-variables.md)"},
 	{text: "MCP servers (docs/mcp.md)", list: pigstrip.ListExtensions, id: "mcp"},
 	{text: "codemode scripts and non-LLM models such as classifiers and image models (docs/codemode.md)", list: pigstrip.ListExtensions, id: "codemode"},
+	// pig additive (D23, D92): the Piglets topic belongs to the `/piglet` command's strip ID, so a Piglet that strips it names no Piglet docs.
+	{text: "Piglets and their tool scope (docs/piglets.md)", list: pigstrip.ListCommands, id: "/piglet"},
 }
 
 // docsSectionAt points the model at PiG's documentation in upstream's format, with the README and examples locations given; an

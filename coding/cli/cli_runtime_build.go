@@ -139,8 +139,8 @@ type cliBuild struct {
 	// InitialActiveToolNames are the Session's initial active tools in order (sdk.ts:274-276).
 	InitialActiveToolNames []string
 	ExcludedTools          map[string]struct{}
-	// ToolScope is the active Piglet's registry predicate; nil without a Piglet.
-	ToolScope        extension.ToolScope
+	// ToolScope is the active Piglet's tool scope; nil without a Piglet.
+	ToolScope        *extension.ToolScope
 	SkipBuiltinTools bool
 	// DefaultToolModifiers are the --tools +name/-name entries (sdk.ts:285).
 	DefaultToolModifiers []string
@@ -509,13 +509,13 @@ func (b *cliRuntimeBuilder) buildResources(ctx context.Context, in cliBuildInput
 	owner := pigletToolOwner(func() []extension.Extension { return build.Extensions })
 	if activePiglet != nil {
 		// The Piglet's tool scope bounds the Session's tool registry, not only its active tools (pig additive, D23).
-		build.ToolScope = piglet.ToolRegistryScope(activePiglet, owner)
+		build.ToolScope = piglet.CompileToolScope(activePiglet, owner)
 	}
 	withPiglet := func(builtins []extension.Extension) []extension.Extension {
 		if activePiglet == nil {
 			return builtins
 		}
-		return append([]extension.Extension{piglet.BuildExtensionWithPigletTools(activePiglet, owner)}, builtins...)
+		return append([]extension.Extension{piglet.BuildExtensionWithToolScope(activePiglet, build.ToolScope)}, builtins...)
 	}
 	// The program's own factories load even when every built-in is stripped (D92).
 	if activePiglet != nil || len(builtInExtensions) > 0 || extensionset.HasInline(b.extensionFactories) {

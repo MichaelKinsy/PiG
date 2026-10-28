@@ -454,6 +454,9 @@ file until it exits, so the pages its system prompt names stay for as long as th
 session runs.
 The stock system prompt points at this build's bundle so the agent can inspect
 the exact extension, Package, and Piglet contracts implemented by its binary.
+Its "When asked about" list adds one topic after Pi's last one, "Piglets and their
+tool scope (docs/piglets.md)" (owner-approved 2026-10-28); the `/piglet` strip ID
+removes it.
 The `codemode` description and the argument errors of its `models` globals name
 the bundle's `codemode.md` where Pi names `CODEMODE_DOCS_PATH` in its package.
 When the config root cannot be written and holds no bundle of the running
@@ -526,16 +529,26 @@ Session's tool registry, not only its active set. Pi's `--tools` and
 `--exclude-tools` remove tools from the registry itself (`agent-session.ts:3457-3521`,
 `_isAllowedTool`; PiG ports it as `extension.ToolFilter`); a piglet scope that only
 narrowed the active set left a hidden tool callable from `codemode` and findable by
-`tool_search`, which read the registry. `coding.SessionOptions.ToolScope`
-(`extension.ToolScope`, a source-aware predicate over one tool's info) is composed
-with `ToolFilter` as an intersection wherever `_isAllowedTool` applies: the
-definitions, the registry, `getAllTools`, activation and the refresh after a late
-registration. The CLI supplies `piglet.ToolRegistryScope` (keyed on extension name,
-source and namespace) when a piglet is active; without one the scope is nil and the
-registry is exactly what `--tools` and `--exclude-tools` leave. `ScopeTools`'
-former `followsMCPServers` rule (hiding `codemode` and `tool_search` when no MCP
-tool stayed visible) is deleted: they are ordinary tools that now reach only what
-the registry keeps.
+`tool_search`, which read the registry. There is one mechanism: the piglet compiles
+into `extension.ToolScope` (`piglet.CompileToolScope`), which `ToolFilter.WithScope`
+holds, so `ToolFilter.AllowsTool` keeps a tool only when `--tools`/`--exclude-tools`
+and the scope both keep it. It applies wherever `_isAllowedTool` applies: the
+definitions, the registry, `getAllTools` (in-process and the extension host's),
+activation and the refresh after a late registration. The rules are on
+`extension.ToolScope`: a built-in tool follows the root `tools` list, an extension's
+tool follows its entry's `tools` list, and an MCP tool (source `mcp:<server>`,
+namespace `mcp__<server>`, or an MCP resource tool) follows the `pig-mcp-adapter`
+entry. `coding.SessionOptions.ToolScope` carries the scope; without a piglet it is
+nil and the registry is exactly what `--tools` and `--exclude-tools` leave (stock
+pig keeps Pi's `--tools` semantics: a bare allowlist keeps MCP tools reachable
+through `codemode` and `tool_search`). `followsMCPServers` (hiding `codemode` and
+`tool_search` when no MCP tool stayed visible) is deleted: they are ordinary tools
+that reach only what the registry keeps. The scope records the tools it removed;
+the piglet extension notifies the user once per change (server, tools and reason)
+and `pig piglet show` prints the MCP scope line, and the agent gets one
+line naming the active piglet and its tool scope (`AgentToolScopeLine`). The rule
+table in `internal/pigdocs/content/piglets.md` and `mcp.md` is computed from the code
+(`coding/piglet/scope_table.go`) and a test keeps it equal.
 
 Upstream pi stamps `sourceInfo` automatically in the in-process extension loader
 (`loader.ts:221 sourceInfo: extension.sourceInfo`). Pig's subprocess host must
@@ -569,7 +582,10 @@ Call-site markers:
 - `coding/extension/tool_filter.go`: `ToolScope`, `ToolFilter.WithScope`, `ToolFilter.AllowsTool`
 - `coding/session.go`: `SessionOptions.ToolScope`
 - `coding/session_tool_registry.go`: `sessionToolRegistry.compileFilter`, `Session.ToolScope`
-- `coding/piglet/main.go`: `ToolRegistryScope`
+- `coding/piglet/scope.go`: `CompileToolScope`
+- `coding/piglet/scope_summary.go`: `MCPScopeLine`, `ToolScopeNotice`, `AgentToolScopeLine`
+- `coding/piglet/scope_table.go`: `ToolScopeTableMarkdown`
+- `internal/codingagent/prompts/docs_section.go`: the Piglets topic
 - `coding/extension/host/subprocess/protocol.go`: `ToolDecl.Source`
 - `extensions/sdk/protocol.go`: `toolDef.Source`
 - `extensions/sdk/extension.go`: `ToolWithSource()`
@@ -579,7 +595,7 @@ Call-site markers:
 - `coding/extension/host/subprocess/host.go`: `buildExtension()` reads
   `ToolDecl.Source` into `RegisteredTool.SourceInfo`
 - `internal/codingagent/interactive_extensions.go`: wires `ContextActions`
-- `coding/piglet/scope.go`: `ScopeTools()` MCP branch
+- `coding/piglet/scope.go`: `CompileToolScope()`, `extension.ToolScope` MCP branch (coding/extension/tool_filter.go)
 - `coding/piglet/main.go`: `BuildExtension()` calls
   `SetActiveTools`
 
