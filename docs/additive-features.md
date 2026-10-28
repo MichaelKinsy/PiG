@@ -481,7 +481,7 @@ session runs.
 The stock system prompt points at this build's bundle so the agent can inspect
 the exact extension, Package, and Piglet contracts implemented by its binary.
 While a Piglet is active, its "When asked about" list adds one topic after Pi's last
-one, "Piglets and their tool scope (docs/piglets.md)" (owner-approved 2026-10-28). The
+one, "Piglets and their tool scope (docs/piglets.md, docs/piglet-strip.md)" (owner-approved 2026-10-28). The
 `docs` feature owns it, as it owns the whole section. Without a Piglet the section is
 Pi's text, byte for byte.
 The `codemode` description and the argument errors of its `models` globals name
