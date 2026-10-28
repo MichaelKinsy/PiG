@@ -749,9 +749,9 @@ func TestCoreOtherTasksCutOffRestartLimitTimesInARow(t *testing.T) {
 	})
 }
 
-// deferredRig is a rig whose model answers deferred, and whose first fetch of each deferred response is in flight until the
+// fetchingDeferredRig is a rig whose model answers deferred, and whose first fetch of each deferred response is in flight until the
 // Harness stops; later fetches answer. fetching opens when the first fetch began.
-func deferredRig(t *testing.T, core bool, pollAfterMs int64) (rig *restartRig, fetching *latch, fetches func() int) {
+func fetchingDeferredRig(t *testing.T, core bool, pollAfterMs int64) (rig *restartRig, fetching *latch, fetches func() int) {
 	t.Helper()
 	faux := ai.NewFauxProvider(ai.FauxConfig{Deferred: &ai.FauxDeferredConfig{PollAfterMS: &pollAfterMs}})
 	provider := faux.Provider()
@@ -806,7 +806,7 @@ func TestCoreCrashEdges(t *testing.T) {
 	// #11139
 	t.Run("charges a crash during a poll's fetch, then polls the same deferred response again", func(t *testing.T) {
 		eachEngine(t, func(t *testing.T, core bool) {
-			rig, fetching, fetches := deferredRig(t, core, 10)
+			rig, fetching, fetches := fetchingDeferredRig(t, core, 10)
 			rig.retryPolicy(true, 2, 1)
 			id, taskId := rig.crashWhilePolling(fetching)
 
@@ -848,7 +848,7 @@ func TestCoreCrashEdges(t *testing.T) {
 
 	t.Run("cancels the deferred response when a crash during its poll ends the run", func(t *testing.T) {
 		eachEngine(t, func(t *testing.T, core bool) {
-			rig, fetching, _ := deferredRig(t, core, 10)
+			rig, fetching, _ := fetchingDeferredRig(t, core, 10)
 			rig.retryPolicy(false, 0, 0)
 			id, taskId := rig.crashWhilePolling(fetching)
 			h, root := rig.open()
@@ -864,7 +864,7 @@ func TestCoreCrashEdges(t *testing.T) {
 
 	t.Run("charges an interrupted poll even when the clock moved backwards", func(t *testing.T) {
 		eachEngine(t, func(t *testing.T, core bool) {
-			rig, fetching, _ := deferredRig(t, core, 10)
+			rig, fetching, _ := fetchingDeferredRig(t, core, 10)
 			var mu sync.Mutex
 			now := 1000.0
 			setNow := func(value float64) {
@@ -1146,4 +1146,55 @@ func TestCoreDeferredToolOutputIsNotProgress(t *testing.T) {
 			}
 		}
 	})
+}
+
+// harness-restart-failure.test.ts "resolves the settings no more often than before: only a task that was cut off reads the limit": Pi
+// resolves HarnessOptions.settings at each use, so a round of one generation with one tool call (five rounds after a warm-up) reads the
+// `extensions` of the host settings 49 times (#11327: 49), one per resolution. pig divergence (D206): the core reads the settings the host
+// sent before the event, so the Go host calls the settings source once before each event it sends and where it resolves an agent: 9 calls a
+// round over the core, where Pi's callback is called 49 times. The count is measured here and fixed; the contract row U-harness-restart-failure states the cf host's
+// own measured count (6 reads of `extensions`, the agent resolutions) for Pi's same test.
+func TestCoreTheRestartLimitOnTheNormalPath(t *testing.T) {
+	const rounds, callsPerRound = 5, 9
+	var calls atomic.Int64
+	rig := newRestartRig(t, true, ai.FauxConfig{})
+	installTools(t, rig.registry, harness.DefineTool(durable.ToolRegistration{
+		ToolSchema: ai.ToolSchema{Name: "t", Description: "t", Parameters: map[string]any{"type": "object", "properties": map[string]any{}}},
+		Replay:     durable.ToolReplay("safe"),
+		Execute: func(context.Context, any, durable.ToolExecutionApi) (durable.ToolExecutionResult, error) {
+			return durable.ToolExecutionResult{Output: []ai.ToolResultMessageContent{}}, nil
+		},
+	}))
+	var responses []ai.FauxResponseStep
+	for round := 0; round <= rounds; round++ {
+		responses = append(responses, toolCallStep(ai.FauxToolCall("t", map[string]any{}, &ai.FauxToolCallOptions{ID: "c"})), fauxAnswer("done"))
+	}
+	rig.faux.SetResponses(responses)
+	base := rig.settings.Load
+	opened := rig.crashRig.open(func(options *harness.HarnessOptions) {
+		options.Models = rig.models
+		options.OnReport = rig.infos.add
+		options.OnWake = nil
+		options.Settings = func() *harness.HarnessSettings { calls.Add(1); return base() }
+	})
+	root, err := opened.h.Root(t.Context(), &harness.RootOptions{Agent: &harness.AgentChange{Model: harness.SetTo(durable.ModelRef{Provider: "faux", ModelId: "faux-1"})}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	opened.h.Resume()
+	submit := func(text string) {
+		if _, err := submitInput(t, root, text).Wait(t.Context()); err != nil {
+			t.Fatal(err)
+		}
+	}
+	submit("warm up")
+	pollUntil(t, "the warm-up to settle", func() bool { return restartLive(t, opened.h, root).Run == nil })
+	calls.Store(0)
+	for round := 0; round < rounds; round++ {
+		submit("round")
+	}
+	pollUntil(t, "the rounds to settle", func() bool { return restartLive(t, opened.h, root).Run == nil })
+	if got := calls.Load(); got != callsPerRound*rounds {
+		t.Fatalf("the settings source was called %v times a round, want %d (D206: Pi resolves it 49 times)", float64(got)/rounds, callsPerRound)
+	}
 }
