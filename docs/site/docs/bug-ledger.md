@@ -352,6 +352,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-5bc4773](#bf-5bc4773) | RPC `set_model` applies after its auth check, as Pi's awaited `setModel` does, so a `cycle_model` in the same… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-5bf0d4a](#bf-5bf0d4a) | Durable partial commits of a streamed answer no longer compare every growing text, thinking and tool-call… | PiG's own defect | All platforms | Unreleased |
 | [BF-5bf0d4a-2](#bf-5bf0d4a-2) | An append op whose text starts with the low half of a surrogate pair joins the high half that ends the string… | PiG's own defect | All platforms | Unreleased |
+| [BF-5bf8461](#bf-5bf8461) | fix(durable/core): a phase span answer that is no uint32 handle names no span | PiG's own defect | All platforms | Unreleased |
 | [BF-5c4167a](#bf-5c4167a) | fix(extension): hold the theme colors map the wire palette memo is keyed on | PiG's own defect | All platforms | Unreleased |
 | [BF-5c9d23f](#bf-5c9d23f) | A provider object's OAuth login receives Pi's login options, as `oauth.login(interaction, options)` does in Pi | PiG's own defect | All platforms | 0.5.0 |
 | [BF-5d36a58](#bf-5d36a58) | fix(agent): end the tool flow at custom user messages and hold system messages mid-flow | PiG's own defect | All platforms | Unreleased |
@@ -5867,6 +5868,19 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `5bf0d4a2ad` (2026-10-24)
 - **Tests:** `chord/delta/append_text_test.go::TestAppendTextAppendsInsideABlockTheSameChangeInsertedOrReplaced`, `chord/delta/append_text_test.go::TestAppendTextFallsBackToTheStringComparisonWhenTheSameKeyIsAlsoAssignedOrDeleted`, `chord/delta/append_text_test.go::TestAppendTextJoinsSeveralAppendsToOneKeyIntoOneOpNextToOtherChanges`, `chord/delta/append_text_test.go::TestAppendTextOwnsTheTextItKeeps`, `chord/delta/append_text_test.go::TestAppendTextRecordsAnAppendOpAndTheAppendedValue`, `chord/delta/append_text_test.go::TestAppendTextRejectsWhatACallerCanGetWrong`, `durable/harness/partial_changes_upstream_test.go::TestPartialChangesAppendGrowingArgumentAndTextStringsInsteadOfReassigningThem`, `durable/harness/partial_changes_upstream_test.go::TestPartialChangesApplyTheChangesOfAFailedCommitInTheNextOne` and 5 more in docs/bug-ledger.json
 - **Release note:** An append op whose text starts with the low half of a surrogate pair joins the high half that ends the string it appends to, as JavaScript string concatenation does.
+
+### BF-5bf8461
+
+**fix(durable/core): a phase span answer that is no uint32 handle names no span**
+
+- **Source:** PiG's own defect
+- **Symptom:** fix(durable/core): a phase span answer that is no uint32 handle names no span
+- **Root cause:** The host's answer to the phaseSpan hook was converted from float64 without a range check, so a negative or out-of-range value became an implementation-defined handle.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `5bf8461a52` (2026-10-27)
+- **Tests:** `durable/core/session/phase_answered_test.go::TestPhaseAnsweredTakesOnlyAUint32SpanHandle`
 
 ### BF-5c4167a
 
