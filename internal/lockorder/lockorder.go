@@ -245,7 +245,7 @@ func report(key, text string, potential bool) {
 	reports[key] = true
 	if potential {
 		if path := os.Getenv("PIG_LOCKORDER_REPORT"); path != "" {
-			if f, err := os.OpenFile(path+".potential", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o600); err == nil {
+			if f, err := os.OpenFile(path+".potential", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o600); err == nil { //nolint:gosec // G304: the path names an output or state file that the user or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so writing it grants nothing the user lacks
 				_, _ = f.WriteString(text + "\n")
 				_ = f.Close()
 			}
@@ -254,7 +254,7 @@ func report(key, text string, potential bool) {
 	}
 	fmt.Fprintf(os.Stderr, "LOCKORDER %s", text)
 	if path := os.Getenv("PIG_LOCKORDER_REPORT"); path != "" {
-		if f, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o600); err == nil {
+		if f, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o600); err == nil { //nolint:gosec // G304: the path names an output or state file that the user or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so writing it grants nothing the user lacks
 			_, _ = f.WriteString(text + "\n")
 			_ = f.Close()
 		}

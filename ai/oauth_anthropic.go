@@ -17,10 +17,10 @@ import (
 const (
 	anthropicClientID     = "9d1c250a-e61b-44d9-88ed-5944d1962f5e"
 	anthropicAuthorizeURL = "https://claude.ai/oauth/authorize"
-	anthropicTokenURL     = "https://platform.claude.com/v1/oauth/token"
+	anthropicTokenURL     = "https://platform.claude.com/v1/oauth/token" //nolint:gosec // G101: the value is a name, URL, or identifier of a public protocol, not a credential value
 	anthropicCallbackPort = 53692
 	anthropicCallbackPath = "/callback"
-	anthropicRedirectURI  = "http://localhost:53692/callback"
+	anthropicRedirectURI  = "http://localhost:53692/callback" //nolint:gosec // G101: the value is a name, URL, or identifier of a public protocol, not a credential value
 	// anthropicCopyCodeRedirectURI is Anthropic's page that shows the authorization code for pasting.
 	anthropicCopyCodeRedirectURI = "https://platform.claude.com/oauth/code/callback"
 	// AnthropicBrowserLoginMethod and AnthropicCopyCodeLoginMethod are the login method IDs Anthropic login offers.

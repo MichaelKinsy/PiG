@@ -208,7 +208,7 @@ func main() {
 }
 
 func decodeJSONFile(path string, target any) error {
-	file, err := os.Open(path)
+	file, err := os.Open(path) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return fmt.Errorf("open %s: %w", path, err)
 	}
@@ -637,7 +637,7 @@ func validateMappingList(id, label string, values []string) []string {
 }
 
 func validateDivergenceReference(entry mappingEntry, repoRoot string) []string {
-	content, err := os.ReadFile(filepath.Join(repoRoot, "docs/parity/DIVERGENCES.md"))
+	content, err := os.ReadFile(filepath.Join(repoRoot, "docs/parity/DIVERGENCES.md")) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return []string{fmt.Sprintf("%s divergence %s: %v", entry.ID, entry.Divergence, err)}
 	}
@@ -656,7 +656,7 @@ func validateDivergenceReference(entry mappingEntry, repoRoot string) []string {
 	marker := []byte("pig divergence (" + entry.Divergence + ")")
 	for _, target := range entry.PigTargets {
 		pathRef, _, _ := strings.Cut(target, "#")
-		data, readErr := os.ReadFile(filepath.Join(repoRoot, filepath.FromSlash(pathRef)))
+		data, readErr := os.ReadFile(filepath.Join(repoRoot, filepath.FromSlash(pathRef))) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 		if readErr == nil && bytes.Contains(data, marker) {
 			return nil
 		}
@@ -834,7 +834,7 @@ func validateReferenceFragment(path, fragment string) error {
 		}
 		return nil
 	}
-	content, err := os.ReadFile(path)
+	content, err := os.ReadFile(path) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return err
 	}

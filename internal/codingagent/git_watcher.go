@@ -285,7 +285,7 @@ func gitPathsAt(dir, gitPath string) (paths gitPaths, ok, stop bool) {
 		return gitPaths{}, false, false
 	}
 	if info.Mode().IsRegular() {
-		data, err := os.ReadFile(gitPath)
+		data, err := os.ReadFile(gitPath) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 		if err != nil {
 			return gitPaths{}, false, true
 		}
@@ -301,7 +301,7 @@ func gitPathsAt(dir, gitPath string) (paths gitPaths, ok, stop bool) {
 		common := gitDir
 		commonPath := filepath.Join(gitDir, "commondir")
 		if _, err := os.Stat(commonPath); err == nil {
-			data, err := os.ReadFile(commonPath)
+			data, err := os.ReadFile(commonPath) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 			if err != nil {
 				return gitPaths{}, false, true
 			}

@@ -252,7 +252,7 @@ func formatModule(m module.Version) string {
 
 func readModFile(root string) (*modfile.File, error) {
 	path := filepath.Join(root, "go.mod")
-	data, err := os.ReadFile(path)
+	data, err := os.ReadFile(path) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return nil, err
 	}
@@ -274,7 +274,7 @@ func mergeGoSum(base []byte, roots []string) ([]byte, error) {
 		out = append(out, '\n')
 	}
 	for _, root := range roots {
-		data, err := os.ReadFile(filepath.Join(root, "go.sum"))
+		data, err := os.ReadFile(filepath.Join(root, "go.sum")) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 		if errors.Is(err, fs.ErrNotExist) {
 			continue
 		}

@@ -17,7 +17,7 @@ func LoadEvidenceAttestation(ctx context.Context, root, configured string) ([]Re
 	if err != nil {
 		return nil, err
 	}
-	file, err := os.Open(path)
+	file, err := os.Open(path) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return nil, err
 	}
@@ -57,7 +57,7 @@ func LoadEvidenceAttestation(ctx context.Context, root, configured string) ([]Re
 		if _, _, err := trackedEvidencePath(ctx, root, artifactPath); err != nil {
 			return nil, fmt.Errorf("evidence artifact %s: %w", artifact.Path, err)
 		}
-		data, err := os.ReadFile(artifactPath)
+		data, err := os.ReadFile(artifactPath) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 		if err != nil {
 			return nil, err
 		}
@@ -92,7 +92,7 @@ func LoadMutationRun(ctx context.Context, root, configured string) ([]Record, er
 	if err != nil {
 		return nil, err
 	}
-	file, err := os.Open(path)
+	file, err := os.Open(path) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return nil, err
 	}
@@ -124,7 +124,7 @@ func LoadMutationRun(ctx context.Context, root, configured string) ([]Record, er
 		if _, _, err := trackedEvidencePath(ctx, root, artifactPath); err != nil {
 			return nil, fmt.Errorf("mutation artifact %s: %w", artifact.Path, err)
 		}
-		data, err := os.ReadFile(artifactPath)
+		data, err := os.ReadFile(artifactPath) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 		if err != nil {
 			return nil, err
 		}
@@ -201,7 +201,7 @@ func verifyMutationPatch(ctx context.Context, root, commit string, patch []byte,
 	if len(paths) != 1 || string(paths[0]) != mutatedPath {
 		return fmt.Errorf("patch does not change only %s", mutatedPath)
 	}
-	data, err := os.ReadFile(filepath.Join(checkout, filepath.FromSlash(mutatedPath)))
+	data, err := os.ReadFile(filepath.Join(checkout, filepath.FromSlash(mutatedPath))) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return err
 	}
@@ -231,7 +231,7 @@ func verifyWitnessArtifactClaims(root, directory string, witness *ExecutionWitne
 			return fmt.Errorf("Go coverage witness requires one artifact")
 		}
 		path := filepath.Join(directory, filepath.FromSlash(witness.Artifacts[0].Path))
-		file, err := os.Open(path)
+		file, err := os.Open(path) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 		if err != nil {
 			return err
 		}
@@ -267,7 +267,7 @@ func verifyWitnessArtifactClaims(root, directory string, witness *ExecutionWitne
 		if len(witness.Artifacts) != 1 {
 			return fmt.Errorf("typed trace witness requires one artifact")
 		}
-		data, err := os.ReadFile(filepath.Join(directory, filepath.FromSlash(witness.Artifacts[0].Path)))
+		data, err := os.ReadFile(filepath.Join(directory, filepath.FromSlash(witness.Artifacts[0].Path))) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 		if err != nil {
 			return err
 		}
@@ -315,7 +315,7 @@ func trackedEvidencePath(ctx context.Context, root, configured string) (string, 
 		return "", "", fmt.Errorf("tracked evidence path %s is not committed", relative)
 	}
 	for _, args := range [][]string{{"diff", "--quiet", "HEAD", "--", relative}, {"diff", "--cached", "--quiet", "HEAD", "--", relative}} {
-		command := exec.CommandContext(ctx, "git", args...)
+		command := exec.CommandContext(ctx, "git", args...) //nolint:gosec // G204: the program and arguments come from the user, the project config, or PiG's own toolchain lookup; the CLI runs as the user with no sandbox and launches them as Pi's child_process.spawn does
 		command.Dir = root
 		if err := command.Run(); err != nil {
 			return "", "", fmt.Errorf("tracked evidence path %s differs from HEAD", relative)
@@ -325,7 +325,7 @@ func trackedEvidencePath(ctx context.Context, root, configured string) (string, 
 }
 
 func repositoryGitOutputBytes(ctx context.Context, root string, args ...string) ([]byte, error) {
-	command := exec.CommandContext(ctx, "git", args...)
+	command := exec.CommandContext(ctx, "git", args...) //nolint:gosec // G204: the program and arguments come from the user, the project config, or PiG's own toolchain lookup; the CLI runs as the user with no sandbox and launches them as Pi's child_process.spawn does
 	command.Dir = root
 	output, err := command.Output()
 	if err != nil {
@@ -335,7 +335,7 @@ func repositoryGitOutputBytes(ctx context.Context, root string, args ...string) 
 }
 
 func repositoryGitOutput(ctx context.Context, root string, args ...string) (string, error) {
-	command := exec.CommandContext(ctx, "git", args...)
+	command := exec.CommandContext(ctx, "git", args...) //nolint:gosec // G204: the program and arguments come from the user, the project config, or PiG's own toolchain lookup; the CLI runs as the user with no sandbox and launches them as Pi's child_process.spawn does
 	command.Dir = root
 	output, err := command.Output()
 	if err != nil {

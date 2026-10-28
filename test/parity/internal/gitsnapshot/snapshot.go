@@ -22,7 +22,7 @@ func Create(ctx context.Context, root, indexPath string) (string, error) {
 		"GIT_COMMITTER_DATE=2000-01-01T00:00:00Z",
 	)
 	run := func(input string, args ...string) (string, error) {
-		command := exec.CommandContext(ctx, "git", append([]string{"-C", root}, args...)...)
+		command := exec.CommandContext(ctx, "git", append([]string{"-C", root}, args...)...) //nolint:gosec // G204: the program and arguments come from the user, the project config, or PiG's own toolchain lookup; the CLI runs as the user with no sandbox and launches them as Pi's child_process.spawn does
 		command.Env = env
 		if input != "" {
 			command.Stdin = strings.NewReader(input)

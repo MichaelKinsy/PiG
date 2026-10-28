@@ -218,7 +218,7 @@ func runImportDenominators(ctx context.Context, args []string, stdout, stderr io
 		if err != nil {
 			return fmt.Errorf("decision %q: %w", configured, err)
 		}
-		file, err := os.Open(path)
+		file, err := os.Open(path) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 		if err != nil {
 			return fmt.Errorf("open decision %q: %w", configured, err)
 		}
@@ -266,7 +266,7 @@ func runImportDenominators(ctx context.Context, args []string, stdout, stderr io
 		if err != nil {
 			return fmt.Errorf("mutation %q: %w", configured, err)
 		}
-		file, err := os.Open(path)
+		file, err := os.Open(path) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 		if err != nil {
 			return fmt.Errorf("open mutation %q: %w", configured, err)
 		}
@@ -311,7 +311,7 @@ func runImportDenominators(ctx context.Context, args []string, stdout, stderr io
 		if err != nil {
 			return fmt.Errorf("bundle %q: %w", configured, err)
 		}
-		file, err := os.Open(path)
+		file, err := os.Open(path) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 		if err != nil {
 			return fmt.Errorf("open bundle %q: %w", configured, err)
 		}
@@ -355,7 +355,7 @@ func runImportDenominators(ctx context.Context, args []string, stdout, stderr io
 
 func committedBundlePaths(ctx context.Context, root, snapshotID string) ([]string, error) {
 	directory := filepath.ToSlash(filepath.Join("test/parity", "closuredata", "proposals", strings.TrimPrefix(snapshotID, "snapshot:")))
-	command := exec.CommandContext(ctx, "git", "ls-files", "-z", "--", directory)
+	command := exec.CommandContext(ctx, "git", "ls-files", "-z", "--", directory) //nolint:gosec // G204: the program and arguments come from the user, the project config, or PiG's own toolchain lookup; the CLI runs as the user with no sandbox and launches them as Pi's child_process.spawn does
 	command.Dir = root
 	output, err := command.Output()
 	if err != nil {
@@ -374,7 +374,7 @@ func committedBundlePaths(ctx context.Context, root, snapshotID string) ([]strin
 			return nil, fmt.Errorf("committed agent bundle %s is not a regular file", path)
 		}
 		for _, args := range [][]string{{"diff", "--quiet", "HEAD", "--", path}, {"diff", "--cached", "--quiet", "HEAD", "--", path}} {
-			check := exec.CommandContext(ctx, "git", args...)
+			check := exec.CommandContext(ctx, "git", args...) //nolint:gosec // G204: the program and arguments come from the user, the project config, or PiG's own toolchain lookup; the CLI runs as the user with no sandbox and launches them as Pi's child_process.spawn does
 			check.Dir = root
 			if err := check.Run(); err != nil {
 				return nil, fmt.Errorf("committed agent bundle %s differs from HEAD", path)
@@ -404,7 +404,7 @@ func runCoverageAudit(ctx context.Context, args []string, stdout, stderr io.Writ
 	if err != nil {
 		return err
 	}
-	file, err := os.Open(piglet)
+	file, err := os.Open(piglet) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return fmt.Errorf("open coverage profile: %w", err)
 	}
@@ -458,7 +458,7 @@ func runRebuild(ctx context.Context, args []string, stdout, stderr io.Writer) er
 		if err != nil {
 			return fmt.Errorf("input %q: %w", configured, err)
 		}
-		file, err := os.Open(path)
+		file, err := os.Open(path) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 		if err != nil {
 			return fmt.Errorf("open input %q: %w", configured, err)
 		}

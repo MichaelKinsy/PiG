@@ -56,7 +56,7 @@ func timingGate(t testing.TB, fatal, failed bool, format string, args []any) {
 
 // appendStepSummary appends line as its own paragraph to the GitHub step summary file at path.
 func appendStepSummary(path, line string) error {
-	file, err := os.OpenFile(path, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0o600)
+	file, err := os.OpenFile(path, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0o600) //nolint:gosec // G304: the path names an output or state file that the user or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so writing it grants nothing the user lacks
 	if err != nil {
 		return err
 	}

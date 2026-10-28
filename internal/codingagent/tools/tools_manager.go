@@ -410,7 +410,7 @@ func (m *ToolsManager) downloadFile(ctx context.Context, rawURL, dest string) er
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		return fmt.Errorf("Download failed with HTTP %d: %s", resp.StatusCode, rawURL)
 	}
-	out, err := os.Create(dest)
+	out, err := os.Create(dest) //nolint:gosec // G304: the path names an output or state file that the user or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so writing it grants nothing the user lacks
 	if err != nil {
 		return err
 	}
@@ -448,7 +448,7 @@ func localArchiveEntry(name string) bool {
 // pig divergence (D14): use Go archive readers. Ignore links that the fd and
 // rg binaries do not require.
 func extractTarGz(archivePath, extractDir string) error {
-	f, err := os.Open(archivePath)
+	f, err := os.Open(archivePath) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return err
 	}
@@ -480,7 +480,7 @@ func extractTarGz(archivePath, extractDir string) error {
 			if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil {
 				return err
 			}
-			out, err := os.OpenFile(target, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, os.FileMode(hdr.Mode)&0o777)
+			out, err := os.OpenFile(target, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, os.FileMode(hdr.Mode)&0o777) //nolint:gosec // G304: localArchiveEntry rejects an entry name that escapes the extract directory before the join, so the target stays inside it
 			if err != nil {
 				return err
 			}
@@ -520,7 +520,7 @@ func extractZip(archivePath, extractDir string) error {
 		if err != nil {
 			return err
 		}
-		out, err := os.OpenFile(target, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, f.Mode().Perm())
+		out, err := os.OpenFile(target, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, f.Mode().Perm()) //nolint:gosec // G304: localArchiveEntry rejects an entry name that escapes the extract directory before the join, so the target stays inside it
 		if err != nil {
 			_ = rc.Close()
 			return err
@@ -640,12 +640,12 @@ func (m *ToolsManager) downloadTool(ctx context.Context, tool string) (string, e
 }
 
 func copyFile(src, dst string) error {
-	in, err := os.Open(src)
+	in, err := os.Open(src) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return err
 	}
 	defer func() { _ = in.Close() }()
-	out, err := os.OpenFile(dst, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0o755)
+	out, err := os.OpenFile(dst, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0o755) //nolint:gosec // G304: the path names an output or state file that the user or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so writing it grants nothing the user lacks
 	if err != nil {
 		return err
 	}

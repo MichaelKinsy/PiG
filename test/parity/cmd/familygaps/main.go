@@ -352,7 +352,7 @@ type portMapEntry struct {
 
 // parsePortMap returns every upstream row. Header, separator and downstream rows are skipped by shape; any other line that starts with `|` and does not parse is an error, so no row is dropped silently.
 func parsePortMap(path string) ([]portMapEntry, error) {
-	data, err := os.ReadFile(path)
+	data, err := os.ReadFile(path) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return nil, err
 	}

@@ -65,7 +65,7 @@ func run(output, schema string, check bool) error {
 	if err != nil {
 		return err
 	}
-	currentSchema, err := os.ReadFile(schema)
+	currentSchema, err := os.ReadFile(schema) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return err
 	}
@@ -74,7 +74,7 @@ func run(output, schema string, check bool) error {
 		return err
 	}
 	if check {
-		current, err := os.ReadFile(output)
+		current, err := os.ReadFile(output) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 		if err != nil {
 			return err
 		}

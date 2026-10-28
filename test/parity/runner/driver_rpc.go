@@ -105,7 +105,7 @@ func (rpcModeDriver) Run(ctx context.Context, t *testing.T, bin BinaryRef, sc *S
 	subCtx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 
-	cmd := exec.CommandContext(subCtx, bin.Path, args...)
+	cmd := exec.CommandContext(subCtx, bin.Path, args...) //nolint:gosec // G204: the program and arguments come from the user, the project config, or PiG's own toolchain lookup; the CLI runs as the user with no sandbox and launches them as Pi's child_process.spawn does
 	cmd.Env = append(hermeticEnviron(), env...)
 	if cwd != "" {
 		cmd.Dir = cwd
@@ -252,7 +252,7 @@ func (rpcModeDriver) Run(ctx context.Context, t *testing.T, bin BinaryRef, sc *S
 	}
 	if sc.RPC.ArtifactPath != "" {
 		path := resolveScenarioCWD(sc.SourcePath, tc.expand(sc.RPC.ArtifactPath))
-		data, err := os.ReadFile(path)
+		data, err := os.ReadFile(path) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 		result.Artifact, result.ArtifactErr = string(data), err
 	}
 	return result

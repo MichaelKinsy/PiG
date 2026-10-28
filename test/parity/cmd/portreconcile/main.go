@@ -195,7 +195,7 @@ func run() error {
 }
 
 func loadInventory(path string) ([]declaration, error) {
-	data, err := os.ReadFile(path)
+	data, err := os.ReadFile(path) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return nil, err
 	}
@@ -216,7 +216,7 @@ func matchPortMapRow(line string) (match []string, ok bool) {
 }
 
 func parsePortMap(path string) (map[string]portMapRow, error) {
-	data, err := os.ReadFile(path)
+	data, err := os.ReadFile(path) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return nil, err
 	}
@@ -302,7 +302,7 @@ func goTargets(root, target string) (files []string, hasGoTarget bool) {
 // repo-relative production files with at least one executed statement. The
 // module prefix is stripped so paths align with PORT_MAP's repo-relative targets.
 func coveredFiles(path string) (map[string]bool, error) {
-	data, err := os.ReadFile(path)
+	data, err := os.ReadFile(path) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return nil, err
 	}
@@ -504,7 +504,7 @@ var portMapLinePat = regexp.MustCompile("^(\\| `[^`]+` \\| .* \\| )(⬜)( \\|\\s
 // exists but is uncovered are left ⬜ and reported as the residual gap. 🟡/⏸/🔴
 // are deliberate states and are never touched.
 func flipPortMap(w io.Writer, portMapPath, root string, unitCov, parityCov map[string]bool, apply bool) error {
-	data, err := os.ReadFile(portMapPath)
+	data, err := os.ReadFile(portMapPath) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return err
 	}

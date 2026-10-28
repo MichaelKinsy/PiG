@@ -102,7 +102,7 @@ func NodeDirectoryImport(dir string) (file string, ok bool) {
 		}
 	}
 	var candidates []string
-	if data, err := os.ReadFile(filepath.Join(dir, "package.json")); err == nil {
+	if data, err := os.ReadFile(filepath.Join(dir, "package.json")); err == nil { //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 		var manifest struct {
 			Main string `json:"main"`
 		}
@@ -164,7 +164,7 @@ func nodeRootEntries(dir string) []string {
 // ignored, "pi" must be an object, and the list counts only when every entry
 // is a string. ok is false when there is no such non-empty list.
 func nodeManifestDeclared(dir string) (entries []string, ok bool, err error) {
-	data, err := os.ReadFile(filepath.Join(dir, "package.json"))
+	data, err := os.ReadFile(filepath.Join(dir, "package.json")) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		if os.IsNotExist(err) {
 			return nil, false, nil

@@ -599,18 +599,18 @@ func (c *Run) checkStderr() {
 		path := filepath.Join(root, name)
 		switch {
 		case strings.HasPrefix(name, "race."):
-			b, _ := os.ReadFile(path)
+			b, _ := os.ReadFile(path) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 			c.note("race", "data race reported by the race detector:\n%s", truncate(string(b), 6000))
 		case name == "lockorder.txt":
-			if b, _ := os.ReadFile(path); len(b) > 0 {
+			if b, _ := os.ReadFile(path); len(b) > 0 { //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 				c.note("lockorder", "lock-order cycle:\n%s", truncate(string(b), 6000))
 			}
 		case name == "requestvalidity.txt":
-			if b, _ := os.ReadFile(path); len(b) > 0 {
+			if b, _ := os.ReadFile(path); len(b) > 0 { //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 				c.note("request", "in-process request-validity violation:\n%s", truncate(string(b), 6000))
 			}
 		case strings.HasPrefix(name, "term"):
-			b, _ := os.ReadFile(filepath.Join(path, "stderr.log"))
+			b, _ := os.ReadFile(filepath.Join(path, "stderr.log")) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 			s := string(b)
 			for _, bad := range []string{"panic:", "fatal error:", "DATA RACE", "REQUESTVALIDITY", "goroutine "} {
 				if strings.Contains(s, bad) {

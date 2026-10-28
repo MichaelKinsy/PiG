@@ -392,7 +392,7 @@ func newSampleLinker(root, out string) sampleLinker {
 		if rel == "" || filepath.IsAbs(rel) || clean == ".." || strings.HasPrefix(clean, "../") {
 			return ""
 		}
-		b, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(clean)))
+		b, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(clean))) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 		if err != nil || len(b) > maxSample {
 			return ""
 		}
@@ -538,7 +538,7 @@ func checkOutputDir(dir string) error {
 	if err != nil {
 		return err
 	}
-	if b, err := os.ReadFile(filepath.Join(dir, "index.html")); err == nil && bytes.Contains(b, []byte(generatorMeta)) {
+	if b, err := os.ReadFile(filepath.Join(dir, "index.html")); err == nil && bytes.Contains(b, []byte(generatorMeta)) { //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 		return nil
 	}
 	return fmt.Errorf("%s is not empty and holds no earlier port lens report; choose a new or empty directory", dir)

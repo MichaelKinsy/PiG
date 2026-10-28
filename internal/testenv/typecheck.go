@@ -28,7 +28,7 @@ func exportsOf(paths []string) (map[string]string, error) {
 			return nil, err
 		}
 		args := append([]string{"list", "-export", "-deps", "-f", "{{.ImportPath}}={{.Export}}"}, paths...)
-		out, err := exec.Command(goTool, args...).Output()
+		out, err := exec.Command(goTool, args...).Output() //nolint:gosec // G204: the program and arguments come from the user, the project config, or PiG's own toolchain lookup; the CLI runs as the user with no sandbox and launches them as Pi's child_process.spawn does
 		if err != nil {
 			return nil, fmt.Errorf("go list -export: %w", err)
 		}

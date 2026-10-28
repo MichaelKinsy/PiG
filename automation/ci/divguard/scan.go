@@ -74,7 +74,7 @@ type env struct {
 func loadEnv(root, upstreamDir string) (*env, error) {
 	e := &env{Root: root, Divergences: map[string]bool{}}
 	for _, ledger := range []string{"docs/parity/DIVERGENCES.md", "docs/additive-features.md"} {
-		data, err := os.ReadFile(filepath.Join(root, ledger))
+		data, err := os.ReadFile(filepath.Join(root, ledger)) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 		if err != nil {
 			if os.IsNotExist(err) {
 				continue
@@ -340,7 +340,7 @@ func scan(root string, e *env, checks []check) ([]Hit, []string, error) {
 		if len(active) == 0 {
 			return nil
 		}
-		src, err := os.ReadFile(path)
+		src, err := os.ReadFile(path) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 		if err != nil {
 			return err
 		}

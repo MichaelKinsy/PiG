@@ -77,7 +77,7 @@ func main() {
 func documentedRenames(root string) (map[string]string, error) {
 	out := map[string]string{}
 	for _, name := range []string{"renames.json", "renames-reviewed.json"} {
-		raw, err := os.ReadFile(filepath.Join(root, "test/parity/interface-closure/autobind", name))
+		raw, err := os.ReadFile(filepath.Join(root, "test/parity/interface-closure/autobind", name)) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 		if err != nil {
 			return nil, err
 		}
@@ -104,7 +104,7 @@ func readLabels(spec string) (map[string]string, error) {
 		}
 		sort.Strings(files)
 		for _, f := range files {
-			raw, err := os.ReadFile(f)
+			raw, err := os.ReadFile(f) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 			if err != nil {
 				return nil, err
 			}
@@ -128,7 +128,7 @@ func readWiring(path string) (map[string]string, error) {
 	if path == "" {
 		return out, nil
 	}
-	raw, err := os.ReadFile(path)
+	raw, err := os.ReadFile(path) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return nil, err
 	}
@@ -170,7 +170,7 @@ func pinnedCitation(upstreamDir, parent, prop string) (string, string) {
 		if err != nil || found != "" || d.IsDir() && (d.Name() == "node_modules" || d.Name() == "dist" || d.Name() == "test") || d.IsDir() || !strings.HasSuffix(path, ".ts") {
 			return nil
 		}
-		raw, readErr := os.ReadFile(path)
+		raw, readErr := os.ReadFile(path) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 		if readErr != nil {
 			return nil
 		}
@@ -207,7 +207,7 @@ func under(root, p string) string {
 }
 
 func readGaps(path string) ([]gap, error) {
-	f, err := os.Open(path)
+	f, err := os.Open(path) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return nil, err
 	}
@@ -225,7 +225,7 @@ func readGaps(path string) ([]gap, error) {
 }
 
 func readInventory(path string) (map[string]*entry, error) {
-	raw, err := os.ReadFile(path)
+	raw, err := os.ReadFile(path) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return nil, err
 	}
@@ -462,7 +462,7 @@ func closingBrace(pkg *packages.Package, tn *types.TypeName) (int, string, error
 }
 
 func applyEdits(file string, es []edit) error {
-	src, err := os.ReadFile(file)
+	src, err := os.ReadFile(file) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return err
 	}

@@ -47,7 +47,7 @@ func CheckBin(bin string) error {
 // installs the published package (`make durable-interop-deps` runs npm-locked.py), so its version is enough. A commit pin shares that
 // package version with the release, so the tree must be the build of the pinned commit that `pin.py install-oracle` stamps.
 func CheckDurable(modules string) error {
-	data, err := os.ReadFile(filepath.Join(modules, "@earendil-works", "pi-durable", "package.json"))
+	data, err := os.ReadFile(filepath.Join(modules, "@earendil-works", "pi-durable", "package.json")) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return fmt.Errorf("pioracle: Pi Durable is not installed in %s (make durable-interop-deps installs it): %w", modules, err)
 	}
@@ -73,7 +73,7 @@ func checkStamp(path, install string) error {
 		return err
 	}
 	for dir := filepath.Dir(real); dir != filepath.Dir(dir); dir = filepath.Dir(dir) {
-		data, err := os.ReadFile(filepath.Join(dir, StampFile))
+		data, err := os.ReadFile(filepath.Join(dir, StampFile)) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 		if err != nil {
 			continue
 		}

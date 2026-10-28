@@ -140,7 +140,7 @@ func runCmdWithInput(ctx context.Context, name string, args, env, inputLines []s
 	subCtx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 
-	cmd := exec.CommandContext(subCtx, name, args...)
+	cmd := exec.CommandContext(subCtx, name, args...) //nolint:gosec // G204: the program and arguments come from the user, the project config, or PiG's own toolchain lookup; the CLI runs as the user with no sandbox and launches them as Pi's child_process.spawn does
 	cmd.Env = append(hermeticEnviron(), env...)
 	if cwd != "" {
 		cmd.Dir = cwd

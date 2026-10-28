@@ -93,7 +93,7 @@ func spawnTrash(args []string) trashSpawnResult {
 }
 
 func runTrashCommand(ctx context.Context, path string, args []string, output *trashOutput) (*exec.Cmd, error) {
-	cmd := exec.CommandContext(ctx, path, args...)
+	cmd := exec.CommandContext(ctx, path, args...) //nolint:gosec // G204: the program and arguments come from the user, the project config, or PiG's own toolchain lookup; the CLI runs as the user with no sandbox and launches them as Pi's child_process.spawn does
 	cmd.Args[0] = "trash"
 	linkerexec.Prepare(cmd)
 	cmd.Cancel = func() error { return terminateTrash(cmd.Process) }

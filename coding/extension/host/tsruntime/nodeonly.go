@@ -66,7 +66,7 @@ func ReadNodeOnly(root string, set Set) (string, bool) {
 		return "", false
 	}
 	path := nodeOnlyPath(root, set)
-	data, err := os.ReadFile(path)
+	data, err := os.ReadFile(path) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return "", false
 	}
@@ -95,7 +95,7 @@ func ListNodeOnly(root string) []NodeOnlyEntry {
 	}
 	var listed []NodeOnlyEntry
 	for _, entry := range entries {
-		data, err := os.ReadFile(filepath.Join(root, NodeOnlyDir, entry.Name()))
+		data, err := os.ReadFile(filepath.Join(root, NodeOnlyDir, entry.Name())) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 		if err != nil {
 			continue
 		}

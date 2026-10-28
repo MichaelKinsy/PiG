@@ -29,7 +29,7 @@ func shipped(path string) bool { return !notShipped.MatchString(path) }
 
 // exemptions reads automation/ci/bugledger/exempt.txt: "<commit> <category>: <reason>" lines for fix-titled commits that are not product bugs.
 func exemptions(root string) (map[string]string, error) {
-	data, err := os.ReadFile(filepath.Join(root, "automation", "ci", "bugledger", "exempt.txt"))
+	data, err := os.ReadFile(filepath.Join(root, "automation", "ci", "bugledger", "exempt.txt")) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if os.IsNotExist(err) {
 		return nil, nil
 	}

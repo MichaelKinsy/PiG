@@ -81,7 +81,7 @@ func (d *detector) goDeclDoc(c *sym) string {
 func (d *detector) packageTestBody(dir, name string) (string, bool) {
 	files, _ := filepath.Glob(filepath.Join(d.ix.root, filepath.FromSlash(dir), "*_test.go"))
 	for _, file := range files {
-		src, err := os.ReadFile(file)
+		src, err := os.ReadFile(file) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 		if err != nil {
 			continue
 		}

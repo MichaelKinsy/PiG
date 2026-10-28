@@ -174,7 +174,7 @@ type Manifest struct {
 
 // ReadManifest reads and validates the manifest of runtime id under root.
 func ReadManifest(root, id string) (Manifest, error) {
-	data, err := os.ReadFile(filepath.Join(root, id, ManifestFile))
+	data, err := os.ReadFile(filepath.Join(root, id, ManifestFile)) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return Manifest{}, err
 	}
@@ -403,7 +403,7 @@ func touchUsed(dir string) {
 	if info, err := os.Stat(path); err == nil && time.Since(info.ModTime()) < usedGranularity {
 		return
 	}
-	file, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY, 0o644)
+	file, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY, 0o644) //nolint:gosec // G304: the path names an output or state file that the user or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so writing it grants nothing the user lacks
 	if err != nil {
 		return
 	}

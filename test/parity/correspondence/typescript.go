@@ -13,7 +13,7 @@ func ExtractTypeScript(ctx context.Context, nodePath, scriptPath, sourceRoot, up
 	if nodePath == "" || scriptPath == "" || sourceRoot == "" || upstreamVersion == "" {
 		return nil, fmt.Errorf("node path, script path, source root, and upstream version are required")
 	}
-	command := exec.CommandContext(ctx, nodePath, scriptPath,
+	command := exec.CommandContext(ctx, nodePath, scriptPath, //nolint:gosec // G204: the program and arguments come from the user, the project config, or PiG's own toolchain lookup; the CLI runs as the user with no sandbox and launches them as Pi's child_process.spawn does
 		"--source-root", sourceRoot,
 		"--upstream-version", upstreamVersion,
 		"--out", "-",

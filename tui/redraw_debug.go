@@ -17,7 +17,7 @@ func (t *TuiMainScreen) logRedraw(reason string, newLen, height int) {
 	if err := os.MkdirAll(filepath.Dir(path), 0o777); err != nil {
 		panic(err)
 	}
-	file, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o666)
+	file, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o666) //nolint:gosec // G304: the path names an output or state file that the user or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so writing it grants nothing the user lacks
 	if err != nil {
 		panic(err)
 	}

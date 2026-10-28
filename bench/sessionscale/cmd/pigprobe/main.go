@@ -27,7 +27,7 @@ func main() {
 				<-sig
 				runtime.GC()
 				name := filepath.Join(dir, fmt.Sprintf("heap-%d.pprof", n))
-				if f, err := os.Create(name); err == nil {
+				if f, err := os.Create(name); err == nil { //nolint:gosec // G304: the path names an output or state file that the user or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so writing it grants nothing the user lacks
 					_ = pprof.Lookup("heap").WriteTo(f, 0)
 					_ = f.Close()
 				}
@@ -40,7 +40,7 @@ func main() {
 			for n := 1; ; n++ {
 				<-cpu
 				name := filepath.Join(dir, fmt.Sprintf("cpu-%d.pprof", n))
-				f, err := os.Create(name)
+				f, err := os.Create(name) //nolint:gosec // G304: the path names an output or state file that the user or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so writing it grants nothing the user lacks
 				if err != nil {
 					continue
 				}

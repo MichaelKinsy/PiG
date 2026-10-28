@@ -772,7 +772,7 @@ func Extension() *sdk.Extension {
 		file, _ := params["file"].(string)
 		tag, _ := params["tag"].(string)
 		_, err := sdk.WithFileMutationQueue(file, func() (struct{}, error) {
-			before, _ := os.ReadFile(file)
+			before, _ := os.ReadFile(file) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 			return struct{}{}, os.WriteFile(file, append(before, tag+"\n"...), 0o600)
 		})
 		if err != nil {

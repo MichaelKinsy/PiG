@@ -273,7 +273,7 @@ func (c *Run) sessionLines() ([]string, error) {
 	sort.Strings(files)
 	var out []string
 	for fi, f := range files {
-		data, err := os.ReadFile(f)
+		data, err := os.ReadFile(f) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 		if err != nil {
 			return nil, err
 		}
@@ -432,7 +432,7 @@ func compareAgentFiles(j *Journey, pig, pi *Run) []Failure {
 	var out []Failure
 	for _, rel := range j.AgentFiles {
 		read := func(r *Run) string {
-			b, err := os.ReadFile(filepath.Join(r.SB.Agent, rel))
+			b, err := os.ReadFile(filepath.Join(r.SB.Agent, rel)) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 			if err != nil {
 				return "<missing: " + err.Error() + ">"
 			}

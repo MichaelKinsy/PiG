@@ -110,7 +110,7 @@ func readRows(file string) ([]string, error) {
 		f = os.Stdin
 	} else {
 		var err error
-		if f, err = os.Open(file); err != nil {
+		if f, err = os.Open(file); err != nil { //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 			return nil, err
 		}
 		defer func() { _ = f.Close() }()
@@ -130,7 +130,7 @@ func readRows(file string) ([]string, error) {
 
 // readSkip reads the Pi paths a skeleton must not be written for: the rows another branch already proves with a `// pi:` marker.
 func readSkip(file string) (map[string]bool, error) {
-	body, err := os.ReadFile(file)
+	body, err := os.ReadFile(file) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return nil, err
 	}
@@ -201,7 +201,7 @@ func build(root string, pis []string) ([]skeleton, []string, error) {
 }
 
 func readCells(root string) (map[string]string, error) {
-	f, err := os.Open(filepath.Join(root, "docs/parity/PORT_MAP.md"))
+	f, err := os.Open(filepath.Join(root, "docs/parity/PORT_MAP.md")) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return nil, err
 	}

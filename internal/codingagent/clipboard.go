@@ -250,7 +250,7 @@ func readClipboardImageViaPowerShellContext(parent context.Context) ([]byte, boo
 	if err != nil || jsstring.Trim(jsstring.FromUTF8(out)) != "ok" {
 		return nil, false
 	}
-	data, err := os.ReadFile(tmpFile)
+	data, err := os.ReadFile(tmpFile) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil || len(data) == 0 {
 		return nil, false
 	}

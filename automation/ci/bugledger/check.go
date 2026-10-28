@@ -19,7 +19,7 @@ func identity(e Entry) string {
 }
 
 func readCommitted(root string) (*Ledger, []byte, error) {
-	data, err := os.ReadFile(filepath.Join(root, jsonPath))
+	data, err := os.ReadFile(filepath.Join(root, jsonPath)) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return nil, nil, fmt.Errorf("%s: %w; run `make bug-ledger`", jsonPath, err)
 	}
@@ -79,7 +79,7 @@ func verify(root string, generated *Ledger, genJSON []byte, genPage string, stri
 			problems = append(problems, fmt.Sprintf("entry %s has no fix commit", e.ID))
 		}
 	}
-	page, err := os.ReadFile(filepath.Join(root, pagePath))
+	page, err := os.ReadFile(filepath.Join(root, pagePath)) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		problems = append(problems, fmt.Sprintf("%s: %v", pagePath, err))
 	} else if string(page) != renderMarkdown(committed) {

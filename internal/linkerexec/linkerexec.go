@@ -216,7 +216,7 @@ func pathLookup(path string) func(string) (string, error) {
 
 // readHead reads the first bytes of the file at path.
 func readHead(path string) ([]byte, error) {
-	file, err := os.Open(path)
+	file, err := os.Open(path) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return nil, err
 	}
@@ -264,7 +264,7 @@ func Prepare(cmd *exec.Cmd) { Current().Prepare(cmd) }
 // Command is exec.Command for a command that starts through the linker when
 // the running process needs it.
 func Command(name string, args ...string) *exec.Cmd {
-	cmd := exec.Command(name, args...)
+	cmd := exec.Command(name, args...) //nolint:gosec // G204: the program and arguments come from the user, the project config, or PiG's own toolchain lookup; the CLI runs as the user with no sandbox and launches them as Pi's child_process.spawn does
 	Prepare(cmd)
 	return cmd
 }
@@ -272,7 +272,7 @@ func Command(name string, args ...string) *exec.Cmd {
 // CommandContext is exec.CommandContext for a command that starts through the
 // linker when the running process needs it.
 func CommandContext(ctx context.Context, name string, args ...string) *exec.Cmd {
-	cmd := exec.CommandContext(ctx, name, args...)
+	cmd := exec.CommandContext(ctx, name, args...) //nolint:gosec // G204: the program and arguments come from the user, the project config, or PiG's own toolchain lookup; the CLI runs as the user with no sandbox and launches them as Pi's child_process.spawn does
 	Prepare(cmd)
 	return cmd
 }

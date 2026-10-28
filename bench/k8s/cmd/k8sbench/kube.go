@@ -41,7 +41,7 @@ func (k execKubectl) args(args []string) []string {
 }
 
 func (k execKubectl) run(ctx context.Context, stdin []byte, args ...string) ([]byte, error) {
-	cmd := exec.CommandContext(ctx, k.bin, k.args(args)...)
+	cmd := exec.CommandContext(ctx, k.bin, k.args(args)...) //nolint:gosec // G204: the program and arguments come from the user, the project config, or PiG's own toolchain lookup; the CLI runs as the user with no sandbox and launches them as Pi's child_process.spawn does
 	if stdin != nil {
 		cmd.Stdin = bytes.NewReader(stdin)
 	}

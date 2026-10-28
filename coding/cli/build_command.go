@@ -102,7 +102,7 @@ func signPigBuild(ctx context.Context, progress *buildprogress.Reporter, target 
 		return
 	}
 	buildprogress.Phase(ctx, "Signing binary", "Ad-hoc codesign: "+target)
-	cmd := exec.CommandContext(ctx, codesign, "--force", "--sign", "-", target)
+	cmd := exec.CommandContext(ctx, codesign, "--force", "--sign", "-", target) //nolint:gosec // G204: the program and arguments come from the user, the project config, or PiG's own toolchain lookup; the CLI runs as the user with no sandbox and launches them as Pi's child_process.spawn does
 	if err := buildprogress.Run(buildprogress.Member(ctx, "pig"), cmd); err != nil {
 		// pig additive (D18): ad-hoc signing remains best-effort, but its failure is visible.
 		_, _ = fmt.Fprintf(stderr, "warning: %v\n", progress.Failure(fmt.Errorf("ad-hoc codesign: %w", err)))
@@ -185,7 +185,7 @@ func findPigSourceRootFrom(start string) (string, bool) {
 	}
 	for {
 		modPath := filepath.Join(cwd, "go.mod")
-		data, err := os.ReadFile(modPath)
+		data, err := os.ReadFile(modPath) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 		if err == nil && strings.Contains(string(data), "module "+pigModulePath) {
 			return cwd, true
 		}

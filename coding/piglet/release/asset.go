@@ -64,7 +64,7 @@ func checkBinarySize(size int64) error {
 }
 
 func fileSHA256(path string) (string, int64, error) {
-	file, err := os.Open(path)
+	file, err := os.Open(path) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return "", 0, err
 	}

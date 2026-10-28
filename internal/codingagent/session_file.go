@@ -107,7 +107,7 @@ func readSessionFileEntries(path string) ([]FileEntry, bool, error) {
 	if _, err := os.Stat(path); err != nil {
 		return []FileEntry{}, false, nil
 	}
-	file, err := os.Open(path)
+	file, err := os.Open(path) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return nil, false, nodeerrno.FromPathError(err)
 	}
@@ -318,7 +318,7 @@ func streamSessionFileBatched(path string, batching lineBatching) (*Session, err
 		}
 		batching = defaultLineBatching()
 	}
-	file, err := os.Open(path)
+	file, err := os.Open(path) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return nil, nodeerrno.FromPathError(err)
 	}

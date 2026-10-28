@@ -27,7 +27,7 @@ var syncFile = (*os.File).Sync
 
 // copyNew copies src to dst, which it creates exclusively, and syncs it when durable is set.
 func copyNew(src, dst string, durable bool) error {
-	in, err := os.Open(src)
+	in, err := os.Open(src) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return err
 	}
@@ -36,7 +36,7 @@ func copyNew(src, dst string, durable bool) error {
 	if err != nil {
 		return err
 	}
-	out, err := os.OpenFile(dst, os.O_WRONLY|os.O_CREATE|os.O_EXCL, info.Mode().Perm())
+	out, err := os.OpenFile(dst, os.O_WRONLY|os.O_CREATE|os.O_EXCL, info.Mode().Perm()) //nolint:gosec // G304: the path names an output or state file that the user or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so writing it grants nothing the user lacks
 	if err != nil {
 		return err
 	}

@@ -98,7 +98,7 @@ func assertDocumentation(variant string) error {
 		}
 		for _, name := range names {
 			path := filepath.Join(docs, name)
-			if data, err := os.ReadFile(path); err != nil || len(data) == 0 {
+			if data, err := os.ReadFile(path); err != nil || len(data) == 0 { //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 				return fmt.Errorf("Missing documentation: %s", path)
 			}
 		}
@@ -121,7 +121,7 @@ func assertRootOnly(path string) error {
 
 // assertSandboxCannotRead runs `test -r path` as the sandbox identity; success means the model-facing user can read it.
 func assertSandboxCannotRead(ctx context.Context, path string, uid, gid int) error {
-	probe := exec.CommandContext(ctx, "test", "-r", path)
+	probe := exec.CommandContext(ctx, "test", "-r", path) //nolint:gosec // G204: the program and arguments come from the user, the project config, or PiG's own toolchain lookup; the CLI runs as the user with no sandbox and launches them as Pi's child_process.spawn does
 	probe.SysProcAttr = &syscall.SysProcAttr{Credential: &syscall.Credential{Uid: uint32(uid), Gid: uint32(gid), Groups: []uint32{}}}
 	if probe.Run() == nil {
 		return fmt.Errorf("The model-facing user can read evaluator source: %s", path)
@@ -257,7 +257,7 @@ func copyAuthFile(source, target string) error {
 	if err != nil {
 		return nil
 	}
-	data, err := os.ReadFile(source)
+	data, err := os.ReadFile(source) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return err
 	}

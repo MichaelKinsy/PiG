@@ -205,7 +205,7 @@ func check(inventoryPath, mappingPath, divergencesPath, repoRoot string, strict 
 		files[file.Path] = file
 	}
 
-	divergences, err := os.ReadFile(filepath.Join(repoRoot, filepath.FromSlash(divergencesPath)))
+	divergences, err := os.ReadFile(filepath.Join(repoRoot, filepath.FromSlash(divergencesPath))) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return fmt.Errorf("read divergences: %w", err)
 	}
@@ -334,7 +334,7 @@ func checkDesignedOutCases(entry mappingEntry, file inventoryFile) error {
 func checkReferences(root, id string, references []string) error {
 	for _, reference := range references {
 		path, fragment, _ := strings.Cut(reference, "#")
-		data, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(path)))
+		data, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(path))) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 		if err != nil {
 			return fmt.Errorf("entry %q evidence %q: %w", id, reference, err)
 		}
@@ -377,7 +377,7 @@ func unique(values []string) bool {
 }
 
 func decodeJSON(path string, target any) error {
-	file, err := os.Open(path)
+	file, err := os.Open(path) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return err
 	}

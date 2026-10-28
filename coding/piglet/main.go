@@ -994,7 +994,7 @@ func findMaterializedPiglet(root string) (string, error) {
 	}
 	relative := "piglet.yaml"
 	manifestPath := filepath.Join(root, "package.json")
-	if data, err := os.ReadFile(manifestPath); err == nil {
+	if data, err := os.ReadFile(manifestPath); err == nil { //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 		var manifest struct {
 			Pig struct {
 				Piglet string `json:"piglet"`
@@ -1362,7 +1362,7 @@ func commitPigletAddFiles(files map[string][]byte, modes map[string]os.FileMode)
 		if err := rejectPigletDestinationSymlinks(target); err != nil {
 			return err
 		}
-		if existing, err := os.ReadFile(target); err == nil {
+		if existing, err := os.ReadFile(target); err == nil { //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 			if !bytes.Equal(existing, files[target]) {
 				return fmt.Errorf("destination %s already exists with different content; remove it explicitly before replacing", target)
 			}
@@ -1739,7 +1739,7 @@ func buildExtensionWithOwner(initial *Piglet, owner func(extension.ToolInfo) str
 				if !filepath.IsAbs(promptPath) {
 					promptPath = filepath.Join(filepath.Dir(resolved), promptPath)
 				}
-				data, err := os.ReadFile(promptPath)
+				data, err := os.ReadFile(promptPath) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 				if err != nil {
 					_, _ = fmt.Fprintf(os.Stderr, "[piglet] warning: systemPrompt file %s: %v\n", promptPath, err)
 				} else {

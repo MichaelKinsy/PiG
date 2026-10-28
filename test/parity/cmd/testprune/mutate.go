@@ -127,7 +127,7 @@ func listGoFiles(root, pkg, tags string) ([]string, error) {
 	if tags != "" {
 		args = append(args, "-tags="+tags)
 	}
-	cmd := exec.Command("go", append(args, pkg)...)
+	cmd := exec.Command("go", append(args, pkg)...) //nolint:gosec // G204: the program and arguments come from the user, the project config, or PiG's own toolchain lookup; the CLI runs as the user with no sandbox and launches them as Pi's child_process.spawn does
 	cmd.Dir = root
 	out, err := cmd.Output()
 	if err != nil {
@@ -195,7 +195,7 @@ func runMutate(root string, args []string) error {
 	sources := map[string][]byte{}
 	for _, f := range files {
 		rel := filepath.ToSlash(filepath.Join(pkgRel, f))
-		src, err := os.ReadFile(filepath.Join(root, rel))
+		src, err := os.ReadFile(filepath.Join(root, rel)) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 		if err != nil {
 			return err
 		}
@@ -310,7 +310,7 @@ func runMutantBinary(root, pkg, bin, skip string, timeout time.Duration) error {
 	if skip != "" {
 		testArgs = append(testArgs, "-test.skip="+skip)
 	}
-	cmd := exec.Command(bin, testArgs...)
+	cmd := exec.Command(bin, testArgs...) //nolint:gosec // G204: the program and arguments come from the user, the project config, or PiG's own toolchain lookup; the CLI runs as the user with no sandbox and launches them as Pi's child_process.spawn does
 	cmd.Dir = filepath.Join(root, strings.TrimPrefix(pkg, "./"))
 	cmd.Env = testEnv(home)
 	var buf bytes.Buffer
@@ -325,7 +325,7 @@ func runMutantCompare(args []string) error {
 		return fmt.Errorf("usage: testprune mutcompare BEFORE.tsv AFTER.tsv")
 	}
 	read := func(p string) (map[string]string, error) {
-		data, err := os.ReadFile(p)
+		data, err := os.ReadFile(p) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 		if err != nil {
 			return nil, err
 		}
@@ -377,7 +377,7 @@ var compileErrorRE = regexp.MustCompile(`\.go:\d+:\d+: `)
 // transient failure never silently drops a mutant from the sample.
 func buildMutant(root, pkg string, build []string) (invalid bool, err error) {
 	for attempt := range 3 {
-		cmd := exec.Command("go", append(build, pkg)...)
+		cmd := exec.Command("go", append(build, pkg)...) //nolint:gosec // G204: the program and arguments come from the user, the project config, or PiG's own toolchain lookup; the CLI runs as the user with no sandbox and launches them as Pi's child_process.spawn does
 		cmd.Dir = root
 		var buf bytes.Buffer
 		cmd.Stderr = &buf

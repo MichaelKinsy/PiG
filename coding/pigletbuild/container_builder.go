@@ -289,7 +289,7 @@ func readBuiltRecords(root string) (binaryBuildRecords, error) {
 		if entry.IsDir() || filepath.Ext(path) != ".json" {
 			return nil
 		}
-		data, err := os.ReadFile(path)
+		data, err := os.ReadFile(path) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 		if err != nil {
 			return err
 		}
@@ -554,7 +554,7 @@ func createContainerMountpoints(inputDir string, mounts []containerPigletMount) 
 		if err := os.MkdirAll(filepath.Dir(mountpoint), 0o755); err != nil {
 			return err
 		}
-		file, err := os.OpenFile(mountpoint, os.O_WRONLY|os.O_CREATE, 0o644)
+		file, err := os.OpenFile(mountpoint, os.O_WRONLY|os.O_CREATE, 0o644) //nolint:gosec // G304: the path names an output or state file that the user or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so writing it grants nothing the user lacks
 		if err != nil {
 			return err
 		}
@@ -659,7 +659,7 @@ func containerIdentityFrom(lookup func() (*user.User, error), getuid, getgid fun
 }
 
 func copyContainerArtifact(source, target string) error {
-	input, err := os.Open(source)
+	input, err := os.Open(source) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return err
 	}
@@ -701,7 +701,7 @@ func loadContainerBuilderConfigs() ([]ContainerBuilderConfig, error) {
 	if path == "" {
 		path = filepath.Join(codingagent.StateDir("pigletbuild"), "builders.json")
 	}
-	data, err := os.ReadFile(path)
+	data, err := os.ReadFile(path) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if os.IsNotExist(err) {
 		return nil, nil
 	}

@@ -288,7 +288,7 @@ type rpcHarness struct {
 }
 
 func startRPC(bin, session, work string, env []string) (*rpcHarness, error) {
-	cmd := exec.Command(bin, "--mode", "rpc", "--session", session)
+	cmd := exec.Command(bin, "--mode", "rpc", "--session", session) //nolint:gosec // G204: the program and arguments come from the user, the project config, or PiG's own toolchain lookup; the CLI runs as the user with no sandbox and launches them as Pi's child_process.spawn does
 	cmd.Dir, cmd.Env, cmd.Stderr = work, env, os.Stderr
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
@@ -384,11 +384,11 @@ func startTmux(bin, session, work string, env []string) (*tmuxHarness, error) {
 		quoted = append(quoted, shellQuote(kv))
 	}
 	quoted = append(quoted, shellQuote(bin), "--session", shellQuote(session))
-	cmd := exec.Command("tmux", "new-session", "-d", "-s", name, "-x", "200", "-y", "50", "-c", work, strings.Join(quoted, " "))
+	cmd := exec.Command("tmux", "new-session", "-d", "-s", name, "-x", "200", "-y", "50", "-c", work, strings.Join(quoted, " ")) //nolint:gosec // G204: the program and arguments come from the user, the project config, or PiG's own toolchain lookup; the CLI runs as the user with no sandbox and launches them as Pi's child_process.spawn does
 	if out, err := cmd.CombinedOutput(); err != nil {
 		return nil, fmt.Errorf("tmux: %w: %s", err, out)
 	}
-	out, err := exec.Command("tmux", "display-message", "-p", "-t", name, "#{pane_pid}").Output()
+	out, err := exec.Command("tmux", "display-message", "-p", "-t", name, "#{pane_pid}").Output() //nolint:gosec // G204: the program and arguments come from the user, the project config, or PiG's own toolchain lookup; the CLI runs as the user with no sandbox and launches them as Pi's child_process.spawn does
 	if err != nil {
 		return nil, err
 	}
@@ -402,7 +402,7 @@ func startTmux(bin, session, work string, env []string) (*tmuxHarness, error) {
 func (h *tmuxHarness) pid() int { return h.panePID }
 
 func (h *tmuxHarness) screen() string {
-	out, _ := exec.Command("tmux", "capture-pane", "-p", "-t", h.name).Output()
+	out, _ := exec.Command("tmux", "capture-pane", "-p", "-t", h.name).Output() //nolint:gosec // G204: the program and arguments come from the user, the project config, or PiG's own toolchain lookup; the CLI runs as the user with no sandbox and launches them as Pi's child_process.spawn does
 	return string(out)
 }
 
@@ -441,10 +441,10 @@ func (h *tmuxHarness) settle(ctx context.Context) error {
 
 // prompt types the text and waits until the model has answered it and the screen has not changed for a second.
 func (h *tmuxHarness) prompt(ctx context.Context, text string, model *scriptedModel, want int64) error {
-	if err := exec.Command("tmux", "send-keys", "-t", h.name, "-l", text).Run(); err != nil {
+	if err := exec.Command("tmux", "send-keys", "-t", h.name, "-l", text).Run(); err != nil { //nolint:gosec // G204: the program and arguments come from the user, the project config, or PiG's own toolchain lookup; the CLI runs as the user with no sandbox and launches them as Pi's child_process.spawn does
 		return err
 	}
-	if err := exec.Command("tmux", "send-keys", "-t", h.name, "Enter").Run(); err != nil {
+	if err := exec.Command("tmux", "send-keys", "-t", h.name, "Enter").Run(); err != nil { //nolint:gosec // G204: the program and arguments come from the user, the project config, or PiG's own toolchain lookup; the CLI runs as the user with no sandbox and launches them as Pi's child_process.spawn does
 		return err
 	}
 	if err := h.poll(ctx, func(string) bool { return model.answered.Load() >= want }); err != nil {
@@ -455,11 +455,11 @@ func (h *tmuxHarness) prompt(ctx context.Context, text string, model *scriptedMo
 
 func (h *tmuxHarness) exit(timeout time.Duration) error {
 	// The session ends with the harness; killing it covers a harness that did not exit, and fails when it is already gone.
-	defer func() { _ = exec.Command("tmux", "kill-session", "-t", h.name).Run() }()
-	if err := exec.Command("tmux", "send-keys", "-t", h.name, "-l", "/quit").Run(); err != nil {
+	defer func() { _ = exec.Command("tmux", "kill-session", "-t", h.name).Run() }()              //nolint:gosec // G204: the program and arguments come from the user, the project config, or PiG's own toolchain lookup; the CLI runs as the user with no sandbox and launches them as Pi's child_process.spawn does
+	if err := exec.Command("tmux", "send-keys", "-t", h.name, "-l", "/quit").Run(); err != nil { //nolint:gosec // G204: the program and arguments come from the user, the project config, or PiG's own toolchain lookup; the CLI runs as the user with no sandbox and launches them as Pi's child_process.spawn does
 		return err
 	}
-	if err := exec.Command("tmux", "send-keys", "-t", h.name, "Enter").Run(); err != nil {
+	if err := exec.Command("tmux", "send-keys", "-t", h.name, "Enter").Run(); err != nil { //nolint:gosec // G204: the program and arguments come from the user, the project config, or PiG's own toolchain lookup; the CLI runs as the user with no sandbox and launches them as Pi's child_process.spawn does
 		return err
 	}
 	deadline := time.Now().Add(timeout)

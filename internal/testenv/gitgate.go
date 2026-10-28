@@ -173,7 +173,7 @@ func IsolateGit(t testing.TB) {
 // RunGit runs git in dir and returns its trimmed output; a failure fails the test.
 func RunGit(t testing.TB, dir string, args ...string) string {
 	t.Helper()
-	cmd := exec.Command("git", args...)
+	cmd := exec.Command("git", args...) //nolint:gosec // G204: the program and arguments come from the user, the project config, or PiG's own toolchain lookup; the CLI runs as the user with no sandbox and launches them as Pi's child_process.spawn does
 	cmd.Dir = dir
 	out, err := cmd.CombinedOutput()
 	if err != nil {

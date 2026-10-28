@@ -39,9 +39,9 @@ const (
 	KnownProviderMeta                    KnownProvider = "meta"
 	KnownProviderCloudflareWorkersAi     KnownProvider = "cloudflare-workers-ai"
 	KnownProviderCloudflareAiGateway     KnownProvider = "cloudflare-ai-gateway"
-	KnownProviderQwenTokenPlan           KnownProvider = "qwen-token-plan"
-	KnownProviderQwenTokenPlanCn         KnownProvider = "qwen-token-plan-cn"
-	KnownProviderQwenTokenPlanIndividual KnownProvider = "qwen-token-plan-individual"
+	KnownProviderQwenTokenPlan           KnownProvider = "qwen-token-plan"            //nolint:gosec // G101: the value is a name, URL, or identifier of a public protocol, not a credential value
+	KnownProviderQwenTokenPlanCn         KnownProvider = "qwen-token-plan-cn"         //nolint:gosec // G101: the value is a name, URL, or identifier of a public protocol, not a credential value
+	KnownProviderQwenTokenPlanIndividual KnownProvider = "qwen-token-plan-individual" //nolint:gosec // G101: the value is a name, URL, or identifier of a public protocol, not a credential value
 	KnownProviderXiaomi                  KnownProvider = "xiaomi"
 	KnownProviderXiaomiTokenPlanCn       KnownProvider = "xiaomi-token-plan-cn"
 	KnownProviderXiaomiTokenPlanAms      KnownProvider = "xiaomi-token-plan-ams"

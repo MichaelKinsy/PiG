@@ -71,7 +71,7 @@ func readsPiGolden(text string) bool {
 }
 
 func listTestFiles(root string) ([]string, error) {
-	out, err := exec.Command("git", "-C", root, "ls-files", "-z", "--", "*_test.go").Output()
+	out, err := exec.Command("git", "-C", root, "ls-files", "-z", "--", "*_test.go").Output() //nolint:gosec // G204: the program and arguments come from the user, the project config, or PiG's own toolchain lookup; the CLI runs as the user with no sandbox and launches them as Pi's child_process.spawn does
 	if err != nil {
 		return nil, err
 	}
@@ -103,7 +103,7 @@ func inventoryFiles(root string, files []string, unitEvidence map[string]bool) (
 	var all []testFunc
 	fset := token.NewFileSet()
 	for _, rel := range files {
-		data, err := os.ReadFile(filepath.Join(root, rel))
+		data, err := os.ReadFile(filepath.Join(root, rel)) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 		if err != nil {
 			return nil, err
 		}

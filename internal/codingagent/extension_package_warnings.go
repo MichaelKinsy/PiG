@@ -35,7 +35,7 @@ func ExtensionPackageWarnings(packageRoots []string) ([]ExtensionWarning, error)
 	var warnings []ExtensionWarning
 	for _, root := range roots {
 		manifestPath := filepath.Join(root, "package.json")
-		data, err := os.ReadFile(manifestPath)
+		data, err := os.ReadFile(manifestPath) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 		if errors.Is(err, os.ErrNotExist) {
 			continue
 		}

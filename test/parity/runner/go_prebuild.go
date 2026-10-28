@@ -160,7 +160,7 @@ func runGoPrebuild(output string, logf func(format string, args ...any), dir str
 		return fmt.Errorf("%s: %w", command, err)
 	}
 	start := time.Now()
-	cmd := exec.Command("go", args...)
+	cmd := exec.Command("go", args...) //nolint:gosec // G204: the program and arguments come from the user, the project config, or PiG's own toolchain lookup; the CLI runs as the user with no sandbox and launches them as Pi's child_process.spawn does
 	cmd.Dir = dir
 	out, err := cmd.CombinedOutput()
 	if err != nil {

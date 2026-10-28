@@ -363,7 +363,7 @@ func hashSourceDirStamped(src, buildType string) (digest, stamp string, err erro
 		return "", "", err
 	}
 	if !info.IsDir() {
-		data, err := os.ReadFile(src)
+		data, err := os.ReadFile(src) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 		if err != nil {
 			return "", "", err
 		}
@@ -418,7 +418,7 @@ func hashDirSources(h hash.Hash, root string, exts []string) error {
 // source directory. A nil stamp is skipped.
 func hashDirSourcesStamped(h, stamp hash.Hash, root string, exts []string) error {
 	return walkDirSources(root, exts, func(path, rel string) error {
-		data, err := os.ReadFile(path)
+		data, err := os.ReadFile(path) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 		if err != nil {
 			return err
 		}
@@ -514,7 +514,7 @@ func goLocalReplaceDirs(srcDir string) ([]string, error) {
 	}
 	srcDir = physicalSource
 	modPath := filepath.Join(srcDir, "go.mod")
-	data, err := os.ReadFile(modPath)
+	data, err := os.ReadFile(modPath) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		if os.IsNotExist(err) {
 			return nil, nil
@@ -635,7 +635,7 @@ func (b *Builder) resolveStagedSDK(srcDir, buildType string) (string, error) {
 // stagedDir, the Go SDK staged now, instead of its own SDK replace.
 func goNeedsStagedSDK(srcDir, stagedDir string) bool {
 	path := filepath.Join(srcDir, "go.mod")
-	data, err := os.ReadFile(path)
+	data, err := os.ReadFile(path) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return false
 	}
@@ -794,7 +794,7 @@ func sdkSourceDigest(sdkDir, buildType string) (string, error) {
 		if err != nil {
 			return err
 		}
-		data, err := os.ReadFile(path)
+		data, err := os.ReadFile(path) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 		if err != nil {
 			return err
 		}
@@ -935,7 +935,7 @@ func isArchive(data []byte) bool {
 // host executes it, reported as a launch failure that names neither the package
 // nor the fix.
 func rejectNonExecutableArtifact(path, srcDir string) error {
-	f, err := os.Open(path)
+	f, err := os.Open(path) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return fmt.Errorf("read build output: %w", err)
 	}
@@ -1022,7 +1022,7 @@ func buildRust(ctx context.Context, cacheRoot, srcDir, outPath, stagedSDK string
 
 // copyBuiltBinary copies the binary cargo built to dst, the program the host executes once the build is published. execfile writes the copy: a concurrent fork must not leave a child that holds its write descriptor, which makes the exec fail with ETXTBSY.
 func copyBuiltBinary(src, dst string) error {
-	input, err := os.Open(src)
+	input, err := os.Open(src) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return err
 	}
@@ -1064,7 +1064,7 @@ func rewritePigSDKPath(manifest, newPath string) (string, bool) {
 // hasInlinePigSDKPath reports whether srcDir/Cargo.toml declares an inline
 // pig-sdk path dependency that must be redirected to the staged SDK.
 func hasInlinePigSDKPath(srcDir string) bool {
-	data, err := os.ReadFile(filepath.Join(srcDir, "Cargo.toml"))
+	data, err := os.ReadFile(filepath.Join(srcDir, "Cargo.toml")) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return false
 	}
@@ -1101,7 +1101,7 @@ func copyCrateWithStagedSDK(srcDir, dstDir, stagedSDK string) error {
 		if err != nil {
 			return err
 		}
-		data, err := os.ReadFile(path)
+		data, err := os.ReadFile(path) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 		if err != nil {
 			return err
 		}
@@ -1111,7 +1111,7 @@ func copyCrateWithStagedSDK(srcDir, dstDir, stagedSDK string) error {
 		return fmt.Errorf("copy rust crate: %w", err)
 	}
 	manifestPath := filepath.Join(dstDir, "Cargo.toml")
-	orig, err := os.ReadFile(manifestPath)
+	orig, err := os.ReadFile(manifestPath) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return err
 	}
@@ -1124,7 +1124,7 @@ func copyCrateWithStagedSDK(srcDir, dstDir, stagedSDK string) error {
 
 func stagedGoModFile(srcDir, stagedSDK string) (string, func(), error) {
 	path := filepath.Join(srcDir, "go.mod")
-	data, err := os.ReadFile(path)
+	data, err := os.ReadFile(path) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return "", func() {}, err
 	}
@@ -1190,7 +1190,7 @@ func stagedGoModFile(srcDir, stagedSDK string) (string, func(), error) {
 	// dependencies verify offline; without this, a -modfile build reports
 	// "missing go.sum entry" for every module the extension imports. Extensions
 	// with only the local SDK replace and stdlib have no go.sum and need none.
-	if sum, err := os.ReadFile(filepath.Join(srcDir, "go.sum")); err == nil {
+	if sum, err := os.ReadFile(filepath.Join(srcDir, "go.sum")); err == nil { //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 		if err := os.WriteFile(sumPath, sum, 0o644); err != nil {
 			cleanup()
 			return "", func() {}, err

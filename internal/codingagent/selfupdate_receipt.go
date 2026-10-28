@@ -44,7 +44,7 @@ func WriteStandaloneReceipt(exe, version, source string) error {
 		return fmt.Errorf("standalone receipt fields must be nonempty single-line values")
 	}
 	exe = canonicalPath(exe)
-	file, err := os.Open(exe)
+	file, err := os.Open(exe) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return fmt.Errorf("hash standalone executable %s: %w", exe, err)
 	}
@@ -111,7 +111,7 @@ func readStandaloneReceipt() (*StandaloneReceipt, error) {
 	if ownerOnly, err := ownerfile.OwnerOnly(path, info); err != nil || !ownerOnly {
 		return nil, fmt.Errorf("standalone receipt %s must be owner-only", path)
 	}
-	file, err := os.Open(path)
+	file, err := os.Open(path) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return nil, fmt.Errorf("read standalone receipt %s: %w", path, err)
 	}
@@ -201,7 +201,7 @@ func validateStandaloneReceipt(exe string) error {
 	if _, err := hex.DecodeString(receipt.SHA256); err != nil {
 		return fmt.Errorf("standalone receipt has invalid executable SHA256: %w", err)
 	}
-	file, err := os.Open(exe)
+	file, err := os.Open(exe) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return fmt.Errorf("hash standalone executable %s: %w", exe, err)
 	}

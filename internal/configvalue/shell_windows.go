@@ -18,7 +18,7 @@ func runShellCommand(ctx context.Context, payload string) (string, bool) {
 
 // configuredShellCommand starts the configured bash as upstream's spawnSync does: stdio is ["pipe" when the command comes from stdin, else "ignore", "pipe", "ignore"] and windowsHide is true.
 func configuredShellCommand(ctx context.Context, path string, commandFromStdin bool, args ...string) *exec.Cmd {
-	cmd := exec.CommandContext(ctx, path, args...)
+	cmd := exec.CommandContext(ctx, path, args...) //nolint:gosec // G204: the program and arguments come from the user, the project config, or PiG's own toolchain lookup; the CLI runs as the user with no sandbox and launches them as Pi's child_process.spawn does
 	stdin := nodespawn.Ignore
 	if commandFromStdin {
 		stdin = nodespawn.Pipe

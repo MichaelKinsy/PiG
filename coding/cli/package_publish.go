@@ -166,7 +166,7 @@ type publishableManifest struct {
 
 // readPublishableManifest checks the package.json fields npm requires and the catalog reads. It never writes the file.
 func readPublishableManifest(root string) (publishableManifest, error) {
-	data, err := os.ReadFile(filepath.Join(root, "package.json"))
+	data, err := os.ReadFile(filepath.Join(root, "package.json")) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return publishableManifest{}, fmt.Errorf("a Package is published from its package.json: %w", err)
 	}

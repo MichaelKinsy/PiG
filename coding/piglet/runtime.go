@@ -422,7 +422,7 @@ func validateImageRuntimePigletClosure(p *Piglet) error {
 }
 
 func copyRuntimePiglet(source, destination string) error {
-	data, err := os.ReadFile(source)
+	data, err := os.ReadFile(source) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return fmt.Errorf("read runtime Piglet: %w", err)
 	}
@@ -559,7 +559,7 @@ func verifyActiveAgentEnvironment(p *Piglet, activeIdentity string) error {
 	if lockPath == "" {
 		return fmt.Errorf("Piglet %q agent environment marker is set without a lock file; refusing host execution", p.Name)
 	}
-	data, err := os.ReadFile(lockPath)
+	data, err := os.ReadFile(lockPath) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return fmt.Errorf("read active agent environment lock: %w", err)
 	}
@@ -594,7 +594,7 @@ func verifyActiveAgentEnvironment(p *Piglet, activeIdentity string) error {
 }
 
 func requireAgentEnvironmentLockAgreement(path string, current agentEnvironmentLock) error {
-	data, err := os.ReadFile(path)
+	data, err := os.ReadFile(path) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if errors.Is(err, os.ErrNotExist) {
 		return nil
 	}
@@ -664,7 +664,7 @@ func agentEnvironmentIdentity(lock agentEnvironmentLock) (string, error) {
 }
 
 func digestFile(path string) (string, error) {
-	data, err := os.ReadFile(path)
+	data, err := os.ReadFile(path) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return "", err
 	}

@@ -35,7 +35,7 @@ func runTrampoline() {
 		os.Exit(127)
 	}
 	path, args, env := os.Args[1], os.Args[2:2+n], os.Args[2+n:]
-	err = syscall.Exec(path, args, env)
+	err = syscall.Exec(path, args, env) //nolint:gosec // G204: the program and arguments come from the user, the project config, or PiG's own toolchain lookup; the CLI runs as the user with no sandbox and launches them as Pi's child_process.spawn does
 	fmt.Fprintf(os.Stderr, "pig: exec %s: %v\n", path, err)
 	os.Exit(127)
 }

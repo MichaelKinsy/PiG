@@ -219,7 +219,7 @@ func run(o options) error {
 		return os.WriteFile(mappingPath, derived, 0o644)
 	}
 	if o.check {
-		current, err := os.ReadFile(mappingPath)
+		current, err := os.ReadFile(mappingPath) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 		if err != nil {
 			return err
 		}
@@ -464,13 +464,13 @@ func runProdreach(root string) ([]byte, error) {
 	for _, l := range reachLibraries {
 		args = append(args, "-library", l)
 	}
-	cmd := exec.Command("go", append(args, reachPatterns...)...)
+	cmd := exec.Command("go", append(args, reachPatterns...)...) //nolint:gosec // G204: the program and arguments come from the user, the project config, or PiG's own toolchain lookup; the CLI runs as the user with no sandbox and launches them as Pi's child_process.spawn does
 	cmd.Dir = root
 	cmd.Stderr = os.Stderr
 	if err := cmd.Run(); err != nil {
 		return nil, fmt.Errorf("prodreach: %w", err)
 	}
-	return os.ReadFile(path)
+	return os.ReadFile(path) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 }
 
 // applyReviewInputs applies the reviewed gaps and the holds to the decisions and returns the reviewed gaps that no undecided row uses, with
@@ -500,7 +500,7 @@ func applyReviewInputs(root string, decisions []*decision, blind, seed bool) (st
 // writeDecisionsIfChanged writes the encoded reviewed decisions when force is set or the file holds other bytes (it was merged with another
 // encoder), and leaves an identical file untouched.
 func writeDecisionsIfChanged(path string, data []byte, force bool) error {
-	if current, err := os.ReadFile(path); !force && err == nil && bytes.Equal(current, data) {
+	if current, err := os.ReadFile(path); !force && err == nil && bytes.Equal(current, data) { //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 		return nil
 	}
 	return os.WriteFile(path, data, 0o644)
@@ -543,7 +543,7 @@ func loadReach(root, path string) (map[string]bool, error) {
 		}
 	} else {
 		var err error
-		if data, err = os.ReadFile(path); err != nil {
+		if data, err = os.ReadFile(path); err != nil { //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 			return nil, err
 		}
 	}
@@ -683,7 +683,7 @@ func baselineIDs(data string) map[string]bool {
 
 // checkBaseline fails when a gap exists that the committed baseline does not list.
 func checkBaseline(path string, ds []*decision) error {
-	data, err := os.ReadFile(path)
+	data, err := os.ReadFile(path) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return fmt.Errorf("baseline %s: %w (run with -update to create it)", path, err)
 	}

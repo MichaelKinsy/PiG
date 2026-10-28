@@ -32,7 +32,7 @@ func newPath(prefix, extension string) string {
 // create creates the file exclusively, so it never follows a link someone else
 // placed at the path.
 func create(path string) (*os.File, error) {
-	return os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, Mode)
+	return os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, Mode) //nolint:gosec // G304: the path names an output or state file that the user or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so writing it grants nothing the user lacks
 }
 
 // WriteFile writes data to a new output file and returns its path. A failure

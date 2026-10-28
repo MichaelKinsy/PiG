@@ -38,7 +38,7 @@ func openKeyFile(path string, flag int, mode os.FileMode) (io.WriteCloser, error
 	if mode == 0o600 {
 		return ownerfile.CreateNew(path)
 	}
-	return os.OpenFile(path, flag, mode)
+	return os.OpenFile(path, flag, mode) //nolint:gosec // G304: the path names an output or state file that the user or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so writing it grants nothing the user lacks
 }
 
 func generateKey(privatePath string, openFile func(string, int, os.FileMode) (io.WriteCloser, error), removeFile func(string) error) (string, error) {
@@ -110,7 +110,7 @@ func MarshalPublicKey(public ed25519.PublicKey) ([]byte, error) {
 
 // ReadPrivateKey reads a PKCS#8 PEM ed25519 private key.
 func ReadPrivateKey(path string) (ed25519.PrivateKey, error) {
-	data, err := os.ReadFile(path)
+	data, err := os.ReadFile(path) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return nil, err
 	}

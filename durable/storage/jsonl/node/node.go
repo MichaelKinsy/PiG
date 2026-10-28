@@ -180,7 +180,7 @@ func (fileSystem *NodeFileSystem) AppendFile(ctx context.Context, path string, c
 	if err := aborted(ctx, resolved); err != nil {
 		return err
 	}
-	file, err := os.OpenFile(resolved, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0o666)
+	file, err := os.OpenFile(resolved, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0o666) //nolint:gosec // G304: the path names an output or state file that the user or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so writing it grants nothing the user lacks
 	if err != nil {
 		return toFileError(err, resolved)
 	}
@@ -204,7 +204,7 @@ func (fileSystem *NodeFileSystem) TruncateFile(ctx context.Context, path string,
 	if size < 0 || size > 1<<53-1 {
 		return env.NewFileError(env.FileErrorInvalid, "File size must be a non-negative safe integer", resolved, nil)
 	}
-	file, err := os.OpenFile(resolved, os.O_RDWR, 0)
+	file, err := os.OpenFile(resolved, os.O_RDWR, 0) //nolint:gosec // G304: the path names an output or state file that the user or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so writing it grants nothing the user lacks
 	if err != nil {
 		return toFileError(err, resolved)
 	}
@@ -225,7 +225,7 @@ func (fileSystem *NodeFileSystem) FlushFile(ctx context.Context, path string) er
 	if err := aborted(ctx, resolved); err != nil {
 		return err
 	}
-	file, err := os.OpenFile(resolved, os.O_RDWR, 0)
+	file, err := os.OpenFile(resolved, os.O_RDWR, 0) //nolint:gosec // G304: the path names an output or state file that the user or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so writing it grants nothing the user lacks
 	if err != nil {
 		return toFileError(err, resolved)
 	}

@@ -37,7 +37,7 @@ type dependencySource struct {
 
 // loadDependencySources admits only reviewed snapshots tied to an exact dependency pin in the current mirror. The CI path is offline; snapshot capture verifies npm archive integrity before recording source digests.
 func (u *upstreamIndex) loadDependencySources(root string) (returnErr error) {
-	file, err := os.Open(filepath.Join(root, "test/parity", "dependency-sources.json"))
+	file, err := os.Open(filepath.Join(root, "test/parity", "dependency-sources.json")) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if os.IsNotExist(err) {
 		return nil
 	}

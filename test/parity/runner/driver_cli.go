@@ -74,7 +74,7 @@ func (cliModeDriver) Name() string { return "cli-mode" }
 
 // isShebangScript reports whether the file at path starts with a #! line.
 func isShebangScript(path string) bool {
-	file, err := os.Open(path)
+	file, err := os.Open(path) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return false
 	}
@@ -206,7 +206,7 @@ func (cliModeDriver) Run(ctx context.Context, t *testing.T, bin BinaryRef, sc *S
 	res.IdentityRoots = resultIdentityRoots(cwd, tc.tempRoot, env)
 	if sc.CLI.ArtifactPath != "" {
 		path := resolveScenarioCWD(sc.SourcePath, tc.expand(sc.CLI.ArtifactPath))
-		data, readErr := os.ReadFile(path)
+		data, readErr := os.ReadFile(path) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 		if readErr != nil {
 			res.ArtifactErr = readErr
 		} else {

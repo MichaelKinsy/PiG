@@ -58,7 +58,7 @@ func load(path string) ([]classifierModel, error) {
 	script := `import { pathToFileURL } from "node:url";
 const mod = await import(pathToFileURL(process.argv[1]).href);
 process.stdout.write(JSON.stringify(Object.entries(mod.CLASSIFIER_MODELS).map(([provider, models]) => [provider, Object.entries(models).map(([id, model]) => [id, model])])));`
-	data, err := exec.Command("node", "--input-type=module", "-e", script, path).CombinedOutput()
+	data, err := exec.Command("node", "--input-type=module", "-e", script, path).CombinedOutput() //nolint:gosec // G204: the program and arguments come from the user, the project config, or PiG's own toolchain lookup; the CLI runs as the user with no sandbox and launches them as Pi's child_process.spawn does
 	if err != nil {
 		return nil, fmt.Errorf("import published classifier catalog: %w\n%s", err, data)
 	}

@@ -554,7 +554,7 @@ func (watcher *nodeFileWatcher) scan(mode durableenv.WatchMode) (scanResult, err
 		hash := ""
 		if mode == durableenv.WatchPolling && info.Mode().IsRegular() && info.Size() <= hashMaxBytes &&
 			time.Since(info.ModTime()) < hashRecentWindow {
-			if content, err := os.ReadFile(path); err == nil {
+			if content, err := os.ReadFile(path); err == nil { //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 				hash = fmt.Sprintf("%x", sha256.Sum256(content))
 			}
 		}

@@ -125,7 +125,7 @@ func load(dir string) ([]fragment, []error) {
 			problems = append(problems, fmt.Errorf("%s: only .md fragments belong in %s", name, dir))
 			continue
 		}
-		data, err := os.ReadFile(filepath.Join(dir, name))
+		data, err := os.ReadFile(filepath.Join(dir, name)) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 		if err != nil {
 			problems = append(problems, err)
 			continue
@@ -305,7 +305,7 @@ func fold(changelog string, fragments []fragment, version string) (string, error
 // foldInto folds the fragments of dir into the version section of changelogPath, then deletes the folded fragments and
 // their lines in legacyPath.
 func foldInto(dir, changelogPath, legacyPath, version string, fragments []fragment) error {
-	data, err := os.ReadFile(changelogPath)
+	data, err := os.ReadFile(changelogPath) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return err
 	}
@@ -326,7 +326,7 @@ func foldInto(dir, changelogPath, legacyPath, version string, fragments []fragme
 			return err
 		}
 	}
-	data, err = os.ReadFile(legacyPath)
+	data, err = os.ReadFile(legacyPath) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return err
 	}
@@ -402,11 +402,11 @@ func gzipChangelog(text []byte) []byte {
 // checkChangelogGzip fails when path+".gz", which the binary embeds, does not inflate to exactly path.
 func checkChangelogGzip(path string) error {
 	fix := "run: gzip -9nc " + path + " > " + path + ".gz"
-	want, err := os.ReadFile(path)
+	want, err := os.ReadFile(path) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return err
 	}
-	data, err := os.ReadFile(path + ".gz")
+	data, err := os.ReadFile(path + ".gz") //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return fmt.Errorf("%s.gz: %w; %s", path, err, fix)
 	}

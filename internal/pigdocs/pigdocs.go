@@ -304,7 +304,7 @@ func buildStaging(parent, digest string) (staging string, written []string, err 
 
 // writeNewFile creates path with exactly mode and fails if it exists.
 func writeNewFile(path string, data []byte, mode os.FileMode) error {
-	f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, mode)
+	f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, mode) //nolint:gosec // G304: the path names an output or state file that the user or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so writing it grants nothing the user lacks
 	if err != nil {
 		return err
 	}
@@ -321,7 +321,7 @@ func writeNewFile(path string, data []byte, mode os.FileMode) error {
 
 // current reports whether dir holds the complete bundle with digest: its marker, written last, matches.
 func current(dir, digest string) bool {
-	data, err := os.ReadFile(filepath.Join(dir, markerFile))
+	data, err := os.ReadFile(filepath.Join(dir, markerFile)) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	return err == nil && strings.TrimSpace(string(data)) == digest
 }
 

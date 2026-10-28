@@ -45,7 +45,7 @@ func Select(journeys []*Journey, changed []string) []string {
 // ChangedFiles lists the files changed since the merge base with base, plus uncommitted and untracked files, relative to the repository root.
 func ChangedFiles(dir, base string) ([]string, error) {
 	run := func(args ...string) ([]string, error) {
-		cmd := exec.Command("git", args...)
+		cmd := exec.Command("git", args...) //nolint:gosec // G204: the program and arguments come from the user, the project config, or PiG's own toolchain lookup; the CLI runs as the user with no sandbox and launches them as Pi's child_process.spawn does
 		cmd.Dir = dir
 		out, err := cmd.Output()
 		if err != nil {

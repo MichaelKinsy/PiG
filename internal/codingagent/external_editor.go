@@ -92,7 +92,7 @@ func OpenExternalEditor(ctx context.Context, initial string, configuredEditor st
 		return initial, fmt.Errorf("external editor: run %s: %w", parts[0], err)
 	}
 
-	data, err := os.ReadFile(tmpPath)
+	data, err := os.ReadFile(tmpPath) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return initial, fmt.Errorf("external editor: read result: %w", err)
 	}

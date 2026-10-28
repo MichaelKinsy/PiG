@@ -65,7 +65,7 @@ func CompactionSettingsRules() Rules {
 			"table:settings-selector": "table:settings-selector",
 		},
 		AdditiveTableItems: map[string]map[string]string{
-			"table:settings-selector": {"mask-secret-input": "docs/parity/DIVERGENCES.md#D80"},
+			"table:settings-selector": {"mask-secret-input": "docs/parity/DIVERGENCES.md#D80"}, //nolint:gosec // G101: the value is a name, URL, or identifier of a public protocol, not a credential value
 		},
 		DesignedOutTableItems: map[string]map[string]string{
 			"table:settings-selector": {"share-destination": "docs/parity/DIVERGENCES.md#D64"},

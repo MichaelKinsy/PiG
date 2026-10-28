@@ -519,7 +519,7 @@ func publishPull(artifacts *os.Root, source string, receiptData, currentData []b
 		return Result{}, err
 	}
 	defer func() { _ = currentDir.Close() }()
-	input, err := os.Open(source)
+	input, err := os.Open(source) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return Result{}, err
 	}

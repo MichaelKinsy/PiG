@@ -71,7 +71,7 @@ func isProdGo(p string) bool {
 // expectations: a pure addition covers new behavior, a pure removal removes it.
 func scanCoEdits(root string, logArgs []string) ([]coEdit, error) {
 	args := append([]string{"-C", root, "log", "--no-merges", "-U0", "-p", "--format=@@COMMIT %H %aI %s"}, logArgs...)
-	cmd := exec.Command("git", args...)
+	cmd := exec.Command("git", args...) //nolint:gosec // G204: the program and arguments come from the user, the project config, or PiG's own toolchain lookup; the CLI runs as the user with no sandbox and launches them as Pi's child_process.spawn does
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
 		return nil, err

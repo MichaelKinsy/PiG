@@ -26,7 +26,7 @@ func realAuthSourcePath() string {
 	if p == "" {
 		return ""
 	}
-	data, err := os.ReadFile(p)
+	data, err := os.ReadFile(p) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return ""
 	}
@@ -64,7 +64,7 @@ func EnsureTestdataAuth(agentDir, label string) (string, error) {
 			"auth.json); requires-auth scenarios need an explicit opt-in naming a real auth.json, the runner never reads "+
 			"~/.pig or ~/.pi credentials implicitly", label)
 	}
-	data, err := os.ReadFile(src)
+	data, err := os.ReadFile(src) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return "", fmt.Errorf("ensureTestdataAuth(%s): read PIG_PARITY_REAL_AUTH=%s: %w", label, src, err)
 	}

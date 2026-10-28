@@ -145,7 +145,7 @@ func isExe(file, pathExt string) bool {
 // readShebang mirrors cross-spawn's 150-byte read and shebang-command's literal
 // space splitting. An interpreter argument stays part of the command name.
 func readShebang(file string) string {
-	f, err := os.Open(file)
+	f, err := os.Open(file) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return ""
 	}

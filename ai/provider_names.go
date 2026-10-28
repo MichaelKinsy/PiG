@@ -7,7 +7,7 @@ import "sync"
 // login selector (interactive-mode.ts:getLoginProviderOptions) and in login
 // status labels, so the port must use the same strings.
 var builtinProviderNames = sync.OnceValue(func() map[string]string {
-	return map[string]string{
+	return map[string]string{ //nolint:gosec // G101: the value is a name, URL, or identifier of a public protocol, not a credential value
 		"amazon-bedrock":             "Amazon Bedrock",
 		"ant-ling":                   "Ant Ling",
 		"anthropic":                  "Anthropic",
@@ -64,7 +64,7 @@ func ProviderDisplayName(providerID string) string {
 
 // builtinProviderBaseURLs mirrors the `baseUrl` of each built-in provider in upstream packages/ai/src/providers/*.ts. It is the provider-level default that bug reports and provider composition read; model catalogs carry their own per-model base URLs. A provider with no entry declares none upstream.
 var builtinProviderBaseURLs = sync.OnceValue(func() map[string]string {
-	return map[string]string{
+	return map[string]string{ //nolint:gosec // G101: the value is a name, URL, or identifier of a public protocol, not a credential value
 		"ant-ling":                   "https://api.ant-ling.com/v1",
 		"anthropic":                  "https://api.anthropic.com",
 		"baseten":                    "https://inference.baseten.co/v1",

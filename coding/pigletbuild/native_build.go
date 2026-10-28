@@ -520,7 +520,7 @@ func pigSourceRoot() (string, error) {
 }
 
 func isPigModule(dir string) bool {
-	data, err := os.ReadFile(filepath.Join(dir, "go.mod"))
+	data, err := os.ReadFile(filepath.Join(dir, "go.mod")) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	return err == nil && strings.Contains(string(data), "module github.com/MichaelKinsy/PiG")
 }
 
@@ -592,7 +592,7 @@ func overlayFuse(o *buildOverlay, sourceRoot string, fused []fusedEntry, fronten
 	genPath := filepath.Join(fuseDir, "registry_generated.go")
 	goModPath := filepath.Join(sourceRoot, "go.mod")
 
-	originalGoMod, err := os.ReadFile(goModPath)
+	originalGoMod, err := os.ReadFile(goModPath) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return fusedModuleGraph{}, fmt.Errorf("read Pig go.mod: %w", err)
 	}
@@ -623,7 +623,7 @@ func overlayFuse(o *buildOverlay, sourceRoot string, fused []fusedEntry, fronten
 		sumFiles = append(sumFiles, filepath.Join(sourceRoot, "go.work.sum"))
 	}
 	for _, sumFile := range sumFiles {
-		original, err := os.ReadFile(sumFile)
+		original, err := os.ReadFile(sumFile) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 		if err != nil && !errors.Is(err, fs.ErrNotExist) {
 			return fusedModuleGraph{}, fmt.Errorf("read Pig checksums: %w", err)
 		}
@@ -660,7 +660,7 @@ func resolveFrontendMember(p *piglet.Piglet) (*fusedEntry, error) {
 		return nil, err
 	}
 	goModPath := filepath.Join(dir, "go.mod")
-	data, err := os.ReadFile(goModPath)
+	data, err := os.ReadFile(goModPath) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return nil, fmt.Errorf("slots.frontend: a Go module is required: %w", err)
 	}

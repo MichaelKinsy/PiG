@@ -210,7 +210,7 @@ func buildGoPackedCell(ctx context.Context, cacheRoot, key string, extensions []
 					if explained, ok := explainMissingToolchain("go", err); ok {
 						return "", explained
 					}
-					generatedMod, _ := os.ReadFile(filepath.Join(buildDir, "go.mod"))
+					generatedMod, _ := os.ReadFile(filepath.Join(buildDir, "go.mod")) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 					failure, recordable := GoBuildFailure(cacheRoot, hash, buildDir, goToolchain, err, combined, generatedMod)
 					if ctx.Err() != nil || cmd.ProcessState == nil || cmd.ProcessState.ExitCode() < 0 || !recordable {
 						return "", failure
@@ -384,7 +384,7 @@ func findSDKRootWithPreferred(extensions []GoExtension, preferred string) (strin
 	wd, err := os.Getwd()
 	if err == nil {
 		for dir := wd; ; dir = filepath.Dir(dir) {
-			data, err := os.ReadFile(filepath.Join(dir, "go.mod"))
+			data, err := os.ReadFile(filepath.Join(dir, "go.mod")) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 			if err == nil && strings.Contains(string(data), "module github.com/MichaelKinsy/PiG") {
 				if sdk := filepath.Join(dir, "extensions", "sdk"); statHasFile(sdk, "go.mod") {
 					return sdk, nil
@@ -423,7 +423,7 @@ func currentGoStagedSDK(preferred string) string {
 // goSDKPathOverride returns an extension module's explicit local SDK replace
 // unless it is missing or a retired staging of stagedDir's config root.
 func goSDKPathOverride(root, stagedDir string) string {
-	data, err := os.ReadFile(filepath.Join(root, "go.mod"))
+	data, err := os.ReadFile(filepath.Join(root, "go.mod")) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return ""
 	}
@@ -590,7 +590,7 @@ func goModuleRoots(extensions []GoExtension) []string {
 func sdkVersionFor(extensions []GoExtension) string {
 	version := "v0.0.0"
 	for _, root := range goModuleRoots(extensions) {
-		data, err := os.ReadFile(filepath.Join(root, "go.mod"))
+		data, err := os.ReadFile(filepath.Join(root, "go.mod")) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 		if err != nil {
 			continue
 		}
@@ -616,7 +616,7 @@ const legacyGoSDKDir = "legacy-sdk"
 // workspace modules) requires the legacy Go SDK module path.
 func requiresLegacyGoSDK(extensions []GoExtension) bool {
 	for _, root := range goModuleRoots(extensions) {
-		data, err := os.ReadFile(filepath.Join(root, "go.mod"))
+		data, err := os.ReadFile(filepath.Join(root, "go.mod")) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 		if err != nil {
 			continue
 		}
@@ -650,7 +650,7 @@ func StageLegacyGoSDK(sdkRoot, dst string) error {
 		if !entry.Type().IsRegular() || strings.HasSuffix(name, "_test.go") {
 			return nil
 		}
-		data, err := os.ReadFile(path)
+		data, err := os.ReadFile(path) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 		if err != nil {
 			return fmt.Errorf("copy Go SDK for legacy module path: %w", err)
 		}
@@ -702,7 +702,7 @@ func aliasGoSDKImports(path string, data []byte) ([]byte, error) {
 }
 
 func modulePathAt(root string) (string, error) {
-	data, err := os.ReadFile(filepath.Join(root, "go.mod"))
+	data, err := os.ReadFile(filepath.Join(root, "go.mod")) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return "", err
 	}
@@ -864,7 +864,7 @@ func collectExtensionDeps(extensions []GoExtension) (requires, replaces []string
 	seenRep := map[string]bool{}
 	for _, root := range goModuleRoots(extensions) {
 		path := filepath.Join(root, "go.mod")
-		data, err := os.ReadFile(path)
+		data, err := os.ReadFile(path) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 		if err != nil {
 			continue
 		}
@@ -922,7 +922,7 @@ func mergeGoSum(extensions []GoExtension) string {
 	seen := map[string]bool{}
 	var lines []string
 	for _, root := range goModuleRoots(extensions) {
-		data, err := os.ReadFile(filepath.Join(root, "go.sum"))
+		data, err := os.ReadFile(filepath.Join(root, "go.sum")) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 		if err != nil {
 			continue
 		}

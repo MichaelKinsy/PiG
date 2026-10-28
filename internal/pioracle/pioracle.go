@@ -55,7 +55,7 @@ await (async () => {
 })();
 process.stdout.write(JSON.stringify(result));
 `
-	cmd := exec.CommandContext(t.Context(), node, "--input-type=module", "-e", script)
+	cmd := exec.CommandContext(t.Context(), node, "--input-type=module", "-e", script) //nolint:gosec // G204: the program and arguments come from the user, the project config, or PiG's own toolchain lookup; the CLI runs as the user with no sandbox and launches them as Pi's child_process.spawn does
 	cmd.Stdin = bytes.NewReader(payload)
 	cmd.Env = append(os.Environ(), "PI_ORACLE_ROOT="+Root(t))
 	cmd.Env = append(cmd.Env, env...)

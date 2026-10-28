@@ -33,7 +33,7 @@ type ExecCommand struct{ Dir string }
 // Execute implements Command. A command that cannot start is an error; one that ends without an exit status counts as
 // status 1.
 func (command ExecCommand) Execute(ctx context.Context, name string, args []string, capture bool) (int, string, error) {
-	process := exec.CommandContext(ctx, name, args...)
+	process := exec.CommandContext(ctx, name, args...) //nolint:gosec // G204: the program and arguments come from the user, the project config, or PiG's own toolchain lookup; the CLI runs as the user with no sandbox and launches them as Pi's child_process.spawn does
 	process.Dir = command.Dir
 	process.Stderr = os.Stderr
 	var output strings.Builder
@@ -149,7 +149,7 @@ func RequireEvalAuthFile(provider string) (string, error) {
 	if info, err := os.Stat(path); err != nil || !info.Mode().IsRegular() {
 		return "", fmt.Errorf("Eval authentication file does not exist: %s", path)
 	}
-	data, err := os.ReadFile(path)
+	data, err := os.ReadFile(path) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return "", err
 	}

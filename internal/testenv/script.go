@@ -31,7 +31,7 @@ func Sh(t testing.TB) string {
 func ScriptCommand(t testing.TB, path string, args ...string) *exec.Cmd {
 	t.Helper()
 	if !needsInterpreter {
-		return exec.Command(path, args...)
+		return exec.Command(path, args...) //nolint:gosec // G204: the program and arguments come from the user, the project config, or PiG's own toolchain lookup; the CLI runs as the user with no sandbox and launches them as Pi's child_process.spawn does
 	}
 	interpreter := ShebangInterpreter(t, path)
 	var program string
@@ -47,14 +47,14 @@ func ScriptCommand(t testing.TB, path string, args ...string) *exec.Cmd {
 	default:
 		t.Skipf("%s: Windows cannot run a #!%s script", path, interpreter)
 	}
-	return exec.Command(program, append([]string{path}, args...)...)
+	return exec.Command(program, append([]string{path}, args...)...) //nolint:gosec // G204: the program and arguments come from the user, the project config, or PiG's own toolchain lookup; the CLI runs as the user with no sandbox and launches them as Pi's child_process.spawn does
 }
 
 // ShebangInterpreter is the program a script's #! line runs, with /usr/bin/env
 // and the directory removed: "#!/usr/bin/env python3" is python3.
 func ShebangInterpreter(t testing.TB, path string) string {
 	t.Helper()
-	file, err := os.Open(path)
+	file, err := os.Open(path) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		t.Fatal(err)
 	}

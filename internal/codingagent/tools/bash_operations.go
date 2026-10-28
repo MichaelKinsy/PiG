@@ -123,7 +123,7 @@ func (o *LocalShellOperations) Exec(ctx context.Context, command, cwd string, op
 	if !commandFromStdin {
 		args = append(args, command)
 	}
-	cmd := exec.Command(shell.Path, args...)
+	cmd := exec.Command(shell.Path, args...) //nolint:gosec // G204: the bash tool sink: it runs the shell with -c on the command the model proposes, exactly like Pi's bash.ts; the CLI runs as the user with no sandbox
 	cmd.Dir = cwd
 	// Upstream passes env as the spawn's env option.
 	nodespawn.SetEnv(cmd, env)

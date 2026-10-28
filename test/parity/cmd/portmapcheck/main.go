@@ -186,14 +186,14 @@ func checkShard(root string, needCoverage bool, shard shardSpec) ([]result, erro
 		return nil, err
 	}
 	var reviewed map[string]reviewedEntry
-	if b, err := os.ReadFile(filepath.Join(root, reviewedFile)); err == nil {
+	if b, err := os.ReadFile(filepath.Join(root, reviewedFile)); err == nil { //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 		if err := json.Unmarshal(b, &reviewed); err != nil {
 			return nil, fmt.Errorf("%s: %w", reviewedFile, err)
 		}
 	}
 	markers := readMarkers(root)
 	var mutants map[string][]mutant
-	if b, err := os.ReadFile(filepath.Join(root, mutantsFile)); err == nil {
+	if b, err := os.ReadFile(filepath.Join(root, mutantsFile)); err == nil { //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 		if err := json.Unmarshal(b, &mutants); err != nil {
 			return nil, fmt.Errorf("%s: %w", mutantsFile, err)
 		}
@@ -329,7 +329,7 @@ var portsRe = regexp.MustCompile(`(?m)^\s*//\s*Ports\s+(\S+)`)
 
 // portsClaim reports whether the Go file declares `// Ports <pi>` for the row's upstream file.
 func portsClaim(root, file, pi string) bool {
-	b, err := os.ReadFile(filepath.Join(root, file))
+	b, err := os.ReadFile(filepath.Join(root, file)) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return false
 	}
@@ -375,7 +375,7 @@ func fixCells(root string, res []result) (int, error) {
 		}
 	}
 	file := filepath.Join(root, portMapFile)
-	b, err := os.ReadFile(file)
+	b, err := os.ReadFile(file) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return 0, err
 	}
@@ -395,7 +395,7 @@ func shortID(id string) string {
 
 // readRows reads the PORT_MAP table rows.
 func readRows(root string) ([]row, error) {
-	b, err := os.ReadFile(filepath.Join(root, portMapFile))
+	b, err := os.ReadFile(filepath.Join(root, portMapFile)) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return nil, err
 	}
@@ -570,7 +570,7 @@ func readInventory(root string) (*inventory, error) {
 }
 
 func readJSON(file string, v any) error {
-	b, err := os.ReadFile(file)
+	b, err := os.ReadFile(file) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return err
 	}
@@ -594,7 +594,7 @@ func readMarkers(root string) map[string][]string {
 		if !strings.HasSuffix(p, "_test.go") {
 			return nil
 		}
-		b, err := os.ReadFile(p)
+		b, err := os.ReadFile(p) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 		if err != nil {
 			return nil
 		}
@@ -710,7 +710,7 @@ func writeBaseline(root string, res []result) error {
 // compareBaseline fails on a new unproven ✅ row and on a baseline entry that is stale.
 func compareBaseline(root string, res []result) ([]string, error) {
 	base := map[string]bool{}
-	if b, err := os.ReadFile(filepath.Join(root, baselineFile)); err == nil {
+	if b, err := os.ReadFile(filepath.Join(root, baselineFile)); err == nil { //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 		for line := range strings.SplitSeq(string(b), "\n") {
 			if line = strings.TrimSpace(line); line != "" {
 				base[line] = true
@@ -749,7 +749,7 @@ func generateStatus(root string, res []result) error {
 		}
 	}
 	file := filepath.Join(root, portMapFile)
-	b, err := os.ReadFile(file)
+	b, err := os.ReadFile(file) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return err
 	}

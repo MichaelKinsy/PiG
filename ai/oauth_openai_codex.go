@@ -27,7 +27,7 @@ import (
 const (
 	codexClientID     = "app_EMoamEEZ73f0CkXaXp7hrann"
 	codexAuthorizeURL = "https://auth.openai.com/oauth/authorize"
-	codexTokenURL     = "https://auth.openai.com/oauth/token"
+	codexTokenURL     = "https://auth.openai.com/oauth/token" //nolint:gosec // G101: the value is a name, URL, or identifier of a public protocol, not a credential value
 	codexCallbackPort = 1455
 	codexCallbackPath = "/auth/callback"
 	codexRedirectURI  = "http://localhost:1455/auth/callback"
@@ -36,7 +36,7 @@ const (
 
 	// Codex device-code (RFC 8628) endpoints. Mirrors openai-codex.ts:36-39.
 	codexDeviceUserCodeURL        = "https://auth.openai.com/api/accounts/deviceauth/usercode"
-	codexDeviceTokenURL           = "https://auth.openai.com/api/accounts/deviceauth/token"
+	codexDeviceTokenURL           = "https://auth.openai.com/api/accounts/deviceauth/token" //nolint:gosec // G101: the value is a name, URL, or identifier of a public protocol, not a credential value
 	codexDeviceVerificationURI    = "https://auth.openai.com/codex/device"
 	codexDeviceRedirectURI        = "https://auth.openai.com/deviceauth/callback"
 	codexDeviceCodeTimeoutSeconds = 15 * 60

@@ -247,12 +247,12 @@ func removeStore(path string) {
 // copyFile streams the fixture to its scratch copy, so the measured process's peak resident set does not include the fixture's
 // size (bench.mjs copies with copyFileSync, outside the JS heap).
 func copyFile(from, to string) error {
-	in, err := os.Open(from)
+	in, err := os.Open(from) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return err
 	}
-	defer func() { _ = in.Close() }() // read-only: a close error loses nothing
-	out, err := os.OpenFile(to, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0o644)
+	defer func() { _ = in.Close() }()                                      // read-only: a close error loses nothing
+	out, err := os.OpenFile(to, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0o644) //nolint:gosec // G304: the path names an output or state file that the user or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so writing it grants nothing the user lacks
 	if err != nil {
 		return err
 	}

@@ -49,7 +49,7 @@ func loadVectorCorpus(root, sdk string) (string, error) {
 		if !spec.test(path) {
 			return nil
 		}
-		data, err := os.ReadFile(path)
+		data, err := os.ReadFile(path) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 		if err != nil {
 			return err
 		}
@@ -65,7 +65,7 @@ func loadVectorCorpus(root, sdk string) (string, error) {
 // typeOnlyCounts counts, per ledger module, the declarations with no runtime
 // value: they are identity by kind and take no ledger row.
 func typeOnlyCounts(root string, rows []ledgerRow) (map[string]int, error) {
-	raw, err := os.ReadFile(filepath.Join(root, "test/parity/interfaces/upstream-v"+coding.UpstreamVersion+".json"))
+	raw, err := os.ReadFile(filepath.Join(root, "test/parity/interfaces/upstream-v"+coding.UpstreamVersion+".json")) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return nil, err
 	}

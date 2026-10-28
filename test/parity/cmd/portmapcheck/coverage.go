@@ -76,7 +76,7 @@ func (d *digester) sum(rel string) string {
 	if s, ok := d.sums[rel]; ok {
 		return s
 	}
-	b, _ := os.ReadFile(filepath.Join(d.root, rel))
+	b, _ := os.ReadFile(filepath.Join(d.root, rel)) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	h := sha256.Sum256(b)
 	s := strconv.Itoa(len(b)) + ":" + hex.EncodeToString(h[:])
 	d.sums[rel] = s
@@ -178,7 +178,7 @@ func coverageFiles(res result) []string {
 
 // modulePath is the module path of the repository under root, the prefix of every file name in a coverage profile.
 func modulePath(root string) string {
-	b, _ := os.ReadFile(filepath.Join(root, "go.mod"))
+	b, _ := os.ReadFile(filepath.Join(root, "go.mod")) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	for line := range strings.SplitSeq(string(b), "\n") {
 		if mod, ok := strings.CutPrefix(line, "module "); ok {
 			return strings.TrimSpace(mod)
@@ -206,7 +206,7 @@ func evidenceEnv(scratch string) []string {
 	env := make([]string, 0, len(os.Environ())+len(agentDirVariables)+2)
 	for _, name := range []string{"GOCACHE", "GOMODCACHE"} {
 		if os.Getenv(name) == "" {
-			if out, err := exec.Command("go", "env", name).Output(); err == nil {
+			if out, err := exec.Command("go", "env", name).Output(); err == nil { //nolint:gosec // G204: the program and arguments come from the user, the project config, or PiG's own toolchain lookup; the CLI runs as the user with no sandbox and launches them as Pi's child_process.spawn does
 				env = append(env, name+"="+strings.TrimSpace(string(out)))
 			}
 		}

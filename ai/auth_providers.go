@@ -198,7 +198,7 @@ func vertexAuth() *APIKeyAuth {
 }
 
 const (
-	cloudflareAPIKey    = "CLOUDFLARE_API_KEY"
+	cloudflareAPIKey    = "CLOUDFLARE_API_KEY" //nolint:gosec // G101: the value is a name, URL, or identifier of a public protocol, not a credential value
 	cloudflareAccountID = "CLOUDFLARE_ACCOUNT_ID"
 	cloudflareGatewayID = "CLOUDFLARE_GATEWAY_ID"
 )
@@ -504,7 +504,7 @@ func newBuiltinAPIKeyAuth(providerID string) (*APIKeyAuth, bool) {
 // builtinAPIKeyNames mirrors each envApiKeyAuth display name; the variables
 // come from the env-api-keys table.
 var builtinAPIKeyNames = sync.OnceValue(func() map[string]string {
-	return map[string]string{
+	return map[string]string{ //nolint:gosec // G101: the value is a name, URL, or identifier of a public protocol, not a credential value
 		"ant-ling":                   "Ant Ling API key",
 		"azure":                      "Azure OpenAI API key",
 		"baseten":                    "Baseten API key",

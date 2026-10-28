@@ -148,7 +148,7 @@ func materializeModuleSource(moduleDir, version, sum string) (string, error) {
 	target := filepath.Join(cacheDir, version+"-"+hex.EncodeToString(key[:8]))
 	marker := filepath.Join(target, ".pig-source-sum")
 	published := func() bool {
-		data, err := os.ReadFile(marker)
+		data, err := os.ReadFile(marker) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 		return err == nil && string(data) == sum
 	}
 	if published() {

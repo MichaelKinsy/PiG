@@ -29,7 +29,7 @@ func noteSectionSet(text string) map[string]bool {
 
 // releaseNotes writes the draft release notes for target from the changelog sections after since, the changelog fragments, the bug fix ledger, and the divergence records. It is a draft: an owner edits and posts it.
 func releaseNotes(root, since, target string) (string, error) {
-	data, err := os.ReadFile(filepath.Join(root, "CHANGELOG.md"))
+	data, err := os.ReadFile(filepath.Join(root, "CHANGELOG.md")) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return "", err
 	}
@@ -51,7 +51,7 @@ func releaseNotes(root, since, target string) (string, error) {
 		return "", err
 	}
 	for _, f := range frags {
-		fd, err := os.ReadFile(f)
+		fd, err := os.ReadFile(f) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 		if err != nil {
 			return "", err
 		}
@@ -84,7 +84,7 @@ func releaseNotes(root, since, target string) (string, error) {
 	slices.Sort(upgrading)
 	fmt.Fprintf(&b, "- %d additions, %d changes and %d recorded fixes since PiG %s.\n", len(bySection["Added"]), len(bySection["Changed"]), len(bySection["Fixed"]), since)
 	fmt.Fprintf(&b, "- The bug fix ledger lists %d bugs: %d PiG defects, %d Pi defects PiG fixed first, %d Pi fixes ported.\n", len(ledger.Entries), counts[ClassOwn], counts[ClassAheadOfPi], counts[ClassPiPort])
-	if pin, err := os.ReadFile(filepath.Join(root, "internal", "coding", "pigversion", "pigversion.go")); err == nil {
+	if pin, err := os.ReadFile(filepath.Join(root, "internal", "coding", "pigversion", "pigversion.go")); err == nil { //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 		if m := pinConstRE.FindStringSubmatch(string(pin)); m != nil {
 			fmt.Fprintf(&b, "- PiG %s follows Pi %s.\n", target, m[1])
 		}

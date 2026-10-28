@@ -200,7 +200,7 @@ func ValidateAutoDiscoveredOverrides(cwd, agentDir string, sm *SettingsManager, 
 
 // dirMayHaveEntries reports whether discovery could find a resource in dir: it is false only for a directory that does not exist or that lists no entry. A directory that cannot be opened or listed may still hold an entry discovery finds by name, as Pi's collectAutoExtensionEntries finds index.ts with existsSync where readdirSync fails.
 func dirMayHaveEntries(dir string) bool {
-	f, err := os.Open(dir)
+	f, err := os.Open(dir) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return !errors.Is(err, fs.ErrNotExist)
 	}
@@ -375,7 +375,7 @@ func ResolvePromptInput(input, description string) string {
 	if _, err := os.Stat(input); err != nil {
 		return input
 	}
-	data, err := os.ReadFile(input)
+	data, err := os.ReadFile(input) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		reportCouldNotRead(description+" file "+input, err)
 		return input

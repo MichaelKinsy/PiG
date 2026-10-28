@@ -26,13 +26,13 @@ func SubstDrive(t testing.TB, dir string) string {
 			continue
 		}
 		drive := string(letter) + ":"
-		out, err := exec.CommandContext(t.Context(), "subst", drive, dir).CombinedOutput()
+		out, err := exec.CommandContext(t.Context(), "subst", drive, dir).CombinedOutput() //nolint:gosec // G204: the program and arguments come from the user, the project config, or PiG's own toolchain lookup; the CLI runs as the user with no sandbox and launches them as Pi's child_process.spawn does
 		if err != nil {
 			failures = append(failures, "subst "+drive+": "+err.Error()+": "+string(out)+"\n"...)
 			continue
 		}
 		t.Cleanup(func() {
-			if out, err := exec.CommandContext(context.WithoutCancel(t.Context()), "subst", drive, "/d").CombinedOutput(); err != nil {
+			if out, err := exec.CommandContext(context.WithoutCancel(t.Context()), "subst", drive, "/d").CombinedOutput(); err != nil { //nolint:gosec // G204: the program and arguments come from the user, the project config, or PiG's own toolchain lookup; the CLI runs as the user with no sandbox and launches them as Pi's child_process.spawn does
 				t.Errorf("subst %s /d: %v\n%s", drive, err, out)
 			}
 		})

@@ -32,7 +32,7 @@ type loadedRun struct {
 // loadRun reads a collected run directory (pod.log, and cluster.json when the runner collected it) and writes its
 // results.jsonl (the sample lines), seeds.jsonl and ENV.txt.
 func loadRun(runDir string) (*loadedRun, error) {
-	f, err := os.Open(filepath.Join(runDir, "pod.log"))
+	f, err := os.Open(filepath.Join(runDir, "pod.log")) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return nil, err
 	}
@@ -45,7 +45,7 @@ func loadRun(runDir string) (*loadedRun, error) {
 		return nil, fmt.Errorf("%s: %w", filepath.Base(runDir), err)
 	}
 	var cluster *object
-	if data, err := os.ReadFile(filepath.Join(runDir, "cluster.json")); err == nil {
+	if data, err := os.ReadFile(filepath.Join(runDir, "cluster.json")); err == nil { //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 		cluster = &object{}
 		if err := json.Unmarshal(data, cluster); err != nil {
 			return nil, fmt.Errorf("cluster.json: %w", err)
@@ -86,7 +86,7 @@ func loadRun(runDir string) (*loadedRun, error) {
 // loadRuns reads a run directory, or every per-node run of a spread session, and checks that they are one session.
 func loadRuns(runDir string) ([]*loadedRun, error) {
 	dirs := []string{runDir}
-	if data, err := os.ReadFile(filepath.Join(runDir, spreadFile)); err == nil {
+	if data, err := os.ReadFile(filepath.Join(runDir, spreadFile)); err == nil { //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 		var spread struct{ Runs []string }
 		if err := json.Unmarshal(data, &spread); err != nil {
 			return nil, fmt.Errorf("%s: %w", spreadFile, err)
@@ -292,7 +292,7 @@ func analyze(runDir, outDir string, a analysisFlags, stdout io.Writer, now time.
 	if err := os.MkdirAll(filepath.Dir(trackPath), 0o755); err != nil {
 		return err
 	}
-	tf, err := os.OpenFile(trackPath, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o644)
+	tf, err := os.OpenFile(trackPath, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o644) //nolint:gosec // G304: the path names an output or state file that the user or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so writing it grants nothing the user lacks
 	if err != nil {
 		return err
 	}
@@ -585,7 +585,7 @@ func readBaselines(paths string, prof *profile) (map[string]*object, error) {
 	}
 	pigs := prof.pigs()
 	for path := range strings.SplitSeq(paths, ",") {
-		data, err := os.ReadFile(path)
+		data, err := os.ReadFile(path) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 		if err != nil {
 			return nil, err
 		}

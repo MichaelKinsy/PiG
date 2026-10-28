@@ -252,7 +252,7 @@ func SubmitAgentBundle(root, packetInput, bundleInput, outputDirectory string) (
 	if err != nil {
 		return AgentBundleSubmissionResult{}, fmt.Errorf("resolve packet input: %w", err)
 	}
-	packetFile, err := os.Open(packetPath)
+	packetFile, err := os.Open(packetPath) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return AgentBundleSubmissionResult{}, fmt.Errorf("open packet input: %w", err)
 	}
@@ -268,7 +268,7 @@ func SubmitAgentBundle(root, packetInput, bundleInput, outputDirectory string) (
 	if err != nil {
 		return AgentBundleSubmissionResult{}, fmt.Errorf("resolve bundle input: %w", err)
 	}
-	bundleFile, err := os.Open(bundlePath)
+	bundleFile, err := os.Open(bundlePath) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return AgentBundleSubmissionResult{}, fmt.Errorf("open bundle input: %w", err)
 	}
@@ -319,7 +319,7 @@ func validateTranslationOriginalHashes(root string, submission *AgentBundleSubmi
 	for _, translation := range submission.Translator.Translations {
 		edits := append(slices.Clone(translation.ProductionEdits), translation.TestEdits...)
 		for _, edit := range edits {
-			command := exec.Command("git", "show", submission.Packet.Target.Revision+":"+edit.Path)
+			command := exec.Command("git", "show", submission.Packet.Target.Revision+":"+edit.Path) //nolint:gosec // G204: the program and arguments come from the user, the project config, or PiG's own toolchain lookup; the CLI runs as the user with no sandbox and launches them as Pi's child_process.spawn does
 			command.Dir = root
 			data, err := command.Output()
 			if err != nil {

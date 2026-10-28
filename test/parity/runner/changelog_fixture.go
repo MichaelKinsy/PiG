@@ -55,7 +55,7 @@ func prepareChangelogFixture(ctx context.Context, t *testing.T, sc *Scenario, pi
 		return pig, pi, err
 	}
 	pig.Path = filepath.Join(tmp, "pig")
-	cmd := exec.CommandContext(ctx, "go", "build", "-overlay", overlayPath, "-o", pig.Path, "./cmd/pig")
+	cmd := exec.CommandContext(ctx, "go", "build", "-overlay", overlayPath, "-o", pig.Path, "./cmd/pig") //nolint:gosec // G204: the program and arguments come from the user, the project config, or PiG's own toolchain lookup; the CLI runs as the user with no sandbox and launches them as Pi's child_process.spawn does
 	cmd.Dir = root
 	if out, err := cmd.CombinedOutput(); err != nil {
 		return pig, pi, fmt.Errorf("build changelog fixture: %w\n%s", err, out)
@@ -96,7 +96,7 @@ func findRepoRoot() (string, error) {
 	}
 	for {
 		modfile := filepath.Join(dir, "go.mod")
-		if data, err := os.ReadFile(modfile); err == nil {
+		if data, err := os.ReadFile(modfile); err == nil { //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 			if strings.Contains(string(data), "module github.com/MichaelKinsy/PiG") {
 				return dir, nil
 			}

@@ -43,7 +43,7 @@ func RunWithHardLinksRefused(t *testing.T) bool {
 	if strings.Contains(t.Name(), "/") {
 		t.Fatalf("RunWithHardLinksRefused reruns a top-level test; %s is a subtest", t.Name())
 	}
-	cmd := exec.Command(os.Args[0], "-test.run=^"+regexp.QuoteMeta(t.Name())+"$", "-test.v", "-test.count=1")
+	cmd := exec.Command(os.Args[0], "-test.run=^"+regexp.QuoteMeta(t.Name())+"$", "-test.v", "-test.count=1") //nolint:gosec // G204: the program and arguments come from the user, the project config, or PiG's own toolchain lookup; the CLI runs as the user with no sandbox and launches them as Pi's child_process.spawn does
 	cmd.Env = append(os.Environ(), refuseHardLinksEnv+"=1")
 	out, err := cmd.CombinedOutput()
 	if err != nil || !strings.Contains(string(out), "--- PASS: "+t.Name()+" ") {

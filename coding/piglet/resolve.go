@@ -277,7 +277,7 @@ func List() ([]PigletInfo, error) {
 }
 
 func pigletSourceDigest(path string) (string, error) {
-	data, err := os.ReadFile(path)
+	data, err := os.ReadFile(path) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return "", fmt.Errorf("hash Piglet source %s: %w", path, err)
 	}
@@ -480,7 +480,7 @@ func recordComponents(plan *artifact.Plan) []RecordComponent {
 }
 
 func readRecordFile(path string) (artifact.Record, error) {
-	data, err := os.ReadFile(path)
+	data, err := os.ReadFile(path) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return artifact.Record{}, fmt.Errorf("read Piglet record %s: %w", path, err)
 	}
@@ -513,7 +513,7 @@ func validateManagedArtifact(path string, binary artifact.Record) error {
 	if !info.Mode().IsRegular() || info.Size() != expected.Size {
 		return fmt.Errorf("managed artifact %s size/type does not match Piglet Binary record", path)
 	}
-	file, err := os.Open(path)
+	file, err := os.Open(path) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return err
 	}

@@ -63,7 +63,7 @@ func newPigletOrigin(source, materializedRoot string, pigletData []byte, now tim
 func inspectPigletOrigin(ref sourceref.Ref, materializedRoot string) (string, string, string, error) {
 	switch ref.Kind {
 	case sourceref.KindNPM:
-		data, err := os.ReadFile(filepath.Join(materializedRoot, "package.json"))
+		data, err := os.ReadFile(filepath.Join(materializedRoot, "package.json")) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 		if err != nil {
 			return "", "", "", fmt.Errorf("read materialized npm package: %w", err)
 		}
@@ -105,7 +105,7 @@ func readNPMOriginIntegrity(materializedRoot string) string {
 	if err != nil {
 		return ""
 	}
-	data, err := os.ReadFile(filepath.Join(installRoot, "package-lock.json"))
+	data, err := os.ReadFile(filepath.Join(installRoot, "package-lock.json")) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return ""
 	}
@@ -260,7 +260,7 @@ func marshalPigletOrigin(origin pigletOrigin) ([]byte, error) {
 
 func readPigletOrigin(path string) (*pigletOrigin, error) {
 	originPath := originPathForPiglet(path)
-	data, err := os.ReadFile(originPath)
+	data, err := os.ReadFile(originPath) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if os.IsNotExist(err) {
 		return nil, nil
 	}
@@ -279,7 +279,7 @@ func readPigletOrigin(path string) (*pigletOrigin, error) {
 	if err := origin.validate(); err != nil {
 		return nil, fmt.Errorf("Piglet origin %s: %w", originPath, err)
 	}
-	data, err = os.ReadFile(path)
+	data, err = os.ReadFile(path) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return nil, fmt.Errorf("read Piglet source %s: %w", path, err)
 	}

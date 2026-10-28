@@ -82,7 +82,7 @@ func packFile(name, version string) string {
 // names (file name to the closure's integrity).
 func pinnedProject(root string, ref piReference, pin piPin) (manifest, lock []byte, packs map[string]string, err error) {
 	frozen := filepath.Join(root, "automation", "pin", "frozen", pin.Commit+"."+ref.closure+".json.gz")
-	compressed, err := os.ReadFile(frozen)
+	compressed, err := os.ReadFile(frozen) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("the pin is Pi commit %s, and its frozen closure for %s: %w", pin.Commit, ref.dir, err)
 	}
@@ -163,7 +163,7 @@ func writePinnedInstall(root, dir, packsDir string, ref piReference, pin piPin) 
 	}
 	if pin.isRelease() {
 		for _, f := range []string{"package.json", "package-lock.json"} {
-			data, err := os.ReadFile(filepath.Join(root, "bench", "k8s", "image", ref.dir, f))
+			data, err := os.ReadFile(filepath.Join(root, "bench", "k8s", "image", ref.dir, f)) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 			if err != nil {
 				return "", err
 			}
@@ -189,7 +189,7 @@ func writePinnedInstall(root, dir, packsDir string, ref piReference, pin piPin) 
 		if !ok {
 			return "", fmt.Errorf("%s holds no pack %s with the frozen closure's integrity %s; build the pinned Pi with `python3 automation/pin/pin.py install-oracle`", packsDir, file, packs[file])
 		}
-		data, err := os.ReadFile(src)
+		data, err := os.ReadFile(src) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 		if err != nil {
 			return "", err
 		}
@@ -208,7 +208,7 @@ func writePinnedInstall(root, dir, packsDir string, ref piReference, pin piPin) 
 // checkInstalledVersion checks that root/<ref.dir> installed ref.pkg at the pin's package version.
 func checkInstalledVersion(root string, ref piReference, pin piPin) error {
 	path := filepath.Join(root, ref.dir, "node_modules", filepath.FromSlash(ref.pkg), "package.json")
-	data, err := os.ReadFile(path)
+	data, err := os.ReadFile(path) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return err
 	}
@@ -233,7 +233,7 @@ func packIntegrities(dir string) (map[string]string, error) {
 	}
 	out := make(map[string]string, len(tarballs))
 	for _, path := range tarballs {
-		data, err := os.ReadFile(path)
+		data, err := os.ReadFile(path) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 		if err != nil {
 			return nil, err
 		}

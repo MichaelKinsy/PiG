@@ -19,7 +19,7 @@ var (
 // directory of the path before it in the same cell, and `dir/{a,b}.go`
 // expands to both files.
 func loadPortMap(root string) (map[string][]string, error) {
-	data, err := os.ReadFile(path.Join(root, "docs/parity/PORT_MAP.md"))
+	data, err := os.ReadFile(path.Join(root, "docs/parity/PORT_MAP.md")) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		if os.IsNotExist(err) {
 			return map[string][]string{}, nil

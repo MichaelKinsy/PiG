@@ -298,7 +298,7 @@ func publishedPackages(p *Piglet, packageMap map[string]string) (map[string]stri
 
 // localPackageIdentity returns "<name>@^<version>" for the Package at root, followed by "?registry=<url>" when its package.json publishes to publishConfig.registry, so the published Piglet installs the Package from the registry that has it.
 func localPackageIdentity(root string) (string, error) {
-	data, err := os.ReadFile(filepath.Join(root, "package.json"))
+	data, err := os.ReadFile(filepath.Join(root, "package.json")) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return "", errors.New("it has no package.json")
 	}
@@ -378,7 +378,7 @@ type authorPackage struct {
 
 // readAuthorPackage reads the optional package.json beside the Piglet. It supplies metadata only.
 func readAuthorPackage(dir string) (authorPackage, error) {
-	data, err := os.ReadFile(filepath.Join(dir, "package.json"))
+	data, err := os.ReadFile(filepath.Join(dir, "package.json")) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if errors.Is(err, fs.ErrNotExist) {
 		return authorPackage{}, nil
 	}

@@ -17,7 +17,7 @@ func RequireQualifiedNode(t testing.TB) string {
 	if err != nil {
 		t.Fatalf("the qualified Node release: %v", err)
 	}
-	out, err := exec.CommandContext(t.Context(), path, "--version").Output()
+	out, err := exec.CommandContext(t.Context(), path, "--version").Output() //nolint:gosec // G204: the program and arguments come from the user, the project config, or PiG's own toolchain lookup; the CLI runs as the user with no sandbox and launches them as Pi's child_process.spawn does
 	if err != nil {
 		t.Fatalf("%s --version: %v", path, err)
 	}

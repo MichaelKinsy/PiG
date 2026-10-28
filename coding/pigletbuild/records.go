@@ -470,7 +470,7 @@ func packageManifestDigest(root string) (string, error) {
 	hash := sha256.New()
 	found := false
 	for _, relative := range paths {
-		data, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(relative)))
+		data, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(relative))) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 		if os.IsNotExist(err) {
 			continue
 		}
@@ -493,7 +493,7 @@ func localGoReplacementDirs(root string) ([]string, error) {
 	if root == "" {
 		return nil, nil
 	}
-	data, err := os.ReadFile(filepath.Join(root, "go.mod"))
+	data, err := os.ReadFile(filepath.Join(root, "go.mod")) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	// A single-file extension (a lone .ts or .js file) has no go.mod beside it: reading "<file>/go.mod" fails with ENOTDIR on
 	// Unix and with a not-found error on Windows.
 	if os.IsNotExist(err) || errors.Is(err, syscall.ENOTDIR) {
@@ -605,7 +605,7 @@ func hashTree(root string) (string, error) {
 // hashFile returns the sha256 digest and size of the file at path, streaming it
 // so a Piglet Binary is never held in memory.
 func hashFile(path string) (string, int64, error) {
-	file, err := os.Open(path)
+	file, err := os.Open(path) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return "", 0, err
 	}
@@ -624,7 +624,7 @@ const hashBufferSize = 64 << 10
 // copyFileInto streams the file at path into w through buffer. The reader is wrapped so io.CopyBuffer uses buffer:
 // *os.File implements WriterTo, which would ignore it and allocate a 32 KiB buffer for every file.
 func copyFileInto(w io.Writer, path string, buffer []byte) error {
-	file, err := os.Open(path)
+	file, err := os.Open(path) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return err
 	}
@@ -806,7 +806,7 @@ func writeRecordFile(path string, record pigletartifact.Record) (bool, error) {
 		return false, err
 	}
 	data = append(data, '\n')
-	if existing, err := os.ReadFile(path); err == nil {
+	if existing, err := os.ReadFile(path); err == nil { //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 		if slices.Equal(existing, data) {
 			return false, nil
 		}
@@ -856,7 +856,7 @@ func writeManagedArtifact(source, target, expectedDigest string) (bool, error) {
 	if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil {
 		return false, err
 	}
-	input, err := os.Open(source)
+	input, err := os.Open(source) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return false, err
 	}

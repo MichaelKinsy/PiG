@@ -62,7 +62,7 @@ var armIDPattern = regexp.MustCompile(`^[a-z0-9]([a-z0-9.-]{0,30}[a-z0-9])?$`)
 
 // readArmsLock reads the pins of ids from root's arms.lock.
 func readArmsLock(root string, ids []string) (map[string]armPin, error) {
-	data, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(armsLock)))
+	data, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(armsLock))) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return nil, err
 	}
@@ -206,7 +206,7 @@ func installReleaseArm(ctx context.Context, client *http.Client, dest, id string
 // extractMember writes the one regular file of a .tar.gz archive whose base name is member to dst, executable. More
 // than one such file, or none, is refused.
 func extractMember(archive, member, dst string) (err error) {
-	f, err := os.Open(archive)
+	f, err := os.Open(archive) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return err
 	}
@@ -232,7 +232,7 @@ func extractMember(archive, member, dst string) (err error) {
 			return fmt.Errorf("more than one %s", member)
 		}
 		found = true
-		out, err := os.OpenFile(dst, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o755)
+		out, err := os.OpenFile(dst, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o755) //nolint:gosec // G304: the path names an output or state file that the user or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so writing it grants nothing the user lacks
 		if err != nil {
 			return err
 		}
@@ -294,7 +294,7 @@ func readPinned(path, want string) ([]byte, error) {
 	if want == "" {
 		return nil, fmt.Errorf("%s has no pinned sha256", path)
 	}
-	data, err := os.ReadFile(path)
+	data, err := os.ReadFile(path) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return nil, err
 	}
@@ -309,7 +309,7 @@ func readPinned(path, want string) ([]byte, error) {
 // for platform. It returns the executable's path relative to dir with symbolic links resolved.
 func checkArm(dir, id string, pin armPin, platform string) (string, error) {
 	var installed struct{ Version string }
-	data, err := os.ReadFile(filepath.Join(dir, "node_modules", filepath.FromSlash(pin.Package), "package.json"))
+	data, err := os.ReadFile(filepath.Join(dir, "node_modules", filepath.FromSlash(pin.Package), "package.json")) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return "", fmt.Errorf("arm %s: %w", id, err)
 	}
@@ -369,7 +369,7 @@ func armArtifacts(dir string) ([]string, error) {
 		if !e.IsDir() {
 			continue
 		}
-		bin, err := os.ReadFile(filepath.Join(dir, armsDir, e.Name(), "BIN"))
+		bin, err := os.ReadFile(filepath.Join(dir, armsDir, e.Name(), "BIN")) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 		if err != nil {
 			return nil, fmt.Errorf("arm %s: %w", e.Name(), err)
 		}

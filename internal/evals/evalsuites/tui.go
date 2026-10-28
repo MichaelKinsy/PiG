@@ -109,7 +109,7 @@ func overrideContextWindow(agentDir, scratch string, selection evals.PiCodingAge
 	}
 	config := map[string]any{}
 	modelsPath := filepath.Join(copied, "models.json")
-	if data, err := os.ReadFile(modelsPath); err == nil {
+	if data, err := os.ReadFile(modelsPath); err == nil { //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 		if err := json.Unmarshal(data, &config); err != nil {
 			return "", err
 		}
@@ -153,10 +153,10 @@ func renderFooter(ctx context.Context, run evals.AgentRun, agentDir, sessionPath
 	if !extensions {
 		args = append(args, "--no-extensions")
 	}
-	if out, err := exec.CommandContext(ctx, "tmux", args...).CombinedOutput(); err != nil {
+	if out, err := exec.CommandContext(ctx, "tmux", args...).CombinedOutput(); err != nil { //nolint:gosec // G204: the program and arguments come from the user, the project config, or PiG's own toolchain lookup; the CLI runs as the user with no sandbox and launches them as Pi's child_process.spawn does
 		return "", fmt.Errorf("tmux new-session: %w: %s", err, out)
 	}
-	defer func() { _ = exec.Command("tmux", "kill-session", "-t", name).Run() }()
+	defer func() { _ = exec.Command("tmux", "kill-session", "-t", name).Run() }() //nolint:gosec // G204: the program and arguments come from the user, the project config, or PiG's own toolchain lookup; the CLI runs as the user with no sandbox and launches them as Pi's child_process.spawn does
 	var pane string
 	deadline := time.Now().Add(30 * time.Second)
 	for time.Now().Before(deadline) {
@@ -165,14 +165,14 @@ func renderFooter(ctx context.Context, run evals.AgentRun, agentDir, sessionPath
 			return "", ctx.Err()
 		case <-time.After(100 * time.Millisecond):
 		}
-		out, err := exec.CommandContext(ctx, "tmux", "capture-pane", "-p", "-t", name).Output()
+		out, err := exec.CommandContext(ctx, "tmux", "capture-pane", "-p", "-t", name).Output() //nolint:gosec // G204: the program and arguments come from the user, the project config, or PiG's own toolchain lookup; the CLI runs as the user with no sandbox and launches them as Pi's child_process.spawn does
 		if err != nil {
 			return pane, fmt.Errorf("pig exited before rendering the footer: %w", err)
 		}
 		if pane = string(out); ready.MatchString(pane) {
 			// Let the footer settle: a later render may replace the status.
 			time.Sleep(300 * time.Millisecond)
-			out, err = exec.CommandContext(ctx, "tmux", "capture-pane", "-p", "-t", name).Output()
+			out, err = exec.CommandContext(ctx, "tmux", "capture-pane", "-p", "-t", name).Output() //nolint:gosec // G204: the program and arguments come from the user, the project config, or PiG's own toolchain lookup; the CLI runs as the user with no sandbox and launches them as Pi's child_process.spawn does
 			return string(out), err
 		}
 	}

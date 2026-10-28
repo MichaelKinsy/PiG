@@ -68,7 +68,7 @@ type Recorder struct {
 
 // NewRecorder starts a recording at path.
 func NewRecorder(path string) (*Recorder, error) {
-	f, err := os.Create(path)
+	f, err := os.Create(path) //nolint:gosec // G304: the path names an output or state file that the user or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so writing it grants nothing the user lacks
 	if err != nil {
 		return nil, err
 	}
@@ -210,7 +210,7 @@ type ReadCall struct {
 
 // Load reads and groups a recording. Slices alias the file's bytes.
 func Load(path string) (*Recording, error) {
-	data, err := os.ReadFile(path)
+	data, err := os.ReadFile(path) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return nil, err
 	}

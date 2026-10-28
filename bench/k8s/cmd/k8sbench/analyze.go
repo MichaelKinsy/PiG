@@ -438,7 +438,7 @@ func noiseProblems(label string, noise *object, gates []string, maxCV float64) [
 // for that comparison: it names no node, it did not measure one of nodes, or it did not calibrate or did not judge
 // (fewer than minJudgedRuns runs) one of the sizes. A calibration of another profile is an error.
 func readCalibration(path string, prof *profile, turns []int, nodes []string) (*object, []string, error) {
-	data, err := os.ReadFile(path)
+	data, err := os.ReadFile(path) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return nil, nil, err
 	}
@@ -1009,7 +1009,7 @@ func readHistory(paths []string, rule string, turns int, run string) ([]*object,
 	var out []*object
 	newest := map[string]int{}
 	for _, path := range paths {
-		f, err := os.Open(path)
+		f, err := os.Open(path) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 		if errors.Is(err, os.ErrNotExist) {
 			continue
 		}

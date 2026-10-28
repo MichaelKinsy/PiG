@@ -179,7 +179,7 @@ func modelDataTimestampValid(raw json.RawMessage) (bool, error) {
 }
 
 func runModelDataNode(script string, input []byte) (string, error) {
-	command := exec.Command("node", "-e", script)
+	command := exec.Command("node", "-e", script) //nolint:gosec // G204: the program and arguments come from the user, the project config, or PiG's own toolchain lookup; the CLI runs as the user with no sandbox and launches them as Pi's child_process.spawn does
 	command.Stdin = bytes.NewReader(input)
 	output, err := command.Output()
 	if err != nil {

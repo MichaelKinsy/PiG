@@ -164,7 +164,7 @@ func normalizePkg(p string) string { return p }
 
 // countEntries counts the entries of a TOML ratchet file: array-of-table headers, or the keys of a named table.
 func countTomlEntries(path string) int {
-	b, err := os.ReadFile(path)
+	b, err := os.ReadFile(path) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return -1
 	}

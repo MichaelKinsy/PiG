@@ -12,7 +12,7 @@ import (
 // computes without one: the key is content-addressed, so duplicate work is wasted but never wrong.
 func (c *ledgerCache) lock(kind, key string) (release func()) {
 	path := c.entryDir(kind, key) + ".lock"
-	f, err := os.OpenFile(path, os.O_CREATE|os.O_RDWR, 0o664)
+	f, err := os.OpenFile(path, os.O_CREATE|os.O_RDWR, 0o664) //nolint:gosec // G304: the path names an output or state file that the user or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so writing it grants nothing the user lacks
 	if err != nil {
 		return func() {}
 	}

@@ -16,7 +16,7 @@ import (
 type system struct{ root string }
 
 func (s system) read(path string) (string, error) {
-	data, err := os.ReadFile(filepath.Join(s.root, path))
+	data, err := os.ReadFile(filepath.Join(s.root, path)) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	return strings.TrimSpace(string(data)), err
 }
 

@@ -262,7 +262,7 @@ func findRustSDKRoot(extensions []RustExtension) (string, error) {
 		return "", fmt.Errorf("get cwd: %w", err)
 	}
 	for dir := wd; ; dir = filepath.Dir(dir) {
-		data, err := os.ReadFile(filepath.Join(dir, "go.mod"))
+		data, err := os.ReadFile(filepath.Join(dir, "go.mod")) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 		if err == nil && strings.Contains(string(data), "module github.com/MichaelKinsy/PiG") {
 			if cand := filepath.Join(dir, "extensions", "sdk-rs"); statHasFile(cand, "Cargo.toml") {
 				return cand, nil
@@ -320,7 +320,7 @@ func RustSDKPathOverride(root string) string {
 }
 
 func copyRustSDKLockfile(sdkRoot, cellDir string) error {
-	data, err := os.ReadFile(filepath.Join(sdkRoot, "Cargo.lock"))
+	data, err := os.ReadFile(filepath.Join(sdkRoot, "Cargo.lock")) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		if os.IsNotExist(err) {
 			return nil

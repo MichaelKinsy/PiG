@@ -302,7 +302,7 @@ func findLispSDKRoot() (string, error) {
 		return "", fmt.Errorf("get cwd: %w", err)
 	}
 	for dir := wd; ; dir = filepath.Dir(dir) {
-		data, err := os.ReadFile(filepath.Join(dir, "go.mod"))
+		data, err := os.ReadFile(filepath.Join(dir, "go.mod")) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 		if err == nil && strings.Contains(string(data), "module github.com/MichaelKinsy/PiG") {
 			if cand := filepath.Join(dir, "extensions", "sdk-lisp"); statHasFile(cand, "pig-sdk.asd") {
 				return cand, nil
@@ -379,7 +379,7 @@ func resolveLispDependencies(ctx context.Context, cacheRoot, sbcl, sdkRoot, scra
 	if output, err := buildprogress.CombinedOutput(ctx, cmd); err != nil {
 		return nil, fmt.Errorf("scan Lisp dependencies: %w: %s", err, oneLine(string(output)))
 	}
-	data, err := os.ReadFile(scanFile)
+	data, err := os.ReadFile(scanFile) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return nil, fmt.Errorf("scan Lisp dependencies: %w", err)
 	}

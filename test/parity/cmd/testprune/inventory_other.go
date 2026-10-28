@@ -53,7 +53,7 @@ func inventoryOther(root string) ([]otherTest, error) {
 		if !ok {
 			continue
 		}
-		data, err := os.ReadFile(filepath.Join(root, f))
+		data, err := os.ReadFile(filepath.Join(root, f)) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 		if err != nil {
 			return nil, err
 		}

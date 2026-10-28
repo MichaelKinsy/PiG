@@ -180,7 +180,7 @@ func initSnapshotGitBranch(ctx context.Context, dir, branch string) error {
 		{"init", "--quiet", dir},
 		{"-C", dir, "symbolic-ref", "HEAD", "refs/heads/" + branch},
 	} {
-		if out, err := exec.CommandContext(ctx, "git", args...).CombinedOutput(); err != nil {
+		if out, err := exec.CommandContext(ctx, "git", args...).CombinedOutput(); err != nil { //nolint:gosec // G204: the program and arguments come from the user, the project config, or PiG's own toolchain lookup; the CLI runs as the user with no sandbox and launches them as Pi's child_process.spawn does
 			return fmt.Errorf("git %s: %w: %s", strings.Join(args, " "), err, strings.TrimSpace(string(out)))
 		}
 	}
@@ -254,7 +254,7 @@ func piPackageRoot(bin string) (string, error) {
 		real = script
 	}
 	for dir := filepath.Dir(real); ; dir = filepath.Dir(dir) {
-		data, err := os.ReadFile(filepath.Join(dir, "package.json"))
+		data, err := os.ReadFile(filepath.Join(dir, "package.json")) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 		if err == nil {
 			var pkg struct {
 				Name string `json:"name"`
@@ -281,7 +281,7 @@ func npmCmdShimScript(bin string) (string, bool) {
 	if !strings.EqualFold(filepath.Ext(bin), ".cmd") {
 		return "", false
 	}
-	data, err := os.ReadFile(bin)
+	data, err := os.ReadFile(bin) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return "", false
 	}

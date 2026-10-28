@@ -141,7 +141,7 @@ func report(path, api string, violations []Violation) {
 		fmt.Fprintf(&lines, "%s\t%s\t%s\t%s\n", api, v.Rule, detail, os.Args[0])
 		fmt.Fprintf(os.Stderr, "REQUESTVALIDITY %s %s: %s\n", api, v.Rule, detail)
 	}
-	file, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o600)
+	file, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o600) //nolint:gosec // G304: the path names an output or state file that the user or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so writing it grants nothing the user lacks
 	if err != nil {
 		panic(fmt.Sprintf("requestvalidity: open report %q: %v", path, err))
 	}

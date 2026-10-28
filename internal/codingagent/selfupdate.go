@@ -159,7 +159,7 @@ func updateTrustRoots() ([]ed25519.PublicKey, error) {
 	var data []byte
 	if path := strings.TrimSpace(os.Getenv("PIG_UPDATE_TRUST_ROOT")); path != "" {
 		var err error
-		data, err = os.ReadFile(path)
+		data, err = os.ReadFile(path) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 		if err != nil {
 			return nil, fmt.Errorf("read update trust root %s: %w", path, err)
 		}
@@ -288,7 +288,7 @@ func readUpdateTransportCA() ([]byte, error) {
 		return nil, fmt.Errorf("stat update config root %s: %w", root, err)
 	}
 	path := filepath.Join(root, updateTransportCASidecarName)
-	file, err := os.Open(path)
+	file, err := os.Open(path) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if errors.Is(err, os.ErrNotExist) {
 		return nil, nil
 	}
@@ -800,7 +800,7 @@ func isTarGzURL(rawURL string) bool {
 // was verified before this runs; anything other than exactly one regular pig
 // file is refused.
 func extractPigFromTarGz(archivePath, dir string, limit int64) (string, error) {
-	archive, err := os.Open(archivePath)
+	archive, err := os.Open(archivePath) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return "", err
 	}

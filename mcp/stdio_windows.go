@@ -38,7 +38,7 @@ func killProcessTree(cmd *exec.Cmd, exited <-chan struct{}, _ bool) {
 		return
 	default:
 	}
-	kill := exec.Command("taskkill", "/pid", strconv.Itoa(cmd.Process.Pid), "/T", "/F")
+	kill := exec.Command("taskkill", "/pid", strconv.Itoa(cmd.Process.Pid), "/T", "/F") //nolint:gosec // G204: the program and arguments come from the user, the project config, or PiG's own toolchain lookup; the CLI runs as the user with no sandbox and launches them as Pi's child_process.spawn does
 	nodespawn.HideWindow(kill, nodespawn.Ignore, nodespawn.Ignore, nodespawn.Ignore)
 	_ = kill.Start()
 	//portlint:allow golifetime reaps taskkill; it returns when taskkill exits

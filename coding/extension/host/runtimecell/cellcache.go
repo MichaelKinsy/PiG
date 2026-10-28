@@ -108,7 +108,7 @@ type EntryIdentity struct {
 }
 
 func readCellFailureMetadata(finalDir string) (cellFailureMeta, bool) {
-	data, err := os.ReadFile(filepath.Join(finalDir, cellFailureFile))
+	data, err := os.ReadFile(filepath.Join(finalDir, cellFailureFile)) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return cellFailureMeta{}, false
 	}
@@ -439,7 +439,7 @@ func stageArtifact(scratch, source, destination string) error {
 
 // copyArtifact copies a compiler's output, which sits outside the scratch directory when CARGO_TARGET_DIR names one. The copy is the runner the host executes once the entry is published, so execfile writes it: a concurrent fork must not leave a child that holds the copy's write descriptor.
 func copyArtifact(source, destination string) (err error) {
-	input, err := os.Open(source)
+	input, err := os.Open(source) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return err
 	}
@@ -480,7 +480,7 @@ func cacheBuildEnvironment(workingDirectory string) []string {
 }
 
 func hashFile(path string) (string, int64, error) {
-	f, err := os.Open(path)
+	f, err := os.Open(path) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return "", 0, err
 	}

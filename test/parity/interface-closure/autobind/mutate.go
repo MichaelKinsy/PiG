@@ -88,7 +88,7 @@ func (l *library) mutantKills(d *detector, s *sym, tests []string, work string) 
 		pkg := "./" + filepath.ToSlash(filepath.Dir(file))
 		run := func(extra ...string) (string, error) {
 			args := append([]string{"test", "-count=1", "-run", "^" + name + "$", pkg}, extra...)
-			cmd := exec.Command("go", args...)
+			cmd := exec.Command("go", args...) //nolint:gosec // G204: the program and arguments come from the user, the project config, or PiG's own toolchain lookup; the CLI runs as the user with no sandbox and launches them as Pi's child_process.spawn does
 			cmd.Dir = l.root
 			var out bytes.Buffer
 			cmd.Stdout, cmd.Stderr = &out, &out

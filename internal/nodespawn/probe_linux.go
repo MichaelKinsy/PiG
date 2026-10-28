@@ -34,7 +34,7 @@ func probeExecve(path, cwd string) (syscall.Errno, bool) {
 	// The tracer must be the thread that started the child.
 	runtime.LockOSThread()
 	defer runtime.UnlockOSThread()
-	pid, err := syscall.ForkExec(path, []string{path}, &syscall.ProcAttr{
+	pid, err := syscall.ForkExec(path, []string{path}, &syscall.ProcAttr{ //nolint:gosec // G204: the program and arguments come from the user, the project config, or PiG's own toolchain lookup; the CLI runs as the user with no sandbox and launches them as Pi's child_process.spawn does
 		Dir: cwd,
 		Env: []string{},
 		Sys: &syscall.SysProcAttr{Ptrace: true},

@@ -122,7 +122,7 @@ func ListGraph(dir string, env []string, patterns ...string) (Graph, []string, e
 }
 
 func goList(dir string, env []string, args []string) (string, error) {
-	cmd := exec.Command("go", append([]string{"list"}, args...)...)
+	cmd := exec.Command("go", append([]string{"list"}, args...)...) //nolint:gosec // G204: the program and arguments come from the user, the project config, or PiG's own toolchain lookup; the CLI runs as the user with no sandbox and launches them as Pi's child_process.spawn does
 	cmd.Dir = dir
 	cmd.Env = append(cmd.Environ(), append([]string{"CGO_ENABLED=0"}, env...)...)
 	var stdout, stderr bytes.Buffer

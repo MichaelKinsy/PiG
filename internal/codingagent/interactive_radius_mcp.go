@@ -98,7 +98,7 @@ func radiusMcpServerConfig(mcpPath, name string, existing bool, providerID strin
 
 // globalMcpServerJSON is the JSON object of one server in an mcp.json.
 func globalMcpServerJSON(mcpPath, name string) (json.RawMessage, error) {
-	data, err := os.ReadFile(mcpPath)
+	data, err := os.ReadFile(mcpPath) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return nil, err
 	}

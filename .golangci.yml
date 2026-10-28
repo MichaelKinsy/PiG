@@ -48,14 +48,13 @@ linters:
     # classes. Site-specific false positives should generally live beside the
     # code as `//nolint:<linter> // rationale` so reviewers see the tradeoff.
     rules:
-      # gosec: subprocess launched with variable: expected in a CLI tool
-      # that execs user-specified commands (git, node, tar, etc.)
+      # gosec G101, G204, G304 are enabled for shipped code: each site carries an inline
+      # `//nolint:gosec` with its CLI threat-model reason. Test files are not shipped. They run
+      # on the developer's or CI's own machine, spawn the fixtures they build, and use fake
+      # tokens, so the three rules are off there only.
       - linters: [gosec]
-        text: "G204:"
-      # gosec: file inclusion via variable: expected for a tool that
-      # reads user config files, session files, and extension sources
-      - linters: [gosec]
-        text: "G304:"
+        path: ".*_test\\.go"
+        text: "G(101|204|304):"
       # gosec: path traversal via taint: same rationale as G304
       - linters: [gosec]
         text: "G703:"
@@ -67,10 +66,6 @@ linters:
       # intentionally, no crypto needed
       - linters: [gosec]
         text: "G404:"
-      # gosec: potential hardcoded credentials: OAuth client IDs and
-      # redirect URIs are public by design (RFC 8252 §8.4)
-      - linters: [gosec]
-        text: "G101:"
       # gosec: Slowloris: local-only OAuth callback server bound to
       # 127.0.0.1, not a production HTTP service
       - linters: [gosec]

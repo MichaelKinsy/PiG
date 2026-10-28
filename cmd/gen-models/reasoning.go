@@ -12,7 +12,7 @@ import (
 // Raw vendor snapshots update reasoning controls before emitting the Go catalog; unspecified models retain the pinned catalog metadata.
 func applyVendorReasoning(rows []modelRow, modelsDevPath, openRouterPath string) error {
 	if modelsDevPath != "" {
-		data, err := os.ReadFile(modelsDevPath)
+		data, err := os.ReadFile(modelsDevPath) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 		if err != nil {
 			return err
 		}
@@ -35,7 +35,7 @@ func applyVendorReasoning(rows []modelRow, modelsDevPath, openRouterPath string)
 		}
 	}
 	if openRouterPath != "" {
-		data, err := os.ReadFile(openRouterPath)
+		data, err := os.ReadFile(openRouterPath) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 		if err != nil {
 			return err
 		}

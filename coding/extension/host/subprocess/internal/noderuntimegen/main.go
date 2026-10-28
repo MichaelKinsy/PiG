@@ -63,7 +63,7 @@ func generate(root, archive, metadata string) error {
 		if noderuntimepack.UnreadAtRuntime(relative) {
 			return nil
 		}
-		data, err := os.ReadFile(path)
+		data, err := os.ReadFile(path) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 		if err != nil {
 			return err
 		}
@@ -109,7 +109,7 @@ func generate(root, archive, metadata string) error {
 
 // harnessVersion is the version the harness package declares (Pi's, the pin): the peers carry it so a manifest read from the harness reports one release.
 func harnessVersion(root string) (string, error) {
-	data, err := os.ReadFile(filepath.Join(root, "harness", "package.json"))
+	data, err := os.ReadFile(filepath.Join(root, "harness", "package.json")) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return "", err
 	}
@@ -123,7 +123,7 @@ func harnessVersion(root string) (string, error) {
 }
 
 func writeGenerated(path string, data []byte) error {
-	if current, err := os.ReadFile(path); err == nil && bytes.Equal(current, data) {
+	if current, err := os.ReadFile(path); err == nil && bytes.Equal(current, data) { //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 		return nil
 	}
 	file, err := os.CreateTemp(filepath.Dir(path), ".node-runtime-*")

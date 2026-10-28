@@ -43,7 +43,7 @@ func RunMigrations(cwd, agentDir string) (migratedAuthProviders []string, deprec
 // migrateKeybindingsConfigFile mirrors migrations.ts:157-173: rewrite only migrated objects, with canonical names taking precedence over aliases and best-effort read/parse/write handling. Property names retain lone UTF-16 units rather than merging them with U+FFFD.
 func migrateKeybindingsConfigFile(agentDir string) {
 	path := KeybindingsFile(agentDir)
-	data, err := os.ReadFile(path)
+	data, err := os.ReadFile(path) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return
 	}
@@ -140,7 +140,7 @@ func migrateAuthToAuthJSON(agentDir string) ([]string, error) {
 	var providers []string
 
 	// Migrate oauth.json.
-	if data, err := os.ReadFile(oauthPath); err == nil {
+	if data, err := os.ReadFile(oauthPath); err == nil { //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 		if oauth, ok := jsObjectEntries(text.StripBomBytes(data)); ok {
 			for _, provider := range oauth.Keys() {
 				raw, _ := oauth.Get(provider)
@@ -160,7 +160,7 @@ func migrateAuthToAuthJSON(agentDir string) ([]string, error) {
 	}
 
 	// Migrate settings.json apiKeys.
-	if data, err := os.ReadFile(settingsPath); err == nil {
+	if data, err := os.ReadFile(settingsPath); err == nil { //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 		if settings, err := orderedJSONObject(text.StripBomBytes(data)); err == nil {
 			if apiKeysRaw, ok := settings.Get("apiKeys"); ok && orderedjson.IsObject(apiKeysRaw) {
 				apiKeys, _ := orderedJSONObject(apiKeysRaw)
@@ -285,7 +285,7 @@ func migrateSessionsFromAgentRoot(agentDir string) {
 			continue
 		}
 		filePath := filepath.Join(agentDir, e.Name())
-		data, err := os.ReadFile(filePath)
+		data, err := os.ReadFile(filePath) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 		if err != nil {
 			continue
 		}

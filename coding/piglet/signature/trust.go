@@ -50,7 +50,7 @@ func LoadTrust(dir string) (Trust, error) {
 		return Trust{}, err
 	}
 	for _, path := range paths {
-		data, err := os.ReadFile(path)
+		data, err := os.ReadFile(path) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 		if err != nil {
 			return Trust{}, err
 		}
@@ -158,7 +158,7 @@ func RevokeKey(dir, id string) error {
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return err
 	}
-	file, err := os.OpenFile(filepath.Join(dir, "revoked"), os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0o644)
+	file, err := os.OpenFile(filepath.Join(dir, "revoked"), os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0o644) //nolint:gosec // G304: the path names an output or state file that the user or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so writing it grants nothing the user lacks
 	if err != nil {
 		return err
 	}

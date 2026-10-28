@@ -471,7 +471,7 @@ func parseRustItems(dir string, itemRE *regexp.Regexp, only func(path string) bo
 	}
 	syms := symbolSet{}
 	for _, f := range files {
-		raw, err := os.ReadFile(f)
+		raw, err := os.ReadFile(f) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 		if err != nil {
 			return nil, err
 		}
@@ -601,7 +601,7 @@ func parsePython(dir string) (symbolSet, error) {
 func parsePythonFiles(files []string) (symbolSet, error) {
 	syms := symbolSet{}
 	for _, f := range files {
-		raw, err := os.ReadFile(f)
+		raw, err := os.ReadFile(f) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 		if err != nil {
 			return nil, err
 		}
@@ -669,7 +669,7 @@ var jsReadRE = regexp.MustCompile(`\b([A-Za-z_$][A-Za-z0-9_$]*)(?:\?\.|\.)([A-Za
 func parseNodeReads(files []string) (symbolSet, error) {
 	syms := symbolSet{}
 	for _, f := range files {
-		raw, err := os.ReadFile(f)
+		raw, err := os.ReadFile(f) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 		if err != nil {
 			return nil, err
 		}
@@ -720,7 +720,7 @@ var lispDefunRE = regexp.MustCompile(`(?m)^\(def(?:un|macro)\s+([a-z0-9][a-z0-9*
 // file is src/package.lisp; for an exported function the parameters of its lambda list (keyword, optional and required)
 // are also symbols, pig:<name>(<parameter>), the form the surface map names a parameter of a member.
 func parseLisp(packageFile string) (symbolSet, error) {
-	data, err := os.ReadFile(packageFile)
+	data, err := os.ReadFile(packageFile) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return nil, err
 	}
@@ -738,7 +738,7 @@ func parseLisp(packageFile string) (symbolSet, error) {
 		return nil, err
 	}
 	for _, file := range files {
-		src, err := os.ReadFile(file)
+		src, err := os.ReadFile(file) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 		if err != nil {
 			return nil, err
 		}

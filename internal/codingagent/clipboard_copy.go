@@ -64,7 +64,7 @@ func runClipboardCommandContext(parent context.Context, name string, args []stri
 	}
 	ctx, cancel := context.WithCancel(parent)
 	defer cancel()
-	cmd := exec.CommandContext(ctx, name, args...)
+	cmd := exec.CommandContext(ctx, name, args...) //nolint:gosec // G204: the program and arguments come from the user, the project config, or PiG's own toolchain lookup; the CLI runs as the user with no sandbox and launches them as Pi's child_process.spawn does
 	hideClipboardWindow(cmd)
 	detachClipboardChild(cmd)
 	// The parent owns its pipe end as an *os.File and closes it itself, so Wait joins only the child and never a copy that a descendant holds open.

@@ -30,7 +30,7 @@ func main() {
 	for _, name := range []string{"id.go", "abi.json"} {
 		path := filepath.Join(*dir, name)
 		if *check {
-			have, err := os.ReadFile(path)
+			have, err := os.ReadFile(path) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 			if err != nil || !bytes.Equal(have, files[name]) {
 				fail(fmt.Errorf("%s is stale; run go generate ./durable/core/abi", path))
 			}

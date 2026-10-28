@@ -27,7 +27,7 @@ type testBlocks struct {
 
 func listTests(c *coverRun) ([]string, error) {
 	dir := filepath.Join(c.root, strings.TrimPrefix(c.pkg, "./"))
-	cmd := exec.Command(c.bin, "-test.list", "^(Test|Fuzz)")
+	cmd := exec.Command(c.bin, "-test.list", "^(Test|Fuzz)") //nolint:gosec // G204: the program and arguments come from the user, the project config, or PiG's own toolchain lookup; the CLI runs as the user with no sandbox and launches them as Pi's child_process.spawn does
 	cmd.Dir = dir
 	out, err := cmd.Output()
 	if err != nil {

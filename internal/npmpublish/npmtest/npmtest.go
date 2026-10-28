@@ -45,7 +45,7 @@ func Install(t testing.TB) *Fake {
 	if err := os.WriteFile(main, source, 0o644); err != nil {
 		t.Fatal(err)
 	}
-	build := exec.Command("go", "build", "-o", filepath.Join(bin, name), main)
+	build := exec.Command("go", "build", "-o", filepath.Join(bin, name), main) //nolint:gosec // G204: the program and arguments come from the user, the project config, or PiG's own toolchain lookup; the CLI runs as the user with no sandbox and launches them as Pi's child_process.spawn does
 	build.Dir = bin
 	build.Env = append(os.Environ(), "GOWORK=off", "GOFLAGS=", "GO111MODULE=off", "CGO_ENABLED=0")
 	if output, err := build.CombinedOutput(); err != nil {

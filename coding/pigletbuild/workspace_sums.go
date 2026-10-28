@@ -36,7 +36,7 @@ func completeWorkspaceSums(ctx context.Context, source pigSource, goToolchain to
 		return nil // a module-cache source builds with GOWORK=off
 	}
 	workPath := filepath.Join(source.Root, "go.work")
-	workData, err := os.ReadFile(workPath)
+	workData, err := os.ReadFile(workPath) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if errors.Is(err, fs.ErrNotExist) {
 		return nil
 	}
@@ -50,7 +50,7 @@ func completeWorkspaceSums(ctx context.Context, source pigSource, goToolchain to
 	if backing == "" {
 		return nil
 	}
-	sums, err := os.ReadFile(backing)
+	sums, err := os.ReadFile(backing) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return fmt.Errorf("read overlay go.work.sum: %w", err)
 	}
@@ -83,7 +83,7 @@ func completeWorkspaceSums(ctx context.Context, source pigSource, goToolchain to
 		return fmt.Errorf("complete workspace checksums: %w: %s", err, strings.TrimSpace(stderr.String()))
 	}
 
-	completed, err := os.ReadFile(scratchSumPath)
+	completed, err := os.ReadFile(scratchSumPath) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return fmt.Errorf("read completed go.work.sum: %w", err)
 	}
@@ -97,7 +97,7 @@ func completeWorkspaceSums(ctx context.Context, source pigSource, goToolchain to
 // overlayBacking returns the file the overlay at path substitutes for target, or
 // "" when it replaces nothing there.
 func overlayBacking(path, target string) (string, error) {
-	data, err := os.ReadFile(path)
+	data, err := os.ReadFile(path) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return "", fmt.Errorf("read build overlay: %w", err)
 	}

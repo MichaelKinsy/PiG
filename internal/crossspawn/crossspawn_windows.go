@@ -13,7 +13,7 @@ import (
 
 func command(ctx context.Context, dir, name string, args []string) *exec.Cmd {
 	plan := planWindowsCommand(dir, name, args)
-	cmd := exec.CommandContext(ctx, plan.name, plan.args...)
+	cmd := exec.CommandContext(ctx, plan.name, plan.args...) //nolint:gosec // G204: the program and arguments come from the user, the project config, or PiG's own toolchain lookup; the CLI runs as the user with no sandbox and launches them as Pi's child_process.spawn does
 	if plan.path != "" {
 		// Resolve against the child cwd, not CommandContext's parent cwd.
 		cmd.Path = plan.path
@@ -36,7 +36,7 @@ func ShellCommand(ctx context.Context, source string) *exec.Cmd {
 		shell = "cmd.exe"
 	}
 	plan := planWindowsShell(shell, source)
-	cmd := exec.CommandContext(ctx, plan.name, plan.args...)
+	cmd := exec.CommandContext(ctx, plan.name, plan.args...) //nolint:gosec // G204: the program and arguments come from the user, the project config, or PiG's own toolchain lookup; the CLI runs as the user with no sandbox and launches them as Pi's child_process.spawn does
 	if plan.cmdLine != "" {
 		cmd.SysProcAttr = &syscall.SysProcAttr{CmdLine: plan.cmdLine}
 	} else {

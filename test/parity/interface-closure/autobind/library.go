@@ -115,7 +115,7 @@ func newLibrary(root string) *library {
 	if err != nil {
 		return lr
 	}
-	pmText, _ := os.ReadFile(filepath.Join(root, "docs", "parity", "PORT_MAP.md"))
+	pmText, _ := os.ReadFile(filepath.Join(root, "docs", "parity", "PORT_MAP.md")) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	pm := rules.ParsePortMap(string(pmText))
 	for up, gos := range pm {
 		rest, ok := strings.CutPrefix(up, "packages/")
@@ -171,7 +171,7 @@ func newLibrary(root string) *library {
 // packageRoots returns the source files (relative to the package directory) of every entry point the package.json publishes, and
 // false when the package publishes no index.
 func packageRoots(dir string) ([]string, bool) {
-	data, err := os.ReadFile(filepath.Join(dir, "package.json"))
+	data, err := os.ReadFile(filepath.Join(dir, "package.json")) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return nil, false
 	}
@@ -255,7 +255,7 @@ func exportClosure(dir string, roots []string) map[string]bool {
 		if seen[f] {
 			continue
 		}
-		src, err := os.ReadFile(filepath.Join(dir, filepath.FromSlash(f)))
+		src, err := os.ReadFile(filepath.Join(dir, filepath.FromSlash(f))) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 		if err != nil {
 			continue
 		}
@@ -1293,7 +1293,7 @@ func (lr *library) text(pkg, f string) string {
 	if t, ok := lr.texts[key]; ok {
 		return t
 	}
-	data, _ := os.ReadFile(filepath.Join(lr.root, ".upstream", "current", "packages", pkg, filepath.FromSlash(f)))
+	data, _ := os.ReadFile(filepath.Join(lr.root, ".upstream", "current", "packages", pkg, filepath.FromSlash(f))) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	lr.texts[key] = string(data)
 	return lr.texts[key]
 }

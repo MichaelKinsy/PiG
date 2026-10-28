@@ -85,7 +85,7 @@ func ResolvePigBin(t *testing.T) BinaryRef {
 	// An existing settings.json keeps PiG's first-time setup (D88) out of scenarios that compare with Pi, which never shows it for PiG.
 	_ = os.WriteFile(filepath.Join(safeAgentDir, "settings.json"), []byte("{}\n"), 0o600)
 	if src := realAuthSourcePath(); src != "" {
-		if data, err := os.ReadFile(src); err == nil {
+		if data, err := os.ReadFile(src); err == nil { //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 			_ = os.WriteFile(filepath.Join(safeAgentDir, "auth.json"), data, 0o600)
 		}
 	}
@@ -202,7 +202,7 @@ func ResolveUpstreamPiBin(t *testing.T) BinaryRef {
 	// real credentials only when PIG_PARITY_REAL_AUTH names the exact
 	// auth.json to use; see realAuthSourcePath.
 	if src := realAuthSourcePath(); src != "" {
-		if data, err := os.ReadFile(src); err == nil {
+		if data, err := os.ReadFile(src); err == nil { //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 			_ = os.WriteFile(filepath.Join(safeAgentDir, "auth.json"), data, 0o600)
 		}
 	}
@@ -227,7 +227,7 @@ func ResolveUpstreamPiBin(t *testing.T) BinaryRef {
 		if _, err := os.Stat(bin); err != nil {
 			failOrSkipMissingBinary(t, fmt.Sprintf("PIG_PARITY_PI_BIN not found at %s", bin))
 		}
-		out, err := exec.Command(bin, "--version").Output()
+		out, err := exec.Command(bin, "--version").Output() //nolint:gosec // G204: the program and arguments come from the user, the project config, or PiG's own toolchain lookup; the CLI runs as the user with no sandbox and launches them as Pi's child_process.spawn does
 		if err != nil {
 			failOrSkipVersionMismatch(t, fmt.Sprintf("PIG_PARITY_PI_BIN version check failed at %s: %v", bin, err))
 		} else if got := strings.TrimSpace(string(out)); got != want {
@@ -325,7 +325,7 @@ func oracleCommitMismatch(bin string) string {
 		return ""
 	}
 	for dir := filepath.Dir(real); dir != filepath.Dir(dir); dir = filepath.Dir(dir) {
-		data, err := os.ReadFile(filepath.Join(dir, ".pig-pi-oracle.json"))
+		data, err := os.ReadFile(filepath.Join(dir, ".pig-pi-oracle.json")) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 		if err != nil {
 			continue
 		}

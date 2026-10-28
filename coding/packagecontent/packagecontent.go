@@ -601,7 +601,7 @@ func ValidatePackage(root string) (Resources, error) {
 		return Resources{}, err
 	}
 	manifestPath := filepath.Join(absoluteRoot, "package.json")
-	data, err := os.ReadFile(manifestPath)
+	data, err := os.ReadFile(manifestPath) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		if os.IsNotExist(err) {
 			return Resources{}, fmt.Errorf("package manifest %s does not exist", manifestPath)
@@ -673,7 +673,7 @@ func validateRoot(root string) (string, error) {
 
 func readStrictPackageManifest(root string, required bool) (*packageManifest, error) {
 	manifestPath := filepath.Join(root, "package.json")
-	data, err := os.ReadFile(manifestPath)
+	data, err := os.ReadFile(manifestPath) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if os.IsNotExist(err) && !required {
 		return nil, nil
 	}
@@ -710,7 +710,7 @@ func readStrictPluginManifest(root string, manifest *packageManifest) (*pluginMa
 			continue
 		}
 		manifestPath := filepath.Join(root, filepath.FromSlash(relative))
-		data, err := os.ReadFile(manifestPath)
+		data, err := os.ReadFile(manifestPath) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 		if os.IsNotExist(err) {
 			continue
 		}
@@ -976,7 +976,7 @@ func validateResourcesIsolating(root string, resources Resources, extensionIssue
 		{Hooks, resources.HookFiles},
 	} {
 		for _, resourcePath := range item.paths {
-			data, err := os.ReadFile(resourcePath)
+			data, err := os.ReadFile(resourcePath) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 			if err != nil {
 				return Resources{}, err
 			}
@@ -1005,7 +1005,7 @@ func validateResourcesIsolating(root string, resources Resources, extensionIssue
 }
 
 func validateDevContainerClosure(root, definitionPath string) error {
-	data, err := os.ReadFile(definitionPath)
+	data, err := os.ReadFile(definitionPath) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return err
 	}
@@ -1132,7 +1132,7 @@ func validateDevContainerClosure(root, definitionPath string) error {
 }
 
 func validateComposeClosure(root, composePath string) (map[string]struct{}, error) {
-	data, err := os.ReadFile(composePath)
+	data, err := os.ReadFile(composePath) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return nil, err
 	}
@@ -1418,7 +1418,7 @@ func definesSkill(resourcePath string) bool {
 	if filepath.Base(file) == "SKILL.md" {
 		return true
 	}
-	data, err := os.ReadFile(file)
+	data, err := os.ReadFile(file) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return true
 	}
@@ -1584,7 +1584,7 @@ func memberName(kind Kind, resourcePath, packageName string) (string, error) {
 		// Upstream loadSkillFromFile: the frontmatter name, else the name of
 		// the directory holding the skill file.
 		file := SkillFile(resourcePath)
-		data, err := os.ReadFile(file)
+		data, err := os.ReadFile(file) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 		if err != nil {
 			return "", fmt.Errorf("read skill %s: %w", resourcePath, err)
 		}
@@ -1601,7 +1601,7 @@ func memberName(kind Kind, resourcePath, packageName string) (string, error) {
 }
 
 func agentEnvironmentName(environmentPath, packageName string) (string, error) {
-	data, err := os.ReadFile(environmentPath)
+	data, err := os.ReadFile(environmentPath) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return "", fmt.Errorf("read agent environment %s: %w", environmentPath, err)
 	}
@@ -2226,7 +2226,7 @@ func HasPiManifest(root string) bool {
 }
 
 func readPackageManifest(root string) *packageManifest {
-	data, err := os.ReadFile(filepath.Join(root, "package.json"))
+	data, err := os.ReadFile(filepath.Join(root, "package.json")) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return nil
 	}
@@ -2317,7 +2317,7 @@ func isAgentPluginsSchema(schema string) bool {
 }
 
 func readPluginManifestFile(manifestPath string) *pluginManifest {
-	data, err := os.ReadFile(manifestPath)
+	data, err := os.ReadFile(manifestPath) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return nil
 	}

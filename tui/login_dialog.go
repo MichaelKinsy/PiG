@@ -42,9 +42,9 @@ func webLink(text, url string) string {
 	return Hyperlink(text, target)
 }
 
-const secretInputSuffixCharacters = 4 // pig divergence (D80): reveal only the final four characters of inputs longer than four.
-const secretInputMaxDots = 8          // pig divergence (D80): bound the preview independently of input length; the counter reports the full length.
-const secretInputHint = "Input hidden (PiG default). Show like Pi: /settings → Mask secret input"
+const secretInputSuffixCharacters = 4                                                             // pig divergence (D80): reveal only the final four characters of inputs longer than four.
+const secretInputMaxDots = 8                                                                      // pig divergence (D80): bound the preview independently of input length; the counter reports the full length.
+const secretInputHint = "Input hidden (PiG default). Show like Pi: /settings → Mask secret input" //nolint:gosec // G101: the value is a name, URL, or identifier of a public protocol, not a credential value
 
 // SecretInputPreview returns a bounded masked preview and the number of user-perceived characters. Inputs shorter than five characters reveal no suffix.
 func SecretInputPreview(value string) (string, int) {

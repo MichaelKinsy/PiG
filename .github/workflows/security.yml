@@ -90,15 +90,22 @@ jobs:
           set -u
           mkdir -p evidence
           status=0
-          for directory in test/parity/interface-extractor automation/images/ci-parity automation/images/npm-runtime; do
+          # Blocking: high or critical findings in a manifest whose code ships or runs in a
+          # product path. Fail the job, which fails the Security result aggregate.
+          for directory in extensions/sdk-ts durable/core/host/cf test/parity/interface-extractor automation/images/ci-parity; do
             name=${directory//\//-}
-            if ! npm audit --prefix "$directory" --omit=dev --json > "evidence/npm-audit-$name.json"; then
-              echo "::warning file=$directory/package-lock.json::npm audit reported findings; review the uploaded evidence"
+            if ! npm audit --prefix "$directory" --omit=dev --audit-level=high --json > "evidence/npm-audit-$name.json"; then
+              echo "::error file=$directory/package-lock.json::npm audit reported high or critical findings"
               status=1
             fi
           done
-          echo "npmAuditFindings=$status" >> "$GITHUB_OUTPUT"
-          exit 0
+          # Advisory: the CI image npm runtime. Its only finding is in the dependencies that npm
+          # itself bundles, which an override cannot reach. It never ships in a product.
+          directory=automation/images/npm-runtime
+          if ! npm audit --prefix "$directory" --omit=dev --json > "evidence/npm-audit-${directory//\//-}.json"; then
+            echo "::warning file=$directory/package-lock.json::npm audit reported findings in the CI npm runtime; review the uploaded evidence"
+          fi
+          exit "$status"
       - name: Analyze Python SDK
         run: |
           ruff check extensions/sdk-py

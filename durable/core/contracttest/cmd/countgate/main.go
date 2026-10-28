@@ -238,7 +238,7 @@ func instructions(args []string) error {
 	if err != nil {
 		return err
 	}
-	cmd := exec.Command(valgrind, "--tool=callgrind", "--callgrind-out-file=/dev/null",
+	cmd := exec.Command(valgrind, "--tool=callgrind", "--callgrind-out-file=/dev/null", //nolint:gosec // G204: the program and arguments come from the user, the project config, or PiG's own toolchain lookup; the CLI runs as the user with no sandbox and launches them as Pi's child_process.spawn does
 		"--toggle-collect=*durable/core.(*Session).Step", self, "replay-native", *rec)
 	cmd.Env = append(os.Environ(), "GOMAXPROCS=1", "GOGC=400", "GODEBUG=asyncpreemptoff=1")
 	stderr, err := cmd.StderrPipe()

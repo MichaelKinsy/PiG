@@ -39,7 +39,7 @@ func aliasBodyHashes(root string, entries []inventoryEntry) map[string]string {
 		}
 		lines, ok := files[source.Path]
 		if !ok {
-			data, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(source.Path)))
+			data, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(source.Path))) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 			if err == nil {
 				lines = strings.Split(string(data), "\n")
 			}

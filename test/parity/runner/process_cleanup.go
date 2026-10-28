@@ -65,7 +65,7 @@ func retainDescendants(owned map[int]bool, processes []processParent) []int {
 }
 
 func tmuxSessionProcesses(ctx context.Context, session string) (map[int]bool, error) {
-	out, err := exec.CommandContext(ctx, "tmux", tmuxArgs("list-panes", "-s", "-t", session, "-F", "#{pane_pid}")...).Output()
+	out, err := exec.CommandContext(ctx, "tmux", tmuxArgs("list-panes", "-s", "-t", session, "-F", "#{pane_pid}")...).Output() //nolint:gosec // G204: the program and arguments come from the user, the project config, or PiG's own toolchain lookup; the CLI runs as the user with no sandbox and launches them as Pi's child_process.spawn does
 	if err != nil {
 		return nil, fmt.Errorf("inspect panes for %s: %w (%s)", session, err, tmuxServerReport(ctx, session))
 	}

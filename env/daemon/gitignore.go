@@ -120,7 +120,7 @@ func (g *gitignore) addLine(line string) {
 // loadGitignore is GitignoreBuilder::add of one file: the lines up to the first one that is not UTF-8, the first line
 // without a leading byte order mark. A file that cannot be opened adds nothing.
 func loadGitignore(into *gitignore, path string) {
-	data, err := os.ReadFile(path)
+	data, err := os.ReadFile(path) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return
 	}
@@ -181,7 +181,7 @@ func parseExcludesFile(data []byte) (string, bool) {
 }
 
 func readConfig(path string) []byte {
-	data, err := os.ReadFile(path)
+	data, err := os.ReadFile(path) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return nil
 	}
@@ -290,7 +290,7 @@ func resolveGitCommonDirectory(dir string, info os.FileInfo, exists bool) (strin
 	if !exists || !info.Mode().IsRegular() {
 		return gitPath, true
 	}
-	data, err := os.ReadFile(gitPath)
+	data, err := os.ReadFile(gitPath) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return "", false
 	}
@@ -300,7 +300,7 @@ func resolveGitCommonDirectory(dir string, info os.FileInfo, exists bool) (strin
 	if !ok {
 		return "", false
 	}
-	commonFile, err := os.ReadFile(filepath.Join(gitDirectory, "commondir"))
+	commonFile, err := os.ReadFile(filepath.Join(gitDirectory, "commondir")) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return "", false
 	}

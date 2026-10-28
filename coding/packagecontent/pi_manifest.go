@@ -22,7 +22,7 @@ var utf8BOM = []byte("\xef\xbb\xbf")
 // cannot be read or parsed, or when the package or its "pi" value is not a JSON
 // object. A resource field is kept only when it is an array of strings.
 func ReadPiManifest(packageJSONPath string) *PiManifest {
-	data, err := os.ReadFile(packageJSONPath)
+	data, err := os.ReadFile(packageJSONPath) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return nil
 	}

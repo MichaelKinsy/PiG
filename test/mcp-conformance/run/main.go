@@ -64,7 +64,7 @@ type commandResult struct {
 }
 
 func runCommand(dir string, env []string, timeout time.Duration, name string, args ...string) (commandResult, error) {
-	cmd := exec.Command(name, args...)
+	cmd := exec.Command(name, args...) //nolint:gosec // G204: the program and arguments come from the user, the project config, or PiG's own toolchain lookup; the CLI runs as the user with no sandbox and launches them as Pi's child_process.spawn does
 	cmd.Dir = dir
 	cmd.Env = env
 	ownProcessGroup(cmd)
@@ -181,7 +181,7 @@ func runScenario(mode, scenario, launcher, workDir string, verbose bool) (*scena
 		result.record("runner", false, fmt.Sprintf("No checks.json (runner exit %d): %s", run.code, tail[max(0, len(tail)-2000):]))
 		return result, nil
 	}
-	data, err := os.ReadFile(checksPath)
+	data, err := os.ReadFile(checksPath) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return nil, err
 	}
@@ -204,7 +204,7 @@ func runScenario(mode, scenario, launcher, workDir string, verbose bool) (*scena
 		Error   string `json:"error"`
 	}
 	client.Error = "client wrote no report"
-	if data, err := os.ReadFile(reportPath); err == nil {
+	if data, err := os.ReadFile(reportPath); err == nil { //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 		client.Error = ""
 		if err := json.Unmarshal(data, &client); err != nil {
 			return nil, fmt.Errorf("%s: %w", reportPath, err)
@@ -367,7 +367,7 @@ func realMain() int {
 		return 1
 	}
 	client := filepath.Join(workDir, "client")
-	build := exec.CommandContext(context.Background(), "go", "build", "-o", client, "./"+filepath.ToSlash(filepath.Join(*here, "client")))
+	build := exec.CommandContext(context.Background(), "go", "build", "-o", client, "./"+filepath.ToSlash(filepath.Join(*here, "client"))) //nolint:gosec // G204: the program and arguments come from the user, the project config, or PiG's own toolchain lookup; the CLI runs as the user with no sandbox and launches them as Pi's child_process.spawn does
 	build.Dir, build.Stdout, build.Stderr = root, os.Stdout, os.Stderr
 	if err := build.Run(); err != nil {
 		fmt.Fprintln(os.Stderr, "building the client:", err)
@@ -420,7 +420,7 @@ func realMain() int {
 		fmt.Printf("\nWrote %s\n", path)
 		return 0
 	}
-	data, err := os.ReadFile(path)
+	data, err := os.ReadFile(path) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "\nNo baseline.json. Run with --update-baseline and review it.")
 		return 1

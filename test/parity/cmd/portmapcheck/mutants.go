@@ -47,7 +47,7 @@ func mutantProblem(root string, res result, mutants []mutant) string {
 // killed replays one mutant: the old text must occur once, and the evidence tests must fail with a test failure (not a build error).
 func killed(root string, res result, mu mutant) bool {
 	mutantReplays.Add(1)
-	src, err := os.ReadFile(filepath.Join(root, mu.File))
+	src, err := os.ReadFile(filepath.Join(root, mu.File)) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil || strings.Count(string(src), mu.Old) != 1 {
 		return false
 	}
@@ -72,7 +72,7 @@ func killed(root string, res result, mu mutant) bool {
 	}
 	for d, names := range byDir {
 		slices.Sort(names)
-		cmd := exec.Command("go", "test", "-count=1", "-overlay="+overlayFile, "-run", "^("+strings.Join(names, "|")+")$", "./"+d)
+		cmd := exec.Command("go", "test", "-count=1", "-overlay="+overlayFile, "-run", "^("+strings.Join(names, "|")+")$", "./"+d) //nolint:gosec // G204: the program and arguments come from the user, the project config, or PiG's own toolchain lookup; the CLI runs as the user with no sandbox and launches them as Pi's child_process.spawn does
 		cmd.Dir = root
 		cmd.Env = evidenceEnv(dir)
 		out, err := cmd.CombinedOutput()

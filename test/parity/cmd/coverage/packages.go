@@ -55,7 +55,7 @@ type npmManifest struct {
 
 func readManifest(upstreamRoot, key string) (npmManifest, error) {
 	var manifest npmManifest
-	body, err := os.ReadFile(filepath.Join(upstreamRoot, "packages", key, "package.json"))
+	body, err := os.ReadFile(filepath.Join(upstreamRoot, "packages", key, "package.json")) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return manifest, err
 	}
@@ -181,7 +181,7 @@ type interfaceClosure struct {
 
 // loadInterfaceClosure reads test/parity/interfaces/mapping-v<version>.json under repoRoot. A missing file yields nil, so a fixture tree without a mapping reports no closure.
 func loadInterfaceClosure(repoRoot, version string) (*interfaceClosure, error) {
-	body, err := os.ReadFile(filepath.Join(repoRoot, "test", "parity", "interfaces", "mapping-v"+version+".json"))
+	body, err := os.ReadFile(filepath.Join(repoRoot, "test", "parity", "interfaces", "mapping-v"+version+".json")) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if os.IsNotExist(err) {
 		return nil, nil
 	}

@@ -155,7 +155,7 @@ func buildDirSource(dir string) func(path string) ([]byte, error) {
 		if !filepath.IsAbs(path) {
 			path = filepath.Join(dir, path)
 		}
-		return os.ReadFile(path)
+		return os.ReadFile(path) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	}
 }
 

@@ -313,7 +313,7 @@ func hint(mod []byte, coldset []string, allowStale bool) ([]byte, error) {
 }
 
 func readList(path string) ([]string, error) {
-	text, err := os.ReadFile(path)
+	text, err := os.ReadFile(path) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return nil, err
 	}
@@ -335,7 +335,7 @@ func run(modPath, listPath string, allowStale bool) error {
 	if err != nil {
 		return err
 	}
-	mod, err := os.ReadFile(modPath)
+	mod, err := os.ReadFile(modPath) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return err
 	}

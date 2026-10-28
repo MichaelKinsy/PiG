@@ -123,7 +123,7 @@ func resolveNodeEntrypoint(src string) (string, error) {
 }
 
 func nodeLauncherEntry(binPath string) (string, bool) {
-	entry, err := os.ReadFile(filepath.Join(binPath+".runtime", nodeEntryFile))
+	entry, err := os.ReadFile(filepath.Join(binPath+".runtime", nodeEntryFile)) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil || len(entry) == 0 {
 		return "", false
 	}

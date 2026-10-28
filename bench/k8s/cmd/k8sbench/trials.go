@@ -48,7 +48,7 @@ type taskLock struct {
 var taskName = regexp.MustCompile(`^[a-z0-9]([a-z0-9._-]{0,61}[a-z0-9])?$`)
 
 func readTasksLock(path string) (*tasksLock, error) {
-	data, err := os.ReadFile(path)
+	data, err := os.ReadFile(path) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return nil, err
 	}
@@ -350,7 +350,7 @@ func addTasks(src, outDir string, l *tasksLock) error {
 			if d.IsDir() {
 				return os.MkdirAll(filepath.Join(dst, rel), 0o755)
 			}
-			data, err := os.ReadFile(p)
+			data, err := os.ReadFile(p) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 			if err != nil {
 				return err
 			}

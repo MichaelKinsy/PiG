@@ -164,7 +164,7 @@ func (d *detector) upstreamSources() []string {
 		})
 		sort.Strings(files)
 		for _, f := range files {
-			if data, err := os.ReadFile(f); err == nil {
+			if data, err := os.ReadFile(f); err == nil { //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 				d.srcText = append(d.srcText, string(data))
 			}
 		}

@@ -46,7 +46,7 @@ var cpythonArchives = map[string]pinnedArchive{
 func fetchPinned(ctx context.Context, client *http.Client, a pinnedArchive, local, dst string) (err error) {
 	var src io.Reader
 	if local != "" {
-		f, err := os.Open(local)
+		f, err := os.Open(local) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 		if err != nil {
 			return err
 		}
@@ -67,7 +67,7 @@ func fetchPinned(ctx context.Context, client *http.Client, a pinnedArchive, loca
 		}
 		src = resp.Body
 	}
-	out, err := os.Create(dst)
+	out, err := os.Create(dst) //nolint:gosec // G304: the path names an output or state file that the user or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so writing it grants nothing the user lacks
 	if err != nil {
 		return err
 	}

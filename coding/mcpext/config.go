@@ -104,7 +104,7 @@ func isOverride(value *orderedjson.Object) bool {
 }
 
 func (s *configState) readFile(path, scope string) {
-	data, err := os.ReadFile(path)
+	data, err := os.ReadFile(path) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if errors.Is(err, os.ErrNotExist) {
 		return
 	}
@@ -393,7 +393,7 @@ var indentPattern = lazyregexp.New(`(?m)^([ \t]+)\S`)
 func editMcpServers(path string, edit func(servers, parsed *orderedjson.Object) (bool, error)) error {
 	var existing []byte
 	parsed := orderedjson.New()
-	if data, err := os.ReadFile(path); err == nil {
+	if data, err := os.ReadFile(path); err == nil { //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 		// upstream: config.ts editMcpServers `stripBom(readFileSync(path, "utf8"))` (#11191)
 		data = text.StripBomBytes(data)
 		existing = data

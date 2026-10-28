@@ -71,12 +71,12 @@ func runUnprivileged(t *testing.T) bool {
 	for i, part := range parts {
 		parts[i] = "^" + regexp.QuoteMeta(part) + "$"
 	}
-	cmd := exec.CommandContext(t.Context(), binary, "-test.run="+strings.Join(parts, "/"), "-test.count=1")
+	cmd := exec.CommandContext(t.Context(), binary, "-test.run="+strings.Join(parts, "/"), "-test.count=1") //nolint:gosec // G204: the program and arguments come from the user, the project config, or PiG's own toolchain lookup; the CLI runs as the user with no sandbox and launches them as Pi's child_process.spawn does
 	cmd.Dir = dir
 	cmd.Env = append(os.Environ(), "HOME="+home, "TMPDIR="+tmp, unprivilegedResultEnv+"="+result)
 	cmd.SysProcAttr = &syscall.SysProcAttr{Credential: &syscall.Credential{Uid: uint32(uid), Gid: uint32(gid), Groups: []uint32{}}}
 	output, runErr := cmd.CombinedOutput()
-	outcome, err := os.ReadFile(result)
+	outcome, err := os.ReadFile(result) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil || runErr != nil || string(outcome) != "pass" {
 		t.Fatalf("unprivileged rerun as %s (uid %d) did not pass: outcome %q, %v, %v\n%s", nobody.Username, uid, outcome, runErr, err, output)
 	}
@@ -114,12 +114,12 @@ func setupUnprivilegedDir(dir, binary, result, home, tmp string, uid, gid int) e
 }
 
 func copyExecutable(from, to string) (err error) {
-	source, err := os.Open(from)
+	source, err := os.Open(from) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return err
 	}
 	defer func() { err = errors.Join(err, source.Close()) }()
-	target, err := os.OpenFile(to, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o755)
+	target, err := os.OpenFile(to, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o755) //nolint:gosec // G304: the path names an output or state file that the user or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so writing it grants nothing the user lacks
 	if err != nil {
 		return err
 	}

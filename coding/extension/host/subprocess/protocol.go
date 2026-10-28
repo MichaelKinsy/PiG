@@ -390,11 +390,15 @@ type ProviderOAuthConfig struct {
 
 // OAuth bridge request methods (host→ext), carried in RequestPayload.Method.
 const (
-	MethodOAuthLogin             = "oauth_login"              // Args: none.                Result: OAuthCredentialsWire.
-	MethodOAuthRefresh           = "oauth_refresh"            // Args: OAuthCredentialsWire. Result: OAuthCredentialsWire.
-	MethodOAuthGetAPIKey         = "oauth_get_api_key"        // Args: OAuthCredentialsWire. Result: OAuthAPIKeyResult.
-	MethodOAuthCredentialStatus  = "oauth_credential_status"  // Args: none.                Result: OAuthCredentialStatusResult.
-	MethodOAuthStoreCredentials  = "oauth_store_credentials"  // Args: OAuthCredentialsWire. Result: OAuthStoreResult.
+	MethodOAuthLogin   = "oauth_login"   // Args: none.                Result: OAuthCredentialsWire.
+	MethodOAuthRefresh = "oauth_refresh" // Args: OAuthCredentialsWire. Result: OAuthCredentialsWire.
+	//nolint:gosec // G101: the value is a name, URL, or identifier of a public protocol, not a credential value
+	MethodOAuthGetAPIKey = "oauth_get_api_key" // Args: OAuthCredentialsWire. Result: OAuthAPIKeyResult.
+	//nolint:gosec // G101: the value is a name, URL, or identifier of a public protocol, not a credential value
+	MethodOAuthCredentialStatus = "oauth_credential_status" // Args: none.                Result: OAuthCredentialStatusResult.
+	//nolint:gosec // G101: the value is a name, URL, or identifier of a public protocol, not a credential value
+	MethodOAuthStoreCredentials = "oauth_store_credentials" // Args: OAuthCredentialsWire. Result: OAuthStoreResult.
+	//nolint:gosec // G101: the value is a name, URL, or identifier of a public protocol, not a credential value
 	MethodOAuthDeleteCredentials = "oauth_delete_credentials" // Args: none.                Result: OAuthDeleteResult.
 )
 

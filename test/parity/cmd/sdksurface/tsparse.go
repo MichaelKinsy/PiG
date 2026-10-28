@@ -38,7 +38,7 @@ func newTSModule() *tsModule { return &tsModule{decls: map[string]*tsDecl{}} }
 // load parses one TypeScript file. A name declared in an earlier file wins,
 // so callers load types.ts first and the files it imports after it.
 func (m *tsModule) load(path, label string) error {
-	raw, err := os.ReadFile(path)
+	raw, err := os.ReadFile(path) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return err
 	}

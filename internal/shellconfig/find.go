@@ -28,7 +28,7 @@ func FindExecutableOnPath(executable string) string {
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), findTimeout)
 	defer cancel()
-	command := exec.CommandContext(ctx, name, executable)
+	command := exec.CommandContext(ctx, name, executable) //nolint:gosec // G204: the program and arguments come from the user, the project config, or PiG's own toolchain lookup; the CLI runs as the user with no sandbox and launches them as Pi's child_process.spawn does
 	// Upstream's spawnSync pipes stdout and stderr, keeps stdin closed, and hides the Windows console window.
 	nodespawn.HideWindow(command, nodespawn.Ignore, nodespawn.Pipe, nodespawn.Pipe)
 	nodespawn.SetProgram(command)

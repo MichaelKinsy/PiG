@@ -288,7 +288,7 @@ func runSsh(ctx context.Context, target SshTarget, command string, options sshRu
 	}
 	runContext, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
-	cmd := exec.CommandContext(runContext, sshProgram(target), append(slices.Clone(args), command)...)
+	cmd := exec.CommandContext(runContext, sshProgram(target), append(slices.Clone(args), command)...) //nolint:gosec // G204: the program and arguments come from the user, the project config, or PiG's own toolchain lookup; the CLI runs as the user with no sandbox and launches them as Pi's child_process.spawn does
 	cmd.Stdin = bytes.NewReader(options.stdin)
 	var stdout bytes.Buffer
 	var stderr lockedBuffer
@@ -392,7 +392,7 @@ func ScanHostKey(ctx context.Context, target SshTarget) (lines, fingerprints []s
 		}
 	}
 	// A file that exists but cannot be read fails, as readFile after existsSync does.
-	if content, readErr := os.ReadFile(scanned); readErr == nil {
+	if content, readErr := os.ReadFile(scanned); readErr == nil { //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 		lines = nonBlankLines(string(content))
 	} else if !errors.Is(readErr, fs.ErrNotExist) {
 		return nil, nil, readErr
@@ -400,7 +400,7 @@ func ScanHostKey(ctx context.Context, target SshTarget) (lines, fingerprints []s
 	if len(lines) == 0 {
 		return nil, nil, fmt.Errorf("No host key received from %s", target.Host)
 	}
-	keygen := exec.CommandContext(ctx, "ssh-keygen", "-lf", scanned)
+	keygen := exec.CommandContext(ctx, "ssh-keygen", "-lf", scanned) //nolint:gosec // G204: the program and arguments come from the user, the project config, or PiG's own toolchain lookup; the CLI runs as the user with no sandbox and launches them as Pi's child_process.spawn does
 	output, keygenErr := keygen.Output()
 	if _, isExit := errors.AsType[*exec.ExitError](keygenErr); keygenErr != nil && !isExit {
 		return nil, nil, keygenErr
@@ -451,7 +451,7 @@ func changeKnownHosts(file string, change func(lines []string) ([]string, error)
 	}
 	var existing []string
 	// Only a missing file is empty: one that cannot be read fails the change instead of being replaced.
-	previous, err := os.ReadFile(file)
+	previous, err := os.ReadFile(file) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	switch {
 	case err == nil:
 		//portlint:allow pathseparators ssh.ts:235 splits known_hosts on "\n" as well
@@ -474,7 +474,7 @@ func changeKnownHosts(file string, change func(lines []string) ([]string, error)
 	if len(lines) > 0 {
 		content = strings.Join(lines, "\n") + "\n"
 	}
-	handle, err := os.OpenFile(temporary, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o600)
+	handle, err := os.OpenFile(temporary, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o600) //nolint:gosec // G304: the path names an output or state file that the user or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so writing it grants nothing the user lacks
 	if err != nil {
 		return err
 	}
@@ -776,7 +776,7 @@ func DeployDaemon(ctx context.Context, target SshTarget, remote RemotePlatform, 
 	}
 	// A missing binary names the system; one that exists but cannot be read fails with its read error, as readFile
 	// after existsSync does.
-	content, err := os.ReadFile(binary)
+	content, err := os.ReadFile(binary) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if errors.Is(err, fs.ErrNotExist) {
 		return "", fmt.Errorf("No pi-env daemon for %s-%s at %s", remote.Platform, remote.Arch, binary)
 	}

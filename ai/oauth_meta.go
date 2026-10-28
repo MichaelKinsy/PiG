@@ -32,7 +32,7 @@ const (
 	metaAuthHost               = "https://auth.meta.com"
 	metaDeviceAuthorizationURL = metaAuthHost + "/oidc/device/authorization/"
 	metaDeviceTokenURL         = metaAuthHost + "/oidc/device/token/"
-	metaAPIKeyMintURL          = "https://api.meta.ai/muse-code/key"
+	metaAPIKeyMintURL          = "https://api.meta.ai/muse-code/key" //nolint:gosec // G101: the value is a name, URL, or identifier of a public protocol, not a credential value
 	metaAPIKeyLifetime         = 24 * time.Hour
 	metaRequestTimeout         = 30 * time.Second
 )

@@ -81,7 +81,7 @@ func writeChunk(name string, flag int, perm fs.FileMode, first bool, offset int6
 	if !first {
 		flag = 0
 	}
-	file, err := os.OpenFile(name, flag|os.O_WRONLY, perm)
+	file, err := os.OpenFile(name, flag|os.O_WRONLY, perm) //nolint:gosec // G304: the path names an output or state file that the user or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so writing it grants nothing the user lacks
 	if err != nil {
 		return err
 	}

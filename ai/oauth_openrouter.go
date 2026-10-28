@@ -23,7 +23,7 @@ import (
 
 const (
 	openRouterAuthorizeURL = "https://openrouter.ai/auth"
-	openRouterTokenURL     = "https://openrouter.ai/api/v1/auth/keys"
+	openRouterTokenURL     = "https://openrouter.ai/api/v1/auth/keys" //nolint:gosec // G101: the value is a name, URL, or identifier of a public protocol, not a credential value
 
 	openRouterLoginTimeout         = 5 * time.Minute
 	openRouterTokenExchangeTimeout = 30 * time.Second

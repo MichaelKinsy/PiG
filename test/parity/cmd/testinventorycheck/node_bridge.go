@@ -344,7 +344,7 @@ func checkNodeBridgeHarness(mappingPath, repoRoot string) error {
 	if err := decodeJSON(mappingPath, &m); err != nil {
 		return err
 	}
-	harness, err := os.ReadFile(filepath.Join(repoRoot, filepath.FromSlash(nodeBridgeHarnessPath)))
+	harness, err := os.ReadFile(filepath.Join(repoRoot, filepath.FromSlash(nodeBridgeHarnessPath))) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return fmt.Errorf("read Node-bridge harness: %w", err)
 	}

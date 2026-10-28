@@ -154,7 +154,7 @@ func uploadShareArtifact(ctx context.Context, client *http.Client, gatewayURL, f
 	if err != nil || gateway.Scheme == "" || gateway.Host == "" {
 		return "", errors.New("invalid share gateway URL")
 	}
-	file, err := os.Open(filePath)
+	file, err := os.Open(filePath) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return "", err
 	}

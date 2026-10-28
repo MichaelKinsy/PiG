@@ -119,7 +119,7 @@ func runPod(ctx context.Context, pl *plan, env podEnv, out io.Writer) error {
 			if err := os.MkdirAll(dir, 0o755); err != nil {
 				return err
 			}
-			f, err := os.Create(filepath.Join(dir, "pod.jsonl"))
+			f, err := os.Create(filepath.Join(dir, "pod.jsonl")) //nolint:gosec // G304: the path names an output or state file that the user or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so writing it grants nothing the user lacks
 			if err != nil {
 				return err
 			}
@@ -460,13 +460,13 @@ func (s *session) step(ctx context.Context, kind string, t target, turns, sample
 	ctx, cancel := context.WithTimeout(ctx, time.Duration(s.plan.StepTimeoutSeconds)*time.Second)
 	defer cancel()
 	logPath := filepath.Join(s.env.data, s.plan.Run, "logs", fmt.Sprintf("%s-%s-%d-%d.log", kind, t.Name, turns, sample))
-	logFile, err := os.Create(logPath)
+	logFile, err := os.Create(logPath) //nolint:gosec // G304: the path names an output or state file that the user or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so writing it grants nothing the user lacks
 	if err != nil {
 		return nil, err
 	}
 	defer func() { _ = logFile.Close() }()
 	var stdout bytes.Buffer
-	cmd := exec.CommandContext(ctx, argv[0], argv[1:]...)
+	cmd := exec.CommandContext(ctx, argv[0], argv[1:]...) //nolint:gosec // G204: the program and arguments come from the user, the project config, or PiG's own toolchain lookup; the CLI runs as the user with no sandbox and launches them as Pi's child_process.spawn does
 	cmd.Stdout = &limitedWriter{w: &stdout, n: 16 << 20}
 	cmd.Stderr = logFile
 	cmd.WaitDelay = 10 * time.Second
@@ -524,7 +524,7 @@ func (l *limitedWriter) Write(p []byte) (int, error) {
 }
 
 func tail(path string, n int64) string {
-	data, err := os.ReadFile(path)
+	data, err := os.ReadFile(path) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return ""
 	}
@@ -543,7 +543,7 @@ func (s *session) seed(ctx context.Context, t target, turns int) error {
 		return err
 	}
 	metaPath := expand([]string{t.SeedMeta}, vars)[0]
-	data, err := os.ReadFile(metaPath)
+	data, err := os.ReadFile(metaPath) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return fmt.Errorf("seed %s at %d turns wrote no %s: %w", t.Name, turns, metaPath, err)
 	}

@@ -97,7 +97,7 @@ func inspectFusedEntry(ctx context.Context, entry fusedEntry) ([]fusedHazard, er
 func fusedModules(entry fusedEntry) ([]fusedModule, error) {
 	modules := []fusedModule{{path: entry.ModulePath, root: entry.Root}}
 	for _, root := range entry.WorkspaceModules {
-		data, err := os.ReadFile(filepath.Join(root, "go.mod"))
+		data, err := os.ReadFile(filepath.Join(root, "go.mod")) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 		if err != nil {
 			return nil, fmt.Errorf("read workspace module %s: %w", root, err)
 		}

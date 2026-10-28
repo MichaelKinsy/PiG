@@ -495,7 +495,7 @@ func sessionPersistenceError(err error, operation, path string) error {
 // appendSessionLine appends a single JSONL record, creating the file if it does not exist (a resumed session always already exists), and
 // returns the file offset after the record, -1 when it is unknown.
 func appendSessionLine(path string, raw []byte) (int64, error) {
-	f, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)
+	f, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644) //nolint:gosec // G304: the path names an output or state file that the user or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so writing it grants nothing the user lacks
 	if err != nil {
 		return -1, sessionPersistenceError(err, "open", path)
 	}
@@ -528,7 +528,7 @@ func createSessionFile(path string, lines [][]byte) error {
 }
 
 func writeSessionFile(path string, lines [][]byte, mode int) error {
-	f, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|mode, 0o644)
+	f, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|mode, 0o644) //nolint:gosec // G304: the path names an output or state file that the user or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so writing it grants nothing the user lacks
 	if err != nil {
 		return sessionPersistenceError(err, "open", path)
 	}

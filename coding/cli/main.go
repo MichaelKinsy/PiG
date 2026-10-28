@@ -428,7 +428,7 @@ func inlinePigletSystemPrompt(p *piglet.Piglet) {
 	if !filepath.IsAbs(promptPath) {
 		promptPath = filepath.Join(filepath.Dir(p.SourcePath()), promptPath)
 	}
-	if data, err := os.ReadFile(promptPath); err == nil {
+	if data, err := os.ReadFile(promptPath); err == nil { //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 		p.SystemPrompt = &piglet.PromptRef{Text: string(data)}
 	} else {
 		fmt.Fprintf(os.Stderr, "warning: piglet %s: system prompt %s: %v\n", p.Name, p.SystemPrompt.File, err)

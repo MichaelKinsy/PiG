@@ -111,7 +111,7 @@ func loadContextFileProbed(probe *nodefs.PathProbe, dir string) *ContextFile {
 		if err != nil || !info.Mode().IsRegular() {
 			continue
 		}
-		data, err := os.ReadFile(p)
+		data, err := os.ReadFile(p) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 		if err != nil {
 			reportCouldNotRead(p, err)
 			continue

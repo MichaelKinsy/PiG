@@ -18,7 +18,7 @@ import (
 type profile map[string]bool
 
 func readProfile(path string) (profile, error) {
-	f, err := os.Open(path)
+	f, err := os.Open(path) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return nil, err
 	}
@@ -124,7 +124,7 @@ func newCoverRun(root, pkg, coverpkg, tags, workDir string, timeout time.Duratio
 		args = append(args, "-tags="+tags)
 	}
 	args = append(args, pkg)
-	cmd := exec.Command("go", args...)
+	cmd := exec.Command("go", args...) //nolint:gosec // G204: the program and arguments come from the user, the project config, or PiG's own toolchain lookup; the CLI runs as the user with no sandbox and launches them as Pi's child_process.spawn does
 	cmd.Dir = root
 	cmd.Stderr = os.Stderr
 	if err := cmd.Run(); err != nil {
@@ -141,7 +141,7 @@ func (c *coverRun) run(out string, testArgs ...string) error {
 	}
 	defer func() { _ = os.RemoveAll(home) }()
 	args := append([]string{"-test.coverprofile=" + out, "-test.timeout=" + c.timeout.String()}, testArgs...)
-	cmd := exec.Command(c.bin, args...)
+	cmd := exec.Command(c.bin, args...) //nolint:gosec // G204: the program and arguments come from the user, the project config, or PiG's own toolchain lookup; the CLI runs as the user with no sandbox and launches them as Pi's child_process.spawn does
 	cmd.Dir = dir
 	cmd.Env = testEnv(home)
 	var buf bytes.Buffer
@@ -259,7 +259,7 @@ func runCoverDiff(root string, args []string) error {
 		if measured == "" {
 			measured = *pkg
 		}
-		cmd := exec.Command("go", "test", "-cover", "-coverpkg="+measured, "-coverprofile="+out, "-covermode=set", other)
+		cmd := exec.Command("go", "test", "-cover", "-coverpkg="+measured, "-coverprofile="+out, "-covermode=set", other) //nolint:gosec // G204: the program and arguments come from the user, the project config, or PiG's own toolchain lookup; the CLI runs as the user with no sandbox and launches them as Pi's child_process.spawn does
 		cmd.Dir = root
 		cmd.Env = testEnv(work)
 		if err := cmd.Run(); err != nil {
@@ -299,7 +299,7 @@ func tailLines(s string, n int) string {
 
 // requireBlocks runs the full suite and fails when a block named in file is uncovered.
 func requireBlocks(cr *coverRun, work, file string) error {
-	data, err := os.ReadFile(file)
+	data, err := os.ReadFile(file) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return err
 	}

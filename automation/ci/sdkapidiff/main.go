@@ -72,7 +72,7 @@ func run(root string) (problems []string, baseline string, err error) {
 
 // goCommand runs the go command with the workspace off, so the baseline resolves from the module cache.
 func goCommand(dir string, args ...string) (string, error) {
-	cmd := exec.Command("go", args...)
+	cmd := exec.Command("go", args...) //nolint:gosec // G204: the program and arguments come from the user, the project config, or PiG's own toolchain lookup; the CLI runs as the user with no sandbox and launches them as Pi's child_process.spawn does
 	cmd.Dir = dir
 	cmd.Env = append(os.Environ(), "GOWORK=off", "GOFLAGS=-mod=mod")
 	var stdout, stderr bytes.Buffer
@@ -130,7 +130,7 @@ func incompatibleChanges(tool, oldDir, newDir string) ([]string, error) {
 	defer func() { _ = os.RemoveAll(scratch) }()
 	export := func(dir, name string) (string, error) {
 		file := filepath.Join(scratch, name)
-		cmd := exec.Command(tool, "-m", "-w", file, sdkModule)
+		cmd := exec.Command(tool, "-m", "-w", file, sdkModule) //nolint:gosec // G204: the program and arguments come from the user, the project config, or PiG's own toolchain lookup; the CLI runs as the user with no sandbox and launches them as Pi's child_process.spawn does
 		cmd.Dir = dir
 		cmd.Env = append(os.Environ(), "GOWORK=off", "GOFLAGS=-mod=mod")
 		if out, err := cmd.CombinedOutput(); err != nil {
@@ -146,7 +146,7 @@ func incompatibleChanges(tool, oldDir, newDir string) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	out, err := exec.Command(tool, "-m", "-incompatible", oldAPI, newAPI).Output()
+	out, err := exec.Command(tool, "-m", "-incompatible", oldAPI, newAPI).Output() //nolint:gosec // G204: the program and arguments come from the user, the project config, or PiG's own toolchain lookup; the CLI runs as the user with no sandbox and launches them as Pi's child_process.spawn does
 	if err != nil {
 		return nil, fmt.Errorf("apidiff -incompatible: %w", err)
 	}
@@ -168,7 +168,7 @@ func releaseNotes(root string) (string, error) {
 	files = append(files, filepath.Join(root, "CHANGELOG.md"))
 	var notes strings.Builder
 	for _, file := range files {
-		data, err := os.ReadFile(file)
+		data, err := os.ReadFile(file) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 		if errors.Is(err, os.ErrNotExist) {
 			continue
 		}

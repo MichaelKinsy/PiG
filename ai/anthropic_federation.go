@@ -30,8 +30,8 @@ import (
 const (
 	anthropicOAuthAPIBeta       = "oauth-2025-04-20"
 	anthropicFederationBeta     = "oidc-federation-2026-04-01"
-	anthropicJWTBearerGrantType = "urn:ietf:params:oauth:grant-type:jwt-bearer"
-	anthropicTokenEndpoint      = "/v1/oauth/token"
+	anthropicJWTBearerGrantType = "urn:ietf:params:oauth:grant-type:jwt-bearer" //nolint:gosec // G101: the value is a name, URL, or identifier of a public protocol, not a credential value
+	anthropicTokenEndpoint      = "/v1/oauth/token"                             //nolint:gosec // G101: the value is a name, URL, or identifier of a public protocol, not a credential value
 	anthropicSDKUserAgent       = "Anthropic/JS 0.129.0"
 	// upstream: node_modules/@anthropic-ai/sdk/lib/credentials/oidc-federation.mjs:jwt
 	anthropicMaxIdentityTokenChars = 16 * 1024
@@ -532,7 +532,7 @@ func requireSecureAnthropicTokenEndpoint(baseURL string) error {
 // readAnthropicIdentityToken reads the JWT from its file on every exchange, so a rotated token is picked up.
 // upstream: node_modules/@anthropic-ai/sdk@0.129.0/lib/credentials/identity-token.mjs:5-25
 func readAnthropicIdentityToken(path string) (string, error) {
-	content, err := os.ReadFile(path)
+	content, err := os.ReadFile(path) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		// Node reports the read failure as "Error: <CODE>: <description>, <syscall> ['<path>']".
 		return "", fmt.Errorf("Failed to read identity token file at %s: Error: %w", path, nodeerrno.FromPathError(err))

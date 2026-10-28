@@ -253,7 +253,7 @@ type ripgrepRun struct {
 // nor drop later matches; at the match limit rg is killed and the rest of
 // its output discarded.
 func runRipgrep(ctx context.Context, rgPath, dir string, args []string, limit float64) ([]grepMatch, ripgrepRun, error) {
-	cmd := exec.CommandContext(ctx, rgPath, args...)
+	cmd := exec.CommandContext(ctx, rgPath, args...) //nolint:gosec // G204: the program and arguments come from the user, the project config, or PiG's own toolchain lookup; the CLI runs as the user with no sandbox and launches them as Pi's child_process.spawn does
 	// Upstream's spawn has no cwd option, so on Windows libuv finds rg from
 	// PiG's working directory: the lookup precedes cmd.Dir.
 	nodespawn.SetProgram(cmd)

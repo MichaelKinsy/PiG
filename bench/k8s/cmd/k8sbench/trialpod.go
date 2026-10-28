@@ -164,6 +164,7 @@ func trialModelsJSON(tp trialPlan) ([]byte, error) {
 		"compat": map[string]any{"supportsDeveloperRole": false, "supportsStore": false, "maxTokensField": "max_tokens"},
 	}
 	//portlint:allow jsonescape models.json for the agent under test; its JSON parser decodes \u003c and < alike
+	//nolint:gosec // G101: the value is a name, URL, or identifier of a public protocol, not a credential value
 	return json.MarshalIndent(map[string]any{"providers": map[string]any{"k8sbench": map[string]any{ //portlint:allow mapkeyorder models.json for the agent under test, whose model registry reads members by name; Go-only bench tool
 		"baseUrl": tp.BaseURL, "api": "openai-completions", "apiKey": "k8sbench-no-key", "models": []any{model},
 	}}}, "", "  ")
@@ -209,7 +210,7 @@ func runTrialAgent(ctx context.Context, tp trialPlan, d trialDirs, res *trialRes
 	}
 	argv = append(argv, "--print", "--mode", "json", "--session-dir", filepath.Join(agentLogs, "sessions"),
 		"--provider", "k8sbench", "--model", tp.Model, string(instruction))
-	events, err := os.Create(filepath.Join(agentLogs, "events.jsonl"))
+	events, err := os.Create(filepath.Join(agentLogs, "events.jsonl")) //nolint:gosec // G304: the path names an output or state file that the user or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so writing it grants nothing the user lacks
 	if err != nil {
 		return err
 	}
@@ -282,7 +283,7 @@ func runTrialVerifier(ctx context.Context, tp trialPlan, d trialDirs, request st
 		return err
 	}
 	logPath := filepath.Join(verifierLogs, "test-output.log")
-	log, err := os.Create(logPath)
+	log, err := os.Create(logPath) //nolint:gosec // G304: the path names an output or state file that the user or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so writing it grants nothing the user lacks
 	if err != nil {
 		return err
 	}
@@ -303,10 +304,10 @@ func runTrialVerifier(ctx context.Context, tp trialPlan, d trialDirs, request st
 
 // readReward reads Harbor's reward file: reward.txt (one number) or reward.json ({"reward": n}).
 func readReward(dir string) (float64, error) {
-	if data, err := os.ReadFile(filepath.Join(dir, "reward.txt")); err == nil {
+	if data, err := os.ReadFile(filepath.Join(dir, "reward.txt")); err == nil { //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 		return strconv.ParseFloat(strings.TrimSpace(string(data)), 64)
 	}
-	data, err := os.ReadFile(filepath.Join(dir, "reward.json"))
+	data, err := os.ReadFile(filepath.Join(dir, "reward.json")) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return 0, errors.New("the tests wrote no reward.txt or reward.json")
 	}
@@ -323,13 +324,13 @@ func readReward(dir string) (float64, error) {
 // runBounded runs argv in its own process group, writing stdout to out and stderr to errPath, and kills the whole
 // group at the timeout. exit is -1 when the process did not exit normally.
 func runBounded(ctx context.Context, argv, env []string, dir string, out io.Writer, errPath string, timeout time.Duration) (exit int, timedOut bool, wall, cpu time.Duration, err error) {
-	errFile, err := os.Create(errPath)
+	errFile, err := os.Create(errPath) //nolint:gosec // G304: the path names an output or state file that the user or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so writing it grants nothing the user lacks
 	if err != nil {
 		return -1, false, 0, 0, err
 	}
 	defer func() { _ = errFile.Close() }()
 	//portlint:allow ctxmapping ctx is mapped by hand below: its Done kills the whole process group, which CommandContext (leader only) would not
-	cmd := exec.Command(argv[0], argv[1:]...)
+	cmd := exec.Command(argv[0], argv[1:]...) //nolint:gosec // G204: the program and arguments come from the user, the project config, or PiG's own toolchain lookup; the CLI runs as the user with no sandbox and launches them as Pi's child_process.spawn does
 	cmd.Env, cmd.Dir, cmd.Stdout, cmd.Stderr = env, dir, out, errFile
 	cmd.SysProcAttr = groupAttr()
 	//portlint:allow clock Go-only bench tool (no Pi counterpart): measures a real process's wall time
@@ -422,7 +423,7 @@ func (u *usageWriter) event(line []byte) {
 }
 
 func copyFile(src, dst string) error {
-	data, err := os.ReadFile(src)
+	data, err := os.ReadFile(src) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return err
 	}

@@ -256,7 +256,7 @@ func (m *InteractiveMode) probeOAuthCopilotEnv() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	const envToken = "tid=parity;proxy-ep=proxy.individual.githubcopilot.com;exp=4102444800"
+	const envToken = "tid=parity;proxy-ep=proxy.individual.githubcopilot.com;exp=4102444800" //nolint:gosec // G101: a fixed fake token for the offline parity harness; it grants access to nothing
 	bearer, base, err := ai.ResolveCopilotEnvFallback(auth, envToken)
 	if err != nil {
 		return "", err

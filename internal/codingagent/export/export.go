@@ -261,7 +261,7 @@ func ExportFromFile(inputPath, outputPath string) (string, error) {
 // its systemPrompt and tools; nil is upstream exportFromFile (CLI --export),
 // whose session data carries neither. themeName is the export theme (opts.themeName); empty exports with the active theme.
 func ExportFromFileWithTools(inputPath, outputPath string, getToolRenderers func(name string) *extension.ToolRenderers, cwd string, state *AgentState, themeName string) (string, error) {
-	data, err := os.ReadFile(inputPath)
+	data, err := os.ReadFile(inputPath) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return "", fmt.Errorf("read session: %w", err)
 	}

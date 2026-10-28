@@ -123,7 +123,7 @@ func listRepoFiles(root string) ([]string, error) {
 }
 
 func gitFiles(root string, args ...string) ([]string, error) {
-	cmd := exec.Command("git", append(append([]string{"ls-files"}, args...), "-z")...)
+	cmd := exec.Command("git", append(append([]string{"ls-files"}, args...), "-z")...) //nolint:gosec // G204: the program and arguments come from the user, the project config, or PiG's own toolchain lookup; the CLI runs as the user with no sandbox and launches them as Pi's child_process.spawn does
 	cmd.Dir = root
 	var out bytes.Buffer
 	cmd.Stdout = &out
@@ -185,7 +185,7 @@ func hashFiles(root string, files []string) ([]string, error) {
 		go func() {
 			defer wg.Done()
 			defer func() { <-sem }()
-			data, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(rel)))
+			data, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(rel))) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 			switch {
 			case errors.Is(err, fs.ErrNotExist):
 				return
@@ -418,7 +418,7 @@ func (c *ledgerCache) publish(kind, key string, files map[string][]byte) error {
 // read returns one file of an entry and marks the entry used.
 func (c *ledgerCache) read(kind, key, name string) ([]byte, bool) {
 	dir := c.entryDir(kind, key)
-	data, err := os.ReadFile(filepath.Join(dir, name))
+	data, err := os.ReadFile(filepath.Join(dir, name)) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return nil, false
 	}

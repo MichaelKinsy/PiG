@@ -90,7 +90,7 @@ func run(root, budgetFile string, top int, install bool) error {
 
 // readBudget parses the budget file: one decimal byte count, with blank lines and # comments ignored.
 func readBudget(file string) (int64, error) {
-	f, err := os.Open(file)
+	f, err := os.Open(file) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return 0, err
 	}
@@ -182,7 +182,7 @@ func overBudget(rep report, budget int64, top int) string {
 
 // proveInstall serves the module zip of root through a file:// GOPROXY and runs `go install` of cmd/pig at that version outside any workspace.
 func proveInstall(root string, files []modzip.File) error {
-	goMod, err := os.ReadFile(filepath.Join(root, "go.mod"))
+	goMod, err := os.ReadFile(filepath.Join(root, "go.mod")) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return err
 	}
@@ -245,7 +245,7 @@ func proveInstall(root string, files []modzip.File) error {
 		"GOBIN="+bin,
 	)
 	fmt.Printf("module-size: go install %s from a file:// GOPROXY\n", target)
-	cmd := exec.Command("go", "install", "-modcacherw", target)
+	cmd := exec.Command("go", "install", "-modcacherw", target) //nolint:gosec // G204: the program and arguments come from the user, the project config, or PiG's own toolchain lookup; the CLI runs as the user with no sandbox and launches them as Pi's child_process.spawn does
 	cmd.Dir = work
 	cmd.Env = env
 	cmd.Stdout, cmd.Stderr = os.Stdout, os.Stderr
@@ -256,7 +256,7 @@ func proveInstall(root string, files []modzip.File) error {
 	if _, err := os.Stat(exe); err != nil {
 		exe += ".exe"
 	}
-	probe := exec.Command(exe, "--version")
+	probe := exec.Command(exe, "--version") //nolint:gosec // G204: the program and arguments come from the user, the project config, or PiG's own toolchain lookup; the CLI runs as the user with no sandbox and launches them as Pi's child_process.spawn does
 	probe.Dir = work
 	probe.Env = append(os.Environ(),
 		"HOME="+scratch, "USERPROFILE="+scratch,
@@ -280,7 +280,7 @@ func fileProxyURL(dir string) string {
 }
 
 func goEnv(dir, key string) (string, error) {
-	cmd := exec.Command("go", "env", key)
+	cmd := exec.Command("go", "env", key) //nolint:gosec // G204: the program and arguments come from the user, the project config, or PiG's own toolchain lookup; the CLI runs as the user with no sandbox and launches them as Pi's child_process.spawn does
 	cmd.Dir = dir
 	out, err := cmd.Output()
 	if err != nil {
@@ -291,7 +291,7 @@ func goEnv(dir, key string) (string, error) {
 
 // writeZip builds the module zip at file.
 func writeZip(file string, mod module.Version, files []modzip.File) error {
-	f, err := os.Create(file)
+	f, err := os.Create(file) //nolint:gosec // G304: the path names an output or state file that the user or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so writing it grants nothing the user lacks
 	if err != nil {
 		return err
 	}

@@ -38,7 +38,7 @@ type PipeDriver struct {
 
 // StartPipe launches Argv with piped standard streams.
 func StartPipe(o PipeOpts) (*PipeDriver, error) {
-	cmd := exec.Command(o.Argv[0], o.Argv[1:]...)
+	cmd := exec.Command(o.Argv[0], o.Argv[1:]...) //nolint:gosec // G204: the program and arguments come from the user, the project config, or PiG's own toolchain lookup; the CLI runs as the user with no sandbox and launches them as Pi's child_process.spawn does
 	cmd.Dir = o.Dir
 	cmd.Env = o.Env
 	in, err := cmd.StdinPipe()

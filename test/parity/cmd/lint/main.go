@@ -314,7 +314,7 @@ func main() {
 			return err
 		}
 
-		raw, readErr := os.ReadFile(path)
+		raw, readErr := os.ReadFile(path) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 		if readErr != nil {
 			return readErr
 		}
@@ -647,7 +647,7 @@ func lintOAuthProviderCoverage(scenariosDir string) []violation {
 		if err != nil || d.IsDir() || !strings.HasSuffix(d.Name(), ".toml") {
 			return err
 		}
-		data, readErr := os.ReadFile(path)
+		data, readErr := os.ReadFile(path) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 		if readErr != nil {
 			return readErr
 		}
@@ -859,7 +859,7 @@ func findDivergenceRefs(source string) []string {
 }
 
 func parseDivergenceIDs(path string) (map[string]bool, error) {
-	data, err := os.ReadFile(path)
+	data, err := os.ReadFile(path) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return nil, err
 	}
@@ -875,7 +875,7 @@ func parseDivergenceIDs(path string) (map[string]bool, error) {
 
 // parsePortMapPaths returns every upstream path PORT_MAP names. Header, separator and downstream rows are skipped by shape; any other line that starts with `|` and does not parse is an error, so no row is dropped silently.
 func parsePortMapPaths(path string) (map[string]bool, error) {
-	data, err := os.ReadFile(path)
+	data, err := os.ReadFile(path) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return nil, err
 	}

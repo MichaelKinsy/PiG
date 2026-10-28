@@ -39,7 +39,7 @@ func findRoot(dir string) (string, error) {
 
 // readPin parses the key=value lines of .upstream/pin.
 func readPin(root string) (Pin, error) {
-	f, err := os.Open(filepath.Join(root, ".upstream", "pin"))
+	f, err := os.Open(filepath.Join(root, ".upstream", "pin")) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return Pin{}, err
 	}
@@ -140,14 +140,14 @@ func pinTargets(committed string, versions []string) []string {
 
 // gitOut runs git in root and returns its trimmed standard output.
 func gitOut(root string, args ...string) (string, error) {
-	cmd := exec.Command("git", append([]string{"-C", root}, args...)...)
+	cmd := exec.Command("git", append([]string{"-C", root}, args...)...) //nolint:gosec // G204: the program and arguments come from the user, the project config, or PiG's own toolchain lookup; the CLI runs as the user with no sandbox and launches them as Pi's child_process.spawn does
 	b, err := cmd.Output()
 	return strings.TrimSpace(string(b)), err
 }
 
 // readLines returns the file's lines, or nil when it cannot be read.
 func readLines(path string) []string {
-	b, err := os.ReadFile(path)
+	b, err := os.ReadFile(path) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return nil
 	}

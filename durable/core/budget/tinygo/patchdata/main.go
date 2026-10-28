@@ -182,7 +182,7 @@ func patch(mod []byte, l layout) error {
 }
 
 func run(modPath, mapPath string) error {
-	m, err := os.ReadFile(mapPath)
+	m, err := os.ReadFile(mapPath) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return err
 	}
@@ -190,7 +190,7 @@ func run(modPath, mapPath string) error {
 	if err != nil {
 		return fmt.Errorf("%s: %w", mapPath, err)
 	}
-	mod, err := os.ReadFile(modPath)
+	mod, err := os.ReadFile(modPath) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return err
 	}

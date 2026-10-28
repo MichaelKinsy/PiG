@@ -305,7 +305,7 @@ func (sm *SessionManager) ForkFromFile(sourcePath string, idOption ...string) (*
 	newPath := filepath.Join(sm.sessionDir, fileTimestamp(header.Timestamp)+"_"+header.ID+".jsonl")
 
 	// Pi writes the header with writeFileSync(newSessionFile, ..., { flag: "wx" }) (session-manager.ts forkFrom), so a file that already holds this timestamp and id is an EEXIST error and is left as it is.
-	f, err := os.OpenFile(newPath, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o666)
+	f, err := os.OpenFile(newPath, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o666) //nolint:gosec // G304: the path names an output or state file that the user or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so writing it grants nothing the user lacks
 	if err != nil {
 		return nil, sessionPersistenceError(err, "open", newPath)
 	}

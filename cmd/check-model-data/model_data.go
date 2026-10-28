@@ -73,7 +73,7 @@ func describeSetDifference(expected, actual []string) string {
 
 func ReadModelDataProviderIds(packageRoot string) ([]string, error) {
 	path := filepath.Join(packageRoot, "src", "models.generated.ts")
-	data, err := os.ReadFile(path)
+	data, err := os.ReadFile(path) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return nil, modelDataFileError(err)
 	}
@@ -236,7 +236,7 @@ func ValidateModelDataDirectory(structure ModelDataStructure, dataDir string) er
 	for _, provider := range sortedModelObjectKeys(structure) {
 		filename := provider + ".json"
 		path := filepath.Join(dataDir, filename)
-		content, readErr := os.ReadFile(path)
+		content, readErr := os.ReadFile(path) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 		if os.IsNotExist(readErr) {
 			continue
 		}
@@ -314,7 +314,7 @@ func modelDataFileError(err error) error {
 }
 
 func readModelDataObject(path, description string, errs *[]string) *modelDataObject {
-	data, err := os.ReadFile(path)
+	data, err := os.ReadFile(path) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err == nil && !json.Valid(data) {
 		message, nodeErr := runModelDataNode(`const fs = require("node:fs"); try { JSON.parse(fs.readFileSync(0, "utf8")); } catch (error) { process.stdout.write(error.message); }`, data)
 		if nodeErr != nil {

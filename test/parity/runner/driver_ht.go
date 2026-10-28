@@ -194,9 +194,9 @@ func (htDriver) Run(ctx context.Context, t *testing.T, bin BinaryRef, sc *Scenar
 
 	// Register cleanup.
 	t.Cleanup(func() {
-		_ = exec.Command("ht", "stop", sessionName).Run()
+		_ = exec.Command("ht", "stop", sessionName).Run() //nolint:gosec // G204: the program and arguments come from the user, the project config, or PiG's own toolchain lookup; the CLI runs as the user with no sandbox and launches them as Pi's child_process.spawn does
 		time.Sleep(200 * time.Millisecond)
-		_ = exec.Command("ht", "remove", sessionName).Run()
+		_ = exec.Command("ht", "remove", sessionName).Run() //nolint:gosec // G204: the program and arguments come from the user, the project config, or PiG's own toolchain lookup; the CLI runs as the user with no sandbox and launches them as Pi's child_process.spawn does
 	})
 
 	// Wait for ready pattern (per-binary, like tmux driver).
@@ -277,7 +277,7 @@ func (htDriver) Run(ctx context.Context, t *testing.T, bin BinaryRef, sc *Scenar
 // must not enter either, so it is kept only to explain a failure.
 func htOutput(ctx context.Context, args ...string) ([]byte, error) {
 	var stderr bytes.Buffer
-	command := exec.CommandContext(ctx, "ht", args...)
+	command := exec.CommandContext(ctx, "ht", args...) //nolint:gosec // G204: the program and arguments come from the user, the project config, or PiG's own toolchain lookup; the CLI runs as the user with no sandbox and launches them as Pi's child_process.spawn does
 	command.Stderr = &stderr
 	output, err := command.Output()
 	if err != nil {

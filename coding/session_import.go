@@ -105,7 +105,7 @@ func copyFileExclusive(src, dst string) error {
 }
 
 func copyFileExclusiveBytes(src, dst string) error {
-	input, err := os.Open(src)
+	input, err := os.Open(src) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return err
 	}
@@ -114,7 +114,7 @@ func copyFileExclusiveBytes(src, dst string) error {
 	if err != nil {
 		return err
 	}
-	output, err := os.OpenFile(dst, os.O_WRONLY|os.O_CREATE|os.O_EXCL, info.Mode().Perm())
+	output, err := os.OpenFile(dst, os.O_WRONLY|os.O_CREATE|os.O_EXCL, info.Mode().Perm()) //nolint:gosec // G304: the path names an output or state file that the user or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so writing it grants nothing the user lacks
 	if err != nil {
 		return err
 	}

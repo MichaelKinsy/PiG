@@ -50,7 +50,7 @@ func tmuxKeyboardSetup(query func(string) string) string {
 func tmuxShowOption(option string) string {
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second) // upstream: coding-agent/src/modes/interactive/interactive-mode.ts:runTmuxShow
 	defer cancel()
-	cmd := exec.CommandContext(ctx, "tmux", "show", "-gv", option)
+	cmd := exec.CommandContext(ctx, "tmux", "show", "-gv", option) //nolint:gosec // G204: the program and arguments come from the user, the project config, or PiG's own toolchain lookup; the CLI runs as the user with no sandbox and launches them as Pi's child_process.spawn does
 	// Upstream's spawn finds tmux with libuv's search on Windows.
 	nodespawn.SetProgram(cmd)
 	out, err := cmd.Output()

@@ -36,12 +36,12 @@ func quietOpen(name string, flag int, perm os.FileMode) (*os.File, error) {
 	done := make(chan opened, 1)
 	go func() {
 		runtime.LockOSThread()
-		all := ^uint32(0) // macOS's sigset_t is one word
-		if _, _, errno := syscall.Syscall(syscall.SYS___PTHREAD_SIGMASK, pthreadSigmaskBlock, uintptr(unsafe.Pointer(&all)), 0); errno != 0 {
+		all := ^uint32(0)                                                                                                                     // macOS's sigset_t is one word
+		if _, _, errno := syscall.Syscall(syscall.SYS___PTHREAD_SIGMASK, pthreadSigmaskBlock, uintptr(unsafe.Pointer(&all)), 0); errno != 0 { //nolint:gosec // G103: blocks signals on this thread for the open call; the pointer is to a local sigset_t that the kernel reads once during the call and nothing keeps
 			done <- opened{err: &os.PathError{Op: "open", Path: name, Err: errno}}
 			return
 		}
-		file, err := os.OpenFile(name, flag, perm)
+		file, err := os.OpenFile(name, flag, perm) //nolint:gosec // G304: the path names an output or state file that the user or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so writing it grants nothing the user lacks
 		done <- opened{file, err}
 	}()
 	result := <-done

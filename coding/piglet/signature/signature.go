@@ -82,7 +82,7 @@ type Manifest struct {
 // Sign appends a signature block for manifest to the unsigned executable at
 // path. It fills the manifest's Executable and Signer fields.
 func Sign(path string, manifest Manifest, key ed25519.PrivateKey) (Manifest, error) {
-	file, err := os.OpenFile(path, os.O_RDWR, 0)
+	file, err := os.OpenFile(path, os.O_RDWR, 0) //nolint:gosec // G304: the path names an output or state file that the user or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so writing it grants nothing the user lacks
 	if err != nil {
 		return Manifest{}, err
 	}
@@ -251,7 +251,7 @@ type Policy struct {
 // Check reads and verifies the signature block of the file at path under
 // policy. The returned Status describes what was found even when err is set.
 func Check(path string, policy Policy) (Status, error) {
-	file, err := os.Open(path)
+	file, err := os.Open(path) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return Status{}, err
 	}

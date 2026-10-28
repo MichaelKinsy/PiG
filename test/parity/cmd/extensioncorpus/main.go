@@ -205,7 +205,7 @@ func validateExample(parent context.Context, root, binary, corpusRoot, path stri
 
 	ctx, cancel := context.WithTimeout(parent, timeout)
 	defer cancel()
-	command := exec.CommandContext(ctx, binary, "install", path, "--validate-only", "--json")
+	command := exec.CommandContext(ctx, binary, "install", path, "--validate-only", "--json") //nolint:gosec // G204: the program and arguments come from the user, the project config, or PiG's own toolchain lookup; the CLI runs as the user with no sandbox and launches them as Pi's child_process.spawn does
 	command.Dir = root
 	command.Env = corpusEnvironment(home)
 	var stdout bytes.Buffer
@@ -276,7 +276,7 @@ func hashFiles(root string, paths []string) (string, error) {
 		if err != nil {
 			return "", err
 		}
-		data, err := os.ReadFile(path)
+		data, err := os.ReadFile(path) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 		if err != nil {
 			return "", err
 		}
@@ -289,7 +289,7 @@ func hashFiles(root string, paths []string) (string, error) {
 }
 
 func hashFile(path string) (string, error) {
-	data, err := os.ReadFile(path)
+	data, err := os.ReadFile(path) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return "", err
 	}
@@ -298,7 +298,7 @@ func hashFile(path string) (string, error) {
 }
 
 func commandVersion(name string, args ...string) string {
-	output, err := exec.Command(name, args...).Output()
+	output, err := exec.Command(name, args...).Output() //nolint:gosec // G204: the program and arguments come from the user, the project config, or PiG's own toolchain lookup; the CLI runs as the user with no sandbox and launches them as Pi's child_process.spawn does
 	if err != nil {
 		return "unavailable"
 	}

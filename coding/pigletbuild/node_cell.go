@@ -131,7 +131,7 @@ func writeArchiveFile(writer *tar.Writer, name, source string, info fs.FileInfo)
 	if err := writer.WriteHeader(&tar.Header{Typeflag: tar.TypeReg, Name: name, Mode: mode, Size: info.Size(), Format: tar.FormatPAX}); err != nil {
 		return err
 	}
-	file, err := os.Open(source)
+	file, err := os.Open(source) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return err
 	}

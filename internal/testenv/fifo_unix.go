@@ -32,7 +32,7 @@ func CopyFromFIFO(t testing.TB, read func(fifo string) error, during func()) (pa
 	// Opening the write end waits for the reader, and the reader never opens when read fails first.
 	writer := make(chan *os.File, 1)
 	go func() {
-		file, err := os.OpenFile(fifo, os.O_WRONLY, 0)
+		file, err := os.OpenFile(fifo, os.O_WRONLY, 0) //nolint:gosec // G304: the path names an output or state file that the user or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so writing it grants nothing the user lacks
 		if err != nil {
 			t.Error(err)
 		}

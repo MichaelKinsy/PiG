@@ -91,7 +91,7 @@ type probeResult struct {
 // Pi's extension-facing packages, and each exported class's public members,
 // from the compiler-derived inventory of the pinned packages' .d.ts files.
 func packageExports(root string) ([]probePackage, error) {
-	raw, err := os.ReadFile(filepath.Join(root, "test/parity/interfaces/upstream-v"+coding.UpstreamVersion+".json"))
+	raw, err := os.ReadFile(filepath.Join(root, "test/parity/interfaces/upstream-v"+coding.UpstreamVersion+".json")) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return nil, err
 	}
@@ -158,12 +158,12 @@ func runProbe(root string, packages []probePackage) (*probeResult, error) {
 		return nil, err
 	}
 	outputPath := filepath.Join(dir, "report.json")
-	cmd := exec.Command("node", probe, runtimeDir, requestPath, outputPath)
+	cmd := exec.Command("node", probe, runtimeDir, requestPath, outputPath) //nolint:gosec // G204: the program and arguments come from the user, the project config, or PiG's own toolchain lookup; the CLI runs as the user with no sandbox and launches them as Pi's child_process.spawn does
 	cmd.Dir = dir
 	if output, err := cmd.CombinedOutput(); err != nil {
 		return nil, fmt.Errorf("node runtime probe: %w\n%s", err, output)
 	}
-	report, err := os.ReadFile(outputPath)
+	report, err := os.ReadFile(outputPath) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return nil, err
 	}

@@ -86,7 +86,7 @@ func discoverAsyncSources(root string) ([]string, error) {
 	var paths []string
 	for _, pkg := range trackedPackages {
 		manifestPath := filepath.Join(root, filepath.FromSlash(pkg.Root), "package.json")
-		body, err := os.ReadFile(manifestPath)
+		body, err := os.ReadFile(manifestPath) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 		if err != nil {
 			return nil, err
 		}
@@ -111,7 +111,7 @@ func discoverAsyncSources(root string) ([]string, error) {
 			if entry.IsDir() || (!strings.HasSuffix(entry.Name(), ".ts") && !strings.HasSuffix(entry.Name(), ".tsx")) || isTestPath(path) {
 				return nil
 			}
-			body, err := os.ReadFile(path)
+			body, err := os.ReadFile(path) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 			if err != nil {
 				return err
 			}
@@ -262,8 +262,8 @@ func carryUnchanged(manifestPath, previousRoot, root string) func(string) (async
 		if !ok || row.Disposition == "pending" {
 			return asyncAudit{}, false
 		}
-		before, errBefore := os.ReadFile(filepath.Join(previousRoot, filepath.FromSlash(path)))
-		now, errNow := os.ReadFile(filepath.Join(root, filepath.FromSlash(path)))
+		before, errBefore := os.ReadFile(filepath.Join(previousRoot, filepath.FromSlash(path))) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
+		now, errNow := os.ReadFile(filepath.Join(root, filepath.FromSlash(path)))               //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 		if errBefore != nil || errNow != nil || !bytes.Equal(before, now) {
 			return asyncAudit{}, false
 		}

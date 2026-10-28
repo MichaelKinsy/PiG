@@ -189,7 +189,7 @@ func agentSessionRuntimeScript(ctx sdk.Context, args map[string]any) map[string]
 		panic(err)
 	}
 	importPath := filepath.Join(importDir, "imported.jsonl")
-	content, err := os.ReadFile(runtimeFile)
+	content, err := os.ReadFile(runtimeFile) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		panic(err)
 	}
@@ -226,7 +226,7 @@ func agentSessionRuntimeScript(ctx sdk.Context, args map[string]any) map[string]
 		reasons = append(reasons, reason)
 	}
 	r["counts"] = map[string]any{"rebinds": rebinds, "invalidations": invalidations, "factoryCalls": len(calls), "reasons": reasons}
-	logged, err := os.ReadFile(logFile)
+	logged, err := os.ReadFile(logFile) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		panic(err)
 	}

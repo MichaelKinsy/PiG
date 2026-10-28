@@ -107,7 +107,7 @@ func loadDivergences(root string, bugs *BugLedger, scan *treeScan, syms *symInde
 		{"docs/parity/DIVERGENCES.md", false},
 		{"docs/additive-features.md", true},
 	} {
-		b, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(src.rel)))
+		b, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(src.rel))) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 		if err != nil {
 			return nil, err
 		}

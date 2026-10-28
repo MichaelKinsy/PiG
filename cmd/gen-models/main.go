@@ -208,7 +208,7 @@ type modelCatalog struct {
 // readModelDataGeneratedAt reads `generatedAt` of the data manifest beside the provider data files. The value is the
 // Date.parse of an ISO-8601 time: whole milliseconds since the Unix epoch.
 func readModelDataGeneratedAt(manifestPath string) (*float64, error) {
-	data, err := os.ReadFile(manifestPath)
+	data, err := os.ReadFile(manifestPath) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return nil, err
 	}
@@ -230,7 +230,7 @@ func readModelDataGeneratedAt(manifestPath string) (*float64, error) {
 // because upstream exposes catalog order to callers (models.generated.ts, providers/<provider>.models.ts,
 // model-catalog.ts flattenChatModelCatalog, flattenImageModelCatalog and flattenClassifierModelCatalog).
 func collectCatalog(src string) (modelCatalog, error) {
-	data, err := os.ReadFile(src)
+	data, err := os.ReadFile(src) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return modelCatalog{}, err
 	}
@@ -245,7 +245,7 @@ func collectCatalog(src string) (modelCatalog, error) {
 		shardPath := filepath.Join(dir, filepath.FromSlash(m[1]))
 		provider := strings.TrimSuffix(filepath.Base(shardPath), filepath.Ext(shardPath))
 		provider = strings.TrimSuffix(provider, ".models")
-		shard, err := os.ReadFile(shardPath)
+		shard, err := os.ReadFile(shardPath) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 		if err != nil {
 			return modelCatalog{}, err
 		}
@@ -434,7 +434,7 @@ type jsonCatalogProvider struct {
 // packages/ai/scripts/model-data.ts validateModelValue and validateModelDataDirectory: a known type, a key that is
 // "<type>:<id>", and no key repeated across API groups.
 func parseDataJSON(path string) ([]modelRow, error) {
-	data, err := os.ReadFile(path)
+	data, err := os.ReadFile(path) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return nil, err
 	}

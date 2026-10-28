@@ -896,7 +896,7 @@ func parseGoFile(ctx context.Context, root, repositoryPrefix, targetCommit, rela
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	command := exec.CommandContext(ctx, "git", "show", object)
+	command := exec.CommandContext(ctx, "git", "show", object) //nolint:gosec // G204: the program and arguments come from the user, the project config, or PiG's own toolchain lookup; the CLI runs as the user with no sandbox and launches them as Pi's child_process.spawn does
 	command.Dir = root
 	stdout := newBoundedBuffer(extractorOutputLimit)
 	stderr := newBoundedBuffer(extractorOutputLimit)

@@ -150,7 +150,7 @@ type usageFile struct {
 
 func loadUsage(root string) (usageFile, error) {
 	var u usageFile
-	raw, err := os.ReadFile(filepath.Join(root, usagePath))
+	raw, err := os.ReadFile(filepath.Join(root, usagePath)) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return u, err
 	}
@@ -192,7 +192,7 @@ var divergenceHeadingRE = regexp.MustCompile(`(?m)^#+ (D[0-9]+)\b`)
 func loadDivergenceIDs(root string) (map[string]bool, error) {
 	ids := map[string]bool{}
 	for _, doc := range divergenceDocs {
-		raw, err := os.ReadFile(filepath.Join(root, doc))
+		raw, err := os.ReadFile(filepath.Join(root, doc)) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 		if err != nil {
 			return nil, err
 		}

@@ -102,7 +102,7 @@ func resolveSecretDeclaration(ctx context.Context, declaration SecretDeclaration
 		if err != nil || !ownerOnly || !info.Mode().IsRegular() || info.Size() <= 0 || info.Size() > maxSecretFileBytes {
 			return nil, "file", fmt.Errorf("secret file must be a non-empty owner-only regular file no larger than %d bytes", maxSecretFileBytes)
 		}
-		value, err := os.ReadFile(path)
+		value, err := os.ReadFile(path) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 		if err != nil {
 			return nil, "file", fmt.Errorf("secret file could not be read")
 		}

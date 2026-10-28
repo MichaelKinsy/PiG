@@ -357,7 +357,7 @@ func (b sdkBundle) current(dir string) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	data, err := os.ReadFile(filepath.Join(dir, markerFile))
+	data, err := os.ReadFile(filepath.Join(dir, markerFile)) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return false, nil
 	}
@@ -412,7 +412,7 @@ func Status(configRoot string) ([]StageStatus, error) {
 			return nil, err
 		}
 		st := StageStatus{Lang: b.lang, Dir: dir, Embedded: embedded}
-		if data, err := os.ReadFile(filepath.Join(dir, markerFile)); err == nil {
+		if data, err := os.ReadFile(filepath.Join(dir, markerFile)); err == nil { //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 			st.OnDisk = strings.TrimSpace(string(data))
 			st.Staged = true
 			st.Current = st.OnDisk == embedded
@@ -445,7 +445,7 @@ func VerifyStaged(configRoot string) func(stagedDir, buildType string) error {
 		if err != nil {
 			return err
 		}
-		data, err := os.ReadFile(filepath.Join(stagedDir, markerFile))
+		data, err := os.ReadFile(filepath.Join(stagedDir, markerFile)) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 		if err != nil {
 			return fmt.Errorf("staged %s SDK at %s has no version marker; run `pig reload`", lang, stagedDir)
 		}
@@ -667,7 +667,7 @@ func withSDKStageLock(ctx context.Context, configRoot string, work func() error)
 
 // writeFile creates path with exactly mode. The file lives in a private staging tree, so no reader observes it before the tree is renamed into place.
 func writeFile(path string, data []byte, mode os.FileMode) error {
-	f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, mode)
+	f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, mode) //nolint:gosec // G304: the path names an output or state file that the user or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so writing it grants nothing the user lacks
 	if err != nil {
 		return fmt.Errorf("pig reload: create %s: %w", path, err)
 	}

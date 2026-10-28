@@ -32,12 +32,12 @@ const (
 	// Every login registers a new client with this ID; OpenAI returns the issued client ID in the callback.
 	chatgptDynamicClientID  = "dynamic_agent_client"
 	chatgptAuthorizeURL     = "https://auth.openai.com/api/accounts/authorize"
-	chatgptTokenRequestURL  = "https://auth.openai.com/api/accounts/oauth/token"
+	chatgptTokenRequestURL  = "https://auth.openai.com/api/accounts/oauth/token" //nolint:gosec // G101: the value is a name, URL, or identifier of a public protocol, not a credential value
 	chatgptResource         = "https://api.openai.com/v1"
 	chatgptCallbackPort     = 1455
 	chatgptCallbackPath     = "/auth/callback"
 	chatgptRedirectURI      = "http://127.0.0.1:1455/auth/callback"
-	chatgptDirectTokenScope = "chatgpt.tokens.use.direct"
+	chatgptDirectTokenScope = "chatgpt.tokens.use.direct" //nolint:gosec // G101: the value is a name, URL, or identifier of a public protocol, not a credential value
 	chatgptScope            = "openid profile email offline_access resource.invoke " + chatgptDirectTokenScope
 	// chatgptExpiryMargin refreshes this long before the real expiry so a request never starts with a token about to
 	// expire.

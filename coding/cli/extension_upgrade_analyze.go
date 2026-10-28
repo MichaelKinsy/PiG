@@ -89,7 +89,7 @@ func (u *extensionUpgrader) checkRewrite(ctx context.Context, config subprocess.
 			return err
 		}
 		args := append([]string{"build", "-buildvcs=false", "-gcflags=-e", "-overlay=" + overlayPath, "-o", filepath.Join(scratch, "out")}, compile.Flags...)
-		cmd := exec.CommandContext(ctx, compile.Command, append(args, compile.BuildPattern)...)
+		cmd := exec.CommandContext(ctx, compile.Command, append(args, compile.BuildPattern)...) //nolint:gosec // G204: the program and arguments come from the user, the project config, or PiG's own toolchain lookup; the CLI runs as the user with no sandbox and launches them as Pi's child_process.spawn does
 		cmd.Dir = compile.Dir
 		cmd.Env = compile.Env
 		var output bytes.Buffer
@@ -119,7 +119,7 @@ func classifyRewriteBuild(runErr error, output []byte, dir string, rewritten map
 		if data, ok := rewritten[path]; ok {
 			return data, nil
 		}
-		return os.ReadFile(path)
+		return os.ReadFile(path) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	}
 	known := map[string]bool{}
 	for _, message := range result.Errors {

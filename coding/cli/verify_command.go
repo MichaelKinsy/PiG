@@ -194,7 +194,7 @@ func binaryIdentity() verifyIdentity {
 }
 
 func fileSHA256(path string) (string, error) {
-	file, err := os.Open(path)
+	file, err := os.Open(path) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return "", err
 	}
@@ -211,7 +211,7 @@ func readChecksums(path string) (map[string]string, error) {
 	if path == "" {
 		return nil, nil
 	}
-	file, err := os.Open(path)
+	file, err := os.Open(path) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return nil, fmt.Errorf("read checksums: %w", err)
 	}
@@ -294,7 +294,7 @@ func verifyProvenance(path, repo, signerWorkflow string) verifyCheck {
 	if err != nil {
 		return verifyCheck{Name: "provenance", Status: "unavailable", Detail: "install the GitHub CLI (https://cli.github.com), then run: gh " + strings.Join(args, " ")}
 	}
-	output, err := exec.Command(gh, args...).CombinedOutput()
+	output, err := exec.Command(gh, args...).CombinedOutput() //nolint:gosec // G204: the program and arguments come from the user, the project config, or PiG's own toolchain lookup; the CLI runs as the user with no sandbox and launches them as Pi's child_process.spawn does
 	if err != nil {
 		return verifyCheck{Name: "provenance", Status: "failed", Detail: strings.TrimSpace(string(output))}
 	}
@@ -320,7 +320,7 @@ func verifyPath(self, path string, sums map[string]string, opts verifyOptions) v
 // keeps its own flags, output, and exit status.
 func delegate(self, path, kind string, command ...string) verifyTarget {
 	var output bytes.Buffer
-	cmd := exec.Command(self, command...)
+	cmd := exec.Command(self, command...) //nolint:gosec // G204: the program and arguments come from the user, the project config, or PiG's own toolchain lookup; the CLI runs as the user with no sandbox and launches them as Pi's child_process.spawn does
 	cmd.Stdout, cmd.Stderr = &output, &output
 	check := verifyCheck{Name: "pig " + strings.Join(command[:len(command)-1], " "), Status: "ok", Detail: strings.TrimSpace(output.String())}
 	if err := cmd.Run(); err != nil {
@@ -344,7 +344,7 @@ func verifyInstalledPackages() []verifyTarget {
 		if lookErr != nil {
 			target.Checks = append(target.Checks, verifyCheck{Name: "registry signatures", Status: "unavailable", Detail: "npm is not on PATH"})
 		} else {
-			cmd := exec.Command(npm, "audit", "signatures")
+			cmd := exec.Command(npm, "audit", "signatures") //nolint:gosec // G204: the program and arguments come from the user, the project config, or PiG's own toolchain lookup; the CLI runs as the user with no sandbox and launches them as Pi's child_process.spawn does
 			cmd.Dir = npmRoot
 			output, err := cmd.CombinedOutput()
 			check := verifyCheck{Name: "registry signatures", Status: "ok", Detail: strings.TrimSpace(string(output))}
@@ -362,8 +362,8 @@ func verifyInstalledPackages() []verifyTarget {
 		}
 		repo := filepath.Dir(path)
 		target := verifyTarget{Path: repo, Kind: "git package"}
-		head, headErr := exec.Command("git", "-C", repo, "rev-parse", "HEAD").Output()
-		status, statusErr := exec.Command("git", "-C", repo, "status", "--porcelain", "--untracked-files=no").Output()
+		head, headErr := exec.Command("git", "-C", repo, "rev-parse", "HEAD").Output()                                 //nolint:gosec // G204: the program and arguments come from the user, the project config, or PiG's own toolchain lookup; the CLI runs as the user with no sandbox and launches them as Pi's child_process.spawn does
+		status, statusErr := exec.Command("git", "-C", repo, "status", "--porcelain", "--untracked-files=no").Output() //nolint:gosec // G204: the program and arguments come from the user, the project config, or PiG's own toolchain lookup; the CLI runs as the user with no sandbox and launches them as Pi's child_process.spawn does
 		switch {
 		case headErr != nil || statusErr != nil:
 			target.Checks = append(target.Checks, verifyCheck{Name: "commit", Status: "failed", Detail: "git cannot read this Package"})

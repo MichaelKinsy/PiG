@@ -130,7 +130,7 @@ func (t *FindTool) Execute(ctx context.Context, _ string, rawParams json.RawMess
 	}
 	args = append(args, "--", effectivePattern, searchPath)
 
-	cmd := exec.CommandContext(ctx, fdPath, args...)
+	cmd := exec.CommandContext(ctx, fdPath, args...) //nolint:gosec // G204: the program and arguments come from the user, the project config, or PiG's own toolchain lookup; the CLI runs as the user with no sandbox and launches them as Pi's child_process.spawn does
 	// Upstream's spawn finds fd with libuv's search on Windows.
 	nodespawn.SetProgram(cmd)
 	var stdout, stderr strings.Builder

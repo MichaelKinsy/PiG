@@ -24,7 +24,7 @@ type AuthCheckReason string
 const (
 	AuthCheckProviderNotFound         AuthCheckReason = "provider_not_found"
 	AuthCheckCredentialsNotConfigured AuthCheckReason = "credentials_not_configured"
-	AuthCheckCredentialNotAvailable   AuthCheckReason = "credential_not_available"
+	AuthCheckCredentialNotAvailable   AuthCheckReason = "credential_not_available" //nolint:gosec // G101: the value is a name, URL, or identifier of a public protocol, not a credential value
 	AuthCheckInvalidState             AuthCheckReason = "invalid_state"
 )
 

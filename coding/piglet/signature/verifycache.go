@@ -125,7 +125,7 @@ func (c verifyCacheFile) holds(want verifyCacheEntry) bool {
 
 // readVerifyCache returns the cache at path, or an empty cache when it is missing, unreadable, too large, not owner-only, or malformed.
 func readVerifyCache(path string) verifyCacheFile {
-	file, err := os.Open(path)
+	file, err := os.Open(path) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return verifyCacheFile{}
 	}

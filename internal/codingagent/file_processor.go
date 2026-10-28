@@ -60,7 +60,7 @@ func ProcessCLIFileArguments(fileArgs []string, cwd string, options ...ProcessFi
 		if info.Size() == 0 || info.IsDir() && runtime.GOOS == "windows" {
 			continue
 		}
-		content, err := os.ReadFile(fsPath)
+		content, err := os.ReadFile(fsPath) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 		if err != nil {
 			return ProcessedCLIArgs{}, fmt.Errorf("could not read file %s: %w", absPath, err)
 		}

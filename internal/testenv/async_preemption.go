@@ -36,7 +36,7 @@ func RerunWithoutAsyncPreemption(t *testing.T) bool {
 	for i, part := range parts {
 		parts[i] = "^" + regexp.QuoteMeta(part) + "$"
 	}
-	command := exec.CommandContext(testbudget.DeadlineContext(t), self, "-test.run="+strings.Join(parts, "/"), "-test.count=1", "-test.v")
+	command := exec.CommandContext(testbudget.DeadlineContext(t), self, "-test.run="+strings.Join(parts, "/"), "-test.count=1", "-test.v") //nolint:gosec // G204: the program and arguments come from the user, the project config, or PiG's own toolchain lookup; the CLI runs as the user with no sandbox and launches them as Pi's child_process.spawn does
 	debug := "asyncpreemptoff=1"
 	if inherited := os.Getenv("GODEBUG"); inherited != "" {
 		debug = inherited + "," + debug

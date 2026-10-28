@@ -31,7 +31,7 @@ func InstalledNpmMatchesConfiguredVersion(source sourceref.Ref, installedPath st
 }
 
 func ReadInstalledNpmVersion(installedPath string) string {
-	data, err := os.ReadFile(filepath.Join(installedPath, "package.json"))
+	data, err := os.ReadFile(filepath.Join(installedPath, "package.json")) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return ""
 	}

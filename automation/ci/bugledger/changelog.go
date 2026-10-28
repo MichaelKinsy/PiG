@@ -161,7 +161,7 @@ func sectionBullets(text, since string, fragment bool, sections map[string]bool)
 // currentFixed reads the "### Fixed" bullets of the working tree: the releases after since in CHANGELOG.md, and every fragment in changelog.d.
 func currentFixed(root, since string) ([]bullet, error) {
 	var out []bullet
-	data, err := os.ReadFile(filepath.Join(root, "CHANGELOG.md"))
+	data, err := os.ReadFile(filepath.Join(root, "CHANGELOG.md")) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return nil, err
 	}
@@ -171,7 +171,7 @@ func currentFixed(root, since string) ([]bullet, error) {
 		return nil, err
 	}
 	for _, f := range files {
-		data, err := os.ReadFile(f)
+		data, err := os.ReadFile(f) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 		if err != nil {
 			return nil, err
 		}

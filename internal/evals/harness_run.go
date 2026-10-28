@@ -511,7 +511,7 @@ func RunPiCodingAgent(ctx context.Context, input PiCodingAgentInput, options PiC
 			if sessionFile != "" {
 				args = append(args, "--session", sessionFile)
 			}
-			command := exec.CommandContext(context.WithoutCancel(ctx), pigPath, args...)
+			command := exec.CommandContext(context.WithoutCancel(ctx), pigPath, args...) //nolint:gosec // G204: the program and arguments come from the user, the project config, or PiG's own toolchain lookup; the CLI runs as the user with no sandbox and launches them as Pi's child_process.spawn does
 			command.Dir = workspace
 			command.Env = os.Environ()
 			if server != nil {
@@ -727,7 +727,7 @@ func RunPiCodingAgent(ctx context.Context, input PiCodingAgentInput, options PiC
 
 	if sessionPath != "" {
 		// harness.ts:422-428: a path that does not exist (existsSync) is a missing session file; an existing file that cannot be read reports readFile's error.
-		if data, err := os.ReadFile(sessionPath); err != nil {
+		if data, err := os.ReadFile(sessionPath); err != nil { //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 			if _, statErr := os.Stat(sessionPath); statErr != nil {
 				err = errors.New("Pi eval produced no session file.")
 			}

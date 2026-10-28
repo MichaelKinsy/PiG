@@ -17,7 +17,7 @@ import (
 // through this SDK's pi-ai helpers and reports each answer as JSON (TestConformance_PiAiHelpersAgreeAcrossSDKs).
 func registerPiAiHelpersFixture(ext *sdk.Extension) {
 	ext.Command("pi_ai_helpers_probe", "Run the golden pi-ai helper calls", func(ctx sdk.Context, args string) error {
-		content, err := os.ReadFile(args)
+		content, err := os.ReadFile(args) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 		if err != nil {
 			return err
 		}

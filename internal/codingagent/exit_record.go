@@ -95,7 +95,7 @@ func appendExitLog(agentDir string, at time.Time, pid, ppid int, reason string) 
 	if info, err := os.Stat(path); err == nil && info.Size() > maxExitLogBytes {
 		trimExitLog(path)
 	}
-	file, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)
+	file, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644) //nolint:gosec // G304: the path names an output or state file that the user or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so writing it grants nothing the user lacks
 	if err != nil {
 		return
 	}
@@ -104,7 +104,7 @@ func appendExitLog(agentDir string, at time.Time, pid, ppid int, reason string) 
 }
 
 func trimExitLog(path string) {
-	data, err := os.ReadFile(path)
+	data, err := os.ReadFile(path) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return
 	}
@@ -152,7 +152,7 @@ var sessionHostIdentity = func() (host, pidns string) {
 
 // markerOwnedElsewhere reports whether the marker at path was written by a session on another host or in another PID namespace, whose liveness this process cannot judge from the PID. A marker without a host (written before the header named one) or that cannot be read is judged by its PID as before.
 func markerOwnedElsewhere(path string) bool {
-	data, err := os.ReadFile(path)
+	data, err := os.ReadFile(path) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return false
 	}
@@ -183,7 +183,7 @@ func BeginSessionMarker(agentDir, version, cwd string) {
 		return
 	}
 	path := filepath.Join(dir, strconv.Itoa(os.Getpid())+crashOutputSuffix)
-	file, err := os.OpenFile(path, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0o644)
+	file, err := os.OpenFile(path, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0o644) //nolint:gosec // G304: the path names an output or state file that the user or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so writing it grants nothing the user lacks
 	if err != nil {
 		return
 	}
@@ -252,7 +252,7 @@ func reconcileSessionMarker(agentDir, path string, pid int, now time.Time) {
 		return
 	}
 	defer func() { _ = os.Remove(claimed) }()
-	data, err := os.ReadFile(claimed)
+	data, err := os.ReadFile(claimed) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return
 	}

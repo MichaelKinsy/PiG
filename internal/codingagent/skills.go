@@ -76,7 +76,7 @@ func LoadSkill(skillsDir, name string) (*SkillDef, error) {
 		return nil, errors.New("skill: empty name")
 	}
 	path := filepath.Join(skillsDir, name, "SKILL.md")
-	data, err := os.ReadFile(path)
+	data, err := os.ReadFile(path) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if errors.Is(err, fs.ErrNotExist) {
 		return nil, fmt.Errorf("skill: %q not found at %s: %w", name, path, fs.ErrNotExist)
 	}
@@ -174,7 +174,7 @@ func LoadSkillPath(path string) (*SkillDef, error) {
 	if stat.IsDir() {
 		path = filepath.Join(path, "SKILL.md")
 	}
-	data, err := os.ReadFile(path)
+	data, err := os.ReadFile(path) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return nil, fmt.Errorf("skill: read %s: %w", path, err)
 	}
@@ -261,7 +261,7 @@ func loadSkillFile(path string) (*SkillDef, error) {
 	if err != nil {
 		// A file that cannot be read is still reported; one whose
 		// frontmatter does not parse is not a skill.
-		if _, readErr := os.ReadFile(file); readErr != nil {
+		if _, readErr := os.ReadFile(file); readErr != nil { //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 			return nil, err
 		}
 		return nil, nil

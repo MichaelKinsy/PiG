@@ -163,7 +163,7 @@ func parentOf(path string) string {
 }
 
 func truncate(path string, size int64) (Object, *Failure) {
-	file, err := os.OpenFile(path, os.O_RDWR, 0)
+	file, err := os.OpenFile(path, os.O_RDWR, 0) //nolint:gosec // G304: the path names an output or state file that the user or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so writing it grants nothing the user lacks
 	if err != nil {
 		return nil, ioFailure(err, "open", path)
 	}
@@ -179,7 +179,7 @@ func fsync(path string) (Object, *Failure) {
 	if stats, err := os.Stat(path); err == nil && stats.IsDir() {
 		return nil, newFailure("EISDIR", "EISDIR: illegal operation on a directory, open '"+path+"'").withPath(path)
 	}
-	file, err := os.OpenFile(path, os.O_RDWR, 0)
+	file, err := os.OpenFile(path, os.O_RDWR, 0) //nolint:gosec // G304: the path names an output or state file that the user or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so writing it grants nothing the user lacks
 	if err != nil {
 		return nil, ioFailure(err, "open", path)
 	}

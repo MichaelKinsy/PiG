@@ -261,7 +261,7 @@ func (env *NodeExecutionEnv) TruncateFile(ctx context.Context, path string, size
 	if size < 0 || size > maxSafeInteger {
 		return durableenv.NewFileError(durableenv.FileErrorInvalid, "File size must be a non-negative safe integer", resolved, nil)
 	}
-	file, err := os.OpenFile(resolved, os.O_RDWR, 0)
+	file, err := os.OpenFile(resolved, os.O_RDWR, 0) //nolint:gosec // G304: the path names an output or state file that the user or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so writing it grants nothing the user lacks
 	if err != nil {
 		return toFileError(err, fsCall{syscall: "open", path: resolved})
 	}
@@ -283,7 +283,7 @@ func (env *NodeExecutionEnv) FlushFile(ctx context.Context, path string) error {
 	if err := abortedFileError(ctx, resolved); err != nil {
 		return err
 	}
-	file, err := os.OpenFile(resolved, os.O_RDWR, 0)
+	file, err := os.OpenFile(resolved, os.O_RDWR, 0) //nolint:gosec // G304: the path names an output or state file that the user or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so writing it grants nothing the user lacks
 	if err != nil {
 		// POSIX refuses to open a directory for writing with EISDIR; Windows refuses it as access denied, where Node
 		// opens it, so a directory is reported as one.
@@ -397,7 +397,7 @@ func readDirNames(path string) ([]string, error) {
 	if !info.IsDir() {
 		return nil, &fs.PathError{Op: "scandir", Path: path, Err: nodeErrorCode("ENOTDIR")}
 	}
-	directory, err := os.Open(path)
+	directory, err := os.Open(path) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return nil, err
 	}

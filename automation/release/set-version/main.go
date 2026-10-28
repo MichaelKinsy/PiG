@@ -357,7 +357,7 @@ func checkConsistency(root string, output io.Writer) error {
 		{"test", "./test/gomodule", "-count=1"},
 		{"test", "./internal/codingagent", "-run", "^TestParseChangelog_RealFile$", "-count=1"},
 	} {
-		cmd := exec.Command("go", args...)
+		cmd := exec.Command("go", args...) //nolint:gosec // G204: the program and arguments come from the user, the project config, or PiG's own toolchain lookup; the CLI runs as the user with no sandbox and launches them as Pi's child_process.spawn does
 		cmd.Dir, cmd.Stdout, cmd.Stderr = root, output, output
 		if err := cmd.Run(); err != nil {
 			return fmt.Errorf("go %s: %w", strings.Join(args, " "), err)

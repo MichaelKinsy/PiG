@@ -109,7 +109,7 @@ func Resolve(input string) (Definition, error) {
 func resolveFile(path string, info os.FileInfo) (Definition, error) {
 	ext := strings.ToLower(filepath.Ext(path))
 	if ext == ".js" || ext == ".mjs" || ext == ".cjs" || ext == ".ts" {
-		data, err := os.ReadFile(path)
+		data, err := os.ReadFile(path) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 		if err != nil {
 			return Definition{}, err
 		}
@@ -122,7 +122,7 @@ func resolveFile(path string, info os.FileInfo) (Definition, error) {
 		return Definition{Language: "node", Form: Factory, Root: filepath.Dir(path), Entrypoint: path}, nil
 	}
 	if ext == ".py" {
-		data, err := os.ReadFile(path)
+		data, err := os.ReadFile(path) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 		if err != nil {
 			return Definition{}, err
 		}
@@ -346,7 +346,7 @@ func enclosingGoWorkspaceModuleRoots(moduleRoot string) ([]string, bool, error) 
 }
 
 func goWorkspaceModuleRoots(root string) ([]string, error) {
-	data, err := os.ReadFile(filepath.Join(root, "go.work"))
+	data, err := os.ReadFile(filepath.Join(root, "go.work")) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return nil, err
 	}
@@ -397,7 +397,7 @@ func pathWithin(root, path string) bool {
 }
 
 func scanGoPackage(moduleRoot, packageRoot string) ([]goFactory, bool, bool, error) {
-	moduleData, err := os.ReadFile(filepath.Join(moduleRoot, "go.mod"))
+	moduleData, err := os.ReadFile(filepath.Join(moduleRoot, "go.mod")) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return nil, false, false, err
 	}
@@ -454,7 +454,7 @@ func scanGoPackage(moduleRoot, packageRoot string) ([]goFactory, bool, bool, err
 }
 
 func scanGoModule(root string) ([]goFactory, bool, bool, error) {
-	moduleData, err := os.ReadFile(filepath.Join(root, "go.mod"))
+	moduleData, err := os.ReadFile(filepath.Join(root, "go.mod")) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return nil, false, false, err
 	}
@@ -590,7 +590,7 @@ func resolveRust(root string) (Definition, error) {
 		return Definition{}, fmt.Errorf("Rust extension %s contains both factory and standalone targets; keep src/lib.rs with pub fn new_extension() -> Extension, or keep only src/main.rs for standalone", root)
 	}
 	if hasLib {
-		data, err := os.ReadFile(libPath)
+		data, err := os.ReadFile(libPath) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 		if err != nil {
 			return Definition{}, err
 		}
@@ -629,7 +629,7 @@ func resolvePython(root string) (Definition, error) {
 			continue
 		}
 		path := filepath.Join(root, entry.Name())
-		data, err := os.ReadFile(path)
+		data, err := os.ReadFile(path) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 		if err != nil {
 			return Definition{}, err
 		}
@@ -708,7 +708,7 @@ func executableScript(path string) bool {
 	if err != nil || !info.Mode().IsRegular() || !executableMode(info) {
 		return false
 	}
-	data, err := os.ReadFile(path)
+	data, err := os.ReadFile(path) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	return err == nil && strings.HasPrefix(string(data), "#!")
 }
 

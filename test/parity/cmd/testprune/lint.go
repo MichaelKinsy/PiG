@@ -55,7 +55,7 @@ func goldenWriterDirs(root string, tracked []string) map[string]bool {
 		if !strings.HasSuffix(f, ".go") || path.Base(f) == "main.go" {
 			continue
 		}
-		data, err := os.ReadFile(filepath.Join(root, f))
+		data, err := os.ReadFile(filepath.Join(root, f)) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 		if err != nil || !goldenWriterRE.Match(data) {
 			continue
 		}
@@ -84,7 +84,7 @@ func isGoldenFile(p string) bool {
 }
 
 func gitFiles(root string, args ...string) ([]string, error) {
-	cmd := exec.Command("git", append([]string{"-C", root}, args...)...)
+	cmd := exec.Command("git", append([]string{"-C", root}, args...)...) //nolint:gosec // G204: the program and arguments come from the user, the project config, or PiG's own toolchain lookup; the CLI runs as the user with no sandbox and launches them as Pi's child_process.spawn does
 	out, err := cmd.Output()
 	if err != nil {
 		return nil, err
@@ -173,7 +173,7 @@ func testNames(root string, tracked []string) map[string]bool {
 		if !strings.HasSuffix(f, "_test.go") {
 			continue
 		}
-		data, err := os.ReadFile(filepath.Join(root, f))
+		data, err := os.ReadFile(filepath.Join(root, f)) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 		if err != nil {
 			continue
 		}
@@ -201,7 +201,7 @@ func piSourceNames(root string) (map[string]bool, error) {
 			return nil, err
 		}
 		for _, f := range files {
-			data, err := os.ReadFile(f)
+			data, err := os.ReadFile(f) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 			if err != nil {
 				return nil, err
 			}
@@ -236,7 +236,7 @@ func checkCoEdits(root string, rangeSpec string, from time.Time, piNames map[str
 			continue
 		}
 		seen[e.Commit+e.Path] = true
-		msg, err := exec.Command("git", "-C", root, "show", "-s", "--format=%B", e.Commit).Output()
+		msg, err := exec.Command("git", "-C", root, "show", "-s", "--format=%B", e.Commit).Output() //nolint:gosec // G204: the program and arguments come from the user, the project config, or PiG's own toolchain lookup; the CLI runs as the user with no sandbox and launches them as Pi's child_process.spawn does
 		if err != nil {
 			return nil, err
 		}
@@ -278,7 +278,7 @@ func checkCoEdits(root string, rangeSpec string, from time.Time, piNames map[str
 
 // commitsInRange returns the full SHA of every commit rangeSpec selects.
 func commitsInRange(root, rangeSpec string) ([]string, error) {
-	out, err := exec.Command("git", "-C", root, "rev-list", rangeSpec).Output()
+	out, err := exec.Command("git", "-C", root, "rev-list", rangeSpec).Output() //nolint:gosec // G204: the program and arguments come from the user, the project config, or PiG's own toolchain lookup; the CLI runs as the user with no sandbox and launches them as Pi's child_process.spawn does
 	if err != nil {
 		return nil, fmt.Errorf("git rev-list %s: %w", rangeSpec, err)
 	}

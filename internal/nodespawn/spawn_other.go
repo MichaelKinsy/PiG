@@ -403,7 +403,7 @@ func nextTerminator(buf []byte, first, last int) int {
 // bytes. Its error is the open error, which is os.ErrPermission for a file
 // without the read permission.
 func openHead(path string) (*os.File, []byte, error) {
-	file, err := os.OpenFile(path, os.O_RDONLY|syscall.O_NONBLOCK, 0)
+	file, err := os.OpenFile(path, os.O_RDONLY|syscall.O_NONBLOCK, 0) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return nil, nil, err
 	}

@@ -264,7 +264,7 @@ func rewriteSnapshotSessionCwds(snap string) error {
 // under newCwd; every other session header is set to newCwd for the established
 // same-cwd resume fixture behavior. Every subsequent line remains untouched.
 func rewriteSessionHeaderCwd(path, newCwd string) error {
-	raw, err := os.ReadFile(path)
+	raw, err := os.ReadFile(path) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return err
 	}
@@ -322,7 +322,7 @@ func isSnapshotKey(k string) bool {
 func seedPiChangelogVersion(t *testing.T, agentDir string) {
 	t.Helper()
 	settingsPath := filepath.Join(agentDir, "settings.json")
-	raw, err := os.ReadFile(settingsPath)
+	raw, err := os.ReadFile(settingsPath) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return
 	}
@@ -366,7 +366,7 @@ func seedCheckoutUntrusted(t *testing.T, root, agentDir string) {
 	t.Helper()
 	path := filepath.Join(agentDir, "trust.json")
 	data := map[string]*bool{}
-	if raw, err := os.ReadFile(path); err == nil {
+	if raw, err := os.ReadFile(path); err == nil { //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 		if err := json.Unmarshal(raw, &data); err != nil {
 			t.Fatalf("seed trust: %s is not a trust store: %v", path, err)
 		}
@@ -412,7 +412,7 @@ func copyDir(src, dst string) error {
 			return os.MkdirAll(target, 0o700)
 		}
 
-		data, err := os.ReadFile(path)
+		data, err := os.ReadFile(path) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 		if err != nil {
 			return err
 		}

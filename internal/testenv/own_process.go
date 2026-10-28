@@ -35,7 +35,7 @@ func InOwnProcess(t *testing.T) bool {
 		left := time.Until(deadline)
 		args = append(args, "-test.timeout="+(left-min(left/10, 5*time.Second)).String())
 	}
-	cmd := exec.CommandContext(t.Context(), executable, args...)
+	cmd := exec.CommandContext(t.Context(), executable, args...) //nolint:gosec // G204: the program and arguments come from the user, the project config, or PiG's own toolchain lookup; the CLI runs as the user with no sandbox and launches them as Pi's child_process.spawn does
 	cmd.Env = append(os.Environ(), ownProcessEnv+"="+name)
 	output, err := cmd.CombinedOutput()
 	switch {

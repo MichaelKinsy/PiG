@@ -92,11 +92,11 @@ func StartTerminal(o TermOpts) (*Terminal, error) {
 		return nil, err
 	}
 	base := []string{"-L", t.sock, "-f", conf}
-	out, err := exec.Command("tmux", append(append([]string(nil), base...), "new-session", "-d", "-s", t.session, "-x", strconv.Itoa(o.Width), "-y", strconv.Itoa(o.Height), "sh", launcher)...).CombinedOutput()
+	out, err := exec.Command("tmux", append(append([]string(nil), base...), "new-session", "-d", "-s", t.session, "-x", strconv.Itoa(o.Width), "-y", strconv.Itoa(o.Height), "sh", launcher)...).CombinedOutput() //nolint:gosec // G204: the program and arguments come from the user, the project config, or PiG's own toolchain lookup; the CLI runs as the user with no sandbox and launches them as Pi's child_process.spawn does
 	if err != nil {
 		return nil, fmt.Errorf("tmux new-session: %w: %s", err, out)
 	}
-	t.ctl = exec.Command("tmux", append(append([]string(nil), base...), "-C", "attach", "-t", t.session)...)
+	t.ctl = exec.Command("tmux", append(append([]string(nil), base...), "-C", "attach", "-t", t.session)...) //nolint:gosec // G204: the program and arguments come from the user, the project config, or PiG's own toolchain lookup; the CLI runs as the user with no sandbox and launches them as Pi's child_process.spawn does
 	t.stdin, err = t.ctl.StdinPipe()
 	if err != nil {
 		return nil, err
@@ -112,7 +112,7 @@ func StartTerminal(o TermOpts) (*Terminal, error) {
 	// The first %begin/%end pair answers the attach itself.
 	go func() { // exit watcher: blocks on tmux wait-for, an event, not a poll.
 		defer close(t.waitDone)
-		_ = exec.Command("tmux", "-L", t.sock, "wait-for", "exited").Run()
+		_ = exec.Command("tmux", "-L", t.sock, "wait-for", "exited").Run() //nolint:gosec // G204: the program and arguments come from the user, the project config, or PiG's own toolchain lookup; the CLI runs as the user with no sandbox and launches them as Pi's child_process.spawn does
 		close(t.exited)
 		t.bump()
 	}()
@@ -342,7 +342,7 @@ func (t *Terminal) Close() {
 			_ = signalPID(pid, 9)
 		}
 	}
-	_ = exec.Command("tmux", "-L", t.sock, "kill-session", "-t", t.session).Run()
+	_ = exec.Command("tmux", "-L", t.sock, "kill-session", "-t", t.session).Run() //nolint:gosec // G204: the program and arguments come from the user, the project config, or PiG's own toolchain lookup; the CLI runs as the user with no sandbox and launches them as Pi's child_process.spawn does
 	_ = t.stdin.Close()
 	done := make(chan struct{})
 	go func() { _ = t.ctl.Wait(); close(done) }()
@@ -357,6 +357,6 @@ func (t *Terminal) Close() {
 	case <-t.exited:
 	default:
 		// release the watcher blocked in wait-for
-		_ = exec.Command("tmux", "-L", t.sock, "wait-for", "-S", "exited").Run()
+		_ = exec.Command("tmux", "-L", t.sock, "wait-for", "-S", "exited").Run() //nolint:gosec // G204: the program and arguments come from the user, the project config, or PiG's own toolchain lookup; the CLI runs as the user with no sandbox and launches them as Pi's child_process.spawn does
 	}
 }

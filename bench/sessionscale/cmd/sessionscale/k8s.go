@@ -103,7 +103,7 @@ func k8sSeed(args []string, stdout io.Writer) error {
 // fixtureFingerprint is the first 16 hex digits of the sha256 of the session file with fingerprintCwd as its header's
 // cwd (the header re-encoded with sorted keys).
 func fixtureFingerprint(path string) (string, error) {
-	f, err := os.Open(path)
+	f, err := os.Open(path) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return "", err
 	}
@@ -133,7 +133,7 @@ func fixtureFingerprint(path string) (string, error) {
 }
 
 func fileSHA256(path string) (string, error) {
-	f, err := os.Open(path)
+	f, err := os.Open(path) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return "", err
 	}
@@ -188,7 +188,7 @@ func k8sSample(args []string, stdout io.Writer) error {
 		"-private", "-out", points, "-work", filepath.Join(work, "run"), "-timeout", timeout.String()}); err != nil {
 		return err
 	}
-	raw, err := os.ReadFile(points)
+	raw, err := os.ReadFile(points) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return err
 	}

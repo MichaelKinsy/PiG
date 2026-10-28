@@ -66,7 +66,7 @@ func childProcesses() int64 {
 	}
 	var count int64
 	for _, list := range lists {
-		data, err := os.ReadFile(list)
+		data, err := os.ReadFile(list) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 		if err != nil {
 			continue // The thread exited between the glob and the read.
 		}

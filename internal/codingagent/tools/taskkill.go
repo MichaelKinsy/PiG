@@ -15,7 +15,7 @@ func newTaskkillCommand(pid int) *exec.Cmd {
 	if root == "" {
 		root = `C:\Windows`
 	}
-	return exec.Command(filepath.Join(root, "System32", "taskkill.exe"), "/F", "/T", "/PID", strconv.Itoa(pid))
+	return exec.Command(filepath.Join(root, "System32", "taskkill.exe"), "/F", "/T", "/PID", strconv.Itoa(pid)) //nolint:gosec // G204: the program and arguments come from the user, the project config, or PiG's own toolchain lookup; the CLI runs as the user with no sandbox and launches them as Pi's child_process.spawn does
 }
 
 // runTaskkill consumes spawn failures as Pi's error listener and catch do. The

@@ -545,12 +545,12 @@ func seed(args []string) error {
 }
 
 func copyFile(from, to string) error {
-	in, err := os.Open(from)
+	in, err := os.Open(from) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return err
 	}
 	defer func() { _ = in.Close() }()
-	out, err := os.Create(to)
+	out, err := os.Create(to) //nolint:gosec // G304: the path names an output or state file that the user or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so writing it grants nothing the user lacks
 	if err != nil {
 		return err
 	}
@@ -729,7 +729,7 @@ func sample(args []string) error {
 		if path == "" {
 			continue
 		}
-		file, err := os.Create(path)
+		file, err := os.Create(path) //nolint:gosec // G304: the path names an output or state file that the user or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so writing it grants nothing the user lacks
 		if err != nil {
 			return err
 		}
@@ -808,7 +808,7 @@ func run(args []string) error {
 		var cold, warm, opens, rss, cpu, bytes []float64
 		var all []float64
 		for i := range *samples {
-			command := exec.Command(self, "sample", "-model", modelVariant, "-provider", providerKind, "-fixture", fixturePath(*dir, size), "-turns", strconv.Itoa(size), "-sample", strconv.Itoa(i))
+			command := exec.Command(self, "sample", "-model", modelVariant, "-provider", providerKind, "-fixture", fixturePath(*dir, size), "-turns", strconv.Itoa(size), "-sample", strconv.Itoa(i)) //nolint:gosec // G204: the program and arguments come from the user, the project config, or PiG's own toolchain lookup; the CLI runs as the user with no sandbox and launches them as Pi's child_process.spawn does
 			command.Stderr = os.Stderr
 			output, err := command.Output()
 			if err != nil {

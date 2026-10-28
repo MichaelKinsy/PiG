@@ -46,7 +46,7 @@ func buildTestIndex(root string) (testIndex, error) {
 		if !strings.HasSuffix(path, "_test.go") {
 			return nil
 		}
-		data, err := os.ReadFile(path)
+		data, err := os.ReadFile(path) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 		if err != nil {
 			return err
 		}
@@ -160,7 +160,7 @@ func exists(root, rel string) bool {
 // testExists reports whether a recorded test reference still resolves in the tree under root.
 func testExists(root string, ref string) bool {
 	path, name, hasName := strings.Cut(ref, "::")
-	data, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(path)))
+	data, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(path))) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return false
 	}

@@ -199,7 +199,7 @@ func executeDispositionPlan(root string) ([]byte, error) {
 }
 
 func dpLoadManifest(path string) (dpManifest, error) {
-	data, err := os.ReadFile(path)
+	data, err := os.ReadFile(path) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return dpManifest{}, fmt.Errorf("read semantic delta: %w", err)
 	}
@@ -214,7 +214,7 @@ func dpLoadManifest(path string) (dpManifest, error) {
 }
 
 func dpLoadInventory(path string) (map[string]dpDecl, error) {
-	data, err := os.ReadFile(path)
+	data, err := os.ReadFile(path) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return nil, fmt.Errorf("read inventory: %w", err)
 	}
@@ -230,7 +230,7 @@ func dpLoadInventory(path string) (map[string]dpDecl, error) {
 }
 
 func dpLoadPortMapStatus(path string) (map[string]string, error) {
-	data, err := os.ReadFile(path)
+	data, err := os.ReadFile(path) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return nil, fmt.Errorf("read PORT_MAP: %w", err)
 	}

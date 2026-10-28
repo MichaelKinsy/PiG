@@ -911,7 +911,7 @@ func browserCommand(target string) *exec.Cmd {
 		cmd = "xdg-open"
 		args = []string{target}
 	}
-	command := exec.Command(cmd, args...)
+	command := exec.Command(cmd, args...) //nolint:gosec // G204: the program and arguments come from the user, the project config, or PiG's own toolchain lookup; the CLI runs as the user with no sandbox and launches them as Pi's child_process.spawn does
 	// Upstream's spawn finds the launcher with libuv's search on Windows.
 	nodespawn.SetProgram(command)
 	detachLauncher(command)

@@ -642,7 +642,7 @@ func lastNewlineEnd(f *os.File, lo, size int64) int64 {
 }
 
 func summarizeSessionFileWith(ctx context.Context, path string, st os.FileInfo, fast bool) (SessionInfo, error) {
-	f, err := os.Open(path)
+	f, err := os.Open(path) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return SessionInfo{}, err
 	}
@@ -916,7 +916,7 @@ func (err *SessionHeaderScanLimitError) Error() string {
 
 // ReadSessionHeader scans at most Pi's header-discovery bound. Explicit opens may fall back to full loading on a scan-limit error.
 func ReadSessionHeader(path string) (*SessionHeader, error) {
-	file, err := os.Open(path)
+	file, err := os.Open(path) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return nil, nodeerrno.FromPathError(err)
 	}

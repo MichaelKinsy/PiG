@@ -100,7 +100,7 @@ func catalogEntry(raw json.RawMessage) (ModelCatalogEntry, bool) {
 // without network access. With validateOnly, it stages and validates the data without replacing the package's current
 // data. Any failure leaves the current data in place.
 func HydrateModelCatalog(packageRoot, catalogPath string, validateOnly bool) error {
-	data, err := os.ReadFile(catalogPath)
+	data, err := os.ReadFile(catalogPath) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return modelDataFileError(err)
 	}

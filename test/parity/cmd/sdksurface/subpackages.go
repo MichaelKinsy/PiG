@@ -126,7 +126,7 @@ var (
 // public: the names mod.rs re-exports (`pub use file::{a, B}`, `pub use file::*`, `pub use file::name`), each
 // with its members, and the plain-pub items mod.rs declares itself.
 func parseRustModule(dir string) (symbolSet, error) {
-	modRaw, err := os.ReadFile(filepath.Join(dir, "mod.rs"))
+	modRaw, err := os.ReadFile(filepath.Join(dir, "mod.rs")) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return nil, err
 	}
@@ -218,7 +218,7 @@ func parsePythonPackage(dir string) (symbolSet, error) {
 	if err != nil {
 		return nil, err
 	}
-	raw, err := os.ReadFile(filepath.Join(dir, "__init__.py"))
+	raw, err := os.ReadFile(filepath.Join(dir, "__init__.py")) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return nil, err
 	}

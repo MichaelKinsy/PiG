@@ -15,20 +15,20 @@ import (
 // ANTHROPIC_OAUTH_TOKEN_ENV, ANTHROPIC_API_KEY_ENV and the workload identity
 // federation variables of packages/ai/src/env-api-keys.ts.
 const (
-	AnthropicAuthTokenEnv         = "ANTHROPIC_AUTH_TOKEN"
-	AnthropicOAuthTokenEnv        = "ANTHROPIC_OAUTH_TOKEN"
-	AnthropicAPIKeyEnv            = "ANTHROPIC_API_KEY"
+	AnthropicAuthTokenEnv         = "ANTHROPIC_AUTH_TOKEN"  //nolint:gosec // G101: the value is a name, URL, or identifier of a public protocol, not a credential value
+	AnthropicOAuthTokenEnv        = "ANTHROPIC_OAUTH_TOKEN" //nolint:gosec // G101: the value is a name, URL, or identifier of a public protocol, not a credential value
+	AnthropicAPIKeyEnv            = "ANTHROPIC_API_KEY"     //nolint:gosec // G101: the value is a name, URL, or identifier of a public protocol, not a credential value
 	AnthropicFederationRuleIDEnv  = "ANTHROPIC_FEDERATION_RULE_ID"
 	AnthropicOrganizationIDEnv    = "ANTHROPIC_ORGANIZATION_ID"
 	AnthropicServiceAccountIDEnv  = "ANTHROPIC_SERVICE_ACCOUNT_ID"
-	AnthropicIdentityTokenFileEnv = "ANTHROPIC_IDENTITY_TOKEN_FILE"
+	AnthropicIdentityTokenFileEnv = "ANTHROPIC_IDENTITY_TOKEN_FILE" //nolint:gosec // G101: the value is a name, URL, or identifier of a public protocol, not a credential value
 	AnthropicWorkspaceIDEnv       = "ANTHROPIC_WORKSPACE_ID"
 )
 
 // envAPIKeyVars mirrors the envMap of upstream getApiKeyEnvVars. Providers
 // with more than one variable are listed in getAPIKeyEnvVars.
 var envAPIKeyVars = sync.OnceValue(func() map[string]string {
-	return map[string]string{
+	return map[string]string{ //nolint:gosec // G101: the value is a name, URL, or identifier of a public protocol, not a credential value
 		"ant-ling":                   "ANT_LING_API_KEY",
 		"qwen-token-plan":            "QWEN_TOKEN_PLAN_API_KEY",
 		"qwen-token-plan-cn":         "QWEN_TOKEN_PLAN_CN_API_KEY",

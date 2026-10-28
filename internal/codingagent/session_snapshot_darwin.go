@@ -19,7 +19,7 @@ func cloneFile(src *os.File, path string) (*os.File, bool) {
 	if unix.Fclonefileat(int(src.Fd()), unix.AT_FDCWD, name, 0) != nil {
 		return nil, false
 	}
-	file, err := os.OpenFile(name, os.O_RDWR, 0)
+	file, err := os.OpenFile(name, os.O_RDWR, 0) //nolint:gosec // G304: the path names an output or state file that the user or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so writing it grants nothing the user lacks
 	_ = os.Remove(name)
 	if err != nil {
 		return nil, false

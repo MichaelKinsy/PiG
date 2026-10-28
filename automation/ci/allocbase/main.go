@@ -109,7 +109,7 @@ func run(root string, pkgs []string, benchtime string) ([]entry, error) {
 			slices.Sort(names)
 			args = append(args, "-skip", strings.Join(names, "|"))
 		}
-		command := exec.Command("go", append(args, pkg)...)
+		command := exec.Command("go", append(args, pkg)...) //nolint:gosec // G204: the program and arguments come from the user, the project config, or PiG's own toolchain lookup; the CLI runs as the user with no sandbox and launches them as Pi's child_process.spawn does
 		command.Dir = root
 		command.Env = append(os.Environ(), "GOMAXPROCS=1")
 		output, err := command.CombinedOutput()

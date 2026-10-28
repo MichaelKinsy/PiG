@@ -379,12 +379,12 @@ type bundleInfo struct {
 // has its sha256, the binaries are Linux ELF executables of one architecture, and the reference packages are installed.
 func inspectBundle(dir string) (*bundleInfo, error) {
 	b := &bundleInfo{dir: dir}
-	commit, err := os.ReadFile(filepath.Join(dir, "COMMIT"))
+	commit, err := os.ReadFile(filepath.Join(dir, "COMMIT")) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return nil, fmt.Errorf("bundle %s: %w", dir, err)
 	}
 	b.commit = strings.TrimSpace(string(commit))
-	list, err := os.ReadFile(filepath.Join(dir, "ARTIFACTS.sha256"))
+	list, err := os.ReadFile(filepath.Join(dir, "ARTIFACTS.sha256")) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return nil, fmt.Errorf("bundle %s: %w", dir, err)
 	}
@@ -468,7 +468,7 @@ func linuxArch(path string) (string, error) {
 }
 
 func fileSHA256(path string) (string, error) {
-	f, err := os.Open(path)
+	f, err := os.Open(path) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return "", err
 	}
@@ -483,7 +483,7 @@ func fileSHA256(path string) (string, error) {
 // packBundle writes the bundle directory as one gzip tar file (paths relative to the directory, fixed times, no
 // owners) and returns its sha256 and size.
 func packBundle(dir, out string) (sum string, size int64, err error) {
-	f, err := os.Create(out)
+	f, err := os.Create(out) //nolint:gosec // G304: the path names an output or state file that the user or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so writing it grants nothing the user lacks
 	if err != nil {
 		return "", 0, err
 	}
@@ -526,7 +526,7 @@ func packBundle(dir, out string) (sum string, size int64, err error) {
 		if !info.Mode().IsRegular() {
 			return nil
 		}
-		src, err := os.Open(path)
+		src, err := os.Open(path) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 		if err != nil {
 			return err
 		}
@@ -672,7 +672,7 @@ func cmdBundle(ctx context.Context, args []string, stderr io.Writer, getenv func
 	if err != nil {
 		return err
 	}
-	benchMjs, err := os.ReadFile(filepath.Join(root, "durable", "interop", "bench.mjs"))
+	benchMjs, err := os.ReadFile(filepath.Join(root, "durable", "interop", "bench.mjs")) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return err
 	}
@@ -704,7 +704,7 @@ func cmdBundle(ctx context.Context, args []string, stderr io.Writer, getenv func
 		return err
 	}
 	piReference := ""
-	if pin, err := os.ReadFile(filepath.Join(root, "durable", "contract", "PIN")); err == nil {
+	if pin, err := os.ReadFile(filepath.Join(root, "durable", "contract", "PIN")); err == nil { //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 		for line := range strings.Lines(string(pin)) {
 			if f := strings.Fields(line); len(f) == 2 && f[0] == "main" {
 				piReference = f[1]
@@ -767,7 +767,7 @@ func finishAgentBundle(ctx context.Context, root, outDir, arch, pythonArchive, v
 		return "", err
 	}
 	var agent struct{ Version string }
-	data, err := os.ReadFile(filepath.Join(outDir, filepath.FromSlash(piAgentPackages), "pi-coding-agent", "package.json"))
+	data, err := os.ReadFile(filepath.Join(outDir, filepath.FromSlash(piAgentPackages), "pi-coding-agent", "package.json")) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return "", err
 	}
@@ -827,7 +827,7 @@ func buildCorePrograms(ctx context.Context, root, outDir, piSource string, stder
 	if piSource == "" {
 		return errors.New("the durable-core programs need the Pi checkout at durable/contract/PIN main: pass -pi-source DIR or set CONTRACT_PI_SOURCE")
 	}
-	pin, err := os.ReadFile(filepath.Join(root, "durable", "contract", "PIN"))
+	pin, err := os.ReadFile(filepath.Join(root, "durable", "contract", "PIN")) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return err
 	}
@@ -875,7 +875,7 @@ func resolveTinyGo(flagValue string, getenv func(string) string) (string, error)
 // gates build with (go.mod's toolchain line is only the minimum), and returns the pinned release. A tree without
 // .go-version pins none ("").
 func checkGoVersion(root, goVersion string) (string, error) {
-	data, err := os.ReadFile(filepath.Join(root, ".go-version"))
+	data, err := os.ReadFile(filepath.Join(root, ".go-version")) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if errors.Is(err, fs.ErrNotExist) {
 		return "", nil
 	}
@@ -1001,7 +1001,7 @@ func writeArtifactList(dir string) error {
 
 // output runs a command in dir with extra environment and returns its trimmed stdout; a failure carries its stderr.
 func output(ctx context.Context, dir string, env []string, name string, args ...string) (string, error) {
-	cmd := exec.CommandContext(ctx, name, args...)
+	cmd := exec.CommandContext(ctx, name, args...) //nolint:gosec // G204: the program and arguments come from the user, the project config, or PiG's own toolchain lookup; the CLI runs as the user with no sandbox and launches them as Pi's child_process.spawn does
 	cmd.Dir = dir
 	if env != nil {
 		cmd.Env = append(os.Environ(), env...)

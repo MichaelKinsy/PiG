@@ -179,7 +179,7 @@ func writeCellBinary(path string, data []byte, mode os.FileMode) error {
 
 // holdsExactly reports whether path is a regular file with data's bytes and, off Windows, the execute bits of mode.
 func holdsExactly(path string, data []byte, mode os.FileMode) bool {
-	file, err := os.Open(path)
+	file, err := os.Open(path) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return false
 	}

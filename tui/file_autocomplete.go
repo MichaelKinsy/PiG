@@ -568,7 +568,7 @@ func (p *CombinedProvider) walkDirectoryWithFd(ctx context.Context, baseDir, que
 		args = append(args, buildFdPathQuery(query))
 	}
 
-	cmd := exec.CommandContext(ctx, p.fdPath, args...)
+	cmd := exec.CommandContext(ctx, p.fdPath, args...) //nolint:gosec // G204: the program and arguments come from the user, the project config, or PiG's own toolchain lookup; the CLI runs as the user with no sandbox and launches them as Pi's child_process.spawn does
 	// Upstream's spawn finds fd with libuv's search on Windows.
 	nodespawn.SetProgram(cmd)
 	out, err := cmd.Output()

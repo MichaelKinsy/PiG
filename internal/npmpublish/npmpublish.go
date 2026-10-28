@@ -221,7 +221,7 @@ func Satisfiable(ctx context.Context, command []string, name, spec, workDir stri
 
 // publishRegistry returns publishConfig.registry from the package.json in dir. `npm publish` sends the package there, but `npm view` ignores publishConfig, so the existence check must name it. An empty result selects npm's configured registry.
 func publishRegistry(dir string) (string, error) {
-	data, err := os.ReadFile(filepath.Join(dir, "package.json"))
+	data, err := os.ReadFile(filepath.Join(dir, "package.json")) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if errors.Is(err, fs.ErrNotExist) {
 		return "", nil
 	}

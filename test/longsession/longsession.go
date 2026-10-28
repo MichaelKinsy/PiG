@@ -92,7 +92,7 @@ func Write(dir string, opts Options) (Meta, error) {
 		return Meta{}, err
 	}
 	sessionPath := filepath.Join(dir, "session.jsonl")
-	f, err := os.Create(sessionPath)
+	f, err := os.Create(sessionPath) //nolint:gosec // G304: the path names an output or state file that the user or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so writing it grants nothing the user lacks
 	if err != nil {
 		return Meta{}, err
 	}
@@ -126,7 +126,7 @@ func (m Meta) Stage(dir string) (string, error) {
 		return "", err
 	}
 	path := filepath.Join(dir, "session.jsonl")
-	dst, err := os.Create(path)
+	dst, err := os.Create(path) //nolint:gosec // G304: the path names an output or state file that the user or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so writing it grants nothing the user lacks
 	if err != nil {
 		return "", err
 	}

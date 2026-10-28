@@ -3351,7 +3351,7 @@ func loadSettingsFile(path string) (result Settings, object *orderedjson.Object,
 		return Settings{}, orderedjson.New(), err
 	}
 	defer releaseSyncLock(release, &err)
-	data, err := os.ReadFile(path)
+	data, err := os.ReadFile(path) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		if os.IsNotExist(err) {
 			return Settings{}, orderedjson.New(), nil
@@ -3481,7 +3481,7 @@ func saveSettingsPatchReplacing(path string, before, after Settings, order, repl
 	}
 	defer releaseSyncLock(release, &err)
 
-	data, readErr := os.ReadFile(path)
+	data, readErr := os.ReadFile(path) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if readErr != nil && !errors.Is(readErr, os.ErrNotExist) {
 		return nodeerrno.FromPathError(readErr)
 	}

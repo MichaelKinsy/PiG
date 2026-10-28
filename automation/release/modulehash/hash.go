@@ -22,8 +22,8 @@ import (
 // TrackedFiles lists Git-tracked paths relative to dir. Outside a Git checkout,
 // it lists all files: a release source archive is already tracked-only.
 func TrackedFiles(dir string) ([]string, error) {
-	if err := exec.Command("git", "-C", dir, "rev-parse", "--show-toplevel").Run(); err == nil {
-		out, err := exec.Command("git", "-C", dir, "ls-files", "-z", "--", ".").Output()
+	if err := exec.Command("git", "-C", dir, "rev-parse", "--show-toplevel").Run(); err == nil { //nolint:gosec // G204: the program and arguments come from the user, the project config, or PiG's own toolchain lookup; the CLI runs as the user with no sandbox and launches them as Pi's child_process.spawn does
+		out, err := exec.Command("git", "-C", dir, "ls-files", "-z", "--", ".").Output() //nolint:gosec // G204: the program and arguments come from the user, the project config, or PiG's own toolchain lookup; the CLI runs as the user with no sandbox and launches them as Pi's child_process.spawn does
 		if err != nil {
 			return nil, fmt.Errorf("list tracked files: %w", err)
 		}
@@ -118,7 +118,7 @@ func Hashes(root, dir string, mod module.Version, overlay map[string][]byte) (zi
 	}
 	goMod, ok := overlay[filepath.ToSlash(filepath.Join(dir, "go.mod"))]
 	if !ok {
-		goMod, err = os.ReadFile(filepath.Join(moduleDir, "go.mod"))
+		goMod, err = os.ReadFile(filepath.Join(moduleDir, "go.mod")) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 		if err != nil {
 			return "", "", err
 		}

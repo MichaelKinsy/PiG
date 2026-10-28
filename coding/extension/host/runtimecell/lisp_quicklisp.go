@@ -107,7 +107,7 @@ func quicklispHex(h hash.Hash, data []byte) string {
 // quicklispDistFile returns one pinned index file, from the cache when present, else fetched. Its SHA-256 is checked on every use.
 func quicklispDistFile(ctx context.Context, root, name, want string) ([]byte, error) {
 	file := filepath.Join(root, name)
-	if data, err := os.ReadFile(file); err == nil {
+	if data, err := os.ReadFile(file); err == nil { //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 		if quicklispHex(sha256.New(), data) == want {
 			return data, nil
 		}
@@ -235,7 +235,7 @@ type quicklispRecord map[string]string
 
 func readQuicklispRecord(file string) quicklispRecord {
 	record := quicklispRecord{}
-	if data, err := os.ReadFile(file); err == nil {
+	if data, err := os.ReadFile(file); err == nil { //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 		_ = json.Unmarshal(data, &record)
 	}
 	return record
@@ -385,7 +385,7 @@ func extractQuicklisp(data []byte, dest, prefix string) error {
 		if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil {
 			return err
 		}
-		file, err := os.OpenFile(target, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o644)
+		file, err := os.OpenFile(target, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o644) //nolint:gosec // G304: the path names an output or state file that the user or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so writing it grants nothing the user lacks
 		if err != nil {
 			return err
 		}

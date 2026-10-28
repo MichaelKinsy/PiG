@@ -132,7 +132,7 @@ func runUpdatedExtensionUpgrade() error {
 	if err != nil {
 		return err
 	}
-	cmd := exec.Command(path, "extension", "upgrade", "--all", "--summary")
+	cmd := exec.Command(path, "extension", "upgrade", "--all", "--summary") //nolint:gosec // G204: the program and arguments come from the user, the project config, or PiG's own toolchain lookup; the CLI runs as the user with no sandbox and launches them as Pi's child_process.spawn does
 	cmd.Stdin, cmd.Stdout, cmd.Stderr = nil, os.Stderr, os.Stderr
 	return cmd.Run()
 }

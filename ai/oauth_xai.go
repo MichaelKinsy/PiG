@@ -22,7 +22,7 @@ const (
 	xaiClientID                   = "b1a00492-073a-47ea-816f-4c329264a828"
 	xaiScope                      = "openid profile email offline_access grok-cli:access api:access"
 	xaiDeviceCodeURL              = "https://auth.x.ai/oauth2/device/code"
-	xaiTokenURL                   = "https://auth.x.ai/oauth2/token"
+	xaiTokenURL                   = "https://auth.x.ai/oauth2/token" //nolint:gosec // G101: the value is a name, URL, or identifier of a public protocol, not a credential value
 	xaiRequestTimeout             = 30 * time.Second
 	xaiRefreshSkewMs        int64 = 5 * 60 * 1000
 	xaiDefaultTokenLifetime int64 = 3600

@@ -573,12 +573,12 @@ func (r publishRelease) prepareBuilds(ctx context.Context, stdout, stderr io.Wri
 }
 
 func copyReleaseAsset(source, target string) error {
-	input, err := os.Open(source)
+	input, err := os.Open(source) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return err
 	}
-	defer func() { _ = input.Close() }() // Read-only: close cannot lose data.
-	output, err := os.OpenFile(target, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o755)
+	defer func() { _ = input.Close() }()                                         // Read-only: close cannot lose data.
+	output, err := os.OpenFile(target, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o755) //nolint:gosec // G304: the path names an output or state file that the user or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so writing it grants nothing the user lacks
 	if err != nil {
 		return err
 	}

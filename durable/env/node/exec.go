@@ -179,7 +179,7 @@ func (run *shellRun) start(spec spawnSpec, cwd string) (*exec.Cmd, *os.File, *os
 		closeAll(stdoutRead, stdoutWrite)
 		return nil, nil, nil, nil, spawnError(err)
 	}
-	cmd := exec.Command(spec.program, spec.args...)
+	cmd := exec.Command(spec.program, spec.args...) //nolint:gosec // G204: the program and arguments come from the user, the project config, or PiG's own toolchain lookup; the CLI runs as the user with no sandbox and launches them as Pi's child_process.spawn does
 	cmd.Dir = cwd
 	nodespawn.SetEnvProperties(cmd, getShellEnv(run.env.shellEnv, run.options.Env, run.options.InheritEnv))
 	cmd.Stdout = stdoutWrite
@@ -440,7 +440,7 @@ func (run *shellRun) openSpill() bool {
 		return false
 	}
 	run.spillPath = path
-	file, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0o666)
+	file, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0o666) //nolint:gosec // G304: the path names an output or state file that the user or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so writing it grants nothing the user lacks
 	if err != nil {
 		run.failSpill(err)
 		return false

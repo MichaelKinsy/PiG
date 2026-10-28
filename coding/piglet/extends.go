@@ -126,7 +126,7 @@ func resolveEffective(path, sourceIdentity string, visits []lineageVisit, depth 
 	if depth > maxExtendsDepth {
 		return nil, fmt.Errorf("Piglet extends depth exceeds %d: %s", maxExtendsDepth, visitChain(visits, path))
 	}
-	data, err := os.ReadFile(path)
+	data, err := os.ReadFile(path) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return nil, fmt.Errorf("read Piglet %s: %w", path, err)
 	}

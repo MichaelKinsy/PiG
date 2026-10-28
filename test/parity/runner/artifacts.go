@@ -124,7 +124,7 @@ func shellSingleQuoteSafeRegex(s string) string {
 func mustRepoRootForArtifact(scenarioPath string) string {
 	dir := filepath.Dir(scenarioPath)
 	for {
-		if data, err := os.ReadFile(filepath.Join(dir, "go.mod")); err == nil && strings.Contains(string(data), "module github.com/MichaelKinsy/PiG") {
+		if data, err := os.ReadFile(filepath.Join(dir, "go.mod")); err == nil && strings.Contains(string(data), "module github.com/MichaelKinsy/PiG") { //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 			return dir
 		}
 		parent := filepath.Dir(dir)

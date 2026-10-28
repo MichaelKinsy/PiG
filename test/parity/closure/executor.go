@@ -352,12 +352,12 @@ func createMutationCheckout(ctx context.Context, root, commit string) (string, e
 	// Evidence hashes the committed bytes, so the snapshot must not take a
 	// line-ending conversion from the host (Git for Windows sets
 	// core.autocrlf=true system-wide). Repository attributes still apply.
-	command := exec.CommandContext(ctx, "git", "clone", "--quiet", "--shared", "--no-checkout", "--config", "core.autocrlf=false", root, checkout)
+	command := exec.CommandContext(ctx, "git", "clone", "--quiet", "--shared", "--no-checkout", "--config", "core.autocrlf=false", root, checkout) //nolint:gosec // G204: the program and arguments come from the user, the project config, or PiG's own toolchain lookup; the CLI runs as the user with no sandbox and launches them as Pi's child_process.spawn does
 	if output, cloneErr := command.CombinedOutput(); cloneErr != nil {
 		_ = os.RemoveAll(checkout)
 		return "", fmt.Errorf("create mutation checkout: %w: %s", cloneErr, strings.TrimSpace(string(output)))
 	}
-	command = exec.CommandContext(ctx, "git", "checkout", "--quiet", "--detach", commit)
+	command = exec.CommandContext(ctx, "git", "checkout", "--quiet", "--detach", commit) //nolint:gosec // G204: the program and arguments come from the user, the project config, or PiG's own toolchain lookup; the CLI runs as the user with no sandbox and launches them as Pi's child_process.spawn does
 	command.Dir = checkout
 	if output, checkoutErr := command.CombinedOutput(); checkoutErr != nil {
 		_ = os.RemoveAll(checkout)
@@ -375,7 +375,7 @@ func applyMutationEdit(root string, edit MutationEdit) ([]byte, error) {
 	if !info.Mode().IsRegular() {
 		return nil, fmt.Errorf("mutation target is not a regular file")
 	}
-	data, err := os.ReadFile(path)
+	data, err := os.ReadFile(path) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return nil, err
 	}
@@ -398,7 +398,7 @@ func applyMutationEdit(root string, edit MutationEdit) ([]byte, error) {
 	if string(bytes.TrimSuffix(output, []byte{0})) != edit.Path {
 		return nil, fmt.Errorf("mutation changed files outside %s", edit.Path)
 	}
-	command = exec.Command("git", "diff", "--binary", "--no-ext-diff", "--", edit.Path)
+	command = exec.Command("git", "diff", "--binary", "--no-ext-diff", "--", edit.Path) //nolint:gosec // G204: the program and arguments come from the user, the project config, or PiG's own toolchain lookup; the CLI runs as the user with no sandbox and launches them as Pi's child_process.spawn does
 	command.Dir = root
 	patch, err := command.Output()
 	if err != nil {
@@ -578,7 +578,7 @@ func populateTraceWitness(root, outputDirectory string, index int, witness *Exec
 	if err != nil {
 		return err
 	}
-	file, err := os.Open(path)
+	file, err := os.Open(path) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return fmt.Errorf("open typed trace %s: %w", plan.ArtifactPath, err)
 	}
@@ -687,7 +687,7 @@ func populateGoCoverageWitness(root, outputDirectory string, index int, witness 
 	if err != nil {
 		return err
 	}
-	file, err := os.Open(path)
+	file, err := os.Open(path) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return fmt.Errorf("open witness coverage %s: %w", plan.ArtifactPath, err)
 	}
@@ -699,7 +699,7 @@ func populateGoCoverageWitness(root, outputDirectory string, index int, witness 
 	if closeErr != nil {
 		return closeErr
 	}
-	data, err := os.ReadFile(path)
+	data, err := os.ReadFile(path) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return err
 	}
@@ -805,7 +805,7 @@ func evidenceCommandHash(run, index int, command EvidenceCommand) (string, error
 func executeEvidenceCommand(parent context.Context, root string, timeoutSeconds int, environment []string, run, index int, command EvidenceCommand, commandHash string) (EvidenceCommandResult, []byte, []byte) {
 	ctx, cancel := context.WithTimeout(parent, time.Duration(timeoutSeconds)*time.Second)
 	defer cancel()
-	process := exec.CommandContext(ctx, command.Name, command.Args...)
+	process := exec.CommandContext(ctx, command.Name, command.Args...) //nolint:gosec // G204: the program and arguments come from the user, the project config, or PiG's own toolchain lookup; the CLI runs as the user with no sandbox and launches them as Pi's child_process.spawn does
 	process.Dir = root
 	process.Env = environment
 	stdout := &boundedBuffer{limit: maxEvidenceCommandOutput}
@@ -840,7 +840,7 @@ func CurrentToolchainHash(ctx context.Context) (string, error) {
 	for _, command := range commands {
 		// Each tool prints its version on stdout. Stderr carries host noise
 		// (go's telemetry warnings), so it must not enter the snapshot identity.
-		output, err := exec.CommandContext(ctx, command[0], command[1:]...).Output()
+		output, err := exec.CommandContext(ctx, command[0], command[1:]...).Output() //nolint:gosec // G204: the program and arguments come from the user, the project config, or PiG's own toolchain lookup; the CLI runs as the user with no sandbox and launches them as Pi's child_process.spawn does
 		if err != nil {
 			return "", fmt.Errorf("resolve toolchain %s: %w", command[0], err)
 		}
@@ -976,7 +976,7 @@ func hashExecutorSource(root string) (string, error) {
 	}
 	var material bytes.Buffer
 	for _, path := range paths {
-		data, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(path)))
+		data, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(path))) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 		if err != nil {
 			return "", err
 		}

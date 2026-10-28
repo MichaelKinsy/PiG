@@ -148,7 +148,7 @@ func (c *RpcClient) spawn() (*agentProcess, io.ReadCloser, io.ReadCloser, error)
 	}
 	args = append(args, c.options.Args...)
 
-	cmd := exec.Command(cliPath, args...)
+	cmd := exec.Command(cliPath, args...) //nolint:gosec // G204: the program and arguments come from the user, the project config, or PiG's own toolchain lookup; the CLI runs as the user with no sandbox and launches them as Pi's child_process.spawn does
 	cmd.Dir = c.options.Cwd
 	cmd.Env = os.Environ()
 	for _, key := range slices.Sorted(maps.Keys(c.options.Env)) {

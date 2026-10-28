@@ -106,7 +106,7 @@ func (o *Outcome) writeArtifacts(cfg *Config) {
 		b, _ := json.MarshalIndent(reqs, "", " ")
 		_ = os.WriteFile(filepath.Join(dir, "requests.json"), b, 0o644)
 		for i, f := range r.SB.SessionFiles() {
-			if data, err := os.ReadFile(f); err == nil {
+			if data, err := os.ReadFile(f); err == nil { //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 				_ = os.WriteFile(filepath.Join(dir, fmt.Sprintf("session-%d.jsonl", i)), data, 0o644)
 			}
 		}

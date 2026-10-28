@@ -34,7 +34,7 @@ type Writer struct {
 
 // NewWriter creates the trace file. The crash switch is read from CONTRACT_CRASH_AFTER, the variable the Node tools set.
 func NewWriter(path string) (*Writer, error) {
-	f, err := os.Create(path)
+	f, err := os.Create(path) //nolint:gosec // G304: the path names an output or state file that the user or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so writing it grants nothing the user lacks
 	if err != nil {
 		return nil, err
 	}
@@ -146,7 +146,7 @@ type Line struct {
 
 // ReadTrace reads a trace file.
 func ReadTrace(path string) ([]Line, error) {
-	data, err := os.ReadFile(path)
+	data, err := os.ReadFile(path) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return nil, err
 	}

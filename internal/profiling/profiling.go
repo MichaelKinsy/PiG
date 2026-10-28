@@ -225,7 +225,7 @@ func DumpFlight(path string) error {
 	if recorder == nil {
 		return nil
 	}
-	file, err := os.OpenFile(path, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0o600)
+	file, err := os.OpenFile(path, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0o600) //nolint:gosec // G304: the path names an output or state file that the user or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so writing it grants nothing the user lacks
 	if err != nil {
 		return err
 	}
@@ -237,7 +237,7 @@ func DumpFlight(path string) error {
 }
 
 func create(path string, diag io.Writer) *os.File {
-	f, err := os.Create(path)
+	f, err := os.Create(path) //nolint:gosec // G304: the path names an output or state file that the user or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so writing it grants nothing the user lacks
 	if err != nil {
 		warnf(diag, "pig: %v\n", err)
 		return nil

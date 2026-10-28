@@ -198,7 +198,7 @@ func (tmuxDriver) Run(ctx context.Context, t *testing.T, bin BinaryRef, sc *Scen
 	var createOutput []byte
 	var createErr error
 	if serverErr == nil {
-		createOutput, createErr = exec.CommandContext(ctx, "tmux", tmuxArgs(createTmuxSessionArgs(session, cmdStr, cfg)...)...).CombinedOutput()
+		createOutput, createErr = exec.CommandContext(ctx, "tmux", tmuxArgs(createTmuxSessionArgs(session, cmdStr, cfg)...)...).CombinedOutput() //nolint:gosec // G204: the program and arguments come from the user, the project config, or PiG's own toolchain lookup; the CLI runs as the user with no sandbox and launches them as Pi's child_process.spawn does
 	}
 	tmuxServerMu.Unlock()
 	if serverErr != nil {
@@ -210,7 +210,7 @@ func (tmuxDriver) Run(ctx context.Context, t *testing.T, bin BinaryRef, sc *Scen
 	started = true
 	transcriptPath := filepath.Join(tc.tempRoot, "terminal-transcript.log")
 	pipeCommand := "cat >> " + shellQuote(transcriptPath)
-	if err := exec.CommandContext(ctx, "tmux", tmuxArgs("pipe-pane", "-o", "-t", session, pipeCommand)...).Run(); err != nil {
+	if err := exec.CommandContext(ctx, "tmux", tmuxArgs("pipe-pane", "-o", "-t", session, pipeCommand)...).Run(); err != nil { //nolint:gosec // G204: the program and arguments come from the user, the project config, or PiG's own toolchain lookup; the CLI runs as the user with no sandbox and launches them as Pi's child_process.spawn does
 		return Result{Err: fmt.Errorf("tmux pipe-pane: %w", err)}
 	}
 
@@ -427,7 +427,7 @@ func awaitProcessExit(ctx context.Context, path string, timeout time.Duration) e
 // the status is either absent or complete; a status without its trailing
 // newline is treated as not yet published, never as status 0.
 func readProcessExitStatus(path string) (int, bool, error) {
-	data, err := os.ReadFile(path)
+	data, err := os.ReadFile(path) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if os.IsNotExist(err) {
 		return 0, false, nil
 	}
@@ -520,7 +520,7 @@ func waitForCaptureSurface(ctx context.Context, session string, cfg TmuxDriverCo
 		if ctx.Err() != nil {
 			return
 		}
-		out, err := exec.CommandContext(ctx, "tmux", tmuxArgs(capturePaneArgs(session, false, cfg)...)...).Output()
+		out, err := exec.CommandContext(ctx, "tmux", tmuxArgs(capturePaneArgs(session, false, cfg)...)...).Output() //nolint:gosec // G204: the program and arguments come from the user, the project config, or PiG's own toolchain lookup; the CLI runs as the user with no sandbox and launches them as Pi's child_process.spawn does
 		if err == nil && paneMatchesCaptureSurface(string(out), cfg) {
 			return
 		}
@@ -534,7 +534,7 @@ func waitForPaneOrCapture(ctx context.Context, session, pattern, captureStart st
 		if ctx.Err() != nil {
 			return false
 		}
-		out, _ := exec.CommandContext(ctx, "tmux", tmuxArgs("capture-pane", "-t", session, "-p")...).Output()
+		out, _ := exec.CommandContext(ctx, "tmux", tmuxArgs("capture-pane", "-t", session, "-p")...).Output() //nolint:gosec // G204: the program and arguments come from the user, the project config, or PiG's own toolchain lookup; the CLI runs as the user with no sandbox and launches them as Pi's child_process.spawn does
 		pane := string(out)
 		if paneMatchesReadyPattern(pane, pattern) || captureStart != "" && strings.Contains(pane, captureStart) {
 			return true
@@ -592,13 +592,13 @@ func paneMatchesAutoReadyPattern(pane string) bool {
 // (persistent animation) simply proceeds after `limit`.
 func waitForPaneStable(ctx context.Context, session string, interval, limit time.Duration) {
 	deadline := time.Now().Add(limit)
-	prev, _ := exec.CommandContext(ctx, "tmux", tmuxArgs("capture-pane", "-t", session, "-p")...).Output()
+	prev, _ := exec.CommandContext(ctx, "tmux", tmuxArgs("capture-pane", "-t", session, "-p")...).Output() //nolint:gosec // G204: the program and arguments come from the user, the project config, or PiG's own toolchain lookup; the CLI runs as the user with no sandbox and launches them as Pi's child_process.spawn does
 	for time.Now().Before(deadline) {
 		if ctx.Err() != nil {
 			return
 		}
 		time.Sleep(interval)
-		cur, _ := exec.CommandContext(ctx, "tmux", tmuxArgs("capture-pane", "-t", session, "-p")...).Output()
+		cur, _ := exec.CommandContext(ctx, "tmux", tmuxArgs("capture-pane", "-t", session, "-p")...).Output() //nolint:gosec // G204: the program and arguments come from the user, the project config, or PiG's own toolchain lookup; the CLI runs as the user with no sandbox and launches them as Pi's child_process.spawn does
 		if bytes.Equal(cur, prev) {
 			return
 		}
@@ -609,7 +609,7 @@ func waitForPaneStable(ctx context.Context, session string, interval, limit time
 const tmuxQuiescencePoll = 25 * time.Millisecond
 
 func capturePaneVisible(ctx context.Context, session string) string {
-	out, _ := exec.CommandContext(ctx, "tmux", tmuxArgs("capture-pane", "-t", session, "-p")...).Output()
+	out, _ := exec.CommandContext(ctx, "tmux", tmuxArgs("capture-pane", "-t", session, "-p")...).Output() //nolint:gosec // G204: the program and arguments come from the user, the project config, or PiG's own toolchain lookup; the CLI runs as the user with no sandbox and launches them as Pi's child_process.spawn does
 	return string(out)
 }
 
@@ -655,7 +655,7 @@ func waitForPaneState(ctx context.Context, session string, includes, excludes []
 		if ctx.Err() != nil {
 			return false
 		}
-		out, _ := exec.CommandContext(ctx, "tmux", tmuxArgs("capture-pane", "-t", session, "-p")...).Output()
+		out, _ := exec.CommandContext(ctx, "tmux", tmuxArgs("capture-pane", "-t", session, "-p")...).Output() //nolint:gosec // G204: the program and arguments come from the user, the project config, or PiG's own toolchain lookup; the CLI runs as the user with no sandbox and launches them as Pi's child_process.spawn does
 		pane := string(out)
 		matches := paneContainsAll(pane, includes)
 		for _, pattern := range excludes {
@@ -674,8 +674,8 @@ func waitForPaneState(ctx context.Context, session string, includes, excludes []
 
 // capturePaneHistory returns the pane's scrollback followed by the displayed text of the terminal transcript, so a wait matches displayed text only.
 func capturePaneHistory(ctx context.Context, session, transcriptPath string) string {
-	out, _ := exec.CommandContext(ctx, "tmux", tmuxArgs("capture-pane", "-t", session, "-p", "-S", "-")...).Output()
-	transcript, _ := os.ReadFile(transcriptPath)
+	out, _ := exec.CommandContext(ctx, "tmux", tmuxArgs("capture-pane", "-t", session, "-p", "-S", "-")...).Output() //nolint:gosec // G204: the program and arguments come from the user, the project config, or PiG's own toolchain lookup; the CLI runs as the user with no sandbox and launches them as Pi's child_process.spawn does
+	transcript, _ := os.ReadFile(transcriptPath)                                                                     //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	return string(out) + "\n" + transcriptText(transcript)
 }
 
@@ -806,11 +806,11 @@ func capturePaneArgs(session string, escaped bool, cfg TmuxDriverConfig) []strin
 }
 
 func capturePanePair(ctx context.Context, session string, cfg TmuxDriverConfig) (string, string, error) {
-	plainOut, err := exec.CommandContext(ctx, "tmux", tmuxArgs(capturePaneArgs(session, false, cfg)...)...).Output()
+	plainOut, err := exec.CommandContext(ctx, "tmux", tmuxArgs(capturePaneArgs(session, false, cfg)...)...).Output() //nolint:gosec // G204: the program and arguments come from the user, the project config, or PiG's own toolchain lookup; the CLI runs as the user with no sandbox and launches them as Pi's child_process.spawn does
 	if err != nil {
 		return "", "", err
 	}
-	escapedOut, err := exec.CommandContext(ctx, "tmux", tmuxArgs(capturePaneArgs(session, true, cfg)...)...).Output()
+	escapedOut, err := exec.CommandContext(ctx, "tmux", tmuxArgs(capturePaneArgs(session, true, cfg)...)...).Output() //nolint:gosec // G204: the program and arguments come from the user, the project config, or PiG's own toolchain lookup; the CLI runs as the user with no sandbox and launches them as Pi's child_process.spawn does
 	if err != nil {
 		return "", "", err
 	}
@@ -868,7 +868,7 @@ func ensureTmuxServer() error {
 	tmuxKeeperErr = nil
 	tmuxKeeperStarted = false
 	// Ignore host tmux configuration and configure the private server before either application starts. Pi checks these options asynchronously (interactive-mode.ts:1214-1259); both sides must see the same supported keyboard protocol, not race a startup warning against scenario input.
-	output, err := exec.Command("tmux", tmuxArgs("-f", os.DevNull,
+	output, err := exec.Command("tmux", tmuxArgs("-f", os.DevNull, //nolint:gosec // G204: the program and arguments come from the user, the project config, or PiG's own toolchain lookup; the CLI runs as the user with no sandbox and launches them as Pi's child_process.spawn does
 		"new-session", "-d", "-s", tmuxKeeperSession, "sleep 2147483647",
 		";", "set-option", "-g", "extended-keys", "on")...).CombinedOutput()
 	if err != nil {
@@ -878,7 +878,7 @@ func ensureTmuxServer() error {
 	tmuxKeeperStarted = true
 	recordTmuxServerPID(context.Background())
 	// extended-keys-format arrived in tmux 3.5. Older tmux (Ubuntu 24.04 ships 3.4) has no such option and always emits its one extended-key format; Pi then reads an empty format and raises no warning (interactive-mode.ts:1214-1259), so both sides still see the same setup.
-	output, err = exec.Command("tmux", tmuxArgs("set-option", "-g", "extended-keys-format", "csi-u")...).CombinedOutput()
+	output, err = exec.Command("tmux", tmuxArgs("set-option", "-g", "extended-keys-format", "csi-u")...).CombinedOutput() //nolint:gosec // G204: the program and arguments come from the user, the project config, or PiG's own toolchain lookup; the CLI runs as the user with no sandbox and launches them as Pi's child_process.spawn does
 	switch {
 	case err == nil:
 		tmuxExtendedKeysFormatSupported = true
@@ -905,7 +905,7 @@ func noteLostTmuxServer(lost, current int) {
 
 // tmuxKeeperPresent reports whether the keeper session, and so the server configured around it, is still there.
 func tmuxKeeperPresent() bool {
-	return exec.Command("tmux", tmuxArgs("has-session", "-t", "="+tmuxKeeperSession)...).Run() == nil
+	return exec.Command("tmux", tmuxArgs("has-session", "-t", "="+tmuxKeeperSession)...).Run() == nil //nolint:gosec // G204: the program and arguments come from the user, the project config, or PiG's own toolchain lookup; the CLI runs as the user with no sandbox and launches them as Pi's child_process.spawn does
 }
 
 func registerSession(name string) {
@@ -934,11 +934,11 @@ func cleanupAllSessions() {
 	tmuxServerMu.Lock()
 	defer tmuxServerMu.Unlock()
 	for _, n := range names {
-		_ = exec.Command("tmux", tmuxArgs("kill-session", "-t", n)...).Run()
+		_ = exec.Command("tmux", tmuxArgs("kill-session", "-t", n)...).Run() //nolint:gosec // G204: the program and arguments come from the user, the project config, or PiG's own toolchain lookup; the CLI runs as the user with no sandbox and launches them as Pi's child_process.spawn does
 	}
 	// Helper processes can inherit the run ID without starting a server. They must not kill the parent's keeper when their TestMain exits.
 	if tmuxKeeperStarted {
-		_ = exec.Command("tmux", tmuxArgs("kill-session", "-t", tmuxKeeperSession)...).Run()
+		_ = exec.Command("tmux", tmuxArgs("kill-session", "-t", tmuxKeeperSession)...).Run() //nolint:gosec // G204: the program and arguments come from the user, the project config, or PiG's own toolchain lookup; the CLI runs as the user with no sandbox and launches them as Pi's child_process.spawn does
 	}
 }
 
@@ -947,7 +947,7 @@ func killSession(session string) {
 	// this one named session. Creation and teardown share a lock so cleanup
 	// cannot remove a session while another test is creating one.
 	tmuxServerMu.Lock()
-	_ = exec.Command("tmux", tmuxArgs("kill-session", "-t", session)...).Run()
+	_ = exec.Command("tmux", tmuxArgs("kill-session", "-t", session)...).Run() //nolint:gosec // G204: the program and arguments come from the user, the project config, or PiG's own toolchain lookup; the CLI runs as the user with no sandbox and launches them as Pi's child_process.spawn does
 	tmuxServerMu.Unlock()
 	unregisterSession(session)
 }
@@ -999,12 +999,12 @@ func sendTmuxKey(ctx context.Context, session, key string) error {
 	if after, ok := strings.CutPrefix(key, "hex:"); ok {
 		args := []string{"send-keys", "-t", session, "-H"}
 		args = append(args, strings.Fields(after)...)
-		return exec.CommandContext(ctx, "tmux", tmuxArgs(args...)...).Run()
+		return exec.CommandContext(ctx, "tmux", tmuxArgs(args...)...).Run() //nolint:gosec // G204: the program and arguments come from the user, the project config, or PiG's own toolchain lookup; the CLI runs as the user with no sandbox and launches them as Pi's child_process.spawn does
 	}
 	if isSpecialTmuxKey(key) {
-		return exec.CommandContext(ctx, "tmux", tmuxArgs("send-keys", "-t", session, key)...).Run()
+		return exec.CommandContext(ctx, "tmux", tmuxArgs("send-keys", "-t", session, key)...).Run() //nolint:gosec // G204: the program and arguments come from the user, the project config, or PiG's own toolchain lookup; the CLI runs as the user with no sandbox and launches them as Pi's child_process.spawn does
 	}
-	return exec.CommandContext(ctx, "tmux", tmuxArgs("send-keys", "-t", session, "-l", key)...).Run()
+	return exec.CommandContext(ctx, "tmux", tmuxArgs("send-keys", "-t", session, "-l", key)...).Run() //nolint:gosec // G204: the program and arguments come from the user, the project config, or PiG's own toolchain lookup; the CLI runs as the user with no sandbox and launches them as Pi's child_process.spawn does
 }
 
 func isSpecialTmuxKey(key string) bool {
@@ -1066,7 +1066,7 @@ func tmuxServerReport(ctx context.Context, session string) string {
 	} else {
 		parts = append(parts, "socket present: "+socket)
 	}
-	out, err := exec.CommandContext(ctx, "tmux", tmuxArgs("list-sessions", "-F", "#{session_name}")...).CombinedOutput()
+	out, err := exec.CommandContext(ctx, "tmux", tmuxArgs("list-sessions", "-F", "#{session_name}")...).CombinedOutput() //nolint:gosec // G204: the program and arguments come from the user, the project config, or PiG's own toolchain lookup; the CLI runs as the user with no sandbox and launches them as Pi's child_process.spawn does
 	if err != nil {
 		parts = append(parts, fmt.Sprintf("server unreachable: %v: %s", err, strings.TrimSpace(string(out))))
 		return strings.Join(append(parts, "session "+session+" absent"), "; ")
@@ -1091,7 +1091,7 @@ func tmuxSocketPath() string {
 
 // recordTmuxServerPID remembers the isolated server's process for tmuxServerReport.
 func recordTmuxServerPID(ctx context.Context) {
-	out, err := exec.CommandContext(ctx, "tmux", tmuxArgs("display-message", "-p", "#{pid}")...).Output()
+	out, err := exec.CommandContext(ctx, "tmux", tmuxArgs("display-message", "-p", "#{pid}")...).Output() //nolint:gosec // G204: the program and arguments come from the user, the project config, or PiG's own toolchain lookup; the CLI runs as the user with no sandbox and launches them as Pi's child_process.spawn does
 	if err != nil {
 		return
 	}

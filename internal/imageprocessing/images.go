@@ -304,7 +304,7 @@ const ImageTypeSniffBytes = 4100
 
 // DetectSupportedImageMimeTypeFromFile is upstream detectSupportedImageMimeTypeFromFile (utils/mime.ts:25): it reads the sniff window from the start of a file and returns the supported still-image MIME type, or "" when unsupported or empty. A file that cannot be opened or read is the error.
 func DetectSupportedImageMimeTypeFromFile(filePath string) (string, error) {
-	f, err := os.Open(filePath)
+	f, err := os.Open(filePath) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return "", err
 	}

@@ -201,7 +201,7 @@ func TouchUsage(entryDir string, now time.Time) error {
 	if now.IsZero() {
 		now = time.Now()
 	}
-	if data, err := os.ReadFile(filepath.Join(entryDir, usageFile)); err == nil {
+	if data, err := os.ReadFile(filepath.Join(entryDir, usageFile)); err == nil { //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 		var current UsageMetadata
 		if json.Unmarshal(data, &current) == nil && current.LastUsed > 0 {
 			last := time.Unix(current.LastUsed, 0)
@@ -577,8 +577,8 @@ func cacheEntryPaths(cacheRoot string) ([]string, error) {
 type entryUse struct{ ready, usage string }
 
 func readEntryUse(path string) entryUse {
-	ready, _ := os.ReadFile(filepath.Join(path, cellReadyFile))
-	usage, _ := os.ReadFile(filepath.Join(path, usageFile))
+	ready, _ := os.ReadFile(filepath.Join(path, cellReadyFile)) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
+	usage, _ := os.ReadFile(filepath.Join(path, usageFile))     //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	return entryUse{ready: string(ready), usage: string(usage)}
 }
 
@@ -626,7 +626,7 @@ func classifyCacheEntry(path string, options CacheLifecycleOptions) CacheEntry {
 		return entry
 	}
 	entry.LastUsed = created
-	if data, err := os.ReadFile(filepath.Join(path, usageFile)); err == nil {
+	if data, err := os.ReadFile(filepath.Join(path, usageFile)); err == nil { //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 		var usage UsageMetadata
 		if json.Unmarshal(data, &usage) == nil && usage.LastUsed > 0 {
 			entry.LastUsed = usage.LastUsed
@@ -642,7 +642,7 @@ func classifyCacheEntry(path string, options CacheLifecycleOptions) CacheEntry {
 	if entry.LastUsed > now {
 		entry.LastUsed = now
 	}
-	if fingerprint, err := os.ReadFile(filepath.Join(path, ".sdk-fingerprint")); err == nil && len(options.LiveFingerprints) > 0 {
+	if fingerprint, err := os.ReadFile(filepath.Join(path, ".sdk-fingerprint")); err == nil && len(options.LiveFingerprints) > 0 { //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 		if _, live := options.LiveFingerprints[strings.TrimSpace(string(fingerprint))]; !live {
 			entry.Class = CacheInactiveExpired
 			entry.Reason = "obsolete SDK fingerprint"
@@ -659,7 +659,7 @@ func classifyCacheEntry(path string, options CacheLifecycleOptions) CacheEntry {
 }
 
 func readReadyMetadata(path string) (cellEntryMeta, bool) {
-	data, err := os.ReadFile(filepath.Join(path, cellReadyFile))
+	data, err := os.ReadFile(filepath.Join(path, cellReadyFile)) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return cellEntryMeta{}, false
 	}

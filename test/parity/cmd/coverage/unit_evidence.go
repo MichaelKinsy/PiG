@@ -36,7 +36,7 @@ func loadUnitEvidence(root string, entries []portMapEntry) (map[string][]string,
 	result := map[string][]string{}
 	packages := map[string]map[string]bool{}
 	for _, path := range paths {
-		data, err := os.ReadFile(path)
+		data, err := os.ReadFile(path) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 		if err != nil {
 			return nil, err
 		}

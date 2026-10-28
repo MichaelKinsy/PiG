@@ -105,7 +105,7 @@ func (driver forkDriver) Spawn() (Instance, error) {
 	syscall.CloseOnExec(fds[0])
 	parentEnd, childEnd := os.NewFile(uintptr(fds[0]), "ipc"), os.NewFile(uintptr(fds[1]), "ipc")
 	defer func() { _ = childEnd.Close() }()
-	cmd := exec.Command(node, forkArguments(options)...)
+	cmd := exec.Command(node, forkArguments(options)...) //nolint:gosec // G204: the program and arguments come from the user, the project config, or PiG's own toolchain lookup; the CLI runs as the user with no sandbox and launches them as Pi's child_process.spawn does
 	cmd.Env = forkEnvironment(options, "3")
 	cmd.ExtraFiles = []*os.File{childEnd}
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}

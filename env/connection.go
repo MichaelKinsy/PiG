@@ -553,7 +553,7 @@ func (c *Connection) start() (RemoteInfo, *session, error) {
 	var tokenBytes [16]byte
 	_, _ = rand.Read(tokenBytes[:])
 	token := hex.EncodeToString(tokenBytes[:])
-	cmd := exec.Command(command[0], append(append([]string{}, command[1:]...), "serve", "--token", token)...)
+	cmd := exec.Command(command[0], append(append([]string{}, command[1:]...), "serve", "--token", token)...) //nolint:gosec // G204: the program and arguments come from the user, the project config, or PiG's own toolchain lookup; the CLI runs as the user with no sandbox and launches them as Pi's child_process.spawn does
 	stdin, stdinErr := cmd.StdinPipe()
 	stdout, stdoutErr := cmd.StdoutPipe()
 	stderr, stderrErr := cmd.StderrPipe()

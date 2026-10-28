@@ -153,7 +153,7 @@ func main() {
 }
 
 func verify(path string, generated []byte) error {
-	checkedIn, err := os.ReadFile(path)
+	checkedIn, err := os.ReadFile(path) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return fmt.Errorf("%w; run: make generate (or: make custom-factory-ledger), then commit the result", err)
 	}
@@ -164,7 +164,7 @@ func verify(path string, generated []byte) error {
 }
 
 func generate(path string) ([]byte, error) {
-	data, err := os.ReadFile(path)
+	data, err := os.ReadFile(path) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return nil, err
 	}

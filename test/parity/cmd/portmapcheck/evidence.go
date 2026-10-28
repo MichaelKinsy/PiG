@@ -38,7 +38,7 @@ const evidenceTimeout = "10m0s"
 
 // cachedEntry returns the green record cached under digest, if any.
 func cachedEntry(root, digest string) (coverageEntry, bool) {
-	b, err := os.ReadFile(filepath.Join(root, "build", "portmap-coverage", digest+".json"))
+	b, err := os.ReadFile(filepath.Join(root, "build", "portmap-coverage", digest+".json")) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		return coverageEntry{}, false
 	}
@@ -327,7 +327,7 @@ func buildTestBinary(root string, job *dirJob, bin string) bool {
 	}
 	sort.Strings(pkgs)
 	evidenceBuilds.Add(1)
-	cmd := exec.Command("go", "test", "-c", "-coverpkg="+strings.Join(pkgs, ","), "-o", bin, "./"+job.dir)
+	cmd := exec.Command("go", "test", "-c", "-coverpkg="+strings.Join(pkgs, ","), "-o", bin, "./"+job.dir) //nolint:gosec // G204: the program and arguments come from the user, the project config, or PiG's own toolchain lookup; the CLI runs as the user with no sandbox and launches them as Pi's child_process.spawn does
 	cmd.Dir = root
 	out, err := cmd.CombinedOutput()
 	if err != nil {
@@ -357,7 +357,7 @@ func runGroup(root, bin, scratchRoot string, g *group) {
 		g.failed = true
 		return
 	}
-	cmd := exec.Command(bin, "-test.count=1", "-test.timeout="+evidenceTimeout, "-test.paniconexit0", "-test.gocoverdir="+coverDir,
+	cmd := exec.Command(bin, "-test.count=1", "-test.timeout="+evidenceTimeout, "-test.paniconexit0", "-test.gocoverdir="+coverDir, //nolint:gosec // G204: the program and arguments come from the user, the project config, or PiG's own toolchain lookup; the CLI runs as the user with no sandbox and launches them as Pi's child_process.spawn does
 		"-test.run=^("+strings.Join(g.names, "|")+")$", "-test.coverprofile="+profile)
 	cmd.Dir = filepath.Join(root, g.dir)
 	// go test also points PWD at the package directory the binary runs in.
@@ -367,7 +367,7 @@ func runGroup(root, bin, scratchRoot string, g *group) {
 		g.failed = true
 		return
 	}
-	prof, err := os.ReadFile(profile)
+	prof, err := os.ReadFile(profile) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	if err != nil {
 		g.failed = true
 		return

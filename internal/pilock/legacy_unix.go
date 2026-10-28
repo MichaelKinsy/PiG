@@ -15,7 +15,7 @@ func observeLegacy(_ string, info fs.FileInfo) (fs.FileInfo, error) {
 }
 
 func openLegacy(path string) (*os.File, error) {
-	return os.OpenFile(path, os.O_RDWR|syscall.O_NOFOLLOW|syscall.O_NONBLOCK, 0)
+	return os.OpenFile(path, os.O_RDWR|syscall.O_NOFOLLOW|syscall.O_NONBLOCK, 0) //nolint:gosec // G304: the path names an output or state file that the user or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so writing it grants nothing the user lacks
 }
 
 func lockLegacy(file *os.File) error {

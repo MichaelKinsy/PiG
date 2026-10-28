@@ -160,7 +160,7 @@ func vertexAccessToken(ctx context.Context, env ProviderEnv) (string, error) {
 	var credentials *google.Credentials
 	var err error
 	if filename := getProviderEnvValue("GOOGLE_APPLICATION_CREDENTIALS", env); filename != "" {
-		data, readErr := os.ReadFile(filename)
+		data, readErr := os.ReadFile(filename) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 		if readErr != nil {
 			return "", fmt.Errorf("Vertex ADC: %w", readErr)
 		}

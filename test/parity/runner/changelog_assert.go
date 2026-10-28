@@ -30,7 +30,7 @@ func readChangelogSource(bin BinaryRef, env []string) (string, error) {
 			return "", err
 		}
 	}
-	data, err := os.ReadFile(filepath.Join(root, "CHANGELOG.md"))
+	data, err := os.ReadFile(filepath.Join(root, "CHANGELOG.md")) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 	return string(data), err
 }
 

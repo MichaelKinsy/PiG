@@ -121,7 +121,7 @@ func loadDurableBar(root string) DurableBar {
 		name := strings.TrimSuffix(filepath.Base(f), ".jsonl")
 		arm := DurableArm{Name: name, File: filepath.ToSlash(mustRel(root, f)), Pi: name == piArm, Headline: name == headlineArm, Cells: map[int]ArmCell{}}
 		by := map[int][]durableSample{}
-		fh, err := os.Open(f)
+		fh, err := os.Open(f) //nolint:gosec // G304: the path names a file that the user, the project config, or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so reading it grants nothing the user lacks
 		if err != nil {
 			continue
 		}

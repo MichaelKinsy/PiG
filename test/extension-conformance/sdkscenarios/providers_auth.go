@@ -140,7 +140,7 @@ func providersAuth() []Scenario {
 				{Op: "settle"},
 				{Op: "models", Provider: "conf-plain"},
 				{Op: "check", Provider: "conf-plain"},
-				{Op: "setcredential", Provider: "conf-plain", Credential: `{"type":"api_key","key":"sk-stored"}`},
+				{Op: "setcredential", Provider: "conf-plain", Credential: `{"type":"api_key","key":"sk-stored"}`}, //nolint:gosec // G101: the value is a name, URL, or identifier of a public protocol, not a credential value
 				{Op: "resolve", Provider: "conf-plain"},
 			},
 			Want: []string{
