@@ -105,6 +105,27 @@ func TestRecoverRunningTool(t *testing.T) {
 	}
 }
 
+// TestRecoverPartialNeverStoredLeavesNoAbortedEntry: a stream that crashed before its first store leaves no aborted entry, and the
+// request is sent again (harness-deferred-progress.test.ts "leaves no aborted entry for a stream that crashed before its first store").
+func TestRecoverPartialNeverStoredLeavesNoAbortedEntry(t *testing.T) {
+	r := newRig(t)
+	conv, _ := r.start("hi")
+	r.resume()
+	r.requests[0].onPartial(mustRaw(t, `{"role":"assistant","content":[{"type":"text","text":"half an ans"}],"stopReason":"stop"}`))
+	r.run()
+	r.advance(100)
+	if live := r.doc(turn.LiveDef, conv); !strings.Contains(live, "half an ans") {
+		t.Fatalf("memory lacks the partial: %s", live)
+	}
+	r.restart()
+	if got := lastEntryOf(r, "pi.assistant"); got != "" {
+		t.Fatalf("a partial that was never stored became an entry: %s", got)
+	}
+	if len(r.requests) != 1 {
+		t.Fatalf("requests = %d", len(r.requests))
+	}
+}
+
 func lastEntryOf(r *rig, kind string) string {
 	var out string
 	for _, e := range r.entries(1) {
@@ -127,6 +148,8 @@ func TestRecoverPartialBecomesAnAbortedEntry(t *testing.T) {
 	if live := r.doc(turn.LiveDef, conv); !strings.Contains(live, "half an ans") {
 		t.Fatalf("partial not committed: %s", live)
 	}
+	// Held in memory until persistWithinMs: a crash before then loses it (spec section 8.2).
+	r.advance(1000)
 	r.restart()
 	got := lastEntryOf(r, "pi.assistant")
 	if !strings.Contains(got, "half an ans") || !strings.Contains(got, `"stopReason":"aborted"`) {

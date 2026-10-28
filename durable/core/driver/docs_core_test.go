@@ -45,6 +45,12 @@ func openCoreDBWith(t *testing.T, phases func(context.Context, driver.PhaseEffec
 // applied the commit, so blocking in it holds the Session line the way a slow Storage commit does.
 func openCoreRig(t *testing.T, phases func(context.Context, driver.PhaseEffect) error, onCommitted func(abi.Commit, []string)) *coreRig {
 	t.Helper()
+	return openCoreRigMode(t, "", phases, onCommitted)
+}
+
+// openCoreRigMode is openCoreRig with the core's mode: "session" opens the tables-and-documents Session with no Loop.
+func openCoreRigMode(t *testing.T, mode string, phases func(context.Context, driver.PhaseEffect) error, onCommitted func(abi.Commit, []string)) *coreRig {
+	t.Helper()
 	db, err := sqlhost.OpenDB(t.Context(), filepath.Join(t.TempDir(), "store.db"))
 	if err != nil {
 		t.Fatal(err)
@@ -57,7 +63,7 @@ func openCoreRig(t *testing.T, phases func(context.Context, driver.PhaseEffect) 
 		}
 	}
 	s, err := driver.OpenSession(t.Context(), driver.SessionConfig{
-		Core: core.NewSession(uuid), SQL: core.SQLTable(), DB: db, Phases: phases, OnCommitted: onCommitted,
+		Core: core.NewSession(uuid), SQL: core.SQLTable(), DB: db, Mode: mode, Phases: phases, OnCommitted: onCommitted,
 		Harness: harness.HarnessOptions{Models: ai.CreateModels(), Registry: registry},
 	})
 	if err != nil {

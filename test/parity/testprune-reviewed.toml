@@ -440,3 +440,24 @@ commit = "2eec1d23fb5778618c8cdd80dcce6905738c645c"
 class = "NOBEHAVIOR"
 cite = ""
 reason = "The multi-language extension SDK bridges are PiG-only (docs/additive-features.md D19), so no Pi line governs them. The commit adds the Lisp SDK as a fourth strippable SDK language: the strip test gains its Lisp row, and the count of SDKs left unstripped after stripping one language is three where it was two. The expectation follows the number of SDK languages the build carries."
+
+[[entry]]
+path = "durable/core/sweep_test.go"
+commit = "1fa0792e5db2dae1fd5dc5b523188e35d98c96b9"
+class = "CITE"
+cite = "packages/durable/src/session/session.ts:736"
+reason = "Pi 6c2fd73b0 adds `held`, the number of documents with held changes, to documentCacheSizes (session.ts:722-737), so the core's doc-cache notice carries `\"held\":0` after `sweeps`, and a sweep job is the async function `#enqueue` runs and whose rejection is caught (session.ts:777-781), so the core's EnqueueSweep job returns an error."
+
+[[entry]]
+path = "durable/core/turn/generation_test.go"
+commit = "1fa0792e5db2dae1fd5dc5b523188e35d98c96b9"
+class = "CITE"
+cite = "packages/durable/src/harness/live.ts:143"
+reason = "Pi 6c2fd73b0 commits a streamed partial with PROGRESS_COMMIT, a deferred commit (live.ts:138-143, generation.ts:484): memory has each partial at once and Storage the folded ops of them all within persistWithinMs. The partial test expects no stored commit when the second partial arrives, memory holding it, and one stored commit at the deadline whose last op appends the new text."
+
+[[entry]]
+path = "durable/core/turn/tool_round_controls_pi_test.go"
+commit = "d94328677410f7437d3bc0371fcf84e0b9b323d0"
+class = "CITE"
+cite = "packages/durable/src/harness/generation.ts:729"
+reason = "Pi 38ff99177 makes finishToolRound append the last handoff's reset (generation.ts:728-739) and end the run only when the round also terminates (generation.ts:741-744); otherwise the run continues at the postTools boundary in the reset's context. The handoff test expects another model request after a handoff alone and none after a terminating round, with the reset entry carrying the last handoff."

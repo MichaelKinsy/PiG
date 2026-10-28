@@ -20,46 +20,48 @@ const E = {
 	"01-documents": ["session", "documents next to transcript entries"],
 	"02-forks": ["store", "fork a conversation"],
 	"03-owned-conversations": ["session", "a background task that owns a child conversation"],
-	"04-chord-state": ["session", "a document exposed through Chord"],
-	"05-watches": ["session", "serialize asynchronous document work with a watch"],
-	"06-harness": ["loop", "open a Harness with a registry of extensions"],
-	"07-configuration": ["loop", "per-conversation agent choices and Harness settings"],
-	"08-harness-conversations": ["session", "conversation handles, typed entries, created conversations, forks"],
-	"09-context": ["store", "transcript history and model context"],
-	"10-registry-reload": ["loop", "reload extension code through the registry"],
-	"11-extension-state": ["loop", "an extension's per-conversation document"],
-	"12-tasks": ["session", "run a durable task"],
-	"13-recovery": ["session", "close, reopen, continue where a task stopped"],
-	"14-chat": ["loop", "a chat turn"],
-	"15-system-prompt": ["loop", "system prompt sections and instructions"],
-	"16-real-model": ["loop", "a real model (OpenAI); no key, no cassette: skipped"],
-	"17-coding-tools": ["loop", "a coding-agent tool turn"],
-	"18-print": ["loop", "print mode, faux path"],
-	"19-json": ["loop", "JSON mode, faux path"],
-	"20-inbox": ["session", "the inbox while a conversation is busy"],
-	"21-late-join": ["session", "a client attaches mid-run"],
-	"22-subagent-foreground": ["session", "a foreground subagent tool"],
-	"23-subagent-background": ["session", "persistent background subagents"],
-	"24-child-tasks": ["session", "a task that owns child tasks"],
-	"25-compaction": ["store", "compaction of a long chat"],
-	"26-coding-agent": ["loop", "a small coding agent"],
-	"27-plan-mode": ["loop", "plan mode"],
-	"28-reviewer": ["loop", "a reviewer agent"],
-	"29-sandbox-per-conversation": ["loop", "one sandbox per conversation"],
-	"30-tool-override": ["loop", "replace and decorate a tool"],
-	"31-reload-and-restart": ["session", "reload an extension while a call runs, then restart"],
+	"04-watches": ["session", "serialize asynchronous document work with a watch"],
+	"05-harness": ["loop", "open a Harness with a registry of extensions"],
+	"06-configuration": ["loop", "per-conversation agent choices and Harness settings"],
+	"07-harness-conversations": ["session", "conversation handles, typed entries, created conversations, forks"],
+	"08-context": ["store", "transcript history and model context"],
+	"09-registry-reload": ["loop", "reload extension code through the registry"],
+	"10-extension-state": ["loop", "an extension's per-conversation document"],
+	"11-tasks": ["session", "run a durable task"],
+	"12-recovery": ["session", "close, reopen, continue where a task stopped"],
+	"13-chat": ["loop", "a chat turn"],
+	"14-system-prompt": ["loop", "system prompt sections and instructions"],
+	"15-real-model": ["loop", "a real model (OpenAI); no key, no cassette: skipped"],
+	"16-coding-tools": ["loop", "a coding-agent tool turn"],
+	"17-print": ["loop", "print mode, faux path"],
+	"18-json": ["loop", "JSON mode, faux path"],
+	"19-inbox": ["session", "the inbox while a conversation is busy"],
+	"20-late-join": ["session", "a client attaches mid-run"],
+	"21-subagent-foreground": ["session", "a foreground subagent tool"],
+	"22-subagent-background": ["session", "persistent background subagents"],
+	"23-child-tasks": ["session", "a task that owns child tasks"],
+	"24-compaction": ["store", "compaction of a long chat"],
+	"25-coding-agent": ["loop", "a small coding agent"],
+	"26-plan-mode": ["loop", "plan mode"],
+	"27-reviewer": ["loop", "a reviewer agent"],
+	"28-sandbox-per-conversation": ["loop", "one sandbox per conversation"],
+	"29-tool-override": ["loop", "replace and decorate a tool"],
+	"30-reload-and-restart": ["session", "reload an extension while a call runs, then restart"],
 }
 const U = {
+	"codemode-checkpoints": "loop", "harness-blocked": "session", "harness-deferred-progress": "session", "harness-failed-run-inbox": "session", "harness-host-inputs": "session",
+	"harness-json": "loop", "harness-observers": "session", "harness-partial-changes": "session", "harness-read-only": "session", "harness-reports": "session", "harness-sleep": "session",
+	"harness-telemetry": "session", "harness-telemetry-options": "host", "indexeddb-storage": "host", "session-adoption": "session", "session-deferred-commits": "session", "session-observers": "session",
 	"codemode-describe": "loop", "codemode-models": "loop", "codemode": "loop", "tool-search": "loop", "env-line-scan": "host", "env-node-conformance": "host", "env-node-spill": "host", "env-node": "host", "env-truncate": "host",
 	"images-wasm-module": "host", "tools-images": "loop", "harness-callers": "loop", "harness-cancellation-barrier": "session", "harness-scheduler-indexes": "session", "harness-scheduler-retention": "session", "harness-nested-tools-restart": "loop", "harness-nested-tools": "loop",
 	"harness-storage-failure": "session", "harness-structured-output": "loop",
 	"harness-compaction": "store", "harness-context": "store", "harness-conversations": "session", "harness-events": "session", "harness-generation-recovery": "loop",
 	"harness-generation": "loop", "harness-inbox": "session", "harness-input-entries": "session", "session-document-retention": "session", "harness-inspect": "session", "harness-lifecycle": "session", "harness-live-deltas": "loop",
-	"harness-output-skip": "loop", "harness-output": "loop", "harness-ownership": "session", "harness-prompt": "loop", "harness-registry": "loop",
+	"harness-ownership": "session", "harness-prompt": "loop", "harness-registry": "loop",
 	"harness-structured": "session", "harness-submissions": "session", "harness-task-graph": "session", "harness-tasks-recovery": "session", "harness-tasks": "session",
 	"harness-tools-recovery": "loop", "harness-tools": "loop", "harness-view": "session", "jsonl-storage": "host", "memory-storage": "host",
 	"provider-session-cache-e2e": "loop", "session-checkpoints-migrations": "session", "session-definitions": "session", "session-documents": "session",
-	"session-forks": "store", "session-states": "session", "session-tables": "store", "session-watches": "session", "spec-usage": "store",
+	"session-forks": "store", "session-tables": "store", "session-watches": "session", "spec-usage": "store",
 	"sqlite-cloudflare": "host", "sqlite-facade": "host", "sqlite-migrations": "store", "sqlite-storage": "store", "storage-runtime-boundary": "store",
 	"system-order-cache-e2e": "loop", "tools-read-differential": "loop", "tools": "loop", "types": "store",
 }
@@ -76,12 +78,12 @@ emit(
 	"# status: ready (a runner exists and the reference capture is deterministic), pending (no candidate can run it yet, with the",
 	"# reason and the owner; `--strict` fails on it), skipped (nobody can run it here, with the reason).",
 	"",
-	"[pin]", `reference = ${q("earendil-works/pi")}`, `commit = ${q("06a466935536f8c9bcacb2d5efc0fc021be1bdff")}`, `ticks_commit = ${q("6c384aa30f619d7b28963f2bab24d8dacbe73cb6")}`, `release = ${q("1.0.4")}`,
+	"[pin]", `reference = ${q("earendil-works/pi")}`, `commit = ${q("6c384aa30f619d7b28963f2bab24d8dacbe73cb6")}`, `release = ${q("1.0.4")}`,
 )
 for (const f of readdirSync(join(pi, "packages/durable/test/examples")).filter(f => /^\d\d-.*\.ts$/.test(f)).sort()) {
 	const name = f.replace(/\.ts$/, "")
 	const [owner, about] = E[name]
-	const skip = name === "16-real-model"
+	const skip = name === "15-real-model"
 	emit("[[scenario]]", `id = ${q("E" + name.slice(0, 2))}`, `family = "example"`, `runner = "example"`, `source = ${q("packages/durable/test/examples/" + f)}`,
 		`sha256 = ${q(sha("packages/durable/test/examples/" + f))}`, `owner = ${q("dcore-" + owner)}`, `about = ${q(about)}`,
 		`levels = ["store", "commit", "context", "output", "order"]`, `normalisers = []`, ...(skip ? [`status = "pending"`, `reason = "pending-owner: needs the owner's OPENAI_API_KEY or a cassette recorded with it (CONTRACT section 6)"`] : [`status = "ready"`]))
@@ -97,6 +99,7 @@ for (const f of readdirSync(join(pi, "packages/durable/test/examples")).filter(f
 const REFERENCE_STORAGE = "the upstream storage conformance suite this file registers runs against the core as row SC (CONTRACT 3.10); the rest tests this Storage class's own internals, which no candidate can run without handing the reference's own class back"
 const NOT_THE_CORE = {
 	"memory-storage": REFERENCE_STORAGE, "jsonl-storage": REFERENCE_STORAGE, "sqlite-facade": REFERENCE_STORAGE, "sqlite-storage": REFERENCE_STORAGE, "sqlite-migrations": REFERENCE_STORAGE,
+	"indexeddb-storage": REFERENCE_STORAGE,
 }
 // A row's real-time tests, with the measurement that shows the window binds the reference as well (gate.mjs reads real_time_tests).
 // Read-only: assigned once at initialization.
@@ -113,7 +116,7 @@ for (const f of readdirSync(join(pi, "packages/durable/test")).filter(f => f.end
 		`owner = ${q("dcore-" + U[name])}`, `levels = ["tests"]`, ...(NOT_THE_CORE[name] ? [`status = "skipped"`, `reason = ${q(NOT_THE_CORE[name])}`] : [`status = "ready"`]), ...(REAL_TIME[name] ?? []))
 }
 emit("[[scenario]]", `id = "SC"`, `family = "storage-conformance"`, `runner = "storage-conformance"`, `source = "packages/durable/src/testing/storage-conformance.ts"`, `sha256 = ${q(sha("packages/durable/src/testing/storage-conformance.ts"))}`,
-	`owner = "dcore-store"`, `about = "the core's write encoder wrapped as a Storage passes the upstream storage conformance suite (CONTRACT 3.10): the suite registered by memory-storage, jsonl-storage, sqlite-storage, sqlite-cloudflare and sqlite-facade"`, `levels = ["tests"]`, `status = "ready"`)
+	`owner = "dcore-store"`, `about = "the core's write encoder wrapped as a Storage passes the upstream storage conformance suite (CONTRACT 3.10): the suite registered by memory-storage, jsonl-storage, sqlite-storage, sqlite-cloudflare, sqlite-facade and indexeddb-storage"`, `levels = ["tests"]`, `status = "ready"`)
 emit("[[scenario]]", `id = "I"`, `family = "interop"`, `runner = "interop"`, `source = "durable/interop/scenario.mjs"`, `owner = "dcore-host"`,
 	`about = "documents, a task-starting tool, a fork with init, compaction and a reset, then the Go port reads the store"`, `levels = ["store", "commit", "output", "order"]`, `status = "ready"`)
 // F: differential ordering. Each seed draws a random schedule of parallel tools, hooks, observers and inbox arrivals
@@ -130,18 +133,15 @@ for (const profile of ["gate", "node"]) for (const seed of [...Array.from({ leng
 	emit("[[scenario]]", `id = ${q(`F-${profile}-${seed}`)}`, `family = "differential"`, `runner = "diff"`, `source = "durable/contract/scenarios/diff-ordering.mjs"`, `seed = ${seed}`, `profile = ${q(profile)}`, `owner = "dcore-loop"`,
 		`about = ${q(`seed ${seed}: random parallel tools, hooks, observers and inbox arrivals on the ${profile} storage profile`)}`, `levels = ["store", "commit", "context", "output", "order"]`, `status = "ready"`)
 }
-// The tick rows (F-ticks*, F-split*) run against the `ticks` reference of PIN (Pi 6c384aa3, the commit PiG pins: a Session wraps its calls in
-// telemetry spans there, which moved the hops of submit and of every scheduler phase), the other rows against `main`. The rows move to
-// one reference when the core follows the commits of Pi between the two (sleeping tasks, deferred partial commits, observers, reports).
 // F-ticks: the tick cost of each public client call (scenarios/client-ticks.mjs), compared as printed counts (output level).
 for (const profile of ["gate", "node"]) {
-	emit("[[scenario]]", `id = ${q(`F-ticks-${profile}`)}`, `family = "differential"`, `runner = "diff"`, `reference = "ticks"`, `source = "durable/contract/scenarios/client-ticks.mjs"`, `seed = 0`, `profile = ${q(profile)}`, `owner = "dcore-host"`,
+	emit("[[scenario]]", `id = ${q(`F-ticks-${profile}`)}`, `family = "differential"`, `runner = "diff"`, `source = "durable/contract/scenarios/client-ticks.mjs"`, `seed = 0`, `profile = ${q(profile)}`, `owner = "dcore-host"`,
 		`about = ${q(`microtask passes each client call spends (submit, wait, entries, inspect, abort) on the ${profile} storage profile`)}`, `levels = ["store", "commit", "context", "output", "order"]`, `status = "ready"`)
 }
 // F-ticks-tools: the pass at which each of three parallel tool calls runs its beforeTool hook, `execute`, return and afterTool hook
 // (scenarios/tool-start-ticks.mjs): the gap between two calls' hooks decides whose hook wait starts first (F-gate seeds 26, 61, 67, 77).
 for (const profile of ["gate", "node"]) {
-	emit("[[scenario]]", `id = ${q(`F-ticks-tools-${profile}`)}`, `family = "differential"`, `runner = "diff"`, `reference = "ticks"`, `source = "durable/contract/scenarios/tool-start-ticks.mjs"`, `seed = 0`, `profile = ${q(profile)}`, `owner = "dcore-host"`,
+	emit("[[scenario]]", `id = ${q(`F-ticks-tools-${profile}`)}`, `family = "differential"`, `runner = "diff"`, `source = "durable/contract/scenarios/tool-start-ticks.mjs"`, `seed = 0`, `profile = ${q(profile)}`, `owner = "dcore-host"`,
 		`about = ${q(`microtask passes between the beforeTool hook, execute, return and afterTool hook of three parallel tool calls on the ${profile} storage profile`)}`, `levels = ["store", "commit", "context", "output", "order"]`, `status = "ready"`)
 }
 // F-split: the passes between observable points inside one call (scenarios/split-ticks.mjs; the seed picks the part), so two tick
@@ -149,7 +149,7 @@ for (const profile of ["gate", "node"]) {
 // client (the publication before `submit` resolves, `wait` after the turn's last event) and context (a custom task's runtime.context
 // on a scanned, kept, cut and extended range).
 for (const [seed, part, about] of [[1, "generation", "a turn's model call and last events, counted from the submission's publication"], [2, "client", "the submission's publication before submit resolves and wait after the turn's last event"], [3, "context", "a custom task's runtime.context on a scanned, kept, cut and extended range"]]) for (const profile of ["gate", "node"]) {
-	emit("[[scenario]]", `id = ${q(`F-split-${part}-${profile}`)}`, `family = "differential"`, `runner = "diff"`, `reference = "ticks"`, `source = "durable/contract/scenarios/split-ticks.mjs"`, `seed = ${seed}`, `profile = ${q(profile)}`, `owner = "dcore-host"`,
+	emit("[[scenario]]", `id = ${q(`F-split-${part}-${profile}`)}`, `family = "differential"`, `runner = "diff"`, `source = "durable/contract/scenarios/split-ticks.mjs"`, `seed = ${seed}`, `profile = ${q(profile)}`, `owner = "dcore-host"`,
 		`about = ${q(`microtask passes between points of one call: ${about}, on the ${profile} storage profile`)}`, `levels = ["store", "commit", "context", "output", "order"]`, `status = "ready"`)
 }
 // F-ticks-runtime: the tick cost of the calls F-ticks leaves out (scenarios/runtime-ticks.mjs; the seed picks the part): runtime.context
@@ -157,19 +157,19 @@ for (const [seed, part, about] of [[1, "generation", "a turn's model call and la
 // Pi today (seed 1, F-ticks-runtime-drift): waitForTask on a settled and a live custom task, runtime.getTask,
 // and status behind a running turn.
 for (const [seed, suffix, about] of [[0, "", "runtime.context in a custom task (scan, kept, extend, cut), client reads behind a running turn and a wait under an abortable context"], [1, "-drift", "waitForTask on a settled and on a live custom task, runtime.getTask in a custom task and a single-row client read behind a running turn"]]) for (const profile of ["gate", "node"]) {
-	emit("[[scenario]]", `id = ${q(`F-ticks-runtime${suffix}-${profile}`)}`, `family = "differential"`, `runner = "diff"`, `reference = "ticks"`, `source = "durable/contract/scenarios/runtime-ticks.mjs"`, `seed = ${seed}`, `profile = ${q(profile)}`, `owner = "dcore-host"`,
+	emit("[[scenario]]", `id = ${q(`F-ticks-runtime${suffix}-${profile}`)}`, `family = "differential"`, `runner = "diff"`, `source = "durable/contract/scenarios/runtime-ticks.mjs"`, `seed = ${seed}`, `profile = ${q(profile)}`, `owner = "dcore-host"`,
 		`about = ${q(`microtask passes of ${about} on the ${profile} storage profile`)}`, `levels = ["store", "commit", "context", "output", "order"]`, `status = "ready"`)
 }
 // F-ticks-watch: the microtask passes `watchEvents` and `Conversation.watch` take to settle on an idle conversation (scenarios/watch-ticks.mjs):
 // an observer that attaches in fewer passes than Pi lands before a submit's commit Pi orders first (F-gate seed 175).
 for (const profile of ["gate", "node"]) {
-	emit("[[scenario]]", `id = ${q(`F-ticks-watch-${profile}`)}`, `family = "differential"`, `runner = "diff"`, `reference = "ticks"`, `source = "durable/contract/scenarios/watch-ticks.mjs"`, `seed = 0`, `profile = ${q(profile)}`, `owner = "dcore-host"`,
+	emit("[[scenario]]", `id = ${q(`F-ticks-watch-${profile}`)}`, `family = "differential"`, `runner = "diff"`, `source = "durable/contract/scenarios/watch-ticks.mjs"`, `seed = 0`, `profile = ${q(profile)}`, `owner = "dcore-host"`,
 		`about = ${q(`microtask passes of watchEvents and viewState on an idle conversation on the ${profile} storage profile`)}`, `levels = ["store", "commit", "context", "output", "order"]`, `status = "ready"`)
 }
 // F-ticks-output: a tool's streamed chunk and its return (scenarios/output-ticks.mjs): passes from api.output() to the tool_execution_update event, and from the
 // tool's return to the tool_execution_end event on an attached event stream. F-gate-11 (commits 87/88) orders a sibling's completion ahead of a chunk when the return costs fewer passes than Pi's.
 for (const profile of ["gate", "node"]) {
-	emit("[[scenario]]", `id = ${q(`F-ticks-output-${profile}`)}`, `family = "differential"`, `runner = "diff"`, `reference = "ticks"`, `source = "durable/contract/scenarios/output-ticks.mjs"`, `seed = 0`, `profile = ${q(profile)}`, `owner = "dcore-host"`,
+	emit("[[scenario]]", `id = ${q(`F-ticks-output-${profile}`)}`, `family = "differential"`, `runner = "diff"`, `source = "durable/contract/scenarios/output-ticks.mjs"`, `seed = 0`, `profile = ${q(profile)}`, `owner = "dcore-host"`,
 		`about = ${q(`microtask passes from a tool's api.output() to its update event and from its return to its end event, on the ${profile} storage profile`)}`, `levels = ["store", "commit", "context", "output", "order"]`, `status = "ready"`)
 }
 // F-fail: a Storage `commit` that throws fails the Session (Pi 42a SessionEnd; scenarios/storage-failure.mjs): the commit number k throws once,

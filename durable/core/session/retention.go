@@ -83,6 +83,11 @@ func (s *Session) unlinkIdle(id string) {
 
 // dropDocument takes a document out of the cache and the idle order.
 func (s *Session) dropDocument(id string) {
+	if s.TrackDropped {
+		if cached := s.docs[id]; cached != nil {
+			s.dropped = append(s.dropped, DroppedDoc{ID: mustInt(cached.record, "id"), Address: cached.addressID})
+		}
+	}
 	delete(s.docs, id)
 	s.unlinkIdle(id)
 }
@@ -114,13 +119,14 @@ func (s *Session) scheduleDocumentSweep() {
 		if s.EnqueueSweep == nil {
 			return
 		}
-		s.EnqueueSweep(func() {
+		s.EnqueueSweep(func() error {
 			if s.sweepToken == token {
 				s.sweepPending, s.sweepCancel = false, nil
 			}
 			if !s.closed {
 				s.sweepDocuments()
 			}
+			return nil
 		})
 	}
 	delay := at - s.now()
@@ -175,7 +181,11 @@ func (s *Session) PinDocument(def *DocDef, args DocArgs) (release func()) {
 	if cached == nil {
 		return nil
 	}
-	recordID := mustInt(cached.record, "id")
+	return s.pinDocument(id, mustInt(cached.record, "id"))
+}
+
+// pinDocument is session.ts #pinDocument: pin the cached incarnation recordID of the document at address id.
+func (s *Session) pinDocument(id string, recordID ID) (release func()) {
 	if s.attached == nil {
 		s.attached = map[ID]int{}
 	}
@@ -199,3 +209,17 @@ func (s *Session) PinDocument(def *DocDef, args DocArgs) (release func()) {
 
 // DocumentsAttached is the number of incarnations an observer pins (session.ts documentCacheSizes.attached).
 func (s *Session) DocumentsAttached() int { return len(s.attached) }
+
+// DroppedDoc is an incarnation that left the cache: its record and the address it is cached under.
+type DroppedDoc struct {
+	ID      ID
+	Address string
+}
+
+// TakeDropped is the record IDs of the incarnations that left the cache since the last call, while TrackDropped is set: the host's
+// copy of a document's value is only as long-lived as the core's cached document (session.ts keeps none of an evicted one).
+func (s *Session) TakeDropped() []DroppedDoc {
+	dropped := s.dropped
+	s.dropped = nil
+	return dropped
+}

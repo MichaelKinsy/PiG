@@ -216,10 +216,11 @@ The host keeps a snapshot until the core says it holds no work for it. The core 
 | 4 | `report` | JSON for `HarnessOptions.onReport` |
 | 5 | `sidecar` | JSON `{conversationId, rows}`: the core wrote a sidecar chunk in this step's commits (diagnostics only) |
 | 6 | `progress_ack` | `u32 waitId`, `u8 outcome` (0 committed, 1 rejected), JSON error when rejected: settles the promise of a tool's `api.details()` |
-| 7 | `doc_cache` | JSON `{cached, idle, attached, sweeps}`: the core's document cache sizes, published after a step in which they changed; the host's synchronous `documentCacheSizes` replicates them (`attached` counts the incarnations a document watch pins) |
+| 7 | `doc_cache` | JSON `{cached, idle, attached, sweeps, held}`: the core's document cache sizes, published after a step in which they changed; the host's synchronous `documentCacheSizes` replicates them (`attached` counts the incarnations a document watch or a held document pins; `held` the incarnations with changes a deferred commit holds in memory, section 8.2) |
 | 8 | `index_sizes` | JSON `{live, settled, edges, below, roots, unloaded, dropQueue}`: a `harness`-mode core's scheduler ownership index sizes, published after a step in which they changed; the host's synchronous `SCHEDULER_INDEX_SIZES` getter replicates them |
 | 9 | `wake` | JSON `{active, at?}`: the `Harness.wake()` value of a `harness`-mode core whose `open` payload sets `onWake`, published after each recomputation (`HarnessOptions.onWake`); the host delivers a changed value to its callback, and again after a throw, so it keeps the last value it delivered. With `onWake` the core arms no timer for sleeping tasks: the host arms its own alarm from `at` |
 | 10 | `origin_free` | `u32 n`, then `n` × `u32 origin` | the origins the core holds no work for any more (section 5.4): the host drops their async contexts. The host consumes it; it reaches no listener |
+| 11 | `telemetry` | JSON op: `entry`, `submission`, `checkpoint`, `replay`, `tool`, `end` or `active` (core/telemetry.go lists the fields): what the host records of Pi's telemetry (`DURABLE_TELEMETRY_SCHEMA`, src/harness/telemetry.ts). Spans are the host's: a call's Context span goes to the core as `span` (with its carrier `trace`) on `submit` and tx `begin`, a phase's span is the answer of the `phaseSpan` hook, and a `report` or `published` notice and a host effect name the span they belong to as `span` |
 
 Sidecar writes, including the `CREATE TABLE IF NOT EXISTS` on first use, are ordinary commits on `pig_*` statements outside Pi's `next_seq` sequence; their `seq` is `-1` (ADR D6).
 
@@ -227,7 +228,7 @@ Sidecar writes, including the `CREATE TABLE IF NOT EXISTS` on first use, are ord
 
 `runtime.commit(tx => ...)`, `session.commit(...)` and other host-side commits use one protocol:
 
-1. `tx {op: "begin", invocation?, conversationId?}` → `tx_result ready` with a `txId`, or `waiting` when the Session line is held; the host awaits the `ready` notice that a later step delivers.
+1. `tx {op: "begin", invocation?, conversationId?, persistence?}` → `tx_result ready` with a `txId`, or `waiting` when the Session line is held; the host awaits the `ready` notice that a later step delivers.
 2. `tx {op: ..., ...}` for each `Tx` operation (`conversation`, `doc`, `appendEntry`, `createTask`, `placeSubmission`, `settleSubmission`, `entry`, ...). Document mutations travel as Chord `Op[]` produced by the host's draft proxy. The core enforces `ReadAfterWrite` and every other §4 rule and answers each op with `tx_result`.
 3. `tx {op: "end", state?}` with the callback's returned next task state, or `{op: "abort", error}` → a step carrying the commit, or `rejected`.
 
@@ -274,7 +275,7 @@ An `api` event is `u32 requestId` then JSON `{op, ...args}`. The answer is an `a
 | `context` | conversationId, at | the ContextView `{head?, entries, contributions, messages}`, or `{"$context":{conversationId, head, tail}}` for a conversation with a visible entry: the core does not build a long context, it names it (the same bounds a `model_context` range names, §10.2) and the host that serves the read derives the ContextView from storage with pi-durable's range algorithm and resolves the request with it. A conversation without a visible entry answers the empty view | at once |
 | `conversation` | conversationId | the conversation handle data or null | at once |
 | `agent` | conversationId | the resolved agent | at once |
-| `sleepUntil` | taskId, until, checkpoint | null | once the sleep is committed (the task's sleeping state, `checkpoint` its next state); the task then holds no invocation |
+| `sleepUntil` | taskId, until (a number; NaN and the infinities as the strings `"NaN"`, `"Infinity"`, `"-Infinity"`, which the scheduler rejects), checkpoint | null | once the sleep is committed (the task's sleeping state, `checkpoint` its next state); the task then holds no invocation |
 | `wake` | none | `{active, at?}`, the Harness's wake | at once; a `harness`-mode core only |
 | `usage` | none | the UsageState of the Session | at once |
 | `taskGraph` | none | the TaskGraph | at once |

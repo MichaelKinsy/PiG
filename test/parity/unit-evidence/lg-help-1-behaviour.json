@@ -2430,7 +2430,7 @@
       "TestGenerationWithoutAUsableModelFailsTheRunWithNoModel",
       "TestToolRoundEndsTheRunOnlyWhenEveryCallAsksToTerminate",
       "TestToolRoundAddsTheToolsItsControlsAsk",
-      "TestToolRoundHandoffAppendsAResetAndEndsTheRun",
+      "TestToolRoundHandoffAppendsAResetAndContinuesTheRunUnlessItTerminates",
       "TestSequentialToolRoundLinksEachLaterCallToItsSlotBeforeDecidingToTerminate"
     ],
     "upstream": "packages/durable/src/harness/generation.ts",
