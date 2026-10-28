@@ -342117,6 +342117,17 @@
       "shapeHash": "sha256:859eb12f14eea4f7eadbd01c84167f7e4cd87e13f2fe3399aa3cdbaf8d80e44d"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#TuiAltScreen.EnableFrameAccess",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "TuiAltScreen.EnableFrameAccess",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/tui#TuiAltScreen.Flash",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "TuiAltScreen.Flash",
