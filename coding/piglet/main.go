@@ -1756,7 +1756,11 @@ func buildExtensionWithOwner(initial *Piglet, owner func(extension.ToolInfo) str
 			if source == "" {
 				source = "builtin"
 			}
-			out[i] = ToolInfo{Name: t.Name, Source: source}
+			namespace := ""
+			if t.Namespace != nil {
+				namespace = t.Namespace.Name
+			}
+			out[i] = ToolInfo{Name: t.Name, Source: source, Namespace: namespace}
 		}
 		return out
 	}
