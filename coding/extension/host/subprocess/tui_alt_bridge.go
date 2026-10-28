@@ -97,6 +97,15 @@ type tuiAltRegistry struct {
 	screens map[tuiAltKey]*tuiAltScreenState
 }
 
+// tuiAlt is the bridge's registry of screens, created by its first use.
+func (b *UIBridge) tuiAlt() *tuiAltRegistry {
+	if registry, ok := b.tuiAltState.Load().(*tuiAltRegistry); ok {
+		return registry
+	}
+	b.tuiAltState.CompareAndSwap(nil, &tuiAltRegistry{})
+	return b.tuiAltState.Load().(*tuiAltRegistry)
+}
+
 type tuiAltKey struct {
 	conn *Conn
 	id   string
@@ -378,9 +387,10 @@ func (s *tuiAltScreenState) keyOf(component tui.Component) *string {
 }
 
 func (b *UIBridge) tuiAltScreen(owner *Conn, id string) (*tuiAltScreenState, error) {
-	b.tuiAlt.mu.Lock()
-	defer b.tuiAlt.mu.Unlock()
-	s, ok := b.tuiAlt.screens[tuiAltKey{owner, id}]
+	registry := b.tuiAlt()
+	registry.mu.Lock()
+	defer registry.mu.Unlock()
+	s, ok := registry.screens[tuiAltKey{owner, id}]
 	if !ok {
 		return nil, fmt.Errorf("tui.alt: unknown screen %q", id)
 	}
@@ -390,14 +400,15 @@ func (b *UIBridge) tuiAltScreen(owner *Conn, id string) (*tuiAltScreenState, err
 // disposeTuiAlt forgets the screens of owner (all of them when ownerOnly is false and owner is nil), stopping each.
 func (b *UIBridge) disposeTuiAlt(owner *Conn, all bool) {
 	var screens []*tuiAltScreenState
-	b.tuiAlt.mu.Lock()
-	for key, s := range b.tuiAlt.screens {
+	registry := b.tuiAlt()
+	registry.mu.Lock()
+	for key, s := range registry.screens {
 		if all || key.conn == owner {
 			screens = append(screens, s)
-			delete(b.tuiAlt.screens, key)
+			delete(registry.screens, key)
 		}
 	}
-	b.tuiAlt.mu.Unlock()
+	registry.mu.Unlock()
 	for _, s := range screens {
 		s.mu.Lock()
 		s.disposed = true
@@ -459,9 +470,10 @@ func (b *UIBridge) handleTuiAlt(owner *Conn, parent string, args json.RawMessage
 		return nil, err
 	}
 	if call.Op == "dispose" {
-		b.tuiAlt.mu.Lock()
-		delete(b.tuiAlt.screens, tuiAltKey{owner, call.ID})
-		b.tuiAlt.mu.Unlock()
+		registry := b.tuiAlt()
+		registry.mu.Lock()
+		delete(registry.screens, tuiAltKey{owner, call.ID})
+		registry.mu.Unlock()
 		if !s.serveInFrame(parent, func(frame tui.AltScreenFrame) { frame.CancelPendingRender() }) {
 			s.screen.CancelPendingRender()
 		}
@@ -483,12 +495,13 @@ func (b *UIBridge) tuiAltCreate(owner *Conn, call *tuiAltCall) (*CallResultPaylo
 	if call.ID == "" {
 		return nil, errors.New("tui.alt create needs an id")
 	}
-	b.tuiAlt.mu.Lock()
-	if _, taken := b.tuiAlt.screens[tuiAltKey{owner, call.ID}]; taken {
-		b.tuiAlt.mu.Unlock()
+	registry := b.tuiAlt()
+	registry.mu.Lock()
+	if _, taken := registry.screens[tuiAltKey{owner, call.ID}]; taken {
+		registry.mu.Unlock()
 		return nil, fmt.Errorf("tui.alt: screen %q already exists", call.ID)
 	}
-	b.tuiAlt.mu.Unlock()
+	registry.mu.Unlock()
 	s := &tuiAltScreenState{
 		id: call.ID, conn: owner,
 		components: map[string]*tuiAltComponent{}, byComp: map[tui.Component]string{},
@@ -518,12 +531,12 @@ func (b *UIBridge) tuiAltCreate(owner *Conn, call *tuiAltCall) (*CallResultPaylo
 	s.screen.OnTerminalColorSchemeChange(func(scheme tui.TerminalColorScheme) {
 		_ = s.callback("colorScheme", map[string]any{"scheme": string(scheme)}, nil)
 	})
-	b.tuiAlt.mu.Lock()
-	if b.tuiAlt.screens == nil {
-		b.tuiAlt.screens = map[tuiAltKey]*tuiAltScreenState{}
+	registry.mu.Lock()
+	if registry.screens == nil {
+		registry.screens = map[tuiAltKey]*tuiAltScreenState{}
 	}
-	b.tuiAlt.screens[tuiAltKey{owner, call.ID}] = s
-	b.tuiAlt.mu.Unlock()
+	registry.screens[tuiAltKey{owner, call.ID}] = s
+	registry.mu.Unlock()
 	return tuiAltResult(map[string]any{})
 }
 

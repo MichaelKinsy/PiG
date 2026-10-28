@@ -61,8 +61,10 @@ type UIBridge struct {
 	// "<extName>:<key>" so render/close notifications from the TS
 	// shim runtime can be routed back to the originating overlay.
 	customOverlays map[string]extension.RemoteOverlayHandle
-	// tuiAlt holds the TuiAltScreens extensions constructed (CallTuiAlt).
-	tuiAlt tuiAltRegistry
+	// tuiAltState holds the *tuiAltRegistry of the TuiAltScreens extensions constructed (CallTuiAlt), created by the first call that needs it (tuiAlt). It is
+	// an atomic.Value so that UIBridge, which every program links, does not name the renderer's types: they stay out of a program that never calls
+	// EnableTuiAltScreens.
+	tuiAltState atomic.Value
 
 	// extConns holds the per-extension socket connection so the
 	// bridge can forward overlay input notifications back to the
