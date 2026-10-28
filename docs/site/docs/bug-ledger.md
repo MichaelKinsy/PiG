@@ -155,6 +155,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-2ab79ce](#bf-2ab79ce) | An extension provider whose `streamSimple` hands its request to pi-ai's compat `streamSimple` (or `stream`)… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-2ab79ce-2](#bf-2ab79ce-2) | A provider registered with its own `streamSimple` runs that callback only for its models whose `api` is the… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-2ad7249](#bf-2ad7249) | fix(ledger): close the getJsonSchemaToolParameters and google convertTools rows | PiG's own defect | All platforms | Unreleased |
+| [BF-2bc49c1](#bf-2bc49c1) | Node extensions read live `ctx.isIdle()` state, so background callbacks detect when a run finishes or starts | PiG's own defect | All platforms | Unreleased |
 | [BF-2be0883](#bf-2be0883) | fix(extensions): parallel Node runtime linking reports the walk-order first failure under every schedule | PiG's own defect | All platforms | Unreleased |
 | [BF-2c1959c](#bf-2c1959c) | A Mistral stream is no longer aborted mid-generation by the request timeout: the timeout now covers only the… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-2c5db8b](#bf-2c5db8b) | A Piglet Binary with a fused Go extension starts within a few milliseconds of Stock PiG | PiG's own defect | All platforms | 0.5.0 |
@@ -3134,6 +3135,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `2ad72495fe` (2026-10-10)
 - **Tests:** `ai/google_convert_tools_upstream_test.go::TestGoogleSharedConvertToolsUpstream`
+
+### BF-2bc49c1
+
+**Node extensions read live `ctx.isIdle()` state, so background callbacks detect when a run finishes or starts**
+
+- **Source:** PiG's own defect
+- **Symptom:** Node extensions read live `ctx.isIdle()` state, so background callbacks detect when a run finishes or starts.
+- **Root cause:** Match Pi by reading the live host state from background callbacks. Cover idle and busy transitions in isolated and packed Node runtimes.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `2bc49c1a50` (2026-10-27)
+- **Tests:** `coding/extension/host/subprocess/runtime_node_idle_test.go::TestNodeBackgroundIsIdleReadsTheHostLive`
+- **Release note:** Node extensions read live `ctx.isIdle()` state, so background callbacks detect when a run finishes or starts.
 
 ### BF-2be0883
 
