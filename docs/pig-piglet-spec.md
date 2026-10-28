@@ -143,7 +143,7 @@ External-harness adapters belong to the harness extension and its own namespaced
 
 ## Derivation
 
-`extends` owns source, version constraint, widening intent, and removals. Depth is eight with cycle detection and exact source digests. Every base/child resolves its own paths before merge. Whole fields replace; named collections preserve base order, replace by identity, append new identities, and remove only existing identities. Unsafe widening and dangling Package aliases fail. Release/build/ derivation metadata does not inherit into effective composition.
+`extends` owns source, version constraint, widening intent, and removals. `source` is optional only in an overlay on a Piglet Binary (D202), where it names the Binary. Depth is eight with cycle detection and exact source digests. Every base/child resolves its own paths before merge. Whole fields replace; named collections preserve base order, replace by identity, append new identities, and remove only existing identities. Unsafe widening and dangling Package aliases fail. Release/build/ derivation metadata does not inherit into effective composition.
 
 ## Model and prompt
 
@@ -235,7 +235,7 @@ pig piglet build reviewer --format binary|image --record <path>
 
 Set `build.extensionRealization: fused` when every selected extension must be compiled into the Piglet Binary. A Binary build then rejects every extension that is not a fuse-compatible Go factory. It does not fall back to a subprocess component. This requirement does not change source invocation.
 
-Set `build.allowOverlays: true` and the Piglet Binary built from the Piglet accepts a Piglet selected at launch (`--piglet`, `PIG_PIGLET_PATH`, `PIG_PIGLET_NAME`) as an overlay on its baked Piglet (D202). Otherwise the Binary refuses those selectors. The setting belongs to the built Piglet and is not inherited through `extends`; `Bake` keeps it in the baked Piglet, so the Binary's Piglet digest covers it. The overlay resolves as `extends` resolves a child over its base, with the Binary's name kept, and cannot replace or remove a baked extension or skill, set `slots` or `systemPrompt`, widen `tools`, `discovery`, `agentEnv` or an extension's `tools`, or re-enable a stripped built-in.
+Set `build.allowOverlays: true` and the Piglet Binary built from the Piglet accepts a Piglet selected at launch (`--piglet`, `PIG_PIGLET_PATH`, `PIG_PIGLET_NAME`) as an overlay on its baked Piglet (D202). Otherwise the Binary refuses those selectors. The setting belongs to the built Piglet and is not inherited through `extends`; `Bake` keeps it in the baked Piglet, so the Binary's Piglet digest covers it. The overlay merges as an `extends` child merges onto its base, with the Binary's name kept: `systemPrompt` replaces, `extends.remove` removes members (extensions, skills, Packages, the frontend slot, strip entries) and `extends.allowWiden` widens `tools`, `discovery`, `agentEnv`, an extension's `tools` and the runtime strip lists. An `extends` block without `source` extends the Binary; stock resolution refuses it. Only what is compiled into the Binary is refused: a new `slots.frontend`, re-enabling a strip entry a build tag compiled out (`stripped(binary)`; a `stripped(runtime)` entry can be re-enabled), and naming a fused or embedded extension again with origins. A Binary that sets it takes `--system-prompt` with stock precedence.
 
 ## Records and inventory
 
