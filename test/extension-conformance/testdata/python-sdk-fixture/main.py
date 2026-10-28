@@ -2136,6 +2136,23 @@ def new_extension() -> pig_sdk.Extension:
 
     ext.command("rw_idle_in_settled", "Read isIdle after a message that starts a run, sent from an agent_settled handler", rw_idle_in_settled)
 
+    def rw_idle_background(ctx: pig_sdk.Context, _args: str) -> None:
+        def agent_end(hctx, _data):
+            def poll():
+                idle = False
+                deadline = time.monotonic() + 3
+                while not idle and time.monotonic() < deadline:
+                    idle = hctx.is_idle()
+                    if not idle:
+                        time.sleep(0.01)
+                hctx.notify("rw_idle_background=%s" % str(idle).lower(), "info")
+
+            threading.Thread(target=poll, daemon=True).start()
+
+        ext.on_event("agent_end", agent_end)
+
+    ext.command("rw_idle_background", "Poll isIdle from a background callback after agent_end", rw_idle_background)
+
     def set_model(ctx: pig_sdk.Context, args: str) -> None:
         ok, error = ctx.set_model(args)
         if error:
