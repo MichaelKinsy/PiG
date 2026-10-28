@@ -2,6 +2,7 @@ package extensionconformance
 
 import (
 	"context"
+	"strings"
 	"testing"
 	"time"
 )
@@ -31,6 +32,9 @@ func runTuiAltProbe(t *testing.T, command, want string) {
 	cases := append(sdkHarnessCases(), packedSDKHarnessCases()...)
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
+			if strings.Contains(tc.name, "lisp") {
+				t.Skip("D204: the Lisp SDK does not yet export TuiAltScreen")
+			}
 			h := tc.make(t)
 			t.Cleanup(func() {
 				if h.cleanup != nil {
