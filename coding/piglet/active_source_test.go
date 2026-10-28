@@ -26,8 +26,13 @@ func TestActiveSourceValue(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got := ActiveSourceValue(parsed, false); got != file {
-		t.Errorf("Piglet from a file = %q, want %q", got, file)
+	// Parse resolves symlinks, so a temp directory under /var on macOS comes back as /private/var.
+	want, err := filepath.EvalSymlinks(file)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := ActiveSourceValue(parsed, false); got != want {
+		t.Errorf("Piglet from a file = %q, want %q", got, want)
 	}
 	if got := ActiveSourceValue(parsed, true); got != "reviewer" {
 		t.Errorf("a Piglet Binary's Piglet = %q, want its name", got)
