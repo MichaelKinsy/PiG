@@ -196,7 +196,7 @@ func (s *ToolScope) HiddenInfo(info ToolInfo) (HiddenTool, bool) {
 	if why == "" {
 		return HiddenTool{}, false
 	}
-	_, owner := s.Classify(info)
+	_, owner := s.KindOf(info)
 	return HiddenTool{Name: info.Name, Server: s.McpServerOf(info), Owner: owner, Why: why}, true
 }
 
@@ -210,8 +210,8 @@ const (
 	ToolClassExtension ToolClass = "extension"
 )
 
-// Classify names the class and the owner entry of a tool. The owner of a built-in tool is "".
-func (s *ToolScope) Classify(info ToolInfo) (ToolClass, string) {
+// KindOf names the class and the owner entry of a tool. The owner of a built-in tool is "".
+func (s *ToolScope) KindOf(info ToolInfo) (ToolClass, string) {
 	source, namespace := s.source(info), ""
 	if info.Namespace != nil {
 		namespace = info.Namespace.Name
@@ -245,7 +245,7 @@ func (s *ToolScope) source(info ToolInfo) string {
 
 // Keeps reports whether the scope keeps a tool.
 func (s *ToolScope) Keeps(info ToolInfo) bool {
-	class, owner := s.Classify(info)
+	class, owner := s.KindOf(info)
 	return s.keeps(class, owner, info.Name)
 }
 
@@ -265,7 +265,7 @@ func (s *ToolScope) keeps(class ToolClass, owner, name string) bool {
 
 // Why says in one sentence why the scope hides a tool, or "" when it keeps it.
 func (s *ToolScope) Why(info ToolInfo) string {
-	class, owner := s.Classify(info)
+	class, owner := s.KindOf(info)
 	if s.keeps(class, owner, info.Name) {
 		return ""
 	}
