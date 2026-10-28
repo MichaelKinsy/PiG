@@ -27,8 +27,8 @@ type viewWatch struct {
 	conv         session.ID
 	conversation *jv.Object // the conversation record the mount was built with, which later observers of the mount are given
 	min, max     int
-	ids      []float64 // the IDs of the window's entries, oldest first
-	docs     map[string]viewDoc
+	ids          []float64 // the IDs of the window's entries, oldest first
+	docs         map[string]viewDoc
 }
 
 type viewDoc struct {
@@ -58,7 +58,7 @@ func resolveWindow(target *jv.Object) (windowBounds, error) {
 		value, _ := object.Get(key)
 		number, ok := value.(float64)
 		if !ok || number != math.Trunc(number) || math.Abs(number) > 1<<53-1 {
-			return 0, false, &Rejection{"RangeError", "Window " + key + " must be an integer, got " + jv.Stringify(value)}
+			return 0, false, reject("RangeError", "Window "+key+" must be an integer, got "+jv.Stringify(value))
 		}
 		return number, true, nil
 	}
@@ -70,7 +70,7 @@ func resolveWindow(target *jv.Object) (windowBounds, error) {
 		minimum = defaultWindowMin
 	}
 	if minimum < 1 {
-		return windowBounds{}, &Rejection{"RangeError", "Window min must be an integer >= 1, got " + jv.Stringify(minimum)}
+		return windowBounds{}, reject("RangeError", "Window min must be an integer >= 1, got "+jv.Stringify(minimum))
 	}
 	maximum, hasMax, err := bound("max")
 	if err != nil {
@@ -80,7 +80,7 @@ func resolveWindow(target *jv.Object) (windowBounds, error) {
 		maximum = 2 * minimum
 	}
 	if maximum < minimum {
-		return windowBounds{}, &Rejection{"RangeError", "Window max must be an integer >= min (" + jv.Stringify(minimum) + "), got " + jv.Stringify(maximum)}
+		return windowBounds{}, reject("RangeError", "Window max must be an integer >= min ("+jv.Stringify(minimum)+"), got "+jv.Stringify(maximum))
 	}
 	from, hasFrom, err := bound("from")
 	if err != nil {
@@ -110,27 +110,12 @@ func (h *handler) viewOpen(req *jv.Object, target *jv.Object) (any, error) {
 		return nil, err
 	}
 	conv := session.ID(numOf(target, "conversationId"))
+	mount := h.mountOf(conv)
 	var record *jv.Object
-	docObject := jv.NewObject()
-	mounted := map[string]viewDoc{}
-	if mount := h.mountOf(conv); mount != nil {
+	var held map[string]viewDoc
+	if mount != nil {
 		// An observer of a mount another holds only loads its window (view.ts attach: `this.#mounts.get(id) ?? build`).
-		record = mount.conversation
-		for _, def := range h.mountedDefs() {
-			at, ok := mount.docs[def.Kind]
-			if !ok {
-				continue
-			}
-			value, err := h.sess.Snapshot(def, session.DocArgs{Owner: conv})
-			if err != nil {
-				return nil, err
-			}
-			if value == nil {
-				continue
-			}
-			docObject.Set(def.Kind, value)
-			mounted[def.Kind] = at
-		}
+		record, held = mount.conversation, mount.docs
 	} else {
 		h.read(hopcost.ReadRow)
 		var err error
@@ -141,23 +126,36 @@ func (h *handler) viewOpen(req *jv.Object, target *jv.Object) (any, error) {
 		if record == nil {
 			return nil, errors.New("Conversation " + itoa(int64(conv)) + " does not exist")
 		}
-		for _, def := range h.mountedDefs() {
-			args := session.DocArgs{Owner: conv}
-			value, err := h.sess.Snapshot(def, args)
-			if err != nil {
-				return nil, err
-			}
+	}
+	docObject := jv.NewObject()
+	mounted := map[string]viewDoc{}
+	for _, def := range h.mountedDefs() {
+		at, isHeld := held[def.Kind]
+		if mount != nil && !isHeld {
+			continue
+		}
+		args := session.DocArgs{Owner: conv}
+		value, err := h.sess.Snapshot(def, args)
+		if err != nil {
+			return nil, err
+		}
+		if mount == nil {
 			h.chargeViewDoc()
-			if value == nil {
-				continue
-			}
+		}
+		if value == nil {
+			continue
+		}
+		if mount == nil {
 			rec, err := h.mir.FindDocument(session.DocumentAddress(def, args), session.Current)
 			if err != nil {
 				return nil, err
 			}
-			docObject.Set(def.Kind, value)
-			mounted[def.Kind] = viewDoc{id: session.ID(numOf(rec, "id")), version: def.Version}
+			at = viewDoc{id: session.ID(numOf(rec, "id")), version: def.Version}
 		}
+		docObject.Set(def.Kind, value)
+		mounted[def.Kind] = at
+	}
+	if mount == nil {
 		h.job.change += hopcost.ViewBuildReturn
 	}
 	records, before, err := h.loadWindow(conv, bounds)

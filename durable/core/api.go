@@ -45,7 +45,7 @@ func (h *handler) onAPI(ev *abi.Event) error {
 	}
 	req, ok := v.(*jv.Object)
 	if !ok {
-		return &Rejection{"TypeError", "api: the request is not an object"}
+		return reject("TypeError", "api: the request is not an object")
 	}
 	if strOf(req, "op") == "adopt" {
 		// The host's Storage adopted the batch of the commit the gate asked it to take (gate.go).
