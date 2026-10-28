@@ -769,6 +769,7 @@ type tuiBase struct {
 	// that is rendering the base container, whose lock it holds across the children's Render.
 	frameOwner         atomic.Uint64
 	baseOwner          atomic.Uint64
+	frameAccess        atomic.Bool // EnableFrameAccess: the renderer records frameOwner and baseOwner
 	frameRenderRequest atomic.Uint32
 	renderGeneration   uint64
 	lastRenderAt       time.Time
@@ -1793,7 +1794,9 @@ func (t *tuiBase) unlockFrame() {
 
 // enterFrame marks the calling goroutine, which holds mu, as running a frame.
 func (t *tuiBase) enterFrame() {
-	t.frameOwner.Store(goroutineid.Current())
+	if t.frameAccess.Load() {
+		t.frameOwner.Store(goroutineid.Current())
+	}
 	t.frameActive.Store(true)
 }
 
