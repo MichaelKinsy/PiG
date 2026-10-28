@@ -44,14 +44,33 @@ func cliPigError(format string, args ...any) *cliStartupFailure {
 	return &cliStartupFailure{message: fmt.Sprintf(format, args...), report: func(message string) { fmt.Fprintf(os.Stderr, "pig: %s\n", message) }}
 }
 
+// ambientScopes returns the ambient scopes extensions and skills are discovered from. A Piglet Binary discovers none, because its
+// extensions and skills are baked in, unless it accepts overlays (D202): then, as for stock pig running a Piglet, the Piglet's own discovery
+// decides.
+func (b *cliRuntimeBuilder) ambientScopes(projectTrusted bool) (extensions, skills *[]string) {
+	extensions = pigletAmbientSources(b.activePiglet, "extensions")
+	skills = pigletAmbientSources(b.activePiglet, "skills")
+	if !projectTrusted {
+		extensions = trustedAmbientScopes(extensions)
+		skills = trustedAmbientScopes(skills)
+	}
+	if b.activePigletBaked && !b.activePigletOpen {
+		empty := []string{}
+		extensions, skills = &empty, &empty
+	}
+	return extensions, skills
+}
+
 // cliRuntimeBuilder holds the process-fixed inputs of Pi's createRuntime closure and builds the cwd-bound state of one Session runtime: services, resources, extension host, model, tools and system prompt.
 type cliRuntimeBuilder struct {
-	mode                appMode
-	flags               Args
-	agentDir            string
-	launchCWD           string
-	activePiglet        *piglet.Piglet
-	activePigletBaked   bool
+	mode              appMode
+	flags             Args
+	agentDir          string
+	launchCWD         string
+	activePiglet      *piglet.Piglet
+	activePigletBaked bool
+	// activePigletOpen is true for a Piglet Binary that accepts overlays (D202): it behaves as stock pig running a Piglet except for what it compiled in.
+	activePigletOpen    bool
 	shadowedPiglet      string
 	settingsManager     *codingagent.SettingsManager
 	settingsDiagnostics []codingagent.AgentSessionRuntimeDiagnostic
@@ -351,17 +370,7 @@ func (b *cliRuntimeBuilder) buildResources(ctx context.Context, in cliBuildInput
 	}
 	build.PromptPaths = collectPromptPaths(cwd, b.agentDir, services.SettingsManager(), resourceFlags, projectTrusted, resolver.Resolve)
 	build.ThemePaths = collectThemePaths(cwd, b.agentDir, services.SettingsManager(), resourceFlags, projectTrusted, resolver.Resolve)
-	extensionScopes := pigletAmbientSources(b.activePiglet, "extensions")
-	skillScopes := pigletAmbientSources(b.activePiglet, "skills")
-	if !projectTrusted {
-		extensionScopes = trustedAmbientScopes(extensionScopes)
-		skillScopes = trustedAmbientScopes(skillScopes)
-	}
-	if b.activePigletBaked {
-		empty := []string{}
-		extensionScopes = &empty
-		skillScopes = &empty
-	}
+	extensionScopes, skillScopes := b.ambientScopes(projectTrusted)
 	build.ExtensionScopes, build.SkillScopes = extensionScopes, skillScopes
 	if err := validateConfiguredPackagesForStartup(cwd, services.SettingsManager(), func(scope string) bool {
 		return !resourceFlags.NoExtensions && packagemanager.PackageScopeEnabled(extensionScopes, scope)
@@ -412,7 +421,7 @@ func (b *cliRuntimeBuilder) buildResources(ctx context.Context, in cliBuildInput
 
 	var embeddedCells []subprocess.EmbeddedCell
 	if b.activePigletBaked {
-		embeddedCells = embeddedCellsFromCellpack(cellpack.LoadedCells())
+		embeddedCells = withoutDroppedMembers(embeddedCellsFromCellpack(cellpack.LoadedCells()))
 	}
 	build.EmbeddedCells = embeddedCells
 	activePiglet := b.activePiglet

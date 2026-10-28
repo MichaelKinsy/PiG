@@ -97,8 +97,17 @@ func (m appMode) extensionMode() extension.ExtensionMode {
 }
 
 func normalizeRuntimeExtensionConfigs(configs []subprocess.ExtConfig) []subprocess.ExtConfig {
-	all := make([]subprocess.ExtConfig, 0, len(configs)+len(fusepack.FusedConfigs()))
-	all = append(all, fusepack.FusedConfigs()...)
+	return withFusedExtensionConfigs(fusepack.FusedConfigs(), configs)
+}
+
+// withFusedExtensionConfigs puts the Binary's fused extensions ahead of configs, less the ones an overlay removed (D202).
+func withFusedExtensionConfigs(fused, configs []subprocess.ExtConfig) []subprocess.ExtConfig {
+	all := make([]subprocess.ExtConfig, 0, len(configs)+len(fused))
+	for _, cfg := range fused {
+		if !droppedBinaryMembers[cfg.Name] {
+			all = append(all, cfg)
+		}
+	}
 	all = append(all, configs...)
 	return mergeExtConfigs(all)
 }
