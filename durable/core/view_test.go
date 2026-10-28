@@ -157,7 +157,7 @@ func TestResolveWindow(t *testing.T) {
 		if c.err != "" {
 			// The host rebuilds view.ts's RangeError from the rejection's name.
 			var rejection *Rejection
-			if !errors.As(err, &rejection) || rejection.Name != "RangeError" || rejection.Text() != c.err {
+			if !errors.As(err, &rejection) || rejection.Name != "RangeError" || rejection.Text() != c.err { // view.ts:114
 				t.Fatalf("window %s: error %v, want a RangeError %q", c.target, err, c.err)
 			}
 			continue

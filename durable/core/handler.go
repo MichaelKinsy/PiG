@@ -26,6 +26,12 @@ type Rejection struct{ Name, Message string }
 
 func (r *Rejection) Error() string { return r.Name + ": " + r.Message }
 
+// reject is a rejection with Pi's error name and message: one allocation site for the rejections that name a kind of their own (the
+// RangeError of a window, a TypeError of a payload), where a literal at each would be one site apiece.
+//
+//go:noinline
+func reject(name, message string) *Rejection { return &Rejection{name, message} }
+
 // Text is the message of the thrown host error (Error.message).
 func (r *Rejection) Text() string { return r.Message }
 
@@ -317,7 +323,7 @@ func (h *handler) onOpen(ev *abi.Event) error {
 		}
 		o, ok := v.(*jv.Object)
 		if !ok {
-			return &Rejection{"TypeError", "open: the payload is not an object"}
+			return reject("TypeError", "open: the payload is not an object")
 		}
 		h.open = o
 		h.mode = strOf(o, "mode")
