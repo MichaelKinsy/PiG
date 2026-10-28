@@ -27,6 +27,7 @@ import (
 	"github.com/MichaelKinsy/PiG/coding/piglet/artifact"
 	"github.com/MichaelKinsy/PiG/coding/piglet/signature"
 	"github.com/MichaelKinsy/PiG/internal/codingagent"
+	"github.com/MichaelKinsy/PiG/internal/frontendpack"
 )
 
 //go:embed piglet.yaml
@@ -74,8 +75,16 @@ func OverlayBase() *piglet.OverlayBase {
 	if err != nil || p.Build == nil || !p.Build.AllowOverlays {
 		return nil
 	}
+	// The baked bytes carry no slots; the frontend member is compiled into the executable, so the base names it for extends.remove.slots.
+	if frontendpack.Fused() {
+		p.Slots = &piglet.Slots{Frontend: &piglet.SlotMember{Member: CompiledFrontendMember}}
+	}
 	return &piglet.OverlayBase{Piglet: p, Digest: "sha256:" + hex.EncodeToString(sha256Sum(pigletYAML))}
 }
+
+// CompiledFrontendMember is the member path the base of an overlay gives the frontend compiled into the Binary, which has no
+// directory at run time.
+const CompiledFrontendMember = "compiled-in"
 
 // Name returns the name of the Piglet baked into this Binary, or "" for stock pig.
 func Name() string {

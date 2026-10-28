@@ -94,10 +94,8 @@ func ActiveByDefaultTools(p *Piglet) []string {
 func AgentToolScopeLine(p *Piglet, untrustedProject bool) string {
 	var line strings.Builder
 	line.WriteString("Active Piglet: " + p.Name)
-	if len(p.lineage) > 0 {
-		if binary, ok := strings.CutPrefix(p.lineage[0].Source, "binary:"); ok {
-			line.WriteString(" (overlay " + p.SourcePath() + " on Piglet Binary " + binary + ")")
-		}
+	if binary, ok := p.OverlayOf(); ok {
+		line.WriteString(" (overlay " + p.SourcePath() + " on Piglet Binary " + binary + ")")
 	}
 	line.WriteString(". Tool scope, at most: " + ToolScopeSummary(p) + ".")
 	var stripped []string
