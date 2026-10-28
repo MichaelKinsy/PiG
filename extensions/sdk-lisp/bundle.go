@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: MIT
 
+// pig divergence (D204): this SDK does not yet export TuiAltScreen, Pi's alternate-screen TUI host (the Node, Go, Rust and Python SDKs do); the export over the tui.alt wire ends this.
+
 // Package lispsdk carries the Common Lisp extension SDK sources so an installed pig can
 // stage a buildable copy to disk. See extensions/sdk-py/bundle.go for the rationale;
 // this is the Lisp analogue. Staging writes these files under
