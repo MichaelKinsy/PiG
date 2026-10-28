@@ -349,28 +349,6 @@ struct Listeners {
 }
 
 thread_local! {
-    /// How many frame callbacks (component `render`, overlay `visible`, the style and indicator options) this thread is running.
-    static FRAME_DEPTH: std::cell::Cell<u32> = const { std::cell::Cell::new(0) };
-}
-
-/// Marks the thread as running a frame callback until dropped: its `tui.alt` calls carry `inFrame`, which tells the host the call comes from
-/// inside the frame being drawn.
-struct InFrame;
-
-impl InFrame {
-    fn enter() -> Self {
-        FRAME_DEPTH.with(|depth| depth.set(depth.get() + 1));
-        Self
-    }
-}
-
-impl Drop for InFrame {
-    fn drop(&mut self) {
-        FRAME_DEPTH.with(|depth| depth.set(depth.get() - 1));
-    }
-}
-
-thread_local! {
     /// The context of the `tui.alt.cb` request this thread is serving, for as long as it runs user code.
     static CALLBACK_CTX: std::cell::RefCell<Option<Context>> = const { std::cell::RefCell::new(None) };
 }
@@ -449,9 +427,6 @@ impl Inner {
         }
         if op != "dispose" {
             args.insert("terminal".into(), self.terminal_block());
-            if FRAME_DEPTH.with(std::cell::Cell::get) > 0 {
-                args.insert("inFrame".into(), Value::Bool(true));
-            }
         }
         let scoped = CALLBACK_CTX.with_borrow(Clone::clone);
         let ctx = scoped.as_ref().unwrap_or(&self.ctx);
@@ -598,7 +573,6 @@ impl Inner {
         let text = |index: usize| positional.get(index).and_then(Value::as_str).unwrap_or("");
         let options = &self.options;
         let missing = || format!("option callback {name:?} is not set");
-        let _frame = matches!(name, "searchMatchStyle" | "searchCurrentMatchStyle" | "searchNavigationButtonStyle" | "scrollToEndIndicator").then(InFrame::enter);
         let value = match name {
             "copySelection" => match (options.copy_selection.as_ref().ok_or_else(missing)?)(text(0)) {
                 CopySelectionOutcome::Copied => Value::Bool(true),
@@ -633,7 +607,6 @@ impl Inner {
             "render" => {
                 let width = args.get("width").and_then(Value::as_u64).unwrap_or(0) as u32;
                 let component = self.component(key)?;
-                let _frame = InFrame::enter();
                 Ok(json!({"lines": component.render(width)}))
             }
             "input" => {
@@ -699,7 +672,6 @@ impl Inner {
             "visible" => {
                 let size = |name: &str| args.get(name).and_then(Value::as_u64).unwrap_or(0) as u32;
                 let visible = self.visible.lock().unwrap().get(key).cloned();
-                let _frame = InFrame::enter();
                 Ok(json!({"value": visible.is_none_or(|visible| visible(size("termWidth"), size("termHeight")))}))
             }
             "option" => self.option_callback(args),
@@ -773,6 +745,10 @@ impl TuiAltScreen {
     }
 
     /// The root's children, in order.
+    ///
+    /// pig divergence (D207): Pi's `children` is a live array; a live array cannot cross the process boundary, so this returns a copy (a snapshot).
+    /// Changing the returned list changes nothing, and it does not follow later changes to the screen. Change the children only with
+    /// [`Self::add_child`], [`Self::remove_child`] and [`Self::clear`].
     pub fn children(&self) -> Vec<ComponentRef> {
         self.inner.children.lock().unwrap().clone()
     }

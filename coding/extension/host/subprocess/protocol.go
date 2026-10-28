@@ -887,8 +887,12 @@ const (
 	CallUICustomShowOverlay = "ui.custom.showOverlay"
 	CallUICustomHideOverlay = "ui.custom.hideOverlay"
 	CallUICustomSetFocus    = "ui.custom.setFocus"
-	// CallTuiAlt (ext→host) drives a TuiAltScreen the extension constructed (pi-tui's alternate-screen host, D204) and RequestTuiAltCallback
-	// (host→ext request) asks the extension for what it owns: its Terminal, its components and its listeners.
+	// CallTuiAlt (ext→host) drives a TuiAltScreen the extension constructed (pi-tui's alternate-screen host) and RequestTuiAltCallback
+	// (host→ext request) asks the extension for what it owns: its Terminal, its components and its listeners. A tui.alt call the extension makes while
+	// it serves a callback names that request as its parent (CallPayload.ParentRequestID): when the host's frame goroutine sent the callback (a
+	// component's render, an overlay's visible callback, a style callback, a terminal write, an invalidate or focus it triggered), that goroutine runs
+	// the call at once, while it holds the frame lock, as Pi's render calls the screen. From such a callback the calls render, renderNow, start, stop,
+	// copyActiveSelectionToClipboard, queryTerminalColors and input fail (D208).
 	CallTuiAlt            = "tui.alt"
 	RequestTuiAltCallback = "tui.alt.cb"
 )

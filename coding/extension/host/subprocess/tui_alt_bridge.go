@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	"github.com/MichaelKinsy/PiG/extensions/sdk/json"
@@ -14,10 +13,13 @@ import (
 	"github.com/MichaelKinsy/PiG/tui"
 )
 
-// Pi's pi-tui `new TuiAltScreen(terminal, ...)` for a subprocess extension (D204 closed): the host runs the `tui` port of tui-alt-screen.ts and
+// Pi's pi-tui `new TuiAltScreen(terminal, ...)` for a subprocess extension: the host runs the `tui` port of tui-alt-screen.ts and
 // the extension owns what Pi's caller owns, the Terminal and the Components. A `tui.alt` call (CallTuiAlt) drives the screen; the host answers
 // the extension's terminal, component and listener needs with `tui.alt.cb` requests (RequestTuiAltCallback). docs/extension-api-parity.md records
 // the contract.
+//
+// Pi runs on one thread: a component's render may call the screen, and the call runs at once, inside the frame. The goroutine that runs the frame
+// sends the callbacks it needs, so it runs the calls the extension makes from them itself, while it waits and holds the frame lock (callback).
 
 // tuiAltCaps are the optional members a component of the extension has, sent with its key.
 type tuiAltCaps struct {
@@ -41,19 +43,16 @@ type tuiAltCall struct {
 	ShowHardwareCursor *bool  `json:"showHardwareCursor,omitempty"`
 	LogDirectory       string `json:"logDirectory,omitempty"`
 	// Options is create's tuiAltOptions or showOverlay's overlay options.
-	Options    json.RawMessage `json:"options,omitempty"`
-	Key        *string         `json:"key"`
-	Caps       *tuiAltCaps     `json:"caps,omitempty"`
-	Width      int             `json:"width"`
-	Lines      json.RawMessage `json:"lines"`
-	Message    string          `json:"message"`
-	DurationMs int             `json:"durationMs"`
-	Enabled    bool            `json:"enabled"`
-	Force      bool            `json:"force"`
-	Visible    bool            `json:"visible"`
-	// InFrame marks a call the extension makes from inside a callback the frame waits on (a component's render, an overlay's visible callback, a style
-	// callback): the SDK knows its calling thread is in one. Only such a call must not wait on the frame lock.
-	InFrame        bool            `json:"inFrame"`
+	Options        json.RawMessage `json:"options,omitempty"`
+	Key            *string         `json:"key"`
+	Caps           *tuiAltCaps     `json:"caps,omitempty"`
+	Width          int             `json:"width"`
+	Lines          json.RawMessage `json:"lines"`
+	Message        string          `json:"message"`
+	DurationMs     int             `json:"durationMs"`
+	Enabled        bool            `json:"enabled"`
+	Force          bool            `json:"force"`
+	Visible        bool            `json:"visible"`
 	PreserveScreen bool            `json:"preserveScreen"`
 	ListenerID     string          `json:"listenerId"`
 	TimeoutMs      float64         `json:"timeoutMs"`
@@ -80,15 +79,9 @@ type tuiAltScreenState struct {
 	screen *tui.TuiAltScreen
 	term   *tuiAltTerminal
 
-	// inFrame counts the callbacks the renderer's frame is waiting on (a component's render, a style callback, an overlay's visible callback); frame
-	// is the renderer state those callbacks may read, taken as the frame began. The frame goroutine holds the renderer's frame lock while it waits, so a
-	// call the extension makes from such a callback (Pi lets render read the screen) is answered without taking it: see opInFrame.
-	inFrame atomic.Int32
-	frame   atomic.Pointer[tui.AltScreenFrameState]
-
-	deferMu       sync.Mutex
-	deferred      []*tuiAltCall
-	deferDraining bool
+	// waits holds the callbacks the goroutine that runs the renderer's frame is waiting on, by request id: see callback.
+	waitMu sync.Mutex
+	waits  map[string]*tuiAltWait
 
 	mu         sync.Mutex
 	components map[string]*tuiAltComponent
@@ -109,24 +102,73 @@ type tuiAltKey struct {
 	id   string
 }
 
+// tuiAltWait is a tui.alt.cb request the goroutine that runs the renderer's frame waits on. That goroutine holds the frame lock (and, while a component
+// renders, the base container's lock), so a call the extension makes from the callback runs on it, as Pi's render calls the screen on its one thread.
+type tuiAltWait struct {
+	frame tui.AltScreenFrame
+	// runs carries the calls to run on the waiting goroutine; done is closed when it stops waiting.
+	runs chan func()
+	done chan struct{}
+}
+
 // callback sends one tui.alt.cb request and decodes its response into result.
+//
+// The goroutine that runs the renderer's frame sends the callbacks a frame makes (a component's render, an overlay's visible callback, a style callback, a
+// terminal write) and those the screen's members make while it runs a call from one of them (a component's invalidate or focus). It holds the frame lock
+// while it waits. The extension answers from the request's own thread; a call it makes meanwhile names the request as its parent (serveInFrame), and this
+// goroutine runs it, while it holds the frame lock: the call applies at once and a later read sees it, as in Pi.
 func (s *tuiAltScreenState) callback(kind string, fields map[string]any, result any) error {
 	args := map[string]any{"id": s.id, "kind": kind}
 	for k, v := range fields {
 		args[k] = v
 	}
 	//portlint:allow ctxbackground the screen outlives the call that built it; a callback ends with the connection (Request returns when it closes)
-	return autocompleteRequest(context.Background(), s.conn, RequestTuiAltCallback, args, result)
+	ctx := context.Background()
+	frame, inFrame := s.screen.Frame()
+	if !inFrame {
+		return autocompleteRequest(ctx, s.conn, RequestTuiAltCallback, args, result)
+	}
+	id := s.conn.newRequestID()
+	wait := &tuiAltWait{frame: frame, runs: make(chan func()), done: make(chan struct{})}
+	s.waitMu.Lock()
+	if s.waits == nil {
+		s.waits = map[string]*tuiAltWait{}
+	}
+	s.waits[id] = wait
+	s.waitMu.Unlock()
+	defer func() {
+		s.waitMu.Lock()
+		delete(s.waits, id)
+		s.waitMu.Unlock()
+		close(wait.done)
+	}()
+	return requestWithID(withRequestInterjections(ctx, wait.runs), s.conn, id, RequestTuiAltCallback, args, result)
 }
 
-// frameCallback is callback for the callbacks a frame waits on.
-func (s *tuiAltScreenState) frameCallback(kind string, fields map[string]any, result any) error {
-	if state, ok := s.screen.FrameState(); ok {
-		s.frame.Store(&state)
-		s.inFrame.Add(1)
-		defer s.inFrame.Add(-1)
+// serveInFrame runs fn on the goroutine that waits for the callback request parent, with the frame that goroutine runs, and reports whether it did. It
+// reports false when no frame goroutine waits for parent, or stopped waiting before it took the call; the call then runs as any other.
+func (s *tuiAltScreenState) serveInFrame(parent string, fn func(frame tui.AltScreenFrame)) bool {
+	if parent == "" {
+		return false
 	}
-	return s.callback(kind, fields, result)
+	s.waitMu.Lock()
+	wait := s.waits[parent]
+	s.waitMu.Unlock()
+	if wait == nil {
+		return false
+	}
+	ran := make(chan struct{})
+	run := func() {
+		defer close(ran)
+		fn(wait.frame)
+	}
+	select {
+	case wait.runs <- run:
+		<-ran
+		return true
+	case <-wait.done:
+		return false
+	}
 }
 
 // tuiAltTerminal is the Terminal of the screen: the extension's own Terminal, reached with callbacks. Output is delivered in order, each write
@@ -226,7 +268,7 @@ func (c *tuiAltComponent) Render(width int) []string {
 	var result struct {
 		Lines []string `json:"lines"`
 	}
-	if err := c.state.frameCallback("render", map[string]any{"key": c.key, "width": width}, &result); err != nil {
+	if err := c.state.callback("render", map[string]any{"key": c.key, "width": width}, &result); err != nil {
 		return nil
 	}
 	return result.Lines
@@ -399,7 +441,9 @@ func (s *tuiAltScreenState) overlayState(handle *tui.OverlayHandle) map[string]a
 	return state
 }
 
-func (b *UIBridge) handleTuiAlt(owner *Conn, args json.RawMessage) (*CallResultPayload, error) {
+// handleTuiAlt applies one tui.alt call. parent is the request the extension made it from, which is the callback request it is serving when it calls the
+// screen from a callback.
+func (b *UIBridge) handleTuiAlt(owner *Conn, parent string, args json.RawMessage) (*CallResultPayload, error) {
 	var call tuiAltCall
 	if err := json.Unmarshal(args, &call); err != nil {
 		return nil, fmt.Errorf("parse tui.alt args: %w", err)
@@ -418,16 +462,21 @@ func (b *UIBridge) handleTuiAlt(owner *Conn, args json.RawMessage) (*CallResultP
 		b.tuiAlt.mu.Lock()
 		delete(b.tuiAlt.screens, tuiAltKey{owner, call.ID})
 		b.tuiAlt.mu.Unlock()
-		s.screen.CancelPendingRender()
+		if !s.serveInFrame(parent, func(frame tui.AltScreenFrame) { frame.CancelPendingRender() }) {
+			s.screen.CancelPendingRender()
+		}
 		return tuiAltResult(map[string]any{})
 	}
 	if s.term.update(call.Terminal) {
 		s.screen.RequestRender()
 	}
-	if call.InFrame && s.inFrame.Load() > 0 {
-		return s.opInFrame(&call)
+	// A call from a callback the frame goroutine waits for runs on that goroutine, at once, as Pi's render calls the screen.
+	var result *CallResultPayload
+	var callErr error
+	if s.serveInFrame(parent, func(frame tui.AltScreenFrame) { result, callErr = s.run(&call, frame, true) }) {
+		return result, callErr
 	}
-	return s.op(&call)
+	return s.run(&call, s.screen, false)
 }
 
 func (b *UIBridge) tuiAltCreate(owner *Conn, call *tuiAltCall) (*CallResultPayload, error) {
@@ -491,8 +540,8 @@ func parseTuiAltWheel(raw json.RawMessage) (tui.WheelScrollLines, error) {
 // bindCallbacks turns the callback options the extension named into functions that call it.
 func (s *tuiAltScreenState) bindCallbacks(options *tui.TuiAltScreenOptions, names []string) {
 	option := func(name string, args []any, result any) error {
-		// Style callbacks and the end indicator run while a frame draws; the rest run on the input path.
-		return s.frameCallback("option", map[string]any{"name": name, "args": args}, result)
+		// Style callbacks and the end indicator run while a frame draws, on the frame's goroutine; the rest run on the input path.
+		return s.callback("option", map[string]any{"name": name, "args": args}, result)
 	}
 	text := func(name string) func(string) string {
 		return func(in string) string {
@@ -563,9 +612,42 @@ func (s *tuiAltScreenState) focusedKey() any {
 	return nil
 }
 
-func (s *tuiAltScreenState) op(call *tuiAltCall) (*CallResultPayload, error) {
+// tuiAltMembers are the members of the screen that take a lock the frame holds: *tui.TuiAltScreen takes them, tui.AltScreenFrame (for the goroutine that
+// runs the frame, which holds them) does not.
+type tuiAltMembers interface {
+	GetScreenLines() []string
+	HasActiveSelection() bool
+	GetCopyOnSelect() bool
+	SetCopyOnSelect(enabled bool)
+	GetShowHardwareCursor() bool
+	SetShowHardwareCursor(enabled bool)
+	GetClearOnShrink() bool
+	SetClearOnShrink(enabled bool)
+	ResetTextSelection()
+	SetOnDebug(onDebug func())
+	SetLayoutRoot(component tui.Component)
+	SetFocus(component tui.Component)
+	AddChild(component tui.Component)
+	RemoveChild(component tui.Component)
+	Clear()
+	Children() []tui.Component
+	HandleMouse(event tui.TuiMouseEvent) *tui.TuiMouseDispatchResult
+}
+
+// run applies call to the screen. inFrame says the call comes from a callback the goroutine that runs the frame waits for and runs on that goroutine, and m
+// is the frame it holds; otherwise m is the screen.
+func (s *tuiAltScreenState) run(call *tuiAltCall, m tuiAltMembers, inFrame bool) (*CallResultPayload, error) {
 	screen := s.screen
 	empty := func() (*CallResultPayload, error) { return tuiAltResult(map[string]any{}) }
+	if inFrame {
+		switch call.Op {
+		case "render", "renderNow", "start", "stop", "copyActiveSelectionToClipboard", "queryTerminalColors", "input":
+			// pig divergence (D208): Pi re-enters its own frame or recurses here (renderNow inside render renders the frame again, start and stop nest a
+			// terminal start and stop, the Promise-returning copy and color query run inside the frame, input dispatches input from render); the frame here
+			// holds its lock for the render it waits on, which these would take again, so the call fails and the screen goes on.
+			return nil, fmt.Errorf("tui.alt: %s cannot run while a component renders", call.Op)
+		}
+	}
 	switch call.Op {
 	case "start":
 		screen.StartRequestingRender()
@@ -589,7 +671,7 @@ func (s *tuiAltScreenState) op(call *tuiAltCall) (*CallResultPayload, error) {
 		screen.Invalidate()
 		// Pi's invalidate reaches the mounted roots (the layout root, else the children) and every overlay's component, each of the extension.
 		// The renderer's container lock is taken before s.mu: a frame holds it while it waits on a component's render, which calls back into s.
-		children := screen.Children()
+		children := m.Children()
 		s.mu.Lock()
 		var targets []tui.Component
 		if s.layoutRoot != nil {
@@ -608,7 +690,7 @@ func (s *tuiAltScreenState) op(call *tuiAltCall) (*CallResultPayload, error) {
 	case "render":
 		return tuiAltResult(map[string]any{"lines": nonNilLines(screen.RenderSnapshot(call.Width))})
 	case "getScreenLines":
-		return tuiAltResult(map[string]any{"lines": nonNilLines(screen.GetScreenLines())})
+		return tuiAltResult(map[string]any{"lines": nonNilLines(m.GetScreenLines())})
 	case "scrollBy":
 		var lines float64
 		if err := json.Unmarshal(call.Lines, &lines); err != nil {
@@ -633,24 +715,24 @@ func (s *tuiAltScreenState) op(call *tuiAltCall) (*CallResultPayload, error) {
 		screen.SetWheelScrollLines(lines)
 		return empty()
 	case "setCopyOnSelect":
-		screen.SetCopyOnSelect(call.Enabled)
+		m.SetCopyOnSelect(call.Enabled)
 		return empty()
 	case "setShowHardwareCursor":
-		screen.SetShowHardwareCursor(call.Enabled)
+		m.SetShowHardwareCursor(call.Enabled)
 		return empty()
 	case "setClearOnShrink":
-		screen.SetClearOnShrink(call.Enabled)
+		m.SetClearOnShrink(call.Enabled)
 		return empty()
 	case "resetTextSelection":
-		screen.ResetTextSelection()
+		m.ResetTextSelection()
 		return empty()
 	case "copyActiveSelectionToClipboard":
 		return tuiAltResult(map[string]any{"value": screen.CopyActiveSelectionToClipboard()})
 	case "state":
 		return tuiAltResult(map[string]any{
 			"viewportTop": screen.ViewportTop(), "isFollowingOutput": screen.IsFollowingOutput(), "fullRedraws": screen.FullRedraws(),
-			"hasOverlay": screen.HasVisibleOverlay(), "hasOverlayEntries": screen.HasOverlay(), "hasActiveSelection": screen.HasActiveSelection(),
-			"copyOnSelect": screen.GetCopyOnSelect(), "showHardwareCursor": screen.GetShowHardwareCursor(), "clearOnShrink": screen.GetClearOnShrink(),
+			"hasOverlay": screen.HasVisibleOverlay(), "hasOverlayEntries": screen.HasOverlay(), "hasActiveSelection": m.HasActiveSelection(),
+			"copyOnSelect": m.GetCopyOnSelect(), "showHardwareCursor": m.GetShowHardwareCursor(), "clearOnShrink": m.GetClearOnShrink(),
 			"focusedKey": s.focusedKey(),
 		})
 	case "addChild", "removeChild":
@@ -659,13 +741,13 @@ func (s *tuiAltScreenState) op(call *tuiAltCall) (*CallResultPayload, error) {
 			return nil, err
 		}
 		if call.Op == "addChild" {
-			screen.AddChild(c)
+			m.AddChild(c)
 		} else {
-			screen.RemoveChild(c)
+			m.RemoveChild(c)
 		}
 		return empty()
 	case "clear":
-		screen.Clear()
+		m.Clear()
 		return empty()
 	case "setLayoutRoot", "setFocus":
 		var component tui.Component
@@ -680,9 +762,9 @@ func (s *tuiAltScreenState) op(call *tuiAltCall) (*CallResultPayload, error) {
 			s.mu.Lock()
 			s.layoutRoot = component
 			s.mu.Unlock()
-			screen.SetLayoutRoot(component)
+			m.SetLayoutRoot(component)
 		} else {
-			screen.SetFocus(component)
+			m.SetFocus(component)
 		}
 		return empty()
 	case "showOverlay":
@@ -703,7 +785,7 @@ func (s *tuiAltScreenState) op(call *tuiAltCall) (*CallResultPayload, error) {
 				var out struct {
 					Value bool `json:"value"`
 				}
-				if err := s.frameCallback("visible", map[string]any{"key": c.key, "termWidth": termWidth, "termHeight": termHeight}, &out); err != nil {
+				if err := s.callback("visible", map[string]any{"key": c.key, "termWidth": termWidth, "termHeight": termHeight}, &out); err != nil {
 					return false
 				}
 				return out.Value
@@ -746,9 +828,9 @@ func (s *tuiAltScreenState) op(call *tuiAltCall) (*CallResultPayload, error) {
 		return empty()
 	case "setOnDebug":
 		if call.Enabled {
-			screen.SetOnDebug(func() { _ = s.callback("debug", nil, nil) })
+			m.SetOnDebug(func() { _ = s.callback("debug", nil, nil) })
 		} else {
-			screen.SetOnDebug(nil)
+			m.SetOnDebug(nil)
 		}
 		return empty()
 	case "setTerminalColorSchemeNotifications":
@@ -771,7 +853,7 @@ func (s *tuiAltScreenState) op(call *tuiAltCall) (*CallResultPayload, error) {
 		if err := json.Unmarshal(call.Event, &event); err != nil {
 			return nil, fmt.Errorf("parse mouse event: %w", err)
 		}
-		result := screen.HandleMouse(tui.TuiMouseEvent{
+		result := m.HandleMouse(tui.TuiMouseEvent{
 			Type: tui.TuiMouseEventType(event.Type), Button: tui.TuiMouseButton(event.Button), X: event.X, Y: event.Y, ScreenX: event.ScreenX, ScreenY: event.ScreenY,
 			Width: event.Width, Height: event.Height, Shift: event.Shift, Alt: event.Alt, Ctrl: event.Ctrl, WheelDelta: event.WheelDelta, ClickCount: event.ClickCount,
 		})
@@ -885,57 +967,4 @@ func tuiAltColorsWire(colors tui.TerminalColors) map[string]any {
 		out["palette"] = palette
 	}
 	return out
-}
-
-// opInFrame answers a call the extension marked as made from a callback the frame waits on. Pi's single thread lets a render read the screen and even change it; here the frame goroutine holds the
-// frame lock, so a call that takes it would wait on a frame that waits on the call. A read answers from the state as the frame began, which is
-// what Pi's render reads. A change returns at once and applies after the frame, in call order. What needs the frame itself (render, renderNow,
-// start, stop, the selection copy) is an error: Pi would re-enter its own frame.
-func (s *tuiAltScreenState) opInFrame(call *tuiAltCall) (*CallResultPayload, error) {
-	frame := s.frame.Load()
-	if frame == nil {
-		return s.op(call)
-	}
-	screen := s.screen
-	switch call.Op {
-	case "state":
-		return tuiAltResult(map[string]any{
-			"viewportTop": screen.ViewportTop(), "isFollowingOutput": screen.IsFollowingOutput(), "fullRedraws": screen.FullRedraws(),
-			"hasOverlay": screen.HasVisibleOverlay(), "hasOverlayEntries": screen.HasOverlay(), "hasActiveSelection": frame.HasActiveSelection,
-			"copyOnSelect": frame.CopyOnSelect, "showHardwareCursor": frame.ShowHardwareCursor, "clearOnShrink": frame.ClearOnShrink,
-			"focusedKey": s.focusedKey(),
-		})
-	case "getScreenLines":
-		return tuiAltResult(map[string]any{"lines": nonNilLines(frame.ScreenLines)})
-	case "render", "renderNow", "start", "stop", "copyActiveSelectionToClipboard", "queryTerminalColors":
-		return nil, fmt.Errorf("tui.alt: %s cannot run while a component renders", call.Op)
-	case "requestRender", "dispose":
-		return s.op(call)
-	}
-	s.deferMu.Lock()
-	s.deferred = append(s.deferred, call)
-	start := !s.deferDraining
-	s.deferDraining = true
-	s.deferMu.Unlock()
-	if start {
-		//portlint:allow golifetime the drain ends when the deferred queue is empty; each change waits only for the renderer's locks, which the frame that deferred it releases
-		go s.drainDeferred()
-	}
-	return tuiAltResult(map[string]any{})
-}
-
-// drainDeferred applies the changes made during a frame, in order; each waits on the renderer's locks until the frame ended.
-func (s *tuiAltScreenState) drainDeferred() {
-	for {
-		s.deferMu.Lock()
-		if len(s.deferred) == 0 {
-			s.deferDraining = false
-			s.deferMu.Unlock()
-			return
-		}
-		call := s.deferred[0]
-		s.deferred = s.deferred[1:]
-		s.deferMu.Unlock()
-		_, _ = s.op(call)
-	}
 }

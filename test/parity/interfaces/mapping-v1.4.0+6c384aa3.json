@@ -208687,9 +208687,9 @@
         "call:durable/harness/harness.go#conversationImpl.Commit"
       ],
       "evidence": [
+        "test:durable/core/driver/session_deferred_commits_core_test.go#TestCoreADeferredCommitWithANegativeWindowIsRejected",
         "test:durable/session/session_deferred_commits_upstream_test.go#TestACrashLeavesStorageAtTheLastStoredState",
-        "test:durable/session/session_deferred_commits_upstream_test.go#TestAHeldDocumentIsPinned",
-        "test:durable/session/session_deferred_commits_upstream_test.go#TestBasesAndOverflowOfHeldChanges"
+        "test:durable/session/session_deferred_commits_upstream_test.go#TestAHeldDocumentIsPinned"
       ]
     },
     {
@@ -208709,9 +208709,9 @@
         "call:durable/session/held.go#SessionImpl.deferral"
       ],
       "evidence": [
+        "test:durable/core/driver/session_deferred_commits_core_test.go#TestCoreADeferredCommitWithANegativeWindowIsRejected",
         "test:durable/session/session_deferred_commits_upstream_test.go#TestHoldingADeferredCommit",
-        "test:durable/session/session_deferred_commits_upstream_test.go#TestStoringHeldChanges",
-        "test:durable/session/session_adoption_test.go#TestPublicationAtAdoption"
+        "test:durable/session/session_deferred_commits_upstream_test.go#TestStoringHeldChanges"
       ]
     },
     {
@@ -209382,7 +209382,7 @@
         "public-api:durable/harness/types.go#Conversation.Context"
       ],
       "evidence": [
-        "test:durable/harness/context_shared_test.go#TestBeforeRequestHookChangesDoNotReachTheStoredContext"
+        "test:durable/core/driver/harness_inbox_core_test.go#TestInboxHandoff"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -209403,7 +209403,7 @@
         "public-api:durable/harness/types.go#Conversation.Context"
       ],
       "evidence": [
-        "test:durable/harness/context_shared_test.go#TestBeforeRequestHookChangesDoNotReachTheStoredContext"
+        "test:durable/core/driver/harness_inbox_core_test.go#TestInboxHandoff"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -209528,7 +209528,7 @@
         "public-api:durable/harness/types.go#Conversation.Reset"
       ],
       "evidence": [
-        "test:durable/harness/harness_events_test.go#TestAgentEvents"
+        "test:durable/core/driver/harness_inbox_core_test.go#TestInboxHandoff"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -209549,7 +209549,7 @@
         "public-api:durable/harness/types.go#Conversation.Reset"
       ],
       "evidence": [
-        "test:durable/harness/harness_events_test.go#TestAgentEvents"
+        "test:durable/core/driver/harness_inbox_core_test.go#TestInboxHandoff"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -209847,8 +209847,8 @@
       ],
       "evidence": [
         "test:durable/codemode/codemode_test.go#TestDurableCodeMode",
-        "test:durable/core/driver/harness_tasks_port2_core_test.go#TestCoreTaskCommitsResultsWithEntriesKeepsMemosUntilTerminalAndRetiresDocuments",
-        "test:durable/core/driver/harness_tasks_port2_core_test.go#TestCoreWaitForIdleCountsBlockedWorkAndIgnoresBackgroundTasks"
+        "test:durable/core/driver/harness_read_only_core_test.go#TestReadOnlyHarnessCore",
+        "test:durable/core/driver/harness_tasks_port2_core_test.go#TestCoreTaskCommitsResultsWithEntriesKeepsMemosUntilTerminalAndRetiresDocuments"
       ]
     },
     {
@@ -211594,9 +211594,9 @@
         "call:durable/entries.go#DefineEntry"
       ],
       "evidence": [
+        "test:durable/core/driver/harness_read_only_core_test.go#TestReadOnlyHarnessCore",
         "test:durable/entries_behavior_test.go#TestDefineEntryGuardsByKindAndDecodesTypedData",
-        "test:durable/harness/harness_read_only_test.go#TestReadOnlyHarness",
-        "test:durable/harness/harness_submissions_test.go#TestSubmissions"
+        "test:durable/harness/harness_read_only_test.go#TestReadOnlyHarness"
       ]
     },
     {
@@ -212193,7 +212193,7 @@
       "evidence": [
         "test:durable/core/driver/harness_blocked_core_test.go#TestBlockedTasks",
         "test:durable/core/driver/harness_inspect_core_test.go#TestCoreInspectDerivesEveryLiveTasksStateWithoutRunningTaskCode",
-        "test:durable/core/driver/harness_sleep_core_test.go#TestSleepingTasks"
+        "test:durable/core/driver/harness_read_only_core_test.go#TestReadOnlyHarnessCore"
       ]
     },
     {
@@ -219490,9 +219490,9 @@
         "call:durable/harness/generation.go#finishToolRound"
       ],
       "evidence": [
+        "test:durable/core/driver/harness_inbox_core_test.go#TestInboxHandoff",
         "test:durable/examples/agent_examples_test.go#TestExample26PlanMode",
-        "test:durable/harness/agent_callers_e2e_test.go#TestAddToolsAppliesToModelToolsSoTheModelIsOfferedTheAddedTools",
-        "test:durable/harness/agent_model_tools_test.go#TestAddToolsExtendsToolsAndModelTools"
+        "test:durable/harness/agent_callers_e2e_test.go#TestAddToolsAppliesToModelToolsSoTheModelIsOfferedTheAddedTools"
       ]
     },
     {
@@ -222155,9 +222155,9 @@
         "call:durable/harness/generation.go#answer"
       ],
       "evidence": [
+        "test:durable/core/driver/harness_read_only_core_test.go#TestReadOnlyHarnessCore",
         "test:durable/harness/harness_generation_test.go#TestGeneration",
-        "test:durable/harness/harness_read_only_test.go#TestReadOnlyHarness",
-        "test:durable/harness/harness_submissions_test.go#TestSubmissionDraftIgnoresTheFieldsOfTheOtherType"
+        "test:durable/harness/harness_read_only_test.go#TestReadOnlyHarness"
       ]
     },
     {
@@ -222200,8 +222200,8 @@
       ],
       "evidence": [
         "test:durable/core/driver/harness_blocked_core_test.go#TestBlockedTasks",
-        "test:durable/core/driver/harness_reports_core_test.go#TestReports",
-        "test:durable/core/driver/harness_sleep_core_test.go#TestSleepingTasks"
+        "test:durable/core/driver/harness_read_only_core_test.go#TestReadOnlyHarnessCore",
+        "test:durable/core/driver/harness_reports_core_test.go#TestReports"
       ]
     },
     {

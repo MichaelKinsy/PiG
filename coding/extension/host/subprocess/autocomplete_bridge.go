@@ -103,11 +103,17 @@ func (b *UIBridge) handleAutocompleteInvoke(ctx context.Context, owner *Conn, ar
 }
 
 func autocompleteRequest(ctx context.Context, conn *Conn, method string, args any, result any) error {
+	return requestWithID(ctx, conn, "", method, args, result)
+}
+
+// requestWithID is autocompleteRequest for a request whose id the caller chose (empty: the connection assigns one), so that it can name the request before
+// it is sent.
+func requestWithID(ctx context.Context, conn *Conn, id string, method string, args any, result any) error {
 	data, err := json.Marshal(args)
 	if err != nil {
 		return err
 	}
-	response, err := conn.Request(ctx, &Envelope{Type: MsgRequest, Request: &RequestPayload{Method: method, Args: data}})
+	response, err := conn.Request(ctx, &Envelope{Type: MsgRequest, ID: id, Request: &RequestPayload{Method: method, Args: data}})
 	if err != nil {
 		return err
 	}

@@ -73,6 +73,7 @@ async function startNestedCall(runtime: Runtime, parentCallId: string, name: str
   const key = options.key
   const call = { type: "toolCall", id: `${parentCallId}/${key}`, name, arguments: copyJson(args, { omitUndefinedProperties: true }) as any }
   let id: number | undefined
+  let replayed = false
   await runtime.commit(async (tx: any) => {
     // Opened, or created empty for a key not made yet.
     const state = await tx.doc(NestedCallDoc, runtime.taskId, key, null)
@@ -82,6 +83,7 @@ async function startNestedCall(runtime: Runtime, parentCallId: string, name: str
       const same = input?.kind === "nested" && input.call.name === name && jsonEqual(input.call.arguments, call.arguments)
       if (!same) throw new Error(`Nested call ${call.id} was already made with another tool or other arguments`)
       id = existing
+      replayed = state.result !== undefined
       return undefined
     }
     const input = { kind: "nested", parent: runtime.taskId, parentCallId, key, call, ...(options.progress === false ? { progress: false } : {}) }
@@ -93,5 +95,7 @@ async function startNestedCall(runtime: Runtime, parentCallId: string, name: str
     id = created
     return undefined
   }, context)
+  // tool.ts startNestedCall: a call answered from its stored result is a replay.
+  if (replayed) context.telemetry.addEvent("pi.durable.replay", { "tool.name": name })
   return id!
 }

@@ -50,37 +50,86 @@ type runState struct {
 	snapshot Snapshot
 	reported *TaskImpl
 	hasRep   bool
+	inv      *invocation
+}
+
+// runner is the run of one task's phases: what the scheduler keeps of an invocation between its steps, in one allocation (a task
+// graph reserves thousands of invocations at once), and the step's two continuations.
+type runner struct {
+	s   *Scheduler
+	inv *invocation
+	st  runState
+	rt  Runtime
+	// previous is the result of the phase that ran before the step in flight, when hasPrevious; cp is the checkpoint the running
+	// phase started from.
+	previous    phaseResult
+	hasPrevious bool
+	cp          any
+	current     *jv.Object
+	finish      func()
 }
 
 func (s *Scheduler) run(r *reservation, finish func()) {
-	inv := r.inv
-	st := &runState{task: r.task, snapshot: r.snapshot}
-	rt := s.newRuntime(inv, func() *TaskImpl { return st.task }, func() Snapshot { return st.snapshot })
-	var previous *phaseResult
-	var next func()
-	next = func() {
-		prev := previous
-		s.step(inv, func(tx *Tx, current *jv.Object) (decision, error) {
-			return s.decide(tx, current, prev, st, inv.extension)
-		}, func(current *jv.Object) {
-			// #run awaits #phase, which wraps the phase handler and the decision step that follows it in a span.
-			if current == nil || s.closing {
-				inv.afterSpan(prev != nil, finish, false)
-				return
-			}
-			// #run awaits #step, an async function that awaited the step's commit: the phase starts a tick after the job resolved
-			// (scheduler.ts :919-926, :1000-1002).
-			inv.afterSpan(prev != nil, func() {
-				cp, _ := getObj(current, "state").Get("checkpoint")
-				rt.agentReset()
-				st.task.Phase(rt, current, func(err error) {
-					previous = &phaseResult{checkpoint: cp, failure: err}
-					s.loop.Defer(next)
-				})
-			}, true)
-		})
+	rn := &runner{s: s, inv: r.inv, st: runState{task: r.task, snapshot: r.snapshot, inv: r.inv}, finish: finish}
+	rn.rt = Runtime{s: s, inv: r.inv, snap: &rn.st.snapshot}
+	rn.next()
+}
+
+// previousResult is the phase result the step in flight decides on: nil before the first phase.
+func (rn *runner) previousResult() *phaseResult {
+	if !rn.hasPrevious {
+		return nil
 	}
-	next()
+	return &rn.previous
+}
+
+// next queues the step that follows the phase that just ended.
+func (rn *runner) next() { rn.s.step(rn.inv, rn) }
+
+func (rn *runner) decide(tx *Tx, current *jv.Object) (decision, error) {
+	return rn.s.decide(tx, current, rn.previousResult(), &rn.st, rn.inv.extension)
+}
+
+// after continues the run once the step has committed: it starts the next phase, or ends the invocation.
+func (rn *runner) after(current *jv.Object) {
+	s, inv := rn.s, rn.inv
+	ran := rn.hasPrevious
+	// #run awaits #phase, which wraps the phase handler and the decision step that follows it in a span: it ends with the step.
+	if ran {
+		s.endPhase(inv)
+	}
+	if current == nil || s.closing {
+		inv.afterSpan(ran, rn.finish, false)
+		return
+	}
+	// #run awaits #step, an async function that awaited the step's commit: the phase starts a tick after the job resolved
+	// (scheduler.ts :919-926, :1000-1002).
+	// The phase runs inside its span: a Harness with telemetry asks the host for it first (afterSpan, spanFirst), which runs the phase.
+	rn.current = current
+	inv.spanFirst = s.env.Telemetry != nil
+	inv.afterSpan(ran, rn.startPhase, true)
+}
+
+// startPhase runs the phase of the checkpoint the step committed.
+func (rn *runner) startPhase() {
+	s, inv, current := rn.s, rn.inv, rn.current
+	if inv.spanAsk {
+		// The host's span comes first; its answer runs this again for the phase.
+		inv.spanAsk = false
+		s.startPhase(inv)
+		return
+	}
+	rn.current = nil
+	rn.cp, _ = getObj(current, "state").Get("checkpoint")
+	rn.rt.agentReset()
+	rn.st.task.Phase(&rn.rt, current, rn.phaseDone)
+}
+
+// phaseDone is the continuation of a phase: its result goes to the next step.
+func (rn *runner) phaseDone(err error) {
+	rn.previous, rn.hasPrevious = phaseResult{checkpoint: rn.cp, failure: err}, true
+	rn.cp = nil
+	rn.s.loop.Defer(rn.next)
 }
 
 func (s *Scheduler) decide(tx *Tx, current *jv.Object, previous *phaseResult, st *runState, extension string) (decision, error) {
@@ -133,7 +182,7 @@ func (s *Scheduler) decide(tx *Tx, current *jv.Object, previous *phaseResult, st
 				info.Set("extension", extension)
 			}
 			info.Set("reason", reason)
-			s.report(errorf("Task %d keeps running under its old %s definition", mustInt(current, "id"), kind), info)
+			s.reportAt(errorf("Task %d keeps running under its old %s definition", mustInt(current, "id"), kind), info, st.inv.span)
 		}
 	}
 	return decision{kind: decideContinue}, nil
@@ -154,15 +203,49 @@ func (s *Scheduler) runAbort(r *reservation, finish func()) {
 		finish()
 		return
 	}
-	rt := s.newRuntime(inv, func() *TaskImpl { return r.task }, func() Snapshot { return r.snapshot })
+	rt := s.newRuntime(inv, &r.snapshot)
 	after := func(failure error) {
-		s.step(inv, func(*Tx, *jv.Object) (decision, error) {
-			if failure != nil {
-				return decision{kind: decideFault, fault: failure}, nil
-			}
-			return decision{kind: decideFault, fault: errorf("Abort handler of task %d returned without a terminal outcome", inv.taskID)}, nil
-		}, func(*jv.Object) { inv.afterSpan(true, finish, false) })
+		s.step(inv, &abortStep{s: s, inv: inv, failure: failure, finish: finish})
 	}
+	// #runAbort wraps the abort handler and its step in a span of kind abort: the host starts it, which runs the handler.
+	if s.env.Telemetry != nil {
+		inv.telemetry().abort = abortRun{r, rt, current, after}
+		s.startPhase(inv)
+		return
+	}
+	s.abortHandler(r, rt, current, after)
+}
+
+// abortStep is the step that follows an abort handler: it faults the task unless the handler left it terminal.
+type abortStep struct {
+	s       *Scheduler
+	inv     *invocation
+	failure error
+	finish  func()
+}
+
+func (a *abortStep) decide(*Tx, *jv.Object) (decision, error) {
+	if a.failure != nil {
+		return decision{kind: decideFault, fault: a.failure}, nil
+	}
+	return decision{kind: decideFault, fault: errorf("Abort handler of task %d returned without a terminal outcome", a.inv.taskID)}, nil
+}
+
+func (a *abortStep) after(*jv.Object) {
+	a.s.endPhase(a.inv)
+	a.inv.afterSpan(true, a.finish, false)
+}
+
+// abortRun is an abort handler waiting for the host's span.
+type abortRun struct {
+	r       *reservation
+	rt      *Runtime
+	current *jv.Object
+	after   func(error)
+}
+
+// abortHandler runs the abort handler of a reservation; after is what follows it (its step).
+func (s *Scheduler) abortHandler(r *reservation, rt *Runtime, current *jv.Object, after func(error)) {
 	r.task.Abort(rt, current, func(err error) {
 		if n := r.task.AbortReturnHops; n > 0 && s.env.After != nil {
 			s.env.After(n, func() { after(err) })
@@ -174,52 +257,92 @@ func (s *Scheduler) runAbort(r *reservation, finish func()) {
 
 // step runs one reservation step on the line: decide, then continue with the
 // running task, or end the invocation (faulting the task when decided).
-func (s *Scheduler) step(inv *invocation, decide func(tx *Tx, current *jv.Object) (decision, error), then func(current *jv.Object)) {
-	var result *jv.Object
-	var fault error
-	// The fault is reported as the step resumes from its commit, after its publication and before the line's next job.
-	reportFault := func() {
-		if fault != nil {
-			info := aboutInvocation("task_faulted", inv)
-			info.Set("reason", "threw")
-			s.report(fault, info)
+func (s *Scheduler) step(inv *invocation, st stepper) {
+	j := &stepJob{s: s, inv: inv, st: st, span: inv.span, trace: inv.carrier()}
+	j.rn = j
+	s.loop.QueueAfterTail(&j.job)
+}
+
+// stepper is what a step decides and does next: decide runs inside the step's commit, and after once the commit is done (with the
+// running task's record, or nil when the invocation ended).
+type stepper interface {
+	decide(tx *Tx, current *jv.Object) (decision, error)
+	after(current *jv.Object)
+}
+
+// stepJob is a reservation step queued on the Session line (step): the line job, its commit callback, its report and its
+// continuation in one allocation, since every task of a large graph has one queued at once.
+type stepJob struct {
+	job
+	s   *Scheduler
+	inv *invocation
+	st  stepper
+	// span and trace are the commit's Context as the step was queued.
+	span   uint32
+	trace  any
+	result *jv.Object
+	fault  error
+}
+
+func (j *stepJob) runJob() error {
+	_, err := j.s.sess.RunCommit(j.change, TxScope{Span: j.span, Trace: j.trace})
+	if err == nil {
+		j.s.loop.OnComplete(j.reportFault)
+	}
+	return err
+}
+
+// reportFault reports the fault as the step resumes from its commit, after its publication and before the line's next job.
+func (j *stepJob) reportFault() {
+	if j.fault != nil {
+		info := aboutInvocation("task_faulted", j.inv)
+		info.Set("reason", "threw")
+		j.s.reportAt(j.fault, info, j.inv.span)
+	}
+}
+
+func (j *stepJob) change(tx *Tx) error {
+	s, inv := j.s, j.inv
+	j.result = nil
+	j.fault = nil
+	found, ok := s.live.get(inv.taskID)
+	var current *jv.Object
+	if ok && taskStatus(found) == StatusRunning {
+		current = found
+	}
+	d := decision{kind: decideStop}
+	if current != nil && !s.closing {
+		var err error
+		if d, err = j.st.decide(tx, current); err != nil {
+			return err
 		}
 	}
-	s.commitJobAfter(s.loop.LineAfterTail, nil, func(tx *Tx) error {
-		result = nil
-		fault = nil
-		found, ok := s.live.get(inv.taskID)
-		var current *jv.Object
-		if ok && taskStatus(found) == StatusRunning {
-			current = found
-		}
-		d := decision{kind: decideStop}
-		if current != nil && !s.closing {
-			var err error
-			if d, err = decide(tx, current); err != nil {
-				return err
-			}
-		}
-		if d.kind == decideContinue {
-			result = current
-			return nil
-		}
-		s.endInvocation(inv)
-		if d.kind == decideFault {
-			fault = d.fault
-			msg := faultText(d.fault)
-			return s.terminate(tx, current, obj("status", "faulted", "error", obj("message", msg)))
-		}
+	if d.kind == decideContinue {
+		j.result = current
 		return nil
-	}, TxScope{}, reportFault, func(err error) {
-		if err != nil {
-			s.endInvocation(inv)
-			s.failSession(err)
-			then(nil)
-			return
+	}
+	s.endInvocation(inv)
+	if d.kind == decideFault {
+		j.fault = d.fault
+		msg := faultText(d.fault)
+		// invTel.fault: the outcome of a task that threw, which the phase's span reports once the task has left the live index.
+		outcome := obj("status", "faulted", "error", obj("message", msg))
+		if s.env.Telemetry != nil {
+			inv.telemetry().fault = outcome
 		}
-		then(result)
-	})
+		return s.terminate(tx, current, outcome)
+	}
+	return nil
+}
+
+func (j *stepJob) doneJob(err error) {
+	if err != nil {
+		j.s.endInvocation(j.inv)
+		j.s.failSession(err)
+		j.st.after(nil)
+		return
+	}
+	j.st.after(j.result)
 }
 
 // terminate settles a task with a scheduler-written outcome: completing while
@@ -229,9 +352,9 @@ func (s *Scheduler) terminate(tx *Tx, rec *jv.Object, outcome *jv.Object) error 
 		return err
 	}
 	if s.hasOwnedLive(mustInt(rec, "id"), overlayOf(tx), nil) {
-		return tx.stageTask(withState(rec, obj("status", StatusCompleting, "outcome", outcome)))
+		return tx.stageFresh(withState(rec, obj("status", StatusCompleting, "outcome", outcome)))
 	}
-	if err := tx.stageTask(withState(rec, obj("status", StatusTerminal, "outcome", outcome))); err != nil {
+	if err := tx.stageFresh(withState(rec, obj("status", StatusTerminal, "outcome", outcome))); err != nil {
 		return err
 	}
 	return s.env.SettleOutcome(tx, rec, outcome)
@@ -262,15 +385,16 @@ func (s *Scheduler) commitState(tx *Tx, inv *invocation, current *jv.Object, nex
 		}
 		if s.hasOwnedLive(mustInt(current, "id"), o, nil) {
 			outcome, _ := next.Get("outcome")
-			return tx.stageTask(withState(progressed(current), obj("status", StatusCompleting, "outcome", outcome)))
+			outcome = shared(&s.sess.lastOutcome, outcome)
+			return tx.stageFresh(withState(progressed(current), obj("status", StatusCompleting, "outcome", outcome)))
 		}
 	}
 	// A state the task committed that differs from its current one is progress: its restart count starts over. The same
 	// checkpoint committed again, for example as intent before an effect, is not.
 	if jv.Equal(getObj(current, "state"), next) {
-		return tx.stageTask(withState(current, next))
+		return tx.stageFresh(withState(current, next))
 	}
-	return tx.stageTask(withState(progressed(current), next))
+	return tx.stageFresh(withState(progressed(current), next))
 }
 
 // validateWait checks that a wait names existing tasks, and failFast only tasks the waiter owns. It may not close a cycle

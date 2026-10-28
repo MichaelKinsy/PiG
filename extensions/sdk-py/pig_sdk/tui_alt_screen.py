@@ -24,10 +24,9 @@ The screen ends with the connection: the host disposes it, and no callback runs 
 from __future__ import annotations
 
 import asyncio
-import contextlib
 import inspect
 import threading
-from collections.abc import Callable, Iterator, Mapping
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Literal, NotRequired, Protocol, TypedDict
 
@@ -328,8 +327,6 @@ class TuiAltScreen:
         self._scheme_listeners: list[Callable[[str], Any]] = []
         self._on_debug: Callable[[], Any] | None = None
         self._visible: dict[str, Callable[[int, int], Any]] = {}
-        # The depth of frame callbacks (render, visible, the style and indicator options) this thread runs for this screen: its host calls say so (inFrame).
-        self._frame = threading.local()
         self._late_colors: dict[str, Callable[[TerminalColors], Any]] = {}
         self._query_seq = 0
         options = options or TuiAltScreenOptions()
@@ -375,22 +372,11 @@ class TuiAltScreen:
         terminal = self._terminal
         return {"columns": int(terminal.columns), "rows": int(terminal.rows), "kitty": bool(terminal.kitty_protocol_active)}
 
-    @contextlib.contextmanager
-    def _in_frame(self) -> Iterator[None]:
-        """Mark the calling thread as running one of this screen's frame callbacks."""
-        self._frame.depth = getattr(self._frame, "depth", 0) + 1
-        try:
-            yield
-        finally:
-            self._frame.depth -= 1
-
     def _call(self, op: str, fields: Mapping[str, Any] | None = None) -> dict[str, Any]:
         args: dict[str, Any] = {"id": self._id, "op": op}
         if fields:
             args.update(fields)
         args["terminal"] = self._terminal_block()
-        if getattr(self._frame, "depth", 0) > 0:
-            args["inFrame"] = True
         ctx = getattr(_CALLBACK, "ctx", None)
         result = (self._extension._call if ctx is None else ctx._call)("tui.alt", args).get("result")
         return result if isinstance(result, dict) else {}
@@ -437,9 +423,15 @@ class TuiAltScreen:
     def terminal(self, terminal: Terminal) -> None:
         self._terminal = terminal
 
+    # pig divergence (D207): Pi's children is a live array; this is a copy, because a live array cannot cross the process boundary.
     @property
     def children(self) -> list[Any]:
-        """The children added with :meth:`add_child`, in order. A snapshot: change the screen with ``add_child``, ``remove_child`` and ``clear``."""
+        """The children added with :meth:`add_child`, in order.
+
+        pig divergence from Pi: Pi's ``children`` is a live array, this is a copy (a snapshot), because a live array cannot cross the process boundary.
+        Changing the returned list changes nothing, and it does not follow later changes. Change the children only with :meth:`add_child`,
+        :meth:`remove_child` and :meth:`clear`; there is no setter.
+        """
         with self._lock:
             return list(self._children)
 
@@ -696,8 +688,7 @@ class TuiAltScreen:
             return self._terminal_callback(args)
         if kind == "render":
             component = self._component(args)
-            with self._in_frame():
-                lines = component.render(int(args.get("width") or 0))
+            lines = component.render(int(args.get("width") or 0))
             if not isinstance(lines, (list, tuple)) or not all(isinstance(line, str) for line in lines):
                 raise TypeError("render must return a list of strings")
             return {"lines": list(lines)}
@@ -726,8 +717,7 @@ class TuiAltScreen:
                 visible = self._visible.get(str(args.get("key") or ""))
             if visible is None:
                 raise RuntimeError(f"no visible callback for component {args.get('key')}")
-            with self._in_frame():
-                return {"value": bool(visible(int(args.get("termWidth") or 0), int(args.get("termHeight") or 0)))}
+            return {"value": bool(visible(int(args.get("termWidth") or 0), int(args.get("termHeight") or 0)))}
         if kind == "listener":
             return self._listener_callback(args)
         if kind == "debug":
@@ -832,9 +822,8 @@ class TuiAltScreen:
         if name in ("openUrl", "onRightClickPaste"):
             _settle(callback(*([str(call_args[0])] if name == "openUrl" else [])))
             return {"value": None}
-        with self._in_frame():
-            if name == "searchNavigationButtonStyle":
-                return {"value": str(callback(str(call_args[0]), bool(call_args[1])))}
-            if name == "scrollToEndIndicator":
-                return {"value": str(callback())}
-            return {"value": str(callback(str(call_args[0])))}
+        if name == "searchNavigationButtonStyle":
+            return {"value": str(callback(str(call_args[0]), bool(call_args[1])))}
+        if name == "scrollToEndIndicator":
+            return {"value": str(callback())}
+        return {"value": str(callback(str(call_args[0])))}

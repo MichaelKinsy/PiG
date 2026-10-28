@@ -16,6 +16,10 @@ import (
 // host calls back into them (docs/extension-api-parity.md, "TuiAltScreen"). Every member that reads or changes the renderer is a host round
 // trip and reports its error; the members Pi serves from the object itself (Mode, Children, Terminal, ViewportTui, SetOnDebug,
 // OnTerminalColorSchemeChange) answer locally.
+//
+// Components are compared by identity, as in Pi, so every [Component] passed to the screen must be a non-nil pointer. Every member may be called
+// from a component's render and applies at once, except Render, RenderNow, Start, Stop, CopyActiveSelectionToClipboard and QueryTerminalColors,
+// which the host fails with "tui.alt: <op> cannot run while a component renders".
 
 // ProgramStatus is pi-tui's ProgramStatus (OSC 7501): State is idle, working, blocked, done, error or clear; an empty App, Kind or Message is
 // upstream's absent field.
@@ -53,7 +57,7 @@ type TerminalRestoreOnExit interface {
 }
 
 // Component is pi-tui's Component: Render returns the lines for width. The components of a [TuiAltScreen] are compared by identity (Pi's
-// object identity), so they must be comparable values such as pointers.
+// reference identity), so a component MUST be a non-nil pointer; the screen's methods return an error for any other value.
 type Component interface {
 	Render(width int) []string
 	Invalidate()
@@ -224,9 +228,6 @@ type tuiAltRegistry struct {
 	mu      sync.Mutex
 	next    int
 	screens map[string]*TuiAltScreen
-	// frames counts, per goroutine, the frame callbacks (render, visible, style) it is running: a call from one carries inFrame, which tells the
-	// host not to wait on the frame that waits for this callback.
-	frames map[uint64]int
 	// callbacks holds, per goroutine, the request of the host callback it is serving: a call it makes is that request's child, in its own
 	// ordering lane, because a call in the lane of the call the callback answers would wait for it.
 	callbacks map[uint64]Context
@@ -273,38 +274,10 @@ func goroutineID() uint64 {
 	return id
 }
 
-// enterFrame marks the calling goroutine as running a frame callback until the returned function runs.
-func (r *tuiAltRegistry) enterFrame() func() {
-	id := goroutineID()
-	r.mu.Lock()
-	if r.frames == nil {
-		r.frames = map[uint64]int{}
-	}
-	r.frames[id]++
-	r.mu.Unlock()
-	return func() {
-		r.mu.Lock()
-		if r.frames[id]--; r.frames[id] <= 0 {
-			delete(r.frames, id)
-		}
-		r.mu.Unlock()
-	}
-}
-
-func (r *tuiAltRegistry) inFrame() bool {
-	id := goroutineID()
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	return r.frames[id] > 0
-}
-
 func (s *TuiAltScreen) call(op string, fields map[string]any, out any) error {
 	args := map[string]any{"id": s.id, "op": op}
 	for k, v := range fields {
 		args[k] = v
-	}
-	if op != "dispose" && s.ext.tuiAlt.inFrame() {
-		args["inFrame"] = true
 	}
 	args["terminal"] = map[string]any{"columns": s.terminal.Columns(), "rows": s.terminal.Rows(), "kitty": s.terminal.KittyProtocolActive()}
 	result, err := s.ext.tuiAlt.callContext(s.ext).callHost("tui.alt", args)
@@ -317,13 +290,18 @@ func (s *TuiAltScreen) call(op string, fields map[string]any, out any) error {
 	return nil
 }
 
-// componentFields names component for the host: its key and, with it, the members it has.
+// componentFields names component for the host: its key and, with it, the members it has. Pi compares components by reference, so a component
+// must be a non-nil pointer; anything else is an error and no host call is made.
 func (s *TuiAltScreen) componentFields(component Component) (map[string]any, error) {
 	if component == nil {
 		return nil, errors.New("tui: component is nil")
 	}
-	if !reflect.TypeOf(component).Comparable() {
-		return nil, fmt.Errorf("tui: component %T is not comparable; use a pointer", component)
+	value := reflect.ValueOf(component)
+	if value.Kind() != reflect.Pointer {
+		return nil, fmt.Errorf("tui: component %T must be a pointer (Pi compares components by reference)", component)
+	}
+	if value.IsNil() {
+		return nil, errors.New("tui: component is nil")
 	}
 	s.mu.Lock()
 	key, ok := s.keys[component]
@@ -388,7 +366,11 @@ func (s *TuiAltScreen) ViewportTui() bool { return true }
 // Terminal is pi-tui's terminal: the terminal the screen was built with.
 func (s *TuiAltScreen) Terminal() Terminal { return s.terminal }
 
-// Children is pi-tui's children: a copy of the screen's children (Pi hands out its live array).
+// Children is pi-tui's children: a copy of the screen's children.
+//
+// pig divergence (D207): Pi's `children` is a live array; a live array cannot cross the process boundary, so this returns a snapshot. Changing
+// the returned list changes nothing and it does not follow later changes: the children are changed only with [TuiAltScreen.AddChild],
+// [TuiAltScreen.RemoveChild] and [TuiAltScreen.Clear] (there is no setChildren).
 func (s *TuiAltScreen) Children() []Component {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -410,7 +392,7 @@ func (s *TuiAltScreen) AddChild(component Component) error {
 	return nil
 }
 
-// RemoveChild is Container.removeChild; a component that is not a child is ignored.
+// RemoveChild is Container.removeChild; a component that is not a child is ignored. A component that is not a pointer is an error.
 func (s *TuiAltScreen) RemoveChild(component Component) error {
 	fields, err := s.componentFields(component)
 	if err != nil {
@@ -917,11 +899,7 @@ func (e *Extension) dispatchTuiAlt(ctx Context, raw json.RawMessage) (any, error
 		if err != nil {
 			return nil, err
 		}
-		var lines []string
-		func() {
-			defer e.tuiAlt.enterFrame()()
-			lines = c.Render(request.Width)
-		}()
+		lines := c.Render(request.Width)
 		if lines == nil {
 			lines = []string{}
 		}
@@ -1014,13 +992,8 @@ func (e *Extension) dispatchTuiAlt(ctx Context, raw json.RawMessage) (any, error
 		if visible == nil {
 			return map[string]any{"value": true}, nil
 		}
-		defer e.tuiAlt.enterFrame()()
 		return map[string]any{"value": visible(request.TermWidth, request.TermHeight)}, nil
 	case "option":
-		switch request.Name {
-		case "searchMatchStyle", "searchCurrentMatchStyle", "searchNavigationButtonStyle", "scrollToEndIndicator":
-			defer e.tuiAlt.enterFrame()()
-		}
 		return s.runOption(request.Name, request.Args)
 	}
 	return nil, fmt.Errorf("tui.alt: unknown callback %q", request.Kind)
