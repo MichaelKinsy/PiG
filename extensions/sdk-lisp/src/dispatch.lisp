@@ -347,7 +347,8 @@
 (defun handle-request-thread (ext env ctx)
   (unwind-protect
        (progn
-         (wait-loaded ext)
+         ;; A tui.alt.cb request answers a screen the extension created, which can be an on-loaded handler's: it must not wait for that handler to return.
+         (unless (equal (jget (jget env "request") "method") "tui.alt.cb") (wait-loaded ext))
          (handle-request ext env ctx))
     (sb-thread:with-mutex ((extension-state-lock ext))
       (setf (extension-request-threads ext) (remove sb-thread:*current-thread* (extension-request-threads ext))))))

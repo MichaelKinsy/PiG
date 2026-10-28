@@ -40,6 +40,7 @@ class: `session-` / `sm-` SessionManager, `settings-` SettingsManager, `registry
 | the context: UI dialogs, status, widgets, footer/header, theme, working indicator, exec (with a signal), compact, session and model controls, nested tool calls | `context`, `context-extra`, `widgets`, `theme` |
 | component kit, `ui.custom`, overlays, mouse | `kit`, `ui-custom`, `overlay` |
 | editor components, autocomplete providers, terminal input | `editor-component`, `autocomplete`, `terminal-input` |
+| the alternate-screen TUI: `TuiAltScreen` (`make-tui-alt-screen`, `tui-alt-screen-*`), the `tui-terminal` and `tui-component` it draws on and shows, `tui-alt-overlay-*` handles | `tui-alt-screen` |
 | providers (config, native `Provider` objects, remote proxies), OAuth, login, sprites, message/entry/tool renderers, markdown transformer, virtual models, MCP servers | `provider`, `oauth`, `renderer`, `virtual-model`, `mcp` |
 | model calls: `modelStream`, `complete`, `classify`, `generateImages`, `ModelRegistry`, event streams, fetch transport | `model-stream`, `model-types`, `event-stream` |
 | session replacement (`new-session`, `fork`, `navigate-tree`, `switch-session`), child agent sessions, `createAgentSessionRuntime`, services | `session-ops`, `child-session`, `agent-runtime` |

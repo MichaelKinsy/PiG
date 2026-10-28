@@ -9,7 +9,7 @@ import (
 
 // wantTuiAltProbe is what Pi's own TuiAltScreen reports for tui-alt-screen-probe (the Node fixture runs the real class): a recording 20x6
 // terminal, a 12-row document, scroll, flash, overlay, focus, input listener, debug key, color scheme and layout root steps. Every SDK
-// reaches the host's port of the class and must report the same values (D204).
+// reaches the host's port of the class and must report the same values.
 const wantTuiAltProbe = "tui-alt: mode=fullscreen; children=1; terminal=true; viewport=6/true; first=row 7 w=20; last=row 12 w=20; redraws=true; entered=true; up=4/false; top=0/false; topfirst=row 1 w=20; bottom=6/true; flash=true; overlay=true/true/true/8; hidden=true; afterHide=false/false; focus=true/true; inputs=k,c; debug=1; flags=true/true; copy=false/false/false; schemes=dark,light; colors={}; mouse=null; render=row 1 w=10|row 2 w=10; root=true; removed=0; cleared=0; stopped=true:info"
 
 // wantTuiAltFrameProbe is Pi's own result for tui-alt-frame-probe: a component's render reads the screen as it was when the frame began, an
@@ -57,8 +57,8 @@ func TestTuiAltScreenGoComponentIdentity(t *testing.T) {
 	})
 }
 
-// allTuiAltCells selects the cells that run TuiAltScreen rows: every SDK cell but the Lisp one (D204).
-func allTuiAltCells(name string) bool { return !strings.Contains(name, "lisp") }
+// allTuiAltCells selects the cells that run the TuiAltScreen rows every SDK shares: all of them.
+func allTuiAltCells(string) bool { return true }
 
 func runTuiAltProbe(t *testing.T, command, want string, cell func(name string) bool) {
 	if testing.Short() {
@@ -67,9 +67,6 @@ func runTuiAltProbe(t *testing.T, command, want string, cell func(name string) b
 	cases := append(sdkHarnessCases(), packedSDKHarnessCases()...)
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			if strings.Contains(tc.name, "lisp") {
-				t.Skip("D204: the Lisp SDK does not yet export TuiAltScreen")
-			}
 			if !cell(tc.name) {
 				t.Skip("this row is not one of this SDK's")
 			}
