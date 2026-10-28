@@ -194,8 +194,8 @@ export class HarnessTelemetry {
     const attributes: SpanAttributes = { type: info.type }
     const i = info as Record<string, any>
     switch (info.type) {
-      case "task_faulted": case "task_outdated": attributes.reason = i.reason; attributes.extension = i.extension; attributes["task.id"] = i.task?.id; break
-      case "task_parked": case "migration_failed": case "task_error": case "extension_error": attributes.extension = i.extension; attributes["task.id"] = i.task?.id; break
+      case "task_faulted": case "task_interrupted": case "task_outdated": attributes.reason = i.reason; attributes.extension = i.extension; attributes["task.id"] = i.task?.id; break
+      case "migration_failed": case "task_error": case "extension_error": attributes.extension = i.extension; attributes["task.id"] = i.task?.id; break
       case "host_error": attributes["task.id"] = i.task?.id; break
     }
     try {
