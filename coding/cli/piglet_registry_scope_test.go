@@ -63,9 +63,11 @@ func runPigletRegistry(t *testing.T, run pigletRegistryRun) mcpBinaryResult {
 		mode:         "rpc",
 		prompt:       "go",
 		trustProject: run.trustProject,
-		servers:      run.servers,
-		steps:        run.steps,
-		args:         append(launch, run.args...),
+		// The project config directory makes the project one that has resources to trust.
+		projectConfig: true,
+		servers:       run.servers,
+		steps:         run.steps,
+		args:          append(launch, run.args...),
 	})
 }
 

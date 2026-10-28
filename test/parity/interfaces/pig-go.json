@@ -168504,6 +168504,17 @@
       "shapeHash": "sha256:31cac5b359d9888bdbe3fe08c486b2e404a728edce6e0aaaa60e59ceafc92fb5"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/piglet#ActiveByDefaultTools",
+      "package": "github.com/MichaelKinsy/PiG/coding/piglet",
+      "name": "ActiveByDefaultTools",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(p *Piglet) []string"
+      },
+      "shapeHash": "sha256:b31521a32fbc3ace61bd4c1ccfbe02e19ad9e284522f6f307f615f8b9801671b"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/piglet#AgentEnvironment",
       "package": "github.com/MichaelKinsy/PiG/coding/piglet",
       "name": "AgentEnvironment",
@@ -168609,9 +168620,9 @@
       "kind": "function",
       "exported": true,
       "shape": {
-        "type": "func(p *Piglet) string"
+        "type": "func(p *Piglet, untrustedProject bool) string"
       },
-      "shapeHash": "sha256:4dd799d0db8d07bd79b2cb67ae773db035da4e5f5bec5ebd8e7d6e0dc03e205a"
+      "shapeHash": "sha256:58b14e4e08eebc7d64465ae4820703d90dc0cb845d17f0239b446d71337b4341"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/piglet#AgentWorkspace",
@@ -235393,6 +235404,17 @@
         "type": "untyped string"
       },
       "shapeHash": "sha256:7eabd192b9f1c379102c8dc793881875f1f949f6b752e15a20b93080cb0b311d"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#DefaultToolNames",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "DefaultToolNames",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() []string"
+      },
+      "shapeHash": "sha256:9f921b0d645d262778fe26bdf2928fddc34adea94eefae075778b323fc6302de"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#DefaultUpdateTrustRoot",
