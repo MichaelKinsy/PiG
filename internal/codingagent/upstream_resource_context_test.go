@@ -69,7 +69,7 @@ func TestUpstreamResourceLoaderContextFiles(t *testing.T) {
 				cwd, agentDir = tc.CWD, "agent"
 			}
 			getStderr := withCapturedStderr(t)
-			got := LoadProjectContextFiles(cwd, agentDir)
+			got := LoadProjectContextFiles(cwd, agentDir, true)
 			stderr := getStderr()
 			// resource-loader.test.ts:399 also requires directory candidates to be ignored without read warnings.
 			for _, dir := range tc.Dirs {

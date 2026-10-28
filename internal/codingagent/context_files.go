@@ -2,6 +2,7 @@
 package codingagent
 
 import (
+	"cmp"
 	"os"
 	"path/filepath"
 	"strings"
@@ -36,7 +37,30 @@ var contextCandidates = []string{"AGENTS.override.md", "AGENTS.md", "AGENTS.MD",
 // Duplicate paths are skipped by their loaded path. In a nested linked
 // worktree, the main checkout's same-named context file is skipped when the
 // worktree root supplies its own copy. Nonempty input paths resolve against the process working directory before discovery.
-func LoadProjectContextFiles(cwd, agentDir string) []ContextFile {
+//
+// pig divergence (D210): when projectTrusted is false, only the global file in the agent config dir and the file in the user's home directory (when that directory is a strict ancestor of cwd) load. Every other file the walk finds is project context and is skipped.
+func LoadProjectContextFiles(cwd, agentDir string, projectTrusted bool) []ContextFile {
+	loaded, _ := discoverContextFiles(cwd, agentDir, projectTrusted)
+	return loaded
+}
+
+// WithheldProjectContextFiles lists the paths of the project context files that LoadProjectContextFiles skips while the project is untrusted, nearest directory last.
+// pig divergence (D210).
+func WithheldProjectContextFiles(cwd, agentDir string) []string {
+	_, withheld := discoverContextFiles(cwd, agentDir, false)
+	return withheld
+}
+
+// userHomeDir is the user's home directory as trust-manager.ts:187 resolves it: HOME first, then the user database.
+func userHomeDir() string {
+	if home := cmp.Or(os.Getenv("HOME"), osHomedir()); home != "" {
+		return canonicalPath(home)
+	}
+	return ""
+}
+
+// discoverContextFiles is the walk behind LoadProjectContextFiles. withheld holds the paths it skipped for an untrusted project; their content is never read.
+func discoverContextFiles(cwd, agentDir string, projectTrusted bool) (loaded []ContextFile, withheld []string) {
 	if cwd != "" {
 		if absolute, err := ResolvePath(cwd, ""); err == nil {
 			cwd = absolute
@@ -47,7 +71,6 @@ func LoadProjectContextFiles(cwd, agentDir string) []ContextFile {
 			agentDir = absolute
 		}
 	}
-	var result []ContextFile
 	seen := make(map[string]struct{})
 
 	// 1. Global context from agent config dir.
@@ -55,7 +78,7 @@ func LoadProjectContextFiles(cwd, agentDir string) []ContextFile {
 		if cf := loadContextFileFromDir(agentDir); cf != nil {
 			if _, dup := seen[cf.Path]; !dup {
 				seen[cf.Path] = struct{}{}
-				result = append(result, *cf)
+				loaded = append(loaded, *cf)
 			}
 		}
 	}
@@ -65,29 +88,53 @@ func LoadProjectContextFiles(cwd, agentDir string) []ContextFile {
 	// upstream's ancestorContextFiles.unshift() pattern.
 	if cwd != "" {
 		var ancestors []ContextFile
+		var skipped []string
 		shadowed := findShadowedContextFile(cwd)
+		home := ""
+		if !projectTrusted {
+			home = userHomeDir()
+		}
 		dir := cwd
-		var probe nodefs.PathProbe
-		clean := false
 		for {
-			if cf := loadContextFileProbed(&probe, dir); cf != nil {
-				// upstream: packages/coding-agent/src/core/resource-loader.ts:loadProjectContextFiles compares the directory's real path plus the file name, so a symlinked context file never equals the shadowed path.
-				isShadowed := shadowed != "" && filepath.Join(canonicalPath(dir), filepath.Base(cf.Path)) == shadowed
+			// The home directory's file is the user's own, not the project's: an untrusted project keeps it unless the project is the home directory itself.
+			isProject := !projectTrusted && !(home != "" && dir != cwd && canonicalPath(dir) == home)
+			if isProject {
+				if path := firstContextFilePath(dir); path != "" {
+					isShadowed := shadowed != "" && canonicalPath(path) == shadowed
+					if _, dup := seen[path]; !dup && !isShadowed {
+						seen[path] = struct{}{}
+						skipped = append([]string{path}, skipped...)
+					}
+				}
+			} else if cf := loadContextFileFromDir(dir); cf != nil {
+				isShadowed := shadowed != "" && canonicalPath(cf.Path) == shadowed
 				if _, dup := seen[cf.Path]; !dup && !isShadowed {
 					seen[cf.Path] = struct{}{}
 					ancestors = append([]ContextFile{*cf}, ancestors...)
 				}
 			}
-			parent := nodefs.ParentDir(dir, clean)
+			parent := filepath.Dir(dir)
 			if parent == dir {
 				break // reached root
 			}
-			dir, clean = parent, true
+			dir = parent
 		}
-		result = append(result, ancestors...)
+		loaded = append(loaded, ancestors...)
+		withheld = skipped
 	}
 
-	return result
+	return loaded, withheld
+}
+
+// firstContextFilePath returns the path of the first context candidate in dir that is a regular file, or "".
+func firstContextFilePath(dir string) string {
+	for _, name := range contextCandidates {
+		p := filepath.Join(dir, name)
+		if info, err := os.Stat(p); err == nil && info.Mode().IsRegular() {
+			return p
+		}
+	}
+	return ""
 }
 
 // loadContextFileFromDir checks context candidates in priority order.

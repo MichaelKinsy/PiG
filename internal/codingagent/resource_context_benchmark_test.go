@@ -51,7 +51,7 @@ func BenchmarkContextResourceReload(b *testing.B) {
 			}
 			b.ReportAllocs()
 			for b.Loop() {
-				if files := LoadProjectContextFiles(cwd, agentDir); len(files) != depth {
+				if files := LoadProjectContextFiles(cwd, agentDir, true); len(files) != depth {
 					b.Fatalf("loaded %d contexts, want one per ancestor (%d)", len(files), depth)
 				}
 			}

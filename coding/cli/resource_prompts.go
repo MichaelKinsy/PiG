@@ -57,11 +57,11 @@ func resolvePromptInputs(cwd, agentDir string, flags Args, projectTrusted bool) 
 	}
 }
 
-func loadContextFiles(cwd, agentDir string, disabled bool) []codingagent.ContextFile {
+func loadContextFiles(cwd, agentDir string, disabled, projectTrusted bool) []codingagent.ContextFile {
 	if disabled {
 		return nil
 	}
-	return codingagent.LoadProjectContextFiles(cwd, agentDir)
+	return codingagent.LoadProjectContextFiles(cwd, agentDir, projectTrusted)
 }
 
 func discoverPromptFile(cwd, agentDir, name string, projectTrusted bool) string {

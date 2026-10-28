@@ -258,7 +258,7 @@ func (l *DefaultResourceLoader) discover(ctx context.Context, preTrust *LoadExte
 	}
 	agentsFiles := AgentsFilesResult{AgentsFiles: []ContextFile{}}
 	if !l.options.NoContextFiles {
-		agentsFiles.AgentsFiles = icodingagent.LoadProjectContextFiles(l.cwd, l.agentDir)
+		agentsFiles.AgentsFiles = icodingagent.LoadProjectContextFiles(l.cwd, l.agentDir, trusted)
 	}
 	if l.options.AgentsFilesOverride != nil {
 		agentsFiles = l.options.AgentsFilesOverride(agentsFiles)

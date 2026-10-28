@@ -1,6 +1,10 @@
 package codingagent
 
-import "github.com/MichaelKinsy/PiG/tui"
+import (
+	"strings"
+
+	"github.com/MichaelKinsy/PiG/tui"
+)
 
 // Ports packages/coding-agent/src/modes/interactive/interactive-mode.ts:renderProjectTrustWarningIfNeeded.
 func (m *InteractiveMode) renderProjectTrustWarningIfNeeded() {
@@ -12,7 +16,17 @@ func (m *InteractiveMode) renderProjectTrustWarningIfNeeded() {
 	}
 	// pig divergence (D2): the warning names PiG's configuration directory and restart command.
 	message := "This project is not trusted. Project " + ConfigDirName() + " resources and packages are ignored. Use /trust to save a trust decision, then restart pig."
+	// pig divergence (D210): the warning also names the project context files that were not loaded.
+	if withheld := WithheldProjectContextFiles(m.opts.CWD, m.opts.AgentDir); len(withheld) > 0 {
+		message += " " + ContextFilesWithheldMessage(withheld)
+	}
 	m.chatContainer.Add(themedNotice("warning", message, 1))
+}
+
+// ContextFilesWithheldMessage says which project context files an untrusted project did not load, and how to load them.
+// pig divergence (D210).
+func ContextFilesWithheldMessage(paths []string) string {
+	return "This project is not trusted, so its context files were not loaded: " + strings.Join(paths, ", ") + ". Use /trust to save a trust decision, then restart pig."
 }
 
 // maybeSaveImplicitProjectTrustAfterReload remembers the trust of a project that gained trust-requiring resources after a start without them.

@@ -59,7 +59,7 @@ func TestTrustStoreWithBOMLoads(t *testing.T) {
 func TestContextFileContentStripsBOM(t *testing.T) {
 	dir := t.TempDir()
 	writeBOMFile(t, filepath.Join(dir, "AGENTS.md"), "rules")
-	files := LoadProjectContextFiles(dir, "")
+	files := LoadProjectContextFiles(dir, "", true)
 	if len(files) != 1 || files[0].Content != "rules" {
 		t.Fatalf("context files = %+v", files)
 	}
