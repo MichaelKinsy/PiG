@@ -338,7 +338,7 @@ fn a_call_made_inside_a_callback_is_a_child_of_the_callback_request() {
     let inner = next(s);
     assert_eq!(inner["call"]["args"]["op"], "requestRender", "{inner}");
     assert_eq!(inner["call"]["parent_request_id"], "cbr", "a call inside a callback gets the callback's own lane: {inner}");
-    assert_eq!(inner["call"]["args"]["inFrame"], true);
+    assert!(inner["call"]["args"].get("inFrame").is_none(), "the wire no longer carries inFrame: {inner}");
     answer(s, &inner, json!({}));
     let response = next(s);
     assert_eq!((response["id"].as_str(), &response["response"]["result"]), (Some("cbr"), &json!({"lines": ["x"]})));

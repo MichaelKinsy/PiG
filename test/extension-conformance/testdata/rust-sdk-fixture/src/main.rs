@@ -3728,6 +3728,8 @@ fn main() {
     register_signal_abort(&mut ext);
     register_tui_alt_screen_probe(&mut ext);
     register_tui_alt_frame_probe(&mut ext);
+    register_tui_alt_children_probe(&mut ext);
+    register_tui_alt_reentry_probe(&mut ext);
     ext.run().unwrap();
 }
 
@@ -4997,6 +4999,86 @@ impl pig_sdk::Component for FrameDoc {
     }
 }
 
+/// The component of tui-alt-frame-probe that changes the screen from inside its own render (once, when armed) and reads each change back.
+struct MutDoc {
+    screen: Arc<std::sync::OnceLock<std::sync::Weak<pig_sdk::TuiAltScreen>>>,
+    armed: AtomicBool,
+    log: Mutex<Vec<String>>,
+    invalidations: std::sync::atomic::AtomicUsize,
+    extra: pig_sdk::ComponentRef,
+    target: pig_sdk::ComponentRef,
+    popup: pig_sdk::ComponentRef,
+}
+
+impl MutDoc {
+    fn flags(screen: &pig_sdk::TuiAltScreen) -> std::io::Result<String> {
+        Ok(format!("{}/{}/{}", screen.get_show_hardware_cursor()?, screen.get_clear_on_shrink()?, screen.get_copy_on_select()?))
+    }
+
+    fn mutate(&self, screen: &Arc<pig_sdk::TuiAltScreen>) -> std::io::Result<String> {
+        use pig_sdk::TuiOverlayOptions;
+        let mut r = vec![format!("flags={}", Self::flags(screen)?)];
+        screen.set_show_hardware_cursor(true)?;
+        screen.set_clear_on_shrink(true)?;
+        screen.set_copy_on_select(false)?;
+        r.push(format!("set={}", Self::flags(screen)?));
+        screen.add_child(&self.extra)?;
+        r.push(format!("add={}", screen.children().len()));
+        screen.remove_child(&self.extra)?;
+        r.push(format!("remove={}", screen.children().len()));
+        screen.set_focus(Some(&self.target))?;
+        let focused = screen.get_focused_component()?;
+        r.push(format!("focus={}", focused.as_ref().is_some_and(|component| Arc::as_ptr(component) as *const () == Arc::as_ptr(&self.target) as *const ())));
+        let first = Arc::new(Mutex::new(None::<String>));
+        let record = first.clone();
+        let weak = Arc::downgrade(screen);
+        let h = screen.show_overlay(
+            &self.popup,
+            Some(TuiOverlayOptions {
+                layout: Some(json!({"width": 8})),
+                visible: Some(Arc::new(move |_, _| {
+                    let mut slot = record.lock().unwrap();
+                    if slot.is_none() {
+                        *slot = Some(match weak.upgrade().map(|screen| screen.get_show_hardware_cursor()) {
+                            Some(Ok(value)) => value.to_string(),
+                            _ => "error".to_string(),
+                        });
+                    }
+                    true
+                })),
+            }),
+        )?;
+        let first_seen = first.lock().unwrap().clone().unwrap_or_else(|| "undefined".to_string());
+        r.push(format!("overlay={}/{}/{}/{}", screen.has_overlay()?, screen.has_overlay_entries()?, h.is_focused()?, first_seen));
+        h.hide()?;
+        r.push(format!("hidden={}", screen.has_overlay_entries()?));
+        screen.scroll_by(-2)?;
+        r.push(format!("scroll={}/{}", screen.viewport_top()?, screen.is_following_output()?));
+        self.invalidations.store(0, Ordering::SeqCst);
+        screen.invalidate()?;
+        r.push(format!("invalidate={}", self.invalidations.load(Ordering::SeqCst) > 0));
+        r.push(format!("lines={}", screen.get_screen_lines()?.len()));
+        Ok(r.join(","))
+    }
+}
+
+impl pig_sdk::Component for MutDoc {
+    fn render(&self, _width: u32) -> Vec<String> {
+        if !self.armed.swap(false, Ordering::SeqCst) {
+            return vec!["MUT".to_string()];
+        }
+        let entry = match self.screen.get().and_then(std::sync::Weak::upgrade) {
+            Some(screen) => self.mutate(&screen).unwrap_or_else(|err| format!("error: {err}")),
+            None => "no screen".to_string(),
+        };
+        self.log.lock().unwrap().push(entry);
+        vec!["MUT".to_string()]
+    }
+    fn invalidate(&self) {
+        self.invalidations.fetch_add(1, Ordering::SeqCst);
+    }
+}
+
 /// tui-alt-frame-probe: a component reads the screen's state from inside its own render, and an overlay's `visible` callback is asked the terminal's size.
 fn tui_alt_frame_probe(ctx: &pig_sdk::Context) -> std::io::Result<String> {
     use pig_sdk::{ComponentRef, Terminal, TuiAltScreen, TuiAltScreenOptions, TuiOverlayOptions};
@@ -5046,11 +5128,36 @@ fn tui_alt_frame_probe(ctx: &pig_sdk::Context) -> std::io::Result<String> {
     let off = screen.show_overlay(&hidden, Some(TuiOverlayOptions { layout: None, visible: Some(Arc::new(|_, _| false)) }))?;
     f.push(format!("visibleOff={}/{}", screen.has_overlay()?, screen.has_overlay_entries()?));
     off.hide()?;
-    let _shown = screen.show_overlay(&ov_ref, Some(TuiOverlayOptions { layout: Some(json!({"width": 8})), visible: None }))?;
+    let ov2 = screen.show_overlay(&ov_ref, Some(TuiOverlayOptions { layout: Some(json!({"width": 8})), visible: None }))?;
     doc.invalidations.store(0, Ordering::SeqCst);
     ov.invalidations.store(0, Ordering::SeqCst);
     screen.invalidate()?;
     f.push(format!("invalidate={}/{}", doc.invalidations.load(Ordering::SeqCst) > 0, ov.invalidations.load(Ordering::SeqCst) > 0));
+    ov2.hide()?;
+    let link = Arc::new(std::sync::OnceLock::new());
+    let mut_doc = Arc::new(MutDoc {
+        screen: link.clone(),
+        armed: AtomicBool::new(false),
+        log: Mutex::new(Vec::new()),
+        invalidations: AtomicUsize::new(0),
+        extra: Arc::new(ProbeLines(Box::new(|_| vec!["EXTRA".to_string()]))),
+        target: Arc::new(ProbeLines(Box::new(|_| vec!["TARGET".to_string()]))),
+        popup: Arc::new(ProbeLines(Box::new(|_| vec!["POP".to_string()]))),
+    });
+    let _ = link.set(Arc::downgrade(&screen));
+    let mut_ref: ComponentRef = mut_doc.clone();
+    screen.add_child(&mut_ref)?;
+    screen.render_now(false)?;
+    mut_doc.armed.store(true, Ordering::SeqCst);
+    screen.render_now(false)?;
+    f.push(format!("mutate={}", mut_doc.log.lock().unwrap().join("|")));
+    f.push(format!(
+        "after={}/{}/{}/{}",
+        screen.get_show_hardware_cursor()?,
+        screen.get_clear_on_shrink()?,
+        screen.get_copy_on_select()?,
+        screen.children().len()
+    ));
     screen.stop(Default::default())?;
     Ok(format!("tui-alt-frame: {}", f.join("; ")))
 }
@@ -5063,5 +5170,141 @@ fn register_tui_alt_frame_probe(ext: &mut Extension) {
             CommandResult::Ok
         }
         Err(err) => CommandResult::Error(err.to_string()),
+    });
+}
+
+/// tui-alt-children-probe: `children` after add_child, remove_child and clear, with three distinct components of equal content.
+fn tui_alt_children_probe(ctx: &pig_sdk::Context) -> std::io::Result<String> {
+    use pig_sdk::{ComponentRef, Terminal, TuiAltScreen, TuiAltScreenOptions};
+    let terminal: Arc<dyn Terminal> = Arc::new(ProbeTerminal::default());
+    let screen = TuiAltScreen::new(ctx, terminal, TuiAltScreenOptions { show_hardware_cursor: Some(false), mouse: Some(false), ..Default::default() })?;
+    let mk = || -> ComponentRef { Arc::new(ProbeLines(Box::new(|_| vec!["same".to_string()]))) };
+    let (a, b, c) = (mk(), mk(), mk());
+    let addr = |component: &ComponentRef| Arc::as_ptr(component) as *const () as usize;
+    let name = |component: &ComponentRef| {
+        let at = addr(component);
+        if at == addr(&a) {
+            "a"
+        } else if at == addr(&b) {
+            "b"
+        } else if at == addr(&c) {
+            "c"
+        } else {
+            "?"
+        }
+    };
+    let order = |screen: &TuiAltScreen| {
+        let names: String = screen.children().iter().map(name).collect();
+        if names.is_empty() { "-".to_string() } else { names }
+    };
+    let mut f = vec![format!("empty={}", order(&screen))];
+    screen.add_child(&a)?;
+    screen.add_child(&b)?;
+    screen.add_child(&c)?;
+    f.push(format!("added={}", order(&screen)));
+    screen.remove_child(&b)?;
+    f.push(format!("removeB={}", order(&screen)));
+    screen.remove_child(&b)?;
+    f.push(format!("removeAbsent={}", order(&screen)));
+    screen.add_child(&a)?;
+    f.push(format!("duplicate={}", order(&screen)));
+    screen.remove_child(&a)?;
+    f.push(format!("removeFirst={}", order(&screen)));
+    screen.add_child(&b)?;
+    f.push(format!("readd={}", order(&screen)));
+    f.push(format!("render={}", screen.render(10)?.join("|")));
+    screen.set_focus(Some(&b))?;
+    let focused = screen.get_focused_component()?;
+    f.push(format!("focus={}", focused.as_ref().map_or("?", name)));
+    screen.clear()?;
+    f.push(format!("cleared={}", order(&screen)));
+    Ok(format!("tui-alt-children: {}", f.join("; ")))
+}
+
+/// Contributes tui-alt-children-probe (TestConformance_TuiAltScreenAgreesAcrossSDKs): one info notify with the facts.
+fn register_tui_alt_children_probe(ext: &mut Extension) {
+    ext.command("tui-alt-children-probe", "Read TuiAltScreen children after addChild, removeChild and clear, with components of equal content", |ctx, _args| {
+        match tui_alt_children_probe(ctx) {
+            Ok(report) => {
+                ctx.notify(&report, "info");
+                CommandResult::Ok
+            }
+            Err(err) => CommandResult::Error(err.to_string()),
+        }
+    });
+}
+
+/// The document of tui-alt-reentry-probe: while armed, its render calls the six members that cannot run during a render.
+struct ReentryDoc {
+    screen: Arc<std::sync::OnceLock<std::sync::Weak<pig_sdk::TuiAltScreen>>>,
+    armed: AtomicBool,
+    facts: Mutex<Vec<String>>,
+}
+
+impl pig_sdk::Component for ReentryDoc {
+    fn render(&self, _width: u32) -> Vec<String> {
+        if self.armed.swap(false, Ordering::SeqCst) {
+            if let Some(screen) = self.screen.get().and_then(std::sync::Weak::upgrade) {
+                fn verdict<T>(result: std::io::Result<T>) -> &'static str {
+                    match result {
+                        Ok(_) => "ok",
+                        Err(err) if err.to_string().contains("cannot run while a component renders") => "err",
+                        Err(_) => "other",
+                    }
+                }
+                let mut facts = vec![
+                    format!("render={}", verdict(screen.render(10))),
+                    format!("renderNow={}", verdict(screen.render_now(false))),
+                    format!("start={}", verdict(screen.start())),
+                    format!("stop={}", verdict(screen.stop(Default::default()))),
+                    format!("copy={}", verdict(screen.copy_active_selection_to_clipboard())),
+                    format!(
+                        "colors={}",
+                        verdict(screen.query_terminal_colors(pig_sdk::QueryTerminalColorsOptions { timeout_ms: 20.0, on_late_reply: None }))
+                    ),
+                ];
+                let after = screen.set_show_hardware_cursor(true).and_then(|()| screen.get_show_hardware_cursor());
+                facts.push(format!("after={}", after.map_or_else(|err| format!("error: {err}"), |value| value.to_string())));
+                *self.facts.lock().unwrap() = facts;
+            }
+        }
+        vec!["line 1".to_string(), "line 2".to_string(), "line 3".to_string()]
+    }
+    fn invalidate(&self) {}
+}
+
+/// tui-alt-reentry-probe: the members that cannot run while a component renders fail from inside a render, and the screen goes on working.
+fn tui_alt_reentry_probe(ctx: &pig_sdk::Context) -> std::io::Result<String> {
+    use pig_sdk::{ComponentRef, Terminal, TuiAltScreen, TuiAltScreenOptions};
+    let terminal: Arc<dyn Terminal> = Arc::new(ProbeTerminal::default());
+    let screen = Arc::new(TuiAltScreen::new(
+        ctx,
+        terminal,
+        TuiAltScreenOptions { show_hardware_cursor: Some(false), mouse: Some(false), ..Default::default() },
+    )?);
+    let link = Arc::new(std::sync::OnceLock::new());
+    let doc = Arc::new(ReentryDoc { screen: link.clone(), armed: AtomicBool::new(false), facts: Mutex::new(Vec::new()) });
+    let _ = link.set(Arc::downgrade(&screen));
+    let doc_ref: ComponentRef = doc.clone();
+    screen.add_child(&doc_ref)?;
+    screen.start()?;
+    screen.render_now(false)?;
+    doc.armed.store(true, Ordering::SeqCst);
+    screen.render_now(false)?;
+    screen.stop(Default::default())?;
+    let facts = doc.facts.lock().unwrap().join("; ");
+    Ok(format!("tui-alt-reentry: {facts}"))
+}
+
+/// Contributes tui-alt-reentry-probe: one info notify with the facts.
+fn register_tui_alt_reentry_probe(ext: &mut Extension) {
+    ext.command("tui-alt-reentry-probe", "Call the frame's own members from a component's render and report that they fail", |ctx, _args| {
+        match tui_alt_reentry_probe(ctx) {
+            Ok(report) => {
+                ctx.notify(&report, "info");
+                CommandResult::Ok
+            }
+            Err(err) => CommandResult::Error(err.to_string()),
+        }
     });
 }

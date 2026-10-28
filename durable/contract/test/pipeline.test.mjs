@@ -17,7 +17,7 @@ test.after(() => rmSync(out, { recursive: true, force: true }))
 const capture = (name, o = {}) => runScenario({ script: example(name), out: join(out, name), name: o.tag ?? "r", tmpKey: name, ...o })
 const same = (a, b) => diffTraces(readTrace(a.trace), readTrace(b.trace), { storesA: a.stores, storesB: b.stores })
 
-for (const name of ["00-conversation.ts", "14-chat.ts", "17-coding-tools.ts", "29-sandbox-per-conversation.ts"]) {
+for (const name of ["00-conversation.ts", "13-chat.ts", "16-coding-tools.ts", "28-sandbox-per-conversation.ts"]) {
 	test(`${name}: five captures are equal at every level (CONTRACT 5.3)`, async () => {
 		const runs = []
 		for (let i = 0; i < 5; i++) runs.push(await capture(name, { tag: `r${i}` }))
@@ -28,14 +28,14 @@ for (const name of ["00-conversation.ts", "14-chat.ts", "17-coding-tools.ts", "2
 }
 
 test("the virtual clock makes durations and timestamps constants, and real I/O still completes", async () => {
-	const r = await capture("17-coding-tools.ts")
+	const r = await capture("16-coding-tools.ts")
 	const ts = readTrace(r.trace).filter(l => l.t === "commit").flatMap(l => l.changes).filter(c => c.table === "entries").map(c => c.after[4]).join("")
 	assert.match(ts, /"timestamp":1800000000000/)
 	assert.doesNotMatch(ts, /"timestamp":18000000[0-9]*[1-9]\b/)
 })
 
 test("a model example records its calls with context fingerprints and a bench-independent shape", async () => {
-	const r = await capture("14-chat.ts")
+	const r = await capture("13-chat.ts")
 	const models = readTrace(r.trace).filter(l => l.t === "model")
 	assert.ok(models.length >= 1)
 	for (const m of models) assert.match(m.ctx, /^[0-9a-f]{64}$/)
@@ -43,17 +43,17 @@ test("a model example records its calls with context fingerprints and a bench-in
 
 test("tape: replay serves the recording and a changed request is a context failure at the first differing call", async () => {
 	const tape = join(out, "chat.tape")
-	const rec = await capture("14-chat.ts", { tag: "rec", tape: { mode: "record", path: tape } })
+	const rec = await capture("13-chat.ts", { tag: "rec", tape: { mode: "record", path: tape } })
 	assert.equal(rec.code, 0, rec.stderr)
 	const entries = readFileSync(tape, "utf8").split("\n").filter(Boolean).map(l => JSON.parse(l))
 	assert.ok(entries.some(e => e.k === "model" && e.events.length > 0))
-	const rep = await capture("14-chat.ts", { tag: "rep", tape: { mode: "replay", path: tape } })
+	const rep = await capture("13-chat.ts", { tag: "rep", tape: { mode: "replay", path: tape } })
 	assert.equal(rep.code, 0, rep.stderr)
 	assert.deepEqual(same(rec, rep), { equal: true, reports: [] })
 	// Change the recorded request of the first model call: the replay refuses it and the comparison names the call.
 	const bad = entries.map(e => (e.k === "model" ? { ...e, request: { ...e.request, ctx: "0".repeat(64) } } : e))
 	writeFileSync(tape, bad.map(e => JSON.stringify(e)).join("\n") + "\n")
-	const rejected = await capture("14-chat.ts", { tag: "bad", tape: { mode: "replay", path: tape } })
+	const rejected = await capture("13-chat.ts", { tag: "bad", tape: { mode: "replay", path: tape } })
 	const mismatch = readTrace(rejected.trace).find(l => l.t === "mismatch")
 	assert.equal(mismatch.kind, "model"); assert.equal(mismatch.index, 0)
 	const d = same(rec, rejected)
@@ -63,22 +63,22 @@ test("tape: replay serves the recording and a changed request is a context failu
 
 test("uuidv7: values are recorded, and replay returns the recorded ones whatever the seed", async () => {
 	const tape = join(out, "uuid.tape")
-	const rec = await capture("14-chat.ts", { tag: "rec", tape: { mode: "record", path: tape } })
+	const rec = await capture("13-chat.ts", { tag: "rec", tape: { mode: "record", path: tape } })
 	const recorded = readTrace(rec.trace).filter(l => l.t === "uuid").map(l => l.value)
 	assert.ok(recorded.length >= 1, "the provider document asks for a session id")
 	for (const v of recorded) assert.match(v, /^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/)
-	const other = await capture("14-chat.ts", { tag: "seed2", env: { DETENV_SEED: "2" } })
+	const other = await capture("13-chat.ts", { tag: "seed2", env: { DETENV_SEED: "2" } })
 	assert.notDeepEqual(readTrace(other.trace).filter(l => l.t === "uuid").map(l => l.value), recorded, "the seed changes a drawn value")
-	const rep = await capture("14-chat.ts", { tag: "rep", env: { DETENV_SEED: "2" }, tape: { mode: "replay", path: tape } })
+	const rep = await capture("13-chat.ts", { tag: "rep", env: { DETENV_SEED: "2" }, tape: { mode: "replay", path: tape } })
 	assert.deepEqual(readTrace(rep.trace).filter(l => l.t === "uuid").map(l => l.value), recorded)
 })
 
 test("candidate alias: a directory laid out like durable/src replaces the reference's modules, and its stores are traced", async () => {
 	const cand = join(out, "mirror")
 	cpSync(join(pi, "packages/durable/src"), cand, { recursive: true })
-	const ref = await capture("14-chat.ts", { tag: "ref" })
+	const ref = await capture("13-chat.ts", { tag: "ref" })
 	// A candidate whose storage does not go through capsql writes nothing the contract can see.
-	const untraced = await capture("14-chat.ts", { tag: "untraced", candidate: cand })
+	const untraced = await capture("13-chat.ts", { tag: "untraced", candidate: cand })
 	assert.equal(untraced.code, 0, untraced.stderr)
 	assert.equal(readTrace(untraced.trace).filter(l => l.t === "commit").length, 0)
 	assert.equal(same(ref, untraced).equal, false)
@@ -92,7 +92,7 @@ test("candidate alias: a directory laid out like durable/src replaces the refere
 		"	}",
 		"}",
 	].join("\n") + "\n")
-	const traced = await capture("14-chat.ts", { tag: "traced", candidate: cand })
+	const traced = await capture("13-chat.ts", { tag: "traced", candidate: cand })
 	assert.equal(traced.code, 0, traced.stderr)
 	assert.deepEqual(same(ref, traced), { equal: true, reports: [] })
 	assert.ok(readTrace(traced.trace).filter(l => l.t === "commit").length > 0)
