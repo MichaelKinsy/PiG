@@ -3,7 +3,7 @@
 > **Differs from Pi, or easy to get wrong**
 > - Settings live in `~/.pig/agent/settings.json` and `<project>/.pig/settings.json`, never `~/.pi` or `.pi/` (D2).
 > - The project file loads only in a trusted project. With `-p` there is no prompt and PiG ignores it: pass `--approve` ([project trust](trust.md)).
-> - `pig diagnose` does not show trust. It can print a default model from an untrusted project's file as if it applied.
+> - `pig status` shows the project trust decision and marks resources that an untrusted project's run ignores.
 
 PiG reads settings from `~/.pig/agent/settings.json`. The file is optional. Every
 key is optional, and a key you leave out keeps its default.
@@ -47,7 +47,7 @@ the value depends on what it detects.
 |---|---|---|---|
 | `defaultProvider` | string |  | Provider for the saved default model. Set it with `defaultModel`. |
 | `defaultModel` | string |  | Model ID within `defaultProvider`, without a provider prefix. A qualified ID such as `github-copilot/gpt-6-sol` is not supported here. |
-| `defaultThinkingLevel` | string |  | Thinking level applied to a new session. |
+| `defaultThinkingLevel` | string | `medium` | Thinking level applied to a new session: `off`, `minimal`, `low`, `medium`, `high`, `xhigh`, or `max`. |
 | `modelThinkingLevels` | object |  | Thinking level for a new session per model, keyed by `provider/modelId`. It overrides `defaultThinkingLevel`. |
 | `enabledModels` | string[] | `all` | Models offered in the model selector. |
 | `thinkingBudgets` | object |  | Token budget per thinking level: `minimal`, `low`, `medium`, `high`. |
