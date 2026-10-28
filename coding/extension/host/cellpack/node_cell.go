@@ -91,7 +91,7 @@ func untarNodeSources(data []byte, root string) error {
 			if header.Mode&0o111 != 0 {
 				mode = 0o755
 			}
-			file, err := os.OpenFile(target, os.O_WRONLY|os.O_CREATE|os.O_EXCL, mode) //nolint:gosec // G304: the path names an output or state file that the user or PiG's own state directory designates; the CLI runs as the user with no sandbox, as Pi does, so writing it grants nothing the user lacks
+			file, err := os.OpenFile(target, os.O_WRONLY|os.O_CREATE|os.O_EXCL, mode) //nolint:gosec // G304: archiveMemberPath rejects an absolute, backslash, or escaping member name before the join, so the target stays inside root
 			if err != nil {
 				return err
 			}
