@@ -145,7 +145,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-26d302a](#bf-26d302a) | A login flow's `select` prompt opens a selector in the login dialog, as Pi's does, instead of ending the… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-26d302a-2](#bf-26d302a-2) | A provider object's own `auth.apiKey.login` runs in the login dialog, as Pi's `showApiKeyLoginDialog` runs… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-26d302a-3](#bf-26d302a-3) | A provider object's login that sends a prompt or event type Pi does not define fails with an error that names… | PiG's own defect | All platforms | 0.5.0 |
-| [BF-26d3370](#bf-26d3370) | The Durable core's host calls `HarnessOptions.settings` as often as Pi does: the core reports how many times… | PiG's own defect | All platforms | Unreleased |
+| [BF-26d3370](#bf-26d3370) | The Durable core's host no longer reads the extensions of the Harness settings before every event it sends… | PiG's own defect | All platforms | Unreleased |
 | [BF-27a1650](#bf-27a1650) | The keybindings manager's key text and key matching now cover every keybinding the merged table defines… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-27ddc30](#bf-27ddc30) | A tool card shows the arguments of a tool call while they stream, as Pi does: a streamed write card shows its… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-27f3324](#bf-27f3324) | The npm release packer reads `npm pack --json` output from npm 12, which keys the result by package name, as… | PiG's own defect | All platforms | 0.5.0 |
@@ -968,6 +968,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-c225c97](#bf-c225c97) | fix(rpc): compaction_start precedes a refused replacement's error; D148 names the extra compaction_end; D141… | PiG's own defect | All platforms | Unreleased |
 | [BF-c229e1c](#bf-c229e1c) | A Pi Durable SQLite file written by PiG can be read by Pi, and the reverse, when a task kind, request ID, or… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-c2b2b8b](#bf-c2b2b8b) | fix(tui): the inline memo is used only with tui's own style functions | PiG's own defect | All platforms | Unreleased |
+| [BF-c30a73a](#bf-c30a73a) | fix(durable/core): revert the settings notice (ABI 12); the core resolves the settings from the snapshot the… | PiG's own defect | All platforms | Unreleased |
 | [BF-c350117](#bf-c350117) | Fixed incorrect MCP reconnect behavior after cancellation during transport cleanup | PiG's own defect | All platforms | Unreleased |
 | [BF-c371a13](#bf-c371a13) | OpenAI Responses requests keep the prompt cache across tool changes (Pi #11142) | PiG's own defect | All platforms | 0.5.2 |
 | [BF-c3a6eca](#bf-c3a6eca) | Markdown rendering follows Pi for lines made only of Unicode spaces (U+00A0, U+3000, U+2003 and the others… | PiG's own defect | All platforms | 0.5.0 |
@@ -3050,17 +3051,17 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 
 ### BF-26d3370
 
-**The Durable core's host calls `HarnessOptions.settings` as often as Pi does: the core reports how many times…**
+**The Durable core's host no longer reads the extensions of the Harness settings before every event it sends…**
 
 - **Source:** PiG's own defect
-- **Symptom:** The Durable core's host calls `HarnessOptions.settings` as often as Pi does: the core reports how many times it resolved the settings while it handled an event (a settings notice, ABI 12) and the host resolves them as often, so a settings callback sees the 49 resolutions Pi makes for a round of one generation with one tool call, not the 193 reads of the extensions the host made before every send.
+- **Symptom:** The Durable core's host no longer reads the extensions of the Harness settings before every event it sends: the core never reads them, so they are neither sent nor compared by the change detector (the host made about 187 such reads in a round of one generation with one tool call).
 - **Root cause:** The core counts its resolutions of the settings it was sent (a turn phase's settings, the context retention checks, the submission's queue modes) and publishes the count in a settings notice (ABI 12) at the end of the event; the host resolves them as often, as Pi's callback is seen to (harness-restart-failure.test.ts counts 49 for a round of one generation with one tool call). U-harness-restart-failure passes on native (18 tests).
 - **User impact:** Behavior differed from Pi
 - **Platform:** All platforms
 - **Fixed in:** Unreleased
 - **Fix commits:** `26d33706d4` (2026-10-28)
 - **Tests:** `durable/core/abi/spec/spec_test.go::TestTablesUnchanged`
-- **Release note:** The Durable core's host calls `HarnessOptions.settings` as often as Pi does: the core reports how many times it resolved the settings while it handled an event (a settings notice, ABI 12) and the host resolves them as often, so a settings callback sees the 49 resolutions Pi makes for a round of one generation with one tool call, not the 193 reads of the extensions the host made before every send.
+- **Release note:** The Durable core's host no longer reads the extensions of the Harness settings before every event it sends: the core never reads them, so they are neither sent nor compared by the change detector (the host made about 187 such reads in a round of one generation with one tool call). The core reads `HarnessOptions.settings` from the snapshot the host sends before each event, where Pi resolves the callback at each use (recorded as D206).
 
 ### BF-27a1650
 
@@ -14465,6 +14466,19 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `c2b2b8b860` (2026-10-10)
 - **Tests:** `tui/markdown_streaming_reuse_test.go::TestStreamedMarkdownEqualsAFreshRender`, `tui/markdown_streaming_reuse_test.go::TestStreamedMarkdownFollowsTheDefaultStyle`, `tui/markdown_streaming_reuse_test.go::TestStreamedMarkdownRendersOnlyChangedInlineText`, `tui/markdown_streaming_reuse_test.go::TestStreamedMarkdownWithAForeignTextColorCallsItAgain`, `tui/markdown_streaming_reuse_test.go::TestStreamedMarkdownWithAForeignThemeCallsItsStylesAgain`
 
+### BF-c30a73a
+
+**fix(durable/core): revert the settings notice (ABI 12); the core resolves the settings from the snapshot the…**
+
+- **Source:** PiG's own defect
+- **Symptom:** fix(durable/core): revert the settings notice (ABI 12); the core resolves the settings from the snapshot the host sends (D206)
+- **Root cause:** The core counted its settings resolutions and told the host in a settings notice so the host's callback would be called as often as Pi's. The notice, its counting in sweep/sched/submit/turnhost/handler and the host's loop are removed and abi_id is the one before it. The host keeps reading no extensions before a send. D206 records the difference.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `c30a73a7ec` (2026-10-28)
+- **Tests:** `durable/core/abi/spec/spec_test.go::TestTablesUnchanged`
+
 ### BF-c350117
 
 **Fixed incorrect MCP reconnect behavior after cancellation during transport cleanup**
@@ -19175,6 +19189,7 @@ Each divergence record is accounted for here. A divergence that fixes a Pi defec
 | D203 | registerProvider with an empty `apiKey` leaves the provider unconfigured where Pi treats the empty string as… | [BF-D203](#bf-d203) |
 | D204 | The Go, Rust and Python SDKs do not yet export TuiAltScreen, Pi's alternate-screen TUI host, where the Node… | [BF-D204](#bf-d204) |
 | D205 | Fullscreen frames scroll the rows that only moved | deliberate difference |
+| D206 | The Durable core resolves HarnessOptions.settings once before each event, where Pi resolves it at each use | deliberate difference |
 
 ## Fix-titled commits that are not bugs in a release
 

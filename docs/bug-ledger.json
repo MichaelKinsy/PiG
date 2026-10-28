@@ -4010,15 +4010,15 @@
     },
     {
       "id": "BF-26d3370",
-      "title": "The Durable core's host calls `HarnessOptions.settings` as often as Pi does: the core reports how many times…",
-      "symptom": "The Durable core's host calls `HarnessOptions.settings` as often as Pi does: the core reports how many times it resolved the settings while it handled an event (a settings notice, ABI 12) and the host resolves them as often, so a settings callback sees the 49 resolutions Pi makes for a round of one generation with one tool call, not the 193 reads of the extensions the host made before every send.",
+      "title": "The Durable core's host no longer reads the extensions of the Harness settings before every event it sends…",
+      "symptom": "The Durable core's host no longer reads the extensions of the Harness settings before every event it sends: the core never reads them, so they are neither sent nor compared by the change detector (the host made about 187 such reads in a round of one generation with one tool call).",
       "rootCause": "The core counts its resolutions of the settings it was sent (a turn phase's settings, the context retention checks, the submission's queue modes) and publishes the count in a settings notice (ABI 12) at the end of the event; the host resolves them as often, as Pi's callback is seen to (harness-restart-failure.test.ts counts 49 for a round of one generation with one tool call). U-harness-restart-failure passes on native (18 tests).",
       "rootCauseSource": "commit",
       "userImpact": "Behavior differed from Pi",
       "platform": "All platforms",
       "class": "own",
       "fixedIn": "Unreleased",
-      "releaseNote": "The Durable core's host calls `HarnessOptions.settings` as often as Pi does: the core reports how many times it resolved the settings while it handled an event (a settings notice, ABI 12) and the host resolves them as often, so a settings callback sees the 49 resolutions Pi makes for a round of one generation with one tool call, not the 193 reads of the extensions the host made before every send.",
+      "releaseNote": "The Durable core's host no longer reads the extensions of the Harness settings before every event it sends: the core never reads them, so they are neither sent nor compared by the change detector (the host made about 187 such reads in a round of one generation with one tool call). The core reads `HarnessOptions.settings` from the snapshot the host sends before each event, where Pi resolves the callback at each use (recorded as D206).",
       "origin": "release note",
       "commits": [
         {
@@ -27915,6 +27915,27 @@
       ]
     },
     {
+      "id": "BF-c30a73a",
+      "title": "fix(durable/core): revert the settings notice (ABI 12); the core resolves the settings from the snapshot the…",
+      "symptom": "fix(durable/core): revert the settings notice (ABI 12); the core resolves the settings from the snapshot the host sends (D206)",
+      "rootCause": "The core counted its settings resolutions and told the host in a settings notice so the host's callback would be called as often as Pi's. The notice, its counting in sweep/sched/submit/turnhost/handler and the host's loop are removed and abi_id is the one before it. The host keeps reading no extensions before a send. D206 records the difference.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "c30a73a7ec",
+          "date": "2026-10-28"
+        }
+      ],
+      "tests": [
+        "durable/core/abi/spec/spec_test.go::TestTablesUnchanged"
+      ]
+    },
+    {
       "id": "BF-c350117",
       "title": "Fixed incorrect MCP reconnect behavior after cancellation during transport cleanup",
       "symptom": "Previously, reconnect still started a replacement connection after the caller had canceled.",
@@ -39686,6 +39707,10 @@
     {
       "id": "D205",
       "title": "Fullscreen frames scroll the rows that only moved"
+    },
+    {
+      "id": "D206",
+      "title": "The Durable core resolves HarnessOptions.settings once before each event, where Pi resolves it at each use"
     }
   ],
   "exemptCommits": {

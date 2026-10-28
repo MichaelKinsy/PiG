@@ -31,8 +31,9 @@ import (
 // retries the charged attempt", "never counts progress commits as progress of a task cut off again and again") follow the
 // restart-failure cases.
 //
-// Not natively portable: TestTheRestartLimitOnTheNormalPath counts settings resolutions of a settings source the host passes to
-// the reference Harness; it stays in durable/harness (harness_restart_failure_test.go).
+// The settings-resolution case of the file ("resolves the settings no more often than before") counts the reads of `extensions` of a
+// settings source: durable/harness TestTheRestartLimitOnTheNormalPath asserts Pi's count over the reference Harness, and
+// TestCoreTheRestartLimitOnTheNormalPath below asserts the core's measured count under D206.
 
 // restartRig is a crashRig with the faux model, a settable clock and the reports of every Harness it opened.
 type restartRig struct {
