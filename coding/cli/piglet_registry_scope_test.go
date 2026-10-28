@@ -23,8 +23,10 @@ type pigletRegistryRun struct {
 	// origins, such as a `tools` list.
 	scopedExtension string
 	scopedTools     string
-	// noExtensionsSection writes a Piglet with no `extensions:` section.
+	// noExtensionsSection writes a Piglet with no `extensions:` section. withoutCodemode leaves `-e builtin:codemode` and
+	// `-e builtin:tool-search` off the command line.
 	noExtensionsSection bool
+	withoutCodemode     bool
 	servers             []mcpBinaryServer
 	steps               []chatStep
 	args                []string
@@ -52,12 +54,16 @@ func runPigletRegistry(t *testing.T, run pigletRegistryRun) mcpBinaryResult {
 	if err := os.WriteFile(filepath.Join(piglet, "piglet.yaml"), []byte(yaml), 0o600); err != nil {
 		t.Fatal(err)
 	}
+	launch := []string{"--piglet", filepath.Join(piglet, "piglet.yaml"), "--no-extensions", "-e", "builtin:mcp"}
+	if !run.withoutCodemode {
+		launch = append(launch, "-e", "builtin:codemode", "-e", "builtin:tool-search")
+	}
 	return runPigWithMCP(t, mcpBinaryRun{
 		mode:    "rpc",
 		prompt:  "go",
 		servers: run.servers,
 		steps:   run.steps,
-		args:    append([]string{"--piglet", filepath.Join(piglet, "piglet.yaml"), "--no-extensions", "-e", "builtin:mcp", "-e", "builtin:codemode", "-e", "builtin:tool-search"}, run.args...),
+		args:    append(launch, run.args...),
 	})
 }
 
@@ -68,6 +74,11 @@ func docsServer(exposure string) mcpBinaryServer {
 
 func codemodeCall(tool string) chatStep {
 	return chatCall("codemode", map[string]any{"code": "return (await tools." + tool + `({ query: "q" })).content[0].text;`})
+}
+
+// codemodeCallJSON calls an extension tool and returns its whole result as JSON.
+func codemodeCallJSON(tool string) chatStep {
+	return chatCall("codemode", map[string]any{"code": "return JSON.stringify(await tools." + tool + "({}));"})
 }
 
 // resultsMention reports whether a tool result of the request mentions text.
@@ -190,7 +201,7 @@ func TestPigletRemovesHiddenExtensionToolsFromTheRegistry(t *testing.T) {
 		t.Parallel()
 		result := runPigletRegistry(t, pigletRegistryRun{
 			scopedExtension: scopedToolsExtension, scopedTools: scopedTools, args: scopedToolsFlag,
-			steps: []chatStep{codemodeCall("hidden_codemode"), codemodeCall("shown_codemode"), chatText("done")},
+			steps: []chatStep{codemodeCallJSON("hidden_codemode"), codemodeCallJSON("shown_codemode"), chatText("done")},
 		})
 		requests := result.chat.recorded()
 		if len(requests) != 3 {
@@ -207,7 +218,7 @@ func TestPigletRemovesHiddenExtensionToolsFromTheRegistry(t *testing.T) {
 		t.Parallel()
 		result := runPigletRegistry(t, pigletRegistryRun{
 			scopedExtension: scopedToolsExtension, scopedTools: scopedTools, args: scopedToolsFlag,
-			steps: []chatStep{chatCall("tool_search", map[string]any{"query": "registry probe", "limit": 10}), chatText("done")},
+			steps: []chatStep{chatCall("tool_search", map[string]any{"query": "deferred", "limit": 10}), chatText("done")},
 		})
 		requests := result.chat.recorded()
 		if len(requests) != 2 {
@@ -277,10 +288,10 @@ func TestPigletToolScopeRulesInTheFirstRequest(t *testing.T) {
 		notice           string
 	}{
 		{"no extensions section", pigletRegistryRun{noExtensionsSection: true}, []string{"mcp__docs__a", "mcp__docs__b"}, nil, "all MCP tools", ""},
-		{"extensions without the adapter", pigletRegistryRun{}, nil, []string{"mcp__docs__a", "mcp__docs__b"}, "MCP tools hidden", "the Piglet lists `extensions:` but not `pig-mcp-adapter`"},
+		{"extensions without the adapter", pigletRegistryRun{withoutCodemode: true}, nil, []string{"mcp__docs__a", "mcp__docs__b"}, "MCP tools hidden", "the Piglet lists `extensions:` but not `pig-mcp-adapter`"},
 		{"the adapter without tools", pigletRegistryRun{entries: "  - name: pig-mcp-adapter\n"}, []string{"mcp__docs__a", "mcp__docs__b"}, nil, "all MCP tools", ""},
 		{"the adapter with a tools list", pigletRegistryRun{entries: "  - name: pig-mcp-adapter\n    tools: [mcp__docs__a]\n"}, []string{"mcp__docs__a"}, []string{"mcp__docs__b"}, "MCP tools only mcp__docs__a", "mcp__docs__b"},
-		{"builtin:codemode and builtin:tool-search selected", pigletRegistryRun{entries: "  - name: codemode\n    origins: [builtin:codemode]\n  - name: tool-search\n    origins: [builtin:tool-search]\n"}, nil, []string{"mcp__docs__a", "mcp__docs__b"}, "MCP tools hidden", "the Piglet lists `extensions:` but not `pig-mcp-adapter`"},
+		{"builtin:codemode and builtin:tool-search selected", pigletRegistryRun{}, nil, []string{"mcp__docs__a", "mcp__docs__b"}, "MCP tools hidden", "the Piglet lists `extensions:` but not `pig-mcp-adapter`"},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()

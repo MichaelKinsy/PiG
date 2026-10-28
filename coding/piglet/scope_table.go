@@ -63,9 +63,7 @@ func scopeRows() []scopeRow {
 		pigletRow("Piglet with `extensions:` but without `pig-mcp-adapter`", &Piglet{Extensions: []ExtensionEntry{{Name: "other"}}}),
 		pigletRow("Piglet with `pig-mcp-adapter` and no `tools:`", &Piglet{Extensions: []ExtensionEntry{{Name: MCPAdapterExtensionName}}}),
 		pigletRow("Piglet with `pig-mcp-adapter` and `tools: [mcp__docs__a]`", &Piglet{Extensions: []ExtensionEntry{{Name: MCPAdapterExtensionName, Tools: &adapterList}}}),
-		pigletRow("Piglet that selects `builtin:codemode` and `builtin:tool-search`, without `pig-mcp-adapter`", &Piglet{Extensions: []ExtensionEntry{
-			{Name: "codemode", Origins: []string{"builtin:codemode"}}, {Name: "tool-search", Origins: []string{"builtin:tool-search"}},
-		}}),
+		pigletRow("Piglet run with `-e builtin:codemode` and `-e builtin:tool-search`, without `pig-mcp-adapter`", &Piglet{Extensions: []ExtensionEntry{{Name: "other"}}}),
 		filterRow("Stock `--tools read`", []string{"read"}, nil),
 		filterRow("Stock `--tools read,codemode,tool_search,mcp__docs__a`", []string{"read", "codemode", "tool_search", "mcp__docs__a"}, nil),
 		filterRow("Stock `--exclude-tools mcp__docs__b`", nil, []string{"mcp__docs__b"}),
