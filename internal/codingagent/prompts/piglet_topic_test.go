@@ -14,8 +14,8 @@ func TestPigletDocsTopicIsAdditive(t *testing.T) {
 	t.Cleanup(func() { SetPigletDocsTopic(false) })
 	SetPigletDocsTopic(true)
 	withPiglet := docsSectionAt("/docs", "", "")
-	const topic = ", Piglets and their tool scope (docs/piglets.md)"
-	if strings.Contains(stock, "piglets.md") {
+	const topic = ", Piglets and their tool scope (docs/piglets.md, docs/piglet-strip.md)"
+	if strings.Contains(stock, "piglet") {
 		t.Errorf("the stock docs section names the Piglet docs:\n%s", stock)
 	}
 	if got := strings.Replace(withPiglet, topic, "", 1); got != stock || !strings.Contains(withPiglet, topic+"\n") {
