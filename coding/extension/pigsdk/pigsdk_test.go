@@ -99,7 +99,7 @@ func TestSyncStagesAllLanguages(t *testing.T) {
 	}
 }
 
-// Each bundle embeds its files of 32 KiB or more gzipped (the generator's -gzip-over); the staged SDK holds the text the Go toolchain, the interpreter and cargo read, under the name without .gz.
+// Each bundle embeds its source files gzipped (the generator's -gzip-over); the staged SDK holds the text the Go toolchain, the interpreter and cargo read, under the name without .gz.
 func TestSyncExpandsTheCompressedFiles(t *testing.T) {
 	root := t.TempDir()
 	if _, _, err := Sync(root, false); err != nil {

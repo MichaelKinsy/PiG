@@ -71,7 +71,7 @@ func TestFactoryTuiShowOverlayReachesTheHost(t *testing.T) {
 	for _, tc := range sdkHarnessCases() {
 		t.Run(tc.name, func(t *testing.T) {
 			if !strings.HasPrefix(tc.name, "subprocess-node") {
-				t.Skip("exempt: the Go, Rust and Python Custom APIs take a component, not a factory, and hand out no TUI, so no component of theirs can call showOverlay")
+				t.Skip("exempt: the Go, Rust, Python and Lisp Custom APIs take a component, not a factory, and hand out no TUI, so no component of theirs can call showOverlay")
 			}
 			h := tc.make(t)
 			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)

@@ -128,6 +128,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-2165463](#bf-2165463) | On Windows, saving credentials to `auth.json`, `models.json` or the MCP OAuth store no longer fails at once… | PiG's own defect | Windows | 0.5.0 |
 | [BF-224dbd9](#bf-224dbd9) | On Linux and macOS, the bash tool, a `!` command and an extension's `exec` no longer report no output for a… | PiG's own defect | macOS, Linux | Unreleased |
 | [BF-2280bf8](#bf-2280bf8) | The per-API stream entry points (`ai.AnthropicMessagesAPI()` through `ai.PiMessagesAPI()` and the deprecated… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-228dbea](#bf-228dbea) | fix(durable/core): follow the microtask schedule of Pi | PiG's own defect | All platforms | Unreleased |
 | [BF-2309604](#bf-2309604) | Tool schemas in OpenAI Completions, OpenAI Responses, Codex and Mistral request bodies keep the members in… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-2316fe3](#bf-2316fe3) | The Piglet JSON Schema that `pig piglet schema` prints rejected `powershell` in `tools`, which `pig piglet… | PiG's own defect | Windows | 0.5.3 |
 | [BF-234316d](#bf-234316d) | On Windows, a Go extension's source hash no longer fails, or makes a build beside it fail, with `The process… | PiG's own defect | Windows | Unreleased |
@@ -846,6 +847,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-ab1d070](#bf-ab1d070) | A durable code mode script's journal now records the calls a script had issued after a batch of results in… | PiG's own defect | All platforms | Unreleased |
 | [BF-ab1d070-2](#bf-ab1d070-2) | A script that ends in its first run while a journaled tool call replays after a restart no longer shows that… | PiG's own defect | All platforms | Unreleased |
 | [BF-ab5be97](#bf-ab5be97) | Long streamed answers render each frame faster: the Markdown view re-wraps and re-renders only the lines and… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-abe0137](#bf-abe0137) | fix(durable/core): deliver the extra hops of Pi without closures | PiG's own defect | All platforms | Unreleased |
 | [BF-ac0dc3b](#bf-ac0dc3b) | An empty list item ends its list: a following unindented line is no longer taken for its lazy continuation… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-ac6fcea](#bf-ac6fcea) | A `session_start` handler that calls `ctx.shutdown()` during `/reload` ends the session and exits 0, as Pi… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-aca35e7](#bf-aca35e7) | In print and JSON mode, a Node extension no longer runs a timer or other callback between a prompt's last… | PiG's own defect | All platforms | 0.5.0 |
@@ -931,6 +933,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-c371a13](#bf-c371a13) | OpenAI Responses requests keep the prompt cache across tool changes (Pi #11142) | PiG's own defect | All platforms | 0.5.2 |
 | [BF-c3a6eca](#bf-c3a6eca) | Markdown rendering follows Pi for lines made only of Unicode spaces (U+00A0, U+3000, U+2003 and the others… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-c416945](#bf-c416945) | fix(ai): tool-argument member order keeps a key with an escaped lone surrogate | PiG's own defect | All platforms | Unreleased |
+| [BF-c4734ed](#bf-c4734ed) | fix(durable/core): the span's resume stage is one if, not a one-case switch | PiG's own defect | All platforms | Unreleased |
 | [BF-c4ad739](#bf-c4ad739) | Extension shortcut conflict warnings name both extensions ("registered by both A and B | PiG's own defect | All platforms | 0.5.0 |
 | [BF-c4d51d5](#bf-c4d51d5) | The OpenAI Codex login reads the account id from the access token the way Pi does: the token payload is… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-c4fae28](#bf-c4fae28) | Provider request bodies write a lone UTF-16 surrogate as its escape, as `JSON.stringify` does, instead of… | PiG's own defect | All platforms | 0.5.0 |
@@ -1030,6 +1033,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-db12780](#bf-db12780) | fix(agent): end the tool flow at custom user messages and hold system messages mid-flow | PiG's own defect | All platforms | Unreleased |
 | [BF-db7007d](#bf-db7007d) | A Radius gateway model's `samplingParamsByThinkingLevel` now reaches the `pi-messages` model and the composed… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-db9a315](#bf-db9a315) | Codemode peak memory is now measured and guarded through the normal tool path in a fresh process with 40… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-dbce96c](#bf-dbce96c) | On macOS, reading or writing a named pipe (FIFO) through the read, edit, write and grep tools, the node and… | PiG's own defect | macOS | Unreleased |
 | [BF-dbe1ad3](#bf-dbe1ad3) | `pig setup` now flags a go on PATH older than Go 1.26, the extension SDK minimum, naming the version found… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-dbe25ef](#bf-dbe25ef) | CI: `make interface-gaps` passes on main again | PiG's own defect | All platforms | 0.5.2 |
 | [BF-dbe25ef-10](#bf-dbe25ef-10) | The bug fix ledger no longer credits a squash commit's tests to a release note that names no fix commit | PiG's own defect | All platforms | 0.5.2 |
@@ -2754,6 +2758,19 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `433d232815` (2026-10-09), `75c06b6556` (2026-10-09), `2280bf8320` (2026-10-10)
 - **Tests:** `agent/convert_custom_upstream_test.go::TestConvertToLLMCustomMessagesMatchUpstreamConvertToLlm`, `agent/convert_custom_upstream_test.go::TestConvertToLLMToolFlowMatchesUpstreamTransformOrder`, `agent/convert_custom_upstream_test.go::TestCustomMessagesReachProvidersAsUpstreamContentBlocks`, `agent/transform_custom_user_boundary_test.go::TestAnthropicRequestAfterBranchSummaryHasNoOrphanToolResult`, `agent/transform_custom_user_boundary_test.go::TestConvertToLLMCustomMessageWithoutWireOutputKeepsToolFlow`, `agent/transform_custom_user_boundary_test.go::TestConvertToLLMCustomUserMessageInterruptsToolFlow`, `agent/transform_custom_user_boundary_test.go::TestConvertToLLMHoldsSystemMessageUntilToolFlowCloses`, `ai/anthropic_messages_payload_oracle_test.go::TestAnthropicMessagesPayloadMatchesPi` and 3 more in docs/bug-ledger.json
 - **Release note:** The per-API stream entry points (`ai.AnthropicMessagesAPI()` through `ai.PiMessagesAPI()` and the deprecated `ai.StreamX`/`ai.StreamSimpleX` aliases) end a failure inside the API's own stream the way Pi's API module does: the final message carries the module's `api` (its own API for azure-openai-responses, bedrock-converse-stream, google-generative-ai, google-vertex and openai-codex-responses, the model's `api` otherwise), and a request aborted before it starts stops with `aborted` instead of `error`. Only `streamSimple`'s missing-key check stays a setup error carrying the model's `api`.
+
+### BF-228dbea
+
+**fix(durable/core): follow the microtask schedule of Pi**
+
+- **Source:** PiG's own defect
+- **Symptom:** fix(durable/core): follow the microtask schedule of Pi
+- **Root cause:** Submit returns two hops later (span of pi.durable.submit), a phase's decision commit continues three hops later (span of pi.durable.phase), runtime.commit returns one hop later, waitForIdle and waitForTask return as Pi's async methods, and a host-driven commit is published at Storage adoption. ticks.test.ts: submit 102, running 408 (F-ticks-gate, F-ticks-tools-gate on Pi).
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `228dbea36a` (2026-10-27)
+- **Tests:** `durable/core/hops_host_commit_test.go::TestAHostCommitIsAnsweredEarlyEnoughForItsCallerToResumeAtThePiJobEnd`, `durable/core/session/sched_restart_test.go::TestTheAbortStepIsEnqueuedAbortReturnHopsAfterTheHandlerCommit`
 
 ### BF-2309604
 
@@ -5953,7 +5970,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Platform:** All platforms
 - **Fixed in:** 0.5.0
 - **Commit that wrote the release note (the fix commit is not identified):** `61300bb3e8` (2026-10-10)
-- **Tests:** `internal/codingagent/interactive_native_login_test.go::TestLoginListsARegisteredNativeAPIKeyProviderInNameOrder`, `internal/codingagent/session_listing_race_test.go::TestSessionListingSortsConcurrentlyWithoutARace`, `internal/jsstring/locale_compare_test.go::TestLocaleCompareIsSafeForConcurrentUse`, `internal/jsstring/locale_compare_test.go::TestLocaleCompareOrdersAsNodeDoes`, `mcp/oauth/parse_url_node_test.go::TestParseURLMatchesNodeNewURL`
+- **Tests:** `internal/codingagent/interactive_native_login_test.go::TestLoginListsARegisteredNativeAPIKeyProviderInNameOrder`, `internal/codingagent/session_listing_race_test.go::TestSessionListingSortsConcurrentlyWithoutARace`, `mcp/oauth/parse_url_node_test.go::TestParseURLMatchesNodeNewURL`
 - **Release note:** MCP OAuth reads a non-HTTP redirect or server URL as Node's `new URL` does: dot segments are removed, a default `ws` or `ftp` port is dropped, and a malformed percent escape such as `/%zz` is kept.
 
 ### BF-61300bb-2
@@ -5967,7 +5984,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Platform:** All platforms
 - **Fixed in:** 0.5.0
 - **Fix commits:** `433d232815` (2026-10-09), `61300bb3e8` (2026-10-10)
-- **Tests:** `agent/convert_custom_upstream_test.go::TestConvertToLLMCustomMessagesMatchUpstreamConvertToLlm`, `agent/convert_custom_upstream_test.go::TestConvertToLLMToolFlowMatchesUpstreamTransformOrder`, `agent/convert_custom_upstream_test.go::TestCustomMessagesReachProvidersAsUpstreamContentBlocks`, `agent/transform_custom_user_boundary_test.go::TestAnthropicRequestAfterBranchSummaryHasNoOrphanToolResult`, `agent/transform_custom_user_boundary_test.go::TestConvertToLLMCustomMessageWithoutWireOutputKeepsToolFlow`, `agent/transform_custom_user_boundary_test.go::TestConvertToLLMCustomUserMessageInterruptsToolFlow`, `agent/transform_custom_user_boundary_test.go::TestConvertToLLMHoldsSystemMessageUntilToolFlowCloses`, `coding/session_tree_wire_oracle_test.go::TestNavigateTreeEveryPointSendsValidToolFlow` and 5 more in docs/bug-ledger.json
+- **Tests:** `agent/convert_custom_upstream_test.go::TestConvertToLLMCustomMessagesMatchUpstreamConvertToLlm`, `agent/convert_custom_upstream_test.go::TestConvertToLLMToolFlowMatchesUpstreamTransformOrder`, `agent/convert_custom_upstream_test.go::TestCustomMessagesReachProvidersAsUpstreamContentBlocks`, `agent/transform_custom_user_boundary_test.go::TestAnthropicRequestAfterBranchSummaryHasNoOrphanToolResult`, `agent/transform_custom_user_boundary_test.go::TestConvertToLLMCustomMessageWithoutWireOutputKeepsToolFlow`, `agent/transform_custom_user_boundary_test.go::TestConvertToLLMCustomUserMessageInterruptsToolFlow`, `agent/transform_custom_user_boundary_test.go::TestConvertToLLMHoldsSystemMessageUntilToolFlowCloses`, `coding/session_tree_wire_oracle_test.go::TestNavigateTreeEveryPointSendsValidToolFlow` and 3 more in docs/bug-ledger.json
 - **Release note:** Sorting names with `localeCompare` (MCP servers, sessions, login providers, codemode namespaces, model lists, Hugging Face results) no longer shares one collator between goroutines, which raced when sessions were listed concurrently, and uses ICU root collation for every name instead of an ASCII weight table.
 
 ### BF-6132277
@@ -12735,6 +12752,19 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** `ai/complexity_scaling_norace_test.go::TestScalingProviderRequestPerTurn`, `ai/complexity_scaling_norace_test.go::TestScalingProviderStreamPerDelta`, `coding/cli/complexity_scaling_norace_test.go::TestScalingExtensionEventStatePush`, `coding/complexity_scaling_norace_test.go::TestScalingSessionTurn`, `coding/extension/host/subprocess/complexity_scaling_norace_test.go::TestScalingMessageUpdatePayload`, `internal/codingagent/compaction/complexity_scaling_norace_test.go::TestScalingCompactionAndContextEstimate`, `internal/codingagent/complexity_scaling_norace_test.go::TestScalingSessionLogOperations`, `internal/codingagent/tools/complexity_scaling_norace_test.go::TestScalingTools` and 10 more in docs/bug-ledger.json
 - **Release note:** Long streamed answers render each frame faster: the Markdown view re-wraps and re-renders only the lines and inline text that changed since the last frame, with the same output.
 
+### BF-abe0137
+
+**fix(durable/core): deliver the extra hops of Pi without closures**
+
+- **Source:** PiG's own defect
+- **Symptom:** fix(durable/core): deliver the extra hops of Pi without closures
+- **Root cause:** The submit span, the phase span, runtime.commit's return and the async client methods (waitForIdle, waitForTask) each added closures and captured variables, which put the TinyGo heap sites over the budget ("." 685 > 679, session 531 > 522).
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `abe0137281` (2026-10-27)
+- **Tests:** `durable/core/session/sched_restart_test.go::TestTheAbortStepIsEnqueuedAbortReturnHopsAfterTheHandlerCommit`
+
 ### BF-ac0dc3b
 
 **An empty list item ends its list: a following unindented line is no longer taken for its lazy continuation…**
@@ -13912,6 +13942,19 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Platform:** All platforms
 - **Fixed in:** Unreleased
 - **Fix commits:** `c416945cd5` (2026-10-10)
+- **Tests:** None recorded.
+
+### BF-c4734ed
+
+**fix(durable/core): the span's resume stage is one if, not a one-case switch**
+
+- **Source:** PiG's own defect
+- **Symptom:** fix(durable/core): the span's resume stage is one if, not a one-case switch
+- **Root cause:** Not recorded.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `c4734ed750` (2026-10-27)
 - **Tests:** None recorded.
 
 ### BF-c4ad739
@@ -15287,6 +15330,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Commit that wrote the release note (the fix commit is not identified):** `db9a31538f` (2026-10-14)
 - **Tests:** `coding/extension/builtin/codemode/baseline_rss_test.go::TestPeakRSSOfCodemodeScenarios`, `coding/extension/builtin/codemode/baseline_rss_test.go::TestRSSScenarioChild`
 - **Release note:** Codemode peak memory is now measured and guarded through the normal tool path in a fresh process with 40 extension tools exposed. Peak RSS is about 62-67 MiB cold (no compilation cache) for a no-op with or without extension tools, about 36 MiB with the compilation cache, about the same for a script passing a 96-record, 18 KB state to a tool, and 41 MiB for the two concurrent scripts the worker limit allows; before the on-demand memory fix a concurrent run reached about 355 MiB. Reported by @kayis-rahman (#211)
+
+### BF-dbce96c
+
+**On macOS, reading or writing a named pipe (FIFO) through the read, edit, write and grep tools, the node and…**
+
+- **Source:** PiG's own defect
+- **Symptom:** On macOS, reading or writing a named pipe (FIFO) through the read, edit, write and grep tools, the node and local execution environments or the JSONL session storage could lose the other end's bytes: a signal that ended the wait for the writer (the Go runtime's SIGURG preemption signal, a child's SIGCHLD) made macOS drop the open from the pipe, so the writer failed with EPIPE and the reader returned an empty file or waited for a writer that had gone (about one open in seven under a steady stream of signals).
+- **Root cause:** On macOS a signal that ends a blocking open of a FIFO (Go's SIGURG preemption, SIGCHLD) makes fifo_open drop the open from the FIFO while the other end, whose open completed because it saw the opener, goes on: the writer's write fails with EPIPE or the reader sees an empty file or waits for a writer that has gone. Node avoids it because libuv opens on a worker thread that signals are not delivered to (fs.readFileSync on the main thread loses bytes at the same rate as Go).
+- **User impact:** An operation failed or was rejected
+- **Platform:** macOS
+- **Fixed in:** Unreleased
+- **Fix commits:** `dbce96c6a2` (2026-10-27)
+- **Tests:** `internal/nodefs/open_fifo_test.go::TestFIFOOpenLosesNoBytesToSignals`
+- **Release note:** On macOS, reading or writing a named pipe (FIFO) through the read, edit, write and grep tools, the node and local execution environments or the JSONL session storage could lose the other end's bytes: a signal that ended the wait for the writer (the Go runtime's SIGURG preemption signal, a child's SIGCHLD) made macOS drop the open from the pipe, so the writer failed with EPIPE and the reader returned an empty file or waited for a writer that had gone (about one open in seven under a steady stream of signals). Pi does not lose them, as Node opens on a libuv worker thread that signals are not delivered to; PiG now opens a FIFO on a thread that blocks every signal. Other platforms and files that are not FIFOs are unchanged.
 
 ### BF-dbe1ad3
 
