@@ -76,7 +76,7 @@ A color can have one of six forms:
 | Variable reference | `"primary"` | The value of an entry in `vars`. |
 | Terminal default | `""` | The foreground or background color of the terminal. |
 
-A missing variable or a circular reference makes the theme invalid. A color name that is not in the lists below also makes the theme invalid: a typo such as `accentt` fails with `must not have additional properties`. A missing required role fails too. The interactive screen reports an invalid theme at startup and at `/reload`. Print mode and `pig status --json` do not check theme files, so open `pig` and select the theme to test it. If colors look wrong, check the terminal color support in [Terminal setup](terminal-setup.md).
+A missing variable or a circular reference makes the theme invalid. A key that is not in this file format also makes the theme invalid, at the top level or under `colors` or `export`. Put your own reusable colors under `vars`. A color name that is not in the lists below is one such key: a typo such as `accentt` fails with `must not have additional properties`. A missing required role fails too. The interactive screen reports an invalid theme at startup and at `/reload`. Print mode and `pig status --json` do not check theme files, so open `pig` and select the theme to test it. If colors look wrong, check the terminal color support in [Terminal setup](terminal-setup.md).
 
 ## Find the color to change
 
