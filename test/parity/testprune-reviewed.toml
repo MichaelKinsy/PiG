@@ -482,3 +482,10 @@ commit = "0b15a5cdf6adb8a34c553465103c8e3676dc2876"
 class = "NOBEHAVIOR"
 cite = ""
 reason = "The Piglets topic of the docs section is PiG-additive (D23): Pi has no Piglets, so no Pi line governs the test. The commit adds the bundle page piglet-strip.md to the topic text, so the expected topic string names two pages. Pi's own topics (system-prompt.ts:166-169) and the stock prompt bytes are unchanged, and the test still asserts that the stock section never names the Piglet docs."
+
+[[entry]]
+path = "coding/cli/introspection_truth_test.go"
+commit = "7bf1cbb246b6c3a76f294b1cba992b6d4fd472c2"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "The test file was added on this branch in the commit before. `pig status` and its Piglet inventory are PiG-additive (D41, D209) and have no Pi counterpart. This commit changes one expectation of the new file: a Piglet Binary named by PIG_ACTIVE_PIGLET_SOURCE is no longer assumed closed, because only the Binary itself knows whether it accepts overlays (D202), so status names the Binary and applies no discovery when it is another executable. TestStatusActivePigletBinaryExcludesEveryAmbientExtensionAndSkill became TestStatusNamesAPigletBinaryItCannotApply."

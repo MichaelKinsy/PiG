@@ -178780,7 +178780,7 @@
       "evidence": [
         "test:internal/codingagent/trust_store_multi_oracle_test.go#TestProjectTrustStoreMultiEntryFilesMatchPi",
         "test:internal/codingagent/trust_store_oracle_test.go#TestProjectTrustStoreMatchesPi",
-        "test:coding/cli/configured_resources_test.go#TestResourceLoaderUpstreamPreTrustExtensions"
+        "test:coding/cli/config_command_test.go#TestProjectPackageDeltaDrivesStartupStatusAndResourceCollectors"
       ]
     },
     {
@@ -178802,7 +178802,7 @@
       "evidence": [
         "test:internal/codingagent/trust_store_multi_oracle_test.go#TestProjectTrustStoreMultiEntryFilesMatchPi",
         "test:internal/codingagent/trust_store_oracle_test.go#TestProjectTrustStoreMatchesPi",
-        "test:coding/cli/configured_resources_test.go#TestResourceLoaderUpstreamPreTrustExtensions"
+        "test:coding/cli/config_command_test.go#TestProjectPackageDeltaDrivesStartupStatusAndResourceCollectors"
       ]
     },
     {
@@ -178908,7 +178908,7 @@
       "evidence": [
         "test:internal/codingagent/trust_store_multi_oracle_test.go#TestProjectTrustStoreMultiEntryFilesMatchPi",
         "test:internal/codingagent/trust_store_oracle_test.go#TestProjectTrustStoreMatchesPi",
-        "test:coding/cli/package_npm_trust_test.go#TestPackageContextNpmCommandRespectsDeniedTrust"
+        "test:coding/cli/config_command_test.go#TestProjectPackageDeltaDrivesStartupStatusAndResourceCollectors"
       ]
     },
     {
@@ -178930,7 +178930,7 @@
       "evidence": [
         "test:internal/codingagent/trust_store_multi_oracle_test.go#TestProjectTrustStoreMultiEntryFilesMatchPi",
         "test:internal/codingagent/trust_store_oracle_test.go#TestProjectTrustStoreMatchesPi",
-        "test:coding/cli/package_npm_trust_test.go#TestPackageContextNpmCommandRespectsDeniedTrust"
+        "test:coding/cli/config_command_test.go#TestProjectPackageDeltaDrivesStartupStatusAndResourceCollectors"
       ]
     },
     {
