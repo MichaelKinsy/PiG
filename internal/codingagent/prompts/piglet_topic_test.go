@@ -14,6 +14,7 @@ func TestPigletDocsTopicIsAdditive(t *testing.T) {
 	t.Cleanup(func() { SetPigletDocsTopic(false) })
 	SetPigletDocsTopic(true)
 	withPiglet := docsSectionAt("/docs", "", "")
+	// system-prompt.ts:166-169 names Pi's topics; the Piglet topic is PiG's addition after them (D23), not a change to them.
 	const topic = ", Piglets and their tool scope (docs/piglets.md, docs/piglet-strip.md)"
 	if strings.Contains(stock, "piglet") {
 		t.Errorf("the stock docs section names the Piglet docs:\n%s", stock)
