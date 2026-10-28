@@ -1,8 +1,8 @@
 package piglet
 
 import (
-	"fmt"
 	"slices"
+	"strconv"
 	"strings"
 
 	"github.com/MichaelKinsy/PiG/coding/extension"
@@ -132,9 +132,9 @@ func ToolScopeNotice(p *Piglet, hidden []extension.HiddenTool) string {
 		}
 		names[key] = append(names[key], tool.Name)
 	}
-	lines := []string{fmt.Sprintf("Piglet %s hid %d tools from the registry:", p.Name, len(hidden))}
+	lines := []string{"Piglet " + p.Name + " hid " + strconv.Itoa(len(hidden)) + " tools from the registry:"}
 	for _, key := range order {
-		lines = append(lines, fmt.Sprintf("- %s: %s (%s)", key.subject, strings.Join(names[key], ", "), key.why))
+		lines = append(lines, "- "+key.subject+": "+strings.Join(names[key], ", ")+" ("+key.why+")")
 	}
 	return strings.Join(lines, "\n")
 }
