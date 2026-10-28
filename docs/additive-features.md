@@ -527,7 +527,7 @@ surprises):
 
 Registry scope (owner-approved 2026-10-28): a piglet's tool scope bounds the
 Session's tool registry, not only its active set. Pi's `--tools` and
-`--exclude-tools` remove tools from the registry itself (`agent-session.ts:3457-3521`,
+`--exclude-tools` remove tools from the registry itself (`agent-session.ts:1557-1561, 3571-3574`,
 `_isAllowedTool`; PiG ports it as `extension.ToolFilter`); a piglet scope that only
 narrowed the active set left a hidden tool callable from `codemode` and findable by
 `tool_search`, which read the registry. There is one mechanism: the piglet compiles
