@@ -24922,7 +24922,7 @@
       "id": "pkg:ai/.#OAuthDeviceCodeInfo::property:copyCodeOnConfirm",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:dde88e931d7274ea63a1e9c2e20bcb7c987cc278f9a345279ee2c9bb8f4bb201",
-      "rationale": "Derived by the interface gap detector: OAuthDeviceCodeInfo::property:copyCodeOnConfirm is Go ai/oauth_types.go#OAuthDeviceCodeInfo.CopyCodeOnConfirm (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: OAuthDeviceCodeInfo::property:copyCodeOnConfirm is Go ai/oauth_types.go#OAuthDeviceCodeInfo.CopyCodeOnConfirm (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "ai/oauth_types.go#OAuthDeviceCodeInfo.CopyCodeOnConfirm"
       ],
@@ -24935,7 +24935,7 @@
         "call:coding/extension/host/subprocess/oauth_bridge.go#Host.handleOAuthCallback"
       ],
       "evidence": [
-        "reach:coding/extension/host/subprocess/oauth_bridge.go#Host.handleOAuthCallback"
+        "test:test/extension-conformance/lisp_provider_api_test.go#TestLispOAuthLoginCallbacksReachTheHost"
       ]
     },
     {
@@ -24984,7 +24984,7 @@
       "id": "pkg:ai/.#OAuthDeviceCodeInfo::property:openBrowserOnConfirm",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:27bf330b0426999dd1c906738f0861c3554ff638e0286b082e47c7d6b4bffb54",
-      "rationale": "Derived by the interface gap detector: OAuthDeviceCodeInfo::property:openBrowserOnConfirm is Go ai/oauth_types.go#OAuthDeviceCodeInfo.OpenBrowserOnConfirm (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: OAuthDeviceCodeInfo::property:openBrowserOnConfirm is Go ai/oauth_types.go#OAuthDeviceCodeInfo.OpenBrowserOnConfirm (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "ai/oauth_types.go#OAuthDeviceCodeInfo.OpenBrowserOnConfirm"
       ],
@@ -24997,7 +24997,7 @@
         "call:coding/extension/host/subprocess/oauth_bridge.go#Host.handleOAuthCallback"
       ],
       "evidence": [
-        "reach:coding/extension/host/subprocess/oauth_bridge.go#Host.handleOAuthCallback"
+        "test:test/extension-conformance/lisp_provider_api_test.go#TestLispOAuthLoginCallbacksReachTheHost"
       ]
     },
     {
@@ -25127,8 +25127,8 @@
       ],
       "evidence": [
         "test:ai/oauth_openai_codex_upstream_test.go#TestOpenAICodexOAuthUpstream",
-        "test:test/extension-conformance/node_oauth_test.go#TestNodeOAuthBridge",
-        "test:ai/oauth_kimi_test.go#TestKimiOAuthLoginContextCancellation"
+        "test:test/extension-conformance/lisp_provider_api_test.go#TestLispOAuthLoginCallbacksReachTheHost",
+        "test:test/extension-conformance/node_oauth_test.go#TestNodeOAuthBridge"
       ]
     },
     {
@@ -25149,8 +25149,8 @@
       ],
       "evidence": [
         "test:ai/oauth_openai_codex_upstream_test.go#TestOpenAICodexOAuthUpstream",
-        "test:test/extension-conformance/node_oauth_test.go#TestNodeOAuthBridge",
-        "test:ai/oauth_kimi_test.go#TestKimiOAuthLoginContextCancellation"
+        "test:test/extension-conformance/lisp_provider_api_test.go#TestLispOAuthLoginCallbacksReachTheHost",
+        "test:test/extension-conformance/node_oauth_test.go#TestNodeOAuthBridge"
       ]
     },
     {
@@ -25193,9 +25193,9 @@
         "call:ai/auth_native_login.go#oauthNativeLogin"
       ],
       "evidence": [
+        "test:test/extension-conformance/lisp_provider_api_test.go#TestLispOAuthLoginCallbacksReachTheHost",
         "test:ai/oauth_meta_test.go#TestMetaOAuthLogsInWithDeviceFlowAndMintsModelAPIKey",
-        "test:ai/oauth_openai_codex_login_test.go#TestLoginOpenAICodexUsesManualCodeWhenCallbackPortBusy",
-        "test:ai/oauth_openrouter_test.go#TestOpenRouterOAuthAlreadyCancelledUpstream"
+        "test:ai/oauth_openai_codex_login_test.go#TestLoginOpenAICodexUsesManualCodeWhenCallbackPortBusy"
       ]
     },
     {
@@ -25216,8 +25216,8 @@
       ],
       "evidence": [
         "test:ai/oauth_openai_codex_upstream_test.go#TestOpenAICodexOAuthUpstream",
-        "test:test/extension-conformance/node_oauth_test.go#TestNodeOAuthBridge",
-        "test:ai/githubcopilot_test.go#TestCopilotLoginReportsTheVerificationURLAndUserCode"
+        "test:test/extension-conformance/lisp_provider_api_test.go#TestLispOAuthLoginCallbacksReachTheHost",
+        "test:test/extension-conformance/node_oauth_test.go#TestNodeOAuthBridge"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -25239,8 +25239,8 @@
       ],
       "evidence": [
         "test:ai/oauth_openai_codex_upstream_test.go#TestOpenAICodexOAuthUpstream",
-        "test:test/extension-conformance/node_oauth_test.go#TestNodeOAuthBridge",
-        "test:ai/githubcopilot_test.go#TestCopilotLoginReportsTheVerificationURLAndUserCode"
+        "test:test/extension-conformance/lisp_provider_api_test.go#TestLispOAuthLoginCallbacksReachTheHost",
+        "test:test/extension-conformance/node_oauth_test.go#TestNodeOAuthBridge"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -69383,7 +69383,7 @@
       "id": "pkg:ai/compat#OAuthDeviceCodeInfo::property:copyCodeOnConfirm",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:dde88e931d7274ea63a1e9c2e20bcb7c987cc278f9a345279ee2c9bb8f4bb201",
-      "rationale": "Derived by the interface gap detector: OAuthDeviceCodeInfo::property:copyCodeOnConfirm is Go ai/oauth_types.go#OAuthDeviceCodeInfo.CopyCodeOnConfirm (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: OAuthDeviceCodeInfo::property:copyCodeOnConfirm is Go ai/oauth_types.go#OAuthDeviceCodeInfo.CopyCodeOnConfirm (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "ai/oauth_types.go#OAuthDeviceCodeInfo.CopyCodeOnConfirm"
       ],
@@ -69396,7 +69396,7 @@
         "call:coding/extension/host/subprocess/oauth_bridge.go#Host.handleOAuthCallback"
       ],
       "evidence": [
-        "reach:coding/extension/host/subprocess/oauth_bridge.go#Host.handleOAuthCallback"
+        "test:test/extension-conformance/lisp_provider_api_test.go#TestLispOAuthLoginCallbacksReachTheHost"
       ]
     },
     {
@@ -69445,7 +69445,7 @@
       "id": "pkg:ai/compat#OAuthDeviceCodeInfo::property:openBrowserOnConfirm",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:27bf330b0426999dd1c906738f0861c3554ff638e0286b082e47c7d6b4bffb54",
-      "rationale": "Derived by the interface gap detector: OAuthDeviceCodeInfo::property:openBrowserOnConfirm is Go ai/oauth_types.go#OAuthDeviceCodeInfo.OpenBrowserOnConfirm (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: OAuthDeviceCodeInfo::property:openBrowserOnConfirm is Go ai/oauth_types.go#OAuthDeviceCodeInfo.OpenBrowserOnConfirm (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "ai/oauth_types.go#OAuthDeviceCodeInfo.OpenBrowserOnConfirm"
       ],
@@ -69458,7 +69458,7 @@
         "call:coding/extension/host/subprocess/oauth_bridge.go#Host.handleOAuthCallback"
       ],
       "evidence": [
-        "reach:coding/extension/host/subprocess/oauth_bridge.go#Host.handleOAuthCallback"
+        "test:test/extension-conformance/lisp_provider_api_test.go#TestLispOAuthLoginCallbacksReachTheHost"
       ]
     },
     {
@@ -69588,8 +69588,8 @@
       ],
       "evidence": [
         "test:ai/oauth_openai_codex_upstream_test.go#TestOpenAICodexOAuthUpstream",
-        "test:test/extension-conformance/node_oauth_test.go#TestNodeOAuthBridge",
-        "test:ai/oauth_kimi_test.go#TestKimiOAuthLoginContextCancellation"
+        "test:test/extension-conformance/lisp_provider_api_test.go#TestLispOAuthLoginCallbacksReachTheHost",
+        "test:test/extension-conformance/node_oauth_test.go#TestNodeOAuthBridge"
       ]
     },
     {
@@ -69610,8 +69610,8 @@
       ],
       "evidence": [
         "test:ai/oauth_openai_codex_upstream_test.go#TestOpenAICodexOAuthUpstream",
-        "test:test/extension-conformance/node_oauth_test.go#TestNodeOAuthBridge",
-        "test:ai/oauth_kimi_test.go#TestKimiOAuthLoginContextCancellation"
+        "test:test/extension-conformance/lisp_provider_api_test.go#TestLispOAuthLoginCallbacksReachTheHost",
+        "test:test/extension-conformance/node_oauth_test.go#TestNodeOAuthBridge"
       ]
     },
     {
@@ -69654,9 +69654,9 @@
         "call:ai/auth_native_login.go#oauthNativeLogin"
       ],
       "evidence": [
+        "test:test/extension-conformance/lisp_provider_api_test.go#TestLispOAuthLoginCallbacksReachTheHost",
         "test:ai/oauth_meta_test.go#TestMetaOAuthLogsInWithDeviceFlowAndMintsModelAPIKey",
-        "test:ai/oauth_openai_codex_login_test.go#TestLoginOpenAICodexUsesManualCodeWhenCallbackPortBusy",
-        "test:ai/oauth_openrouter_test.go#TestOpenRouterOAuthAlreadyCancelledUpstream"
+        "test:ai/oauth_openai_codex_login_test.go#TestLoginOpenAICodexUsesManualCodeWhenCallbackPortBusy"
       ]
     },
     {
@@ -69677,8 +69677,8 @@
       ],
       "evidence": [
         "test:ai/oauth_openai_codex_upstream_test.go#TestOpenAICodexOAuthUpstream",
-        "test:test/extension-conformance/node_oauth_test.go#TestNodeOAuthBridge",
-        "test:ai/githubcopilot_test.go#TestCopilotLoginReportsTheVerificationURLAndUserCode"
+        "test:test/extension-conformance/lisp_provider_api_test.go#TestLispOAuthLoginCallbacksReachTheHost",
+        "test:test/extension-conformance/node_oauth_test.go#TestNodeOAuthBridge"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -69700,8 +69700,8 @@
       ],
       "evidence": [
         "test:ai/oauth_openai_codex_upstream_test.go#TestOpenAICodexOAuthUpstream",
-        "test:test/extension-conformance/node_oauth_test.go#TestNodeOAuthBridge",
-        "test:ai/githubcopilot_test.go#TestCopilotLoginReportsTheVerificationURLAndUserCode"
+        "test:test/extension-conformance/lisp_provider_api_test.go#TestLispOAuthLoginCallbacksReachTheHost",
+        "test:test/extension-conformance/node_oauth_test.go#TestNodeOAuthBridge"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -85340,7 +85340,7 @@
       "id": "pkg:ai/oauth#OAuthDeviceCodeInfo::property:copyCodeOnConfirm",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:dde88e931d7274ea63a1e9c2e20bcb7c987cc278f9a345279ee2c9bb8f4bb201",
-      "rationale": "Derived by the interface gap detector: OAuthDeviceCodeInfo::property:copyCodeOnConfirm is Go ai/oauth_types.go#OAuthDeviceCodeInfo.CopyCodeOnConfirm (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: OAuthDeviceCodeInfo::property:copyCodeOnConfirm is Go ai/oauth_types.go#OAuthDeviceCodeInfo.CopyCodeOnConfirm (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "ai/oauth_types.go#OAuthDeviceCodeInfo.CopyCodeOnConfirm"
       ],
@@ -85353,7 +85353,7 @@
         "call:coding/extension/host/subprocess/oauth_bridge.go#Host.handleOAuthCallback"
       ],
       "evidence": [
-        "reach:coding/extension/host/subprocess/oauth_bridge.go#Host.handleOAuthCallback"
+        "test:test/extension-conformance/lisp_provider_api_test.go#TestLispOAuthLoginCallbacksReachTheHost"
       ]
     },
     {
@@ -85402,7 +85402,7 @@
       "id": "pkg:ai/oauth#OAuthDeviceCodeInfo::property:openBrowserOnConfirm",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:27bf330b0426999dd1c906738f0861c3554ff638e0286b082e47c7d6b4bffb54",
-      "rationale": "Derived by the interface gap detector: OAuthDeviceCodeInfo::property:openBrowserOnConfirm is Go ai/oauth_types.go#OAuthDeviceCodeInfo.OpenBrowserOnConfirm (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: OAuthDeviceCodeInfo::property:openBrowserOnConfirm is Go ai/oauth_types.go#OAuthDeviceCodeInfo.OpenBrowserOnConfirm (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "ai/oauth_types.go#OAuthDeviceCodeInfo.OpenBrowserOnConfirm"
       ],
@@ -85415,7 +85415,7 @@
         "call:coding/extension/host/subprocess/oauth_bridge.go#Host.handleOAuthCallback"
       ],
       "evidence": [
-        "reach:coding/extension/host/subprocess/oauth_bridge.go#Host.handleOAuthCallback"
+        "test:test/extension-conformance/lisp_provider_api_test.go#TestLispOAuthLoginCallbacksReachTheHost"
       ]
     },
     {
@@ -85545,8 +85545,8 @@
       ],
       "evidence": [
         "test:ai/oauth_openai_codex_upstream_test.go#TestOpenAICodexOAuthUpstream",
-        "test:test/extension-conformance/node_oauth_test.go#TestNodeOAuthBridge",
-        "test:ai/oauth_kimi_test.go#TestKimiOAuthLoginContextCancellation"
+        "test:test/extension-conformance/lisp_provider_api_test.go#TestLispOAuthLoginCallbacksReachTheHost",
+        "test:test/extension-conformance/node_oauth_test.go#TestNodeOAuthBridge"
       ]
     },
     {
@@ -85567,8 +85567,8 @@
       ],
       "evidence": [
         "test:ai/oauth_openai_codex_upstream_test.go#TestOpenAICodexOAuthUpstream",
-        "test:test/extension-conformance/node_oauth_test.go#TestNodeOAuthBridge",
-        "test:ai/oauth_kimi_test.go#TestKimiOAuthLoginContextCancellation"
+        "test:test/extension-conformance/lisp_provider_api_test.go#TestLispOAuthLoginCallbacksReachTheHost",
+        "test:test/extension-conformance/node_oauth_test.go#TestNodeOAuthBridge"
       ]
     },
     {
@@ -85611,9 +85611,9 @@
         "call:ai/auth_native_login.go#oauthNativeLogin"
       ],
       "evidence": [
+        "test:test/extension-conformance/lisp_provider_api_test.go#TestLispOAuthLoginCallbacksReachTheHost",
         "test:ai/oauth_meta_test.go#TestMetaOAuthLogsInWithDeviceFlowAndMintsModelAPIKey",
-        "test:ai/oauth_openai_codex_login_test.go#TestLoginOpenAICodexUsesManualCodeWhenCallbackPortBusy",
-        "test:ai/oauth_openrouter_test.go#TestOpenRouterOAuthAlreadyCancelledUpstream"
+        "test:ai/oauth_openai_codex_login_test.go#TestLoginOpenAICodexUsesManualCodeWhenCallbackPortBusy"
       ]
     },
     {
@@ -85634,8 +85634,8 @@
       ],
       "evidence": [
         "test:ai/oauth_openai_codex_upstream_test.go#TestOpenAICodexOAuthUpstream",
-        "test:test/extension-conformance/node_oauth_test.go#TestNodeOAuthBridge",
-        "test:ai/githubcopilot_test.go#TestCopilotLoginReportsTheVerificationURLAndUserCode"
+        "test:test/extension-conformance/lisp_provider_api_test.go#TestLispOAuthLoginCallbacksReachTheHost",
+        "test:test/extension-conformance/node_oauth_test.go#TestNodeOAuthBridge"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -85657,8 +85657,8 @@
       ],
       "evidence": [
         "test:ai/oauth_openai_codex_upstream_test.go#TestOpenAICodexOAuthUpstream",
-        "test:test/extension-conformance/node_oauth_test.go#TestNodeOAuthBridge",
-        "test:ai/githubcopilot_test.go#TestCopilotLoginReportsTheVerificationURLAndUserCode"
+        "test:test/extension-conformance/lisp_provider_api_test.go#TestLispOAuthLoginCallbacksReachTheHost",
+        "test:test/extension-conformance/node_oauth_test.go#TestNodeOAuthBridge"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -137485,7 +137485,7 @@
       "evidence": [
         "test:test/extension-conformance/event_payload_test.go#TestConformance_EventPayloadsReachEverySDKUnchanged",
         "test:test/extension-conformance/extension_api_go_test.go#TestExtensionAPIToolEventsCarryParentAndStructuredContentGo",
-        "test:test/extension-conformance/node_extension_api_test.go#TestNodeToolEventsAndNewEvents"
+        "test:test/extension-conformance/lisp_extension_api_test.go#TestLispSDKToolEventsAndNewEvents"
       ]
     },
     {
@@ -150228,7 +150228,7 @@
       "evidence": [
         "test:test/extension-conformance/event_payload_test.go#TestConformance_EventPayloadsReachEverySDKUnchanged",
         "test:test/extension-conformance/extension_api_go_test.go#TestExtensionAPIToolEventsCarryParentAndStructuredContentGo",
-        "test:test/extension-conformance/node_extension_api_test.go#TestNodeToolEventsAndNewEvents"
+        "test:test/extension-conformance/lisp_extension_api_test.go#TestLispSDKToolEventsAndNewEvents"
       ]
     },
     {
@@ -151054,9 +151054,9 @@
         "call:coding/extension/builtin/codemode/run.go#run.nestedCall"
       ],
       "evidence": [
-        "test:test/extension-conformance/node_extension_api_fidelity_test.go#TestNodeExecuteToolOnUpdateThrowRejectsTheNestedCall",
-        "test:test/extension-conformance/node_extension_api_fidelity_test.go#TestNodeExecuteToolOutcomeCarriesDuration",
-        "test:test/extension-conformance/node_extension_api_test.go#TestNodeExecuteToolAndCallableTools"
+        "test:test/extension-conformance/lisp_extension_api_test.go#TestLispSDKExecuteToolAndCallableTools",
+        "test:test/extension-conformance/lisp_extension_api_test.go#TestLispSDKExecuteToolOnUpdateErrorRejectsTheNestedCall",
+        "test:test/extension-conformance/lisp_extension_api_test.go#TestLispSDKExecuteToolOutcomeCarriesDuration"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -151077,9 +151077,9 @@
         "call:coding/extension/host/subprocess/host_extension_api.go#Host.handleExecuteToolCall"
       ],
       "evidence": [
-        "test:test/extension-conformance/node_extension_api_fidelity_test.go#TestNodeExecuteToolOnUpdateThrowRejectsTheNestedCall",
-        "test:test/extension-conformance/node_extension_api_test.go#TestNodeExecuteToolAndCallableTools",
-        "test:test/extension-conformance/python_extension_api_fidelity_test.go#TestPythonSDKExecuteToolOnUpdateRaiseRejectsTheNestedCall"
+        "test:test/extension-conformance/lisp_extension_api_test.go#TestLispSDKExecuteToolAndCallableTools",
+        "test:test/extension-conformance/lisp_extension_api_test.go#TestLispSDKExecuteToolOnUpdateErrorRejectsTheNestedCall",
+        "test:test/extension-conformance/node_extension_api_fidelity_test.go#TestNodeExecuteToolOnUpdateThrowRejectsTheNestedCall"
       ]
     },
     {
@@ -151099,9 +151099,9 @@
         "call:coding/extension/builtin/codemode/run.go#run.nestedCall"
       ],
       "evidence": [
-        "test:test/extension-conformance/node_extension_api_fidelity_test.go#TestNodeExecuteToolOnUpdateThrowRejectsTheNestedCall",
-        "test:test/extension-conformance/node_extension_api_fidelity_test.go#TestNodeExecuteToolOutcomeCarriesDuration",
-        "test:test/extension-conformance/node_extension_api_test.go#TestNodeExecuteToolAndCallableTools"
+        "test:test/extension-conformance/lisp_extension_api_test.go#TestLispSDKExecuteToolAndCallableTools",
+        "test:test/extension-conformance/lisp_extension_api_test.go#TestLispSDKExecuteToolOnUpdateErrorRejectsTheNestedCall",
+        "test:test/extension-conformance/lisp_extension_api_test.go#TestLispSDKExecuteToolOutcomeCarriesDuration"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -160912,8 +160912,8 @@
       ],
       "evidence": [
         "test:coding/extension/host/inproc/upstream_provider_queue_test.go#TestUpstreamRunnerProviderRegistration",
-        "test:test/extension-conformance/node_extension_api_test.go#TestNodeProviderConfigWithImageAndClassifierModels",
-        "test:test/extension-conformance/provider_registration_diagnostic_test.go#TestProviderRegistrationFailureIsADiagnosticAcrossSDKs"
+        "test:test/extension-conformance/lisp_provider_api_test.go#TestLispSDKProviderConfigWithImageAndClassifierModels",
+        "test:test/extension-conformance/node_extension_api_test.go#TestNodeProviderConfigWithImageAndClassifierModels"
       ]
     },
     {
@@ -164101,9 +164101,9 @@
         "call:coding/extension/host/subprocess/host_extension_api.go#Host.virtualModelDefinition"
       ],
       "evidence": [
+        "test:test/extension-conformance/lisp_provider_api_test.go#TestLispSDKVirtualModelRegistrationAndRouting",
         "test:test/extension-conformance/node_extension_api_test.go#TestNodeVirtualModelRegistrationAndRouting",
-        "test:test/extension-conformance/python_extension_api_test.go#TestPythonSDKVirtualModelRegistrationAndRouting",
-        "test:coding/extension/host/subprocess/extension_api_wire_test.go#TestVirtualModelDeclarationRoutesThroughTheExtension"
+        "test:test/extension-conformance/python_extension_api_test.go#TestPythonSDKVirtualModelRegistrationAndRouting"
       ]
     },
     {
@@ -164125,7 +164125,7 @@
       "evidence": [
         "test:coding/extension/host/subprocess/upstream_jev_router_test.go#TestJevRouterExampleRegistersTheVirtualModel",
         "test:test/extension-conformance/extension_api_go_test.go#TestExtensionAPIRegistrationsAtLoadGo",
-        "test:test/extension-conformance/node_extension_api_test.go#TestNodeVirtualModelRegistrationAndRouting"
+        "test:test/extension-conformance/lisp_provider_api_test.go#TestLispSDKVirtualModelRegistrationAndRouting"
       ]
     },
     {
@@ -164237,7 +164237,7 @@
       "evidence": [
         "test:coding/extension/host/subprocess/upstream_jev_router_test.go#TestJevRouterExampleRegistersTheVirtualModel",
         "test:test/extension-conformance/extension_api_go_test.go#TestExtensionAPIRegistrationsAtLoadGo",
-        "test:test/extension-conformance/node_extension_api_test.go#TestNodeVirtualModelRegistrationAndRouting"
+        "test:test/extension-conformance/lisp_provider_api_test.go#TestLispSDKVirtualModelRegistrationAndRouting"
       ]
     },
     {
@@ -164608,7 +164608,7 @@
       "evidence": [
         "test:test/extension-conformance/event_payload_test.go#TestConformance_EventPayloadsReachEverySDKUnchanged",
         "test:test/extension-conformance/extension_api_go_test.go#TestExtensionAPIToolEventsCarryParentAndStructuredContentGo",
-        "test:test/extension-conformance/node_extension_api_test.go#TestNodeToolEventsAndNewEvents"
+        "test:test/extension-conformance/lisp_extension_api_test.go#TestLispSDKToolEventsAndNewEvents"
       ]
     },
     {
@@ -166527,7 +166527,7 @@
       "evidence": [
         "test:test/extension-conformance/event_payload_test.go#TestConformance_EventPayloadsReachEverySDKUnchanged",
         "test:test/extension-conformance/extension_api_go_test.go#TestExtensionAPIToolEventsCarryParentAndStructuredContentGo",
-        "test:test/extension-conformance/node_extension_api_test.go#TestNodeToolEventsAndNewEvents"
+        "test:test/extension-conformance/lisp_extension_api_test.go#TestLispSDKToolEventsAndNewEvents"
       ]
     },
     {
@@ -170384,7 +170384,7 @@
       "evidence": [
         "test:test/extension-conformance/event_payload_test.go#TestConformance_EventPayloadsReachEverySDKUnchanged",
         "test:test/extension-conformance/extension_api_go_test.go#TestExtensionAPIToolEventsCarryParentAndStructuredContentGo",
-        "test:test/extension-conformance/node_extension_api_test.go#TestNodeToolEventsAndNewEvents"
+        "test:test/extension-conformance/lisp_extension_api_test.go#TestLispSDKToolEventsAndNewEvents"
       ]
     },
     {
@@ -173515,7 +173515,7 @@
       "evidence": [
         "test:test/extension-conformance/extension_api_go_test.go#TestExtensionAPIVirtualModelRouteRunsInTheExtensionGo",
         "test:test/extension-conformance/extension_api_rust_test.go#TestRustSDKVirtualModelRoute",
-        "test:test/extension-conformance/node_extension_api_test.go#TestNodeVirtualModelRegistrationAndRouting"
+        "test:test/extension-conformance/lisp_provider_api_test.go#TestLispSDKVirtualModelRegistrationAndRouting"
       ]
     },
     {
@@ -173648,7 +173648,7 @@
       "evidence": [
         "test:test/extension-conformance/extension_api_go_test.go#TestExtensionAPIVirtualModelRouteRunsInTheExtensionGo",
         "test:test/extension-conformance/extension_api_rust_test.go#TestRustSDKVirtualModelRoute",
-        "test:test/extension-conformance/node_extension_api_test.go#TestNodeVirtualModelRegistrationAndRouting"
+        "test:test/extension-conformance/lisp_provider_api_test.go#TestLispSDKVirtualModelRegistrationAndRouting"
       ]
     },
     {
@@ -178149,7 +178149,7 @@
       "evidence": [
         "test:test/extension-conformance/event_payload_test.go#TestConformance_EventPayloadsReachEverySDKUnchanged",
         "test:test/extension-conformance/extension_api_go_test.go#TestExtensionAPIToolEventsCarryParentAndStructuredContentGo",
-        "test:test/extension-conformance/node_extension_api_test.go#TestNodeToolEventsAndNewEvents"
+        "test:test/extension-conformance/lisp_extension_api_test.go#TestLispSDKToolEventsAndNewEvents"
       ]
     },
     {
@@ -180408,7 +180408,7 @@
       "evidence": [
         "test:test/extension-conformance/event_payload_test.go#TestConformance_EventPayloadsReachEverySDKUnchanged",
         "test:test/extension-conformance/extension_api_go_test.go#TestExtensionAPIToolEventsCarryParentAndStructuredContentGo",
-        "test:test/extension-conformance/node_extension_api_test.go#TestNodeToolEventsAndNewEvents"
+        "test:test/extension-conformance/lisp_extension_api_test.go#TestLispSDKToolEventsAndNewEvents"
       ]
     },
     {
@@ -202641,7 +202641,7 @@
       "evidence": [
         "test:test/extension-conformance/extension_api_go_test.go#TestExtensionAPIRegistrationsAtLoadGo",
         "test:test/extension-conformance/extension_api_rust_test.go#TestRustSDKToolDefinitionFields",
-        "test:test/extension-conformance/node_extension_api_test.go#TestNodeToolExposureFieldsAndPrepareLoadout"
+        "test:test/extension-conformance/lisp_extension_api_test.go#TestLispSDKToolExposureFieldsAndPrepareLoadout"
       ]
     },
     {
@@ -202863,7 +202863,7 @@
       "evidence": [
         "test:test/extension-conformance/extension_api_go_test.go#TestExtensionAPIRegistrationsAtLoadGo",
         "test:test/extension-conformance/extension_api_rust_test.go#TestRustSDKToolDefinitionFields",
-        "test:test/extension-conformance/node_extension_api_test.go#TestNodeToolExposureFieldsAndPrepareLoadout"
+        "test:test/extension-conformance/lisp_extension_api_test.go#TestLispSDKToolExposureFieldsAndPrepareLoadout"
       ]
     },
     {
@@ -202885,7 +202885,7 @@
       "evidence": [
         "test:test/extension-conformance/extension_api_go_test.go#TestExtensionAPIRegistrationsAtLoadGo",
         "test:test/extension-conformance/extension_api_rust_test.go#TestRustSDKToolDefinitionFields",
-        "test:test/extension-conformance/node_extension_api_test.go#TestNodeToolExposureFieldsAndPrepareLoadout"
+        "test:test/extension-conformance/lisp_extension_api_test.go#TestLispSDKToolExposureFieldsAndPrepareLoadout"
       ]
     },
     {
@@ -202951,7 +202951,7 @@
       "evidence": [
         "test:test/extension-conformance/extension_api_go_test.go#TestExtensionAPIExecuteToolOrchestrationGo",
         "test:test/extension-conformance/extension_api_rust_test.go#TestRustSDKPrepareLoadout",
-        "test:test/extension-conformance/node_extension_api_test.go#TestNodeToolExposureFieldsAndPrepareLoadout"
+        "test:test/extension-conformance/lisp_extension_api_test.go#TestLispSDKToolExposureFieldsAndPrepareLoadout"
       ]
     },
     {
@@ -203017,7 +203017,7 @@
       "evidence": [
         "test:test/extension-conformance/extension_api_go_test.go#TestExtensionAPIRegistrationsAtLoadGo",
         "test:test/extension-conformance/extension_api_rust_test.go#TestRustSDKToolDefinitionFields",
-        "test:test/extension-conformance/node_extension_api_test.go#TestNodeToolExposureFieldsAndPrepareLoadout"
+        "test:test/extension-conformance/lisp_extension_api_test.go#TestLispSDKToolExposureFieldsAndPrepareLoadout"
       ]
     },
     {
@@ -204658,7 +204658,7 @@
       "evidence": [
         "test:test/extension-conformance/extension_api_go_test.go#TestExtensionAPIRegistrationsAtLoadGo",
         "test:test/extension-conformance/extension_api_rust_test.go#TestRustSDKToolDefinitionFields",
-        "test:test/extension-conformance/node_extension_api_test.go#TestNodeToolExposureFieldsAndPrepareLoadout"
+        "test:test/extension-conformance/lisp_extension_api_test.go#TestLispSDKToolExposureFieldsAndPrepareLoadout"
       ]
     },
     {
@@ -207872,7 +207872,7 @@
       "evidence": [
         "test:coding/extension/host/subprocess/upstream_jev_router_test.go#TestJevRouterExampleRegistersTheVirtualModel",
         "test:test/extension-conformance/extension_api_go_test.go#TestExtensionAPIRegistrationsAtLoadGo",
-        "test:test/extension-conformance/node_extension_api_test.go#TestNodeVirtualModelRegistrationAndRouting"
+        "test:test/extension-conformance/lisp_provider_api_test.go#TestLispSDKVirtualModelRegistrationAndRouting"
       ]
     },
     {
@@ -208409,7 +208409,7 @@
       "evidence": [
         "test:test/extension-conformance/event_payload_test.go#TestConformance_EventPayloadsReachEverySDKUnchanged",
         "test:test/extension-conformance/extension_api_go_test.go#TestExtensionAPIToolEventsCarryParentAndStructuredContentGo",
-        "test:test/extension-conformance/node_extension_api_test.go#TestNodeToolEventsAndNewEvents"
+        "test:test/extension-conformance/lisp_extension_api_test.go#TestLispSDKToolEventsAndNewEvents"
       ]
     },
     {
@@ -266809,9 +266809,9 @@
         "call:tui/bash_execution.go#BashExecutionComponent.IsDirty"
       ],
       "evidence": [
-        "test:tui/alt_screen_oracle_test.go#TestAltScreenFramesMatchPiOracle",
         "test:tui/image_transcoder_upstream_test.go#TestUpstreamImageTranscoding",
-        "test:tui/terminal_image_sizing_upstream_test.go#TestUpstreamImageCellSizing"
+        "test:tui/terminal_image_sizing_upstream_test.go#TestUpstreamImageCellSizing",
+        "test:tui/terminal_image_upstream_test.go#TestUpstreamTerminalImageEncoding"
       ]
     },
     {
@@ -266831,9 +266831,9 @@
         "call:tui/image.go#NewImage"
       ],
       "evidence": [
-        "test:tui/alt_screen_oracle_test.go#TestAltScreenFramesMatchPiOracle",
         "test:tui/image_transcoder_upstream_test.go#TestUpstreamImageTranscoding",
-        "test:tui/terminal_image_sizing_upstream_test.go#TestUpstreamImageCellSizing"
+        "test:tui/terminal_image_sizing_upstream_test.go#TestUpstreamImageCellSizing",
+        "test:tui/terminal_image_upstream_test.go#TestUpstreamTerminalImageEncoding"
       ]
     },
     {
@@ -267077,9 +267077,9 @@
         "call:tui/image.go#Image.Render"
       ],
       "evidence": [
-        "test:tui/alt_screen_oracle_test.go#TestAltScreenFramesMatchPiOracle",
         "test:tui/image_transcoder_upstream_test.go#TestUpstreamImageTranscoding",
-        "test:tui/terminal_image_sizing_upstream_test.go#TestUpstreamImageCellSizing"
+        "test:tui/terminal_image_sizing_upstream_test.go#TestUpstreamImageCellSizing",
+        "test:tui/terminal_image_upstream_test.go#TestUpstreamTerminalImageEncoding"
       ]
     },
     {
@@ -267141,9 +267141,9 @@
         "call:tui/image.go#Image.Render"
       ],
       "evidence": [
-        "test:tui/alt_screen_oracle_test.go#TestAltScreenFramesMatchPiOracle",
         "test:tui/loader_image_parity_test.go#TestImage_Render_UsesMaxHeightCells",
-        "test:tui/image_render_oracle_test.go#TestImageRenderMatchesPi"
+        "test:tui/alt_screen_oracle_test.go#TestAltScreenFramesMatchPiOracle",
+        "test:tui/alt_screen_oracle_test.go#TestAltScreenScrollFallsBackToPisBytes"
       ]
     },
     {
@@ -267186,7 +267186,7 @@
       "evidence": [
         "test:internal/codingagent/settings_upstream_test.go#TestSettingsManagerOriginalValues",
         "test:internal/codingagent/tools/render_text_output_oracle_test.go#TestGetTextOutputMatchesPi",
-        "test:tui/alt_screen_oracle_test.go#TestAltScreenFramesMatchPiOracle"
+        "test:tui/main_screen_oracle_test.go#TestMainScreenFramesMatchPiOracle"
       ]
     },
     {
@@ -272239,8 +272239,8 @@
       ],
       "evidence": [
         "test:tui/overlay_non_capturing_upstream_test.go#TestUpstreamOverlayNonCapturing",
-        "test:tui/alt_screen_oracle_test.go#TestAltScreenFramesMatchPiOracle",
-        "test:tui/main_screen_oracle_test.go#TestMainScreenFramesMatchPiOracle"
+        "test:tui/main_screen_oracle_test.go#TestMainScreenFramesMatchPiOracle",
+        "test:tui/overlay_options_upstream_test.go#TestUpstreamOverlayOptionsHidingAfterStop"
       ]
     },
     {
@@ -272344,9 +272344,9 @@
         "call:tui/tui.go#OverlayHandle.Hide"
       ],
       "evidence": [
-        "test:tui/alt_screen_oracle_test.go#TestAltScreenFramesMatchPiOracle",
         "test:tui/main_screen_oracle_test.go#TestMainScreenFramesMatchPiOracle",
-        "test:tui/overlay_options_upstream_test.go#TestUpstreamOverlayOptionsHidingAfterStop"
+        "test:tui/overlay_options_upstream_test.go#TestUpstreamOverlayOptionsHidingAfterStop",
+        "test:internal/codingagent/ext_ui_custom_test.go#TestExtUIContextCustomOverlayOptionsFunctionAndOnHandle"
       ]
     },
     {
@@ -272366,9 +272366,9 @@
         "call:tui/tui.go#OverlayHandle.Hide"
       ],
       "evidence": [
-        "test:tui/alt_screen_oracle_test.go#TestAltScreenFramesMatchPiOracle",
         "test:tui/main_screen_oracle_test.go#TestMainScreenFramesMatchPiOracle",
-        "test:tui/overlay_options_upstream_test.go#TestUpstreamOverlayOptionsHidingAfterStop"
+        "test:tui/overlay_options_upstream_test.go#TestUpstreamOverlayOptionsHidingAfterStop",
+        "test:internal/codingagent/ext_ui_custom_test.go#TestExtUIContextCustomOverlayOptionsFunctionAndOnHandle"
       ]
     },
     {
@@ -282283,9 +282283,9 @@
         "call:tui/tui_alt_screen.go#TuiAltScreen.Flash"
       ],
       "evidence": [
-        "test:tui/alt_screen_oracle_test.go#TestAltScreenFramesMatchPiOracle",
         "test:tui/tui_alt_screen_test.go#TestAltScreenFlashComposited",
-        "test:tui/tui_alt_screen_v087_test.go#TestAltScreenCopySelectionErrorMessages"
+        "test:tui/tui_alt_screen_v087_test.go#TestAltScreenCopySelectionErrorMessages",
+        "test:tui/alt_screen_oracle_test.go#TestAltScreenFramesMatchPiOracle"
       ]
     },
     {
@@ -282305,9 +282305,9 @@
         "call:tui/tui_alt_screen.go#TuiAltScreen.Flash"
       ],
       "evidence": [
-        "test:tui/alt_screen_oracle_test.go#TestAltScreenFramesMatchPiOracle",
         "test:tui/tui_alt_screen_test.go#TestAltScreenFlashComposited",
-        "test:tui/tui_alt_screen_v087_test.go#TestAltScreenCopySelectionErrorMessages"
+        "test:tui/tui_alt_screen_v087_test.go#TestAltScreenCopySelectionErrorMessages",
+        "test:tui/alt_screen_oracle_test.go#TestAltScreenFramesMatchPiOracle"
       ]
     },
     {
@@ -282327,7 +282327,9 @@
         "call:tui/tui_alt_screen.go#TuiAltScreen.FullRedraws"
       ],
       "evidence": [
-        "test:tui/alt_screen_oracle_test.go#TestAltScreenFramesMatchPiOracle"
+        "test:tui/alt_screen_oracle_test.go#TestAltScreenFramesMatchPiOracle",
+        "test:tui/alt_screen_oracle_test.go#TestAltScreenScrollFallsBackToPisBytes",
+        "test:tui/alt_screen_oracle_test.go#TestAltScreenScrolledFramesShowPisScreens"
       ]
     },
     {
@@ -283082,9 +283084,9 @@
         "call:tui/tui.go#tuiBase.RenderNow"
       ],
       "evidence": [
-        "test:tui/alt_screen_oracle_test.go#TestAltScreenFramesMatchPiOracle",
         "test:tui/tui_main_screen_new_test.go#TestNewTuiMainScreenDrawsOnItsTerminalAndTakesItsSize",
-        "test:tui/tui_mode_debug_test.go#TestRenderNowAndRepaintAll"
+        "test:tui/tui_mode_debug_test.go#TestRenderNowAndRepaintAll",
+        "test:tui/alt_screen_oracle_test.go#TestAltScreenFramesMatchPiOracle"
       ]
     },
     {
@@ -283104,9 +283106,9 @@
         "call:tui/tui.go#tuiBase.RenderNow"
       ],
       "evidence": [
-        "test:tui/alt_screen_oracle_test.go#TestAltScreenFramesMatchPiOracle",
         "test:tui/tui_main_screen_new_test.go#TestNewTuiMainScreenDrawsOnItsTerminalAndTakesItsSize",
-        "test:tui/tui_mode_debug_test.go#TestRenderNowAndRepaintAll"
+        "test:tui/tui_mode_debug_test.go#TestRenderNowAndRepaintAll",
+        "test:tui/alt_screen_oracle_test.go#TestAltScreenFramesMatchPiOracle"
       ]
     },
     {
@@ -283212,9 +283214,9 @@
         "call:tui/tui_alt_screen.go#TuiAltScreen.ScrollBy"
       ],
       "evidence": [
-        "test:tui/alt_screen_oracle_test.go#TestAltScreenFramesMatchPiOracle",
-        "test:tui/tui_alt_screen_kitty_cache_test.go#TestAltScreenEvictsLeastRecentlyVisibleKittyImageWhenCacheFull",
-        "test:tui/tui_alt_screen_kitty_cache_test.go#TestAltScreenEvictsOffscreenKittyImagesOverDecodedMemoryQuota"
+        "test:tui/tui_alt_screen_scroll_test.go#TestAltScreenDoesNotScrollImageRows",
+        "test:tui/tui_alt_screen_scroll_test.go#TestAltScreenScrolledFramesShowEveryRow",
+        "test:tui/tui_alt_screen_scroll_test.go#TestAltScreenScrollsRowsDownWhenScrolledBack"
       ]
     },
     {
@@ -283234,9 +283236,9 @@
         "call:tui/tui_alt_screen.go#TuiAltScreen.ScrollBy"
       ],
       "evidence": [
-        "test:tui/alt_screen_oracle_test.go#TestAltScreenFramesMatchPiOracle",
-        "test:tui/tui_alt_screen_kitty_cache_test.go#TestAltScreenEvictsLeastRecentlyVisibleKittyImageWhenCacheFull",
-        "test:tui/tui_alt_screen_kitty_cache_test.go#TestAltScreenEvictsOffscreenKittyImagesOverDecodedMemoryQuota"
+        "test:tui/tui_alt_screen_scroll_test.go#TestAltScreenDoesNotScrollImageRows",
+        "test:tui/tui_alt_screen_scroll_test.go#TestAltScreenScrolledFramesShowEveryRow",
+        "test:tui/tui_alt_screen_scroll_test.go#TestAltScreenScrollsRowsDownWhenScrolledBack"
       ]
     },
     {
@@ -283256,8 +283258,9 @@
         "call:tui/tui_alt_screen.go#TuiAltScreen.ScrollToBottom"
       ],
       "evidence": [
+        "test:tui/tui_alt_screen_test.go#TestAltScreenScrollAndFollow",
         "test:tui/alt_screen_oracle_test.go#TestAltScreenFramesMatchPiOracle",
-        "test:tui/tui_alt_screen_test.go#TestAltScreenScrollAndFollow"
+        "test:tui/alt_screen_oracle_test.go#TestAltScreenScrollFallsBackToPisBytes"
       ]
     },
     {
@@ -283277,8 +283280,9 @@
         "call:tui/tui_alt_screen.go#TuiAltScreen.ScrollToBottom"
       ],
       "evidence": [
+        "test:tui/tui_alt_screen_test.go#TestAltScreenScrollAndFollow",
         "test:tui/alt_screen_oracle_test.go#TestAltScreenFramesMatchPiOracle",
-        "test:tui/tui_alt_screen_test.go#TestAltScreenScrollAndFollow"
+        "test:tui/alt_screen_oracle_test.go#TestAltScreenScrollFallsBackToPisBytes"
       ]
     },
     {
@@ -283298,9 +283302,9 @@
         "call:tui/tui_alt_screen.go#TuiAltScreen.ScrollToTop"
       ],
       "evidence": [
-        "test:tui/alt_screen_oracle_test.go#TestAltScreenFramesMatchPiOracle",
         "test:tui/tui_alt_screen_kitty_cache_test.go#TestAltScreenEvictsLeastRecentlyVisibleKittyImageWhenCacheFull",
-        "test:tui/tui_alt_screen_test.go#TestAltScreenScrollAndFollow"
+        "test:tui/tui_alt_screen_test.go#TestAltScreenScrollAndFollow",
+        "test:tui/tui_alt_screen_test.go#TestAltScreenScrollToPromptJumpsToOsc133Marker"
       ]
     },
     {
@@ -283320,9 +283324,9 @@
         "call:tui/tui_alt_screen.go#TuiAltScreen.ScrollToTop"
       ],
       "evidence": [
-        "test:tui/alt_screen_oracle_test.go#TestAltScreenFramesMatchPiOracle",
         "test:tui/tui_alt_screen_kitty_cache_test.go#TestAltScreenEvictsLeastRecentlyVisibleKittyImageWhenCacheFull",
-        "test:tui/tui_alt_screen_test.go#TestAltScreenScrollAndFollow"
+        "test:tui/tui_alt_screen_test.go#TestAltScreenScrollAndFollow",
+        "test:tui/tui_alt_screen_test.go#TestAltScreenScrollToPromptJumpsToOsc133Marker"
       ]
     },
     {
@@ -283514,7 +283518,9 @@
         "call:tui/tui_alt_screen.go#TuiAltScreen.SetShowHardwareCursor"
       ],
       "evidence": [
-        "test:tui/alt_screen_oracle_test.go#TestAltScreenFramesMatchPiOracle"
+        "test:tui/alt_screen_oracle_test.go#TestAltScreenFramesMatchPiOracle",
+        "test:tui/alt_screen_oracle_test.go#TestAltScreenScrollFallsBackToPisBytes",
+        "test:tui/alt_screen_oracle_test.go#TestAltScreenScrolledFramesShowPisScreens"
       ]
     },
     {
@@ -283534,7 +283540,9 @@
         "call:tui/tui_alt_screen.go#TuiAltScreen.SetShowHardwareCursor"
       ],
       "evidence": [
-        "test:tui/alt_screen_oracle_test.go#TestAltScreenFramesMatchPiOracle"
+        "test:tui/alt_screen_oracle_test.go#TestAltScreenFramesMatchPiOracle",
+        "test:tui/alt_screen_oracle_test.go#TestAltScreenScrollFallsBackToPisBytes",
+        "test:tui/alt_screen_oracle_test.go#TestAltScreenScrolledFramesShowPisScreens"
       ]
     },
     {
@@ -283642,9 +283650,9 @@
         "call:tui/tui.go#tuiBase.ShowOverlay"
       ],
       "evidence": [
-        "test:tui/alt_screen_oracle_test.go#TestAltScreenFramesMatchPiOracle",
         "test:tui/main_screen_oracle_test.go#TestMainScreenFramesMatchPiOracle",
-        "test:tui/overlay_non_capturing_upstream_test.go#TestUpstreamOverlayNonCapturing"
+        "test:tui/overlay_non_capturing_upstream_test.go#TestUpstreamOverlayNonCapturing",
+        "test:tui/overlay_options_upstream_test.go#TestUpstreamOverlayOptionsHidingAfterStop"
       ]
     },
     {
@@ -283664,9 +283672,9 @@
         "call:tui/tui.go#tuiBase.ShowOverlay"
       ],
       "evidence": [
-        "test:tui/alt_screen_oracle_test.go#TestAltScreenFramesMatchPiOracle",
         "test:tui/main_screen_oracle_test.go#TestMainScreenFramesMatchPiOracle",
-        "test:tui/overlay_non_capturing_upstream_test.go#TestUpstreamOverlayNonCapturing"
+        "test:tui/overlay_non_capturing_upstream_test.go#TestUpstreamOverlayNonCapturing",
+        "test:tui/overlay_options_upstream_test.go#TestUpstreamOverlayOptionsHidingAfterStop"
       ]
     },
     {
@@ -283729,8 +283737,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/interactive_tui_factory_upstream_test.go#TestInteractiveTuiShowsConfiguredJumpShortcut",
-        "test:tui/alt_screen_oracle_test.go#TestAltScreenFramesMatchPiOracle",
-        "test:tui/terminal_exit_restore_test.go#TestExitRestoreFixture"
+        "test:tui/terminal_exit_restore_test.go#TestExitRestoreFixture",
+        "test:tui/terminal_exit_restore_test.go#TestRestoreTerminalOnExitAltScreenWithColorSchemeReportsAndModifyOtherKeys"
       ]
     },
     {
@@ -283751,8 +283759,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/interactive_tui_factory_upstream_test.go#TestInteractiveTuiShowsConfiguredJumpShortcut",
-        "test:tui/alt_screen_oracle_test.go#TestAltScreenFramesMatchPiOracle",
-        "test:tui/terminal_exit_restore_test.go#TestExitRestoreFixture"
+        "test:tui/terminal_exit_restore_test.go#TestExitRestoreFixture",
+        "test:tui/terminal_exit_restore_test.go#TestRestoreTerminalOnExitAltScreenWithColorSchemeReportsAndModifyOtherKeys"
       ]
     },
     {
@@ -283816,9 +283824,9 @@
         "call:tui/tui_alt_screen.go#NewTuiAltScreen"
       ],
       "evidence": [
-        "test:tui/alt_screen_oracle_test.go#TestAltScreenFramesMatchPiOracle",
         "test:tui/assistant_mouse_upstream_test.go#TestAssistantThinkingClicksThroughTerminal",
-        "test:tui/collapsible_message_upstream_test.go#TestCollapsibleMessageClicksThroughTerminal"
+        "test:tui/collapsible_message_upstream_test.go#TestCollapsibleMessageClicksThroughTerminal",
+        "test:tui/key_event_type_upstream_test.go#TestIsFocusableAndIsViewportTUI"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -284966,9 +284974,9 @@
         "call:tui/tui.go#tuiBase.RenderNow"
       ],
       "evidence": [
-        "test:tui/alt_screen_oracle_test.go#TestAltScreenFramesMatchPiOracle",
         "test:tui/tui_main_screen_new_test.go#TestNewTuiMainScreenDrawsOnItsTerminalAndTakesItsSize",
-        "test:tui/tui_mode_debug_test.go#TestRenderNowAndRepaintAll"
+        "test:tui/tui_mode_debug_test.go#TestRenderNowAndRepaintAll",
+        "test:tui/alt_screen_oracle_test.go#TestAltScreenFramesMatchPiOracle"
       ]
     },
     {
@@ -284988,9 +284996,9 @@
         "call:tui/tui.go#tuiBase.RenderNow"
       ],
       "evidence": [
-        "test:tui/alt_screen_oracle_test.go#TestAltScreenFramesMatchPiOracle",
         "test:tui/tui_main_screen_new_test.go#TestNewTuiMainScreenDrawsOnItsTerminalAndTakesItsSize",
-        "test:tui/tui_mode_debug_test.go#TestRenderNowAndRepaintAll"
+        "test:tui/tui_mode_debug_test.go#TestRenderNowAndRepaintAll",
+        "test:tui/alt_screen_oracle_test.go#TestAltScreenFramesMatchPiOracle"
       ]
     },
     {
@@ -285274,9 +285282,9 @@
         "call:tui/tui.go#tuiBase.ShowOverlay"
       ],
       "evidence": [
-        "test:tui/alt_screen_oracle_test.go#TestAltScreenFramesMatchPiOracle",
         "test:tui/main_screen_oracle_test.go#TestMainScreenFramesMatchPiOracle",
-        "test:tui/overlay_non_capturing_upstream_test.go#TestUpstreamOverlayNonCapturing"
+        "test:tui/overlay_non_capturing_upstream_test.go#TestUpstreamOverlayNonCapturing",
+        "test:tui/overlay_options_upstream_test.go#TestUpstreamOverlayOptionsHidingAfterStop"
       ]
     },
     {
@@ -285296,9 +285304,9 @@
         "call:tui/tui.go#tuiBase.ShowOverlay"
       ],
       "evidence": [
-        "test:tui/alt_screen_oracle_test.go#TestAltScreenFramesMatchPiOracle",
         "test:tui/main_screen_oracle_test.go#TestMainScreenFramesMatchPiOracle",
-        "test:tui/overlay_non_capturing_upstream_test.go#TestUpstreamOverlayNonCapturing"
+        "test:tui/overlay_non_capturing_upstream_test.go#TestUpstreamOverlayNonCapturing",
+        "test:tui/overlay_options_upstream_test.go#TestUpstreamOverlayOptionsHidingAfterStop"
       ]
     },
     {
@@ -286279,7 +286287,9 @@
         "call:tui/tui_alt_screen.go#TuiAltScreen.FullRedraws"
       ],
       "evidence": [
-        "test:tui/alt_screen_oracle_test.go#TestAltScreenFramesMatchPiOracle"
+        "test:tui/alt_screen_oracle_test.go#TestAltScreenFramesMatchPiOracle",
+        "test:tui/alt_screen_oracle_test.go#TestAltScreenScrollFallsBackToPisBytes",
+        "test:tui/alt_screen_oracle_test.go#TestAltScreenScrolledFramesShowPisScreens"
       ]
     },
     {
@@ -286811,9 +286821,9 @@
         "call:tui/tui.go#tuiBase.RenderNow"
       ],
       "evidence": [
-        "test:tui/alt_screen_oracle_test.go#TestAltScreenFramesMatchPiOracle",
         "test:tui/tui_main_screen_new_test.go#TestNewTuiMainScreenDrawsOnItsTerminalAndTakesItsSize",
-        "test:tui/tui_mode_debug_test.go#TestRenderNowAndRepaintAll"
+        "test:tui/tui_mode_debug_test.go#TestRenderNowAndRepaintAll",
+        "test:tui/alt_screen_oracle_test.go#TestAltScreenFramesMatchPiOracle"
       ]
     },
     {
@@ -286833,9 +286843,9 @@
         "call:tui/tui.go#tuiBase.RenderNow"
       ],
       "evidence": [
-        "test:tui/alt_screen_oracle_test.go#TestAltScreenFramesMatchPiOracle",
         "test:tui/tui_main_screen_new_test.go#TestNewTuiMainScreenDrawsOnItsTerminalAndTakesItsSize",
-        "test:tui/tui_mode_debug_test.go#TestRenderNowAndRepaintAll"
+        "test:tui/tui_mode_debug_test.go#TestRenderNowAndRepaintAll",
+        "test:tui/alt_screen_oracle_test.go#TestAltScreenFramesMatchPiOracle"
       ]
     },
     {
@@ -287196,8 +287206,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/interactive_tui_factory_upstream_test.go#TestInteractiveTuiShowsConfiguredJumpShortcut",
-        "test:tui/alt_screen_oracle_test.go#TestAltScreenFramesMatchPiOracle",
-        "test:tui/terminal_exit_restore_test.go#TestExitRestoreFixture"
+        "test:tui/terminal_exit_restore_test.go#TestExitRestoreFixture",
+        "test:tui/terminal_exit_restore_test.go#TestRestoreTerminalOnExitAltScreenWithColorSchemeReportsAndModifyOtherKeys"
       ]
     },
     {
@@ -287218,8 +287228,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/interactive_tui_factory_upstream_test.go#TestInteractiveTuiShowsConfiguredJumpShortcut",
-        "test:tui/alt_screen_oracle_test.go#TestAltScreenFramesMatchPiOracle",
-        "test:tui/terminal_exit_restore_test.go#TestExitRestoreFixture"
+        "test:tui/terminal_exit_restore_test.go#TestExitRestoreFixture",
+        "test:tui/terminal_exit_restore_test.go#TestRestoreTerminalOnExitAltScreenWithColorSchemeReportsAndModifyOtherKeys"
       ]
     },
     {

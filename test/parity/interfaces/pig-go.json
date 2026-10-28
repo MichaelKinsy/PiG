@@ -225077,15 +225077,15 @@
       "shapeHash": "sha256:3e5164b8bf2e1e8b3933f05e2cdb99e90aebcf8c03ec4e6cd76b804020b6cf6d"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/engine#fKeyFinals",
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/engine#fKeyFinal",
       "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/engine",
-      "name": "fKeyFinals",
-      "kind": "variable",
+      "name": "fKeyFinal",
+      "kind": "function",
       "exported": false,
       "shape": {
-        "type": "map[byte]int"
+        "type": "func(final byte) (int, bool)"
       },
-      "shapeHash": "sha256:477cd00112a76589414130439902ed7405565c4fdc0ed3fe869aac9bd2341fe7"
+      "shapeHash": "sha256:598b42301d5edffe09de4090f5036fa3dbb2de7d04034367078d6c924649d0e9"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/engine#findClosest",
@@ -225138,9 +225138,9 @@
       "kind": "variable",
       "exported": false,
       "shape": {
-        "type": "map[int]int"
+        "type": "[25]int16"
       },
-      "shapeHash": "sha256:9135bc58ba016fd28342f2b58ffb121a6e8d4c825c734814644962a976d187bf"
+      "shapeHash": "sha256:43983ff94e6601de804eabb64ed134c23c1e47f364abe01a0e36d3a0a2369411"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/engine#globalTUIKeybindings",
@@ -226419,6 +226419,17 @@
       "shapeHash": "sha256:98897944e8d55144dac3dc2e4c8d8fc7d431d7f629ad62c314d843437807c76f"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/engine#parseBareFKey",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/engine",
+      "name": "parseBareFKey",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(data string) *parsedKey"
+      },
+      "shapeHash": "sha256:0099aa2450fee8433a4de5956abb57ad49996a8a339b643eb6f269d22096b730"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/engine#parseCSIu",
       "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/engine",
       "name": "parseCSIu",
@@ -226488,17 +226499,6 @@
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/engine#parseModifiedArrow",
       "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/engine",
       "name": "parseModifiedArrow",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func(data string) *parsedKey"
-      },
-      "shapeHash": "sha256:0099aa2450fee8433a4de5956abb57ad49996a8a339b643eb6f269d22096b730"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/engine#parseModifiedFKey",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/engine",
-      "name": "parseModifiedFKey",
       "kind": "function",
       "exported": false,
       "shape": {
@@ -350367,15 +350367,15 @@
       "shapeHash": "sha256:712aa1f912ed8b2a515afd3e016ad20e83192eda792ea2444cc3e25c00ffe2fd"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/tui#fKeyFinals",
+      "id": "go:github.com/MichaelKinsy/PiG/tui#fKeyFinal",
       "package": "github.com/MichaelKinsy/PiG/tui",
-      "name": "fKeyFinals",
-      "kind": "variable",
+      "name": "fKeyFinal",
+      "kind": "function",
       "exported": false,
       "shape": {
-        "type": "map[byte]int"
+        "type": "func(final byte) (int, bool)"
       },
-      "shapeHash": "sha256:477cd00112a76589414130439902ed7405565c4fdc0ed3fe869aac9bd2341fe7"
+      "shapeHash": "sha256:598b42301d5edffe09de4090f5036fa3dbb2de7d04034367078d6c924649d0e9"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui#faintOpening",
@@ -350780,9 +350780,9 @@
       "kind": "variable",
       "exported": false,
       "shape": {
-        "type": "map[int]int"
+        "type": "[25]int16"
       },
-      "shapeHash": "sha256:9135bc58ba016fd28342f2b58ffb121a6e8d4c825c734814644962a976d187bf"
+      "shapeHash": "sha256:43983ff94e6601de804eabb64ed134c23c1e47f364abe01a0e36d3a0a2369411"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui#getActiveFormatter",
@@ -358859,6 +358859,17 @@
       "shapeHash": "sha256:a3c2aa668464b99b384d2a07d39ffabad660e3925d768ff4ce82a0ea6ae0f3e6"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#parseBareFKey",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "parseBareFKey",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(data string) *parsedKey"
+      },
+      "shapeHash": "sha256:0099aa2450fee8433a4de5956abb57ad49996a8a339b643eb6f269d22096b730"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/tui#parseBooleanCapabilityOverride",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "parseBooleanCapabilityOverride",
@@ -359005,17 +359016,6 @@
       "id": "go:github.com/MichaelKinsy/PiG/tui#parseModifiedArrow",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "parseModifiedArrow",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func(data string) *parsedKey"
-      },
-      "shapeHash": "sha256:0099aa2450fee8433a4de5956abb57ad49996a8a339b643eb6f269d22096b730"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/tui#parseModifiedFKey",
-      "package": "github.com/MichaelKinsy/PiG/tui",
-      "name": "parseModifiedFKey",
       "kind": "function",
       "exported": false,
       "shape": {

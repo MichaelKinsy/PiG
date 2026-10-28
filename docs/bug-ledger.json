@@ -34901,6 +34901,25 @@
       ]
     },
     {
+      "id": "BF-ed9548a",
+      "title": "fix(durable/core): report task_interrupted from the runtime's commit path for every task (Pi scheduler.ts)",
+      "symptom": "fix(durable/core): report task_interrupted from the runtime's commit path for every task (Pi scheduler.ts)",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "ed9548ab70",
+          "date": "2026-10-27"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-edb73db",
       "title": "fix(codingagent): one owner-overflow forwarder at a time; the drain test waits for it, not for the flag's…",
       "symptom": "fix(codingagent): one owner-overflow forwarder at a time; the drain test waits for it, not for the flag's early read",
