@@ -11,7 +11,8 @@ import (
 // docs/design/builtin-mcp.md step 2): a positive-only Piglet that does not list the adapter entry hides every
 // `mcp__<server>__<tool>` tool and the tools that reach servers (codemode, tool_search, the MCP resource tools), and an
 // adapter entry brings them back, narrowed by its `tools` list. The first model request is the observation, in RPC mode,
-// with a stub stdio MCP server and an isolated home and working directory.
+// with a stub stdio MCP server and an isolated home and working directory. The launch loads builtin:codemode and
+// builtin:tool-search, which a Piglet's own extension list does not select.
 func TestPigletScopesBuiltinMCPToolsInRPCMode(t *testing.T) {
 	if testing.Short() {
 		t.Skip("builds the pig binary and starts Node extensions")
@@ -48,7 +49,7 @@ func TestPigletScopesBuiltinMCPToolsInRPCMode(t *testing.T) {
 					prompt:  "go",
 					servers: []mcpBinaryServer{{name: "docs", config: map[string]any{"exposure": exposure}}},
 					steps:   []chatStep{chatText("done")},
-					args:    []string{"--piglet", filepath.Join(piglet, "piglet.yaml"), "--no-extensions", "-e", "builtin:mcp"},
+					args:    []string{"--piglet", filepath.Join(piglet, "piglet.yaml"), "--no-extensions", "-e", "builtin:mcp", "-e", "builtin:codemode", "-e", "builtin:tool-search"},
 				})
 				requests := result.chat.recorded()
 				if len(requests) == 0 {
