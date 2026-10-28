@@ -5,7 +5,7 @@ These PiG-only features have no Pi equivalent. This page lists the ones that mat
 | ID | Title | Summary |
 |---|---|---|
 | D18 | Piglet management and build dispatch | PiG manages, validates, runs, and builds Piglets with generic commands, and Pi has no Piglets. |
-| D19 | Multi-language subprocess SDK bridges | PiG ships extension SDKs for Go, Rust, and Python that use the same wire protocol and the same features. |
+| D19 | Multi-language subprocess SDK bridges | PiG ships extension SDKs for Go, Rust, Python, and Lisp that use the same wire protocol and the same features. |
 | D22 | Stock documentation materialization | PiG carries its own manual, and the pig docs command writes it to the config directory so no source checkout is needed. |
 | D23 | Per-tool source metadata and piglet-scoped active-tool Context API | Extensions can list all tools with their source, read and change the active tools, and read flag values. |
 | D28 | Extension validation report surface (pig install --validate-only --json) | The pig install --validate-only command loads and starts an extension without installing it and prints a machine-readable report. |
