@@ -220,7 +220,7 @@ func TestGeneratedBundlePagesCarryTheDoNotEditHeader(t *testing.T) {
 
 // A bundle page is read from a flat directory by `pig docs show`, so a link must name a bundle page, an anchor, or a full URL.
 func TestBundleLinksStayInsideTheFlatBundle(t *testing.T) {
-	flat := regexp.MustCompile(`^[a-z0-9-]+\.md(#[^/]*)?$`)
+	flat := regexp.MustCompile(`^[A-Za-z0-9-]+\.md(#[^/]*)?$`)
 	for _, src := range corpus(t) {
 		if !strings.HasPrefix(src.Rel, bundleDirRel+"/") {
 			continue
