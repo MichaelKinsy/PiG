@@ -457,7 +457,6 @@ func (s *Scheduler) Open(done func(error)) {
 	})
 }
 
-
 func (s *Scheduler) addFailFast(id ID) {
 	if !slices.Contains(s.failFastChecks, id) {
 		s.failFastChecks = append(s.failFastChecks, id)
