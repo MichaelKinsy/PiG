@@ -138,13 +138,50 @@ invocation still uses the normal extension host.
 
 Set `build.allowOverlays: true` to let the Binary accept a Piglet selected at
 launch (`--piglet`, `PIG_PIGLET_PATH`, `PIG_PIGLET_NAME`) as an overlay on its
-own Piglet. It is off by default, applies to the built Piglet only, and the
-overlay cannot replace or remove the Binary's extensions, skills, slots or
-system prompt, widen its ceilings, or re-enable what it strips.
+own Piglet; see [Accept overlay Piglets](#accept-overlay-piglets). It is off by
+default and applies to the built Piglet only.
 
 Direct-binary startup verifies every non-fused component from its registered
 release/environment closure before model/session/tools. It never uses an
 arbitrary same-named PATH extension or silently pulls/substitutes content.
+
+## Accept overlay Piglets
+
+A Piglet Binary runs its built-in Piglet and refuses `--piglet`, `PIG_PIGLET_PATH` and `PIG_PIGLET_NAME` unless its Piglet set `build.allowOverlays: true`. The setting is not inherited through `extends`. A Binary that sets it resolves the selected Piglet with stock pig's trust, directories and Package install flow, and merges it onto its own Piglet.
+
+An overlay merges onto the Binary's Piglet exactly as an `extends` child merges onto its base, so a Binary that sets `allowOverlays: true` behaves like stock pig started with a different Piglet.
+
+- `systemPrompt` replaces the Binary's prompt. `--system-prompt` is accepted with stock precedence (the flag wins over the Piglet's prompt); a Binary without `allowOverlays` still refuses it.
+- `extends.remove` removes Binary members: `extensions`, `skills`, `packages`, `slots: [frontend]` (the Binary then starts without its compiled-in frontend) and `strip` entries.
+- `extends.allowWiden: true` allows what widens the Binary's ceilings: `tools`, `discovery`, `agentEnv`, an extension's `tools`, and removing a strip entry. Without it resolution fails with `capability widening [...] requires extends.allowWiden: true`, as for any `extends` child.
+- An `extends` block with no `source` extends the Binary itself. It carries only `remove`, `allowWiden` and nothing else; a Piglet file with such a block resolves only as an overlay on a Piglet Binary that sets `allowOverlays`, and stock pig refuses it by name.
+
+```yaml
+name: tern-lite
+systemPrompt:
+  text: You answer in one paragraph.
+extends:
+  allowWiden: true
+  remove:
+    slots: [frontend]
+    extensions: [codegraph]
+    strip:
+      tools: [bash]
+```
+
+A name in `extends.remove` must exist in the Binary. Naming a member the Binary does not have fails with `remove.extensions: "codegraph" is absent`. The `tern-lite` overlay above needs a Binary that has an extension named `codegraph`.
+
+To test an overlay, start the Binary with the overlay as its Piglet, for example `./pig-base --piglet ./tern-lite.yaml`. Stock `pig piglet validate` rejects an overlay file by design, because an `extends` block without a `source` has no base to extend.
+
+Three things stay fixed, because they are compiled into the Binary. Each refusal names the field, the Binary and the reason:
+
+| The overlay | Why it is refused |
+|---|---|
+| sets `slots.frontend` (a new one, or another under the Binary's) | A frontend is Go code linked into the Binary. Removing the Binary's frontend with `extends.remove.slots: [frontend]` is allowed. |
+| removes a `strip` entry whose built-in a build tag compiled out: `strip.extensions` (`mcp`, `codemode` and the other built-in extensions), `strip.apis`, and the compile-out `strip.features` (`docs` is one) | The code is not in the executable. `pig piglet show` marks these `stripped(binary)`. |
+| names a fused or embedded extension again with `origins` | The Binary selects its own members by name and cannot build another at run time under that name. Remove it with `extends.remove.extensions` and add the new one under another name. |
+
+An overlay can undo runtime strips: `strip.tools`, `strip.commands` and the runtime-only features (`themes`, `skills`, `prompt-templates`), which `pig piglet show` marks `stripped(runtime)`. It cannot undo a `stripped(binary)` entry.
 
 ## Required agent environment
 

@@ -625,7 +625,7 @@ jobs:
         with:
           path: ~/.cache/pig-dev/pi-builds
           key: pi-oracle-${{ runner.os }}-${{ hashFiles('.upstream/pin', 'automation/pin/frozen/**', 'automation/pin/*.py', '.node-version', 'automation/ci/npm-toolchain/package-lock.json') }}
-      # TinyGo 0.42.0 (the tinygo row of automation/dev/toolchains.lock, digest-checked) builds the codemode module and the
+      # TinyGo (the tinygo row of automation/dev/toolchains.lock, digest-checked) builds the codemode module and the
       # TinyGo pass's core; the Pi reference the conformance tests read is the checkout durable/contract/PIN names.
       - name: Restore TinyGo and the Pi reference
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
@@ -1021,7 +1021,7 @@ jobs:
           path: ~/.cache/pig-sbcl
           key: sbcl-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('automation/dev/toolchains.lock', 'automation/ci/install-sbcl.sh') }}
       - name: Install the pinned SBCL
-        # SBCL publishes no 2.6.9 binary for arm64 macOS: the script builds the checksummed release source with the 2.4.0 binary.
+        # SBCL publishes no binary of the pinned release for arm64 macOS: the script builds the checksummed release source with the arm64 macOS binary row of automation/dev/toolchains.lock.
         shell: bash
         run: |
           set -euo pipefail

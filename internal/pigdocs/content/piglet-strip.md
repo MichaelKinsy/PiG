@@ -86,7 +86,7 @@ set `extends.allowWiden: true`. Without `allowWiden`, resolution fails.
 - `pig piglet schema` prints the schema and the IDs.
 
 An overlay on a Piglet Binary can undo some strips. See
-[Piglet Binary](piglets.md#piglet-binary) for what an overlay may change.
+[Accept overlay Piglets](piglets.md#accept-overlay-piglets) for what an overlay may change.
 
 ## `systemPrompt` replaces PiG's prompt
 

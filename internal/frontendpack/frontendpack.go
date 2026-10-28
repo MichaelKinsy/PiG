@@ -12,6 +12,17 @@ var selected func() frontend.Frontend
 // register records the member's factory. A Piglet has at most one frontend.
 func register(factory func() frontend.Frontend) { selected = factory }
 
+// Fused reports whether a frontend member is fused into this executable.
+func Fused() bool { return selected != nil }
+
+// SelectedIf is Selected when on is true and nil otherwise, for a run that starts the Binary without its fused frontend.
+func SelectedIf(on bool) frontend.Frontend {
+	if !on {
+		return nil
+	}
+	return Selected()
+}
+
 // Selected constructs the fused frontend, or returns nil when none is fused.
 func Selected() frontend.Frontend {
 	if selected == nil {
