@@ -1023,6 +1023,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-d37c769](#bf-d37c769) | A replacement request body from a `before_provider_request` hook on Anthropic Messages, and every OpenAI… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-d38f3be](#bf-d38f3be) | fix(durable): record the requested thinking level without boxing a string in the turn package | PiG's own defect | All platforms | Unreleased |
 | [BF-d39069d](#bf-d39069d) | Tool cards rebuilt when a session is resumed now follow the `showImages` and `imageWidthCells` settings | PiG's own defect | All platforms | 0.5.0 |
+| [BF-d3adcfe](#bf-d3adcfe) | A Piglet's tool scope now bounds the Session's tool registry, not only its active tools | PiG's own defect | All platforms | Unreleased |
 | [BF-d3b3618](#bf-d3b3618) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
 | [BF-d42aebb](#bf-d42aebb) | `ai.ValidateToolArguments` and `ai.ValidateToolCall` list a failed validation's errors in the order the… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-d449f74](#bf-d449f74) | `tool_search` and the Durable `searchTools()` ranker compute the same BM25 scores as Pi on arm64: the length… | PiG's own defect | All platforms | 0.5.0 |
@@ -1271,6 +1272,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-fce99d3](#bf-fce99d3) | The "Your first ten minutes" and Quickstart pages now describe the first-time setup screen (theme, sprite and… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-fce99d4](#bf-fce99d4) | An npm or git `-e` source that fails to install stops startup and `/reload` before any extension factory… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-fd4be86](#bf-fd4be86) | OpenAI-compatible Chat Completions keeps the `"text":""` member of a user text part whose text is only a lone… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-fd68cf8](#bf-fd68cf8) | A Piglet's tool scope now covers the built-in MCP tools | PiG's own defect | All platforms | Unreleased |
 | [BF-fd7f660](#bf-fd7f660) | A resumed session keeps the tools that were active when it was saved (an optional or deferred tool a command… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-fdbd6ca](#bf-fdbd6ca) | Automatic `fd` and `rg` downloads no longer fetch x86-64 binaries on ARM32 and other architectures without a… | PiG's own defect | All platforms | Unreleased |
 | [BF-fdfb748](#bf-fdfb748) | A surrogate pair split across two concatenated string halves is written as its character in session files… | PiG's own defect | All platforms | 0.5.0 |
@@ -15211,6 +15213,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** `internal/codingagent/interactive_tool_execution_options_test.go::TestResumedToolCardsUseTheImageSettings`, `internal/codingagent/interactive_tool_execution_options_test.go::TestToolExecutionOptionsDefaultWhenUndefined`, `internal/imageprocessing/image_processing_upstream_test.go::TestFormatDimensionNoteUpstream`, `internal/imageprocessing/input_limits_test.go::TestResizeModelProfileJPEGQualityAndSizeOnlyHint`
 - **Release note:** Tool cards rebuilt when a session is resumed now follow the `showImages` and `imageWidthCells` settings.
 
+### BF-d3adcfe
+
+**A Piglet's tool scope now bounds the Session's tool registry, not only its active tools**
+
+- **Source:** PiG's own defect
+- **Symptom:** A Piglet's tool scope now bounds the Session's tool registry, not only its active tools.
+- **Root cause:** A Piglet that allowed some MCP tools, or hid some tools of an extension, still left the others callable from a `codemode` script (the MCP server logged the call) and loadable with `tool_search`, because both read the registry.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `d3adcfebef` (2026-10-28)
+- **Tests:** `coding/cli/piglet_mcp_tool_scope_test.go::TestPigletScopesBuiltinMCPToolsInRPCMode`, `coding/extension/tool_filter_test.go::TestToolFilterScopeIntersects`, `coding/piglet/scope_mcp_test.go::TestScopeToolsScopesBuiltinMCPNamespaceLikeMCPSource`, `coding/session_tool_scope_test.go::TestNilToolScopeLeavesTheRegistryUnchanged`, `coding/session_tool_scope_test.go::TestToolScopeIntersectsWithToolsFlags`, `coding/session_tool_scope_test.go::TestToolScopeRemovesToolsFromTheRegistry`
+- **Release note:** A Piglet's tool scope now bounds the Session's tool registry, not only its active tools. A Piglet that allowed some MCP tools, or hid some tools of an extension, still left the others callable from a `codemode` script (the MCP server logged the call) and loadable with `tool_search`, because both read the registry. The Piglet scope now composes with `--tools` and `--exclude-tools` as an intersection wherever Pi applies its allowlist: definitions, the registry, `getAllTools`, activation and the refresh after a late registration. A hidden tool fails in `codemode` as it does under `--tools` (`tools.<name> does not exist`) and `tool_search` cannot find it. `codemode` and `tool_search` are no longer hidden when a Piglet leaves no MCP tool visible; they just reach nothing hidden. The MCP resource tools (`list_mcp_resources`, `list_mcp_resource_templates`, `read_mcp_resource`) are governed by the `pig-mcp-adapter` entry by name. Stock PiG without a Piglet is unchanged.
+
 ### BF-d3b3618
 
 **Fix in shipped code**
@@ -18669,6 +18685,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Commit that wrote the release note (the fix commit is not identified):** `fd4be8683c` (2026-10-11)
 - **Tests:** `ai/openai_completions_empty_sanitized_text_test.go::TestCompletionsUserTextThatSanitizesToNothingKeepsItsEmptyTextMember`
 - **Release note:** OpenAI-compatible Chat Completions keeps the `"text":""` member of a user text part whose text is only a lone UTF-16 surrogate, as Pi writes it after sanitizing (a part that is empty to begin with is still dropped). Found by widening the payload oracles' random transcripts with lone surrogates and decoding and encoding them with the SDK-compatible JSON package.
+
+### BF-fd68cf8
+
+**A Piglet's tool scope now covers the built-in MCP tools**
+
+- **Source:** PiG's own defect
+- **Symptom:** A Piglet's tool scope now covers the built-in MCP tools.
+- **Root cause:** Not recorded.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `fd68cf8c38` (2026-10-27)
+- **Tests:** `coding/cli/piglet_mcp_tool_scope_test.go::TestPigletScopesBuiltinMCPToolsInRPCMode`, `coding/piglet/scope_mcp_test.go::TestScopeToolsScopesBuiltinMCPNamespaceLikeMCPSource`
+- **Release note:** A Piglet's tool scope now covers the built-in MCP tools. A Piglet with an `extensions:` section that does not list `pig-mcp-adapter` still offered `mcp__<server>__<tool>` from `builtin:mcp`, and `codemode` with them. `ScopeTools` now treats a tool in namespace `mcp__<server>` like the adapter's `mcp:<server>` source: the `pig-mcp-adapter` entry and its `tools` list govern it, and the MCP resource tools follow the same entry by name. Stock PiG without a Piglet is unchanged.
 
 ### BF-fd7f660
 
