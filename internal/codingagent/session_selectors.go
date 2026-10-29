@@ -553,7 +553,7 @@ func (m *InteractiveMode) runEditorSlotUserMessageSelector(items []tui.UserMessa
 		sel.Invalidate()
 	}
 	for !done.Load() {
-		buf, ok := m.readModalInputFor(sel, inputCh)
+		buf, ok := m.readModalInputFor(list, inputCh)
 		if !ok {
 			return "", false
 		}
