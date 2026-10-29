@@ -1,0 +1,4 @@
+### Fixed
+
+- The Go Durable SDK's scheduler no longer resolves the Harness settings for the context a run itself reads: `contextRetentionMs` is read only when the conversation is idle, as Pi's `runtime.context` does, which removes four settings resolutions from every round of one generation with a tool call. <!-- fix: 9eda51265b00744a15a1d37755daa5df9eba7651 -->
+- The Durable core's host no longer reads the extensions of the Harness settings before every event it sends: the core never reads them, so they are neither sent nor compared by the change detector (the host made about 187 such reads in a round of one generation with one tool call). The core reads `HarnessOptions.settings` from the snapshot the host sends before each event, where Pi resolves the callback at each use (recorded as D206). <!-- fix: a1efda7e2b68629d6332b3110305315012622ea8 -->

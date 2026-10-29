@@ -5,4 +5,4 @@
 
 ### Fixed
 
-- The agent docs bundle no longer contradicts the site. `/fork` continues from before an earlier user message, the `PIG_HOME` default names `XDG_CONFIG_HOME`, `defaultThinkingLevel` defaults to `medium`, the site lists all nine Resource kinds, the bundle's Package page documents `pig update --models`, and the Piglet Image is marked as planned. <!-- fix: 618ca75612 -->
+- The agent docs bundle no longer contradicts the site. `/fork` continues from before an earlier user message, the `PIG_HOME` default names `XDG_CONFIG_HOME`, `defaultThinkingLevel` defaults to `medium`, the site lists all nine Resource kinds, the bundle's Package page documents `pig update --models`, and the Piglet Image is marked as planned. <!-- fix: 0367abc801 -->
