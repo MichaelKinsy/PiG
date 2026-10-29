@@ -103,7 +103,7 @@ func TestStartupChangelogFollowsPi(t *testing.T) {
 		if withChat {
 			mode.chatContainer.Add(tui.NewPaddedText("existing", 0, 0, nil))
 		}
-		mode.showStartupChangelog(newer)
+		mode.showStartupChangelog(newer, nil)
 		var got []string
 		for _, line := range mode.chatContainer.Render(80) {
 			got = append(got, strings.TrimRight(stripANSI(line), " "))
@@ -120,7 +120,7 @@ func TestStartupChangelogFollowsPi(t *testing.T) {
 		t.Fatalf("collapsed startup changelog with an existing chat = %q", got)
 	}
 	mode := &InteractiveMode{chatContainer: tui.NewContainer(), tuiInst: tui.NewWithOutput(io.Discard, 80, 24), opts: InteractiveModeOptions{AppVersion: "9.9.9", SettingsManager: &SettingsManager{merged: Settings{CollapseChangelog: true}}}}
-	mode.showStartupChangelog([]ChangelogEntry{{Content: "no version header here"}})
+	mode.showStartupChangelog([]ChangelogEntry{{Content: "no version header here"}}, nil)
 	if rows := stripANSI(strings.Join(mode.chatContainer.Render(80), "\n")); !strings.Contains(rows, "Updated to v9.9.9.") {
 		t.Fatalf("a changelog without a version header names the running version: %q", rows)
 	}
