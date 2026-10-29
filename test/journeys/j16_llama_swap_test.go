@@ -94,6 +94,7 @@ func init() {
 		Env: func(harness.Kind) harness.Env {
 			return harness.Env{
 				NoModelArg:    true,
+				ReadyMarker:   swapLoaded,
 				Models:        swapModels,
 				AgentDirFiles: map[string]string{"auth.json": `{"llama.cpp":{"type":"api_key","key":"local","env":{"LLAMA_BASE_URL":"{{PROVIDER_URL}}"}}}`},
 			}
