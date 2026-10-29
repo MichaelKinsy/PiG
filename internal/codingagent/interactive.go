@@ -648,10 +648,10 @@ type InteractiveMode struct {
 	autocompleteEpoch       context.Context
 	autocompleteEpochCancel context.CancelFunc
 	autocompletePending     <-chan struct{}
-	currentInputTicket  *inputTicket
-	pendingUserInputs   []string
-	onInputCallback     func(string)
-	initialMessagesDone <-chan struct{}
+	currentInputTicket      *inputTicket
+	pendingUserInputs       []string
+	onInputCallback         func(string)
+	initialMessagesDone     <-chan struct{}
 	// activeSelectorToken identifies the model selector still shown while its change settles, and activeSelectorDispose closes it (interactive-mode.ts:469-470).
 	activeSelectorToken   *int
 	activeSelectorDispose func()

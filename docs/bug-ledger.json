@@ -36212,11 +36212,15 @@
       "platform": "All platforms",
       "class": "ahead-of-pi",
       "divergence": "D213",
-      "removeWhen": "Pi's extensions run outside the editor's process, or the extension API gives a provider a way to say that it settles without I/O, or the owner withdraws the decision. Then the notice, the bound, the checkpoints and this record go.",
+      "removeWhen": "Pi's extensions run outside the editor's process, or the owner withdraws the decision. Then the release on runtime exit, the call-site marker and this record go.",
       "fixedIn": "Unreleased",
-      "releaseNote": "Text typed over an extension's autocomplete provider and followed at once by Enter no longer skips the menu Pi opens. With an extension that wraps the provider through `ctx.ui.addAutocompleteProvider` and answers without I/O, `/model provider/id` typed and entered in one go switched the model in PiG, where Pi accepts the suggestion into the editor on the first Enter and switches on the second (the same holds for `/thinking level`, any command with argument completions, and a command name). Pi awaits the whole wrapper chain in the Promise jobs after the terminal read, so a chain that needs no I/O has opened its menu before the next read, and a chain that awaits a timer, a socket or a process has not. PiG's chain is a round trip through the extension runtime that the next read overtook. The editor now starts the extension chain's request at the end of each read and the host holds the next read until the menu is published, the chain says it awaits real I/O, or one second passes; a provider that waits on I/O still lets the Enter submit at once, as in Pi. The Node runtime says so at the end of its macrotask (microtasks, `queueMicrotask` and `process.nextTick` stay inside Pi's checkpoint, a timer or `setImmediate` leaves it); the Go, Rust, Python and Lisp SDKs, whose providers block a thread, say so after 50 ms without progress outside a host call (D213). Extension authors change nothing.",
+      "releaseNote": "Text typed over an extension's autocomplete provider and followed at once by Enter no longer skips the menu Pi opens. With an extension that wraps the provider through `ctx.ui.addAutocompleteProvider` and answers without I/O, `/model provider/id` typed and entered in one go switched the model in PiG, where Pi accepts the suggestion into the editor on the first Enter and switches on the second (the same holds for `/thinking level`, any command with argument completions, and a command name). Pi awaits the whole wrapper chain in the Promise jobs after the terminal read, so a chain that needs no I/O has opened its menu before the next read, and a chain that awaits a timer, a socket or a process has not. PiG's chain is a round trip through the extension runtime that the next read overtook. The editor now starts the extension chain's request at the end of each read and the host holds the next read until the menu is published or the chain says it awaits real I/O; a provider that awaits a timer or a socket still lets the Enter submit at once, as in Pi, and a synchronous provider that blocks holds the read until it returns, as it holds Pi's loop. The Node runtime says so at the end of its macrotask (microtasks, `queueMicrotask` and `process.nextTick` stay inside Pi's checkpoint, a timer or `setImmediate` leaves it), including for a chain another extension of the same runtime calls (D213). Extension authors change nothing.",
       "origin": "release note",
       "commits": [
+        {
+          "hash": "04664a8579",
+          "date": "2026-10-29"
+        },
         {
           "hash": "39c44731e4",
           "date": "2026-10-29"
@@ -36232,15 +36236,20 @@
         {
           "hash": "ef7da87980",
           "date": "2026-10-29"
+        },
+        {
+          "hash": "fe3c40cd56",
+          "date": "2026-10-29"
         }
       ],
       "tests": [
         "coding/extension/host/subprocess/autocomplete_lifetime_test.go::TestAutocompleteCancellationPrecedesDispatchAndReleasesReferences",
         "coding/extension/host/subprocess/autocomplete_settle_test.go::TestNodeAutocompleteChainTellsTheHostWhenItAwaitsIO",
-        "internal/codingagent/autocomplete_extension_read_test.go::TestAnExtensionProviderThatNeverAnswersHoldsInputOnlyForTheBound",
+        "coding/extension/host/subprocess/autocomplete_settle_test.go::TestPackedNodeMembersShareTheBaseProvidersIOAnnouncement",
         "internal/codingagent/autocomplete_extension_read_test.go::TestBaseProviderAnnouncesItsAwaitedWork",
         "internal/codingagent/autocomplete_extension_read_test.go::TestEnterInTheReadAfterTheTextAcceptsTheMenuAnExtensionProviderOpened",
         "internal/codingagent/autocomplete_extension_read_test.go::TestEnterInTheReadAfterTheTextSubmitsWhileAnExtensionProviderAwaitsIO",
+        "internal/codingagent/autocomplete_extension_read_test.go::TestEnterWaitsForAnExtensionProviderThatBlocksUntilItReturns",
         "test/extension-conformance/autocomplete_settle_test.go::TestAutocompleteSettlementAcrossSDKs",
         "tui/async_autocomplete_race_test.go::TestAsyncAutocomplete_NoRaceWithInput",
         "tui/editor_async_provider_test.go::TestForcedAutocompleteQueryDoesNotHoldInput",
