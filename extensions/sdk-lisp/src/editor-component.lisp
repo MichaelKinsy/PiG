@@ -19,13 +19,15 @@ and ACTION-HANDLERS (a live table of functions by app action id such as \"app.cl
 
 (defstruct (editor-component
             (:constructor make-editor-component
-                (base &key embed-working-status
+                (base &key embed-working-status captures-viewport-input
                         ((:handle-input handle-input-fn)) ((:handle-mouse handle-mouse-fn)) ((:render render-fn))
                         ((:set-text set-text-fn)) ((:insert-text-at-cursor insert-text-fn)) ((:add-to-history add-history-fn))
                         ((:set-working-status-indicator status-fn)) ((:invalidate invalidate-fn)))))
   "The editor an extension installs. BASE is the EDITOR-BASE the factory received. Each keyword overrides one method with a function of that
-method's arguments; a method left out is the host's default editor's. EMBED-WORKING-STATUS makes the host draw the working status in the rows RENDER returns."
-  base embed-working-status handle-input-fn handle-mouse-fn render-fn set-text-fn insert-text-fn add-history-fn status-fn invalidate-fn)
+method's arguments; a method left out is the host's default editor's. EMBED-WORKING-STATUS makes the host draw the working status in the rows RENDER returns.
+CAPTURES-VIEWPORT-INPUT (Pi's Component.capturesViewportInput) is a boolean or a function of no arguments returning one, read each time a frame is
+rendered and sent as capturesViewportInput when true; a frame goes out when only it changed."
+  base embed-working-status captures-viewport-input handle-input-fn handle-mouse-fn render-fn set-text-fn insert-text-fn add-history-fn status-fn invalidate-fn)
 
 ;;; ---------------------------------------------------------------- the base: calls on the host's editor
 
@@ -179,10 +181,13 @@ each through the handler the component set for it, then the editing."
         (edcomp-guard session "render"
                       (lambda () (mapcar (lambda (line) (edcomp-string line (princ-to-string line)))
                                          (coerce (editor-component-render (edcomp-session-component session) width) 'list))))
-      (when (and ok (not (equal (edcomp-session-last-frame session) (cons width lines))))
-        (setf (edcomp-session-last-frame session) (cons width lines))
-        (notify-host ext "ui.editor.render" (obj "key" (edcomp-session-key session) "lines" (coerce lines 'simple-vector)
-                                                 "width" width "seq" (incf (edcomp-session-seq session))))))))
+      (let ((captures (capture-viewport-input-p (editor-component-captures-viewport-input (edcomp-session-component session)))))
+        (when (and ok (not (equal (edcomp-session-last-frame session) (list width lines captures))))
+          (setf (edcomp-session-last-frame session) (list width lines captures))
+          (let ((args (obj "key" (edcomp-session-key session) "lines" (coerce lines 'simple-vector)
+                           "width" width "seq" (incf (edcomp-session-seq session)))))
+            (when captures (setf (gethash "capturesViewportInput" args) t))
+            (notify-host ext "ui.editor.render" args)))))))
 
 (defun edcomp-handle-event (session event)
   (let ((component (edcomp-session-component session)) (payload (cdr event)))

@@ -326,3 +326,13 @@
   (check= "Ctrl+Y" (pig:format-key-text "ctrl+y" t))
   (check= "ctrl+y/enter" (pig:format-key-text "ctrl+y/enter"))
   (check= (if (member :darwin *features*) "option+left" "alt+left") (pig:format-key-text "alt+left")))
+
+(deftest get-select-page-index-moves-by-a-page-and-clamps
+  (let ((manager (pig:tui-make-keybindings-manager pig:*tui-keybindings*))
+        (page-up (format nil "~C[5~~" (code-char 27))) (page-down (format nil "~C[6~~" (code-char 27))))
+    (check= 5 (pig:tui-get-select-page-index manager page-down 2 20 3))
+    (check= 0 (pig:tui-get-select-page-index manager page-up 2 20 3) "clamped at the first item")
+    (check= 19 (pig:tui-get-select-page-index manager page-down 18 20 5) "clamped at the last item")
+    (check= 0 (pig:tui-get-select-page-index manager page-down 0 0 5) "an empty list answers 0 for a page key")
+    (check= 0 (pig:tui-get-select-page-index manager page-up 0 0 5))
+    (check (null (pig:tui-get-select-page-index manager "x" 2 20 3)) "not a page key")))

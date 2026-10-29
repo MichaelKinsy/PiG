@@ -798,6 +798,9 @@ type SourceInfo struct {
 	Scope   string `json:"scope"`
 	Origin  string `json:"origin"`
 	BaseDir string `json:"baseDir,omitempty"`
+	// ChangelogPath is the changelog file of the package that supplied the resource, when it has one (source-info.ts
+	// SourceInfo.changelogPath). It is set for a resource a package contributed and empty otherwise.
+	ChangelogPath string `json:"changelogPath,omitempty"`
 }
 
 // ToolInfo mirrors upstream ToolInfo, one entry of GetAllTools: a tool
@@ -1676,9 +1679,10 @@ type ExecResult struct {
 	Stdout   string `json:"stdout"`
 	Stderr   string `json:"stderr"`
 	ExitCode int    `json:"code"`
-	// Killed reports that the command was killed by its timeout or by
-	// cancellation.
+	// Killed reports that the command was terminated by pi: its timeout, cancellation, or output over MaxBuffer.
 	Killed bool `json:"killed"`
+	// Truncated reports that the output exceeded MaxBuffer: Stdout and Stderr are incomplete and ExitCode is nonzero.
+	Truncated bool `json:"truncated"`
 }
 
 // ExecOptions are the options of [Context.ExecWithOptions], upstream's ExecOptions.
@@ -1689,11 +1693,16 @@ type ExecOptions struct {
 	Timeout float64 `json:"timeout,omitempty"`
 	// Cwd is the command's working directory. Empty uses the session's.
 	Cwd string `json:"cwd,omitempty"`
+	// MaxBuffer is the byte limit of stdout and stderr together. Output past it terminates the command and the result has Truncated
+	// and Killed set and a nonzero ExitCode; a character the limit cuts is dropped whole. nil is undefined: 256 MiB, capped by the
+	// runtime string limit. Pi's maxBuffer is a JavaScript number that must be an integer from 0 to that limit: the host fails
+	// the call for a fraction, a negative value or a value above it (and the call fails here for NaN or an infinity).
+	MaxBuffer *float64 `json:"maxBuffer,omitempty"`
 	// Signal is upstream's options.signal. When it is done the host terminates the command, as Pi does: the command alone
 	// receives SIGTERM (the process is killed on Windows), no descendant is signalled, and the call returns the output
 	// written so far with Killed set and ExitCode 0, which is what a command that a signal ended reports. A Signal that is done
-	// before the call starts the command and ends it at once. Like upstream, nothing follows the SIGTERM, so a command that
-	// ignores it keeps the call waiting.
+	// before the call starts the command and ends it at once. SIGKILL follows the SIGTERM five seconds later if the command has not
+	// exited, as it does for a timeout or a MaxBuffer overflow.
 	//
 	// Without a Signal the command ends when the calling request is cancelled. A Signal replaces that cancellation, as
 	// upstream's exec has no signal but the one the caller passes: cancelling the request then leaves the command running

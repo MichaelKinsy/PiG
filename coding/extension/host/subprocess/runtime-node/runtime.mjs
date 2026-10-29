@@ -7,6 +7,7 @@ import { disposeIndependentSessions } from "./independent-session-owner.mjs";
 import { dispatchNativeProvider, nativeDeclaration } from "./native-provider.mjs";
 import { dispatchProviderObjectSync, dispatchProviderObjectCallback, remoteProvider } from "./provider-object.mjs";
 import { isWaiting, ProviderSocket, setProviderSocketsRef, shareDecodedFrames } from "./provider-socket.mjs";
+import { constants as bufferConstants } from "node:buffer";
 import { MessageChannel } from "node:worker_threads";
 import net from "node:net";
 import { closeSync, openSync, readSync } from "node:fs";
@@ -2546,6 +2547,11 @@ export class Runtime {
   //
   // core/exec.ts:46-52 kills the child when options.signal aborts, and the call has no other signal. An AbortSignal cannot cross the process boundary: the call names itself by an exec id and carries ownSignal, which detaches it from the calling request, and the abort reaches the Host as exec.cancel.
   exec(request) {
+    // core/exec.ts rejects an invalid maxBuffer before it spawns. NaN and the infinities would reach the Host as null, which means undefined, so the check runs here with the runtime's own limit.
+    const maxBuffer = request.options?.maxBuffer;
+    if (maxBuffer != null && (!Number.isInteger(maxBuffer) || maxBuffer < 0 || maxBuffer > bufferConstants.MAX_STRING_LENGTH)) {
+      return Promise.reject(new RangeError(`maxBuffer must be an integer between 0 and ${bufferConstants.MAX_STRING_LENGTH} bytes`));
+    }
     const signal = request.options?.signal;
     if (!signal || typeof signal.addEventListener !== "function") return this.execCall(request, false, () => {});
     const { signal: _signal, ...options } = request.options;
@@ -3732,6 +3738,7 @@ export class Runtime {
     let lastWidth;
     let lastViewKey;
     let lastMouse = false;
+    let lastCaptures = false;
     // ui.view.evicted: the next frame goes out with the image data again.
     overlay.resendFrame = () => {
       lastViewKey = undefined;
@@ -3759,17 +3766,21 @@ export class Runtime {
       // The frame says whether the component takes the
       // mouse, so the host hands it fullscreen mouse events.
       const mouse = takesMouse(component);
-      if (termWidth === lastWidth && mouse === lastMouse && derived?.key === lastViewKey && out.length === lastLines.length && out.every((value, index) => value === lastLines[index])) return;
+      // Component.capturesViewportInput is read as Pi reads it, when the frame is drawn: the host keeps the viewport keys from the transcript while it is true.
+      const captures = component.capturesViewportInput === true;
+      if (termWidth === lastWidth && mouse === lastMouse && captures === lastCaptures && derived?.key === lastViewKey && out.length === lastLines.length && out.every((value, index) => value === lastLines[index])) return;
       lastLines = out;
       lastWidth = termWidth;
       lastViewKey = derived?.key;
       lastMouse = mouse;
+      lastCaptures = captures;
       overlay.viewRefs = derived?.images;
       overlay.seq += 1;
       try {
         const args = { key, lines: out, width: termWidth, seq: overlay.seq };
         if (derived) args.view = this.viewWithImages(derived);
         if (mouse) args.mouse = true;
+        if (captures) args.capturesViewportInput = true;
         this.notify("ui.custom.render", args);
       } catch (err) {
         fail(err);

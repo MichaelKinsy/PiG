@@ -89,6 +89,23 @@ class MouseProbe:
         return pig_sdk.RemoteComponentResult()
 
 
+class ViewportProbe:
+    """Captures viewport input until it receives "t", then stops; closes on "q"."""
+
+    def __init__(self) -> None:
+        self.captures_viewport_input = True
+
+    def render(self, _width: int) -> list[str]:
+        return ["viewport probe"]
+
+    def handle_input(self, data: str) -> pig_sdk.RemoteComponentResult:
+        if data == "t":
+            self.captures_viewport_input = False
+        if data == "q":
+            return pig_sdk.RemoteComponentResult(done=True, value="viewport=done")
+        return pig_sdk.RemoteComponentResult()
+
+
 KIT_WIDGET_CASES: dict[str, Any] = {}
 """The widget kinds' Pi vector cases (D107, docs/plan/extension-component-kit.md
 §10), built with the SDK's own constructors; the key is
@@ -1357,6 +1374,21 @@ def new_extension() -> pig_sdk.Extension:
 
     ext.command("exec-abort-probe", "Abort a running exec through its signal", exec_abort_probe)
 
+    def exec_limits_probe(ctx, args):
+        probe = json.loads(args)
+        try:
+            options = {"max_buffer": probe["maxBuffer"]} if "maxBuffer" in probe else {}
+            result = ctx.exec(probe["command"], probe["args"], **options)
+            ctx.notify(
+                f"exec-limits:truncated={str(result.truncated).lower()};killed={str(result.killed).lower()};code={result.exit_code}"
+                f";stdout={result.stdout.strip()};stderr={result.stderr.strip()}",
+                "info",
+            )
+        except RuntimeError as error:
+            ctx.notify(f"rejected:{error}", "info")
+
+    ext.command("exec-limits-probe", "Run a command with a max_buffer and report truncation", exec_limits_probe)
+
     def language_probe(ctx, args):
         ctx.notify("language:%s:end" % json.dumps({"lang": pig_sdk.get_language_from_path(json.loads(args)["path"])}, separators=(",", ":")), "info")
 
@@ -2501,6 +2533,14 @@ def new_extension() -> pig_sdk.Extension:
 
     ext.command("mouse-probe", "Exercise extension mouse input", mouse_probe)
 
+    # viewport-probe opens a component that captures viewport input until it
+    # receives "t", and closes on "q".
+    def viewport_probe(ctx: pig_sdk.Context, _args: str) -> None:
+        result = ctx.custom(ViewportProbe(), {"overlay": True})
+        ctx.notify(f"{'' if result is None else result}", "info")
+
+    ext.command("viewport-probe", "Exercise capturesViewportInput", viewport_probe)
+
     # kit-surfaces shows the kit probe's tree on every other view surface
     # (D107, spec §10): a pushed widget, the header, the footer and a tool
     # result. The message renderer "kit-message" draws it too.
@@ -2922,6 +2962,7 @@ def new_extension() -> pig_sdk.Extension:
     _register_signal_abort(ext)
     _register_tui_alt_screen_probe(ext)
     _register_tui_alt_frame_probe(ext)
+    _register_tui_alt_viewport_probe(ext)
     _register_tui_alt_children_probe(ext)
     _register_tui_alt_reentry_probe(ext)
     return ext
@@ -3282,6 +3323,12 @@ class _AltCounted(_AltLines):
         self.invalidated += 1
 
 
+class _AltViewport(_AltLines):
+    """A tui.alt component that captures viewport input."""
+
+    captures_viewport_input = True
+
+
 def _register_tui_alt_frame_probe(ext: pig_sdk.Extension) -> None:
     """Read the screen from inside a component's render, and drive an overlay's visible callback, over a recording terminal. Every SDK fixture runs the
     same steps as the Pi oracle probe and must print its exact text."""
@@ -3395,6 +3442,24 @@ class _AltSame:
 
     def invalidate(self) -> None:
         pass
+
+
+def _register_tui_alt_viewport_probe(ext: pig_sdk.Extension) -> None:
+    """Mount a focused component with captures_viewport_input on a screen, then idle until the context ends."""
+
+    def tui_alt_viewport_probe(ctx: pig_sdk.Context, _args: str) -> None:
+        term = _AltTerminal()
+        screen = pig_sdk.TuiAltScreen(ctx, term, False, None, pig_sdk.TuiAltScreenOptions(mouse=False))
+        component = _AltViewport(lambda _w: ["viewport"])
+        screen.add_child(component)
+        screen.set_focus(component)
+        screen.start()
+        try:
+            (ctx.signal or pig_sdk.ProviderSignal()).wait(60)
+        finally:
+            screen.stop()
+
+    ext.command("tui-alt-viewport-probe", "Mount a viewport-capturing component on a TuiAltScreen and idle", tui_alt_viewport_probe)
 
 
 def _register_tui_alt_children_probe(ext: pig_sdk.Extension) -> None:

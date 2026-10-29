@@ -78,6 +78,7 @@ from .tui_alt_screen import (
     TuiMouseEventResult as TuiMouseEventResult,
     TuiOverlayOptions as TuiOverlayOptions,
     _TuiAltScreens,
+    captures_viewport_input as _captures_viewport_input,
 )
 from .tui_alt_screen import Component as TuiAltComponent
 from .agent_session_services import (
@@ -563,8 +564,10 @@ class ExecResult:
     stdout: str = ""
     stderr: str = ""
     exit_code: int = 0
-    # Upstream ExecResult.killed: the process was killed (timeout or abort).
+    # Upstream ExecResult.killed: pi terminated the process (timeout, abort, or output over ``max_buffer``).
     killed: bool = False
+    # Upstream ExecResult.truncated: output exceeded ``max_buffer``; ``stdout`` and ``stderr`` are incomplete and ``exit_code`` is nonzero.
+    truncated: bool = False
 
 
 @dataclass(kw_only=True)
@@ -1042,12 +1045,19 @@ class MouseHandler(Protocol):
     def handle_mouse(self, event: MouseEvent) -> RemoteComponentResult: ...
 
 
+# Any RemoteComponent or ``kit.ViewComponent`` may also have ``captures_viewport_input`` (a bool attribute, property or
+# method; Pi's ``capturesViewportInput``). Each ui.custom.render frame carries ``capturesViewportInput: true`` while it
+# is true, and a change alone sends a frame.
+
+
 @dataclass
 class _RemoteOverlayState:
     component: RemoteComponent | ViewComponent
     last_lines: list[str] = field(default_factory=list)
     # The last view frame's wire body, without image data, and the width it went out for (D107).
     last_view: tuple[dict[str, Any], int] | None = None
+    # The capturesViewportInput the last frame carried; a change alone sends a frame.
+    last_captures: bool = False
     seq: int = 0
     events: queue.Queue[tuple[str, Any]] = field(default_factory=lambda: queue.Queue(maxsize=64))
     active: threading.Event = field(default_factory=threading.Event)
@@ -3642,19 +3652,27 @@ class Context:
 
     # Shell ------------------------------------------------------------------
 
-    def exec(self, command: str, args: list[str] | None = None, *, timeout: float | None = None, cwd: str | None = None, signal: ProviderSignal | None = None) -> ExecResult:
+    def exec(self, command: str, args: list[str] | None = None, *, timeout: float | None = None, cwd: str | None = None, max_buffer: float | None = None, signal: ProviderSignal | None = None) -> ExecResult:
         """Run a command through the host's executor.
 
-        ``timeout`` (milliseconds), ``cwd`` and ``signal`` are upstream
-        ExecOptions; a command the timeout kills reports ``killed``. Setting
+        ``timeout`` (milliseconds), ``cwd``, ``max_buffer`` and ``signal`` are
+        upstream ExecOptions; a command the timeout kills reports ``killed``.
+        ``max_buffer`` caps the bytes of stdout and stderr together (default
+        256 MiB, capped by the runtime string limit): output past it
+        terminates the command and the result reports ``truncated`` and
+        ``killed`` with a nonzero ``exit_code``; a character the cap cuts is
+        dropped whole. It must be an integer from 0 to the runtime string
+        limit: the host fails the call (HostCallError) for a fraction, a
+        negative value or one above the limit, and a NaN or infinity raises
+        ValueError before the call, as it cannot cross the wire. Setting
         the ``signal`` (a :class:`ProviderSignal`) terminates the command, as
         Pi does: the command alone receives SIGTERM (the process is killed on
         Windows), no descendant is signalled, and the call returns the output
         written so far with ``killed`` set and ``exit_code`` 0, which is what a
         command that a signal ended reports. A signal that is set before the
-        call starts the command and ends it at once. Nothing follows the
-        SIGTERM, as upstream's: a command that ignores it keeps the call
-        waiting. Without a ``signal`` the command ends when the calling request
+        call starts the command and ends it at once. SIGKILL follows the
+        SIGTERM five seconds later if the command has not exited, for a
+        timeout and a ``max_buffer`` overflow too. Without a ``signal`` the command ends when the calling request
         is cancelled; a ``signal`` replaces that cancellation, so cancelling
         the request then leaves the command running and the call waits for its
         result. Raises HostCallError, a RuntimeError whose message is the
@@ -3670,6 +3688,12 @@ class Context:
             options["timeout"] = timeout
         if cwd is not None:
             options["cwd"] = cwd
+        if max_buffer is not None:
+            if isinstance(max_buffer, bool) or not isinstance(max_buffer, (int, float)):
+                raise TypeError("max_buffer must be a number")
+            if max_buffer != max_buffer or max_buffer in (float("inf"), float("-inf")):
+                raise ValueError("maxBuffer must be an integer between 0 and the runtime string limit")
+            options["maxBuffer"] = max_buffer
         if options:
             call_args["options"] = options
         if signal is None:
@@ -3682,6 +3706,7 @@ class Context:
             stderr=str(result.get("stderr") or ""),
             exit_code=int(result.get("code") or 0),
             killed=bool(result.get("killed")),
+            truncated=bool(result.get("truncated")),
         )
 
     # Agent/session control --------------------------------------------------
@@ -6033,9 +6058,11 @@ class Extension:
         render_width = overlay.render_width(width) if overlay.render_width is not None else width
         lines = [str(line) for line in overlay.component.render(render_width)]
         overlay.last_render = time.monotonic()
-        if lines == overlay.last_lines:
+        captures = _captures_viewport_input(overlay.component)
+        if lines == overlay.last_lines and captures == overlay.last_captures:
             return
         overlay.last_lines = list(lines)
+        overlay.last_captures = captures
         overlay.seq += 1
         self._notify("ui.custom.render", self._frame_args(overlay, {"key": key, "lines": lines, "width": width, "seq": overlay.seq}))
 
@@ -6048,9 +6075,11 @@ class Extension:
         with overlay.event_lock:
             force = overlay.force_view
             overlay.force_view = False
-        if not force and overlay.last_view == (encoded.body, width) and not self._views.has_unsent(encoded):
+        captures = _captures_viewport_input(overlay.component)
+        if not force and overlay.last_view == (encoded.body, width) and captures == overlay.last_captures and not self._views.has_unsent(encoded):
             return
         overlay.last_view = (encoded.body, width)
+        overlay.last_captures = captures
         with overlay.event_lock:
             overlay.view_refs = encoded.refs()
         overlay.seq += 1
@@ -6061,6 +6090,8 @@ class Extension:
         """Mark a frame of a component that takes the mouse; the host then hands it mouse events."""
         if overlay.takes_mouse:
             args["mouse"] = True
+        if overlay.last_captures:
+            args["capturesViewportInput"] = True
         return args
 
     def _remote_component_worker(self, key: str, overlay: _RemoteOverlayState) -> None:

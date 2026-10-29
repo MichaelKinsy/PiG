@@ -74,6 +74,13 @@ pub trait RemoteComponent: Send {
     fn handle_input(&mut self, data: &crate::JsString) -> Result<RemoteComponentResult, String>;
     fn set_invalidate(&mut self, _invalidate: Option<RemoteComponentInvalidate>) {}
     fn dispose(&mut self) {}
+    /// Whether the component captures viewport input, as an upstream component with
+    /// `capturesViewportInput` does: the host's fullscreen viewport keys (scroll, page) go to it instead
+    /// of the viewport. Read each time a frame is drawn and sent with the frame as `capturesViewportInput`
+    /// (omitted when false); a frame goes out when only this changed. The default is false.
+    fn captures_viewport_input(&self) -> bool {
+        false
+    }
     /// Whether the component takes the mouse, as an upstream component with
     /// `handleMouse` does; see [`Self::handle_mouse`]. The default is false.
     fn handles_mouse(&self) -> bool {
@@ -113,6 +120,11 @@ pub trait ViewComponent: Send {
     }
     fn set_invalidate(&mut self, _invalidate: Option<RemoteComponentInvalidate>) {}
     fn dispose(&mut self) {}
+    /// Whether the component captures viewport input; see
+    /// [`RemoteComponent::captures_viewport_input`]. The default is false.
+    fn captures_viewport_input(&self) -> bool {
+        false
+    }
     /// Whether the component takes the mouse; see
     /// [`RemoteComponent::handles_mouse`]. The default is false.
     fn handles_mouse(&self) -> bool {
@@ -138,6 +150,13 @@ impl OverlayComponent {
         match self {
             OverlayComponent::Lines(component) => component.handle_input(data),
             OverlayComponent::View(component) => component.handle_input(data),
+        }
+    }
+
+    fn captures_viewport_input(&self) -> bool {
+        match self {
+            OverlayComponent::Lines(component) => component.captures_viewport_input(),
+            OverlayComponent::View(component) => component.captures_viewport_input(),
         }
     }
 
@@ -173,6 +192,8 @@ impl OverlayComponent {
 pub(crate) struct RemoteComponentState {
     pub(crate) component: OverlayComponent,
     pub(crate) last_lines: Vec<String>,
+    /// The `capturesViewportInput` the last frame carried.
+    pub(crate) last_captures: bool,
     /// The last view frame's wire body, without image data, and the width it
     /// went out for.
     pub(crate) last_view: Option<(serde_json::Value, u32)>,
@@ -476,9 +497,10 @@ fn render_remote_component_frame(
     }
     .map_err(|_| io::Error::other("focused render panicked"))?;
     state.last_render = Some(Instant::now());
+    let captures = state.component.captures_viewport_input();
     let mut frame = match frame {
         crate::kit::Rendered::Lines(lines) => {
-            if lines == state.last_lines {
+            if lines == state.last_lines && captures == state.last_captures {
                 return Ok(());
             }
             state.last_lines.clone_from(&lines);
@@ -491,6 +513,7 @@ fn render_remote_component_frame(
             let encoded = conn.views.encode(&view).map_err(io::Error::other)?;
             let force = overlay.force_view.swap(false, Ordering::AcqRel);
             if !force
+                && captures == state.last_captures
                 && state.last_view.as_ref().is_some_and(|(body, last)| *body == encoded.body && *last == width)
                 && !conn.views.has_unsent(&encoded)
             {
@@ -502,7 +525,11 @@ fn render_remote_component_frame(
         }
     };
     state.seq += 1;
+    state.last_captures = captures;
     frame["seq"] = serde_json::Value::from(state.seq);
+    if captures {
+        frame["capturesViewportInput"] = serde_json::Value::Bool(true);
+    }
     // The host hands a component that takes the mouse its events.
     if state.component.handles_mouse() {
         frame["mouse"] = serde_json::Value::Bool(true);
@@ -2973,6 +3000,7 @@ impl Context {
             state: Mutex::new(RemoteComponentState {
                 component,
                 last_lines: Vec::new(),
+                last_captures: false,
                 last_view: None,
                 seq: 0,
                 last_render: None,
@@ -3590,8 +3618,8 @@ impl Context {
     /// When `options.signal` is cancelled the host terminates the command, as Pi does: the command alone receives SIGTERM (the
     /// process is killed on Windows), no descendant is signalled, and the call returns the output written so far with `killed`
     /// set and `exit_code` 0, which is what a command that a signal ended reports. A signal that is cancelled before the call
-    /// starts the command and ends it at once. Nothing follows the SIGTERM, as upstream's: a command that ignores it keeps the
-    /// call waiting. Without a signal the command ends when the calling request is cancelled; a signal replaces that
+    /// starts the command and ends it at once. SIGKILL follows the SIGTERM five seconds later if the command has not exited, for a
+    /// timeout and a `max_buffer` overflow too. Without a signal the command ends when the calling request is cancelled; a signal replaces that
     /// cancellation, so cancelling the request then leaves the command running and the call waits for its result.
     pub fn exec_with_options(
         &self,
@@ -3605,6 +3633,12 @@ impl Context {
         }
         if let Some(cwd) = options.cwd.as_deref() {
             opts.insert("cwd".into(), serde_json::Value::String(cwd.to_string()));
+        }
+        if let Some(max_buffer) = options.max_buffer {
+            if !max_buffer.is_finite() {
+                return Err("maxBuffer must be an integer between 0 and the runtime string limit".to_string());
+            }
+            opts.insert("maxBuffer".into(), serde_json::Value::from(max_buffer));
         }
         let mut call = serde_json::json!({ "command": command, "args": args, "options": opts });
         let Some(signal) = options.signal.as_ref() else {
@@ -3660,6 +3694,10 @@ impl Context {
             exit_code: value.get("code").and_then(|v| v.as_i64()).unwrap_or(0) as i32,
             killed: value
                 .get("killed")
+                .and_then(|v| v.as_bool())
+                .unwrap_or(false),
+            truncated: value
+                .get("truncated")
                 .and_then(|v| v.as_bool())
                 .unwrap_or(false),
         })
@@ -4114,9 +4152,12 @@ pub struct ExecResult {
     pub stderr: String,
     /// The host's `code`.
     pub exit_code: i32,
-    /// Whether the command was killed (timeout or cancellation).
+    /// Whether pi terminated the command (timeout, cancellation, or output over `max_buffer`).
     #[serde(default)]
     pub killed: bool,
+    /// Whether the output exceeded `max_buffer`: `stdout` and `stderr` are incomplete and `exit_code` is nonzero.
+    #[serde(default)]
+    pub truncated: bool,
 }
 
 /// Upstream `ExecOptions` for [`Context::exec_with_options`].
@@ -4126,6 +4167,8 @@ pub struct ExecOptions {
     pub timeout: Option<f64>,
     /// Working directory; the session's when unset.
     pub cwd: Option<String>,
+    /// Upstream's `maxBuffer`: the byte limit of stdout and stderr together. Output past it terminates the command and the result has `truncated` and `killed` set and a nonzero `exit_code`; a character the limit cuts is dropped whole. Unset: 256 MiB, capped by the runtime string limit. It is a JavaScript number that must be an integer from 0 to that limit: the host fails the call for a fraction, a negative value or one above it, and the call fails here for NaN or an infinity, which cannot cross the wire.
+    pub max_buffer: Option<f64>,
     /// Upstream's `signal`: cancelling it terminates the command (see [`Context::exec_with_options`]). Unset, the command ends when the calling request is cancelled.
     pub signal: Option<crate::ProviderSignal>,
 }
@@ -4181,6 +4224,9 @@ pub struct SourceInfo {
     pub origin: String,
     #[serde(default, rename = "baseDir", skip_serializing_if = "Option::is_none")]
     pub base_dir: Option<String>,
+    /// The changelog file of the package that supplied the resource, when it has one (`SourceInfo.changelogPath`).
+    #[serde(default, rename = "changelogPath", skip_serializing_if = "Option::is_none")]
+    pub changelog_path: Option<String>,
 }
 
 /// Upstream `ToolInfo`, one entry of `get_all_tools()`: a tool definition's
@@ -5593,6 +5639,7 @@ mod sdk_surface_call_tests {
                     &ExecOptions {
                         timeout: Some(250.0),
                         cwd: Some("/work".to_string()),
+                        max_buffer: None,
                         signal: None,
                     },
                 )

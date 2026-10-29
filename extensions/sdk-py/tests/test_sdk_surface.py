@@ -444,3 +444,29 @@ def test_session_log_getters_report_subscription_failure() -> None:
     for name in ("get_branch", "get_entries"):
         raised = _probe_getter(lambda c, name=name: getattr(c, name)(), None, failure)
         assert isinstance(raised, pig_sdk.HostCallError) and "log unavailable" in str(raised), name
+
+
+def test_exec_max_buffer_option_and_truncated_result() -> None:
+    results: list[pig_sdk.ExecResult] = []
+    calls, _ = _run_command(
+        lambda ctx: results.append(ctx.exec("yes", [], max_buffer=1024)),
+        {"exec": {"stdout": "yyyy", "stderr": "", "code": 1, "killed": True, "truncated": True}},
+    )
+    assert calls[0]["call"]["args"] == {"command": "yes", "args": [], "options": {"maxBuffer": 1024}}
+    assert results == [pig_sdk.ExecResult(stdout="yyyy", stderr="", exit_code=1, killed=True, truncated=True)]
+
+
+def test_select_page_index_follows_the_page_keys() -> None:
+    from pig_sdk import tui
+
+    keys = tui.get_keybindings()
+    up, down = keys.get_keys("tui.select.pageUp")[0], keys.get_keys("tui.select.pageDown")[0]
+    assert (up, down) == ("pageUp", "pageDown")
+    page_up, page_down = "\x1b[5~", "\x1b[6~"
+    assert tui.get_select_page_index(keys, page_down, 2, 20, 5) == 7
+    assert tui.get_select_page_index(keys, page_down, 18, 20, 5) == 19
+    assert tui.get_select_page_index(keys, page_up, 2, 20, 5) == 0
+    assert tui.get_select_page_index(keys, page_up, 12, 20, 5) == 7
+    assert tui.get_select_page_index(keys, page_down, 0, 0, 5) == 0
+    assert tui.get_select_page_index(keys, page_up, 0, 0, 5) == 0
+    assert tui.get_select_page_index(keys, "x", 3, 20, 5) is None

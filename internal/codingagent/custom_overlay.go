@@ -35,8 +35,10 @@ type customOverlay struct {
 	result        any
 	onInput       func(data string)
 	// onMouse hands a mouse event to the extension's component.
-	onMouse  func(event extension.RemoteMouseEvent) extension.ViewMouseResult
-	onChange func()
+	onMouse func(event extension.RemoteMouseEvent) extension.ViewMouseResult
+	// capturesViewport is the component's capturesViewportInput as its latest frame reported it.
+	capturesViewport func() bool
+	onChange         func()
 
 	// closedCh is closed exactly once by Close so a waiter blocked on input can
 	// observe an extension-initiated close instead of sitting on its input
@@ -146,6 +148,22 @@ func (c *customOverlay) SetOnMouse(fn func(event extension.RemoteMouseEvent) ext
 	c.mu.Lock()
 	c.onMouse = fn
 	c.mu.Unlock()
+}
+
+// SetCapturesViewportInput registers the reader of the component's capturesViewportInput.
+func (c *customOverlay) SetCapturesViewportInput(fn func() bool) {
+	c.mu.Lock()
+	c.capturesViewport = fn
+	c.mu.Unlock()
+}
+
+// CapturesViewportInput is the extension component's optional capturesViewportInput (Component.capturesViewportInput in packages/tui/src/tui.ts):
+// while the overlay has focus in fullscreen mode, PageUp, PageDown and the other viewport keys go to the component. Satisfies tui.ViewportInputCapturer.
+func (c *customOverlay) CapturesViewportInput() bool {
+	c.mu.RLock()
+	fn := c.capturesViewport
+	c.mu.RUnlock()
+	return fn != nil && fn()
 }
 
 // HandleMouse hands a fullscreen mouse event to the component, as Pi's

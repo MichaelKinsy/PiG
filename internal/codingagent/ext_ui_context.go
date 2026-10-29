@@ -845,6 +845,9 @@ func (u *ExtUIContext) newRemoteOverlay(host extension.RemoteOverlayHost) *custo
 		if mouse, ok := host.(extension.RemoteOverlayMouseHost); ok {
 			overlay.SetOnMouse(mouse.OnMouse)
 		}
+		if viewport, ok := host.(extension.RemoteOverlayViewportHost); ok {
+			overlay.SetCapturesViewportInput(viewport.CapturesViewportInput)
+		}
 	}
 	overlay.onFocus = func(focused bool) { overlay.setInputActive(u.m, focused) }
 	return overlay

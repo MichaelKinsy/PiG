@@ -1,4 +1,4 @@
-package tools
+package utf8stream
 
 import (
 	"math/rand/v2"
@@ -20,17 +20,17 @@ func TestUTF8StreamDecoderChunkingMatchesWholeDecode(t *testing.T) {
 			data = append(data, pieces[rng.IntN(len(pieces))]...)
 		}
 		for _, stripBOM := range []bool{true, false} {
-			whole := utf8StreamDecoder{stripBOM: stripBOM}
-			want := whole.decode(data, false)
-			streamed := utf8StreamDecoder{stripBOM: stripBOM}
+			whole := Decoder{StripBOM: stripBOM}
+			want := whole.Decode(data, false)
+			streamed := Decoder{StripBOM: stripBOM}
 			var got []byte
 			rest := data
 			for len(rest) > 0 {
 				n := 1 + rng.IntN(len(rest))
-				got = streamed.appendDecode(got, rest[:n], true)
+				got = streamed.AppendDecode(got, rest[:n], true)
 				rest = rest[n:]
 			}
-			got = streamed.appendDecode(got, nil, false)
+			got = streamed.AppendDecode(got, nil, false)
 			if string(got) != want {
 				t.Fatalf("run %d stripBOM %v: %x decoded in chunks to %q, at once to %q", run, stripBOM, data, got, want)
 			}

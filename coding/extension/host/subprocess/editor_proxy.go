@@ -44,15 +44,17 @@ const (
 // EditorPayload is the argument of the editor notifies; each carries the
 // fields its method uses.
 type EditorPayload struct {
-	Key                string   `json:"key"`
-	Data               string   `json:"data,omitempty"`
-	Text               string   `json:"text,omitempty"`
-	Expanded           string   `json:"expanded,omitempty"`
-	Lines              []string `json:"lines,omitempty"`
-	Width              int      `json:"width,omitempty"`
-	Seq                uint64   `json:"seq,omitempty"`
-	WantsKeyRelease    bool     `json:"wantsKeyRelease,omitempty"`
-	EmbedWorkingStatus bool     `json:"embedWorkingStatus,omitempty"`
+	Key             string   `json:"key"`
+	Data            string   `json:"data,omitempty"`
+	Text            string   `json:"text,omitempty"`
+	Expanded        string   `json:"expanded,omitempty"`
+	Lines           []string `json:"lines,omitempty"`
+	Width           int      `json:"width,omitempty"`
+	Seq             uint64   `json:"seq,omitempty"`
+	WantsKeyRelease bool     `json:"wantsKeyRelease,omitempty"`
+	// CapturesViewportInput is the editor component's capturesViewportInput when the frame was drawn.
+	CapturesViewportInput bool `json:"capturesViewportInput,omitempty"`
+	EmbedWorkingStatus    bool `json:"embedWorkingStatus,omitempty"`
 	// Delegated marks a component that subclasses the host's stock editor: its base calls arrive as ui.editor.base.
 	Delegated bool   `json:"delegated,omitempty"`
 	ID        uint64 `json:"id,omitempty"`
@@ -257,6 +259,9 @@ func (p *editorProxy) handle(method string, args json.RawMessage) {
 			lines = []string{}
 		}
 		p.deliver(func(host extension.RemoteEditorHost) {
+			if viewport, ok := host.(extension.RemoteEditorViewportHost); ok {
+				viewport.EditorCapturesViewportInput(payload.CapturesViewportInput)
+			}
 			host.EditorFrame(lines, payload.Width, payload.WantsKeyRelease)
 		})
 	case NotifyEditorOptions:

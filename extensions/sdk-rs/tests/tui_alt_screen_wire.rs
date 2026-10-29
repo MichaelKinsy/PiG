@@ -121,6 +121,7 @@ impl Terminal for Recording {
 struct Doc {
     inputs: Mutex<Vec<String>>,
     focused: Mutex<Vec<bool>>,
+    captures: std::sync::atomic::AtomicBool,
 }
 
 impl Component for Doc {
@@ -132,6 +133,9 @@ impl Component for Doc {
     }
     fn handle_input(&self, data: &str) {
         self.inputs.lock().unwrap().push(data.to_string());
+    }
+    fn captures_viewport_input(&self) -> bool {
+        self.captures.load(std::sync::atomic::Ordering::SeqCst)
     }
     fn is_focusable(&self) -> bool {
         true
@@ -194,7 +198,7 @@ fn calls_carry_the_terminal_block_and_callbacks_run_while_a_call_is_blocked() {
         add["call"]["args"],
         json!({
             "id": "t1", "op": "addChild", "key": "c1",
-            "caps": {"input": true, "mouse": false, "focusable": true, "wantsKeyRelease": false},
+            "caps": {"input": true, "mouse": false, "focusable": true, "wantsKeyRelease": false, "capturesViewportInput": true},
             "terminal": {"columns": 20, "rows": 6, "kitty": false},
         })
     );
@@ -207,6 +211,10 @@ fn calls_carry_the_terminal_block_and_callbacks_run_while_a_call_is_blocked() {
     assert_eq!(callback(s, "cb1", json!({"id": "t1", "kind": "render", "key": "c1", "width": 7}))["result"], json!({"lines": ["w=7"]}));
     assert_eq!(callback(s, "cb2", json!({"id": "t1", "kind": "input", "key": "c1", "data": "x"}))["result"], json!({}));
     assert_eq!(callback(s, "cb3", json!({"id": "t1", "kind": "focus", "key": "c1", "focused": true}))["result"], json!({}));
+    // The host asks for the component's capturesViewportInput each time; the answer is the value at that moment.
+    assert_eq!(callback(s, "cb3a", json!({"id": "t1", "kind": "capturesViewportInput", "key": "c1"}))["result"], json!({"captures": false}));
+    doc.captures.store(true, std::sync::atomic::Ordering::SeqCst);
+    assert_eq!(callback(s, "cb3b", json!({"id": "t1", "kind": "capturesViewportInput", "key": "c1"}))["result"], json!({"captures": true}));
     assert_eq!(callback(s, "cb4", json!({"id": "t1", "kind": "terminal", "method": "write", "data": "\u{1b}[?1049h"}))["result"], json!({}));
     assert_eq!(
         callback(s, "cb5", json!({"id": "t1", "kind": "terminal", "method": "setProgramStatus", "status": {"state": "blocked", "kind": "auth"}}))["result"],
@@ -275,7 +283,7 @@ fn show_overlay_names_its_visible_callback_and_answers_the_hosts_size_asks() {
         show["call"]["args"],
         json!({
             "id": "t1", "op": "showOverlay", "key": "c1", "visible": true,
-            "caps": {"input": true, "mouse": false, "focusable": true, "wantsKeyRelease": false},
+            "caps": {"input": true, "mouse": false, "focusable": true, "wantsKeyRelease": false, "capturesViewportInput": true},
             "terminal": {"columns": 20, "rows": 6, "kitty": false},
         })
     );

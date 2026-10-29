@@ -173,3 +173,17 @@ pub fn get_keybindings() -> Arc<KeybindingsManager> {
     let mut guard = GLOBAL.lock().unwrap_or_else(|e| e.into_inner());
     guard.get_or_insert_with(|| Arc::new(KeybindingsManager::new(tui_keybindings(), Vec::new()))).clone()
 }
+
+/// pi-tui's `getSelectPageIndex`: the selection after a page key of a select list. `tui.select.pageUp` moves one page up and
+/// `tui.select.pageDown` one down, clamped to the list; `None` when `data` is neither. An empty list answers 0.
+pub fn get_select_page_index(keybindings: &KeybindingsManager, data: &str, selected_index: usize, item_count: usize, page_size: usize) -> Option<usize> {
+    let up = keybindings.matches(data, "tui.select.pageUp");
+    if !up && !keybindings.matches(data, "tui.select.pageDown") {
+        return None;
+    }
+    if item_count == 0 {
+        return Some(0);
+    }
+    let last = item_count - 1;
+    Some(if up { selected_index.saturating_sub(page_size) } else { selected_index.saturating_add(page_size).min(last) }.min(last))
+}

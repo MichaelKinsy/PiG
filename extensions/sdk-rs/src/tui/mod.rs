@@ -22,7 +22,7 @@ pub(crate) use host::{apply_host_state, install_theme, installed_theme_palette, 
 pub use host::current_host_theme;
 pub use colors::*;
 pub use fuzzy::{FuzzyMatch, fuzzy_filter, fuzzy_match};
-pub use keybindings::{KeybindingConflict, KeybindingDefinition, KeybindingsManager, get_keybindings, set_keybindings, tui_keybindings};
+pub use keybindings::{KeybindingConflict, KeybindingDefinition, KeybindingsManager, get_keybindings, get_select_page_index, set_keybindings, tui_keybindings};
 pub use keys::{
     Key, decode_kitty_printable, decode_printable_key, is_key_release, is_key_repeat, is_kitty_protocol_active, matches_key, parse_key,
     set_kitty_protocol_active,

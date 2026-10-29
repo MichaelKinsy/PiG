@@ -391,6 +391,13 @@ pub trait EditorComponent: Send {
         false
     }
 
+    /// Whether the component captures viewport input, as an upstream editor component with `capturesViewportInput` does:
+    /// the host's fullscreen viewport keys go to it instead of the viewport. Read each time a frame is drawn and sent with the
+    /// frame as `capturesViewportInput` (omitted when false); a frame goes out when only this changed. The default is false.
+    fn captures_viewport_input(&self) -> bool {
+        false
+    }
+
     /// One key from the host.
     fn handle_input(&mut self, data: &JsString) -> Result<(), String> {
         self.base().handle_input(data).map_err(|e| e.to_string())
@@ -438,6 +445,8 @@ struct Frame<'a> {
     lines: &'a [JsString],
     width: u32,
     seq: u64,
+    #[serde(rename = "capturesViewportInput", skip_serializing_if = "std::ops::Not::not")]
+    captures_viewport_input: bool,
 }
 
 enum EditorEvent {
@@ -480,7 +489,7 @@ struct EditorWorker {
     width: Arc<AtomicU32>,
     component: Box<dyn EditorComponent>,
     seq: u64,
-    last: Option<(u32, Vec<JsString>)>,
+    last: Option<(u32, Vec<JsString>, bool)>,
     /// The working status the component was last told, and whether it was told one.
     status: Option<EditorStatus>,
     status_sent: bool,
@@ -514,13 +523,14 @@ impl EditorWorker {
         let Some(lines) = self.guarded("render", |c| c.render(width)) else {
             return;
         };
-        if self.last.as_ref().is_some_and(|(w, l)| *w == width && *l == lines) {
+        let captures = self.component.captures_viewport_input();
+        if self.last.as_ref().is_some_and(|(w, l, c)| *w == width && *l == lines && *c == captures) {
             return;
         }
         self.seq += 1;
-        let frame = Frame { key: &self.key, lines: &lines, width, seq: self.seq };
+        let frame = Frame { key: &self.key, lines: &lines, width, seq: self.seq, captures_viewport_input: captures };
         let _ = self.conn.notify_typed("ui.editor.render", Some(frame));
-        self.last = Some((width, lines));
+        self.last = Some((width, lines, captures));
     }
 
     fn run(mut self, events: Receiver<EditorEvent>) {

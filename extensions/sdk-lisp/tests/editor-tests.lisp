@@ -569,3 +569,19 @@ whose value is the call's result (or :DEFER to answer later with EDH-REPLY)."
     (check-equal 0 (ed-count edh (ed-call "ui.onTerminalInput")))
     (check-equal 0 (ed-count edh (ed-call "ui.offTerminalInput")))
     (check (eq :false (pig:jget (ed-terminal-input edh "t1" "x") "consume")))))
+
+(deftest an-editor-frame-carries-captures-viewport-input-and-resends-when-only-it-changes
+  (let ((stock (make-edstock)) (capturing t))
+    (with-edh (edh (ed-editor-extension
+                    (lambda (base)
+                      (pig:make-editor-component base :captures-viewport-input (lambda () capturing)
+                                                      :handle-input (lambda (data) (when (string= data "t") (setf capturing nil)))
+                                                      :render (lambda (width) (declare (ignore width)) (list "editor")))))
+                   (edstock-handler stock))
+      (ed-command edh "r1" "install")
+      (ed-host-notify edh "ui.editor.input" "key" "editor-1" "data" "x")
+      (check-equal t (pig:jget (ed-args (ed-wait edh (ed-notify "ui.editor.render") 1)) "capturesViewportInput"))
+      (ed-host-notify edh "ui.editor.input" "key" "editor-1" "data" "t")
+      (let ((frame (ed-wait edh (ed-notify "ui.editor.render") 2)))
+        (check (not (nth-value 1 (gethash "capturesViewportInput" (ed-args frame)))) "false is omitted")
+        (check-equal '("editor") (ed-render-lines frame))))))

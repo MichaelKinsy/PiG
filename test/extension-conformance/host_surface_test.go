@@ -33,7 +33,7 @@ func (u *hostSurfaceUI) GetToolsExpanded() bool { return u.expanded.Load() }
 func (u *hostSurfaceUI) Bell()                  { u.bells.Add(1) }
 
 // hostSurfaceSource is the SourceInfo the rows load every fixture with.
-var hostSurfaceSource = extension.SourceInfo{Path: "/c3/source/entry", Source: "local", Scope: "project", Origin: "package", BaseDir: "/c3/source"}
+var hostSurfaceSource = extension.SourceInfo{Path: "/c3/source/entry", Source: "local", Scope: "project", Origin: "package", BaseDir: "/c3/source", ChangelogPath: "/c3/source/CHANGELOG.md"}
 
 // eventually polls check until it holds or the deadline passes.
 func eventually(t *testing.T, what string, check func() bool) {
@@ -238,7 +238,7 @@ func TestToolCallInputAcrossSDKs(t *testing.T) {
 func TestExtensionSourceInfoAcrossSDKs(t *testing.T) {
 	eachModelTypesPlacement(t, func(t *testing.T, r *modelTypesRig) {
 		report := r.tool("c3_source")
-		want := map[string]any{"path": hostSurfaceSource.Path, "source": hostSurfaceSource.Source, "scope": hostSurfaceSource.Scope, "origin": hostSurfaceSource.Origin, "baseDir": hostSurfaceSource.BaseDir}
+		want := map[string]any{"path": hostSurfaceSource.Path, "source": hostSurfaceSource.Source, "scope": hostSurfaceSource.Scope, "origin": hostSurfaceSource.Origin, "baseDir": hostSurfaceSource.BaseDir, "changelogPath": hostSurfaceSource.ChangelogPath}
 		if got, _ := report["info"].(map[string]any); !reflect.DeepEqual(got, want) {
 			t.Fatalf("info = %v, want %v", report["info"], want)
 		}

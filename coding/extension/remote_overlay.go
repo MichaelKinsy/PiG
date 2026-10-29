@@ -186,6 +186,16 @@ type RemoteOverlayFocusHost interface {
 	OnFocus(focused bool)
 }
 
+// RemoteOverlayViewportHost is an optional [RemoteOverlayHost] that publishes the component's capturesViewportInput: Pi's optional
+// Component.capturesViewportInput (packages/tui/src/tui.ts) is read from the focused component whenever a fullscreen viewport key
+// arrives, and the key goes to the component instead of scrolling the transcript while it is true.
+//
+// pig-specific: Pi's component is in-process; a remote component sends its current value with each frame.
+type RemoteOverlayViewportHost interface {
+	// CapturesViewportInput reports the capturesViewportInput of the latest frame the component sent. Safe to call from any goroutine.
+	CapturesViewportInput() bool
+}
+
 // RemoteTUI is an optional [UIContext] that drives the TUI a remote component factory receives. Pi hands showExtensionCustom's
 // factory the TUI itself (interactive-mode.ts:3008), and the factory or its components may call its showOverlay, hideOverlay and
 // setFocus (tui.ts:598-842); a subprocess factory makes those calls across the process boundary.
