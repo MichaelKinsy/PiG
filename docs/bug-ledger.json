@@ -23839,6 +23839,34 @@
       ]
     },
     {
+      "id": "BF-D212",
+      "title": "`/llama` explains a 404 from llama-swap's missing load and unload endpoints, where Pi shows \"llama.cpp…",
+      "symptom": "none claimed.",
+      "rootCause": "Pi's text names neither the server nor the way that works, and the reporter took it for a PiG bug. The way that works is the models.json provider, where PiG and Pi behave the same (journey `llama-swap-models-json`); `/llama` stays a llama.cpp router manager.",
+      "rootCauseSource": "divergence record",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "ahead-of-pi",
+      "divergence": "D212",
+      "removeWhen": "Pi's `/llama` names llama-swap itself, or can manage llama-swap models; or the owner withdraws the decision. Then the call-site marker, the `GET /running` probe, the docs section and this record go.",
+      "fixedIn": "Unreleased",
+      "origin": "divergence",
+      "commits": [
+        {
+          "hash": "3f46dee992",
+          "date": "2026-10-28"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/llama/client_http_oracle_test.go::TestLlamaClientRequestsMatchPi",
+        "internal/codingagent/llama/llamaswap_test.go::TestLlamaClientAndCatalogAgainstLlamaSwapAndLlamaServerMatchPi",
+        "internal/codingagent/llama/llamaswap_test.go::TestLlamaCommandAgainstLlamaSwapExplainsTheMissingEndpoints",
+        "internal/codingagent/llama/llamaswap_test.go::TestLlamaCommandKeepsPisTextForARouter404",
+        "internal/codingagent/llama/llamaswap_test.go::TestLoadAndUnloadKeepPisTextForA404ThatIsNotLlamaSwap",
+        "internal/codingagent/llama/llamaswap_test.go::TestLoadAndUnloadRecognizeLlamaSwapByItsErrorEnvelope"
+      ]
+    },
+    {
       "id": "BF-a076a50",
       "title": "A model request on a reused connection gets the full HTTP idle timeout to receive its first response bytes…",
       "symptom": "The time the connection had spent idle in the pool was deducted from the next request's timeout.",
@@ -39478,6 +39506,11 @@
       "id": "D208",
       "title": "From inside a component's render, a TuiAltScreen of the Go, Rust, Python and Lisp SDKs fails the calls that…",
       "entry": "BF-D208"
+    },
+    {
+      "id": "D212",
+      "title": "`/llama` explains a 404 from llama-swap's missing load and unload endpoints, where Pi shows \"llama.cpp…",
+      "entry": "BF-D212"
     }
   ],
   "exemptCommits": {

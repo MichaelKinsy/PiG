@@ -303254,6 +303254,17 @@
       "shapeHash": "sha256:f168504470efe2ea57a2c2fc9dbb13a177e531248054ca318847f8b3dbdedfc7"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent/llama#LlamaClient.explainLlamaSwap",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent/llama",
+      "name": "LlamaClient.explainLlamaSwap",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(ctx context.Context, err error) error"
+      },
+      "shapeHash": "sha256:804805114bead1ecaad8b509fb179e299327ef62513269fba80c79ed49cb95fe"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent/llama#LlamaClient.headers",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent/llama",
       "name": "LlamaClient.headers",
@@ -303263,6 +303274,17 @@
         "type": "func() net/http.Header"
       },
       "shapeHash": "sha256:6773f2cddc82cf9152695a43422fda42c1ae6df24fde6f5191485415bf69e471"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent/llama#LlamaClient.isLlamaSwap",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent/llama",
+      "name": "LlamaClient.isLlamaSwap",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(ctx context.Context, payload any) bool"
+      },
+      "shapeHash": "sha256:fdde8fb897be5c5616fca866cbc15bec115a5f6a3bde952220ffb062f452779d"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent/llama#LlamaClient.request",
@@ -304871,6 +304893,28 @@
       "shapeHash": "sha256:7eabd192b9f1c379102c8dc793881875f1f949f6b752e15a20b93080cb0b311d"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent/llama#llamaHTTPError",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent/llama",
+      "name": "llamaHTTPError",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "llamaHTTPError"
+      },
+      "shapeHash": "sha256:b44a7e25fe8b456979e6eb4841bee4dee4ce5cf021c811287647ea02159e0be8"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent/llama#llamaHTTPError.Error",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent/llama",
+      "name": "llamaHTTPError.Error",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() string"
+      },
+      "shapeHash": "sha256:31cac5b359d9888bdbe3fe08c486b2e404a728edce6e0aaaa60e59ceafc92fb5"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent/llama#llamaInteraction",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent/llama",
       "name": "llamaInteraction",
@@ -304880,6 +304924,17 @@
         "type": "func(ctx context.Context, interaction github.com/MichaelKinsy/PiG/ai.AuthInteraction) AuthInteraction"
       },
       "shapeHash": "sha256:cbefbd7b9e3756f00d747a766854782f21b2ddb47e4d27d1c211e3b84a077027"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent/llama#llamaSwapDocsURL",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent/llama",
+      "name": "llamaSwapDocsURL",
+      "kind": "constant",
+      "exported": false,
+      "shape": {
+        "type": "untyped string"
+      },
+      "shapeHash": "sha256:7eabd192b9f1c379102c8dc793881875f1f949f6b752e15a20b93080cb0b311d"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent/llama#loadFailure",
