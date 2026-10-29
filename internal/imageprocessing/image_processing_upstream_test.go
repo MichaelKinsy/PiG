@@ -196,9 +196,16 @@ func TestResizeImagePicksJPEGOverLargerPNGForPhotos(t *testing.T) {
 // Pi e7a0df27 image-resize-core.ts: the smaller of the PNG and the JPEG at the configured quality goes first, the other format next, and
 // the lower JPEG qualities only when neither fits.
 func TestFirstFittingCandidatePrefersTheSmallerOfPNGAndJPEG(t *testing.T) {
+	// Blocks with sharp edges: the PNG is far smaller than the JPEG, which rings around every edge.
 	flat := image.NewRGBA(image.Rect(0, 0, 200, 200))
-	for i := 0; i < len(flat.Pix); i += 4 {
-		flat.Pix[i], flat.Pix[i+1], flat.Pix[i+2], flat.Pix[i+3] = 10, 20, 30, 255
+	for y := range 200 {
+		for x := range 200 {
+			v := uint8(0)
+			if (x/10+y/10)%2 == 0 {
+				v = 255
+			}
+			flat.Set(x, y, color.RGBA{v, v, v, 255})
+		}
 	}
 	noisy := image.NewRGBA(image.Rect(0, 0, 200, 200))
 	rng := rand.New(rand.NewPCG(3, 4))
@@ -223,7 +230,7 @@ func TestFirstFittingCandidatePrefersTheSmallerOfPNGAndJPEG(t *testing.T) {
 		return encodedSizeBase64(data)
 	}
 	if png, jpegAt80 := pngSize(flat), jpegSize(flat, 80); png >= jpegAt80 {
-		t.Fatalf("fixture: flat PNG %d must be smaller than JPEG %d", png, jpegAt80)
+		t.Fatalf("fixture: blocks PNG %d must be smaller than JPEG %d", png, jpegAt80)
 	}
 	if png, jpegAt80 := pngSize(noisy), jpegSize(noisy, 80); jpegAt80 >= png {
 		t.Fatalf("fixture: noisy JPEG %d must be smaller than PNG %d", jpegAt80, png)
@@ -234,7 +241,7 @@ func TestFirstFittingCandidatePrefersTheSmallerOfPNGAndJPEG(t *testing.T) {
 		maxBytes int
 		wantMIME string
 	}{
-		{"flat image, both fit: PNG is smaller", flat, 1 << 30, "image/png"},
+		{"blocks, both fit: PNG is smaller", flat, 1 << 30, "image/png"},
 		{"noisy image, both fit: JPEG is smaller", noisy, 1 << 30, "image/jpeg"},
 		// The PNG fits as well, but the smaller JPEG goes first.
 		{"noisy image, maxBytes above the PNG: the JPEG still wins", noisy, pngSize(noisy) + 1, "image/jpeg"},

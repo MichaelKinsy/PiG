@@ -636,8 +636,8 @@ func toNRGBA(img image.Image) *image.NRGBA {
 	return out
 }
 
-// resizeImage scales img to width×height with the Lanczos filter of radius 3, as Photon's resize does with SamplingFilter.Lanczos3
-// (image-resize-core.ts tryEncodings). The pixels differ from Photon's by a mean of 0.01 of 255 (pig divergence D165).
+// resizeImage scales img to width×height as Photon's resize does with SamplingFilter.Lanczos3 (image-resize-core.ts tryEncodings), with
+// Photon's own pixels (photonimage.ResizeLanczos3).
 func resizeImage(img image.Image, width, height int) *image.NRGBA {
 	return photonimage.ResizeLanczos3(toNRGBA(img), width, height)
 }
@@ -754,8 +754,8 @@ func encodePNG(img image.Image) ([]byte, error) {
 	return photonimage.EncodePNG(toNRGBA(img)), nil
 }
 
-// encodeJPEG drops the alpha channel as Photon's JPEG encoder does, rather than darkening transparent pixels. pig divergence (D165): Go's
-// JPEG encoder, not Photon's `get_bytes_jpeg(quality)`; the quantization differs.
+// pig divergence (D165): Go's JPEG encoder, not Photon's `get_bytes_jpeg(quality)`; the quantization differs.
+// encodeJPEG drops the alpha channel, as Photon's JPEG encoder does, rather than darkening transparent pixels.
 func encodeJPEG(img image.Image, quality int) ([]byte, error) {
 	opaque := toNRGBA(img)
 	if imageHasAlpha(opaque) {
