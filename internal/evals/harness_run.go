@@ -76,10 +76,13 @@ type AgentRun struct {
 	AgentDir     string
 	Workspace    string
 	// Model and PigPath identify the Session's model and the pig binary, for outputs that start more pig processes.
-	Model            PiCodingAgentModelSelection
-	PigPath          string
-	Messages         []map[string]any
-	ExtensionErrors  []json.RawMessage
+	Model           PiCodingAgentModelSelection
+	PigPath         string
+	Messages        []map[string]any
+	ExtensionErrors []json.RawMessage
+	// Extensions are the paths of the extensions the Session loaded besides pig's built-in ones and the eval bridge
+	// (the visible extensions of resourceLoader.getExtensions()).
+	Extensions       []string
 	SuccessfulTools  map[string]string
 	SessionStatistic SessionStatistics
 }
@@ -717,8 +720,12 @@ func RunPiCodingAgent(ctx context.Context, input PiCodingAgentInput, options PiC
 		}
 		var output any = response
 		if options.Output != nil {
+			extensions, err := visibleExtensions(ctx, process, extensionPath, useExtension)
+			if err != nil {
+				return err
+			}
 			if output, err = options.Output(ctx, AgentRun{Response: response, SystemPrompt: systemPrompt, AgentDir: agentDir, Workspace: workspace, Model: selection, PigPath: pigPath,
-				Messages: messages, ExtensionErrors: extensionErrors, SuccessfulTools: successfulTools, SessionStatistic: statistics}); err != nil {
+				Messages: messages, ExtensionErrors: extensionErrors, Extensions: extensions, SuccessfulTools: successfulTools, SessionStatistic: statistics}); err != nil {
 				return err
 			}
 		}
@@ -898,15 +905,27 @@ const builtinExtensionPrefix = "builtin:"
 // pig lists its loaded extensions through the get_extensions RPC command; the built-in extensions are PiG's stock
 // set and the bridge extension is the harness's inline extension.
 func verifyLoadedExtensions(ctx context.Context, process *agentProcess, bridgePath string, expectBridge bool) error {
-	data, err := process.request(ctx, map[string]any{"type": "get_extensions"})
+	unexpected, err := visibleExtensions(ctx, process, bridgePath, expectBridge)
 	if err != nil {
 		return err
+	}
+	if len(unexpected) > 0 {
+		return fmt.Errorf("Isolated eval loaded unexpected extensions: %s", strings.Join(unexpected, ", "))
+	}
+	return nil
+}
+
+// visibleExtensions lists the loaded extensions that are neither pig's built-in ones nor, when expectBridge, the eval bridge.
+func visibleExtensions(ctx context.Context, process *agentProcess, bridgePath string, expectBridge bool) ([]string, error) {
+	data, err := process.request(ctx, map[string]any{"type": "get_extensions"})
+	if err != nil {
+		return nil, err
 	}
 	var listed struct {
 		Paths []string `json:"paths"`
 	}
 	if err := json.Unmarshal(data, &listed); err != nil {
-		return err
+		return nil, err
 	}
 	resolve := func(path string) string {
 		if resolved, err := filepath.EvalSymlinks(path); err == nil {
@@ -914,17 +933,14 @@ func verifyLoadedExtensions(ctx context.Context, process *agentProcess, bridgePa
 		}
 		return path
 	}
-	var unexpected []string
+	visible := []string{}
 	for _, path := range listed.Paths {
 		if strings.HasPrefix(path, builtinExtensionPrefix) || (expectBridge && resolve(path) == resolve(bridgePath)) {
 			continue
 		}
-		unexpected = append(unexpected, path)
+		visible = append(visible, path)
 	}
-	if len(unexpected) > 0 {
-		return fmt.Errorf("Isolated eval loaded unexpected extensions: %s", strings.Join(unexpected, ", "))
-	}
-	return nil
+	return visible, nil
 }
 
 // removePigDocumentation is the without_docs variant's removal of the coding-agent documentation from disk (entrypoint.ts:48-52 asserts README.md, CHANGELOG.md, docs and examples are gone). pig materializes only docs/ under its config root, holding one bundle directory per build, so the whole docs directory is removed; its prompt points at GitHub for examples (D22), so the other names are removed only if present.

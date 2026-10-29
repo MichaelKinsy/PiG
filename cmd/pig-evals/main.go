@@ -9,6 +9,11 @@
 //	pig-evals host [-t PATTERN] [FILE...]
 //
 // runs the host evals on this machine (`vitest run --project host`) and writes vitest.json to the current directory.
+//
+//	pig-evals audit [-t PATTERN] [FILE...]
+//
+// runs the documentation audit on this machine (`vitest run --project audit`, Pi's `npm run eval:audit`); the host
+// project leaves it out because it is expensive.
 package main
 
 import (
@@ -39,13 +44,15 @@ func main() {
 
 func run(ctx context.Context, args []string) (int, error) {
 	if len(args) == 0 {
-		return 2, fmt.Errorf("usage: pig-evals docs|host|entrypoint [arguments]")
+		return 2, fmt.Errorf("usage: pig-evals docs|host|audit|entrypoint [arguments]")
 	}
 	switch args[0] {
 	case "docs":
 		return docs(ctx, args[1:])
 	case "host":
-		return host(ctx, args[1:])
+		return local(ctx, evals.EvalProjectHost, args[1:])
+	case "audit":
+		return local(ctx, evals.EvalProjectAudit, args[1:])
 	case "entrypoint":
 		return entrypoint(ctx, args[1:])
 	}
@@ -97,8 +104,9 @@ func docs(ctx context.Context, args []string) (int, error) {
 	return cli.RunEvalCli(ctx, args)
 }
 
-func host(ctx context.Context, args []string) (int, error) {
-	selection := evals.Selection{Project: evals.EvalProjectHost}
+// local runs the suites of a project that runs on this machine, the host or the audit project.
+func local(ctx context.Context, project evals.EvalProject, args []string) (int, error) {
+	selection := evals.Selection{Project: project}
 	for index := 0; index < len(args); index++ {
 		switch argument := args[index]; argument {
 		case "-t", "--testNamePattern":

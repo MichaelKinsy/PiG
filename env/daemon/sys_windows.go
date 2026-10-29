@@ -119,3 +119,8 @@ func rawName(string) []int { return nil }
 
 // defaultChildSignals has nothing to do: Windows programs do not inherit signal dispositions.
 func defaultChildSignals() {}
+
+// notifyExitSignals delivers nothing: the daemon cannot catch TerminateProcess. When it ends, the job object kills each
+// command's own process; processes those start leave the job (silent breakaway, as in libuv) and keep running
+// (sys/windows.rs on_exit_signal).
+func notifyExitSignals() (<-chan int, func()) { return nil, func() {} }
