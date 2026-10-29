@@ -226,6 +226,23 @@ func TestUpstreamEditorMovesTheAutocompleteSelectionWithSelectionPageKeys(t *tes
 	}
 }
 
+// editor.ts builds the autocomplete SelectList once per suggestion update, so a page key moves by the row limit the open menu was
+// built with, not by a later setAutocompleteMaxVisible.
+func TestUpstreamEditorPagesByTheRowLimitTheOpenMenuWasBuiltWith(t *testing.T) {
+	editor := NewEditor()
+	editor.SetAutocompleteMaxVisible(5)
+	editor.SetAutocomplete(commandProvider{})
+	var submitted string
+	editor.OnSubmit = func(text string) { submitted = text }
+	editor.HandleInput("/")
+	editor.SetAutocompleteMaxVisible(3)
+	editor.HandleInput(testPageDownKey)
+	editor.HandleInput("\r")
+	if submitted != "/command-5" {
+		t.Fatalf("submitted %q, want /command-5", submitted)
+	}
+}
+
 // select-list.test.ts "moves by one visible page with selection page keys (#7629)".
 func TestUpstreamSelectListMovesByOneVisiblePageWithSelectionPageKeys(t *testing.T) {
 	items := make([]SelectItem, 12)

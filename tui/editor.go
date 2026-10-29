@@ -1765,7 +1765,7 @@ func (e *Editor) HandleInput(data string) {
 			e.AutocompleteMove(1)
 			return
 		case kb.Matches(data, KBSelectPageUp) || kb.Matches(data, KBSelectPageDown):
-			if index, ok := GetSelectPageIndex(kb, data, e.autocompleteCursor, len(e.autocompleteItems), e.AutocompleteMaxVisible()); ok && index != e.autocompleteCursor {
+			if index, ok := GetSelectPageIndex(kb, data, e.autocompleteCursor, len(e.autocompleteItems), e.popupMaxVisible()); ok && index != e.autocompleteCursor {
 				e.autocompleteCursor = index
 				e.Invalidate()
 			}

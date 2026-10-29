@@ -2116,21 +2116,21 @@ Remove when: Pi reports the size of the last counted line.
 
 SCRUTINIZED:approved
 
-## D155 Selection lists page with PageUp and PageDown (Pi #7629)
+## D155 PiG pages selectors that Pi does not flag for viewport input (Pi #7629)
 
-What: PageUp and PageDown (`tui.select.pageUp` and `tui.select.pageDown`) move the selection by one visible page, clamped at both ends without wrapping, in the select list, settings list, the open editor autocomplete list, and the extension, model, OAuth, scoped-models, tree, user-message, config, session, trust, first-time-setup and llama.cpp selectors. A component that takes these keys reports it through `tui.CapturesSelectPageInput`, and the fullscreen viewport and the modal host loops then leave the keys to it. The tree selector keeps paging on Left and Right and also pages on these keys. Pi 1.4.0 scrolls the fullscreen transcript on these keys while a selector is open and ignores them in the lists that have no page action.
+What: Pi 1.4.0 (`3bae8527`) pages `tui.select.pageUp` and `tui.select.pageDown` in the select list, settings list, editor autocomplete and the model, scoped-models, OAuth, session, tree, user-message, settings-submenu, llama.cpp search and `/mcp` selectors, and a focused component that sets `capturesViewportInput` keeps the fullscreen viewport keys. PiG follows that set without a marker through `tui.GetSelectPageIndex` and `tui.CapturesViewportInput`. PiG also pages, and reports `CapturesViewportInput`, for five components that Pi does not flag: the extension selector (Pi has no page keys there, and PiG moves by `extensionSelectorPageSize` rows), the config selector (Pi pages it but does not set the flag), `FilterableList` (a PiG list with no Pi component), the trust selector and the first-time setup dialog (PiG-only dialogs).
 
-Why: the selection stays where the user is looking. Pi #7629 is open, and its PR #7680 (`packages/tui/src/tui-alt-screen.ts`, `getPageSelectionIndex`, `capturesSelectPageInput`) is unmerged.
+Why: the selection stays where the user is looking in the selectors Pi's change left out. Pi decided the set above in #7629; PiG keeps the keys in the five components it already paged.
 
-Observable effect: in a selector, PageDown moves the selection down one page and does not scroll the transcript behind it. Pi scrolls the transcript or does nothing. An open editor autocomplete list pages the same way, and a user binding of the same key to an app action does not fire while the list is open. Extension-provided overlays cannot yet report that they capture the page keys, so the viewport still takes them there.
+Observable effect: in fullscreen mode, PageDown in one of the five components moves the selection one page and does not scroll the transcript behind it. Pi scrolls the transcript or, in the extension selector, does nothing. Extension-provided overlays report their own flag.
 
-Call-site markers: `tui/selection_navigation.go`, the page cases of the components above, `tui/tui_alt_screen_input.go` (`matchViewportAction`), `internal/codingagent/interactive_theme_modal.go` (`readModalInputFor`, `consumeModalHostInputFor`), `internal/codingagent/custom_editor.go`.
+Call-site markers: `tui/extension_selector.go`, `tui/config_selector.go`, `tui/select_filterable.go`, `internal/codingagent/trust_selector.go`, `internal/codingagent/first_time_setup.go`.
 
-Locked by: `tui/select_page_keys_test.go` (`TestPageSelectionIndex`, `TestSelectListPageKeysMoveByAPage`, `TestSettingsListPageKeysMoveByAPage`, `TestEditorAutocompletePageKeys`, `TestSelectorComponentsMoveByTheirPage`, `TestAltScreenGivesSelectionPageKeysToACapturingFocus`), `internal/codingagent/select_page_keys_test.go`, `TestHuggingFaceSearchPageKeysMoveTenResults` (`internal/codingagent/llama/ui_test.go`), `TestFullscreenSelectionKeepsItsPageKeys`, `TestEditorSlotSelectorPageKeyMovesSelectionInEveryMode`.
+Locked by: `TestSelectorComponentsMoveByTheirPage` (`tui/select_page_keys_test.go`) and `internal/codingagent/select_page_keys_test.go`.
 
-Parity allowance: the Pi-oracle input generators for the select list, settings list, model, OAuth, theme, show-images, trust, settings and submenu selectors, the editor autocomplete and the llama view leave PageUp and PageDown out, because Pi 1.4.0 ignores them there.
+Parity allowance: the Pi-oracle input generators of the extension selector dialog and the trust selector leave PageUp and PageDown out, because Pi does not page them.
 
-Remove when: Pi merges PR #7680 or another change that pages selection lists on these keys; then restore the keys in the oracle generators.
+Remove when: Pi flags and pages these selectors, or the owner removes the five PiG-only flags.
 
 SCRUTINIZED:approved
 
