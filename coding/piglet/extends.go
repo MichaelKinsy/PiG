@@ -154,7 +154,7 @@ func resolveEffective(path, sourceIdentity string, visits []lineageVisit, depth 
 	// pig additive (D202): an extends block that names no source extends the Piglet Binary the Piglet is selected on, so an
 	// overlay can spell extends.remove and extends.allowWiden without another Piglet to name.
 	if p.Extends != nil && p.Extends.Source == "" && options.Base == nil {
-		return nil, fmt.Errorf("Piglet %s: extends.source is required unless a Piglet Binary that sets build.allowOverlays runs the Piglet as an overlay", path)
+		return nil, fmt.Errorf("Piglet %s: extends.source is required unless a Piglet Binary that is not built closed runs the Piglet as an overlay", path)
 	}
 	if p.Extends == nil || p.Extends.Source == "" {
 		if options.Base != nil {

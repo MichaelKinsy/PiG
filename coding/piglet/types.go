@@ -378,12 +378,13 @@ type BuildSpec struct {
 	Targets              []string `yaml:"targets,omitempty"`
 	OutputName           string   `yaml:"outputName,omitempty"`
 	ExtensionRealization string   `yaml:"extensionRealization,omitempty"`
-	// AllowOverlays lets the Piglet Binary built from this Piglet accept a Piglet selected at launch (--piglet,
-	// PIG_PIGLET_PATH, PIG_PIGLET_NAME) as an overlay on its baked Piglet. Default off; like all of build it is
-	// authored on the Piglet that is built and is not inherited through extends.
+	// Closed makes the Piglet Binary built from this Piglet run only its baked Piglet: it refuses a Piglet selected at
+	// launch (--piglet, PIG_PIGLET_PATH, PIG_PIGLET_NAME) and --system-prompt, and discovers no ambient extensions or
+	// skills. Default false: the Binary behaves as stock pig started with its Piglet. Like all of build it is authored on
+	// the Piglet that is built and is not inherited through extends.
 	//
-	// pig additive (D202): a Piglet Binary can declare that it accepts overlay Piglets.
-	AllowOverlays bool `yaml:"allowOverlays,omitempty"`
+	// pig additive (D202): a Piglet Binary accepts overlay Piglets unless built closed.
+	Closed bool `yaml:"closed,omitempty"`
 }
 
 // ReleaseSpec carries Piglet release identity, separate from portable build

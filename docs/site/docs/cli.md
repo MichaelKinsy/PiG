@@ -105,7 +105,7 @@ These options apply to `pig [options] [prompt]`. Run `pig --help` for the full l
 | `--no-approve`, `-na` | Ignore project-local files for this run. |
 | `--offline` | Turn off startup network operations, as `PI_OFFLINE=1` does. |
 | `--no-stdin` | Ignore piped stdin. Use it when the process that starts PiG leaves the stdin pipe open and never closes it. Without it, PiG waits for end of input, as Pi does. Pi 1.4.0 has no such option and treats `--no-stdin` as an unknown extension flag (D150, [Pi #10415](https://github.com/earendil-works/pi/issues/10415)). |
-| `--piglet <name\|path>` | Run a named Piglet or the Piglet file at a path. A Piglet Binary refuses it unless its Piglet set `build.allowOverlays`, which lays the selected Piglet over the Binary's own ([Accept overlay Piglets](/docs/latest/piglet-binaries#accept-overlay-piglets)). See [Piglets](/docs/latest/piglets). |
+| `--piglet <name\|path>` | Run a named Piglet or the Piglet file at a path. A Piglet Binary lays the selected Piglet over its own, unless it was built with `build.closed: true`, which makes it refuse the option ([Accept overlay Piglets](/docs/latest/piglet-binaries#accept-overlay-piglets)). See [Piglets](/docs/latest/piglets). |
 
 Extensions can register their own options, such as `--plan` from a plan-mode extension.
 
