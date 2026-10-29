@@ -149,6 +149,9 @@ func versionLiterals(line string) []string {
 		if strings.Count(literal, ".") == 3 && !strings.Contains(literal, "+") {
 			continue
 		}
+		if dottedCommit.MatchString(line[span[1]:]) {
+			continue
+		}
 		literals = append(literals, literal)
 	}
 	return literals
