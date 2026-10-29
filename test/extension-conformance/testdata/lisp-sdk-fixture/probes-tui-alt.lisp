@@ -385,3 +385,21 @@
 
 (def-fixture "tui-alt-reentry-probe" (ext)
   (pig:command ext "tui-alt-reentry-probe" "Call the frame's own members from a component's render and report that they fail" #'tui-alt-reentry-probe))
+
+(defun tui-alt-viewport-probe (ctx args)
+  "Mount a focused component that captures viewport input and idle until the request ends."
+  (declare (ignore args))
+  (let* ((rec (make-alt-rec)) (term (alt-recording-terminal rec))
+         (screen (pig:make-tui-alt-screen ctx term :show-hardware-cursor nil :mouse nil))
+         (doc (pig:make-tui-component :render (lambda (w) (declare (ignore w)) (list "viewport probe"))
+                                      :handle-input (lambda (data) (declare (ignore data)) nil)
+                                      :focusable t :captures-viewport-input t)))
+    (pig:tui-alt-screen-add-child screen doc)
+    (pig:tui-alt-screen-set-focus screen doc)
+    (pig:tui-alt-screen-start screen)
+    (pig:tui-alt-screen-render-now screen)
+    (unwind-protect (pig:ctx-wait-cancelled ctx)
+      (pig:tui-alt-screen-stop screen nil))))
+
+(def-fixture "tui-alt-viewport-probe" (ext)
+  (pig:command ext "tui-alt-viewport-probe" "Mount a focused component that captures viewport input" #'tui-alt-viewport-probe))

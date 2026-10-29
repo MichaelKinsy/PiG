@@ -152,3 +152,82 @@ fn custom_component_receives_lone_units_without_disconnect() {
     );
     runtime.thread.take().unwrap().join().unwrap().unwrap();
 }
+
+struct Viewport {
+    captures: bool,
+}
+impl RemoteComponent for Viewport {
+    fn render(&self, _: u32) -> Vec<String> {
+        vec!["viewport probe".into()]
+    }
+    fn captures_viewport_input(&self) -> bool {
+        self.captures
+    }
+    fn handle_input(&mut self, data: &JsString) -> Result<RemoteComponentResult, String> {
+        match data.to_string().as_deref().ok() {
+            Some("t") => {
+                self.captures = false;
+                Ok(RemoteComponentResult::pending())
+            }
+            Some("q") => Ok(RemoteComponentResult::done(Some(json!("viewport=done")))),
+            _ => Ok(RemoteComponentResult::pending()),
+        }
+    }
+}
+
+// Component.capturesViewportInput rides the ui.custom.render frame as `capturesViewportInput: true` and is omitted when false; a frame
+// whose lines did not change still goes out when only the flag changed.
+#[test]
+fn custom_frame_carries_captures_viewport_input_and_resends_when_only_it_changed() {
+    let root = std::env::temp_dir().join(format!("pig-custom-viewport-{}", std::process::id()));
+    std::fs::create_dir(&root).unwrap();
+    let socket = root.join("sock");
+    let listener = UnixListener::bind(&socket).unwrap();
+    let mut ext = Extension::new("custom-viewport");
+    ext.tool("custom", "Viewport", empty_schema(), |ctx, _| match ctx.custom_component(Viewport { captures: true }, json!({})) {
+        Ok(value) => ToolResult::json(value.unwrap_or(Value::Null)),
+        Err(err) => ToolResult::Error(err.to_string()),
+    });
+    let thread = std::thread::spawn(move || ext.run_with_socket(socket.to_str().unwrap()));
+    let (stream, _) = listener.accept().unwrap();
+    stream.set_read_timeout(Some(std::time::Duration::from_secs(10))).unwrap();
+    let mut runtime = Runtime { stream, thread: Some(thread), root };
+    assert_eq!(read(&mut runtime.stream)["type"], "register");
+    send(&mut runtime.stream, r#"{"type":"ready","ready":{"state":{"hasUI":true},"width":80}}"#);
+    send(&mut runtime.stream, r#"{"type":"request","id":"v","request":{"method":"tool_call","tool":"custom","args":{}}}"#);
+    let call = loop {
+        let frame = read(&mut runtime.stream);
+        if frame["type"] == "call" {
+            break frame;
+        }
+        assert_eq!(frame["type"], "request_state");
+    };
+    let key = call["call"]["args"]["key"].as_str().unwrap().to_string();
+    let next_render = |stream: &mut UnixStream| loop {
+        let frame = read(stream);
+        if frame["type"] == "notify" && frame["notify"]["method"] == "ui.custom.render" {
+            return frame["notify"]["args"].clone();
+        }
+    };
+    let input = |stream: &mut UnixStream, data: &str| {
+        send(stream, &json!({"type":"notify","notify":{"method":"ui.custom.input","args":{"key":key,"data":data}}}).to_string());
+    };
+    let first = next_render(&mut runtime.stream);
+    assert_eq!(first["lines"], json!(["viewport probe"]));
+    assert_eq!(first["capturesViewportInput"], json!(true));
+    input(&mut runtime.stream, "t");
+    let second = next_render(&mut runtime.stream);
+    assert_eq!(second["lines"], json!(["viewport probe"]));
+    assert!(second.get("capturesViewportInput").is_none(), "false is omitted: {second}");
+    input(&mut runtime.stream, "q");
+    loop {
+        let frame = read(&mut runtime.stream);
+        if frame["type"] == "notify" && frame["notify"]["method"] == "ui.custom.close" {
+            assert_eq!(frame["notify"]["args"]["result"], json!("viewport=done"));
+            break;
+        }
+    }
+    send(&mut runtime.stream, &json!({"type":"call_result","id":call["id"],"call_result":{"result":{"ok":true,"result":"viewport=done"}}}).to_string());
+    send(&mut runtime.stream, r#"{"type":"shutdown","shutdown":{"reason":"done"}}"#);
+    runtime.thread.take().unwrap().join().unwrap().unwrap();
+}

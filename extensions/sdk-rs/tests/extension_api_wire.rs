@@ -748,6 +748,23 @@ fn exec_signal_cancels_the_command() {
     host.finish();
 }
 
+// exec.ts maxBuffer: the option crosses as `options.maxBuffer`, and the result's `truncated` is read.
+#[test]
+fn exec_max_buffer_goes_out_as_an_option_and_truncated_comes_back() {
+    let mut ext = Extension::new("api");
+    ext.tool("caller", "Caller", empty_schema(), |ctx, _| {
+        let result = ctx.exec_with_options("yes", &[], &pig_sdk::ExecOptions { max_buffer: Some(8.0), ..Default::default() }).unwrap();
+        ToolResult::json(json!({"content":"returned","details":{"stdout":result.stdout,"truncated":result.truncated,"killed":result.killed,"code":result.exit_code}}))
+    });
+    let mut host = Host::start(ext, json!({}));
+    host.tool_call("r1", "caller", "call-1", json!({}));
+    let call = host.expect_call("exec");
+    assert_eq!(call["call"]["args"]["options"], json!({"maxBuffer":8.0}));
+    host.reply(&call, json!({"stdout":"y\ny\ny\ny\n","stderr":"","code":1,"killed":true,"truncated":true}));
+    assert_eq!(host.response("r1")["result"]["details"], json!({"stdout":"y\ny\ny\ny\n","truncated":true,"killed":true,"code":1}));
+    host.finish();
+}
+
 // A signal that is cancelled before the call still sends the call first and the cancel behind it, so the host starts the command and ends it, as exec.ts does.
 #[test]
 fn exec_with_a_cancelled_signal_sends_the_cancel_behind_the_call() {
@@ -822,6 +839,7 @@ fn get_all_tools_reports_exposure_namespace_and_annotations() {
         let tools = ctx.get_all_tools().unwrap();
         ToolResult::json(json!({"content":"x","details":tools.iter().map(|t| json!({
             "name": t.name,
+            "changelogPath": t.source_info.changelog_path,
             "exposure": t.exposure.as_str(),
             "namespace": t.namespace,
             "annotations": t.annotations,
@@ -833,14 +851,14 @@ fn get_all_tools_reports_exposure_namespace_and_annotations() {
     host.reply(
         &call,
         json!({"tools":[
-            {"name":"search","description":"d","parameters":{},"sourceInfo":{"path":"p","source":"s","scope":"user","origin":"top-level"},
+            {"name":"search","description":"d","parameters":{},"sourceInfo":{"path":"p","source":"s","scope":"user","origin":"top-level","changelogPath":"/pkg/CHANGELOG.md"},
              "exposure":"deferred","namespace":{"name":"mcp__docs","description":"Docs"},"annotations":{"readOnlyHint":true}},
             {"name":"read","description":"d","parameters":{},"sourceInfo":{"path":"p","source":"builtin","scope":"user","origin":"top-level"},"exposure":"direct"},
         ]}),
     );
     let details = host.response("r1")["result"]["details"].clone();
-    assert_eq!(details[0], json!({"name":"search","exposure":"deferred","namespace":{"name":"mcp__docs","description":"Docs"},"annotations":{"readOnlyHint":true}}));
-    assert_eq!(details[1], json!({"name":"read","exposure":"direct","namespace":null,"annotations":null}));
+    assert_eq!(details[0], json!({"name":"search","changelogPath":"/pkg/CHANGELOG.md","exposure":"deferred","namespace":{"name":"mcp__docs","description":"Docs"},"annotations":{"readOnlyHint":true}}));
+    assert_eq!(details[1], json!({"name":"read","changelogPath":null,"exposure":"direct","namespace":null,"annotations":null}));
     host.finish();
 }
 

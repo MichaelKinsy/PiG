@@ -471,3 +471,17 @@ fn pi_vectors_match_pinned_package() {
         }
     }
 }
+
+#[test]
+fn select_page_index_follows_pi() {
+    let keys = KeybindingsManager::new(tui_keybindings(), Vec::new());
+    let (up, down) = ("\x1b[5~", "\x1b[6~");
+    assert_eq!(get_select_page_index(&keys, up, 12, 20, 5), Some(7));
+    assert_eq!(get_select_page_index(&keys, down, 12, 20, 5), Some(17));
+    assert_eq!(get_select_page_index(&keys, up, 2, 20, 5), Some(0), "clamped to the first item");
+    assert_eq!(get_select_page_index(&keys, down, 18, 20, 5), Some(19), "clamped to the last item");
+    assert_eq!(get_select_page_index(&keys, down, 0, 0, 5), Some(0), "an empty list answers 0");
+    assert_eq!(get_select_page_index(&keys, up, 0, 0, 5), Some(0));
+    assert_eq!(get_select_page_index(&keys, "x", 3, 20, 5), None, "not a page key");
+    assert_eq!(get_select_page_index(&keys, "\x1b[A", 3, 20, 5), None);
+}

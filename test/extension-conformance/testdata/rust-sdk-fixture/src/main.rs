@@ -272,6 +272,55 @@ impl RemoteComponent for MouseProbe {
     }
 }
 
+/// viewport-probe's component: it captures viewport input until it receives `t`, then stops, and closes on `q`.
+struct ViewportProbe {
+    captures: bool,
+}
+
+impl RemoteComponent for ViewportProbe {
+    fn render(&self, _width: u32) -> Vec<String> {
+        vec!["viewport probe".to_string()]
+    }
+
+    fn captures_viewport_input(&self) -> bool {
+        self.captures
+    }
+
+    fn handle_input(&mut self, data: &pig_sdk::JsString) -> Result<RemoteComponentResult, String> {
+        match data.to_string().as_deref().ok() {
+            Some("t") => {
+                self.captures = false;
+                Ok(RemoteComponentResult::pending())
+            }
+            Some("q") => Ok(RemoteComponentResult::done(Some(Value::from("viewport=done")))),
+            _ => Ok(RemoteComponentResult::pending()),
+        }
+    }
+}
+
+/// tui-alt-viewport-probe's component: a focusable component that captures viewport input.
+struct ViewportFocus {
+    focused: AtomicBool,
+}
+
+impl pig_sdk::Component for ViewportFocus {
+    fn render(&self, _width: u32) -> Vec<String> {
+        vec!["viewport probe".to_string()]
+    }
+    fn captures_viewport_input(&self) -> bool {
+        true
+    }
+    fn is_focusable(&self) -> bool {
+        true
+    }
+    fn focused(&self) -> bool {
+        self.focused.load(Ordering::SeqCst)
+    }
+    fn set_focused(&self, focused: bool) {
+        self.focused.store(focused, Ordering::SeqCst);
+    }
+}
+
 /// Image n of kit-images: a 1×1 RGBA PNG whose pixel encodes n, so each n has
 /// its own bytes and ref.
 fn kit_image_png(n: u32) -> Vec<u8> {
@@ -1382,6 +1431,27 @@ fn main() {
         let argv: Vec<&str> = argv.iter().map(String::as_str).collect();
         match ctx.exec_with_options(&command, &argv, &pig_sdk::ExecOptions { signal: Some(signal), ..Default::default() }) {
             Ok(result) => ctx.notify(&format!("exec-abort:killed={};code={};stdout={}", result.killed, result.exit_code, result.stdout.trim()), "info"),
+            Err(err) => ctx.notify(&format!("rejected:{err}"), "info"),
+        }
+        CommandResult::Ok
+    });
+    ext.command("exec-limits-probe", "Run a command with a max_buffer and report the result", |ctx, args| {
+        let probe: Value = match serde_json::from_str(args) {
+            Ok(probe) => probe,
+            Err(err) => return CommandResult::Error(err.to_string()),
+        };
+        let command = probe["command"].as_str().unwrap_or_default().to_string();
+        let argv: Vec<String> = probe["args"].as_array().into_iter().flatten().filter_map(|arg| arg.as_str().map(str::to_string)).collect();
+        let argv: Vec<&str> = argv.iter().map(String::as_str).collect();
+        let options = pig_sdk::ExecOptions { max_buffer: probe["maxBuffer"].as_f64(), ..Default::default() };
+        match ctx.exec_with_options(&command, &argv, &options) {
+            Ok(result) => ctx.notify(
+                &format!(
+                    "exec-limits:truncated={};killed={};code={};stdout={};stderr={}",
+                    result.truncated, result.killed, result.exit_code, result.stdout.trim(), result.stderr.trim()
+                ),
+                "info",
+            ),
             Err(err) => ctx.notify(&format!("rejected:{err}"), "info"),
         }
         CommandResult::Ok
@@ -3133,6 +3203,46 @@ fn main() {
             Ok(result) => {
                 let text = result.map(|value| value.as_str().map_or_else(|| value.to_string(), str::to_string)).unwrap_or_default();
                 ctx.notify(&format!("mouse={text}"), "info");
+                CommandResult::Ok
+            }
+            Err(err) => CommandResult::Error(err.to_string()),
+        }
+    });
+    // viewport-probe opens a component that captures viewport input until it
+    // receives `t` and closes on `q`.
+    ext.command("viewport-probe", "Exercise capturesViewportInput", |ctx, _args| {
+        match ctx.custom_component(ViewportProbe { captures: true }, json!({"overlay": true})) {
+            Ok(result) => {
+                let text = result.map(|value| value.as_str().map_or_else(|| value.to_string(), str::to_string)).unwrap_or_default();
+                ctx.notify(&text, "info");
+                CommandResult::Ok
+            }
+            Err(err) => CommandResult::Error(err.to_string()),
+        }
+    });
+    // tui-alt-viewport-probe mounts a focused component with capturesViewportInput on a TuiAltScreen and idles until the command's signal ends.
+    ext.command("tui-alt-viewport-probe", "Mount a viewport-capturing component on a TuiAltScreen", |ctx, _args| {
+        use pig_sdk::{ComponentRef, Terminal, TuiAltScreen, TuiAltScreenOptions};
+        let terminal: Arc<dyn Terminal> = Arc::new(ProbeTerminal::default());
+        let mount = || -> std::io::Result<TuiAltScreen> {
+            let screen = TuiAltScreen::new(ctx, terminal, TuiAltScreenOptions { show_hardware_cursor: Some(false), mouse: Some(false), ..Default::default() })?;
+            let component: ComponentRef = Arc::new(ViewportFocus { focused: AtomicBool::new(false) });
+            screen.add_child(&component)?;
+            screen.set_focus(Some(&component))?;
+            screen.start()?;
+            screen.render_now(false)?;
+            Ok(screen)
+        };
+        match mount() {
+            Ok(screen) => {
+                ctx.notify("tui-alt-viewport:mounted", "info");
+                if let Some(signal) = ctx.signal() {
+                    let deadline = std::time::Instant::now() + Duration::from_secs(10);
+                    while !signal.is_cancelled() && std::time::Instant::now() < deadline {
+                        thread::sleep(Duration::from_millis(5));
+                    }
+                }
+                let _ = screen.stop(Default::default());
                 CommandResult::Ok
             }
             Err(err) => CommandResult::Error(err.to_string()),
