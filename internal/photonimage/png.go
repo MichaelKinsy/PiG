@@ -7,8 +7,8 @@
 // `PhotonImage.get_bytes()` (EncodePNG), the JPEG encoder behind `get_bytes_jpeg(quality)` (EncodeJPEG) and the Lanczos3 `resize`
 // (ResizeLanczos3), all byte for byte. The durable image processor (durable/images) and the coding agent's image path
 // (internal/imageprocessing) use it, so both reproduce Photon's pixels and the PNG and JPEG bytes, and with them Photon's sizes,
-// which decide what fits a byte limit and which of PNG and JPEG a resize returns. What it does not reproduce is Photon's decoding
-// of JPEG and WebP (D165).
+// which decide what fits a byte limit and which of PNG and JPEG a resize returns. Decode (JPEG and WebP: DecodeJPEG, DecodeWebP) is
+// the decoding Photon's `new_from_byteslice` runs.
 package photonimage
 
 import (

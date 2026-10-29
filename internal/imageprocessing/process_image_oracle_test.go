@@ -41,7 +41,7 @@ type processImageOutcome struct {
 // TestProcessImageMatchesPi runs image-process.ts processImage and PiG's ProcessImage over 400 seeded inputs: PNG, JPEG, GIF, BMP, TIFF and WebP bytes (some larger than the resize
 // limits), garbage and empty bytes; declared types with parameters, case and spaces ("IMAGE/JPEG; q=1", " image/jpg "), unsupported types (image/bmp, image/tiff, image/x-icon, application/octet-stream,
 // the empty string) and types that do not match the bytes; automatic resizing on and off with small or default limits. Whether an image is returned, its mime type, the
-// conversion and dimension hints (in order) and the omission message must match. The returned bytes must match as well: PiG's PNG and JPEG encoders and its resize are ports of Photon's, except for a JPEG or WebP input, which Go decodes to other pixels (D165).
+// conversion and dimension hints (in order) and the omission message must match. The returned bytes must match as well: PiG's PNG and JPEG encoders and its resize are ports of Photon's, and so are its JPEG and WebP decoders.
 func TestProcessImageMatchesPi(t *testing.T) {
 	rng := rand.New(rand.NewPCG(20261126, 9))
 	pick := func(xs ...string) string { return xs[rng.IntN(len(xs))] }
@@ -128,19 +128,6 @@ emit(out);`, cases, &want)
 		source := detectFormat(raw)
 		counts := bySource[source]
 		counts[0]++
-		// D165: Go's JPEG and WebP decoders give other pixels than Photon's, so the bytes a re-encoded JPEG or WebP input comes out as
-		// are not Pi's; what is compared for them is the rest of the outcome. Every other input is compared byte for byte.
-		if (source == "jpeg" || source == "webp") && !reflect.DeepEqual(got, want[i]) {
-			counts[1]++
-			withoutBytes := got
-			withoutBytes.SHA256 = want[i].SHA256
-			if reflect.DeepEqual(withoutBytes, want[i]) {
-				bytesOnly[source]++
-				bySource[source] = counts
-				continue
-			}
-			counts[1]--
-		}
 		if !reflect.DeepEqual(got, want[i]) {
 			counts[1]++
 			withoutBytes := got

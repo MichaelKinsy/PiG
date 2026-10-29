@@ -4,7 +4,6 @@
 package images
 
 import (
-	"bytes"
 	"context"
 	"encoding/base64"
 	"image"
@@ -12,13 +11,11 @@ import (
 	"math"
 	"slices"
 
-	// The decoders of the formats read accepts: PNG and JPEG, GIF and WebP, and BMP, which is converted.
+	// The decoders of the lossless formats read accepts: PNG, GIF and BMP, which is converted. JPEG and WebP are decoded by photonimage.
 	_ "image/gif"
-	_ "image/jpeg"
 	_ "image/png"
 
 	_ "golang.org/x/image/bmp"
-	_ "golang.org/x/image/webp"
 
 	"github.com/MichaelKinsy/PiG/durable/tools"
 	"github.com/MichaelKinsy/PiG/internal/photonimage"
@@ -45,9 +42,8 @@ func CreatePhotonImages() tools.ImageProcessor { return newSequential(photon{}) 
 func (photon) Prepare(ctx context.Context, data []byte, mimeType string, limits tools.ImageLimits) (*tools.PreparedImage, error) {
 	orientation := ExifOrientation(data)
 	inline := tools.INLINE_IMAGE_TYPES[mimeType]
-	// pig divergence (D165): Go's image decoders stand for Photon's `new_from_byteslice`; the JPEG and WebP ones do not give its pixels.
 	// Decoded even when it is returned as it is: a damaged file is an error, not an image the provider rejects.
-	decoded, _, err := image.Decode(bytes.NewReader(data))
+	decoded, err := photonimage.Decode(data)
 	if err != nil || decoded.Bounds().Empty() {
 		return nil, nil
 	}
