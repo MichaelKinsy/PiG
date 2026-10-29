@@ -41,10 +41,10 @@ func TestLimitsPerPart(t *testing.T) {
 		if got := link.LinkLimits(false, link.PartLimits{}); got != (link.Limits{Part: 16 * mib, Decoded: 64 * mib}) {
 			t.Fatalf("untrusted = %+v", got)
 		}
-		if got := link.LinkLimits(false, link.PartLimits{Part: link.Limit(10)}); got != (link.Limits{Part: 10, Decoded: 64 * mib}) {
+		if got := link.LinkLimits(false, link.PartLimits{Part: new(float64(10))}); got != (link.Limits{Part: 10, Decoded: 64 * mib}) {
 			t.Fatalf("part 10 = %+v", got)
 		}
-		if got := link.LinkLimits(true, link.PartLimits{Decoded: link.Limit(5)}); got != (link.Limits{Part: math.Inf(1), Decoded: 5}) {
+		if got := link.LinkLimits(true, link.PartLimits{Decoded: new(float64(5))}); got != (link.Limits{Part: math.Inf(1), Decoded: 5}) {
 			t.Fatalf("decoded 5 = %+v", got)
 		}
 	})

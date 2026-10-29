@@ -55,18 +55,14 @@ type DeflatedPart struct {
 // NewDeflatedPart returns a deflated part of bytes.
 func NewDeflatedPart(bytes []byte) *DeflatedPart { return &DeflatedPart{Bytes: bytes} }
 
-// PartLimits are a link's limits per part as `accept`, `connect` and `resolve` take them, in bytes; nil is unset.
+// PartLimits are a link's limits per part as `accept`, `connect` and `resolve` take them, in bytes; nil is unset
+// (`new(float64(10))` makes one).
 type PartLimits struct {
 	// Part is a part's size on the wire.
 	Part *float64
 	// Decoded is a part's size after inflating it.
 	Decoded *float64
 }
-
-// Limit returns a PartLimits field value.
-//
-//go:fix inline
-func Limit(bytes float64) *float64 { return new(bytes) }
 
 // Limits are a link's limits in force; +Inf for none.
 type Limits struct{ Part, Decoded float64 }
