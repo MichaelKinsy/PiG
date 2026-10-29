@@ -116,7 +116,7 @@ To turn cache warming off, choose `off` for **Cache warming** in `/settings`, or
 | `markdown.codeBlockIndent` | string | `"  "` | Prefix that indents rendered code blocks. |
 | `markdown.mermaid` | string | `streaming` | Mermaid rendering mode: `off`, `final`, or `streaming`. |
 | `quietStartup` | boolean \| `"header"` | `false` | `true` hides the startup header and the loaded-resource listing. `"header"` keeps the header (version and key hints) but hides the model scope line and the loaded-resource listing. `--verbose` overrides both. |
-| `collapseChangelog` | boolean | `false` | Show a condensed changelog after an update. |
+| `collapseChangelog` | boolean | `false` | Show a condensed changelog after an update. Also condenses extension package changelogs to one line per package. |
 | `lastChangelogVersion` | string |  | Last changelog version shown. PiG writes this. |
 
 ## Images and terminal
