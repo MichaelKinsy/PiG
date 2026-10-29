@@ -193,10 +193,11 @@
 "binary.pig.windows_amd64.bytes" = 71606272
 
 # binary: the headless embed example (examples/headless: session API, MCP, one provider, no terminal) per release platform, stripped as released (TestHeadlessEmbedBinarySizeGate). "default" is a plain build; "stripped" passes every strip tag except pig_strip_mcp. Measured at the change that stopped the Node view kit's editor builder (tui.Editor and the 6.3 MB word dictionaries behind it) and the announcement image (539 KB) from linking into programs that never draw an interactive editor, rounded up to 8 KiB with one 4 KiB page of linker alignment as headroom (the same program built by the test and by hand differed by a page). A ceiling only moves down. The default ceilings were lowered when Amazon Bedrock (ai/providers/bedrock, the AWS SDK) stopped linking into a plain import of ai: measured at that change, rounded the same way (linux_amd64 40,148,992 -> 36,675,584 B).
-"binary.headless.default.linux_amd64.bytes" = 36675584
+# default, owner-approved 2026-10-28 (Michael Kinsy) for the 0.6.0 batch: linux_amd64 36,675,584 -> 36,696,064, darwin_arm64 35,250,176 -> 35,270,656, windows_amd64 38,002,688 -> 38,023,168; linux_arm64 is unchanged. Measured with the word dictionaries (6.3 MB) and the TuiAltScreen renderer out of the binary (subprocess.EnableTuiAltScreens): 36,688,032, 35,259,970 and 38,016,512 B, rounded as above. The growth over the Bedrock-lane measurement is spread across the batch's code (Lisp staging, ToolScope, the tui Container's re-entrant render, localecompare); symbols new since: linux_amd64 +12.9 KB, type data +5 KB, pclntab +8 KB, text +9 KB.
+"binary.headless.default.linux_amd64.bytes" = 36696064
 "binary.headless.default.linux_arm64.bytes" = 34217984
-"binary.headless.default.darwin_arm64.bytes" = 35250176
-"binary.headless.default.windows_amd64.bytes" = 38002688
+"binary.headless.default.darwin_arm64.bytes" = 35270656
+"binary.headless.default.windows_amd64.bytes" = 38023168
 "binary.headless.stripped.linux_amd64.bytes" = 30384128
 "binary.headless.stripped.linux_arm64.bytes" = 28057600
 "binary.headless.stripped.darwin_arm64.bytes" = 28999680
