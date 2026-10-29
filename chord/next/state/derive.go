@@ -307,6 +307,6 @@ func identityKey[E any](element E) (sharedIdentity, bool) {
 		return sharedIdentity{}, false
 	}
 	// The weak pointer and the cleanup need the object's address, not its type: the address is all that identifies it.
-	target := (*byte)(pointer) //nolint:gosec // G103: pointer is an unsafe.Pointer from reflect; only its address is used, as weak.Make and AddCleanup key.
+	target := (*byte)(pointer)
 	return sharedIdentity{key: sharedKey{object: weak.Make(target), length: length}, target: target}, true
 }

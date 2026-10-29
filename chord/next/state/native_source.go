@@ -2,6 +2,7 @@ package state
 
 import (
 	"context"
+	"slices"
 	"sync"
 
 	"github.com/MichaelKinsy/PiG/chord"
@@ -349,12 +350,7 @@ func (f *FollowedSource[T]) removeObserver(entry *observerEntry[T]) bool {
 }
 
 func (f *FollowedSource[T]) hasObserver(entry *observerEntry[T]) bool {
-	for _, each := range f.observers {
-		if each == entry {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(f.observers, entry)
 }
 
 // Deliver delivers this batch's frame: the new value when the followers have another, or a failure once per episode.

@@ -33,9 +33,9 @@ func TestContractHandles(t *testing.T) {
 	t.Run("carry kind, name, version and fingerprint only", func(t *testing.T) {
 		var fields []string
 		kind := reflect.TypeOf(*notes)
-		for i := range kind.NumField() {
-			if kind.Field(i).IsExported() {
-				fields = append(fields, kind.Field(i).Name)
+		for field := range kind.Fields() {
+			if field.IsExported() {
+				fields = append(fields, field.Name)
 			}
 		}
 		if !reflect.DeepEqual(fields, []string{"Kind", "Name", "Version", "Fingerprint"}) {

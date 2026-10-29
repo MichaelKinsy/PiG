@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"maps"
 	"runtime"
 	"strings"
 	"sync"
@@ -159,9 +160,7 @@ func rewriteSchema(schema any) (any, bool) {
 			if next, changed := rewriteKeyword(key, child); changed {
 				if out == nil {
 					out = make(map[string]any, len(typed))
-					for k, v := range typed {
-						out[k] = v
-					}
+					maps.Copy(out, typed)
 				}
 				out[key] = next
 			}
@@ -246,9 +245,7 @@ func rewriteMap(value any) (any, bool) {
 			if next, changed := rewriteSchema(child); changed {
 				if out == nil {
 					out = make(map[string]any, len(typed))
-					for k, v := range typed {
-						out[k] = v
-					}
+					maps.Copy(out, typed)
 				}
 				out[key] = next
 			}

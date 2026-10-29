@@ -1,6 +1,9 @@
 package state
 
-import "sync"
+import (
+	"slices"
+	"sync"
+)
 
 // orderedSet is JavaScript's Set for the collections a source keeps: insertion ordered, each member once. Iteration is
 // over Snapshot, which is never mutated, so a member may leave the set while it is walked (a watch ending as it is
@@ -15,10 +18,8 @@ type orderedSet[K comparable] struct {
 func (set *orderedSet[K]) Add(key K) {
 	set.mu.Lock()
 	defer set.mu.Unlock()
-	for _, item := range set.items {
-		if item == key {
-			return
-		}
+	if slices.Contains(set.items, key) {
+		return
 	}
 	next := make([]K, len(set.items)+1)
 	copy(next, set.items)
@@ -47,12 +48,7 @@ func (set *orderedSet[K]) Delete(key K) bool {
 func (set *orderedSet[K]) Has(key K) bool {
 	set.mu.Lock()
 	defer set.mu.Unlock()
-	for _, item := range set.items {
-		if item == key {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(set.items, key)
 }
 
 // Len is the number of members.

@@ -82,7 +82,7 @@ func Delivered() { time.Sleep(time.Millisecond) }
 // ExpectCollected expects every referent to be collected once nothing else holds it.
 func ExpectCollected[T any](t testing.TB, refs ...weak.Pointer[T]) {
 	t.Helper()
-	for round := 0; round < 10; round++ {
+	for range 10 {
 		runtime.GC()
 		held := false
 		for _, ref := range refs {

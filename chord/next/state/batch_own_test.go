@@ -74,7 +74,7 @@ func TestBatchReentrancy(t *testing.T) {
 	t.Run("clears the flags after a compute that fails or panics", func(t *testing.T) {
 		batch := state.NewBatch(func(state.BatchError) {}, nil)
 		boom := errors.New("compute threw")
-		if err := batch.Compute(func() error { return boom }); err != boom {
+		if err := batch.Compute(func() error { return boom }); !errors.Is(err, boom) {
 			t.Fatalf("Compute = %v, want the compute's error", err)
 		}
 		if err := batch.AssertNotComputing("writable.set"); err != nil || batch.Running() {
@@ -87,7 +87,7 @@ func TestBatchReentrancy(t *testing.T) {
 		if err := batch.AssertNotComputing("writable.set"); err != nil || batch.Running() {
 			t.Fatalf("flags stay set after a panicking compute: %v, running %v", err, batch.Running())
 		}
-		if err := batch.Run(func() error { return boom }); err != boom || batch.Running() {
+		if err := batch.Run(func() error { return boom }); !errors.Is(err, boom) || batch.Running() {
 			t.Fatalf("Run = %v, running %v", err, batch.Running())
 		}
 	})
@@ -126,7 +126,7 @@ func TestBatchDelivery(t *testing.T) {
 			h.batch.Flushing(func(context.Context) error { order = append(order, "flush"); return nil })
 			return boom
 		}, background)
-		if err != boom {
+		if !errors.Is(err, boom) {
 			t.Fatalf("Commit = %v, want %v", err, boom)
 		}
 		if len(order) != 0 {

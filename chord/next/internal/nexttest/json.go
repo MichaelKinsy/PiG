@@ -3,6 +3,7 @@ package nexttest
 import (
 	"bytes"
 	"fmt"
+	"maps"
 	"math"
 	"reflect"
 	"testing"
@@ -89,10 +90,7 @@ func describe(value any) string {
 func objectMembers(value any) (map[string]any, bool) {
 	switch typed := value.(type) {
 	case *delta.JsonObject:
-		members := make(map[string]any, typed.Len())
-		for key, member := range typed.All() {
-			members[key] = member
-		}
+		members := maps.Collect(typed.All())
 		return members, true
 	case map[string]any:
 		return typed, true

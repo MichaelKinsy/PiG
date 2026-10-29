@@ -167,7 +167,7 @@ func TestDerivePullModel(t *testing.T) {
 		if computes() != before {
 			t.Fatal("a commit computed an unwatched derive")
 		}
-		for i := 0; i < 2; i++ {
+		for range 2 {
 			if got := mustValue(t, double.derive); got != float64(2) {
 				t.Fatalf("value = %v, want 2", got)
 			}
@@ -491,7 +491,7 @@ func TestDeriveRetiredFlag(t *testing.T) {
 		}
 		previous := attach([]any{doc}, func(v []any) (delta.JsonValue, error) { return float64(count(v[0])), nil })
 		// 13 layers of two derives joined by a third: 2^13 paths from the top to the bottom.
-		for layer := 0; layer < 13; layer++ {
+		for range 13 {
 			left := attach([]any{previous}, func(v []any) (delta.JsonValue, error) { return v[0].(float64) + 1, nil })
 			right := attach([]any{previous}, func(v []any) (delta.JsonValue, error) { return v[0].(float64) + 2, nil })
 			previous = attach([]any{left, right}, func(v []any) (delta.JsonValue, error) { return v[0].(float64) + v[1].(float64), nil })
