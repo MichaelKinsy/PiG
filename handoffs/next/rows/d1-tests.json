@@ -1,0 +1,414 @@
+{
+ "packages/chord/test/next/contracts/accepts.test.ts": {
+  "ported": [
+   "state mappings › a changed member maps the current member to the old one",
+   "state mappings › a removed member maps the variant's whole current state, or refuses",
+   "state mappings › an absent section is allowed only when nothing is needed there",
+   "state mappings › unnecessary mappings are refused",
+   "state mappings › is checked by edit, not by schema: a no-op edit and a reverted change still need mappings",
+   "method mappings › changed args map old to current; a changed result maps current to old; both need both",
+   "method mappings › a removed method takes a call replacement or refuses",
+   "method mappings › a method removed from one variant that had it counts as removed",
+   "method mappings › call and refuse are also allowed for changed methods",
+   "method mappings › added methods and methods added to a new variant need nothing",
+   "method mappings › refuses wrong shapes",
+   "versions › refuses unknown versions and the current version",
+   "versions › maps directly over several versions: every edit after the accepted version counts",
+   "versions › never calls a mapping",
+   "versions › local tables are flat: state without a variant level"
+  ],
+  "missing": [],
+  "designedOut": []
+ },
+ "packages/chord/test/next/contracts/contract.test.ts": {
+  "ported": [
+   "contract handles › carry kind, name, version and fingerprint only",
+   "contract handles › are branded: spread and hand-built copies are refused",
+   "contract handles › are collected when dropped, with their data",
+   "derived types › takesNoArgs: exactly the methods whose argument schema is null"
+  ],
+  "missing": [],
+  "designedOut": [
+   "derived types › Implementation: one variant with its members, state watchables and methods taking args and a context",
+   "derived types › Implementation of a local contract is flat",
+   "derived types › ParamsOf: the params object"
+  ]
+ },
+ "packages/chord/test/next/contracts/declare.test.ts": {
+  "ported": [
+   "declaration checks › accept a remote and a local declaration",
+   "declaration checks › remote refuses %s",
+   "declaration checks › local refuses %s",
+   "declaration checks › does not check state for closed objects",
+   "D11: members across variants › refuses a name that is state in one variant and a method in another",
+   "D11: members across variants › refuses one name as state and method within a variant",
+   "D11: members across variants › refuses a method with different signatures in two variants",
+   "D11: members across variants › allows state schemas to differ per variant (redaction)",
+   "reserved member names › refuses %s in remote, local and evolve",
+   "keyed members (slice 6a §12) › declare a keyed member in a local contract: its own kind and a node of its own in the fingerprint"
+  ],
+  "missing": [],
+  "designedOut": [
+   "declaration checks › refuse a remote declaration without a host address at the type level",
+   "keyed members (slice 6a §12) › refuse a keyed member in a remote contract, at the type level and at declaration"
+  ]
+ },
+ "packages/chord/test/next/contracts/evolve.test.ts": {
+  "ported": [
+   "edits › state changes one state member of one variant",
+   "edits › addState adds a state member",
+   "edits › removeState removes a state member",
+   "edits › args and result change one side of a method in every variant that has it",
+   "edits › method replaces both sides",
+   "edits › addMethod adds a method; to another variant only with the same signature",
+   "edits › removeMethod removes a method from every variant",
+   "edits › local edits take no variant",
+   "edits › checks every edit: closed arguments and the vocabulary",
+   "kinds and fixed parts › a member's kind never changes, also not after a removal and re-add",
+   "kinds and fixed parts › the variant set never changes",
+   "kinds and fixed parts › a new base is a full declaration with an explicit version and no older versions",
+   "kinds and fixed parts › evolve must return the editor it was given",
+   "kinds and fixed parts › leaves the previous contract untouched",
+   "long histories › count versions beyond 9 and 99, at runtime and in the types"
+  ],
+  "missing": [],
+  "designedOut": [
+   "long histories › the types track every step with its changes"
+  ]
+ },
+ "packages/chord/test/next/contracts/fingerprint.test.ts": {
+  "ported": [
+   "fingerprints › pin the normal form: a fixed contract has a fixed hash",
+   "fingerprints › are stable across key order and annotations",
+   "fingerprints › are sensitive to %s",
+   "fingerprints › are sensitive to params order",
+   "fingerprints › give the same v1 from a separate declaration, and evolve keeps v1's",
+   "fingerprints › differ between local and remote",
+   "fingerprints › do not depend on the name or version"
+  ],
+  "missing": [],
+  "designedOut": []
+ },
+ "packages/chord/test/next/contracts/history.test.ts": {
+  "ported": [],
+  "missing": [],
+  "designedOut": [
+   "type-level history › increments decimal versions",
+   "type-level history › finds the current step, older versions and steps by version",
+   "type-level history › collects every change after a version"
+  ]
+ },
+ "packages/chord/test/next/contracts/host-kind.test.ts": {
+  "ported": [
+   "host kinds › make addresses: the kind, the params and a key built like an identity key",
+   "host kinds › follow the params policy of contracts at declaration",
+   "host kinds › check an address's params where it is routed, with the kind's compiled check: invalid/host_address",
+   "host kinds › keep their params data only while the kind is referenced",
+   "hostAddress › is not part of the fingerprint and is carried by evolve"
+  ],
+  "missing": [],
+  "designedOut": [
+   "hostAddress › is typed by the contract's params"
+  ]
+ },
+ "packages/chord/test/next/contracts/params.test.ts": {
+  "ported": [
+   "params policy › accepts required str, int, bool and oneOf of strings, with constraints",
+   "params policy › refuses optional fields, in the types and at declaration",
+   "params policy › refuses %s, in the types and at declaration"
+  ],
+  "missing": [],
+  "designedOut": []
+ },
+ "packages/chord/test/next/contracts/schema.test.ts": {
+  "ported": [
+   "schema helpers › produce ordinary TypeBox schemas with bounds under their JSON Schema names",
+   "schema helpers › leave absent bounds out instead of writing undefined",
+   "schema helpers › obj() is always closed and opt() makes a field optional",
+   "schema helpers › Static and TypeBox's compiler work unchanged",
+   "bytes › is the data marker with the check attached non-enumerably",
+   "bytes › checks instanceof Uint8Array and the length bounds",
+   "method › an omitted side is null"
+  ],
+  "missing": [],
+  "designedOut": []
+ },
+ "packages/chord/test/next/contracts/snapshot.test.ts": {
+  "ported": [
+   "vocabulary › accepts primitives, arrays, tuples, objects, records, unions, intersections, $defs/$ref, constraints",
+   "vocabulary › refuses %s",
+   "vocabulary › refuses symbol keys, accessors and cycles, naming the path",
+   "vocabulary › allows a schema object shared by two places (not a cycle)",
+   "closed arguments › requires every object, nested ones included, to be closed",
+   "closed arguments › accepts a raw closed Type.Object and records",
+   "closed arguments › checks objects inside $defs, unions and tuples",
+   "closed arguments › does not apply to state or results",
+   "snapshots › are copies, independent of later changes to the app's schema objects",
+   "snapshots › copy data values (defaults, consts)",
+   "snapshots › rebuild the bytes check from the marker; no app callback is copied",
+   "snapshots › refuse a bytes marker with other keywords or bad bounds",
+   "snapshots › normal form: sorted keys, sorted required and enum, annotations dropped on schema nodes only",
+   "snapshots › normal form keeps union and tuple order",
+   "bytes › mark a snapshot with a bytes leaf anywhere inside"
+  ],
+  "missing": [],
+  "designedOut": []
+ },
+ "packages/chord/test/next/data/args.test.ts": {
+  "ported": [
+   "bindProvider › checks the accepts table once and lists the accepted versions",
+   "bindProvider › compiles nothing and calls no mapping",
+   "checkArgs › returns current-version arguments as passed: no copy, never mapped",
+   "checkArgs › checks an old version against the old schema, then maps directly to the current shape",
+   "checkArgs › returns the old arguments with the call replacement; never invokes it",
+   "checkArgs › refuses unknown fields, nested ones too, and checks bytes by instanceof and length",
+   "checkArgs › takes null for no-argument methods",
+   "checkArgs › checks local callers too",
+   "checkArgs › refuses an unknown method, an unaccepted version and a refused method",
+   "checkArgs › compiles lazily, once per accepted version and method; equal schema objects share a validator",
+   "checkArgs › counts one validation per call and no walk",
+   "memory › a dropped binding releases its dispatch table, mappings, schemas and validators after the last call"
+  ],
+  "missing": [],
+  "designedOut": [
+   "checkArgs › types a call replacement's arguments as values"
+  ]
+ },
+ "packages/chord/test/next/data/errors.test.ts": {
+  "ported": [
+   "ChordError › narrowing on code narrows reason",
+   "ChordError › round-trips through JSON without stack or cause",
+   "ChordError › keeps details by reference",
+   "ChordError › chordErrorFromJson refuses %s",
+   "protocol table › is pinned together with PROTOCOL_VERSION",
+   "helpers › isChordError checks the class and optionally the code",
+   "helpers › invalid builds an invalid error with its reason and details",
+   "helpers › asChordError keeps a ChordError and wraps anything else as unavailable",
+   "PluginError › carries a plugin's code, message and JSON details"
+  ],
+  "missing": [],
+  "designedOut": [
+   "ChordError › is a tagged union: a wrong pairing is a type error"
+  ]
+ },
+ "packages/chord/test/next/data/failure.test.ts": {
+  "ported": [
+   "failure causes › a value thrown by an open is transient unless marked broken",
+   "failure causes › broken() marks an open's failure as broken; its message is the cause's",
+   "failure causes › the kind comes from the stage, never from the error code",
+   "a dependent's waiting cause (dependency model §3) › names the nearest blocker and the root cause, its blocker's error as the cause",
+   "a dependent's waiting cause (dependency model §3) › reaches a fixed point when a ring of waiting attempts passes its causes round (Opus F1)",
+   "a dependent's waiting cause (dependency model §3) › keeps the root cause within 500 characters: a long label is clipped first (Sol 8)",
+   "a dependent's waiting cause (dependency model §3) › keeps a long chain's root cause, never repeated ellipses (Sol 8)",
+   "a dependent's waiting cause (dependency model §3) › clips a long root past its share, and both when both are long",
+   "a dependent's waiting cause (dependency model §3) › is compared by value: kind, code, reason and message"
+  ],
+  "missing": [],
+  "designedOut": []
+ },
+ "packages/chord/test/next/data/params.test.ts": {
+  "ported": [
+   "checkParams › returns the caller's own object and the key of the field values in declared order",
+   "checkParams › gives the same key whatever the property order",
+   "checkParams › refuses missing, extra and wrong fields at their paths",
+   "checkParams › enforces literal membership and constraints",
+   "checkParams › escapes the separator: no two params join to one key",
+   "checkParams › counts one compilation per contract, then one validation per get; a failure adds one walk",
+   "checkParams › does not retain a dropped contract's params validator",
+   "identityKey › joins name, key and principal key, each escaped",
+   "identityKey › local objects take no principal key, by type"
+  ],
+  "missing": [],
+  "designedOut": []
+ },
+ "packages/chord/test/next/data/principal.test.ts": {
+  "ported": [
+   "canonicalJson › sorts object keys and writes -0 as 0",
+   "canonicalJson › counts one walk",
+   "principalKey › defaults to the canonical JSON, whatever the property order",
+   "principalKey › uses a custom key function when given",
+   "principalKey › caches per principal object: no second walk",
+   "principalKey › caches custom keys per function",
+   "principalKey › never retains a dropped custom key function while its principal lives",
+   "principalKey › does not retain dropped principals"
+  ],
+  "missing": [],
+  "designedOut": []
+ },
+ "packages/chord/test/next/data/validator.test.ts": {
+  "ported": [
+   "failed checks › pass a valid value",
+   "failed checks › report TypeBox's first error with its JSON Pointer path",
+   "failed checks › report a missing field at its own path (TypeBox reports it at the parent)",
+   "failed checks › report an unknown field at its own path, nested too",
+   "failed checks › check bytes by instanceof and length",
+   "failed checks › leave keys containing `/` or `~` unescaped (TypeBox's instance path, ambiguous)",
+   "validators › compile once per schema owner (counted), then validate (counted); a failure adds one walk",
+   "validators › are collected with their schema owner; TypeBox retains no build state"
+  ],
+  "missing": [],
+  "designedOut": [
+   "validators › leave nothing in TypeBox's build accumulators"
+  ]
+ },
+ "packages/chord/test/next/state/batch.test.ts": {
+  "ported": [
+   "flushes › run once per listing at the end of the commit, after its deliveries; a throwing one is reported"
+  ],
+  "designedOut": [],
+  "missing": [
+   "reentrancy › refuses watch (ref.state too), release, get, load, close and a transaction in a commit's derive computes",
+   "reentrancy › refuses them in a lazy compute outside a commit",
+   "reentrancy › clears the flag after a throwing compute",
+   "delivery › reports a delivery that throws and still delivers the later frames of the commit"
+  ]
+ },
+ "packages/chord/test/next/state/derive.test.ts": {
+  "ported": [
+   "mapShared › maps an object element once while it stays the same object; primitives every time",
+   "mapShared › keeps no element alive in its cache",
+   "mapShared › returns the previous result object for an unchanged element"
+  ],
+  "designedOut": [],
+  "missing": [
+   "derives across objects › update in the batch of the commit that changed their source's object",
+   "the pull model › computes a diamond's derives once each per batch",
+   "the pull model › leaves unwatched derives dirty until read; a one-off read does not make them eager",
+   "the pull model › diffs a watched derive's old and new value (counted), and sends no frame when they are equal",
+   "failures › give the throwing derive's watches and those of the derives over it one failure call; they heal on a later change",
+   "failures › give one failure call per episode: a recompute that throws again is quiet; a heal ends the episode",
+   "failures › open a new watch on a failed derive at its last good value, the failure its first call, then the heal",
+   "failures › report once per failure episode, also when nothing watches (a lazy derive fails when read)",
+   "failures › fold a failure and a value for a busy listener: the value replaces the failure, as a root replacement",
+   "GC › a detached derive is not held by its former sources",
+   "GC › a watch open on a failed derive keeps nothing more: it ends with its reference, and a retained one holds no source",
+   "GC of handed-out errors › a failure call's fresh error kept by its listener keeps nothing of its host once the host closes",
+   "the retired flag › a derive over a retired source publishes retired: true although its value and ops are unchanged (rule 21)",
+   "the retired flag › a retirement while the derive is failed travels with its next good value",
+   "the retired flag › a retirement visits each derive of a diamond once, not once per path (40 derives)"
+  ]
+ },
+ "packages/chord/test/next/state/native-source.test.ts": {
+  "ported": [],
+  "designedOut": [
+   "native sources as derive sources › types a derive's sources: watchables of either kind, never a native's handle (Fable)"
+  ],
+  "missing": [
+   "native sources as derive sources › a derive reads JSON and native sources alike, marked when a native one changes",
+   "native sources as derive sources › `ref.state` is a derive source: a state member can show a dependency's reachability",
+   "native sources as derive sources › refuses a native source as a state member (Q14)",
+   "watching a native source that fails › a watch taken while it is failed opens at its last good value and gets the failure first",
+   "watching a native source that fails › an `on` routine started while its source is failed waits for its next good value, never calls with the stale one"
+  ]
+ },
+ "packages/chord/test/next/state/watchable.test.ts": {
+  "ported": [
+   "constant › never changes; its watches end only by stop or cancellation and hold nothing after"
+  ],
+  "designedOut": [],
+  "missing": [
+   "watches › start from the value at acquisition; a listener that keeps up gets each commit",
+   "watches › give a busy listener one call with the newest value and the folded ops",
+   "watches › end cancelled when their context aborts",
+   "watches › end with listener_error when the listener throws, reported to onError",
+   "subscribers › get each batch's frame synchronously, inside the commit, and count as watching"
+  ]
+ },
+ "packages/chord/test/next/state/writable.test.ts": {
+  "ported": [],
+  "designedOut": [],
+  "missing": [
+   "writable › a new value (by identity) is a new frame; the same value notifies nobody and costs one comparison",
+   "writable › inside a batch, sets mark it there: one frame with the last value, the derives over it computed once",
+   "writable › refuses a set inside a derive compute or a compose (`invalid/reentrant`)",
+   "writable › is the attempt's: `set` after its end throws `released`, its watches end `ended`, its value stays readable",
+   "writable › is a contribution, a derive source and an `on` source",
+   "writable › is collected with its attempt",
+   "writable › a set of the same value after its attempt ended throws `released` too (Sol, Astra)",
+   "writable › a writable an app keeps after `host.close` keeps no closed host; its observers' abort listeners go (Sol)",
+   "writable › a late callback's set after the host closed throws `released`"
+  ]
+ },
+ "packages/chord/test/next/registries/entries.test.ts": {
+  "ported": [
+   "keyedEntries › maps every entry's keys with their plugin; a duplicate is reported and the first by plugin name keeps it",
+   "orderedEntries › lists every entry's items in table order, with their plugin and type",
+   "orderedEntries › sorts by `orderOf`, table order kept among equals"
+  ],
+  "missing": [],
+  "designedOut": []
+ },
+ "packages/chord/test/next/registries/record.test.ts": {
+  "ported": [
+   "the table › adapts an older contribution once per value; a newer one, or an older one without an adapter, is left out and reported once",
+   "the table › takes a contribution declared before its provider's setup into the first composition",
+   "compose › is lazy: a change marks the table, a read composes it once; no compose for an unchanged table",
+   "compose › reports a conflict once per episode",
+   "compose › a throwing compose: reported once, a failed call, `.value` keeps the last good composition; the next good one heals",
+   "contributions › a watchable contribution that fails is left out and reported once, and is back once it heals",
+   "contributions › a contribution adapter that throws leaves that contribution out (`contribution_failed`)",
+   "contributions › keeps an `undefined` contribution in the table (Sol, Astra)",
+   "contributions › leaves out a registry's value contributed to another while that registry's compose throws (Sol, Astra)"
+  ],
+  "missing": [
+   "the table › is sorted by plugin name, then type, a facet first: never load order",
+   "compose › composes every served registry once at the end of load's setups, an empty table too, before any object activates",
+   "compose › composes a watched registry in the batch of the commit that changed a contribution, once per batch",
+   "compose › before any good composition, `.value` throws the error and `host.registry` rejects with it at its readyTimeout",
+   "contributions › refuses a contribution closing a cycle with the registries' tables; one through a derive is cut and reported",
+   "contributions › refuses a cycle declared within one factory: broken, invalid/cycle (Sol)",
+   "contributions › leaves no cycle edge from a contribution that never entered a table (Sol)",
+   "contributions › follows only Chord watchables: anything else is a plain value, whatever methods it has (Sol)",
+   "contributions › a followed contribution whose runtime ended its observer stays with its last value (R4: the source keeps it)",
+   "contributions › an object's contribution is in the table from live until it fails, again once retried, until it ends",
+   "the last good composition (decision 5) › is dropped when a contribution it was built from leaves: `.value` throws until `compose` succeeds",
+   "the table's memory › keeps nothing of a closed host: records, tables and followed contributions go with it"
+  ],
+  "designedOut": []
+ },
+ "packages/chord/test/next/registries/registry.test.ts": {
+  "ported": [
+   "tokens › carry a name, a version and the types only; names and versions are checked at declaration"
+  ],
+  "missing": [
+   "providers › one per host: a second serve is refused at load",
+   "providers › a provider without compose is refused at load (plugin code is not type-checked)",
+   "providers › a registry whose provider comes with `load` heals a `host.registry` made before it",
+   "providers › are served only while the setup runs"
+  ],
+  "designedOut": []
+ },
+ "packages/chord/test/next/registries/value.test.ts": {
+  "ported": [
+   "older readers (S2) › get the composition mapped back with accepts[old].value, once per composition",
+   "older readers (S2) › maps an `undefined` composition (Sol, Astra)",
+   "older readers (S2) › a failed mapping heals when the composition is the one mapped before (Astra)",
+   "values' memory › drops an older version's mapping once its last reader ended (Sol)"
+  ],
+  "missing": [
+   "older readers (S2) › without a value mapping, and for a reader newer than the provider, park readers failed { waiting } (contract_mismatch)",
+   "older readers (S2) › drops an older reader's last good mapping after a contributor it was built from failed live (fix round 1, Astra 2)",
+   "older readers (S2) › never hands out a mapped native whose contributor failed and closed it (fix round 1, Sol 2)",
+   "readers (S3) › activate once the registry has a value; a reader of a registry nobody serves parks failed { waiting }, `load` waits for nothing",
+   "readers (S3) › a reader parked on a first `compose` that threw goes on at the first good composition",
+   "readers (S3) › host.registry before the publication waits for it, then resolves with the provider it served",
+   "readers (S3) › host.registry waits through no value until a first good composition, woken by it, its wait then gone",
+   "readers (S3) › once live, a later throwing `compose` changes nothing for the reader: `.value` keeps the last good one",
+   "readers' memory › an ended reader is collected while the registry lives: its derive and its read leave the value",
+   "values' memory › keeps no old composition once its readers stopped waiting and nobody follows it (Opus)",
+   "values' memory › a value an app keeps after `host.close` keeps no closed host, and reads its last composition (Sol, Astra)",
+   "observe › calls a synchronous observer inside the batch that composed; it counts as watching"
+  ],
+  "designedOut": []
+ },
+ "packages/chord/test/next-node/compression.test.ts": {
+  "ported": [
+   "nodeCompression › deflates raw at level 1 and inflates back",
+   "nodeCompression › gives too_large past the limit, without inflating the rest (a bomb)",
+   "nodeCompression › takes a limit of 0: an empty stream inflates, anything else is too_large (never zlib's range error)",
+   "nodeCompression › gives corrupt for data that is no raw deflate stream"
+  ],
+  "missing": [],
+  "designedOut": []
+ }
+}
