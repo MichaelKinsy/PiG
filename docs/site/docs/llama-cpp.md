@@ -86,6 +86,32 @@ Loaded and sleeping models appear in `/model`. A sleeping model wakes when you s
 
 If the router disconnects, `/llama` shows **Retry** and **Close**. Retry reconnects and refreshes model state without replaying the interrupted operation.
 
+## llama-swap
+
+[llama-swap](https://github.com/mostlygeek/llama-swap) puts several llama.cpp (or other) servers behind one OpenAI-compatible endpoint and starts the one a request names. It is not a llama.cpp router, so `/llama` does not manage it. llama-swap lists its models at `/models` the way a router does, but it has no endpoint to load or unload one: it loads a model when a request names it in `model`, and by default stops the model it replaces. Pi's `/llama` behaves the same way. Against llama-swap, PiG's `/llama` says so instead of "llama.cpp returned HTTP 404" (D212).
+
+Use llama-swap as a custom provider instead, the way you would use Ollama or vLLM. Add it to `~/.pig/agent/models.json`, with one `models` entry for each model ID in your llama-swap configuration:
+
+```json
+{
+  "providers": {
+    "llama-swap": {
+      "baseUrl": "http://127.0.0.1:8080/v1",
+      "api": "openai-completions",
+      "apiKey": "llama-swap",
+      "models": [
+        { "id": "qwen3.8-27b-q4-split-layer", "contextWindow": 131072 },
+        { "id": "qwen3.8-flash-next-q2", "contextWindow": 32768 }
+      ]
+    }
+  }
+}
+```
+
+The key can be any text unless your llama-swap sets `apiKeys`; then use one of them. Set `contextWindow` to the context size each model starts with, so the footer's context percentage is right.
+
+Run `/model` and pick a model. The first request after a switch makes llama-swap start that model, so the reply waits for the start and streams llama-swap's loading progress as reasoning text first; a model that fails to start ends the reply with llama-swap's error. To unload models yourself, call llama-swap directly, for example `curl -X POST http://127.0.0.1:8080/api/models/unload`. The other `models.json` fields are described on the models page, under "Configure a compatible endpoint".
+
 ## Thinking levels
 
 A model whose chat template reads `enable_thinking` is a reasoning model. PiG offers it the `off`, `minimal`, `low`, `medium` and `high` thinking levels. Each level other than `off` sends `chat_template_kwargs.enable_thinking: true` and a per-request `thinking_budget_tokens` of 1024, 2048, 8192 or 16384 tokens (or your `thinkingBudgets`). `off` sends `enable_thinking: false`. llama-server applies the budget only when its command line sets no `--reasoning-budget`. Pi offers only `off` and `medium` and sends no budget (D90).
@@ -121,6 +147,7 @@ curl http://127.0.0.1:8080/models
 - **Model missing from `/model` with `--no-models-autoload`:** Load it with `/llama` first.
 - **Load fails or uses too much memory:** Lower `-c` or unload another model.
 - **Server is not in router mode:** Start it without `--model`, `-m`, or `-hf`.
+- **`/llama` says it cannot load or unload models on llama-swap:** The server is [llama-swap](#llama-swap), not a llama.cpp router. Configure it as a `models.json` provider and pick models with `/model`.
 
 To remove the `llama.cpp` provider and `/llama`, disable `llama.cpp` under Built-in in `pig config`, or set `"extensions": ["-builtin:llama.cpp"]` in [settings](settings.md).
 
