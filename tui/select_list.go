@@ -219,12 +219,13 @@ func (l *SelectList) HandleMouse(event TuiMouseEvent) *TuiMouseDispatchResult {
 	return &TuiMouseDispatchResult{TuiMouseEventResult: TuiMouseEventResult{Handled: true}}
 }
 
-// CapturesSelectPageInput reports that the list handles tui.select.pageUp and tui.select.pageDown.
-func (l *SelectList) CapturesSelectPageInput() bool { return true }
+// CapturesViewportInput reports that fullscreen viewport keys go to the list (select-list.ts capturesViewportInput).
+func (l *SelectList) CapturesViewportInput() bool { return true }
 
 // HandleInput moves the selection (wrapping at both ends), confirms or cancels through the tui.select.* keybindings.
 func (l *SelectList) HandleInput(data string) {
 	kb := GetTUIKeybindings()
+	pageIndex, isPage := GetSelectPageIndex(kb, data, l.selectedIndex, len(l.filteredItems), l.maxVisible)
 	switch {
 	case kb.Matches(data, KBSelectUp):
 		if l.selectedIndex == 0 {
@@ -242,12 +243,12 @@ func (l *SelectList) HandleInput(data string) {
 		}
 		l.notifySelectionChange()
 		l.Invalidate()
-	// pig divergence (D155): a select page key moves the selection by a page (Pi PR #7680).
-	case pageSelectionKey(kb, data):
-		if len(l.filteredItems) == 0 {
+	case isPage:
+		// A page key moves by one visible page, clamped to the list bounds.
+		if len(l.filteredItems) == 0 || pageIndex == l.selectedIndex {
 			return
 		}
-		l.selectedIndex, _ = PageSelectionIndex(kb, data, l.selectedIndex, len(l.filteredItems), l.maxVisible)
+		l.selectedIndex = pageIndex
 		l.notifySelectionChange()
 		l.Invalidate()
 	case kb.Matches(data, KBSelectConfirm):

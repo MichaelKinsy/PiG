@@ -388,8 +388,11 @@ func normalizeToSingleLine(s string) string {
 	return strings.TrimSpace(string(out))
 }
 
-// CapturesSelectPageInput reports that the list handles tui.select.pageUp and tui.select.pageDown.
-func (f *FilterableList) CapturesSelectPageInput() bool { return true }
+// CapturesViewportInput reports that fullscreen viewport keys go to the list.
+//
+// pig divergence (D155): FilterableList is a PiG list that Pi has no component for and that pages on tui.select.pageUp
+// and tui.select.pageDown; it keeps the keys away from the transcript.
+func (f *FilterableList) CapturesViewportInput() bool { return true }
 
 // HandleInput updates the filter or moves the cursor.
 func (f *FilterableList) HandleInput(data string) {
@@ -397,6 +400,7 @@ func (f *FilterableList) HandleInput(data string) {
 	// ~/.pig/keybindings.json (tui.select.* / tui.input.*) take effect
 	// here. Mirrors upstream filterable-list.ts handleInput dispatch.
 	kb := GetTUIKeybindings()
+	pageIndex, isPage := GetSelectPageIndex(kb, data, f.cursor, len(f.filtered), f.MaxVisible)
 	// up and down are checked before confirm and cancel, as in upstream SelectList, so a key bound to two actions keeps the earlier one.
 	switch {
 	case f.EnableSearch && (data == "\x7f" || data == "\b"): // Backspace: filter edit
@@ -440,10 +444,10 @@ func (f *FilterableList) HandleInput(data string) {
 		if f.onCancel != nil {
 			f.onCancel()
 		}
-	case !f.EnableSearch && pageSelectionKey(kb, data):
-		// A list without search stands for upstream's SelectList, which moves by one visible page and does not wrap (Pi PR #7680).
+	case !f.EnableSearch && isPage:
+		// A list without search stands for upstream's SelectList, which moves by one visible page and does not wrap.
 		if len(f.filtered) > 0 {
-			f.cursor, _ = PageSelectionIndex(kb, data, f.cursor, len(f.filtered), f.MaxVisible)
+			f.cursor = pageIndex
 			f.fixScroll()
 		}
 	case f.EnableSearch && kb.Matches(data, KBSelectPageUp):

@@ -1319,9 +1319,9 @@ func (e *Editor) AutocompleteAccept() (submit bool) {
 	return isSlashName
 }
 
-// CapturesSelectPageInput reports that the editor handles tui.select.pageUp and tui.select.pageDown while its
-// autocomplete list is open.
-func (e *Editor) CapturesSelectPageInput() bool { return len(e.autocompleteItems) > 0 }
+// CapturesViewportInput reports that the open autocomplete menu receives fullscreen viewport keys, such as PageUp and
+// PageDown (editor.ts capturesViewportInput).
+func (e *Editor) CapturesViewportInput() bool { return len(e.autocompleteItems) > 0 }
 
 // AutocompleteMove moves the selection with keyboard-style wraparound. Mouse callers clamp their target before invoking it.
 func (e *Editor) AutocompleteMove(delta int) {
@@ -1764,9 +1764,8 @@ func (e *Editor) HandleInput(data string) {
 		case kb.Matches(data, KBSelectDown):
 			e.AutocompleteMove(1)
 			return
-		case pageSelectionKey(kb, data):
-			// pig divergence (D155): Pi 1.1.0 ignores the selection page keys in the autocomplete list (Pi #7629).
-			if index, ok := PageSelectionIndex(kb, data, e.autocompleteCursor, len(e.autocompleteItems), e.AutocompleteMaxVisible()); ok && index != e.autocompleteCursor {
+		case kb.Matches(data, KBSelectPageUp) || kb.Matches(data, KBSelectPageDown):
+			if index, ok := GetSelectPageIndex(kb, data, e.autocompleteCursor, len(e.autocompleteItems), e.AutocompleteMaxVisible()); ok && index != e.autocompleteCursor {
 				e.autocompleteCursor = index
 				e.Invalidate()
 			}

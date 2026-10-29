@@ -472,8 +472,8 @@ func (s *ScopedModelsList) NativeNode() (frontend.Node, bool) {
 	return node, true
 }
 
-// CapturesSelectPageInput reports that the list handles tui.select.pageUp and tui.select.pageDown.
-func (s *ScopedModelsList) CapturesSelectPageInput() bool { return true }
+// CapturesViewportInput reports that fullscreen viewport keys go to the selector (scoped-models-selector.ts capturesViewportInput).
+func (s *ScopedModelsList) CapturesViewportInput() bool { return true }
 
 // HandleInput processes a keystroke.
 func (s *ScopedModelsList) HandleInput(data string) {
@@ -483,6 +483,7 @@ func (s *ScopedModelsList) HandleInput(data string) {
 	defer s.updateList()
 
 	kb := GetTUIKeybindings()
+	pageIndex, isPage := GetSelectPageIndex(kb, data, s.cursor, len(s.filteredItems), s.maxVisible)
 	switch {
 	// Navigation.
 	case kb.Matches(data, KBSelectUp):
@@ -509,8 +510,11 @@ func (s *ScopedModelsList) HandleInput(data string) {
 		s.fixScroll()
 		s.Invalidate()
 
-	case pageSelectionKey(kb, data):
-		s.cursor, _ = PageSelectionIndex(kb, data, s.cursor, len(s.filteredItems), s.maxVisible)
+	case isPage:
+		if len(s.filteredItems) == 0 {
+			return
+		}
+		s.cursor = pageIndex
 		s.fixScroll()
 		s.Invalidate()
 

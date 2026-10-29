@@ -83,11 +83,6 @@ func newUserMessageSelectorComponent(messages []UserMessageItem, onSelect func(e
 // GetMessageList returns the message list (user-message-selector.ts getMessageList).
 func (s *UserMessageSelectorComponent) GetMessageList() *UserMessageList { return s.list }
 
-// CapturesSelectPageInput reports that the list inside handles tui.select.pageUp and tui.select.pageDown.
-func (s *UserMessageSelectorComponent) CapturesSelectPageInput() bool {
-	return s.list.CapturesSelectPageInput()
-}
-
 // HandleInput forwards to the message list, as the host drives upstream's getMessageList(). A parent Container reuses this component's lines until it is invalidated, so a list change must invalidate it.
 func (s *UserMessageSelectorComponent) HandleInput(data string) {
 	s.list.HandleInput(data)
@@ -124,12 +119,14 @@ func (s *UserMessageList) Render(width int) []string {
 	return lines
 }
 
-// CapturesSelectPageInput reports that the list handles tui.select.pageUp and tui.select.pageDown.
-func (s *UserMessageList) CapturesSelectPageInput() bool { return true }
+// CapturesViewportInput reports that fullscreen viewport keys go to the list (user-message-selector.ts capturesViewportInput). The
+// host focuses the list from GetMessageList, as upstream does; the selector container does not forward the flag.
+func (s *UserMessageList) CapturesViewportInput() bool { return true }
 
 // HandleInput checks up, down, confirm and cancel in user-message-selector.ts order, so a key bound to two of them keeps the earlier action.
 func (s *UserMessageList) HandleInput(data string) {
 	kb := GetTUIKeybindings()
+	pageIndex, isPage := GetSelectPageIndex(kb, data, s.selectedIndex, len(s.messages), s.maxVisible)
 	switch {
 	case kb.Matches(data, KBSelectUp):
 		if len(s.messages) > 0 {
@@ -147,8 +144,11 @@ func (s *UserMessageList) HandleInput(data string) {
 				s.selectedIndex++
 			}
 		}
-	case pageSelectionKey(kb, data):
-		s.selectedIndex, _ = PageSelectionIndex(kb, data, s.selectedIndex, len(s.messages), s.maxVisible)
+	case isPage:
+		if len(s.messages) == 0 {
+			return
+		}
+		s.selectedIndex = pageIndex
 	case kb.Matches(data, KBSelectConfirm):
 		if s.selectedIndex >= 0 && s.selectedIndex < len(s.messages) && s.OnSelect != nil {
 			s.OnSelect(s.messages[s.selectedIndex].ID)
