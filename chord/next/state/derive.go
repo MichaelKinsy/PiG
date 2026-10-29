@@ -240,8 +240,7 @@ func (d *Derive) recompute() (delta.JsonValue, error) {
 // The cache is weak, as Pi's WeakMap: a dropped element takes its result along (a cleanup removes the entry once the
 // element is collected). Go has no ephemeron: a result that holds its own element keeps it alive, and with it the entry.
 func MapShared[E, R any](f func(element E) R) func(elements []E) []R {
-	var mu sync.Mutex
-	results := map[sharedKey]R{}
+	cache := &sharedResults[R]{results: map[sharedKey]R{}}
 	return func(elements []E) []R {
 		mapped := make([]R, len(elements))
 		for i, element := range elements {
@@ -250,28 +249,40 @@ func MapShared[E, R any](f func(element E) R) func(elements []E) []R {
 				mapped[i] = f(element)
 				continue
 			}
-			mu.Lock()
-			result, found := results[key.key]
-			mu.Unlock()
+			cache.mu.Lock()
+			result, found := cache.results[key.key]
+			cache.mu.Unlock()
 			if found {
 				mapped[i] = result
 				continue
 			}
 			result = f(element)
 			mapped[i] = result
-			mu.Lock()
-			if _, raced := results[key.key]; !raced {
-				results[key.key] = result
-				runtime.AddCleanup(key.target, func(dropped sharedKey) {
-					mu.Lock()
-					defer mu.Unlock()
-					delete(results, dropped)
-				}, key.key)
+			cache.mu.Lock()
+			if _, raced := cache.results[key.key]; !raced {
+				cache.results[key.key] = result
+				// The cleanup closes over cache only. cache holds a pointer (its map), so it is never a tiny allocation:
+				// runtime.AddCleanup refuses a cleanup whose closure points into the block of the element it is
+				// attached to, and a bare sync.Mutex captured here shared a 16-byte tiny block with a small element.
+				runtime.AddCleanup(key.target, cache.drop, key.key)
 			}
-			mu.Unlock()
+			cache.mu.Unlock()
 		}
 		return mapped
 	}
+}
+
+// sharedResults is MapShared's cache: the results by element identity.
+type sharedResults[R any] struct {
+	mu      sync.Mutex
+	results map[sharedKey]R
+}
+
+// drop removes the entry of a collected element.
+func (cache *sharedResults[R]) drop(dropped sharedKey) {
+	cache.mu.Lock()
+	defer cache.mu.Unlock()
+	delete(cache.results, dropped)
 }
 
 // sharedKey is the identity of an element: its object, weakly, and for a slice its length.
