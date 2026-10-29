@@ -1,6 +1,6 @@
 package codingagent
 
-// pig divergence D199: OpenRouter's :nitro and :floor routing variants follow every OpenRouter chat model of the current list, whether that
+// D199 (docs/parity/divergences/D199.md): OpenRouter's :nitro and :floor routing variants follow every OpenRouter chat model of the current list, whether that
 // list is the bundled catalog or the one a refresh (pig update --models) saved. The refreshed list replaces the bundled one, so the variants
 // are derived from it where it is read, not from the bundled models alone.
 
