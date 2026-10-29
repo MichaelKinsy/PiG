@@ -148,14 +148,14 @@ func TestWritable(t *testing.T) {
 		if end := watch.End(); end != (chord.WatchEnd{Kind: chord.WatchEnded}) {
 			t.Fatalf("end = %+v, want ended", end)
 		}
-		if err := c.writable.Set(2); err != ended {
+		if err := c.writable.Set(2); !errors.Is(err, ended) {
 			t.Fatalf("Set after the end = %v, want %v", err, ended)
 		}
 		if c.writable.Value() != 1 {
 			t.Fatalf("Value = %v, want 1", c.writable.Value())
 		}
 		// A set of the same value after its attempt ended throws released too.
-		if err := c.writable.Set(1); err != ended {
+		if err := c.writable.Set(1); !errors.Is(err, ended) {
 			t.Fatalf("Set of the same value after the end = %v, want %v", err, ended)
 		}
 	})

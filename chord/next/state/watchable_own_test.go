@@ -99,7 +99,7 @@ func TestSourceWatches(t *testing.T) {
 			t.Fatalf("end = %+v, want listener_error", end)
 		}
 		h.delivered()
-		if got := h.errors.all(); len(got) != 1 || got[0].Kind != state.BatchListenerError || got[0].Error != boom {
+		if got := h.errors.all(); len(got) != 1 || got[0].Kind != state.BatchListenerError || !errors.Is(got[0].Error, boom) {
 			t.Fatalf("reported = %+v, want the listener's error", got)
 		}
 	})
@@ -261,7 +261,7 @@ func TestSourceFailedStart(t *testing.T) {
 	t.Run("with no value to start at, the watch is refused with the failure", func(t *testing.T) {
 		h := newHarness(t, nil)
 		source := newFlaky(h.batch, state.WatchStart{Kind: state.StartFailed, Error: errThrew})
-		if _, err := source.Watch(background); err != errThrew {
+		if _, err := source.Watch(background); !errors.Is(err, errThrew) {
 			t.Fatalf("Watch error = %v, want %v", err, errThrew)
 		}
 		if source.Watched() {
