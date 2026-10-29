@@ -18,6 +18,8 @@ func TestOverflowUpstream(t *testing.T) {
 		{"detects Together AI context length errors", "400 The input (516368 tokens) is longer than the model's context length (262144 tokens).", "ollama", 262144, true},
 		// .upstream/v0.87.1/packages/ai/test/overflow.test.ts:51
 		{"detects LiteLLM-wrapped OpenAI maximum context length errors", "Error: 503 litellm.ServiceUnavailableError: litellm.MidStreamFallbackError: litellm.APIConnectionError: APIConnectionError: OpenAIException - Requested token count exceeds the model's maximum context length of 131072 tokens.", "ollama", 131072, true},
+		// Pi 36ae26b4 overflow.test.ts:94 (#11492)
+		{"detects LiteLLM pre-call ContextWindowExceededError", "400: {\"message\":\"litellm.ContextWindowExceededError: litellm.BadRequestError: litellm._pre_call_checks: Context Window exceeded for given call. No models have context window large enough for this call.\\nModel=Qwen3.8-Flash-Next, Max Input Tokens=262144, Got=265262\\nmodel=Qwen3.8-Flash-Next. context_window_fallbacks=None. fallbacks=[].\"}", "ollama", 262144, true},
 		// .upstream/v0.87.1/packages/ai/test/overflow.test.ts:58
 		{"detects OpenAI-compatible parenthesized maximum context length errors", "Error: 400 Input length (265330) exceeds model's maximum context length (262144).", "ollama", 262144, true},
 		// .upstream/v0.87.1/packages/ai/test/overflow.test.ts:65
