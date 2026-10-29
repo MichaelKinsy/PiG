@@ -90426,6 +90426,17 @@
       "shapeHash": "sha256:1995cea80708bddfc64a7343a20cc0003a26e7a4e4bef0eeee01a3a31e961c00"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#currentPigletBinary",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "currentPigletBinary",
+      "kind": "variable",
+      "exported": false,
+      "shape": {
+        "type": "func() pigletBinary"
+      },
+      "shapeHash": "sha256:243916ed9e6098f2d1c6b564ba95072e3af79e9036e15f1d5a7e5ce76a92c4b0"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/cli#currentSDKFingerprints",
       "package": "github.com/MichaelKinsy/PiG/coding/cli",
       "name": "currentSDKFingerprints",
@@ -94089,6 +94100,61 @@
       "shapeHash": "sha256:73f260455c65d082c6656531acaceb04663e51072fe5f63d4426ab8e997333f5"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#pigletBinaryClosed",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "pigletBinaryClosed",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(binary pigletBinary) bool"
+      },
+      "shapeHash": "sha256:93bfbc807503af122e5939eb7355ded2ad51ce3da3e9f8d2027bd6e9f0b9afc4"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#pigletBinaryClosedRefusal",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "pigletBinaryClosedRefusal",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(binary pigletBinary, refused string) string"
+      },
+      "shapeHash": "sha256:2601eb7f4e01d4330d6cb0b05db665d291a30704351669251533a6935f991b4b"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#pigletBinaryExtensionFlagRefusal",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "pigletBinaryExtensionFlagRefusal",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(binary pigletBinary, extensions []string) string"
+      },
+      "shapeHash": "sha256:4749752e4438c10312eff38940a3a628108c05d9a45a390525b51510fda70740"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#pigletBinaryMcpConfigRefusal",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "pigletBinaryMcpConfigRefusal",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(binary pigletBinary) string"
+      },
+      "shapeHash": "sha256:68f2783cf2934850eb775f334cab6d4d33f62432fb752e64d2894c10445c6eff"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#pigletBinaryMcpRefusal",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "pigletBinaryMcpRefusal",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(binary pigletBinary, args []string) string"
+      },
+      "shapeHash": "sha256:14d8d05e3c8877bfca36363c7ea6103e05323b5b48eb484a4d62049d7659461e"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/cli#pigletBinaryOverlayRefusal",
       "package": "github.com/MichaelKinsy/PiG/coding/cli",
       "name": "pigletBinaryOverlayRefusal",
@@ -94098,6 +94164,28 @@
         "type": "func(flags map[string]any, binary pigletBinary) string"
       },
       "shapeHash": "sha256:e3a3d53cd65f24ae501507d5e42156b4c68443781cc41cc1ed79895928b40e82"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#pigletBinaryPackageCommandRefusal",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "pigletBinaryPackageCommandRefusal",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(binary pigletBinary, opts *packageCLIOptions) string"
+      },
+      "shapeHash": "sha256:d20908838f276b635e14c2b54283185093a2bc4583d441f781f3d22c78dfb0b5"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#pigletBinarySettingsExtensionsRefusal",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "pigletBinarySettingsExtensionsRefusal",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(binary pigletBinary, global []string, project []string) string"
+      },
+      "shapeHash": "sha256:14d9b9ac953c89e8c391ad2f012fb3751ba3294e13d53e03cfefa055cbf7256e"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/cli#pigletBinarySystemPromptRefusal",
@@ -94582,6 +94670,17 @@
         "type": "func(sm *github.com/MichaelKinsy/PiG/internal/codingagent.SettingsManager, item *github.com/MichaelKinsy/PiG/tui.ResourceItem) string"
       },
       "shapeHash": "sha256:d6fd156925411b3f90a920def809eabe676a2f3f8b1ad9a277f2b66d01489d8c"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#projectSettingsExtensions",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "projectSettingsExtensions",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(sm *github.com/MichaelKinsy/PiG/internal/codingagent.SettingsManager, projectTrusted bool) []string"
+      },
+      "shapeHash": "sha256:aea3eda799e5e2d878dc51bd39007cef19195a1089123993cf7d73b42c8a0efb"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/cli#projectTrustCLIUI",
@@ -113854,6 +113953,17 @@
         "type": "func(agentDir string, configDirName string, openURL func(url string), copyToClipboard ...func(text string) error)"
       },
       "shapeHash": "sha256:0d6c2e0dd45fe425438177172208f0d0d974da9b2c266b885e6101f4d48a418b"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/builtin#Options.RefuseMcpConfigFiles",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/builtin",
+      "name": "Options.RefuseMcpConfigFiles",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(message string)"
+      },
+      "shapeHash": "sha256:e7dae146e9d1693f88eb2c07ce5ba10c048b7ca6c99a50f3ebaa6f8c39fafc83"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/builtin#PathPrefix",
@@ -161110,6 +161220,17 @@
         "type": "func(ctx context.Context, name string, c CommandContext, options pick) *server"
       },
       "shapeHash": "sha256:2cedcf080454a91e86ac7d4b8571e51cfaac2f295a7675293935dacf8c0004c0"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#Extension.readConfig",
+      "package": "github.com/MichaelKinsy/PiG/coding/mcpext",
+      "name": "Extension.readConfig",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(ctx EventContext) LoadedMcpConfig"
+      },
+      "shapeHash": "sha256:c977114522111beec10e50b4b96e3036fd4a76cb9a956a23f9d31ce607ef618b"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#Extension.reconnectSignedIn",
