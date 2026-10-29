@@ -20407,6 +20407,43 @@
       ]
     },
     {
+      "id": "BF-8e3613d",
+      "title": "Text typed over an extension's autocomplete provider and followed at once by Enter no longer skips the menu…",
+      "symptom": "Text typed over an extension's autocomplete provider and followed at once by Enter no longer skips the menu Pi opens.",
+      "rootCause": "Pi's editor awaits the whole extension wrapper chain in the Promise jobs after the terminal read (editor.ts requestAutocomplete, startAutocompleteRequest): a chain that needs no I/O has opened its menu before the next read, so an Enter sent right behind `/model provider/id` accepts the suggestion and only a second Enter submits; a chain that awaits a timer, socket or process has not, and the next read is handled first. PiG's chain is a round trip through the extension runtime, and the next read overtook it: the Enter submitted on the first press. An earlier change fixed the built-in provider only.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "ahead-of-pi",
+      "divergence": "D213",
+      "removeWhen": "Pi's extensions run outside the editor's process, or the owner withdraws the decision. Then the release on runtime exit, the call-site marker and this record go.",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Text typed over an extension's autocomplete provider and followed at once by Enter no longer skips the menu Pi opens. With an extension that wraps the provider through `ctx.ui.addAutocompleteProvider` and answers without I/O, `/model provider/id` typed and entered in one go switched the model in PiG, where Pi accepts the suggestion into the editor on the first Enter and switches on the second (the same holds for `/thinking level`, any command with argument completions, and a command name). Pi awaits the whole wrapper chain in the Promise jobs after the terminal read, so a chain that needs no I/O has opened its menu before the next read, and a chain that awaits a timer, a socket or a process has not. PiG's chain is a round trip through the extension runtime that the next read overtook. The editor now starts the extension chain's request at the end of each read and the host holds the next read until the menu is published or the chain says it awaits real I/O; a provider that awaits a timer or a socket still lets the Enter submit at once, as in Pi, and a synchronous provider that blocks holds the read until it returns, as it holds Pi's loop. The Node runtime says so at the end of its macrotask (microtasks, `queueMicrotask` and `process.nextTick` stay inside Pi's checkpoint, a timer or `setImmediate` leaves it), including for a chain another extension of the same runtime calls (D213). Extension authors change nothing.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "8e3613da73",
+          "date": "2026-10-29"
+        }
+      ],
+      "tests": [
+        "coding/extension/host/subprocess/autocomplete_lifetime_test.go::TestAutocompleteCancellationPrecedesDispatchAndReleasesReferences",
+        "coding/extension/host/subprocess/autocomplete_settle_test.go::TestNodeAutocompleteChainTellsTheHostWhenItAwaitsIO",
+        "coding/extension/host/subprocess/autocomplete_settle_test.go::TestPackedNodeMembersShareTheBaseProvidersIOAnnouncement",
+        "internal/codingagent/autocomplete_extension_read_test.go::TestBaseProviderAnnouncesItsAwaitedWork",
+        "internal/codingagent/autocomplete_extension_read_test.go::TestEnterInTheReadAfterTheTextAcceptsTheMenuAnExtensionProviderOpened",
+        "internal/codingagent/autocomplete_extension_read_test.go::TestEnterInTheReadAfterTheTextSubmitsWhileAnExtensionProviderAwaitsIO",
+        "internal/codingagent/autocomplete_extension_read_test.go::TestEnterWaitsForAnExtensionProviderThatBlocksUntilItReturns",
+        "test/extension-conformance/autocomplete_settle_test.go::TestAutocompleteSettlementAcrossSDKs",
+        "tui/async_autocomplete_race_test.go::TestAsyncAutocomplete_NoRaceWithInput",
+        "tui/editor_async_provider_test.go::TestForcedAutocompleteQueryDoesNotHoldInput",
+        "tui/editor_autocomplete_hold_test.go::TestDebouncedExtensionRequestDoesNotHold",
+        "tui/editor_autocomplete_hold_test.go::TestExtensionChainAwaitingIOReleasesTheHold",
+        "tui/editor_autocomplete_hold_test.go::TestExtensionChainBehindAnUnfinishedRequestDoesNotHold",
+        "tui/editor_autocomplete_hold_test.go::TestFlushAutocompleteStartsTheExtensionChainOncePerRead"
+      ]
+    },
+    {
       "id": "BF-8eb1202",
       "title": "An OpenAI Chat Completions chunk with a member of an unexpected type (a number for `delta.content`…",
       "symptom": "An OpenAI Chat Completions chunk with a member of an unexpected type (a number for `delta.content`, `delta.tool_calls` or `function.arguments`, a non-object `choices` or `delta`, a non-string `delta.role` or tool call `type`, a falsy `custom`, a tool call element that is not an object) is read as Pi's JavaScript reads it: the member is ignored, tool-call arguments append their string form, a `tool_calls` string makes one empty tool call per character, any other `tool_calls` value that is not an array ends the turn with `choice.delta.tool_calls is not iterable`, non-empty array content (or an object with a positive `length`) appends its string form, a truthy `finish_reason` that is not a string ends the turn with `Provider finish_reason: \u003cits string form\u003e`, a usage that is not an object resets the counts to 0, a falsy count or a details member that is not an object reads as 0, and a prompt count that is not a number counts as its Number() when that is an integer.",

@@ -21,15 +21,18 @@ type autocompleteDescriptor struct {
 }
 
 type autocompleteInvocation struct {
-	QueryID    string                     `json:"queryId,omitempty"`
-	ID         string                     `json:"id"`
-	Operation  string                     `json:"operation"`
-	Lines      []string                   `json:"lines"`
-	CursorLine int                        `json:"cursorLine"`
-	CursorCol  int                        `json:"cursorCol"`
-	Force      bool                       `json:"force"`
-	Item       extension.AutocompleteItem `json:"item"`
-	Prefix     string                     `json:"prefix"`
+	QueryID    string   `json:"queryId,omitempty"`
+	ID         string   `json:"id"`
+	Operation  string   `json:"operation"`
+	Lines      []string `json:"lines"`
+	CursorLine int      `json:"cursorLine"`
+	CursorCol  int      `json:"cursorCol"`
+	Force      bool     `json:"force"`
+	// SuggestRequestID names the autocomplete.suggest request whose chain makes this call, when the call cannot name it as its parent: a
+	// packed Node member's captured provider called directly by another member's provider.
+	SuggestRequestID string                     `json:"suggestRequestId,omitempty"`
+	Item             extension.AutocompleteItem `json:"item"`
+	Prefix           string                     `json:"prefix"`
 }
 
 // MaxFrameSize bounds a single length-prefixed wire frame. The 4-byte length
@@ -1567,6 +1570,14 @@ const RequestResolveToolRenderers = "resolve_tool_renderers"
 // NotifyToolRenderers (ext→host) reports the extension's resolver count after
 // a registration that followed loading. Args is a ToolRenderersPayload.
 const NotifyToolRenderers = "tool_renderers"
+
+// NotifyUIAutocompletePending (ext→host, args {"requestId"}) tells the host that the provider chain serving the autocomplete.suggest request with that
+// id awaits real I/O. Pi's editor awaits the whole wrapper chain in the Promise jobs after the terminal read (editor.ts startAutocompleteRequest), so a
+// chain that settles there has opened its menu before the next read, and the host holds that read for it. Only a runtime whose providers are async sends
+// the notice: the Node runtime, at the end of its macrotask, when the chain is neither settled nor waiting on a ui.autocomplete.invoke it made. The Go,
+// Rust, Python and Lisp SDKs call blocking providers, which settle when they return, as a synchronous Pi provider holds the loop until it returns.
+// The notice is sent at most once per request and before the response; a request the host did not hold ignores it.
+const NotifyUIAutocompletePending = "ui.autocomplete.pending"
 
 // ToolRenderersPayload is the NotifyToolRenderers argument.
 type ToolRenderersPayload struct {

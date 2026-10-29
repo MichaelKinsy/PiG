@@ -643,7 +643,7 @@ func (m *InteractiveMode) dispatchInputChunk(ctx context.Context, data string, t
 	if m.consumeTerminalThemeInput(data) {
 		return nil
 	}
-	if pending := m.autocompletePending; pending != nil {
+	if pending := m.autocompletePending; pending != nil && !closedChannel(pending) {
 		ticket.await()
 		m.backgroundTasks.Go(func() {
 			select {
@@ -1363,3 +1363,13 @@ func (m *InteractiveMode) hasActiveAgentTurn() bool {
 }
 
 // handleSubmit fires before_agent_start, then starts the agent in a goroutine.
+
+// closedChannel reports whether done is closed, and forgets none of it: a released hold stays in autocompletePending until the next input finds it.
+func closedChannel(done <-chan struct{}) bool {
+	select {
+	case <-done:
+		return true
+	default:
+		return false
+	}
+}

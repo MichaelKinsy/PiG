@@ -126462,6 +126462,17 @@
       "shapeHash": "sha256:ff6905ed5bb83f8296fba288081d1e3435462bd447a7c21d211a48a9a72b6656"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#Conn.autocompleteUnhold",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "Conn.autocompleteUnhold",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(id string) func()"
+      },
+      "shapeHash": "sha256:2d4793119187806efb4040c266e0f534a79792f2c4031589864f6ff3bbf09498"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#Conn.awaitEventLoopTurn",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
       "name": "Conn.awaitEventLoopTurn",
@@ -126570,6 +126581,17 @@
         "type": "func(report *Envelope)"
       },
       "shapeHash": "sha256:776b43f6586b83eebad679089383bf20702277be019b4a6e5fe93425c3d05a5a"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#Conn.deliverAutocompletePending",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "Conn.deliverAutocompletePending",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(args github.com/MichaelKinsy/PiG/extensions/sdk/json.RawMessage)"
+      },
+      "shapeHash": "sha256:b9b0fc3ce9da9850cefe7fab075a404883204555e519730c29ea562089b387f3"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#Conn.deliverRequestState",
@@ -127164,6 +127186,17 @@
         "type": "func() *viewImageStore"
       },
       "shapeHash": "sha256:68be69dca402f250ae6bf931db358926a8a1d0f23fc5393d5426969b330ba461"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#Conn.watchAutocomplete",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "Conn.watchAutocomplete",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(id string, unhold func()) func()"
+      },
+      "shapeHash": "sha256:36c34316fbc8043a5f89543605bdde8bca5e7244bc22c1e079ac102f4ae4a0ed"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#Conn.withSessionRoute",
@@ -132864,6 +132897,17 @@
       "shapeHash": "sha256:7eabd192b9f1c379102c8dc793881875f1f949f6b752e15a20b93080cb0b311d"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#NotifyUIAutocompletePending",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "NotifyUIAutocompletePending",
+      "kind": "constant",
+      "exported": true,
+      "shape": {
+        "type": "untyped string"
+      },
+      "shapeHash": "sha256:7eabd192b9f1c379102c8dc793881875f1f949f6b752e15a20b93080cb0b311d"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#NotifyUICustomClose",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
       "name": "NotifyUICustomClose",
@@ -135730,9 +135774,9 @@
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func(ctx context.Context, owner *Conn, args github.com/MichaelKinsy/PiG/extensions/sdk/json.RawMessage) (*CallResultPayload, error)"
+        "type": "func(ctx context.Context, owner *Conn, parentRequestID string, args github.com/MichaelKinsy/PiG/extensions/sdk/json.RawMessage) (*CallResultPayload, error)"
       },
-      "shapeHash": "sha256:1c17ffa3393aa17de98f67a3372d701364588f5d6de50413eec5601e0a7fa40c"
+      "shapeHash": "sha256:8e7421e57a915dfec017ab88f5b965aefbd6c59af61465c4be019955ea3d5e48"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#UIBridge.handleCall",
@@ -138417,6 +138461,17 @@
         "type": "func(ctx context.Context, method string, args autocompleteInvocation, result any) error"
       },
       "shapeHash": "sha256:bfacc0f375e4d0452f0667956a5ffd80f4494533c36ac2b47db9c99693c8743b"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#autocompleteRemoteLease.requestWithID",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "autocompleteRemoteLease.requestWithID",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(ctx context.Context, requestID string, method string, args autocompleteInvocation, result any) error"
+      },
+      "shapeHash": "sha256:4e0a9b98a8a7adae121f1eb29db68baa5f5ba282ad9fe4f14e36820badc1cb4c"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#autocompleteRequest",
@@ -153124,6 +153179,17 @@
         "type": "func(changed func(github.com/MichaelKinsy/PiG/tui.AutocompleteProvider))"
       },
       "shapeHash": "sha256:9ce6f842240578de52117de0f2b598271e6753b539255856df4601562ce5984f"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#viewEditorComponent.SetAutocompleteInputHold",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "viewEditorComponent.SetAutocompleteInputHold",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(hold func(context.Context) (context.Context, func()))"
+      },
+      "shapeHash": "sha256:306b46c9b4dacaeda507ae5d9786df8ea8e501e8032a161fb314801dccb30d7e"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#viewEditorComponent.SetAutocompleteMaxVisible",
@@ -236407,6 +236473,17 @@
       "shapeHash": "sha256:9ce6f842240578de52117de0f2b598271e6753b539255856df4601562ce5984f"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#CustomEditor.SetAutocompleteInputHold",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "CustomEditor.SetAutocompleteInputHold",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(hold func(context.Context) (context.Context, func()))"
+      },
+      "shapeHash": "sha256:306b46c9b4dacaeda507ae5d9786df8ea8e501e8032a161fb314801dccb30d7e"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#CustomEditor.SetAutocompleteMaxVisible",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
       "name": "CustomEditor.SetAutocompleteMaxVisible",
@@ -246558,6 +246635,17 @@
         "type": "func() map[string]struct{}"
       },
       "shapeHash": "sha256:994c479e95f100279eccb653c095f87d5caf593dece87d69d3492ac09348d743"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.holdAutocompleteInput",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "InteractiveMode.holdAutocompleteInput",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(ctx context.Context) (context.Context, func())"
+      },
+      "shapeHash": "sha256:c50bf0fa2bc1347a459df0a25656225be7a44da58b3714663674d0440156ce59"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.holdProgramStatusForFrontend",
@@ -268987,6 +269075,17 @@
         "type": "func(v *WarningSettings) *WarningSettings"
       },
       "shapeHash": "sha256:88420c450f6439a7f6fa3516c7f7b8b32db4cfc1db480f4a045004408f1e96e2"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#closedChannel",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "closedChannel",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(done \u003c-chan struct{}) bool"
+      },
+      "shapeHash": "sha256:70b59de6b835d9cdc2aaf49d233cfbfbb0363c79cbe16558059a01f2b1c9fc13"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#cmdRunner",
@@ -315189,6 +315288,17 @@
       "shapeHash": "sha256:a4dd400166ee079676020e2e775b00a79d947a1a693505ab7716ac793e6631ee"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#AutocompleteAwaitsIO",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "AutocompleteAwaitsIO",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(ctx context.Context)"
+      },
+      "shapeHash": "sha256:ffa79b2277a97578edb7154cd76c29b32899d1eb9bc77e0c60af10883a735d63"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/tui#AutocompleteItem",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "AutocompleteItem",
@@ -315231,6 +315341,17 @@
         "type": "AutocompleteSuggestions"
       },
       "shapeHash": "sha256:7dc40448f4b11beabd0f2c64a3e3189716489637a6e917f34d7065596377b4c0"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#AutocompleteUnhold",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "AutocompleteUnhold",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(ctx context.Context) func()"
+      },
+      "shapeHash": "sha256:64efb8a422ca0b55cdf40e0940f8a7f3dd0cc823afd53ebbf1d15dce0fbdd87f"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui#AutocompleteWork",
@@ -320236,6 +320357,17 @@
         "type": "func(changed func(AutocompleteProvider))"
       },
       "shapeHash": "sha256:a20fc17009ce1050d6f36856493bd289319101bffff5abed555e77d086dea2a0"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#Editor.SetAutocompleteInputHold",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "Editor.SetAutocompleteInputHold",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(hold func(context.Context) (context.Context, func()))"
+      },
+      "shapeHash": "sha256:306b46c9b4dacaeda507ae5d9786df8ea8e501e8032a161fb314801dccb30d7e"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui#Editor.SetAutocompleteMaxVisible",
@@ -332237,6 +332369,17 @@
         "type": "RemoteSuggestionQuery"
       },
       "shapeHash": "sha256:28f62d891f4757d945a947334696e2dec3ea33b75644042e14bb015e49971653"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#RemoteSuggestionQuery.AwaitsIO",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "RemoteSuggestionQuery.AwaitsIO",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() bool"
+      },
+      "shapeHash": "sha256:f632619397f10a7f0e472ad47d2824ec7e080d15ac9eb0994e24800757b3fb96"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui#RemoteSuggestionQuery.RunResult",
@@ -352567,6 +352710,17 @@
       "shapeHash": "sha256:86e3c1d6bbd68b462dd8ef7e402c4da8fadf5f9b255a535b5608e28489047a25"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#WithAutocompleteUnhold",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "WithAutocompleteUnhold",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(ctx context.Context, unhold func()) context.Context"
+      },
+      "shapeHash": "sha256:4c8e290f654080f6cce9eaf7feab0ec1a0ec5b0f80bda0930c6e9ebc45bb48d8"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/tui#WithEditorTheme",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "WithEditorTheme",
@@ -353887,6 +354041,17 @@
       "shapeHash": "sha256:e69a271a9652a452e2f19c39b81382a706701e2e3819262dc10ffbd5342afde8"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#autocompleteUnholdKey",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "autocompleteUnholdKey",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "autocompleteUnholdKey"
+      },
+      "shapeHash": "sha256:69c000c1247a1df47388828438397215ed61a9268694dc8b7d6dae4ecbaddaab"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/tui#averageLightness",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "averageLightness",
@@ -354842,6 +355007,17 @@
         "type": "func(tj *ThemeJSON) *ThemeJSON"
       },
       "shapeHash": "sha256:b40117cace81216bebdc3c1acd0262f1250c124bf95ae4278adabe0ce9bbf8f2"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#closedSignal",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "closedSignal",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(done \u003c-chan struct{}) bool"
+      },
+      "shapeHash": "sha256:70b59de6b835d9cdc2aaf49d233cfbfbb0363c79cbe16558059a01f2b1c9fc13"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui#codeBlockLines",

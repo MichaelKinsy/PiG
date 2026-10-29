@@ -10,8 +10,9 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
 )
 
-// nativeAutocompleteRequest is a request a keystroke of the terminal read in progress made of the local provider. Pi's requestAutocomplete only schedules startAutocompleteRequest (editor.ts:2286-2338) and the provider runs in the Promise jobs that follow the read, so a later keystroke of the same read supersedes the request before the provider sees it.
+// nativeAutocompleteRequest is a request a keystroke of the terminal read in progress made, of the local provider or, when provider is set, of the extension provider chain. Pi's requestAutocomplete only schedules startAutocompleteRequest (editor.ts:2286-2338) and the provider runs in the Promise jobs that follow the read, so a later keystroke of the same read supersedes the request before the provider sees it.
 type nativeAutocompleteRequest struct {
+	provider        *AsyncAutocompleteProvider
 	force, explicit bool
 	// request, cursor and lines are the editor's state when the key asked; a request whose text moved on is dropped.
 	request uint64
@@ -44,17 +45,27 @@ func (e *Editor) requestNativeAutocomplete(force, explicit bool) {
 // menu it opens is already there when the next terminal read arrives (tui.ts handleTerminalInput handles one StdinBuffer
 // sequence per call; the keys of one read all see the menu the previous read left). The owner calls FlushAutocomplete once
 // after each read, never between its sequences. An awaited argument completer or an fd search still runs on the worker and
-// publishes when it settles, as Pi's does once its child process or Promise resolves.
+// publishes when it settles, as Pi's does once its child process or Promise resolves. The extension provider chain starts
+// here too, on its worker, and holds the host's next read until it settles or announces that it awaits I/O.
 func (e *Editor) FlushAutocomplete() {
 	pending := e.nativeAutocomplete
 	if pending == nil {
 		return
 	}
 	e.nativeAutocomplete = nil
-	if e.forwards() || e.autocomplete == nil || pending.request != e.autocompleteRequestID || e.cursor != pending.cursor || !slices.Equal(e.lines, pending.lines) {
+	if e.forwards() || pending.request != e.autocompleteRequestID || e.cursor != pending.cursor || !slices.Equal(e.lines, pending.lines) {
 		return
 	}
 	if e.autocompleteLifetime != nil && e.autocompleteLifetime.Err() != nil {
+		return
+	}
+	if pending.provider != nil {
+		if e.asyncAutocomplete == pending.provider {
+			e.requestAutocompleteProvider(pending.provider, pending.force, pending.explicit)
+		}
+		return
+	}
+	if e.autocomplete == nil {
 		return
 	}
 	lines, row, col := e.autocompleteView()
@@ -76,17 +87,7 @@ func (e *Editor) FlushAutocomplete() {
 }
 
 // autocompleteWorkerIdle reports whether the ordered worker has no earlier request left to join.
-func (e *Editor) autocompleteWorkerIdle() bool {
-	if e.autocompleteTaskDone == nil {
-		return true
-	}
-	select {
-	case <-e.autocompleteTaskDone:
-		return true
-	default:
-		return false
-	}
-}
+func (e *Editor) autocompleteWorkerIdle() bool { return closedSignal(e.autocompleteTaskDone) }
 
 func (e *Editor) nativeTriggerCharacters() []string {
 	triggers := make([]string, len(e.autocompleteTriggerCharacters))
