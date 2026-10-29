@@ -15,19 +15,21 @@ import (
 )
 
 type execScenario struct {
-	Command string   `json:"command"`
-	Args    []string `json:"args"`
-	CWD     string   `json:"cwd"`
-	Timeout *float64 `json:"timeout,omitempty"`
-	Aborted bool     `json:"aborted,omitempty"`
+	Command   string   `json:"command"`
+	Args      []string `json:"args"`
+	CWD       string   `json:"cwd"`
+	Timeout   *float64 `json:"timeout,omitempty"`
+	MaxBuffer *float64 `json:"maxBuffer,omitempty"`
+	Aborted   bool     `json:"aborted,omitempty"`
 }
 
 type execOutcome struct {
-	Stdout string `json:"stdout,omitempty"`
-	Stderr string `json:"stderr,omitempty"`
-	Code   int    `json:"code"`
-	Killed bool   `json:"killed"`
-	Thrown string `json:"thrown,omitempty"`
+	Stdout    string `json:"stdout,omitempty"`
+	Stderr    string `json:"stderr,omitempty"`
+	Code      int    `json:"code"`
+	Killed    bool   `json:"killed"`
+	Truncated bool   `json:"truncated"`
+	Thrown    string `json:"thrown,omitempty"`
 }
 
 func execScenarios(dir string) []execScenario {
@@ -63,6 +65,22 @@ func execScenarios(dir string) []execScenario {
 		{Command: dir, CWD: dir},
 		{Command: "sh", Args: []string{"-c", "exit 7"}, CWD: dir},
 	}...)
+	// maxBuffer: caps below, at and above the output, caps that split a character (e2 82 ac, f0 9f 99 82), a flood that only the cap ends, a zero cap, and values execCommand rejects.
+	for _, script := range []string{"printf 'a€🙂'", "printf 'a€🙂' >&2", "printf 'ab' ; printf 'cd' >&2", "printf '\\342'; printf '\\360' >&2", "yes", "yes >&2", "yes; echo done", "printf x"} {
+		limits := []float64{0, 1, 2, 3, 4, 5, 8, 9, 1000, 536870888}
+		if strings.HasPrefix(script, "yes") {
+			// The cap alone ends an endless writer.
+			limits = limits[:len(limits)-1]
+		}
+		for _, limit := range limits {
+			l := limit
+			scenarios = append(scenarios, execScenario{Command: "sh", Args: sh(script), CWD: dir, MaxBuffer: &l})
+		}
+	}
+	for _, limit := range []float64{-1, 0.5, 536870889, 1e300} {
+		l := limit
+		scenarios = append(scenarios, execScenario{Command: "pi-command-that-does-not-exist-11360", CWD: dir, MaxBuffer: &l})
+	}
 	exits := []int{0, 1, 2, 42, 127, 128, 130, 255}
 	for range 60 {
 		script := "echo " + strings.Repeat("x", rng.IntN(50)) + "; echo e >&2; exit " + []string{"0", "1", "2", "42", "127", "130", "255"}[rng.IntN(len(exits)-1)]
@@ -127,12 +145,13 @@ func TestExecCommandMatchesPi(t *testing.T) {
 		if scenario.Timeout != nil {
 			options.Timeout = *scenario.Timeout
 		}
+		options.MaxBuffer = scenario.MaxBuffer
 		result, err := ExecCommand(ctx, scenario.CWD, scenario.Command, scenario.Args, options)
 		var got execOutcome
 		if err != nil {
 			got.Thrown = err.Error()
 		} else {
-			got = execOutcome{Stdout: result.Stdout, Stderr: result.Stderr, Code: result.Code, Killed: result.Killed}
+			got = execOutcome{Stdout: result.Stdout, Stderr: result.Stderr, Code: result.Code, Killed: result.Killed, Truncated: result.Truncated}
 		}
 		raw, _ := json.Marshal(got)
 		var normalized execOutcome

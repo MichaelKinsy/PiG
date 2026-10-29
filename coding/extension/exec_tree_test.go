@@ -308,43 +308,64 @@ func TestExecCommandTermHandlerRuns(t *testing.T) {
 	assertAlive(t, conn)
 }
 
-// Pi sends SIGTERM once. Node sets proc.killed when the signal is delivered, so
-// the SIGKILL that its timer sends `if (!proc.killed)` never follows: a child
-// that ignores SIGTERM keeps the call waiting. Windows has no signals.
-func TestExecCommandDoesNotEscalateAfterSIGTERM(t *testing.T) {
+// core/exec.ts killProcess sends SIGTERM and, forceKillDelay later, SIGKILL if the child has not exited (c466a359: it checks exitCode and signalCode, because
+// proc.killed only says that a signal was sent). A child that ignores SIGTERM therefore keeps the call waiting for five seconds and is then ended. Windows has
+// no signals: the kill ends the child at once.
+func TestExecCommandForceKillsAChildThatIgnoresSIGTERMAfterFiveSeconds(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("Node's kill ends a Windows child without a handler")
 	}
-	f := newTreeFixture(t)
-	command, args := helper(t, "stubborn", f.listener.Addr().String())
-	ctx, cancel := context.WithCancel(t.Context())
-	defer cancel()
-	done := make(chan execOutcome, 1)
-	go func() {
-		result, err := extension.ExecCommand(ctx, t.TempDir(), command, args, nil)
-		done <- execOutcome{result, err}
-	}()
-	conn := f.accept(t)
-	cancel()
-	// The child reports the delivery of SIGTERM; a SIGKILL ends it instead.
-	reader := bufio.NewReader(conn)
-	if line, err := reader.ReadString('\n'); err != nil || line != "term\n" {
-		t.Fatalf("the child did not report SIGTERM: %q, %v", line, err)
-	}
-	select {
-	case outcome := <-done:
-		t.Fatalf("ExecCommand returned while the child ignores SIGTERM: %+v", outcome)
-	default:
-	}
-	if _, err := conn.Write([]byte("exit\n")); err != nil {
-		t.Fatal(err)
-	}
-	outcome := <-done
-	if outcome.err != nil {
-		t.Fatal(outcome.err)
-	}
-	if want := (extension.ExecResult{Code: 7, Killed: true}); outcome.result != want {
-		t.Fatalf("result = %+v, want %+v", outcome.result, want)
+	for _, how := range []string{"context", "signal", "timeout"} {
+		t.Run(how, func(t *testing.T) {
+			f := newTreeFixture(t)
+			command, args := helper(t, "stubborn", f.listener.Addr().String())
+			ctx, cancel := context.WithCancel(t.Context())
+			defer cancel()
+			opts := &extension.ExecOptions{}
+			if how == "signal" {
+				signal, abort := context.WithCancel(t.Context())
+				defer abort()
+				opts.Signal = signal
+				cancel = abort
+			}
+			if how == "timeout" {
+				opts.Timeout = 100
+			}
+			done := make(chan execOutcome, 1)
+			go func() {
+				result, err := extension.ExecCommand(ctx, t.TempDir(), command, args, opts)
+				done <- execOutcome{result, err}
+			}()
+			conn := f.accept(t)
+			var killedAt time.Time
+			if how == "timeout" {
+				killedAt = time.Now().Add(100 * time.Millisecond)
+			} else {
+				killedAt = time.Now()
+				cancel()
+			}
+			// The child reports the delivery of SIGTERM, then keeps running until SIGKILL ends it.
+			reader := bufio.NewReader(conn)
+			if line, err := reader.ReadString('\n'); err != nil || line != "term\n" {
+				t.Fatalf("the child did not report SIGTERM: %q, %v", line, err)
+			}
+			select {
+			case outcome := <-done:
+				t.Fatalf("ExecCommand returned while the child ignores SIGTERM and the force kill is not due: %+v", outcome)
+			case <-time.After(500 * time.Millisecond):
+			}
+			outcome := <-done
+			// A lower bound only: a loaded host can make the call take longer, never shorter.
+			if elapsed := time.Since(killedAt); elapsed < extension.ExecForceKillDelay-100*time.Millisecond {
+				t.Fatalf("ExecCommand returned %v after the kill, before the %v force-kill delay", elapsed, extension.ExecForceKillDelay)
+			}
+			if outcome.err != nil {
+				t.Fatal(outcome.err)
+			}
+			if want := (extension.ExecResult{Killed: true}); outcome.result != want {
+				t.Fatalf("result = %+v, want %+v", outcome.result, want)
+			}
+		})
 	}
 }
 
