@@ -1,6 +1,6 @@
 ### Upgrading
 
-- Go API `coding/extension/host/runtimecell`: a failed Go build is classified as SDK drift (the "written for an older SDK" message and `BuildFailure.Drift`) through `runtimecell.SetDriftClassifier`, which the `pig` command installs. `BuildFailure.Drift` is a list of `runtimecell.Drift`, with the fields and JSON of `upgrade.Drift`. A program that embeds the extension host without the `pig` command and starts Go extensions reports a failed build with the compiler's own message, as it does for an error that is not an SDK change; one that wants the drift calls `SetDriftClassifier` from an init function.
+- **Breaking (Go API):** `coding/extension/host/runtimecell`: a failed Go build is classified as SDK drift (the "written for an older SDK" message and `BuildFailure.Drift`) through `runtimecell.SetDriftClassifier`, which the `pig` command installs. `BuildFailure.Drift` is a list of `runtimecell.Drift`, with the fields and JSON of `upgrade.Drift`; it was a list of `upgrade.Drift`, so code that names the element type must change it. A program that embeds the extension host without the `pig` command and starts Go extensions reports a failed build with the compiler's own message, as it does for an error that is not an SDK change; one that wants the drift calls `SetDriftClassifier` from an init function.
 
 ### Changed
 
