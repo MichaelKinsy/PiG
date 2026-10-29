@@ -135,7 +135,7 @@ func (m *InteractiveMode) showLoadedResources(force, showDiagnosticsWhenQuiet bo
 				m.loadedResourcesContainer.Add(tui.NewSpacer(1))
 			}
 		}
-		addDiagnostics("Skill conflicts", m.opts.SkillDiagnostics)
+		addDiagnostics("Skill warnings", m.opts.SkillDiagnostics)
 		addDiagnostics("Prompt conflicts", m.promptDiagnostics)
 		addDiagnostics("Extension issues", m.extensionDiagnostics())
 		addDiagnostics("Theme conflicts", m.themeDiagnostics)
