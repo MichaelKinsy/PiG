@@ -70,7 +70,7 @@ func StartTerminal(o TermOpts) (*Terminal, error) {
 		return nil, err
 	}
 	conf := filepath.Join(t.root, "tmux.conf")
-	confText := "set -g remain-on-exit on\nset -g window-size manual\nset -g history-limit 200000\nset -g extended-keys on\n"
+	confText := "set -g remain-on-exit on\nset -g history-limit 200000\nset -g extended-keys on\n"
 	if err := os.WriteFile(conf, []byte(confText), 0o600); err != nil {
 		return nil, err
 	}
@@ -95,6 +95,11 @@ func StartTerminal(o TermOpts) (*Terminal, error) {
 	out, err := exec.Command("tmux", append(append([]string(nil), base...), "new-session", "-d", "-s", t.session, "-x", strconv.Itoa(o.Width), "-y", strconv.Itoa(o.Height), "sh", launcher)...).CombinedOutput()
 	if err != nil {
 		return nil, fmt.Errorf("tmux new-session: %w: %s", err, out)
+	}
+	// window-size manual keeps the size new-session gave the window when the control client attaches. It is set on the running server: tmux 3.3 to 3.6a exit on it in a config file, before the first session exists, while 3.2 to 3.8 accept it afterwards. tmux 3.2a then recomputes the window at its 80x24 default, so the size is set again.
+	size := []string{"set-option", "-g", "window-size", "manual", ";", "resize-window", "-t", t.session, "-x", strconv.Itoa(o.Width), "-y", strconv.Itoa(o.Height)}
+	if out, err := exec.Command("tmux", append(append([]string(nil), base...), size...)...).CombinedOutput(); err != nil {
+		return nil, fmt.Errorf("tmux window-size manual: %w: %s", err, out)
 	}
 	t.ctl = exec.Command("tmux", append(append([]string(nil), base...), "-C", "attach", "-t", t.session)...)
 	t.stdin, err = t.ctl.StdinPipe()
