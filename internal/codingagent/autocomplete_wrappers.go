@@ -6,7 +6,6 @@ import (
 	"slices"
 	"strings"
 	"sync"
-	"time"
 	"unicode/utf8"
 
 	"github.com/MichaelKinsy/PiG/coding/extension"
