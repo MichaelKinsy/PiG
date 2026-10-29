@@ -92,10 +92,12 @@ func StartTerminal(o TermOpts) (*Terminal, error) {
 		return nil, err
 	}
 	base := []string{"-L", t.sock, "-f", conf}
+	//nolint:gosec // G204 (class a): program is literal tmux; new-session with fixed flags, a generated session name, and the launcher script path in t.root.
 	out, err := exec.Command("tmux", append(append([]string(nil), base...), "new-session", "-d", "-s", t.session, "-x", strconv.Itoa(o.Width), "-y", strconv.Itoa(o.Height), "sh", launcher)...).CombinedOutput()
 	if err != nil {
 		return nil, fmt.Errorf("tmux new-session: %w: %s", err, out)
 	}
+	//nolint:gosec // G204 (class a): program is literal tmux; control-mode attach to the generated session name.
 	t.ctl = exec.Command("tmux", append(append([]string(nil), base...), "-C", "attach", "-t", t.session)...)
 	t.stdin, err = t.ctl.StdinPipe()
 	if err != nil {
@@ -112,6 +114,7 @@ func StartTerminal(o TermOpts) (*Terminal, error) {
 	// The first %begin/%end pair answers the attach itself.
 	go func() { // exit watcher: blocks on tmux wait-for, an event, not a poll.
 		defer close(t.waitDone)
+		//nolint:gosec // G204 (class a): program is literal tmux; wait-for exited on a test-generated socket (-L).
 		_ = exec.Command("tmux", "-L", t.sock, "wait-for", "exited").Run()
 		close(t.exited)
 		t.bump()
@@ -342,6 +345,7 @@ func (t *Terminal) Close() {
 			_ = signalPID(pid, 9)
 		}
 	}
+	//nolint:gosec // G204 (class a): program is literal tmux; kill-session on the harness-generated socket and session.
 	_ = exec.Command("tmux", "-L", t.sock, "kill-session", "-t", t.session).Run()
 	_ = t.stdin.Close()
 	done := make(chan struct{})
@@ -357,6 +361,7 @@ func (t *Terminal) Close() {
 	case <-t.exited:
 	default:
 		// release the watcher blocked in wait-for
+		//nolint:gosec // G204 (class a): program is literal tmux; wait-for -S exited on the generated socket.
 		_ = exec.Command("tmux", "-L", t.sock, "wait-for", "-S", "exited").Run()
 	}
 }

@@ -34,6 +34,7 @@ func probeExecve(path, cwd string) (syscall.Errno, bool) {
 	// The tracer must be the thread that started the child.
 	runtime.LockOSThread()
 	defer runtime.UnlockOSThread()
+	//nolint:gosec // G204 (class b): path is the program the caller is about to spawn (the same value), run once under ptrace to read the execve errno; argv is only that path.
 	pid, err := syscall.ForkExec(path, []string{path}, &syscall.ProcAttr{
 		Dir: cwd,
 		Env: []string{},

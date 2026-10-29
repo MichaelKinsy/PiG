@@ -911,6 +911,7 @@ func browserCommand(target string) *exec.Cmd {
 		cmd = "xdg-open"
 		args = []string{target}
 	}
+	//nolint:gosec // G204 (class a): program is the literal open, rundll32 or xdg-open by OS, with no shell; the single argument is the sign-in URL of the provider's login flow, as Pi's openBrowser passes it.
 	command := exec.Command(cmd, args...)
 	// Upstream's spawn finds the launcher with libuv's search on Windows.
 	nodespawn.SetProgram(command)

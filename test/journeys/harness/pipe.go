@@ -38,6 +38,7 @@ type PipeDriver struct {
 
 // StartPipe launches Argv with piped standard streams.
 func StartPipe(o PipeOpts) (*PipeDriver, error) {
+	//nolint:gosec // G204 (class b): argv[0] is Run.bin, which is the harness's PigBin or PiBin set by the test from the BuildPig output or the Pi checkout; the rest are scenario args.
 	cmd := exec.Command(o.Argv[0], o.Argv[1:]...)
 	cmd.Dir = o.Dir
 	cmd.Env = o.Env

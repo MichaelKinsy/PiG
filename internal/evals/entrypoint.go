@@ -121,6 +121,7 @@ func assertRootOnly(path string) error {
 
 // assertSandboxCannotRead runs `test -r path` as the sandbox identity; success means the model-facing user can read it.
 func assertSandboxCannotRead(ctx context.Context, path string, uid, gid int) error {
+	//nolint:gosec // G204 (class a): program is literal test; args are -r and config.Runner (the eval runner path from the entrypoint's own config) as one operand, run as the sandbox uid.
 	probe := exec.CommandContext(ctx, "test", "-r", path)
 	probe.SysProcAttr = &syscall.SysProcAttr{Credential: &syscall.Credential{Uid: uint32(uid), Gid: uint32(gid), Groups: []uint32{}}}
 	if probe.Run() == nil {

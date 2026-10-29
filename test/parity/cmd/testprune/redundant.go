@@ -27,6 +27,7 @@ type testBlocks struct {
 
 func listTests(c *coverRun) ([]string, error) {
 	dir := filepath.Join(c.root, strings.TrimPrefix(c.pkg, "./"))
+	//nolint:gosec // G204 (class b): runs c.bin, the test binary built by newCoverRun; args are the literal -test.list and a regex.
 	cmd := exec.Command(c.bin, "-test.list", "^(Test|Fuzz)")
 	cmd.Dir = dir
 	out, err := cmd.Output()
