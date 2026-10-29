@@ -220,6 +220,10 @@ func (b *webpCorpusBuilder) riffAndLossy() {
 		g := randomWebPLossy(rng, size[0], size[1], uint32(6100+size[0]*3+size[1]))
 		b.add(fmt.Sprintf("vp8-dims-%dx%d", size[0], size[1]), webpLossyFile(g))
 	}
+	// a frame of 16383 by 16383 pixels has no data but is far over the memory limit of RGB
+	g = randomWebPLossy(rng, 16383, 16383, 6150)
+	g.headerExtra, g.partitionBytes = 0, 0
+	b.add("vp8-over-limit-16383x16383", webpLossyFile(g))
 	for i := range 6 {
 		g := randomWebPLossy(rng, 32, 32, uint32(6200+i))
 		g.colorSpace = i & 1

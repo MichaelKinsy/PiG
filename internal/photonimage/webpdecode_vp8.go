@@ -640,6 +640,13 @@ func (d *vp8Decoder) readFrameHeader() error {
 	d.frame.width = w & 0x3FFF
 	d.frame.height = h & 0x3FFF
 
+	// Photon decodes the frame and then fails the memory limit on its RGB (image::Limits::default().max_alloc): a frame of more than 2^29
+	// bytes of RGB never ends in an image, whatever file it is in (the canvas of an extended image has as many pixels, or the image has
+	// alpha and 4 bytes a pixel).
+	if uint64(d.frame.width)*uint64(d.frame.height)*3 > webpMaxAlloc {
+		return errWebPLimit
+	}
+
 	d.top = vp8InitTopMacroblocks(int(d.frame.width))
 	// Almost always the first macro block, except when non exists (i.e. width == 0)
 	d.left = vp8MacroBlock{}
