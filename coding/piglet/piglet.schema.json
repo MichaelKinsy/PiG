@@ -653,7 +653,7 @@
             "fused"
           ]
         },
-        "allowOverlays": {
+        "closed": {
           "type": "boolean"
         }
       }

@@ -1,6 +1,7 @@
 package piglet
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -9,8 +10,8 @@ import (
 	"github.com/MichaelKinsy/PiG/coding/piglet/signature"
 )
 
-// overlayBaseYAML is what a Piglet Binary that accepts overlays bakes: no origins, inlined prompt and skill, the strip
-// list, and the one build setting Bake keeps.
+// overlayBaseYAML is what a Piglet Binary that accepts overlays bakes: no origins, inlined prompt and skill and the strip
+// list.
 const overlayBaseYAML = `name: pig-base
 description: the Binary's own
 tools: [read, bash, grep]
@@ -25,8 +26,6 @@ skills:
 strip:
   tools: [edit]
   extensions: [mcp]
-build:
-  allowOverlays: true
 `
 
 func overlayBase(t *testing.T) *OverlayBase {
@@ -388,7 +387,7 @@ func TestCheckOverlayStripDispositions(t *testing.T) {
 
 func TestOverlayOnABaseWithoutSlotsOrPromptStaysEmptyThere(t *testing.T) {
 	dir := t.TempDir()
-	base, err := ParseBytes([]byte("name: bare\nstrip:\n  tools: [edit]\nbuild:\n  allowOverlays: true\n"))
+	base, err := ParseBytes([]byte("name: bare\nstrip:\n  tools: [edit]\n"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -402,20 +401,23 @@ func TestOverlayOnABaseWithoutSlotsOrPromptStaysEmptyThere(t *testing.T) {
 	}
 }
 
-func TestBuildAllowOverlaysIsStrictDefaultOffAndNotInherited(t *testing.T) {
+func TestBuildClosedIsStrictDefaultOffAndNotInherited(t *testing.T) {
 	parsed, err := ParseBytes([]byte("name: p\n"))
 	if err != nil || parsed.Build != nil {
 		t.Fatalf("default = %#v, %v", parsed.Build, err)
 	}
-	parsed, err = ParseBytes([]byte("name: p\nbuild:\n  allowOverlays: true\n"))
-	if err != nil || parsed.Build == nil || !parsed.Build.AllowOverlays {
-		t.Fatalf("allowOverlays: true = %#v, %v", parsed.Build, err)
+	parsed, err = ParseBytes([]byte("name: p\nbuild:\n  closed: true\n"))
+	if err != nil || parsed.Build == nil || !parsed.Build.Closed {
+		t.Fatalf("closed: true = %#v, %v", parsed.Build, err)
 	}
-	if _, err := ParseBytes([]byte("name: p\nbuild:\n  allowOverlays: yes please\n")); err == nil {
-		t.Fatal("a non-boolean allowOverlays parsed")
+	if _, err := ParseBytes([]byte("name: p\nbuild:\n  closed: yes please\n")); err == nil {
+		t.Fatal("a non-boolean closed parsed")
+	}
+	if _, err := ParseBytes([]byte("name: p\nbuild:\n  allowOverlays: true\n")); err == nil {
+		t.Fatal("the removed allowOverlays field parsed")
 	}
 	dir := t.TempDir()
-	writePigletSource(t, dir, "base", "name: base\nbuild:\n  allowOverlays: true\n  outputName: pig-base\n")
+	writePigletSource(t, dir, "base", "name: base\nbuild:\n  closed: true\n  outputName: pig-base\n")
 	child := writePigletSource(t, dir, "child", "name: child\nextends:\n  source: local:./base.yaml\n")
 	resolved, err := ResolveEffective(child)
 	if err != nil {
@@ -430,14 +432,14 @@ func TestBuildAllowOverlaysIsStrictDefaultOffAndNotInherited(t *testing.T) {
 	}
 }
 
-func TestBakeKeepsOnlyAllowOverlaysFromBuild(t *testing.T) {
+func TestBakeKeepsOnlyClosedFromBuild(t *testing.T) {
 	dir := t.TempDir()
 	for _, tc := range []struct {
 		build string
 		want  string
 	}{
-		{"build:\n  allowOverlays: true\n  outputName: pig-x\n  targets: [linux/amd64]\n", "build:\n    allowOverlays: true\n"},
-		{"build:\n  allowOverlays: false\n  outputName: pig-x\n", ""},
+		{"build:\n  closed: true\n  outputName: pig-x\n  targets: [linux/amd64]\n", "build:\n    closed: true\n"},
+		{"build:\n  closed: false\n  outputName: pig-x\n", ""},
 		{"build:\n  outputName: pig-x\n", ""},
 		{"", ""},
 	} {
@@ -451,7 +453,7 @@ func TestBakeKeepsOnlyAllowOverlaysFromBuild(t *testing.T) {
 		}
 		got := string(baked)
 		if tc.want == "" {
-			if strings.Contains(got, "build:") || strings.Contains(got, "allowOverlays") {
+			if strings.Contains(got, "build:") || strings.Contains(got, "closed") {
 				t.Fatalf("Bake wrote build for %q:\n%s", tc.build, got)
 			}
 			continue
@@ -460,33 +462,57 @@ func TestBakeKeepsOnlyAllowOverlaysFromBuild(t *testing.T) {
 			t.Fatalf("Bake of %q:\n%s", tc.build, got)
 		}
 		reparsed, err := ParseBytes(baked)
-		if err != nil || reparsed.Build == nil || !reparsed.Build.AllowOverlays {
+		if err != nil || reparsed.Build == nil || !reparsed.Build.Closed {
 			t.Fatalf("baked Piglet does not parse back with the setting: %#v %v", reparsed, err)
 		}
 	}
 }
 
-func TestShowPrintsAllowOverlays(t *testing.T) {
+func TestShowPrintsClosed(t *testing.T) {
 	t.Setenv("PIG_HOME", t.TempDir())
 	t.Chdir(t.TempDir())
 	dir := t.TempDir()
-	if err := os.WriteFile(filepath.Join(dir, "x.yaml"), []byte("name: x\nbuild:\n  allowOverlays: true\n"), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, "x.yaml"), []byte("name: x\nbuild:\n  closed: true\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	var stdout, stderr strings.Builder
-	if code := cmdShow([]string{filepath.Join(dir, "x.yaml")}, &stdout, &stderr); code != 0 || !strings.Contains(stdout.String(), "Build defaults:\n  allowOverlays: true") {
+	if code := cmdShow([]string{filepath.Join(dir, "x.yaml")}, &stdout, &stderr); code != 0 || !strings.Contains(stdout.String(), "Build defaults:\n  closed: true") {
 		t.Fatalf("show: exit %d\n%s%s", code, stdout.String(), stderr.String())
 	}
 }
 
-// A Binary's signed manifest names the digest of its baked Piglet, which carries build.allowOverlays. `pig piglet verify
+// `pig piglet show` run by a Piglet Binary names whether that Binary is closed.
+func TestShowNamesWhetherTheRunningBinaryIsClosed(t *testing.T) {
+	t.Setenv("PIG_HOME", t.TempDir())
+	t.Chdir(t.TempDir())
+	for _, tc := range []struct {
+		closed bool
+		want   string
+	}{
+		{true, "Binary: closed (build.closed: true"},
+		{false, "Binary: open (it accepts overlay Piglets"},
+	} {
+		SetRunningBinary(func() (string, bool, bool) { return "pig-tern", tc.closed, true })
+		t.Cleanup(func() { SetRunningBinary(nil) })
+		var stdout, stderr strings.Builder
+		if code := cmdShow([]string{"pig-tern"}, &stdout, &stderr); code != 0 || !strings.Contains(stdout.String(), tc.want) {
+			t.Fatalf("closed=%t: exit %d, want %q\n%s%s", tc.closed, code, tc.want, stdout.String(), stderr.String())
+		}
+		stdout.Reset()
+		if code := cmdShow([]string{"pig-tern", "--json"}, &stdout, &stderr); code != 0 || !strings.Contains(stdout.String(), fmt.Sprintf("\"closed\": %t", tc.closed)) {
+			t.Fatalf("closed=%t json: exit %d\n%s%s", tc.closed, code, stdout.String(), stderr.String())
+		}
+	}
+}
+
+// A Binary's signed manifest names the digest of its baked Piglet, which carries build.closed. `pig piglet verify
 // --source` recomputes that digest from the source as the build does, so a source that sets the setting still matches and
 // one that changed it no longer does.
-func TestProvenanceCoversAllowOverlays(t *testing.T) {
+func TestProvenanceCoversClosed(t *testing.T) {
 	t.Setenv("PIG_HOME", t.TempDir())
 	t.Chdir(t.TempDir())
 	source := filepath.Join(t.TempDir(), "overlayable.yaml")
-	if err := os.WriteFile(source, []byte("name: overlayable\nmodel:\n  provider: test-faux\n  name: faux-1\nbuild:\n  allowOverlays: true\n  outputName: pig-overlayable\n"), 0o644); err != nil {
+	if err := os.WriteFile(source, []byte("name: overlayable\nmodel:\n  provider: test-faux\n  name: faux-1\nbuild:\n  closed: true\n  outputName: pig-overlayable\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	// The build reattaches the authored build block to the effective Piglet and bakes it.
@@ -503,7 +529,7 @@ func TestProvenanceCoversAllowOverlays(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(string(baked), "allowOverlays: true") {
+	if !strings.Contains(string(baked), "closed: true") {
 		t.Fatalf("baked Piglet lacks the setting:\n%s", baked)
 	}
 	key := filepath.Join(t.TempDir(), "author.key")
@@ -526,11 +552,11 @@ func TestProvenanceCoversAllowOverlays(t *testing.T) {
 		t.Fatalf("verify --source: code=%d stdout=%q stderr=%q", code, stdout, stderr)
 	}
 	data, _ := os.ReadFile(source)
-	if err := os.WriteFile(source, []byte(strings.Replace(string(data), "allowOverlays: true", "allowOverlays: false", 1)), 0o644); err != nil {
+	if err := os.WriteFile(source, []byte(strings.Replace(string(data), "closed: true", "closed: false", 1)), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	if code, stdout, _ := runSigningCommand(t, "verify", binary, "--source", source); code != 1 || !strings.Contains(stdout, "Piglet digest:") {
-		t.Fatalf("a source that changed allowOverlays must fail the Piglet digest: code=%d stdout=%q", code, stdout)
+		t.Fatalf("a source that changed closed must fail the Piglet digest: code=%d stdout=%q", code, stdout)
 	}
 }
 
