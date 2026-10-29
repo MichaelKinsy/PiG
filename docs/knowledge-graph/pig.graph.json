@@ -20,7 +20,7 @@
     {"id": "builder", "label": "Builder", "kind": "tool", "summary": "Produces Piglet Binaries: native (needs Go and PiG source) or container (needs Docker or Podman).", "where": "pig piglet build", "inspect": "pig setup", "doc": "piglets.md"},
     {"id": "slot", "label": "Slot", "kind": "concept", "summary": "A part of PiG that a Piglet can change: keep PiG's own part, replace it with a fused member (today the frontend), or strip it.", "where": "slots: and strip: in the Piglet file", "inspect": "pig piglet show <name>", "doc": "piglet-strip.md"},
     {"id": "strip", "label": "Strip list", "kind": "composition", "summary": "Disables built-in tools, commands, extensions, APIs, or features by stable ID; tools: is a ceiling, strip removes.", "where": "strip: in the Piglet file", "inspect": "pig piglet schema, pig piglet show <name>", "doc": "piglet-strip.md"},
-    {"id": "overlay", "label": "Overlay Piglet", "kind": "composition", "summary": "A Piglet chosen at launch on a Piglet Binary that sets build.allowOverlays; it can undo runtime strips but not compiled-out ones.", "where": "--piglet, PIG_PIGLET_PATH, PIG_PIGLET_NAME", "inspect": "/piglet", "doc": "piglets.md"},
+    {"id": "overlay", "label": "Overlay Piglet", "kind": "composition", "summary": "A Piglet chosen at launch on a Piglet Binary that is not built with build.closed; it can undo runtime strips but not compiled-out ones.", "where": "--piglet, PIG_PIGLET_PATH, PIG_PIGLET_NAME", "inspect": "/piglet", "doc": "piglets.md"},
     {"id": "divergence", "label": "Divergence", "kind": "record", "summary": "A numbered, approved, user-visible difference from pinned Pi.", "where": "divergences.md in this bundle", "inspect": "pig docs show divergences", "doc": "divergences.md"}
   ],
   "relations": [
@@ -42,7 +42,7 @@
     ["piglet", "declares", "strip", "tools is a ceiling; strip removes built-ins"],
     ["strip", "disables", "slot", "by stable ID, in runtime or binary"],
     ["piglet", "replaces", "slot", "slots.frontend"],
-    ["overlay", "is_a", "piglet", "accepted only by a Binary with build.allowOverlays"],
+    ["overlay", "is_a", "piglet", "refused only by a Binary built with build.closed"],
     ["overlay", "applies_to", "piglet_binary", "at launch"],
     ["divergence", "documents_difference_from", "pi", "numbered D<N>"]
   ]

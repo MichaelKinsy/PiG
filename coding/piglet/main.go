@@ -255,6 +255,9 @@ type pigletShowOutput struct {
 	StripDelta []string `json:"stripDelta,omitempty"`
 	//portlint:allow emptydrop PiG-only format with no Pi counterpart (Pi has no Piglets)
 	MCPScope string `json:"mcpScope,omitempty"`
+	// Closed is set only for the running Piglet Binary: whether it was built with build.closed.
+	//portlint:allow emptydrop PiG-only format with no Pi counterpart (Pi has no Piglets)
+	Closed *bool `json:"closed,omitempty"`
 }
 
 type pigletRecordJSON struct {
@@ -372,8 +375,12 @@ func cmdShow(args []string, stdout, stderr io.Writer) int {
 	}
 	resolved, err := Resolve(nameOrPath)
 	if err != nil {
-		if info != nil && info.Path == "" && len(info.Records) > 0 {
-			return renderBinaryOnlyPiglet(*info, jsonMode, stdout, stderr)
+		closed, running := runningBinaryNamed(nameOrPath)
+		if running && info == nil {
+			info = &PigletInfo{Name: nameOrPath}
+		}
+		if running || (info != nil && info.Path == "" && len(info.Records) > 0) {
+			return renderBinaryOnlyPiglet(*info, binaryClosure(running, closed), jsonMode, stdout, stderr)
 		}
 		_, _ = fmt.Fprintf(stderr, "error: %v\n", err)
 		return 1
@@ -552,8 +559,8 @@ func cmdShow(args []string, stdout, stderr io.Writer) int {
 		if p.Build.OutputName != "" {
 			_, _ = fmt.Fprintf(stdout, "  output: %s\n", p.Build.OutputName)
 		}
-		if p.Build.AllowOverlays {
-			_, _ = fmt.Fprintln(stdout, "  allowOverlays: true")
+		if p.Build.Closed {
+			_, _ = fmt.Fprintln(stdout, "  closed: true")
 		}
 	}
 	if p.Release != nil && p.Release.Version != "" {
@@ -684,12 +691,27 @@ func renderPigletShowJSON(output pigletShowOutput, stdout, stderr io.Writer) int
 	return 0
 }
 
-func renderBinaryOnlyPiglet(info PigletInfo, jsonMode bool, stdout, stderr io.Writer) int {
+// binaryClosure is what `pig piglet show` says about the running Piglet Binary: nil when the Binary is not the Piglet shown.
+func binaryClosure(running, closed bool) *bool {
+	if !running {
+		return nil
+	}
+	return &closed
+}
+
+func renderBinaryOnlyPiglet(info PigletInfo, closed *bool, jsonMode bool, stdout, stderr io.Writer) int {
 	stripDelta := StripDeltaReport(info.Name, nil)
 	if jsonMode {
-		return renderPigletShowJSON(pigletShowOutput{Name: info.Name, Records: recordJSON(info.Records), StripDelta: stripDelta}, stdout, stderr)
+		return renderPigletShowJSON(pigletShowOutput{Name: info.Name, Records: recordJSON(info.Records), StripDelta: stripDelta, Closed: closed}, stdout, stderr)
 	}
 	_, _ = fmt.Fprintf(stdout, "Piglet: %s\nSource: none (Piglet Binary only)\n", info.Name)
+	if closed != nil {
+		if *closed {
+			_, _ = fmt.Fprintln(stdout, "Binary: closed (build.closed: true; it refuses --piglet, --system-prompt and ambient discovery)")
+		} else {
+			_, _ = fmt.Fprintln(stdout, "Binary: open (it accepts overlay Piglets; build.closed: true closes it)")
+		}
+	}
 	if len(stripDelta) > 0 {
 		_, _ = fmt.Fprintf(stdout, "\n%s\n", strings.Join(stripDelta, "\n"))
 	}

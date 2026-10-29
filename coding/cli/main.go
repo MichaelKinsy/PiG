@@ -296,23 +296,23 @@ func runningPigletBinary() pigletBinary {
 }
 
 // pigletBinaryOverlayRefusal returns the refusal for a Piglet requested from a Piglet Binary that does not accept
-// overlays, or "" when the run may go on. A Piglet Binary is bound to one immutable composition unless its Piglet set
-// build.allowOverlays (D202); otherwise running another Piglet is out of scope, so it names the Binary and points at the
-// setting and at raw pig.
+// overlays, or "" when the run may go on. A Piglet Binary is bound to one immutable composition when its Piglet set
+// build.closed (D202); then running another Piglet is out of scope, so it names the Binary and points at the setting and at
+// raw pig.
 func pigletBinaryOverlayRefusal(flags map[string]any, binary pigletBinary) string {
 	if !binary.Is || !pigletWasRequested(flags) || binary.OverlayBase() != nil {
 		return ""
 	}
-	return fmt.Sprintf("pig: this Piglet Binary (%s) runs only its built-in Piglet and does not accept --piglet overlays (nor PIG_PIGLET_PATH or PIG_PIGLET_NAME); build its Piglet with build.allowOverlays: true to accept them, or run the Piglet with stock pig (pig --piglet <name|path>)", binary.Name())
+	return fmt.Sprintf("pig: this Piglet Binary (%s) was built with build.closed: true, so it runs only its built-in Piglet and does not accept --piglet overlays (nor PIG_PIGLET_PATH or PIG_PIGLET_NAME); rebuild its Piglet without build.closed to accept them, or run the Piglet with stock pig (pig --piglet <name|path>)", binary.Name())
 }
 
 // pigletBinarySystemPromptRefusal returns the refusal for --system-prompt on a Piglet Binary, or "" when the run may go on. A Piglet
-// Binary keeps its baseline system prompt unless it accepts overlays (D202), and then takes the flag as stock pig does.
+// Binary built with build.closed (D202) keeps its baseline system prompt; every other Piglet Binary takes the flag as stock pig does.
 func pigletBinarySystemPromptRefusal(baked, acceptsOverlays bool, systemPrompt string) string {
 	if !baked || acceptsOverlays || systemPrompt == "" {
 		return ""
 	}
-	return "pig: a Piglet Binary's baseline system prompt cannot be replaced; use --append-system-prompt for an additive prompt"
+	return "pig: this Piglet Binary was built with build.closed: true, so its baseline system prompt cannot be replaced; use --append-system-prompt for an additive prompt"
 }
 
 // enforcePigletBinaryScope fails closed when a Piglet Binary is asked to run a
@@ -953,8 +953,8 @@ func Main(args []string, options *MainOptions) {
 	exportActivePigletSource(activePiglet, activePigletBaked)
 	// pig additive (D23): an active Piglet adds the Piglets topic to the docs section of the system prompt.
 	prompts.SetPigletDocsTopic(activePiglet != nil)
-	// pig additive (D202): a Piglet Binary that accepts overlays takes --system-prompt as stock pig does, so the flag replaces the
-	// Piglet's own prompt; every other Piglet Binary keeps its baseline.
+	// pig additive (D202): a Piglet Binary that is not built closed takes --system-prompt as stock pig does, so the flag replaces the
+	// Piglet's own prompt; a closed Piglet Binary keeps its baseline.
 	activePigletOpen := activePigletBaked && runningPigletBinary().OverlayBase() != nil
 	if message := pigletBinarySystemPromptRefusal(activePigletBaked, activePigletOpen, flags.SystemPrompt); message != "" {
 		fmt.Fprintln(os.Stderr, message)
@@ -1150,6 +1150,8 @@ func Main(args []string, options *MainOptions) {
 		sessionName = ""
 	}
 	flags.Name = sessionName
+	// pig additive (D211): the active Piglet decides whether an untrusted project loads its context files.
+	flags.ContextFilesTrustedOnly = activePiglet.WithholdsUntrustedContextFiles()
 	timings.Time("createSessionManager")
 	// The builder is Pi's createRuntime closure: every mode builds its first Session
 	// and every replacement Session from the same process-fixed inputs.
@@ -1309,6 +1311,12 @@ func Main(args []string, options *MainOptions) {
 	agentToolNames := build.AgentToolNames
 	allowed, activeBuiltin, excludedTools, skipBuiltinTools := build.Allowed, build.ActiveBuiltin, build.ExcludedTools, build.SkipBuiltinTools
 	projectCtxFiles, resolvedPrompts := build.ContextFiles, build.ResolvedPrompts
+	// pig additive (D211): print, JSON and RPC runs have no transcript to hold the notice, so it goes to stderr.
+	if runMode != appModeInteractive && !loadsProjectContextFiles(flags, projectTrusted) && !flags.NoContextFiles {
+		if withheld := codingagent.WithheldProjectContextFiles(build.CWD, agentDir); len(withheld) > 0 {
+			fmt.Fprintln(os.Stderr, codingagent.ContextFilesWithheldMessage(withheld))
+		}
+	}
 	systemPrompt, systemPromptOptions := build.SystemPrompt, build.SystemPromptOptions
 	// No agent-defined beforeToolCall hooks: agent persona system is
 	// a pig-extension concern, not built into core.
@@ -1520,6 +1528,7 @@ func Main(args []string, options *MainOptions) {
 		SkillPaths:                 skillInputs,
 		NoSkills:                   flags.NoSkills,
 		ContextFiles:               projectCtxFiles,
+		ContextFilesTrustedOnly:    flags.ContextFilesTrustedOnly,
 		SystemPromptSourcePaths:    resolvedPrompts.sourcePaths,
 		SessionHandle:              codingSess,
 		ResumePath:                 displayResumePath,

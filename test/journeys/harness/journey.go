@@ -21,6 +21,8 @@ type Env struct {
 	Bin           map[string]string // executable stubs that lead PATH
 	AgentDirFiles map[string]string // files under the agent directory (prompts, skills, context files)
 	ContextWindow int
+	ReadyMarker   string   // the footer text that marks a live prompt (default "strict", the scripted model's name)
+	Models        []string // further model ids of the scripted provider (models.json lists them after "strict")
 	Width, Height int
 	NoModelArg    bool // launch without --model
 	Pipe          bool // drive the process over standard input and output instead of a terminal (RPC and print modes)

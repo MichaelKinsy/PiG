@@ -37,3 +37,24 @@ func ActiveSourceFromEnv() string {
 	//perf:ok read once per status, diagnose or show command
 	return strings.TrimSpace(os.Getenv(ActiveSourceEnv))
 }
+
+// runningBinary reports the Piglet Binary this process is. The CLI sets it with [SetRunningBinary]; stock pig sets none.
+var runningBinary func() (name string, closed, ok bool)
+
+// SetRunningBinary lets `pig piglet show` name whether the Piglet Binary it runs in is closed (build.closed). The package that owns
+// the baked Piglet cannot be imported from here, so the CLI hands the answer in.
+//
+// pig additive (D202): `pig piglet show` on a Piglet Binary prints whether it is closed.
+func SetRunningBinary(fn func() (name string, closed, ok bool)) { runningBinary = fn }
+
+// runningBinaryNamed reports the open or closed state of the running Piglet Binary when its Piglet is called name.
+func runningBinaryNamed(name string) (closed, ok bool) {
+	if runningBinary == nil {
+		return false, false
+	}
+	binaryName, closed, ok := runningBinary()
+	if !ok || binaryName != name {
+		return false, false
+	}
+	return closed, true
+}

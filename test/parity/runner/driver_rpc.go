@@ -105,6 +105,7 @@ func (rpcModeDriver) Run(ctx context.Context, t *testing.T, bin BinaryRef, sc *S
 	subCtx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 
+	//nolint:gosec // G204 (class c): program is bin.Path, the pig/pi binary under test (env PIG_PARITY_*_BIN or the scenario pig_bin/pi_bin override); args are scenario args plus "--mode rpc".
 	cmd := exec.CommandContext(subCtx, bin.Path, args...)
 	cmd.Env = append(hermeticEnviron(), env...)
 	if cwd != "" {

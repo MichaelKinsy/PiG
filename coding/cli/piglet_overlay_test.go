@@ -22,7 +22,7 @@ func bakedPigletBinary(t *testing.T, name, bakedYAML string) pigletBinary {
 		Is:   true,
 		Name: func() string { return name },
 		OverlayBase: func() *piglet.OverlayBase {
-			if baked.Build == nil || !baked.Build.AllowOverlays {
+			if baked.Build != nil && baked.Build.Closed {
 				return nil
 			}
 			return &piglet.OverlayBase{Piglet: baked, Digest: "sha256:" + strings.Repeat("ab", 32)}
@@ -37,9 +37,9 @@ func clearPigletEnv(t *testing.T) {
 	t.Setenv("PIG_HOME", t.TempDir())
 }
 
-func TestPigletBinaryWithoutAllowOverlaysRefusesEverySelector(t *testing.T) {
+func TestClosedPigletBinaryRefusesEverySelector(t *testing.T) {
 	clearPigletEnv(t)
-	binary := bakedPigletBinary(t, "pig-tern", "name: pig-tern\nstrip:\n  tools: [edit]\n")
+	binary := bakedPigletBinary(t, "pig-tern", "name: pig-tern\nstrip:\n  tools: [edit]\nbuild:\n  closed: true\n")
 	if got := pigletBinaryOverlayRefusal(map[string]any{}, binary); got != "" {
 		t.Fatalf("no selector refused: %q", got)
 	}
@@ -56,7 +56,7 @@ func TestPigletBinaryWithoutAllowOverlaysRefusesEverySelector(t *testing.T) {
 				flags["piglet"] = "extra.yaml"
 			}
 			got := pigletBinaryOverlayRefusal(flags, binary)
-			for _, want := range []string{"Piglet Binary (pig-tern)", "does not accept --piglet overlays", "build.allowOverlays: true", "stock pig"} {
+			for _, want := range []string{"Piglet Binary (pig-tern)", "does not accept --piglet overlays", "build.closed: true", "stock pig"} {
 				if !strings.Contains(got, want) {
 					t.Fatalf("refusal %q lacks %q", got, want)
 				}
@@ -65,9 +65,9 @@ func TestPigletBinaryWithoutAllowOverlaysRefusesEverySelector(t *testing.T) {
 	}
 }
 
-func TestPigletBinaryWithAllowOverlaysAcceptsEverySelector(t *testing.T) {
+func TestDefaultPigletBinaryAcceptsEverySelector(t *testing.T) {
 	clearPigletEnv(t)
-	binary := bakedPigletBinary(t, "pig-tern", "name: pig-tern\nstrip:\n  tools: [edit]\nbuild:\n  allowOverlays: true\n")
+	binary := bakedPigletBinary(t, "pig-tern", "name: pig-tern\nstrip:\n  tools: [edit]\n")
 	for _, flags := range []map[string]any{{"piglet": "extra.yaml"}, {}} {
 		t.Setenv("PIG_PIGLET_NAME", "extra")
 		if got := pigletBinaryOverlayRefusal(flags, binary); got != "" {
@@ -78,7 +78,7 @@ func TestPigletBinaryWithAllowOverlaysAcceptsEverySelector(t *testing.T) {
 
 func TestResolvePigletLaysAnOverlayOnAnAcceptingBinary(t *testing.T) {
 	clearPigletEnv(t)
-	binary := bakedPigletBinary(t, "pig-tern", "name: pig-tern\nextensions:\n  - name: core\nstrip:\n  tools: [edit]\nbuild:\n  allowOverlays: true\n")
+	binary := bakedPigletBinary(t, "pig-tern", "name: pig-tern\nextensions:\n  - name: core\nstrip:\n  tools: [edit]\n")
 	dir := t.TempDir()
 	overlay := filepath.Join(dir, "extra.yaml")
 	if err := os.WriteFile(overlay, []byte("name: extra\nextensions:\n  - name: extra\n    origins: [local:./extra]\nstrip:\n  tools: [grep]\n"), 0o644); err != nil {
@@ -105,7 +105,7 @@ func TestResolvePigletLaysAnOverlayOnAnAcceptingBinary(t *testing.T) {
 
 func TestResolvePigletNeverFallsBackToTheBinaryWhenAnOverlayDoesNotResolve(t *testing.T) {
 	clearPigletEnv(t)
-	binary := bakedPigletBinary(t, "pig-tern", "name: pig-tern\nextensions:\n  - name: core\nbuild:\n  allowOverlays: true\n")
+	binary := bakedPigletBinary(t, "pig-tern", "name: pig-tern\nextensions:\n  - name: core\n")
 	dir := t.TempDir()
 	conflict := filepath.Join(dir, "conflict.yaml")
 	if err := os.WriteFile(conflict, []byte("name: conflict\nextensions:\n  - name: core\n    origins: [local:./other]\n"), 0o644); err != nil {
@@ -123,7 +123,7 @@ func TestResolvePigletNeverFallsBackToTheBinaryWhenAnOverlayDoesNotResolve(t *te
 	}
 }
 
-const overlayBinaryYAML = "name: pig-tern\nsystemPrompt:\n  text: baked prompt\nextensions:\n  - name: core\n  - name: other\nstrip:\n  tools: [edit]\nbuild:\n  allowOverlays: true\n"
+const overlayBinaryYAML = "name: pig-tern\nsystemPrompt:\n  text: baked prompt\nextensions:\n  - name: core\n  - name: other\nstrip:\n  tools: [edit]\n"
 
 func writeOverlay(t *testing.T, body string) string {
 	t.Helper()
@@ -205,9 +205,9 @@ func TestSystemPromptOnAPigletBinary(t *testing.T) {
 		wantRefused, wantInMsg string
 	}{
 		{"stock pig", false, false, "p", "", ""},
-		{"Binary without allowOverlays refuses", true, false, "p", "yes", "--append-system-prompt"},
-		{"Binary without allowOverlays and no flag", true, false, "", "", ""},
-		{"Binary with allowOverlays accepts", true, true, "p", "", ""},
+		{"closed Binary refuses", true, false, "p", "yes", "--append-system-prompt"},
+		{"closed Binary and no flag", true, false, "", "", ""},
+		{"default Binary accepts", true, true, "p", "", ""},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			got := pigletBinarySystemPromptRefusal(tc.baked, tc.overlays, tc.prompt)
@@ -226,12 +226,12 @@ func TestAmbientScopesOfAPigletBinary(t *testing.T) {
 	closed := &cliRuntimeBuilder{activePiglet: p, activePigletBaked: true}
 	ext, skills := closed.ambientScopes(true)
 	if len(*ext) != 0 || len(*skills) != 0 {
-		t.Fatalf("a Binary without allowOverlays discovers %v %v", *ext, *skills)
+		t.Fatalf("a closed Binary discovers %v %v", *ext, *skills)
 	}
 	open := &cliRuntimeBuilder{activePiglet: p, activePigletBaked: true, activePigletOpen: true}
 	ext, skills = open.ambientScopes(true)
 	if len(*ext) != 1 || (*ext)[0] != "user" || len(*skills) != 2 {
-		t.Fatalf("a Binary with allowOverlays discovers %v %v, want its Piglet's discovery", *ext, *skills)
+		t.Fatalf("an open Binary discovers %v %v, want its Piglet's discovery", *ext, *skills)
 	}
 	ext, skills = open.ambientScopes(false)
 	if len(*ext) != 1 || len(*skills) != 1 || (*skills)[0] != "user" {
@@ -241,7 +241,7 @@ func TestAmbientScopesOfAPigletBinary(t *testing.T) {
 
 func TestOverlaySkillsKeepDeclarationOrderAndBakedSkillsKeepTheirLocation(t *testing.T) {
 	clearPigletEnv(t)
-	binary := bakedPigletBinary(t, "pig-tern", "name: pig-tern\nskills:\n  - name: baked\n    description: baked skill\n    content: baked body\nbuild:\n  allowOverlays: true\n")
+	binary := bakedPigletBinary(t, "pig-tern", "name: pig-tern\nskills:\n  - name: baked\n    description: baked skill\n    content: baked body\n")
 	dir := t.TempDir()
 	skillDir := filepath.Join(dir, "skills", "ov-skill")
 	if err := os.MkdirAll(skillDir, 0o755); err != nil {

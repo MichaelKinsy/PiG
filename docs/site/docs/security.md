@@ -100,11 +100,11 @@ A Piglet Binary adds guarantees that stock PiG does not give. The next section l
 
 ## What a Piglet Binary guarantees
 
-The guarantees below hold for a Piglet Binary built with `build.allowOverlays` off. That is the default. A Binary built with `build.allowOverlays: true` accepts an overlay Piglet, and the overlay selects its ambient Resources. Build a controlled deployment with `allowOverlays` off.
+The guarantees below hold for a Piglet Binary built with `build.closed: true`. A Binary is open by default. It behaves as stock PiG started with its Piglet: it accepts an overlay Piglet, `--system-prompt` and ambient Resources that its effective Piglet's `discovery` allows. Organizations opt in to the closed Binary. Build a controlled deployment with `build.closed: true`.
 
 **Fused extensions.** A fused extension is compiled into the executable. The Binary starts it in the PiG process. It does not build, download, or run a subprocess for it. A fused extension that fails to load is reported and is not replaced by a subprocess. At startup the Binary checks that the fused extensions equal the component plan it was built with. It exits when they differ.
 
-**No Piglet or ambient Resource selection at run time.** A Binary refuses `--piglet`, `PIG_PIGLET_PATH`, `PIG_PIGLET_NAME` and `--system-prompt`. It loads no ambient extension or skill, even when its Piglet lists a discovery scope.
+**No Piglet or ambient Resource selection at run time.** A closed Binary refuses `--piglet`, `PIG_PIGLET_PATH`, `PIG_PIGLET_NAME` and `--system-prompt`, and each refusal names `build.closed`. It loads no ambient extension or skill, even when its Piglet lists a discovery scope.
 
 **A fixed set of fused and packed extensions.** At startup the Binary checks that the fused and packed extensions that start have the names its component plan lists, no more and no fewer. This is a check of names. It does not pin `PATH` for tools or runtimes. Startup does not install a Package or download a component.
 
@@ -119,7 +119,7 @@ The guarantees below hold for a Piglet Binary built with `build.allowOverlays` o
 ## What a Piglet Binary does not guarantee
 
 - **It is not a sandbox.** A Binary runs as the user. The fused code shares the PiG process. The model can still run the tools that the ceiling leaves.
-- **It does not stop `-e`, `pig install` or MCP configuration.** A Binary loads an extension that the user names with `-e` (a path, `npm:` or `git:` source). A test Binary built without `allowOverlays` loaded a `-e` extension and ran its code. A Binary also accepts the package commands. A Binary that keeps the `mcp` built-in loads the MCP servers of the user configuration and of a trusted project. A Binary fixes what it ships. It does not fix what a user adds. Strip `mcp` to remove MCP, and control the command line to control `-e`.
+- **It does not stop `-e`, `pig install` or MCP configuration.** A Binary loads an extension that the user names with `-e` (a path, `npm:` or `git:` source). A test Binary built without overlays loaded a `-e` extension and ran its code, and a closed Binary still accepts `-e`. A Binary also accepts the package commands, closed or not. A later release is planned to refuse `-e`, `pig install` and MCP configuration when `build.closed` is true. A Binary that keeps the `mcp` built-in loads the MCP servers of the user configuration and of a trusted project. A Binary fixes what it ships. It does not fix what a user adds. Strip `mcp` to remove MCP, and control the command line to control `-e`.
 - **It does not pin `PATH` or runtimes.** The `bash` tool, MCP servers and extensions find programs through the inherited `PATH`. A Node extension runs the `node` found on `PATH`. A Python or Lisp source extension finds `uv`, Python or SBCL on `PATH`.
 - **The signature is a self-check.** A signature proves that the file is unchanged since a key signed it. A person who can rewrite the Binary and the trust store can sign a replacement. An unsigned Binary runs unless `trust require` is on.
 - **Revocation is local.** `pig piglet trust revoke` changes a file on one machine. There is no revocation list, no key expiry and no online check. Distribute the `revoked` file with your configuration tool.
@@ -200,12 +200,12 @@ Build a controlled Binary in these steps:
 
 1. Set an exact `tools` list, and set `discovery.extensions: []` and `discovery.skills: []`.
 2. Strip the built-ins that the application does not need, with `strip`.
-3. Leave `build.allowOverlays` unset, and add `mcp` to `strip.extensions` when the application needs no MCP server.
+3. Set `build.closed: true`, and add `mcp` to `strip.extensions` when the application needs no MCP server.
 4. Build with `--sign-key`. Run `pig piglet trust add` for the publisher key, and run `pig piglet trust require on` on each host.
 5. Run the Binary in a container or virtual machine that you provide, with the secrets injected at run time. Start it with a fixed command line, because `-e` loads any extension that the command line names. The Binary fixes what it ships, and the container fixes what it can reach.
-6. Run `pig verify <binary>` and `pig piglet verify <binary> --source <piglet.yaml>` before you release it. The second command fails when the source differs from the baked Piglet, which includes a source that turns `allowOverlays` on.
+6. Run `pig verify <binary>` and `pig piglet verify <binary> --source <piglet.yaml>` before you release it. The second command fails when the source differs from the baked Piglet, which includes a source that turns `build.closed` off.
 
-A Binary that accepts overlays refuses nothing for `--piglet`. A Binary that does not accept them refuses `--piglet` with a message that names `build.allowOverlays`. Use that message to test a build.
+An open Binary refuses nothing for `--piglet`. A closed Binary refuses `--piglet` with a message that names `build.closed`. Use that message to test a build.
 
 ## Network content
 

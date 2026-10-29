@@ -24,7 +24,7 @@ fi
 if command -v sha256sum >/dev/null 2>&1; then hasher=(sha256sum); else hasher=(shasum -a 256); fi
 # The gate's own outputs are not its inputs.
 excludes=()
-for dir in "${outs[@]}"; do excludes+=(":(exclude)$dir"); done
+for dir in ${outs[@]+"${outs[@]}"}; do excludes+=(":(exclude)$dir"); done
 key=$(
   {
     go version
@@ -32,7 +32,7 @@ key=$(
     readlink .upstream/current 2>/dev/null || true
     git ls-files --stage
     git diff --no-ext-diff --binary
-    git ls-files --others --exclude-standard -z -- . "${excludes[@]}" | xargs -0 -r "${hasher[@]}"
+    git ls-files --others --exclude-standard -z -- . ${excludes[@]+"${excludes[@]}"} | xargs -0 -r "${hasher[@]}"
   } | "${hasher[@]}" | cut -c1-40
 )
 store="${PIG_CACHE_HOME:-${XDG_CACHE_HOME:-$HOME/.cache}}/pig-gates/$name"
@@ -40,7 +40,7 @@ entry="$store/$key"
 
 if [[ -f "$entry/ok" ]]; then
   cat "$entry/log"
-  for i in "${!outs[@]}"; do
+  for i in ${!outs[@]+"${!outs[@]}"}; do
     rm -rf "${outs[i]}"
     mkdir -p "${outs[i]}"
     tar -C "${outs[i]}" -xf "$entry/out-$i.tar"
@@ -59,7 +59,7 @@ set +e
 status=${PIPESTATUS[0]}
 set -e
 if [[ $status -eq 0 ]]; then
-  for i in "${!outs[@]}"; do
+  for i in ${!outs[@]+"${!outs[@]}"}; do
     tar -C "${outs[i]}" -cf "$tmp/out-$i.tar" .
   done
   touch "$tmp/ok"

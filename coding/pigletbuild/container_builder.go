@@ -419,10 +419,10 @@ func localizeContainerPiglet(p *piglet.Piglet) ([]byte, []containerPigletMount, 
 		return nil, nil, fmt.Errorf("slots.frontend requires the native builder; the container builder cannot fuse a frontend member")
 	}
 	localized := piglet.Clone(p)
-	// The in-container build bakes this Piglet; it keeps build.allowOverlays (D202) so the Binary declares what the source did.
+	// The in-container build bakes this Piglet; it keeps build.closed (D202) so the Binary declares what the source did.
 	localized.Build = nil
-	if p.Build != nil && p.Build.AllowOverlays {
-		localized.Build = &piglet.BuildSpec{AllowOverlays: true}
+	if p.Build != nil && p.Build.Closed {
+		localized.Build = &piglet.BuildSpec{Closed: true}
 	}
 	localized.Packages = nil
 	mountSet := make(map[string]string)

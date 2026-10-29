@@ -77,3 +77,21 @@ func TestDestinationArgumentKnowsTheSDKCodec(t *testing.T) {
 		t.Error("yaml.Unmarshal is not counted")
 	}
 }
+
+// The scan must see traps in files the host build context excludes, so the
+// same baseline passes on darwin, linux and windows.
+func TestScanFindsLinuxOnlyTrapOnEveryHost(t *testing.T) {
+	t.Setenv("GOWORK", "off") // the fixture is its own module, outside the repository workspace
+	root, err := filepath.Abs(filepath.Join("testdata", "platform"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	pkgs, err := load(root, []string{"./..."})
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []finding{{File: "linux_only.go", Func: "LinuxOnly", Call: "json.Unmarshal", Dest: "*map[string]any", Count: 1}}
+	if got := scan(root, pkgs); !slices.Equal(got, want) {
+		t.Fatalf("findings\n got %+v\nwant %+v", got, want)
+	}
+}

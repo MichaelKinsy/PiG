@@ -1,6 +1,7 @@
 package harness
 
 import (
+	"cmp"
 	"errors"
 	"fmt"
 	"maps"
@@ -136,7 +137,7 @@ func NewRun(cfg *Config, j *Journey, kind Kind, plan Plan, root string) (*Run, e
 	}
 	maps.Copy(settings, c.Env.Settings)
 	c.SB, err = NewSandbox(SandboxOpts{Kind: kind, Root: root, Provider: c.P, Settings: settings, Files: c.Env.Files,
-		ExtraEnv: extra, Reasoning: c.Env.Reasoning, Images: c.Env.Images, Bin: c.Env.Bin, AgentFiles: c.Env.AgentDirFiles, ContextWindow: c.Env.ContextWindow})
+		ExtraEnv: extra, Reasoning: c.Env.Reasoning, Images: c.Env.Images, Bin: c.Env.Bin, AgentFiles: c.Env.AgentDirFiles, ContextWindow: c.Env.ContextWindow, Models: c.Env.Models})
 	if err != nil {
 		c.P.Close()
 		return nil, err
@@ -207,10 +208,11 @@ func (c *Run) WaitReady() {
 		c.WaitFor(`"id":"ready"`)
 		return
 	}
+	marker := cmp.Or(c.Env.ReadyMarker, "strict")
 	c.Await("interactive prompt", func(s string) bool {
 		lines := strings.Split(s, "\n")
 		for i := max(0, len(lines)-4); i < len(lines); i++ {
-			if strings.Contains(lines[i], "strict") {
+			if strings.Contains(lines[i], marker) {
 				return true
 			}
 		}

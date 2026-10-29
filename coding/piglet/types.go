@@ -101,6 +101,7 @@ type Piglet struct {
 	Extensions       []ExtensionEntry    `yaml:"extensions,omitempty"`
 	Skills           []SkillEntry        `yaml:"skills,omitempty"`
 	Discovery        *Discovery          `yaml:"discovery,omitempty"`
+	ContextFiles     string              `yaml:"contextFiles,omitempty"` // pig additive (D211): trusted-only withholds an untrusted project's context files.
 	SystemPrompt     *PromptRef          `yaml:"systemPrompt,omitempty"`
 	AgentEnv         *AgentEnvironment   `yaml:"agentEnv,omitempty"`
 	Model            *ModelConfig        `yaml:"model,omitempty"`
@@ -378,12 +379,13 @@ type BuildSpec struct {
 	Targets              []string `yaml:"targets,omitempty"`
 	OutputName           string   `yaml:"outputName,omitempty"`
 	ExtensionRealization string   `yaml:"extensionRealization,omitempty"`
-	// AllowOverlays lets the Piglet Binary built from this Piglet accept a Piglet selected at launch (--piglet,
-	// PIG_PIGLET_PATH, PIG_PIGLET_NAME) as an overlay on its baked Piglet. Default off; like all of build it is
-	// authored on the Piglet that is built and is not inherited through extends.
+	// Closed makes the Piglet Binary built from this Piglet run only its baked Piglet: it refuses a Piglet selected at
+	// launch (--piglet, PIG_PIGLET_PATH, PIG_PIGLET_NAME) and --system-prompt, and discovers no ambient extensions or
+	// skills. Default false: the Binary behaves as stock pig started with its Piglet. Like all of build it is authored on
+	// the Piglet that is built and is not inherited through extends.
 	//
-	// pig additive (D202): a Piglet Binary can declare that it accepts overlay Piglets.
-	AllowOverlays bool `yaml:"allowOverlays,omitempty"`
+	// pig additive (D202): a Piglet Binary accepts overlay Piglets unless built closed.
+	Closed bool `yaml:"closed,omitempty"`
 }
 
 // ReleaseSpec carries Piglet release identity, separate from portable build
@@ -483,6 +485,9 @@ func (p *Piglet) Validate() error {
 		return err
 	}
 	if err := validateDiscovery(p.Discovery); err != nil {
+		return err
+	}
+	if err := validateContextFiles(p.ContextFiles); err != nil {
 		return err
 	}
 	if err := validateStrip("strip", p.Strip); err != nil {
@@ -674,6 +679,25 @@ func validateToolAllowlist(location string, values *[]string, allowed []string) 
 		seen[name] = struct{}{}
 	}
 	return nil
+}
+
+// Context file modes a Piglet may set. ContextFilesAll is Pi's behaviour: every project context file loads. ContextFilesTrustedOnly withholds the project's context files until the project is trusted.
+const (
+	ContextFilesAll         = "all"
+	ContextFilesTrustedOnly = "trusted-only"
+)
+
+func validateContextFiles(mode string) error {
+	switch mode {
+	case "", ContextFilesAll, ContextFilesTrustedOnly:
+		return nil
+	}
+	return fmt.Errorf("contextFiles must be %q or %q, got %q", ContextFilesAll, ContextFilesTrustedOnly, mode)
+}
+
+// WithholdsUntrustedContextFiles reports whether the Piglet withholds an untrusted project's context files. A nil Piglet does not.
+func (p *Piglet) WithholdsUntrustedContextFiles() bool {
+	return p != nil && p.ContextFiles == ContextFilesTrustedOnly
 }
 
 func validateDiscovery(discovery *Discovery) error {

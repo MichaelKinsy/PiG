@@ -6,7 +6,7 @@ import (
 	"strings"
 )
 
-// OverlayBase is the Piglet a Piglet Binary that sets build.allowOverlays bakes, offered as the implicit base of the Piglet
+// OverlayBase is the Piglet a Piglet Binary that is not built closed bakes, offered as the implicit base of the Piglet
 // a user selects at launch (--piglet, PIG_PIGLET_PATH, PIG_PIGLET_NAME).
 //
 // pig additive (D202): a Piglet Binary can declare that it accepts overlay Piglets.

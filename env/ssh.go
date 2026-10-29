@@ -288,6 +288,7 @@ func runSsh(ctx context.Context, target SshTarget, command string, options sshRu
 	}
 	runContext, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
+	//nolint:gosec // G204 (class c): program is the ssh option of the user's SSH target (default ssh); args come from SshArguments, which validates host, user, port and alias, then the remote command PiG builds.
 	cmd := exec.CommandContext(runContext, sshProgram(target), append(slices.Clone(args), command)...)
 	cmd.Stdin = bytes.NewReader(options.stdin)
 	var stdout bytes.Buffer
@@ -400,6 +401,7 @@ func ScanHostKey(ctx context.Context, target SshTarget) (lines, fingerprints []s
 	if len(lines) == 0 {
 		return nil, nil, fmt.Errorf("No host key received from %s", target.Host)
 	}
+	//nolint:gosec // G204 (class a): program is the literal ssh-keygen; args are fixed -lf plus the temporary known-hosts scan file PiG wrote.
 	keygen := exec.CommandContext(ctx, "ssh-keygen", "-lf", scanned)
 	output, keygenErr := keygen.Output()
 	if _, isExit := errors.AsType[*exec.ExitError](keygenErr); keygenErr != nil && !isExit {

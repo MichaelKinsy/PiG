@@ -71,6 +71,7 @@ func readsPiGolden(text string) bool {
 }
 
 func listTestFiles(root string) ([]string, error) {
+	//nolint:gosec // G204 (class a): program is literal git; args are fixed "-C root ls-files -z -- *_test.go".
 	out, err := exec.Command("git", "-C", root, "ls-files", "-z", "--", "*_test.go").Output()
 	if err != nil {
 		return nil, err

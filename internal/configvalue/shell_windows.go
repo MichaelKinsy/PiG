@@ -18,6 +18,7 @@ func runShellCommand(ctx context.Context, payload string) (string, bool) {
 
 // configuredShellCommand starts the configured bash as upstream's spawnSync does: stdio is ["pipe" when the command comes from stdin, else "ignore", "pipe", "ignore"] and windowsHide is true.
 func configuredShellCommand(ctx context.Context, path string, commandFromStdin bool, args ...string) *exec.Cmd {
+	//nolint:gosec // G204 (class c): program is the bash that the user's shellPath setting or PATH names, running the config value command after a leading !, as Pi's config resolution does; args are the shell's own flags.
 	cmd := exec.CommandContext(ctx, path, args...)
 	stdin := nodespawn.Ignore
 	if commandFromStdin {

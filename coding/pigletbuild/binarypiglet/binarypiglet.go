@@ -56,23 +56,23 @@ func parse(data []byte) *piglet.Piglet {
 		return nil
 	}
 	// pig additive (D92): a strip list alone defines a Piglet Binary's agent.
-	if p.Model == nil && p.SystemPrompt == nil && len(p.Extensions) == 0 && len(p.Skills) == 0 && p.BuiltinTools == nil && p.Discovery == nil && p.Strip.IsEmpty() {
+	if p.Model == nil && p.SystemPrompt == nil && len(p.Extensions) == 0 && len(p.Skills) == 0 && p.BuiltinTools == nil && p.Discovery == nil && p.ContextFiles == "" && p.Strip.IsEmpty() {
 		return nil
 	}
 	return p
 }
 
-// OverlayBase returns the baked Piglet as the base of an overlay when this Piglet Binary accepts one (its Piglet set
-// build.allowOverlays), and nil otherwise, including for stock pig. The flag is part of the baked Piglet, so the digest the
-// record and the signed manifest name covers it.
+// OverlayBase returns the baked Piglet as the base of an overlay when this Piglet Binary accepts one (every Piglet
+// Binary does unless its Piglet set build.closed), and nil otherwise, including for stock pig. The flag is part of the baked
+// Piglet, so the digest the record and the signed manifest name covers it.
 //
-// pig additive (D202): a Piglet Binary can declare that it accepts overlay Piglets.
+// pig additive (D202): a Piglet Binary accepts overlay Piglets unless built closed.
 func OverlayBase() *piglet.OverlayBase {
 	if !IsPigletBinary() {
 		return nil
 	}
 	p, err := piglet.ParseBytes(pigletYAML)
-	if err != nil || p.Build == nil || !p.Build.AllowOverlays {
+	if err != nil || closed(p) {
 		return nil
 	}
 	// The baked bytes carry no slots; the frontend member is compiled into the executable, so the base names it for extends.remove.slots.
@@ -80,6 +80,20 @@ func OverlayBase() *piglet.OverlayBase {
 		p.Slots = &piglet.Slots{Frontend: &piglet.SlotMember{Member: CompiledFrontendMember}}
 	}
 	return &piglet.OverlayBase{Piglet: p, Digest: "sha256:" + hex.EncodeToString(sha256Sum(pigletYAML))}
+}
+
+func closed(p *piglet.Piglet) bool { return p.Build != nil && p.Build.Closed }
+
+// Closed reports whether this executable is a Piglet Binary built with build.closed, or one whose baked Piglet cannot be read
+// (it then accepts nothing). Stock pig is not closed.
+//
+// pig additive (D202): `pig piglet show` names whether a Piglet Binary is closed.
+func Closed() bool {
+	if !IsPigletBinary() {
+		return false
+	}
+	p, err := piglet.ParseBytes(pigletYAML)
+	return err != nil || closed(p)
 }
 
 // CompiledFrontendMember is the member path the base of an overlay gives the frontend compiled into the Binary, which has no

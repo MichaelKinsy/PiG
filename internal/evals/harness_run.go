@@ -511,6 +511,7 @@ func RunPiCodingAgent(ctx context.Context, input PiCodingAgentInput, options PiC
 			if sessionFile != "" {
 				args = append(args, "--session", sessionFile)
 			}
+			//nolint:gosec // G204 (class c): program is pigPath from resolveBinary (harness option, then PI_EVAL_PIG env, then exec.LookPath("pig")); args are the harness-built session, model, and tool flags.
 			command := exec.CommandContext(context.WithoutCancel(ctx), pigPath, args...)
 			command.Dir = workspace
 			command.Env = os.Environ()
