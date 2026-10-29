@@ -699,6 +699,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-8eb1202](#bf-8eb1202) | An OpenAI Chat Completions chunk with a member of an unexpected type (a number for `delta.content`… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-8f45099](#bf-8f45099) | Compaction summaries, branch summaries and bug reports omit thinking blocks (Pi 15e7bdc1, Pi #9602): replayed… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-8f88d43](#bf-8f88d43) | On Windows, an extension's `exec` no longer returns no output for a command that printed, when the machine is… | PiG's own defect | Windows | Unreleased |
+| [BF-903bfab](#bf-903bfab) | The footer's thinking level no longer reads `thinking off` in the first frames of an interactive start | PiG's own defect | All platforms | Unreleased |
 | [BF-905f3d0](#bf-905f3d0) | A trap of the codemode module on a Worker no longer loses the output the script printed before it: the host… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-9076cd5](#bf-9076cd5) | Markdown bold and italic render next to CJK punctuation in the terminal, for example… | PiG's own defect | All platforms | 0.5.2 |
 | [BF-9088293](#bf-9088293) | The Azure OpenAI base URL is parsed and serialized with the WHATWG URL parser, as Pi does: hosts are… | PiG's own defect | All platforms | 0.5.0 |
@@ -10731,6 +10732,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `8f88d43fa5` (2026-10-24)
 - **Tests:** `coding/extension/exec_drain_test.go::TestExecCommandKeepsTheOutputOfAChildThatExitedBeforeItsReadersRan`
 - **Release note:** On Windows, an extension's `exec` no longer returns no output for a command that printed, when the machine is too busy to run PiG's pipe reader within 100 ms of the command's exit. The command now starts suspended and joins a job object before it can start another process, as the bash tool's shell already did, so PiG knows when no process holds the output pipes any more and reads them to the end instead of dropping what the command had written before it exited.
+
+### BF-903bfab
+
+**The footer's thinking level no longer reads `thinking off` in the first frames of an interactive start**
+
+- **Source:** PiG's own defect
+- **Symptom:** The footer's thinking level no longer reads `thinking off` in the first frames of an interactive start.
+- **Root cause:** The footer and the editor border learned the Session's thinking level only when the startup bind ran, after the TUI had started drawing, so a startup frame painted before the bind showed 'thinking off' where Pi shows the configured level. Pi's footer reads session.state.thinkingLevel on every render (footer.ts:236, interactive-mode.ts:2351) and is built with the Session (interactive-mode.ts:659); the footer and the editor are now seeded with the Session's level when they are built.
+- **User impact:** Wrong display
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `903bfaba9a` (2026-10-29)
+- **Tests:** None recorded.
+- **Release note:** The footer's thinking level no longer reads `thinking off` in the first frames of an interactive start. PiG drew the footer and the editor border before the startup bind told them the Session's level, so a frame painted in that window showed `• thinking off` (and the neutral border) where Pi shows the configured level, `• medium` by default; with an extension loaded the bind comes later and the window is longer. The Session's level was right all along (`get_state` and the first request carry it); only the presentation lagged. Pi builds its footer with the Session and reads `session.state.thinkingLevel` on every render (`footer.ts` `render`, `interactive-mode.ts` `init`), so the footer and the editor are now seeded with the Session's level when they are built, for the default level, `--thinking` and settings overrides, and `off`, whichever extension host is loaded.
 
 ### BF-905f3d0
 

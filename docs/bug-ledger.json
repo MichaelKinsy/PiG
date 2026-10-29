@@ -20339,6 +20339,26 @@
       ]
     },
     {
+      "id": "BF-903bfab",
+      "title": "The footer's thinking level no longer reads `thinking off` in the first frames of an interactive start",
+      "symptom": "The footer's thinking level no longer reads `thinking off` in the first frames of an interactive start.",
+      "rootCause": "The footer and the editor border learned the Session's thinking level only when the startup bind ran, after the TUI had started drawing, so a startup frame painted before the bind showed 'thinking off' where Pi shows the configured level. Pi's footer reads session.state.thinkingLevel on every render (footer.ts:236, interactive-mode.ts:2351) and is built with the Session (interactive-mode.ts:659); the footer and the editor are now seeded with the Session's level when they are built.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong display",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "The footer's thinking level no longer reads `thinking off` in the first frames of an interactive start. PiG drew the footer and the editor border before the startup bind told them the Session's level, so a frame painted in that window showed `• thinking off` (and the neutral border) where Pi shows the configured level, `• medium` by default; with an extension loaded the bind comes later and the window is longer. The Session's level was right all along (`get_state` and the first request carry it); only the presentation lagged. Pi builds its footer with the Session and reads `session.state.thinkingLevel` on every render (`footer.ts` `render`, `interactive-mode.ts` `init`), so the footer and the editor are now seeded with the Session's level when they are built, for the default level, `--thinking` and settings overrides, and `off`, whichever extension host is loaded.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "903bfaba9a",
+          "date": "2026-10-29"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-905f3d0",
       "title": "A trap of the codemode module on a Worker no longer loses the output the script printed before it: the host…",
       "symptom": "A script that printed 100,000 one-character items used to trap the module on its heap and now completes (a batch of the same items took 1.06 s, against 1.56 s with the module holding them; the exchange count and the other timings are unchanged).",
