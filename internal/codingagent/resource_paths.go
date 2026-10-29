@@ -102,6 +102,8 @@ type PathMetadata struct {
 	BaseDir string
 	// PackageRoot is the directory of the npm, git or local-directory Package that supplied the resource; it is empty for a top-level resource and for a local source that is a single file.
 	PackageRoot string
+	// ChangelogPath is the changelog file of the Package that supplied the resource, or empty when it has none (package-manager.ts PathMetadata.changelogPath).
+	ChangelogPath string
 }
 
 // ResolvedResource is a resolved resource path with its PathMetadata (package-manager.ts ResolvedResource).
@@ -114,7 +116,7 @@ type ResolvedResource struct {
 
 // SourceInfo is source-info.ts createSourceInfo.
 func (m PathMetadata) SourceInfo(path string) PiSourceInfo {
-	return PiSourceInfo{Path: path, Source: m.Source, Scope: m.Scope, Origin: m.Origin, BaseDir: m.BaseDir}
+	return PiSourceInfo{Path: path, Source: m.Source, Scope: m.Scope, Origin: m.Origin, BaseDir: m.BaseDir, ChangelogPath: m.ChangelogPath}
 }
 
 // ResourcePaths lists the paths of the enabled resources.

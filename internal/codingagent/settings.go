@@ -318,18 +318,19 @@ type imageSettingsWire struct {
 
 // settingsWire mirrors upstream settings JSON.
 type settingsWire struct {
-	LastChangelogVersion    string                  `json:"lastChangelogVersion,omitempty"`
-	DefaultProvider         *string                 `json:"defaultProvider,omitempty"`
-	DefaultModel            *string                 `json:"defaultModel,omitempty"`
-	DefaultThinkingLevel    string                  `json:"defaultThinkingLevel,omitempty"`
-	Transport               string                  `json:"transport,omitempty"`
-	SessionShareDestination SessionShareDestination `json:"sessionShareDestination,omitempty"`
-	SteeringMode            string                  `json:"steeringMode,omitempty"`
-	FollowUpMode            string                  `json:"followUpMode,omitempty"`
-	TuiMode                 string                  `json:"tuiMode,omitempty"`
-	FullscreenExitOutput    FullscreenExitOutput    `json:"fullscreenExitOutput,omitempty"`
-	FullscreenScrollbar     string                  `json:"fullscreenScrollbar,omitempty"`
-	FullscreenCopyOnSelect  *bool                   `json:"fullscreenCopyOnSelect,omitempty"`
+	LastChangelogVersion       string                  `json:"lastChangelogVersion,omitempty"`
+	ExtensionChangelogVersions map[string]string       `json:"extensionChangelogVersions,omitempty"`
+	DefaultProvider            *string                 `json:"defaultProvider,omitempty"`
+	DefaultModel               *string                 `json:"defaultModel,omitempty"`
+	DefaultThinkingLevel       string                  `json:"defaultThinkingLevel,omitempty"`
+	Transport                  string                  `json:"transport,omitempty"`
+	SessionShareDestination    SessionShareDestination `json:"sessionShareDestination,omitempty"`
+	SteeringMode               string                  `json:"steeringMode,omitempty"`
+	FollowUpMode               string                  `json:"followUpMode,omitempty"`
+	TuiMode                    string                  `json:"tuiMode,omitempty"`
+	FullscreenExitOutput       FullscreenExitOutput    `json:"fullscreenExitOutput,omitempty"`
+	FullscreenScrollbar        string                  `json:"fullscreenScrollbar,omitempty"`
+	FullscreenCopyOnSelect     *bool                   `json:"fullscreenCopyOnSelect,omitempty"`
 	// FullscreenWheelScrollLines keeps the authored JSON value, including null.
 	FullscreenWheelScrollLines  json.RawMessage         `json:"fullscreenWheelScrollLines,omitempty"`
 	DeviceID                    string                  `json:"deviceId,omitempty"`
@@ -565,6 +566,9 @@ type Settings struct {
 	// "what's new" display to only new entries since last run.
 	// Mirrors upstream settings.lastChangelogVersion (settings-manager.ts:66).
 	LastChangelogVersion string `json:"lastChangelogVersion,omitempty"`
+	// ExtensionChangelogVersions records the last changelog version seen per extension package, keyed by GetSourcePackageKey.
+	// Mirrors upstream settings.extensionChangelogVersions (settings-schema.ts).
+	ExtensionChangelogVersions map[string]string `json:"extensionChangelogVersions,omitempty"`
 
 	// Compaction mirrors upstream settings.compaction (settings-manager.ts:74).
 	// Nested to match upstream JSON schema:
@@ -1003,6 +1007,7 @@ func cloneSettings(s Settings) Settings {
 		DefaultTools:                   slices.Clone(s.DefaultTools),
 		ModelThinkingLevels:            maps.Clone(s.ModelThinkingLevels),
 		LastChangelogVersion:           s.LastChangelogVersion,
+		ExtensionChangelogVersions:     maps.Clone(s.ExtensionChangelogVersions),
 		Compaction:                     cloneCompactionSettings(s.Compaction),
 		BranchSummary:                  cloneBranchSummary(s.BranchSummary),
 		DoubleEscapeAction:             s.DoubleEscapeAction,
@@ -1100,6 +1105,7 @@ func (s Settings) MarshalJSON() ([]byte, error) {
 		EnabledModels:               s.EnabledModels,
 		DefaultTools:                s.DefaultTools,
 		ModelThinkingLevels:         s.ModelThinkingLevels,
+		ExtensionChangelogVersions:  s.ExtensionChangelogVersions,
 		DoubleEscapeAction:          s.DoubleEscapeAction,
 		TreeFilterMode:              s.TreeFilterMode,
 		DefaultProjectTrust:         s.DefaultProjectTrust,
@@ -1325,6 +1331,7 @@ func (s *Settings) UnmarshalJSON(data []byte) error {
 	s.EnabledModels = w.EnabledModels
 	s.DefaultTools = w.DefaultTools
 	s.ModelThinkingLevels = w.ModelThinkingLevels
+	s.ExtensionChangelogVersions = w.ExtensionChangelogVersions
 	s.DoubleEscapeAction = w.DoubleEscapeAction
 	s.TreeFilterMode = w.TreeFilterMode
 	s.DefaultProjectTrust = w.DefaultProjectTrust
@@ -2205,6 +2212,31 @@ func (sm *SettingsManager) GetLastChangelogVersion() string {
 func (sm *SettingsManager) SetLastChangelogVersion(version string) error {
 	return sm.UpdateGlobal(func(s *Settings) {
 		s.LastChangelogVersion = version
+	})
+}
+
+// GetExtensionChangelogVersion returns the last changelog version seen for the extension package key (GetSourcePackageKey), if any.
+// Mirrors upstream getExtensionChangelogVersion (settings-manager.ts).
+func (sm *SettingsManager) GetExtensionChangelogVersion(key string) (string, bool) {
+	type seen struct {
+		version string
+		ok      bool
+	}
+	got := readMerged(sm, func(s *Settings) seen {
+		version, ok := s.ExtensionChangelogVersions[key]
+		return seen{version, ok}
+	})
+	return got.version, got.ok
+}
+
+// SetExtensionChangelogVersion records that the user has seen the changelog of the extension package key up to version. Persists to
+// global settings, changing only that key. Mirrors upstream setExtensionChangelogVersion.
+func (sm *SettingsManager) SetExtensionChangelogVersion(key, version string) error {
+	return sm.UpdateGlobal(func(s *Settings) {
+		if s.ExtensionChangelogVersions == nil {
+			s.ExtensionChangelogVersions = map[string]string{}
+		}
+		s.ExtensionChangelogVersions[key] = version
 	})
 }
 
@@ -3858,6 +3890,15 @@ func mergeSettings(global, project Settings) Settings {
 		}
 		maps.Copy(merged, project.ModelThinkingLevels)
 		m.ModelThinkingLevels = merged
+	}
+	if project.ExtensionChangelogVersions != nil {
+		// Upstream deep-merges nested objects: project keys override global.
+		merged := maps.Clone(m.ExtensionChangelogVersions)
+		if merged == nil {
+			merged = map[string]string{}
+		}
+		maps.Copy(merged, project.ExtensionChangelogVersions)
+		m.ExtensionChangelogVersions = merged
 	}
 	if project.EnabledModels != nil {
 		m.EnabledModels = append([]string{}, project.EnabledModels...)

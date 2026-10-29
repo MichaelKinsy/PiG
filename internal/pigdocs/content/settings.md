@@ -120,8 +120,9 @@ set it in `~/.pig/agent/settings.json`:
 | `showHardwareCursor` | boolean | `false` | Show the terminal's own cursor. |
 | `markdown` | object |  | Markdown rendering: `codeBlockIndent`, `mermaid`. |
 | `quietStartup` | boolean | `false` | Suppress the startup banner. |
-| `collapseChangelog` | boolean | `false` | Show a condensed changelog. |
+| `collapseChangelog` | boolean | `false` | Show a condensed changelog. Also condenses extension Package changelogs to one line per Package. |
 | `lastChangelogVersion` | string |  | Last changelog version shown. PiG writes this. |
+| `extensionChangelogVersions` | object |  | Last seen changelog version per extension package, keyed by package source and scope. PiG writes this. |
 
 ## Images and terminal
 

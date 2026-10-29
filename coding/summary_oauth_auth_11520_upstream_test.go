@@ -50,10 +50,11 @@ func TestSDKSummaryLetsTheRuntimeResolveStoredOAuthUpstream(t *testing.T) {
 	if model == nil {
 		t.Fatal("oauth-model is not registered")
 	}
-	session, err := NewSession(services, SessionOptions{Model: model})
+	created, err := CreateAgentSessionFromServices(CreateAgentSessionFromServicesOptions{Services: services, Model: model})
 	if err != nil {
 		t.Fatal(err)
 	}
+	session := created.Session
 	defer func() {
 		if err := session.Close(); err != nil {
 			t.Error(err)

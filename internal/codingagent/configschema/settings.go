@@ -129,6 +129,7 @@ func settingsSchema() *Schema {
 	return Object([]Prop{
 		Optional("$schema", String(D("JSON Schema reference."))),
 		Optional("lastChangelogVersion", String()),
+		Optional("extensionChangelogVersions", Record(String(), D("Last seen changelog version per extension package."))),
 		Optional("defaultProvider", String()),
 		Optional("defaultModel", String()),
 		Optional("defaultThinkingLevel", ModelThinkingLevelSchema()),

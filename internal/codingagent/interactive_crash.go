@@ -115,7 +115,7 @@ func (m *InteractiveMode) crashExtensionMetadata() []ExtensionStackMetadata {
 }
 
 func resourceSourceInfoValue(value extension.SourceInfo) ResourceSourceInfo {
-	return ResourceSourceInfo{Path: value.Path, Source: value.Source, Scope: value.Scope, Origin: value.Origin, BaseDir: value.BaseDir}
+	return ResourceSourceInfo{Path: value.Path, Source: value.Source, Scope: value.Scope, Origin: value.Origin, BaseDir: value.BaseDir, ChangelogPath: value.ChangelogPath}
 }
 
 func (m *InteractiveMode) crashExtensionHint(stack string) string {

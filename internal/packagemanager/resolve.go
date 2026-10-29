@@ -73,7 +73,7 @@ func (m *PackageManager) Resolve(onMissing MissingSourceCallback) (ResolvedPaths
 	items, _ := CollectResolvedPackageResourceItems(cwd, agentDir, settings, nil, false)
 	var fromPackages ResolvedPaths
 	for _, item := range items {
-		resource := codingagent.ResolvedResource{Path: item.Path, Enabled: item.Enabled, Metadata: codingagent.PathMetadata{Source: item.Source, Scope: item.Scope, Origin: item.Origin, BaseDir: item.BaseDir, PackageRoot: item.PackageRoot}}
+		resource := codingagent.ResolvedResource{Path: item.Path, Enabled: item.Enabled, Metadata: codingagent.PathMetadata{Source: item.Source, Scope: item.Scope, Origin: item.Origin, BaseDir: item.BaseDir, PackageRoot: item.PackageRoot, ChangelogPath: packageChangelogPath(item.PackageRoot)}}
 		switch packagecontent.Kind(item.ResourceType) {
 		case packagecontent.Extensions:
 			fromPackages.Extensions = append(fromPackages.Extensions, resource)
@@ -166,7 +166,7 @@ func (m *PackageManager) ResolveExtensionSources(sources []string, local, tempor
 			return ResolvedPaths{}, err
 		}
 		for _, item := range items {
-			resource := codingagent.ResolvedResource{Path: item.Path, Enabled: item.Enabled, Metadata: codingagent.PathMetadata{Source: item.Source, Scope: item.Scope, Origin: item.Origin, BaseDir: item.BaseDir, PackageRoot: item.PackageRoot}}
+			resource := codingagent.ResolvedResource{Path: item.Path, Enabled: item.Enabled, Metadata: codingagent.PathMetadata{Source: item.Source, Scope: item.Scope, Origin: item.Origin, BaseDir: item.BaseDir, PackageRoot: item.PackageRoot, ChangelogPath: packageChangelogPath(item.PackageRoot)}}
 			switch packagecontent.Kind(item.ResourceType) {
 			case packagecontent.Extensions:
 				resolved.Extensions = append(resolved.Extensions, resource)
@@ -223,4 +223,12 @@ func (m *PackageManager) builtinExtensionResources() []codingagent.ResolvedResou
 		resources = append(resources, codingagent.ResolvedResource{Path: item.Path, Enabled: item.Enabled, Metadata: codingagent.PathMetadata{Source: item.Source, Scope: item.Scope, Origin: item.Origin}})
 	}
 	return resources
+}
+
+// packageChangelogPath is the changelog of the Package at root, or "" for a resource that belongs to no Package (package-manager.ts resolvePackageChangelogPath).
+func packageChangelogPath(root string) string {
+	if root == "" {
+		return ""
+	}
+	return packagecontent.ResolvePackageChangelogPath(root)
 }

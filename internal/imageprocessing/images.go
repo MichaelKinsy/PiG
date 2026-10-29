@@ -6,8 +6,8 @@
 // Go standard library plus golang.org/x/image in place of Photon:
 //  1. Decode + apply EXIF orientation once.
 //  2. If needed, resize to fit within 2000x2000.
-//  3. Try PNG first, then JPEG quality steps until the base64 payload fits
-//     under 4.5 MB.
+//  3. Try the smaller of PNG and JPEG at the configured quality, then lower
+//     JPEG quality steps, until the base64 payload fits under 4.5 MB.
 //  4. If still too large, shrink dimensions by 25% and retry.
 package imageprocessing
 
@@ -683,25 +683,39 @@ func imageHasAlpha(img image.Image) bool {
 	return false
 }
 
-// firstFittingCandidate encodes img as PNG, then as JPEG at each quality in order, and returns the first whose base64 size is below
-// maxBytes. Later encodings are never made once one fits, because upstream also takes the first fitting candidate and the rest
-// only cost time (a JPEG encode of a large image is the most expensive step of a resize). A failed JPEG encode is skipped; a failed PNG
+// firstFittingCandidate encodes img as PNG and as JPEG at the configured quality (jpegQualities[0]) and returns the first of these two
+// whose base64 size is below maxBytes, the smaller of the two first; only when neither fits does it try the lower JPEG qualities, in
+// order (image-resize-core.ts tryEncodings, e7a0df27, #11551). Later encodings are never made once one fits, because the rest only
+// cost time (a JPEG encode of a large image is the most expensive step of a resize). A failed JPEG encode is skipped; a failed PNG
 // encode is an error.
 func firstFittingCandidate(img image.Image, jpegQualities []int, maxBytes int) (encodedCandidate, bool, error) {
 	pngBytes, err := encodePNG(img)
 	if err != nil {
 		return encodedCandidate{}, false, fmt.Errorf("image: encode png: %w", err)
 	}
-	candidate := encodedCandidate{Data: pngBytes, EncodedSize: encodedSizeBase64(pngBytes), MIME: "image/png"}
-	if candidate.EncodedSize < maxBytes {
-		return candidate, true, nil
+	pngCandidate := encodedCandidate{Data: pngBytes, EncodedSize: encodedSizeBase64(pngBytes), MIME: "image/png"}
+	preferred := []encodedCandidate{pngCandidate}
+	if len(jpegQualities) > 0 {
+		if jpegBytes, err := encodeJPEG(img, jpegQualities[0]); err == nil {
+			jpegCandidate := encodedCandidate{Data: jpegBytes, EncodedSize: encodedSizeBase64(jpegBytes), MIME: "image/jpeg"}
+			if jpegCandidate.EncodedSize < pngCandidate.EncodedSize {
+				preferred = []encodedCandidate{jpegCandidate, pngCandidate}
+			} else {
+				preferred = append(preferred, jpegCandidate)
+			}
+		}
 	}
-	for _, quality := range jpegQualities {
+	for _, candidate := range preferred {
+		if candidate.EncodedSize < maxBytes {
+			return candidate, true, nil
+		}
+	}
+	for _, quality := range jpegQualities[min(1, len(jpegQualities)):] {
 		jpegBytes, err := encodeJPEG(img, quality)
 		if err != nil {
 			continue
 		}
-		candidate = encodedCandidate{Data: jpegBytes, EncodedSize: encodedSizeBase64(jpegBytes), MIME: "image/jpeg"}
+		candidate := encodedCandidate{Data: jpegBytes, EncodedSize: encodedSizeBase64(jpegBytes), MIME: "image/jpeg"}
 		if candidate.EncodedSize < maxBytes {
 			return candidate, true, nil
 		}

@@ -583,7 +583,7 @@ func collectPackageExtensionConfigs(cwd string, sm *codingagent.SettingsManager,
 			continue
 		}
 		for _, config := range pathToExtConfigs(item.Path, resolvers...) {
-			config.SourceInfo = codingagent.PiSourceInfo{Path: item.Path, Source: item.Source, Scope: item.Scope, Origin: "package", BaseDir: item.BaseDir}
+			config.SourceInfo = codingagent.PiSourceInfo{Path: item.Path, Source: item.Source, Scope: item.Scope, Origin: "package", BaseDir: item.BaseDir, ChangelogPath: packagecontent.ResolvePackageChangelogPath(item.PackageRoot)}
 			config.PackageRoot = item.PackageRoot
 			configs = append(configs, config)
 		}
