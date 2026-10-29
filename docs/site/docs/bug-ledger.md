@@ -839,6 +839,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-a901509](#bf-a901509) | OpenRouter turns (the built-in provider and custom providers on OpenRouter's endpoint) now take OpenRouter's… | PiG's own defect | All platforms | 0.5.3 |
 | [BF-a94455c](#bf-a94455c) | The durable code mode joins the text items of a script's output in linear time (Pi f11e50f7… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-a9757c8](#bf-a9757c8) | A Cloudflare model built with `coding.BuildModel` and streamed through its own `Provider` resolves… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-a998e97](#bf-a998e97) | Concurrent updates, rendering, mouse hit-testing, and transcript node snapshots on… | PiG's own defect | All platforms | Unreleased |
 | [BF-aa2003c](#bf-aa2003c) | The edit tool's prepared arguments keep the members in the order the model sent them | PiG's own defect | All platforms | 0.5.0 |
 | [BF-aa69959](#bf-aa69959) | Key matching follows Pi for more terminal inputs and key identifiers | PiG's own defect | All platforms | 0.5.0 |
 | [BF-aabd300](#bf-aabd300) | An OpenAI Responses, Azure OpenAI Responses or Google stream event whose JSON is a number, string, boolean or… | PiG's own defect | All platforms | 0.5.0 |
@@ -12636,6 +12637,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `a9757c8ed3` (2026-10-10)
 - **Tests:** `ai/provider_wrap_test.go::TestWrapBuiltinProviderResolvesTheEndpointFromTheConfiguredEnv`, `coding/cloudflare_build_model_test.go::TestBuildModelCloudflareEndpointUsesTheStoredCredentialEnv`
 - **Release note:** A Cloudflare model built with `coding.BuildModel` and streamed through its own `Provider` resolves `{CLOUDFLARE_ACCOUNT_ID}` and `{CLOUDFLARE_GATEWAY_ID}` from the stored credential's env again, under the request env, as Pi's `Models.applyAuth` merges the resolution env before `cloudflareStreams` runs. Since `ai.WrapBuiltinProvider` the wrapper read only the request env, so such a request went to the literal placeholder URL.
+
+### BF-a998e97
+
+**Concurrent updates, rendering, mouse hit-testing, and transcript node snapshots on…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Unsynchronized updates to `childScratch` and thinking-run state raced with concurrent renders and could panic in `Container.renderChildLocked` with a nil child interface (`{0x0, 0x0}`).
+- **Root cause:** AssistantMessageComponent updated childScratch, segments, and thinking-run visibility state without synchronization while background goroutines applied streaming updates concurrently with TUI rendering, mouse hit-testing, and transcript node snapshots, racing on slice backing storage and panicking in Container.renderChildLocked with a nil child interface.
+- **User impact:** Crash, hang or runaway process
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `a998e97615` (2026-10-29)
+- **Tests:** `tui/assistant_message_block_test.go::TestAssistantMessageBlock_ConcurrentMutationsAndRender`, `tui/assistant_message_block_test.go::TestAssistantMessageBlock_StaleThinkingRegionClickIgnored`, `tui/assistant_message_block_test.go::TestAssistantMessageBlock_TransformStateGetterNoDeadlock`
+- **Release note:** Concurrent updates, rendering, mouse hit-testing, and transcript node snapshots on `AssistantMessageComponent` no longer race or panic during streaming sessions with subprocess extensions. Before this fix, unsynchronized updates to `childScratch` and thinking-run state raced with concurrent renders and could panic in `Container.renderChildLocked` with a nil child interface (`{0x0, 0x0}`). `AssistantMessageComponent` now serializes component state and layout snapshots while keeping `Text`, `Thinking`, and `IsStreaming` reentrant for render callbacks.
 
 ### BF-aa2003c
 

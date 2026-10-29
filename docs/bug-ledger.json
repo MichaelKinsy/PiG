@@ -24420,6 +24420,30 @@
       ]
     },
     {
+      "id": "BF-a998e97",
+      "title": "Concurrent updates, rendering, mouse hit-testing, and transcript node snapshots on…",
+      "symptom": "Unsynchronized updates to `childScratch` and thinking-run state raced with concurrent renders and could panic in `Container.renderChildLocked` with a nil child interface (`{0x0, 0x0}`).",
+      "rootCause": "AssistantMessageComponent updated childScratch, segments, and thinking-run visibility state without synchronization while background goroutines applied streaming updates concurrently with TUI rendering, mouse hit-testing, and transcript node snapshots, racing on slice backing storage and panicking in Container.renderChildLocked with a nil child interface.",
+      "rootCauseSource": "commit",
+      "userImpact": "Crash, hang or runaway process",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Concurrent updates, rendering, mouse hit-testing, and transcript node snapshots on `AssistantMessageComponent` no longer race or panic during streaming sessions with subprocess extensions. Before this fix, unsynchronized updates to `childScratch` and thinking-run state raced with concurrent renders and could panic in `Container.renderChildLocked` with a nil child interface (`{0x0, 0x0}`). `AssistantMessageComponent` now serializes component state and layout snapshots while keeping `Text`, `Thinking`, and `IsStreaming` reentrant for render callbacks.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "a998e97615",
+          "date": "2026-10-29"
+        }
+      ],
+      "tests": [
+        "tui/assistant_message_block_test.go::TestAssistantMessageBlock_ConcurrentMutationsAndRender",
+        "tui/assistant_message_block_test.go::TestAssistantMessageBlock_StaleThinkingRegionClickIgnored",
+        "tui/assistant_message_block_test.go::TestAssistantMessageBlock_TransformStateGetterNoDeadlock"
+      ]
+    },
+    {
       "id": "BF-aa2003c",
       "title": "The edit tool's prepared arguments keep the members in the order the model sent them",
       "symptom": "A `tool_call` handler used to see the members sorted, with `\u003c`, `\u003e` and `\u0026` escaped.",
