@@ -1210,6 +1210,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-edd287c](#bf-edd287c) | Migrating a version 1 session file that holds a line parsing to a number, string, array or `true` no longer… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-eeac307](#bf-eeac307) | Anthropic and Bedrock assistant messages write `providerThinkingLevel` after `model`, and write… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-ef0f95a](#bf-ef0f95a) | OpenCode Zen and OpenCode Go use the `opencode.ai/inference` endpoints, which fixes OpenCode Go Gemini models… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-ef7da87](#bf-ef7da87) | Text typed over an extension's autocomplete provider and followed at once by Enter no longer skips the menu… | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-f02269c](#bf-f02269c) | When an extension's `before_provider_request` handler replaces an Anthropic request, or a Codex WebSocket… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-f06ab7e](#bf-f06ab7e) | A run that `sendMessage({ triggerTurn: true })` starts while idle emits `before_agent_start`, checks… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-f07d033](#bf-f07d033) | A response stream dropped mid-run now reports `terminated (cause: ...)` instead of a bare `terminated` (D144… | A Pi defect that PiG fixed first | All platforms | 0.5.0 |
@@ -17838,6 +17839,22 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** `ai/classifier_models_upstream_test.go::TestClassifierModelsUpstream`, `cmd/gen-models/carried_fixes_test.go::TestCarriedOpenCodeInferenceEndpoints`
 - **Release note:** OpenCode Zen and OpenCode Go use the `opencode.ai/inference` endpoints, which fixes OpenCode Go Gemini models failing with a 404; OpenCode Go MiniMax M2.7 uses the Anthropic Messages API, and OpenCode Go DeepSeek V4 Flash is no longer listed (carried Pi fix, Pi 195120a9).
 
+### BF-ef7da87
+
+**Text typed over an extension's autocomplete provider and followed at once by Enter no longer skips the menu…**
+
+- **Source:** A Pi defect that PiG fixed first (divergence D213)
+- **Symptom:** Text typed over an extension's autocomplete provider and followed at once by Enter no longer skips the menu Pi opens.
+- **Root cause:** Pi's editor awaits the whole extension wrapper chain in the Promise jobs after the terminal read (editor.ts requestAutocomplete, startAutocompleteRequest): a chain that needs no I/O has opened its menu before the next read, so an Enter sent right behind `/model provider/id` accepts the suggestion and only a second Enter submits; a chain that awaits a timer, socket or process has not, and the next read is handled first. PiG's chain is a round trip through the extension runtime, and the next read overtook it: the Enter submitted on the first press. An earlier change fixed the built-in provider only.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Pi issue:** none recorded
+- **Removed when Pi fixes it:** Pi's extensions run outside the editor's process, or the extension API gives a provider a way to say that it settles without I/O, or the owner withdraws the decision. Then the notice, the bound, the checkpoints and this record go.
+- **Fix commits:** `39c44731e4` (2026-10-29), `9f3e3802c2` (2026-10-29), `caf16625c8` (2026-10-29), `ef7da87980` (2026-10-29)
+- **Tests:** `coding/extension/host/subprocess/autocomplete_lifetime_test.go::TestAutocompleteCancellationPrecedesDispatchAndReleasesReferences`, `coding/extension/host/subprocess/autocomplete_settle_test.go::TestNodeAutocompleteChainTellsTheHostWhenItAwaitsIO`, `internal/codingagent/autocomplete_extension_read_test.go::TestAnExtensionProviderThatNeverAnswersHoldsInputOnlyForTheBound`, `internal/codingagent/autocomplete_extension_read_test.go::TestBaseProviderAnnouncesItsAwaitedWork`, `internal/codingagent/autocomplete_extension_read_test.go::TestEnterInTheReadAfterTheTextAcceptsTheMenuAnExtensionProviderOpened`, `internal/codingagent/autocomplete_extension_read_test.go::TestEnterInTheReadAfterTheTextSubmitsWhileAnExtensionProviderAwaitsIO`, `test/extension-conformance/autocomplete_settle_test.go::TestAutocompleteSettlementAcrossSDKs`, `tui/async_autocomplete_race_test.go::TestAsyncAutocomplete_NoRaceWithInput` and 5 more in docs/bug-ledger.json
+- **Release note:** Text typed over an extension's autocomplete provider and followed at once by Enter no longer skips the menu Pi opens. With an extension that wraps the provider through `ctx.ui.addAutocompleteProvider` and answers without I/O, `/model provider/id` typed and entered in one go switched the model in PiG, where Pi accepts the suggestion into the editor on the first Enter and switches on the second (the same holds for `/thinking level`, any command with argument completions, and a command name). Pi awaits the whole wrapper chain in the Promise jobs after the terminal read, so a chain that needs no I/O has opened its menu before the next read, and a chain that awaits a timer, a socket or a process has not. PiG's chain is a round trip through the extension runtime that the next read overtook. The editor now starts the extension chain's request at the end of each read and the host holds the next read until the menu is published, the chain says it awaits real I/O, or one second passes; a provider that waits on I/O still lets the Enter submit at once, as in Pi. The Node runtime says so at the end of its macrotask (microtasks, `queueMicrotask` and `process.nextTick` stay inside Pi's checkpoint, a timer or `setImmediate` leaves it); the Go, Rust, Python and Lisp SDKs, whose providers block a thread, say so after 50 ms without progress outside a host call (D213). Extension authors change nothing.
+
 ### BF-f02269c
 
 **When an extension's `before_provider_request` handler replaces an Anthropic request, or a Codex WebSocket…**
@@ -19434,6 +19451,7 @@ Each divergence record is accounted for here. A divergence that fixes a Pi defec
 | D207 | TuiAltScreen.children is a copy in the Go, Rust, Python and Lisp SDKs, where Pi's is a live array | [BF-D207](#bf-d207) |
 | D208 | From inside a component's render, a TuiAltScreen of the Go, Rust, Python and Lisp SDKs fails the calls that… | [BF-D208](#bf-d208) |
 | D212 | `/llama` explains a 404 from llama-swap's missing load and unload endpoints, where Pi shows "llama.cpp… | [BF-3f46dee](#bf-3f46dee) |
+| D213 | The host holds the read after text typed over an extension autocomplete provider until the provider chain… | [BF-ef7da87](#bf-ef7da87) |
 
 ## Fix-titled commits that are not bugs in a release
 

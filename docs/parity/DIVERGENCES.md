@@ -2794,3 +2794,30 @@ Parity allowance: `TestLlamaClientRequestsMatchPi` compares load and unload agai
 Remove when: Pi's `/llama` names llama-swap itself, or can manage llama-swap models; or the owner withdraws the decision. Then the call-site marker, the `GET /running` probe, the docs section and this record go.
 
 SCRUTINIZED:approved
+
+## D213 The host holds the read after text typed over an extension autocomplete provider until the provider chain settles, announces I/O or reaches a bound
+
+What: Pi's editor awaits an autocomplete request in the Promise jobs that follow the terminal read that typed the text (`editor.ts` `requestAutocomplete`, `startAutocompleteRequest`), and its extensions run in Pi's own process. A provider chain that needs no I/O therefore opens its menu before the next read: `/model provider/id` typed and entered at once leaves the suggestion in the editor and only a second Enter submits. A chain that awaits real I/O (a timer, a socket, a process) has not settled when the next read arrives, and that read is handled first. PiG's chain crosses a process boundary, and the next read overtakes the round trip. After each read, PiG starts the request of the extension chain (the last key of the read, as Pi's start token) and holds the next read until the chain settles and its menu is published, or until the chain announces that it awaits real I/O (`ui.autocomplete.pending`, `NotifyUIAutocompletePending`), or until a bound passes. Three parts have no Pi counterpart: the notice, the bound, and the checkpoint of the blocking SDKs.
+
+- The Node runtime announces a chain that is neither settled nor waiting for the host's answer to a captured provider's call at the end of its macrotask (`setImmediate`), which is Pi's rule exactly: microtasks, `queueMicrotask` and `process.nextTick` stay in the checkpoint, a zero timer, `setImmediate`, a timer, a socket or a process leave it.
+- The Go, Rust, Python and Lisp SDKs run a provider on a blocked thread, which has no event loop and no macrotask. They announce a request that has run 50 ms, outside a host call, without finishing, and restart the 50 ms after each host call. A provider that only computes for longer than 50 ms is announced as if it awaited I/O, and a provider that waits on I/O for under 50 ms holds the read for that time; Pi's microtask checkpoint has no duration.
+- The host also announces the base provider's awaited work (an `@` file search, a command's Promise-returning argument completer), which it alone can see.
+- A request that neither answers nor announces releases the read after one second (`autocompleteHoldBound`) and marks the chain overdue: no request holds input until one that was not cancelled ends. In Pi a hung provider hangs the whole editor. A dead runtime fails its request at once and releases the read.
+
+Why: Pi's observable order (the first Enter accepts, the second submits) needs the next read to wait for a chain that needs no I/O, and Pi's input never waits for one that does. The notice carries the distinction across the boundary where Pi's event loop made it for free. The bound and the checkpoint are the price of a runtime that can hang or block, which Pi's in-process extensions do not have.
+
+Pi bug: none claimed.
+
+Scope: requests of the extension provider chain that start at the end of a read: natural slash, argument and mention requests of text typed or pasted. Debounced symbol requests (a later task in Pi too), forced Tab requests (the host asks `shouldTriggerFileCompletion` first, as before) and a request made behind an unfinished one never hold the read. The native provider chain without an extension provider is unchanged.
+
+Owner decision: owner Michael Kinsy ordered the fix for 0.6.0 on 2026-10-29 and asked for the bound to be recorded as a numbered divergence; the 50 ms checkpoint and the one second bound are the lane's choice, listed for the owner's confirmation in the lane report.
+
+Call-site markers: `tui/autocomplete_unhold.go`, `tui/editor_async_provider.go` (`requestAutocompleteProvider`), `internal/codingagent/autocomplete_wrappers.go` (`holdAutocompleteInput`), `coding/extension/host/subprocess/autocomplete_bridge.go`, `coding/extension/host/subprocess/protocol.go` (`NotifyUIAutocompletePending`), `coding/extension/host/subprocess/runtime-node/autocomplete.mjs`, `extensions/sdk/autocomplete.go`, `extensions/sdk-rs/src/autocomplete.rs`, `extensions/sdk-py/pig_sdk/autocomplete.py`, `extensions/sdk-lisp/src/autocomplete.lisp`.
+
+Evidence: journey `extension-completion-fast-enter` (j18, packed Node runtime) runs Pi and PiG through `/model provider/id` and `/thinking level` typed and entered at once. `TestAutocompleteSettlementAcrossSDKs` runs a fast chain, a chain that sleeps and a chain that waits on a slow host answer in the Go, Node (isolated and packed), Rust, Python and Lisp realizations, fused and packed Go included, and requires the sleeping chain, and only that one, to be announced before its answer. `TestNodeAutocompleteChainTellsTheHostWhenItAwaitsIO` pins the Node rule in isolated and packed mode (microtasks, `nextTick`, host waits stay in the checkpoint; a zero timer, `setImmediate` and a timer leave it). `TestEnterInTheReadAfterTheTextAcceptsTheMenuAnExtensionProviderOpened`, `TestEnterInTheReadAfterTheTextSubmitsWhileAnExtensionProviderAwaitsIO`, `TestAnExtensionProviderThatNeverAnswersHoldsInputOnlyForTheBound` and `TestBaseProviderAnnouncesItsAwaitedWork` cover the host, and `tui/editor_autocomplete_hold_test.go` the editor.
+
+Parity allowance: journey `extension-completion-fast-enter` normalizes nothing for this difference: a provider that needs no I/O matches Pi. The slow, blocking and hung cases differ from Pi only in how long the host holds one read, which no journey can observe without a clock.
+
+Remove when: Pi's extensions run outside the editor's process, or the extension API gives a provider a way to say that it settles without I/O, or the owner withdraws the decision. Then the notice, the bound, the checkpoints and this record go.
+
+SCRUTINIZED:approved
