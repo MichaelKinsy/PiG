@@ -10322,6 +10322,35 @@
       ]
     },
     {
+      "id": "BF-58f6697",
+      "title": "Text typed and followed at once by Enter no longer skips the autocomplete menu Pi opens: `/model provider/id`…",
+      "symptom": "Text typed and followed at once by Enter no longer skips the autocomplete menu Pi opens: `/model provider/id` typed and entered in one go switched the model in PiG, where Pi accepts the suggestion into the editor on the first Enter and switches on the second (the same holds for `/thinking level`, any command with argument completions, and a command name such as `/settin`, which Pi accepts and submits).",
+      "rootCause": "Pi's editor only schedules an autocomplete request from the key handlers (editor.ts requestAutocomplete); startAutocompleteRequest runs as a Promise job after the terminal read's last sequence, and a provider that needs no I/O (a command name, a command's argument completions such as /model provider/id and /thinking level) answers in the same microtask checkpoint, before the next read is handled. An Enter sent right behind the text therefore finds the menu open: the first Enter accepts the suggestion, a second submits.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Text typed and followed at once by Enter no longer skips the autocomplete menu Pi opens: `/model provider/id` typed and entered in one go switched the model in PiG, where Pi accepts the suggestion into the editor on the first Enter and switches on the second (the same holds for `/thinking level`, any command with argument completions, and a command name such as `/settin`, which Pi accepts and submits). Pi's editor resolves its autocomplete request in the Promise jobs that follow the terminal read that typed the text, so the menu is open when the next read arrives; PiG started the request on a worker and published the menu through two later owner-loop tasks that the Enter overtook, so the Enter found no menu and submitted what was typed. The editor now starts the request of a read when the read has been handled (`Editor.FlushAutocomplete`, called by the interactive loop after each read), and an Enter in the same read as the text still submits it, as in Pi. Typed at human speed both behaved like Pi already.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "58f6697aa5",
+          "date": "2026-10-29"
+        }
+      ],
+      "tests": [
+        "tui/editor_autocomplete_flush_test.go::TestFlushAutocompleteAfterShutdownStartsNothing",
+        "tui/editor_autocomplete_flush_test.go::TestFlushAutocompleteAnswersTheLastRequestOfAReadOnce",
+        "tui/editor_autocomplete_flush_test.go::TestFlushAutocompleteDropsARequestTheEditorMovedOnFrom",
+        "tui/editor_autocomplete_flush_test.go::TestFlushAutocompleteJoinsARequestStillOnTheWorker",
+        "tui/editor_autocomplete_flush_test.go::TestFlushAutocompleteLeavesAnAwaitedAnswerToTheWorker",
+        "tui/editor_autocomplete_flush_test.go::TestFlushAutocompleteLeavesTheSymbolDebounceToItsTimer",
+        "tui/editor_autocomplete_flush_test.go::TestPostedRequestStartsWithoutAFlush",
+        "tui/editor_completion_owner_test.go::TestOwnedAutocompleteWaitsForOwnerPublication"
+      ]
+    },
+    {
       "id": "BF-59456ae",
       "title": "Pressing a key in a subprocess extension's overlay no longer freezes interactive mode when the key reaches…",
       "symptom": "Pressing a key in a subprocess extension's overlay no longer freezes interactive mode when the key reaches the overlay on the main loop (public PR #197).",
