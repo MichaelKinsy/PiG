@@ -19685,6 +19685,42 @@
       ]
     },
     {
+      "id": "BF-8a44836",
+      "title": "Closing a session with an MCP server that signs in with OAuth no longer fails at random",
+      "symptom": "Closing a session with an MCP server that signs in with OAuth no longer fails at random.",
+      "rootCause": "Close cancelled the transport's context, which aborts the requests in flight, and sent the session DELETE at once. A response without a body (the GET stream answered 405, a 202) is handed to its round trip after the connection went back to the idle pool (net/http transport.go readLoop: tryPutIdleConn before the send on rc.ch). When the transport's context ends in that window the round trip finds no response yet and closes the connection with its context error (persistConn.roundTrip, `case \u003c-ctxDoneChan`), although the DELETE may already have taken the connection from the pool. The DELETE then fails with the aborted request's `context canceled` after about 100 microseconds and the server…",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Closing a session with an MCP server that signs in with OAuth no longer fails at random. The `DELETE` that ends the session could be refused with the `context canceled` of the stream the connection opens to hear from the server, when closing began while that stream's answer was still being handed over, so the server kept the session until it expired; closing now sends the `DELETE` only after the requests it aborted have returned. The stream's first request also reads its token before the connection is reported ready, as in Pi: a stream that started late could refresh a token that was about to expire, and closing then waited up to 15 seconds for the authorization server.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "320d389221",
+          "date": "2026-10-29"
+        },
+        {
+          "hash": "680815deac",
+          "date": "2026-10-29"
+        },
+        {
+          "hash": "8a4483647c",
+          "date": "2026-10-29"
+        },
+        {
+          "hash": "d5d34e7742",
+          "date": "2026-10-29"
+        }
+      ],
+      "tests": [
+        "coding/mcp_oauth_session_upstream_test.go::TestAgentSessionMCPOAuthClosesTheSessionWithoutRefreshingAnExpiringToken",
+        "mcp/streamable_http_close_order_test.go::TestStreamableHTTPTransportSendsTheSessionDeleteOnlyAfterTheAbortedRequestsReturned",
+        "mcp/streamable_http_get_stream_token_test.go::TestStreamableHTTPTransportReadsTheGETStreamsTokenBeforeTheInitializedNotificationReturns"
+      ]
+    },
+    {
       "id": "BF-8a88c34",
       "title": "On Windows, a custom theme edited in a rapid burst of writes no longer stays on a stale version",
       "symptom": "On Windows, a custom theme edited in a rapid burst of writes no longer stays on a stale version.",

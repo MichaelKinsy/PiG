@@ -686,6 +686,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-89d167f](#bf-89d167f) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
 | [BF-8a18a6b](#bf-8a18a6b) | A Node extension no longer keeps reading an entry the host refused | PiG's own defect | All platforms | 0.5.2 |
 | [BF-8a25539](#bf-8a25539) | `llama-cpp-classify` answers match Pi bit for bit: the softmax uses `jsmath.Exp`, V8's fdlibm `Math.exp`… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-8a44836](#bf-8a44836) | Closing a session with an MCP server that signs in with OAuth no longer fails at random | PiG's own defect | All platforms | Unreleased |
 | [BF-8a88c34](#bf-8a88c34) | On Windows, a custom theme edited in a rapid burst of writes no longer stays on a stale version | PiG's own defect | Windows | Unreleased |
 | [BF-8a9bb40](#bf-8a9bb40) | fix(ai): Anthropic retry-delay message and Codex error body without an error member | PiG's own defect | All platforms | Unreleased |
 | [BF-8ab5a89](#bf-8ab5a89) | A long session no longer holds each tool result twice | PiG's own defect | All platforms | 0.5.0 |
@@ -10565,6 +10566,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Commit that wrote the release note (the fix commit is not identified):** `8a25539ce3` (2026-10-13)
 - **Tests:** `test/docs-drift/changelog_fragments_test.go::TestChangelogFragmentsFollowTheRules`, `test/docs-drift/public_claims_test.go::TestPublicClaimsMatchTheEvidence`
 - **Release note:** `llama-cpp-classify` answers match Pi bit for bit: the softmax uses `jsmath.Exp`, V8's fdlibm `Math.exp` (Go's `math.Exp` differs in the last bit for some arguments on amd64). Its requests are written with their members in Pi's order, and a failed lookup no longer cancels the sibling requests of the same `Promise.all`, so the server receives what it receives from Pi.
+
+### BF-8a44836
+
+**Closing a session with an MCP server that signs in with OAuth no longer fails at random**
+
+- **Source:** PiG's own defect
+- **Symptom:** Closing a session with an MCP server that signs in with OAuth no longer fails at random.
+- **Root cause:** Close cancelled the transport's context, which aborts the requests in flight, and sent the session DELETE at once. A response without a body (the GET stream answered 405, a 202) is handed to its round trip after the connection went back to the idle pool (net/http transport.go readLoop: tryPutIdleConn before the send on rc.ch). When the transport's context ends in that window the round trip finds no response yet and closes the connection with its context error (persistConn.roundTrip, `case <-ctxDoneChan`), although the DELETE may already have taken the connection from the pool. The DELETE then fails with the aborted request's `context canceled` after about 100 microseconds and the server…
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `320d389221` (2026-10-29), `680815deac` (2026-10-29), `8a4483647c` (2026-10-29), `d5d34e7742` (2026-10-29)
+- **Tests:** `coding/mcp_oauth_session_upstream_test.go::TestAgentSessionMCPOAuthClosesTheSessionWithoutRefreshingAnExpiringToken`, `mcp/streamable_http_close_order_test.go::TestStreamableHTTPTransportSendsTheSessionDeleteOnlyAfterTheAbortedRequestsReturned`, `mcp/streamable_http_get_stream_token_test.go::TestStreamableHTTPTransportReadsTheGETStreamsTokenBeforeTheInitializedNotificationReturns`
+- **Release note:** Closing a session with an MCP server that signs in with OAuth no longer fails at random. The `DELETE` that ends the session could be refused with the `context canceled` of the stream the connection opens to hear from the server, when closing began while that stream's answer was still being handed over, so the server kept the session until it expired; closing now sends the `DELETE` only after the requests it aborted have returned. The stream's first request also reads its token before the connection is reported ready, as in Pi: a stream that started late could refresh a token that was about to expire, and closing then waited up to 15 seconds for the authorization server.
 
 ### BF-8a88c34
 
