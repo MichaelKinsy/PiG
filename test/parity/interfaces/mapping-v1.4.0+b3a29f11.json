@@ -136636,7 +136636,9 @@
         "call:coding/extension/autocomplete.go#SetupAutocompleteProvider"
       ],
       "evidence": [
-        "test:internal/codingagent/autocomplete_wrappers_test.go#TestAutocompleteFactoriesRebuildOnOwnerLoop"
+        "test:internal/codingagent/autocomplete_wrappers_test.go#TestAutocompleteFactoriesRebuildOnOwnerLoop",
+        "test:internal/codingagent/autocomplete_extension_read_test.go#TestEnterInTheReadAfterTheTextAcceptsTheMenuAnExtensionProviderOpened",
+        "test:internal/codingagent/autocomplete_extension_read_test.go#TestEnterInTheReadAfterTheTextSubmitsWhileAnExtensionProviderAwaitsIO"
       ]
     },
     {
@@ -136656,7 +136658,9 @@
         "call:coding/extension/autocomplete.go#SetupAutocompleteProvider"
       ],
       "evidence": [
-        "test:internal/codingagent/autocomplete_wrappers_test.go#TestAutocompleteFactoriesRebuildOnOwnerLoop"
+        "test:internal/codingagent/autocomplete_wrappers_test.go#TestAutocompleteFactoriesRebuildOnOwnerLoop",
+        "test:internal/codingagent/autocomplete_extension_read_test.go#TestEnterInTheReadAfterTheTextAcceptsTheMenuAnExtensionProviderOpened",
+        "test:internal/codingagent/autocomplete_extension_read_test.go#TestEnterInTheReadAfterTheTextSubmitsWhileAnExtensionProviderAwaitsIO"
       ]
     },
     {
@@ -146738,7 +146742,7 @@
       "evidence": [
         "test:tui/editor_autocomplete_boundary_upstream_test.go#TestEditorResetsCustomTriggerCharactersWhenProviderChanges",
         "test:tui/editor_kill_undo_upstream_test.go#TestUpstreamEditorUndo",
-        "test:internal/codingagent/autocomplete_read_checkpoint_test.go#TestEnterInTheReadAfterTheTextAcceptsTheMenuThatReadOpened"
+        "test:internal/codingagent/autocomplete_extension_read_test.go#TestEnterInTheReadAfterTheTextAcceptsTheMenuAnExtensionProviderOpened"
       ]
     },
     {
@@ -146760,7 +146764,7 @@
       "evidence": [
         "test:tui/editor_autocomplete_boundary_upstream_test.go#TestEditorResetsCustomTriggerCharactersWhenProviderChanges",
         "test:tui/editor_kill_undo_upstream_test.go#TestUpstreamEditorUndo",
-        "test:internal/codingagent/autocomplete_read_checkpoint_test.go#TestEnterInTheReadAfterTheTextAcceptsTheMenuThatReadOpened"
+        "test:internal/codingagent/autocomplete_extension_read_test.go#TestEnterInTheReadAfterTheTextAcceptsTheMenuAnExtensionProviderOpened"
       ]
     },
     {
@@ -261603,7 +261607,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:tui/editor_async_provider.go#Editor.requestAutocompleteProvider"
+        "call:tui/editor_async_provider.go#Editor.requestAsyncAutocomplete"
       ],
       "evidence": [
         "test:tui/editor_async_provider_test.go#TestForcedAutocompleteAsksShouldTriggerFileCompletion"
@@ -264726,7 +264730,7 @@
       "evidence": [
         "test:tui/editor_autocomplete_boundary_upstream_test.go#TestEditorResetsCustomTriggerCharactersWhenProviderChanges",
         "test:tui/editor_kill_undo_upstream_test.go#TestUpstreamEditorUndo",
-        "test:internal/codingagent/autocomplete_read_checkpoint_test.go#TestEnterInTheReadAfterTheTextAcceptsTheMenuThatReadOpened"
+        "test:internal/codingagent/autocomplete_extension_read_test.go#TestEnterInTheReadAfterTheTextAcceptsTheMenuAnExtensionProviderOpened"
       ]
     },
     {
@@ -264748,7 +264752,7 @@
       "evidence": [
         "test:tui/editor_autocomplete_boundary_upstream_test.go#TestEditorResetsCustomTriggerCharactersWhenProviderChanges",
         "test:tui/editor_kill_undo_upstream_test.go#TestUpstreamEditorUndo",
-        "test:internal/codingagent/autocomplete_read_checkpoint_test.go#TestEnterInTheReadAfterTheTextAcceptsTheMenuThatReadOpened"
+        "test:internal/codingagent/autocomplete_extension_read_test.go#TestEnterInTheReadAfterTheTextAcceptsTheMenuAnExtensionProviderOpened"
       ]
     },
     {

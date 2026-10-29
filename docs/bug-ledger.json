@@ -40631,6 +40631,11 @@
       "id": "D212",
       "title": "`/llama` explains a 404 from llama-swap's missing load and unload endpoints, where Pi shows \"llama.cpp…",
       "entry": "BF-3f46dee"
+    },
+    {
+      "id": "D213",
+      "title": "A crashed or exited extension runtime releases the read the host holds for an autocomplete provider chain",
+      "entry": "BF-8e3613d"
     }
   ],
   "exemptCommits": {
