@@ -10,6 +10,9 @@
 #   PageUp                      -> "Model Name: Model Two" (clamped to the first row)
 # The scenario first prints /hotkeys so the transcript is taller than the viewport: a PageUp that reached the viewport
 # would scroll it and leave the picker on Model One. The crop below shows only the picker.
+# Two layers keep the key from the viewport in PiG, the alternate screen (shouldDeferViewportInput) and the modal host
+# (consumeModalHostInputFor); disabling both makes this scenario fail, either alone leaves it passing because the other layer
+# still hands the key to the picker.
 # The step after it waits for the background refresh, the settled state that
 # re-anchors the selection on both sides (see 11-model-picker-arrow-wrap).
 
