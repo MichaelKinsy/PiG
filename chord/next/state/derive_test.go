@@ -47,6 +47,18 @@ func TestMapShared(t *testing.T) {
 		}
 	})
 
+	t.Run("attaches its cleanups to tiny elements allocated right after the cache", func(t *testing.T) {
+		// runtime.AddCleanup refuses a cleanup whose closure points into the allocation block of its object; a small
+		// pointer-free element shares a 16-byte tiny block with whatever was allocated just before it.
+		for n := range 256 {
+			mapped := state.MapShared(func(e *element) int { return e.n })
+			e := &element{n: n}
+			if got := mapped([]*element{e}); len(got) != 1 || got[0] != n {
+				t.Fatalf("map = %v, want [%d]", got, n)
+			}
+		}
+	})
+
 	t.Run("keeps no element alive in its cache", func(t *testing.T) {
 		mapped := state.MapShared(func(n *note) *note { return &note{text: n.text} })
 		refs := func() (weak.Pointer[note], weak.Pointer[note]) {
