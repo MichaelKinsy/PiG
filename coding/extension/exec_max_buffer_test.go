@@ -30,6 +30,11 @@ func init() {
 		}
 		_, _ = out.Write(data)
 	}
+	// outerr: "ab" on stdout, then "cd" on stderr.
+	treeHelpers["outerr"] = func([]string) {
+		_, _ = os.Stdout.WriteString("ab")
+		_, _ = os.Stderr.WriteString("cd")
+	}
 	// flood: 600 bytes of "e" on stderr, 600 of "o" on stdout, then 1000 bytes of "x" on stdout every 10 ms until the child is ended.
 	treeHelpers["flood"] = func([]string) {
 		_, _ = os.Stderr.WriteString(strings.Repeat("e", 600))
@@ -191,5 +196,21 @@ func TestExecCommandDefaultCapFollowsTheRuntimeStringLimit(t *testing.T) {
 func TestExecCommandDefaultCapIs256MiB(t *testing.T) {
 	if got := extension.ExecDefaultMaxBuffer(); got != 256*1024*1024 {
 		t.Fatalf("default cap = %d, want %d", got, 256*1024*1024)
+	}
+}
+
+// Node's loop hands the bytes of a child that writes stdout and then stderr to the byte cap in that order (Pi's oracle gave the same
+// result in 20 of 20 runs), so a cap of 2 keeps "ab" of stdout and none of stderr every time. Reader goroutines that the scheduler orders freely would
+// sometimes keep the stderr bytes first.
+func TestExecCommandCountsStdoutBeforeStderrWhenTheChildWroteItFirst(t *testing.T) {
+	command, args := helper(t, "outerr")
+	for i := range 300 {
+		result, err := extension.ExecCommand(context.Background(), t.TempDir(), command, args, maxBuffer(2))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if result.Stdout != "ab" || result.Stderr != "" || !result.Truncated {
+			t.Fatalf("run %d: result = %+v, want stdout %q, no stderr, truncated", i, result, "ab")
+		}
 	}
 }

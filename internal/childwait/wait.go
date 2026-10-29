@@ -66,6 +66,10 @@ type Pipes struct {
 	// stopped[i] is set once the reader of files[i] has returned: nothing more
 	// is taken from that pipe, so it holds no output a reader will deliver.
 	stopped []atomic.Bool
+
+	// inflight[i] is set from the moment the reader of files[i] has taken bytes until it has delivered them, so a reader of a later pipe can tell
+	// that earlier output is still on its way.
+	inflight []atomic.Bool
 }
 
 // Start reads each file until it fails or ends, calling onData with the index
@@ -82,6 +86,7 @@ func Start(files []*os.File, onData func(index int, chunk []byte), hooks *Hooks)
 		activity: make(chan struct{}, 1),
 		done:     make(chan struct{}),
 		stopped:  make([]atomic.Bool, len(files)),
+		inflight: make([]atomic.Bool, len(files)),
 	}
 	var readers sync.WaitGroup
 	for index, file := range files {
@@ -109,6 +114,8 @@ func (p *Pipes) read(index int, file *os.File) {
 	for {
 		n, err := file.Read(buf)
 		if n > 0 {
+			p.inflight[index].Store(true)
+			p.awaitEarlierPipes(index)
 			if p.hooks != nil && p.hooks.BeforeDeliver != nil {
 				p.hooks.BeforeDeliver()
 			}
@@ -120,6 +127,7 @@ func (p *Pipes) read(index int, file *os.File) {
 				p.hooks.AfterData(index, buf[:n])
 			}
 			p.mu.Unlock()
+			p.inflight[index].Store(false)
 			select {
 			case p.activity <- struct{}{}:
 			default:
@@ -127,6 +135,18 @@ func (p *Pipes) read(index int, file *os.File) {
 		}
 		if err != nil {
 			return
+		}
+	}
+}
+
+// awaitEarlierPipes lets the output of an earlier pipe (stdout before stderr) that is readable now, or already taken, be delivered before this
+// reader's. Node's loop polls the pipes together and handles the readable ones in registration order, so a child that writes stdout and then
+// stderr is seen in that order, which a byte cap that spans both streams makes observable; separate reader goroutines would hand it to
+// whichever the scheduler ran first. A pipe that holds nothing now is not waited for, and a reader of an earlier pipe is never blocked by a later one.
+func (p *Pipes) awaitEarlierPipes(index int) {
+	for earlier := range index {
+		for !p.stopped[earlier].Load() && (p.inflight[earlier].Load() || pollPending(p.files[earlier])) {
+			time.Sleep(10 * time.Microsecond)
 		}
 	}
 }

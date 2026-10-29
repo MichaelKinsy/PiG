@@ -9,6 +9,28 @@ import (
 	"golang.org/x/sys/unix"
 )
 
+// pollPending reports whether the read end of a pipe is readable: it holds bytes, or has ended (POLLHUP with bytes also reports POLLIN). It is false when
+// the kernel did not answer.
+func pollPending(file *os.File) bool {
+	conn, err := file.SyscallConn()
+	if err != nil {
+		return false
+	}
+	fds := []unix.PollFd{{Events: unix.POLLIN}}
+	var pollErr error
+	if err := conn.Control(func(fd uintptr) {
+		fds[0].Fd = int32(fd)
+		for {
+			if _, pollErr = unix.Poll(fds, 0); !errors.Is(pollErr, unix.EINTR) {
+				return
+			}
+		}
+	}); err != nil || pollErr != nil {
+		return false
+	}
+	return fds[0].Revents&unix.POLLIN != 0
+}
+
 // pollPipe asks the kernel about the read end of a pipe without taking a byte from it or changing its mode (SyscallConn, not Fd, which would make the
 // descriptor blocking under the reader). hungUp reports that every write end is closed, which poll(2) reports as POLLHUP on a pipe whether or not
 // bytes remain in it; unread reports that bytes wait in the pipe while a write end is still open (an ended pipe reports POLLIN on macOS, where
