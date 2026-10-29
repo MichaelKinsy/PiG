@@ -5205,7 +5205,7 @@ export class Runtime {
           return;
         }
         case "autocomplete.suggest": {
-          await this.respond(id, await this.autocomplete.suggest(request.args, ctx[requestSignal]));
+          await this.respond(id, await this.autocomplete.suggest(request.args, ctx[requestSignal], id));
           return;
         }
         case "terminal_input": {
