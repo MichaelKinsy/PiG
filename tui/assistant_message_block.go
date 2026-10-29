@@ -2,6 +2,8 @@ package tui
 
 import (
 	"strings"
+	"sync"
+	"sync/atomic"
 
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
 )
@@ -16,7 +18,25 @@ const (
 // Ports packages/coding-agent/src/modes/interactive/components/assistant-message.ts.
 type AssistantMessageComponent struct {
 	Container
-	contentContainer  *Container
+	// mu serializes every access to the block's fields and the children
+	// updateContent hands to contentContainer: extension view builders,
+	// repaint callbacks and MouseRegion clicks mutate the block off the owner
+	// goroutine (D107 conversation renderer), and an unsynchronized
+	// updateContent pair let one caller's clear() write {0x0, 0x0} nil
+	// Components into the child list another caller was handing to SetChildren
+	// (the renderChildLocked nil-dispatch panic). Lock order is fixed
+	// b.mu -> b.Container.mu -> contentContainer.mu: Render and updateContent
+	// acquire container locks while holding b.mu, and container paths
+	// (HandleMouse, render) never acquire b.mu while holding a container lock.
+	mu               sync.Mutex
+	contentContainer *Container
+	// snapMu guards only the thinking and text fields. The getters read them
+	// under snapMu.RLock instead of b.mu because a Markdown render under b.mu
+	// can invoke a TransformState closure that calls Text or Thinking back on
+	// this block, and sync.Mutex is not reentrant. Lock order is fixed
+	// b.mu -> snapMu: the only writer is setContentLocked, which already holds
+	// b.mu when it takes snapMu, and no code takes b.mu while holding snapMu.
+	snapMu            sync.RWMutex
 	thinking          string
 	text              string
 	hidden            bool // whether thinking trace is hidden
@@ -35,16 +55,25 @@ type AssistantMessageComponent struct {
 	thinkingVisibilityOverrides map[int]bool
 	markdownTheme               *MarkdownTheme
 	lastMessage                 *AssistantMessage
-	isStreaming                 bool
+	// isStreaming is atomic: the markdown transform closure reads it while a
+	// render holds b.mu, and sync.Mutex is not reentrant.
+	isStreaming atomic.Bool
 	// finished reports that FinishStreaming ran: the block's Markdown keeps no streaming memos.
 	finished bool
 	// previousSegments is the scratch copy SetContent takes of segments.
 	previousSegments []assistantSegment
-	// childScratch is the scratch list updateContent hands to the content container.
+	// childScratch is the scratch list updateContent hands to the content
+	// container; b.mu serializes updateContent, so the slice is single-writer
+	// and SetChildren copies it before the next update reuses it.
 	childScratch []Component
 	// spacers, thinkingRuns and terminalError are the children updateContent keeps across updates (see updateContent).
-	spacers           []*Spacer
-	thinkingRuns      []thinkingRunRegion
+	spacers      []*Spacer
+	thinkingRuns []thinkingRunRegion
+	// mountedRuns is the number of thinking runs the last updateContent
+	// mounted into the content container; b.thinkingRuns keeps stale entries
+	// past it, and their click callbacks must not toggle a run index that no
+	// longer belongs to them.
+	mountedRuns       int
 	terminalError     []Component
 	terminalErrorLine string
 	terminalErrorPad  int
@@ -105,8 +134,8 @@ func NewAssistantMessageComponent(message *AssistantMessage, hideThinkingBlock b
 	b.md = b.newMarkdown("")
 	b.Add(b.contentContainer)
 	if len(markdownTransformers) > 0 {
-		b.SetMarkdownTransform(createMarkdownTransform("assistant", func() bool { return b.isStreaming }, markdownTransformers, messageID, timestamp))
-		b.SetThinkingMarkdownTransform(createMarkdownTransform("assistant-thinking", func() bool { return b.isStreaming }, markdownTransformers, messageID, timestamp))
+		b.SetMarkdownTransform(createMarkdownTransform("assistant", func() bool { return b.isStreaming.Load() }, markdownTransformers, messageID, timestamp))
+		b.SetThinkingMarkdownTransform(createMarkdownTransform("assistant-thinking", func() bool { return b.isStreaming.Load() }, markdownTransformers, messageID, timestamp))
 	}
 	if message != nil {
 		b.UpdateContent(*message)
@@ -153,9 +182,11 @@ func createMarkdownTransform(messageType string, isStreaming func() bool, transf
 // length/aborted/error diagnostic after the content (suppressed for aborted/error when the message has tool calls). The optional
 // isStreaming replaces the retained flag; IsStreaming reports it.
 func (b *AssistantMessageComponent) UpdateContent(message AssistantMessage, isStreaming ...bool) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
 	b.lastMessage = &message
 	if len(isStreaming) > 0 {
-		b.isStreaming = isStreaming[0]
+		b.isStreaming.Store(isStreaming[0])
 	}
 	segments := make([]AssistantSegment, 0, len(message.Content))
 	hasToolCalls := false
@@ -173,13 +204,15 @@ func (b *AssistantMessageComponent) UpdateContent(message AssistantMessage, isSt
 	b.hasToolCalls = hasToolCalls
 	b.stopReason = message.StopReason
 	b.errorMessage = message.ErrorMessage
-	b.SetContent(segments)
+	b.setContentLocked(segments)
 }
 
 // FinishStreaming tells the block that its message is complete: its Markdown drops the memos that only speed up the
 // render of the next streamed delta. The rows are unchanged. A hidden thinking run shows its label, so its Markdown does
 // not render again and drops them now (Markdown.FinishStreaming keeps them for an undrawn text's next render).
 func (b *AssistantMessageComponent) FinishStreaming() {
+	b.mu.Lock()
+	defer b.mu.Unlock()
 	b.finished = true
 	run := 0
 	for _, segment := range b.segments {
@@ -202,16 +235,20 @@ func (b *AssistantMessageComponent) thinkingRunHidden(index int) bool {
 }
 
 // IsStreaming reports the isStreaming flag of the last UpdateContent.
-func (b *AssistantMessageComponent) IsStreaming() bool { return b.isStreaming }
+func (b *AssistantMessageComponent) IsStreaming() bool { return b.isStreaming.Load() }
 
 // SetHiddenThinkingLabel sets the label that stands in for a hidden thinking run (assistant-message.ts setHiddenThinkingLabel).
 func (b *AssistantMessageComponent) SetHiddenThinkingLabel(label string) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
 	b.hiddenLabel = label
 	b.updateContent()
 }
 
 // SetOutputPad changes the horizontal content padding.
 func (b *AssistantMessageComponent) SetOutputPad(padding int) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
 	b.outputPad = max(0, padding)
 	b.updateContent()
 }
@@ -227,15 +264,24 @@ func (b *AssistantMessageComponent) SetTextDelta(delta string) {
 }
 
 func (b *AssistantMessageComponent) appendDelta(thinking bool, delta string) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
 	if len(b.content) == 0 || b.content[len(b.content)-1].Thinking != thinking {
 		b.content = append(b.content, AssistantSegment{Thinking: thinking})
 	}
 	b.content[len(b.content)-1].Text += delta
-	b.SetContent(b.content)
+	b.setContentLocked(b.content)
 }
 
 // SetContent replaces text/thinking content in message order for streaming or redraw. Blocks are trimmed, empty ones skipped, and consecutive thinking blocks form one run joined by a blank line. An empty text segment preserves an invisible boundary such as a tool call.
 func (b *AssistantMessageComponent) SetContent(content []AssistantSegment) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	b.setContentLocked(content)
+}
+
+// setContentLocked is SetContent under b.mu.
+func (b *AssistantMessageComponent) setContentLocked(content []AssistantSegment) {
 	b.content = append(b.content[:0], content...)
 	b.previousSegments = append(b.previousSegments[:0], b.segments...)
 	previous := b.previousSegments
@@ -290,14 +336,19 @@ func (b *AssistantMessageComponent) SetContent(content []AssistantSegment) {
 		}
 	}
 	clear(previous) // the scratch copy must not keep disposed Markdown alive
+	// Writers hold b.mu, then snapMu; Thinking and Text take only snapMu.
+	b.snapMu.Lock()
 	b.thinking = strings.Join(thinking, "\n\n")
 	b.text = strings.Join(text, "")
+	b.snapMu.Unlock()
 	b.md.SetText(b.text)
 	b.updateContent()
 }
 
 // Dispose releases this block's Markdown generations without allowing a late publication.
 func (b *AssistantMessageComponent) Dispose() {
+	b.mu.Lock()
+	defer b.mu.Unlock()
 	b.md.Dispose()
 	for _, segment := range b.segments {
 		segment.md.Dispose()
@@ -306,6 +357,8 @@ func (b *AssistantMessageComponent) Dispose() {
 
 // SetHideThinkingBlock controls all thinking runs and clears individual click overrides (assistant-message.ts setHideThinkingBlock).
 func (b *AssistantMessageComponent) SetHideThinkingBlock(hidden bool) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
 	b.hidden = hidden
 	clear(b.thinkingVisibilityOverrides)
 	b.updateContent()
@@ -315,7 +368,12 @@ func (b *AssistantMessageComponent) SetHideThinkingBlock(hidden bool) {
 // section at its render width, before markdown parsing. Mirrors upstream
 // MarkdownOptions.transform threaded through createMarkdownTransform in
 // assistant-message.ts:112. Used for the built-in Mermaid transformer.
+// fn runs at render time while the render holds b.mu, so it may call only
+// read-only getters such as Text, Thinking and IsStreaming; calling a
+// mutator of this block deadlocks.
 func (b *AssistantMessageComponent) SetMarkdownTransform(fn func(markdown string, width int) string) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
 	b.md.Transform = fn
 	b.md.Invalidate()
 	for _, seg := range b.segments {
@@ -328,7 +386,10 @@ func (b *AssistantMessageComponent) SetMarkdownTransform(fn func(markdown string
 }
 
 // SetThinkingMarkdownTransform installs the display-only rewrite for visible thinking, separate from the assistant-text transform context. Hidden thinking does not invoke it.
+// fn runs under b.mu at render time, with the same constraint as SetMarkdownTransform.
 func (b *AssistantMessageComponent) SetThinkingMarkdownTransform(fn func(markdown string, width int) string) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
 	b.thinkingTransform = fn
 	for _, seg := range b.segments {
 		if seg.thinking && seg.md != nil {
@@ -342,7 +403,10 @@ func (b *AssistantMessageComponent) SetThinkingMarkdownTransform(fn func(markdow
 // SetMarkdownTransformState declares the external state the installed transform
 // reads, so a change to it re-renders instead of serving the cached lines.
 // Required whenever the transform is not a pure function of (markdown, width).
+// fn runs under b.mu at render time, with the same constraint as SetMarkdownTransform.
 func (b *AssistantMessageComponent) SetMarkdownTransformState(fn func() string) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
 	b.md.TransformState = fn
 	b.md.Invalidate()
 	for _, seg := range b.segments {
@@ -355,7 +419,10 @@ func (b *AssistantMessageComponent) SetMarkdownTransformState(fn func() string) 
 }
 
 // SetAsyncMarkdownTransforms installs separately contextualized text and thinking rewrites. Each retained segment owns its replaceable worker generation.
+// Each transform's Prepare runs under b.mu at render time, with the same constraint as SetMarkdownTransform.
 func (b *AssistantMessageComponent) SetAsyncMarkdownTransforms(text, thinking *AsyncMarkdownTransform) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
 	b.asyncText, b.asyncThinking = text, thinking
 	b.md.AsyncTransform = text
 	for _, seg := range b.segments {
@@ -367,17 +434,32 @@ func (b *AssistantMessageComponent) SetAsyncMarkdownTransforms(text, thinking *A
 	b.updateContent()
 }
 
-// Thinking returns the accumulated thinking content.
-func (b *AssistantMessageComponent) Thinking() string { return b.thinking }
+// Thinking returns the accumulated thinking content. It reads under
+// snapMu.RLock rather than b.mu because a Markdown TransformState callback may
+// run while a render holds b.mu (sync.Mutex is not reentrant); the only
+// writer already holds b.mu when it takes snapMu, so a callback cannot
+// interleave with a write.
+func (b *AssistantMessageComponent) Thinking() string {
+	b.snapMu.RLock()
+	defer b.snapMu.RUnlock()
+	return b.thinking
+}
 
-// Text returns concatenated untrimmed text blocks, without display transformations.
-func (b *AssistantMessageComponent) Text() string { return b.text }
+// Text returns concatenated untrimmed text blocks, without display
+// transformations; snapMu.RLock for the same reason as Thinking.
+func (b *AssistantMessageComponent) Text() string {
+	b.snapMu.RLock()
+	defer b.snapMu.RUnlock()
+	return b.text
+}
 
 // SetHasToolCalls records that the assistant message contains tool calls.
 // When true, the abort/error section is suppressed: tool execution
 // components show their own error state. Mirrors upstream
 // assistant-message.ts:128: `if (!hasToolCalls) { ... }`.
 func (b *AssistantMessageComponent) SetHasToolCalls(v bool) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
 	if b.hasToolCalls == v {
 		return // every tool-call argument delta reports it; nothing it decides changed
 	}
@@ -387,6 +469,8 @@ func (b *AssistantMessageComponent) SetHasToolCalls(v bool) {
 
 // SetTerminalError records length/error/abort state after partial assistant content. An empty error message renders "Unknown error"; tool calls suppress abort/error but not length diagnostics.
 func (b *AssistantMessageComponent) SetTerminalError(stopReason, errorMessage string) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
 	b.stopReason = stopReason
 	b.errorMessage = errorMessage
 	b.updateContent()
@@ -394,6 +478,8 @@ func (b *AssistantMessageComponent) SetTerminalError(stopReason, errorMessage st
 
 // Invalidate rebuilds the content so theme-baked colors follow the active theme (assistant-message.ts invalidate).
 func (b *AssistantMessageComponent) Invalidate() {
+	b.mu.Lock()
+	defer b.mu.Unlock()
 	b.Container.Invalidate()
 	b.updateContent()
 }
@@ -403,6 +489,10 @@ func (b *AssistantMessageComponent) Render(width int) []string {
 	if width < 1 {
 		width = 1
 	}
+	// b.mu serializes the render against the mutators off the owner goroutine;
+	// it precedes every container lock (see the mu field comment).
+	b.mu.Lock()
+	defer b.mu.Unlock()
 	out := b.renderCopy(width)
 	if b.hasToolCalls || len(out) == 0 {
 		return out
@@ -414,7 +504,7 @@ func (b *AssistantMessageComponent) Render(width int) []string {
 
 // updateContent rebuilds the content container from the retained Markdown segments and the terminal state (assistant-message.ts updateContent).
 // The spacers, the thinking runs' mouse regions and the diagnostic lines are kept across updates while what they show is unchanged, so a
-// streamed delta neither allocates them again nor makes the container render them again.
+// streamed delta neither allocates them again nor makes the container render them again. b.mu must be held.
 func (b *AssistantMessageComponent) updateContent() {
 	children := b.childScratch[:0]
 	if len(b.segments) > 0 {
@@ -442,10 +532,61 @@ func (b *AssistantMessageComponent) updateContent() {
 		}
 	}
 	children = append(children, b.terminalErrorChildren()...)
+	b.mountedRuns = run
+	// SetChildren copies the slice, so handing it the scratch buffer keeps no
+	// alias the next update could mutate through.
 	b.contentContainer.SetChildren(children...)
 	clear(children)
 	b.childScratch = children[:0]
 	b.Container.Invalidate()
+}
+
+// HandleMouse replaces the inherited Container.HandleMouse with the same hit
+// contract — the event's self-reported bounds decide the layout width and the
+// forwarded coordinates — while b.mu serializes the layout read and any
+// measurement against the block's mutators: measuring renders each child's
+// Markdown, and off-lock that would race the mutators and the content
+// container's own layout writes.
+//
+// The lock splits the call in two. Under b.mu the call copies the rendered
+// child layout when the cache matches the event width, or measures the
+// children at event.Width; the dispatch then runs unlocked, because the
+// thinking-run click callback re-enters b.mu to toggle the run and sync.Mutex
+// is not reentrant. A snapshot taken under a released b.mu can describe
+// children updateContent replaced since; those are handled the way upstream
+// handles any layout drift — the click may land on a child that no longer
+// draws, and a stale thinking region's callback validates its run under b.mu
+// before toggling.
+func (b *AssistantMessageComponent) HandleMouse(event TuiMouseEvent) *TuiMouseDispatchResult {
+	if event.Y < 0 || event.Y >= event.Height {
+		return nil
+	}
+	children := func() []mouseChild {
+		b.mu.Lock()
+		defer b.mu.Unlock()
+		var children []mouseChild
+		b.contentContainer.mu.RLock()
+		if b.contentContainer.layoutValid && b.contentContainer.layoutWidth == event.Width {
+			children = make([]mouseChild, len(b.contentContainer.builtKids))
+			top := 0
+			for i, child := range b.contentContainer.builtKids {
+				children[i] = mouseChild{component: child, height: b.contentContainer.builtEnds[i] - top}
+				top = b.contentContainer.builtEnds[i]
+			}
+		}
+		components := append([]Component(nil), b.contentContainer.children...)
+		b.contentContainer.mu.RUnlock()
+		if children == nil {
+			// Stale or width-mismatched layout cache: measure at the event's
+			// own width, as Container.HandleMouse does, while b.mu still
+			// serializes the render against the mutators.
+			children = measureMouseChildren(components, event.Width)
+		}
+		return children
+	}()
+	// dispatchToStackedChild may invoke the thinking-run click callback,
+	// which takes b.mu; it must run unlocked.
+	return dispatchToStackedChild(children, event, event.X, event.Y, event.Width)
 }
 
 // spacer is the block's i-th one-line spacer: 0 leads the content, i > 0 follows thinking run i-1.
@@ -466,7 +607,7 @@ type thinkingRunRegion struct {
 }
 
 // thinkingRun is the mouse region of thinking run index: its Markdown, or the hidden-thinking label when hidden. A click toggles the
-// run's visibility.
+// run's visibility. b.mu must be held.
 func (b *AssistantMessageComponent) thinkingRun(index int, md *Markdown, hidden bool) *MouseRegion {
 	for len(b.thinkingRuns) <= index {
 		b.thinkingRuns = append(b.thinkingRuns, thinkingRunRegion{})
@@ -485,18 +626,31 @@ func (b *AssistantMessageComponent) thinkingRun(index int, md *Markdown, hidden 
 	if hidden {
 		thinking = NewPaddedText(hiddenText, b.outputPad, 0, nil)
 	}
-	runIndex, wasHidden := index, hidden
-	*kept = thinkingRunRegion{md: md, hidden: hidden, hiddenText: hiddenText, outputPad: b.outputPad, region: NewMouseRegion(thinking, func(event TuiMouseEvent) *TuiMouseEventResult {
+	runIndex := index
+	var region *MouseRegion
+	region = NewMouseRegion(thinking, func(event TuiMouseEvent) *TuiMouseEventResult {
 		if event.Type != MouseClick || event.Button != MouseButtonLeft {
 			return nil
 		}
-		if b.thinkingVisibilityOverrides == nil {
-			b.thinkingVisibilityOverrides = make(map[int]bool)
+		// The click can arrive on a goroutine that is not holding b.mu; take it
+		// for the same mutation window every other entry serializes through.
+		b.mu.Lock()
+		defer b.mu.Unlock()
+		// The region this callback belongs to may be stale: a later update can
+		// have replaced thinkingRuns[runIndex].region or shrunk the run list.
+		// Only a click on the region currently mounted at runIndex toggles it;
+		// a stale one reports the click handled without touching state, the
+		// same outcome the miss branch produces.
+		if runIndex < b.mountedRuns && runIndex < len(b.thinkingRuns) && b.thinkingRuns[runIndex].region == region {
+			if b.thinkingVisibilityOverrides == nil {
+				b.thinkingVisibilityOverrides = make(map[int]bool)
+			}
+			b.thinkingVisibilityOverrides[runIndex] = !hidden
+			b.updateContent()
 		}
-		b.thinkingVisibilityOverrides[runIndex] = !wasHidden
-		b.updateContent()
 		return &TuiMouseEventResult{Handled: true}
-	})}
+	})
+	*kept = thinkingRunRegion{md: md, hidden: hidden, hiddenText: hiddenText, outputPad: b.outputPad, region: region}
 	return kept.region
 }
 
