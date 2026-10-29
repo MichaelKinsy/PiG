@@ -2,11 +2,13 @@ package link_test
 
 import (
 	"errors"
+	"runtime"
 	"slices"
 	"strconv"
+	"strings"
 	"sync"
 	"testing"
-	"weak"
+	"time"
 
 	"github.com/MichaelKinsy/PiG/chord/next/data"
 	"github.com/MichaelKinsy/PiG/chord/next/internal/nexttest"
@@ -428,16 +430,19 @@ func TestInOrderHandling(t *testing.T) {
 
 		t.Run("keeps no held message once the link closed (GC)", func(t *testing.T) {
 			h := newHolding(t, codec)
-			ref := func() weak.Pointer[byte] {
+			collected := make(chan struct{})
+			func() {
 				h.setup.peer.send(&link.ReleaseMessage{Hold: 0})
-				held := encode(t, codec, &link.ReleaseMessage{Hold: 1})
+				// A message past Go's tiny allocator: objects under 16 bytes share a block, which a neighbour's life keeps
+				// alive, so a 3-byte release could not be collected on its own (TypeScript's WeakRef has no such block).
+				held := encode(t, codec, &link.CallMessage{Call: 1, Hold: 1, Method: 0, Args: link.Text(`"` + strings.Repeat("x", 64) + `"`)})
+				runtime.AddCleanup(&held[0], func(chan struct{}) { close(collected) }, collected)
 				h.setup.peer.sendBytes(held)
 				h.settle()
 				h.setup.peer.link.Close()
 				h.settle()
-				return weak.Make(&held[0])
 			}()
-			nexttest.ExpectCollected(t, ref)
+			expectCleanedUp(t, collected)
 			h.finish(0).Resolve()
 			if !h.setup.peer.isClosed() {
 				t.Fatal("the peer's end is open")
@@ -458,4 +463,22 @@ func TestInOrderHandling(t *testing.T) {
 			}
 		})
 	})
+}
+
+// expectCleanedUp waits for the cleanup of a referent to run: it collects until it does, so a referent something still
+// holds fails after the deadline, and one nothing holds passes as soon as the collector has run (a single collection and
+// a check can race the cleanup goroutine, and the collector's own timing).
+func expectCleanedUp(t *testing.T, cleaned <-chan struct{}) {
+	t.Helper()
+	deadline := time.After(30 * time.Second)
+	for {
+		runtime.GC()
+		select {
+		case <-cleaned:
+			return
+		case <-deadline:
+			t.Fatal("the referent was not collected: something still holds it")
+		case <-time.After(5 * time.Millisecond):
+		}
+	}
 }
