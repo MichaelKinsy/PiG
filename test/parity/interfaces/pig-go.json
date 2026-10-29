@@ -244355,9 +244355,9 @@
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func(block *github.com/MichaelKinsy/PiG/tui.AssistantMessageComponent, messageType github.com/MichaelKinsy/PiG/coding/extension.MarkdownMessageType, invalidate func(), retry *markdownRetry, meta messageMeta) *github.com/MichaelKinsy/PiG/tui.AsyncMarkdownTransform"
+        "type": "func(block *github.com/MichaelKinsy/PiG/tui.AssistantMessageComponent, messageType github.com/MichaelKinsy/PiG/coding/extension.MarkdownMessageType, retry *markdownRetry, meta messageMeta) *github.com/MichaelKinsy/PiG/tui.AsyncMarkdownTransform"
       },
-      "shapeHash": "sha256:a7fcf970ed48112e11a6ca234b1bd591c93fd6965c5739de2eb97fe18b5a470b"
+      "shapeHash": "sha256:d1408e595090c77e6e19374dc52ca5515d4b02065e195de9aee971e81d4379a8"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.attachSubprocess",
@@ -354688,6 +354688,17 @@
         "type": "func(keys []string) string"
       },
       "shapeHash": "sha256:3f44ebeb8542eed43f8bd339059f8b067433d1d9db17abb908eb516c9500e33f"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#completionDirtying",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "completionDirtying",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(owner *invalidatable, transform *AsyncMarkdownTransform) *AsyncMarkdownTransform"
+      },
+      "shapeHash": "sha256:9a82d328ecae4f983a104fb330a083881ade02d2c74fdba8bac6771538e13261"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui#componentClick",
