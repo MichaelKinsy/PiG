@@ -3157,23 +3157,8 @@
     },
     {
       "path": "packages/chord/test/next/state/writable.test.ts",
-      "disposition": "partial",
-      "upstreamTestHash": "sha256:bb30a8c001f4005cc4fa582552e40b2f81f3e70486dd09c933206b1f4a5fd0ae",
-      "evidence": [
-        "chord/next/state/writable_own_test.go"
-      ],
-      "missingCases": [
-        "writable › a new value (by identity) is a new frame; the same value notifies nobody and costs one comparison",
-        "writable › inside a batch, sets mark it there: one frame with the last value, the derives over it computed once",
-        "writable › refuses a set inside a derive compute or a compose (`invalid/reentrant`)",
-        "writable › is the attempt's: `set` after its end throws `released`, its watches end `ended`, its value stays readable",
-        "writable › is a contribution, a derive source and an `on` source",
-        "writable › is collected with its attempt",
-        "writable › a set of the same value after its attempt ended throws `released` too (Sol, Astra)",
-        "writable › a writable an app keeps after `host.close` keeps no closed host; its observers' abort listeners go (Sol)",
-        "writable › a late callback's set after the host closed throws `released`"
-      ],
-      "rationale": "0 of 9 upstream cases are ported (lane D1); the 9 missing cases need the host, jobs, remote or store layers of later Chord v2 lanes and are listed in missingCases."
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:bb30a8c001f4005cc4fa582552e40b2f81f3e70486dd09c933206b1f4a5fd0ae"
     },
     {
       "path": "packages/chord/test/next/store/allocator.test.ts",
