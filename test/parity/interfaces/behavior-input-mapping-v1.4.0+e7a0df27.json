@@ -24,50 +24,90 @@
     {
       "id": "input:packages/coding-agent/src/extensions/llama/ui.ts#LlamaView.handleInput",
       "ownerFamily": "llama-runtime",
-      "disposition": "pending",
-      "pigTargets": [],
-      "evidence": [],
-      "contracts": [],
+      "disposition": "ported",
+      "pigTargets": [
+        "internal/codingagent/llama/ui.go#HandleInput"
+      ],
+      "evidence": [
+        "internal/codingagent/llama/ui_oracle_test.go#TestLlamaViewMatchesPi",
+        "test/parity/scenarios/extensions-runtime/75-llama-view.toml"
+      ],
+      "contracts": [
+        "coding-agent/llama-view/handle-input"
+      ],
       "divergence": "",
       "rationale": ""
     },
     {
       "id": "input:packages/coding-agent/src/extensions/mcp/ui.ts#McpManagerView.handleInput",
       "ownerFamily": "extensions-runtime",
-      "disposition": "pending",
-      "pigTargets": [],
-      "evidence": [],
-      "contracts": [],
+      "disposition": "ported",
+      "pigTargets": [
+        "coding/mcpext/mcptui/manager.go#HandleInput"
+      ],
+      "evidence": [
+        "coding/mcpext/manager_test.go#TestMcpManagerStatusScreenCancelsTheRunningOperationWithTheCancelKey",
+        "test/parity/scenarios/slash-commands/18-mcp-signin-cancel.toml"
+      ],
+      "contracts": [
+        "coding-agent/mcp-manager/handle-input-delegates"
+      ],
       "divergence": "",
       "rationale": ""
     },
     {
       "id": "input:packages/coding-agent/src/extensions/mcp/ui.ts#McpManagerView.redirectUrl.handleInput",
       "ownerFamily": "extensions-runtime",
-      "disposition": "pending",
-      "pigTargets": [],
-      "evidence": [],
-      "contracts": [],
+      "disposition": "ported",
+      "pigTargets": [
+        "coding/mcpext/mcptui/manager.go#RedirectURL"
+      ],
+      "evidence": [
+        "coding/mcpext/manager_test.go#TestMcpManagerViewRedirectURL",
+        "coding/mcpext/manager_test.go#TestMcpManagerViewRedirectURLTrimsLikeJavaScript",
+        "coding/mcpext/manager_test.go#TestMcpManagerViewSignInScreenCopiesTheAuthorizationURL",
+        "test/parity/scenarios/slash-commands/20-mcp-signin-paste-redirect-url.toml",
+        "test/parity/scenarios/slash-commands/21-mcp-signin-redirect-screen-cancel.toml"
+      ],
+      "contracts": [
+        "coding-agent/mcp-manager/redirect-url-screen-keys"
+      ],
       "divergence": "",
       "rationale": ""
     },
     {
       "id": "input:packages/coding-agent/src/extensions/mcp/ui.ts#McpManagerView.render.handleInput",
       "ownerFamily": "extensions-runtime",
-      "disposition": "pending",
-      "pigTargets": [],
-      "evidence": [],
-      "contracts": [],
+      "disposition": "ported",
+      "pigTargets": [
+        "coding/mcpext/mcptui/manager.go#Menu"
+      ],
+      "evidence": [
+        "coding/mcpext/manager_test.go#TestMcpManagerViewEmptyMenu",
+        "test/parity/scenarios/slash-commands/19-mcp-manager-empty-menu-cancel.toml"
+      ],
+      "contracts": [
+        "coding-agent/mcp-manager/empty-menu-cancel"
+      ],
       "divergence": "",
       "rationale": ""
     },
     {
       "id": "input:packages/coding-agent/src/extensions/mcp/ui.ts#McpManagerView.status.handleInput",
       "ownerFamily": "extensions-runtime",
-      "disposition": "pending",
-      "pigTargets": [],
-      "evidence": [],
-      "contracts": [],
+      "disposition": "ported",
+      "pigTargets": [
+        "coding/mcpext/mcptui/manager.go#Status"
+      ],
+      "evidence": [
+        "coding/mcpext/manager_test.go#TestMcpManagerStatusScreenCancelsTheRunningOperationWithTheCancelKey",
+        "coding/mcpext/manager_test.go#TestMcpManagerStatusScreenIgnoresTheCancelKeyForOperationsThatCannotBeCancelled",
+        "test/parity/scenarios/slash-commands/17-mcp-signin-status-cancel-hint.toml",
+        "test/parity/scenarios/slash-commands/18-mcp-signin-cancel.toml"
+      ],
+      "contracts": [
+        "coding-agent/mcp-manager/status-cancel"
+      ],
       "divergence": "",
       "rationale": ""
     },
@@ -105,30 +145,70 @@
     {
       "id": "input:packages/coding-agent/src/modes/interactive/components/custom-editor.ts#CustomEditor.handleInput",
       "ownerFamily": "interactive-rendering",
-      "disposition": "pending",
-      "pigTargets": [],
-      "evidence": [],
-      "contracts": [],
+      "disposition": "ported",
+      "pigTargets": [
+        "internal/codingagent/custom_editor.go#HandleInput",
+        "internal/codingagent/custom_editor.go#OnAction",
+        "internal/codingagent/interactive_input.go#handleCustomEditorKey",
+        "internal/codingagent/interactive_input.go#inputLoopUntil",
+        "internal/codingagent/keys.go#classifyKeyWithBindings"
+      ],
+      "evidence": [
+        "internal/codingagent/custom_editor_test.go#TestCustomEditorEscapePrefersOnEscapeThenTheInterruptActionThenTheEditor",
+        "internal/codingagent/custom_editor_test.go#TestCustomEditorExitOnlyWhenTheEditorIsEmpty",
+        "internal/codingagent/custom_editor_test.go#TestCustomEditorExplicitHistoryBindingBeatsModelCycling",
+        "internal/codingagent/custom_editor_test.go#TestCustomEditorExtensionShortcutThenPasteImageComeFirst",
+        "internal/codingagent/custom_editor_test.go#TestCustomEditorRunsTheRegisteredAppActionAndReplacesIt",
+        "internal/codingagent/interactive_remapped_submit_test.go#TestTerminalInputPreservesRemappedSubmitBindings",
+        "test/parity/scenarios/custom-editor-precedence.toml",
+        "test/parity/scenarios/tui-components/22-editor-remapped-submit-with-key-diagnostics.toml"
+      ],
+      "contracts": [
+        "coding-agent/custom-editor/active-keybinding-manager",
+        "coding-agent/custom-editor/app-key-precedence",
+        "coding-agent/custom-editor/handler-order"
+      ],
       "divergence": "",
       "rationale": ""
     },
     {
       "id": "input:packages/coding-agent/src/modes/interactive/components/easter-egg-3d.ts#EasterEgg3dAnimation.handleInput",
       "ownerFamily": "interactive-rendering",
-      "disposition": "pending",
-      "pigTargets": [],
-      "evidence": [],
-      "contracts": [],
+      "disposition": "ported",
+      "pigTargets": [
+        "internal/codingagent/pig_egg3d.go#blockOffsets",
+        "internal/codingagent/pig_logo_animation.go#HandleInput",
+        "internal/codingagent/pig_logo_animation.go#close"
+      ],
+      "evidence": [
+        "internal/codingagent/pig_egg3d_test.go#TestPig3dAnimationMatchesPinnedPi",
+        "internal/codingagent/pig_logo_animation_test.go#TestPigLogoAnimationMatchesPinnedPi",
+        "test/parity/scenarios/fullscreen/12-arminsayshi-3d.toml"
+      ],
+      "contracts": [
+        "coding-agent/easter-egg-3d/exit-keys"
+      ],
       "divergence": "",
       "rationale": ""
     },
     {
       "id": "input:packages/coding-agent/src/modes/interactive/components/extension-editor.ts#ExtensionEditorComponent.handleInput",
       "ownerFamily": "selectors",
-      "disposition": "pending",
-      "pigTargets": [],
-      "evidence": [],
-      "contracts": [],
+      "disposition": "ported",
+      "pigTargets": [
+        "internal/codingagent/ext_ui_context.go#Editor",
+        "internal/codingagent/extension_editor.go#HandleInput"
+      ],
+      "evidence": [
+        "internal/codingagent/extension_editor_test.go#TestExtensionEditorExternalAction",
+        "internal/codingagent/extension_editor_test.go#TestExtensionEditorHandleInputMatchesPi",
+        "internal/codingagent/extension_editor_test.go#TestExtensionEditorHandleInputTransitions",
+        "test/parity/scenarios/selectors/10-extension-editor.toml"
+      ],
+      "contracts": [
+        "coding-agent/extension-editor/cancel-and-external",
+        "coding-agent/extension-editor/cancel-before-external-editor"
+      ],
       "divergence": "",
       "rationale": ""
     },
@@ -185,10 +265,22 @@
     {
       "id": "input:packages/coding-agent/src/modes/interactive/components/model-selector.ts#ModelSelectorComponent.refreshModels",
       "ownerFamily": "model-resolver-selector",
-      "disposition": "pending",
-      "pigTargets": [],
-      "evidence": [],
-      "contracts": [],
+      "disposition": "ported",
+      "pigTargets": [
+        "tui/model_selector_runtime.go#NewModelSelectorComponent",
+        "tui/model_selector_runtime.go#applyCatalogRefresh",
+        "tui/model_selector_runtime.go#rejectCatalogRefresh",
+        "internal/codingagent/interactive_models.go#modelSelectorRuntime"
+      ],
+      "evidence": [
+        "tui/model_selector_refresh_oracle_test.go#TestModelSelectorRefreshModelsMatchesPi",
+        "tui/model_selector_runtime_test.go#TestModelSelectorConstructorKeepsTheListAfterATimedOutRefresh",
+        "test/parity/scenarios/model-resolver-selector/03-model-invalid.toml",
+        "test/parity/scenarios/model-resolver-selector/12-expired-credential-is-not-refresh-failure.toml"
+      ],
+      "contracts": [
+        "coding-agent/model-selector/refresh-result-status"
+      ],
       "divergence": "",
       "rationale": ""
     },
@@ -225,10 +317,17 @@
     {
       "id": "input:packages/coding-agent/src/modes/interactive/components/session-selector.ts#SessionSelectorComponent.handleInput",
       "ownerFamily": "session",
-      "disposition": "pending",
-      "pigTargets": [],
-      "evidence": [],
-      "contracts": [],
+      "disposition": "ported",
+      "pigTargets": [
+        "internal/codingagent/session_selector.go#HandleInput"
+      ],
+      "evidence": [
+        "internal/codingagent/session_selector_oracle_test.go#TestSessionSelectorInputMatchesPi",
+        "test/parity/scenarios/session/20-session-selector-search.toml"
+      ],
+      "contracts": [
+        "coding-agent/session-selector/rename-mode-input"
+      ],
       "divergence": "",
       "rationale": ""
     },
@@ -265,10 +364,17 @@
     {
       "id": "input:packages/coding-agent/src/modes/interactive/components/settings-submenu.ts#SteppedSubmenu.handleInput",
       "ownerFamily": "settings",
-      "disposition": "pending",
-      "pigTargets": [],
-      "evidence": [],
-      "contracts": [],
+      "disposition": "ported",
+      "pigTargets": [
+        "internal/codingagent/settings_submenu.go#HandleInput"
+      ],
+      "evidence": [
+        "internal/codingagent/settings_submenu_oracle_test.go#TestSettingsSubmenusMatchPi",
+        "test/parity/scenarios/settings/07-settings-model-thinking-model-step.toml"
+      ],
+      "contracts": [
+        "coding-agent/stepped-submenu/input-state-machine"
+      ],
       "divergence": "",
       "rationale": ""
     },
@@ -385,10 +491,20 @@
     {
       "id": "input:packages/coding-agent/src/modes/interactive/interactive-mode.ts#InteractiveMode.setExtensionFooter",
       "ownerFamily": "extensions-runtime",
-      "disposition": "pending",
-      "pigTargets": [],
-      "evidence": [],
-      "contracts": [],
+      "disposition": "ported",
+      "pigTargets": [
+        "internal/codingagent/ext_ui_context.go#SetFooter",
+        "internal/codingagent/status_line.go#Render(width int)"
+      ],
+      "evidence": [
+        "internal/codingagent/status_line_test.go#TestAC53CustomFooterOwnsKeyedStatusRendering",
+        "internal/codingagent/ext_ui_factories_test.go#TestExtUIContextHeaderAndFooterFactoriesBuildAndDisposeComponents",
+        "test/parity/scenarios/extensions-runtime/15-footer-status-reload-composition.toml",
+        "test/parity/scenarios/extensions-runtime/34-empty-custom-footer.toml"
+      ],
+      "contracts": [
+        "coding-agent/extensions/footer-status-composition"
+      ],
       "divergence": "",
       "rationale": ""
     },
@@ -491,10 +607,18 @@
     {
       "id": "input:packages/tui/src/components/cancellable-loader.ts#CancellableLoader.handleInput",
       "ownerFamily": "tui-components",
-      "disposition": "pending",
-      "pigTargets": [],
-      "evidence": [],
-      "contracts": [],
+      "disposition": "ported",
+      "pigTargets": [
+        "tui/cancellable_loader.go#HandleInput"
+      ],
+      "evidence": [
+        "tui/loader_image_parity_test.go#TestCancellableLoader_HandleInput_RouteBindings",
+        "tui/cancellable_loader_input_test.go#TestCancellableLoaderCancelFollowsTheBindingAndCallsOnAbortEachPress",
+        "test/parity/scenarios/tui-components/09-cancellable-loader.toml"
+      ],
+      "contracts": [
+        "tui/cancellable-loader/cancel-input"
+      ],
       "divergence": "",
       "rationale": ""
     },
@@ -511,20 +635,40 @@
     {
       "id": "input:packages/tui/src/components/editor.ts#Editor.shouldSubmitOnBackslashEnter",
       "ownerFamily": "tui-components",
-      "disposition": "pending",
-      "pigTargets": [],
-      "evidence": [],
-      "contracts": [],
+      "disposition": "ported",
+      "pigTargets": [
+        "tui/editor.go#shouldSubmitOnBackslashEnter"
+      ],
+      "evidence": [
+        "tui/editor_bindings_oracle_test.go#TestEditorRebindingsMatchPi",
+        "test/parity/scenarios/tui-components/38-editor-rebinding-submit.toml"
+      ],
+      "contracts": [
+        "tui/editor/should-submit-on-backslash-enter"
+      ],
       "divergence": "",
       "rationale": ""
     },
     {
       "id": "input:packages/tui/src/components/input.ts#Input.handleInput",
       "ownerFamily": "tui-components",
-      "disposition": "pending",
-      "pigTargets": [],
-      "evidence": [],
-      "contracts": [],
+      "disposition": "ported",
+      "pigTargets": [
+        "tui/text_input.go#HandleInput"
+      ],
+      "evidence": [
+        "tui/input_oracle_test.go#TestInputHandleInputMatchesPi",
+        "tui/text_input_test.go#TestTextInputDeleteWordUndoAndYank",
+        "tui/text_input_test.go#TestTextInputConsecutiveCtrlWAccumulatesIntoOneKillEntry",
+        "tui/text_input_test.go#TestTextInputUndoCoalescesWordCharsAndSpacesSeparately",
+        "tui/text_input_test.go#TestTextInputBracketedPasteCleansInput",
+        "tui/keys_decode_test.go#TestTextInputDecodesKittyPrintable",
+        "tui/key_csiu_text_test.go#TestTextInputIgnoresModifyOtherKeysText",
+        "test/parity/scenarios/extensions-runtime/11-subprocess-tool-ui-dialogs.toml"
+      ],
+      "contracts": [
+        "tui/input/edit-state-machine"
+      ],
       "divergence": "",
       "rationale": ""
     },
@@ -551,10 +695,18 @@
     {
       "id": "input:packages/tui/src/keybindings.ts#<module>.getSelectPageIndex",
       "ownerFamily": "tui-components",
-      "disposition": "pending",
-      "pigTargets": [],
-      "evidence": [],
-      "contracts": [],
+      "disposition": "ported",
+      "pigTargets": [
+        "tui/selection_navigation.go#GetSelectPageIndex"
+      ],
+      "evidence": [
+        "test/parity/scenarios/model-resolver-selector/24-fullscreen-model-picker-page-keys-reach-selector.toml",
+        "tui/select_page_keys_test.go#TestGetSelectPageIndex",
+        "tui/select_page_keys_test.go#TestSelectListPageKeysMoveByAPage"
+      ],
+      "contracts": [
+        "tui/keybindings/get-select-page-index"
+      ],
       "divergence": "",
       "rationale": ""
     },
@@ -1199,10 +1351,20 @@
     {
       "id": "render:packages/coding-agent/src/extensions/llama/ui.ts#LlamaView.render",
       "ownerFamily": "llama-runtime",
-      "disposition": "pending",
-      "pigTargets": [],
-      "evidence": [],
-      "contracts": [],
+      "disposition": "ported",
+      "pigTargets": [
+        "internal/codingagent/llama/ui.go#Render",
+        "internal/codingagent/llama/ui.go#frame",
+        "internal/codingagent/llama/ui.go#ShowModels",
+        "internal/codingagent/llama/ui.go#updateProgressLocked"
+      ],
+      "evidence": [
+        "internal/codingagent/llama/ui_oracle_test.go#TestLlamaViewMatchesPi",
+        "test/parity/scenarios/extensions-runtime/75-llama-view.toml"
+      ],
+      "contracts": [
+        "coding-agent/llama-view/render"
+      ],
       "divergence": "",
       "rationale": ""
     },
@@ -1279,20 +1441,38 @@
     {
       "id": "render:packages/coding-agent/src/extensions/mcp/ui.ts#McpManagerView.menu.render",
       "ownerFamily": "extensions-runtime",
-      "disposition": "pending",
-      "pigTargets": [],
-      "evidence": [],
-      "contracts": [],
+      "disposition": "ported",
+      "pigTargets": [
+        "coding/mcpext/mcptui/manager.go#Menu"
+      ],
+      "evidence": [
+        "coding/mcpext/manager_test.go#TestMcpManagerViewMenuLayout",
+        "coding/mcpext/manager_test.go#TestMcpManagerViewMenuRebuildsOnChangeKeepingTheSelection",
+        "test/parity/scenarios/slash-commands/14-mcp-manager-menu.toml",
+        "test/parity/scenarios/slash-commands/15-mcp-server-detail.toml",
+        "test/parity/scenarios/slash-commands/19-mcp-manager-empty-menu-cancel.toml"
+      ],
+      "contracts": [
+        "coding-agent/mcp-manager/menu-render"
+      ],
       "divergence": "",
       "rationale": ""
     },
     {
       "id": "render:packages/coding-agent/src/extensions/mcp/ui.ts#McpManagerView.render",
       "ownerFamily": "extensions-runtime",
-      "disposition": "pending",
-      "pigTargets": [],
-      "evidence": [],
-      "contracts": [],
+      "disposition": "ported",
+      "pigTargets": [
+        "coding/mcpext/mcptui/manager.go#Render"
+      ],
+      "evidence": [
+        "coding/mcpext/manager_test.go#TestMcpManagerViewCutsRowsToTheWidth",
+        "test/parity/scenarios/slash-commands/16-mcp-manager-while-connecting.toml",
+        "test/parity/scenarios/slash-commands/17-mcp-signin-status-cancel-hint.toml"
+      ],
+      "contracts": [
+        "coding-agent/mcp-manager/view-render"
+      ],
       "divergence": "",
       "rationale": ""
     },
@@ -1587,10 +1767,17 @@
     {
       "id": "render:packages/coding-agent/src/modes/interactive/components/settings-submenu.ts#SteppedSubmenu.render",
       "ownerFamily": "settings",
-      "disposition": "pending",
-      "pigTargets": [],
-      "evidence": [],
-      "contracts": [],
+      "disposition": "ported",
+      "pigTargets": [
+        "tui/select_submenu.go#Render"
+      ],
+      "evidence": [
+        "internal/codingagent/settings_submenu_oracle_test.go#TestSettingsSubmenusMatchPi",
+        "test/parity/scenarios/settings/05-settings-thinking-submenu.toml"
+      ],
+      "contracts": [
+        "coding-agent/settings-submenu/stepped-render"
+      ],
       "divergence": "",
       "rationale": ""
     },
@@ -1725,11 +1912,18 @@
     {
       "id": "render:packages/coding-agent/src/modes/interactive/components/user-message-selector.ts#UserMessageList.render",
       "ownerFamily": "interactive-rendering",
-      "disposition": "pending",
-      "pigTargets": [],
-      "evidence": [],
-      "contracts": [],
-      "divergence": "",
+      "disposition": "divergence",
+      "pigTargets": [
+        "tui/user_message_selector.go#Render"
+      ],
+      "evidence": [
+        "tui/user_message_selector_oracle_test.go#TestUserMessageSelectorInputMatchesPi",
+        "test/parity/scenarios/interactive-rendering/16-user-message-selector.toml"
+      ],
+      "contracts": [
+        "coding-agent/user-message-selector/render"
+      ],
+      "divergence": "D66",
       "rationale": ""
     },
     {
@@ -1832,20 +2026,38 @@
     {
       "id": "render:packages/coding-agent/src/modes/interactive/interactive-mode.ts#InteractiveMode.renderWidgetContainer",
       "ownerFamily": "interactive-input",
-      "disposition": "pending",
-      "pigTargets": [],
-      "evidence": [],
-      "contracts": [],
+      "disposition": "ported",
+      "pigTargets": [
+        "internal/codingagent/interactive_extensions.go#renderWidgetsLocked"
+      ],
+      "evidence": [
+        "internal/codingagent/widget_layout_test.go#TestAboveEditorWidgetSpacerPrecedesWidgets",
+        "internal/codingagent/host_ui_commands_test.go#TestHostSpacerSurvivesEditorReplacementAndWidgetClear",
+        "internal/codingagent/widget_layout_test.go#TestWidgetsFollowTheOrderTheyWereSetAcrossExtensionHosts",
+        "test/parity/scenarios/extensions-runtime/69-sdk-string-widget-python.toml"
+      ],
+      "contracts": [
+        "coding-agent/interactive/render-widget-container"
+      ],
       "divergence": "",
       "rationale": ""
     },
     {
       "id": "render:packages/coding-agent/src/modes/interactive/interactive-mode.ts#InteractiveMode.renderWidgets",
       "ownerFamily": "interactive-input",
-      "disposition": "pending",
-      "pigTargets": [],
-      "evidence": [],
-      "contracts": [],
+      "disposition": "ported",
+      "pigTargets": [
+        "internal/codingagent/interactive_extensions.go#renderWidgetsLocked",
+        "internal/codingagent/ext_widgets.go#setExtensionWidget"
+      ],
+      "evidence": [
+        "internal/codingagent/widget_layout_test.go#TestWidgetsFollowTheOrderTheyWereSetAcrossExtensionHosts",
+        "internal/codingagent/widget_layout_test.go#TestAboveEditorWidgetSpacerPrecedesWidgets",
+        "test/parity/scenarios/extensions-runtime/17-subprocess-widget-factory.toml"
+      ],
+      "contracts": [
+        "coding-agent/interactive/render-widgets"
+      ],
       "divergence": "",
       "rationale": ""
     },
@@ -1923,30 +2135,53 @@
     {
       "id": "render:packages/tui/src/components/editor.ts#Editor.render",
       "ownerFamily": "tui-components",
-      "disposition": "pending",
-      "pigTargets": [],
-      "evidence": [],
-      "contracts": [],
-      "divergence": "",
+      "disposition": "divergence",
+      "pigTargets": [
+        "tui/editor.go#Render"
+      ],
+      "evidence": [
+        "tui/editor_autocomplete_render_oracle_test.go#TestEditorAutocompleteRenderMatchesPi",
+        "test/parity/scenarios/tui-components/36-editor-autocomplete-render.toml"
+      ],
+      "contracts": [
+        "tui/editor/render"
+      ],
+      "divergence": "D66",
       "rationale": ""
     },
     {
       "id": "render:packages/tui/src/components/editor.ts#Editor.renderBottomBorder",
       "ownerFamily": "tui-components",
-      "disposition": "pending",
-      "pigTargets": [],
-      "evidence": [],
-      "contracts": [],
+      "disposition": "ported",
+      "pigTargets": [
+        "tui/editor.go#renderBottomBorder"
+      ],
+      "evidence": [
+        "tui/editor_scroll_border_oracle_test.go#TestEditorScrollBordersMatchPi",
+        "tui/editor_oracle_test.go#TestEditorMatchesPiOracle",
+        "test/parity/scenarios/tui-components/30-editor-scroll-borders.toml"
+      ],
+      "contracts": [
+        "tui/editor/render-bottom-border"
+      ],
       "divergence": "",
       "rationale": ""
     },
     {
       "id": "render:packages/tui/src/components/editor.ts#Editor.renderTopBorder",
       "ownerFamily": "tui-components",
-      "disposition": "pending",
-      "pigTargets": [],
-      "evidence": [],
-      "contracts": [],
+      "disposition": "ported",
+      "pigTargets": [
+        "tui/editor.go#renderTopBorder"
+      ],
+      "evidence": [
+        "tui/editor_scroll_border_oracle_test.go#TestEditorScrollBordersMatchPi",
+        "tui/editor_oracle_test.go#TestEditorMatchesPiOracle",
+        "test/parity/scenarios/tui-components/30-editor-scroll-borders.toml"
+      ],
+      "contracts": [
+        "tui/editor/render-top-border"
+      ],
       "divergence": "",
       "rationale": ""
     },
@@ -2106,41 +2341,70 @@
     {
       "id": "render:packages/tui/src/components/select-list.ts#SelectList.render",
       "ownerFamily": "tui-components",
-      "disposition": "pending",
-      "pigTargets": [],
-      "evidence": [],
-      "contracts": [],
+      "disposition": "ported",
+      "pigTargets": [
+        "tui/select_list.go#Render"
+      ],
+      "evidence": [
+        "tui/select_list_oracle_test.go#TestSelectListInputMatchesPi",
+        "test/parity/scenarios/tui-components/11-select-list-input-state.toml"
+      ],
+      "contracts": [
+        "tui/select-list/render-window"
+      ],
       "divergence": "",
       "rationale": ""
     },
     {
       "id": "render:packages/tui/src/components/select-list.ts#SelectList.renderItem",
       "ownerFamily": "tui-components",
-      "disposition": "pending",
-      "pigTargets": [],
-      "evidence": [],
-      "contracts": [],
+      "disposition": "ported",
+      "pigTargets": [
+        "tui/select_list.go#renderItem",
+        "tui/select_list.go#primaryColumnWidth"
+      ],
+      "evidence": [
+        "tui/select_list_oracle_test.go#TestSelectListInputMatchesPi",
+        "test/parity/scenarios/tui-components/11-select-list-input-state.toml"
+      ],
+      "contracts": [
+        "tui/select-list/render-item"
+      ],
       "divergence": "",
       "rationale": ""
     },
     {
       "id": "render:packages/tui/src/components/settings-list.ts#SettingsList.render",
       "ownerFamily": "settings",
-      "disposition": "pending",
-      "pigTargets": [],
-      "evidence": [],
-      "contracts": [],
-      "divergence": "",
+      "disposition": "divergence",
+      "pigTargets": [
+        "tui/settings_list.go#Render"
+      ],
+      "evidence": [
+        "tui/settings_list_render_oracle_test.go#TestSettingsListRenderMatchesPi",
+        "test/parity/scenarios/settings/02-settings-selector.toml"
+      ],
+      "contracts": [
+        "tui/settings-list/render"
+      ],
+      "divergence": "D66",
       "rationale": ""
     },
     {
       "id": "render:packages/tui/src/components/settings-list.ts#SettingsList.renderMainList",
       "ownerFamily": "settings",
-      "disposition": "pending",
-      "pigTargets": [],
-      "evidence": [],
-      "contracts": [],
-      "divergence": "",
+      "disposition": "divergence",
+      "pigTargets": [
+        "tui/settings_list.go#renderMainList"
+      ],
+      "evidence": [
+        "tui/settings_list_render_oracle_test.go#TestSettingsListRenderMatchesPi",
+        "test/parity/scenarios/settings/02-settings-selector.toml"
+      ],
+      "contracts": [
+        "tui/settings-list/render-main-list"
+      ],
+      "divergence": "D66",
       "rationale": ""
     },
     {
@@ -2383,30 +2647,56 @@
     {
       "id": "render:packages/tui/src/tui-main-screen.ts#TuiMainScreen.doRender",
       "ownerFamily": "fullscreen",
-      "disposition": "pending",
-      "pigTargets": [],
-      "evidence": [],
-      "contracts": [],
+      "disposition": "ported",
+      "pigTargets": [
+        "tui/tui.go#doRender",
+        "tui/tui.go#resolveFakeCursors"
+      ],
+      "evidence": [
+        "tui/main_screen_upstream_parity_test.go#TestMainScreenFramesMatchPi084LogicalHistory",
+        "tui/fake_cursor_test.go#TestMainScreenResolvesTheFakeCursorOfAnOverlayComponent",
+        "test/parity/scenarios/fullscreen/03-main-screen-history-redraw.toml"
+      ],
+      "contracts": [
+        "tui/render/main-screen-full-redraw"
+      ],
       "divergence": "",
       "rationale": ""
     },
     {
       "id": "render:packages/tui/src/tui.ts#<module>.renderFakeCursor",
       "ownerFamily": "tui-components",
-      "disposition": "pending",
-      "pigTargets": [],
-      "evidence": [],
-      "contracts": [],
+      "disposition": "ported",
+      "pigTargets": [
+        "tui/widthx/cursor_marker.go#RenderFakeCursor",
+        "tui/tui.go#resolveFakeCursors"
+      ],
+      "evidence": [
+        "tui/fake_cursor_test.go#TestResolveFakeCursorsTable",
+        "test/parity/scenarios/settings/08-settings-search-editing.toml"
+      ],
+      "contracts": [
+        "tui/fake-cursor/render"
+      ],
       "divergence": "",
       "rationale": ""
     },
     {
       "id": "render:packages/tui/src/tui.ts#Container.render",
       "ownerFamily": "tui-components",
-      "disposition": "pending",
-      "pigTargets": [],
-      "evidence": [],
-      "contracts": [],
+      "disposition": "ported",
+      "pigTargets": [
+        "tui/tui.go#Render",
+        "tui/tui.go#renderBorrowedLocked"
+      ],
+      "evidence": [
+        "tui/container_render_oracle_test.go#TestContainerRenderMatchesPi",
+        "tui/container_render_oracle_test.go#TestContainerRenderParity",
+        "test/parity/scenarios/tui-components/28-container-render.toml"
+      ],
+      "contracts": [
+        "tui/container/render"
+      ],
       "divergence": "",
       "rationale": ""
     },
