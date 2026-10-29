@@ -628,13 +628,14 @@ type managedExt struct {
 	toolUpdates  toolUpdateStreams
 	facetBridge  *FacetBridge
 	pendingReady *Envelope
-	// earlyOwnsThinkingRuns is an ownThinkingRuns call that arrived before the registration built the Extension; Host.mu guards it (pig additive D214).
+	// earlyOwnsThinkingRuns is an ownThinkingRuns call that arrived before the registration built the Extension; Host.mu guards it.
+	// pig additive (D214)
 	earlyOwnsThinkingRuns *bool
 	nodeEntry             string
-	replacement  atomic.Pointer[managedExt]
-	config       ExtConfig
-	host         *Host
-	supervisor   *Supervisor
+	replacement           atomic.Pointer[managedExt]
+	config                ExtConfig
+	host                  *Host
+	supervisor            *Supervisor
 	// conn is the current connection. Only setConnLocked stores it, and only while holding Host.mu, so a Host.mu holder reads a stable value; every other reader loads it once through connection() and keeps that snapshot for the whole operation.
 	conn atomic.Pointer[Conn]
 	// procMu guards the process handle: proc, processTree, cmd and exitedCh. An automatic restart replaces them in startExt while a stop, a crash handler or a status reader can run; it is a leaf lock, never held while calling out.

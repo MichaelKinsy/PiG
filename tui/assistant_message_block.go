@@ -16,11 +16,11 @@ const (
 // Ports packages/coding-agent/src/modes/interactive/components/assistant-message.ts.
 type AssistantMessageComponent struct {
 	Container
-	contentContainer  *Container
-	thinking          string
-	text              string
-	hidden            bool // whether thinking trace is hidden
-	hiddenLabel       string
+	contentContainer *Container
+	thinking         string
+	text             string
+	hidden           bool // whether thinking trace is hidden
+	hiddenLabel      string
 	// ownedRuns is whether an extension owns the thinking runs (SetOwnedThinkingRuns); runDrawsNothing holds, per thinking run, whether
 	// its last render drew no rows.
 	ownedRuns         bool

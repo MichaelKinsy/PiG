@@ -604,8 +604,8 @@ type InteractiveMode struct {
 	hiddenThinkingLabel *string
 	// stopThinkingRuns ends the observation of the current runner's thinking-run ownership (bindThinkingRuns); pig additive (D214).
 	stopThinkingRuns func()
-	userBlocks          []*tui.UserMessageComponent
-	outputPad           int
+	userBlocks       []*tui.UserMessageComponent
+	outputPad        int
 
 	// layout is the main-screen render root used for editor-slot swaps.
 	layout *tui.Container

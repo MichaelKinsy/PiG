@@ -2913,6 +2913,7 @@ class Context:
         label and shows an empty one (``label ?? defaultHiddenThinkingLabel``)."""
         self._call("ui.setHiddenThinkingLabel", {} if label is None else {"label": label})
 
+    # pig additive (D214)
     def own_thinking_runs(self, enabled: bool = True) -> None:
         """Declare that this extension owns the thinking runs of assistant messages (see :meth:`Extension.own_thinking_runs`); the host ORs the flag across extensions."""
         if not isinstance(enabled, bool):
@@ -4910,6 +4911,7 @@ class Extension:
         keeps the input."""
         self._markdown_transformer = transformer
 
+    # pig additive (D214)
     def own_thinking_runs(self, enabled: bool = True) -> None:
         """Declare that this extension owns the thinking runs of assistant messages, so a thinking run that is hidden or draws no rows leaves no blank spacer rows
         around it. PiG-only and product-neutral. Before the extension registers this records the value (last call wins; ``False`` sends nothing); once it is

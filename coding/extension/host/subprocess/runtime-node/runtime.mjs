@@ -2319,6 +2319,7 @@ export class Runtime {
       registerMarkdownTransformer: (transformer) => {
         this.markdownTransformer = transformer;
       },
+      // pig additive (D214): the extension owns the thinking runs of assistant messages; recorded while loading, a host call afterwards.
       ownThinkingRuns: (enabled = true) => {
         if (typeof enabled !== "boolean") throw new TypeError("ownThinkingRuns requires a boolean");
         this.ownsThinkingRuns = enabled;

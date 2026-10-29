@@ -2427,6 +2427,7 @@ impl Context {
 
     /// PiG-only: set whether this extension owns the thinking runs of assistant messages (see [`Extension::own_thinking_runs`](crate::Extension::own_thinking_runs)).
     /// The host ORs the flag across extensions; the last write of an extension wins.
+    /// pig additive (D214)
     pub fn own_thinking_runs(&self, enabled: bool) -> io::Result<()> {
         call_result_to_io(self.call_wire("ownThinkingRuns", Some(serde_json::json!({"enabled": enabled})))?)
     }

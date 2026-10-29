@@ -1414,6 +1414,7 @@ impl Extension {
     /// PiG-only, product-neutral: declare that this extension owns the thinking runs of assistant messages, so a thinking run that is hidden or draws
     /// zero rows leaves no blank spacer rows around it. The value goes in the register frame (omitted when false); the last call wins. Runs before the
     /// extension is live; afterwards use [`crate::Context::own_thinking_runs`].
+    /// pig additive (D214)
     pub fn own_thinking_runs(&mut self, enabled: bool) {
         self.owns_thinking_runs = enabled;
     }

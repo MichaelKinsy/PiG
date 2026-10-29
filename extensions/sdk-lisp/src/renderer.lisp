@@ -81,6 +81,7 @@ a signalled condition, keeps the input. A later registration replaces an earlier
   (setf (rd-markdown (rd-of ext)) transformer)
   nil)
 
+; pig additive (D214)
 (defun own-thinking-runs (ext &optional (enabled t))
   "Declare that the extension owns the thinking runs of assistant messages: a hidden or zero-row thinking run then leaves no blank
 spacer rows around it. Before the extension is live this records the value for the register payload (a later call wins; no argument
@@ -92,6 +93,7 @@ means on); once live it calls the host. The host ORs the flag over extensions an
       (host-call ext "ownThinkingRuns" (obj "enabled" (if enabled t :false)))))
   nil)
 
+; pig additive (D214)
 (defun ctx-own-thinking-runs (ctx &optional (enabled t))
   "Change, while the extension runs, whether it owns the thinking runs of assistant messages (see OWN-THINKING-RUNS)."
   (ctx-call-host ctx "ownThinkingRuns" (obj "enabled" (if enabled t :false)))

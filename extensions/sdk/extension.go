@@ -1011,6 +1011,7 @@ func (e *Extension) MarkdownTransformer(transformer MarkdownTransformerFunc) {
 // no blank spacer rows. Before Run registers the extension the value is only
 // recorded and the last call wins; the register payload carries it when true.
 // Once the extension runs the call goes to the host at once.
+// pig additive (D214)
 func (e *Extension) OwnThinkingRuns(enabled bool) {
 	e.toolMu.Lock()
 	e.ownsThinkingRuns = enabled
