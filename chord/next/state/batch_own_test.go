@@ -142,7 +142,7 @@ func TestBatchDelivery(t *testing.T) {
 		boom := errors.New("listener threw")
 		h.batch.ReportListener(boom)
 		got := h.errors.all()
-		if len(got) != 1 || got[0].Kind != state.BatchListenerError || got[0].Error != boom {
+		if len(got) != 1 || got[0].Kind != state.BatchListenerError || !errors.Is(got[0].Error, boom) {
 			t.Fatalf("reported = %+v", got)
 		}
 	})

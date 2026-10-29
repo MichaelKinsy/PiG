@@ -230,7 +230,7 @@ func (f *failingDerives) set(t *testing.T, n float64) { t.Helper(); mustSet(t, f
 
 func requireThrows(t *testing.T, name string, source *state.Derive, want error) {
 	t.Helper()
-	if _, err := source.Value(); err != want {
+	if _, err := source.Value(); !errors.Is(err, want) {
 		t.Fatalf("%s.Value error = %v, want %v", name, err, want)
 	}
 }
@@ -266,7 +266,7 @@ func TestDeriveFailures(t *testing.T) {
 			t.Fatalf("v frames = %v, want %v", values, want)
 		}
 		// The throwing derive's owner reports it, once; the derive over it (its source failed) does not.
-		if got := *f.t.reports; len(got) != 1 || got[0] != errThrew {
+		if got := *f.t.reports; len(got) != 1 || !errors.Is(got[0], errThrew) {
 			t.Fatalf("t reports = %v, want one %v", got, errThrew)
 		}
 		if got := *f.u.reports; len(got) != 0 {
