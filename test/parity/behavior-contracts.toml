@@ -582,7 +582,7 @@ id = "coding-agent/scoped-models/input-state-machine"
 upstream_id = "input:packages/coding-agent/src/modes/interactive/components/scoped-models-selector.ts#ScopedModelsSelectorComponent.handleInput"
 family = "model-resolver-selector"
 kind = "selector-input-state-machine"
-claim = "scoped-model input preserves wrap navigation, fuzzy search, filtered bulk actions, unavailable IDs, provider toggles, bounded reorder, session-only dirty/save state, configurable action bindings, explicit cancellation, and key-order precedence when bindings overlap"
+claim = "scoped-model input preserves wrap navigation, fuzzy search, filtered bulk actions, unavailable IDs, provider toggles, bounded reorder, session-only dirty/save state, configurable action bindings, explicit cancellation, and key-order precedence when bindings overlap; tui.select.pageUp and tui.select.pageDown move the selection by one visible page, clamped to the list bounds, and are ignored on an empty list"
 status = "ported"
 pig_targets = [
   "tui/scoped_models_list.go#HandleInput",
@@ -598,13 +598,14 @@ evidence = [
   "tui/scoped_models_list_test.go#TestScopedModels_UsesConfiguredActionBindings",
   "test/parity/scenarios/model-resolver-selector/08-scoped-models-selector.toml",
   "test/parity/scenarios/model-resolver-selector/13-scoped-models-fuzzy-filter.toml",
+  "tui/select_page_keys_test.go#TestSelectorComponentsMoveByTheirPage",
 ]
 
 [contract.upstream]
 path = "packages/coding-agent/src/modes/interactive/components/scoped-models-selector.ts"
 start = "\thandleInput(data: string): void {"
 end = "\n\tgetSearchInput(): Input {"
-sha256 = "ea8d93a09b36865b16a2fd68d5d6bdde88bcf4f4a757306f0ec89f725f347508"
+sha256 = "d09c79298d8e26276278af5359c29636eafeade65e26e7b11dd47b5aa6efd59e"
 keybindings = [
   "app.models.clearAll",
   "app.models.enableAll",
@@ -707,7 +708,7 @@ id = "tui/select-list/input-state-machine"
 upstream_id = "input:packages/tui/src/components/select-list.ts#SelectList.handleInput"
 family = "tui-components"
 kind = "selector-input-state-machine"
-claim = "SelectList mode wraps arrows, reports selection changes, confirms/cancels through configured actions, and ignores search-selector-only Page/Home/End input"
+claim = "SelectList mode wraps arrows, reports selection changes, confirms/cancels through configured actions, and moves by one visible page on tui.select.pageUp and tui.select.pageDown, clamped to the list bounds and ignored on an empty list"
 status = "ported"
 pig_targets = [
   "tui/select_list.go#HandleInput",
@@ -721,13 +722,14 @@ evidence = [
   "tui/select_filterable_test.go#TestFilterableList_DisabledSearchIgnoresNonSelectListNavigation",
   "tui/select_submenu_test.go#TestSelectSubmenuDownWrapsLastToFirst",
   "test/parity/scenarios/tui-components/11-select-list-input-state.toml",
+  "tui/select_page_keys_upstream_test.go#TestUpstreamSelectListMovesByOneVisiblePageWithSelectionPageKeys",
 ]
 
 [contract.upstream]
 path = "packages/tui/src/components/select-list.ts"
 start = "\thandleInput(keyData: string): void {"
 end = "\n\tprivate renderItem("
-sha256 = "be8c40b865ef194372ed1c9e9a7f7f5de56bb8ccb0bd6b9f1f6ad8f371d04803"
+sha256 = "aafcdd39cc354e6e362e42e4a6a5419ac5b0672e94863bcff5156cc7a9906781"
 keybindings = [
   "tui.select.cancel",
   "tui.select.confirm",
@@ -839,7 +841,7 @@ id = "tui/render/main-screen-full-redraw"
 upstream_id = "render:packages/tui/src/tui-main-screen.ts#TuiMainScreen.doRender"
 family = "fullscreen"
 kind = "viewport-shrink-redraw"
-claim = "when a changed row begins above the visible viewport, Pig matches Pi by clearing obsolete physical history and replaying the current logical transcript once"
+claim = "when a changed row begins above the visible viewport, Pig matches Pi by clearing obsolete physical history and replaying the current logical transcript once; leading OSC 133 zone marks are dropped from every rendered line before compositing"
 status = "ported"
 pig_targets = [
   "tui/tui.go#doRender",
@@ -857,13 +859,14 @@ evidence = [
   "test/parity/scenarios/fullscreen/10-main-screen-compaction-settled.toml",
   "tui/fake_cursor_test.go#TestMainScreenDrawsTheFocusedFakeCursorAndOmitsItWhenTheHardwareCursorIsShown",
   "tui/fake_cursor_test.go#TestMainScreenResolvesTheFakeCursorOfAnOverlayComponent",
+  "tui/layout_osc133_test.go",
 ]
 
 [contract.upstream]
 path = "packages/tui/src/tui-main-screen.ts"
 start = "\tprotected doRender(): void {"
 end = "\n\tprivate positionHardwareCursor"
-sha256 = "8c7bf8834b673523c57ebb66d3550d5e7ae1d770f970288142a60e228cc10ae6"
+sha256 = "bba5085c1cd3147cc2eba52ee920093af2b6ccb03d7c95bfc96f2772f415d2d2"
 keybindings = []
 
 [[contract]]
@@ -881,7 +884,7 @@ path = "packages/tui/src/components/editor.ts"
 start = "\tprivate submitValue(): void {"
 end = "\n\tprivate handleBackspace()"
 sha256 = "a911681463db938b62ced2849f6729151b9a235c83406e030b14468cf6270f90"
-keybindings = ['matchesKey:"shift+backspace"', 'matchesKey:"shift+delete"', 'matchesKey:"shift+space"', "tui.editor.cursorDown", "tui.editor.cursorLeft", "tui.editor.cursorLineEnd", "tui.editor.cursorLineStart", "tui.editor.cursorRight", "tui.editor.cursorUp", "tui.editor.cursorWordLeft", "tui.editor.cursorWordRight", "tui.editor.deleteCharBackward", "tui.editor.deleteCharForward", "tui.editor.deleteToLineEnd", "tui.editor.deleteToLineStart", "tui.editor.deleteWordBackward", "tui.editor.deleteWordForward", "tui.editor.historyNext", "tui.editor.historyPrevious", "tui.editor.jumpBackward", "tui.editor.jumpForward", "tui.editor.pageDown", "tui.editor.pageUp", "tui.editor.undo", "tui.editor.yank", "tui.editor.yankPop", "tui.input.copy", "tui.input.newLine", "tui.input.submit", "tui.input.tab", "tui.select.cancel", "tui.select.confirm", "tui.select.down", "tui.select.up"]
+keybindings = ['matchesKey:"shift+backspace"', 'matchesKey:"shift+delete"', 'matchesKey:"shift+space"', "tui.editor.cursorDown", "tui.editor.cursorLeft", "tui.editor.cursorLineEnd", "tui.editor.cursorLineStart", "tui.editor.cursorRight", "tui.editor.cursorUp", "tui.editor.cursorWordLeft", "tui.editor.cursorWordRight", "tui.editor.deleteCharBackward", "tui.editor.deleteCharForward", "tui.editor.deleteToLineEnd", "tui.editor.deleteToLineStart", "tui.editor.deleteWordBackward", "tui.editor.deleteWordForward", "tui.editor.historyNext", "tui.editor.historyPrevious", "tui.editor.jumpBackward", "tui.editor.jumpForward", "tui.editor.pageDown", "tui.editor.pageUp", "tui.editor.undo", "tui.editor.yank", "tui.editor.yankPop", "tui.input.copy", "tui.input.newLine", "tui.input.submit", "tui.input.tab", "tui.select.cancel", "tui.select.confirm", "tui.select.down", "tui.select.up", "tui.select.pageDown", "tui.select.pageUp"]
 
 [[contract]]
 id = "tui/editor/history-whitespace"
@@ -898,7 +901,7 @@ path = "packages/tui/src/components/editor.ts"
 start = "\taddToHistory(text: string): void {"
 end = "\n\tprivate isEditorEmpty()"
 sha256 = "c7193b420e4f69ef8d06d2552824fc97bcee2c87e32ea2067566b58d81b7fec5"
-keybindings = ['matchesKey:"shift+backspace"', 'matchesKey:"shift+delete"', 'matchesKey:"shift+space"', "tui.editor.cursorDown", "tui.editor.cursorLeft", "tui.editor.cursorLineEnd", "tui.editor.cursorLineStart", "tui.editor.cursorRight", "tui.editor.cursorUp", "tui.editor.cursorWordLeft", "tui.editor.cursorWordRight", "tui.editor.deleteCharBackward", "tui.editor.deleteCharForward", "tui.editor.deleteToLineEnd", "tui.editor.deleteToLineStart", "tui.editor.deleteWordBackward", "tui.editor.deleteWordForward", "tui.editor.historyNext", "tui.editor.historyPrevious", "tui.editor.jumpBackward", "tui.editor.jumpForward", "tui.editor.pageDown", "tui.editor.pageUp", "tui.editor.undo", "tui.editor.yank", "tui.editor.yankPop", "tui.input.copy", "tui.input.newLine", "tui.input.submit", "tui.input.tab", "tui.select.cancel", "tui.select.confirm", "tui.select.down", "tui.select.up"]
+keybindings = ['matchesKey:"shift+backspace"', 'matchesKey:"shift+delete"', 'matchesKey:"shift+space"', "tui.editor.cursorDown", "tui.editor.cursorLeft", "tui.editor.cursorLineEnd", "tui.editor.cursorLineStart", "tui.editor.cursorRight", "tui.editor.cursorUp", "tui.editor.cursorWordLeft", "tui.editor.cursorWordRight", "tui.editor.deleteCharBackward", "tui.editor.deleteCharForward", "tui.editor.deleteToLineEnd", "tui.editor.deleteToLineStart", "tui.editor.deleteWordBackward", "tui.editor.deleteWordForward", "tui.editor.historyNext", "tui.editor.historyPrevious", "tui.editor.jumpBackward", "tui.editor.jumpForward", "tui.editor.pageDown", "tui.editor.pageUp", "tui.editor.undo", "tui.editor.yank", "tui.editor.yankPop", "tui.input.copy", "tui.input.newLine", "tui.input.submit", "tui.input.tab", "tui.select.cancel", "tui.select.confirm", "tui.select.down", "tui.select.up", "tui.select.pageDown", "tui.select.pageUp"]
 
 [[contract]]
 id = "tui/editor/atomic-paste-segments"
@@ -915,7 +918,7 @@ path = "packages/tui/src/components/editor.ts"
 start = "function segmentWithMarkers("
 end = "\n/**\n * Represents a chunk of text for word-wrap layout."
 sha256 = "9a0203b22bee2bafbff8df9ace3cead39273e533808bf1c5ea6a687ad5f0710c"
-keybindings = ['matchesKey:"shift+backspace"', 'matchesKey:"shift+delete"', 'matchesKey:"shift+space"', "tui.editor.cursorDown", "tui.editor.cursorLeft", "tui.editor.cursorLineEnd", "tui.editor.cursorLineStart", "tui.editor.cursorRight", "tui.editor.cursorUp", "tui.editor.cursorWordLeft", "tui.editor.cursorWordRight", "tui.editor.deleteCharBackward", "tui.editor.deleteCharForward", "tui.editor.deleteToLineEnd", "tui.editor.deleteToLineStart", "tui.editor.deleteWordBackward", "tui.editor.deleteWordForward", "tui.editor.historyNext", "tui.editor.historyPrevious", "tui.editor.jumpBackward", "tui.editor.jumpForward", "tui.editor.pageDown", "tui.editor.pageUp", "tui.editor.undo", "tui.editor.yank", "tui.editor.yankPop", "tui.input.copy", "tui.input.newLine", "tui.input.submit", "tui.input.tab", "tui.select.cancel", "tui.select.confirm", "tui.select.down", "tui.select.up"]
+keybindings = ['matchesKey:"shift+backspace"', 'matchesKey:"shift+delete"', 'matchesKey:"shift+space"', "tui.editor.cursorDown", "tui.editor.cursorLeft", "tui.editor.cursorLineEnd", "tui.editor.cursorLineStart", "tui.editor.cursorRight", "tui.editor.cursorUp", "tui.editor.cursorWordLeft", "tui.editor.cursorWordRight", "tui.editor.deleteCharBackward", "tui.editor.deleteCharForward", "tui.editor.deleteToLineEnd", "tui.editor.deleteToLineStart", "tui.editor.deleteWordBackward", "tui.editor.deleteWordForward", "tui.editor.historyNext", "tui.editor.historyPrevious", "tui.editor.jumpBackward", "tui.editor.jumpForward", "tui.editor.pageDown", "tui.editor.pageUp", "tui.editor.undo", "tui.editor.yank", "tui.editor.yankPop", "tui.input.copy", "tui.input.newLine", "tui.input.submit", "tui.input.tab", "tui.select.cancel", "tui.select.confirm", "tui.select.down", "tui.select.up", "tui.select.pageDown", "tui.select.pageUp"]
 
 [[contract]]
 id = "tui/editor/word-action-state"
@@ -932,31 +935,36 @@ path = "packages/tui/src/components/editor.ts"
 start = "\tprivate moveWordBackwards(): void {"
 end = "\n\t// Slash menu only allowed on the first line of the editor"
 sha256 = "6a13f41a16e52d6adf7843dbfbced6dab8d92a9503c0025d9a40c151a1696af3"
-keybindings = ['matchesKey:"shift+backspace"', 'matchesKey:"shift+delete"', 'matchesKey:"shift+space"', "tui.editor.cursorDown", "tui.editor.cursorLeft", "tui.editor.cursorLineEnd", "tui.editor.cursorLineStart", "tui.editor.cursorRight", "tui.editor.cursorUp", "tui.editor.cursorWordLeft", "tui.editor.cursorWordRight", "tui.editor.deleteCharBackward", "tui.editor.deleteCharForward", "tui.editor.deleteToLineEnd", "tui.editor.deleteToLineStart", "tui.editor.deleteWordBackward", "tui.editor.deleteWordForward", "tui.editor.historyNext", "tui.editor.historyPrevious", "tui.editor.jumpBackward", "tui.editor.jumpForward", "tui.editor.pageDown", "tui.editor.pageUp", "tui.editor.undo", "tui.editor.yank", "tui.editor.yankPop", "tui.input.copy", "tui.input.newLine", "tui.input.submit", "tui.input.tab", "tui.select.cancel", "tui.select.confirm", "tui.select.down", "tui.select.up"]
+keybindings = ['matchesKey:"shift+backspace"', 'matchesKey:"shift+delete"', 'matchesKey:"shift+space"', "tui.editor.cursorDown", "tui.editor.cursorLeft", "tui.editor.cursorLineEnd", "tui.editor.cursorLineStart", "tui.editor.cursorRight", "tui.editor.cursorUp", "tui.editor.cursorWordLeft", "tui.editor.cursorWordRight", "tui.editor.deleteCharBackward", "tui.editor.deleteCharForward", "tui.editor.deleteToLineEnd", "tui.editor.deleteToLineStart", "tui.editor.deleteWordBackward", "tui.editor.deleteWordForward", "tui.editor.historyNext", "tui.editor.historyPrevious", "tui.editor.jumpBackward", "tui.editor.jumpForward", "tui.editor.pageDown", "tui.editor.pageUp", "tui.editor.undo", "tui.editor.yank", "tui.editor.yankPop", "tui.input.copy", "tui.input.newLine", "tui.input.submit", "tui.input.tab", "tui.select.cancel", "tui.select.confirm", "tui.select.down", "tui.select.up", "tui.select.pageDown", "tui.select.pageUp"]
 
 [[contract]]
 id = "coding-agent/custom-editor/active-keybinding-manager"
 upstream_id = "input:packages/coding-agent/src/modes/interactive/components/custom-editor.ts#CustomEditor.handleInput"
 family = "interactive-rendering"
 kind = "keybinding-state-ownership"
-claim = "ordinary input reaches Editor with the installed user bindings intact; enabling key diagnostics does not replace the manager, so raw Ctrl+S submits when configured as tui.input.submit"
+claim = "ordinary input reaches Editor with the installed user bindings intact; enabling key diagnostics does not replace the manager, so raw Ctrl+S submits when configured as tui.input.submit; while an autocomplete menu is open the selection page keys go to the editor before any app action runs, so a user can bind Ctrl+V"
 status = "ported"
 pig_targets = ["internal/codingagent/interactive_input.go#inputLoopUntil", "internal/codingagent/keys.go#classifyKeyWithBindings"]
-evidence = ["internal/codingagent/interactive_remapped_submit_test.go#TestTerminalInputPreservesRemappedSubmitBindings", "test/parity/scenarios/tui-components/22-editor-remapped-submit-with-key-diagnostics.toml"]
+evidence = [
+  "internal/codingagent/interactive_remapped_submit_test.go#TestTerminalInputPreservesRemappedSubmitBindings",
+  "test/parity/scenarios/tui-components/22-editor-remapped-submit-with-key-diagnostics.toml",
+  "internal/codingagent/custom_editor_keybindings_test.go#TestPR7680AutocompletePageKeysWinOverTheImagePasteShortcut",
+  "internal/codingagent/select_page_keys_test.go#TestCustomEditorGivesSelectionPageKeysToAnOpenAutocomplete",
+]
 
 [contract.upstream]
 path = "packages/coding-agent/src/modes/interactive/components/custom-editor.ts"
 start = "\thandleInput(data: string): void {"
 end = "\n\t}\n}\n"
-sha256 = "17e85c22925c34b2e99ec1cc3d1d6be4b7a2dec7040dd8a9aefb8f821889860b"
-keybindings = ["app.clipboard.pasteImage", "app.exit", "app.interrupt", "tui.editor.historyNext", "tui.editor.historyPrevious"]
+sha256 = "38dce28b907b20a7fb15c4a9af4f58081637bb93a735b8c56a50f6d48be6c652"
+keybindings = ["app.clipboard.pasteImage", "app.exit", "app.interrupt", "tui.editor.historyNext", "tui.editor.historyPrevious", "tui.select.pageDown", "tui.select.pageUp"]
 
 [[contract]]
 id = "coding-agent/custom-editor/handler-order"
 upstream_id = "input:packages/coding-agent/src/modes/interactive/components/custom-editor.ts#CustomEditor.handleInput"
 family = "interactive-rendering"
 kind = "boundary-transition"
-claim = "extension shortcuts come before the paste-image key, which comes before interrupt (only while no autocomplete is open; onEscape wins over the registered app.interrupt handler) and exit (only when the editor is empty; onCtrlD wins over app.exit); explicit editor history bindings beat every other app action; the remaining app actions run in registration order; every other key reaches the editor"
+claim = "extension shortcuts come before the paste-image key, which comes before interrupt (only while no autocomplete is open; onEscape wins over the registered app.interrupt handler) and exit (only when the editor is empty; onCtrlD wins over app.exit); explicit editor history bindings beat every other app action; the remaining app actions run in registration order; every other key reaches the editor; while an autocomplete menu is open the selection page keys go to the editor before any app action runs, so a user can bind Ctrl+V"
 status = "ported"
 pig_targets = ["internal/codingagent/custom_editor.go#HandleInput", "internal/codingagent/custom_editor.go#OnAction"]
 evidence = [
@@ -966,14 +974,16 @@ evidence = [
   "internal/codingagent/custom_editor_keybindings_test.go#TestCustomEditorExplicitHistoryBindingBeatsModelCycling",
   "internal/codingagent/custom_editor_test.go#TestCustomEditorRunsTheRegisteredAppActionAndReplacesIt",
   "test/parity/scenarios/custom-editor-precedence.toml",
+  "internal/codingagent/custom_editor_keybindings_test.go#TestPR7680AutocompletePageKeysWinOverTheImagePasteShortcut",
+  "internal/codingagent/select_page_keys_test.go#TestCustomEditorGivesSelectionPageKeysToAnOpenAutocomplete",
 ]
 
 [contract.upstream]
 path = "packages/coding-agent/src/modes/interactive/components/custom-editor.ts"
 start = "\thandleInput(data: string): void {"
 end = "\n\t}\n}\n"
-sha256 = "17e85c22925c34b2e99ec1cc3d1d6be4b7a2dec7040dd8a9aefb8f821889860b"
-keybindings = ["app.clipboard.pasteImage", "app.exit", "app.interrupt", "tui.editor.historyNext", "tui.editor.historyPrevious"]
+sha256 = "38dce28b907b20a7fb15c4a9af4f58081637bb93a735b8c56a50f6d48be6c652"
+keybindings = ["app.clipboard.pasteImage", "app.exit", "app.interrupt", "tui.editor.historyNext", "tui.editor.historyPrevious", "tui.select.pageDown", "tui.select.pageUp"]
 
 # D87: Pi's 3D easter egg plays with PiG's models (the PiG mark's pig on a header click, the sprite's pig head for fullscreen /arminsayshi and /pigsayhi); the input handler is Pi's.
 [[contract]]
@@ -1088,7 +1098,7 @@ id = "tui/settings-list/search-input-delegation"
 upstream_id = "input:packages/tui/src/components/settings-list.ts#SettingsList.handleInput"
 family = "settings"
 kind = "boundary-transition"
-claim = "an open submenu receives every key; otherwise up and down wrap, empty lists ignore them, up, down, confirm or space (when search is off or empty) and cancel are tested in that order, and every other key goes to the search Input and refilters, returning the selection to the first match"
+claim = "an open submenu receives every key; otherwise up and down wrap, empty lists ignore them, up, down, confirm or space (when search is off or empty) and cancel are tested in that order, with the selection page keys moving by one visible page between down and confirm, and every other key goes to the search Input and refilters, returning the selection to the first match"
 status = "ported"
 pig_targets = ["tui/settings_list.go#HandleInput", "tui/settings_list.go#applyFilter"]
 evidence = [
@@ -1099,13 +1109,14 @@ evidence = [
   "tui/settings_list_input_test.go#TestSettingsListSubmenuReceivesEveryKeyIncludingCancel",
   "tui/settings_list_keys_test.go#TestSettingsListPageAndHomeEndKeysFollowSearchState",
   "test/parity/scenarios/settings/08-settings-search-editing.toml",
+  "tui/select_page_keys_upstream_test.go#TestUpstreamSettingsListMovesByOneVisiblePageWithSelectionPageKeys",
 ]
 
 [contract.upstream]
 path = "packages/tui/src/components/settings-list.ts"
 start = "\thandleInput(data: string): void {"
 end = "\tprivate getDisplayItems(): SettingItem[] {"
-sha256 = "f10da89d0a8daa8f47b63b2d95210818c0cff24f9d2ee01876646c79a92549ba"
+sha256 = "6774050cffaa75b63afbe38699061d9956e42422461eabd721bba2bf9e73872d"
 keybindings = ["tui.select.cancel", "tui.select.confirm", "tui.select.down", "tui.select.up"]
 
 [[contract]]
@@ -1113,20 +1124,21 @@ id = "coding-agent/oauth-selector/input-state-machine"
 upstream_id = "input:packages/coding-agent/src/modes/interactive/components/oauth-selector.ts#OAuthSelectorComponent.handleInput"
 family = "oauth"
 kind = "selector-input-state-machine"
-claim = "up and down clamp without wrapping, empty filtered lists ignore arrows and confirm, confirm and the search Input's submit (tui.input.submit or LF) select the highlighted provider, cancel cancels, and every other key edits the fuzzy search and clamps the selection"
+claim = "up and down clamp without wrapping, empty filtered lists ignore arrows and confirm, confirm and the search Input's submit (tui.input.submit or LF) select the highlighted provider, cancel cancels, and every other key edits the fuzzy search and clamps the selection; tui.select.pageUp and tui.select.pageDown move the selection by one visible page, clamped to the list bounds, and are ignored on an empty list"
 status = "ported"
 pig_targets = ["tui/oauth_selector.go#HandleInput", "tui/oauth_selector.go#confirm"]
 evidence = [
   "tui/oauth_selector_input_test.go#TestOAuthSelectorInputMatchesPi",
   "tui/oauth_selector_oracle_test.go#TestOAuthSelectorHandleInputMatchesPi",
   "test/parity/scenarios/oauth/17-login-method-search.toml",
+  "tui/select_page_keys_test.go#TestSelectorComponentsMoveByTheirPage",
 ]
 
 [contract.upstream]
 path = "packages/coding-agent/src/modes/interactive/components/oauth-selector.ts"
 start = "\thandleInput(keyData: string): void {"
 end = "\t\t}\n\t}\n}\n"
-sha256 = "17088a93a1c724c61a6aaa6262eaa6930983aa98d47c3915d3b217c1386c750f"
+sha256 = "b52bcc452ac2149631047cf64b901be57894b59690f173bac47ca3b011d2648c"
 keybindings = ["tui.select.cancel", "tui.select.confirm", "tui.select.down", "tui.select.up"]
 
 [[contract]]
@@ -1321,7 +1333,7 @@ id = "tui/editor/input-state-machine"
 upstream_id = "input:packages/tui/src/components/editor.ts#Editor.handleInput"
 family = "tui-components"
 kind = "input-state-machine"
-claim = "the editor's key chain (action order, shared keys, cursor, word, line and page movement, deletion and kill ring, undo, history, newline and submit, tab, character jump, paste, literal text) matches Pi under default and rebound keybindings; autocomplete popup behavior is carried by the ported upstream autocomplete tests"
+claim = "the editor's key chain (action order, shared keys, cursor, word, line and page movement, deletion and kill ring, undo, history, newline and submit, tab, character jump, paste, literal text) matches Pi under default and rebound keybindings; autocomplete popup behavior is carried by the ported upstream autocomplete tests; with an autocomplete popup open the selection page keys move its selection"
 status = "ported"
 pig_targets = ["tui/editor.go#HandleInput"]
 evidence = [
@@ -1330,14 +1342,16 @@ evidence = [
   "tui/editor_autocomplete_boundary_upstream_test.go#TestEditorAdvertisedTriggerCharactersRequestAfterCJKBoundary",
   "tui/editor_kill_undo_upstream_test.go#TestUpstreamEditorKillRing",
   "test/parity/scenarios/tui-components/25-editor-edit-state.toml",
+  "tui/select_page_keys_upstream_test.go#TestUpstreamEditorForwardsRemappedPageKeysToTheAutocompleteMenu",
+  "tui/select_page_keys_upstream_test.go#TestUpstreamEditorMovesTheAutocompleteSelectionWithSelectionPageKeys",
 ]
 
 [contract.upstream]
 path = "packages/tui/src/components/editor.ts"
 start = "\thandleInput(data: string): void {\n\t\tconst kb = getKeybindings();"
 end = "\n\tprivate layoutText("
-sha256 = "774d97716ae01a4977ef27bb859bd492f1197c592c88aed0afbe6ea470f8fc1b"
-keybindings = ['matchesKey:"shift+backspace"', 'matchesKey:"shift+delete"', 'matchesKey:"shift+space"', "tui.editor.cursorDown", "tui.editor.cursorLeft", "tui.editor.cursorLineEnd", "tui.editor.cursorLineStart", "tui.editor.cursorRight", "tui.editor.cursorUp", "tui.editor.cursorWordLeft", "tui.editor.cursorWordRight", "tui.editor.deleteCharBackward", "tui.editor.deleteCharForward", "tui.editor.deleteToLineEnd", "tui.editor.deleteToLineStart", "tui.editor.deleteWordBackward", "tui.editor.deleteWordForward", "tui.editor.historyNext", "tui.editor.historyPrevious", "tui.editor.jumpBackward", "tui.editor.jumpForward", "tui.editor.pageDown", "tui.editor.pageUp", "tui.editor.undo", "tui.editor.yank", "tui.editor.yankPop", "tui.input.copy", "tui.input.newLine", "tui.input.submit", "tui.input.tab", "tui.select.cancel", "tui.select.confirm", "tui.select.down", "tui.select.up"]
+sha256 = "a5578ee4fc84e81d540e7fd79621095567c944ce4b1f1d76e05614e7f39a25ba"
+keybindings = ['matchesKey:"shift+backspace"', 'matchesKey:"shift+delete"', 'matchesKey:"shift+space"', "tui.editor.cursorDown", "tui.editor.cursorLeft", "tui.editor.cursorLineEnd", "tui.editor.cursorLineStart", "tui.editor.cursorRight", "tui.editor.cursorUp", "tui.editor.cursorWordLeft", "tui.editor.cursorWordRight", "tui.editor.deleteCharBackward", "tui.editor.deleteCharForward", "tui.editor.deleteToLineEnd", "tui.editor.deleteToLineStart", "tui.editor.deleteWordBackward", "tui.editor.deleteWordForward", "tui.editor.historyNext", "tui.editor.historyPrevious", "tui.editor.jumpBackward", "tui.editor.jumpForward", "tui.editor.pageDown", "tui.editor.pageUp", "tui.editor.undo", "tui.editor.yank", "tui.editor.yankPop", "tui.input.copy", "tui.input.newLine", "tui.input.submit", "tui.input.tab", "tui.select.cancel", "tui.select.confirm", "tui.select.down", "tui.select.up", "tui.select.pageDown", "tui.select.pageUp"]
 
 [[contract]]
 id = "coding-agent/trust-selector/input-state-machine"
@@ -1364,19 +1378,20 @@ id = "coding-agent/user-message-selector/input-state-machine"
 upstream_id = "input:packages/coding-agent/src/modes/interactive/components/user-message-selector.ts#UserMessageList.handleInput"
 family = "interactive-rendering"
 kind = "selector-input-state-machine"
-claim = "up and down wrap through the messages, then confirm selects the highlighted message and cancel cancels; the actions are checked in that order so a key bound to two of them keeps the earlier action, and other keys are ignored"
+claim = "up and down wrap through the messages, then confirm selects the highlighted message and cancel cancels; the actions are checked in that order so a key bound to two of them keeps the earlier action, and other keys are ignored; tui.select.pageUp and tui.select.pageDown move the selection by one visible page, clamped to the list bounds, and are ignored on an empty list"
 status = "ported"
 pig_targets = ["tui/user_message_selector.go#HandleInput"]
 evidence = [
   "tui/user_message_selector_oracle_test.go#TestUserMessageSelectorInputMatchesPi",
   "test/parity/scenarios/interactive-rendering/16-user-message-selector.toml",
+  "tui/select_page_keys_test.go#TestSelectorComponentsMoveByTheirPage",
 ]
 
 [contract.upstream]
 path = "packages/coding-agent/src/modes/interactive/components/user-message-selector.ts"
 start = "\thandleInput(keyData: string): void {"
 end = "\n}\n\n/**\n * Component that renders a user message selector"
-sha256 = "8120a51b15eb1a5434f052d0e5b91c01e931adab6c4d7dfa593947a611758e8f"
+sha256 = "6313be372280647e9384cd1393122ee77ebba2e2a8389d1ea19efbe31d3dd676"
 keybindings = ["tui.select.cancel", "tui.select.confirm", "tui.select.down", "tui.select.up"]
 
 [[contract]]
@@ -1405,7 +1420,7 @@ id = "coding-agent/oauth-selector/boundary-transitions"
 upstream_id = "input:packages/coding-agent/src/modes/interactive/components/oauth-selector.ts#OAuthSelectorComponent.handleInput"
 family = "selectors"
 kind = "boundary-transition"
-claim = "up and down clamp at the first and last provider without wrapping, confirm selects nothing when the filtered list is empty, cancel is checked before the search input, and every other key edits the search and re-filters"
+claim = "up and down clamp at the first and last provider without wrapping, confirm selects nothing when the filtered list is empty, cancel is checked before the search input, and every other key edits the search and re-filters; tui.select.pageUp and tui.select.pageDown move the selection by one visible page, clamped to the list bounds, and are ignored on an empty list"
 status = "ported"
 pig_targets = ["tui/oauth_selector.go#HandleInput"]
 evidence = [
@@ -1415,13 +1430,14 @@ evidence = [
   "tui/oauth_selector_test.go#TestOAuthSelector_LettersEditSearch",
   "tui/oauth_selector_input_test.go#TestOAuthSelectorInputMatchesPi",
   "test/parity/scenarios/oauth/17-login-method-search.toml",
+  "tui/select_page_keys_test.go#TestSelectorComponentsMoveByTheirPage",
 ]
 
 [contract.upstream]
 path = "packages/coding-agent/src/modes/interactive/components/oauth-selector.ts"
 start = "\thandleInput(keyData: string): void {"
 end = "\t\t\tthis.filterProviders(this.searchInput.getValue());\n"
-sha256 = "d20a4b95242ca6f4b5b1a85a39ddb19d3eca810f4c2db3e60b360334118679d8"
+sha256 = "0028cc5970c905c84d59ea9e40c494c421b69e764593916d0cc29b0714446c19"
 keybindings = ["tui.select.up", "tui.select.down", "tui.select.confirm", "tui.select.cancel"]
 
 [[contract]]
@@ -1451,20 +1467,21 @@ id = "coding-agent/select-submenu/input-state-machine"
 upstream_id = "input:packages/coding-agent/src/modes/interactive/components/settings-submenu.ts#SelectSubmenu.handleInput"
 family = "settings"
 kind = "selector-input-state-machine"
-claim = "navigation keys go to the select list and fire selection-change on every up or down over a non-empty list, other keys edit the optional search input and rebuild the fuzzy-filtered list; the search input never holds focus, so it emits no hardware cursor marker"
+claim = "navigation keys go to the select list and fire selection-change on every up or down over a non-empty list, other keys edit the optional search input and rebuild the fuzzy-filtered list; the search input never holds focus, so it emits no hardware cursor marker; the selection page keys also go to the select list"
 status = "ported"
 pig_targets = ["tui/select_submenu.go#HandleInput"]
 evidence = [
   "internal/codingagent/settings_submenu_oracle_test.go#TestSettingsSubmenusMatchPi",
   "test/parity/scenarios/settings/08-settings-model-thinking-empty-search.toml",
+  "tui/select_page_keys_upstream_test.go#TestUpstreamSelectSubmenuPagesWithSelectionPageKeys",
 ]
 
 [contract.upstream]
 path = "packages/coding-agent/src/modes/interactive/components/settings-submenu.ts"
 start = "\thandleInput(data: string): void {\n\t\tif (this.searchInput) {"
 end = "\n}\n\n// ===="
-sha256 = "63e96b947ace8711d62da42237583c9efecbda7161eb1edf9c145f67532c4b7c"
-keybindings = ["tui.select.cancel", "tui.select.confirm", "tui.select.down", "tui.select.up"]
+sha256 = "21eca9b4bb621508ec0c79a37f6d4757073c868c49b5e28f5fe6618c2f3ea37a"
+keybindings = ["tui.select.cancel", "tui.select.confirm", "tui.select.down", "tui.select.up", "tui.select.pageDown", "tui.select.pageUp"]
 
 [[contract]]
 id = "coding-agent/stepped-submenu/input-state-machine"
@@ -1544,7 +1561,7 @@ path = "packages/coding-agent/src/modes/interactive/components/config-selector.t
 start = "\thandleInput(data: string): void {\n\t\tconst kb = getKeybindings();\n\n\t\tif (kb.matches(data, \"tui.select.up\")) {\n\t\t\tthis.selectedIndex = this.findNextItem"
 end = "\t\tthis.filterItems(this.searchInput.getValue());\n\t}\n\n\tprivate toggleResource"
 sha256 = "cb51db9951240d706d20bda6c145fb9c060e01b5204d8aabc1d9c6fc2719b2ba"
-keybindings = ["matchesKey:\"ctrl+c\"", "tui.input.tab", "tui.select.cancel", "tui.select.confirm", "tui.select.down", "tui.select.pageDown", "tui.select.pageUp", "tui.select.up"]
+keybindings = ['matchesKey:"ctrl+c"', "tui.input.tab", "tui.select.cancel", "tui.select.confirm", "tui.select.down", "tui.select.pageDown", "tui.select.pageUp", "tui.select.up"]
 
 [[contract]]
 id = "coding-agent/first-time-setup/input-state-machine"
@@ -1591,7 +1608,7 @@ id = "coding-agent/custom-editor/app-key-precedence"
 upstream_id = "input:packages/coding-agent/src/modes/interactive/components/custom-editor.ts#CustomEditor.handleInput"
 family = "interactive-input"
 kind = "boundary-transition"
-claim = "an extension shortcut is tried first, then the clipboard image paste (consumed even without a handler), then app.interrupt (onEscape, else the registered handler; an open autocomplete popup gets Escape first), then app.exit only on an empty editor, then the explicit editor history bindings before every other registered app action in registration order, and finally the editor itself"
+claim = "an extension shortcut is tried first, then the clipboard image paste (consumed even without a handler), then app.interrupt (onEscape, else the registered handler; an open autocomplete popup gets Escape first), then app.exit only on an empty editor, then the explicit editor history bindings before every other registered app action in registration order, and finally the editor itself; while an autocomplete menu is open the selection page keys go to the editor before any app action runs, so a user can bind Ctrl+V"
 status = "ported"
 pig_targets = ["internal/codingagent/custom_editor.go#HandleInput", "internal/codingagent/interactive_input.go#handleCustomEditorKey"]
 evidence = [
@@ -1600,14 +1617,16 @@ evidence = [
   "internal/codingagent/custom_editor_test.go#TestCustomEditorExitOnlyWhenTheEditorIsEmpty",
   "internal/codingagent/custom_editor_test.go#TestCustomEditorExtensionShortcutThenPasteImageComeFirst",
   "test/parity/scenarios/custom-editor-precedence.toml",
+  "internal/codingagent/custom_editor_keybindings_test.go#TestPR7680AutocompletePageKeysWinOverTheImagePasteShortcut",
+  "internal/codingagent/select_page_keys_test.go#TestCustomEditorGivesSelectionPageKeysToAnOpenAutocomplete",
 ]
 
 [contract.upstream]
 path = "packages/coding-agent/src/modes/interactive/components/custom-editor.ts"
 start = "\thandleInput(data: string): void {"
 end = "\t}\n}"
-sha256 = "1a74cdab45af75482edc6d6191b07769290d27e4c9790a459677adc74334068e"
-keybindings = ["app.clipboard.pasteImage", "app.exit", "app.interrupt", "tui.editor.historyNext", "tui.editor.historyPrevious"]
+sha256 = "f88513e8176d996ec993af613b07587a10fc935fcf9f6aade3babec7d0859110"
+keybindings = ["app.clipboard.pasteImage", "app.exit", "app.interrupt", "tui.editor.historyNext", "tui.editor.historyPrevious", "tui.select.pageDown", "tui.select.pageUp"]
 
 [[contract]]
 id = "coding-agent/mcp-manager/status-cancel"
@@ -1626,9 +1645,9 @@ evidence = [
 
 [contract.upstream]
 path = "packages/coding-agent/src/extensions/mcp/ui.ts"
-start = "\t\tthis.setContent(frame(this.theme, title, body, keyHint(\"tui.select.cancel\", \"cancel\")), (data) => {"
+start = "\t\tthis.setContent(frame(this.theme, title, body, keyHint(\"tui.select.cancel\", \"cancel\")), {"
 end = "\t}\n\n\tredirectUrl("
-sha256 = "69119050d6b22f31d2989132ef5852a9d136b87ecf82c1d415aeda1edf46066c"
+sha256 = "55f5baeaf0558eaae4a7d8b37287330fe9c7adb21c546f8942057828911f519a"
 keybindings = ["tui.select.cancel"]
 
 [[contract]]
@@ -1648,7 +1667,7 @@ evidence = [
 path = "packages/coding-agent/src/extensions/mcp/ui.ts"
 start = "\thandleInput(data: string): void {"
 end = "\trender(width: number): string[] {"
-sha256 = "d330dc2094bd03ddae9c690315c3d32ad1a8116fe2f21c6f3d3334a534190df9"
+sha256 = "5ee7a51df6c4c23dbbcc34ceedba7dc5db45b1957297a86307961855eb1ad1f7"
 keybindings = []
 
 [[contract]]
@@ -1666,9 +1685,9 @@ evidence = [
 
 [contract.upstream]
 path = "packages/coding-agent/src/extensions/mcp/ui.ts"
-start = "\t\t\t\t\tthis.setContent(\n\t\t\t\t\t\tframe(this.theme, menu.title, body, keyHint(\"tui.select.cancel\", menu.cancelLabel)),"
+start = "\t\t\t\t\tthis.setContent(frame(this.theme, menu.title, body, keyHint(\"tui.select.cancel\", menu.cancelLabel)), {"
 end = "\t\t\t\t\treturn;\n\t\t\t\t}\n\t\t\t\tconst list = new SelectList("
-sha256 = "0e2ef96b634f770379d195c48ef15039ed2abdd153e2570aa8e5ade4b3b5c1d6"
+sha256 = "994d3980db22722745051e9492080fac851abd4097a8fb95ac83aa169a488380"
 keybindings = ["tui.select.cancel"]
 
 [[contract]]
@@ -1689,9 +1708,9 @@ evidence = [
 
 [contract.upstream]
 path = "packages/coding-agent/src/extensions/mcp/ui.ts"
-start = "\t\t\t\t(data) => {\n\t\t\t\t\tif (this.keybindings.matches(data, \"tui.select.confirm\")) {\n\t\t\t\t\t\tconst value = input.getValue().trim();"
+start = "\t\t\t\t{\n\t\t\t\t\thandleInput: (data) => {\n\t\t\t\t\t\tif (this.keybindings.matches(data, \"tui.select.confirm\")) {\n\t\t\t\t\t\t\tconst value = input.getValue().trim();"
 end = "\t\t\t\tinput,\n\t\t\t);\n\t\t});\n\t}\n\n\thandleInput"
-sha256 = "47d48551c84e2cb20201c58c41e8f5cd48a047e9be0a3d58e64bf8d3fa4f8713"
+sha256 = "5c6c032350a43ad79a437981c2ce5c9762f75772a7dc5383ab294c5ca2159568"
 keybindings = ["app.message.copy", "tui.select.cancel", "tui.select.confirm"]
 
 [[contract]]
@@ -1714,7 +1733,7 @@ evidence = [
 path = "packages/coding-agent/src/extensions/mcp/ui.ts"
 start = "\tmenu(build: () => McpMenu, subscribe?: (listener: () => void) => () => void): Promise<string | undefined> {"
 end = "\tstatus(title: string, message: string, onCancel?: () => void): void {"
-sha256 = "1537a72378a9fb3da05b46f7e7c89f1b07ad2937281fbfdd6cff8837d8f8aed2"
+sha256 = "bc71800b3a21b39993eb92276d721f9ebcc2cc7d150d81ca2f4b3b46fb54f7c8"
 keybindings = []
 
 [[contract]]
@@ -1849,7 +1868,7 @@ path = "packages/tui/src/tui.ts"
 start = "\tprivate handleTerminalInput(data: string): void {"
 end = "\n\tprivate consumeTerminalColorResponse("
 sha256 = "be2869f917b41d5795bed90190543a223cb428163d762052cf15632cc35f5e6c"
-keybindings = ["matchesKey:\"shift+ctrl+d\""]
+keybindings = ['matchesKey:"shift+ctrl+d"']
 
 [[contract]]
 id = "tui/select-list/render-window"
@@ -2565,14 +2584,14 @@ path = "packages/tui/src/tui.ts"
 start = "\tprivate handleTerminalInput(data: string): void {"
 end = "\tprivate consumeTerminalColorResponse(data: string): boolean {"
 sha256 = "1d56f514643b403bd3b1f142dda246bd2e717f21f0bce8d85a1550f50637304e"
-keybindings = ["matchesKey:\"shift+ctrl+d\""]
+keybindings = ['matchesKey:"shift+ctrl+d"']
 
 [[contract]]
 id = "tui/editor/handle-input-oracle"
 upstream_id = "input:packages/tui/src/components/editor.ts#Editor.handleInput"
 family = "tui-components"
 kind = "input-state-machine"
-claim = "Editor.handleInput resolves every key through the configured keybindings: character jump, bracketed paste, autocomplete, submit, new line, history, undo, kill ring and yank pop, word and line movement and deletion, paging and the backslash-Enter newline produce Pi's text, cursor, expanded text, callbacks and rendered lines; shared and remapped keys keep Pi's action precedence"
+claim = "Editor.handleInput resolves every key through the configured keybindings: character jump, bracketed paste, autocomplete, submit, new line, history, undo, kill ring and yank pop, word and line movement and deletion, paging and the backslash-Enter newline produce Pi's text, cursor, expanded text, callbacks and rendered lines; shared and remapped keys keep Pi's action precedence; with an autocomplete popup open the selection page keys move its selection"
 status = "ported"
 pig_targets = ["tui/editor.go#HandleInput"]
 evidence = [
@@ -2583,14 +2602,16 @@ evidence = [
   "test/parity/scenarios/tui-components/20-editor-word-and-paste-segments.toml",
   "test/parity/scenarios/tui-components/22-editor-remapped-submit-with-key-diagnostics.toml",
   "test/parity/scenarios/tui-components/25-editor-edit-state.toml",
+  "tui/select_page_keys_upstream_test.go#TestUpstreamEditorForwardsRemappedPageKeysToTheAutocompleteMenu",
+  "tui/select_page_keys_upstream_test.go#TestUpstreamEditorMovesTheAutocompleteSelectionWithSelectionPageKeys",
 ]
 
 [contract.upstream]
 path = "packages/tui/src/components/editor.ts"
 start = "\thandleInput(data: string): void {"
 end = "\tprivate layoutText(contentWidth: number): LayoutLine[] {"
-sha256 = "db74740f5e59ce03150fbf946cec5bb9cf67e5016ee6763acfa206a1bf43b868"
-keybindings = ["matchesKey:\"shift+backspace\"", "matchesKey:\"shift+delete\"", "matchesKey:\"shift+space\"", "tui.editor.cursorDown", "tui.editor.cursorLeft", "tui.editor.cursorLineEnd", "tui.editor.cursorLineStart", "tui.editor.cursorRight", "tui.editor.cursorUp", "tui.editor.cursorWordLeft", "tui.editor.cursorWordRight", "tui.editor.deleteCharBackward", "tui.editor.deleteCharForward", "tui.editor.deleteToLineEnd", "tui.editor.deleteToLineStart", "tui.editor.deleteWordBackward", "tui.editor.deleteWordForward", "tui.editor.historyNext", "tui.editor.historyPrevious", "tui.editor.jumpBackward", "tui.editor.jumpForward", "tui.editor.pageDown", "tui.editor.pageUp", "tui.editor.undo", "tui.editor.yank", "tui.editor.yankPop", "tui.input.copy", "tui.input.newLine", "tui.input.submit", "tui.input.tab", "tui.select.cancel", "tui.select.confirm", "tui.select.down", "tui.select.up"]
+sha256 = "df53623d419acf4f578aae05f1aa56af95395ed2aa7b59d44815c2ab5cf70698"
+keybindings = ['matchesKey:"shift+backspace"', 'matchesKey:"shift+delete"', 'matchesKey:"shift+space"', "tui.editor.cursorDown", "tui.editor.cursorLeft", "tui.editor.cursorLineEnd", "tui.editor.cursorLineStart", "tui.editor.cursorRight", "tui.editor.cursorUp", "tui.editor.cursorWordLeft", "tui.editor.cursorWordRight", "tui.editor.deleteCharBackward", "tui.editor.deleteCharForward", "tui.editor.deleteToLineEnd", "tui.editor.deleteToLineStart", "tui.editor.deleteWordBackward", "tui.editor.deleteWordForward", "tui.editor.historyNext", "tui.editor.historyPrevious", "tui.editor.jumpBackward", "tui.editor.jumpForward", "tui.editor.pageDown", "tui.editor.pageUp", "tui.editor.undo", "tui.editor.yank", "tui.editor.yankPop", "tui.input.copy", "tui.input.newLine", "tui.input.submit", "tui.input.tab", "tui.select.cancel", "tui.select.confirm", "tui.select.down", "tui.select.up", "tui.select.pageDown", "tui.select.pageUp"]
 
 [[contract]]
 id = "coding-agent/themed-text/render"
@@ -3557,7 +3578,7 @@ path = "packages/tui/src/components/editor.ts"
 start = "\tprivate shouldSubmitOnBackslashEnter(data: string, kb: ReturnType<typeof getKeybindings>): boolean {"
 end = "\tprivate submitValue(): void {"
 sha256 = "a5e707df6e351400fa72705ff27894756809ffd82da6574519729d9d7e42d674"
-keybindings = ["matchesKey:\"enter\""]
+keybindings = ['matchesKey:"enter"']
 
 [[contract]]
 id = "coding-agent/tool-renderers/read-rendercall"
@@ -4357,7 +4378,7 @@ id = "coding-agent/llama-search/handle-input"
 upstream_id = "input:packages/coding-agent/src/extensions/llama/ui.ts#HuggingFaceSearch.handleInput"
 family = "extensions-runtime"
 kind = "boundary-transition"
-claim = "tui.select.up and tui.select.down move the selection with wrap-around over the filtered results, tui.select.confirm takes an owner/repository query as typed or the selected result, tui.select.cancel closes, and every other key edits the input; a changed trimmed query starts a new search: fewer than two characters show the hint, a cached query shows its results, otherwise the status reads Searching and the search starts after 500 ms, aborting the previous one; frames, settlements and completed searches (with their abort flags) agree with Pi over 600 seeded scenarios on a virtual clock; a key after close starts no timer (Q12)"
+claim = "tui.select.up and tui.select.down move the selection with wrap-around over the filtered results, tui.select.confirm takes an owner/repository query as typed or the selected result, tui.select.cancel closes, and every other key edits the input; a changed trimmed query starts a new search: fewer than two characters show the hint, a cached query shows its results, otherwise the status reads Searching and the search starts after 500 ms, aborting the previous one; frames, settlements and completed searches (with their abort flags) agree with Pi over 600 seeded scenarios on a virtual clock; a key after close starts no timer (Q12); tui.select.pageUp and tui.select.pageDown move the selection by ten results, clamped"
 status = "ported"
 pig_targets = [
   "internal/codingagent/llama/ui.go#HandleInput",
@@ -4367,14 +4388,15 @@ pig_targets = [
 evidence = [
   "internal/codingagent/llama/search_oracle_test.go#TestLlamaSearchMatchesPi",
   "internal/codingagent/llama/search_oracle_test.go#TestLlamaSearchStartsNoSearchAfterClose",
-  "test/parity/scenarios/extensions-runtime/76-llama-search.toml"
+  "test/parity/scenarios/extensions-runtime/76-llama-search.toml",
+  "internal/codingagent/llama/ui_test.go#TestHuggingFaceSearchPageKeysMoveTenResults",
 ]
 
 [contract.upstream]
 path = "packages/coding-agent/src/extensions/llama/ui.ts"
 start = "\thandleInput(data: string): void {\n\t\tif (this.keybindings.matches(data, \"tui.select.up\")) {"
 end = "\t\tthis.scheduleSearch();\n\t}\n}"
-sha256 = "a7839f88ade8659df9860ad6bb7e9f7e87e54d840c879163ddd1e827d6fa37e8"
+sha256 = "9d1d350a7deb37dc84da096ec040c8ab4b45d9cc26cb9b50dc6dd8192c59cfc4"
 keybindings = ["tui.select.cancel", "tui.select.confirm", "tui.select.down", "tui.select.up"]
 
 [[contract]]
@@ -4796,7 +4818,7 @@ id = "tui/tui-alt-screen/viewport-input"
 upstream_id = "input:packages/tui/src/tui-alt-screen.ts#TuiAltScreen.handleViewportInput"
 family = "fullscreen"
 kind = "boundary-transition"
-claim = "the alternate-screen viewport handler takes the tui.altScreen keybindings (top, bottom, page, half-page, line, previous and next prompt, search and its navigation) for the transcript unless a focused overlay owns viewport keys, and a wheel event that no component handles scrolls the transcript even while an overlay has focus (Pi 1.2.0, #10769)"
+claim = "the alternate-screen viewport handler takes the tui.altScreen keybindings (top, bottom, page, half-page, line, previous and next prompt, search and its navigation) for the transcript unless a focused overlay owns viewport keys, and a wheel event that no component handles scrolls the transcript even while an overlay has focus (Pi 1.2.0, #10769); a focused component that captures viewport input (an open autocomplete, a select list) also owns the viewport keys"
 status = "ported"
 pig_targets = [
   "tui/tui_alt_screen_input.go#HandleViewportInput",
@@ -4808,11 +4830,12 @@ evidence = [
   "tui/tui_alt_screen_test.go#TestAltScreenKeyboardPageAndEdgeScroll",
   "tui/tui_alt_screen_test.go#TestAltScreenScrollToPromptJumpsToOsc133Marker",
   "test/parity/scenarios/fullscreen/02-keyboard-navigation-fullscreen.toml",
+  "tui/select_page_keys_upstream_test.go#TestUpstreamAltScreenDefersViewportKeysToAFocusedList",
 ]
 
 [contract.upstream]
 path = "packages/tui/src/tui-alt-screen.ts"
 start = "\tprivate handleViewportInput(data: string): { consume?: boolean } | undefined {"
 end = "\n\tprivate decodeMouseButton("
-sha256 = "cd333cc7a31011a1f4350e2d3223823f87d08fd5808dabb7ce39496e8b83b02d"
+sha256 = "7691a35123fd4d5ce35058153abc67dd79801087078ed1548f1055c7fcbed6b9"
 keybindings = ["tui.altScreen.bottom", "tui.altScreen.halfPageDown", "tui.altScreen.halfPageUp", "tui.altScreen.lineDown", "tui.altScreen.lineUp", "tui.altScreen.nextPrompt", "tui.altScreen.pageDown", "tui.altScreen.pageUp", "tui.altScreen.previousPrompt", "tui.altScreen.search", "tui.altScreen.searchClose", "tui.altScreen.searchNext", "tui.altScreen.searchPrevious", "tui.altScreen.top"]
