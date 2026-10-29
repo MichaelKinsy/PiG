@@ -2391,240 +2391,240 @@ rationale = "`WritableSource`, `WritableOwner`; `Writable` type is type-level. P
 [[files]]
 path = "packages/chord/src/next/store/adapter.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/store/table_handle_test.go#TestTableHandle"]
+rationale = "StoreOwnerTables and OwnerTable (stamp is \"\" when absent); Pi has no adapter test, exercised through every table preparation (lane D3). PiG: chord/next/store/adapter.go"
 
 [[files]]
 path = "packages/chord/src/next/store/allocator.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/store/allocator_test.go#TestAllocator"]
+rationale = "`Mint` returns `(id, error)`; mutex added (Go readers on several goroutines). PiG: allocator.go (lane D3)."
 
 [[files]]
 path = "packages/chord/src/next/store/applier.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/store/applier_test.go#TestApplier"]
+rationale = "`applyWrite` over the typed writes (type switch for Pi's `kind` switch), `Diverged` (+ `IsDiverged`), every check of the records with Pi's messages. Typed `WhereNode`/`ExprNode`/`SetNode` are well-formed by their decoders, so Pi's shape checks (one operator, array arity) collapse into the checks of columns, scalars and operations that remain; a `json(...)` column's fingerprint is a string, \"has a fingerprint\" is non-empty. PiG: chord/next/store/applier.go (lane D3)."
 
 [[files]]
 path = "packages/chord/src/next/store/apply-batch.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/store/apply_batch_test.go#TestApplyBatch"]
+rationale = "`ApplyBatch`; `checkCommit` through `CheckWrite` (archive.go); `replayCommits` is Pi's `replay`. PiG: chord/next/store/apply_batch.go (lane D3)."
 
 [[files]]
 path = "packages/chord/src/next/store/archive.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/store/archive_test.go#TestArchivePartSchema"]
+rationale = "`ArchiveFormat`, `ArchivePart` (interface; `*ManifestPart`, `*EndPart` here, the write kinds from table_writes.go/engine.go), `CheckPart`, `CheckWrite`; the TypeBox PART/WRITE schemas are `contracts` schemas compiled by `data.ValidatorFor` through package-level `*contracts.ParamsData` owners. Pi casts a checked `unknown`; Go decodes the checked JSON into the typed part (`decodeArchivePart`, `decodeStoreWrite`, the latter is also Outbox.Read's decoder). A typed input is checked through its JSON text and returned as it is. An op of a delta that is not an array is refused (a typed `delta.Op` cannot hold it); Pi stores it. PiG: chord/next/store/archive.go (lane D3)."
 
 [[files]]
 path = "packages/chord/src/next/store/backend.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/store/store_test.go#TestStore"]
+rationale = "The backend interface and SqliteBackend; Pi has no test file of its own (lane D3). PiG: chord/next/store/backend.go"
 
 [[files]]
 path = "packages/chord/src/next/store/catalog.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/store/catalog_test.go#TestCatalog"]
+rationale = "`WriteCatalog` writes in name order (Go maps unordered). PiG: catalog.go (lane D3)."
 
 [[files]]
 path = "packages/chord/src/next/store/claims.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/store/claims_test.go#TestClaims"]
+rationale = "`Claimant` interface compared by identity (`*NamedClaimant`); mutex. PiG: claims.go (lane D3)."
 
 [[files]]
 path = "packages/chord/src/next/store/columns.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/store/columns_test.go#TestColumnDescriptors"]
+rationale = "type-level machinery (RowOf, PutRowOf, ColumnTypeOf, ValueOf, OrderColumn) designed out; `ColumnRecords`/`IndexRecords` ordered for byte-identical JSON. PiG: columns.go (lane D3)."
 
 [[files]]
 path = "packages/chord/src/next/store/engine.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/store/engine_test.go#TestEngineDocuments"]
+rationale = "Document write kinds as pointer types; `DocumentPoint` is a struct (zero = current); reads take narrow `rowGetter`/`rowLister`. PiG: chord/next/store/engine.go (lane D3)."
 
 [[files]]
 path = "packages/chord/src/next/store/evaluate.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/store/evaluate_test.go#TestEvaluator"]
+rationale = "`Matches`, `ApplySet` (error return), `CompareScalar` (sign, not difference); absent map key = `undefined`/`NULL`; add/sub computed in float64 as JS so the out-of-range message is identical. PiG: evaluate.go (lane D3)."
 
 [[files]]
 path = "packages/chord/src/next/store/export.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/store/export_test.go#TestExportCommitQueue"]
+rationale = "`StoreExport` (`Next`, `Close`), `NewStoreExport`, `ExportPage`, `PartIterator`. Pi's async generators `parts`/`puts`/`documents`/`revisions` are the explicit state machine `exportParts`, one page held at a time. PiG: chord/next/store/export.go (lane D3)."
 
 [[files]]
 path = "packages/chord/src/next/store/expression.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/store/expression_test.go#TestCompilingConditions"]
+rationale = "Pi's JSON-shaped nodes are structs (`WhereNode`, `ExprNode`, `SetNode` ordered `[]SetEntry`) with `MarshalJSON` in Pi's exact shape and key order, plus decoders (`DecodeWhereNode`, `DecodeExprNode`, `DecodeSetNode`) for archives. JS `undefined` is `Undefined`, `null` is nil. Builders `Eq..Not`, `Add..When` over `any` operands. The type-level `Expression<T,K>`, `SetOf<C,K>`, `Operand` are designed out; every runtime check is kept. PiG: expression.go (lane D3)."
 
 [[files]]
 path = "packages/chord/src/next/store/import.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/store/import_test.go#TestImportRefusals"]
+rationale = "`ImportStore`, `PartSource`, `SlicePartSource`; `ArchiveImport` is `archiveImport` with Pi's checks and messages. PiG: chord/next/store/import.go (lane D3)."
 
 [[files]]
 path = "packages/chord/src/next/store/index.ts"
 change = "added"
-disposition = "pending"
+disposition = "designed-out"
 evidence = []
-rationale = ""
+rationale = "export barrel: the Go package exports the names directly. Each exported name of the list exists in package store: `ArchivePart` (`ArchiveManifest` is `ManifestPart`), `Backend`/`SqliteBackend`, expression builders (`Add And ColumnRef Condition Coalesce Concat Expression Eq Gt Gte InArray IsNull Lt Lte Max Min Ne Not Or Prefix ReplacePrefix SetOf Sub When`), `ImportStore`, `JsonColumnOptions`/`Json`, `DecodeJsonl`/`EncodeJsonl`, `Outbox`/`OutboxCommit`, `ColumnRefs`/`Query`, `OpenStore`/`Store`/`StoreOptions`, `DefineTable`/`TableDefinition`/`TableOptions`, `EvolveTable`/`TableEditor`, `Page`/`PageOptions`, `CompareText`, `StoreWrite`. Type-level only, designed out by the other D3 agents: `Columns PutRowOf RowOf KeyOf PatchOf AddedColumn TableTailEditor TableOf Table` (lane D3)."
 
 [[files]]
 path = "packages/chord/src/next/store/json-column.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/store/json_column_test.go#TestJsonColumnDeclaration"]
+rationale = "`Json` panics on a declaration error (Pi throws); `NewJsonColumn` returns it. PiG: json_column.go (lane D3)."
 
 [[files]]
 path = "packages/chord/src/next/store/jsonl.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/store/jsonl_test.go#TestJsonl"]
+rationale = "async generators -> pull iterators (ByteSource, PartIterator, PartSource). Chunk size measured in bytes. PiG: jsonl.go (lane D3)."
 
 [[files]]
 path = "packages/chord/src/next/store/outbox.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/store/outbox_test.go#TestOutbox"]
+rationale = "`Outbox`, `OutboxCommit`, `OutboxFormat`; the `#queued` promise chain is a FIFO ticket. PiG: chord/next/store/outbox.go (lane D3)."
 
 [[files]]
 path = "packages/chord/src/next/store/query.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/store/query_test.go#TestQueries"]
+rationale = "`NewQuery` (Go type and func cannot share Pi's name `query`); `Where`/`OrderBy` keep the first error in the query (`Err`), callers MUST check it; `EncodeCursor`/`DecodeCursor` byte-identical base64url JSON. PiG: query.go (lane D3)."
 
 [[files]]
 path = "packages/chord/src/next/store/refusal.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/store/refusal_test.go#TestClassification"]
+rationale = "`isCheck` mirrors Pi: an error with `Code() int` is told by the code alone (275), one without a code by its message (Durable Object facade). modernc carries the extended code 275 for a CHECK through the node facade (run and transaction), proved directly by TestCheckFailureCode; the earlier message fallback for other codes is removed (Pi's `typeof errcode === \"number\"` branch has none). cloudflare store_check_test (message only, no code) still takes the message branch. PiG: refusal.go (lane D3)."
 
 [[files]]
 path = "packages/chord/src/next/store/rows.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/store/rows_test.go#TestPutRows"]
+rationale = "StoredRow/Columns ordered `*delta.JsonObject` (float64 numbers); json cells checked with `chordjson.Validate` before marshal (cycle-safe). PiG: rows.go (lane D3)."
 
 [[files]]
 path = "packages/chord/src/next/store/schema.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/store/store_test.go#TestStore"]
+rationale = "applyStoreSchema: blocking, Pi's statement order, DDL byte-identical; covered by every OpenStore (lane D3). PiG: chord/next/store/schema.go"
 
 [[files]]
 path = "packages/chord/src/next/store/sql.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/store/sql_test.go#TestSqlNames"]
+rationale = "nodes from expression.go (struct nodes). PiG: sql.go (lane D3)."
 
 [[files]]
 path = "packages/chord/src/next/store/step.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/store/catalog_test.go#TestCatalog"]
+rationale = "Step.Run/RunCounted/Get/All in call order within the step's transaction; Step.Tables is a map and StagedWrite an interface; covered by every commit test (lane D3). PiG: chord/next/store/step.go"
 
 [[files]]
 path = "packages/chord/src/next/store/store.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/store/store_test.go#TestStore"]
+rationale = "`Store`, `StoreOptions{Outbox *bool}`, `OpenStore`, `ChordStore` (commit queue, `Commit`/`CommitInBatch`, generic `Read`/`ReadTransaction`, `Maintain`, `Take`, `Replay`, `Attach`/`Detach`, `Close`, claims, ids, catalog), `CommitFence{Admit, Adopt}`, `Attachment`, `Replayed`. Catalog is a copy-on-write map replaced after a DDL commit (a map handed out is never written); `mu` guards the position, state, queue tail. No test seam in the store: Pi's tests reassign `store.commit`, ours append their held write to the commit they make. PiG: chord/next/store/store.go (lane D3)."
 
 [[files]]
 path = "packages/chord/src/next/store/table-changes.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/store/table_changes_test.go#TestTableChanges"]
+rationale = "`TableChanges` with `Put/Update/Delete/UpdateWhere/DeleteWhere/Get`; Pi `throw` = returned error; `staged` is `*[]StagedWrite`; callbacks are `func(ColumnRefs) Condition` / `func(ColumnRefs) SetOf`. PiG: chord/next/store/table_changes.go (lane D3)."
 
 [[files]]
 path = "packages/chord/src/next/store/table-evolve.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/store/table_evolve_test.go#TestEvolveVersions"]
+rationale = "`EvolveTable` with one concrete `*TableEditor` (editor types designed out; their runtime checks kept); first failing edit kept as in `contracts.Evolve`; `contracts.EditWith` for the editor rule. PiG: table_evolve.go (lane D3)."
 
 [[files]]
 path = "packages/chord/src/next/store/table-handle.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/store/table_handle_test.go#TestTableHandle"]
+rationale = "`TableHandle`, `TableOwner` (interface), `Page`, `PageOptions`, `RowsIterator` for `rows` (AsyncIterable); `Table<C,K>`/`TableOf` type-level interface designed out. PiG: chord/next/store/table_handle.go (lane D3)."
 
 [[files]]
 path = "packages/chord/src/next/store/table-history.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/store/table_history_test.go#TestPlans"]
+rationale = "unions (`TableEdit`, `DataStep`, `TablePlan`) are Kind-tagged structs; `DecodeTableEdit` for archives; a `rows` patch is `func(Row) (any, error)` returning a `SetOf` or `Row`. PiG: table_history.go (lane D3)."
 
 [[files]]
 path = "packages/chord/src/next/store/table-migration.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/store/table_migration_test.go#TestFreshTables"]
+rationale = "`PrepareTables`, `MigrationChunk`; `macrotask` (setImmediate / MessageChannel) is `runtime.Gosched()`. PiG: table_migration.go (lane D3)."
 
 [[files]]
 path = "packages/chord/src/next/store/table-writes.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/store/table_writes_test.go#TestTableWrites"]
+rationale = "One pointer type per write kind (`TableDefinitionWrite`, `IndexWrite`, `DropIndexWrite`, `AlterWrite`, `PutWrite`, `UpdateWrite`, `DeleteWrite`, `UpdateWhereWrite`, `DeleteWhereWrite`), each a `StoreWrite` with `MarshalJSON` in Pi's key order; `StoredKey`/`ColumnVersions` are ordered `*delta.JsonObject`; `Stage*`, `Apply*`, `JsonVersions`, `RecordedVersions`. A `version` Pi leaves undefined is a nil `*int`. PiG: chord/next/store/table_writes.go (lane D3)."
 
 [[files]]
 path = "packages/chord/src/next/store/table.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/store/table_test.go#TestDefineTable"]
+rationale = "`DefineTable` returns the declaration error; columns an ordered `[]ColumnProp`, indexes ordered `IndexRecords`; fingerprint input serialized in Pi's key order (`jsstring.SortOwnKeys` for JS key order); type parameters designed out. PiG: table.go (lane D3)."
 
 [[files]]
 path = "packages/chord/src/next/store/text.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/store/text_test.go#TestCompareText"]
+rationale = "Go strings are UTF-8, so code point order is byte order (`CompareText` = `strings.Compare`); lone surrogates are WTF-8, replaced by `jsstring.StreamText`. PiG: chord/next/store/text.go (lane D3)."
 
 [[files]]
 path = "packages/chord/src/next/store/writes.ts"
 change = "added"
-disposition = "pending"
+disposition = "designed-out"
 evidence = []
-rationale = ""
+rationale = "Type-only file: the StoreWrite union; Go's StoreWrite interface (StoreWriteKind() string) in chord/next/store/writes.go carries it (lane D3)."
 
 [[files]]
 path = "packages/chord/src/node.ts"

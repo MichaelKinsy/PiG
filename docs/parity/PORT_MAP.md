@@ -797,6 +797,40 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/chord/src/next/link/text.ts` | `chord/next/link/text.go` | ✅ |
 | `packages/chord/src/next/link/values.ts` | `chord/next/link/values.go` | ✅ |
 | `packages/chord/src/next/link/websocket.ts` | `chord/next/link/websocket.go` | ✅ |
+| `packages/chord/src/next/store/table-writes.ts` | `chord/next/store/table_writes.go` | ✅ |
+| `packages/chord/src/next/store/table-changes.ts` | `chord/next/store/table_changes.go` | ✅ |
+| `packages/chord/src/next/store/table-handle.ts` | `chord/next/store/table_handle.go` | ✅ |
+| `packages/chord/src/next/store/engine.ts` | `chord/next/store/engine.go` | ✅ |
+| `packages/chord/src/next/store/outbox.ts` | `chord/next/store/outbox.go` | ✅ |
+| `packages/chord/src/next/store/store.ts` | `chord/next/store/store.go` | ✅ |
+| `packages/chord/src/next/store/applier.ts` | `chord/next/store/applier.go` | ✅ |
+| `packages/chord/src/next/store/apply-batch.ts` | `chord/next/store/apply_batch.go` | ✅ |
+| `packages/chord/src/next/store/index.ts` | `(export barrel: the Go package exports the names directly. Each exported name of the list exists in package store: ArchivePart (ArchiveManifest is ManifestPart), Backend/SqliteBackend, expression builders (Add And ColumnRef Condition Coalesce Concat Expression Eq Gt Gte InArray IsNull Lt Lte Max Min Ne Not Or Prefix ReplacePrefix SetOf Sub When), ImportStore, JsonColumnOptions/Json, DecodeJsonl/EncodeJsonl, Outbox/OutboxCommit, ColumnRefs/Query, OpenStore/Store/StoreOptions, DefineTable/TableDefinition/TableOptions, EvolveTable/TableEditor, Page/PageOptions, CompareText, StoreWrite. Type-level only, designed out by the other D3 agents: Columns PutRowOf RowOf KeyOf PatchOf AddedColumn TableTailEditor TableOf Table)` | n/a |
+| `packages/chord/src/next/store/archive.ts` | `chord/next/store/archive.go` | ✅ |
+| `packages/chord/src/next/store/export.ts` | `chord/next/store/export.go` | ✅ |
+| `packages/chord/src/next/store/import.ts` | `chord/next/store/import.go` | ✅ |
+| `packages/chord/src/next/store/text.ts` | `chord/next/store/text.go` | ✅ |
+| `packages/chord/src/next/store/allocator.ts` | `allocator.go` | ✅ |
+| `packages/chord/src/next/store/claims.ts` | `claims.go` | ✅ |
+| `packages/chord/src/next/store/refusal.ts` | `refusal.go` | ✅ |
+| `packages/chord/src/next/store/columns.ts` | `columns.go` | ✅ |
+| `packages/chord/src/next/store/json-column.ts` | `json_column.go` | ✅ |
+| `packages/chord/src/next/store/rows.ts` | `rows.go` | ✅ |
+| `packages/chord/src/next/store/sql.ts` | `sql.go` | ✅ |
+| `packages/chord/src/next/store/jsonl.ts` | `jsonl.go` | ✅ |
+| `packages/chord/src/next/store/catalog.ts` | `catalog.go` | ✅ |
+| `packages/chord/src/next/store/expression.ts` | `expression.go` | ✅ |
+| `packages/chord/src/next/store/evaluate.ts` | `evaluate.go` | ✅ |
+| `packages/chord/src/next/store/query.ts` | `query.go` | ✅ |
+| `packages/chord/src/next/store/table.ts` | `table.go` | ✅ |
+| `packages/chord/src/next/store/table-history.ts` | `table_history.go` | ✅ |
+| `packages/chord/src/next/store/table-evolve.ts` | `table_evolve.go` | ✅ |
+| `packages/chord/src/next/store/table-migration.ts` | `table_migration.go` | ✅ |
+| `packages/chord/src/next/store/adapter.ts` | `chord/next/store/adapter.go` | ✅ |
+| `packages/chord/src/next/store/backend.ts` | `chord/next/store/backend.go` | ✅ |
+| `packages/chord/src/next/store/schema.ts` | `chord/next/store/schema.go` | ✅ |
+| `packages/chord/src/next/store/step.ts` | `chord/next/store/step.go` | ✅ |
+| `packages/chord/src/next/store/writes.ts` | `(type-only: the StoreWrite union; chord/next/store/writes.go StoreWrite interface)` | n/a |
 
 ## `packages/protocol/src/`
 
