@@ -38,6 +38,7 @@ func killProcessTree(cmd *exec.Cmd, exited <-chan struct{}, _ bool) {
 		return
 	default:
 	}
+	//nolint:gosec // G204 (class a): program is the literal taskkill; args are fixed /T /F plus the pid of the MCP server process PiG started.
 	kill := exec.Command("taskkill", "/pid", strconv.Itoa(cmd.Process.Pid), "/T", "/F")
 	nodespawn.HideWindow(kill, nodespawn.Ignore, nodespawn.Ignore, nodespawn.Ignore)
 	_ = kill.Start()

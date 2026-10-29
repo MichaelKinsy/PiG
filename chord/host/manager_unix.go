@@ -105,6 +105,7 @@ func (driver forkDriver) Spawn() (Instance, error) {
 	syscall.CloseOnExec(fds[0])
 	parentEnd, childEnd := os.NewFile(uintptr(fds[0]), "ipc"), os.NewFile(uintptr(fds[1]), "ipc")
 	defer func() { _ = childEnd.Close() }()
+	//nolint:gosec // G204 (class b): program is node from exec.LookPath; args are the chord host's own execArgv, entry module and entry args from its loader options, with no shell.
 	cmd := exec.Command(node, forkArguments(options)...)
 	cmd.Env = forkEnvironment(options, "3")
 	cmd.ExtraFiles = []*os.File{childEnd}

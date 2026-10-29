@@ -122,6 +122,7 @@ func ListGraph(dir string, env []string, patterns ...string) (Graph, []string, e
 }
 
 func goList(dir string, env []string, args []string) (string, error) {
+	//nolint:gosec // G204 (class a): program is literal go; args are fixed list plus flags and patterns that tests pass as constants (./durable/core/..., testdata paths).
 	cmd := exec.Command("go", append([]string{"list"}, args...)...)
 	cmd.Dir = dir
 	cmd.Env = append(cmd.Environ(), append([]string{"CGO_ENABLED=0"}, env...)...)

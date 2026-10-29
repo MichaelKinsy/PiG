@@ -180,6 +180,7 @@ func initSnapshotGitBranch(ctx context.Context, dir, branch string) error {
 		{"init", "--quiet", dir},
 		{"-C", dir, "symbolic-ref", "HEAD", "refs/heads/" + branch},
 	} {
+		//nolint:gosec // G204 (class a): program is literal git; args are fixed "init --quiet <tmp>" and "-C <tmp> symbolic-ref HEAD refs/heads/<branch>", where the branch is prefixed by "refs/heads/".
 		if out, err := exec.CommandContext(ctx, "git", args...).CombinedOutput(); err != nil {
 			return fmt.Errorf("git %s: %w: %s", strings.Join(args, " "), err, strings.TrimSpace(string(out)))
 		}

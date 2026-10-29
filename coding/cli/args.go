@@ -114,6 +114,9 @@ type Args struct {
 	// NoContextFiles disables AGENTS.md/CLAUDE.md discovery.
 	// Mirrors upstream --no-context-files (args.ts:116).
 	NoContextFiles bool
+	// ContextFilesTrustedOnly withholds the project's context files until the project is trusted. A Piglet's contextFiles: trusted-only sets it; no command-line flag does.
+	// pig additive (D211).
+	ContextFilesTrustedOnly bool
 	// Export exports a session file to HTML and exits.
 	// Mirrors upstream --export (args.ts:106).
 	Export string
@@ -433,7 +436,7 @@ const pigCommands = `PiG Commands:
 
 PiG Options:
   --piglet <name|path>           Run the named Piglet, or the Piglet file at path; a Piglet Binary
-                                 built with build.allowOverlays merges it onto its own Piglet as an extends child
+                                 merges it onto its own Piglet as an extends child unless built with build.closed
   --no-stdin                     Ignore piped stdin (for a stdin pipe that never closes)
 
 PiG keeps its configuration in ~/.pig and never reads or writes ~/.pi.

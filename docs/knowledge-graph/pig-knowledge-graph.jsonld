@@ -189,7 +189,7 @@
       "@id": "pig:overlay",
       "@type": "DefinedTerm",
       "name": "Overlay Piglet",
-      "description": "A Piglet chosen at launch on a Piglet Binary that sets build.allowOverlays; it can undo runtime strips but not compiled-out ones.",
+      "description": "A Piglet chosen at launch on a Piglet Binary that is not built with build.closed; it can undo runtime strips but not compiled-out ones.",
       "pig:kind": "composition",
       "pig:where": "--piglet, PIG_PIGLET_PATH, PIG_PIGLET_NAME",
       "pig:inspect": "/piglet"
@@ -334,7 +334,7 @@
       "pig:from": "pig:overlay",
       "pig:relation": "is_a",
       "pig:to": "pig:piglet",
-      "description": "accepted only by a Binary with build.allowOverlays"
+      "description": "refused only by a Binary built with build.closed"
     },
     {
       "@type": "pig:Relation",

@@ -1200,6 +1200,10 @@ type InteractiveModeOptions struct {
 	// getSystemPromptSource and getAppendSystemPromptSources report them.
 	SystemPromptSourcePaths []string
 
+	// ContextFilesTrustedOnly marks a run that withholds an untrusted project's context files, and that warns of them.
+	// pig additive (D211).
+	ContextFilesTrustedOnly bool
+
 	// ReplacementResources returns the cwd-bound options of the build that owns session.
 	ReplacementResources func(session InteractiveSessionHandle) InteractiveReplacement
 
