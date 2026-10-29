@@ -1,6 +1,6 @@
 ### Upgrading
 
-- Go API `coding/extension/host/subprocess` and `coding/extension/source`: a program that loads Lisp extensions imports the new package `coding/extension/host/lispcell` for its side effect (`import _ "github.com/MichaelKinsy/PiG/coding/extension/host/lispcell"`). The `pig` command does. A program that links the extension host without it, such as `examples/headless`, does not resolve Lisp extension sources and fails a Lisp cell with "this program was built without Lisp extension support". `subprocess.EnableLisp` and `source.EnableLisp` are the hooks the package calls.
+- Go API `coding/extension/host/subprocess` and `coding/extension/source`: a program that loads Lisp extensions imports the new package `coding/extension/host/lispcell` for its side effect (`import _ "github.com/MichaelKinsy/PiG/coding/extension/host/lispcell"`). The `pig` command does. A program that links the extension host without it, such as `examples/headless`, does not resolve Lisp extension sources and fails a Lisp cell with "this program was built without Lisp extension support". `subprocess.EnableLisp` and `source.EnableLisp` are the hooks the package calls. No released PiG had Lisp extension support, so this is a note for embedders and not a break.
 
 ### Changed
 
