@@ -489,3 +489,31 @@ commit = "7bf1cbb246b6c3a76f294b1cba992b6d4fd472c2"
 class = "NOBEHAVIOR"
 cite = ""
 reason = "The test file was added on this branch in the commit before. `pig status` and its Piglet inventory are PiG-additive (D41, D209) and have no Pi counterpart. This commit changes one expectation of the new file: a Piglet Binary named by PIG_ACTIVE_PIGLET_SOURCE is no longer assumed closed, because only the Binary itself knows whether it accepts overlays (D202), so status names the Binary and applies no discovery when it is another executable. TestStatusActivePigletBinaryExcludesEveryAmbientExtensionAndSkill became TestStatusNamesAPigletBinaryItCannotApply."
+
+[[entry]]
+path = "coding/cli/piglet_overlay_test.go"
+commit = "d0eec18348ed05556c8dda8665631d210bb1dbfd"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "Piglet Binary overlays are PiG-original (a Piglet Binary has no Pi counterpart), so no Pi line governs the test. The commit replaces the opt-in build.allowOverlays with the opt-out build.closed (D202), so a Binary accepts overlays by default and the test's fixture, expected refusal text and accepting/refusing roles swap: the closed Binary now names build.closed, and the default Binary accepts what it refused."
+
+[[entry]]
+path = "coding/piglet/overlay_test.go"
+commit = "d0eec18348ed05556c8dda8665631d210bb1dbfd"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "Piglet Binary overlays are PiG-original (a Piglet Binary has no Pi counterpart), so no Pi line governs the test. The commit replaces the opt-in build.allowOverlays with the opt-out build.closed (D202), so a Binary accepts overlays by default and the test's fixture, expected refusal text and accepting/refusing roles swap: the closed Binary now names build.closed, and the default Binary accepts what it refused."
+
+[[entry]]
+path = "coding/pigletbuild/overlay_binary_test.go"
+commit = "d0eec18348ed05556c8dda8665631d210bb1dbfd"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "Piglet Binary overlays are PiG-original (a Piglet Binary has no Pi counterpart), so no Pi line governs the test. The commit replaces the opt-in build.allowOverlays with the opt-out build.closed (D202), so a Binary accepts overlays by default and the test's fixture, expected refusal text and accepting/refusing roles swap: the closed Binary now names build.closed, and the default Binary accepts what it refused."
+
+[[entry]]
+path = "coding/pigletbuild/overlay_build_test.go"
+commit = "d0eec18348ed05556c8dda8665631d210bb1dbfd"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "Piglet Binary overlays are PiG-original (a Piglet Binary has no Pi counterpart), so no Pi line governs the test. The commit replaces the opt-in build.allowOverlays with the opt-out build.closed (D202), so a Binary accepts overlays by default and the test's fixture, expected refusal text and accepting/refusing roles swap: the closed Binary now names build.closed, and the default Binary accepts what it refused."
