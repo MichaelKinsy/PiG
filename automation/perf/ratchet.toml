@@ -196,10 +196,11 @@
 # linux_amd64 and darwin_arm64 (default): owner-approved 2026-10-27 for the Pi b3a29f11 pin. Stripped size 36,675,744 (linux_amd64) over 36,675,584 -> ceiling 36,683,776 (+8,192 B); 35,259,074 (darwin_arm64) over 35,250,176 -> ceiling 35,266,560 (+16,384 B). Symbol growth (go tool nm -size, batch vs head, linux_amd64): internal/codingagent +877 B, tui +526 B, ai +427 B, all ported Pi b3a29f11 code.
 # default, owner-approved 2026-10-28 (Michael Kinsy) for the 0.6.0 batch: linux_amd64 36,675,584 -> 36,696,064, darwin_arm64 35,250,176 -> 35,270,656, windows_amd64 38,002,688 -> 38,023,168; linux_arm64 is unchanged. Measured with the word dictionaries (6.3 MB) and the TuiAltScreen renderer out of the binary (subprocess.EnableTuiAltScreens): 36,688,032, 35,259,970 and 38,016,512 B, rounded as above. The growth over the Bedrock-lane measurement is spread across the batch's code (Lisp staging, ToolScope, the tui Container's re-entrant render, localecompare); symbols new since: linux_amd64 +12.9 KB, type data +5 KB, pclntab +8 KB, text +9 KB.
 # default, owner-approved 2026-10-28 (Michael Kinsy) for the combined Pi follow b3a29f11 + batch-gate (the sum of the two lanes' growth exceeds each lane's own approval): measured by TestHeadlessEmbedBinarySizeGate on the merged head linux_amd64 36,696,224, linux_arm64 34,275,488, darwin_arm64 35,292,962 B, each rounded up to 8 KiB: linux_amd64 36,700,160, linux_arm64 34,283,520, darwin_arm64 35,299,328; windows_amd64 stays 38,023,168.
-"binary.headless.default.linux_amd64.bytes" = 36700160
+# default, owner-approved 2026-10-29 (Michael Kinsy) for the combined Pi follow b3a29f11 + full 0.6.0 batch (4414eac033): measured by TestHeadlessEmbedBinarySizeGate on the merged head linux_amd64 36,700,320 and windows_amd64 38,026,752 B, each rounded up to 8 KiB: linux_amd64 36,708,352, windows_amd64 38,027,264; linux_arm64 34,283,520 and darwin_arm64 35,299,328 are unchanged.
+"binary.headless.default.linux_amd64.bytes" = 36708352
 "binary.headless.default.linux_arm64.bytes" = 34283520
 "binary.headless.default.darwin_arm64.bytes" = 35299328
-"binary.headless.default.windows_amd64.bytes" = 38023168
+"binary.headless.default.windows_amd64.bytes" = 38027264
 "binary.headless.stripped.linux_amd64.bytes" = 30384128
 "binary.headless.stripped.linux_arm64.bytes" = 28057600
 "binary.headless.stripped.darwin_arm64.bytes" = 28999680
