@@ -227,6 +227,7 @@ func ResolveUpstreamPiBin(t *testing.T) BinaryRef {
 		if _, err := os.Stat(bin); err != nil {
 			failOrSkipMissingBinary(t, fmt.Sprintf("PIG_PARITY_PI_BIN not found at %s", bin))
 		}
+		//nolint:gosec // G204 (class c): program is PIG_PARITY_PI_BIN, a developer-set oracle path, run with the fixed "--version".
 		out, err := exec.Command(bin, "--version").Output()
 		if err != nil {
 			failOrSkipVersionMismatch(t, fmt.Sprintf("PIG_PARITY_PI_BIN version check failed at %s: %v", bin, err))

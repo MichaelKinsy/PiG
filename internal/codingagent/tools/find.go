@@ -130,6 +130,7 @@ func (t *FindTool) Execute(ctx context.Context, _ string, rawParams json.RawMess
 	}
 	args = append(args, "--", effectivePattern, searchPath)
 
+	//nolint:gosec // G204 (class b): program is fd resolved by PiG's tools manager; args are fixed flags, then -- and the pattern and search path from the find tool call, so the model cannot reach an fd option.
 	cmd := exec.CommandContext(ctx, fdPath, args...)
 	// Upstream's spawn finds fd with libuv's search on Windows.
 	nodespawn.SetProgram(cmd)

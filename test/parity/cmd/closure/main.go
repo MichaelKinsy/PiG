@@ -355,6 +355,7 @@ func runImportDenominators(ctx context.Context, args []string, stdout, stderr io
 
 func committedBundlePaths(ctx context.Context, root, snapshotID string) ([]string, error) {
 	directory := filepath.ToSlash(filepath.Join("test/parity", "closuredata", "proposals", strings.TrimPrefix(snapshotID, "snapshot:")))
+	//nolint:gosec // G204 (class a): program is literal git; args are fixed "ls-files -z --" plus a directory built from the snapshot ID after `--`.
 	command := exec.CommandContext(ctx, "git", "ls-files", "-z", "--", directory)
 	command.Dir = root
 	output, err := command.Output()
@@ -374,6 +375,7 @@ func committedBundlePaths(ctx context.Context, root, snapshotID string) ([]strin
 			return nil, fmt.Errorf("committed agent bundle %s is not a regular file", path)
 		}
 		for _, args := range [][]string{{"diff", "--quiet", "HEAD", "--", path}, {"diff", "--cached", "--quiet", "HEAD", "--", path}} {
+			//nolint:gosec // G204 (class a): program is literal git; args are fixed diff flags plus a path taken from git ls-files output after `--`.
 			check := exec.CommandContext(ctx, "git", args...)
 			check.Dir = root
 			if err := check.Run(); err != nil {

@@ -179,6 +179,7 @@ func modelDataTimestampValid(raw json.RawMessage) (bool, error) {
 }
 
 func runModelDataNode(script string, input []byte) (string, error) {
+	//nolint:gosec // G204 (class a): program is literal node resolved via PATH; script is a constant string and the input goes on stdin, not argv.
 	command := exec.Command("node", "-e", script)
 	command.Stdin = bytes.NewReader(input)
 	output, err := command.Output()

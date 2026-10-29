@@ -148,6 +148,7 @@ func (c *RpcClient) spawn() (*agentProcess, io.ReadCloser, io.ReadCloser, error)
 	}
 	args = append(args, c.options.Args...)
 
+	//nolint:gosec // G204 (class c): program is the CliPath option of the SDK caller (default pig); args are --mode rpc, the caller's provider, model and extra Args, as Pi's RpcClient does.
 	cmd := exec.Command(cliPath, args...)
 	cmd.Dir = c.options.Cwd
 	cmd.Env = os.Environ()

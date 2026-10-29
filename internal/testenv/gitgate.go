@@ -173,6 +173,7 @@ func IsolateGit(t testing.TB) {
 // RunGit runs git in dir and returns its trimmed output; a failure fails the test.
 func RunGit(t testing.TB, dir string, args ...string) string {
 	t.Helper()
+	//nolint:gosec // G204 (class a): program is literal git; args are fixed per-test git commands from the test's own callers.
 	cmd := exec.Command("git", args...)
 	cmd.Dir = dir
 	out, err := cmd.CombinedOutput()

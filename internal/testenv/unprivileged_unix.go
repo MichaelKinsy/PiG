@@ -71,6 +71,7 @@ func runUnprivileged(t *testing.T) bool {
 	for i, part := range parts {
 		parts[i] = "^" + regexp.QuoteMeta(part) + "$"
 	}
+	//nolint:gosec // G204 (class b): program is binary, the running test binary copied by setupUnprivilegedDir from os.Executable; args are -test.run from quoted test names and -test.count.
 	cmd := exec.CommandContext(t.Context(), binary, "-test.run="+strings.Join(parts, "/"), "-test.count=1")
 	cmd.Dir = dir
 	cmd.Env = append(os.Environ(), "HOME="+home, "TMPDIR="+tmp, unprivilegedResultEnv+"="+result)
