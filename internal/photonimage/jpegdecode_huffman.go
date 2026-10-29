@@ -4,7 +4,10 @@
 
 package photonimage
 
-import "slices"
+import (
+	"encoding/binary"
+	"slices"
+)
 
 // Ports jpeg-decoder 0.3.1 src/huffman.rs (cited as huffman.rs).
 
@@ -37,8 +40,35 @@ type jpegHuffmanTable struct {
 	acLUT   *[1 << jpegLUTBits]jpegACLUTEntry
 }
 
-// readBits is huffman.rs:123-163 read_bits. Once the marker is met the buffer is filled with zero bits.
+// readBits is huffman.rs:123-163 read_bits. Once the marker is met the buffer is filled with zero bits. The loop of the Rust code
+// appends one byte at a time while the buffer holds 56 bits or fewer, that is k = (56 - numBits) / 8 + 1 bytes; when none of
+// them is 0xFF (so none is stuffing or the start of a marker) they are taken as one word, and when the marker has been met the
+// k zero bytes are just counted, which are the same bits and the same positions as the loop gives; anything else, and the end of
+// the input, is the loop itself (readBitsSlow).
 func (h *jpegHuffmanDecoder) readBits(r *jpegReader) error {
+	if h.numBits > 56 {
+		return nil
+	}
+	k := (56-h.numBits)/8 + 1
+	if h.hasMarker {
+		h.numBits += 8 * k
+		return nil
+	}
+	if r.pos+8 <= len(r.data) {
+		head := binary.BigEndian.Uint64(r.data[r.pos:]) &^ (^uint64(0) >> (8 * k))
+		// a zero byte of the complement is a 0xFF byte of the first k bytes (the rest of the word is 0x00, whose complement is not)
+		if inverse := ^head; (inverse-0x0101010101010101)&^inverse&0x8080808080808080 == 0 {
+			h.bits |= head >> h.numBits
+			h.numBits += 8 * k
+			r.pos += int(k)
+			return nil
+		}
+	}
+	return h.readBitsSlow(r)
+}
+
+// readBitsSlow is the loop of read_bits, byte by byte.
+func (h *jpegHuffmanDecoder) readBitsSlow(r *jpegReader) error {
 	for h.numBits <= 56 {
 		var byt byte
 		if !h.hasMarker {

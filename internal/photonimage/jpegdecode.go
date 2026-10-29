@@ -69,17 +69,12 @@ func DecodeJPEG(data []byte) (img *image.NRGBA, err error) {
 		return nil, errors.New("photonimage: jpeg: not a JPEG (no FF D8 FF signature)")
 	}
 	d := &jpegDecoder{r: jpegReader{data: data}}
-	return d.decodeImage()
+	return d.decode()
 }
 
-// decodeImage is JpegDecoder::new (image codecs/jpeg/decoder.rs:19-35: `read_info`), the limits of `load_inner`, and
-// `read_image` (:106-117) with `to_rgba8`.
-func (d *jpegDecoder) decodeImage() (*image.NRGBA, error) {
-	pixels, format, err := d.decode()
-	if err != nil {
-		return nil, err
-	}
-	frame := d.frame
+// jpegLosslessToNRGBA is `read_image` of image 0.24.9 (codecs/jpeg/decoder.rs:106-117) with `to_rgba8` for the bytes of a lossless
+// frame: the other processes are converted to RGBA row by row (computeImageRGBA).
+func jpegLosslessToNRGBA(frame *jpegFrame, pixels []byte, format jpegPixelFormat) (*image.NRGBA, error) {
 	width, height := int(frame.outputSize.width), int(frame.outputSize.height)
 
 	// `read_image` converts CMYK to RGB (cmyk_to_rgb) and asserts the buffer has `total_bytes()`, which holds a CMYK image as RGB24.
@@ -137,19 +132,19 @@ func jpegCMYKToRGB(input []byte) []byte {
 	return output
 }
 
-// decode is decoder.rs:297-615 decode_internal (the two calls the image crate makes, `read_info` and `decode`, are one pass here:
-// `read_info` stops after the frame header and `decode` goes on with the same reader), returning the samples of `Decoder::decode`
-// and the pixel format of `Decoder::info`.
-func (d *jpegDecoder) decode() ([]byte, jpegPixelFormat, error) {
+// decode is JpegDecoder::new (image codecs/jpeg/decoder.rs:19-35: `read_info`), the limits of `load_inner` and `read_image`
+// (:106-117) with `to_rgba8`, over decoder.rs:297-615 decode_internal (the two calls the image crate makes, `read_info` and
+// `decode`, are one pass here: `read_info` stops after the frame header and `decode` goes on with the same reader).
+func (d *jpegDecoder) decode() (*image.NRGBA, error) {
 	if b, err := d.r.readU8(); err != nil {
-		return nil, 0, err
+		return nil, err
 	} else if b != 0xFF {
-		return nil, 0, jpegFormatError("first two bytes are not an SOI marker")
+		return nil, jpegFormatError("first two bytes are not an SOI marker")
 	}
 	if b, err := d.r.readU8(); err != nil {
-		return nil, 0, err
+		return nil, err
 	} else if b != jpegMarkerSOI {
-		return nil, 0, jpegFormatError("first two bytes are not an SOI marker")
+		return nil, jpegFormatError("first two bytes are not an SOI marker")
 	}
 
 	var (
@@ -171,7 +166,7 @@ scans:
 		} else {
 			m, err := d.readMarker()
 			if err != nil {
-				return nil, 0, err
+				return nil, err
 			}
 			marker = m
 		}
@@ -181,31 +176,31 @@ scans:
 		case jpegIsSOF(marker):
 			// Section 4.10: an image contains only one frame in the cases of sequential and progressive coding processes.
 			if d.frame != nil {
-				return nil, 0, jpegUnsupported("Hierarchical")
+				return nil, jpegUnsupported("Hierarchical")
 			}
 			frame, err := d.r.parseSOF(marker)
 			if err != nil {
-				return nil, 0, err
+				return nil, err
 			}
 			componentCount := len(frame.components)
 			if frame.isDifferential {
-				return nil, 0, jpegUnsupported("Hierarchical")
+				return nil, jpegUnsupported("Hierarchical")
 			}
 			if frame.arithmetic {
-				return nil, 0, jpegUnsupported("ArithmeticEntropyCoding")
+				return nil, jpegUnsupported("ArithmeticEntropyCoding")
 			}
 			if frame.precision != 8 && frame.codingProcess != jpegLossless {
-				return nil, 0, jpegUnsupported(fmt.Sprintf("SamplePrecision(%d)", frame.precision))
+				return nil, jpegUnsupported(fmt.Sprintf("SamplePrecision(%d)", frame.precision))
 			}
 			if frame.precision < 2 || frame.precision > 16 {
-				return nil, 0, jpegUnsupported(fmt.Sprintf("SamplePrecision(%d)", frame.precision))
+				return nil, jpegUnsupported(fmt.Sprintf("SamplePrecision(%d)", frame.precision))
 			}
 			if componentCount != 1 && componentCount != 3 && componentCount != 4 {
-				return nil, 0, jpegUnsupported(fmt.Sprintf("ComponentCount(%d)", componentCount))
+				return nil, jpegUnsupported(fmt.Sprintf("ComponentCount(%d)", componentCount))
 			}
 			// Make sure we support the subsampling ratios used.
 			if _, err := newJPEGUpsampler(frame.components, frame.imageSize.width, frame.imageSize.height); err != nil {
-				return nil, 0, err
+				return nil, err
 			}
 
 			// Decoder::info (decoder.rs:171-194) and the limits of image's load_inner: width * height * the bytes of the colour type
@@ -222,7 +217,7 @@ scans:
 				format = jpegCMYK32
 			}
 			if uint64(frame.outputSize.width)*uint64(frame.outputSize.height)*uint64(bytesPerPixel) > jpegMaxAlloc {
-				return nil, 0, errors.New("photonimage: jpeg: image exceeds the 512 MiB allocation limit of image 0.24.9")
+				return nil, errors.New("photonimage: jpeg: image exceeds the 512 MiB allocation limit of image 0.24.9")
 			}
 
 			d.frame = frame
@@ -232,12 +227,12 @@ scans:
 		// Scan header
 		case marker == jpegMarkerSOS:
 			if d.frame == nil {
-				return nil, 0, jpegFormatError("scan encountered before frame")
+				return nil, jpegFormatError("scan encountered before frame")
 			}
 			frame := d.frame
 			scan, err := d.r.parseSOS(frame)
 			if err != nil {
-				return nil, 0, err
+				return nil, err
 			}
 
 			if frame.codingProcess == jpegDCTProgressive && len(d.coefficients) == 0 {
@@ -251,7 +246,7 @@ scans:
 			if frame.codingProcess == jpegLossless {
 				m, ok, data, err := d.decodeScanLossless(frame, scan)
 				if err != nil {
-					return nil, 0, err
+					return nil, err
 				}
 				for i, plane := range data {
 					if len(plane) != 0 {
@@ -280,7 +275,7 @@ scans:
 
 				m, ok, data, hasData, err := d.decodeScan(frame, scan, &worker, &finished)
 				if err != nil {
-					return nil, 0, err
+					return nil, err
 				}
 				if hasData {
 					for i, plane := range data {
@@ -297,7 +292,7 @@ scans:
 		case marker == jpegMarkerDQT:
 			tables, err := d.r.parseDQT()
 			if err != nil {
-				return nil, 0, err
+				return nil, err
 			}
 			for i, table := range tables {
 				if table == nil {
@@ -314,7 +309,7 @@ scans:
 		case marker == jpegMarkerDHT:
 			dc, ac, err := d.r.parseDHT(d.frame != nil, d.frame != nil && d.frame.isBaseline)
 			if err != nil {
-				return nil, 0, err
+				return nil, err
 			}
 			for i := range dc {
 				if dc[i] != nil {
@@ -327,27 +322,27 @@ scans:
 
 		// Arithmetic conditioning table-specification
 		case marker == jpegMarkerDAC:
-			return nil, 0, jpegUnsupported("ArithmeticEntropyCoding")
+			return nil, jpegUnsupported("ArithmeticEntropyCoding")
 
 		// Restart interval definition
 		case marker == jpegMarkerDRI:
 			interval, err := d.r.parseDRI()
 			if err != nil {
-				return nil, 0, err
+				return nil, err
 			}
 			d.restartInterval = interval
 
 		// Comment
 		case marker == jpegMarkerCOM:
 			if err := d.r.parseCOM(); err != nil {
-				return nil, 0, err
+				return nil, err
 			}
 
 		// Application data
 		case marker >= jpegMarkerAPP0 && marker <= jpegMarkerAPP15:
 			data, err := d.r.parseAPP(marker)
 			if err != nil {
-				return nil, 0, err
+				return nil, err
 			}
 			switch {
 			case data.adobe:
@@ -363,41 +358,41 @@ scans:
 		case jpegIsRST(marker):
 			// Some encoders emit a final RST marker after entropy-coded data, which decode_scan does not take care of.
 			if previousMarker != jpegMarkerSOS {
-				return nil, 0, jpegFormatError("RST found outside of entropy-coded data")
+				return nil, jpegFormatError("RST found outside of entropy-coded data")
 			}
 
 		// Define number of lines
 		case marker == jpegMarkerDNL:
 			// Section B.2.1: "If a DNL segment is present, it shall immediately follow the first scan."
 			if previousMarker != jpegMarkerSOS || scansProcessed != 1 {
-				return nil, 0, jpegFormatError("DNL is only allowed immediately after the first scan")
+				return nil, jpegFormatError("DNL is only allowed immediately after the first scan")
 			}
-			return nil, 0, jpegUnsupported("DNL")
+			return nil, jpegUnsupported("DNL")
 
 		// Hierarchical mode markers
 		case marker == jpegMarkerDHP || marker == jpegMarkerEXP:
-			return nil, 0, jpegUnsupported("Hierarchical")
+			return nil, jpegUnsupported("Hierarchical")
 
 		// End of image
 		case marker == jpegMarkerEOI:
 			break scans
 
 		default:
-			return nil, 0, jpegFormatError("marker 0x%02X found where not allowed", marker)
+			return nil, jpegFormatError("marker 0x%02X found where not allowed", marker)
 		}
 		previousMarker = marker
 	}
 
 	if d.frame == nil {
-		return nil, 0, jpegFormatError("end of image encountered before frame")
+		return nil, jpegFormatError("end of image encountered before frame")
 	}
-	pixels, err := d.decodePlanes(&worker, planes, planesU16)
-	return pixels, format, err
+	return d.decodePlanes(&worker, planes, planesU16, format)
 }
 
-// decodePlanes is decoder.rs:617-696 decode_planes. (Its check of the decoded size against `decoding_buffer_size_limit`, which is
-// usize::MAX, can only fail for images of more than 4 GiB on wasm32, and the 512 MiB limit of DecodeJPEG is much below.)
-func (d *jpegDecoder) decodePlanes(worker *jpegWorker, planes [][]byte, planesU16 [][]uint16) ([]byte, error) {
+// decodePlanes is decoder.rs:617-696 decode_planes and what follows it in the image crate: the RGBA pixels. (Its check of the
+// decoded size against `decoding_buffer_size_limit`, which is usize::MAX, can only fail for images of more than 4 GiB on wasm32,
+// and the 512 MiB limit of DecodeJPEG is much below.)
+func (d *jpegDecoder) decodePlanes(worker *jpegWorker, planes [][]byte, planesU16 [][]uint16, format jpegPixelFormat) (*image.NRGBA, error) {
 	frame := d.frame
 
 	// If we're decoding a progressive jpeg and a component is unfinished, render what we've got.
@@ -426,9 +421,13 @@ func (d *jpegDecoder) decodePlanes(worker *jpegWorker, planes [][]byte, planesU1
 	}
 
 	if frame.codingProcess == jpegLossless {
-		return computeImageLossless(frame, planesU16)
+		pixels, err := computeImageLossless(frame, planesU16)
+		if err != nil {
+			return nil, err
+		}
+		return jpegLosslessToNRGBA(frame, pixels, format)
 	}
-	return computeImage(frame.components, planes, frame.outputSize, d.determineColorTransform())
+	return computeImageRGBA(frame.components, planes, frame.outputSize, d.determineColorTransform())
 }
 
 // determineColorTransform is decoder.rs:698-764 determine_color_transform (`set_color_transform` is never called by the image
@@ -474,13 +473,11 @@ func (d *jpegDecoder) determineColorTransform() jpegColorTransform {
 		return jpegTransformCMYK
 	}
 
-	switch count {
-	case 4:
+	// The frame has 3 or 4 components here (`Unknown` is for any other count, which decode_internal has refused).
+	if count == 4 {
 		return jpegTransformYCCK
-	case 3:
-		return jpegTransformYCbCr
 	}
-	return jpegTransformUnknown
+	return jpegTransformYCbCr
 }
 
 // readMarker is decoder.rs:766-792 read_marker.
@@ -927,55 +924,4 @@ func jpegRefineNonZeroes(reader *jpegReader, coefficients *[64]int16, huffman *j
 		}
 	}
 	return last, nil
-}
-
-// computeImage is decoder.rs:1300-1337 compute_image: the interleaved samples of the planes (the plane of a single component is
-// copied to a stride of its width), through worker/mod.rs:97-128 compute_image_parallel for the colour images.
-func computeImage(components []jpegComponent, data [][]byte, outputSize jpegDimensions, transform jpegColorTransform) ([]byte, error) {
-	if len(data) == 0 {
-		return nil, jpegFormatError("not all components have data")
-	}
-	for _, plane := range data {
-		if len(plane) == 0 {
-			return nil, jpegFormatError("not all components have data")
-		}
-	}
-
-	if len(components) == 1 {
-		component := &components[0]
-		decoded := data[0]
-
-		width := int(component.size.width)
-		height := int(component.size.height)
-		size := width * height
-		lineStride := int(component.blockSize.width) * component.dctScale
-
-		// If the image width is a multiple of the block size, the bytes need not move. The first line already starts at index 0,
-		// the others move backwards, top down.
-		if int(outputSize.width) != lineStride {
-			for y := 1; y < height; y++ {
-				copy(decoded[y*width:], decoded[y*lineStride:y*lineStride+width])
-			}
-		}
-		return decoded[:size], nil
-	}
-
-	convert, err := chooseJPEGColorConvert(len(components), transform)
-	if err != nil {
-		return nil, err
-	}
-	upsampler, err := newJPEGUpsampler(components, outputSize.width, outputSize.height)
-	if err != nil {
-		return nil, err
-	}
-	lineSize := int(outputSize.width) * len(components)
-	image := make([]byte, lineSize*int(outputSize.height))
-	lineBuffers := make([][]byte, len(components))
-	for i := range lineBuffers {
-		lineBuffers[i] = make([]byte, upsampler.lineBufferSize)
-	}
-	for row := range int(outputSize.height) {
-		upsampler.upsampleAndInterleaveRow(data, row, int(outputSize.width), lineBuffers, image[row*lineSize:(row+1)*lineSize], convert)
-	}
-	return image, nil
 }
