@@ -158,9 +158,19 @@ func TestStore(t *testing.T) {
 					},
 				}
 			}
-			first := store.CommitAsync([]StagedWrite{CreateDocument(storeAddress, storeBase, "{}", nil), RetireDocument(id, 1)}, fence("recreate"), background)
+			held, entered, release := holdingWrite()
+			first := startQueued(t, store, func() (int64, error) {
+				writes := []StagedWrite{CreateDocument(storeAddress, storeBase, "{}", nil), RetireDocument(id, 1), held}
+				return store.Commit(writes, fence("recreate"), background)
+			})
+			// Both commits are queued before either settles (Pi starts both before awaiting): the first is held until
+			// the second took its place.
+			<-entered
 			content := DocumentContent{Kind: "delta", Version: 1, Ops: []delta.Op{{"s", []any{"n"}, float64(1)}}}
-			second := store.CommitAsync([]StagedWrite{ChangeDocument(3, 1, content, `[["s",["n"],1]]`)}, fence("change"), background)
+			second := startQueued(t, store, func() (int64, error) {
+				return store.Commit([]StagedWrite{ChangeDocument(3, 1, content, `[["s",["n"],1]]`)}, fence("change"), background)
+			})
+			release()
 			seqs := make([]int64, 0, 2)
 			for _, settled := range []<-chan chordctx.Settled[int64]{first, second} {
 				seq, err := settledValue(t, settled)
@@ -386,9 +396,11 @@ func TestStore(t *testing.T) {
 
 		t.Run("starts at 2, takes a creation's id as it applies, and gives a mint during a running step the next one", func(t *testing.T) {
 			store := memoryStore(t, true)
-			entered, release := holdNextCommit(store)
+			held, entered, release := holdingWrite()
 			_, fence := recording()
-			commit := store.CommitAsync([]StagedWrite{CreateDocument(storeAddress, storeBase, "{}", nil)}, fence, background)
+			commit := startQueued(t, store, func() (int64, error) {
+				return store.Commit([]StagedWrite{CreateDocument(storeAddress, storeBase, "{}", nil), held}, fence, background)
+			})
 			<-entered
 			minted, err := store.MintId()
 			noError(t, err)
@@ -484,11 +496,13 @@ func TestStore(t *testing.T) {
 				return create.Apply(step)
 			}}
 			_, fence := recording()
-			running := store.CommitAsync([]StagedWrite{held}, fence, background)
+			running := startQueued(t, store, func() (int64, error) { return store.Commit([]StagedWrite{held}, fence, background) })
 			<-entered
 			queuedAt := storeAddress
 			queuedAt.Key = new("q")
-			queued := store.CommitAsync([]StagedWrite{CreateDocument(queuedAt, storeBase, "{}", nil)}, fence, background)
+			queued := startQueued(t, store, func() (int64, error) {
+				return store.Commit([]StagedWrite{CreateDocument(queuedAt, storeBase, "{}", nil)}, fence, background)
+			})
 			closed := make(chan error, 1)
 			go func() { closed <- store.Close(background) }()
 			// Close stops the store at its call: wait for it before the running step goes on.

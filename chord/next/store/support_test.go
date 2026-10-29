@@ -15,7 +15,7 @@ import (
 )
 
 // Ports packages/chord/test/next/support.ts (the store's helpers: memoryStore, faultyDatabase, faultyStore,
-// holdNextCommit, tableOwner, tableIn, rejection, exported, metered).
+// holdingWrite, startQueued, tableOwner, tableIn, rejection, exported, metered).
 //
 // Shared test helpers of package store. Every test file of the package uses these and none redefines them.
 
@@ -227,24 +227,57 @@ func (write stagedWrite) StageOrder() WriteOrder { return write.order }
 
 func (write stagedWrite) Apply(step *Step) ([]StoreWrite, error) { return write.apply(step) }
 
-// holdNextCommit holds store's next commit step inside its backend transaction, after its admission: entered is
-// closed there, release lets it finish; later commits run as usual.
-func holdNextCommit(store *ChordStore) (entered <-chan struct{}, release func()) {
+// holdingWrite is a staged write that holds its commit step inside its backend transaction: entered is closed when
+// the step applies it, release lets the step finish. A test appends it to the writes of the commit it holds (Pi's
+// `holdNextCommit` replaced `store.commit` for one call to append the same write); it records a `dropIndex` of a
+// table the step does not have, which only the outbox sees.
+func holdingWrite() (held StagedWrite, entered <-chan struct{}, release func()) {
 	gate := make(chan struct{})
 	reached := make(chan struct{})
 	var once sync.Once
-	store.InterceptNextCommit(func(writes []StagedWrite) []StagedWrite {
-		held := stagedWrite{
-			order: OrderWrite,
-			apply: func(*Step) ([]StoreWrite, error) {
-				close(reached)
-				<-gate
-				return []StoreWrite{&DropIndexWrite{Table: "x", Name: "y"}}, nil
-			},
+	held = stagedWrite{
+		order: OrderWrite,
+		apply: func(*Step) ([]StoreWrite, error) {
+			close(reached)
+			<-gate
+			return []StoreWrite{&DropIndexWrite{Table: "x", Name: "y"}}, nil
+		},
+	}
+	return held, reached, func() { once.Do(func() { close(gate) }) }
+}
+
+// queueTail is the store's commit queue tail: it changes whenever an entry takes its place.
+func (store *ChordStore) queueTail() <-chan struct{} {
+	store.mu.Lock()
+	defer store.mu.Unlock()
+	return store.tail
+}
+
+// startQueued runs call (a Commit, a Replay, an ApplyBatch) on a goroutine, as Pi starts a promise it awaits later, and
+// returns its result channel once call has taken its place in store's commit queue (or settled without one: a
+// refusal at the call). Entries started one after another through it queue in that order.
+func startQueued[T any](t testing.TB, store *ChordStore, call func() (T, error)) <-chan chordctx.Settled[T] {
+	t.Helper()
+	before := store.queueTail()
+	settled := make(chan chordctx.Settled[T], 1)
+	go func() {
+		value, err := call()
+		settled <- chordctx.Settled[T]{Value: value, Err: err}
+	}()
+	deadline := time.Now().Add(10 * time.Second)
+	for store.queueTail() == before {
+		select {
+		case outcome := <-settled:
+			settled <- outcome
+			return settled
+		default:
 		}
-		return append(append([]StagedWrite{}, writes...), held)
-	})
-	return reached, func() { once.Do(func() { close(gate) }) }
+		if time.Now().After(deadline) {
+			t.Fatal("a store call neither took its place in the commit queue nor settled")
+		}
+		time.Sleep(50 * time.Microsecond)
+	}
+	return settled
 }
 
 // rejected is the ChordError err is, failing the test when it is none or its code or reason differ; an empty reason

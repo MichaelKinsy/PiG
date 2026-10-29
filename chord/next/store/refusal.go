@@ -51,13 +51,13 @@ func RefusalOf(err error, label string) *Refusal {
 }
 
 // isCheck reports whether a refusal is a CHECK failure: SQLite's extended code where the driver has one (an error
-// with `Code() int`, as modernc's), the message otherwise (the Durable Object facade has no extended codes).
-// Go difference: a driver may report the primary constraint code instead of the extended one, so a code other than
-// 275 still falls back to the message, which names only CHECK failures.
+// with `Code() int`: modernc's carries 275 for a CHECK, proved by TestCheckFailureCode), the message otherwise (the
+// Durable Object facade has no extended codes), as Pi's `typeof errcode === "number"` branch does: an error that has
+// a code is told by it alone.
 func isCheck(err error, message string) bool {
 	var coded interface{ Code() int }
-	if errors.As(err, &coded) && coded.Code() == sqliteConstraintCheck {
-		return true
+	if errors.As(err, &coded) {
+		return coded.Code() == sqliteConstraintCheck
 	}
 	return strings.Contains(message, "CHECK constraint failed")
 }

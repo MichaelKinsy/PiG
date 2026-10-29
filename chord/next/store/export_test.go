@@ -79,8 +79,9 @@ func exportOf(t *testing.T, store *ChordStore, ctx context.Context) *StoreExport
 }
 
 // exportCommit queues a commit of no writes and returns a poll of its result: settled, and its error.
-func exportCommit(store *ChordStore) func() (bool, error) {
-	result := store.CommitAsync(nil, openFence, background)
+func exportCommit(t *testing.T, store *ChordStore) func() (bool, error) {
+	t.Helper()
+	result := startQueued(t, store, func() (int64, error) { return store.Commit(nil, openFence, background) })
 	return func() (bool, error) {
 		select {
 		case settled := <-result:
@@ -260,7 +261,7 @@ func TestExportCommitQueue(t *testing.T) {
 		store := archiveStore(t)
 		export := exportOf(t, store, background)
 		exportNext(t, export)
-		commit := exportCommit(store)
+		commit := exportCommit(t, store)
 		exportFlushed()
 		if settled, _ := commit(); settled {
 			t.Fatal("the commit ran while the export held the queue")
@@ -342,7 +343,7 @@ func TestExportCommitQueue(t *testing.T) {
 		cancellable, cancel := chordctx.WithCancel(background)
 		export := exportOf(t, store, cancellable)
 		exportNext(t, export)
-		commit := exportCommit(store)
+		commit := exportCommit(t, store)
 		exportFlushed()
 		if settled, _ := commit(); settled {
 			t.Fatal("the commit ran while the export held the queue")

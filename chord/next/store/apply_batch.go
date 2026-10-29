@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"maps"
 
-	chordctx "github.com/MichaelKinsy/PiG/chord/context"
 	"github.com/MichaelKinsy/PiG/chord/sqlite"
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
 )
@@ -18,9 +17,9 @@ import (
 //
 // Async contract: Pi's `applyBatch` checks the commits synchronously (a failure is the returned promise's rejection,
 // before the queue is touched), then takes its place in the store's commit queue at the call and resolves once the
-// batch applied or was refused. ApplyBatch blocks until then; ApplyBatchAsync takes the place in the queue before it
-// returns and settles on a channel, for a caller that queues behind another entry (an export holding the queue) and
-// goes on meanwhile. Nothing is cancelled once queued; ctx counts the checks only (Pi's context does).
+// batch applied or was refused. ApplyBatch does the same and blocks until then: its place in the queue is taken at
+// the call, claims and divergence are checked at the call and again at the turn, and nothing is cancelled once
+// queued; ctx counts the checks only (Pi's context does).
 
 // ApplyBatch applies commits (from an outbox, in seq order) to store: refused while an owner holds a claim on it, once
 // it diverged, or when the first commit does not follow its LastSeq or one does not follow the one before; a write
@@ -33,18 +32,6 @@ func ApplyBatch(store *ChordStore, commits []OutboxCommit, ctx context.Context) 
 		return err
 	}
 	return store.Replay(batchReplay(store, checked), IsDiverged)
-}
-
-// ApplyBatchAsync is ApplyBatch with its place in the store's commit queue taken before it returns: the result
-// settles on the channel (one value, buffered).
-func ApplyBatchAsync(store *ChordStore, commits []OutboxCommit, ctx context.Context) <-chan chordctx.Settled[struct{}] {
-	checked, err := checkCommits(commits, ctx)
-	if err != nil {
-		settled := make(chan chordctx.Settled[struct{}], 1)
-		settled <- chordctx.Settled[struct{}]{Err: err}
-		return settled
-	}
-	return store.ReplayAsync(batchReplay(store, checked), IsDiverged)
 }
 
 // checkCommits is every commit's envelope and writes, checked.

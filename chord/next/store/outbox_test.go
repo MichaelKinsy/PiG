@@ -13,6 +13,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/internal/nexttest"
 	"github.com/MichaelKinsy/PiG/chord/sqlite"
 	"github.com/MichaelKinsy/PiG/chord/sqlite/node"
+	"github.com/MichaelKinsy/PiG/internal/jsonparse"
 )
 
 // Ports packages/chord/test/next/store/outbox.test.ts: tests of the outbox (slice 6a §2; decisions "The outbox is
@@ -282,5 +283,86 @@ func TestOutbox(t *testing.T) {
 			}
 		}
 		noError(t, store.Close(context.Background()))
+	})
+}
+
+// TestOutboxReadsStoredWritesAsJSONParse pins what Pi's outbox.ts does with a stored commit's writes text, which it
+// never validates: `JSON.parse(writes) as StoreWrite[]` hands out any JSON as it parsed (an element that is no write, a
+// value that is no array), and text that is no JSON rejects the read with the SyntaxError JSON.parse throws (V8's
+// message, no ChordError); the throw is outside the store's read guard, so the store and the outbox go on.
+func TestOutboxReadsStoredWritesAsJSONParse(t *testing.T) {
+	// stored overwrites the writes text of commit seq.
+	stored := func(t *testing.T, store *ChordStore, seq int64, text string) {
+		t.Helper()
+		noError(t, store.Maintain(func(executor sqlite.SqliteExecutor) error {
+			return executor.Run(`UPDATE `+TableOutbox+` SET writes = ? WHERE seq = ?`, text, seq)
+		}))
+	}
+	twoCommits := func(t *testing.T) *ChordStore {
+		t.Helper()
+		store := memoryStore(t, true)
+		outboxCreated(t, store, "a")
+		outboxCreated(t, store, "b")
+		return store
+	}
+
+	t.Run("passes valid JSON through as it parsed: elements that are no write, a value that is no array", func(t *testing.T) {
+		store := twoCommits(t)
+		const first = `[{"kind":"nope","x":1},5,{"kind":"table"},{"kind":"document.create"},null]`
+		stored(t, store, 1, first)
+		stored(t, store, 2, `{"a":1}`)
+		commits, err := store.Outbox().Read(0, 10, background)
+		noError(t, err)
+		if len(commits) != 2 {
+			t.Fatalf("commits = %d, want 2", len(commits))
+		}
+		if got := nexttest.JSONText(t, commits[0].Raw); got != first {
+			t.Fatalf("raw 0 = %s, want %s", got, first)
+		}
+		if got := nexttest.JSONText(t, commits[0].Writes); got != first || len(commits[0].Writes) != 5 {
+			t.Fatalf("writes 0 = %s (%d), want %s", got, len(commits[0].Writes), first)
+		}
+		// An element's kind is its string `kind` member (the malformed table and document.create ones stay unknown).
+		for index, kind := range []string{"nope", "", "table", "document.create", ""} {
+			if got := commits[0].Writes[index].StoreWriteKind(); got != kind {
+				t.Fatalf("writes[%d] kind = %q, want %q", index, got, kind)
+			}
+		}
+		for index, write := range commits[0].Writes {
+			if _, unknown := write.(*UnknownWrite); !unknown {
+				t.Fatalf("writes[%d] = %T, want *UnknownWrite", index, write)
+			}
+		}
+		if got := nexttest.JSONText(t, commits[1].Raw); got != `{"a":1}` || commits[1].Writes != nil {
+			t.Fatalf("commit 1 raw = %s writes = %v, want {\"a\":1} and none", got, commits[1].Writes)
+		}
+	})
+
+	t.Run("text that is no JSON rejects the read with JSON.parse's SyntaxError; the store and the outbox go on", func(t *testing.T) {
+		store := twoCommits(t)
+		stored(t, store, 1, `nope`)
+		_, err := store.Outbox().Read(0, 10, background)
+		if err == nil {
+			t.Fatalf("Read of text that is no JSON succeeded")
+		}
+		if _, isChord := data.IsChordError(err); isChord {
+			t.Fatalf("Read = %v, want a plain SyntaxError, not a ChordError", err)
+		}
+		want := jsonparse.Validate([]byte(`nope`))
+		if want == nil || err.Error() != want.Error() {
+			t.Fatalf("Read = %q, want JSON.parse's message %v", err.Error(), want)
+		}
+		// The throw is outside the store's read guard: it neither stopped the store nor blocked the outbox's queue.
+		commits, err := store.Outbox().Read(1, 10, background)
+		noError(t, err)
+		if len(commits) != 1 || commits[0].Seq != 2 {
+			t.Fatalf("commits after the bad one = %+v", commits)
+		}
+		stored(t, store, 1, `[]`)
+		commits, err = store.Outbox().Read(0, 10, background)
+		noError(t, err)
+		if len(commits) != 2 {
+			t.Fatalf("commits once repaired = %d, want 2", len(commits))
+		}
 	})
 }

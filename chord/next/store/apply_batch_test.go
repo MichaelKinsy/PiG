@@ -188,6 +188,13 @@ func batchDiverging(commits []OutboxCommit) []OutboxCommit {
 	})
 }
 
+// startBatch starts ApplyBatch on a goroutine (Pi's unawaited `applyBatch(...)` promise) and returns once it took its
+// place in the store's commit queue, or settled at its call.
+func startBatch(t *testing.T, store *ChordStore, commits []OutboxCommit) <-chan chordctx.Settled[struct{}] {
+	t.Helper()
+	return startQueued(t, store, func() (struct{}, error) { return struct{}{}, ApplyBatch(store, commits, background) })
+}
+
 // batchRejected is the error the settled batch failed with; it fails the test when it succeeded.
 func batchRejected(t *testing.T, settled <-chan chordctx.Settled[struct{}]) error {
 	t.Helper()
@@ -263,7 +270,7 @@ func TestApplyBatch(t *testing.T) {
 		t.Run("a claim taken between the call and its turn in the queue refuses the batch; a claim is refused while it applies", func(t *testing.T) {
 			replica, arm := gatedStore(t)
 			held := <-replica.Take(func() {})
-			replaying := ApplyBatchAsync(replica, nil, background)
+			replaying := startBatch(t, replica, nil)
 			owner := &NamedClaimant{Label: "an object"}
 			noError(t, replica.Claims.Documents("app.store", "chord", owner))
 			held()
@@ -274,7 +281,7 @@ func TestApplyBatch(t *testing.T) {
 			replica.Claims.Release(owner)
 			all := batchCommits(t, batchEveryKind(t))
 			gate := arm()
-			applying := ApplyBatchAsync(replica, all, background)
+			applying := startBatch(t, replica, all)
 			// Once the batch applies (its transaction is held open), a claim is refused.
 			<-gate.Entered()
 			_ = rejected(t, replica.Claims.Documents("app.store", "chord", owner), data.CodeInvalid, data.ReasonArgs)
@@ -289,9 +296,13 @@ func TestApplyBatch(t *testing.T) {
 
 		t.Run("a batch queued behind one that diverges is refused at its turn", func(t *testing.T) {
 			all := batchCommits(t, batchEveryKind(t))
-			replica := memoryStore(t)
-			first := ApplyBatchAsync(replica, batchDiverging(all), background)
-			second := ApplyBatchAsync(replica, all, background)
+			replica, arm := gatedStore(t)
+			// The first batch is held inside its transaction until the second one took its place behind it.
+			gate := arm()
+			first := startBatch(t, replica, batchDiverging(all))
+			<-gate.Entered()
+			second := startBatch(t, replica, all)
+			gate.Release()
 			if err := batchRejected(t, first); !strings.Contains(err.Error(), "recorded") {
 				t.Fatalf("diverging batch = %v, want recorded", err)
 			}

@@ -28,9 +28,10 @@ import (
 // call before it settled; a settled queue entry never blocks the next one, whatever it rejected with. Go keeps that
 // contract with a ticket: a call takes its place under `mu` (so the queue order is the order of the calls that reach
 // it) and waits for the ticket before it (a channel the previous entry closes when it settled). `Commit`, `Replay`
-// and `Read` block until they settle, as the Pi promises resolve; `CommitAsync` and `ReplayAsync` take their place
-// before they return and settle on a channel, for a caller that queues several entries before it waits (Pi's
-// `const a = store.commit(...); const b = store.commit(...)`), and `Take` does the same for an export. Nothing is
+// and `Read` block until they settle, as the Pi promises resolve, and so does `Take`'s channel: an export selects on it
+// with its context, as Pi's does while its caller awaits the promise. A caller that needs two entries queued in order
+// takes the second place after the first one's call has returned, as Pi's `const a = store.commit(...); const b =
+// store.commit(...)` does (tests start the first on a goroutine and wait for the queue to show its place). Nothing is
 // cancelled once queued (Pi's `context` counts the step; it does not abort it). A read or a maintenance write runs on
 // the caller's goroutine, outside the queue, as Pi's does outside it. `mu` guards the store's own state (the
 // position, the catalog, the stopped state, the counters, the queue's tail); no database call and no callback runs
@@ -197,8 +198,6 @@ type ChordStore struct {
 	catalog map[string]*TableRecord
 	// held is the ends of the exports holding the queue or waiting for it, which closing the store calls.
 	held map[*heldEnd]struct{}
-	// intercept is InterceptNextCommit's wrapper of the next commit's writes.
-	intercept func(writes []StagedWrite) []StagedWrite
 }
 
 var _ Store = (*ChordStore)(nil)
@@ -341,28 +340,6 @@ func (store *ChordStore) Detach() {
 	store.attachment = nil
 }
 
-// InterceptNextCommit makes the next Commit, CommitAsync or CommitInBatch (once) commit wrap(writes) instead of its
-// writes.
-// pig additive (D104): Pi's tests hold a commit step by reassigning `store.commit` for one call (holdNextCommit);
-// Go cannot patch a method, so the seam is a method. Nothing in the store itself calls it.
-func (store *ChordStore) InterceptNextCommit(wrap func(writes []StagedWrite) []StagedWrite) {
-	store.mu.Lock()
-	defer store.mu.Unlock()
-	store.intercept = wrap
-}
-
-// intercepted is writes as the pending InterceptNextCommit wants them committed.
-func (store *ChordStore) intercepted(writes []StagedWrite) []StagedWrite {
-	store.mu.Lock()
-	wrap := store.intercept
-	store.intercept = nil
-	store.mu.Unlock()
-	if wrap == nil {
-		return writes
-	}
-	return wrap(writes)
-}
-
 // ticket takes the next place of the commit queue: the entry waits for previous, and closes done once it settled.
 func (store *ChordStore) ticket() (previous <-chan struct{}, done chan struct{}) {
 	done = make(chan struct{})
@@ -380,7 +357,6 @@ func (store *ChordStore) ticket() (previous <-chan struct{}, done chan struct{})
 // unchanged and the store goes on; any other failure (`BEGIN`, `COMMIT`, `ROLLBACK`, a failing Adopt) is an unknown
 // outcome that stops the store (`storage_failed`). ctx counts the step (no abort once queued).
 func (store *ChordStore) Commit(writes []StagedWrite, fence CommitFence, ctx context.Context) (int64, error) {
-	writes = store.intercepted(writes)
 	if err := store.AssertUsable(); err != nil {
 		return 0, err
 	}
@@ -388,25 +364,6 @@ func (store *ChordStore) Commit(writes []StagedWrite, fence CommitFence, ctx con
 	<-previous
 	defer close(done)
 	return store.step(writes, fence, ctx)
-}
-
-// CommitAsync is Commit with its place in the queue taken before it returns: the result settles on the channel (one
-// value, buffered).
-func (store *ChordStore) CommitAsync(writes []StagedWrite, fence CommitFence, ctx context.Context) <-chan chordctx.Settled[int64] {
-	settled := make(chan chordctx.Settled[int64], 1)
-	writes = store.intercepted(writes)
-	if err := store.AssertUsable(); err != nil {
-		settled <- chordctx.Settled[int64]{Err: err}
-		return settled
-	}
-	previous, done := store.ticket()
-	go func() {
-		<-previous
-		defer close(done)
-		seq, err := store.step(writes, fence, ctx)
-		settled <- chordctx.Settled[int64]{Value: seq, Err: err}
-	}()
-	return settled
 }
 
 // CommitInBatch is an adapter's commit (§1.3): Commit admitting every write, its adoption run in the attached host's
@@ -699,23 +656,6 @@ func (store *ChordStore) Replay(apply ReplayApply, isDivergence func(err error) 
 	<-previous
 	defer close(done)
 	return store.replay(apply, isDivergence)
-}
-
-// ReplayAsync is Replay with its place in the queue taken before it returns: the result settles on the channel (one
-// value, buffered).
-func (store *ChordStore) ReplayAsync(apply ReplayApply, isDivergence func(err error) bool) <-chan chordctx.Settled[struct{}] {
-	settled := make(chan chordctx.Settled[struct{}], 1)
-	if err := store.assertReplayable(); err != nil {
-		settled <- chordctx.Settled[struct{}]{Err: err}
-		return settled
-	}
-	previous, done := store.ticket()
-	go func() {
-		<-previous
-		defer close(done)
-		settled <- chordctx.Settled[struct{}]{Err: store.replay(apply, isDivergence)}
-	}()
-	return settled
 }
 
 // assertReplayable is checked at the call of Replay and again at its turn: a claim or a divergence may come between
