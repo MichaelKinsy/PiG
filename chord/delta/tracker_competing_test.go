@@ -12,7 +12,7 @@ func weakRegistrations(tracker *Tracker) int {
 	if tracker.owner == nil {
 		return 0
 	}
-	return len(tracker.owner.contexts)
+	return len(tracker.owner.competitors)
 }
 
 func TestTrackerTracksOneChangeAtATimeWithoutAWeakRegistration(t *testing.T) {

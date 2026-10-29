@@ -355,7 +355,7 @@ func TestDeltaTrackerRetentionAcrossGCJobs(t *testing.T) {
 			mustNoErr(t, change.State().Set("value", float64(index)))
 			change.Abort()
 		}
-		if live := len(tracker.owner.contexts); live > 256 {
+		if live := len(tracker.owner.competitors); live > 256 {
 			t.Fatalf("the tracker still registers %d aborted changes", live)
 		}
 		replace(t, tracker, jsonObject(t, `{"value":1}`))
@@ -388,7 +388,7 @@ func TestDeltaTrackerRetentionAcrossGCJobs(t *testing.T) {
 		for range 10_000 {
 			commit()
 		}
-		if live := len(tracker.owner.contexts); live > 256 {
+		if live := len(tracker.owner.competitors); live > 256 {
 			t.Fatalf("the tracker still registers %d adopted changes", live)
 		}
 		// The text itself grows 4 bytes per change; every earlier revision is released, and the allowance is Pi's 48 bytes.
@@ -467,14 +467,16 @@ func itoa(value int) string {
 	return string(digits)
 }
 
-// upstream: packages/chord/src/delta/tracker.ts:216 (#contexts = new Set<WeakRef<OverlayContext>>()): the tracker holds an open change weakly, so a change the caller drops without settling it is reclaimed with its draft before any adoption.
-func TestTrackerReleasesADroppedOpenChange(t *testing.T) {
+// upstream: packages/chord/src/delta/tracker.ts (#open, #competitors; a9228305): the tracker holds its most recent open change strongly and moves it into the weak registry when the next change opens, so a change the caller drops without settling it is reclaimed with its draft once another change opens.
+func TestTrackerReleasesADroppedOpenChangeWhenTheNextOpens(t *testing.T) {
 	tracker := Track(jsonObject(t, `{"payload":null}`))
 	reference := func() weak.Pointer[node] {
 		change := tracker.BeginChange()
 		mustNoErr(t, change.State().Set("payload", JsonObjectOf("rows", valueRows(50_000))))
 		return weak.Make(draftNode(change.State().Object("payload").Array("rows").ref))
 	}()
+	next := tracker.BeginChange()
 	collect(t, reference, "a dropped open change")
+	next.Abort()
 	expectJSONText(t, tracker.Value(), `{"payload":null}`)
 }
