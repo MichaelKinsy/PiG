@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/durable/tools"
+	"github.com/MichaelKinsy/PiG/internal/photonimage"
 )
 
 // Pi's index.ts decides, for each image, whether it passes through, how it is turned, what size it is given, which
@@ -37,21 +38,21 @@ func TestPhotonImagesMatchPiAtTheLimitBoundaries(t *testing.T) {
 		{name: "jpeg exactly at the byte limit", data: jpegSource, mime: "image/jpeg", limits: exactBytes(jpegSource)},
 		{name: "gif exactly at the byte limit", data: gif(), mime: "image/gif", limits: exactBytes(gif())},
 		// One past a limit is not.
-		{name: "png one pixel wider than the limit", data: pngOf(2001, 100), mime: "image/png", limits: def, tolerance: 2},
-		{name: "png one pixel taller than the limit", data: pngOf(100, 2001), mime: "image/png", limits: def, tolerance: 2},
+		{name: "png one pixel wider than the limit", data: pngOf(2001, 100), mime: "image/png", limits: def},
+		{name: "png one pixel taller than the limit", data: pngOf(100, 2001), mime: "image/png", limits: def},
 		// A size that rounds half up (4000x1001 at scale 1/2 is 500.5 high) and sizes that round down.
-		{name: "png whose resized height is a half", data: pngOf(4000, 1001), mime: "image/png", limits: def, tolerance: 2},
-		{name: "png whose resized height is just under a half", data: pngOf(3001, 1000), mime: "image/png", limits: def, tolerance: 2},
-		{name: "png whose resized height is a hair under a half", data: pngOf(2003, 334), mime: "image/png", limits: def, tolerance: 2},
-		{name: "png whose resized width is just over a half", data: pngOf(1001, 4002), mime: "image/png", limits: def, tolerance: 2},
+		{name: "png whose resized height is a half", data: pngOf(4000, 1001), mime: "image/png", limits: def},
+		{name: "png whose resized height is just under a half", data: pngOf(3001, 1000), mime: "image/png", limits: def},
+		{name: "png whose resized height is a hair under a half", data: pngOf(2003, 334), mime: "image/png", limits: def},
+		{name: "png whose resized width is just over a half", data: pngOf(1001, 4002), mime: "image/png", limits: def},
 		// A side that rounds to zero is one pixel, and a side that does not change is left as it is.
-		{name: "png one pixel wide and far taller than the limit", data: pngOf(1, 10000), mime: "image/png", limits: def, tolerance: 2},
-		{name: "png one pixel tall and far wider than the limit", data: pngOf(10000, 1), mime: "image/png", limits: def, tolerance: 2},
-		{name: "png one pixel wide and a little taller than the limit", data: pngOf(1, 3000), mime: "image/png", limits: def, tolerance: 2},
-		{name: "png one pixel tall and a little wider than the limit", data: pngOf(3000, 1), mime: "image/png", limits: def, tolerance: 2},
+		{name: "png one pixel wide and far taller than the limit", data: pngOf(1, 10000), mime: "image/png", limits: def},
+		{name: "png one pixel tall and far wider than the limit", data: pngOf(10000, 1), mime: "image/png", limits: def},
+		{name: "png one pixel wide and a little taller than the limit", data: pngOf(1, 3000), mime: "image/png", limits: def},
+		{name: "png one pixel tall and a little wider than the limit", data: pngOf(3000, 1), mime: "image/png", limits: def},
 		// A limit tighter on one axis only.
-		{name: "png wide for a narrow limit and short for a tall one", data: pngOf(300, 200), mime: "image/png", limits: tools.ImageLimits{MaxWidth: 150, MaxHeight: 2000, MaxBytes: def.MaxBytes}, tolerance: 2},
-		{name: "png tall for a short limit and narrow for a wide one", data: pngOf(300, 200), mime: "image/png", limits: tools.ImageLimits{MaxWidth: 2000, MaxHeight: 100, MaxBytes: def.MaxBytes}, tolerance: 2},
+		{name: "png wide for a narrow limit and short for a tall one", data: pngOf(300, 200), mime: "image/png", limits: tools.ImageLimits{MaxWidth: 150, MaxHeight: 2000, MaxBytes: def.MaxBytes}},
+		{name: "png tall for a short limit and narrow for a wide one", data: pngOf(300, 200), mime: "image/png", limits: tools.ImageLimits{MaxWidth: 2000, MaxHeight: 100, MaxBytes: def.MaxBytes}},
 	}
 	comparePhotonToPi(t, corpus)
 }
@@ -63,27 +64,40 @@ func TestPhotonImagesMatchPiWhenAnImageOnePixelAcrossKeepsShrinking(t *testing.T
 	for _, maxBytes := range []int{5600, 7600} {
 		corpus = append(corpus,
 			oracleCase{name: "noisy png one pixel wide", data: encodePNG(t, noisy(1, 3000)), mime: "image/png",
-				limits: tools.ImageLimits{MaxWidth: 2000, MaxHeight: 2000, MaxBytes: maxBytes}, skipPix: true},
+				limits: tools.ImageLimits{MaxWidth: 2000, MaxHeight: 2000, MaxBytes: maxBytes}},
 			oracleCase{name: "noisy png one pixel tall", data: encodePNG(t, noisy(3000, 1)), mime: "image/png",
-				limits: tools.ImageLimits{MaxWidth: 2000, MaxHeight: 2000, MaxBytes: maxBytes}, skipPix: true},
+				limits: tools.ImageLimits{MaxWidth: 2000, MaxHeight: 2000, MaxBytes: maxBytes}},
 		)
 	}
 	comparePhotonToPi(t, corpus)
 }
 
-// A JPEG that must be re-encoded is tried at quality 80, 70, 55 and 40, the first whose base64 fits. The quantization
-// table in the output says which quality was used. The limits sit between the sizes both encoders give at neighbouring
-// qualities, so the same quality fits in Pi and in PiG.
+// An image declared as a JPEG is tried at quality 80, 70, 55 and 40 before PNG, the first whose base64 fits. The quantization
+// table in the output says which quality was used. The limits are the base64 lengths of Photon's own JPEG at each quality and
+// one byte under them (EncodeJPEG writes Photon's bytes: TestEncodeJPEGWritesPhotonsBytes), so each quality of the ladder
+// fits exactly at its limit and is passed over one byte below it. The pixels are a PNG that Photon decodes exactly, declared
+// as image/jpeg, which is what sends a decoded image down the JPEG-first order: a real JPEG's pixels depend on the decoder, and
+// the sizes at a boundary with them (D165).
 func TestPhotonImagesMatchPiOnTheJPEGQualityLadder(t *testing.T) {
-	// Mirrored (EXIF orientation 2), so it is re-encoded rather than returned as it is.
-	source := withOrientation(encodeJPEG(t, noisy(300, 300)), 2, false, false)
+	picture := noisy(300, 300)
+	source := encodePNG(t, picture)
 	var corpus []oracleCase
-	for _, maxBytes := range []int{120000, 81000, 66500, 54000} {
-		corpus = append(corpus, oracleCase{name: "jpeg re-encoded within " + strconv.Itoa(maxBytes) + " bytes", data: source, mime: "image/jpeg",
-			limits: tools.ImageLimits{MaxWidth: 2000, MaxHeight: 2000, MaxBytes: maxBytes}, skipPix: true, quantized: true})
+	for _, quality := range jpegLadder {
+		encoded, err := photonimage.EncodeJPEG(picture, uint8(quality))
+		if err != nil {
+			t.Fatal(err)
+		}
+		fits := int(tools.Base64Length(int64(len(encoded))))
+		for _, maxBytes := range []int{fits, fits - 1} {
+			corpus = append(corpus, oracleCase{name: "jpeg declared, quality " + strconv.Itoa(quality) + " within " + strconv.Itoa(maxBytes) + " bytes",
+				data: source, mime: "image/jpeg", limits: tools.ImageLimits{MaxWidth: 2000, MaxHeight: 2000, MaxBytes: maxBytes}, quantized: true})
+		}
 	}
 	comparePhotonToPi(t, corpus)
 }
+
+// jpegLadder is the qualities Pi's index.ts tries in turn.
+var jpegLadder = []int{80, 70, 55, 40}
 
 // The base64 of an encoding that is exactly as long as the byte limit fits. Photon's PNG is byte-for-byte PiG's, so the
 // limit is the length of Pi's own PNG for the image.

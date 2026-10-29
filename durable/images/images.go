@@ -45,7 +45,7 @@ func CreatePhotonImages() tools.ImageProcessor { return newSequential(photon{}) 
 func (photon) Prepare(ctx context.Context, data []byte, mimeType string, limits tools.ImageLimits) (*tools.PreparedImage, error) {
 	orientation := ExifOrientation(data)
 	inline := tools.INLINE_IMAGE_TYPES[mimeType]
-	// pig divergence (D165): Go's image decoders stand for Photon's `new_from_byteslice`.
+	// pig divergence (D165): Go's image decoders stand for Photon's `new_from_byteslice`; the JPEG and WebP ones do not give its pixels.
 	// Decoded even when it is returned as it is: a damaged file is an error, not an image the provider rejects.
 	decoded, _, err := image.Decode(bytes.NewReader(data))
 	if err != nil || decoded.Bounds().Empty() {

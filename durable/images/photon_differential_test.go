@@ -10,9 +10,9 @@ import (
 	"github.com/MichaelKinsy/PiG/durable/tools"
 )
 
-// D165: the processor is native Go, so its encoded bytes and resampled pixels are not Photon's. These tests are the differential
-// that locks "behavior identical where observable": for the same input and limits, the prepared image has Photon's format and
-// dimensions, the same resized record, and pixels within a small mean error of what Pi's Photon 0.3.3 produced.
+// D165: the processor is native Go, but for an image it decodes the way Photon does (PNG here) its resample and both of its
+// encoders are ports of Photon's, so the prepared image is Photon's, byte for byte. This is the differential that locks it: for the
+// same input and limits the prepared image has Photon's format, dimensions and resized record, and Photon 0.3.3's own bytes.
 //
 // testdata/scene.png is a 600x400 synthetic scene (gradients, a disc, a diagonal stripe, a white grid: edges to resample).
 // testdata/scene-photon-300x200.png and testdata/scene-photon-300x200-q80.jpg are `get_bytes()` and `get_bytes_jpeg(80)` of
@@ -23,28 +23,24 @@ import (
 //	const scaled = resize(PhotonImage.new_from_byteslice(readFileSync("scene.png")), 300, 200, SamplingFilter.Lanczos3);
 //	writeFileSync("scene-photon-300x200.png", scaled.get_bytes());
 //	writeFileSync("scene-photon-300x200-q80.jpg", scaled.get_bytes_jpeg(80));
-func TestPreparedPixelsStayCloseToWhatPhotonProduces(t *testing.T) {
+func TestPreparedImagesAreWhatPhotonProduces(t *testing.T) {
 	source, err := os.ReadFile("testdata/scene.png")
 	if err != nil {
 		t.Fatal(err)
 	}
 	for _, tc := range []struct {
 		name, fixture, mime string
-		maxBytes            int
-		// maxError is the mean absolute channel error allowed, out of 255: resampling alone for PNG, resampling plus two
-		// different JPEG encoders for JPEG.
-		maxError float64
 		// convertedFrom is set when the PNG is too large for the byte limit and becomes a JPEG.
 		convertedFrom string
 	}{
-		{"png", "testdata/scene-photon-300x200.png", "image/png", tools.DEFAULT_IMAGE_LIMITS.MaxBytes, 1.0, ""},
-		{"jpeg", "testdata/scene-photon-300x200-q80.jpg", "image/jpeg", tools.DEFAULT_IMAGE_LIMITS.MaxBytes, 4.5, "image/png"},
+		{"png", "testdata/scene-photon-300x200.png", "image/png", ""},
+		{"jpeg", "testdata/scene-photon-300x200-q80.jpg", "image/jpeg", "image/png"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			maxBytes := tc.maxBytes
+			maxBytes := tools.DEFAULT_IMAGE_LIMITS.MaxBytes
 			if tc.mime == "image/jpeg" {
 				// One byte under the PNG's base64, so the PNG does not fit and the first JPEG quality does.
-				png := prepare(t, source, "image/png", tools.ImageLimits{MaxWidth: 300, MaxHeight: 300, MaxBytes: tc.maxBytes})
+				png := prepare(t, source, "image/png", tools.ImageLimits{MaxWidth: 300, MaxHeight: 300, MaxBytes: maxBytes})
 				maxBytes = len(png.Data) - 1
 			}
 			limits := tools.ImageLimits{MaxWidth: 300, MaxHeight: 300, MaxBytes: maxBytes}
@@ -57,15 +53,8 @@ func TestPreparedPixelsStayCloseToWhatPhotonProduces(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			ours := decode(t, got.Data)
-			theirs := decode(t, base64.StdEncoding.EncodeToString(photonBytes))
-			if ours.Bounds() != theirs.Bounds() {
-				t.Fatalf("size %v, Photon %v", ours.Bounds(), theirs.Bounds())
-			}
-			mean := meanChannelError(ours, theirs)
-			t.Logf("mean absolute channel error against Photon: %.3f of 255", mean)
-			if mean > tc.maxError {
-				t.Fatalf("mean absolute channel error %.3f against Photon exceeds %.1f", mean, tc.maxError)
+			if want := base64.StdEncoding.EncodeToString(photonBytes); got.Data != want {
+				t.Fatalf("prepared %d base64 bytes, Photon's are %d", len(got.Data), len(want))
 			}
 		})
 	}

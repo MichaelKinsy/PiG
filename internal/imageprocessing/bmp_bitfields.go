@@ -11,6 +11,7 @@ import (
 // DecodeImage decodes the bytes Pi hands to Photon's PhotonImage.new_from_byteslice. Photon 0.3.4 decodes with the image 0.24.9 crate, which also accepts 16-bit BMPs and BI_BITFIELDS BMPs under BITMAPINFOHEADER, BITMAPV2INFOHEADER and BITMAPV3INFOHEADER. golang.org/x/image/bmp rejects those layouts, so they fall back to decodeBitfieldBMP. Windows places such bitmaps on the clipboard as CF_DIB for Print Screen and GDI captures.
 // upstream: packages/coding-agent/src/utils/image-convert.ts:convertImageBytesToPng
 func DecodeImage(data []byte) (image.Image, error) {
+	// pig divergence (D165): Go's image decoders stand for Photon's `new_from_byteslice`; the JPEG and WebP ones do not give its pixels.
 	decoded, _, err := image.Decode(bytes.NewReader(data))
 	if err == nil {
 		return decoded, nil

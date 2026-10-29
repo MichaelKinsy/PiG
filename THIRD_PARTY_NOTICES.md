@@ -92,13 +92,37 @@ The width table is generated through `grok-mermaid` from the exact `unicode-widt
 
 Sources: <https://github.com/image-rs/image-png/tree/v0.17.14> and <https://github.com/image-rs/fdeflate/tree/v0.3.6>
 
-Distributed file: `durable/images/png.go`
+Distributed file: `internal/photonimage/png.go`
 
 - png: Copyright (c) 2015 nwin; The image-rs Developers
 - fdeflate: The image-rs Developers
 - License: MIT OR Apache-2.0; PiG uses the MIT option for this derived code
 
-`durable/images/png.go` ports the PNG encoder that Photon 0.3.3 runs: png's `write_image_data` with `Compression::Fast` and adaptive filtering, and fdeflate's `Compressor` and `StoredOnlyCompressor` with its Huffman and length tables. The required MIT copyright and permission notice is preserved here, and the canonical MIT text is in `LICENSES/MIT.txt`.
+`internal/photonimage/png.go` ports the PNG encoder that Photon 0.3.3 runs: png's `write_image_data` with `Compression::Fast` and adaptive filtering, and fdeflate's `Compressor` and `StoredOnlyCompressor` with its Huffman and length tables. The required MIT copyright and permission notice is preserved here, and the canonical MIT text is in `LICENSES/MIT.txt`.
+
+## image 0.24.9 JPEG encoder and the IJG forward DCT
+
+Sources: <https://github.com/image-rs/image/tree/v0.24.9/src/codecs/jpeg> (`encoder.rs`, `transform.rs`, `entropy.rs`) and the Independent JPEG Group's libjpeg 9a `jfdctint.c`, from which `transform.rs` is translated.
+
+Distributed file: `internal/photonimage/jpeg.go`
+
+- image: Copyright (c) 2015 nwin; The image-rs Developers
+- libjpeg: Copyright (C) 1991-2014, Thomas G. Lane, Guido Vollbeding
+- License: image is MIT; the DCT is under the IJG License (`LICENSES/IJG.txt`)
+
+`internal/photonimage/jpeg.go` ports the JPEG encoder Photon 0.3.3 runs for `get_bytes_jpeg(quality)`: `JpegEncoder::new_with_quality` and `encode_image`, its standard quantization and Huffman tables, the BT.601 colour conversion, the IJG integer forward DCT and the bit writer. This software is based in part on the work of the Independent JPEG Group. The required MIT copyright and permission notice is preserved here, and the canonical MIT text is in `LICENSES/MIT.txt`.
+
+## libm 0.2.16 sinf (FreeBSD msun)
+
+Sources: <https://github.com/rust-lang/libm/tree/libm-v0.2.16/src/math> (`sinf.rs`, `k_sinf.rs`, `k_cosf.rs`, `rem_pio2f.rs`), from FreeBSD `s_sinf.c`, `k_sinf.c`, `k_cosf.c` and `e_rem_pio2f.c`.
+
+Distributed file: `internal/photonimage/sinf.go`
+
+- FreeBSD msun: Copyright (C) 1993 by Sun Microsystems, Inc. All rights reserved.
+- libm: Copyright (c) Rust Project Developers; MIT
+- License: `LICENSES/SunPro.txt` for the msun algorithms and `LICENSES/MIT.txt` for the Rust translation
+
+`internal/photonimage/sinf.go` ports the single-precision sine that Photon's WebAssembly calls (compiler_builtins' copy of libm), so that the Lanczos3 weights are Photon's own.
 
 ## Pi TUI 0.87.1
 

@@ -11,6 +11,7 @@ import (
 	"errors"
 	"image"
 	"math"
+	"math/bits"
 )
 
 // Photon's `PhotonImage.get_bytes_jpeg(quality)` (photon-rs 0.3.3 lib.rs:203-211) hands its RGBA8 pixels to image 0.24.9
@@ -19,8 +20,12 @@ import (
 // encoder, so the JPEG the model receives has Photon's bytes, and with them Photon's size, which decides whether the PNG or the
 // JPEG of a resize is returned.
 
-// Ports image 0.24.9 src/codecs/jpeg/encoder.rs (the file named below as encoder.rs), transform.rs (the IJG jfdctint.c fdct) and
-// entropy.rs (the Huffman code tables).
+// Ports image 0.24.9 (crates.io image-0.24.9.crate, SHA-256 5690139d2f55868e080017335e4b94cb7414274c74f1669c84fb5feba2c9f69d; Photon's
+// wasm embeds exactly this version, its panic paths name image-0.24.9\src\codecs\jpeg\encoder.rs): src/codecs/jpeg/encoder.rs
+// (cited below as encoder.rs) :34-150 tables, :177-282 BitWriter, :352-424 new_with_quality, :498-590 encode_image, :620-666 encode_rgb,
+// :682-805 header builders, encode_coefficient and rgb_to_ycbcr, :810-836 pixel_at_or_near and copy_blocks_ycbcr; transform.rs :54-196
+// fdct (the IJG jfdctint.c, libjpeg 9a); entropy.rs :4-63 (the Huffman code tables). The lookup tables, the reciprocal in place of the
+// float32 division and the bit tricks in the writer are replacements that give the same results, proven by jpeg_reference_test.go.
 
 // huffEntry is one (size, code) pair of build_huff_lut_const (entropy.rs:52-63); a value without a code has size 17.
 type huffEntry struct {
@@ -103,6 +108,14 @@ var unzigzag = [64]uint8{
 	58, 59, 52, 45, 38, 31, 39, 46,
 	53, 60, 61, 54, 47, 55, 62, 63,
 }
+
+// zigzagOf is the inverse of unzigzag: the position in zigzag order of the coefficient i.
+var zigzagOf = func() (inverse [64]uint8) {
+	for k, i := range unzigzag {
+		inverse[i] = uint8(k)
+	}
+	return inverse
+}()
 
 // buildHuffLUT is entropy.rs derive_codes_and_sizes (:4-50) and build_huff_lut_const (:52-63), including the u8 and u16 wrapping the
 // Rust code relies on.
@@ -296,100 +309,95 @@ func fdct(samples *[64]uint8, coeffs *[64]int32) {
 	}
 }
 
-// jpegBitWriter is encoder.rs BitWriter (:177-282): big-endian bit packing with 0xFF byte stuffing.
-type jpegBitWriter struct {
-	out         []byte
-	accumulator uint32
-	nbits       uint8
+// jpegWriter is encoder.rs BitWriter (:177-282) with the work arranged for speed and the same bytes: bits collect in a 64-bit
+// accumulator and leave 32 at a time, with the 0xFF byte stuffing of write_bits (:204-206).
+type jpegWriter struct {
+	out []byte
+	acc uint64 // the low n bits are pending, most significant first
+	n   uint
+	bad bool // a symbol had no Huffman code: Photon panics at that point (encoder.rs:222-224)
 }
 
-func (w *jpegBitWriter) writeBits(bits uint16, size uint8) {
-	if size == 0 {
-		return
+// write appends the size (at most 27) low bits of value.
+func (w *jpegWriter) write(value uint32, size uint) {
+	w.acc = w.acc<<size | uint64(value)
+	w.n += size
+	if w.n >= 32 {
+		w.n -= 32
+		word := uint32(w.acc >> w.n)
+		// Does a byte of word equal 0xFF (a zero byte of ^word)?
+		if v := ^word; (v-0x01010101)&^v&0x80808080 != 0 {
+			for shift := 24; shift >= 0; shift -= 8 {
+				b := byte(word >> shift)
+				w.out = append(w.out, b)
+				if b == 0xFF {
+					w.out = append(w.out, 0x00)
+				}
+			}
+			return
+		}
+		w.out = binary.BigEndian.AppendUint32(w.out, word)
 	}
-	w.nbits += size
-	w.accumulator |= uint32(bits) << (32 - w.nbits)
-	for w.nbits >= 8 {
-		b := byte(w.accumulator >> 24)
+}
+
+// finish is pad_byte (:215-217) and the bytes write_bits has completed by then; the bits that do not fill a byte are not written.
+func (w *jpegWriter) finish() {
+	w.write(0x7F, 7)
+	for w.n >= 8 {
+		w.n -= 8
+		b := byte(w.acc >> w.n)
 		w.out = append(w.out, b)
 		if b == 0xFF {
 			w.out = append(w.out, 0x00)
 		}
-		w.nbits -= 8
-		w.accumulator <<= 8
 	}
 }
 
-var errBadHuffmanValue = errors.New("photonimage: bad huffman value")
-
-func (w *jpegBitWriter) huffmanEncode(val uint8, table *[256]huffEntry) error {
-	e := table[val]
-	if e.size > 16 {
-		return errBadHuffmanValue // Photon panics here (encoder.rs:222-224)
-	}
-	w.writeBits(e.code, e.size)
-	return nil
-}
-
-func (w *jpegBitWriter) writeMarker(marker byte) {
+func (w *jpegWriter) writeMarker(marker byte) {
 	w.out = append(w.out, 0xFF, marker)
 }
 
-func (w *jpegBitWriter) writeSegment(marker byte, data []byte) {
+func (w *jpegWriter) writeSegment(marker byte, data []byte) {
 	w.out = append(w.out, 0xFF, marker)
 	w.out = binary.BigEndian.AppendUint16(w.out, uint16(len(data)+2))
 	w.out = append(w.out, data...)
 }
 
-// encodeCoefficient is encoder.rs encode_coefficient (:768-786).
-func encodeCoefficient(coefficient int32) (uint8, uint16) {
-	magnitude := uint16(max(coefficient, -coefficient))
-	var numBits uint8
-	for magnitude > 0 {
-		magnitude >>= 1
-		numBits++
+// huffmanEncode writes the code of val and then the size low bits of value: huffman_encode (:219-227) and the write_bits after it.
+func (w *jpegWriter) huffmanEncode(val uint8, table *[256]huffEntry, value int32, size uint) {
+	e := table[val]
+	if e.size > 16 {
+		w.bad = true
+		return
 	}
-	mask := uint16(1)<<numBits - 1
-	if coefficient < 0 {
-		return numBits, uint16(coefficient-1) & mask
-	}
-	return numBits, uint16(coefficient) & mask
+	w.write(uint32(e.code)<<size|uint32(value)&(1<<size-1), uint(e.size)+size)
 }
 
-// writeBlock is encoder.rs write_block (:229-271) and returns the block's DC value.
-func (w *jpegBitWriter) writeBlock(block *[64]int32, prevDC int32, dcTable, acTable *[256]huffEntry) (int32, error) {
+// writeBlock is encoder.rs write_block (:229-271) for a quantized block whose non-zero AC coefficients are the set bits of nonzero,
+// by zigzag position (the loop over UNZIGZAG[1..] skips the zero ones and counts them as a run). It returns the block's DC value. A coefficient
+// c is written as its bit length (encode_coefficient, :768-786) and the low bits of c, or of c-1 when c is negative.
+func (w *jpegWriter) writeBlock(block *[64]int32, nonzero uint64, prevDC int32, dcTable, acTable *[256]huffEntry) int32 {
 	dcval := block[0]
-	size, value := encodeCoefficient(dcval - prevDC)
-	if err := w.huffmanEncode(size, dcTable); err != nil {
-		return 0, err
-	}
-	w.writeBits(value, size)
+	diff := dcval - prevDC
+	size := uint(bits.Len32(uint32(max(diff, -diff))))
+	w.huffmanEncode(uint8(size), dcTable, diff+diff>>31, size)
 
-	zeroRun := 0
-	for _, k := range unzigzag[1:] {
-		if block[k] == 0 {
-			zeroRun++
-			continue
+	last := 0
+	for m := nonzero; m != 0; m &= m - 1 {
+		k := bits.TrailingZeros64(m)
+		run := k - last - 1
+		for ; run > 15; run -= 16 {
+			w.huffmanEncode(0xF0, acTable, 0, 0)
 		}
-		for zeroRun > 15 {
-			if err := w.huffmanEncode(0xF0, acTable); err != nil {
-				return 0, err
-			}
-			zeroRun -= 16
-		}
-		size, value := encodeCoefficient(block[k])
-		if err := w.huffmanEncode(uint8(zeroRun<<4)|size, acTable); err != nil {
-			return 0, err
-		}
-		w.writeBits(value, size)
-		zeroRun = 0
+		c := block[unzigzag[k&63]&63]
+		size := uint(bits.Len32(uint32(max(c, -c))))
+		w.huffmanEncode(uint8(run<<4)|uint8(size), acTable, c+c>>31, size)
+		last = k
 	}
-	if block[unzigzag[63]] == 0 {
-		if err := w.huffmanEncode(0x00, acTable); err != nil {
-			return 0, err
-		}
+	if nonzero>>63 == 0 {
+		w.huffmanEncode(0x00, acTable, 0, 0)
 	}
-	return dcval, nil
+	return dcval
 }
 
 // Single-precision JPEG File Interchange Format (Version 1.02) coefficients, multiplied for 255 maximum (encoder.rs:799-802). They
@@ -400,36 +408,73 @@ var (
 	crfR, crfG, crfB float32 = 127.5, -106.7685, -20.7315
 	chromaOffset     float32 = 128
 	jpegMaxSubpixel  float32 = 255
-	yR, yG, yB               = yfR / jpegMaxSubpixel, yfG / jpegMaxSubpixel, yfB / jpegMaxSubpixel
-	cbR, cbG, cbB            = cbfR / jpegMaxSubpixel, cbfG / jpegMaxSubpixel, cbfB / jpegMaxSubpixel
-	crR, crG, crB            = crfR / jpegMaxSubpixel, crfG / jpegMaxSubpixel, crfB / jpegMaxSubpixel
 )
 
-// saturateU8 is Rust's saturating `f32 as u8`.
-func saturateU8(v float32) uint8 {
-	if !(v > 0) {
-		return 0
-	}
-	if v >= 255 {
-		return 255
-	}
-	return uint8(v)
+// colorTables are the products of rgb_to_ycbcr (encoder.rs:789-805) for every value of a channel. Each product is rounded to float32
+// on its own, as in Rust (which does not fuse it with the addition after it), and the sums that follow keep Rust's order, so a
+// lookup in place of a multiplication changes nothing.
+type colorTables struct {
+	yR, yG, yB    [256]float32
+	cbR, cbG, cbB [256]float32 // cbG holds the products of 84.4815/255, which Rust subtracts
+	crR, crG, crB [256]float32 // crG and crB hold the products of 106.7685/255 and 20.7315/255, which Rust subtracts
 }
 
-// rgbToYCbCr is encoder.rs rgb_to_ycbcr (:789-805). Every product is converted to float32 so that no platform fuses it with the
-// addition that follows, as Rust does not.
-func rgbToYCbCr(r, g, b uint8) (uint8, uint8, uint8) {
-	fr, fg, fb := float32(r), float32(g), float32(b)
-	y := float32(yR*fr) + float32(yG*fg) + float32(yB*fb)
-	cb := float32(cbR*fr) - float32(-cbG*fg) + float32(cbB*fb) + chromaOffset
-	cr := float32(crR*fr) - float32(-crG*fg) - float32(-crB*fb) + chromaOffset
-	return saturateU8(y), saturateU8(cb), saturateU8(cr)
+var jpegColor = func() *colorTables {
+	t := new(colorTables)
+	yR, yG, yB := yfR/jpegMaxSubpixel, yfG/jpegMaxSubpixel, yfB/jpegMaxSubpixel
+	cbR, cbG, cbB := cbfR/jpegMaxSubpixel, cbfG/jpegMaxSubpixel, cbfB/jpegMaxSubpixel
+	crR, crG, crB := crfR/jpegMaxSubpixel, crfG/jpegMaxSubpixel, crfB/jpegMaxSubpixel
+	for i := range 256 {
+		v := float32(i)
+		t.yR[i], t.yG[i], t.yB[i] = float32(yR*v), float32(yG*v), float32(yB*v)
+		t.cbR[i], t.cbG[i], t.cbB[i] = float32(cbR*v), float32(-cbG*v), float32(cbB*v)
+		t.crR[i], t.crG[i], t.crB[i] = float32(crR*v), float32(-crG*v), float32(-crB*v)
+	}
+	return t
+}()
+
+// toU8 is Rust's saturating `f32 as u8` for a finite value.
+func toU8(v float32) uint8 {
+	return uint8(min(max(int32(v), 0), 255))
 }
 
-// quantize is `((coefficient / 8) as f32 / f32::from(table[i])).round() as i32` (encoder.rs:647-650).
-func quantize(coefficient int32, q uint8) int32 {
-	return int32(math.Round(float64(float32(coefficient/8) / float32(q))))
+// quantTable is a quantization table with what quantize needs.
+type quantTable struct {
+	q [64]uint32 // the table entries
+	m [64]uint32 // ceil(2^32 / 2q)
 }
+
+func newQuantTable(table *[64]uint8) *quantTable {
+	t := new(quantTable)
+	for i, v := range table {
+		q := uint64(v)
+		t.q[i] = uint32(q)
+		t.m[i] = uint32((1<<32 + 2*q - 1) / (2 * q))
+	}
+	return t
+}
+
+// quantize is `((dct[i] / 8) as f32 / f32::from(table[i])).round() as i32` for every coefficient (encoder.rs:645-651), in place, and
+// the set of the zigzag positions 1 to 63 whose result is not zero (bit k is UNZIGZAG[k]). With a = dct[i] / 8 (truncated toward zero)
+// the float32 quotient rounded half away from zero is the exact quotient a/q rounded so: a float32 quotient is never on the other
+// side of a half (TestQuantizeMatchesFloat32 checks every table entry and every |dct[i]| < 2^17). That is floor((2|a|+q) / 2q) with
+// the sign of a, and the reciprocal m of 2q computes it without a division.
+func quantize(dct *[64]int32, t *quantTable) (nonzero uint64) {
+	for i := range 64 {
+		d := dct[i]
+		sign := d >> 31
+		a := uint64(uint32((d^sign)-sign) >> 3) // |d| / 8: Rust's `/ 8` truncates toward zero
+		n := int32((a*2 + uint64(t.q[i])) * uint64(t.m[i]) >> 32)
+		n = (n ^ sign) - sign
+		dct[i] = n
+		if n != 0 {
+			nonzero |= 1 << zigzagOf[i]
+		}
+	}
+	return nonzero &^ 1
+}
+
+var errBadHuffmanValue = errors.New("photonimage: bad huffman value")
 
 // EncodeJPEG is img as the JPEG Photon's `get_bytes_jpeg(quality)` writes: baseline, 8-bit, three components without chroma
 // subsampling, the standard Huffman tables, the quantization tables of quality scaled the libjpeg way, a JFIF 1.02 header with a
@@ -442,7 +487,7 @@ func EncodeJPEG(img *image.NRGBA, quality uint8) ([]byte, error) {
 	}
 	lumaTable, chromaTable := jpegQuantTables(quality)
 
-	w := &jpegBitWriter{out: make([]byte, 0, 1024+width*height/4)}
+	w := &jpegWriter{out: make([]byte, 0, 1024+width*height/4)}
 	w.writeMarker(0xD8) // SOI
 	// build_jfif_header (:682-698).
 	w.writeSegment(0xE0, []byte{'J', 'F', 'I', 'F', 0, 0x01, 0x02, 0x00, 0, 1, 0, 1, 0, 0})
@@ -475,16 +520,53 @@ func EncodeJPEG(img *image.NRGBA, quality uint8) ([]byte, error) {
 	// build_scan_header (:720-732).
 	w.writeSegment(0xDA, []byte{3, 1, 0x00, 2, 0x11, 3, 0x11, 0, 63, 0})
 
-	if err := encodeRGB(w, img, &lumaTable, &chromaTable); err != nil {
-		return nil, err
+	encodeRGB(w, img, newQuantTable(&lumaTable), newQuantTable(&chromaTable))
+	if w.bad {
+		return nil, errBadHuffmanValue
 	}
-	w.writeBits(0x7F, 7) // pad_byte
-	w.writeMarker(0xD9)  // EOI
+	w.finish()
+	w.writeMarker(0xD9) // EOI
 	return w.out, nil
 }
 
+// loadBlock is copy_blocks_ycbcr (encoder.rs:818-836) for the block at (x0, y0). pixel_at_or_near (:810-816) repeats the edge pixel
+// of a block that overhangs the image.
+func loadBlock(img *image.NRGBA, x0, y0 int, blockY, blockCb, blockCr *[64]uint8) {
+	c := jpegColor
+	width, height := img.Rect.Dx(), img.Rect.Dy()
+	for y := range 8 {
+		row := img.Pix[img.PixOffset(img.Rect.Min.X, img.Rect.Min.Y+min(y0+y, height-1)):]
+		for x := range 8 {
+			o := min(x0+x, width-1) * 4
+			px := row[o : o+3 : o+3]
+			r, g, b := px[0], px[1], px[2]
+			yv := c.yR[r] + c.yG[g] + c.yB[b]
+			cb := c.cbR[r] - c.cbG[g] + c.cbB[b] + chromaOffset
+			cr := c.crR[r] - c.crG[g] - c.crB[b] + chromaOffset
+			blockY[y*8+x], blockCb[y*8+x], blockCr[y*8+x] = toU8(yv), toU8(cb), toU8(cr)
+		}
+	}
+}
+
+// loadInteriorBlock is loadBlock for a block that lies inside the image.
+func loadInteriorBlock(img *image.NRGBA, x0, y0 int, blockY, blockCb, blockCr *[64]uint8) {
+	c := jpegColor
+	for y := range 8 {
+		o := img.PixOffset(img.Rect.Min.X+x0, img.Rect.Min.Y+y0+y)
+		row := img.Pix[o : o+32 : o+32]
+		out := y * 8
+		for x := range 8 {
+			r, g, b := row[x*4], row[x*4+1], row[x*4+2]
+			yv := c.yR[r] + c.yG[g] + c.yB[b]
+			cb := c.cbR[r] - c.cbG[g] + c.cbB[b] + chromaOffset
+			cr := c.crR[r] - c.crG[g] - c.crB[b] + chromaOffset
+			blockY[out+x], blockCb[out+x], blockCr[out+x] = toU8(yv), toU8(cb), toU8(cr)
+		}
+	}
+}
+
 // encodeRGB is encoder.rs encode_rgb (:620-666).
-func encodeRGB(w *jpegBitWriter, img *image.NRGBA, lumaTable, chromaTable *[64]uint8) error {
+func encodeRGB(w *jpegWriter, img *image.NRGBA, luma, chroma *quantTable) {
 	width, height := img.Rect.Dx(), img.Rect.Dy()
 	var yDCPrev, cbDCPrev, crDCPrev int32
 	var dctY, dctCb, dctCr [64]int32
@@ -492,32 +574,21 @@ func encodeRGB(w *jpegBitWriter, img *image.NRGBA, lumaTable, chromaTable *[64]u
 
 	for y0 := 0; y0 < height; y0 += 8 {
 		for x0 := 0; x0 < width; x0 += 8 {
-			// copy_blocks_ycbcr (:818-836), with pixel_at_or_near (:810-816) repeating the edge pixel.
-			for y := range 8 {
-				for x := range 8 {
-					o := img.PixOffset(img.Rect.Min.X+min(x0+x, width-1), img.Rect.Min.Y+min(y0+y, height-1))
-					blockY[y*8+x], blockCb[y*8+x], blockCr[y*8+x] = rgbToYCbCr(img.Pix[o], img.Pix[o+1], img.Pix[o+2])
-				}
+			if x0+8 <= width && y0+8 <= height {
+				loadInteriorBlock(img, x0, y0, &blockY, &blockCb, &blockCr)
+			} else {
+				loadBlock(img, x0, y0, &blockY, &blockCb, &blockCr)
 			}
 			fdct(&blockY, &dctY)
+			nonzeroY := quantize(&dctY, luma)
 			fdct(&blockCb, &dctCb)
+			nonzeroCb := quantize(&dctCb, chroma)
 			fdct(&blockCr, &dctCr)
-			for i := range 64 {
-				dctY[i] = quantize(dctY[i], lumaTable[i])
-				dctCb[i] = quantize(dctCb[i], chromaTable[i])
-				dctCr[i] = quantize(dctCr[i], chromaTable[i])
-			}
-			var err error
-			if yDCPrev, err = w.writeBlock(&dctY, yDCPrev, &stdLumaDCHuffLUT, &stdLumaACHuffLUT); err != nil {
-				return err
-			}
-			if cbDCPrev, err = w.writeBlock(&dctCb, cbDCPrev, &stdChromaDCHuffLUT, &stdChromaACHuffLUT); err != nil {
-				return err
-			}
-			if crDCPrev, err = w.writeBlock(&dctCr, crDCPrev, &stdChromaDCHuffLUT, &stdChromaACHuffLUT); err != nil {
-				return err
-			}
+			nonzeroCr := quantize(&dctCr, chroma)
+
+			yDCPrev = w.writeBlock(&dctY, nonzeroY, yDCPrev, &stdLumaDCHuffLUT, &stdLumaACHuffLUT)
+			cbDCPrev = w.writeBlock(&dctCb, nonzeroCb, cbDCPrev, &stdChromaDCHuffLUT, &stdChromaACHuffLUT)
+			crDCPrev = w.writeBlock(&dctCr, nonzeroCr, crDCPrev, &stdChromaDCHuffLUT, &stdChromaACHuffLUT)
 		}
 	}
-	return nil
 }

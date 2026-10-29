@@ -123,7 +123,7 @@ func sinc(x float32) float32 {
 		return 1
 	}
 	a := float32(x * float32(math.Pi))
-	return float32(float32(math.Sin(float64(a))) / a)
+	return float32(sinf(a) / a)
 }
 
 func abs32(x float32) float32 {

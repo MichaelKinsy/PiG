@@ -19,9 +19,9 @@ import (
 	"fmt"
 	"image"
 	"image/draw"
-	_ "image/gif" // decoder for the GIF entry of the supported-format allowlist
+	_ "image/gif"  // decoder for the GIF entry of the supported-format allowlist
 	_ "image/jpeg" // decoder for JPEG; JPEG is encoded by photonimage
-	_ "image/png" // decoder for PNG; PNG is encoded by photonimage
+	_ "image/png"  // decoder for PNG; PNG is encoded by photonimage
 	"io"
 	"math"
 	"os"
