@@ -1271,6 +1271,16 @@ export default function (pi) {
     const result = ctx.ui.setTheme("missing");
     ctx.ui.notify(`selected=${selected} expanded=${ctx.ui.getToolsExpanded()} named=${named?.name} missing=${missing === undefined} success=${result.success} error=${result.error}`, "info");
   }});
+  pi.registerCommand("autocomplete-settle-register", {handler: async (_,ctx) => {
+    ctx.ui.addAutocompleteProvider(current => ({
+      async getSuggestions(lines,line,col,options) {
+        await current.getSuggestions(lines,line,col,options);
+        if(lines[0]==="slow")await new Promise(resolve=>setTimeout(resolve,400));
+        return {items:[{value:lines[0],label:"settled:"+lines[0]}],prefix:lines[0]};
+      },
+      applyCompletion(...args){return current.applyCompletion(...args);},
+    }));
+  }});
   pi.registerCommand("autocomplete-register", {handler: async (_,ctx) => {
     for(const tag of ["A","B"]) {
       ctx.ui.addAutocompleteProvider(current => {

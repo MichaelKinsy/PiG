@@ -10,6 +10,7 @@ import (
 	"sync"
 	"sync/atomic"
 	"testing"
+	"time"
 	"unicode/utf16"
 
 	"github.com/MichaelKinsy/PiG/coding/extension"
@@ -30,6 +31,10 @@ func autocompleteBase() *extension.AutocompleteProvider {
 			}
 			if lines[0] == "error" {
 				return nil, errors.New("base failed")
+			}
+			if lines[0] == "hostwait" {
+				// A host answer that takes longer than any SDK checkpoint window: the chain waits on the host, not on I/O of its own.
+				time.Sleep(150 * time.Millisecond)
 			}
 			items := []extension.AutocompleteItem{{Value: "keep", Label: "keep"}, {Value: "drop", Label: "drop"}}
 			if force {
