@@ -14,9 +14,9 @@ import (
 
 // Ports packages/chord/test/next/contracts/contract.test.ts.
 //
-// Designed out: the "derived types" cases that assert Implementation<C>, VariantImplementation, MethodFunction and
-// ParamsOf with expectTypeOf (type-level only; the Go forms are contracts.VariantImplementation, MethodFunction and
-// *delta.JsonObject params, which carry no per-contract type).
+// The "derived types" cases that assert Implementation<C> and ParamsOf with expectTypeOf are not designed out: the Go
+// forms (VariantImplementation, MethodFunction, *delta.JsonObject params) carry no per-contract type, so they are
+// ported as runtime tests over the contract data in derived_runtime_test.go (TestDerivedShapes).
 
 func notesContract(t testing.TB) *contracts.Contract {
 	t.Helper()

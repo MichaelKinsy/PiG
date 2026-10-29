@@ -14,10 +14,11 @@ import (
 
 // Ports packages/chord/test/next/data/errors.test.ts.
 //
-// Designed out (type level, no Go runtime form): "is a tagged union: a wrong pairing is a type error" and the
+// Designed out (type level): the
 // expectTypeOf assertions of "narrowing on code narrows reason" and "invalid builds an invalid error ...". Go's
 // ChordErrorInit does not reject a wrong code/reason pairing at compile time; data.ChordErrorFromJson checks the
-// pairing at runtime, as upstream's runtime does, and the cases below cover that.
+// pairing at runtime, as upstream's runtime does; "a wrong pairing is a type error" is ported as a runtime test in
+// typelevel_test.go (unenforced by the Go compiler).
 
 func TestChordError(t *testing.T) {
 	t.Run("is a tagged union: constructing the valid pairings", func(t *testing.T) {

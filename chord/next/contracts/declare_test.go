@@ -12,8 +12,9 @@ import (
 // Designed out (no Go input: a declaration is a typed struct): a contract name that is no string; an unknown
 // declaration or variant key; a method placed under `state`; a schema placed under `methods` (the Go form is a nil
 // *Method, covered below); an unknown key of a local declaration, and a host address in one (a LocalDeclaration has no
-// such field); a keyed member under a remote variant's state (VariantDeclaration.State holds TSchema only), so the
-// @ts-expect-error variants of those tests have nothing to refuse at runtime.
+// such field); a keyed member under a remote variant's state (VariantDeclaration.State holds []Property of TSchema, and
+// *KeyedMember is not a TSchema: a compile error), so the @ts-expect-error variants of those tests have nothing to
+// refuse at runtime. The missing host address is a runtime test (TestDeclarationTypeChecksAtRuntime).
 //
 // A nil slice is upstream's absent field (`missing params`, `no variants`); an empty non-nil one is `{}`.
 

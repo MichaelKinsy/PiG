@@ -12,8 +12,8 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/internal/nexttest"
 )
 
-// Ports packages/chord/test/next/contracts/host-kind.test.ts. The `hostAddress` typing case (expectTypeOf and
-// @ts-expect-error) is type-level only: designed out.
+// Ports packages/chord/test/next/contracts/host-kind.test.ts. The `hostAddress` typing case is ported as a runtime
+// test in derived_runtime_test.go (TestHostAddressParams): a HostAddress takes an untyped *delta.JsonObject.
 
 var (
 	session = mustKind("session", contracts.Prop("id", contracts.Str()))

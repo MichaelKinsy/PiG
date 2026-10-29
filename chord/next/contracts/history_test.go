@@ -8,7 +8,8 @@ import (
 )
 
 // Ports packages/chord/test/next/contracts/history.test.ts. Upstream's history is a type-level structure
-// (Increment, CurrentStep, OlderVersions, StepAt, ChangesAfter, tested with expectTypeOf only): designed out. At
+// (Increment, CurrentStep, OlderVersions, StepAt, ChangesAfter, tested with expectTypeOf only); Go does not type it,
+// so the cases are runtime tests (ChangesAfter: TestChangesAfter in derived_runtime_test.go). At
 // runtime a contract holds its versions as numbers and the changes of each version (contracts.VersionData), so the
 // cases below test what the types computed: counting past 9 and 99, the current and older versions, and the changes
 // after a version, through contracts.Evolve; plus the runtime forms of MemberNames, VariantsWith and MethodAt.
