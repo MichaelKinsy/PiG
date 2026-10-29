@@ -12,23 +12,82 @@ import (
 	"github.com/MichaelKinsy/PiG/coding/extension"
 )
 
-func TestPortWave12FireworksModelGeneration(t *testing.T) {
+// reasoningOption is a ModelsDevReasoningOption of the upstream test: toggle, effort (values) or budget_tokens (min).
+type reasoningOption struct {
+	kind   string
+	values []string
+	min    *float64
+}
+
+func toggleOption() reasoningOption { return reasoningOption{kind: "toggle"} }
+
+func effortOption(values ...string) reasoningOption {
+	return reasoningOption{kind: "effort", values: values}
+}
+
+// generateFireworksModels ports generateFireworksModels of fireworks-model-generation.test.ts. A nil option list is a model without
+// reasoning metadata, an empty one a model with fixed reasoning.
+func generateFireworksModels(t *testing.T, options map[string][]reasoningOption) map[string]json.RawMessage {
+	t.Helper()
+	root := t.TempDir()
+	var models []map[string]any
+	for id, reasoningOptions := range options {
+		reasoning := map[string]any{"supported": true}
+		for _, option := range reasoningOptions {
+			switch option.kind {
+			case "toggle":
+				reasoning["toggle"] = true
+			case "effort":
+				if _, found := reasoning["effort"]; !found {
+					reasoning["effort"] = option.values
+				}
+			case "budget_tokens":
+				if _, found := reasoning["budget"]; !found {
+					reasoning["budget"] = map[string]any{"min": option.min}
+				}
+			}
+		}
+		model := sourceModel("accounts/fireworks/models/"+id, map[string]any{})
+		model["capabilities"] = map[string]any{"tools": map[string]any{"supported": true}, "reasoning": reasoning}
+		models = append(models, model)
+	}
+	output := filepath.Join(root, "catalog")
+	status, stdout, stderr := runGeneratorSubprocess(t, root, providerCatalog("fireworks-ai", models...), "--json-only", "--json-output", output)
+	if status != 0 {
+		t.Fatalf("generator status = %d, want 0\n%s\n%s", status, stdout, stderr)
+	}
+	if stderr != "" {
+		t.Fatalf("generator stderr = %q, want empty", stderr)
+	}
+	return decodeJSONObject(t, filepath.Join(output, "providers", "fireworks.json"))
+}
+
+func requireMessagesModel(t *testing.T, raw json.RawMessage) {
+	t.Helper()
+	assertGeneratedJSON(t, generatedModelField(t, raw, "api"), `"anthropic-messages"`)
+}
+
+func TestFireworksModelGeneration(t *testing.T) {
 	isolateGeneratorEnvironment(t)
-	// upstream: packages/ai/test/fireworks-model-generation.test.ts:67
+	// Regression for #9323: import catalog efforts and correct only the known omissions.
+	// upstream: packages/ai/test/fireworks-model-generation.test.ts:63
 	t.Run("combines upstream effort and toggle metadata with narrow corrections", func(t *testing.T) {
-		models := generateFireworksFixture(t, map[string][]modelsDevReasoningOption{
-			"deepseek-v4-flash-0731":       {{Type: "toggle"}, effortOptions("low", "high", "max")},
-			"deepseek-v4-flash-vision-exp": {{Type: "toggle"}, effortOptions("low", "high", "max")},
-			"deepseek-v4-pro-0813":         {{Type: "toggle"}, effortOptions("high", "max")},
-			"qwen3p8-max":                  {{Type: "toggle"}},
-			"qwen3p8-2p4t-a95b":            {effortOptions("low", "medium", "xhigh")},
-			"kimi-k2p6":                    {{Type: "toggle"}},
+		models := generateFireworksModels(t, map[string][]reasoningOption{
+			"deepseek-v4-flash-0731":       {toggleOption(), effortOption("low", "high", "max")},
+			"deepseek-v4-flash-vision-exp": {toggleOption(), effortOption("low", "high", "max")},
+			"deepseek-v4-pro-0813":         {toggleOption(), effortOption("high", "max")},
+			"qwen3p8-max":                  {toggleOption()},
+			"qwen3p8-2p4t-a95b":            {effortOption("low", "medium", "xhigh")},
+			"kimi-k2p6":                    {toggleOption()},
 		})
 		for _, id := range []string{"deepseek-v4-flash-0731", "deepseek-v4-flash-vision-exp", "deepseek-v4-pro-0813"} {
 			assertGeneratedJSON(t, generatedModelField(t, models["accounts/fireworks/models/"+id], "thinkingLevelMap"), `{"off":"none","minimal":null,"low":"low","medium":null,"high":"high","xhigh":null,"max":"max"}`)
 		}
 		for _, id := range []string{"qwen3p8-max", "qwen3p8-2p4t-a95b"} {
 			assertGeneratedJSON(t, generatedModelField(t, models["accounts/fireworks/models/"+id], "thinkingLevelMap"), `{"off":"none","minimal":null,"low":"low","medium":"medium","high":null,"xhigh":"xhigh","max":null}`)
+		}
+		if len(models) != 6 {
+			t.Errorf("generated %d models, want 6", len(models))
 		}
 		for id, model := range models {
 			requireMessagesModel(t, model)
@@ -48,9 +107,10 @@ func TestPortWave12FireworksModelGeneration(t *testing.T) {
 		}
 	})
 
-	// upstream: packages/ai/test/fireworks-model-generation.test.ts:107
+	// Regression for #9323: new effort-capable models must not require an allowlist update.
+	// upstream: packages/ai/test/fireworks-model-generation.test.ts:103
 	t.Run("automatically sends native effort for newly cataloged Messages models", func(t *testing.T) {
-		models := generateFireworksFixture(t, map[string][]modelsDevReasoningOption{"new-reasoner": {{Type: "toggle"}, effortOptions("low", "max")}})
+		models := generateFireworksModels(t, map[string][]reasoningOption{"new-reasoner": {toggleOption(), effortOption("low", "max")}})
 		raw := models["accounts/fireworks/models/new-reasoner"]
 		requireMessagesModel(t, raw)
 		assertGeneratedJSON(t, generatedModelField(t, generatedModelField(t, raw, "compat"), "forceAdaptiveThinking"), `true`)
@@ -100,11 +160,15 @@ func TestPortWave12FireworksModelGeneration(t *testing.T) {
 		assertGeneratedJSON(t, payload["output_config"], `{"effort":"max"}`)
 	})
 
-	// upstream: packages/ai/test/fireworks-model-generation.test.ts:128
+	// upstream: packages/ai/test/fireworks-model-generation.test.ts:124
 	t.Run("does not infer adaptive thinking from toggle, budget, or missing metadata", func(t *testing.T) {
-		models := generateFireworksFixture(t, map[string][]modelsDevReasoningOption{
-			"toggle-only": {{Type: "toggle"}}, "budget-only": {{Type: "budget_tokens", Min: new(float64(1024))}}, "fixed-reasoning": {}, "missing-metadata": nil,
+		min := 1024.0
+		models := generateFireworksModels(t, map[string][]reasoningOption{
+			"toggle-only": {toggleOption()}, "budget-only": {{kind: "budget_tokens", min: &min}}, "fixed-reasoning": {}, "missing-metadata": nil,
 		})
+		if len(models) != 4 {
+			t.Errorf("generated %d models, want 4", len(models))
+		}
 		for id, model := range models {
 			requireMessagesModel(t, model)
 			if got := generatedModelField(t, generatedModelField(t, model, "compat"), "forceAdaptiveThinking"); got != nil {
@@ -116,10 +180,11 @@ func TestPortWave12FireworksModelGeneration(t *testing.T) {
 		}
 	})
 
-	// upstream: packages/ai/test/fireworks-model-generation.test.ts:143
+	// Regression for #9323: full hardcoded maps must not override updated catalog efforts.
+	// upstream: packages/ai/test/fireworks-model-generation.test.ts:139
 	t.Run("prefers updated upstream efforts over fixed maps and the Qwen fallback", func(t *testing.T) {
-		models := generateFireworksFixture(t, map[string][]modelsDevReasoningOption{
-			"deepseek-v4-flash-0731": {effortOptions("high", "max")}, "qwen3p8-max": {{Type: "toggle"}, effortOptions("medium", "xhigh")},
+		models := generateFireworksModels(t, map[string][]reasoningOption{
+			"deepseek-v4-flash-0731": {effortOption("high", "max")}, "qwen3p8-max": {toggleOption(), effortOption("medium", "xhigh")},
 		})
 		assertGeneratedJSON(t, generatedModelField(t, models["accounts/fireworks/models/deepseek-v4-flash-0731"], "thinkingLevelMap"), `{"off":null,"minimal":null,"low":null,"medium":null,"high":"high","xhigh":null,"max":"max"}`)
 		assertGeneratedJSON(t, generatedModelField(t, models["accounts/fireworks/models/qwen3p8-max"], "thinkingLevelMap"), `{"off":"none","minimal":null,"low":null,"medium":"medium","high":null,"xhigh":"xhigh","max":null}`)

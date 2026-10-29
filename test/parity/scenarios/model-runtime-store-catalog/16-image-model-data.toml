@@ -1,18 +1,17 @@
-# Covers generate-models.ts because buildOpenRouterCatalog lives in scripts/openrouter-catalog.ts, which has no PORT_MAP row of its own.
-# The oracle imports the pinned upstream maintenance script; npm does not publish scripts.
+# The oracle imports packages/ai/catalog/sources/openrouter.ts from the pinned upstream checkout; npm does not publish the catalog.
 # The four image-model-data.test.ts inputs (image-only, chat plus image for one id, ignored models, decision models)
 # plus Anthropic routing, :batch ids, parseFloat price prefixes, NaN prices, toFixed(6) ties, negative-zero prices, thinking-level maps,
 # modality filtering and context-window fallbacks compare full catalogs, keys sorted on both sides.
 # The Go wrapper removes only Go test-runner framing, not catalog output.
 name = "16-image-model-data"
 description = "OpenRouter chat, image and classifier catalog construction matches Pi's buildOpenRouterCatalog."
-covers = ["packages/ai/scripts/generate-models.ts"]
+covers = ["packages/ai/catalog/sources/openrouter.ts"]
 tags = ["fast", "hermetic"]
 driver = "cli-mode"
 
 [env]
-pig_go_tests = ["./cmd/gen-models"]
-pi_go_tests = ["./cmd/gen-models"]
+pig_go_tests = ["./internal/modelgen"]
+pi_go_tests = ["./internal/modelgen"]
 override_base_args = true
 pig_bin = "/usr/bin/env"
 pi_bin = "/usr/bin/env"
