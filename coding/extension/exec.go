@@ -26,8 +26,8 @@ import (
 // execForceKillDelay is exec.ts FORCE_KILL_DELAY_MS: SIGKILL follows SIGTERM this long after, if the child has not exited.
 const execForceKillDelay = 5 * time.Second
 
-// execMaxStringLength is buffer.constants.MAX_STRING_LENGTH of the runtime Pi's execCommand validates maxBuffer against: V8's 2^29-24 on 64-bit Node 24.
-const nodeMaxStringLength = 536870888 // upstream: coding-agent/src/core/exec.ts:DEFAULT_EXEC_MAX_BUFFER
+// nodeMaxStringLength is buffer.constants.MAX_STRING_LENGTH of Node 24 on 64-bit builds (V8 String::kMaxLength), which exec.ts reads from node:buffer; see GUARD-13 in automation/ci/divguard/baseline.toml.
+const nodeMaxStringLength = 536870888
 
 // execMaxStringLength is the limit a test replaces (export_test.go), as exec-runtime-limit.test.ts mocks it.
 var execMaxStringLength int64 = nodeMaxStringLength
