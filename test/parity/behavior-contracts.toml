@@ -810,6 +810,29 @@ sha256 = "ec0f9d90513e7440523101e5687a746c16015e70d9a8d4ad82184ce43cdb8746"
 keybindings = ["matchesKey:key"]
 
 [[contract]]
+id = "tui/keybindings/get-select-page-index"
+upstream_id = "input:packages/tui/src/keybindings.ts#<module>.getSelectPageIndex"
+family = "tui-components"
+kind = "boundary-transition"
+claim = "tui.select.pageUp and tui.select.pageDown move the selection by one page and clamp to the first and last item without wrapping; any other key reports no page move, and a page key on an empty list yields index 0 so callers must still check for items"
+status = "ported"
+pig_targets = [
+  "tui/selection_navigation.go#GetSelectPageIndex",
+]
+evidence = [
+  "tui/select_page_keys_test.go#TestGetSelectPageIndex",
+  "tui/select_page_keys_test.go#TestSelectListPageKeysMoveByAPage",
+  "test/parity/scenarios/model-resolver-selector/24-fullscreen-model-picker-page-keys-reach-selector.toml",
+]
+
+[contract.upstream]
+path = "packages/tui/src/keybindings.ts"
+start = "export function getSelectPageIndex("
+end = " * pageSize));\n}"
+sha256 = "2b589401ef060e5960fa70f25b1a4f210932ab78af30a25727a9765e50ab94af"
+keybindings = ["tui.select.pageDown", "tui.select.pageUp"]
+
+[[contract]]
 id = "coding-agent/compaction/escape-cancel"
 upstream_id = "input:packages/coding-agent/src/modes/interactive/interactive-mode.ts#InteractiveMode.handleEvent"
 family = "compaction"
