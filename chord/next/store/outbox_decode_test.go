@@ -3,6 +3,7 @@ package store
 import (
 	"encoding/json"
 	"fmt"
+	"maps"
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/chord/delta"
@@ -74,9 +75,7 @@ func mutateEach(root any, visit func(path string, mutated any)) {
 
 func copyWith(object map[string]any, key string, value any, remove bool) map[string]any {
 	out := make(map[string]any, len(object))
-	for name, member := range object {
-		out[name] = member
-	}
+	maps.Copy(out, object)
 	if remove {
 		delete(out, key)
 	} else {
