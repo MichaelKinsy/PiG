@@ -103,12 +103,23 @@ const NOT_THE_CORE = {
 	"indexeddb-storage": REFERENCE_STORAGE,
 }
 // A row's real-time tests, with the measurement that shows the window binds the reference as well (gate.mjs reads real_time_tests).
+// `exclusive` (gate.mjs runRows, runVitestRow): the gate runs the row alone, its reference run and its candidate run one after the other,
+// because the window is filled by the run's own work and any other row's processes on the host stretch that work past it.
 // Read-only: assigned once at initialization.
 const REAL_TIME = {
 	"harness-tools": [
 		"# The test sleeps 20 ms (real setTimeout) inside the 100 ms output throttle window; a process stall longer than ~80 ms flushes the",
 		"# buffered output in the reference as well as in the candidate (checked with an 85 ms stall: both fail; 70 ms: both pass).",
 		`real_time_tests = ["tool progress and lifetime answers an aborted tool with only its durable output"]`,
+		`exclusive = true`,
+	],
+	"codemode": [
+		"# `times a script out across a restart, without admitting new calls` gives the script 300 ms (`@options timeout_ms`) from the start of its",
+		"# first run to its first tool call: the sandbox starts and `hold` is reached, 148-207 ms of CPU on both sides (probed inside the gate). A",
+		"# host that gives the process under ~65% of a CPU in that stretch ends the script live (\"Script timed out\") before `hold` runs,",
+		"# `holds.reached` never resolves and the test fails at vitest's 5 s: in the reference as well as in the candidate (of six full runs at",
+		"# -j 8 the candidate missed the window in four and the reference in one; alone the reference took 166-227 ms of wall time, the candidate 195-245).",
+		`exclusive = true`,
 	],
 }
 // A row's measured value of an approved divergence (gate.mjs reads measured_*): the candidate fails the test with this failure, and only with it.
