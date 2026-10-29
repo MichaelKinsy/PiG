@@ -1353,8 +1353,23 @@ func markedAutolink(src []rune) (markedToken, bool) {
 	return markedToken{kind: markedLink, raw: match.String(), text: text, href: href, tokens: []markedToken{{kind: markedText, raw: text, text: text}}}, true
 }
 
-// markedURL ports Tokenizer.ts:953-988, the GFM extended autolink with its trailing-punctuation backpedal.
+// markedURL is markdown.ts MarkdownTokenizer.url: a bare URL stops at the first CJK punctuation character and is tokenized again
+// from the text before it, so the trailing-punctuation backpedal applies to that prefix. Explicit links and angle autolinks use
+// other tokenizers and keep these characters. The bare token holds no whitespace, so autocompleteSeparator selects only punctuation.
 func markedURL(src []rune) (markedToken, bool) {
+	token, ok := markedBaseURL(src)
+	if !ok {
+		return token, false
+	}
+	punctuation := strings.IndexFunc(token.raw, autocompleteSeparator)
+	if punctuation < 0 {
+		return token, true
+	}
+	return markedBaseURL([]rune(token.raw[:punctuation]))
+}
+
+// markedBaseURL ports Tokenizer.ts:953-988, the GFM extended autolink with its trailing-punctuation backpedal.
+func markedBaseURL(src []rune) (markedToken, bool) {
 	if !markedHasPrefix(src, 0, "http://", true) && !markedHasPrefix(src, 0, "https://", true) && !markedHasPrefix(src, 0, "ftp://", true) && !markedHasPrefix(src, 0, "www.", false) {
 		// Otherwise only the email branch, ^[A-Za-z0-9._+-]+(@), can match.
 		i := 0
