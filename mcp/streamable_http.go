@@ -201,7 +201,8 @@ type StreamableHTTPTransport struct {
 	// lastToken is the access token of the latest request, which Close reuses instead of asking the auth provider.
 	lastToken      string
 	getStreamStart bool
-	// getStreamWritten reports that the GET stream's first request was written or failed; nil until the stream starts.
+	// getStreamWritten reports that the GET stream's first request was written (issued, for a fetch that cannot report
+	// its writes) or failed; nil until the stream starts.
 	getStreamWritten func()
 }
 
@@ -454,6 +455,11 @@ func (t *StreamableHTTPTransport) authorizedFetch(method string, extra map[strin
 			}))
 		}
 		request.Header = headers
+		if _, reportsWrites := t.fetch.(*http.Client); method == http.MethodGet && !reportsWrites {
+			// Another McpFetch may not report its writes: the stream's first request counts as sent once it is issued to
+			// the fetch, with its token read.
+			t.signalGetStreamWritten()
+		}
 		response, err := t.do(request)
 		if err != nil {
 			return nil, err
@@ -666,13 +672,12 @@ func (t *StreamableHTTPTransport) startGetStream() {
 		t.runGetStream()
 	}()
 	// The upstream transport issues the GET request before send returns, so it reaches the server before the client's
-	// next request. A goroutine can start late: wait until the first attempt has written its request or failed. Another
-	// McpFetch may not report its writes and is not waited for.
-	if _, ok := t.fetch.(*http.Client); ok {
-		select {
-		case <-written:
-		case <-t.ctx.Done():
-		}
+	// next request and has read its token by then. A goroutine can start late: wait until the first attempt has written
+	// its request, or failed. A fetch that cannot report its writes is waited for until the request is issued to it
+	// (see authorizedFetch).
+	select {
+	case <-written:
+	case <-t.ctx.Done():
 	}
 }
 
