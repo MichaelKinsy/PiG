@@ -127,6 +127,8 @@ type Options struct {
 	// become available when they connect. Nil waits 10000 ms; 0 does not wait for a server that is not yet ready
 	// (index.ts:90, 294 `options.startupWaitMs ?? DEFAULT_STARTUP_WAIT_MS`).
 	StartupWaitMs *int
+	// RefuseConfigFiles, when set, is the refusal message of a host that does not accept `mcp.json`.
+	RefuseConfigFiles string
 	// AgentDir and ConfigDirName locate the configuration and the credentials.
 	AgentDir      string
 	ConfigDirName string
