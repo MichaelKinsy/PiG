@@ -21,6 +21,7 @@ import (
 	_ "golang.org/x/image/webp"
 
 	"github.com/MichaelKinsy/PiG/durable/tools"
+	"github.com/MichaelKinsy/PiG/internal/photonimage"
 )
 
 // jpegQualities are the JPEG qualities tried in order.
@@ -92,13 +93,13 @@ func jsRound(x float64) int { return int(math.Floor(x + 0.5)) } //portlint:allow
 func encodeWithin(ctx context.Context, img *image.NRGBA, size tools.ImageSize, maxBytes int, jpegFirst bool) (*tools.PreparedImage, error) {
 	scaled := img
 	if bounds := img.Bounds(); size.Width != bounds.Dx() || size.Height != bounds.Dy() {
-		scaled = resizeLanczos3(img, size.Width, size.Height)
+		scaled = photonimage.ResizeLanczos3(img, size.Width, size.Height)
 	}
 	type candidate struct {
 		mimeType string
 		encode   func() ([]byte, error)
 	}
-	pngCandidate := candidate{"image/png", func() ([]byte, error) { return encodePhotonPNG(scaled), nil }}
+	pngCandidate := candidate{"image/png", func() ([]byte, error) { return photonimage.EncodePNG(scaled), nil }}
 	var jpegs []candidate
 	for _, quality := range jpegQualities {
 		jpegs = append(jpegs, candidate{"image/jpeg", func() ([]byte, error) { return encodeJPEG(scaled, quality) }})

@@ -3,7 +3,11 @@
 // SPDX-FileCopyrightText: The image-rs Developers
 // SPDX-License-Identifier: MIT
 
-package images
+// Package photonimage is the pixel pipeline Photon (@silvia-odwyer/photon 0.3.3, Rust) runs, ported to Go: the PNG encoder behind
+// `PhotonImage.get_bytes()` (EncodePNG) and the Lanczos3 `resize` (ResizeLanczos3), both byte for byte. The durable image processor
+// (durable/images) and the coding agent's image path (internal/imageprocessing) use it, so both reproduce Photon's pixels and PNG bytes,
+// and with them Photon's PNG sizes, which decide which of PNG and JPEG a resize returns. The JPEG encoder is Go's (D165).
+package photonimage
 
 import (
 	"bytes"
@@ -17,12 +21,12 @@ import (
 
 // Photon's `PhotonImage.get_bytes()` writes PNG with the image crate 0.24.9 `PngEncoder::new` defaults: png 0.17.14 with
 // `Compression::Fast` and adaptive filtering, which compresses with fdeflate 0.3.6 and falls back to stored blocks when that
-// is not smaller. encodePhotonPNG ports that encoder, so the PNG read gives the model has Photon's bytes, and with them
+// is not smaller. EncodePNG ports that encoder, so the PNG read gives the model has Photon's bytes, and with them
 // Photon's size, which decides whether a PNG fits the byte limit or the next encoding is tried.
 
-// encodePhotonPNG is img as an RGBA 8-bit PNG: the signature, IHDR, one IDAT chunk and IEND (png encoder.rs
+// EncodePNG is img as an RGBA 8-bit PNG: the signature, IHDR, one IDAT chunk and IEND (png encoder.rs
 // write_image_data with Compression::Fast).
-func encodePhotonPNG(img *image.NRGBA) []byte {
+func EncodePNG(img *image.NRGBA) []byte {
 	width, height := img.Rect.Dx(), img.Rect.Dy()
 	rowLength := width * 4
 	rows := make([][]byte, height)
