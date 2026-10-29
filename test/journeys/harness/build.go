@@ -53,6 +53,7 @@ func BuildPig(moduleRoot, out string, v Variant) (time.Duration, error) {
 		args = append(args, "-cover", "-coverpkg=github.com/MichaelKinsy/PiG/...")
 	}
 	args = append(args, "./cmd/pig")
+	//nolint:gosec // G204 (class a): program is literal go; args are fixed build flags (-tags, -race, -cover) plus a computed overlay file and ./cmd/pig, with moduleRoot as Dir.
 	cmd := exec.Command("go", args...)
 	cmd.Dir = moduleRoot
 	var buf bytes.Buffer

@@ -315,6 +315,7 @@ func trackedEvidencePath(ctx context.Context, root, configured string) (string, 
 		return "", "", fmt.Errorf("tracked evidence path %s is not committed", relative)
 	}
 	for _, args := range [][]string{{"diff", "--quiet", "HEAD", "--", relative}, {"diff", "--cached", "--quiet", "HEAD", "--", relative}} {
+		//nolint:gosec // G204 (class a): program is literal git; args are fixed "diff --quiet HEAD --" plus the repo-relative evidence path after `--`.
 		command := exec.CommandContext(ctx, "git", args...)
 		command.Dir = root
 		if err := command.Run(); err != nil {
@@ -325,6 +326,7 @@ func trackedEvidencePath(ctx context.Context, root, configured string) (string, 
 }
 
 func repositoryGitOutputBytes(ctx context.Context, root string, args ...string) ([]byte, error) {
+	//nolint:gosec // G204 (class a): program is literal git; args come from callers (fixed diff flags, or "show <commit>:<path>" from provider_wire.go), no literal option injection.
 	command := exec.CommandContext(ctx, "git", args...)
 	command.Dir = root
 	output, err := command.Output()
@@ -335,6 +337,7 @@ func repositoryGitOutputBytes(ctx context.Context, root string, args ...string) 
 }
 
 func repositoryGitOutput(ctx context.Context, root string, args ...string) (string, error) {
+	//nolint:gosec // G204 (class a): program is literal git; args come from callers (fixed subcommands such as ls-files/log/rev-parse/add/commit with paths after `--`).
 	command := exec.CommandContext(ctx, "git", args...)
 	command.Dir = root
 	output, err := command.Output()

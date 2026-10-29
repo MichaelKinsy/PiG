@@ -553,6 +553,7 @@ func (c *Connection) start() (RemoteInfo, *session, error) {
 	var tokenBytes [16]byte
 	_, _ = rand.Read(tokenBytes[:])
 	token := hex.EncodeToString(tokenBytes[:])
+	//nolint:gosec // G204 (class c): program and leading args are the daemon command the user configured for the remote or container environment; PiG appends only serve --token plus a random token.
 	cmd := exec.Command(command[0], append(append([]string{}, command[1:]...), "serve", "--token", token)...)
 	stdin, stdinErr := cmd.StdinPipe()
 	stdout, stdoutErr := cmd.StdoutPipe()

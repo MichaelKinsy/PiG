@@ -327,6 +327,7 @@ func buildTestBinary(root string, job *dirJob, bin string) bool {
 	}
 	sort.Strings(pkgs)
 	evidenceBuilds.Add(1)
+	//nolint:gosec // G204 (class a): program is literal go; args are fixed flags, coverpkg from repo package paths, "./"+job.dir, and a temp output path.
 	cmd := exec.Command("go", "test", "-c", "-coverpkg="+strings.Join(pkgs, ","), "-o", bin, "./"+job.dir)
 	cmd.Dir = root
 	out, err := cmd.CombinedOutput()
@@ -357,6 +358,7 @@ func runGroup(root, bin, scratchRoot string, g *group) {
 		g.failed = true
 		return
 	}
+	//nolint:gosec // G204 (class b): runs the bin built by go test -c just above; args are fixed -test.* flags and test names parsed from repo test files.
 	cmd := exec.Command(bin, "-test.count=1", "-test.timeout="+evidenceTimeout, "-test.paniconexit0", "-test.gocoverdir="+coverDir,
 		"-test.run=^("+strings.Join(g.names, "|")+")$", "-test.coverprofile="+profile)
 	cmd.Dir = filepath.Join(root, g.dir)

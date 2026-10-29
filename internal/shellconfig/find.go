@@ -28,6 +28,7 @@ func FindExecutableOnPath(executable string) string {
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), findTimeout)
 	defer cancel()
+	//nolint:gosec // G204 (class a): program is the literal which (where on Windows); the one argument is a fixed executable name such as bash or pwsh that PiG looks up.
 	command := exec.CommandContext(ctx, name, executable)
 	// Upstream's spawnSync pipes stdout and stderr, keeps stdin closed, and hides the Windows console window.
 	nodespawn.HideWindow(command, nodespawn.Ignore, nodespawn.Pipe, nodespawn.Pipe)

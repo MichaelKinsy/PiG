@@ -102,6 +102,7 @@ func signPigBuild(ctx context.Context, progress *buildprogress.Reporter, target 
 		return
 	}
 	buildprogress.Phase(ctx, "Signing binary", "Ad-hoc codesign: "+target)
+	//nolint:gosec // G204 (class b): program is codesign from exec.LookPath; args are fixed --force --sign - plus the path of the binary pig build just wrote.
 	cmd := exec.CommandContext(ctx, codesign, "--force", "--sign", "-", target)
 	if err := buildprogress.Run(buildprogress.Member(ctx, "pig"), cmd); err != nil {
 		// pig additive (D18): ad-hoc signing remains best-effort, but its failure is visible.

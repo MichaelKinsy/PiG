@@ -357,6 +357,7 @@ func checkConsistency(root string, output io.Writer) error {
 		{"test", "./test/gomodule", "-count=1"},
 		{"test", "./internal/codingagent", "-run", "^TestParseChangelog_RealFile$", "-count=1"},
 	} {
+		//nolint:gosec // G204 (class a): program is literal go; args come from checkConsistency's fixed test lists and the root flag.
 		cmd := exec.Command("go", args...)
 		cmd.Dir, cmd.Stdout, cmd.Stderr = root, output, output
 		if err := cmd.Run(); err != nil {

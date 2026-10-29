@@ -206,6 +206,7 @@ func evidenceEnv(scratch string) []string {
 	env := make([]string, 0, len(os.Environ())+len(agentDirVariables)+2)
 	for _, name := range []string{"GOCACHE", "GOMODCACHE"} {
 		if os.Getenv(name) == "" {
+			//nolint:gosec // G204 (class a): program is literal go; name iterates the literal {GOCACHE,GOMODCACHE} list.
 			if out, err := exec.Command("go", "env", name).Output(); err == nil {
 				env = append(env, name+"="+strings.TrimSpace(string(out)))
 			}
