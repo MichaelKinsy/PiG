@@ -27,5 +27,6 @@ timeout_seconds = 60
 [assert]
 exit_code = 0
 output_equal = true
-both_contain = ['"name":"keyboard","renders":1', '"name":"keyboard-caller","requests":3', 'pi-tui-debug.log', 'pi-tui-crash.log']
+both_contain = ['"name":"osc133-differential"', '"name":"keyboard","renders":1', '"name":"keyboard-caller","requests":3', 'pi-tui-debug.log', 'pi-tui-crash.log']
 runs = 3
+both_not_contain = ['\u001b]133;']
