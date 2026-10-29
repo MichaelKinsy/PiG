@@ -110,7 +110,7 @@ Use llama-swap as a custom provider instead, the way you would use Ollama or vLL
 
 The key can be any text unless your llama-swap sets `apiKeys`; then use one of them. Set `contextWindow` to the context size each model starts with, so the footer's context percentage is right.
 
-Run `/model` and pick a model. The first request after a switch makes llama-swap start that model, so the reply waits for the start and streams llama-swap's loading progress as reasoning text first; a model that fails to start ends the reply with llama-swap's error. To unload models yourself, call llama-swap directly, for example `curl -X POST http://127.0.0.1:8080/api/models/unload`. See [Configure a compatible endpoint](models.md#configure-a-compatible-endpoint) for the other `models.json` fields.
+Run `/model` and pick a model. The first request after a switch makes llama-swap start that model, so the reply waits for the start and streams llama-swap's loading progress as reasoning text first; a model that fails to start ends the reply with llama-swap's error. To unload models yourself, call llama-swap directly, for example `curl -X POST http://127.0.0.1:8080/api/models/unload`. The other `models.json` fields are described on the models page, under "Configure a compatible endpoint".
 
 ## Thinking levels
 
