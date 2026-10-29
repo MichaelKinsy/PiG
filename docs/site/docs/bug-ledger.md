@@ -1025,6 +1025,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-ca27ba6](#bf-ca27ba6) | The Go extension SDK accepts a native Provider object with no auth methods, as Pi's `ProviderAuth` (both… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-ca675e0](#bf-ca675e0) | A list item whose text is `[ ] ` or `[x] ` with nothing after the spaces on the line is plain text, not a… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-cb00273](#bf-cb00273) | OpenRouter's signature-only `reasoning.text` delta for Claude is kept and replayed with its reasoning block… | A Pi defect that PiG fixed first | All platforms | 0.5.0 |
+| [BF-cb20ec0](#bf-cb20ec0) | After `pig update --models`, OpenRouter's `:nitro` and `:floor` routing variants no longer disappear from… | PiG's own defect | All platforms | Unreleased |
 | [BF-cb21ee0](#bf-cb21ee0) | Markdown resolves link reference definitions as Pi does: `[text][label]`, `[label][]` and `[label]` link to a… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-cb3eb3b](#bf-cb3eb3b) | fix(durable/core): memory-held commits record no telemetry events | PiG's own defect | All platforms | Unreleased |
 | [BF-cc9370b](#bf-cc9370b) | A Node extension's `setWidget`, `setHeader` and `setFooter` factories receive the same `tui` as a… | PiG's own defect | All platforms | 0.5.0 |
@@ -15286,6 +15287,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `cb002735d6` (2026-10-09)
 - **Tests:** `ai/openai_reasoning_signature_only_test.go::TestOpenAICompletionsKeepsSignatureOnlyReasoningText`
 - **Release note:** OpenRouter's signature-only `reasoning.text` delta for Claude is kept and replayed with its reasoning block (D122, pi-mono #9534).
+
+### BF-cb20ec0
+
+**After `pig update --models`, OpenRouter's `:nitro` and `:floor` routing variants no longer disappear from…**
+
+- **Source:** PiG's own defect
+- **Symptom:** After `pig update --models`, OpenRouter's `:nitro` and `:floor` routing variants no longer disappear from `--list-models`, the model selector, `/scoped-models`, RPC `get_available_models` and the SDK lists.
+- **Root cause:** After pig update --models the saved OpenRouter list replaces the bundled one, and the :nitro and :floor variants, which were derived from the bundled models only, vanished from every listing. WithOpenRouterRoutingVariantModels derives them from whichever list is current, where the composed provider data and the native collection read the saved list.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `cb20ec03cd` (2026-10-29), `d58e454dd9` (2026-10-29)
+- **Tests:** `internal/codingagent/remote_catalog_openrouter_variants_test.go::TestRefreshedOpenRouterProviderListsRoutingVariantsOfTheRefreshedList`, `internal/codingagent/remote_catalog_openrouter_variants_test.go::TestSavedOpenRouterListShowsRoutingVariantsOnEveryRegistryListing`
+- **Release note:** After `pig update --models`, OpenRouter's `:nitro` and `:floor` routing variants no longer disappear from `--list-models`, the model selector, `/scoped-models`, RPC `get_available_models` and the SDK lists. The refreshed list replaces the bundled OpenRouter list, and the variants were derived from the bundled models only; they are now derived from whichever list is current (D199).
 
 ### BF-cb21ee0
 

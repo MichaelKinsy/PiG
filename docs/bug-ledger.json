@@ -29505,6 +29505,33 @@
       ]
     },
     {
+      "id": "BF-cb20ec0",
+      "title": "After `pig update --models`, OpenRouter's `:nitro` and `:floor` routing variants no longer disappear from…",
+      "symptom": "After `pig update --models`, OpenRouter's `:nitro` and `:floor` routing variants no longer disappear from `--list-models`, the model selector, `/scoped-models`, RPC `get_available_models` and the SDK lists.",
+      "rootCause": "After pig update --models the saved OpenRouter list replaces the bundled one, and the :nitro and :floor variants, which were derived from the bundled models only, vanished from every listing. WithOpenRouterRoutingVariantModels derives them from whichever list is current, where the composed provider data and the native collection read the saved list.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "After `pig update --models`, OpenRouter's `:nitro` and `:floor` routing variants no longer disappear from `--list-models`, the model selector, `/scoped-models`, RPC `get_available_models` and the SDK lists. The refreshed list replaces the bundled OpenRouter list, and the variants were derived from the bundled models only; they are now derived from whichever list is current (D199).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "cb20ec03cd",
+          "date": "2026-10-29"
+        },
+        {
+          "hash": "d58e454dd9",
+          "date": "2026-10-29"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/remote_catalog_openrouter_variants_test.go::TestRefreshedOpenRouterProviderListsRoutingVariantsOfTheRefreshedList",
+        "internal/codingagent/remote_catalog_openrouter_variants_test.go::TestSavedOpenRouterListShowsRoutingVariantsOnEveryRegistryListing"
+      ]
+    },
+    {
       "id": "BF-cb21ee0",
       "title": "Markdown resolves link reference definitions as Pi does: `[text][label]`, `[label][]` and `[label]` link to a…",
       "symptom": "Markdown resolves link reference definitions as Pi does: `[text][label]`, `[label][]` and `[label]` link to a `[label]: url` defined anywhere in the message, and the definition line is no longer printed.",
