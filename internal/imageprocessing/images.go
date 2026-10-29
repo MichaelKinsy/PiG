@@ -28,14 +28,14 @@ import (
 	"slices"
 	"strings"
 
-	_ "golang.org/x/image/bmp" // decoder for the BMP entry of the supported-format allowlist
+	_ "golang.org/x/image/bmp"  // decoder for the BMP entry of the supported-format allowlist
 	_ "golang.org/x/image/webp" // decoder for the WebP entry of the supported-format allowlist
 
 	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
-	"github.com/MichaelKinsy/PiG/internal/photonimage"
 	"github.com/MichaelKinsy/PiG/internal/nodebase64"
+	"github.com/MichaelKinsy/PiG/internal/photonimage"
 )
 
 const (
