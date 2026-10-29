@@ -1034,7 +1034,7 @@ rationale = "PORT_MAP row is ✅ ported (ai/models_generated.go + internal/codin
 path = "packages/ai/src/providers/openrouter-api.ts"
 change = "added"
 disposition = "ported"
-evidence = ["test:ai/openrouter_api_test.go#TestOpenRouterCostConvertsPricesAndFallsBackOnMissingInvalidAndNegativeRates", "test:cmd/gen-models/openrouter_catalog_test.go#TestOpenRouterCatalogParsingUpstream", "test:cmd/gen-models/openrouter_catalog_test.go#TestOpenRouterPricingOverridesTurnPromptLengthOverridesIntoTiers", "test:ai/openrouter_user_models_test.go#TestPersonalizeOpenRouterCatalogKeepsOnlyTheKeysChatModelsWithTheKeysLimitsAndPrices"]
+evidence = ["test:ai/openrouter_api_test.go#TestOpenRouterCostConvertsPricesAndFallsBackOnMissingInvalidAndNegativeRates", "test:internal/modelgen/source_openrouter_test.go#TestOpenRouterCatalogParsing", "test:internal/modelgen/source_openrouter_test.go#TestOpenRouterPricingOverrides", "test:ai/openrouter_user_models_test.go#TestPersonalizeOpenRouterCatalogKeepsOnlyTheKeysChatModelsWithTheKeysLimitsAndPrices"]
 rationale = "Added in 1.2.0 (ee409a85, #10672): the OpenRouter listing shapes (OpenRouterPricing, OpenRouterPricingOverride, OpenRouterModel) and openRouterCost, moved out of scripts/openrouter-catalog.ts so the generator and personalizeOpenRouterCatalog share it. Its one behavior change is that a missing, invalid or negative rate (-1 for router models such as openrouter/auto) takes the fallback instead of becoming NaN or a negative price. ai/openrouter_api.go ports the types and OpenRouterCost; cmd/gen-models/openrouter_catalog.go openRouterCost calls ai.OpenRouterCost, so the generator and the runtime share one conversion."
 
 [[files]]

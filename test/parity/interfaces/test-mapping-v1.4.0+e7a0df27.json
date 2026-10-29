@@ -1056,10 +1056,10 @@
       "disposition": "ported",
       "upstreamTestHash": "sha256:90d87127f9fec167e10736691c74a1b02c3aa71e86a9994c956890258dcc2fa5",
       "evidence": [
-        "cmd/check-model-data/model_data_upstream_test.go#TestModelDataValidationUpstream",
-        "cmd/check-model-data/model_data_semantics_test.go#TestModelDataStructureHashJavaScriptOrdering",
+        "internal/modelgen/modeldata/model_data_upstream_test.go#TestModelDataValidationUpstream",
+        "internal/modelgen/modeldata/model_data_semantics_test.go#TestModelDataStructureHashJavaScriptOrdering",
         "test/parity/scenarios/model-runtime-store-catalog/17-model-data-validation.toml",
-        "cmd/check-model-data/hydrate_upstream_test.go#TestHydrateModelCatalogUpstream"
+        "internal/modelgen/modeldata/hydrate_upstream_test.go#TestHydrateModelCatalogUpstream"
       ],
       "rationale": "All 15 cases in TestModelDataValidationUpstream; the production check-model-data command is also compared with Pi by the scenario."
     },
@@ -3633,7 +3633,7 @@
         "chord/watch_upstream_test.go#TestWatchStopsIdempotentlyAndRejectsARepeatedOrLateStart",
         "chord/watch_upstream_test.go#TestWatchEndsEndedOrFailedFromItsSourceDroppingPendingFrames",
         "chord/watch_upstream_test.go#TestWatchStopsFutureDeliveryWithoutAbortingOrAwaitingAnInFlightCallback",
-        "chord/watch_upstream_test.go#TestWatchEndsCancelledWhenItsAcquisitionContextEndsAlsoWhenAlreadyDone",
+        "chord/watch_upstream_test.go#TestWatchEndsAbortedWhenItsAcquisitionContextEndsAlsoWhenAlreadyDone",
         "chord/watch_upstream_test.go#TestWatchEndsListenerErrorOnAFailureReportsItAndDeliversNothingMore",
         "chord/watch_upstream_test.go#TestWatchWrapsAPanickedNonErrorInAnError",
         "chord/watch_upstream_test.go#TestWatchRetainsNeitherItsSourceNorItsListenerOnceEnded",
