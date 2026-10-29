@@ -20,11 +20,11 @@ func fastEnterEditorHolds(c *harness.Ctx, text string) bool { return strings.Con
 func init() {
 	register(&harness.Journey{
 		Name: "completion-fast-enter",
-		Doc: "Text and Enter sent back to back (two tmux commands, the way a script or a fast typist sends them) while an autocomplete menu is due: Pi's editor opens the menu in the microtasks that follow the read that typed the text, " +
+		Doc: "Text and Enter sent right behind each other while an autocomplete menu is due, the way a script or a fast typist sends them (the Enter is the very next terminal read after the text's): Pi's editor opens the menu in the Promise jobs that follow the read that typed the text, " +
 			"so the first Enter accepts the suggestion and only a second Enter submits (editor.ts requestAutocomplete/startAutocompleteRequest, tui.ts handleTerminalInput). " +
 			"A `/model provider/id` and a `/thinking level` argument completion stay in the editor after the first Enter and apply on the second; a `/settin` command-name completion is accepted and submitted by the first Enter.",
 		Touches:     []string{"internal/codingagent/", "tui/"},
-		Normalizers: []harness.Normalizer{bugReportHint, d80SettingsCount},
+		Normalizers: []harness.Normalizer{bugReportHint},
 		Env: func(harness.Kind) harness.Env {
 			return harness.Env{
 				NoModelArg:  true,
@@ -40,7 +40,7 @@ func init() {
 		Pool: []harness.Action{
 			{Step: harness.Step{Name: "model-argument", Run: func(c *harness.Ctx) {
 				spec := "strict-wire/" + fastEnterSecond
-				c.Say("/model " + spec)
+				c.SayNextRead("/model " + spec)
 				c.Quiet(c.Settle())
 				c.Quiet(c.Settle())
 				c.Snap("model-first-enter")
@@ -52,7 +52,7 @@ func init() {
 				c.Snap("model-second-enter")
 			}}},
 			{Step: harness.Step{Name: "thinking-argument", Run: func(c *harness.Ctx) {
-				c.Say("/thinking high")
+				c.SayNextRead("/thinking high")
 				c.Quiet(c.Settle())
 				c.Quiet(c.Settle())
 				c.Snap("thinking-first-enter")
@@ -63,7 +63,7 @@ func init() {
 				c.Snap("thinking-second-enter")
 			}}},
 			{Step: harness.Step{Name: "command-name", Run: func(c *harness.Ctx) {
-				c.Say("/settin")
+				c.SayNextRead("/settin")
 				c.Quiet(c.Settle())
 				c.Quiet(c.Settle())
 				c.Snap("command-name-enter")
