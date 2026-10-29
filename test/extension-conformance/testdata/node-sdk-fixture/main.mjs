@@ -882,6 +882,22 @@ export default function (pi) {
       });
     },
   });
+  pi.registerCommand("rw_idle_live", {
+    description: "Poll isIdle live and report the sequence of answers",
+    handler: async (_args, ctx) => {
+      const seen = [];
+      const deadline = Date.now() + 10000;
+      const poll = () => {
+        const answer = String(ctx.isIdle());
+        if (seen.at(-1) !== answer) {
+          seen.push(answer);
+          ctx.ui.notify(`rw_idle_live=${seen.join(",")}`, "info");
+        }
+        if (seen.length < 3 && Date.now() < deadline) setTimeout(poll, 10);
+      };
+      poll();
+    },
+  });
   pi.registerCommand("set_model", {
     description: "Switch to the model in the arguments",
     handler: async (args, ctx) => {
