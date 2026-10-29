@@ -822,6 +822,12 @@ func Main(args []string, options *MainOptions) {
 		exitProcess(0)
 	}
 
+	// pig additive (D202): a Piglet Binary built with build.closed runs only the extensions its signed closure lists.
+	if message := pigletBinaryExtensionFlagRefusal(currentPigletBinary(), flags.Extensions); message != "" {
+		fmt.Fprintln(os.Stderr, message)
+		exitProcess(1)
+	}
+
 	// A Piglet Binary embeds prebuilt cells and may link fused extensions. Register
 	// both only when starting a session (after --version); stock Pig carries empty registries.
 	if err := cellpack.Register(); err != nil {

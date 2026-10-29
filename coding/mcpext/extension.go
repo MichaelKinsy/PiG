@@ -1499,6 +1499,15 @@ func (e *Extension) FormatStatus() string {
 // ---------------------------------------------------------------------------------------
 
 func (e *Extension) loadConfig(ctx EventContext) LoadedMcpConfig {
+	loaded := e.readConfig(ctx)
+	// pig additive (D202): a host that refuses mcp.json (a closed Piglet Binary) starts none of its servers and reports why when there were any.
+	if e.options.RefuseConfigFiles != "" && len(loaded.Servers) > 0 {
+		return LoadedMcpConfig{Errors: []string{e.options.RefuseConfigFiles}}
+	}
+	return loaded
+}
+
+func (e *Extension) readConfig(ctx EventContext) LoadedMcpConfig {
 	if e.options.LoadConfig != nil {
 		if ctx.Context == nil {
 			return e.options.LoadConfig(context.Background())
