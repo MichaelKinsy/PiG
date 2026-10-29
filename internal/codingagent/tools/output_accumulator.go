@@ -328,13 +328,13 @@ func (a *OutputAccumulator) ReadFullOutput(maxBytes int) (FullOutput, error) {
 		return FullOutput{}, err
 	}
 	headDecoder := utf8stream.Decoder{StripBOM: true}
-	headText := headDecoder.decode(head, true)
+	headText := headDecoder.Decode(head, true)
 	tailStart := 0
 	for tailStart < len(tail) && tail[tailStart]&0xc0 == 0x80 {
 		tailStart++
 	}
 	tailDecoder := utf8stream.Decoder{StripBOM: true}
-	tailText := tailDecoder.decode(tail[tailStart:], false)
+	tailText := tailDecoder.Decode(tail[tailStart:], false)
 	omitted := size - int64(headBytes) - int64(tailBytes)
 	return FullOutput{Content: headText + "\n\n[... " + strconv.FormatInt(omitted, 10) + " bytes omitted ...]\n\n" + tailText, Truncated: true}, nil
 }
