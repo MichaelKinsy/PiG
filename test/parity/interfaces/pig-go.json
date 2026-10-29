@@ -160925,6 +160925,17 @@
       "shapeHash": "sha256:8dec88039a8cc2f9368a55bf1b9d36921d0d4092004fafb14a321c4584db00c2"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#Extension.acceptedConfig",
+      "package": "github.com/MichaelKinsy/PiG/coding/mcpext",
+      "name": "Extension.acceptedConfig",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(ctx EventContext) LoadedMcpConfig"
+      },
+      "shapeHash": "sha256:c977114522111beec10e50b4b96e3036fd4a76cb9a956a23f9d31ce607ef618b"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#Extension.attemptCurrentLocked",
       "package": "github.com/MichaelKinsy/PiG/coding/mcpext",
       "name": "Extension.attemptCurrentLocked",
@@ -161220,17 +161231,6 @@
         "type": "func(ctx context.Context, name string, c CommandContext, options pick) *server"
       },
       "shapeHash": "sha256:2cedcf080454a91e86ac7d4b8571e51cfaac2f295a7675293935dacf8c0004c0"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#Extension.readConfig",
-      "package": "github.com/MichaelKinsy/PiG/coding/mcpext",
-      "name": "Extension.readConfig",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func(ctx EventContext) LoadedMcpConfig"
-      },
-      "shapeHash": "sha256:c977114522111beec10e50b4b96e3036fd4a76cb9a956a23f9d31ce607ef618b"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#Extension.reconnectSignedIn",
