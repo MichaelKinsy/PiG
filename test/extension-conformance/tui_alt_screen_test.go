@@ -5,7 +5,12 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/MichaelKinsy/PiG/coding/extension/host/subprocess"
 )
+
+// The conformance hosts serve the TuiAltScreens an extension constructs, as the pig command's host does.
+func init() { subprocess.EnableTuiAltScreens() }
 
 // wantTuiAltProbe is what Pi's own TuiAltScreen reports for tui-alt-screen-probe (the Node fixture runs the real class): a recording 20x6
 // terminal, a 12-row document, scroll, flash, overlay, focus, input listener, debug key, color scheme and layout root steps. Every SDK

@@ -1,9 +1,11 @@
 package subprocess
 
 import (
+	"strings"
 	"testing"
 	"time"
 
+	"github.com/MichaelKinsy/PiG/extensions/sdk/json"
 	"github.com/MichaelKinsy/PiG/tui"
 )
 
@@ -51,5 +53,25 @@ func TestServeInFrameLeavesOtherCallsToTheCaller(t *testing.T) {
 		}
 	case <-time.After(10 * time.Second):
 		t.Fatal("a call whose wait ended blocks for a goroutine that no longer waits")
+	}
+}
+
+// A program that never calls EnableTuiAltScreens does not link the renderer (TestHeadlessEmbedBinaryHoldsNoWordDictionary), so a tui.alt call fails
+// with an error that names the call instead of constructing a screen; EnableTuiAltScreens turns the screens on.
+func TestTuiAltCallFailsUntilTuiAltScreensAreEnabled(t *testing.T) {
+	previous := tuiAltEnabled.Swap(nil)
+	t.Cleanup(func() { tuiAltEnabled.Store(previous) })
+	b := NewUIBridge(func() {})
+	_, err := b.callTuiAlt(nil, "", json.RawMessage(`{"op":"create","id":"s"}`))
+	if err == nil || !strings.Contains(err.Error(), "EnableTuiAltScreens") {
+		t.Fatalf("tui.alt call before EnableTuiAltScreens: err = %v, want one that names EnableTuiAltScreens", err)
+	}
+	b.clearTuiAlt("ext", nil, false)
+	EnableTuiAltScreens()
+	if tuiAltEnabled.Load() == nil {
+		t.Fatal("EnableTuiAltScreens left the TuiAltScreen server unset")
+	}
+	if _, err := b.callTuiAlt(nil, "", json.RawMessage(`{"op":"create","id":"s"}`)); err == nil || !strings.Contains(err.Error(), "needs an extension connection") {
+		t.Fatalf("tui.alt call after EnableTuiAltScreens: err = %v, want the screen's own error", err)
 	}
 }

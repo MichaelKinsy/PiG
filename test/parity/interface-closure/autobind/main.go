@@ -366,7 +366,7 @@ var (
 // `export ... from` closure of its source).
 var libraryEntries = map[string][]string{
 	"env:.":                               {"./env"},
-	"durable:.":                           {"./durable", "./durable/harness", "./durable/session", "./durable/storage"},
+	"durable:.":                           {"./durable", "./durable/core", "./durable/core/session", "./durable/harness", "./durable/session", "./durable/storage"},
 	"durable:./env":                       {"./durable/env"},
 	"durable:./env/node":                  {"./durable/env/node"},
 	"durable:./codemode":                  {"./durable/codemode"},
