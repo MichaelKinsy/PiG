@@ -16,37 +16,16 @@ import (
 	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
 
-// altRowAddress matches a per-row differential write intro: \x1b[<row>;1H\x1b[2K.
-var altRowAddress = regexp.MustCompile("\x1b\\[(\\d+);1H\x1b\\[2K")
-
 // altScreenFrame drives one render and returns the escape-stripped visible rows,
 // so tests can assert frame geometry without matching raw control bytes.
 func altScreenVisibleRows(t *testing.T, out *bytes.Buffer, width, height int) []string {
 	t.Helper()
-	raw := out.String()
+	// Replayed through rowsVT: a frame in a terminal trusted with scroll regions moves rows with line feeds and reverse indexes, which a reader of the row addresses alone would miss.
+	vt := newRowsVT(height)
+	vt.apply(out.String())
 	rows := make([]string, height)
-	locs := altRowAddress.FindAllStringSubmatchIndex(raw, -1)
-	for i, loc := range locs {
-		// Row number from the capture group.
-		rowNum := 0
-		for _, c := range raw[loc[2]:loc[3]] {
-			rowNum = rowNum*10 + int(c-'0')
-		}
-		if rowNum < 1 || rowNum > height {
-			continue
-		}
-		// Content runs from the end of this intro to the start of the next
-		// row-address (or end of the buffer for the last row).
-		end := len(raw)
-		if i+1 < len(locs) {
-			end = locs[i+1][0]
-		}
-		content := raw[loc[1]:end]
-		// Trim a trailing cursor-position / synchronized-output tail on the last row.
-		if k := strings.Index(content, "\x1b[?25"); k >= 0 {
-			content = content[:k]
-		}
-		rows[rowNum-1] = widthx.StripTerminalSequences(content)
+	for i, row := range vt.rows {
+		rows[i] = widthx.StripTerminalSequences(row)
 	}
 	return rows
 }
