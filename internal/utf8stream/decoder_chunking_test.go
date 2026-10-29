@@ -19,10 +19,10 @@ func TestUTF8StreamDecoderChunkingMatchesWholeDecode(t *testing.T) {
 		for range rng.IntN(12) {
 			data = append(data, pieces[rng.IntN(len(pieces))]...)
 		}
-		for _, StripBOM := range []bool{true, false} {
-			whole := Decoder{StripBOM: StripBOM}
+		for _, stripBOM := range []bool{true, false} {
+			whole := Decoder{StripBOM: stripBOM}
 			want := whole.Decode(data, false)
-			streamed := Decoder{StripBOM: StripBOM}
+			streamed := Decoder{StripBOM: stripBOM}
 			var got []byte
 			rest := data
 			for len(rest) > 0 {
@@ -32,7 +32,7 @@ func TestUTF8StreamDecoderChunkingMatchesWholeDecode(t *testing.T) {
 			}
 			got = streamed.AppendDecode(got, nil, false)
 			if string(got) != want {
-				t.Fatalf("run %d StripBOM %v: %x decoded in chunks to %q, at once to %q", run, StripBOM, data, got, want)
+				t.Fatalf("run %d stripBOM %v: %x decoded in chunks to %q, at once to %q", run, stripBOM, data, got, want)
 			}
 		}
 	}
