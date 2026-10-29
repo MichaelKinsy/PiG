@@ -2376,21 +2376,15 @@
       "upstreamTestHash": "sha256:0ba6bd1fab1cabff14fea7ed111551940ec8d038827818ba8e588b2208eac68b",
       "area": "extensions",
       "tags": [],
-      "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path. Re-review pending: designedOutCases need owner approval.",
-      "designedOutCases": [
-        "derived types \u203a Implementation: one variant with its members, state watchables and methods taking args and a context",
-        "derived types \u203a Implementation of a local contract is flat",
-        "derived types \u203a ParamsOf: the params object"
-      ]
+      "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
     },
     {
       "path": "packages/chord/test/next/contracts/declare.test.ts",
       "upstreamTestHash": "sha256:fc841de7411c2abb0ae92833aeab8c7e6f51e146aa2453014750417aeae41574",
       "area": "extensions",
       "tags": [],
-      "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path. Re-review pending: designedOutCases need owner approval.",
+      "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path. SCRUTINIZED:approved by owner 2026-10-29 class approval (TypeScript type-level checks, verified per row): the designed-out case 'refuse a keyed member in a remote contract, at the type level and at declaration' is enforced in Go by the type system: Keyed() returns *contracts.KeyedMember, which is not a contracts.TSchema, so contracts.Prop, VariantDeclaration.State and RemoteEditor.State refuse it at compile time (`cannot use contracts.Keyed(contracts.Str()) (value of type *contracts.KeyedMember) as contracts.TSchema value in argument to contracts.Prop`); upstream's runtime throw has no Go counterpart.",
       "designedOutCases": [
-        "declaration checks \u203a refuse a remote declaration without a host address at the type level",
         "keyed members (slice 6a \u00a712) \u203a refuse a keyed member in a remote contract, at the type level and at declaration"
       ]
     },
@@ -2399,10 +2393,7 @@
       "upstreamTestHash": "sha256:8d9ed24a8a839777303d948ca790c15003e22a2d04e1e0d9ebd4898072ef44ec",
       "area": "extensions",
       "tags": [],
-      "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path. Re-review pending: designedOutCases need owner approval.",
-      "designedOutCases": [
-        "long histories \u203a the types track every step with its changes"
-      ]
+      "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
     },
     {
       "path": "packages/chord/test/next/contracts/fingerprint.test.ts",
@@ -2423,10 +2414,7 @@
       "upstreamTestHash": "sha256:11f3aeda1a0de8e75102be0d037a16b2b4a57169e169ee7b4a26dec6ca4ae4aa",
       "area": "extensions",
       "tags": [],
-      "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path. Re-review pending: designedOutCases need owner approval.",
-      "designedOutCases": [
-        "hostAddress \u203a is typed by the contract's params"
-      ]
+      "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
     },
     {
       "path": "packages/chord/test/next/contracts/params.test.ts",
@@ -2454,7 +2442,7 @@
       "upstreamTestHash": "sha256:62c1a36d13245367b5dd72713720c84d14c7f5be704461091e6ef39a346fb413",
       "area": "extensions",
       "tags": [],
-      "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path. Re-review pending: designedOutCases need owner approval.",
+      "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path. SCRUTINIZED:approved by owner 2026-10-29 class approval (TypeScript type-level checks, verified per row): the designed-out case \"types a call replacement's arguments as values\" is enforced in Go by the signature: CheckedArgs.Call is contracts.CallFunc, so a call with wrong argument types does not compile (`cannot use func(args string, ...) ... as contracts.CallFunc value`); TestCallReplacementArgumentsAreValues pins it.",
       "designedOutCases": [
         "checkArgs \u203a types a call replacement's arguments as values"
       ]
@@ -2464,10 +2452,7 @@
       "upstreamTestHash": "sha256:df321f5af5c8d3a332fe0b00c72d584dc55992f9bed723015a94a5e0f3db638d",
       "area": "extensions",
       "tags": [],
-      "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path. Re-review pending: designedOutCases need owner approval.",
-      "designedOutCases": [
-        "ChordError \u203a is a tagged union: a wrong pairing is a type error"
-      ]
+      "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
     },
     {
       "path": "packages/chord/test/next/data/failure.test.ts",
@@ -2495,10 +2480,7 @@
       "upstreamTestHash": "sha256:76364bcd3003a8bb51b1b6a2b6894287afb033f0a82837a79550504b53ee9a26",
       "area": "extensions",
       "tags": [],
-      "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path. Re-review pending: designedOutCases need owner approval.",
-      "designedOutCases": [
-        "validators \u203a leave nothing in TypeBox's build accumulators"
-      ]
+      "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
     },
     {
       "path": "packages/chord/test/next/link/channel.test.ts",
@@ -2603,10 +2585,7 @@
       "upstreamTestHash": "sha256:cacd209499045575d937bb8ac50595119b93299b7f6c8caf77304a3889a3d11d",
       "area": "extensions",
       "tags": [],
-      "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path. Re-review pending: designedOutCases need owner approval.",
-      "designedOutCases": [
-        "native sources as derive sources \u203a types a derive's sources: watchables of either kind, never a native's handle (Fable)"
-      ]
+      "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
     },
     {
       "path": "packages/chord/test/next/state/watchable.test.ts",

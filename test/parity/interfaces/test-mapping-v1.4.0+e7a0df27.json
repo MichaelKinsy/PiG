@@ -2513,12 +2513,7 @@
       "evidence": [
         "chord/next/contracts/contract_test.go"
       ],
-      "rationale": "All 4 upstream cases run in the evidence files (lane D1); 3 type-level cases are designed out.",
-      "designedOutCases": [
-        "derived types › Implementation: one variant with its members, state watchables and methods taking args and a context",
-        "derived types › Implementation of a local contract is flat",
-        "derived types › ParamsOf: the params object"
-      ]
+      "rationale": "All 7 upstream cases run in the evidence files (lane D1)."
     },
     {
       "path": "packages/chord/test/next/contracts/declare.test.ts",
@@ -2527,9 +2522,8 @@
       "evidence": [
         "chord/next/contracts/declare_test.go"
       ],
-      "rationale": "All 10 upstream cases run in the evidence files (lane D1); 2 type-level cases are designed out.",
+      "rationale": "All 11 upstream cases run in the evidence files (lane D1); 1 type-level cases are designed out.",
       "designedOutCases": [
-        "declaration checks › refuse a remote declaration without a host address at the type level",
         "keyed members (slice 6a §12) › refuse a keyed member in a remote contract, at the type level and at declaration"
       ]
     },
@@ -2540,10 +2534,7 @@
       "evidence": [
         "chord/next/contracts/evolve_test.go"
       ],
-      "rationale": "All 15 upstream cases run in the evidence files (lane D1); 1 type-level cases are designed out.",
-      "designedOutCases": [
-        "long histories › the types track every step with its changes"
-      ]
+      "rationale": "All 16 upstream cases run in the evidence files (lane D1)."
     },
     {
       "path": "packages/chord/test/next/contracts/fingerprint.test.ts",
@@ -2556,12 +2547,12 @@
     },
     {
       "path": "packages/chord/test/next/contracts/history.test.ts",
-      "disposition": "designed-out",
+      "disposition": "ported",
       "upstreamTestHash": "sha256:44da0fbbb0c10fe9dc4aff47634443bcfaa522d6a41c3d7d7c766212b9b56497",
       "evidence": [
         "chord/next/contracts/history_test.go"
       ],
-      "rationale": "Every case checks TypeScript type-level machinery (expectTypeOf), which Go's compiler carries; the runtime form is covered by the evidence (lane D1)."
+      "rationale": "All 3 upstream cases run in the evidence files (lane D1)."
     },
     {
       "path": "packages/chord/test/next/contracts/host-kind.test.ts",
@@ -2570,10 +2561,7 @@
       "evidence": [
         "chord/next/contracts/host_kind_test.go"
       ],
-      "rationale": "All 5 upstream cases run in the evidence files (lane D1); 1 type-level cases are designed out.",
-      "designedOutCases": [
-        "hostAddress › is typed by the contract's params"
-      ]
+      "rationale": "All 6 upstream cases run in the evidence files (lane D1)."
     },
     {
       "path": "packages/chord/test/next/contracts/params.test.ts",
@@ -2621,10 +2609,7 @@
       "evidence": [
         "chord/next/data/errors_test.go"
       ],
-      "rationale": "All 9 upstream cases run in the evidence files (lane D1); 1 type-level cases are designed out.",
-      "designedOutCases": [
-        "ChordError › is a tagged union: a wrong pairing is a type error"
-      ]
+      "rationale": "All 10 upstream cases run in the evidence files (lane D1)."
     },
     {
       "path": "packages/chord/test/next/data/failure.test.ts",
@@ -2660,10 +2645,7 @@
       "evidence": [
         "chord/next/data/validator_test.go"
       ],
-      "rationale": "All 8 upstream cases run in the evidence files (lane D1); 1 type-level cases are designed out.",
-      "designedOutCases": [
-        "validators › leave nothing in TypeBox's build accumulators"
-      ]
+      "rationale": "All 9 upstream cases run in the evidence files (lane D1)."
     },
     {
       "path": "packages/chord/test/next/documents/address-source.test.ts",
@@ -2977,6 +2959,7 @@
       "evidence": [
         "chord/next/registries/record_test.go"
       ],
+      "rationale": "9 of 21 upstream cases are ported (lane D1); the 12 missing cases need the host, jobs, remote or store layers of later Chord v2 lanes and are listed in missingCases.",
       "missingCases": [
         "the table › is sorted by plugin name, then type, a facet first: never load order",
         "compose › composes every served registry once at the end of load's setups, an empty table too, before any object activates",
@@ -2990,8 +2973,7 @@
         "contributions › an object's contribution is in the table from live until it fails, again once retried, until it ends",
         "the last good composition (decision 5) › is dropped when a contribution it was built from leaves: `.value` throws until `compose` succeeds",
         "the table's memory › keeps nothing of a closed host: records, tables and followed contributions go with it"
-      ],
-      "rationale": "9 of 21 upstream cases are ported (lane D1); the 12 missing cases need the host, jobs, remote or store layers of later Chord v2 lanes and are listed in missingCases."
+      ]
     },
     {
       "path": "packages/chord/test/next/registries/registry.test.ts",
@@ -3000,13 +2982,13 @@
       "evidence": [
         "chord/next/registries/registry_test.go"
       ],
+      "rationale": "1 of 5 upstream cases are ported (lane D1); the 4 missing cases need the host, jobs, remote or store layers of later Chord v2 lanes and are listed in missingCases.",
       "missingCases": [
         "providers › one per host: a second serve is refused at load",
         "providers › a provider without compose is refused at load (plugin code is not type-checked)",
         "providers › a registry whose provider comes with `load` heals a `host.registry` made before it",
         "providers › are served only while the setup runs"
-      ],
-      "rationale": "1 of 5 upstream cases are ported (lane D1); the 4 missing cases need the host, jobs, remote or store layers of later Chord v2 lanes and are listed in missingCases."
+      ]
     },
     {
       "path": "packages/chord/test/next/registries/value.test.ts",
@@ -3015,6 +2997,7 @@
       "evidence": [
         "chord/next/registries/value_test.go"
       ],
+      "rationale": "4 of 16 upstream cases are ported (lane D1); the 12 missing cases need the host, jobs, remote or store layers of later Chord v2 lanes and are listed in missingCases.",
       "missingCases": [
         "older readers (S2) › without a value mapping, and for a reader newer than the provider, park readers failed { waiting } (contract_mismatch)",
         "older readers (S2) › drops an older reader's last good mapping after a contributor it was built from failed live (fix round 1, Astra 2)",
@@ -3028,8 +3011,7 @@
         "values' memory › keeps no old composition once its readers stopped waiting and nobody follows it (Opus)",
         "values' memory › a value an app keeps after `host.close` keeps no closed host, and reads its last composition (Sol, Astra)",
         "observe › calls a synchronous observer inside the batch that composed; it counts as watching"
-      ],
-      "rationale": "4 of 16 upstream cases are ported (lane D1); the 12 missing cases need the host, jobs, remote or store layers of later Chord v2 lanes and are listed in missingCases."
+      ]
     },
     {
       "path": "packages/chord/test/next/remote/calls.test.ts",
@@ -3084,13 +3066,13 @@
         "chord/next/state/batch_own_test.go",
         "chord/next/state/batch_test.go"
       ],
+      "rationale": "1 of 5 upstream cases are ported (lane D1); the 4 missing cases need the host, jobs, remote or store layers of later Chord v2 lanes and are listed in missingCases.",
       "missingCases": [
         "reentrancy › refuses watch (ref.state too), release, get, load, close and a transaction in a commit's derive computes",
         "reentrancy › refuses them in a lazy compute outside a commit",
         "reentrancy › clears the flag after a throwing compute",
         "delivery › reports a delivery that throws and still delivers the later frames of the commit"
-      ],
-      "rationale": "1 of 5 upstream cases are ported (lane D1); the 4 missing cases need the host, jobs, remote or store layers of later Chord v2 lanes and are listed in missingCases."
+      ]
     },
     {
       "path": "packages/chord/test/next/state/derive.test.ts",
@@ -3098,8 +3080,10 @@
       "upstreamTestHash": "sha256:ca292a29a4a223f8b26a6b9e3c55b5fb5d8cc40a8bd42b903816e8b91e9d375d",
       "evidence": [
         "chord/next/state/derive_own_test.go",
+        "chord/next/state/derive_sources_own_test.go",
         "chord/next/state/derive_test.go"
       ],
+      "rationale": "3 of 18 upstream cases are ported (lane D1); the 15 missing cases need the host, jobs, remote or store layers of later Chord v2 lanes and are listed in missingCases.",
       "missingCases": [
         "derives across objects › update in the batch of the commit that changed their source's object",
         "the pull model › computes a diamond's derives once each per batch",
@@ -3116,27 +3100,12 @@
         "the retired flag › a derive over a retired source publishes retired: true although its value and ops are unchanged (rule 21)",
         "the retired flag › a retirement while the derive is failed travels with its next good value",
         "the retired flag › a retirement visits each derive of a diamond once, not once per path (40 derives)"
-      ],
-      "rationale": "3 of 18 upstream cases are ported (lane D1); the 15 missing cases need the host, jobs, remote or store layers of later Chord v2 lanes and are listed in missingCases."
+      ]
     },
     {
       "path": "packages/chord/test/next/state/native-source.test.ts",
-      "disposition": "partial",
-      "upstreamTestHash": "sha256:cacd209499045575d937bb8ac50595119b93299b7f6c8caf77304a3889a3d11d",
-      "evidence": [
-        "chord/next/state/native_own_test.go"
-      ],
-      "missingCases": [
-        "native sources as derive sources › a derive reads JSON and native sources alike, marked when a native one changes",
-        "native sources as derive sources › `ref.state` is a derive source: a state member can show a dependency's reachability",
-        "native sources as derive sources › refuses a native source as a state member (Q14)",
-        "watching a native source that fails › a watch taken while it is failed opens at its last good value and gets the failure first",
-        "watching a native source that fails › an `on` routine started while its source is failed waits for its next good value, never calls with the stale one"
-      ],
-      "rationale": "0 of 6 upstream cases are ported (lane D1); the 5 missing cases need the host, jobs, remote or store layers of later Chord v2 lanes and are listed in missingCases.",
-      "designedOutCases": [
-        "native sources as derive sources › types a derive's sources: watchables of either kind, never a native's handle (Fable)"
-      ]
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:cacd209499045575d937bb8ac50595119b93299b7f6c8caf77304a3889a3d11d"
     },
     {
       "path": "packages/chord/test/next/state/watchable.test.ts",
@@ -3146,14 +3115,14 @@
         "chord/next/state/watchable_own_test.go",
         "chord/next/state/watchable_test.go"
       ],
+      "rationale": "1 of 6 upstream cases are ported (lane D1); the 5 missing cases need the host, jobs, remote or store layers of later Chord v2 lanes and are listed in missingCases.",
       "missingCases": [
         "watches › start from the value at acquisition; a listener that keeps up gets each commit",
         "watches › give a busy listener one call with the newest value and the folded ops",
         "watches › end cancelled when their context aborts",
         "watches › end with listener_error when the listener throws, reported to onError",
         "subscribers › get each batch's frame synchronously, inside the commit, and count as watching"
-      ],
-      "rationale": "1 of 6 upstream cases are ported (lane D1); the 5 missing cases need the host, jobs, remote or store layers of later Chord v2 lanes and are listed in missingCases."
+      ]
     },
     {
       "path": "packages/chord/test/next/state/writable.test.ts",
