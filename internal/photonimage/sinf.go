@@ -10,7 +10,7 @@ import "math"
 // Photon's wasm calls `f32::sin` through compiler_builtins' libm (the symbol `compiler_builtins::math::libm::sinf::sinf` is in
 // photon_rs_bg.wasm): the FreeBSD s_sinf.c that musl and the libm crate carry. It is not the correctly rounded sine of the double
 // precision `math.Sin`: for some arguments it is one float32 step away, which moves a Lanczos weight by one step and, for a rare pixel,
-// the rounded channel by one. sinf ports it so the weights are Photon's.
+// the rounded channel by one. sinf ports it so the weights are Photon's. The kernel passes it arguments below 3*pi only, which is why the medium-size reduction suffices.
 
 // Ports libm 0.2.16 src/math/sinf.rs, k_sinf.rs, k_cosf.rs and rem_pio2f.rs (the algorithm is unchanged since libm 0.2.1), for the
 // arguments the kernel gives it (|x| < 3*pi, below the 2^28*pi/2 where rem_pio2f needs rem_pio2_large).
