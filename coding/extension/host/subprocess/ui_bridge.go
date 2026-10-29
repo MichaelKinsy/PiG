@@ -2165,6 +2165,7 @@ func (b *UIBridge) HandleNotifyFrom(extName string, owner *Conn, n *NotifyPayloa
 		}
 		proxy := handle.(*overlayProxy)
 		proxy.mouse.Store(p.Mouse)
+		proxy.capturesViewportInput.Store(p.CapturesViewportInput)
 		if len(p.View) > 0 && string(p.View) != "null" {
 			proxy.UpdateViewFrame(owner, p.Key, p.View, p.Lines, p.Width, p.Seq, width)
 			return
@@ -2894,6 +2895,17 @@ func (h *customOverlayHost) OnMouse(event extension.RemoteMouseEvent) extension.
 	return h.bridge.sendCustomMouse(h.extName, h.owner, h.key, event)
 }
 
+// CapturesViewportInput is the component's capturesViewportInput as its latest frame reported it; see [extension.RemoteOverlayViewportHost].
+func (h *customOverlayHost) CapturesViewportInput() bool {
+	h.bridge.mu.RLock()
+	handle, ok := h.bridge.customOverlays[customOverlayOwnerPrefix(h.extName, h.owner)+h.key]
+	h.bridge.mu.RUnlock()
+	if !ok {
+		return false
+	}
+	return handle.(*overlayProxy).capturesViewportInput.Load()
+}
+
 // OnFocus publishes a change of the component's focus; see [extension.RemoteOverlayFocusHost].
 func (h *customOverlayHost) OnFocus(focused bool) {
 	h.bridge.sendCustomFocus(h.extName, h.owner, h.key, focused)
@@ -2921,6 +2933,8 @@ type overlayProxy struct {
 	hasView   bool
 	// mouse reports that the latest frame's component takes the mouse.
 	mouse atomic.Bool
+	// capturesViewportInput is the capturesViewportInput the latest frame carried.
+	capturesViewportInput atomic.Bool
 }
 
 func newOverlayProxy() *overlayProxy {

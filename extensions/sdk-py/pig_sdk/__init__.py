@@ -563,8 +563,10 @@ class ExecResult:
     stdout: str = ""
     stderr: str = ""
     exit_code: int = 0
-    # Upstream ExecResult.killed: the process was killed (timeout or abort).
+    # Upstream ExecResult.killed: pi terminated the process (timeout, abort, or output over ``max_buffer``).
     killed: bool = False
+    # Upstream ExecResult.truncated: output exceeded ``max_buffer``; ``stdout`` and ``stderr`` are incomplete and ``exit_code`` is nonzero.
+    truncated: bool = False
 
 
 @dataclass(kw_only=True)
@@ -3642,19 +3644,27 @@ class Context:
 
     # Shell ------------------------------------------------------------------
 
-    def exec(self, command: str, args: list[str] | None = None, *, timeout: float | None = None, cwd: str | None = None, signal: ProviderSignal | None = None) -> ExecResult:
+    def exec(self, command: str, args: list[str] | None = None, *, timeout: float | None = None, cwd: str | None = None, max_buffer: float | None = None, signal: ProviderSignal | None = None) -> ExecResult:
         """Run a command through the host's executor.
 
-        ``timeout`` (milliseconds), ``cwd`` and ``signal`` are upstream
-        ExecOptions; a command the timeout kills reports ``killed``. Setting
+        ``timeout`` (milliseconds), ``cwd``, ``max_buffer`` and ``signal`` are
+        upstream ExecOptions; a command the timeout kills reports ``killed``.
+        ``max_buffer`` caps the bytes of stdout and stderr together (default
+        256 MiB, capped by the runtime string limit): output past it
+        terminates the command and the result reports ``truncated`` and
+        ``killed`` with a nonzero ``exit_code``; a character the cap cuts is
+        dropped whole. It must be an integer from 0 to the runtime string
+        limit: the host fails the call (HostCallError) for a fraction, a
+        negative value or one above the limit, and a NaN or infinity raises
+        ValueError before the call, as it cannot cross the wire. Setting
         the ``signal`` (a :class:`ProviderSignal`) terminates the command, as
         Pi does: the command alone receives SIGTERM (the process is killed on
         Windows), no descendant is signalled, and the call returns the output
         written so far with ``killed`` set and ``exit_code`` 0, which is what a
         command that a signal ended reports. A signal that is set before the
-        call starts the command and ends it at once. Nothing follows the
-        SIGTERM, as upstream's: a command that ignores it keeps the call
-        waiting. Without a ``signal`` the command ends when the calling request
+        call starts the command and ends it at once. SIGKILL follows the
+        SIGTERM five seconds later if the command has not exited, for a
+        timeout and a ``max_buffer`` overflow too. Without a ``signal`` the command ends when the calling request
         is cancelled; a ``signal`` replaces that cancellation, so cancelling
         the request then leaves the command running and the call waits for its
         result. Raises HostCallError, a RuntimeError whose message is the
@@ -3670,6 +3680,12 @@ class Context:
             options["timeout"] = timeout
         if cwd is not None:
             options["cwd"] = cwd
+        if max_buffer is not None:
+            if isinstance(max_buffer, bool) or not isinstance(max_buffer, (int, float)):
+                raise TypeError("max_buffer must be a number")
+            if max_buffer != max_buffer or max_buffer in (float("inf"), float("-inf")):
+                raise ValueError("maxBuffer must be an integer between 0 and the runtime string limit")
+            options["maxBuffer"] = max_buffer
         if options:
             call_args["options"] = options
         if signal is None:
@@ -3682,6 +3698,7 @@ class Context:
             stderr=str(result.get("stderr") or ""),
             exit_code=int(result.get("code") or 0),
             killed=bool(result.get("killed")),
+            truncated=bool(result.get("truncated")),
         )
 
     # Agent/session control --------------------------------------------------

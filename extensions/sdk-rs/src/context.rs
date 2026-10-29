@@ -3590,8 +3590,8 @@ impl Context {
     /// When `options.signal` is cancelled the host terminates the command, as Pi does: the command alone receives SIGTERM (the
     /// process is killed on Windows), no descendant is signalled, and the call returns the output written so far with `killed`
     /// set and `exit_code` 0, which is what a command that a signal ended reports. A signal that is cancelled before the call
-    /// starts the command and ends it at once. Nothing follows the SIGTERM, as upstream's: a command that ignores it keeps the
-    /// call waiting. Without a signal the command ends when the calling request is cancelled; a signal replaces that
+    /// starts the command and ends it at once. SIGKILL follows the SIGTERM five seconds later if the command has not exited, for a
+    /// timeout and a `max_buffer` overflow too. Without a signal the command ends when the calling request is cancelled; a signal replaces that
     /// cancellation, so cancelling the request then leaves the command running and the call waits for its result.
     pub fn exec_with_options(
         &self,
@@ -3605,6 +3605,12 @@ impl Context {
         }
         if let Some(cwd) = options.cwd.as_deref() {
             opts.insert("cwd".into(), serde_json::Value::String(cwd.to_string()));
+        }
+        if let Some(max_buffer) = options.max_buffer {
+            if !max_buffer.is_finite() {
+                return Err("maxBuffer must be an integer between 0 and the runtime string limit".to_string());
+            }
+            opts.insert("maxBuffer".into(), serde_json::Value::from(max_buffer));
         }
         let mut call = serde_json::json!({ "command": command, "args": args, "options": opts });
         let Some(signal) = options.signal.as_ref() else {
@@ -3660,6 +3666,10 @@ impl Context {
             exit_code: value.get("code").and_then(|v| v.as_i64()).unwrap_or(0) as i32,
             killed: value
                 .get("killed")
+                .and_then(|v| v.as_bool())
+                .unwrap_or(false),
+            truncated: value
+                .get("truncated")
                 .and_then(|v| v.as_bool())
                 .unwrap_or(false),
         })
@@ -4114,9 +4124,12 @@ pub struct ExecResult {
     pub stderr: String,
     /// The host's `code`.
     pub exit_code: i32,
-    /// Whether the command was killed (timeout or cancellation).
+    /// Whether pi terminated the command (timeout, cancellation, or output over `max_buffer`).
     #[serde(default)]
     pub killed: bool,
+    /// Whether the output exceeded `max_buffer`: `stdout` and `stderr` are incomplete and `exit_code` is nonzero.
+    #[serde(default)]
+    pub truncated: bool,
 }
 
 /// Upstream `ExecOptions` for [`Context::exec_with_options`].
@@ -4126,6 +4139,8 @@ pub struct ExecOptions {
     pub timeout: Option<f64>,
     /// Working directory; the session's when unset.
     pub cwd: Option<String>,
+    /// Upstream's `maxBuffer`: the byte limit of stdout and stderr together. Output past it terminates the command and the result has `truncated` and `killed` set and a nonzero `exit_code`; a character the limit cuts is dropped whole. Unset: 256 MiB, capped by the runtime string limit. It is a JavaScript number that must be an integer from 0 to that limit: the host fails the call for a fraction, a negative value or one above it, and the call fails here for NaN or an infinity, which cannot cross the wire.
+    pub max_buffer: Option<f64>,
     /// Upstream's `signal`: cancelling it terminates the command (see [`Context::exec_with_options`]). Unset, the command ends when the calling request is cancelled.
     pub signal: Option<crate::ProviderSignal>,
 }
@@ -4181,6 +4196,9 @@ pub struct SourceInfo {
     pub origin: String,
     #[serde(default, rename = "baseDir", skip_serializing_if = "Option::is_none")]
     pub base_dir: Option<String>,
+    /// The changelog file of the package that supplied the resource, when it has one (`SourceInfo.changelogPath`).
+    #[serde(default, rename = "changelogPath", skip_serializing_if = "Option::is_none")]
+    pub changelog_path: Option<String>,
 }
 
 /// Upstream `ToolInfo`, one entry of `get_all_tools()`: a tool definition's
@@ -5593,6 +5611,7 @@ mod sdk_surface_call_tests {
                     &ExecOptions {
                         timeout: Some(250.0),
                         cwd: Some("/work".to_string()),
+                        max_buffer: None,
                         signal: None,
                     },
                 )

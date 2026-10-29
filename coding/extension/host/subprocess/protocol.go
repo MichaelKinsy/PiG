@@ -973,6 +973,9 @@ type RemoteOverlayRenderPayload struct {
 	// Mouse reports a component that takes the mouse:
 	// the host hands it NotifyUICustomMouse events inside its bounds.
 	Mouse bool `json:"mouse,omitempty"`
+	// CapturesViewportInput is the component's capturesViewportInput when the frame was drawn (Component.capturesViewportInput in
+	// packages/tui/src/tui.ts): the host keeps fullscreen viewport keys (PageUp, PageDown, ...) away from the transcript while it is true.
+	CapturesViewportInput bool `json:"capturesViewportInput,omitempty"`
 }
 
 // pig additive (D107): the extension component kit. A view describes an

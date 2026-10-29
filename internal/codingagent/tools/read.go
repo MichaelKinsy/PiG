@@ -16,6 +16,7 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/imageprocessing"
 	"github.com/MichaelKinsy/PiG/internal/nodeerrno"
 	"github.com/MichaelKinsy/PiG/internal/nodefs"
+	"github.com/MichaelKinsy/PiG/internal/utf8stream"
 )
 
 // ─── Read Tool ────────────────────────────────────────────────────────────────
@@ -326,8 +327,8 @@ func lineStart(data []byte, from, at, line int) int {
 // decoding: 0x0A is never part of a multibyte sequence, and an invalid sequence before it becomes U+FFFD before the newline. The
 // decoder keeps a BOM, so a range decodes as it reads in the whole file.
 func decodeText(data []byte) string {
-	var decoder utf8StreamDecoder
-	return decoder.decode(data, false)
+	var decoder utf8stream.Decoder
+	return decoder.Decode(data, false)
 }
 
 // readTextResult mirrors the text branch of upstream read.ts execute over the file's bytes. Upstream decodes the file and splits it into

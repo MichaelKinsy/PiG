@@ -1321,7 +1321,9 @@ func (e *Editor) AutocompleteAccept() (submit bool) {
 
 // CapturesViewportInput reports that the open autocomplete menu receives fullscreen viewport keys, such as PageUp and
 // PageDown (editor.ts capturesViewportInput).
-func (e *Editor) CapturesViewportInput() bool { return len(e.autocompleteItems) > 0 }
+func (e *Editor) CapturesViewportInput() bool {
+	return len(e.autocompleteItems) > 0 || (e.remote != nil && e.remote.capturesViewportInput)
+}
 
 // AutocompleteMove moves the selection with keyboard-style wraparound. Mouse callers clamp their target before invoking it.
 func (e *Editor) AutocompleteMove(delta int) {

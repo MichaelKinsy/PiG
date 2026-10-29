@@ -290,26 +290,33 @@ value the client answered with (RPC clients may send any), :false when it sent n
 
 ;;; exec ---------------------------------------------------------------------
 
-(defstruct (exec-result (:constructor make-exec-result (stdout stderr exit-code killed)))
-  stdout stderr exit-code killed)
+(defstruct (exec-result (:constructor make-exec-result (stdout stderr exit-code killed truncated)))
+  stdout stderr exit-code killed truncated)
 
 (declaim (ftype function core-exec-with-signal tool-start-before-call tool-start-after-call tool-start-response-slot settle-slot-settle))
 
-(defun ctx-exec (ctx command &key args timeout cwd signal)
+(defun ctx-exec (ctx command &key args timeout cwd max-buffer signal)
   "Run COMMAND through the host's executor. TIMEOUT is in milliseconds; a command it kills reports KILLED.
-SIGNAL, an abort-signal, ends the command when it is set (SIGTERM to the command alone): the call returns the output so far, killed, code 0.
-It replaces the cancellation of the calling request."
+MAX-BUFFER caps the bytes of stdout and stderr together (default 256 MiB, capped by the runtime string limit): output past it terminates the command and the
+result reports TRUNCATED and KILLED with a nonzero code; a character the cap cuts is dropped whole. It must be an integer from 0 to the runtime string limit: the
+host fails the call for a fraction, a negative value or one above the limit, and a NaN or infinity signals a host-call-error here, as it cannot cross the wire.
+SIGNAL, an abort-signal, ends the command when it is set (SIGTERM to the command alone, SIGKILL five seconds later if it has not exited): the call returns the output
+so far, killed, code 0. It replaces the cancellation of the calling request."
   (let ((call-args (obj "command" command "args" (coerce args 'simple-vector)))
         (options (obj)))
     (when timeout (setf (gethash "timeout" options) timeout))
     (when cwd (setf (gethash "cwd" options) cwd))
+    (when max-buffer
+      (when (and (floatp max-buffer) (or (sb-ext:float-nan-p max-buffer) (sb-ext:float-infinity-p max-buffer)))
+        (error 'host-call-error :message "maxBuffer must be an integer between 0 and the runtime string limit"))
+      (setf (gethash "maxBuffer" options) max-buffer))
     (when (plusp (hash-table-count options)) (setf (gethash "options" call-args) options))
     (let ((result (or (if signal (core-exec-with-signal ctx call-args signal) (ctx-call-host ctx "exec" call-args)) (obj))))
       (flet ((text (key) (let ((v (jget result key))) (if (stringp v) v "")))
              (truth (key) (eq (jget result key) t)))
         (make-exec-result (text "stdout") (text "stderr")
                           (let ((code (jget result "code"))) (if (integerp code) code 0))
-                          (truth "killed"))))))
+                          (truth "killed") (truth "truncated"))))))
 
 ;;; agent and session control -------------------------------------------------
 
