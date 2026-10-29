@@ -10,7 +10,7 @@
 
 [pin]
 reference = "earendil-works/pi"
-commit = "b3a29f1111114fac696e2cfcd65acdb382a6ed5e"
+commit = "e7a0df27c09d11bf4161d3605246cbf57a129cb2"
 release = "1.0.4"
 
 [[scenario]]
@@ -66,7 +66,7 @@ id = "E04"
 family = "example"
 runner = "example"
 source = "packages/durable/test/examples/04-watches.ts"
-sha256 = "de60a861c8329a6643bd7c2dc55215682d2aeacc041fd6d6c43df8803e52895c"
+sha256 = "ac141752ff2ae2ad2e13cd13e0ffdea4e827b6b5d463fd0848079515f2eb4b52"
 owner = "dcore-session"
 about = "serialize asynchronous document work with a watch"
 levels = ["store", "commit", "context", "output", "order"]
@@ -198,7 +198,7 @@ id = "E15"
 family = "example"
 runner = "example"
 source = "packages/durable/test/examples/15-real-model.ts"
-sha256 = "5aa5b5efb32d189ec6f437d9a3351e8b99e90235dcfa45ab45cdd497cb8da483"
+sha256 = "2b0f47681147478328c95f332d71122785c9b86b45de52be94cc68ea5130ea06"
 owner = "dcore-loop"
 about = "a real model (OpenAI); no key, no cassette: skipped"
 levels = ["store", "commit", "context", "output", "order"]
@@ -235,7 +235,7 @@ id = "E18"
 family = "example"
 runner = "example"
 source = "packages/durable/test/examples/18-json.ts"
-sha256 = "5ef8535a3cd7ca2496c23dbe38e51d2c2ee4a0001b2b161d814a0d1884020a50"
+sha256 = "4e60aa74bdd18caaef28c80d7042c16c2b09209bb865d5ff7699bce14d6df730"
 owner = "dcore-loop"
 about = "JSON mode, faux path"
 levels = ["store", "commit", "context", "output", "order"]
@@ -259,7 +259,7 @@ id = "E20"
 family = "example"
 runner = "example"
 source = "packages/durable/test/examples/20-late-join.ts"
-sha256 = "2ed726fc736aa9e35227fde009d0daf15079759690ca7ab9092116a243968e6a"
+sha256 = "94905a34c6cf3d627bf95e5650c7ec1ab741f2547b91114216dd04cf728933d6"
 owner = "dcore-session"
 about = "a client attaches mid-run"
 levels = ["store", "commit", "context", "output", "order"]
@@ -271,7 +271,7 @@ id = "E21"
 family = "example"
 runner = "example"
 source = "packages/durable/test/examples/21-subagent-foreground.ts"
-sha256 = "7b55c56abaeeec151d24344fdf6ec1c674c01530b1d6d4f2ebb74ca0b2e2e662"
+sha256 = "be5530a57c971bff9a39fbe6eab600103155c511b55ea90837da0838a1d0071d"
 owner = "dcore-session"
 about = "a foreground subagent tool"
 levels = ["store", "commit", "context", "output", "order"]
@@ -283,7 +283,7 @@ id = "E22"
 family = "example"
 runner = "example"
 source = "packages/durable/test/examples/22-subagent-background.ts"
-sha256 = "2b2e2b3862902da0a939d3b25da93a8ca68121c17373711bdbc44171954dc805"
+sha256 = "7ec8f2881294d6fd38f12075c3cd38b32a0beb65f9563e057fa9c3f358d071db"
 owner = "dcore-session"
 about = "persistent background subagents"
 levels = ["store", "commit", "context", "output", "order"]
@@ -391,12 +391,90 @@ id = "E31"
 family = "example"
 runner = "example"
 source = "packages/durable/test/examples/31-transcript.ts"
-sha256 = "d031cdbcb3633fe5024dc2ce8bac642cd642bf558647436eabc77e64a9b9f20a"
+sha256 = "708afcaee122293163b1a9041d02fd3e208eec47f578c30bf1823c9cb94a0278"
 owner = "dcore-session"
 about = "a client keeps a conversation's transcript over the windowed view"
 levels = ["store", "commit", "context", "output", "order"]
 normalisers = []
 status = "ready"
+
+[[scenario]]
+id = "E32"
+family = "example"
+runner = "example"
+source = "packages/durable/test/examples/32-tests-after-edits.ts"
+sha256 = "41290c97ea2ec68b54d88a95e98067516ac271faf33251b7778f3c32c2dd7822"
+owner = "dcore-loop"
+about = "run the tests after the agent's edits"
+levels = ["store", "commit", "context", "output", "order"]
+normalisers = []
+status = "pending"
+reason = "pending lane C (Pi durable features after the 5f312dac port): afterTool runs on every tool task result, and calls to tools not offered run as tool tasks (87eff524, 1c6928b3)"
+
+[[scenario]]
+id = "E33"
+family = "example"
+runner = "example"
+source = "packages/durable/test/examples/33-turn-limit-and-continue.ts"
+sha256 = "8091ad0e415c079b47e000fff3bd9b2ec4275915c393ec5dc79e6a48c01799c4"
+owner = "dcore-loop"
+about = "a per-conversation turn limit and a continue submission"
+levels = ["store", "commit", "context", "output", "order"]
+normalisers = []
+status = "pending"
+reason = "pending lane C (Pi durable features after the 5f312dac port): the per-conversation turn limit and continue submissions (f6a9db1d, fb524dd2)"
+
+[[scenario]]
+id = "E34"
+family = "example"
+runner = "example"
+source = "packages/durable/test/examples/34-submit-in-commit.ts"
+sha256 = "acf2823a8ae84484b0876fead94f182648a220e7a2990ff9bded78986db5240a"
+owner = "dcore-session"
+about = "admit a submission inside the caller's commit"
+levels = ["store", "commit", "context", "output", "order"]
+normalisers = []
+status = "pending"
+reason = "pending lane C (Pi durable features after the 5f312dac port): submissions admitted inside the caller's commit with submit(tx, draft), and whenIdle (cc9c5231, 6a282511)"
+
+[[scenario]]
+id = "E35"
+family = "example"
+runner = "example"
+source = "packages/durable/test/examples/35-durable-on-the-store.ts"
+sha256 = "1940003ad38efa190e36b576942804f00f12cd75b90ef1e7d7d140295052f0c1"
+owner = "dcore-store"
+about = "a Harness on Chord's store"
+levels = ["store", "commit", "context", "output", "order"]
+normalisers = []
+status = "pending"
+reason = "pending lane D-store (Durable on Chord's store, registries): a Harness on StoreStorage over Chord's store (14b4c56e)"
+
+[[scenario]]
+id = "E36"
+family = "example"
+runner = "example"
+source = "packages/durable/test/examples/36-durable-views.ts"
+sha256 = "1c1d5ec3f72f9cc1ac7352624735a1b67bf4b90afba18ff01600772101e1da25"
+owner = "dcore-store"
+about = "Durable views on Chord's store"
+levels = ["store", "commit", "context", "output", "order"]
+normalisers = []
+status = "pending"
+reason = "pending lane D-store (Durable on Chord's store, registries): Durable views on Chord's store (14b4c56e)"
+
+[[scenario]]
+id = "E37"
+family = "example"
+runner = "example"
+source = "packages/durable/test/examples/37-harness-registry.ts"
+sha256 = "b62f6aab12c0ac15bf531ba00faf1310b17e2ac16907204ef8fd4497296075b5"
+owner = "dcore-loop"
+about = "a Harness over a registry"
+levels = ["store", "commit", "context", "output", "order"]
+normalisers = []
+status = "pending"
+reason = "pending lane D-store (Durable on Chord's store, registries): a Harness over a registry and host.root (6eb99ad6)"
 
 [[scenario]]
 id = "U-codemode-checkpoints"
@@ -419,6 +497,17 @@ levels = ["tests"]
 status = "ready"
 
 [[scenario]]
+id = "U-codemode-imports"
+family = "upstream-test"
+runner = "vitest"
+source = "packages/durable/test/codemode-imports.test.ts"
+sha256 = "2abdc6758279c53d873a8e764d3b06e0bf73ac37e07dfb930832a088df2d7426"
+owner = "dcore-loop"
+levels = ["tests"]
+status = "pending"
+reason = "pending lane C (Pi durable features after the 5f312dac port): toCodemodeIdentifier is imported from pi-codemode/declarations (bb65e3e4)"
+
+[[scenario]]
 id = "U-codemode-models"
 family = "upstream-test"
 runner = "vitest"
@@ -433,7 +522,7 @@ id = "U-codemode"
 family = "upstream-test"
 runner = "vitest"
 source = "packages/durable/test/codemode.test.ts"
-sha256 = "2d355090072d972420078ce5cf7f0975d8dd0bc56a35b9e517fd8c94ad079c86"
+sha256 = "667a48093efb522682a54824929bd79d0bc196870127a416b1a67537458375ca"
 owner = "dcore-loop"
 levels = ["tests"]
 status = "ready"
@@ -449,7 +538,7 @@ id = "U-conversation-transcript"
 family = "upstream-test"
 runner = "vitest"
 source = "packages/durable/test/conversation-transcript.test.ts"
-sha256 = "9a0beb7dc2de99cf01a9f2370ee96b6a976a73f7bd806e99336d3301934b8090"
+sha256 = "775ef73de2f397ffc2fea610e24afbdb18572982d3c549893f05dddd7826b621"
 owner = "dcore-session"
 levels = ["tests"]
 status = "ready"
@@ -469,7 +558,7 @@ id = "U-env-node-conformance"
 family = "upstream-test"
 runner = "vitest"
 source = "packages/durable/test/env-node-conformance.test.ts"
-sha256 = "9516f54eab474671e439ae04a89ed5196219d3ef5689bb603e2e3784f3c6acc9"
+sha256 = "b052a243a51aa777a4c835f15721ce08c2c875c976ca1c1d29a49e3641afbb9b"
 owner = "dcore-host"
 levels = ["tests"]
 status = "ready"
@@ -505,11 +594,22 @@ levels = ["tests"]
 status = "ready"
 
 [[scenario]]
+id = "U-harness-after-run"
+family = "upstream-test"
+runner = "vitest"
+source = "packages/durable/test/harness-after-run.test.ts"
+sha256 = "887a7f1a78ea3ebe19c89ac4c8836c6910e7fed18350cdbc73e23d2ca6a84d85"
+owner = "dcore-loop"
+levels = ["tests"]
+status = "pending"
+reason = "pending lane C (Pi durable features after the 5f312dac port): run-end tasks with the afterRun hook (7e15f960)"
+
+[[scenario]]
 id = "U-harness-blocked"
 family = "upstream-test"
 runner = "vitest"
 source = "packages/durable/test/harness-blocked.test.ts"
-sha256 = "08a3c318fd2e0daf4dd5e1c83b0e6f92438c1a70cc1660cf8e0cbff6c10f1d34"
+sha256 = "4b334f8d229d0ba2219b7af6541161ec941ade803219d560ad48cc37e57e14cd"
 owner = "dcore-session"
 levels = ["tests"]
 status = "ready"
@@ -539,10 +639,11 @@ id = "U-harness-compaction"
 family = "upstream-test"
 runner = "vitest"
 source = "packages/durable/test/harness-compaction.test.ts"
-sha256 = "a9027dffbfe152001214043532800145b44b3dcf08362f585a7668aeac655758"
+sha256 = "e636f6208791332942ab04246184ca14af140c375de756e69f422126c4c8fa82"
 owner = "dcore-store"
 levels = ["tests"]
-status = "ready"
+status = "pending"
+reason = "pending lane C (Pi durable features after the 5f312dac port): pi.live version 3 gives a stored run without turns a count of 0, and the run's turns (018fdcf4, f6a9db1d)"
 
 [[scenario]]
 id = "U-harness-context"
@@ -553,6 +654,17 @@ sha256 = "08e0b9093dc25c9b2f2fa0a9e18718e85f217782e75de1ef4bf1f14563f5f3c5"
 owner = "dcore-store"
 levels = ["tests"]
 status = "ready"
+
+[[scenario]]
+id = "U-harness-continue"
+family = "upstream-test"
+runner = "vitest"
+source = "packages/durable/test/harness-continue.test.ts"
+sha256 = "8ed81a038ea0f4cdfccd81ecda6354cad100dfa9cd0bded8170b8a4496824cf1"
+owner = "dcore-session"
+levels = ["tests"]
+status = "pending"
+reason = "pending lane C (Pi durable features after the 5f312dac port): continue submissions (fb524dd2)"
 
 [[scenario]]
 id = "U-harness-conversations"
@@ -569,7 +681,7 @@ id = "U-harness-deferred-progress"
 family = "upstream-test"
 runner = "vitest"
 source = "packages/durable/test/harness-deferred-progress.test.ts"
-sha256 = "e76a420baae6ba52a5792794727e338c8a053660ef388eb7f836cf06295c735c"
+sha256 = "c0c1aa38ec884f479f13e383caa30731224b2abb24b8a94962745d3c5a796dda"
 owner = "dcore-session"
 levels = ["tests"]
 status = "ready"
@@ -589,20 +701,33 @@ id = "U-harness-generation-recovery"
 family = "upstream-test"
 runner = "vitest"
 source = "packages/durable/test/harness-generation-recovery.test.ts"
-sha256 = "f888af61dc1be41d32c4486d29fc277e85593b81f14823c688314a2bda01ce10"
+sha256 = "3af8f443ad4e08b3907e5150fe1f21333142653825464eed8f285a73366cba46"
 owner = "dcore-loop"
 levels = ["tests"]
-status = "ready"
+status = "pending"
+reason = "pending lane C (Pi durable features after the 5f312dac port): pi.live run carries turns and first (7e15f960, f6a9db1d)"
 
 [[scenario]]
 id = "U-harness-generation"
 family = "upstream-test"
 runner = "vitest"
 source = "packages/durable/test/harness-generation.test.ts"
-sha256 = "43b691d134536925bcbd7a6ba4ee11aa39bff517a0ae2455f979340c02ea8b4a"
+sha256 = "0c88bca32e91338f4a342a2a2f16c12b7fd55109c59941b0a9de291e29d6e2af"
 owner = "dcore-loop"
 levels = ["tests"]
-status = "ready"
+status = "pending"
+reason = "pending lane C (Pi durable features after the 5f312dac port): pi.live run and runFailure carry first, turns; unoffered tool tasks (7e15f960, f6a9db1d, 1c6928b3)"
+
+[[scenario]]
+id = "U-harness-hook-reads"
+family = "upstream-test"
+runner = "vitest"
+source = "packages/durable/test/harness-hook-reads.test.ts"
+sha256 = "d04265c97672ba7fde44d525a7195821a090b7156bb44210696760af9deec07b"
+owner = "dcore-loop"
+levels = ["tests"]
+status = "pending"
+reason = "pending lane C (Pi durable features after the 5f312dac port): entry reads for hooks and tasks (65fba65b)"
 
 [[scenario]]
 id = "U-harness-host-inputs"
@@ -619,7 +744,7 @@ id = "U-harness-inbox"
 family = "upstream-test"
 runner = "vitest"
 source = "packages/durable/test/harness-inbox.test.ts"
-sha256 = "657d22d057b476c771ed551d947663b1be40a43aec47f955804ba75261171d04"
+sha256 = "ca2884a8f7dac42e0bea8492dd34bb0942dfd0ceaa493d22962347c039f92c62"
 owner = "dcore-session"
 levels = ["tests"]
 status = "ready"
@@ -629,17 +754,18 @@ id = "U-harness-input-entries"
 family = "upstream-test"
 runner = "vitest"
 source = "packages/durable/test/harness-input-entries.test.ts"
-sha256 = "8cffb0eb1a967ab9340a8388654120bf72640344c68f50ca2c047f1efaa38714"
+sha256 = "c1cbec807cec25b100c544eb75f5ae97bf3ec0b563e95d8de9993fe7a2d7e87d"
 owner = "dcore-session"
 levels = ["tests"]
-status = "ready"
+status = "pending"
+reason = "pending lane C (Pi durable features after the 5f312dac port): pi.live runFailure carries first (7e15f960)"
 
 [[scenario]]
 id = "U-harness-inspect"
 family = "upstream-test"
 runner = "vitest"
 source = "packages/durable/test/harness-inspect.test.ts"
-sha256 = "05a12f76ab3f4cd2b8b18db14180ebd61976512f7715001e575a516651ca266f"
+sha256 = "685d8063e16b24310d3270d174803368e4d62bcbbcbf91e308e455fc41e28b90"
 owner = "dcore-session"
 levels = ["tests"]
 status = "ready"
@@ -659,7 +785,7 @@ id = "U-harness-lifecycle"
 family = "upstream-test"
 runner = "vitest"
 source = "packages/durable/test/harness-lifecycle.test.ts"
-sha256 = "d565006c65eb1b3f76ae47d659a49f6ba3377abbe01858102e876f9fbe6d3cb9"
+sha256 = "9966a51dc5f85703cb9972786c4c06fd049bcbeaa8268103df6885b49f4eeed4"
 owner = "dcore-session"
 levels = ["tests"]
 status = "ready"
@@ -669,17 +795,18 @@ id = "U-harness-live-deltas"
 family = "upstream-test"
 runner = "vitest"
 source = "packages/durable/test/harness-live-deltas.test.ts"
-sha256 = "c12c833129a881d69ffe1b0a0af39fe5db49c0d2283fe2de9f69b73032329747"
+sha256 = "80386749a7dfe46deb0b6862bb6c1fb88b2cca4d4400bdc480e7d850959bbad7"
 owner = "dcore-loop"
 levels = ["tests"]
-status = "ready"
+status = "pending"
+reason = "pending lane C (Pi durable features after the 5f312dac port): pi.live run turns and first, and flagged tool slots for calls not offered (7e15f960, f6a9db1d, 1c6928b3)"
 
 [[scenario]]
 id = "U-harness-nested-tools-restart"
 family = "upstream-test"
 runner = "vitest"
 source = "packages/durable/test/harness-nested-tools-restart.test.ts"
-sha256 = "7867a4fb54de6c4048a32050c015c0e1b5a6ee891018412d396129e232ca7734"
+sha256 = "06762903976feb0e8f9dfd9cea4cdbca8292e459025c9b067dffd156b13c72e3"
 owner = "dcore-loop"
 levels = ["tests"]
 status = "ready"
@@ -689,30 +816,33 @@ id = "U-harness-nested-tools"
 family = "upstream-test"
 runner = "vitest"
 source = "packages/durable/test/harness-nested-tools.test.ts"
-sha256 = "bfb6b42661f24fd8f2ee9d03c77e65e3fd6ced343fb689bde266918fd1c943e7"
+sha256 = "ac01ebc37ed46f7907801b74857fa6036fe6ea23a5f5944f5744dbe8563a703a"
 owner = "dcore-loop"
 levels = ["tests"]
-status = "ready"
+status = "pending"
+reason = "pending lane C (Pi durable features after the 5f312dac port): tool task version 2 input kept as it is, unoffered calls (1c6928b3)"
 
 [[scenario]]
 id = "U-harness-observers"
 family = "upstream-test"
 runner = "vitest"
 source = "packages/durable/test/harness-observers.test.ts"
-sha256 = "bd8362f8bde0956b53682786f237d6109293e7f4ce0efc7da957a26d385fde24"
+sha256 = "c8b376851540438d54f27f413898d741d60b035bc3a2d4af0e50cd6834dc3480"
 owner = "dcore-session"
 levels = ["tests"]
-status = "ready"
+status = "pending"
+reason = "pending lane D-store (Durable on Chord's store, registries): a Session close fails an observer (S1) and ends a watch ended (6eb99ad6)"
 
 [[scenario]]
 id = "U-harness-ownership"
 family = "upstream-test"
 runner = "vitest"
 source = "packages/durable/test/harness-ownership.test.ts"
-sha256 = "ae91229b0746a4aae5a77138314f84bf3115173f71c19f6a4f11e9cb10d23676"
+sha256 = "d479f9fd6337004e47a5127e52e2002944b292e3ae4692c53e636d5e005d8747"
 owner = "dcore-session"
 levels = ["tests"]
-status = "ready"
+status = "pending"
+reason = "pending lane C (Pi durable features after the 5f312dac port): pi.live run carries turns (f6a9db1d)"
 
 [[scenario]]
 id = "U-harness-partial-changes"
@@ -739,10 +869,21 @@ id = "U-harness-read-only"
 family = "upstream-test"
 runner = "vitest"
 source = "packages/durable/test/harness-read-only.test.ts"
-sha256 = "18a7cb17058c1129effa37e03e9a5157396defb49057b304291a1061fe4291d7"
+sha256 = "ab194b95e69f2855c837d0efffbb10ddf69a7054b284dfa31f301047590a8eaf"
 owner = "dcore-session"
 levels = ["tests"]
 status = "ready"
+
+[[scenario]]
+id = "U-harness-registry-reader"
+family = "upstream-test"
+runner = "vitest"
+source = "packages/durable/test/harness-registry-reader.test.ts"
+sha256 = "4b53c3cbeea9d414bf159641293e3a5edc60834a624beaca15b0496e047d053c"
+owner = "dcore-loop"
+levels = ["tests"]
+status = "pending"
+reason = "pending lane D-store (Durable on Chord's store, registries): the registry reader (6eb99ad6)"
 
 [[scenario]]
 id = "U-harness-registry"
@@ -759,7 +900,7 @@ id = "U-harness-reports"
 family = "upstream-test"
 runner = "vitest"
 source = "packages/durable/test/harness-reports.test.ts"
-sha256 = "f0eceabb4618291349a6dabdcb9ef5c8fac163739519edbb856754b3d32a2d17"
+sha256 = "dff2a3965f2c320c52a81a3a4ba9606571dcb20ebba73cf44186925229d9b362"
 owner = "dcore-session"
 levels = ["tests"]
 status = "ready"
@@ -769,10 +910,11 @@ id = "U-harness-restart-failure"
 family = "upstream-test"
 runner = "vitest"
 source = "packages/durable/test/harness-restart-failure.test.ts"
-sha256 = "91a5324a0a55e0a14d5e7258857b81c64d6e944d1b6037afb0b871590bdb2a96"
+sha256 = "b3728b374242b3ae3baa1d8fdc9f491982edfd2fba594c9cb31c7f06bd7c1b5f"
 owner = "dcore-session"
 levels = ["tests"]
-status = "ready"
+status = "pending"
+reason = "pending lane C (Pi durable features after the 5f312dac port): pi.live runFailure carries first (7e15f960)"
 # D206 (owner approved 2026-10-28): the core resolves HarnessOptions.settings from the snapshot the host sends before each event, so the
 # test's count of the reads of `extensions` (Pi: 49 a round, one per resolution at each use) is the 6 agent resolutions of the host in a round.
 # The candidate must fail this test with this failure: a pass means D206 is over (gate.mjs), another failure fails the row.
@@ -785,10 +927,11 @@ id = "U-harness-run-failure"
 family = "upstream-test"
 runner = "vitest"
 source = "packages/durable/test/harness-run-failure.test.ts"
-sha256 = "fd86b0188ff79a1ecb484b0095f79c67b9ac1b003e6356698ffdcc4ad707757e"
+sha256 = "e98593bf231696af77f76774cf9db708abd4cf3668cf39227d618c91289e3186"
 owner = "dcore-session"
 levels = ["tests"]
-status = "ready"
+status = "pending"
+reason = "pending lane C (Pi durable features after the 5f312dac port): pi.live runFailure carries first (7e15f960)"
 
 [[scenario]]
 id = "U-harness-scheduler-indexes"
@@ -805,10 +948,11 @@ id = "U-harness-scheduler-retention"
 family = "upstream-test"
 runner = "vitest"
 source = "packages/durable/test/harness-scheduler-retention.test.ts"
-sha256 = "3ff6cd6a338800957464d44f6e8777a2f052170eb0e0f05df7c41d21c2a8cfec"
+sha256 = "ca3ea7f81236bb901312cdcfed091a4b5d198dd3098f51c2f480dee857f21b0e"
 owner = "dcore-session"
 levels = ["tests"]
-status = "ready"
+status = "pending"
+reason = "pending lane C (Pi durable features after the 5f312dac port): pi.live run carries turns (f6a9db1d)"
 
 [[scenario]]
 id = "U-harness-sleep"
@@ -825,7 +969,7 @@ id = "U-harness-storage-failure"
 family = "upstream-test"
 runner = "vitest"
 source = "packages/durable/test/harness-storage-failure.test.ts"
-sha256 = "7ea276e30260a238f34d46c6dfa50d0e91b80111759b480f6706469a14a940ed"
+sha256 = "c4c3e3e3440d2c1e1b1970aa22e37c630c39e97bd02ed184dc3a51a37704a58a"
 owner = "dcore-session"
 levels = ["tests"]
 status = "ready"
@@ -835,7 +979,7 @@ id = "U-harness-structured-output"
 family = "upstream-test"
 runner = "vitest"
 source = "packages/durable/test/harness-structured-output.test.ts"
-sha256 = "3ef664e45dee5b543860e66369b1d08399d6af34e5b149d033a3fea1d651fac5"
+sha256 = "981186aeb7755ef5feead64e3637a2367a8b68d55df77ad64042306a2a4f2557"
 owner = "dcore-loop"
 levels = ["tests"]
 status = "ready"
@@ -845,27 +989,40 @@ id = "U-harness-structured"
 family = "upstream-test"
 runner = "vitest"
 source = "packages/durable/test/harness-structured.test.ts"
-sha256 = "81f4f304000988174f1c8559cde2b39624a07f206551fc8e21bd28e1a0b23f5c"
+sha256 = "60705c17557ad75d75ac5b378575476c88300980662a180d81365c79ce3f685f"
 owner = "dcore-session"
 levels = ["tests"]
-status = "ready"
+status = "pending"
+reason = "pending lane C (Pi durable features after the 5f312dac port): pi.live runFailure carries first (7e15f960)"
 
 [[scenario]]
 id = "U-harness-submissions"
 family = "upstream-test"
 runner = "vitest"
 source = "packages/durable/test/harness-submissions.test.ts"
-sha256 = "1c422b24f7e902217eaf2658dabbfeaed146206acd843d0bed01ec25f0aeb079"
+sha256 = "2e17390334de32c04fc2244427fc9dc6fefbb89a58d840cb7bd966857f2b6e09"
 owner = "dcore-session"
 levels = ["tests"]
-status = "ready"
+status = "pending"
+reason = "pending lane C (Pi durable features after the 5f312dac port): the submission record is tagged by type, input or continue (fb524dd2)"
+
+[[scenario]]
+id = "U-harness-submit-in-commit"
+family = "upstream-test"
+runner = "vitest"
+source = "packages/durable/test/harness-submit-in-commit.test.ts"
+sha256 = "d2e281a68dc8cfe7799d5764f6dc2ede789fb38f7a7991762792c044cd717d31"
+owner = "dcore-session"
+levels = ["tests"]
+status = "pending"
+reason = "pending lane C (Pi durable features after the 5f312dac port): submit(tx, draft) and whenIdle (cc9c5231, 6a282511)"
 
 [[scenario]]
 id = "U-harness-task-graph"
 family = "upstream-test"
 runner = "vitest"
 source = "packages/durable/test/harness-task-graph.test.ts"
-sha256 = "25465f8ee2915ed5f2aa1c9946cc026c25ece9ff822a0c7c093d27cfbb1d8c9d"
+sha256 = "add260b22476cf10db182c05b768f9f89c0ca1ffd0679598cad32ef40a17b8c1"
 owner = "dcore-session"
 levels = ["tests"]
 status = "ready"
@@ -875,7 +1032,7 @@ id = "U-harness-tasks-recovery"
 family = "upstream-test"
 runner = "vitest"
 source = "packages/durable/test/harness-tasks-recovery.test.ts"
-sha256 = "89176944cccaf505eb8306caaae4a72188bbf3e4de4df274fef92a2f0389078f"
+sha256 = "2054cf93822a42a8cbcf2b08745d763d336f18399875db94505048f29a5baec7"
 owner = "dcore-session"
 levels = ["tests"]
 status = "ready"
@@ -885,7 +1042,7 @@ id = "U-harness-tasks"
 family = "upstream-test"
 runner = "vitest"
 source = "packages/durable/test/harness-tasks.test.ts"
-sha256 = "b6e38edf8999e406d2e68a4c302447d53edd7fae5509fcfe6248b47eb31c97b3"
+sha256 = "069ff1217d0ed1a7befabf3bc6f2ad4cc4f9a55feb163f185df54472206b6e2b"
 owner = "dcore-session"
 levels = ["tests"]
 status = "ready"
@@ -905,10 +1062,21 @@ id = "U-harness-telemetry"
 family = "upstream-test"
 runner = "vitest"
 source = "packages/durable/test/harness-telemetry.test.ts"
-sha256 = "cf89a6f77b4f3cd5fe822ce49a46df7a5573b9d9a0de8e951cf4f4a8fd6fb658"
+sha256 = "1c7d6b87bf1c904405958fa102cce6fba55264e1fe1803da481dd094631ffa4d"
 owner = "dcore-session"
 levels = ["tests"]
 status = "ready"
+
+[[scenario]]
+id = "U-harness-tool-hooks"
+family = "upstream-test"
+runner = "vitest"
+source = "packages/durable/test/harness-tool-hooks.test.ts"
+sha256 = "12668d785c9ce1cf263fdac4912914500e772a47d33593db126cd7ae619591e6"
+owner = "dcore-loop"
+levels = ["tests"]
+status = "pending"
+reason = "pending lane C (Pi durable features after the 5f312dac port): afterTool on every tool task result and tool tasks for calls not offered (87eff524, 1c6928b3)"
 
 [[scenario]]
 id = "U-harness-tools-recovery"
@@ -925,31 +1093,44 @@ id = "U-harness-tools"
 family = "upstream-test"
 runner = "vitest"
 source = "packages/durable/test/harness-tools.test.ts"
-sha256 = "fb5e0ebdb9c5d3ba167a2c8ad35fc67b1539d1d00be096f843b76094813103d7"
+sha256 = "07c71c84c796c337869ffd6ba82608d9167eb66bc1d97961e4249aebe630123c"
 owner = "dcore-loop"
 levels = ["tests"]
-status = "ready"
+status = "pending"
+reason = "pending lane C (Pi durable features after the 5f312dac port): calls to tools not offered run through a flagged tool task, afterTool on every result (1c6928b3, 87eff524)"
 # The test sleeps 20 ms (real setTimeout) inside the 100 ms output throttle window; a process stall longer than ~80 ms flushes the
 # buffered output in the reference as well as in the candidate (checked with an 85 ms stall: both fail; 70 ms: both pass).
 real_time_tests = ["tool progress and lifetime answers an aborted tool with only its durable output"]
 exclusive = true
 
 [[scenario]]
+id = "U-harness-turn-limit"
+family = "upstream-test"
+runner = "vitest"
+source = "packages/durable/test/harness-turn-limit.test.ts"
+sha256 = "5dcefe326f589ebd90732a756ed7a7648060a6c3168f46ca9c4bf47f8481868e"
+owner = "dcore-loop"
+levels = ["tests"]
+status = "pending"
+reason = "pending lane C (Pi durable features after the 5f312dac port): the per-conversation turn limit (f6a9db1d)"
+
+[[scenario]]
 id = "U-harness-view-run"
 family = "upstream-test"
 runner = "vitest"
 source = "packages/durable/test/harness-view-run.test.ts"
-sha256 = "40a3f92f16b365ecc302287d62f6d55f67c289fcf14e7b772d32dd0aa2b05922"
+sha256 = "cf4b013d04f5b637c04546000b765f6a105e0d3e85838f5e00de202fe31a92f9"
 owner = "dcore-session"
 levels = ["tests"]
-status = "ready"
+status = "pending"
+reason = "pending lane C (Pi durable features after the 5f312dac port): the view's run carries turns and first, and a call not offered has its own task (7e15f960, f6a9db1d, 1c6928b3)"
 
 [[scenario]]
 id = "U-harness-view"
 family = "upstream-test"
 runner = "vitest"
 source = "packages/durable/test/harness-view.test.ts"
-sha256 = "ee3a0cbab90f4ae3027dd814d1f22b7f4be8352fde56cd0e27c07a987b2f6718"
+sha256 = "b7a28e72a989b36c21bdd61d705eefa5782076d7ab4525279ef0b033a04f4dff"
 owner = "dcore-session"
 levels = ["tests"]
 status = "ready"
@@ -1012,7 +1193,7 @@ id = "U-session-adoption"
 family = "upstream-test"
 runner = "vitest"
 source = "packages/durable/test/session-adoption.test.ts"
-sha256 = "e59d09fd11b36966c94f747501c2bc893c1fbee01f5954d3fcf35df565fa136c"
+sha256 = "3c7c42cb37a59f4b6266b16df4c321502aa15e998e50b30ba799db1f71d7862f"
 owner = "dcore-session"
 levels = ["tests"]
 status = "ready"
@@ -1022,7 +1203,7 @@ id = "U-session-checkpoints-migrations"
 family = "upstream-test"
 runner = "vitest"
 source = "packages/durable/test/session-checkpoints-migrations.test.ts"
-sha256 = "4fc4cb13f8e6bf58c5403947210358b39571b2408dfff1584a340190ca213de8"
+sha256 = "f9555a19175438877b309d1ca9bb5fab026c0ba5af9f882f0cd5b00d5f0ee46b"
 owner = "dcore-session"
 levels = ["tests"]
 status = "ready"
@@ -1032,7 +1213,7 @@ id = "U-session-deferred-commits"
 family = "upstream-test"
 runner = "vitest"
 source = "packages/durable/test/session-deferred-commits.test.ts"
-sha256 = "264bea166593b88c0471e711d8a123f1d68c48e2a2d110a06999fc8642abd4d5"
+sha256 = "6acfc01b89d41643a872a35df74a2ece2f1b73e772894df308ecd00018a66fb4"
 owner = "dcore-session"
 levels = ["tests"]
 status = "ready"
@@ -1052,7 +1233,7 @@ id = "U-session-document-retention"
 family = "upstream-test"
 runner = "vitest"
 source = "packages/durable/test/session-document-retention.test.ts"
-sha256 = "6084594e4782ee3be7316e93ccb09715505422d282ea5efbcb02b2bbce7cdb6e"
+sha256 = "46e116eba1fba08653a6bf07dbf24aa5325e5f6b45a19c717a87d14233e13c81"
 owner = "dcore-session"
 levels = ["tests"]
 status = "ready"
@@ -1062,7 +1243,7 @@ id = "U-session-documents"
 family = "upstream-test"
 runner = "vitest"
 source = "packages/durable/test/session-documents.test.ts"
-sha256 = "3961ee091c195571877fcbfc80cb85daa859f8b12d5dee17e58dbd7c62039b82"
+sha256 = "81a40b5b1e9fb2b314d8dc05971a8aa0519e7f4fa88766dc25e3778b24a8bab4"
 owner = "dcore-session"
 levels = ["tests"]
 status = "ready"
@@ -1072,7 +1253,7 @@ id = "U-session-forks"
 family = "upstream-test"
 runner = "vitest"
 source = "packages/durable/test/session-forks.test.ts"
-sha256 = "21f40b78204ea8c61c6456856274df0c3c47d53695d69b2113105373dc7da1f9"
+sha256 = "109b19f413e5ded65f4761a825b13f8e744fa858fe75e25969dba40c22142a21"
 owner = "dcore-store"
 levels = ["tests"]
 status = "ready"
@@ -1082,17 +1263,18 @@ id = "U-session-observers"
 family = "upstream-test"
 runner = "vitest"
 source = "packages/durable/test/session-observers.test.ts"
-sha256 = "c1c26addd1200121b56eac97b860021a6c5db710a5dca766e2c35336dfea222e"
+sha256 = "dfd8850882c8e65c4893a29f23d697df9a27a4fef69e135e3099ce8c8414fffb"
 owner = "dcore-session"
 levels = ["tests"]
-status = "ready"
+status = "pending"
+reason = "pending lane D-store (Durable on Chord's store, registries): a Session close fails an observer (S1) and ends a watch ended (6eb99ad6)"
 
 [[scenario]]
 id = "U-session-tables"
 family = "upstream-test"
 runner = "vitest"
 source = "packages/durable/test/session-tables.test.ts"
-sha256 = "cdaf4388c08ed849d8017fe9ed649d1071768a3b6feed323d936e5d290f3888f"
+sha256 = "f6076806f5edd08fb30601352eb5a54dd8e3401813e0ed8b28d7f04a63789105"
 owner = "dcore-store"
 levels = ["tests"]
 status = "ready"
@@ -1102,7 +1284,7 @@ id = "U-session-watches"
 family = "upstream-test"
 runner = "vitest"
 source = "packages/durable/test/session-watches.test.ts"
-sha256 = "0516ada2d2bed412faaac3007fd8f6af296ac6a91f08df8d38923039711e5984"
+sha256 = "fe9dcb88e78357d2bf9b90d06d434997c361cf5c8b8989f495da5bb8cfe310b6"
 owner = "dcore-session"
 levels = ["tests"]
 status = "ready"
@@ -1112,7 +1294,7 @@ id = "U-spec-usage"
 family = "upstream-test"
 runner = "vitest"
 source = "packages/durable/test/spec-usage.test.ts"
-sha256 = "4fab91c13cf678dc55c9672694d40e04ae21cc571236aee3edbaa3251691873f"
+sha256 = "8bd7a4b5ebc1aa3eb80dd5f9881c9ade7ce17e05d25c50b4133a87118d121630"
 owner = "dcore-store"
 levels = ["tests"]
 status = "ready"
@@ -1169,6 +1351,17 @@ sha256 = "11bce7410b047902ea3362487954c1f9ac59ddeca6911a0319ae0542e1747f1b"
 owner = "dcore-store"
 levels = ["tests"]
 status = "ready"
+
+[[scenario]]
+id = "U-store-storage"
+family = "upstream-test"
+runner = "vitest"
+source = "packages/durable/test/store-storage.test.ts"
+sha256 = "1aae7057f4a21dfbb38f79118a11514bf94b10bd08a075a6a198ba0c318fed5c"
+owner = "dcore-store"
+levels = ["tests"]
+status = "pending"
+reason = "pending lane D-store (Durable on Chord's store, registries): StoreStorage, Durable's storage on Chord's store (14b4c56e)"
 
 [[scenario]]
 id = "U-system-order-cache-e2e"
@@ -1235,11 +1428,12 @@ id = "SC"
 family = "storage-conformance"
 runner = "storage-conformance"
 source = "packages/durable/src/testing/storage-conformance.ts"
-sha256 = "32b9064e91388750ac369821ec9199712a382986de3d25dab26a04e481ef173d"
+sha256 = "496d55d80ad5529c3bdd8fd7302fbf353d9b13637c18425592d069e26491d2a6"
 owner = "dcore-store"
 about = "the core's write encoder wrapped as a Storage passes the upstream storage conformance suite (CONTRACT 3.10): the suite registered by memory-storage, jsonl-storage, sqlite-storage, sqlite-cloudflare, sqlite-facade and indexeddb-storage"
 levels = ["tests"]
-status = "ready"
+status = "pending"
+reason = "pending lane C (Pi durable features after the 5f312dac port): the suite stores continue submissions (fb524dd2); pending lane D-store (Durable on Chord's store, registries): it refuses a creation and a change of one document in one commit (14b4c56e)"
 
 [[scenario]]
 id = "I"

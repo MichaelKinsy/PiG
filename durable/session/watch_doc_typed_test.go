@@ -25,8 +25,8 @@ func TestWatchDocTypedDecodesRevisionsAndReportsRetirementAsAFlag(t *testing.T) 
 		t.Fatalf("acquisition value = %+v", initial)
 	}
 	var mu sync.Mutex
-	var seen []durable.WatchChange[obj]
-	watch.Start(func(_ context.Context, change durable.WatchChange[obj]) error {
+	var seen []durable.WatchCall[obj]
+	watch.Start(func(_ context.Context, change durable.WatchCall[obj]) error {
 		mu.Lock()
 		seen = append(seen, change)
 		mu.Unlock()
@@ -55,7 +55,7 @@ func TestWatchDocTypedDecodesRevisionsAndReportsRetirementAsAFlag(t *testing.T) 
 		t.Fatalf("a retirement ended the watch: %+v", watch.End())
 	default:
 	}
-	if end, err := watch.Stop(); err != nil || end.Reason != durable.WatchStopped {
+	if end, err := watch.Stop(); err != nil || end.Kind != durable.WatchStopped {
 		t.Fatalf("end = %+v, %v", end, err)
 	}
 
@@ -105,11 +105,11 @@ func TestDeferUntilPublishedRunsAfterEveryListener(t *testing.T) {
 	var order []string
 	var mu sync.Mutex
 	note := func(what string) { mu.Lock(); order = append(order, what); mu.Unlock() }
-	harness.Session.SubscribeCommits(func(context.Context, durable.CommitPublication) {
+	sessiontest.ObserveCommitsFunc(harness.Session, func(context.Context, durable.CommitPublication) {
 		harness.Session.DeferUntilPublished(func() { note("deferred") })
 		note("first listener")
 	})
-	harness.Session.SubscribeCommits(func(context.Context, durable.CommitPublication) { note("second listener") })
+	sessiontest.ObserveCommitsFunc(harness.Session, func(context.Context, durable.CommitPublication) { note("second listener") })
 	setWatchValue(t, harness, 1)
 	mu.Lock()
 	defer mu.Unlock()
@@ -132,10 +132,10 @@ func TestDeferUntilPublishedSurvivesAPanickingListener(t *testing.T) {
 	var mu sync.Mutex
 	note := func(what string) { mu.Lock(); ran = append(ran, what); mu.Unlock() }
 	panicking := true
-	harness.Session.SubscribeCommits(func(context.Context, durable.CommitPublication) {
+	sessiontest.ObserveCommitsFunc(harness.Session, func(context.Context, durable.CommitPublication) {
 		harness.Session.DeferUntilPublished(func() { note("deferred") })
 	})
-	harness.Session.SubscribeCommits(func(context.Context, durable.CommitPublication) {
+	sessiontest.ObserveCommitsFunc(harness.Session, func(context.Context, durable.CommitPublication) {
 		if panicking {
 			panicking = false
 			panic("listener failed")
@@ -194,7 +194,7 @@ func TestWatchDocTypedValueDoesNotPanicOnAMismatchedRevision(t *testing.T) {
 	}
 	var mu sync.Mutex
 	var delivered int
-	watch.Start(func(_ context.Context, change durable.WatchChange[watchedNumber]) error {
+	watch.Start(func(_ context.Context, change durable.WatchCall[watchedNumber]) error {
 		mu.Lock()
 		delivered++
 		mu.Unlock()
@@ -208,7 +208,7 @@ func TestWatchDocTypedValueDoesNotPanicOnAMismatchedRevision(t *testing.T) {
 	case <-time.After(5 * time.Second):
 		t.Fatal("the watch did not end")
 	}
-	if end := watch.End(); end.Reason != durable.WatchListenerError {
+	if end := watch.End(); end.Kind != durable.WatchListenerError {
 		t.Fatalf("end %+v, want listener_error", end)
 	}
 	if value := watch.Value(); value.Value != 3 {

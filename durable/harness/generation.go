@@ -227,7 +227,7 @@ func generationPrepareHandler(ctx context.Context, task durable.RunningTask[Gene
 		if ctx.Err() != nil {
 			return err
 		}
-		runtime.Report(err, durable.ReportFrom{Type: durable.ReportFromHost, Callback: durable.HostCallbackEnv})
+		runtime.Report(err, durable.ReportFrom{Kind: durable.ReportFromHost, Callback: durable.HostCallbackEnv})
 		environment = nil
 	}
 	shownMap := map[string]string{}
@@ -236,7 +236,7 @@ func generationPrepareHandler(ctx context.Context, task durable.RunningTask[Gene
 	}
 	input := durable.PromptInput{ConversationId: conversationId, Agent: agent, Env: environment, Shown: shownMap, Read: runtime}
 	desired, err := RenderSections(ctx, agent.Sections, input, shown, func(err error, section *durable.PromptSection) {
-		runtime.Report(err, durable.ReportFrom{Type: durable.ReportFromExtension, Extension: SectionExtension(agent, section.Key)})
+		runtime.Report(err, durable.ReportFrom{Kind: durable.ReportFromExtension, Extension: SectionExtension(agent, section.Key)})
 	})
 	if err != nil {
 		return err
@@ -626,7 +626,7 @@ func cancelDeferred(ctx context.Context, runtime generationRuntime, polled defer
 	}
 	signal := runtime.Signal()
 	if err := runtime.Models().CancelDeferred(signal, model, polled.Handle, ai.DeferredCancelOptions{Signal: signal, Telemetry: chordctx.Telemetry(ctx)}); err != nil {
-		runtime.Report(err, durable.ReportFrom{Type: durable.ReportFromHost, Callback: durable.HostCallbackModels})
+		runtime.Report(err, durable.ReportFrom{Kind: durable.ReportFromHost, Callback: durable.HostCallbackModels})
 	}
 }
 

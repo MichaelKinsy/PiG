@@ -340,7 +340,7 @@ func CreateCompaction(tx *session.Tx, conv ID, input *jv.Object, owner ID) (ID, 
 	if err != nil {
 		return 0, err
 	}
-	status := jobj("taskId", float64(taskID), "reason", reason, "blocking", owner != 0, "attempt", 1.0)
+	status := jobj("taskId", float64(taskID), "trigger", reason, "blocking", owner != 0, "attempt", 1.0)
 	return taskID, AddCompactionStatus(live, status)
 }
 

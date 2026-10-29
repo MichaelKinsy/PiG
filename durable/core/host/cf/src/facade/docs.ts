@@ -3,12 +3,26 @@
 import { uuidv7 } from "@earendil-works/pi-ai"
 import { defineDoc, defineDocFamily } from "./documents.ts"
 
-const conversationDoc = (kind: string, initial: () => any, checkpointWhen: (value: any) => boolean) =>
-  defineDoc({ kind, version: 1, scope: "conversation", history: "latest", fork: "initial", initial, checkpointWhen })
+const conversationDoc = (kind: string, initial: () => any, checkpointWhen: (value: any) => boolean, extra: { version?: number; migrate?: (value: any) => any } = {}) =>
+  defineDoc({ kind, version: extra.version ?? 1, scope: "conversation", history: "latest", fork: "initial", initial, checkpointWhen, ...(extra.migrate === undefined ? {} : { migrate: extra.migrate }) })
 
-/** A complete base whenever nothing runs: no generation and no running tool slot (live.ts). */
+/** A copy of a version 1 compaction status or failure with `reason` renamed `trigger`, its keys in their order (live.ts renameReason). */
+const renameReason = (value: Record<string, unknown>): Record<string, unknown> => Object.fromEntries(Object.entries(value).map(([key, field]) => [key === "reason" ? "trigger" : key, field]))
+
+/** A complete base whenever nothing runs: no generation and no running tool slot (live.ts). Version 2: version 1 named a compaction's trigger `reason`, in `compactions` and `compactionFailure`. */
 export const LiveDoc = conversationDoc("pi.live", () => ({}),
-  (value: { generation?: unknown; tools?: { status?: string }[] }) => value.generation === undefined && !(value.tools ?? []).some(slot => slot.status === "running"))
+  (value: { generation?: unknown; tools?: { status?: string }[] }) => value.generation === undefined && !(value.tools ?? []).some(slot => slot.status === "running"),
+  {
+    version: 2,
+    migrate: (value: { compactions?: Record<string, unknown>[]; compactionFailure?: Record<string, unknown> }) => {
+      const { compactions, compactionFailure } = value
+      return {
+        ...value,
+        ...(compactions === undefined ? {} : { compactions: compactions.map(renameReason) }),
+        ...(compactionFailure === undefined ? {} : { compactionFailure: renameReason(compactionFailure) }),
+      }
+    },
+  })
 /** A complete base exactly while the inbox is empty (inbox.ts). */
 export const InboxDoc = conversationDoc("pi.inbox", () => ({ items: [] }), (value: { items: unknown[] }) => value.items.length === 0)
 export const UsageDoc = conversationDoc("pi.usage", () => ({ models: {}, tools: {} }), () => true)

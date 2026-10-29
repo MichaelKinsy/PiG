@@ -19,7 +19,7 @@ func TestCoreKeepsWorkingWhenOnReportThrowsAndFallsBackToTheWallClock(t *testing
 	quick := quickTask("test.quick")
 	h, root := openTasksWith(t, harness.HarnessOptions{
 		Now: func() float64 { panic(errors.New("clock broke")) },
-		OnReport: func(error, durable.ReportInfo) {
+		OnReport: func(durable.Report) {
 			mu.Lock()
 			reported++
 			mu.Unlock()
@@ -48,8 +48,8 @@ func TestCoreKeepsWorkingWhenOnReportThrowsAndFallsBackToTheWallClock(t *testing
 func TestCoreDropsAThrowingOnReportForAFailingListener(t *testing.T) {
 	// safeReport: onReport is the last place an error goes, so its own throw is dropped.
 	reported := make(chan error, 4)
-	h, root := openTasksWith(t, harness.HarnessOptions{OnReport: func(err error, _ durable.ReportInfo) {
-		reported <- err
+	h, root := openTasksWith(t, harness.HarnessOptions{OnReport: func(report durable.Report) {
+		reported <- report.Error
 		panic(errors.New("report broke"))
 	}})
 	watch, err := root.Watch(t.Context(), nil)
@@ -58,7 +58,7 @@ func TestCoreDropsAThrowingOnReportForAFailingListener(t *testing.T) {
 	}
 	defer func() { _, _ = watch.Stop() }()
 	failure := errors.New("view watch listener failed")
-	watch.Start(func(_ context.Context, change durable.WatchChange[harness.ConversationView]) error { return failure })
+	watch.Start(func(_ context.Context, change durable.WatchCall[harness.ConversationView]) error { return failure })
 	appendCoreNote(t, root)
 	expectReport(t, reported, failure)
 	appendCoreNote(t, root)
@@ -73,19 +73,19 @@ func TestCoreReportsAThrowingCommitOrCloseListenerAndRunsTheOthers(t *testing.T)
 	var mu sync.Mutex
 	var reports []string
 	var seen []string
-	h, root := openTasksWith(t, harness.HarnessOptions{OnReport: func(err error, _ durable.ReportInfo) {
+	h, root := openTasksWith(t, harness.HarnessOptions{OnReport: func(report durable.Report) {
 		mu.Lock()
-		reports = append(reports, err.Error())
+		reports = append(reports, report.Error.Error())
 		mu.Unlock()
 	}})
 	committed := make(chan struct{}, 1)
-	h.SubscribeCommits(func(context.Context, durable.CommitPublication) { panic(errors.New("commit listener")) })
-	h.SubscribeCommits(func(context.Context, durable.CommitPublication) {
+	h.ObserveCommits(commitsFunc(func(context.Context, durable.CommitPublication) { panic(errors.New("commit listener")) }))
+	h.ObserveCommits(commitsFunc(func(context.Context, durable.CommitPublication) {
 		mu.Lock()
 		seen = append(seen, "commit")
 		mu.Unlock()
 		committed <- struct{}{}
-	})
+	}))
 	h.SubscribeClose(func() { panic(errors.New("close listener")) })
 	h.SubscribeClose(func() {
 		mu.Lock()

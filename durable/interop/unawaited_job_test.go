@@ -153,7 +153,7 @@ func (recording *viewsRecording) add(view harness.ConversationView) error {
 	return nil
 }
 
-func (recording *viewsRecording) Advance(_ context.Context, change chord.WatchChange[harness.ConversationView]) {
+func (recording *viewsRecording) Advance(_ context.Context, change chord.WatchCall[harness.ConversationView]) {
 	if err := recording.add(change.Value); err != nil {
 		recording.mu.Lock()
 		recording.failed = err
@@ -161,7 +161,7 @@ func (recording *viewsRecording) Advance(_ context.Context, change chord.WatchCh
 	}
 }
 
-func (recording *viewsRecording) End(error) { close(recording.ended) }
+func (recording *viewsRecording) End(chord.WatchEnd) { close(recording.ended) }
 
 // transientReads are the reads of a user whose Submission.Wait just returned: the live tasks and the job's record.
 func transientReads(t *testing.T, opened harness.Harness) map[string]any {

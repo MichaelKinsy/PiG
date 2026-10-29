@@ -587,7 +587,7 @@ func TestCoreAGenerationInterruptedWhileTheModelAnswers(t *testing.T) {
 			expectRestartRunFailure(t, restartLive(t, reopened, reopenedRoot), harness.RunFailure{TaskId: taskId, Inputs: []durable.SubmissionId{id}, Reason: harness.RunRestartLimit, Detail: &text})
 			pollUntil(t, "the report", func() bool { return len(rig.infos.infos()) > 0 })
 			expectRestartInfo(t, rig.infos.infos(), func(info durable.ReportInfo) bool {
-				return info.Type == durable.ReportTaskInterrupted && info.Reason == "restart_limit" && info.Restarts == 1
+				return info.Kind == durable.ReportTaskInterrupted && info.Reason == "restart_limit" && info.Restarts == 1
 			})
 		})
 	})
@@ -705,7 +705,7 @@ func TestCoreOtherTasksCutOffRestartLimitTimesInARow(t *testing.T) {
 			if toolTask.State.Status != durable.TaskTerminal || outcome.Status != durable.OutcomeFailed || restartJSON(t, outcome.Error.Detail) != `{"reason":"restart_limit"}` {
 				t.Fatalf("tool task state = %s", restartJSON(t, toolTask.State))
 			}
-			want := durable.ReportInfo{Type: durable.ReportTaskInterrupted, Task: &durable.ReportTask{Id: toolTask.Id, Kind: "pi.tool", ConversationId: root.Id()}, Reason: "restart_limit", Restarts: 2}
+			want := durable.ReportInfo{Kind: durable.ReportTaskInterrupted, Task: &durable.ReportTask{Id: toolTask.Id, Kind: "pi.tool", ConversationId: root.Id()}, Reason: "restart_limit", Restarts: 2}
 			pollUntil(t, "the report", func() bool { return len(rig.infos.infos()) > 0 })
 			expectRestartInfo(t, rig.infos.infos(), func(info durable.ReportInfo) bool { return reflect.DeepEqual(info, want) })
 		})
@@ -740,11 +740,11 @@ func TestCoreOtherTasksCutOffRestartLimitTimesInARow(t *testing.T) {
 				t.Fatalf("outcome = %s, want %s", restartJSON(t, outcome), restartJSON(t, want))
 			}
 			live := restartLive(t, reopened, reopenedRoot)
-			if live.CompactionFailure == nil || *live.CompactionFailure != (harness.CompactionFailure{TaskId: compaction, Reason: durable.CompactionManual, Error: message}) || live.Compactions != nil {
+			if live.CompactionFailure == nil || *live.CompactionFailure != (harness.CompactionFailure{TaskId: compaction, Trigger: durable.CompactionManual, Error: message}) || live.Compactions != nil {
 				t.Fatalf("pi.live = %s", restartJSON(t, live))
 			}
 			pollUntil(t, "the report", func() bool { return len(rig.infos.infos()) > 0 })
-			wantInfo := durable.ReportInfo{Type: durable.ReportTaskInterrupted, Task: &durable.ReportTask{Id: compaction, Kind: "pi.compaction", ConversationId: reopenedRoot.Id()}, Reason: "restart_limit", Restarts: 1}
+			wantInfo := durable.ReportInfo{Kind: durable.ReportTaskInterrupted, Task: &durable.ReportTask{Id: compaction, Kind: "pi.compaction", ConversationId: reopenedRoot.Id()}, Reason: "restart_limit", Restarts: 1}
 			expectRestartInfo(t, rig.infos.infos(), func(info durable.ReportInfo) bool { return reflect.DeepEqual(info, wantInfo) })
 		})
 	})
@@ -1022,7 +1022,7 @@ func TestCoreCrashEdges(t *testing.T) {
 			}
 			pollUntil(t, "the task_faulted report", func() bool {
 				for _, info := range rig.infos.infos() {
-					if info.Type == durable.ReportTaskFaulted && info.Reason == "restart_limit" {
+					if info.Kind == durable.ReportTaskFaulted && info.Reason == "restart_limit" {
 						return true
 					}
 				}
@@ -1045,7 +1045,7 @@ func TestCoreReportsOfWorkCrashesEnded(t *testing.T) {
 			h.Resume()
 			restartOk(h.WaitForTask(t.Context(), taskId))
 			pollUntil(t, "the report", func() bool { return len(rig.infos.infos()) > 0 })
-			want := []durable.ReportInfo{{Type: durable.ReportTaskInterrupted, Task: &durable.ReportTask{Id: taskId, Kind: "pi.generation", ConversationId: root.Id()}, Reason: "interrupted", Restarts: 1}}
+			want := []durable.ReportInfo{{Kind: durable.ReportTaskInterrupted, Task: &durable.ReportTask{Id: taskId, Kind: "pi.generation", ConversationId: root.Id()}, Reason: "interrupted", Restarts: 1}}
 			if got := rig.infos.infos(); !reflect.DeepEqual(got, want) {
 				t.Fatalf("report infos = %s, want %s", restartJSON(t, got), restartJSON(t, want))
 			}
@@ -1057,7 +1057,7 @@ func TestCoreReportsOfWorkCrashesEnded(t *testing.T) {
 }
 
 // harness-deferred-progress.test.ts "converts what was stored into the aborted entry after a crash, and retries the charged
-// attempt" (#11139) over both engines, without the replica of SubscribeCommits (durable/harness covers it).
+// attempt" (#11139) over both engines, without the replica of ObserveCommits (durable/harness covers it).
 func TestCoreDeferredGenerationPartialsAfterACrash(t *testing.T) {
 	eachEngine(t, func(t *testing.T, core bool) {
 		four := 4

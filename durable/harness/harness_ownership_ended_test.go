@@ -181,7 +181,7 @@ func ownExpectFailedEnd(t *testing.T, harness Harness, failure error) {
 	case <-time.After(10 * time.Second):
 		t.Fatal("the Harness did not fail")
 	}
-	if end := harness.End(); end.Reason != durable.SessionEndFailed || (failure != nil && !errors.Is(end.Error, failure)) {
+	if end := harness.End(); end.Kind != durable.SessionEndFailed || (failure != nil && !errors.Is(end.Error, failure)) {
 		t.Fatalf("end %+v, want failed with %v", end, failure)
 	}
 }

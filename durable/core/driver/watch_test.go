@@ -2,6 +2,7 @@ package driver_test
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"path/filepath"
 	"sync"
@@ -60,7 +61,7 @@ func TestWatchDocDeliversExactFramesInCommitOrder(t *testing.T) {
 		t.Fatalf("the acquisition revision is the committed value: %v", got)
 	}
 	frames := make(chan delivery, 8)
-	watch.Start(func(_ context.Context, change durable.WatchChange[durable.JsonObject]) error {
+	watch.Start(func(_ context.Context, change durable.WatchCall[durable.JsonObject]) error {
 		value, ops := change.Value, change.Ops
 		frames <- delivery{value, ops}
 		return nil
@@ -78,10 +79,10 @@ func TestWatchDocDeliversExactFramesInCommitOrder(t *testing.T) {
 		}
 	}
 	end, err := watch.Stop()
-	if err != nil || end.Reason != durable.WatchStopped {
+	if err != nil || end.Kind != durable.WatchStopped {
 		t.Fatalf("stop: %+v %v", end, err)
 	}
-	if again, _ := watch.Stop(); again.Reason != durable.WatchStopped {
+	if again, _ := watch.Stop(); again.Kind != durable.WatchStopped {
 		t.Fatalf("stop is idempotent: %+v", again)
 	}
 	writeNotes(t, s, "d")
@@ -112,7 +113,7 @@ func TestWatchDocEndsOnCancellationAndSessionClose(t *testing.T) {
 	case <-time.After(5 * time.Second):
 		t.Fatal("a cancelled watch closes")
 	}
-	if got := cancelled.End().Reason; got != durable.WatchCancelled {
+	if got := cancelled.End().Kind; got != durable.WatchAborted {
 		t.Fatalf("cancelled: %v", got)
 	}
 	if err := s.Close(t.Context()); err != nil {
@@ -123,7 +124,7 @@ func TestWatchDocEndsOnCancellationAndSessionClose(t *testing.T) {
 	case <-time.After(5 * time.Second):
 		t.Fatal("closing the Session closes its watches")
 	}
-	if got := open.End().Reason; got != durable.WatchEnded {
+	if got := open.End().Kind; got != durable.WatchEnded {
 		t.Fatalf("session closed: %v", got)
 	}
 }
@@ -185,7 +186,7 @@ func TestConversationWatchFollowsCommits(t *testing.T) {
 	}
 	before := len(watch.Value().Entries)
 	frames := make(chan int, 4)
-	watch.Start(func(_ context.Context, change durable.WatchChange[harness.ConversationView]) error {
+	watch.Start(func(_ context.Context, change durable.WatchCall[harness.ConversationView]) error {
 		value := change.Value
 		frames <- len(value.Entries)
 		return nil
@@ -206,7 +207,7 @@ func TestConversationWatchFollowsCommits(t *testing.T) {
 	case <-time.After(5 * time.Second):
 		t.Fatal("no view frame")
 	}
-	if end, err := watch.Stop(); err != nil || end.Reason != durable.WatchStopped {
+	if end, err := watch.Stop(); err != nil || end.Kind != durable.WatchStopped {
 		t.Fatalf("stop: %+v %v", end, err)
 	}
 }
@@ -221,7 +222,7 @@ func TestTaskGraphOpensEmptyOnAnIdleSession(t *testing.T) {
 	if n := len(watch.Value().Tasks); n != 0 {
 		t.Fatalf("no live task: %d", n)
 	}
-	if end, err := watch.Stop(); err != nil || end.Reason != durable.WatchStopped {
+	if end, err := watch.Stop(); err != nil || end.Kind != durable.WatchStopped {
 		t.Fatalf("stop: %+v %v", end, err)
 	}
 }
@@ -243,7 +244,7 @@ func TestDocumentWatchValueFollowsCommitsUntilStopped(t *testing.T) {
 		t.Fatalf("hydrated value: %v", got)
 	}
 	// A started watch keeps its value current.
-	watch.Start(func(_ context.Context, change durable.WatchChange[durable.JsonObject]) error { return nil })
+	watch.Start(func(_ context.Context, change durable.WatchCall[durable.JsonObject]) error { return nil })
 	writeNotes(t, s, "b")
 	deadline := time.Now().Add(5 * time.Second)
 	for watch.Value().Value("text") != "b" {
@@ -260,12 +261,12 @@ func TestDocumentWatchValueFollowsCommitsUntilStopped(t *testing.T) {
 	}
 }
 
-// Session.subscribeCommits (session.ts): a listener receives each successful commit's complete publication in commit order,
-// with the document change's exact value and ops; an unsubscribed listener hears nothing more.
-func TestSubscribeCommitsDeliversPublicationsInOrder(t *testing.T) {
+// Session.observeCommits (session.ts): an observer receives each successful commit's complete publication in commit order,
+// with the document change's exact value and ops; a detached observer hears nothing more.
+func TestObserveCommitsDeliversPublicationsInOrder(t *testing.T) {
 	s := openCore(t)
 	got := make(chan durable.CommitPublication, 8)
-	off := s.SubscribeCommits(func(_ context.Context, p durable.CommitPublication) { got <- p })
+	off := s.ObserveCommits(commitsFunc(func(_ context.Context, p durable.CommitPublication) { got <- p }))
 	writeNotes(t, s, "a")
 	writeNotes(t, s, "b")
 	var seqs []durable.Seq
@@ -289,12 +290,12 @@ func TestSubscribeCommitsDeliversPublicationsInOrder(t *testing.T) {
 	if seqs[0] >= seqs[1] {
 		t.Fatalf("commit order: %v", seqs)
 	}
-	off()
-	off()
+	off.Detach()
+	off.Detach()
 	writeNotes(t, s, "c")
 	select {
 	case p := <-got:
-		t.Fatalf("an unsubscribed listener hears nothing: %+v", p)
+		t.Fatalf("a detached observer hears nothing: %+v", p)
 	case <-time.After(200 * time.Millisecond):
 	}
 }
@@ -340,15 +341,15 @@ func TestOpenHarnessReopensItsFile(t *testing.T) {
 }
 
 // Publications reach a listener in commit order however many commits follow each other (one delivery goroutine per Session).
-func TestSubscribeCommitsKeepsCommitOrderUnderBurst(t *testing.T) {
+func TestObserveCommitsKeepsCommitOrderUnderBurst(t *testing.T) {
 	s := openCore(t)
 	var mu sync.Mutex
 	var seqs []durable.Seq
-	s.SubscribeCommits(func(_ context.Context, p durable.CommitPublication) {
+	s.ObserveCommits(commitsFunc(func(_ context.Context, p durable.CommitPublication) {
 		mu.Lock()
 		seqs = append(seqs, p.Seq)
 		mu.Unlock()
-	})
+	}))
 	const n = 30
 	for i := range n {
 		writeNotes(t, s, fmt.Sprint(i))
@@ -418,5 +419,77 @@ func TestRetiringADocumentThroughTheRealCoreStartsANewIncarnation(t *testing.T) 
 	}
 	if set(4, false) {
 		t.Fatal("after the retirement the address starts a new incarnation from Initial")
+	}
+}
+
+// commitsFunc is a CommitObserver of an Advance function, ignoring its end.
+type commitsFunc func(context.Context, durable.CommitPublication)
+
+func (f commitsFunc) Advance(ctx context.Context, p durable.CommitPublication) { f(ctx, p) }
+func (commitsFunc) End(durable.WatchEnd)                                       {}
+
+// endingCommits is a CommitObserver that records how it ended.
+type endingCommits struct {
+	advance func(context.Context, durable.CommitPublication)
+	ended   chan durable.WatchEnd
+}
+
+func (o *endingCommits) Advance(ctx context.Context, p durable.CommitPublication) { o.advance(ctx, p) }
+func (o *endingCommits) End(end durable.WatchEnd)                                 { o.ended <- end }
+
+// Session.observeCommits (session.ts): an observer that throws is reported, detached, and ended listener_error with the error;
+// later commits do not reach it.
+func TestObserveCommitsEndsAThrowingObserverListenerError(t *testing.T) {
+	s := openCore(t)
+	failure := errors.New("observer broke")
+	observer := &endingCommits{advance: func(context.Context, durable.CommitPublication) { panic(failure) }, ended: make(chan durable.WatchEnd, 2)}
+	s.ObserveCommits(observer)
+	writeNotes(t, s, "a")
+	select {
+	case end := <-observer.ended:
+		if end.Kind != durable.WatchListenerError || !errors.Is(end.Error, failure) {
+			t.Fatalf("ended %+v, want listener_error with the observer's error", end)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("the observer did not end")
+	}
+	writeNotes(t, s, "b")
+	select {
+	case end := <-observer.ended:
+		t.Fatalf("ended twice: %+v", end)
+	case <-time.After(200 * time.Millisecond):
+	}
+}
+
+// Session.observeCommits (session.ts): the Session's close ends an observer ended after its last publication, and never one that
+// detached.
+func TestObserveCommitsEndsEndedAtCloseAndNeverAfterDetach(t *testing.T) {
+	s := openCore(t)
+	seen := make(chan durable.Seq, 8)
+	attached := &endingCommits{advance: func(_ context.Context, p durable.CommitPublication) { seen <- p.Seq }, ended: make(chan durable.WatchEnd, 2)}
+	detached := &endingCommits{advance: func(context.Context, durable.CommitPublication) {}, ended: make(chan durable.WatchEnd, 2)}
+	s.ObserveCommits(attached)
+	s.ObserveCommits(detached).Detach()
+	writeNotes(t, s, "a")
+	if err := s.Close(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case <-seen:
+	default:
+		t.Fatal("the observer got no publication before it ended")
+	}
+	select {
+	case end := <-attached.ended:
+		if end.Kind != durable.WatchEnded || end.Error != nil {
+			t.Fatalf("ended %+v, want ended", end)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("the observer did not end at close")
+	}
+	select {
+	case end := <-detached.ended:
+		t.Fatalf("a detached observer ended: %+v", end)
+	default:
 	}
 }

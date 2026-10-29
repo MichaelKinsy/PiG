@@ -222,7 +222,7 @@ func (h *handler) onTimer(ev *abi.Event) error {
 }
 
 // report forwards a non-fatal failure to HarnessOptions.onReport as a report notice: {name, message, info}, info being the
-// ReportInfo of types.ts (type, and task, extension, reason, callback or conversationId where they apply).
+// ReportInfo of types.ts (kind, and task, extension, reason, callback or conversationId where they apply).
 func (h *handler) report(err error, info *jv.Object) {
 	body := errorJSON(err)
 	body = append(body[:len(body)-1], `,"info":`...)
@@ -246,10 +246,10 @@ func (h *handler) reportFrom(task session.ID, err error, from session.ReportFrom
 		return
 	}
 	if from.Callback != "" {
-		h.report(err, jobj("type", "host_error", "callback", from.Callback))
+		h.report(err, jobj("kind", "host_error", "callback", from.Callback))
 		return
 	}
-	info := jobj("type", "extension_error")
+	info := jobj("kind", "extension_error")
 	if from.Extension != "" {
 		info.Set("extension", from.Extension)
 	}

@@ -9,6 +9,7 @@ import (
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/durable"
 	"github.com/MichaelKinsy/PiG/durable/harness"
+	"github.com/MichaelKinsy/PiG/durable/session/sessiontest"
 	"github.com/MichaelKinsy/PiG/durable/storage"
 )
 
@@ -34,7 +35,7 @@ type holdingSubscriber struct {
 func holdOn(t *testing.T, opened harness.Harness, matches func(durable.CommitPublication) bool) *holdingSubscriber {
 	t.Helper()
 	held := &holdingSubscriber{seen: make(chan struct{}), release: make(chan struct{})}
-	unsubscribe := opened.SubscribeCommits(func(_ context.Context, publication durable.CommitPublication) {
+	unsubscribe := sessiontest.ObserveCommitsFunc(opened, func(_ context.Context, publication durable.CommitPublication) {
 		if !matches(publication) {
 			return
 		}

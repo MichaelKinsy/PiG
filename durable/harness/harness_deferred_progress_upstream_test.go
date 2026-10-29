@@ -105,9 +105,9 @@ func openProgress(t *testing.T, storage *controlledStorage, setup *chatState) *p
 func memoryPartials(t *testing.T, harness Harness) *textLog {
 	t.Helper()
 	log := &textLog{}
-	observeCommits(harness, func(_ context.Context, publication session.ObservedCommit) {
-		for _, change := range documentChanges(publication.Changes) {
-			if change.Record.Kind != "pi.live" || change.Value == nil {
+	followCommits(harness, func(_ context.Context, publication session.ObservedCommit) {
+		for _, change := range documentValues(publication.Changes) {
+			if change.Record.Kind != "pi.live" {
 				continue
 			}
 			live, err := durable.FromJsonValue[LiveState](change.Value)
@@ -236,23 +236,23 @@ func TestDeferredGenerationPartials(t *testing.T) {
 		setup := slowProgressSetup(t, 150)
 		setup.Faux.SetResponses([]ai.FauxResponseStep{fauxAnswer(longText())})
 		run := openProgress(t, storage, setup)
-		// A replica fed by SubscribeCommits alone, as a replication feed would be.
+		// A replica fed by ObserveCommits alone, as a replication feed would be.
 		var replicaMu sync.Mutex
 		var replica durable.JsonValue = storedLiveValue(t, storage, run.root.Id())
-		run.harness.SubscribeCommits(func(_ context.Context, publication durable.CommitPublication) {
-			for _, change := range documentChanges(publication.Changes) {
+		run.harness.ObserveCommits(commitsObserver{advance: func(_ context.Context, publication durable.CommitPublication) {
+			for _, change := range documentValues(publication.Changes) {
 				if change.Record.Kind != "pi.live" {
 					continue
 				}
 				replicaMu.Lock()
-				if replica == nil || (len(change.Ops) == 0 && change.Value != nil) {
+				if replica == nil || len(change.Ops) == 0 {
 					replica = change.Value
 				} else {
 					replica = must(delta.ApplyImmutable(replica, change.Ops))
 				}
 				replicaMu.Unlock()
 			}
-		})
+		}})
 		submission := submitInput(t, run.root, "hi")
 		waitForLong(t, func() bool { return storedTextLength(t, storage, run.root.Id()) > 40 })
 		inMemory := run.memory.last()

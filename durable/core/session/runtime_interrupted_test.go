@@ -101,7 +101,7 @@ func TestACommitThatEndsAnyTaskForCrashesReportsTaskInterrupted(t *testing.T) {
 			if len(reports) != 1 || committed != 1 {
 				t.Fatalf("reports %q, %d of them before the commit returned, want one before", reports, committed)
 			}
-			want := `{"type":"task_interrupted","task":{"id":` + strconv.Itoa(int(id)) + `,"kind":"t.ext","conversationId":`
+			want := `{"kind":"task_interrupted","task":{"id":` + strconv.Itoa(int(id)) + `,"kind":"t.ext","conversationId":`
 			if !strings.HasPrefix(reports[0], want) || !strings.HasSuffix(reports[0], `"extension":"ext",`+c.want) {
 				t.Fatalf("report %s, want %s…\"extension\":\"ext\",%s", reports[0], want, c.want)
 			}

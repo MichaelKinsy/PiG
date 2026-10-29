@@ -9,7 +9,7 @@ The core is correct when pi-durable, run through the same scenario with the same
 | item | value |
 |---|---|
 | reference | `packages/durable`, `packages/ai` and `packages/chord` of Pi at the upstream commit below, run from source (`make durable-contract-setup` checks it out; `durable/contract/PIN`) |
-| upstream commit | `b3a29f1111114fac696e2cfcd65acdb382a6ed5e` (Pi 1.4.0+b3a29f11; `durable/contract/PIN` `main`, `durable/contract/corpus.toml` `[pin]`): the reference of every row, tick rows included (F-ticks-\*, F-split-\*) and of the Storage hop tables |
+| upstream commit | `e7a0df27c09d11bf4161d3605246cbf57a129cb2` (Pi 1.4.0+e7a0df27; `durable/contract/PIN` `main`, `durable/contract/corpus.toml` `[pin]`): the reference of every row, tick rows included (F-ticks-\*, F-split-\*) and of the Storage hop tables |
 | normative spec | `packages/durable/docs/spec.md`, sha256 prefix `62f887f2481c22c7`, 5,912 lines |
 | storage conformance | `packages/durable/src/testing/storage-conformance.ts`, sha256 prefix `32b9064e91388750` |
 | scenarios | `packages/durable/test/examples/00-*.ts` through `31-*.ts` (32 programs) |
@@ -191,7 +191,7 @@ A bench row (W, X1, R) also bounds memory. Each run writes one sample after ever
 
 | id | source | adaptation | checks |
 |---|---|---|---|
-| E00-E31 | the 32 upstream examples | storage swapped to `capsql` by an ESM resolve hook (the `MemoryStorage` constructor and `openNodeJsonlStorage` return a SqliteStorage over `capsql`; `openNodeSqliteStorage` gets `capsql` directly); `OPENAI_API_KEY` unset so 18, 19, 22 and 23 take their faux path; 16 (real model) replays a recorded cassette and is skipped until the owner records one; examples using `NodeExecutionEnv` record tool results on the tape; candidate runs alias `../../src/index.ts` to the candidate's JS API (ADR D12) | store, commit, context, output |
+| E00-E37 | the 38 upstream examples | storage swapped to `capsql` by an ESM resolve hook (the `MemoryStorage` constructor and `openNodeJsonlStorage` return a SqliteStorage over `capsql`; `openNodeSqliteStorage` gets `capsql` directly); `OPENAI_API_KEY` unset so 18, 19, 22 and 23 take their faux path; 16 (real model) replays a recorded cassette and is skipped until the owner records one; examples using `NodeExecutionEnv` record tool results on the tape; candidate runs alias `../../src/index.ts` to the candidate's JS API (ADR D12) | store, commit, context, output |
 | U | upstream `test/*.test.ts` harness tests (47 files) | the Go ports under `durable/...` (for example `spec_usage_upstream_test.go` and `durable/examples`, as tracked in the test mapping) run against the core-backed Harness once it exists | their own assertions |
 | SC | `src/testing/storage-conformance.ts` | the core's write encoder wrapped as `Storage` | suite |
 | I | `durable/interop` scripted session (documents, task-starting tool, fork with init, compaction, reset) | unchanged; extended with a candidate column | store, commit, cross-open |

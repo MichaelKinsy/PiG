@@ -19,6 +19,7 @@ import (
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/durable"
 	"github.com/MichaelKinsy/PiG/durable/harness"
+	"github.com/MichaelKinsy/PiG/durable/session/sessiontest"
 	"github.com/MichaelKinsy/PiG/durable/storage"
 	sqlitenode "github.com/MichaelKinsy/PiG/durable/storage/sqlite/node"
 )
@@ -84,7 +85,7 @@ func TestPocketOpenCreatesDocumentsAndSurvivesReopen(t *testing.T) {
 				_, err := durable.TxDoc[pocketChat](tx, pocketChatDoc, conversation.Id)
 				return err
 			},
-			OnReport: func(err error, _ durable.ReportInfo) { reports = append(reports, err) },
+			OnReport: func(report durable.Report) { reports = append(reports, report.Error) },
 		})
 		if err != nil {
 			t.Fatal(err)
@@ -148,7 +149,7 @@ func TestPocketOpenCreatesDocumentsAndSurvivesReopen(t *testing.T) {
 	closeSession(t, opened)
 }
 
-// 2. subscribeCommits: busy state from pi.live document changes, spend from pi.usage, submissions from table changes.
+// 2. observeCommits: busy state from pi.live document changes, spend from pi.usage, submissions from table changes.
 func TestPocketCommitSubscriberTracksBusySpendAndSubmissions(t *testing.T) {
 	opened, err := harness.OpenHarness(background, storage.NewMemoryStorage(), harness.HarnessOptions{Models: fauxModels(fauxAnswer("Done.")), Registry: harness.CreateRegistry()})
 	if err != nil {
@@ -158,7 +159,7 @@ func TestPocketCommitSubscriberTracksBusySpendAndSubmissions(t *testing.T) {
 	busyChanges := []bool{}
 	var usageSeen, submissionsSeen int
 	var busy bool
-	unsubscribe := opened.SubscribeCommits(func(_ context.Context, publication durable.CommitPublication) {
+	unsubscribe := sessiontest.ObserveCommitsFunc(opened, func(_ context.Context, publication durable.CommitPublication) {
 		mu.Lock()
 		defer mu.Unlock()
 		for _, change := range publication.Changes {

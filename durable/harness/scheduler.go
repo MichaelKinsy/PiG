@@ -443,7 +443,7 @@ func (s *TaskScheduler) liveValuesLocked() []anyTaskRecord {
 // a task cut off settings.restartLimit times ends when it is next reserved. Read-only, it only loads them: a running task
 // stays as committed, running in another process.
 func (s *TaskScheduler) Open(ctx context.Context) error {
-	s.options.Session.ObserveCommits(func(_ context.Context, publication session.ObservedCommit) { s.observe(publication) })
+	s.options.Session.FollowCommits(func(_ context.Context, publication session.ObservedCommit) { s.observe(publication) })
 	s.options.Session.SubscribeClose(s.seal)
 	s.unsubscribeRegistry = s.options.Registry.Subscribe(func() {
 		s.notifyBlocked()
@@ -582,7 +582,7 @@ func (s *TaskScheduler) notifyBlockedLocked() {
 	s.background.Go(func() {
 		for _, listener := range listeners {
 			session.Contained(listener, func(err error) {
-				s.options.Report(context.Background(), err, durable.ReportInfo{Type: durable.ReportListenerError})
+				s.options.Report(context.Background(), err, durable.ReportInfo{Kind: durable.ReportListenerError})
 			})
 		}
 	})
@@ -2039,7 +2039,7 @@ func (s *TaskScheduler) inspectTaskLocked(record anyTaskRecord, snapshot durable
 	if found.migrates && found.task.AnyDefinition().Migrate == nil {
 		return TaskInspectionState{Kind: TaskInspectionBlocked, Reason: blockedMigrationFailed, Error: missingMigration(record, found.task.AnyDefinition())}
 	}
-	return TaskInspectionState{Kind: TaskInspectionReady, Migrates: found.migrates}
+	return TaskInspectionState{Kind: TaskInspectionPending, Migrates: found.migrates}
 }
 
 func (s *TaskScheduler) createInvocationLocked(record anyTaskRecord, mode invocationMode, extension string) *invocation {
@@ -2323,10 +2323,7 @@ func (s *TaskScheduler) decideLocked(tx *session.Transaction, current anyTaskRec
 		}
 		if phase.reported == nil || !sameTaskDefinition(phase.reported.task, next) {
 			phase.reported = &reportedTask{task: next}
-			reason := durable.ReasonIncompatibleTask
-			if next.Definition == nil {
-				reason = durable.ReasonMissingTask
-			}
+			reason := outdatedReason(next, current)
 			info := s.aboutRecord(durable.ReportTaskOutdated, current)
 			info.Extension, info.Reason = invocation.extension, reason
 			s.options.Report(invocation.telemetryContext(), fmt.Errorf("Task %d keeps running under its old %s definition", current.Id, current.Kind), info)
@@ -2788,7 +2785,7 @@ func (hooks runtimeHooks) Each(name string, invoke func(handlers any) error) err
 			if runtime.invocation.ctx.Err() != nil {
 				return err
 			}
-			runtime.scheduler.options.Report(runtime.invocation.telemetryContext(), err, durable.ReportInfo{Type: durable.ReportExtensionError, Extension: hook.Extension, Task: runtime.invocation.reportTask()})
+			runtime.scheduler.options.Report(runtime.invocation.telemetryContext(), err, durable.ReportInfo{Kind: durable.ReportExtensionError, Extension: hook.Extension, Task: runtime.invocation.reportTask()})
 		}
 	}
 	return nil
@@ -3138,11 +3135,11 @@ func (runtime *taskRuntime) Report(err error, from ...durable.ReportFrom) {
 		runtime.scheduler.options.Report(invocation.telemetryContext(), err, runtime.scheduler.aboutInvocation(durable.ReportTaskError, invocation))
 		return
 	}
-	switch from[0].Type {
+	switch from[0].Kind {
 	case durable.ReportFromExtension:
-		runtime.scheduler.options.Report(invocation.telemetryContext(), err, durable.ReportInfo{Type: durable.ReportExtensionError, Task: invocation.reportTask(), Extension: from[0].Extension})
+		runtime.scheduler.options.Report(invocation.telemetryContext(), err, durable.ReportInfo{Kind: durable.ReportExtensionError, Task: invocation.reportTask(), Extension: from[0].Extension})
 	default:
-		runtime.scheduler.options.Report(invocation.telemetryContext(), err, durable.ReportInfo{Type: durable.ReportHostError, Callback: from[0].Callback, Task: invocation.reportTask()})
+		runtime.scheduler.options.Report(invocation.telemetryContext(), err, durable.ReportInfo{Kind: durable.ReportHostError, Callback: from[0].Callback, Task: invocation.reportTask()})
 	}
 }
 
@@ -3352,6 +3349,18 @@ func withState(record anyTaskRecord, state anyTaskState) anyTaskRecord {
 		record.Restarts = 0
 	}
 	return record
+}
+
+// outdatedReason is why a replacement definition cannot take a running task, in fitLocked's words: none is registered, it
+// is older than the task, or it is newer without a migrate (outdatedReason in scheduler.ts).
+func outdatedReason(task durable.AnyTask, record anyTaskRecord) string {
+	if task.Definition == nil {
+		return blockedMissingTask
+	}
+	if task.AnyDefinition().Version < record.Version {
+		return blockedTaskTooOld
+	}
+	return blockedMigrationFailed
 }
 
 // canReserve reports whether a definition can take the task at reservation: same version, or newer with a migration.
@@ -3628,10 +3637,10 @@ func (s *TaskScheduler) armTimerLocked(at *float64) {
 }
 
 var (
-	registryInfo  = durable.ReportInfo{Type: durable.ReportHostError, Callback: durable.HostCallbackRegistry}
-	settingsInfo  = durable.ReportInfo{Type: durable.ReportHostError, Callback: durable.HostCallbackSettings}
-	onWakeInfo    = durable.ReportInfo{Type: durable.ReportHostError, Callback: durable.HostCallbackOnWake}
-	telemetryInfo = durable.ReportInfo{Type: durable.ReportHostError, Callback: durable.HostCallbackTelemetry}
+	registryInfo  = durable.ReportInfo{Kind: durable.ReportHostError, Callback: durable.HostCallbackRegistry}
+	settingsInfo  = durable.ReportInfo{Kind: durable.ReportHostError, Callback: durable.HostCallbackSettings}
+	onWakeInfo    = durable.ReportInfo{Kind: durable.ReportHostError, Callback: durable.HostCallbackOnWake}
+	telemetryInfo = durable.ReportInfo{Kind: durable.ReportHostError, Callback: durable.HostCallbackTelemetry}
 )
 
 // installerOf is the extension that installed task in snapshot, the last one that lists it; empty for a built-in task.
@@ -3655,15 +3664,15 @@ func (invocation *invocation) reportTask() *durable.ReportTask {
 
 // aboutInvocation is the report info of a failure of an invocation's task: the task, and the extension that installed the
 // definition the invocation runs.
-func (s *TaskScheduler) aboutInvocation(reportType durable.ReportType, invocation *invocation) durable.ReportInfo {
-	return durable.ReportInfo{Type: reportType, Task: invocation.reportTask(), Extension: invocation.extension}
+func (s *TaskScheduler) aboutInvocation(reportKind durable.ReportKind, invocation *invocation) durable.ReportInfo {
+	return durable.ReportInfo{Kind: reportKind, Task: invocation.reportTask(), Extension: invocation.extension}
 }
 
 // aboutRecord is the report info of a failure of a stored task, with the extension that installed its current
 // definition: the code that failed is that extension's. Built-in tasks have none. A registry that panics is reported where
 // it is read for scheduling; a report goes out without the name.
-func (s *TaskScheduler) aboutRecord(reportType durable.ReportType, record anyTaskRecord) durable.ReportInfo {
-	info := durable.ReportInfo{Type: reportType, Task: &durable.ReportTask{Id: record.Id, Kind: record.Kind, ConversationId: record.ConversationId}}
+func (s *TaskScheduler) aboutRecord(reportKind durable.ReportKind, record anyTaskRecord) durable.ReportInfo {
+	info := durable.ReportInfo{Kind: reportKind, Task: &durable.ReportTask{Id: record.Id, Kind: record.Kind, ConversationId: record.ConversationId}}
 	func() {
 		defer func() {
 			// upstream: packages/durable/src/harness/scheduler.ts:#aboutTask

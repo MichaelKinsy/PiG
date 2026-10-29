@@ -195,7 +195,7 @@ func (harness *harnessImpl) resolveAgent(ctx context.Context, id durable.Convers
 		return durable.Agent{}, err
 	}
 	return ResolveAgent(state, registry, harness.settings(), func(err error, extension string) {
-		harness.report(ctx, err, durable.ReportInfo{Type: durable.ReportExtensionError, ConversationId: &id, Extension: extension})
+		harness.report(ctx, err, durable.ReportInfo{Kind: durable.ReportExtensionError, ConversationId: &id, Extension: extension})
 	}), nil
 }
 
@@ -547,14 +547,14 @@ func OpenHarness(ctx context.Context, storage durable.Storage, options HarnessOp
 
 // SafeReport is onReport that cannot fail: it is the last place an error goes, so its own panic is dropped. Ports harness.ts
 // safeReport; the Harness over the core wraps its OnReport with it too.
-func SafeReport(onReport func(err error, info durable.ReportInfo)) func(err error, info durable.ReportInfo) {
+func SafeReport(onReport func(report durable.Report)) func(err error, info durable.ReportInfo) {
 	return func(err error, info durable.ReportInfo) {
 		defer func() {
 			// upstream: packages/durable/src/harness/harness.ts:safeReport
 			_ = recover()
 		}()
 		if onReport != nil {
-			onReport(err, info)
+			onReport(durable.Report{ReportInfo: info, Error: err})
 		}
 	}
 }
@@ -578,7 +578,7 @@ func SafeNow(now func() float64, report func(err error, info durable.ReportInfo)
 					if !ok {
 						err = fmt.Errorf("%v", recovered)
 					}
-					report(err, durable.ReportInfo{Type: durable.ReportHostError, Callback: durable.HostCallbackNow})
+					report(err, durable.ReportInfo{Kind: durable.ReportHostError, Callback: durable.HostCallbackNow})
 				}
 				value = wall()
 			}
@@ -630,7 +630,7 @@ func newHarness(ctx context.Context, storage durable.Storage, options HarnessOpt
 		Now:      now,
 		OnWake:   options.OnWake,
 		Timers: durable.HostTimers(options.SetTimer, func(err error) {
-			harness.report(context.Background(), err, durable.ReportInfo{Type: durable.ReportHostError, Callback: durable.HostCallbackSetTimer})
+			harness.report(context.Background(), err, durable.ReportInfo{Kind: durable.ReportHostError, Callback: durable.HostCallbackSetTimer})
 		}),
 		WriteAtClose: func(writes func() []durable.StorageWrite) error {
 			// A close writes what it stops straight to Storage, off the published changes, with no caller to cancel it.

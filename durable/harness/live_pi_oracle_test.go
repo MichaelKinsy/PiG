@@ -80,7 +80,7 @@ func livePrograms() []liveProgram {
 		if random.Intn(2) == 0 {
 			var statuses []any
 			for range random.Intn(3) + 1 {
-				statuses = append(statuses, map[string]any{"taskId": task(), "reason": "threshold", "blocking": random.Intn(2) == 0, "attempt": 1})
+				statuses = append(statuses, map[string]any{"taskId": task(), "trigger": "threshold", "blocking": random.Intn(2) == 0, "attempt": 1})
 			}
 			live["compactions"] = statuses
 		}
@@ -96,7 +96,7 @@ func livePrograms() []liveProgram {
 					map[string]any{"status": "unanswered", "reason": "no_model", "detail": "No model is configured", "settlement": map[string]any{"status": "unanswered", "reason": "no_model"}},
 				).(map[string]any)}
 			case 1:
-				step = liveStep{Op: "addCompaction", Status: map[string]any{"taskId": task(), "reason": "manual", "blocking": random.Intn(2) == 0, "attempt": 1}}
+				step = liveStep{Op: "addCompaction", Status: map[string]any{"taskId": task(), "trigger": "manual", "blocking": random.Intn(2) == 0, "attempt": 1}}
 			case 2:
 				step = liveStep{Op: "removeCompaction", Task: task()}
 			case 3:
@@ -159,7 +159,7 @@ func TestLiveDocHelpersMatchPi(t *testing.T) {
 			case "endRun":
 				err = EndRun(tx, live, durable.TaskId(step.Task), runEndOf(step.End))
 			case "addCompaction":
-				err = AddCompactionStatus(live, CompactionStatus{TaskId: durable.TaskId(intOf(step.Status["taskId"])), Reason: durable.CompactionReason(step.Status["reason"].(string)), Blocking: step.Status["blocking"].(bool), Attempt: 1})
+				err = AddCompactionStatus(live, CompactionStatus{TaskId: durable.TaskId(intOf(step.Status["taskId"])), Trigger: durable.CompactionReason(step.Status["trigger"].(string)), Blocking: step.Status["blocking"].(bool), Attempt: 1})
 			case "removeCompaction":
 				err = RemoveCompactionStatus(live, durable.TaskId(step.Task))
 			case "finishSlot":

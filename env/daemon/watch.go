@@ -87,7 +87,7 @@ func watchEvent(change durableenv.FileChange) Object {
 		return Object{"kind": "change", "paths": typed.Paths}
 	case durableenv.FileChangeOverflow:
 		return Object{"kind": "change", "overflow": true, "mode": "polling"}
-	case durableenv.FileChangeError:
+	case durableenv.FileChangeFailed:
 		return Object{"kind": "error", "code": string(typed.Error.Code), "message": typed.Error.Message}
 	}
 	return nil
@@ -128,7 +128,7 @@ func (s *server) runWatch(id uint32, request Object, ctl *control) (Object, *Fai
 	if err != nil {
 		return nil, watchFailure(err)
 	}
-	defer func() { _ = opened.Close(context.Background()) }()
+	defer func() { _ = opened.Stop(context.Background()) }()
 	send(Object{"kind": "ready", "mode": string(opened.Mode())})
 	<-ctx.Done()
 	return Object{}, nil

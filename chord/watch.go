@@ -6,54 +6,75 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/delta"
 )
 
-// Ports packages/chord/src/watch.ts (WatchEnd, WatchChange, NativeWatchChange, WatchHandle, Watchable, NativeWatchable).
+// Ports packages/chord/src/watch.ts (WatchEnd, WatchCall, NativeWatchCall, WatchHandle, Watchable, NativeWatchable).
 
-// WatchEndReason is why a watch ended.
+// WatchEndKind is why a watch ended. A watch ends only for good; a failure its source recovers from is a failed WatchCall
+// and the watch stays open.
 //
 //   - WatchStopped: Stop was called.
-//   - WatchCancelled: the context the watch was acquired with was cancelled.
+//   - WatchAborted: the context the watch was acquired with was aborted.
 //   - WatchEnded: the source closed (its owner ended or closed).
 //   - WatchListenerError: the listener failed with Error.
-//   - WatchFailed: the source failed with Error.
-type WatchEndReason string
+//   - WatchFailed: the source failed for good with Error.
+type WatchEndKind string
 
 const (
-	WatchStopped       WatchEndReason = "stopped"
-	WatchCancelled     WatchEndReason = "cancelled"
-	WatchEnded         WatchEndReason = "ended"
-	WatchListenerError WatchEndReason = "listener_error"
-	WatchFailed        WatchEndReason = "failed"
+	WatchStopped       WatchEndKind = "stopped"
+	WatchAborted       WatchEndKind = "aborted"
+	WatchEnded         WatchEndKind = "ended"
+	WatchListenerError WatchEndKind = "listener_error"
+	WatchFailed        WatchEndKind = "failed"
 )
 
-// WatchEnd is the terminal result of one watch; Error is set only for listener_error and failed.
+// WatchEnd is the terminal result of one watch, tagged by Kind; Error is set only for listener_error and failed.
 type WatchEnd struct {
-	Reason WatchEndReason
-	Error  error
+	Kind  WatchEndKind
+	Error error
 }
 
-// WatchChange is one call of a JSON watch's listener, and one change a source hands its Watch: the newest value, the ops
-// that turn the previous value into it, and whether the document the watch follows was retired since the previous call. A
-// retirement does not end the watch: Value is then what the address shows after it (the source decides; a Durable document
-// keeps the last value the watch was given, with no ops), and a document created there later arrives as [["r", value]],
-// possibly in the same call. It is plain data: the frame's context is the listener's first argument, never part of the
-// change.
-type WatchChange[T any] struct {
+// WatchCallKind tags a WatchCall and a NativeWatchCall.
+type WatchCallKind string
+
+const (
+	// WatchCallValue is a call with the newest value.
+	WatchCallValue WatchCallKind = "value"
+	// WatchCallFailed is a call with the error of a failure its source may recover from.
+	WatchCallFailed WatchCallKind = "failed"
+)
+
+// WatchCall is one call of a JSON watch's listener, and one frame a source hands its Watch, tagged by Kind:
+//
+//   - WatchCallValue: the newest Value, the Ops that turn the previous value into it, and whether the document the watch
+//     follows was retired since the previous value call. A retirement does not end the watch: Value is then what the
+//     address shows after it (the source decides; a Durable document keeps the last value the watch was given, with no
+//     ops), and a document created there later arrives as [["r", value]], possibly in the same call.
+//   - WatchCallFailed: the source cannot compute its value now, with Error; the watch stays open, and the next value
+//     arrives as [["r", value]]. WatchHandle.Value keeps the last value.
+//
+// Plain data: the frame's context is the listener's first argument, never part of the call. Value, Ops and Retired are
+// zero in a failed call; Error is nil in a value call.
+type WatchCall[T any] struct {
+	Kind    WatchCallKind
 	Value   T
 	Ops     []delta.Op
 	Retired bool
+	Error   error
 }
 
-// NativeWatchChange is one call of a native watch's listener: the new value.
-type NativeWatchChange[T any] struct {
+// NativeWatchCall is one call of a native watch's listener: the new value, or a failure its source may recover from, as in
+// WatchCall. Value is zero in a failed call; Error is nil in a value call.
+type NativeWatchCall[T any] struct {
+	Kind  WatchCallKind
 	Value T
+	Error error
 }
 
 // WatchHandle is a serialized exact-frame observation of an immutable value with bounded pending delivery.
 type WatchHandle[T any] interface {
-	// Value is the acquisition revision before Start and the latest delivered immutable revision afterward.
+	// Value is the acquisition revision before Start and the latest delivered immutable revision afterward (a failed call keeps it).
 	Value() T
 	// Start installs the sole asynchronous listener. It never invokes it inline.
-	Start(listener func(ctx context.Context, change WatchChange[T]) error)
+	Start(listener func(ctx context.Context, call WatchCall[T]) error)
 	// Stop idempotently stops future callbacks and returns this watch's terminal result.
 	Stop() (WatchEnd, error)
 	// Closed returns a channel closed when the watch terminates; an already-running callback remains caller-owned.
@@ -68,7 +89,7 @@ type WatchHandle[T any] interface {
 type Watchable[T any] interface {
 	// Value is the current value.
 	Value() T
-	// Watch returns a watch holding the current value, then one frame per change; cancelling ctx ends it.
+	// Watch returns a watch holding the current value, then one frame per change; aborting ctx ends it.
 	Watch(ctx context.Context) (WatchHandle[T], error)
 }
 
@@ -77,7 +98,7 @@ type Watchable[T any] interface {
 type NativeWatchable[T any] interface {
 	// Value is the current value.
 	Value() T
-	// Watch returns a watch holding the current value, then one frame per new value; cancelling ctx ends it. It returns an
+	// Watch returns a watch holding the current value, then one frame per new value; aborting ctx ends it. It returns an
 	// error where Pi's watch rejects.
 	Watch(ctx context.Context) (NativeWatchHandle[T], error)
 }

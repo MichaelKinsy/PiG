@@ -3,7 +3,7 @@
 // (host/PROTOCOL.md). A frame is `{value, ops}`, `{retired: true}` for the retirement of the document a watch follows, or `{end: true}`
 // once the owner task of a task document ended; a watch follows its address across retirements (session.ts #observeDocument).
 import { withColdLoad } from "./coldload.ts"
-import { replicatedState, Watch, type AttachedReplicatedState, type Context, type WatchChange } from "@earendil-works/chord"
+import { replicatedState, Watch, type AttachedReplicatedState, type Context, type WatchCall, type WatchEnd } from "@earendil-works/chord"
 import { BACKGROUND_CONTEXT, awaitWithContext } from "@earendil-works/chord/context"
 import { applyImmutable, type Op } from "@earendil-works/chord/delta"
 import type { CoreClient } from "../client.ts"
@@ -11,7 +11,7 @@ import { migrateRead } from "./tx.ts"
 import { currentCommit } from "./commit-context.ts"
 import { rememberSnapshot, revisionAt, sameContent, shareSnapshot } from "./snapshots.ts"
 import { sharedChange } from "./publications.ts"
-import { CommittedStateSource, guardObserver, observation, RETIREMENT_OPERATIONS } from "./observation.ts"
+import { CommittedStateSource, ENDED, guardObserver, observation, RETIREMENT_OPERATIONS, type GuardedObserver } from "./observation.ts"
 import type { Observation, Observer } from "./watch-types.ts"
 
 /** What a watch observes. */
@@ -25,10 +25,10 @@ export type Frame = { value?: unknown; ops?: readonly Op[]; retired?: boolean; e
 
 /** An `Observer` of the mount's value, with what the host adds: the end of a task document's owner. */
 type Sink = {
-  advance(change: WatchChange<unknown>, context: Context): void
+  advance(call: WatchCall<unknown>, context: Context): void
   /** The owner task of the task document ended, after the retirement change (session.ts endWatch, endGuarded). */
   ownerEnded?(): void
-  end(failure?: { readonly error: unknown }): void
+  end(end: WatchEnd): void
 }
 
 type Mount = { watchId: number; answeredMount?: boolean; request?: Promise<unknown>; result?: { value: unknown } | undefined; first?: unknown; frames?: Frame[]; waiting: number; members: Set<Sink>; ready: Promise<{ value: unknown } | undefined> }
@@ -68,7 +68,7 @@ export class WatchHub {
     const before = this.values.get(watchId)
     // A retirement repeats the last value the watch was given, with no ops.
     // The watch keeps no value while the address is absent (session.ts #observeDocument): the new incarnation's frame carries its own.
-    if (frame.retired === true) { this.values.delete(watchId); sink.advance({ value: before, ops: [], retired: true }, context); return }
+    if (frame.retired === true) { this.values.delete(watchId); sink.advance({ kind: "value", value: before, ops: [], retired: true }, context); return }
     const frameOps = frame.ops ?? []
     const target = this.targets.get(watchId)
     // The frame of a commit this host wrote carries the revision its draft prepared (snapshots.ts Revision), as the Storage write and the publication do.
@@ -78,7 +78,7 @@ export class WatchHub {
     const after = this.shareDocs(watchId, target, value !== undefined ? value : ops.length > 0 ? applyImmutable(before as never, ops as never) : before)
     this.values.set(watchId, after)
     if (target?.kind === "doc" && after !== undefined && after !== null ) rememberSnapshot(this.client, target.address, target.def as { kind?: unknown } | undefined, after)
-    if (ops.length > 0 || value !== undefined) sink.advance({ value: after, ops, retired: false }, context)
+    if (ops.length > 0 || value !== undefined) sink.advance({ kind: "value", value: after, ops, retired: false }, context)
   }
 
   /**
@@ -211,9 +211,9 @@ export class WatchHub {
   private fanOut(mount: Mount): Sink {
     const each = (call: (sink: Sink) => void) => { for (const sink of [...mount.members]) { try { call(sink) } catch (error) { this.report(error as Error) } } }
     return {
-      advance: (change, context) => each(sink => sink.advance(change, context)),
+      advance: (call, context) => each(sink => sink.advance(call, context)),
       ownerEnded: () => each(sink => sink.ownerEnded?.()),
-      end: failure => each(sink => sink.end(failure)),
+      end: end => each(sink => sink.end(end)),
     }
   }
 
@@ -235,24 +235,24 @@ export class WatchHub {
     await this.open<T>(target, context, (value, release) => {
       const made = watch = new Watch<T>(value, release, error => this.report(error as Error))
       // A task document's watch delivers the retirement that ends its task, then ends (session.ts endWatch).
-      return { advance: (change, context) => made.advance(change as WatchChange<T>, context), ownerEnded: () => made.endAfterDelivery(), end: failure => made.end(failure) }
+      return { advance: (call, context) => made.advance(call as WatchCall<T>, context), ownerEnded: () => made.endAfterDelivery(), end: end => made.end(end) }
     })
-    // A watch ends as cancelled when its caller's context is cancelled later (session.ts watchDoc, view.ts watch: observeCancellation).
-    if (watch !== undefined && context.abortSignal !== undefined) watch.observeCancellation(context.abortSignal)
+    // A watch ends `aborted` when its caller's context is aborted later (session.ts watchDoc, view.ts watch: observeAbort).
+    if (watch !== undefined && context.abortSignal !== undefined) watch.observeAbort(context.abortSignal)
     return watch
   }
 
   /**
    * Attach `observer` to the target, behind `guardObserver()`: `undefined` when the target is absent. The attachment's `context`
-   * governs only the attachment: cancelled while attaching, the promise rejects and nothing stays attached.
+   * governs only the attachment: aborted while attaching, the promise rejects and nothing stays attached.
    */
   async observe<T>(target: WatchTarget, observer: Observer<T>, context: Context): Promise<Observation<T> | undefined> {
     let value!: T
-    let guarded!: ReturnType<typeof guardObserver<T>>
+    let guarded!: GuardedObserver<WatchCall<T>>
     const sink = await this.open<T>(target, context, (current, release) => {
       value = current
       guarded = guardObserver(observer, release, error => this.report(error as Error))
-      return { advance: (change, context) => guarded.advance(change as WatchChange<T>, context), ownerEnded: () => guarded.end(undefined), end: failure => guarded.end(failure) }
+      return { advance: (call, context) => guarded.advance(call as WatchCall<T>, context), ownerEnded: () => guarded.end(ENDED), end: end => guarded.end(end) }
     })
     if (sink === undefined) return undefined
     const signal = context.abortSignal
@@ -269,7 +269,8 @@ export class WatchHub {
     await this.open<T>(target, context, (value, release) => {
       const made = source = new CommittedStateSource<T>(value, release)
       // The source is retired by a null value: the host's state does not follow the address (a Chord source has no such state).
-      return { advance: (change, context) => change.retired ? made.advance(null as never, RETIREMENT_OPERATIONS, context) : made.advance(change.value as T, change.ops, context), ownerEnded: () => made.closeSession(), end: () => made.closeSession() }
+      // Durable's failures are final: a state sees value calls only.
+      return { advance: (call, context) => { if (call.kind === "value") call.retired ? made.advance(null as never, RETIREMENT_OPERATIONS, context) : made.advance(call.value as T, call.ops, context) }, ownerEnded: () => made.closeSession(), end: () => made.closeSession() }
     })
     return source ? replicatedState(source as never) as AttachedReplicatedState<T> : undefined
   }
@@ -297,11 +298,11 @@ export class WatchHub {
   }
 
   /** The handle is closing: every watch and state ends with `session_closed` without a `watch.close` the core cannot answer. */
-  closeSession(failure?: { readonly error: unknown }) {
+  closeSession(end: WatchEnd) {
     this.closing = true
     const sinks = [...this.sinks.values()]
     this.sinks.clear()
     this.mounts.clear()
-    for (const sink of sinks) sink.end(failure)
+    for (const sink of sinks) sink.end(end)
   }
 }

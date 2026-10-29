@@ -34,7 +34,7 @@ func PersistWithin(ms *float64) float64 {
 	return defaultPersistWithinMs
 }
 
-// ObservedCommit is what the Session's own components observe of one commit (ObserveCommits): a stored commit with its
+// ObservedCommit is what the Session's own components observe of one commit (FollowCommits): a stored commit with its
 // own changes, or a deferred one adopted in memory only (Memory), which changes documents only. Memory is never behind: a
 // later store of held changes is not observed again.
 type ObservedCommit struct {
@@ -151,7 +151,7 @@ func (session *SessionImpl) hold(ctx context.Context, tx *Transaction, held []he
 }
 
 // storeHolds stores the held changes of holds in one storage transaction, on the line. Memory already has them, so only
-// SubscribeCommits listeners see it, published as Storage adopts it. A failure fails the Session, as every Storage failure does.
+// ObserveCommits listeners see it, published as Storage adopts it. A failure fails the Session, as every Storage failure does.
 func (session *SessionImpl) storeHolds(ctx context.Context, holds []*heldDocument) error {
 	if len(holds) == 0 {
 		return nil
@@ -171,7 +171,7 @@ func (session *SessionImpl) storeHolds(ctx context.Context, holds []*heldDocumen
 			id := record.Scope.ConversationId
 			conversationId = &id
 		}
-		changes = append(changes, durable.DocumentChange{Record: record, ConversationId: conversationId, Version: &version, Value: value, Ops: ops})
+		changes = append(changes, durable.DocumentChange{Record: record, ConversationId: conversationId, Version: version, Value: value, Ops: ops})
 	}
 	adopted := false
 	adopt := func(seq durable.Seq) {

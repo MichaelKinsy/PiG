@@ -662,7 +662,7 @@ func TestCoreObserversOfAnOlderShapeGetARootReplacementAfterANewerTokenWrites(t 
 		t.Fatalf("watch: %v %v", w, err)
 	}
 	frames := make(chan []durable.Op, 4)
-	w.Start(func(_ context.Context, change durable.WatchChange[durable.JsonObject]) error {
+	w.Start(func(_ context.Context, change durable.WatchCall[durable.JsonObject]) error {
 		ops := change.Ops
 		frames <- ops
 		return nil
@@ -1859,8 +1859,8 @@ func TestCoreAnUncertainStorageFailurePoisonsTheSession(t *testing.T) {
 	live := defineConversationDoc("test.poison")
 	r.commit(t, func(tx durable.Tx) error { return touch2(tx, live, conversationId) })
 	published := make(chan durable.CommitPublication, 8)
-	off := r.s.SubscribeCommits(func(_ context.Context, p durable.CommitPublication) { published <- p })
-	defer off()
+	off := r.s.ObserveCommits(commitsFunc(func(_ context.Context, p durable.CommitPublication) { published <- p }))
+	defer off.Detach()
 	r.failRevisionsOfKind(t, "test.poison", "disk vanished")
 	err := r.fail(t, func(tx durable.Tx) error {
 		o, err := tx.Doc(live, conversationId)

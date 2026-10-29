@@ -16,8 +16,8 @@ func TestCommitChangeVariantsCarryPiDiscriminators(t *testing.T) {
 			t.Errorf("%T: type = %q, want %q", change, got, wantTables[i])
 		}
 	}
-	documents := []durable.DocumentCommitChange{durable.DocumentChange{}, durable.DocumentCopyChange{}}
-	wantDocuments := []string{"document", "document.copy"}
+	documents := []durable.DocumentCommitChange{durable.DocumentChange{}, durable.DocumentRetireChange{}, durable.DocumentCopyChange{}}
+	wantDocuments := []string{"document", "document", "document.copy"}
 	for i, change := range documents {
 		if got := durable.CommitChangeType(change); got != wantDocuments[i] {
 			t.Errorf("%T: type = %q, want %q", change, got, wantDocuments[i])

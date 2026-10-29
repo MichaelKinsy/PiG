@@ -1001,7 +1001,7 @@ func finalResult(ctx context.Context, runtime toolRuntime, input ToolTaskInput, 
 			if agent, err := runtime.Agent(ctx); err == nil {
 				extension = ToolExtension(agent, tool.Name)
 			}
-			runtime.Report(errors.New(broken), durable.ReportFrom{Type: durable.ReportFromExtension, Extension: extension})
+			runtime.Report(errors.New(broken), durable.ReportFrom{Kind: durable.ReportFromExtension, Extension: extension})
 		}
 	}
 	// Programs get the tool's own value: without a schema, its output. The model reads only Output, so model-issued calls

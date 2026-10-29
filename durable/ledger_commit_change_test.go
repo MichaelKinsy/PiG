@@ -39,6 +39,7 @@ func TestDocumentCommitChangeKindsAndCopySource(t *testing.T) {
 		want   string
 	}{
 		{DocumentChange{}, "document"},
+		{DocumentRetireChange{}, "document"},
 		{DocumentCopyChange{Source: source}, "document.copy"},
 	} {
 		if got := CommitChangeType(tc.change); got != tc.want {
@@ -56,7 +57,7 @@ func TestDocumentCommitChangeKindsAndCopySource(t *testing.T) {
 		t.Fatal("CurrentPoint selects the current state")
 	}
 	tableType := reflect.TypeFor[TableCommitChange]()
-	for _, change := range []any{DocumentChange{}, DocumentCopyChange{}} {
+	for _, change := range []any{DocumentChange{}, DocumentRetireChange{}, DocumentCopyChange{}} {
 		if reflect.TypeOf(change).Implements(tableType) {
 			t.Errorf("%T must not be a TableCommitChange", change)
 		}

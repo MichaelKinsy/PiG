@@ -765,7 +765,7 @@ func TestTheSlotsOfNestedCallsAnEarlierAttemptFinishedAreClearedWhenTheRerunMake
 	// The nested slots pi.live holds in the commit where the model-issued call's task ends.
 	slotsAfterCaller := -1
 	var slotsMu sync.Mutex
-	harness.SubscribeCommits(func(_ context.Context, publication durable.CommitPublication) {
+	harness.ObserveCommits(commitsObserver{advance: func(_ context.Context, publication durable.CommitPublication) {
 		ended := false
 		slots := 0
 		for _, change := range publication.Changes {
@@ -774,7 +774,7 @@ func TestTheSlotsOfNestedCallsAnEarlierAttemptFinishedAreClearedWhenTheRerunMake
 				input, err := durable.FromJsonValue[ToolTaskInput](typed.Value.Input)
 				ended = ended || typed.Value.Kind == "pi.tool" && err == nil && input.Kind == ToolTaskModel && typed.Value.State.Status == durable.TaskTerminal
 			case durable.DocumentChange:
-				if typed.Record.Kind == "pi.live" && typed.Value != nil {
+				if typed.Record.Kind == "pi.live" {
 					if list, ok := typed.Value.Value("nestedTools").([]any); ok {
 						slots = len(list)
 					}
@@ -786,7 +786,7 @@ func TestTheSlotsOfNestedCallsAnEarlierAttemptFinishedAreClearedWhenTheRerunMake
 			slotsAfterCaller = slots
 			slotsMu.Unlock()
 		}
-	})
+	}})
 	harness.Resume()
 	waiting, cancel := context.WithTimeout(testContext, 30*time.Second)
 	defer cancel()

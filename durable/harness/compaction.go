@@ -346,7 +346,7 @@ func CreateCompaction(tx durable.Tx, conversationId durable.ConversationId, inpu
 	if err != nil {
 		return 0, err
 	}
-	status := CompactionStatus{TaskId: taskId, Reason: input.Reason, Blocking: owner != nil, Attempt: 1}
+	status := CompactionStatus{TaskId: taskId, Trigger: input.Reason, Blocking: owner != nil, Attempt: 1}
 	return taskId, AddCompactionStatus(live, status)
 }
 

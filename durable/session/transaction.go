@@ -1254,7 +1254,7 @@ func (tx *Transaction) discard() {
 	tx.mu.Unlock()
 }
 
-// adoptedDocuments is what adoption publishes: to the Session's own observers, and the stored changes to SubscribeCommits.
+// adoptedDocuments is what adoption publishes: to the Session's own observers, and the stored changes to ObserveCommits.
 type adoptedDocuments struct {
 	// observed is this commit's own changes, as memory adopted them.
 	observed []durable.DocumentCommitChange
@@ -1360,7 +1360,7 @@ func (tx *Transaction) adopt(seq durable.Seq) (adoptedDocuments, error) {
 func describe(plan *documentPlan, record durable.DocumentRecord) durable.DocumentCommitChange {
 	conversationId := plan.conversationId
 	if plan.retire {
-		return durable.DocumentChange{Record: record, ConversationId: conversationId, Ops: []durable.Op{}}
+		return durable.DocumentRetireChange{Record: record, ConversationId: conversationId}
 	}
 	if copyWrite, ok := plan.content.(durable.DocumentCopyWrite); ok {
 		return durable.DocumentCopyChange{Record: record, ConversationId: *conversationId, Source: copyWrite.Source}
@@ -1374,7 +1374,7 @@ func describe(plan *documentPlan, record durable.DocumentRecord) durable.Documen
 		ops = []durable.Op{}
 	}
 	version := change.version
-	return durable.DocumentChange{Record: record, ConversationId: conversationId, Version: &version, Value: change.prepared.Value(), Ops: ops}
+	return durable.DocumentChange{Record: record, ConversationId: conversationId, Version: version, Value: change.prepared.Value(), Ops: ops}
 }
 
 // heldDocument holds the changes of a cached incarnation that deferred commits adopted in memory and the Session has not
@@ -1458,7 +1458,7 @@ func (tx *Transaction) adoptHeld() ([]durable.DocumentCommitChange, error) {
 		publications = append(publications, durable.DocumentChange{
 			Record:         change.loaded.Record,
 			ConversationId: plan.conversationId,
-			Version:        &version,
+			Version:        version,
 			Value:          change.prepared.Value(),
 			Ops:            change.prepared.Ops(),
 		})

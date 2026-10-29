@@ -172,10 +172,7 @@ func (s *Scheduler) decide(tx *Tx, current *jv.Object, previous *phaseResult, st
 		}
 		if !st.hasRep || st.reported != next {
 			st.reported, st.hasRep = next, true
-			reason := "incompatible_task"
-			if next == nil {
-				reason = "missing_task"
-			}
+			reason := outdatedReason(next, current)
 			info := s.aboutRecord("task_outdated", current)
 			info.Delete("extension")
 			if extension != "" {
@@ -186,6 +183,18 @@ func (s *Scheduler) decide(tx *Tx, current *jv.Object, previous *phaseResult, st
 		}
 	}
 	return decision{kind: decideContinue}, nil
+}
+
+// outdatedReason is why a replacement definition cannot take a running task, in fit's words: none is registered, it is
+// older than the task, or it is newer without a migration (scheduler.ts outdatedReason).
+func outdatedReason(task *TaskImpl, rec *jv.Object) string {
+	if task == nil {
+		return "missing_task"
+	}
+	if task.Def.Version < int(mustInt(rec, "version")) {
+		return "task_too_old"
+	}
+	return "migration_failed"
 }
 
 // freshSnapshot is registry.snapshot() inside a step job (Env.FreshSnapshot).

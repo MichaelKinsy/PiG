@@ -17,7 +17,7 @@ func TestWatchEventsMatchTheRustDaemon(t *testing.T) {
 	}{
 		{durableenv.FileChangePaths{Paths: []string{"/a", "/b"}}, `{"kind":"change","paths":["/a","/b"]}`},
 		{durableenv.FileChangeOverflow{}, `{"kind":"change","mode":"polling","overflow":true}`},
-		{durableenv.FileChangeError{Error: durableenv.NewFileError(durableenv.FileErrorPermissionDenied, "denied", "", nil)}, `{"code":"permission_denied","kind":"error","message":"denied"}`},
+		{durableenv.FileChangeFailed{Error: durableenv.NewFileError(durableenv.FileErrorPermissionDenied, "denied", "", nil)}, `{"code":"permission_denied","kind":"error","message":"denied"}`},
 	} {
 		encoded, err := json.Marshal(watchEvent(test.change))
 		if err != nil || string(encoded) != test.want {

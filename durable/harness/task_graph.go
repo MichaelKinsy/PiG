@@ -77,8 +77,8 @@ type TaskGraphWatch = durable.WatchHandle[TaskGraph]
 
 // taskGraphObserver is a chord.Watch of the graph or a guarded host observer (ObserveTaskGraph).
 type taskGraphObserver interface {
-	Advance(ctx context.Context, change chord.WatchChange[TaskGraph])
-	SourceEnded(failure error)
+	Advance(ctx context.Context, call chord.WatchCall[TaskGraph])
+	End(end chord.WatchEnd)
 }
 
 // guardedGraphObserver adapts a session.GuardedObserver to the mount's observer interface.
@@ -86,7 +86,12 @@ type guardedGraphObserver struct {
 	*session.GuardedObserver[TaskGraph]
 }
 
-func (observer guardedGraphObserver) SourceEnded(failure error) { observer.End(failure) }
+// graphWatch adapts a chord.Watch to the mount's observer interface: a Watch ends with EndWith.
+type graphWatch struct {
+	*chord.Watch[TaskGraph]
+}
+
+func (observer graphWatch) End(end chord.WatchEnd) { observer.EndWith(end) }
 
 type taskGraphMount struct {
 	value     TaskGraph
@@ -121,7 +126,7 @@ type TaskGraphView struct {
 // NewTaskGraphView subscribes the mount to the Session's commits and close.
 func NewTaskGraphView(sessionImpl *session.SessionImpl, storage durable.Storage, blocking TaskGraphBlocking) *TaskGraphView {
 	view := &TaskGraphView{session: sessionImpl, storage: storage, blocking: blocking}
-	sessionImpl.ObserveCommits(func(ctx context.Context, publication session.ObservedCommit) {
+	sessionImpl.FollowCommits(func(ctx context.Context, publication session.ObservedCommit) {
 		// A commit held in memory changes documents only, which the graph does not show.
 		if publication.Memory {
 			return
@@ -139,7 +144,7 @@ func NewTaskGraphView(sessionImpl *session.SessionImpl, storage durable.Storage,
 	})
 	blocking.SubscribeBlocked(view.refreshBlocked)
 	sessionImpl.SubscribeClose(func() {
-		failure := view.session.Failure()
+		end := sessionEnd(view.session.Failure())
 		view.mu.Lock()
 		view.closed = true
 		var observers []taskGraphObserver
@@ -149,7 +154,7 @@ func NewTaskGraphView(sessionImpl *session.SessionImpl, storage durable.Storage,
 		view.mount = nil
 		view.mu.Unlock()
 		for _, observer := range observers {
-			session.Contained(func() { observer.SourceEnded(failure) }, view.session.Report)
+			session.Contained(func() { observer.End(end) }, view.session.Report)
 		}
 	})
 	return view
@@ -180,16 +185,16 @@ func (view *TaskGraphView) Watch(ctx context.Context) (TaskGraphWatch, error) {
 	var watch *chord.Watch[TaskGraph]
 	if _, err := view.attach(ctx, func(value TaskGraph, release func()) taskGraphObserver {
 		watch = session.NewSessionWatch(view.session, value, release)
-		return watch
+		return graphWatch{watch}
 	}); err != nil {
 		return nil, err
 	}
 	if ctx.Err() != nil {
-		watch.Cancel()
+		watch.Abort()
 		return nil, context.Cause(ctx)
 	}
 	if ctx.Done() != nil {
-		watch.ObserveCancellation(ctx)
+		watch.ObserveAbort(ctx)
 	}
 	return watch, nil
 }
@@ -421,7 +426,7 @@ func publishChanged(ctx context.Context, mount *taskGraphMount, observers []task
 	}
 	mount.value = TaskGraph{Tasks: tasks}
 	frameContext := context.WithoutCancel(ctx)
-	change := chord.WatchChange[TaskGraph]{Value: mount.value, Ops: ops}
+	change := chord.WatchCall[TaskGraph]{Kind: chord.WatchCallValue, Value: mount.value, Ops: ops}
 	for _, observer := range observers {
 		session.Contained(func() { observer.Advance(frameContext, change) }, report)
 	}

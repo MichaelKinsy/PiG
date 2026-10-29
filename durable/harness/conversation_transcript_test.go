@@ -523,13 +523,13 @@ func TestConversationTranscriptOverAHarness(t *testing.T) {
 		watch := must(root.Watch(testContext, &window))
 		var mu sync.Mutex
 		view := helper.Merge(watch.Value())
-		watch.Start(func(_ context.Context, change durable.WatchChange[ConversationView]) error {
+		watch.Start(onValue(func(_ context.Context, change durable.WatchCall[ConversationView]) error {
 			merged := helper.Merge(change.Value)
 			mu.Lock()
 			defer mu.Unlock()
 			view = merged
 			return nil
-		})
+		}))
 		current := func() *TranscriptView {
 			mu.Lock()
 			defer mu.Unlock()

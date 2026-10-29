@@ -55,7 +55,7 @@ func TestCoreAnExtensionTaskThatEndsForCrashesIsReportedInterrupted(t *testing.T
 				}
 				var want []durable.ReportInfo
 				if c.reported {
-					want = []durable.ReportInfo{{Type: durable.ReportTaskInterrupted, Task: &durable.ReportTask{Id: id, Kind: "test.ends-for-crashes", ConversationId: root.Id()}, Extension: "loop", Reason: c.reason, Restarts: 1}}
+					want = []durable.ReportInfo{{Kind: durable.ReportTaskInterrupted, Task: &durable.ReportTask{Id: id, Kind: "test.ends-for-crashes", ConversationId: root.Id()}, Extension: "loop", Reason: c.reason, Restarts: 1}}
 				}
 				got := current.infos.infos()
 				if !reflect.DeepEqual(got, want) {

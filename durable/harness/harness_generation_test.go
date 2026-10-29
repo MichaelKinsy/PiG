@@ -84,9 +84,9 @@ type livePublications struct {
 func observeLive(t *testing.T, harness Harness) *livePublications {
 	t.Helper()
 	collected := &livePublications{}
-	observeCommits(harness, func(_ context.Context, publication session.ObservedCommit) {
-		for _, change := range documentChanges(publication.Changes) {
-			if change.Record.Kind != "pi.live" || change.Value == nil {
+	followCommits(harness, func(_ context.Context, publication session.ObservedCommit) {
+		for _, change := range documentValues(publication.Changes) {
+			if change.Record.Kind != "pi.live" {
 				continue
 			}
 			value, err := durable.FromJsonValue[LiveState](change.Value)

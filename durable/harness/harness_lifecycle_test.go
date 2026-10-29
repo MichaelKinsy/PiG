@@ -406,9 +406,9 @@ func TestHarnessClose(t *testing.T) {
 			defer mu.Unlock()
 			frames = append(frames, name)
 		}
-		graphWatch.Start(func(context.Context, chord.WatchChange[TaskGraph]) error { frame("graphWatch"); return nil })
-		docWatch.Start(func(context.Context, chord.WatchChange[durable.JsonObject]) error { frame("docWatch"); return nil })
-		viewWatch.Start(func(context.Context, chord.WatchChange[ConversationView]) error { frame("viewWatch"); return nil })
+		graphWatch.Start(func(context.Context, chord.WatchCall[TaskGraph]) error { frame("graphWatch"); return nil })
+		docWatch.Start(func(context.Context, chord.WatchCall[durable.JsonObject]) error { frame("docWatch"); return nil })
+		viewWatch.Start(func(context.Context, chord.WatchCall[ConversationView]) error { frame("viewWatch"); return nil })
 		docValue := docWatch.Value()
 		viewValue := viewWatch.Value()
 
@@ -457,8 +457,8 @@ func TestHarnessClose(t *testing.T) {
 		<-docWatch.Closed()
 		<-viewWatch.Closed()
 		for name, end := range map[string]durable.WatchEnd{"graph": graphWatch.End(), "doc": docWatch.End(), "view": viewWatch.End()} {
-			if end.Reason != durable.WatchEnded {
-				t.Fatalf("%s watch ended %v", name, end.Reason)
+			if end.Kind != durable.WatchEnded {
+				t.Fatalf("%s watch ended %v", name, end.Kind)
 			}
 		}
 		// The commit itself settled.
@@ -486,7 +486,7 @@ func TestHarnessClose(t *testing.T) {
 		}); err != nil {
 			t.Fatal(err)
 		}
-		// Count commit subscriptions of document observers: upstream wraps harness.subscribeCommits; the Session counts them.
+		// Count commit subscriptions of document observers: upstream wraps session.followCommits; the Session counts them.
 		impl := harness.(*harnessImpl)
 		baseline := impl.CommitSubscriptions()
 
@@ -923,7 +923,7 @@ func TestRegistryChangesBeforeResume(t *testing.T) {
 			t.Fatalf("tasks %+v", tasks)
 		}
 		installed := addTask(t, registry, define("v1").Erased())
-		if tasks := inspectOf(t, harness).Tasks; len(tasks) != 1 || tasks[0].State.Kind != TaskInspectionReady {
+		if tasks := inspectOf(t, harness).Tasks; len(tasks) != 1 || tasks[0].State.Kind != TaskInspectionPending {
 			t.Fatalf("tasks %+v", tasks)
 		}
 		// The same extension name replaces the definition in place, still before resume.

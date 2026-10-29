@@ -125,7 +125,7 @@ type viewLines struct {
 	ops    [][]durable.Op
 }
 
-func (lines *viewLines) add(change chord.WatchChange[harness.ConversationView]) {
+func (lines *viewLines) add(change chord.WatchCall[harness.ConversationView]) {
 	lines.mu.Lock()
 	defer lines.mu.Unlock()
 	lines.values = append(lines.values, change.Value)
@@ -139,7 +139,10 @@ func runJson(t *testing.T) (initial harness.ConversationView, lines *viewLines) 
 	watch := must(root.Watch(background, nil))
 	initial = watch.Value()
 	lines = &viewLines{}
-	watch.Start(func(_ context.Context, change chord.WatchChange[harness.ConversationView]) error {
+	watch.Start(func(_ context.Context, change chord.WatchCall[harness.ConversationView]) error {
+		if change.Kind != chord.WatchCallValue {
+			return nil
+		}
 		lines.add(change)
 		return nil
 	})

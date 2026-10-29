@@ -327,7 +327,7 @@ func TestCoreTaskRejectsRuntimeOperationsAfterTheInvocationEndsAndStopsItsWatche
 		if watch, err = rt.WatchDocErased(ctx, notes); err != nil {
 			return err
 		}
-		watch.Start(func(_ context.Context, change durable.WatchChange[durable.JsonObject]) error {
+		watch.Start(func(_ context.Context, change durable.WatchCall[durable.JsonObject]) error {
 			value := change.Value
 			mu.Lock()
 			defer mu.Unlock()
@@ -354,7 +354,7 @@ func TestCoreTaskRejectsRuntimeOperationsAfterTheInvocationEndsAndStopsItsWatche
 		t.Fatalf("watching an absent document gives no watch: %v", absent)
 	}
 	end := awaitClosed(t, watch)
-	if end.Reason != "stopped" {
+	if end.Kind != durable.WatchStopped {
 		t.Fatalf("the watch ends stopped with the invocation: %+v", end)
 	}
 	mu.Lock()

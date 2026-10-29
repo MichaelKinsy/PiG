@@ -520,14 +520,11 @@ func TestSessionTransactionTables(t *testing.T) {
 				tasks++
 			}
 		}
-		documents := sessiontest.DocumentChanges(publication)
-		if tasks != 1 || len(documents) != 3 {
-			t.Fatalf("tasks %d documents %d", tasks, len(documents))
+		documents := sessiontest.DocumentRetireChanges(publication)
+		if tasks != 1 || len(documents) != 3 || len(sessiontest.DocumentChanges(publication)) != 0 {
+			t.Fatalf("tasks %d retirements %d", tasks, len(documents))
 		}
 		for _, document := range documents {
-			if document.Value != nil || len(document.Ops) != 0 {
-				t.Fatal("retirement publishes null with no ops")
-			}
 			if document.ConversationId == nil || *document.ConversationId != conversationId {
 				t.Fatal("retirement names the task's conversation")
 			}

@@ -101,10 +101,10 @@ func TestExecutionEnvFileSystemContract(t *testing.T) {
 	case <-time.After(10 * time.Second):
 		t.Fatal("no change reported for a file created under a watched directory")
 	}
-	if err := watcher.Close(background); err != nil {
+	if err := watcher.Stop(background); err != nil {
 		t.Fatal(err)
 	}
-	if err := watcher.Close(background); err != nil {
+	if err := watcher.Stop(background); err != nil {
 		t.Fatalf("Close must be idempotent: %v", err)
 	}
 }

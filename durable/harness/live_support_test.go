@@ -42,13 +42,16 @@ type viewRecording struct {
 	observation durable.Observation[ConversationView]
 }
 
-func (recording *viewRecording) Advance(_ context.Context, change chord.WatchChange[ConversationView]) {
+func (recording *viewRecording) Advance(_ context.Context, call chord.WatchCall[ConversationView]) {
+	if call.Kind != chord.WatchCallValue {
+		return
+	}
 	recording.mu.Lock()
 	defer recording.mu.Unlock()
-	recording.views = append(recording.views, change.Value)
+	recording.views = append(recording.views, call.Value)
 }
 
-func (recording *viewRecording) End(error) {}
+func (recording *viewRecording) End(durable.WatchEnd) {}
 
 // viewHistory records the views of conversationId from now on.
 func viewHistory(t testing.TB, harness Harness, conversationId durable.ConversationId) *viewRecording {
@@ -164,9 +167,9 @@ type nestedResultsRecording struct {
 // nestedResults records the results of nested calls from now on.
 func nestedResults(harness Harness) *nestedResultsRecording {
 	recording := &nestedResultsRecording{results: map[durable.TaskId]durable.NestedToolExecutionResult{}}
-	observeCommits(harness, func(_ context.Context, publication session.ObservedCommit) {
-		for _, change := range documentChanges(publication.Changes) {
-			if change.Record.Kind != nestedCallKind || change.Value == nil {
+	followCommits(harness, func(_ context.Context, publication session.ObservedCommit) {
+		for _, change := range documentValues(publication.Changes) {
+			if change.Record.Kind != nestedCallKind {
 				continue
 			}
 			text, err := json.Marshal(change.Value)
@@ -207,13 +210,16 @@ type graphRecording struct {
 	observation durable.Observation[TaskGraph]
 }
 
-func (recording *graphRecording) Advance(_ context.Context, change chord.WatchChange[TaskGraph]) {
+func (recording *graphRecording) Advance(_ context.Context, call chord.WatchCall[TaskGraph]) {
+	if call.Kind != chord.WatchCallValue {
+		return
+	}
 	recording.mu.Lock()
 	defer recording.mu.Unlock()
-	recording.graphs = append(recording.graphs, change.Value)
+	recording.graphs = append(recording.graphs, call.Value)
 }
 
-func (recording *graphRecording) End(error) {}
+func (recording *graphRecording) End(durable.WatchEnd) {}
 
 // graphHistory records the task graphs from now on.
 func graphHistory(t testing.TB, harness Harness) *graphRecording {

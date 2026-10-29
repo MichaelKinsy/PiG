@@ -115,7 +115,10 @@ func TestExample31Transcript(t *testing.T) {
 	}
 	// follow starts the watch's merging.
 	follow := func(watch harness.ConversationWatch) {
-		watch.Start(func(_ context.Context, change chord.WatchChange[harness.ConversationView]) error {
+		watch.Start(func(_ context.Context, change chord.WatchCall[harness.ConversationView]) error {
+			if change.Kind != chord.WatchCallValue {
+				return nil
+			}
 			merged := transcript.Merge(change.Value)
 			mu.Lock()
 			defer mu.Unlock()

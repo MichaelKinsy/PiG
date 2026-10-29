@@ -170,8 +170,8 @@ export function substituteWrite(client: CoreClient, write: DocumentWrite): void 
 }
 
 /** A document change of a commit publication is the staged revision: its value and operations are the Storage write's and the next snapshot's. */
-export function substitutePublished(client: CoreClient, change: { type?: string; record?: DocumentWrite["record"] & { id?: number }; value?: unknown; ops?: unknown }): void {
-  if (change.type !== "document" || change.record === undefined || change.value === null || change.value === undefined) return
+export function substitutePublished(client: CoreClient, change: { type?: string; kind?: string; record?: DocumentWrite["record"] & { id?: number }; value?: unknown; ops?: unknown }): void {
+  if (change.type !== "document" || change.kind !== "change" || change.record === undefined || change.value === undefined) return
   const revision = revisionOf(client, change.record)
   if (revision === undefined) return
   if (sameContent(change.value, revision.value)) change.value = revision.value

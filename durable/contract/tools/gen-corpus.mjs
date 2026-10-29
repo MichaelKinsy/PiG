@@ -48,6 +48,12 @@ const E = {
 	"29-tool-override": ["loop", "replace and decorate a tool"],
 	"30-reload-and-restart": ["session", "reload an extension while a call runs, then restart"],
 	"31-transcript": ["session", "a client keeps a conversation's transcript over the windowed view"],
+	"32-tests-after-edits": ["loop", "run the tests after the agent's edits"],
+	"33-turn-limit-and-continue": ["loop", "a per-conversation turn limit and a continue submission"],
+	"34-submit-in-commit": ["session", "admit a submission inside the caller's commit"],
+	"35-durable-on-the-store": ["store", "a Harness on Chord's store"],
+	"36-durable-views": ["store", "Durable views on Chord's store"],
+	"37-harness-registry": ["loop", "a Harness over a registry"],
 }
 const U = {
 	"codemode-checkpoints": "loop", "harness-blocked": "session", "harness-deferred-progress": "session", "harness-failed-run-inbox": "session", "harness-host-inputs": "session",
@@ -65,6 +71,49 @@ const U = {
 	"session-forks": "store", "session-tables": "store", "session-watches": "session", "spec-usage": "store",
 	"sqlite-cloudflare": "host", "sqlite-facade": "host", "sqlite-migrations": "store", "sqlite-storage": "store", "storage-runtime-boundary": "store",
 	"system-order-cache-e2e": "loop", "tools-read-differential": "loop", "tools": "loop", "types": "store",
+	"codemode-imports": "loop", "harness-after-run": "loop", "harness-continue": "session", "harness-hook-reads": "loop", "harness-submit-in-commit": "session", "harness-tool-hooks": "loop",
+	"harness-turn-limit": "loop", "harness-registry-reader": "loop", "store-storage": "store",
+}
+// Sources that gained, after Pi 5f312dac (the watch vocabulary the Go port implements), what a later lane of the follow ports. The row is
+// pending, with the lane that owns the feature in its reason, until that lane lands: the candidates cannot pass it, and a row that
+// reports the lane's work as `ready` would fail every candidate for the wrong reason. Lane C: durable features after the break (bb65e3e4
+// 87eff524 1c6928b3 fb524dd2 f6a9db1d 6a282511 cc9c5231 65fba65b 7e15f960 018fdcf4). Lane D-store: Durable on Chord's store and the
+// registry (14b4c56e, 6eb99ad6).
+const laneC = what => `pending lane C (Pi durable features after the 5f312dac port): ${what}`
+const laneDStore = what => `pending lane D-store (Durable on Chord's store, registries): ${what}`
+const LATER = {
+	"32-tests-after-edits": laneC("afterTool runs on every tool task result, and calls to tools not offered run as tool tasks (87eff524, 1c6928b3)"),
+	"33-turn-limit-and-continue": laneC("the per-conversation turn limit and continue submissions (f6a9db1d, fb524dd2)"),
+	"34-submit-in-commit": laneC("submissions admitted inside the caller's commit with submit(tx, draft), and whenIdle (cc9c5231, 6a282511)"),
+	"35-durable-on-the-store": laneDStore("a Harness on StoreStorage over Chord's store (14b4c56e)"),
+	"36-durable-views": laneDStore("Durable views on Chord's store (14b4c56e)"),
+	"37-harness-registry": laneDStore("a Harness over a registry and host.root (6eb99ad6)"),
+	"codemode-imports": laneC("toCodemodeIdentifier is imported from pi-codemode/declarations (bb65e3e4)"),
+	"harness-after-run": laneC("run-end tasks with the afterRun hook (7e15f960)"),
+	"harness-continue": laneC("continue submissions (fb524dd2)"),
+	"harness-hook-reads": laneC("entry reads for hooks and tasks (65fba65b)"),
+	"harness-submit-in-commit": laneC("submit(tx, draft) and whenIdle (cc9c5231, 6a282511)"),
+	"harness-tool-hooks": laneC("afterTool on every tool task result and tool tasks for calls not offered (87eff524, 1c6928b3)"),
+	"harness-turn-limit": laneC("the per-conversation turn limit (f6a9db1d)"),
+	"harness-registry-reader": laneDStore("the registry reader (6eb99ad6)"),
+	"store-storage": laneDStore("StoreStorage, Durable's storage on Chord's store (14b4c56e)"),
+	"harness-compaction": laneC("pi.live version 3 gives a stored run without turns a count of 0, and the run's turns (018fdcf4, f6a9db1d)"),
+	"harness-generation-recovery": laneC("pi.live run carries turns and first (7e15f960, f6a9db1d)"),
+	"harness-generation": laneC("pi.live run and runFailure carry first, turns; unoffered tool tasks (7e15f960, f6a9db1d, 1c6928b3)"),
+	"harness-input-entries": laneC("pi.live runFailure carries first (7e15f960)"),
+	"harness-live-deltas": laneC("pi.live run turns and first, and flagged tool slots for calls not offered (7e15f960, f6a9db1d, 1c6928b3)"),
+	"harness-nested-tools": laneC("tool task version 2 input kept as it is, unoffered calls (1c6928b3)"),
+	"harness-ownership": laneC("pi.live run carries turns (f6a9db1d)"),
+	"harness-restart-failure": laneC("pi.live runFailure carries first (7e15f960)"),
+	"harness-run-failure": laneC("pi.live runFailure carries first (7e15f960)"),
+	"harness-scheduler-retention": laneC("pi.live run carries turns (f6a9db1d)"),
+	"harness-structured": laneC("pi.live runFailure carries first (7e15f960)"),
+	"harness-submissions": laneC("the submission record is tagged by type, input or continue (fb524dd2)"),
+	"harness-tools": laneC("calls to tools not offered run through a flagged tool task, afterTool on every result (1c6928b3, 87eff524)"),
+	"harness-view-run": laneC("the view's run carries turns and first, and a call not offered has its own task (7e15f960, f6a9db1d, 1c6928b3)"),
+	"harness-observers": laneDStore("a Session close fails an observer (S1) and ends a watch ended (6eb99ad6)"),
+	"session-observers": laneDStore("a Session close fails an observer (S1) and ends a watch ended (6eb99ad6)"),
+	"SC": `${laneC("the suite stores continue submissions (fb524dd2)")}; ${laneDStore("it refuses a creation and a change of one document in one commit (14b4c56e)")}`,
 }
 const out = []
 const emit = (...lines) => out.push(...lines, "")
@@ -79,7 +128,7 @@ emit(
 	"# status: ready (a runner exists and the reference capture is deterministic), pending (no candidate can run it yet, with the",
 	"# reason and the owner; `--strict` fails on it), skipped (nobody can run it here, with the reason).",
 	"",
-	"[pin]", `reference = ${q("earendil-works/pi")}`, `commit = ${q("b3a29f1111114fac696e2cfcd65acdb382a6ed5e")}`, `release = ${q("1.0.4")}`,
+	"[pin]", `reference = ${q("earendil-works/pi")}`, `commit = ${q("e7a0df27c09d11bf4161d3605246cbf57a129cb2")}`, `release = ${q("1.0.4")}`,
 )
 for (const f of readdirSync(join(pi, "packages/durable/test/examples")).filter(f => /^\d\d-.*\.ts$/.test(f)).sort()) {
 	const name = f.replace(/\.ts$/, "")
@@ -87,7 +136,7 @@ for (const f of readdirSync(join(pi, "packages/durable/test/examples")).filter(f
 	const skip = name === "15-real-model"
 	emit("[[scenario]]", `id = ${q("E" + name.slice(0, 2))}`, `family = "example"`, `runner = "example"`, `source = ${q("packages/durable/test/examples/" + f)}`,
 		`sha256 = ${q(sha("packages/durable/test/examples/" + f))}`, `owner = ${q("dcore-" + owner)}`, `about = ${q(about)}`,
-		`levels = ["store", "commit", "context", "output", "order"]`, `normalisers = []`, ...(skip ? [`status = "pending"`, `reason = "pending-owner: needs the owner's OPENAI_API_KEY or a cassette recorded with it (CONTRACT section 6)"`] : [`status = "ready"`]))
+		`levels = ["store", "commit", "context", "output", "order"]`, `normalisers = []`, ...(skip ? [`status = "pending"`, `reason = "pending-owner: needs the owner's OPENAI_API_KEY or a cassette recorded with it (CONTRACT section 6)"`] : LATER[name] ? [`status = "pending"`, `reason = ${q(LATER[name])}`] : [`status = "ready"`]))
 }
 // U files that cannot run against the core. Each carries its reason (lib/corpus.mjs requires one); a pass that never reaches the
 // core must not count (dcore-int ruling, 2026-10-07). The Session files import ../src/session/session.ts (SessionImpl) and drive
@@ -135,11 +184,13 @@ const MEASURED = {
 }
 for (const f of readdirSync(join(pi, "packages/durable/test")).filter(f => f.endsWith(".test.ts")).sort()) {
 	const name = f.replace(/\.test\.ts$/, "")
+	const status = NOT_THE_CORE[name] ? [`status = "skipped"`, `reason = ${q(NOT_THE_CORE[name])}`] : LATER[name] ? [`status = "pending"`, `reason = ${q(LATER[name])}`] : [`status = "ready"`]
 	emit("[[scenario]]", `id = ${q("U-" + name)}`, `family = "upstream-test"`, `runner = "vitest"`, `source = ${q("packages/durable/test/" + f)}`, `sha256 = ${q(sha("packages/durable/test/" + f))}`,
-		`owner = ${q("dcore-" + U[name])}`, `levels = ["tests"]`, ...(NOT_THE_CORE[name] ? [`status = "skipped"`, `reason = ${q(NOT_THE_CORE[name])}`] : [`status = "ready"`]), ...(REAL_TIME[name] ?? []), ...(MEASURED[name] ?? []))
+		`owner = ${q("dcore-" + U[name])}`, `levels = ["tests"]`, ...status, ...(REAL_TIME[name] ?? []), ...(MEASURED[name] ?? []))
 }
 emit("[[scenario]]", `id = "SC"`, `family = "storage-conformance"`, `runner = "storage-conformance"`, `source = "packages/durable/src/testing/storage-conformance.ts"`, `sha256 = ${q(sha("packages/durable/src/testing/storage-conformance.ts"))}`,
-	`owner = "dcore-store"`, `about = "the core's write encoder wrapped as a Storage passes the upstream storage conformance suite (CONTRACT 3.10): the suite registered by memory-storage, jsonl-storage, sqlite-storage, sqlite-cloudflare, sqlite-facade and indexeddb-storage"`, `levels = ["tests"]`, `status = "ready"`)
+	`owner = "dcore-store"`, `about = "the core's write encoder wrapped as a Storage passes the upstream storage conformance suite (CONTRACT 3.10): the suite registered by memory-storage, jsonl-storage, sqlite-storage, sqlite-cloudflare, sqlite-facade and indexeddb-storage"`, `levels = ["tests"]`,
+	`status = "pending"`, `reason = ${q(LATER["SC"])}`)
 emit("[[scenario]]", `id = "I"`, `family = "interop"`, `runner = "interop"`, `source = "durable/interop/scenario.mjs"`, `owner = "dcore-host"`,
 	`about = "documents, a task-starting tool, a fork with init, compaction and a reset, then the Go port reads the store"`, `levels = ["store", "commit", "output", "order"]`, `status = "ready"`)
 // F: differential ordering. Each seed draws a random schedule of parallel tools, hooks, observers and inbox arrivals

@@ -24,12 +24,14 @@ type watchFrameSeen struct {
 }
 
 // frame is a source's frame that is not a retirement.
-func frame(value any, ops []delta.Op) WatchChange[any] {
-	return WatchChange[any]{Value: value, Ops: ops}
+func frame(value any, ops []delta.Op) WatchCall[any] {
+	return WatchCall[any]{Kind: WatchCallValue, Value: value, Ops: ops}
 }
 
 // retirement is a source's retirement carrying value, with no ops.
-func retirement(value any) WatchChange[any] { return WatchChange[any]{Value: value, Retired: true} }
+func retirement(value any) WatchCall[any] {
+	return WatchCall[any]{Kind: WatchCallValue, Value: value, Retired: true}
+}
 
 type watchRecord struct {
 	mu       sync.Mutex
@@ -53,10 +55,10 @@ func recordedWatch(value any) (*Watch[any], *DeliveryScheduler, *watchRecord) {
 }
 
 // collectListener returns a listener that appends each frame to the returned slice, read after scheduler.Wait.
-func collectListener() (func(context.Context, WatchChange[any]) error, func() []watchFrameSeen) {
+func collectListener() (func(context.Context, WatchCall[any]) error, func() []watchFrameSeen) {
 	var mu sync.Mutex
 	var frames []watchFrameSeen
-	return func(_ context.Context, change WatchChange[any]) error {
+	return func(_ context.Context, change WatchCall[any]) error {
 			mu.Lock()
 			frames = append(frames, watchFrameSeen{change.Value, change.Ops})
 			mu.Unlock()
@@ -69,28 +71,28 @@ func collectListener() (func(context.Context, WatchChange[any]) error, func() []
 }
 
 // collectChanges returns a listener that appends each change, retirement flag included, read after scheduler.Wait.
-func collectChanges() (func(context.Context, WatchChange[any]) error, func() []WatchChange[any]) {
+func collectChanges() (func(context.Context, WatchCall[any]) error, func() []WatchCall[any]) {
 	var mu sync.Mutex
-	var changes []WatchChange[any]
-	return func(_ context.Context, change WatchChange[any]) error {
+	var changes []WatchCall[any]
+	return func(_ context.Context, change WatchCall[any]) error {
 			mu.Lock()
 			changes = append(changes, change)
 			mu.Unlock()
 			return nil
-		}, func() []WatchChange[any] {
+		}, func() []WatchCall[any] {
 			mu.Lock()
 			defer mu.Unlock()
 			return slices.Clone(changes)
 		}
 }
 
-func expectChanges(t *testing.T, got []WatchChange[any], want ...WatchChange[any]) {
+func expectChanges(t *testing.T, got []WatchCall[any], want ...WatchCall[any]) {
 	t.Helper()
 	if len(got) != len(want) {
 		t.Fatalf("changes %#v, want %#v", got, want)
 	}
 	for i := range want {
-		if !equalJSON(got[i].Value, want[i].Value) || !equalJSON(got[i].Ops, want[i].Ops) || got[i].Retired != want[i].Retired {
+		if !equalJSON(got[i].Value, want[i].Value) || !equalJSON(got[i].Ops, want[i].Ops) || got[i].Retired != want[i].Retired || got[i].Kind != want[i].Kind {
 			t.Fatalf("change %d = %#v, want %#v", i, got[i], want[i])
 		}
 	}
@@ -151,11 +153,11 @@ func deepEqualAny(a, b any) bool {
 	return a == b
 }
 
-func mustEnd(t *testing.T, watch interface{ Closed() <-chan struct{} }, end func() WatchEnd, reason WatchEndReason) WatchEnd {
+func mustEnd(t *testing.T, watch interface{ Closed() <-chan struct{} }, end func() WatchEnd, reason WatchEndKind) WatchEnd {
 	t.Helper()
 	<-watch.Closed()
 	got := end()
-	if got.Reason != reason {
+	if got.Kind != reason {
 		t.Fatalf("end = %+v, want %s", got, reason)
 	}
 	return got
@@ -192,7 +194,7 @@ func TestWatchPassesAFramesOpsOnByIdentityToAListenerThatKeepsUp(t *testing.T) {
 	watch, scheduler, _ := recordedWatch(0.0)
 	var mu sync.Mutex
 	var delivered [][]delta.Op
-	watch.Start(func(_ context.Context, change WatchChange[any]) error {
+	watch.Start(func(_ context.Context, change WatchCall[any]) error {
 		ops := change.Ops
 		mu.Lock()
 		delivered = append(delivered, ops)
@@ -214,7 +216,7 @@ func TestWatchPassesAFramesOpsOnByIdentityToAListenerThatKeepsUp(t *testing.T) {
 func TestWatchNeverInvokesTheListenerInline(t *testing.T) {
 	watch, scheduler, _ := recordedWatch(0.0)
 	var deliveredOn atomic.Uint64
-	watch.Start(func(context.Context, WatchChange[any]) error {
+	watch.Start(func(context.Context, WatchCall[any]) error {
 		deliveredOn.Store(goroutineid.Current())
 		return nil
 	})
@@ -232,7 +234,7 @@ func TestWatchAwaitsEachCallbackAndFoldsFramesAdvancedWhileOneIsInFlightIntoTheN
 	var mu sync.Mutex
 	var calls []string
 	var frames []watchFrameSeen
-	watch.Start(func(_ context.Context, change WatchChange[any]) error {
+	watch.Start(func(_ context.Context, change WatchCall[any]) error {
 		value := change.Value
 		ops := change.Ops
 		mu.Lock()
@@ -280,7 +282,7 @@ func TestWatchDeliversTheNewestFramesContextWithoutItsCancellation(t *testing.T)
 	var delivered []context.Context
 	watch.Advance(first, frame(1.0, rootOps(1.0)))
 	watch.Advance(second, frame(2.0, rootOps(2.0)))
-	watch.Start(func(ctx context.Context, change WatchChange[any]) error {
+	watch.Start(func(ctx context.Context, change WatchCall[any]) error {
 		mu.Lock()
 		delivered = append(delivered, ctx)
 		mu.Unlock()
@@ -304,7 +306,7 @@ func TestWatchWithASlowListenerGetsOneCallPerBatchWhoseOpsTurnThePreviousDeliver
 	var calls []int
 	var text string
 	var tokens float64
-	watch.Start(func(_ context.Context, change WatchChange[any]) error {
+	watch.Start(func(_ context.Context, change WatchCall[any]) error {
 		ops := change.Ops
 		mu.Lock()
 		for _, op := range ops {
@@ -389,7 +391,7 @@ func TestWatchNeverFoldsTheInFlightCallIntoAnOverflow(t *testing.T) {
 	started := make(chan struct{}, 1)
 	var mu sync.Mutex
 	var frames []watchFrameSeen
-	watch.Start(func(_ context.Context, change WatchChange[any]) error {
+	watch.Start(func(_ context.Context, change WatchCall[any]) error {
 		value := change.Value
 		ops := change.Ops
 		mu.Lock()
@@ -421,7 +423,7 @@ func TestWatchStartsFoldingAgainAfterAnOverflowWasDelivered(t *testing.T) {
 	var mu sync.Mutex
 	var frames []watchFrameSeen
 	advanceDistinct(watch, maxPendingOps+1)
-	watch.Start(func(_ context.Context, change WatchChange[any]) error {
+	watch.Start(func(_ context.Context, change WatchCall[any]) error {
 		value := change.Value
 		ops := change.Ops
 		mu.Lock()
@@ -457,9 +459,9 @@ func TestWatchReportsARetirementInTheNextCallWithTheValueTheSourceGivesAndGoesOn
 	watch.Advance(ctx, frame(3.0, rootOps(3.0)))
 	scheduler.Wait()
 	expectChanges(t, changes(),
-		WatchChange[any]{Value: 2.0, Ops: rootOps(2.0)},
-		WatchChange[any]{Value: 2.0, Retired: true},
-		WatchChange[any]{Value: 3.0, Ops: rootOps(3.0)})
+		WatchCall[any]{Kind: WatchCallValue, Value: 2.0, Ops: rootOps(2.0)},
+		WatchCall[any]{Kind: WatchCallValue, Value: 2.0, Retired: true},
+		WatchCall[any]{Kind: WatchCallValue, Value: 3.0, Ops: rootOps(3.0)})
 	select {
 	case <-watch.Closed():
 		t.Fatalf("a retirement ended the watch %+v", watch.End())
@@ -468,7 +470,7 @@ func TestWatchReportsARetirementInTheNextCallWithTheValueTheSourceGivesAndGoesOn
 	if watch.Value() != 3.0 || record.detachedCount() != 0 {
 		t.Fatalf("value %v detached %d, want 3 and no detach", watch.Value(), record.detachedCount())
 	}
-	if end, _ := watch.Stop(); end.Reason != WatchStopped {
+	if end, _ := watch.Stop(); end.Kind != WatchStopped {
 		t.Fatalf("end %+v, want stopped", end)
 	}
 }
@@ -482,10 +484,10 @@ func TestWatchFoldsARetirementAndTheFramesAroundItIntoOneCallThatReportsIt(t *te
 	listener, changes := collectChanges()
 	watch.Start(listener)
 	scheduler.Wait()
-	expectChanges(t, changes(), WatchChange[any]{Value: map[string]any{"m": 1.0}, Ops: rootOps(map[string]any{"m": 1.0}), Retired: true})
+	expectChanges(t, changes(), WatchCall[any]{Kind: WatchCallValue, Value: map[string]any{"m": 1.0}, Ops: rootOps(map[string]any{"m": 1.0}), Retired: true})
 	watch.Advance(ctx, frame(map[string]any{"m": 2.0}, []delta.Op{{"s", []any{"m"}, 2.0}}))
 	scheduler.Wait()
-	expectChanges(t, changes()[1:], WatchChange[any]{Value: map[string]any{"m": 2.0}, Ops: []delta.Op{{"s", []any{"m"}, 2.0}}})
+	expectChanges(t, changes()[1:], WatchCall[any]{Kind: WatchCallValue, Value: map[string]any{"m": 2.0}, Ops: []delta.Op{{"s", []any{"m"}, 2.0}}})
 	_, _ = watch.Stop()
 }
 
@@ -496,7 +498,7 @@ func TestWatchKeepsReportingTheRetirementPastAnOverflow(t *testing.T) {
 	listener, changes := collectChanges()
 	watch.Start(listener)
 	scheduler.Wait()
-	expectChanges(t, changes(), WatchChange[any]{Value: newest, Ops: rootOps(newest), Retired: true})
+	expectChanges(t, changes(), WatchCall[any]{Kind: WatchCallValue, Value: newest, Ops: rootOps(newest), Retired: true})
 	_, _ = watch.Stop()
 }
 
@@ -514,7 +516,7 @@ func TestWatchTreatsANullValueAsAValueNeverAsARetirement(t *testing.T) {
 		t.Fatalf("a null value ended the watch %+v", watch.End())
 	default:
 	}
-	if end, _ := watch.Stop(); end.Reason != WatchStopped {
+	if end, _ := watch.Stop(); end.Kind != WatchStopped {
 		t.Fatalf("end %+v, want stopped", end)
 	}
 }
@@ -522,11 +524,225 @@ func TestWatchTreatsANullValueAsAValueNeverAsARetirement(t *testing.T) {
 func TestWatchDiscardsARetirementStillPendingWhenTheSourceEnds(t *testing.T) {
 	watch, _, _ := recordedWatch(1.0)
 	watch.Advance(context.Background(), retirement(1.0))
-	watch.SourceEnded(nil)
+	watch.EndWith(WatchEnd{Kind: WatchEnded})
 	mustEnd(t, watch, watch.End, WatchEnded)
 	if watch.Value() != 1.0 {
 		t.Fatalf("value = %v, want the acquisition value", watch.Value())
 	}
+}
+
+// recordingWatch is a started watch recording every call, failures included, read after scheduler.Wait.
+func recordingWatch(value any) (*Watch[any], *DeliveryScheduler, *watchRecord, func() []WatchCall[any]) {
+	watch, scheduler, record := recordedWatch(value)
+	var mu sync.Mutex
+	var calls []WatchCall[any]
+	watch.Start(func(_ context.Context, call WatchCall[any]) error {
+		mu.Lock()
+		calls = append(calls, call)
+		mu.Unlock()
+		return nil
+	})
+	return watch, scheduler, record, func() []WatchCall[any] {
+		mu.Lock()
+		defer mu.Unlock()
+		return slices.Clone(calls)
+	}
+}
+
+var errWatchDown = errors.New("down")
+
+func expectFailedCall(t *testing.T, got WatchCall[any], want error) {
+	t.Helper()
+	if got.Kind != WatchCallFailed || got.Error != want || got.Value != nil || got.Ops != nil || got.Retired {
+		t.Fatalf("call %#v, want a failed call with %v", got, want)
+	}
+}
+
+func TestWatchFailureCallsDeliversAFailureAsACallStaysOpenKeepsTheLastValueAndReplacesTheRootOnRecovery(t *testing.T) {
+	watch, scheduler, record, calls := recordingWatch(map[string]any{"n": 0.0})
+	ctx := context.Background()
+	watch.Advance(ctx, frame(map[string]any{"n": 1.0}, []delta.Op{{"s", []any{"n"}, 1.0}}))
+	scheduler.Wait()
+	failure := errors.New("cannot compute")
+	watch.Fail(ctx, failure)
+	scheduler.Wait()
+	got := calls()
+	if len(got) != 2 {
+		t.Fatalf("calls %#v", got)
+	}
+	expectFailedCall(t, got[1], failure)
+	if !deepEqualAny(watch.Value(), map[string]any{"n": 1.0}) {
+		t.Fatalf("value after a failure = %v", watch.Value())
+	}
+	select {
+	case <-watch.Closed():
+		t.Fatal("a failure ended the watch")
+	default:
+	}
+	if record.detachedCount() != 0 {
+		t.Fatalf("detached %d", record.detachedCount())
+	}
+	watch.Advance(ctx, frame(map[string]any{"n": 2.0}, []delta.Op{{"s", []any{"n"}, 2.0}}))
+	scheduler.Wait()
+	expectChanges(t, calls()[2:], WatchCall[any]{Kind: WatchCallValue, Value: map[string]any{"n": 2.0}, Ops: rootOps(map[string]any{"n": 2.0})})
+	// Recovered: frames pass on as the source made them again.
+	next := frame(map[string]any{"n": 3.0}, []delta.Op{{"s", []any{"n"}, 3.0}})
+	watch.Advance(ctx, next)
+	scheduler.Wait()
+	got = calls()
+	if len(got) != 4 || &got[3].Ops[0] != &next.Ops[0] || !deepEqualAny(got[3].Value, next.Value) || got[3].Kind != WatchCallValue || got[3].Retired {
+		t.Fatalf("calls %#v, want the frame the source made %#v", got, next)
+	}
+	if !deepEqualAny(watch.Value(), map[string]any{"n": 3.0}) {
+		t.Fatalf("value = %v", watch.Value())
+	}
+	_, _ = watch.Stop()
+}
+
+func TestWatchFailureCallsTakesAFailureThroughAdvanceAsThroughFail(t *testing.T) {
+	watch, scheduler, _, calls := recordingWatch(0.0)
+	watch.Advance(context.Background(), WatchCall[any]{Kind: WatchCallFailed, Error: errWatchDown})
+	scheduler.Wait()
+	got := calls()
+	if len(got) != 1 {
+		t.Fatalf("calls %#v", got)
+	}
+	expectFailedCall(t, got[0], errWatchDown)
+	_, _ = watch.Stop()
+}
+
+func TestWatchFailureCallsFoldsPendingValuesFollowedByAFailureIntoTheFailure(t *testing.T) {
+	watch, scheduler, _ := recordedWatch(map[string]any{"n": 0.0})
+	ctx := context.Background()
+	watch.Advance(ctx, frame(map[string]any{"n": 1.0}, []delta.Op{{"s", []any{"n"}, 1.0}}))
+	watch.Advance(ctx, frame(map[string]any{"n": 2.0}, []delta.Op{{"s", []any{"n"}, 2.0}}))
+	first, second := errors.New("first"), errors.New("second")
+	watch.Fail(ctx, first)
+	watch.Fail(ctx, second)
+	var mu sync.Mutex
+	var calls []WatchCall[any]
+	watch.Start(func(_ context.Context, call WatchCall[any]) error {
+		mu.Lock()
+		calls = append(calls, call)
+		mu.Unlock()
+		return nil
+	})
+	scheduler.Wait()
+	mu.Lock()
+	defer mu.Unlock()
+	if len(calls) != 1 {
+		t.Fatalf("calls %#v", calls)
+	}
+	expectFailedCall(t, calls[0], second)
+	if !deepEqualAny(watch.Value(), map[string]any{"n": 0.0}) {
+		t.Fatalf("value = %v, want the acquisition value", watch.Value())
+	}
+	_, _ = watch.Stop()
+}
+
+func TestWatchFailureCallsFoldsAPendingFailureFollowedByValuesIntoOneRootReplacementWithTheNewestValue(t *testing.T) {
+	watch, scheduler, _ := recordedWatch(map[string]any{"n": 0.0})
+	type frameKey struct{}
+	watch.Fail(context.WithValue(context.Background(), frameKey{}, "failure"), errors.New("down"))
+	watch.Advance(context.Background(), frame(map[string]any{"n": 1.0}, []delta.Op{{"s", []any{"n"}, 1.0}}))
+	watch.Advance(context.Background(), retirement(map[string]any{"n": 1.0}))
+	watch.Advance(context.WithValue(context.Background(), frameKey{}, "newest"), frame(map[string]any{"m": 2.0}, rootOps(map[string]any{"m": 2.0})))
+	type seen struct {
+		call  WatchCall[any]
+		frame any
+	}
+	var mu sync.Mutex
+	var calls []seen
+	watch.Start(func(ctx context.Context, call WatchCall[any]) error {
+		mu.Lock()
+		calls = append(calls, seen{call, ctx.Value(frameKey{})})
+		mu.Unlock()
+		return nil
+	})
+	scheduler.Wait()
+	mu.Lock()
+	defer mu.Unlock()
+	if len(calls) != 1 || calls[0].frame != "newest" {
+		t.Fatalf("calls %#v", calls)
+	}
+	expectChanges(t, []WatchCall[any]{calls[0].call}, WatchCall[any]{Kind: WatchCallValue, Value: map[string]any{"m": 2.0}, Ops: rootOps(map[string]any{"m": 2.0}), Retired: true})
+	_, _ = watch.Stop()
+}
+
+func TestWatchFailureCallsDeliversAFailureThatArrivesDuringACallAfterItThenTheRecovery(t *testing.T) {
+	watch, scheduler, _ := recordedWatch(0.0)
+	gate := make(chan struct{})
+	started := make(chan struct{}, 1)
+	var mu sync.Mutex
+	var calls []WatchCall[any]
+	watch.Start(func(_ context.Context, call WatchCall[any]) error {
+		mu.Lock()
+		calls = append(calls, call)
+		first := len(calls) == 1
+		mu.Unlock()
+		if first {
+			started <- struct{}{}
+			<-gate
+		}
+		return nil
+	})
+	ctx := context.Background()
+	watch.Advance(ctx, frame(1.0, rootOps(1.0)))
+	<-started
+	watch.Advance(ctx, frame(2.0, rootOps(2.0)))
+	watch.Fail(ctx, errWatchDown)
+	close(gate)
+	scheduler.Wait()
+	watch.Advance(ctx, frame(3.0, rootOps(3.0)))
+	scheduler.Wait()
+	mu.Lock()
+	defer mu.Unlock()
+	if len(calls) != 3 || calls[0].Kind != WatchCallValue || calls[0].Value != 1.0 {
+		t.Fatalf("calls %#v", calls)
+	}
+	expectFailedCall(t, calls[1], errWatchDown)
+	if calls[2].Kind != WatchCallValue || calls[2].Value != 3.0 {
+		t.Fatalf("calls %#v", calls)
+	}
+	if watch.Value() != 3.0 {
+		t.Fatalf("value = %v", watch.Value())
+	}
+	_, _ = watch.Stop()
+}
+
+func TestWatchFailureCallsDropsAPendingFailureWhenTheSourceEndsAndIgnoresOneAfter(t *testing.T) {
+	watch, scheduler, _, calls := recordingWatch(0.0)
+	release := scheduler.Hold()
+	watch.Fail(context.Background(), errWatchDown)
+	watch.EndWith(WatchEnd{Kind: WatchEnded})
+	watch.Fail(context.Background(), errors.New("later"))
+	release()
+	scheduler.Wait()
+	if got := calls(); len(got) != 0 {
+		t.Fatalf("calls %#v", got)
+	}
+	mustEnd(t, watch, watch.End, WatchEnded)
+}
+
+func TestWatchFailureCallsPassesEveryLoneValueCallOnByIdentitySoAValueCallCostsTheWatchNoAllocation(t *testing.T) {
+	watch, scheduler, _, calls := recordingWatch(0.0)
+	var sent []WatchCall[any]
+	for n := 1; n <= 1000; n++ {
+		call := frame(float64(n), rootOps(float64(n)))
+		sent = append(sent, call)
+		watch.Advance(context.Background(), call)
+		scheduler.Wait()
+	}
+	got := calls()
+	if len(got) != len(sent) {
+		t.Fatalf("%d calls, want %d", len(got), len(sent))
+	}
+	for i := range got {
+		if &got[i].Ops[0] != &sent[i].Ops[0] || got[i].Value != sent[i].Value || got[i].Kind != WatchCallValue {
+			t.Fatalf("call %d = %#v, want %#v", i, got[i], sent[i])
+		}
+	}
+	_, _ = watch.Stop()
 }
 
 func TestWatchEndAfterDeliveryTakesNoMoreFramesDeliversWhatIsPendingThenEndsEndedAndOnlyThenDetaches(t *testing.T) {
@@ -540,8 +756,8 @@ func TestWatchEndAfterDeliveryTakesNoMoreFramesDeliversWhatIsPendingThenEndsEnde
 	watch.Advance(ctx, frame(2.0, rootOps(2.0)))
 	scheduler.Wait()
 	<-watch.Closed()
-	expectChanges(t, changes(), WatchChange[any]{Value: 1.0, Retired: true})
-	if end := watch.End(); end.Reason != WatchEnded || record.detachedCount() != 1 {
+	expectChanges(t, changes(), WatchCall[any]{Kind: WatchCallValue, Value: 1.0, Retired: true})
+	if end := watch.End(); end.Kind != WatchEnded || record.detachedCount() != 1 {
 		t.Fatalf("end %+v detached %d, want ended and one detach", end, record.detachedCount())
 	}
 }
@@ -582,14 +798,14 @@ func TestWatchEndAfterDeliveryEndsANeverStartedWatchAtItsSourcesEndDroppingWhatI
 	watch.Advance(context.Background(), retirement(1.0))
 	watch.EndAfterDelivery()
 	failure := errors.New("source failed")
-	watch.SourceEnded(failure)
+	watch.EndWith(WatchEnd{Kind: WatchFailed, Error: failure})
 	if end := mustEnd(t, watch, watch.End, WatchFailed); !errors.Is(end.Error, failure) {
 		t.Fatalf("end %+v", end)
 	}
 	if record.detachedCount() != 1 {
 		t.Fatalf("detached %d times", record.detachedCount())
 	}
-	expectPanic(t, "Watch is stopped", func() { watch.Start(func(context.Context, WatchChange[any]) error { return nil }) })
+	expectPanic(t, "Watch is stopped", func() { watch.Start(func(context.Context, WatchCall[any]) error { return nil }) })
 }
 
 // endingWhileRunning is a started watch whose listener is in a call held by gate, with nothing pending, then EndAfterDelivery.
@@ -607,7 +823,7 @@ func endingWhileRunning(t *testing.T, settle func() error) endingWatch {
 	gate := make(chan struct{})
 	entered := make(chan struct{}, 1)
 	returned := &atomic.Bool{}
-	watch.Start(func(_ context.Context, change WatchChange[any]) error {
+	watch.Start(func(_ context.Context, change WatchCall[any]) error {
 		if change.Value != 1.0 {
 			t.Errorf("value %v, want 1", change.Value)
 		}
@@ -617,7 +833,7 @@ func endingWhileRunning(t *testing.T, settle func() error) endingWatch {
 		returned.Store(true)
 		return err
 	})
-	watch.Advance(context.Background(), WatchChange[any]{Value: 1.0, Ops: rootOps(1.0), Retired: true})
+	watch.Advance(context.Background(), WatchCall[any]{Kind: WatchCallValue, Value: 1.0, Ops: rootOps(1.0), Retired: true})
 	<-entered
 	watch.EndAfterDelivery()
 	select {
@@ -657,7 +873,7 @@ func TestWatchEndAfterDeliveryEndsListenerErrorAndReportsItWhenTheRunningCallFai
 
 func TestWatchEndAfterDeliveryEndsStoppedWhenStoppedWhileEndingWithoutAwaitingTheRunningCall(t *testing.T) {
 	ending := endingWhileRunning(t, func() error { return nil })
-	if end, _ := ending.watch.Stop(); end.Reason != WatchStopped {
+	if end, _ := ending.watch.Stop(); end.Kind != WatchStopped {
 		t.Fatalf("end %+v", end)
 	}
 	if ending.record.detachedCount() != 1 || ending.returned.Load() {
@@ -665,12 +881,12 @@ func TestWatchEndAfterDeliveryEndsStoppedWhenStoppedWhileEndingWithoutAwaitingTh
 	}
 	ending.release()
 	ending.scheduler.Wait()
-	if end := ending.watch.End(); end.Reason != WatchStopped {
+	if end := ending.watch.End(); end.Kind != WatchStopped {
 		t.Fatalf("end %+v, want stopped", end)
 	}
 }
 
-func TestWatchChangeObjectsCarryPlainDataOnlyTheFoldedChangeBuiltByTheWatch(t *testing.T) {
+func TestWatchCallObjectsCarryPlainDataOnlyTheFoldedChangeBuiltByTheWatch(t *testing.T) {
 	watch, scheduler, _ := recordedWatch(map[string]any{"n": 0.0})
 	listener, changes := collectChanges()
 	watch.Start(listener)
@@ -685,8 +901,8 @@ func TestWatchChangeObjectsCarryPlainDataOnlyTheFoldedChangeBuiltByTheWatch(t *t
 	release()
 	scheduler.Wait()
 	expectChanges(t, changes(),
-		WatchChange[any]{Value: map[string]any{"n": 1.0}, Ops: []delta.Op{{"s", []any{"n"}, 1.0}}},
-		WatchChange[any]{Value: map[string]any{"n": 2.0}, Ops: []delta.Op{{"s", []any{"n"}, 2.0}}, Retired: true})
+		WatchCall[any]{Kind: WatchCallValue, Value: map[string]any{"n": 1.0}, Ops: []delta.Op{{"s", []any{"n"}, 1.0}}},
+		WatchCall[any]{Kind: WatchCallValue, Value: map[string]any{"n": 2.0}, Ops: []delta.Op{{"s", []any{"n"}, 2.0}}, Retired: true})
 	_, _ = watch.Stop()
 }
 
@@ -717,11 +933,11 @@ func expectPanic(t *testing.T, message string, call func()) {
 
 func TestWatchStopsIdempotentlyAndRejectsARepeatedOrLateStart(t *testing.T) {
 	watch, _, record := recordedWatch(0.0)
-	noop := func(context.Context, WatchChange[any]) error { return nil }
+	noop := func(context.Context, WatchCall[any]) error { return nil }
 	watch.Start(noop)
 	expectPanic(t, "Watch is already started", func() { watch.Start(noop) })
 	for range 2 {
-		if end, _ := watch.Stop(); end.Reason != WatchStopped {
+		if end, _ := watch.Stop(); end.Kind != WatchStopped {
 			t.Fatalf("end %+v", end)
 		}
 	}
@@ -737,7 +953,7 @@ func TestWatchEndsEndedOrFailedFromItsSourceDroppingPendingFrames(t *testing.T) 
 	watch, scheduler, _ := recordedWatch(0.0)
 	listener, frames := collectListener()
 	watch.Start(listener)
-	watch.SourceEnded(nil)
+	watch.EndWith(WatchEnd{Kind: WatchEnded})
 	watch.Advance(context.Background(), frame(1.0, rootOps(1.0)))
 	scheduler.Wait()
 	if got := frames(); len(got) != 0 {
@@ -747,8 +963,8 @@ func TestWatchEndsEndedOrFailedFromItsSourceDroppingPendingFrames(t *testing.T) 
 
 	failure := errors.New("source failed")
 	failed, _, _ := recordedWatch(0.0)
-	failed.SourceEnded(failure)
-	failed.SourceEnded(nil)
+	failed.EndWith(WatchEnd{Kind: WatchFailed, Error: failure})
+	failed.EndWith(WatchEnd{Kind: WatchEnded})
 	if end := mustEnd(t, failed, failed.End, WatchFailed); !errors.Is(end.Error, failure) {
 		t.Fatalf("end %+v", end)
 	}
@@ -761,7 +977,7 @@ func TestWatchStopsFutureDeliveryWithoutAbortingOrAwaitingAnInFlightCallback(t *
 	var mu sync.Mutex
 	var calls []string
 	var inFlight context.Context
-	watch.Start(func(ctx context.Context, change WatchChange[any]) error {
+	watch.Start(func(ctx context.Context, change WatchCall[any]) error {
 		mu.Lock()
 		calls = append(calls, "start")
 		inFlight = ctx
@@ -776,7 +992,7 @@ func TestWatchStopsFutureDeliveryWithoutAbortingOrAwaitingAnInFlightCallback(t *
 	watch.Advance(context.Background(), frame(1.0, rootOps(1.0)))
 	<-started
 	watch.Advance(context.Background(), frame(2.0, rootOps(2.0)))
-	if end, _ := watch.Stop(); end.Reason != WatchStopped {
+	if end, _ := watch.Stop(); end.Kind != WatchStopped {
 		t.Fatalf("end %+v", end)
 	}
 	if inFlight.Err() != nil {
@@ -791,13 +1007,13 @@ func TestWatchStopsFutureDeliveryWithoutAbortingOrAwaitingAnInFlightCallback(t *
 	}
 }
 
-func TestWatchEndsCancelledWhenItsAcquisitionContextEndsAlsoWhenAlreadyDone(t *testing.T) {
+func TestWatchEndsAbortedWhenItsAcquisitionContextEndsAlsoWhenAlreadyDone(t *testing.T) {
 	watch, _, record := recordedWatch(0.0)
 	ctx, cancel := context.WithCancel(context.Background())
-	watch.ObserveCancellation(ctx)
-	expectPanic(t, "Watch cancellation is already installed", func() { watch.ObserveCancellation(ctx) })
+	watch.ObserveAbort(ctx)
+	expectPanic(t, "Watch abort is already installed", func() { watch.ObserveAbort(ctx) })
 	cancel()
-	mustEnd(t, watch, watch.End, WatchCancelled)
+	mustEnd(t, watch, watch.End, WatchAborted)
 	if record.detachedCount() != 1 {
 		t.Fatalf("detached %d times", record.detachedCount())
 	}
@@ -805,12 +1021,12 @@ func TestWatchEndsCancelledWhenItsAcquisitionContextEndsAlsoWhenAlreadyDone(t *t
 	done, cancelDone := context.WithCancel(context.Background())
 	cancelDone()
 	aborted, _, _ := recordedWatch(0.0)
-	aborted.ObserveCancellation(done)
-	mustEnd(t, aborted, aborted.End, WatchCancelled)
+	aborted.ObserveAbort(done)
+	mustEnd(t, aborted, aborted.End, WatchAborted)
 
-	cancelled, _, _ := recordedWatch(0.0)
-	cancelled.Cancel()
-	mustEnd(t, cancelled, cancelled.End, WatchCancelled)
+	direct, _, _ := recordedWatch(0.0)
+	direct.Abort()
+	mustEnd(t, direct, direct.End, WatchAborted)
 }
 
 func TestWatchEndsListenerErrorOnAFailureReportsItAndDeliversNothingMore(t *testing.T) {
@@ -818,7 +1034,7 @@ func TestWatchEndsListenerErrorOnAFailureReportsItAndDeliversNothingMore(t *test
 	failure := errors.New("listener failed")
 	var mu sync.Mutex
 	var values []any
-	watch.Start(func(_ context.Context, change WatchChange[any]) error {
+	watch.Start(func(_ context.Context, change WatchCall[any]) error {
 		value := change.Value
 		mu.Lock()
 		values = append(values, value)
@@ -843,7 +1059,7 @@ func TestWatchEndsListenerErrorOnAFailureReportsItAndDeliversNothingMore(t *test
 // wraps a thrown non-Error in an Error.
 func TestWatchWrapsAPanickedNonErrorInAnError(t *testing.T) {
 	watch, _, _ := recordedWatch(0.0)
-	watch.Start(func(context.Context, WatchChange[any]) error { panic("plain") })
+	watch.Start(func(context.Context, WatchCall[any]) error { panic("plain") })
 	watch.Advance(context.Background(), frame(1.0, rootOps(1.0)))
 	end := mustEnd(t, watch, watch.End, WatchListenerError)
 	if end.Error == nil || end.Error.Error() != "plain" {
@@ -856,16 +1072,16 @@ func TestWatchWrapsAPanickedNonErrorInAnError(t *testing.T) {
 func TestWatchRetainsNeitherItsSourceNorItsListenerOnceEnded(t *testing.T) {
 	ends := map[string]func(*Watch[any]){
 		"stop":             func(w *Watch[any]) { _, _ = w.Stop() },
-		"cancel":           func(w *Watch[any]) { w.Cancel() },
-		"end":              func(w *Watch[any]) { w.SourceEnded(nil) },
+		"cancel":           func(w *Watch[any]) { w.Abort() },
+		"end":              func(w *Watch[any]) { w.EndWith(WatchEnd{Kind: WatchEnded}) },
 		"endAfterDelivery": func(w *Watch[any]) { w.EndAfterDelivery() },
 	}
 	for name, end := range ends {
 		t.Run(name, func(t *testing.T) {
 			watch, scheduler, _ := recordedWatch(0.0)
 			ctx := t.Context()
-			watch.ObserveCancellation(ctx)
-			watch.Start(func(context.Context, WatchChange[any]) error { return nil })
+			watch.ObserveAbort(ctx)
+			watch.Start(func(context.Context, WatchCall[any]) error { return nil })
 			watch.Advance(context.Background(), frame(1.0, rootOps(1.0)))
 			scheduler.Wait()
 			if name != "stop" {
@@ -920,7 +1136,7 @@ func TestWatchKeepsNoOpsAFoldOrAnOverflowDroppedWhileItWaits(t *testing.T) {
 	listener, changes := collectChanges()
 	watch.Start(listener)
 	scheduler.Wait()
-	expectChanges(t, changes(), WatchChange[any]{Value: newest, Ops: rootOps(newest)})
+	expectChanges(t, changes(), WatchCall[any]{Kind: WatchCallValue, Value: newest, Ops: rootOps(newest)})
 	_, _ = watch.Stop()
 }
 
@@ -936,7 +1152,7 @@ func TestNativeWatchDeliversValuesByIdentityInOrderWithAContextNeverInline(t *te
 	var mu sync.Mutex
 	var delivered []seen
 	var handle NativeWatchHandle[*thing] = watch
-	handle.Start(func(ctx context.Context, change NativeWatchChange[*thing]) error {
+	handle.Start(func(ctx context.Context, change NativeWatchCall[*thing]) error {
 		mu.Lock()
 		delivered = append(delivered, seen{change.Value, ctx.Value(watchContextKey{})})
 		mu.Unlock()
@@ -958,7 +1174,7 @@ func TestNativeWatchDeliversValuesByIdentityInOrderWithAContextNeverInline(t *te
 		t.Fatal("an open watch is closed")
 	default:
 	}
-	if end, _ := handle.Stop(); end.Reason != WatchStopped {
+	if end, _ := handle.Stop(); end.Kind != WatchStopped {
 		t.Fatalf("end %+v", end)
 	}
 	<-handle.Closed()
@@ -971,7 +1187,7 @@ func TestNativeWatchCollapses101PendingValuesToTheValueOfReplace(t *testing.T) {
 		watch.Advance(context.Background(), "value "+string(rune('0'+n%10)))
 	}
 	var values []string
-	watch.Start(func(_ context.Context, change NativeWatchChange[string]) error {
+	watch.Start(func(_ context.Context, change NativeWatchCall[string]) error {
 		values = append(values, change.Value)
 		return nil
 	})
@@ -988,7 +1204,7 @@ func TestNativeWatchCollapses101PendingValuesToTheNewest(t *testing.T) {
 		watch.Advance(context.Background(), n)
 	}
 	var values []int
-	watch.Start(func(_ context.Context, change NativeWatchChange[int]) error {
+	watch.Start(func(_ context.Context, change NativeWatchCall[int]) error {
 		values = append(values, change.Value)
 		return nil
 	})
@@ -1003,20 +1219,20 @@ func TestNativeWatchEndsWithEveryReasonOfItsLifecycle(t *testing.T) {
 		return NewNativeWatch(0, func() {}, func(error) {}, nil).On(NewDeliveryScheduler())
 	}
 	stopped := create()
-	if end, _ := stopped.Stop(); end.Reason != WatchStopped {
+	if end, _ := stopped.Stop(); end.Kind != WatchStopped {
 		t.Fatalf("end %+v", end)
 	}
-	cancelled := create()
+	aborted := create()
 	done, cancel := context.WithCancel(context.Background())
 	cancel()
-	cancelled.(*NativeWatch[int]).ObserveCancellation(done)
-	mustEnd(t, cancelled, cancelled.End, WatchCancelled)
+	aborted.(*NativeWatch[int]).ObserveAbort(done)
+	mustEnd(t, aborted, aborted.End, WatchAborted)
 	ended := create()
-	ended.(*NativeWatch[int]).SourceEnded(nil)
+	ended.(*NativeWatch[int]).EndWith(WatchEnd{Kind: WatchEnded})
 	mustEnd(t, ended, ended.End, WatchEnded)
 	failure := errors.New("source failed")
 	failed := create()
-	failed.(*NativeWatch[int]).SourceEnded(failure)
+	failed.(*NativeWatch[int]).EndWith(WatchEnd{Kind: WatchFailed, Error: failure})
 	if end := mustEnd(t, failed, failed.End, WatchFailed); !errors.Is(end.Error, failure) {
 		t.Fatalf("end %+v", end)
 	}
@@ -1025,7 +1241,7 @@ func TestNativeWatchEndsWithEveryReasonOfItsLifecycle(t *testing.T) {
 	throwing := NewNativeWatch(0, func() {}, func(err error) { mu.Lock(); reported = append(reported, err); mu.Unlock() }, nil).On(NewDeliveryScheduler())
 	var throwingHandle NativeWatchHandle[int] = throwing
 	listenerFailure := errors.New("listener failed")
-	throwingHandle.Start(func(context.Context, NativeWatchChange[int]) error { return listenerFailure })
+	throwingHandle.Start(func(context.Context, NativeWatchCall[int]) error { return listenerFailure })
 	throwing.Advance(context.Background(), 1)
 	if end := mustEnd(t, throwingHandle, throwingHandle.End, WatchListenerError); !errors.Is(end.Error, listenerFailure) {
 		t.Fatalf("end %+v", end)
@@ -1037,10 +1253,59 @@ func TestNativeWatchEndsWithEveryReasonOfItsLifecycle(t *testing.T) {
 	}
 }
 
+func TestNativeWatchDeliversAFailureAsACallStaysOpenAndFoldsItWithTheValuesAroundIt(t *testing.T) {
+	scheduler := NewDeliveryScheduler()
+	record := &watchRecord{}
+	watch := NewNativeWatch(0, func() {}, record.report, nil).On(scheduler)
+	var mu sync.Mutex
+	var calls []NativeWatchCall[int]
+	watch.Start(func(_ context.Context, call NativeWatchCall[int]) error {
+		mu.Lock()
+		calls = append(calls, call)
+		mu.Unlock()
+		return nil
+	})
+	ctx := context.Background()
+	watch.Advance(ctx, 1)
+	scheduler.Wait()
+	// Values followed by a failure: the failure; a failure followed by values: the values, in order.
+	down, again := errors.New("down"), errors.New("again")
+	release := scheduler.Hold()
+	watch.Advance(ctx, 2)
+	watch.Advance(ctx, 3)
+	watch.Fail(ctx, down)
+	release()
+	scheduler.Wait()
+	if watch.Value() != 1 {
+		t.Fatalf("value after a failure = %d, want the last delivered 1", watch.Value())
+	}
+	release = scheduler.Hold()
+	watch.Fail(ctx, again)
+	watch.Advance(ctx, 4)
+	watch.Advance(ctx, 5)
+	release()
+	scheduler.Wait()
+	mu.Lock()
+	defer mu.Unlock()
+	want := []NativeWatchCall[int]{
+		{Kind: WatchCallValue, Value: 1},
+		{Kind: WatchCallFailed, Error: down},
+		{Kind: WatchCallValue, Value: 4},
+		{Kind: WatchCallValue, Value: 5},
+	}
+	if !slices.Equal(calls, want) {
+		t.Fatalf("calls = %v, want %v", calls, want)
+	}
+	if watch.Value() != 5 || len(record.reported) != 0 {
+		t.Fatalf("value %d, reported %v", watch.Value(), record.reported)
+	}
+	_, _ = watch.Stop()
+}
+
 func TestNativeWatchRetainsNeitherItsSourceNorItsListenerOnceStopped(t *testing.T) {
 	scheduler := NewDeliveryScheduler()
 	watch := NewNativeWatch(0, func() {}, func(error) {}, nil).On(scheduler)
-	watch.Start(func(context.Context, NativeWatchChange[int]) error { return nil })
+	watch.Start(func(context.Context, NativeWatchCall[int]) error { return nil })
 	watch.Advance(context.Background(), 1)
 	scheduler.Wait()
 	watch.mu.Lock()
@@ -1069,7 +1334,7 @@ func TestNativeWatchHandleInterface(t *testing.T) {
 	}
 	var mu sync.Mutex
 	var seen []int
-	handle.Start(func(_ context.Context, change NativeWatchChange[int]) error {
+	handle.Start(func(_ context.Context, change NativeWatchCall[int]) error {
 		mu.Lock()
 		seen = append(seen, change.Value)
 		mu.Unlock()
@@ -1078,11 +1343,11 @@ func TestNativeWatchHandleInterface(t *testing.T) {
 	handle.(*NativeWatch[int]).Advance(context.Background(), 1)
 	scheduler.Wait()
 	end, err := handle.Stop()
-	if err != nil || end.Reason != WatchStopped || handle.Value() != 1 {
+	if err != nil || end.Kind != WatchStopped || handle.Value() != 1 {
 		t.Fatalf("stop = %+v, %v, value %d", end, err, handle.Value())
 	}
 	<-handle.Closed()
-	if handle.End().Reason != WatchStopped {
+	if handle.End().Kind != WatchStopped {
 		t.Fatalf("end = %+v", handle.End())
 	}
 	mu.Lock()
@@ -1106,7 +1371,7 @@ func (c *watchableCounter) Watch(ctx context.Context) (WatchHandle[int], error) 
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	watch := NewWatch(c.value, func() {}, func(error) {}).On(c.scheduler)
-	watch.ObserveCancellation(ctx)
+	watch.ObserveAbort(ctx)
 	c.watches = append(c.watches, watch)
 	return watch, nil
 }
@@ -1117,7 +1382,7 @@ func (c *watchableCounter) set(ctx context.Context, value int) {
 	watches := slices.Clone(c.watches)
 	c.mu.Unlock()
 	for _, watch := range watches {
-		watch.Advance(ctx, WatchChange[int]{Value: value, Ops: rootOps(float64(value))})
+		watch.Advance(ctx, WatchCall[int]{Kind: WatchCallValue, Value: value, Ops: rootOps(float64(value))})
 	}
 }
 
@@ -1138,7 +1403,7 @@ func TestWatchableWatchHoldsTheCurrentValueThenOneFramePerChangeAndEndsWithItsCo
 	}
 	var mu sync.Mutex
 	var values []int
-	handle.Start(func(_ context.Context, change WatchChange[int]) error {
+	handle.Start(func(_ context.Context, change WatchCall[int]) error {
 		mu.Lock()
 		values = append(values, change.Value)
 		mu.Unlock()
@@ -1154,8 +1419,8 @@ func TestWatchableWatchHoldsTheCurrentValueThenOneFramePerChangeAndEndsWithItsCo
 	mu.Unlock()
 	cancel()
 	<-handle.Closed()
-	if end := handle.End(); end.Reason != WatchCancelled {
-		t.Fatalf("end %+v, want cancelled", end)
+	if end := handle.End(); end.Kind != WatchAborted {
+		t.Fatalf("end %+v, want aborted", end)
 	}
 }
 
@@ -1176,7 +1441,7 @@ func (c *nativeWatchableCell) Watch(ctx context.Context) (NativeWatchHandle[*cel
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	watch := NewNativeWatch(c.value, func() {}, func(error) {}, nil).On(c.scheduler)
-	watch.ObserveCancellation(ctx)
+	watch.ObserveAbort(ctx)
 	c.watches = append(c.watches, watch)
 	return watch, nil
 }
@@ -1209,7 +1474,7 @@ func TestNativeWatchableWatchHoldsTheCurrentValueThenOneFramePerNewValueAndEndsW
 	}
 	var mu sync.Mutex
 	var values []*cellValue
-	handle.Start(func(_ context.Context, change NativeWatchChange[*cellValue]) error {
+	handle.Start(func(_ context.Context, change NativeWatchCall[*cellValue]) error {
 		mu.Lock()
 		values = append(values, change.Value)
 		mu.Unlock()
@@ -1225,8 +1490,8 @@ func TestNativeWatchableWatchHoldsTheCurrentValueThenOneFramePerNewValueAndEndsW
 	mu.Unlock()
 	cancel()
 	<-handle.Closed()
-	if end := handle.End(); end.Reason != WatchCancelled {
-		t.Fatalf("end %+v, want cancelled", end)
+	if end := handle.End(); end.Kind != WatchAborted {
+		t.Fatalf("end %+v, want aborted", end)
 	}
 }
 
@@ -1240,7 +1505,7 @@ func TestNativeWatchEndAfterDeliveryDeliversWhatIsPendingThenEndsEnded(t *testin
 	finishing.Advance(ctx, 3)
 	var mu sync.Mutex
 	var finished []int
-	finishing.Start(func(_ context.Context, change NativeWatchChange[int]) error {
+	finishing.Start(func(_ context.Context, change NativeWatchCall[int]) error {
 		mu.Lock()
 		finished = append(finished, change.Value)
 		mu.Unlock()
@@ -1263,7 +1528,7 @@ func TestNativeWatchDeliversABacklogThatNeverDrainsInOrder(t *testing.T) {
 	var values []int
 	next := 50
 	ctx := context.Background()
-	watch.Start(func(_ context.Context, change NativeWatchChange[int]) error {
+	watch.Start(func(_ context.Context, change NativeWatchCall[int]) error {
 		mu.Lock()
 		values = append(values, change.Value)
 		more := next < 1_000
@@ -1313,8 +1578,8 @@ func TestDeliverySchedulerHoldFoldsTheFramesAdvancedWhileItIsOpenIntoOneCallPerW
 	}
 	outer()
 	scheduler.Wait()
-	expectChanges(t, firstChanges(), WatchChange[any]{Value: 2.0, Ops: rootOps(2.0)})
-	expectChanges(t, secondChanges(), WatchChange[any]{Value: 1.0, Ops: rootOps(1.0)})
+	expectChanges(t, firstChanges(), WatchCall[any]{Kind: WatchCallValue, Value: 2.0, Ops: rootOps(2.0)})
+	expectChanges(t, secondChanges(), WatchCall[any]{Kind: WatchCallValue, Value: 1.0, Ops: rootOps(1.0)})
 	if first.Value() != 2.0 {
 		t.Fatalf("value %v", first.Value())
 	}

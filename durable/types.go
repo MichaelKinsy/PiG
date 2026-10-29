@@ -652,43 +652,45 @@ const (
 	HostCallbackTelemetry HostCallback = "telemetry"
 )
 
-// ReportType is what a report to HarnessOptions.OnReport is about.
-type ReportType string
+// ReportKind is what a report to HarnessOptions.OnReport is about (Pi's `ReportInfo` tag, `kind`).
+type ReportKind string
 
-// The report types.
+// The report kinds.
 const (
-	// ReportSessionFailed: the error failed the Session, which closes: a Storage error, often a platform reset.
-	ReportSessionFailed ReportType = "session_failed"
+	// ReportStorageFailed: the error failed the Session, which closes: a Storage error, often a platform reset.
+	ReportStorageFailed ReportKind = "storage_failed"
 	// ReportTaskFaulted: the task ended faulted: its phase threw (ReasonThrew), or its abort handler was cut off
 	// settings.restartLimit times (ReasonRestartLimit), as was a phase of a task of an extension's kind.
-	ReportTaskFaulted ReportType = "task_faulted"
+	ReportTaskFaulted ReportKind = "task_faulted"
 	// ReportTaskInterrupted: crashes ended the task: it ended itself after being cut off settings.restartLimit times in a
 	// row (ReasonRestartLimit; a tool call, a compaction, a generation), or a generation's run ended because the host
 	// kept stopping while the model answered (ReasonInterrupted). ReportInfo.Restarts is the task's count when it ended.
-	ReportTaskInterrupted ReportType = "task_interrupted"
+	ReportTaskInterrupted ReportKind = "task_interrupted"
 	// ReportMigrationFailed: the task's stored state could not be migrated; it is blocked until the registry changes.
-	ReportMigrationFailed ReportType = "migration_failed"
+	ReportMigrationFailed ReportKind = "migration_failed"
 	// ReportTaskOutdated: a running task keeps running under its old definition, which was uninstalled (missing_task)
-	// or replaced by one that cannot take over its state (incompatible_task).
-	ReportTaskOutdated ReportType = "task_outdated"
+	// or replaced by one that cannot take over its state: older than the task (task_too_old), or newer without a
+	// migrate (migration_failed).
+	ReportTaskOutdated ReportKind = "task_outdated"
 	// ReportTaskError: the task's own runtime.Report, or a failure in running it.
-	ReportTaskError ReportType = "task_error"
+	ReportTaskError ReportKind = "task_error"
 	// ReportExtensionError: a hook, a section, a wrapper, or a tool's invalid structured output; with the task that ran
 	// it, or, outside a task, the conversation whose agent was resolved.
-	ReportExtensionError ReportType = "extension_error"
+	ReportExtensionError ReportKind = "extension_error"
 	// ReportHostError: a host callback threw; with the task that called it, if one did.
-	ReportHostError ReportType = "host_error"
+	ReportHostError ReportKind = "host_error"
 	// ReportListenerError: a commit, close, watch, view, or document listener threw.
-	ReportListenerError ReportType = "listener_error"
+	ReportListenerError ReportKind = "listener_error"
 )
 
 // The reasons a report carries in ReportInfo.Reason.
 const (
-	ReasonThrew            = "threw"
-	ReasonRestartLimit     = "restart_limit"
-	ReasonInterrupted      = "interrupted"
-	ReasonMissingTask      = "missing_task"
-	ReasonIncompatibleTask = "incompatible_task"
+	ReasonThrew           = "threw"
+	ReasonRestartLimit    = "restart_limit"
+	ReasonInterrupted     = "interrupted"
+	ReasonMissingTask     = "missing_task"
+	ReasonTaskTooOld      = "task_too_old"
+	ReasonMigrationFailed = "migration_failed"
 )
 
 // BlockedReason is why a pending task cannot run here (Pi scheduler.ts BlockedReason): no registered definition takes
@@ -702,13 +704,13 @@ const (
 	BlockedMigrationFailed BlockedReason = "migration_failed"
 )
 
-// ReportInfo says what a report to HarnessOptions.OnReport is about. Extension, where set, names the extension whose
+// ReportInfo says, by Kind, what a report to HarnessOptions.OnReport is about (Report adds the error). Extension, where set, names the extension whose
 // code failed, when known; for a task's own code, the one that installed the definition the task ran. Task is set for
 // the task types, and for an extension_error or host_error that a task caused. ConversationId is set for an
 // extension_error outside a task. Reason is set for task_faulted, task_interrupted, and task_outdated, Restarts for
 // task_interrupted; Callback for host_error.
 type ReportInfo struct {
-	Type           ReportType
+	Kind           ReportKind
 	Task           *ReportTask
 	Extension      string
 	Reason         string
@@ -717,19 +719,25 @@ type ReportInfo struct {
 	ConversationId *ConversationId
 }
 
-// ReportFromType is whose code a task's runtime.Report is about when not the task's own.
-type ReportFromType string
+// Report is one report to HarnessOptions.OnReport: what it is about (ReportInfo, by Kind) and the Error reported.
+type Report struct {
+	ReportInfo
+	Error error
+}
+
+// ReportFromKind is whose code a task's runtime.Report is about when not the task's own.
+type ReportFromKind string
 
 // The sources ReportFrom names.
 const (
-	ReportFromExtension ReportFromType = "extension"
-	ReportFromHost      ReportFromType = "host"
+	ReportFromExtension ReportFromKind = "extension"
+	ReportFromHost      ReportFromKind = "host"
 )
 
-// ReportFrom is whose code a task's runtime.Report is about when not the task's own: an extension's (Extension, when
-// known), or a host callback (Callback).
+// ReportFrom is whose code a task's runtime.Report is about when not the task's own, by Kind: an extension's (Extension,
+// when known), or a host callback (Callback).
 type ReportFrom struct {
-	Type      ReportFromType
+	Kind      ReportFromKind
 	Extension string
 	Callback  HostCallback
 }
@@ -1014,18 +1022,28 @@ func (EntryWrite) commitChangeType() string        { return "entry" }
 func (TaskWrite) commitChangeType() string         { return "task" }
 func (SubmissionWrite) commitChangeType() string   { return "submission" }
 
-// DocumentChange is the committed change of one document incarnation.
+// DocumentChange is the committed change of one document incarnation, a creation or an update (Pi's `type: "document"`
+// with `kind: "change"`); a retirement is a DocumentRetireChange.
 type DocumentChange struct {
 	Record DocumentRecord
 	// ConversationId owns the document; task documents derive it from their task record. Nil only for Session
 	// documents.
 	ConversationId *ConversationId
-	// Version is the definition version of Value; nil when this commit retired the incarnation.
-	Version *int
-	// Value is the exact adopted immutable revision, or nil when this commit retired the incarnation.
+	// Version is the definition version of Value.
+	Version int
+	// Value is the exact adopted immutable revision.
 	Value JsonObject
-	// Ops are the exact adopted operations for an ordinary update; empty for creation and retirement.
+	// Ops are the exact adopted operations for an ordinary update; empty for creation.
 	Ops []Op
+}
+
+// DocumentRetireChange is the committed retirement of one document incarnation (Pi's `type: "document"` with
+// `kind: "retire"`): this commit retired it.
+type DocumentRetireChange struct {
+	Record DocumentRecord
+	// ConversationId owns the document; task documents derive it from their task record. Nil only for Session
+	// documents.
+	ConversationId *ConversationId
 }
 
 // DocumentCopyChange is a definition-free child initialization; consumers hydrate through state or watch acquisition.
@@ -1035,17 +1053,19 @@ type DocumentCopyChange struct {
 	Source         DocumentCopySource
 }
 
-func (DocumentChange) commitChangeType() string     { return "document" }
-func (DocumentCopyChange) commitChangeType() string { return "document.copy" }
+func (DocumentChange) commitChangeType() string       { return "document" }
+func (DocumentRetireChange) commitChangeType() string { return "document" }
+func (DocumentCopyChange) commitChangeType() string   { return "document.copy" }
 
-// DocumentCommitChange is a DocumentChange or a DocumentCopyChange.
+// DocumentCommitChange is a DocumentChange, a DocumentRetireChange or a DocumentCopyChange.
 type DocumentCommitChange interface {
 	CommitChange
 	documentCommitChange()
 }
 
-func (DocumentChange) documentCommitChange()     {}
-func (DocumentCopyChange) documentCommitChange() {}
+func (DocumentChange) documentCommitChange()       {}
+func (DocumentRetireChange) documentCommitChange() {}
+func (DocumentCopyChange) documentCommitChange()   {}
 
 // CommitChangeType returns the upstream `type` discriminator of a change.
 func CommitChangeType(change CommitChange) string { return change.commitChangeType() }
@@ -1113,30 +1133,39 @@ type Tx interface {
 	RetireDoc(token AnyDocToken, args ...any) error
 }
 
-// WatchEndReason is why a watch ended; it is Chord's (index.ts re-exports Chord's WatchEnd and WatchHandle).
-type WatchEndReason = chord.WatchEndReason
+// WatchEndKind is why a watch ended; it is Chord's (index.ts re-exports Chord's WatchEnd and WatchHandle).
+type WatchEndKind = chord.WatchEndKind
 
 const (
 	WatchStopped       = chord.WatchStopped
-	WatchCancelled     = chord.WatchCancelled
+	WatchAborted       = chord.WatchAborted
 	WatchEnded         = chord.WatchEnded
 	WatchListenerError = chord.WatchListenerError
 	// WatchFailed ends a watch when the Session failed; Error is the failure, usually a Storage error (see SessionFailed).
 	WatchFailed = chord.WatchFailed
 )
 
-// WatchEnd is the terminal result of one watch.
+// WatchEnd is the terminal result of one watch, tagged by Kind.
 type WatchEnd = chord.WatchEnd
+
+// WatchCallKind tags a WatchCall; it is Chord's.
+type WatchCallKind = chord.WatchCallKind
+
+const (
+	WatchCallValue  = chord.WatchCallValue
+	WatchCallFailed = chord.WatchCallFailed
+)
 
 // WatchHandle is a serialized observation of an immutable value: one listener call at a time; changes made meanwhile arrive folded into the next call.
 type WatchHandle[T any] = chord.WatchHandle[T]
 
-// WatchChange is one call of a JSON watch's listener: the newest value, the ops that turn the previous value into it,
-// and whether the document the watch follows was retired since the previous call; it is Chord's.
-type WatchChange[T any] = chord.WatchChange[T]
+// WatchCall is one call of a JSON watch's listener, tagged by Kind: the newest value, the ops that turn the previous value
+// into it, and whether the document the watch follows was retired since the previous value call, or a failure its source
+// may recover from; it is Chord's.
+type WatchCall[T any] = chord.WatchCall[T]
 
-// NativeWatchChange is one call of a native watch's listener: the new value; it is Chord's.
-type NativeWatchChange[T any] = chord.NativeWatchChange[T]
+// NativeWatchCall is one call of a native watch's listener: the new value, or a failure; it is Chord's.
+type NativeWatchCall[T any] = chord.NativeWatchCall[T]
 
 // DocumentWatch is a watch of one document address (kind, scope, and key), from the incarnation found at acquisition on.
 // A retirement is a call with Retired set, the last value the watch was given and no ops (a change made in the retiring
@@ -1147,18 +1176,33 @@ type NativeWatchChange[T any] = chord.NativeWatchChange[T]
 type DocumentWatch[T any] = WatchHandle[T]
 
 // Observer is a synchronous observer of committed Durable state, for adapters such as a Chord source
-// (Session.ObserveDocErased, Harness.ObserveConversation, Harness.ObserveTaskGraph). Advance gets every change, unfolded, as
+// (Session.ObserveDocErased, Harness.ObserveConversation, Harness.ObserveTaskGraph), with the shapes of Chord's watch:
+// Advance gets a WatchCall, End a WatchEnd. Advance gets every change, unfolded, as
 // memory adopts it: for a stored commit inside Storage's adopt, for a deferred one before it is stored. A view or the
 // graph gets at most one call per commit, a document observer one per change at its address (two for a commit that
 // retires and recreates it); the task graph also advances outside any commit and adopt, on the Session line, when a
-// registry change or a failed migration changes a blocked reason. Calls may come before the attaching call returns; their
-// ops apply from Observation.Value. Advance must only record the change, synchronously and quickly, never wait, call the
-// Session, or panic. A panic is reported as listener_error, detaches the observer, and ends it with the error. End is
-// called once, when the Session closes (failure nil) or fails (failure is the error), or when the observed scope's owner
-// ends (a task document's task, after its retirement change, inside that commit's adopt), and never after Detach.
+// registry change or a failed migration changes a blocked reason. Durable's failures are final, so every call is a value
+// call; a failure ends the observer. Calls may come before the attaching call returns; their ops apply from
+// Observation.Value. Advance must only record the call, synchronously and quickly, never wait, call the Session, or
+// panic. A panic is reported as listener_error, detaches the observer, and ends it listener_error with the error. End is
+// called once: ended when the Session closes or the observed scope's owner ends (a task document's task, after its
+// retirement change, inside that commit's adopt), failed with the error that failed the Session; never after Detach.
 type Observer[T any] interface {
-	Advance(ctx context.Context, change WatchChange[T])
-	End(failure error)
+	Advance(ctx context.Context, call WatchCall[T])
+	End(end WatchEnd)
+}
+
+// CommitObserver is a synchronous observer of stored commits (Session.ObserveCommits): Advance gets each
+// CommitPublication, End the Session's close.
+type CommitObserver interface {
+	Advance(ctx context.Context, publication CommitPublication)
+	End(end WatchEnd)
+}
+
+// CommitObservation is an attached CommitObserver: how to detach it.
+type CommitObservation interface {
+	// Detach is idempotent: no Advance or End follows it.
+	Detach()
 }
 
 // Observation is an attached Observer: the value at attachment, which every later Advance starts from, and how to detach
@@ -1185,18 +1229,19 @@ type DocumentObserver interface {
 	WatchDocErased(ctx context.Context, token AnyDocToken, args ...any) (WatchHandle[JsonObject], error)
 }
 
-// SessionEndReason is how a Session ended: closed by its owner, or failed.
-type SessionEndReason string
+// SessionEndKind is how a Session ended: closed by its owner, or failed.
+type SessionEndKind string
 
 const (
-	SessionEndClosed SessionEndReason = "closed"
-	SessionEndFailed SessionEndReason = "failed"
+	SessionEndClosed SessionEndKind = "closed"
+	SessionEndFailed SessionEndKind = "failed"
 )
 
-// SessionEnd is the terminal result of one Session; Error is the first error that failed it, set only for failed.
+// SessionEnd is the terminal result of one Session, tagged by Kind; Error is the first error that failed it, set only for
+// failed.
 type SessionEnd struct {
-	Reason SessionEndReason
-	Error  error
+	Kind  SessionEndKind
+	Error error
 }
 
 // CommitPersistenceKind is when a commit reaches Storage.
@@ -1260,14 +1305,17 @@ type Session interface {
 	Commit(ctx context.Context, change func(tx Tx) (any, error), options ...CommitOptions) (any, error)
 	// Close seals admission, settles admitted commits, then closes storage.
 	Close(ctx context.Context) error
-	// SubscribeCommits observes stored commits, each with exactly what it stored, except that a document the commit
+	// ObserveCommits observes stored commits, each with exactly what it stored, except that a document the commit
 	// retires is published as its retirement only; a commit held in memory is published when it is stored
 	// (CommitPublication). Storage's adoption of the commit queues one dispatch, which runs once adopt returned (when the
 	// storage then waits, at once; otherwise when Storage.Commit returns, before the Session sees it resolve), before
-	// every wait the commit resolves and every abort it queues, and calls the listeners registered by then; a commit
-	// adopted while none was registered has no dispatch. There is no order relative to watch listeners. The
-	// listener runs synchronously and must not panic, block, or call Session APIs.
-	SubscribeCommits(listener func(ctx context.Context, publication CommitPublication)) func()
+	// every wait the commit resolves and every abort it queues, and calls the observers attached by then; a commit
+	// adopted while none was attached has no dispatch. There is no order relative to watch listeners. Advance runs
+	// synchronously and must not block or call Session APIs; a panic is reported as listener_error, detaches the
+	// observer, and ends it listener_error. End is called once, when the Session closes (ended, after its last
+	// publication) or fails (failed), never after Detach. It attaches synchronously; the observation has no value:
+	// commits are events, not a state, and the Session does not know Storage's newest Seq before its own first commit.
+	ObserveCommits(observer CommitObserver) CommitObservation
 	// SubscribeClose observes close synchronously when it begins. The listener must not panic, block, or call
 	// Session APIs.
 	SubscribeClose(listener func()) func()

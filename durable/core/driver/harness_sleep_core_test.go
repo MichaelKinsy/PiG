@@ -222,7 +222,7 @@ func newSleepRig(t *testing.T, core bool, tasks ...durable.AnyTask) *sleepRig {
 
 func (rig *sleepRig) open(configure func(*harness.HarnessOptions)) harness.Harness {
 	rig.t.Helper()
-	options := harness.HarnessOptions{Models: ai.CreateModels(), Registry: rig.registry, OnReport: func(err error, _ durable.ReportInfo) { rig.reports.add(err) }}
+	options := harness.HarnessOptions{Models: ai.CreateModels(), Registry: rig.registry, OnReport: func(report durable.Report) { rig.reports.add(report.Error) }}
 	if configure != nil {
 		configure(&options)
 	}

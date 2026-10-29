@@ -301,9 +301,9 @@ func TestConversationViewsMatchPi(t *testing.T) {
 				}
 				_, detach, err := views.Attach(ctx, conversations[0], window, func(value ConversationView, _ func()) *ViewObserver {
 					entry.Initial = value
-					return &ViewObserver{Advance: func(_ context.Context, change chord.WatchChange[ConversationView]) {
+					return &ViewObserver{Advance: func(_ context.Context, change chord.WatchCall[ConversationView]) {
 						entry.Events = append(entry.Events, recorded{current, change.Value, change.Ops})
-					}, End: func(error) {}}
+					}, End: func(chord.WatchEnd) {}}
 				})
 				gotErr = err
 				if err == nil {

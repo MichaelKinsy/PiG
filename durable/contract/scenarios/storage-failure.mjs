@@ -43,7 +43,7 @@ const failing = new Proxy(storage, { get(t, k, r) {
 
 const describe = e => (e === failure ? "the storage error" : e instanceof Error ? `${e.name}(cause ${e.cause === failure ? "the storage error" : String(e.cause)})` : String(e))
 const outcome = async (name, p) => { try { const v = await p; log(`${name}: ok`) ; return v } catch (e) { log(`${name}: rejected ${describe(e)}`) } }
-const ending = e => (e.reason === "failed" ? `failed(${e.error === failure ? "the storage error" : String(e.error)})` : e.reason)
+const ending = e => (e.kind === "failed" ? `failed(${e.error === failure ? "the storage error" : String(e.error)})` : e.kind)
 
 const harness = await Harness.open(failing, { models, registry }, context)
 const root = await harness.root(context, { agent: { model: { provider: "faux", modelId: "faux-1" } } })
@@ -55,8 +55,8 @@ await outcome("idle 1", harness.waitForIdle(context))
 await outcome("second submit", root.submit({ type: "input", content: "and again" }, context))
 await outcome("idle 2", harness.waitForIdle(context))
 await outcome("get task", harness.getTask("t1", context))
-const quiet = new Promise(r => setTimeout(() => r({ reason: "open" }), 20))
-log("stream:", ending(await Promise.race([stream.closed.catch(e => ({ reason: `threw ${describe(e)}` })), quiet])))
+const quiet = new Promise(r => setTimeout(() => r({ kind: "open" }), 20))
+log("stream:", ending(await Promise.race([stream.closed.catch(e => ({ kind: `threw ${describe(e)}` })), quiet])))
 log("harness:", ending(await Promise.race([harness.closed, quiet])))
 log("commits seen:", failAt === 0 ? commits : "n/a", "changes delivered:", batches > 0 ? "some" : "none")
 await outcome("close", harness.close(context))

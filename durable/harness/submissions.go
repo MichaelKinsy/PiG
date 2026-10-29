@@ -60,7 +60,7 @@ func NewSubmissions(line *session.SessionImpl, storage durable.Storage, now func
 		root = telemetry.NoopTelemetryContext
 	}
 	submissions := &Submissions{telemetry: root, line: line, storage: storage, now: now, queueModes: queueModes, resume: resume}
-	line.ObserveCommits(func(ctx context.Context, publication session.ObservedCommit) {
+	line.FollowCommits(func(ctx context.Context, publication session.ObservedCommit) {
 		submissions.observe(publication)
 	})
 	line.SubscribeClose(func() {

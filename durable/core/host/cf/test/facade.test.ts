@@ -127,7 +127,7 @@ test("a fatal core failure rejects a pending wait with its cause instead of leav
     return undefined
   })
   const reports: unknown[] = []
-  const h = await harness(core, { onReport: (e: unknown) => reports.push(e) })
+  const h = await harness(core, { onReport: (report: { error: unknown }) => reports.push(report.error) })
   const conversation = new (await import("../src/facade/harness.ts")).Conversation(h, 1)
   const submission = await conversation.submit({ type: "input", content: "hi" }, context)
   ;(h as any).store.run("CREATE TABLE IF NOT EXISTS submissions (id INTEGER PRIMARY KEY, conversation_id INTEGER, request_id TEXT, status TEXT, record TEXT)", [])
@@ -198,22 +198,40 @@ test("settings are live: a change to the caller's settings object reaches the co
   assert.ok(kinds.lastIndexOf(EVENT.registry) < kinds.indexOf(EVENT.api, kinds.lastIndexOf(EVENT.registry)), "the settings event precedes the event that needs them")
 })
 
-test("subscribeCommits asks the core for the complete publication while a listener exists, and hands listeners {seq, changes}", async () => {
+test("observeCommits asks the core for the complete publication while an observer is attached, and hands it {seq, changes}", async () => {
   const core = new ScriptedCore(ev => ev.kind === EVENT.api ? { notices: [apiResult(ev.id!, { ok: null })] } : undefined)
   const h = await harness(core)
   const modes = () => core.seen.filter(e => e.kind === EVENT.api && e.body.op === "commits").map(e => e.body.on)
   const seen: unknown[] = []
-  const off = h.subscribeCommits(p => { seen.push(p) })
-  const off2 = h.subscribeCommits(() => {})
-  assert.deepEqual(modes(), [true], "the first listener turns it on")
+  const first = h.observeCommits({ advance: p => { seen.push(p) }, end: () => {} })
+  const second = h.observeCommits({ advance: () => {}, end: () => {} })
+  assert.deepEqual(modes(), [true], "the first observer turns it on")
   ;(h as any).onNotice(1, new TextEncoder().encode(JSON.stringify({ seq: 3, entries: [], changes: [{ type: "entry", value: { id: 1 } }] })))
   ;(h as any).onNotice(1, new TextEncoder().encode(JSON.stringify({ seq: 4, entries: [] })))
-  // session.ts #notifyHosts: the listeners are called one microtask after the adoption, outside it.
+  // session.ts #notifyHosts: the observers are called one microtask after the adoption, outside it.
   assert.deepEqual(seen, [], "the dispatch is one microtask after the notice")
   await Promise.resolve()
   assert.deepEqual(seen, [{ seq: 3, changes: [{ type: "entry", value: { id: 1 } }] }])
-  off(); assert.deepEqual(modes(), [true])
-  off2(); assert.deepEqual(modes(), [true, false], "the last one turns it off")
+  first.detach(); assert.deepEqual(modes(), [true])
+  second.detach(); assert.deepEqual(modes(), [true, false], "the last one turns it off")
+})
+
+test("an observeCommits observer that throws is reported, detached and ended listener_error; the Session's close ends the others ended, after their last publication", async () => {
+  const core = new ScriptedCore(ev => ev.kind === EVENT.api ? { notices: [apiResult(ev.id!, { ok: null })] } : undefined)
+  const reports: { error: unknown; kind: string }[] = []
+  const h = await harness(core, { onReport: (report: { error: unknown; kind: string }) => reports.push(report) })
+  const boom = new Error("boom")
+  const log: unknown[] = []
+  h.observeCommits({ advance: () => { throw boom }, end: end => log.push(["thrower", end]) })
+  h.observeCommits({ advance: p => log.push(["kept", p]), end: end => log.push(["kept", end]) })
+  const detached = h.observeCommits({ advance: () => log.push("detached"), end: () => log.push("detached end") })
+  detached.detach()
+  ;(h as any).onNotice(1, new TextEncoder().encode(JSON.stringify({ seq: 3, entries: [], changes: [{ type: "entry", value: { id: 1 } }] })))
+  await Promise.resolve()
+  assert.deepEqual(reports.map(r => [r.kind, r.error]), [["listener_error", boom]])
+  assert.deepEqual(log, [["thrower", { kind: "listener_error", error: boom }], ["kept", { seq: 3, changes: [{ type: "entry", value: { id: 1 } }] }]])
+  await h.close(context)
+  assert.deepEqual(log.slice(2), [["kept", { kind: "ended" }]], "never after detach, and not again for the one that was ended")
 })
 
 test("close lets a caller's open transaction end before the final close event, and does not wait for a task invocation's", async () => {
@@ -240,13 +258,13 @@ test("close lets a caller's open transaction end before the final close event, a
 })
 
 test("inspect() hands a blocked task's error over as an Error", async () => {
-  const body = { scheduling: "paused", submissions: [], tasks: [{ record: { id: 3 }, state: { kind: "blocked", reason: "migration_failed", error: { name: "Error", message: "no migration" } } }, { record: { id: 4 }, state: { kind: "ready", migrates: false } }] }
+  const body = { scheduling: "paused", submissions: [], tasks: [{ record: { id: 3 }, state: { kind: "blocked", reason: "migration_failed", error: { name: "Error", message: "no migration" } } }, { record: { id: 4 }, state: { kind: "pending", migrates: false } }] }
   const core = new ScriptedCore(ev => ev.kind === EVENT.inspect ? { notices: [apiResult(ev.body.requestId, { ok: body })] } : undefined)
   const h = await harness(core)
   const inspection: any = await h.inspect(context)
   assert.ok(inspection.tasks[0].state.error instanceof Error)
   assert.equal(inspection.tasks[0].state.error.message, "no migration")
-  assert.deepEqual(inspection.tasks[1].state, { kind: "ready", migrates: false })
+  assert.deepEqual(inspection.tasks[1].state, { kind: "pending", migrates: false })
 })
 
 test("open rejects a registry without the built-in tasks, as Harness.open does", async () => {
@@ -263,11 +281,11 @@ test("open rejects a registry without the built-in tasks, as Harness.open does",
 test("a report notice from the core reaches HarnessOptions.onReport as an Error", async () => {
   const reports: Error[] = []
   const infos: unknown[] = []
-  const core = new ScriptedCore(ev => ev.kind === EVENT.api && ev.body.op !== "opened" ? { notices: [{ kind: NOTICE.report, payload: new TextEncoder().encode(JSON.stringify({ name: "RangeError", message: "no sandbox", info: { type: "host_error", callback: "env" } })) }, apiResult(ev.id!, { ok: null })] } : undefined)
-  const h = await harness(core, { onReport: (error: Error, info: unknown) => { reports.push(error); infos.push(info) } })
+  const core = new ScriptedCore(ev => ev.kind === EVENT.api && ev.body.op !== "opened" ? { notices: [{ kind: NOTICE.report, payload: new TextEncoder().encode(JSON.stringify({ name: "RangeError", message: "no sandbox", info: { kind: "host_error", callback: "env" } })) }, apiResult(ev.id!, { ok: null })] } : undefined)
+  const h = await harness(core, { onReport: ({ error, ...info }: { error: Error }) => { reports.push(error); infos.push(info) } })
   await h.snapshot(AgentDoc, 1, context)
   assert.equal(reports.length, 1)
-  assert.deepEqual(infos, [{ type: "host_error", callback: "env" }], "the notice's ReportInfo is the second argument")
+  assert.deepEqual(infos, [{ kind: "host_error", callback: "env" }], "the report is the notice's ReportInfo with the error")
   assert.ok(reports[0] instanceof Error)
   assert.equal(reports[0]!.message, "no sandbox")
   assert.equal(reports[0]!.name, "RangeError")

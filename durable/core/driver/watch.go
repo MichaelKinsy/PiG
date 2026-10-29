@@ -48,7 +48,7 @@ type watchHub struct {
 	next    uint32
 	sinks   map[uint32]func(rawFrame)
 	early   map[uint32][]rawFrame
-	ends    []func() // SourceEnded of each open watch
+	ends    []func() // end of each open watch
 	bg      sync.WaitGroup
 	spawnMu sync.Mutex // guards shut; apart from mu because sinks run under mu and spawn
 	shut    bool       // closeSession ran: no further background work starts
@@ -175,7 +175,7 @@ func (h *watchHub) notice(n abi.Notice) {
 	}
 }
 
-// closeSession ends every open watch as Session.close does (reason ended) and waits for the watch.close requests.
+// closeSession ends every open watch as Session.close does (kind ended) and waits for the watch.close requests.
 func (h *watchHub) closeSession() {
 	h.mu.Lock()
 	ends := h.ends
@@ -341,22 +341,22 @@ func watchOf[T any](ctx context.Context, m *mountSource[T]) *chord.Watch[T] {
 			watch.EndAfterDelivery()
 		case f.retired:
 			// The retirement repeats the last value the watch was given, with no ops.
-			watch.Advance(m.hub.deliveryContext(), chord.WatchChange[T]{Value: m.current(), Retired: true})
+			watch.Advance(m.hub.deliveryContext(), chord.WatchCall[T]{Kind: chord.WatchCallValue, Value: m.current(), Retired: true})
 		default:
 			if value, ok := m.advance(f); ok {
-				watch.Advance(m.hub.deliveryContext(), chord.WatchChange[T]{Value: value, Ops: f.ops})
+				watch.Advance(m.hub.deliveryContext(), chord.WatchCall[T]{Kind: chord.WatchCallValue, Value: value, Ops: f.ops})
 			}
 		}
-	}, func() { watch.SourceEnded(nil) })
+	}, func() { watch.EndWith(chord.WatchEnd{Kind: chord.WatchEnded}) })
 	if ctx.Done() != nil {
-		watch.ObserveCancellation(ctx)
+		watch.ObserveAbort(ctx)
 	}
 	return watch
 }
 
 // watchDoc is Session.watchDoc (session.ts:268-298): the watch of a document's committed value, or nil when the document is
-// absent. Cancelling ctx before the core answers rejects with ctx's error; cancelling it after ends the watch with reason
-// cancelled.
+// absent. Cancelling ctx before the core answers rejects with ctx's error; cancelling it after ends the watch with kind
+// aborted.
 func (s *coreSession) watchDoc(ctx context.Context, token durable.AnyDocToken, args []any) (durable.WatchHandle[durable.JsonObject], error) {
 	def := token.AnyDefinition()
 	resolved, err := durable.ResolveAddress(def, args)
@@ -388,15 +388,15 @@ func (s *coreSession) ObserveDocErased(ctx context.Context, token durable.AnyDoc
 	m.hub.bind(m.id, func(f rawFrame) {
 		switch {
 		case f.end:
-			guarded.End(nil)
+			guarded.End(durable.WatchEnd{Kind: durable.WatchEnded})
 		case f.retired:
-			guarded.Advance(m.hub.deliveryContext(), durable.WatchChange[durable.JsonObject]{Value: m.current(), Retired: true})
+			guarded.Advance(m.hub.deliveryContext(), durable.WatchCall[durable.JsonObject]{Kind: durable.WatchCallValue, Value: m.current(), Retired: true})
 		default:
 			if value, ok := m.advance(f); ok {
-				guarded.Advance(m.hub.deliveryContext(), durable.WatchChange[durable.JsonObject]{Value: value, Ops: f.ops})
+				guarded.Advance(m.hub.deliveryContext(), durable.WatchCall[durable.JsonObject]{Kind: durable.WatchCallValue, Value: value, Ops: f.ops})
 			}
 		}
-	}, func() { guarded.End(nil) })
+	}, func() { guarded.End(durable.WatchEnd{Kind: durable.WatchEnded}) })
 	return session.NewObservation(m.first, guarded), nil
 }
 

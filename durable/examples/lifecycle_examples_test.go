@@ -100,7 +100,10 @@ func TestExample20LateJoin(t *testing.T) {
 	var viewMu sync.Mutex
 	var viewOutputs, viewAnswers []string
 	var finalKinds []string
-	view.Start(func(_ context.Context, change chord.WatchChange[harness.ConversationView]) error {
+	view.Start(func(_ context.Context, change chord.WatchCall[harness.ConversationView]) error {
+		if change.Kind != chord.WatchCallValue {
+			return nil
+		}
 		value := change.Value
 		state := liveState(t, value)
 		viewMu.Lock()
@@ -336,7 +339,10 @@ func subagentForeground(t *testing.T, attachAfterSettled bool) {
 		mu.Lock()
 		watches = append(watches, watch)
 		mu.Unlock()
-		watch.Start(func(_ context.Context, change chord.WatchChange[harness.ConversationView]) error {
+		watch.Start(func(_ context.Context, change chord.WatchCall[harness.ConversationView]) error {
+			if change.Kind != chord.WatchCallValue {
+				return nil
+			}
 			show(change.Value)
 			// A running subagent call names its child conversation in its details.
 			for _, slot := range liveState(t, change.Value).Tools {
@@ -614,7 +620,10 @@ func TestExample15RealModel(t *testing.T) {
 		increments = append(increments, text[len(printed):])
 		printed = text
 	}
-	liveWatch.Start(func(_ context.Context, change chord.WatchChange[harness.LiveState]) error {
+	liveWatch.Start(func(_ context.Context, change chord.WatchCall[harness.LiveState]) error {
+		if change.Kind != chord.WatchCallValue {
+			return nil
+		}
 		value := change.Value
 		if value.Generation == nil {
 			return nil

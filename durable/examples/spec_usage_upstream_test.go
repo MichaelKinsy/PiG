@@ -455,7 +455,10 @@ func specUsageHarnessExamples(names specNames) map[string]func(context.Context) 
 				return err
 			}
 			names.render(transcript.Merge(watch.Value()))
-			watch.Start(func(_ context.Context, change chord.WatchChange[harness.ConversationView]) error {
+			watch.Start(func(_ context.Context, change chord.WatchCall[harness.ConversationView]) error {
+				if change.Kind != chord.WatchCallValue {
+					return nil
+				}
 				names.render(transcript.Merge(change.Value))
 				return nil
 			})

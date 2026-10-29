@@ -186,14 +186,14 @@ func sfSessionFailed(t *testing.T, err error, cause error) {
 	}
 }
 
-func sfEnded(t *testing.T, harness Harness, reason durable.SessionEndReason, cause error) {
+func sfEnded(t *testing.T, harness Harness, reason durable.SessionEndKind, cause error) {
 	t.Helper()
 	select {
 	case <-harness.Closed():
 	case <-time.After(10 * time.Second):
 		t.Fatal("the Harness did not end")
 	}
-	if end := harness.End(); end.Reason != reason || !errors.Is(end.Error, cause) || (cause == nil && end.Error != nil) {
+	if end := harness.End(); end.Kind != reason || !errors.Is(end.Error, cause) || (cause == nil && end.Error != nil) {
 		t.Fatalf("end %+v, want %s caused by %v", end, reason, cause)
 	}
 }
@@ -243,7 +243,7 @@ func TestAFailedStorageCall(t *testing.T) {
 		go func() { idle <- harness.WaitForIdle(testContext) }()
 		watch := must(harness.WatchDocErased(testContext, LiveDoc, root.Id()))
 		view := must(root.Watch(testContext, nil))
-		view.Start(func(context.Context, chord.WatchChange[ConversationView]) error { return nil })
+		view.Start(func(context.Context, chord.WatchCall[ConversationView]) error { return nil })
 		flush()
 
 		failure := errors.New("disk gone")
@@ -255,11 +255,11 @@ func TestAFailedStorageCall(t *testing.T) {
 		sfSessionFailed(t, <-task, failure)
 		sfSessionFailed(t, <-idle, failure)
 		<-watch.Closed()
-		if end := watch.End(); end.Reason != durable.WatchFailed || !errors.Is(end.Error, failure) {
+		if end := watch.End(); end.Kind != durable.WatchFailed || !errors.Is(end.Error, failure) {
 			t.Fatalf("watch ended %+v, want failed with the first error", end)
 		}
 		<-view.Closed()
-		if end := view.End(); end.Reason != durable.WatchFailed || !errors.Is(end.Error, failure) {
+		if end := view.End(); end.Kind != durable.WatchFailed || !errors.Is(end.Error, failure) {
 			t.Fatalf("view ended %+v, want failed with the first error", end)
 		}
 		// Every later call, and a wait that starts now.
@@ -496,7 +496,7 @@ func TestAFailedStorageCall(t *testing.T) {
 		}
 		sfEnded(t, harness, durable.SessionEndFailed, failure)
 		got := <-finished
-		if got.watch.Reason != durable.WatchFailed || !errors.Is(got.watch.Error, failure) {
+		if got.watch.Kind != durable.WatchFailed || !errors.Is(got.watch.Error, failure) {
 			t.Fatalf("the task's watch ended %+v, want failed", got.watch)
 		}
 		sfSessionFailed(t, got.idle, failure)
@@ -578,7 +578,7 @@ func TestAFailedStorageCall(t *testing.T) {
 	t.Run("fails it for a throw in its own commit listeners, which would leave memory behind storage", func(t *testing.T) {
 		harness, root, reports := sfStarted(t, newControlledStorage(), &signalLog{})
 		bug := errors.New("listener bug")
-		harness.(*harnessImpl).ObserveCommits(func(context.Context, session.ObservedCommit) { panic(bug) })
+		harness.(*harnessImpl).FollowCommits(func(context.Context, session.ObservedCommit) { panic(bug) })
 		// The commit itself is durable and returns; the Session fails behind it.
 		if err := sfAppendNote(root); err != nil {
 			t.Fatalf("the commit returned %v, want success", err)
@@ -659,7 +659,7 @@ func TestAFailedStorageCall(t *testing.T) {
 		var once sync.Once
 		var opened sync.WaitGroup
 		opened.Add(1)
-		harness = must(OpenHarness(testContext, store, HarnessOptions{Models: ai.CreateModels(), Registry: registry, OnReport: func(error, durable.ReportInfo) {
+		harness = must(OpenHarness(testContext, store, HarnessOptions{Models: ai.CreateModels(), Registry: registry, OnReport: func(durable.Report) {
 			once.Do(func() {
 				opened.Wait()
 				// A report handler that calls back finds the Session already failed.
@@ -732,7 +732,7 @@ func TestAHarnessKeepsWorkingWhenOnReportPanicsAndFallsBackToTheSystemClockWhenT
 		Models:   ai.CreateModels(),
 		Registry: registry,
 		Now:      func() float64 { panic(errors.New("clock broke")) },
-		OnReport: func(error, durable.ReportInfo) { panic(errors.New("report broke")) },
+		OnReport: func(durable.Report) { panic(errors.New("report broke")) },
 	})
 	if err != nil {
 		t.Fatal(err)

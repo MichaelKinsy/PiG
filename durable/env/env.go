@@ -249,7 +249,7 @@ type WatchTarget struct {
 	Exclude   *WatchExclude
 }
 
-// FileChange is what changed. It is FileChangePaths, FileChangeOverflow, or FileChangeError.
+// FileChange is what changed, tagged by its type (Pi's `kind`). It is FileChangePaths, FileChangeOverflow, or FileChangeFailed.
 type FileChange interface{ fileChange() }
 
 // FileChangePaths reports that something at or below each path may have changed (a directory path covers its whole
@@ -260,13 +260,13 @@ type FileChangePaths struct{ Paths []string }
 // is watched.
 type FileChangeOverflow struct{}
 
-// FileChangeError reports that the watcher stopped, for example because the watched tree grew past the environment's
-// limit; no calls follow.
-type FileChangeError struct{ Error *FileError }
+// FileChangeFailed reports that the watcher stopped with Error, for example because the watched tree grew past the
+// environment's limit; no calls follow.
+type FileChangeFailed struct{ Error *FileError }
 
 func (FileChangePaths) fileChange()    {}
 func (FileChangeOverflow) fileChange() {}
-func (FileChangeError) fileChange()    {}
+func (FileChangeFailed) fileChange()   {}
 
 // WatchMode is how a FileWatcher learns of changes.
 type WatchMode string
@@ -282,8 +282,8 @@ const (
 // FileWatcher is a running watch.
 type FileWatcher interface {
 	Mode() WatchMode
-	// Close stops watching; no onChange call starts after it returns. It is idempotent.
-	Close(ctx context.Context) error
+	// Stop stops watching; no onChange call starts after it returns. It is idempotent.
+	Stop(ctx context.Context) error
 }
 
 // ReadTextLinesOptions bounds FileSystem.ReadTextLines; nil MaxLines reads every line.

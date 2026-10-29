@@ -26,17 +26,46 @@ const (
 // Read-only: assigned once at initialization.
 var LiveDef = &session.DocDef{
 	Kind:    "pi.live",
-	Version: 1,
+	Version: 2,
 	Scope:   session.ScopeConversation,
 	History: session.HistoryLatest,
 	Fork:    session.ForkInitial,
 	Initial: func(any) *jv.Object { return jv.NewObject() },
+	// Version 1 named a compaction's trigger `reason`, in `compactions` and `compactionFailure`.
+	Migrate: func(value *jv.Object, _ int) *jv.Object {
+		live := value.Shallow()
+		if list, ok := value.Get("compactions"); ok {
+			statuses, _ := list.([]any)
+			renamed := make([]any, len(statuses))
+			for i, status := range statuses {
+				renamed[i] = renameReason(status.(*jv.Object))
+			}
+			live.Set("compactions", renamed)
+		}
+		if failure, ok := value.Get("compactionFailure"); ok {
+			live.Set("compactionFailure", renameReason(failure.(*jv.Object)))
+		}
+		return live
+	},
 	CheckpointWhen: func(value *jv.Object, _ []delta.Op, _ int) bool {
 		if _, ok := value.Get("generation"); ok {
 			return false
 		}
 		return !anySlotRunning(value)
 	},
+}
+
+// renameReason is a copy of a version 1 compaction status or failure with `reason` renamed `trigger`, its keys in their order.
+func renameReason(value *jv.Object) *jv.Object {
+	out := jv.NewObject()
+	value.Entries(func(key string, field any) bool {
+		if key == "reason" {
+			key = "trigger"
+		}
+		out.Set(key, field)
+		return true
+	})
+	return out
 }
 
 func anySlotRunning(value *jv.Object) bool {
@@ -171,7 +200,7 @@ func RemoveCompactionStatus(live *delta.Obj, taskID session.ID) error {
 // message (pi.live.compactionFailure).
 func FailCompactionStatus(live *delta.Obj, taskID session.ID, message string) error {
 	if status := CompactionStatusOf(live, taskID); status != nil {
-		if err := live.Set("compactionFailure", jobj("taskId", float64(taskID), "reason", status.Get("reason"), "error", message)); err != nil {
+		if err := live.Set("compactionFailure", jobj("taskId", float64(taskID), "trigger", status.Get("trigger"), "error", message)); err != nil {
 			return err
 		}
 	}

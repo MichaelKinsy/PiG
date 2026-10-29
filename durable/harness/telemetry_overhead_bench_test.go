@@ -23,7 +23,7 @@ func benchGeneration(b *testing.B, sink telemetry.TelemetryContext, answer strin
 		Models: models, Registry: CreateRegistry(), Telemetry: sink,
 		Settings: func() *HarnessSettings { return &HarnessSettings{} },
 		Now:      func() float64 { return 1 },
-		OnReport: func(error, durable.ReportInfo) {},
+		OnReport: func(durable.Report) {},
 	})
 	if err != nil {
 		b.Fatal(err)

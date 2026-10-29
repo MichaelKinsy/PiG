@@ -55,7 +55,7 @@ func TestStreamedPartialsCommitAtACostThatFollowsTheNewText(t *testing.T) {
 		setup := streamedTextAndCall(t, size, 64, 64_000)
 		harness, root := openChat(t, storage.NewMemoryStorage(), setup)
 		var mu sync.Mutex
-		observeCommits(harness, func(context.Context, session.ObservedCommit) {
+		followCommits(harness, func(context.Context, session.ObservedCommit) {
 			mu.Lock()
 			commits++
 			mu.Unlock()
@@ -132,13 +132,13 @@ func TestStreamedPartialsKeepAWatchersMemoryProportionalToTheText(t *testing.T) 
 	harness, root := openChat(t, storage.NewMemoryStorage(), setup)
 	watch := must(root.Watch(testContext, nil))
 	watcher := &opsWatcher{}
-	watch.Start(func(_ context.Context, change chord.WatchChange[ConversationView]) error {
+	watch.Start(onValue(func(_ context.Context, change chord.WatchCall[ConversationView]) error {
 		watcher.mu.Lock()
 		defer watcher.mu.Unlock()
 		watcher.frames++
 		watcher.ops = append(watcher.ops, change.Ops)
 		return nil
-	})
+	}))
 	before := heapInUse(harness)
 	submission := submit(t, root, inputDraft("go"))
 	// shown is the length of the streamed block at index in the committed partial.

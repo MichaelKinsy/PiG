@@ -28,8 +28,8 @@ func TestListenerAndReportErrors(t *testing.T) {
 	t.Run("reports a throwing commit or close listener and runs the others; the commit stands", func(t *testing.T) {
 		harness, root, reports := sfStarted(t, newControlledStorage(), &signalLog{})
 		var seen []string
-		harness.SubscribeCommits(func(context.Context, durable.CommitPublication) { panic(errors.New("commit listener")) })
-		harness.SubscribeCommits(func(context.Context, durable.CommitPublication) { seen = append(seen, "commit") })
+		harness.ObserveCommits(commitsObserver{advance: func(context.Context, durable.CommitPublication) { panic(errors.New("commit listener")) }})
+		harness.ObserveCommits(commitsObserver{advance: func(context.Context, durable.CommitPublication) { seen = append(seen, "commit") }})
 		harness.SubscribeClose(func() { panic(errors.New("close listener")) })
 		harness.SubscribeClose(func() { seen = append(seen, "close") })
 		if err := sfAppendNote(root); err != nil {
@@ -57,21 +57,21 @@ func TestListenerAndReportErrors(t *testing.T) {
 		failure := errors.New("observer broke")
 		if _, _, err := views.Attach(testContext, root.Id(), nil, func(ConversationView, func()) *ViewObserver {
 			return &ViewObserver{
-				Advance: func(context.Context, chord.WatchChange[ConversationView]) {
+				Advance: func(context.Context, chord.WatchCall[ConversationView]) {
 					panic(failure)
 				},
-				End: func(error) {},
+				End: func(chord.WatchEnd) {},
 			}
 		}); err != nil {
 			t.Fatal(err)
 		}
 		watch := must(root.Watch(testContext, nil))
 		seen := make(chan ConversationView, 8)
-		watch.Start(func(_ context.Context, change chord.WatchChange[ConversationView]) error {
+		watch.Start(onValue(func(_ context.Context, change chord.WatchCall[ConversationView]) error {
 			value := change.Value
 			seen <- value
 			return nil
-		})
+		}))
 		if err := sfAppendNote(root); err != nil {
 			t.Fatal(err)
 		}
@@ -85,7 +85,7 @@ func TestListenerAndReportErrors(t *testing.T) {
 			t.Fatal(err)
 		}
 		<-watch.Closed()
-		if end := watch.End(); end.Reason != durable.WatchEnded {
+		if end := watch.End(); end.Kind != durable.WatchEnded {
 			t.Fatalf("the watch ended %+v, want ended", end)
 		}
 	})
@@ -114,11 +114,11 @@ func TestListenerAndReportErrors(t *testing.T) {
 		graph.mount.observers = append([]taskGraphObserver{throwingGraphObserver{failure}}, graph.mount.observers...)
 		graph.mu.Unlock()
 		seen := make(chan TaskGraph, 8)
-		watch.Start(func(_ context.Context, change chord.WatchChange[TaskGraph]) error {
+		watch.Start(onValue(func(_ context.Context, change chord.WatchCall[TaskGraph]) error {
 			value := change.Value
 			seen <- value
 			return nil
-		})
+		}))
 		if _, err := root.Commit(testContext, func(tx durable.Tx) (any, error) {
 			return durable.CreateTask(tx, waitingTask(log), struct{}{}, durable.TaskOptions{Ownership: durable.TaskOwnership{Kind: durable.TaskOwnedByConversation}})
 		}); err != nil {
@@ -140,7 +140,7 @@ func TestListenerAndReportErrors(t *testing.T) {
 		case <-time.After(10 * time.Second):
 			t.Fatal("the watch behind the throwing observer never closed with the Session")
 		}
-		if end := watch.End(); end.Reason != durable.WatchEnded {
+		if end := watch.End(); end.Kind != durable.WatchEnded {
 			t.Fatalf("the watch ended %+v, want ended", end)
 		}
 		// The advance and the close of the throwing observer each failed once, and each was reported.
@@ -152,7 +152,7 @@ func TestListenerAndReportErrors(t *testing.T) {
 		harness, root, reports := sfStarted(t, newControlledStorage(), &signalLog{})
 		watch := must(harness.WatchDocErased(testContext, LiveDoc, root.Id()))
 		failure := errors.New("listener broke")
-		watch.Start(func(context.Context, chord.WatchChange[durable.JsonObject]) error { return failure })
+		watch.Start(func(context.Context, chord.WatchCall[durable.JsonObject]) error { return failure })
 		if _, err := root.Commit(testContext, func(tx durable.Tx) (any, error) {
 			live, err := docDraft(tx, LiveDoc, root.Id())
 			if err != nil {
@@ -163,7 +163,7 @@ func TestListenerAndReportErrors(t *testing.T) {
 			t.Fatal(err)
 		}
 		<-watch.Closed()
-		if end := watch.End(); end.Reason != durable.WatchListenerError || !errors.Is(end.Error, failure) {
+		if end := watch.End(); end.Kind != durable.WatchListenerError || !errors.Is(end.Error, failure) {
 			t.Fatalf("the watch ended %+v, want listener_error with the listener's error", end)
 		}
 		sfReports(t, reports, failure)
@@ -173,11 +173,11 @@ func TestListenerAndReportErrors(t *testing.T) {
 
 type throwingGraphObserver struct{ failure error }
 
-func (observer throwingGraphObserver) Advance(context.Context, chord.WatchChange[TaskGraph]) {
+func (observer throwingGraphObserver) Advance(context.Context, chord.WatchCall[TaskGraph]) {
 	panic(observer.failure)
 }
 
-func (observer throwingGraphObserver) SourceEnded(error) { panic(observer.failure) }
+func (observer throwingGraphObserver) End(chord.WatchEnd) { panic(observer.failure) }
 
 func TestSafeNow(t *testing.T) {
 	// harness-storage-failure.test.ts:603 it("reports a throwing clock once, also when the report handler reads the clock again")
@@ -211,7 +211,7 @@ func TestSafeNow(t *testing.T) {
 			Models:   ai.CreateModels(),
 			Registry: registry,
 			Now:      func() float64 { panic(errors.New("clock broke")) },
-			OnReport: func(error, durable.ReportInfo) {
+			OnReport: func(durable.Report) {
 				mu.Lock()
 				reported++
 				mu.Unlock()
@@ -272,7 +272,7 @@ func TestAThrownValueThatCannotBeFormatted(t *testing.T) {
 		harness, _, _ := openTasks(t, newControlledStorage(), []durable.AnyTask{throws.Erased()})
 		root := mustRoot(t, harness, nil)
 		watch := must(harness.WatchDocErased(testContext, LiveDoc, root.Id()))
-		watch.Start(func(context.Context, chord.WatchChange[durable.JsonObject]) error { panic(unformattable{}) })
+		watch.Start(func(context.Context, chord.WatchCall[durable.JsonObject]) error { panic(unformattable{}) })
 		id := must(durable.Commit(testContext, root, func(tx durable.Tx) (durable.TaskId, error) {
 			return durable.CreateTask(tx, throws, struct{}{}, durable.TaskOptions{Ownership: durable.TaskOwnership{Kind: durable.TaskOwnedByConversation}})
 		}))
@@ -291,7 +291,7 @@ func TestAThrownValueThatCannotBeFormatted(t *testing.T) {
 			t.Fatal(err)
 		}
 		<-watch.Closed()
-		if end := watch.End(); end.Reason != durable.WatchListenerError {
+		if end := watch.End(); end.Kind != durable.WatchListenerError {
 			t.Fatalf("the watch ended %+v, want listener_error", end)
 		}
 		if err := sfAppendNote(root); err != nil {

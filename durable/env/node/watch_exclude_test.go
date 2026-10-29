@@ -26,7 +26,7 @@ func TestWatchTargetExcludeSkipsHiddenAndNamedEntries(t *testing.T) {
 			mu.Unlock()
 		}
 	}))
-	defer func() { _ = watcher.Close(background) }()
+	defer func() { _ = watcher.Stop(background) }()
 	has := func(suffix string) bool {
 		mu.Lock()
 		defer mu.Unlock()

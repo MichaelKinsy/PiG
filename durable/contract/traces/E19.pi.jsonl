@@ -19,14 +19,14 @@
 {"k":"#","seq":10,"summary":"document_revisions:i submissions:u","tick":1056,"begin":1038}
 {"k":">","name":"harness.snapshot","tick":1065}
 {"k":">","name":"harness.root().submit().wait","tick":1066}
-{"k":"#","seq":11,"summary":"document_revisions:d document_revisions:i entries:i submissions:u tasks:i tasks:u","tick":1402,"begin":1335}
-{"k":">","name":"harness.root().submit().wait","tick":1407}
-{"k":"#","seq":12,"summary":"tasks:u","tick":1452,"begin":1441}
-{"k":"#","seq":13,"summary":"tasks:u","tick":1597,"begin":1586}
-{"k":"#","seq":14,"summary":"document_revisions:i","tick":1649,"begin":1636}
-{"k":"#","seq":15,"summary":"document_revisions:d document_revisions:i entries:i submissions:u tasks:u","tick":1870,"begin":1830}
-{"k":">","name":"harness.root().submit().wait","tick":1875}
-{"k":">","name":"harness.root().submit().wait","tick":1917}
-{"k":">","name":"harness.root().submit().wait","tick":1945}
-{"k":">","name":"harness.root().entries","tick":1966}
-{"k":">","name":"harness.close","tick":1988}
+{"k":"#","seq":11,"summary":"document_revisions:d document_revisions:i entries:i submissions:u tasks:i tasks:u","tick":1405,"begin":1338}
+{"k":">","name":"harness.root().submit().wait","tick":1410}
+{"k":"#","seq":12,"summary":"tasks:u","tick":1455,"begin":1444}
+{"k":"#","seq":13,"summary":"tasks:u","tick":1600,"begin":1589}
+{"k":"#","seq":14,"summary":"document_revisions:i","tick":1652,"begin":1639}
+{"k":"#","seq":15,"summary":"document_revisions:d document_revisions:i entries:i submissions:u tasks:u","tick":1876,"begin":1836}
+{"k":">","name":"harness.root().submit().wait","tick":1881}
+{"k":">","name":"harness.root().submit().wait","tick":1923}
+{"k":">","name":"harness.root().submit().wait","tick":1951}
+{"k":">","name":"harness.root().entries","tick":1972}
+{"k":">","name":"harness.close","tick":1994}

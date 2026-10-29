@@ -2,13 +2,13 @@
 // `watch`, and each call builds its own instance where Pi keeps one per Harness. The core mounts the view; this attaches one observer to it,
 // with its own window. An observer that throws is reported through the Harness and the others still get the frame; the Session's close
 // reaches `end` once.
-import type { Context, WatchChange } from "@earendil-works/chord"
+import type { Context, WatchCall, WatchEnd } from "@earendil-works/chord"
 import type { ConversationWindow } from "@earendil-works/pi-durable"
 import { Harness } from "../harness.ts"
 
 type Observer = {
-  advance?(change: WatchChange<unknown>, context: Context): void
-  end(failure: { readonly error: unknown } | undefined): void
+  advance?(call: WatchCall<unknown>, context: Context): void
+  end(end: WatchEnd): void
 }
 
 export class ConversationViews {
@@ -35,8 +35,8 @@ export class ConversationViews {
         for (const call of early.splice(0)) { try { call(created) } catch (error) { this.#harness.report(error) } }
       }, error => made.reject(error))
       return {
-        advance: (change, frameContext) => deliver(o => o.advance?.(change, frameContext)),
-        end: failure => deliver(o => o.end(failure)),
+        advance: (call, frameContext) => deliver(o => o.advance?.(call, frameContext)),
+        end: end => deliver(o => o.end(end)),
       }
     })
     if (ready === undefined) throw new Error(`Conversation ${id} does not exist`)

@@ -2,6 +2,8 @@
 // once; the core's cold open is asynchronous, so the Session here opens on first use and every method waits for it. The core
 // opens in `session` mode: no built-in documents, no scheduler.
 import type { Context } from "@earendil-works/chord"
+import type { Report } from "@earendil-works/pi-durable"
+import type { CommitObservation, CommitObserver } from "./watch-types.ts"
 import { BACKGROUND_CONTEXT } from "@earendil-works/chord/context"
 import { Harness } from "./harness.ts"
 import type { SetTimer } from "../timers.ts"
@@ -32,9 +34,9 @@ function watchingVia(open: () => Promise<Harness>, owner: object) {
  * HarnessOptions.onReport of a Session: the report goes to the `report(error, info)` the owner defines (session.ts: a Session subclass
  * overrides it, the plain one drops reports). The owner is held weakly, so the Harness keeps nothing of the object that holds it.
  */
-function reportingTo(owner: object): (error: unknown, info?: unknown) => void {
+function reportingTo(owner: object): (report: Report) => void {
   const ref = new WeakRef(owner as { report?: (error: unknown, info?: unknown) => void })
-  return (error, info) => { ref.deref()?.report?.(error, info) }
+  return ({ error, ...info }) => { ref.deref()?.report?.(error, info) }
 }
 
 /** `owner` is the object the caller holds as the Session (SessionImpl's `this`); a bare Session is its own owner. */
@@ -70,6 +72,7 @@ export function createLazySession(storage: Storage, options: { now?: () => numbe
     void open().then(h => { if (!cancelled) off = subscribe(h, listener) }, () => {})
     return () => { cancelled = true; off?.() }
   }
+  const observeLater = later<CommitObserver>((h, o) => { const observation = h.observeCommits(o); return () => observation.detach() })
   const via = (name: "snapshot" | "snapshotAsOf" | "documentState" | "observeDoc" | "unloadDocuments") => async (...args: unknown[]) => (((await open()) as unknown as Record<string, (...a: unknown[]) => unknown>)[name]!)(...args)
   const watchDoc = watchingVia(open, owner)
   const methods = {
@@ -80,12 +83,13 @@ export function createLazySession(storage: Storage, options: { now?: () => numbe
     get documentCacheSizes() { return harness?.documentCacheSizes ?? { cached: 0, idle: 0, attached: 0, sweeps: 0, held: 0 } },
     commit: async <T>(change: (tx: never) => T | Promise<T>, context: Context, commitOptions?: unknown): Promise<T> => (await open()).commit(change as never, context, commitOptions as never),
     // Closing a Session nobody used must not cold-open the core just to seal it.
-    close: async (context: Context) => { if (opened) await (await opened).close(context); else ended.resolve({ reason: "closed" }) },
-    /** Internal (session.ts observeCommits): the Session components' commit listener, run before the host's `subscribeCommits` listeners. */
-    observeCommits: later<(publication: unknown, context: Context) => void>((h, l) => h.observeCommits(l)),
+    close: async (context: Context) => { if (opened) await (await opened).close(context); else ended.resolve({ kind: "closed" }) },
+    /** Internal (session.ts followCommits): the Session components' commit listener, run before the host's `observeCommits` observers. */
+    followCommits: later<(publication: unknown, context: Context) => void>((h, l) => h.followCommits(l)),
     /** Internal, for tests (session.ts fail): fail the Session. */
     fail: (error: unknown) => { if (harness !== undefined) harness.fail(error); else void open().then(h => h.fail(error), () => {}) },
-    subscribeCommits: later<(publication: unknown, context: Context) => void>((h, l) => h.subscribeCommits(l)),
+    /** session.ts observeCommits: attached when the core is open; `detach()` before that cancels the attachment. */
+    observeCommits: (observer: CommitObserver): CommitObservation => ({ detach: observeLater(observer) }),
     subscribeClose: later<() => void>((h, l) => h.subscribeClose(l)),
     snapshot: via("snapshot"), snapshotAsOf: via("snapshotAsOf"), documentState: via("documentState"), watchDoc, observeDoc: via("observeDoc"), unloadDocuments: via("unloadDocuments"),
   }

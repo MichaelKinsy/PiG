@@ -66,13 +66,13 @@ func TestNodeExecutionEnvWatchLimits(t *testing.T) {
 		mustDo(t, env.Remove(background, "tree/c", &durableenv.RemoveOptions{Recursive: true}))
 		changes := make(chan durableenv.FileChange, 100)
 		watcher := must(env.Watch(background, []durableenv.WatchTarget{{Path: "tree", Recursive: true}}, func(change durableenv.FileChange) { changes <- change }))
-		defer func() { _ = watcher.Close(background) }()
+		defer func() { _ = watcher.Stop(background) }()
 		mustDo(t, env.CreateDir(background, "tree/d", nil))
 		deadline := time.After(3 * time.Second)
 		for {
 			select {
 			case change := <-changes:
-				if failure, ok := change.(durableenv.FileChangeError); ok {
+				if failure, ok := change.(durableenv.FileChangeFailed); ok {
 					if failure.Error.Code != durableenv.FileErrorInvalid {
 						t.Fatalf("error code = %s, want invalid", failure.Error.Code)
 					}

@@ -59,11 +59,11 @@ type watchDelivery struct {
 // changeRecorder records each change a watch delivers, retirement flag included.
 type changeRecorder struct {
 	mu    sync.Mutex
-	items []durable.WatchChange[obj]
+	items []durable.WatchCall[obj]
 }
 
-func (recorder *changeRecorder) listener() func(context.Context, durable.WatchChange[obj]) error {
-	return func(_ context.Context, change durable.WatchChange[obj]) error {
+func (recorder *changeRecorder) listener() func(context.Context, durable.WatchCall[obj]) error {
+	return func(_ context.Context, change durable.WatchCall[obj]) error {
 		recorder.mu.Lock()
 		recorder.items = append(recorder.items, change)
 		recorder.mu.Unlock()
@@ -71,10 +71,10 @@ func (recorder *changeRecorder) listener() func(context.Context, durable.WatchCh
 	}
 }
 
-func (recorder *changeRecorder) all() []durable.WatchChange[obj] {
+func (recorder *changeRecorder) all() []durable.WatchCall[obj] {
 	recorder.mu.Lock()
 	defer recorder.mu.Unlock()
-	return append([]durable.WatchChange[obj](nil), recorder.items...)
+	return append([]durable.WatchCall[obj](nil), recorder.items...)
 }
 
 type watchRecorder struct {
@@ -140,7 +140,7 @@ func TestSessionDocumentWatches(t *testing.T) {
 		var mu sync.Mutex
 		inline := true
 		recorder := &watchRecorder{}
-		watch.Start(func(_ context.Context, change durable.WatchChange[obj]) error {
+		watch.Start(func(_ context.Context, change durable.WatchCall[obj]) error {
 			value, ops := change.Value, change.Ops
 			mu.Lock()
 			wasInline := inline
@@ -188,7 +188,7 @@ func TestSessionDocumentWatches(t *testing.T) {
 		var values []any
 		var batches []any
 		active, maxActive := 0, 0
-		watch.Start(func(_ context.Context, change durable.WatchChange[obj]) error {
+		watch.Start(func(_ context.Context, change durable.WatchCall[obj]) error {
 			value, ops := change.Value, change.Ops
 			mu.Lock()
 			active++
@@ -231,7 +231,7 @@ func TestSessionDocumentWatches(t *testing.T) {
 		watch := watchDoc(t, harness, ctx, watchStateDoc)
 		completed := make(chan struct{})
 		recorder := &watchRecorder{}
-		watch.Start(func(_ context.Context, change durable.WatchChange[obj]) error {
+		watch.Start(func(_ context.Context, change durable.WatchCall[obj]) error {
 			value, ops := change.Value, change.Ops
 			recorder.record(value, ops)
 			if num(value.Value("value")) == 1 {
@@ -254,7 +254,7 @@ func TestSessionDocumentWatches(t *testing.T) {
 			setWatchValue(t, harness, value)
 		}
 		recorder := &watchRecorder{}
-		watch.Start(func(_ context.Context, change durable.WatchChange[obj]) error {
+		watch.Start(func(_ context.Context, change durable.WatchCall[obj]) error {
 			value, ops := change.Value, change.Ops
 			recorder.record(value, ops)
 			return nil
@@ -288,7 +288,7 @@ func TestSessionDocumentWatches(t *testing.T) {
 			})
 		}
 		recorder := &watchRecorder{}
-		watch.Start(func(_ context.Context, change durable.WatchChange[obj]) error {
+		watch.Start(func(_ context.Context, change durable.WatchCall[obj]) error {
 			value, ops := change.Value, change.Ops
 			recorder.record(value, ops)
 			return nil
@@ -311,7 +311,7 @@ func TestSessionDocumentWatches(t *testing.T) {
 		entered := make(chan struct{})
 		release := make(chan struct{})
 		recorder := &watchRecorder{}
-		watch.Start(func(_ context.Context, change durable.WatchChange[obj]) error {
+		watch.Start(func(_ context.Context, change durable.WatchCall[obj]) error {
 			value, ops := change.Value, change.Ops
 			recorder.record(value, ops)
 			if len(recorder.all()) == 1 {
@@ -380,7 +380,7 @@ func TestSessionDocumentWatches(t *testing.T) {
 			t.Fatal("a structural no-op is a new equal revision")
 		}
 		recorder := &watchRecorder{}
-		watch.Start(func(_ context.Context, change durable.WatchChange[obj]) error {
+		watch.Start(func(_ context.Context, change durable.WatchCall[obj]) error {
 			value, ops := change.Value, change.Ops
 			if !same(value, newest) {
 				t.Error("the frame value is the newest revision")
@@ -405,7 +405,7 @@ func TestSessionDocumentWatches(t *testing.T) {
 		entered := make(chan struct{})
 		release := make(chan struct{})
 		deliveryContext := make(chan context.Context, 1)
-		watch.Start(func(delivered context.Context, change durable.WatchChange[obj]) error {
+		watch.Start(func(delivered context.Context, change durable.WatchCall[obj]) error {
 			deliveryContext <- delivered
 			close(entered)
 			<-release
@@ -422,7 +422,7 @@ func TestSessionDocumentWatches(t *testing.T) {
 		}
 		cancelParent(errors.New("caller finished"))
 		end, _ := watch.Stop()
-		expectEqual(t, end, durable.WatchEnd{Reason: durable.WatchStopped})
+		expectEqual(t, end, durable.WatchEnd{Kind: durable.WatchStopped})
 		if delivered.Done() != nil || delivered.Err() != nil {
 			t.Fatal("producer cancellation does not reach the delivery")
 		}
@@ -434,7 +434,7 @@ func TestSessionDocumentWatches(t *testing.T) {
 		watch := watchDoc(t, harness, ctx, watchStateDoc)
 		initial := watch.Value()
 		recorder := &watchRecorder{}
-		watch.Start(func(_ context.Context, change durable.WatchChange[obj]) error {
+		watch.Start(func(_ context.Context, change durable.WatchCall[obj]) error {
 			value, ops := change.Value, change.Ops
 			recorder.record(value, ops)
 			return nil
@@ -511,11 +511,11 @@ func TestSessionDocumentWatches(t *testing.T) {
 		baseline := watch.Value()
 		commit(t, harness.Session, func(tx durable.Tx) error { return tx.RetireDoc(watchStateDoc) })
 		must(t, harness.Session.Close(ctx))
-		expectEqual(t, closedEnd(t, watch), durable.WatchEnd{Reason: durable.WatchEnded})
+		expectEqual(t, closedEnd(t, watch), durable.WatchEnd{Kind: durable.WatchEnded})
 		if !same(watch.Value(), baseline) {
 			t.Fatal("the value stays at acquisition")
 		}
-		expectPanic(t, "stopped", func() { watch.Start(func(_ context.Context, change durable.WatchChange[obj]) error { return nil }) })
+		expectPanic(t, "stopped", func() { watch.Start(func(_ context.Context, change durable.WatchCall[obj]) error { return nil }) })
 	})
 
 	t.Run("Session close discards retirement behind an in-flight callback", func(t *testing.T) {
@@ -524,7 +524,7 @@ func TestSessionDocumentWatches(t *testing.T) {
 		entered := make(chan struct{})
 		release := make(chan struct{})
 		recorder := &watchRecorder{}
-		watch.Start(func(_ context.Context, change durable.WatchChange[obj]) error {
+		watch.Start(func(_ context.Context, change durable.WatchCall[obj]) error {
 			value, ops := change.Value, change.Ops
 			recorder.record(value, ops)
 			close(entered)
@@ -535,7 +535,7 @@ func TestSessionDocumentWatches(t *testing.T) {
 		waitClosed(t, entered)
 		commit(t, harness.Session, func(tx durable.Tx) error { return tx.RetireDoc(watchStateDoc) })
 		must(t, harness.Session.Close(ctx))
-		expectEqual(t, closedEnd(t, watch), durable.WatchEnd{Reason: durable.WatchEnded})
+		expectEqual(t, closedEnd(t, watch), durable.WatchEnd{Kind: durable.WatchEnded})
 		close(release)
 		flush(harness)
 		expectEqual(t, recorder.values(), []any{1})
@@ -544,7 +544,7 @@ func TestSessionDocumentWatches(t *testing.T) {
 	t.Run("supports idempotent stop and rejects repeated or late start", func(t *testing.T) {
 		harness := createWatchHarness(t)
 		started := watchDoc(t, harness, ctx, watchStateDoc)
-		noop := func(_ context.Context, change durable.WatchChange[obj]) error { return nil }
+		noop := func(_ context.Context, change durable.WatchCall[obj]) error { return nil }
 		started.Start(noop)
 		expectPanic(t, "already started", func() { started.Start(noop) })
 		first, _ := started.Stop()
@@ -552,7 +552,7 @@ func TestSessionDocumentWatches(t *testing.T) {
 		if first != second {
 			t.Fatal("stop is idempotent")
 		}
-		expectEqual(t, first, durable.WatchEnd{Reason: durable.WatchStopped})
+		expectEqual(t, first, durable.WatchEnd{Kind: durable.WatchStopped})
 		stopped := watchDoc(t, harness, ctx, watchStateDoc)
 		_, _ = stopped.Stop()
 		expectPanic(t, "stopped", func() { stopped.Start(noop) })
@@ -582,7 +582,7 @@ func TestSessionDocumentWatches(t *testing.T) {
 		entered := make(chan struct{})
 		release := make(chan struct{})
 		deliveryContext := make(chan context.Context, 1)
-		watch.Start(func(delivered context.Context, change durable.WatchChange[obj]) error {
+		watch.Start(func(delivered context.Context, change durable.WatchCall[obj]) error {
 			deliveryContext <- delivered
 			close(entered)
 			<-release
@@ -591,7 +591,7 @@ func TestSessionDocumentWatches(t *testing.T) {
 		setWatchValue(t, harness, 1)
 		waitClosed(t, entered)
 		cancel()
-		expectEqual(t, closedEnd(t, watch), durable.WatchEnd{Reason: durable.WatchCancelled})
+		expectEqual(t, closedEnd(t, watch), durable.WatchEnd{Kind: durable.WatchAborted})
 		if (<-deliveryContext).Done() != nil {
 			t.Fatal("the in-flight callback is not cancelled")
 		}
@@ -604,7 +604,7 @@ func TestSessionDocumentWatches(t *testing.T) {
 		entered := make(chan struct{})
 		release := make(chan struct{})
 		deliveryContext := make(chan context.Context, 1)
-		watch.Start(func(delivered context.Context, change durable.WatchChange[obj]) error {
+		watch.Start(func(delivered context.Context, change durable.WatchCall[obj]) error {
 			deliveryContext <- delivered
 			close(entered)
 			<-release
@@ -616,7 +616,7 @@ func TestSessionDocumentWatches(t *testing.T) {
 		if (<-deliveryContext).Done() != nil {
 			t.Fatal("the delivery carries no cancellation")
 		}
-		expectEqual(t, closedEnd(t, watch), durable.WatchEnd{Reason: durable.WatchEnded})
+		expectEqual(t, closedEnd(t, watch), durable.WatchEnd{Kind: durable.WatchEnded})
 		close(release)
 	})
 
@@ -624,10 +624,10 @@ func TestSessionDocumentWatches(t *testing.T) {
 		harness := createWatchHarness(t)
 		failed := watchDoc(t, harness, ctx, watchStateDoc)
 		healthy := watchDoc(t, harness, ctx, watchStateDoc)
-		failed.Start(func(_ context.Context, change durable.WatchChange[obj]) error { return errors.New("listener failed") })
+		failed.Start(func(_ context.Context, change durable.WatchCall[obj]) error { return errors.New("listener failed") })
 		var mu sync.Mutex
 		healthyCalls := 0
-		healthy.Start(func(_ context.Context, change durable.WatchChange[obj]) error {
+		healthy.Start(func(_ context.Context, change durable.WatchCall[obj]) error {
 			mu.Lock()
 			healthyCalls++
 			mu.Unlock()
@@ -635,7 +635,7 @@ func TestSessionDocumentWatches(t *testing.T) {
 		})
 		setWatchValue(t, harness, 1)
 		end := closedEnd(t, failed)
-		if end.Reason != durable.WatchListenerError || end.Error == nil || end.Error.Error() != "listener failed" {
+		if end.Kind != durable.WatchListenerError || end.Error == nil || end.Error.Error() != "listener failed" {
 			t.Fatalf("end %+v", end)
 		}
 		flush(harness)
@@ -662,9 +662,9 @@ func TestSessionDocumentWatches(t *testing.T) {
 		})
 		failed := watchDoc(t, harness, ctx, watchStateDoc)
 		failure := errors.New("listener failed")
-		failed.Start(func(_ context.Context, change durable.WatchChange[obj]) error { return failure })
+		failed.Start(func(_ context.Context, change durable.WatchCall[obj]) error { return failure })
 		setWatchValue(t, harness, 1)
-		if end := closedEnd(t, failed); end.Reason != durable.WatchListenerError {
+		if end := closedEnd(t, failed); end.Kind != durable.WatchListenerError {
 			t.Fatalf("end %+v", end)
 		}
 		mu.Lock()
@@ -691,7 +691,7 @@ func TestSessionDocumentWatches(t *testing.T) {
 			t.Fatal("hydration writes nothing")
 		}
 		recorder := &watchRecorder{}
-		watch.Start(func(_ context.Context, change durable.WatchChange[obj]) error {
+		watch.Start(func(_ context.Context, change durable.WatchCall[obj]) error {
 			value, ops := change.Value, change.Ops
 			recorder.record(value, ops)
 			return nil
@@ -712,7 +712,7 @@ func TestSessionDocumentWatches(t *testing.T) {
 		watch := watchDoc(t, harness, ctx, watchStateDoc)
 		var mu sync.Mutex
 		var replica any = watch.Value()
-		watch.Start(func(_ context.Context, change durable.WatchChange[obj]) error {
+		watch.Start(func(_ context.Context, change durable.WatchCall[obj]) error {
 			value, ops := change.Value, change.Ops
 			mu.Lock()
 			defer mu.Unlock()
@@ -749,7 +749,7 @@ func TestSessionDocumentWatches(t *testing.T) {
 		if same(reloaded, baseline) || !equal(reloaded, baseline) || harness.Storage.DocumentReadCount() <= reads {
 			t.Fatal("unload cold-loads a detached equal value")
 		}
-		watch.Start(func(_ context.Context, change durable.WatchChange[obj]) error { return nil })
+		watch.Start(func(_ context.Context, change durable.WatchCall[obj]) error { return nil })
 		setWatchValue(t, harness, 7)
 		flush(harness)
 		expectEqual(t, watch.Value().Value("value"), 7)
@@ -766,7 +766,7 @@ func TestSessionWatchEntersTheCommittedFrameBeforeTheCommitReturns(t *testing.T)
 	harness := createWatchHarness(t)
 	watch := watchDoc(t, harness, ctx, watchStateDoc)
 	recorder := &watchRecorder{}
-	watch.Start(func(_ context.Context, change durable.WatchChange[obj]) error {
+	watch.Start(func(_ context.Context, change durable.WatchCall[obj]) error {
 		value, ops := change.Value, change.Ops
 		recorder.record(value, ops)
 		return nil
@@ -777,7 +777,7 @@ func TestSessionWatchEntersTheCommittedFrameBeforeTheCommitReturns(t *testing.T)
 		t.Fatal("the watch value is the committed frame when the commit returns")
 	}
 	end, err := watch.Stop()
-	if err != nil || end.Reason != durable.WatchStopped {
+	if err != nil || end.Kind != durable.WatchStopped {
 		t.Fatalf("stop: %+v %v", end, err)
 	}
 	flush(harness)
