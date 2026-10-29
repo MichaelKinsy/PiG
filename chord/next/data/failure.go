@@ -43,7 +43,7 @@ func (err *BrokenOpen) Unwrap() error { return err.cause }
 
 // OpenFailure is the cause of an error returned by an open: broken when it came from Broken, transient otherwise.
 func OpenFailure(thrown error, label string) FailureCause {
-	if broken, ok := thrown.(*BrokenOpen); ok {
+	if broken, ok := thrown.(*BrokenOpen); ok { //nolint:errorlint // upstream's instanceof: only the marker itself is a broken open
 		return FailureCause{Kind: FailureBroken, Error: AsChordError(broken.cause, label)}
 	}
 	return FailureCause{Kind: FailureTransient, Error: AsChordError(thrown, label)}

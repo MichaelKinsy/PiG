@@ -91,7 +91,7 @@ func text(source string) func(t *testing.T) any {
 }
 
 func TestSnapshotClosedArguments(t *testing.T) {
-	object := func(properties ...contracts.Property) contracts.TSchema { return tbObject(properties...) }
+	object := tbObject
 	str := func() contracts.TSchema { return contracts.Str() }
 
 	t.Run("requires every object, nested ones included, to be closed", func(t *testing.T) {

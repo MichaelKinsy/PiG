@@ -48,5 +48,5 @@ func Identical[T any](a, b T) bool {
 // interface holding it is the closure itself; reflect's Pointer reports only the code, which two closures of one
 // function literal share.
 func funcIdentity(function any) unsafe.Pointer {
-	return (*[2]unsafe.Pointer)(unsafe.Pointer(&function))[1]
+	return (*[2]unsafe.Pointer)(unsafe.Pointer(&function))[1] //nolint:gosec // G103: deliberate read of the interface data word, the only way to tell closures of one literal apart.
 }

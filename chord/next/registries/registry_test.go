@@ -17,7 +17,7 @@ import (
 
 func TestTokens(t *testing.T) {
 	t.Run("carry a name, a version and the types only; names and versions are checked at declaration", func(t *testing.T) {
-		type contribution struct{ path string }
+		type contribution struct{ Path string }
 		Http, err := registries.DefineRegistry[contribution, []string]("chord.http", registries.DefineRegistryOptions{Version: 2})
 		if err != nil {
 			t.Fatalf("DefineRegistry: %v", err)
@@ -25,7 +25,7 @@ func TestTokens(t *testing.T) {
 		if want := (registries.Registry[contribution, []string]{Kind: "registry", Name: "chord.http", Version: 2}); Http != want {
 			t.Fatalf("token = %#v, want %#v", Http, want)
 		}
-		var _ registries.Registry[contribution, []string] = Http
+		func(registries.Registry[contribution, []string]) {}(Http)
 
 		_, err = registries.DefineRegistry[any, any]("Chord.Http", registries.DefineRegistryOptions{Version: 1})
 		if err == nil || !strings.Contains(err.Error(), `registry "Chord.Http": expected lowercase`) {

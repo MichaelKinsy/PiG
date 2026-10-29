@@ -171,7 +171,7 @@ func CheckArgs(provider *Provider, method string, raw any, boundVersion int, ctx
 		return CheckedArgs{}, err
 	}
 	// The check above establishes the argument type; mapping output is trusted.
-	var args Value = raw
+	args := raw
 	if entry.kind == dispatchCall {
 		return CheckedArgs{Kind: CheckedCall, Args: args, Call: entry.call}, nil
 	}

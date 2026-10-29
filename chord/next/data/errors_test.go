@@ -21,9 +21,15 @@ import (
 
 func TestChordError(t *testing.T) {
 	t.Run("is a tagged union: constructing the valid pairings", func(t *testing.T) {
-		data.NewChordError(data.ChordErrorInit{Code: data.CodeInvalid, Reason: data.ReasonArgs, Message: "m"}, nil)
-		data.NewChordError(data.ChordErrorInit{Code: data.CodeUnavailable, Message: "m"}, nil)
-		data.NewChordError(data.ChordErrorInit{Code: data.CodeUnavailable, Reason: data.ReasonLocked, Message: "m"}, nil)
+		for _, init := range []data.ChordErrorInit{
+			{Code: data.CodeInvalid, Reason: data.ReasonArgs, Message: "m"},
+			{Code: data.CodeUnavailable, Message: "m"},
+			{Code: data.CodeUnavailable, Reason: data.ReasonLocked, Message: "m"},
+		} {
+			if err := data.NewChordError(init, nil); err.Code != init.Code || err.Reason != init.Reason {
+				t.Errorf("NewChordError(%+v) = %+v", init, err)
+			}
+		}
 	})
 
 	t.Run("narrowing on code narrows reason", func(t *testing.T) {
@@ -169,7 +175,7 @@ func TestErrorHelpers(t *testing.T) {
 		foreign := errors.New("boom")
 		wrapped := data.AsChordError(foreign, "open notes")
 		nexttest.RequireJSONEqual(t, wrapped.ToJSON(), delta.JsonObjectOf("code", "unavailable", "message", "open notes: boom"))
-		if wrapped.Cause != foreign {
+		if !errors.Is(wrapped.Cause, foreign) {
 			t.Fatal("the foreign error is not the cause")
 		}
 		if got := data.AsChordError(errors.New("text"), "open").Message; got != "open: text" {

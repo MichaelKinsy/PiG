@@ -40,7 +40,7 @@ type WritableSource[T any] struct {
 // NewWritableSource returns a writable holding initial, owned by owner, on batch.
 func NewWritableSource[T any](initial T, owner WritableOwner, batch *Batch) *WritableSource[T] {
 	w := &WritableSource[T]{value: initial, owner: owner}
-	w.FollowedSource.Init(batch, w)
+	w.Init(batch, w)
 	return w
 }
 

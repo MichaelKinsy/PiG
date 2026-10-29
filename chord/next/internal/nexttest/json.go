@@ -1,6 +1,7 @@
 package nexttest
 
 import (
+	"bytes"
 	"fmt"
 	"math"
 	"reflect"
@@ -65,7 +66,7 @@ func JSONEqual(got, want any) bool {
 	}
 	if gotBytes, ok := got.([]byte); ok {
 		wantBytes, ok := want.([]byte)
-		return ok && string(gotBytes) == string(wantBytes)
+		return ok && bytes.Equal(gotBytes, wantBytes)
 	}
 	return reflect.DeepEqual(got, want)
 }

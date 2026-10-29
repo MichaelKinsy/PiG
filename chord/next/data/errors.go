@@ -140,7 +140,7 @@ func (err *ChordError) MarshalJSON() ([]byte, error) { return err.ToJSON().Marsh
 // IsChordError reports whether err is a ChordError and returns it. It is upstream's `instanceof`: an error that wraps
 // a ChordError (with %w, or as Broken's cause) is not one; AsChordError and OpenFailure read the causes they own.
 func IsChordError(err error) (*ChordError, bool) {
-	chordErr, ok := err.(*ChordError)
+	chordErr, ok := err.(*ChordError) //nolint:errorlint // upstream's instanceof: a wrapper of a ChordError is not one
 	return chordErr, ok && chordErr != nil
 }
 

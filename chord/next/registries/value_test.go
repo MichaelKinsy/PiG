@@ -81,8 +81,10 @@ func TestOlderReaders(t *testing.T) {
 		n := newCell(1)
 		contribute(e, Sum, "@app/sum", "app.setter", n.native())
 		old, current := record.Value(1), record.Value(2)
-		if old.Value() != 1 || old.Value() != 1 {
-			t.Fatalf("old = %v", old.Value())
+		for range 2 {
+			if got := old.Value(); got != 1 {
+				t.Fatalf("old = %v", got)
+			}
 		}
 		if got := current.Value(); got != (sumValue{total: 1}) {
 			t.Fatalf("current = %v", got)
@@ -341,10 +343,7 @@ func TestReaders(t *testing.T) {
 
 func TestValuesMemory(t *testing.T) {
 	t.Run("drops an older version's mapping once its last reader ended (Sol)", func(t *testing.T) {
-		type mappedValue struct {
-			n       int
-			payload [1000]byte
-		}
+		type mappedValue struct{ n int }
 		New := mustDefine[int, int](t, "app.version-gc", 2)
 		e := newEnv(t)
 		var mapped weak.Pointer[mappedValue]
@@ -474,7 +473,7 @@ func TestRegistryValue(t *testing.T) {
 		})
 		label := newCell("a")
 		contribute(e, Labels, "@app/labels", "app.label", label.native())
-		var typed registries.RegistryValue[string] = registries.NewRegistryValue[string](record.Value(1))
+		typed := registries.NewRegistryValue[string](record.Value(1))
 		if got := typed.Value(); got != "a" {
 			t.Fatalf("value = %q", got)
 		}

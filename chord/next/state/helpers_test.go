@@ -111,7 +111,7 @@ type docSource struct {
 
 func newDoc(batch *state.Batch, value delta.JsonValue) *docSource {
 	doc := &docSource{value: value}
-	doc.Source.Init(batch, doc)
+	doc.Init(batch, doc)
 	return doc
 }
 
@@ -159,7 +159,7 @@ func (doc *docSource) begin() {
 	doc.Changed()
 }
 
-func (doc *docSource) batch() *state.Batch { return doc.Source.Batch() }
+func (doc *docSource) batch() *state.Batch { return doc.Batch() }
 
 func num(n float64) *delta.JsonObject { return delta.JsonObjectOf("n", n) }
 

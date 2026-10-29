@@ -92,7 +92,7 @@ var (
 // NewRegistryValueSource makes the value of record's registry for readers of version.
 func NewRegistryValueSource(record *RegistryRecord, version int, batch *state.Batch) *RegistryValueSource {
 	source := &RegistryValueSource{Name: record.Name, Version: version, record: record, readers: map[*readToken]struct{}{}}
-	source.FollowedSource.Init(batch, source)
+	source.Init(batch, source)
 	return source
 }
 

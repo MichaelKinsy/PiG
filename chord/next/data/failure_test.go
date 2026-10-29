@@ -22,7 +22,7 @@ func TestFailureCauses(t *testing.T) {
 			t.Fatalf("kind = %q", transient.Kind)
 		}
 		nexttest.RequireJSONEqual(t, transient.Error.ToJSON(), delta.JsonObjectOf("code", "unavailable", "message", "open notes: network down"))
-		if transient.Error.Cause != err {
+		if !errors.Is(transient.Error.Cause, err) {
 			t.Fatal("the thrown error is not the cause")
 		}
 	})
@@ -63,7 +63,7 @@ func TestWaitingCause(t *testing.T) {
 		nexttest.RequireJSONEqual(t, cause.Error.ToJSON(), delta.JsonObjectOf(
 			"code", "unavailable", "message", "waiting for app.chat(S1): app.catalog is not served here",
 		))
-		if cause.Error.Cause != root {
+		if !errors.Is(cause.Error.Cause, root) {
 			t.Fatal("the blocker's error is not the cause")
 		}
 		// A chain names its nearest blocker and its root only (fix round 1, Opus F1).

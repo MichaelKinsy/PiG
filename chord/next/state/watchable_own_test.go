@@ -227,7 +227,7 @@ type flaky struct {
 
 func newFlaky(batch *state.Batch, start state.WatchStart) *flaky {
 	source := &flaky{start: start}
-	source.Source.Init(batch, source)
+	source.Init(batch, source)
 	return source
 }
 

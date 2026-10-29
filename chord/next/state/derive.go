@@ -5,7 +5,6 @@ import (
 	"reflect"
 	"runtime"
 	"sync"
-	"unsafe"
 	"weak"
 
 	"github.com/MichaelKinsy/PiG/chord/delta"
@@ -68,7 +67,7 @@ type Derive struct {
 // NewDerive returns a derive of the declared sources, resolved by Attach, whose values compute turns into its value.
 func NewDerive(sources []any, compute func(values []any) (delta.JsonValue, error), batch *Batch) *Derive {
 	d := &Derive{declared: sources, compute: compute}
-	d.Source.Init(batch, d)
+	d.Init(batch, d)
 	return d
 }
 
@@ -308,6 +307,6 @@ func identityKey[E any](element E) (sharedIdentity, bool) {
 		return sharedIdentity{}, false
 	}
 	// The weak pointer and the cleanup need the object's address, not its type: the address is all that identifies it.
-	target := (*byte)(unsafe.Pointer(pointer))
+	target := (*byte)(pointer) //nolint:gosec // G103: pointer is an unsafe.Pointer from reflect; only its address is used, as weak.Make and AddCleanup key.
 	return sharedIdentity{key: sharedKey{object: weak.Make(target), length: length}, target: target}, true
 }

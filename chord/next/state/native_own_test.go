@@ -30,7 +30,7 @@ type failable struct {
 
 func newFailable(batch *state.Batch, value float64) *failable {
 	source := &failable{value: value, hasLast: true}
-	source.FollowedSource.Init(batch, source)
+	source.Init(batch, source)
 	return source
 }
 

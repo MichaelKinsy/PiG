@@ -2,7 +2,6 @@ package registries_test
 
 import (
 	"fmt"
-	"strings"
 	"testing"
 
 	chordctx "github.com/MichaelKinsy/PiG/chord/context"
@@ -56,20 +55,20 @@ func (e *env) change(work func()) {
 }
 
 // serve serves record with a typed provider, as `host.serve(R, provider)` does.
-func serve[C, V any](e *env, R registries.Registry[C, V], provider registries.RegistryProvider[C, V]) *registries.RegistryRecord {
+func serve[C, V any](e *env, reg registries.Registry[C, V], provider registries.RegistryProvider[C, V]) *registries.RegistryRecord {
 	e.t.Helper()
-	record := e.record(R.Name)
-	if err := record.Serve(R.Version, provider.Erase()); err != nil {
-		e.t.Fatalf("serve %s: %v", R.Name, err)
+	record := e.record(reg.Name)
+	if err := record.Serve(reg.Version, provider.Erase()); err != nil {
+		e.t.Fatalf("serve %s: %v", reg.Name, err)
 	}
 	return record
 }
 
-// contribute adds a contribution of `content` to R's record inside a commit, as an object going live does.
-func contribute[C, V any](e *env, R registries.Registry[C, V], plugin, typ string, content registries.ContributionContent) *registries.RegistryContribution {
+// contribute adds a contribution of `content` to reg's record inside a commit, as an object going live does.
+func contribute[C, V any](e *env, reg registries.Registry[C, V], plugin, typ string, content registries.ContributionContent) *registries.RegistryContribution {
 	e.t.Helper()
-	record := e.record(R.Name)
-	contribution := registries.NewRegistryContribution(record, registries.Contributor{Plugin: plugin, Type: typ}, R.Version, content)
+	record := e.record(reg.Name)
+	contribution := registries.NewRegistryContribution(record, registries.Contributor{Plugin: plugin, Type: typ}, reg.Version, content)
 	e.change(func() { record.Add(contribution) })
 	return contribution
 }
@@ -80,11 +79,11 @@ func plain(value any) registries.ContributionContent {
 
 func mustDefine[C, V any](t *testing.T, name string, version int) registries.Registry[C, V] {
 	t.Helper()
-	R, err := registries.DefineRegistry[C, V](name, registries.DefineRegistryOptions{Version: version})
+	reg, err := registries.DefineRegistry[C, V](name, registries.DefineRegistryOptions{Version: version})
 	if err != nil {
 		t.Fatalf("DefineRegistry(%s): %v", name, err)
 	}
-	return R
+	return reg
 }
 
 // cell is a changing value a contribution follows: a Chord JSON source and a native source in one (a writable, a
@@ -165,5 +164,3 @@ func listed(table registries.RegistryTable[string], _ registries.ComposeContext)
 	}
 	return out, nil
 }
-
-func join(values []string) string { return strings.Join(values, "|") }
