@@ -20,7 +20,7 @@ import (
 	"image"
 	"image/draw"
 	_ "image/gif" // decoder for the GIF entry of the supported-format allowlist
-	"image/jpeg"  // decoder for JPEG plus the JPEG re-encoder
+	_ "image/jpeg" // decoder for JPEG; JPEG is encoded by photonimage
 	_ "image/png" // decoder for PNG; PNG is encoded by photonimage
 	"io"
 	"math"
@@ -608,8 +608,8 @@ func fixOrientation(img image.Image, o exifOrientation) image.Image {
 
 // remapPixels builds a dstW×dstH NRGBA image whose pixel (x,y) is the source
 // pixel named by src, expressed in source coordinates relative to the source
-// bounds origin. NRGBA output keeps alpha non-premultiplied so imageHasAlpha
-// reads the same channel the encoders write.
+// bounds origin. NRGBA output keeps alpha non-premultiplied, the channel
+// the encoders write.
 func remapPixels(img image.Image, dstW, dstH int, src func(x, y int) (int, int)) *image.NRGBA {
 	srcNRGBA := toNRGBA(img)
 	dst := image.NewNRGBA(image.Rect(0, 0, dstW, dstH))
@@ -649,37 +649,6 @@ type encodedCandidate struct {
 }
 
 var pngSignature = []byte{0x89, 'P', 'N', 'G', 0x0d, 0x0a, 0x1a, 0x0a}
-
-func imageHasAlpha(img image.Image) bool {
-	switch m := img.(type) {
-	case *image.RGBA:
-		for i := 3; i < len(m.Pix); i += 4 {
-			if m.Pix[i] != 0xff {
-				return true
-			}
-		}
-		return false
-	case *image.NRGBA:
-		for i := 3; i < len(m.Pix); i += 4 {
-			if m.Pix[i] != 0xff {
-				return true
-			}
-		}
-		return false
-	case *image.RGBA64, *image.NRGBA64:
-		return true
-	}
-	bounds := img.Bounds()
-	for y := bounds.Min.Y; y < bounds.Max.Y; y += 16 {
-		for x := bounds.Min.X; x < bounds.Max.X; x += 16 {
-			_, _, _, a := img.At(x, y).RGBA()
-			if a < 0xffff {
-				return true
-			}
-		}
-	}
-	return false
-}
 
 // firstFittingCandidate encodes img as PNG and as JPEG at the configured quality (jpegQualities[0]) and returns the first of these two
 // whose base64 size is below maxBytes, the smaller of the two first; only when neither fits does it try the lower JPEG qualities, in
@@ -754,21 +723,10 @@ func encodePNG(img image.Image) ([]byte, error) {
 	return photonimage.EncodePNG(toNRGBA(img)), nil
 }
 
-// pig divergence (D165): Go's JPEG encoder, not Photon's `get_bytes_jpeg(quality)`; the quantization differs.
-// encodeJPEG drops the alpha channel, as Photon's JPEG encoder does, rather than darkening transparent pixels.
+// encodeJPEG is the JPEG Photon's `get_bytes_jpeg(quality)` writes for img, alpha channel dropped (see photonimage.EncodeJPEG): its size
+// decides whether the PNG or the JPEG candidate of a resize is the smaller one, so it must be Photon's. quality is Photon's `u8`.
 func encodeJPEG(img image.Image, quality int) ([]byte, error) {
-	opaque := toNRGBA(img)
-	if imageHasAlpha(opaque) {
-		opaque = &image.NRGBA{Pix: slices.Clone(opaque.Pix), Stride: opaque.Stride, Rect: opaque.Rect}
-		for i := 3; i < len(opaque.Pix); i += 4 {
-			opaque.Pix[i] = 0xff
-		}
-	}
-	var buf bytes.Buffer
-	if err := jpeg.Encode(&buf, opaque, &jpeg.Options{Quality: quality}); err != nil {
-		return nil, err
-	}
-	return buf.Bytes(), nil
+	return photonimage.EncodeJPEG(toNRGBA(img), uint8(quality))
 }
 
 // detectFormat sniffs the source format from magic bytes. Returns

@@ -3,8 +3,8 @@ package imageprocessing
 import (
 	"bytes"
 	"crypto/sha256"
-	"encoding/hex"
 	"encoding/base64"
+	"encoding/hex"
 	"image"
 	"image/color"
 	"image/gif"
