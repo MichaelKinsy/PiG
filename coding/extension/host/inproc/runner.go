@@ -254,6 +254,7 @@ func NewRunner(extensions []extension.Extension, cwd string, sharedRuntime ...*e
 		ext := &extensions[i]
 		ext.InitializeEventHandlers()
 		ext.InitializeDeclarationRegistry()
+		ext.InitializeThinkingRuns()
 		if ext.SourceInfo == (extension.SourceInfo{}) {
 			ext.SourceInfo = defaultExtensionSourceInfo(*ext, cwd)
 		}
@@ -1185,13 +1186,31 @@ func (r *Runner) GetMarkdownTransformers() []extension.MarkdownTransformer {
 	return transformers
 }
 
-// OwnsThinkingRuns reports whether any extension owns thinking runs.
+// OwnsThinkingRuns reports whether any of the runner's extensions owns the thinking runs of assistant messages: the flags of the
+// extensions are ORed, and an extension that unloaded or reloaded left the runner with its flag.
 // pig additive (D214)
-func (r *Runner) OwnsThinkingRuns() bool { return false }
+func (r *Runner) OwnsThinkingRuns() bool {
+	for i := range r.extensions {
+		if r.extensions[i].OwnsThinkingRuns() {
+			return true
+		}
+	}
+	return false
+}
 
-// ObserveThinkingRuns calls fn after any extension's ownership of thinking runs changes, until stop is called.
+// ObserveThinkingRuns calls fn after the ownership of thinking runs of any of the runner's extensions changes, until stop is called.
 // pig additive (D214)
-func (r *Runner) ObserveThinkingRuns(fn func()) (stop func()) { return func() {} }
+func (r *Runner) ObserveThinkingRuns(fn func()) (stop func()) {
+	stops := make([]func(), len(r.extensions))
+	for i := range r.extensions {
+		stops[i] = r.extensions[i].ObserveThinkingRuns(fn)
+	}
+	return func() {
+		for _, stop := range stops {
+			stop()
+		}
+	}
+}
 
 // ResolveToolRenderers returns the renderers of calls to toolName: extension
 // resolvers in load order, then base.

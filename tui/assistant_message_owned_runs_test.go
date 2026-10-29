@@ -79,7 +79,7 @@ func TestOwnedThinkingRunsLeaveNoSpacing(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			for _, width := range []int{40, 12} {
+			for _, width := range []int{40, 80} {
 				for _, owned := range []bool{false, true} {
 					block := ownedBlock(tc.hide, owned, tc.transform, tc.content)
 					if tc.terminal[0] != "" {

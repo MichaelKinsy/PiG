@@ -71,6 +71,7 @@ func (m *InteractiveMode) newAssistantMessageBlock(meta messageMeta) *tui.Assist
 		block.SetHiddenThinkingLabel(*m.hiddenThinkingLabel)
 	}
 	block.SetOutputPad(m.outputPad)
+	block.SetOwnedThinkingRuns(m.ownsThinkingRuns()) // pig additive (D214)
 	retry := &markdownRetry{m: m}
 	block.SetMarkdownTransform(m.assistantMarkdownTransform(block, extension.MarkdownMessageAssistant, retry, meta))
 	block.SetThinkingMarkdownTransform(m.assistantMarkdownTransform(block, extension.MarkdownMessageAssistantThinking, retry, meta))
