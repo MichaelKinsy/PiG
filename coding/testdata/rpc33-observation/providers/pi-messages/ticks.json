@@ -1,6 +1,6 @@
 {
   "piVersion": "1.4.0+e7a0df27",
-  "node": "v24.22.1",
+  "node": "v24.19.0",
   "scenarios": [
     {
       "name": "oneChunk",
@@ -115,7 +115,7 @@
         },
         "stopReason": "toolUse",
         "responseId": "r1",
-        "durationMs": 21
+        "durationMs": 33
       }
     },
     {
@@ -1209,7 +1209,7 @@
         },
         "stopReason": "error",
         "errorMessage": "p stream ended without a terminal event",
-        "durationMs": 0
+        "durationMs": 1
       }
     },
     {
@@ -1325,7 +1325,7 @@
         },
         "stopReason": "toolUse",
         "responseId": "r1",
-        "durationMs": 0
+        "durationMs": 1
       }
     },
     {
