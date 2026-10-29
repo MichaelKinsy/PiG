@@ -6715,6 +6715,39 @@
       ]
     },
     {
+      "id": "BF-3f46dee",
+      "title": "`/llama` pointed at llama-swap no longer ends in a bare \"llama.cpp returned HTTP 404\" when you load or unload…",
+      "symptom": "`/llama` pointed at llama-swap no longer ends in a bare \"llama.cpp returned HTTP 404\" when you load or unload a model (#380). llama-swap lists its models like a llama.cpp router but has no load or unload endpoint, because it loads a model when a request names it, and Pi shows the same 404.",
+      "rootCause": "`/llama` pointed at llama-swap no longer ends in a bare \"llama.cpp returned HTTP 404\" when you load or unload a model (#380). llama-swap lists its models like a llama.cpp router but has no load or unload endpoint, because it loads a model when a request names it, and Pi shows the same 404.",
+      "rootCauseSource": "release note",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "ahead-of-pi",
+      "divergence": "D212",
+      "removeWhen": "Pi's `/llama` names llama-swap itself, or can manage llama-swap models; or the owner withdraws the decision. Then the call-site marker, the `GET /running` probe, the docs section and this record go.",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`/llama` pointed at llama-swap no longer ends in a bare \"llama.cpp returned HTTP 404\" when you load or unload a model (#380). llama-swap lists its models like a llama.cpp router but has no load or unload endpoint, because it loads a model when a request names it, and Pi shows the same 404. PiG now recognises llama-swap (its error envelope, or a `GET /running` that answers like it) and says to add it to `models.json` as an `openai-completions` provider and pick models with `/model`; a 404 from a real llama.cpp router keeps Pi's text (D212). The llama.cpp docs page has a new llama-swap section with the `models.json` setup.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "2d23f814c2",
+          "date": "2026-10-28"
+        },
+        {
+          "hash": "3f46dee992",
+          "date": "2026-10-28"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/llama/client_http_oracle_test.go::TestLlamaClientRequestsMatchPi",
+        "internal/codingagent/llama/llamaswap_test.go::TestLlamaClientAndCatalogAgainstLlamaSwapAndLlamaServerMatchPi",
+        "internal/codingagent/llama/llamaswap_test.go::TestLlamaCommandAgainstLlamaSwapExplainsTheMissingEndpoints",
+        "internal/codingagent/llama/llamaswap_test.go::TestLlamaCommandKeepsPisTextForARouter404",
+        "internal/codingagent/llama/llamaswap_test.go::TestLoadAndUnloadKeepPisTextForA404ThatIsNotLlamaSwap",
+        "internal/codingagent/llama/llamaswap_test.go::TestLoadAndUnloadRecognizeLlamaSwapByItsErrorEnvelope"
+      ]
+    },
+    {
       "id": "BF-3fa6e63",
       "title": "MCP servers with resources registered no tools until every resource was listed, so a slow listing (a large…",
       "symptom": "MCP servers with resources registered no tools until every resource was listed, so a slow listing (a large drive) kept their tools out of the first prompt.",
@@ -40125,6 +40158,11 @@
       "id": "D208",
       "title": "From inside a component's render, a TuiAltScreen of the Go, Rust, Python and Lisp SDKs fails the calls that…",
       "entry": "BF-D208"
+    },
+    {
+      "id": "D212",
+      "title": "`/llama` explains a 404 from llama-swap's missing load and unload endpoints, where Pi shows \"llama.cpp…",
+      "entry": "BF-3f46dee"
     }
   ],
   "exemptCommits": {
