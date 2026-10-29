@@ -35170,6 +35170,28 @@
       ]
     },
     {
+      "id": "BF-e79abfb",
+      "title": "The CI image version-literal test no longer reports the Pi part of an image tag (`1.4.0.b3a29f11`, written by…",
+      "symptom": "The CI image version-literal test no longer reports the Pi part of an image tag (`1.4.0.b3a29f11`, written by `make pin-sync` and checked by `make pin-check`) as a hard-coded version when the pinned commit starts with a letter.",
+      "rootCause": "pin.py ci_tag writes the pin's dotted build metadata (1.4.0.) into IMAGE_TAG and make pin-check checks it. A commit starting with a digit read as a fourth number and was skipped; the Pi pin starts with a letter, so TestBuildAutomationNamesNoUnrecordedVersionLiteral reported automation/images/ci-parity/metadata.env:5 as a hard-coded 1.4.0.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "The CI image version-literal test no longer reports the Pi part of an image tag (`1.4.0.b3a29f11`, written by `make pin-sync` and checked by `make pin-check`) as a hard-coded version when the pinned commit starts with a letter.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "e79abfb60a",
+          "date": "2026-10-28"
+        }
+      ],
+      "tests": [
+        "test/ci-images/version_literals_test.go::TestBuildAutomationNamesNoUnrecordedVersionLiteral"
+      ]
+    },
+    {
       "id": "BF-e79c70e",
       "title": "fix(ai): Codex WebSocket, OpenRouter images, pi-messages and replaced Anthropic bodies write JSON.stringify…",
       "symptom": "fix(ai): Codex WebSocket, OpenRouter images, pi-messages and replaced Anthropic bodies write JSON.stringify text",
