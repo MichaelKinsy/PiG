@@ -32,6 +32,7 @@ func TestStartTerminalRunsAProgramAtItsSizeOnThisTmux(t *testing.T) {
 		}
 		select {
 		case <-changed:
+		case <-time.After(50 * time.Millisecond): // the program may have written before the control client attached: no output event follows
 		case <-deadline:
 			t.Fatalf("the program's output never appeared; screen:\n%s", screen)
 		}
