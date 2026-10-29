@@ -579,6 +579,7 @@ whose value is the call's result (or :DEFER to answer later with EDH-REPLY)."
                                                       :render (lambda (width) (declare (ignore width)) (list "editor")))))
                    (edstock-handler stock))
       (ed-command edh "r1" "install")
+      (ed-host-notify edh "ui.editor.input" "key" "editor-1" "data" "x")
       (check-equal t (pig:jget (ed-args (ed-wait edh (ed-notify "ui.editor.render") 1)) "capturesViewportInput"))
       (ed-host-notify edh "ui.editor.input" "key" "editor-1" "data" "t")
       (let ((frame (ed-wait edh (ed-notify "ui.editor.render") 2)))
