@@ -431,6 +431,17 @@ func TestAltScreenModifiedNavigationReachesFocusedComponent(t *testing.T) {
 // "supports configurable keyboard viewport navigation with four rows of page
 // overlap" with Ctrl+Home and Ctrl+End in rxvt form for the edges.
 func TestAltScreenKeyboardNavigationHasFourRowsOfPageOverlap(t *testing.T) {
+	checkAltScreenKeyboardNavigation(t)
+}
+
+// The same navigation in a terminal that scroll regions are trusted in (TERM set, as on a developer's Mac): the frames then scroll the rows that moved, and the harness must read the screen they leave.
+func TestAltScreenKeyboardNavigationOnAScrollRegionTerminal(t *testing.T) {
+	t.Setenv("TERM", "xterm-256color")
+	checkAltScreenKeyboardNavigation(t)
+}
+
+func checkAltScreenKeyboardNavigation(t *testing.T) {
+	t.Helper()
 	useAltScreenBindings(t, nil)
 	h := newAltHarness(t, 20, 8, TuiAltScreenOptions{})
 	h.tui.Add(NewText(numberedLines(12)))

@@ -1,0 +1,3 @@
+### Changed
+
+- Development: the fullscreen renderer's unit-test harness reads the screen a frame leaves by replaying the frame's bytes through a terminal model that scrolls regions, not by reading the row addresses it wrote. In a terminal where PiG scrolls moved rows (`TERM` set, as on a developer's Mac), `TestAltScreenKeyboardNavigationHasFourRowsOfPageOverlap` read the rows a scroll had moved as unchanged and failed on every run, though a Kitty key release never scrolled the viewport; the tests now run in both modes and a Kitty press and release stream split at every byte reaches the viewport as one page scroll.
