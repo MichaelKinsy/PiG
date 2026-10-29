@@ -823,6 +823,27 @@
       ]
     },
     {
+      "id": "BF-084fa64",
+      "title": "fix(interactive): call GetSourcePackageKey with the string scope; extension changelog fragment",
+      "symptom": "fix(interactive): call GetSourcePackageKey with the string scope; extension changelog fragment",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "084fa64481",
+          "date": "2026-10-29"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/interactive_extension_changelog_test.go::TestExtensionChangelogUpdatesUpstream"
+      ]
+    },
+    {
       "id": "BF-086395a",
       "title": "`coding.DefaultAgentDir()` (Pi's `getAgentDir`) now returns the directory named by `PIG_CODING_AGENT_DIR`…",
       "symptom": "`coding.DefaultAgentDir()` (Pi's `getAgentDir`) now returns the directory named by `PIG_CODING_AGENT_DIR` (`PI_CODING_AGENT_DIR` with `PIG_USE_PI_DIRS=1`), tilde expanded, as the `pig` binary does; before, SDK embedders, `--skill` loading, the default skills directory and the interactive default ignored the variable and used `$PIG_HOME/agent`.",
@@ -1953,6 +1974,28 @@
       "tests": []
     },
     {
+      "id": "BF-14886f9",
+      "title": "A call to `Session.DeferUntilPublished` from a goroutine other than the publishing one (a Harness's wait for…",
+      "symptom": "A call to `Session.DeferUntilPublished` from a goroutine other than the publishing one (a Harness's wait for idleness makes it from its caller's) no longer races the commit that arms the publication it lands on: the commit read the publication's queue without the lock the call appends under, which the race detector reported.",
+      "rootCause": "The emptiness check now happens under the lock.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A call to `Session.DeferUntilPublished` from a goroutine other than the publishing one (a Harness's wait for idleness makes it from its caller's) no longer races the commit that arms the publication it lands on: the commit read the publication's queue without the lock the call appends under, which the race detector reported.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "14886f9f32",
+          "date": "2026-10-29"
+        }
+      ],
+      "tests": [
+        "durable/harness/harness_tasks_scheduling_test.go::TestTaskScheduling"
+      ]
+    },
+    {
       "id": "BF-155d0f3",
       "title": "In RPC mode, SIGTERM or SIGHUP during a tool call likewise stops the run while the `session_shutdown`…",
       "symptom": "In RPC mode, SIGTERM or SIGHUP during a tool call likewise stops the run while the `session_shutdown` handlers finish without waiting, as Pi does: a handler that throws no longer lets the run persist the tool result and send another provider request before the exit.",
@@ -2961,9 +3004,7 @@
         "internal/codingagent/select_page_keys_test.go::TestCustomEditorGivesSelectionPageKeysToAnOpenAutocomplete",
         "internal/codingagent/select_page_keys_test.go::TestSessionSelectorCapturesSelectionPageKeys",
         "tui/select_page_keys_test.go::TestAltScreenGivesSelectionPageKeysToACapturingFocus",
-        "tui/select_page_keys_test.go::TestContainerCapturesSelectPageInputFromItsChildren",
         "tui/select_page_keys_test.go::TestEditorAutocompletePageKeys",
-        "tui/select_page_keys_test.go::TestPageSelectionIndex",
         "tui/select_page_keys_test.go::TestSelectListFilterLowercasesAsJavaScriptDoes",
         "tui/select_page_keys_test.go::TestSelectListPageKeysIgnoreAnEmptyList",
         "tui/select_page_keys_test.go::TestSelectListPageKeysMoveByAPage",
@@ -4153,6 +4194,28 @@
       ]
     },
     {
+      "id": "BF-27f6a7e",
+      "title": "The `pi-env` daemon now kills every command it started when it receives `SIGTERM`, `SIGINT` or `SIGHUP`, then…",
+      "symptom": "A client that closes its connection ends the daemon with `SIGTERM`; the daemon used to die on it before killing its commands, which were left running under init.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Lost or altered data",
+      "platform": "Windows",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "The `pi-env` daemon now kills every command it started when it receives `SIGTERM`, `SIGINT` or `SIGHUP`, then exits with status 128 plus the signal. A client that closes its connection ends the daemon with `SIGTERM`; the daemon used to die on it before killing its commands, which were left running under init. On Windows a terminated daemon cannot clean up: its job object ends each command's own process, but not processes that one started.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "27f6a7e3bb",
+          "date": "2026-10-29"
+        }
+      ],
+      "tests": [
+        "env/daemon/sys_windows_test.go::TestWindowsDaemonHandlesNoExitSignal"
+      ]
+    },
+    {
       "id": "BF-286d303",
       "title": "A native Provider object an extension registers (`registerNativeProvider`, `pi.registerProvider(provider)`)…",
       "symptom": "Such a provider never composed (no models, its name replaced by its id, every stream an error), and a provider-level `baseUrl` was copied onto its models, which Pi does not do (it is only the context of `refreshModels`).",
@@ -4396,6 +4459,25 @@
       ]
     },
     {
+      "id": "BF-2ad6dd7",
+      "title": "fix(interactive): show extension package changelogs at startup",
+      "symptom": "fix(interactive): show extension package changelogs at startup",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "2ad6dd7ae7",
+          "date": "2026-10-29"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-2ad7249",
       "title": "fix(ledger): close the getJsonSchemaToolParameters and google convertTools rows",
       "symptom": "fix(ledger): close the getJsonSchemaToolParameters and google convertTools rows",
@@ -4590,11 +4672,29 @@
         "ai/model_cost_tiers_presence_test.go::TestBuiltinFallbackCostsWithoutTiersHaveNone",
         "ai/model_cost_tiers_presence_test.go::TestComposedModelRecordKeepsTiersPresence",
         "ai/model_cost_tiers_presence_test.go::TestModelCostKeepsTiersPresence",
-        "cmd/gen-models/ai_gateway_models_test.go::TestAiGatewayListingWindowsAreWholeTokenCounts",
         "cmd/gen-models/main_test.go::TestAllowedFallbackModelsLiteralKeepsTiersPresence",
         "coding/cli/rpc_model_cost_tiers_test.go::TestRPCModelValueKeepsCostTiersPresence",
         "coding/model_object_cost_tiers_test.go::TestModelObjectKeepsAnAuthoredEmptyCostTiers"
       ]
+    },
+    {
+      "id": "BF-2d31c33",
+      "title": "Fix in shipped code",
+      "symptom": "Fix in shipped code",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "2d31c33b90",
+          "date": "2026-10-29"
+        }
+      ],
+      "tests": []
     },
     {
       "id": "BF-2d71556",
@@ -4695,6 +4795,25 @@
         }
       ],
       "commitsFrom": "release note",
+      "tests": []
+    },
+    {
+      "id": "BF-2fb2917",
+      "title": "fix(interactive): label skill diagnostics [Skill warnings] and show the model scope in the fullscreen header",
+      "symptom": "fix(interactive): label skill diagnostics [Skill warnings] and show the model scope in the fullscreen header",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "2fb2917ad2",
+          "date": "2026-10-29"
+        }
+      ],
       "tests": []
     },
     {
@@ -4944,7 +5063,6 @@
         "ai/openrouter_user_models_test.go::TestPersonalizeOpenRouterCatalogKeepsOnlyTheKeysChatModelsWithTheKeysLimitsAndPrices",
         "ai/openrouter_user_models_test.go::TestPersonalizeOpenRouterCatalogRejectsOtherFailuresAndSkipsTheRequestWithoutAKey",
         "ai/openrouter_user_models_test.go::TestPersonalizeOpenRouterCatalogReturnsTheCatalogUnchangedWhenTheEndpointRejectsTheKeyOrIsMissing",
-        "cmd/gen-models/openrouter_catalog_test.go::TestOpenRouterCostSerializesNegativeZeroAsZero",
         "internal/codingagent/remote_catalog_personalized_test.go::TestPersonalizedCatalogProviderKeepsTheSavedListAndSavesNothingWhenPersonalizationFails",
         "internal/codingagent/remote_catalog_personalized_test.go::TestPersonalizedCatalogProviderPersonalizesTheBuiltInModelsPlusANewerPiDevCatalogOnEveryRefresh",
         "internal/codingagent/remote_catalog_personalized_test.go::TestPersonalizedCatalogProviderRestoresASavedListAsIsAndFallsBackToTheBuiltInModelsOnlyWhenItIsEmpty",
@@ -8033,6 +8151,182 @@
         }
       ],
       "tests": []
+    },
+    {
+      "id": "BF-4706781",
+      "title": "Tool output and streamed shell output no longer keep the parameters of private-parameter CSI sequences such…",
+      "symptom": "Tool output and streamed shell output no longer keep the parameters of private-parameter CSI sequences such as the SGR mouse report `ESC[\u003c35;59;1M`, which left `35;59;1M` in the text.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Tool output and streamed shell output no longer keep the parameters of private-parameter CSI sequences such as the SGR mouse report `ESC[\u003c35;59;1M`, which left `35;59;1M` in the text. A private prefix (`\u003c`, `=`, `\u003e`) counts only directly after `ESC [` or the 8-bit CSI, so the keypad-mode sequences `ESC =` and `ESC \u003e` still keep the digits that follow them (Pi #11377).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "4706781900",
+          "date": "2026-10-29"
+        }
+      ],
+      "tests": [
+        "coding/summary_oauth_auth_11520_upstream_test.go::TestSDKSummaryLetsTheRuntimeResolveStoredOAuthUpstream"
+      ]
+    },
+    {
+      "id": "BF-4706781-2",
+      "title": "A package whose `pi` object holds only metadata such as `changelogPath` is loaded by directory auto-discovery…",
+      "symptom": "A package whose `pi` object holds only metadata such as `changelogPath` is loaded by directory auto-discovery instead of loading no resources.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A package whose `pi` object holds only metadata such as `changelogPath` is loaded by directory auto-discovery instead of loading no resources.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "4706781900",
+          "date": "2026-10-29"
+        }
+      ],
+      "tests": [
+        "coding/summary_oauth_auth_11520_upstream_test.go::TestSDKSummaryLetsTheRuntimeResolveStoredOAuthUpstream"
+      ]
+    },
+    {
+      "id": "BF-4706781-3",
+      "title": "With `codemode.mode: \"on\"`, the description of a tool whose output schema is a union of objects lists each…",
+      "symptom": "With `codemode.mode: \"on\"`, the description of a tool whose output schema is a union of objects lists each variant's field names (a `const` field shows its value, for example `{ action: \"start\", process } | { action: \"list\", processes }`), and any other multi-line output type says `a value; `await describeTool(\"name\")` shows its type` instead of inlining the whole type into every request (Pi #11501).",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "With `codemode.mode: \"on\"`, the description of a tool whose output schema is a union of objects lists each variant's field names (a `const` field shows its value, for example `{ action: \"start\", process } | { action: \"list\", processes }`), and any other multi-line output type says `a value; `await describeTool(\"name\")` shows its type` instead of inlining the whole type into every request (Pi #11501).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "4706781900",
+          "date": "2026-10-29"
+        }
+      ],
+      "tests": [
+        "coding/summary_oauth_auth_11520_upstream_test.go::TestSDKSummaryLetsTheRuntimeResolveStoredOAuthUpstream"
+      ]
+    },
+    {
+      "id": "BF-4706781-4",
+      "title": "Starting `pig` from a directory that has been deleted, including `pig --version` and `pig --help`, prints…",
+      "symptom": "Starting `pig` from a directory that has been deleted, including `pig --version` and `pig --help`, prints `Error: The current working directory no longer exists. Change to an existing directory and try again.` and exits 1 (Pi #11509).",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Crash, hang or runaway process",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Starting `pig` from a directory that has been deleted, including `pig --version` and `pig --help`, prints `Error: The current working directory no longer exists. Change to an existing directory and try again.` and exits 1 (Pi #11509).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "4706781900",
+          "date": "2026-10-29"
+        }
+      ],
+      "tests": [
+        "coding/summary_oauth_auth_11520_upstream_test.go::TestSDKSummaryLetsTheRuntimeResolveStoredOAuthUpstream"
+      ]
+    },
+    {
+      "id": "BF-4706781-5",
+      "title": "Resizing an image that does not fit its limits now sends the smaller of the PNG and the JPEG at the…",
+      "symptom": "Photos used to go out as multi-megabyte PNGs whenever the PNG fitted, which made requests large enough to fail or time out (Pi #11551).",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Resizing an image that does not fit its limits now sends the smaller of the PNG and the JPEG at the configured quality, and tries lower JPEG qualities only when neither fits. Photos used to go out as multi-megabyte PNGs whenever the PNG fitted, which made requests large enough to fail or time out (Pi #11551).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "4706781900",
+          "date": "2026-10-29"
+        }
+      ],
+      "tests": [
+        "coding/summary_oauth_auth_11520_upstream_test.go::TestSDKSummaryLetsTheRuntimeResolveStoredOAuthUpstream"
+      ]
+    },
+    {
+      "id": "BF-4706781-6",
+      "title": "`pig update` warns when an npm package update leaves the installed version unchanged, for example…",
+      "symptom": "`pig update` warns when an npm package update leaves the installed version unchanged, for example `npm:demo-pkg is still 1.0.0 (registry reports 1.0.1); npm registry metadata may be stale, try again in a few minutes`, instead of reporting success for an update that installed nothing.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`pig update` warns when an npm package update leaves the installed version unchanged, for example `npm:demo-pkg is still 1.0.0 (registry reports 1.0.1); npm registry metadata may be stale, try again in a few minutes`, instead of reporting success for an update that installed nothing. The package commands print these warnings in yellow (Pi #11536).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "4706781900",
+          "date": "2026-10-29"
+        }
+      ],
+      "tests": [
+        "coding/summary_oauth_auth_11520_upstream_test.go::TestSDKSummaryLetsTheRuntimeResolveStoredOAuthUpstream"
+      ]
+    },
+    {
+      "id": "BF-4706781-7",
+      "title": "Compaction and branch summaries in a session created by `CreateAgentSession` now let the session's own stream…",
+      "symptom": "Compaction and branch summaries in a session created by `CreateAgentSession` now let the session's own stream resolve auth, as prompts do, instead of passing a pre-resolved OAuth access token on as an explicit API key.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Compaction and branch summaries in a session created by `CreateAgentSession` now let the session's own stream resolve auth, as prompts do, instead of passing a pre-resolved OAuth access token on as an explicit API key. A provider whose API-key path differs from its OAuth path no longer fails every summary while normal prompts work (Pi #11520).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "4706781900",
+          "date": "2026-10-29"
+        }
+      ],
+      "tests": [
+        "coding/summary_oauth_auth_11520_upstream_test.go::TestSDKSummaryLetsTheRuntimeResolveStoredOAuthUpstream"
+      ]
+    },
+    {
+      "id": "BF-4706781-8",
+      "title": "Setting the same active tools again in a different order, as…",
+      "symptom": "Setting the same active tools again in a different order, as `pi.setActiveTools([...pi.getActiveTools()].reverse())` does, keeps the order of the tools that stay active and appends new ones, so the system prompt no longer records a `System Prompt Update: tools, rules` message and no longer loses the prompt cache (Pi #11495).",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Lost or altered data",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Setting the same active tools again in a different order, as `pi.setActiveTools([...pi.getActiveTools()].reverse())` does, keeps the order of the tools that stay active and appends new ones, so the system prompt no longer records a `System Prompt Update: tools, rules` message and no longer loses the prompt cache (Pi #11495).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "4706781900",
+          "date": "2026-10-29"
+        }
+      ],
+      "tests": [
+        "coding/summary_oauth_auth_11520_upstream_test.go::TestSDKSummaryLetsTheRuntimeResolveStoredOAuthUpstream"
+      ]
     },
     {
       "id": "BF-471c46e",
@@ -15142,9 +15436,7 @@
         "internal/codingagent/select_page_keys_test.go::TestCustomEditorGivesSelectionPageKeysToAnOpenAutocomplete",
         "internal/codingagent/select_page_keys_test.go::TestSessionSelectorCapturesSelectionPageKeys",
         "tui/select_page_keys_test.go::TestAltScreenGivesSelectionPageKeysToACapturingFocus",
-        "tui/select_page_keys_test.go::TestContainerCapturesSelectPageInputFromItsChildren",
         "tui/select_page_keys_test.go::TestEditorAutocompletePageKeys",
-        "tui/select_page_keys_test.go::TestPageSelectionIndex",
         "tui/select_page_keys_test.go::TestSelectListPageKeysIgnoreAnEmptyList",
         "tui/select_page_keys_test.go::TestSelectListPageKeysMoveByAPage",
         "tui/select_page_keys_test.go::TestSelectorComponentsMoveByTheirPage",
@@ -15478,6 +15770,28 @@
       ],
       "tests": [
         "coding/model_default_provider_race_test.go::TestExtensionProviderIsConfiguredWhenTheDefaultModelIsResolved"
+      ]
+    },
+    {
+      "id": "BF-69cd9d2",
+      "title": "PageUp and PageDown (`tui.select.pageUp` and `tui.select.pageDown`) move the selection by one page in the…",
+      "symptom": "PageUp and PageDown (`tui.select.pageUp` and `tui.select.pageDown`) move the selection by one page in the select list, settings list, editor autocomplete, and the model, OAuth, scoped-models, user-message and settings-submenu selectors.",
+      "rootCause": "Add GetSelectPageIndex and the optional ViewportInputCapturer in place of the page-selection capturer. SelectList, SettingsList, the editor autocomplete and the model, OAuth, scoped-models, user-message, tree and submenu selectors page on tui.select.pageUp and pageDown, and fullscreen leaves viewport keys to a focused component that captures them.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "PageUp and PageDown (`tui.select.pageUp` and `tui.select.pageDown`) move the selection by one page in the select list, settings list, editor autocomplete, and the model, OAuth, scoped-models, user-message and settings-submenu selectors. A focused component that handles these keys now receives them in fullscreen mode instead of the transcript scrolling, as in Pi.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "69cd9d29e6",
+          "date": "2026-10-29"
+        }
+      ],
+      "tests": [
+        "tui/oauth_selector_input_test.go::TestOAuthSelectorInputMatchesPi"
       ]
     },
     {
@@ -15967,6 +16281,27 @@
       ],
       "tests": [
         "durable/harness/harness_submissions_test.go::TestSubmissions"
+      ]
+    },
+    {
+      "id": "BF-6c7b377",
+      "title": "fix(tui): page the editor autocomplete by the row limit the open menu was built with; narrow D155 to the…",
+      "symptom": "fix(tui): page the editor autocomplete by the row limit the open menu was built with; narrow D155 to the PiG-only selectors",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "6c7b3772a6",
+          "date": "2026-10-29"
+        }
+      ],
+      "tests": [
+        "tui/select_page_keys_upstream_test.go::TestUpstreamEditorPagesByTheRowLimitTheOpenMenuWasBuiltWith"
       ]
     },
     {
@@ -22923,6 +23258,26 @@
       ]
     },
     {
+      "id": "BF-95de1de",
+      "title": "An image the model receives is now JPEG-encoded with a port of Photon's encoder (image 0.24.9: the IJG…",
+      "symptom": "An image the model receives is now JPEG-encoded with a port of Photon's encoder (image 0.24.9: the IJG integer DCT, the standard Huffman tables, the libjpeg quality scaling) instead of Go's `image/jpeg`, so for an image that decodes to the pixels Photon decodes (PNG, GIF, BMP) the bytes and sizes are Pi's, and with them every decision that depends on a size: which quality of the ladder fits the byte limit, how far the 3/4 shrink goes, and which of the PNG and the JPEG candidate of a resize is smaller (Pi #11577).",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "An image the model receives is now JPEG-encoded with a port of Photon's encoder (image 0.24.9: the IJG integer DCT, the standard Huffman tables, the libjpeg quality scaling) instead of Go's `image/jpeg`, so for an image that decodes to the pixels Photon decodes (PNG, GIF, BMP) the bytes and sizes are Pi's, and with them every decision that depends on a size: which quality of the ladder fits the byte limit, how far the 3/4 shrink goes, and which of the PNG and the JPEG candidate of a resize is smaller (Pi #11577). The encoder is 1.9 times faster than Go's on a screenshot and 2.4 times faster on a 12 MP photo, with a dozen allocations in place of millions. D165 now covers only the JPEG and WebP decoders, whose pixels are still Go's.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "95de1de195",
+          "date": "2026-10-29"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-95eefe2",
       "title": "openai-completions thinking formats now match Pi (`ai/openai.go`, openai-completions.ts:885-985 and…",
       "symptom": "openai-completions thinking formats now match Pi (`ai/openai.go`, openai-completions.ts:885-985 and 1034-1075), found by the new live-Pi oracle `TestOpenAICompletionsThinkingFormatsPayloadMatchesPi` (3,000 probes: every `thinkingFormat`, `compat.chatTemplateKwargs`/`chatTemplateArgs` with scalars, null, `$var` placeholders, `omitWhenOff`, arrays, and model `thinkingLevelMap` entries; 32 of 1,200 probes differed before any fix, 4 more after widening the corpus).",
@@ -23321,6 +23676,26 @@
       ]
     },
     {
+      "id": "BF-99d6e28",
+      "title": "Resizing an image no longer differs from Photon's by one in a channel of a rare pixel",
+      "symptom": "Resizing an image no longer differs from Photon's by one in a channel of a rare pixel.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Resizing an image no longer differs from Photon's by one in a channel of a rare pixel. Photon computes the Lanczos weights with libm's single-precision `sinf`, which is not always the correctly rounded sine Go's `math.Sin` gives; PiG now runs the same `sinf`, so the resized pixels, and the PNG and JPEG written from them, are Photon's for every size measured (251 more pictures against Photon, 19 of which differed before).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "99d6e28a33",
+          "date": "2026-10-29"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-9a9dc99",
       "title": "`WaitForTask` on a task whose terminal commit was adopted no longer fails with \"Harness is closed\" when a…",
       "symptom": "`WaitForTask` on a task whose terminal commit was adopted no longer fails with \"Harness is closed\" when a close begins before the wait wakes: a host `SubscribeCommits` listener that closes the Harness on that commit, or a close that comes between the commit's adoption and its publication.",
@@ -23690,6 +24065,25 @@
         "agent/message_source_test.go::TestWithEmptyContentSpreadsContent",
         "agent/tool_result_fields_test.go::TestToolResultMessageFieldsMatchUpstream"
       ]
+    },
+    {
+      "id": "BF-9badad6",
+      "title": "fix(chord): MapShared's cleanup no longer closes over a tiny allocation of its element",
+      "symptom": "fix(chord): MapShared's cleanup no longer closes over a tiny allocation of its element",
+      "rootCause": "runtime.AddCleanup refuses a cleanup whose closure points into the allocation block of the object it is attached to. MapShared captured a bare sync.Mutex, a 16-byte tiny allocation that a small element could share. The mutex and the results now live in one pointer-holding struct and the cleanup is its method.",
+      "rootCauseSource": "commit",
+      "userImpact": "Lost or altered data",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "9badad67ea",
+          "date": "2026-10-29"
+        }
+      ],
+      "tests": []
     },
     {
       "id": "BF-9be5765",
@@ -25294,9 +25688,7 @@
           "date": "2026-10-10"
         }
       ],
-      "tests": [
-        "internal/codingagent/select_page_keys_pr7680_test.go::TestPR7680SessionSelectionStaysValidWhenPagingBeforeTheLoad"
-      ]
+      "tests": []
     },
     {
       "id": "BF-a739b6d",
@@ -25508,6 +25900,28 @@
       "tests": [
         "internal/codingagent/debug_log_security_test.go::TestRedactKeyChunkHidesTypedAndPastedText",
         "internal/codingagent/debug_log_security_unix_test.go::TestDebugLogRefusesASymlinkAndIsPrivate"
+      ]
+    },
+    {
+      "id": "BF-a8f5413",
+      "title": "Fix the lint findings of the JPEG port",
+      "symptom": "Fix the lint findings of the JPEG port",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "a8f5413125",
+          "date": "2026-10-29"
+        }
+      ],
+      "tests": [
+        "internal/photonimage/jpeg_oracle_test.go::TestEncodeJPEGWritesPhotonsBytes",
+        "internal/photonimage/resize_corpus_test.go::TestResizeLanczos3MatchesPhotonOnStripsAndNearOneRatios"
       ]
     },
     {
@@ -25932,6 +26346,28 @@
         "tui/markdown_streaming_reuse_test.go::TestStreamedMarkdownRendersOnlyChangedInlineText",
         "tui/markdown_streaming_reuse_test.go::TestStreamedMarkdownWrapsOnlyChangedLines",
         "tui/windowed_render_test.go::TestWindowedFramesEqualWholeFrames"
+      ]
+    },
+    {
+      "id": "BF-ab99da4",
+      "title": "fix(chord/delta): the tracker holds its one open change without a weak registration",
+      "symptom": "fix(chord/delta): the tracker holds its one open change without a weak registration",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "ab99da4063",
+          "date": "2026-10-29"
+        }
+      ],
+      "tests": [
+        "chord/delta/retention_upstream_test.go::TestDeltaTrackerRetentionAcrossGCJobs",
+        "chord/delta/retention_upstream_test.go::TestTrackerReleasesADroppedOpenChangeWhenTheNextOpens"
       ]
     },
     {
@@ -28947,6 +29383,46 @@
       ]
     },
     {
+      "id": "BF-c60a7b1",
+      "title": "The regular-mode renderer no longer writes OSC 133 prompt markers to the terminal",
+      "symptom": "The regular-mode renderer no longer writes OSC 133 prompt markers to the terminal.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Lost or altered data",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "The regular-mode renderer no longer writes OSC 133 prompt markers to the terminal. Terminals that show program status read them as a new shell prompt and dropped the working indicator during runs. Fullscreen mode still uses them for prompt navigation.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "c60a7b14aa",
+          "date": "2026-10-29"
+        }
+      ],
+      "tests": []
+    },
+    {
+      "id": "BF-c60a7b1-2",
+      "title": "Bare URLs in Markdown now stop at CJK punctuation such as `，` and `。`, so Chinese, Japanese and Korean…",
+      "symptom": "Bare URLs in Markdown now stop at CJK punctuation such as `，` and `。`, so Chinese, Japanese and Korean text after a URL is no longer part of the link.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Bare URLs in Markdown now stop at CJK punctuation such as `，` and `。`, so Chinese, Japanese and Korean text after a URL is no longer part of the link. Explicit `[text](url)` links and `\u003curl\u003e` autolinks keep these characters.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "c60a7b14aa",
+          "date": "2026-10-29"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-c625bb4",
       "title": "The durable `powershell` tool fails with \"No command to run\" when its program list is empty, instead of…",
       "symptom": "The durable `powershell` tool fails with \"No command to run\" when its program list is empty, instead of reporting success.",
@@ -29013,7 +29489,6 @@
         "chord/delta/json_kind_message_test.go::TestCloneJSONReportsPisMessageForEachGoKind",
         "chord/delta/normalize_error_order_test.go::TestDiffCandidateReportsTheFirstInvalidPropertyDeterministically",
         "chord/delta/retention_upstream_test.go::TestDeltaTrackerRetentionAcrossGCJobs",
-        "chord/delta/retention_upstream_test.go::TestTrackerReleasesADroppedOpenChange",
         "chord/delta/tracker_delta_lifecycle_upstream_test.go::TestDeltaImmutableTrackerLifecycle",
         "chord/delta/tracker_state_upstream_test.go::TestStateFuzzConvergesAcrossRandomizedPreparedRevisions",
         "chord/delta/tracker_state_upstream_test.go::TestStateValueOwnership",
@@ -31705,7 +32180,6 @@
         "durable/harness/tool_task_v2_test.go::TestToolTaskIsVersion2",
         "durable/harness/tool_task_v2_test.go::TestToolTaskMigratesVersion1",
         "durable/harness/tool_task_v2_test.go::TestToolTaskUnionsSerializeLikePi",
-        "durable/images/photon_differential_test.go::TestPreparedPixelsStayCloseToWhatPhotonProduces",
         "durable/tools/read_differential_test.go::TestReadToolDetectsAnimatedPNGsWhoseAcTLChunkLiesFarBeyondTheHeader",
         "durable/tools/read_differential_test.go::TestReadToolReturnsExactlyWhatReadingTheWholeFileReturned",
         "durable/tools/read_images_test.go::TestReadChecksTheBase64SizeAgainstTheModelsImageLimit",
@@ -34701,6 +35175,46 @@
       ]
     },
     {
+      "id": "BF-df5964b",
+      "title": "A context-overflow error from a LiteLLM proxy's pre-call check (`litellm.ContextWindowExceededError ...…",
+      "symptom": "A context-overflow error from a LiteLLM proxy's pre-call check (`litellm.ContextWindowExceededError ... Context Window exceeded for given call`) is now recognised as context overflow, so compaction recovery runs instead of the turn failing (Pi #11492).",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A context-overflow error from a LiteLLM proxy's pre-call check (`litellm.ContextWindowExceededError ... Context Window exceeded for given call`) is now recognised as context overflow, so compaction recovery runs instead of the turn failing (Pi #11492).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "df5964b4e7",
+          "date": "2026-10-29"
+        }
+      ],
+      "tests": []
+    },
+    {
+      "id": "BF-df5964b-2",
+      "title": "A Zhipu/Z.ai usage-limit error (error code 1308, sent as HTTP 429) is no longer retried: the plan's limit…",
+      "symptom": "A Zhipu/Z.ai usage-limit error (error code 1308, sent as HTTP 429) is no longer retried: the plan's limit resets after hours, not seconds (Pi #11537).",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A Zhipu/Z.ai usage-limit error (error code 1308, sent as HTTP 429) is no longer retried: the plan's limit resets after hours, not seconds (Pi #11537).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "df5964b4e7",
+          "date": "2026-10-29"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-df96b6a",
       "title": "Fix in shipped code",
       "symptom": "Fix in shipped code",
@@ -36541,8 +37055,7 @@
         }
       ],
       "tests": [
-        "ai/classifier_models_upstream_test.go::TestClassifierModelsUpstream",
-        "cmd/gen-models/carried_fixes_test.go::TestCarriedOpenCodeInferenceEndpoints"
+        "ai/classifier_models_upstream_test.go::TestClassifierModelsUpstream"
       ]
     },
     {
@@ -36771,6 +37284,26 @@
         "test/parity/scenarios/extensions-runtime/75-robust-notes-python.toml",
         "test/parity/scenarios/extensions-runtime/75-robust-notes-rust.toml"
       ]
+    },
+    {
+      "id": "BF-f2431b9",
+      "title": "The session selector, the `/llama` search and the `/mcp` menus move their selection on `tui.select.pageUp`…",
+      "symptom": "The session selector, the `/llama` search and the `/mcp` menus move their selection on `tui.select.pageUp` and `tui.select.pageDown`, and a page key bound to Ctrl+V pages an open autocomplete menu instead of pasting an image.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "The session selector, the `/llama` search and the `/mcp` menus move their selection on `tui.select.pageUp` and `tui.select.pageDown`, and a page key bound to Ctrl+V pages an open autocomplete menu instead of pasting an image. In fullscreen mode a focused list that handles those keys receives them instead of the transcript.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "f2431b9153",
+          "date": "2026-10-29"
+        }
+      ],
+      "tests": []
     },
     {
       "id": "BF-f24a8ee",
@@ -37454,6 +37987,25 @@
       ]
     },
     {
+      "id": "BF-f474c30",
+      "title": "fix(evals): drop an unused import from the prompt-template eval",
+      "symptom": "fix(evals): drop an unused import from the prompt-template eval",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "f474c30499",
+          "date": "2026-10-29"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-f4d85f8",
       "title": "A large file written through a tool call no longer slows down as it streams: each streamed piece of the…",
       "symptom": "A large file written through a tool call no longer slows down as it streams: each streamed piece of the tool-call arguments is parsed on its own instead of re-parsing all the arguments so far after a provider opened the call with empty arguments, so the cost of the whole call grows with its size instead of with the square of its size.",
@@ -37476,6 +38028,25 @@
         "ai/assistant_published_clone_test.go::TestCellObservationsCopyPublishedArgumentsUnread",
         "ai/assistant_published_clone_test.go::TestObserveOfAnUnpublishedMessageStillChecksArgumentStrings"
       ]
+    },
+    {
+      "id": "BF-f589900",
+      "title": "fix(tui): delete D155; PageUp and PageDown paging follows Pi",
+      "symptom": "fix(tui): delete D155; PageUp and PageDown paging follows Pi",
+      "rootCause": "The extension selector, trust selector and first-time setup dialog no longer move their selection on tui.select.pageUp and pageDown, and no longer keep the fullscreen transcript from scrolling, as in Pi. The config selector keeps the native paging of config-selector.ts but does not set capturesViewportInput. FilterableList keeps the paging of the SelectList it stands in for and no longer reports the flag itself; the llama.cpp and /mcp views pass their own. Divergence D155 and its call-site markers are removed.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "f589900c55",
+          "date": "2026-10-29"
+        }
+      ],
+      "tests": []
     },
     {
       "id": "BF-f5ecdc2",
@@ -37656,7 +38227,6 @@
         "chord/delta/path_errors_test.go::TestPathErrorConstructorsAndTheApplierRaisingThem",
         "chord/delta/path_ref_test.go::TestNonEmptyPathAndPathRefMatchPi",
         "chord/delta/retention_upstream_test.go::TestDeltaTrackerRetentionAcrossGCJobs",
-        "chord/delta/retention_upstream_test.go::TestTrackerReleasesADroppedOpenChange",
         "chord/delta/tracker_delta_lifecycle_upstream_test.go::TestDeltaImmutableTrackerLifecycle",
         "chord/delta/tracker_lifecycle_upstream_test.go::TestTrackerOverlayLifecycle",
         "chord/delta/tracker_state_upstream_test.go::TestStateFuzzConvergesAcrossRandomizedPreparedRevisions",
@@ -37814,7 +38384,6 @@
         "chord/delta/path_errors_test.go::TestPathErrorConstructorsAndTheApplierRaisingThem",
         "chord/delta/path_ref_test.go::TestNonEmptyPathAndPathRefMatchPi",
         "chord/delta/retention_upstream_test.go::TestDeltaTrackerRetentionAcrossGCJobs",
-        "chord/delta/retention_upstream_test.go::TestTrackerReleasesADroppedOpenChange",
         "chord/delta/tracker_delta_lifecycle_upstream_test.go::TestDeltaImmutableTrackerLifecycle",
         "chord/delta/tracker_lifecycle_upstream_test.go::TestTrackerOverlayLifecycle",
         "chord/delta/tracker_state_upstream_test.go::TestStateFuzzConvergesAcrossRandomizedPreparedRevisions",
@@ -38373,6 +38942,29 @@
         "chord/delta/own_key_order_test.go::TestDiffRevisionsVisitsArrayIndexKeysFirstInNumericOrder",
         "internal/chord/chordjson/own_key_order_test.go::TestCopyFollowsPisKeyOrderAndMessages",
         "internal/evals/report_oracle_test.go::TestEvalReportMatchesPiOnSeededDesigns"
+      ]
+    },
+    {
+      "id": "BF-f821434",
+      "title": "fix(ai): lint and go fix findings of the catalog generator",
+      "symptom": "fix(ai): lint and go fix findings of the catalog generator",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "f821434225",
+          "date": "2026-10-29"
+        }
+      ],
+      "tests": [
+        "cmd/gen-models/generate_models_cli_test.go::TestGeneratorRecordAndReplay",
+        "internal/modelgen/obj_test.go::TestObjSetNormalizesAndRejectsUnsupportedValues",
+        "internal/modelgen/sources_test.go::TestLoadCatalogSourcesFailures"
       ]
     },
     {
