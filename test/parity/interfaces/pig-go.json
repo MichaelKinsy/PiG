@@ -17221,6 +17221,17 @@
       "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#Model.openRouterVariant",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "Model.openRouterVariant",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(variant string) *Model"
+      },
+      "shapeHash": "sha256:10dd872032cd0d56f9fabb19526200746c5ee015260c78c0b05f67b84c1c4b18"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/ai#ModelAuth",
       "package": "github.com/MichaelKinsy/PiG/ai",
       "name": "ModelAuth",
@@ -26866,6 +26877,17 @@
         "type": "func(streams *ProviderStreams) *ProviderStreams"
       },
       "shapeHash": "sha256:d371aad6864bfe262522dedac0e31b0d5dffead7f08ac4ee4ea4cd239b29b971"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#WithOpenRouterRoutingVariantModels",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "WithOpenRouterRoutingVariantModels",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(models []AnyModel) []AnyModel"
+      },
+      "shapeHash": "sha256:6619790fa934659792f1f1304160d1c0a90c517407bd8c7a4d37684b53c858cb"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/ai#WithOpenRouterRoutingVariants",
@@ -53882,6 +53904,17 @@
         "type": "func() string"
       },
       "shapeHash": "sha256:31cac5b359d9888bdbe3fe08c486b2e404a728edce6e0aaaa60e59ceafc92fb5"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#openRouterChatModel",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "openRouterChatModel",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(model AnyModel) (*Model, bool)"
+      },
+      "shapeHash": "sha256:445d00cf2337a227fc66eea68f6846d181dc04b332b626bfb57c9f07a89af653"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/ai#openRouterErrorDetail",
