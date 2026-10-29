@@ -1,0 +1,44 @@
+# Behavior family: fullscreen
+# Surface: the model scope notice in the fullscreen header (pi #11508/#11512).
+#
+# Upstream evidence (Pi e7a0df27): fullscreen does not print `Model scope: ...`
+# to stdout; showFullscreenModelScopeNotice adds it to the header container as a
+# ThemedText(1, 0) followed by a Spacer(1). With settings.json tuiMode="fullscreen"
+# and `--models fixture/model-two` the alternate screen shows
+#
+#   Model scope: model-two (Ctrl+P to cycle)
+#
+# below the built-in header. The crop is that line; both binaries must paint it
+# byte-identically with SGR preserved.
+
+name = "14-fullscreen-model-scope-notice"
+description = "Fullscreen header shows the model scope notice in the same cells as pi."
+covers = [
+  "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+]
+tags = ["fast", "hermetic", "tui", "fullscreen"]
+driver = "interactive-tmux"
+
+[env]
+pig = ["PIG_CODING_AGENT_DIR=testdata/pig-agent-model-scope"]
+pi = ["PI_CODING_AGENT_DIR=testdata/pi-agent-model-scope", "PI_SKIP_VERSION_CHECK=1"]
+pig_args = ["--no-extensions", "--offline", "--models", "fixture/model-two", "--session-dir", "{{TEMP}}/sessions"]
+pi_args = ["--no-extensions", "--offline", "--models", "fixture/model-two", "--session-dir", "{{TEMP}}/sessions"]
+
+[tmux]
+width = 100
+height = 35
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "$0.000"
+ready_timeout_seconds = 30
+settle_seconds = 1
+capture_start = "Model scope:"
+capture_end = "to cycle)"
+
+[assert]
+both_reach_ready = true
+both_contain = ["Model scope: model-two (Ctrl+P to cycle)"]
+both_not_contain = ["panic:", "goroutine ", "No matching models"]
+escaped_output_equal = true
+runtime_ratio_max = 2.0
+runs = 3
