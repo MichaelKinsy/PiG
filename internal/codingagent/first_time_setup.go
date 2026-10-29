@@ -200,8 +200,10 @@ func (c *FirstTimeSetupComponent) moveSelection(delta int) {
 	c.update()
 }
 
-// CapturesSelectPageInput reports that the dialog handles tui.select.pageUp and tui.select.pageDown.
-func (c *FirstTimeSetupComponent) CapturesSelectPageInput() bool { return true }
+// CapturesViewportInput reports that the dialog handles tui.select.pageUp and tui.select.pageDown.
+//
+// pig divergence (D155): Pi's first-time setup does not page its options and does not set capturesViewportInput; Pig pages it and keeps the page keys.
+func (c *FirstTimeSetupComponent) CapturesViewportInput() bool { return true }
 
 // pageSize is the option count of the current step, so a page key moves to the first or last option
 // (first-time-setup.ts getPageSize of Pi PR #7680). The sprite step also lists a choice of no sprite.

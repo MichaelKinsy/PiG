@@ -33,8 +33,10 @@ type McpManagerView struct {
 	mu           sync.Mutex
 	content      *tui.Container
 	inputHandler func(data string)
-	inputTarget  interface{ SetFocused(bool) }
-	focused      bool
+	// capturesViewportInput is the current input handler's capturesViewportInput: true only while a menu list handles the keys.
+	capturesViewportInput bool
+	inputTarget           interface{ SetFocused(bool) }
+	focused               bool
 	// copyToClipboard copies the sign-in URL on `app.message.copy`.
 	copyToClipboard func(text string) error
 }
@@ -69,12 +71,12 @@ func (v *McpManagerView) keyHint(action tui.TUIKeybinding, description string) s
 	return tui.KeyHint(tui.FormatKeyText(strings.Join(v.keybindings.GetKeys(action), "/"), false), description)
 }
 
-func (v *McpManagerView) setContent(content *tui.Container, inputHandler func(string), target interface{ SetFocused(bool) }) {
+func (v *McpManagerView) setContent(content *tui.Container, inputHandler func(string), capturesViewportInput bool, target interface{ SetFocused(bool) }) {
 	v.mu.Lock()
 	if v.inputTarget != nil {
 		v.inputTarget.SetFocused(false)
 	}
-	v.content, v.inputHandler, v.inputTarget = content, inputHandler, target
+	v.content, v.inputHandler, v.capturesViewportInput, v.inputTarget = content, inputHandler, capturesViewportInput, target
 	if target != nil {
 		target.SetFocused(v.focused)
 	}
@@ -145,7 +147,7 @@ func (v *McpManagerView) Menu(ctx context.Context, build func() mcpext.McpMenu, 
 				if v.keybindings.Matches(data, tui.KBSelectCancel) {
 					finish("", false)
 				}
-			}, nil)
+			}, false, nil)
 			return
 		}
 		footer := v.keyHint(tui.KBSelectConfirm, menu.ConfirmLabel) + " • " + v.keyHint(tui.KBSelectCancel, menu.CancelLabel)
@@ -177,7 +179,7 @@ func (v *McpManagerView) Menu(ctx context.Context, build func() mcpext.McpMenu, 
 				selected = menu.Items[list.CursorIndex()].Value
 				v.mu.Unlock()
 			}
-		}, nil)
+		}, true, nil)
 	}
 	render()
 	if subscribe != nil {
@@ -210,14 +212,14 @@ func (v *McpManagerView) Menu(ctx context.Context, build func() mcpext.McpMenu, 
 func (v *McpManagerView) Status(title, message string, onCancel func()) {
 	body := []tui.Component{tui.NewSpacer(1), tui.NewPaddedText(v.theme.Fg("muted", message), 1, 0, nil)}
 	if onCancel == nil {
-		v.setContent(v.frame(title, body, ""), nil, nil)
+		v.setContent(v.frame(title, body, ""), nil, false, nil)
 		return
 	}
 	v.setContent(v.frame(title, body, v.keyHint(tui.KBSelectCancel, "cancel")), func(data string) {
 		if v.keybindings.Matches(data, tui.KBSelectCancel) {
 			onCancel()
 		}
-	}, nil)
+	}, false, nil)
 }
 
 // SetCopyToClipboard supplies the clipboard writer `app.message.copy` uses for the authorization URL on the sign-in
@@ -270,13 +272,20 @@ func (v *McpManagerView) RedirectURL(ctx context.Context, title, authorizationUR
 		default:
 			input.HandleInput(data)
 		}
-	}, input)
+	}, false, input)
 	select {
 	case got := <-result:
 		return got.value, got.ok
 	case <-ctx.Done():
 		return "", false
 	}
+}
+
+// CapturesViewportInput is ui.ts McpManagerView capturesViewportInput: the current input handler's flag, true while a menu list is shown.
+func (v *McpManagerView) CapturesViewportInput() bool {
+	v.mu.Lock()
+	defer v.mu.Unlock()
+	return v.inputHandler != nil && v.capturesViewportInput
 }
 
 // HandleInput passes a key to what the view is showing.
