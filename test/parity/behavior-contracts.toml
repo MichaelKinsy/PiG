@@ -1630,7 +1630,7 @@ keybindings = ["app.clipboard.pasteImage", "app.exit", "app.interrupt", "tui.edi
 
 [[contract]]
 id = "coding-agent/mcp-manager/status-cancel"
-upstream_id = "input:packages/coding-agent/src/extensions/mcp/ui.ts#McpManagerView.<anonymous@165>"
+upstream_id = "input:packages/coding-agent/src/extensions/mcp/ui.ts#McpManagerView.status.handleInput"
 family = "extensions-runtime"
 kind = "boundary-transition"
 claim = "a status screen with an onCancel callback shows the cancel key hint and calls it when tui.select.cancel is pressed; any other key does nothing; a status screen without onCancel has no hint and no input handler"
@@ -1672,7 +1672,7 @@ keybindings = []
 
 [[contract]]
 id = "coding-agent/mcp-manager/empty-menu-cancel"
-upstream_id = "input:packages/coding-agent/src/extensions/mcp/ui.ts#McpManagerView.<anonymous@130>"
+upstream_id = "input:packages/coding-agent/src/extensions/mcp/ui.ts#McpManagerView.render.handleInput"
 family = "extensions-runtime"
 kind = "boundary-transition"
 claim = "a menu without items shows its empty text and only the cancel hint, and tui.select.cancel is the only key that finishes it; every other key is ignored"
@@ -1692,7 +1692,7 @@ keybindings = ["tui.select.cancel"]
 
 [[contract]]
 id = "coding-agent/mcp-manager/redirect-url-screen-keys"
-upstream_id = "input:packages/coding-agent/src/extensions/mcp/ui.ts#McpManagerView.<anonymous@206>"
+upstream_id = "input:packages/coding-agent/src/extensions/mcp/ui.ts#McpManagerView.redirectUrl.handleInput"
 family = "extensions-runtime"
 kind = "boundary-transition"
 claim = "on the sign-in screen tui.select.confirm submits the trimmed input unless it is empty, tui.select.cancel finishes without a value, app.message.copy copies the authorization URL, and every other key goes to the input"

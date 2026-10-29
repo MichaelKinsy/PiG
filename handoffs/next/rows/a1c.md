@@ -20,7 +20,9 @@ All 19 drifting contracts were re-read against the Pi diff b3a29f11..e7a0df27. T
 | coding-agent/llama-search/handle-input | same markers; hash only | none (getSelectPageIndex) | none |
 | tui/tui-alt-screen/viewport-input | same markers; hash only (shouldDeferViewportInput) | none | none |
 | tui/render/main-screen-full-redraw | same markers; hash only (OSC 133 prefix strip) | none | none |
-| coding-agent/mcp-manager/status-cancel | start `...(data) => {` -> `...), {` (setContent object literal) | none | none |
-| coding-agent/mcp-manager/empty-menu-cancel | start moved to the one-line `this.setContent(frame(...), {` | none | none |
-| coding-agent/mcp-manager/redirect-url-screen-keys | start `(data) => {` -> `{ handleInput: (data) => {` | none | none |
+| coding-agent/mcp-manager/status-cancel | upstream_id `<anonymous@165>` -> `McpManagerView.status.handleInput`; start `...(data) => {` -> `...), {` (setContent object literal) | none | none |
+| coding-agent/mcp-manager/empty-menu-cancel | upstream_id `<anonymous@130>` -> `McpManagerView.render.handleInput`; start moved to the one-line `this.setContent(frame(...), {` | none | none |
+| coding-agent/mcp-manager/redirect-url-screen-keys | upstream_id `<anonymous@206>` -> `McpManagerView.redirectUrl.handleInput`; start `(data) => {` -> `{ handleInput: (data) => {` | none | none |
 | coding-agent/mcp-manager/handle-input-delegates, menu-render | same markers; hash only | none | none |
+
+Mapping (integrator-owned, not edited here): `behavior-input-mapping-v1.4.0+e7a0df27.json` has the handlers `McpManagerView.status.handleInput`, `.render.handleInput` and `.redirectUrl.handleInput` pending with no contracts. They should reference `coding-agent/mcp-manager/status-cancel`, `empty-menu-cancel` and `redirect-url-screen-keys`, with the targets and evidence of the old `<anonymous@165|130>` entries (the old `<anonymous@206>` entry was pending). `make behavior-contracts-strict` fails on the 52 pending mapping entries (36 were already pending at the previous pin b3a29f11; 16 were reset by the pin bump).
