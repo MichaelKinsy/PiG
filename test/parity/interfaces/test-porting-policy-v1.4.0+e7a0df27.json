@@ -2501,6 +2501,62 @@
       ]
     },
     {
+      "path": "packages/chord/test/next/link/channel.test.ts",
+      "upstreamTestHash": "sha256:3795f2abac8cbcd27858a7c7fda97ae55db8eec74eb20eb936c22c726a6e8ff5",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
+    },
+    {
+      "path": "packages/chord/test/next/link/errors.test.ts",
+      "upstreamTestHash": "sha256:3b11210af4b2edbf15131fda64157e9b273db0ffdaa3dc57a747fd55c135710d",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
+    },
+    {
+      "path": "packages/chord/test/next/link/ipc.test.ts",
+      "upstreamTestHash": "sha256:f029c67e7545c5627c537cd2617399748f0a2e46f391958b18bae677c0618278",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
+    },
+    {
+      "path": "packages/chord/test/next/link/link.test.ts",
+      "upstreamTestHash": "sha256:71a5fd9226b3623679fe82a969f50bc7da6764947fd0077a588101afcf055345",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
+    },
+    {
+      "path": "packages/chord/test/next/link/message.test.ts",
+      "upstreamTestHash": "sha256:3266b625e94c2bbc155acb86ff028dbaf958cebb4b74aa0dd41f1eb3cdd10496",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
+    },
+    {
+      "path": "packages/chord/test/next/link/part.test.ts",
+      "upstreamTestHash": "sha256:5d042bb4ac8b17cf19fd56819bcbc596ce77e7b5779d366d98b0889e79ab1ffe",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
+    },
+    {
+      "path": "packages/chord/test/next/link/values.test.ts",
+      "upstreamTestHash": "sha256:eee3a2df82908d68d39013ec798f76eb216b29cc8f046fae9a8b5cdbf8750d81",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
+    },
+    {
+      "path": "packages/chord/test/next/link/websocket.test.ts",
+      "upstreamTestHash": "sha256:785df8126f3507ea2e46d075c168f871410866b96630034d2cce6c1bf56f80c3",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
+    },
+    {
       "path": "packages/chord/test/next/registries/entries.test.ts",
       "upstreamTestHash": "sha256:9462c38f6ee1b8f567084760eda16ad8d04695163dce427317216ca91ec76550",
       "area": "extensions",
