@@ -230,8 +230,8 @@ func fdct(samples *[64]uint8, coeffs *[64]int32) {
 		z1 = (t12 + t13) * fix1175875
 		z1 += 1 << (constBits - pass1Bits - 1)
 
-		t12 = t12 * -fix0390180
-		t13 = t13 * -fix1961570
+		t12 *= -fix0390180
+		t13 *= -fix1961570
 		t12 += z1
 		t13 += z1
 
@@ -285,8 +285,8 @@ func fdct(samples *[64]uint8, coeffs *[64]int32) {
 		z1 = (t12 + t13) * fix1175875
 		z1 += 1 << (constBits - pass1Bits - 1)
 
-		t12 = t12 * -fix0390180
-		t13 = t13 * -fix1961570
+		t12 *= -fix0390180
+		t13 *= -fix1961570
 		t12 += z1
 		t13 += z1
 

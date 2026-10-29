@@ -18,7 +18,7 @@ func TestResizeLanczos3MatchesPhotonOnStripsAndNearOneRatios(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 	same, failures := 0, 0
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
