@@ -216,9 +216,11 @@ func ExecCommand(ctx context.Context, cwd, command string, args []string, opts *
 		}
 		if remaining := maxBuffer - outputBytes; int64(len(chunk)) > remaining {
 			truncated = true
+			// Node's destroy() closes the pipes on a later tick, so SIGTERM reaches the child first; closing them first would let a writer die of SIGPIPE
+			// and a shell report that status instead of the signal's.
+			killProcess()
 			_ = stdoutRead.Close()
 			_ = stderrRead.Close()
-			killProcess()
 			chunk = chunk[:max(remaining, 0)]
 		}
 		outputBytes += int64(len(chunk))
