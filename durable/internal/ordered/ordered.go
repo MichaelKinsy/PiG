@@ -205,7 +205,7 @@ func fieldByIndex(value reflect.Value, index []int) (reflect.Value, bool) {
 type field struct {
 	name  string
 	index []int
-	reflect.Type
+	Type reflect.Type
 }
 
 var fieldLists sync.Map // reflect.Type -> []field
