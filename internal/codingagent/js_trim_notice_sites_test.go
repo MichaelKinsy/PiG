@@ -34,7 +34,7 @@ func TestStartupChangelogTrimsLikeJavaScript(t *testing.T) {
 			tuiInst:       tui.NewWithOutput(io.Discard, 80, 24),
 			opts:          InteractiveModeOptions{SettingsManager: &SettingsManager{}, AppVersion: "9.9.9"},
 		}
-		mode.showStartupChangelog([]ChangelogEntry{{Content: content}})
+		mode.showStartupChangelog([]ChangelogEntry{{Content: content}}, nil)
 		var got []string
 		for _, line := range mode.chatContainer.Render(80) {
 			got = append(got, strings.TrimRight(stripANSI(line), " "))
