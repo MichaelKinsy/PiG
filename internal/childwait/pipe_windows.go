@@ -6,12 +6,16 @@ import (
 	"errors"
 	"os"
 	"time"
+	"unsafe"
 
 	"golang.org/x/sys/windows"
 )
 
 // pollSupported reports that PeekNamedPipe answers for the read end of a pipe.
 const pollSupported = true
+
+// procPeekNamedPipe is kernel32's PeekNamedPipe, which golang.org/x/sys/windows does not wrap.
+var procPeekNamedPipe = windows.NewLazySystemDLL("kernel32.dll").NewProc("PeekNamedPipe")
 
 // peekPipe asks how many bytes wait in the read end of a pipe without taking any. ended reports that every write end is closed
 // (ERROR_BROKEN_PIPE), and closed that the handle is gone, as it is once Wait closed it.
@@ -22,7 +26,10 @@ func peekPipe(file *os.File) (avail uint32, ended, closed bool) {
 	}
 	var peekErr error
 	if err := conn.Control(func(fd uintptr) {
-		peekErr = windows.PeekNamedPipe(windows.Handle(fd), nil, 0, nil, &avail, nil)
+		ok, _, callErr := procPeekNamedPipe.Call(fd, 0, 0, 0, uintptr(unsafe.Pointer(&avail)), 0)
+		if ok == 0 {
+			peekErr = callErr
+		}
 	}); err != nil {
 		return 0, false, true
 	}
