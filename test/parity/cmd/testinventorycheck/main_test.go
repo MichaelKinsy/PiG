@@ -536,3 +536,69 @@ func TestCarryMappingKeepsOnlyEntriesWhoseUpstreamTestIsUnchanged(t *testing.T) 
 		t.Fatalf("carried mapping = %+v\nwant %+v", got, want)
 	}
 }
+
+// partialEntry returns a partial file with two upstream cases: "official › runs"
+// is covered by the evidence, "analytics › ported" is the one that is missing.
+func partialEntry() (inventory, mapping, map[string]string, string) {
+	inv, m, evidence, div := mixedClosure()
+	m.Entries[0].DesignedOutCases = nil
+	m.Entries[0].Disposition = "partial"
+	m.Entries[0].Rationale = "the analytics case needs the exporter, which is not ported"
+	m.Entries[0].MissingCases = []string{"analytics › ported"}
+	return inv, m, evidence, div
+}
+
+// TestCheckPartialEnumeratesMissingCases proves AGENTS.md's rule that a partial
+// disposition enumerates the missing cases: a partial entry without a list, with
+// an unknown, duplicate, ambiguous or designed-out id, or naming every case is
+// rejected, and the list is refused on any other disposition.
+func TestCheckPartialEnumeratesMissingCases(t *testing.T) {
+	cases := []struct {
+		name   string
+		mutate func(*inventory, *mapping)
+		want   string
+	}{
+		{"accepts a partial entry that names its missing case", func(*inventory, *mapping) {}, ""},
+		{"partial without missingCases", func(_ *inventory, m *mapping) {
+			m.Entries[0].MissingCases = nil
+		}, "enumerate its missingCases"},
+		{"partial with an empty list", func(_ *inventory, m *mapping) {
+			m.Entries[0].MissingCases = []string{}
+		}, "enumerate its missingCases"},
+		{"unknown case id", func(_ *inventory, m *mapping) {
+			m.Entries[0].MissingCases = []string{"analytics › typo"}
+		}, "not an upstream case"},
+		{"duplicate case id", func(_ *inventory, m *mapping) {
+			m.Entries[0].MissingCases = []string{"analytics › ported", "analytics › ported"}
+		}, "duplicate missingCases"},
+		{"every case missing", func(_ *inventory, m *mapping) {
+			m.Entries[0].MissingCases = []string{"official › runs", "analytics › ported"}
+		}, "classify the file pending"},
+		{"a case that is also designed out", func(_ *inventory, m *mapping) {
+			m.Entries[0].DesignedOutCases = []string{"analytics › ported"}
+		}, "both missing and designed out"},
+		{"ambiguous case id", func(inv *inventory, _ *mapping) {
+			inv.Files[0].Cases = append(inv.Files[0].Cases, inv.Files[0].Cases[1])
+		}, "ambiguous"},
+		{"missingCases on a ported entry", func(_ *inventory, m *mapping) {
+			m.Entries[0].Disposition = "ported"
+		}, "only partial entries"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			inv, m, evidence, div := partialEntry()
+			tc.mutate(&inv, &m)
+			root, invPath, mapPath := writeRepo(t, inv, m, evidence, div)
+			err := check(invPath, mapPath, "docs/parity/DIVERGENCES.md", root, false)
+			if tc.want == "" {
+				if err != nil {
+					t.Fatalf("partial entry with missingCases rejected: %v", err)
+				}
+				return
+			}
+			if err == nil || !strings.Contains(err.Error(), tc.want) {
+				t.Fatalf("error %v does not contain %q", err, tc.want)
+			}
+		})
+	}
+}

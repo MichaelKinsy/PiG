@@ -80,6 +80,10 @@ type mappingEntry struct {
 	// designed out inside a ported or partial file. The remaining cases are
 	// covered by the entry's verified evidence; the file itself is not designed out.
 	DesignedOutCases []string `json:"designedOutCases,omitempty"`
+	// MissingCases enumerates the upstream case IDs (exact inventory ids) a
+	// partial entry does not cover yet (AGENTS.md: a partial disposition
+	// enumerates the missing cases). Required on every partial entry, forbidden elsewhere.
+	MissingCases []string `json:"missingCases,omitempty"`
 }
 
 var (
