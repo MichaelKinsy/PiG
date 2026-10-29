@@ -163,10 +163,10 @@ func TestWritable(t *testing.T) {
 	t.Run("is the attempt's until it is sealed: Set returns what AssertUsable refuses, even for the same value", func(t *testing.T) {
 		c, _ := newCounter(t, nil)
 		c.owner.sealed = errors.New("sealed")
-		if err := c.writable.Set(1); err != c.owner.sealed {
+		if err := c.writable.Set(1); !errors.Is(err, c.owner.sealed) {
 			t.Fatalf("Set = %v, want the seal's error", err)
 		}
-		if err := c.writable.Set(2); err != c.owner.sealed || c.writable.Value() != 1 {
+		if err := c.writable.Set(2); !errors.Is(err, c.owner.sealed) || c.writable.Value() != 1 {
 			t.Fatalf("Set = %v, value %v", err, c.writable.Value())
 		}
 	})
