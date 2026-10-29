@@ -20352,11 +20352,17 @@
       "origin": "release note",
       "commits": [
         {
+          "hash": "1f99dde9d0",
+          "date": "2026-10-29"
+        },
+        {
           "hash": "903bfaba9a",
           "date": "2026-10-29"
         }
       ],
-      "tests": []
+      "tests": [
+        "internal/codingagent/footer_startup_thinking_test.go::TestNewFooterShowsTheSessionThinkingLevelBeforeTheStartupBind"
+      ]
     },
     {
       "id": "BF-905f3d0",

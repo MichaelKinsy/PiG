@@ -10743,8 +10743,8 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **User impact:** Wrong display
 - **Platform:** All platforms
 - **Fixed in:** Unreleased
-- **Fix commits:** `903bfaba9a` (2026-10-29)
-- **Tests:** None recorded.
+- **Fix commits:** `1f99dde9d0` (2026-10-29), `903bfaba9a` (2026-10-29)
+- **Tests:** `internal/codingagent/footer_startup_thinking_test.go::TestNewFooterShowsTheSessionThinkingLevelBeforeTheStartupBind`
 - **Release note:** The footer's thinking level no longer reads `thinking off` in the first frames of an interactive start. PiG drew the footer and the editor border before the startup bind told them the Session's level, so a frame painted in that window showed `• thinking off` (and the neutral border) where Pi shows the configured level, `• medium` by default; with an extension loaded the bind comes later and the window is longer. The Session's level was right all along (`get_state` and the first request carry it); only the presentation lagged. Pi builds its footer with the Session and reads `session.state.thinkingLevel` on every render (`footer.ts` `render`, `interactive-mode.ts` `init`), so the footer and the editor are now seeded with the Session's level when they are built, for the default level, `--thinking` and settings overrides, and `off`, whichever extension host is loaded.
 
 ### BF-905f3d0
