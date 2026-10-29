@@ -93,7 +93,7 @@ func releaseNotes(root, since, target string) (string, error) {
 
 	for _, sec := range upgrading {
 		fmt.Fprintf(&b, "## %s\n\n", sec)
-		writeBullets(&b, bySection[sec])
+		writeUpgrading(&b, bySection[sec])
 	}
 	for _, sec := range []string{"Added", "Changed"} {
 		if len(bySection[sec]) == 0 {
@@ -116,6 +116,33 @@ func releaseNotes(root, since, target string) (string, error) {
 		return "", err
 	}
 	return b.String(), nil
+}
+
+// embedderBreak opens an Upgrading bullet that breaks a program importing PiG as a Go module. Only a bullet that opens
+// with it goes under embedderHeading: a "Go API" bullet that states an opt-in or a new import for something no release
+// had stays a plain Upgrading bullet.
+const (
+	embedderBreak   = "**Breaking (Go API):**"
+	embedderHeading = "Breaking changes for Go embedders"
+)
+
+// writeUpgrading lists the Upgrading bullets, then the breaking Go API ones under their own heading.
+func writeUpgrading(b *strings.Builder, items []string) {
+	var general, breaking []string
+	for _, it := range items {
+		if strings.HasPrefix(it, embedderBreak) {
+			breaking = append(breaking, it)
+		} else {
+			general = append(general, it)
+		}
+	}
+	if len(general) > 0 {
+		writeBullets(b, general)
+	}
+	if len(breaking) > 0 {
+		fmt.Fprintf(b, "### %s\n\n", embedderHeading)
+		writeBullets(b, breaking)
+	}
 }
 
 func writeBullets(b *strings.Builder, items []string) {
