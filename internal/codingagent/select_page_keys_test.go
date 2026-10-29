@@ -30,7 +30,7 @@ func TestCustomEditorGivesSelectionPageKeysToAnOpenAutocomplete(t *testing.T) {
 		t.Fatalf("with no autocomplete open, a key bound to the paste action pasted %d times, want 1", pasted)
 	}
 	probe.HandleInput("/")
-	if !tui.CapturesSelectPageInput(probe) {
+	if !tui.CapturesViewportInput(probe) {
 		t.Fatal("an editor with an open autocomplete list must capture the selection page keys")
 	}
 	probe.HandleInput(selectPageDownKey)
@@ -55,7 +55,7 @@ func TestTrustSelectorPageKeysMoveToTheEnds(t *testing.T) {
 	if len(selector.trustOptions) < 2 {
 		t.Fatalf("trust options = %d, want a list to move in", len(selector.trustOptions))
 	}
-	if !tui.CapturesSelectPageInput(selector) {
+	if !tui.CapturesViewportInput(selector) {
 		t.Fatal("the trust selector must capture the selection page keys")
 	}
 	selector.HandleInput(selectPageDownKey)
@@ -70,7 +70,7 @@ func TestTrustSelectorPageKeysMoveToTheEnds(t *testing.T) {
 
 func TestFirstTimeSetupPageKeysMoveToTheEnds(t *testing.T) {
 	setup := NewFirstTimeSetupComponent(FirstTimeSetupOptions{})
-	if !tui.CapturesSelectPageInput(setup) {
+	if !tui.CapturesViewportInput(setup) {
 		t.Fatal("first-time setup must capture the selection page keys")
 	}
 	setup.HandleInput(selectPageDownKey)
@@ -89,7 +89,10 @@ func TestFirstTimeSetupPageKeysMoveToTheEnds(t *testing.T) {
 }
 
 func TestSessionSelectorCapturesSelectionPageKeys(t *testing.T) {
-	if !tui.CapturesSelectPageInput(&SessionSelectorComponent{}) {
-		t.Fatal("the session selector must capture the selection page keys")
+	if !tui.CapturesViewportInput(&SessionSelectorComponent{}) {
+		t.Fatal("the session selector must capture the viewport keys")
+	}
+	if tui.CapturesViewportInput(&SessionSelectorComponent{renameMode: true}) {
+		t.Fatal("the session selector must not capture the viewport keys while renaming")
 	}
 }

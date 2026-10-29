@@ -302,8 +302,8 @@ func TestHuggingFaceSearchPageKeysMoveTenResults(t *testing.T) {
 		selections <- model
 	}()
 	waitFor(t, view, "Type at least 2 characters")
-	if !view.CapturesSelectPageInput() {
-		t.Fatal("the search view must capture the selection page keys")
+	if !view.CapturesViewportInput() {
+		t.Fatal("the search view must capture the viewport keys")
 	}
 	view.HandleInput("m")
 	view.HandleInput("o")
@@ -324,7 +324,7 @@ func TestHuggingFaceSearchPageKeysMoveTenResults(t *testing.T) {
 		t.Fatalf("selection = %q, want owner/model-14", got)
 	}
 	view.ShowStatus("Done", "finished")
-	if view.CapturesSelectPageInput() {
-		t.Fatal("a status view has no selection and must not capture the page keys")
+	if view.CapturesViewportInput() {
+		t.Fatal("a status view has no selection and must not capture the viewport keys")
 	}
 }

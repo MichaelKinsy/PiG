@@ -13,15 +13,13 @@
 #   Down, Left                   -> "Model Name: Model Two"
 # Pig previously moved the cursor ten rows on PageDown and skipped the refilter
 # when the query did not change, so both waits below timed out on Pig.
-# Pi 1.0.0 draws fullscreen by default (re-probed 2026-10-02, 100x35): the alternate screen
-# binds PageDown to the viewport (tui.altScreen.pageDown, tui-alt-screen.ts:747) and consumes
-# it before the model selector, so PageDown is no longer an unbound picker key. Right is
-# unbound in both modes (it reaches searchInput as cursorRight and leaves the query unchanged),
+# Since Pi e7a0df27 PageDown is no longer an unbound picker key: model-selector.ts handleInput pages the
+# selection with getSelectPageIndex (and the focused picker keeps the fullscreen viewport keys, #7629).
+# Right is unbound in both modes (it reaches searchInput as cursorRight and leaves the query unchanged),
 # so it carries the same refilter contract: the selection returns to the first match.
-# The last step pins the fullscreen PageDown contract itself. From "Model Name: Model One",
-# PageDown then Down must wrap to model-two on Pi (the viewport took PageDown, already at the
-# end, so the frame is unchanged). PiG previously handed PageDown to the selector, which
-# refiltered to model-two, and Down then left model-one selected on the final frame.
+# The last step pins the PageDown contract itself. From "Model Name: Model One" (the last of two rows),
+# PageDown stays on the last row (a page down is clamped to the list) and refilters nothing, so Down then
+# wraps to model-two.
 # The first step waits for the background refresh, the settled state that
 # re-anchors the selection on both sides (see 11-model-picker-arrow-wrap).
 
