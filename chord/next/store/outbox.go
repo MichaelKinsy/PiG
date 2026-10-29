@@ -50,8 +50,6 @@ type OutboxCommit struct {
 // through, so the element is kept as it was parsed. Its kind is its `kind` member when it has a string one.
 type UnknownWrite struct {
 	Value delta.JsonValue
-	// Panic is what decoding the element as a typed write panicked with, nil when it only did not decode to the same JSON.
-	Panic any
 }
 
 // StoreWriteKind is the `kind` member of the element, "" when it has none.
@@ -177,7 +175,8 @@ func (outbox *Outbox) read(afterSeq, limit int64, ctx context.Context) ([]Outbox
 // stored form of a write the store recorded does), any other (an unknown kind, a malformed or extra member, a value that
 // is no object) is an UnknownWrite carrying it as parsed, and a Raw that is no array has no Writes. decodeStoreWrite
 // assumes a schema-checked object (archive.go's CheckWrite) and fills what is missing with zero values, so its result
-// is trusted only through that round trip; a panic on a member of the wrong shape falls back to an UnknownWrite too.
+// is trusted only through that round trip. It reads every member with a checked assertion and never panics on a member
+// of the wrong shape or a missing one (TestDecodeStoreWriteNeverPanicsOnMalformedWrites), so there is no recover.
 func parseRecordedWrites(text string) (raw delta.JsonValue, writes []StoreWrite, err error) {
 	if err := jsonparse.Validate([]byte(text)); err != nil {
 		return nil, nil, err
@@ -199,12 +198,7 @@ func parseRecordedWrites(text string) (raw delta.JsonValue, writes []StoreWrite,
 
 // typedWrite is a recorded element as the write it decodes to when that write is the same JSON, else as an UnknownWrite
 // (see parseRecordedWrites).
-func typedWrite(item delta.JsonValue) (write StoreWrite) {
-	defer func() {
-		if reason := recover(); reason != nil {
-			write = &UnknownWrite{Value: item, Panic: reason}
-		}
-	}()
+func typedWrite(item delta.JsonValue) StoreWrite {
 	if object, ok := item.(*delta.JsonObject); ok {
 		if typed, err := decodeStoreWrite(object, "outbox"); err == nil && sameJSON(typed, item) {
 			return typed
