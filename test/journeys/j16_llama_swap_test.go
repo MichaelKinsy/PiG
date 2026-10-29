@@ -74,6 +74,16 @@ func mountSwap(p *harness.Provider) {
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(map[string]any{"object": "list", "data": data})
 	}
+	// GET /props needs ?model= and answers from that model's own server (README: "requires ?model={model_id}").
+	p.Handle("GET /props", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		if r.URL.Query().Get("model") == "" {
+			w.WriteHeader(http.StatusNotFound)
+			_, _ = w.Write([]byte(swapEnvelope("no model id could be identified", "not_found_error", "not_found")))
+			return
+		}
+		_, _ = w.Write([]byte(`{"chat_template":"{{ messages }}"}`))
+	})
 	p.Handle("GET /models", catalog)
 	p.Handle("GET /v1/models", catalog)
 }
