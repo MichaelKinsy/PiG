@@ -1383,9 +1383,9 @@ rationale = "Pi cae8d69e5 (#10286) adds openrouter-cost.ts; ai/openrouter_cost.g
 [[files]]
 path = "packages/ai/src/utils/overflow.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:ai/overflow_upstream_test.go#TestOverflowUpstream"]
+rationale = "Pi d3398f82 adds LiteLLM ContextWindowExceededError to the overflow patterns; ai/overflow.go gains /context window exceeded/i (lane B2)."
 
 [[files]]
 path = "packages/ai/src/utils/provider-env.ts"
@@ -1404,9 +1404,9 @@ rationale = "PORT_MAP row is ✅ ported (ai/provider_retry.go). coverage.md repo
 [[files]]
 path = "packages/ai/src/utils/retry.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:ai/assistant_retry_test.go#TestIsRetryableAssistantErrorClassification"]
+rationale = "Pi c719d5b0 stops retrying Zhipu usage-limit code 1308; ai/assistant_retry.go nonRetryableProviderLimitErrorPattern carries it (lane B2)."
 
 [[files]]
 path = "packages/ai/src/utils/sanitize-unicode.ts"
