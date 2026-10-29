@@ -101,6 +101,7 @@ type Piglet struct {
 	Extensions       []ExtensionEntry    `yaml:"extensions,omitempty"`
 	Skills           []SkillEntry        `yaml:"skills,omitempty"`
 	Discovery        *Discovery          `yaml:"discovery,omitempty"`
+	ContextFiles     string              `yaml:"contextFiles,omitempty"` // pig additive (D211): trusted-only withholds an untrusted project's context files.
 	SystemPrompt     *PromptRef          `yaml:"systemPrompt,omitempty"`
 	AgentEnv         *AgentEnvironment   `yaml:"agentEnv,omitempty"`
 	Model            *ModelConfig        `yaml:"model,omitempty"`
@@ -485,6 +486,9 @@ func (p *Piglet) Validate() error {
 	if err := validateDiscovery(p.Discovery); err != nil {
 		return err
 	}
+	if err := validateContextFiles(p.ContextFiles); err != nil {
+		return err
+	}
 	if err := validateStrip("strip", p.Strip); err != nil {
 		return err
 	}
@@ -674,6 +678,25 @@ func validateToolAllowlist(location string, values *[]string, allowed []string) 
 		seen[name] = struct{}{}
 	}
 	return nil
+}
+
+// Context file modes a Piglet may set. ContextFilesAll is Pi's behaviour: every project context file loads. ContextFilesTrustedOnly withholds the project's context files until the project is trusted.
+const (
+	ContextFilesAll         = "all"
+	ContextFilesTrustedOnly = "trusted-only"
+)
+
+func validateContextFiles(mode string) error {
+	switch mode {
+	case "", ContextFilesAll, ContextFilesTrustedOnly:
+		return nil
+	}
+	return fmt.Errorf("contextFiles must be %q or %q, got %q", ContextFilesAll, ContextFilesTrustedOnly, mode)
+}
+
+// WithholdsUntrustedContextFiles reports whether the Piglet withholds an untrusted project's context files. A nil Piglet does not.
+func (p *Piglet) WithholdsUntrustedContextFiles() bool {
+	return p != nil && p.ContextFiles == ContextFilesTrustedOnly
 }
 
 func validateDiscovery(discovery *Discovery) error {
