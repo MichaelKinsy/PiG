@@ -76,8 +76,8 @@ func TestPhotonImagesMatchPiWhenAnImageOnePixelAcrossKeepsShrinking(t *testing.T
 // table in the output says which quality was used. The limits are the base64 lengths of Photon's own JPEG at each quality and
 // one byte under them (EncodeJPEG writes Photon's bytes: TestEncodeJPEGWritesPhotonsBytes), so each quality of the ladder
 // fits exactly at its limit and is passed over one byte below it. The pixels are a PNG that Photon decodes exactly, declared
-// as image/jpeg, which is what sends a decoded image down the JPEG-first order: a real JPEG's pixels depend on the decoder, and
-// the sizes at a boundary with them (D165).
+// as image/jpeg, which is what sends a decoded image down the JPEG-first order and keeps the sizes at a boundary independent of
+// the source's JPEG coding.
 func TestPhotonImagesMatchPiOnTheJPEGQualityLadder(t *testing.T) {
 	picture := noisy(300, 300)
 	source := encodePNG(t, picture)

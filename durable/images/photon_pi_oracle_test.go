@@ -15,11 +15,10 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
-// D165: runs Pi's images/index.ts createPhotonImages (Photon 0.3.3 under Node, types stripped) and PiG's CreatePhotonImages over
+// Runs Pi's images/index.ts createPhotonImages (Photon 0.3.3 under Node, types stripped) and PiG's CreatePhotonImages over
 // one corpus and compares what the model receives: whether an image can be prepared, its format, the resized and convertedFrom
-// records, the decoded size, and the bytes: every byte when the image decodes the way Photon decodes it (PNG, GIF and BMP; the
-// resample and both encoders are Photon's own, byte for byte), the pixels within the D165 tolerance when it comes from a JPEG,
-// whose Go decoder does not give Photon's pixels.
+// records, the decoded size, and every byte: the decoders (JPEG and WebP included), the resample and both encoders are ports of
+// Photon's, byte for byte.
 type oracleCase struct {
 	name      string
 	data      []byte
@@ -60,10 +59,10 @@ func oracleCorpus(t *testing.T) []oracleCase {
 	for orientation := 1; orientation <= 8; orientation++ {
 		cases = append(cases, oracleCase{
 			name: "jpeg with EXIF orientation " + string(rune('0'+orientation)),
-			data: withOrientation(jpegSource, orientation, orientation%2 == 0, orientation == 5), mime: "image/jpeg", limits: def, tolerance: 6,
+			data: withOrientation(jpegSource, orientation, orientation%2 == 0, orientation == 5), mime: "image/jpeg", limits: def,
 		})
 	}
-	cases = append(cases, oracleCase{name: "jpeg that must be resized", data: withOrientation(encodeJPEG(t, pixels(3000, 1500)), 3, false, false), mime: "image/jpeg", limits: def, tolerance: 6})
+	cases = append(cases, oracleCase{name: "jpeg that must be resized", data: withOrientation(encodeJPEG(t, pixels(3000, 1500)), 3, false, false), mime: "image/jpeg", limits: def})
 	return cases
 }
 

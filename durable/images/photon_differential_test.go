@@ -10,8 +10,8 @@ import (
 	"github.com/MichaelKinsy/PiG/durable/tools"
 )
 
-// D165: the processor is native Go, but for an image it decodes the way Photon does (PNG here) its resample and both of its
-// encoders are ports of Photon's, so the prepared image is Photon's, byte for byte. This is the differential that locks it: for the
+// The processor is native Go, but its decoders, its resample and both of its encoders are ports of Photon's, so the prepared
+// image is Photon's, byte for byte. This is the differential that locks it: for the
 // same input and limits the prepared image has Photon's format, dimensions and resized record, and Photon 0.3.3's own bytes.
 //
 // testdata/scene.png is a 600x400 synthetic scene (gradients, a disc, a diagonal stripe, a white grid: edges to resample).
