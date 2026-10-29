@@ -828,6 +828,7 @@ func (m *InteractiveMode) newFooter() *FooterComponent {
 	footer := NewFooterComponentForSession(m, NewFooterDataProvider())
 	footer.SetSubscriptionResolver(m.footerUsingSubscription)
 	footer.SetModel(m.opts.Model)
+	footer.SetThinkingLevel(m.sessionThinkingLevel())
 	return footer
 }
 

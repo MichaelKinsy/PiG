@@ -1624,6 +1624,8 @@ func (m *InteractiveMode) Init(ctx context.Context) (err error) {
 	m.editor.SetAutocomplete(m.buildAutocompleteProvider())
 	m.applyEditorMaxVisible()
 	m.statusLine = m.newFooter() // timings rebound after agent constructed
+	m.thinkingLevel = m.sessionThinkingLevel()
+	m.editor.ThinkingLevel = m.thinkingLevel
 	m.statusLine.SetCwd(m.opts.CWD)
 	// Set auto-compact indicator from settings (nil == true default).
 	autoCompact := m.opts.Settings.Compaction == nil ||
