@@ -831,6 +831,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-D203](#bf-d203) | registerProvider with an empty `apiKey` leaves the provider unconfigured where Pi treats the empty string as… | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D207](#bf-d207) | TuiAltScreen.children is a copy in the Go, Rust, Python and Lisp SDKs, where Pi's is a live array | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D208](#bf-d208) | From inside a component's render, a TuiAltScreen of the Go, Rust, Python and Lisp SDKs fails the calls that… | A Pi defect that PiG fixed first | All platforms | Unreleased |
+| [BF-D212](#bf-d212) | `/llama` explains a 404 from llama-swap's missing load and unload endpoints, where Pi shows "llama.cpp… | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-a076a50](#bf-a076a50) | A model request on a reused connection gets the full HTTP idle timeout to receive its first response bytes… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-a09da26](#bf-a09da26) | `pi.getSettings()` in a subprocess extension lists the settings in Pi's order: the global settings file's… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-a09da26-2](#bf-a09da26-2) | A bash or PowerShell tool card reads the result's `truncation` details by their exact keys, as Pi does: a… | PiG's own defect | Windows | 0.5.0 |
@@ -12556,6 +12557,21 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `1d6732bee8` (2026-10-28), `395ad20127` (2026-10-28), `5a671a6be6` (2026-10-28), `be8abc8c03` (2026-10-28)
 - **Tests:** `test/extension-conformance/tui_alt_screen_test.go::TestTuiAltScreenFrameReentryAcrossSDKs`
 
+### BF-D212
+
+**`/llama` explains a 404 from llama-swap's missing load and unload endpoints, where Pi shows "llama.cpp…**
+
+- **Source:** A Pi defect that PiG fixed first (divergence D212)
+- **Symptom:** none claimed.
+- **Root cause:** Pi's text names neither the server nor the way that works, and the reporter took it for a PiG bug. The way that works is the models.json provider, where PiG and Pi behave the same (journey `llama-swap-models-json`); `/llama` stays a llama.cpp router manager.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Pi issue:** none recorded
+- **Removed when Pi fixes it:** Pi's `/llama` names llama-swap itself, or can manage llama-swap models; or the owner withdraws the decision. Then the call-site marker, the `GET /running` probe, the docs section and this record go.
+- **Fix commits:** `3f46dee992` (2026-10-28)
+- **Tests:** `internal/codingagent/llama/client_http_oracle_test.go::TestLlamaClientRequestsMatchPi`, `internal/codingagent/llama/llamaswap_test.go::TestLlamaClientAndCatalogAgainstLlamaSwapAndLlamaServerMatchPi`, `internal/codingagent/llama/llamaswap_test.go::TestLlamaCommandAgainstLlamaSwapExplainsTheMissingEndpoints`, `internal/codingagent/llama/llamaswap_test.go::TestLlamaCommandKeepsPisTextForARouter404`, `internal/codingagent/llama/llamaswap_test.go::TestLoadAndUnloadKeepPisTextForA404ThatIsNotLlamaSwap`, `internal/codingagent/llama/llamaswap_test.go::TestLoadAndUnloadRecognizeLlamaSwapByItsErrorEnvelope`
+
 ### BF-a076a50
 
 **A model request on a reused connection gets the full HTTP idle timeout to receive its first response bytes…**
@@ -18973,6 +18989,7 @@ Each divergence record is accounted for here. A divergence that fixes a Pi defec
 | D205 | Fullscreen frames scroll the rows that only moved | deliberate difference |
 | D207 | TuiAltScreen.children is a copy in the Go, Rust, Python and Lisp SDKs, where Pi's is a live array | [BF-D207](#bf-d207) |
 | D208 | From inside a component's render, a TuiAltScreen of the Go, Rust, Python and Lisp SDKs fails the calls that… | [BF-D208](#bf-d208) |
+| D212 | `/llama` explains a 404 from llama-swap's missing load and unload endpoints, where Pi shows "llama.cpp… | [BF-D212](#bf-d212) |
 
 ## Fix-titled commits that are not bugs in a release
 
