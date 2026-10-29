@@ -41,9 +41,9 @@ func observeOf[T any](ctx context.Context, m *mountSource[T], observer durable.O
 	guarded := session.GuardObserver(observer, func() { once.Do(func() { m.hub.release(m.id); m.closeCore() }) }, m.hub.report)
 	m.hub.bind(m.id, func(f rawFrame) {
 		if value, ok := m.advance(f); ok {
-			guarded.Advance(m.hub.deliveryContext(), chord.WatchChange[T]{Value: value, Ops: f.ops})
+			guarded.Advance(m.hub.deliveryContext(), chord.WatchCall[T]{Kind: chord.WatchCallValue, Value: value, Ops: f.ops})
 		}
-	}, func() { guarded.End(nil) })
+	}, func() { guarded.End(durable.WatchEnd{Kind: durable.WatchEnded}) })
 	if err := ctx.Err(); err != nil {
 		guarded.Detach()
 		return nil, context.Cause(ctx)

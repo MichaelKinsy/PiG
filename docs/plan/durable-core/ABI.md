@@ -213,7 +213,7 @@ The host keeps a snapshot until the core says it holds no work for it. The core 
 | 1 | `published` | JSON: committed document ops by document, appended entry IDs, task status changes, submission settlements; drives `Submission.wait`, watches and Chord clients (§9) |
 | 2 | `api_result` | `u32 requestId`, JSON |
 | 3 | `tx_result` | `u32 txId`, JSON (`ready`, `waiting` for the line, an op's result, or `rejected` with Pi's error) |
-| 4 | `report` | JSON for `HarnessOptions.onReport` |
+| 4 | `report` | JSON `{name, message, info, span?}` for `HarnessOptions.onReport`: `info` is the `ReportInfo` of the `Report`, tagged by `kind` (`task_error`, `task_faulted`, `task_interrupted`, `task_outdated`, `migration_failed`, `extension_error`, `host_error`, `listener_error`, `storage_failed`); a `task_outdated` `reason` is `missing_task`, `task_too_old` or `migration_failed` |
 | 5 | `sidecar` | JSON `{conversationId, rows}`: the core wrote a sidecar chunk in this step's commits (diagnostics only) |
 | 6 | `progress_ack` | `u32 waitId`, `u8 outcome` (0 committed, 1 rejected), JSON error when rejected: settles the promise of a tool's `api.details()` |
 | 7 | `doc_cache` | JSON `{cached, idle, attached, sweeps, held}`: the core's document cache sizes, published after a step in which they changed; the host's synchronous `documentCacheSizes` replicates them (`attached` counts the incarnations a document watch or a held document pins; `held` the incarnations with changes a deferred commit holds in memory, section 8.2) |

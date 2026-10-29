@@ -339,7 +339,7 @@ func run(ctx context.Context, o options) (err error) {
 			Models: models, Registry: registry,
 			Now:      func() float64 { return math.Floor(virtualNow()) },
 			Settings: func() *harness.HarnessSettings { return &settings },
-			OnReport: func(err error, _ durable.ReportInfo) { fmt.Fprintln(os.Stderr, "report:", err) },
+			OnReport: func(report durable.Report) { fmt.Fprintln(os.Stderr, "report:", report.Error) },
 		},
 		Monotonic:   virtualNow,
 		TimerLead:   time.Nanosecond,

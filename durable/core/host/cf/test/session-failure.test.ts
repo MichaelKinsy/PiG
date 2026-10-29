@@ -30,14 +30,14 @@ test("a failed commit rejects its caller with the Storage's error, later calls w
   process.env.DCORE_WASM = wasm
   const storage = new FailingStorage()
   const reports: unknown[] = []
-  const harness = await Harness.open(storage, { models: models(), registry: createRegistry(), onReport: (e: unknown) => reports.push(e) } as any, context)
+  const harness = await Harness.open(storage, { models: models(), registry: createRegistry(), onReport: (report: { error: unknown }) => reports.push(report.error) } as any, context)
   const conversation = await harness.root(context, { agent: { model: { provider: "faux", modelId: "faux-1" } } } as any)
   storage.failing = true
   await assert.rejects(conversation.commit(tx => tx.appendEntry(conversation.id, { kind: "message", model: [{ role: "user", content: "x", timestamp: 0 }] } as any), context), /disk gone/)
   await assert.rejects(harness.root(context, {} as any), (error: unknown) => error instanceof SessionFailed && (error.cause as Error)?.message === "disk gone")
   await assert.rejects(conversation.entries({}, 5, undefined, context), SessionFailed)
-  const end = await (harness as unknown as { closed: Promise<{ reason: string; error?: Error }> }).closed
-  assert.equal(end.reason, "failed")
+  const end = await (harness as unknown as { closed: Promise<{ kind: string; error?: Error }> }).closed
+  assert.equal(end.kind, "failed")
   assert.equal(end.error?.message, "disk gone")
 })
 
@@ -51,5 +51,5 @@ test("a wait on a turn in flight rejects SessionFailed when the turn's own commi
   const conversation = await harness.root(context, { agent: { model: { provider: "faux", modelId: "faux-1" } } } as any)
   const submission = await conversation.submit({ type: "input", content: "go" } as any, context)
   await assert.rejects(submission.wait(context), (error: unknown) => error instanceof SessionFailed && (error.cause as Error)?.message === "disk gone")
-  assert.equal((await (harness as unknown as { closed: Promise<{ reason: string }> }).closed).reason, "failed")
+  assert.equal((await (harness as unknown as { closed: Promise<{ kind: string }> }).closed).kind, "failed")
 })

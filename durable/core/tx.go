@@ -475,7 +475,7 @@ func (h *handler) publish(pub *session.Publication) {
 	var out abi.Chunks
 	item := make([]byte, 0, 128)
 	if pub.Memory {
-		// A commit held in memory (session/held.go) is shown to watches and views now and to the host's subscribeCommits listeners
+		// A commit held in memory (session/held.go) is shown to watches and views now and to the host's observeCommits observers
 		// once stored. The host's internal observers (observeCommits) see it in a notice with no sequence number and no tables.
 		if h.changes {
 			out.Append(h.appendChanges(append(item, `{"memory":true,"changes":`...), pub.Changes, valueFromOps))
@@ -1088,9 +1088,9 @@ func storedMode(pub *session.Publication) valueMode {
 	return valueWhole
 }
 
-// commitChanges renders the CommitPublication changes of Session.subscribeCommits (types.ts CommitChange): a table
-// write is {type, value: record}; a document change {type: "document", record, conversationId, version, value, ops}
-// with null value and version absent for a retirement; a copy {type: "document.copy", record, conversationId, source}.
+// commitChanges renders the CommitPublication changes of Session.observeCommits (types.ts CommitChange): a table
+// write is {type, value: record}; a document change {type: "document", kind: "change", record, conversationId, version, value,
+// ops}, a retirement {type: "document", kind: "retire", record, conversationId}; a copy {type: "document.copy", record, conversationId, source}.
 //
 // Not inlined: only a commit listener asks for changes, and an inlined copy would be compiled by V8 with its hot caller, publish.
 //
@@ -1105,15 +1105,22 @@ func commitChanges(changes []session.Change, sent *idSet, mode valueMode) []any 
 			o.Set("value", c.Record)
 		case session.ChangeDocument:
 			o.Set("type", "document")
+			id := session.ID(numOf(c.Record, "id"))
+			if c.Value == nil {
+				sent.remove(id)
+				o.Set("kind", "retire")
+				o.Set("record", c.Record)
+				if c.ConversationID != 0 {
+					o.Set("conversationId", float64(c.ConversationID))
+				}
+				break
+			}
+			o.Set("kind", "change")
 			o.Set("record", c.Record)
 			if c.ConversationID != 0 {
 				o.Set("conversationId", float64(c.ConversationID))
 			}
-			id := session.ID(numOf(c.Record, "id"))
 			switch {
-			case c.Value == nil:
-				sent.remove(id)
-				o.Set("value", nil)
 			case mode == valueFromOps && sent.has(id) && len(c.Ops) > 0 && c.Ops[0].Verb != delta.Replace:
 				// The host holds the value this document had (a notice carried it) and applies the operations to it: a partial commit's
 				// notice costs its new text, not the length of the answer so far (host/cf/src/facade/harness.ts onNotice).

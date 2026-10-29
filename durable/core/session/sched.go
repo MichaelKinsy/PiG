@@ -266,7 +266,7 @@ func NewScheduler(sess *Session, loop *Loop, env Env) *Scheduler {
 		contexts: map[ID]*keptContext{}, failedMigrations: map[ID]failedMigration{}, migrations: map[ID]*migration{}, edges: map[ID]ID{}, settled: map[ID]taskNode{},
 		below: map[treeNode]*orderedSet[treeNode]{}, roots: newOrderedSet[ID](), unloaded: newOrderedSet[ID](), intent: newOrderedSet[ID](), runnable: newOrderedSet[ID](), finalizeChecks: newOrderedSet[ID](), waiters: map[ID]*orderedSet[ID]{}, sleeping: newOrderedSet[ID](), dropQueue: newOrderedSet[treeNode](), abandoned: newOrderedSet[ID](),
 	}
-	sess.OnFail = func(err error) { s.report(err, obj("type", "session_failed")) }
+	sess.OnFail = func(err error) { s.report(err, obj("kind", "storage_failed")) }
 	return s
 }
 
@@ -340,7 +340,7 @@ func reportTask(id ID, kind string, conversationID ID) *jv.Object {
 // definition: the code that failed is that extension's. Built-in tasks have none (scheduler.ts #aboutTask).
 func (s *Scheduler) aboutRecord(typ string, rec *jv.Object) *jv.Object {
 	kind, _ := getStr(rec, "kind")
-	info := obj("type", typ, "task", reportTask(mustInt(rec, "id"), kind, mustInt(rec, "conversationId")))
+	info := obj("kind", typ, "task", reportTask(mustInt(rec, "id"), kind, mustInt(rec, "conversationId")))
 	if task := s.env.Snapshot().Task(kind); task != nil && task.Extension != "" {
 		info.Set("extension", task.Extension)
 	}
@@ -350,7 +350,7 @@ func (s *Scheduler) aboutRecord(typ string, rec *jv.Object) *jv.Object {
 // aboutInvocation is the report info of a failure of an invocation's task: the task, and the extension that installed
 // the definition the invocation runs.
 func aboutInvocation(typ string, inv *invocation) *jv.Object {
-	info := obj("type", typ, "task", reportTask(inv.taskID, inv.kind, inv.conversationID))
+	info := obj("kind", typ, "task", reportTask(inv.taskID, inv.kind, inv.conversationID))
 	if inv.extension != "" {
 		info.Set("extension", inv.extension)
 	}

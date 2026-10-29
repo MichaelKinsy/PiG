@@ -82,8 +82,9 @@ type RetryStatus struct {
 
 // CompactionStatus is the presentation of one live compaction task (spec §8.7, live.ts:34-43).
 type CompactionStatus struct {
-	TaskId durable.TaskId           `json:"taskId"`
-	Reason durable.CompactionReason `json:"reason"`
+	TaskId durable.TaskId `json:"taskId"`
+	// Trigger is what started it: compact(), a threshold, or a context overflow.
+	Trigger durable.CompactionReason `json:"trigger"`
 	// Blocking reports whether a generation waits for it: a compaction the generation owns.
 	Blocking bool `json:"blocking"`
 	Attempt  int  `json:"attempt"`
@@ -94,8 +95,9 @@ type CompactionStatus struct {
 // CompactionFailure is the newest compaction that failed since a compaction last produced a summary (spec §8.7,
 // live.ts:74-79).
 type CompactionFailure struct {
-	TaskId durable.TaskId           `json:"taskId"`
-	Reason durable.CompactionReason `json:"reason"`
+	TaskId durable.TaskId `json:"taskId"`
+	// Trigger is what started the compaction that failed.
+	Trigger durable.CompactionReason `json:"trigger"`
 	// Error is the failed or faulted outcome's error message, or why the scheduler orphaned the task.
 	Error string `json:"error"`
 }
@@ -190,7 +192,23 @@ type LiveState struct {
 var LiveDoc = durable.DefineDoc(durable.DocDefinition[LiveState]{
 	CommonDocDefinition: durable.CommonDocDefinition[LiveState]{
 		Kind:    "pi.live",
-		Version: 1,
+		Version: 2,
+		// Version 1 named a compaction's trigger `reason`, in `compactions` and `compactionFailure`.
+		Migrate: func(value durable.JsonObject, _ int) (LiveState, error) {
+			live := value.Clone()
+			if list, ok := value.Get("compactions"); ok {
+				statuses, _ := list.([]any)
+				renamed := make([]any, len(statuses))
+				for i, status := range statuses {
+					renamed[i] = renameReason(status.(durable.JsonObject))
+				}
+				live.Set("compactions", renamed)
+			}
+			if failure, ok := value.Get("compactionFailure"); ok {
+				live.Set("compactionFailure", renameReason(failure.(durable.JsonObject)))
+			}
+			return durable.FromJsonValue[LiveState](live)
+		},
 		CheckpointWhenRaw: func(value durable.JsonObject, _ []durable.Op, _ durable.CheckpointInfo) bool {
 			if generation, _ := value.Get("generation"); generation != nil {
 				return false
@@ -213,6 +231,19 @@ var LiveDoc = durable.DefineDoc(durable.DocDefinition[LiveState]{
 	},
 	DocumentSemantics: durable.NewLatestConversationSemantics(durable.ForkInitial).DocumentSemantics,
 })
+
+// renameReason is a copy of a version 1 compaction status or failure with `reason` renamed `trigger`, its keys in their
+// order (renameReason in live.ts).
+func renameReason(value durable.JsonObject) durable.JsonObject {
+	renamed := delta.NewJsonObject(value.Len())
+	for key, field := range value.All() {
+		if key == "reason" {
+			key = "trigger"
+		}
+		renamed.Set(key, field)
+	}
+	return renamed
+}
 
 // ProgressCommit is how the progress throttles commit a partial answer and running tool output into pi.live: deferred, so
 // storage gets them together, at the next commit that reads or writes pi.live or after Settings.Progress.PersistWithinMs.
@@ -378,8 +409,8 @@ func RemoveCompactionStatus(live *delta.Object, taskId durable.TaskId) error {
 // FailCompactionStatus removes the status of compaction task taskId and records that it failed with message.
 func FailCompactionStatus(live *delta.Object, taskId durable.TaskId, message string) error {
 	if status := FindCompactionStatus(live, taskId); status != nil {
-		reason, _ := status.Get("reason").(string)
-		if err := setJSON(live, "compactionFailure", CompactionFailure{TaskId: taskId, Reason: durable.CompactionReason(reason), Error: message}); err != nil {
+		trigger, _ := status.Get("trigger").(string)
+		if err := setJSON(live, "compactionFailure", CompactionFailure{TaskId: taskId, Trigger: durable.CompactionReason(trigger), Error: message}); err != nil {
 			return err
 		}
 	}

@@ -174,9 +174,10 @@ type HarnessOptions struct {
 	// next change.
 	OnWake func(wake Wake)
 	// OnReport receives failures that do not fail the calling operation, such as a panicking hook or listener, a task
-	// that faulted, and the error that fails the Session, once. info says what happened: a host can tell a failed
-	// Session (ReportSessionFailed, often a platform reset) from a faulted task (ReportTaskFaulted). A panic of its own is dropped.
-	OnReport func(err error, info durable.ReportInfo)
+	// that faulted, and the error that fails the Session, once: one durable.Report, the Error and what happened (Kind and
+	// the fields of its ReportInfo). A host can tell a failed Session (ReportStorageFailed, often a platform reset) from a
+	// faulted task (ReportTaskFaulted). A panic of its own is dropped.
+	OnReport func(report durable.Report)
 	// ReadOnly opens for reading only, as a viewer of a session that another process drives, for example a synced copy on a
 	// device that only shows it. Open recovers nothing: a running task stays as committed. Every commit with writes fails
 	// with *durable.ReadOnlySession before it reaches Storage, and so does Resume (a panic, as it throws upstream) and every
@@ -201,14 +202,14 @@ type TaskInspectionKind string
 
 const (
 	TaskInspectionRunning    TaskInspectionKind = "running"
-	TaskInspectionReady      TaskInspectionKind = "ready"
+	TaskInspectionPending    TaskInspectionKind = "pending"
 	TaskInspectionWaiting    TaskInspectionKind = "waiting"
 	TaskInspectionSleeping   TaskInspectionKind = "sleeping"
 	TaskInspectionCompleting TaskInspectionKind = "completing"
 	TaskInspectionBlocked    TaskInspectionKind = "blocked"
 )
 
-// TaskInspectionState is what the scheduler would do with a live task: running (an invocation is active); ready (the next scheduling pass reserves it; Migrates when its definition is newer and has a migration); waiting (on these live tasks: the live part of its on, or, when abort-marked, its live ordinary owned work); sleeping (until the Harness clock reaches Until); completing (outcome held until its ordinary owned work drains); blocked (no registered definition can take it, with Reason missing_task, task_too_old, or migration_failed and an optional Error).
+// TaskInspectionState is what the scheduler would do with a live task: running (an invocation is active); pending (the next scheduling pass reserves it; Migrates when its definition is newer and has a migration); waiting (on these live tasks: the live part of its on, or, when abort-marked, its live ordinary owned work); sleeping (until the Harness clock reaches Until); completing (outcome held until its ordinary owned work drains); blocked (no registered definition can take it, with Reason missing_task, task_too_old, or migration_failed and an optional Error).
 type TaskInspectionState struct {
 	Kind     TaskInspectionKind
 	Migrates bool

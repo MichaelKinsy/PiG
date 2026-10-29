@@ -5,10 +5,10 @@ import "github.com/MichaelKinsy/PiG/durable/core/jv"
 // TaskInspection is one live task with the state the scheduler derives for it (types.ts TaskInspection).
 type TaskInspection struct {
 	Record *jv.Object
-	// Kind is "running", "ready", "waiting", "sleeping", "completing" or "blocked".
+	// Kind is "running", "pending", "waiting", "sleeping", "completing" or "blocked".
 	Kind     string
 	Until    float64 // sleeping
-	Migrates bool    // ready
+	Migrates bool    // pending
 	On       []ID    // waiting
 	Reason   string  // blocked: missing_task, task_too_old, or migration_failed
 	Err      error   // blocked with migration_failed: why, when known
@@ -38,7 +38,7 @@ func (s *Scheduler) BlockedReason(rec *jv.Object) string {
 }
 
 // Inspect is scheduler.ts inspect: the scheduling state and every live task with its derived state. It runs no task
-// code: a pending migration shows as ready with Migrates, and only a migration the scheduler already tried, or one that
+// code: a pending migration shows as pending with Migrates, and only a migration the scheduler already tried, or one that
 // cannot exist, shows as failed.
 func (s *Scheduler) Inspect(snapshot Snapshot) (scheduling string, tasks []TaskInspection, err error) {
 	if _, err = s.loadScopes(false); err != nil {
@@ -91,6 +91,6 @@ func (s *Scheduler) inspectTask(rec *jv.Object, snapshot Snapshot) TaskInspectio
 		out.Kind, out.Reason, out.Err = "blocked", "migration_failed", missingMigration(rec, task)
 		return out
 	}
-	out.Kind, out.Migrates = "ready", migrates
+	out.Kind, out.Migrates = "pending", migrates
 	return out
 }

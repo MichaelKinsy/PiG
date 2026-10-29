@@ -261,7 +261,7 @@ func OpenReportingTestSession(report func(error)) Harness {
 	}
 	kernel := session.NewSessionImpl(controlled, hooks, nil, nil)
 	publications := &Publications{}
-	kernel.SubscribeCommits(func(_ context.Context, publication durable.CommitPublication) {
+	ObserveCommitsFunc(kernel, func(_ context.Context, publication durable.CommitPublication) {
 		publications.mu.Lock()
 		publications.items = append(publications.items, publication)
 		publications.mu.Unlock()
@@ -269,11 +269,40 @@ func OpenReportingTestSession(report func(error)) Harness {
 	return Harness{Storage: controlled, Session: kernel, Publications: publications}
 }
 
-// DocumentChanges returns the document changes of a publication.
+// CommitFunc is a CommitObserver that runs a function for each publication and ignores its end.
+type CommitFunc func(ctx context.Context, publication durable.CommitPublication)
+
+// Advance runs the function.
+func (f CommitFunc) Advance(ctx context.Context, publication durable.CommitPublication) {
+	f(ctx, publication)
+}
+
+// End ignores the end.
+func (CommitFunc) End(durable.WatchEnd) {}
+
+// ObserveCommitsFunc observes the commits of s (a Session or a Harness) with f and returns the observation's Detach.
+func ObserveCommitsFunc(s interface {
+	ObserveCommits(durable.CommitObserver) durable.CommitObservation
+}, f func(ctx context.Context, publication durable.CommitPublication)) func() {
+	return s.ObserveCommits(CommitFunc(f)).Detach
+}
+
+// DocumentChanges returns the document changes of a publication that carry a value: creations and updates, no retirements.
 func DocumentChanges(publication durable.CommitPublication) []durable.DocumentChange {
 	var changes []durable.DocumentChange
 	for _, change := range publication.Changes {
 		if document, ok := change.(durable.DocumentChange); ok {
+			changes = append(changes, document)
+		}
+	}
+	return changes
+}
+
+// DocumentRetireChanges returns the document retirements of a publication.
+func DocumentRetireChanges(publication durable.CommitPublication) []durable.DocumentRetireChange {
+	var changes []durable.DocumentRetireChange
+	for _, change := range publication.Changes {
+		if document, ok := change.(durable.DocumentRetireChange); ok {
 			changes = append(changes, document)
 		}
 	}

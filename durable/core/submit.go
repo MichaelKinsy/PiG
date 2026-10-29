@@ -271,7 +271,7 @@ func inspectedTask(t session.TaskInspection) *jv.Object {
 	state := jv.NewObject()
 	state.Set("kind", t.Kind)
 	switch t.Kind {
-	case "ready":
+	case "pending":
 		state.Set("migrates", t.Migrates)
 	case "sleeping":
 		state.Set("until", t.Until)

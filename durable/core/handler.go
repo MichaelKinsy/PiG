@@ -74,7 +74,7 @@ type handler struct {
 	reader      Reader // the host's synchronous read; nil loads every record at open
 	now         float64
 
-	// changes makes every published notice carry the commit's complete publication (Session.subscribeCommits).
+	// changes makes every published notice carry the commit's complete publication (Session.observeCommits).
 	changes bool
 	opened  bool
 	mode    string // "harness" or "session"

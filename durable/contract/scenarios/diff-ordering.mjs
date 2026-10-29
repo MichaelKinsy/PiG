@@ -218,12 +218,12 @@ const observe = async o => {
 		// A view with its own small window (Pi f3255de7): the first value holds the newest two entries, and more than four leave in one splice.
 		const view = await conversation.watch(context, { min: 2, max: 4 })
 		log("window attached", o.conv, view.value.entries.length, view.value.before ?? "-")
-		view.start(async ({ value, ops }) => { log("window", o.conv, value.entries.length, value.before ?? "-", ops.length); await pause(o.listener) })
+		view.start(async call => { if (call.kind !== "value") return; const { value, ops } = call; log("window", o.conv, value.entries.length, value.before ?? "-", ops.length); await pause(o.listener) })
 		observers.push(() => view.stop())
 	} else {
 		const view = await conversation.watch(context)
 		log("view attached", o.conv, view.value.entries.length)
-		view.start(async ({ value }) => log("view", o.conv, value.entries.length))
+		view.start(async call => { if (call.kind === "value") log("view", o.conv, call.value.entries.length) })
 		observers.push(() => view.stop())
 	}
 }

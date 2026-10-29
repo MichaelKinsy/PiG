@@ -395,14 +395,17 @@ func (watch typedWatch[T]) Value() T {
 }
 
 // Start installs the sole listener; a value that does not decode ends the watch with its listener_error.
-func (watch typedWatch[T]) Start(listener func(ctx context.Context, change WatchChange[T]) error) {
-	watch.WatchHandle.Start(func(ctx context.Context, change WatchChange[JsonObject]) error {
-		decoded, err := decodeValue[T](change.Value)
+func (watch typedWatch[T]) Start(listener func(ctx context.Context, call WatchCall[T]) error) {
+	watch.WatchHandle.Start(func(ctx context.Context, call WatchCall[JsonObject]) error {
+		if call.Kind == WatchCallFailed {
+			return listener(ctx, WatchCall[T]{Kind: WatchCallFailed, Error: call.Error})
+		}
+		decoded, err := decodeValue[T](call.Value)
 		if err != nil {
 			return err
 		}
 		watch.decoded.Store(&typedValue[T]{decoded})
-		return listener(ctx, WatchChange[T]{Value: decoded, Ops: change.Ops, Retired: change.Retired})
+		return listener(ctx, WatchCall[T]{Kind: WatchCallValue, Value: decoded, Ops: call.Ops, Retired: call.Retired})
 	})
 }
 
@@ -428,17 +431,21 @@ func WatchDoc[T any](ctx context.Context, observer DocumentObserver, token DocTo
 // typedObserver is an observer of decoded values over an erased one.
 type typedObserver[T any] struct{ observer Observer[T] }
 
-// Advance decodes the change; a value that does not decode panics, which the Session reports as the observer's
+// Advance decodes the call; a value that does not decode panics, which the Session reports as the observer's
 // listener_error, detaching and ending it.
-func (typed typedObserver[T]) Advance(ctx context.Context, change WatchChange[JsonObject]) {
-	value, err := decodeValue[T](change.Value)
+func (typed typedObserver[T]) Advance(ctx context.Context, call WatchCall[JsonObject]) {
+	if call.Kind == WatchCallFailed {
+		typed.observer.Advance(ctx, WatchCall[T]{Kind: WatchCallFailed, Error: call.Error})
+		return
+	}
+	value, err := decodeValue[T](call.Value)
 	if err != nil {
 		panic(err)
 	}
-	typed.observer.Advance(ctx, WatchChange[T]{Value: value, Ops: change.Ops, Retired: change.Retired})
+	typed.observer.Advance(ctx, WatchCall[T]{Kind: WatchCallValue, Value: value, Ops: call.Ops, Retired: call.Retired})
 }
 
-func (typed typedObserver[T]) End(failure error) { typed.observer.End(failure) }
+func (typed typedObserver[T]) End(end WatchEnd) { typed.observer.End(end) }
 
 // typedObservation is an observation whose value decoded as T.
 type typedObservation[T any] struct {

@@ -117,14 +117,15 @@ func open(ctx context.Context, cfg SessionConfig) (*coreSession, error) {
 		return nil, errors.New("driver.Open needs Core, DB, Harness.Models and Harness.Registry")
 	}
 	// Pi harness.ts:178-179: `const report = safeReport(options.onReport); const now = safeNow(options.now, report)`.
-	cfg.Harness.OnReport = harness.SafeReport(cfg.Harness.OnReport)
+	safeReport := harness.SafeReport(cfg.Harness.OnReport)
+	cfg.Harness.OnReport = func(report durable.Report) { safeReport(report.Error, report.ReportInfo) }
 	cfg.Harness = cfg.Harness.WithModelsView()
 	if cfg.Harness.Now != nil {
-		cfg.Harness.Now = harness.SafeNow(cfg.Harness.Now, cfg.Harness.OnReport)
+		cfg.Harness.Now = harness.SafeNow(cfg.Harness.Now, safeReport)
 	}
 	s := &coreSession{ended: make(chan struct{}), cfg: cfg, table: newHandlerTable(), instruction: map[string]*durable.PromptSection{}, callbacks: map[string]Callback{}}
 	s.timers = durable.HostTimers(cfg.Harness.SetTimer, func(err error) {
-		s.report(err, durable.ReportInfo{Type: durable.ReportHostError, Callback: durable.HostCallbackSetTimer})
+		s.report(err, durable.ReportInfo{Kind: durable.ReportHostError, Callback: durable.HostCallbackSetTimer})
 	})
 	s.watches = newWatchHub(s.reportListener)
 	s.settings = s.resolveSettings()
@@ -135,7 +136,7 @@ func open(ctx context.Context, cfg SessionConfig) (*coreSession, error) {
 	}
 	handlers := map[abi.EffectKind]sqlhost.Handler{}
 	models := NewModels(cfg.Harness.CurrentModels, now, func(err error) {
-		report(err, durable.ReportInfo{Type: durable.ReportHostError, Callback: durable.HostCallbackModels})
+		report(err, durable.ReportInfo{Kind: durable.ReportHostError, Callback: durable.HostCallbackModels})
 	})
 	models.monotonic = cfg.Monotonic
 	maps.Copy(handlers, models.Handlers())
@@ -169,7 +170,7 @@ func open(ctx context.Context, cfg SessionConfig) (*coreSession, error) {
 		SetTimer: s.armTimer,
 		Handlers: handlers, OnNotice: func(n abi.Notice) { s.watches.notice(n); s.commitNotice(n); s.reportNotice(n); s.wakeNotice(n) }, OnCommit: cfg.onCommit, OnCommitted: cfg.OnCommitted, TimerFired: cfg.TimerFired,
 		OnRejected: func(kind abi.EventKind, err *sqlhost.RejectedError) {
-			report(err, durable.ReportInfo{Type: durable.ReportListenerError})
+			report(err, durable.ReportInfo{Kind: durable.ReportListenerError})
 		},
 		// Pi reads HarnessSettings at each use: the owner resends them to the core when they changed (sqlhost Options.Settings).
 		// A settings reader that throws fails the reads that need it (resolveAgent, the task runtime), not the owner: the
@@ -177,7 +178,7 @@ func open(ctx context.Context, cfg SessionConfig) (*coreSession, error) {
 		Settings: func() (text []byte) {
 			defer func() {
 				if recovered := recover(); recovered != nil {
-					report(fmt.Errorf("Harness settings: %s", durable.ErrorMessage(recovered)), durable.ReportInfo{Type: durable.ReportHostError, Callback: durable.HostCallbackSettings})
+					report(fmt.Errorf("Harness settings: %s", durable.ErrorMessage(recovered)), durable.ReportInfo{Kind: durable.ReportHostError, Callback: durable.HostCallbackSettings})
 					text = nil
 				}
 			}()
@@ -429,6 +430,7 @@ func (s *coreSession) finishClose(ctx context.Context) error {
 		s.unsub()
 	}
 	s.watches.closeSession()
+	s.endAllCommits()
 	// The handlers join while the core still takes events: a run's end is reported to the core, which ends its invocation and
 	// answers the abort that joined it (scheduler.ts abort awaits run.done; close joins every invocation before it closes Storage).
 	if err := s.host.WaitEffects(ctx); err != nil {
@@ -464,9 +466,9 @@ func (s *coreSession) settleEnd() {
 		return
 	default:
 	}
-	s.end = durable.SessionEnd{Reason: durable.SessionEndClosed}
+	s.end = durable.SessionEnd{Kind: durable.SessionEndClosed}
 	if fatal := s.client.poisoned.Load(); fatal != nil {
-		s.end = durable.SessionEnd{Reason: durable.SessionEndFailed, Error: fatal}
+		s.end = durable.SessionEnd{Kind: durable.SessionEndFailed, Error: fatal}
 	}
 	close(s.ended)
 }
@@ -556,7 +558,7 @@ func (s *coreSession) hookHandler(hooks *Hooks) sqlhost.Handler {
 			}
 		}
 		agent := harness.ResolveAgent(in.State, s.cfg.Harness.Registry.Snapshot(), s.resolveSettings(), func(err error, extension string) {
-			s.report(err, durable.ReportInfo{Type: durable.ReportExtensionError, ConversationId: &head.ConversationId, Extension: extension})
+			s.report(err, durable.ReportInfo{Kind: durable.ReportExtensionError, ConversationId: &head.ConversationId, Extension: extension})
 		})
 		//portlint:allow mapkeyorder driver-to-core wire (durable/core/host/PROTOCOL.md): the core reads its members by name and stores none of this object
 		body, err := json.Marshal(s.agentJSON(agent))
@@ -787,7 +789,7 @@ type reportBody struct {
 	Name    string `json:"name"`
 	Message string `json:"message"`
 	Info    struct {
-		Type           durable.ReportType      `json:"type"`
+		Kind           durable.ReportKind      `json:"kind"`
 		Task           *durable.ReportTask     `json:"task"`
 		Extension      string                  `json:"extension"`
 		Reason         string                  `json:"reason"`
@@ -799,10 +801,10 @@ type reportBody struct {
 
 func (b reportBody) info() durable.ReportInfo {
 	i := b.Info
-	if i.Type == "" {
-		return durable.ReportInfo{Type: durable.ReportListenerError}
+	if i.Kind == "" {
+		return durable.ReportInfo{Kind: durable.ReportListenerError}
 	}
-	return durable.ReportInfo{Type: i.Type, Task: i.Task, Extension: i.Extension, Reason: i.Reason, Restarts: i.Restarts, Callback: i.Callback, ConversationId: i.ConversationId}
+	return durable.ReportInfo{Kind: i.Kind, Task: i.Task, Extension: i.Extension, Reason: i.Reason, Restarts: i.Restarts, Callback: i.Callback, ConversationId: i.ConversationId}
 }
 
 // Report is session.ts report: it hands a non-fatal failure, such as the error of a state listener or of the typed listener of
@@ -811,12 +813,12 @@ func (s *coreSession) Report(err error) { s.reportListener(err) }
 
 // reportListener is report for a listener's failure, the default source of a report.
 func (s *coreSession) reportListener(err error) {
-	s.report(err, durable.ReportInfo{Type: durable.ReportListenerError})
+	s.report(err, durable.ReportInfo{Kind: durable.ReportListenerError})
 }
 
 func (s *coreSession) report(err error, info durable.ReportInfo) {
 	if s.cfg.Harness.OnReport != nil {
-		s.cfg.Harness.OnReport(err, info)
+		s.cfg.Harness.OnReport(durable.Report{ReportInfo: info, Error: err})
 	}
 }
 
@@ -962,7 +964,7 @@ func (s *coreSession) deliverWakes() {
 			continue
 		}
 		if err := s.callOnWake(wake); err != nil {
-			s.report(err, durable.ReportInfo{Type: durable.ReportHostError, Callback: durable.HostCallbackOnWake})
+			s.report(err, durable.ReportInfo{Kind: durable.ReportHostError, Callback: durable.HostCallbackOnWake})
 			continue
 		}
 		s.mu.Lock()

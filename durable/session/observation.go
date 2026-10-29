@@ -15,62 +15,90 @@ func NewSessionWatch[T any](session *SessionImpl, value T, detach func()) *chord
 	return chord.NewWatch(value, detach, session.reportListener).On(session.scheduler)
 }
 
-// GuardedObserver is a host's Observer behind the rule for observers that run inside Storage's adopt (session.ts
-// guardObserver): one that panics is reported through report, detached, and ended with the error, so the panic never reaches
-// adopt; nothing reaches it after its detach or end, and from then on the guard references neither it nor its source.
-type GuardedObserver[T any] struct {
-	mu       sync.Mutex
-	attached *guardedObserver[T]
+// syncObserver is what a guard guards: an Observer[T] (A is WatchCall[T]) or a CommitObserver (A is CommitPublication).
+type syncObserver[A any] interface {
+	Advance(ctx context.Context, call A)
+	End(end durable.WatchEnd)
 }
 
-type guardedObserver[T any] struct {
-	observer durable.Observer[T]
+// guard is a host's observer behind the rule for observers that run inside Storage's adopt (session.ts guardObserver): one
+// that panics is reported through report, detached, and ended listener_error, so the panic never reaches adopt; nothing
+// reaches it after its detach or end, and from then on the guard references neither it nor its source.
+type guard[A any] struct {
+	mu       sync.Mutex
+	attached *guardedObserver[A]
+}
+
+type guardedObserver[A any] struct {
+	observer syncObserver[A]
 	detach   func()
 	report   func(error)
+	// reportIn, when set, reports an Advance's panic under the context of that call (session.ts passes it to report).
+	reportIn func(ctx context.Context) func(error)
 }
 
-// GuardObserver guards observer. detach is the source's; the guard's Detach is the observation's.
+// GuardedObserver is a host's Observer[T] behind the guard. detach is the source's; the guard's Detach is the observation's.
+type GuardedObserver[T any] struct {
+	guard[durable.WatchCall[T]]
+}
+
+// GuardedCommitObserver is a host's CommitObserver behind the guard.
+type GuardedCommitObserver struct {
+	guard[durable.CommitPublication]
+}
+
+// GuardObserver guards observer.
 func GuardObserver[T any](observer durable.Observer[T], detach func(), report func(error)) *GuardedObserver[T] {
-	return &GuardedObserver[T]{attached: &guardedObserver[T]{observer: observer, detach: detach, report: report}}
+	return &GuardedObserver[T]{guard[durable.WatchCall[T]]{attached: &guardedObserver[durable.WatchCall[T]]{observer: observer, detach: detach, report: report}}}
+}
+
+// guardCommitObserver guards observer.
+func guardCommitObserver(observer durable.CommitObserver, detach func(), report func(error), reportIn func(context.Context) func(error)) *GuardedCommitObserver {
+	return &GuardedCommitObserver{guard[durable.CommitPublication]{attached: &guardedObserver[durable.CommitPublication]{observer: observer, detach: detach, report: report, reportIn: reportIn}}}
 }
 
 // release detaches from the source once, and hands back what the guard was attached with.
-func (guard *GuardedObserver[T]) release() *guardedObserver[T] {
-	guard.mu.Lock()
-	released := guard.attached
-	guard.attached = nil
-	guard.mu.Unlock()
+func (g *guard[A]) release() *guardedObserver[A] {
+	g.mu.Lock()
+	released := g.attached
+	g.attached = nil
+	g.mu.Unlock()
 	if released != nil {
 		released.detach()
 	}
 	return released
 }
 
-// Advance passes a change on; a panic of the observer is reported, and detaches and ends it with the error.
-func (guard *GuardedObserver[T]) Advance(ctx context.Context, change durable.WatchChange[T]) {
-	guard.mu.Lock()
-	current := guard.attached
-	guard.mu.Unlock()
+// Advance passes a call on; a panic of the observer is reported, and detaches and ends it listener_error.
+func (g *guard[A]) Advance(ctx context.Context, call A) {
+	g.mu.Lock()
+	current := g.attached
+	g.mu.Unlock()
 	if current == nil {
 		return
 	}
-	contained(func() { current.observer.Advance(ctx, change) }, func(err error) {
-		current.report(err)
-		if guard.release() != nil {
-			contained(func() { current.observer.End(err) }, current.report)
+	report := current.report
+	if current.reportIn != nil {
+		report = current.reportIn(ctx)
+	}
+	contained(func() { current.observer.Advance(ctx, call) }, func(err error) {
+		report(err)
+		if g.release() != nil {
+			end := durable.WatchEnd{Kind: durable.WatchListenerError, Error: err}
+			contained(func() { current.observer.End(end) }, current.report)
 		}
 	})
 }
 
-// End ends the observer once, with the failure of the Session, or nil when it closed.
-func (guard *GuardedObserver[T]) End(failure error) {
-	if ending := guard.release(); ending != nil {
-		contained(func() { ending.observer.End(failure) }, ending.report)
+// End ends the observer once, with end.
+func (g *guard[A]) End(end durable.WatchEnd) {
+	if ending := g.release(); ending != nil {
+		contained(func() { ending.observer.End(end) }, ending.report)
 	}
 }
 
 // Detach detaches the observer from its source; it is idempotent.
-func (guard *GuardedObserver[T]) Detach() { guard.release() }
+func (g *guard[A]) Detach() { g.release() }
 
 // observation is the Observation of a guarded observer attached at value; it keeps nothing but value and the spent guard
 // alive once detached.

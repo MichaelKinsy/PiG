@@ -73,10 +73,10 @@ func (r *Runtime) Report(err error, from ...ReportFrom) error {
 	}
 	task := reportTask(r.inv.taskID, r.inv.kind, r.inv.conversationID)
 	if f := from[0]; f.Callback != "" {
-		r.s.reportAt(err, obj("type", "host_error", "callback", f.Callback, "task", task), r.inv.span)
+		r.s.reportAt(err, obj("kind", "host_error", "callback", f.Callback, "task", task), r.inv.span)
 		return nil
 	} else {
-		info := obj("type", "extension_error", "task", task)
+		info := obj("kind", "extension_error", "task", task)
 		if f.Extension != "" {
 			info.Set("extension", f.Extension)
 		}

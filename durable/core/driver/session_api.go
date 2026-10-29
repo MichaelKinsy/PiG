@@ -163,7 +163,7 @@ func (s *coreSession) agent(ctx context.Context, id durable.ConversationId) (dur
 		return durable.Agent{}, err
 	}
 	return harness.ResolveAgent(state, s.cfg.Harness.Registry.Snapshot(), s.resolveSettings(), func(err error, extension string) {
-		s.report(err, durable.ReportInfo{Type: durable.ReportExtensionError, ConversationId: &id, Extension: extension})
+		s.report(err, durable.ReportInfo{Kind: durable.ReportExtensionError, ConversationId: &id, Extension: extension})
 	}), nil
 }
 
