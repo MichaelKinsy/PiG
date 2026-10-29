@@ -25,6 +25,11 @@ import (
 // or has a fourth number (an IPv4 address) is not a version.
 var versionLiteral = regexp.MustCompile(`\d+\.\d+\.\d+(?:\.\d+)?(?:\+[0-9a-f]{8})?`)
 
+// dottedCommit follows the x.y.z of a commit pin's dotted build metadata (1.4.0.b3a29f11, as pin.py ci_tag writes it into an image tag
+// and make pin-check checks it). A commit that starts with a digit already read as a fourth number and was skipped; one that starts with a
+// letter was reported as the bare release, so the test failed on every pin whose commit starts with a letter.
+var dottedCommit = regexp.MustCompile(`^\.[0-9a-f]{8}(?:[^0-9a-f]|$)`)
+
 // allowedVersionLiteral says why one literal in one file is not a drifting copy of a pin.
 type allowedVersionLiteral struct {
 	path    string
@@ -195,6 +200,11 @@ func TestVersionLiteralScanSeesVersionsAndSkipsAddresses(t *testing.T) {
 		`build 1.2.3.4`:                                nil,
 		`      - uses: actions/checkout@abc # v7.0.1`:  nil,
 		`sha 6c384aa30f619d7b28963f2bab24d8dacbe73cb6`: nil,
+		// The Pi part of an image tag is the pin's dotted build metadata (pin.py ci_tag writes it, make pin-check checks it); it is skipped
+		// whether the commit's first character is a digit or a letter.
+		`IMAGE_TAG=go1.27.3-node24.22-pi1.4.0.6c384aa3-rust1.97-tools2`: {"1.27.3"},
+		`IMAGE_TAG=go1.27.3-node24.22-pi1.4.0.b3a29f11-rust1.97-tools2`: {"1.27.3"},
+		`pi 1.4.0.b3a29f11a`: {"1.4.0"},
 	} {
 		if got := versionLiterals(line); !slices.Equal(got, want) {
 			t.Errorf("versionLiterals(%q) = %q, want %q", line, got, want)
