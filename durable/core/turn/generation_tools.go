@@ -136,18 +136,20 @@ func (r *run) finishToolRound(assistant ID, toolList []any) {
 				// Read from the phase's agent, as every agent field; a `configure()` during the round applies at its end.
 				// The extra hop reproduces Pi e7a0df27's tick count of the F-ticks-tools rows (settled 1728 gate / 1509 node): measured,
 				// the core was one tick short of `(await runtime.agent(context)).maxTurns` after hooks.each in finishToolRound.
-				r.hops(1, func() { r.agent(func(agent *Agent) {
-					commit := func(afterRun bool) {
-						r.commitDone(func(tx *session.Tx, _ *jv.Object) (*jv.Object, error) {
-							return r.finishCommit(tx, assistant, newest, terminate, afterRun, agent.MaxTurns, handoff, added)
-						})
-					}
-					if terminate {
-						r.asksAfterRun(commit)
-						return
-					}
-					commit(false)
-				}) })
+				r.hops(1, func() {
+					r.agent(func(agent *Agent) {
+						commit := func(afterRun bool) {
+							r.commitDone(func(tx *session.Tx, _ *jv.Object) (*jv.Object, error) {
+								return r.finishCommit(tx, assistant, newest, terminate, afterRun, agent.MaxTurns, handoff, added)
+							})
+						}
+						if terminate {
+							r.asksAfterRun(commit)
+							return
+						}
+						commit(false)
+					})
+				})
 			})
 		})
 	})

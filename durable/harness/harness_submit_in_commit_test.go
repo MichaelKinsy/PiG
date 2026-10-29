@@ -436,8 +436,7 @@ func TestSubmitInsideTheCallersCommit(t *testing.T) {
 		commits := store.commitCount()
 		outcome := must(durable.Commit(testContext, harness, func(tx durable.Tx) (string, error) {
 			if _, err := root.SubmitIn(tx, sicSteerDraft("hi", sicReject)); err != nil {
-				var idle *durable.ConversationIdle
-				if errors.As(err, &idle) {
+				if _, ok := errors.AsType[*durable.ConversationIdle](err); ok {
 					return "idle", nil
 				}
 				return "other", nil
@@ -459,8 +458,7 @@ func TestSubmitInsideTheCallersCommit(t *testing.T) {
 		busy := sicOpenBusy(t)
 		expectReadAfterWrite := func(err error) {
 			t.Helper()
-			var rejected *durable.ReadAfterWrite
-			if !errors.As(err, &rejected) {
+			if _, ok := errors.AsType[*durable.ReadAfterWrite](err); !ok {
 				t.Fatalf("error = %v, want ReadAfterWrite", err)
 			}
 		}
@@ -516,8 +514,7 @@ func TestSubmitInsideTheCallersCommit(t *testing.T) {
 			_, err := root.SubmitIn(tx, continueDraft())
 			return struct{}{}, err
 		})
-		var rejected *durable.ReadAfterWrite
-		if !errors.As(err, &rejected) {
+		if _, ok := errors.AsType[*durable.ReadAfterWrite](err); !ok {
 			t.Fatalf("late continue = %v, want ReadAfterWrite", err)
 		}
 
@@ -539,8 +536,7 @@ func TestSubmitInsideTheCallersCommit(t *testing.T) {
 	t.Run("rejects a busy continue and steers with whenIdle inside the commit", func(t *testing.T) {
 		busy := sicOpenBusy(t)
 		_, err := sicSubmitIn(busy.harness, busy.root, continueDraft())
-		var rejected *durable.ConversationBusy
-		if !errors.As(err, &rejected) {
+		if _, ok := errors.AsType[*durable.ConversationBusy](err); !ok {
 			t.Fatalf("busy continue = %v, want ConversationBusy", err)
 		}
 		steer := must(sicSubmitIn(busy.harness, busy.root, sicSteerDraft("steer", sicReject)))

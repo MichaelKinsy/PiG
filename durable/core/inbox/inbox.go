@@ -65,7 +65,9 @@ type Result struct {
 }
 
 // Start is what startRun takes for the run the boundary's users start.
-func (r Result) Start() RunStart { return RunStart{Inputs: r.Users, First: r.First, HasFirst: r.HasFirst} }
+func (r Result) Start() RunStart {
+	return RunStart{Inputs: r.Users, First: r.First, HasFirst: r.HasFirst}
+}
 
 // Prepare is prepareBoundary: table reads must precede the commit's first table write, so callers prepare the boundary at
 // the start of their commit.

@@ -839,9 +839,13 @@ func TestAfterRun(t *testing.T) {
 			// Its initial() throws.
 			Initial: func(durable.JsonValue) stepState { panic(errors.New("initial failed")) },
 			Phases: map[string]durable.PhaseHandler[durable.JsonValue, stepState, durable.JsonValue, any]{
-				"run": func(context.Context, stepRecordOf[durable.JsonValue], stepRuntimeOf[durable.JsonValue]) error { return nil },
+				"run": func(context.Context, stepRecordOf[durable.JsonValue], stepRuntimeOf[durable.JsonValue]) error {
+					return nil
+				},
 			},
-			Abort: func(context.Context, stepRecordOf[durable.JsonValue], stepRuntimeOf[durable.JsonValue]) error { return nil },
+			Abort: func(context.Context, stepRecordOf[durable.JsonValue], stepRuntimeOf[durable.JsonValue]) error {
+				return nil
+			},
 		})
 		// Its initial() starts at a phase the definition does not have.
 		badStart := durable.DefineTask(durable.TaskDefinition[durable.JsonValue, stepState, durable.JsonValue, any]{
@@ -849,9 +853,13 @@ func TestAfterRun(t *testing.T) {
 			Version: 1,
 			Initial: func(durable.JsonValue) stepState { return stepState{Phase: "nowhere"} },
 			Phases: map[string]durable.PhaseHandler[durable.JsonValue, stepState, durable.JsonValue, any]{
-				"run": func(context.Context, stepRecordOf[durable.JsonValue], stepRuntimeOf[durable.JsonValue]) error { return nil },
+				"run": func(context.Context, stepRecordOf[durable.JsonValue], stepRuntimeOf[durable.JsonValue]) error {
+					return nil
+				},
 			},
-			Abort: func(context.Context, stepRecordOf[durable.JsonValue], stepRuntimeOf[durable.JsonValue]) error { return nil },
+			Abort: func(context.Context, stepRecordOf[durable.JsonValue], stepRuntimeOf[durable.JsonValue]) error {
+				return nil
+			},
 		})
 		unknown := *tests.AnyDefinition()
 		unknown.Name = "test.unknown"
@@ -931,7 +939,9 @@ func TestAfterRun(t *testing.T) {
 						})
 					},
 				},
-				Abort: func(context.Context, stepRecordOf[durable.JsonValue], stepRuntimeOf[durable.JsonValue]) error { return nil },
+				Abort: func(context.Context, stepRecordOf[durable.JsonValue], stepRuntimeOf[durable.JsonValue]) error {
+					return nil
+				},
 			})
 		}
 		installed := define(2, &installedCalls)
@@ -1329,7 +1339,9 @@ func TestAfterRun(t *testing.T) {
 					})
 				},
 			},
-			Abort: func(context.Context, stepRecordOf[durable.JsonValue], stepRuntimeOf[durable.JsonValue]) error { return nil },
+			Abort: func(context.Context, stepRecordOf[durable.JsonValue], stepRuntimeOf[durable.JsonValue]) error {
+				return nil
+			},
 		})
 		mustInstall(t, setup.Registry, new(durable.Extension{Name: "worker", Tasks: []durable.AnyTask{worker.Erased()}}))
 		opened := arOpenKillable(t, path, setup)

@@ -214,8 +214,7 @@ func TestContinue(t *testing.T) {
 		resumed := submit(t, root, continueDraft("resume-1"))
 		<-busy.reached
 		_, err := root.Submit(testContext, continueDraft())
-		var rejected *durable.ConversationBusy
-		if !errors.As(err, &rejected) {
+		if _, ok := errors.AsType[*durable.ConversationBusy](err); !ok {
 			t.Fatalf("busy continue = %v, want ConversationBusy", err)
 		}
 		// The same request ID returns the existing submission instead of rejecting.
@@ -294,7 +293,7 @@ func TestContinue(t *testing.T) {
 		path := filepath.Join(t.TempDir(), "session.sqlite")
 		open := func(setup *chatState) (Harness, Conversation, *continueKillable) {
 			store := &continueKillable{Storage: openSqlite(t, path), dead: make(chan struct{})}
-			t.Cleanup(func() { _ = store.Storage.Close(testContext) })
+			t.Cleanup(func() { _ = store.Close(testContext) })
 			harness, root := openChat(t, store, setup)
 			harness.Resume()
 			return harness, root, store
@@ -463,8 +462,7 @@ func TestContinue(t *testing.T) {
 		if first != "unanswered" || resumedStatus != "done" {
 			t.Fatalf("outcome first=%q resumed=%q, want unanswered and done", first, resumedStatus)
 		}
-		var rejected *durable.ConversationBusy
-		if !errors.As(busyErr, &rejected) {
+		if _, ok := errors.AsType[*durable.ConversationBusy](busyErr); !ok {
 			t.Fatalf("busy continue through the handle = %v, want ConversationBusy", busyErr)
 		}
 		closeHarness(t, harness)

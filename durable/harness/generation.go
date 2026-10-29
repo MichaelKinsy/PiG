@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"slices"
 	"strings"
 	"sync"
 
@@ -774,8 +775,8 @@ func failGenerationModelError(ctx context.Context, runtime generationRuntime, te
 // endsInAnswerable reports whether the context's last non-system message is a user message or tool results, the only
 // messages the model owes an answer to.
 func endsInAnswerable(messages []ai.Message) bool {
-	for index := len(messages) - 1; index >= 0; index-- {
-		switch messages[index].(type) {
+	for _, message := range slices.Backward(messages) {
+		switch message.(type) {
 		case ai.SystemMessage:
 			continue
 		case ai.UserMessage, ai.ToolResultMessage:
@@ -1696,7 +1697,8 @@ func finishToolRound(ctx context.Context, runtime generationRuntime, assistant d
 				return held, nil
 			}
 		}
-		if terminate {
+		switch {
+		case terminate:
 			placed, err := ApplyBoundary(tx, boundary, BoundaryFinal, now)
 			if err != nil {
 				return nil, err
@@ -1709,7 +1711,7 @@ func finishToolRound(ctx context.Context, runtime generationRuntime, assistant d
 					return nil, err
 				}
 			}
-		} else if maxTurns != nil && turns >= *maxTurns {
+		case maxTurns != nil && turns >= *maxTurns:
 			// The turn limit ends the run like a failure: afterFailedRun decides the queued items, and a continue resumes it
 			// on the round's results. The table was read for the boundary already, before any write.
 			failed := failure{policy: runtime.Settings().AfterFailedRun}
@@ -1723,7 +1725,7 @@ func finishToolRound(ctx context.Context, runtime generationRuntime, assistant d
 			if err := endFailedRun(tx, runtime, live, failed, runUnanswered(RunTurnLimit, &detail)); err != nil {
 				return nil, err
 			}
-		} else {
+		default:
 			placed, err := ApplyBoundary(tx, boundary, BoundaryPostTools, now)
 			if err != nil {
 				return nil, err

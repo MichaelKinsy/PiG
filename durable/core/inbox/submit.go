@@ -46,6 +46,7 @@ func (e *IdleError) Error() string {
 
 // Is matches ErrConversationIdle.
 func (e *IdleError) Is(target error) bool { return target == ErrConversationIdle }
+
 // Draft is a SubmissionDraft: input carries Content, WhenBusy, WhenIdle and optionally the InputEntry it is placed as (Entry), a
 // write carries Entry, the entry it appends, a continue carries neither.
 type Draft struct {

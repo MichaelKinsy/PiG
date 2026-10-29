@@ -75,8 +75,7 @@ func TestExample33TurnLimitAndContinue(t *testing.T) {
 	resumed := must(root.Submit(background, durable.SubmissionDraft{Type: durable.SubmissionTypeContinue}))
 	// It never queues: while that run works, another continue is refused.
 	_, err = root.Submit(background, durable.SubmissionDraft{Type: durable.SubmissionTypeContinue})
-	var busy *durable.ConversationBusy
-	if !errors.As(err, &busy) {
+	if _, ok := errors.AsType[*durable.ConversationBusy](err); !ok {
 		t.Fatalf("second continue while busy: %v, want ConversationBusy", err)
 	}
 	close(gate)

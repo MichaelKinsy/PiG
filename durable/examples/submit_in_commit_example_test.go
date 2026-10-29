@@ -11,6 +11,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 	"testing"
 
@@ -79,10 +80,8 @@ func TestExample34SubmitInCommit(t *testing.T) {
 			if err != nil {
 				return nil, err
 			}
-			for _, name := range muted {
-				if name == from {
-					return from + " is muted", nil
-				}
+			if slices.Contains(muted, from) {
+				return from + " is muted", nil
 			}
 			// Before the commit's own table writes; document writes may come before or after.
 			id, err := root.SubmitIn(tx, durable.SubmissionDraft{
@@ -100,8 +99,7 @@ func TestExample34SubmitInCommit(t *testing.T) {
 			}
 			return fmt.Sprintf("%s's message is submission %d", from, id), nil
 		})
-		var idle *durable.ConversationIdle
-		if errors.As(err, &idle) {
+		if _, ok := errors.AsType[*durable.ConversationIdle](err); ok {
 			return from + ": the agent isn't working now"
 		}
 		if err != nil {

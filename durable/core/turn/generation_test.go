@@ -26,9 +26,9 @@ type rig struct {
 	sched *session.Scheduler
 	// agentFails, when set, is the error the host resolves the agent with.
 	agentFails error
-	host  *turn.Host
-	reg   *registry
-	now   float64
+	host       *turn.Host
+	reg        *registry
+	now        float64
 
 	settings turn.Settings
 	agent    turn.Agent
