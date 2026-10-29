@@ -146738,7 +146738,7 @@
       "evidence": [
         "test:tui/editor_autocomplete_boundary_upstream_test.go#TestEditorResetsCustomTriggerCharactersWhenProviderChanges",
         "test:tui/editor_kill_undo_upstream_test.go#TestUpstreamEditorUndo",
-        "test:internal/codingagent/autocomplete_wrappers_test.go#TestAutocompleteCompletionHoldsInputUntilOwnerApply"
+        "test:internal/codingagent/autocomplete_read_checkpoint_test.go#TestEnterInTheReadAfterTheTextAcceptsTheMenuThatReadOpened"
       ]
     },
     {
@@ -146760,7 +146760,7 @@
       "evidence": [
         "test:tui/editor_autocomplete_boundary_upstream_test.go#TestEditorResetsCustomTriggerCharactersWhenProviderChanges",
         "test:tui/editor_kill_undo_upstream_test.go#TestUpstreamEditorUndo",
-        "test:internal/codingagent/autocomplete_wrappers_test.go#TestAutocompleteCompletionHoldsInputUntilOwnerApply"
+        "test:internal/codingagent/autocomplete_read_checkpoint_test.go#TestEnterInTheReadAfterTheTextAcceptsTheMenuThatReadOpened"
       ]
     },
     {
@@ -264726,7 +264726,7 @@
       "evidence": [
         "test:tui/editor_autocomplete_boundary_upstream_test.go#TestEditorResetsCustomTriggerCharactersWhenProviderChanges",
         "test:tui/editor_kill_undo_upstream_test.go#TestUpstreamEditorUndo",
-        "test:internal/codingagent/autocomplete_wrappers_test.go#TestAutocompleteCompletionHoldsInputUntilOwnerApply"
+        "test:internal/codingagent/autocomplete_read_checkpoint_test.go#TestEnterInTheReadAfterTheTextAcceptsTheMenuThatReadOpened"
       ]
     },
     {
@@ -264748,7 +264748,7 @@
       "evidence": [
         "test:tui/editor_autocomplete_boundary_upstream_test.go#TestEditorResetsCustomTriggerCharactersWhenProviderChanges",
         "test:tui/editor_kill_undo_upstream_test.go#TestUpstreamEditorUndo",
-        "test:internal/codingagent/autocomplete_wrappers_test.go#TestAutocompleteCompletionHoldsInputUntilOwnerApply"
+        "test:internal/codingagent/autocomplete_read_checkpoint_test.go#TestEnterInTheReadAfterTheTextAcceptsTheMenuThatReadOpened"
       ]
     },
     {
