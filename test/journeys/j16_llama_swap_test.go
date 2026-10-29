@@ -119,13 +119,16 @@ func init() {
 	register(&harness.Journey{
 		Name: "llama-swap-models-json",
 		Doc: "A llama-swap gateway configured as a models.json provider, beside the llama.cpp provider logged in to the same gateway: /model lists the models, a second model is selected and a prompt names it in the request's model field " +
-			"(llama-swap loads it on that request, streaming bare loading frames ahead of the reply), /model <id> switches back, a model that fails to start ends the stream with the gateway's error envelope, and an unrouted model is refused with HTTP 404.",
-		Touches: []string{"internal/codingagent/", "ai/", "agent/", "tui/", "coding/"},
+			"(llama-swap loads it on that request, streaming bare loading frames ahead of the reply), the selector switches back, a model that fails to start ends the stream with the gateway's error envelope, and an unrouted model is refused with HTTP 404.",
+		Touches:     []string{"internal/codingagent/", "ai/", "agent/", "tui/", "coding/"},
+		Normalizers: []harness.Normalizer{bugReportHint},
 		Env: func(harness.Kind) harness.Env {
 			return harness.Env{
-				NoModelArg:    true,
-				ReadyMarker:   swapLoaded,
-				Models:        swapModels,
+				NoModelArg:  true,
+				ReadyMarker: swapLoaded,
+				Models:      swapModels,
+				// The llama.cpp provider lists the gateway's catalog only with network access.
+				ExtraEnv:      []string{"PI_OFFLINE=0"},
 				AgentDirFiles: map[string]string{"auth.json": `{"llama.cpp":{"type":"api_key","key":"local","env":{"LLAMA_BASE_URL":"{{PROVIDER_URL}}"}}}`},
 			}
 		},
