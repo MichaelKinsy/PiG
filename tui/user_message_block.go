@@ -80,19 +80,7 @@ func (u *UserMessageComponent) SetMarkdownTransformState(fn func() string) {
 
 // SetAsyncMarkdownTransform installs an off-loop rewrite that completes before the message content is painted.
 func (u *UserMessageComponent) SetAsyncMarkdownTransform(transform *AsyncMarkdownTransform) {
-	if transform != nil {
-		options := *transform
-		completed := options.Invalidate
-		options.Invalidate = func() {
-			// Completion dirties the rendered frame, not the logical transform revision.
-			u.Container.Invalidate()
-			if completed != nil {
-				completed()
-			}
-		}
-		transform = &options
-	}
-	u.inner.AsyncTransform = transform
+	u.inner.AsyncTransform = completionDirtying(&u.invalidatable, transform)
 	u.Invalidate()
 }
 
