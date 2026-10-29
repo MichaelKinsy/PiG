@@ -2428,9 +2428,7 @@ impl Context {
     /// PiG-only: set whether this extension owns the thinking runs of assistant messages (see [`Extension::own_thinking_runs`](crate::Extension::own_thinking_runs)).
     /// The host ORs the flag across extensions; the last write of an extension wins.
     pub fn own_thinking_runs(&self, enabled: bool) -> io::Result<()> {
-        // STAGE-B: send
-        let _ = enabled;
-        Ok(())
+        call_result_to_io(self.call_wire("ownThinkingRuns", Some(serde_json::json!({"enabled": enabled})))?)
     }
 
     /// Restore the default hidden-thinking label: Pi's `setHiddenThinkingLabel()` with no argument.

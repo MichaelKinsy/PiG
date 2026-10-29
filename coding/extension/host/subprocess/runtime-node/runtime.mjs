@@ -2322,7 +2322,7 @@ export class Runtime {
       ownThinkingRuns: (enabled = true) => {
         if (typeof enabled !== "boolean") throw new TypeError("ownThinkingRuns requires a boolean");
         this.ownsThinkingRuns = enabled;
-        // STAGE-B: send
+        if (this.providersSent) this.fireAndForget("ownThinkingRuns", { enabled });
       },
       registerToolRenderer: (resolver) => this.registerToolRenderer(resolver),
       registerProvider: (name, config) => this.registerProvider(name, config),
@@ -3022,8 +3022,7 @@ export class Runtime {
         message_renderers: [...this.renderers.keys()].map((customType) => ({ custom_type: customType })),
         entry_renderers: [...this.entryRenderers.keys()].map((customType) => ({ custom_type: customType })),
         markdown_transformer: typeof this.markdownTransformer === "function" || undefined,
-        // STAGE-B: send
-        owns_thinking_runs: undefined,
+        owns_thinking_runs: this.ownsThinkingRuns || undefined,
         tool_renderers: this.toolRendererResolvers.length || undefined,
         mcp_servers: this.mcpServersPending.size > 0 ? [...this.mcpServersPending].map(([name, config]) => ({ name, config })) : undefined,
         virtual_models: this.virtualModelsPending.length > 0 ? this.virtualModelsPending : undefined,

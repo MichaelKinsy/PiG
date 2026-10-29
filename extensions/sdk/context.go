@@ -475,9 +475,10 @@ func (c Context) ClearHiddenThinkingLabel() error {
 // thinking run leaves no blank spacer rows. The host ORs the flag across
 // extensions; the last call of an extension wins.
 func (c Context) OwnThinkingRuns(enabled bool) error {
-	// STAGE-B: send
-	_ = enabled
-	return nil
+	result, err := c.callHost("ownThinkingRuns", map[string]bool{
+		"enabled": enabled,
+	})
+	return callResultError(result, err)
 }
 
 // SetTitle sets the terminal window/tab title.

@@ -1548,7 +1548,7 @@ impl Extension {
                 renderers: self.renderers.clone(),
                 entry_renderers: self.entry_renderers.clone(),
                 markdown_transformer: self.markdown_transformer.is_some(),
-                owns_thinking_runs: false, // STAGE-B: send self.owns_thinking_runs
+                owns_thinking_runs: self.owns_thinking_runs,
                 tool_renderers: self.tool_renderers.resolvers.len(),
                 mcp_servers: self.mcp_servers.clone(),
                 virtual_models: self.virtual_models.iter().map(|model| model.declaration()).collect(),

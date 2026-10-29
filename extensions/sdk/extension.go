@@ -1017,8 +1017,10 @@ func (e *Extension) OwnThinkingRuns(enabled bool) {
 	conn := e.toolConn
 	e.toolMu.Unlock()
 	if conn != nil {
-		// STAGE-B: send
-		_ = conn
+		result, err := hostCallFor(nil, conn, "ownThinkingRuns", map[string]bool{"enabled": enabled})
+		if err = callResultError(result, err); err != nil {
+			panic(fmt.Errorf("ownThinkingRuns: %w", err))
+		}
 	}
 }
 
@@ -1173,7 +1175,7 @@ func (e *Extension) runWithConn(nc net.Conn, started *conn, sockPath string) err
 			Renderers:               e.renderers,
 			EntryRenderers:          e.entryRenderers,
 			MarkdownTransformer:     e.markdownTransform != nil,
-			// STAGE-B: send (OwnsThinkingRuns: e.ownsThinkingRuns)
+			OwnsThinkingRuns:        e.ownsThinkingRuns,
 			ToolRenderers:           e.toolRendererCount(),
 			McpServers:              e.mcpServerDecls,
 			VirtualModels:           e.virtualModelDecls,
