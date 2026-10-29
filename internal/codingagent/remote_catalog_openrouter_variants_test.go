@@ -55,7 +55,10 @@ func TestRefreshedOpenRouterProviderListsRoutingVariantsOfTheRefreshedList(t *te
 	requireIDs(t, "chat models after the refresh", catalogModelIDs(t, provider), refreshedOpenRouterIDs)
 	requireIDs(t, "all models after the refresh", catalogAllModelIDs(t, provider), refreshedOpenRouterIDs)
 	// The saved list is the refreshed list as the catalog returned it: the variants are derived where it is read.
-	requireIDs(t, "saved models", storedCatalogIDs(t, store), []string{"vendor/refreshed"})
+	saved, err := store.Read(t.Context(), openRouterProviderID)
+	if err != nil || saved == nil || len(saved.Models) != 1 || saved.Models[0].ModelID() != "vendor/refreshed" {
+		t.Fatalf("saved entry = %+v, %v; want only vendor/refreshed", saved, err)
+	}
 }
 
 // Every registry listing of a saved OpenRouter list: the composed provider data, all-provider data, the native collection, the selection metadata, a lookup by id.
@@ -81,7 +84,11 @@ func TestSavedOpenRouterListShowsRoutingVariantsOnEveryRegistryListing(t *testin
 
 	requireIDs(t, "GetProviderModelData", openRouterModelIDs(registry.GetProviderModelData(openRouterProviderID)), refreshedOpenRouterIDs)
 	requireIDs(t, "GetAllModelData", openRouterModelIDs(registry.GetAllModelData()), refreshedOpenRouterIDs)
-	requireIDs(t, "GetNativeModels", openRouterModelIDs(registry.GetNativeModels(openRouterProviderID)), refreshedOpenRouterIDs)
+	var typed []string
+	for _, model := range registry.GetProviderAllModelData(openRouterProviderID) {
+		typed = append(typed, model.ModelID())
+	}
+	requireIDs(t, "GetProviderAllModelData", typed, refreshedOpenRouterIDs)
 	available, err := registry.GetAvailableModelDataContext(context.Background(), openRouterProviderID)
 	if err != nil {
 		t.Fatal(err)
