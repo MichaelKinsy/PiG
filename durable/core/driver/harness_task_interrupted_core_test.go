@@ -6,6 +6,7 @@ package driver_test
 import (
 	"context"
 	"reflect"
+	"sync"
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/chord/delta"
@@ -30,7 +31,9 @@ func TestCoreAnExtensionTaskThatEndsForCrashesIsReportedInterrupted(t *testing.T
 		t.Run(c.name, func(t *testing.T) {
 			eachEngine(t, func(t *testing.T, core bool) {
 				state := &crashLoopState{crashing: true}
-				task := endsForCrashesTask(state, c.reason)
+				var committedOnce sync.Once
+				committed := make(chan struct{})
+				task := endsForCrashesTask(state, c.reason, func() { committedOnce.Do(func() { close(committed) }) })
 				registry := harness.CreateRegistry()
 				installTasks(t, registry, "loop", task.Erased())
 				rig := newCrashRig(t, core, registry, harness.HarnessSettings{})
@@ -48,11 +51,10 @@ func TestCoreAnExtensionTaskThatEndsForCrashesIsReportedInterrupted(t *testing.T
 				if outcome == nil || outcome.Status != durable.OutcomeFailed || outcome.Error == nil || outcome.Error.Message != "ended for crashes" {
 					t.Fatalf("outcome %+v, want failed with the message", outcome)
 				}
-				// A report is made as the commit returns to the task, before the receipt can be told apart from it: wait for a
-				// later commit's turn on the line so a missing report is not a late one.
-				if _, err := durable.Commit(t.Context(), root, func(tx durable.Tx) (struct{}, error) { return struct{}{}, nil }); err != nil {
-					t.Fatal(err)
-				}
+				// A report is made inside the commit, before it returns to the task. The receipt is told before that, from the commit's
+				// publication, and the task's goroutine reports when it runs: wait for the task to hear that its commit returned. A later
+				// commit's turn on the line is not that: the report is not on the line.
+				<-committed
 				var want []durable.ReportInfo
 				if c.reported {
 					want = []durable.ReportInfo{{Kind: durable.ReportTaskInterrupted, Task: &durable.ReportTask{Id: id, Kind: "test.ends-for-crashes", ConversationId: root.Id()}, Extension: "loop", Reason: c.reason, Restarts: 1}}
@@ -71,8 +73,9 @@ func TestCoreAnExtensionTaskThatEndsForCrashesIsReportedInterrupted(t *testing.T
 	}
 }
 
-// endsForCrashesTask hangs in its phase while state is crashing, and then ends failed with detail.reason as given.
-func endsForCrashesTask(state *crashLoopState, reason string) durable.Task[durable.JsonValue, loopState, durable.JsonValue, any] {
+// endsForCrashesTask hangs in its phase while state is crashing, and then ends failed with detail.reason as given; committed is called
+// when that ending's commit returned to it.
+func endsForCrashesTask(state *crashLoopState, reason string, committed func()) durable.Task[durable.JsonValue, loopState, durable.JsonValue, any] {
 	return durable.DefineTask(durable.TaskDefinition[durable.JsonValue, loopState, durable.JsonValue, any]{
 		Name: "test.ends-for-crashes", Version: 1,
 		Initial: func(durable.JsonValue) loopState { return loopState{Phase: "run"} },
@@ -82,12 +85,14 @@ func endsForCrashesTask(state *crashLoopState, reason string) durable.Task[durab
 					<-runtime.Signal().Done()
 					return nil
 				}
-				return runtime.Commit(ctx, func(durable.Tx, loopRecord) (*loopNext, error) {
+				err := runtime.Commit(ctx, func(durable.Tx, loopRecord) (*loopNext, error) {
 					return &loopNext{Status: durable.TaskTerminal, Outcome: &durable.TaskOutcome[durable.JsonValue]{
 						Status: durable.OutcomeFailed,
 						Error:  &durable.TaskOutcomeError{Message: "ended for crashes", Detail: delta.JsonObjectOf("reason", reason)},
 					}}, nil
 				})
+				committed()
+				return err
 			},
 		},
 	})
