@@ -2858,6 +2858,23 @@ fn main() {
         })();
         match result { Ok(()) => CommandResult::Ok, Err(err) => CommandResult::Error(err.to_string()) }
     });
+    ext.command("autocomplete-settle-register", "Register a provider whose answer settles or awaits real I/O", |ctx, _| {
+        let result = ctx.add_autocomplete_provider(std::sync::Arc::new(|_, current| {
+            let get = current.clone();
+            let apply = current.clone();
+            Ok(std::sync::Arc::new(pig_sdk::AutocompleteProvider {
+                trigger_characters: vec![],
+                get_suggestions: std::sync::Arc::new(move |ctx, lines, line, col, force| {
+                    (get.get_suggestions)(ctx, lines, line, col, force)?;
+                    if lines[0] == "slow" { std::thread::sleep(std::time::Duration::from_millis(400)); }
+                    Ok(Some(pig_sdk::AutocompleteSuggestions { prefix: lines[0].clone(), items: vec![pig_sdk::AutocompleteItem { value: lines[0].clone(), label: Some(format!("settled:{}", lines[0])), description: None }] }))
+                }),
+                apply_completion: std::sync::Arc::new(move |ctx, lines, line, col, item, prefix| (apply.apply_completion)(ctx, lines, line, col, item, prefix)),
+                should_trigger_file_completion: None,
+            }))
+        }));
+        match result { Ok(()) => CommandResult::Ok, Err(err) => CommandResult::Error(err.to_string()) }
+    });
     // Upstream ctx.cwd, ctx.mode, ctx.hasUI and ctx.model throw the stale message after invalidation (runner.ts:571-600).
     ext.command("stale-probe", "Report cwd, mode, hasUI and model", |ctx, _args| {
         ctx.notify(&format!("stale:{}|{}|{}|{}", ctx.cwd(), ctx.mode(), ctx.has_ui(), ctx.model()), "info");

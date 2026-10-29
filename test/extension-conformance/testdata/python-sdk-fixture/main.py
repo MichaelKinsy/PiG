@@ -2324,6 +2324,21 @@ def new_extension() -> pig_sdk.Extension:
             ctx.notify("registered:" + tag, "info")
 
     ext.command("autocomplete-register", "Register retained provider wrappers", autocomplete_register)
+    def autocomplete_settle_register(ctx, args):
+        def factory(ctx, current):
+            class Settling:
+                trigger_characters = []
+                def get_suggestions(self, ctx, lines, line, col, force=False):
+                    current.get_suggestions(ctx, lines, line, col, force)
+                    if lines[0] == "slow":
+                        time.sleep(0.4)
+                    return {"items": [{"value": lines[0], "label": "settled:" + lines[0]}], "prefix": lines[0]}
+                def apply_completion(self, ctx, lines, line, col, item, prefix):
+                    return current.apply_completion(ctx, lines, line, col, item, prefix)
+            return Settling()
+        ctx.add_autocomplete_provider(factory)
+
+    ext.command("autocomplete-settle-register", "Register a provider whose answer settles or awaits real I/O", autocomplete_settle_register)
     def signal_probe(ctx: pig_sdk.Context, args: str) -> None:
         signal = ctx.signal
         ctx.notify("signal:" + ("none" if signal is None else "aborted" if signal.is_set() else "live"), "info")
