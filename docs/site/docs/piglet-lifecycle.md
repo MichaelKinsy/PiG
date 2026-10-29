@@ -143,18 +143,16 @@ The native builder compiles PiG with the Go toolchain on your computer. See [Bui
 
 ### Overlay Piglets
 
-A Piglet Binary runs its own Piglet only. It refuses `--piglet`, `PIG_PIGLET_PATH` and `PIG_PIGLET_NAME`. To let a Binary accept one more Piglet at launch, set `build.allowOverlays` in the Piglet that you build:
+A Piglet Binary behaves as stock PiG started with its own Piglet. It accepts one more Piglet at launch as an overlay, with `--piglet`, `PIG_PIGLET_PATH` or `PIG_PIGLET_NAME`. To make a Binary refuse the overlay selectors and `--system-prompt`, and to remove its ambient discovery, set `build.closed: true` in the Piglet that you build. The next example is an open Binary:
 
 ```yaml
 name: pig-base
 tools: [read, grep, find]
-build:
-  allowOverlays: true
 systemPrompt:
   text: Base.
 ```
 
-The Binary then takes an overlay with `--piglet`:
+The Binary takes an overlay with `--piglet`:
 
 ```bash
 pig piglet build ./base.yaml --format binary --out ./pig-base
@@ -164,7 +162,7 @@ pig piglet build ./base.yaml --format binary --out ./pig-base
 An overlay merges onto the Piglet of the Binary exactly as an `extends` child merges onto its base. An overlay file has an `extends` block with no `source`. Stock `pig piglet validate` rejects such a file by design, because it has no base to extend:
 
 ```text
-FAIL: Piglet extra.yaml: extends.source is required unless a Piglet Binary that sets build.allowOverlays runs the Piglet as an overlay
+FAIL: Piglet extra.yaml: extends.source is required unless a Piglet Binary that is not built closed runs the Piglet as an overlay
 ```
 
 An overlay can replace the system prompt. It can remove members with `extends.remove`. It can widen the ceilings only with `extends.allowWiden: true`.
@@ -178,7 +176,7 @@ strip.extensions: "mcp" is compiled out of Piglet Binary "pig-nomcp" (build tag 
 
 The first message means that the Binary does not strip `mcp`, so the overlay has nothing to remove. The second message means that the build removed the `mcp` code from the executable. An overlay cannot bring that code back. See [Accept overlay Piglets](/docs/latest/piglet-binaries#accept-overlay-piglets) for the full rules.
 
-`build.allowOverlays` is part of the baked Piglet. A change to it changes the Piglet digest in the record.
+`build.closed` is part of the baked Piglet. A change to it changes the Piglet digest in the record. A closed Binary refuses the overlay selectors and names `build.closed`.
 
 ## 7. Sign and verify
 
@@ -235,7 +233,7 @@ The signed manifest above names the parts of the release record. Each edit chang
 | The Piglet file | The source digest. The record path contains the source digest, so a new source gets a new record. |
 | A prompt file, a skill, or a base Piglet that the Piglet names | The Piglet definition digest. `pig piglet verify --source` fails until you rebuild. |
 | The extensions or their origins | The component plan and the resolution record. |
-| `build.allowOverlays` | The Piglet definition digest. |
+| `build.closed` | The Piglet definition digest. |
 | The target (`--targets`) | A separate record and Binary for each target. |
 | The PiG version that builds the Binary | The `Pig:` line of the manifest. |
 
