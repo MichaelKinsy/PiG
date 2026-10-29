@@ -40,7 +40,7 @@ func listenView(t *testing.T, conversation Conversation, check bool) *viewListen
 	watch := must(conversation.Watch(testContext, nil))
 	listening := &viewListening{watch: watch}
 	replayed := orderedJSONOf(t, watch.Value())
-	watch.Start(func(_ context.Context, change chord.WatchChange[ConversationView]) error {
+	watch.Start(func(_ context.Context, change chord.WatchCall[ConversationView]) error {
 		listening.mu.Lock()
 		defer listening.mu.Unlock()
 		if check {
@@ -100,9 +100,9 @@ func assistantFromJSON(value any) ai.AssistantMessage {
 // partialsOf records the committed partials of the Harness's generations (harness-view-run.test.ts partialsOf).
 func partialsOf(harness Harness) *partialLog {
 	log := &partialLog{}
-	observeCommits(harness, func(_ context.Context, publication session.ObservedCommit) {
-		for _, change := range documentChanges(publication.Changes) {
-			if change.Record.Kind != "pi.live" || change.Value == nil {
+	followCommits(harness, func(_ context.Context, publication session.ObservedCommit) {
+		for _, change := range documentValues(publication.Changes) {
+			if change.Record.Kind != "pi.live" {
 				continue
 			}
 			generation, _ := change.Value.Value("generation").(*delta.JsonObject)
@@ -425,9 +425,9 @@ func TestARunAsTheConversationViewShowsIt(t *testing.T) {
 		harness, root := openChat(t, storage.NewMemoryStorage(), setup)
 		var mu sync.Mutex
 		var outputs []string
-		observeCommits(harness, func(_ context.Context, publication session.ObservedCommit) {
-			for _, change := range documentChanges(publication.Changes) {
-				if change.Record.Kind != "pi.live" || change.Value == nil {
+		followCommits(harness, func(_ context.Context, publication session.ObservedCommit) {
+			for _, change := range documentValues(publication.Changes) {
+				if change.Record.Kind != "pi.live" {
 					continue
 				}
 				tools, _ := change.Value.Value("tools").([]any)
@@ -654,7 +654,7 @@ func TestARunAsTheConversationViewShowsIt(t *testing.T) {
 		}
 		var mu sync.Mutex
 		var frames []viewFrame
-		watch.Start(func(_ context.Context, change chord.WatchChange[ConversationView]) error {
+		watch.Start(func(_ context.Context, change chord.WatchCall[ConversationView]) error {
 			mu.Lock()
 			defer mu.Unlock()
 			frames = append(frames, viewFrame{value: change.Value, ops: change.Ops})
@@ -717,13 +717,13 @@ type opsRecording struct {
 	changes []viewFrame
 }
 
-func (recording *opsRecording) Advance(_ context.Context, change chord.WatchChange[ConversationView]) {
+func (recording *opsRecording) Advance(_ context.Context, change chord.WatchCall[ConversationView]) {
 	recording.mu.Lock()
 	defer recording.mu.Unlock()
 	recording.changes = append(recording.changes, viewFrame{value: change.Value, ops: change.Ops})
 }
 
-func (recording *opsRecording) End(error) {}
+func (recording *opsRecording) End(durable.WatchEnd) {}
 
 func (recording *opsRecording) batches() []viewFrame {
 	recording.mu.Lock()

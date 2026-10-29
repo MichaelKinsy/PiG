@@ -4,8 +4,8 @@ import "testing"
 
 // Pi packages/durable/src/types.ts:705 DocumentCommitChange = a document change or a document copy; CommitChange (types.ts:732) adds the table changes. Each variant reports its upstream type discriminator.
 func TestDocumentCommitChangeVariantsCarryTheirDiscriminators(t *testing.T) {
-	var documents = []DocumentCommitChange{DocumentChange{}, DocumentCopyChange{}}
-	want := []string{"document", "document.copy"}
+	var documents = []DocumentCommitChange{DocumentChange{}, DocumentRetireChange{}, DocumentCopyChange{}}
+	want := []string{"document", "document", "document.copy"}
 	for index, change := range documents {
 		if got := CommitChangeType(change); got != want[index] {
 			t.Errorf("CommitChangeType(%T) = %q, want %q", change, got, want[index])

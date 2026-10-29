@@ -93,11 +93,11 @@ type reportLog struct {
 	infos   []durable.ReportInfo
 }
 
-func (log *reportLog) add(err error, info durable.ReportInfo) {
+func (log *reportLog) add(report durable.Report) {
 	log.mu.Lock()
 	defer log.mu.Unlock()
-	log.reports = append(log.reports, err)
-	log.infos = append(log.infos, info)
+	log.reports = append(log.reports, report.Error)
+	log.infos = append(log.infos, report.ReportInfo)
 }
 
 // allInfos is the info of every report, in order (task-support.ts openTasks infos).

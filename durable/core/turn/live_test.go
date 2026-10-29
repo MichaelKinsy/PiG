@@ -1,8 +1,10 @@
 package turn_test
 
 import (
+	"strings"
 	"testing"
 
+	"github.com/MichaelKinsy/PiG/durable/core/internal/delta"
 	"github.com/MichaelKinsy/PiG/durable/core/jv"
 	"github.com/MichaelKinsy/PiG/durable/core/session"
 	"github.com/MichaelKinsy/PiG/durable/core/session/sessiontest"
@@ -150,7 +152,7 @@ func TestLiveRunLifecycle(t *testing.T) {
 			return err
 		}
 		for _, id := range []string{"3", "5"} {
-			if err := turn.AddCompactionStatus(live, parse(t, `{"taskId":`+id+`,"reason":"threshold","blocking":false,"attempt":1}`).(*jv.Object)); err != nil {
+			if err := turn.AddCompactionStatus(live, parse(t, `{"taskId":`+id+`,"trigger":"threshold","blocking":false,"attempt":1}`).(*jv.Object)); err != nil {
 				return err
 			}
 		}
@@ -161,7 +163,7 @@ func TestLiveRunLifecycle(t *testing.T) {
 	}, session.TxScope{}); err != nil {
 		t.Fatal(err)
 	}
-	if got, want := liveValue(t, s), failure+`,"compactions":[{"taskId":5,"reason":"threshold","blocking":false,"attempt":1}]}`; got != want {
+	if got, want := liveValue(t, s), failure+`,"compactions":[{"taskId":5,"trigger":"threshold","blocking":false,"attempt":1}]}`; got != want {
 		t.Fatalf("compactions:\n got %s\nwant %s", got, want)
 	}
 	if _, err := s.Commit(func(tx *session.Tx) error {
@@ -192,5 +194,70 @@ func TestLiveCheckpointRule(t *testing.T) {
 		if got := turn.LiveDef.CheckpointWhen(parse(t, text).(*jv.Object), nil, 0); got != want {
 			t.Errorf("checkpointWhen(%s) = %v, want %v", text, got, want)
 		}
+	}
+}
+
+// TestLiveVersion2 follows harness-compaction.test.ts "pi.live version 2": a version 1 value reads with each compaction's
+// `reason` as `trigger`, keys in order, and is stored migrated on its next write.
+func TestLiveVersion2(t *testing.T) {
+	mem := sessiontest.New()
+	clock := func() float64 { return 1000 }
+	liveV1 := &session.DocDef{
+		Kind: "pi.live", Version: 1, Scope: session.ScopeConversation, History: session.HistoryLatest, Fork: session.ForkInitial,
+		Initial:        func(any) *jv.Object { return jv.NewObject() },
+		CheckpointWhen: func(*jv.Object, []delta.Op, int) bool { return false },
+	}
+	old := session.New(mem, mem.NextID(), clock)
+	if _, err := old.Commit(func(tx *session.Tx) error {
+		if _, err := tx.CreateRootConversation(); err != nil {
+			return err
+		}
+		live, err := tx.Doc(liveV1, session.DocArgs{Owner: 1})
+		if err != nil {
+			return err
+		}
+		if err := live.Set("compactions", parse(t, `[{"taskId":7,"reason":"threshold","blocking":true,"attempt":2}]`)); err != nil {
+			return err
+		}
+		return live.Set("compactionFailure", parse(t, `{"taskId":5,"reason":"manual","error":"no model"}`))
+	}, session.TxScope{}); err != nil {
+		t.Fatal(err)
+	}
+	stored := func() *session.StoredDoc {
+		t.Helper()
+		record, err := mem.FindDocument(session.Address{Kind: "pi.live", Scope: session.Scope{Kind: session.ScopeConversation, Owner: 1}}, session.Current)
+		if err != nil || record == nil {
+			t.Fatalf("find pi.live: %v %v", record, err)
+		}
+		id, _ := record.Get("id")
+		doc, err := mem.Document(session.ID(id.(float64)), session.Current)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return doc
+	}
+	s := session.New(mem, mem.NextID(), clock)
+	const migrated = `{"compactions":[{"taskId":7,"trigger":"threshold","blocking":true,"attempt":2}],"compactionFailure":{"taskId":5,"trigger":"manual","error":"no model"}}`
+	read, err := s.Snapshot(turn.LiveDef, session.DocArgs{Owner: 1})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := jv.Stringify(read); got != migrated {
+		t.Fatalf("read = %s, want %s", got, migrated)
+	}
+	if doc := stored(); doc.Version != 1 || !strings.Contains(jv.Stringify(doc.Value), `"reason":"threshold"`) {
+		t.Fatalf("a read must leave the version 1 value stored: %d %s", doc.Version, jv.Stringify(doc.Value))
+	}
+	if _, err := s.Commit(func(tx *session.Tx) error {
+		live, err := tx.Doc(turn.LiveDef, session.DocArgs{Owner: 1})
+		if err != nil {
+			return err
+		}
+		return live.Arr("compactions").Obj(0).Set("attempt", 3.0)
+	}, session.TxScope{}); err != nil {
+		t.Fatal(err)
+	}
+	if doc := stored(); doc.Version != 2 || !strings.Contains(jv.Stringify(doc.Value), `"trigger":"threshold","blocking":true,"attempt":3`) || !strings.Contains(jv.Stringify(doc.Value), `"compactionFailure":{"taskId":5,"trigger":"manual"`) {
+		t.Fatalf("stored after write = %d %s", doc.Version, jv.Stringify(doc.Value))
 	}
 }

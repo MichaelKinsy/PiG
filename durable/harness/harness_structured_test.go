@@ -1950,7 +1950,7 @@ func TestToolRounds(t *testing.T) {
 		openGate("abort.hooked")
 		// The final commit, with the run's cleanup, fails: nothing of the cleanup lands, and the Harness fails.
 		<-harness.Closed()
-		if end := harness.End(); end.Reason != durable.SessionEndFailed || !errors.Is(end.Error, store.failure) {
+		if end := harness.End(); end.Kind != durable.SessionEndFailed || !errors.Is(end.Error, store.failure) {
 			t.Fatalf("end %+v, want failed with the storage error", end)
 		}
 		_, err := submission.Wait(testContext)
@@ -2304,7 +2304,7 @@ func TestConversationAbortAndBoundaries(t *testing.T) {
 		store.reject(parent)
 		openGate("child")
 		<-harness.Closed()
-		if end := harness.End(); end.Reason != durable.SessionEndFailed || !errors.Is(end.Error, store.failure) {
+		if end := harness.End(); end.Kind != durable.SessionEndFailed || !errors.Is(end.Error, store.failure) {
 			t.Fatalf("end %+v, want failed with the storage error", end)
 		}
 		if got := reports.all(); len(got) != 1 || !errors.Is(got[0], store.failure) {

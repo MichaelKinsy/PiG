@@ -43,7 +43,7 @@ func TestCreateEnvConformanceCasesMatchUpstream(t *testing.T) {
 		"watch reports a missing target whose ancestors are created",
 		"watch reports changes to the file a watched symbolic link points to",
 		"watch skips excluded entries and reports a rename out of them",
-		"watch stops reporting once closed",
+		"watch stops reporting once stopped",
 		"windowed exec keeps the exact tail and counts what it skips",
 	}
 	providerFailure := errors.New("provider failed")

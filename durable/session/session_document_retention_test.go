@@ -161,9 +161,9 @@ func TestSessionDocumentCacheRetention(t *testing.T) {
 		opened.bump(t, conversationId, 1)
 		watch := watchOf(t, opened, retentionCounterDoc, conversationId)
 		kept := watchOf(t, opened, retentionCounterDoc, conversationId)
-		kept.Start(func(_ context.Context, change durable.WatchChange[obj]) error { return nil })
+		kept.Start(func(_ context.Context, change durable.WatchCall[obj]) error { return nil })
 		seen := &watchRecorder{}
-		watch.Start(func(_ context.Context, change durable.WatchChange[obj]) error {
+		watch.Start(func(_ context.Context, change durable.WatchCall[obj]) error {
 			value, ops := change.Value, change.Ops
 			seen.record(value, ops)
 			return nil
@@ -503,7 +503,7 @@ func TestSessionDocumentCacheRetention(t *testing.T) {
 		conversationId := opened.conversation(t)
 		opened.bump(t, conversationId, 1)
 		watch := watchOf(t, opened, retentionCounterDoc, conversationId)
-		watch.Start(func(_ context.Context, change durable.WatchChange[obj]) error { return nil })
+		watch.Start(func(_ context.Context, change durable.WatchCall[obj]) error { return nil })
 		commit(t, opened.session, func(tx durable.Tx) error { return tx.RetireDoc(retentionCounterDoc, conversationId) })
 		opened.untilCached(t, 0)
 		if attached := opened.sizes().Attached; attached != 0 {

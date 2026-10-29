@@ -46,13 +46,13 @@ type viewRecording struct {
 	observation durable.Observation[harness.ConversationView]
 }
 
-func (recording *viewRecording) Advance(_ context.Context, change chord.WatchChange[harness.ConversationView]) {
+func (recording *viewRecording) Advance(_ context.Context, change chord.WatchCall[harness.ConversationView]) {
 	recording.mu.Lock()
 	defer recording.mu.Unlock()
 	recording.views = append(recording.views, change.Value)
 }
 
-func (recording *viewRecording) End(error) {}
+func (recording *viewRecording) End(durable.WatchEnd) {}
 
 // viewHistory records the views of conversationId from now on.
 func viewHistory(t testing.TB, h harness.Harness, conversationId durable.ConversationId) *viewRecording {
@@ -190,7 +190,7 @@ type nestedResultsRecording struct {
 func nestedResults(t testing.TB, h harness.Harness) *nestedResultsRecording {
 	t.Helper()
 	recording := &nestedResultsRecording{results: map[durable.TaskId]durable.NestedToolExecutionResult{}}
-	off := h.SubscribeCommits(func(_ context.Context, publication durable.CommitPublication) {
+	off := h.ObserveCommits(commitsFunc(func(_ context.Context, publication durable.CommitPublication) {
 		for _, change := range publication.Changes {
 			document, ok := change.(durable.DocumentChange)
 			if !ok || document.Record.Kind != harness.NestedCallDoc.AnyDefinition().Kind || document.Value == nil {
@@ -210,8 +210,8 @@ func nestedResults(t testing.TB, h harness.Harness) *nestedResultsRecording {
 				recording.mu.Unlock()
 			}
 		}
-	})
-	t.Cleanup(off)
+	}))
+	t.Cleanup(off.Detach)
 	return recording
 }
 

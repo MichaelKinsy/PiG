@@ -260,8 +260,8 @@ func TestDurableTelemetryMirrorsRuntimeReportsAsFixedFieldPhaseEventsAndTypeOnly
 	task := telemetryTask("test.report", "report", map[string]telemetryPhase{
 		"report": func(ctx context.Context, _ telemetryRunning, runtime telemetryRuntime) error {
 			runtime.Report(failure)
-			runtime.Report(failure, durable.ReportFrom{Type: durable.ReportFromExtension, Extension: "reporting-extension"})
-			runtime.Report(failure, durable.ReportFrom{Type: durable.ReportFromHost, Callback: durable.HostCallbackModels})
+			runtime.Report(failure, durable.ReportFrom{Kind: durable.ReportFromExtension, Extension: "reporting-extension"})
+			runtime.Report(failure, durable.ReportFrom{Kind: durable.ReportFromHost, Callback: durable.HostCallbackModels})
 			return finishPhase(ctx, telemetryRunning{}, runtime)
 		},
 	})
@@ -392,7 +392,7 @@ func TestDurableTelemetryCountsAnOutsideSpanSessionFailureWithoutStartingASpan(t
 	if strings.Contains(jsonText(t, recorder.GetMetrics()), "private-storage-error") {
 		t.Fatal("the storage error was recorded")
 	}
-	if got, want := reportAttributes(recorder), []telemetry.SpanAttributes{{telemetry.Attr("type", "session_failed")}}; !reflect.DeepEqual(got, want) {
+	if got, want := reportAttributes(recorder), []telemetry.SpanAttributes{{telemetry.Attr("type", "storage_failed")}}; !reflect.DeepEqual(got, want) {
 		t.Fatalf("report counters %+v, want %+v", got, want)
 	}
 }
@@ -402,7 +402,7 @@ func TestDurableTelemetryCountsReportsRaisedWithANoopSpanWithoutCreatingARoot(t 
 	recorder := telemetry.NewInMemoryTelemetryContext()
 	harness, root := openTracked(t, storage.NewMemoryStorage(), setup, recorder)
 	failure := errors.New("private-noop-report")
-	unsubscribe := harness.SubscribeCommits(func(context.Context, durable.CommitPublication) { panic(failure) })
+	unsubscribe := observeStored(harness, func(context.Context, durable.CommitPublication) { panic(failure) })
 	if _, err := root.Commit(testContext, func(tx durable.Tx) (any, error) {
 		return tx.AppendEntry(root.Id(), durable.EntryDraft{Kind: "app.note"})
 	}); err != nil {
@@ -417,7 +417,7 @@ func TestDurableTelemetryCountsReportsRaisedWithANoopSpanWithoutCreatingARoot(t 
 	if got, want := reportAttributes(recorder), []telemetry.SpanAttributes{{telemetry.Attr("type", "listener_error")}}; !reflect.DeepEqual(got, want) {
 		t.Fatalf("report counters %+v, want %+v", got, want)
 	}
-	unsubscribe()
+	unsubscribe.Detach()
 	mustClose(t, harness)
 }
 
@@ -427,7 +427,7 @@ func TestDurableTelemetryAttachesSynchronousCommitListenerReportsToTheActiveSubm
 	setup.Faux.SetResponses([]ai.FauxResponseStep{fauxAnswer("answer")})
 	harness, root := openTracked(t, storage.NewMemoryStorage(), setup, recorder)
 	failure := errors.New("private-listener-error")
-	unsubscribe := harness.SubscribeCommits(func(_ context.Context, publication durable.CommitPublication) {
+	unsubscribe := observeStored(harness, func(_ context.Context, publication durable.CommitPublication) {
 		for _, change := range publication.Changes {
 			if write, ok := change.(durable.EntryWrite); ok && write.Value.Kind == "pi.user" {
 				panic(failure)
@@ -449,6 +449,6 @@ func TestDurableTelemetryAttachesSynchronousCommitListenerReportsToTheActiveSubm
 	if strings.Contains(jsonText(t, recorder.GetSpans()), "private-listener-error") {
 		t.Fatal("the listener error was recorded")
 	}
-	unsubscribe()
+	unsubscribe.Detach()
 	mustClose(t, harness)
 }

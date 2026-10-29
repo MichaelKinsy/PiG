@@ -98,8 +98,8 @@ func TestCoreViewWindowDropsItsOldestPastMaxInOneSplice(t *testing.T) {
 	initial := watch.Value()
 	expectWindow(t, initial, written[1:], &written[0])
 	var mu sync.Mutex
-	var frames []chord.WatchChange[harness.ConversationView]
-	watch.Start(func(_ context.Context, change chord.WatchChange[harness.ConversationView]) error {
+	var frames []chord.WatchCall[harness.ConversationView]
+	watch.Start(func(_ context.Context, change chord.WatchCall[harness.ConversationView]) error {
 		mu.Lock()
 		defer mu.Unlock()
 		frames = append(frames, change)
@@ -143,7 +143,7 @@ func TestCoreViewWindowKeepsTheNewestMinOfACommitThatAppendsMoreThanMax(t *testi
 	}
 	var mu sync.Mutex
 	var latest harness.ConversationView
-	watch.Start(func(_ context.Context, change chord.WatchChange[harness.ConversationView]) error {
+	watch.Start(func(_ context.Context, change chord.WatchCall[harness.ConversationView]) error {
 		mu.Lock()
 		defer mu.Unlock()
 		latest = change.Value

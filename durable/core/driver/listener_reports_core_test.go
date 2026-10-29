@@ -24,7 +24,7 @@ func openReportingCoreHarness(t *testing.T) (harness.Harness, harness.Conversati
 	t.Helper()
 	reports := make(chan error, 16)
 	h, err := driver.OpenHarness(t.Context(), filepath.Join(t.TempDir(), "store.db"), harness.HarnessOptions{
-		Models: ai.CreateModels(), Registry: harness.CreateRegistry(), OnReport: func(err error, _ durable.ReportInfo) { reports <- err },
+		Models: ai.CreateModels(), Registry: harness.CreateRegistry(), OnReport: func(report durable.Report) { reports <- report.Error },
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -66,7 +66,7 @@ func TestCoreReportsAFailingWatchListenerAndEndsTheWatch(t *testing.T) {
 			t.Fatal(err)
 		}
 		failure := errors.New("view watch listener failed")
-		watch.Start(func(_ context.Context, change durable.WatchChange[harness.ConversationView]) error { return failure })
+		watch.Start(func(_ context.Context, change durable.WatchCall[harness.ConversationView]) error { return failure })
 		appendCoreNote(t, root)
 		expectWatchListenerError(t, watch.Closed(), watch.End, failure)
 		expectReport(t, reports, failure)
@@ -80,7 +80,7 @@ func TestCoreReportsAFailingWatchListenerAndEndsTheWatch(t *testing.T) {
 			t.Fatalf("watch: %v %v", watch, err)
 		}
 		failure := errors.New("document watch listener failed")
-		watch.Start(func(_ context.Context, change durable.WatchChange[durable.JsonObject]) error { return failure })
+		watch.Start(func(_ context.Context, change durable.WatchCall[durable.JsonObject]) error { return failure })
 		commitCoreDoc(t, h, increment(stateDoc))
 		expectWatchListenerError(t, watch.Closed(), watch.End, failure)
 		expectReport(t, reports, failure)
@@ -103,7 +103,7 @@ func expectWatchListenerError(t *testing.T, closed <-chan struct{}, end func() d
 	case <-time.After(10 * time.Second):
 		t.Fatal("the watch did not end after its listener failed")
 	}
-	if got := end(); got.Reason != durable.WatchListenerError || !errors.Is(got.Error, failure) {
+	if got := end(); got.Kind != durable.WatchListenerError || !errors.Is(got.Error, failure) {
 		t.Fatalf("the watch ended %+v, want listener_error with the listener's error", got)
 	}
 }

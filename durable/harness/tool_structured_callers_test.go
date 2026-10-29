@@ -188,10 +188,10 @@ func TestTheHarnessStoresExactlyWhatCallersAndEventsGetAndKeepsAStoredNull(t *te
 	// The result each nested call's document got, as committed (4ac0bd8c: written by an update of the call's document).
 	var storedMu sync.Mutex
 	var stored []string
-	harness.SubscribeCommits(func(_ context.Context, publication durable.CommitPublication) {
+	harness.ObserveCommits(commitsObserver{advance: func(_ context.Context, publication durable.CommitPublication) {
 		for _, change := range publication.Changes {
 			doc, ok := change.(durable.DocumentChange)
-			if !ok || doc.Record.Kind != nestedCallKind || doc.Value == nil || len(doc.Ops) == 0 {
+			if !ok || doc.Record.Kind != nestedCallKind || len(doc.Ops) == 0 {
 				continue
 			}
 			if result := doc.Value.Value("result"); result != nil {
@@ -200,7 +200,7 @@ func TestTheHarnessStoresExactlyWhatCallersAndEventsGetAndKeepsAStoredNull(t *te
 				storedMu.Unlock()
 			}
 		}
-	})
+	}})
 	if _, err := ownSubmit(t, root, ownInput("go")).Wait(testContext); err != nil {
 		t.Fatal(err)
 	}

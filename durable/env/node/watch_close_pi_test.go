@@ -8,10 +8,10 @@ import (
 	durableenv "github.com/MichaelKinsy/PiG/durable/env"
 )
 
-// TestFileWatcherCloseIsIdempotentAndEndsReporting ports the FileWatcher contract of packages/durable/src/env/index.ts:136 ("Stop watching; no
-// onChange call starts after this resolves. Idempotent.") over node-watch.ts's #closed gates (:204-220): a change made while the watch runs
-// is reported, a second Close is a no-op that succeeds, and a change made after Close is never reported.
-func TestFileWatcherCloseIsIdempotentAndEndsReporting(t *testing.T) {
+// TestFileWatcherStopIsIdempotentAndEndsReporting ports the FileWatcher contract of packages/durable/src/env/index.ts:136 ("Stop watching; no
+// onChange call starts after this resolves. Idempotent.") over node-watch.ts's #stopped gates (:204-220): a change made while the watch runs
+// is reported, a second Stop is a no-op that succeeds, and a change made after Stop is never reported.
+func TestFileWatcherStopIsIdempotentAndEndsReporting(t *testing.T) {
 	env := NewNodeExecutionEnv(NodeExecutionEnvOptions{Cwd: t.TempDir()})
 	mustDo(t, env.CreateDir(background, "tree", nil))
 	var reported atomic.Int32
@@ -26,12 +26,12 @@ func TestFileWatcherCloseIsIdempotentAndEndsReporting(t *testing.T) {
 			t.Fatal("a change made while watching was never reported")
 		}
 	}
-	mustDo(t, watcher.Close(background))
-	mustDo(t, watcher.Close(background))
+	mustDo(t, watcher.Stop(background))
+	mustDo(t, watcher.Stop(background))
 	seen := reported.Load()
 	mustDo(t, env.WriteFile(background, "tree/after.txt", "x"))
 	time.Sleep(500 * time.Millisecond)
 	if got := reported.Load(); got != seen {
-		t.Fatalf("%d change(s) were reported after Close", got-seen)
+		t.Fatalf("%d change(s) were reported after Stop", got-seen)
 	}
 }

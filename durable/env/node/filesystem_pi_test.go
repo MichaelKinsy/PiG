@@ -147,7 +147,7 @@ func TestFileSystemInterfaceContractThroughTheInterface(t *testing.T) {
 	case <-time.After(5 * time.Second):
 		t.Fatal("watch reported no change")
 	}
-	mustDo(t, watcher.Close(background))
+	mustDo(t, watcher.Stop(background))
 }
 
 // packages/durable/src/env/index.ts:116: WatchTarget.exclude keeps names out of what a watch reports; packages/durable/src/env/index.ts:252: ShellExecOptions.cwd is the directory the command runs in, resolved against the environment's cwd.
@@ -163,7 +163,7 @@ func TestWatchTargetExcludeAndShellCwdMirrorPi(t *testing.T) {
 
 	changes := make(chan durableenv.FileChange, 64)
 	watcher := must(env.Watch(background, []durableenv.WatchTarget{{Path: ".", Recursive: true, Exclude: &durableenv.WatchExclude{Names: []string{"skipped"}, Hidden: true}}}, func(change durableenv.FileChange) { changes <- change }))
-	defer func() { _ = watcher.Close(background) }()
+	defer func() { _ = watcher.Stop(background) }()
 	mustDo(t, env.WriteFile(background, "skipped", "x"))
 	mustDo(t, env.WriteFile(background, ".hidden", "x"))
 	mustDo(t, env.WriteFile(background, "kept", "x"))

@@ -70,9 +70,9 @@ func openCoreHooks(t *testing.T, task durable.AnyTask, settings func() *harness.
 	}
 	h, err := driver.OpenHarness(t.Context(), filepath.Join(t.TempDir(), "store.db"), harness.HarnessOptions{
 		Models: ai.CreateModels(), Registry: env.registry, Settings: settings,
-		OnReport: func(err error, _ durable.ReportInfo) {
+		OnReport: func(report durable.Report) {
 			env.mu.Lock()
-			env.reports = append(env.reports, err)
+			env.reports = append(env.reports, report.Error)
 			env.mu.Unlock()
 		},
 	})

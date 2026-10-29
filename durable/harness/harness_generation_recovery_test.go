@@ -165,7 +165,7 @@ func TestGenerationRecovery(t *testing.T) {
 		var mu sync.Mutex
 		watched := ""
 		seen := false
-		watch.Start(func(_ context.Context, change chord.WatchChange[durable.JsonObject]) error {
+		watch.Start(onValue(func(_ context.Context, change chord.WatchCall[durable.JsonObject]) error {
 			value := change.Value
 			generation, _ := value.Value("generation").(*delta.JsonObject)
 			message, _ := generation.Value("message").(*delta.JsonObject)
@@ -175,7 +175,7 @@ func TestGenerationRecovery(t *testing.T) {
 				mu.Unlock()
 			}
 			return nil
-		})
+		}))
 		id := submitInput(t, root, "hi").Id()
 		waitFor(t, func() bool {
 			mu.Lock()

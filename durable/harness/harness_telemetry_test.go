@@ -241,14 +241,14 @@ func TestDurableTelemetryReportsTelemetryAdaptersThatThrowWhileACommitIsPublishe
 	view := must(root.Watch(testContext, nil))
 	var mu sync.Mutex
 	var shown []durable.EntryId
-	view.Start(func(_ context.Context, change chord.WatchChange[ConversationView]) error {
+	view.Start(func(_ context.Context, change chord.WatchCall[ConversationView]) error {
 		mu.Lock()
 		defer mu.Unlock()
 		shown = append(shown, change.Value.Entries[len(change.Value.Entries)-1].Id)
 		return nil
 	})
 	var hosts []durable.Seq
-	harness.SubscribeCommits(func(_ context.Context, publication durable.CommitPublication) {
+	observeStored(harness, func(_ context.Context, publication durable.CommitPublication) {
 		mu.Lock()
 		defer mu.Unlock()
 		hosts = append(hosts, publication.Seq)
@@ -270,7 +270,7 @@ func TestDurableTelemetryReportsTelemetryAdaptersThatThrowWhileACommitIsPublishe
 		t.Fatal(err)
 	}
 	// The entry event, then the active-task metric; the report's own event throws too and is dropped.
-	telemetryInfo := durable.ReportInfo{Type: durable.ReportHostError, Callback: durable.HostCallbackTelemetry}
+	telemetryInfo := durable.ReportInfo{Kind: durable.ReportHostError, Callback: durable.HostCallbackTelemetry}
 	if infos := opened.reports.allInfos(); !reflect.DeepEqual(infos, []durable.ReportInfo{telemetryInfo, telemetryInfo}) {
 		t.Fatalf("infos %v", infos)
 	}
@@ -286,7 +286,7 @@ func TestDurableTelemetryReportsTelemetryAdaptersThatThrowWhileACommitIsPublishe
 	}
 	must(view.Stop())
 	mustClose(t, harness)
-	if end := harness.End(); end.Reason != durable.SessionEndClosed {
+	if end := harness.End(); end.Kind != durable.SessionEndClosed {
 		t.Fatalf("end %+v", end)
 	}
 }
@@ -297,18 +297,18 @@ func TestDurableTelemetryDropsAReportsOwnMetricThatThrowsAfterOnReportGotTheRepo
 	opened := tkOpenRoot(t, nil, tkOptions{telemetry: adapter})
 	harness, root := opened.harness, opened.root
 	bug := errors.New("listener bug")
-	harness.SubscribeCommits(func(context.Context, durable.CommitPublication) { panic(bug) })
+	observeStored(harness, func(context.Context, durable.CommitPublication) { panic(bug) })
 	appendPlainNote(t, root)
 	// The listener runs in the commit's dispatch; a panic escaping its report would crash the process.
 	flush()
 	if reports := opened.reports.all(); len(reports) != 1 || !errors.Is(reports[0], bug) {
 		t.Fatalf("reports %v", reports)
 	}
-	if infos := opened.reports.allInfos(); !reflect.DeepEqual(infos, []durable.ReportInfo{{Type: durable.ReportListenerError}}) {
+	if infos := opened.reports.allInfos(); !reflect.DeepEqual(infos, []durable.ReportInfo{{Kind: durable.ReportListenerError}}) {
 		t.Fatalf("infos %v", infos)
 	}
 	mustClose(t, harness)
-	if end := harness.End(); end.Reason != durable.SessionEndClosed {
+	if end := harness.End(); end.Kind != durable.SessionEndClosed {
 		t.Fatalf("end %+v", end)
 	}
 }

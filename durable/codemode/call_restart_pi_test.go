@@ -380,9 +380,9 @@ func (r *restartRun) open(rearm, unblock bool) {
 	}
 	opened, err := harness.OpenHarness(testContext, r.storage, harness.HarnessOptions{
 		Models: r.f.setup.models, Registry: r.f.setup.registry, Now: r.clock.now,
-		OnReport: func(err error, _ durable.ReportInfo) {
+		OnReport: func(report durable.Report) {
 			r.mu.Lock()
-			r.reports = append(r.reports, err.Error())
+			r.reports = append(r.reports, report.Error.Error())
 			r.mu.Unlock()
 		},
 	})

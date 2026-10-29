@@ -41,7 +41,7 @@ func TestNodeFileWatcherReportsALinkedTargetForAnEventNamedByTheResolvedFile(t *
 		}
 	}, NodeWatchOptions{Mode: durableenv.WatchNative})
 	mustDo(t, err)
-	t.Cleanup(func() { _ = watcher.Close(background) })
+	t.Cleanup(func() { _ = watcher.Stop(background) })
 	if watcher.Mode() != durableenv.WatchNative {
 		t.Skip("no native watcher available")
 	}

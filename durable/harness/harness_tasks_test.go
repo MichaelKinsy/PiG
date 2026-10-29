@@ -27,6 +27,20 @@ import (
 	"github.com/MichaelKinsy/PiG/telemetry"
 )
 
+// storedObserver is a CommitObserver over a function: observeCommits() in upstream tests passes `{ advance, end: () => {} }`.
+type storedObserver func(context.Context, durable.CommitPublication)
+
+func (observer storedObserver) Advance(ctx context.Context, publication durable.CommitPublication) {
+	observer(ctx, publication)
+}
+
+func (storedObserver) End(durable.WatchEnd) {}
+
+// observeStored observes what was stored through Harness.ObserveCommits.
+func observeStored(harness Harness, advance func(context.Context, durable.CommitPublication)) durable.CommitObservation {
+	return harness.ObserveCommits(storedObserver(advance))
+}
+
 // syncList is a slice that handlers on several goroutines append to.
 type syncList[T any] struct {
 	mu    sync.Mutex
@@ -1046,7 +1060,7 @@ func TestPublicationAtAdoption(t *testing.T) {
 		gated := tkGated("test.wake-gated", gate)
 		opened := tkOpenRoot(t, []durable.AnyTask{gated.Erased()}, tkOptions{storage: newLateResolvingStorage()})
 		var seen syncList[durable.TaskId]
-		opened.harness.SubscribeCommits(func(_ context.Context, publication durable.CommitPublication) {
+		observeStored(opened.harness, func(_ context.Context, publication durable.CommitPublication) {
 			for _, change := range publication.Changes {
 				if write, ok := change.(durable.TaskWrite); ok && write.Value.State.Status == durable.TaskTerminal {
 					seen.add(write.Value.Id)
@@ -1089,7 +1103,7 @@ func TestPublicationAtAdoption(t *testing.T) {
 			opened := tkOpenRoot(t, []durable.AnyTask{gated.Erased()}, tkOptions{storage: store})
 			var order syncList[string]
 			id := tkStart(t, opened.root, gated.Erased())
-			opened.harness.SubscribeCommits(func(_ context.Context, publication durable.CommitPublication) {
+			observeStored(opened.harness, func(_ context.Context, publication durable.CommitPublication) {
 				if publicationTerminal(publication, id) {
 					order.add(fmt.Sprintf("host adopting=%v", c.adopting(store)))
 				}
@@ -1129,7 +1143,7 @@ func TestPublicationAtAdoption(t *testing.T) {
 			})
 			opened := tkOpenRoot(t, []durable.AnyTask{task.Erased()}, tkOptions{storage: store})
 			id := tkStart(t, opened.root, task.Erased())
-			opened.harness.SubscribeCommits(func(_ context.Context, publication durable.CommitPublication) {
+			observeStored(opened.harness, func(_ context.Context, publication durable.CommitPublication) {
 				for _, change := range publication.Changes {
 					if write, ok := change.(durable.TaskWrite); ok && write.Value.Id == id && write.Value.AbortRequested && write.Value.State.Status != durable.TaskTerminal {
 						order.add("host")
@@ -1159,7 +1173,7 @@ func TestPublicationAtAdoption(t *testing.T) {
 		var order syncList[string]
 		id := tkStart(t, opened.root, gated.Erased())
 		hosted := deferred()
-		opened.harness.SubscribeCommits(func(_ context.Context, publication durable.CommitPublication) {
+		observeStored(opened.harness, func(_ context.Context, publication durable.CommitPublication) {
 			if publicationTerminal(publication, id) {
 				order.add("host")
 				hosted.resolve()
@@ -1200,7 +1214,7 @@ func TestPublicationAtAdoption(t *testing.T) {
 		opened := tkOpenRoot(t, []durable.AnyTask{gated.Erased()}, tkOptions{storage: store, telemetry: recorder})
 		id := tkStart(t, opened.root, gated.Erased())
 		var seen syncList[string]
-		opened.harness.SubscribeCommits(func(_ context.Context, publication durable.CommitPublication) {
+		observeStored(opened.harness, func(_ context.Context, publication durable.CommitPublication) {
 			if publicationTerminal(publication, id) {
 				seen.add("terminal")
 			}
@@ -1221,10 +1235,10 @@ func TestPublicationAtAdoption(t *testing.T) {
 			t.Fatalf("seen %v", got)
 		}
 		<-opened.harness.Closed()
-		if end := opened.harness.End(); end.Reason != durable.SessionEndFailed || !errors.Is(end.Error, errReclaimFailed) {
+		if end := opened.harness.End(); end.Kind != durable.SessionEndFailed || !errors.Is(end.Error, errReclaimFailed) {
 			t.Fatalf("end %+v", end)
 		}
-		if !slices.Contains(opened.reports.allInfos(), durable.ReportInfo{Type: durable.ReportSessionFailed}) {
+		if !slices.Contains(opened.reports.allInfos(), durable.ReportInfo{Kind: durable.ReportStorageFailed}) {
 			t.Fatalf("infos %v", opened.reports.allInfos())
 		}
 		if got := activeCounts(recorder); !reflect.DeepEqual(got, []float64{1, -1}) {
@@ -1252,7 +1266,7 @@ func TestPublicationAtAdoption(t *testing.T) {
 			t.Fatalf("error %v", err)
 		}
 		<-opened.harness.Closed()
-		if end := opened.harness.End(); end.Reason != durable.SessionEndFailed {
+		if end := opened.harness.End(); end.Kind != durable.SessionEndFailed {
 			t.Fatalf("end %+v", end)
 		}
 		if got := activeCounts(recorder); !reflect.DeepEqual(got, []float64{1, -1}) {
@@ -1267,7 +1281,7 @@ func TestPublicationAtAdoption(t *testing.T) {
 		id := tkStart(t, opened.root, gated.Erased())
 		closing := make(chan struct{})
 		var once sync.Once
-		opened.harness.SubscribeCommits(func(_ context.Context, publication durable.CommitPublication) {
+		observeStored(opened.harness, func(_ context.Context, publication durable.CommitPublication) {
 			if publicationTerminal(publication, id) {
 				once.Do(func() { go func() { _ = opened.harness.Close(testContext); close(closing) }() })
 			}
@@ -1301,7 +1315,7 @@ func TestPublicationAtAdoption(t *testing.T) {
 		sealed := opened.harness.(*harnessImpl).tasks.idleHarness.Add(testContext, false)
 		closing := make(chan struct{})
 		var once sync.Once
-		opened.harness.SubscribeCommits(func(_ context.Context, publication durable.CommitPublication) {
+		observeStored(opened.harness, func(_ context.Context, publication durable.CommitPublication) {
 			if publicationTerminal(publication, id) {
 				once.Do(func() {
 					go func() { _ = opened.harness.Close(testContext); close(closing) }()
@@ -1339,7 +1353,7 @@ func TestPublicationAtAdoption(t *testing.T) {
 		conversationWait := tasks.idleWaiters.Add(testContext, opened.root.Id())
 		harnessWait := tasks.idleHarness.Add(testContext, true)
 		awake := make(chan int, 1)
-		opened.harness.SubscribeCommits(func(_ context.Context, publication durable.CommitPublication) {
+		observeStored(opened.harness, func(_ context.Context, publication durable.CommitPublication) {
 			if publicationTerminal(publication, id) {
 				tasks.resolveIdleWaiters()
 				count := 0
@@ -1378,7 +1392,7 @@ func TestPublicationAtAdoption(t *testing.T) {
 		sealed := opened.harness.(*harnessImpl).tasks.idleHarness.Add(testContext, false)
 		closing := make(chan struct{})
 		var once sync.Once
-		opened.harness.SubscribeCommits(func(_ context.Context, publication durable.CommitPublication) {
+		observeStored(opened.harness, func(_ context.Context, publication durable.CommitPublication) {
 			if publicationTerminal(publication, id) {
 				once.Do(func() {
 					go func() { _ = opened.harness.Close(testContext); close(closing) }()
@@ -1433,7 +1447,7 @@ func TestPublicationAtAdoption(t *testing.T) {
 			t.Fatalf("wait %+v %v", result.receipt.State, result.err)
 		}
 		<-opened.harness.Closed()
-		if end := opened.harness.End(); end.Reason != durable.SessionEndClosed {
+		if end := opened.harness.End(); end.Kind != durable.SessionEndClosed {
 			t.Fatalf("end %+v", end)
 		}
 	})
@@ -1442,7 +1456,7 @@ func TestPublicationAtAdoption(t *testing.T) {
 		store := newLateResolvingStorage()
 		opened := tkOpenRoot(t, nil, tkOptions{storage: store})
 		bug := errors.New("observer bug")
-		observeCommits(opened.harness, func(_ context.Context, publication session.ObservedCommit) {
+		followCommits(opened.harness, func(_ context.Context, publication session.ObservedCommit) {
 			if publication.Memory {
 				return
 			}
@@ -1467,15 +1481,15 @@ func TestPublicationAtAdoption(t *testing.T) {
 			t.Fatalf("error %v", err)
 		}
 		<-opened.harness.Closed()
-		if end := opened.harness.End(); end.Reason != durable.SessionEndFailed || !errors.Is(end.Error, errReclaimFailed) {
+		if end := opened.harness.End(); end.Kind != durable.SessionEndFailed || !errors.Is(end.Error, errReclaimFailed) {
 			t.Fatalf("end %+v", end)
 		}
 		reports, infos := opened.reports.all(), opened.reports.allInfos()
 		at := slices.IndexFunc(reports, func(err error) bool { return errors.Is(err, bug) })
-		if at < 0 || infos[at].Type != durable.ReportListenerError {
+		if at < 0 || infos[at].Kind != durable.ReportListenerError {
 			t.Fatalf("reports %v infos %v", reports, infos)
 		}
-		if !slices.Contains(infos, durable.ReportInfo{Type: durable.ReportSessionFailed}) {
+		if !slices.Contains(infos, durable.ReportInfo{Kind: durable.ReportStorageFailed}) {
 			t.Fatalf("infos %v", infos)
 		}
 	})
@@ -1501,7 +1515,7 @@ func TestPublicationAtAdoption(t *testing.T) {
 			record, _ := opened.harness.GetTask(testContext, parentId)
 			return record != nil && record.State.Status == durable.TaskCompleting
 		})
-		opened.harness.SubscribeCommits(func(_ context.Context, publication durable.CommitPublication) {
+		observeStored(opened.harness, func(_ context.Context, publication durable.CommitPublication) {
 			for _, change := range publication.Changes {
 				if write, ok := change.(durable.TaskWrite); ok && write.Value.Id != parentId && write.Value.State.Status == durable.TaskTerminal {
 					// Upstream's void commit takes its line position in this turn; goroutines have no such order, so the
@@ -1566,10 +1580,10 @@ func TestPublicationAtAdoption(t *testing.T) {
 			}
 		}
 		var late syncList[durable.Seq]
-		stopLate := func() {}
+		stopLate := durable.CommitObservation(nil)
 		// No host listener at adopt, although the Harness's own observers run: no dispatch, so the late one misses it.
 		store.setAfterAdopt(func() {
-			stopLate = opened.harness.SubscribeCommits(func(_ context.Context, publication durable.CommitPublication) { late.add(publication.Seq) })
+			stopLate = observeStored(opened.harness, func(_ context.Context, publication durable.CommitPublication) { late.add(publication.Seq) })
 		})
 		note()
 		flush()
@@ -1580,12 +1594,12 @@ func TestPublicationAtAdoption(t *testing.T) {
 		if late.len() != 1 {
 			t.Fatalf("late listener got %v", late.all())
 		}
-		stopLate()
+		stopLate.Detach()
 		// One registered at adopt: the dispatch reads the listeners when it runs, the late one included.
-		opened.harness.SubscribeCommits(func(context.Context, durable.CommitPublication) {})
+		observeStored(opened.harness, func(context.Context, durable.CommitPublication) {})
 		var second syncList[durable.Seq]
 		store.setAfterAdopt(func() {
-			opened.harness.SubscribeCommits(func(_ context.Context, publication durable.CommitPublication) { second.add(publication.Seq) })
+			observeStored(opened.harness, func(_ context.Context, publication durable.CommitPublication) { second.add(publication.Seq) })
 		})
 		note()
 		if second.len() != 1 {

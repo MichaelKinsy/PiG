@@ -228,7 +228,7 @@ func TestSubmissions(t *testing.T) {
 		sealed := harness.(*harnessImpl).submissions.waiters.Add(testContext, 999_999)
 		closing := make(chan struct{})
 		var once sync.Once
-		harness.SubscribeCommits(func(_ context.Context, publication durable.CommitPublication) {
+		observeStored(harness, func(_ context.Context, publication durable.CommitPublication) {
 			for _, change := range publication.Changes {
 				if write, ok := change.(durable.SubmissionWrite); ok && write.Value.Id == submission.Id() && write.Value.Status == durable.SubmissionDone {
 					once.Do(func() {
@@ -498,7 +498,7 @@ func TestSubmissionDraftIgnoresTheFieldsOfTheOtherType(t *testing.T) {
 		harness, root := openChat(t, newLateResolvingStorage(), setup)
 		var mu sync.Mutex
 		settled := map[durable.SubmissionId]bool{}
-		harness.SubscribeCommits(func(_ context.Context, publication durable.CommitPublication) {
+		observeStored(harness, func(_ context.Context, publication durable.CommitPublication) {
 			for _, change := range publication.Changes {
 				if write, ok := change.(durable.SubmissionWrite); ok && write.Value.Status == durable.SubmissionDone {
 					mu.Lock()

@@ -47,7 +47,7 @@ func (r *coreRig) watchState(t *testing.T) durable.WatchHandle[durable.JsonObjec
 func collect(w durable.WatchHandle[durable.JsonObject], gate <-chan struct{}) chan frame {
 	frames := make(chan frame, 256)
 	n := 0
-	w.Start(func(_ context.Context, change durable.WatchChange[durable.JsonObject]) error {
+	w.Start(func(_ context.Context, change durable.WatchCall[durable.JsonObject]) error {
 		f := frame{ops: change.Ops, retired: change.Retired}
 		if change.Value != nil {
 			f.value = toInt(change.Value.Value("value"))
@@ -198,7 +198,7 @@ func expectPanicContaining(t *testing.T, text string, use func()) {
 	use()
 }
 
-func noopListener(context.Context, durable.WatchChange[durable.JsonObject]) error { return nil }
+func noopListener(context.Context, durable.WatchCall[durable.JsonObject]) error { return nil }
 
 func awaitClosed(t *testing.T, w durable.WatchHandle[durable.JsonObject]) durable.WatchEnd {
 	t.Helper()
@@ -218,7 +218,7 @@ func TestCoreWatchStopIsIdempotentAndStartIsRejectedTwiceOrLate(t *testing.T) {
 	expectPanicContaining(t, "already started", func() { started.Start(noopListener) })
 	first, _ := started.Stop()
 	second, _ := started.Stop()
-	if first != second || first.Reason != durable.WatchStopped {
+	if first != second || first.Kind != durable.WatchStopped {
 		t.Fatalf("stop = %+v then %+v", first, second)
 	}
 	stopped, err := r.s.WatchDocErased(t.Context(), watchStateDoc)
@@ -237,17 +237,17 @@ func TestCoreWatchListenerFailureSettlesOnlyTheAffectedWatch(t *testing.T) {
 	if err != nil || healthy == nil {
 		t.Fatalf("watch: %v %v", healthy, err)
 	}
-	failed.Start(func(_ context.Context, change durable.WatchChange[durable.JsonObject]) error {
+	failed.Start(func(_ context.Context, change durable.WatchCall[durable.JsonObject]) error {
 		return errors.New("listener failed")
 	})
 	calls := make(chan struct{}, 8)
-	healthy.Start(func(_ context.Context, change durable.WatchChange[durable.JsonObject]) error {
+	healthy.Start(func(_ context.Context, change durable.WatchCall[durable.JsonObject]) error {
 		calls <- struct{}{}
 		return nil
 	})
 	r.setValue(t, 1)
 	end := awaitClosed(t, failed)
-	if end.Reason != durable.WatchListenerError || end.Error == nil || end.Error.Error() != "listener failed" {
+	if end.Kind != durable.WatchListenerError || end.Error == nil || end.Error.Error() != "listener failed" {
 		t.Fatalf("end = %+v", end)
 	}
 	select {
@@ -272,7 +272,7 @@ func TestCoreSessionCloseDiscardsRetirementBufferedBeforeStart(t *testing.T) {
 	if err := r.s.Close(t.Context()); err != nil {
 		t.Fatal(err)
 	}
-	if end := awaitClosed(t, w); end.Reason != durable.WatchEnded {
+	if end := awaitClosed(t, w); end.Kind != durable.WatchEnded {
 		t.Fatalf("end = %+v", end)
 	}
 	if !reflect.DeepEqual(w.Value(), baseline) {
@@ -295,7 +295,7 @@ func TestCoreSessionCloseDiscardsRetirementBehindAnInFlightCallback(t *testing.T
 	if err := r.s.Close(t.Context()); err != nil {
 		t.Fatal(err)
 	}
-	if end := awaitClosed(t, w); end.Reason != durable.WatchEnded {
+	if end := awaitClosed(t, w); end.Kind != durable.WatchEnded {
 		t.Fatalf("end = %+v", end)
 	}
 	close(release)
@@ -308,7 +308,7 @@ func TestCoreSessionCloseDoesNotJoinAnInFlightCallbackNorCancelItsContext(t *tes
 	w := r.watchState(t)
 	entered := make(chan context.Context, 1)
 	release := make(chan struct{})
-	w.Start(func(ctx context.Context, change durable.WatchChange[durable.JsonObject]) error {
+	w.Start(func(ctx context.Context, change durable.WatchCall[durable.JsonObject]) error {
 		entered <- ctx
 		<-release
 		return nil
@@ -333,7 +333,7 @@ func TestCoreSessionCloseDoesNotJoinAnInFlightCallbackNorCancelItsContext(t *tes
 	if delivered.Err() != nil {
 		t.Fatalf("the callback's context is not cancelled by close: %v", delivered.Err())
 	}
-	if end := awaitClosed(t, w); end.Reason != durable.WatchEnded {
+	if end := awaitClosed(t, w); end.Kind != durable.WatchEnded {
 		t.Fatalf("end = %+v", end)
 	}
 	close(release)
@@ -346,7 +346,7 @@ func TestCoreWatchFramesReplayFromTheAcquisitionRevision(t *testing.T) {
 	replica := any(w.Value())
 	type applied struct{ ok bool }
 	results := make(chan applied, 4)
-	w.Start(func(_ context.Context, change durable.WatchChange[durable.JsonObject]) error {
+	w.Start(func(_ context.Context, change durable.WatchCall[durable.JsonObject]) error {
 		value, ops := change.Value, change.Ops
 		next, err := delta.ApplyImmutable(replica, ops)
 		replica = next
@@ -396,7 +396,7 @@ func TestCoreWatchDeliversStructuralNoOpCommits(t *testing.T) {
 		return err
 	})
 	frames := make(chan []durable.Op, 8)
-	w.Start(func(_ context.Context, change durable.WatchChange[durable.JsonObject]) error {
+	w.Start(func(_ context.Context, change durable.WatchCall[durable.JsonObject]) error {
 		value, ops := change.Value, change.Ops
 		if !reflect.DeepEqual(value, initial) {
 			t.Errorf("the delivered value equals the initial one: %v vs %v", value, initial)
@@ -432,7 +432,7 @@ func TestCoreWatchHydratesMigrationWithoutWritingAndSeesTheLaterEdit(t *testing.
 	}
 	eq(t, "revisions after the watch", r.revisions(t, "watch.migration"), before)
 	values := make(chan int, 8)
-	w.Start(func(_ context.Context, change durable.WatchChange[durable.JsonObject]) error {
+	w.Start(func(_ context.Context, change durable.WatchCall[durable.JsonObject]) error {
 		value := change.Value
 		values <- toInt(value.Value("value"))
 		return nil
@@ -477,7 +477,7 @@ func TestCoreWatchKeepsEarlierRevisionsStable(t *testing.T) {
 	}
 	initial := w.Value()
 	got := make(chan durable.JsonObject, 2)
-	w.Start(func(_ context.Context, change durable.WatchChange[durable.JsonObject]) error {
+	w.Start(func(_ context.Context, change durable.WatchCall[durable.JsonObject]) error {
 		value := change.Value
 		got <- value
 		return nil
@@ -511,7 +511,7 @@ func TestCoreWatchCancellationEndsFutureDeliveryWithoutAbortingTheInFlightCallba
 	}
 	entered := make(chan context.Context, 1)
 	release := make(chan struct{})
-	w.Start(func(ctx context.Context, change durable.WatchChange[durable.JsonObject]) error {
+	w.Start(func(ctx context.Context, change durable.WatchCall[durable.JsonObject]) error {
 		entered <- ctx
 		<-release
 		return nil
@@ -524,7 +524,7 @@ func TestCoreWatchCancellationEndsFutureDeliveryWithoutAbortingTheInFlightCallba
 		t.Fatal("no delivery")
 	}
 	cancel()
-	if end := awaitClosed(t, w); end.Reason != durable.WatchCancelled {
+	if end := awaitClosed(t, w); end.Kind != durable.WatchAborted {
 		t.Fatalf("end = %+v", end)
 	}
 	if delivered.Err() != nil {
@@ -543,7 +543,7 @@ func TestCoreWatchDeliveryCarriesTheCommitContextValuesButNotItsCancellation(t *
 	parent, cancelParent := context.WithCancel(context.WithValue(t.Context(), watchKey{}, "newest-commit"))
 	entered := make(chan context.Context, 1)
 	release := make(chan struct{})
-	w.Start(func(ctx context.Context, change durable.WatchChange[durable.JsonObject]) error {
+	w.Start(func(ctx context.Context, change durable.WatchCall[durable.JsonObject]) error {
 		entered <- ctx
 		<-release
 		return nil
@@ -567,7 +567,7 @@ func TestCoreWatchDeliveryCarriesTheCommitContextValuesButNotItsCancellation(t *
 		t.Fatalf("the delivery context value = %v, want newest-commit", got)
 	}
 	cancelParent()
-	if end, _ := w.Stop(); end.Reason != durable.WatchStopped {
+	if end, _ := w.Stop(); end.Kind != durable.WatchStopped {
 		t.Fatalf("end = %+v", end)
 	}
 	if delivered.Err() != nil {
