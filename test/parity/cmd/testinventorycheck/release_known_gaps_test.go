@@ -13,6 +13,13 @@ func knownGapReleasePolicy() (inventory, mapping, releasePolicy) {
 	inv, m, policy := closedReleasePolicy()
 	m.Entries[0].Disposition = "partial"
 	m.Entries[0].Rationale = "missing cancellation and ordering cases"
+	inv.Files[0].Cases = []struct {
+		ID        string   `json:"id"`
+		Kind      string   `json:"kind"`
+		Modifiers []string `json:"modifiers"`
+		Line      int      `json:"line"`
+	}{{ID: "providers › streams", Kind: "it", Line: 10}, {ID: "providers › cancels and keeps order", Kind: "it", Line: 20}}
+	m.Entries[0].MissingCases = []string{"providers › cancels and keeps order"}
 	m.Entries[1].Disposition = "ported" // Preserve the independent committed count.
 	policy.Entries[0].Tags = append(policy.Entries[0].Tags, "deferred-0.3.x")
 	policy.Entries[0].Rationale = "0.3.x known gap: acceptance incomplete; SCRUTINIZED:approved by Michael Kinsy 2026-09-28; FOLLOWUP-providers; Missing cases: test/parity/interfaces/test-mapping-v" + inv.UpstreamVersion + ".json#" + inv.Files[0].Path
