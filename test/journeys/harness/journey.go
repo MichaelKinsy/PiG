@@ -21,6 +21,7 @@ type Env struct {
 	Bin           map[string]string // executable stubs that lead PATH
 	AgentDirFiles map[string]string // files under the agent directory (prompts, skills, context files)
 	ContextWindow int
+	Models        []string // further model ids of the scripted provider (models.json lists them after "strict")
 	Width, Height int
 	NoModelArg    bool // launch without --model
 	Pipe          bool // drive the process over standard input and output instead of a terminal (RPC and print modes)
@@ -58,7 +59,9 @@ type Journey struct {
 	// PigOnly journeys cover PiG-only features and have no Pi run.
 	PigOnly bool
 	Script  Script
-	Env     func(Kind) Env
+	// Mount registers a gateway's own routes (catalog, control) on each product's provider before the product starts.
+	Mount func(*Provider)
+	Env   func(Kind) Env
 	// Backbone runs first, in order; the first step normally launches.
 	Backbone []Step
 	// Pool actions run in seeded random order between Backbone and Tail.

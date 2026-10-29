@@ -109,6 +109,10 @@ type Reply struct {
 	Usage  *Usage
 	// Length makes the reply finish with finish_reason "length".
 	Length bool
+	// Preamble is sent as raw SSE data frames before anything else, the way a gateway streams its own progress ahead of the upstream reply.
+	Preamble []string
+	// Bare ends the stream after the Preamble frames and [DONE]: no role chunk, no finish chunk, no usage.
+	Bare bool
 }
 
 // Say streams text.
@@ -123,6 +127,15 @@ func Use(calls ...Call) Reply {
 	for _, c := range calls {
 		r.Parts = append(r.Parts, Part{kind: partCall, call: c})
 	}
+	return r
+}
+
+// RawStream answers 200 with exactly the given SSE data frames followed by [DONE].
+func RawStream(frames ...string) Reply { return Reply{Preamble: frames, Bare: true} }
+
+// WithPreamble sends raw SSE data frames ahead of r's own stream.
+func (r Reply) WithPreamble(frames ...string) Reply {
+	r.Preamble = append(append([]string(nil), r.Preamble...), frames...)
 	return r
 }
 
@@ -167,6 +180,7 @@ type Event struct {
 // Provider is a scripted OpenAI-compatible endpoint.
 type Provider struct {
 	srv    *http.Server
+	mux    *http.ServeMux
 	ln     net.Listener
 	script Script
 	// OnRequest runs for every request before it is answered, so a checker sees the exact wire transcript.
@@ -197,10 +211,14 @@ func NewProvider(script Script) (*Provider, error) {
 	p := &Provider{ln: ln, script: script, gates: map[string]*gate{}, notify: make(chan struct{})}
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", p.handle)
+	p.mux = mux
 	p.srv = &http.Server{Handler: mux, ReadHeaderTimeout: 30 * time.Second}
 	go func() { _ = p.srv.Serve(ln) }()
 	return p, nil
 }
+
+// Handle serves pattern (a net/http ServeMux pattern) beside the chat endpoint, for a gateway's catalog and control routes. Register before the product starts.
+func (p *Provider) Handle(pattern string, h http.HandlerFunc) { p.mux.HandleFunc(pattern, h) }
 
 // URL is the base URL a model's baseUrl points at.
 func (p *Provider) URL() string { return "http://" + p.ln.Addr().String() + "/v1" }
@@ -421,6 +439,14 @@ func (p *Provider) handle(w http.ResponseWriter, hr *http.Request) {
 	}
 	chunk := func(delta map[string]any, finish any) map[string]any {
 		return map[string]any{"id": fmt.Sprintf("chatcmpl-j%d", n), "object": "chat.completion.chunk", "created": 1700000000, "model": "strict", "choices": []any{map[string]any{"index": 0, "delta": delta, "finish_reason": finish}}}
+	}
+	for _, frame := range reply.Preamble {
+		emit(frame)
+	}
+	if reply.Bare {
+		emit("[DONE]")
+		p.log(EvDone, n, "")
+		return
 	}
 	emit(chunk(map[string]any{"role": "assistant", "content": ""}, nil))
 	calls := 0

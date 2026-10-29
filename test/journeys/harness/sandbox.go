@@ -26,9 +26,8 @@ type SandboxOpts struct {
 	Provider *Provider
 	// Settings is merged into settings.json.
 	Settings map[string]any
-	// Files are created under the working directory before launch (path -> content).
-	Files map[string]string
-	// AgentFiles are created under the agent directory before launch (path -> content): user prompts, skills and context files.
+	// Files and AgentFiles are created before launch (path -> content), the first under the working directory, the second under the agent directory (user prompts, skills, context files). {{PROVIDER_URL}} in a content becomes the scripted provider's base URL.
+	Files      map[string]string
 	AgentFiles map[string]string
 	// Bin holds executable scripts (name -> content) that shadow host commands: the sandbox bin directory leads PATH.
 	Bin map[string]string
@@ -40,6 +39,8 @@ type SandboxOpts struct {
 	Images bool
 	// ContextWindow overrides the scripted model's context window.
 	ContextWindow int
+	// Models are further model ids of the scripted provider, listed after "strict" in models.json.
+	Models []string
 }
 
 // Sandbox holds the directories one product instance runs in.
@@ -78,10 +79,13 @@ func NewSandbox(o SandboxOpts) (*Sandbox, error) {
 	if window == 0 {
 		window = 128000
 	}
+	var scripted []any
+	for _, id := range append([]string{"strict"}, o.Models...) {
+		scripted = append(scripted, map[string]any{"id": id, "name": id, "reasoning": o.Reasoning, "input": input,
+			"cost": json.RawMessage(`{"input":0,"output":0,"cacheRead":0,"cacheWrite":0}`), "contextWindow": window, "maxTokens": 4096})
+	}
 	models := map[string]any{"providers": map[string]any{"strict-wire": map[string]any{
-		"api": "openai-completions", "baseUrl": o.Provider.URL(), "apiKey": "fixture-key",
-		"models": []any{map[string]any{"id": "strict", "name": "strict", "reasoning": o.Reasoning, "input": input,
-			"cost": json.RawMessage(`{"input":0,"output":0,"cacheRead":0,"cacheWrite":0}`), "contextWindow": window, "maxTokens": 4096}},
+		"api": "openai-completions", "baseUrl": o.Provider.URL(), "apiKey": "fixture-key", "models": scripted,
 	}}}
 	if err := writeJSON(filepath.Join(s.Agent, "models.json"), models); err != nil {
 		return nil, err
@@ -96,7 +100,7 @@ func NewSandbox(o SandboxOpts) (*Sandbox, error) {
 		if err := os.MkdirAll(filepath.Dir(p), 0o700); err != nil {
 			return nil, err
 		}
-		if err := os.WriteFile(p, []byte(content), 0o600); err != nil {
+		if err := os.WriteFile(p, []byte(strings.ReplaceAll(content, "{{PROVIDER_URL}}", o.Provider.URL())), 0o600); err != nil {
 			return nil, err
 		}
 	}
@@ -114,7 +118,7 @@ func NewSandbox(o SandboxOpts) (*Sandbox, error) {
 		if err := os.MkdirAll(filepath.Dir(p), 0o700); err != nil {
 			return nil, err
 		}
-		if err := os.WriteFile(p, []byte(content), 0o600); err != nil {
+		if err := os.WriteFile(p, []byte(strings.ReplaceAll(content, "{{PROVIDER_URL}}", o.Provider.URL())), 0o600); err != nil {
 			return nil, err
 		}
 	}
