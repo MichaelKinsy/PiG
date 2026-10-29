@@ -42,7 +42,7 @@ func jdcMutate(data []byte, rnd *corpusRNG, op int) []byte {
 	if scanStart < 0 {
 		scanStart = n
 	}
-	pos := func(lo, hi int) int { return lo + int(rnd.next()>>4)%max(hi-lo, 1) }
+	pos := func(lo, hi int) int { return min(lo+int(rnd.next()>>4)%max(hi-lo, 1), n-1) }
 	switch op % 14 {
 	case 0: // a bit flip anywhere
 		i := pos(0, n)

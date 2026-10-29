@@ -201,14 +201,14 @@ func (b *jdcBuilder) structure() {
 	add("dri-zero-after-first-scan", rsSegs.before("sos", 1, jdwMarkerSeg("dri", 0xDD, []byte{0, 0})))
 	add("dri-missing-but-rst", noDRI)
 	add("dri-bad-length", rsSegs.patch("dri", 0, 3, 3))
-	var rstStripped jdcSegs = rsSegs.clone()
+	rstStripped := rsSegs.clone()
 	for i := range rstStripped {
 		if rstStripped[i].name == "ecs" {
 			rstStripped[i].data = jdcStripRST(rstStripped[i].data, false)
 		}
 	}
 	add("rst-missing", rstStripped)
-	var rstSwapped jdcSegs = rsSegs.clone()
+	rstSwapped := rsSegs.clone()
 	for i := range rstSwapped {
 		if rstSwapped[i].name == "ecs" {
 			rstSwapped[i].data = jdcStripRST(rstSwapped[i].data, true)

@@ -352,7 +352,7 @@ func jdcQuant(s *jdwSpec, kind string) {
 				s.qtab[t][k] = uint16(1 + (k*1021+t*4093)%65535)
 				s.q16 = true
 			case "q16small":
-				s.qtab[t][k] = s.qtab[t][k] * 3
+				s.qtab[t][k] *= 3
 				s.q16 = true
 			}
 		}

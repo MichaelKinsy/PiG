@@ -315,17 +315,6 @@ func (b *jdcBuilder) image(kind string, w, h int) *image.NRGBA {
 	return corpusImage(kind, b.ordinal, w, h)
 }
 
-// colour is a colour JPEG of the sampling named.
-func (b *jdcBuilder) colour(name string, sampling string, w, h int, scans func(n int) []jdwScan, tweak func(*jdwSpec)) {
-	s := jdcSamplingSpec(w, h, sampling, jdcYCbCrIDs)
-	s.fillImage(b.image("photo", w, h), "ycbcr")
-	s.scans = scans(3)
-	if tweak != nil {
-		tweak(s)
-	}
-	b.add(name, s.build())
-}
-
 // jdcInterleavedFits reports whether one interleaved scan of the frame is allowed (at most 10 blocks per MCU).
 func jdcInterleavedFits(s *jdwSpec) bool {
 	n := 0
