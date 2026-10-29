@@ -109,6 +109,25 @@ func (*mouseProbe) HandleInput(string) (sdk.RemoteComponentResult, error) {
 	return sdk.RemoteComponentResult{}, nil
 }
 
+// viewportProbe is the viewport row's component: it captures the viewport's input until it receives "t", then stops, and it closes on "q".
+type viewportProbe struct {
+	released atomic.Bool
+}
+
+func (*viewportProbe) Render(int) []string { return []string{"viewport probe"} }
+
+func (p *viewportProbe) CapturesViewportInput() bool { return !p.released.Load() }
+
+func (p *viewportProbe) HandleInput(data string) (sdk.RemoteComponentResult, error) {
+	switch data {
+	case "t":
+		p.released.Store(true)
+	case "q":
+		return sdk.RemoteComponentResult{Done: true, Value: "viewport=done"}, nil
+	}
+	return sdk.RemoteComponentResult{}, nil
+}
+
 func (p *mouseProbe) HandleMouse(event sdk.MouseEvent) (sdk.RemoteComponentResult, error) {
 	var mods strings.Builder
 	for _, mod := range []struct {
@@ -334,6 +353,7 @@ func Extension() *sdk.Extension {
 	ext.Command("tui-alt-children-probe", "Read TuiAltScreen children after addChild, removeChild and clear, with components of equal content", tuiAltChildrenProbe)
 	ext.Command("tui-alt-reentry-probe", "Call the frame's own members from a component's render and report that they fail", tuiAltReentryProbe)
 	ext.Command("tui-alt-go-identity-probe", "Pass component values and equal-content pointers to a TuiAltScreen", tuiAltGoIdentityProbe)
+	ext.Command("tui-alt-viewport-probe", "Mount a focused TuiAltScreen component that captures viewport input", tuiAltViewportProbe)
 	ext.Command("tui-alt-screen-probe", "Drive a TuiAltScreen over a recording terminal", tuiAltProbe)
 	ext.Command("flag-probe", "Report registered flag values", func(ctx sdk.Context, _ string) error {
 		values := []any{}
@@ -408,6 +428,23 @@ func Extension() *sdk.Extension {
 			return nil
 		}
 		ctx.Notify(fmt.Sprintf("exec-abort:killed=%t;code=%d;stdout=%s", result.Killed, result.ExitCode, strings.TrimSpace(result.Stdout)), "info")
+		return nil
+	})
+	ext.Command("exec-limits-probe", "Run a command under exec's maxBuffer and report truncation", func(ctx sdk.Context, args string) error {
+		var probe struct {
+			Command   string   `json:"command"`
+			Args      []string `json:"args"`
+			MaxBuffer *float64 `json:"maxBuffer"`
+		}
+		if err := json.Unmarshal([]byte(args), &probe); err != nil {
+			return err
+		}
+		result, err := ctx.ExecWithOptions(probe.Command, probe.Args, sdk.ExecOptions{MaxBuffer: probe.MaxBuffer})
+		if err != nil {
+			ctx.Notify("rejected:"+err.Error(), "info")
+			return nil
+		}
+		ctx.Notify(fmt.Sprintf("exec-limits:truncated=%t;killed=%t;code=%d;stdout=%s;stderr=%s", result.Truncated, result.Killed, result.ExitCode, strings.TrimSpace(result.Stdout), strings.TrimSpace(result.Stderr)), "info")
 		return nil
 	})
 	ext.Command("thinking-model", "Read the thinking level and switch the model", func(ctx sdk.Context, _ string) error {
@@ -1619,6 +1656,17 @@ func Extension() *sdk.Extension {
 			return err
 		}
 		ctx.Notify(fmt.Sprintf("mouse=%v", result), "info")
+		return nil
+	})
+
+	// viewport-probe opens a component that captures the viewport's input until
+	// it gets "t", and closes on "q".
+	ext.Command("viewport-probe", "Exercise a custom component's capturesViewportInput", func(ctx sdk.Context, _ string) error {
+		result, err := ctx.Custom(&viewportProbe{}, sdk.RemoteOverlayOptions{Overlay: true})
+		if err != nil {
+			return err
+		}
+		ctx.Notify(fmt.Sprintf("%v", result), "info")
 		return nil
 	})
 

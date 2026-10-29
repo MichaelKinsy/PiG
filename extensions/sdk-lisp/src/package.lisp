@@ -81,7 +81,7 @@
     #:make-tui-keybinding-definition #:tui-keybinding-definition-default-keys #:tui-keybinding-definition-description #:tui-keybinding-conflict-key
     #:tui-keybinding-conflict-keybindings #:tui-make-keybindings-manager #:tui-keybindings-from-wire #:tui-keybindings-matches
     #:tui-keybindings-get-keys #:tui-keybindings-get-definition #:tui-keybindings-get-conflicts #:tui-keybindings-set-user-bindings
-    #:tui-keybindings-get-user-bindings #:tui-keybindings-get-resolved-bindings #:tui-get-keybindings #:tui-set-keybindings #:make-tui-capabilities
+    #:tui-keybindings-get-user-bindings #:tui-keybindings-get-resolved-bindings #:tui-get-keybindings #:tui-get-select-page-index #:tui-set-keybindings #:make-tui-capabilities
     #:tui-capabilities-images #:tui-capabilities-true-color #:tui-capabilities-hyperlinks #:tui-hyperlink #:tui-detect-capabilities
     #:tui-get-capabilities #:tui-get-terminal-color-mode #:tui-reset-capabilities-cache #:tui-set-capability-overrides #:tui-set-capabilities
     #:tui-error #:tui-error-message #:tui-indexed-color #:tui-rgb-color #:tui-oklch-color #:tui-okhsl-color #:tui-parse-color #:tui-color-to-rgb
@@ -358,7 +358,7 @@
    #:kit-view #:kit-render-result #:kit-event-node #:kit-event-type #:kit-event-index #:kit-event-item #:kit-event-id #:kit-event-value
    #:kit-event-cursor #:kit-event-mouse
    ;; ui.custom and overlays
-   #:make-custom-component #:make-custom-result #:ctx-custom #:make-mouse-event #:mouse-event-type #:mouse-event-button #:mouse-event-x
+   #:make-custom-component #:custom-component-captures-viewport-input #:make-custom-result #:ctx-custom #:make-mouse-event #:mouse-event-type #:mouse-event-button #:mouse-event-x
    #:mouse-event-y #:mouse-event-screen-x #:mouse-event-screen-y #:mouse-event-width #:mouse-event-height #:mouse-event-shift
    #:mouse-event-alt #:mouse-event-ctrl #:mouse-event-wheel-delta #:mouse-event-click-count
    #:overlay-handle #:overlay-hide #:overlay-set-hidden #:overlay-hidden-p #:overlay-focus #:overlay-unfocus #:overlay-focused-p
@@ -379,6 +379,7 @@
    #:editor-status #:make-editor-status #:editor-status-kind #:editor-status-message #:editor-status-frames #:editor-status-frame
    #:editor-status-spinner-color #:editor-status-message-color #:editor-status-indicator-verbatim
    #:editor-component #:make-editor-component #:editor-component-base #:editor-component-embed-working-status
+   #:editor-component-captures-viewport-input
    #:editor-component-handle-input #:editor-component-handle-mouse #:editor-component-render #:editor-component-set-text
    #:editor-component-insert-text-at-cursor #:editor-component-add-to-history #:editor-component-set-working-status-indicator
    #:editor-component-invalidate
@@ -400,7 +401,7 @@
    #:tui-terminal-clear-line #:tui-terminal-clear-from-cursor #:tui-terminal-clear-screen #:tui-terminal-set-title #:tui-terminal-set-progress
    #:tui-terminal-set-program-status #:tui-terminal-restore-on-exit
    #:tui-component #:make-tui-component #:tui-component-render #:tui-component-invalidate #:tui-component-handle-input
-   #:tui-component-handle-mouse #:tui-component-focusable #:tui-component-on-focus #:tui-component-wants-key-release #:tui-component-focused
+   #:tui-component-handle-mouse #:tui-component-focusable #:tui-component-on-focus #:tui-component-wants-key-release #:tui-component-captures-viewport-input #:tui-component-focused
    #:tui-alt-screen #:make-tui-alt-screen #:tui-alt-screen-viewport-tui-p #:tui-alt-screen-add-child #:tui-alt-screen-add-input-listener
    #:tui-alt-screen-children #:tui-alt-screen-clear #:tui-alt-screen-copy-active-selection-to-clipboard #:tui-alt-screen-flash
    #:tui-alt-screen-full-redraws #:tui-alt-screen-get-clear-on-shrink #:tui-alt-screen-get-copy-on-select #:tui-alt-screen-get-focused-component

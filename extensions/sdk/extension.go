@@ -356,6 +356,9 @@ type remoteOverlay struct {
 	stopped     chan struct{}
 	stopOnce    sync.Once
 
+	// lastCaptures is the capturesViewportInput the last frame carried; a change alone sends a frame.
+	lastCaptures bool
+
 	// frontend reports whether a frontend draws; nil reports none.
 	frontend func() bool
 	// lastView and lastWidth are a view component's last frame, without its
@@ -637,10 +640,12 @@ func (o *remoteOverlay) renderLocked(conn *conn, key string, width int) error {
 		}
 		lines := component.Render(renderWidth)
 		o.lastRender = time.Now()
-		if slices.Equal(lines, o.lastLines) {
+		captures := capturesViewportInput(component)
+		if slices.Equal(lines, o.lastLines) && captures == o.lastCaptures {
 			return nil
 		}
 		o.lastLines = append(o.lastLines[:0], lines...)
+		o.lastCaptures = captures
 		o.seq++
 		return conn.notify("ui.custom.render", o.frameArgs(map[string]any{"key": key, "lines": lines, "width": width, "seq": o.seq}))
 	}
@@ -659,10 +664,12 @@ func (o *remoteOverlay) renderViewLocked(conn *conn, key string, width int, comp
 		return err
 	}
 	force := o.forceView.Swap(false)
-	if !force && o.lastView != nil && width == o.lastWidth && bytes.Equal(encoded.View, o.lastView) && len(conn.images.unsent(encoded.Images)) == 0 {
+	captures := capturesViewportInput(component)
+	if !force && o.lastView != nil && width == o.lastWidth && captures == o.lastCaptures && bytes.Equal(encoded.View, o.lastView) && len(conn.images.unsent(encoded.Images)) == 0 {
 		return nil
 	}
 	o.lastView = encoded.View
+	o.lastCaptures = captures
 	o.lastWidth = width
 	refs := make([]string, len(encoded.Images))
 	for i, image := range encoded.Images {
@@ -678,10 +685,14 @@ func (o *remoteOverlay) renderViewLocked(conn *conn, key string, width int, comp
 }
 
 // frameArgs marks a frame of a component that takes the mouse, which the
-// host then hands mouse events inside its bounds.
+// host then hands mouse events inside its bounds, and of one that captures
+// the viewport's input (ViewportInputCapturer), as of when the frame is drawn.
 func (o *remoteOverlay) frameArgs(args map[string]any) map[string]any {
 	if _, ok := o.component.(MouseHandler); ok {
 		args["mouse"] = true
+	}
+	if capturesViewportInput(o.component) {
+		args["capturesViewportInput"] = true
 	}
 	return args
 }

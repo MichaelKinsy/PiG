@@ -58,6 +58,10 @@ Serialize `JsString` directly with `serde_json::to_string` or `serde_json::to_ve
 
 A `RemoteComponent` or `ViewComponent` that returns `true` from `handles_mouse` receives Pi's fullscreen mouse events in `handle_mouse(&MouseEvent)` (snake_case fields such as `screen_x`, `wheel_delta`, `click_count`; `x`/`y` local to the component), on the same serial queue as `handle_input` and with the same result meaning. Regular `tuiMode` delivers none, as in Pi. See "Mouse in custom components" in `docs/extension-authoring.md`.
 
+`captures_viewport_input(&self) -> bool` (default `false`) is Pi's `Component.capturesViewportInput`, a member of `RemoteComponent`, `ViewComponent`, `EditorComponent` and the `tui_alt_screen::Component` trait: a focused component that returns `true` takes the fullscreen viewport's keys (scroll, page) instead of the viewport. `ui.custom.render` and `ui.editor.render` frames carry the value read when the frame is drawn as `capturesViewportInput` (omitted when false), and a frame goes out when only that changed; a `TuiAltScreen` component is asked each time the host asks and answers its current value.
+
+`pig_sdk::tui::get_select_page_index(&keybindings, data, selected_index, item_count, page_size) -> Option<usize>` is pi-tui's `getSelectPageIndex`: `tui.select.pageUp` / `tui.select.pageDown` move the selection one page, clamped to the list (an empty list gives `Some(0)`); any other key gives `None`.
+
 ## Child agent sessions
 
 `Context::create_agent_session(CreateAgentSessionOptions { .. })` is Pi's `createAgentSession`: a child agent session over the host's model runtime that the extension prompts (`prompt`, `steer`, `follow_up`), observes (`subscribe`), aborts (`abort`) and disposes (`dispose`), with `custom_tools` served by this extension. Calls block as Pi's Promises resolve; the session ends with the connection. See [Child agent sessions](../../docs/extension-authoring.md#child-agent-sessions-createagentsession).

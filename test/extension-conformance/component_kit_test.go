@@ -229,6 +229,8 @@ type kitSession struct {
 	mouse func(event extension.RemoteMouseEvent) extension.ViewMouseResult
 	// lines returns the last lines frame; nil for inproc-go.
 	lines func() []string
+	// capturesViewportInput is the component's capturesViewportInput as its latest frame reported it; nil for inproc-go.
+	capturesViewportInput func() bool
 }
 
 // kitUI shows ui.custom calls to the row: an in-process factory's component,
@@ -291,6 +293,9 @@ func (u *kitUI) RunRemoteOverlay(_ extension.RemoteOverlayOptions, host extensio
 	session := &kitSession{rows: handle.rows, frontendView: handle.frontendView, input: host.OnInput, lines: handle.lineFrame}
 	if mouse, ok := host.(extension.RemoteOverlayMouseHost); ok {
 		session.mouse = mouse.OnMouse
+	}
+	if viewport, ok := host.(extension.RemoteOverlayViewportHost); ok {
+		session.capturesViewportInput = viewport.CapturesViewportInput
 	}
 	u.sessions <- session
 	select {

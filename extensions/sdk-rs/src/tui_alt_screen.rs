@@ -85,6 +85,11 @@ pub trait Component: Send + Sync {
     fn handles_mouse(&self) -> bool {
         false
     }
+    /// pi-tui's `Component.capturesViewportInput`: whether the component, while focused, takes the fullscreen viewport's keys.
+    /// Every Rust component has the member, so the screen asks it each time the host does and answers its current value.
+    fn captures_viewport_input(&self) -> bool {
+        false
+    }
     fn handle_mouse(&self, _event: &MouseEvent) -> Option<MouseEventResult> {
         None
     }
@@ -468,6 +473,7 @@ impl Inner {
         let caps = json!({
             "input": component.handles_input(),
             "mouse": component.handles_mouse(),
+            "capturesViewportInput": true,
             "focusable": component.is_focusable(),
             "wantsKeyRelease": component.wants_key_release(),
         });
@@ -618,6 +624,7 @@ impl Inner {
                 let result = self.component(key)?.handle_mouse(&event);
                 Ok(json!({"result": result.map(|result| serde_json::to_value(result).unwrap_or(Value::Null))}))
             }
+            "capturesViewportInput" => Ok(json!({"captures": self.component(key)?.captures_viewport_input()})),
             "focus" => {
                 self.component(key)?.set_focused(args.get("focused").and_then(Value::as_bool).unwrap_or(false));
                 Ok(json!({}))

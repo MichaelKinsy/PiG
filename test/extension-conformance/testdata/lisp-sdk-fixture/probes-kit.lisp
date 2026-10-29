@@ -39,6 +39,16 @@
                           (and (equal (pig:kit-event-type event) "select")
                                (pig:make-custom-result :done t :value (format nil "~{~A~^,~}" (reverse log))))))))
 
+(defun kp-viewport-component ()
+  "Captures viewport input until it receives \"t\", then stops; closes with \"viewport=done\" on \"q\"."
+  (let ((capturing t))
+    (pig:make-custom-component
+     :render (lambda (width) (declare (ignore width)) (list "viewport probe"))
+     :captures-viewport-input (lambda () capturing)
+     :handle-input (lambda (data)
+                     (cond ((equal data "t") (setf capturing nil) nil)
+                           ((equal data "q") (pig:make-custom-result :done t :value "viewport=done")))))))
+
 (defun kp-mouse-component ()
   "Logs every mouse event it receives, all of its fields, and closes on a click with the log joined by \",\"."
   (let ((log '()))
@@ -367,6 +377,10 @@ kit-widget-event=<type>:<value> (a change report is not one). It never closes it
                (lambda (ctx args) (declare (ignore args))
                  (let ((result (pig:ctx-custom ctx (kp-mouse-component) :options (pig:obj "overlay" t))))
                    (kp-notify ctx (format nil "mouse=~A" (or result ""))))))
+  (pig:command ext "viewport-probe" "Exercise a component that captures viewport input"
+               (lambda (ctx args) (declare (ignore args))
+                 (let ((result (pig:ctx-custom ctx (kp-viewport-component) :options (pig:obj "overlay" t))))
+                   (kp-notify ctx (format nil "~A" (or result ""))))))
   ;; kit-surfaces shows the kit probe's tree on every other view surface: a pushed widget, the header, the footer and a tool result
   (pig:command ext "kit-surfaces" "Show the kit probe on every view surface (D107)"
                (lambda (ctx args) (declare (ignore args))

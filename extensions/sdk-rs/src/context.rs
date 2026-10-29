@@ -74,6 +74,13 @@ pub trait RemoteComponent: Send {
     fn handle_input(&mut self, data: &crate::JsString) -> Result<RemoteComponentResult, String>;
     fn set_invalidate(&mut self, _invalidate: Option<RemoteComponentInvalidate>) {}
     fn dispose(&mut self) {}
+    /// Whether the component captures viewport input, as an upstream component with
+    /// `capturesViewportInput` does: the host's fullscreen viewport keys (scroll, page) go to it instead
+    /// of the viewport. Read each time a frame is drawn and sent with the frame as `capturesViewportInput`
+    /// (omitted when false); a frame goes out when only this changed. The default is false.
+    fn captures_viewport_input(&self) -> bool {
+        false
+    }
     /// Whether the component takes the mouse, as an upstream component with
     /// `handleMouse` does; see [`Self::handle_mouse`]. The default is false.
     fn handles_mouse(&self) -> bool {
@@ -113,6 +120,11 @@ pub trait ViewComponent: Send {
     }
     fn set_invalidate(&mut self, _invalidate: Option<RemoteComponentInvalidate>) {}
     fn dispose(&mut self) {}
+    /// Whether the component captures viewport input; see
+    /// [`RemoteComponent::captures_viewport_input`]. The default is false.
+    fn captures_viewport_input(&self) -> bool {
+        false
+    }
     /// Whether the component takes the mouse; see
     /// [`RemoteComponent::handles_mouse`]. The default is false.
     fn handles_mouse(&self) -> bool {
@@ -138,6 +150,13 @@ impl OverlayComponent {
         match self {
             OverlayComponent::Lines(component) => component.handle_input(data),
             OverlayComponent::View(component) => component.handle_input(data),
+        }
+    }
+
+    fn captures_viewport_input(&self) -> bool {
+        match self {
+            OverlayComponent::Lines(component) => component.captures_viewport_input(),
+            OverlayComponent::View(component) => component.captures_viewport_input(),
         }
     }
 
@@ -173,6 +192,8 @@ impl OverlayComponent {
 pub(crate) struct RemoteComponentState {
     pub(crate) component: OverlayComponent,
     pub(crate) last_lines: Vec<String>,
+    /// The `capturesViewportInput` the last frame carried.
+    pub(crate) last_captures: bool,
     /// The last view frame's wire body, without image data, and the width it
     /// went out for.
     pub(crate) last_view: Option<(serde_json::Value, u32)>,
@@ -476,9 +497,10 @@ fn render_remote_component_frame(
     }
     .map_err(|_| io::Error::other("focused render panicked"))?;
     state.last_render = Some(Instant::now());
+    let captures = state.component.captures_viewport_input();
     let mut frame = match frame {
         crate::kit::Rendered::Lines(lines) => {
-            if lines == state.last_lines {
+            if lines == state.last_lines && captures == state.last_captures {
                 return Ok(());
             }
             state.last_lines.clone_from(&lines);
@@ -491,6 +513,7 @@ fn render_remote_component_frame(
             let encoded = conn.views.encode(&view).map_err(io::Error::other)?;
             let force = overlay.force_view.swap(false, Ordering::AcqRel);
             if !force
+                && captures == state.last_captures
                 && state.last_view.as_ref().is_some_and(|(body, last)| *body == encoded.body && *last == width)
                 && !conn.views.has_unsent(&encoded)
             {
@@ -502,7 +525,11 @@ fn render_remote_component_frame(
         }
     };
     state.seq += 1;
+    state.last_captures = captures;
     frame["seq"] = serde_json::Value::from(state.seq);
+    if captures {
+        frame["capturesViewportInput"] = serde_json::Value::Bool(true);
+    }
     // The host hands a component that takes the mouse its events.
     if state.component.handles_mouse() {
         frame["mouse"] = serde_json::Value::Bool(true);
@@ -2973,6 +3000,7 @@ impl Context {
             state: Mutex::new(RemoteComponentState {
                 component,
                 last_lines: Vec::new(),
+                last_captures: false,
                 last_view: None,
                 seq: 0,
                 last_render: None,

@@ -96,6 +96,15 @@ export default function (pi) {
       ctx.ui.notify(`rejected:${error.message}`, "info");
     }
   }});
+  pi.registerCommand("exec-limits-probe", { description: "Exec with a maxBuffer", handler: async (args, ctx) => {
+    const probe = JSON.parse(args);
+    try {
+      const result = await pi.exec(probe.command, probe.args, probe.maxBuffer === undefined ? undefined : { maxBuffer: probe.maxBuffer });
+      ctx.ui.notify(`exec-limits:truncated=${result.truncated};killed=${result.killed};code=${result.code};stdout=${result.stdout.trim()};stderr=${result.stderr.trim()}`, "info");
+    } catch (error) {
+      ctx.ui.notify(`rejected:${error.message}`, "info");
+    }
+  }});
   pi.registerCommand("thinking-model", { description: "Read the thinking level and switch the model", handler: async (_args, ctx) => {
     pi.setThinkingLevel("high");
     const ok = await pi.setModel({ provider: "probe", id: "model" });
@@ -1803,6 +1812,25 @@ export default function (pi) {
     handler: async (_args, ctx) => {
       const result = await ctx.ui.custom((_tui, _theme, _keys, done) => new MouseProbe(done), { overlay: true });
       ctx.ui.notify(`mouse=${result ?? ""}`, "info");
+    },
+  });
+  // viewport-probe's component: Component.capturesViewportInput is true until it gets "t", and it closes on "q".
+  class ViewportProbe {
+    constructor(done) {
+      this.done = done;
+      this.capturesViewportInput = true;
+    }
+    render() { return ["viewport probe"]; }
+    handleInput(data) {
+      if (data === "t") this.capturesViewportInput = false;
+      if (data === "q") this.done("viewport=done");
+    }
+  }
+  pi.registerCommand("viewport-probe", {
+    description: "Exercise capturesViewportInput",
+    handler: async (_args, ctx) => {
+      const result = await ctx.ui.custom((_tui, _theme, _keys, done) => new ViewportProbe(done), { overlay: true });
+      ctx.ui.notify(`${result ?? ""}`, "info");
     },
   });
   pi.registerMessageRenderer("kit-message", (_message, _options, theme) => new KitProbe(theme));

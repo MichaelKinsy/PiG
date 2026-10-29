@@ -100,7 +100,7 @@
 (defun ctx-get-session-file (ctx) (optional-string-field ctx "getSessionFile" "sessionFile"))
 
 (defun ctx-extension-source-info (ctx)
-  "The provenance the host stamped on this extension (path, source, scope, origin, baseDir), or NIL."
+  "The provenance the host stamped on this extension (path, source, scope, origin, baseDir, and changelogPath when the package has a changelog), as the host sent it, or NIL."
   (with-core-state (cs ctx) (and (cs-source-info cs) (clone-stream-value (cs-source-info cs)))))
 
 (defun ctx-get-settings (ctx)

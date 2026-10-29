@@ -78,6 +78,7 @@ from .tui_alt_screen import (
     TuiMouseEventResult as TuiMouseEventResult,
     TuiOverlayOptions as TuiOverlayOptions,
     _TuiAltScreens,
+    captures_viewport_input as _captures_viewport_input,
 )
 from .tui_alt_screen import Component as TuiAltComponent
 from .agent_session_services import (
@@ -1044,12 +1045,19 @@ class MouseHandler(Protocol):
     def handle_mouse(self, event: MouseEvent) -> RemoteComponentResult: ...
 
 
+# Any RemoteComponent or ``kit.ViewComponent`` may also have ``captures_viewport_input`` (a bool attribute, property or
+# method; Pi's ``capturesViewportInput``). Each ui.custom.render frame carries ``capturesViewportInput: true`` while it
+# is true, and a change alone sends a frame.
+
+
 @dataclass
 class _RemoteOverlayState:
     component: RemoteComponent | ViewComponent
     last_lines: list[str] = field(default_factory=list)
     # The last view frame's wire body, without image data, and the width it went out for (D107).
     last_view: tuple[dict[str, Any], int] | None = None
+    # The capturesViewportInput the last frame carried; a change alone sends a frame.
+    last_captures: bool = False
     seq: int = 0
     events: queue.Queue[tuple[str, Any]] = field(default_factory=lambda: queue.Queue(maxsize=64))
     active: threading.Event = field(default_factory=threading.Event)
@@ -6050,9 +6058,11 @@ class Extension:
         render_width = overlay.render_width(width) if overlay.render_width is not None else width
         lines = [str(line) for line in overlay.component.render(render_width)]
         overlay.last_render = time.monotonic()
-        if lines == overlay.last_lines:
+        captures = _captures_viewport_input(overlay.component)
+        if lines == overlay.last_lines and captures == overlay.last_captures:
             return
         overlay.last_lines = list(lines)
+        overlay.last_captures = captures
         overlay.seq += 1
         self._notify("ui.custom.render", self._frame_args(overlay, {"key": key, "lines": lines, "width": width, "seq": overlay.seq}))
 
@@ -6065,9 +6075,11 @@ class Extension:
         with overlay.event_lock:
             force = overlay.force_view
             overlay.force_view = False
-        if not force and overlay.last_view == (encoded.body, width) and not self._views.has_unsent(encoded):
+        captures = _captures_viewport_input(overlay.component)
+        if not force and overlay.last_view == (encoded.body, width) and captures == overlay.last_captures and not self._views.has_unsent(encoded):
             return
         overlay.last_view = (encoded.body, width)
+        overlay.last_captures = captures
         with overlay.event_lock:
             overlay.view_refs = encoded.refs()
         overlay.seq += 1
@@ -6078,6 +6090,8 @@ class Extension:
         """Mark a frame of a component that takes the mouse; the host then hands it mouse events."""
         if overlay.takes_mouse:
             args["mouse"] = True
+        if overlay.last_captures:
+            args["capturesViewportInput"] = True
         return args
 
     def _remote_component_worker(self, key: str, overlay: _RemoteOverlayState) -> None:
