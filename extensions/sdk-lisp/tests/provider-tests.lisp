@@ -154,8 +154,20 @@ once the response arrives. A responder that returns (values nil message) answers
     (let ((r (pig:jget register "register")))
       (check-equal 0 (length (pig:jget r "providers")))
       (check-equal 0 (length (pig:jget r "message_renderers")))
-      (dolist (key '("markdown_transformer" "tool_renderers" "mcp_servers" "virtual_models" "unregister_virtual_models"))
+      (dolist (key '("markdown_transformer" "tool_renderers" "mcp_servers" "virtual_models" "unregister_virtual_models"
+                     "owns_thinking_runs"))
         (check (not (nth-value 1 (gethash key r))) key)))))
+
+(deftest owning-thinking-runs-reaches-the-register-payload-only-while-on
+  (flet ((payload-key (&rest setup)
+           (with-host (host (apply #'pt-ext setup) register)
+             (multiple-value-list (gethash "owns_thinking_runs" (pig:jget register "register"))))))
+    (check-equal '(t t) (payload-key (lambda (ext) (pig:own-thinking-runs ext t))))
+    (check-equal '(t t) (payload-key (lambda (ext) (pig:own-thinking-runs ext))))
+    (check-equal '(t t) (payload-key (lambda (ext) (pig:own-thinking-runs ext nil) (pig:own-thinking-runs ext t))))
+    (check-equal '(nil nil) (payload-key (lambda (ext) (pig:own-thinking-runs ext t) (pig:own-thinking-runs ext nil))))
+    (check-equal '(nil nil) (payload-key (lambda (ext) (pig:own-thinking-runs ext nil))))
+    (check-equal '(nil nil) (payload-key))))
 
 (deftest provider-objects-need-an-id
   (check-error error (pig:register-native-provider (pt-ext) (pig:make-provider :id "  " :name "x")))

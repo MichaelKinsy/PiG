@@ -298,6 +298,13 @@ func (a *api) RegisterMarkdownTransformer(transformer extension.MarkdownTransfor
 	a.ext.MarkdownTransformer = transformer
 }
 
+// OwnThinkingRuns declares or withdraws this extension's ownership of thinking runs; it takes effect at once, also after loading.
+// pig additive (D214)
+func (a *api) OwnThinkingRuns(enabled bool) {
+	a.assertActive()
+	a.ext.SetOwnsThinkingRuns(enabled)
+}
+
 func (a *api) SendMessage(message extension.SendMessagePayload, options *extension.SendMessageOptions) {
 	a.assertActive()
 	send := a.runtime.SendMessage

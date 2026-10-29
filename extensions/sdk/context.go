@@ -470,6 +470,16 @@ func (c Context) ClearHiddenThinkingLabel() error {
 	return callResultError(result, err)
 }
 
+// OwnThinkingRuns declares (true) or withdraws (false) that this extension
+// owns the thinking runs of assistant messages, so a hidden or zero-row
+// thinking run leaves no blank spacer rows. The host ORs the flag across
+// extensions; the last call of an extension wins.
+func (c Context) OwnThinkingRuns(enabled bool) error {
+	// STAGE-B: send
+	_ = enabled
+	return nil
+}
+
 // SetTitle sets the terminal window/tab title.
 func (c Context) SetTitle(title string) {
 	_, _ = c.callHost("ui.setTitle", map[string]string{

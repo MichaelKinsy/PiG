@@ -21,6 +21,8 @@ type AssistantMessageComponent struct {
 	text              string
 	hidden            bool // whether thinking trace is hidden
 	hiddenLabel       string
+	// ownedRuns is whether an extension owns the thinking runs (SetOwnedThinkingRuns).
+	ownedRuns         bool
 	stopReason        string
 	errorMessage      string
 	hasToolCalls      bool // skip error/abort rendering when tools handle their own
@@ -364,6 +366,12 @@ func (b *AssistantMessageComponent) SetAsyncMarkdownTransforms(text, thinking *A
 			seg.md.AsyncTransform = thinking
 		}
 	}
+	b.updateContent()
+}
+
+// SetOwnedThinkingRuns declares that an extension owns the thinking runs of this message.
+func (b *AssistantMessageComponent) SetOwnedThinkingRuns(owned bool) {
+	b.ownedRuns = owned
 	b.updateContent()
 }
 

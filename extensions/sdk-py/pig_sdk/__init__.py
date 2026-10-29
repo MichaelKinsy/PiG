@@ -2913,6 +2913,12 @@ class Context:
         label and shows an empty one (``label ?? defaultHiddenThinkingLabel``)."""
         self._call("ui.setHiddenThinkingLabel", {} if label is None else {"label": label})
 
+    def own_thinking_runs(self, enabled: bool = True) -> None:
+        """Declare that this extension owns the thinking runs of assistant messages (see :meth:`Extension.own_thinking_runs`); the host ORs the flag across extensions."""
+        if not isinstance(enabled, bool):
+            raise TypeError("own_thinking_runs requires a boolean")
+        # STAGE-B: send
+
     def set_title(self, title: str) -> None:
         self._call("ui.setTitle", {"title": title})
 
@@ -4130,6 +4136,7 @@ class Extension:
         self._renderers: list[dict[str, Any]] = []
         self._entry_renderers: list[dict[str, Any]] = []
         self._markdown_transformer: Callable[[str, dict[str, Any]], Any] | None = None
+        self._owns_thinking_runs = False
         self._tool_renderer_resolvers: list[ToolRendererResolver] = []
         self._resolved_tool_renderers: dict[str, ToolRenderers] = {}
         self._oauth_providers: dict[str, OAuthProvider] = {}
@@ -4903,6 +4910,19 @@ class Extension:
         keeps the input."""
         self._markdown_transformer = transformer
 
+    def own_thinking_runs(self, enabled: bool = True) -> None:
+        """Declare that this extension owns the thinking runs of assistant messages, so a thinking run that is hidden or draws no rows leaves no blank spacer rows
+        around it. PiG-only and product-neutral. Before the extension registers this records the value (last call wins; ``False`` sends nothing); once it is
+        live the same call is a host call. The host ORs the flag across extensions and drops it when the extension unloads."""
+        if not isinstance(enabled, bool):
+            raise TypeError("own_thinking_runs requires a boolean")
+        with self._tool_registration_lock:
+            self._owns_thinking_runs = enabled
+            live = self._tools_live
+        if live:
+            # STAGE-B: send
+            pass
+
     def on_project_trust(self, handler: ProjectTrustHandler) -> Callable[[], None]:
         """Register an awaited pre-runtime project_trust handler and return its unsubscribe function."""
         return self.on_event("project_trust", handler)
@@ -4974,6 +4994,7 @@ class Extension:
     def _serve(self) -> None:
         self._bus.register_pending()
         with self._tool_registration_lock:
+            # STAGE-B: send (add **({"owns_thinking_runs": True} if self._owns_thinking_runs else {}) to the register payload below)
             self._send({"type": "register", "register": {"name": self._name, "tools": self._tools, "commands": self._commands, "shortcuts": self._shortcuts, "handlers": self._handlers, "flags": self._flags, "providers": self._providers, "message_renderers": self._renderers, "entry_renderers": self._entry_renderers, **({"markdown_transformer": True} if self._markdown_transformer is not None else {}), **({"tool_renderers": len(self._tool_renderer_resolvers)} if self._tool_renderer_resolvers else {}), **({"mcp_servers": self._mcp_servers_pending} if self._mcp_servers_pending else {}), **({"virtual_models": self._virtual_models_pending} if self._virtual_models_pending else {}), **({"unregister_virtual_models": self._virtual_model_unregistrations} if self._virtual_model_unregistrations else {})}})
             ready = self._read_during_load()
             if ready.get("type") != "ready":

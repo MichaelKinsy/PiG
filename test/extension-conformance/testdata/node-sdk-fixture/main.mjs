@@ -12,6 +12,7 @@ import {
 } from "@earendil-works/pi-coding-agent";
 
 export default function (pi) {
+  pi.ownThinkingRuns(true);
   // factoryAgentDir is getAgentDir() while the factory runs, where Pi's extensions call it (TestConformance_HostConfigurationAgreesAcrossSDKs).
   const factoryAgentDir = getAgentDir();
   let schemaRejected = false;
@@ -473,6 +474,8 @@ export default function (pi) {
     handler: async () => {},
   });
   pi.registerCommand("ping", { description: "Respond with pong", handler: async (_args, ctx) => ctx.ui.notify("pong", "info") });
+  pi.registerCommand("thinking_runs_off", { description: "Release thinking-run ownership", handler: async () => pi.ownThinkingRuns(false) });
+  pi.registerCommand("thinking_runs_on", { description: "Claim thinking-run ownership", handler: async () => pi.ownThinkingRuns(true) });
   pi.registerCommand("model-stream-probe", {
     description: "Exercise model streaming",
     handler: async (_args, ctx) => {

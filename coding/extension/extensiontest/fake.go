@@ -81,6 +81,7 @@ type Fake struct {
 	RegisterMessageRendererCalls []RegisterMessageRendererCall
 	RegisterEntryRendererCalls   []RegisterEntryRendererCall
 	RegisterMarkdownTransformers []extension.MarkdownTransformer
+	OwnThinkingRunsCalls         []bool
 	RegisterToolRenderers        []extension.ToolRendererResolver
 	RegisterProviderCalls        []RegisterProviderCall
 	RegisterNativeProviderCalls  []*ai.ModelsProvider
@@ -356,6 +357,12 @@ func (f *Fake) RegisterToolRenderer(resolver extension.ToolRendererResolver) {
 func (f *Fake) RegisterMarkdownTransformer(transformer extension.MarkdownTransformer) {
 	f.RegisterMarkdownTransformers = append(f.RegisterMarkdownTransformers, transformer)
 }
+
+// OwnThinkingRuns records the calls in order.
+func (f *Fake) OwnThinkingRuns(enabled bool) {
+	f.OwnThinkingRunsCalls = append(f.OwnThinkingRunsCalls, enabled)
+}
+
 func (f *Fake) RegisterProvider(name string, config extension.ProviderConfig) {
 	f.RegisterProviderCalls = append(f.RegisterProviderCalls, RegisterProviderCall{Name: name, Config: config})
 }

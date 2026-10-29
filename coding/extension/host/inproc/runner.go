@@ -1185,6 +1185,14 @@ func (r *Runner) GetMarkdownTransformers() []extension.MarkdownTransformer {
 	return transformers
 }
 
+// OwnsThinkingRuns reports whether any extension owns thinking runs.
+// pig additive (D214)
+func (r *Runner) OwnsThinkingRuns() bool { return false }
+
+// ObserveThinkingRuns calls fn after any extension's ownership of thinking runs changes, until stop is called.
+// pig additive (D214)
+func (r *Runner) ObserveThinkingRuns(fn func()) (stop func()) { return func() {} }
+
 // ResolveToolRenderers returns the renderers of calls to toolName: extension
 // resolvers in load order, then base.
 //

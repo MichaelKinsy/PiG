@@ -126,6 +126,17 @@ declare module "@earendil-works/pi-coding-agent" {
      */
     registerSprite(definition: PiGSpriteDefinition): Promise<void>;
   }
+  interface ExtensionAPI {
+    /**
+     * Declare that this extension owns the thinking runs of assistant messages,
+     * so a thinking run that is hidden or draws zero rows leaves no blank
+     * spacer rows around it. Called while the extension loads, it sets the
+     * initial value; called later, it changes it. The host ORs the flag across
+     * extensions, and it drops when the extension unloads or reloads. The last
+     * call wins. `enabled` defaults to true.
+     */
+    ownThinkingRuns(enabled?: boolean): void;
+  }
 }
 
 declare module "@earendil-works/pi-tui" {

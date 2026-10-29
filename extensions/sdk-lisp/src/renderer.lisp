@@ -18,7 +18,7 @@ RENDER-SHELL is \"default\" or \"self\"."
 (defstruct (rd-state (:conc-name rd-))
   (message-declarations '()) (message-handlers (make-hash-table :test 'equal)) (message-views (make-hash-table :test 'equal))
   (entry-declarations '()) (entry-handlers (make-hash-table :test 'equal)) (entry-views (make-hash-table :test 'equal))
-  (markdown nil)
+  (markdown nil) (owns-thinking-runs nil)
   (resolvers '()) (resolved (make-hash-table :test 'equal))
   (cards (make-hash-table :test 'equal))      ; card -> (lock . state)
   (lock (sb-thread:make-mutex :name "pig renderers")))
@@ -79,6 +79,24 @@ RENDER-SHELL is \"default\" or \"self\"."
   "Register the extension's display-only Markdown transform: TRANSFORMER is (lambda (markdown context)) -> string; any other value, or
 a signalled condition, keeps the input. A later registration replaces an earlier one."
   (setf (rd-markdown (rd-of ext)) transformer)
+  nil)
+
+(defun own-thinking-runs (ext &optional (enabled t))
+  "Declare that the extension owns the thinking runs of assistant messages: a hidden or zero-row thinking run then leaves no blank
+spacer rows around it. Before the extension is live this records the value for the register payload (a later call wins; no argument
+means on); once live it calls the host. The host ORs the flag over extensions and drops it when the extension unloads."
+  (let ((live (sb-thread:with-mutex ((extension-reg-lock ext))
+                (setf (rd-owns-thinking-runs (rd-of ext)) (and enabled t))
+                (extension-live ext))))
+    (when live
+      ;; STAGE-B: send
+      nil))
+  nil)
+
+(defun ctx-own-thinking-runs (ctx &optional (enabled t))
+  "Change, while the extension runs, whether it owns the thinking runs of assistant messages (see OWN-THINKING-RUNS)."
+  (declare (ignorable ctx enabled))
+  ;; STAGE-B: send
   nil)
 
 (def-request "markdown_transform" (ext ctx req)
@@ -200,6 +218,8 @@ functions: returning it keeps them. Resolvers run in extension load order, an ex
     (setf (gethash "message_renderers" payload) (prov-vec (rd-message-declarations rd))
           (gethash "entry_renderers" payload) (prov-vec (rd-entry-declarations rd)))
     (when (rd-markdown rd) (setf (gethash "markdown_transformer" payload) t))
+    ;; STAGE-B: send
+    (when nil (setf (gethash "owns_thinking_runs" payload) t))
     (when (rd-resolvers rd) (setf (gethash "tool_renderers" payload) (length (rd-resolvers rd))))))
 
 ;;; ---------------------------------------------------------------- login and sprite definitions

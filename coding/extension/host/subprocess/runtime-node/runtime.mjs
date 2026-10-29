@@ -2133,6 +2133,8 @@ export class Runtime {
     this.extensionRuntime = createExtensionRuntime();
     this.hostReady = false;
     this.markdownTransformer = undefined;
+    // PiG-only: whether this extension owns the thinking runs of assistant messages. Recorded during load, carried by the register frame; later calls go to the host.
+    this.ownsThinkingRuns = false;
     this.requestContext = new AsyncLocalStorage();
     // withSession callbacks of replacement calls in flight, by the handle the call names.
     this.withSessionCallbacks = new Map();
@@ -2316,6 +2318,11 @@ export class Runtime {
       registerEntryRenderer: (customType, handler) => this.registerEntryRenderer(customType, handler),
       registerMarkdownTransformer: (transformer) => {
         this.markdownTransformer = transformer;
+      },
+      ownThinkingRuns: (enabled = true) => {
+        if (typeof enabled !== "boolean") throw new TypeError("ownThinkingRuns requires a boolean");
+        this.ownsThinkingRuns = enabled;
+        // STAGE-B: send
       },
       registerToolRenderer: (resolver) => this.registerToolRenderer(resolver),
       registerProvider: (name, config) => this.registerProvider(name, config),
@@ -3015,6 +3022,8 @@ export class Runtime {
         message_renderers: [...this.renderers.keys()].map((customType) => ({ custom_type: customType })),
         entry_renderers: [...this.entryRenderers.keys()].map((customType) => ({ custom_type: customType })),
         markdown_transformer: typeof this.markdownTransformer === "function" || undefined,
+        // STAGE-B: send
+        owns_thinking_runs: undefined,
         tool_renderers: this.toolRendererResolvers.length || undefined,
         mcp_servers: this.mcpServersPending.size > 0 ? [...this.mcpServersPending].map(([name, config]) => ({ name, config })) : undefined,
         virtual_models: this.virtualModelsPending.length > 0 ? this.virtualModelsPending : undefined,
