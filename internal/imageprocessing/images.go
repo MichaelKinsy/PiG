@@ -21,7 +21,7 @@ import (
 	"image/draw"
 	_ "image/gif" // decoder for the GIF entry of the supported-format allowlist
 	"image/jpeg"  // decoder for JPEG plus the JPEG re-encoder
-	"image/png"   // decoder for PNG plus the PNG re-encoder
+	_ "image/png" // decoder for PNG; PNG is encoded by photonimage
 	"io"
 	"math"
 	"os"
@@ -29,12 +29,12 @@ import (
 	"strings"
 
 	_ "golang.org/x/image/bmp" // decoder for the BMP entry of the supported-format allowlist
-	xdraw "golang.org/x/image/draw"
 	_ "golang.org/x/image/webp" // decoder for the WebP entry of the supported-format allowlist
 
 	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
+	"github.com/MichaelKinsy/PiG/internal/photonimage"
 	"github.com/MichaelKinsy/PiG/internal/nodebase64"
 )
 
@@ -636,12 +636,10 @@ func toNRGBA(img image.Image) *image.NRGBA {
 	return out
 }
 
-// resizeImage scales img to width×height with the CatmullRom kernel, the
-// highest-quality resampler in golang.org/x/image/draw.
+// resizeImage scales img to width×height with the Lanczos filter of radius 3, as Photon's resize does with SamplingFilter.Lanczos3
+// (image-resize-core.ts tryEncodings). The pixels differ from Photon's by a mean of 0.01 of 255 (pig divergence D165).
 func resizeImage(img image.Image, width, height int) *image.NRGBA {
-	dst := image.NewNRGBA(image.Rect(0, 0, width, height))
-	xdraw.CatmullRom.Scale(dst, dst.Bounds(), img, img.Bounds(), xdraw.Src, nil)
-	return dst
+	return photonimage.ResizeLanczos3(toNRGBA(img), width, height)
 }
 
 type encodedCandidate struct {
@@ -750,18 +748,24 @@ func encodedSizeBase64(data []byte) int {
 	return base64.StdEncoding.EncodedLen(len(data))
 }
 
+// encodePNG is the PNG Photon's `get_bytes()` writes for img (see photonimage.EncodePNG): its size decides whether the PNG or the JPEG
+// candidate of a resize is the smaller one, so it must be Photon's.
 func encodePNG(img image.Image) ([]byte, error) {
-	var buf bytes.Buffer
-	enc := png.Encoder{CompressionLevel: png.DefaultCompression}
-	if err := enc.Encode(&buf, img); err != nil {
-		return nil, err
-	}
-	return buf.Bytes(), nil
+	return photonimage.EncodePNG(toNRGBA(img)), nil
 }
 
+// encodeJPEG drops the alpha channel as Photon's JPEG encoder does, rather than darkening transparent pixels. pig divergence (D165): Go's
+// JPEG encoder, not Photon's `get_bytes_jpeg(quality)`; the quantization differs.
 func encodeJPEG(img image.Image, quality int) ([]byte, error) {
+	opaque := toNRGBA(img)
+	if imageHasAlpha(opaque) {
+		opaque = &image.NRGBA{Pix: slices.Clone(opaque.Pix), Stride: opaque.Stride, Rect: opaque.Rect}
+		for i := 3; i < len(opaque.Pix); i += 4 {
+			opaque.Pix[i] = 0xff
+		}
+	}
 	var buf bytes.Buffer
-	if err := jpeg.Encode(&buf, img, &jpeg.Options{Quality: quality}); err != nil {
+	if err := jpeg.Encode(&buf, opaque, &jpeg.Options{Quality: quality}); err != nil {
 		return nil, err
 	}
 	return buf.Bytes(), nil

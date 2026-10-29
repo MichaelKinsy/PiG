@@ -1,4 +1,4 @@
-package images
+package photonimage
 
 import (
 	"image"
@@ -9,9 +9,9 @@ import (
 // `resize(image, size.width, size.height, SamplingFilter.Lanczos3)`).
 
 // pig divergence (D165): Go's Lanczos3, not Photon's `resize` with `SamplingFilter.Lanczos3`; the pixels differ by a mean of 0.01 of 255.
-// resizeLanczos3 is src scaled to width by height with the Lanczos filter of radius 3, the sampling filter
+// ResizeLanczos3 is src scaled to width by height with the Lanczos filter of radius 3, the sampling filter
 // images/index.ts gives Photon's resize (SamplingFilter.Lanczos3). The channels are filtered as stored, not premultiplied.
-func resizeLanczos3(src *image.NRGBA, width, height int) *image.NRGBA {
+func ResizeLanczos3(src *image.NRGBA, width, height int) *image.NRGBA {
 	bounds := src.Bounds()
 	srcWidth, srcHeight := bounds.Dx(), bounds.Dy()
 	horizontal := lanczosWeights(srcWidth, width)
