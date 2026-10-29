@@ -571,9 +571,9 @@ rationale = "PORT_MAP row is ✅ ported (ai/models_store.go (ModelsStoreEntry, M
 [[files]]
 path = "packages/ai/src/models.generated.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "unchanged-observable"
+evidence = ["test:cmd/gen-models/catalog_matches_pi_test.go#TestCatalogGenerationMatchesPi"]
+rationale = "Header comment only (`scripts/generate-models.ts` -> `catalog/generate.ts`); the shard's data flows into the Go catalog through `make model-catalogs`, which yields no diff, and the Go generator reproduces Pi's data byte for byte. PiG: ai/models_generated.go, ai/image_models_generated.go, ai/classifier_models_generated.go, ai/providers_generated.go (lane B1)."
 
 [[files]]
 path = "packages/ai/src/models.ts"
@@ -599,9 +599,9 @@ rationale = "PORT_MAP row is ✅ ported (ai/registry.go + ai/register_builtins.g
 [[files]]
 path = "packages/ai/src/providers/amazon-bedrock.models.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "unchanged-observable"
+evidence = ["test:cmd/gen-models/catalog_matches_pi_test.go#TestCatalogGenerationMatchesPi"]
+rationale = "Header comment only (`scripts/generate-models.ts` -> `catalog/generate.ts`); the shard's data flows into the Go catalog through `make model-catalogs`, which yields no diff, and the Go generator reproduces Pi's data byte for byte. PiG: ai/models_generated.go, ai/image_models_generated.go, ai/classifier_models_generated.go, ai/providers_generated.go (lane B1)."
 
 [[files]]
 path = "packages/ai/src/providers/amazon-bedrock.ts"
@@ -613,9 +613,9 @@ rationale = "PORT_MAP row is ✅ ported (ai/auth_providers.go + ai/providers/bed
 [[files]]
 path = "packages/ai/src/providers/ant-ling.models.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "unchanged-observable"
+evidence = ["test:cmd/gen-models/catalog_matches_pi_test.go#TestCatalogGenerationMatchesPi"]
+rationale = "Header comment only (`scripts/generate-models.ts` -> `catalog/generate.ts`); the shard's data flows into the Go catalog through `make model-catalogs`, which yields no diff, and the Go generator reproduces Pi's data byte for byte. PiG: ai/models_generated.go, ai/image_models_generated.go, ai/classifier_models_generated.go, ai/providers_generated.go (lane B1)."
 
 [[files]]
 path = "packages/ai/src/providers/ant-ling.ts"
@@ -627,9 +627,9 @@ rationale = "PORT_MAP row is ✅ ported (ai/models_generated.go + internal/codin
 [[files]]
 path = "packages/ai/src/providers/anthropic.models.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "unchanged-observable"
+evidence = ["test:cmd/gen-models/catalog_matches_pi_test.go#TestCatalogGenerationMatchesPi"]
+rationale = "Header comment only (`scripts/generate-models.ts` -> `catalog/generate.ts`); the shard's data flows into the Go catalog through `make model-catalogs`, which yields no diff, and the Go generator reproduces Pi's data byte for byte. PiG: ai/models_generated.go, ai/image_models_generated.go, ai/classifier_models_generated.go, ai/providers_generated.go (lane B1)."
 
 [[files]]
 path = "packages/ai/src/providers/anthropic.ts"
@@ -641,9 +641,9 @@ rationale = "PORT_MAP row is ✅ ported (ai/anthropic.go + ai/anthropic_client.g
 [[files]]
 path = "packages/ai/src/providers/azure.models.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "unchanged-observable"
+evidence = ["test:cmd/gen-models/catalog_matches_pi_test.go#TestCatalogGenerationMatchesPi"]
+rationale = "Header comment only (`scripts/generate-models.ts` -> `catalog/generate.ts`); the shard's data flows into the Go catalog through `make model-catalogs`, which yields no diff, and the Go generator reproduces Pi's data byte for byte. PiG: ai/models_generated.go, ai/image_models_generated.go, ai/classifier_models_generated.go, ai/providers_generated.go (lane B1)."
 
 [[files]]
 path = "packages/ai/src/providers/azure.ts"
@@ -655,9 +655,9 @@ rationale = "PORT_MAP row is ✅ ported (ai/azure.go (Azure Chat Completions end
 [[files]]
 path = "packages/ai/src/providers/baseten.models.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "unchanged-observable"
+evidence = ["test:cmd/gen-models/catalog_matches_pi_test.go#TestCatalogGenerationMatchesPi"]
+rationale = "Header comment only. The Baseten shard's data is part of the generated catalog like every other shard; the provider factory `baseten.ts` stays unported (PORT_MAP `n/a`), unchanged by this commit. PiG: ai/models_generated.go, ai/image_models_generated.go, ai/classifier_models_generated.go, ai/providers_generated.go (lane B1)."
 
 [[files]]
 path = "packages/ai/src/providers/baseten.ts"
@@ -669,9 +669,9 @@ rationale = "PORT_MAP records this file n/a with the reason: (not ported: Basete
 [[files]]
 path = "packages/ai/src/providers/cerebras.models.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "unchanged-observable"
+evidence = ["test:cmd/gen-models/catalog_matches_pi_test.go#TestCatalogGenerationMatchesPi"]
+rationale = "Header comment only (`scripts/generate-models.ts` -> `catalog/generate.ts`); the shard's data flows into the Go catalog through `make model-catalogs`, which yields no diff, and the Go generator reproduces Pi's data byte for byte. PiG: ai/models_generated.go, ai/image_models_generated.go, ai/classifier_models_generated.go, ai/providers_generated.go (lane B1)."
 
 [[files]]
 path = "packages/ai/src/providers/cerebras.ts"
@@ -683,9 +683,9 @@ rationale = "PORT_MAP row is ✅ ported (ai/models_generated.go + internal/codin
 [[files]]
 path = "packages/ai/src/providers/cloudflare-ai-gateway.models.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "unchanged-observable"
+evidence = ["test:cmd/gen-models/catalog_matches_pi_test.go#TestCatalogGenerationMatchesPi"]
+rationale = "Header comment only (`scripts/generate-models.ts` -> `catalog/generate.ts`); the shard's data flows into the Go catalog through `make model-catalogs`, which yields no diff, and the Go generator reproduces Pi's data byte for byte. PiG: ai/models_generated.go, ai/image_models_generated.go, ai/classifier_models_generated.go, ai/providers_generated.go (lane B1)."
 
 [[files]]
 path = "packages/ai/src/providers/cloudflare-ai-gateway.ts"
@@ -711,9 +711,9 @@ rationale = "PORT_MAP row is ✅ ported (ai/cloudflare_streams.go (ResolveCloudf
 [[files]]
 path = "packages/ai/src/providers/cloudflare-workers-ai.models.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "unchanged-observable"
+evidence = ["test:cmd/gen-models/catalog_matches_pi_test.go#TestCatalogGenerationMatchesPi"]
+rationale = "Header comment only (`scripts/generate-models.ts` -> `catalog/generate.ts`); the shard's data flows into the Go catalog through `make model-catalogs`, which yields no diff, and the Go generator reproduces Pi's data byte for byte. PiG: ai/models_generated.go, ai/image_models_generated.go, ai/classifier_models_generated.go, ai/providers_generated.go (lane B1)."
 
 [[files]]
 path = "packages/ai/src/providers/cloudflare-workers-ai.ts"
@@ -739,9 +739,9 @@ rationale = "PORT_MAP records this file n/a with the reason: (TypeScript JSON im
 [[files]]
 path = "packages/ai/src/providers/deepseek.models.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "unchanged-observable"
+evidence = ["test:cmd/gen-models/catalog_matches_pi_test.go#TestCatalogGenerationMatchesPi"]
+rationale = "Header comment only (`scripts/generate-models.ts` -> `catalog/generate.ts`); the shard's data flows into the Go catalog through `make model-catalogs`, which yields no diff, and the Go generator reproduces Pi's data byte for byte. PiG: ai/models_generated.go, ai/image_models_generated.go, ai/classifier_models_generated.go, ai/providers_generated.go (lane B1)."
 
 [[files]]
 path = "packages/ai/src/providers/deepseek.ts"
@@ -760,9 +760,9 @@ rationale = "Pi f715a15c1 gives streamWithDeltas a ToolCallArgumentsStream per t
 [[files]]
 path = "packages/ai/src/providers/fireworks.models.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "unchanged-observable"
+evidence = ["test:cmd/gen-models/catalog_matches_pi_test.go#TestCatalogGenerationMatchesPi"]
+rationale = "Header comment only (`scripts/generate-models.ts` -> `catalog/generate.ts`); the shard's data flows into the Go catalog through `make model-catalogs`, which yields no diff, and the Go generator reproduces Pi's data byte for byte. PiG: ai/models_generated.go, ai/image_models_generated.go, ai/classifier_models_generated.go, ai/providers_generated.go (lane B1)."
 
 [[files]]
 path = "packages/ai/src/providers/fireworks.ts"
@@ -774,9 +774,9 @@ rationale = "PORT_MAP row is ✅ ported (ai/models_generated.go + internal/codin
 [[files]]
 path = "packages/ai/src/providers/github-copilot.models.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "unchanged-observable"
+evidence = ["test:cmd/gen-models/catalog_matches_pi_test.go#TestCatalogGenerationMatchesPi"]
+rationale = "Header comment only (`scripts/generate-models.ts` -> `catalog/generate.ts`); the shard's data flows into the Go catalog through `make model-catalogs`, which yields no diff, and the Go generator reproduces Pi's data byte for byte. PiG: ai/models_generated.go, ai/image_models_generated.go, ai/classifier_models_generated.go, ai/providers_generated.go (lane B1)."
 
 [[files]]
 path = "packages/ai/src/providers/github-copilot.ts"
@@ -788,9 +788,9 @@ rationale = "PORT_MAP row is ✅ ported (ai/models_generated.go + ai/github_copi
 [[files]]
 path = "packages/ai/src/providers/google-vertex.models.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "unchanged-observable"
+evidence = ["test:cmd/gen-models/catalog_matches_pi_test.go#TestCatalogGenerationMatchesPi"]
+rationale = "Header comment only (`scripts/generate-models.ts` -> `catalog/generate.ts`); the shard's data flows into the Go catalog through `make model-catalogs`, which yields no diff, and the Go generator reproduces Pi's data byte for byte. PiG: ai/models_generated.go, ai/image_models_generated.go, ai/classifier_models_generated.go, ai/providers_generated.go (lane B1)."
 
 [[files]]
 path = "packages/ai/src/providers/google-vertex.ts"
@@ -802,9 +802,9 @@ rationale = "PORT_MAP row is ✅ ported (ai/auth_providers.go + ai/google_vertex
 [[files]]
 path = "packages/ai/src/providers/google.models.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "unchanged-observable"
+evidence = ["test:cmd/gen-models/catalog_matches_pi_test.go#TestCatalogGenerationMatchesPi"]
+rationale = "Header comment only (`scripts/generate-models.ts` -> `catalog/generate.ts`); the shard's data flows into the Go catalog through `make model-catalogs`, which yields no diff, and the Go generator reproduces Pi's data byte for byte. PiG: ai/models_generated.go, ai/image_models_generated.go, ai/classifier_models_generated.go, ai/providers_generated.go (lane B1)."
 
 [[files]]
 path = "packages/ai/src/providers/google.ts"
@@ -816,9 +816,9 @@ rationale = "PORT_MAP row is ✅ ported (ai/google.go, ai/builtin_providers_goog
 [[files]]
 path = "packages/ai/src/providers/groq.models.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "unchanged-observable"
+evidence = ["test:cmd/gen-models/catalog_matches_pi_test.go#TestCatalogGenerationMatchesPi"]
+rationale = "Header comment only (`scripts/generate-models.ts` -> `catalog/generate.ts`); the shard's data flows into the Go catalog through `make model-catalogs`, which yields no diff, and the Go generator reproduces Pi's data byte for byte. PiG: ai/models_generated.go, ai/image_models_generated.go, ai/classifier_models_generated.go, ai/providers_generated.go (lane B1)."
 
 [[files]]
 path = "packages/ai/src/providers/groq.ts"
@@ -830,9 +830,9 @@ rationale = "PORT_MAP row is ✅ ported (ai/models_generated.go + internal/codin
 [[files]]
 path = "packages/ai/src/providers/huggingface.models.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "unchanged-observable"
+evidence = ["test:cmd/gen-models/catalog_matches_pi_test.go#TestCatalogGenerationMatchesPi"]
+rationale = "Header comment only (`scripts/generate-models.ts` -> `catalog/generate.ts`); the shard's data flows into the Go catalog through `make model-catalogs`, which yields no diff, and the Go generator reproduces Pi's data byte for byte. PiG: ai/models_generated.go, ai/image_models_generated.go, ai/classifier_models_generated.go, ai/providers_generated.go (lane B1)."
 
 [[files]]
 path = "packages/ai/src/providers/huggingface.ts"
@@ -851,9 +851,9 @@ rationale = "PORT_MAP row is ✅ ported (ai/openrouter_images.go (RegisterBuiltI
 [[files]]
 path = "packages/ai/src/providers/kimi-coding.models.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "unchanged-observable"
+evidence = ["test:cmd/gen-models/catalog_matches_pi_test.go#TestCatalogGenerationMatchesPi"]
+rationale = "Header comment only (`scripts/generate-models.ts` -> `catalog/generate.ts`); the shard's data flows into the Go catalog through `make model-catalogs`, which yields no diff, and the Go generator reproduces Pi's data byte for byte. PiG: ai/models_generated.go, ai/image_models_generated.go, ai/classifier_models_generated.go, ai/providers_generated.go (lane B1)."
 
 [[files]]
 path = "packages/ai/src/providers/kimi-coding.ts"
@@ -865,9 +865,9 @@ rationale = "PORT_MAP row is ✅ ported (ai/models_generated.go + internal/codin
 [[files]]
 path = "packages/ai/src/providers/meta.models.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "unchanged-observable"
+evidence = ["test:cmd/gen-models/catalog_matches_pi_test.go#TestCatalogGenerationMatchesPi"]
+rationale = "Header comment only (`scripts/generate-models.ts` -> `catalog/generate.ts`); the shard's data flows into the Go catalog through `make model-catalogs`, which yields no diff, and the Go generator reproduces Pi's data byte for byte. PiG: ai/models_generated.go, ai/image_models_generated.go, ai/classifier_models_generated.go, ai/providers_generated.go (lane B1)."
 
 [[files]]
 path = "packages/ai/src/providers/meta.ts"
@@ -879,9 +879,9 @@ rationale = "PORT_MAP row is ✅ ported (ai/models_generated.go + ai/openai_resp
 [[files]]
 path = "packages/ai/src/providers/minimax-cn.models.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "unchanged-observable"
+evidence = ["test:cmd/gen-models/catalog_matches_pi_test.go#TestCatalogGenerationMatchesPi"]
+rationale = "Header comment only (`scripts/generate-models.ts` -> `catalog/generate.ts`); the shard's data flows into the Go catalog through `make model-catalogs`, which yields no diff, and the Go generator reproduces Pi's data byte for byte. PiG: ai/models_generated.go, ai/image_models_generated.go, ai/classifier_models_generated.go, ai/providers_generated.go (lane B1)."
 
 [[files]]
 path = "packages/ai/src/providers/minimax-cn.ts"
@@ -893,9 +893,9 @@ rationale = "PORT_MAP row is ✅ ported (ai/models_generated.go + internal/codin
 [[files]]
 path = "packages/ai/src/providers/minimax.models.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "unchanged-observable"
+evidence = ["test:cmd/gen-models/catalog_matches_pi_test.go#TestCatalogGenerationMatchesPi"]
+rationale = "Header comment only (`scripts/generate-models.ts` -> `catalog/generate.ts`); the shard's data flows into the Go catalog through `make model-catalogs`, which yields no diff, and the Go generator reproduces Pi's data byte for byte. PiG: ai/models_generated.go, ai/image_models_generated.go, ai/classifier_models_generated.go, ai/providers_generated.go (lane B1)."
 
 [[files]]
 path = "packages/ai/src/providers/minimax.ts"
@@ -907,9 +907,9 @@ rationale = "PORT_MAP row is ✅ ported (ai/models_generated.go + internal/codin
 [[files]]
 path = "packages/ai/src/providers/mistral.models.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "unchanged-observable"
+evidence = ["test:cmd/gen-models/catalog_matches_pi_test.go#TestCatalogGenerationMatchesPi"]
+rationale = "Header comment only (`scripts/generate-models.ts` -> `catalog/generate.ts`); the shard's data flows into the Go catalog through `make model-catalogs`, which yields no diff, and the Go generator reproduces Pi's data byte for byte. PiG: ai/models_generated.go, ai/image_models_generated.go, ai/classifier_models_generated.go, ai/providers_generated.go (lane B1)."
 
 [[files]]
 path = "packages/ai/src/providers/mistral.ts"
@@ -928,9 +928,9 @@ rationale = "71023aec→8efd314f: Pi 8efd314f: ThinkingLevelMapSchema gains its 
 [[files]]
 path = "packages/ai/src/providers/moonshotai-cn.models.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "unchanged-observable"
+evidence = ["test:cmd/gen-models/catalog_matches_pi_test.go#TestCatalogGenerationMatchesPi"]
+rationale = "Header comment only (`scripts/generate-models.ts` -> `catalog/generate.ts`); the shard's data flows into the Go catalog through `make model-catalogs`, which yields no diff, and the Go generator reproduces Pi's data byte for byte. PiG: ai/models_generated.go, ai/image_models_generated.go, ai/classifier_models_generated.go, ai/providers_generated.go (lane B1)."
 
 [[files]]
 path = "packages/ai/src/providers/moonshotai-cn.ts"
@@ -942,9 +942,9 @@ rationale = "PORT_MAP row is ✅ ported (ai/models_generated.go + internal/codin
 [[files]]
 path = "packages/ai/src/providers/moonshotai.models.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "unchanged-observable"
+evidence = ["test:cmd/gen-models/catalog_matches_pi_test.go#TestCatalogGenerationMatchesPi"]
+rationale = "Header comment only (`scripts/generate-models.ts` -> `catalog/generate.ts`); the shard's data flows into the Go catalog through `make model-catalogs`, which yields no diff, and the Go generator reproduces Pi's data byte for byte. PiG: ai/models_generated.go, ai/image_models_generated.go, ai/classifier_models_generated.go, ai/providers_generated.go (lane B1)."
 
 [[files]]
 path = "packages/ai/src/providers/moonshotai.ts"
@@ -956,9 +956,9 @@ rationale = "PORT_MAP row is ✅ ported (ai/models_generated.go + internal/codin
 [[files]]
 path = "packages/ai/src/providers/nvidia.models.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "unchanged-observable"
+evidence = ["test:cmd/gen-models/catalog_matches_pi_test.go#TestCatalogGenerationMatchesPi"]
+rationale = "Header comment only (`scripts/generate-models.ts` -> `catalog/generate.ts`); the shard's data flows into the Go catalog through `make model-catalogs`, which yields no diff, and the Go generator reproduces Pi's data byte for byte. PiG: ai/models_generated.go, ai/image_models_generated.go, ai/classifier_models_generated.go, ai/providers_generated.go (lane B1)."
 
 [[files]]
 path = "packages/ai/src/providers/nvidia.ts"
@@ -970,9 +970,9 @@ rationale = "PORT_MAP row is ✅ ported (ai/models_generated.go + internal/codin
 [[files]]
 path = "packages/ai/src/providers/openai-codex.models.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "unchanged-observable"
+evidence = ["test:cmd/gen-models/catalog_matches_pi_test.go#TestCatalogGenerationMatchesPi"]
+rationale = "Header comment only (`scripts/generate-models.ts` -> `catalog/generate.ts`); the shard's data flows into the Go catalog through `make model-catalogs`, which yields no diff, and the Go generator reproduces Pi's data byte for byte. PiG: ai/models_generated.go, ai/image_models_generated.go, ai/classifier_models_generated.go, ai/providers_generated.go (lane B1)."
 
 [[files]]
 path = "packages/ai/src/providers/openai-codex.ts"
@@ -984,9 +984,9 @@ rationale = "PORT_MAP row is ✅ ported (ai/models_generated.go + internal/codin
 [[files]]
 path = "packages/ai/src/providers/openai.models.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "unchanged-observable"
+evidence = ["test:cmd/gen-models/catalog_matches_pi_test.go#TestCatalogGenerationMatchesPi"]
+rationale = "Header comment only (`scripts/generate-models.ts` -> `catalog/generate.ts`); the shard's data flows into the Go catalog through `make model-catalogs`, which yields no diff, and the Go generator reproduces Pi's data byte for byte. PiG: ai/models_generated.go, ai/image_models_generated.go, ai/classifier_models_generated.go, ai/providers_generated.go (lane B1)."
 
 [[files]]
 path = "packages/ai/src/providers/openai.ts"
@@ -998,9 +998,9 @@ rationale = "PORT_MAP row is ✅ ported (ai/models_generated.go + internal/codin
 [[files]]
 path = "packages/ai/src/providers/opencode-go.models.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "unchanged-observable"
+evidence = ["test:cmd/gen-models/catalog_matches_pi_test.go#TestCatalogGenerationMatchesPi"]
+rationale = "Header comment only (`scripts/generate-models.ts` -> `catalog/generate.ts`); the shard's data flows into the Go catalog through `make model-catalogs`, which yields no diff, and the Go generator reproduces Pi's data byte for byte. PiG: ai/models_generated.go, ai/image_models_generated.go, ai/classifier_models_generated.go, ai/providers_generated.go (lane B1)."
 
 [[files]]
 path = "packages/ai/src/providers/opencode-go.ts"
@@ -1019,9 +1019,9 @@ rationale = "PORT_MAP row is ✅ ported (ai/opencode_headers.go (WithOpenCodeSes
 [[files]]
 path = "packages/ai/src/providers/opencode.models.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "unchanged-observable"
+evidence = ["test:cmd/gen-models/catalog_matches_pi_test.go#TestCatalogGenerationMatchesPi"]
+rationale = "Header comment only (`scripts/generate-models.ts` -> `catalog/generate.ts`); the shard's data flows into the Go catalog through `make model-catalogs`, which yields no diff, and the Go generator reproduces Pi's data byte for byte. PiG: ai/models_generated.go, ai/image_models_generated.go, ai/classifier_models_generated.go, ai/providers_generated.go (lane B1)."
 
 [[files]]
 path = "packages/ai/src/providers/opencode.ts"
@@ -1040,9 +1040,9 @@ rationale = "Added in 1.2.0 (ee409a85, #10672): the OpenRouter listing shapes (O
 [[files]]
 path = "packages/ai/src/providers/openrouter.models.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "unchanged-observable"
+evidence = ["test:cmd/gen-models/catalog_matches_pi_test.go#TestCatalogGenerationMatchesPi"]
+rationale = "Header comment only (`scripts/generate-models.ts` -> `catalog/generate.ts`); the shard's data flows into the Go catalog through `make model-catalogs`, which yields no diff, and the Go generator reproduces Pi's data byte for byte. PiG: ai/models_generated.go, ai/image_models_generated.go, ai/classifier_models_generated.go, ai/providers_generated.go (lane B1)."
 
 [[files]]
 path = "packages/ai/src/providers/openrouter.ts"
@@ -1054,9 +1054,9 @@ rationale = "PORT_MAP row is ✅ ported (ai/models_generated.go + internal/codin
 [[files]]
 path = "packages/ai/src/providers/qwen-token-plan-cn.models.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "unchanged-observable"
+evidence = ["test:cmd/gen-models/catalog_matches_pi_test.go#TestCatalogGenerationMatchesPi"]
+rationale = "Header comment only (`scripts/generate-models.ts` -> `catalog/generate.ts`); the shard's data flows into the Go catalog through `make model-catalogs`, which yields no diff, and the Go generator reproduces Pi's data byte for byte. PiG: ai/models_generated.go, ai/image_models_generated.go, ai/classifier_models_generated.go, ai/providers_generated.go (lane B1)."
 
 [[files]]
 path = "packages/ai/src/providers/qwen-token-plan-cn.ts"
@@ -1068,9 +1068,9 @@ rationale = "PORT_MAP row is ✅ ported (ai/models_generated.go + internal/codin
 [[files]]
 path = "packages/ai/src/providers/qwen-token-plan-individual.models.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "unchanged-observable"
+evidence = ["test:cmd/gen-models/catalog_matches_pi_test.go#TestCatalogGenerationMatchesPi"]
+rationale = "Header comment only (`scripts/generate-models.ts` -> `catalog/generate.ts`); the shard's data flows into the Go catalog through `make model-catalogs`, which yields no diff, and the Go generator reproduces Pi's data byte for byte. PiG: ai/models_generated.go, ai/image_models_generated.go, ai/classifier_models_generated.go, ai/providers_generated.go (lane B1)."
 
 [[files]]
 path = "packages/ai/src/providers/qwen-token-plan-individual.ts"
@@ -1082,9 +1082,9 @@ rationale = "PORT_MAP row is ✅ ported (ai/models_generated.go + ai/openai.go +
 [[files]]
 path = "packages/ai/src/providers/qwen-token-plan.models.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "unchanged-observable"
+evidence = ["test:cmd/gen-models/catalog_matches_pi_test.go#TestCatalogGenerationMatchesPi"]
+rationale = "Header comment only (`scripts/generate-models.ts` -> `catalog/generate.ts`); the shard's data flows into the Go catalog through `make model-catalogs`, which yields no diff, and the Go generator reproduces Pi's data byte for byte. PiG: ai/models_generated.go, ai/image_models_generated.go, ai/classifier_models_generated.go, ai/providers_generated.go (lane B1)."
 
 [[files]]
 path = "packages/ai/src/providers/qwen-token-plan.ts"
@@ -1103,9 +1103,9 @@ rationale = "Pi f715a15c1 wraps the 512-character truncation of a gateway error 
 [[files]]
 path = "packages/ai/src/providers/radius.models.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "unchanged-observable"
+evidence = ["test:cmd/gen-models/catalog_matches_pi_test.go#TestCatalogGenerationMatchesPi"]
+rationale = "Header comment only (`scripts/generate-models.ts` -> `catalog/generate.ts`); the shard's data flows into the Go catalog through `make model-catalogs`, which yields no diff, and the Go generator reproduces Pi's data byte for byte. PiG: ai/models_generated.go, ai/image_models_generated.go, ai/classifier_models_generated.go, ai/providers_generated.go (lane B1)."
 
 [[files]]
 path = "packages/ai/src/providers/radius.ts"
@@ -1117,9 +1117,9 @@ rationale = "PORT_MAP row is ✅ ported (ai/radius.go + internal/codingagent/rad
 [[files]]
 path = "packages/ai/src/providers/together.models.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "unchanged-observable"
+evidence = ["test:cmd/gen-models/catalog_matches_pi_test.go#TestCatalogGenerationMatchesPi"]
+rationale = "Header comment only (`scripts/generate-models.ts` -> `catalog/generate.ts`); the shard's data flows into the Go catalog through `make model-catalogs`, which yields no diff, and the Go generator reproduces Pi's data byte for byte. PiG: ai/models_generated.go, ai/image_models_generated.go, ai/classifier_models_generated.go, ai/providers_generated.go (lane B1)."
 
 [[files]]
 path = "packages/ai/src/providers/together.ts"
@@ -1131,9 +1131,9 @@ rationale = "PORT_MAP row is ✅ ported (ai/models_generated.go + internal/codin
 [[files]]
 path = "packages/ai/src/providers/typesafe.models.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "unchanged-observable"
+evidence = ["test:cmd/gen-models/catalog_matches_pi_test.go#TestCatalogGenerationMatchesPi"]
+rationale = "Header comment only (`scripts/generate-models.ts` -> `catalog/generate.ts`); the shard's data flows into the Go catalog through `make model-catalogs`, which yields no diff, and the Go generator reproduces Pi's data byte for byte. PiG: ai/models_generated.go, ai/image_models_generated.go, ai/classifier_models_generated.go, ai/providers_generated.go (lane B1)."
 
 [[files]]
 path = "packages/ai/src/providers/typesafe.ts"
@@ -1145,9 +1145,9 @@ rationale = "PORT_MAP row is ✅ ported (ai/builtin_providers.go (TypesafeProvid
 [[files]]
 path = "packages/ai/src/providers/vercel-ai-gateway.models.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "unchanged-observable"
+evidence = ["test:cmd/gen-models/catalog_matches_pi_test.go#TestCatalogGenerationMatchesPi"]
+rationale = "Header comment only (`scripts/generate-models.ts` -> `catalog/generate.ts`); the shard's data flows into the Go catalog through `make model-catalogs`, which yields no diff, and the Go generator reproduces Pi's data byte for byte. PiG: ai/models_generated.go, ai/image_models_generated.go, ai/classifier_models_generated.go, ai/providers_generated.go (lane B1)."
 
 [[files]]
 path = "packages/ai/src/providers/vercel-ai-gateway.ts"
@@ -1159,9 +1159,9 @@ rationale = "PORT_MAP row is ✅ ported (ai/models_generated.go + internal/codin
 [[files]]
 path = "packages/ai/src/providers/xai.models.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "unchanged-observable"
+evidence = ["test:cmd/gen-models/catalog_matches_pi_test.go#TestCatalogGenerationMatchesPi"]
+rationale = "Header comment only (`scripts/generate-models.ts` -> `catalog/generate.ts`); the shard's data flows into the Go catalog through `make model-catalogs`, which yields no diff, and the Go generator reproduces Pi's data byte for byte. PiG: ai/models_generated.go, ai/image_models_generated.go, ai/classifier_models_generated.go, ai/providers_generated.go (lane B1)."
 
 [[files]]
 path = "packages/ai/src/providers/xai.ts"
@@ -1173,9 +1173,9 @@ rationale = "PORT_MAP row is ✅ ported (ai/models_generated.go + internal/codin
 [[files]]
 path = "packages/ai/src/providers/xiaomi-token-plan-ams.models.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "unchanged-observable"
+evidence = ["test:cmd/gen-models/catalog_matches_pi_test.go#TestCatalogGenerationMatchesPi"]
+rationale = "Header comment only (`scripts/generate-models.ts` -> `catalog/generate.ts`); the shard's data flows into the Go catalog through `make model-catalogs`, which yields no diff, and the Go generator reproduces Pi's data byte for byte. PiG: ai/models_generated.go, ai/image_models_generated.go, ai/classifier_models_generated.go, ai/providers_generated.go (lane B1)."
 
 [[files]]
 path = "packages/ai/src/providers/xiaomi-token-plan-ams.ts"
@@ -1187,9 +1187,9 @@ rationale = "PORT_MAP row is ✅ ported (ai/models_generated.go + internal/codin
 [[files]]
 path = "packages/ai/src/providers/xiaomi-token-plan-cn.models.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "unchanged-observable"
+evidence = ["test:cmd/gen-models/catalog_matches_pi_test.go#TestCatalogGenerationMatchesPi"]
+rationale = "Header comment only (`scripts/generate-models.ts` -> `catalog/generate.ts`); the shard's data flows into the Go catalog through `make model-catalogs`, which yields no diff, and the Go generator reproduces Pi's data byte for byte. PiG: ai/models_generated.go, ai/image_models_generated.go, ai/classifier_models_generated.go, ai/providers_generated.go (lane B1)."
 
 [[files]]
 path = "packages/ai/src/providers/xiaomi-token-plan-cn.ts"
@@ -1201,9 +1201,9 @@ rationale = "PORT_MAP row is ✅ ported (ai/models_generated.go + internal/codin
 [[files]]
 path = "packages/ai/src/providers/xiaomi-token-plan-sgp.models.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "unchanged-observable"
+evidence = ["test:cmd/gen-models/catalog_matches_pi_test.go#TestCatalogGenerationMatchesPi"]
+rationale = "Header comment only (`scripts/generate-models.ts` -> `catalog/generate.ts`); the shard's data flows into the Go catalog through `make model-catalogs`, which yields no diff, and the Go generator reproduces Pi's data byte for byte. PiG: ai/models_generated.go, ai/image_models_generated.go, ai/classifier_models_generated.go, ai/providers_generated.go (lane B1)."
 
 [[files]]
 path = "packages/ai/src/providers/xiaomi-token-plan-sgp.ts"
@@ -1215,9 +1215,9 @@ rationale = "PORT_MAP row is ✅ ported (ai/models_generated.go + internal/codin
 [[files]]
 path = "packages/ai/src/providers/xiaomi.models.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "unchanged-observable"
+evidence = ["test:cmd/gen-models/catalog_matches_pi_test.go#TestCatalogGenerationMatchesPi"]
+rationale = "Header comment only (`scripts/generate-models.ts` -> `catalog/generate.ts`); the shard's data flows into the Go catalog through `make model-catalogs`, which yields no diff, and the Go generator reproduces Pi's data byte for byte. PiG: ai/models_generated.go, ai/image_models_generated.go, ai/classifier_models_generated.go, ai/providers_generated.go (lane B1)."
 
 [[files]]
 path = "packages/ai/src/providers/xiaomi.ts"
@@ -1229,9 +1229,9 @@ rationale = "PORT_MAP row is ✅ ported (ai/models_generated.go + internal/codin
 [[files]]
 path = "packages/ai/src/providers/zai-coding-cn.models.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "unchanged-observable"
+evidence = ["test:cmd/gen-models/catalog_matches_pi_test.go#TestCatalogGenerationMatchesPi"]
+rationale = "Header comment only (`scripts/generate-models.ts` -> `catalog/generate.ts`); the shard's data flows into the Go catalog through `make model-catalogs`, which yields no diff, and the Go generator reproduces Pi's data byte for byte. PiG: ai/models_generated.go, ai/image_models_generated.go, ai/classifier_models_generated.go, ai/providers_generated.go (lane B1)."
 
 [[files]]
 path = "packages/ai/src/providers/zai-coding-cn.ts"
@@ -1243,9 +1243,9 @@ rationale = "PORT_MAP row is ✅ ported (ai/models_generated.go + internal/codin
 [[files]]
 path = "packages/ai/src/providers/zai.models.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "unchanged-observable"
+evidence = ["test:cmd/gen-models/catalog_matches_pi_test.go#TestCatalogGenerationMatchesPi"]
+rationale = "Header comment only (`scripts/generate-models.ts` -> `catalog/generate.ts`); the shard's data flows into the Go catalog through `make model-catalogs`, which yields no diff, and the Go generator reproduces Pi's data byte for byte. PiG: ai/models_generated.go, ai/image_models_generated.go, ai/classifier_models_generated.go, ai/providers_generated.go (lane B1)."
 
 [[files]]
 path = "packages/ai/src/providers/zai.ts"

@@ -57,9 +57,71 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 
 | upstream | pig | status |
 |---|---|---|
-| `packages/ai/scripts/check-model-data.ts` | `cmd/check-model-data/main.go (validation command)` | ✅ |
-| `packages/ai/scripts/model-data.ts` | `cmd/check-model-data/model_data.go + model_data_json.go (identity, shard, manifest, hash and metadata validation; Node supplies Date.parse and JSON syntax diagnostics)` | ✅ |
-| `packages/ai/scripts/hydrate-model-catalog.ts` | `cmd/check-model-data/hydrate.go (-hydrate <models.all.json>; groupProviderModelData, staging, validation and replacement; hydration cases of model-data-validation.test.ts in hydrate_upstream_test.go)` | ✅ |
+| `packages/ai/scripts/check-model-data.ts` | `cmd/check-model-data/main.go (validation command over internal/modelgen/modeldata)` | ✅ |
+| `packages/ai/scripts/model-data.ts` | `internal/modelgen/modeldata/model_data.go + model_data_json.go (identity, shard, manifest, hash and metadata validation; Node supplies Date.parse and JSON syntax diagnostics; moved from cmd/check-model-data so cmd/gen-models shares it)` | ✅ |
+| `packages/ai/scripts/hydrate-model-catalog.ts` | `internal/modelgen/modeldata/hydrate.go (HydrateModelCatalog and GroupProviderModelData; command in cmd/check-model-data -hydrate <models.all.json>; hydration cases of model-data-validation.test.ts in hydrate_upstream_test.go)` | ✅ |
+
+## `packages/ai/catalog/`
+
+| upstream | pig | status |
+|---|---|---|
+| `packages/ai/catalog/build.ts` | `internal/modelgen/build.go` | ✅ |
+| `packages/ai/catalog/define.ts` | `internal/modelgen/define.go (+ internal/modelgen/obj.go: the ordered JavaScript-object value the models are built as)` | ✅ |
+| `packages/ai/catalog/families/anthropic.ts` | `internal/modelgen/family_anthropic.go` | ✅ |
+| `packages/ai/catalog/families/deepseek.ts` | `internal/modelgen/family_deepseek.go` | ✅ |
+| `packages/ai/catalog/families/google.ts` | `internal/modelgen/family_google.go` | ✅ |
+| `packages/ai/catalog/families/kimi.ts` | `internal/modelgen/family_kimi.go` | ✅ |
+| `packages/ai/catalog/families/openai.ts` | `internal/modelgen/family_openai.go` | ✅ |
+| `packages/ai/catalog/generate.ts` | `cmd/gen-models/generate.go (flags, staging, validation, data and public JSON output; `-data-output` is the Go form of Pi's `src/providers/data`, `-data-only` takes its provider ids from that directory) + cmd/gen-models/main.go + cmd/gen-models/fixtures.go (-record/-replay)` | ✅ |
+| `packages/ai/catalog/providers/amazon-bedrock.ts` | `internal/modelgen/providers/amazon_bedrock.go` | ✅ |
+| `packages/ai/catalog/providers/ant-ling.ts` | `internal/modelgen/providers/ant_ling.go` | ✅ |
+| `packages/ai/catalog/providers/anthropic.ts` | `internal/modelgen/providers/anthropic.go` | ✅ |
+| `packages/ai/catalog/providers/azure.ts` | `internal/modelgen/providers/azure.go` | ✅ |
+| `packages/ai/catalog/providers/baseten.ts` | `internal/modelgen/providers/baseten.go` | ✅ |
+| `packages/ai/catalog/providers/cerebras.ts` | `internal/modelgen/providers/cerebras.go` | ✅ |
+| `packages/ai/catalog/providers/cloudflare-ai-gateway.ts` | `internal/modelgen/providers/cloudflare_ai_gateway.go` | ✅ |
+| `packages/ai/catalog/providers/cloudflare-workers-ai.ts` | `internal/modelgen/providers/cloudflare_workers_ai.go` | ✅ |
+| `packages/ai/catalog/providers/deepseek.ts` | `internal/modelgen/providers/deepseek.go` | ✅ |
+| `packages/ai/catalog/providers/fireworks.ts` | `internal/modelgen/providers/fireworks.go` | ✅ |
+| `packages/ai/catalog/providers/github-copilot.ts` | `internal/modelgen/providers/github_copilot.go` | ✅ |
+| `packages/ai/catalog/providers/google-vertex.ts` | `internal/modelgen/providers/google_vertex.go` | ✅ |
+| `packages/ai/catalog/providers/google.ts` | `internal/modelgen/providers/google.go` | ✅ |
+| `packages/ai/catalog/providers/groq.ts` | `internal/modelgen/providers/groq.go` | ✅ |
+| `packages/ai/catalog/providers/huggingface.ts` | `internal/modelgen/providers/huggingface.go` | ✅ |
+| `packages/ai/catalog/providers/index.ts` | `internal/modelgen/providers/index.go` | ✅ |
+| `packages/ai/catalog/providers/kimi-coding.ts` | `internal/modelgen/providers/kimi_coding.go` | ✅ |
+| `packages/ai/catalog/providers/meta.ts` | `internal/modelgen/providers/meta.go` | ✅ |
+| `packages/ai/catalog/providers/minimax-cn.ts` | `internal/modelgen/providers/minimax_cn.go` | ✅ |
+| `packages/ai/catalog/providers/minimax.ts` | `internal/modelgen/providers/minimax.go` | ✅ |
+| `packages/ai/catalog/providers/mistral.ts` | `internal/modelgen/providers/mistral.go` | ✅ |
+| `packages/ai/catalog/providers/moonshotai-cn.ts` | `internal/modelgen/providers/moonshotai_cn.go` | ✅ |
+| `packages/ai/catalog/providers/moonshotai.ts` | `internal/modelgen/providers/moonshotai.go` | ✅ |
+| `packages/ai/catalog/providers/nvidia.ts` | `internal/modelgen/providers/nvidia.go` | ✅ |
+| `packages/ai/catalog/providers/openai-codex.ts` | `internal/modelgen/providers/openai_codex.go` | ✅ |
+| `packages/ai/catalog/providers/openai.ts` | `internal/modelgen/providers/openai.go` | ✅ |
+| `packages/ai/catalog/providers/opencode-go.ts` | `internal/modelgen/providers/opencode_go.go` | ✅ |
+| `packages/ai/catalog/providers/opencode.ts` | `internal/modelgen/providers/opencode.go` | ✅ |
+| `packages/ai/catalog/providers/openrouter.ts` | `internal/modelgen/providers/openrouter.go` | ✅ |
+| `packages/ai/catalog/providers/qwen-token-plan-cn.ts` | `internal/modelgen/providers/qwen_token_plan_cn.go` | ✅ |
+| `packages/ai/catalog/providers/qwen-token-plan-individual.ts` | `internal/modelgen/providers/qwen_token_plan_individual.go` | ✅ |
+| `packages/ai/catalog/providers/qwen-token-plan.ts` | `internal/modelgen/providers/qwen_token_plan.go` | ✅ |
+| `packages/ai/catalog/providers/radius.ts` | `internal/modelgen/providers/radius.go` | ✅ |
+| `packages/ai/catalog/providers/together.ts` | `internal/modelgen/providers/together.go` | ✅ |
+| `packages/ai/catalog/providers/typesafe.ts` | `internal/modelgen/providers/typesafe.go` | ✅ |
+| `packages/ai/catalog/providers/vercel-ai-gateway.ts` | `internal/modelgen/providers/vercel_ai_gateway.go` | ✅ |
+| `packages/ai/catalog/providers/xai.ts` | `internal/modelgen/providers/xai.go` | ✅ |
+| `packages/ai/catalog/providers/xiaomi-token-plan-ams.ts` | `internal/modelgen/providers/xiaomi_token_plan_ams.go` | ✅ |
+| `packages/ai/catalog/providers/xiaomi-token-plan-cn.ts` | `internal/modelgen/providers/xiaomi_token_plan_cn.go` | ✅ |
+| `packages/ai/catalog/providers/xiaomi-token-plan-sgp.ts` | `internal/modelgen/providers/xiaomi_token_plan_sgp.go` | ✅ |
+| `packages/ai/catalog/providers/xiaomi.ts` | `internal/modelgen/providers/xiaomi.go` | ✅ |
+| `packages/ai/catalog/providers/zai-coding-cn.ts` | `internal/modelgen/providers/zai_coding_cn.go` | ✅ |
+| `packages/ai/catalog/providers/zai.ts` | `internal/modelgen/providers/zai.go` | ✅ |
+| `packages/ai/catalog/reasoning.ts` | `internal/modelgen/reasoning.go` | ✅ |
+| `packages/ai/catalog/sources/index.ts` | `internal/modelgen/sources.go (+ the Radius gateway config reader of packages/ai/src/providers/radius-config.ts)` | ✅ |
+| `packages/ai/catalog/sources/models-dev.ts` | `internal/modelgen/models_dev.go` | ✅ |
+| `packages/ai/catalog/sources/openrouter.ts` | `internal/modelgen/source_openrouter.go (+ openRouterCost of src/providers/openrouter-api.ts, kept equal to ai.OpenRouterCost by internal/modelgen/crosscheck_test.go)` | ✅ |
+| `packages/ai/catalog/sources/vercel-ai-gateway.ts` | `internal/modelgen/source_vercel.go (replaces scripts/ai-gateway-pricing.ts)` | ✅ |
+| `packages/ai/catalog/README.md` | `internal/modelgen/README.md` | ✅ |
 
 ## `packages/agent/src/`
 

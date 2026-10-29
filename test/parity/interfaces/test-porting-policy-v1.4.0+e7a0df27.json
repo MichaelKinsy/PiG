@@ -1708,6 +1708,13 @@
       "rationale": "New in 0.99.1; area and tags follow the sibling tests under packages/ai/test/ until the production-path review."
     },
     {
+      "path": "packages/ai/test/opencode-model-generation.test.ts",
+      "upstreamTestHash": "sha256:4c5542985e4b2d51c835870c2cf48bce32a209264fad1b8c73d51e102d379100",
+      "area": "utilities",
+      "tags": [],
+      "rationale": "Model-catalog generation (OpenCode models) is build-time tooling that writes the checked-in catalog; no runtime path reads the generator. Follows the sibling fireworks-model-generation.test.ts row."
+    },
+    {
       "path": "packages/ai/test/opencode-provider-headers.test.ts",
       "upstreamTestHash": "sha256:77ef0553a77f1005d672847e56edead61b2235780ffbe6bbec97bdd5cc3b305f",
       "area": "providers",

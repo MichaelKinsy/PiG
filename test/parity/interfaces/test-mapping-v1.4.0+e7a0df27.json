@@ -674,8 +674,12 @@
     },
     {
       "path": "packages/ai/test/fireworks-model-generation.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:009bab2e1548ad5d2882ddfabb430c034141c823cc6581faa9d16fdd4af3a4d1"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:009bab2e1548ad5d2882ddfabb430c034141c823cc6581faa9d16fdd4af3a4d1",
+      "evidence": [
+        "cmd/gen-models/fireworks_model_generation_test.go#TestFireworksModelGeneration"
+      ],
+      "rationale": "Four cases of Pi 2e0f175b's catalog generation for Fireworks, through the recorded-fetch generator subprocess helper (lane B1)."
     },
     {
       "path": "packages/ai/test/fireworks-models.test.ts",
@@ -690,8 +694,12 @@
     },
     {
       "path": "packages/ai/test/generate-models-strict.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:1d82bd52055d61f2f8a800107ee97c5dae863cec8fd4abacb1d18a5322c0104b"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:1d82bd52055d61f2f8a800107ee97c5dae863cec8fd4abacb1d18a5322c0104b",
+      "evidence": [
+        "cmd/gen-models/generate_models_strict_test.go#TestGenerateModelsStrict"
+      ],
+      "rationale": "Strict generation rejects on a failed source and leaves the data directory untouched (lane B1)."
     },
     {
       "path": "packages/ai/test/github-copilot-anthropic.test.ts",
@@ -849,8 +857,12 @@
     },
     {
       "path": "packages/ai/test/image-model-data.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:c0ba0f20f20d6e1d35b981b8c23632db0a7ff5113afb545e7b59a5dcbdb0f114"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:c0ba0f20f20d6e1d35b981b8c23632db0a7ff5113afb545e7b59a5dcbdb0f114",
+      "evidence": [
+        "internal/modelgen/source_openrouter_test.go#TestOpenRouterCatalogParsing"
+      ],
+      "rationale": "Image-model catalog parsing cases, now over catalog/sources/openrouter.ts (lane B1)."
     },
     {
       "path": "packages/ai/test/image-tool-result.test.ts",
@@ -1031,8 +1043,13 @@
     },
     {
       "path": "packages/ai/test/model-cost-tiers.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:12c515388e123bf69a9f6ff2fd69f15bfbaaf209aad13fcdf86cc44c1db0ed34"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:12c515388e123bf69a9f6ff2fd69f15bfbaaf209aad13fcdf86cc44c1db0ed34",
+      "evidence": [
+        "internal/modelgen/source_openrouter_test.go#TestOpenRouterPricingOverrides",
+        "internal/modelgen/source_vercel_test.go#TestGetAiGatewayCost"
+      ],
+      "rationale": "Cost-tier cases over catalog/sources (OpenRouter pricing overrides and getAiGatewayCost), lane B1."
     },
     {
       "path": "packages/ai/test/model-data-validation.test.ts",
@@ -1455,8 +1472,12 @@
     },
     {
       "path": "packages/ai/test/opencode-model-generation.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:4c5542985e4b2d51c835870c2cf48bce32a209264fad1b8c73d51e102d379100"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:4c5542985e4b2d51c835870c2cf48bce32a209264fad1b8c73d51e102d379100",
+      "evidence": [
+        "cmd/gen-models/opencode_model_generation_test.go#TestOpencodeModelGeneration"
+      ],
+      "rationale": "Two OpenCode generation cases (Pi 2e0f175b, lane B1)."
     },
     {
       "path": "packages/ai/test/opencode-provider-headers.test.ts",
@@ -1515,8 +1536,13 @@
     },
     {
       "path": "packages/ai/test/openrouter-reasoning-options.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:75358f2a0014328d3818bad2fa429c32aeddc60ce41a4e236d5a7ecf3902bc2f"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:75358f2a0014328d3818bad2fa429c32aeddc60ce41a4e236d5a7ecf3902bc2f",
+      "evidence": [
+        "internal/modelgen/source_openrouter_test.go#TestGetOpenRouterThinkingLevelMap",
+        "ai/openrouter_reasoning_upstream_test.go"
+      ],
+      "rationale": "getOpenRouterThinkingLevelMap cases in catalog/sources/openrouter.ts; the payload cases are unchanged (lane B1)."
     },
     {
       "path": "packages/ai/test/openrouter-user-models.test.ts",
@@ -1666,8 +1692,12 @@
     },
     {
       "path": "packages/ai/test/reasoning-options.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:5e1d98de596939ba1c28f9f5f6f0165b97a31830e053a5ca3276d603749642fe"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:5e1d98de596939ba1c28f9f5f6f0165b97a31830e053a5ca3276d603749642fe",
+      "evidence": [
+        "internal/modelgen/reasoning_test.go#TestGetEffortThinkingLevelMap"
+      ],
+      "rationale": "getEffortThinkingLevelMap cases in catalog/reasoning.ts (lane B1)."
     },
     {
       "path": "packages/ai/test/responseid.test.ts",
