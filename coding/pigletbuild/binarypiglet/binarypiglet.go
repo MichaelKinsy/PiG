@@ -56,7 +56,7 @@ func parse(data []byte) *piglet.Piglet {
 		return nil
 	}
 	// pig additive (D92): a strip list alone defines a Piglet Binary's agent.
-	if p.Model == nil && p.SystemPrompt == nil && len(p.Extensions) == 0 && len(p.Skills) == 0 && p.BuiltinTools == nil && p.Discovery == nil && p.Strip.IsEmpty() {
+	if p.Model == nil && p.SystemPrompt == nil && len(p.Extensions) == 0 && len(p.Skills) == 0 && p.BuiltinTools == nil && p.Discovery == nil && p.ContextFiles == "" && p.Strip.IsEmpty() {
 		return nil
 	}
 	return p
