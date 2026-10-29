@@ -4,6 +4,11 @@
 
 package photonimage
 
+import (
+	"encoding/binary"
+	"slices"
+)
+
 // Ports the lossless (VP8L) WebP decoder of image 0.24.9 (crates.io image-0.24.9.crate, the version Photon's wasm embeds): src/codecs/webp/
 // lossless.rs (cited below as lossless.rs), huffman.rs and lossless_transform.rs. Photon's wasm is 32-bit: the `usize` of the Rust code is a
 // uint32 here wherever a hostile stream can make its wrapping visible (copy lengths and distances, bit counts), the `u16` of the Rust code is
@@ -55,30 +60,57 @@ func losslessSubsampleSize(size uint16, bits uint8) uint16 {
 	return uint16((uint32(size) + (1 << bits) - 1) >> bits)
 }
 
-// losslessBitReader is BitReader (lossless.rs:670-712): the bits of the stream, least significant bit of each byte first.
+// losslessBitReader is BitReader (lossless.rs:670-712): the bits of the stream, least significant bit of each byte first. The Rust reader
+// moves one bit at a time and fails as soon as it needs a bit the buffer does not have; this one keeps the position in bits and gets as many
+// as it is asked for with one load, failing in the same cases (an error is an error, whichever bit it comes at).
 type losslessBitReader struct {
-	buf      []byte
-	index    int
-	bitCount uint8
+	buf []byte
+	pos uint64 // bits consumed
+	end uint64 // bits in buf
+}
+
+func (r *losslessBitReader) init(buf []byte) {
+	*r = losslessBitReader{buf: buf, end: uint64(len(buf)) * 8}
+}
+
+// window is the bits from the position on, the first one in the least significant bit, at least 57 of them, zeros after the end.
+func (r *losslessBitReader) window() uint64 {
+	i := r.pos >> 3
+	if i+8 <= uint64(len(r.buf)) {
+		return binary.LittleEndian.Uint64(r.buf[i:]) >> (r.pos & 7)
+	}
+	var tail [8]byte
+	if i < uint64(len(r.buf)) {
+		copy(tail[:], r.buf[i:])
+	}
+	return binary.LittleEndian.Uint64(tail[:]) >> (r.pos & 7)
 }
 
 // readBits is BitReader::read_bits (lossless.rs:690-711). The Rust function is generic over the result type, the shift of each bit is
 // a shift of that type: for a 32-bit usize a count above 32 shifts by the count modulo 32, which only a hostile stream gets to. The
 // callers of the narrower types never ask for more bits than the type has.
 func (r *losslessBitReader) readBits(num uint8) (uint32, error) {
+	if num > 32 {
+		return r.readManyBits(num)
+	}
+	n := uint64(num)
+	if r.pos+n > r.end {
+		return 0, errWebPBitStream
+	}
+	v := uint32(r.window() & (1<<n - 1))
+	r.pos += n
+	return v, nil
+}
+
+// readManyBits is readBits for more than 32 bits: bit i is added shifted by i modulo 32.
+func (r *losslessBitReader) readManyBits(num uint8) (uint32, error) {
 	var value uint32
 	for i := range num {
-		if len(r.buf) <= r.index {
+		if r.pos >= r.end {
 			return 0, errWebPBitStream
 		}
-		bit := uint32(r.buf[r.index]>>r.bitCount) & 1
-		value += bit << (i & 31)
-		if r.bitCount == 7 {
-			r.index++
-			r.bitCount = 0
-		} else {
-			r.bitCount++
-		}
+		value += uint32(r.window()&1) << (i & 31)
+		r.pos++
 	}
 	return value, nil
 }
@@ -103,7 +135,21 @@ type webpHuffmanTree struct {
 	tree     []webpHuffmanNode
 	maxNodes int
 	numNodes int
+
+	// fast answers the first webpHuffmanRootBits bits of a symbol at once and second the rest of a longer code (a table for each prefix);
+	// they are made from tree when the first symbol is read.
+	fast   *[1 << webpHuffmanRootBits]uint32
+	second []uint32
 }
+
+// The entries of webpHuffmanTree.fast and second are the kind in the bits 28 and up, the length of the code in bits 16 to 19, the symbol below.
+const (
+	webpHuffmanRootBits = 8
+
+	webpFastLeaf  = 1 << 28 // the symbol, with the length of its whole code
+	webpFastSlow  = 2 << 28 // a longer code: the bits 16 to 19 are the bits to look up in second, the bits below the offset there
+	webpFastEmpty = 3 << 28 // the path ends in a node without symbol
+)
 
 // assignChildren is huffman.rs:32-38.
 func (t *webpHuffmanTree) assignChildren(nodeIndex int) int {
@@ -260,25 +306,92 @@ func buildWebPHuffmanExplicit(codeLengths, codes, symbols []uint16) (*webpHuffma
 	return tree, nil
 }
 
-// readSymbol is HuffmanTree::read_symbol (huffman.rs:183-199).
-func (t *webpHuffmanTree) readSymbol(r *losslessBitReader) (uint16, error) {
-	index := 0
-	node := t.tree[index]
-
-	for node.kind == webpHuffmanBranch {
-		bit, err := r.readBits(1)
-		if err != nil {
-			return 0, err
+// buildFast fills the tables: the code of a symbol is the path to its leaf, the first bit read is the least significant bit of the index.
+func (t *webpHuffmanTree) buildFast() {
+	var fast [1 << webpHuffmanRootBits]uint32
+	var walk func(node int, depth uint, path uint32)
+	walk = func(node int, depth uint, path uint32) {
+		n := t.tree[node]
+		var entry uint32
+		switch {
+		case n.kind == webpHuffmanLeaf:
+			entry = webpFastLeaf | uint32(depth)<<16 | uint32(n.symbol)
+		case n.kind == webpHuffmanEmpty:
+			entry = webpFastEmpty
+		case depth == webpHuffmanRootBits:
+			entry = t.buildSecond(node)
+		default:
+			walk(node+n.offset, depth+1, path)
+			walk(node+n.offset+1, depth+1, path|1<<depth)
+			return
 		}
-		index += node.offset + int(bit)
-		node = t.tree[index]
+		for i := path; i < uint32(len(fast)); i += 1 << depth {
+			fast[i] = entry
+		}
 	}
+	walk(0, 0, 0)
+	t.fast = &fast
+}
 
-	if node.kind == webpHuffmanEmpty {
+// height is the longest path below the node.
+func (t *webpHuffmanTree) height(node int) uint {
+	n := t.tree[node]
+	if n.kind != webpHuffmanBranch {
+		return 0
+	}
+	return 1 + max(t.height(node+n.offset), t.height(node+n.offset+1))
+}
+
+// buildSecond adds the table of the codes that go on below the branch node, which is reached by webpHuffmanRootBits bits, and returns the
+// entry of the first table that points to it.
+func (t *webpHuffmanTree) buildSecond(root int) uint32 {
+	bits := t.height(root)
+	base := len(t.second)
+	t.second = append(t.second, make([]uint32, 1<<bits)...)
+
+	var walk func(node int, depth uint, path uint32)
+	walk = func(node int, depth uint, path uint32) {
+		n := t.tree[node]
+		var entry uint32
+		switch n.kind {
+		case webpHuffmanLeaf:
+			entry = webpFastLeaf | uint32(webpHuffmanRootBits+depth)<<16 | uint32(n.symbol)
+		case webpHuffmanEmpty:
+			entry = webpFastEmpty
+		default:
+			walk(node+n.offset, depth+1, path)
+			walk(node+n.offset+1, depth+1, path|1<<depth)
+			return
+		}
+		for i := path; i < 1<<bits; i += 1 << depth {
+			t.second[base+int(i)] = entry
+		}
+	}
+	walk(root, 0, 0)
+
+	return webpFastSlow | uint32(bits)<<16 | uint32(base)
+}
+
+// readSymbol is HuffmanTree::read_symbol (huffman.rs:183-199): the Rust code walks the tree one bit at a time, this finds the leaf in the
+// tables. A symbol fails when the stream ends in its code or its path ends in a node that has no symbol.
+func (t *webpHuffmanTree) readSymbol(r *losslessBitReader) (uint16, error) {
+	if t.fast == nil {
+		t.buildFast()
+	}
+	w := r.window()
+	e := t.fast[w&(1<<webpHuffmanRootBits-1)]
+	if e&(3<<28) == webpFastSlow {
+		e = t.second[e&0xffff+uint32(w>>webpHuffmanRootBits)&(1<<(e>>16&0xf)-1)]
+	}
+	if e&(3<<28) != webpFastLeaf {
 		return 0, errWebPHuffman
 	}
-
-	return node.symbol, nil
+	n := uint64(e>>16) & 0xf
+	if r.pos+n > r.end {
+		return 0, errWebPBitStream
+	}
+	r.pos += n
+	return uint16(e), nil
 }
 
 // losslessHuffmanGroup is HuffmanCodeGroup (lossless.rs:51).
@@ -333,14 +446,10 @@ type losslessFrame struct {
 
 // fillRGBA is LosslessFrame::fill_rgba: the pixels of the frame in raster order as RGBA8 into buf, as many as there are in both.
 func (f *losslessFrame) fillRGBA(buf []byte) {
-	for i, argb := range f.buf {
-		if 4*i+4 > len(buf) {
-			break
-		}
-		buf[4*i] = byte(argb >> 16)
-		buf[4*i+1] = byte(argb >> 8)
-		buf[4*i+2] = byte(argb)
-		buf[4*i+3] = byte(argb >> 24)
+	n := min(len(f.buf), len(buf)/4)
+	buf = buf[:4*n]
+	for i, argb := range f.buf[:n] {
+		binary.LittleEndian.PutUint32(buf[4*i:], argb&0xff00ff00|argb>>16&0xff|argb&0xff<<16)
 	}
 }
 
@@ -398,7 +507,7 @@ func (d *losslessDecoder) decodeFrame() (*losslessFrame, error) {
 		return nil, errWebPLosslessSignature
 	}
 
-	d.bitReader.buf = d.r[1:]
+	d.bitReader.init(d.r[1:])
 
 	w, err := d.bitReader.readBits(14)
 	if err != nil {
@@ -434,7 +543,7 @@ func (d *losslessDecoder) decodeFrame() (*losslessFrame, error) {
 // decodeFrameImplicitDims is LosslessDecoder::decode_frame_implicit_dims (lossless.rs:170-192), used for the alpha data of an extended
 // image: there is no header, the dimensions are those of the canvas.
 func (d *losslessDecoder) decodeFrameImplicitDims(width, height uint16) (*losslessFrame, error) {
-	d.bitReader.buf = d.r
+	d.bitReader.init(d.r)
 
 	d.frame.width = width
 	d.frame.height = height
@@ -449,8 +558,8 @@ func (d *losslessDecoder) decodeFrameData() (*losslessFrame, error) {
 	}
 
 	// transform_order is the indices (0-3) into transforms in the order decoded
-	for i := len(d.transformOrder) - 1; i >= 0; i-- {
-		trans := d.transforms[d.transformOrder[i]]
+	for _, v := range slices.Backward(d.transformOrder) {
+		trans := d.transforms[v]
 		data, err = trans.apply(data, d.frame.width, d.frame.height)
 		if err != nil {
 			return nil, err
@@ -994,178 +1103,230 @@ func losslessPlaneCodeToDistance(xsize uint16, planeCode uint32) (uint32, error)
 }
 
 // apply is TransformType::apply_transform (lossless_transform.rs:23-262): the inverse of the transform on the image data; width and
-// height are those of the frame, whichever size the data of the stream has.
+// height are those of the frame, whichever size the data of the stream has. The Rust code does a pixel at a time and panics at the first
+// index past the data or the transform image; the same conditions are errors here, found before the pixels they would spoil.
 func (t *losslessTransformType) apply(imageData []uint32, width, height uint16) ([]uint32, error) {
+	w := int(width)
+	h := int(height)
+
 	switch t.kind {
 	case losslessPredictor:
-		blockXsize := int(losslessSubsampleSize(width, t.sizeBits))
-		w := int(width)
-		h := int(height)
-
 		if len(imageData) < w*h {
 			return nil, errWebPTransform
 		}
-
-		// handle top and left borders specially
-		// this involves ignoring mode and just setting prediction values like this
-		imageData[0] = losslessAddPixels(imageData[0], 0xff000000)
-
-		for x := 1; x < w; x++ {
-			imageData[x] = losslessAddPixels(imageData[x], imageData[x-1])
+		return imageData, t.applyPredictor(imageData, w, h)
+	case losslessColorTransform:
+		if len(imageData) < w*h {
+			return nil, errWebPTransform
 		}
-
-		for y := 1; y < h; y++ {
-			imageData[y*w] = losslessAddPixels(imageData[y*w], imageData[(y-1)*w])
-		}
-
-		for y := 1; y < h; y++ {
-			for x := 1; x < w; x++ {
-				blockIndex := (y>>t.sizeBits)*blockXsize + (x >> t.sizeBits)
+		blockXsize := int(losslessSubsampleSize(width, t.sizeBits))
+		for y := range h {
+			row := imageData[y*w : y*w+w]
+			rowBlocks := (y >> t.sizeBits) * blockXsize
+			for x0 := 0; x0 < w; x0 += 1 << t.sizeBits {
+				blockIndex := rowBlocks + x0>>t.sizeBits
 				if blockIndex >= len(t.data) {
 					return nil, errWebPTransform
 				}
-
-				index := y*w + x
-
-				green := (t.data[blockIndex] >> 8) & 0xff
-
-				left := imageData[index-1]
-				top := imageData[index-w]
-				// if x == width - 1 this gets the left most pixel of the current row as described in the specification
-				topRight := imageData[index-w+1]
-				topLeft := imageData[index-w-1]
-
-				var predicted uint32
-				switch green {
-				case 0:
-					predicted = 0xff000000
-				case 1:
-					predicted = left
-				case 2:
-					predicted = top
-				case 3:
-					predicted = topRight
-				case 4:
-					predicted = topLeft
-				case 5:
-					predicted = losslessAverage2(losslessAverage2(left, topRight), top)
-				case 6:
-					predicted = losslessAverage2(left, topLeft)
-				case 7:
-					predicted = losslessAverage2(left, top)
-				case 8:
-					predicted = losslessAverage2(topLeft, top)
-				case 9:
-					predicted = losslessAverage2(top, topRight)
-				case 10:
-					predicted = losslessAverage2(losslessAverage2(left, topLeft), losslessAverage2(top, topRight))
-				case 11:
-					predicted = losslessSelect(left, top, topLeft)
-				case 12:
-					predicted = losslessClampAddSubtractFull(left, top, topLeft)
-				case 13:
-					predicted = losslessClampAddSubtractHalf(losslessAverage2(left, top), topLeft)
-				default:
-					continue
+				code := t.data[blockIndex]
+				for x := x0; x < min(x0+1<<t.sizeBits, w); x++ {
+					row[x] = losslessTransformColor(code, row[x])
 				}
-				imageData[index] = losslessAddPixels(imageData[index], predicted)
-			}
-		}
-	case losslessColorTransform:
-		blockXsize := int(losslessSubsampleSize(width, t.sizeBits))
-		w := int(width)
-		h := int(height)
-
-		for y := range h {
-			for x := range w {
-				blockIndex := (y>>t.sizeBits)*blockXsize + (x >> t.sizeBits)
-				index := y*w + x
-
-				if blockIndex >= len(t.data) || index >= len(imageData) {
-					return nil, errWebPTransform
-				}
-
-				imageData[index] = losslessTransformColor(t.data[blockIndex], imageData[index])
 			}
 		}
 	case losslessSubtractGreen:
-		w := int(width)
-		for y := range int(height) {
-			for x := range w {
-				if y*w+x >= len(imageData) {
-					return nil, errWebPTransform
-				}
-				imageData[y*w+x] = losslessAddGreen(imageData[y*w+x])
-			}
+		if len(imageData) < w*h {
+			return nil, errWebPTransform
+		}
+		for i, argb := range imageData[:w*h] {
+			imageData[i] = losslessAddGreen(argb)
 		}
 	default: // color indexing
-		w := int(width)
-		h := int(height)
-		newImageData := make([]uint32, 0, w*h)
-
-		tableSize := uint32(t.tableLen)
-		widthBits := losslessWidthBits(t.tableLen)
-
-		bitsPerPixel := 8 >> widthBits
-		mask := uint32(1)<<bitsPerPixel - 1
-
-		src := 0
-
-		pixelsPerByte := 1 << widthBits
-		countMask := pixelsPerByte - 1
-		var packedPixels uint32
-
-		for range h {
-			for x := range w {
-				if x&countMask == 0 {
-					if src >= len(imageData) {
-						return nil, errWebPTransform
-					}
-					packedPixels = (imageData[src] >> 8) & 0xff
-					src++
-				}
-
-				pixels := packedPixels & mask
-				var newVal uint32
-				if pixels < tableSize {
-					newVal = t.data[pixels]
-				}
-
-				newImageData = append(newImageData, newVal)
-
-				packedPixels >>= bitsPerPixel
-			}
-		}
-
-		imageData = newImageData
+		return t.applyColorIndexing(imageData, w, h)
 	}
 
 	return imageData, nil
 }
 
-// losslessAddPixels is add_pixels (lossless_transform.rs:268-275): two pixels added mod 256 for each channel.
-func losslessAddPixels(a, b uint32) uint32 {
-	newAlpha := ((a >> 24) + (b >> 24)) & 0xff
-	newRed := (((a >> 16) & 0xff) + ((b >> 16) & 0xff)) & 0xff
-	newGreen := (((a >> 8) & 0xff) + ((b >> 8) & 0xff)) & 0xff
-	newBlue := ((a & 0xff) + (b & 0xff)) & 0xff
+// applyPredictor is the predictor transform (lossless_transform.rs:30-179): the pixel is added to the prediction the mode of its block picks
+// from the pixels around it, which are final already.
+func (t *losslessTransformType) applyPredictor(imageData []uint32, w, h int) error {
+	blockXsize := int((uint32(w) + (1 << t.sizeBits) - 1) >> t.sizeBits)
 
-	return newAlpha<<24 + newRed<<16 + newGreen<<8 + newBlue
-}
+	// handle top and left borders specially
+	// this involves ignoring mode and just setting prediction values like this
+	imageData[0] = losslessAddPixels(imageData[0], 0xff000000)
 
-// losslessAverage2 is average2 (lossless_transform.rs:300-313).
-func losslessAverage2(a, b uint32) uint32 {
-	var avg uint32
-	for i := range 4 {
-		subA := (a >> (i * 8)) & 0xff
-		subB := (b >> (i * 8)) & 0xff
-		avg |= ((subA + subB) / 2) << (i * 8)
+	for x := 1; x < w; x++ {
+		imageData[x] = losslessAddPixels(imageData[x], imageData[x-1])
 	}
-	return avg
+
+	for y := 1; y < h; y++ {
+		imageData[y*w] = losslessAddPixels(imageData[y*w], imageData[(y-1)*w])
+	}
+
+	for y := 1; y < h; y++ {
+		row := imageData[y*w : y*w+w]
+		up := imageData[(y-1)*w : y*w]
+		rowBlocks := (y >> t.sizeBits) * blockXsize
+
+		for x0 := 1; x0 < w; {
+			blockIndex := rowBlocks + x0>>t.sizeBits
+			if blockIndex >= len(t.data) {
+				return errWebPTransform
+			}
+			mode := (t.data[blockIndex] >> 8) & 0xff
+			x1 := min((x0>>t.sizeBits+1)<<t.sizeBits, w)
+
+			// if x == width - 1 the top right pixel is the left most pixel of the current row as described in the specification
+			topRightLast := row[0]
+			predictRow(mode, row, up, x0, x1, topRightLast)
+			x0 = x1
+		}
+	}
+
+	return nil
 }
 
-func losslessByte(val uint32, b uint8) int32 {
-	return int32((val >> (b * 8)) & 0xff)
+// predictRow adds the prediction of the mode to row[x0:x1] (x0 at least 1); up is the row above and topRightLast the pixel that is to the top
+// right of the last pixel of the row. The modes 14 and above do not predict: the pixels stay.
+func predictRow(mode uint32, row, up []uint32, x0, x1 int, topRightLast uint32) {
+	w := len(row)
+	left := row[x0-1]
+	topRight := func(x int) uint32 {
+		if x+1 < w {
+			return up[x+1]
+		}
+		return topRightLast
+	}
+
+	switch mode {
+	case 0:
+		for x := x0; x < x1; x++ {
+			row[x] = losslessAddPixels(row[x], 0xff000000)
+		}
+	case 1:
+		for x := x0; x < x1; x++ {
+			left = losslessAddPixels(row[x], left)
+			row[x] = left
+		}
+	case 2:
+		for x := x0; x < x1; x++ {
+			row[x] = losslessAddPixels(row[x], up[x])
+		}
+	case 3:
+		for x := x0; x < x1; x++ {
+			row[x] = losslessAddPixels(row[x], topRight(x))
+		}
+	case 4:
+		for x := x0; x < x1; x++ {
+			row[x] = losslessAddPixels(row[x], up[x-1])
+		}
+	case 5:
+		for x := x0; x < x1; x++ {
+			left = losslessAddPixels(row[x], losslessAverage2(losslessAverage2(left, topRight(x)), up[x]))
+			row[x] = left
+		}
+	case 6:
+		for x := x0; x < x1; x++ {
+			left = losslessAddPixels(row[x], losslessAverage2(left, up[x-1]))
+			row[x] = left
+		}
+	case 7:
+		for x := x0; x < x1; x++ {
+			left = losslessAddPixels(row[x], losslessAverage2(left, up[x]))
+			row[x] = left
+		}
+	case 8:
+		for x := x0; x < x1; x++ {
+			row[x] = losslessAddPixels(row[x], losslessAverage2(up[x-1], up[x]))
+		}
+	case 9:
+		for x := x0; x < x1; x++ {
+			row[x] = losslessAddPixels(row[x], losslessAverage2(up[x], topRight(x)))
+		}
+	case 10:
+		for x := x0; x < x1; x++ {
+			left = losslessAddPixels(row[x], losslessAverage2(losslessAverage2(left, up[x-1]), losslessAverage2(up[x], topRight(x))))
+			row[x] = left
+		}
+	case 11:
+		for x := x0; x < x1; x++ {
+			left = losslessAddPixels(row[x], losslessSelect(left, up[x], up[x-1]))
+			row[x] = left
+		}
+	case 12:
+		for x := x0; x < x1; x++ {
+			left = losslessAddPixels(row[x], losslessClampAddSubtractFull(left, up[x], up[x-1]))
+			row[x] = left
+		}
+	case 13:
+		for x := x0; x < x1; x++ {
+			left = losslessAddPixels(row[x], losslessClampAddSubtractHalf(losslessAverage2(left, up[x]), up[x-1]))
+			row[x] = left
+		}
+	}
+}
+
+// applyColorIndexing is the color indexing transform (lossless_transform.rs:209-258): the pixels of the image data are indices into the
+// color table, several in the green channel of a pixel when the table is small; an index past the table is transparent black.
+func (t *losslessTransformType) applyColorIndexing(imageData []uint32, w, h int) ([]uint32, error) {
+	tableSize := uint32(t.tableLen)
+	widthBits := losslessWidthBits(t.tableLen)
+
+	bitsPerPixel := 8 >> widthBits
+	mask := uint32(1)<<bitsPerPixel - 1
+
+	pixelsPerByte := 1 << widthBits
+	countMask := pixelsPerByte - 1
+
+	if len(imageData) < h*((w+pixelsPerByte-1)>>widthBits) {
+		return nil, errWebPTransform
+	}
+
+	lookup := func(index uint32) uint32 {
+		if index < tableSize {
+			return t.data[index]
+		}
+		return 0
+	}
+
+	if widthBits == 0 {
+		// one index a pixel: the data is replaced in place
+		for i, argb := range imageData[:w*h] {
+			imageData[i] = lookup((argb >> 8) & 0xff)
+		}
+		return imageData[:w*h], nil
+	}
+
+	out := make([]uint32, w*h)
+	src := 0
+	for y := range h {
+		row := out[y*w : y*w+w]
+		var packedPixels uint32
+		for x := range row {
+			if x&countMask == 0 {
+				packedPixels = (imageData[src] >> 8) & 0xff
+				src++
+			}
+
+			row[x] = lookup(packedPixels & mask)
+
+			packedPixels >>= bitsPerPixel
+		}
+	}
+
+	return out, nil
+}
+
+// losslessAddPixels is add_pixels (lossless_transform.rs:268-275): two pixels added mod 256 for each channel, two channels at a time.
+func losslessAddPixels(a, b uint32) uint32 {
+	return (a&0xff00ff00+b&0xff00ff00)&0xff00ff00 | (a&0x00ff00ff+b&0x00ff00ff)&0x00ff00ff
+}
+
+// losslessAverage2 is average2 (lossless_transform.rs:300-313): the average of two pixels, rounded down, for each channel at once.
+func losslessAverage2(a, b uint32) uint32 {
+	return ((a^b)&0xfefefefe)>>1 + a&b
 }
 
 func losslessAbs(v int32) int32 {
@@ -1177,19 +1338,14 @@ func losslessAbs(v int32) int32 {
 
 // losslessSelect is select (lossless_transform.rs:326-346).
 func losslessSelect(left, top, topLeft uint32) uint32 {
-	predictAlpha := losslessByte(left, 3) + losslessByte(top, 3) - losslessByte(topLeft, 3)
-	predictRed := losslessByte(left, 2) + losslessByte(top, 2) - losslessByte(topLeft, 2)
-	predictGreen := losslessByte(left, 1) + losslessByte(top, 1) - losslessByte(topLeft, 1)
-	predictBlue := losslessByte(left, 0) + losslessByte(top, 0) - losslessByte(topLeft, 0)
-
-	predictLeft := losslessAbs(predictAlpha-losslessByte(left, 3)) +
-		losslessAbs(predictRed-losslessByte(left, 2)) +
-		losslessAbs(predictGreen-losslessByte(left, 1)) +
-		losslessAbs(predictBlue-losslessByte(left, 0))
-	predictTop := losslessAbs(predictAlpha-losslessByte(top, 3)) +
-		losslessAbs(predictRed-losslessByte(top, 2)) +
-		losslessAbs(predictGreen-losslessByte(top, 1)) +
-		losslessAbs(predictBlue-losslessByte(top, 0))
+	var predictLeft, predictTop int32
+	for shift := 0; shift < 32; shift += 8 {
+		l := int32(left >> shift & 0xff)
+		tp := int32(top >> shift & 0xff)
+		predict := l + tp - int32(topLeft>>shift&0xff)
+		predictLeft += losslessAbs(predict - l)
+		predictTop += losslessAbs(predict - tp)
+	}
 
 	if predictLeft < predictTop {
 		return left
@@ -1204,11 +1360,8 @@ func losslessClamp(a int32) int32 {
 // losslessClampAddSubtractFull is clamp_add_subtract_full (lossless_transform.rs:370-380).
 func losslessClampAddSubtractFull(a, b, c uint32) uint32 {
 	var value uint32
-	for i := range uint8(4) {
-		subA := losslessByte(a, i)
-		subB := losslessByte(b, i)
-		subC := losslessByte(c, i)
-		value |= uint32(losslessClamp(subA+subB-subC)) << (i * 8)
+	for shift := 0; shift < 32; shift += 8 {
+		value |= uint32(losslessClamp(int32(a>>shift&0xff)+int32(b>>shift&0xff)-int32(c>>shift&0xff))) << shift
 	}
 	return value
 }
@@ -1216,10 +1369,10 @@ func losslessClampAddSubtractFull(a, b, c uint32) uint32 {
 // losslessClampAddSubtractHalf is clamp_add_subtract_half (lossless_transform.rs:383-392).
 func losslessClampAddSubtractHalf(a, b uint32) uint32 {
 	var value uint32
-	for i := range uint8(4) {
-		subA := losslessByte(a, i)
-		subB := losslessByte(b, i)
-		value |= uint32(losslessClamp(subA+(subA-subB)/2)) << (i * 8)
+	for shift := 0; shift < 32; shift += 8 {
+		subA := int32(a >> shift & 0xff)
+		subB := int32(b >> shift & 0xff)
+		value |= uint32(losslessClamp(subA+(subA-subB)/2)) << shift
 	}
 	return value
 }
@@ -1255,12 +1408,6 @@ func losslessTransformColor(colorCode, colorValue uint32) uint32 {
 
 // losslessAddGreen is add_green (lossless_transform.rs:452-461): green is added to red and blue.
 func losslessAddGreen(argb uint32) uint32 {
-	red := (argb >> 16) & 0xff
 	green := (argb >> 8) & 0xff
-	blue := argb & 0xff
-
-	newRed := (red + green) & 0xff
-	newBlue := (blue + green) & 0xff
-
-	return (argb & 0xff00ff00) | (newRed << 16) | newBlue
+	return (argb & 0xff00ff00) | ((argb&0x00ff0000+green<<16)&0x00ff0000 | (argb&0xff+green)&0xff)
 }

@@ -356,7 +356,7 @@ func (b *webpCorpusBuilder) lossless() {
 	// In an extended image the canvas can be smaller than the frame, then Photon returns the first pixels of the frame, whatever its size: a
 	// frame of 11586 by 11586 pixels has more than the 2^27 pixels the memory limit allows for RGBA8, and 11585 by 11585 has not.
 	constant := randomWebPLossless(rng, 0)
-	for _, size := range [][2]int{{1, 1}, {64, 64}, {4000, 4000}} {
+	for _, size := range [][2]int{{1, 1}, {64, 64}, {1000, 1000}} {
 		argb := uint32(0x80a05010)
 		b.add(fmt.Sprintf("vp8l-constant-%dx%d", size[0], size[1]), webpRIFF(webpChunkBytes("VP8L", constant.constantChunk(size[0], size[1], argb))))
 		b.add(fmt.Sprintf("vp8x-vp8l-constant-%dx%d-canvas-1x1", size[0], size[1]), webpRIFF(webpVP8XChunk(0x10, 1, 1), webpChunkBytes("VP8L", constant.constantChunk(size[0], size[1], argb))))

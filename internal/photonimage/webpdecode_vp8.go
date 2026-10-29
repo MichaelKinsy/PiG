@@ -4,6 +4,8 @@
 
 package photonimage
 
+import "math/bits"
+
 // Ports the lossy WebP decoder of image 0.24.9 (crates.io image-0.24.9.crate, the version Photon's wasm embeds): src/codecs/webp/vp8.rs
 // (cited below as vp8.rs), loop_filter.rs and transform.rs. It is a literal port, quirks included: the chroma planes are upsampled by
 // repeating each sample (no fancy upsampling), a stream without segment feature data ignores its base quantizer index, the intra
@@ -121,7 +123,8 @@ func (b *vp8BoolReader) init(buf []byte) error {
 	return nil
 }
 
-// readBool is BoolReader::read_bool (vp8.rs:762-793). A reader that has run out of bytes shifts in zeros.
+// readBool is BoolReader::read_bool (vp8.rs:762-793). A reader that has run out of bytes shifts in zeros. The Rust code normalizes one bit at
+// a time; the shift is the same all at once: a byte is taken in at the step the bit count reaches 8.
 func (b *vp8BoolReader) readBool(probability uint8) bool {
 	split := 1 + (((b.rng - 1) * uint32(probability)) >> 8)
 	bigsplit := split << 8
@@ -135,21 +138,64 @@ func (b *vp8BoolReader) readBool(probability uint8) bool {
 		b.rng = split
 	}
 
-	for b.rng < 128 {
-		b.value <<= 1
-		b.rng <<= 1
-		b.bitCount++
-
-		if b.bitCount == 8 {
-			b.bitCount = 0
+	if b.rng < 128 {
+		n := uint(bits.LeadingZeros8(uint8(b.rng)))
+		b.rng <<= n
+		count := uint(b.bitCount) + n
+		if count >= 8 {
+			b.value <<= 8 - uint(b.bitCount)
 			if b.index < len(b.buf) {
 				b.value |= uint32(b.buf[b.index])
 				b.index++
 			}
+			b.value <<= count - 8
+			b.bitCount = uint8(count - 8)
+		} else {
+			b.value <<= n
+			b.bitCount = uint8(count)
 		}
 	}
 
 	return retval
+}
+
+// readToken is read_with_tree (vp8.rs:818-832) with DCT_TOKEN_TREE and the probabilities of a context, the tree unrolled; after a zero
+// token (afterZero) the tree is entered at its second node, where an end of block cannot be.
+func (b *vp8BoolReader) readToken(p *[vp8NumDCTTokens - 1]uint8, afterZero bool) int8 {
+	if !afterZero && !b.readBool(p[0]) {
+		return vp8DCTEOB
+	}
+	if !b.readBool(p[1]) {
+		return vp8DCT0
+	}
+	if !b.readBool(p[2]) {
+		return vp8DCT1
+	}
+	if !b.readBool(p[3]) {
+		if !b.readBool(p[4]) {
+			return vp8DCT2
+		}
+		if !b.readBool(p[5]) {
+			return vp8DCT3
+		}
+		return vp8DCT4
+	}
+	if !b.readBool(p[6]) {
+		if !b.readBool(p[7]) {
+			return vp8DCTCat1
+		}
+		return vp8DCTCat2
+	}
+	if !b.readBool(p[8]) {
+		if !b.readBool(p[9]) {
+			return vp8DCTCat3
+		}
+		return vp8DCTCat4
+	}
+	if !b.readBool(p[10]) {
+		return vp8DCTCat5
+	}
+	return vp8DCTCat6
 }
 
 // readLiteral is BoolReader::read_literal (vp8.rs:795-805).
@@ -231,29 +277,87 @@ func (f *vp8Frame) chromaHeight() uint16 {
 	return (f.height + 1) / 2
 }
 
-// fillSingle is Frame::fill_single (vp8.rs:928-947): the YUV to RGB conversion of the Microsoft recommendation.
-func vp8FillSingle(y, u, v uint8, rgb []byte) {
-	c := int32(y) - 16
-	d := int32(u) - 128
-	e := int32(v) - 128
+// vp8Tables are the terms of Frame::fill_single (vp8.rs:928-947), the YUV to RGB conversion of the Microsoft recommendation:
+// r = (298 c + 409 e + 128) >> 8, g = (298 c - 100 d - 208 e + 128) >> 8, b = (298 c + 516 d + 128) >> 8 with c = y - 16, d = u - 128, e = v - 128,
+// each clamped to 0 to 255.
+var (
+	vp8LumaTerm   [256]int32 // 298 (y - 16) + 128
+	vp8RedV       [256]int32 // 409 (v - 128)
+	vp8GreenU     [256]int32 // -100 (u - 128)
+	vp8GreenV     [256]int32 // -208 (v - 128)
+	vp8BlueU      [256]int32 // 516 (u - 128)
+	vp8ClampTable [vp8ClampSize]uint8
+)
 
-	rgb[0] = uint8(min(max((298*c+409*e+128)>>8, 0), 255))
-	rgb[1] = uint8(min(max((298*c-100*d-208*e+128)>>8, 0), 255))
-	rgb[2] = uint8(min(max((298*c+516*d+128)>>8, 0), 255))
+// The shifted sums go from -276 (blue) to 534 (blue): vp8ClampTable is indexed by the sum plus vp8ClampOffset.
+const (
+	vp8ClampOffset = 300
+	vp8ClampSize   = 900
+)
+
+func init() {
+	for i := range 256 {
+		vp8LumaTerm[i] = 298*(int32(i)-16) + 128
+		vp8RedV[i] = 409 * (int32(i) - 128)
+		vp8GreenU[i] = -100 * (int32(i) - 128)
+		vp8GreenV[i] = -208 * (int32(i) - 128)
+		vp8BlueU[i] = 516 * (int32(i) - 128)
+	}
+	for i := range vp8ClampTable {
+		vp8ClampTable[i] = uint8(min(max(i-vp8ClampOffset, 0), 255))
+	}
 }
 
-// fill is Frame::fill_rgb and Frame::fill_rgba (vp8.rs:897-926) with stride 3 and 4: it writes the red, green and blue of each pixel
-// of buf in raster order and leaves the rest of each stride-sized chunk alone (the alpha of an rgba buffer).
+// vp8FillSingle is Frame::fill_single.
+func vp8FillSingle(y, u, v uint8, rgb []byte) {
+	luma := vp8LumaTerm[y]
+	rgb[0] = vp8ClampTable[(luma+vp8RedV[v])>>8+vp8ClampOffset]
+	rgb[1] = vp8ClampTable[(luma+vp8GreenU[u]+vp8GreenV[v])>>8+vp8ClampOffset]
+	rgb[2] = vp8ClampTable[(luma+vp8BlueU[u])>>8+vp8ClampOffset]
+}
+
+// fill is Frame::fill_rgb and Frame::fill_rgba (vp8.rs:897-926) with stride 3 and 4: it writes the red, green and blue of each pixel of buf
+// in raster order, and 255 in the alpha of an rgba buffer (the Rust code leaves it alone). Each chroma sample serves the 2x2 pixels it covers.
 func (f *vp8Frame) fill(buf []byte, stride int) {
 	width := int(f.width)
+	if width == 0 {
+		return
+	}
 	chromaWidth := int(f.chromaWidth())
-	chunks := min(len(f.ybuf), len(buf)/stride)
-	for index := range chunks {
-		y := index / width
-		x := index % width
-		chromaIndex := chromaWidth*(y/2) + x/2
+	pixels := min(len(f.ybuf), len(buf)/stride)
 
-		vp8FillSingle(f.ybuf[index], f.ubuf[chromaIndex], f.vbuf[chromaIndex], buf[index*stride:])
+	for y := 0; y*width < pixels; y++ {
+		n := min(width, pixels-y*width)
+		yRow := f.ybuf[y*width : y*width+n]
+		uRow := f.ubuf[(y/2)*chromaWidth:]
+		vRow := f.vbuf[(y/2)*chromaWidth:]
+		out := buf[y*width*stride : (y*width+n)*stride]
+
+		for x := 0; x < n; x += 2 {
+			// the red, green and blue terms the two pixels share
+			u, v := uRow[x>>1], vRow[x>>1]
+			redV, greenUV, blueU := vp8RedV[v], vp8GreenU[u]+vp8GreenV[v], vp8BlueU[u]
+
+			luma := vp8LumaTerm[yRow[x]]
+			o := out[x*stride : x*stride+3]
+			o[0] = vp8ClampTable[(luma+redV)>>8+vp8ClampOffset]
+			o[1] = vp8ClampTable[(luma+greenUV)>>8+vp8ClampOffset]
+			o[2] = vp8ClampTable[(luma+blueU)>>8+vp8ClampOffset]
+			if stride == 4 {
+				out[x*4+3] = 255
+			}
+
+			if x+1 < n {
+				luma = vp8LumaTerm[yRow[x+1]]
+				o = out[(x+1)*stride : (x+1)*stride+3]
+				o[0] = vp8ClampTable[(luma+redV)>>8+vp8ClampOffset]
+				o[1] = vp8ClampTable[(luma+greenUV)>>8+vp8ClampOffset]
+				o[2] = vp8ClampTable[(luma+blueU)>>8+vp8ClampOffset]
+				if stride == 4 {
+					out[(x+1)*4+3] = 255
+				}
+			}
+		}
 	}
 }
 
@@ -296,8 +400,6 @@ type vp8Decoder struct {
 	segmentTreeProbs [3]uint8
 	tokenProbs       *[4][8][3][vp8NumDCTTokens - 1]uint8
 
-	probIntra uint8
-
 	probSkipFalse    uint8
 	hasProbSkipFalse bool
 
@@ -306,6 +408,8 @@ type vp8Decoder struct {
 
 	topBorder  []byte
 	leftBorder []byte
+
+	blocks [384]int32 // the residues of the macroblock being decoded
 }
 
 // newVP8Decoder is Vp8Decoder::new (vp8.rs:1014-1063).
@@ -693,7 +797,8 @@ func vp8InitTopMacroblocks(width int) []vp8MacroBlock {
 }
 
 // intraPredictLuma is vp8.rs:1440-1484.
-func (d *vp8Decoder) intraPredictLuma(mbx, mby int, mb *vp8MacroBlock, resdata *[384]int32) {
+func (d *vp8Decoder) intraPredictLuma(mbx, mby int, mb *vp8MacroBlock, mask uint32) {
+	resdata := &d.blocks
 	const stride = 1 + 16 + 4
 	w := int(d.frame.width)
 	mw := int(d.mbwidth)
@@ -709,13 +814,16 @@ func (d *vp8Decoder) intraPredictLuma(mbx, mby int, mb *vp8MacroBlock, resdata *
 	case vp8DCPred:
 		vp8PredictDCPred(ws[:], 16, stride, mby != 0, mbx != 0)
 	default:
-		vp8Predict4x4(ws[:], stride, mb.bpred[:], resdata[:])
+		vp8Predict4x4(ws[:], stride, mb.bpred[:], resdata[:], mask)
 	}
 
 	if mb.lumaMode != vp8BPred {
 		for y := range 4 {
 			for x := range 4 {
 				i := x + y*4
+				if mask&(1<<i) == 0 {
+					continue
+				}
 				y0 := 1 + y*4
 				x0 := 1 + x*4
 
@@ -743,7 +851,8 @@ func (d *vp8Decoder) intraPredictLuma(mbx, mby int, mb *vp8MacroBlock, resdata *
 }
 
 // intraPredictChroma is vp8.rs:1486-1580.
-func (d *vp8Decoder) intraPredictChroma(mbx, mby int, mb *vp8MacroBlock, resdata *[384]int32) {
+func (d *vp8Decoder) intraPredictChroma(mbx, mby int, mb *vp8MacroBlock, mask uint32) {
+	resdata := &d.blocks
 	const stride = 1 + 8
 
 	w := int(d.frame.chromaWidth())
@@ -814,15 +923,16 @@ func (d *vp8Decoder) intraPredictChroma(mbx, mby int, mb *vp8MacroBlock, resdata
 	for y := range 2 {
 		for x := range 2 {
 			i := x + y*2
-			urb := (*[16]int32)(resdata[16*16+i*16 : 16*16+i*16+16])
 
 			y0 := 1 + y*4
 			x0 := 1 + x*4
-			vp8AddResidue(uws[:], urb, y0, x0, stride)
+			if mask&(1<<(16+i)) != 0 {
+				vp8AddResidue(uws[:], (*[16]int32)(resdata[16*16+i*16:16*16+i*16+16]), y0, x0, stride)
+			}
 
-			vrb := (*[16]int32)(resdata[20*16+i*16 : 20*16+i*16+16])
-
-			vp8AddResidue(vws[:], vrb, y0, x0, stride)
+			if mask&(1<<(20+i)) != 0 {
+				vp8AddResidue(vws[:], (*[16]int32)(resdata[20*16+i*16:20*16+i*16+16]), y0, x0, stride)
+			}
 		}
 	}
 
@@ -834,38 +944,31 @@ func (d *vp8Decoder) intraPredictChroma(mbx, mby int, mb *vp8MacroBlock, resdata
 	}
 }
 
-// readCoefficients is vp8.rs:1582-1658; it reports whether the block had any coefficient token other than an immediate end of block.
-func (d *vp8Decoder) readCoefficients(block []int32, p, plane, complexity int, dcq, acq int16) bool {
+// readCoefficients is vp8.rs:1582-1658; it reports whether the block had any coefficient token other than an immediate end of block, and
+// whether a coefficient other than the first is not zero (the block is then a flat one: only its first coefficient counts).
+func (d *vp8Decoder) readCoefficients(block []int32, p, plane, complexity int, dcq, acq int16) (hasCoefficients, hasAC bool) {
 	first := 0
 	if plane == 0 {
 		first = 1
 	}
 	probs := &d.tokenProbs[plane]
-	tree := vp8DCTTokenTree[:]
+	br := &d.partitions[p]
 
-	hasCoefficients := false
 	skip := false
 
 	for i := first; i < 16; i++ {
-		table := &probs[vp8CoeffBands[i]][complexity]
-
-		var token int8
-		if !skip {
-			token = d.partitions[p].readWithTree(tree, table[:], 0)
-		} else {
-			token = d.partitions[p].readWithTree(tree, table[:], 2)
-		}
+		token := br.readToken(&probs[vp8CoeffBands[i]][complexity], skip)
 
 		var absValue int32
 		switch {
 		case token == vp8DCTEOB:
-			return hasCoefficients
+			return hasCoefficients, hasAC
 		case token == vp8DCT0:
 			skip = true
 			hasCoefficients = true
 			complexity = 0
 			continue
-		case token >= vp8DCT1 && token <= vp8DCT4:
+		case token <= vp8DCT4:
 			absValue = int32(token)
 		default: // DCT_CAT1..=DCT_CAT6
 			t := &vp8ProbDCTCat[token-vp8DCTCat1]
@@ -873,7 +976,7 @@ func (d *vp8Decoder) readCoefficients(block []int32, p, plane, complexity int, d
 			var extra int16
 			for j := 0; t[j] > 0; j++ {
 				extra += extra
-				if d.partitions[p].readBool(t[j]) {
+				if br.readBool(t[j]) {
 					extra++
 				}
 			}
@@ -883,29 +986,27 @@ func (d *vp8Decoder) readCoefficients(block []int32, p, plane, complexity int, d
 
 		skip = false
 
-		switch absValue {
-		case 0:
-			complexity = 0
-		case 1:
+		// the value is at least 1: the complexity is 1 for 1 and 2 above (vp8.rs:1639-1645)
+		complexity = 2
+		if absValue == 1 {
 			complexity = 1
-		default:
-			complexity = 2
 		}
 
-		if d.partitions[p].readBool(128) {
+		if br.readBool(128) {
 			absValue = -absValue
 		}
 
 		q := dcq
-		if vp8Zigzag[i] > 0 {
+		if i > 0 {
 			q = acq
+			hasAC = true
 		}
 		block[vp8Zigzag[i]] = absValue * int32(q)
 
 		hasCoefficients = true
 	}
 
-	return hasCoefficients
+	return hasCoefficients, hasAC
 }
 
 func vp8Bit(b bool) uint8 {
@@ -915,10 +1016,14 @@ func vp8Bit(b bool) uint8 {
 	return 0
 }
 
-// readResidualData is vp8.rs:1660-1735.
-func (d *vp8Decoder) readResidualData(mb *vp8MacroBlock, mbx, p int) *[384]int32 {
+// readResidualData is vp8.rs:1660-1735. It reads the coefficients of the macroblock into d.blocks (the 16 luma blocks, then the 4 of u and
+// the 4 of v), turns them into residues and returns which of the 24 blocks have one: the others are all zeros, adding them to the
+// prediction does nothing.
+func (d *vp8Decoder) readResidualData(mb *vp8MacroBlock, mbx, p int) uint32 {
 	sindex := int(mb.segmentID)
-	blocks := new([384]int32)
+	blocks := &d.blocks
+	*blocks = [384]int32{}
+	var mask uint32
 	plane := 1
 	if mb.lumaMode == vp8BPred {
 		plane = 3
@@ -929,7 +1034,7 @@ func (d *vp8Decoder) readResidualData(mb *vp8MacroBlock, mbx, p int) *[384]int32
 		var block [16]int32
 		dcq := d.segment[sindex].y2dc
 		acq := d.segment[sindex].y2ac
-		n := d.readCoefficients(block[:], p, plane, int(complexity), dcq, acq)
+		n, _ := d.readCoefficients(block[:], p, plane, int(complexity), dcq, acq)
 
 		d.left.complexity[0] = vp8Bit(n)
 		d.top[mbx].complexity[0] = vp8Bit(n)
@@ -953,10 +1058,11 @@ func (d *vp8Decoder) readResidualData(mb *vp8MacroBlock, mbx, p int) *[384]int32
 			dcq := d.segment[sindex].ydc
 			acq := d.segment[sindex].yac
 
-			n := d.readCoefficients(block, p, plane, int(complexity), dcq, acq)
+			n, ac := d.readCoefficients(block, p, plane, int(complexity), dcq, acq)
 
 			if block[0] != 0 || n {
-				vp8IDCT4x4(block)
+				vp8Residue(block, ac)
+				mask |= 1 << i
 			}
 
 			left = vp8Bit(n)
@@ -985,9 +1091,10 @@ func (d *vp8Decoder) readResidualData(mb *vp8MacroBlock, mbx, p int) *[384]int32
 				dcq := d.segment[sindex].uvdc
 				acq := d.segment[sindex].uvac
 
-				n := d.readCoefficients(block, p, plane, int(complexity), dcq, acq)
+				n, ac := d.readCoefficients(block, p, plane, int(complexity), dcq, acq)
 				if block[0] != 0 || n {
-					vp8IDCT4x4(block)
+					vp8Residue(block, ac)
+					mask |= 1 << i
 				}
 
 				left = vp8Bit(n)
@@ -998,7 +1105,20 @@ func (d *vp8Decoder) readResidualData(mb *vp8MacroBlock, mbx, p int) *[384]int32
 		}
 	}
 
-	return blocks
+	return mask
+}
+
+// vp8Residue is idct4x4 of a block (vp8.rs:1696-1698); a block with no coefficient but the first is flat: every sample of its inverse
+// transform is the first coefficient plus 4, shifted down by 3.
+func vp8Residue(block []int32, hasAC bool) {
+	if hasAC {
+		vp8IDCT4x4(block)
+		return
+	}
+	flat := int32((int64(block[0]) + 4) >> 3)
+	for i := range block[:16] {
+		block[i] = flat
+	}
 }
 
 // loopFilter is vp8.rs:1738-2000.
@@ -1227,9 +1347,9 @@ func (d *vp8Decoder) decodeFrame() (*vp8Frame, error) {
 
 		for mbx := range int(d.mbwidth) {
 			mb := d.readMacroblockHeader(mbx)
-			var blocks *[384]int32
+			var mask uint32
 			if !mb.coeffsSkiped {
-				blocks = d.readResidualData(&mb, mbx, p)
+				mask = d.readResidualData(&mb, mbx, p)
 			} else {
 				if mb.lumaMode != vp8BPred {
 					d.left.complexity[0] = 0
@@ -1241,11 +1361,10 @@ func (d *vp8Decoder) decodeFrame() (*vp8Frame, error) {
 					d.top[mbx].complexity[i] = 0
 				}
 
-				blocks = new([384]int32)
 			}
 
-			d.intraPredictLuma(mbx, mby, &mb, blocks)
-			d.intraPredictChroma(mbx, mby, &mb, blocks)
+			d.intraPredictLuma(mbx, mby, &mb, mask)
+			d.intraPredictChroma(mbx, mby, &mb, mask)
 
 			d.macroblocks = append(d.macroblocks, mb)
 		}
@@ -1343,7 +1462,7 @@ func vp8AddResidue(pblock []byte, rblock *[16]int32, y0, x0, stride int) {
 }
 
 // vp8Predict4x4 is predict_4x4 (vp8.rs:2253-2277).
-func vp8Predict4x4(ws []byte, stride int, modes []int8, resdata []int32) {
+func vp8Predict4x4(ws []byte, stride int, modes []int8, resdata []int32, mask uint32) {
 	for sby := range 4 {
 		for sbx := range 4 {
 			i := sbx + sby*4
@@ -1373,7 +1492,9 @@ func vp8Predict4x4(ws []byte, stride int, modes []int8, resdata []int32) {
 				vp8PredictBHUPred(ws, x0, y0, stride)
 			}
 
-			vp8AddResidue(ws, (*[16]int32)(resdata[i*16:i*16+16]), y0, x0, stride)
+			if mask&(1<<i) != 0 {
+				vp8AddResidue(ws, (*[16]int32)(resdata[i*16:i*16+16]), y0, x0, stride)
+			}
 		}
 	}
 }
@@ -1672,12 +1793,13 @@ func vp8Diff(val1, val2 uint8) uint8 {
 	return val2 - val1
 }
 
-// vp8CommonAdjust is common_adjust (loop_filter.rs:32-51, 15.2).
-func vp8CommonAdjust(useOuterTaps bool, pixels []byte, point, stride int) int32 {
-	p1 := vp8U2S(pixels[point-2*stride])
-	p0 := vp8U2S(pixels[point-stride])
-	q0 := vp8U2S(pixels[point])
-	q1 := vp8U2S(pixels[point+stride])
+// vp8AdjustTaps is common_adjust (loop_filter.rs:32-51, 15.2) on the four pixels around an edge: it returns the new values of the two next to
+// the edge and the adjustment a.
+func vp8AdjustTaps(useOuterTaps bool, p1b, p0b, q0b, q1b uint8) (newP0, newQ0 uint8, a int32) {
+	p1 := vp8U2S(p1b)
+	p0 := vp8U2S(p0b)
+	q0 := vp8U2S(q0b)
+	q1 := vp8U2S(q1b)
 
 	// value for the outer 2 pixels
 	var outer int32
@@ -1685,87 +1807,104 @@ func vp8CommonAdjust(useOuterTaps bool, pixels []byte, point, stride int) int32 
 		outer = vp8C(p1 - q1)
 	}
 
-	a := vp8C(outer + 3*(q0-p0))
+	a = vp8C(outer + 3*(q0-p0))
 
 	b := vp8C(a+3) >> 3
 
 	a = vp8C(a+4) >> 3
 
-	pixels[point] = vp8S2U(q0 - a)
-	pixels[point-stride] = vp8S2U(p0 + b)
-
-	return a
-}
-
-func vp8SimpleThreshold(filterLimit int32, pixels []byte, point, stride int) bool {
-	return int32(vp8Diff(pixels[point-stride], pixels[point]))*2+int32(vp8Diff(pixels[point-2*stride], pixels[point+stride]))/2 <= filterLimit
-}
-
-func vp8ShouldFilter(interiorLimit, edgeLimit uint8, pixels []byte, point, stride int) bool {
-	return vp8SimpleThreshold(int32(edgeLimit), pixels, point, stride) &&
-		vp8Diff(pixels[point-4*stride], pixels[point-3*stride]) <= interiorLimit &&
-		vp8Diff(pixels[point-3*stride], pixels[point-2*stride]) <= interiorLimit &&
-		vp8Diff(pixels[point-2*stride], pixels[point-stride]) <= interiorLimit &&
-		vp8Diff(pixels[point+3*stride], pixels[point+2*stride]) <= interiorLimit &&
-		vp8Diff(pixels[point+2*stride], pixels[point+stride]) <= interiorLimit &&
-		vp8Diff(pixels[point+stride], pixels[point]) <= interiorLimit
-}
-
-func vp8HighEdgeVariance(threshold uint8, pixels []byte, point, stride int) bool {
-	return vp8Diff(pixels[point-2*stride], pixels[point-stride]) > threshold ||
-		vp8Diff(pixels[point+stride], pixels[point]) > threshold
+	return vp8S2U(p0 + b), vp8S2U(q0 - a), a
 }
 
 // vp8SimpleSegment is simple_segment (loop_filter.rs:80-86): the simple filter, which affects 4 pixels on an edge (2 each side).
 func vp8SimpleSegment(edgeLimit uint8, pixels []byte, point, stride int) {
-	if vp8SimpleThreshold(int32(edgeLimit), pixels, point, stride) {
-		vp8CommonAdjust(true, pixels, point, stride)
+	p1 := pixels[point-2*stride]
+	p0 := pixels[point-stride]
+	q0 := pixels[point]
+	q1 := pixels[point+stride]
+
+	if int32(vp8Diff(p0, q0))*2+int32(vp8Diff(p1, q1))/2 <= int32(edgeLimit) {
+		pixels[point-stride], pixels[point], _ = vp8AdjustTaps(true, p1, p0, q0, q1)
 	}
 }
 
-// vp8SubblockFilter is subblock_filter (loop_filter.rs:88-108): the normal filter on the edges between subblocks inside a macroblock.
+// vp8SubblockFilter is subblock_filter (loop_filter.rs:88-108): the normal filter on the edges between subblocks inside a macroblock. The
+// Rust code reads the pixels where it needs them, all eight are read here at once: they are always inside the plane for the edges the
+// decoder filters.
 func vp8SubblockFilter(hevThreshold, interiorLimit, edgeLimit uint8, pixels []byte, point, stride int) {
-	if vp8ShouldFilter(interiorLimit, edgeLimit, pixels, point, stride) {
-		hv := vp8HighEdgeVariance(hevThreshold, pixels, point, stride)
+	p1 := pixels[point-2*stride]
+	p0 := pixels[point-stride]
+	q0 := pixels[point]
+	q1 := pixels[point+stride]
 
-		a := (vp8CommonAdjust(hv, pixels, point, stride) + 1) >> 1
+	if int32(vp8Diff(p0, q0))*2+int32(vp8Diff(p1, q1))/2 > int32(edgeLimit) || vp8Diff(p1, p0) > interiorLimit || vp8Diff(q1, q0) > interiorLimit {
+		return
+	}
 
-		if !hv {
-			pixels[point+stride] = vp8S2U(vp8U2S(pixels[point+stride]) - a)
-			pixels[point-2*stride] = vp8S2U(vp8U2S(pixels[point-2*stride]) - a)
-		}
+	p3 := pixels[point-4*stride]
+	p2 := pixels[point-3*stride]
+	q2 := pixels[point+2*stride]
+	q3 := pixels[point+3*stride]
+
+	if vp8Diff(p3, p2) > interiorLimit || vp8Diff(p2, p1) > interiorLimit || vp8Diff(q3, q2) > interiorLimit || vp8Diff(q2, q1) > interiorLimit {
+		return
+	}
+
+	hv := vp8Diff(p1, p0) > hevThreshold || vp8Diff(q1, q0) > hevThreshold
+
+	newP0, newQ0, a := vp8AdjustTaps(hv, p1, p0, q0, q1)
+	pixels[point-stride], pixels[point] = newP0, newQ0
+
+	if !hv {
+		a = (a + 1) >> 1
+		pixels[point+stride] = vp8S2U(vp8U2S(q1) - a)
+		pixels[point-2*stride] = vp8S2U(vp8U2S(p1) - a)
 	}
 }
 
 // vp8MacroblockFilter is macroblock_filter (loop_filter.rs:110-147): the normal filter on the edges between macroblocks.
 func vp8MacroblockFilter(hevThreshold, interiorLimit, edgeLimit uint8, pixels []byte, point, stride int) {
-	var spixels [8]int32
-	for i := range 8 {
-		spixels[i] = vp8U2S(pixels[point+i*stride-4*stride])
+	p1 := pixels[point-2*stride]
+	p0 := pixels[point-stride]
+	q0 := pixels[point]
+	q1 := pixels[point+stride]
+
+	if int32(vp8Diff(p0, q0))*2+int32(vp8Diff(p1, q1))/2 > int32(edgeLimit) || vp8Diff(p1, p0) > interiorLimit || vp8Diff(q1, q0) > interiorLimit {
+		return
 	}
 
-	if vp8ShouldFilter(interiorLimit, edgeLimit, pixels, point, stride) {
-		if !vp8HighEdgeVariance(hevThreshold, pixels, point, stride) {
-			w := vp8C(vp8C(spixels[2]-spixels[5]) + 3*(spixels[4]-spixels[3]))
+	p3 := pixels[point-4*stride]
+	p2 := pixels[point-3*stride]
+	q2 := pixels[point+2*stride]
+	q3 := pixels[point+3*stride]
 
-			a := vp8C((27*w + 63) >> 7)
-
-			pixels[point] = vp8S2U(spixels[4] - a)
-			pixels[point-stride] = vp8S2U(spixels[3] + a)
-
-			a = vp8C((18*w + 63) >> 7)
-
-			pixels[point+stride] = vp8S2U(spixels[5] - a)
-			pixels[point-2*stride] = vp8S2U(spixels[2] + a)
-
-			a = vp8C((9*w + 63) >> 7)
-
-			pixels[point+2*stride] = vp8S2U(spixels[6] - a)
-			pixels[point-3*stride] = vp8S2U(spixels[1] + a)
-		} else {
-			vp8CommonAdjust(true, pixels, point, stride)
-		}
+	if vp8Diff(p3, p2) > interiorLimit || vp8Diff(p2, p1) > interiorLimit || vp8Diff(q3, q2) > interiorLimit || vp8Diff(q2, q1) > interiorLimit {
+		return
 	}
+
+	if vp8Diff(p1, p0) > hevThreshold || vp8Diff(q1, q0) > hevThreshold {
+		pixels[point-stride], pixels[point], _ = vp8AdjustTaps(true, p1, p0, q0, q1)
+		return
+	}
+
+	s1, s2, s3, s4, s5, s6 := vp8U2S(p2), vp8U2S(p1), vp8U2S(p0), vp8U2S(q0), vp8U2S(q1), vp8U2S(q2)
+
+	w := vp8C(vp8C(s2-s5) + 3*(s4-s3))
+
+	a := vp8C((27*w + 63) >> 7)
+
+	pixels[point] = vp8S2U(s4 - a)
+	pixels[point-stride] = vp8S2U(s3 + a)
+
+	a = vp8C((18*w + 63) >> 7)
+
+	pixels[point+stride] = vp8S2U(s5 - a)
+	pixels[point-2*stride] = vp8S2U(s2 + a)
+
+	a = vp8C((9*w + 63) >> 7)
+
+	pixels[point+2*stride] = vp8S2U(s6 - a)
+	pixels[point-3*stride] = vp8S2U(s1 + a)
 }
 
 // Transforms, transform.rs.

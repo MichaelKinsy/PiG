@@ -30,7 +30,7 @@ func readWebPOracle(t testing.TB) map[string]webpOracleRow {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer f.Close()
+	t.Cleanup(func() { _ = f.Close() })
 
 	rows := map[string]webpOracleRow{}
 	scanner := bufio.NewScanner(f)

@@ -686,7 +686,6 @@ type webpLosslessGen struct {
 	cacheBits  int // of the main image, 0: none
 	metaBits   int // 0: none
 	numGroups  int
-	literalPct int
 	cachePct   int
 	backrefPct int
 	maxLength  int

@@ -398,50 +398,7 @@ func webpStaticFromAlphaLossy(alpha *webpAlphaChunk, frame *vp8Frame) (*webpStat
 
 	frame.fill(imageVec, 4)
 
-	at := func(x, y int) int { return int(imageVec[(y*width+x)*4+3]) }
-
-	for y := range height {
-		for x := range width {
-			var predictor int
-			switch alpha.filteringMethod {
-			case webpFilterHorizontal:
-				switch {
-				case x == 0 && y == 0:
-				case x == 0:
-					predictor = at(x, y-1)
-				default:
-					predictor = at(x-1, y)
-				}
-			case webpFilterVertical:
-				switch {
-				case x == 0 && y == 0:
-				case y == 0:
-					predictor = at(x-1, y)
-				default:
-					predictor = at(x, y-1)
-				}
-			case webpFilterGradient:
-				var left, top, topLeft int
-				switch {
-				case x == 0 && y == 0:
-				case x == 0:
-					left = at(x, y-1)
-					top, topLeft = left, left
-				case y == 0:
-					left = at(x-1, y)
-					top, topLeft = left, left
-				default:
-					left = at(x-1, y)
-					top = at(x, y-1)
-					topLeft = at(x-1, y-1)
-				}
-				predictor = min(max(left+top-topLeft, 0), 255)
-			}
-
-			alphaVal := int(alpha.data[y*width+x])
-			imageVec[(y*width+x)*4+3] = byte((predictor + alphaVal) % 256)
-		}
-	}
+	webpUnfilterAlpha(alpha.filteringMethod, imageVec, alpha.data, width, height)
 
 	return &webpStatic{kind: webpLossyWithAlpha, rgba: imageVec}, nil
 }
@@ -525,4 +482,48 @@ func webpAlphaBlend(buffer, canvas [4]byte) [4]byte {
 	}
 
 	return [4]byte{blendRGB[0], blendRGB[1], blendRGB[2], blendAlpha}
+}
+
+// webpUnfilterAlpha writes the alpha channel of the RGBA image rgba: each alpha value is the sum, mod 256, of its value in data and the
+// prediction of the filtering method from the pixels to the left and above, which are final already (extended.rs:438-458 and get_predictor,
+// :466-526). The alpha of a pixel is at rgba[4*i+3]. The first row has no pixel above and the first column no pixel to the left: there
+// the horizontal and vertical methods use the pixel they have, the gradient method too.
+func webpUnfilterAlpha(method uint8, rgba, data []byte, width, height int) {
+	for y := range height {
+		out := rgba[y*width*4 : (y+1)*width*4]
+		in := data[y*width : (y+1)*width]
+		var up []byte
+		if y > 0 {
+			up = rgba[(y-1)*width*4 : y*width*4]
+		}
+
+		switch {
+		case method == webpFilterNone:
+			for x, v := range in {
+				out[4*x+3] = v
+			}
+		case y == 0 || method == webpFilterHorizontal:
+			// the sum of the row so far, which starts at the pixel above (nothing in the first row)
+			var left byte
+			if y > 0 {
+				left = up[3]
+			}
+			for x, v := range in {
+				left += v
+				out[4*x+3] = left
+			}
+		case method == webpFilterVertical:
+			for x, v := range in {
+				out[4*x+3] = up[4*x+3] + v
+			}
+		default: // gradient
+			left := up[3] + in[0]
+			out[3] = left
+			for x := 1; x < len(in); x++ {
+				gradient := min(max(int(left)+int(up[4*x+3])-int(up[4*x-1]), 0), 255)
+				left = byte(gradient) + in[x]
+				out[4*x+3] = left
+			}
+		}
+	}
 }
