@@ -163,7 +163,7 @@ func TestNativeSourceFailing(t *testing.T) {
 		source := newFailable(h.batch, 0)
 		source.hasLast = false
 		source.failure = errThrew
-		if _, err := source.Watch(background); err != errThrew {
+		if _, err := source.Watch(background); !errors.Is(err, errThrew) {
 			t.Fatalf("Watch error = %v, want %v", err, errThrew)
 		}
 		if source.Watched() {
@@ -192,7 +192,7 @@ func TestNativeSourceFailing(t *testing.T) {
 		source.hasLast = false
 		source.failure = errors.New("negative: -1")
 		o := newObserver(h.batch)
-		if _, err := source.Observe(o, background); err != source.failure {
+		if _, err := source.Observe(o, background); !errors.Is(err, source.failure) {
 			t.Fatalf("Observe error = %v, want the failure (no value to start at)", err)
 		}
 		source.Subscribe(o)
@@ -417,7 +417,7 @@ func TestNativeSourcesAsDeriveSources(t *testing.T) {
 		if got := mustValue(t, label.derive); got != float64(6) {
 			t.Fatalf("label = %v, want 6", got)
 		}
-		if _, err := count.CurrentAny(); err != errThrew {
+		if _, err := count.CurrentAny(); !errors.Is(err, errThrew) {
 			t.Fatalf("CurrentAny error = %v, want %v", err, errThrew)
 		}
 		var handle state.NativeSourceHandle = count
