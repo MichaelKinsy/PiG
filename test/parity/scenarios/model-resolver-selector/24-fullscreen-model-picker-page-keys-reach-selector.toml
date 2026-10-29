@@ -8,7 +8,9 @@
 # With the local two-model fixture:
 #   /model Enter, "model", Down -> "Model Name: Model One" (second of two rows)
 #   PageUp                      -> "Model Name: Model Two" (clamped to the first row)
-# The first step waits for the background refresh, the settled state that
+# The scenario first prints /hotkeys so the transcript is taller than the viewport: a PageUp that reached the viewport
+# would scroll it and leave the picker on Model One. The crop below shows only the picker.
+# The step after it waits for the background refresh, the settled state that
 # re-anchors the selection on both sides (see 11-model-picker-arrow-wrap).
 
 name = "24-fullscreen-model-picker-page-keys-reach-selector"
@@ -28,6 +30,12 @@ ready_pattern_pi = "$0.000"
 ready_timeout_seconds = 15
 capture_start = "Only showing models"
 capture_end = "Model Name: Model Two"
+
+[[tmux.steps]]
+keys = ["/hotkeys", "Enter"]
+wait_contains = ["Ctrl+G"]
+wait_timeout_seconds = 5
+settle_seconds = 1
 
 [[tmux.steps]]
 keys = ["/model", "Enter"]
