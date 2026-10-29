@@ -405,12 +405,6 @@ func (l configResourceList) Render(width int) []string {
 	return lines
 }
 
-// CapturesViewportInput reports that fullscreen viewport keys go to the selector.
-//
-// pig divergence (D155): Pi's config-selector.ts pages on tui.select.pageUp and tui.select.pageDown but does not set
-// capturesViewportInput; PiG keeps the keys away from the transcript.
-func (cs *ConfigSelectorComponent) CapturesViewportInput() bool { return true }
-
 // HandleInput processes keyboard input.
 func (cs *ConfigSelectorComponent) HandleInput(data string) {
 	// Route through the TUI keybinding registry.

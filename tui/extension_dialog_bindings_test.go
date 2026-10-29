@@ -45,12 +45,11 @@ type dialogProbeResult struct {
 }
 
 // randomDialogProbes draws select options (empty, blank, wide, combining, long) and input descriptions and initial values, widths from 10 to 100,
-// bindings over the select, input and expand actions, and key scripts of list keys, text, cursor and word editing, and paste. PageUp and PageDown
-// stay out: Pi's extension-selector.ts has no select page keys and Pig pages the selection (D155).
+// bindings over the select, input and expand actions, and key scripts of list keys, page keys, text, cursor and word editing, and paste.
 func randomDialogProbes() []dialogProbe {
 	rng := rand.New(rand.NewSource(20261029))
 	words := []string{"first", "second", "Yes", "No", "日本語", "e\u0301", "😀", "a very long option label that wraps or truncates at narrow widths 0123456789", "", " ", "tab\there", "x"}
-	keys := []string{"j", "k", "\x1b[A", "\x1b[B", "\r", "\n", "\x1b", "\x03", "\x0f", "\x05", "\x13", "\x7f", "\x1b[3~", "\x1b[D", "\x1b[C", "\x01", "\x17", "\x15", "\x0b", "a", "é", "日", " ", "hello", "\x1b[200~pasted text\x1b[201~", "\x1b[1;5D", "\x1b[H", "\x1b[F", "\t"}
+	keys := []string{"j", "k", "\x1b[A", "\x1b[B", "\r", "\n", "\x1b", "\x03", "\x0f", "\x05", "\x13", "\x7f", "\x1b[3~", "\x1b[D", "\x1b[C", "\x01", "\x17", "\x15", "\x0b", "a", "é", "日", " ", "hello", "\x1b[200~pasted text\x1b[201~", "\x1b[1;5D", "\x1b[H", "\x1b[F", "\t", "\x1b[5~", "\x1b[6~"}
 	bindingSets := []map[string][]string{nil, {"app.tools.expand": {"ctrl+e"}}, {KBSelectConfirm: {"ctrl+s", "alt+s"}, KBSelectCancel: {"ctrl+q"}}, {KBInputSubmit: {"ctrl+s"}}, {KBSelectDown: {"ctrl+x"}, KBSelectCancel: {"ctrl+x"}}, {KBSelectConfirm: {}}, {"app.tools.expand": {}}}
 	var probes []dialogProbe
 	for range 400 {

@@ -50,41 +50,46 @@ func TestCustomEditorGivesSelectionPageKeysToAnOpenAutocomplete(t *testing.T) {
 	}
 }
 
-func TestTrustSelectorPageKeysMoveToTheEnds(t *testing.T) {
+// trust-selector.ts has no select page keys and does not set capturesViewportInput: PageUp and PageDown leave the
+// selection where it is and the fullscreen viewport keeps the keys.
+func TestTrustSelectorIgnoresSelectionPageKeys(t *testing.T) {
 	selector := NewTrustSelectorComponent(TrustSelectorOptions{Cwd: t.TempDir()})
 	if len(selector.trustOptions) < 2 {
 		t.Fatalf("trust options = %d, want a list to move in", len(selector.trustOptions))
 	}
-	if !tui.CapturesViewportInput(selector) {
-		t.Fatal("the trust selector must capture the selection page keys")
+	if tui.CapturesViewportInput(selector) {
+		t.Fatal("the trust selector must not capture viewport input")
 	}
+	selector.HandleInput("j")
 	selector.HandleInput(selectPageDownKey)
-	if want := len(selector.trustOptions) - 1; selector.selectedIndex != want {
-		t.Fatalf("page down: index = %d, want the last option %d", selector.selectedIndex, want)
+	if selector.selectedIndex != 1 {
+		t.Fatalf("page down: index = %d, want it to stay at 1", selector.selectedIndex)
 	}
 	selector.HandleInput(selectPageUpKey)
-	if selector.selectedIndex != 0 {
-		t.Fatalf("page up: index = %d, want the first option", selector.selectedIndex)
+	if selector.selectedIndex != 1 {
+		t.Fatalf("page up: index = %d, want it to stay at 1", selector.selectedIndex)
 	}
 }
 
-func TestFirstTimeSetupPageKeysMoveToTheEnds(t *testing.T) {
+// first-time-setup.ts has no select page keys and does not set capturesViewportInput.
+func TestFirstTimeSetupIgnoresSelectionPageKeys(t *testing.T) {
 	setup := NewFirstTimeSetupComponent(FirstTimeSetupOptions{})
-	if !tui.CapturesViewportInput(setup) {
-		t.Fatal("first-time setup must capture the selection page keys")
+	if tui.CapturesViewportInput(setup) {
+		t.Fatal("first-time setup must not capture viewport input")
 	}
+	setup.HandleInput("j")
 	setup.HandleInput(selectPageDownKey)
-	if want := len(firstTimeSetupThemeOptions) - 1; setup.themeIndex != want {
-		t.Fatalf("theme step page down: index = %d, want %d", setup.themeIndex, want)
+	if setup.themeIndex != 1 {
+		t.Fatalf("theme step page down: index = %d, want it to stay at 1", setup.themeIndex)
 	}
 	setup.HandleInput(selectPageUpKey)
-	if setup.themeIndex != 0 {
-		t.Fatalf("theme step page up: index = %d, want 0", setup.themeIndex)
+	if setup.themeIndex != 1 {
+		t.Fatalf("theme step page up: index = %d, want it to stay at 1", setup.themeIndex)
 	}
 	setup.step = firstTimeSetupStepAnalytics
 	setup.HandleInput(selectPageDownKey)
-	if want := len(firstTimeSetupAnalyticsOptions) - 1; setup.analyticsIndex != want {
-		t.Fatalf("analytics step page down: index = %d, want %d", setup.analyticsIndex, want)
+	if setup.analyticsIndex != 0 {
+		t.Fatalf("analytics step page down: index = %d, want it to stay at 0", setup.analyticsIndex)
 	}
 }
 

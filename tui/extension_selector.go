@@ -315,22 +315,12 @@ func (e *ExtensionSelectorComponent) SelectedValue() string {
 	return e.options[e.cursor]
 }
 
-// pig divergence (D155): extensionSelectorPageSize is the rows a selection page key moves; Pi's extension-selector.ts has no page keys.
-const extensionSelectorPageSize = 8
-
-// CapturesViewportInput reports that fullscreen viewport keys go to the selector.
-//
-// pig divergence (D155): Pi's extension-selector.ts does not flag the component and has no page keys; PiG pages it, so it
-// keeps the keys away from the transcript.
-func (e *ExtensionSelectorComponent) CapturesViewportInput() bool { return true }
-
 // HandleInput resolves expansion, navigation, confirmation and cancellation in that order. Empty options do not complete the selector.
 func (e *ExtensionSelectorComponent) HandleInput(data string) {
 	if e.done {
 		return
 	}
 	kb := GetTUIKeybindings()
-	pageIndex, isPage := GetSelectPageIndex(kb, data, e.cursor, len(e.options), extensionSelectorPageSize)
 	switch {
 	case kb.Matches(data, "app.tools.expand"):
 		if e.onToggleToolsExpanded != nil {
@@ -341,9 +331,6 @@ func (e *ExtensionSelectorComponent) HandleInput(data string) {
 		e.updateList()
 	case kb.Matches(data, KBSelectDown) || data == "j":
 		e.cursor = min(len(e.options)-1, e.cursor+1)
-		e.updateList()
-	case isPage:
-		e.cursor = pageIndex
 		e.updateList()
 	case kb.Matches(data, KBSelectConfirm) || data == "\n":
 		if selected := e.SelectedValue(); selected != "" {

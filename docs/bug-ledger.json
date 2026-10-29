@@ -2959,9 +2959,7 @@
         "internal/codingagent/llama/ui_test.go::TestHuggingFaceSearchPageKeysMoveTenResults",
         "internal/codingagent/modal_viewport_input_test.go::TestEditorSlotSelectorPageKeyMovesSelectionInEveryMode",
         "internal/codingagent/select_page_keys_test.go::TestCustomEditorGivesSelectionPageKeysToAnOpenAutocomplete",
-        "internal/codingagent/select_page_keys_test.go::TestFirstTimeSetupPageKeysMoveToTheEnds",
         "internal/codingagent/select_page_keys_test.go::TestSessionSelectorCapturesSelectionPageKeys",
-        "internal/codingagent/select_page_keys_test.go::TestTrustSelectorPageKeysMoveToTheEnds",
         "tui/select_page_keys_test.go::TestAltScreenGivesSelectionPageKeysToACapturingFocus",
         "tui/select_page_keys_test.go::TestContainerCapturesSelectPageInputFromItsChildren",
         "tui/select_page_keys_test.go::TestEditorAutocompletePageKeys",
@@ -15069,9 +15067,7 @@
         "internal/codingagent/llama/ui_test.go::TestHuggingFaceSearchPageKeysMoveTenResults",
         "internal/codingagent/modal_viewport_input_test.go::TestEditorSlotSelectorPageKeyMovesSelectionInEveryMode",
         "internal/codingagent/select_page_keys_test.go::TestCustomEditorGivesSelectionPageKeysToAnOpenAutocomplete",
-        "internal/codingagent/select_page_keys_test.go::TestFirstTimeSetupPageKeysMoveToTheEnds",
         "internal/codingagent/select_page_keys_test.go::TestSessionSelectorCapturesSelectionPageKeys",
-        "internal/codingagent/select_page_keys_test.go::TestTrustSelectorPageKeysMoveToTheEnds",
         "tui/select_page_keys_test.go::TestAltScreenGivesSelectionPageKeysToACapturingFocus",
         "tui/select_page_keys_test.go::TestContainerCapturesSelectPageInputFromItsChildren",
         "tui/select_page_keys_test.go::TestEditorAutocompletePageKeys",
@@ -24067,42 +24063,6 @@
       "tests": [
         "internal/codingagent/tools/last_line_bytes_test.go::TestBashLongLastLineNoticeNamesTheLineSize",
         "internal/codingagent/tools/last_line_bytes_test.go::TestOutputAccumulatorLastLineBytes"
-      ]
-    },
-    {
-      "id": "BF-D155",
-      "title": "Selection lists page with PageUp and PageDown (Pi #7629)",
-      "symptom": "in a selector, PageDown moves the selection down one page and does not scroll the transcript behind it. Pi scrolls the transcript or does nothing. An open editor autocomplete list pages the same way, and a user binding of the same key to an app action does not fire while the list is open. Extension-provided overlays cannot yet report that they capture the page keys, so the viewport still takes them there.",
-      "rootCause": "the selection stays where the user is looking. Pi #7629 is open, and its PR #7680 (`packages/tui/src/tui-alt-screen.ts`, `getPageSelectionIndex`, `capturesSelectPageInput`) is unmerged.",
-      "rootCauseSource": "divergence record",
-      "userImpact": "An operation failed or was rejected",
-      "platform": "All platforms",
-      "class": "ahead-of-pi",
-      "divergence": "D155",
-      "piIssue": "https://github.com/earendil-works/pi/issues/7629",
-      "removeWhen": "Pi merges PR #7680 or another change that pages selection lists on these keys; then restore the keys in the oracle generators.",
-      "fixedIn": "Unreleased",
-      "origin": "divergence",
-      "commits": [
-        {
-          "hash": "68a4ed2b54",
-          "date": "2026-10-09"
-        },
-        {
-          "hash": "0d867c440e",
-          "date": "2026-10-10"
-        }
-      ],
-      "tests": [
-        "internal/codingagent/fullscreen_modal_viewport_test.go::TestFullscreenSelectionKeepsItsPageKeys",
-        "internal/codingagent/llama/ui_test.go::TestHuggingFaceSearchPageKeysMoveTenResults",
-        "internal/codingagent/modal_viewport_input_test.go::TestEditorSlotSelectorPageKeyMovesSelectionInEveryMode",
-        "tui/select_page_keys_test.go::TestAltScreenGivesSelectionPageKeysToACapturingFocus",
-        "tui/select_page_keys_test.go::TestEditorAutocompletePageKeys",
-        "tui/select_page_keys_test.go::TestPageSelectionIndex",
-        "tui/select_page_keys_test.go::TestSelectListPageKeysMoveByAPage",
-        "tui/select_page_keys_test.go::TestSelectorComponentsMoveByTheirPage",
-        "tui/select_page_keys_test.go::TestSettingsListPageKeysMoveByAPage"
       ]
     },
     {
@@ -40283,11 +40243,6 @@
       "id": "D153",
       "title": "The bash truncation notice names the size of the last line, not the bytes after the final newline (Pi #10015)",
       "entry": "BF-D153"
-    },
-    {
-      "id": "D155",
-      "title": "Selection lists page with PageUp and PageDown (Pi #7629)",
-      "entry": "BF-D155"
     },
     {
       "id": "D156",

@@ -2116,24 +2116,6 @@ Remove when: Pi reports the size of the last counted line.
 
 SCRUTINIZED:approved
 
-## D155 PiG pages selectors that Pi does not flag for viewport input (Pi #7629)
-
-What: Pi 1.4.0 (`3bae8527`) pages `tui.select.pageUp` and `tui.select.pageDown` in the select list, settings list, editor autocomplete and the model, scoped-models, OAuth, session, tree, user-message, settings-submenu, llama.cpp search and `/mcp` selectors, and a focused component that sets `capturesViewportInput` keeps the fullscreen viewport keys. PiG follows that set without a marker through `tui.GetSelectPageIndex` and `tui.CapturesViewportInput`. PiG also pages, and reports `CapturesViewportInput`, for five components that Pi does not flag: the extension selector (Pi has no page keys there, and PiG moves by `extensionSelectorPageSize` rows), the config selector (Pi pages it but does not set the flag), `FilterableList` (a PiG list with no Pi component), the trust selector and the first-time setup dialog (PiG-only dialogs).
-
-Why: the selection stays where the user is looking in the selectors Pi's change left out. Pi decided the set above in #7629; PiG keeps the keys in the five components it already paged.
-
-Observable effect: in fullscreen mode, PageDown in one of the five components moves the selection one page and does not scroll the transcript behind it. Pi scrolls the transcript or, in the extension selector, does nothing. Extension-provided overlays report their own flag.
-
-Call-site markers: `tui/extension_selector.go`, `tui/config_selector.go`, `tui/select_filterable.go`, `internal/codingagent/trust_selector.go`, `internal/codingagent/first_time_setup.go`.
-
-Locked by: `TestSelectorComponentsMoveByTheirPage` (`tui/select_page_keys_test.go`) and `internal/codingagent/select_page_keys_test.go`.
-
-Parity allowance: the Pi-oracle input generators of the extension selector dialog and the trust selector leave PageUp and PageDown out, because Pi does not page them.
-
-Remove when: Pi flags and pages these selectors, or the owner removes the five PiG-only flags.
-
-SCRUTINIZED:approved
-
 ## D156 MCP server `url` expands environment references (Pi #10654)
 
 What: PiG expands the environment references of an MCP server's `url` (`$VAR`, `${VAR}`, `$$`) the way it resolves `headers` and `env` values. It validates the expanded URL when it loads `mcp.json` or registers a server, connects to it, and uses it as the OAuth server URL. A `url` that cannot be expanded now (a `!command`, or a variable that is unset or empty) is used as written, so a literal URL with a `$` keeps working. Pi uses the `url` as written in `validateMcpServerConfig` (`packages/coding-agent/src/core/mcp-servers.ts`), `createDefaultTransport` and `McpServerConnection.oauthUrl` (`packages/coding-agent/src/extensions/mcp/runtime.ts`).

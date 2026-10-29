@@ -1551,7 +1551,7 @@
     "upstream_reference": "armin.ts:62-80 ArminComponent constructor(ui)"
   },
   {
-    "mutation": "tui/extension_selector.go: 43 mutants over the Pi-shaped constructor (options, callbacks, title, description, countdown wiring, hint, children), updateList/rowText, handleInput (expand, up/down, k/j, confirm, newline, cancel, done guard, invalidate), Cancel, expiry and Dispose. Survivors of the existing non-oracle tests (description, selected/other row colours, newline confirm, expand callback guard, invalidate after input, expiry after an answer, countdown render request) are killed by tui/extension_selector_pi_semantics_test.go. The Pig-only preview column (D2) and page keys (D155) are not mutated here. TestExtensionDialogsMatchPiBindingsAndPalette and TestExtensionDialogCountdownMatchesPi (node oracles) fail on this host and are not counted",
+    "mutation": "tui/extension_selector.go: 43 mutants over the Pi-shaped constructor (options, callbacks, title, description, countdown wiring, hint, children), updateList/rowText, handleInput (expand, up/down, k/j, confirm, newline, cancel, done guard, invalidate), Cancel, expiry and Dispose. Survivors of the existing non-oracle tests (description, selected/other row colours, newline confirm, expand callback guard, invalidate after input, expiry after an answer, countdown render request) are killed by tui/extension_selector_pi_semantics_test.go. The Pig-only preview column (D2) is not mutated here. TestExtensionDialogsMatchPiBindingsAndPalette and TestExtensionDialogCountdownMatchesPi (node oracles) fail on this host and are not counted",
     "package": "./tui",
     "tests": [
       "TestExtensionDialogsOwnTheirCountdown",

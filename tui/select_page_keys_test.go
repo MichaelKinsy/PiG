@@ -193,16 +193,13 @@ func TestAltScreenGivesSelectionPageKeysToACapturingFocus(t *testing.T) {
 	}
 }
 
-// Each selector moves its selection by its visible page (getSelectPageIndex), clamped at both ends, and captures viewport
-// input so fullscreen leaves the keys to it. The extension selector and the search-less filterable list are PiG pagers
-// that Pi does not flag (D155).
+// Each selector Pi flags with capturesViewportInput moves its selection by its visible page (getSelectPageIndex), clamped
+// at both ends, and captures viewport input so fullscreen leaves the keys to it.
 func TestSelectorComponentsMoveByTheirPage(t *testing.T) {
 	models := make([]ModelSelectorItem, 25)
 	scoped := make([]ModelItem, 25)
 	providers := make([]OAuthProvider, 20)
 	messages := make([]UserMessageItem, 25)
-	options := make([]string, 20)
-	labels := make([]string, 30)
 	for i := range 25 {
 		models[i] = ModelSelectorItem{Provider: "p", ID: fmt.Sprintf("m%02d", i)}
 		scoped[i] = ModelItem{FullID: fmt.Sprintf("p/m%02d", i), Name: fmt.Sprintf("m%02d", i), Provider: "p"}
@@ -210,20 +207,12 @@ func TestSelectorComponentsMoveByTheirPage(t *testing.T) {
 	}
 	for i := range 20 {
 		providers[i] = OAuthProvider{ID: fmt.Sprintf("prov%02d", i), Name: fmt.Sprintf("Provider %02d", i), AuthType: "oauth"}
-		options[i] = fmt.Sprintf("option %02d", i)
-	}
-	for i := range labels {
-		labels[i] = fmt.Sprintf("label %02d", i)
 	}
 	model := NewStaticModelSelectorComponent("Select model", nil, models, "p/m00")
 	model.SetFilter("m")
 	oauth := NewOAuthSelectorComponent("login", providers, func(string, string) {}, func() {})
 	scopedList := NewScopedModelsList(ScopedModelsConfig{AllModels: scoped})
 	userMessages := NewUserMessageSelectorComponent(messages, func(string) {}, func() {}, "u00")
-	extension := NewExtensionSelectorComponent("Pick", options, func(string) {}, func() {})
-	filterable := NewFilterableList("", labels)
-	filterable.EnableSearch = false
-	filterable.MaxVisible = 7
 
 	type selector struct {
 		name   string
@@ -238,8 +227,6 @@ func TestSelectorComponentsMoveByTheirPage(t *testing.T) {
 		{"oauth", oauth.HandleInput, func() int { return oauth.cursor }, 8, 19, oauth},
 		{"scoped models", scopedList.HandleInput, func() int { return scopedList.cursor }, 8, 24, scopedList},
 		{"user messages", userMessages.HandleInput, func() int { return userMessages.list.selectedIndex }, 10, 24, userMessages.GetMessageList()},
-		{"extension", extension.HandleInput, func() int { return extension.cursor }, 8, 19, extension},
-		{"select list without search", filterable.HandleInput, func() int { return filterable.cursor }, 7, 29, filterable},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			if !CapturesViewportInput(tc.captor) {
@@ -267,6 +254,100 @@ func TestSelectorComponentsMoveByTheirPage(t *testing.T) {
 				t.Fatalf("page up at the start: cursor = %d, want 0", got)
 			}
 		})
+	}
+}
+
+// extension-selector.ts has no select page keys and does not set capturesViewportInput: PageUp and PageDown leave the
+// selection where it is, and the fullscreen viewport keeps the keys.
+func TestExtensionSelectorIgnoresSelectionPageKeys(t *testing.T) {
+	options := make([]string, 20)
+	for i := range options {
+		options[i] = fmt.Sprintf("option %02d", i)
+	}
+	selected := ""
+	extension := NewExtensionSelectorComponent("Pick", options, func(option string) { selected = option }, func() {})
+	if CapturesViewportInput(extension) {
+		t.Fatal("the extension selector must not capture viewport input")
+	}
+	extension.HandleInput("j")
+	extension.HandleInput(testPageDownKey)
+	if extension.cursor != 1 {
+		t.Fatalf("page down moved the cursor to %d, want it to stay at 1", extension.cursor)
+	}
+	extension.HandleInput(testPageUpKey)
+	if extension.cursor != 1 {
+		t.Fatalf("page up moved the cursor to %d, want it to stay at 1", extension.cursor)
+	}
+	extension.HandleInput("\r")
+	if selected != "option 01" {
+		t.Fatalf("confirm after the page keys selected %q, want option 01", selected)
+	}
+}
+
+// config-selector.ts pages natively on tui.select.pageUp and tui.select.pageDown by maxVisible rows and moves on to the
+// nearest item, but does not set capturesViewportInput.
+func TestConfigSelectorPagesNativelyAndDoesNotCaptureViewportInput(t *testing.T) {
+	resources := make([]ResourceItem, 30)
+	for i := range resources {
+		name := fmt.Sprintf("prompt%02d.md", i)
+		resources[i] = ResourceItem{Path: "/agent/prompts/" + name, ResourceType: ResourcePrompts, DisplayName: name, Enabled: true, Scope: "user", Origin: "top-level", Source: "auto"}
+	}
+	cs := NewConfigSelector(BuildResourceGroups(resources), 0)
+	if CapturesViewportInput(cs) {
+		t.Fatal("the config selector must not capture viewport input")
+	}
+	start, last := cs.cursor, len(cs.filtered)-1
+	if cs.filtered[start].entryType != "item" || last-start <= cs.maxVisible {
+		t.Fatalf("fixture: cursor %d (%s) and last row %d must leave more than one page of items", start, cs.filtered[start].entryType, last)
+	}
+	cs.HandleInput(testPageDownKey)
+	if want := start + cs.maxVisible; cs.cursor != want {
+		t.Fatalf("page down: cursor = %d, want %d", cs.cursor, want)
+	}
+	for range 5 {
+		cs.HandleInput(testPageDownKey)
+	}
+	if cs.cursor != last {
+		t.Fatalf("page down at the end: cursor = %d, want %d", cs.cursor, last)
+	}
+	cs.HandleInput(testPageUpKey)
+	if want := last - cs.maxVisible; cs.cursor != want {
+		t.Fatalf("page up: cursor = %d, want %d", cs.cursor, want)
+	}
+	for range 5 {
+		cs.HandleInput(testPageUpKey)
+	}
+	if cs.cursor != start {
+		t.Fatalf("page up at the start: cursor = %d, want the first item %d", cs.cursor, start)
+	}
+}
+
+// FilterableList stands in for Pi's SelectList inside hosts that set capturesViewportInput themselves (the llama.cpp and
+// /mcp views, the settings submenu); the list pages by MaxVisible rows and reports no capture of its own.
+func TestFilterableListPagesByItsVisibleRowsWithoutCapturingViewportInput(t *testing.T) {
+	labels := make([]string, 30)
+	for i := range labels {
+		labels[i] = fmt.Sprintf("label %02d", i)
+	}
+	list := NewFilterableList("", labels)
+	list.EnableSearch = false
+	list.MaxVisible = 7
+	if CapturesViewportInput(list) {
+		t.Fatal("a filterable list must not capture viewport input on its own")
+	}
+	list.HandleInput(testPageDownKey)
+	if list.cursor != 7 {
+		t.Fatalf("page down: cursor = %d, want 7", list.cursor)
+	}
+	for range 10 {
+		list.HandleInput(testPageDownKey)
+	}
+	if list.cursor != 29 {
+		t.Fatalf("page down at the end: cursor = %d, want 29 without wrapping", list.cursor)
+	}
+	list.HandleInput(testPageUpKey)
+	if list.cursor != 22 {
+		t.Fatalf("page up: cursor = %d, want 22", list.cursor)
 	}
 }
 
