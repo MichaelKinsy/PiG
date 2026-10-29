@@ -124,5 +124,5 @@ func TestReadingACell(t *testing.T) {
 // rejectedUnavailable fails the test unless err is an `unavailable` ChordError.
 func rejectedUnavailable(t *testing.T, err error) {
 	t.Helper()
-	rejected(t, err, data.CodeUnavailable, "")
+	_ = rejected(t, err, data.CodeUnavailable, "")
 }

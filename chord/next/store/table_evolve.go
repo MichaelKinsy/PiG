@@ -272,10 +272,8 @@ func (e *TableEditor) Drop(name string) *TableEditor {
 	if _, err := e.assertColumn(name, "drop"); err != nil {
 		return e.fail(err)
 	}
-	for _, key := range e.key {
-		if key == name {
-			return e.errorf("%s: drop: %s is a key column", e.what, quote(name))
-		}
+	if slices.Contains(e.key, name) {
+		return e.errorf("%s: drop: %s is a key column", e.what, quote(name))
 	}
 	kept := e.indexes[:0:0]
 	for _, index := range e.indexes {

@@ -18,7 +18,7 @@ func claimFails(t *testing.T, err error, want string) {
 	if err == nil || !strings.Contains(err.Error(), want) {
 		t.Fatalf("error = %v, want it to contain %q", err, want)
 	}
-	rejected(t, err, "invalid", "args")
+	_ = rejected(t, err, "invalid", "args")
 }
 
 func claimed(t *testing.T, err error) {

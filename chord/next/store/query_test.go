@@ -52,14 +52,14 @@ func TestQueries(t *testing.T) {
 	t.Run("refuse duplicate orderBy columns, two directions and opt columns (rule 17)", func(t *testing.T) {
 		qFails(t, NewQuery(T).OrderBy(byAt, "").OrderBy(byAt, "").Err(), "twice")
 		qFails(t, NewQuery(T).OrderBy(byAt, "").OrderBy(func(e ColumnRefs) *ColumnRef { return e["id"] }, "desc").Err(), "one direction")
-		rejected(t, NewQuery(T).OrderBy(func(e ColumnRefs) *ColumnRef { return e["note"] }, "").Err(), data.CodeInvalid, data.ReasonArgs)
+		_ = rejected(t, NewQuery(T).OrderBy(func(e ColumnRefs) *ColumnRef { return e["note"] }, "").Err(), data.CodeInvalid, data.ReasonArgs)
 	})
 
 	t.Run("a failed where is kept: the chain returns its first error", func(t *testing.T) {
 		failed := NewQuery(T).
 			Where(func(e ColumnRefs) Condition { return Eq(e["at"], "x") }).
 			OrderBy(byAt, "")
-		rejected(t, failed.Err(), data.CodeInvalid, data.ReasonArgs)
+		_ = rejected(t, failed.Err(), data.CodeInvalid, data.ReasonArgs)
 	})
 }
 
@@ -89,7 +89,7 @@ func TestCursors(t *testing.T) {
 		refuse := func(definition *TableDefinition, sqlName string, order Order, cursor any) {
 			t.Helper()
 			_, err := DecodeCursor(definition, sqlName, order, cursor)
-			rejected(t, err, data.CodeInvalid, data.ReasonArgs)
+			_ = rejected(t, err, data.CodeInvalid, data.ReasonArgs)
 		}
 		refuse(T, "app:edits", NewQuery(T).Order(), cursor)
 		refuse(T, "app:edits", NewQuery(T).OrderBy(byAt, "").Order(), cursor)

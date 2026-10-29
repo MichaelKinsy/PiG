@@ -530,8 +530,7 @@ func checkAlter(record *TableRecord, write *AlterWrite, what string) error {
 		if !ColumnNamePattern.MatchString(name) {
 			return false
 		}
-		lower := strings.ToLower(name)
-		return !slices.ContainsFunc(record.Columns.Names(), func(each string) bool { return strings.ToLower(each) == lower })
+		return !slices.ContainsFunc(record.Columns.Names(), func(each string) bool { return strings.EqualFold(each, name) })
 	}
 	indexed := func(name string) bool {
 		if slices.Contains(record.Key, name) {

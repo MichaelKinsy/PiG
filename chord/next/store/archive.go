@@ -35,10 +35,7 @@ const ArchiveFormat int64 = 1
 // `put`s and its `index` writes; per document record (by id, live and retired) its `document.create` without a base,
 // then its kept revisions in seq order; `end` with the count of the parts between. Its values are *ManifestPart,
 // *TableDefinitionWrite, *PutWrite, *IndexWrite, *DocumentCreate, *DocumentRevisionWrite and *EndPart.
-type ArchivePart interface {
-	// StoreWriteKind is the part's `kind` tag.
-	StoreWriteKind() string
-}
+type ArchivePart = StoreWrite
 
 // ManifestPart is the first part: the format, the store's schema version, its `lastSeq` and the allocator's next id
 // (rule 24, D3).
@@ -295,9 +292,8 @@ func checkedValue(value any, ctx context.Context, owner *contracts.ParamsData, r
 
 // jsonForm is value as decoded JSON: a typed part or write through its JSON text, anything else as it is.
 func jsonForm(value any) (any, error) {
-	switch value.(type) {
-	case StoreWrite:
-		// ArchivePart has StoreWrite's method set: one case covers both.
+	// ArchivePart is StoreWrite: one test covers both.
+	if _, typed := value.(StoreWrite); typed {
 		text, err := jsstring.MarshalJSON(value)
 		if err != nil {
 			return nil, err

@@ -3,6 +3,7 @@ package store
 import (
 	"context"
 	"fmt"
+	"maps"
 
 	chordctx "github.com/MichaelKinsy/PiG/chord/context"
 	"github.com/MichaelKinsy/PiG/chord/sqlite"
@@ -85,9 +86,7 @@ func checkCommit(commit OutboxCommit, what string, ctx context.Context) (OutboxC
 // replayCommits is the batch inside the store's turn: seqs continuous from LastSeq, allocator values never falling.
 func replayCommits(store *ChordStore, commits []OutboxCommit, executor sqlite.SqliteExecutor, catalog map[string]*TableRecord) (Replayed, error) {
 	tables := make(map[string]*TableRecord, len(catalog))
-	for name, record := range catalog {
-		tables[name] = record
-	}
+	maps.Copy(tables, catalog)
 	changed := map[string]*TableRecord{}
 	lastSeq := store.LastSeq()
 	nextID := store.NextID()

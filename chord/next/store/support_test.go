@@ -247,14 +247,6 @@ func holdNextCommit(store *ChordStore) (entered <-chan struct{}, release func())
 	return reached, func() { once.Do(func() { close(gate) }) }
 }
 
-// rejection is err as ChordError JSON when it is one (Pi's `rejection`); anything else is err itself.
-func rejection(err error) any {
-	if chordErr, ok := data.IsChordError(err); ok {
-		return chordErr.ToJSON()
-	}
-	return err
-}
-
 // rejected is the ChordError err is, failing the test when it is none or its code or reason differ; an empty reason
 // expects none (Pi's `toMatchObject({ code, reason })`).
 func rejected(t testing.TB, err error, code data.ChordErrorCode, reason data.ChordErrorReason) *data.ChordError {

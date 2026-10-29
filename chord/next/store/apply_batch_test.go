@@ -257,7 +257,7 @@ func TestApplyBatch(t *testing.T) {
 		t.Run("while an owner holds a claim on the store (its memory would go stale)", func(t *testing.T) {
 			replica := memoryStore(t)
 			noError(t, replica.Claims.Documents("app.store", "chord", &NamedClaimant{Label: "an object"}))
-			rejected(t, ApplyBatch(replica, nil, background), data.CodeInvalid, data.ReasonArgs)
+			_ = rejected(t, ApplyBatch(replica, nil, background), data.CodeInvalid, data.ReasonArgs)
 		})
 
 		t.Run("a claim taken between the call and its turn in the queue refuses the batch; a claim is refused while it applies", func(t *testing.T) {
@@ -267,7 +267,7 @@ func TestApplyBatch(t *testing.T) {
 			owner := &NamedClaimant{Label: "an object"}
 			noError(t, replica.Claims.Documents("app.store", "chord", owner))
 			held()
-			rejected(t, batchRejected(t, replaying), data.CodeInvalid, data.ReasonArgs)
+			_ = rejected(t, batchRejected(t, replaying), data.CodeInvalid, data.ReasonArgs)
 			if replica.LastSeq() != 0 {
 				t.Fatalf("lastSeq = %d, want 0", replica.LastSeq())
 			}
@@ -277,7 +277,7 @@ func TestApplyBatch(t *testing.T) {
 			applying := ApplyBatchAsync(replica, all, background)
 			// Once the batch applies (its transaction is held open), a claim is refused.
 			<-gate.Entered()
-			rejected(t, replica.Claims.Documents("app.store", "chord", owner), data.CodeInvalid, data.ReasonArgs)
+			_ = rejected(t, replica.Claims.Documents("app.store", "chord", owner), data.CodeInvalid, data.ReasonArgs)
 			gate.Release()
 			_, err := settledValue(t, applying)
 			noError(t, err)
@@ -295,7 +295,7 @@ func TestApplyBatch(t *testing.T) {
 			if err := batchRejected(t, first); !strings.Contains(err.Error(), "recorded") {
 				t.Fatalf("diverging batch = %v, want recorded", err)
 			}
-			rejected(t, batchRejected(t, second), data.CodeInvalid, data.ReasonArgs)
+			_ = rejected(t, batchRejected(t, second), data.CodeInvalid, data.ReasonArgs)
 			if replica.LastSeq() != 0 {
 				t.Fatalf("lastSeq = %d, want 0", replica.LastSeq())
 			}
@@ -309,8 +309,8 @@ func TestApplyBatch(t *testing.T) {
 			}
 			base := DocumentBase{Version: 1, Fingerprint: "", Value: delta.NewJsonObject(0)}
 			create := &DocumentCreate{Record: record, Base: &base}
-			rejected(t, ApplyBatch(replica, []OutboxCommit{{Seq: 1, NextID: 2, Writes: []StoreWrite{create}}}, background), data.CodeInvalid, data.ReasonArgs)
-			rejected(t, ApplyBatch(replica, []OutboxCommit{{Seq: 1, NextID: 100, Writes: []StoreWrite{create}}}, background), data.CodeInvalid, data.ReasonArgs)
+			_ = rejected(t, ApplyBatch(replica, []OutboxCommit{{Seq: 1, NextID: 2, Writes: []StoreWrite{create}}}, background), data.CodeInvalid, data.ReasonArgs)
+			_ = rejected(t, ApplyBatch(replica, []OutboxCommit{{Seq: 1, NextID: 100, Writes: []StoreWrite{create}}}, background), data.CodeInvalid, data.ReasonArgs)
 			noError(t, ApplyBatch(replica, []OutboxCommit{{Seq: 1, NextID: 101, Writes: []StoreWrite{create}}}, background))
 			saturated := &DocumentCreate{Record: record, Base: &base}
 			saturated.Record.ID = MaxSafeInteger
@@ -324,8 +324,8 @@ func TestApplyBatch(t *testing.T) {
 		t.Run("a first commit that does not follow lastSeq, or one that does not follow the one before; nothing applied", func(t *testing.T) {
 			all := batchCommits(t, batchEveryKind(t))
 			replica := memoryStore(t)
-			rejected(t, ApplyBatch(replica, all[1:], background), data.CodeInvalid, data.ReasonArgs)
-			rejected(t, ApplyBatch(replica, []OutboxCommit{all[0], all[2]}, background), data.CodeInvalid, data.ReasonArgs)
+			_ = rejected(t, ApplyBatch(replica, all[1:], background), data.CodeInvalid, data.ReasonArgs)
+			_ = rejected(t, ApplyBatch(replica, []OutboxCommit{all[0], all[2]}, background), data.CodeInvalid, data.ReasonArgs)
 			if replica.LastSeq() != 0 {
 				t.Fatalf("lastSeq = %d, want 0", replica.LastSeq())
 			}
@@ -349,10 +349,10 @@ func TestApplyBatch(t *testing.T) {
 			if _, ok := all[0].Writes[0].(*TableDefinitionWrite); !ok {
 				t.Fatalf("the first write of the first commit is %T, want a table write", all[0].Writes[0])
 			}
-			rejected(t, ApplyBatch(replica, broken, background), data.CodeInvalid, data.ReasonArgs)
+			_ = rejected(t, ApplyBatch(replica, broken, background), data.CodeInvalid, data.ReasonArgs)
 			forged := batchChanged(all, func(_ int, write StoreWrite) StoreWrite { return write })
 			forged[0].Writes = append(forged[0].Writes, &PutWrite{Table: "x", Row: delta.NewJsonObject(0), Version: 0, Columns: delta.NewJsonObject(0)})
-			rejected(t, ApplyBatch(replica, forged, background), data.CodeInvalid, data.ReasonArgs)
+			_ = rejected(t, ApplyBatch(replica, forged, background), data.CodeInvalid, data.ReasonArgs)
 			noError(t, ApplyBatch(replica, all, background))
 		})
 
@@ -367,7 +367,7 @@ func TestApplyBatch(t *testing.T) {
 			if err := ApplyBatch(replica, batchDiverging(all), background); err == nil || !strings.Contains(err.Error(), "recorded") {
 				t.Fatalf("diverging batch = %v, want recorded", err)
 			}
-			rejected(t, ApplyBatch(replica, all, background), data.CodeInvalid, data.ReasonArgs)
+			_ = rejected(t, ApplyBatch(replica, all, background), data.CodeInvalid, data.ReasonArgs)
 			if replica.LastSeq() != 0 {
 				t.Fatalf("lastSeq = %d, want 0", replica.LastSeq())
 			}

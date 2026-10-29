@@ -49,8 +49,6 @@ func onFile(t *testing.T) (path string, open func(outbox *bool) *ChordStore) {
 	}
 }
 
-func boolPtr(value bool) *bool { return &value }
-
 // hookedDatabase is a database whose Transaction and All a test can intercept (Pi reassigns `db.transaction` and
 // `db.all`).
 type hookedDatabase struct {
@@ -86,7 +84,7 @@ func hookedStore(t *testing.T) (*ChordStore, *hookedDatabase) {
 	inner, err := node.OpenNodeSqliteDatabase(":memory:", node.NodeSqliteDatabaseOptions{})
 	noError(t, err)
 	db := &hookedDatabase{SqliteDatabase: inner}
-	opened, err := OpenStore(SqliteBackend(db), background, StoreOptions{Outbox: boolPtr(true)})
+	opened, err := OpenStore(SqliteBackend(db), background, StoreOptions{Outbox: new(true)})
 	noError(t, err)
 	store := opened.(*ChordStore)
 	t.Cleanup(func() { _ = store.Close(background) })
@@ -107,7 +105,7 @@ func TestOutbox(t *testing.T) {
 		store := open(nil)
 		outboxCreated(t, store, "")
 		noError(t, store.Close(background))
-		store = open(boolPtr(true))
+		store = open(new(true))
 		if store.Outbox().Floor() != 1 {
 			t.Fatalf("floor = %d, want 1", store.Outbox().Floor())
 		}
@@ -128,11 +126,11 @@ func TestOutbox(t *testing.T) {
 			t.Fatalf("writes = %s, want %s", got, want)
 		}
 		_, err = store.Outbox().Read(0, 10, background)
-		rejected(t, err, data.CodeInvalid, data.ReasonArgs)
+		_ = rejected(t, err, data.CodeInvalid, data.ReasonArgs)
 		_, err = store.Outbox().Read(3, 10, background)
-		rejected(t, err, data.CodeInvalid, data.ReasonArgs)
+		_ = rejected(t, err, data.CodeInvalid, data.ReasonArgs)
 		noError(t, store.Close(background))
-		store = open(boolPtr(false))
+		store = open(new(false))
 		if store.Outbox() != nil {
 			t.Fatalf("outbox = %v, want none", store.Outbox())
 		}
@@ -162,22 +160,20 @@ func TestOutbox(t *testing.T) {
 		if len(commits) != 0 {
 			t.Fatalf("commits after the floor = %+v", commits)
 		}
-		rejected(t, store.Outbox().Trim(2, background), data.CodeInvalid, data.ReasonArgs)
+		_ = rejected(t, store.Outbox().Trim(2, background), data.CodeInvalid, data.ReasonArgs)
 	})
 
 	t.Run("overlapping trims run one at a time: the stored floor never moves back and equals the one in memory", func(t *testing.T) {
 		_, open := onFile(t)
-		store := open(boolPtr(true))
+		store := open(new(true))
 		for i := range 11 {
 			outboxCreated(t, store, "k"+string(rune('a'+i)))
 		}
 		var wait sync.WaitGroup
 		for _, through := range []int64{9, 3} {
-			wait.Add(1)
-			go func() {
-				defer wait.Done()
+			wait.Go(func() {
 				noError(t, store.Outbox().Trim(through, background))
-			}()
+			})
 		}
 		wait.Wait()
 		if store.Outbox().Floor() != 9 {
@@ -189,7 +185,7 @@ func TestOutbox(t *testing.T) {
 			t.Fatalf("stored floor = %d, want 9", store.Outbox().Floor())
 		}
 		_, err := store.Outbox().Read(3, 10, background)
-		rejected(t, err, data.CodeInvalid, data.ReasonArgs)
+		_ = rejected(t, err, data.CodeInvalid, data.ReasonArgs)
 		commits, err := store.Outbox().Read(9, 10, background)
 		noError(t, err)
 		if got := outboxSeqs(commits); len(got) != 2 || got[0] != 10 || got[1] != 11 {
@@ -225,7 +221,7 @@ func TestOutbox(t *testing.T) {
 		time.Sleep(20 * time.Millisecond)
 		close(gate)
 		noError(t, <-trimmed)
-		rejected(t, <-read, data.CodeInvalid, data.ReasonArgs)
+		_ = rejected(t, <-read, data.CodeInvalid, data.ReasonArgs)
 	})
 
 	t.Run("a trim waits for a read in flight: the read gets the commits it was admitted for", func(t *testing.T) {
@@ -270,7 +266,7 @@ func TestOutbox(t *testing.T) {
 
 	t.Run("a commit stored in a newer format is refused unavailable; the data stays", func(t *testing.T) {
 		path, open := onFile(t)
-		store := open(boolPtr(true))
+		store := open(new(true))
 		outboxCreated(t, store, "")
 		noError(t, store.Close(background))
 		db, err := node.OpenNodeSqliteDatabase(path, node.NodeSqliteDatabaseOptions{})

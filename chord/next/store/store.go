@@ -3,6 +3,7 @@ package store
 import (
 	"context"
 	"errors"
+	"maps"
 	"reflect"
 	"sync"
 
@@ -627,18 +628,14 @@ func sameError(a, b error) bool {
 	if !reflect.TypeOf(a).Comparable() || !reflect.TypeOf(b).Comparable() {
 		return false
 	}
-	return a == b
+	return any(a) == any(b)
 }
 
 // withTables is catalog with changed's records, as a new map: a map once handed out is never written.
 func withTables(catalog, changed map[string]*TableRecord) map[string]*TableRecord {
 	next := make(map[string]*TableRecord, len(catalog)+len(changed))
-	for name, record := range catalog {
-		next[name] = record
-	}
-	for name, record := range changed {
-		next[name] = record
-	}
+	maps.Copy(next, catalog)
+	maps.Copy(next, changed)
 	return next
 }
 

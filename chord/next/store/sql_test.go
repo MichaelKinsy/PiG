@@ -69,7 +69,11 @@ func TestSqlDDL(t *testing.T) {
 		if err != nil {
 			t.Fatalf("open: %v", err)
 		}
-		defer db.Close()
+		defer func() {
+			if err := db.Close(); err != nil {
+				t.Errorf("close: %v", err)
+			}
+		}()
 		if err := db.Run(CreateTableSql("t", edits.Record, edits.Key)); err != nil {
 			t.Fatalf("create: %v", err)
 		}

@@ -2,6 +2,7 @@ package store
 
 import (
 	"fmt"
+	"maps"
 	"reflect"
 	"strings"
 	"testing"
@@ -70,12 +71,10 @@ func TestEvaluator(t *testing.T) {
 		must(t, err)
 		qEqual(t, got["path"], "x")
 		big := EvaluatedRow{}
-		for column, value := range row {
-			big[column] = value
-		}
+		maps.Copy(big, row)
 		big["n"] = MaxSafeInteger
 		_, err = apply(SetOf{Assign("n", Add(refs["n"], 1))}, big)
-		rejected(t, err, data.CodeInvalid, data.ReasonArgs)
+		_ = rejected(t, err, data.CodeInvalid, data.ReasonArgs)
 	})
 }
 
@@ -89,17 +88,17 @@ var evaluatorRows = []EvaluatedRow{
 }
 
 // evaluatorDatabase is a `:memory:` database with the table t holding evaluatorRows, and its statements.
-func evaluatorDatabase(t *testing.T, T *TableDefinition) (sqlite.SqliteDatabase, *TableSql) {
+func evaluatorDatabase(t *testing.T, table *TableDefinition) (sqlite.SqliteDatabase, *TableSql) {
 	t.Helper()
 	db, err := node.OpenNodeSqliteDatabase(":memory:", node.NodeSqliteDatabaseOptions{})
 	if err != nil {
 		t.Fatalf("open: %v", err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
-	must(t, db.Run(CreateTableSql("t", T.Record, T.Key)))
-	sql := NewTableSql("t", T.Named(), T.Rows.Physical, T.Key)
+	must(t, db.Run(CreateTableSql("t", table.Record, table.Key)))
+	sql := NewTableSql("t", table.Named(), table.Rows.Physical, table.Key)
 	for _, each := range evaluatorRows {
-		encoded, err := T.Rows.Put(Row(each), 1)
+		encoded, err := table.Rows.Put(Row(each), 1)
 		must(t, err)
 		must(t, db.Run(sql.Put, encoded.Params...))
 	}
@@ -116,9 +115,9 @@ func idsOf(t *testing.T, rows []sqlite.SqliteRow) []string {
 }
 
 // sameRows fails unless SQLite selects exactly the rows the evaluator matches for condition.
-func sameRows(t *testing.T, T *TableDefinition, db sqlite.SqliteDatabase, condition Condition) {
+func sameRows(t *testing.T, table *TableDefinition, db sqlite.SqliteDatabase, condition Condition) {
 	t.Helper()
-	compiled, err := CompileWhere(T, condition, "where")
+	compiled, err := CompileWhere(table, condition, "where")
 	must(t, err)
 	var params []sqlite.SqliteValue
 	text := WhereSql(compiled, &params)

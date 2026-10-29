@@ -123,11 +123,11 @@ func TestTableChanges(t *testing.T) {
 				Row{"note": "bulk"},
 			))
 			_, err = changes.Get(Row{"id": "e1"}, background)
-			rejected(t, err, data.CodeInvalid, data.ReasonReadAfterBulk)
+			_ = rejected(t, err, data.CodeInvalid, data.ReasonReadAfterBulk)
 			other := NewTableChanges(changes.Handle, &[]StagedWrite{})
 			noError(t, other.DeleteWhere(func(e ColumnRefs) Condition { return Eq(e["id"], "x") }))
 			_, err = other.Get(Row{"id": "e1"}, background)
-			rejected(t, err, data.CodeInvalid, data.ReasonReadAfterBulk)
+			_ = rejected(t, err, data.CodeInvalid, data.ReasonReadAfterBulk)
 			fresh, err := NewTableChanges(changes.Handle, &[]StagedWrite{}).Get(Row{"id": "e1"}, background)
 			noError(t, err)
 			if fresh == nil {

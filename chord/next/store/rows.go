@@ -82,9 +82,8 @@ func PhysicalColumns(columns []NamedType) []string {
 
 // ToSqlite is a scalar as SQLite binds it: booleans as 0 and 1.
 func ToSqlite(scalar Scalar) sqlite.SqliteValue {
-	switch typed := scalar.(type) {
-	case bool:
-		if typed {
+	if flag, ok := scalar.(bool); ok {
+		if flag {
 			return int64(1)
 		}
 		return int64(0)

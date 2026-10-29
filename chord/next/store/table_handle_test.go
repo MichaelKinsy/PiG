@@ -70,7 +70,7 @@ func TestTableHandle(t *testing.T) {
 				t.Fatalf("Get(nope) = %v, want absent", row)
 			}
 			_, err = edits.Get(Row{"id": "e001", "path": "x"}, background)
-			rejected(t, err, data.CodeInvalid, data.ReasonArgs)
+			_ = rejected(t, err, data.CodeInvalid, data.ReasonArgs)
 		})
 
 		t.Run("page fetches limit + 1 for next, and the cursor continues in order with the key tie-break", func(t *testing.T) {
@@ -153,20 +153,20 @@ func TestTableHandle(t *testing.T) {
 			other, err := DefineTable("other", TableOptions{Version: 1, Columns: []ColumnProp{Col("id", Str())}, Key: []string{"id"}})
 			noError(t, err)
 			_, err = edits.Page(NewQuery(other), 1, background, PageOptions{})
-			rejected(t, err, data.CodeInvalid, data.ReasonArgs)
+			_ = rejected(t, err, data.CodeInvalid, data.ReasonArgs)
 			_, err = edits.Page(NewQuery(definition), 0, background, PageOptions{})
-			rejected(t, err, data.CodeInvalid, data.ReasonArgs)
+			_ = rejected(t, err, data.CodeInvalid, data.ReasonArgs)
 			// Pi's `1.5` is no integer: Go's limit is an int64, so the check is the positive-integer one (designed out).
 			after := "x"
 			_, err = edits.Page(NewQuery(definition), 1, background, PageOptions{After: &after})
-			rejected(t, err, data.CodeInvalid, data.ReasonArgs)
+			_ = rejected(t, err, data.CodeInvalid, data.ReasonArgs)
 		})
 
 		t.Run("reads go through the store's guard: refused once the store closed", func(t *testing.T) {
 			store, edits, _ := filledHandle(t, 1)
 			noError(t, store.Close(background))
 			_, err := edits.Get(Row{"id": "e000"}, background)
-			rejected(t, err, data.CodeReleased, "")
+			_ = rejected(t, err, data.CodeReleased, "")
 		})
 	})
 
@@ -178,7 +178,7 @@ func TestTableHandle(t *testing.T) {
 				return executor.Run(`UPDATE "app.store:edits" SET "meta$v" = 2`)
 			}))
 			_, err := edits.Get(Row{"id": "e000"}, background)
-			rejected(t, err, data.CodeUnavailable, "")
+			_ = rejected(t, err, data.CodeUnavailable, "")
 			if len(owner.failures) != 1 {
 				t.Fatalf("owner failures = %d, want 1", len(owner.failures))
 			}

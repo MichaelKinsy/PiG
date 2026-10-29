@@ -1,6 +1,7 @@
 package store
 
 import (
+	"maps"
 	"math"
 	"reflect"
 	"strings"
@@ -48,7 +49,7 @@ func rowsPutFails(t *testing.T, codec *RowCodec, row any, want string) {
 		t.Fatalf("Put(%v) succeeded, want %q", row, want)
 	}
 	if want == "" {
-		rejected(t, err, data.CodeInvalid, data.ReasonArgs)
+		_ = rejected(t, err, data.CodeInvalid, data.ReasonArgs)
 	} else if !strings.Contains(err.Error(), want) {
 		t.Fatalf("Put error = %v, want it to contain %q", err, want)
 	}
@@ -56,9 +57,7 @@ func rowsPutFails(t *testing.T, codec *RowCodec, row any, want string) {
 
 func rowsWith(row Row, key string, value any) Row {
 	next := Row{}
-	for name, cell := range row {
-		next[name] = cell
-	}
+	maps.Copy(next, row)
 	if value == nil {
 		delete(next, key)
 	} else {
@@ -139,7 +138,7 @@ func TestKeys(t *testing.T) {
 			t.Fatalf("Key(extra) error = %v, want unknown column", err)
 		}
 		_, err = codec.Key(Row{"id": 1}, "get")
-		rejected(t, err, data.CodeInvalid, data.ReasonArgs)
+		_ = rejected(t, err, data.CodeInvalid, data.ReasonArgs)
 	})
 }
 

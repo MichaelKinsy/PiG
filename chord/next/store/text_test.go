@@ -56,12 +56,12 @@ func TestStoredText(t *testing.T) {
 
 	t.Run("refuses NUL with invalid/args", func(t *testing.T) {
 		_, err := StoredText("a\x00b", "edits.path")
-		rejected(t, err, data.CodeInvalid, data.ReasonArgs)
+		_ = rejected(t, err, data.CodeInvalid, data.ReasonArgs)
 	})
 }
 
 func TestPrefixUpperBound(t *testing.T) {
-	bound := func(prefix string) (string, bool) { return PrefixUpperBound(prefix) }
+	bound := PrefixUpperBound
 
 	t.Run("is the next code point after the last one", func(t *testing.T) {
 		for prefix, want := range map[string]string{"a/": "a0", "a\U0001F600": "a\U0001F601", "\uFFFF": "\U00010000"} {

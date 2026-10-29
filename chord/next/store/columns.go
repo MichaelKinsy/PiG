@@ -302,7 +302,7 @@ func describeColumn(name string, schema ColumnSchema, what string) (Column, erro
 // checkDefault checks a declared default and returns it as the column's Scalar (int: int64).
 func checkDefault(typ ColumnType, value any, what string) (Scalar, error) {
 	var valid bool
-	var normalized Scalar = value
+	normalized := value
 	switch typ {
 	case ColStr:
 		text, ok := value.(string)

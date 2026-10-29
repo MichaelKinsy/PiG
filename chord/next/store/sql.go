@@ -2,6 +2,7 @@ package store
 
 import (
 	"fmt"
+	"slices"
 	"strconv"
 	"strings"
 	"unicode/utf8"
@@ -57,8 +58,7 @@ func CreateTableSql(table string, columns ColumnRecords, key []string) string {
 	for _, entry := range columns {
 		definitions = append(definitions, ColumnSql(entry.Name, entry.Record)...)
 	}
-	definitions = append(definitions, Quote(RowVersion)+" INTEGER NOT NULL")
-	definitions = append(definitions, "PRIMARY KEY ("+strings.Join(quoteAll(key), ", ")+")")
+	definitions = append(definitions, Quote(RowVersion)+" INTEGER NOT NULL", "PRIMARY KEY ("+strings.Join(quoteAll(key), ", ")+")")
 	rowid := false
 	if len(key) == 1 {
 		first, _ := columns.Get(key[0])
@@ -142,12 +142,7 @@ func CreateIndexSql(table, index string, columns, key []string) string {
 }
 
 func containsString(list []string, item string) bool {
-	for _, each := range list {
-		if each == item {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(list, item)
 }
 
 // DropIndexSql is `DROP INDEX` of `<table>:<index>`.

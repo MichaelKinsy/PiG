@@ -1,6 +1,7 @@
 package store
 
 import (
+	"maps"
 	"strconv"
 
 	"github.com/MichaelKinsy/PiG/chord/next/data"
@@ -174,9 +175,7 @@ func numeric(scalar Scalar) float64 {
 // integer result outside ±(2^53 - 1) is `invalid/args` (rule 10), as the column's `CHECK` fails the step.
 func ApplySet(set SetNode, row EvaluatedRow, table string) (EvaluatedRow, error) {
 	next := make(EvaluatedRow, len(row)+len(set))
-	for column, value := range row {
-		next[column] = value
-	}
+	maps.Copy(next, row)
 	for _, entry := range set {
 		value, present, err := evaluate(entry.Node, row, table)
 		if err != nil {

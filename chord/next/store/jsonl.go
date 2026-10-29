@@ -2,6 +2,7 @@ package store
 
 import (
 	"context"
+	"slices"
 	"strconv"
 	"strings"
 	"unicode/utf8"
@@ -162,7 +163,7 @@ func (decoder *jsonlDecoder) emit(text string) (any, bool, error) {
 // ill-formed sequence fails `invalid/args` naming the line after those taken (Pi's `line + 1`); a sequence a chunk
 // cuts is held for the next. A leading BOM is dropped, as TextDecoder does.
 func (decoder *jsonlDecoder) decode(chunk []byte, final bool) (string, error) {
-	buffer := append(decoder.pending, chunk...)
+	buffer := slices.Concat(decoder.pending, chunk)
 	complete := len(buffer)
 	if !final {
 		// Hold an incomplete trailing sequence: at most the last 3 bytes, starting at a lead byte.

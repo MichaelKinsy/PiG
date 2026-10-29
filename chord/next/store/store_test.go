@@ -182,7 +182,7 @@ func TestStore(t *testing.T) {
 			store := memoryStore(t)
 			refusing := CommitFence{Admit: func() bool { return false }, Adopt: func(int64, []int64) error { return nil }}
 			_, err := store.Commit([]StagedWrite{CreateDocument(storeAddress, storeBase, "{}", nil)}, refusing, background)
-			rejected(t, err, data.CodeReleased, "")
+			_ = rejected(t, err, data.CodeReleased, "")
 			adopted, fence := recording()
 			seq, err := store.Commit(nil, fence, background)
 			noError(t, err)
@@ -218,12 +218,12 @@ func TestStore(t *testing.T) {
 			keyed.Key = new("b")
 			_, fence := recording()
 			_, err = store.Commit([]StagedWrite{CreateDocument(keyed, storeBase, "{}", nil)}, fence, background)
-			rejected(t, err, data.CodeUnavailable, data.ReasonStorageFailed)
+			_ = rejected(t, err, data.CodeUnavailable, data.ReasonStorageFailed)
 			if store.LastSeq() != MaxSafeInteger {
 				t.Fatalf("lastSeq after the refusal = %d, want Number.MAX_SAFE_INTEGER", store.LastSeq())
 			}
 			_, err = Read(store, func(sqlite.SqliteExecutor) (any, error) { return nil, nil }, background)
-			rejected(t, err, data.CodeUnavailable, data.ReasonStorageFailed)
+			_ = rejected(t, err, data.CodeUnavailable, data.ReasonStorageFailed)
 		})
 
 		t.Run("counts one commit and three statements for a delta, four with an outbox (cost guard)", func(t *testing.T) {
@@ -286,11 +286,11 @@ func TestStore(t *testing.T) {
 				}
 				_, fence := recording()
 				_, err := store.Commit(writes, fence, background)
-				rejected(t, err, data.CodeUnavailable, data.ReasonStorageFailed)
+				_ = rejected(t, err, data.CodeUnavailable, data.ReasonStorageFailed)
 				_, err = store.Commit([]StagedWrite{CreateDocument(storeAddress, storeBase, "{}", nil)}, fence, background)
-				rejected(t, err, data.CodeUnavailable, data.ReasonStorageFailed)
+				_ = rejected(t, err, data.CodeUnavailable, data.ReasonStorageFailed)
 				_, err = Read(store, func(sqlite.SqliteExecutor) (int, error) { return 1, nil }, background)
-				rejected(t, err, data.CodeUnavailable, data.ReasonStorageFailed)
+				_ = rejected(t, err, data.CodeUnavailable, data.ReasonStorageFailed)
 				if len(told) != 1 {
 					t.Fatalf("told %d times, want once", len(told))
 				}
@@ -304,12 +304,12 @@ func TestStore(t *testing.T) {
 			id := storeCreated(t, store)
 			throwing := CommitFence{Admit: func() bool { return true }, Adopt: func(int64, []int64) error { return errors.New("adopt threw") }}
 			_, err := store.Commit([]StagedWrite{RetireDocument(id, 1)}, throwing, background)
-			rejected(t, err, data.CodeUnavailable, data.ReasonStorageFailed)
+			_ = rejected(t, err, data.CodeUnavailable, data.ReasonStorageFailed)
 			empty := memoryStore(t)
 			_, err = empty.Commit(nil, throwing, background)
-			rejected(t, err, data.CodeUnavailable, data.ReasonStorageFailed)
+			_ = rejected(t, err, data.CodeUnavailable, data.ReasonStorageFailed)
 			_, err = Read(empty, func(sqlite.SqliteExecutor) (int, error) { return 1, nil }, background)
-			rejected(t, err, data.CodeUnavailable, data.ReasonStorageFailed)
+			_ = rejected(t, err, data.CodeUnavailable, data.ReasonStorageFailed)
 			other := memoryStore(t)
 			otherID := storeCreated(t, other)
 			stale := ChangeDocument(otherID, 7, DocumentContent{Kind: "delta", Version: 1, Ops: []delta.Op{}}, "[]")
@@ -332,7 +332,7 @@ func TestStore(t *testing.T) {
 			cancelled, cancel := chordctx.WithCancel(background)
 			cancel(nil)
 			_, err := Read(store, func(sqlite.SqliteExecutor) (int, error) { return 0, errors.New("backend") }, cancelled)
-			rejected(t, err, data.CodeAborted, "")
+			_ = rejected(t, err, data.CodeAborted, "")
 			gate := make(chan struct{})
 			started := make(chan struct{})
 			late := make(chan error, 1)
@@ -352,7 +352,7 @@ func TestStore(t *testing.T) {
 				t.Fatal("the commit with a failing COMMIT succeeded")
 			}
 			close(gate)
-			rejected(t, <-late, data.CodeUnavailable, data.ReasonStorageFailed)
+			_ = rejected(t, <-late, data.CodeUnavailable, data.ReasonStorageFailed)
 		})
 
 		t.Run("runs a read transaction's queries on one state, guarded as a read", func(t *testing.T) {
@@ -371,7 +371,7 @@ func TestStore(t *testing.T) {
 				t.Fatalf("counts = %v, want %v", counts, want)
 			}
 			_, err = ReadTransaction(store, func(sqlite.SqliteExecutor) (int, error) { return 0, errors.New("backend") }, background)
-			rejected(t, err, data.CodeUnavailable, data.ReasonStorageFailed)
+			_ = rejected(t, err, data.CodeUnavailable, data.ReasonStorageFailed)
 		})
 	})
 
@@ -506,10 +506,10 @@ func TestStore(t *testing.T) {
 				t.Fatalf("running commit's seq = %d, want 1", seq)
 			}
 			_, err = settledValue(t, queued)
-			rejected(t, err, data.CodeReleased, "")
+			_ = rejected(t, err, data.CodeReleased, "")
 			noError(t, <-closed)
 			_, err = Read(store, func(sqlite.SqliteExecutor) (int, error) { return 1, nil }, background)
-			rejected(t, err, data.CodeReleased, "")
+			_ = rejected(t, err, data.CodeReleased, "")
 		})
 	})
 }

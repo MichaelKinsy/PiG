@@ -130,8 +130,8 @@ func (table *OwnerTable) Prepare(columns []string, where *WhereNode, order Order
 // call).
 func (table *OwnerTable) PrepareFirst(columns []string, where *WhereNode, order Order) string {
 	sql := table.Sql.Select(where, order, nil, 1, columns).SQL
-	if strings.HasSuffix(sql, "LIMIT ?") {
-		sql = strings.TrimSuffix(sql, "LIMIT ?") + "LIMIT 1"
+	if before, ok := strings.CutSuffix(sql, "LIMIT ?"); ok {
+		sql = before + "LIMIT 1"
 	}
 	return sql
 }
