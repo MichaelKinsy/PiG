@@ -492,10 +492,10 @@ rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`ai/prov
 
 [[files]]
 path = "packages/ai/src/utils/retry.ts"
-disposition = "pending"
+disposition = "deferred"
 contracts = []
 evidence = []
-rationale = ""
+rationale = "async/Promise source; PORT_MAP marks this file ported, but the per-file cross-language ordering/cancellation/error contract has not been reviewed for this pin, as for its sibling rows. Delta at Pi bd3c9b82: cedefc53, 29057ece and 6e491cfa change the classifier regular expressions; no added or removed line contains async, await, Promise or .then, so the delta adds no async contract to review. delivery/unresolved.tsv row 'Review the v0.87.1 denominators' Re-confirmed at Pi e7a0df27: the delta since b3a29f11 changes no line that mentions async, await, Promise, then/catch/finally, timers, signals or AbortSignal, so the contract stands."
 
 [[files]]
 path = "packages/ai/src/utils/sleep.ts"
@@ -1213,10 +1213,10 @@ rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`coding/
 
 [[files]]
 path = "packages/coding-agent/src/core/agent-session.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "deferred"
+contracts = ["awaited", "concurrent-joined", "cancellable", "microtask-ordering"]
+evidence = ["test:coding/session_retry_scheduler_test.go", "test:coding/session_model_runtime_request_test.go", "test:coding/cli/rpc_retry_reactions_test.go", "scenario:test/parity/scenarios/rpc/17-rpc-abort-retry.toml", "test:coding/session_model_dispatch_test.go", "test:coding/session_preflight_test.go", "test:coding/cli/rpc_preflight_admission_test.go", "scenario:test/parity/scenarios/rpc/13-rpc-steering-queue.toml", "scenario:test/parity/scenarios/rpc/31-rpc-cycle-await-interleaving.toml", "scenario:test/parity/scenarios/rpc/32-rpc-cycle-prefix-and-completion.toml", "scenario:test/parity/scenarios/rpc/36-rpc-preflight-admission.toml", "probe:docs/findings/rpc-command-dispatch.md", "probe:docs/findings/rpc-preflight-admission.md", "probe:docs/findings/pr70-steering-admission.md"]
+rationale = "Model-cycle prefix/notification and prompt preflight admission are covered. Input and before_agent_start awaits do not reserve the Agent or hold the Session run lock; streaming is sampled after input, normalization follows before_agent_start, and acceptance precedes the Agent claim. Suspended preflight permits another prompt and both queues. Retry cancellation queues its catch before command replies and resolves the awaited retry in a later reaction; the Go host scheduler binding joins both phases. Session abort cancels the Agent signal without turning it into forced caller-context cancellation. The complete Session Promise contract remains deferred for other replacement, retry and compaction obligations. Pi 6f2f164a changes the constructor's tool restore only; no async change. Delta at Pi bd3c9b82: bd3c9b82 activates extension tools the branch never mentioned when resuming; no added or removed line contains async, await, Promise or .then, so the reviewed contract is unchanged. Re-confirmed at Pi e7a0df27: the delta since b3a29f11 changes no line that mentions async, await, Promise, then/catch/finally, timers, signals or AbortSignal, so the contract stands."
 
 [[files]]
 path = "packages/coding-agent/src/core/auth-storage.ts"
@@ -1409,10 +1409,10 @@ rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`ai/auth
 
 [[files]]
 path = "packages/coding-agent/src/core/sdk.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "deferred"
+contracts = ["awaited", "cancellable"]
+evidence = ["test:coding/sdk_stream_options_upstream_test.go", "test:coding/session_cache_warming_test.go", "test:ai/provider_request_options_test.go", "scenario:test/parity/scenarios/providers-faux-streaming/20-sdk-stream-options.toml"]
+rationale = "Reviewed streamFn/buildRequestOptions: request presence overrides settings, the assembled-header hook completes before provider execution, its errors propagate on the same request, and cache warming receives the prepared options. Header-attempt timers stop at headers; request cancellation owns body/tunnel lifetime. All nine SDK stream-options cases are ported and presence mutations fail. Other SDK construction and resource-loader async obligations remain deferred. Delta at Pi bd3c9b82: adc5fa9f/04a93bad set the per-request identity and rename transformHeaders' parameter; the transformHeaders callback stays async and awaited (only its parameter name changes) and its await of the extension header hook is the one the evidence covers, so the reviewed contract is unchanged. Re-confirmed at Pi e7a0df27: the delta since b3a29f11 changes no line that mentions async, await, Promise, then/catch/finally, timers, signals or AbortSignal, so the contract stands."
 
 [[files]]
 path = "packages/coding-agent/src/core/session-manager.ts"
@@ -1423,10 +1423,10 @@ rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`interna
 
 [[files]]
 path = "packages/coding-agent/src/core/settings-manager.ts"
-disposition = "pending"
+disposition = "deferred"
 contracts = []
 evidence = []
-rationale = ""
+rationale = "async/Promise source; PORT_MAP marks this file \u2705 ported (`internal/codingagent/settings.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators' Re-confirmed at Pi e7a0df27: the delta since b3a29f11 changes no line that mentions async, await, Promise, then/catch/finally, timers, signals or AbortSignal, so the contract stands."
 
 [[files]]
 path = "packages/coding-agent/src/core/tools/bash.ts"
@@ -1577,10 +1577,10 @@ rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`interna
 
 [[files]]
 path = "packages/coding-agent/src/extensions/llama/ui.ts"
-disposition = "pending"
+disposition = "deferred"
 contracts = []
 evidence = []
-rationale = ""
+rationale = "async/Promise source; PORT_MAP marks this file \u2705 ported (`internal/codingagent/llama/ui.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators' Re-confirmed at Pi e7a0df27: the delta since b3a29f11 changes no line that mentions async, await, Promise, then/catch/finally, timers, signals or AbortSignal, so the contract stands."
 
 [[files]]
 path = "packages/coding-agent/src/extensions/mcp/cli.ts"
@@ -1626,10 +1626,10 @@ rationale = "async/Promise source new in 0.99.1; PORT_MAP status 🟡 (coding/mc
 
 [[files]]
 path = "packages/coding-agent/src/extensions/mcp/ui.ts"
-disposition = "pending"
+disposition = "deferred"
 contracts = []
 evidence = []
-rationale = ""
+rationale = "async/Promise source new in 0.99.1; PORT_MAP status \u2b1c ((not started: the McpManagerView interactive manager)); no per-file ordering, cancellation and error contract has been reviewed yet, and no evidence is claimed. Review with the owning family before marking translated. Re-confirmed at Pi e7a0df27: the delta since b3a29f11 changes no line that mentions async, await, Promise, then/catch/finally, timers, signals or AbortSignal, so the contract stands."
 
 [[files]]
 path = "packages/coding-agent/src/extensions/tool-search/tool.ts"
@@ -1640,10 +1640,10 @@ rationale = "async/Promise source new in 0.99.1; PORT_MAP status ⬜ ((not start
 
 [[files]]
 path = "packages/coding-agent/src/main.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited", "cancellable", "detached-owned"]
+evidence = ["test:coding/cli/credential_print_test.go#TestCredentialPrintCancellationEndsTheCallBeforeRefreshing", "test:coding/cli/credential_print_test.go#TestCredentialPrintRefreshesExpiredOAuthTokenBeforePrinting", "test:coding/cli/credential_print_test.go#TestAuthCommandExitCodesAndErrors", "test:coding/cli/credential_print_test.go#TestAuthCheckNoRefreshCreatesNothingAndDoesNotRefresh", "test:coding/cli/main_test.go#TestReadPipedStdinTrimsContent", "test:coding/cli/print_signal_exit_test.go#TestPrintModeSignalDuringPipedStdinRead", "test:coding/cli/startup_session_test.go#TestConfirmCrossProjectSessionDefaultsNo", "test:coding/cli/startup_session_test.go#TestResolveStartupSessionSelectionFindsGlobalPrefixBeforeRuntime", "test:coding/cli/startup_native_provider_test.go#TestStartupRefreshMakesExtensionNativeProviderAvailable", "test:coding/cli/startup_native_provider_test.go#TestStartupNativeProviderCallbacksWaitForEveryExtensionFactory", "test:coding/cli/startup_benchmark_pty_test.go#TestStartupBenchmarkInitsAndStopsInteractiveMode", "test:coding/cli/rpc_startup_name_order_test.go#TestRPCStartupNamePrecedesTheInitialModelEntries", "test:coding/cli/model_tasks_exit_test.go#TestExitProcessDrainsModelTasksBeforeExtensionTransports", "test:coding/services_model_tasks_test.go#TestServicesOwnBackgroundModelTasksNotBorrowingRuntime", "test:coding/cli/metadata_stdout_test.go#TestRuntimeMetadataUsesLoadedExtensionsInEveryMode"]
+rationale = "Async uses in main.ts (read at the pin). readPipedStdin (:80-96) returns undefined on a TTY and otherwise resolves once stdin ends with the trimmed content or undefined for empty: Go readPipedStdin (main.go:202) reads on a goroutine and also ends on the context, so a termination signal stops the wait as the default signal action stops Pi mid-read (TestReadPipedStdinTrimsContent, TestPrintModeSignalDuringPipedStdinRead). runAuthCommand (:133-208) parses, then for print kinds creates the ModelRuntime with a 15 s AbortSignal.timeout and awaits resolveCredentialForPrint with that signal, writing the credential only after it resolved; for `check` it awaits the runtime and the check (refresh unless --no-refresh), turns any throw into status invalid/invalid_state, and sets exit code 0/1/2 by status; errors print `Error: message` with exit 1 (2 for check). Go ResolveCredentialForPrint takes the context: TestCredentialPrintCancellationEndsTheCallBeforeRefreshing proves a cancelled call returns the cancellation error, no value and performs no refresh (failing-first test added for this review), TestCredentialPrintRefreshesExpiredOAuthTokenBeforePrinting that the refresh is awaited before the print, TestAuthCommandExitCodesAndErrors the exit codes and error text, TestAuthCheckNoRefreshCreatesNothingAndDoesNotRefresh the read-only check. createSessionManager (:358-430) awaits resolveSessionPath (local, then global lookups, in that order), asks `Fork this session into current directory?` for a session of another project and exits 0 on no (the prompt reads one line from stdin and defaults to no): TestConfirmCrossProjectSessionDefaultsNo, TestResolveStartupSessionSelectionFindsGlobalPrefixBeforeRuntime. The runtime factory (:733-866) awaits createAgentSessionServices, which registers extension providers and awaits a refresh({ allowNetwork: false }) before the startup model is resolved, then awaits createAgentSessionFromServices; extension providers registered by factories are only visible after every factory ran: TestStartupRefreshMakesExtensionNativeProviderAvailable, TestStartupNativeProviderCallbacksWaitForEveryExtensionFactory, TestRPCStartupNamePrecedesTheInitialModelEntries. The RPC catalog refresh (:938-946) is a detached promise with a 15 s abort timer cleared in finally and its error swallowed: Go rpc_mode.go starts it through registry.StartModelTask with a 15 s context timeout (unless model network is off), so the detached refresh is an owned task that the services join: TestServicesOwnBackgroundModelTasksNotBorrowingRuntime and TestExitProcessDrainsModelTasksBeforeExtensionTransports. The interactive teardown (:960-985, startup benchmark) awaits init, waits 150 ms for the terminal query replies, stops, waits for stdout/stderr to drain and returns: Go runStartupBenchmark runs the same sequence, joins the stop error and exits non-zero on failure (TestStartupBenchmarkInitsAndStopsInteractiveMode). Print mode awaits runPrintMode and sets the exit code from its result. Pi 6dfb54678 moves the computation of startupDiagnostics before the awaited help and list-models branches and reports it there; no new Promise or ordering: the diagnostics are printed synchronously before the help text or listing (TestRuntimeMetadataUsesLoadedExtensionsInEveryMode). Re-confirmed at Pi e7a0df27: the delta since b3a29f11 changes no line that mentions async, await, Promise, then/catch/finally, timers, signals or AbortSignal, so the contract stands."
 
 [[files]]
 path = "packages/coding-agent/src/migrations.ts"
@@ -1696,24 +1696,24 @@ rationale = "showPrompt and showManualInput return a Promise settled only by the
 
 [[files]]
 path = "packages/coding-agent/src/modes/interactive/components/model-selector.ts"
-disposition = "pending"
+disposition = "deferred"
 contracts = []
 evidence = []
-rationale = ""
+rationale = "async/Promise source; PORT_MAP marks this file \u2705 ported (`tui/model_select.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators' Re-confirmed at Pi e7a0df27: the delta since b3a29f11 changes no line that mentions async, await, Promise, then/catch/finally, timers, signals or AbortSignal, so the contract stands."
 
 [[files]]
 path = "packages/coding-agent/src/modes/interactive/components/scoped-models-selector.ts"
-disposition = "pending"
+disposition = "deferred"
 contracts = []
 evidence = []
-rationale = ""
+rationale = "async/Promise source; PORT_MAP marks this file \u2705 ported (`tui/scoped_models_list.go + internal/codingagent/interactive.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators' Re-confirmed at Pi e7a0df27: the delta since b3a29f11 changes no line that mentions async, await, Promise, then/catch/finally, timers, signals or AbortSignal, so the contract stands."
 
 [[files]]
 path = "packages/coding-agent/src/modes/interactive/components/session-selector.ts"
-disposition = "pending"
+disposition = "deferred"
 contracts = []
 evidence = []
-rationale = ""
+rationale = "async/Promise source; PORT_MAP marks this file \u2705 ported (`internal/codingagent/session_selector.go + session_selectors.go + interactive.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators' Re-confirmed at Pi e7a0df27: the delta since b3a29f11 changes no line that mentions async, await, Promise, then/catch/finally, timers, signals or AbortSignal, so the contract stands."
 
 [[files]]
 path = "packages/coding-agent/src/modes/interactive/external-editor.ts"
@@ -1724,10 +1724,10 @@ rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`ported+
 
 [[files]]
 path = "packages/coding-agent/src/modes/interactive/interactive-mode.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited", "cancellable", "detached-owned"]
+evidence = ["test:internal/codingagent/login_cancel_test.go#TestOAuthLoginCancellationDoesNotCompleteAuthentication", "test:internal/codingagent/login_persistence_cancel_test.go#TestLoginCancelWhileCredentialStoreLocked", "test:internal/codingagent/interactive_post_login_discovery_test.go#TestPostLoginCompletesBeforeBackgroundRefresh", "test:internal/codingagent/signal_handler_lifetime_upstream_test.go#TestSignalShutdownDefersTerminalCleanupUntilDisposalCompletesUpstream", "test:internal/codingagent/upstream_signal_shutdown_test.go#TestSignalShutdownJoinsCleanupBeforeOwnerTeardown", "test:internal/codingagent/upstream_signal_shutdown_test.go#TestUpstreamSignalShutdownExtensionCleanup", "test:internal/codingagent/interactive_teardown_test.go#TestRequestShutdownDoesNotTearDownOffLoop", "test:internal/codingagent/shutdown_input_owner_test.go#TestInteractiveShutdownJoinsInputBeforeTerminalTeardown", "test:internal/codingagent/interactive_user_bash_lifetime_test.go#TestInteractiveUserBashShutdownCancelsAndDrainsHook", "test:internal/codingagent/interactive_prompt_routing_test.go#TestSettleActiveRunAbortsAndWaitsForTheRun", "test:internal/codingagent/interactive_prompt_routing_test.go#TestExtensionAbortSettlesTheRunAndTheNextPromptRuns", "test:internal/codingagent/interactive_agent_settled_aborted_test.go#TestInteractiveAgentSettledReportsEscapeAbort", "test:internal/codingagent/interactive_test.go#TestInteractiveMode_QueuedEnterSendsAfterCompactionEnd", "test:internal/codingagent/interactive_test.go#TestInteractiveMode_CompactionQueueFlushSkipsTurnWhenBusy", "test:internal/codingagent/interactive_test.go#TestCompactionFlushStartsTurnWhenIsIdleIsStaleFalse", "test:internal/codingagent/interactive_session_test.go#TestInteractiveMessageQueuedDuringEndOfTurnCompactionIsDelivered", "test:internal/codingagent/interactive_extension_delivery_test.go#TestDeliverUserMessageIsNotDroppedWhenTheUIQueueIsFull", "test:internal/codingagent/tmux_check_test.go#TestTmuxKeyboardQueriesStartConcurrently", "test:internal/codingagent/update_notice_test.go#TestStartupVersionCheckShowsTheReleaseItReports", "test:internal/codingagent/reload_notices_caller_test.go#TestExtensionReloadShowsTheReloadStatus"]
+rationale = "Async uses in interactive-mode.ts (read at the pin; the file is 7105 lines and its asynchrony falls in six groups). (1) Startup (:1090-1380): init awaits Promise.all for the fd lookup and the keyboard-protocol queries, then starts detached work that nobody awaits: the highlight-language preload, the catalog refresh with a 15 s abort timer (:1153), the new-release check, the package-update check, the tmux keyboard check (runTmuxShow spawns `tmux show -gv` with a 2 s kill timer, :1287-1305) and the anonymous install report; each .then only paints a notice when its result arrives. Go starts these as owned goroutines joined at shutdown, and the tmux queries run concurrently (TestTmuxKeyboardQueriesStartConcurrently), the release check paints the release it reports (TestStartupVersionCheckShowsTheReleaseItReports). (2) Input (getUserInput :4238-4252): a queued input is returned first, otherwise one resolver is parked and the next submit settles it; Go keeps the same single-resolver queue on the interactive loop, with the same order for deliveries that arrive while the UI queue is full (TestDeliverUserMessageIsNotDroppedWhenTheUIQueueIsFull). (3) Turn and abort: Escape and Ctrl-C call session.abort() unawaited (:4740-4750); Go settles the active run before the next prompt starts and reports the abort (TestSettleActiveRunAbortsAndWaitsForTheRun, TestExtensionAbortSettlesTheRunAndTheNextPromptRuns, TestInteractiveAgentSettledReportsEscapeAbort). (4) Compaction queue: flushCompactionQueue runs unawaited after compaction end (:2020, 3696, 5667); a message typed meanwhile joins the queue, is flushed after the end event, restarts the turn only when the agent is idle, and a retry keeps its follow-up mode: TestInteractiveMode_QueuedEnterSendsAfterCompactionEnd, TestInteractiveMode_CompactionQueueFlushSkipsTurnWhenBusy, TestCompactionFlushStartsTurnWhenIsIdleIsStaleFalse, TestInteractiveMessageQueuedDuringEndOfTurnCompactionIsDelivered. (5) Shutdown (:4258-4400): Ctrl-C twice within 500 ms, Ctrl-D and the signal handlers (SIGINT/SIGTERM/SIGHUP, prepended) each call `void this.shutdown()`, which stops the TUI before extension shutdown events so cleanup cannot repaint, then disposes and exits once. Go ShutdownFromSignal runs the same order and joins the input reader, the user-bash hook and the extension cleanup before the terminal teardown (TestSignalShutdownDefersTerminalCleanupUntilDisposalCompletesUpstream, TestSignalShutdownJoinsCleanupBeforeOwnerTeardown, TestUpstreamSignalShutdownExtensionCleanup, TestRequestShutdownDoesNotTearDownOffLoop, TestInteractiveShutdownJoinsInputBeforeTerminalTeardown, TestInteractiveUserBashShutdownCancelsAndDrainsHook). (6) Login and reload: the login prompt races the dialog's response against the prompt's AbortSignal and rejects `Login cancelled`, removing the listener in finally (:6280-6296), a cancelled provider login never completes authentication and leaves the old credential, also while the credential store is locked, and the post-login refresh runs in the background only after the login completed (TestOAuthLoginCancellationDoesNotCompleteAuthentication, TestLoginCancelWhileCredentialStoreLocked, TestPostLoginCompletesBeforeBackgroundRefresh); the reload box yields one process.nextTick so the box paints before the reload starts (:6457), which Go reproduces with the render turn before the reload goroutine (TestExtensionReloadShowsTheReloadStatus). Delta at Pi 7853186d and c1810bf7: setCustomEditorComponent stays synchronous and only skips the selector disposal, editor-slot swap and focus while an extension dialog is open (TestExtensionDialogsStayVisibleWhenTheEditorComponentIsReplaced, TestEditorComponentReplacementKeepsTheActiveSelectorWhileADialogIsOpen); showExtensionCustom still resolves when done runs and now passes options.blocked to pushExtensionDialog, a synchronous argument (TestExtensionDialogsReportBlockedStatusForAnInlineCustomComponentThatOptsIn). Re-confirmed at Pi e7a0df27: the delta since b3a29f11 changes no line that mentions async, await, Promise, then/catch/finally, timers, signals or AbortSignal, so the contract stands."
 
 [[files]]
 path = "packages/coding-agent/src/modes/interactive/model-catalog-refresh.ts"
@@ -1780,10 +1780,10 @@ rationale = "Session-replacing commands and export_html await off the input loop
 
 [[files]]
 path = "packages/coding-agent/src/package-manager-cli.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "deferred"
+contracts = ["awaited"]
+evidence = ["test:coding/cli/package_cli_parity_test.go", "test:coding/cli/package_git_parity_test.go", "scenario:test/parity/scenarios/cli-utils/11-package-uninstall-alias.toml", "scenario:test/parity/scenarios/cli-utils/12-package-update-error.toml"]
+rationale = "Package aliases route before Session/model startup. Removal, installation and update complete before success output; thrown errors appear after inherited child diagnostics. Native self-update ownership remains D39; the complete upstream managed-update and configuration async family remains unreviewed, so this file is not async-closed. Pi fdce48eb only strips a BOM (stripBom) from the synchronously read managed-install marker; no async construct is added or changed, so the review above carries over. Pi 6dfb54678 prints the install failures of the awaited resolve() in the config command; PiG's config command does not resolve by installing, so no new async obligation. Re-confirmed at Pi e7a0df27: the delta since b3a29f11 changes no line that mentions async, await, Promise, then/catch/finally, timers, signals or AbortSignal, so the contract stands."
 
 [[files]]
 path = "packages/coding-agent/src/utils/abort.ts"
@@ -1836,10 +1836,10 @@ rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`interna
 
 [[files]]
 path = "packages/coding-agent/src/utils/image-resize-core.ts"
-disposition = "pending"
+disposition = "deferred"
 contracts = []
 evidence = []
-rationale = ""
+rationale = "async/Promise source; PORT_MAP marks this file \u2705 ported (`internal/codingagent/images.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators' Re-confirmed at Pi e7a0df27: the delta since b3a29f11 changes no line that mentions async, await, Promise, then/catch/finally, timers, signals or AbortSignal, so the contract stands."
 
 [[files]]
 path = "packages/coding-agent/src/utils/image-resize-worker.ts"
@@ -1927,10 +1927,10 @@ rationale = "`(Go archive/zip, used by internal/codingagent/bug_report.go)`"
 
 [[files]]
 path = "packages/durable/src/codemode/codemode.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited", "cancellable", "detached-owned", "microtask-ordering"]
+evidence = ["test:durable/codemode/codemode_test.go#TestDurableCodeMode", "test:durable/codemode/call_test.go#TestACallLaunchesOnlyOnceItsIssuedCountIsCommitted", "test:durable/codemode/call_test.go#TestALaunchedCallEntersBeforeTheNextOneIsLaunched", "test:durable/codemode/call_test.go#TestAReplayedCallEntersBeforeTheNextOneIsStarted", "test:durable/codemode/call_test.go#TestAScriptsTimeoutLimitsItsRun", "test:durable/codemode/models_test.go#TestCodeModeModels", "test:durable/codemode/telemetry_replay_test.go#TestDurableTelemetryEmitsReplayForACodemodeJournalResultWithoutRerunningItsNestedTool"]
+rationale = "Async uses in codemode.ts. execute (:369-516) runs the sandbox with the call's abort signal (the caller's abort forwarded to this.controller, and a timeout of what the script has left), awaits run.result and then decides: a recorded failure rethrows, a decided outcome (divergence) returns it, a caller abort throws, a sandbox closed by the host without the call being aborted stores nothing and waits for the caller's abort before throwing so a later attempt replays; the abort listener is removed in finally. Go call.run keeps that decision order (TestDurableCodeMode: stores no outcome when the host closes the sandbox, and replays the script after a restart; times a script out across a restart, without admitting new calls; TestAScriptsTimeoutLimitsItsRun). Journaling (pump :966-1006) is one commit in flight at a time: finished calls and acknowledged counts go in one commit, then each result is delivered to the VM in journal order and the covered calls are launched; what arrives meanwhile queues for the next commit, and a failed commit fails the call. Go pump keeps the committing flag, posts the commit and flushes it when the call ends (TestACallLaunchesOnlyOnceItsIssuedCountIsCommitted, and TestDurableCodeMode: delivers a result only after its journal commit; journals results that finish together in one commit). Replay (onCall :655-690, deliverReplayed :700-715) starts each journaled tool call behind the gate, collects outcomes into ready and delivers them in journal order once the VM issued the call: TestDurableCodeMode: replays results in the order they arrived, not the order the calls were made, resumes a script after a restart without running its finished calls again; a replayed call enters before the next one starts (TestAReplayedCallEntersBeforeTheNextOneIsStarted) as a live one enters before the next is launched (TestALaunchedCallEntersBeforeTheNextOneIsLaunched; pig divergence D184 in call.go notes the goroutine hop). diverge (:530-540) stores the divergence outcome and then aborts the VM with an error the script cannot catch, and a failing store fails the call: the divergence subtests of TestDurableCodeMode (a different number of calls, waits without making a call, other arguments, admits no call of a diverging replay). release (:744-775) waits for the gate, then checks every held call of a rerun against earlier attempts before launching any: checks every call a rerun holds before launching any of them. launch (:790-815) runs one live call, journals its result unless the call stopped, and a failure while the abort signal is set fails the call, otherwise diverges. callTool/callGlobal reach the nested tool through api.executeTool; the model slots (modelSlot/releaseModelSlot :897-910) admit at most four concurrent model calls and a call that waited for a slot starts nothing after the script ended: TestCodeModeModels (runs at most four model calls at once; does not start a model call that waited for a slot after the script ended). Calls still running when the script ends are aborted (TestDurableCodeMode: aborts a call still running when the script ends; drops a global result that arrives after the script finished). Go runs these continuations on the call's owned goroutines and its serialized event loop, which the call joins before returning. Delta at Pi d0aa218c: f715a15c1 copies the call preview's cut with ownedSlice; no added or removed line contains async, await, Promise or .then, so the reviewed contract is unchanged. Re-confirmed at Pi e7a0df27: the delta since b3a29f11 changes no line that mentions async, await, Promise, then/catch/finally, timers, signals or AbortSignal, so the contract stands."
 
 [[files]]
 path = "packages/durable/src/codemode/describe.ts"
@@ -1976,17 +1976,17 @@ rationale = ""
 
 [[files]]
 path = "packages/durable/src/harness/agent.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited"]
+evidence = ["test:durable/harness/agent_model_tools_test.go#TestAddToolsExtendsToolsAndModelTools", "test:durable/harness/agent_regression_test.go#TestAddToolsEditsTheStoredToolFilter", "test:durable/harness/agent_regression_test.go#TestConfigureStoresTheArrayAndObjectFormsOfExtensions", "test:durable/harness/harness_conversations_test.go#TestHarnessAgent", "test:durable/harness/agent_resolve_pi_oracle_test.go#TestResolveAgentMatchesPi"]
+rationale = "The async functions are the transactional document updates: configure and addTools await tx.doc(AgentDoc, conversationId) and then edit the draft in place, and createAgent returns for a forked conversation, otherwise awaits the new conversation's own agent document, then (for a task-owned conversation) the owner conversation's document and copies it over; they are part of the creating commit, so the reads happen in that order inside the transaction. Go durable/harness/agent.go Configure, AddTools and CreateAgent (called from the creating commit, harness.go:400) take the same Tx and perform the same reads and writes in order. The cited tests pin the stored tool filters after addTools, the array and object forms of configure, the three document outcomes of a created conversation (empty, owner copy, fork as-of copy) in TestHarnessAgent, and Pi's resolveAgent against the oracle. Delta at Pi 38ff9917: 6c2fd73b0 adds persistWithinMs to the progress policy and its resolver; no added or removed line contains async, await, Promise or .then, so the reviewed contract is unchanged. Re-confirmed at Pi e7a0df27: the delta since b3a29f11 changes no line that mentions async, await, Promise, then/catch/finally, timers, signals or AbortSignal, so the contract stands."
 
 [[files]]
 path = "packages/durable/src/harness/compaction.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited", "cancellable", "concurrent-joined", "detached-owned"]
+evidence = ["test:durable/harness/harness_compaction_test.go#TestManualCompaction", "test:durable/harness/harness_compaction_test.go#TestManualCompactionConcurrency", "test:durable/harness/harness_compaction_test.go#TestBackgroundThresholdCompaction", "test:durable/harness/harness_compaction_test.go#TestBlockingThresholdCompaction", "test:durable/harness/harness_compaction_test.go#TestCompactionOutcomes", "test:durable/harness/harness_compaction_test.go#TestCompactionRecovery", "test:durable/core/driver/compaction_failure_core_test.go#TestCoreACompactionFailureIsVisibleUntilASummaryIsProduced"]
+rationale = "The compaction task is a checkpointed phase machine (select, summarize, retry, abort): each phase awaits its reads (agent, context at the immutable tail, beforeCompact hooks one after another, the completeSimple call with runtime.signal) and ends in one awaited commit; after the model call it throws if the signal was aborted so the abort invocation or the reopened task owns the committed state; a retryable error is re-queued with a durable backoff; the abort phase removes the live status and ends terminal. Compactions run as ordinary background work and several may be in flight, the one that cuts furthest wins whatever finishes first. Go durable/harness/compaction.go keeps the phases and checkpoints. The cited tests pin the manual and concurrent cases (a compaction that cuts furthest wins, an older-selected summary that cuts later is placed, abort by Conversation.abort with an already queued summary surviving), the background and blocking threshold paths (stops through abortTask, aborted with its generation by Esc), hook decisions (first wins, a throw is reported), retry with the pinned request, and recovery after reopen. Delta at Pi b3a29f11: failCutOff(runtime, task, context) is one awaited runtime.commit that records the compaction failure in pi.live (failCompactionStatus) and ends the task terminal instead of parking it at restartLimit; the phases and checkpoints are unchanged. Go durable/harness/compaction.go failCompactionCutOff and the core's durable/core/turn/compaction.go failCutOff commit the same failure; TestCoreOtherTasksCutOffRestartLimitTimesInARow pins it on both engines. Re-confirmed at Pi e7a0df27: the delta since b3a29f11 changes no line that mentions async, await, Promise, then/catch/finally, timers, signals or AbortSignal, so the contract stands."
 
 [[files]]
 path = "packages/durable/src/harness/context.ts"
@@ -2011,17 +2011,17 @@ rationale = ""
 
 [[files]]
 path = "packages/durable/src/harness/inbox.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited"]
+evidence = ["test:durable/harness/harness_inbox_test.go#TestInbox"]
+rationale = "prepareBoundary, applyBoundary, removeInboxItem and withdrawQueuedInputs run inside one transaction and await its operations one at a time: applyBoundary appends the queued writes first (stale ones are settled as unanswered/stale without an append) and then the selected steer and follow-up items in ID order, each append awaited before the next so the placed entry order is deterministic, and only then removes the used items. Go PrepareBoundary/ApplyBoundary/RemoveInboxItem/WithdrawQueuedInputs (durable/harness/inbox.go) take the same Tx and perform the same sequence synchronously, returning the first error. The subtests of TestInbox pin the order (writes before user items at the final boundary, one follow-up per run, every follow-up with followUpMode all, steers at postTools, a queued reset, stale head writes, positional removals, withdrawals and persistence across reopen). Re-confirmed at Pi e7a0df27: the delta since b3a29f11 changes no line that mentions async, await, Promise, then/catch/finally, timers, signals or AbortSignal, so the contract stands."
 
 [[files]]
 path = "packages/durable/src/harness/live.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited"]
+evidence = ["test:durable/harness/harness_live_deltas_test.go#TestLiveDeltas", "test:durable/harness/tool_nested_records_test.go#TestARunningNestedCallSlotKeepsPiMemberOrder", "test:durable/harness/harness_run_failure_test.go"]
+rationale = "The live-state helpers are synchronous functions over a transaction's draft documents (ending a run, finding a slot by binary search, settling a task the scheduler wrote); their asynchronous callers await the commit that contains them, so the changes are published together in commit order. Delta at Pi 38ff9917: 6c2fd73b0 adds the PROGRESS_COMMIT constant; no added or removed line contains async, await, Promise or .then, so the reviewed contract is unchanged. Delta at Pi f3255de7 and b3a29f11: runFailure, endFailedRun and startRun({ keepFailure }) are synchronous edits of the draft LiveDoc inside the commit of their async callers, which await that commit, so a failure and the entry conversions that go with it are published together in commit order; LIMITS_RESTARTS is a constant. The reviewed contract is unchanged; durable/harness/live.go has the same helpers over the Tx draft (TestRunFailure of harness_run_failure_test.go, TestDeferredGenerationPartials). Re-confirmed at Pi e7a0df27: the delta since b3a29f11 changes no line that mentions async, await, Promise, then/catch/finally, timers, signals or AbortSignal, so the contract stands."
 
 [[files]]
 path = "packages/durable/src/harness/prompt.ts"
@@ -2039,10 +2039,10 @@ rationale = "Added to the accounting when every monorepo package was listed: the
 
 [[files]]
 path = "packages/durable/src/harness/scheduler.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["microtask-ordering", "detached-owned", "cancellable", "awaited", "concurrent-joined"]
+evidence = ["test:durable/harness/harness_tasks_scheduling_test.go#TestTaskScheduling", "test:durable/harness/harness_tasks_scheduling_test.go#TestTaskAbort", "test:durable/harness/harness_tasks_scheduling_test.go#TestTaskClose", "test:durable/harness/harness_tasks_scheduling_test.go#TestTaskCloseSignalsHandlersOnlyAfterEveryCloseListenerRan", "test:durable/harness/scheduler_line_position_test.go#TestReservationPassTakesItsLinePositionInThePublishingTurn", "test:durable/harness/scheduler_wake_clock_test.go#TestWakeRecomputedAfterSleepCameDueArmsItsTimer", "test:durable/harness/scheduler_wake_clock_test.go#TestWakeRecomputedAfterSleepCameDueOffersItsAlarm", "test:durable/harness/scheduler_storage_failure_test.go#TestASchedulerChainReadThatFailsTheSessionEndsIt", "test:durable/harness/scheduler_owned_tasks_test.go#TestOwnedTasksRejectsOnceItsInvocationHasEnded", "test:durable/harness/harness_deferred_progress_upstream_test.go#TestReadingPiLiveInACommitStoresTheHeldPartial", "test:durable/core/driver/harness_blocked_core_test.go#TestBlockedTasks"]
+rationale = "Async uses in scheduler.ts (the microtask-driven parts). #kick (:1452-1458) marks dirty, schedules the wake and, unless a drain runs, queues #drain in a microtask so no commit starts synchronously inside a commit or registry listener; #drain loops reserve-then-start while dirty, fails the Session on a reservation error and, in finally, kicks again when a wakeup arrived after the loop's last check. Go kick takes the pass's place on the Session line immediately (TakeLineTicket) and runs drain on the scheduler's background group, which models the publishing-turn position of queueMicrotask: TestReservationPassTakesItsLinePositionInThePublishingTurn pins that a commit started after the kick queues behind the reservation, and TestTaskScheduling (fails the Harness on a failed reservation commit; reopening runs the task) the error path. #start (:1705-1725) runs the reserved invocation in a detached async IIFE that reports a thrown error as task_error and in finally ends the invocation, clears its record, finishes it and kicks; Go start runs it on its own goroutine joined through invocation.done and Join (pig divergence D181, commit sequence numbers of unawaited jobs may differ, final state equal): TestTaskScheduling (waits for Harness and conversation idleness; rejects unknown tasks), TestOwnedTasksRejectsOnceItsInvocationHasEnded. #scheduleReconcile and #scheduleWake (:775-783, 1330-1345) coalesce through a scheduled flag and recompute in a microtask off the Session line, arming the timer or telling onWake of a change; Go scheduleWakeLocked recomputes under wakeMu: TestWakeRecomputedAfterSleepCameDueArmsItsTimer and ...OffersItsAlarm. The abort path (:570-585) marks under a commit, then joins the run with Promise.race([run.done, session.failed]) so a run that ignores its signal cannot outlive a failed Session: TestTaskAbort (signals and joins the run before returning, then runs the abort handler; a cancelled caller leaves the mark durable; lets an abort mark win over a fault that races it) and TestASchedulerChainReadThatFailsTheSessionEndsIt. waitForTask checks and registers on the line so no terminal publication falls between: TestTaskScheduling (rejects task waits cancelled or closed while queued on the line). Close seals admission, signals handlers, joins the invocations and rejects pending waiters: TestTaskClose and TestTaskCloseSignalsHandlersOnlyAfterEveryCloseListenerRan. Delta at Pi d0aa218c: f715a15c1 copies the task span error message with ownedSlice; no added or removed line contains async, await, Promise or .then, so the reviewed contract is unchanged. Delta at Pi 38ff9917: 6c2fd73b0 passes the optional CommitOptions through the task runtime's commit and #gated, and the scheduler's observer returns for a commit held in memory (it changes documents only); the gated commit is the same awaited line job and the observer still runs synchronously on the line, so the contracts are unchanged (TestDeferredToolOutput, TestReadingPiLiveInACommitStoresTheHeldPartial: a task commit that returns a state is stored at once). Pi 8b0caefc: onWake runs off the Session line after adoption and a host listener's commit queues ahead of the reservation pass (scheduler_line_position_test.go TestReservationPassTakesItsLinePositionInThePublishingTurn). Delta at Pi b3a29f11: restartLimit now ends work instead of parking it, so retry(id, context) (an awaited commitWith that cleared a parked task's restart count and enabled scheduling) is removed together with the #parked check of the drain; the reservation pass faults a task of an extension's kind at the limit in the same awaited commit as before and reports task_faulted reason restart_limit, and the built-in tasks' own terminal commits report task_interrupted. The kick, drain and wake contracts above are unchanged; Go removes Scheduler.Retry and Harness.RetryTask and has no retry wait to order (TestBlockedTasks pins that no task is blocked restart_limit). Re-confirmed at Pi e7a0df27: the delta since b3a29f11 changes no line that mentions async, await, Promise, then/catch/finally, timers, signals or AbortSignal, so the contract stands."
 
 [[files]]
 path = "packages/durable/src/harness/submissions.ts"
@@ -2088,10 +2088,10 @@ rationale = "Added to the accounting when every monorepo package was listed: the
 
 [[files]]
 path = "packages/durable/src/harness/util.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited", "cancellable", "detached-owned"]
+evidence = ["test:durable/harness/harness_submissions_test.go#TestSubmissions", "test:durable/harness/context_extend_scaling_test.go"]
+rationale = "Waiters.add returns a Promise that settles once: resolve(key, value) resolves every waiter of the key, rejectAll rejects all pending ones, and an AbortSignal on the context rejects only that waiter with signal.reason (already-aborted: rejected at once) and detaches its abort listener when it settles; scanAll awaits the pages one after another in order. Go Waiters (durable/harness/util.go) keeps the same: Add fails an already-done context at once with its cause and otherwise registers an AfterFunc that removes only that waiter, Resolve and RejectAll close every waiter's done channel after storing the value or error, and ScanAll follows the cursor sequentially. TestSubmissions subtest 'cancels only a wait and rejects pending waits on close' drives two waits on one submission, cancels one with its cause (the other stays pending and the status stays placed) and then close rejects the other with 'Harness is closed'; ScanAll is exercised through its callers (durable/harness/context.go:536, scheduler.go:460 and :1463), e.g. by the context extension scaling test. Re-confirmed at Pi e7a0df27: the delta since b3a29f11 changes no line that mentions async, await, Promise, then/catch/finally, timers, signals or AbortSignal, so the contract stands."
 
 [[files]]
 path = "packages/durable/src/harness/view.ts"
@@ -2137,10 +2137,10 @@ rationale = ""
 
 [[files]]
 path = "packages/durable/src/session/transaction.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited"]
+evidence = ["test:durable/session/task_times_test.go#TestSetTaskStampsLifecycleTimesFromTheSessionClock", "test:durable/harness/harness_tasks_times_test.go#TestTaskTimes", "test:durable/session/transaction_context_release_internal_test.go", "test:durable/session/session_deferred_commits_upstream_test.go#TestStoringHeldChanges"]
+rationale = "The change adds only a synchronous clock read (`now()` in setTask) and a field on createTask; the transaction's awaited reads, preparation and settlement are the blocking calls the port already had, and no Promise outlives the commit. Pi 2ec55d80 keeps the caller's span on the transaction and resets the transaction context to the background context once it settles, so no Promise or span reference outlives the commit; durable/session/transaction.go releases the context however settlement ends. Delta at Pi 38ff9917: 6c2fd73b0 adds the synchronous holdable(), adoptHeld() and takeHeld() and splits adopt()'s publication into what memory adopted and what Storage stored; they run on the line between settlement and Storage admission and add no Promise (TestStoringHeldChanges, TestBasesAndOverflowOfHeldChanges). Re-confirmed at Pi e7a0df27: the delta since b3a29f11 changes no line that mentions async, await, Promise, then/catch/finally, timers, signals or AbortSignal, so the contract stands."
 
 [[files]]
 path = "packages/durable/src/storage/indexeddb.ts"
@@ -2389,10 +2389,10 @@ rationale = "runPiCodingAgent (:272-469) runs the agent in-process; internal/eva
 
 [[files]]
 path = "packages/evals/src/report.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited", "concurrent-joined"]
+evidence = ["test:internal/evals/report_persist_order_test.go#TestReadTaskObservationAwaitsTheSessionWriteBeforeTheModelCheck", "test:internal/evals/evals_oracle_test.go#TestReadTaskObservationMatchesUpstream", "test:internal/evals/report_upstream_test.go#TestReportUpstream"]
+rationale = "readTaskObservation (:136-189) is the file's only async path; internal/evals/report.go ReadTaskObservation is a blocking call. Its Promise.all over readReportWorkspace and readVitestJsonReportFile (:142-145) reads one report path twice and maps either rejection to an errored observation; Go parses the file once and derives both views, so a read or parse failure is the same errored observation. persistSession (:122-134) is awaited without a catch after the run check (:158-159) and before the model check (:161-162), so a failed mkdir or writeFile is returned as the call's error (the CLI awaits it, cli.ts:177) and a model mismatch still leaves the session written. Re-confirmed at Pi e7a0df27: the delta since b3a29f11 changes no line that mentions async, await, Promise, then/catch/finally, timers, signals or AbortSignal, so the contract stands."
 
 [[files]]
 path = "packages/mcp/src/auth-provider.ts"
@@ -2515,10 +2515,10 @@ rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`tui/can
 
 [[files]]
 path = "packages/tui/src/components/editor.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "deferred"
+contracts = ["awaited", "concurrent-joined", "cancellable", "microtask-ordering"]
+evidence = ["test:tui/editor_async_provider_test.go", "test:tui/editor_completion_owner_test.go", "test:tui/editor_completion_upstream_test.go", "test:tui/editor_completion_boundary_external_test.go", "test:internal/codingagent/autocomplete_wrappers_test.go", "scenario:test/parity/scenarios/autocomplete/12-editor-completion-lifecycle.toml", "scenario:test/parity/scenarios/autocomplete/12-extension-wrapper-error.toml", "probe:docs/findings/fix-rigidity-b.md"]
+rationale = "Native and extension autocomplete share one serial request worker. Native synchronous callbacks are prepared on the owner loop; captured filesystem and awaited callbacks run on the worker. Natural symbol requests debounce for20ms, cancelled queued requests join predecessors, and completion joins owner publication before releasing the successor. Forced queries leave input live; synchronous application holds subsequent input until the owner applies its result. Cancellation is quiet, while real rejection reaches the crash owner. The remaining editor Promise and input surfaces stay deferred. Re-confirmed at Pi e7a0df27: the delta since b3a29f11 changes no line that mentions async, await, Promise, then/catch/finally, timers, signals or AbortSignal, so the contract stands."
 
 [[files]]
 path = "packages/tui/src/native-platform.ts"
@@ -2536,14 +2536,14 @@ rationale = "Input callbacks settle in order before later negotiation effects. T
 
 [[files]]
 path = "packages/tui/src/tui-alt-screen.ts"
-disposition = "pending"
+disposition = "deferred"
 contracts = []
 evidence = []
-rationale = ""
+rationale = "async/Promise source; PORT_MAP marks this file \u2705 ported (`tui/tui_alt_screen.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators' Re-confirmed at Pi e7a0df27: the delta since b3a29f11 changes no line that mentions async, await, Promise, then/catch/finally, timers, signals or AbortSignal, so the contract stands."
 
 [[files]]
 path = "packages/tui/src/tui.ts"
-disposition = "pending"
+disposition = "deferred"
 contracts = []
-evidence = []
-rationale = ""
+evidence = ["test:tui/terminal_colors_query_upstream_test.go", "test:internal/codingagent/terminal_colors_upstream_test.go", "test:internal/codingagent/terminal_color_query_integration_test.go", "scenario:test/parity/scenarios/tui-components/15-terminal-background-query-lifecycle.toml"]
+rationale = "Background queries register FIFO reply ownership before writing, settle once, retain timed-out reply slots without timers or resolvers, preserve their deadlines across Stop, and surface write errors. Bounded timer callbacks only settle query state; they never mutate UI or retain the renderer. Startup and interactive theme detection share the renderer queue, and replies precede autocomplete, terminal-input listeners and focus dispatch. Complete TuiBase async closure remains deferred for the other query and callback lifetimes; PORT_MAP is partial. Re-confirmed at Pi e7a0df27: the delta since b3a29f11 changes no line that mentions async, await, Promise, then/catch/finally, timers, signals or AbortSignal, so the contract stands."

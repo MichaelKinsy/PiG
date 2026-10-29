@@ -5401,9 +5401,9 @@ rationale = "PORT_MAP row is ✅ ported (internal/evals/plan.go). coverage.md re
 [[files]]
 path = "packages/evals/src/report.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:internal/evals/report_upstream_test.go#TestReportUpstream"]
+rationale = "Pi 9628c848: classifyCaseStatus stops being exported and readTaskObservation filters assertions and cases by the requested fullName, so skipped siblings no longer make the observation errored; ported in internal/evals/report.go (lane E)."
 
 [[files]]
 path = "packages/mcp/src/auth-provider.ts"
