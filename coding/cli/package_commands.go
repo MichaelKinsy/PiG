@@ -403,6 +403,11 @@ func runPackageCommand(args []string, runtimeOptions ...packageCommandRuntimeOpt
 		fmt.Fprintln(os.Stderr, chalkDim("Usage: "+packageUsage(opts.command)))
 		return 1
 	}
+	// pig additive (D202): a Piglet Binary built with build.closed runs only what its signed closure lists, so it installs, removes and updates no packages.
+	if message := pigletBinaryPackageCommandRefusal(currentPigletBinary(), opts); message != "" {
+		fmt.Fprintln(os.Stderr, message)
+		return 1
+	}
 	if opts.command == packageUpdate && opts.modelsOnly {
 		if err := refreshModelCatalogs(codingagent.AgentDir()); err != nil {
 			fmt.Fprintln(os.Stderr, chalkRed(fmt.Sprintf("Error: %v", err)))

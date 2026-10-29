@@ -1091,6 +1091,23 @@ func Extension() *sdk.Extension {
 		})
 		return nil
 	})
+	// rw_idle_live polls isIdle with the command's Context, with no event subscription at all, and notifies the whole sequence of answers at each change until it has seen three (idle, busy, idle), or for 10s. An answer that never changes, a constant, or one held at the last event's snapshot cannot report the three.
+	ext.Command("rw_idle_live", "Poll isIdle live and report the sequence of answers", func(ctx sdk.Context, _ string) error {
+		go func() {
+			var seen []string
+			for deadline := time.Now().Add(10 * time.Second); len(seen) < 3 && time.Now().Before(deadline); time.Sleep(10 * time.Millisecond) {
+				answer := "error"
+				if idle, err := ctx.IsIdle(); err == nil {
+					answer = strconv.FormatBool(idle)
+				}
+				if len(seen) == 0 || seen[len(seen)-1] != answer {
+					seen = append(seen, answer)
+					ctx.Notify("rw_idle_live="+strings.Join(seen, ","), "info")
+				}
+			}
+		}()
+		return nil
+	})
 	ext.Command("set_model", "Switch to the model in the arguments", func(ctx sdk.Context, args string) error {
 		ok, err := ctx.SetModel(args)
 		if err != nil {

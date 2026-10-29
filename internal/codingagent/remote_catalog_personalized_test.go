@@ -196,8 +196,10 @@ func TestRegistryPersonalizesTheOpenRouterCatalogThroughTheConfiguredBaseURL(t *
 	if result := registry.RefreshCatalogs(context.Background(), CatalogRefreshOptions{AllowNetwork: true, Providers: []string{"openrouter"}}); len(result.Errors) != 0 || result.Aborted {
 		t.Fatalf("refresh = %+v", result)
 	}
-	if got := ids(registry); !slices.Equal(got, []string{"openai/gpt-4o-mini"}) {
-		t.Fatalf("personalized chat models = %v, want only the listed model", got)
+	// The key's list replaces the bundled one; OpenRouter's routing variants (D199) follow the listed model, as they follow every bundled model.
+	personalized := []string{"openai/gpt-4o-mini", "openai/gpt-4o-mini:nitro", "openai/gpt-4o-mini:floor"}
+	if got := ids(registry); !slices.Equal(got, personalized) {
+		t.Fatalf("personalized chat models = %v, want only the listed model and its routing variants", got)
 	}
 	listed := registry.GetProviderModelData("openrouter")[0].Capabilities
 	if listed.ContextWindow != 4321 || listed.MaxOutputTokens != 123 || listed.InputCostPer1M != 2 || listed.OutputCostPer1M != 4 {
@@ -212,7 +214,7 @@ func TestRegistryPersonalizesTheOpenRouterCatalogThroughTheConfiguredBaseURL(t *
 	// A new registry over the same store restores the personalized list as is, without the network.
 	restored := newRegistry()
 	restored.RefreshCatalogs(context.Background(), CatalogRefreshOptions{AllowNetwork: false, Providers: []string{"openrouter"}})
-	if got := ids(restored); !slices.Equal(got, []string{"openai/gpt-4o-mini"}) {
+	if got := ids(restored); !slices.Equal(got, personalized) {
 		t.Fatalf("restored models = %v", got)
 	}
 	mu.Lock()

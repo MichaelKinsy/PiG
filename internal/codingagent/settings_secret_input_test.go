@@ -188,3 +188,30 @@ func TestLoginMaskSettingReachesStandardDialog(t *testing.T) {
 		t.Fatal("false did not restore Pi input rendering")
 	}
 }
+
+// Pi's settings-selector.ts lists 33 rows on a terminal without inline images; PiG omits "share-destination" (D64) and adds "mask-secret-input" (D80), so the counts coincide and the roster differs by exactly those two ids.
+func TestSettingsRosterDiffersFromPiOnlyByD64AndD80(t *testing.T) {
+	piRoster := []string{"autocompact", "auto-resize-images", "block-images", "skill-commands", "show-hardware-cursor", "editor-padding", "output-padding", "autocomplete-max-visible", "clear-on-shrink", "terminal-progress", "steering-mode", "follow-up-mode", "transport", "share-destination", "http-idle-timeout", "cache-warming-mode", "hide-thinking", "mermaid-rendering", "cache-miss-notices", "collapse-changelog", "quiet-startup", "install-telemetry", "default-project-trust", "double-escape-action", "tree-filter-mode", "warnings", "model-thinking", "tui-mode", "fullscreen-exit-output", "fullscreen-scrollbar", "fullscreen-copy-on-select", "fullscreen-wheel-scroll-lines", "theme"}
+	var got []string
+	for _, item := range NewSettingsSelectorComponent(SettingsConfig{}, SettingsCallbacks{}).GetSettingsList().Items() {
+		if item.ID != "show-images" && item.ID != "image-width-cells" { // the two rows only an image-capable terminal adds
+			got = append(got, item.ID)
+		}
+	}
+	var want []string
+	for _, id := range piRoster {
+		if id == "share-destination" {
+			continue // D64
+		}
+		want = append(want, id)
+		if id == "tree-filter-mode" {
+			want = append(want, "mask-secret-input") // D80
+		}
+	}
+	if strings.Join(got, ",") != strings.Join(want, ",") {
+		t.Fatalf("roster = %v\nwant     %v", got, want)
+	}
+	if len(piRoster) != 33 || len(got) != 33 {
+		t.Fatalf("counts: pi %d, pig %d, want 33 each", len(piRoster), len(got))
+	}
+}

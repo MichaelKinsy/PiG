@@ -143,7 +143,7 @@ The native builder compiles PiG with the Go toolchain on your computer. See [Bui
 
 ### Overlay Piglets
 
-A Piglet Binary behaves as stock PiG started with its own Piglet. It accepts one more Piglet at launch as an overlay, with `--piglet`, `PIG_PIGLET_PATH` or `PIG_PIGLET_NAME`. To make a Binary refuse the overlay selectors and `--system-prompt`, and to remove its ambient discovery, set `build.closed: true` in the Piglet that you build. The next example is an open Binary:
+A Piglet Binary behaves as stock PiG started with its own Piglet. It accepts one more Piglet at launch as an overlay, with `--piglet`, `PIG_PIGLET_PATH` or `PIG_PIGLET_NAME`. To make a Binary refuse the overlay selectors, `--system-prompt`, `-e`, the package commands and `pig mcp add`, and to remove its ambient discovery, `settings.extensions` and `mcp.json` servers, set `build.closed: true` in the Piglet that you build. The next example is an open Binary:
 
 ```yaml
 name: pig-base
@@ -176,7 +176,7 @@ strip.extensions: "mcp" is compiled out of Piglet Binary "pig-nomcp" (build tag 
 
 The first message means that the Binary does not strip `mcp`, so the overlay has nothing to remove. The second message means that the build removed the `mcp` code from the executable. An overlay cannot bring that code back. See [Accept overlay Piglets](/docs/latest/piglet-binaries#accept-overlay-piglets) for the full rules.
 
-`build.closed` is part of the baked Piglet. A change to it changes the Piglet digest in the record. A closed Binary refuses the overlay selectors and names `build.closed`.
+`build.closed` is part of the baked Piglet. A change to it changes the Piglet digest in the record. A closed Binary refuses the overlay selectors, `-e`, `pig install`, `pig remove`, `pig update --extensions` and `pig mcp add`, and each refusal names `build.closed`.
 
 ## 7. Sign and verify
 

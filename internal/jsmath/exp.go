@@ -3,7 +3,7 @@ package jsmath
 import "math"
 
 // Exp is Math.exp as V8 computes it: fdlibm's __ieee754_exp (V8 src/base/ieee754.cc exp), including V8's exact result for exp(1). Go's math.Exp uses an assembly routine on amd64 whose last bit differs for some arguments.
-// Every product that feeds an addition is converted with float64() so that the compiler cannot fuse it into a multiply-add, which fdlibm does not do.
+// Each product that feeds an addition is fused through mulAdd where fdlibm's C expression has one, and rounded with float64() where it has none, so the compiler cannot contract anything else.
 func Exp(x float64) float64 {
 	const (
 		oThreshold = 7.09782712893383973096e+02  // 0x40862E42 FEFA39EF
@@ -58,9 +58,9 @@ func Exp(x float64) float64 {
 			if xsb != 0 {
 				half = -0.5
 			}
-			k = int32(float64(invln2*x) + half)
+			k = int32(mulAdd(invln2, x, half))
 			t := float64(k)
-			hi = x - float64(t*ln2HiPos)
+			hi = mulAdd(-t, ln2HiPos, x)
 			lo = float64(t * ln2LoPos)
 		}
 		x = hi - lo
@@ -76,7 +76,7 @@ func Exp(x float64) float64 {
 	} else {
 		twopk = math.Float64frombits(uint64(uint32(0x3FF00000+((k+1000)<<20))) << 32)
 	}
-	c := x - float64(t*(p1+float64(t*(p2+float64(t*(p3+float64(t*(p4+float64(t*p5)))))))))
+	c := mulAdd(-t, mulAdd(t, mulAdd(t, mulAdd(t, mulAdd(t, p5, p4), p3), p2), p1), x)
 	if k == 0 {
 		return 1 - (float64(x*c)/(c-2.0) - x)
 	}

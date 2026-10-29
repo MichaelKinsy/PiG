@@ -188,7 +188,7 @@ func (e *Editor) requestAutocompleteProvider(provider *AsyncAutocompleteProvider
 	})
 	e.autocompleteTaskDone = finished
 	var timer *time.Timer
-	if !explicit && !force && autocompleteTriggered(jsstring.Slice(lines[cursor[0]], 0, cursor[1]), provider.TriggerCharacters) {
+	if debouncedAutocomplete(lines, cursor, provider.TriggerCharacters, force, explicit) {
 		timer = time.NewTimer(attachmentAutocompleteDebounce)
 	}
 	launch := func() {
@@ -218,30 +218,7 @@ func (e *Editor) requestAutocompleteProvider(provider *AsyncAutocompleteProvider
 				if ctx.Err() != nil || request != e.autocompleteRequestID || e.cursor != cursor || !slices.Equal(e.lines, lines) {
 					return
 				}
-				defer e.requestRender()
-				e.asyncCancel = nil
-				e.autocompleteFromAwaited = e.asyncAutocomplete == nil
-				if err != nil {
-					e.autocompleteError(err)
-					return
-				}
-				e.setAutocompleteItems(nil)
-				e.autocompletePrefix = ""
-				e.autocompleteForced = force
-				if result != nil && len(result.Items) > 0 {
-					e.setAutocompleteItems(result.Items)
-					e.autocompletePrefix = result.Prefix
-					e.autocompleteQueryCursor = cursor
-					e.autocompleteCursor = bestAutocompleteMatchIndex(result.Items, result.Prefix)
-					if force && explicit && len(result.Items) == 1 {
-						if e.asyncAutocomplete == nil {
-							e.AutocompleteAccept()
-						} else {
-							e.acceptAsyncAutocomplete(nil)
-						}
-					}
-				}
-				e.Invalidate()
+				e.publishAutocomplete(force, explicit, cursor, result, err)
 			})
 			select {
 			case <-applied:
@@ -267,4 +244,32 @@ func (e *Editor) requestAutocompleteProvider(provider *AsyncAutocompleteProvider
 	} else {
 		launch()
 	}
+}
+
+// publishAutocomplete makes a request's answer the open menu: editor.ts applyAutocompleteSuggestions, then tui.requestRender. The caller has checked that the editor still holds the text and cursor the request asked about.
+func (e *Editor) publishAutocomplete(force, explicit bool, cursor [2]int, result *AutocompleteSuggestions, err error) {
+	defer e.requestRender()
+	e.asyncCancel = nil
+	e.autocompleteFromAwaited = e.asyncAutocomplete == nil
+	if err != nil {
+		e.autocompleteError(err)
+		return
+	}
+	e.setAutocompleteItems(nil)
+	e.autocompletePrefix = ""
+	e.autocompleteForced = force
+	if result != nil && len(result.Items) > 0 {
+		e.setAutocompleteItems(result.Items)
+		e.autocompletePrefix = result.Prefix
+		e.autocompleteQueryCursor = cursor
+		e.autocompleteCursor = bestAutocompleteMatchIndex(result.Items, result.Prefix)
+		if force && explicit && len(result.Items) == 1 {
+			if e.asyncAutocomplete == nil {
+				e.AutocompleteAccept()
+			} else {
+				e.acceptAsyncAutocomplete(nil)
+			}
+		}
+	}
+	e.Invalidate()
 }

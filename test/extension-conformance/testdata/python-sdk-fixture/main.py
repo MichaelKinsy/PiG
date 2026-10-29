@@ -2154,6 +2154,21 @@ def new_extension() -> pig_sdk.Extension:
 
     ext.command("rw_idle_background", "Poll isIdle from a background callback after agent_end", rw_idle_background)
 
+    def rw_idle_live(ctx: pig_sdk.Context, _args: str) -> None:
+        def poll():
+            seen = []
+            deadline = time.monotonic() + 10
+            while len(seen) < 3 and time.monotonic() < deadline:
+                answer = str(ctx.is_idle()).lower()
+                if not seen or seen[-1] != answer:
+                    seen.append(answer)
+                    ctx.notify("rw_idle_live=" + ",".join(seen), "info")
+                time.sleep(0.01)
+
+        threading.Thread(target=poll, daemon=True).start()
+
+    ext.command("rw_idle_live", "Poll isIdle live and report the sequence of answers", rw_idle_live)
+
     def set_model(ctx: pig_sdk.Context, args: str) -> None:
         ok, error = ctx.set_model(args)
         if error:

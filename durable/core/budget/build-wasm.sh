@@ -9,8 +9,10 @@ here=$(cd "$(dirname "$0")" && pwd)
 fork=$here/tinygo
 toolchain=${1:?go or tinygo}
 pkg=${2:?main package directory}
-out=$(realpath -m "${3:?output .wasm}")
+out=${3:?output .wasm}
 mkdir -p "$(dirname "$out")"
+# Resolve the parent after creating it: BSD realpath has no -m, and the output file need not exist yet.
+out=$(cd "$(dirname "$out")" && pwd -P)/$(basename "$out")
 pkg=$(realpath "$pkg")
 export GOTOOLCHAIN=${GOTOOLCHAIN:-go$(tr -d '\r\n' <"$(dirname "$0")/../../../.go-version")}
 cd "$pkg"

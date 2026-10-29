@@ -686,6 +686,19 @@
                                          (unless idle (sleep 0.01)))
                                 (core-info hctx (format nil "rw_idle_background=~A" (if idle "true" "false"))))))
                            nil))))
+  (pig:command ext "rw_idle_live" "Poll isIdle live and report the sequence of answers"
+               (lambda (ctx args) (declare (ignore args))
+                 (sb-thread:make-thread
+                  (lambda ()
+                    (let ((seen nil)
+                          (deadline (+ (get-internal-real-time) (* 10 internal-time-units-per-second))))
+                      (loop while (and (< (length seen) 3) (<= (get-internal-real-time) deadline))
+                            do (let ((answer (if (pig:ctx-is-idle-p ctx) "true" "false")))
+                                 (unless (equal answer (car (last seen)))
+                                   (setf seen (append seen (list answer)))
+                                   (core-info ctx (format nil "rw_idle_live=~{~A~^,~}" seen))))
+                               (sleep 0.01)))))
+                 nil))
   (let ((settled-once nil))
     (pig:command ext "rw_idle_in_settled" "Read isIdle after a message that starts a run, sent from an agent_settled handler"
                  (lambda (ctx args) (declare (ignore ctx args))

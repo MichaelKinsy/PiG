@@ -217,8 +217,39 @@ jobs:
           path: ${{ github.workspace }}/ci-image-${{ matrix.image }}/out/ci-images/${{ matrix.image }}/
           retention-days: 14
 
+  plan:
+    name: Select the images to build
+    # The parity image installs the published Pi release; a commit pin has no published package, so its oracle is built from source
+    # in the Linux parity job instead (automation/pin/oracle.py, pin.py check-oracle). The verify job above skips it for the same
+    # reason. The build and publish jobs take their images from here, so a commit pin builds and publishes the go image only.
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    timeout-minutes: 5
+    outputs:
+      images: ${{ steps.images.outputs.images }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Select the images
+        id: images
+        shell: bash
+        run: |
+          set -euo pipefail
+          ref=$(sed -n 's/^ref=//p' .upstream/pin)
+          commit=$(sed -n 's/^commit=//p' .upstream/pin)
+          if [ "$ref" = "$commit" ]; then
+            echo "::notice::Parity image skipped: the pin is commit $commit, not a release tag; the Linux parity job runs against the source-built oracle."
+            echo 'images=["go"]' >> "$GITHUB_OUTPUT"
+          else
+            echo 'images=["go","parity"]' >> "$GITHUB_OUTPUT"
+          fi
+
   build:
     name: Build ${{ matrix.image }} image
+    needs: plan
     # The refresh: the one place the package index and the vulnerability database are read.
     if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-24.04
@@ -229,7 +260,7 @@ jobs:
       fail-fast: false
       max-parallel: 1
       matrix:
-        image: [go, parity]
+        image: ${{ fromJSON(needs.plan.outputs.images) }}
     steps:
       - name: Require main for publication
         if: github.event_name == 'workflow_dispatch' && inputs.publish == true && github.ref != 'refs/heads/main'
@@ -241,30 +272,7 @@ jobs:
         with:
           path: ci-image-${{ matrix.image }}
           persist-credentials: false
-      - name: Skip the parity image for a commit pin
-        id: pin
-        shell: bash
-        working-directory: ${{ github.workspace }}/ci-image-${{ matrix.image }}
-        env:
-          IMAGE: ${{ matrix.image }}
-        run: |
-          set -euo pipefail
-          # The parity image installs the published Pi release; a commit pin has no published package, so its oracle is
-          # built from source in the Linux parity job instead (automation/pin/oracle.py, pin.py check-oracle).
-          ref=$(sed -n 's/^ref=//p' .upstream/pin)
-          commit=$(sed -n 's/^commit=//p' .upstream/pin)
-          if [ "$IMAGE" = parity ] && [ "$ref" = "$commit" ]; then
-            if [ "${{ github.event_name }}" = workflow_dispatch ] && [ "${{ inputs.publish }}" = true ]; then
-              echo "a commit pin ($commit) has no published Pi to build a parity image from; publish images from a release-tag pin" >&2
-              exit 1
-            fi
-            echo "::notice::Parity image skipped: the pin is commit $commit, not a release tag; the Linux parity job runs against the source-built oracle."
-            echo "skip=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "skip=false" >> "$GITHUB_OUTPUT"
-          fi
       - name: Verify locked dependencies
-        if: steps.pin.outputs.skip != 'true'
         shell: bash
         working-directory: ${{ github.workspace }}/ci-image-${{ matrix.image }}
         run: |
@@ -272,7 +280,6 @@ jobs:
             automation/images/ci-parity/package-lock.json \
             automation/images/npm-runtime/package-lock.json
       - name: Seed pinned base images
-        if: steps.pin.outputs.skip != 'true'
         shell: bash
         working-directory: ${{ github.workspace }}/ci-image-${{ matrix.image }}
         env:
@@ -282,7 +289,6 @@ jobs:
       # The locks name the versions the package index had when they were written; the index drops old versions within weeks.
       # Resolve them again here, then build with the exact lock (the Dockerfile's cmp proves the install matches it).
       - name: Resolve the apk lock from the current index
-        if: steps.pin.outputs.skip != 'true'
         shell: bash
         working-directory: ${{ github.workspace }}/ci-image-${{ matrix.image }}
         env:
@@ -300,7 +306,6 @@ jobs:
           cp "automation/images/$image_dir/packages.lock" "out/ci-images/$IMAGE/packages.lock"
           git diff --stat -- "automation/images/$image_dir/packages.lock" || true
       - name: Build and validate
-        if: steps.pin.outputs.skip != 'true'
         id: build
         shell: bash
         working-directory: ${{ github.workspace }}/ci-image-${{ matrix.image }}
@@ -320,7 +325,6 @@ jobs:
           ./automation/ci/build-ci-image.sh "$IMAGE"
           echo "ref=$ref" >> "$GITHUB_OUTPUT"
       - name: Generate SBOM
-        if: steps.pin.outputs.skip != 'true'
         shell: bash
         working-directory: ${{ github.workspace }}/ci-image-${{ matrix.image }}
         env:
@@ -343,7 +347,6 @@ jobs:
               raise SystemExit("SBOM contains no packages")
           PY
       - name: Scan vulnerabilities
-        if: steps.pin.outputs.skip != 'true'
         shell: bash
         working-directory: ${{ github.workspace }}/ci-image-${{ matrix.image }}
         env:
@@ -385,14 +388,14 @@ jobs:
           compression-level: 0
           retention-days: 14
       - name: Upload image evidence
-        if: always() && steps.pin.outputs.skip != 'true'
+        if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: pig-ci-${{ matrix.image }}-evidence
           path: ${{ github.workspace }}/ci-image-${{ matrix.image }}/out/ci-images/${{ matrix.image }}/
           retention-days: 14
       - name: Remove job images
-        if: always() && steps.pin.outputs.skip != 'true'
+        if: always()
         shell: bash
         env:
           IMAGE_REF: ${{ steps.build.outputs.ref }}
@@ -414,7 +417,7 @@ jobs:
 
   publish:
     name: Publish ${{ matrix.image }} image
-    needs: build
+    needs: [plan, build]
     if: github.event_name == 'workflow_dispatch' && inputs.publish == true && github.ref == 'refs/heads/main'
     # Configure required reviewers and a main-only deployment rule on release.
     environment:
@@ -428,7 +431,7 @@ jobs:
       fail-fast: false
       max-parallel: 1
       matrix:
-        image: [go, parity]
+        image: ${{ fromJSON(needs.plan.outputs.images) }}
     steps:
       - name: Download validated image
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2

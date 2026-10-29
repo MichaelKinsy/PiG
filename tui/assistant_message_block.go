@@ -354,8 +354,9 @@ func (b *AssistantMessageComponent) SetMarkdownTransformState(fn func() string) 
 	b.updateContent()
 }
 
-// SetAsyncMarkdownTransforms installs separately contextualized text and thinking rewrites. Each retained segment owns its replaceable worker generation.
+// SetAsyncMarkdownTransforms installs separately contextualized text and thinking rewrites. Each retained segment owns its replaceable worker generation. A completion runs on a worker goroutine and only marks the block dirty (completionDirtying) before the transform's Invalidate: every rebuild of the block's content stays on the owner loop.
 func (b *AssistantMessageComponent) SetAsyncMarkdownTransforms(text, thinking *AsyncMarkdownTransform) {
+	text, thinking = completionDirtying(&b.invalidatable, text), completionDirtying(&b.invalidatable, thinking)
 	b.asyncText, b.asyncThinking = text, thinking
 	b.md.AsyncTransform = text
 	for _, seg := range b.segments {
@@ -392,7 +393,7 @@ func (b *AssistantMessageComponent) SetTerminalError(stopReason, errorMessage st
 	b.updateContent()
 }
 
-// Invalidate rebuilds the content so theme-baked colors follow the active theme (assistant-message.ts invalidate).
+// Invalidate rebuilds the content so theme-baked colors follow the active theme (assistant-message.ts invalidate). It runs on the goroutine that owns the block, as Pi's runs on its event loop; a transform worker marks the block dirty through SetAsyncMarkdownTransforms instead.
 func (b *AssistantMessageComponent) Invalidate() {
 	b.Container.Invalidate()
 	b.updateContent()
