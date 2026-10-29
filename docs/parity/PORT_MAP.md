@@ -57,9 +57,71 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 
 | upstream | pig | status |
 |---|---|---|
-| `packages/ai/scripts/check-model-data.ts` | `cmd/check-model-data/main.go (validation command)` | ✅ |
-| `packages/ai/scripts/model-data.ts` | `cmd/check-model-data/model_data.go + model_data_json.go (identity, shard, manifest, hash and metadata validation; Node supplies Date.parse and JSON syntax diagnostics)` | ✅ |
-| `packages/ai/scripts/hydrate-model-catalog.ts` | `cmd/check-model-data/hydrate.go (-hydrate <models.all.json>; groupProviderModelData, staging, validation and replacement; hydration cases of model-data-validation.test.ts in hydrate_upstream_test.go)` | ✅ |
+| `packages/ai/scripts/check-model-data.ts` | `cmd/check-model-data/main.go (validation command over internal/modelgen/modeldata)` | ✅ |
+| `packages/ai/scripts/model-data.ts` | `internal/modelgen/modeldata/model_data.go + model_data_json.go (identity, shard, manifest, hash and metadata validation; Node supplies Date.parse and JSON syntax diagnostics; moved from cmd/check-model-data so cmd/gen-models shares it)` | ✅ |
+| `packages/ai/scripts/hydrate-model-catalog.ts` | `internal/modelgen/modeldata/hydrate.go (HydrateModelCatalog and GroupProviderModelData; command in cmd/check-model-data -hydrate <models.all.json>; hydration cases of model-data-validation.test.ts in hydrate_upstream_test.go)` | ✅ |
+
+## `packages/ai/catalog/`
+
+| upstream | pig | status |
+|---|---|---|
+| `packages/ai/catalog/build.ts` | `internal/modelgen/build.go` | ✅ |
+| `packages/ai/catalog/define.ts` | `internal/modelgen/define.go (+ internal/modelgen/obj.go: the ordered JavaScript-object value the models are built as)` | ✅ |
+| `packages/ai/catalog/families/anthropic.ts` | `internal/modelgen/family_anthropic.go` | ✅ |
+| `packages/ai/catalog/families/deepseek.ts` | `internal/modelgen/family_deepseek.go` | ✅ |
+| `packages/ai/catalog/families/google.ts` | `internal/modelgen/family_google.go` | ✅ |
+| `packages/ai/catalog/families/kimi.ts` | `internal/modelgen/family_kimi.go` | ✅ |
+| `packages/ai/catalog/families/openai.ts` | `internal/modelgen/family_openai.go` | ✅ |
+| `packages/ai/catalog/generate.ts` | `cmd/gen-models/generate.go (flags, staging, validation, data and public JSON output; `-data-output` is the Go form of Pi's `src/providers/data`, `-data-only` takes its provider ids from that directory) + cmd/gen-models/main.go + cmd/gen-models/fixtures.go (-record/-replay)` | ✅ |
+| `packages/ai/catalog/providers/amazon-bedrock.ts` | `internal/modelgen/providers/amazon_bedrock.go` | ✅ |
+| `packages/ai/catalog/providers/ant-ling.ts` | `internal/modelgen/providers/ant_ling.go` | ✅ |
+| `packages/ai/catalog/providers/anthropic.ts` | `internal/modelgen/providers/anthropic.go` | ✅ |
+| `packages/ai/catalog/providers/azure.ts` | `internal/modelgen/providers/azure.go` | ✅ |
+| `packages/ai/catalog/providers/baseten.ts` | `internal/modelgen/providers/baseten.go` | ✅ |
+| `packages/ai/catalog/providers/cerebras.ts` | `internal/modelgen/providers/cerebras.go` | ✅ |
+| `packages/ai/catalog/providers/cloudflare-ai-gateway.ts` | `internal/modelgen/providers/cloudflare_ai_gateway.go` | ✅ |
+| `packages/ai/catalog/providers/cloudflare-workers-ai.ts` | `internal/modelgen/providers/cloudflare_workers_ai.go` | ✅ |
+| `packages/ai/catalog/providers/deepseek.ts` | `internal/modelgen/providers/deepseek.go` | ✅ |
+| `packages/ai/catalog/providers/fireworks.ts` | `internal/modelgen/providers/fireworks.go` | ✅ |
+| `packages/ai/catalog/providers/github-copilot.ts` | `internal/modelgen/providers/github_copilot.go` | ✅ |
+| `packages/ai/catalog/providers/google-vertex.ts` | `internal/modelgen/providers/google_vertex.go` | ✅ |
+| `packages/ai/catalog/providers/google.ts` | `internal/modelgen/providers/google.go` | ✅ |
+| `packages/ai/catalog/providers/groq.ts` | `internal/modelgen/providers/groq.go` | ✅ |
+| `packages/ai/catalog/providers/huggingface.ts` | `internal/modelgen/providers/huggingface.go` | ✅ |
+| `packages/ai/catalog/providers/index.ts` | `internal/modelgen/providers/index.go` | ✅ |
+| `packages/ai/catalog/providers/kimi-coding.ts` | `internal/modelgen/providers/kimi_coding.go` | ✅ |
+| `packages/ai/catalog/providers/meta.ts` | `internal/modelgen/providers/meta.go` | ✅ |
+| `packages/ai/catalog/providers/minimax-cn.ts` | `internal/modelgen/providers/minimax_cn.go` | ✅ |
+| `packages/ai/catalog/providers/minimax.ts` | `internal/modelgen/providers/minimax.go` | ✅ |
+| `packages/ai/catalog/providers/mistral.ts` | `internal/modelgen/providers/mistral.go` | ✅ |
+| `packages/ai/catalog/providers/moonshotai-cn.ts` | `internal/modelgen/providers/moonshotai_cn.go` | ✅ |
+| `packages/ai/catalog/providers/moonshotai.ts` | `internal/modelgen/providers/moonshotai.go` | ✅ |
+| `packages/ai/catalog/providers/nvidia.ts` | `internal/modelgen/providers/nvidia.go` | ✅ |
+| `packages/ai/catalog/providers/openai-codex.ts` | `internal/modelgen/providers/openai_codex.go` | ✅ |
+| `packages/ai/catalog/providers/openai.ts` | `internal/modelgen/providers/openai.go` | ✅ |
+| `packages/ai/catalog/providers/opencode-go.ts` | `internal/modelgen/providers/opencode_go.go` | ✅ |
+| `packages/ai/catalog/providers/opencode.ts` | `internal/modelgen/providers/opencode.go` | ✅ |
+| `packages/ai/catalog/providers/openrouter.ts` | `internal/modelgen/providers/openrouter.go` | ✅ |
+| `packages/ai/catalog/providers/qwen-token-plan-cn.ts` | `internal/modelgen/providers/qwen_token_plan_cn.go` | ✅ |
+| `packages/ai/catalog/providers/qwen-token-plan-individual.ts` | `internal/modelgen/providers/qwen_token_plan_individual.go` | ✅ |
+| `packages/ai/catalog/providers/qwen-token-plan.ts` | `internal/modelgen/providers/qwen_token_plan.go` | ✅ |
+| `packages/ai/catalog/providers/radius.ts` | `internal/modelgen/providers/radius.go` | ✅ |
+| `packages/ai/catalog/providers/together.ts` | `internal/modelgen/providers/together.go` | ✅ |
+| `packages/ai/catalog/providers/typesafe.ts` | `internal/modelgen/providers/typesafe.go` | ✅ |
+| `packages/ai/catalog/providers/vercel-ai-gateway.ts` | `internal/modelgen/providers/vercel_ai_gateway.go` | ✅ |
+| `packages/ai/catalog/providers/xai.ts` | `internal/modelgen/providers/xai.go` | ✅ |
+| `packages/ai/catalog/providers/xiaomi-token-plan-ams.ts` | `internal/modelgen/providers/xiaomi_token_plan_ams.go` | ✅ |
+| `packages/ai/catalog/providers/xiaomi-token-plan-cn.ts` | `internal/modelgen/providers/xiaomi_token_plan_cn.go` | ✅ |
+| `packages/ai/catalog/providers/xiaomi-token-plan-sgp.ts` | `internal/modelgen/providers/xiaomi_token_plan_sgp.go` | ✅ |
+| `packages/ai/catalog/providers/xiaomi.ts` | `internal/modelgen/providers/xiaomi.go` | ✅ |
+| `packages/ai/catalog/providers/zai-coding-cn.ts` | `internal/modelgen/providers/zai_coding_cn.go` | ✅ |
+| `packages/ai/catalog/providers/zai.ts` | `internal/modelgen/providers/zai.go` | ✅ |
+| `packages/ai/catalog/reasoning.ts` | `internal/modelgen/reasoning.go` | ✅ |
+| `packages/ai/catalog/sources/index.ts` | `internal/modelgen/sources.go (+ the Radius gateway config reader of packages/ai/src/providers/radius-config.ts)` | ✅ |
+| `packages/ai/catalog/sources/models-dev.ts` | `internal/modelgen/models_dev.go` | ✅ |
+| `packages/ai/catalog/sources/openrouter.ts` | `internal/modelgen/source_openrouter.go (+ openRouterCost of src/providers/openrouter-api.ts, kept equal to ai.OpenRouterCost by internal/modelgen/crosscheck_test.go)` | ✅ |
+| `packages/ai/catalog/sources/vercel-ai-gateway.ts` | `internal/modelgen/source_vercel.go (replaces scripts/ai-gateway-pricing.ts)` | ✅ |
+| `packages/ai/catalog/README.md` | `internal/modelgen/README.md` | ✅ |
 
 ## `packages/agent/src/`
 
@@ -393,7 +455,7 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/coding-agent/src/core/export-html/ansi-to-html.ts` | `internal/codingagent/export/ansi_html.go` | ✅ |
 | `packages/coding-agent/src/core/export-html/tool-renderer.ts` | `internal/codingagent/export/ansi_html.go + internal/codingagent/export/tool_renderer.go + internal/codingagent/slash_session_handlers.go` | ✅ |
 | `packages/coding-agent/src/core/export-html/index.ts` | `internal/codingagent/export/export.go + internal/codingagent/export/assets/` | ✅ |
-| `packages/coding-agent/src/modes/interactive/interactive-mode.ts` | `internal/codingagent/interactive.go (formatResumeCommand preserves TTY/persistence gates and the default-directory decision), internal/codingagent/auth_warnings.go, internal/codingagent/interactive_input.go, internal/codingagent/startup_input.go, internal/codingagent/interactive_turn.go, internal/codingagent/interactive_user_bash.go, internal/codingagent/ext_ui_editor_snapshot.go, internal/codingagent/interactive_commands.go, internal/codingagent/interactive_reload.go, internal/codingagent/interactive_rebind.go, internal/codingagent/model_command.go, internal/codingagent/scoped_models_selection.go, internal/codingagent/interactive_auth.go, internal/codingagent/interactive_login.go, internal/codingagent/interactive_api_key_login.go, internal/codingagent/slash_auth.go, internal/codingagent/interactive_post_login.go, internal/codingagent/interactive_events.go, internal/codingagent/interactive_tui.go, internal/codingagent/startup_header.go, internal/codingagent/ext_ui_context.go, internal/codingagent/interactive_signals_unix.go, internal/codingagent/interactive_signals_windows.go, internal/codingagent/suspend.go, internal/codingagent/session_selectors.go, internal/codingagent/interactive_theme_modal.go, internal/codingagent/interactive_theme_watcher.go, internal/codingagent/interactive_models.go, internal/codingagent/interactive_extensions.go, internal/codingagent/interactive_chat.go, internal/codingagent/interactive_changelog.go, internal/codingagent/interactive_layout.go, internal/codingagent/interactive_editor.go, internal/codingagent/remote_editor.go, internal/codingagent/interactive_transcript.go, internal/codingagent/interactive_compaction.go, internal/codingagent/interactive_thinking.go, internal/codingagent/interactive_helpers.go, internal/codingagent/interactive_hotkeys.go, internal/codingagent/loaded_resources.go, internal/codingagent/extension_diagnostics.go (quiet resource diagnostics), internal/codingagent/project_trust_warning.go (startup transcript warning), internal/codingagent/resource_diagnostics.go, internal/codingagent/autocomplete_wrappers.go, internal/codingagent/extension_ui_phase.go, coding/extension/autocomplete.go, coding/extension/host/subprocess/runtime-node/widget-component.mjs`, `internal/codingagent/interactive_lifecycle.go`, internal/codingagent/ext_ui_dialog_stack.go (extension dialog stack: select, confirm, input, editor and editor-slot custom dialogs stack, a hidden dialog's abort removes only itself, session replacement and /reload dispose every dialog; Pi 38847563) | ✅ |
+| `packages/coding-agent/src/modes/interactive/interactive-mode.ts` | `internal/codingagent/interactive.go (formatResumeCommand preserves TTY/persistence gates and the default-directory decision), internal/codingagent/auth_warnings.go, internal/codingagent/interactive_input.go, internal/codingagent/startup_input.go, internal/codingagent/interactive_turn.go, internal/codingagent/interactive_user_bash.go, internal/codingagent/ext_ui_editor_snapshot.go, internal/codingagent/interactive_commands.go, internal/codingagent/interactive_reload.go, internal/codingagent/interactive_rebind.go, internal/codingagent/model_command.go, internal/codingagent/scoped_models_selection.go, internal/codingagent/interactive_auth.go, internal/codingagent/interactive_login.go, internal/codingagent/interactive_api_key_login.go, internal/codingagent/slash_auth.go, internal/codingagent/interactive_post_login.go, internal/codingagent/interactive_events.go, internal/codingagent/interactive_tui.go, internal/codingagent/startup_header.go, internal/codingagent/ext_ui_context.go, internal/codingagent/interactive_signals_unix.go, internal/codingagent/interactive_signals_windows.go, internal/codingagent/suspend.go, internal/codingagent/session_selectors.go, internal/codingagent/interactive_theme_modal.go, internal/codingagent/interactive_theme_watcher.go, internal/codingagent/interactive_models.go, internal/codingagent/interactive_extensions.go, internal/codingagent/interactive_chat.go, internal/codingagent/interactive_changelog.go, internal/codingagent/interactive_layout.go, internal/codingagent/interactive_editor.go, internal/codingagent/remote_editor.go, internal/codingagent/interactive_transcript.go, internal/codingagent/interactive_compaction.go, internal/codingagent/interactive_thinking.go, internal/codingagent/interactive_helpers.go, internal/codingagent/interactive_hotkeys.go, internal/codingagent/loaded_resources.go, internal/codingagent/extension_diagnostics.go (quiet resource diagnostics), internal/codingagent/project_trust_warning.go (startup transcript warning), internal/codingagent/resource_diagnostics.go, internal/codingagent/autocomplete_wrappers.go, internal/codingagent/extension_ui_phase.go, coding/extension/autocomplete.go, coding/extension/host/subprocess/runtime-node/widget-component.mjs`, `internal/codingagent/interactive_lifecycle.go`, internal/codingagent/ext_ui_dialog_stack.go (extension dialog stack: select, confirm, input, editor and editor-slot custom dialogs stack, a hidden dialog's abort removes only itself, session replacement and /reload dispose every dialog; Pi 38847563); getModelScopeNotice/showFullscreenModelScopeNotice: internal/codingagent/model_scope_line.go; getExtensionChangelogUpdates/readPackageJson: internal/codingagent/interactive_changelog.go | ✅ |
 | `packages/coding-agent/src/modes/interactive/external-editor.ts` | `internal/codingagent/external_editor.go (opened by the interactive editor, the extension UI context and the session selectors)` | ✅ |
 | `packages/coding-agent/src/modes/interactive/components/trust-selector.ts` | `internal/codingagent/trust_selector.go; internal/codingagent/slash_session_handlers.go (trustHandler)` | ✅ |
 | `packages/coding-agent/src/modes/interactive/components/first-time-setup.ts` | `internal/codingagent/first_time_setup.go (FirstTimeSetupComponent; D88 adds the sprite step and the pig-head logo)` | ✅ |
@@ -549,11 +611,11 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 
 | upstream | pig | status |
 |---|---|---|
-| `packages/tui/src/tui.ts` | `tui/tui.go, tui/terminal_color_query.go (FIFO background-query lifetime), tui/overlay_command.go (input-boundary focus restoration), tui/cell_size.go (CSI 16t query and response consumption), tui/mouse.go (mouse event API, Container/Box dispatch, overlay bounds and hit testing), internal/codingagent/interactive_input.go + interactive_theme.go + startup_ui.go (driver-owned terminal input routing and theme detection)`, `tui/bash_execution.go`, `tui/login_dialog.go`, `tui/theme_selector.go`, `tui/tree_select.go`, `tui/user_message_block.go`, `tui/stack.go`, `tui/widthx/cursor_marker.go`, `tui/tui_alt_screen.go`, `tui/overlay_compositor.go`, `tui/overlay_spec.go`, `tui/renderer.go`, `tui/tui_input.go`, `tui/renderer_terminal.go`, `tui/tui_mode_debug.go`, `tui/tui_mode.go` | ✅ |
+| `packages/tui/src/tui.ts` | `tui/tui.go, tui/terminal_color_query.go (FIFO background-query lifetime), tui/overlay_command.go (input-boundary focus restoration), tui/cell_size.go (CSI 16t query and response consumption), tui/mouse.go (mouse event API, Container/Box dispatch, overlay bounds and hit testing), internal/codingagent/interactive_input.go + interactive_theme.go + startup_ui.go (driver-owned terminal input routing and theme detection)`, `tui/bash_execution.go`, `tui/login_dialog.go`, `tui/theme_selector.go`, `tui/tree_select.go`, `tui/user_message_block.go`, `tui/stack.go`, `tui/widthx/cursor_marker.go`, `tui/tui_alt_screen.go`, `tui/overlay_compositor.go`, `tui/overlay_spec.go`, `tui/renderer.go`, `tui/tui_input.go`, `tui/renderer_terminal.go`, `tui/tui_mode_debug.go`, `tui/tui_mode.go; tui/selection_navigation.go ViewportInputCapturer, CapturesViewportInput (Component.capturesViewportInput)` | ✅ |
 | `packages/tui/src/editor-component.ts` | `tui/editor_component.go (EditorComponent and its optional-member interfaces)`, `tui/editor.go` | ✅ |
 | `packages/tui/src/autocomplete.ts` | `tui/autocomplete.go + tui/file_autocomplete.go`, `tui/editor_async_provider.go` | ✅ |
 | `packages/tui/src/fuzzy.ts` | `tui/fuzzy.go` | ✅ |
-| `packages/tui/src/keybindings.ts` | `tui/keybindings.go`, `internal/codingagent/keybindings.go`, `tui/alt_screen_keybindings.go` | ✅ |
+| `packages/tui/src/keybindings.ts` | `tui/keybindings.go`, `internal/codingagent/keybindings.go`, `tui/alt_screen_keybindings.go; tui/selection_navigation.go GetSelectPageIndex (replaces the PR-7680 PageSelectionIndex)` | ✅ |
 | `packages/tui/src/keys.ts` | `tui/key_match.go + tui/key_parse.go + tui/keys_decode.go + tui/keybindings.go + internal/codingagent/keys.go + internal/codingagent/stdin_buffer.go + internal/codingagent/kitty_csi.go`, `tui/terminal.go`, `tui/key_helper.go` | ✅ |
 | `packages/tui/src/kill-ring.ts` | `tui/kill_ring.go` | ✅ |
 | `packages/tui/src/stdin-buffer.ts` | `tui/stdin_buffer.go (shared UTF-16 parser), internal/codingagent/stdin_buffer.go (owner timer and modal routing); native unit tests pass, full cross-boundary qualification remains partial`, `tui/stdin_buffer_events.go` | ✅ |
@@ -572,7 +634,7 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/tui/src/components/image.ts` | `tui/image.go` | ✅ |
 | `packages/tui/src/components/input.ts` | `tui/text_input.go (lossless UTF-16 via internal/jsstring)`, `tui/tui.go` | ✅ |
 | `packages/tui/src/components/loader.ts` | `tui/loader.go` | ✅ |
-| `packages/tui/src/components/markdown.ts` | `tui/markdown.go + tui/markdown_options.go + tui/markdown_style.go + tui/markdown_list.go + tui/markdown_marked.go + tui/markdown_marked_block.go (marked 18.0.11 lexer rules) + tui/markdown_cjk.go (marked-cjk-friendly 0.1.2 emStrong: the CJK class and the previous-character recovery; Pi b2d0da6f)`, tui/markdown_latex.go containsTableStart (display math never spans a GFM table; Pi 2ed3118b) | ✅ |
+| `packages/tui/src/components/markdown.ts` | `tui/markdown.go + tui/markdown_options.go + tui/markdown_style.go + tui/markdown_list.go + tui/markdown_marked.go + tui/markdown_marked_block.go (marked 18.0.11 lexer rules) + tui/markdown_cjk.go (marked-cjk-friendly 0.1.2 emStrong: the CJK class and the previous-character recovery; Pi b2d0da6f)`, tui/markdown_latex.go containsTableStart (display math never spans a GFM table; Pi 2ed3118b); markedURL CJK-punctuation cut (Pi fa168515) | ✅ |
 | `packages/tui/src/components/select-list.ts` | `tui/select_list.go (SelectList) + tui/select_filterable.go (shared row layout and truncation)`, `tui/select_submenu.go`, `tui/tui.go` | ✅ |
 | `packages/tui/src/components/settings-list.ts` | `tui/settings_list.go`, `tui/tui.go` | ✅ |
 | `packages/tui/src/components/spacer.ts` | `tui/spacer.go`, `tui/tui.go` | ✅ |
@@ -587,7 +649,7 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/tui/src/layout-node.ts` | `tui/layout_node.go` | ✅ |
 | `packages/tui/src/layout.ts` | `tui/layout.go` | ✅ |
 | `packages/tui/src/tui-alt-screen.ts` | `tui/tui_alt_screen.go, tui/tui_alt_screen_input.go, tui/tui_alt_screen_mouse.go, tui/tui_alt_screen_selection.go`, `tui/tui.go`, tui/terminal_exit_restore.go (exit prefix and suffix of the alternate screen) | ✅ |
-| `packages/tui/src/tui-main-screen.ts` | `tui/tui.go, tui/bounded_terminal_writer.go, tui/redraw_debug.go, tui/render_overflow.go`, `tui/tui_mode_debug.go` | ✅ |
+| `packages/tui/src/tui-main-screen.ts` | `tui/tui.go, tui/bounded_terminal_writer.go, tui/redraw_debug.go, tui/render_overflow.go`, `tui/tui_mode_debug.go; OSC 133 strip of the regular-mode renderer (Pi 19ce8059): tui/tui.go stripOsc133ZonePrefixes, tui/layout.go stripOsc133ZonePrefix` | ✅ |
 | `packages/tui/src/alt-screen-search.ts` | `tui/alt_screen_search.go` | ✅ |
 | `packages/tui/src/components/mouse-region.ts` | `tui/mouse_region.go` | ✅ |
 | `packages/tui/src/native-module-path.ts` | `partial: coding/extension/host/subprocess/runtime-node/shims/pi-dist/pi-tui/native-module-path.js (pinned Pi for Node extensions); TestNodeVendoredTuiUpstreamTests/native-module-path runs the upstream lookup cases; host Go terminal needs no Node module lookup` | ✅ |
@@ -686,6 +748,55 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/chord/src/wire.ts` | `chord/host/wire.go (link protocol 4)` | ✅ |
 | `packages/chord/src/telemetry-sqlite/index.ts` | `chord/telemetrysqlite/index.go` | ✅ |
 | `packages/chord/src/telemetry-sqlite/store.ts` | `chord/telemetrysqlite/store.go` | ✅ |
+| `packages/chord/src/next/contracts/accepts.ts` | `chord/next/contracts/accepts.go` | ✅ |
+| `packages/chord/src/next/contracts/contract.ts` | `chord/next/contracts/contract.go` | ✅ |
+| `packages/chord/src/next/contracts/declare.ts` | `chord/next/contracts/declare.go` | ✅ |
+| `packages/chord/src/next/contracts/evolve.ts` | `chord/next/contracts/evolve.go` | ✅ |
+| `packages/chord/src/next/contracts/fingerprint.ts` | `chord/next/contracts/fingerprint.go` | ✅ |
+| `packages/chord/src/next/contracts/history.ts` | `chord/next/contracts/history.go` | ✅ |
+| `packages/chord/src/next/contracts/host-kind.ts` | `chord/next/contracts/host_kind.go` | ✅ |
+| `packages/chord/src/next/contracts/index.ts` | `(re-export barrel; Go packages export names directly)` | n/a |
+| `packages/chord/src/next/contracts/internal.ts` | `(re-export barrel for Chord's layers)` | n/a |
+| `packages/chord/src/next/contracts/names.ts` | `chord/next/contracts/names.go` | ✅ |
+| `packages/chord/src/next/contracts/params.ts` | `chord/next/contracts/params.go` | ✅ |
+| `packages/chord/src/next/contracts/schema.ts` | `chord/next/contracts/schema.go, chord/next/contracts/namedmap.go, chord/next/contracts/jsorder.go` | ✅ |
+| `packages/chord/src/next/contracts/snapshot.ts` | `chord/next/contracts/snapshot.go` | ✅ |
+| `packages/chord/src/next/data/args.ts` | `chord/next/data/args.go` | ✅ |
+| `packages/chord/src/next/data/errors.ts` | `chord/next/data/errors.go` | ✅ |
+| `packages/chord/src/next/data/failure.ts` | `chord/next/data/failure.go` | ✅ |
+| `packages/chord/src/next/data/index.ts` | `(re-export barrel)` | n/a |
+| `packages/chord/src/next/data/internal.ts` | `(re-export barrel)` | n/a |
+| `packages/chord/src/next/data/params.ts` | `chord/next/data/params.go` | ✅ |
+| `packages/chord/src/next/data/principal.ts` | `chord/next/data/principal.go` | ✅ |
+| `packages/chord/src/next/data/validator.ts` | `chord/next/data/validator.go` | ✅ |
+| `packages/chord/src/next/index.ts` | `(aggregate barrel of every layer; Go imports the layer packages)` | n/a |
+| `packages/chord/src/next/registries/contribution.ts` | `chord/next/registries/contribution.go` | ✅ |
+| `packages/chord/src/next/registries/entries.ts` | `chord/next/registries/entries.go` | ✅ |
+| `packages/chord/src/next/registries/index.ts` | `(re-export barrel)` | n/a |
+| `packages/chord/src/next/registries/internal.ts` | `chord/next/registries/internal.go` | ✅ |
+| `packages/chord/src/next/registries/record.ts` | `chord/next/registries/record.go` | ✅ |
+| `packages/chord/src/next/registries/registry.ts` | `chord/next/registries/registry.go` | ✅ |
+| `packages/chord/src/next/registries/value.ts` | `chord/next/registries/value.go` | ✅ |
+| `packages/chord/src/next/state/batch.ts` | `chord/next/state/batch.go` | ✅ |
+| `packages/chord/src/next/state/derive.ts` | `chord/next/state/derive.go` | ✅ |
+| `packages/chord/src/next/state/index.ts` | `(re-export barrel)` | n/a |
+| `packages/chord/src/next/state/internal.ts` | `(re-export barrel)` | n/a |
+| `packages/chord/src/next/state/native-source.ts` | `chord/next/state/native_source.go` | ✅ |
+| `packages/chord/src/next/state/watchable.ts` | `chord/next/state/watchable.go, chord/next/state/identical.go, chord/next/state/set.go` | ✅ |
+| `packages/chord/src/next/state/writable.ts` | `chord/next/state/writable.go` | ✅ |
+| `packages/chord/src/next-node/compression.ts` | `chord/nextnode/compression.go` | ✅ |
+| `packages/chord/src/next/link/binary.ts` | `chord/next/link/binary.go` | ✅ |
+| `packages/chord/src/next/link/channel.ts` | `chord/next/link/channel.go` | ✅ |
+| `packages/chord/src/next/link/errors.ts` | `chord/next/link/errors.go` | ✅ |
+| `packages/chord/src/next/link/index.ts` | `(re-export barrel; Go packages export names directly)` | n/a |
+| `packages/chord/src/next/link/internal.ts` | `(re-export barrel for Chord's layers)` | n/a |
+| `packages/chord/src/next/link/ipc.ts` | `chord/next/link/ipc.go` | ✅ |
+| `packages/chord/src/next/link/link.ts` | `chord/next/link/link.go` | ✅ |
+| `packages/chord/src/next/link/message.ts` | `chord/next/link/message.go` | ✅ |
+| `packages/chord/src/next/link/part.ts` | `chord/next/link/part.go` | ✅ |
+| `packages/chord/src/next/link/text.ts` | `chord/next/link/text.go` | ✅ |
+| `packages/chord/src/next/link/values.ts` | `chord/next/link/values.go` | ✅ |
+| `packages/chord/src/next/link/websocket.ts` | `chord/next/link/websocket.go` | ✅ |
 
 ## `packages/protocol/src/`
 

@@ -1,6 +1,7 @@
 package delta
 
 import (
+	"errors"
 	"runtime"
 	"strings"
 	"testing"
@@ -20,7 +21,7 @@ import (
 func expectRevokedUse(t *testing.T, use func(), what string) {
 	t.Helper()
 	defer func() {
-		if recovered, _ := recover().(error); recovered != ErrRevoked {
+		if recovered, _ := recover().(error); !errors.Is(recovered, ErrRevoked) {
 			t.Fatalf("%s: expected ErrRevoked, got %v", what, recovered)
 		}
 	}()

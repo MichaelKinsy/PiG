@@ -6832,7 +6832,7 @@ snippet = "lifetime = context.Background()"
 [[hit]]
 check = "ctxbackground"
 file = "tui/editor_autocomplete_request.go"
-func = "Editor.requestNativeAutocomplete"
+func = "prepareNativeAutocomplete"
 snippet = "result := provider.GetSuggestions(context.Background(), lines, row, col, AutocompleteSuggestionOptions{Force: force})"
 
 [[hit]]

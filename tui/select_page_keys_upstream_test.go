@@ -317,7 +317,7 @@ func TestUpstreamSelectSubmenuPagesWithSelectionPageKeys(t *testing.T) {
 }
 
 // Remapped selection page keys on the selectors of this package: the model, scoped models, OAuth and user-message
-// selectors and the SelectList-backed show-images and theme selectors follow Pi; the extension selector is a PiG pager (D155).
+// selectors and the SelectList-backed show-images and theme selectors page; the extension selector, as in Pi, ignores them.
 func TestUpstreamSelectorsPageWithRemappedKeys(t *testing.T) {
 	useRemappedPageKeys(t, map[string][]string{"tui.editor.pageUp": {"alt+v"}, "tui.editor.pageDown": {"ctrl+v"}, "tui.select.pageUp": {"alt+v"}, "tui.select.pageDown": {"ctrl+v"}})
 
@@ -365,8 +365,8 @@ func TestUpstreamSelectorsPageWithRemappedKeys(t *testing.T) {
 	extension := NewExtensionSelectorComponent("Select", options, func(o string) { option = o }, func() {})
 	extension.HandleInput("\x16")
 	extension.HandleInput("\r")
-	if option != "option-8" {
-		t.Errorf("extension selector selected %q, want option-8", option)
+	if option != "option-0" {
+		t.Errorf("extension selector selected %q, want option-0: it has no page keys", option)
 	}
 	messages := make([]UserMessageItem, 12)
 	for i := range messages {

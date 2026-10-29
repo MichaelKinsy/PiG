@@ -48,7 +48,7 @@ func decodeBase64(t *testing.T, s string) []byte {
 // TestResizeImageDimensionStrategyMatchesPi runs image-resize-core.ts resizeImageInProcess (Photon) and PiG's ResizeImage over 200 seeded PNGs and option sets. Dimensions from 1 to
 // 2,600 (narrow strips, squares, images just over or under each limit), maxWidth and maxHeight from 1 to 3,000, the default and a very large maxBytes, a one-byte maxBytes that nothing
 // satisfies, and an unset or explicit mime type. The original and resulting size, whether the image was resized, whether Pi returns null, and the mime type must match, and the
-// returned image must decode to the size it reports. Not compared: the encoded bytes (Photon's PNG/JPEG encoders differ from Go's) and which candidate wins a tight maxBytes, and the 0.75 shrink steps (reached only when every candidate misses maxBytes), which depend on those encoders.
+// returned image must decode to the size it reports. The encoded bytes must match too, so the candidate that wins a tight maxBytes and the 0.75 shrink steps (reached only when every candidate misses maxBytes) are compared as well: PiG's PNG and JPEG encoders and its resize are ports of Photon's.
 func TestResizeImageDimensionStrategyMatchesPi(t *testing.T) {
 	rng := rand.New(rand.NewPCG(20261125, 7))
 	pickInt := func(xs ...int) int { return xs[rng.IntN(len(xs))] }
@@ -137,7 +137,7 @@ emit(out);`, cases, &want)
 		got, err := outcomes[i].got, outcomes[i].err
 		gotResult := resizeStrategyResult{Null: err != nil}
 		if err == nil {
-			gotResult = resizeStrategyResult{MimeType: got.MimeType, OriginalWidth: got.OriginalWidth, OriginalHeight: got.OriginalHeight, Width: got.Width, Height: got.Height, WasResized: got.WasResized}
+			gotResult = resizeStrategyResult{MimeType: got.MimeType, OriginalWidth: got.OriginalWidth, OriginalHeight: got.OriginalHeight, Width: got.Width, Height: got.Height, WasResized: got.WasResized, Data: got.Data}
 			if config, _, decodeErr := image.DecodeConfig(bytes.NewReader(got.Bytes())); decodeErr != nil || config.Width != got.Width || config.Height != got.Height {
 				t.Errorf("case %d: PiG's image decodes to %+v (%v), not the %dx%d it reports", i, config, decodeErr, got.Width, got.Height)
 			}
@@ -148,7 +148,6 @@ emit(out);`, cases, &want)
 				t.Fatalf("case %d: Pi image does not decode", i)
 			}
 		}
-		expected.Data = ""
 		if gotResult != expected {
 			failures++
 			if failures <= 8 {

@@ -215,24 +215,6 @@ classification = "upstream"
 rationale = "Chord SQLite schema migration version (packages/chord/src/sqlite/migrations.ts), the migration type pi-durable re-exports."
 
 [[fields]]
-id = "cmd/check-model-data/model_data.go#ModelDataManifest.SchemaVersion:json:schemaVersion"
-path = "cmd/check-model-data/model_data.go"
-owner = "ModelDataManifest"
-field = "SchemaVersion"
-wire_name = "schemaVersion"
-classification = "upstream"
-rationale = "Reads the exact Pi model-data manifest field from packages/ai/scripts/model-data.ts:10-15; this is not a Pig-owned format."
-
-[[fields]]
-id = "cmd/check-model-data/model_data.go#const.ModelDataSchemaVersion:go:-"
-path = "cmd/check-model-data/model_data.go"
-owner = "<package>"
-field = "ModelDataSchemaVersion"
-wire_name = "-"
-classification = "upstream"
-rationale = "Exact MODEL_DATA_SCHEMA_VERSION = 3 from packages/ai/scripts/model-data.ts:5; the checker validates the pinned upstream manifest."
-
-[[fields]]
 id = "codemode/deterministic.go#const.deterministicVersion:go:-"
 path = "codemode/deterministic.go"
 owner = "<package>"
@@ -1050,6 +1032,24 @@ field = "evalReportSchemaVersion"
 wire_name = "-"
 classification = "upstream"
 rationale = "Exact upstream pi-evals report schemaVersion 3 (packages/evals/src/report.ts:405)."
+
+[[fields]]
+id = "internal/modelgen/modeldata/model_data.go#ModelDataManifest.SchemaVersion:json:schemaVersion"
+path = "internal/modelgen/modeldata/model_data.go"
+owner = "ModelDataManifest"
+field = "SchemaVersion"
+wire_name = "schemaVersion"
+classification = "upstream"
+rationale = "Reads the exact Pi model-data manifest field from packages/ai/scripts/model-data.ts:10-15; this is not a Pig-owned format."
+
+[[fields]]
+id = "internal/modelgen/modeldata/model_data.go#const.ModelDataSchemaVersion:go:-"
+path = "internal/modelgen/modeldata/model_data.go"
+owner = "<package>"
+field = "ModelDataSchemaVersion"
+wire_name = "-"
+classification = "upstream"
+rationale = "Exact MODEL_DATA_SCHEMA_VERSION = 3 from packages/ai/scripts/model-data.ts:5; the checker validates the pinned upstream manifest."
 
 [[fields]]
 id = "internal/nodesemver/semver.go#const.mainVersion:go:-"

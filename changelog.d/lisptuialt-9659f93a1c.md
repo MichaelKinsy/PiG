@@ -1,0 +1,3 @@
+### Added
+
+- The Lisp SDK exports `TuiAltScreen`, pi-tui's alternate-screen TUI host, with all 45 members: `pig:make-tui-alt-screen` (a `pig:tui-terminal` and `pig:tui-component`s the extension supplies), `pig:tui-alt-screen-<member>` and `pig:tui-alt-overlay-*`. The 46 `pi-tui: TuiAltScreen` rows of the SDK exports ledger are `native:` cells with conformance reach in every isolated and packed Lisp cell, and divergence D204, which recorded the missing export, is removed. A call a Lisp extension makes while it serves a host callback is a child of that callback's request, so a component's `render` can read and change its screen. <!-- feat: 9659f93a1c -->

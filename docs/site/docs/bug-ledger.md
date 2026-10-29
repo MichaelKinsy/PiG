@@ -210,6 +210,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-3602f48](#bf-3602f48) | fix(durable/core): scheduler microtasks of the commit observer run behind the host listeners' dispatch; a… | PiG's own defect | All platforms | Unreleased |
 | [BF-364cc57](#bf-364cc57) | RPC model objects of built-in models match Pi's: each keeps its catalog entry's own member order and spelling… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-3651a90](#bf-3651a90) | A provider stream that keeps sending keepalive comments or pings but no event now ends with an error after… | A Pi defect that PiG fixed first | All platforms | 0.5.0 |
+| [BF-366ae8e](#bf-366ae8e) | An extension provider's model that another provider also catalogs, such as `gpt-6-astra` under `azure`, no… | PiG's own defect | All platforms | Unreleased |
 | [BF-369b1e1](#bf-369b1e1) | `grep` with `context` no longer loads each matched file into memory | PiG's own defect | All platforms | 0.5.0 |
 | [BF-36e192b](#bf-36e192b) | fix(lint): port Kitty chunking in UTF-16 units; clear the codemode, terminal image and exit-restore lint hits | PiG's own defect | All platforms | Unreleased |
 | [BF-36e82ad](#bf-36e82ad) | fix(durable): a non-finite number is a strict JSON error whichever JSON package a value's own encoder used | PiG's own defect | All platforms | Unreleased |
@@ -302,6 +303,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-4c45afa](#bf-4c45afa) | fix(sdk-py): stage pig_sdk.tui with the package, which pig_sdk imports at load; keep the pi-ai patterns… | PiG's own defect | All platforms | Unreleased |
 | [BF-4c7ccf2](#bf-4c7ccf2) | A classifier response that reports more than 2,147,483,647 input or output tokens keeps the reported count… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-4d04134](#bf-4d04134) | The cancel hint of extension loaders (`/share`, `/bug`) shows the key bound to `tui.select.cancel` instead of… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-4d32556](#bf-4d32556) | `Math.exp` in `internal/jsmath` returns Node's bits on arm64 | PiG's own defect | All platforms | Unreleased |
 | [BF-4d33f78](#bf-4d33f78) | fix(tui): a tool error result collapses like any other (Pi updateResult) | PiG's own defect | All platforms | Unreleased |
 | [BF-4d965e3](#bf-4d965e3) | The `/tree` label of a custom tool call shows its arguments in the order the model sent them, with `<`, `>`… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-4e204f4](#bf-4e204f4) | fix(sdk-py): clear bandit's findings in the 0.5.2 Python SDK code | PiG's own defect | All platforms | Unreleased |
@@ -352,6 +354,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-578c1a3](#bf-578c1a3) | The "Applied use cases" page in the manual that ships inside PiG now links the Security page on the website | PiG's own defect | All platforms | 0.5.0 |
 | [BF-57a1687](#bf-57a1687) | fix(ai,agent): return a projection's blocks apart from its scalars so the caller's buffer stays on its stack | PiG's own defect | All platforms | Unreleased |
 | [BF-57ee33b](#bf-57ee33b) | A model an extension registers with `registerProvider` reaches `ctx.modelRegistry`, `ctx.model` and RPC as… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-58f6697](#bf-58f6697) | Text typed and followed at once by Enter no longer skips the autocomplete menu Pi opens: `/model provider/id`… | PiG's own defect | All platforms | Unreleased |
 | [BF-59456ae](#bf-59456ae) | Pressing a key in a subprocess extension's overlay no longer freezes interactive mode when the key reaches… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-598e27f](#bf-598e27f) | Escape over an open autocomplete list during compaction now closes the list and lets compaction continue, as… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-59b5dae](#bf-59b5dae) | OpenCode and OpenCode Go requests go to the protocol-specific endpoints instead of the shared base… | PiG's own defect | All platforms | Unreleased |
@@ -846,7 +849,6 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-D150](#bf-d150) | `--no-stdin` skips the startup read of piped stdin (Pi #10415) | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D151](#bf-d151) | `grep` with context reads a window of each matched file (Pi #9276) | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D153](#bf-d153) | The bash truncation notice names the size of the last line, not the bytes after the final newline (Pi #10015) | A Pi defect that PiG fixed first | All platforms | Unreleased |
-| [BF-D155](#bf-d155) | Selection lists page with PageUp and PageDown (Pi #7629) | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D156](#bf-d156) | MCP server `url` expands environment references (Pi #10654) | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D195](#bf-d195) | An empty AWS_BEARER_TOKEN_BEDROCK is no token, where Pi's AWS SDK treats the variable as set and the request… | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D196](#bf-d196) | Under skip-auth a bearer token from the process environment is not sent over an http:// endpoint, where Pi's… | A Pi defect that PiG fixed first | All platforms | Unreleased |
@@ -867,6 +869,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-a1da44d](#bf-a1da44d) | The durable turn classifier retries on a status code (429, 500, 502, 503, 504, 520, 524) only when it stands… | PiG's own defect | All platforms | 0.5.2 |
 | [BF-a1efda7](#bf-a1efda7) | fix(durable/core): the host resolves the Harness settings as often as the core did (Pi resolves… | PiG's own defect | All platforms | Unreleased |
 | [BF-a1fa6d1](#bf-a1fa6d1) | NO_PROXY entries and ports are trimmed with JavaScript's whitespace rules, as in Pi: an entry or port that… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-a222037](#bf-a222037) | A Go program that embeds PiG and also links a reflection consumer such as protobuf is no longer about 6 MB… | PiG's own defect | All platforms | Unreleased |
 | [BF-a238095](#bf-a238095) | coding: fix session executor queue-prefix race and durable execMu waits | PiG's own defect | All platforms | Unreleased |
 | [BF-a30388b](#bf-a30388b) | GPT-5.4 and GPT-5.5 no longer fail with `Missing namespace for function_call` after switching from another… | PiG's own defect | All platforms | Unreleased |
 | [BF-a3859aa](#bf-a3859aa) | An OpenAI-compatible provider that streams a tool call without an id or a function name (OpenRouter and GLM… | A Pi defect that PiG fixed first | All platforms | 0.5.0 |
@@ -1004,6 +1007,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-c58ceed](#bf-c58ceed) | `chord/host.Forbidden("")` keeps the empty message, as Pi's `forbidden("")` does; `Forbidden()` still says… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-c5b14a5](#bf-c5b14a5) | fix(durable/contract): a vitest run keeps its cache out of the reference checkout, so E17 and E18 list the… | PiG's own defect | All platforms | Unreleased |
 | [BF-c5ce588](#bf-c5ce588) | Gemini 4 and later models send `thinkingLevel` instead of `thinkingBudget`, fixing Gemini 4 Argon on Vertex… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-c5ea0d1](#bf-c5ea0d1) | A session with an extension that registers a markdown transformer no longer crashes while an assistant reply… | PiG's own defect | All platforms | Unreleased |
 | [BF-c625bb4](#bf-c625bb4) | The durable `powershell` tool fails with "No command to run" when its program list is empty, instead of… | PiG's own defect | Windows | 0.5.0 |
 | [BF-c6c2cf3](#bf-c6c2cf3) | An `env` request whose context is already cancelled is now always sent to the daemon and then cancelled, as… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-c6cad39](#bf-c6cad39) | fix(session): fork writes the header and entries through one file (Pi,) | PiG's own defect | All platforms | Unreleased |
@@ -1020,6 +1024,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-ca27ba6](#bf-ca27ba6) | The Go extension SDK accepts a native Provider object with no auth methods, as Pi's `ProviderAuth` (both… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-ca675e0](#bf-ca675e0) | A list item whose text is `[ ] ` or `[x] ` with nothing after the spaces on the line is plain text, not a… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-cb00273](#bf-cb00273) | OpenRouter's signature-only `reasoning.text` delta for Claude is kept and replayed with its reasoning block… | A Pi defect that PiG fixed first | All platforms | 0.5.0 |
+| [BF-cb20ec0](#bf-cb20ec0) | After `pig update --models`, OpenRouter's `:nitro` and `:floor` routing variants no longer disappear from… | PiG's own defect | All platforms | Unreleased |
 | [BF-cb21ee0](#bf-cb21ee0) | Markdown resolves link reference definitions as Pi does: `[text][label]`, `[label][]` and `[label]` link to a… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-cb3eb3b](#bf-cb3eb3b) | fix(durable/core): memory-held commits record no telemetry events | PiG's own defect | All platforms | Unreleased |
 | [BF-cc9370b](#bf-cc9370b) | A Node extension's `setWidget`, `setHeader` and `setFooter` factories receive the same `tui` as a… | PiG's own defect | All platforms | 0.5.0 |
@@ -1206,6 +1211,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-eaa4ed7](#bf-eaa4ed7) | F1-F12 are recognized when the terminal reports them with the Kitty keyboard protocol: `CSI P`/`Q`/`S` and… | PiG's own defect | All platforms | Unreleased |
 | [BF-ead285d](#bf-ead285d) | Two `compact` commands of one RPC input batch no longer cancel each other; they run one after another (D147) | PiG's own defect | All platforms | 0.5.0 |
 | [BF-eb34085](#bf-eb34085) | The find tool trims each fd result line like JavaScript trim(): a name ending in U+FEFF loses it and a name… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-eb6626f](#bf-eb6626f) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
 | [BF-ebb4c0e](#bf-ebb4c0e) | An `"m"` operation whose permutation a Go caller builds as `[]int` validates and applies again, as it did in… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-ebb4c0e-2](#bf-ebb4c0e-2) | `durable.DocumentContent` decoded by `encoding/json` keeps the key order of the objects its operations carry… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-ebbdfe7](#bf-ebbdfe7) | fix(extensions): load highlight.js grammars after the startup session_start, as Pi does | PiG's own defect | All platforms | Unreleased |
@@ -2655,7 +2661,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Platform:** All platforms
 - **Fixed in:** 0.5.0
 - **Fix commits:** `68a4ed2b54` (2026-10-09), `1d02c73a90` (2026-10-10)
-- **Tests:** `internal/codingagent/fullscreen_modal_viewport_test.go::TestFullscreenSelectionKeepsItsPageKeys`, `internal/codingagent/fullscreen_modal_viewport_test.go::TestRegularModeSelectorPageKeyMovesItsSelection`, `internal/codingagent/llama/ui_test.go::TestHuggingFaceSearchPageKeysMoveTenResults`, `internal/codingagent/modal_viewport_input_test.go::TestEditorSlotSelectorPageKeyMovesSelectionInEveryMode`, `internal/codingagent/select_page_keys_test.go::TestCustomEditorGivesSelectionPageKeysToAnOpenAutocomplete`, `internal/codingagent/select_page_keys_test.go::TestFirstTimeSetupPageKeysMoveToTheEnds`, `internal/codingagent/select_page_keys_test.go::TestSessionSelectorCapturesSelectionPageKeys`, `internal/codingagent/select_page_keys_test.go::TestTrustSelectorPageKeysMoveToTheEnds` and 9 more in docs/bug-ledger.json
+- **Tests:** `internal/codingagent/fullscreen_modal_viewport_test.go::TestFullscreenSelectionKeepsItsPageKeys`, `internal/codingagent/fullscreen_modal_viewport_test.go::TestRegularModeSelectorPageKeyMovesItsSelection`, `internal/codingagent/llama/ui_test.go::TestHuggingFaceSearchPageKeysMoveTenResults`, `internal/codingagent/modal_viewport_input_test.go::TestEditorSlotSelectorPageKeyMovesSelectionInEveryMode`, `internal/codingagent/select_page_keys_test.go::TestCustomEditorGivesSelectionPageKeysToAnOpenAutocomplete`, `internal/codingagent/select_page_keys_test.go::TestSessionSelectorCapturesSelectionPageKeys`, `tui/select_page_keys_test.go::TestAltScreenGivesSelectionPageKeysToACapturingFocus`, `tui/select_page_keys_test.go::TestContainerCapturesSelectPageInputFromItsChildren` and 7 more in docs/bug-ledger.json
 - **Release note:** Filters that Pi writes with `toLowerCase()` (select lists, the config selector, file autocomplete, `/model` search, minimatch `nocase`) lowercase as JavaScript does (`İ` becomes `i̇`, a final sigma `ς`), not as Go's `strings.ToLower`.
 
 ### BF-1d1c8aa
@@ -3976,6 +3982,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** `ai/sse_event_idle_test.go::TestSSEIdleTrackerRecognizesReasoningEvents`, `ai/sse_event_idle_test.go::TestSSEKeepalivesAfterANonReasoningEventStillEndTheStream`, `ai/sse_event_idle_test.go::TestSSEKeepalivesAfterAReasoningEventDoNotEndTheStream`, `ai/sse_event_idle_test.go::TestSSEStreamWithOnlyKeepalivesEndsAfterTheIdleTimeout`, `ai/sse_event_idle_test.go::TestSSEStreamWithSlowEventsIsNotCutOff`
 - **Release note:** A provider stream that keeps sending keepalive comments or pings but no event now ends with an error after `httpIdleTimeoutMs` instead of hanging for ever; the timeout restarts on each event, and on keepalives while the model is reasoning (D131, pi-mono #10761, #10762).
 
+### BF-366ae8e
+
+**An extension provider's model that another provider also catalogs, such as `gpt-6-astra` under `azure`, no…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Such a model took the other provider's API and the turn failed (`LiteLLM model gpt-6-astra declares unsupported protocol "azure-openai-responses"`).
+- **Root cause:** Not recorded.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `366ae8eb45` (2026-10-28)
+- **Tests:** `coding/build_model_catalog_scope_test.go::TestBuildModelIgnoresOtherProvidersCatalog`
+- **Release note:** An extension provider's model that another provider also catalogs, such as `gpt-6-astra` under `azure`, no longer takes that provider's API when it is built before its own provider registers. Before this fix, such a model took the other provider's API and the turn failed (`LiteLLM model gpt-6-astra declares unsupported protocol "azure-openai-responses"`). `BuildModel` now matches only the requested provider's catalog, as the CLI's startup resolution already did.
+
 ### BF-369b1e1
 
 **`grep` with `context` no longer loads each matched file into memory**
@@ -5235,6 +5255,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** `internal/codingagent/thinking_selector_oracle_test.go::TestThinkingSelectorInputMatchesPi`, `test/parity/scenarios/settings/06-thinking-selector-search-editing.toml`, `test/parity/scenarios/settings/08-settings-search-editing.toml`, `tui/bordered_loader_oracle_test.go::TestBorderedLoaderMatchesPi`, `tui/cancellable_loader_input_test.go::TestCancellableLoaderCancelFollowsTheBindingAndCallsOnAbortEachPress`, `tui/cancellable_loader_input_test.go::TestCancellableLoaderCancelWithoutOnAbortOnlyAborts`, `tui/settings_list_input_test.go::TestSettingsListAnyDelegatedKeyResetsTheSelectionToTheFirstMatch`, `tui/settings_list_input_test.go::TestSettingsListBoundActionsRunInUpstreamOrder` and 5 more in docs/bug-ledger.json
 - **Release note:** The cancel hint of extension loaders (`/share`, `/bug`) shows the key bound to `tui.select.cancel` instead of always `escape/ctrl+c`.
 
+### BF-4d32556
+
+**`Math.exp` in `internal/jsmath` returns Node's bits on arm64**
+
+- **Source:** PiG's own defect
+- **Symptom:** `Math.exp` in `internal/jsmath` returns Node's bits on arm64.
+- **Root cause:** Node's arm64 builds compile V8's src/base/ieee754.cc with clang, whose -ffp-contract=on fuses a product into the addition or subtraction in the same expression. Exp rounded every such product with float64(), so on arm64 it disagreed with Math.exp in the last bit for 126 of 320026 arguments (TestExpMatchesNode). Log already went through mulAdd for the same reason; Exp now does too, at the five Horner terms, the ln2 reduction's hi and invln2*x+half. GOARCH=amd64 keeps the unfused product, which is the same single rounded addition the old expression performed.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `4d32556afa` (2026-10-28)
+- **Tests:** `internal/jsmath/exp_oracle_test.go::TestExpMatchesNode`
+- **Release note:** `Math.exp` in `internal/jsmath` returns Node's bits on arm64. V8's fdlibm build contracts products into multiply-adds there, and `Exp` rounded them, so the last bit differed from `Math.exp` for about 1 in 2500 arguments on arm64 hosts. GOARCH=amd64 results are unchanged.
+
 ### BF-4d33f78
 
 **fix(tui): a tool error result collapses like any other (Pi updateResult)**
@@ -5920,6 +5954,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `50ca49180f` (2026-10-13), `57ee33b5c7` (2026-10-13), `5cd840e477` (2026-10-13)
 - **Tests:** `coding/cli/model_registry_refresh_test.go::TestSubprocessModelRegistryPublishesExtensionReplacementAndRestoration`, `coding/cli/model_registry_refresh_test.go::TestSubprocessModelRegistryPublishesProviderOnlyOverlayRefresh`, `coding/cli/model_registry_refresh_test.go::TestSubprocessModelRegistryPublishesProviderRegistrationAndRemoval`, `coding/cli/model_registry_refresh_test.go::TestSubprocessModelRegistryRefreshesConnectedNode`, `coding/cli/port_wave_10_package_command_paths_test.go::TestPortWave10ModelRuntimeCreation`, `coding/cli/shipped_piglet_inventory_test.go::TestShippedPigletInventory`, `coding/cli/strip_leak_gate_test.go::TestStripLeakGate`, `coding/model_availability_auth_view_test.go::TestAvailabilityPassAuthViewMatchesPiUpstream` and 1 more in docs/bug-ledger.json
 - **Release note:** A model an extension registers with `registerProvider` reaches `ctx.modelRegistry`, `ctx.model` and RPC as Pi's object: the definition's members in the order the extension wrote them, then `api`, `provider` and `baseUrl`, and its `input` as written. PiG sent the members in its own order and filled in `input: ["text"]` when the definition left it out.
+
+### BF-58f6697
+
+**Text typed and followed at once by Enter no longer skips the autocomplete menu Pi opens: `/model provider/id`…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Text typed and followed at once by Enter no longer skips the autocomplete menu Pi opens: `/model provider/id` typed and entered in one go switched the model in PiG, where Pi accepts the suggestion into the editor on the first Enter and switches on the second (the same holds for `/thinking level`, any command with argument completions, and a command name such as `/settin`, which Pi accepts and submits).
+- **Root cause:** Pi's editor only schedules an autocomplete request from the key handlers (editor.ts requestAutocomplete); startAutocompleteRequest runs as a Promise job after the terminal read's last sequence, and a provider that needs no I/O (a command name, a command's argument completions such as /model provider/id and /thinking level) answers in the same microtask checkpoint, before the next read is handled. An Enter sent right behind the text therefore finds the menu open: the first Enter accepts the suggestion, a second submits.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `58f6697aa5` (2026-10-29)
+- **Tests:** `tui/editor_autocomplete_flush_test.go::TestFlushAutocompleteAfterShutdownStartsNothing`, `tui/editor_autocomplete_flush_test.go::TestFlushAutocompleteAnswersTheLastRequestOfAReadOnce`, `tui/editor_autocomplete_flush_test.go::TestFlushAutocompleteDropsARequestTheEditorMovedOnFrom`, `tui/editor_autocomplete_flush_test.go::TestFlushAutocompleteJoinsARequestStillOnTheWorker`, `tui/editor_autocomplete_flush_test.go::TestFlushAutocompleteLeavesAnAwaitedAnswerToTheWorker`, `tui/editor_autocomplete_flush_test.go::TestFlushAutocompleteLeavesTheSymbolDebounceToItsTimer`, `tui/editor_autocomplete_flush_test.go::TestPostedRequestStartsWithoutAFlush`, `tui/editor_completion_owner_test.go::TestOwnedAutocompleteWaitsForOwnerPublication`
+- **Release note:** Text typed and followed at once by Enter no longer skips the autocomplete menu Pi opens: `/model provider/id` typed and entered in one go switched the model in PiG, where Pi accepts the suggestion into the editor on the first Enter and switches on the second (the same holds for `/thinking level`, any command with argument completions, and a command name such as `/settin`, which Pi accepts and submits). Pi's editor resolves its autocomplete request in the Promise jobs that follow the terminal read that typed the text, so the menu is open when the next read arrives; PiG started the request on a worker and published the menu through two later owner-loop tasks that the Enter overtook, so the Enter found no menu and submitted what was typed. The editor now starts the request of a read when the read has been handled (`Editor.FlushAutocomplete`, called by the interactive loop after each read), and an Enter in the same read as the text still submits it, as in Pi. Typed at human speed both behaved like Pi already.
 
 ### BF-59456ae
 
@@ -8385,7 +8433,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Platform:** All platforms
 - **Fixed in:** 0.5.0
 - **Fix commits:** `68a4ed2b54` (2026-10-09)
-- **Tests:** `internal/codingagent/fullscreen_modal_viewport_test.go::TestFullscreenSelectionKeepsItsPageKeys`, `internal/codingagent/fullscreen_modal_viewport_test.go::TestRegularModeSelectorPageKeyMovesItsSelection`, `internal/codingagent/llama/ui_test.go::TestHuggingFaceSearchPageKeysMoveTenResults`, `internal/codingagent/modal_viewport_input_test.go::TestEditorSlotSelectorPageKeyMovesSelectionInEveryMode`, `internal/codingagent/select_page_keys_test.go::TestCustomEditorGivesSelectionPageKeysToAnOpenAutocomplete`, `internal/codingagent/select_page_keys_test.go::TestFirstTimeSetupPageKeysMoveToTheEnds`, `internal/codingagent/select_page_keys_test.go::TestSessionSelectorCapturesSelectionPageKeys`, `internal/codingagent/select_page_keys_test.go::TestTrustSelectorPageKeysMoveToTheEnds` and 8 more in docs/bug-ledger.json
+- **Tests:** `internal/codingagent/fullscreen_modal_viewport_test.go::TestFullscreenSelectionKeepsItsPageKeys`, `internal/codingagent/fullscreen_modal_viewport_test.go::TestRegularModeSelectorPageKeyMovesItsSelection`, `internal/codingagent/llama/ui_test.go::TestHuggingFaceSearchPageKeysMoveTenResults`, `internal/codingagent/modal_viewport_input_test.go::TestEditorSlotSelectorPageKeyMovesSelectionInEveryMode`, `internal/codingagent/select_page_keys_test.go::TestCustomEditorGivesSelectionPageKeysToAnOpenAutocomplete`, `internal/codingagent/select_page_keys_test.go::TestSessionSelectorCapturesSelectionPageKeys`, `tui/select_page_keys_test.go::TestAltScreenGivesSelectionPageKeysToACapturingFocus`, `tui/select_page_keys_test.go::TestContainerCapturesSelectPageInputFromItsChildren` and 6 more in docs/bug-ledger.json
 - **Release note:** PageUp and PageDown move the selection by a page in selection lists and selectors (settings, model, extension, session, tree, trust, login and the open editor autocomplete) and no longer scroll the fullscreen transcript behind them (Pi #7629, PR #7680).
 
 ### BF-68a63f2
@@ -12789,21 +12837,6 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `983d651097` (2026-10-09)
 - **Tests:** `internal/codingagent/tools/last_line_bytes_test.go::TestBashLongLastLineNoticeNamesTheLineSize`, `internal/codingagent/tools/last_line_bytes_test.go::TestOutputAccumulatorLastLineBytes`
 
-### BF-D155
-
-**Selection lists page with PageUp and PageDown (Pi #7629)**
-
-- **Source:** A Pi defect that PiG fixed first (divergence D155)
-- **Symptom:** in a selector, PageDown moves the selection down one page and does not scroll the transcript behind it. Pi scrolls the transcript or does nothing. An open editor autocomplete list pages the same way, and a user binding of the same key to an app action does not fire while the list is open. Extension-provided overlays cannot yet report that they capture the page keys, so the viewport still takes them there.
-- **Root cause:** the selection stays where the user is looking. Pi #7629 is open, and its PR #7680 (`packages/tui/src/tui-alt-screen.ts`, `getPageSelectionIndex`, `capturesSelectPageInput`) is unmerged.
-- **User impact:** An operation failed or was rejected
-- **Platform:** All platforms
-- **Fixed in:** Unreleased
-- **Pi issue:** https://github.com/earendil-works/pi/issues/7629
-- **Removed when Pi fixes it:** Pi merges PR #7680 or another change that pages selection lists on these keys; then restore the keys in the oracle generators.
-- **Fix commits:** `68a4ed2b54` (2026-10-09), `0d867c440e` (2026-10-10)
-- **Tests:** `internal/codingagent/fullscreen_modal_viewport_test.go::TestFullscreenSelectionKeepsItsPageKeys`, `internal/codingagent/llama/ui_test.go::TestHuggingFaceSearchPageKeysMoveTenResults`, `internal/codingagent/modal_viewport_input_test.go::TestEditorSlotSelectorPageKeyMovesSelectionInEveryMode`, `tui/select_page_keys_test.go::TestAltScreenGivesSelectionPageKeysToACapturingFocus`, `tui/select_page_keys_test.go::TestEditorAutocompletePageKeys`, `tui/select_page_keys_test.go::TestPageSelectionIndex`, `tui/select_page_keys_test.go::TestSelectListPageKeysMoveByAPage`, `tui/select_page_keys_test.go::TestSelectorComponentsMoveByTheirPage` and 1 more in docs/bug-ledger.json
-
 ### BF-D156
 
 **MCP server `url` expands environment references (Pi #10654)**
@@ -13089,6 +13122,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `0b4e1e3376` (2026-10-09), `90882933f6` (2026-10-09), `a1fa6d1a33` (2026-10-09)
 - **Tests:** `ai/azure_config_oracle_test.go::TestAzureBaseURLNormalizationMatchesPi`, `ai/codex_vertex_urls_oracle_test.go::TestCodexWebSocketAndVertexVersionURLsMatchPi`, `ai/node_http_proxy_oracle_test.go::TestResolveHTTPProxyURLForTargetMatchesPiOracle`, `internal/evals/plan_oracle_test.go::TestPlanMatchesPiOnSeededProbes`
 - **Release note:** NO_PROXY entries and ports are trimmed with JavaScript's whitespace rules, as in Pi: an entry or port that starts with U+0085 is no longer stripped, and one that starts with U+FEFF is.
+
+### BF-a222037
+
+**A Go program that embeds PiG and also links a reflection consumer such as protobuf is no longer about 6 MB…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A Go program that embeds PiG and also links a reflection consumer such as protobuf is no longer about 6 MB larger because of `durable/internal/ordered`: its field metadata embedded `reflect.Type` anonymously, which promoted `MethodByName` onto it and made the linker keep every exported method of every reachable type; the field is now named.
+- **Root cause:** A Go program that embeds PiG and also links a reflection consumer such as protobuf is no longer about 6 MB larger because of `durable/internal/ordered`: its field metadata embedded `reflect.Type` anonymously, which promoted `MethodByName` onto it and made the linker keep every exported method of every reachable type; the field is now named.
+- **User impact:** Wrong output or ordering
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `a222037a72` (2026-10-29, #385)
+- **Tests:** None recorded.
+- **Release note:** A Go program that embeds PiG and also links a reflection consumer such as protobuf is no longer about 6 MB larger because of `durable/internal/ordered`: its field metadata embedded `reflect.Type` anonymously, which promoted `MethodByName` onto it and made the linker keep every exported method of every reachable type; the field is now named.
 
 ### BF-a238095
 
@@ -14986,6 +15033,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** `ai/google_thinking_level_map_upstream_test.go::TestGoogleThinkingLevelMapRegression`
 - **Release note:** Gemini 4 and later models send `thinkingLevel` instead of `thinkingBudget`, fixing Gemini 4 Argon on Vertex and the ignored thinking level on the Gemini API. Carried forward from Pi 1692bba6 (earendil-works/pi#10890), past the 1.2.0+3daa2028 pin.
 
+### BF-c5ea0d1
+
+**A session with an extension that registers a markdown transformer no longer crashes while an assistant reply…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A session with an extension that registers a markdown transformer no longer crashes while an assistant reply streams.
+- **Root cause:** interactive mode handed each assistant block's async markdown transforms block.Invalidate as their completion hook. The hook runs on the background worker that finished the extension's transform chain, and AssistantMessageComponent.Invalidate rebuilds the block's content container (updateContent: the segment list, spacers, thinking-run regions and the scratch child list) while the owner loop streams the next delta into the same block. Two goroutines in updateContent let one clear the shared scratch list while the other passed it to SetChildren, so the container held nil children and the next frame panicked in Container.renderChildLocked with a nil child interface. Only a session with an…
+- **User impact:** Crash, hang or runaway process
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `c5ea0d127b` (2026-10-29), `d0d459e754` (2026-10-29)
+- **Tests:** `internal/codingagent/assistant_block_async_race_test.go::TestAssistantBlockAsyncMarkdownCompletionLeavesTheBlockToTheOwnerLoop`, `tui/assistant_message_async_test.go::TestAssistantMessageAsyncCompletionMarksBlockDirty`
+- **Release note:** A session with an extension that registers a markdown transformer no longer crashes while an assistant reply streams. The transformer runs on a background worker, and its completion rebuilt the reply's content from that worker while the interface was streaming the next delta into the same reply, so both could rebuild it at once and the next frame panicked in `Container.renderChildLocked` with a nil child. A finished transform now only marks the reply for redraw, as it already did for a user message, and the interface rebuilds the reply on its own loop.
+
 ### BF-c625bb4
 
 **The durable `powershell` tool fails with "No command to run" when its program list is empty, instead of…**
@@ -15210,6 +15271,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `cb002735d6` (2026-10-09)
 - **Tests:** `ai/openai_reasoning_signature_only_test.go::TestOpenAICompletionsKeepsSignatureOnlyReasoningText`
 - **Release note:** OpenRouter's signature-only `reasoning.text` delta for Claude is kept and replayed with its reasoning block (D122, pi-mono #9534).
+
+### BF-cb20ec0
+
+**After `pig update --models`, OpenRouter's `:nitro` and `:floor` routing variants no longer disappear from…**
+
+- **Source:** PiG's own defect
+- **Symptom:** After `pig update --models`, OpenRouter's `:nitro` and `:floor` routing variants no longer disappear from `--list-models`, the model selector, `/scoped-models`, RPC `get_available_models` and the SDK lists.
+- **Root cause:** After pig update --models the saved OpenRouter list replaces the bundled one, and the :nitro and :floor variants, which were derived from the bundled models only, vanished from every listing. WithOpenRouterRoutingVariantModels derives them from whichever list is current, where the composed provider data and the native collection read the saved list.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `cb20ec03cd` (2026-10-29), `d58e454dd9` (2026-10-29)
+- **Tests:** `internal/codingagent/remote_catalog_openrouter_variants_test.go::TestRefreshedOpenRouterProviderListsRoutingVariantsOfTheRefreshedList`, `internal/codingagent/remote_catalog_openrouter_variants_test.go::TestSavedOpenRouterListShowsRoutingVariantsOnEveryRegistryListing`
+- **Release note:** After `pig update --models`, OpenRouter's `:nitro` and `:floor` routing variants no longer disappear from `--list-models`, the model selector, `/scoped-models`, RPC `get_available_models` and the SDK lists. The refreshed list replaces the bundled OpenRouter list, and the variants were derived from the bundled models only; they are now derived from whichever list is current (D199).
 
 ### BF-cb21ee0
 
@@ -17785,6 +17860,19 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** `internal/codingagent/tools/find_trim_oracle_test.go::TestFindToolTrimsFdLinesLikePi`
 - **Release note:** The find tool trims each fd result line like JavaScript trim(): a name ending in U+FEFF loses it and a name ending in U+0085 keeps it.
 
+### BF-eb6626f
+
+**Fix in shipped code**
+
+- **Source:** PiG's own defect
+- **Symptom:** Fix in shipped code
+- **Root cause:** Not recorded.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `eb6626fe9a` (2026-10-29)
+- **Tests:** `coding/mcpext/closed_config_test.go::TestRefuseConfigFilesDropsServersFromMcpJSON`
+
 ### BF-ebb4c0e
 
 **An `"m"` operation whose permutation a Go caller builds as `[]int` validates and applies again, as it did in…**
@@ -19569,7 +19657,6 @@ Each divergence record is accounted for here. A divergence that fixes a Pi defec
 | D150 | `--no-stdin` skips the startup read of piped stdin (Pi #10415) | [BF-D150](#bf-d150) |
 | D151 | `grep` with context reads a window of each matched file (Pi #9276) | [BF-D151](#bf-d151) |
 | D153 | The bash truncation notice names the size of the last line, not the bytes after the final newline (Pi #10015) | [BF-D153](#bf-d153) |
-| D155 | Selection lists page with PageUp and PageDown (Pi #7629) | [BF-D155](#bf-d155) |
 | D156 | MCP server `url` expands environment references (Pi #10654) | [BF-D156](#bf-d156) |
 | D157 | PiG's startup additions stay quiet when the config root cannot be written | deliberate difference |
 | D158 | A setting of the wrong JSON type is ignored (Pi 1.4.0 throws) | deliberate difference |

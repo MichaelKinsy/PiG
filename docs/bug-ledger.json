@@ -2959,9 +2959,7 @@
         "internal/codingagent/llama/ui_test.go::TestHuggingFaceSearchPageKeysMoveTenResults",
         "internal/codingagent/modal_viewport_input_test.go::TestEditorSlotSelectorPageKeyMovesSelectionInEveryMode",
         "internal/codingagent/select_page_keys_test.go::TestCustomEditorGivesSelectionPageKeysToAnOpenAutocomplete",
-        "internal/codingagent/select_page_keys_test.go::TestFirstTimeSetupPageKeysMoveToTheEnds",
         "internal/codingagent/select_page_keys_test.go::TestSessionSelectorCapturesSelectionPageKeys",
-        "internal/codingagent/select_page_keys_test.go::TestTrustSelectorPageKeysMoveToTheEnds",
         "tui/select_page_keys_test.go::TestAltScreenGivesSelectionPageKeysToACapturingFocus",
         "tui/select_page_keys_test.go::TestContainerCapturesSelectPageInputFromItsChildren",
         "tui/select_page_keys_test.go::TestEditorAutocompletePageKeys",
@@ -5989,6 +5987,28 @@
       ]
     },
     {
+      "id": "BF-366ae8e",
+      "title": "An extension provider's model that another provider also catalogs, such as `gpt-6-astra` under `azure`, no…",
+      "symptom": "Such a model took the other provider's API and the turn failed (`LiteLLM model gpt-6-astra declares unsupported protocol \"azure-openai-responses\"`).",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "An extension provider's model that another provider also catalogs, such as `gpt-6-astra` under `azure`, no longer takes that provider's API when it is built before its own provider registers. Before this fix, such a model took the other provider's API and the turn failed (`LiteLLM model gpt-6-astra declares unsupported protocol \"azure-openai-responses\"`). `BuildModel` now matches only the requested provider's catalog, as the CLI's startup resolution already did.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "366ae8eb45",
+          "date": "2026-10-28"
+        }
+      ],
+      "tests": [
+        "coding/build_model_catalog_scope_test.go::TestBuildModelIgnoresOtherProvidersCatalog"
+      ]
+    },
+    {
       "id": "BF-369b1e1",
       "title": "`grep` with `context` no longer loads each matched file into memory",
       "symptom": "A search over a directory of very large logs used to exhaust the heap; the output is unchanged (Pi #9276).",
@@ -8692,6 +8712,28 @@
       ]
     },
     {
+      "id": "BF-4d32556",
+      "title": "`Math.exp` in `internal/jsmath` returns Node's bits on arm64",
+      "symptom": "`Math.exp` in `internal/jsmath` returns Node's bits on arm64.",
+      "rootCause": "Node's arm64 builds compile V8's src/base/ieee754.cc with clang, whose -ffp-contract=on fuses a product into the addition or subtraction in the same expression. Exp rounded every such product with float64(), so on arm64 it disagreed with Math.exp in the last bit for 126 of 320026 arguments (TestExpMatchesNode). Log already went through mulAdd for the same reason; Exp now does too, at the five Horner terms, the ln2 reduction's hi and invln2*x+half. GOARCH=amd64 keeps the unfused product, which is the same single rounded addition the old expression performed.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`Math.exp` in `internal/jsmath` returns Node's bits on arm64. V8's fdlibm build contracts products into multiply-adds there, and `Exp` rounded them, so the last bit differed from `Math.exp` for about 1 in 2500 arguments on arm64 hosts. GOARCH=amd64 results are unchanged.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "4d32556afa",
+          "date": "2026-10-28"
+        }
+      ],
+      "tests": [
+        "internal/jsmath/exp_oracle_test.go::TestExpMatchesNode"
+      ]
+    },
+    {
       "id": "BF-4d33f78",
       "title": "fix(tui): a tool error result collapses like any other (Pi updateResult)",
       "symptom": "fix(tui): a tool error result collapses like any other (Pi updateResult)",
@@ -10380,6 +10422,35 @@
         "coding/cli/strip_leak_gate_test.go::TestStripLeakGate",
         "coding/model_availability_auth_view_test.go::TestAvailabilityPassAuthViewMatchesPiUpstream",
         "coding/model_runtime_injected_credentials_test.go::TestInjectedCredentialStoreAvailabilityReadsProvidersConcurrently"
+      ]
+    },
+    {
+      "id": "BF-58f6697",
+      "title": "Text typed and followed at once by Enter no longer skips the autocomplete menu Pi opens: `/model provider/id`…",
+      "symptom": "Text typed and followed at once by Enter no longer skips the autocomplete menu Pi opens: `/model provider/id` typed and entered in one go switched the model in PiG, where Pi accepts the suggestion into the editor on the first Enter and switches on the second (the same holds for `/thinking level`, any command with argument completions, and a command name such as `/settin`, which Pi accepts and submits).",
+      "rootCause": "Pi's editor only schedules an autocomplete request from the key handlers (editor.ts requestAutocomplete); startAutocompleteRequest runs as a Promise job after the terminal read's last sequence, and a provider that needs no I/O (a command name, a command's argument completions such as /model provider/id and /thinking level) answers in the same microtask checkpoint, before the next read is handled. An Enter sent right behind the text therefore finds the menu open: the first Enter accepts the suggestion, a second submits.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Text typed and followed at once by Enter no longer skips the autocomplete menu Pi opens: `/model provider/id` typed and entered in one go switched the model in PiG, where Pi accepts the suggestion into the editor on the first Enter and switches on the second (the same holds for `/thinking level`, any command with argument completions, and a command name such as `/settin`, which Pi accepts and submits). Pi's editor resolves its autocomplete request in the Promise jobs that follow the terminal read that typed the text, so the menu is open when the next read arrives; PiG started the request on a worker and published the menu through two later owner-loop tasks that the Enter overtook, so the Enter found no menu and submitted what was typed. The editor now starts the request of a read when the read has been handled (`Editor.FlushAutocomplete`, called by the interactive loop after each read), and an Enter in the same read as the text still submits it, as in Pi. Typed at human speed both behaved like Pi already.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "58f6697aa5",
+          "date": "2026-10-29"
+        }
+      ],
+      "tests": [
+        "tui/editor_autocomplete_flush_test.go::TestFlushAutocompleteAfterShutdownStartsNothing",
+        "tui/editor_autocomplete_flush_test.go::TestFlushAutocompleteAnswersTheLastRequestOfAReadOnce",
+        "tui/editor_autocomplete_flush_test.go::TestFlushAutocompleteDropsARequestTheEditorMovedOnFrom",
+        "tui/editor_autocomplete_flush_test.go::TestFlushAutocompleteJoinsARequestStillOnTheWorker",
+        "tui/editor_autocomplete_flush_test.go::TestFlushAutocompleteLeavesAnAwaitedAnswerToTheWorker",
+        "tui/editor_autocomplete_flush_test.go::TestFlushAutocompleteLeavesTheSymbolDebounceToItsTimer",
+        "tui/editor_autocomplete_flush_test.go::TestPostedRequestStartsWithoutAFlush",
+        "tui/editor_completion_owner_test.go::TestOwnedAutocompleteWaitsForOwnerPublication"
       ]
     },
     {
@@ -15069,9 +15140,7 @@
         "internal/codingagent/llama/ui_test.go::TestHuggingFaceSearchPageKeysMoveTenResults",
         "internal/codingagent/modal_viewport_input_test.go::TestEditorSlotSelectorPageKeyMovesSelectionInEveryMode",
         "internal/codingagent/select_page_keys_test.go::TestCustomEditorGivesSelectionPageKeysToAnOpenAutocomplete",
-        "internal/codingagent/select_page_keys_test.go::TestFirstTimeSetupPageKeysMoveToTheEnds",
         "internal/codingagent/select_page_keys_test.go::TestSessionSelectorCapturesSelectionPageKeys",
-        "internal/codingagent/select_page_keys_test.go::TestTrustSelectorPageKeysMoveToTheEnds",
         "tui/select_page_keys_test.go::TestAltScreenGivesSelectionPageKeysToACapturingFocus",
         "tui/select_page_keys_test.go::TestContainerCapturesSelectPageInputFromItsChildren",
         "tui/select_page_keys_test.go::TestEditorAutocompletePageKeys",
@@ -24070,42 +24139,6 @@
       ]
     },
     {
-      "id": "BF-D155",
-      "title": "Selection lists page with PageUp and PageDown (Pi #7629)",
-      "symptom": "in a selector, PageDown moves the selection down one page and does not scroll the transcript behind it. Pi scrolls the transcript or does nothing. An open editor autocomplete list pages the same way, and a user binding of the same key to an app action does not fire while the list is open. Extension-provided overlays cannot yet report that they capture the page keys, so the viewport still takes them there.",
-      "rootCause": "the selection stays where the user is looking. Pi #7629 is open, and its PR #7680 (`packages/tui/src/tui-alt-screen.ts`, `getPageSelectionIndex`, `capturesSelectPageInput`) is unmerged.",
-      "rootCauseSource": "divergence record",
-      "userImpact": "An operation failed or was rejected",
-      "platform": "All platforms",
-      "class": "ahead-of-pi",
-      "divergence": "D155",
-      "piIssue": "https://github.com/earendil-works/pi/issues/7629",
-      "removeWhen": "Pi merges PR #7680 or another change that pages selection lists on these keys; then restore the keys in the oracle generators.",
-      "fixedIn": "Unreleased",
-      "origin": "divergence",
-      "commits": [
-        {
-          "hash": "68a4ed2b54",
-          "date": "2026-10-09"
-        },
-        {
-          "hash": "0d867c440e",
-          "date": "2026-10-10"
-        }
-      ],
-      "tests": [
-        "internal/codingagent/fullscreen_modal_viewport_test.go::TestFullscreenSelectionKeepsItsPageKeys",
-        "internal/codingagent/llama/ui_test.go::TestHuggingFaceSearchPageKeysMoveTenResults",
-        "internal/codingagent/modal_viewport_input_test.go::TestEditorSlotSelectorPageKeyMovesSelectionInEveryMode",
-        "tui/select_page_keys_test.go::TestAltScreenGivesSelectionPageKeysToACapturingFocus",
-        "tui/select_page_keys_test.go::TestEditorAutocompletePageKeys",
-        "tui/select_page_keys_test.go::TestPageSelectionIndex",
-        "tui/select_page_keys_test.go::TestSelectListPageKeysMoveByAPage",
-        "tui/select_page_keys_test.go::TestSelectorComponentsMoveByTheirPage",
-        "tui/select_page_keys_test.go::TestSettingsListPageKeysMoveByAPage"
-      ]
-    },
-    {
       "id": "BF-D156",
       "title": "MCP server `url` expands environment references (Pi #10654)",
       "symptom": "the `/mcp` server menu adds a `connects to: \u003cexpanded url\u003e` line under a `url` that expands to something else (owner-approved; the expansion can contain a secret from the environment, and the menu shows it). An entry whose `url` is only a reference loads in PiG and is rejected by Pi. An entry whose `url` contains `$$`, or `$NAME` or `${NAME}` with `NAME` set, connects to the expanded URL in PiG and to the literal text in Pi. The stored config and `getMcpServers` keep the URL as written, and the server list shows it as written.",
@@ -24687,6 +24720,27 @@
         "ai/node_http_proxy_oracle_test.go::TestResolveHTTPProxyURLForTargetMatchesPiOracle",
         "internal/evals/plan_oracle_test.go::TestPlanMatchesPiOnSeededProbes"
       ]
+    },
+    {
+      "id": "BF-a222037",
+      "title": "A Go program that embeds PiG and also links a reflection consumer such as protobuf is no longer about 6 MB…",
+      "symptom": "A Go program that embeds PiG and also links a reflection consumer such as protobuf is no longer about 6 MB larger because of `durable/internal/ordered`: its field metadata embedded `reflect.Type` anonymously, which promoted `MethodByName` onto it and made the linker keep every exported method of every reachable type; the field is now named.",
+      "rootCause": "A Go program that embeds PiG and also links a reflection consumer such as protobuf is no longer about 6 MB larger because of `durable/internal/ordered`: its field metadata embedded `reflect.Type` anonymously, which promoted `MethodByName` onto it and made the linker keep every exported method of every reachable type; the field is now named.",
+      "rootCauseSource": "release note",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A Go program that embeds PiG and also links a reflection consumer such as protobuf is no longer about 6 MB larger because of `durable/internal/ordered`: its field metadata embedded `reflect.Type` anonymously, which promoted `MethodByName` onto it and made the linker keep every exported method of every reachable type; the field is now named.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "a222037a72",
+          "date": "2026-10-29",
+          "pr": "385"
+        }
+      ],
+      "tests": []
     },
     {
       "id": "BF-a238095",
@@ -28866,6 +28920,33 @@
       ]
     },
     {
+      "id": "BF-c5ea0d1",
+      "title": "A session with an extension that registers a markdown transformer no longer crashes while an assistant reply…",
+      "symptom": "A session with an extension that registers a markdown transformer no longer crashes while an assistant reply streams.",
+      "rootCause": "interactive mode handed each assistant block's async markdown transforms block.Invalidate as their completion hook. The hook runs on the background worker that finished the extension's transform chain, and AssistantMessageComponent.Invalidate rebuilds the block's content container (updateContent: the segment list, spacers, thinking-run regions and the scratch child list) while the owner loop streams the next delta into the same block. Two goroutines in updateContent let one clear the shared scratch list while the other passed it to SetChildren, so the container held nil children and the next frame panicked in Container.renderChildLocked with a nil child interface. Only a session with an…",
+      "rootCauseSource": "commit",
+      "userImpact": "Crash, hang or runaway process",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A session with an extension that registers a markdown transformer no longer crashes while an assistant reply streams. The transformer runs on a background worker, and its completion rebuilt the reply's content from that worker while the interface was streaming the next delta into the same reply, so both could rebuild it at once and the next frame panicked in `Container.renderChildLocked` with a nil child. A finished transform now only marks the reply for redraw, as it already did for a user message, and the interface rebuilds the reply on its own loop.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "c5ea0d127b",
+          "date": "2026-10-29"
+        },
+        {
+          "hash": "d0d459e754",
+          "date": "2026-10-29"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/assistant_block_async_race_test.go::TestAssistantBlockAsyncMarkdownCompletionLeavesTheBlockToTheOwnerLoop",
+        "tui/assistant_message_async_test.go::TestAssistantMessageAsyncCompletionMarksBlockDirty"
+      ]
+    },
+    {
       "id": "BF-c625bb4",
       "title": "The durable `powershell` tool fails with \"No command to run\" when its program list is empty, instead of…",
       "symptom": "The durable `powershell` tool fails with \"No command to run\" when its program list is empty, instead of reporting success.",
@@ -29381,6 +29462,33 @@
       ],
       "tests": [
         "ai/openai_reasoning_signature_only_test.go::TestOpenAICompletionsKeepsSignatureOnlyReasoningText"
+      ]
+    },
+    {
+      "id": "BF-cb20ec0",
+      "title": "After `pig update --models`, OpenRouter's `:nitro` and `:floor` routing variants no longer disappear from…",
+      "symptom": "After `pig update --models`, OpenRouter's `:nitro` and `:floor` routing variants no longer disappear from `--list-models`, the model selector, `/scoped-models`, RPC `get_available_models` and the SDK lists.",
+      "rootCause": "After pig update --models the saved OpenRouter list replaces the bundled one, and the :nitro and :floor variants, which were derived from the bundled models only, vanished from every listing. WithOpenRouterRoutingVariantModels derives them from whichever list is current, where the composed provider data and the native collection read the saved list.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "After `pig update --models`, OpenRouter's `:nitro` and `:floor` routing variants no longer disappear from `--list-models`, the model selector, `/scoped-models`, RPC `get_available_models` and the SDK lists. The refreshed list replaces the bundled OpenRouter list, and the variants were derived from the bundled models only; they are now derived from whichever list is current (D199).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "cb20ec03cd",
+          "date": "2026-10-29"
+        },
+        {
+          "hash": "d58e454dd9",
+          "date": "2026-10-29"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/remote_catalog_openrouter_variants_test.go::TestRefreshedOpenRouterProviderListsRoutingVariantsOfTheRefreshedList",
+        "internal/codingagent/remote_catalog_openrouter_variants_test.go::TestSavedOpenRouterListShowsRoutingVariantsOnEveryRegistryListing"
       ]
     },
     {
@@ -35822,6 +35930,27 @@
       ]
     },
     {
+      "id": "BF-eb6626f",
+      "title": "Fix in shipped code",
+      "symptom": "Fix in shipped code",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "eb6626fe9a",
+          "date": "2026-10-29"
+        }
+      ],
+      "tests": [
+        "coding/mcpext/closed_config_test.go::TestRefuseConfigFilesDropsServersFromMcpJSON"
+      ]
+    },
+    {
       "id": "BF-ebb4c0e",
       "title": "An `\"m\"` operation whose permutation a Go caller builds as `[]int` validates and applies again, as it did in…",
       "symptom": "`AssertValidOp` reported `m permutation is not an array`.",
@@ -40283,11 +40412,6 @@
       "id": "D153",
       "title": "The bash truncation notice names the size of the last line, not the bytes after the final newline (Pi #10015)",
       "entry": "BF-D153"
-    },
-    {
-      "id": "D155",
-      "title": "Selection lists page with PageUp and PageDown (Pi #7629)",
-      "entry": "BF-D155"
     },
     {
       "id": "D156",

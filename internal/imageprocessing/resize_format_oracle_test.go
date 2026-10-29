@@ -103,15 +103,10 @@ func realisticImage(rng *rand.Rand, category string, width, height int) *image.N
 	return img
 }
 
-// d165FormatChoice lists the cases of TestResizeFormatChoiceMatchesPiOnRealisticImages on which PiG returns the other of PNG and JPEG than Pi,
-// because Go's JPEG encoder writes other sizes than Photon's (docs/parity/DIVERGENCES.md D165). The corpus is seeded: an entry is a case
-// index, so a case that starts to match, or another one that stops, fails the test.
-var d165FormatChoice = map[int]string{}
-
 // TestResizeFormatChoiceMatchesPiOnRealisticImages runs image-resize-core.ts resizeImageInProcess (Photon) and ResizeImage over seeded
 // photos (JPEG), screenshots and icon sheets with transparency (PNG), 100 to 2,900 pixels on a side, resized to 2,000 or to a smaller limit
 // that most of them exceed. The size and the format of the result must match, the format being Pi's choice of the smaller of the PNG and the
-// JPEG candidate (e7a0df27); the cases of d165FormatChoice are the cases where the two JPEG encoders make that choice differ.
+// JPEG candidate (e7a0df27).
 func TestResizeFormatChoiceMatchesPiOnRealisticImages(t *testing.T) {
 	rng := rand.New(rand.NewPCG(20261130, 11))
 	var cases []formatChoiceCase
@@ -157,11 +152,7 @@ emit(out);`, cases, &want)
 		counts[0]++
 		if gotResult != want[i] {
 			counts[1]++
-			if _, cited := d165FormatChoice[i]; !cited {
-				t.Errorf("case %d (%s, %s, limit %d)\n Go %+v\n Pi %+v", i, c.Category, c.MimeType, c.MaxSide, gotResult, want[i])
-			}
-		} else if reason, cited := d165FormatChoice[i]; cited {
-			t.Errorf("case %d now matches Pi: remove it from d165FormatChoice (%s)", i, reason)
+			t.Errorf("case %d (%s, %s, limit %d)\n Go %+v\n Pi %+v", i, c.Category, c.MimeType, c.MaxSide, gotResult, want[i])
 		}
 		mismatches[c.Category] = counts
 	}

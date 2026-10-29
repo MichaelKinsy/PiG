@@ -571,9 +571,9 @@ rationale = "PORT_MAP row is ✅ ported (ai/models_store.go (ModelsStoreEntry, M
 [[files]]
 path = "packages/ai/src/models.generated.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "unchanged-observable"
+evidence = ["test:cmd/gen-models/catalog_matches_pi_test.go#TestCatalogGenerationMatchesPi"]
+rationale = "Header comment only (`scripts/generate-models.ts` -> `catalog/generate.ts`); the shard's data flows into the Go catalog through `make model-catalogs`, which yields no diff, and the Go generator reproduces Pi's data byte for byte. PiG: ai/models_generated.go, ai/image_models_generated.go, ai/classifier_models_generated.go, ai/providers_generated.go (lane B1)."
 
 [[files]]
 path = "packages/ai/src/models.ts"
@@ -599,9 +599,9 @@ rationale = "PORT_MAP row is ✅ ported (ai/registry.go + ai/register_builtins.g
 [[files]]
 path = "packages/ai/src/providers/amazon-bedrock.models.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "unchanged-observable"
+evidence = ["test:cmd/gen-models/catalog_matches_pi_test.go#TestCatalogGenerationMatchesPi"]
+rationale = "Header comment only (`scripts/generate-models.ts` -> `catalog/generate.ts`); the shard's data flows into the Go catalog through `make model-catalogs`, which yields no diff, and the Go generator reproduces Pi's data byte for byte. PiG: ai/models_generated.go, ai/image_models_generated.go, ai/classifier_models_generated.go, ai/providers_generated.go (lane B1)."
 
 [[files]]
 path = "packages/ai/src/providers/amazon-bedrock.ts"
@@ -613,9 +613,9 @@ rationale = "PORT_MAP row is ✅ ported (ai/auth_providers.go + ai/providers/bed
 [[files]]
 path = "packages/ai/src/providers/ant-ling.models.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "unchanged-observable"
+evidence = ["test:cmd/gen-models/catalog_matches_pi_test.go#TestCatalogGenerationMatchesPi"]
+rationale = "Header comment only (`scripts/generate-models.ts` -> `catalog/generate.ts`); the shard's data flows into the Go catalog through `make model-catalogs`, which yields no diff, and the Go generator reproduces Pi's data byte for byte. PiG: ai/models_generated.go, ai/image_models_generated.go, ai/classifier_models_generated.go, ai/providers_generated.go (lane B1)."
 
 [[files]]
 path = "packages/ai/src/providers/ant-ling.ts"
@@ -627,9 +627,9 @@ rationale = "PORT_MAP row is ✅ ported (ai/models_generated.go + internal/codin
 [[files]]
 path = "packages/ai/src/providers/anthropic.models.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "unchanged-observable"
+evidence = ["test:cmd/gen-models/catalog_matches_pi_test.go#TestCatalogGenerationMatchesPi"]
+rationale = "Header comment only (`scripts/generate-models.ts` -> `catalog/generate.ts`); the shard's data flows into the Go catalog through `make model-catalogs`, which yields no diff, and the Go generator reproduces Pi's data byte for byte. PiG: ai/models_generated.go, ai/image_models_generated.go, ai/classifier_models_generated.go, ai/providers_generated.go (lane B1)."
 
 [[files]]
 path = "packages/ai/src/providers/anthropic.ts"
@@ -641,9 +641,9 @@ rationale = "PORT_MAP row is ✅ ported (ai/anthropic.go + ai/anthropic_client.g
 [[files]]
 path = "packages/ai/src/providers/azure.models.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "unchanged-observable"
+evidence = ["test:cmd/gen-models/catalog_matches_pi_test.go#TestCatalogGenerationMatchesPi"]
+rationale = "Header comment only (`scripts/generate-models.ts` -> `catalog/generate.ts`); the shard's data flows into the Go catalog through `make model-catalogs`, which yields no diff, and the Go generator reproduces Pi's data byte for byte. PiG: ai/models_generated.go, ai/image_models_generated.go, ai/classifier_models_generated.go, ai/providers_generated.go (lane B1)."
 
 [[files]]
 path = "packages/ai/src/providers/azure.ts"
@@ -655,9 +655,9 @@ rationale = "PORT_MAP row is ✅ ported (ai/azure.go (Azure Chat Completions end
 [[files]]
 path = "packages/ai/src/providers/baseten.models.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "unchanged-observable"
+evidence = ["test:cmd/gen-models/catalog_matches_pi_test.go#TestCatalogGenerationMatchesPi"]
+rationale = "Header comment only. The Baseten shard's data is part of the generated catalog like every other shard; the provider factory `baseten.ts` stays unported (PORT_MAP `n/a`), unchanged by this commit. PiG: ai/models_generated.go, ai/image_models_generated.go, ai/classifier_models_generated.go, ai/providers_generated.go (lane B1)."
 
 [[files]]
 path = "packages/ai/src/providers/baseten.ts"
@@ -669,9 +669,9 @@ rationale = "PORT_MAP records this file n/a with the reason: (not ported: Basete
 [[files]]
 path = "packages/ai/src/providers/cerebras.models.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "unchanged-observable"
+evidence = ["test:cmd/gen-models/catalog_matches_pi_test.go#TestCatalogGenerationMatchesPi"]
+rationale = "Header comment only (`scripts/generate-models.ts` -> `catalog/generate.ts`); the shard's data flows into the Go catalog through `make model-catalogs`, which yields no diff, and the Go generator reproduces Pi's data byte for byte. PiG: ai/models_generated.go, ai/image_models_generated.go, ai/classifier_models_generated.go, ai/providers_generated.go (lane B1)."
 
 [[files]]
 path = "packages/ai/src/providers/cerebras.ts"
@@ -683,9 +683,9 @@ rationale = "PORT_MAP row is ✅ ported (ai/models_generated.go + internal/codin
 [[files]]
 path = "packages/ai/src/providers/cloudflare-ai-gateway.models.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "unchanged-observable"
+evidence = ["test:cmd/gen-models/catalog_matches_pi_test.go#TestCatalogGenerationMatchesPi"]
+rationale = "Header comment only (`scripts/generate-models.ts` -> `catalog/generate.ts`); the shard's data flows into the Go catalog through `make model-catalogs`, which yields no diff, and the Go generator reproduces Pi's data byte for byte. PiG: ai/models_generated.go, ai/image_models_generated.go, ai/classifier_models_generated.go, ai/providers_generated.go (lane B1)."
 
 [[files]]
 path = "packages/ai/src/providers/cloudflare-ai-gateway.ts"
@@ -711,9 +711,9 @@ rationale = "PORT_MAP row is ✅ ported (ai/cloudflare_streams.go (ResolveCloudf
 [[files]]
 path = "packages/ai/src/providers/cloudflare-workers-ai.models.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "unchanged-observable"
+evidence = ["test:cmd/gen-models/catalog_matches_pi_test.go#TestCatalogGenerationMatchesPi"]
+rationale = "Header comment only (`scripts/generate-models.ts` -> `catalog/generate.ts`); the shard's data flows into the Go catalog through `make model-catalogs`, which yields no diff, and the Go generator reproduces Pi's data byte for byte. PiG: ai/models_generated.go, ai/image_models_generated.go, ai/classifier_models_generated.go, ai/providers_generated.go (lane B1)."
 
 [[files]]
 path = "packages/ai/src/providers/cloudflare-workers-ai.ts"
@@ -739,9 +739,9 @@ rationale = "PORT_MAP records this file n/a with the reason: (TypeScript JSON im
 [[files]]
 path = "packages/ai/src/providers/deepseek.models.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "unchanged-observable"
+evidence = ["test:cmd/gen-models/catalog_matches_pi_test.go#TestCatalogGenerationMatchesPi"]
+rationale = "Header comment only (`scripts/generate-models.ts` -> `catalog/generate.ts`); the shard's data flows into the Go catalog through `make model-catalogs`, which yields no diff, and the Go generator reproduces Pi's data byte for byte. PiG: ai/models_generated.go, ai/image_models_generated.go, ai/classifier_models_generated.go, ai/providers_generated.go (lane B1)."
 
 [[files]]
 path = "packages/ai/src/providers/deepseek.ts"
@@ -760,9 +760,9 @@ rationale = "Pi f715a15c1 gives streamWithDeltas a ToolCallArgumentsStream per t
 [[files]]
 path = "packages/ai/src/providers/fireworks.models.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "unchanged-observable"
+evidence = ["test:cmd/gen-models/catalog_matches_pi_test.go#TestCatalogGenerationMatchesPi"]
+rationale = "Header comment only (`scripts/generate-models.ts` -> `catalog/generate.ts`); the shard's data flows into the Go catalog through `make model-catalogs`, which yields no diff, and the Go generator reproduces Pi's data byte for byte. PiG: ai/models_generated.go, ai/image_models_generated.go, ai/classifier_models_generated.go, ai/providers_generated.go (lane B1)."
 
 [[files]]
 path = "packages/ai/src/providers/fireworks.ts"
@@ -774,9 +774,9 @@ rationale = "PORT_MAP row is ✅ ported (ai/models_generated.go + internal/codin
 [[files]]
 path = "packages/ai/src/providers/github-copilot.models.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "unchanged-observable"
+evidence = ["test:cmd/gen-models/catalog_matches_pi_test.go#TestCatalogGenerationMatchesPi"]
+rationale = "Header comment only (`scripts/generate-models.ts` -> `catalog/generate.ts`); the shard's data flows into the Go catalog through `make model-catalogs`, which yields no diff, and the Go generator reproduces Pi's data byte for byte. PiG: ai/models_generated.go, ai/image_models_generated.go, ai/classifier_models_generated.go, ai/providers_generated.go (lane B1)."
 
 [[files]]
 path = "packages/ai/src/providers/github-copilot.ts"
@@ -788,9 +788,9 @@ rationale = "PORT_MAP row is ✅ ported (ai/models_generated.go + ai/github_copi
 [[files]]
 path = "packages/ai/src/providers/google-vertex.models.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "unchanged-observable"
+evidence = ["test:cmd/gen-models/catalog_matches_pi_test.go#TestCatalogGenerationMatchesPi"]
+rationale = "Header comment only (`scripts/generate-models.ts` -> `catalog/generate.ts`); the shard's data flows into the Go catalog through `make model-catalogs`, which yields no diff, and the Go generator reproduces Pi's data byte for byte. PiG: ai/models_generated.go, ai/image_models_generated.go, ai/classifier_models_generated.go, ai/providers_generated.go (lane B1)."
 
 [[files]]
 path = "packages/ai/src/providers/google-vertex.ts"
@@ -802,9 +802,9 @@ rationale = "PORT_MAP row is ✅ ported (ai/auth_providers.go + ai/google_vertex
 [[files]]
 path = "packages/ai/src/providers/google.models.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "unchanged-observable"
+evidence = ["test:cmd/gen-models/catalog_matches_pi_test.go#TestCatalogGenerationMatchesPi"]
+rationale = "Header comment only (`scripts/generate-models.ts` -> `catalog/generate.ts`); the shard's data flows into the Go catalog through `make model-catalogs`, which yields no diff, and the Go generator reproduces Pi's data byte for byte. PiG: ai/models_generated.go, ai/image_models_generated.go, ai/classifier_models_generated.go, ai/providers_generated.go (lane B1)."
 
 [[files]]
 path = "packages/ai/src/providers/google.ts"
@@ -816,9 +816,9 @@ rationale = "PORT_MAP row is ✅ ported (ai/google.go, ai/builtin_providers_goog
 [[files]]
 path = "packages/ai/src/providers/groq.models.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "unchanged-observable"
+evidence = ["test:cmd/gen-models/catalog_matches_pi_test.go#TestCatalogGenerationMatchesPi"]
+rationale = "Header comment only (`scripts/generate-models.ts` -> `catalog/generate.ts`); the shard's data flows into the Go catalog through `make model-catalogs`, which yields no diff, and the Go generator reproduces Pi's data byte for byte. PiG: ai/models_generated.go, ai/image_models_generated.go, ai/classifier_models_generated.go, ai/providers_generated.go (lane B1)."
 
 [[files]]
 path = "packages/ai/src/providers/groq.ts"
@@ -830,9 +830,9 @@ rationale = "PORT_MAP row is ✅ ported (ai/models_generated.go + internal/codin
 [[files]]
 path = "packages/ai/src/providers/huggingface.models.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "unchanged-observable"
+evidence = ["test:cmd/gen-models/catalog_matches_pi_test.go#TestCatalogGenerationMatchesPi"]
+rationale = "Header comment only (`scripts/generate-models.ts` -> `catalog/generate.ts`); the shard's data flows into the Go catalog through `make model-catalogs`, which yields no diff, and the Go generator reproduces Pi's data byte for byte. PiG: ai/models_generated.go, ai/image_models_generated.go, ai/classifier_models_generated.go, ai/providers_generated.go (lane B1)."
 
 [[files]]
 path = "packages/ai/src/providers/huggingface.ts"
@@ -851,9 +851,9 @@ rationale = "PORT_MAP row is ✅ ported (ai/openrouter_images.go (RegisterBuiltI
 [[files]]
 path = "packages/ai/src/providers/kimi-coding.models.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "unchanged-observable"
+evidence = ["test:cmd/gen-models/catalog_matches_pi_test.go#TestCatalogGenerationMatchesPi"]
+rationale = "Header comment only (`scripts/generate-models.ts` -> `catalog/generate.ts`); the shard's data flows into the Go catalog through `make model-catalogs`, which yields no diff, and the Go generator reproduces Pi's data byte for byte. PiG: ai/models_generated.go, ai/image_models_generated.go, ai/classifier_models_generated.go, ai/providers_generated.go (lane B1)."
 
 [[files]]
 path = "packages/ai/src/providers/kimi-coding.ts"
@@ -865,9 +865,9 @@ rationale = "PORT_MAP row is ✅ ported (ai/models_generated.go + internal/codin
 [[files]]
 path = "packages/ai/src/providers/meta.models.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "unchanged-observable"
+evidence = ["test:cmd/gen-models/catalog_matches_pi_test.go#TestCatalogGenerationMatchesPi"]
+rationale = "Header comment only (`scripts/generate-models.ts` -> `catalog/generate.ts`); the shard's data flows into the Go catalog through `make model-catalogs`, which yields no diff, and the Go generator reproduces Pi's data byte for byte. PiG: ai/models_generated.go, ai/image_models_generated.go, ai/classifier_models_generated.go, ai/providers_generated.go (lane B1)."
 
 [[files]]
 path = "packages/ai/src/providers/meta.ts"
@@ -879,9 +879,9 @@ rationale = "PORT_MAP row is ✅ ported (ai/models_generated.go + ai/openai_resp
 [[files]]
 path = "packages/ai/src/providers/minimax-cn.models.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "unchanged-observable"
+evidence = ["test:cmd/gen-models/catalog_matches_pi_test.go#TestCatalogGenerationMatchesPi"]
+rationale = "Header comment only (`scripts/generate-models.ts` -> `catalog/generate.ts`); the shard's data flows into the Go catalog through `make model-catalogs`, which yields no diff, and the Go generator reproduces Pi's data byte for byte. PiG: ai/models_generated.go, ai/image_models_generated.go, ai/classifier_models_generated.go, ai/providers_generated.go (lane B1)."
 
 [[files]]
 path = "packages/ai/src/providers/minimax-cn.ts"
@@ -893,9 +893,9 @@ rationale = "PORT_MAP row is ✅ ported (ai/models_generated.go + internal/codin
 [[files]]
 path = "packages/ai/src/providers/minimax.models.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "unchanged-observable"
+evidence = ["test:cmd/gen-models/catalog_matches_pi_test.go#TestCatalogGenerationMatchesPi"]
+rationale = "Header comment only (`scripts/generate-models.ts` -> `catalog/generate.ts`); the shard's data flows into the Go catalog through `make model-catalogs`, which yields no diff, and the Go generator reproduces Pi's data byte for byte. PiG: ai/models_generated.go, ai/image_models_generated.go, ai/classifier_models_generated.go, ai/providers_generated.go (lane B1)."
 
 [[files]]
 path = "packages/ai/src/providers/minimax.ts"
@@ -907,9 +907,9 @@ rationale = "PORT_MAP row is ✅ ported (ai/models_generated.go + internal/codin
 [[files]]
 path = "packages/ai/src/providers/mistral.models.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "unchanged-observable"
+evidence = ["test:cmd/gen-models/catalog_matches_pi_test.go#TestCatalogGenerationMatchesPi"]
+rationale = "Header comment only (`scripts/generate-models.ts` -> `catalog/generate.ts`); the shard's data flows into the Go catalog through `make model-catalogs`, which yields no diff, and the Go generator reproduces Pi's data byte for byte. PiG: ai/models_generated.go, ai/image_models_generated.go, ai/classifier_models_generated.go, ai/providers_generated.go (lane B1)."
 
 [[files]]
 path = "packages/ai/src/providers/mistral.ts"
@@ -928,9 +928,9 @@ rationale = "71023aec→8efd314f: Pi 8efd314f: ThinkingLevelMapSchema gains its 
 [[files]]
 path = "packages/ai/src/providers/moonshotai-cn.models.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "unchanged-observable"
+evidence = ["test:cmd/gen-models/catalog_matches_pi_test.go#TestCatalogGenerationMatchesPi"]
+rationale = "Header comment only (`scripts/generate-models.ts` -> `catalog/generate.ts`); the shard's data flows into the Go catalog through `make model-catalogs`, which yields no diff, and the Go generator reproduces Pi's data byte for byte. PiG: ai/models_generated.go, ai/image_models_generated.go, ai/classifier_models_generated.go, ai/providers_generated.go (lane B1)."
 
 [[files]]
 path = "packages/ai/src/providers/moonshotai-cn.ts"
@@ -942,9 +942,9 @@ rationale = "PORT_MAP row is ✅ ported (ai/models_generated.go + internal/codin
 [[files]]
 path = "packages/ai/src/providers/moonshotai.models.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "unchanged-observable"
+evidence = ["test:cmd/gen-models/catalog_matches_pi_test.go#TestCatalogGenerationMatchesPi"]
+rationale = "Header comment only (`scripts/generate-models.ts` -> `catalog/generate.ts`); the shard's data flows into the Go catalog through `make model-catalogs`, which yields no diff, and the Go generator reproduces Pi's data byte for byte. PiG: ai/models_generated.go, ai/image_models_generated.go, ai/classifier_models_generated.go, ai/providers_generated.go (lane B1)."
 
 [[files]]
 path = "packages/ai/src/providers/moonshotai.ts"
@@ -956,9 +956,9 @@ rationale = "PORT_MAP row is ✅ ported (ai/models_generated.go + internal/codin
 [[files]]
 path = "packages/ai/src/providers/nvidia.models.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "unchanged-observable"
+evidence = ["test:cmd/gen-models/catalog_matches_pi_test.go#TestCatalogGenerationMatchesPi"]
+rationale = "Header comment only (`scripts/generate-models.ts` -> `catalog/generate.ts`); the shard's data flows into the Go catalog through `make model-catalogs`, which yields no diff, and the Go generator reproduces Pi's data byte for byte. PiG: ai/models_generated.go, ai/image_models_generated.go, ai/classifier_models_generated.go, ai/providers_generated.go (lane B1)."
 
 [[files]]
 path = "packages/ai/src/providers/nvidia.ts"
@@ -970,9 +970,9 @@ rationale = "PORT_MAP row is ✅ ported (ai/models_generated.go + internal/codin
 [[files]]
 path = "packages/ai/src/providers/openai-codex.models.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "unchanged-observable"
+evidence = ["test:cmd/gen-models/catalog_matches_pi_test.go#TestCatalogGenerationMatchesPi"]
+rationale = "Header comment only (`scripts/generate-models.ts` -> `catalog/generate.ts`); the shard's data flows into the Go catalog through `make model-catalogs`, which yields no diff, and the Go generator reproduces Pi's data byte for byte. PiG: ai/models_generated.go, ai/image_models_generated.go, ai/classifier_models_generated.go, ai/providers_generated.go (lane B1)."
 
 [[files]]
 path = "packages/ai/src/providers/openai-codex.ts"
@@ -984,9 +984,9 @@ rationale = "PORT_MAP row is ✅ ported (ai/models_generated.go + internal/codin
 [[files]]
 path = "packages/ai/src/providers/openai.models.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "unchanged-observable"
+evidence = ["test:cmd/gen-models/catalog_matches_pi_test.go#TestCatalogGenerationMatchesPi"]
+rationale = "Header comment only (`scripts/generate-models.ts` -> `catalog/generate.ts`); the shard's data flows into the Go catalog through `make model-catalogs`, which yields no diff, and the Go generator reproduces Pi's data byte for byte. PiG: ai/models_generated.go, ai/image_models_generated.go, ai/classifier_models_generated.go, ai/providers_generated.go (lane B1)."
 
 [[files]]
 path = "packages/ai/src/providers/openai.ts"
@@ -998,9 +998,9 @@ rationale = "PORT_MAP row is ✅ ported (ai/models_generated.go + internal/codin
 [[files]]
 path = "packages/ai/src/providers/opencode-go.models.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "unchanged-observable"
+evidence = ["test:cmd/gen-models/catalog_matches_pi_test.go#TestCatalogGenerationMatchesPi"]
+rationale = "Header comment only (`scripts/generate-models.ts` -> `catalog/generate.ts`); the shard's data flows into the Go catalog through `make model-catalogs`, which yields no diff, and the Go generator reproduces Pi's data byte for byte. PiG: ai/models_generated.go, ai/image_models_generated.go, ai/classifier_models_generated.go, ai/providers_generated.go (lane B1)."
 
 [[files]]
 path = "packages/ai/src/providers/opencode-go.ts"
@@ -1019,9 +1019,9 @@ rationale = "PORT_MAP row is ✅ ported (ai/opencode_headers.go (WithOpenCodeSes
 [[files]]
 path = "packages/ai/src/providers/opencode.models.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "unchanged-observable"
+evidence = ["test:cmd/gen-models/catalog_matches_pi_test.go#TestCatalogGenerationMatchesPi"]
+rationale = "Header comment only (`scripts/generate-models.ts` -> `catalog/generate.ts`); the shard's data flows into the Go catalog through `make model-catalogs`, which yields no diff, and the Go generator reproduces Pi's data byte for byte. PiG: ai/models_generated.go, ai/image_models_generated.go, ai/classifier_models_generated.go, ai/providers_generated.go (lane B1)."
 
 [[files]]
 path = "packages/ai/src/providers/opencode.ts"
@@ -1034,15 +1034,15 @@ rationale = "PORT_MAP row is ✅ ported (ai/models_generated.go + internal/codin
 path = "packages/ai/src/providers/openrouter-api.ts"
 change = "added"
 disposition = "ported"
-evidence = ["test:ai/openrouter_api_test.go#TestOpenRouterCostConvertsPricesAndFallsBackOnMissingInvalidAndNegativeRates", "test:cmd/gen-models/openrouter_catalog_test.go#TestOpenRouterCatalogParsingUpstream", "test:cmd/gen-models/openrouter_catalog_test.go#TestOpenRouterPricingOverridesTurnPromptLengthOverridesIntoTiers", "test:ai/openrouter_user_models_test.go#TestPersonalizeOpenRouterCatalogKeepsOnlyTheKeysChatModelsWithTheKeysLimitsAndPrices"]
+evidence = ["test:ai/openrouter_api_test.go#TestOpenRouterCostConvertsPricesAndFallsBackOnMissingInvalidAndNegativeRates", "test:internal/modelgen/source_openrouter_test.go#TestOpenRouterCatalogParsing", "test:internal/modelgen/source_openrouter_test.go#TestOpenRouterPricingOverrides", "test:ai/openrouter_user_models_test.go#TestPersonalizeOpenRouterCatalogKeepsOnlyTheKeysChatModelsWithTheKeysLimitsAndPrices"]
 rationale = "Added in 1.2.0 (ee409a85, #10672): the OpenRouter listing shapes (OpenRouterPricing, OpenRouterPricingOverride, OpenRouterModel) and openRouterCost, moved out of scripts/openrouter-catalog.ts so the generator and personalizeOpenRouterCatalog share it. Its one behavior change is that a missing, invalid or negative rate (-1 for router models such as openrouter/auto) takes the fallback instead of becoming NaN or a negative price. ai/openrouter_api.go ports the types and OpenRouterCost; cmd/gen-models/openrouter_catalog.go openRouterCost calls ai.OpenRouterCost, so the generator and the runtime share one conversion."
 
 [[files]]
 path = "packages/ai/src/providers/openrouter.models.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "unchanged-observable"
+evidence = ["test:cmd/gen-models/catalog_matches_pi_test.go#TestCatalogGenerationMatchesPi"]
+rationale = "Header comment only (`scripts/generate-models.ts` -> `catalog/generate.ts`); the shard's data flows into the Go catalog through `make model-catalogs`, which yields no diff, and the Go generator reproduces Pi's data byte for byte. PiG: ai/models_generated.go, ai/image_models_generated.go, ai/classifier_models_generated.go, ai/providers_generated.go (lane B1)."
 
 [[files]]
 path = "packages/ai/src/providers/openrouter.ts"
@@ -1054,9 +1054,9 @@ rationale = "PORT_MAP row is ✅ ported (ai/models_generated.go + internal/codin
 [[files]]
 path = "packages/ai/src/providers/qwen-token-plan-cn.models.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "unchanged-observable"
+evidence = ["test:cmd/gen-models/catalog_matches_pi_test.go#TestCatalogGenerationMatchesPi"]
+rationale = "Header comment only (`scripts/generate-models.ts` -> `catalog/generate.ts`); the shard's data flows into the Go catalog through `make model-catalogs`, which yields no diff, and the Go generator reproduces Pi's data byte for byte. PiG: ai/models_generated.go, ai/image_models_generated.go, ai/classifier_models_generated.go, ai/providers_generated.go (lane B1)."
 
 [[files]]
 path = "packages/ai/src/providers/qwen-token-plan-cn.ts"
@@ -1068,9 +1068,9 @@ rationale = "PORT_MAP row is ✅ ported (ai/models_generated.go + internal/codin
 [[files]]
 path = "packages/ai/src/providers/qwen-token-plan-individual.models.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "unchanged-observable"
+evidence = ["test:cmd/gen-models/catalog_matches_pi_test.go#TestCatalogGenerationMatchesPi"]
+rationale = "Header comment only (`scripts/generate-models.ts` -> `catalog/generate.ts`); the shard's data flows into the Go catalog through `make model-catalogs`, which yields no diff, and the Go generator reproduces Pi's data byte for byte. PiG: ai/models_generated.go, ai/image_models_generated.go, ai/classifier_models_generated.go, ai/providers_generated.go (lane B1)."
 
 [[files]]
 path = "packages/ai/src/providers/qwen-token-plan-individual.ts"
@@ -1082,9 +1082,9 @@ rationale = "PORT_MAP row is ✅ ported (ai/models_generated.go + ai/openai.go +
 [[files]]
 path = "packages/ai/src/providers/qwen-token-plan.models.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "unchanged-observable"
+evidence = ["test:cmd/gen-models/catalog_matches_pi_test.go#TestCatalogGenerationMatchesPi"]
+rationale = "Header comment only (`scripts/generate-models.ts` -> `catalog/generate.ts`); the shard's data flows into the Go catalog through `make model-catalogs`, which yields no diff, and the Go generator reproduces Pi's data byte for byte. PiG: ai/models_generated.go, ai/image_models_generated.go, ai/classifier_models_generated.go, ai/providers_generated.go (lane B1)."
 
 [[files]]
 path = "packages/ai/src/providers/qwen-token-plan.ts"
@@ -1103,9 +1103,9 @@ rationale = "Pi f715a15c1 wraps the 512-character truncation of a gateway error 
 [[files]]
 path = "packages/ai/src/providers/radius.models.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "unchanged-observable"
+evidence = ["test:cmd/gen-models/catalog_matches_pi_test.go#TestCatalogGenerationMatchesPi"]
+rationale = "Header comment only (`scripts/generate-models.ts` -> `catalog/generate.ts`); the shard's data flows into the Go catalog through `make model-catalogs`, which yields no diff, and the Go generator reproduces Pi's data byte for byte. PiG: ai/models_generated.go, ai/image_models_generated.go, ai/classifier_models_generated.go, ai/providers_generated.go (lane B1)."
 
 [[files]]
 path = "packages/ai/src/providers/radius.ts"
@@ -1117,9 +1117,9 @@ rationale = "PORT_MAP row is ✅ ported (ai/radius.go + internal/codingagent/rad
 [[files]]
 path = "packages/ai/src/providers/together.models.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "unchanged-observable"
+evidence = ["test:cmd/gen-models/catalog_matches_pi_test.go#TestCatalogGenerationMatchesPi"]
+rationale = "Header comment only (`scripts/generate-models.ts` -> `catalog/generate.ts`); the shard's data flows into the Go catalog through `make model-catalogs`, which yields no diff, and the Go generator reproduces Pi's data byte for byte. PiG: ai/models_generated.go, ai/image_models_generated.go, ai/classifier_models_generated.go, ai/providers_generated.go (lane B1)."
 
 [[files]]
 path = "packages/ai/src/providers/together.ts"
@@ -1131,9 +1131,9 @@ rationale = "PORT_MAP row is ✅ ported (ai/models_generated.go + internal/codin
 [[files]]
 path = "packages/ai/src/providers/typesafe.models.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "unchanged-observable"
+evidence = ["test:cmd/gen-models/catalog_matches_pi_test.go#TestCatalogGenerationMatchesPi"]
+rationale = "Header comment only (`scripts/generate-models.ts` -> `catalog/generate.ts`); the shard's data flows into the Go catalog through `make model-catalogs`, which yields no diff, and the Go generator reproduces Pi's data byte for byte. PiG: ai/models_generated.go, ai/image_models_generated.go, ai/classifier_models_generated.go, ai/providers_generated.go (lane B1)."
 
 [[files]]
 path = "packages/ai/src/providers/typesafe.ts"
@@ -1145,9 +1145,9 @@ rationale = "PORT_MAP row is ✅ ported (ai/builtin_providers.go (TypesafeProvid
 [[files]]
 path = "packages/ai/src/providers/vercel-ai-gateway.models.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "unchanged-observable"
+evidence = ["test:cmd/gen-models/catalog_matches_pi_test.go#TestCatalogGenerationMatchesPi"]
+rationale = "Header comment only (`scripts/generate-models.ts` -> `catalog/generate.ts`); the shard's data flows into the Go catalog through `make model-catalogs`, which yields no diff, and the Go generator reproduces Pi's data byte for byte. PiG: ai/models_generated.go, ai/image_models_generated.go, ai/classifier_models_generated.go, ai/providers_generated.go (lane B1)."
 
 [[files]]
 path = "packages/ai/src/providers/vercel-ai-gateway.ts"
@@ -1159,9 +1159,9 @@ rationale = "PORT_MAP row is ✅ ported (ai/models_generated.go + internal/codin
 [[files]]
 path = "packages/ai/src/providers/xai.models.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "unchanged-observable"
+evidence = ["test:cmd/gen-models/catalog_matches_pi_test.go#TestCatalogGenerationMatchesPi"]
+rationale = "Header comment only (`scripts/generate-models.ts` -> `catalog/generate.ts`); the shard's data flows into the Go catalog through `make model-catalogs`, which yields no diff, and the Go generator reproduces Pi's data byte for byte. PiG: ai/models_generated.go, ai/image_models_generated.go, ai/classifier_models_generated.go, ai/providers_generated.go (lane B1)."
 
 [[files]]
 path = "packages/ai/src/providers/xai.ts"
@@ -1173,9 +1173,9 @@ rationale = "PORT_MAP row is ✅ ported (ai/models_generated.go + internal/codin
 [[files]]
 path = "packages/ai/src/providers/xiaomi-token-plan-ams.models.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "unchanged-observable"
+evidence = ["test:cmd/gen-models/catalog_matches_pi_test.go#TestCatalogGenerationMatchesPi"]
+rationale = "Header comment only (`scripts/generate-models.ts` -> `catalog/generate.ts`); the shard's data flows into the Go catalog through `make model-catalogs`, which yields no diff, and the Go generator reproduces Pi's data byte for byte. PiG: ai/models_generated.go, ai/image_models_generated.go, ai/classifier_models_generated.go, ai/providers_generated.go (lane B1)."
 
 [[files]]
 path = "packages/ai/src/providers/xiaomi-token-plan-ams.ts"
@@ -1187,9 +1187,9 @@ rationale = "PORT_MAP row is ✅ ported (ai/models_generated.go + internal/codin
 [[files]]
 path = "packages/ai/src/providers/xiaomi-token-plan-cn.models.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "unchanged-observable"
+evidence = ["test:cmd/gen-models/catalog_matches_pi_test.go#TestCatalogGenerationMatchesPi"]
+rationale = "Header comment only (`scripts/generate-models.ts` -> `catalog/generate.ts`); the shard's data flows into the Go catalog through `make model-catalogs`, which yields no diff, and the Go generator reproduces Pi's data byte for byte. PiG: ai/models_generated.go, ai/image_models_generated.go, ai/classifier_models_generated.go, ai/providers_generated.go (lane B1)."
 
 [[files]]
 path = "packages/ai/src/providers/xiaomi-token-plan-cn.ts"
@@ -1201,9 +1201,9 @@ rationale = "PORT_MAP row is ✅ ported (ai/models_generated.go + internal/codin
 [[files]]
 path = "packages/ai/src/providers/xiaomi-token-plan-sgp.models.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "unchanged-observable"
+evidence = ["test:cmd/gen-models/catalog_matches_pi_test.go#TestCatalogGenerationMatchesPi"]
+rationale = "Header comment only (`scripts/generate-models.ts` -> `catalog/generate.ts`); the shard's data flows into the Go catalog through `make model-catalogs`, which yields no diff, and the Go generator reproduces Pi's data byte for byte. PiG: ai/models_generated.go, ai/image_models_generated.go, ai/classifier_models_generated.go, ai/providers_generated.go (lane B1)."
 
 [[files]]
 path = "packages/ai/src/providers/xiaomi-token-plan-sgp.ts"
@@ -1215,9 +1215,9 @@ rationale = "PORT_MAP row is ✅ ported (ai/models_generated.go + internal/codin
 [[files]]
 path = "packages/ai/src/providers/xiaomi.models.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "unchanged-observable"
+evidence = ["test:cmd/gen-models/catalog_matches_pi_test.go#TestCatalogGenerationMatchesPi"]
+rationale = "Header comment only (`scripts/generate-models.ts` -> `catalog/generate.ts`); the shard's data flows into the Go catalog through `make model-catalogs`, which yields no diff, and the Go generator reproduces Pi's data byte for byte. PiG: ai/models_generated.go, ai/image_models_generated.go, ai/classifier_models_generated.go, ai/providers_generated.go (lane B1)."
 
 [[files]]
 path = "packages/ai/src/providers/xiaomi.ts"
@@ -1229,9 +1229,9 @@ rationale = "PORT_MAP row is ✅ ported (ai/models_generated.go + internal/codin
 [[files]]
 path = "packages/ai/src/providers/zai-coding-cn.models.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "unchanged-observable"
+evidence = ["test:cmd/gen-models/catalog_matches_pi_test.go#TestCatalogGenerationMatchesPi"]
+rationale = "Header comment only (`scripts/generate-models.ts` -> `catalog/generate.ts`); the shard's data flows into the Go catalog through `make model-catalogs`, which yields no diff, and the Go generator reproduces Pi's data byte for byte. PiG: ai/models_generated.go, ai/image_models_generated.go, ai/classifier_models_generated.go, ai/providers_generated.go (lane B1)."
 
 [[files]]
 path = "packages/ai/src/providers/zai-coding-cn.ts"
@@ -1243,9 +1243,9 @@ rationale = "PORT_MAP row is ✅ ported (ai/models_generated.go + internal/codin
 [[files]]
 path = "packages/ai/src/providers/zai.models.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "unchanged-observable"
+evidence = ["test:cmd/gen-models/catalog_matches_pi_test.go#TestCatalogGenerationMatchesPi"]
+rationale = "Header comment only (`scripts/generate-models.ts` -> `catalog/generate.ts`); the shard's data flows into the Go catalog through `make model-catalogs`, which yields no diff, and the Go generator reproduces Pi's data byte for byte. PiG: ai/models_generated.go, ai/image_models_generated.go, ai/classifier_models_generated.go, ai/providers_generated.go (lane B1)."
 
 [[files]]
 path = "packages/ai/src/providers/zai.ts"
@@ -1614,156 +1614,156 @@ rationale = "Pi 3daa2028..b06c1f2c changes this file only in commits PiG ports f
 [[files]]
 path = "packages/chord/src/next-node/compression.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/nextnode/compression_test.go#TestNodeCompression"]
+rationale = "`NodeCompression` (compress/flate level 1, inflate reads at most `limit+1` bytes), `Inflated`, `NoLimit`; see open question on `link.Inflated`. PiG: chord/nextnode/compression.go (lane D1)."
 
 [[files]]
 path = "packages/chord/src/next/contracts/accepts.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/contracts/accepts_test.go#TestAcceptsStateMappings"]
+rationale = "`CheckAccepts`, `AcceptsTable`, `StateMapping`/`MethodMapping` (`Refuse` flag), `VersionMappings`; the generic `AcceptsTable<C>` typing is type-level only. PiG: chord/next/contracts/accepts.go (lane D1)."
 
 [[files]]
 path = "packages/chord/src/next/contracts/contract.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/contracts/contract_test.go#TestContractHandles"]
+rationale = "`*Contract` (Kind, Name, Version, Fingerprint) holds its `ContractData` and a self pointer: replaces the WeakMap brand, a struct copy is refused; `hostAddress` in `ContractData`; `Implementation`/`KeyedWatchable` as Go types. PiG: chord/next/contracts/contract.go (lane D1)."
 
 [[files]]
 path = "packages/chord/src/next/contracts/declare.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/contracts/declare_test.go#TestDeclarationChecks"]
+rationale = "`Local`/`Remote` over `LocalDeclaration`/`RemoteDeclaration` with `HostAddress` (required on remote, 5ec24188); entries helpers `Var`, `Meth`, `Mem` keep declaration order. PiG: chord/next/contracts/declare.go (lane D1)."
 
 [[files]]
 path = "packages/chord/src/next/contracts/evolve.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/contracts/evolve_test.go#TestEvolveEdits"]
+rationale = "`Evolve`, `RemoteEditor`/`LocalEditor`; chained edit methods keep the first failure. PiG: chord/next/contracts/evolve.go (lane D1)."
 
 [[files]]
 path = "packages/chord/src/next/contracts/fingerprint.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/contracts/fingerprint_test.go#TestFingerprints"]
+rationale = "`Materialize`, `FingerprintOf`, `Hash64`, `NormalFormVersion` 2; pinned fingerprint `b3eda86070a7e319` matches Pi. PiG: chord/next/contracts/fingerprint.go (lane D1)."
 
 [[files]]
 path = "packages/chord/src/next/contracts/history.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/contracts/history_test.go#TestRuntimeHistory"]
+rationale = "the history types (`History`, `CurrentStep`, `MemberNames`, `MethodAt`) are conditional types; the Go form is the runtime `MemberNames`, `VariantsWith`, `MethodAt`, version counting and `Change` records; `history.test.ts` is `expectTypeOf`-only. PiG: chord/next/contracts/history.go (lane D1)."
 
 [[files]]
 path = "packages/chord/src/next/contracts/host-kind.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/contracts/host_kind_test.go#TestHostKinds"]
+rationale = "`NewHostKind` (was `hostKind`), `(*HostKind).Address`, `Address{Kind, Params *delta.JsonObject, Key}`, `AddressKey`, `KindParams`; kind `client` reserved. PiG: chord/next/contracts/host_kind.go (lane D1)."
 
 [[files]]
 path = "packages/chord/src/next/contracts/index.ts"
 change = "added"
-disposition = "pending"
+disposition = "designed-out"
 evidence = []
-rationale = ""
+rationale = "re-export barrel; Go packages export names directly (lane D1)."
 
 [[files]]
 path = "packages/chord/src/next/contracts/internal.ts"
 change = "added"
-disposition = "pending"
+disposition = "designed-out"
 evidence = []
-rationale = ""
+rationale = "re-export barrel for Chord's layers (lane D1)."
 
 [[files]]
 path = "packages/chord/src/next/contracts/names.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/contracts/host_kind_test.go#TestHostKinds"]
+rationale = "`CheckName`. PiG: chord/next/contracts/names.go (lane D1)."
 
 [[files]]
 path = "packages/chord/src/next/contracts/params.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/contracts/params_test.go#TestParamsPolicy"]
+rationale = "`ReadParams`, `JoinKey`, `ParamsData`; `Params`/`RequiredFields` types are type-level only. PiG: chord/next/contracts/params.go (lane D1)."
 
 [[files]]
 path = "packages/chord/src/next/contracts/schema.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/contracts/schema_test.go#TestSchemaHelpers"]
+rationale = "`TSchema{Node, Optional}` over JSON Schema data, constructors `Str Num Int Bool Nul Lit OneOf Union Obj Arr Map Opt Unknown Bytes`, `NewMethod` (was `method`), `Keyed`; `Static<T>` type-level only; `withBytesCheck`'s `~refine` is designed-out: the bytes check is native to `type:\"bytes\"` (`CheckBytes`). PiG: chord/next/contracts/schema.go, chord/next/contracts/namedmap.go, chord/next/contracts/jsorder.go (lane D1)."
 
 [[files]]
 path = "packages/chord/src/next/contracts/snapshot.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/contracts/snapshot_test.go#TestSnapshotVocabulary"]
+rationale = "`SnapshotSchema`, `SnapshotArguments`; TypeBox refinements/codecs/unsafe, symbol keys and accessors have no Go input. PiG: chord/next/contracts/snapshot.go (lane D1)."
 
 [[files]]
 path = "packages/chord/src/next/data/args.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/data/args_test.go#TestBindProvider"]
+rationale = "`BindProvider`, `CheckArgs`, `Provider`, `CheckedArgs` (struct with `Kind`), `Value = any`. PiG: chord/next/data/args.go (lane D1)."
 
 [[files]]
 path = "packages/chord/src/next/data/errors.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/data/errors_test.go#TestChordError"]
+rationale = "`ChordError`, `ChordErrorInit`, `ChordErrorCode`/`ChordErrorReason`, `ChordErrorReasons(code)` (was `CHORD_ERROR_REASONS`), `ProtocolVersion`, `Invalid`, `AsChordError`, `IsChordError` (type assertion = `instanceof`), `ChordErrorFromJson`, `PluginError`; the tagged-union pairing is type-level, checked at runtime in `ChordErrorFromJson`. PiG: chord/next/data/errors.go (lane D1)."
 
 [[files]]
 path = "packages/chord/src/next/data/failure.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/data/failure_test.go#TestFailureCauses"]
+rationale = "`FailureCause`, `WaitingFor`, `SameCause`, `OpenFailure`, `Broken` (339847eb dependency model); lengths and clipping in UTF-16 units. PiG: chord/next/data/failure.go (lane D1)."
 
 [[files]]
 path = "packages/chord/src/next/data/index.ts"
 change = "added"
-disposition = "pending"
+disposition = "designed-out"
 evidence = []
-rationale = ""
+rationale = "re-export barrel (lane D1)."
 
 [[files]]
 path = "packages/chord/src/next/data/internal.ts"
 change = "added"
-disposition = "pending"
+disposition = "designed-out"
 evidence = []
-rationale = ""
+rationale = "re-export barrel (lane D1)."
 
 [[files]]
 path = "packages/chord/src/next/data/params.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/data/params_test.go#TestCheckParams"]
+rationale = "`CheckParams`, `IdentityKey`, `CheckAddress` (`invalid/host_address`, 5ec24188). PiG: chord/next/data/params.go (lane D1)."
 
 [[files]]
 path = "packages/chord/src/next/data/principal.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/data/principal_test.go#TestCanonicalJson"]
+rationale = "`PrincipalKey`, `CanonicalJson`; `Principal = *delta.JsonObject` (pointer identity keys the cache), `PrincipalKeyFunction` a struct from `NewPrincipalKeyFunction` (a Go func has no identity); weak caches via `weak.Pointer` + `runtime.AddCleanup`. PiG: chord/next/data/principal.go (lane D1)."
 
 [[files]]
 path = "packages/chord/src/next/data/validator.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/data/validator_test.go#TestFailedChecks"]
+rationale = "`ValidatorFor`, `Check` over `internal/typebox` (counters `chord.data.{compilations,validations,walks}`); bytes leaves handled by rewriting markers; TypeBox's module-level build accumulators have no Go counterpart (designed-out test). PiG: chord/next/data/validator.go (lane D1)."
 
 [[files]]
 path = "packages/chord/src/next/documents/address-source.ts"
@@ -2062,9 +2062,9 @@ rationale = ""
 [[files]]
 path = "packages/chord/src/next/index.ts"
 change = "added"
-disposition = "pending"
+disposition = "designed-out"
 evidence = []
-rationale = ""
+rationale = "aggregate barrel of every layer; Go imports the layer packages (lane D1)."
 
 [[files]]
 path = "packages/chord/src/next/jobs/definition.ts"
@@ -2139,135 +2139,135 @@ rationale = ""
 [[files]]
 path = "packages/chord/src/next/link/binary.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/link/message_test.go#TestTheBinaryCodec", "test:chord/next/link/oracle_test.go#TestWireFormatsMatchPi"]
+rationale = "`BinaryCodec`; bytes equal Pi's for 84 cases (testdata/link_wire.mjs runs Pi's own binary.ts); `Writer`/`Reader` failures are a recovered panic of the codec's own type, so the field code reads as upstream's; `Uint8Array` views are 3-index slices of the message. PiG: chord/next/link/binary.go (lane D2)."
 
 [[files]]
 path = "packages/chord/src/next/link/channel.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/link/channel_test.go#TestInOrderHandling"]
+rationale = "`Channel`, `ChannelHandler`, `ChannelOptions` (+ `Now`, the heartbeat clock tests set; Pi fakes `Date`), `Handling` (the `Promise<void>` a handler returns). PiG: chord/next/link/channel.go (lane D2)."
 
 [[files]]
 path = "packages/chord/src/next/link/errors.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/link/errors_test.go#TestErrorsOnTheWire"]
+rationale = "`WireErrorOf` (was `wireError`), `ErrorFromWire`; `WireError` is the wire JSON object (`*delta.JsonObject`). PiG: chord/next/link/errors.go (lane D2)."
 
 [[files]]
 path = "packages/chord/src/next/link/index.ts"
 change = "added"
-disposition = "pending"
+disposition = "designed-out"
 evidence = []
-rationale = ""
+rationale = "re-export barrel; Go packages export names directly (lane D2)."
 
 [[files]]
 path = "packages/chord/src/next/link/internal.ts"
 change = "added"
-disposition = "pending"
+disposition = "designed-out"
 evidence = []
-rationale = ""
+rationale = "re-export barrel for Chord's layers (lane D2)."
 
 [[files]]
 path = "packages/chord/src/next/link/ipc.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/link/ipc_test.go#TestIPCLinksOverAFakePort"]
+rationale = "`IpcPort`, `IpcLink` (was `ipcLink`); listener removal is the func the registration returns. PiG: chord/next/link/ipc.go (lane D2)."
 
 [[files]]
 path = "packages/chord/src/next/link/link.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/link/link_test.go#TestMemoryLinks"]
+rationale = "`Link`, `LinkEnd`, `MemoryLinkPair`/`MemoryLink` (+ `Flushed`: the Go form of awaiting a macrotask after `queueMicrotask`). PiG: chord/next/link/link.go (lane D2)."
 
 [[files]]
 path = "packages/chord/src/next/link/message.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/link/message_test.go#TestMessages"]
+rationale = "`Message` (sealed interface, one struct per kind), `CheckMessage` (the TypeBox `MESSAGE` schema checked field by field), `Codec`, `CHAIN`, `CauseKinds`, `NoRetired`, `Optional`; the schema's static types (`Static<...>`) are type-level. PiG: chord/next/link/message.go (lane D2)."
 
 [[files]]
 path = "packages/chord/src/next/link/part.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/link/part_test.go"]
+rationale = "`Part` (sealed: `Text`, `Bytes`, `*DeflatedPart`), `Limits`/`PartLimits`/`LinkLimits`, `CompressAbove`, `OriginPart`, `Oversized`, `OpenPart`, `InflateAsync`; `Inflated` and `Compression` are aliases of `nextnode.Inflated`/`nextnode.Compression` (D1's open question: no duplicate types, `nextnode.NodeCompression` satisfies `link.Compression` unchanged). PiG: chord/next/link/part.go (lane D2)."
 
 [[files]]
 path = "packages/chord/src/next/link/text.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/link/message_test.go#TestTheTextCodec", "test:chord/next/link/oracle_test.go#TestWireFormatsMatchPi"]
+rationale = "`TextCodec`, `DescribeMessage`; field types are read into the typed message at decode (a mistyped field is a decode error where Pi's check follows the decode: both are protocol errors). PiG: chord/next/link/text.go (lane D2)."
 
 [[files]]
 path = "packages/chord/src/next/link/values.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/link/values_test.go"]
+rationale = "`JsonPart`, `PayloadPart`, `ParsePart`, `ParsePayload`, `ResolveSegments`; `[]byte` leaves are the `Uint8Array` leaves; a key `__proto__` is an ordinary own key of `*delta.JsonObject`. PiG: chord/next/link/values.go (lane D2)."
 
 [[files]]
 path = "packages/chord/src/next/link/websocket.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/link/websocket_test.go#TestWebSocketLinksOverAFakeSocket"]
+rationale = "`WebSocketLike`, `WebSocketLink`; the event names are `WebSocketEvent` constants; a text frame is a non-`[]byte` message data. PiG: chord/next/link/websocket.go (lane D2)."
 
 [[files]]
 path = "packages/chord/src/next/registries/contribution.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/registries/record_test.go#TestTheTable"]
+rationale = "`RegistryContribution`, `Contributor`, `ContributionContent` (one struct tagged by `Kind`: plain, JSON, native). PiG: chord/next/registries/contribution.go (lane D1)."
 
 [[files]]
 path = "packages/chord/src/next/registries/entries.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/registries/entries_test.go#TestKeyedEntries"]
+rationale = "`KeyedEntries`, `OrderedEntries`, `TableItem`; `Record<string,I>` is an ordered `[]RecordEntry[I]`. PiG: chord/next/registries/entries.go (lane D1)."
 
 [[files]]
 path = "packages/chord/src/next/registries/index.ts"
 change = "added"
-disposition = "pending"
+disposition = "designed-out"
 evidence = []
-rationale = ""
+rationale = "re-export barrel (lane D1)."
 
 [[files]]
 path = "packages/chord/src/next/registries/internal.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/registries/value_test.go#TestOlderReaders"]
+rationale = "the layer-internal exports. PiG: chord/next/registries/internal.go (lane D1)."
 
 [[files]]
 path = "packages/chord/src/next/registries/record.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/registries/record_test.go#TestTheTable"]
+rationale = "`RegistryRecord`, `RegistryEdge`, `RegistryError` (kind-tagged struct), cycle check, serve/compose/adapt; 339847eb dependency model. PiG: chord/next/registries/record.go (lane D1)."
 
 [[files]]
 path = "packages/chord/src/next/registries/registry.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/registries/registry_test.go#TestTokens"]
+rationale = "`DefineRegistry`, `Registry[C,V]`, `RegistryProvider`, `RegistryAccepts`, `RegistryConflict`, `ComposeContext`, `Erase()` (Pi's cast to `<unknown,unknown>`); `Contribution<C>` union is type-level, classified at runtime. PiG: chord/next/registries/registry.go (lane D1)."
 
 [[files]]
 path = "packages/chord/src/next/registries/value.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/registries/value_test.go#TestOlderReaders"]
+rationale = "`RegistryValueSource`, `RegistryWaiter`, `RegistryValue[V]`; `Value()` panics with the failure when no last good value (Go getters have no error result); 339847eb. PiG: chord/next/registries/value.go (lane D1)."
 
 [[files]]
 path = "packages/chord/src/next/remote/calls.ts"
@@ -2342,51 +2342,51 @@ rationale = ""
 [[files]]
 path = "packages/chord/src/next/state/batch.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/state/batch_test.go#TestFlushes"]
+rationale = "`Batch`, `BatchError`, `Delivered`; deliveries on `chord.DeliveryScheduler` stand for the microtask queue; host serializes calls. PiG: chord/next/state/batch.go (lane D1)."
 
 [[files]]
 path = "packages/chord/src/next/state/derive.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/state/derive_test.go#TestMapShared"]
+rationale = "`Derive`, `DeriveInput`, `DeriveSource`, `MapShared`. PiG: chord/next/state/derive.go (lane D1)."
 
 [[files]]
 path = "packages/chord/src/next/state/index.ts"
 change = "added"
-disposition = "pending"
+disposition = "designed-out"
 evidence = []
-rationale = ""
+rationale = "re-export barrel (lane D1)."
 
 [[files]]
 path = "packages/chord/src/next/state/internal.ts"
 change = "added"
-disposition = "pending"
+disposition = "designed-out"
 evidence = []
-rationale = ""
+rationale = "re-export barrel (lane D1)."
 
 [[files]]
 path = "packages/chord/src/next/state/native-source.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/state/native_own_test.go#TestNativeSourceFailing"]
+rationale = "`NativeSource`, `FollowedSource`, `NativeStart`, `NativeObserver`, `NativeObservation`; abstract-class subclassing is embedding with `Init(batch, self)`. PiG: chord/next/state/native_source.go (lane D1)."
 
 [[files]]
 path = "packages/chord/src/next/state/watchable.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/state/watchable_test.go#TestConstant"]
+rationale = "`Source`, `Subscriber`, `Dependent`, `HandedOut`, `NewConstant`/`ConstantOf` (class `Constant` and function `constant` share a name in TS); a throwing `value` getter is `(value, error)` so these are not `chord.Watchable`; `Identical` is `===`. PiG: chord/next/state/watchable.go, chord/next/state/identical.go, chord/next/state/set.go (lane D1)."
 
 [[files]]
 path = "packages/chord/src/next/state/writable.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/state/writable_own_test.go#TestWritable"]
+rationale = "`WritableSource`, `WritableOwner`; `Writable` type is type-level. PiG: chord/next/state/writable.go (lane D1)."
 
 [[files]]
 path = "packages/chord/src/next/store/adapter.ts"
@@ -3798,9 +3798,9 @@ rationale = "PORT_MAP row is ✅ ported (internal/codingagent/llama/provider.go 
 [[files]]
 path = "packages/coding-agent/src/extensions/llama/ui.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:internal/codingagent/llama/ui_test.go#TestHuggingFaceSearchPageKeysMoveTenResults"]
+rationale = "Pi 3bae8527: search and list views capture viewport keys and page; internal/codingagent/llama/ui.go (lane A1)."
 
 [[files]]
 path = "packages/coding-agent/src/extensions/mcp/cli.lazy.ts"
@@ -3875,9 +3875,9 @@ rationale = "PORT_MAP row is ✅ ported (coding/mcpext/tools.go (tools_test.go))
 [[files]]
 path = "packages/coding-agent/src/extensions/mcp/ui.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:coding/mcpext/manager_test.go#TestMcpManagerMenuCapturesViewportKeysOnlyWhileAMenuListIsShown"]
+rationale = "Pi 3bae8527: a menu list captures viewport keys, status/input/empty-menu screens do not; coding/mcpext/mcptui/manager.go (lane A1)."
 
 [[files]]
 path = "packages/coding-agent/src/extensions/tool-search/index.ts"
@@ -4001,9 +4001,9 @@ rationale = "PORT_MAP row is ✅ ported (tui/countdown_timer.go). coverage.md re
 [[files]]
 path = "packages/coding-agent/src/modes/interactive/components/custom-editor.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:internal/codingagent/custom_editor_keybindings_test.go#TestPR7680AutocompletePageKeysWinOverTheImagePasteShortcut", "test:internal/codingagent/custom_editor_keybindings_test.go#TestCustomEditorExplicitHistoryBindingBeatsModelCycling"]
+rationale = "Pi 3bae8527: an open autocomplete takes the page keys before app actions and a remapped page key (Ctrl+V) pages the menu instead of pasting an image; internal/codingagent/custom_editor.go (lane A1)."
 
 [[files]]
 path = "packages/coding-agent/src/modes/interactive/components/custom-entry.ts"
@@ -4127,16 +4127,16 @@ rationale = "PORT_MAP row is ✅ ported (internal/codingagent/mermaid_transform.
 [[files]]
 path = "packages/coding-agent/src/modes/interactive/components/model-selector.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:tui/select_page_keys_upstream_test.go#TestUpstreamModelSelectorMovesByOnePageWithRemappedSelectionPageKeys", "test:tui/model_selector_oracle_test.go#TestModelSelectorInputMatchesPi"]
+rationale = "Pi 3bae8527: page keys and the capture flag; tui/model_select.go (lane A1)."
 
 [[files]]
 path = "packages/coding-agent/src/modes/interactive/components/oauth-selector.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:tui/select_page_keys_test.go#TestSelectorComponentsMoveByTheirPage"]
+rationale = "Pi 3bae8527: page keys and the capture flag; tui/oauth_selector.go (lane A1)."
 
 [[files]]
 path = "packages/coding-agent/src/modes/interactive/components/pi-logo.ts"
@@ -4155,9 +4155,9 @@ rationale = "PORT_MAP row is ✅ ported (internal/codingagent/radius_login_selec
 [[files]]
 path = "packages/coding-agent/src/modes/interactive/components/scoped-models-selector.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:tui/select_page_keys_test.go#TestSelectorComponentsMoveByTheirPage"]
+rationale = "Pi 3bae8527: page keys and the capture flag; tui/scoped_models_list.go (lane A1)."
 
 [[files]]
 path = "packages/coding-agent/src/modes/interactive/components/session-selector-search.ts"
@@ -4169,9 +4169,9 @@ rationale = "Ported per-field tiered search (Pi 8c03fef4d)."
 [[files]]
 path = "packages/coding-agent/src/modes/interactive/components/session-selector.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:internal/codingagent/select_page_keys_test.go#TestSessionSelectorCapturesSelectionPageKeys"]
+rationale = "Pi 3bae8527: CapturesViewportInput is true except in rename mode, page keys move the selection, and paging over an empty list leaves -1 as Pi does; internal/codingagent/session_selector.go (lane A1)."
 
 [[files]]
 path = "packages/coding-agent/src/modes/interactive/components/settings-selector.ts"
@@ -4183,9 +4183,9 @@ rationale = "PORT_MAP row is ✅ ported (tui/settings_list.go + internal/codinga
 [[files]]
 path = "packages/coding-agent/src/modes/interactive/components/settings-submenu.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:tui/select_page_keys_upstream_test.go#TestUpstreamSelectSubmenuPagesWithSelectionPageKeys"]
+rationale = "Pi 3bae8527: page keys are navigation keys and OnSelectionChange fires when a page key moves the highlight; tui/select_submenu.go (lane A1)."
 
 [[files]]
 path = "packages/coding-agent/src/modes/interactive/components/show-images-selector.ts"
@@ -4239,9 +4239,9 @@ rationale = "Pi f715a15c1 makes updateArgs record the arguments and request a re
 [[files]]
 path = "packages/coding-agent/src/modes/interactive/components/tree-selector.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:tui/select_page_keys_test.go#TestTreeSelectorCapturesViewportInputUnlessEditingALabel"]
+rationale = "Pi 3bae8527: TreeList.CapturesViewportInput is true unless a label is being edited; tui/tree_select.go (lane A1)."
 
 [[files]]
 path = "packages/coding-agent/src/modes/interactive/components/trust-selector.ts"
@@ -4253,9 +4253,9 @@ rationale = "PORT_MAP row is ✅ ported (internal/codingagent/trust_selector.go;
 [[files]]
 path = "packages/coding-agent/src/modes/interactive/components/user-message-selector.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:tui/select_page_keys_test.go#TestUserMessageSelectorReportsViewportCaptureOnItsList"]
+rationale = "Pi 3bae8527: the capture flag lives on UserMessageList only; tui/user_message_selector.go (lane A1)."
 
 [[files]]
 path = "packages/coding-agent/src/modes/interactive/components/user-message.ts"
@@ -4281,9 +4281,9 @@ rationale = "PORT_MAP row is ✅ ported (internal/codingagent/external_editor.go
 [[files]]
 path = "packages/coding-agent/src/modes/interactive/interactive-mode.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:internal/codingagent/startup_hints_test.go#TestFullscreenModelScopeNoticeRendersInHeader", "test:internal/codingagent/interactive_extension_changelog_test.go#TestExtensionChangelogUpdatesUpstream", "test:internal/codingagent/loaded_resources_quiet_upstream_test.go#TestLoadedResourcesQuietReloadUpstream"]
+rationale = "Pi f14813e9 [Skill warnings], 7391dbb0 the model scope notice in the fullscreen header, b4b72a35 extension changelog updates at startup, 3bae8527 modal viewport deferral; internal/codingagent/{loaded_resources,model_scope_line,startup_header,interactive,interactive_changelog,slash_commands,interactive_theme_modal}.go (lane A1)."
 
 [[files]]
 path = "packages/coding-agent/src/modes/interactive/model-catalog-refresh.ts"
@@ -4526,9 +4526,9 @@ rationale = "PORT_MAP row is ✅ ported (internal/imageprocessing/images.go). co
 [[files]]
 path = "packages/coding-agent/src/utils/image-resize-core.ts"
 change = "added"
-disposition = "deferred"
-evidence = ["test:internal/imageprocessing/image_processing_upstream_test.go#TestResizeImagePicksJPEGOverLargerPNGForPhotos"]
-rationale = "Pi e7a0df27 picks the smaller of PNG and JPEG when resizing; internal/imageprocessing now shares the Photon-exact PNG encoder and Lanczos3 (internal/photonimage), oracle skip removed; the one remaining format difference of 400 is Go's JPEG encoder, cited to D165 (docs/parity/divergences/D165.md), whose SCRUTINIZED approval is pending owner review. Becomes ported when the owner approves D165."
+disposition = "ported"
+evidence = ["test:internal/imageprocessing/image_processing_upstream_test.go#TestResizeImagePicksJPEGOverLargerPNGForPhotos", "test:internal/imageprocessing/resize_strategy_oracle_test.go#TestResizeImageDimensionStrategyMatchesPi", "test:internal/imageprocessing/resize_format_oracle_test.go#TestResizeFormatChoiceMatchesPiOnRealisticImages"]
+rationale = "Pi e7a0df27 picks the smaller of PNG and JPEG when resizing; internal/imageprocessing/images.go with Photon's byte-exact PNG encoder, Lanczos3 and JPEG encoder (internal/photonimage); the format choice matches Pi on 200/200 and 72/72 oracle cases (lanes A2, A2b, photon-jpeg)."
 
 [[files]]
 path = "packages/coding-agent/src/utils/image-resize-worker.ts"
@@ -5632,9 +5632,9 @@ rationale = "PORT_MAP row is ✅ ported (tui/cancellable_loader.go). coverage.md
 [[files]]
 path = "packages/tui/src/components/editor.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:tui/select_page_keys_upstream_test.go#TestUpstreamEditorMovesTheAutocompleteSelectionWithSelectionPageKeys"]
+rationale = "Pi 3bae8527: the capture flag is true while autocomplete is open and the autocomplete selection pages with the selection page keys; tui/editor.go (lane A1)."
 
 [[files]]
 path = "packages/tui/src/components/h-stack.ts"
@@ -5667,9 +5667,9 @@ rationale = "PORT_MAP row is ✅ ported (tui/loader.go). coverage.md reports 2 b
 [[files]]
 path = "packages/tui/src/components/markdown.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:tui/markdown_cjk_url_test.go#TestMarkdownBareURLCJKPunctuation"]
+rationale = "Pi fa168515: bare URLs stop at CJK punctuation; tui/markdown_marked.go markedURL (lane A1). The generated markdown_upstream_test.go cannot be regenerated at this pin (test/parity/testdata/markdown-upstream-tests.mjs fails on an arrow function in a test that predates b3a29f11), so the four upstream cases are hand-ported in markdown_cjk_url_test.go."
 
 [[files]]
 path = "packages/tui/src/components/mouse-region.ts"
@@ -5688,16 +5688,16 @@ rationale = "PORT_MAP row is ✅ ported (tui/scroll_view.go; coding/extension/ho
 [[files]]
 path = "packages/tui/src/components/select-list.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:tui/select_page_keys_upstream_test.go#TestUpstreamSelectListMovesByOneVisiblePageWithSelectionPageKeys"]
+rationale = "Pi 3bae8527: page keys move one visible page, no notify when the index is unchanged, capture flag; tui/select_list.go (lane A1)."
 
 [[files]]
 path = "packages/tui/src/components/settings-list.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:tui/select_page_keys_upstream_test.go#TestUpstreamSettingsListMovesByOneVisiblePageWithSelectionPageKeys"]
+rationale = "Pi 3bae8527: page keys and capture flag; tui/settings_list.go (lane A1)."
 
 [[files]]
 path = "packages/tui/src/components/spacer.ts"
@@ -5751,16 +5751,16 @@ rationale = "Ported contiguous-alignment scoring (Pi 8c03fef4d)."
 [[files]]
 path = "packages/tui/src/index.ts"
 change = "added"
-disposition = "pending"
+disposition = "designed-out"
 evidence = []
-rationale = ""
+rationale = "PORT_MAP records this file n/a: Go exports are package-level identifiers (getSelectPageIndex is tui.GetSelectPageIndex)."
 
 [[files]]
 path = "packages/tui/src/keybindings.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:tui/select_page_keys_test.go#TestGetSelectPageIndex"]
+rationale = "Pi 3bae8527 (#7629): getSelectPageIndex; tui/selection_navigation.go GetSelectPageIndex replaces the PR-7680 PageSelectionIndex (lane A1)."
 
 [[files]]
 path = "packages/tui/src/keys.ts"
@@ -5863,23 +5863,23 @@ rationale = "setTitle replaces control characters so a title cannot end the OSC 
 [[files]]
 path = "packages/tui/src/tui-alt-screen.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:tui/select_page_keys_upstream_test.go#TestUpstreamAltScreenDefersViewportKeysToAFocusedList", "test:tui/select_page_keys_upstream_test.go#TestUpstreamAltScreenGivesViewportKeysBackWhenEditorAutocompleteCloses", "test:tui/select_page_keys_upstream_test.go#TestUpstreamAltScreenScrollsTheTranscriptForAFocusedContainerWrapper"]
+rationale = "Pi 3bae8527: shouldDeferViewportInput gives viewport keys to a focused component that captures them; tui/tui_alt_screen_input.go, D155 special case removed (lane A1)."
 
 [[files]]
 path = "packages/tui/src/tui-main-screen.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:tui/tui_render_upstream_test.go#TestUpstreamTUIOSC133Markers"]
+rationale = "Pi 19ce8059: the regular-mode renderer strips the leading OSC 133 A/B/C run of every rendered line; tui/tui.go (doRender, composeFrameLines, stripOsc133ZonePrefixes) (lane A1)."
 
 [[files]]
 path = "packages/tui/src/tui.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:tui/select_page_keys_test.go#TestContainerDoesNotForwardViewportCapture"]
+rationale = "Pi 3bae8527: Component.capturesViewportInput; the optional property is the optional interface tui.ViewportInputCapturer with tui.CapturesViewportInput, and Container no longer forwards it (lane A1)."
 
 [[files]]
 path = "packages/tui/src/undo-stack.ts"

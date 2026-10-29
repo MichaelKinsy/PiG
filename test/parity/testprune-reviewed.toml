@@ -464,77 +464,77 @@ reason = "Pi 38ff99177 makes finishToolRound append the last handoff's reset (ge
 
 [[entry]]
 path = "durable/core/view_test.go"
-commit = "4fb7dc6de718961fbde2ea69cee2efba70436323"
+commit = "121ba35041cbdd862404532e67e864b4fee5fe3f"
 class = "CITE"
 cite = "packages/durable/src/harness/view.ts:114"
 reason = "Pi f3255de7's resolveWindow throws a RangeError for a window bound that is not an integer or a max below min (view.ts:114-121): the core rejects such a window as a Rejection named RangeError, which the host rebuilds as the RangeError, where it returned a plain error. The test asserts the rejection's name and message."
 
 [[entry]]
 path = "coding/piglet/scope_mcp_test.go"
-commit = "d3adcfebef205ccb7b80baa600a973e66e7b4aea"
+commit = "227a4c1bff5e42573122263bf2a3ca8caceccf9d"
 class = "CITE"
 cite = "packages/coding-agent/src/core/agent-session.ts:1557"
 reason = "A Piglet's tool scope now bounds the Session's tool registry as Pi's _isAllowedTool bounds it for --tools and --exclude-tools (agent-session.ts:1557-1561, 3571-3574). codemode and tool_search are ordinary tools that reach what the registry keeps, so the table no longer expects them hidden when no MCP tool stays visible; the MCP resource tools follow the pig-mcp-adapter entry by name."
 
 [[entry]]
 path = "coding/extension/tool_filter_test.go"
-commit = "14378701855dadfdcd44cfcb960c03dc1d83a7ce"
+commit = "f322041adf29d06ebac9dc58733d32c8b3a881d4"
 class = "CITE"
 cite = "packages/coding-agent/src/core/agent-session.ts:1557"
 reason = "The test is this range's own test of the Piglet scope in the registry filter (ToolFilter.WithScope, AllowsTool), written against Pi's _isAllowedTool intersection (agent-session.ts:1557-1561, 3571-3574); the commit replaces the predicate form of the scope with the data form the filter holds, and the expectations are the same intersection."
 
 [[entry]]
 path = "coding/session_tool_scope_test.go"
-commit = "14378701855dadfdcd44cfcb960c03dc1d83a7ce"
+commit = "f322041adf29d06ebac9dc58733d32c8b3a881d4"
 class = "CITE"
 cite = "packages/coding-agent/src/core/agent-session.ts:1557"
 reason = "The test is this range's own test that the Session registry admits the intersection of --tools/--exclude-tools and the Piglet scope (Pi's _isAllowedTool, agent-session.ts:1557-1561, 3571-3574); the commit replaces the predicate form of the scope with the data form, and the expectations are the same intersection."
 
 [[entry]]
 path = "coding/piglet/overlay_test.go"
-commit = "c267f5a15e5e1254ba83842de0c5a26b64ca6181"
+commit = "f71fa007f7d83c87156bb2a8cb64182a35f85871"
 class = "NOBEHAVIOR"
 cite = ""
 reason = "Overlay Piglets on a Piglet Binary are PiG-additive (D202) and have no Pi counterpart, so no Pi line governs the test. The owner approved the D202 redesign on 2026-10-28: an overlay merges as an extends child of the Binary's baked Piglet, and only what the Binary compiled in is refused (setting a frontend, re-enabling a build-tag strip, naming a fused or embedded member again with origins). TestOverlayRefusesWhatChangesTheBinary moves from the old refusal list (baked extension or skill replaced or removed, systemPrompt set, ceilings widened, runtime strips re-enabled) to those three refusals, each message naming the field, the Binary and the reason; the newly allowed cases have their own tests in the same commit range."
 
 [[entry]]
 path = "internal/codingagent/prompts/piglet_topic_test.go"
-commit = "0b15a5cdf6adb8a34c553465103c8e3676dc2876"
+commit = "568a15b72e1efa79ef7cc8d15e33dff8531352de"
 class = "NOBEHAVIOR"
 cite = ""
 reason = "The Piglets topic of the docs section is PiG-additive (D23): Pi has no Piglets, so no Pi line governs the test. The commit adds the bundle page piglet-strip.md to the topic text, so the expected topic string names two pages. Pi's own topics (system-prompt.ts:166-169) and the stock prompt bytes are unchanged, and the test still asserts that the stock section never names the Piglet docs."
 
 [[entry]]
 path = "coding/cli/introspection_truth_test.go"
-commit = "7bf1cbb246b6c3a76f294b1cba992b6d4fd472c2"
+commit = "6ea3ba872073f71d456b85ccdc86a45a062f5a55"
 class = "NOBEHAVIOR"
 cite = ""
 reason = "The test file was added on this branch in the commit before. `pig status` and its Piglet inventory are PiG-additive (D41, D209) and have no Pi counterpart. This commit changes one expectation of the new file: a Piglet Binary named by PIG_ACTIVE_PIGLET_SOURCE is no longer assumed closed, because only the Binary itself knows whether it accepts overlays (D202), so status names the Binary and applies no discovery when it is another executable. TestStatusActivePigletBinaryExcludesEveryAmbientExtensionAndSkill became TestStatusNamesAPigletBinaryItCannotApply."
 
 [[entry]]
 path = "coding/cli/piglet_overlay_test.go"
-commit = "d0eec18348ed05556c8dda8665631d210bb1dbfd"
+commit = "eb562ce1a8ad6fb5b1316c74110981cd57de2ddf"
 class = "NOBEHAVIOR"
 cite = ""
 reason = "Piglet Binary overlays are PiG-original (a Piglet Binary has no Pi counterpart), so no Pi line governs the test. The commit replaces the opt-in build.allowOverlays with the opt-out build.closed (D202), so a Binary accepts overlays by default and the test's fixture, expected refusal text and accepting/refusing roles swap: the closed Binary now names build.closed, and the default Binary accepts what it refused."
 
 [[entry]]
 path = "coding/piglet/overlay_test.go"
-commit = "d0eec18348ed05556c8dda8665631d210bb1dbfd"
+commit = "eb562ce1a8ad6fb5b1316c74110981cd57de2ddf"
 class = "NOBEHAVIOR"
 cite = ""
 reason = "Piglet Binary overlays are PiG-original (a Piglet Binary has no Pi counterpart), so no Pi line governs the test. The commit replaces the opt-in build.allowOverlays with the opt-out build.closed (D202), so a Binary accepts overlays by default and the test's fixture, expected refusal text and accepting/refusing roles swap: the closed Binary now names build.closed, and the default Binary accepts what it refused."
 
 [[entry]]
 path = "coding/pigletbuild/overlay_binary_test.go"
-commit = "d0eec18348ed05556c8dda8665631d210bb1dbfd"
+commit = "eb562ce1a8ad6fb5b1316c74110981cd57de2ddf"
 class = "NOBEHAVIOR"
 cite = ""
 reason = "Piglet Binary overlays are PiG-original (a Piglet Binary has no Pi counterpart), so no Pi line governs the test. The commit replaces the opt-in build.allowOverlays with the opt-out build.closed (D202), so a Binary accepts overlays by default and the test's fixture, expected refusal text and accepting/refusing roles swap: the closed Binary now names build.closed, and the default Binary accepts what it refused."
 
 [[entry]]
 path = "coding/pigletbuild/overlay_build_test.go"
-commit = "d0eec18348ed05556c8dda8665631d210bb1dbfd"
+commit = "eb562ce1a8ad6fb5b1316c74110981cd57de2ddf"
 class = "NOBEHAVIOR"
 cite = ""
 reason = "Piglet Binary overlays are PiG-original (a Piglet Binary has no Pi counterpart), so no Pi line governs the test. The commit replaces the opt-in build.allowOverlays with the opt-out build.closed (D202), so a Binary accepts overlays by default and the test's fixture, expected refusal text and accepting/refusing roles swap: the closed Binary now names build.closed, and the default Binary accepts what it refused."

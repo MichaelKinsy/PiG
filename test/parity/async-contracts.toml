@@ -583,24 +583,24 @@ rationale = "createHostManager runs start, stop and replace through one serializ
 
 [[files]]
 path = "packages/chord/src/next/contracts/accepts.ts"
-disposition = "pending"
+disposition = "no-runtime-async"
 contracts = []
 evidence = []
-rationale = ""
+rationale = "Promise appears only in the type of a method's call signature (accepts.ts:113, a declaration of the contract's callable shape). The Go chord/next/contracts has no async function: a method call is a blocking Go call that takes a context.Context, so no ordering, cancellation or error contract is added here; calls are contracted where they run (the host and link files)."
 
 [[files]]
 path = "packages/chord/src/next/contracts/contract.ts"
-disposition = "pending"
+disposition = "no-runtime-async"
 contracts = []
 evidence = []
-rationale = ""
+rationale = "Promise appears only in declared member types (contract.ts:83, 85, 92-93: get/watch and method call signatures of the contract's handle). The Go contract handles are data (*Contract holds its ContractData); the callable shapes are the host and remote lanes' blocking calls over context.Context."
 
 [[files]]
 path = "packages/chord/src/next/data/args.ts"
-disposition = "pending"
+disposition = "no-runtime-async"
 contracts = []
 evidence = []
-rationale = ""
+rationale = "Promise appears only in the declared type of a provided call (args.ts:31, 64, 75: `call: (args, context) => Promise<Value>`). Go's Provider call is a blocking function over context.Context (chord/next/data/args.go); CheckArgs and BindProvider are synchronous."
 
 [[files]]
 path = "packages/chord/src/next/documents/documents.ts"
@@ -793,17 +793,17 @@ rationale = ""
 
 [[files]]
 path = "packages/chord/src/next/link/channel.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited", "microtask-ordering"]
+evidence = ["test:chord/next/link/channel_test.go#TestInOrderHandling", "test:chord/next/link/channel_test.go#TestTheHeartbeat"]
+rationale = "A message the handler handles asynchronously (message(): void | Promise<void>, #hold at channel.ts:176-179) holds every later message, ping included, until it settles; messages are handled in order and dropped when the link closes meanwhile; a rejection is a protocol error (reported, the link closes). Go: chord/next/link channel.go holds the queue by index and a *Handling settles the hold. The heartbeat Tick pings a silent open link once and closes a silent one; a ping is answered at once."
 
 [[files]]
 path = "packages/chord/src/next/link/part.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited", "cancellable"]
+evidence = ["test:chord/next/link/part_test.go#TestTheAsynchronousInflate"]
+rationale = "inflateAsync (part.ts:142-154) awaits the stream-based inflate; AbortSignal is a context.Context in Go, a cancelled inflate leaves no outcome on the part and never more than the limit of output bytes is kept. chord/next/link/part.go InflateAsync is a blocking call that leaves the outcome on the part."
 
 [[files]]
 path = "packages/chord/src/next/remote/consumer.ts"
@@ -842,17 +842,17 @@ rationale = ""
 
 [[files]]
 path = "packages/chord/src/next/state/native-source.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited", "cancellable"]
+evidence = ["test:chord/next/state/native_own_test.go#TestNativeSourceFailing", "test:chord/next/state/watchable_own_test.go#TestSourceWatches"]
+rationale = "NativeSource.watch (native-source.ts:57, 124) opens a watch and resolves with the handle; on a failed source it opens at the last good value and its first call is the failure. chord/next/state/native_source.go Watch is a blocking call over context.Context: a failed call keeps the last value, an aborted context ends the watch aborted, deliveries are one frame per change serialized per watch (the host serializes calls as Pi's single event loop does; collections touched by end/stop/abort paths are locked)."
 
 [[files]]
 path = "packages/chord/src/next/state/watchable.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited", "cancellable"]
+evidence = ["test:chord/next/state/watchable_own_test.go#TestSourceWatches", "test:chord/next/state/batch_test.go#TestFlushes"]
+rationale = "Watchable.watch (watchable.ts:82, 193) resolves with the Watch of a source. chord/next/state/watchable.go Watch blocks over context.Context: one frame per change, serialized per watch, a failed call keeps the last value, abort ends the watch aborted; deliveries run on chord.DeliveryScheduler, the Go stand-in for the microtask queue (Batch.Soon runs queued work after the current synchronous section in order and panics with no queue)."
 
 [[files]]
 path = "packages/chord/src/next/store/adapter.ts"
@@ -1054,7 +1054,7 @@ rationale = "Type declarations only (no exported function, const or class in the
 path = "packages/chord/src/watch.ts"
 disposition = "translated"
 contracts = ["awaited", "cancellable", "detached-owned", "microtask-ordering"]
-evidence = ["test:chord/watch_upstream_test.go#TestWatchAwaitsEachCallbackAndFoldsFramesAdvancedWhileOneIsInFlightIntoTheNextCall", "test:chord/watch_upstream_test.go#TestWatchNeverInvokesTheListenerInline", "test:chord/watch_upstream_test.go#TestWatchStopsFutureDeliveryWithoutAbortingOrAwaitingAnInFlightCallback", "test:chord/watch_upstream_test.go#TestWatchEndsCancelledWhenItsAcquisitionContextEndsAlsoWhenAlreadyDone", "test:chord/watch_upstream_test.go#TestWatchEndsListenerErrorOnAFailureReportsItAndDeliversNothingMore", "test:chord/watch_upstream_test.go#TestWatchNeverFoldsTheInFlightCallIntoAnOverflow", "test:chord/watch_upstream_test.go#TestNativeWatchEndsWithEveryReasonOfItsLifecycle", "test:chord/watch_upstream_test.go#TestWatchableWatchHoldsTheCurrentValueThenOneFramePerChangeAndEndsWithItsContext", "test:chord/watch_upstream_test.go#TestNativeWatchableWatchHoldsTheCurrentValueThenOneFramePerNewValueAndEndsWithItsContext", "test:chord/watch_upstream_test.go#TestWatchStartsFoldingAgainAfterAnOverflowWasDelivered", "test:chord/watch_upstream_test.go#TestWatchKeepsReportingTheRetirementPastAnOverflow", "test:chord/watch_upstream_test.go#TestNativeWatchCollapses101PendingValuesToTheValueOfReplace", "test:chord/watch_upstream_test.go#TestWatchFailureCallsDeliversAFailureAsACallStaysOpenKeepsTheLastValueAndReplacesTheRootOnRecovery"]
+evidence = ["test:chord/watch_upstream_test.go#TestWatchAwaitsEachCallbackAndFoldsFramesAdvancedWhileOneIsInFlightIntoTheNextCall", "test:chord/watch_upstream_test.go#TestWatchNeverInvokesTheListenerInline", "test:chord/watch_upstream_test.go#TestWatchStopsFutureDeliveryWithoutAbortingOrAwaitingAnInFlightCallback", "test:chord/watch_upstream_test.go#TestWatchEndsAbortedWhenItsAcquisitionContextEndsAlsoWhenAlreadyDone", "test:chord/watch_upstream_test.go#TestWatchEndsListenerErrorOnAFailureReportsItAndDeliversNothingMore", "test:chord/watch_upstream_test.go#TestWatchNeverFoldsTheInFlightCallIntoAnOverflow", "test:chord/watch_upstream_test.go#TestNativeWatchEndsWithEveryReasonOfItsLifecycle", "test:chord/watch_upstream_test.go#TestWatchableWatchHoldsTheCurrentValueThenOneFramePerChangeAndEndsWithItsContext", "test:chord/watch_upstream_test.go#TestNativeWatchableWatchHoldsTheCurrentValueThenOneFramePerNewValueAndEndsWithItsContext", "test:chord/watch_upstream_test.go#TestWatchStartsFoldingAgainAfterAnOverflowWasDelivered", "test:chord/watch_upstream_test.go#TestWatchKeepsReportingTheRetirementPastAnOverflow", "test:chord/watch_upstream_test.go#TestNativeWatchCollapses101PendingValuesToTheValueOfReplace", "test:chord/watch_upstream_test.go#TestWatchFailureCallsDeliversAFailureAsACallStaysOpenKeepsTheLastValueAndReplacesTheRootOnRecovery"]
 rationale = "WatchLifecycle (the base of Watch and NativeWatch). start installs the sole listener and queues one drain microtask when frames are already pending; advance and retire queue frames and, once started, a drain: #schedule queues at most one microtask, #drain runs one frame at a time, awaits the listener's promise, sets value to the frame's value before the call and hands it a context without the frame's abort signal. A listener that rejects reports the error, ends the watch listener_error (a non-Error wrapped in an Error) and stops delivery; the retirement frame ends it retired once delivered; stop ends it stopped at once without aborting or awaiting the callback in flight, and drops the pending frames and every reference into the source. observeCancellation ends it cancelled when the signal aborts, also when already aborted, and is installed once. Go chord/watch_impl.go keeps the sequence: Start installs the listener, a frame is taken into delivery under the lock in publish order and its listener runs on a delivery goroutine of the DeliveryScheduler (never inline, one at a time, joined by DeliveryScheduler.Wait), a returned error or panic is reported and ends the watch listener_error, Stop closes the watch without joining the running callback, ObserveCancellation uses context.AfterFunc, and the end drops detach, report, replace, listener, scheduler and pending frames. A started watch with no callback in flight takes a committed frame into delivery before Advance returns, as the drain microtask enters the listener before the publishing commit's caller resumes. The tests assert in-order awaited delivery with buffering, the goroutine hop, stop with a callback in flight, the cancelled and listener_error ends and the overflow that never folds the in-flight frame; the NativeWatch end reasons are covered the same way. Pi a2fd25f56 adds the Watchable interface, whose watch(context) returns Promise<WatchHandle<T>>: Go's Watch(ctx) is a blocking call that returns the handle or an error; the lifecycle contract of the file is unchanged. Re-reviewed for Pi 5e106ab1c: NativeWatchable declares watch(context): Promise<NativeWatchHandle<T>> beside Watchable's, with no implementation, so no new async behavior; Go declares Watch(ctx) (NativeWatchHandle[T], error) as it does for Watchable, and the test shows the acquired watch holds the current value, delivers one frame per new value in order and ends with the context's cancellation. Delta at Pi d0aa218c: d8d99950a replaces the pending frame list with a PendingOps queue and a record of the newest frame. #drain takes next() (the newest value, the folded ops and the newest frame's context) for each listener call instead of shifting one frame, invoke receives that delivery, and #terminate calls release() to drop the queue; the awaited listener call with the abort-free delivery context, the running flag that serializes calls, the microtask-deferred start and advance scheduling, the retirement ending the watch after its delivery, and the listener error ending the watch are unchanged. NativeWatch keeps its own queue of values and collapses past 100 to replace(). Go: watchLifecycle takes next, hasPending and release from the handle; frames advanced while a call is in flight fold into the next call and the in-flight call is never folded into an overflow. Pi 8b0caefc: a retirement is a flag of the next call and the watch goes on; endAfterDelivery() ends it `ended` after the pending call returned (the EndAfterDelivery tests of chord/watch_upstream_test.go). Pi 5f312dac (lane C2): a failure call drops pending frames and waits as one call; a value after it replaces it ([[\"r\", value]]); Value() keeps the last value; the watch stays open; a failure after the end is ignored. An aborted context ends the watch aborted; installing the abort twice panics 'Watch abort is already installed'."
 
 [[files]]
@@ -1964,7 +1964,7 @@ rationale = "The runtime exports are synchronous (ok, err, getOrThrow, getOrUnde
 path = "packages/durable/src/env/node-watch.ts"
 disposition = "translated"
 contracts = ["awaited", "detached-owned"]
-evidence = ["test:durable/env/node/watch_close_pi_test.go#TestFileWatcherCloseIsIdempotentAndEndsReporting", "test:durable/env/node/watch_deliver_pi_test.go#TestWatcherDeliversOnlyWhileOpenAndSurvivesAThrowingCallback", "test:durable/env/node/conformance_test.go#TestNodeExecutionEnvWatchLimits", "test:durable/env/node/watch_unavailable_test.go#TestNodeFileWatcherReportsOverflowWhenNoNativeWatchCanBeCreated", "test:durable/env/node/watch_options_test.go#TestNodeWatchOptionsForceTheModeAndSetThePollInterval", "test:durable/env/node/watch_abort_pi_test.go#TestWatchAbortedWhileOpeningClosesTheWatcherAndFails", "test:durable/env/node/watch_close_pi_test.go#TestFileWatcherStopIsIdempotentAndEndsReporting", "test:durable/env/node/watch_close_waits_pi_test.go#TestFileWatcherStopWaitsForTheRescanInProgress"]
+evidence = ["test:durable/env/node/watch_close_pi_test.go#TestFileWatcherStopIsIdempotentAndEndsReporting", "test:durable/env/node/watch_deliver_pi_test.go#TestWatcherDeliversOnlyWhileOpenAndSurvivesAThrowingCallback", "test:durable/env/node/conformance_test.go#TestNodeExecutionEnvWatchLimits", "test:durable/env/node/watch_unavailable_test.go#TestNodeFileWatcherReportsOverflowWhenNoNativeWatchCanBeCreated", "test:durable/env/node/watch_options_test.go#TestNodeWatchOptionsForceTheModeAndSetThePollInterval", "test:durable/env/node/watch_abort_pi_test.go#TestWatchAbortedWhileOpeningClosesTheWatcherAndFails", "test:durable/env/node/watch_close_pi_test.go#TestFileWatcherStopIsIdempotentAndEndsReporting", "test:durable/env/node/watch_close_waits_pi_test.go#TestFileWatcherStopWaitsForTheRescanInProgress"]
 rationale = "NodeFileWatcher.open (:168-195) awaits the first #sync before it schedules polling and stops the watcher when that sync fails; Go's openFileWatcher (durable/env/node/watch.go) blocks on the same sync and returns the same errors, and an event that arrives during it marks the opening sync as running, so the rescan it asks for runs after open as Pi's debounce timer would. #flush (:253-282) shares one running Promise: a flush that finds one running sets #dirty and returns it, and the running flush goes round again; Go's flush returns the running flush's done channel and loops on dirty the same way, on one owned goroutine per flush. Its failure delivers one FileError and stops the watcher in both. The poll timer runs `void this.#flush().finally(() => this.#schedulePoll())` (:228-234) and the debounce timer an unawaited #flush (:236-242); Go's time.AfterFunc callbacks wait for the flush and re-arm, and stop() cancels the timer and closes the native watchers, so every background task is owned by the watcher. #deliver (:219-226) swallows a throwing onChange; Go recovers its panic. close (:203-207) stops the watcher and awaits #running. Go's Close waits for the running flush too, except while a change is being delivered: a Close called from onChange cannot wait for the flush that is calling it, so it returns once the watcher is stopped, and Pi's close called there resolves only after that flush, which a synchronous onChange cannot observe. JavaScript cannot run close beside onChange otherwise; a Go Close from another goroutine during a delivery also returns at once, and no onChange starts after it. The macOS settle rescan (:244-251) has no counterpart because fsnotify's kqueue and inotify registrations are synchronous (watch.go header). close takes an unused context in both. Pi 5f312dac (lane C2): Stop waits for the rescan in progress, is idempotent, no onChange after it returns."
 
 [[files]]
@@ -2377,7 +2377,7 @@ rationale = "openTerminal starts the pty request with its own AbortController an
 path = "packages/env/src/watch.ts"
 disposition = "translated"
 contracts = ["awaited", "detached-owned", "cancellable"]
-evidence = ["test:env/watch_test.go#TestRemoteWatcherOpensAgainAfterALostConnectionAndReportsOverflow", "test:env/watch_test.go#TestRemoteWatcherCloseWakesAPendingReconnect", "test:env/watch_semantics_test.go#TestRemoteWatcherReportsAFailedRequestBeforeAndAfterCoverage", "test:env/watch_semantics_test.go#TestRemoteWatcherStopsAfterAnErrorEventAndSurvivesAThrowingCallback", "test:env/regressions_test.go#TestRemoteWatcherOutlivesTheContextThatOpenedIt", "test:env/watch_events_test.go"]
+evidence = ["test:env/watch_test.go#TestRemoteWatcherOpensAgainAfterALostConnectionAndReportsOverflow", "test:env/watch_test.go#TestRemoteWatcherStopWakesAPendingReconnect", "test:env/watch_semantics_test.go#TestRemoteWatcherReportsAFailedRequestBeforeAndAfterCoverage", "test:env/watch_semantics_test.go#TestRemoteWatcherStopsAfterAnErrorEventAndSurvivesAThrowingCallback", "test:env/regressions_test.go#TestRemoteWatcherOutlivesTheContextThatOpenedIt", "test:env/watch_events_test.go"]
 rationale = "RemoteWatcher.open awaits #start, which resolves on the daemon's ready event and rejects when the watch request fails before it (:80-131). Go's OpenRemoteWatcher blocks on the same ready or failure; its context aborts only the opening, as Pi's open takes no signal, and the watcher lives until Close. Events are delivered from the request's event callback as they arrive, and a throwing onChange is swallowed (Go recovers its panic). A failure after coverage starts the unawaited #reconnect loop (:123), which Go runs as an owned goroutine joined by Close: the delay doubles from 1 s to 30 s, close wakes it (:62-68, :133-142), the loop stops when the watcher is closed, a reopened watcher reports overflow, a lost connection retries and any other failure is delivered once and stops the watcher. Close marks the watcher closed, wakes the delay, aborts the current request and awaits its settlement; Go also waits for the loop, which then returns without opening another request. Pi 5f312dac (lane C2): RemoteWatcher.Stop waits for the in-flight delivery, is idempotent, and no onChange follows it."
 
 [[files]]
@@ -2517,8 +2517,8 @@ rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`tui/can
 path = "packages/tui/src/components/editor.ts"
 disposition = "deferred"
 contracts = ["awaited", "concurrent-joined", "cancellable", "microtask-ordering"]
-evidence = ["test:tui/editor_async_provider_test.go", "test:tui/editor_completion_owner_test.go", "test:tui/editor_completion_upstream_test.go", "test:tui/editor_completion_boundary_external_test.go", "test:internal/codingagent/autocomplete_wrappers_test.go", "scenario:test/parity/scenarios/autocomplete/12-editor-completion-lifecycle.toml", "scenario:test/parity/scenarios/autocomplete/12-extension-wrapper-error.toml", "probe:docs/findings/fix-rigidity-b.md"]
-rationale = "Native and extension autocomplete share one serial request worker. Native synchronous callbacks are prepared on the owner loop; captured filesystem and awaited callbacks run on the worker. Natural symbol requests debounce for20ms, cancelled queued requests join predecessors, and completion joins owner publication before releasing the successor. Forced queries leave input live; synchronous application holds subsequent input until the owner applies its result. Cancellation is quiet, while real rejection reaches the crash owner. The remaining editor Promise and input surfaces stay deferred. Re-confirmed at Pi e7a0df27: the delta since b3a29f11 changes no line that mentions async, await, Promise, then/catch/finally, timers, signals or AbortSignal, so the contract stands."
+evidence = ["test:tui/editor_async_provider_test.go", "test:tui/editor_autocomplete_flush_test.go", "test:tui/editor_completion_owner_test.go", "test:tui/editor_completion_upstream_test.go", "test:tui/editor_completion_boundary_external_test.go", "test:internal/codingagent/autocomplete_wrappers_test.go", "test:internal/codingagent/autocomplete_read_checkpoint_test.go", "scenario:test/parity/scenarios/autocomplete/12-editor-completion-lifecycle.toml", "scenario:test/parity/scenarios/autocomplete/12-extension-wrapper-error.toml", "probe:docs/findings/fix-rigidity-b.md"]
+rationale = "Native and extension autocomplete share one serial request worker. A native request that needs no I/O (command names, a command's synchronous argument completions, a directory read) is not started by the key that makes it: requestAutocomplete only schedules startAutocompleteRequest, a Promise job that runs after the terminal read's last sequence and before the next read, and only the newest request of a read reaches the provider. Go starts it in Editor.FlushAutocomplete, which the owner loop calls once after each read, and publishes the menu on the owner loop in the same turn, so the next read's Enter accepts the menu (a `/model provider/id` typed and entered at once completes in Pi and in Go, and a second Enter submits); an owner that never flushes still starts the request from the task each key posts. Captured filesystem work, awaited argument completers and extension providers run on the worker. Natural symbol requests debounce for 20ms from a timer, a later task than any read; cancelled queued requests join predecessors, a request made behind an unfinished one joins it instead of answering at the end of its read, and completion joins owner publication before releasing the successor. Forced queries leave input live; synchronous application holds subsequent input until the owner applies its result. Cancellation is quiet, while real rejection reaches the crash owner. The remaining editor Promise and input surfaces stay deferred."
 
 [[files]]
 path = "packages/tui/src/native-platform.ts"

@@ -17,16 +17,16 @@ import (
 
 // D165: runs Pi's images/index.ts createPhotonImages (Photon 0.3.3 under Node, types stripped) and PiG's CreatePhotonImages over
 // one corpus and compares what the model receives: whether an image can be prepared, its format, the resized and convertedFrom
-// records, the decoded size, byte-exact output when Pi passes the image through, and the pixels within the D165 tolerance
-// (PNG: Lanczos3 differences only; JPEG: two encoders). The limits of every case leave the choice of PNG or JPEG and the
-// number of 3/4 shrinks beyond what the two encoders' sizes can change.
+// records, the decoded size, and the bytes: every byte when the image decodes the way Photon decodes it (PNG, GIF and BMP; the
+// resample and both encoders are Photon's own, byte for byte), the pixels within the D165 tolerance when it comes from a JPEG,
+// whose Go decoder does not give Photon's pixels.
 type oracleCase struct {
 	name      string
 	data      []byte
 	mime      string
 	limits    tools.ImageLimits
 	tolerance float64 // mean absolute channel error of the decoded images, 0 = bytes must be equal
-	skipPix   bool    // compare size only (noise: JPEG encoders differ widely on it)
+	skipPix   bool    // compare size only
 	quantized bool    // a JPEG result must carry the quantization table of the quality Pi chose
 }
 
@@ -44,13 +44,13 @@ func oracleCorpus(t *testing.T) []oracleCase {
 		{name: "png within the limits", data: encodePNG(t, pixels(8, 6)), mime: "image/png", limits: def},
 		{name: "gif within the limits", data: gif(), mime: "image/gif", limits: def},
 		{name: "jpeg within the limits", data: encodeJPEG(t, pixels(40, 30)), mime: "image/jpeg", limits: def},
-		{name: "png wider than the limit", data: encodePNG(t, pixels(4000, 1000)), mime: "image/png", limits: def, tolerance: 1},
-		{name: "png whose resized height rounds up", data: encodePNG(t, pixels(2999, 1000)), mime: "image/png", limits: def, tolerance: 1},
-		{name: "png of an extreme aspect ratio", data: encodePNG(t, pixels(6000, 2)), mime: "image/png", limits: def, tolerance: 1},
-		{name: "bmp becomes png", data: bmp(4, 4), mime: "image/bmp", limits: def, tolerance: 1},
-		{name: "model limit narrower than the image", data: scene, mime: "image/png", limits: tools.ImageLimits{MaxWidth: 300, MaxHeight: 300, MaxBytes: def.MaxBytes}, tolerance: 1},
-		{name: "model limit shorter than the image", data: scene, mime: "image/png", limits: tools.ImageLimits{MaxWidth: 2000, MaxHeight: 100, MaxBytes: def.MaxBytes}, tolerance: 1},
-		{name: "png too large for the byte limit", data: noisyPNG(t, 1100, 1100), mime: "image/png", limits: def, skipPix: true},
+		{name: "png wider than the limit", data: encodePNG(t, pixels(4000, 1000)), mime: "image/png", limits: def},
+		{name: "png whose resized height rounds up", data: encodePNG(t, pixels(2999, 1000)), mime: "image/png", limits: def},
+		{name: "png of an extreme aspect ratio", data: encodePNG(t, pixels(6000, 2)), mime: "image/png", limits: def},
+		{name: "bmp becomes png", data: bmp(4, 4), mime: "image/bmp", limits: def},
+		{name: "model limit narrower than the image", data: scene, mime: "image/png", limits: tools.ImageLimits{MaxWidth: 300, MaxHeight: 300, MaxBytes: def.MaxBytes}},
+		{name: "model limit shorter than the image", data: scene, mime: "image/png", limits: tools.ImageLimits{MaxWidth: 2000, MaxHeight: 100, MaxBytes: def.MaxBytes}},
+		{name: "png too large for the byte limit", data: noisyPNG(t, 1100, 1100), mime: "image/png", limits: def},
 		{name: "not even one pixel fits", data: encodePNG(t, pixels(4, 4)), mime: "image/png", limits: tools.ImageLimits{MaxWidth: 2000, MaxHeight: 2000, MaxBytes: 8}},
 		{name: "truncated png", data: encodePNG(t, pixels(4, 4))[:40], mime: "image/png", limits: def},
 		{name: "not an image", data: []byte("definitely not a png"), mime: "image/png", limits: def},
@@ -147,7 +147,7 @@ func comparePhotonToPi(t *testing.T, corpus []oracleCase) {
 		}
 		if c.tolerance == 0 && !c.skipPix {
 			if got.Data != want.Data {
-				t.Errorf("%s: Pi passed the image through; PiG's data differs", c.name)
+				t.Errorf("%s: PiG's bytes differ from Pi's (%d bytes, Pi %d)", c.name, len(got.Data), len(want.Data))
 			}
 			continue
 		}
