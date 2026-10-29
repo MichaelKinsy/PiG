@@ -40,7 +40,7 @@ entry="$store/$key"
 
 if [[ -f "$entry/ok" ]]; then
   cat "$entry/log"
-  for i in ${!outs[@]+"${!outs[@]}"}; do
+  for ((i = 0; i < ${#outs[@]}; i++)); do
     rm -rf "${outs[i]}"
     mkdir -p "${outs[i]}"
     tar -C "${outs[i]}" -xf "$entry/out-$i.tar"
@@ -59,7 +59,7 @@ set +e
 status=${PIPESTATUS[0]}
 set -e
 if [[ $status -eq 0 ]]; then
-  for i in ${!outs[@]+"${!outs[@]}"}; do
+  for ((i = 0; i < ${#outs[@]}; i++)); do
     tar -C "${outs[i]}" -cf "$tmp/out-$i.tar" .
   done
   touch "$tmp/ok"
