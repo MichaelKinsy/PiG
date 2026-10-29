@@ -147,7 +147,6 @@ for (const c of input) {
 emit(out);`, cases, &want)
 
 	mismatches := map[string][2]int{} // category: cases, format differences
-	var unexpected []int
 	for i, c := range cases {
 		got, err := ResizeImage(decodeBase64(t, c.Data), c.MimeType, &ai.ModelImageResizeOptions{MaxWidth: c.MaxSide, MaxHeight: c.MaxSide})
 		gotResult := formatChoiceResult{Null: err != nil}
@@ -159,7 +158,6 @@ emit(out);`, cases, &want)
 		if gotResult != want[i] {
 			counts[1]++
 			if _, cited := d165FormatChoice[i]; !cited {
-				unexpected = append(unexpected, i)
 				t.Errorf("case %d (%s, %s, limit %d)\n Go %+v\n Pi %+v", i, c.Category, c.MimeType, c.MaxSide, gotResult, want[i])
 			}
 		} else if reason, cited := d165FormatChoice[i]; cited {
