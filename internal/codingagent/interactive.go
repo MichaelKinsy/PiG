@@ -1805,9 +1805,13 @@ func (m *InteractiveMode) Init(ctx context.Context) (err error) {
 	// fresh install and an update with new changelog entries.
 	// Mirrors upstream getChangelogForDisplay + showStartupNoticesIfNeeded
 	// (interactive-mode.ts:816-843, 487-522, 1265-1307).
-	if m.opts.SettingsManager != nil && m.opts.AppVersion != "" && m.opts.ResumePath == "" {
-		if newEntries := startupChangelog(m.opts.SettingsManager, m.opts.AppVersion); len(newEntries) > 0 {
-			m.showStartupChangelog(newEntries)
+	if m.opts.SettingsManager != nil && m.opts.ResumePath == "" {
+		var newEntries []ChangelogEntry
+		if m.opts.AppVersion != "" {
+			newEntries = startupChangelog(m.opts.SettingsManager, m.opts.AppVersion)
+		}
+		if extensionUpdates := m.getExtensionChangelogUpdates(); len(newEntries) > 0 || len(extensionUpdates) > 0 {
+			m.showStartupChangelog(newEntries, extensionUpdates)
 			m.tuiInst.Render()
 		}
 	}
