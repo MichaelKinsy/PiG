@@ -2889,7 +2889,7 @@
         "the heartbeat › runs one timer per host, only while it has links: none per message",
         "the heartbeat › takes its numbers from the host's options"
       ],
-      "rationale": "14 of 19 upstream cases are ported (lane D2); the 5 missing cases need the host, jobs, remote or store layers of later Chord v2 lanes and are listed in missingCases."
+      "rationale": "14 of 19 upstream cases are ported (lane D2); the 5 missing cases need the host, jobs, remote or store layers of later Chord v2 lanes and are listed in missingCases. The GC case 'keeps no held message once the link closed' holds a 64-byte call message and waits on an AddCleanup signal instead of Pi's release message: a 3-byte message sits in a Go tiny-allocation block kept alive by its neighbours, so retention of the message cannot be observed (a Go forced difference; a negative control proves the test still catches retention) (lane D2b)."
     },
     {
       "path": "packages/chord/test/next/link/errors.test.ts",
