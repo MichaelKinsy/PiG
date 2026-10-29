@@ -39,22 +39,24 @@ const (
 
 // Tracker owns one sequence of immutable revisions of an object or array root, as tracker.ts's track(initial: T extends object).
 //
-// As in tracker.ts, a Change, a Prepared or a draft handle never keeps its Tracker alive, and the Tracker holds its open changes weakly: an open change the caller drops is reclaimed, and a settled one releases its draft at once.
+// As in tracker.ts, a Change, a Prepared or a draft handle never keeps its Tracker alive. Open changes are tracked so that adopting one makes its open competitors stale at once; prepared ones need no tracking, because Change.Prepare releases their draft and Adopt rejects them by revision. The most recent open change is held strongly in open: with one transaction at a time per tracker, the common case, that is the only one and it costs no weak registration. A second BeginChange while one is open moves the older change into the owner's weak registry, so a draft the caller drops can be reclaimed. A dropped draft that was never settled stays held by open until the tracker's next BeginChange or Adopt: at most one per tracker.
 type Tracker struct {
 	mu       sync.Mutex
 	value    any // *JsonObject or []any
 	revision int
-	owner    *owner // made by the first change; tracker.ts #owner
+	owner    *owner   // made by the first change; tracker.ts #owner
+	open     *overlay // the most recent open change; tracker.ts #open. Guarded by owner.mu
 }
 
-// owner is tracker.ts's #owner token together with its #contexts registry. A context reaches its tracker's registry through it without keeping the tracker or a revision alive, as tracker.ts reaches the tracker through a WeakRef.
+// owner is tracker.ts's #owner token together with its #competitors registry. A context reaches its tracker's registry through it without keeping the tracker, its open change or a revision alive, as tracker.ts reaches the tracker through a WeakRef.
 type owner struct {
 	mu          sync.Mutex
-	contexts    map[weak.Pointer[overlay]]struct{}
+	tracker     weak.Pointer[Tracker]
+	competitors map[weak.Pointer[overlay]]struct{} // open changes other than the most recent; made by the first demotion
 	pruneBudget int
 }
 
-// pruneBudget is tracker.ts's #pruneBudget: registrations between sweeps of reclaimed changes.
+// pruneBudget is tracker.ts's #pruneBudget: demotions between sweeps of reclaimed changes.
 const pruneBudget = 256
 
 // Track takes immutable ownership of an alias-free strict-JSON root in O(1).
@@ -71,33 +73,51 @@ func TrackArray(initial []any) *Tracker {
 // ownerHeld returns the tracker's owner token, making it on first use. The caller holds tracker.mu.
 func (tracker *Tracker) ownerHeld() *owner {
 	if tracker.owner == nil {
-		tracker.owner = &owner{contexts: map[weak.Pointer[overlay]]struct{}{}, pruneBudget: pruneBudget}
+		tracker.owner = &owner{tracker: weak.Make(tracker), pruneBudget: pruneBudget}
 	}
 	return tracker.owner
 }
 
-// register is tracker.ts #register: it holds context weakly and sweeps reclaimed registrations once per budget.
-func (owner *owner) register(context *overlay) {
-	context.registration = weak.Make(context)
+// beginOpen makes context the tracker's open change, demoting the previous one into the weak registry (tracker.ts beginChange).
+func (tracker *Tracker) beginOpen(context *overlay) {
+	owner := tracker.owner
 	owner.mu.Lock()
 	defer owner.mu.Unlock()
-	owner.contexts[context.registration] = struct{}{}
+	if tracker.open != nil {
+		owner.demote(tracker.open)
+	}
+	tracker.open = context
+}
+
+// demote is tracker.ts #demote: it holds context weakly and sweeps reclaimed registrations once per budget. The caller holds owner.mu.
+func (owner *owner) demote(context *overlay) {
+	context.registration = weak.Make(context)
+	if owner.competitors == nil {
+		owner.competitors = map[weak.Pointer[overlay]]struct{}{}
+	}
+	owner.competitors[context.registration] = struct{}{}
 	owner.pruneBudget--
 	if owner.pruneBudget == 0 {
-		for registration := range owner.contexts {
+		for registration := range owner.competitors {
 			if registration.Value() == nil {
-				delete(owner.contexts, registration)
+				delete(owner.competitors, registration)
 			}
 		}
-		owner.pruneBudget = max(pruneBudget, len(owner.contexts))
+		owner.pruneBudget = max(pruneBudget, len(owner.competitors))
 	}
 }
 
 // release is tracker.ts releaseContext. The caller must not hold the context's lock, which Adopt takes after owner.mu.
-func (owner *owner) release(registration weak.Pointer[overlay]) {
+func (owner *owner) release(context *overlay) {
+	tracker := owner.tracker.Value()
 	owner.mu.Lock()
-	delete(owner.contexts, registration)
-	owner.mu.Unlock()
+	defer owner.mu.Unlock()
+	if tracker != nil && tracker.open == context {
+		tracker.open = nil
+	} else {
+		delete(owner.competitors, context.registration)
+	}
+	context.registration = weak.Pointer[overlay]{}
 }
 
 // Value returns the latest adopted revision of an object root, and nil for an array root; Root returns either.
@@ -127,7 +147,7 @@ func (tracker *Tracker) BeginChange() *Change {
 	defer tracker.mu.Unlock()
 	context := &overlay{owner: tracker.ownerHeld(), baseRevision: tracker.revision, base: tracker.value}
 	context.root = &node{ctx: context, base: tracker.value}
-	context.owner.register(context)
+	tracker.beginOpen(context)
 	return &Change{ctx: context}
 }
 
@@ -174,23 +194,35 @@ func (tracker *Tracker) Adopt(prepared *Prepared) error {
 	tracker.value = prepared.value
 	tracker.revision++
 	// The winner's lock is released before the other drafts are locked: a draft that is placing one of the winner's handles holds its own lock while it waits for the winner's.
-	tracker.owner.mu.Lock()
-	defer tracker.owner.mu.Unlock()
-	for registration := range tracker.owner.contexts {
-		other := registration.Value()
-		if other == nil || other == context {
-			continue
-		}
-		other.mu.Lock()
-		if other.status == statusOpen || other.status == statusPrepared {
-			other.status = statusStale
-		}
-		other.release()
-		other.mu.Unlock()
+	owner := tracker.owner
+	owner.mu.Lock()
+	defer owner.mu.Unlock()
+	open, competitors := tracker.open, owner.competitors
+	tracker.open, owner.competitors = nil, nil
+	owner.pruneBudget = pruneBudget
+	if open != nil {
+		staleCompetitor(open, context)
 	}
-	clear(tracker.owner.contexts)
-	tracker.owner.pruneBudget = pruneBudget
+	for registration := range competitors {
+		if other := registration.Value(); other != nil {
+			staleCompetitor(other, context)
+		}
+	}
 	return nil
+}
+
+// staleCompetitor is tracker.ts staleCompetitor: it makes an open or prepared competitor of the adopted change stale and drops its draft in O(1). The caller holds the owner's lock, which orders before the context's.
+func staleCompetitor(context, winner *overlay) {
+	if context == winner {
+		return
+	}
+	context.mu.Lock()
+	if context.status == statusOpen || context.status == statusPrepared {
+		context.status = statusStale
+	}
+	context.registration = weak.Pointer[overlay]{}
+	context.release()
+	context.mu.Unlock()
 }
 
 // consume marks the prepared context consumed, or reports why it cannot be adopted. The caller holds tracker.mu.
@@ -282,7 +314,7 @@ func (change *Change) Prepare() (*Prepared, error) {
 	}
 	change.ctx = nil
 	change.settled = true
-	defer context.owner.release(context.registration)
+	defer context.owner.release(context)
 	defer context.mu.Unlock()
 	context.status = statusPrepared
 	root, base := context.root, context.base
@@ -319,7 +351,7 @@ func (change *Change) Abort() {
 	change.settled = true
 	context := change.ctx
 	change.ctx = nil
-	defer context.owner.release(context.registration)
+	defer context.owner.release(context)
 	context.mu.Lock()
 	defer context.mu.Unlock()
 	if context.status == statusOpen {
