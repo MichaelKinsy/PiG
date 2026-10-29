@@ -1,7 +1,6 @@
 package link_test
 
 import (
-	"bytes"
 	"encoding/hex"
 	"fmt"
 	"strings"
@@ -180,5 +179,3 @@ func transported(ends ...*link.MemoryLink) {
 		}
 	}
 }
-
-func bytesEqual(a, b []byte) bool { return bytes.Equal(a, b) }

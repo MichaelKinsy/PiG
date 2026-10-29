@@ -453,7 +453,7 @@ func TestInOrderHandling(t *testing.T) {
 			corrupt := errors.New("corrupt")
 			h.finish(0).Reject(corrupt)
 			h.settle()
-			if !peer.isClosed() || len(h.setup.reports.all()) != 1 || h.setup.reports.all()[0] != corrupt || len(h.setup.handler.names()) != 0 {
+			if !peer.isClosed() || len(h.setup.reports.all()) != 1 || !errors.Is(h.setup.reports.all()[0], corrupt) || len(h.setup.handler.names()) != 0 {
 				t.Fatalf("closed = %v, reports = %v, handled = %v", peer.isClosed(), h.setup.reports.all(), h.setup.handler.names())
 			}
 		})

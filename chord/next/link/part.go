@@ -64,7 +64,9 @@ type PartLimits struct {
 }
 
 // Limit returns a PartLimits field value.
-func Limit(bytes float64) *float64 { return &bytes }
+//
+//go:fix inline
+func Limit(bytes float64) *float64 { return new(bytes) }
 
 // Limits are a link's limits in force; +Inf for none.
 type Limits struct{ Part, Decoded float64 }
@@ -185,7 +187,7 @@ func (err *causedError) Unwrap() error { return err.cause }
 func InflateAsync(part *DeflatedPart, limit float64, signal context.Context, ctx context.Context) {
 	chordctx.Telemetry(ctx).Metrics().Counter("chord.link.inflates", telemetry.InstrumentOptions{}).Add(1, nil)
 	reader := flate.NewReader(&bytesReader{data: part.Bytes})
-	defer reader.Close()
+	defer func() { _ = reader.Close() }()
 	var output []byte
 	chunk := make([]byte, 32*1024)
 	for {

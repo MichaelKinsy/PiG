@@ -31,7 +31,8 @@ func TestErrorsOnTheWire(t *testing.T) {
 		nexttest.RequireJSONEqual(t, wire, object("kind", "plugin", "code", "quota", "message", "too many notes", "details", object("limit", 3.0)))
 		back, err := link.ErrorFromWire(wire)
 		requireNoError(t, err)
-		plugin, ok := back.(*data.PluginError)
+		var plugin *data.PluginError
+		ok := errors.As(back, &plugin)
 		if !ok || plugin.Code != "quota" || plugin.Message != "too many notes" || !plugin.HasDetails {
 			t.Fatalf("back = %#v", back)
 		}

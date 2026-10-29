@@ -2,9 +2,9 @@ package link_test
 
 import (
 	"bytes"
+	"reflect"
 	"strings"
 	"testing"
-	"unsafe"
 
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/chord/next/internal/nexttest"
@@ -241,12 +241,15 @@ func sameBacking(whole, part []byte) bool {
 	if len(part) == 0 || len(whole) == 0 {
 		return true
 	}
-	start := uintptr(unsafe.Pointer(&whole[0]))
-	at := uintptr(unsafe.Pointer(&part[0]))
-	return at >= start && at+uintptr(len(part)) <= start+uintptr(len(whole))
+	for offset := 0; offset+len(part) <= len(whole); offset++ {
+		if &whole[offset] == &part[0] {
+			return true
+		}
+	}
+	return false
 }
 
-func sameSlice(a, b []int) bool { return unsafe.SliceData(a) == unsafe.SliceData(b) }
+func sameSlice(a, b []int) bool { return reflect.ValueOf(a).Pointer() == reflect.ValueOf(b).Pointer() }
 
 func TestTheBinaryCodec(t *testing.T) {
 	binary := link.BinaryCodec

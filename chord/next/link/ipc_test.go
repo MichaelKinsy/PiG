@@ -264,7 +264,7 @@ func (port *framedPort) Disconnect() {
 	port.mu.Lock()
 	port.connected = false
 	port.mu.Unlock()
-	port.conn.Close()
+	_ = port.conn.Close()
 }
 
 func (port *framedPort) Connected() bool {

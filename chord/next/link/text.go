@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"math"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -49,8 +50,8 @@ func (textCodec) Encode(message Message) (encoded []byte, err error) {
 func (textCodec) Decode(data []byte) (message Message, err error) {
 	defer recoverCodec(&err)
 	line, rest := data, data[len(data):]
-	if at := bytes.IndexByte(data, newline); at != -1 {
-		line, rest = data[:at], data[at+1:]
+	if before, after, ok0 := bytes.Cut(data, []byte{newline}); ok0 {
+		line, rest = before, after
 	}
 	parsed, parseErr := parseJson(line)
 	if parseErr != nil {
@@ -332,10 +333,8 @@ func fromFields(fields []any, rest []byte) Message {
 	}
 	tag, f := fields[0], fields[1:]
 	arity := func(allowed ...int) {
-		for _, each := range allowed {
-			if each == len(f) {
-				return
-			}
+		if slices.Contains(allowed, len(f)) {
+			return
 		}
 		fail("text: a %q message with %d fields", tagText(tag), len(f))
 	}
