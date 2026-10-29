@@ -1180,6 +1180,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-e69d018](#bf-e69d018) | Closing an `env` connection, or losing it, now ends its daemon process with SIGTERM, as in Pi, instead of… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-e73e536](#bf-e73e536) | Codemode scripts no longer fail immediately when both codemode workers are busy, for example with parallel… | A fix Pi shipped that PiG ported | All platforms | 0.5.2 |
 | [BF-e75a8b9](#bf-e75a8b9) | The external editor (`ctrl+g`) now edits `prompt.md` inside a private `pi-editor-*` directory under the… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-e79abfb](#bf-e79abfb) | The CI image version-literal test no longer reports the Pi part of an image tag (`1.4.0.b3a29f11`, written by… | PiG's own defect | All platforms | Unreleased |
 | [BF-e79c70e](#bf-e79c70e) | fix(ai): Codex WebSocket, OpenRouter images, pi-messages and replaced Anthropic bodies write JSON.stringify… | PiG's own defect | All platforms | Unreleased |
 | [BF-e8489d4](#bf-e8489d4) | A key hint for an app action the user unbound shows no key, as in Pi, instead of the action's default key | PiG's own defect | All platforms | 0.5.0 |
 | [BF-e90ac19](#bf-e90ac19) | Very long streamed answers no longer slow down with their length: each streamed frame renders only the last… | PiG's own defect | All platforms | 0.5.0 |
@@ -17418,6 +17419,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `e75a8b9cbd` (2026-10-09)
 - **Tests:** `internal/codingagent/external_editor_test.go::TestEditorHelperProcess`, `internal/codingagent/external_editor_test.go::TestExternalEditorUpstream`, `internal/codingagent/wsl_test.go::TestIsWSL`
 - **Release note:** The external editor (`ctrl+g`) now edits `prompt.md` inside a private `pi-editor-*` directory under the system temp directory and removes the directory afterwards, as Pi does. It previously wrote a `pig-editor-*.md` file directly in the shared temp directory.
+
+### BF-e79abfb
+
+**The CI image version-literal test no longer reports the Pi part of an image tag (`1.4.0.b3a29f11`, written by…**
+
+- **Source:** PiG's own defect
+- **Symptom:** The CI image version-literal test no longer reports the Pi part of an image tag (`1.4.0.b3a29f11`, written by `make pin-sync` and checked by `make pin-check`) as a hard-coded version when the pinned commit starts with a letter.
+- **Root cause:** pin.py ci_tag writes the pin's dotted build metadata (1.4.0.) into IMAGE_TAG and make pin-check checks it. A commit starting with a digit read as a fourth number and was skipped; the Pi pin starts with a letter, so TestBuildAutomationNamesNoUnrecordedVersionLiteral reported automation/images/ci-parity/metadata.env:5 as a hard-coded 1.4.0.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `e79abfb60a` (2026-10-28)
+- **Tests:** `test/ci-images/version_literals_test.go::TestBuildAutomationNamesNoUnrecordedVersionLiteral`
+- **Release note:** The CI image version-literal test no longer reports the Pi part of an image tag (`1.4.0.b3a29f11`, written by `make pin-sync` and checked by `make pin-check`) as a hard-coded version when the pinned commit starts with a letter.
 
 ### BF-e79c70e
 
