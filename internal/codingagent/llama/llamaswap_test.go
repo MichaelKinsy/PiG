@@ -20,9 +20,8 @@ import (
 )
 
 // fakeLlamaSwap serves the HTTP surface of llama-swap (github.com/mostlygeek/llama-swap, internal/server/server.go and api.go) and nothing else:
-// GET /models and /v1/models list the configured models with a llama.cpp router style status.value, GET /running, GET /unload, POST /api/models/unload[/<model>],
-// GET /props?model= and POST /v1/chat/completions load the model they name, and every other path is Go's ServeMux 404. It has no /models/load, /models/unload or
-// /models/sse, which Pi's /llama calls.
+// GET /models and /v1/models list the configured models with a llama.cpp router style status.value, and GET /props?model= answers for (and loads) the model it names;
+// every other path is Go's ServeMux 404. It has no /models/load, /models/unload or /models/sse, which Pi's /llama calls.
 type fakeLlamaSwap struct {
 	mu       sync.Mutex
 	models   []string
@@ -62,42 +61,18 @@ func (s *fakeLlamaSwap) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				"status": map[string]any{"value": status}, "meta": map[string]any{"n_ctx": 131072}})
 		}
 		writeJSON(w, map[string]any{"object": "list", "data": data})
-	case r.Method == http.MethodGet && r.URL.Path == "/running":
-		running := []any{}
-		if s.running != "" {
-			running = append(running, map[string]any{"model": s.running, "state": "ready"})
-		}
-		writeJSON(w, map[string]any{"running": running})
-	case r.Method == http.MethodGet && r.URL.Path == "/unload":
-		s.running = ""
-		_, _ = w.Write([]byte("OK"))
-	case r.Method == http.MethodPost && r.URL.Path == "/api/models/unload":
-		s.running = ""
-		_, _ = w.Write([]byte("OK"))
-	case r.Method == http.MethodPost && strings.HasPrefix(r.URL.Path, "/api/models/unload/"):
-		if id := strings.TrimPrefix(r.URL.Path, "/api/models/unload/"); id == s.running {
-			s.running = ""
-		}
-		_, _ = w.Write([]byte("OK"))
 	case r.Method == http.MethodGet && r.URL.Path == "/props":
 		id := r.URL.Query().Get("model")
-		if id == "" {
+		switch {
+		case id == "":
 			s.envelope(w, http.StatusNotFound, "no model id could be identified", "not_found_error", "not_found")
-		} else if !s.configured(id) {
+		case !s.configured(id):
 			s.envelope(w, http.StatusNotFound, "no local server found for requested model", "not_found_error", "not_found")
-		} else {
+		default:
 			s.running = id
 			writeJSON(w, map[string]any{"chat_template": "{{ messages }}"})
 		}
-	case r.Method == http.MethodPost && r.URL.Path == "/v1/chat/completions":
-		var request struct{ Model string }
-		_ = json.Unmarshal(body, &request)
-		if !s.configured(request.Model) {
-			s.envelope(w, http.StatusNotFound, "no local server found for requested model", "not_found_error", "not_found")
-			return
-		}
-		s.running = request.Model
-		writeJSON(w, map[string]any{"object": "chat.completion", "model": request.Model, "choices": []any{map[string]any{"index": 0, "finish_reason": "stop", "message": map[string]any{"role": "assistant", "content": "served by " + request.Model}}}})
+	// POST /v1/chat/completions, GET /running, GET /unload and POST /api/models/unload[/<model>] also exist on llama-swap; /llama calls none of them.
 	default:
 		http.NotFound(w, r)
 	}
@@ -332,25 +307,4 @@ func TestLlamaCommandAgainstLlamaSwapFailsLikePi(t *testing.T) {
 	if swap.running != swapAlpha {
 		t.Fatalf("llama-swap runs %q after the failed load and unload, want %q", swap.running, swapAlpha)
 	}
-}
-
-// The path that works with llama-swap, in Pi and in the port: llama-swap as an openai-completions provider. The request carries the model in its `model` field and llama-swap
-// swaps to it. See the llama-swap-models-json journey (test/journeys) for the same path through the model selector in Pi and PiG side by side.
-func TestFakeLlamaSwapSwapsOnTheModelField(t *testing.T) {
-	swap, url := newFakeLlamaSwap(t, swapAlpha, swapBeta)
-	for _, id := range []string{swapAlpha, swapBeta, swapAlpha} {
-		response, err := http.Post(url+"/v1/chat/completions", "application/json", strings.NewReader(`{"model":"`+id+`","messages":[]}`))
-		if err != nil || response.StatusCode != 200 {
-			t.Fatalf("chat %s: %v %v", id, response, err)
-		}
-		_ = response.Body.Close()
-		if swap.running != id {
-			t.Fatalf("running = %q after a request for %q", swap.running, id)
-		}
-	}
-	response, err := http.Post(url+"/v1/chat/completions", "application/json", strings.NewReader(`{"model":"nope","messages":[]}`))
-	if err != nil || response.StatusCode != http.StatusNotFound {
-		t.Fatalf("unrouted model: %v %v", response, err)
-	}
-	_ = response.Body.Close()
 }
