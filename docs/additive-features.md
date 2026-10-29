@@ -1890,7 +1890,7 @@ Summary: A Piglet with `contextFiles: trusted-only` loads no AGENTS.md or CLAUDE
 
 Audience: author
 
-Stock disposition: product-neutral. A run with no Piglet, and a Piglet without the field or with `contextFiles: all`, loads context files as Pi does, with no trust check.
+Stock disposition: inert capability. A run with no Piglet, and a Piglet without the field or with `contextFiles: all`, loads context files as Pi does, with no trust check.
 
 What: The Piglet field `contextFiles` takes `all` (the default, Pi's behaviour) or `trusted-only`. With `trusted-only`, a project that has a context file (`AGENTS.override.md`, `AGENTS.md` or `CLAUDE.md` in the working directory or a parent directory) needs a trust decision, as a project with `.pig/settings.json` does. While the project is not trusted, the run loads only the context file in the agent directory and the one in the user's home directory, when that directory is a strict ancestor of the working directory. It does not read the other files. Print, JSON and RPC runs write one line to stderr that names the skipped files. Interactive mode adds the names to the project-trust warning. A trusted project, `--no-context-files` and the SDK `NoContextFiles` option work as before. A Piglet that extends a `trusted-only` Piglet and sets `contextFiles: all` widens the base, so it needs `allowWiden`, as a wider `tools` or `discovery` does.
 

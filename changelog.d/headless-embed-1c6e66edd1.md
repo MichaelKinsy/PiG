@@ -1,6 +1,6 @@
 ### Upgrading
 
-- Go API `coding/extension/host/subprocess`: editor nodes of an extension's view need `subprocess.EnableEditorViews()`, which the `pig` command calls where it creates the extension host. A program that serves extension views to its own terminal calls it once before the first view is built; until then a view that holds an editor fails with an error that names the call. A program that draws no extension editor needs no change and no longer links the terminal editor.
+- **Breaking (Go API):** `coding/extension/host/subprocess`: editor nodes of an extension's view need `subprocess.EnableEditorViews()`, which the `pig` command calls where it creates the extension host. A program that serves extension views to its own terminal calls it once before the first view is built; until then a view that holds an editor fails with an error that names the call. PiG 0.5.3 served editor views without it, so code that hosts them must add the call. A program that draws no extension editor needs no change and no longer links the terminal editor.
 
 ### Added
 

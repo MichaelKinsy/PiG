@@ -23,7 +23,7 @@ const (
 
 func main() {
 	root := flag.String("root", ".", "repository root")
-	since := flag.String("since", "0.4.1", "release the ledger starts after")
+	since := flag.String("since", "0.4.1", "release the ledger starts after; with -notes, the release the notes start after (default: the release before the notes' version)")
 	check := flag.Bool("check", false, "fail when the committed ledger is out of date instead of writing it")
 	refresh := flag.Bool("refresh", false, "recompute every entry from the history instead of keeping the committed entries whose fix is recorded (a release does this)")
 	summary := flag.Bool("summary", false, "print the entry counts of the committed ledger")
@@ -41,7 +41,13 @@ func main() {
 		return
 	}
 	if *notes != "" {
-		text, err := releaseNotes(abs, *since, *notes)
+		notesSince := ""
+		flag.Visit(func(f *flag.Flag) {
+			if f.Name == "since" {
+				notesSince = *since
+			}
+		})
+		text, err := releaseNotes(abs, notesSince, *notes)
 		if err != nil {
 			fail(err)
 		}

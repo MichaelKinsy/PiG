@@ -2772,3 +2772,25 @@ Parity allowance: no paired Pi corpus constructs `TuiAltScreen` through an SDK a
 Remove when: the host's frame can be entered again from inside a render and these calls run as Pi's do; then the call-site marker, the error and this record go.
 
 SCRUTINIZED:approved
+
+## D212 `/llama` explains a 404 from llama-swap's missing load and unload endpoints, where Pi shows "llama.cpp returned HTTP 404"
+
+What: Pi's `/llama` loads and unloads a model with `POST /models/load` and `POST /models/unload` (`extensions/llama/client.ts`, `load` and `unload`) and shows an HTTP error as the server's `error.message`, else `llama.cpp returned HTTP <status>`. llama-swap lists its models at `/models` with a `status.value`, so the `/llama` list renders, but it has no load or unload endpoint of that shape: it loads a model when a request names it in `model`, and Pi's `/llama` ends in the bare `llama.cpp returned HTTP 404` (reported as #380). When `/models/load` or `/models/unload` answers 404, PiG asks whether the server is llama-swap, by the `"src": "llama-swap"` of the 404's error envelope or a `GET /running` that answers `{"running": [...]}`, and if it is, shows: `/llama cannot load or unload models on llama-swap: it loads a model when a request names it. Add llama-swap to models.json as an openai-completions provider with baseUrl <server>/v1, then pick models with /model. See <docs link>.` Any other 404, and every other status, keeps Pi's text. `GET /running` is the one request PiG sends that Pi does not, and only after such a 404.
+
+Why: Pi's text names neither the server nor the way that works, and the reporter took it for a PiG bug. The way that works is the models.json provider, where PiG and Pi behave the same (journey `llama-swap-models-json`); `/llama` stays a llama.cpp router manager.
+
+Pi bug: none claimed.
+
+Scope: the `Load` and `Unload` calls of the llama.cpp client, so the `/llama` load, unload, restore-after-failed-load and stop-loading paths. `Download` (`POST /models`) and every other request keep Pi's text.
+
+Owner decision: approved by owner Michael Kinsy on 2026-10-29.
+
+Call-site markers: `internal/codingagent/llama/client.go` (`explainLlamaSwap`).
+
+Evidence: `TestLlamaClientAndCatalogAgainstLlamaSwapAndLlamaServerMatchPi` (`internal/codingagent/llama/llamaswap_test.go`) runs Pi's client and PiG's against a fake llama-swap and a plain llama-server, requires Pi's `llama.cpp returned HTTP 404` from Pi for load, unload and unload-and-wait on both, the llama-swap message from PiG on llama-swap, Pi's text from PiG on the plain server, and every other outcome and request equal. `TestLlamaCommandAgainstLlamaSwapExplainsTheMissingEndpoints` runs the `/llama` command, `TestLoadAndUnloadRecognizeLlamaSwapByItsErrorEnvelope` the envelope, and `TestLoadAndUnloadKeepPisTextForA404ThatIsNotLlamaSwap` and `TestLlamaCommandKeepsPisTextForARouter404` the 404s that keep Pi's text.
+
+Parity allowance: `TestLlamaClientRequestsMatchPi` compares load and unload against Pi over random statuses and bodies, 404 included; its server answers `GET /running` with 404, which is not llama-swap's, so every outcome there stays Pi's.
+
+Remove when: Pi's `/llama` names llama-swap itself, or can manage llama-swap models; or the owner withdraws the decision. Then the call-site marker, the `GET /running` probe, the docs section and this record go.
+
+SCRUTINIZED:approved
