@@ -9,12 +9,12 @@ import (
 	"encoding/base64"
 	"image"
 	"image/color"
-	"image/jpeg"
 	"math"
 	"slices"
 
 	// The decoders of the formats read accepts: PNG and JPEG, GIF and WebP, and BMP, which is converted.
 	_ "image/gif"
+	_ "image/jpeg"
 	_ "image/png"
 
 	_ "golang.org/x/image/bmp"
@@ -45,7 +45,7 @@ func CreatePhotonImages() tools.ImageProcessor { return newSequential(photon{}) 
 func (photon) Prepare(ctx context.Context, data []byte, mimeType string, limits tools.ImageLimits) (*tools.PreparedImage, error) {
 	orientation := ExifOrientation(data)
 	inline := tools.INLINE_IMAGE_TYPES[mimeType]
-	// pig divergence (D165): Go's image decoders stand for Photon's `new_from_byteslice`.
+	// pig divergence (D165): Go's image decoders stand for Photon's `new_from_byteslice`; the JPEG and WebP ones do not give its pixels.
 	// Decoded even when it is returned as it is: a damaged file is an error, not an image the provider rejects.
 	decoded, _, err := image.Decode(bytes.NewReader(data))
 	if err != nil || decoded.Bounds().Empty() {
@@ -102,7 +102,7 @@ func encodeWithin(ctx context.Context, img *image.NRGBA, size tools.ImageSize, m
 	pngCandidate := candidate{"image/png", func() ([]byte, error) { return photonimage.EncodePNG(scaled), nil }}
 	var jpegs []candidate
 	for _, quality := range jpegQualities {
-		jpegs = append(jpegs, candidate{"image/jpeg", func() ([]byte, error) { return encodeJPEG(scaled, quality) }})
+		jpegs = append(jpegs, candidate{"image/jpeg", func() ([]byte, error) { return photonimage.EncodeJPEG(scaled, uint8(quality)) }})
 	}
 	order := slices.Concat([]candidate{pngCandidate}, jpegs)
 	if jpegFirst {
@@ -121,19 +121,6 @@ func encodeWithin(ctx context.Context, img *image.NRGBA, size tools.ImageSize, m
 		}
 	}
 	return nil, nil
-}
-
-// pig divergence (D165): Go's JPEG encoder, not Photon's `get_bytes_jpeg(quality)`; the quantization differs.
-// encodeJPEG drops the alpha channel, as Photon's JPEG encoder does, rather than darkening transparent pixels.
-func encodeJPEG(img *image.NRGBA, quality int) ([]byte, error) {
-	opaque := image.NewNRGBA(img.Bounds())
-	copy(opaque.Pix, img.Pix)
-	for i := 3; i < len(opaque.Pix); i += 4 {
-		opaque.Pix[i] = 0xff
-	}
-	var out bytes.Buffer
-	err := jpeg.Encode(&out, opaque, &jpeg.Options{Quality: quality})
-	return out.Bytes(), err
 }
 
 func toNRGBA(img image.Image) *image.NRGBA {

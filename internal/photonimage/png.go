@@ -4,9 +4,11 @@
 // SPDX-License-Identifier: MIT
 
 // Package photonimage is the pixel pipeline Photon (@silvia-odwyer/photon 0.3.3, Rust) runs, ported to Go: the PNG encoder behind
-// `PhotonImage.get_bytes()` (EncodePNG) and the Lanczos3 `resize` (ResizeLanczos3), both byte for byte. The durable image processor
-// (durable/images) and the coding agent's image path (internal/imageprocessing) use it, so both reproduce Photon's pixels and PNG bytes,
-// and with them Photon's PNG sizes, which decide which of PNG and JPEG a resize returns. The JPEG encoder is Go's (D165).
+// `PhotonImage.get_bytes()` (EncodePNG), the JPEG encoder behind `get_bytes_jpeg(quality)` (EncodeJPEG) and the Lanczos3 `resize`
+// (ResizeLanczos3), all byte for byte. The durable image processor (durable/images) and the coding agent's image path
+// (internal/imageprocessing) use it, so both reproduce Photon's pixels and the PNG and JPEG bytes, and with them Photon's sizes,
+// which decide what fits a byte limit and which of PNG and JPEG a resize returns. What it does not reproduce is Photon's decoding
+// of JPEG and WebP (D165).
 package photonimage
 
 import (

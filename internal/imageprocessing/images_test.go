@@ -742,3 +742,35 @@ func TestToolImageInputLimitsAcceptNodeBase64(t *testing.T) {
 		t.Fatalf("resized dimensions=%+v err=%v", config, err)
 	}
 }
+
+// imageHasAlpha reports whether img has a pixel that is not opaque (it samples one pixel in 16 on each axis for the generic case).
+func imageHasAlpha(img image.Image) bool {
+	switch m := img.(type) {
+	case *image.RGBA:
+		for i := 3; i < len(m.Pix); i += 4 {
+			if m.Pix[i] != 0xff {
+				return true
+			}
+		}
+		return false
+	case *image.NRGBA:
+		for i := 3; i < len(m.Pix); i += 4 {
+			if m.Pix[i] != 0xff {
+				return true
+			}
+		}
+		return false
+	case *image.RGBA64, *image.NRGBA64:
+		return true
+	}
+	bounds := img.Bounds()
+	for y := bounds.Min.Y; y < bounds.Max.Y; y += 16 {
+		for x := bounds.Min.X; x < bounds.Max.X; x += 16 {
+			_, _, _, a := img.At(x, y).RGBA()
+			if a < 0xffff {
+				return true
+			}
+		}
+	}
+	return false
+}

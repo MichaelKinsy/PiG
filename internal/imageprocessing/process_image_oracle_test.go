@@ -2,7 +2,9 @@ package imageprocessing
 
 import (
 	"bytes"
+	"crypto/sha256"
 	"encoding/base64"
+	"encoding/hex"
 	"image"
 	"image/color"
 	"image/gif"
@@ -32,19 +34,14 @@ type processImageOutcome struct {
 	MimeType string `json:"mimeType"`
 	Hints    string `json:"hints"`
 	Message  string `json:"message"`
-}
-
-// d165ProcessImageFormatChoice lists the cases of TestProcessImageMatchesPi on which PiG returns the other of PNG and JPEG than Pi, because
-// Go's JPEG encoder writes another size than Photon's and the PNG and JPEG candidates of that image are close (docs/parity/DIVERGENCES.md
-// D165). The corpus is seeded: an entry is a case index, so a case that starts to match, or another one that stops, fails the test.
-var d165ProcessImageFormatChoice = map[int]string{
-	59: "a 62x106 image resized to 16x28: the two JPEG encoders size it differently",
+	// SHA256 is the SHA-256 of the returned bytes.
+	SHA256 string `json:"sha256"`
 }
 
 // TestProcessImageMatchesPi runs image-process.ts processImage and PiG's ProcessImage over 400 seeded inputs: PNG, JPEG, GIF, BMP, TIFF and WebP bytes (some larger than the resize
 // limits), garbage and empty bytes; declared types with parameters, case and spaces ("IMAGE/JPEG; q=1", " image/jpg "), unsupported types (image/bmp, image/tiff, image/x-icon, application/octet-stream,
 // the empty string) and types that do not match the bytes; automatic resizing on and off with small or default limits. Whether an image is returned, its mime type, the
-// conversion and dimension hints (in order) and the omission message must match. Not compared: the returned bytes (Photon's encoders differ from Go's).
+// conversion and dimension hints (in order) and the omission message must match. The returned bytes must match as well: PiG's PNG and JPEG encoders and its resize are ports of Photon's, except for a JPEG or WebP input, which Go decodes to other pixels (D165).
 func TestProcessImageMatchesPi(t *testing.T) {
 	rng := rand.New(rand.NewPCG(20261126, 9))
 	pick := func(xs ...string) string { return xs[rng.IntN(len(xs))] }
@@ -103,37 +100,63 @@ func TestProcessImageMatchesPi(t *testing.T) {
 	var want []processImageOutcome
 	pioracle.Run(t, `
 const { processImage } = await load("pi-coding-agent/utils/image-process.js");
+const { createHash } = await import("node:crypto");
 const out = [];
 for (const c of input) {
 	const resizeOptions = {};
 	if (c.maxWidth) resizeOptions.maxWidth = c.maxWidth;
 	if (c.maxHeight) resizeOptions.maxHeight = c.maxHeight;
 	const r = await processImage(new Uint8Array(Buffer.from(c.data, "base64")), c.mimeType, { autoResizeImages: c.autoResize, resizeOptions });
-	out.push(r.ok ? { ok: true, mimeType: r.mimeType, hints: r.hints.join("\n"), message: "" } : { ok: false, mimeType: "", hints: "", message: r.message });
+	out.push(r.ok ? { ok: true, mimeType: r.mimeType, hints: r.hints.join("\n"), message: "", sha256: createHash("sha256").update(Buffer.from(r.data, "base64")).digest("hex") } : { ok: false, mimeType: "", hints: "", message: r.message, sha256: "" });
 }
 emit(out);`, cases, &want)
 
 	failures := 0
+	// bySource counts the cases and the failures by the format of the input bytes, and bytesOnly the failures that differ in the
+	// returned bytes alone (the mime type, the hints and the omission message are Pi's).
+	bySource, bytesOnly := map[string][2]int{}, map[string]int{}
 	for i, c := range cases {
 		raw, _ := base64.StdEncoding.DecodeString(c.Data)
-		_, mime, hints, err := ProcessImage(raw, c.MimeType, c.AutoResize, &ai.ModelImageResizeOptions{MaxWidth: c.MaxWidth, MaxHeight: c.MaxHeight})
+		data, mime, hints, err := ProcessImage(raw, c.MimeType, c.AutoResize, &ai.ModelImageResizeOptions{MaxWidth: c.MaxWidth, MaxHeight: c.MaxHeight})
 		got := processImageOutcome{OK: err == nil, MimeType: mime, Hints: hints}
 		if err != nil {
 			got.Message = err.Error()
+		} else {
+			sum := sha256.Sum256(data)
+			got.SHA256 = hex.EncodeToString(sum[:])
 		}
-		if reason, cited := d165ProcessImageFormatChoice[i]; cited && reflect.DeepEqual(got, want[i]) {
-			t.Errorf("case %d now matches Pi: remove it from d165ProcessImageFormatChoice (%s)", i, reason)
-		}
-		if !reflect.DeepEqual(got, want[i]) {
-			if reason, cited := d165ProcessImageFormatChoice[i]; cited {
-				t.Logf("case %d differs from Pi (D165: %s)", i, reason)
+		source := detectFormat(raw)
+		counts := bySource[source]
+		counts[0]++
+		// D165: Go's JPEG and WebP decoders give other pixels than Photon's, so the bytes a re-encoded JPEG or WebP input comes out as
+		// are not Pi's; what is compared for them is the rest of the outcome. Every other input is compared byte for byte.
+		if (source == "jpeg" || source == "webp") && !reflect.DeepEqual(got, want[i]) {
+			counts[1]++
+			withoutBytes := got
+			withoutBytes.SHA256 = want[i].SHA256
+			if reflect.DeepEqual(withoutBytes, want[i]) {
+				bytesOnly[source]++
+				bySource[source] = counts
 				continue
 			}
+			counts[1]--
+		}
+		if !reflect.DeepEqual(got, want[i]) {
+			counts[1]++
+			withoutBytes := got
+			withoutBytes.SHA256 = want[i].SHA256
+			if reflect.DeepEqual(withoutBytes, want[i]) {
+				bytesOnly[source]++
+			}
 			failures++
-			if failures <= 8 {
+			if counts[1] <= 3 { // the first three of each input format
 				t.Errorf("case %d (%s, %d bytes, resize %v, %dx%d, head %q)\n Go %+v\n Pi %+v", i, c.MimeType, len(raw), c.AutoResize, c.MaxWidth, c.MaxHeight, string(raw[:min(8, len(raw))]), got, want[i])
 			}
 		}
+		bySource[source] = counts
+	}
+	for source, counts := range bySource {
+		t.Logf("input %q: %d cases, %d differ from Pi (%d in the bytes alone)", source, counts[0], counts[1], bytesOnly[source])
 	}
 	t.Logf("%d cases, %d failures", len(cases), failures)
 }
