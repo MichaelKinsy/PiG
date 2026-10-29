@@ -1,6 +1,6 @@
 ### Upgrading
 
-- Go API `chord`, `durable/session`: the watch handle implementation moves from Durable to Chord, as in Pi. `session.CommittedWatch`, `session.NewCommittedWatch`, `session.NewCommittedWatchOn`, `session.DeliveryScheduler` and `session.NewDeliveryScheduler` are removed. Use `chord.Watch` with `chord.NewWatch(scheduler, value, detach, report, replace)`, and `chord.DeliveryScheduler` with `chord.NewDeliveryScheduler()`. Code inside Durable builds a Session watch with `session.NewSessionWatch(session, value, detach, replace)`.
+- **Breaking (Go API):** `chord`, `durable/session`: the watch handle implementation moves from Durable to Chord, as in Pi. `session.CommittedWatch`, `session.NewCommittedWatch`, `session.NewCommittedWatchOn`, `session.DeliveryScheduler` and `session.NewDeliveryScheduler` are removed. Use `chord.Watch` with `chord.NewWatch(scheduler, value, detach, report, replace)`, and `chord.DeliveryScheduler` with `chord.NewDeliveryScheduler()`. Code inside Durable builds a Session watch with `session.NewSessionWatch(session, value, detach, replace)`.
 
 ### Added
 
