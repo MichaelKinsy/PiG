@@ -177,6 +177,7 @@ func (e *Extension) dispatchAutocomplete(ctx Context, raw json.RawMessage) (any,
 	}
 	switch request.Operation {
 	case "getSuggestions":
+		// a blocking provider is settled when it returns, as a synchronous Pi provider holds the loop until it returns; this SDK never sends ui.autocomplete.pending (only the async Node runtime does).
 		return provider.GetSuggestions(ctx, request.Lines, request.CursorLine, request.CursorCol, request.Force)
 	case "applyCompletion":
 		return provider.ApplyCompletion(ctx, request.Lines, request.CursorLine, request.CursorCol, request.Item, request.Prefix)

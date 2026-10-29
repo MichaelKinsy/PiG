@@ -116,6 +116,7 @@ impl AutocompleteRegistry {
         let line = args["cursorLine"].as_u64().unwrap_or(0) as usize;
         let col = args["cursorCol"].as_u64().unwrap_or(0) as usize;
         match operation {
+            // a blocking provider is settled when it returns, as a synchronous Pi provider holds the loop until it returns; this SDK never sends ui.autocomplete.pending (only the async Node runtime does).
             "getSuggestions" => serde_json::to_value((provider.get_suggestions)(ctx, &lines, line, col, args["force"].as_bool().unwrap_or(false))?).map_err(io::Error::other),
             "applyCompletion" => {
                 let item: AutocompleteItem = serde_json::from_value(args["item"].clone()).map_err(io::Error::other)?;

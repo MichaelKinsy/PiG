@@ -89,6 +89,7 @@ class _AutocompleteRegistry:
         with self._lock:
             provider = self._providers[args["id"]]
         values = (ctx, args["lines"], args["cursorLine"], args["cursorCol"])
+        # a blocking provider is settled when it returns, as a synchronous Pi provider holds the loop until it returns; this SDK never sends ui.autocomplete.pending (only the async Node runtime does).
         if operation == "getSuggestions":
             return provider.get_suggestions(*values, bool(args.get("force")))
         if operation == "applyCompletion":
