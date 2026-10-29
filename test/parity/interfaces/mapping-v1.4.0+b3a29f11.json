@@ -170936,8 +170936,8 @@
       ],
       "evidence": [
         "test:coding/session_graph_mcp_test.go#TestGraphMcpUpdateConfigAndOpenURLWire",
-        "test:coding/mcpext/command_test.go#TestMcpFactoryRegistersTheCommand",
-        "test:coding/mcpext/command_test.go#TestMcpLoadConfigReceivesTheHandlersExtensionContext"
+        "test:coding/mcpext/closed_config_test.go#TestRefuseConfigFilesDropsServersFromMcpJSON",
+        "test:coding/mcpext/command_test.go#TestMcpFactoryRegistersTheCommand"
       ]
     },
     {
@@ -283856,7 +283856,7 @@
       "evidence": [
         "test:tui/tui_alt_screen_kitty_cache_test.go#TestAltScreenCropsAKittyImageInAPaddedColoredBoxWhoseFirstLineIsAboveTheViewport",
         "test:tui/tui_alt_screen_kitty_cache_test.go#TestAltScreenCropsAKittyImageWhosePlaceholderRowsContainText",
-        "test:tui/tui_alt_screen_test.go#TestAltScreenKeyboardPageAndEdgeScroll"
+        "test:tui/tui_alt_screen_release_split_test.go#TestAltScreenKittyReleaseNeverScrollsWhateverTheReadSplit"
       ]
     },
     {
