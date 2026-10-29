@@ -376,7 +376,7 @@ const modelSelectorPageSize = 10
 // CapturesViewportInput reports that fullscreen viewport keys go to the selector (model-selector.ts capturesViewportInput).
 func (m *ModelSelectorComponent) CapturesViewportInput() bool { return true }
 
-// HandleInput mirrors upstream model-selector.ts handleInput: it checks tui.input.tab, tui.select.up, tui.select.down, tui.select.confirm, tui.select.cancel and app.models.save in that order, and passes every other key to the search input before it reapplies the query.
+// HandleInput mirrors upstream model-selector.ts handleInput: it checks tui.input.tab, tui.select.up, tui.select.down, tui.select.pageUp and tui.select.pageDown (one page of modelSelectorPageSize rows, clamped), tui.select.confirm, tui.select.cancel and app.models.save in that order, and passes every other key to the search input before it reapplies the query.
 func (m *ModelSelectorComponent) HandleInput(data string) {
 	kb := GetTUIKeybindings()
 	pageIndex, isPage := GetSelectPageIndex(kb, data, m.cursor, len(m.filtered), modelSelectorPageSize)
