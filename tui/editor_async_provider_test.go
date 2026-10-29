@@ -22,7 +22,7 @@ func newAsyncEditorProbe(t *testing.T, provider *AsyncAutocompleteProvider) *asy
 	t.Helper()
 	ctx, cancel := context.WithCancel(t.Context())
 	var workers sync.WaitGroup
-	p := &asyncEditorProbe{editor: NewEditor(), tasks: make(chan func())}
+	p := &asyncEditorProbe{editor: NewEditor(), tasks: make(chan func(), 64)}
 	schedule := func(fn func()) {
 		select {
 		case p.tasks <- fn:
@@ -107,7 +107,8 @@ func TestForcedAutocompleteQueryDoesNotHoldInput(t *testing.T) {
 		p := newAsyncEditorProbe(t, provider)
 		p.editor.HandleInput("x")
 		p.editor.HandleInput("\t")
-		synctest.Wait()
+		// The forced request starts at the end of the read (Pi's Promise job), which the probe's task queue stands in for.
+		p.drain()
 		select {
 		case <-entered:
 		default:

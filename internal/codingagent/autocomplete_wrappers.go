@@ -6,6 +6,7 @@ import (
 	"slices"
 	"strings"
 	"sync"
+	"time"
 	"unicode/utf8"
 
 	"github.com/MichaelKinsy/PiG/coding/extension"
@@ -125,6 +126,10 @@ func (m *InteractiveMode) baseAutocompleteProvider(base tui.AutocompleteProvider
 		if err := m.autocompleteOnMain(ctx, func() { query = tui.NewAutocompleteQuery(base, lines, line, col, force) }); err != nil {
 			return nil, err
 		}
+		if query.AwaitsIO() {
+			// The wrapper chain waits on the base provider's awaited work: it has left Pi's microtask checkpoint (D213).
+			tui.AutocompleteAwaitsIO(ctx)
+		}
 		result, err := query.RunResult(ctx)
 		return extensionSuggestions(result), err
 	}
@@ -169,6 +174,82 @@ func (m *InteractiveMode) asyncAutocompleteProvider(provider *extension.Autocomp
 		}
 	}
 	return adapted
+}
+
+// pig divergence (D213): autocompleteHoldBound is how long a request of the extension provider chain may hold the next terminal read without settling or announcing
+// that it awaits I/O. Pi has no bound: its microtask checkpoint is over when the Promise jobs run out. The bound only keeps a hung extension
+// runtime from freezing input (D213).
+var autocompleteHoldBound = time.Second
+
+// holdAutocompleteInput holds the next terminal read for one request of the extension provider chain: Pi opens the menu of a chain that
+// needs no I/O in the Promise jobs after the read that typed its text, before the next read, and PiG's chain is a round trip through the
+// extension runtime that the next read would overtake (D213). The hold ends when the request ends (end), when its chain announces that it
+// awaits I/O (the returned context's tui.AutocompleteAwaitsIO), or after autocompleteHoldBound. A request that outlives the bound marks the
+// chain overdue: no request holds input until one ends without having been cancelled, that is, until the runtime answers again. It runs on
+// the owner loop.
+func (m *InteractiveMode) holdAutocompleteInput(ctx context.Context) (context.Context, func()) {
+	if m.autocompleteOverdue.Load() {
+		return ctx, func() {
+			if ctx.Err() == nil {
+				m.autocompleteOverdue.Store(false)
+			}
+		}
+	}
+	released := make(chan struct{})
+	var (
+		mu      sync.Mutex
+		state   int // 0 holding, 1 released by the chain, 2 overdue, 3 ended
+		closeIt = sync.OnceFunc(func() { close(released) })
+	)
+	gate := released
+	if previous := m.autocompletePending; previous != nil {
+		select {
+		case <-previous:
+		default:
+			// An earlier hold (a completion apply, a provider rebuild) still gates input: this one opens after it.
+			gate = make(chan struct{})
+			lifetime := m.autocompleteContext()
+			m.backgroundTasks.Go(func() {
+				defer close(gate)
+				for _, wait := range []<-chan struct{}{previous, released} {
+					select {
+					case <-wait:
+					case <-lifetime.Done():
+						return
+					}
+				}
+			})
+		}
+	}
+	m.autocompletePending = gate
+	timer := time.AfterFunc(autocompleteHoldBound, func() {
+		mu.Lock()
+		defer mu.Unlock()
+		if state == 0 {
+			state = 2
+			m.autocompleteOverdue.Store(true)
+			closeIt()
+		}
+	})
+	unhold := func() {
+		mu.Lock()
+		defer mu.Unlock()
+		if state == 0 {
+			state = 1
+		}
+		closeIt()
+	}
+	end := func() {
+		mu.Lock()
+		defer mu.Unlock()
+		timer.Stop()
+		if ctx.Err() == nil {
+			m.autocompleteOverdue.Store(false)
+		}
+		state = 3
+		closeIt()
+	}
+	return tui.WithAutocompleteUnhold(ctx, unhold), end
 }
 
 // startAutocompleteWork owns ordered input/factory work. The input pump waits before delivering the next chunk, while render and UI tasks remain live.
@@ -264,6 +345,7 @@ func (m *InteractiveMode) rebuildAutocompleteWrappers(base tui.AutocompleteProvi
 			}
 			m.autocompleteProvider = provider
 			m.editor.SetAsyncAutocomplete(adapted, epoch, m.backgroundTasks.Go, func(work tui.AutocompleteWork) { m.startAutocompleteWork(work, nil, nil) }, m.reportAutocompleteError)
+			m.editor.SetAutocompleteInputHold(m.holdAutocompleteInput)
 		}, nil
 	}, result, func(ctx context.Context) error {
 		if epoch.Err() != nil {
@@ -294,6 +376,7 @@ func (m *InteractiveMode) resetAutocompleteWrappers() {
 	m.autocompleteProvider = nil
 	m.editor.SetAutocompleteChanged(nil)
 	m.editor.SetAsyncAutocomplete(nil, nil, nil, nil, nil)
+	m.editor.SetAutocompleteInputHold(nil)
 	m.editor.SetAutocompleteTaskOwner(m.autocompleteContext(), m.backgroundTasks.Go, m.reportAutocompleteError)
 }
 

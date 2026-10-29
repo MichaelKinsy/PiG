@@ -1568,6 +1568,14 @@ const RequestResolveToolRenderers = "resolve_tool_renderers"
 // a registration that followed loading. Args is a ToolRenderersPayload.
 const NotifyToolRenderers = "tool_renderers"
 
+// pig divergence (D213): NotifyUIAutocompletePending (ext→host, args {"requestId"}) tells the host that the provider chain serving the autocomplete.suggest request with that
+// id awaits real I/O (D213). Pi's editor awaits the whole wrapper chain in the Promise jobs after the terminal read (editor.ts startAutocompleteRequest),
+// so a chain that settles there has opened its menu before the next read and the host holds that read for it. The runtime sends the notice, at most once
+// per request and before the response, when the chain is neither settled nor waiting on a host call (a ui.autocomplete.invoke the request made) at the end
+// of its checkpoint: the Node runtime's next macrotask; the Go, Rust, Python and Lisp SDKs, whose providers block a thread, 50 ms of no progress
+// outside a host call. A request the host did not hold for ignores it.
+const NotifyUIAutocompletePending = "ui.autocomplete.pending"
+
 // ToolRenderersPayload is the NotifyToolRenderers argument.
 type ToolRenderersPayload struct {
 	Count int `json:"count"`

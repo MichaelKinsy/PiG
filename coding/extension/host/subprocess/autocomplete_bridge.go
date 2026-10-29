@@ -11,6 +11,7 @@ import (
 	"github.com/MichaelKinsy/PiG/extensions/sdk/json"
 
 	"github.com/MichaelKinsy/PiG/coding/extension"
+	"github.com/MichaelKinsy/PiG/tui"
 )
 
 type autocompleteReference struct {
@@ -66,7 +67,7 @@ func autocompleteInvoke(ctx context.Context, provider *extension.AutocompletePro
 	}
 }
 
-func (b *UIBridge) handleAutocompleteInvoke(ctx context.Context, owner *Conn, args json.RawMessage) (*CallResultPayload, error) {
+func (b *UIBridge) handleAutocompleteInvoke(ctx context.Context, owner *Conn, parentRequestID string, args json.RawMessage) (*CallResultPayload, error) {
 	var request autocompleteInvocation
 	if err := json.Unmarshal(args, &request); err != nil {
 		return nil, err
@@ -76,6 +77,13 @@ func (b *UIBridge) handleAutocompleteInvoke(ctx context.Context, owner *Conn, ar
 	b.mu.RUnlock()
 	if !ok || ref.owner != owner {
 		return nil, errors.New("autocomplete provider is no longer available")
+	}
+	// A captured provider the wrapper chain of an editor request calls shares that request's input hold (D213): when the base provider waits on
+	// real I/O, the chain has left Pi's microtask checkpoint, and it is the host that knows.
+	if parentRequestID != "" {
+		if unhold := owner.autocompleteUnhold(parentRequestID); unhold != nil {
+			ctx = tui.WithAutocompleteUnhold(ctx, unhold)
+		}
 	}
 	// A captured provider can call a preceding subprocess provider which can itself make host calls.
 	if request.QueryID != "" {
@@ -162,7 +170,14 @@ func (b *UIBridge) handleAddAutocompleteProvider(ctx context.Context, name strin
 		provider := &extension.AutocompleteProvider{TriggerCharacters: desc.TriggerCharacters}
 		provider.GetSuggestions = func(ctx context.Context, lines []string, line, col int, force bool) (*extension.AutocompleteSuggestions, error) {
 			var result *extension.AutocompleteSuggestions
-			err := lease.request(ctx, "autocomplete.suggest", autocompleteInvocation{Operation: "getSuggestions", Lines: lines, CursorLine: line, CursorCol: col, Force: force}, &result)
+			// pig divergence (D213): an editor request holds the host's input until its chain settles or announces that it awaits I/O; the runtime's
+			// ui.autocomplete.pending notice names this request by its id, which the request's nested calls also name as their parent.
+			var requestID string
+			if unhold := tui.AutocompleteUnhold(ctx); unhold != nil {
+				requestID = owner.newRequestID()
+				defer owner.watchAutocomplete(requestID, unhold)()
+			}
+			err := lease.requestWithID(ctx, requestID, "autocomplete.suggest", autocompleteInvocation{Operation: "getSuggestions", Lines: lines, CursorLine: line, CursorCol: col, Force: force}, &result)
 			return result, err
 		}
 		provider.ApplyCompletion = func(ctx context.Context, lines []string, line, col int, item extension.AutocompleteItem, prefix string) (extension.AutocompleteCompletion, error) {
@@ -205,15 +220,19 @@ type autocompleteRemoteLease struct {
 }
 
 func (l *autocompleteRemoteLease) request(ctx context.Context, method string, args autocompleteInvocation, result any) error {
+	return l.requestWithID(ctx, "", method, args, result)
+}
+func (l *autocompleteRemoteLease) requestWithID(ctx context.Context, requestID, method string, args autocompleteInvocation, result any) error {
 	defer runtime.KeepAlive(l)
 	args.ID = l.id
-	return autocompleteRequest(ctx, l.owner, method, args, result)
+	return requestWithID(ctx, l.owner, requestID, method, args, result)
 }
 func releaseRemoteAutocomplete(origin autocompleteOrigin) {
 	data, _ := json.Marshal(map[string]string{"id": origin.id})
 	// The connection's close path releases all owned references if this advisory release cannot be delivered.
 	_ = origin.owner.Send(&Envelope{Type: MsgNotify, Notify: &NotifyPayload{Method: "autocomplete.release", Args: data}})
 }
+
 func (b *UIBridge) releaseAutocompleteReference(owner *Conn, args json.RawMessage) {
 	var request struct {
 		ID string `json:"id"`

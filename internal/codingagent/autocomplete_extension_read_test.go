@@ -90,3 +90,66 @@ func TestEnterInTheReadAfterTheTextSubmitsWhileAnExtensionProviderAwaitsIO(t *te
 		t.Fatalf("Enter submitted %q, want %q", *submitted, text)
 	}
 }
+
+// A runtime that neither answers nor announces anything must not freeze input: the hold ends at autocompleteHoldBound, the Enter
+// submits, and while that request is still overdue no later request holds input.
+func TestAnExtensionProviderThatNeverAnswersHoldsInputOnlyForTheBound(t *testing.T) {
+	old := autocompleteHoldBound
+	autocompleteHoldBound = 50 * time.Millisecond
+	t.Cleanup(func() { autocompleteHoldBound = old })
+	release := make(chan struct{})
+	t.Cleanup(func() { close(release) })
+	m, submitted, ctx := extensionCompletionMode(t, func(_ context.Context, current *extension.AutocompleteProvider) (*extension.AutocompleteProvider, error) {
+		return &extension.AutocompleteProvider{GetSuggestions: func(ctx context.Context, _ []string, _, _ int, _ bool) (*extension.AutocompleteSuggestions, error) {
+			select {
+			case <-release:
+			case <-ctx.Done():
+			}
+			return nil, ctx.Err()
+		}, ApplyCompletion: current.ApplyCompletion}, nil
+	})
+	const text = "/model capture/model-two"
+	dispatchRead(t, ctx, m, splitKeys(text)...)
+	dispatchRead(t, ctx, m, "\r")
+	pumpOwnerUntil(t, m, "the Enter submit after the bound", func() bool { return len(*submitted) > 0 })
+	if !m.autocompleteOverdue.Load() {
+		t.Fatal("the request that outlived the bound did not mark the chain overdue")
+	}
+	dispatchRead(t, ctx, m, splitKeys(text)...)
+	if pending := m.autocompletePending; pending != nil && !closedChannel(pending) {
+		t.Fatal("a request behind an overdue one holds input")
+	}
+}
+
+// The base provider's awaited work (an fd search, a Promise-returning argument completer) is real I/O: the wrapper chain that waits on it
+// has left Pi's microtask checkpoint, so the base announces it on the request's context.
+type awaitedFileProvider struct{ tui.AutocompleteProvider }
+
+func (awaitedFileProvider) FileSearchTask([]string, int, int) (string, func(context.Context) []tui.AutocompleteItem, bool) {
+	return "f", func(context.Context) []tui.AutocompleteItem { return []tui.AutocompleteItem{{Value: "file"}} }, true
+}
+
+func TestBaseProviderAnnouncesItsAwaitedWork(t *testing.T) {
+	m := autocompleteModeProbe(t)
+	for _, tc := range []struct {
+		name  string
+		base  tui.AutocompleteProvider
+		await int
+	}{
+		{"file search", awaitedFileProvider{tui.NewCombinedProvider(nil, t.TempDir(), "")}, 1},
+		{"command names", tui.NewCombinedProvider([]tui.SlashCommand{{Name: "keep"}}, t.TempDir(), ""), 0},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			var calls int
+			ctx := tui.WithAutocompleteUnhold(t.Context(), func() { calls++ })
+			base := m.baseAutocompleteProvider(tc.base)
+			autocompleteOwnerCall(t, m, func() error {
+				_, err := base.GetSuggestions(ctx, []string{"/k"}, 0, 2, false)
+				return err
+			})
+			if calls != tc.await {
+				t.Fatalf("announced %d times, want %d", calls, tc.await)
+			}
+		})
+	}
+}

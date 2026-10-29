@@ -66,8 +66,10 @@ type Editor struct {
 	asyncCancel            context.CancelFunc
 	asyncSeq               uint64
 	scheduleAsyncApply     func(func())
-	// nativeAutocomplete is the local provider's request of the terminal read in progress, started by FlushAutocomplete.
+	// nativeAutocomplete is the request of the terminal read in progress, started by FlushAutocomplete.
 	nativeAutocomplete *nativeAutocompleteRequest
+	// autocompleteHold holds the host's terminal input for a request of the extension provider chain (D213).
+	autocompleteHold func(context.Context) (context.Context, func())
 	// ui is the TUI the editor owns (editor.ts `tui`); nil for the host-driven form.
 	ui                            TUI
 	autocompleteRequestID         uint64

@@ -318,6 +318,10 @@ func NewAutocompleteQuery(provider AutocompleteProvider, lines []string, cursorL
 	return query
 }
 
+// AwaitsIO reports whether RunResult waits for work Pi awaits off the loop (a command's Promise-returning argument completer, the fd search):
+// the answer cannot settle in the microtask checkpoint after the read that asked.
+func (q *RemoteSuggestionQuery) AwaitsIO() bool { return q.argumentTask != nil || q.fileTask != nil }
+
 // RunResult awaits the query and preserves callback errors for its caller.
 func (q *RemoteSuggestionQuery) RunResult(ctx context.Context) (*AutocompleteSuggestions, error) {
 	if q.argumentTask != nil {

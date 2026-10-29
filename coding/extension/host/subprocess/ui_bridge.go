@@ -1472,7 +1472,7 @@ func (b *UIBridge) handleCall(ctx context.Context, extName string, owner *Conn, 
 	case "ui.addAutocompleteProvider":
 		return b.handleAddAutocompleteProvider(ctx, extName, owner, ui, call.Args)
 	case "ui.autocomplete.invoke":
-		return b.handleAutocompleteInvoke(ctx, owner, call.Args)
+		return b.handleAutocompleteInvoke(ctx, owner, call.ParentRequestID, call.Args)
 	case "ui.autocomplete.cancel":
 		return b.handleAutocompleteCancel(owner, call.Args)
 	case "ui.autocomplete.current":
