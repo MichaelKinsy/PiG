@@ -24,6 +24,20 @@ func levelsForModel(model *ai.Model) []string {
 	return out
 }
 
+// sessionThinkingLevel is the thinking level of the Session's agent state, "off" when there is no Session or no level. Pi's footer and editor border read
+// session.state.thinkingLevel on every render (footer.ts:236, interactive-mode.ts:2351), so the first frame, painted by ui.start() before the extension bind,
+// already shows it; the footer and the editor are seeded with this level when they are built, as the render-time read would give.
+func (m *InteractiveMode) sessionThinkingLevel() string {
+	a := m.agent
+	if a == nil && m.opts.SessionHandle != nil {
+		a = m.opts.SessionHandle.Agent()
+	}
+	if a == nil || a.ThinkingLevel() == "" {
+		return string(ai.ThinkingOff)
+	}
+	return string(a.ThinkingLevel())
+}
+
 // refreshThinkingLevel synchronizes the footer and editor with the Session's effective agent state at startup and after a model or thinking-level change.
 func (m *InteractiveMode) refreshThinkingLevel() {
 	if m.agent == nil {
