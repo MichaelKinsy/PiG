@@ -686,6 +686,43 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/chord/src/wire.ts` | `chord/host/wire.go (link protocol 4)` | ✅ |
 | `packages/chord/src/telemetry-sqlite/index.ts` | `chord/telemetrysqlite/index.go` | ✅ |
 | `packages/chord/src/telemetry-sqlite/store.ts` | `chord/telemetrysqlite/store.go` | ✅ |
+| `packages/chord/src/next/contracts/accepts.ts` | `chord/next/contracts/accepts.go` | ✅ |
+| `packages/chord/src/next/contracts/contract.ts` | `chord/next/contracts/contract.go` | ✅ |
+| `packages/chord/src/next/contracts/declare.ts` | `chord/next/contracts/declare.go` | ✅ |
+| `packages/chord/src/next/contracts/evolve.ts` | `chord/next/contracts/evolve.go` | ✅ |
+| `packages/chord/src/next/contracts/fingerprint.ts` | `chord/next/contracts/fingerprint.go` | ✅ |
+| `packages/chord/src/next/contracts/history.ts` | `chord/next/contracts/history.go` | ✅ |
+| `packages/chord/src/next/contracts/host-kind.ts` | `chord/next/contracts/host_kind.go` | ✅ |
+| `packages/chord/src/next/contracts/index.ts` | `(re-export barrel; Go packages export names directly)` | n/a |
+| `packages/chord/src/next/contracts/internal.ts` | `(re-export barrel for Chord's layers)` | n/a |
+| `packages/chord/src/next/contracts/names.ts` | `chord/next/contracts/names.go` | ✅ |
+| `packages/chord/src/next/contracts/params.ts` | `chord/next/contracts/params.go` | ✅ |
+| `packages/chord/src/next/contracts/schema.ts` | `chord/next/contracts/schema.go, chord/next/contracts/namedmap.go, chord/next/contracts/jsorder.go` | ✅ |
+| `packages/chord/src/next/contracts/snapshot.ts` | `chord/next/contracts/snapshot.go` | ✅ |
+| `packages/chord/src/next/data/args.ts` | `chord/next/data/args.go` | ✅ |
+| `packages/chord/src/next/data/errors.ts` | `chord/next/data/errors.go` | ✅ |
+| `packages/chord/src/next/data/failure.ts` | `chord/next/data/failure.go` | ✅ |
+| `packages/chord/src/next/data/index.ts` | `(re-export barrel)` | n/a |
+| `packages/chord/src/next/data/internal.ts` | `(re-export barrel)` | n/a |
+| `packages/chord/src/next/data/params.ts` | `chord/next/data/params.go` | ✅ |
+| `packages/chord/src/next/data/principal.ts` | `chord/next/data/principal.go` | ✅ |
+| `packages/chord/src/next/data/validator.ts` | `chord/next/data/validator.go` | ✅ |
+| `packages/chord/src/next/index.ts` | `(aggregate barrel of every layer; Go imports the layer packages)` | n/a |
+| `packages/chord/src/next/registries/contribution.ts` | `chord/next/registries/contribution.go` | ✅ |
+| `packages/chord/src/next/registries/entries.ts` | `chord/next/registries/entries.go` | ✅ |
+| `packages/chord/src/next/registries/index.ts` | `(re-export barrel)` | n/a |
+| `packages/chord/src/next/registries/internal.ts` | `chord/next/registries/internal.go` | ✅ |
+| `packages/chord/src/next/registries/record.ts` | `chord/next/registries/record.go` | ✅ |
+| `packages/chord/src/next/registries/registry.ts` | `chord/next/registries/registry.go` | ✅ |
+| `packages/chord/src/next/registries/value.ts` | `chord/next/registries/value.go` | ✅ |
+| `packages/chord/src/next/state/batch.ts` | `chord/next/state/batch.go` | ✅ |
+| `packages/chord/src/next/state/derive.ts` | `chord/next/state/derive.go` | ✅ |
+| `packages/chord/src/next/state/index.ts` | `(re-export barrel)` | n/a |
+| `packages/chord/src/next/state/internal.ts` | `(re-export barrel)` | n/a |
+| `packages/chord/src/next/state/native-source.ts` | `chord/next/state/native_source.go` | ✅ |
+| `packages/chord/src/next/state/watchable.ts` | `chord/next/state/watchable.go, chord/next/state/identical.go, chord/next/state/set.go` | ✅ |
+| `packages/chord/src/next/state/writable.ts` | `chord/next/state/writable.go` | ✅ |
+| `packages/chord/src/next-node/compression.ts` | `chord/nextnode/compression.go` | ✅ |
 
 ## `packages/protocol/src/`
 

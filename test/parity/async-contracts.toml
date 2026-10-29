@@ -583,24 +583,24 @@ rationale = "createHostManager runs start, stop and replace through one serializ
 
 [[files]]
 path = "packages/chord/src/next/contracts/accepts.ts"
-disposition = "pending"
+disposition = "no-runtime-async"
 contracts = []
 evidence = []
-rationale = ""
+rationale = "Promise appears only in the type of a method's call signature (accepts.ts:113, a declaration of the contract's callable shape). The Go chord/next/contracts has no async function: a method call is a blocking Go call that takes a context.Context, so no ordering, cancellation or error contract is added here; calls are contracted where they run (the host and link files)."
 
 [[files]]
 path = "packages/chord/src/next/contracts/contract.ts"
-disposition = "pending"
+disposition = "no-runtime-async"
 contracts = []
 evidence = []
-rationale = ""
+rationale = "Promise appears only in declared member types (contract.ts:83, 85, 92-93: get/watch and method call signatures of the contract's handle). The Go contract handles are data (*Contract holds its ContractData); the callable shapes are the host and remote lanes' blocking calls over context.Context."
 
 [[files]]
 path = "packages/chord/src/next/data/args.ts"
-disposition = "pending"
+disposition = "no-runtime-async"
 contracts = []
 evidence = []
-rationale = ""
+rationale = "Promise appears only in the declared type of a provided call (args.ts:31, 64, 75: `call: (args, context) => Promise<Value>`). Go's Provider call is a blocking function over context.Context (chord/next/data/args.go); CheckArgs and BindProvider are synchronous."
 
 [[files]]
 path = "packages/chord/src/next/documents/documents.ts"
@@ -842,17 +842,17 @@ rationale = ""
 
 [[files]]
 path = "packages/chord/src/next/state/native-source.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited", "cancellable"]
+evidence = ["test:chord/next/state/native_own_test.go#TestNativeSourceFailing", "test:chord/next/state/watchable_own_test.go#TestSourceWatches"]
+rationale = "NativeSource.watch (native-source.ts:57, 124) opens a watch and resolves with the handle; on a failed source it opens at the last good value and its first call is the failure. chord/next/state/native_source.go Watch is a blocking call over context.Context: a failed call keeps the last value, an aborted context ends the watch aborted, deliveries are one frame per change serialized per watch (the host serializes calls as Pi's single event loop does; collections touched by end/stop/abort paths are locked)."
 
 [[files]]
 path = "packages/chord/src/next/state/watchable.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited", "cancellable"]
+evidence = ["test:chord/next/state/watchable_own_test.go#TestSourceWatches", "test:chord/next/state/batch_test.go#TestFlushes"]
+rationale = "Watchable.watch (watchable.ts:82, 193) resolves with the Watch of a source. chord/next/state/watchable.go Watch blocks over context.Context: one frame per change, serialized per watch, a failed call keeps the last value, abort ends the watch aborted; deliveries run on chord.DeliveryScheduler, the Go stand-in for the microtask queue (Batch.Soon runs queued work after the current synchronous section in order and panics with no queue)."
 
 [[files]]
 path = "packages/chord/src/next/store/adapter.ts"
