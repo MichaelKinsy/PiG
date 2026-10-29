@@ -28960,33 +28960,6 @@
       ]
     },
     {
-      "id": "BF-ecc7b76",
-      "title": "A session with an extension that registers a markdown transformer no longer crashes while an assistant reply…",
-      "symptom": "A session with an extension that registers a markdown transformer no longer crashes while an assistant reply streams.",
-      "rootCause": "interactive mode handed each assistant block's async markdown transforms block.Invalidate as their completion hook. The hook runs on the background worker that finished the extension's transform chain, and AssistantMessageComponent.Invalidate rebuilds the block's content container (updateContent: the segment list, spacers, thinking-run regions and the scratch child list) while the owner loop streams the next delta into the same block. Two goroutines in updateContent let one clear the shared scratch list while the other passed it to SetChildren, so the container held nil children and the next frame panicked in Container.renderChildLocked with a nil child interface. Only a session with an…",
-      "rootCauseSource": "commit",
-      "userImpact": "Crash, hang or runaway process",
-      "platform": "All platforms",
-      "class": "own",
-      "fixedIn": "Unreleased",
-      "releaseNote": "A session with an extension that registers a markdown transformer no longer crashes while an assistant reply streams. The transformer runs on a background worker, and its completion rebuilt the reply's content from that worker while the interface was streaming the next delta into the same reply, so both could rebuild it at once and the next frame panicked in `Container.renderChildLocked` with a nil child. A finished transform now only marks the reply for redraw, as it already did for a user message, and the interface rebuilds the reply on its own loop.",
-      "origin": "release note",
-      "commits": [
-        {
-          "hash": "ecc7b7683c",
-          "date": "2026-10-29"
-        },
-        {
-          "hash": "a654570024",
-          "date": "2026-10-29"
-        }
-      ],
-      "tests": [
-        "internal/codingagent/assistant_block_async_race_test.go::TestAssistantBlockAsyncMarkdownCompletionLeavesTheBlockToTheOwnerLoop",
-        "tui/assistant_message_async_test.go::TestAssistantMessageAsyncCompletionMarksBlockDirty"
-      ]
-    },
-    {
       "id": "BF-c625bb4",
       "title": "The durable `powershell` tool fails with \"No command to run\" when its program list is empty, instead of…",
       "symptom": "The durable `powershell` tool fails with \"No command to run\" when its program list is empty, instead of reporting success.",
@@ -29502,6 +29475,33 @@
       ],
       "tests": [
         "ai/openai_reasoning_signature_only_test.go::TestOpenAICompletionsKeepsSignatureOnlyReasoningText"
+      ]
+    },
+    {
+      "id": "BF-cb20ec0",
+      "title": "After `pig update --models`, OpenRouter's `:nitro` and `:floor` routing variants no longer disappear from…",
+      "symptom": "After `pig update --models`, OpenRouter's `:nitro` and `:floor` routing variants no longer disappear from `--list-models`, the model selector, `/scoped-models`, RPC `get_available_models` and the SDK lists.",
+      "rootCause": "After pig update --models the saved OpenRouter list replaces the bundled one, and the :nitro and :floor variants, which were derived from the bundled models only, vanished from every listing. WithOpenRouterRoutingVariantModels derives them from whichever list is current, where the composed provider data and the native collection read the saved list.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "After `pig update --models`, OpenRouter's `:nitro` and `:floor` routing variants no longer disappear from `--list-models`, the model selector, `/scoped-models`, RPC `get_available_models` and the SDK lists. The refreshed list replaces the bundled OpenRouter list, and the variants were derived from the bundled models only; they are now derived from whichever list is current (D199).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "cb20ec03cd",
+          "date": "2026-10-29"
+        },
+        {
+          "hash": "d58e454dd9",
+          "date": "2026-10-29"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/remote_catalog_openrouter_variants_test.go::TestRefreshedOpenRouterProviderListsRoutingVariantsOfTheRefreshedList",
+        "internal/codingagent/remote_catalog_openrouter_variants_test.go::TestSavedOpenRouterListShowsRoutingVariantsOnEveryRegistryListing"
       ]
     },
     {
@@ -36276,6 +36276,33 @@
         "test/extension-conformance/prompt_chain_test.go::TestBeforeAgentStartChainSeesEveryEarlierEditAcrossSDKs",
         "test/extension-conformance/render_system_prompt_test.go::TestRenderCurrentSystemPromptAcrossSDKs",
         "test/extension-conformance/wire_capability_coverage_test.go::TestEverySDKCanReachEveryWireCapability"
+      ]
+    },
+    {
+      "id": "BF-ecc7b76",
+      "title": "A session with an extension that registers a markdown transformer no longer crashes while an assistant reply…",
+      "symptom": "A session with an extension that registers a markdown transformer no longer crashes while an assistant reply streams.",
+      "rootCause": "interactive mode handed each assistant block's async markdown transforms block.Invalidate as their completion hook. The hook runs on the background worker that finished the extension's transform chain, and AssistantMessageComponent.Invalidate rebuilds the block's content container (updateContent: the segment list, spacers, thinking-run regions and the scratch child list) while the owner loop streams the next delta into the same block. Two goroutines in updateContent let one clear the shared scratch list while the other passed it to SetChildren, so the container held nil children and the next frame panicked in Container.renderChildLocked with a nil child interface. Only a session with an…",
+      "rootCauseSource": "commit",
+      "userImpact": "Crash, hang or runaway process",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A session with an extension that registers a markdown transformer no longer crashes while an assistant reply streams. The transformer runs on a background worker, and its completion rebuilt the reply's content from that worker while the interface was streaming the next delta into the same reply, so both could rebuild it at once and the next frame panicked in `Container.renderChildLocked` with a nil child. A finished transform now only marks the reply for redraw, as it already did for a user message, and the interface rebuilds the reply on its own loop.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "ecc7b7683c",
+          "date": "2026-10-29"
+        },
+        {
+          "hash": "a654570024",
+          "date": "2026-10-29"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/assistant_block_async_race_test.go::TestAssistantBlockAsyncMarkdownCompletionLeavesTheBlockToTheOwnerLoop",
+        "tui/assistant_message_async_test.go::TestAssistantMessageAsyncCompletionMarksBlockDirty"
       ]
     },
     {
