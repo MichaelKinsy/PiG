@@ -1367,10 +1367,10 @@ rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`interna
 
 [[files]]
 path = "packages/coding-agent/src/core/package-manager.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "deferred"
+contracts = ["awaited", "concurrent-joined"]
+evidence = ["test:coding/cli/package_cli_parity_test.go", "test:coding/cli/package_git_parity_test.go", "test:coding/cli/package_process_test.go", "test:coding/cli/package_update_shared_checkout_test.go", "test:internal/packagemanager/package_update_shared_checkout_test.go", "test:internal/packagemanager/resolve_gaps_test.go#TestResolveSkipsAPackageSourceThatFailsToInstallAndReportsIt", "test:internal/packagemanager/resolve_gaps_test.go#TestResolveReportsNoInstallFailureForASkippedSourceAndKeepsTheErrorDecision", "test:internal/packagemanager/resolve_gaps_test.go#TestResolveExtensionSourcesReportsATemporarySourceThatFailsToInstall", "test:internal/packagemanager/package_manager_ops_gaps_test.go#TestPackageManagerWarnsWhenAnNpmUpdateLeavesTheInstalledVersionUnchanged"]
+rationale = "Package mutation commands block until the child exits, stream inherited output before reporting failure, and persist only after success. npm metadata checks precede per-scope batches and Git updates; four-worker pools bound metadata and Git work and join started operations. Pi starts a Git update task per source, so two sources of one checkout fetch into one FETCH_HEAD and run `git reset --hard` at once and fail on index.lock; PiG runs the sources of one checkout one at a time in settings order, each source reporting its own start and terminal event, and keeps different checkouts concurrent. Git ref reconciliation waits for fetch, compares commits, then resets/cleans/installs or repairs only missing dependencies. Full resolve/temporary-source and startup-update async behavior remains unreviewed, so this file is not async-closed. Pi 6dfb54678: resolvePackageSources awaits installParsedSource inside a try block, so a rejected install is recorded in installFailures and the loop goes on with the next source, as before for offline and skipped sources; the onMissing decision is awaited first and an error decision still rejects. Go installMissing runs the installs in order on the caller's goroutine, records the failure and continues (TestResolveSkipsAPackageSourceThatFailsToInstallAndReportsIt, TestResolveReportsNoInstallFailureForASkippedSourceAndKeepsTheErrorDecision, TestResolveExtensionSourcesReportsATemporarySourceThatFailsToInstall). Delta at Pi 5f960a0e2: getNpmInstallArgs and uninstallNpm resolve the install root with realpathSync before the awaited npm command (a synchronous call; its failure rejects the awaiting install or uninstall as it does in Go, RealInstallRoot and the EvalSymlinks in uninstallManagedNPM before RunPackageProcess); no added or removed line contains async, await, Promise or .then, so the reviewed ordering, joining and cancellation contract is unchanged. Delta at Pi 5fb9a0b1: the changed lines add --no-audit --no-fund to the argument lists built synchronously (getGitDependencyInstallArgs, getNpmInstallArgs) and to the arguments uninstallNpm passes to the awaited runNpmCommand; no added or removed line contains async, await, Promise or .then, so the reviewed contract is unchanged. Pi 0d23d534 (updateNpmBatch): after the batch completes and only when the install succeeded, one progress warning per unchanged package in batch order; ordering evidence TestPackageManagerWarnsWhenAnNpmUpdateLeavesTheInstalledVersionUnchanged."
 
 [[files]]
 path = "packages/coding-agent/src/core/project-trust.ts"
@@ -1542,10 +1542,10 @@ rationale = "Pi 885a564b (#11184): executeCodemode awaits reserveCodemodeWorker 
 
 [[files]]
 path = "packages/coding-agent/src/extensions/codemode/tool.ts"
-disposition = "pending"
+disposition = "deferred"
 contracts = []
 evidence = []
-rationale = ""
+rationale = "async/Promise source new in 0.99.1; PORT_MAP status \u2b1c ((not started: codemode runs Pi's own extension code in the Node extension runtime, D-B)); no per-file ordering, cancellation and error contract has been reviewed yet, and no evidence is claimed. Review with the owning family before marking translated. Re-confirmed at Pi e7a0df27: the only async-matching line of the delta is a description string literal (await describeTool(...)), not async code."
 
 [[files]]
 path = "packages/coding-agent/src/extensions/llama/client.ts"

@@ -3565,8 +3565,13 @@
     },
     {
       "path": "packages/coding-agent/test/ansi-utils.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:1b4100cda231545cf02934d8340d6073bb77effd5050ce5c158fc9d0a58497e2"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:1b4100cda231545cf02934d8340d6073bb77effd5050ce5c158fc9d0a58497e2",
+      "evidence": [
+        "internal/codingagent/tools/sanitize_private_csi_test.go#TestStripANSIPrivateParameterCSI",
+        "internal/codingagent/tools/sanitize_private_csi_test.go#TestSplitIncompleteAnsiSuffixPrivateParameterCSI"
+      ],
+      "rationale": "Pi b5fc6dc8: private-parameter CSI stripping, bare ESC keypad-mode digits, splitIncompleteAnsiSuffix holding back unfinished private CSI (lane A2)."
     },
     {
       "path": "packages/coding-agent/test/args.test.ts",
@@ -4060,8 +4065,12 @@
     },
     {
       "path": "packages/coding-agent/test/deleted-cwd.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:7e5f398357ca22bc93e316a8f9b3a234033af1e8a0aedb121a9d307fd0c0fe6b"
+      "disposition": "partial",
+      "upstreamTestHash": "sha256:7e5f398357ca22bc93e316a8f9b3a234033af1e8a0aedb121a9d307fd0c0fe6b",
+      "evidence": [
+        "coding/cli/deleted_cwd_unix_test.go#TestMainReportsDeletedWorkingDirectory"
+      ],
+      "rationale": "Case 1 ported as a child process that deletes its own cwd (--version, --help, print mode); case 2 'rethrows unrelated cwd errors' has no Go seam without a fake cwd syscall and needs owner approval as a designed-out case or a port (open decision, lane A2)."
     },
     {
       "path": "packages/coding-agent/test/documentation.test.ts",
@@ -4412,8 +4421,12 @@
     },
     {
       "path": "packages/coding-agent/test/image-processing.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:31012e506feb87b60a12c9d7888ab82fe0f0875544f431b8bd5985338a5cbada"
+      "disposition": "partial",
+      "upstreamTestHash": "sha256:31012e506feb87b60a12c9d7888ab82fe0f0875544f431b8bd5985338a5cbada",
+      "evidence": [
+        "internal/imageprocessing/image_processing_upstream_test.go#TestResizeImagePicksJPEGOverLargerPNGForPhotos"
+      ],
+      "rationale": "The 'pick JPEG over a larger PNG when resizing a photo' case is ported; the PNG-vs-JPEG comparison of the oracle tests is skipped until lane A2b closes it."
     },
     {
       "path": "packages/coding-agent/test/image-resize-callers.test.ts",
@@ -5017,8 +5030,13 @@
     },
     {
       "path": "packages/coding-agent/test/package-manager.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:e2ac8e62c803add3d482ed1abe01711910d095753061d61003a5f4337f0c482f"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:e2ac8e62c803add3d482ed1abe01711910d095753061d61003a5f4337f0c482f",
+      "evidence": [
+        "internal/packagemanager/changelog_path_test.go",
+        "internal/packagemanager/package_manager_ops_gaps_test.go#TestPackageManagerWarnsWhenAnNpmUpdateLeavesTheInstalledVersionUnchanged"
+      ],
+      "rationale": "Four changelogPath cases and the unchanged-npm-update warning (lane A2)."
     },
     {
       "path": "packages/coding-agent/test/path-utils.test.ts",
@@ -5813,8 +5831,13 @@
     },
     {
       "path": "packages/coding-agent/test/suite/agent-session-codemode.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:0524110cf6f5ea3080ec34b7b44734a5c1328586105f1f750e6bd8a9f6bffe8a"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:0524110cf6f5ea3080ec34b7b44734a5c1328586105f1f750e6bd8a9f6bffe8a",
+      "evidence": [
+        "coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeSummarizesUnionAndMultiLineOutputTypes",
+        "coding/extension/builtin/codemode/reach_describe_test.go#TestDescribeOutputSummarizesUnionsAndMultiLineTypes"
+      ],
+      "rationale": "Union and multi-line output types are summarized in tool descriptions (Pi f6ee9ce9, lane A2)."
     },
     {
       "path": "packages/coding-agent/test/suite/agent-session-compaction-model-overrides.test.ts",
@@ -6029,8 +6052,12 @@
     },
     {
       "path": "packages/coding-agent/test/suite/regressions/11520-sdk-summary-oauth-auth.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:0b7ea193c558f0ab6963829116594003a9c37e9db987400627d98c5c0e49b80e"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:0b7ea193c558f0ab6963829116594003a9c37e9db987400627d98c5c0e49b80e",
+      "evidence": [
+        "coding/summary_oauth_auth_11520_upstream_test.go#TestSDKSummaryLetsTheRuntimeResolveStoredOAuthUpstream"
+      ],
+      "rationale": "The getAuth spy is prepareSummarizationRequest carrying no apiKey/headers/env (Pi 6fed3cfb, lane A2)."
     },
     {
       "path": "packages/coding-agent/test/suite/regressions/1717-2113-agent-session-event-settlement.test.ts",
@@ -6917,8 +6944,12 @@
     },
     {
       "path": "packages/coding-agent/test/system-prompt-updates.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:3b2de45c8dde41fb7cd8f6e4387a73347be093ce56d9b9fca60c07bcd323fa1b"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:3b2de45c8dde41fb7cd8f6e4387a73347be093ce56d9b9fca60c07bcd323fa1b",
+      "evidence": [
+        "coding/session_system_prompt_updates_upstream_test.go#TestReorderedActiveToolsDoNotPatchThePrompt"
+      ],
+      "rationale": "Reordered active tools do not patch the prompt (Pi b9e3eef6, lane A2)."
     },
     {
       "path": "packages/coding-agent/test/system-prompt.test.ts",
