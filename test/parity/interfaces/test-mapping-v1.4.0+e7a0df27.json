@@ -1540,7 +1540,11 @@
       "upstreamTestHash": "sha256:75358f2a0014328d3818bad2fa429c32aeddc60ce41a4e236d5a7ecf3902bc2f",
       "evidence": [
         "internal/modelgen/source_openrouter_test.go#TestGetOpenRouterThinkingLevelMap",
-        "ai/openrouter_reasoning_upstream_test.go"
+        "ai/openrouter_reasoning_upstream_test.go",
+        "ai/openrouter_reasoning_upstream_test.go#TestOpenRouterReasoningPayloadsUpstream",
+        "ai/openrouter_reasoning_upstream_test.go#TestConfiguredThinkingMapAndUnsetReasoningAcrossOpenAIPaths",
+        "ai/model_runtime_thinking_map_test.go#TestModelRuntimeForwardsConfiguredThinkingMap",
+        "test/parity/scenarios/providers-faux-streaming/18-unset-and-configured-reasoning.toml"
       ],
       "rationale": "getOpenRouterThinkingLevelMap cases in catalog/sources/openrouter.ts; the payload cases are unchanged (lane B1)."
     },
@@ -1559,7 +1563,11 @@
       "disposition": "ported",
       "upstreamTestHash": "sha256:1d8f734545528e121cec300b5401a090cd693eb455044639d51ec85a0b1c02ca",
       "evidence": [
-        "ai/overflow_upstream_test.go#TestOverflowUpstream"
+        "ai/overflow_upstream_test.go#TestOverflowUpstream",
+        "ai/overflow_upstream_test.go#TestOverflowLengthStopsUpstream",
+        "ai/overflow_upstream_test.go#detects z.ai CN endpoint prompt-exceeds-max-length errors",
+        "ai/overflow_upstream_test.go#TestOverflowRequestSizeUpstream",
+        "ai/overflow_oracle_test.go#TestContextOverflowMatchesPiOnSeededMessages"
       ],
       "rationale": "Pi d3398f82 adds the LiteLLM pre-call ContextWindowExceededError row; ported as the LiteLLM row of the overflow table (lane B2)."
     },
@@ -1695,7 +1703,8 @@
       "disposition": "ported",
       "upstreamTestHash": "sha256:5e1d98de596939ba1c28f9f5f6f0165b97a31830e053a5ca3276d603749642fe",
       "evidence": [
-        "internal/modelgen/reasoning_test.go#TestGetEffortThinkingLevelMap"
+        "internal/modelgen/reasoning_test.go#TestGetEffortThinkingLevelMap",
+        "test/parity/scenarios/providers-faux-streaming/18-unset-and-configured-reasoning.toml"
       ],
       "rationale": "getEffortThinkingLevelMap cases in catalog/reasoning.ts (lane B1)."
     },
@@ -2236,7 +2245,44 @@
       "disposition": "ported",
       "upstreamTestHash": "sha256:ca4369a43253b69fc1570035856a599532a861c0676ba9af7106728ebef71b6e",
       "evidence": [
-        "chord/delta/tracker_competing_test.go#TestTrackerKeepsAnAbandonedDraftACompetitorOfTheNextChangeThroughOneWeakRegistration"
+        "chord/delta/tracker_competing_test.go#TestTrackerKeepsAnAbandonedDraftACompetitorOfTheNextChangeThroughOneWeakRegistration",
+        "chord/delta/tracker_array_root_test.go#TestTrackerAdoptsOverAnEmptyArrayRoot",
+        "chord/delta/tracker_array_root_test.go#TestTrackerArrayRootOperationsMatchPiForRandomizedEdits",
+        "chord/delta/tracker_array_root_test.go#TestTrackerRootKindsAndReplacement",
+        "chord/delta/tracker_array_root_test.go#TestTrackerSupportsRootArrays",
+        "chord/delta/tracker_emission_boundaries_test.go#TestTrackerAdoptStalesOnlyOpenAndPreparedCompetitors",
+        "chord/delta/tracker_emission_boundaries_test.go#TestTrackerEmitsOnlyTheWriteOrDeleteOverModifiedDescendants",
+        "chord/delta/tracker_emission_boundaries_test.go#TestTrackerFoldsArrayElementOverridesOnlyBeyondMaxDeltaOperations",
+        "chord/delta/tracker_emission_boundaries_test.go#TestTrackerFoldsOnlyBeyondMaxDeltaOperations",
+        "chord/delta/tracker_emission_boundaries_test.go#TestTrackerPreparesAnUnchangedDraftAsTheBaseRevision",
+        "chord/delta/tracker_emission_boundaries_test.go#TestTrackerSetsAValueWhoseTypeChanged",
+        "chord/delta/tracker_equivalence_test.go#TestTrackerDraftMutatorsActOnlyOnTheDraftAndReadOutsAreDetached",
+        "chord/delta/tracker_equivalence_test.go#TestTrackerKeysAndSnapshotsListOnlyData",
+        "chord/delta/tracker_equivalence_test.go#TestTrackerRemovedValuesAreDetached",
+        "chord/delta/tracker_equivalence_test.go#TestTrackerStoresReservedAndInheritedNamesAsOwnData",
+        "chord/delta/tracker_equivalence_test.go#TestTrackerStructuralMutatorsMatchNativeArgumentHandling",
+        "chord/delta/tracker_foreign_prepared_test.go#TestAdoptRefusesAPreparedValueOfAnotherTrackerThatAlreadyHasAnOwner",
+        "chord/delta/tracker_lifecycle_upstream_test.go#TestTrackerOverlayLifecycle",
+        "chord/delta/tracker_piece_upstream_test.go#TestTrackerPieceArrayCases",
+        "chord/delta/tracker_placement_upstream_test.go#TestTrackerByValuePlacementCases",
+        "chord/delta/tracker_policy_upstream_test.go#TestTrackerPolicyViewCases",
+        "chord/delta/tracker_transactions_upstream_test.go#TestTrackerAliasedDraftPlacementsStayIndependent",
+        "chord/delta/tracker_transactions_upstream_test.go#TestTrackerObjectEmissionScaling",
+        "chord/delta/tracker_transactions_upstream_test.go#TestTrackerRandomizedTransactions",
+        "chord/delta/tracker_transactions_upstream_test.go#TestTrackerSecurityAndStorageStyleCloning",
+        "chord/delta/tracker_upstream_test.go#TestTrackerByValuePlacementsOfEveryArrayMutator",
+        "chord/delta/tracker_upstream_test.go#TestTrackerDocumentKeysAreDistinctFromHandleFields",
+        "chord/delta/tracker_upstream_test.go#TestTrackerFillReplacesTheClampedRange",
+        "chord/delta/tracker_upstream_test.go#TestTrackerFoldsDenseArrayRegions",
+        "chord/delta/tracker_upstream_test.go#TestTrackerIntegerLikeKeysOrderBeforeStrings",
+        "chord/delta/tracker_upstream_test.go#TestTrackerKeyOrderAfterDeleteAndReAdd",
+        "chord/delta/tracker_upstream_test.go#TestTrackerKeysMoveAReAddedNewKeyToTheEnd",
+        "chord/delta/tracker_upstream_test.go#TestTrackerPolicyViewReadsAfterEdits",
+        "chord/delta/tracker_upstream_test.go#TestTrackerQueueStepsDoNotCopyTheEntryList",
+        "chord/delta/tracker_upstream_test.go#TestTrackerSortComparatorWritesAndReentrantAppends",
+        "chord/delta/tracker_upstream_test.go#TestTrackerSortNormalizesDuplicatesFromReentrantStructuralEdits",
+        "chord/delta/tracker_upstream_test.go#TestTrackerStringOperationFormsAndArgumentSideEffects",
+        "chord/delta/tracker_upstream_test.go#TestTrackerSupportsSelfOverlappingFillAndCopyWithinByValue"
       ],
       "rationale": "The 'delta tracker competing changes' cases follow Pi a9228305: WeakRef counts become weak-registration counts of the one-open-change tracker (lane D0)."
     },
@@ -3573,7 +3619,36 @@
       "disposition": "ported",
       "upstreamTestHash": "sha256:449c93b9acb04611757207aaea4195e8b99673475bcf0dcc3b8a55467e989e57",
       "evidence": [
-        "chord/watch_upstream_test.go"
+        "chord/watch_upstream_test.go",
+        "chord/watch_upstream_test.go#TestWatchKeepsTheAcquisitionValueUntilStartThenDeliversTheFramesSinceInOneCall",
+        "chord/watch_upstream_test.go#TestWatchPassesAFramesOpsOnByIdentityToAListenerThatKeepsUp",
+        "chord/watch_upstream_test.go#TestWatchNeverInvokesTheListenerInline",
+        "chord/watch_upstream_test.go#TestWatchAwaitsEachCallbackAndFoldsFramesAdvancedWhileOneIsInFlightIntoTheNextCall",
+        "chord/watch_upstream_test.go#TestWatchDeliversTheNewestFramesContextWithoutItsCancellation",
+        "chord/watch_upstream_test.go#TestWatchWithASlowListenerGetsOneCallPerBatchWhoseOpsTurnThePreviousDeliveredValueIntoTheNewest",
+        "chord/watch_upstream_test.go#TestWatchKeepsMaxPendingOpsPendingOpsAfterFoldingAndReplacesTheRootPastThem",
+        "chord/watch_upstream_test.go#TestWatchNeverFoldsTheInFlightCallIntoAnOverflow",
+        "chord/watch_upstream_test.go#TestWatchStartsFoldingAgainAfterAnOverflowWasDelivered",
+        "chord/watch_upstream_test.go#TestWatchDiscardsARetirementStillPendingWhenTheSourceEnds",
+        "chord/watch_upstream_test.go#TestWatchStopsIdempotentlyAndRejectsARepeatedOrLateStart",
+        "chord/watch_upstream_test.go#TestWatchEndsEndedOrFailedFromItsSourceDroppingPendingFrames",
+        "chord/watch_upstream_test.go#TestWatchStopsFutureDeliveryWithoutAbortingOrAwaitingAnInFlightCallback",
+        "chord/watch_upstream_test.go#TestWatchEndsCancelledWhenItsAcquisitionContextEndsAlsoWhenAlreadyDone",
+        "chord/watch_upstream_test.go#TestWatchEndsListenerErrorOnAFailureReportsItAndDeliversNothingMore",
+        "chord/watch_upstream_test.go#TestWatchWrapsAPanickedNonErrorInAnError",
+        "chord/watch_upstream_test.go#TestWatchRetainsNeitherItsSourceNorItsListenerOnceEnded",
+        "chord/watch_upstream_test.go#TestNativeWatchDeliversValuesByIdentityInOrderWithAContextNeverInline",
+        "chord/watch_upstream_test.go#TestNativeWatchCollapses101PendingValuesToTheValueOfReplace",
+        "chord/watch_upstream_test.go#TestNativeWatchCollapses101PendingValuesToTheNewest",
+        "chord/watch_upstream_test.go#TestNativeWatchEndsWithEveryReasonOfItsLifecycle",
+        "chord/watch_upstream_test.go#TestNativeWatchRetainsNeitherItsSourceNorItsListenerOnceStopped",
+        "chord/watch_upstream_test.go#TestNativeWatchHandleInterface",
+        "chord/watch_upstream_test.go#TestWatchableWatchHoldsTheCurrentValueThenOneFramePerChangeAndEndsWithItsContext",
+        "chord/watch_upstream_test.go#TestNativeWatchableWatchHoldsTheCurrentValueThenOneFramePerNewValueAndEndsWithItsContext",
+        "chord/watch_upstream_test.go#TestWatchReportsARetirementInTheNextCallWithTheValueTheSourceGivesAndGoesOn",
+        "chord/watch_upstream_test.go#TestWatchFoldsARetirementAndTheFramesAroundItIntoOneCallThatReportsIt",
+        "chord/watch_upstream_test.go#TestWatchKeepsReportingTheRetirementPastAnOverflow",
+        "chord/watch_upstream_test.go#TestWatchTreatsANullValueAsAValueNeverAsARetirement"
       ],
       "rationale": "Pi 5f312dac: renamed expectations (kind, aborted, EndWith/ObserveAbort), the 'Watch failure calls' group and the NativeWatch failure case; call-object key/structuredClone/identity cases are designed out (Go call is a struct value). Lane C2."
     },
@@ -3822,7 +3897,9 @@
       "upstreamTestHash": "sha256:1b4100cda231545cf02934d8340d6073bb77effd5050ce5c158fc9d0a58497e2",
       "evidence": [
         "internal/codingagent/tools/sanitize_private_csi_test.go#TestStripANSIPrivateParameterCSI",
-        "internal/codingagent/tools/sanitize_private_csi_test.go#TestSplitIncompleteAnsiSuffixPrivateParameterCSI"
+        "internal/codingagent/tools/sanitize_private_csi_test.go#TestSplitIncompleteAnsiSuffixPrivateParameterCSI",
+        "internal/codingagent/tools/sanitize_test.go#TestStripANSI_UpstreamCases",
+        "internal/codingagent/tools/sanitize_input_contract_test.go#TestStripANSIRejectsNonTextAtCompileTime"
       ],
       "rationale": "Pi b5fc6dc8: private-parameter CSI stripping, bare ESC keypad-mode digits, splitIncompleteAnsiSuffix holding back unfinished private CSI (lane A2)."
     },
@@ -4683,9 +4760,20 @@
       "disposition": "ported",
       "upstreamTestHash": "sha256:31012e506feb87b60a12c9d7888ab82fe0f0875544f431b8bd5985338a5cbada",
       "evidence": [
-        "internal/imageprocessing/image_processing_upstream_test.go#TestResizeImagePicksJPEGOverLargerPNGForPhotos"
+        "internal/imageprocessing/images_test.go#TestResizeBelowThresholdNoop",
+        "internal/imageprocessing/images_test.go#TestResizeOver2048Resizes",
+        "internal/imageprocessing/images_test.go#TestResizeReencodesIfOverThreshold",
+        "internal/imageprocessing/images_test.go#TestExifOrientationApplied",
+        "internal/imageprocessing/image_processing_upstream_test.go#TestResizeImageUpstream",
+        "internal/imageprocessing/image_processing_upstream_test.go#TestFormatDimensionNoteUpstream",
+        "internal/codingagent/image_convert_test.go#TestConvertToPngReturnsOriginalDataForPNG",
+        "internal/codingagent/image_convert_test.go#TestConvertToPngConvertsJPEG",
+        "internal/codingagent/image_convert_test.go#TestConvertToPngAppliesExifOrientationAfterXMPSegment",
+        "internal/codingagent/image_convert_test.go#TestPngTranscoderConvertsSynchronouslyToOrientedPNGData",
+        "internal/imageprocessing/image_processing_upstream_test.go#TestResizeImagePicksJPEGOverLargerPNGForPhotos",
+        "internal/imageprocessing/resize_format_oracle_test.go#TestResizeFormatChoiceMatchesPiOnRealisticImages"
       ],
-      "rationale": "The 'pick JPEG over a larger PNG when resizing a photo' case; the oracle PNG-vs-JPEG comparison is restored (one case of 400 cited to D165; the source row stays deferred until the owner approves D165). Lane A2b."
+      "rationale": "The complete pinned upstream case set is reviewed in gate-close-08 and its delivered tests are composed from e503bb258. All named added evidence passes on the release union with Go 1.27.1, -race and -count=1; original upstream hashes and existing evidence are retained. This closes the test file, not ... Pi e7a0df27 adds the \"pick JPEG over a larger PNG when resizing a photo\" case (lane A2/A2b) and the format choice is compared byte for byte against Pi (lane photon-jpeg: TestResizeFormatChoiceMatchesPiOnRealisticImages). Go's JPEG and WebP decoders still differ from Photon's on some inputs (D165, being ported by the decoder lane); that is an oracle-level difference, not an upstream case without a port."
     },
     {
       "path": "packages/coding-agent/test/image-resize-callers.test.ts",
@@ -4837,7 +4925,28 @@
       "disposition": "ported",
       "upstreamTestHash": "sha256:66d640a003ec2064ac0f64b8b5858e46faf96d7171851392b3163178aea6e5c3",
       "evidence": [
-        "internal/codingagent/loaded_resources_quiet_upstream_test.go#TestLoadedResourcesQuietReloadUpstream"
+        "internal/codingagent/loaded_resources_quiet_upstream_test.go#TestLoadedResourcesQuietReloadUpstream",
+        "internal/codingagent/interactive_mode_status_upstream_test.go#TestInteractiveStatusCoalescingUpstream",
+        "internal/codingagent/interactive_mode_status_upstream_test.go#TestInteractiveManagedToolStatusContiguousGroupUpstream",
+        "internal/codingagent/tools_expansion_upstream_test.go#TestSetToolsExpandedAppliesToHeaderAndMountedChildrenUpstream",
+        "internal/codingagent/ext_theme_settings_upstream_test.go#TestExtensionSetThemePersistsToSettingsManagerUpstream",
+        "internal/codingagent/ext_theme_settings_upstream_test.go#TestExtensionSetThemeDoesNotPersistInvalidNamesUpstream",
+        "internal/codingagent/custom_focus_upstream_test.go#TestRemoteOverlayReclaimsInputAfterEditorReplacementUpstream",
+        "internal/codingagent/autocomplete_wrappers_test.go#TestAutocompleteFactoriesRebuildOnOwnerLoop",
+        "internal/codingagent/model_autocomplete_upstream_test.go#TestInteractiveModelArgumentCompletionUpstream",
+        "internal/codingagent/login_autocomplete_upstream_test.go#TestInteractiveLoginArgumentCompletionUpstream",
+        "internal/codingagent/loaded_resources_listing_upstream_test.go#TestLoadedResourcesSkillAndExtensionListingsUpstream",
+        "internal/codingagent/loaded_resources_test.go#TestShowLoadedResourcesListsEachSectionUnderItsHeading",
+        "internal/codingagent/loaded_resources_test.go#TestLoadedResourcesExtensionLabelsMatchUpstream",
+        "internal/codingagent/loaded_resources_test.go#TestLoadedResourcesExpandedExtensionsMatchUpstream",
+        "internal/codingagent/loaded_resources_test.go#TestLoadedResourcesContextMatchesUpstream",
+        "internal/codingagent/loaded_resources_test.go#TestLoadedResourcesQuietAndVerboseStartup",
+        "internal/codingagent/loaded_resources_diagnostics_test.go#TestShowLoadedResourcesQuietDiagnosticsAllKinds",
+        "internal/codingagent/startup_quiet_diagnostics_test.go#TestQuietStartupBindShowsDiagnosticsOnly",
+        "internal/codingagent/loaded_resources_quiet_header_upstream_test.go#TestLoadedResourcesQuietStartupHeaderUpstream",
+        "internal/codingagent/ext_ui_custom_stack_test.go#TestHostCustomOverlayCloseOutOfOrderRemovesItsOwnOverlay",
+        "internal/codingagent/ext_ui_custom_stack_test.go#TestRemoteCustomOverlayCloseOutOfOrderRemovesItsOwnOverlay",
+        "internal/codingagent/ext_ui_dialog_stack_test.go#TestExtensionDialogsStackConcurrentInlineCustomComponents"
       ],
       "rationale": "Quiet startup still shows diagnostics, headed [Skill warnings] (Pi f14813e9, lane A1)."
     },
@@ -4996,7 +5105,9 @@
       "disposition": "ported",
       "upstreamTestHash": "sha256:b2ebdecc484b1c0581cc8d2186ed830722c59a5d99e5dbe16ec600625bdde0ed",
       "evidence": [
-        "coding/mcpext/manager_test.go#TestMcpManagerMenuCapturesViewportKeysOnlyWhileAMenuListIsShown"
+        "coding/mcpext/manager_test.go#TestMcpManagerMenuCapturesViewportKeysOnlyWhileAMenuListIsShown",
+        "coding/mcpext/manager_test.go#TestMcpManagerStatusScreenCancelsTheRunningOperationWithTheCancelKey",
+        "coding/mcpext/manager_test.go#TestMcpManagerStatusScreenIgnoresTheCancelKeyForOperationsThatCannotBeCancelled"
       ],
       "rationale": "A menu list captures fullscreen viewport keys only while shown (Pi 3bae8527, lane A1)."
     },
@@ -5195,7 +5306,11 @@
       "disposition": "ported",
       "upstreamTestHash": "sha256:d119876bcde54fd2ca47be1bba3f457dd68572835ba9d9b82a3ee750e916d5eb",
       "evidence": [
-        "tui/select_page_keys_upstream_test.go#TestUpstreamModelSelectorMovesByOnePageWithRemappedSelectionPageKeys"
+        "tui/select_page_keys_upstream_test.go#TestUpstreamModelSelectorMovesByOnePageWithRemappedSelectionPageKeys",
+        "tui/model_selector_upstream_test.go#TestModelSelectorUpstream",
+        "internal/codingagent/model_selector_errors_upstream_test.go#TestModelSelectorListsEveryFailedCatalogUpstream",
+        "test/parity/scenarios/model-runtime-store-catalog/14-model-selector-error-order.toml",
+        "tui/model_select_test.go#TestModelSelector_ShowsModelNamesThatDifferFromTheID"
       ],
       "rationale": "Moves by one page with remapped selection page keys (Pi 3bae8527, lane A1)."
     },
@@ -5314,7 +5429,88 @@
       "upstreamTestHash": "sha256:e2ac8e62c803add3d482ed1abe01711910d095753061d61003a5f4337f0c482f",
       "evidence": [
         "internal/packagemanager/changelog_path_test.go",
-        "internal/packagemanager/package_manager_ops_gaps_test.go#TestPackageManagerWarnsWhenAnNpmUpdateLeavesTheInstalledVersionUnchanged"
+        "internal/packagemanager/package_manager_ops_gaps_test.go#TestPackageManagerWarnsWhenAnNpmUpdateLeavesTheInstalledVersionUnchanged",
+        "coding/cli/package_git_parity_test.go#TestGitPackageCLIComparedWithPi",
+        "coding/cli/package_process_test.go#TestPackageSourceReplacementPreservesFilters",
+        "coding/cli/package_process_test.go#TestPackageChildOutputDuringStdoutTakeover",
+        "coding/cli/package_cli_output_test.go#TestPackageChildOutputAndFailure",
+        "coding/cli/package_commands_test.go#TestNPMInstallArgsMatchUpstreamManagedInstallContract",
+        "coding/cli/package_commands_test.go#TestGetGitDependencyInstallArgs",
+        "coding/cli/package_npm_trust_test.go#TestPackageNpmCommandUsesResolvedTrust",
+        "coding/cli/package_npm_trust_test.go#TestPackageNpmCommandRetainsOverrides",
+        "coding/cli/package_npm_trust_test.go#TestPackageNpmCommandDefaultsRespectTrust",
+        "coding/cli/package_npm_trust_test.go#TestPackageNpmCommandFailureIsReturned",
+        "coding/cli/package_npm_trust_test.go#TestPackageRemoveRetainsCommandOverridesAndSettingsOnFailure",
+        "coding/cli/package_registry_scope_test.go#TestNpmMetadataLookupScope",
+        "coding/cli/package_registry_scope_test.go#TestPackageUpdatePerformsScopedMetadataLookup",
+        "coding/cli/package_registry_scope_test.go#TestLatestNpmVersionFromJSON",
+        "coding/cli/package_commands_test.go#TestDetectSourceKind",
+        "coding/cli/package_commands_test.go#TestNormalizePackageSourceForSettings_UsesScopeBase",
+        "coding/cli/configured_resources_test.go#TestCollectPackagePromptPaths_DedupesSharedPackageWithProjectPrecedence",
+        "coding/packagecontent/packagecontent_test.go#TestApplyPatternsUsesSkillDirectoryIdentity",
+        "coding/packagecontent/pi_manifest_test.go#TestReadPiManifest",
+        "coding/cli/package_resource_upstream_test.go#TestPackageResolveOriginalCases",
+        "coding/cli/package_resource_upstream_test.go#TestPackageSkillMetadataOriginalCases",
+        "coding/cli/package_agents_skills_upstream_test.go#TestPackageAgentsSkillDiscoveryOriginal",
+        "coding/cli/package_local_identity_upstream_test.go#TestPackageLocalSourceResolutionUpstream",
+        "coding/cli/package_local_identity_upstream_test.go#TestPackageCommandPreservesSpacedArgvUpstream",
+        "coding/cli/package_local_identity_upstream_test.go#TestPackageIdentityDeduplicationUpstream",
+        "coding/cli/package_progress_upstream_test.go#TestPackageLocalResolutionProgressUpstream",
+        "coding/cli/package_progress_upstream_test.go#TestPackageInstallFailureProgressUpstream",
+        "coding/cli/package_progress_upstream_test.go#TestPackageInstallCompletionProgressUpstream",
+        "coding/cli/package_progress_upstream_test.go#TestPackageTemporaryRefreshProgressUpstream",
+        "coding/cli/package_progress_upstream_test.go#TestPackageUpdateFailureProgressUpstream",
+        "coding/cli/package_progress_upstream_test.go#TestPackageGitInstallRootTraversalUpstream",
+        "coding/cli/package_npm_commands_upstream_test.go#TestPackageNpmCommandOriginal",
+        "coding/cli/package_npm_commands_upstream_test.go#TestPackageNpmRootCommandChangesOriginal",
+        "coding/cli/package_npm_commands_upstream_test.go#TestPackagePnpmManagedResolutionOriginal",
+        "coding/cli/package_npm_commands_upstream_test.go#TestPackagePnpmLegacyResolutionOriginal",
+        "coding/cli/package_npm_commands_upstream_test.go#TestPackageLegacyNpmUpdateMigratesOriginal",
+        "coding/cli/package_git_dependencies_upstream_test.go#TestPackageGitDependenciesOriginal",
+        "coding/cli/package_source_parsing_upstream_test.go#TestPackageSourceDocsExamplesOriginal",
+        "coding/cli/package_source_parsing_upstream_test.go#TestPackageHTTPSParsingOriginal",
+        "coding/cli/package_temporary_path_upstream_test.go#TestTemporaryNpmPathUnderAgentRootUpstream",
+        "coding/cli/package_settings_upstream_test.go#TestPackageSettingsSourceNormalizationUpstream",
+        "coding/cli/package_patterns_upstream_test.go#TestPackagePatternCasesUpstream",
+        "coding/cli/package_manifest_patterns_upstream_test.go#TestPackageManifestPatternsUpstream",
+        "coding/cli/package_autoload_upstream_test.go#TestPackageAutoloadDisabledOriginal",
+        "coding/cli/package_multifile_upstream_test.go#TestPackageMultiFileExtensionDiscoveryUpstream",
+        "coding/cli/package_reconcile_upstream_test.go#TestNpmUpdateVersionReconciliationUpstream",
+        "coding/cli/package_reconcile_upstream_test.go#TestPackageCapturedCommandWaitsForStreamClosureUpstream",
+        "coding/cli/package_batch_upstream_test.go#TestPackageBatchedConcurrentUpdatesOriginal",
+        "coding/cli/package_update_cases_upstream_test.go#TestPackageUpdateLookupPrefixesOriginal",
+        "coding/cli/package_update_cases_upstream_test.go#TestPackageOfflineResolutionOriginal",
+        "coding/cli/package_update_cases_upstream_test.go#TestPackageAvailableUpdatesOriginal",
+        "coding/cli/package_update_cases_upstream_test.go#TestPackageLatestVersionCommandsOriginal",
+        "docs/parity/cfg-2-test-closure.md",
+        "coding/cli/package_auto_discovery_upstream_test.go#TestPackageAutoDiscoveryLayoutUpstream",
+        "coding/cli/package_autoload_upstream_test.go#TestPackageAutoloadRuntimeDeltaOrder",
+        "coding/cli/package_autoload_upstream_test.go#TestPackageAutoloadDefaultsDoNotInferDeltas",
+        "coding/cli/package_directory_link_test.go#TestPackageDirectoryLinkDoesNotSkipAssertions",
+        "coding/cli/package_directory_link_test.go#TestPackageDirectoryLinkSurfacesFailures",
+        "coding/cli/package_installed_version_test.go#TestEnsureConfiguredNpmVersionMatchesUpstream",
+        "coding/cli/package_installed_version_test.go#TestEnsureConfiguredNpmMismatchOfflineAndFailure",
+        "coding/cli/package_layered_filters_upstream_test.go#TestPackageLayeredFiltersUpstream",
+        "coding/cli/package_manager_gaps_upstream_test.go#TestUpstreamGitInstallPathRejectsPathsOutsideRoots",
+        "coding/cli/package_manager_gaps_upstream_test.go#TestUpstreamInstallProgressAndGitURLWithoutPrefix",
+        "coding/cli/package_manager_gaps_upstream_test.go#TestUpstreamLocalExtensionResolutionStartsNoInstall",
+        "coding/cli/package_reconcile_upstream_test.go#TestNpmUpdateSkipsExactVersionsAndIncludesBothScopes",
+        "coding/cli/package_resource_upstream_test.go#TestCanonicalResourceWinnerUsesProjectAutoBeforeUserExplicit",
+        "coding/cli/package_source_parsing_upstream_test.go#TestPackageBareSourcesNeverInvokeNpm",
+        "coding/cli/package_update_results_test.go#TestPackageAvailableUpdatesResults",
+        "coding/cli/skill_resource_metadata_upstream_test.go#TestSkillResourceMetadataUpstream",
+        "coding/cli/skill_resource_metadata_upstream_test.go#TestSkillMetadataUsesFilesWithoutChangingConfigBundlePaths",
+        "coding/cli/skill_resource_metadata_upstream_test.go#TestExplicitSkillFileMetadataWinsOverAutomaticBundle",
+        "coding/cli/skill_resource_metadata_upstream_test.go#TestSkillMetadataProjection",
+        "internal/packagemanager/builtin_extensions_test.go#TestResolveBuiltinExtensionsProjectOverrideBranches",
+        "coding/cli/package_temporary_upstream_test.go#TestPinnedTemporaryGitSourceChangingRefLoadsNewCheckout",
+        "coding/cli/package_patterns_tilde_upstream_test.go#TestPackagePatternsExpandTildeInExclusionAndExactPatternsUpstream",
+        "internal/packagemanager/resolve_gaps_test.go#TestResolveSkipsAPackageSourceThatFailsToInstallAndReportsIt",
+        "internal/packagemanager/resolve_gaps_test.go#TestResolveReportsNoInstallFailureForASkippedSourceAndKeepsTheErrorDecision",
+        "internal/packagemanager/resolve_gaps_test.go#TestResolveExtensionSourcesReportsATemporarySourceThatFailsToInstall",
+        "internal/packagemanager/package_manager_ops_gaps_test.go#TestPackageManagerNpmInstallAndUninstallPassTheRealPathWhenTheAgentDirIsASymlink",
+        "internal/packagemanager/package_manager_ops_gaps_test.go#TestPackageManagerNpmUninstallAndUpdateCheckUseTheConfiguredCommand",
+        "test/parity/scenarios/cli-utils/15-package-npm-name-lexical.toml"
       ],
       "rationale": "Four changelogPath cases and the unchanged-npm-update warning (lane A2)."
     },
@@ -6007,7 +6203,10 @@
       "disposition": "ported",
       "upstreamTestHash": "sha256:3233e090a5acb9e88381ed9c8131a360923f505230e5e5c788229c5f53b9e800",
       "evidence": [
-        "tui/select_page_keys_upstream_test.go#TestUpstreamSelectSubmenuPagesWithSelectionPageKeys"
+        "tui/select_page_keys_upstream_test.go#TestUpstreamSelectSubmenuPagesWithSelectionPageKeys",
+        "internal/codingagent/settings_selector_upstream_test.go#TestSettingsSelectorUpstream",
+        "internal/codingagent/settings_selector_upstream_test.go#TestAutomaticThemeSubmenuCancelRestoresPendingPair",
+        "internal/codingagent/session_share_destination_test.go#TestSettingsSelectorOmitsShareDestination"
       ],
       "rationale": "Pages a searchable submenu with selection page keys (Pi 3bae8527); SelectSubmenu lives in tui/ (lane A1)."
     },
@@ -6119,7 +6318,13 @@
       "upstreamTestHash": "sha256:0524110cf6f5ea3080ec34b7b44734a5c1328586105f1f750e6bd8a9f6bffe8a",
       "evidence": [
         "coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeSummarizesUnionAndMultiLineOutputTypes",
-        "coding/extension/builtin/codemode/reach_describe_test.go#TestDescribeOutputSummarizesUnionsAndMultiLineTypes"
+        "coding/extension/builtin/codemode/reach_describe_test.go#TestDescribeOutputSummarizesUnionsAndMultiLineTypes",
+        "coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeTool",
+        "coding/codemode_session_upstream_test.go#TestUpstreamCodemodeOptionsAndStore",
+        "coding/codemode_session_upstream_test.go#TestUpstreamCodemodeModels",
+        "coding/codemode_session_upstream_test.go#Pi #10631: a misplaced options line fails before the script runs",
+        "coding/codemode_session_upstream_test.go#formats output at the item limit in linear time",
+        "coding/codemode_session_upstream_test.go#arrayImagesContext"
       ],
       "rationale": "Union and multi-line output types are summarized in tool descriptions (Pi f6ee9ce9, lane A2)."
     },
@@ -7231,7 +7436,10 @@
       "disposition": "ported",
       "upstreamTestHash": "sha256:3b2de45c8dde41fb7cd8f6e4387a73347be093ce56d9b9fca60c07bcd323fa1b",
       "evidence": [
-        "coding/session_system_prompt_updates_upstream_test.go#TestReorderedActiveToolsDoNotPatchThePrompt"
+        "coding/session_system_prompt_updates_upstream_test.go#TestReorderedActiveToolsDoNotPatchThePrompt",
+        "coding/session_sections_test.go",
+        "agent/system_state_test.go",
+        "internal/codingagent/prompts/sections_test.go"
       ],
       "rationale": "Reordered active tools do not patch the prompt (Pi b9e3eef6, lane A2)."
     },
@@ -7632,7 +7840,8 @@
       "disposition": "ported",
       "upstreamTestHash": "sha256:b052a243a51aa777a4c835f15721ce08c2c875c976ca1c1d29a49e3641afbb9b",
       "evidence": [
-        "durable/env/node/conformance_test.go"
+        "durable/env/node/conformance_test.go",
+        "durable/durabletest/env_conformance.go"
       ],
       "rationale": "Follows Pi 5f312dac (kind coverage, 'watch stops reporting once stopped'); lane C2."
     },
@@ -8071,7 +8280,9 @@
       "disposition": "ported",
       "upstreamTestHash": "sha256:3c7c42cb37a59f4b6266b16df4c321502aa15e998e50b30ba799db1f71d7862f",
       "evidence": [
-        "durable/session/session_adoption_test.go"
+        "durable/session/session_adoption_test.go",
+        "durable/session/session_adoption_test.go#TestSessionAdoptionInsideStorageCommit",
+        "durable/session/session_adoption_internal_test.go#TestSessionFailsWithItsOwnAdoptionErrorWhichNeverReachesStorage"
       ],
       "rationale": "Follows Pi 5f312dac (observeCommits, WatchCall/WatchEnd observers, retirement as DocumentRetireChange); same-stem Go tests (lane C2)."
     },
@@ -8080,7 +8291,11 @@
       "disposition": "ported",
       "upstreamTestHash": "sha256:f9555a19175438877b309d1ca9bb5fab026c0ba5af9f882f0cd5b00d5f0ee46b",
       "evidence": [
-        "durable/session/session_checkpoints_migrations_test.go"
+        "durable/session/session_checkpoints_migrations_test.go",
+        "durable/session/session_checkpoints_migrations_test.go#TestSessionDocumentCheckpoints",
+        "durable/session/session_checkpoints_migrations_test.go#TestSessionDocumentMigrations",
+        "durable/session/session_checkpoints_migrations_test.go#TestSessionHistoricalDocumentSnapshots",
+        "durable/session/session_checkpoints_migrations_test.go#TestSessionTrackerCacheAcrossDefinitionVersions"
       ],
       "rationale": "Follows Pi 5f312dac (observeCommits, WatchCall/WatchEnd observers, retirement as DocumentRetireChange); same-stem Go tests (lane C2)."
     },
@@ -8089,7 +8304,13 @@
       "disposition": "ported",
       "upstreamTestHash": "sha256:6acfc01b89d41643a872a35df74a2ece2f1b73e772894df308ecd00018a66fb4",
       "evidence": [
-        "durable/session/session_deferred_commits_upstream_test.go"
+        "durable/session/session_deferred_commits_upstream_test.go",
+        "durable/session/session_deferred_commits_upstream_test.go#TestHoldingADeferredCommit",
+        "durable/session/session_deferred_commits_upstream_test.go#TestStoringHeldChanges",
+        "durable/session/session_deferred_commits_upstream_test.go#TestBasesAndOverflowOfHeldChanges",
+        "durable/session/session_deferred_commits_upstream_test.go#TestPublicationsOfDeferredCommits",
+        "durable/session/session_deferred_commits_upstream_test.go#TestAHeldDocumentIsPinned",
+        "durable/session/session_deferred_commits_upstream_test.go#TestACrashLeavesStorageAtTheLastStoredState"
       ],
       "rationale": "Follows Pi 5f312dac (observeCommits, WatchCall/WatchEnd observers, retirement as DocumentRetireChange); same-stem Go tests (lane C2)."
     },
@@ -8107,7 +8328,9 @@
       "disposition": "ported",
       "upstreamTestHash": "sha256:46e116eba1fba08653a6bf07dbf24aa5325e5f6b45a19c717a87d14233e13c81",
       "evidence": [
-        "durable/session/session_document_retention_test.go#TestSessionDocumentCacheRetention"
+        "durable/session/session_document_retention_test.go#TestSessionDocumentCacheRetention",
+        "durable/harness/document_retention_test.go#TestHarnessDocumentRetentionFollowsSettings",
+        "durable/harness/document_retention_test.go#TestTheViewsAreTheSameWithDocumentsEvictedRightAfterUseAsWithDocumentsKept"
       ],
       "rationale": "Follows Pi 5f312dac; the case 'keeps no timer where timers cannot be unreferenced, and evicts on commits' stays designed out (Node unreferenced-timer mechanics; approved by the tern lead ruling 2026-10-13, tests-120-b; case and approval carried from the b3a29f11 mapping). Lane C2.",
       "designedOutCases": [
@@ -8119,7 +8342,22 @@
       "disposition": "ported",
       "upstreamTestHash": "sha256:81a40b5b1e9fb2b314d8dc05971a8aa0519e7f4fa88766dc25e3778b24a8bab4",
       "evidence": [
-        "durable/session/session_documents_test.go"
+        "durable/session/session_documents_test.go",
+        "durable/session/session_documents_test.go#TestSessionDocumentTransactions",
+        "durable/session/subscribe_close_test.go#TestSessionSubscribeCloseRunsListenersWhenCloseBeginsAndSupportsUnsubscription",
+        "durable/core/driver/docs_core_test.go#TestCoreFamilyDocumentsUseTheFirstSeedAndIgnoreSeedsForExistingMembers",
+        "durable/core/driver/docs_core_test.go#TestCoreRejectsTokensWhoseSemanticsOrVersionDisagreeWithTheStoredIncarnation",
+        "durable/core/driver/docs_core_test.go#TestCoreRetiredDocumentsGetANewIncarnationAtTheSameAddress",
+        "durable/core/driver/docs_core_test.go#TestCoreRetiresWithoutAcquisitionAndRecreatesExistingAndAbsentAddresses",
+        "durable/core/driver/docs_core_test.go#TestCoreEscapedDraftsAreRevokedWhenTheCallbackSettles",
+        "durable/core/driver/docs_core_test.go#TestCoreACallbackFailureAbortsEveryChange",
+        "durable/core/driver/docs_core_test.go#TestCoreTxUseAfterTheCallbackSettlesIsRejected",
+        "durable/core/driver/docs_core_test.go#TestCoreNonJSONPlacementsAreRejectedBeforeAnythingIsStored",
+        "durable/core/driver/docs_core_test.go#TestCoreAnUncertainStorageFailurePoisonsTheSession",
+        "durable/core/driver/docs_core_test.go#TestCoreASnapshotStaysUnchangedThroughALaterCommit",
+        "durable/core/driver/docs_core_test.go#TestCoreRetirementBetweenTwoAcquisitionsCreatesAFreshIncarnation",
+        "durable/core/driver/docs_core_test.go#TestCoreCloseListenersRunOnceAndSupportUnsubscription",
+        "durable/core/driver/docs_core_test.go#TestCoreCloseSettlesAdmittedCommitsAndRejectsLaterAdmission"
       ],
       "rationale": "Follows Pi 5f312dac (observeCommits, WatchCall/WatchEnd observers, retirement as DocumentRetireChange); same-stem Go tests (lane C2)."
     },
@@ -8128,7 +8366,21 @@
       "disposition": "ported",
       "upstreamTestHash": "sha256:109b19f413e5ded65f4761a825b13f8e744fa858fe75e25969dba40c22142a21",
       "evidence": [
-        "durable/session/session_forks_test.go"
+        "durable/session/session_forks_test.go",
+        "durable/session/session_forks_test.go#TestSessionConversationDocumentForks",
+        "durable/core/driver/docs_core_test.go#TestCoreForkCopiesAsOfAndCurrentSingletonAndFamilyBasesAndLeavesInitialDocumentsAbsent",
+        "durable/core/driver/docs_core_test.go#TestCoreForkUsesTheFinalDocumentStateOfTheEntryCommitAndExcludesLaterSameCommitEntries",
+        "durable/core/driver/docs_core_test.go#TestCoreForkSelectsTheEntryOwningAncestorForAsOfAndTheImmediateParentForCurrent",
+        "durable/core/driver/docs_core_test.go#TestCoreForkCopiesTheStoredVersionWithoutConsultingMigrations",
+        "durable/core/driver/docs_core_test.go#TestCoreForkCoalescesATypedMigrationAndOverrideIntoTheCopiedCreationBase",
+        "durable/core/driver/docs_core_test.go#TestCoreForkCopiesTheIncarnationAliveAtTheForkPoint",
+        "durable/core/driver/docs_core_test.go#TestCoreForkRejectsInvisibleForkPointsAndRemainsUsable",
+        "durable/core/driver/docs_core_test.go#TestCoreForkRejectsDuplicateAsOfAndCurrentSelectionsForOneChildAddress",
+        "durable/core/driver/docs_core_test.go#TestCoreForkRejectsCurrentAndAsOfSourceWritesInTheForkTransaction",
+        "durable/core/driver/docs_core_test.go#TestCoreForkRollsEveryCopiedBaseBackWhenLaterAssemblyFails",
+        "durable/core/driver/docs_core_test.go#TestCoreForkRetiresACopiedDocumentAndRecreatesTheAddressInTheForkTransaction",
+        "durable/core/driver/docs_core_test.go#TestCoreForkCopiesEveryFamilyMemberAcrossScanPages",
+        "durable/core/driver/docs_core_test.go#TestCoreARejectedForkCommitFailsTheSessionAndLeavesNoEffect"
       ],
       "rationale": "Follows Pi 5f312dac (observeCommits, WatchCall/WatchEnd observers, retirement as DocumentRetireChange); same-stem Go tests (lane C2)."
     },
@@ -8137,7 +8389,9 @@
       "disposition": "ported",
       "upstreamTestHash": "sha256:dfd8850882c8e65c4893a29f23d697df9a27a4fef69e135e3099ce8c8414fffb",
       "evidence": [
-        "durable/session/session_observers_test.go"
+        "durable/session/session_observers_test.go",
+        "durable/session/session_observers_test.go#TestObserveDoc",
+        "durable/session/session_observers_test.go#TestObserveDocDetachedDuringACommit"
       ],
       "rationale": "Follows Pi 5f312dac (observeCommits, WatchCall/WatchEnd observers, retirement as DocumentRetireChange); same-stem Go tests (lane C2)."
     },
@@ -8146,7 +8400,8 @@
       "disposition": "ported",
       "upstreamTestHash": "sha256:f6076806f5edd08fb30601352eb5a54dd8e3401813e0ed8b28d7f04a63789105",
       "evidence": [
-        "durable/session/session_tables_test.go"
+        "durable/session/session_tables_test.go",
+        "durable/session/session_tables_test.go#TestSessionTransactionTables"
       ],
       "rationale": "Follows Pi 5f312dac (observeCommits, WatchCall/WatchEnd observers, retirement as DocumentRetireChange); same-stem Go tests (lane C2)."
     },
@@ -8155,7 +8410,10 @@
       "disposition": "ported",
       "upstreamTestHash": "sha256:fe9dcb88e78357d2bf9b90d06d434997c361cf5c8b8989f495da5bb8cfe310b6",
       "evidence": [
-        "durable/session/session_watches_test.go"
+        "durable/session/session_watches_test.go",
+        "durable/session/session_watches_test.go#TestSessionDocumentWatches",
+        "chord/watch_upstream_test.go#TestWatchRetainsNeitherItsSourceNorItsListenerOnceEnded",
+        "durable/core/driver/docs_core_watches_test.go#TestCoreWatchFoldsPendingCommitsOfOneFieldIntoOneSet"
       ],
       "rationale": "Follows Pi 5f312dac (observeCommits, WatchCall/WatchEnd observers, retirement as DocumentRetireChange); same-stem Go tests (lane C2)."
     },
@@ -8164,7 +8422,9 @@
       "disposition": "ported",
       "upstreamTestHash": "sha256:8bd7a4b5ebc1aa3eb80dd5f9881c9ade7ce17e05d25c50b4133a87118d121630",
       "evidence": [
-        "durable/types_upstream_test.go"
+        "durable/types_upstream_test.go",
+        "durable/examples/spec_usage_upstream_test.go#TestSpecUsageCompilesTheHarnessExamples",
+        "durable/spec_usage_upstream_test.go#TestSpecUsageCompilesTheRootExamples"
       ],
       "rationale": "Follows Pi 5f312dac (types and the observer vocabulary); durable/types_upstream_test.go (lane C2)."
     },
@@ -8363,7 +8623,11 @@
       "upstreamTestHash": "sha256:225016706c17f0596d032b4c51c9904f4eeef93b14b62a14764d1168268e95fd",
       "evidence": [
         "env/watch_events_test.go",
-        "env/remote_daemon_signal_test.go#TestConnectionCloseKillsRunningCommands"
+        "env/remote_daemon_signal_test.go#TestConnectionCloseKillsRunningCommands",
+        "env/remote_test.go#TestRemoteExecutionEnv",
+        "env/list_files_test.go#TestNodePlatformNamesTheRemoteSystemAsNodeDoes",
+        "env/list_files_test.go#TestListFilesIsNotSupportedByDaemonsReleasedBeforeIt",
+        "env/list_files_test.go#TestListFilesCancelsAListingInTheDaemon"
       ],
       "rationale": "Watch hunks of Pi 5f312dac (lane C2) and the daemon-kill hunk (lane E, TestConnectionCloseKillsRunningCommands)."
     },
@@ -8416,7 +8680,8 @@
       "disposition": "ported",
       "upstreamTestHash": "sha256:491b9218ab016c57be25d26e6e5ead1b8a1f6ed9a17dd6d76cd13a953dde4bd0",
       "evidence": [
-        "internal/evals/comparison_upstream_test.go"
+        "internal/evals/comparison_upstream_test.go",
+        "internal/evals/comparison_upstream_test.go#TestComparisonUpstream"
       ],
       "rationale": "Pi 9628c848 touches the totalMs and estimatedCostUsd cases; internal/evals/comparison_upstream_test.go already asserts both (lane E)."
     },
@@ -8660,7 +8925,36 @@
       "disposition": "ported",
       "upstreamTestHash": "sha256:258a60b2aa2afbb6d0d053c7cf67e335a4b69cef2e39650b9c265d9f9ec24820",
       "evidence": [
-        "tui/select_page_keys_upstream_test.go#TestUpstreamEditorMovesTheAutocompleteSelectionWithSelectionPageKeys"
+        "tui/select_page_keys_upstream_test.go#TestUpstreamEditorMovesTheAutocompleteSelectionWithSelectionPageKeys",
+        "tui/editor_history_test.go",
+        "tui/kill_ring_test.go",
+        "tui/undo_stack_test.go",
+        "tui/autocomplete_test.go",
+        "tui/key_csiu_text_test.go",
+        "tui/async_autocomplete_race_test.go",
+        "tui/editor_border_regression_test.go#TestEditorScrollBorderCallbackLayout",
+        "tui/editor_literal_input_upstream_test.go",
+        "test/parity/testdata/pt-tui-input-terminal/editor-case-audit.md",
+        "test/parity/scenarios/tui-components/19-editor-history-submission-whitespace.toml",
+        "tui/editor_word_segments_upstream_test.go",
+        "tui/editor_segments_regression_test.go",
+        "test/parity/scenarios/tui-components/20-editor-word-and-paste-segments.toml",
+        "test/parity/scenarios/tui-components/21-editor-terminal-word-and-paste-navigation.toml",
+        "tui/editor_utf16_test.go",
+        "tui/editor_autocomplete_units_test.go",
+        "tui/editor_wrapping_upstream_test.go",
+        "tui/editor_autocomplete_boundary_upstream_test.go",
+        "test/parity/scenarios/tui-components/24-editor-wrap-scroll.toml",
+        "tui/editor_kill_undo_upstream_test.go",
+        "tui/editor_character_jump_upstream_test.go",
+        "tui/editor_sticky_paste_upstream_test.go",
+        "test/parity/scenarios/tui-components/25-editor-edit-state.toml",
+        "tui/editor_completion_upstream_test.go",
+        "tui/editor_completion_boundary_external_test.go",
+        "tui/editor_completion_undo_boundary_test.go",
+        "test/parity/scenarios/autocomplete/12-editor-completion-lifecycle.toml",
+        "tui/fake_cursor_test.go#TestMainScreenDrawsTheFocusedFakeCursorAndOmitsItWhenTheHardwareCursorIsShown",
+        "tui/editor_oracle_test.go#TestEditorMatchesPiOracle"
       ],
       "rationale": "Pi 3bae8527 'moves the autocomplete selection with selection page keys (#7629)' (lane A1)."
     },
@@ -8762,7 +9056,27 @@
       "upstreamTestHash": "sha256:e57a2e8ada4bca2f249814a11197c3e2446e3560db21a893e35620ef702b024a",
       "evidence": [
         "tui/markdown_upstream_test.go#TestUpstreamMarkdown",
-        "tui/markdown_cjk_url_test.go#TestMarkdownBareURLCJKPunctuation"
+        "tui/markdown_cjk_url_test.go#TestMarkdownBareURLCJKPunctuation",
+        "tui/markdown_test.go#TestMarkdownTableSimple",
+        "tui/w3_sessions_test.go#TestMarkdownRuleWidthCap",
+        "internal/codingagent/w3_pi_test.go#TestW3SessionPiComparison",
+        "tui/markdown_codeblock_wrap_test.go#TestCodeBlockKeepsEveryCharacterAtNarrowWidth",
+        "tui/markdown_row_invariant_test.go#TestRealMarkdownNeverEmitsAnOverWideRow",
+        "tui/markdown_width_test.go#TestMarkdownRender_NeverExceedsWidth",
+        "tui/markdown_latex_test.go#TestMarkdownLatexMatchesUpstream",
+        "tui/markdown_upstream_fixture_test.go",
+        "tui/markdown_port_regressions_test.go",
+        "test/parity/scenarios/tui-components/16-markdown-user-components.toml",
+        "tui/markdown_cjk_test.go#TestMarkdownCJKEmphasisPiCases",
+        "tui/markdown_cjk_test.go#TestMarkdownCJKEmphasisMatchesPi",
+        "tui/markdown_cjk_test.go#TestMarkedCJKClassMatchesPinnedPackage",
+        "tui/markdown_marked_test.go#TestMarkedRightDelimiterScanMatchesRegexps",
+        "tui/markdown_latex_table_test.go#TestMarkdownUnclosedDisplayMathBeforeTables",
+        "tui/markdown_latex_table_test.go#TestMarkdownUnclosedDisplayMathBeforeTablesMatchesPi",
+        "tui/markdown_latex_table_test.go#TestMarkdownContainsTableStart",
+        "tui/markdown_upstream_test.go#TestMarkdownRendersQuotesNestedDeeperThanTheWidthAllowsWithoutExploding",
+        "tui/markdown_latex_width_test.go#TestMarkdownDisplayMathWiderThanTheContentWidthFallsBackToRawSource",
+        "tui/markdown_latex_width_test.go#TestMarkdownDisplayMathWidthFallbackMatchesPi"
       ],
       "rationale": "Pi fa168515: four bare-URL CJK punctuation cases, hand-ported because the markdown test generator fails at this pin on an arrow function in a test that predates b3a29f11 (lane A1)."
     },
@@ -8902,7 +9216,8 @@
       "disposition": "ported",
       "upstreamTestHash": "sha256:4551731e4c707e51f8af3432ec30fe2c1445ecbb9a5b8258caf1f8215e788064",
       "evidence": [
-        "tui/select_page_keys_upstream_test.go#TestUpstreamSelectListMovesByOneVisiblePageWithSelectionPageKeys"
+        "tui/select_page_keys_upstream_test.go#TestUpstreamSelectListMovesByOneVisiblePageWithSelectionPageKeys",
+        "tui/select_filterable_test.go"
       ],
       "rationale": "Pi 3bae8527 'moves by one visible page with selection page keys (#7629)' (lane A1)."
     },
@@ -8911,7 +9226,8 @@
       "disposition": "ported",
       "upstreamTestHash": "sha256:4fed7aa1085045f46c5e372284f4e03111c012c2f081a4cf8e61f8a346bee364",
       "evidence": [
-        "tui/select_page_keys_upstream_test.go#TestUpstreamSettingsListMovesByOneVisiblePageWithSelectionPageKeys"
+        "tui/select_page_keys_upstream_test.go#TestUpstreamSettingsListMovesByOneVisiblePageWithSelectionPageKeys",
+        "tui/settings_list_upstream_test.go#TestUpstreamSettingsList"
       ],
       "rationale": "Pi 3bae8527 same case for the settings list (lane A1)."
     },
@@ -9014,7 +9330,21 @@
       "upstreamTestHash": "sha256:a99182c1ae345ff662211993f697db47a0c3972181a9bf74d72977166b70225e",
       "evidence": [
         "tui/select_page_keys_upstream_test.go#TestUpstreamAltScreenDefersViewportKeysToAFocusedList",
-        "tui/select_page_keys_upstream_test.go#TestUpstreamAltScreenGivesViewportKeysBackWhenEditorAutocompleteCloses"
+        "tui/select_page_keys_upstream_test.go#TestUpstreamAltScreenGivesViewportKeysBackWhenEditorAutocompleteCloses",
+        "tui/tui_alt_screen_test.go",
+        "tui/tui_alt_screen_v087_test.go",
+        "tui/mouse_test.go",
+        "tui/tui_alt_screen_wheel_upstream_test.go#TestUpstreamAltScreenAppliesRuntimeWheelLineCountUpdates",
+        "tui/tui_alt_screen_wezterm_test.go#TestAltScreenRedrawsWezTermKittyImagesAfterWritesToCoveredRows",
+        "tui/tui_alt_screen_v087_test.go#TestAltScreenModifiedNavigationReachesFocusedComponent",
+        "tui/tui_alt_screen_v087_test.go#TestAltScreenKeyboardNavigationHasFourRowsOfPageOverlap",
+        "tui/tui_alt_screen_test.go#TestAltScreenKeyboardPageAndEdgeScroll",
+        "tui/fake_cursor_test.go#TestAltScreenKeepsTheSelectionHighlightAfterAFakeCursorCell",
+        "tui/tui_alt_screen_v087_test.go#TestAltScreenScrollsOnWheelAFocusedOverlayDoesNotHandle",
+        "tui/tui_alt_screen_v087_test.go#TestAltScreenFocusedOverlayOwnsViewportKeys",
+        "tui/tui_alt_screen_v087_test.go#TestAltScreenDoubleClickJoinsSlashAndHyphenSegments",
+        "tui/tui_alt_screen_kitty_cache_test.go#TestAltScreenCropsAKittyImageWhosePlaceholderRowsContainText",
+        "tui/tui_alt_screen_kitty_cache_test.go#TestAltScreenCropsAKittyImageInAPaddedColoredBoxWhoseFirstLineIsAboveTheViewport"
       ],
       "rationale": "Pi 3bae8527 'defers viewport keys to a focused list' and 'gives viewport keys back when autocomplete closes' (lane A1)."
     },
@@ -9041,7 +9371,18 @@
       "disposition": "ported",
       "upstreamTestHash": "sha256:d9c33b9b76d52f0416579f3cbff9d7fc709a0cab0aa915f43bd5c8194a6fde7a",
       "evidence": [
-        "tui/tui_render_upstream_test.go#TestUpstreamTUIOSC133Markers"
+        "tui/tui_render_upstream_test.go#TestUpstreamTUIOSC133Markers",
+        "tui/tui_render_keyboard_upstream_test.go#TestUpstreamTUIKeyboardRender",
+        "tui/tui_render_upstream_test.go#TestUpstreamTUIRenderDiagnostics",
+        "tui/tui_render_upstream_test.go#TestUpstreamTUIBoundedRender",
+        "tui/tui_render_kitty_upstream_test.go#TestUpstreamTUIRenderKittyCleanup",
+        "tui/tui_render_upstream_test.go#TestUpstreamTUIResize",
+        "tui/tui_render_upstream_test.go#TestUpstreamTUIContentShrinkage",
+        "tui/tui_render_upstream_test.go#TestUpstreamTUIDifferentialRendering",
+        "tui/fake_cursor_test.go#TestMainScreenDrawsTheFocusedFakeCursorAndOmitsItWhenTheHardwareCursorIsShown",
+        "tui/fake_cursor_test.go#TestMainScreenKeepsTheFakeCursorOfAnUnfocusedInput",
+        "tui/fake_cursor_test.go#TestMainScreenOmitsAFocusedFakeCursorWhoseEndMarkerTruncationDropped",
+        "tui/fake_cursor_test.go#TestMainScreenKeepsTheCursorWhenAnOverlayEndsDirectlyLeftOfIt"
       ],
       "rationale": "Pi 19ce8059 'does not write OSC 133 prompt markers to the terminal' (lane A1)."
     },

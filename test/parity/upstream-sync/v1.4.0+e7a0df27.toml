@@ -4526,9 +4526,9 @@ rationale = "PORT_MAP row is ✅ ported (internal/imageprocessing/images.go). co
 [[files]]
 path = "packages/coding-agent/src/utils/image-resize-core.ts"
 change = "added"
-disposition = "deferred"
-evidence = ["test:internal/imageprocessing/image_processing_upstream_test.go#TestResizeImagePicksJPEGOverLargerPNGForPhotos"]
-rationale = "Pi e7a0df27 picks the smaller of PNG and JPEG when resizing; internal/imageprocessing now shares the Photon-exact PNG encoder and Lanczos3 (internal/photonimage), oracle skip removed; the one remaining format difference of 400 is Go's JPEG encoder, cited to D165 (docs/parity/divergences/D165.md), whose SCRUTINIZED approval is pending owner review. Becomes ported when the owner approves D165."
+disposition = "ported"
+evidence = ["test:internal/imageprocessing/image_processing_upstream_test.go#TestResizeImagePicksJPEGOverLargerPNGForPhotos", "test:internal/imageprocessing/resize_strategy_oracle_test.go#TestResizeImageDimensionStrategyMatchesPi", "test:internal/imageprocessing/resize_format_oracle_test.go#TestResizeFormatChoiceMatchesPiOnRealisticImages"]
+rationale = "Pi e7a0df27 picks the smaller of PNG and JPEG when resizing; internal/imageprocessing/images.go with Photon's byte-exact PNG encoder, Lanczos3 and JPEG encoder (internal/photonimage); the format choice matches Pi on 200/200 and 72/72 oracle cases (lanes A2, A2b, photon-jpeg)."
 
 [[files]]
 path = "packages/coding-agent/src/utils/image-resize-worker.ts"
