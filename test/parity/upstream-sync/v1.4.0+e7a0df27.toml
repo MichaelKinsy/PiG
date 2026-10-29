@@ -2651,7 +2651,7 @@ rationale = "PORT_MAP row is ✅ ported (chord/output/output.go OutputBuffer, Pr
 path = "packages/chord/src/publish.ts"
 change = "added"
 disposition = "ported"
-evidence = ["test:chord/host/state_upstream_test.go#TestStateReEntrantWritesPublishInAdoptionOrderDerivationsNeverGoStale", "test:chord/host/cell_upstream_test.go#TestCellReentrantWritesPublishInAdoptionOrder", "test:chord/host/review_upstream_test.go#TestReviewReentrantObserversCallingAnotherRecordDuringACommitSeeTheWholeNewEpoch", "test:chord/host/order_test.go#TestListenerInvocationsStartInPublicationOrder"]
+evidence = ["test:chord/host/state_upstream_test.go#TestStateReEntrantWritesPublishInAdoptionOrderDerivationsNeverGoStale", "test:chord/host/cell_upstream_test.go#TestCellReentrantWritesPublishInAdoptionOrder", "test:chord/host/review_upstream_test.go#TestReviewReentrantObserversCallingAnotherObjectDuringACommitSeeTheWholeNewCodeVersion", "test:chord/host/order_test.go#TestListenerInvocationsStartInPublicationOrder"]
 rationale = "New in 1.2.0. chord/host/publish.go ports the process-wide FIFO: enqueue (publish.ts:15-18), holdPublications (:21-29) and drain (:31-39). Pi's module-level queue is guarded by a mutex; tasks run outside the guard and the goroutine already draining delivers everything enqueued meanwhile, so enqueue order stays delivery order across goroutines. Callers: cell.go fanout and Cell.publish, record.go listener and shape publications, host.go installTables, reload.go commit under holdPublications. publish.ts has no test file of its own; state.test.ts:195 (re-entrant writes in adoption order), cell re-entrancy, review.test.ts's re-entrant observers during a commit and the listener publication order test cover it."
 
 [[files]]

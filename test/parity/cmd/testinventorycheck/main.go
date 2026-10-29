@@ -263,6 +263,9 @@ func checkDisposition(repoRoot string, entry mappingEntry, file inventoryFile, d
 	if err := checkDesignedOutCases(entry, file); err != nil {
 		return err
 	}
+	if err := checkMissingCases(entry, file); err != nil {
+		return err
+	}
 	switch entry.Disposition {
 	case "ported", "partial":
 		if len(entry.Evidence) == 0 {
@@ -294,6 +297,43 @@ func checkDisposition(repoRoot string, entry mappingEntry, file inventoryFile, d
 		if !strings.Contains(divergences, entry.Divergence) {
 			return fmt.Errorf("divergence entry %q names %s, absent from the divergence ledger", entry.Path, entry.Divergence)
 		}
+	}
+	return nil
+}
+
+// checkMissingCases enforces AGENTS.md's rule that a partial disposition enumerates the missing cases: a partial
+// entry lists each upstream case it does not cover yet by exact inventory id (distinct, unambiguous, not also designed
+// out, and not every case: that entry is pending), and no other disposition may carry the list.
+func checkMissingCases(entry mappingEntry, file inventoryFile) error {
+	if entry.Disposition != "partial" {
+		if len(entry.MissingCases) > 0 {
+			return fmt.Errorf("%s entry %q lists missingCases; only partial entries enumerate missing cases", entry.Disposition, entry.Path)
+		}
+		return nil
+	}
+	if len(entry.MissingCases) == 0 {
+		return fmt.Errorf("partial entry %q must enumerate its missingCases (exact upstream case ids)", entry.Path)
+	}
+	if !unique(entry.MissingCases) {
+		return fmt.Errorf("entry %q has duplicate missingCases", entry.Path)
+	}
+	inventorySites := make(map[string]int, len(file.Cases))
+	for _, c := range file.Cases {
+		inventorySites[c.ID]++
+	}
+	for _, id := range entry.MissingCases {
+		switch sites := inventorySites[id]; {
+		case sites == 0:
+			return fmt.Errorf("entry %q missingCases names %q, which is not an upstream case of the file", entry.Path, id)
+		case sites > 1:
+			return fmt.Errorf("entry %q missingCases names %q, which is ambiguous: %d upstream case sites share the id", entry.Path, id, sites)
+		}
+		if slices.Contains(entry.DesignedOutCases, id) {
+			return fmt.Errorf("entry %q lists %q as both missing and designed out", entry.Path, id)
+		}
+	}
+	if len(entry.MissingCases) >= len(inventorySites) {
+		return fmt.Errorf("entry %q misses every upstream case; classify the file pending", entry.Path)
 	}
 	return nil
 }

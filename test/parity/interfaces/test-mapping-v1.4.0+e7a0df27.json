@@ -3152,7 +3152,10 @@
         "chord/sqlite/cloudflare/cloudflare_test.go#TestDurableObjectSqliteDriver",
         "chord/sqlite/cloudflare/transaction_outcome_test.go#TestDurableObjectSqliteTransactionOutcome"
       ],
-      "rationale": "Pi c268154c moved the Durable Object driver cases of durable/test/sqlite-cloudflare.test.ts here. The eight cases (BLOB bytes, the cursor's first row for get, the safe-integer bigint bound, close after a transaction, an uncontended statement run before returning, rollback and handle rejection, another adapter's operations outside the rollback, direct underlying calls inside a transaction) are subtests of TestDurableObjectSqliteDriver over the native-connection stand-in. Delta at Pi 8025c414: the new case 'reports the rows a statement changed, without index writes' is a subtest of TestDurableObjectSqliteDriver over sqlitetest.RunChanges (the port of helpers.ts runChanges and RUN_CHANGES) and a RunCounted inside a transaction. Pi 14b4c56e adds the transaction-outcome case (ported, lane D0) and \"a store on it tells a CHECK refusal by its message\", which needs chord/next/store (lane D3): pending there."
+      "rationale": "Pi c268154c moved the Durable Object driver cases of durable/test/sqlite-cloudflare.test.ts here. The eight cases (BLOB bytes, the cursor's first row for get, the safe-integer bigint bound, close after a transaction, an uncontended statement run before returning, rollback and handle rejection, another adapter's operations outside the rollback, direct underlying calls inside a transaction) are subtests of TestDurableObjectSqliteDriver over the native-connection stand-in. Delta at Pi 8025c414: the new case 'reports the rows a statement changed, without index writes' is a subtest of TestDurableObjectSqliteDriver over sqlitetest.RunChanges (the port of helpers.ts runChanges and RUN_CHANGES) and a RunCounted inside a transaction. Pi 14b4c56e adds the transaction-outcome case (ported, lane D0) and \"a store on it tells a CHECK refusal by its message\", which needs chord/next/store (lane D3): pending there.",
+      "missingCases": [
+        "the outcome of a transaction (slice 6b D4) › a store on it tells a CHECK refusal by its message, its error having no extended code"
+      ]
     },
     {
       "path": "packages/chord/test/sqlite/migrations.test.ts",

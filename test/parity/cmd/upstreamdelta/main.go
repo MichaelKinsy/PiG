@@ -245,10 +245,16 @@ func validateAudit(audit fileAudit, repoRoot string) []string {
 			problems = append(problems, fmt.Sprintf("%s has invalid evidence %q", audit.Path, evidence))
 			continue
 		}
-		path, _, _ = strings.Cut(path, "#")
+		path, fragment, _ := strings.Cut(path, "#")
 		fullPath := filepath.Join(repoRoot, filepath.FromSlash(path))
-		if _, err := os.Stat(fullPath); err != nil {
+		body, err := os.ReadFile(fullPath)
+		if err != nil {
 			problems = append(problems, fmt.Sprintf("%s evidence %q: %v", audit.Path, evidence, err))
+			continue
+		}
+		// A Go test fragment (an identifier) must name something in the file; a title with spaces names a vitest case and is not checked.
+		if kind == "test" && fragment != "" && !strings.ContainsAny(fragment, " \t") && !strings.Contains(string(body), fragment) {
+			problems = append(problems, fmt.Sprintf("%s evidence %q: %s does not contain %q", audit.Path, evidence, path, fragment))
 			continue
 		}
 		if kind == "scenario" {
