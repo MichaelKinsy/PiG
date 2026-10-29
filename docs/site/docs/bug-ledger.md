@@ -605,6 +605,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-7744a0b](#bf-7744a0b) | `--model <provider>/<id>` now resolves when the provider id itself contains a `/`, such as a URL-derived id… | PiG's own defect | All platforms | Unreleased |
 | [BF-7768bea](#bf-7768bea) | fix(ai): tool-call arguments are written as JSON.stringify writes them, and keep a lone surrogate | PiG's own defect | All platforms | Unreleased |
 | [BF-776b600](#bf-776b600) | fix(durable/core): the scheduler's reconcile and drain microtasks run behind the host listeners' dispatch of… | PiG's own defect | All platforms | Unreleased |
+| [BF-777e981](#bf-777e981) | The Durable core conformance gate runs `U-codemode` and `U-harness-tools` alone, their reference run before… | PiG's own defect | All platforms | Unreleased |
 | [BF-779318a](#bf-779318a) | OpenAI-compatible streams where one chunk carries reasoning and content (LiteLLM and similar proxies) now… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-7809364](#bf-7809364) | Schema errors of a `ChordError` of code `invalid` list their members in the order the value arrived in, as… | PiG's own defect | All platforms | Unreleased |
 | [BF-78c4c6c](#bf-78c4c6c) | `pig piglet add` now names the offending bundled path and where it came from (for example `Package herdr… | PiG's own defect | All platforms | 0.5.0 |
@@ -663,6 +664,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-85ca0f5](#bf-85ca0f5) | Rebuilding the transcript (resume, `/tree`, display settings) now places cache-miss notices as Pi does in a… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-860776a](#bf-860776a) | A Google provider built from a model id without catalog metadata now sends its own earlier thinking blocks as… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-8620e9e](#bf-8620e9e) | The SDK `DefaultResourceLoader` lists a tool or flag that two extensions register as an error of the… | PiG's own defect | All platforms | Unreleased |
+| [BF-862d453](#bf-862d453) | The Durable core conformance gate no longer writes the reference checkout from a vitest run: its cache lives… | PiG's own defect | All platforms | Unreleased |
 | [BF-86364b4](#bf-86364b4) | fix(minimatch): case-insensitive patterns compare as a JavaScript RegExp does | PiG's own defect | All platforms | Unreleased |
 | [BF-866c7f9](#bf-866c7f9) | fix(rpc): two prompts of one batch answer in request order | PiG's own defect | All platforms | Unreleased |
 | [BF-869cef8](#bf-869cef8) | A pi-messages stream event that is a number, string, boolean or array is skipped, as Pi skips an event of… | PiG's own defect | All platforms | 0.5.0 |
@@ -9424,6 +9426,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `776b600064` (2026-10-27)
 - **Tests:** None recorded.
 
+### BF-777e981
+
+**The Durable core conformance gate runs `U-codemode` and `U-harness-tools` alone, their reference run before…**
+
+- **Source:** PiG's own defect
+- **Symptom:** The Durable core conformance gate runs `U-codemode` and `U-harness-tools` alone, their reference run before their candidate run.
+- **Root cause:** U-codemode's 'times a script out across a restart' gives a script 300 ms to start the QuickJS sandbox and reach its first tool (148-207 ms of CPU, on both sides). The gate ran the row beside seven others, two vitest runs of four forks each, so the host starved either run: in six full runs at -j 8 the candidate missed the window four times and the reference once (the test then hangs until vitest's 5 s). A row marked exclusive now runs alone before any other row, and its two runs take turns.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `777e981085` (2026-10-28)
+- **Tests:** `durable/contract/test/exclusive.test.mjs`
+- **Release note:** The Durable core conformance gate runs `U-codemode` and `U-harness-tools` alone, their reference run before their candidate run. Their upstream tests assert inside a real-time window that the run fills itself (`times a script out across a restart` gives a script 300 ms to start the sandbox and reach a tool, 148-207 ms of CPU); next to the other rows, the host starved either run, and in six full runs at `-j 8` the candidate missed the window four times and the reference once.
+
 ### BF-779318a
 
 **OpenAI-compatible streams where one chunk carries reasoning and content (LiteLLM and similar proxies) now…**
@@ -10228,6 +10244,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `8620e9eac5` (2026-10-25)
 - **Tests:** None recorded.
 - **Release note:** The SDK `DefaultResourceLoader` lists a tool or flag that two extensions register as an error of the extension load result (`Tool "x" conflicts with <path>`), and an extension it loads from `additionalExtensionPaths` has the source `cli`, as Pi's loader reports them.
+
+### BF-862d453
+
+**The Durable core conformance gate no longer writes the reference checkout from a vitest run: its cache lives…**
+
+- **Source:** PiG's own defect
+- **Symptom:** The Durable core conformance gate no longer writes the reference checkout from a vitest run: its cache lives in the run's output directory.
+- **Root cause:** E17 and E18 run `ls` in the reference's packages/durable. The default vitest cache, packages/durable/node_modules/.vite, made the first U row add node_modules to that listing; `contract all` captures the reference once, in its first pass, before any U row, so every later pass compared a listing with node_modules against one without it and both rows failed on every fresh clone (wasm-tinygo, native and the wasm-go diagnostic, in two full runs).
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `862d4534e4` (2026-10-28)
+- **Tests:** None recorded.
+- **Release note:** The Durable core conformance gate no longer writes the reference checkout from a vitest run: its cache lives in the run's output directory. The default, `packages/durable/node_modules/.vite`, added `node_modules` to the listing E17 and E18 print with `ls`, which they capture once for the reference before any U row ran, so `make durable-contract` failed both rows against every build on a fresh clone.
 
 ### BF-86364b4
 

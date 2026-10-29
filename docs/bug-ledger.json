@@ -17440,6 +17440,28 @@
       "tests": []
     },
     {
+      "id": "BF-777e981",
+      "title": "The Durable core conformance gate runs `U-codemode` and `U-harness-tools` alone, their reference run before…",
+      "symptom": "The Durable core conformance gate runs `U-codemode` and `U-harness-tools` alone, their reference run before their candidate run.",
+      "rootCause": "U-codemode's 'times a script out across a restart' gives a script 300 ms to start the QuickJS sandbox and reach its first tool (148-207 ms of CPU, on both sides). The gate ran the row beside seven others, two vitest runs of four forks each, so the host starved either run: in six full runs at -j 8 the candidate missed the window four times and the reference once (the test then hangs until vitest's 5 s). A row marked exclusive now runs alone before any other row, and its two runs take turns.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "The Durable core conformance gate runs `U-codemode` and `U-harness-tools` alone, their reference run before their candidate run. Their upstream tests assert inside a real-time window that the run fills itself (`times a script out across a restart` gives a script 300 ms to start the sandbox and reach a tool, 148-207 ms of CPU); next to the other rows, the host starved either run, and in six full runs at `-j 8` the candidate missed the window four times and the reference once.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "777e981085",
+          "date": "2026-10-28"
+        }
+      ],
+      "tests": [
+        "durable/contract/test/exclusive.test.mjs"
+      ]
+    },
+    {
       "id": "BF-779318a",
       "title": "OpenAI-compatible streams where one chunk carries reasoning and content (LiteLLM and similar proxies) now…",
       "symptom": "OpenAI-compatible streams where one chunk carries reasoning and content (LiteLLM and similar proxies) now place the thinking block before the text.",
@@ -19124,6 +19146,26 @@
         {
           "hash": "8620e9eac5",
           "date": "2026-10-25"
+        }
+      ],
+      "tests": []
+    },
+    {
+      "id": "BF-862d453",
+      "title": "The Durable core conformance gate no longer writes the reference checkout from a vitest run: its cache lives…",
+      "symptom": "The Durable core conformance gate no longer writes the reference checkout from a vitest run: its cache lives in the run's output directory.",
+      "rootCause": "E17 and E18 run `ls` in the reference's packages/durable. The default vitest cache, packages/durable/node_modules/.vite, made the first U row add node_modules to that listing; `contract all` captures the reference once, in its first pass, before any U row, so every later pass compared a listing with node_modules against one without it and both rows failed on every fresh clone (wasm-tinygo, native and the wasm-go diagnostic, in two full runs).",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "The Durable core conformance gate no longer writes the reference checkout from a vitest run: its cache lives in the run's output directory. The default, `packages/durable/node_modules/.vite`, added `node_modules` to the listing E17 and E18 print with `ls`, which they capture once for the reference before any U row ran, so `make durable-contract` failed both rows against every build on a fresh clone.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "862d4534e4",
+          "date": "2026-10-28"
         }
       ],
       "tests": []
