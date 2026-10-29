@@ -186,9 +186,7 @@ func TestImportRoundTrips(t *testing.T) {
 		if err != nil {
 			t.Fatalf("edits.get: %v", err)
 		}
-		if want := `{"id":"e003","path":"p/3","at":3,"meta":{"a":3},"done":false}`; nexttest.JSONText(t, got) != want {
-			t.Fatalf("row = %s, want %s", nexttest.JSONText(t, got), want)
-		}
+		nexttest.RequireJSONEqual(t, got, nexttest.ParseJSON(t, `{"id":"e003","path":"p/3","at":3,"meta":{"a":3},"done":false}`))
 	})
 }
 
@@ -206,14 +204,14 @@ func TestImportJSONCellsHoldingNull(t *testing.T) {
 			},
 			Key: []string{"id"},
 		})
-		must(t, err)
+		archiveMust(t, err)
 		handle := tableIn(t, source, cells)
 		var staged []StagedWrite
 		changes := NewTableChanges(handle, &staged)
-		must(t, changes.Put(Row{"id": "a", "data": nil, "more": nil}))
-		must(t, changes.Put(Row{"id": "b", "data": nil}))
-		must(t, changes.Put(Row{"id": "c", "data": nil, "more": nil}))
-		must(t, changes.Update(Row{"id": "c"}, Row{"more": Undefined}))
+		archiveMust(t, changes.Put(Row{"id": "a", "data": nil, "more": nil}))
+		archiveMust(t, changes.Put(Row{"id": "b", "data": nil}))
+		archiveMust(t, changes.Put(Row{"id": "c", "data": nil, "more": nil}))
+		archiveMust(t, changes.Update(Row{"id": "c"}, Row{"more": Undefined}))
 		if _, err := source.Commit(staged, openFence, ctx); err != nil {
 			t.Fatalf("commit: %v", err)
 		}
@@ -243,10 +241,10 @@ func TestImportJSONCellsHoldingNull(t *testing.T) {
 			Columns: []ColumnProp{Col("id", Str()), Col("data", Json(contracts.Nul(), JsonColumnOptions{Version: 1}))},
 			Key:     []string{"id"},
 		})
-		must(t, err)
+		archiveMust(t, err)
 		old := tableIn(t, source, v1)
 		var staged []StagedWrite
-		must(t, NewTableChanges(old, &staged).Put(Row{"id": "a", "data": nil}))
+		archiveMust(t, NewTableChanges(old, &staged).Put(Row{"id": "a", "data": nil}))
 		if _, err := source.Commit(staged, openFence, ctx); err != nil {
 			t.Fatalf("commit: %v", err)
 		}
@@ -258,7 +256,7 @@ func TestImportJSONCellsHoldingNull(t *testing.T) {
 				},
 			}))
 		})
-		must(t, err)
+		archiveMust(t, err)
 		handle := tableIn(t, source, v2)
 		assertRowText(t, handle, `{"id":"a","data":{"was":null}}`)
 		parts := exported(t, source, ctx)
@@ -526,8 +524,13 @@ func TestImportRefusals(t *testing.T) {
 			"two live records at one address",
 			func(parts []any) []any {
 				creates := importAll(parts, "document.create")
-				key, _ := importMember(importAt(parts, creates[0]), "record").Get("key")
-				importMember(importAt(parts, creates[1]), "record").Set("key", key)
+				first, second := importMember(importAt(parts, creates[0]), "record"), importMember(importAt(parts, creates[1]), "record")
+				// The first record is the singleton: no key (Pi assigns its `undefined`, an absent key).
+				if key, present := first.Get("key"); present {
+					second.Set("key", key)
+				} else {
+					second.Delete("key")
+				}
 				return parts
 			},
 			"a second record at one address for an overlapping lifetime",

@@ -310,12 +310,12 @@ func TestExportCommitQueue(t *testing.T) {
 			Columns: []ColumnProp{Col("id", Int()), Col("text", Str())},
 			Key:     []string{"id"},
 		})
-		must(t, err)
+		archiveMust(t, err)
 		var staged []StagedWrite
 		changes := NewTableChanges(tableIn(t, store, big), &staged)
 		for i := range int(ExportPage) {
 			prefix := fmt.Sprint(i)
-			must(t, changes.Put(Row{"id": int64(i), "text": prefix + strings.Repeat("x", 8_000-len(prefix))}))
+			archiveMust(t, changes.Put(Row{"id": int64(i), "text": prefix + strings.Repeat("x", 8_000-len(prefix))}))
 		}
 		if _, err := store.Commit(staged, openFence, background); err != nil {
 			t.Fatalf("commit: %v", err)

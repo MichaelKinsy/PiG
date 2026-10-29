@@ -84,11 +84,11 @@ func archiveStore(t *testing.T, outbox ...bool) *ChordStore {
 		if i%3 == 0 {
 			row["meta"] = delta.JsonObjectOf("a", float64(i))
 		}
-		must(t, editChanges.Put(row))
+		archiveMust(t, editChanges.Put(row))
 	}
 	noteChanges := NewTableChanges(notes, &staged)
 	for i := range 150 {
-		must(t, noteChanges.Put(Row{"id": int64(i), "text": fmt.Sprintf("t%d", i)}))
+		archiveMust(t, noteChanges.Put(Row{"id": int64(i), "text": fmt.Sprintf("t%d", i)}))
 	}
 	if _, err := store.Commit(staged, openFence, background); err != nil {
 		t.Fatalf("archiveStore: commit: %v", err)
@@ -96,11 +96,13 @@ func archiveStore(t *testing.T, outbox ...bool) *ChordStore {
 	prepare := func(definition *TableDefinition, table string) error {
 		return PrepareTables([]DeclaredTable{{Definition: definition, Table: table}}, store, openFence, "app", background)
 	}
-	must(t, prepare(tables.EditsV2, "app.store:edits"))
+	archiveMust(t, prepare(tables.EditsV2, "app.store:edits"))
 	// The notes migration crashes after its first committed chunk: the table stays `migrating`.
 	_ = prepare(tables.NotesV2, "app.store:notes")
 	address := DocumentAddress{Namespace: "chord", Owner: "app.store", Kind: "memo"}
-	base := func(value delta.JsonValue) DocumentBase { return DocumentBase{Version: 1, Fingerprint: "f1", Value: value} }
+	base := func(value delta.JsonValue) DocumentBase {
+		return DocumentBase{Version: 1, Fingerprint: "f1", Value: value}
+	}
 	var ids []int64
 	created := CommitFence{
 		Admit: func() bool { return true },
@@ -139,7 +141,7 @@ func archiveStore(t *testing.T, outbox ...bool) *ChordStore {
 func archiveTableAt(t *testing.T, store *ChordStore, table string, definition *TableDefinition) *TableHandle {
 	t.Helper()
 	err := PrepareTables([]DeclaredTable{{Definition: definition, Table: table}}, store, openFence, "app", background)
-	must(t, err)
+	archiveMust(t, err)
 	return NewTableHandle(definition, table, store, tableOwner())
 }
 
@@ -185,4 +187,12 @@ func assertRowText(t *testing.T, handle *TableHandle, want string) {
 		t.Fatalf("get %v: %v", id, err)
 	}
 	nexttest.RequireJSONEqual(t, got, expected)
+}
+
+// archiveMust fails the test on err.
+func archiveMust(t testing.TB, err error) {
+	t.Helper()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
 }

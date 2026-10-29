@@ -325,3 +325,11 @@ func tableIn(t testing.TB, store *ChordStore, definition *TableDefinition, owner
 	}
 	return NewTableHandle(definition, table, store, handleOwner)
 }
+
+// must fails the test when err is not nil.
+func must(t testing.TB, err error) {
+	t.Helper()
+	if err != nil {
+		t.Fatalf("%v", err)
+	}
+}

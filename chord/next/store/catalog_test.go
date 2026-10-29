@@ -28,7 +28,6 @@ func catalogEdits(t *testing.T) *TableDefinition {
 	return definition
 }
 
-
 func TestCatalog(t *testing.T) {
 	edits := catalogEdits(t)
 
