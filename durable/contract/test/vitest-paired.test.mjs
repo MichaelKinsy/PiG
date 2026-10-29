@@ -3,7 +3,7 @@
 // then against a candidate that ran later under more load (native U-harness-inbox, -compaction, -lifecycle at host load ~600).
 // The reference here is a stand-in tree whose test fails while a flag file exists: the flag is the load of the moment.
 import assert from "node:assert/strict"
-import { existsSync, mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from "node:fs"
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync, symlinkSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import test from "node:test"
@@ -92,4 +92,30 @@ test("a measured divergence fails the row when the candidate passes the test, so
 	const r = await gate.runVitestRow(measuredRow("expected 41 to be 42"), { name: "right", vitest: true, candidateDir: candidate, env: {} }, { out: join(work, "out-measured-pass") })
 	assert.equal(r.status, "fail", JSON.stringify(r))
 	assert.match(r.detail.problem, /D206 .* passes answers/)
+})
+
+// E17 and E18 run `ls` in the reference's packages/durable. Vitest's cache (vite's cacheDir, by default packages/durable/node_modules/.vite)
+// made the first U row create the entry `node_modules` there, so the reference's capture, taken before it, and a candidate's, taken after
+// (`contract all` captures the reference once, in its first pass), listed different directories: both rows failed on every fresh clone.
+test("a run of a U row leaves the reference checkout as it found it: vitest's cache lives in the run's output", { skip }, async () => {
+	const clean = join(work, "clean")
+	const cleanDurable = join(clean, "packages", "durable")
+	mkdirSync(join(cleanDurable, "src"), { recursive: true })
+	mkdirSync(join(cleanDurable, "test"), { recursive: true })
+	symlinkSync(join(real, "node_modules"), join(clean, "node_modules"))
+	writeFileSync(join(cleanDurable, "src", "index.ts"), "export const answer = 42\n")
+	writeFileSync(join(cleanDurable, "test", "listing.test.ts"), ['import { expect, it } from "vitest"', 'import { answer } from "../src/index.ts"', 'it("answers", () => { expect(answer).toBe(42) })', ""].join("\n"))
+	const before = readdirSync(cleanDurable, { recursive: true }).sort()
+	const was = process.env.CONTRACT_PI_SOURCE
+	process.env.CONTRACT_PI_SOURCE = clean
+	try {
+		const out = join(work, "out-clean")
+		const r = await gate.runVitestRow(row("listing"), { name: "clean", vitest: true, candidateDir: candidate, env: {} }, { out })
+		assert.equal(r.status, "pass", JSON.stringify(r))
+		assert.deepEqual(readdirSync(cleanDurable, { recursive: true }).sort(), before)
+		assert.ok(readdirSync(join(out, "clean")).some(f => f.startsWith("vitest-cache-")), "the cache went to the run's output directory")
+	} finally {
+		if (was === undefined) delete process.env.CONTRACT_PI_SOURCE
+		else process.env.CONTRACT_PI_SOURCE = was
+	}
 })

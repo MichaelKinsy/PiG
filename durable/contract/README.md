@@ -40,7 +40,7 @@ A row is `pass`, `fail`, `pending` (the implementation cannot run it yet, with t
 | inject | `lib/inject.mjs` | unknown-field injection (X1): entry, `pi.usage` and `pi.live` bases at rest; live task, state, checkpoint, input and submission at the crash |
 | gate | `lib/gate.mjs`, `cli/contract.mjs` | runs rows, memoises the reference captures, summarises per lane |
 
-Every scenario runs in its own process with `HOME` and `TMPDIR` set to one fixed directory per scenario (`<tmp>/pig-contract/<id>`, serialised by a lock), so a path a scenario stores is the same for every implementation. A run always starts from an empty store directory.
+Every scenario runs in its own process with `HOME` and `TMPDIR` set to one fixed directory per scenario (`<tmp>/pig-contract/<id>`, serialised by a lock), so a path a scenario stores is the same for every implementation. A run always starts from an empty store directory. The scenarios' working directory is the reference's `packages/durable`, which E17 and E18 list with `ls`, so no run writes the reference checkout: a U row's vitest keeps its cache (`CONTRACT_VITEST_CACHE`, `cacheDir`) in the run's output directory, where its default, `packages/durable/node_modules/.vite`, made the first U row add `node_modules` to that listing and `contract all` (which captures the reference once, in its first pass) failed E17 and E18 on every fresh clone.
 
 ### Trace format
 
