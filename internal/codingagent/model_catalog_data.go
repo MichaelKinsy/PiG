@@ -31,7 +31,8 @@ func (r *ModelRegistry) GetProviderModelData(id string) []*ai.Model {
 		chatOverlay := slices.DeleteFunc(overlay, func(model ai.AnyModel) bool { return !ai.IsModelType(model, ai.ModelTypeChat) })
 		merged := mergeRemoteCatalogModels(ai.AnyModels(baseline), chatOverlay)
 		if r.remoteOverlayReplaces(id) {
-			merged = chatOverlay
+			// pig divergence (D199): the saved list replaces the bundled one, so OpenRouter's routing variants are derived from it, as they are from the bundled models.
+			merged = ai.WithOpenRouterRoutingVariantModels(chatOverlay)
 		}
 		baseline = baseline[:0:0]
 		for _, model := range merged {

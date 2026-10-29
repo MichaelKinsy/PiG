@@ -119,6 +119,75 @@ func WithOpenRouterRoutingVariants(models []GeneratedModel) []GeneratedModel {
 	return out
 }
 
+// WithOpenRouterRoutingVariantModels is WithOpenRouterRoutingVariants for a list of models a catalog refresh saved, which replaces the bundled
+// catalog of OpenRouter: it lists each routing variant of every OpenRouter chat model of models right after the model, leaving a variant the list
+// already holds where it is. The variants are derived each time the list is read and never saved, so they follow the current list whether it is the
+// bundled catalog or a refreshed one. It returns models itself when it holds no OpenRouter chat model.
+//
+// pig divergence (D199): see OpenRouterRoutingVariants.
+func WithOpenRouterRoutingVariantModels(models []AnyModel) []AnyModel {
+	bases, hasVariant := 0, false
+	for _, model := range models {
+		chat, ok := openRouterChatModel(model)
+		if !ok {
+			continue
+		}
+		if _, _, variant := OpenRouterRoutingVariant(chat.ProviderMeta.ProviderID, chat.ID); variant {
+			hasVariant = true
+		} else {
+			bases++
+		}
+	}
+	if bases == 0 {
+		return models
+	}
+	var listed map[string]struct{}
+	if hasVariant {
+		listed = make(map[string]struct{}, len(models))
+		for _, model := range models {
+			if chat, ok := openRouterChatModel(model); ok {
+				listed[chat.ID] = struct{}{}
+			}
+		}
+	}
+	out := make([]AnyModel, 0, len(models)+bases*len(OpenRouterRoutingVariants))
+	for _, model := range models {
+		out = append(out, model)
+		chat, ok := openRouterChatModel(model)
+		if !ok || !IsOpenRouterBase(chat.ProviderMeta.ProviderID, chat.ID) {
+			continue
+		}
+		for _, variant := range OpenRouterRoutingVariants {
+			if _, exists := listed[chat.ID+":"+variant]; exists {
+				continue
+			}
+			out = append(out, chat.openRouterVariant(variant))
+		}
+	}
+	return out
+}
+
+// openRouterChatModel is model as a chat model of OpenRouter, the only models that take routing variants.
+func openRouterChatModel(model AnyModel) (*Model, bool) {
+	chat, ok := model.(*Model)
+	if !ok || chat == nil || chat.ProviderMeta.ProviderID != "openrouter" || !IsModelType(model, ModelTypeChat) { //portlint:allow providerliteral the variants are OpenRouter's own routing suffixes
+		return nil, false
+	}
+	return chat, true
+}
+
+// openRouterVariant is the routing variant of m, an OpenRouter chat model that is not itself a variant: a copy of m in everything but its id,
+// name and record, as GeneratedModel.OpenRouterVariant derives it from a bundled entry.
+func (m *Model) openRouterVariant(variant string) *Model {
+	derived := *m
+	derived.ID = m.ID + ":" + variant
+	derived.DisplayName = m.DisplayName + " (" + variant + ")"
+	if m.catalogRecord != "" {
+		derived.catalogRecord = rewriteRecordIdentity(m.catalogRecord, derived.ID, derived.DisplayName)
+	}
+	return &derived
+}
+
 // derivedVariantKey names the variant of a bundled OpenRouter model.
 type derivedVariantKey struct{ base, variant string }
 
