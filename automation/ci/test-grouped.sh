@@ -55,15 +55,18 @@ SERIAL_PKGS=(
 )
 
 all_pkgs=$(go list ./...)
-mapfile -t ALL_PKGS <<<"$all_pkgs"
+ALL_PKGS=()
+while IFS= read -r pkg; do ALL_PKGS+=("$pkg"); done <<<"$all_pkgs"
 heavy_pkgs=$(go list "${HEAVY_PKGS[@]}")
-mapfile -t HEAVY_PKGS <<<"$heavy_pkgs"
+HEAVY_PKGS=()
+while IFS= read -r pkg; do HEAVY_PKGS+=("$pkg"); done <<<"$heavy_pkgs"
 CLI_PKG=$(go list "$CLI_PKG")
 SUBPROCESS_PKG=$(go list "$SUBPROCESS_PKG")
 CONFORMANCE_PKG=$(go list "$CONFORMANCE_PKG")
 if [[ ${#SERIAL_PKGS[@]} -gt 0 ]]; then
   serial_pkgs=$(go list "${SERIAL_PKGS[@]}")
-  mapfile -t SERIAL_PKGS <<<"$serial_pkgs"
+  SERIAL_PKGS=()
+  while IFS= read -r pkg; do SERIAL_PKGS+=("$pkg"); done <<<"$serial_pkgs"
 fi
 exclude_pkg() {
   local pkg="$1"
@@ -139,20 +142,37 @@ if [[ "$MODE" == changed ]]; then
   fi
 fi
 
+# Bash 3.2 has no associative arrays. Keep the sharded package/count pairs in two
+# parallel arrays; the list is short and only these helpers read it.
+SHARD_COUNT_PKGS=()
+SHARD_COUNT_SHARDS=()
+shard_count_set() {
+  SHARD_COUNT_PKGS+=("$1")
+  SHARD_COUNT_SHARDS+=("$2")
+}
+shard_count_get() {
+  local wanted=$1 i
+  if [[ ${#SHARD_COUNT_PKGS[@]} -gt 0 ]]; then
+    for i in "${!SHARD_COUNT_PKGS[@]}"; do
+      [[ "${SHARD_COUNT_PKGS[$i]}" == "$wanted" ]] && { printf '%s\n' "${SHARD_COUNT_SHARDS[$i]}"; return 0; }
+    done
+  fi
+  return 1
+}
+
 # Resolve the sharded packages that exist in this module and take them out of the whole-package groups. Changed mode shards them as CI does (SHARDED_SPEC, test-shard-pattern.sh and its weights): one go test process of a heavy package outlives go test's 10-minute timeout on a loaded host, especially under -race.
-declare -A SHARD_COUNT=()
 if [[ "$MODE" != report ]]; then
   for spec in "${SHARDED_SPEC[@]}"; do
     spec_pkg=$(go list "${spec%:*}")
     in_all=
     for pkg in "${ALL_PKGS[@]}"; do [[ "$pkg" == "$spec_pkg" ]] && in_all=1; done
-    [[ -n "$in_all" ]] && SHARD_COUNT[$spec_pkg]=${spec##*:}
+    [[ -n "$in_all" ]] && shard_count_set "$spec_pkg" "${spec##*:}"
   done
   kept=()
-  for pkg in "${FAST_PKGS[@]}"; do [[ -n ${SHARD_COUNT[$pkg]:-} ]] || kept+=("$pkg"); done
+  for pkg in "${FAST_PKGS[@]}"; do shard_count_get "$pkg" >/dev/null || kept+=("$pkg"); done
   FAST_PKGS=("${kept[@]}")
   kept=()
-  for pkg in "${HEAVY_PKGS[@]}"; do [[ -n ${SHARD_COUNT[$pkg]:-} ]] || kept+=("$pkg"); done
+  for pkg in "${HEAVY_PKGS[@]}"; do shard_count_get "$pkg" >/dev/null || kept+=("$pkg"); done
   HEAVY_PKGS_WHOLE=("${kept[@]}")
 else
   HEAVY_PKGS_WHOLE=("${HEAVY_PKGS[@]}")
@@ -189,10 +209,11 @@ STABLE_BASE="${TMPDIR:-/tmp}"
 STABLE_BASE=${STABLE_BASE%/}
 if [[ "$MODE" != "report" ]]; then
   mkdir -p "$ROOT/tmp"
-  exec {RUN_LOCK}>"$ROOT/tmp/test-grouped.lock"
-  if command -v flock >/dev/null 2>&1 && ! flock -n "$RUN_LOCK"; then
+  # A fixed descriptor: Bash 3.2 has no {name}> allocation.
+  exec 9>"$ROOT/tmp/test-grouped.lock"
+  if command -v flock >/dev/null 2>&1 && ! flock -n 9; then
     echo "[test-grouped] another test-grouped.sh run is using this checkout; waiting for it" >&2
-    flock "$RUN_LOCK"
+    flock 9
   fi
 fi
 trap '[[ -z "$SCRATCH" ]] || rm -rf "$SCRATCH"; [[ -z "$AGENT_GUARD" ]] || rm -rf "$AGENT_GUARD" "$AGENT_GUARD.manifest"' EXIT
@@ -203,6 +224,7 @@ run_group() {
   local label="$1" parallel="$2"
   shift 2
   local pkgs=("$@")
+  [[ ${#pkgs[@]} -gt 0 ]] || return 0
   if [[ ${#pkgs[@]} -eq 0 ]]; then
     return 0
   fi
@@ -235,9 +257,9 @@ run_group() {
   if [[ -n "$JSON_DIR" ]]; then
     JSON_LABEL=$((JSON_LABEL + 1))
     # The tests get no copy of the checkout lock: a process they leak would otherwise hold it and block every later run here.
-    TMPDIR="$SCRATCH" go test -json -p "$parallel" "${TAG_FLAG[@]}" "${COUNT_FLAG[@]}" "${RACE_FLAG[@]}" "${RUN_FLAG[@]}" "${pkgs[@]}" {RUN_LOCK}>&- | python3 "$ROOT/automation/ci/test-json-report.py" --out "$JSON_DIR/$JSON_LABEL-${label//[^A-Za-z0-9]/-}.json" || status=$?
+    TMPDIR="$SCRATCH" go test -json -p "$parallel" ${TAG_FLAG[@]+"${TAG_FLAG[@]}"} ${COUNT_FLAG[@]+"${COUNT_FLAG[@]}"} ${RACE_FLAG[@]+"${RACE_FLAG[@]}"} ${RUN_FLAG[@]+"${RUN_FLAG[@]}"} "${pkgs[@]}" 9>&- | python3 "$ROOT/automation/ci/test-json-report.py" --out "$JSON_DIR/$JSON_LABEL-${label//[^A-Za-z0-9]/-}.json" || status=$?
   else
-    TMPDIR="$SCRATCH" go test -p "$parallel" "${TAG_FLAG[@]}" "${COUNT_FLAG[@]}" "${RACE_FLAG[@]}" "${RUN_FLAG[@]}" "${pkgs[@]}" {RUN_LOCK}>&- || status=$?
+    TMPDIR="$SCRATCH" go test -p "$parallel" ${TAG_FLAG[@]+"${TAG_FLAG[@]}"} ${COUNT_FLAG[@]+"${COUNT_FLAG[@]}"} ${RACE_FLAG[@]+"${RACE_FLAG[@]}"} ${RUN_FLAG[@]+"${RUN_FLAG[@]}"} "${pkgs[@]}" 9>&- || status=$?
   fi
   "$ROOT/automation/ci/reap-test-processes.sh" "$SCRATCH" || status=$?
   "$ROOT/automation/ci/agent-dir-guard.sh" check "$AGENT_GUARD" || status=$?
@@ -284,13 +306,13 @@ run_sharded() {
   local parallel="$1" status=0 pkg
   shift
   local only=("$@")
-  for pkg in "${!SHARD_COUNT[@]}"; do
+  for pkg in ${SHARD_COUNT_PKGS[@]+"${SHARD_COUNT_PKGS[@]}"}; do
     if [[ ${#only[@]} -gt 0 ]]; then
       local hit=
       for o in "${only[@]}"; do [[ "$o" == "$pkg" ]] && hit=1; done
       [[ -n "$hit" ]] || continue
     fi
-    run_sharded_pkg sharded "$parallel" "$pkg" "${SHARD_COUNT[$pkg]}" || status=$?
+    run_sharded_pkg sharded "$parallel" "$pkg" "$(shard_count_get "$pkg")" || status=$?
   done
   return "$status"
 }
@@ -322,12 +344,12 @@ done
 
 case "$MODE" in
   default)
-    run_group fast-parallel "$FAST_PARALLEL" "${FAST_PKGS[@]}"
+    run_group fast-parallel "$FAST_PARALLEL" ${FAST_PKGS[@]+"${FAST_PKGS[@]}"}
     run_sharded "$SUBPROCESS_PARALLEL"
     run_fault_group "$SERIAL_PARALLEL"
-    run_group subprocess-bounded "$SUBPROCESS_PARALLEL" "${OTHER_HEAVY_PKGS[@]}"
+    run_group subprocess-bounded "$SUBPROCESS_PARALLEL" ${OTHER_HEAVY_PKGS[@]+"${OTHER_HEAVY_PKGS[@]}"}
     run_cli_shards "$SUBPROCESS_PARALLEL"
-    run_group serial-exclusive "$SERIAL_PARALLEL" "${SERIAL_PKGS[@]}"
+    run_group serial-exclusive "$SERIAL_PARALLEL" ${SERIAL_PKGS[@]+"${SERIAL_PKGS[@]}"}
     ;;
   fast|fast-parallel|fast-sharded)
     # fast is fast-parallel and fast-sharded in one run. CI runs the two halves on separate jobs, because together they
@@ -335,17 +357,17 @@ case "$MODE" in
     # Every group runs even when an earlier one failed, so one run reports all the failing groups: a failure in the parallel group must not hide one in the serial packages.
     status=0
     if [[ "$MODE" != fast-sharded ]]; then
-      run_group fast-parallel "$FAST_PARALLEL" "${FAST_PKGS[@]}" || status=$?
+      run_group fast-parallel "$FAST_PARALLEL" ${FAST_PKGS[@]+"${FAST_PKGS[@]}"} || status=$?
     fi
     if [[ "$MODE" != fast-parallel ]]; then
       # Every sharded package but the extension host and the conformance suite, which test-subprocess and test-conformance run.
       fast_sharded=()
-      for pkg in "${!SHARD_COUNT[@]}"; do [[ "$pkg" == "$SUBPROCESS_PKG" || "$pkg" == "$CONFORMANCE_PKG" ]] || fast_sharded+=("$pkg"); done
+      for pkg in ${SHARD_COUNT_PKGS[@]+"${SHARD_COUNT_PKGS[@]}"}; do [[ "$pkg" == "$SUBPROCESS_PKG" || "$pkg" == "$CONFORMANCE_PKG" ]] || fast_sharded+=("$pkg"); done
       [[ ${#fast_sharded[@]} -eq 0 ]] || run_sharded "$SUBPROCESS_PARALLEL" "${fast_sharded[@]}" || status=$?
     fi
     if [[ "$MODE" != fast-sharded ]]; then
       run_fault_group "$SERIAL_PARALLEL" || status=$?
-      run_group serial-exclusive "$SERIAL_PARALLEL" "${SERIAL_PKGS[@]}" || status=$?
+      run_group serial-exclusive "$SERIAL_PARALLEL" ${SERIAL_PKGS[@]+"${SERIAL_PKGS[@]}"} || status=$?
     fi
     exit "$status"
     ;;
@@ -359,7 +381,7 @@ case "$MODE" in
       conformance) selected=./test/extension-conformance ;;
     esac
     selected=$(go list "$selected")
-    if [[ -n ${SHARD_COUNT[$selected]:-} ]]; then
+    if shard_count_get "$selected" >/dev/null; then
       run_sharded "$SUBPROCESS_PARALLEL" "$selected"
     else
       run_group "$MODE" "$SUBPROCESS_PARALLEL" "$selected"
@@ -371,12 +393,12 @@ case "$MODE" in
     # heavy bucket is also exercised here.
     echo "[test-grouped] stress: -count=$STRESS_COUNT"
     COUNT_FLAG=(-count="$STRESS_COUNT")
-    run_group fast-parallel 8 "${FAST_PKGS[@]}"
+    run_group fast-parallel 8 ${FAST_PKGS[@]+"${FAST_PKGS[@]}"}
     run_fault_group 1
     run_sharded 4
-    run_group subprocess-bounded 4 "${OTHER_HEAVY_PKGS[@]}"
+    run_group subprocess-bounded 4 ${OTHER_HEAVY_PKGS[@]+"${OTHER_HEAVY_PKGS[@]}"}
     run_cli_shards 4
-    run_group serial-exclusive 1 "${SERIAL_PKGS[@]}"
+    run_group serial-exclusive 1 ${SERIAL_PKGS[@]+"${SERIAL_PKGS[@]}"}
     ;;
   changed)
     echo "[test-grouped] changed: ${#DIRECT_PKGS[@]} edited packages run under -race (TEST_CHANGED_RACE=${TEST_CHANGED_RACE:-direct}); events in $JSON_DIR"
@@ -389,19 +411,20 @@ case "$MODE" in
       if in_list "$pkg" "${DIRECT_PKGS[@]}"; then race_heavy+=("$pkg"); else plain_heavy+=("$pkg"); fi
     done
     RACE_FLAG=(-race)
-    run_group "changed fast-parallel race" "$FAST_PARALLEL" "${race_fast[@]}" || status=$?
-    run_group "changed subprocess-bounded race" "$SUBPROCESS_PARALLEL" "${race_heavy[@]}" || status=$?
+    run_group "changed fast-parallel race" "$FAST_PARALLEL" ${race_fast[@]+"${race_fast[@]}"} || status=$?
+    run_group "changed subprocess-bounded race" "$SUBPROCESS_PARALLEL" ${race_heavy[@]+"${race_heavy[@]}"} || status=$?
     RACE_FLAG=()
-    run_group "changed fast-parallel" "$FAST_PARALLEL" "${plain_fast[@]}" || status=$?
-    run_group "changed subprocess-bounded" "$SUBPROCESS_PARALLEL" "${plain_heavy[@]}" || status=$?
+    run_group "changed fast-parallel" "$FAST_PARALLEL" ${plain_fast[@]+"${plain_fast[@]}"} || status=$?
+    run_group "changed subprocess-bounded" "$SUBPROCESS_PARALLEL" ${plain_heavy[@]+"${plain_heavy[@]}"} || status=$?
     # The sharded packages the change affects run in the shards of SHARDED_SPEC, edited ones under -race. The scoped light run leaves them to the test-fast-sharded row.
     sharded_run=0
     if [[ -z "${TEST_CHANGED_FOR:-}" ]]; then
-      mapfile -t sharded_pkgs < <(printf '%s\n' "${!SHARD_COUNT[@]}" | sort)
-      for pkg in "${sharded_pkgs[@]}"; do
+      sharded_pkgs=()
+      while IFS= read -r pkg; do [[ -n "$pkg" ]] && sharded_pkgs+=("$pkg"); done < <(printf '%s\n' ${SHARD_COUNT_PKGS[@]+"${SHARD_COUNT_PKGS[@]}"} | sort)
+      for pkg in ${sharded_pkgs[@]+"${sharded_pkgs[@]}"}; do
         in_list "$pkg" "${AFFECTED[@]}" || continue
         sharded_run=$((sharded_run + 1))
-        shards=${SHARD_COUNT[$pkg]}
+        shards=$(shard_count_get "$pkg")
         if in_list "$pkg" "${DIRECT_PKGS[@]}"; then
           RACE_FLAG=(-race)
           shards=$((shards * RACE_SHARD_FACTOR))
@@ -421,7 +444,7 @@ case "$MODE" in
       fault=1
       run_fault_group "$SERIAL_PARALLEL" || status=$?
     fi
-    run_group "changed serial-exclusive" "$SERIAL_PARALLEL" "${SERIAL_PKGS[@]}" || status=$?
+    run_group "changed serial-exclusive" "$SERIAL_PARALLEL" ${SERIAL_PKGS[@]+"${SERIAL_PKGS[@]}"} || status=$?
     if [[ ${#FAST_PKGS[@]} -eq 0 && ${#HEAVY_PKGS[@]} -eq 0 && ${#SERIAL_PKGS[@]} -eq 0 && $sharded_run -eq 0 && -z "$fault" ]]; then echo "[test-grouped] changed: no Go package is affected"; fi
     exit "$status"
     ;;
