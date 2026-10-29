@@ -37,7 +37,6 @@ func TestTestFauxSleepCallCreatesItsMarkerInTheShellItself(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(bin, "sleep"), []byte("#!/bin/sh\nexit 0\n"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	//nolint:gosec // G204: /bin/sh runs the command that the faux provider itself emits for this scenario.
 	cmd := exec.CommandContext(t.Context(), "/bin/sh", "-c", command)
 	cmd.Dir = work
 	cmd.Env = []string{"PATH=" + bin}
