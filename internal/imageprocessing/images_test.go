@@ -298,14 +298,20 @@ func TestResizeReencodesIfOverThreshold(t *testing.T) {
 }
 
 func TestResizePreservesAlpha(t *testing.T) {
-	// 1000×1000 PNG with alpha: longest side fits, but force resize
-	// by making it 3000×3000. Output MUST be PNG (not JPEG) per
-	// chunk-d.md gotcha #610.
+	// 3000×3000 PNG with alpha: the longest side exceeds the limit, so it is
+	// resized. The PNG candidate is far smaller than the JPEG one (a few large
+	// blocks with sharp edges), so Pi's choice of the smaller of the two
+	// (e7a0df27) keeps the PNG and its alpha channel (chunk-d.md gotcha #610).
+	// Pi has no alpha rule: a translucent image whose JPEG is the smaller
+	// candidate goes out as a JPEG, as it does in Pi.
 	img := image.NewRGBA(image.Rect(0, 0, 3000, 3000))
-	// Half-transparent green.
 	for y := range 3000 {
 		for x := range 3000 {
-			img.Set(x, y, color.RGBA{0, 255, 0, 128})
+			if (x/500+y/500)%2 == 0 {
+				img.Set(x, y, color.RGBA{0, 255, 0, 128}) // half-transparent green
+			} else {
+				img.Set(x, y, color.RGBA{255, 0, 0, 64}) // mostly transparent red
+			}
 		}
 	}
 	var buf bytes.Buffer

@@ -15,6 +15,9 @@ type npmUpdateTarget struct {
 	ref    sourceref.Ref
 	source string
 	local  bool
+	// installedVersion is the version installed before the update, if any; targetVersion is the newer version the registry reported, if the lookup succeeded.
+	installedVersion string
+	targetVersion    string
 }
 
 type npmUpdateBatch struct {
@@ -40,7 +43,7 @@ func updateConfiguredSources(cwd string, sm *codingagent.SettingsManager, packag
 			if err != nil {
 				return err
 			}
-			npm = append(npm, npmUpdateTarget{ref, pkg.Source.Source, pkg.Scope == "project"})
+			npm = append(npm, npmUpdateTarget{ref: ref, source: pkg.Source.Source, local: pkg.Scope == "project"})
 		case "git":
 			git = append(git, pkg)
 		}
@@ -48,7 +51,12 @@ func updateConfiguredSources(cwd string, sm *codingagent.SettingsManager, packag
 	checks := make([]func() error, len(npm))
 	shouldUpdate := make([]bool, len(npm))
 	for i, target := range npm {
-		checks[i] = func() error { shouldUpdate[i] = shouldUpdateNpmSource(cwd, sm, target.ref, target.local); return nil }
+		checks[i] = func() error {
+			check := shouldUpdateNpmSource(cwd, sm, target.ref, target.local)
+			shouldUpdate[i] = check.shouldUpdate
+			npm[i].installedVersion, npm[i].targetVersion = check.installedVersion, check.targetVersion
+			return nil
+		}
 	}
 	if err := runPackageTasks(checks, nil); err != nil {
 		return err
@@ -92,7 +100,11 @@ func updateConfiguredSources(cwd string, sm *codingagent.SettingsManager, packag
 		}
 		report(ProgressEvent{Type: "start", Action: "update", Source: label, Message: new(fmt.Sprintf("Updating %s...", label))})
 		tasks = append(tasks, func() error {
-			return FinishPackageProgress(report, "update", label, installNpmBatch(sm, batch))
+			if err := FinishPackageProgress(report, "update", label, installNpmBatch(sm, batch)); err != nil {
+				return err
+			}
+			reportUnchangedNpmUpdates(cwd, sm, batch, report)
+			return nil
 		})
 	}
 	if len(git) > 0 {
@@ -141,6 +153,22 @@ func groupGitUpdatesByCheckout(cwd, agentDir string, git []ConfiguredPackage) []
 		groups = append(groups, []ConfiguredPackage{pkg})
 	}
 	return groups
+}
+
+// reportUnchangedNpmUpdates warns about every announced update that left the installed version unchanged. npm can resolve stale
+// registry metadata shortly after a publish and install the old version without an error (package-manager.ts reportUnchangedNpmUpdates,
+// 0d23d534, #11571).
+func reportUnchangedNpmUpdates(cwd string, sm *codingagent.SettingsManager, batch npmUpdateBatch, report ProgressCallback) {
+	for _, target := range batch.sources {
+		if target.installedVersion == "" || target.targetVersion == "" {
+			continue
+		}
+		versionAfter := ReadInstalledNpmVersion(npmInstalledPath(cwd, sm, target.ref, batch.local))
+		if versionAfter != target.installedVersion {
+			continue
+		}
+		report(ProgressEvent{Type: "progress", Action: "update", Source: target.source, Message: new(fmt.Sprintf("%s is still %s (registry reports %s); npm registry metadata may be stale, try again in a few minutes", target.source, versionAfter, target.targetVersion))})
+	}
 }
 
 func installNpmBatch(sm *codingagent.SettingsManager, batch npmUpdateBatch) error {

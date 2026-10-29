@@ -76,6 +76,16 @@ type piManifest struct {
 	Themes     *[]string `json:"themes"`
 }
 
+// declaresPiResources is package-manager.ts hasManifestResourceFields (b4b72a35): a "pi" object counts as an explicit resource manifest
+// only when it lists resources. A package whose "pi" object holds only metadata (changelogPath, gallery image/video) still uses
+// directory auto-discovery. It is false for a nil manifest.
+func (m *packageManifest) declaresPiResources() bool {
+	if m == nil || m.PI == nil {
+		return false
+	}
+	return m.PI.Extensions != nil || m.PI.Skills != nil || m.PI.Prompts != nil || m.PI.Themes != nil
+}
+
 type pigManifest struct {
 	Hooks             *[]string `json:"hooks"`
 	MCPServers        *[]string `json:"mcpServers"`
@@ -198,7 +208,7 @@ func discover(root string, manifest *packageManifest, plugin *pluginManifest, co
 	// hooks/ or mcp/ directory another agent's tooling ships is not read.
 	pigEntries := func(kind Kind) *[]string {
 		entries := coalesceEntries(manifestEntries(manifest, kind), pluginEntries(plugin, kind))
-		if entries == nil && manifest != nil && manifest.PI != nil && manifest.Pig == nil {
+		if entries == nil && manifest.declaresPiResources() && manifest.Pig == nil {
 			return &[]string{}
 		}
 		return entries
@@ -207,7 +217,7 @@ func discover(root string, manifest *packageManifest, plugin *pluginManifest, co
 	// collectPackageResources, addManifestEntries): a kind it does not
 	// declare loads nothing, and plugin metadata never adds to it.
 	piEntries := func(kind Kind) *[]string {
-		if manifest != nil && manifest.PI != nil {
+		if manifest.declaresPiResources() {
 			entries := manifestEntries(manifest, kind)
 			if conventionFor != nil && conventionFor(kind, entries) {
 				return nil
@@ -222,7 +232,7 @@ func discover(root string, manifest *packageManifest, plugin *pluginManifest, co
 	skillEntries := piEntries(Skills)
 	if plugin != nil && plugin.AgentPlugins {
 		skillEntries = manifestEntries(manifest, Skills)
-		if skillEntries == nil && manifest != nil && manifest.PI != nil {
+		if skillEntries == nil && manifest.declaresPiResources() {
 			skillEntries = &[]string{}
 		}
 	}

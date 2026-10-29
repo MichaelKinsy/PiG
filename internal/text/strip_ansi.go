@@ -19,7 +19,13 @@ import (
 // only "ESC[38;5".
 var ansiRegex = lazyregexp.New(
 	`(?:\x1b\][\s\S]*?(?:\x07|\x1b\\|\x{9c}))` +
-		`|[\x1b\x{9b}][\[\]()#;?]*(?:\d{1,4}(?:[;:]\d{0,4})*)?[\dA-PR-TZcf-nq-uy=><~]`)
+		`|` + csiStart + `[\dA-PR-TZcf-nq-uy=><~]`)
+
+// csiStart is utils/ansi.ts CSI_START: an introducer, its optional intermediates and its optional parameters (b5fc6dc8, #11377). A
+// private prefix (<, =, >) is accepted only right after a real CSI introducer (ESC [ or 0x9B), so ESC[<35;59;1M (an SGR mouse
+// report) is stripped whole. After a bare ESC these bytes stay final bytes: ESC = and ESC > (keypad modes) must not swallow the
+// digits of the text that follows.
+const csiStart = `(?:(?:\x1b\[|\x{9b})[<=>]|[\x1b\x{9b}][\[\]()#;?]*)(?:\d{1,4}(?:[;:]\d{0,4})*)?`
 
 // csi8 is the UTF-8 encoding of the 8-bit CSI introducer U+009B.
 const csi8 = "\u009b"

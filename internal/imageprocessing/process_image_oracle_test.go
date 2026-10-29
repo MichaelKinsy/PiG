@@ -37,7 +37,7 @@ type processImageOutcome struct {
 // TestProcessImageMatchesPi runs image-process.ts processImage and PiG's ProcessImage over 400 seeded inputs: PNG, JPEG, GIF, BMP, TIFF and WebP bytes (some larger than the resize
 // limits), garbage and empty bytes; declared types with parameters, case and spaces ("IMAGE/JPEG; q=1", " image/jpg "), unsupported types (image/bmp, image/tiff, image/x-icon, application/octet-stream,
 // the empty string) and types that do not match the bytes; automatic resizing on and off with small or default limits. Whether an image is returned, its mime type, the
-// conversion and dimension hints (in order) and the omission message must match. Not compared: the returned bytes (Photon's encoders differ from Go's).
+// conversion and dimension hints (in order) and the omission message must match. Not compared: the returned bytes (Photon's encoders differ from Go's) and, for a resized image, whether it is a PNG or a JPEG (Pi picks the smaller of the two, e7a0df27; see format_choice_test.go).
 func TestProcessImageMatchesPi(t *testing.T) {
 	rng := rand.New(rand.NewPCG(20261126, 9))
 	pick := func(xs ...string) string { return xs[rng.IntN(len(xs))] }
@@ -106,13 +106,19 @@ for (const c of input) {
 }
 emit(out);`, cases, &want)
 
-	failures := 0
+	failures, ties := 0, 0
 	for i, c := range cases {
 		raw, _ := base64.StdEncoding.DecodeString(c.Data)
 		_, mime, hints, err := ProcessImage(raw, c.MimeType, c.AutoResize, &ai.ModelImageResizeOptions{MaxWidth: c.MaxWidth, MaxHeight: c.MaxHeight})
 		got := processImageOutcome{OK: err == nil, MimeType: mime, Hints: hints}
 		if err != nil {
 			got.Message = err.Error()
+		}
+		// Pi picks the smaller of the PNG and the JPEG candidate (e7a0df27); see format_choice_test.go for why the format is not compared.
+		if err == nil && want[i].OK && c.AutoResize && pngOrJPEG(got.MimeType, want[i].MimeType) && got.MimeType != want[i].MimeType {
+			ties++
+			got.MimeType, got.Hints = want[i].MimeType, hintsWithoutFormat(got.Hints)
+			want[i].Hints = hintsWithoutFormat(want[i].Hints)
 		}
 		if !reflect.DeepEqual(got, want[i]) {
 			failures++
@@ -121,5 +127,5 @@ emit(out);`, cases, &want)
 			}
 		}
 	}
-	t.Logf("%d cases, %d failures", len(cases), failures)
+	t.Logf("%d cases, %d failures, %d PNG/JPEG choices not compared", len(cases), failures, ties)
 }

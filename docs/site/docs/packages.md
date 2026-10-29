@@ -77,6 +77,26 @@ At startup, duplicate skill names keep the first valid definition and produce a 
 
 Direct Package installation preserves upstream behavior: it records the Package in settings and normal discovery exposes enabled members, defaulting to all unless Package filters narrow them. Installation does not copy Piglets or Agents, merge MCP configuration, create diagnostics, or generate entry points. A Piglet Package dependency resolves through the same materializer without mutating global/project settings; only explicit member selections activate.
 
+## Show a changelog
+
+After a Package update, PiG can show what changed. On the next fresh launch it reads the Package changelog and shows entries newer than the last seen version under "Extension Updates", the way it shows its own changelog. The first time PiG sees a Package, it records the version without showing anything. The last seen versions are stored in the `extensionChangelogVersions` setting.
+
+This applies to Packages that load at least one extension. Packages that only provide skills, prompt templates, or themes do not show a changelog.
+
+By default PiG reads `CHANGELOG.md` from the Package root. Point `pi.changelogPath` at another file inside the Package, or set it to `""` to disable the changelog. A path that leaves the Package root, directly or through a symbolic link, is ignored:
+
+```json
+{
+  "name": "my-pi-package",
+  "version": "1.2.0",
+  "pi": {
+    "changelogPath": "./docs/CHANGELOG.md"
+  }
+}
+```
+
+A `pi` object that holds only metadata such as `changelogPath` does not make the manifest an explicit resource list: the Package's resources are still found by directory auto-discovery. Use version headings in the same format as PiG's changelog, such as `## [1.2.0]` or `## 1.2.0 - 2026-01-01`. Entries are matched against the `version` field in `package.json`, so a git Package only shows a changelog when that field increases. The `collapseChangelog` setting condenses the section to one line per Package.
+
 ## Install
 
 ```bash

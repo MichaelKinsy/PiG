@@ -17,6 +17,8 @@ type ResourceSourceInfo struct {
 	Origin       string // "package" | "top-level"
 	Source       string // package source string or "local"
 	BaseDir      string // package root for package-relative shortening
+	// ChangelogPath is the changelog file of the package that supplied the resource, or "" (package-manager.ts PathMetadata.changelogPath).
+	ChangelogPath string
 }
 
 // DisplayName derives the path-based resource name used for collision grouping. A skill entry file uses its parent directory, matching Pi's default skill name.

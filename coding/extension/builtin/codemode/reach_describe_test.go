@@ -30,7 +30,7 @@ func TestDescribeOutputDescribesTheFieldsOfObjectFieldsOneLevelDeep(t *testing.T
 		"string": {`{"type":"string"}`, "a string"},
 		"array":  {`{"type":"array","items":{"type":"string"}}`, "`Array<string>`"},
 	} {
-		got, err := describeOutput(json.RawMessage(tc.schema))
+		got, err := describeOutput("tool", json.RawMessage(tc.schema))
 		if err != nil || got != tc.want {
 			t.Errorf("%s: describeOutput = %q, %v; want %q", name, got, err, tc.want)
 		}
@@ -67,4 +67,24 @@ func mustJSON(t *testing.T, v any) []byte {
 		t.Fatal(err)
 	}
 	return b
+}
+
+// Pi f6ee9ce9 (#11501): unions of objects list each variant's fields (const fields show their value), other multi-line types point
+// to describeTool(), single-line types are unchanged.
+func TestDescribeOutputSummarizesUnionsAndMultiLineTypes(t *testing.T) {
+	union := `{"anyOf":[` +
+		`{"type":"object","properties":{"action":{"const":"start","type":"string"},"process":{"type":"object","properties":{"id":{"type":"string"}},"required":["id"]}},"required":["action","process"]},` +
+		`{"type":"object","properties":{"action":{"const":"list","type":"string"},"processes":{"type":"array","items":{"type":"object","properties":{"id":{"type":"string"}},"required":["id"]}},"truncated":{"type":"boolean"}},"required":["action","processes"]}]}`
+	for name, tc := range map[string]struct{ schema, want string }{
+		"union of objects":  {union, "`{ action: \"start\", process } | { action: \"list\", processes, truncated? }`"},
+		"oneOf of objects":  {`{"oneOf":[{"type":"object","properties":{"a":{"type":"string"}},"required":["a"]},{"type":"object","properties":{"b":{"type":"string"}}}]}`, "`{ a } | { b? }`"},
+		"array of objects":  {`{"type":"array","items":{"type":"object","properties":{"id":{"type":"string"},"size":{"type":"integer"}},"required":["id","size"]}}`, "a value; `await describeTool(\"entries\")` shows its type"},
+		"single-line type":  {`{"type":"number"}`, "`number`"},
+		"object with const": {`{"type":"object","properties":{"kind":{"const":7}}}`, "`{ kind?: 7 }`"},
+	} {
+		got, err := describeOutput("entries", json.RawMessage(tc.schema))
+		if err != nil || got != tc.want {
+			t.Errorf("%s: describeOutput = %q, %v; want %q", name, got, err, tc.want)
+		}
+	}
 }

@@ -71,6 +71,13 @@ func (s *Session) prepareSummarizationRequest(ctx context.Context, model *ai.Mod
 		model, thinking = route.Model, route.ThinkingLevel
 	}
 	request := summarizationRequest{model: model, completer: s.resolveCompleter(), streamFn: s.streamFn, thinkingLevel: thinking}
+	// A session CreateAgentSession built sends summaries through its own stream (sdk.ts streamFn, marked with markRuntimeStreamFunction),
+	// which resolves auth through the Model Runtime as it does for prompts. Credentials resolved here would reach the runtime as an
+	// explicit API key instead of the stored OAuth login (#11520). The check runs after virtual-model routing. A caller's completer,
+	// streamFn or replaced agent stream function keeps the pre-resolved credentials.
+	if s.runtimeStream && s.completer == nil && s.streamFn == nil && s.agent.StreamFunction() == nil {
+		return request, nil
+	}
 	// Registry-built providers use the stock request path. A directly supplied Go provider is a caller-owned stream, even when it carries provider identity metadata.
 	_, registryBuilt := model.Provider.(*requestOptionsProvider)
 	_, nativeAuth := model.Provider.(interface{ Auth() ai.ProviderAuth })
