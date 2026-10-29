@@ -23,13 +23,13 @@ func TestRefuseConfigFilesDropsServersFromMcpJSON(t *testing.T) {
 	ctx := EventContext{Context: context.Background(), Cwd: project, IsProjectTrusted: func() bool { return true }}
 
 	open := &Extension{options: Options{AgentDir: agentDir, ConfigDirName: ".pig"}}
-	if got := open.loadConfig(ctx); len(got.Servers) != 2 || len(got.Errors) != 0 {
+	if got := open.acceptedConfig(ctx); len(got.Servers) != 2 || len(got.Errors) != 0 {
 		t.Fatalf("default load = %d servers, errors %v; want 2 servers", len(got.Servers), got.Errors)
 	}
 
 	const message = "pig: this Piglet Binary (x) was built with build.closed: true, so it does not accept mcp.json"
 	closed := &Extension{options: Options{AgentDir: agentDir, ConfigDirName: ".pig", RefuseConfigFiles: message}}
-	got := closed.loadConfig(ctx)
+	got := closed.acceptedConfig(ctx)
 	if len(got.Servers) != 0 || got.ProjectConfig != "" {
 		t.Fatalf("closed load kept servers %v / project config %q", got.Servers, got.ProjectConfig)
 	}
@@ -39,7 +39,7 @@ func TestRefuseConfigFilesDropsServersFromMcpJSON(t *testing.T) {
 
 	empty := &Extension{options: Options{AgentDir: t.TempDir(), ConfigDirName: ".pig", RefuseConfigFiles: message}}
 	emptyCtx := EventContext{Context: context.Background(), Cwd: t.TempDir(), IsProjectTrusted: func() bool { return true }}
-	if got := empty.loadConfig(emptyCtx); len(got.Errors) != 0 {
+	if got := empty.acceptedConfig(emptyCtx); len(got.Errors) != 0 {
 		t.Fatalf("closed load with no mcp.json reported %v", got.Errors)
 	}
 }

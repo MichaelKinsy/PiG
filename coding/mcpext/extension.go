@@ -1499,15 +1499,6 @@ func (e *Extension) FormatStatus() string {
 // ---------------------------------------------------------------------------------------
 
 func (e *Extension) loadConfig(ctx EventContext) LoadedMcpConfig {
-	loaded := e.readConfig(ctx)
-	// pig additive (D202): a host that refuses mcp.json (a closed Piglet Binary) starts none of its servers and reports why when there were any.
-	if e.options.RefuseConfigFiles != "" && len(loaded.Servers) > 0 {
-		return LoadedMcpConfig{Errors: []string{e.options.RefuseConfigFiles}}
-	}
-	return loaded
-}
-
-func (e *Extension) readConfig(ctx EventContext) LoadedMcpConfig {
 	if e.options.LoadConfig != nil {
 		if ctx.Context == nil {
 			return e.options.LoadConfig(context.Background())
@@ -1521,12 +1512,22 @@ func (e *Extension) readConfig(ctx EventContext) LoadedMcpConfig {
 	return LoadMcpConfig(LoadOptions{AgentDir: e.options.AgentDir, Cwd: ctx.Cwd, ProjectTrusted: trusted, ConfigDirName: e.options.ConfigDirName})
 }
 
+// acceptedConfig is the configuration the session uses: [Extension.loadConfig]'s, except that a host that refuses `mcp.json` (D202, a closed
+// Piglet Binary) starts none of its servers and reports why when there were any.
+func (e *Extension) acceptedConfig(ctx EventContext) LoadedMcpConfig {
+	loaded := e.loadConfig(ctx)
+	if e.options.RefuseConfigFiles != "" && len(loaded.Servers) > 0 {
+		return LoadedMcpConfig{Errors: []string{e.options.RefuseConfigFiles}}
+	}
+	return loaded
+}
+
 // SessionStart is the `session_start` handler. It loads the configuration and
 // connects the enabled servers on a goroutine the extension owns and drains in
 // [Extension.SessionShutdown]; the first prompt waits for them in
 // [Extension.BeforeAgentStart].
 func (e *Extension) SessionStart(ctx EventContext) {
-	loaded := e.loadConfig(ctx)
+	loaded := e.acceptedConfig(ctx)
 	e.mu.Lock()
 	e.configErrors = loaded.Errors
 	e.projectConfig = loaded.ProjectConfig
