@@ -27,8 +27,7 @@ import (
 const execForceKillDelay = 5 * time.Second
 
 // execMaxStringLength is buffer.constants.MAX_STRING_LENGTH of the runtime Pi's execCommand validates maxBuffer against: V8's 2^29-24 on 64-bit Node 24.
-// upstream: node:buffer constants.MAX_STRING_LENGTH (exec.ts DEFAULT_EXEC_MAX_BUFFER, maxBuffer validation)
-var execMaxStringLength int64 = 536870888
+var execMaxStringLength int64 = 536870888 // upstream: node:buffer constants.MAX_STRING_LENGTH, which exec.ts validates maxBuffer against
 
 // execDefaultMaxBuffer is DEFAULT_EXEC_MAX_BUFFER: 256 MiB, capped by the runtime string limit.
 func execDefaultMaxBuffer() int64 { return min(256*1024*1024, execMaxStringLength) }
