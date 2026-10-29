@@ -5,9 +5,10 @@ import { BACKGROUND_CONTEXT } from "@earendil-works/chord/context"
 import { createModels } from "@earendil-works/pi-ai/models"
 import { fauxProvider } from "@earendil-works/pi-ai/providers/faux"
 import { EFFECT, EVENT, NOTICE } from "../src/abi.ts"
-import { AgentDoc, createRegistry, defineDoc, defineExtension, defineTool, ConversationBusy } from "../src/facade/index.ts"
+import { AgentDoc, createRegistry, defineDoc, defineExtension, defineTool, ConversationBusy, ConversationIdle, ReadAfterWrite } from "../src/facade/index.ts"
 import { MemoryStorage } from "../src/facade/storage.ts"
-import { Harness } from "../src/facade/harness.ts"
+import { Conversation, Harness } from "../src/facade/harness.ts"
+import { applyChange } from "../src/facade/agent.ts"
 import { FatalError } from "../src/host.ts"
 import { apiResult, published, ScriptedCore, txResult, type Seen } from "./scripted.ts"
 
@@ -146,6 +147,73 @@ test("a rejected submit is Pi's error: ConversationBusy", async () => {
   const h = await harness(core)
   const c = new (await import("../src/facade/harness.ts")).Conversation(h, 1)
   await assert.rejects(c.submit({ type: "input", content: "x", whenBusy: "reject" }, context), (e: Error) => e instanceof ConversationBusy && (e as ConversationBusy).conversationId === 1, "Pi's ConversationBusy carries the conversation ID as a number")
+})
+
+test("a rejected input with whenIdle reject is Pi's error: ConversationIdle", async () => {
+  const core = new ScriptedCore(ev => ev.kind === EVENT.submit ? { notices: [apiResult(ev.body.id, { error: { name: "ConversationIdle", message: "Conversation 1 is idle", conversationId: 1 } })] } : undefined)
+  const h = await harness(core)
+  const c = new Conversation(h, 1)
+  await assert.rejects(c.submit({ type: "input", content: "x", whenBusy: "steer", whenIdle: "reject" }, context), (e: Error) => e instanceof ConversationIdle && e.conversationId === 1 && e.message === "Conversation 1 is idle")
+  assert.deepEqual(core.ofKind(EVENT.submit)[0]!.body.whenIdle, "reject", "the draft's whenIdle reaches the core")
+})
+
+test("a continue submits as a draft of its own type, with no content", async () => {
+  const core = new ScriptedCore(ev => ev.kind === EVENT.submit ? { notices: [published({ submissions: [{ id: 4, requestId: "", status: "placed" }] }), apiResult(ev.body.id, { ok: { id: 4, status: "placed" } })] } : undefined)
+  const h = await harness(core)
+  const c = new Conversation(h, 1)
+  const submission = await c.submit({ type: "continue" }, context)
+  assert.equal(submission.id, 4)
+  const body = core.ofKind(EVENT.submit)[0]!.body
+  assert.equal(body.type, "continue")
+  assert.equal("content" in body, false)
+})
+
+test("submit(tx, draft) admits through the transaction's submit operation and answers the submission ID", async () => {
+  const { core, log } = line(ev => ev.body.op === "submit" ? { result: { id: 7, status: "queued" } } : { result: null })
+  const h = await harness(core)
+  const c = new Conversation(h, 3)
+  const id = await h.commit(tx => c.submit(tx, { type: "input", content: "steer", whenBusy: "steer", whenIdle: "reject", requestId: "r1" }), context)
+  assert.equal(id, 7)
+  const op = log.find(entry => entry.op === "submit")!
+  assert.deepEqual({ conversationId: op.conversationId, type: op.type, content: op.content, whenBusy: op.whenBusy, whenIdle: op.whenIdle, requestId: op.requestId }, { conversationId: 3, type: "input", content: "steer", whenBusy: "steer", whenIdle: "reject", requestId: "r1" })
+  assert.equal(core.ofKind(EVENT.submit).length, 0, "no submit event: the admission is part of the caller's commit")
+})
+
+test("submit(tx, draft) throws for a transaction of another Session, or a wrapped or plain one, before any operation", async () => {
+  const { core, log } = line(() => ({ result: null }))
+  const h = await harness(core)
+  const { core: otherCore } = line(() => ({ result: { id: 1, status: "queued" } }))
+  const other = await harness(otherCore)
+  const c = new Conversation(h, 1)
+  const draft = { type: "input", content: "hi" }
+  await assert.rejects(other.commit(tx => c.submit(tx, draft), context), /The transaction belongs to another Session/)
+  await assert.rejects(h.commit(tx => c.submit(new Proxy(tx, {}), draft), context), /The transaction belongs to another Session/)
+  await assert.rejects(h.commit(() => c.submit({ doc: () => undefined }, draft), context), /The transaction belongs to another Session/)
+  assert.equal(log.some(entry => entry.op === "submit"), false)
+})
+
+test("a submit(tx, draft) after a table write is Pi's ReadAfterWrite, which names the operation", async () => {
+  const { core } = line(() => ({ result: null }))
+  const h = await harness(core)
+  core.respond = ev => {
+    if (ev.kind !== EVENT.tx) return undefined
+    if (ev.body.op === "begin") return { notices: [txResult(ev.id!, { ready: true })] }
+    if (ev.body.op === "submit") return { notices: [txResult(ev.id!, { rejected: { name: "ReadAfterWrite", message: "submit(tx, draft) cannot read tables after the first table write" } })] }
+    if (ev.body.op === "abort") return undefined
+    return { notices: [txResult(ev.id!, { result: null })] }
+  }
+  const c = new Conversation(h, 1)
+  const late = h.commit(async tx => { await tx.appendEntry(1, { kind: "app.note" }); await c.submit(tx, { type: "continue" }) }, context)
+  await assert.rejects(late, (e: Error) => e instanceof ReadAfterWrite && e.message === "submit(tx, draft) cannot read tables after the first table write")
+})
+
+test("configure validates maxTurns as Pi does: an integer 1 or more, null clears", () => {
+  const state: Record<string, unknown> = {}
+  applyChange(state, { maxTurns: 3 })
+  assert.equal(state.maxTurns, 3)
+  for (const bad of [0, -1, 1.5, Number.NaN, Number.MAX_SAFE_INTEGER + 2]) assert.throws(() => applyChange(state, { maxTurns: bad }), (e: Error) => e instanceof RangeError && e.message === `maxTurns must be an integer 1 or more, got ${String(bad)}`)
+  applyChange(state, { maxTurns: null })
+  assert.equal("maxTurns" in state, false)
 })
 
 test("agent() resolves the stored agent state against the live registry in the host, wraps included", async () => {

@@ -205,8 +205,8 @@ test("a tool call cut off restartLimit times ends with an error result in Pi's p
     opened.harness.resume()
   }
   const result = await counts("tool", { path: copyStore(path, path + ".crash"), taskId, setup: () => setupOf(piApi) }, (api, next) => { const made = make(api); Object.assign(next, { settings: made.settings, registry: made.registry, faux: made.faux, models: made.models }) })
-  // Measured with the Go build of the core: the end of the cut-off tool spends 171 passes in the core against Pi's 173 (2 fewer, as for the interrupted request), and Harness.open 53 against Pi's 56. The contract traces equal Pi's.
-  assertNoMoreThanPi(result, 173)
+  // Pi e7a0df27 spends 184 passes to the cut-off tool's end (173 at b3a29f11: afterTool now runs on every tool task result, 87eff524); the core's count is reported by the failing assertion if it exceeds Pi's. Harness.open 53 against Pi's 56. The contract traces equal Pi's.
+  assertNoMoreThanPi(result, 184)
 })
 
 // A compaction cut off restartLimit times fails into compactionFailure (compaction.ts).

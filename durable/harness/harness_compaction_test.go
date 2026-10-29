@@ -3171,6 +3171,7 @@ func TestPerModelCompactionOverrides(t *testing.T) {
 
 // liveV1 is pi.live as version 1 wrote it: a compaction's trigger was its `reason`.
 type liveV1 struct {
+	Run               *liveV2Run         `json:"run,omitempty"`
 	Compactions       []liveV1Compaction `json:"compactions,omitempty"`
 	CompactionFailure *liveV1Failure     `json:"compactionFailure,omitempty"`
 }
@@ -3188,7 +3189,19 @@ type liveV1Failure struct {
 	Error  string         `json:"error"`
 }
 
-func TestPiLiveVersion2(t *testing.T) {
+// liveV2 is pi.live as version 2 wrote it before run.turns: a run without a turn count.
+type liveV2 struct {
+	Run         *liveV2Run         `json:"run,omitempty"`
+	Compactions []CompactionStatus `json:"compactions,omitempty"`
+}
+
+type liveV2Run struct {
+	TaskId durable.TaskId         `json:"taskId"`
+	Inputs []durable.SubmissionId `json:"inputs"`
+	Turns  *int                   `json:"turns,omitempty"`
+}
+
+func TestPiLiveMigrations(t *testing.T) {
 	t.Run("reads a version 1 value with each compaction's `reason` as `trigger`, and stores it migrated on its next write", func(t *testing.T) {
 		// upstream: packages/durable/test/harness-compaction.test.ts "pi.live version 2"
 		store := storage.NewMemoryStorage()
@@ -3211,6 +3224,9 @@ func TestPiLiveVersion2(t *testing.T) {
 			if err != nil {
 				return struct{}{}, err
 			}
+			if err := setJSON(live, "run", liveV2Run{TaskId: 9, Inputs: []durable.SubmissionId{4}}); err != nil {
+				return struct{}{}, err
+			}
 			if err := setJSON(live, "compactions", []liveV1Compaction{{TaskId: 7, Reason: "threshold", Blocking: true, Attempt: 2}}); err != nil {
 				return struct{}{}, err
 			}
@@ -3224,6 +3240,8 @@ func TestPiLiveVersion2(t *testing.T) {
 		raw := must(line.SnapshotErased(testContext, LiveDoc, conversationId))
 		read := must(durable.FromJsonValue[LiveState](raw))
 		migrated := LiveState{
+			// A run in flight across the upgrade counts its turns from 0 (#11043).
+			Run:               &LiveRun{TaskId: 9, Inputs: []durable.SubmissionId{4}, Turns: 0},
 			Compactions:       []CompactionStatus{{TaskId: 7, Trigger: "threshold", Blocking: true, Attempt: 2}},
 			CompactionFailure: &CompactionFailure{TaskId: 5, Trigger: "manual", Error: "no model"},
 		}
@@ -3249,8 +3267,61 @@ func TestPiLiveVersion2(t *testing.T) {
 		}))
 		after := stored()
 		expectMatch(t, after.Value, `{"compactions":[{"trigger":"threshold","attempt":3}],"compactionFailure":{"trigger":"manual"}}`)
-		if after.Version != 2 {
+		if after.Version != 3 {
 			t.Fatalf("version = %d", after.Version)
+		}
+		if err := line.Close(testContext); err != nil {
+			t.Fatal(err)
+		}
+	})
+
+	// #11043: an unreleased build stored version 2 without `run.turns`; a run in flight then counted NaN turns.
+	t.Run("gives a version 2 run without turns a count of 0", func(t *testing.T) {
+		// upstream: packages/durable/test/harness-compaction.test.ts "pi.live migrations"
+		store := storage.NewMemoryStorage()
+		line := session.CreateSession(store)
+		LiveV2 := durable.DefineDoc(durable.DocDefinition[liveV2]{
+			CommonDocDefinition: durable.CommonDocDefinition[liveV2]{
+				Kind:           "pi.live",
+				Version:        2,
+				Initial:        func() liveV2 { return liveV2{} },
+				CheckpointWhen: func(liveV2, []durable.Op, durable.CheckpointInfo) bool { return false },
+			},
+			DocumentSemantics: durable.NewLatestConversationSemantics(durable.ForkInitial).DocumentSemantics,
+		})
+		conversationId := must(durable.Commit(testContext, line, func(tx durable.Tx) (durable.ConversationId, error) {
+			record, err := tx.CreateConversation(durable.CreateConversationOptions{Ownership: ownerless})
+			return record.Id, err
+		}))
+		must(durable.Commit(testContext, line, func(tx durable.Tx) (struct{}, error) {
+			live, err := docDraft(tx, LiveV2, conversationId)
+			if err != nil {
+				return struct{}{}, err
+			}
+			if err := setJSON(live, "run", liveV2Run{TaskId: 9, Inputs: []durable.SubmissionId{4}}); err != nil {
+				return struct{}{}, err
+			}
+			return struct{}{}, setJSON(live, "compactions", []CompactionStatus{{TaskId: 7, Trigger: "threshold", Blocking: true, Attempt: 2}})
+		}))
+		read := must(durable.Snapshot(testContext, line, LiveDoc, conversationId))
+		want := LiveState{
+			Run:         &LiveRun{TaskId: 9, Inputs: []durable.SubmissionId{4}, Turns: 0},
+			Compactions: []CompactionStatus{{TaskId: 7, Trigger: "threshold", Blocking: true, Attempt: 2}},
+		}
+		if !reflect.DeepEqual(read, &want) {
+			t.Fatalf("read = %s", jsonText(t, read))
+		}
+		// A version 2 run that has a count keeps it.
+		three := 3
+		must(durable.Commit(testContext, line, func(tx durable.Tx) (struct{}, error) {
+			live, err := docDraft(tx, LiveV2, conversationId)
+			if err != nil {
+				return struct{}{}, err
+			}
+			return struct{}{}, setJSON(live, "run", liveV2Run{TaskId: 9, Inputs: []durable.SubmissionId{4}, Turns: &three})
+		}))
+		if run := must(durable.Snapshot(testContext, line, LiveDoc, conversationId)).Run; run == nil || run.Turns != 3 {
+			t.Fatalf("run = %s, want turns 3", jsonText(t, run))
 		}
 		if err := line.Close(testContext); err != nil {
 			t.Fatal(err)

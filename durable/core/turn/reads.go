@@ -129,7 +129,11 @@ func (r *run) agent(then func(*Agent)) {
 }
 
 // agentAfter is agent with the hops Pi's caller spends before it resumes.
-func (r *run) agentAfter(hops int, then func(*Agent)) {
+func (r *run) agentAfter(hops int, then func(*Agent)) { r.agentAfterOr(hops, then, r.fail) }
+
+// agentAfterOr is agentAfter for a caller that handles the failure of the resolution itself (`runtime.agent().catch(...)`): onErr gets
+// the error instead of the phase failing with it.
+func (r *run) agentAfterOr(hops int, then func(*Agent), onErr func(error)) {
 	if r.rt.Ended() {
 		r.fail(r.rt.EndedError())
 		return
@@ -142,7 +146,7 @@ func (r *run) agentAfter(hops int, then func(*Agent)) {
 			return
 		}
 		if gerr != nil {
-			r.fail(gerr)
+			onErr(gerr)
 			return
 		}
 		r.agentSeen, r.phaseAgent = true, got

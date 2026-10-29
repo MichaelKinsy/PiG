@@ -408,8 +408,7 @@ owner = "dcore-loop"
 about = "run the tests after the agent's edits"
 levels = ["store", "commit", "context", "output", "order"]
 normalisers = []
-status = "pending"
-reason = "pending lane C (Pi durable features after the 5f312dac port): afterTool runs on every tool task result, and calls to tools not offered run as tool tasks (87eff524, 1c6928b3)"
+status = "ready"
 
 [[scenario]]
 id = "E33"
@@ -421,8 +420,7 @@ owner = "dcore-loop"
 about = "a per-conversation turn limit and a continue submission"
 levels = ["store", "commit", "context", "output", "order"]
 normalisers = []
-status = "pending"
-reason = "pending lane C (Pi durable features after the 5f312dac port): the per-conversation turn limit and continue submissions (f6a9db1d, fb524dd2)"
+status = "ready"
 
 [[scenario]]
 id = "E34"
@@ -434,8 +432,7 @@ owner = "dcore-session"
 about = "admit a submission inside the caller's commit"
 levels = ["store", "commit", "context", "output", "order"]
 normalisers = []
-status = "pending"
-reason = "pending lane C (Pi durable features after the 5f312dac port): submissions admitted inside the caller's commit with submit(tx, draft), and whenIdle (cc9c5231, 6a282511)"
+status = "ready"
 
 [[scenario]]
 id = "E35"
@@ -504,8 +501,7 @@ source = "packages/durable/test/codemode-imports.test.ts"
 sha256 = "2abdc6758279c53d873a8e764d3b06e0bf73ac37e07dfb930832a088df2d7426"
 owner = "dcore-loop"
 levels = ["tests"]
-status = "pending"
-reason = "pending lane C (Pi durable features after the 5f312dac port): toCodemodeIdentifier is imported from pi-codemode/declarations (bb65e3e4)"
+status = "ready"
 
 [[scenario]]
 id = "U-codemode-models"
@@ -601,8 +597,7 @@ source = "packages/durable/test/harness-after-run.test.ts"
 sha256 = "887a7f1a78ea3ebe19c89ac4c8836c6910e7fed18350cdbc73e23d2ca6a84d85"
 owner = "dcore-loop"
 levels = ["tests"]
-status = "pending"
-reason = "pending lane C (Pi durable features after the 5f312dac port): run-end tasks with the afterRun hook (7e15f960)"
+status = "ready"
 
 [[scenario]]
 id = "U-harness-blocked"
@@ -642,8 +637,7 @@ source = "packages/durable/test/harness-compaction.test.ts"
 sha256 = "e636f6208791332942ab04246184ca14af140c375de756e69f422126c4c8fa82"
 owner = "dcore-store"
 levels = ["tests"]
-status = "pending"
-reason = "pending lane C (Pi durable features after the 5f312dac port): pi.live version 3 gives a stored run without turns a count of 0, and the run's turns (018fdcf4, f6a9db1d)"
+status = "ready"
 
 [[scenario]]
 id = "U-harness-context"
@@ -663,8 +657,7 @@ source = "packages/durable/test/harness-continue.test.ts"
 sha256 = "8ed81a038ea0f4cdfccd81ecda6354cad100dfa9cd0bded8170b8a4496824cf1"
 owner = "dcore-session"
 levels = ["tests"]
-status = "pending"
-reason = "pending lane C (Pi durable features after the 5f312dac port): continue submissions (fb524dd2)"
+status = "ready"
 
 [[scenario]]
 id = "U-harness-conversations"
@@ -704,8 +697,7 @@ source = "packages/durable/test/harness-generation-recovery.test.ts"
 sha256 = "3af8f443ad4e08b3907e5150fe1f21333142653825464eed8f285a73366cba46"
 owner = "dcore-loop"
 levels = ["tests"]
-status = "pending"
-reason = "pending lane C (Pi durable features after the 5f312dac port): pi.live run carries turns and first (7e15f960, f6a9db1d)"
+status = "ready"
 
 [[scenario]]
 id = "U-harness-generation"
@@ -715,8 +707,7 @@ source = "packages/durable/test/harness-generation.test.ts"
 sha256 = "0c88bca32e91338f4a342a2a2f16c12b7fd55109c59941b0a9de291e29d6e2af"
 owner = "dcore-loop"
 levels = ["tests"]
-status = "pending"
-reason = "pending lane C (Pi durable features after the 5f312dac port): pi.live run and runFailure carry first, turns; unoffered tool tasks (7e15f960, f6a9db1d, 1c6928b3)"
+status = "ready"
 
 [[scenario]]
 id = "U-harness-hook-reads"
@@ -726,8 +717,7 @@ source = "packages/durable/test/harness-hook-reads.test.ts"
 sha256 = "d04265c97672ba7fde44d525a7195821a090b7156bb44210696760af9deec07b"
 owner = "dcore-loop"
 levels = ["tests"]
-status = "pending"
-reason = "pending lane C (Pi durable features after the 5f312dac port): entry reads for hooks and tasks (65fba65b)"
+status = "ready"
 
 [[scenario]]
 id = "U-harness-host-inputs"
@@ -757,8 +747,7 @@ source = "packages/durable/test/harness-input-entries.test.ts"
 sha256 = "c1cbec807cec25b100c544eb75f5ae97bf3ec0b563e95d8de9993fe7a2d7e87d"
 owner = "dcore-session"
 levels = ["tests"]
-status = "pending"
-reason = "pending lane C (Pi durable features after the 5f312dac port): pi.live runFailure carries first (7e15f960)"
+status = "ready"
 
 [[scenario]]
 id = "U-harness-inspect"
@@ -798,8 +787,7 @@ source = "packages/durable/test/harness-live-deltas.test.ts"
 sha256 = "80386749a7dfe46deb0b6862bb6c1fb88b2cca4d4400bdc480e7d850959bbad7"
 owner = "dcore-loop"
 levels = ["tests"]
-status = "pending"
-reason = "pending lane C (Pi durable features after the 5f312dac port): pi.live run turns and first, and flagged tool slots for calls not offered (7e15f960, f6a9db1d, 1c6928b3)"
+status = "ready"
 
 [[scenario]]
 id = "U-harness-nested-tools-restart"
@@ -819,8 +807,7 @@ source = "packages/durable/test/harness-nested-tools.test.ts"
 sha256 = "ac01ebc37ed46f7907801b74857fa6036fe6ea23a5f5944f5744dbe8563a703a"
 owner = "dcore-loop"
 levels = ["tests"]
-status = "pending"
-reason = "pending lane C (Pi durable features after the 5f312dac port): tool task version 2 input kept as it is, unoffered calls (1c6928b3)"
+status = "ready"
 
 [[scenario]]
 id = "U-harness-observers"
@@ -841,8 +828,7 @@ source = "packages/durable/test/harness-ownership.test.ts"
 sha256 = "d479f9fd6337004e47a5127e52e2002944b292e3ae4692c53e636d5e005d8747"
 owner = "dcore-session"
 levels = ["tests"]
-status = "pending"
-reason = "pending lane C (Pi durable features after the 5f312dac port): pi.live run carries turns (f6a9db1d)"
+status = "ready"
 
 [[scenario]]
 id = "U-harness-partial-changes"
@@ -913,8 +899,7 @@ source = "packages/durable/test/harness-restart-failure.test.ts"
 sha256 = "b3728b374242b3ae3baa1d8fdc9f491982edfd2fba594c9cb31c7f06bd7c1b5f"
 owner = "dcore-session"
 levels = ["tests"]
-status = "pending"
-reason = "pending lane C (Pi durable features after the 5f312dac port): pi.live runFailure carries first (7e15f960)"
+status = "ready"
 # D206 (owner approved 2026-10-28): the core resolves HarnessOptions.settings from the snapshot the host sends before each event, so the
 # test's count of the reads of `extensions` (Pi: 49 a round, one per resolution at each use) is the 6 agent resolutions of the host in a round.
 # The candidate must fail this test with this failure: a pass means D206 is over (gate.mjs), another failure fails the row.
@@ -930,8 +915,7 @@ source = "packages/durable/test/harness-run-failure.test.ts"
 sha256 = "e98593bf231696af77f76774cf9db708abd4cf3668cf39227d618c91289e3186"
 owner = "dcore-session"
 levels = ["tests"]
-status = "pending"
-reason = "pending lane C (Pi durable features after the 5f312dac port): pi.live runFailure carries first (7e15f960)"
+status = "ready"
 
 [[scenario]]
 id = "U-harness-scheduler-indexes"
@@ -951,8 +935,7 @@ source = "packages/durable/test/harness-scheduler-retention.test.ts"
 sha256 = "ca3ea7f81236bb901312cdcfed091a4b5d198dd3098f51c2f480dee857f21b0e"
 owner = "dcore-session"
 levels = ["tests"]
-status = "pending"
-reason = "pending lane C (Pi durable features after the 5f312dac port): pi.live run carries turns (f6a9db1d)"
+status = "ready"
 
 [[scenario]]
 id = "U-harness-sleep"
@@ -992,8 +975,7 @@ source = "packages/durable/test/harness-structured.test.ts"
 sha256 = "60705c17557ad75d75ac5b378575476c88300980662a180d81365c79ce3f685f"
 owner = "dcore-session"
 levels = ["tests"]
-status = "pending"
-reason = "pending lane C (Pi durable features after the 5f312dac port): pi.live runFailure carries first (7e15f960)"
+status = "ready"
 
 [[scenario]]
 id = "U-harness-submissions"
@@ -1003,8 +985,7 @@ source = "packages/durable/test/harness-submissions.test.ts"
 sha256 = "2e17390334de32c04fc2244427fc9dc6fefbb89a58d840cb7bd966857f2b6e09"
 owner = "dcore-session"
 levels = ["tests"]
-status = "pending"
-reason = "pending lane C (Pi durable features after the 5f312dac port): the submission record is tagged by type, input or continue (fb524dd2)"
+status = "ready"
 
 [[scenario]]
 id = "U-harness-submit-in-commit"
@@ -1014,8 +995,7 @@ source = "packages/durable/test/harness-submit-in-commit.test.ts"
 sha256 = "d2e281a68dc8cfe7799d5764f6dc2ede789fb38f7a7991762792c044cd717d31"
 owner = "dcore-session"
 levels = ["tests"]
-status = "pending"
-reason = "pending lane C (Pi durable features after the 5f312dac port): submit(tx, draft) and whenIdle (cc9c5231, 6a282511)"
+status = "ready"
 
 [[scenario]]
 id = "U-harness-task-graph"
@@ -1075,8 +1055,7 @@ source = "packages/durable/test/harness-tool-hooks.test.ts"
 sha256 = "12668d785c9ce1cf263fdac4912914500e772a47d33593db126cd7ae619591e6"
 owner = "dcore-loop"
 levels = ["tests"]
-status = "pending"
-reason = "pending lane C (Pi durable features after the 5f312dac port): afterTool on every tool task result and tool tasks for calls not offered (87eff524, 1c6928b3)"
+status = "ready"
 
 [[scenario]]
 id = "U-harness-tools-recovery"
@@ -1096,8 +1075,7 @@ source = "packages/durable/test/harness-tools.test.ts"
 sha256 = "07c71c84c796c337869ffd6ba82608d9167eb66bc1d97961e4249aebe630123c"
 owner = "dcore-loop"
 levels = ["tests"]
-status = "pending"
-reason = "pending lane C (Pi durable features after the 5f312dac port): calls to tools not offered run through a flagged tool task, afterTool on every result (1c6928b3, 87eff524)"
+status = "ready"
 # The test sleeps 20 ms (real setTimeout) inside the 100 ms output throttle window; a process stall longer than ~80 ms flushes the
 # buffered output in the reference as well as in the candidate (checked with an 85 ms stall: both fail; 70 ms: both pass).
 real_time_tests = ["tool progress and lifetime answers an aborted tool with only its durable output"]
@@ -1111,8 +1089,7 @@ source = "packages/durable/test/harness-turn-limit.test.ts"
 sha256 = "5dcefe326f589ebd90732a756ed7a7648060a6c3168f46ca9c4bf47f8481868e"
 owner = "dcore-loop"
 levels = ["tests"]
-status = "pending"
-reason = "pending lane C (Pi durable features after the 5f312dac port): the per-conversation turn limit (f6a9db1d)"
+status = "ready"
 
 [[scenario]]
 id = "U-harness-view-run"
@@ -1122,8 +1099,7 @@ source = "packages/durable/test/harness-view-run.test.ts"
 sha256 = "cf4b013d04f5b637c04546000b765f6a105e0d3e85838f5e00de202fe31a92f9"
 owner = "dcore-session"
 levels = ["tests"]
-status = "pending"
-reason = "pending lane C (Pi durable features after the 5f312dac port): the view's run carries turns and first, and a call not offered has its own task (7e15f960, f6a9db1d, 1c6928b3)"
+status = "ready"
 
 [[scenario]]
 id = "U-harness-view"
@@ -1433,7 +1409,7 @@ owner = "dcore-store"
 about = "the core's write encoder wrapped as a Storage passes the upstream storage conformance suite (CONTRACT 3.10): the suite registered by memory-storage, jsonl-storage, sqlite-storage, sqlite-cloudflare, sqlite-facade and indexeddb-storage"
 levels = ["tests"]
 status = "pending"
-reason = "pending lane C (Pi durable features after the 5f312dac port): the suite stores continue submissions (fb524dd2); pending lane D-store (Durable on Chord's store, registries): it refuses a creation and a change of one document in one commit (14b4c56e)"
+reason = "pending lane D-store (Durable on Chord's store, registries): it refuses a creation and a change of one document in one commit (14b4c56e)"
 
 [[scenario]]
 id = "I"

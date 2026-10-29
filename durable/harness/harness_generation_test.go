@@ -254,7 +254,7 @@ func TestGeneration(t *testing.T) {
 		// The earlier settlement stays; the run's own settlement leaves it unchanged.
 		expectSettled(t, must(submission.Status(testContext)), durable.SubmissionUnanswered, "withdrawn")
 		// A run ends without an answer even when its inputs were settled already.
-		expectEqualJSON(t, live(t, harness, root), jsonText(t, map[string]any{"runFailure": map[string]any{"taskId": taskId, "inputs": []durable.SubmissionId{submission.Id()}, "reason": "aborted"}}))
+		expectEqualJSON(t, live(t, harness, root), jsonText(t, map[string]any{"runFailure": map[string]any{"taskId": taskId, "inputs": []durable.SubmissionId{submission.Id()}, "reason": "aborted", "first": arFirstUser(t, root)}}))
 		closeHarness(t, harness)
 	})
 
@@ -277,7 +277,7 @@ func TestGeneration(t *testing.T) {
 		expectKinds(t, allEntries(t, root), "pi.user")
 		expectEqualJSON(t, conversationTasks(t, harness, root)[0].State, `{"status":"terminal","outcome":{"status":"failed","error":{"message":"Model faux/missing is not available","detail":{"reason":"no_model"}}}}`)
 		expectEqualJSON(t, live(t, harness, root), jsonText(t, map[string]any{"runFailure": map[string]any{
-			"taskId": conversationTasks(t, harness, root)[0].Id, "inputs": []durable.SubmissionId{unknown.Id}, "reason": "no_model", "detail": "Model faux/missing is not available",
+			"taskId": conversationTasks(t, harness, root)[0].Id, "inputs": []durable.SubmissionId{unknown.Id}, "reason": "no_model", "detail": "Model faux/missing is not available", "first": arFirstUser(t, root),
 		}}))
 		expectMatch(t, live(t, harness, plain), `{"runFailure":{"reason":"no_model","detail":"No model is configured"}}`)
 		closeHarness(t, harness)
@@ -484,7 +484,7 @@ func TestGeneration(t *testing.T) {
 		if got, _ := textOf(converted); !strings.HasPrefix(got, partial) {
 			t.Fatalf("converted %q does not start with the partial %q", got, partial)
 		}
-		expectEqualJSON(t, live(t, harness, root), jsonText(t, map[string]any{"runFailure": map[string]any{"taskId": taskId, "inputs": []durable.SubmissionId{submission.Id()}, "reason": "aborted"}}))
+		expectEqualJSON(t, live(t, harness, root), jsonText(t, map[string]any{"runFailure": map[string]any{"taskId": taskId, "inputs": []durable.SubmissionId{submission.Id()}, "reason": "aborted", "first": arFirstUser(t, root)}}))
 		expectEqualJSON(t, must(harness.WaitForTask(testContext, taskId)).State.Outcome, `{"status":"aborted"}`)
 		closeHarness(t, harness)
 	})
@@ -510,7 +510,7 @@ func TestGeneration(t *testing.T) {
 		if cancelled := setup.Faux.(interface{ CancelledDeferred() []ai.DeferredHandle }).CancelledDeferred(); len(cancelled) != 1 {
 			t.Fatalf("cancelled deferred = %v, want one", cancelled)
 		}
-		expectEqualJSON(t, live(t, harness, root), jsonText(t, map[string]any{"runFailure": map[string]any{"taskId": taskId, "inputs": []durable.SubmissionId{submission.Id()}, "reason": "aborted"}}))
+		expectEqualJSON(t, live(t, harness, root), jsonText(t, map[string]any{"runFailure": map[string]any{"taskId": taskId, "inputs": []durable.SubmissionId{submission.Id()}, "reason": "aborted", "first": arFirstUser(t, root)}}))
 		closeHarness(t, harness)
 	})
 
@@ -540,7 +540,7 @@ func TestGeneration(t *testing.T) {
 		if !slices.ContainsFunc(setup.Reports.all(), func(err error) bool { return err.Error() == "cancel failed" }) {
 			t.Fatalf("reports = %v, want cancel failed", setup.Reports.all())
 		}
-		expectEqualJSON(t, live(t, harness, root), jsonText(t, map[string]any{"runFailure": map[string]any{"taskId": taskId, "inputs": []durable.SubmissionId{submission.Id()}, "reason": "aborted"}}))
+		expectEqualJSON(t, live(t, harness, root), jsonText(t, map[string]any{"runFailure": map[string]any{"taskId": taskId, "inputs": []durable.SubmissionId{submission.Id()}, "reason": "aborted", "first": arFirstUser(t, root)}}))
 		closeHarness(t, harness)
 	})
 
@@ -981,7 +981,7 @@ func TestGeneration(t *testing.T) {
 			t.Fatalf("converted text = %q, want partial", got)
 		}
 		failure := live(t, harness, root).RunFailure
-		if failure == nil || failure.Reason != RunFaulted || !slices.Equal(failure.Inputs, []durable.SubmissionId{submission.Id()}) || failure.Detail == nil || !strings.Contains(*failure.Detail, "is not strict JSON") {
+		if failure == nil || failure.Reason != RunFaulted || !slices.Equal(failure.Inputs, []durable.SubmissionId{submission.Id()}) || failure.Detail == nil || !strings.Contains(*failure.Detail, "is not strict JSON") || failure.First == nil {
 			t.Fatalf("runFailure = %+v, want faulted with the strict JSON failure", failure)
 		}
 		state := conversationTasks(t, harness, root)[0].State
@@ -998,7 +998,7 @@ func TestGeneration(t *testing.T) {
 		rootId := root.Id()
 		// A run whose task was stored by a newer generation definition this process cannot run.
 		newer := *GenerationTask.Definition
-		newer.Version = 2
+		newer.Version = GenerationTask.Definition.Version + 1
 		newerTask := durable.DefineTask(newer)
 		type created struct {
 			taskId       durable.TaskId

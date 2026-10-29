@@ -95,6 +95,8 @@ type slotView struct {
 	// TaskId is nil for a model-issued call not started yet.
 	TaskId *durable.TaskId
 	Status ToolSlotStatus
+	// Unoffered is a model-issued call to a tool its request did not offer.
+	Unoffered bool
 	// Output is the retained running output; nil when the slot has none.
 	Output *string
 	// Entry is the result entry of a done model-issued slot.
@@ -106,7 +108,7 @@ type slotView struct {
 func slotsIn(live LiveState) []slotView {
 	var slots []slotView
 	for _, slot := range live.Tools {
-		slots = append(slots, slotView{CallId: slot.CallId, Name: slot.Name, TaskId: slot.TaskId, Status: slot.Status, Output: slot.Output, Entry: slot.Entry})
+		slots = append(slots, slotView{CallId: slot.CallId, Name: slot.Name, TaskId: slot.TaskId, Status: slot.Status, Unoffered: slot.Unoffered, Output: slot.Output, Entry: slot.Entry})
 	}
 	for index := range live.NestedTools {
 		nested := &live.NestedTools[index]

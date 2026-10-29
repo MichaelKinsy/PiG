@@ -191,3 +191,9 @@ func jsonQuote(text string) string {
 	_ = encoder.Encode(text)
 	return string(bytes.TrimSuffix(buffer.Bytes(), []byte("\n")))
 }
+
+// conversationEntries is the scan of conversation conversationId's history that query asks for, without fields an
+// untyped caller added: only the query's bounds and order are kept.
+func conversationEntries(conversationId durable.ConversationId, query durable.EntryQuery) durable.EntryQuery {
+	return durable.EntryQuery{ConversationId: conversationId, MinEntryId: query.MinEntryId, MaxEntryId: query.MaxEntryId, Order: query.Order}
+}

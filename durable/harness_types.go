@@ -32,6 +32,15 @@ const (
 	WhenBusyReject   WhenBusy = "reject"
 )
 
+// WhenIdle is the idle policy of an input submission.
+type WhenIdle string
+
+const (
+	// WhenIdleReject rejects an input that reaches an idle conversation (no run) with ConversationIdle and writes
+	// nothing, so the input never starts a run of its own.
+	WhenIdleReject WhenIdle = "reject"
+)
+
 // InputEntry is the entry an input is placed as, instead of pi.user: an application kind, and data the transcript shows,
 // such as its author. Its model message is still the input's user message (types.ts InputEntry).
 type InputEntry struct {
@@ -41,14 +50,21 @@ type InputEntry struct {
 	Data JsonValue `json:"data,omitempty"`
 }
 
-// SubmissionDraft is a host submission: user input (type input, with Content, an optional WhenBusy and an optional
-// InputEntry) that may start a run, or a passive entry write (type write, with Entry).
+// SubmissionDraft is a host submission: user input (type input, with Content, an optional WhenBusy, an optional WhenIdle
+// and an optional InputEntry) that may start a run, a passive entry write (type write, with Entry), or a continue
+// (type continue, with no other field than RequestId): a run without a new user message, for an idle conversation whose
+// context the model still owes an answer (it ends in a user message or tool results, for example after a run that ended
+// without an answer).
 type SubmissionDraft struct {
 	// RequestId is nil when absent.
 	RequestId *string
 	Type      SubmissionType
 	Content   UserInput
 	WhenBusy  WhenBusy
+	// WhenIdle reject: an idle conversation (no run) rejects the input with ConversationIdle and writes nothing, so the
+	// input never starts a run of its own. With WhenBusy steer it steers the current run or is refused; a run that
+	// answered and waits for its afterRun tasks is still busy, and such an input queues and starts the next run.
+	WhenIdle WhenIdle
 	// InputEntry places an input as that entry; nil places it as pi.user without data. Only input submissions carry it
 	// (types.ts SubmissionDraft: an input's `entry` is an InputEntry, a write's is an EntryDraft).
 	InputEntry *InputEntry
@@ -92,10 +108,15 @@ type ConversationAbortOptions struct {
 }
 
 // ConversationHandle holds the invocation-bound conversation operations for tasks and tools. It fails after the
-// invocation ends; passive entries are written with ordinary transaction writes instead.
+// invocation ends. Submit and SubmitIn take any submission, in both forms of Conversation.Submit: a subagent's
+// conversation is an ordinary one, so a tool may also continue it, and a task may admit a submission in the same commit
+// as its own writes (TaskRuntime.Commit); entries the admission appends there carry the task's byTaskId. SubmitIn also
+// fails once the invocation is aborted.
 type ConversationHandle interface {
 	Id() ConversationId
-	Submit(ctx context.Context, submission InputSubmissionDraft) (Submission, error)
+	Submit(ctx context.Context, submission SubmissionDraft) (Submission, error)
+	// SubmitIn is the transaction form of Submit (`submit(tx, submission)`).
+	SubmitIn(tx Tx, submission SubmissionDraft) (SubmissionId, error)
 	// Abort is Conversation.Abort: withdraw queued inputs, abort the ordinary ownership scope, and wait until it is
 	// idle.
 	Abort(ctx context.Context, options *ConversationAbortOptions) error
@@ -441,6 +462,9 @@ type Agent struct {
 	Sections     []*PromptSection
 	Instructions *string
 	Cwd          *string
+	// MaxTurns is the tool rounds one run takes at most (pi.live.run.turns): the round that reaches it runs its tools, then
+	// the run ends unanswered with turn_limit. An integer, 1 or more; nil, no limit. Task-owned children and forks inherit it.
+	MaxTurns *int
 }
 
 // ConversationStreamOptions holds curated pi-ai request options; absent fields use pi-ai defaults.
@@ -556,7 +580,8 @@ type Settings struct {
 	// its last read or write; the next access loads it from Storage. Observed documents always stay. Default ten
 	// minutes; 0 drops one right after use; +Inf keeps them.
 	DocumentRetentionMs float64
-	// AfterFailedRun is what a run that fails (model_error, no_model, interrupted, restart_limit) does with the inputs queued behind it.
+	// AfterFailedRun is what a run that fails (model_error, no_model, interrupted, restart_limit, nothing_to_answer,
+	// turn_limit) does with the inputs queued behind it.
 	AfterFailedRun AfterFailedRun
 	// RestartLimit is how many times in a row a task may be cut off by a crash, eviction, or reset (a close does not
 	// count) without changing its state before it ends instead of running again: a tool call with an error result, a

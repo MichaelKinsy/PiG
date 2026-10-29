@@ -23,7 +23,8 @@ func (r *runs) Live(tx *session.Tx, conv session.ID) (*delta.Obj, error) {
 	return tx.Doc(turn.LiveDef, session.DocArgs{Owner: conv})
 }
 
-func (r *runs) Start(_ *session.Tx, _ session.ID, live *delta.Obj, inputs []session.ID) error {
+func (r *runs) Start(_ *session.Tx, _ session.ID, live *delta.Obj, start inbox.RunStart) error {
+	inputs := start.Inputs
 	r.started = append(r.started, inputs)
 	run := jv.NewObject()
 	run.Set("taskId", float64(99))

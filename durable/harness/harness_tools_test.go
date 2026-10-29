@@ -257,8 +257,8 @@ func TestToolRound(t *testing.T) {
 		mustClose(t, run.harness)
 	})
 
-	// harness-tools.test.ts:138 it("answers calls to tools the request did not offer without a task")
-	t.Run("answers calls to tools the request did not offer without a task", func(t *testing.T) {
+	// harness-tools.test.ts:138 it("answers calls to tools the request did not offer through a flagged tool task")
+	t.Run("answers calls to tools the request did not offer through a flagged tool task", func(t *testing.T) {
 		setup := chatSetup(t)
 		addTool(t, setup.Registry, tlTool("echo", tlNoContent))
 		run := tlRun(t, setup, []ai.FauxResponseStep{tlCallsStep(tlCall{"ghost", map[string]any{}, "c1"}, tlCall{"echo", map[string]any{}, "c2"}), tlDone()}, nil)
@@ -278,9 +278,45 @@ func TestToolRound(t *testing.T) {
 		if got := tlFirstToolResultEntry(t, run.entries).Data; !reflect.DeepEqual(plainObject(got), wantData) {
 			t.Fatalf("ghost data %v, want %v", got, wantData)
 		}
-		if count := len(tlToolTasks(tlScanTasks(t, run.harness, run.root.Id()))); count != 1 {
-			t.Fatalf("%d tool tasks, want 1", count)
+		// #11043: the unoffered call has its own task, so `afterTool` and `control` apply to it as to any call.
+		inputs := []map[string]any{}
+		for _, task := range tlToolTasks(tlScanTasks(t, run.harness, run.root.Id())) {
+			inputs = append(inputs, plainObject(task.Input))
 		}
+		if len(inputs) != 2 {
+			t.Fatalf("%d tool tasks, want 2", len(inputs))
+		}
+		flagged, plain := 0, 0
+		for _, input := range inputs {
+			if input["unoffered"] == true && input["callId"] == "c1" {
+				flagged++
+			} else if _, has := input["unoffered"]; !has {
+				plain++
+			}
+		}
+		if flagged != 1 || plain != 1 {
+			t.Fatalf("tool task inputs %v, want one flagged unoffered for c1 and one without the flag", inputs)
+		}
+		mustClose(t, run.harness)
+	})
+
+	// #11043
+	// harness-tools.test.ts:171 it("never runs a tool the request did not offer, even when the agent has it")
+	t.Run("never runs a tool the request did not offer, even when the agent has it", func(t *testing.T) {
+		setup := chatSetup(t)
+		var ran atomic.Int32
+		addTool(t, setup.Registry, tlTool("hidden", func(context.Context, any, durable.ToolExecutionApi) (durable.ToolExecutionResult, error) {
+			ran.Add(1)
+			return durable.ToolExecutionResult{Output: []ai.ToolResultMessageContent{}}, nil
+		}, func(tool *durable.ToolRegistration) { tool.Deferred = true }))
+		run := tlRun(t, setup, []ai.FauxResponseStep{tlCallsStep(tlCall{"hidden", map[string]any{}, "c1"}), tlDone()}, nil)
+		if run.status != durable.SubmissionDone {
+			t.Fatalf("status %s, want done", run.status)
+		}
+		if ran.Load() != 0 {
+			t.Fatalf("the tool ran %d times, want 0", ran.Load())
+		}
+		tlExpectText(t, tlResultText(tlResults(run.entries)[0]), "<harness>\n[error] Tool hidden is not available\n</harness>")
 		mustClose(t, run.harness)
 	})
 

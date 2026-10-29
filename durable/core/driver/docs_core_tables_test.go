@@ -105,7 +105,7 @@ func TestCoreTableScansPassLimitsAndCursors(t *testing.T) {
 // A core error named after a Pi error class matches the same Go type the in-process Session returns (errors.ts instanceof).
 func TestRemoteErrorsMatchPiErrorClasses(t *testing.T) {
 	var rw *durable.ReadAfterWrite
-	if err := error(&driver.CoreError{Name: "ReadAfterWrite", Message: "Tx.scanEntries() cannot read tables after the first table write"}); !errors.As(err, &rw) || rw.Method != "scanEntries" {
+	if err := error(&driver.CoreError{Name: "ReadAfterWrite", Message: "Tx.scanEntries() cannot read tables after the first table write"}); !errors.As(err, &rw) || rw.Operation != "Tx.scanEntries()" {
 		t.Fatalf("ReadAfterWrite: %v %+v", err, rw)
 	}
 	var busy *durable.ConversationBusy
@@ -117,7 +117,11 @@ func TestRemoteErrorsMatchPiErrorClasses(t *testing.T) {
 	if err := error(&driver.CoreError{Name: "ConversationBusy", Message: "changed text", ConversationID: &id}); !errors.As(err, &busy) || busy.ConversationId != 9 {
 		t.Fatalf("ConversationBusy by field: %v %+v", err, busy)
 	}
-	if err := error(&driver.CoreError{Name: "Error", Message: "x"}); errors.As(err, &rw) && rw.Method == "x" {
+	var idle *durable.ConversationIdle
+	if err := error(&driver.CoreError{Name: "ConversationIdle", Message: "Conversation 7 is idle"}); !errors.As(err, &idle) || idle.ConversationId != 7 {
+		t.Fatalf("ConversationIdle: %v %+v", err, idle)
+	}
+	if err := error(&driver.CoreError{Name: "Error", Message: "x"}); errors.As(err, &rw) && rw.Operation == "x" {
 		t.Fatal("a plain Error is not a ReadAfterWrite")
 	}
 }

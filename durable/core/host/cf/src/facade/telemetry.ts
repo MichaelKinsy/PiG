@@ -102,11 +102,12 @@ export class HarnessTelemetry {
 
   /** submissions.ts submit: the `pi.durable.submit` span around one admission. `send` makes the call to the core with the span's fields; `undefined` when the span is the NOOP span. */
   submit<T extends { id: number; status?: string; link?: TelemetryCarrier }>(conversationId: number, draft: { type: string }, context: Context, send: (fields: Record<string, unknown>) => Promise<T>): Promise<T> | undefined {
-    // Inputs start their own trace, linked to the caller; writes are children of the caller's span.
-    const parent = draft.type === "input" ? this.root : context.telemetry
+    // Inputs and continues start runs: their own trace, linked to the caller; writes are children of the caller's span.
+    const startsRun = draft.type !== "write"
+    const parent = startsRun ? this.root : context.telemetry
     if (parent === ROOT) return undefined
     return parent.startSpan({ name: "pi.durable.submit", attributes: { "submission.type": draft.type, "conversation.id": conversationId } }, async span => {
-      if (draft.type === "input") span.addLink({ context: context.telemetry })
+      if (startsRun) span.addLink({ context: context.telemetry })
       const handle = this.table.hold(span)
       try {
         const trace = span.propagation?.inject(span)

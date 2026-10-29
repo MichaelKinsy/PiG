@@ -18,11 +18,17 @@ type Runtime struct {
 	agent any
 	// ended is what the commit that last ended the task for crashes ended it for, until ReportEnded reports it.
 	ended interruption
+	// crashEnd is the message of a terminal state the commit's change marked as ending its task for crashes (MarkEndedByCrashes).
+	crashEnd string
 }
 
 func (s *Scheduler) newRuntime(inv *invocation, snap *Snapshot) *Runtime {
 	return &Runtime{s: s, inv: inv, snap: snap}
 }
+
+// MarkEndedByCrashes marks the terminal state the commit's change is about to return as ending its task for crashes: the scheduler
+// reports it task_interrupted with message, whatever its outcome (scheduler.ts endedByCrashes). Call it inside the change.
+func (r *Runtime) MarkEndedByCrashes(message string) { r.crashEnd = message }
 
 func (r *Runtime) agentReset() { r.agent = nil }
 
@@ -110,6 +116,8 @@ func (r *Runtime) commit(deferred bool, change func(tx *Tx, current *jv.Object) 
 	// returned the promise itself: its caller resumes a tick after the commit's resolution (the late job).
 	r.gatedWith(true, deferred, func(tx *Tx, current *jv.Object) error {
 		next, err := change(tx, current)
+		crashEnd := r.crashEnd
+		r.crashEnd = ""
 		if err != nil {
 			return err
 		}
@@ -124,7 +132,17 @@ func (r *Runtime) commit(deferred bool, change func(tx *Tx, current *jv.Object) 
 		if err == nil {
 			// A task that ends for crashes says so (task_interrupted), so a host keeps a crash-loop signal: reported once the
 			// commit resolved, before its caller resumes (scheduler.ts runtime.commit).
-			if r.ended = interruptionOf(current, next); r.ended.reason != nil {
+			r.ended = interruptionOf(current, next)
+			if status, _ := getStr(next, "status"); r.ended.reason == nil && crashEnd != "" && status == StatusTerminal {
+				// A task that ended for crashes with another outcome says so itself, as a generation whose run answered ends `completed`
+				// without its after-run tasks (scheduler.ts endedByCrashes).
+				restarts, ok := current.Get("restarts")
+				if !ok {
+					restarts = float64(0)
+				}
+				r.ended = interruption{reason: "restart_limit", message: crashEnd, restarts: restarts}
+			}
+			if r.ended.reason != nil {
 				r.s.loop.endedBy(r)
 			}
 		}

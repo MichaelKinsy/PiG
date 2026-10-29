@@ -60,6 +60,7 @@ export const HOOK_ARGUMENTS: Record<string, (payload: Record<string, any>) => un
   afterTools: p => [p.assistant, p.results],
   beforeTool: p => [hookCall(p)],
   afterTool: p => [hookCall(p), p.result],
+  afterRun: p => [p.run],
   beforeCompact: p => [p.compaction],
   prepareArguments: p => [p.arguments],
 }

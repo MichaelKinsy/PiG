@@ -324,6 +324,9 @@ export class TxChannel {
 
   constructor(client: CoreClient, id: number) { this.client = client; this.id = id }
 
+  /** The core client this transaction runs on: the Session that owns it. */
+  get owner(): CoreClient { return this.client }
+
   /** Run the host's conversationCreated callback for a record this transaction created. */
   async created(tx: unknown, record: unknown): Promise<void> { await this.client.onConversationCreated?.(tx, record) }
 

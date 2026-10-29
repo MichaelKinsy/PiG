@@ -450,7 +450,7 @@ func sessionProgramFor(seed int64) oracleProgram {
 		case 16, 17:
 			create := fmt.Sprintf(`{"type":"input","status":"queued"%s}`, g.pick(``, ``, `,"requestId":"r1"`, `,"requestId":"r2"`))
 			extra := ""
-			switch g.random.Intn(6) {
+			switch g.random.Intn(8) {
 			case 0:
 				create = `{"type":"input","status":"placed"}`
 				extra = `,"entry":` + pickRef(30)
@@ -458,6 +458,11 @@ func sessionProgramFor(seed int64) oracleProgram {
 				create = `{"type":"input","status":"unanswered","reason":"gone"}`
 			case 2:
 				create = `{"type":"write","status":"queued"}`
+			case 6:
+				// A continue is never queued: it starts placed, or is stored settled.
+				create = `{"type":"continue","status":"placed"}`
+			case 7:
+				create = `{"type":"continue","status":"unanswered","reason":"gone"}`
 			}
 			return json.RawMessage(fmt.Sprintf(`{"t":"createSubmission","conv":%s,"create":%s%s}`, pickRef(8), create, extra))
 		case 18:
@@ -598,7 +603,7 @@ func TestSessionTransactionsMatchPiOnSeededPrograms(t *testing.T) {
 						if bytes.Contains(outcome.OK, []byte(`"count":`)) {
 							inner["draft"]++
 						}
-						for _, marker := range []string{`"status":"pending"`, `"type":"input"`, `"status":"placed"`, `"status":"unanswered"`, `"owner":{"conversationId"`, `"type":"write"`} {
+						for _, marker := range []string{`"status":"pending"`, `"type":"input"`, `"status":"placed"`, `"status":"unanswered"`, `"owner":{"conversationId"`, `"type":"write"`, `"type":"continue"`} {
 							if bytes.Contains(outcome.OK, []byte(marker)) {
 								inner["record "+marker]++
 							}
@@ -609,7 +614,7 @@ func TestSessionTransactionsMatchPiOnSeededPrograms(t *testing.T) {
 		}
 	}
 	t.Logf("%d failed-Session steps; operation outcomes %v", failedSteps, inner)
-	if failedSteps < 2 || failedSteps > 400 || inner["ok"] < 4000 || inner["err"] < 500 || inner["undef"] < 100 || inner[`record "owner":{"conversationId"`] < 50 || inner[`record "status":"pending"`] < 50 || inner[`record "status":"placed"`] < 50 {
+	if failedSteps < 2 || failedSteps > 400 || inner["ok"] < 4000 || inner["err"] < 500 || inner["undef"] < 100 || inner[`record "owner":{"conversationId"`] < 50 || inner[`record "status":"pending"`] < 50 || inner[`record "status":"placed"`] < 50 || inner[`record "type":"continue"`] < 20 {
 		t.Errorf("probes are one-sided: %d failed-Session steps, %v", failedSteps, inner)
 	}
 	differing, ops, failures := 0, map[string]int{}, 0

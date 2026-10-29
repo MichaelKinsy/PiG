@@ -22,6 +22,9 @@ type RequestContext interface {
 	Bounds() (head, tail int64)
 	// Threshold is generation.ts thresholdCompaction over the context followed by the planned messages.
 	Threshold(planned [][]byte, window float64, p history.Policy) history.Threshold
+	// OwesAnswer is whether the model owes an answer to the context: its last message that is not a system message is a user message or
+	// tool results.
+	OwesAnswer() bool
 }
 
 // ViewContext is the context the core derived itself.
@@ -32,6 +35,9 @@ func (c ViewContext) PromptView() PromptView { return promptView(c.View) }
 
 // SystemMessages implements RequestContext.
 func (c ViewContext) SystemMessages() []*jv.Object { return systemMessagesOf(c.View) }
+
+// OwesAnswer implements RequestContext.
+func (c ViewContext) OwesAnswer() bool { return c.View.OwesAnswer() }
 
 // Messages implements RequestContext.
 func (c ViewContext) Messages() []*jv.Object { return messagesOf(c.View) }

@@ -56,6 +56,33 @@ func (i *invocation) Agent(ctx context.Context) (durable.Agent, error) {
 
 func (i *invocation) Models() durable.Models { return i.s.cfg.Harness.CurrentModels() }
 
+// Entry is a committed entry visible from the task's conversation (HookApi.entry): the runtime's read.
+func (i *invocation) Entry(ctx context.Context, id durable.EntryId) (*durable.EntryRecord, error) {
+	return i.s.entryIn(ctx, i.conversation, id)
+}
+
+// Entries is the committed raw history of the task's conversation (HookApi.entries).
+func (i *invocation) Entries(ctx context.Context, query durable.EntryQuery, limit int, cursor durable.Cursor) (durable.Page[durable.EntryRecord, durable.Cursor], error) {
+	return i.s.entriesIn(ctx, i.conversation, query, limit, cursor)
+}
+
+// entryIn reads one entry of a conversation (api entry).
+func (s *coreSession) entryIn(ctx context.Context, conversation durable.ConversationId, id durable.EntryId) (*durable.EntryRecord, error) {
+	raw, err := s.client.API(ctx, "entry", map[string]any{"conversationId": conversation, "entryId": id})
+	if err != nil || string(raw) == "null" {
+		return nil, err
+	}
+	var record durable.EntryRecord
+	return &record, json.Unmarshal(raw, &record)
+}
+
+// entriesIn is the scan of a conversation's history that query asks for (api scanEntries): only the entry ID bounds and the order of
+// the query are used (util.ts conversationEntries).
+func (s *coreSession) entriesIn(ctx context.Context, conversation durable.ConversationId, query durable.EntryQuery, limit int, cursor durable.Cursor) (durable.Page[durable.EntryRecord, durable.Cursor], error) {
+	scan := durable.EntryQuery{ConversationId: conversation, MinEntryId: query.MinEntryId, MaxEntryId: query.MaxEntryId, Order: query.Order}
+	return decodePage[durable.EntryRecord](s.client.API(ctx, "scanEntries", map[string]any{"query": wireEntryQuery(scan), "limit": limit, "cursor": cursor}))
+}
+
 func (i *invocation) Env() env.ExecutionEnv { return i.s.envs.Get(i.task) }
 
 func (i *invocation) Now() float64 { return i.s.now() }
@@ -115,8 +142,11 @@ func (i *invocation) Conversation(ctx context.Context, id durable.ConversationId
 type handle struct{ c *conversation }
 
 func (h handle) Id() durable.ConversationId { return h.c.id }
-func (h handle) Submit(ctx context.Context, draft durable.InputSubmissionDraft) (durable.Submission, error) {
+func (h handle) Submit(ctx context.Context, draft durable.SubmissionDraft) (durable.Submission, error) {
 	return h.c.Submit(ctx, draft)
+}
+func (h handle) SubmitIn(tx durable.Tx, draft durable.SubmissionDraft) (durable.SubmissionId, error) {
+	return h.c.SubmitIn(tx, draft)
 }
 func (h handle) Abort(ctx context.Context, options *durable.ConversationAbortOptions) error {
 	return h.c.Abort(ctx, options)
@@ -573,24 +603,7 @@ func (s *coreSession) submit(ctx context.Context, conversationID durable.Convers
 	if err := s.kick(); err != nil {
 		return nil, err
 	}
-	rid := ""
-	if draft.RequestId != nil {
-		rid = *draft.RequestId
-	} else {
-		rid = requestID()
-	}
-	event := map[string]any{"conversationId": int64(conversationID), "type": string(draft.Type), "requestId": rid}
-	if draft.WhenBusy != "" {
-		event["whenBusy"] = string(draft.WhenBusy)
-	}
-	if draft.Type == durable.SubmissionTypeInput {
-		event["content"] = draft.Content
-		if draft.InputEntry != nil {
-			event["entry"] = wireInputEntry(*draft.InputEntry)
-		}
-	} else if draft.Entry != nil {
-		event["entry"] = wireSubmittedDraft(*draft.Entry)
-	}
+	event := submissionEvent(conversationID, draft)
 	raw, err := s.client.Submit(ctx, event)
 	if err != nil {
 		return nil, reviveError(err)
@@ -602,6 +615,52 @@ func (s *coreSession) submit(ctx context.Context, conversationID durable.Convers
 		return nil, err
 	}
 	return &submission{s: s, id: durable.SubmissionId(admitted.ID)}, nil
+}
+
+// submissionEvent is the submit event (and the transaction op's arguments) of a draft: a request ID the caller did not give is minted.
+func submissionEvent(conversationID durable.ConversationId, draft durable.SubmissionDraft) map[string]any {
+	rid := ""
+	if draft.RequestId != nil {
+		rid = *draft.RequestId
+	} else {
+		rid = requestID()
+	}
+	event := map[string]any{"conversationId": int64(conversationID), "type": string(draft.Type), "requestId": rid}
+	if draft.WhenBusy != "" {
+		event["whenBusy"] = string(draft.WhenBusy)
+	}
+	if draft.WhenIdle != "" {
+		event["whenIdle"] = string(draft.WhenIdle)
+	}
+	if draft.Type == durable.SubmissionTypeInput {
+		event["content"] = draft.Content
+		if draft.InputEntry != nil {
+			event["entry"] = wireInputEntry(*draft.InputEntry)
+		}
+	} else if draft.Entry != nil {
+		event["entry"] = wireSubmittedDraft(*draft.Entry)
+	}
+	return event
+}
+
+// submitIn is Conversation.submit(tx, draft): the admission runs inside the caller's commit, by the transaction operation `submit`, which
+// the core refuses after the transaction's first table write (ReadAfterWrite).
+func (s *coreSession) submitIn(tx durable.Tx, conversationID durable.ConversationId, draft durable.SubmissionDraft) (durable.SubmissionId, error) {
+	proxy, ok := tx.(*txProxy)
+	if !ok || proxy.tx.client != s.client {
+		return 0, errors.New("The transaction belongs to another Session")
+	}
+	var admitted struct {
+		ID int64 `json:"id"`
+	}
+	raw, err := proxy.op("submit", submissionEvent(conversationID, draft))
+	if err != nil {
+		return 0, err
+	}
+	if err := json.Unmarshal(raw, &admitted); err != nil {
+		return 0, err
+	}
+	return durable.SubmissionId(admitted.ID), nil
 }
 
 // wireInputEntry is the {kind, data?} an input is placed as.
@@ -715,6 +774,11 @@ func (c *conversation) Configure(ctx context.Context, change harness.AgentChange
 
 func (c *conversation) Submit(ctx context.Context, draft durable.SubmissionDraft) (durable.Submission, error) {
 	return c.s.submit(ctx, c.id, draft)
+}
+
+// SubmitIn is Conversation.submit(tx, draft): the admission inside the caller's commit.
+func (c *conversation) SubmitIn(tx durable.Tx, draft durable.SubmissionDraft) (durable.SubmissionId, error) {
+	return c.s.submitIn(tx, c.id, draft)
 }
 
 func (c *conversation) Reset(ctx context.Context, handoff *string) error {

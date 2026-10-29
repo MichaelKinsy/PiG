@@ -557,7 +557,7 @@ func applySubmissionChange(cur *jv.Object, ch submissionChange) (*jv.Object, err
 		return with(cur, "status", next, "entry", idv(ch.entry)), nil
 	}
 	if st, _ := getStr(ch.settle, "status"); st == "done" && status != "placed" {
-		return nil, errorf("Submission %d is not a placed input", id)
+		return nil, errorf("Submission %d is not a placed input or continue", id)
 	}
 	out := spread(cur)
 	ch.settle.Entries(func(k string, v any) bool { out.Set(k, v); return true })

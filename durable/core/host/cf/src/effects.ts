@@ -295,6 +295,31 @@ export function createEffectHandlers(rt: EffectRuntime): Partial<Record<number, 
     }
   }
 
+  /** generation.ts prepareRunEndTasks: the tasks one `afterRun` hook asked for, checked off the line. A request that passes goes to `tasks` with the installed definition's version and its `initial` checkpoint; one that fails to `rejected`, which the core reports against the hook's extension. */
+  const runEndAnswer = (registry: HostRegistry, hookResult: unknown): unknown => {
+    if (hookResult === undefined) return null
+    // The hook's HookResult<{ tasks: RunEndTask[] }>; a result without `tasks` throws here, as `asked.tasks` does in Pi, and the hook completes with outcome 1.
+    const asked: { readonly tasks: readonly { readonly task: { readonly definition: { readonly name: string } }; readonly input: JsonValue }[] } = hookResult as never
+    const tasks: { task: string; version: number; input: JsonValue; checkpoint: JsonValue }[] = []
+    const rejected: { name: string; message: string }[] = []
+    for (const request of asked.tasks) {
+      try {
+        const name = request.task.definition.name
+        if (name.startsWith("pi.")) throw new Error(`An afterRun hook cannot start the built-in task ${name}`)
+        const installed = registry.find(name)
+        if (installed === undefined) throw new Error(`Task ${name} is not installed`)
+        const input = copyJson(request.input, { omitUndefinedProperties: true })
+        const definition = installed.definition as unknown as { version?: number; phases: Record<string, unknown>; initial(input: JsonValue): JsonValue }
+        const checkpoint = copyJson(definition.initial(input), { omitUndefinedProperties: true }) as JsonValue & { phase: string }
+        if (!Object.hasOwn(definition.phases, checkpoint.phase)) throw new Error(`Task ${name} starts at the unknown phase ${String(checkpoint.phase)}`)
+        tasks.push({ task: name, version: definition.version ?? 1, input, checkpoint })
+      } catch (error) {
+        rejected.push({ name: wireError(error).name, message: wireError(error).message })
+      }
+    }
+    return tasks.length === 0 && rejected.length === 0 ? null : { tasks, ...(rejected.length === 0 ? {} : { rejected }) }
+  }
+
   const hook: EffectHandler = async (effect, { host, signal }) => {
     const p = parse<HookEffect>(effect)
     const context = contextOf(signal, p.span)
@@ -317,8 +342,8 @@ export function createEffectHandlers(rt: EffectRuntime): Partial<Record<number, 
     const args = argumentsOf(p.payload)
     const api = invocationApi(rt.hostApi, { taskId: p.taskId, conversationId: p.conversationId })
     try {
-      const value = await fn(...args, { taskId: api.taskId, conversationId: api.conversationId, get models() { return rt.models }, memo: api.memo, snapshot: api.snapshot, snapshotAsOf: api.snapshotAsOf }, context)
-      host.hookDone(effect.id, 0, value)
+      const value = await fn(...args, { taskId: api.taskId, conversationId: api.conversationId, get models() { return rt.models }, memo: api.memo, snapshot: api.snapshot, snapshotAsOf: api.snapshotAsOf, entry: api.entry, entries: api.entries }, context)
+      host.hookDone(effect.id, 0, p.name === "afterRun" ? runEndAnswer(rt.registry, value) : value)
     } catch (error) {
       host.hookDone(effect.id, 1, thrown(error))
     }

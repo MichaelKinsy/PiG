@@ -213,10 +213,13 @@ func (tx *Tx) read(method string) error {
 		return err
 	}
 	if tx.hasTableWrite {
-		return readAfterWrite(method)
+		return ReadAfterWriteOf("Tx." + method + "()")
 	}
 	return nil
 }
+
+// HasTableWrite reports whether a table write was staged, after which table reads (and a submission's admission) fail with ReadAfterWrite.
+func (tx *Tx) HasTableWrite() bool { return tx.hasTableWrite }
 
 func (tx *Tx) write() error {
 	if err := tx.assertOpen(); err != nil {

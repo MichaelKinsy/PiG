@@ -7,6 +7,7 @@ import (
 	"errors"
 
 	"github.com/MichaelKinsy/PiG/durable/core/abi"
+	"github.com/MichaelKinsy/PiG/durable/core/inbox"
 	"github.com/MichaelKinsy/PiG/durable/core/internal/delta"
 	"github.com/MichaelKinsy/PiG/durable/core/jv"
 	"github.com/MichaelKinsy/PiG/durable/core/session"
@@ -192,6 +193,8 @@ func requiredConversation(t *hostTx, name string, op *jv.Object) session.ID {
 		return t.scope.ConversationID
 	case "createSubmission":
 		return session.ID(numOf(objOf(op, "create"), "conversationId"))
+	case "submit":
+		return session.ID(numOf(op, "conversationId"))
 	}
 	return 0
 }
@@ -703,6 +706,23 @@ func (h *handler) txOp(t *hostTx, name string, op *jv.Object) (any, error) {
 	case "createCompaction":
 		id, err := turn.CreateCompaction(tx, session.ID(numOf(op, "conversationId")), objOf(op, "input"), 0)
 		return float64(id), err
+	case "submit":
+		// Conversation.submit(tx, draft): the admission of the submit event inside the host's transaction. It must come before the first
+		// table write, on every path (submissions.ts admit).
+		if tx.HasTableWrite() {
+			return nil, session.ReadAfterWriteOf("submit(tx, draft)")
+		}
+		var admitted inbox.Admission
+		err := inbox.AdmitStatus(tx, turn.Runs{}, session.ID(numOf(op, "conversationId")), submissionDraft(op), h.now, h.queueModes(), &admitted)
+		if err != nil {
+			return nil, err
+		}
+		answer := jobj("id", float64(admitted.ID), "status", admitted.Status)
+		if admitted.Link != nil {
+			// A steer admission to a busy run links its span to the run's carrier, as the submit event's answer does.
+			answer.Set("link", admitted.Link)
+		}
+		return answer, nil
 	case "createSubmission":
 		return tx.CreateSubmission(objOf(op, "create"))
 	case "settleSubmission":

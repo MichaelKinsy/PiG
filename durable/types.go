@@ -280,6 +280,11 @@ type TaskRuntime[I, S, R any, H any] interface {
 	Conversation(ctx context.Context, id ConversationId) (ConversationHandle, error)
 	// Entry returns a committed entry visible from the task's conversation; nil when absent.
 	Entry(ctx context.Context, id EntryId) (*EntryRecord, error)
+	// Entries returns the committed raw history of the task's conversation, fork-aware, as Conversation.Entries: every
+	// entry, also those a compaction summary or reset left behind. Entries never change, so a range bounded by entry
+	// IDs reads the same before and after a compaction, and in a rerun after a crash. Only the query's MinEntryId,
+	// MaxEntryId and Order are used.
+	Entries(ctx context.Context, query EntryQuery, limit int, cursor Cursor) (Page[EntryRecord, Cursor], error)
 	// Context returns the committed raw active transcript and model context, cut off at the visible entry
 	// options.At when it is set.
 	Context(ctx context.Context, conversationId ConversationId, options *ContextOptions) (ContextView, error)
@@ -490,12 +495,14 @@ type Entry[D any] struct {
 	Kind string
 }
 
-// SubmissionType is "input" or "write".
+// SubmissionType is "input", "write", or "continue".
 type SubmissionType string
 
 const (
 	SubmissionTypeInput SubmissionType = "input"
 	SubmissionTypeWrite SubmissionType = "write"
+	// SubmissionTypeContinue is a run started without a user message; it places no entry and is never queued.
+	SubmissionTypeContinue SubmissionType = "continue"
 )
 
 // SubmissionStatus is the lifecycle status of a submission.
@@ -513,11 +520,11 @@ const (
 	SubmissionUnanswered SubmissionStatus = "unanswered"
 )
 
-// SubmissionRecord is the durable lifecycle of one admitted user input or passive entry write.
+// SubmissionRecord is the durable lifecycle of one admitted user input, passive entry write, or continue.
 //
 // Upstream encodes each (type, status) pair as a union member; the Go struct carries every field and the Session
-// keeps them consistent: Entry is set for placed and done records and optional for unanswered input; Answer only for
-// done input; Reason and Detail only for unanswered records.
+// keeps them consistent: Entry is set for placed and done records and optional for unanswered input (a continue never
+// has one); Answer only for done input or continue; Reason and Detail only for unanswered records.
 type SubmissionRecord struct {
 	// Trace is the adapter-owned context of the admission span; absent without propagation.
 	Trace          telemetry.TelemetryCarrier `json:"trace,omitzero"`
@@ -1117,9 +1124,9 @@ type Tx interface {
 	// inbox queueing, no placement. Use Conversation.Submit or a conversation handle unless the caller implements
 	// admission itself.
 	CreateSubmission(create SubmissionCreate) (SubmissionRecord, error)
-	// SettleSubmission settles a queued or placed submission; only a placed input can be answered, and a settled
-	// submission stays unchanged. Resolved against this transaction's latest record of the submission, so it works
-	// after table writes. Run tasks settle the inputs they answer.
+	// SettleSubmission settles a queued or placed submission; only a placed input or continue can be answered, and a
+	// settled submission stays unchanged. Resolved against this transaction's latest record of the submission, so it
+	// works after table writes. Run tasks settle the inputs they answer.
 	SettleSubmission(id SubmissionId, settlement SubmissionSettlement) error
 	// PlaceSubmission places a queued submission at entry: an input becomes placed, a write done. Resolved like
 	// SettleSubmission. Inbox boundaries place the submissions they select.

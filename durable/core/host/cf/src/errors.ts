@@ -1,10 +1,11 @@
 // pi-durable's three public error classes (src/errors.ts), reconstructed from the {name, message} pair a rejected step or an
 // api answer carries. Other names revive as a plain Error with that name.
 
-/** A transaction read a table after its first table write. */
+/** A transaction read a table after its first table write, or admitted a submission (`submit(tx, draft)`) after it. */
 export class ReadAfterWrite extends Error {
-  constructor(method: string) {
-    super(`Tx.${method}() cannot read tables after the first table write`)
+  /** `operation` names the call, such as `Tx.task()`. */
+  constructor(operation: string) {
+    super(`${operation} cannot read tables after the first table write`)
     this.name = "ReadAfterWrite"
   }
 }
@@ -49,7 +50,17 @@ export class ConversationBusy extends Error {
   }
 }
 
-export type WireErrorBody = { name?: string; message?: string; conversationId?: number | string; stack?: string; cause?: unknown }
+/** An input with `whenIdle: "reject"` reached an idle conversation and was not admitted. */
+export class ConversationIdle extends Error {
+  readonly conversationId: number
+  constructor(conversationId: number | string) {
+    super(`Conversation ${conversationId} is idle`)
+    this.name = "ConversationIdle"
+    this.conversationId = Number(conversationId)
+  }
+}
+
+export type WireErrorBody = { name?: string; message?: string; conversationId?: number | string; stack?: string; cause?: unknown; errors?: WireErrorBody[] }
 
 /** The message of a thrown value; a value that cannot be formatted (a null-prototype object) must not fail the code that formats it (errors.ts errorMessage). */
 export function errorMessage(error: unknown): string {
@@ -73,10 +84,17 @@ export function reviveError(body: WireErrorBody, failure?: Error): Error {
       error.message = message || error.message
       break
     }
+    case "ConversationIdle": {
+      error = new ConversationIdle(body.conversationId ?? /\d+/.exec(message)?.[0] ?? "")
+      error.message = message || error.message
+      break
+    }
     case "ReadOnlySession": error = Object.assign(new ReadOnlySession("a commit with writes"), { message }); break
-    case "ReadAfterWrite": error = Object.assign(new ReadAfterWrite("doc"), { message }); break
+    case "ReadAfterWrite": error = Object.assign(new ReadAfterWrite("Tx.doc()"), { message }); break
     case "StorageRequestError": error = new StorageRequestError(message); break
     case "RangeError": error = new RangeError(message); break
+    // An afterRun hook's rejected requests (generation.ts prepareRunEndTasks): the notice carries each one's {name, message}.
+    case "AggregateError": error = new AggregateError((body.errors ?? []).map(each => reviveError(each)), message); break
     default: {
       error = new Error(message)
       // An Error keeps its prototype's name; only another name becomes an own property.

@@ -13,6 +13,7 @@ import (
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/durable"
+	"github.com/MichaelKinsy/PiG/durable/core/jv"
 	"github.com/MichaelKinsy/PiG/durable/env"
 	"github.com/MichaelKinsy/PiG/durable/session"
 )
@@ -195,6 +196,9 @@ type AgentState struct {
 	Instructions *string `json:"instructions,omitempty"`
 	// Cwd is a directory within the environment's file system, passed to HarnessOptions.Env.
 	Cwd *string `json:"cwd,omitempty"`
+	// MaxTurns is the tool rounds one run takes at most (pi.live.run.turns): the round that reaches it runs its tools, then the run
+	// ends unanswered with turn_limit. An integer, 1 or more; unset, no limit. Task-owned children and forks inherit it.
+	MaxTurns *int `json:"maxTurns,omitempty"`
 }
 
 // AgentDoc is the built-in agent document; rewindable so forks start from the agent at their fork entry.
@@ -262,6 +266,8 @@ type AgentChange struct {
 	ModelTools    Change[ToolChange]
 	Instructions  Change[string]
 	Cwd           Change[string]
+	// MaxTurns is validated by Configure: it must be an integer 1 or more (or cleared), else an error (upstream's RangeError).
+	MaxTurns Change[float64]
 }
 
 // HarnessSettings is the Harness-wide run policy. It is read at every resolution and never copied.
@@ -285,7 +291,8 @@ type HarnessSettings struct {
 	// default, ten minutes; 0 drops one right after use; +Inf keeps them. Anything else that is not a number of
 	// milliseconds, 0 or more, means the default.
 	DocumentRetentionMs *float64
-	// AfterFailedRun is what a run that fails (model_error, no_model, interrupted, restart_limit) does with the inputs queued behind it: keep leaves
+	// AfterFailedRun is what a run that fails (model_error, no_model, interrupted, restart_limit, nothing_to_answer,
+	// turn_limit) does with the inputs queued behind it: keep leaves
 	// them queued until the next input or queued write, continue starts the next run with them, as an answer would, and
 	// withdraw settles them unanswered with reason run_failed. Empty selects keep.
 	AfterFailedRun durable.AfterFailedRun
@@ -569,7 +576,27 @@ func applyChange(state durable.Draft[AgentState], change AgentChange) error {
 	if err := setField(state, "instructions", change.Instructions.state, change.Instructions.value); err != nil {
 		return err
 	}
-	return setField(state, "cwd", change.Cwd.state, change.Cwd.value)
+	if err := setField(state, "cwd", change.Cwd.state, change.Cwd.value); err != nil {
+		return err
+	}
+	maxTurns := change.MaxTurns
+	if maxTurns.state == changeSet && !(maxTurns.value == math.Trunc(maxTurns.value) && math.Abs(maxTurns.value) <= 1<<53-1 && maxTurns.value >= 1) {
+		return fmt.Errorf("maxTurns must be an integer 1 or more, got %s", jsNumberString(maxTurns.value))
+	}
+	return setField(state, "maxTurns", maxTurns.state, maxTurns.value)
+}
+
+// jsNumberString is `String(value)` of a JavaScript number: NaN and the infinities by name, other values in JSON form.
+func jsNumberString(value float64) string {
+	switch {
+	case math.IsNaN(value):
+		return "NaN"
+	case math.IsInf(value, 1):
+		return "Infinity"
+	case math.IsInf(value, -1):
+		return "-Infinity"
+	}
+	return jv.FormatNumber(value)
 }
 
 // setField is applyChange's set (agent.ts:89-93): a set value replaces the stored field, a cleared one deletes it.
@@ -762,6 +789,9 @@ func ResolveAgent(state *AgentState, snapshot durable.RegistrySnapshot, settings
 	}
 	if state.Cwd != nil {
 		agent.Cwd = new(*state.Cwd)
+	}
+	if state.MaxTurns != nil {
+		agent.MaxTurns = new(*state.MaxTurns)
 	}
 	return agent
 }

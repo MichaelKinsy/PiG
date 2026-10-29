@@ -438,7 +438,8 @@ func TestDataOnlyWrites(t *testing.T) {
 		failing.awaitReached(t)
 		f := submit(t, root, inputWith("f", mention("f"), ""))
 		failing.release()
-		expectSettled(t, must(input.Wait(testContext)), durable.SubmissionUnanswered, "model_error")
+		failed := must(input.Wait(testContext))
+		expectSettled(t, failed, durable.SubmissionUnanswered, "model_error")
 		mustOK(t, harness.WaitForIdle(testContext))
 		note := submit(t, root, writeDraft(durable.EntryDraft{Kind: "note", Data: "n"}))
 		if got := status(t, note).Status; got != durable.SubmissionDone {
@@ -451,7 +452,7 @@ func TestDataOnlyWrites(t *testing.T) {
 		if ids := inboxIds(inboxItemsOf(t, harness, root)); len(ids) != 1 || ids[0] != f.Id() {
 			t.Fatalf("inbox = %v, want [%d]", ids, f.Id())
 		}
-		expectMatch(t, liveOf(t, harness, root.Id()), jsonText(t, map[string]any{"runFailure": map[string]any{"inputs": []durable.SubmissionId{input.Id()}, "reason": "model_error", "detail": "invalid request"}}))
+		expectMatch(t, liveOf(t, harness, root.Id()), jsonText(t, map[string]any{"runFailure": map[string]any{"inputs": []durable.SubmissionId{input.Id()}, "reason": "model_error", "detail": "invalid request", "first": *failed.Entry}}))
 		if calls := setup.Faux.CallCount(); calls != 1 {
 			t.Fatalf("calls = %d, want 1", calls)
 		}

@@ -495,6 +495,12 @@ func (session *SessionImpl) ReadWithTicket(ticket *LineTicket, job func() (any, 
 	return job()
 }
 
+// OwnsTransaction is internal: whether tx is the transaction of one of this Session's commits; it returns that
+// transaction (session.ts `ownsTransaction`).
+func (session *SessionImpl) OwnsTransaction(tx durable.Tx) (*Transaction, bool) {
+	return transactionOwnedBy(tx, session.host)
+}
+
 // ReadOnLine runs a read-only job on the mutation line so multi-read derivations observe one committed state.
 func (session *SessionImpl) ReadOnLine(job func() (any, error)) (any, error) {
 	if err := session.assertUsable(); err != nil {

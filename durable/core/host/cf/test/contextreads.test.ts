@@ -74,9 +74,13 @@ test("a summary names the system messages the view leads with and the estimate o
   const reader = new ContextReader(rig.all)
   const summary = json(answerContextRead(reader, CONTEXT_SUMMARY, [1, 5, 0, 0, 1]))
   // The system message leads the view (leadWithSystem); the assistant message's usage is the measured prefix and the last user message is estimated: 120 + ceil(70 / 3.5).
-  assert.deepEqual(summary, { tail: 5, head: null, system: [{ role: "system", content: "be brief", timestamp: 2 }], tokens: 140 })
+  assert.deepEqual(summary, { tail: 5, head: null, system: [{ role: "system", content: "be brief", timestamp: 2 }], tokens: 140, owes: true })
   assert.equal(reader.read(1, 0, 5).view.messages[0]!.role, "system")
   assert.equal(json(answerContextRead(reader, CONTEXT_SUMMARY, [1, 5, 0, 0, 0])).tokens, 0, "the estimate is computed only when asked for")
+  // The model owes an answer while the last message that is not a system message is a user message or tool results (generation.ts prepare).
+  assert.equal(json(answerContextRead(new ContextReader(rig.all), CONTEXT_SUMMARY, [1, 4, 0, 0, 0])).owes, false, "the context ends in an answer")
+  rig.entry(6, "pi.system", [{ role: "system", content: "late", timestamp: 5 }])
+  assert.equal(json(answerContextRead(new ContextReader(rig.all), CONTEXT_SUMMARY, [1, 6, 0, 0, 0])).owes, true, "a system message after the user message does not change what is owed")
 })
 
 test("a head marker's summary lists the active entries and the messages read reuses the range", () => {
@@ -86,7 +90,7 @@ test("a head marker's summary lists the active entries and the messages read reu
   rig.entry(4, "pi.compaction", [{ role: "user", content: "summary", timestamp: 3 }], 3)
   const reader = new ContextReader(rig.all)
   const summary = json(answerContextRead(reader, CONTEXT_SUMMARY, [1, 4, 4, 3, 0]))
-  assert.deepEqual(summary, { tail: 4, head: 4, entries: [[4, "pi.compaction"], [3, "pi.user"]], system: [], tokens: 0 })
+  assert.deepEqual(summary, { tail: 4, head: 4, entries: [[4, "pi.compaction"], [3, "pi.user"]], system: [], tokens: 0, owes: true })
   const rows = rig.rowsRead
   assert.deepEqual(json(answerContextRead(reader, CONTEXT_MESSAGES, [1, 4, 4, 3])).map((m: { content: string }) => m.content), ["summary", "kept"])
   assert.equal(rig.rowsRead, rows, "the second read of the same bounds read no entries")

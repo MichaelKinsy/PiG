@@ -2857,9 +2857,17 @@ func (runtime *taskRuntime) Commit(ctx context.Context, change func(tx durable.T
 			}
 		}
 		// A task that ends for crashes says so (task_interrupted), so a host keeps a crash-loop signal.
-		if next.Status == durable.TaskTerminal && next.Outcome != nil && next.Outcome.Status == durable.OutcomeFailed && next.Outcome.Error != nil {
-			if reason := interruptionOf(next.Outcome.Error); reason != "" {
+		if next.Status == durable.TaskTerminal {
+			reason := ""
+			if next.Outcome != nil && next.Outcome.Status == durable.OutcomeFailed && next.Outcome.Error != nil {
+				reason = interruptionOf(next.Outcome.Error)
+			}
+			if reason != "" {
 				interrupted = &interruption{message: next.Outcome.Error.Message, reason: reason, restarts: current.Restarts, record: current}
+			} else if message, ok := ctx.Value(endedByCrashesKey{}).(string); ok {
+				// A task that ended for crashes with another outcome says so itself, as a generation whose run answered
+				// ends completed without its after-run tasks.
+				interrupted = &interruption{message: message, reason: durable.ReasonRestartLimit, restarts: current.Restarts, record: current}
 			}
 		}
 		return struct{}{}, nil
@@ -3039,6 +3047,16 @@ func (runtime *taskRuntime) Entry(ctx context.Context, id durable.EntryId) (*dur
 	}
 	entry := found.Entry
 	return &entry, nil
+}
+
+func (runtime *taskRuntime) Entries(ctx context.Context, query durable.EntryQuery, limit int, cursor durable.Cursor) (durable.Page[durable.EntryRecord, durable.Cursor], error) {
+	if err := runtime.check(); err != nil {
+		return durable.Page[durable.EntryRecord, durable.Cursor]{}, err
+	}
+	scan := conversationEntries(runtime.invocation.conversationId, query)
+	return readOnLine(runtime.scheduler.options.Session, func() (durable.Page[durable.EntryRecord, durable.Cursor], error) {
+		return runtime.scheduler.options.Storage.ScanEntries(ctx, scan, limit, cursor)
+	})
 }
 
 func (runtime *taskRuntime) Context(ctx context.Context, conversationId durable.ConversationId, options *durable.ContextOptions) (durable.ContextView, error) {
@@ -3701,4 +3719,18 @@ func (s *TaskScheduler) restartLimit() float64 {
 		return durable.DefaultRestartLimit
 	}
 	return limit
+}
+
+// endedByCrashesKey carries, in the context of a terminal commit, the message that ends the committing task for crashes
+// (task_interrupted) whatever its outcome (endedByCrashes in scheduler.ts, which marks the state object instead: a Go
+// commit takes a state value that its typed runtime re-encodes, so the mark travels with the commit's context, as the
+// line hold does).
+type endedByCrashesKey struct{}
+
+// endedByCrashes returns ctx marked so that a terminal state committed with it ends its task for crashes: the scheduler
+// reports it task_interrupted with message, even though its outcome does not say so (a failure with detail
+// {reason: "restart_limit"} does). Used by built-in tasks that were cut off settings.restartLimit times and end with
+// another outcome.
+func endedByCrashes(ctx context.Context, message string) context.Context {
+	return context.WithValue(ctx, endedByCrashesKey{}, message)
 }

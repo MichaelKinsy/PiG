@@ -11,15 +11,18 @@ import * as define from "./define.ts"
 import * as docs from "./docs.ts"
 import * as documents from "./documents.ts"
 import * as entries from "./entries.ts"
-import { Harness as Core } from "./harness.ts"
+import { Harness as Core, ROOT_CONVERSATION_ID as ROOT } from "./harness.ts"
 import { createRegistry as createHostRegistry } from "./registry.ts"
 import { createSession as createSessionOver } from "./session/session.ts"
 import * as storage from "./storage.ts"
 import { ConversationTranscript as HostConversationTranscript } from "./transcript.ts"
 
 export type * from "@earendil-works/pi-durable"
-export { ConversationBusy, ReadAfterWrite, ReadOnlySession, SessionFailed, StorageRequestError } from "../errors.ts"
-export { DEFAULT_HARNESS_IDENTITY, ROOT_CONVERSATION_ID, useCore } from "./harness.ts"
+export { ConversationBusy, ConversationIdle, ReadAfterWrite, ReadOnlySession, SessionFailed, StorageRequestError } from "../errors.ts"
+export { DEFAULT_HARNESS_IDENTITY, useCore } from "./harness.ts"
+
+/** The facade's ids are plain numbers; a caller sees pi-durable's branded `ConversationId`. */
+export const ROOT_CONVERSATION_ID = ROOT as unknown as typeof P.ROOT_CONVERSATION_ID
 
 export const AgentDoc = agent.AgentDoc as unknown as typeof P.AgentDoc
 export const configure = agent.configure as unknown as typeof P.configure
@@ -31,6 +34,7 @@ export const defineExtension = define.defineExtension as unknown as typeof P.def
 export const defineTool = define.defineTool as unknown as typeof P.defineTool
 export const defineTask = define.defineTask as unknown as typeof P.defineTask
 export const hook = define.hook as unknown as typeof P.hook
+export const runEndTask = define.runEndTask as unknown as typeof P.runEndTask
 export const section = define.section as unknown as typeof P.section
 export const wrapSection = define.wrapSection as unknown as typeof P.wrapSection
 export const wrapTool = define.wrapTool as unknown as typeof P.wrapTool

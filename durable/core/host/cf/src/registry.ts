@@ -91,5 +91,8 @@ export class HostRegistry {
     return task
   }
 
+  /** The installed task of that name, or undefined (registry snapshot `task`). */
+  find(name: string): HostTask | undefined { return this.source.snapshot().task(name) }
+
   subscribe(listener: () => void): () => void { return this.source.subscribe(listener) }
 }

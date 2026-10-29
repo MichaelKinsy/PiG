@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/durable"
@@ -50,6 +51,9 @@ func (h *Hooks) run(ctx context.Context, call *sqlhost.Call) error {
 	}
 	if p.Name == "migrate" {
 		return h.migrate(call, p)
+	}
+	if p.Name == "afterRun" {
+		return h.afterRun(ctx, call, p)
 	}
 	target, ok := h.Lookup(p.Handler)
 	if !ok {
@@ -117,6 +121,110 @@ func (h *Hooks) migrate(call *sqlhost.Call, p hookEffect) error {
 	}
 	call.Post(abi.Event{Kind: abi.EventHookDone, ID: call.ID, Phase: abi.OutcomeResult, Payload: body})
 	return nil
+}
+
+// afterRun runs one `afterRun` handler (generation.ts finish): the host checks the tasks it asks for, off the line, as the core
+// creates only checked ones: the kind must be an installed task that is not built in, its input JSON, and its definition's `initial()`
+// a JSON checkpoint of one of its phases. The answer is {tasks: [{task, version, input, checkpoint}], rejected?: [{name, message}]}.
+func (h *Hooks) afterRun(ctx context.Context, call *sqlhost.Call, p hookEffect) error {
+	target, ok := h.Lookup(p.Handler)
+	if !ok {
+		return fmt.Errorf("hook effect %d names handler %d, which the registry does not hold", call.ID, p.Handler)
+	}
+	hooks, ok := target.(*harness.GenerationHooks)
+	if !ok {
+		return mismatch(p.Name, target)
+	}
+	var in struct {
+		Run harness.RunSummary `json:"run"`
+	}
+	if err := json.Unmarshal(p.Payload, &in); err != nil {
+		return protocol(p.Name, err)
+	}
+	post := func(phase uint8, payload json.RawMessage) error {
+		call.Post(abi.Event{Kind: abi.EventHookDone, ID: call.ID, Phase: phase, Payload: payload})
+		return nil
+	}
+	if hooks.AfterRun == nil {
+		return post(abi.OutcomeResult, json.RawMessage("null"))
+	}
+	api := h.API(durable.TaskId(p.TaskID), durable.ConversationId(p.ConversationID))
+	var asked *harness.RunEndTasks
+	if err := callDefinition(func() (err error) { asked, err = hooks.AfterRun(ctx, in.Run, api); return err }); err != nil {
+		return post(abi.OutcomeThrown, wireError(err))
+	}
+	if asked == nil {
+		return post(abi.OutcomeResult, json.RawMessage("null"))
+	}
+	type preparedWire struct {
+		Task       string            `json:"task"`
+		Version    int               `json:"version"`
+		Input      durable.JsonValue `json:"input"`
+		Checkpoint durable.JsonValue `json:"checkpoint"`
+	}
+	type rejectedWire struct {
+		Name    string `json:"name"`
+		Message string `json:"message"`
+	}
+	tasks := []preparedWire{}
+	rejected := []rejectedWire{}
+	reject := func(err error) { rejected = append(rejected, rejectedWire{"Error", err.Error()}) }
+	for _, request := range asked.Tasks {
+		if request.Task.Definition == nil {
+			reject(errors.New("An afterRun hook asked for a task without a definition"))
+			continue
+		}
+		name := request.Task.Definition.Name
+		if strings.HasPrefix(name, "pi.") {
+			reject(fmt.Errorf("An afterRun hook cannot start the built-in task %s", name))
+			continue
+		}
+		var installed durable.AnyTask
+		if h.Task != nil {
+			installed, _ = h.Task(name)
+		}
+		if installed.Definition == nil {
+			reject(fmt.Errorf("Task %s is not installed", name))
+			continue
+		}
+		input, err := durable.ToJsonValue(request.Input)
+		if err != nil {
+			reject(err)
+			continue
+		}
+		var checkpoint durable.JsonValue
+		if err := callDefinition(func() error {
+			initial, err := installed.Definition.Initial(input)
+			if err != nil {
+				return err
+			}
+			checkpoint, err = durable.ToJsonValue(initial)
+			return err
+		}); err != nil {
+			reject(err)
+			continue
+		}
+		phase, err := durable.FromJsonValue[struct {
+			Phase string `json:"phase"`
+		}](checkpoint)
+		if err != nil {
+			reject(err)
+			continue
+		}
+		if _, ok := installed.Definition.Phases[phase.Phase]; !ok {
+			reject(fmt.Errorf("Task %s starts at the unknown phase %s", name, phase.Phase))
+			continue
+		}
+		tasks = append(tasks, preparedWire{name, installed.Definition.Version, input, checkpoint})
+	}
+	body, err := json.Marshal(struct {
+		Tasks    []preparedWire `json:"tasks"`
+		Rejected []rejectedWire `json:"rejected,omitempty"`
+	}{tasks, rejected})
+	if err != nil {
+		return fmt.Errorf("hook afterRun result: %w", err)
+	}
+	return post(abi.OutcomeResult, body)
 }
 
 // mismatch is a protocol failure: the core asked a handler for a hook it did not register.
