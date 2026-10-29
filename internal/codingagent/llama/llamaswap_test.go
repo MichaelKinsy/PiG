@@ -293,7 +293,10 @@ func outcomeOfRefresh(t *testing.T, controller *LlamaProviderController, url str
 		outcome.Err = err.Error()
 	}
 	for _, model := range controller.Provider.GetAllModels() {
-		outcome.IDs = append(outcome.IDs, model.ProviderID()+"/"+model.ModelID())
+		var identity struct{ Provider, ID string }
+		encoded, _ := json.Marshal(model)
+		_ = json.Unmarshal(encoded, &identity)
+		outcome.IDs = append(outcome.IDs, identity.Provider+"/"+identity.ID)
 	}
 	return outcome
 }
