@@ -1558,9 +1558,9 @@ rationale = "PORT_MAP records this file n/a with the reason: WeakSet memo of val
 [[files]]
 path = "packages/chord/src/delta/tracker.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/delta/tracker_competing_test.go#TestTrackerKeepsAnAbandonedDraftACompetitorOfTheNextChangeThroughOneWeakRegistration", "test:chord/delta/retention_upstream_test.go#TestDeltaTrackerRetentionAcrossGCJobs"]
+rationale = "Pi a9228305: the tracker holds its one open change in a plain field and moves an older open change into a weak.Pointer registry when a second opens; lazy stored/rawNodes are designed out (Go drafts have neither). Lane D0; internal/chord/delta/tracker.go (second, unmapped port) is tracked in the dedup review."
 
 [[files]]
 path = "packages/chord/src/errors.ts"

@@ -1530,8 +1530,12 @@
     },
     {
       "path": "packages/ai/test/overflow.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:1d8f734545528e121cec300b5401a090cd693eb455044639d51ec85a0b1c02ca"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:1d8f734545528e121cec300b5401a090cd693eb455044639d51ec85a0b1c02ca",
+      "evidence": [
+        "ai/overflow_upstream_test.go#TestOverflowUpstream"
+      ],
+      "rationale": "Pi d3398f82 adds the LiteLLM pre-call ContextWindowExceededError row; ported as the LiteLLM row of the overflow table (lane B2)."
     },
     {
       "path": "packages/ai/test/pi-messages.test.ts",
@@ -2190,13 +2194,21 @@
     },
     {
       "path": "packages/chord/test/delta-tracker/retention.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:90e2dae8d04967d1a24f7580ad32c692b417d2fce96ca0ba0e8a10c9f21ec7f1"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:90e2dae8d04967d1a24f7580ad32c692b417d2fce96ca0ba0e8a10c9f21ec7f1",
+      "evidence": [
+        "chord/delta/retention_upstream_test.go#TestDeltaTrackerRetentionAcrossGCJobs"
+      ],
+      "rationale": "Retention across GC jobs after the Pi a9228305 tracker (abandoned-draft-released, tracker-with-open-draft, adopted-changes-flat) (lane D0)."
     },
     {
       "path": "packages/chord/test/delta-tracker/tracker.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:ca4369a43253b69fc1570035856a599532a861c0676ba9af7106728ebef71b6e"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:ca4369a43253b69fc1570035856a599532a861c0676ba9af7106728ebef71b6e",
+      "evidence": [
+        "chord/delta/tracker_competing_test.go#TestTrackerKeepsAnAbandonedDraftACompetitorOfTheNextChangeThroughOneWeakRegistration"
+      ],
+      "rationale": "The 'delta tracker competing changes' cases follow Pi a9228305: WeakRef counts become weak-registration counts of the one-open-change tracker (lane D0)."
     },
     {
       "path": "packages/chord/test/delta.test.ts",
@@ -3134,8 +3146,13 @@
     },
     {
       "path": "packages/chord/test/sqlite/cloudflare.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:0df03ae98b7f79e3af15f8f1eb6f839b5c34ec2bde550739abcc8b1f9070d61a"
+      "disposition": "partial",
+      "upstreamTestHash": "sha256:0df03ae98b7f79e3af15f8f1eb6f839b5c34ec2bde550739abcc8b1f9070d61a",
+      "evidence": [
+        "chord/sqlite/cloudflare/cloudflare_test.go#TestDurableObjectSqliteDriver",
+        "chord/sqlite/cloudflare/transaction_outcome_test.go#TestDurableObjectSqliteTransactionOutcome"
+      ],
+      "rationale": "Pi c268154c moved the Durable Object driver cases of durable/test/sqlite-cloudflare.test.ts here. The eight cases (BLOB bytes, the cursor's first row for get, the safe-integer bigint bound, close after a transaction, an uncontended statement run before returning, rollback and handle rejection, another adapter's operations outside the rollback, direct underlying calls inside a transaction) are subtests of TestDurableObjectSqliteDriver over the native-connection stand-in. Delta at Pi 8025c414: the new case 'reports the rows a statement changed, without index writes' is a subtest of TestDurableObjectSqliteDriver over sqlitetest.RunChanges (the port of helpers.ts runChanges and RUN_CHANGES) and a RunCounted inside a transaction. Pi 14b4c56e adds the transaction-outcome case (ported, lane D0) and \"a store on it tells a CHECK refusal by its message\", which needs chord/next/store (lane D3): pending there."
     },
     {
       "path": "packages/chord/test/sqlite/migrations.test.ts",
@@ -3148,8 +3165,16 @@
     },
     {
       "path": "packages/chord/test/sqlite/node.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:188aa3693184603bf54cd426899932b5ed9f5d18e18750483872e5a607b2c4d9"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:188aa3693184603bf54cd426899932b5ed9f5d18e18750483872e5a607b2c4d9",
+      "evidence": [
+        "chord/sqlite/node/database_contract_test.go#TestSqliteDatabaseContractRollsBackAFailedTransactionAndClosesIdempotently",
+        "chord/sqlite/node/database_contract_test.go#TestSqliteDatabaseContractReportsBothErrorsWhenRollbackFails",
+        "chord/sqlite/node/sqlite_driver_test.go#TestNodeSqliteDriver",
+        "chord/sqlite/node/statement_cache_test.go#TestNodeSqliteStatementCache",
+        "chord/sqlite/node/transaction_outcome_test.go#TestNodeSqliteTransactionOutcome"
+      ],
+      "rationale": "Pi c268154c moved the Node driver cases of durable/test/sqlite-facade.test.ts here. The eight cases (connection defaults, commit and idempotent close, serialized transactions, call order, queueing behind a transaction, synchronous calls from a transaction, a settled handle rejected, rollback failure not preserving the callback error) are subtests of TestNodeSqliteDriver and the two contract tests, moved with the driver to chord/sqlite/node. Pi 89e30958 removed the exclusive() cases with the method; the Go exclusive tests went with Exclusive. Delta at Pi 8025c414: the case 'reports the rows a statement changed, without index writes' is a subtest of TestNodeSqliteDriver over sqlitetest.RunChanges. Delta at Pi db14038b: the case 'keeps the most recently used prepared statements and prepares evicted ones again' is TestNodeSqliteStatementCache (the DatabaseSync.prepare spy is ObservePrepare); the 300-statement count is the Pi input. Pi 14b4c56e adds the four-case \"the outcome of a transaction (slice 6b D4)\" group; ported in chord/sqlite/node/transaction_outcome_test.go (lane D0)."
     },
     {
       "path": "packages/chord/test/state-diff.test.ts",
