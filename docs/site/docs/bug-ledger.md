@@ -1007,6 +1007,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-c58ceed](#bf-c58ceed) | `chord/host.Forbidden("")` keeps the empty message, as Pi's `forbidden("")` does; `Forbidden()` still says… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-c5b14a5](#bf-c5b14a5) | fix(durable/contract): a vitest run keeps its cache out of the reference checkout, so E17 and E18 list the… | PiG's own defect | All platforms | Unreleased |
 | [BF-c5ce588](#bf-c5ce588) | Gemini 4 and later models send `thinkingLevel` instead of `thinkingBudget`, fixing Gemini 4 Argon on Vertex… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-ecc7b76](#bf-ecc7b76) | A session with an extension that registers a markdown transformer no longer crashes while an assistant reply… | PiG's own defect | All platforms | Unreleased |
 | [BF-c625bb4](#bf-c625bb4) | The durable `powershell` tool fails with "No command to run" when its program list is empty, instead of… | PiG's own defect | Windows | 0.5.0 |
 | [BF-c6c2cf3](#bf-c6c2cf3) | An `env` request whose context is already cancelled is now always sent to the daemon and then cancelled, as… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-c6cad39](#bf-c6cad39) | fix(session): fork writes the header and entries through one file (Pi,) | PiG's own defect | All platforms | Unreleased |
@@ -15031,6 +15032,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `c5ce588c58` (2026-10-14, #10890)
 - **Tests:** `ai/google_thinking_level_map_upstream_test.go::TestGoogleThinkingLevelMapRegression`
 - **Release note:** Gemini 4 and later models send `thinkingLevel` instead of `thinkingBudget`, fixing Gemini 4 Argon on Vertex and the ignored thinking level on the Gemini API. Carried forward from Pi 1692bba6 (earendil-works/pi#10890), past the 1.2.0+3daa2028 pin.
+
+### BF-ecc7b76
+
+**A session with an extension that registers a markdown transformer no longer crashes while an assistant reply…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A session with an extension that registers a markdown transformer no longer crashes while an assistant reply streams.
+- **Root cause:** interactive mode handed each assistant block's async markdown transforms block.Invalidate as their completion hook. The hook runs on the background worker that finished the extension's transform chain, and AssistantMessageComponent.Invalidate rebuilds the block's content container (updateContent: the segment list, spacers, thinking-run regions and the scratch child list) while the owner loop streams the next delta into the same block. Two goroutines in updateContent let one clear the shared scratch list while the other passed it to SetChildren, so the container held nil children and the next frame panicked in Container.renderChildLocked with a nil child interface. Only a session with an…
+- **User impact:** Crash, hang or runaway process
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `ecc7b7683c` (2026-10-29), `a654570024` (2026-10-29)
+- **Tests:** `internal/codingagent/assistant_block_async_race_test.go::TestAssistantBlockAsyncMarkdownCompletionLeavesTheBlockToTheOwnerLoop`, `tui/assistant_message_async_test.go::TestAssistantMessageAsyncCompletionMarksBlockDirty`
+- **Release note:** A session with an extension that registers a markdown transformer no longer crashes while an assistant reply streams. The transformer runs on a background worker, and its completion rebuilt the reply's content from that worker while the interface was streaming the next delta into the same reply, so both could rebuild it at once and the next frame panicked in `Container.renderChildLocked` with a nil child. A finished transform now only marks the reply for redraw, as it already did for a user message, and the interface rebuilds the reply on its own loop.
 
 ### BF-c625bb4
 
