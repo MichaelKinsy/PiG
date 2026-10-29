@@ -77,6 +77,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-0e3411c](#bf-0e3411c) | Fixed CI on `main` after the 0.5.1 ledger trim: the reviewed-pin ledgers (`upstream-v0.84.0.json`… | PiG's own defect | All platforms | 0.5.2 |
 | [BF-0e360a0](#bf-0e360a0) | The `tui` package's default keybindings no longer depend on the platform: undo is `ctrl+-` and the alt-screen… | PiG's own defect | Windows, WSL | 0.5.0 |
 | [BF-0e8761b](#bf-0e8761b) | A system message with an empty sections object is stored as `"sections": {}`, as Pi stores it after a reset | A fix Pi shipped that PiG ported | All platforms | 0.5.0 |
+| [BF-0ec2cc8](#bf-0ec2cc8) | A durable session no longer has a data race between a call to `DeferUntilPublished` from another goroutine (a… | PiG's own defect | All platforms | Unreleased |
 | [BF-0ffb06a](#bf-0ffb06a) | fix(tui): diff rows with a CR are wrapped like Pi's Text | PiG's own defect | All platforms | Unreleased |
 | [BF-10189c4](#bf-10189c4) | The `/tree` Summarize option sends the session's thinking level with the branch summary request when the… | PiG's own defect | All platforms | Unreleased |
 | [BF-116b36c](#bf-116b36c) | fix(extensions): answer the start-window report of a tool call that holds no window, where the report is read | PiG's own defect | All platforms | Unreleased |
@@ -2147,6 +2148,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `0e8761be47` (2026-10-05), `b728733998` (2026-10-05)
 - **Tests:** `ai/system_message_sections_test.go::TestSystemMessageWritesAnEmptySectionsObjectButNotAnAbsentOne`, `durable/examples/tasks_compaction_examples_test.go::TestExample24Compaction`, `durable/interop/interop_test.go::TestGoOpensAndResumesAStoreWrittenByPiDurable`, `durable/interop/interop_test.go::TestPiDurableOpensAndResumesAStoreWrittenByGo`, `durable/interop/interop_test.go::TestScriptedSessionJsonlFilesMatchPiDurable`, `durable/interop/interop_test.go::TestScriptedSessionStoresMatchPiDurable`, `durable/interop/interop_test.go::TestScriptedSessionsViewIdentically`, `durable/interop/interop_test.go::TestSecondScriptedSessionStoresMatchPiDurable` and 1 more in docs/bug-ledger.json
 - **Release note:** A system message with an empty sections object is stored as `"sections": {}`, as Pi stores it after a reset.
+
+### BF-0ec2cc8
+
+**A durable session no longer has a data race between a call to `DeferUntilPublished` from another goroutine (a…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A durable session no longer has a data race between a call to `DeferUntilPublished` from another goroutine (a harness's wait for idleness makes one) and the commit that arms its publication: the commit read the length of the publication's queue after it released the lock that the call appends to it under, so the race detector could report the two in a long durable/harness run.
+- **Root cause:** The emptiness check now happens under the lock.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `0ec2cc8d9a` (2026-10-29), `d6110092aa` (2026-10-29)
+- **Tests:** `durable/harness/harness_tasks_scheduling_test.go::TestTaskScheduling`, `durable/session/session_defer_until_published_race_test.go::TestDeferUntilPublishedFromAnotherGoroutineWhilePublicationsRun`
+- **Release note:** A durable session no longer has a data race between a call to `DeferUntilPublished` from another goroutine (a harness's wait for idleness makes one) and the commit that arms its publication: the commit read the length of the publication's queue after it released the lock that the call appends to it under, so the race detector could report the two in a long durable/harness run. The commit now checks the queue under the lock.
 
 ### BF-0ffb06a
 
