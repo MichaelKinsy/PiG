@@ -2,6 +2,7 @@ use std::collections::{HashMap, HashSet};
 use std::io;
 use std::sync::{Arc, Mutex};
 use std::sync::atomic::{AtomicU64, Ordering};
+use std::time::Duration;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use crate::{AutocompleteItem, Context};
@@ -36,8 +37,58 @@ pub struct AutocompleteProvider {
 
 pub type AutocompleteProviderFactory = Arc<dyn Fn(&Context, Arc<AutocompleteProvider>) -> io::Result<Arc<AutocompleteProvider>> + Send + Sync>;
 
+/// pig divergence (D213): how long a provider that blocks its thread may run, outside a call to the host, before the host is told that it awaits real I/O (the
+/// `ui.autocomplete.pending` notice, D213). Pi's microtask checkpoint has no duration; a blocking provider has no event loop to end it.
+const CHECKPOINT: Duration = Duration::from_millis(50);
+
+#[derive(Default)]
+struct SettleState { host_calls: usize, epoch: u64, done: bool, announced: bool }
+
+/// One getSuggestions request being served: it awaits real I/O when it made no progress for a checkpoint, unfinished and outside a host call.
+struct Settle {
+    state: Mutex<SettleState>,
+    conn: Arc<crate::protocol::Connection>,
+    request_id: String,
+}
+
+impl Settle {
+    fn arm(self: &Arc<Self>) {
+        let epoch = {
+            let mut state = self.state.lock().unwrap();
+            if state.done || state.announced { return; }
+            state.epoch += 1;
+            state.epoch
+        };
+        let settle = self.clone();
+        std::thread::spawn(move || {
+            std::thread::sleep(CHECKPOINT);
+            let announce = {
+                let mut state = settle.state.lock().unwrap();
+                let announce = !state.done && !state.announced && state.host_calls == 0 && state.epoch == epoch;
+                if announce { state.announced = true; }
+                announce
+            };
+            if announce { let _ = settle.conn.notify("ui.autocomplete.pending", Some(json!({"requestId": settle.request_id}))); }
+        });
+    }
+    fn host_call(self: &Arc<Self>) -> HostWait {
+        self.state.lock().unwrap().host_calls += 1;
+        HostWait(self.clone())
+    }
+}
+
+/// Marks the request as waiting for the host until dropped.
+struct HostWait(Arc<Settle>);
+impl Drop for HostWait {
+    fn drop(&mut self) {
+        self.0.state.lock().unwrap().host_calls -= 1;
+        self.0.arm();
+    }
+}
+
 #[derive(Default)]
 pub(crate) struct AutocompleteRegistry {
+    suggests: Mutex<HashMap<String, Arc<Settle>>>,
     next: AtomicU64,
     factories: Mutex<HashMap<String, AutocompleteProviderFactory>>,
     invoked: Mutex<HashSet<String>>,
@@ -55,6 +106,8 @@ struct Descriptor {
 
 fn invoke<T: serde::de::DeserializeOwned>(ctx: &Context, args: Value) -> io::Result<T> {
     if ctx.is_cancelled() { return Err(io::Error::new(io::ErrorKind::Interrupted, "autocomplete cancelled")); }
+    let settle = if args["operation"] == "getSuggestions" && !ctx.request_id.is_empty() { ctx.conn.autocomplete.suggests.lock().unwrap().get(&ctx.request_id).cloned() } else { None };
+    let _waiting = settle.as_ref().map(|settle| settle.host_call());
     let value = ctx.call_host("ui.autocomplete.invoke", Some(args))?.unwrap_or(Value::Null);
     serde_json::from_value(value).map_err(io::Error::other)
 }
@@ -116,7 +169,17 @@ impl AutocompleteRegistry {
         let line = args["cursorLine"].as_u64().unwrap_or(0) as usize;
         let col = args["cursorCol"].as_u64().unwrap_or(0) as usize;
         match operation {
-            "getSuggestions" => serde_json::to_value((provider.get_suggestions)(ctx, &lines, line, col, args["force"].as_bool().unwrap_or(false))?).map_err(io::Error::other),
+            "getSuggestions" => {
+                let force = args["force"].as_bool().unwrap_or(false);
+                if ctx.request_id.is_empty() { return serde_json::to_value((provider.get_suggestions)(ctx, &lines, line, col, force)?).map_err(io::Error::other); }
+                let settle = Arc::new(Settle { state: Mutex::new(SettleState::default()), conn: ctx.conn.clone(), request_id: ctx.request_id.clone() });
+                self.suggests.lock().unwrap().insert(ctx.request_id.clone(), settle.clone());
+                settle.arm();
+                let result = (provider.get_suggestions)(ctx, &lines, line, col, force);
+                settle.state.lock().unwrap().done = true;
+                self.suggests.lock().unwrap().remove(&ctx.request_id);
+                serde_json::to_value(result?).map_err(io::Error::other)
+            }
             "applyCompletion" => {
                 let item: AutocompleteItem = serde_json::from_value(args["item"].clone()).map_err(io::Error::other)?;
                 serde_json::to_value((provider.apply_completion)(ctx, &lines, line, col, &item, args["prefix"].as_str().unwrap_or(""))?).map_err(io::Error::other)
