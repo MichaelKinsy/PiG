@@ -2558,6 +2558,29 @@ fn main() {
         },
     );
     ext.command(
+        "rw_idle_live",
+        "Poll isIdle live and report the sequence of answers",
+        |ctx, _args| {
+            let ctx = ctx.clone();
+            std::thread::spawn(move || {
+                let mut seen: Vec<String> = Vec::new();
+                let deadline = std::time::Instant::now() + std::time::Duration::from_secs(10);
+                while seen.len() < 3 && std::time::Instant::now() < deadline {
+                    let answer = match ctx.is_idle() {
+                        Ok(idle) => idle.to_string(),
+                        Err(_) => "error".to_string(),
+                    };
+                    if seen.last() != Some(&answer) {
+                        seen.push(answer);
+                        ctx.notify(&format!("rw_idle_live={}", seen.join(",")), "info");
+                    }
+                    std::thread::sleep(std::time::Duration::from_millis(10));
+                }
+            });
+            CommandResult::Ok
+        },
+    );
+    ext.command(
         "set_model",
         "Switch to the model in the arguments",
         |ctx, args| {
