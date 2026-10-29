@@ -1,6 +1,7 @@
 package harness
 
 import (
+	"cmp"
 	"errors"
 	"fmt"
 	"maps"
@@ -210,10 +211,11 @@ func (c *Run) WaitReady() {
 		c.WaitFor(`"id":"ready"`)
 		return
 	}
+	marker := cmp.Or(c.Env.ReadyMarker, "strict")
 	c.Await("interactive prompt", func(s string) bool {
 		lines := strings.Split(s, "\n")
 		for i := max(0, len(lines)-4); i < len(lines); i++ {
-			if strings.Contains(lines[i], "strict") {
+			if strings.Contains(lines[i], marker) {
 				return true
 			}
 		}
