@@ -1307,6 +1307,7 @@ closing = "Pure helpers ported per SDK with vector tests from Pi at the pin (tes
 "pi-tui: getNativeClipboard" = { go = "gap:SdkExportsLedger", rust = "gap:SdkExportsLedger", python = "gap:SdkExportsLedger", lisp = "gap:SdkExportsLedger" }
 "pi-tui: getOsc8LinkAtColumn" = { go = "native:tui.GetOsc8LinkAtColumn", rust = "native:tui::get_osc8_link_at_column", python = "native:tui.get_osc8_link_at_column", lisp = "native:pig:tui-get-osc8-link-at-column" }
 "pi-tui: getPngDimensions" = { go = "gap:SdkExportsLedger", rust = "gap:SdkExportsLedger", python = "gap:SdkExportsLedger", lisp = "gap:SdkExportsLedger" }
+"pi-tui: getSelectPageIndex" = { go = "native:tui.GetSelectPageIndex", rust = "native:tui::get_select_page_index", python = "native:tui.get_select_page_index", lisp = "native:pig:tui-get-select-page-index" }
 "pi-tui: getTerminalColorMode" = { go = "native:tui.GetTerminalColorMode", rust = "native:tui::get_terminal_color_mode", python = "native:tui.get_terminal_color_mode", lisp = "native:pig:tui-get-terminal-color-mode" }
 "pi-tui: getWebpDimensions" = { go = "gap:SdkExportsLedger", rust = "gap:SdkExportsLedger", python = "gap:SdkExportsLedger", lisp = "gap:SdkExportsLedger" }
 "pi-tui: hyperlink" = { go = "native:tui.Hyperlink", rust = "native:tui::hyperlink", python = "native:tui.hyperlink", lisp = "native:pig:tui-hyperlink" }
