@@ -136593,8 +136593,8 @@
       ],
       "evidence": [
         "test:tui/assistant_message_render_oracle_test.go#TestAssistantMessageComponentRenderMatchesPi",
-        "test:internal/codingagent/markdown_message_meta_test.go#TestMarkdownTransformContextCarriesPersistedEntryIdentity",
-        "test:tui/assistant_message_block_allocs_norace_test.go#TestAssistantMessageDeltaAllocationCeiling"
+        "test:internal/codingagent/assistant_block_async_race_test.go#TestAssistantBlockAsyncMarkdownCompletionLeavesTheBlockToTheOwnerLoop",
+        "test:internal/codingagent/markdown_message_meta_test.go#TestMarkdownTransformContextCarriesPersistedEntryIdentity"
       ]
     },
     {
@@ -136615,8 +136615,8 @@
       ],
       "evidence": [
         "test:tui/assistant_message_render_oracle_test.go#TestAssistantMessageComponentRenderMatchesPi",
-        "test:internal/codingagent/markdown_message_meta_test.go#TestMarkdownTransformContextCarriesPersistedEntryIdentity",
-        "test:tui/assistant_message_block_allocs_norace_test.go#TestAssistantMessageDeltaAllocationCeiling"
+        "test:internal/codingagent/assistant_block_async_race_test.go#TestAssistantBlockAsyncMarkdownCompletionLeavesTheBlockToTheOwnerLoop",
+        "test:internal/codingagent/markdown_message_meta_test.go#TestMarkdownTransformContextCarriesPersistedEntryIdentity"
       ]
     },
     {
