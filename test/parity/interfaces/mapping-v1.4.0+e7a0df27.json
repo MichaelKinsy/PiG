@@ -3497,7 +3497,7 @@
       "evidence": [
         "test:agent/agent_upstream_test.go#TestAgent_UpdatesStateWithMutators",
         "test:agent/tool_call_hook_func_upstream_test.go#TestToolCallFuncsReceiveTheToolCallBlockAndTheAgentContext",
-        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeTool"
+        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeSummarizesUnionAndMultiLineOutputTypes"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -3652,7 +3652,7 @@
       "evidence": [
         "test:agent/agent_upstream_test.go#TestAgent_UpdatesStateWithMutators",
         "test:agent/tool_call_hook_func_upstream_test.go#TestToolCallFuncsReceiveTheToolCallBlockAndTheAgentContext",
-        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeTool"
+        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeSummarizesUnionAndMultiLineOutputTypes"
       ]
     },
     {
@@ -112267,8 +112267,8 @@
       ],
       "evidence": [
         "test:chord/delta/retention_upstream_test.go#TestDeltaTrackerRetentionAcrossGCJobs",
-        "test:chord/delta/tracker_delta_lifecycle_upstream_test.go#TestDeltaImmutableTrackerLifecycle",
-        "test:chord/delta/tracker_lifecycle_upstream_test.go#TestTrackerOverlayLifecycle"
+        "test:chord/delta/retention_upstream_test.go#TestTrackerReleasesADroppedOpenChangeWhenTheNextOpens",
+        "test:chord/delta/tracker_delta_lifecycle_upstream_test.go#TestDeltaImmutableTrackerLifecycle"
       ]
     },
     {
@@ -112289,8 +112289,8 @@
       ],
       "evidence": [
         "test:chord/delta/retention_upstream_test.go#TestDeltaTrackerRetentionAcrossGCJobs",
-        "test:chord/delta/tracker_delta_lifecycle_upstream_test.go#TestDeltaImmutableTrackerLifecycle",
-        "test:chord/delta/tracker_lifecycle_upstream_test.go#TestTrackerOverlayLifecycle"
+        "test:chord/delta/retention_upstream_test.go#TestTrackerReleasesADroppedOpenChangeWhenTheNextOpens",
+        "test:chord/delta/tracker_delta_lifecycle_upstream_test.go#TestDeltaImmutableTrackerLifecycle"
       ]
     },
     {
@@ -113570,7 +113570,7 @@
       "evidence": [
         "test:chord/delta/tracker_array_root_test.go#TestTrackerSupportsRootArrays",
         "test:chord/delta/tracker_change_lifecycle_test.go#TestTrackerChangesCommitInOrderAndAbortedChangesLeaveNoTrace",
-        "test:chord/delta/tracker_foreign_prepared_test.go#TestAdoptRefusesAPreparedValueOfAnotherTrackerThatAlreadyHasAnOwner"
+        "test:chord/delta/tracker_competing_test.go#TestTrackerTracksOneChangeAtATimeWithoutAWeakRegistration"
       ]
     },
     {
@@ -120411,7 +120411,7 @@
       "evidence": [
         "test:chord/sqlite/migrations_test.go#TestSqliteMigrations",
         "test:chord/sqlite/node/sqlite_driver_test.go#TestNodeSqliteDriver",
-        "test:durable/storage/sqlite/sqlite_migrations_test.go#TestDurableSQLiteMigrations"
+        "test:chord/sqlite/node/transaction_outcome_test.go#TestNodeSqliteTransactionOutcome"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -120434,7 +120434,7 @@
       "evidence": [
         "test:chord/sqlite/migrations_test.go#TestSqliteMigrations",
         "test:chord/sqlite/node/sqlite_driver_test.go#TestNodeSqliteDriver",
-        "test:durable/storage/sqlite/sqlite_migrations_test.go#TestDurableSQLiteMigrations"
+        "test:chord/sqlite/node/transaction_outcome_test.go#TestNodeSqliteTransactionOutcome"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -136546,9 +136546,9 @@
         "call:coding/session_tools.go#Session.SetActiveToolsByName"
       ],
       "evidence": [
+        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeSummarizesUnionAndMultiLineOutputTypes",
         "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeTool",
-        "test:coding/mcp_session_upstream_test.go#TestAgentSessionMCPDoesNotLetCodemodeCallItselfOrInactiveDirectTools",
-        "test:coding/mcp_session_upstream_test.go#TestAgentSessionMCPTellsScriptsWhatDirectlyExposedMCPToolsResolveTo"
+        "test:coding/mcp_session_upstream_test.go#TestAgentSessionMCPDoesNotLetCodemodeCallItselfOrInactiveDirectTools"
       ]
     },
     {
@@ -136568,9 +136568,9 @@
         "call:coding/session_tools.go#Session.SetActiveToolsByName"
       ],
       "evidence": [
+        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeSummarizesUnionAndMultiLineOutputTypes",
         "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeTool",
-        "test:coding/mcp_session_upstream_test.go#TestAgentSessionMCPDoesNotLetCodemodeCallItselfOrInactiveDirectTools",
-        "test:coding/mcp_session_upstream_test.go#TestAgentSessionMCPTellsScriptsWhatDirectlyExposedMCPToolsResolveTo"
+        "test:coding/mcp_session_upstream_test.go#TestAgentSessionMCPDoesNotLetCodemodeCallItselfOrInactiveDirectTools"
       ]
     },
     {
@@ -143097,7 +143097,7 @@
       "evidence": [
         "test:coding/branch_summary_ambient_auth_upstream_test.go#TestBranchSummaryAmbientAuthWithoutAPIKeyUpstream",
         "test:coding/session_branch_summary_upstream_test.go#TestBranchSummaryAmbientAuthUpstream",
-        "test:internal/codingagent/session_tree_traversal_upstream_test.go#TestSessionTreeTraversalUpstream"
+        "test:coding/summary_oauth_auth_11520_upstream_test.go#TestSDKSummaryLetsTheRuntimeResolveStoredOAuthUpstream"
       ]
     },
     {
@@ -147154,8 +147154,8 @@
       ],
       "evidence": [
         "test:coding/session_export_html_oracle_test.go#TestSessionExportToHTMLMatchesPi",
-        "test:coding/create_agent_session_extensions_result_test.go#TestCreateAgentSessionFromServicesReturnsTheLoadedExtensions",
-        "test:coding/create_agent_session_model_test.go#TestCreateAgentSessionFromServicesNeedsServices"
+        "test:coding/summary_oauth_auth_11520_upstream_test.go#TestSDKSummaryLetsTheRuntimeResolveStoredOAuthUpstream",
+        "test:coding/create_agent_session_extensions_result_test.go#TestCreateAgentSessionFromServicesReturnsTheLoadedExtensions"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -147177,8 +147177,8 @@
       ],
       "evidence": [
         "test:coding/session_export_html_oracle_test.go#TestSessionExportToHTMLMatchesPi",
-        "test:coding/create_agent_session_extensions_result_test.go#TestCreateAgentSessionFromServicesReturnsTheLoadedExtensions",
-        "test:coding/create_agent_session_model_test.go#TestCreateAgentSessionFromServicesNeedsServices"
+        "test:coding/summary_oauth_auth_11520_upstream_test.go#TestSDKSummaryLetsTheRuntimeResolveStoredOAuthUpstream",
+        "test:coding/create_agent_session_extensions_result_test.go#TestCreateAgentSessionFromServicesReturnsTheLoadedExtensions"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -147200,8 +147200,8 @@
       ],
       "evidence": [
         "test:coding/session_export_html_oracle_test.go#TestSessionExportToHTMLMatchesPi",
-        "test:coding/create_agent_session_extensions_result_test.go#TestCreateAgentSessionFromServicesReturnsTheLoadedExtensions",
-        "test:coding/create_agent_session_model_test.go#TestCreateAgentSessionFromServicesCarriesTheToolSelectionIntoTheSession"
+        "test:coding/summary_oauth_auth_11520_upstream_test.go#TestSDKSummaryLetsTheRuntimeResolveStoredOAuthUpstream",
+        "test:coding/create_agent_session_extensions_result_test.go#TestCreateAgentSessionFromServicesReturnsTheLoadedExtensions"
       ]
     },
     {
@@ -147264,8 +147264,8 @@
       ],
       "evidence": [
         "test:coding/session_export_html_oracle_test.go#TestSessionExportToHTMLMatchesPi",
-        "test:coding/create_agent_session_extensions_result_test.go#TestCreateAgentSessionFromServicesReturnsTheLoadedExtensions",
-        "test:coding/create_agent_session_test.go#TestCreateAgentSessionFromServicesForwardsTheSessionInputs"
+        "test:coding/summary_oauth_auth_11520_upstream_test.go#TestSDKSummaryLetsTheRuntimeResolveStoredOAuthUpstream",
+        "test:coding/create_agent_session_extensions_result_test.go#TestCreateAgentSessionFromServicesReturnsTheLoadedExtensions"
       ]
     },
     {
@@ -147328,8 +147328,8 @@
       ],
       "evidence": [
         "test:coding/session_export_html_oracle_test.go#TestSessionExportToHTMLMatchesPi",
-        "test:coding/create_agent_session_extensions_result_test.go#TestCreateAgentSessionFromServicesReturnsTheLoadedExtensions",
-        "test:coding/create_agent_session_model_test.go#TestCreateAgentSessionFromServicesReportsASavedModelChangeThatNamesNoCatalogModel"
+        "test:coding/summary_oauth_auth_11520_upstream_test.go#TestSDKSummaryLetsTheRuntimeResolveStoredOAuthUpstream",
+        "test:coding/create_agent_session_extensions_result_test.go#TestCreateAgentSessionFromServicesReturnsTheLoadedExtensions"
       ]
     },
     {
@@ -147736,8 +147736,8 @@
       ],
       "evidence": [
         "test:coding/session_export_html_oracle_test.go#TestSessionExportToHTMLMatchesPi",
-        "test:coding/create_agent_session_extensions_result_test.go#TestCreateAgentSessionFromServicesReturnsTheLoadedExtensions",
-        "test:coding/create_agent_session_model_test.go#TestCreateAgentSessionFromServicesReportsASavedModelChangeThatNamesNoCatalogModel"
+        "test:coding/summary_oauth_auth_11520_upstream_test.go#TestSDKSummaryLetsTheRuntimeResolveStoredOAuthUpstream",
+        "test:coding/create_agent_session_extensions_result_test.go#TestCreateAgentSessionFromServicesReturnsTheLoadedExtensions"
       ]
     },
     {
@@ -147801,8 +147801,8 @@
       ],
       "evidence": [
         "test:coding/session_export_html_oracle_test.go#TestSessionExportToHTMLMatchesPi",
-        "test:coding/create_agent_session_extensions_result_test.go#TestCreateAgentSessionFromServicesReturnsTheLoadedExtensions",
-        "test:coding/create_agent_session_model_test.go#TestCreateAgentSessionFromServicesReportsASavedModelChangeThatNamesNoCatalogModel"
+        "test:coding/summary_oauth_auth_11520_upstream_test.go#TestSDKSummaryLetsTheRuntimeResolveStoredOAuthUpstream",
+        "test:coding/create_agent_session_extensions_result_test.go#TestCreateAgentSessionFromServicesReturnsTheLoadedExtensions"
       ]
     },
     {
@@ -149470,13 +149470,47 @@
     },
     {
       "id": "pkg:coding-agent/.#createSyntheticSourceInfo",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:46db07d0a1b6c33a609e3468f963a41a3bd2f38678a6040d24ec72cef7a5dc54"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:46db07d0a1b6c33a609e3468f963a41a3bd2f38678a6040d24ec72cef7a5dc54",
+      "rationale": "Derived by the interface gap detector: createSyntheticSourceInfo is Go internal/codingagent/extension_host_info.go#CreateSyntheticSourceInfo (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "internal/codingagent/extension_host_info.go#CreateSyntheticSourceInfo"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:internal/codingagent/extension_host_info.go#CreateSyntheticSourceInfo"
+      ],
+      "evidence": [
+        "test:internal/codingagent/source_info_oracle_test.go#TestSourceInfoHelpersMatchPi",
+        "test:internal/codingagent/slash_command_info_test.go#TestSlashCommandInfoWireShape",
+        "test:internal/codingagent/slash_command_source_test.go#TestSlashCommandCatalogPromptUsesRecordedSourceInfoOverItsOwn"
+      ]
     },
     {
       "id": "pkg:coding-agent/.#createSyntheticSourceInfo::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:0893a1f9327ab320feb817d306cb7aae1c32d59c0c82c2e5136e595660b2084a"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:0893a1f9327ab320feb817d306cb7aae1c32d59c0c82c2e5136e595660b2084a",
+      "rationale": "Derived by the interface gap detector: createSyntheticSourceInfo::call:0 is Go internal/codingagent/extension_host_info.go#CreateSyntheticSourceInfo (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "internal/codingagent/extension_host_info.go#CreateSyntheticSourceInfo"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:internal/codingagent/extension_host_info.go#CreateSyntheticSourceInfo"
+      ],
+      "evidence": [
+        "test:internal/codingagent/source_info_oracle_test.go#TestSourceInfoHelpersMatchPi",
+        "test:internal/codingagent/slash_command_info_test.go#TestSlashCommandInfoWireShape",
+        "test:internal/codingagent/slash_command_source_test.go#TestSlashCommandCatalogPromptUsesRecordedSourceInfoOverItsOwn"
+      ]
     },
     {
       "id": "pkg:coding-agent/.#createToolSearchExtension",
@@ -152757,9 +152791,9 @@
         "call:internal/packagemanager/resolve.go#PackageManager.ResolveExtensionSources"
       ],
       "evidence": [
+        "test:internal/packagemanager/changelog_path_test.go#TestResolveExtensionSourcesExposesThePackageChangelogPath",
         "test:internal/packagemanager/resolve_gaps_test.go#TestResolveExtensionSourcesReportsATemporarySourceThatFailsToInstall",
-        "test:internal/packagemanager/resolve_gaps_test.go#TestResolveExtensionSourcesSkipsMissingLocalSourcesAndSortsTypes",
-        "test:internal/packagemanager/resolve_test.go#TestResolveExtensionSourcesBuiltinsAndOfflineRemoteSources"
+        "test:internal/packagemanager/resolve_gaps_test.go#TestResolveExtensionSourcesSkipsMissingLocalSourcesAndSortsTypes"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -152780,9 +152814,9 @@
         "call:internal/packagemanager/resolve.go#PackageManager.ResolveExtensionSources"
       ],
       "evidence": [
+        "test:internal/packagemanager/changelog_path_test.go#TestResolveExtensionSourcesExposesThePackageChangelogPath",
         "test:internal/packagemanager/resolve_gaps_test.go#TestResolveExtensionSourcesReportsATemporarySourceThatFailsToInstall",
-        "test:internal/packagemanager/resolve_gaps_test.go#TestResolveExtensionSourcesSkipsMissingLocalSourcesAndSortsTypes",
-        "test:internal/packagemanager/resolve_test.go#TestResolveExtensionSourcesBuiltinsAndOfflineRemoteSources"
+        "test:internal/packagemanager/resolve_gaps_test.go#TestResolveExtensionSourcesSkipsMissingLocalSourcesAndSortsTypes"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -152803,6 +152837,7 @@
         "call:internal/packagemanager/package_manager.go#PackageManager.SetProgressCallback"
       ],
       "evidence": [
+        "test:internal/packagemanager/package_manager_ops_gaps_test.go#TestPackageManagerWarnsWhenAnNpmUpdateLeavesTheInstalledVersionUnchanged",
         "test:internal/packagemanager/package_manager_test.go#TestPackageManagerReportsProgressToTheInstalledCallback",
         "test:internal/packagemanager/package_update_shared_checkout_test.go#TestUpdateRunsThePackagesOfOneCheckoutOneAtATime"
       ]
@@ -152824,6 +152859,7 @@
         "call:internal/packagemanager/package_manager.go#PackageManager.SetProgressCallback"
       ],
       "evidence": [
+        "test:internal/packagemanager/package_manager_ops_gaps_test.go#TestPackageManagerWarnsWhenAnNpmUpdateLeavesTheInstalledVersionUnchanged",
         "test:internal/packagemanager/package_manager_test.go#TestPackageManagerReportsProgressToTheInstalledCallback",
         "test:internal/packagemanager/package_update_shared_checkout_test.go#TestUpdateRunsThePackagesOfOneCheckoutOneAtATime"
       ]
@@ -155083,9 +155119,9 @@
         "call:coding/extension/factoryload/load.go#LoadExtensionFromFactory"
       ],
       "evidence": [
+        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeSummarizesUnionAndMultiLineOutputTypes",
         "test:coding/codemode_session_upstream_test.go#TestUpstreamCodemodeModels",
-        "test:coding/extension/diagnostics_upstream_test.go#TestRunnerShortcutConflictIsAWarningDiagnosticWithThePath",
-        "test:coding/extension/host/inproc/shortcuts_oracle_test.go#TestRunnerShortcutsMatchPi"
+        "test:coding/extension/diagnostics_upstream_test.go#TestRunnerShortcutConflictIsAWarningDiagnosticWithThePath"
       ]
     },
     {
@@ -155172,8 +155208,8 @@
       ],
       "evidence": [
         "test:coding/cli/extension_set_upstream_test.go#TestOmitReplacedExtensionsWarnsAboutReplacedBuiltin",
-        "test:coding/codemode_session_upstream_test.go#TestUpstreamCodemodeModels",
-        "test:coding/extension/diagnostics_upstream_test.go#TestRunnerShortcutConflictIsAWarningDiagnosticWithThePath"
+        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeSummarizesUnionAndMultiLineOutputTypes",
+        "test:coding/codemode_session_upstream_test.go#TestUpstreamCodemodeModels"
       ]
     },
     {
@@ -155559,8 +155595,8 @@
       ],
       "evidence": [
         "test:coding/extension/host/inproc/runtime_shared_state_test.go#TestBindCoreRuntimeHandlersForwardArgumentsAndResults",
-        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeTool",
-        "test:coding/codemode_session_upstream_test.go#TestUpstreamCodemodeModels"
+        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeSummarizesUnionAndMultiLineOutputTypes",
+        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeTool"
       ]
     },
     {
@@ -155581,8 +155617,8 @@
       ],
       "evidence": [
         "test:coding/extension/host/inproc/runtime_shared_state_test.go#TestBindCoreRuntimeHandlersForwardArgumentsAndResults",
-        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeTool",
-        "test:coding/codemode_session_upstream_test.go#TestUpstreamCodemodeModels"
+        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeSummarizesUnionAndMultiLineOutputTypes",
+        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeTool"
       ]
     },
     {
@@ -155603,8 +155639,8 @@
       ],
       "evidence": [
         "test:coding/extension/host/inproc/event_send_user_message_test.go#TestAnEventHandlerCanSendAUserMessage",
-        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeTool",
-        "test:coding/codemode_session_upstream_test.go#TestUpstreamCodemodeModels"
+        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeSummarizesUnionAndMultiLineOutputTypes",
+        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeTool"
       ]
     },
     {
@@ -155625,8 +155661,8 @@
       ],
       "evidence": [
         "test:coding/extension/host/inproc/event_send_user_message_test.go#TestAnEventHandlerCanSendAUserMessage",
-        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeTool",
-        "test:coding/codemode_session_upstream_test.go#TestUpstreamCodemodeModels"
+        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeSummarizesUnionAndMultiLineOutputTypes",
+        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeTool"
       ]
     },
     {
@@ -160784,7 +160820,7 @@
       "evidence": [
         "test:coding/extension/context_api_test.go#TestContext_InjectedActionsForward",
         "test:coding/extension/context_api_test.go#TestContext_StaleRunnerErrors",
-        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeTool"
+        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeSummarizesUnionAndMultiLineOutputTypes"
       ]
     },
     {
@@ -160806,7 +160842,7 @@
       "evidence": [
         "test:coding/extension/context_api_test.go#TestContext_InjectedActionsForward",
         "test:coding/extension/context_api_test.go#TestContext_StaleRunnerErrors",
-        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeTool"
+        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeSummarizesUnionAndMultiLineOutputTypes"
       ]
     },
     {
@@ -160828,7 +160864,7 @@
       "evidence": [
         "test:coding/extension/context_api_test.go#TestContext_InjectedActionsForward",
         "test:coding/extension/context_api_test.go#TestContext_StaleRunnerErrors",
-        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeTool"
+        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeSummarizesUnionAndMultiLineOutputTypes"
       ]
     },
     {
@@ -160850,7 +160886,7 @@
       "evidence": [
         "test:coding/extension/context_api_test.go#TestContext_InjectedActionsForward",
         "test:coding/extension/context_api_test.go#TestContext_StaleRunnerErrors",
-        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeTool"
+        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeSummarizesUnionAndMultiLineOutputTypes"
       ]
     },
     {
@@ -164873,8 +164909,8 @@
       ],
       "evidence": [
         "test:coding/extension/host/inproc/runtime_shared_state_test.go#TestBindCoreRuntimeHandlersForwardArgumentsAndResults",
-        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeTool",
-        "test:coding/codemode_session_upstream_test.go#TestUpstreamCodemodeModels"
+        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeSummarizesUnionAndMultiLineOutputTypes",
+        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeTool"
       ]
     },
     {
@@ -164895,8 +164931,8 @@
       ],
       "evidence": [
         "test:coding/extension/host/inproc/runtime_shared_state_test.go#TestBindCoreRuntimeHandlersForwardArgumentsAndResults",
-        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeTool",
-        "test:coding/codemode_session_upstream_test.go#TestUpstreamCodemodeModels"
+        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeSummarizesUnionAndMultiLineOutputTypes",
+        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeTool"
       ]
     },
     {
@@ -164917,8 +164953,8 @@
       ],
       "evidence": [
         "test:coding/extension/host/inproc/event_send_user_message_test.go#TestAnEventHandlerCanSendAUserMessage",
-        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeTool",
-        "test:coding/codemode_session_upstream_test.go#TestUpstreamCodemodeModels"
+        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeSummarizesUnionAndMultiLineOutputTypes",
+        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeTool"
       ]
     },
     {
@@ -164939,8 +164975,8 @@
       ],
       "evidence": [
         "test:coding/extension/host/inproc/event_send_user_message_test.go#TestAnEventHandlerCanSendAUserMessage",
-        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeTool",
-        "test:coding/codemode_session_upstream_test.go#TestUpstreamCodemodeModels"
+        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeSummarizesUnionAndMultiLineOutputTypes",
+        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeTool"
       ]
     },
     {
@@ -174391,9 +174427,9 @@
         "call:coding/cli/main.go#Main"
       ],
       "evidence": [
+        "test:coding/cli/deleted_cwd_unix_test.go#TestMainReportsDeletedWorkingDirectory",
         "test:coding/cli/main_options_test.go#TestMainLoadsTheProgramsExtensionFactories",
-        "test:coding/cli/main_options_test.go#TestMainPassesTheProgramsExtensionFactoriesToPackageCommands",
-        "test:coding/cli/main_options_test.go#TestMainRunsAFailingProgramFactoryOnceWithAProjectTrustPass"
+        "test:coding/cli/main_options_test.go#TestMainPassesTheProgramsExtensionFactoriesToPackageCommands"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -174414,9 +174450,9 @@
         "call:coding/cli/main.go#Main"
       ],
       "evidence": [
+        "test:coding/cli/deleted_cwd_unix_test.go#TestMainReportsDeletedWorkingDirectory",
         "test:coding/cli/main_options_test.go#TestMainLoadsTheProgramsExtensionFactories",
-        "test:coding/cli/main_options_test.go#TestMainPassesTheProgramsExtensionFactoriesToPackageCommands",
-        "test:coding/cli/main_options_test.go#TestMainRunsAFailingProgramFactoryOnceWithAProjectTrustPass"
+        "test:coding/cli/main_options_test.go#TestMainPassesTheProgramsExtensionFactoriesToPackageCommands"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -181228,9 +181264,9 @@
         "call:internal/packagemanager/resolve.go#PackageManager.ResolveExtensionSources"
       ],
       "evidence": [
+        "test:internal/packagemanager/changelog_path_test.go#TestResolveExtensionSourcesExposesThePackageChangelogPath",
         "test:internal/packagemanager/resolve_gaps_test.go#TestResolveExtensionSourcesReportsATemporarySourceThatFailsToInstall",
-        "test:internal/packagemanager/resolve_gaps_test.go#TestResolveExtensionSourcesSkipsMissingLocalSourcesAndSortsTypes",
-        "test:internal/packagemanager/resolve_test.go#TestResolveExtensionSourcesBuiltinsAndOfflineRemoteSources"
+        "test:internal/packagemanager/resolve_gaps_test.go#TestResolveExtensionSourcesSkipsMissingLocalSourcesAndSortsTypes"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -181251,9 +181287,9 @@
         "call:internal/packagemanager/resolve.go#PackageManager.ResolveExtensionSources"
       ],
       "evidence": [
+        "test:internal/packagemanager/changelog_path_test.go#TestResolveExtensionSourcesExposesThePackageChangelogPath",
         "test:internal/packagemanager/resolve_gaps_test.go#TestResolveExtensionSourcesReportsATemporarySourceThatFailsToInstall",
-        "test:internal/packagemanager/resolve_gaps_test.go#TestResolveExtensionSourcesSkipsMissingLocalSourcesAndSortsTypes",
-        "test:internal/packagemanager/resolve_test.go#TestResolveExtensionSourcesBuiltinsAndOfflineRemoteSources"
+        "test:internal/packagemanager/resolve_gaps_test.go#TestResolveExtensionSourcesSkipsMissingLocalSourcesAndSortsTypes"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -181274,6 +181310,7 @@
         "call:internal/packagemanager/package_manager.go#PackageManager.SetProgressCallback"
       ],
       "evidence": [
+        "test:internal/packagemanager/package_manager_ops_gaps_test.go#TestPackageManagerWarnsWhenAnNpmUpdateLeavesTheInstalledVersionUnchanged",
         "test:internal/packagemanager/package_manager_test.go#TestPackageManagerReportsProgressToTheInstalledCallback",
         "test:internal/packagemanager/package_update_shared_checkout_test.go#TestUpdateRunsThePackagesOfOneCheckoutOneAtATime"
       ]
@@ -181295,6 +181332,7 @@
         "call:internal/packagemanager/package_manager.go#PackageManager.SetProgressCallback"
       ],
       "evidence": [
+        "test:internal/packagemanager/package_manager_ops_gaps_test.go#TestPackageManagerWarnsWhenAnNpmUpdateLeavesTheInstalledVersionUnchanged",
         "test:internal/packagemanager/package_manager_test.go#TestPackageManagerReportsProgressToTheInstalledCallback",
         "test:internal/packagemanager/package_update_shared_checkout_test.go#TestUpdateRunsThePackagesOfOneCheckoutOneAtATime"
       ]
@@ -181639,8 +181677,25 @@
     },
     {
       "id": "pkg:coding-agent/.#PathMetadata",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:6c78008acbe163e66a43f35797f446b9bb05d06747958fc5fff393f7844a3f73"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:6c78008acbe163e66a43f35797f446b9bb05d06747958fc5fff393f7844a3f73",
+      "rationale": "Derived by the interface gap detector: PathMetadata is Go internal/codingagent/resource_paths.go#PathMetadata (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "internal/codingagent/resource_paths.go#PathMetadata"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:internal/codingagent/reload_resources.go#ExtensionDiscoveredPathMetadata"
+      ],
+      "evidence": [
+        "test:internal/packagemanager/resolve_oracle_test.go#TestResolveMatchesPiOnRandomFixtures",
+        "test:internal/codingagent/source_info_changelog_test.go#TestSourceInfoCarriesTheChangelogPath",
+        "test:coding/resource_loader_extend_gaps_test.go#TestExtendResourcesRecordsDirectorySourcesAccumulatesAndKeepsThemeSourceInfo"
+      ]
     },
     {
       "id": "pkg:coding-agent/.#PathMetadata::property:baseDir",
@@ -181666,8 +181721,24 @@
     },
     {
       "id": "pkg:coding-agent/.#PathMetadata::property:changelogPath",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:c3eb5286add0f37f19d630813991bf868683561afa953e1eacbaa5b8f011d384"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:c3eb5286add0f37f19d630813991bf868683561afa953e1eacbaa5b8f011d384",
+      "rationale": "Derived by the interface gap detector: PathMetadata::property:changelogPath is Go internal/codingagent/resource_paths.go#PathMetadata.ChangelogPath (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "internal/codingagent/resource_paths.go#PathMetadata.ChangelogPath"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:internal/codingagent/resource_paths.go#PathMetadata.SourceInfo"
+      ],
+      "evidence": [
+        "test:internal/codingagent/source_info_changelog_test.go#TestSourceInfoCarriesTheChangelogPath",
+        "test:internal/packagemanager/changelog_path_test.go#TestResolveExtensionSourcesExposesThePackageChangelogPath"
+      ]
     },
     {
       "id": "pkg:coding-agent/.#PathMetadata::property:origin",
@@ -184633,8 +184704,8 @@
       ],
       "evidence": [
         "test:coding/cli/extension_set_upstream_test.go#TestOmitReplacedExtensionsWarnsAboutReplacedBuiltin",
-        "test:coding/codemode_session_upstream_test.go#TestUpstreamCodemodeModels",
-        "test:coding/extension/diagnostics_upstream_test.go#TestRunnerShortcutConflictIsAWarningDiagnosticWithThePath"
+        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeSummarizesUnionAndMultiLineOutputTypes",
+        "test:coding/codemode_session_upstream_test.go#TestUpstreamCodemodeModels"
       ]
     },
     {
@@ -184654,9 +184725,9 @@
         "call:coding/extension/factoryload/api.go#api.RegisterTool"
       ],
       "evidence": [
+        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeSummarizesUnionAndMultiLineOutputTypes",
         "test:coding/codemode_session_upstream_test.go#TestUpstreamCodemodeModels",
-        "test:coding/extension/host/inproc/upstream_catalog_test.go#TestUpstreamRunnerCatalog",
-        "test:coding/extension/host/subprocess/subagent_trust_upstream_test.go#TestSubagentProjectTrustUpstream"
+        "test:coding/extension/host/inproc/upstream_catalog_test.go#TestUpstreamRunnerCatalog"
       ]
     },
     {
@@ -184805,8 +184876,8 @@
       ],
       "evidence": [
         "test:internal/imageprocessing/image_processing_upstream_test.go#TestResizeImageHonoursMaxHeightAndJPEGQualityOnTheirOwn",
-        "test:internal/imageprocessing/image_processing_upstream_test.go#TestResizeImageUpstream",
-        "test:internal/imageprocessing/resize_zero_side_test.go#TestResizeImageReturnsNoImageWhenAScaledSideRoundsToZero"
+        "test:internal/imageprocessing/image_processing_upstream_test.go#TestResizeImagePicksJPEGOverLargerPNGForPhotos",
+        "test:internal/imageprocessing/image_processing_upstream_test.go#TestResizeImageUpstream"
       ]
     },
     {
@@ -185340,7 +185411,7 @@
       "evidence": [
         "test:internal/packagemanager/resolve_oracle_test.go#TestResolveMatchesPiOnRandomFixtures",
         "test:internal/packagemanager/builtin_extensions_test.go#TestResolveReportsTheBuiltinExtensionsOption",
-        "test:internal/packagemanager/managed_root_cwd_test.go#TestEmptyAgentDirNeverWritesIntoTheProcessDirectory"
+        "test:internal/packagemanager/changelog_path_test.go#TestResolveExtensionSourcesExposesThePackageChangelogPath"
       ]
     },
     {
@@ -185362,7 +185433,7 @@
       "evidence": [
         "test:internal/packagemanager/resolve_oracle_test.go#TestResolveMatchesPiOnRandomFixtures",
         "test:internal/packagemanager/builtin_extensions_test.go#TestResolveReportsTheBuiltinExtensionsOption",
-        "test:internal/packagemanager/resolve_gaps_test.go#TestResolveExtensionSourcesReportsATemporarySourceThatFailsToInstall"
+        "test:internal/packagemanager/changelog_path_test.go#TestResolveExtensionSourcesExposesThePackageChangelogPath"
       ]
     },
     {
@@ -196415,8 +196486,26 @@
     },
     {
       "id": "pkg:coding-agent/.#SettingsManager",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:9b885f8e7a0fdba6d2bfacc1714f65920464b6d046a28c109eeefcc4f577076d"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:9b885f8e7a0fdba6d2bfacc1714f65920464b6d046a28c109eeefcc4f577076d",
+      "rationale": "Derived by the interface gap detector: SettingsManager is Go coding/services.go#SettingsManager (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "coding/services.go#SettingsManager"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:coding/cli/auth_commands.go#runLoginCommand"
+      ],
+      "evidence": [
+        "test:coding/cli/config_builtin_upstream_test.go#TestUpstreamConfigCyclesProjectBuiltinExtensionOverridesInLocalMode",
+        "test:coding/cli/config_builtin_upstream_test.go#TestUpstreamConfigTogglesBuiltinExtensionsInGlobalMode",
+        "test:coding/cli/git_update_upstream_test.go#TestGitUpdatesUpstream"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:coding-agent/.#SettingsManager::property:applyOverrides",
@@ -197576,13 +197665,43 @@
     },
     {
       "id": "pkg:coding-agent/.#SettingsManager::property:getExtensionChangelogVersion",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:1eb3ee4ffb764d6b4a412f08e068e8fdb158f0ce93889e7ba6ca49a14462e66e"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:1eb3ee4ffb764d6b4a412f08e068e8fdb158f0ce93889e7ba6ca49a14462e66e",
+      "rationale": "Derived by the interface gap detector: SettingsManager::property:getExtensionChangelogVersion is Go internal/codingagent/settings.go#SettingsManager.GetExtensionChangelogVersion (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "internal/codingagent/settings.go#SettingsManager.GetExtensionChangelogVersion"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:internal/codingagent/settings.go#SettingsManager.GetExtensionChangelogVersion"
+      ],
+      "evidence": [
+        "test:internal/codingagent/source_info_changelog_test.go#TestExtensionChangelogVersionsRoundTripThroughSettings"
+      ]
     },
     {
       "id": "pkg:coding-agent/.#SettingsManager::property:getExtensionChangelogVersion::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:97d8f23064a480d5d4bb98f940d41a2fafa0d7b49b02ea3f23797d35209e92d9"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:97d8f23064a480d5d4bb98f940d41a2fafa0d7b49b02ea3f23797d35209e92d9",
+      "rationale": "Derived by the interface gap detector: SettingsManager::property:getExtensionChangelogVersion::call:0 is Go internal/codingagent/settings.go#SettingsManager.GetExtensionChangelogVersion (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "internal/codingagent/settings.go#SettingsManager.GetExtensionChangelogVersion"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:internal/codingagent/settings.go#SettingsManager.GetExtensionChangelogVersion"
+      ],
+      "evidence": [
+        "test:internal/codingagent/source_info_changelog_test.go#TestExtensionChangelogVersionsRoundTripThroughSettings"
+      ]
     },
     {
       "id": "pkg:coding-agent/.#SettingsManager::property:getExtensionPaths",
@@ -200480,13 +200599,43 @@
     },
     {
       "id": "pkg:coding-agent/.#SettingsManager::property:setExtensionChangelogVersion",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:68579f1225df7f2b5680376250b042ba762b380ef4823eb71df7a7797e75193a"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:68579f1225df7f2b5680376250b042ba762b380ef4823eb71df7a7797e75193a",
+      "rationale": "Derived by the interface gap detector: SettingsManager::property:setExtensionChangelogVersion is Go internal/codingagent/settings.go#SettingsManager.SetExtensionChangelogVersion (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "internal/codingagent/settings.go#SettingsManager.SetExtensionChangelogVersion"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:internal/codingagent/settings.go#SettingsManager.SetExtensionChangelogVersion"
+      ],
+      "evidence": [
+        "test:internal/codingagent/source_info_changelog_test.go#TestExtensionChangelogVersionsRoundTripThroughSettings"
+      ]
     },
     {
       "id": "pkg:coding-agent/.#SettingsManager::property:setExtensionChangelogVersion::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:a39fc3b20c573e7cd31a899b6a6f5e0dbcad9fa525707c2ea31418eb37b64bda"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:a39fc3b20c573e7cd31a899b6a6f5e0dbcad9fa525707c2ea31418eb37b64bda",
+      "rationale": "Derived by the interface gap detector: SettingsManager::property:setExtensionChangelogVersion::call:0 is Go internal/codingagent/settings.go#SettingsManager.SetExtensionChangelogVersion (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "internal/codingagent/settings.go#SettingsManager.SetExtensionChangelogVersion"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:internal/codingagent/settings.go#SettingsManager.SetExtensionChangelogVersion"
+      ],
+      "evidence": [
+        "test:internal/codingagent/source_info_changelog_test.go#TestExtensionChangelogVersionsRoundTripThroughSettings"
+      ]
     },
     {
       "id": "pkg:coding-agent/.#SettingsManager::property:setExtensionPaths",
@@ -203900,8 +204049,25 @@
     },
     {
       "id": "pkg:coding-agent/.#SourceInfo",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:cd33577491400baba5b89932d3606bfa8f73afce01605209b6acdd89e90f57b9"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:cd33577491400baba5b89932d3606bfa8f73afce01605209b6acdd89e90f57b9",
+      "rationale": "Derived by the interface gap detector: SourceInfo is Go internal/codingagent/extension_host_info.go#PiSourceInfo (name rule N4), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "internal/codingagent/extension_host_info.go#PiSourceInfo"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:internal/codingagent/autocomplete_source_tag.go#autocompleteSourceTag"
+      ],
+      "evidence": [
+        "test:coding/cli/extension_api_get_commands_upstream_test.go#TestExtensionAPIGetCommandsReadsTheBoundSession",
+        "test:coding/cli/extension_set_builtin_mcp_upstream_test.go#TestBuiltinExtensionSourceInfoIsSynthetic",
+        "test:coding/cli/extension_set_upstream_test.go#TestExtensionPackageWarningsIgnoreALocalFileSource"
+      ]
     },
     {
       "id": "pkg:coding-agent/.#SourceInfo::property:baseDir",
@@ -203927,8 +204093,24 @@
     },
     {
       "id": "pkg:coding-agent/.#SourceInfo::property:changelogPath",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:c3eb5286add0f37f19d630813991bf868683561afa953e1eacbaa5b8f011d384"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:c3eb5286add0f37f19d630813991bf868683561afa953e1eacbaa5b8f011d384",
+      "rationale": "Derived by the interface gap detector: SourceInfo::property:changelogPath is Go coding/source/source_info.go#SourceInfo.ChangelogPath (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "coding/source/source_info.go#SourceInfo.ChangelogPath"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:coding/cli/configured_resources.go#collectPackageExtensionConfigs"
+      ],
+      "evidence": [
+        "test:coding/source/source_package_key_test.go#TestSourceInfoCarriesChangelogPathOnlyWhenSet",
+        "test:internal/codingagent/source_info_changelog_test.go#TestSourceInfoCarriesTheChangelogPath"
+      ]
     },
     {
       "id": "pkg:coding-agent/.#SourceInfo::property:origin",
@@ -206440,8 +206622,8 @@
       ],
       "evidence": [
         "test:coding/cli/resource_extensions_upstream_test.go#TestUpstreamResourceLoaderExtensionConflicts",
-        "test:coding/extension/builtin/codemode/session_free_upstream_test.go#TestDeclaresModelsOnlyForAToolCreatedWithModelAccess",
-        "test:coding/extension/builtin/toolsearch/toolsearch_upstream_test.go#TestToolSearchDescriptionDoesNotListTheSearchableSources"
+        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeSummarizesUnionAndMultiLineOutputTypes",
+        "test:coding/extension/builtin/codemode/session_free_upstream_test.go#TestDeclaresModelsOnlyForAToolCreatedWithModelAccess"
       ]
     },
     {
@@ -206551,9 +206733,9 @@
         "call:coding/extension/builtin/codemode/tool.go#Definition"
       ],
       "evidence": [
+        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeSummarizesUnionAndMultiLineOutputTypes",
         "test:coding/mcp_session_upstream_test.go#TestAgentSessionMCPActivatesAnotherExtensionsCodemodeToolWhenItReachesOtherTools",
-        "test:coding/mcp_session_upstream_test.go#TestAgentSessionMCPDoesNotActivateAnotherExtensionsToolNamedCodemode",
-        "test:coding/session_lax_content_upstream_test.go#TestUpstreamLaxExtensionContent"
+        "test:coding/mcp_session_upstream_test.go#TestAgentSessionMCPDoesNotActivateAnotherExtensionsToolNamedCodemode"
       ]
     },
     {
@@ -206573,9 +206755,9 @@
         "call:coding/extension/builtin/codemode/tool.go#Definition"
       ],
       "evidence": [
+        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeSummarizesUnionAndMultiLineOutputTypes",
         "test:coding/codemode_session_upstream_test.go#TestUpstreamCodemodeModels",
-        "test:coding/extension/host/inproc/upstream_catalog_test.go#TestUpstreamRunnerCatalog",
-        "test:coding/mcp_session_upstream_test.go#TestAgentSessionMCPActivatesAnotherExtensionsCodemodeToolWhenItReachesOtherTools"
+        "test:coding/extension/host/inproc/upstream_catalog_test.go#TestUpstreamRunnerCatalog"
       ]
     },
     {
@@ -206617,9 +206799,9 @@
         "call:coding/extension/host/subprocess/child_session.go#Host.childSessionTools"
       ],
       "evidence": [
+        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeSummarizesUnionAndMultiLineOutputTypes",
         "test:test/extension-conformance/extension_api_go_test.go#TestExtensionAPIRegistrationsAtLoadGo",
-        "test:test/extension-conformance/extension_api_rust_test.go#TestRustSDKToolDefinitionFields",
-        "test:test/extension-conformance/lisp_extension_api_test.go#TestLispSDKToolExposureFieldsAndPrepareLoadout"
+        "test:test/extension-conformance/extension_api_rust_test.go#TestRustSDKToolDefinitionFields"
       ]
     },
     {
@@ -206639,9 +206821,9 @@
         "call:coding/extension/builtin/codemode/tool.go#Definition"
       ],
       "evidence": [
+        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeSummarizesUnionAndMultiLineOutputTypes",
         "test:coding/mcp_session_upstream_test.go#TestAgentSessionMCPActivatesAnotherExtensionsCodemodeToolWhenItReachesOtherTools",
-        "test:coding/mcp_session_upstream_test.go#TestAgentSessionMCPDoesNotActivateAnotherExtensionsToolNamedCodemode",
-        "test:coding/session_lax_content_upstream_test.go#TestUpstreamLaxExtensionContent"
+        "test:coding/mcp_session_upstream_test.go#TestAgentSessionMCPDoesNotActivateAnotherExtensionsToolNamedCodemode"
       ]
     },
     {
@@ -228621,7 +228803,7 @@
       "evidence": [
         "test:chord/sqlite/migrations_test.go#TestSqliteMigrations",
         "test:chord/sqlite/node/sqlite_driver_test.go#TestNodeSqliteDriver",
-        "test:durable/storage/sqlite/sqlite_migrations_test.go#TestDurableSQLiteMigrations"
+        "test:chord/sqlite/node/transaction_outcome_test.go#TestNodeSqliteTransactionOutcome"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -228644,7 +228826,7 @@
       "evidence": [
         "test:chord/sqlite/migrations_test.go#TestSqliteMigrations",
         "test:chord/sqlite/node/sqlite_driver_test.go#TestNodeSqliteDriver",
-        "test:durable/storage/sqlite/sqlite_migrations_test.go#TestDurableSQLiteMigrations"
+        "test:chord/sqlite/node/transaction_outcome_test.go#TestNodeSqliteTransactionOutcome"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
