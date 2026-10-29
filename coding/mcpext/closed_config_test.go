@@ -38,7 +38,8 @@ func TestRefuseConfigFilesDropsServersFromMcpJSON(t *testing.T) {
 	}
 
 	empty := &Extension{options: Options{AgentDir: t.TempDir(), ConfigDirName: ".pig", RefuseConfigFiles: message}}
-	if got := empty.loadConfig(ctx); len(got.Errors) != 0 {
+	emptyCtx := EventContext{Context: context.Background(), Cwd: t.TempDir(), IsProjectTrusted: func() bool { return true }}
+	if got := empty.loadConfig(emptyCtx); len(got.Errors) != 0 {
 		t.Fatalf("closed load with no mcp.json reported %v", got.Errors)
 	}
 }
