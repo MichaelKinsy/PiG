@@ -15,15 +15,15 @@ func TestAssistantThinkingClicksThroughTerminal(t *testing.T) {
 	block.SetContent(content)
 	h.tui.Add(block)
 	h.start()
-	// Pi's alternate screen consumes zone marks internally rather than writing them (tui-alt-screen.ts:1670).
+	// Pi's alternate screen consumes zone marks internally rather than writing them (tui-alt-screen.ts:1670); the Main Screen strips them (tui-main-screen.ts doRender).
 	var output bytes.Buffer
 	regular := NewWithOutput(&output, 80, 24)
 	zoneBlock := NewAssistantMessageComponent(nil, false, nil, "", nil, nil, "", "")
 	zoneBlock.SetContent(content)
 	regular.Add(zoneBlock)
 	regular.Render()
-	if !strings.Contains(output.String(), "\x1b]133;A\x07") || !strings.Contains(output.String(), "\x1b]133;B\x07\x1b]133;C\x07") {
-		t.Fatal("assistant zone markers did not reach the Main Screen terminal")
+	if strings.Contains(output.String(), "\x1b]133;") || !strings.Contains(output.String(), "first reasoning") {
+		t.Fatalf("Main Screen output = %q, want the text without zone markers", output.String())
 	}
 	h.send("\x1b[<0;2;2M", "\x1b[<0;2;2m")
 	if h.viewportHas("first reasoning") || !h.viewportHas("Thinking...") || !h.viewportHas("second reasoning") {
