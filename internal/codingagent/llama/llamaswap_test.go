@@ -61,6 +61,12 @@ func (s *fakeLlamaSwap) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				"status": map[string]any{"value": status}, "meta": map[string]any{"n_ctx": 131072}})
 		}
 		writeJSON(w, map[string]any{"object": "list", "data": data})
+	case r.Method == http.MethodGet && r.URL.Path == "/running":
+		running := []any{}
+		if s.running != "" {
+			running = append(running, map[string]any{"model": s.running, "state": "ready"})
+		}
+		writeJSON(w, map[string]any{"running": running})
 	case r.Method == http.MethodGet && r.URL.Path == "/props":
 		id := r.URL.Query().Get("model")
 		switch {
@@ -218,13 +224,44 @@ emit(out);
 					want[i].IDs = []string{}
 				}
 			}
+			// The one place the port answers differently from Pi (D212): a 404 from the load and unload endpoints that llama-swap lacks names llama-swap and how to use it. A 404 from a
+			// server that is not llama-swap keeps Pi's text. The port asks GET /running after such a 404, which Pi never sends.
+			const piText = "llama.cpp returned HTTP 404"
+			portText := piText
+			if v.name == "llama-swap" {
+				portText = llamaSwapMessage(goURL)
+			}
+			for i := range got {
+				switch got[i].Step {
+				case "load", "unload", "unloadAndWait":
+					if want[i].Err != piText {
+						t.Fatalf("Pi's %s = %q, want %q", got[i].Step, want[i].Err, piText)
+					}
+					if got[i].Err != portText {
+						t.Fatalf("%s = %q, want %q", got[i].Step, got[i].Err, portText)
+					}
+					got[i].Err = want[i].Err
+				}
+			}
 			if !reflect.DeepEqual(got, want) {
 				g, _ := json.MarshalIndent(got, "", " ")
 				w, _ := json.MarshalIndent(want, "", " ")
 				t.Fatalf("port differs from Pi:\n got %s\nwant %s", g, w)
 			}
-			if gotLog, wantLog := goRequests(), piRequests(); !reflect.DeepEqual(gotLog, wantLog) {
+			var gotLog []string
+			probes := 0
+			for _, request := range goRequests() {
+				if strings.HasPrefix(request, "GET /running") {
+					probes++
+					continue
+				}
+				gotLog = append(gotLog, request)
+			}
+			if wantLog := piRequests(); !reflect.DeepEqual(gotLog, wantLog) {
 				t.Fatalf("requests differ from Pi:\n got %q\nwant %q", gotLog, wantLog)
+			}
+			if probes != 3 {
+				t.Fatalf("GET /running probes = %d, want one after each of the 3 failed 404 calls", probes)
 			}
 
 			byStep := map[string]clientOutcome{}
@@ -232,10 +269,6 @@ emit(out);
 				byStep[o.Step] = o
 			}
 			if v.name == "llama-swap" {
-				// The values Pi produces, so a port that "fixed" this would be distinguishable.
-				if byStep["load"].Err != "llama.cpp returned HTTP 404" || byStep["unload"].Err != "llama.cpp returned HTTP 404" || byStep["unloadAndWait"].Err != "llama.cpp returned HTTP 404" {
-					t.Fatalf("load/unload against llama-swap = %q / %q / %q, want Pi's HTTP 404", byStep["load"].Err, byStep["unload"].Err, byStep["unloadAndWait"].Err)
-				}
 				if want := []string{swapAlpha + "|loaded", swapBeta + "|unloaded", swapGamma + "|unloaded"}; !reflect.DeepEqual(byStep["list"].IDs, want) {
 					t.Fatalf("llama-swap catalog = %v, want %v", byStep["list"].IDs, want)
 				}
@@ -276,10 +309,16 @@ func outcomeOfRefresh(t *testing.T, controller *LlamaProviderController, url str
 	return outcome
 }
 
-// /llama pointed at llama-swap: the catalog lists every configured model, and loading or unloading one fails with Pi's text, "llama.cpp returned HTTP 404", because the
-// /models/load and /models/unload that index.ts calls do not exist on llama-swap. The command refreshes the catalog afterwards and loses nothing, and llama-swap never receives a chat
-// request: /llama does not load a model by sending one.
-func TestLlamaCommandAgainstLlamaSwapFailsLikePi(t *testing.T) {
+// llamaSwapMessage is what /llama says when load or unload hits llama-swap (D212). Written out here so the production text cannot drift without this test noticing.
+func llamaSwapMessage(serverURL string) string {
+	return "/llama cannot load or unload models on llama-swap: it loads a model when a request names it. Add llama-swap to models.json as an openai-completions provider with baseUrl " + serverURL +
+		"/v1, then pick models with /model. See https://github.com/MichaelKinsy/PiG/blob/main/docs/site/docs/llama-cpp.md#llama-swap"
+}
+
+// /llama pointed at llama-swap: the catalog lists every configured model, and loading or unloading one fails with the llama-swap message (D212) instead of Pi's bare
+// "llama.cpp returned HTTP 404", because the /models/load and /models/unload that index.ts calls do not exist on llama-swap. The command refreshes the catalog afterwards and loses
+// nothing, and llama-swap never receives a chat request: /llama does not load a model by sending one.
+func TestLlamaCommandAgainstLlamaSwapExplainsTheMissingEndpoints(t *testing.T) {
 	swap, url := newFakeLlamaSwap(t, swapAlpha, swapBeta, swapGamma)
 	swap.running = swapAlpha
 	session, notices := commandFixture(t, url)
@@ -290,7 +329,7 @@ func TestLlamaCommandAgainstLlamaSwapFailsLikePi(t *testing.T) {
 	if err := session.manage(ui); err != nil {
 		t.Fatal(err)
 	}
-	want := []notification{{"llama.cpp returned HTTP 404", "error"}, {"llama.cpp returned HTTP 404", "error"}}
+	want := []notification{{llamaSwapMessage(url), "error"}, {llamaSwapMessage(url), "error"}}
 	if !reflect.DeepEqual(*notices, want) {
 		t.Fatalf("notices = %+v, want %+v", *notices, want)
 	}
@@ -306,5 +345,80 @@ func TestLlamaCommandAgainstLlamaSwapFailsLikePi(t *testing.T) {
 	}
 	if swap.running != swapAlpha {
 		t.Fatalf("llama-swap runs %q after the failed load and unload, want %q", swap.running, swapAlpha)
+	}
+}
+
+// llama-swap is recognized by the 404 itself when it names llama-swap in its error envelope's "src", with no GET /running needed.
+func TestLoadAndUnloadRecognizeLlamaSwapByItsErrorEnvelope(t *testing.T) {
+	url := listen(t, func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			http.NotFound(w, r)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusNotFound)
+		_, _ = w.Write([]byte(`{"src":"llama-swap","error":{"message":"no router for requested model","type":"not_found_error","code":"not_found"}}`))
+	})
+	client, err := NewLlamaClient(url, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for name, call := range map[string]func() error{
+		"load":   func() error { return client.Load(t.Context(), swapBeta) },
+		"unload": func() error { return client.Unload(t.Context(), swapAlpha) },
+	} {
+		if err := call(); err == nil || err.Error() != llamaSwapMessage(url) {
+			t.Errorf("%s = %v, want the llama-swap message", name, err)
+		}
+	}
+}
+
+// A 404 from a server that is not llama-swap keeps Pi's text: the bare "llama.cpp returned HTTP 404" when the body says nothing (a router build without the endpoint, a proxy in
+// front of one), and the server's own message when the body carries one. GET /running is not llama-swap's there.
+func TestLoadAndUnloadKeepPisTextForA404ThatIsNotLlamaSwap(t *testing.T) {
+	for _, test := range []struct{ name, body, want string }{
+		{"bare 404", "404 page not found\n", "llama.cpp returned HTTP 404"},
+		{"server message", `{"error":{"message":"model not found"}}`, "model not found"},
+		{"running is not llama-swap's", "404 page not found\n", "llama.cpp returned HTTP 404"},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			url := listen(t, func(w http.ResponseWriter, r *http.Request) {
+				if r.Method == http.MethodGet && r.URL.Path == "/running" && test.name == "running is not llama-swap's" {
+					writeJSON(w, map[string]any{"status": "ok"}) // 200, but not llama-swap's {"running": [...]}
+					return
+				}
+				w.WriteHeader(http.StatusNotFound)
+				_, _ = w.Write([]byte(test.body))
+			})
+			client, err := NewLlamaClient(url, "")
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := client.Load(t.Context(), swapBeta); err == nil || err.Error() != test.want {
+				t.Errorf("load = %v, want %q", err, test.want)
+			}
+			if err := client.Unload(t.Context(), swapAlpha); err == nil || err.Error() != test.want {
+				t.Errorf("unload = %v, want %q", err, test.want)
+			}
+		})
+	}
+}
+
+// /llama against a llama.cpp router that answers 404 for load: the notice is Pi's text.
+func TestLlamaCommandKeepsPisTextForARouter404(t *testing.T) {
+	url := listen(t, func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodGet && r.URL.Path == "/models" {
+			writeJSON(w, map[string]any{"data": []any{map[string]any{"id": "alpha", "status": map[string]any{"value": "unloaded"}}}})
+			return
+		}
+		http.NotFound(w, r)
+	})
+	session, notices := commandFixture(t, url)
+	ui := &fakeUI{t: t, actions: []LlamaManagerAction{{Type: LlamaManagerActionModel, Model: model("alpha", LlamaModelStatusUnloaded)}}}
+	if err := session.manage(ui); err != nil {
+		t.Fatal(err)
+	}
+	if want := []notification{{"llama.cpp returned HTTP 404", "error"}}; !reflect.DeepEqual(*notices, want) {
+		t.Fatalf("notices = %+v, want %+v", *notices, want)
 	}
 }
