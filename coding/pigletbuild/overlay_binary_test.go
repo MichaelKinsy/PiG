@@ -38,8 +38,8 @@ func writeOverlayFixture(t *testing.T, root string) {
 	files := map[string]string{
 		filepath.Join(root, "hello", "go.mod"):       "module example.com/overlay/hello\n\ngo 1.26\n\nrequire github.com/MichaelKinsy/PiG/extensions/sdk v0.0.0\n",
 		filepath.Join(root, "hello", "extension.go"): overlayHelloExtension,
-		filepath.Join(root, "accepting.yaml"):        "name: accepting\nmodel:\n  provider: test-faux\n  name: faux-1\nstrip:\n  tools: [ls]\n  extensions: [mcp]\nbuild:\n  allowOverlays: true\nextensions:\n  - name: hello\n    origins: [local:./hello]\n",
-		filepath.Join(root, "closed.yaml"):           "name: closed\nmodel:\n  provider: test-faux\n  name: faux-1\nstrip:\n  tools: [ls]\nextensions:\n  - name: hello\n    origins: [local:./hello]\n",
+		filepath.Join(root, "accepting.yaml"):        "name: accepting\nmodel:\n  provider: test-faux\n  name: faux-1\nstrip:\n  tools: [ls]\n  extensions: [mcp]\nextensions:\n  - name: hello\n    origins: [local:./hello]\n",
+		filepath.Join(root, "closed.yaml"):           "name: closed\nmodel:\n  provider: test-faux\n  name: faux-1\nstrip:\n  tools: [ls]\nbuild:\n  closed: true\nextensions:\n  - name: hello\n    origins: [local:./hello]\n",
 		filepath.Join(root, "overlays", "flag.mjs"):  overlayFlagExtension,
 		filepath.Join(root, "overlays", "add.yaml"):  "name: add\nextensions:\n  - name: flag\n    origins: [local:./flag.mjs]\nstrip:\n  tools: [grep]\n",
 	}
@@ -53,10 +53,10 @@ func writeOverlayFixture(t *testing.T, root string) {
 	}
 }
 
-// A Piglet Binary built from a Piglet with build.allowOverlays accepts --piglet and PIG_PIGLET_PATH as an overlay on its
-// baked Piglet, and one built without it refuses them and names the setting. Every forbidden override is refused with the
+// A Piglet Binary built from a Piglet accepts --piglet and PIG_PIGLET_PATH as an overlay on its baked Piglet, and one built
+// with build.closed refuses them and names the setting. Every forbidden override is refused with the
 // field and the Binary named, and a refused overlay never starts the Binary's own Piglet.
-func TestPigletBinaryAcceptsOverlaysOnlyWhenItsPigletSaysSo(t *testing.T) {
+func TestPigletBinaryAcceptsOverlaysUnlessBuiltClosed(t *testing.T) {
 	root := t.TempDir()
 	writeOverlayFixture(t, root)
 	keyPath := filepath.Join(t.TempDir(), "author.key")
@@ -70,20 +70,20 @@ func TestPigletBinaryAcceptsOverlaysOnlyWhenItsPigletSaysSo(t *testing.T) {
 
 	// The baked Piglet is the embedded piglet.yaml; the same words also appear in the Binary's messages and docs, so match its
 	// YAML shape.
-	const bakedSetting = "build:\n    allowOverlays: true\n"
+	const bakedSetting = "build:\n    closed: true\n"
 	baked, err := os.ReadFile(accepting)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(string(baked), bakedSetting) {
-		t.Fatal("the accepting Binary does not carry build.allowOverlays in its baked Piglet")
+	if strings.Contains(string(baked), bakedSetting) {
+		t.Fatal("a default Binary carries build.closed in its baked Piglet")
 	}
 	closedBytes, err := os.ReadFile(closed)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if strings.Contains(string(closedBytes), bakedSetting) {
-		t.Fatal("a Binary built without the setting carries it")
+	if !strings.Contains(string(closedBytes), bakedSetting) {
+		t.Fatal("a Binary built with build.closed does not carry it in its baked Piglet")
 	}
 	var stdout, stderr strings.Builder
 	if code := piglet.RunCommand([]string{"piglet", "verify", accepting}, &stdout, &stderr); code != 0 || !strings.Contains(stdout.String(), "Signature: signed by "+keyID) {
@@ -154,7 +154,7 @@ func TestPigletBinaryAcceptsOverlaysOnlyWhenItsPigletSaysSo(t *testing.T) {
 			if code != 1 {
 				t.Fatalf("exit %d, want 1\n%s", code, output)
 			}
-			for _, want := range []string{"this Piglet Binary (closed)", "does not accept --piglet overlays", "build.allowOverlays: true"} {
+			for _, want := range []string{"this Piglet Binary (closed)", "does not accept --piglet overlays", "build.closed: true"} {
 				if !strings.Contains(output, want) {
 					t.Fatalf("refusal lacks %q:\n%s", want, output)
 				}

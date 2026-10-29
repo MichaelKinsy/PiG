@@ -37,6 +37,12 @@ type inspectedPiglet struct {
 	Err    error
 }
 
+func init() {
+	piglet.SetRunningBinary(func() (string, bool, bool) {
+		return binarypiglet.Name(), binarypiglet.Closed(), binarypiglet.IsPigletBinary()
+	})
+}
+
 // inspectActivePiglet reports the active Piglet for the read-only commands, or nil when none is active.
 //
 // pig additive (D209): `pig status`, `pig diagnose` and `pig piglet show` read PIG_ACTIVE_PIGLET_SOURCE.

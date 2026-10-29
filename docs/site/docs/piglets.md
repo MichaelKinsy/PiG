@@ -98,7 +98,7 @@ build:
 | `slots` | Replace a part of PiG with a fused Go member. `frontend` is the only slot (D91); see [Piglet Binaries](piglet-binaries.md#frontend-members). |
 | `strip` | Strip built-in tools, slash commands, built-in extensions, model APIs, and features; a Piglet Binary compiles most of them out (D92). |
 | `release` | Set release identity. |
-| `build` | Set portable Binary target, output, and realization requirements, and whether the Binary [accepts overlay Piglets](piglet-binaries.md#accept-overlay-piglets) (`allowOverlays`, D202). |
+| `build` | Set portable Binary target, output, and realization requirements, and whether the Binary is [closed](piglet-binaries.md#accept-overlay-piglets) (`closed`, D202). A Binary accepts overlay Piglets unless it is closed. |
 
 ## Model selection
 
@@ -224,7 +224,7 @@ extends:
       tools: [bash]
 ```
 
-A Piglet Binary that sets `build.allowOverlays` accepts a Piglet selected at launch as a child of its own Piglet. In that Piglet an `extends` block may omit `source`: it then extends the Binary and carries only `remove` and `allowWiden`. Stock pig refuses such a Piglet by name, because it has no Binary to extend.
+A Piglet Binary that is not built with `build.closed: true` accepts a Piglet selected at launch as a child of its own Piglet. In that Piglet an `extends` block may omit `source`: it then extends the Binary and carries only `remove` and `allowWiden`. Stock pig refuses such a Piglet by name, because it has no Binary to extend.
 
 ```yaml
 name: tern-lite
