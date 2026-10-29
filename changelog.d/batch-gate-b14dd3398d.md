@@ -1,0 +1,3 @@
+### Upgrading
+
+- Go API `coding/extension/host/subprocess`: a program that embeds the extension host and serves an extension's `TuiAltScreen` calls `subprocess.EnableTuiAltScreens()` once before the first extension loads. The `pig` command does, where it creates the extension host. A program that links the host without the call, such as `examples/headless`, does not link the alternate-screen renderer or the word-segmentation dictionaries (6.3 MB) behind its text inputs, and an extension's `tui.alt` call fails with an error that names the call. `TuiAltScreen` is unreleased, so no released program changes.

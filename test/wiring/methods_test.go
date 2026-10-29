@@ -184,6 +184,8 @@ func init() {
 	for _, request := range []string{"builtin_tool_callback", "builtin_tool_exec_data", "sessionGraph.callback"} {
 		undeliveredHostFrames["request "+request+" by node"] = "Node runs Pi's own built-in tools and session graph in the extension process; its callbacks never cross the wire"
 	}
+	// tui_alt_bridge.go: only the Go, Python, Rust and Lisp SDKs construct a TuiAltScreen through the host (tui.alt) and answer its component, terminal and listener needs (tui.alt.cb); Node runs Pi's own TuiAltScreen in the extension process.
+	undeliveredHostFrames["request tui.alt.cb by node"] = "Node runs Pi's own TuiAltScreen in the extension process; its callbacks never cross the wire"
 	// view_wire.go: a Node frame carries the lines Pi's components rendered, so the host routes every key to ui.custom.input.
 	undeliveredHostFrames["notify ui.view.event by node"] = "a Node view frame is rendered lines; keys go to ui.custom.input (TestEverySDKReceivesEveryHostNotifyCapability)"
 }
