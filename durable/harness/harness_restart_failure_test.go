@@ -9,6 +9,7 @@ import (
 	"context"
 	"runtime"
 	"strings"
+	"sync/atomic"
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/ai"
@@ -50,7 +51,7 @@ func TestTheRestartLimitOnTheNormalPath(t *testing.T) {
 	// idle settlements follow its goroutines, so their count varies by a few between rounds; the others are exact.
 	t.Run("resolves the settings as often as Pi does for a round", func(t *testing.T) {
 		setup := chatSetup(t)
-		others, retention := 0, 0
+		var others, retention atomic.Int64
 		counting := func() *HarnessSettings {
 			pcs := make([]uintptr, 12)
 			frames := runtime.CallersFrames(pcs[:runtime.Callers(2, pcs)])
@@ -66,9 +67,9 @@ func TestTheRestartLimitOnTheNormalPath(t *testing.T) {
 				}
 			}
 			if isRetention {
-				retention++
+				retention.Add(1)
 			} else {
-				others++
+				others.Add(1)
 			}
 			return &HarnessSettings{}
 		}
@@ -104,16 +105,17 @@ func TestTheRestartLimitOnTheNormalPath(t *testing.T) {
 			}
 		}
 		submit("warm up")
-		others, retention = 0, 0
+		others.Store(0)
+		retention.Store(0)
 		for round := 0; round < rounds; round++ {
 			submit("round")
 		}
 		waitForIdle(t, root)
-		if others != 15*rounds {
-			t.Fatalf("a round resolved the settings %v times outside the idle checks, want Pi's 15 (6 agents, 9 phases)", float64(others)/rounds)
+		if others.Load() != 15*rounds {
+			t.Fatalf("a round resolved the settings %v times outside the idle checks, want Pi's 15 (6 agents, 9 phases)", float64(others.Load())/rounds)
 		}
 		// Pi's 34 per round: a settlement that finds nothing to settle is not counted by the scheduler's goroutines.
-		if perRound := float64(retention) / rounds; perRound < 30 || perRound > 36 {
+		if perRound := float64(retention.Load()) / rounds; perRound < 30 || perRound > 36 {
 			t.Fatalf("a round made %v retention checks, want about Pi's 34", perRound)
 		}
 		mustClose(t, harness)
