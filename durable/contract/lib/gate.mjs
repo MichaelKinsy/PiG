@@ -134,7 +134,8 @@ export async function vitestRun(impl, ctx, include, label = "sc", isSc = label =
 	mkdirSync(join(ctx.out, impl.name), { recursive: true })
 	rmSync(outFile, { force: true })
 	const sc = isSc && impl.scExe
-	const env = { ...process.env, CONTRACT_PI_SOURCE: piSource(), ...(include ? { CONTRACT_TEST_INCLUDE: include } : {}), ...(impl.candidateDir && !sc ? { CONTRACT_CANDIDATE: impl.candidateDir, ...impl.env } : {}), ...(sc ? { CONTRACT_SC_EXE: impl.scExe, CONTRACT_SC_PROVIDER: join(CONTRACT_DIR, "impls", "sc-native-provider.ts") } : {}) }
+	// The run's own cache directory: vitest writes it, and the reference checkout (the working directory of the E rows' `ls`) must not change.
+	const env = { ...process.env, CONTRACT_PI_SOURCE: piSource(), CONTRACT_VITEST_CACHE: resolve(ctx.out, impl.name, `vitest-cache-${label}`), ...(include ? { CONTRACT_TEST_INCLUDE: include } : {}), ...(impl.candidateDir && !sc ? { CONTRACT_CANDIDATE: impl.candidateDir, ...impl.env } : {}), ...(sc ? { CONTRACT_SC_EXE: impl.scExe, CONTRACT_SC_PROVIDER: join(CONTRACT_DIR, "impls", "sc-native-provider.ts") } : {}) }
 	const bin = join(piSource(), "node_modules", ".bin", "vitest")
 	const child = spawnGroup(bin, ["run", "--config", join(CONTRACT_DIR, "scenarios", "vitest.contract.config.mjs"), "--reporter=json", `--outputFile=${outFile}`], { cwd: join(piSource(), "packages", "durable"), env, stdio: ["ignore", "ignore", "pipe"] })
 	let err = ""
