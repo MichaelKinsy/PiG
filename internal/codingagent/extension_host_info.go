@@ -174,7 +174,7 @@ func (c SlashCommandCatalog) recordedSourceInfo(path string) (PiSourceInfo, bool
 	// first, for the path or any directory above it.
 	for current := path; current != ""; {
 		if info, ok := c.SourceInfo[current]; ok && strings.HasPrefix(info.Source, "extension:") {
-			return PiSourceInfo{Path: path, Source: info.Source, Scope: info.Scope, Origin: info.Origin, BaseDir: info.BaseDir}, true
+			return PiSourceInfo{Path: path, Source: info.Source, Scope: info.Scope, Origin: info.Origin, BaseDir: info.BaseDir, ChangelogPath: info.ChangelogPath}, true
 		}
 		parent := filepath.Dir(current)
 		if parent == current {
@@ -198,7 +198,7 @@ func (c SlashCommandCatalog) recordedSourceInfo(path string) (PiSourceInfo, bool
 			}
 			// Upstream createSourceInfo: the recorded metadata's baseDir, which
 			// a settings entry does not have.
-			return PiSourceInfo{Path: path, Source: source, Scope: scope, Origin: origin, BaseDir: info.BaseDir}, true
+			return PiSourceInfo{Path: path, Source: source, Scope: scope, Origin: origin, BaseDir: info.BaseDir, ChangelogPath: info.ChangelogPath}, true
 		}
 	}
 	return PiSourceInfo{}, false
@@ -242,11 +242,13 @@ type SyntheticSourceInfoOptions struct {
 	Scope   string
 	Origin  string
 	BaseDir string
+	// ChangelogPath is the changelog file of the package the resource belongs to, if any.
+	ChangelogPath string
 }
 
 // CreateSyntheticSourceInfo is upstream's createSyntheticSourceInfo (source-info.ts:41): a SourceInfo for a resource without a file source, with scope "temporary" and origin "top-level" unless the options name others.
 func CreateSyntheticSourceInfo(path string, options SyntheticSourceInfoOptions) PiSourceInfo {
-	info := PiSourceInfo{Path: path, Source: options.Source, Scope: options.Scope, Origin: options.Origin, BaseDir: options.BaseDir}
+	info := PiSourceInfo{Path: path, Source: options.Source, Scope: options.Scope, Origin: options.Origin, BaseDir: options.BaseDir, ChangelogPath: options.ChangelogPath}
 	if info.Scope == "" {
 		info.Scope = "temporary"
 	}

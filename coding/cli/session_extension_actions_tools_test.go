@@ -57,9 +57,15 @@ func TestSessionExtensionActionsBindActiveTools(t *testing.T) {
 	if got, want := active(), session.ActiveToolNames(); len(got) == 0 || !slices.Equal(got, want) {
 		t.Fatalf("getActiveTools = %v, want the session's %v", got, want)
 	}
+	// The requested names are a set: a tool that stays active keeps its place (_applyToolLoadout, b9e3eef6, #11495).
+	call("setActiveTools", map[string]any{"tools": []string{}})
 	call("setActiveTools", map[string]any{"tools": []string{"bash", "read"}})
 	if got := active(); !slices.Equal(got, []string{"bash", "read"}) {
 		t.Fatalf("getActiveTools after setActiveTools = %v, want [bash read]", got)
+	}
+	call("setActiveTools", map[string]any{"tools": []string{"read", "bash"}})
+	if got := active(); !slices.Equal(got, []string{"bash", "read"}) {
+		t.Fatalf("getActiveTools after setting the same tools again = %v, want [bash read]", got)
 	}
 }
 

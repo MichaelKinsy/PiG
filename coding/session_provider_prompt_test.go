@@ -91,6 +91,9 @@ func TestRegisteredToolPromptContributions(t *testing.T) {
 			t.Cleanup(func() { _ = session.Close() })
 			check := func(names []string, wantTools, wantRules string) {
 				t.Helper()
+				// The requested names are a set whose tools keep their current order (agent-session.ts _applyToolLoadout, b9e3eef6), so each
+				// check starts from no active tools to fix the order of the names it requests.
+				session.SetActiveToolsByName(nil)
 				session.SetActiveToolsByName(names)
 				sections := map[string]string{}
 				for _, s := range session.baseSystemSections {

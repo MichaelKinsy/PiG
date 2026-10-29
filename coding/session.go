@@ -210,6 +210,9 @@ type Session struct {
 	// Override in tests to inject a fake.
 	completer compaction.SimpleCompleter
 	streamFn  compaction.StreamFn
+	// runtimeStream is set on a session CreateAgentSession built: its agent's default stream resolves auth through modelRuntime itself
+	// (upstream markRuntimeStreamFunction, agent-session.ts), so summaries must not pre-resolve it.
+	runtimeStream bool
 
 	// agentStartMu guards agentStartMessages: the custom messages the last
 	// before_agent_start dispatch returned, waiting for the prompt they join.
