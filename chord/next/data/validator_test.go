@@ -15,7 +15,7 @@ import (
 
 // Ports packages/chord/test/next/data/validator.test.ts.
 //
-// Designed out: "leave nothing in TypeBox's build accumulators" asserts that typebox's module-level GetExternal and
+// Ported in typelevel_test.go: "leave nothing in TypeBox's build accumulators" asserts that typebox's module-level GetExternal and
 // GetFunctions accumulators are empty after a build. The Go validator compiles through a per-call jsonschema compiler
 // and keeps no module-level build state, so there is nothing to reset; "are collected with their schema owner" below
 // covers the observable half (nothing retains the owner or its validator).

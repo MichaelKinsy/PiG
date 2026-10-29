@@ -25,14 +25,13 @@
    "contract handles › carry kind, name, version and fingerprint only",
    "contract handles › are branded: spread and hand-built copies are refused",
    "contract handles › are collected when dropped, with their data",
-   "derived types › takesNoArgs: exactly the methods whose argument schema is null"
-  ],
-  "missing": [],
-  "designedOut": [
+   "derived types › takesNoArgs: exactly the methods whose argument schema is null",
    "derived types › Implementation: one variant with its members, state watchables and methods taking args and a context",
    "derived types › Implementation of a local contract is flat",
    "derived types › ParamsOf: the params object"
-  ]
+  ],
+  "missing": [],
+  "designedOut": []
  },
  "packages/chord/test/next/contracts/declare.test.ts": {
   "ported": [
@@ -45,11 +44,11 @@
    "D11: members across variants › refuses a method with different signatures in two variants",
    "D11: members across variants › allows state schemas to differ per variant (redaction)",
    "reserved member names › refuses %s in remote, local and evolve",
-   "keyed members (slice 6a §12) › declare a keyed member in a local contract: its own kind and a node of its own in the fingerprint"
+   "keyed members (slice 6a §12) › declare a keyed member in a local contract: its own kind and a node of its own in the fingerprint",
+   "declaration checks › refuse a remote declaration without a host address at the type level"
   ],
   "missing": [],
   "designedOut": [
-   "declaration checks › refuse a remote declaration without a host address at the type level",
    "keyed members (slice 6a §12) › refuse a keyed member in a remote contract, at the type level and at declaration"
   ]
  },
@@ -69,12 +68,11 @@
    "kinds and fixed parts › a new base is a full declaration with an explicit version and no older versions",
    "kinds and fixed parts › evolve must return the editor it was given",
    "kinds and fixed parts › leaves the previous contract untouched",
-   "long histories › count versions beyond 9 and 99, at runtime and in the types"
+   "long histories › count versions beyond 9 and 99, at runtime and in the types",
+   "long histories › the types track every step with its changes"
   ],
   "missing": [],
-  "designedOut": [
-   "long histories › the types track every step with its changes"
-  ]
+  "designedOut": []
  },
  "packages/chord/test/next/contracts/fingerprint.test.ts": {
   "ported": [
@@ -90,13 +88,13 @@
   "designedOut": []
  },
  "packages/chord/test/next/contracts/history.test.ts": {
-  "ported": [],
-  "missing": [],
-  "designedOut": [
+  "ported": [
    "type-level history › increments decimal versions",
    "type-level history › finds the current step, older versions and steps by version",
    "type-level history › collects every change after a version"
-  ]
+  ],
+  "missing": [],
+  "designedOut": []
  },
  "packages/chord/test/next/contracts/host-kind.test.ts": {
   "ported": [
@@ -104,12 +102,11 @@
    "host kinds › follow the params policy of contracts at declaration",
    "host kinds › check an address's params where it is routed, with the kind's compiled check: invalid/host_address",
    "host kinds › keep their params data only while the kind is referenced",
-   "hostAddress › is not part of the fingerprint and is carried by evolve"
+   "hostAddress › is not part of the fingerprint and is carried by evolve",
+   "hostAddress › is typed by the contract's params"
   ],
   "missing": [],
-  "designedOut": [
-   "hostAddress › is typed by the contract's params"
-  ]
+  "designedOut": []
  },
  "packages/chord/test/next/contracts/params.test.ts": {
   "ported": [
@@ -184,12 +181,11 @@
    "helpers › isChordError checks the class and optionally the code",
    "helpers › invalid builds an invalid error with its reason and details",
    "helpers › asChordError keeps a ChordError and wraps anything else as unavailable",
-   "PluginError › carries a plugin's code, message and JSON details"
+   "PluginError › carries a plugin's code, message and JSON details",
+   "ChordError › is a tagged union: a wrong pairing is a type error"
   ],
   "missing": [],
-  "designedOut": [
-   "ChordError › is a tagged union: a wrong pairing is a type error"
-  ]
+  "designedOut": []
  },
  "packages/chord/test/next/data/failure.test.ts": {
   "ported": [
@@ -244,12 +240,11 @@
    "failed checks › check bytes by instanceof and length",
    "failed checks › leave keys containing `/` or `~` unescaped (TypeBox's instance path, ambiguous)",
    "validators › compile once per schema owner (counted), then validate (counted); a failure adds one walk",
-   "validators › are collected with their schema owner; TypeBox retains no build state"
+   "validators › are collected with their schema owner; TypeBox retains no build state",
+   "validators › leave nothing in TypeBox's build accumulators"
   ],
   "missing": [],
-  "designedOut": [
-   "validators › leave nothing in TypeBox's build accumulators"
-  ]
+  "designedOut": []
  },
  "packages/chord/test/next/state/batch.test.ts": {
   "ported": [
@@ -290,15 +285,14 @@
  },
  "packages/chord/test/next/state/native-source.test.ts": {
   "ported": [],
-  "designedOut": [
-   "native sources as derive sources › types a derive's sources: watchables of either kind, never a native's handle (Fable)"
-  ],
+  "designedOut": [],
   "missing": [
    "native sources as derive sources › a derive reads JSON and native sources alike, marked when a native one changes",
    "native sources as derive sources › `ref.state` is a derive source: a state member can show a dependency's reachability",
    "native sources as derive sources › refuses a native source as a state member (Q14)",
    "watching a native source that fails › a watch taken while it is failed opens at its last good value and gets the failure first",
-   "watching a native source that fails › an `on` routine started while its source is failed waits for its next good value, never calls with the stale one"
+   "watching a native source that fails › an `on` routine started while its source is failed waits for its next good value, never calls with the stale one",
+   "native sources as derive sources › types a derive's sources: watchables of either kind, never a native's handle (Fable)"
   ]
  },
  "packages/chord/test/next/state/watchable.test.ts": {

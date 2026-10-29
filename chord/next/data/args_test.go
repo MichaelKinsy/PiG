@@ -17,9 +17,9 @@ import (
 // Ports packages/chord/test/next/data/args.test.ts.
 //
 // Designed out (type level, no Go runtime form): the expectTypeOf assertions of "returns current-version arguments as
-// passed" (CheckedArgs<C, M> and ArgsOf are Value in Go) and the whole of "types a call replacement's arguments as
-// values" (Extract<CheckedArgs, {kind: "call"}>["call"] is the contracts.CallFunc field type, checked by the compiler
-// where Call is assigned). The WeakRef of the mapping function in "memory" is a weak pointer to a value the mapping
+// passed" (CheckedArgs<C, M> and ArgsOf are Value in Go) and, for "types a call replacement's arguments as
+// values" (CheckedArgs.Call is the contracts.CallFunc field type; the compiler rejects another signature), the
+// type check in typelevel_test.go. The WeakRef of the mapping function in "memory" is a weak pointer to a value the mapping
 // closure captures: a Go func value has no weak reference.
 
 var (
