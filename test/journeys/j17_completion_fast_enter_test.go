@@ -15,7 +15,9 @@ const (
 )
 
 // fastEnterEditorHolds reports whether the typed command is still on the screen, in the editor.
-func fastEnterEditorHolds(c *harness.Ctx, text string) bool { return strings.Contains(c.Screen(), text) }
+func fastEnterEditorHolds(c *harness.Ctx, text string) bool {
+	return strings.Contains(c.Screen(), text)
+}
 
 func init() {
 	register(&harness.Journey{
