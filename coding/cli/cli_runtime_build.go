@@ -379,6 +379,10 @@ func (b *cliRuntimeBuilder) buildResources(ctx context.Context, in cliBuildInput
 	build.ThemePaths = collectThemePaths(cwd, b.agentDir, services.SettingsManager(), resourceFlags, projectTrusted, resolver.Resolve)
 	extensionScopes, skillScopes := b.ambientScopes(projectTrusted)
 	build.ExtensionScopes, build.SkillScopes = extensionScopes, skillScopes
+	// pig additive (D202): a closed Piglet Binary loads no settings.extensions entry and says so.
+	if message := pigletBinarySettingsExtensionsRefusal(currentPigletBinary(), services.SettingsManager().GetGlobalSettings().Extensions, projectSettingsExtensions(services.SettingsManager(), projectTrusted)); message != "" {
+		build.StartupDiagnostics = append(build.StartupDiagnostics, codingagent.AgentSessionRuntimeDiagnostic{Type: "warning", Message: message})
+	}
 	if err := validateConfiguredPackagesForStartup(cwd, services.SettingsManager(), func(scope string) bool {
 		return !resourceFlags.NoExtensions && packagemanager.PackageScopeEnabled(extensionScopes, scope)
 	}, resolver.Resolve); err != nil {
