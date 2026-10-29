@@ -3161,9 +3161,9 @@ rationale = "PORT_MAP row is ✅ ported (coding/extension/eventbus.go). coverage
 [[files]]
 path = "packages/coding-agent/src/core/exec.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:coding/extension/exec_max_buffer_test.go#TestExecCommandCapsCombinedOutputAtMaxBuffer", "test:coding/extension/exec_tree_test.go#TestExecCommandForceKillsAChildThatIgnoresSIGTERMAfterFiveSeconds"]
+rationale = "Pi c466a359 caps pi.exec output at 256 MiB: ExecOptions.maxBuffer, ExecResult.truncated, SIGKILL five seconds after a SIGTERM that is ignored, a maxBuffer overflow kills the child before the pipes close (exit 1 like Pi); coding/extension/exec.go, exec_unix.go, exec_windows.go with internal/utf8stream for chunked UTF-8 (lane F)."
 
 [[files]]
 path = "packages/coding-agent/src/core/experimental.ts"
