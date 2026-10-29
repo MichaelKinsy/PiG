@@ -5,7 +5,7 @@ package providers
 import (
 	"strings"
 
-	. "github.com/MichaelKinsy/PiG/internal/modelgen"
+	. "github.com/MichaelKinsy/PiG/internal/modelgen" //nolint:staticcheck // ST1001: provider files mirror packages/ai/catalog/providers; the dot import keeps the definition helpers (O, Spread, MergeCompat, ...) as unqualified as the TypeScript imports of ../define.ts
 )
 
 // Copied from packages/ai/src/api/cloudflare.ts.
@@ -21,12 +21,12 @@ const (
 // cloudflareAiGatewayRouteModel: models.dev lists gateway models as `<upstream>/<id>`; route each upstream to its passthrough.
 func cloudflareAiGatewayRouteModel(model ChatModel) ChatModel {
 	id := model.Str("id")
-	slash := strings.Index(id, "/")
-	if slash == -1 {
+	before, after, ok := strings.Cut(id, "/")
+	if !ok {
 		return nil
 	}
-	upstream := id[:slash]
-	nativeID := id[slash+1:]
+	upstream := before
+	nativeID := after
 	switch upstream {
 	case "openai":
 		// Cloudflare AI Gateway passes OpenAI usage through at OpenAI list prices.

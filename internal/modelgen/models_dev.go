@@ -4,6 +4,7 @@ package modelgen
 
 import (
 	"math"
+	"slices"
 	"strings"
 
 	"github.com/MichaelKinsy/PiG/internal/jsnumber"
@@ -295,12 +296,7 @@ func stringOf(value any) string {
 }
 
 func contains(values []string, value string) bool {
-	for _, candidate := range values {
-		if candidate == value {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(values, value)
 }
 
 // RoundCost is Number(value.toFixed(6)).

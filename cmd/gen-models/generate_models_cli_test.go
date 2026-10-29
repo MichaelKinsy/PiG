@@ -381,7 +381,14 @@ func TestGeneratorRecordAndReplay(t *testing.T) {
 				t.Errorf("%s replayed %d bytes, want the %d recorded", entry.URL, len(body), len(want))
 			}
 		}
-		_, err := http.DefaultClient.Get("https://example.test/unrecorded")
+		unrecorded, err := http.NewRequestWithContext(t.Context(), http.MethodGet, "https://example.test/unrecorded", nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		response, err := http.DefaultClient.Do(unrecorded)
+		if response != nil {
+			_ = response.Body.Close()
+		}
 		if err == nil || !strings.Contains(err.Error(), "Unexpected fetch: https://example.test/unrecorded") {
 			t.Errorf("unrecorded fetch error = %v, want Unexpected fetch", err)
 		}

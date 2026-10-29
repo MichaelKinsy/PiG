@@ -2,7 +2,7 @@ package providers
 
 // Ports packages/ai/catalog/providers/azure.ts
 
-import . "github.com/MichaelKinsy/PiG/internal/modelgen"
+import . "github.com/MichaelKinsy/PiG/internal/modelgen" //nolint:staticcheck // ST1001: provider files mirror packages/ai/catalog/providers; the dot import keeps the definition helpers (O, Spread, MergeCompat, ...) as unqualified as the TypeScript imports of ../define.ts
 
 // Azure Foundry deploys these with larger context windows than OpenAI's own short-tier defaults.
 // See models-sold-directly-by-azure docs.

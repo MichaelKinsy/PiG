@@ -2,7 +2,7 @@ package providers
 
 // Ports packages/ai/catalog/providers/zai.ts
 
-import . "github.com/MichaelKinsy/PiG/internal/modelgen"
+import . "github.com/MichaelKinsy/PiG/internal/modelgen" //nolint:staticcheck // ST1001: provider files mirror packages/ai/catalog/providers; the dot import keeps the definition helpers (O, Spread, MergeCompat, ...) as unqualified as the TypeScript imports of ../define.ts
 
 // Tool-call streaming (`tool_stream`) is rejected by the GLM-4.5 generation.
 var zaiToolStreamUnsupportedModelIDs = map[string]bool{"glm-4.5": true, "glm-4.5-air": true, "glm-4.5-flash": true, "glm-4.5v": true}

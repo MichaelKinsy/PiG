@@ -105,7 +105,8 @@ func TestObjSetNormalizesAndRejectsUnsupportedValues(t *testing.T) {
 				t.Error("O accepted an odd argument count")
 			}
 		}()
-		O("a")
+		odd := []any{"a"}
+		O(odd...) //nolint:staticcheck // SA5012: the panic on an odd argument count is what the test asserts
 	}()
 }
 

@@ -5,7 +5,7 @@ package providers
 import (
 	"errors"
 
-	. "github.com/MichaelKinsy/PiG/internal/modelgen"
+	. "github.com/MichaelKinsy/PiG/internal/modelgen" //nolint:staticcheck // ST1001: provider files mirror packages/ai/catalog/providers; the dot import keeps the definition helpers (O, Spread, MergeCompat, ...) as unqualified as the TypeScript imports of ../define.ts
 )
 
 func typesafe() ProviderDefinition {

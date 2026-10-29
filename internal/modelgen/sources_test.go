@@ -5,6 +5,7 @@ package modelgen
 import (
 	"bytes"
 	"io"
+	"maps"
 	"net/http"
 	"os"
 	"strings"
@@ -128,9 +129,7 @@ func TestLoadCatalogSourcesFailures(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			responses := healthySources()
-			for url, response := range tc.fail {
-				responses[url] = response
-			}
+			maps.Copy(responses, tc.fail)
 			serveSources(t, responses)
 
 			stderr := captureStderr(t, func() {

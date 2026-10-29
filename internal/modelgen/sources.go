@@ -141,7 +141,7 @@ func fetchRadiusModels() ([]*Obj, error) {
 // contributes nothing.
 func LoadCatalogSources(strict bool) (*CatalogSources, error) {
 	load := func(label string, fetch func() error) error {
-		fmt.Fprintf(os.Stdout, "Fetching %s...\n", label)
+		fmt.Printf("Fetching %s...\n", label)
 		err := fetch()
 		if err == nil {
 			return nil

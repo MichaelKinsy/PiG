@@ -8,7 +8,7 @@ import (
 	"regexp"
 	"strings"
 
-	. "github.com/MichaelKinsy/PiG/internal/modelgen"
+	. "github.com/MichaelKinsy/PiG/internal/modelgen" //nolint:staticcheck // ST1001: provider files mirror packages/ai/catalog/providers; the dot import keeps the definition helpers (O, Spread, MergeCompat, ...) as unqualified as the TypeScript imports of ../define.ts
 )
 
 // OpenAI-compatible endpoints reject the long prompt-cache retention parameter for these models.

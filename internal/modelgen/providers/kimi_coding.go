@@ -2,7 +2,7 @@ package providers
 
 // Ports packages/ai/catalog/providers/kimi-coding.ts
 
-import . "github.com/MichaelKinsy/PiG/internal/modelgen"
+import . "github.com/MichaelKinsy/PiG/internal/modelgen" //nolint:staticcheck // ST1001: provider files mirror packages/ai/catalog/providers; the dot import keeps the definition helpers (O, Spread, MergeCompat, ...) as unqualified as the TypeScript imports of ../define.ts
 
 // kimiCodingImpliedCost returns the implied cost of a model, or nil. Kimi Coding is subscription-backed, so models.dev
 // reports zero cost. Use the equivalent Moonshot API rates to estimate the value of subscription usage.

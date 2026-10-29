@@ -6,6 +6,7 @@ import (
 	"compress/gzip"
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
 	"io"
 	"io/fs"
 	"net/http"
@@ -109,7 +110,7 @@ func unpackFixtures(t *testing.T, archive, dir string) {
 	reader := tar.NewReader(zipped)
 	for {
 		header, err := reader.Next()
-		if err == io.EOF {
+		if errors.Is(err, io.EOF) {
 			return
 		}
 		if err != nil {

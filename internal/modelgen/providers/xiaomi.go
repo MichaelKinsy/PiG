@@ -2,7 +2,7 @@ package providers
 
 // Ports packages/ai/catalog/providers/xiaomi.ts
 
-import . "github.com/MichaelKinsy/PiG/internal/modelgen"
+import . "github.com/MichaelKinsy/PiG/internal/modelgen" //nolint:staticcheck // ST1001: provider files mirror packages/ai/catalog/providers; the dot import keeps the definition helpers (O, Spread, MergeCompat, ...) as unqualified as the TypeScript imports of ../define.ts
 
 // Xiaomi MiMo. The `xiaomi` provider targets the API billing endpoint; the
 // `xiaomi-token-plan-*` providers cover prepaid Token Plan endpoints per region.

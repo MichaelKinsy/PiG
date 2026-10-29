@@ -2,7 +2,7 @@ package providers
 
 // Ports packages/ai/catalog/providers/deepseek.ts
 
-import . "github.com/MichaelKinsy/PiG/internal/modelgen"
+import . "github.com/MichaelKinsy/PiG/internal/modelgen" //nolint:staticcheck // ST1001: provider files mirror packages/ai/catalog/providers; the dot import keeps the definition helpers (O, Spread, MergeCompat, ...) as unqualified as the TypeScript imports of ../define.ts
 
 // models.dev's DeepSeek entries lag the API; pricing from https://api-docs.deepseek.com/quick_start/pricing. DeepSeek also offers
 // time-based off-peak rates, which the cost schema cannot represent yet.
