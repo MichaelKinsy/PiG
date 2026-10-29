@@ -235,13 +235,22 @@ func (m *InteractiveMode) dispatchRoutedInput(ctx context.Context, input inputCh
 // Handling each sequence as its own loop turn painted every prefix of a typed
 // "/compact" with the popup its stale suggestions opened, which grew the
 // transcript and left the main screen scrolled further than upstream.
+//
+// The Promise jobs the read's keys queued run once its last sequence is
+// handled and before the next read: the editor's autocomplete request, which
+// needs no I/O for a command name or a command's arguments, opens its menu
+// there (editor.ts startAutocompleteRequest), so the next read's Enter finds
+// the menu open and accepts it instead of submitting the typed text.
 func (m *InteractiveMode) dispatchTerminalRead(ctx context.Context, input inputChunk, readCh *chan inputChunk, errCh <-chan error) (err error) {
 	dispatched := false
-	// Match upstream's immediate keyboard paint before asynchronous
-	// autocomplete results request their throttled follow-up frame.
+	// Match upstream's immediate keyboard paint before the autocomplete
+	// request resolves and asks for its throttled follow-up frame.
 	defer func() {
 		if dispatched && err == nil {
 			m.tuiInst.Render()
+		}
+		if err == nil && m.editor != nil {
+			m.editor.FlushAutocomplete()
 		}
 	}()
 	for {

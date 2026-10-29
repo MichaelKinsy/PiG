@@ -33,9 +33,9 @@ mutations = [
     ("accept-no-undo", "tui/editor.go", 'e.saveHistory()\n\te.lastAction = ""\n\tlines, row, byteCol := e.autocompleteView()\n\tnewLines, nl, nc :=', 'e.lastAction = ""\n\tlines, row, byteCol := e.autocompleteView()\n\tnewLines, nl, nc :=', "TestUpstreamEditorCompletionUndoAndForce|TestCompletionUndoRestoresPreApplyTextAndCursor"),
     ("delete-no-refresh", "tui/editor.go", "e.backspace()\n\t\te.refreshAutocomplete()", "e.backspace()", "TestUpstreamEditorCompletionBackspaceSlashToEmpty|TestUpstreamEditorCompletionRetriggersCJKDirectoriesAndDeletion"),
 ]
-# refreshAutocomplete and requestOwnedAutocomplete both cancel the prior query.
+# refreshAutocomplete, requestNativeAutocomplete and requestAutocompleteProvider each cancel the prior query.
 # Removing only one is not a behavioral mutation of cancellation on this path.
-extra_mutations = {"abort-active": [("tui/editor_async_provider.go", "if e.asyncCancel != nil {\n\t\te.asyncCancel()\n\t}", "if e.asyncCancel != nil {\n\t\te.asyncCancel = nil\n\t}")]}
+extra_mutations = {"abort-active": [("tui/editor_async_provider.go", "if e.asyncCancel != nil {\n\t\te.asyncCancel()\n\t}", "if e.asyncCancel != nil {\n\t\te.asyncCancel = nil\n\t}"), ("tui/editor_autocomplete_request.go", "if e.asyncCancel != nil {\n\t\te.asyncCancel()\n\t\te.asyncCancel = nil\n\t}", "if e.asyncCancel != nil {\n\t\te.asyncCancel = nil\n\t}")]}
 pair_mutations = {"keyboard-wrap", "unbound-control-p", "await-callback", "node-invalid-shape", "best-prefix", "cursor-requery", "force-option", "force-single", "force-multiple", "force-retention", "accept-no-cancel", "accept-no-undo", "delete-no-refresh"}
 pi = subprocess.run(["node", "test/parity/testdata/editor-completion-helper/pi.mjs"], cwd=root, capture_output=True, check=True)
 (out / "pi-output.json").write_bytes(pi.stdout)
