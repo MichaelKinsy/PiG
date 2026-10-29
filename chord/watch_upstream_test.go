@@ -1542,9 +1542,13 @@ func TestNativeWatchDeliversABacklogThatNeverDrainsInOrder(t *testing.T) {
 		}
 		return nil
 	})
+	// Upstream's loop runs to its end before the listener's first call, a microtask; a delivery here runs on its own goroutine from the
+	// first advance on, so the values it queues behind the backlog of 50 would otherwise interleave with the loop's.
+	release := scheduler.Hold()
 	for n := range 50 {
 		watch.Advance(ctx, n)
 	}
+	release()
 	scheduler.Wait()
 	mu.Lock()
 	defer mu.Unlock()
