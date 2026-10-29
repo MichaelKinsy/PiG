@@ -154,9 +154,10 @@
         "internal/codingagent/keys.go#classifyKeyWithBindings"
       ],
       "evidence": [
+        "internal/codingagent/custom_editor_keybindings_test.go#TestCustomEditorExplicitHistoryBindingBeatsModelCycling",
+        "internal/codingagent/custom_editor_keybindings_test.go#TestPR7680AutocompletePageKeysWinOverTheImagePasteShortcut",
         "internal/codingagent/custom_editor_test.go#TestCustomEditorEscapePrefersOnEscapeThenTheInterruptActionThenTheEditor",
         "internal/codingagent/custom_editor_test.go#TestCustomEditorExitOnlyWhenTheEditorIsEmpty",
-        "internal/codingagent/custom_editor_test.go#TestCustomEditorExplicitHistoryBindingBeatsModelCycling",
         "internal/codingagent/custom_editor_test.go#TestCustomEditorExtensionShortcutThenPasteImageComeFirst",
         "internal/codingagent/custom_editor_test.go#TestCustomEditorRunsTheRegisteredAppActionAndReplacesIt",
         "internal/codingagent/interactive_remapped_submit_test.go#TestTerminalInputPreservesRemappedSubmitBindings",
