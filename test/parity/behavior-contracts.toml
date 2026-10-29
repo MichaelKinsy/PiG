@@ -147,17 +147,21 @@ evidence = [
   "tui/model_selector_oracle_test.go#TestModelSelectorInputMatchesPi",
   "tui/model_select_test.go#TestModelSelectorArrowNavigationWrapsAtBothEnds",
   "test/parity/scenarios/model-resolver-selector/11-model-picker-arrow-wrap.toml",
+  "tui/select_page_keys_upstream_test.go#TestUpstreamModelSelectorMovesByOnePageWithRemappedSelectionPageKeys",
+  "test/parity/scenarios/model-resolver-selector/24-fullscreen-model-picker-page-keys-reach-selector.toml",
 ]
 
 [contract.upstream]
 path = "packages/coding-agent/src/modes/interactive/components/model-selector.ts"
 start = "\thandleInput(keyData: string): void {"
 end = "\tgetSearchInput(): Input {"
-sha256 = "5f10cf12b4d26b982551f7b1ef22363d1f913863e1fc8ee8378ed228f48b86fc"
+sha256 = "e70f42228e9b7c6fe6965df4a6f1c66988d462ca17a28cc3abde4088b4c929f6"
 keybindings = [
   "tui.input.tab",
   "tui.select.up",
   "tui.select.down",
+  "tui.select.pageUp",
+  "tui.select.pageDown",
   "tui.select.confirm",
   "tui.select.cancel",
   "app.models.save",
@@ -185,17 +189,21 @@ evidence = [
   "test/parity/scenarios/model-resolver-selector/16-model-picker-enter-session-only.toml",
   "test/parity/scenarios/model-resolver-selector/17-model-picker-save-default.toml",
   "test/parity/scenarios/model-resolver-selector/18-model-picker-save-default-scope-order.toml",
+  "tui/select_page_keys_upstream_test.go#TestUpstreamModelSelectorMovesByOnePageWithRemappedSelectionPageKeys",
+  "test/parity/scenarios/model-resolver-selector/24-fullscreen-model-picker-page-keys-reach-selector.toml",
 ]
 
 [contract.upstream]
 path = "packages/coding-agent/src/modes/interactive/components/model-selector.ts"
 start = "\thandleInput(keyData: string): void {"
 end = "\tgetSearchInput(): Input {"
-sha256 = "5f10cf12b4d26b982551f7b1ef22363d1f913863e1fc8ee8378ed228f48b86fc"
+sha256 = "e70f42228e9b7c6fe6965df4a6f1c66988d462ca17a28cc3abde4088b4c929f6"
 keybindings = [
   "tui.input.tab",
   "tui.select.up",
   "tui.select.down",
+  "tui.select.pageUp",
+  "tui.select.pageDown",
   "tui.select.confirm",
   "tui.select.cancel",
   "app.models.save",
@@ -634,17 +642,21 @@ evidence = [
   "test/parity/scenarios/model-resolver-selector/06-model-scope-toggle.toml",
   "test/parity/scenarios/model-resolver-selector/09-model-filter-resets-selection.toml",
   "test/parity/scenarios/model-resolver-selector/14-model-picker-fuzzy-filter.toml",
+  "tui/select_page_keys_upstream_test.go#TestUpstreamModelSelectorMovesByOnePageWithRemappedSelectionPageKeys",
+  "test/parity/scenarios/model-resolver-selector/24-fullscreen-model-picker-page-keys-reach-selector.toml",
 ]
 
 [contract.upstream]
 path = "packages/coding-agent/src/modes/interactive/components/model-selector.ts"
 start = "\thandleInput(keyData: string): void {"
 end = "\tgetSearchInput(): Input {"
-sha256 = "5f10cf12b4d26b982551f7b1ef22363d1f913863e1fc8ee8378ed228f48b86fc"
+sha256 = "e70f42228e9b7c6fe6965df4a6f1c66988d462ca17a28cc3abde4088b4c929f6"
 keybindings = [
   "tui.input.tab",
   "tui.select.up",
   "tui.select.down",
+  "tui.select.pageUp",
+  "tui.select.pageDown",
   "tui.select.confirm",
   "tui.select.cancel",
   "app.models.save",

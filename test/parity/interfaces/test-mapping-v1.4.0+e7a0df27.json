@@ -4039,8 +4039,13 @@
     },
     {
       "path": "packages/coding-agent/test/custom-editor-keybindings.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:0532c4e7a7e3d521ed62f9987e2cdd600796a10000821ac62a1515d04a513a2c"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:0532c4e7a7e3d521ed62f9987e2cdd600796a10000821ac62a1515d04a513a2c",
+      "evidence": [
+        "internal/codingagent/custom_editor_keybindings_test.go#TestCustomEditorExplicitHistoryBindingBeatsModelCycling",
+        "internal/codingagent/custom_editor_keybindings_test.go#TestPR7680AutocompletePageKeysWinOverTheImagePasteShortcut"
+      ],
+      "rationale": "Replaces the deleted custom-editor-history-keybindings test: explicit history binding beats model cycling, autocomplete page keys beat the image-paste shortcut (lane A1)."
     },
     {
       "path": "packages/coding-agent/test/custom-message.test.ts",
@@ -4517,8 +4522,12 @@
     },
     {
       "path": "packages/coding-agent/test/interactive-mode-extension-changelog.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:cdc72029f64b5b7d8fdaf8696c00cbc900643dd57882ff919b59fef4988c134d"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:cdc72029f64b5b7d8fdaf8696c00cbc900643dd57882ff919b59fef4988c134d",
+      "evidence": [
+        "internal/codingagent/interactive_extension_changelog_test.go#TestExtensionChangelogUpdatesUpstream"
+      ],
+      "rationale": "Four extension changelog cases (Pi b4b72a35, lane A1)."
     },
     {
       "path": "packages/coding-agent/test/interactive-mode-extension-dialogs.test.ts",
@@ -4556,8 +4565,13 @@
     },
     {
       "path": "packages/coding-agent/test/interactive-mode-model-scope.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:4d0f30135d06ca974939bd2e08d4e7e939e6f8f68d9948c209cd6f5319ff83a6"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:4d0f30135d06ca974939bd2e08d4e7e939e6f8f68d9948c209cd6f5319ff83a6",
+      "evidence": [
+        "internal/codingagent/startup_hints_test.go#TestFullscreenModelScopeNoticeRendersInHeader",
+        "internal/codingagent/startup_hints_test.go#TestFullscreenModelScopeNoticeHiddenWithStartupDetails"
+      ],
+      "rationale": "Model scope inside the fullscreen header and hidden with startup details (Pi 7391dbb0, lane A1)."
     },
     {
       "path": "packages/coding-agent/test/interactive-mode-startup-input.test.ts",
@@ -4574,8 +4588,12 @@
     },
     {
       "path": "packages/coding-agent/test/interactive-mode-status.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:66d640a003ec2064ac0f64b8b5858e46faf96d7171851392b3163178aea6e5c3"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:66d640a003ec2064ac0f64b8b5858e46faf96d7171851392b3163178aea6e5c3",
+      "evidence": [
+        "internal/codingagent/loaded_resources_quiet_upstream_test.go#TestLoadedResourcesQuietReloadUpstream"
+      ],
+      "rationale": "Quiet startup still shows diagnostics, headed [Skill warnings] (Pi f14813e9, lane A1)."
     },
     {
       "path": "packages/coding-agent/test/interactive-mode-suspend.test.ts",
@@ -4729,8 +4747,12 @@
     },
     {
       "path": "packages/coding-agent/test/mcp-manager-view.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:b2ebdecc484b1c0581cc8d2186ed830722c59a5d99e5dbe16ec600625bdde0ed"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:b2ebdecc484b1c0581cc8d2186ed830722c59a5d99e5dbe16ec600625bdde0ed",
+      "evidence": [
+        "coding/mcpext/manager_test.go#TestMcpManagerMenuCapturesViewportKeysOnlyWhileAMenuListIsShown"
+      ],
+      "rationale": "A menu list captures fullscreen viewport keys only while shown (Pi 3bae8527, lane A1)."
     },
     {
       "path": "packages/coding-agent/test/mcp-oauth-refresh.test.ts",
@@ -4924,8 +4946,12 @@
     },
     {
       "path": "packages/coding-agent/test/model-selector.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:d119876bcde54fd2ca47be1bba3f457dd68572835ba9d9b82a3ee750e916d5eb"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:d119876bcde54fd2ca47be1bba3f457dd68572835ba9d9b82a3ee750e916d5eb",
+      "evidence": [
+        "tui/select_page_keys_upstream_test.go#TestUpstreamModelSelectorMovesByOnePageWithRemappedSelectionPageKeys"
+      ],
+      "rationale": "Moves by one page with remapped selection page keys (Pi 3bae8527, lane A1)."
     },
     {
       "path": "packages/coding-agent/test/models-store.test.ts",
@@ -5732,8 +5758,12 @@
     },
     {
       "path": "packages/coding-agent/test/settings-selector.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:3233e090a5acb9e88381ed9c8131a360923f505230e5e5c788229c5f53b9e800"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:3233e090a5acb9e88381ed9c8131a360923f505230e5e5c788229c5f53b9e800",
+      "evidence": [
+        "tui/select_page_keys_upstream_test.go#TestUpstreamSelectSubmenuPagesWithSelectionPageKeys"
+      ],
+      "rationale": "Pages a searchable submenu with selection page keys (Pi 3bae8527); SelectSubmenu lives in tui/ (lane A1)."
     },
     {
       "path": "packages/coding-agent/test/shell-kill-process-tree.test.ts",
@@ -8381,8 +8411,12 @@
     },
     {
       "path": "packages/tui/test/editor.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:258a60b2aa2afbb6d0d053c7cf67e335a4b69cef2e39650b9c265d9f9ec24820"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:258a60b2aa2afbb6d0d053c7cf67e335a4b69cef2e39650b9c265d9f9ec24820",
+      "evidence": [
+        "tui/select_page_keys_upstream_test.go#TestUpstreamEditorMovesTheAutocompleteSelectionWithSelectionPageKeys"
+      ],
+      "rationale": "Pi 3bae8527 'moves the autocomplete selection with selection page keys (#7629)' (lane A1)."
     },
     {
       "path": "packages/tui/test/exit-restore.test.ts",
@@ -8478,8 +8512,13 @@
     },
     {
       "path": "packages/tui/test/markdown.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:e57a2e8ada4bca2f249814a11197c3e2446e3560db21a893e35620ef702b024a"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:e57a2e8ada4bca2f249814a11197c3e2446e3560db21a893e35620ef702b024a",
+      "evidence": [
+        "tui/markdown_upstream_test.go#TestUpstreamMarkdown",
+        "tui/markdown_cjk_url_test.go#TestMarkdownBareURLCJKPunctuation"
+      ],
+      "rationale": "Pi fa168515: four bare-URL CJK punctuation cases, hand-ported because the markdown test generator fails at this pin on an arrow function in a test that predates b3a29f11 (lane A1)."
     },
     {
       "path": "packages/tui/test/mouse-components.test.ts",
@@ -8614,13 +8653,21 @@
     },
     {
       "path": "packages/tui/test/select-list.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:4551731e4c707e51f8af3432ec30fe2c1445ecbb9a5b8258caf1f8215e788064"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:4551731e4c707e51f8af3432ec30fe2c1445ecbb9a5b8258caf1f8215e788064",
+      "evidence": [
+        "tui/select_page_keys_upstream_test.go#TestUpstreamSelectListMovesByOneVisiblePageWithSelectionPageKeys"
+      ],
+      "rationale": "Pi 3bae8527 'moves by one visible page with selection page keys (#7629)' (lane A1)."
     },
     {
       "path": "packages/tui/test/settings-list.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:4fed7aa1085045f46c5e372284f4e03111c012c2f081a4cf8e61f8a346bee364"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:4fed7aa1085045f46c5e372284f4e03111c012c2f081a4cf8e61f8a346bee364",
+      "evidence": [
+        "tui/select_page_keys_upstream_test.go#TestUpstreamSettingsListMovesByOneVisiblePageWithSelectionPageKeys"
+      ],
+      "rationale": "Pi 3bae8527 same case for the settings list (lane A1)."
     },
     {
       "path": "packages/tui/test/stdin-buffer.test.ts",
@@ -8717,8 +8764,13 @@
     },
     {
       "path": "packages/tui/test/tui-alt-screen.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:a99182c1ae345ff662211993f697db47a0c3972181a9bf74d72977166b70225e"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:a99182c1ae345ff662211993f697db47a0c3972181a9bf74d72977166b70225e",
+      "evidence": [
+        "tui/select_page_keys_upstream_test.go#TestUpstreamAltScreenDefersViewportKeysToAFocusedList",
+        "tui/select_page_keys_upstream_test.go#TestUpstreamAltScreenGivesViewportKeysBackWhenEditorAutocompleteCloses"
+      ],
+      "rationale": "Pi 3bae8527 'defers viewport keys to a focused list' and 'gives viewport keys back when autocomplete closes' (lane A1)."
     },
     {
       "path": "packages/tui/test/tui-cell-size-input.test.ts",
@@ -8740,8 +8792,12 @@
     },
     {
       "path": "packages/tui/test/tui-render.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:d9c33b9b76d52f0416579f3cbff9d7fc709a0cab0aa915f43bd5c8194a6fde7a"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:d9c33b9b76d52f0416579f3cbff9d7fc709a0cab0aa915f43bd5c8194a6fde7a",
+      "evidence": [
+        "tui/tui_render_upstream_test.go#TestUpstreamTUIOSC133Markers"
+      ],
+      "rationale": "Pi 19ce8059 'does not write OSC 133 prompt markers to the terminal' (lane A1)."
     },
     {
       "path": "packages/tui/test/tui-shrink.test.ts",

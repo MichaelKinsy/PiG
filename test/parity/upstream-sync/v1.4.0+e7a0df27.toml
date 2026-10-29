@@ -3798,9 +3798,9 @@ rationale = "PORT_MAP row is ✅ ported (internal/codingagent/llama/provider.go 
 [[files]]
 path = "packages/coding-agent/src/extensions/llama/ui.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:internal/codingagent/llama/ui_test.go#TestHuggingFaceSearchPageKeysMoveTenResults"]
+rationale = "Pi 3bae8527: search and list views capture viewport keys and page; internal/codingagent/llama/ui.go (lane A1)."
 
 [[files]]
 path = "packages/coding-agent/src/extensions/mcp/cli.lazy.ts"
@@ -3875,9 +3875,9 @@ rationale = "PORT_MAP row is ✅ ported (coding/mcpext/tools.go (tools_test.go))
 [[files]]
 path = "packages/coding-agent/src/extensions/mcp/ui.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:coding/mcpext/manager_test.go#TestMcpManagerMenuCapturesViewportKeysOnlyWhileAMenuListIsShown"]
+rationale = "Pi 3bae8527: a menu list captures viewport keys, status/input/empty-menu screens do not; coding/mcpext/mcptui/manager.go (lane A1)."
 
 [[files]]
 path = "packages/coding-agent/src/extensions/tool-search/index.ts"
@@ -4001,9 +4001,9 @@ rationale = "PORT_MAP row is ✅ ported (tui/countdown_timer.go). coverage.md re
 [[files]]
 path = "packages/coding-agent/src/modes/interactive/components/custom-editor.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:internal/codingagent/custom_editor_keybindings_test.go#TestPR7680AutocompletePageKeysWinOverTheImagePasteShortcut", "test:internal/codingagent/custom_editor_keybindings_test.go#TestCustomEditorExplicitHistoryBindingBeatsModelCycling"]
+rationale = "Pi 3bae8527: an open autocomplete takes the page keys before app actions and a remapped page key (Ctrl+V) pages the menu instead of pasting an image; internal/codingagent/custom_editor.go (lane A1)."
 
 [[files]]
 path = "packages/coding-agent/src/modes/interactive/components/custom-entry.ts"
@@ -4127,16 +4127,16 @@ rationale = "PORT_MAP row is ✅ ported (internal/codingagent/mermaid_transform.
 [[files]]
 path = "packages/coding-agent/src/modes/interactive/components/model-selector.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:tui/select_page_keys_upstream_test.go#TestUpstreamModelSelectorMovesByOnePageWithRemappedSelectionPageKeys", "test:tui/model_selector_oracle_test.go#TestModelSelectorInputMatchesPi"]
+rationale = "Pi 3bae8527: page keys and the capture flag; tui/model_select.go (lane A1)."
 
 [[files]]
 path = "packages/coding-agent/src/modes/interactive/components/oauth-selector.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:tui/select_page_keys_test.go#TestSelectorComponentsMoveByTheirPage"]
+rationale = "Pi 3bae8527: page keys and the capture flag; tui/oauth_selector.go (lane A1)."
 
 [[files]]
 path = "packages/coding-agent/src/modes/interactive/components/pi-logo.ts"
@@ -4155,9 +4155,9 @@ rationale = "PORT_MAP row is ✅ ported (internal/codingagent/radius_login_selec
 [[files]]
 path = "packages/coding-agent/src/modes/interactive/components/scoped-models-selector.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:tui/select_page_keys_test.go#TestSelectorComponentsMoveByTheirPage"]
+rationale = "Pi 3bae8527: page keys and the capture flag; tui/scoped_models_list.go (lane A1)."
 
 [[files]]
 path = "packages/coding-agent/src/modes/interactive/components/session-selector-search.ts"
@@ -4169,9 +4169,9 @@ rationale = "Ported per-field tiered search (Pi 8c03fef4d)."
 [[files]]
 path = "packages/coding-agent/src/modes/interactive/components/session-selector.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:internal/codingagent/select_page_keys_test.go#TestSessionSelectorCapturesSelectionPageKeys"]
+rationale = "Pi 3bae8527: CapturesViewportInput is true except in rename mode, page keys move the selection, and paging over an empty list leaves -1 as Pi does; internal/codingagent/session_selector.go (lane A1)."
 
 [[files]]
 path = "packages/coding-agent/src/modes/interactive/components/settings-selector.ts"
@@ -4183,9 +4183,9 @@ rationale = "PORT_MAP row is ✅ ported (tui/settings_list.go + internal/codinga
 [[files]]
 path = "packages/coding-agent/src/modes/interactive/components/settings-submenu.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:tui/select_page_keys_upstream_test.go#TestUpstreamSelectSubmenuPagesWithSelectionPageKeys"]
+rationale = "Pi 3bae8527: page keys are navigation keys and OnSelectionChange fires when a page key moves the highlight; tui/select_submenu.go (lane A1)."
 
 [[files]]
 path = "packages/coding-agent/src/modes/interactive/components/show-images-selector.ts"
@@ -4239,9 +4239,9 @@ rationale = "Pi f715a15c1 makes updateArgs record the arguments and request a re
 [[files]]
 path = "packages/coding-agent/src/modes/interactive/components/tree-selector.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:tui/select_page_keys_test.go#TestTreeSelectorCapturesViewportInputUnlessEditingALabel"]
+rationale = "Pi 3bae8527: TreeList.CapturesViewportInput is true unless a label is being edited; tui/tree_select.go (lane A1)."
 
 [[files]]
 path = "packages/coding-agent/src/modes/interactive/components/trust-selector.ts"
@@ -4253,9 +4253,9 @@ rationale = "PORT_MAP row is ✅ ported (internal/codingagent/trust_selector.go;
 [[files]]
 path = "packages/coding-agent/src/modes/interactive/components/user-message-selector.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:tui/select_page_keys_test.go#TestUserMessageSelectorReportsViewportCaptureOnItsList"]
+rationale = "Pi 3bae8527: the capture flag lives on UserMessageList only; tui/user_message_selector.go (lane A1)."
 
 [[files]]
 path = "packages/coding-agent/src/modes/interactive/components/user-message.ts"
@@ -4281,9 +4281,9 @@ rationale = "PORT_MAP row is ✅ ported (internal/codingagent/external_editor.go
 [[files]]
 path = "packages/coding-agent/src/modes/interactive/interactive-mode.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:internal/codingagent/startup_hints_test.go#TestFullscreenModelScopeNoticeRendersInHeader", "test:internal/codingagent/interactive_extension_changelog_test.go#TestExtensionChangelogUpdatesUpstream", "test:internal/codingagent/loaded_resources_quiet_upstream_test.go#TestLoadedResourcesQuietReloadUpstream"]
+rationale = "Pi f14813e9 [Skill warnings], 7391dbb0 the model scope notice in the fullscreen header, b4b72a35 extension changelog updates at startup, 3bae8527 modal viewport deferral; internal/codingagent/{loaded_resources,model_scope_line,startup_header,interactive,interactive_changelog,slash_commands,interactive_theme_modal}.go (lane A1)."
 
 [[files]]
 path = "packages/coding-agent/src/modes/interactive/model-catalog-refresh.ts"
@@ -5632,9 +5632,9 @@ rationale = "PORT_MAP row is ✅ ported (tui/cancellable_loader.go). coverage.md
 [[files]]
 path = "packages/tui/src/components/editor.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:tui/select_page_keys_upstream_test.go#TestUpstreamEditorMovesTheAutocompleteSelectionWithSelectionPageKeys"]
+rationale = "Pi 3bae8527: the capture flag is true while autocomplete is open and the autocomplete selection pages with the selection page keys; tui/editor.go (lane A1)."
 
 [[files]]
 path = "packages/tui/src/components/h-stack.ts"
@@ -5667,9 +5667,9 @@ rationale = "PORT_MAP row is ✅ ported (tui/loader.go). coverage.md reports 2 b
 [[files]]
 path = "packages/tui/src/components/markdown.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:tui/markdown_cjk_url_test.go#TestMarkdownBareURLCJKPunctuation"]
+rationale = "Pi fa168515: bare URLs stop at CJK punctuation; tui/markdown_marked.go markedURL (lane A1). The generated markdown_upstream_test.go cannot be regenerated at this pin (test/parity/testdata/markdown-upstream-tests.mjs fails on an arrow function in a test that predates b3a29f11), so the four upstream cases are hand-ported in markdown_cjk_url_test.go."
 
 [[files]]
 path = "packages/tui/src/components/mouse-region.ts"
@@ -5688,16 +5688,16 @@ rationale = "PORT_MAP row is ✅ ported (tui/scroll_view.go; coding/extension/ho
 [[files]]
 path = "packages/tui/src/components/select-list.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:tui/select_page_keys_upstream_test.go#TestUpstreamSelectListMovesByOneVisiblePageWithSelectionPageKeys"]
+rationale = "Pi 3bae8527: page keys move one visible page, no notify when the index is unchanged, capture flag; tui/select_list.go (lane A1)."
 
 [[files]]
 path = "packages/tui/src/components/settings-list.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:tui/select_page_keys_upstream_test.go#TestUpstreamSettingsListMovesByOneVisiblePageWithSelectionPageKeys"]
+rationale = "Pi 3bae8527: page keys and capture flag; tui/settings_list.go (lane A1)."
 
 [[files]]
 path = "packages/tui/src/components/spacer.ts"
@@ -5751,16 +5751,16 @@ rationale = "Ported contiguous-alignment scoring (Pi 8c03fef4d)."
 [[files]]
 path = "packages/tui/src/index.ts"
 change = "added"
-disposition = "pending"
+disposition = "designed-out"
 evidence = []
-rationale = ""
+rationale = "PORT_MAP records this file n/a: Go exports are package-level identifiers (getSelectPageIndex is tui.GetSelectPageIndex)."
 
 [[files]]
 path = "packages/tui/src/keybindings.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:tui/select_page_keys_test.go#TestGetSelectPageIndex"]
+rationale = "Pi 3bae8527 (#7629): getSelectPageIndex; tui/selection_navigation.go GetSelectPageIndex replaces the PR-7680 PageSelectionIndex (lane A1)."
 
 [[files]]
 path = "packages/tui/src/keys.ts"
@@ -5863,23 +5863,23 @@ rationale = "setTitle replaces control characters so a title cannot end the OSC 
 [[files]]
 path = "packages/tui/src/tui-alt-screen.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:tui/select_page_keys_upstream_test.go#TestUpstreamAltScreenDefersViewportKeysToAFocusedList", "test:tui/select_page_keys_upstream_test.go#TestUpstreamAltScreenGivesViewportKeysBackWhenEditorAutocompleteCloses", "test:tui/select_page_keys_upstream_test.go#TestUpstreamAltScreenScrollsTheTranscriptForAFocusedContainerWrapper"]
+rationale = "Pi 3bae8527: shouldDeferViewportInput gives viewport keys to a focused component that captures them; tui/tui_alt_screen_input.go, D155 special case removed (lane A1)."
 
 [[files]]
 path = "packages/tui/src/tui-main-screen.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:tui/tui_render_upstream_test.go#TestUpstreamTUIOSC133Markers"]
+rationale = "Pi 19ce8059: the regular-mode renderer strips the leading OSC 133 A/B/C run of every rendered line; tui/tui.go (doRender, composeFrameLines, stripOsc133ZonePrefixes) (lane A1)."
 
 [[files]]
 path = "packages/tui/src/tui.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:tui/select_page_keys_test.go#TestContainerDoesNotForwardViewportCapture"]
+rationale = "Pi 3bae8527: Component.capturesViewportInput; the optional property is the optional interface tui.ViewportInputCapturer with tui.CapturesViewportInput, and Container no longer forwards it (lane A1)."
 
 [[files]]
 path = "packages/tui/src/undo-stack.ts"
