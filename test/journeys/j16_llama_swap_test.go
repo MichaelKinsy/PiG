@@ -100,6 +100,21 @@ func lastModel(reqs []*harness.Request) string {
 	return reqs[len(reqs)-1].Model
 }
 
+// pickModel selects a models.json model in the /model selector: open it, list, filter to the model, Enter.
+func pickModel(c *harness.Ctx, id, name string) {
+	c.Say("/model")
+	c.WaitFor("Only showing models from configured providers", "Model catalogs refreshed.")
+	c.Quiet(c.Settle())
+	c.Snap(name + "-model-list")
+	c.Type(id + " strict-wire")
+	c.Quiet(c.Settle())
+	c.Snap(name + "-model-filtered")
+	c.Key("Enter")
+	c.WaitFor("Model: " + id)
+	c.Quiet(c.Settle())
+	c.Snap(name + "-model-selected")
+}
+
 func init() {
 	register(&harness.Journey{
 		Name: "llama-swap-models-json",
@@ -127,45 +142,28 @@ func init() {
 		},
 		Pool: []harness.Action{
 			{Step: harness.Step{Name: "select-second-and-prompt", Run: func(c *harness.Ctx) {
-				c.Say("/model")
-				c.WaitFor("Only showing models from configured providers", "Model catalogs refreshed.")
-				c.Quiet(c.Settle())
-				c.Snap("model-list")
-				c.Type("q6-uncensored")
-				c.Quiet(c.Settle())
-				c.Snap("model-filtered")
-				c.Key("Enter")
-				c.WaitGone("Only showing models")
-				c.Quiet(c.Settle())
-				c.Snap("model-selected")
+				pickModel(c, swapSecond, "second")
 				prompt(c, "Hello from the second model", 1)
 				c.WaitFor("served by " + swapSecond + " (Hello from the second model)")
 				swapServed(c, swapSecond)
 				c.Snap("turn-second")
 			}}},
 			{Needs: []string{"select-second-and-prompt"}, Step: harness.Step{Name: "switch-back", Run: func(c *harness.Ctx) {
-				c.Say(fmt.Sprintf("/model strict-wire/%s", swapLoaded))
-				c.WaitFor("Model: " + swapLoaded)
-				c.Quiet(c.Settle())
-				c.Snap("switched-back")
+				pickModel(c, swapLoaded, "back")
 				prompt(c, "Hello again from the first model", 1)
 				c.WaitFor("served by " + swapLoaded + " (Hello again from the first model)")
 				swapServed(c, swapLoaded)
 				c.Snap("turn-back")
 			}}},
 			{Step: harness.Step{Name: "broken-model", Run: func(c *harness.Ctx) {
-				c.Say(fmt.Sprintf("/model strict-wire/%s", swapBroken))
-				c.WaitFor("Model: " + swapBroken)
-				c.Quiet(c.Settle())
+				pickModel(c, swapBroken, "broken")
 				prompt(c, "Try the model that fails to start", 1)
 				c.Quiet(c.Settle())
 				swapServed(c, swapBroken)
 				c.Snap("turn-broken")
 			}}},
 			{Step: harness.Step{Name: "unrouted-model", Run: func(c *harness.Ctx) {
-				c.Say(fmt.Sprintf("/model strict-wire/%s", swapUnrouted))
-				c.WaitFor("Model: " + swapUnrouted)
-				c.Quiet(c.Settle())
+				pickModel(c, swapUnrouted, "unrouted")
 				prompt(c, "Try the model the gateway does not route", 1)
 				c.WaitFor("no local server found for requested model")
 				swapServed(c, swapUnrouted)
