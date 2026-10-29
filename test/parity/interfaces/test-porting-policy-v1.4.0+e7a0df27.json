@@ -2351,6 +2351,215 @@
       "rationale": "Production-path review at Pi 1.2.0: Chord's multi-host runtime (the host manager). Neither Pi's coding agent nor Pi Durable reaches it: Durable imports only Context, the JSON and delta helpers, Draft and replicatedState from chord, the coding agent does not depend on chord, and no Stock PiG production package imports chord/host. Not tagged hot-path."
     },
     {
+      "path": "packages/chord/test/next-node/compression.test.ts",
+      "upstreamTestHash": "sha256:289ae9ce728c8a040951f23e1767342d66eab2e8cbae2ade327adda57aa8c0d1",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
+    },
+    {
+      "path": "packages/chord/test/next/contracts/accepts.test.ts",
+      "upstreamTestHash": "sha256:cd8459c0c5ac8e0568302d8e313279547eb586313b1f143a85ab527f1a7a8779",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
+    },
+    {
+      "path": "packages/chord/test/next/contracts/contract.test.ts",
+      "upstreamTestHash": "sha256:0ba6bd1fab1cabff14fea7ed111551940ec8d038827818ba8e588b2208eac68b",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path. Re-review pending: designedOutCases need owner approval.",
+      "designedOutCases": [
+        "derived types \u203a Implementation: one variant with its members, state watchables and methods taking args and a context",
+        "derived types \u203a Implementation of a local contract is flat",
+        "derived types \u203a ParamsOf: the params object"
+      ]
+    },
+    {
+      "path": "packages/chord/test/next/contracts/declare.test.ts",
+      "upstreamTestHash": "sha256:fc841de7411c2abb0ae92833aeab8c7e6f51e146aa2453014750417aeae41574",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path. Re-review pending: designedOutCases need owner approval.",
+      "designedOutCases": [
+        "declaration checks \u203a refuse a remote declaration without a host address at the type level",
+        "keyed members (slice 6a \u00a712) \u203a refuse a keyed member in a remote contract, at the type level and at declaration"
+      ]
+    },
+    {
+      "path": "packages/chord/test/next/contracts/evolve.test.ts",
+      "upstreamTestHash": "sha256:8d9ed24a8a839777303d948ca790c15003e22a2d04e1e0d9ebd4898072ef44ec",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path. Re-review pending: designedOutCases need owner approval.",
+      "designedOutCases": [
+        "long histories \u203a the types track every step with its changes"
+      ]
+    },
+    {
+      "path": "packages/chord/test/next/contracts/fingerprint.test.ts",
+      "upstreamTestHash": "sha256:5ead63ed2c246e3593e276c2e335bbf9efbf55b24e980bb11784d1c34ed60f5e",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
+    },
+    {
+      "path": "packages/chord/test/next/contracts/history.test.ts",
+      "upstreamTestHash": "sha256:44da0fbbb0c10fe9dc4aff47634443bcfaa522d6a41c3d7d7c766212b9b56497",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
+    },
+    {
+      "path": "packages/chord/test/next/contracts/host-kind.test.ts",
+      "upstreamTestHash": "sha256:11f3aeda1a0de8e75102be0d037a16b2b4a57169e169ee7b4a26dec6ca4ae4aa",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path. Re-review pending: designedOutCases need owner approval.",
+      "designedOutCases": [
+        "hostAddress \u203a is typed by the contract's params"
+      ]
+    },
+    {
+      "path": "packages/chord/test/next/contracts/params.test.ts",
+      "upstreamTestHash": "sha256:df09c5964a2d7feaf1c8032c49cb0b1ed5e7d93c6e937198001a607638478be6",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
+    },
+    {
+      "path": "packages/chord/test/next/contracts/schema.test.ts",
+      "upstreamTestHash": "sha256:f29f2647fe978e73da74592b7c1efd54d928616b36a9d9cf834605026c97244e",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
+    },
+    {
+      "path": "packages/chord/test/next/contracts/snapshot.test.ts",
+      "upstreamTestHash": "sha256:5590f3b9d88023288cff9916672d0174d72208778e91078c96bb159c25c81dbb",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
+    },
+    {
+      "path": "packages/chord/test/next/data/args.test.ts",
+      "upstreamTestHash": "sha256:62c1a36d13245367b5dd72713720c84d14c7f5be704461091e6ef39a346fb413",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path. Re-review pending: designedOutCases need owner approval.",
+      "designedOutCases": [
+        "checkArgs \u203a types a call replacement's arguments as values"
+      ]
+    },
+    {
+      "path": "packages/chord/test/next/data/errors.test.ts",
+      "upstreamTestHash": "sha256:df321f5af5c8d3a332fe0b00c72d584dc55992f9bed723015a94a5e0f3db638d",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path. Re-review pending: designedOutCases need owner approval.",
+      "designedOutCases": [
+        "ChordError \u203a is a tagged union: a wrong pairing is a type error"
+      ]
+    },
+    {
+      "path": "packages/chord/test/next/data/failure.test.ts",
+      "upstreamTestHash": "sha256:31fb8ef134cbbf2715f0d712b8a1dc0d63d874ffdf5328f2757fc2a4d78855b2",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
+    },
+    {
+      "path": "packages/chord/test/next/data/params.test.ts",
+      "upstreamTestHash": "sha256:32df0c985819989248e3d8e70a6840ff1045ccf47c2d916805b43b376400e9d1",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
+    },
+    {
+      "path": "packages/chord/test/next/data/principal.test.ts",
+      "upstreamTestHash": "sha256:a7f4561cecde22b3ef41f48566a88903edc546e81f7f4088dd560932e93b0c6a",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
+    },
+    {
+      "path": "packages/chord/test/next/data/validator.test.ts",
+      "upstreamTestHash": "sha256:76364bcd3003a8bb51b1b6a2b6894287afb033f0a82837a79550504b53ee9a26",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path. Re-review pending: designedOutCases need owner approval.",
+      "designedOutCases": [
+        "validators \u203a leave nothing in TypeBox's build accumulators"
+      ]
+    },
+    {
+      "path": "packages/chord/test/next/registries/entries.test.ts",
+      "upstreamTestHash": "sha256:9462c38f6ee1b8f567084760eda16ad8d04695163dce427317216ca91ec76550",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
+    },
+    {
+      "path": "packages/chord/test/next/registries/record.test.ts",
+      "upstreamTestHash": "sha256:cd49a8762715ebe1279666fb2d41d89deef1cfc806481b6a99cbe6330a0d091d",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
+    },
+    {
+      "path": "packages/chord/test/next/registries/registry.test.ts",
+      "upstreamTestHash": "sha256:77f81e6af9871d8500cafe46d91e03c6b0e810339db046cb4dbfbcf45a66144c",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
+    },
+    {
+      "path": "packages/chord/test/next/registries/value.test.ts",
+      "upstreamTestHash": "sha256:17b5272b8e52523053901d91e7a9ae1f588caefbb8b6d906926d51361791eeb6",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
+    },
+    {
+      "path": "packages/chord/test/next/state/batch.test.ts",
+      "upstreamTestHash": "sha256:ff9f54f270d65f1a4ee5d15fc5d9a40c76999078013407e6981cc62d9db4c5ac",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
+    },
+    {
+      "path": "packages/chord/test/next/state/derive.test.ts",
+      "upstreamTestHash": "sha256:ca292a29a4a223f8b26a6b9e3c55b5fb5d8cc40a8bd42b903816e8b91e9d375d",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
+    },
+    {
+      "path": "packages/chord/test/next/state/native-source.test.ts",
+      "upstreamTestHash": "sha256:cacd209499045575d937bb8ac50595119b93299b7f6c8caf77304a3889a3d11d",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path. Re-review pending: designedOutCases need owner approval.",
+      "designedOutCases": [
+        "native sources as derive sources \u203a types a derive's sources: watchables of either kind, never a native's handle (Fable)"
+      ]
+    },
+    {
+      "path": "packages/chord/test/next/state/watchable.test.ts",
+      "upstreamTestHash": "sha256:49358bb0162f25038b284e4e0e3e3595edc37df4bf2a1ac8d5c8904712960155",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
+    },
+    {
+      "path": "packages/chord/test/next/state/writable.test.ts",
+      "upstreamTestHash": "sha256:bb30a8c001f4005cc4fa582552e40b2f81f3e70486dd09c933206b1f4a5fd0ae",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
+    },
+    {
       "path": "packages/chord/test/output-skip.test.ts",
       "upstreamTestHash": "sha256:2adc9961db3ee819deff8303b06d30f195a4e1681a99f9bd93a2875ec45f576a",
       "area": "cli",

@@ -2414,88 +2414,180 @@
     },
     {
       "path": "packages/chord/test/next-node/compression.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:289ae9ce728c8a040951f23e1767342d66eab2e8cbae2ade327adda57aa8c0d1"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:289ae9ce728c8a040951f23e1767342d66eab2e8cbae2ade327adda57aa8c0d1",
+      "evidence": [
+        "chord/nextnode/compression_test.go"
+      ],
+      "rationale": "All 4 upstream cases run in the evidence files (lane D1)."
     },
     {
       "path": "packages/chord/test/next/contracts/accepts.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:cd8459c0c5ac8e0568302d8e313279547eb586313b1f143a85ab527f1a7a8779"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:cd8459c0c5ac8e0568302d8e313279547eb586313b1f143a85ab527f1a7a8779",
+      "evidence": [
+        "chord/next/contracts/accepts_test.go"
+      ],
+      "rationale": "All 15 upstream cases run in the evidence files (lane D1)."
     },
     {
       "path": "packages/chord/test/next/contracts/contract.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:0ba6bd1fab1cabff14fea7ed111551940ec8d038827818ba8e588b2208eac68b"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:0ba6bd1fab1cabff14fea7ed111551940ec8d038827818ba8e588b2208eac68b",
+      "evidence": [
+        "chord/next/contracts/contract_test.go"
+      ],
+      "rationale": "All 4 upstream cases run in the evidence files (lane D1); 3 type-level cases are designed out.",
+      "designedOutCases": [
+        "derived types › Implementation: one variant with its members, state watchables and methods taking args and a context",
+        "derived types › Implementation of a local contract is flat",
+        "derived types › ParamsOf: the params object"
+      ]
     },
     {
       "path": "packages/chord/test/next/contracts/declare.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:fc841de7411c2abb0ae92833aeab8c7e6f51e146aa2453014750417aeae41574"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:fc841de7411c2abb0ae92833aeab8c7e6f51e146aa2453014750417aeae41574",
+      "evidence": [
+        "chord/next/contracts/declare_test.go"
+      ],
+      "rationale": "All 10 upstream cases run in the evidence files (lane D1); 2 type-level cases are designed out.",
+      "designedOutCases": [
+        "declaration checks › refuse a remote declaration without a host address at the type level",
+        "keyed members (slice 6a §12) › refuse a keyed member in a remote contract, at the type level and at declaration"
+      ]
     },
     {
       "path": "packages/chord/test/next/contracts/evolve.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:8d9ed24a8a839777303d948ca790c15003e22a2d04e1e0d9ebd4898072ef44ec"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:8d9ed24a8a839777303d948ca790c15003e22a2d04e1e0d9ebd4898072ef44ec",
+      "evidence": [
+        "chord/next/contracts/evolve_test.go"
+      ],
+      "rationale": "All 15 upstream cases run in the evidence files (lane D1); 1 type-level cases are designed out.",
+      "designedOutCases": [
+        "long histories › the types track every step with its changes"
+      ]
     },
     {
       "path": "packages/chord/test/next/contracts/fingerprint.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:5ead63ed2c246e3593e276c2e335bbf9efbf55b24e980bb11784d1c34ed60f5e"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:5ead63ed2c246e3593e276c2e335bbf9efbf55b24e980bb11784d1c34ed60f5e",
+      "evidence": [
+        "chord/next/contracts/fingerprint_test.go"
+      ],
+      "rationale": "All 7 upstream cases run in the evidence files (lane D1)."
     },
     {
       "path": "packages/chord/test/next/contracts/history.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:44da0fbbb0c10fe9dc4aff47634443bcfaa522d6a41c3d7d7c766212b9b56497"
+      "disposition": "designed-out",
+      "upstreamTestHash": "sha256:44da0fbbb0c10fe9dc4aff47634443bcfaa522d6a41c3d7d7c766212b9b56497",
+      "evidence": [
+        "chord/next/contracts/history_test.go"
+      ],
+      "rationale": "Every case checks TypeScript type-level machinery (expectTypeOf), which Go's compiler carries; the runtime form is covered by the evidence (lane D1)."
     },
     {
       "path": "packages/chord/test/next/contracts/host-kind.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:11f3aeda1a0de8e75102be0d037a16b2b4a57169e169ee7b4a26dec6ca4ae4aa"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:11f3aeda1a0de8e75102be0d037a16b2b4a57169e169ee7b4a26dec6ca4ae4aa",
+      "evidence": [
+        "chord/next/contracts/host_kind_test.go"
+      ],
+      "rationale": "All 5 upstream cases run in the evidence files (lane D1); 1 type-level cases are designed out.",
+      "designedOutCases": [
+        "hostAddress › is typed by the contract's params"
+      ]
     },
     {
       "path": "packages/chord/test/next/contracts/params.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:df09c5964a2d7feaf1c8032c49cb0b1ed5e7d93c6e937198001a607638478be6"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:df09c5964a2d7feaf1c8032c49cb0b1ed5e7d93c6e937198001a607638478be6",
+      "evidence": [
+        "chord/next/contracts/params_test.go"
+      ],
+      "rationale": "All 3 upstream cases run in the evidence files (lane D1)."
     },
     {
       "path": "packages/chord/test/next/contracts/schema.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:f29f2647fe978e73da74592b7c1efd54d928616b36a9d9cf834605026c97244e"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:f29f2647fe978e73da74592b7c1efd54d928616b36a9d9cf834605026c97244e",
+      "evidence": [
+        "chord/next/contracts/schema_test.go"
+      ],
+      "rationale": "All 7 upstream cases run in the evidence files (lane D1)."
     },
     {
       "path": "packages/chord/test/next/contracts/snapshot.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:5590f3b9d88023288cff9916672d0174d72208778e91078c96bb159c25c81dbb"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:5590f3b9d88023288cff9916672d0174d72208778e91078c96bb159c25c81dbb",
+      "evidence": [
+        "chord/next/contracts/snapshot_test.go"
+      ],
+      "rationale": "All 15 upstream cases run in the evidence files (lane D1)."
     },
     {
       "path": "packages/chord/test/next/data/args.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:62c1a36d13245367b5dd72713720c84d14c7f5be704461091e6ef39a346fb413"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:62c1a36d13245367b5dd72713720c84d14c7f5be704461091e6ef39a346fb413",
+      "evidence": [
+        "chord/next/data/args_test.go"
+      ],
+      "rationale": "All 12 upstream cases run in the evidence files (lane D1); 1 type-level cases are designed out.",
+      "designedOutCases": [
+        "checkArgs › types a call replacement's arguments as values"
+      ]
     },
     {
       "path": "packages/chord/test/next/data/errors.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:df321f5af5c8d3a332fe0b00c72d584dc55992f9bed723015a94a5e0f3db638d"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:df321f5af5c8d3a332fe0b00c72d584dc55992f9bed723015a94a5e0f3db638d",
+      "evidence": [
+        "chord/next/data/errors_test.go"
+      ],
+      "rationale": "All 9 upstream cases run in the evidence files (lane D1); 1 type-level cases are designed out.",
+      "designedOutCases": [
+        "ChordError › is a tagged union: a wrong pairing is a type error"
+      ]
     },
     {
       "path": "packages/chord/test/next/data/failure.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:31fb8ef134cbbf2715f0d712b8a1dc0d63d874ffdf5328f2757fc2a4d78855b2"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:31fb8ef134cbbf2715f0d712b8a1dc0d63d874ffdf5328f2757fc2a4d78855b2",
+      "evidence": [
+        "chord/next/data/failure_test.go"
+      ],
+      "rationale": "All 9 upstream cases run in the evidence files (lane D1)."
     },
     {
       "path": "packages/chord/test/next/data/params.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:32df0c985819989248e3d8e70a6840ff1045ccf47c2d916805b43b376400e9d1"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:32df0c985819989248e3d8e70a6840ff1045ccf47c2d916805b43b376400e9d1",
+      "evidence": [
+        "chord/next/data/params_test.go"
+      ],
+      "rationale": "All 9 upstream cases run in the evidence files (lane D1)."
     },
     {
       "path": "packages/chord/test/next/data/principal.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:a7f4561cecde22b3ef41f48566a88903edc546e81f7f4088dd560932e93b0c6a"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:a7f4561cecde22b3ef41f48566a88903edc546e81f7f4088dd560932e93b0c6a",
+      "evidence": [
+        "chord/next/data/principal_test.go"
+      ],
+      "rationale": "All 8 upstream cases run in the evidence files (lane D1)."
     },
     {
       "path": "packages/chord/test/next/data/validator.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:76364bcd3003a8bb51b1b6a2b6894287afb033f0a82837a79550504b53ee9a26"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:76364bcd3003a8bb51b1b6a2b6894287afb033f0a82837a79550504b53ee9a26",
+      "evidence": [
+        "chord/next/data/validator_test.go"
+      ],
+      "rationale": "All 8 upstream cases run in the evidence files (lane D1); 1 type-level cases are designed out.",
+      "designedOutCases": [
+        "validators › leave nothing in TypeBox's build accumulators"
+      ]
     },
     {
       "path": "packages/chord/test/next/documents/address-source.test.ts",
@@ -2749,23 +2841,73 @@
     },
     {
       "path": "packages/chord/test/next/registries/entries.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:9462c38f6ee1b8f567084760eda16ad8d04695163dce427317216ca91ec76550"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:9462c38f6ee1b8f567084760eda16ad8d04695163dce427317216ca91ec76550",
+      "evidence": [
+        "chord/next/registries/entries_test.go"
+      ],
+      "rationale": "All 3 upstream cases run in the evidence files (lane D1)."
     },
     {
       "path": "packages/chord/test/next/registries/record.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:cd49a8762715ebe1279666fb2d41d89deef1cfc806481b6a99cbe6330a0d091d"
+      "disposition": "partial",
+      "upstreamTestHash": "sha256:cd49a8762715ebe1279666fb2d41d89deef1cfc806481b6a99cbe6330a0d091d",
+      "evidence": [
+        "chord/next/registries/record_test.go"
+      ],
+      "missingCases": [
+        "the table › is sorted by plugin name, then type, a facet first: never load order",
+        "compose › composes every served registry once at the end of load's setups, an empty table too, before any object activates",
+        "compose › composes a watched registry in the batch of the commit that changed a contribution, once per batch",
+        "compose › before any good composition, `.value` throws the error and `host.registry` rejects with it at its readyTimeout",
+        "contributions › refuses a contribution closing a cycle with the registries' tables; one through a derive is cut and reported",
+        "contributions › refuses a cycle declared within one factory: broken, invalid/cycle (Sol)",
+        "contributions › leaves no cycle edge from a contribution that never entered a table (Sol)",
+        "contributions › follows only Chord watchables: anything else is a plain value, whatever methods it has (Sol)",
+        "contributions › a followed contribution whose runtime ended its observer stays with its last value (R4: the source keeps it)",
+        "contributions › an object's contribution is in the table from live until it fails, again once retried, until it ends",
+        "the last good composition (decision 5) › is dropped when a contribution it was built from leaves: `.value` throws until `compose` succeeds",
+        "the table's memory › keeps nothing of a closed host: records, tables and followed contributions go with it"
+      ],
+      "rationale": "9 of 21 upstream cases are ported (lane D1); the 12 missing cases need the host, jobs, remote or store layers of later Chord v2 lanes and are listed in missingCases."
     },
     {
       "path": "packages/chord/test/next/registries/registry.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:77f81e6af9871d8500cafe46d91e03c6b0e810339db046cb4dbfbcf45a66144c"
+      "disposition": "partial",
+      "upstreamTestHash": "sha256:77f81e6af9871d8500cafe46d91e03c6b0e810339db046cb4dbfbcf45a66144c",
+      "evidence": [
+        "chord/next/registries/registry_test.go"
+      ],
+      "missingCases": [
+        "providers › one per host: a second serve is refused at load",
+        "providers › a provider without compose is refused at load (plugin code is not type-checked)",
+        "providers › a registry whose provider comes with `load` heals a `host.registry` made before it",
+        "providers › are served only while the setup runs"
+      ],
+      "rationale": "1 of 5 upstream cases are ported (lane D1); the 4 missing cases need the host, jobs, remote or store layers of later Chord v2 lanes and are listed in missingCases."
     },
     {
       "path": "packages/chord/test/next/registries/value.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:17b5272b8e52523053901d91e7a9ae1f588caefbb8b6d906926d51361791eeb6"
+      "disposition": "partial",
+      "upstreamTestHash": "sha256:17b5272b8e52523053901d91e7a9ae1f588caefbb8b6d906926d51361791eeb6",
+      "evidence": [
+        "chord/next/registries/value_test.go"
+      ],
+      "missingCases": [
+        "older readers (S2) › without a value mapping, and for a reader newer than the provider, park readers failed { waiting } (contract_mismatch)",
+        "older readers (S2) › drops an older reader's last good mapping after a contributor it was built from failed live (fix round 1, Astra 2)",
+        "older readers (S2) › never hands out a mapped native whose contributor failed and closed it (fix round 1, Sol 2)",
+        "readers (S3) › activate once the registry has a value; a reader of a registry nobody serves parks failed { waiting }, `load` waits for nothing",
+        "readers (S3) › a reader parked on a first `compose` that threw goes on at the first good composition",
+        "readers (S3) › host.registry before the publication waits for it, then resolves with the provider it served",
+        "readers (S3) › host.registry waits through no value until a first good composition, woken by it, its wait then gone",
+        "readers (S3) › once live, a later throwing `compose` changes nothing for the reader: `.value` keeps the last good one",
+        "readers' memory › an ended reader is collected while the registry lives: its derive and its read leave the value",
+        "values' memory › keeps no old composition once its readers stopped waiting and nobody follows it (Opus)",
+        "values' memory › a value an app keeps after `host.close` keeps no closed host, and reads its last composition (Sol, Astra)",
+        "observe › calls a synchronous observer inside the batch that composed; it counts as watching"
+      ],
+      "rationale": "4 of 16 upstream cases are ported (lane D1); the 12 missing cases need the host, jobs, remote or store layers of later Chord v2 lanes and are listed in missingCases."
     },
     {
       "path": "packages/chord/test/next/remote/calls.test.ts",
@@ -2814,28 +2956,102 @@
     },
     {
       "path": "packages/chord/test/next/state/batch.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:ff9f54f270d65f1a4ee5d15fc5d9a40c76999078013407e6981cc62d9db4c5ac"
+      "disposition": "partial",
+      "upstreamTestHash": "sha256:ff9f54f270d65f1a4ee5d15fc5d9a40c76999078013407e6981cc62d9db4c5ac",
+      "evidence": [
+        "chord/next/state/batch_own_test.go",
+        "chord/next/state/batch_test.go"
+      ],
+      "missingCases": [
+        "reentrancy › refuses watch (ref.state too), release, get, load, close and a transaction in a commit's derive computes",
+        "reentrancy › refuses them in a lazy compute outside a commit",
+        "reentrancy › clears the flag after a throwing compute",
+        "delivery › reports a delivery that throws and still delivers the later frames of the commit"
+      ],
+      "rationale": "1 of 5 upstream cases are ported (lane D1); the 4 missing cases need the host, jobs, remote or store layers of later Chord v2 lanes and are listed in missingCases."
     },
     {
       "path": "packages/chord/test/next/state/derive.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:ca292a29a4a223f8b26a6b9e3c55b5fb5d8cc40a8bd42b903816e8b91e9d375d"
+      "disposition": "partial",
+      "upstreamTestHash": "sha256:ca292a29a4a223f8b26a6b9e3c55b5fb5d8cc40a8bd42b903816e8b91e9d375d",
+      "evidence": [
+        "chord/next/state/derive_own_test.go",
+        "chord/next/state/derive_test.go"
+      ],
+      "missingCases": [
+        "derives across objects › update in the batch of the commit that changed their source's object",
+        "the pull model › computes a diamond's derives once each per batch",
+        "the pull model › leaves unwatched derives dirty until read; a one-off read does not make them eager",
+        "the pull model › diffs a watched derive's old and new value (counted), and sends no frame when they are equal",
+        "failures › give the throwing derive's watches and those of the derives over it one failure call; they heal on a later change",
+        "failures › give one failure call per episode: a recompute that throws again is quiet; a heal ends the episode",
+        "failures › open a new watch on a failed derive at its last good value, the failure its first call, then the heal",
+        "failures › report once per failure episode, also when nothing watches (a lazy derive fails when read)",
+        "failures › fold a failure and a value for a busy listener: the value replaces the failure, as a root replacement",
+        "GC › a detached derive is not held by its former sources",
+        "GC › a watch open on a failed derive keeps nothing more: it ends with its reference, and a retained one holds no source",
+        "GC of handed-out errors › a failure call's fresh error kept by its listener keeps nothing of its host once the host closes",
+        "the retired flag › a derive over a retired source publishes retired: true although its value and ops are unchanged (rule 21)",
+        "the retired flag › a retirement while the derive is failed travels with its next good value",
+        "the retired flag › a retirement visits each derive of a diamond once, not once per path (40 derives)"
+      ],
+      "rationale": "3 of 18 upstream cases are ported (lane D1); the 15 missing cases need the host, jobs, remote or store layers of later Chord v2 lanes and are listed in missingCases."
     },
     {
       "path": "packages/chord/test/next/state/native-source.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:cacd209499045575d937bb8ac50595119b93299b7f6c8caf77304a3889a3d11d"
+      "disposition": "partial",
+      "upstreamTestHash": "sha256:cacd209499045575d937bb8ac50595119b93299b7f6c8caf77304a3889a3d11d",
+      "evidence": [
+        "chord/next/state/native_own_test.go"
+      ],
+      "missingCases": [
+        "native sources as derive sources › a derive reads JSON and native sources alike, marked when a native one changes",
+        "native sources as derive sources › `ref.state` is a derive source: a state member can show a dependency's reachability",
+        "native sources as derive sources › refuses a native source as a state member (Q14)",
+        "watching a native source that fails › a watch taken while it is failed opens at its last good value and gets the failure first",
+        "watching a native source that fails › an `on` routine started while its source is failed waits for its next good value, never calls with the stale one"
+      ],
+      "rationale": "0 of 6 upstream cases are ported (lane D1); the 5 missing cases need the host, jobs, remote or store layers of later Chord v2 lanes and are listed in missingCases.",
+      "designedOutCases": [
+        "native sources as derive sources › types a derive's sources: watchables of either kind, never a native's handle (Fable)"
+      ]
     },
     {
       "path": "packages/chord/test/next/state/watchable.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:49358bb0162f25038b284e4e0e3e3595edc37df4bf2a1ac8d5c8904712960155"
+      "disposition": "partial",
+      "upstreamTestHash": "sha256:49358bb0162f25038b284e4e0e3e3595edc37df4bf2a1ac8d5c8904712960155",
+      "evidence": [
+        "chord/next/state/watchable_own_test.go",
+        "chord/next/state/watchable_test.go"
+      ],
+      "missingCases": [
+        "watches › start from the value at acquisition; a listener that keeps up gets each commit",
+        "watches › give a busy listener one call with the newest value and the folded ops",
+        "watches › end cancelled when their context aborts",
+        "watches › end with listener_error when the listener throws, reported to onError",
+        "subscribers › get each batch's frame synchronously, inside the commit, and count as watching"
+      ],
+      "rationale": "1 of 6 upstream cases are ported (lane D1); the 5 missing cases need the host, jobs, remote or store layers of later Chord v2 lanes and are listed in missingCases."
     },
     {
       "path": "packages/chord/test/next/state/writable.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:bb30a8c001f4005cc4fa582552e40b2f81f3e70486dd09c933206b1f4a5fd0ae"
+      "disposition": "partial",
+      "upstreamTestHash": "sha256:bb30a8c001f4005cc4fa582552e40b2f81f3e70486dd09c933206b1f4a5fd0ae",
+      "evidence": [
+        "chord/next/state/writable_own_test.go"
+      ],
+      "missingCases": [
+        "writable › a new value (by identity) is a new frame; the same value notifies nobody and costs one comparison",
+        "writable › inside a batch, sets mark it there: one frame with the last value, the derives over it computed once",
+        "writable › refuses a set inside a derive compute or a compose (`invalid/reentrant`)",
+        "writable › is the attempt's: `set` after its end throws `released`, its watches end `ended`, its value stays readable",
+        "writable › is a contribution, a derive source and an `on` source",
+        "writable › is collected with its attempt",
+        "writable › a set of the same value after its attempt ended throws `released` too (Sol, Astra)",
+        "writable › a writable an app keeps after `host.close` keeps no closed host; its observers' abort listeners go (Sol)",
+        "writable › a late callback's set after the host closed throws `released`"
+      ],
+      "rationale": "0 of 9 upstream cases are ported (lane D1); the 9 missing cases need the host, jobs, remote or store layers of later Chord v2 lanes and are listed in missingCases."
     },
     {
       "path": "packages/chord/test/next/store/allocator.test.ts",
