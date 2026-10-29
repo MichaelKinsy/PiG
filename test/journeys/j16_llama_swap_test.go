@@ -41,12 +41,17 @@ func swapEnvelope(message, typ, code string) string {
 
 // swapReply is a pure function of the request's model, as the harness requires: the model the gateway already runs answers at once, every other
 // configured model first streams the loading frames, the broken one fails to start, and an unrouted one is refused with HTTP 404.
+// served is the reply text: the model that answered and the prompt it answered, so each turn's text is unique on screen.
+func served(r *harness.Request) string {
+	return fmt.Sprintf("served by %s (%s)", r.Model, short(r.Last().Text))
+}
+
 func swapReply(r *harness.Request) (harness.Reply, bool) {
 	switch r.Model {
 	case swapLoaded:
-		return harness.Say("served by " + r.Model), true
+		return harness.Say(served(r)), true
 	case swapSecond, swapThird:
-		return harness.Say("served by " + r.Model).WithPreamble(swapLoading()...), true
+		return harness.Say(served(r)).WithPreamble(swapLoading()...), true
 	case swapBroken:
 		return harness.RawStream(append(swapLoading()[:2], swapEnvelope("["+r.Model+"] upstream exited unexpectedly", "server_error", "internal_server_error"))...), true
 	case swapUnrouted:
@@ -105,7 +110,7 @@ func init() {
 			{Name: "launch", Run: func(c *harness.Ctx) { c.Launch("--model", "strict-wire/"+swapLoaded); c.Snap("startup") }},
 			{Name: "first-turn", Run: func(c *harness.Ctx) {
 				prompt(c, "Hello from the loaded model", 1)
-				c.WaitFor("served by " + swapLoaded)
+				c.WaitFor("served by " + swapLoaded + " (Hello from the loaded model)")
 				swapServed(c, swapLoaded)
 				c.Snap("turn-loaded")
 			}},
@@ -124,22 +129,23 @@ func init() {
 				c.Quiet(c.Settle())
 				c.Snap("model-selected")
 				prompt(c, "Hello from the second model", 1)
-				c.WaitFor("served by " + swapSecond)
+				c.WaitFor("served by " + swapSecond + " (Hello from the second model)")
 				swapServed(c, swapSecond)
 				c.Snap("turn-second")
 			}}},
 			{Needs: []string{"select-second-and-prompt"}, Step: harness.Step{Name: "switch-back", Run: func(c *harness.Ctx) {
 				c.Say(fmt.Sprintf("/model strict-wire/%s", swapLoaded))
+				c.WaitFor("Model: " + swapLoaded)
 				c.Quiet(c.Settle())
 				c.Snap("switched-back")
 				prompt(c, "Hello again from the first model", 1)
-				c.WaitFor("Hello again from the first model")
-				c.WaitCount("served by "+swapLoaded, 2)
+				c.WaitFor("served by " + swapLoaded + " (Hello again from the first model)")
 				swapServed(c, swapLoaded)
 				c.Snap("turn-back")
 			}}},
 			{Step: harness.Step{Name: "broken-model", Run: func(c *harness.Ctx) {
 				c.Say(fmt.Sprintf("/model strict-wire/%s", swapBroken))
+				c.WaitFor("Model: " + swapBroken)
 				c.Quiet(c.Settle())
 				prompt(c, "Try the model that fails to start", 1)
 				c.Quiet(c.Settle())
@@ -148,6 +154,7 @@ func init() {
 			}}},
 			{Step: harness.Step{Name: "unrouted-model", Run: func(c *harness.Ctx) {
 				c.Say(fmt.Sprintf("/model strict-wire/%s", swapUnrouted))
+				c.WaitFor("Model: " + swapUnrouted)
 				c.Quiet(c.Settle())
 				prompt(c, "Try the model the gateway does not route", 1)
 				c.WaitFor("no local server found for requested model")
