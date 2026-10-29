@@ -33,6 +33,8 @@ export function validateCorpus(corpus) {
 			const record = typeof s.measured_divergence === "string" ? join(REPO, "docs", "parity", "divergences", `${s.measured_divergence}.md`) : undefined
 			if (record && !(existsSync(record) && readFileSync(record, "utf8").includes("SCRUTINIZED:approved"))) problems.push(`${s.id}: ${s.measured_divergence} has no approved record in docs/parity/divergences`)
 		}
+		// `exclusive`: the gate runs the row alone (gate.mjs runRows); only a vitest row's two runs know how to take turns.
+		if (s.exclusive !== undefined && (s.exclusive !== true || s.runner !== "vitest")) problems.push(`${s.id}: exclusive is true, and a field of vitest rows`)
 		if (s.levels?.includes("order") && !["example", "interop", "diff"].includes(s.runner)) problems.push(`${s.id}: the order level needs a scenario program (an example, interop or diff row)`)
 		if (s.runner === "diff" && (!Number.isInteger(s.seed) || !["gate", "node"].includes(s.profile))) problems.push(`${s.id}: a diff row names an integer seed and a storage profile (gate or node)`)
 		if (s.normalisers?.length) problems.push(`${s.id}: normalisers are not allowed in acceptance runs (CONTRACT 2.2)`)

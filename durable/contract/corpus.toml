@@ -437,6 +437,12 @@ sha256 = "2d355090072d972420078ce5cf7f0975d8dd0bc56a35b9e517fd8c94ad079c86"
 owner = "dcore-loop"
 levels = ["tests"]
 status = "ready"
+# `times a script out across a restart, without admitting new calls` gives the script 300 ms (`@options timeout_ms`) from the start of its
+# first run to its first tool call: the sandbox starts and `hold` is reached, 148-207 ms of CPU on both sides (probed inside the gate). A
+# host that gives the process under ~65% of a CPU in that stretch ends the script live ("Script timed out") before `hold` runs,
+# `holds.reached` never resolves and the test fails at vitest's 5 s: in the reference as well as in the candidate (of six full runs at
+# -j 8 the candidate missed the window in four and the reference in one; alone the reference took 166-227 ms of wall time, the candidate 195-245).
+exclusive = true
 
 [[scenario]]
 id = "U-conversation-transcript"
@@ -926,6 +932,7 @@ status = "ready"
 # The test sleeps 20 ms (real setTimeout) inside the 100 ms output throttle window; a process stall longer than ~80 ms flushes the
 # buffered output in the reference as well as in the candidate (checked with an 85 ms stall: both fail; 70 ms: both pass).
 real_time_tests = ["tool progress and lifetime answers an aborted tool with only its durable output"]
+exclusive = true
 
 [[scenario]]
 id = "U-harness-view-run"
