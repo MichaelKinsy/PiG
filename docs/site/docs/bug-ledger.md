@@ -1066,7 +1066,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-d37c769](#bf-d37c769) | A replacement request body from a `before_provider_request` hook on Anthropic Messages, and every OpenAI… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-d38f3be](#bf-d38f3be) | fix(durable): record the requested thinking level without boxing a string in the turn package | PiG's own defect | All platforms | Unreleased |
 | [BF-d39069d](#bf-d39069d) | Tool cards rebuilt when a session is resumed now follow the `showImages` and `imageWidthCells` settings | PiG's own defect | All platforms | 0.5.0 |
-| [BF-d3aa996](#bf-d3aa996) | fix(durable/session): read the queue of a publication under deferMu when arming it | PiG's own defect | All platforms | Unreleased |
+| [BF-d3aa996](#bf-d3aa996) | A durable session no longer has a data race between a call to `DeferUntilPublished` from another goroutine (a… | PiG's own defect | All platforms | Unreleased |
 | [BF-d3adcfe](#bf-d3adcfe) | A Piglet's tool scope now bounds the Session's tool registry, not only its active tools | PiG's own defect | All platforms | Unreleased |
 | [BF-d3b3618](#bf-d3b3618) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
 | [BF-d409922](#bf-d409922) | A host that crashes during a model request no longer resends it forever, adding an aborted entry each time… | PiG's own defect | All platforms | Unreleased |
@@ -15858,16 +15858,17 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 
 ### BF-d3aa996
 
-**fix(durable/session): read the queue of a publication under deferMu when arming it**
+**A durable session no longer has a data race between a call to `DeferUntilPublished` from another goroutine (a…**
 
 - **Source:** PiG's own defect
-- **Symptom:** fix(durable/session): read the queue of a publication under deferMu when arming it
+- **Symptom:** A durable session no longer has a data race between a call to `DeferUntilPublished` from another goroutine (a harness's wait for idleness makes one) and the commit that arms its publication: the commit read the length of the publication's queue after it released the lock that the call appends to it under, so the race detector could report the two in a long durable/harness run.
 - **Root cause:** The emptiness check now happens under the lock.
 - **User impact:** Behavior differed from Pi
 - **Platform:** All platforms
 - **Fixed in:** Unreleased
-- **Fix commits:** `d3aa996f80` (2026-10-29)
-- **Tests:** `durable/harness/harness_tasks_scheduling_test.go::TestTaskScheduling`
+- **Fix commits:** `5352452911` (2026-10-29), `d3aa996f80` (2026-10-29)
+- **Tests:** `durable/harness/harness_tasks_scheduling_test.go::TestTaskScheduling`, `durable/session/session_defer_until_published_race_test.go::TestDeferUntilPublishedFromAnotherGoroutineWhilePublicationsRun`
+- **Release note:** A durable session no longer has a data race between a call to `DeferUntilPublished` from another goroutine (a harness's wait for idleness makes one) and the commit that arms its publication: the commit read the length of the publication's queue after it released the lock that the call appends to it under, so the race detector could report the two in a long durable/harness run. The commit now checks the queue under the lock.
 
 ### BF-d3adcfe
 
