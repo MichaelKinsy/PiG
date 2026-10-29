@@ -6,7 +6,9 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"slices"
+	"strconv"
 	"sort"
 	"strings"
 )
@@ -27,11 +29,56 @@ func noteSectionSet(text string) map[string]bool {
 	return set
 }
 
+// releaseHeading matches a released section heading of CHANGELOG.md.
+var releaseHeading = regexp.MustCompile(`(?m)^## \[(\d+)\.(\d+)\.(\d+)\]`)
+
+// previousRelease is the newest released version in the changelog that is older than target, or "" when none is. The notes of a release cover the changes since it; the ledger keeps its own, older start.
+func previousRelease(changelog, target string) string {
+	want, ok := parseVersion(target)
+	if !ok {
+		return ""
+	}
+	var best [3]int
+	found := false
+	for _, m := range releaseHeading.FindAllStringSubmatch(changelog, -1) {
+		v, _ := parseVersion(m[1] + "." + m[2] + "." + m[3])
+		if slices.Compare(v[:], want[:]) >= 0 || (found && slices.Compare(v[:], best[:]) <= 0) {
+			continue
+		}
+		best, found = v, true
+	}
+	if !found {
+		return ""
+	}
+	return fmt.Sprintf("%d.%d.%d", best[0], best[1], best[2])
+}
+
+func parseVersion(s string) ([3]int, bool) {
+	var v [3]int
+	parts := strings.Split(s, ".")
+	if len(parts) != 3 {
+		return v, false
+	}
+	for i, p := range parts {
+		n, err := strconv.Atoi(p)
+		if err != nil {
+			return v, false
+		}
+		v[i] = n
+	}
+	return v, true
+}
+
 // releaseNotes writes the draft release notes for target from the changelog sections after since, the changelog fragments, the bug fix ledger, and the divergence records. It is a draft: an owner edits and posts it.
 func releaseNotes(root, since, target string) (string, error) {
 	data, err := os.ReadFile(filepath.Join(root, "CHANGELOG.md"))
 	if err != nil {
 		return "", err
+	}
+	if since == "" {
+		if since = previousRelease(string(data), target); since == "" {
+			return "", fmt.Errorf("CHANGELOG.md has no release older than %s; pass -since", target)
+		}
 	}
 	set := noteSectionSet(string(data))
 	bySection := map[string][]string{}
@@ -82,7 +129,7 @@ func releaseNotes(root, since, target string) (string, error) {
 		}
 	}
 	slices.Sort(upgrading)
-	fmt.Fprintf(&b, "- %d additions, %d changes and %d recorded fixes since PiG %s.\n", len(bySection["Added"]), len(bySection["Changed"]), len(bySection["Fixed"]), since)
+	fmt.Fprintf(&b, "- %d additions, %d changes and %d recorded fixes since PiG %s. For earlier releases, read the [notes of each release](https://github.com/MichaelKinsy/PiG/releases).\n", len(bySection["Added"]), len(bySection["Changed"]), len(bySection["Fixed"]), since)
 	fmt.Fprintf(&b, "- The bug fix ledger lists %d bugs: %d PiG defects, %d Pi defects PiG fixed first, %d Pi fixes ported.\n", len(ledger.Entries), counts[ClassOwn], counts[ClassAheadOfPi], counts[ClassPiPort])
 	if pin, err := os.ReadFile(filepath.Join(root, "internal", "coding", "pigversion", "pigversion.go")); err == nil {
 		if m := pinConstRE.FindStringSubmatch(string(pin)); m != nil {
