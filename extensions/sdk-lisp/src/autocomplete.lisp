@@ -40,11 +40,45 @@ LINES is a vector of strings; cursor columns are UTF-16 code units; suggestions 
     (when (and ext (not (extension-shutdown ext)))
       (ignore-errors (notify-host ext "ui.autocomplete.release" (obj "id" id))))))
 
+(defparameter *acomp-checkpoint* 0.05
+  "pig divergence (D213): seconds a provider that blocks its thread may run, outside a call to the host, before the host is told that it awaits real I/O (the
+ui.autocomplete.pending notice, D213). Pi's microtask checkpoint has no duration; a blocking provider has no event loop to end it.")
+
+(defstruct (acomp-settle (:constructor make-acomp-settle (ext request-id)))
+  "One getSuggestions request being served: it awaits real I/O when it made no progress for a checkpoint, unfinished and outside a host call."
+  ext request-id (lock (sb-thread:make-mutex :name "pig autocomplete settle")) (host-calls 0) (epoch 0) done announced)
+
+(defun acomp-settle-arm (settle)
+  (let ((epoch (sb-thread:with-mutex ((acomp-settle-lock settle))
+                 (unless (or (acomp-settle-done settle) (acomp-settle-announced settle))
+                   (incf (acomp-settle-epoch settle))))))
+    (when epoch
+      (sb-thread:make-thread
+       (lambda ()
+         (sleep *acomp-checkpoint*)
+         (when (sb-thread:with-mutex ((acomp-settle-lock settle))
+                 (when (and (not (acomp-settle-done settle)) (not (acomp-settle-announced settle))
+                            (zerop (acomp-settle-host-calls settle)) (= epoch (acomp-settle-epoch settle)))
+                   (setf (acomp-settle-announced settle) t)))
+           (ignore-errors (notify-host (acomp-settle-ext settle) "ui.autocomplete.pending" (obj "requestId" (acomp-settle-request-id settle))))))
+       :name "pig autocomplete checkpoint"))))
+
+(defun acomp-settle-of (ctx)
+  (let ((request-id (ctx-request-id ctx)))
+    (when (plusp (length request-id))
+      (let ((registry (acomp-registry-of (ctx-extension ctx))))
+        (sb-thread:with-mutex ((acomp-registry-lock registry)) (gethash request-id (acomp-registry-suggests registry)))))))
+
 (defun acomp-invoke (ctx id operation lines cursor-line cursor-col &rest members)
   (when (ctx-cancelled-p ctx) (error "autocomplete cancelled"))
-  (let ((args (obj "id" id "operation" operation "lines" lines "cursorLine" cursor-line "cursorCol" cursor-col)))
+  (let ((args (obj "id" id "operation" operation "lines" lines "cursorLine" cursor-line "cursorCol" cursor-col))
+        (settle (and (equal operation "getSuggestions") (acomp-settle-of ctx))))
     (loop for (key value) on members by #'cddr do (setf (gethash key args) value))
-    (ctx-call-host ctx "ui.autocomplete.invoke" args)))
+    (when settle (sb-thread:with-mutex ((acomp-settle-lock settle)) (incf (acomp-settle-host-calls settle))))
+    (unwind-protect (ctx-call-host ctx "ui.autocomplete.invoke" args)
+      (when settle
+        (sb-thread:with-mutex ((acomp-settle-lock settle)) (decf (acomp-settle-host-calls settle)))
+        (acomp-settle-arm settle)))))
 
 (defun acomp-current (ctx descriptor)
   "The provider the host holds under DESCRIPTOR, called through the host; the host drops it once the extension does."
@@ -68,7 +102,8 @@ LINES is a vector of strings; cursor columns are UTF-16 code units; suggestions 
 
 (defstruct (acomp-registry (:constructor make-acomp-registry ()))
   (lock (sb-thread:make-mutex :name "pig autocomplete"))
-  (factories (make-hash-table :test 'equal)) (invoked (make-hash-table :test 'equal)) (providers (make-hash-table :test 'equal)))
+  (factories (make-hash-table :test 'equal)) (invoked (make-hash-table :test 'equal)) (providers (make-hash-table :test 'equal))
+  (suggests (make-hash-table :test 'equal)))
 
 (defun acomp-registry-of (ext) (extension-extra ext :autocomplete #'make-acomp-registry))
 
@@ -106,7 +141,15 @@ Without a UI it does nothing."
                               (error "unknown autocomplete provider ~S" (jget args "id")))))
               (lines (jget args "lines")) (line (jget args "cursorLine")) (col (jget args "cursorCol")))
           (cond ((equal operation "getSuggestions")
-                 (autocomplete-get-suggestions provider ctx lines line col (eq (jget args "force") t)))
+                 (let* ((request-id (ctx-request-id ctx))
+                        (settle (and (plusp (length request-id)) (make-acomp-settle ext request-id))))
+                   (when settle
+                     (sb-thread:with-mutex ((acomp-registry-lock registry)) (setf (gethash request-id (acomp-registry-suggests registry)) settle))
+                     (acomp-settle-arm settle))
+                   (unwind-protect (autocomplete-get-suggestions provider ctx lines line col (eq (jget args "force") t))
+                     (when settle
+                       (sb-thread:with-mutex ((acomp-settle-lock settle)) (setf (acomp-settle-done settle) t))
+                       (sb-thread:with-mutex ((acomp-registry-lock registry)) (remhash request-id (acomp-registry-suggests registry)))))))
                 ((equal operation "applyCompletion")
                  (autocomplete-apply-completion provider ctx lines line col (jget args "item") (jget args "prefix")))
                 ((equal operation "shouldTriggerFileCompletion")
