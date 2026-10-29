@@ -86,7 +86,7 @@ func TestShowLoadedResourcesSkillConflicts(t *testing.T) {
 		},
 	}
 	// renderedListing spells separators as "/", as upstream's listing tests do.
-	want := "[Skills]\n  same\n\n[Skill conflicts]\n  \"same\" collision:\n    ✓ npm:duplicates (user) second/SKILL.md\n    ✗ " + strings.ReplaceAll(formatDisplayPath(loser), `\`, "/") + " (skipped)"
+	want := "[Skills]\n  same\n\n[Skill warnings]\n  \"same\" collision:\n    ✓ npm:duplicates (user) second/SKILL.md\n    ✗ " + strings.ReplaceAll(formatDisplayPath(loser), `\`, "/") + " (skipped)"
 	if got := renderedListing(m); got != want {
 		t.Fatalf("listing = %q; want %q", got, want)
 	}

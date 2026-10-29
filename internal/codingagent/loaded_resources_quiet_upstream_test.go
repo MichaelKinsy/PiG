@@ -25,7 +25,7 @@ func TestLoadedResourcesQuietReloadUpstream(t *testing.T) {
 		m.opts.SkillDiagnostics = []extension.ResourceDiagnostic{{Type: extension.DiagnosticWarning, Message: "duplicate skill name"}}
 		m.showLoadedResources(false, true)
 		text := renderListing(m)
-		if !strings.Contains(text, "[Skill conflicts]") || strings.Contains(text, "[Skills]") {
+		if !strings.Contains(text, "[Skill warnings]") || strings.Contains(text, "[Skills]") {
 			t.Fatalf("quiet diagnostics=%q", text)
 		}
 	})
