@@ -1,5 +1,5 @@
 {
- "pin": "1.4.0+b3a29f11",
+ "pin": "1.4.0+e7a0df27",
  "package": "pi-coding-agent@1.4.0",
  "module": "pi-coding-agent",
  "export": "CustomMessageComponent",
