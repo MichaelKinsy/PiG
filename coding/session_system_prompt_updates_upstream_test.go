@@ -3,6 +3,7 @@ package coding
 import (
 	"encoding/json"
 	"reflect"
+	"slices"
 	"strings"
 	"testing"
 
@@ -176,5 +177,38 @@ func TestToolDeclarationsSurviveASessionJSONRoundTrip(t *testing.T) {
 	}
 	if systems != 1 {
 		t.Errorf("the transcript has %d system messages after the round trip, want 1", systems)
+	}
+}
+
+// Ports system-prompt-updates.test.ts "does not patch the prompt when the active tools are only reordered" (Pi b9e3eef6, #11495).
+func TestReorderedActiveToolsDoNotPatchThePrompt(t *testing.T) {
+	h := newRecoveryHarness(t, harnessOptions{tools: []agent.AgentTool{
+		boundaryTool{name: "noop", label: "Noop", description: "Noop", text: "done"},
+		boundaryTool{name: "noop2", label: "Noop2", description: "Noop2", text: "done"},
+	}}, fauxReply("first", ai.StopReasonStop, 0), fauxReply("second", ai.StopReasonStop, 0))
+	if err := h.session.Prompt(t.Context(), "one"); err != nil {
+		t.Fatal(err)
+	}
+	before := h.session.ActiveToolNames()
+	if len(before) < 2 {
+		t.Fatalf("active tools = %v, want at least two to reorder", before)
+	}
+	reversed := slices.Clone(before)
+	slices.Reverse(reversed)
+	h.session.SetActiveToolsByName(reversed)
+	if got := h.session.ActiveToolNames(); !slices.Equal(got, before) {
+		t.Fatalf("active tools after reordering = %v, want %v", got, before)
+	}
+	if err := h.session.Prompt(t.Context(), "two"); err != nil {
+		t.Fatal(err)
+	}
+	systems := 0
+	for _, message := range h.session.Messages() {
+		if message.System != nil {
+			systems++
+		}
+	}
+	if systems != 1 {
+		t.Fatalf("system messages = %d, want 1", systems)
 	}
 }

@@ -4,7 +4,9 @@ import (
 	"bytes"
 	"image"
 	"image/color"
+	"image/jpeg"
 	"image/png"
+	"math"
 	"math/rand/v2"
 	"os"
 	"path/filepath"
@@ -151,4 +153,42 @@ func TestResizeImageHonoursMaxHeightAndJPEGQualityOnTheirOwn(t *testing.T) {
 			t.Fatalf("quality 5 gave %d bytes and quality 95 gave %d, want the low quality far smaller", low, high)
 		}
 	})
+}
+
+// photoLikeJPEG ports photoLikeJpeg of packages/coding-agent/test/image-processing.test.ts: smooth gradients with light deterministic noise, so PNG compresses it poorly.
+func photoLikeJPEG(t *testing.T, width, height int) []byte {
+	t.Helper()
+	img := image.NewRGBA(image.Rect(0, 0, width, height))
+	seed := 1
+	for y := range height {
+		for x := range width {
+			seed = (seed*1103515245 + 12345) & 0x7fffffff
+			noise := seed % 6
+			i := img.PixOffset(x, y)
+			img.Pix[i] = uint8(int(float64(x)/float64(width)*200) + noise)
+			img.Pix[i+1] = uint8(int(float64(y)/float64(height)*200) + noise)
+			img.Pix[i+2] = uint8(int(128+math.Sin(float64(x)/30)*60) + noise)
+			img.Pix[i+3] = 255
+		}
+	}
+	var out bytes.Buffer
+	if err := jpeg.Encode(&out, img, &jpeg.Options{Quality: 85}); err != nil {
+		t.Fatal(err)
+	}
+	return out.Bytes()
+}
+
+// Ports packages/coding-agent/test/image-processing.test.ts:196-206 (Pi e7a0df27, #11551): PNG was returned whenever it fit, even when JPEG was much smaller.
+func TestResizeImagePicksJPEGOverLargerPNGForPhotos(t *testing.T) {
+	input := photoLikeJPEG(t, 1200, 800)
+	result, err := resizeDetected(input, &ai.ModelImageResizeOptions{MaxWidth: 1000, MaxHeight: 1000})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !result.WasResized || result.MimeType != "image/jpeg" || result.Width != 1000 {
+		t.Fatalf("result = %s resized=%v width=%d, want a resized image/jpeg of width 1000", result.MimeType, result.WasResized, result.Width)
+	}
+	if limit := encodedSizeBase64(input) * 2; len(result.Data) >= limit {
+		t.Fatalf("len(Data) = %d, want below %d", len(result.Data), limit)
+	}
 }
