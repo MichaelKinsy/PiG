@@ -68,8 +68,8 @@ func TestUTF8StreamDecoderMatchesNodeTextDecoder(t *testing.T) {
 	pioracle.Run(t, `
 emit(input.map((p) => {
 	const d = new TextDecoder();
-	const out = p.chunks.map((chunk) => d.Decode(Uint8Array.from(chunk), { stream: true }));
-	out.push(d.Decode());
+	const out = p.chunks.map((chunk) => d.decode(Uint8Array.from(chunk), { stream: true }));
+	out.push(d.decode());
 	return out;
 }));`, probes, &want)
 	bad := 0

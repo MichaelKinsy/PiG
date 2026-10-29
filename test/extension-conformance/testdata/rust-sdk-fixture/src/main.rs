@@ -287,7 +287,7 @@ impl RemoteComponent for ViewportProbe {
     }
 
     fn handle_input(&mut self, data: &pig_sdk::JsString) -> Result<RemoteComponentResult, String> {
-        match data.to_string().as_deref() {
+        match data.to_string().as_deref().ok() {
             Some("t") => {
                 self.captures = false;
                 Ok(RemoteComponentResult::pending())

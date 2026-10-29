@@ -164,7 +164,7 @@ impl RemoteComponent for Viewport {
         self.captures
     }
     fn handle_input(&mut self, data: &JsString) -> Result<RemoteComponentResult, String> {
-        match data.to_string().as_deref() {
+        match data.to_string().as_deref().ok() {
             Some("t") => {
                 self.captures = false;
                 Ok(RemoteComponentResult::pending())
