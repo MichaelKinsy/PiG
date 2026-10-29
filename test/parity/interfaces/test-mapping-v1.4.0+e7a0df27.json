@@ -3324,8 +3324,12 @@
     },
     {
       "path": "packages/chord/test/watch.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:449c93b9acb04611757207aaea4195e8b99673475bcf0dcc3b8a55467e989e57"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:449c93b9acb04611757207aaea4195e8b99673475bcf0dcc3b8a55467e989e57",
+      "evidence": [
+        "chord/watch_upstream_test.go"
+      ],
+      "rationale": "Pi 5f312dac: renamed expectations (kind, aborted, EndWith/ObserveAbort), the 'Watch failure calls' group and the NativeWatch failure case; call-object key/structuredClone/identity cases are designed out (Go call is a struct value). Lane C2."
     },
     {
       "path": "packages/chord/test/websocket.test.ts",
@@ -4068,12 +4072,13 @@
     },
     {
       "path": "packages/coding-agent/test/deleted-cwd.test.ts",
-      "disposition": "partial",
+      "disposition": "ported",
       "upstreamTestHash": "sha256:7e5f398357ca22bc93e316a8f9b3a234033af1e8a0aedb121a9d307fd0c0fe6b",
       "evidence": [
-        "coding/cli/deleted_cwd_unix_test.go#TestMainReportsDeletedWorkingDirectory"
+        "coding/cli/deleted_cwd_unix_test.go#TestMainReportsDeletedWorkingDirectory",
+        "coding/cli/deleted_cwd_unix_test.go#TestMainHandlesCwdErrors"
       ],
-      "rationale": "Case 1 ported as a child process that deletes its own cwd (--version, --help, print mode); case 2 'rethrows unrelated cwd errors' has no Go seam without a fake cwd syscall and needs owner approval as a designed-out case or a port (open decision, lane A2)."
+      "rationale": "Both cases: a child process that deletes its own cwd (--version, --help, print mode), and the processCwd seam for 'rethrows unrelated cwd errors' (lane A2b)."
     },
     {
       "path": "packages/coding-agent/test/documentation.test.ts",
@@ -4424,12 +4429,12 @@
     },
     {
       "path": "packages/coding-agent/test/image-processing.test.ts",
-      "disposition": "partial",
+      "disposition": "ported",
       "upstreamTestHash": "sha256:31012e506feb87b60a12c9d7888ab82fe0f0875544f431b8bd5985338a5cbada",
       "evidence": [
         "internal/imageprocessing/image_processing_upstream_test.go#TestResizeImagePicksJPEGOverLargerPNGForPhotos"
       ],
-      "rationale": "The 'pick JPEG over a larger PNG when resizing a photo' case is ported; the PNG-vs-JPEG comparison of the oracle tests is skipped until lane A2b closes it."
+      "rationale": "The 'pick JPEG over a larger PNG when resizing a photo' case; the oracle PNG-vs-JPEG comparison is restored (one case of 400 cited to D165; the source row stays deferred until the owner approves D165). Lane A2b."
     },
     {
       "path": "packages/coding-agent/test/image-resize-callers.test.ts",
@@ -7348,8 +7353,12 @@
     },
     {
       "path": "packages/durable/test/env-node-conformance.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:b052a243a51aa777a4c835f15721ce08c2c875c976ca1c1d29a49e3641afbb9b"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:b052a243a51aa777a4c835f15721ce08c2c875c976ca1c1d29a49e3641afbb9b",
+      "evidence": [
+        "durable/env/node/conformance_test.go"
+      ],
+      "rationale": "Follows Pi 5f312dac (kind coverage, 'watch stops reporting once stopped'); lane C2."
     },
     {
       "path": "packages/durable/test/env-node-spill.test.ts",
@@ -7783,18 +7792,30 @@
     },
     {
       "path": "packages/durable/test/session-adoption.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:3c7c42cb37a59f4b6266b16df4c321502aa15e998e50b30ba799db1f71d7862f"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:3c7c42cb37a59f4b6266b16df4c321502aa15e998e50b30ba799db1f71d7862f",
+      "evidence": [
+        "durable/session/session_adoption_test.go"
+      ],
+      "rationale": "Follows Pi 5f312dac (observeCommits, WatchCall/WatchEnd observers, retirement as DocumentRetireChange); same-stem Go tests (lane C2)."
     },
     {
       "path": "packages/durable/test/session-checkpoints-migrations.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:f9555a19175438877b309d1ca9bb5fab026c0ba5af9f882f0cd5b00d5f0ee46b"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:f9555a19175438877b309d1ca9bb5fab026c0ba5af9f882f0cd5b00d5f0ee46b",
+      "evidence": [
+        "durable/session/session_checkpoints_migrations_test.go"
+      ],
+      "rationale": "Follows Pi 5f312dac (observeCommits, WatchCall/WatchEnd observers, retirement as DocumentRetireChange); same-stem Go tests (lane C2)."
     },
     {
       "path": "packages/durable/test/session-deferred-commits.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:6acfc01b89d41643a872a35df74a2ece2f1b73e772894df308ecd00018a66fb4"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:6acfc01b89d41643a872a35df74a2ece2f1b73e772894df308ecd00018a66fb4",
+      "evidence": [
+        "durable/session/session_deferred_commits_upstream_test.go"
+      ],
+      "rationale": "Follows Pi 5f312dac (observeCommits, WatchCall/WatchEnd observers, retirement as DocumentRetireChange); same-stem Go tests (lane C2)."
     },
     {
       "path": "packages/durable/test/session-definitions.test.ts",
@@ -7807,38 +7828,69 @@
     },
     {
       "path": "packages/durable/test/session-document-retention.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:46e116eba1fba08653a6bf07dbf24aa5325e5f6b45a19c717a87d14233e13c81"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:46e116eba1fba08653a6bf07dbf24aa5325e5f6b45a19c717a87d14233e13c81",
+      "evidence": [
+        "durable/session/session_document_retention_test.go#TestSessionDocumentCacheRetention"
+      ],
+      "rationale": "Follows Pi 5f312dac; the case 'keeps no timer where timers cannot be unreferenced, and evicts on commits' stays designed out (Node unreferenced-timer mechanics; approved by the tern lead ruling 2026-10-13, tests-120-b; case and approval carried from the b3a29f11 mapping). Lane C2.",
+      "designedOutCases": [
+        "document cache retention › keeps no timer where timers cannot be unreferenced, and evicts on commits"
+      ]
     },
     {
       "path": "packages/durable/test/session-documents.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:81a40b5b1e9fb2b314d8dc05971a8aa0519e7f4fa88766dc25e3778b24a8bab4"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:81a40b5b1e9fb2b314d8dc05971a8aa0519e7f4fa88766dc25e3778b24a8bab4",
+      "evidence": [
+        "durable/session/session_documents_test.go"
+      ],
+      "rationale": "Follows Pi 5f312dac (observeCommits, WatchCall/WatchEnd observers, retirement as DocumentRetireChange); same-stem Go tests (lane C2)."
     },
     {
       "path": "packages/durable/test/session-forks.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:109b19f413e5ded65f4761a825b13f8e744fa858fe75e25969dba40c22142a21"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:109b19f413e5ded65f4761a825b13f8e744fa858fe75e25969dba40c22142a21",
+      "evidence": [
+        "durable/session/session_forks_test.go"
+      ],
+      "rationale": "Follows Pi 5f312dac (observeCommits, WatchCall/WatchEnd observers, retirement as DocumentRetireChange); same-stem Go tests (lane C2)."
     },
     {
       "path": "packages/durable/test/session-observers.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:dfd8850882c8e65c4893a29f23d697df9a27a4fef69e135e3099ce8c8414fffb"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:dfd8850882c8e65c4893a29f23d697df9a27a4fef69e135e3099ce8c8414fffb",
+      "evidence": [
+        "durable/session/session_observers_test.go"
+      ],
+      "rationale": "Follows Pi 5f312dac (observeCommits, WatchCall/WatchEnd observers, retirement as DocumentRetireChange); same-stem Go tests (lane C2)."
     },
     {
       "path": "packages/durable/test/session-tables.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:f6076806f5edd08fb30601352eb5a54dd8e3401813e0ed8b28d7f04a63789105"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:f6076806f5edd08fb30601352eb5a54dd8e3401813e0ed8b28d7f04a63789105",
+      "evidence": [
+        "durable/session/session_tables_test.go"
+      ],
+      "rationale": "Follows Pi 5f312dac (observeCommits, WatchCall/WatchEnd observers, retirement as DocumentRetireChange); same-stem Go tests (lane C2)."
     },
     {
       "path": "packages/durable/test/session-watches.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:fe9dcb88e78357d2bf9b90d06d434997c361cf5c8b8989f495da5bb8cfe310b6"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:fe9dcb88e78357d2bf9b90d06d434997c361cf5c8b8989f495da5bb8cfe310b6",
+      "evidence": [
+        "durable/session/session_watches_test.go"
+      ],
+      "rationale": "Follows Pi 5f312dac (observeCommits, WatchCall/WatchEnd observers, retirement as DocumentRetireChange); same-stem Go tests (lane C2)."
     },
     {
       "path": "packages/durable/test/spec-usage.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:8bd7a4b5ebc1aa3eb80dd5f9881c9ade7ce17e05d25c50b4133a87118d121630"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:8bd7a4b5ebc1aa3eb80dd5f9881c9ade7ce17e05d25c50b4133a87118d121630",
+      "evidence": [
+        "durable/types_upstream_test.go"
+      ],
+      "rationale": "Follows Pi 5f312dac (types and the observer vocabulary); durable/types_upstream_test.go (lane C2)."
     },
     {
       "path": "packages/durable/test/sqlite-cloudflare.test.ts",
@@ -8031,8 +8083,13 @@
     },
     {
       "path": "packages/env/test/remote.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:225016706c17f0596d032b4c51c9904f4eeef93b14b62a14764d1168268e95fd"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:225016706c17f0596d032b4c51c9904f4eeef93b14b62a14764d1168268e95fd",
+      "evidence": [
+        "env/watch_events_test.go",
+        "env/remote_daemon_signal_test.go#TestConnectionCloseKillsRunningCommands"
+      ],
+      "rationale": "Watch hunks of Pi 5f312dac (lane C2) and the daemon-kill hunk (lane E, TestConnectionCloseKillsRunningCommands)."
     },
     {
       "path": "packages/env/test/ssh-external.test.ts",

@@ -1579,9 +1579,9 @@ rationale = "aa9cf15b (required self principal, no host named by the caller: Get
 [[files]]
 path = "packages/chord/src/index.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/watch_upstream_test.go#TestWatchFailureCallsTakesAFailureThroughAdvanceAsThroughFail"]
+rationale = "Pi 5f312dac exports WatchCall and NativeWatchCall; the Go types live in chord/watch.go (lane C2)."
 
 [[files]]
 path = "packages/chord/src/json.ts"
@@ -2755,9 +2755,9 @@ rationale = "PORT_MAP row is ✅ ported (chord/host/types.go (Context is context
 [[files]]
 path = "packages/chord/src/watch.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/watch_upstream_test.go#TestWatchFailureCallsDeliversAFailureAsACallStaysOpenKeepsTheLastValueAndReplacesTheRootOnRecovery"]
+rationale = "Pi 5f312dac: failures are watch calls: WatchCall/NativeWatchCall (Kind, Error), WatchEnd.Kind, Fail, ObserveAbort/Abort, EndWith; Go's call is a struct value (no lone-call identity). chord/watch.go, watch_impl.go (lane C2)."
 
 [[files]]
 path = "packages/chord/src/websocket.ts"
@@ -4528,7 +4528,7 @@ path = "packages/coding-agent/src/utils/image-resize-core.ts"
 change = "added"
 disposition = "deferred"
 evidence = ["test:internal/imageprocessing/image_processing_upstream_test.go#TestResizeImagePicksJPEGOverLargerPNGForPhotos"]
-rationale = "Pi e7a0df27 picks the smaller of PNG and JPEG when resizing; ported in internal/imageprocessing/images.go (TestResizeImagePicksJPEGOverLargerPNGForPhotos), but the oracle tests TestProcessImageMatchesPi and TestResizeImageDimensionStrategyMatchesPi skip PNG-vs-JPEG comparisons of resized images; lane A2b closes that, then this row becomes ported."
+rationale = "Pi e7a0df27 picks the smaller of PNG and JPEG when resizing; internal/imageprocessing now shares the Photon-exact PNG encoder and Lanczos3 (internal/photonimage), oracle skip removed; the one remaining format difference of 400 is Go's JPEG encoder, cited to D165 (docs/parity/divergences/D165.md), whose SCRUTINIZED approval is pending owner review. Becomes ported when the owner approves D165."
 
 [[files]]
 path = "packages/coding-agent/src/utils/image-resize-worker.ts"
@@ -4729,9 +4729,9 @@ rationale = "PORT_MAP row is ✅ ported (durable/env/decode.go). coverage.md rep
 [[files]]
 path = "packages/durable/src/env/index.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:durable/env/node/conformance_test.go"]
+rationale = "Pi 5f312dac: FileChangeFailed (was FileChangeError) and FileWatcher.Stop (was Close); durable/env/env.go (lane C2)."
 
 [[files]]
 path = "packages/durable/src/env/line-scan.ts"
@@ -4743,16 +4743,16 @@ rationale = "PORT_MAP row is ✅ ported (durable/env/line_scan.go). coverage.md 
 [[files]]
 path = "packages/durable/src/env/node-watch.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:durable/env/node/watch_close_pi_test.go#TestFileWatcherStopIsIdempotentAndEndsReporting"]
+rationale = "Pi 5f312dac: stop(ctx), #stopped, failed change; durable/env/node/watch.go (lane C2)."
 
 [[files]]
 path = "packages/durable/src/env/node.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:durable/env/node/watch_close_waits_pi_test.go#TestFileWatcherStopWaitsForTheRescanInProgress"]
+rationale = "Pi 5f312dac: watcher.stop(context) after an aborted open; durable/env/node/watch.go (lane C2)."
 
 [[files]]
 path = "packages/durable/src/errors.ts"
@@ -5163,9 +5163,9 @@ rationale = "PORT_MAP row is ✅ ported (durable/durabletest/durabletest.go). co
 [[files]]
 path = "packages/durable/src/testing/env-conformance.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:durable/env/node/conformance_test.go"]
+rationale = "Pi 5f312dac: covers() by kind and 'watch stops reporting once stopped'; durable/durabletest/env_conformance.go (lane C2)."
 
 [[files]]
 path = "packages/durable/src/testing/index.ts"
@@ -5345,9 +5345,9 @@ rationale = "Added in 1.2.0. env/list_files.go ports listFilesOver: it checks ma
 [[files]]
 path = "packages/env/src/remote-env.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:env/watch_events_test.go"]
+rationale = "Pi 5f312dac: watcher.stop(context) after an aborted open; env/remote_env.go (lane C2)."
 
 [[files]]
 path = "packages/env/src/ssh.ts"
@@ -5366,9 +5366,9 @@ rationale = "Added in 1.2.0. env/terminal.go ports openTerminal (the pty request
 [[files]]
 path = "packages/env/src/watch.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:env/watch_events_test.go"]
+rationale = "Pi 5f312dac: RemoteWatcher.Stop, stopped, FileChangeFailed; the daemon wire is unchanged; env/watch.go (lane C2)."
 
 [[files]]
 path = "packages/evals/src/cli.ts"
