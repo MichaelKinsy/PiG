@@ -2,31 +2,13 @@ pkg:chord/.#ChordError	chord	child-gap	chord/host/errors.go#ChordError
 pkg:chord/.#ChordError::construct:0	chord	undecidable	chord/host/errors.go#NewChordError
 pkg:chord/.#ChordErrorCode	chord	undecidable	chord/host/errors.go#ChordErrorCode
 pkg:chord/.#NativeWatch	chord	child-gap	chord/watch_impl.go#NativeWatch
-pkg:chord/.#NativeWatch::property:abort	chord	member-missing	chord/watch_impl.go#NativeWatch
-pkg:chord/.#NativeWatch::property:abort::call:0	chord	member-missing	chord/watch_impl.go#NativeWatch
-pkg:chord/.#NativeWatch::property:fail	chord	member-missing	chord/watch_impl.go#NativeWatch
-pkg:chord/.#NativeWatch::property:fail::call:0	chord	member-missing	chord/watch_impl.go#NativeWatch
-pkg:chord/.#NativeWatch::property:observeAbort	chord	member-missing	chord/watch_impl.go#NativeWatch
-pkg:chord/.#NativeWatch::property:observeAbort::call:0	chord	member-missing	chord/watch_impl.go#NativeWatch
-pkg:chord/.#NativeWatchCall	chord	no-go-symbol	
+pkg:chord/.#NativeWatch::property:end	chord	child-gap	chord/watch_impl.go#watchLifecycle.End
+pkg:chord/.#NativeWatch::property:end::call:0	chord	signature-mismatch	chord/watch_impl.go#watchLifecycle.End
 pkg:chord/.#RegistryTable	chord	undecidable	chord/host/registry.go#RegistryTable
 pkg:chord/.#ServeOptions	chord	undecidable	chord/host/object.go#ServeOptions
 pkg:chord/.#Watch	chord	child-gap	chord/watch_impl.go#Watch
-pkg:chord/.#Watch::property:abort	chord	member-missing	chord/watch_impl.go#Watch
-pkg:chord/.#Watch::property:abort::call:0	chord	member-missing	chord/watch_impl.go#Watch
-pkg:chord/.#Watch::property:advance	chord	child-gap	chord/watch_impl.go#Watch.Advance
-pkg:chord/.#Watch::property:advance::call:0	chord	signature-mismatch	chord/watch_impl.go#Watch.Advance
-pkg:chord/.#Watch::property:fail	chord	member-missing	chord/watch_impl.go#Watch
-pkg:chord/.#Watch::property:fail::call:0	chord	member-missing	chord/watch_impl.go#Watch
-pkg:chord/.#Watch::property:observeAbort	chord	member-missing	chord/watch_impl.go#Watch
-pkg:chord/.#Watch::property:observeAbort::call:0	chord	member-missing	chord/watch_impl.go#Watch
-pkg:chord/.#Watch::property:start	chord	child-gap	chord/watch_impl.go#Watch.Start
-pkg:chord/.#Watch::property:start::call:0	chord	signature-mismatch	chord/watch_impl.go#Watch.Start
-pkg:chord/.#WatchCall	chord	no-go-symbol	
-pkg:chord/.#WatchEnd	chord	type-mismatch	chord/watch.go#WatchEnd
-pkg:chord/.#WatchHandle	chord	child-gap	chord/watch.go#WatchHandle
-pkg:chord/.#WatchHandle::property:start	chord	child-gap	chord/watch.go#WatchHandle.Start
-pkg:chord/.#WatchHandle::property:start::call:0	chord	signature-mismatch	chord/watch.go#WatchHandle.Start
+pkg:chord/.#Watch::property:end	chord	child-gap	chord/watch_impl.go#watchLifecycle.End
+pkg:chord/.#Watch::property:end::call:0	chord	signature-mismatch	chord/watch_impl.go#watchLifecycle.End
 pkg:chord/next#AcceptsTable	chord	no-go-symbol	
 pkg:chord/next#ActivityCounts	chord	no-go-symbol	
 pkg:chord/next#AddedColumn	chord	no-go-symbol	
@@ -764,13 +746,9 @@ pkg:coding-agent/.#TreeSelectorComponent::property:capturesViewportInput	coding-
 pkg:durable/.#Agent	durable	type-mismatch	durable/harness_types.go#Agent
 pkg:durable/.#AgentChange	durable	type-mismatch	durable/harness/agent.go#AgentChange
 pkg:durable/.#AgentState	durable	type-mismatch	durable/harness/agent.go#AgentState
-pkg:durable/.#CommitObservation	durable	no-go-symbol	
-pkg:durable/.#CommitObserver	durable	no-go-symbol	
-pkg:durable/.#CompactionFailure	durable	type-mismatch	durable/harness/live.go#CompactionFailure
 pkg:durable/.#CompactionHooks	durable	child-gap	durable/harness/types.go#CompactionHooks
 pkg:durable/.#CompactionHooks::property:beforeCompact	durable	child-gap	durable/harness/types.go#CompactionHooks.BeforeCompact
 pkg:durable/.#CompactionHooks::property:beforeCompact::call:0	durable	signature-mismatch	durable/harness/types.go#CompactionHooks.BeforeCompact
-pkg:durable/.#CompactionStatus	durable	type-mismatch	durable/harness/live.go#CompactionStatus
 pkg:durable/.#Conversation	durable	child-gap	durable/harness/types.go#Conversation
 pkg:durable/.#Conversation::property:abort	durable	child-gap	durable/harness/types.go#Conversation.Abort
 pkg:durable/.#Conversation::property:abort::call:0	durable	signature-mismatch	durable/harness/types.go#Conversation.Abort
@@ -874,13 +852,9 @@ pkg:durable/.#MemoryStorage::property:submissionByRequest	durable	child-gap	dura
 pkg:durable/.#MemoryStorage::property:submissionByRequest::call:0	durable	signature-mismatch	durable/storage/memory.go#MemoryStorage.SubmissionByRequest
 pkg:durable/.#MemoryStorage::property:task	durable	child-gap	durable/storage/memory.go#MemoryStorage.Task
 pkg:durable/.#MemoryStorage::property:task::call:0	durable	signature-mismatch	durable/storage/memory.go#MemoryStorage.Task
-pkg:durable/.#NativeWatchCall	durable	no-go-symbol	
 pkg:durable/.#PhaseHandler	durable	child-gap	durable/types.go#PhaseHandler
 pkg:durable/.#PhaseHandler::call:0	durable	signature-mismatch	durable/types.go#PhaseHandler
 pkg:durable/.#PromptSection	durable	type-mismatch	durable/harness_types.go#PromptSection
-pkg:durable/.#Report	durable	no-go-symbol	
-pkg:durable/.#ReportFrom	durable	type-mismatch	durable/types.go#ReportFrom
-pkg:durable/.#ReportInfo	durable	type-mismatch	durable/types.go#ReportInfo
 pkg:durable/.#RunEndTask	durable	no-go-symbol	
 pkg:durable/.#RunFailure	durable	type-mismatch	durable/harness/live.go#RunFailure
 pkg:durable/.#RunFailureReason	durable	type-mismatch	durable/harness/live.go#RunFailureReason
@@ -890,9 +864,6 @@ pkg:durable/.#Session::property:close	durable	child-gap	durable/types.go#Session
 pkg:durable/.#Session::property:close::call:0	durable	signature-mismatch	durable/types.go#Session.Close
 pkg:durable/.#Session::property:commit	durable	child-gap	durable/types.go#Session.Commit
 pkg:durable/.#Session::property:commit::call:0	durable	signature-mismatch	durable/types.go#Session.Commit
-pkg:durable/.#Session::property:observeCommits	durable	member-missing	durable/types.go#Session
-pkg:durable/.#Session::property:observeCommits::call:0	durable	member-missing	durable/types.go#Session
-pkg:durable/.#SessionEnd	durable	type-mismatch	durable/types.go#SessionEnd
 pkg:durable/.#Storage	durable	child-gap	durable/types.go#Storage
 pkg:durable/.#Storage::property:close	durable	child-gap	durable/types.go#Storage.Close
 pkg:durable/.#Storage::property:close::call:0	durable	signature-mismatch	durable/types.go#Storage.Close
@@ -993,8 +964,6 @@ pkg:durable/.#ToolHooks::property:beforeTool::call:0	durable	signature-mismatch	
 pkg:durable/.#ToolRegistration	durable	type-mismatch	durable/harness_types.go#ToolRegistration
 pkg:durable/.#ToolSlot	durable	type-mismatch	durable/harness/live.go#ToolSlot
 pkg:durable/.#ToolTaskInput	durable	type-mismatch	durable/harness/tool.go#ToolTaskInput
-pkg:durable/.#WatchCall	durable	no-go-symbol	
-pkg:durable/.#WatchEnd	durable	type-mismatch	durable/types.go#WatchEnd
 pkg:durable/.#WatchHandle	durable	child-gap	durable/types.go#WatchHandle
 pkg:durable/.#WatchHandle::property:start	durable	child-gap	chord/watch.go#WatchHandle.Start
 pkg:durable/.#WatchHandle::property:start::call:0	durable	signature-mismatch	chord/watch.go#WatchHandle.Start
@@ -1069,7 +1038,6 @@ pkg:durable/env#ExecutionEnv::property:watch	durable	child-gap	durable/env/env.g
 pkg:durable/env#ExecutionEnv::property:watch::call:0	durable	signature-mismatch	durable/env/env.go#FileSystem.Watch
 pkg:durable/env#ExecutionEnv::property:writeFile	durable	child-gap	durable/env/env.go#FileSystem.WriteFile
 pkg:durable/env#ExecutionEnv::property:writeFile::call:0	durable	signature-mismatch	durable/env/env.go#FileSystem.WriteFile
-pkg:durable/env#FileChange	durable	undecidable	durable/env/env.go#FileChange
 pkg:durable/env#FileSystem	durable	child-gap	durable/env/env.go#FileSystem
 pkg:durable/env#FileSystem::property:absolutePath	durable	child-gap	durable/env/env.go#FileSystem.AbsolutePath
 pkg:durable/env#FileSystem::property:absolutePath::call:0	durable	signature-mismatch	durable/env/env.go#FileSystem.AbsolutePath
@@ -1119,8 +1087,8 @@ pkg:durable/env#FileSystem::property:watch::call:0	durable	signature-mismatch	du
 pkg:durable/env#FileSystem::property:writeFile	durable	child-gap	durable/env/env.go#FileSystem.WriteFile
 pkg:durable/env#FileSystem::property:writeFile::call:0	durable	signature-mismatch	durable/env/env.go#FileSystem.WriteFile
 pkg:durable/env#FileWatcher	durable	child-gap	durable/env/env.go#FileWatcher
-pkg:durable/env#FileWatcher::property:stop	durable	member-missing	durable/env/env.go#FileWatcher
-pkg:durable/env#FileWatcher::property:stop::call:0	durable	member-missing	durable/env/env.go#FileWatcher
+pkg:durable/env#FileWatcher::property:stop	durable	child-gap	durable/env/env.go#FileWatcher.Stop
+pkg:durable/env#FileWatcher::property:stop::call:0	durable	signature-mismatch	durable/env/env.go#FileWatcher.Stop
 pkg:durable/env#Shell	durable	child-gap	durable/env/env.go#Shell
 pkg:durable/env#Shell::property:cleanup	durable	child-gap	durable/env/env.go#Shell.Cleanup
 pkg:durable/env#Shell::property:cleanup::call:0	durable	signature-mismatch	durable/env/env.go#Shell.Cleanup
@@ -1348,9 +1316,6 @@ pkg:durable/storage/store#StoreStorage::property:task	durable	child-gap
 pkg:durable/storage/store#StoreStorage::property:task::call:0	durable	child-gap	
 pkg:durable/tools#BashPrepare	durable	child-gap	durable/tools/bash.go#BashPrepare
 pkg:durable/tools#BashPrepare::call:0	durable	signature-mismatch	durable/tools/bash.go#BashPrepare
-pkg:env/.#RemoteWatcher	env	child-gap	env/watch.go#RemoteWatcher
-pkg:env/.#RemoteWatcher::property:stop	env	child-gap	env/watch.go#RemoteWatcher.stop
-pkg:env/.#RemoteWatcher::property:stop::call:0	env	signature-mismatch	env/watch.go#RemoteWatcher.stop
 pkg:tui/.#Component	tui	child-gap	tui/tui.go#Component
 pkg:tui/.#Component::property:capturesViewportInput	tui	member-missing	tui/tui.go#Component
 pkg:tui/.#Editor	tui	child-gap	tui/editor.go#Editor

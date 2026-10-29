@@ -94573,6 +94573,17 @@
       "shapeHash": "sha256:8ff8a2e4d9d1c8b07d86d78bf11f9104d73d905ab330bbb51afa3b158d139af0"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#processCwd",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "processCwd",
+      "kind": "variable",
+      "exported": false,
+      "shape": {
+        "type": "func() (string, error)"
+      },
+      "shapeHash": "sha256:60c06af2ab8dbe05a093fcda297ca37ab0155078bcee1a108937479e218ba9ff"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/cli#projectConfigOverride",
       "package": "github.com/MichaelKinsy/PiG/coding/cli",
       "name": "projectConfigOverride",
