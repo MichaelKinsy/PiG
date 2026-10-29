@@ -149,6 +149,10 @@ func thresholdRig(t *testing.T, reserve, background float64) *rig {
 				return err
 			}
 		}
+		// The context ends in a message the model answers (a context that does not ends the run with nothing_to_answer).
+		if _, err := tx.AppendEntry(1, mustParse(t, `{"kind":"pi.user","model":[{"role":"user","content":"and one more question","timestamp":1}]}`)); err != nil {
+			return err
+		}
 		return nil
 	})
 	return r

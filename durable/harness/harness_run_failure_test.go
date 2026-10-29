@@ -45,6 +45,9 @@ func TestRunFailure(t *testing.T) {
 		if failure.TaskId == 0 {
 			t.Fatal("runFailure names no task")
 		}
+		if failure.First == nil {
+			t.Fatal("runFailure names no first entry")
+		}
 		next := submit(t, root, inputDraft("again"))
 		// The commit that starts the next run removes it.
 		if got := runFailureOf(t, harness, root); got != nil {
@@ -91,6 +94,9 @@ func TestRunFailure(t *testing.T) {
 		expectRunFailure(t, failure, []durable.SubmissionId{submission.Id()}, RunAborted, nil)
 		if failure.TaskId != taskId {
 			t.Fatalf("runFailure task = %d, want %d", failure.TaskId, taskId)
+		}
+		if failure.First == nil {
+			t.Fatal("runFailure names no first entry")
 		}
 		closeHarness(t, harness)
 	})

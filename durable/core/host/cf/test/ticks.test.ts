@@ -57,7 +57,8 @@ test("a call queued behind the reserve pass of the previous call's resume() star
   // await of generation.ts between its commits spends its tick: the helper async functions of a commit body (prepareBoundary, appendAssistant,
   // applyBoundary), the settle's reads (transaction.ts), the run's context read (context.ts, scheduler.ts), hooks.each (scheduler.ts),
   // ensureProviderSessionId (provider.ts), the stream's end and the start of a commit queued on an idle line (session.ts). Pi 1.2.0 counted 409; Pi 8b0caefc publishes a commit when Storage adopts it, hopcost.AdoptTail (3 over capsql) ticks before #runCommit resumes, so the wait on the last commit's publication resolves that much earlier: 406.
-  assert.equal(running, 408)
+  // Pi e7a0df27 counts 411 (3 more than 6c384aa3: `answer` awaits asksAfterRun's `runtime.agent`, 87eff524..7e15f960); the F-ticks-gate row, equal to Pi's, pins it.
+  assert.equal(running, 411)
   // snapshot of a document that does not exist: Session.snapshot awaits the line load once and returns (session.ts); the migration retry of
   // the host's read settles the same promise, so a success spends no pass of its own (Pi 6c384aa3 counts 13; the `.catch` adds one in both).
   assert.equal(snapshot, 13)

@@ -257,7 +257,7 @@ func TestLiveVersion2(t *testing.T) {
 	}, session.TxScope{}); err != nil {
 		t.Fatal(err)
 	}
-	if doc := stored(); doc.Version != 2 || !strings.Contains(jv.Stringify(doc.Value), `"trigger":"threshold","blocking":true,"attempt":3`) || !strings.Contains(jv.Stringify(doc.Value), `"compactionFailure":{"taskId":5,"trigger":"manual"`) {
+	if doc := stored(); doc.Version != 3 || !strings.Contains(jv.Stringify(doc.Value), `"trigger":"threshold","blocking":true,"attempt":3`) || !strings.Contains(jv.Stringify(doc.Value), `"compactionFailure":{"taskId":5,"trigger":"manual"`) {
 		t.Fatalf("stored after write = %d %s", doc.Version, jv.Stringify(doc.Value))
 	}
 }

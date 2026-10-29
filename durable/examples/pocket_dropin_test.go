@@ -9,6 +9,7 @@ package examples_test
 
 import (
 	"context"
+	"errors"
 	"path/filepath"
 	"slices"
 	"strconv"
@@ -360,4 +361,13 @@ func (api memoPrefixed) Memo(ctx context.Context, name string) (durable.JsonValu
 
 func (api memoPrefixed) MemoCandidate(ctx context.Context, name string, candidate durable.JsonValue) (durable.JsonValue, error) {
 	return api.ToolExecutionApi.MemoCandidate(ctx, api.prefix+name, candidate)
+}
+
+// Entry and Entries complete harness.HookApi, which `{ ...api, memo }` stands in for: a ToolExecutionApi reads no entries.
+func (memoPrefixed) Entry(context.Context, durable.EntryId) (*durable.EntryRecord, error) {
+	return nil, errors.New("a tool execution api reads no entries")
+}
+
+func (memoPrefixed) Entries(context.Context, durable.EntryQuery, int, durable.Cursor) (durable.Page[durable.EntryRecord, durable.Cursor], error) {
+	return durable.Page[durable.EntryRecord, durable.Cursor]{}, errors.New("a tool execution api reads no entries")
 }

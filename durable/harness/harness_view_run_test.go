@@ -199,7 +199,7 @@ func TestARunAsTheConversationViewShowsIt(t *testing.T) {
 		// The run shows from the input's commit until the commit that appends the answer and clears the partial.
 		views := history.All()
 		started := slices.IndexFunc(states, func(state LiveState) bool { return state.Run != nil })
-		if started < 0 || states[started].Run.TaskId == 0 || !slices.Equal(states[started].Run.Inputs, []durable.SubmissionId{submission.Id()}) {
+		if started < 0 || states[started].Run.TaskId == 0 || !slices.Equal(states[started].Run.Inputs, []durable.SubmissionId{submission.Id()}) || states[started].Run.Turns != 0 {
 			t.Fatalf("run at %d = %+v, want the submission's", started, states[started].Run)
 		}
 		if kind := lastEntry(views[started]).Kind; kind != "pi.user" {
@@ -507,7 +507,7 @@ func TestARunAsTheConversationViewShowsIt(t *testing.T) {
 		closeHarness(t, harness)
 	})
 
-	t.Run("ends a call that never runs with its result at once, and a tool aborted with its generation", func(t *testing.T) {
+	t.Run("ends a call that never runs through its own task, and a tool aborted with its generation", func(t *testing.T) {
 		// upstream: packages/durable/test/harness-view-run.test.ts:331
 		setup := chatSetup(t)
 		addTool(t, setup.Registry, DefineTool(durable.ToolRegistration{
@@ -531,18 +531,19 @@ func TestARunAsTheConversationViewShowsIt(t *testing.T) {
 		history.Detach()
 		states := history.Live()
 		views := history.All()
-		// The call not offered is listed done, with its result entry, in the commit of its calling answer.
+		// #11043: the call not offered is listed pending with its task in the commit of its calling answer, and its task
+		// ends it done with its result entry.
 		ghostSlots := slotsOf(states, "c1")
 		listed := slices.IndexFunc(ghostSlots, func(slot *slotView) bool { return slot != nil })
-		ghost := ghostSlots[listed]
-		if ghost.Status != ToolSlotDone {
-			t.Fatalf("the call not offered is %s when listed, want done", ghost.Status)
+		if ghost := ghostSlots[listed]; ghost.Status != ToolSlotPending || !ghost.Unoffered || ghost.TaskId == nil {
+			t.Fatalf("the call not offered is %+v when listed, want pending, unoffered, with a task", ghost)
 		}
-		listing := views[listed].Entries
-		kinds := []string{listing[len(listing)-2].Kind, listing[len(listing)-1].Kind}
-		expectStrings(t, kinds, []string{"pi.assistant", "pi.tool-result"})
-		if ghost.Entry == nil || *ghost.Entry != listing[len(listing)-1].Id {
-			t.Fatalf("the call not offered names entry %v, want %d", ghost.Entry, listing[len(listing)-1].Id)
+		if kind := lastEntry(views[listed]).Kind; kind != "pi.assistant" {
+			t.Fatalf("the commit listing the call not offered ends with %s, want pi.assistant", kind)
+		}
+		ended := slices.IndexFunc(ghostSlots, func(slot *slotView) bool { return slot != nil && slot.Status == ToolSlotDone })
+		if ghostSlots[ended].Entry == nil || *ghostSlots[ended].Entry != lastEntry(views[ended]).Id {
+			t.Fatalf("the call not offered names entry %v when done, want %d", ghostSlots[ended].Entry, lastEntry(views[ended]).Id)
 		}
 		// The aborted tool ends with its result entry, then the run ends without an answer.
 		waitSlots := slotsOf(states, "c2")

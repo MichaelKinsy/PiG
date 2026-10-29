@@ -100,6 +100,8 @@ type slotView struct {
 	Output *string
 	// Entry is the result entry of a done model-issued slot.
 	Entry *durable.EntryId
+	// Unoffered is a call to a tool its request did not offer.
+	Unoffered bool
 	// Nested is the nested slot, nil for a model-issued one.
 	Nested *harness.NestedToolSlot
 }
@@ -107,7 +109,7 @@ type slotView struct {
 func slotsIn(live harness.LiveState) []slotView {
 	var slots []slotView
 	for _, slot := range live.Tools {
-		slots = append(slots, slotView{CallId: slot.CallId, Name: slot.Name, TaskId: slot.TaskId, Status: slot.Status, Output: slot.Output, Entry: slot.Entry})
+		slots = append(slots, slotView{CallId: slot.CallId, Name: slot.Name, TaskId: slot.TaskId, Status: slot.Status, Output: slot.Output, Entry: slot.Entry, Unoffered: slot.Unoffered})
 	}
 	for index := range live.NestedTools {
 		nested := &live.NestedTools[index]
