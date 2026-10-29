@@ -785,6 +785,18 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/chord/src/next/state/watchable.ts` | `chord/next/state/watchable.go, chord/next/state/identical.go, chord/next/state/set.go` | ✅ |
 | `packages/chord/src/next/state/writable.ts` | `chord/next/state/writable.go` | ✅ |
 | `packages/chord/src/next-node/compression.ts` | `chord/nextnode/compression.go` | ✅ |
+| `packages/chord/src/next/link/binary.ts` | `chord/next/link/binary.go` | ✅ |
+| `packages/chord/src/next/link/channel.ts` | `chord/next/link/channel.go` | ✅ |
+| `packages/chord/src/next/link/errors.ts` | `chord/next/link/errors.go` | ✅ |
+| `packages/chord/src/next/link/index.ts` | `(re-export barrel; Go packages export names directly)` | n/a |
+| `packages/chord/src/next/link/internal.ts` | `(re-export barrel for Chord's layers)` | n/a |
+| `packages/chord/src/next/link/ipc.ts` | `chord/next/link/ipc.go` | ✅ |
+| `packages/chord/src/next/link/link.ts` | `chord/next/link/link.go` | ✅ |
+| `packages/chord/src/next/link/message.ts` | `chord/next/link/message.go` | ✅ |
+| `packages/chord/src/next/link/part.ts` | `chord/next/link/part.go` | ✅ |
+| `packages/chord/src/next/link/text.ts` | `chord/next/link/text.go` | ✅ |
+| `packages/chord/src/next/link/values.ts` | `chord/next/link/values.go` | ✅ |
+| `packages/chord/src/next/link/websocket.ts` | `chord/next/link/websocket.go` | ✅ |
 
 ## `packages/protocol/src/`
 

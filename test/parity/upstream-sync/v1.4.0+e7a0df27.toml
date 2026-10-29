@@ -2139,86 +2139,86 @@ rationale = ""
 [[files]]
 path = "packages/chord/src/next/link/binary.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/link/message_test.go#TestTheBinaryCodec", "test:chord/next/link/oracle_test.go#TestWireFormatsMatchPi"]
+rationale = "`BinaryCodec`; bytes equal Pi's for 84 cases (testdata/link_wire.mjs runs Pi's own binary.ts); `Writer`/`Reader` failures are a recovered panic of the codec's own type, so the field code reads as upstream's; `Uint8Array` views are 3-index slices of the message. PiG: chord/next/link/binary.go (lane D2)."
 
 [[files]]
 path = "packages/chord/src/next/link/channel.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/link/channel_test.go#TestInOrderHandling"]
+rationale = "`Channel`, `ChannelHandler`, `ChannelOptions` (+ `Now`, the heartbeat clock tests set; Pi fakes `Date`), `Handling` (the `Promise<void>` a handler returns). PiG: chord/next/link/channel.go (lane D2)."
 
 [[files]]
 path = "packages/chord/src/next/link/errors.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/link/errors_test.go#TestErrorsOnTheWire"]
+rationale = "`WireErrorOf` (was `wireError`), `ErrorFromWire`; `WireError` is the wire JSON object (`*delta.JsonObject`). PiG: chord/next/link/errors.go (lane D2)."
 
 [[files]]
 path = "packages/chord/src/next/link/index.ts"
 change = "added"
-disposition = "pending"
+disposition = "designed-out"
 evidence = []
-rationale = ""
+rationale = "re-export barrel; Go packages export names directly (lane D2)."
 
 [[files]]
 path = "packages/chord/src/next/link/internal.ts"
 change = "added"
-disposition = "pending"
+disposition = "designed-out"
 evidence = []
-rationale = ""
+rationale = "re-export barrel for Chord's layers (lane D2)."
 
 [[files]]
 path = "packages/chord/src/next/link/ipc.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/link/ipc_test.go#TestIPCLinksOverAFakePort"]
+rationale = "`IpcPort`, `IpcLink` (was `ipcLink`); listener removal is the func the registration returns. PiG: chord/next/link/ipc.go (lane D2)."
 
 [[files]]
 path = "packages/chord/src/next/link/link.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/link/link_test.go#TestMemoryLinks"]
+rationale = "`Link`, `LinkEnd`, `MemoryLinkPair`/`MemoryLink` (+ `Flushed`: the Go form of awaiting a macrotask after `queueMicrotask`). PiG: chord/next/link/link.go (lane D2)."
 
 [[files]]
 path = "packages/chord/src/next/link/message.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/link/message_test.go#TestMessages"]
+rationale = "`Message` (sealed interface, one struct per kind), `CheckMessage` (the TypeBox `MESSAGE` schema checked field by field), `Codec`, `CHAIN`, `CauseKinds`, `NoRetired`, `Optional`; the schema's static types (`Static<...>`) are type-level. PiG: chord/next/link/message.go (lane D2)."
 
 [[files]]
 path = "packages/chord/src/next/link/part.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/link/part_test.go"]
+rationale = "`Part` (sealed: `Text`, `Bytes`, `*DeflatedPart`), `Limits`/`PartLimits`/`LinkLimits`, `CompressAbove`, `OriginPart`, `Oversized`, `OpenPart`, `InflateAsync`; `Inflated` and `Compression` are aliases of `nextnode.Inflated`/`nextnode.Compression` (D1's open question: no duplicate types, `nextnode.NodeCompression` satisfies `link.Compression` unchanged). PiG: chord/next/link/part.go (lane D2)."
 
 [[files]]
 path = "packages/chord/src/next/link/text.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/link/message_test.go#TestTheTextCodec", "test:chord/next/link/oracle_test.go#TestWireFormatsMatchPi"]
+rationale = "`TextCodec`, `DescribeMessage`; field types are read into the typed message at decode (a mistyped field is a decode error where Pi's check follows the decode: both are protocol errors). PiG: chord/next/link/text.go (lane D2)."
 
 [[files]]
 path = "packages/chord/src/next/link/values.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/link/values_test.go"]
+rationale = "`JsonPart`, `PayloadPart`, `ParsePart`, `ParsePayload`, `ResolveSegments`; `[]byte` leaves are the `Uint8Array` leaves; a key `__proto__` is an ordinary own key of `*delta.JsonObject`. PiG: chord/next/link/values.go (lane D2)."
 
 [[files]]
 path = "packages/chord/src/next/link/websocket.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/link/websocket_test.go#TestWebSocketLinksOverAFakeSocket"]
+rationale = "`WebSocketLike`, `WebSocketLink`; the event names are `WebSocketEvent` constants; a text frame is a non-`[]byte` message data. PiG: chord/next/link/websocket.go (lane D2)."
 
 [[files]]
 path = "packages/chord/src/next/registries/contribution.ts"
