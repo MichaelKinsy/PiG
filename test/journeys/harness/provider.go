@@ -180,7 +180,6 @@ type Event struct {
 // Provider is a scripted OpenAI-compatible endpoint.
 type Provider struct {
 	srv    *http.Server
-	mux    *http.ServeMux
 	ln     net.Listener
 	script Script
 	// OnRequest runs for every request before it is answered, so a checker sees the exact wire transcript.
@@ -211,14 +210,10 @@ func NewProvider(script Script) (*Provider, error) {
 	p := &Provider{ln: ln, script: script, gates: map[string]*gate{}, notify: make(chan struct{})}
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", p.handle)
-	p.mux = mux
 	p.srv = &http.Server{Handler: mux, ReadHeaderTimeout: 30 * time.Second}
 	go func() { _ = p.srv.Serve(ln) }()
 	return p, nil
 }
-
-// Handle serves pattern (a net/http ServeMux pattern) beside the chat endpoint, for a gateway's catalog and control routes. Register before the product starts.
-func (p *Provider) Handle(pattern string, h http.HandlerFunc) { p.mux.HandleFunc(pattern, h) }
 
 // URL is the base URL a model's baseUrl points at.
 func (p *Provider) URL() string { return "http://" + p.ln.Addr().String() + "/v1" }

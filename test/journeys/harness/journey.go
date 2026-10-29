@@ -60,9 +60,7 @@ type Journey struct {
 	// PigOnly journeys cover PiG-only features and have no Pi run.
 	PigOnly bool
 	Script  Script
-	// Mount registers a gateway's own routes (catalog, control) on each product's provider before the product starts.
-	Mount func(*Provider)
-	Env   func(Kind) Env
+	Env     func(Kind) Env
 	// Backbone runs first, in order; the first step normally launches.
 	Backbone []Step
 	// Pool actions run in seeded random order between Backbone and Tail.

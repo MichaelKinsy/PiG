@@ -111,9 +111,6 @@ func NewRun(cfg *Config, j *Journey, kind Kind, plan Plan, root string) (*Run, e
 	if err != nil {
 		return nil, err
 	}
-	if j.Mount != nil {
-		j.Mount(c.P)
-	}
 	c.P.OnRequest = func(r *Request) error {
 		if v := CheckChatRequest(r); len(v) > 0 {
 			return errors.New(strings.Join(v, "; "))
