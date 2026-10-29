@@ -28,6 +28,8 @@ func TestExecLimitsHelperProcess(t *testing.T) {
 		out = os.Stderr
 	}
 	_, _ = out.Write(data)
+	// The test binary would print PASS on stdout, which the byte caps count.
+	os.Exit(0)
 }
 
 func execLimitsProbe(t *testing.T, stream, text string, maxBuffer *float64) string {
