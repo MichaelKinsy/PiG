@@ -1,7 +1,7 @@
 {
- "pi": "1.4.0+b3a29f11",
+ "pi": "1.4.0+e7a0df27",
  "genai": "2.21.0",
- "node": "v24.19.0",
+ "node": "v24.22.1",
  "cap": 160,
  "note": "stamp = (seg, tick); see probe.mjs header. array order within a stamp is execution order.",
  "cases": [
@@ -384,7 +384,7 @@
       "timestamp": 0,
       "responseId": "g1",
       "rawStopReason": "STOP",
-      "durationMs": 5
+      "durationMs": 4
      }
     },
     {
@@ -428,7 +428,7 @@
       "timestamp": 0,
       "responseId": "g1",
       "rawStopReason": "STOP",
-      "durationMs": 5
+      "durationMs": 4
      }
     },
     {
@@ -472,7 +472,7 @@
       "timestamp": 0,
       "responseId": "g1",
       "rawStopReason": "STOP",
-      "durationMs": 5
+      "durationMs": 4
      }
     },
     {
@@ -873,7 +873,7 @@
       "timestamp": 0,
       "responseId": "g1",
       "rawStopReason": "STOP",
-      "durationMs": 3
+      "durationMs": 2
      }
     },
     {
@@ -917,7 +917,7 @@
       "timestamp": 0,
       "responseId": "g1",
       "rawStopReason": "STOP",
-      "durationMs": 3
+      "durationMs": 2
      }
     },
     {
@@ -961,7 +961,7 @@
       "timestamp": 0,
       "responseId": "g1",
       "rawStopReason": "STOP",
-      "durationMs": 3
+      "durationMs": 2
      }
     },
     {
@@ -1859,7 +1859,7 @@
       "timestamp": 0,
       "responseId": "g1",
       "rawStopReason": "STOP",
-      "durationMs": 4
+      "durationMs": 3
      }
     },
     {
@@ -1903,7 +1903,7 @@
       "timestamp": 0,
       "responseId": "g1",
       "rawStopReason": "STOP",
-      "durationMs": 4
+      "durationMs": 3
      }
     },
     {
@@ -1947,7 +1947,7 @@
       "timestamp": 0,
       "responseId": "g1",
       "rawStopReason": "STOP",
-      "durationMs": 4
+      "durationMs": 3
      }
     },
     {
@@ -4051,7 +4051,7 @@
       "timestamp": 0,
       "responseId": "g2",
       "rawStopReason": "STOP",
-      "durationMs": 4
+      "durationMs": 3
      }
     },
     {
@@ -4091,7 +4091,7 @@
       "timestamp": 0,
       "responseId": "g2",
       "rawStopReason": "STOP",
-      "durationMs": 4
+      "durationMs": 3
      }
     },
     {
@@ -5227,7 +5227,7 @@
       "timestamp": 0,
       "responseId": "g3",
       "rawStopReason": "STOP",
-      "durationMs": 3
+      "durationMs": 2
      }
     },
     {
@@ -5272,7 +5272,7 @@
       "timestamp": 0,
       "responseId": "g3",
       "rawStopReason": "STOP",
-      "durationMs": 3
+      "durationMs": 2
      }
     },
     {
@@ -5317,7 +5317,7 @@
       "timestamp": 0,
       "responseId": "g3",
       "rawStopReason": "STOP",
-      "durationMs": 3
+      "durationMs": 2
      }
     },
     {
@@ -5362,7 +5362,7 @@
       "timestamp": 0,
       "responseId": "g3",
       "rawStopReason": "STOP",
-      "durationMs": 3
+      "durationMs": 2
      }
     },
     {

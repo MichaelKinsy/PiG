@@ -2207,7 +2207,7 @@ id = "tui/markdown/render-token"
 upstream_id = "render:packages/tui/src/components/markdown.ts#Markdown.renderToken"
 family = "tui-components"
 kind = "markdown-render"
-claim = "each block (heading with its depth styling, paragraph, fenced and indented code, block quote, rule, list, table, definition, space) renders as Pi does, including the blank row after a block when another block follows, the rows a quote or a code border adds (a quote narrower than three columns renders its blocks without a border and without wrapping them again, Pi 8a2ebd385), and the rows reference definitions leave"
+claim = "each block (heading with its depth styling, paragraph, fenced and indented code, block quote, rule, list, table, definition, space) renders as Pi does, including the blank row after a block when another block follows, the rows a quote or a code border adds (a quote narrower than three columns renders its blocks without a border and without wrapping them again, Pi 8a2ebd385), and the rows reference definitions leave Display math whose rendered layout has a row wider than the content width renders as its raw source, wrapped, because a two-dimensional layout cannot be wrapped row by row (Pi cd1ea342)."
 status = "ported"
 pig_targets = [
   "tui/markdown.go#renderContent"
@@ -2215,6 +2215,8 @@ pig_targets = [
 evidence = [
   "tui/markdown_render_oracle_test.go#TestMarkdownRenderMatchesPi",
   "tui/markdown_upstream_test.go#TestMarkdownRendersQuotesNestedDeeperThanTheWidthAllowsWithoutExploding",
+  "tui/markdown_latex_width_test.go#TestMarkdownDisplayMathWiderThanTheContentWidthFallsBackToRawSource",
+  "tui/markdown_latex_width_test.go#TestMarkdownDisplayMathWidthFallbackMatchesPi",
   "test/parity/scenarios/tui-components/05-markdown-text-fits.toml",
   "test/parity/scenarios/tui-components/16-markdown-user-components.toml"
 ]
@@ -2223,7 +2225,7 @@ evidence = [
 path = "packages/tui/src/components/markdown.ts"
 start = "\tprivate renderToken("
 end = "\n\tprivate renderInlineTokens("
-sha256 = "75b4b9e4bbef726797e7e011c9b71923034a1acea8a93ed0acbc5ff7064134e8"
+sha256 = "c8e1a62605fe4c946c2446237234ff9486a7618d138d43e7476c6468a54a0f2e"
 keybindings = []
 
 [[contract]]

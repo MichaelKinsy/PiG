@@ -1,6 +1,6 @@
 {
-  "piVersion": "1.4.0+b3a29f11",
-  "node": "v24.19.0",
+  "piVersion": "1.4.0+e7a0df27",
+  "node": "v24.22.1",
   "scenarios": [
     {
       "name": "oneChunk",
@@ -191,7 +191,7 @@
         "stopReason": "toolUse",
         "responseId": "r1",
         "rawStopReason": "tool_calls",
-        "durationMs": 38
+        "durationMs": 26
       }
     },
     {
@@ -1365,7 +1365,7 @@
         "stopReason": "toolUse",
         "responseId": "r1",
         "rawStopReason": "tool_calls",
-        "durationMs": 2
+        "durationMs": 1
       }
     },
     {
@@ -1754,7 +1754,7 @@
         "stopReason": "toolUse",
         "responseId": "r1",
         "rawStopReason": "tool_calls",
-        "durationMs": 1
+        "durationMs": 0
       }
     },
     {
@@ -1876,7 +1876,7 @@
         "stopReason": "error",
         "responseId": "r1",
         "errorMessage": "Mistral stream ended without a finish reason",
-        "durationMs": 1
+        "durationMs": 0
       }
     },
     {
@@ -2068,7 +2068,7 @@
         "stopReason": "toolUse",
         "responseId": "r1",
         "rawStopReason": "tool_calls",
-        "durationMs": 1
+        "durationMs": 0
       }
     },
     {
@@ -2260,7 +2260,7 @@
         "stopReason": "toolUse",
         "responseId": "r1",
         "rawStopReason": "tool_calls",
-        "durationMs": 1
+        "durationMs": 0
       }
     },
     {
@@ -2452,7 +2452,7 @@
         "stopReason": "toolUse",
         "responseId": "r1",
         "rawStopReason": "tool_calls",
-        "durationMs": 1
+        "durationMs": 0
       }
     },
     {
@@ -2649,7 +2649,7 @@
         "stopReason": "toolUse",
         "responseId": "r1",
         "rawStopReason": "tool_calls",
-        "durationMs": 1
+        "durationMs": 0
       }
     },
     {
@@ -3254,7 +3254,7 @@
         "stopReason": "error",
         "responseId": "r1",
         "errorMessage": "Mistral stream ended without a finish reason",
-        "durationMs": 1
+        "durationMs": 0
       }
     },
     {
@@ -3450,7 +3450,7 @@
         "stopReason": "toolUse",
         "responseId": "r1",
         "rawStopReason": "tool_calls",
-        "durationMs": 0
+        "durationMs": 1
       }
     },
     {
@@ -4249,7 +4249,7 @@
         "stopReason": "error",
         "responseId": "r1",
         "errorMessage": "Cannot read properties of undefined (reading 'content')",
-        "durationMs": 1
+        "durationMs": 0
       }
     },
     {
@@ -4496,7 +4496,7 @@
         "stopReason": "error",
         "responseId": "r1",
         "errorMessage": "Cannot read properties of null (reading 'type')",
-        "durationMs": 1
+        "durationMs": 0
       }
     },
     {
@@ -4605,7 +4605,7 @@
         "stopReason": "error",
         "responseId": "r1",
         "errorMessage": "body failed",
-        "durationMs": 1
+        "durationMs": 0
       }
     },
     {

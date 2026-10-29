@@ -7210,8 +7210,8 @@
         "integrity": "sha512-hQM/C4+1w8rHYACzDDf+0vQMnEnpzIop1tptIERVgR3ZeT/hHSzBNG8PaWPgxWQjqSeKCyBZSyp8uTT6eKK1pQ=="
       },
       "source": "dist/models.generated.js",
-      "sourceSha256": "4b56a81c5f5592c3253e6d9ed233b0ca5913d8cb6897a0b368dc08802b6269bd",
-      "sha256": "4b56a81c5f5592c3253e6d9ed233b0ca5913d8cb6897a0b368dc08802b6269bd"
+      "sourceSha256": "1b545cecb8f2d983238a8dec9e2ef31e9a7f60ace91ab9c1fea4369cfb9f9563",
+      "sha256": "1b545cecb8f2d983238a8dec9e2ef31e9a7f60ace91ab9c1fea4369cfb9f9563"
     },
     {
       "path": "pi-dist/pi-ai/models.js",
@@ -7265,8 +7265,8 @@
         "integrity": "sha512-hQM/C4+1w8rHYACzDDf+0vQMnEnpzIop1tptIERVgR3ZeT/hHSzBNG8PaWPgxWQjqSeKCyBZSyp8uTT6eKK1pQ=="
       },
       "source": "dist/providers/amazon-bedrock.models.js",
-      "sourceSha256": "1e4b83835e8952d59b501ddbc04e8b8e15fedfb94a183c0595643a6923abdd28",
-      "sha256": "1e4b83835e8952d59b501ddbc04e8b8e15fedfb94a183c0595643a6923abdd28"
+      "sourceSha256": "74d55ec86b8b897dd748a2f8f2fce75a539434a723352f16279d512b0487684a",
+      "sha256": "74d55ec86b8b897dd748a2f8f2fce75a539434a723352f16279d512b0487684a"
     },
     {
       "path": "pi-dist/pi-ai/providers/ant-ling.js",
@@ -7287,8 +7287,8 @@
         "integrity": "sha512-hQM/C4+1w8rHYACzDDf+0vQMnEnpzIop1tptIERVgR3ZeT/hHSzBNG8PaWPgxWQjqSeKCyBZSyp8uTT6eKK1pQ=="
       },
       "source": "dist/providers/ant-ling.models.js",
-      "sourceSha256": "349aee512346a1d36d8b57294be3e31c05b6ff31f4a301b1691e16eef5ea6767",
-      "sha256": "349aee512346a1d36d8b57294be3e31c05b6ff31f4a301b1691e16eef5ea6767"
+      "sourceSha256": "84c0dcd8574d4afe72d871008a89de56274dc258696ab42d1077a768a7c7b075",
+      "sha256": "84c0dcd8574d4afe72d871008a89de56274dc258696ab42d1077a768a7c7b075"
     },
     {
       "path": "pi-dist/pi-ai/providers/anthropic.js",
@@ -7309,8 +7309,8 @@
         "integrity": "sha512-hQM/C4+1w8rHYACzDDf+0vQMnEnpzIop1tptIERVgR3ZeT/hHSzBNG8PaWPgxWQjqSeKCyBZSyp8uTT6eKK1pQ=="
       },
       "source": "dist/providers/anthropic.models.js",
-      "sourceSha256": "415abca5324e43073ee30cee8ad01c2b4150f93440a439c7c7a7933424dd5f7e",
-      "sha256": "415abca5324e43073ee30cee8ad01c2b4150f93440a439c7c7a7933424dd5f7e"
+      "sourceSha256": "ce70bb4ce4064362823edb4934a89f9f41c06fe385b61de08e1aa948392e47e0",
+      "sha256": "ce70bb4ce4064362823edb4934a89f9f41c06fe385b61de08e1aa948392e47e0"
     },
     {
       "path": "pi-dist/pi-ai/providers/azure.js",
@@ -7331,8 +7331,8 @@
         "integrity": "sha512-hQM/C4+1w8rHYACzDDf+0vQMnEnpzIop1tptIERVgR3ZeT/hHSzBNG8PaWPgxWQjqSeKCyBZSyp8uTT6eKK1pQ=="
       },
       "source": "dist/providers/azure.models.js",
-      "sourceSha256": "9fc05f302b7a2d1b045a8c3b1f9d93fdb7e92bf15e829120e002af3cb1c83162",
-      "sha256": "9fc05f302b7a2d1b045a8c3b1f9d93fdb7e92bf15e829120e002af3cb1c83162"
+      "sourceSha256": "84d521cf42c0fad8730bc457cb785722176b096df9e6129407772d468f732b24",
+      "sha256": "84d521cf42c0fad8730bc457cb785722176b096df9e6129407772d468f732b24"
     },
     {
       "path": "pi-dist/pi-ai/providers/baseten.js",
@@ -7353,8 +7353,8 @@
         "integrity": "sha512-hQM/C4+1w8rHYACzDDf+0vQMnEnpzIop1tptIERVgR3ZeT/hHSzBNG8PaWPgxWQjqSeKCyBZSyp8uTT6eKK1pQ=="
       },
       "source": "dist/providers/baseten.models.js",
-      "sourceSha256": "b4d07108692210546d56568a666aead9bc4a713c8ee504caaafca14b9273b3c0",
-      "sha256": "b4d07108692210546d56568a666aead9bc4a713c8ee504caaafca14b9273b3c0"
+      "sourceSha256": "69535143a7b40eb8647db1660711648325987b664a0a8d7cbf044c5b5c942511",
+      "sha256": "69535143a7b40eb8647db1660711648325987b664a0a8d7cbf044c5b5c942511"
     },
     {
       "path": "pi-dist/pi-ai/providers/cerebras.js",
@@ -7375,8 +7375,8 @@
         "integrity": "sha512-hQM/C4+1w8rHYACzDDf+0vQMnEnpzIop1tptIERVgR3ZeT/hHSzBNG8PaWPgxWQjqSeKCyBZSyp8uTT6eKK1pQ=="
       },
       "source": "dist/providers/cerebras.models.js",
-      "sourceSha256": "711f7a401be91b8a9ed63493dec577f4d4725f9cfa3bb3251adc10040972bc35",
-      "sha256": "711f7a401be91b8a9ed63493dec577f4d4725f9cfa3bb3251adc10040972bc35"
+      "sourceSha256": "b36806464fdc12d50352b11adf5d613b08e06d0d0f53e404fb92ae7d92c885c8",
+      "sha256": "b36806464fdc12d50352b11adf5d613b08e06d0d0f53e404fb92ae7d92c885c8"
     },
     {
       "path": "pi-dist/pi-ai/providers/cloudflare-ai-gateway.js",
@@ -7397,8 +7397,8 @@
         "integrity": "sha512-hQM/C4+1w8rHYACzDDf+0vQMnEnpzIop1tptIERVgR3ZeT/hHSzBNG8PaWPgxWQjqSeKCyBZSyp8uTT6eKK1pQ=="
       },
       "source": "dist/providers/cloudflare-ai-gateway.models.js",
-      "sourceSha256": "18ccf3a6a5f7b31985bd97f7ed91be98f471f92519182d8a7ea9b559fe32b77c",
-      "sha256": "18ccf3a6a5f7b31985bd97f7ed91be98f471f92519182d8a7ea9b559fe32b77c"
+      "sourceSha256": "da583d68cdbe2efd3db873e8d75218260b581a7f2c4264bc5fe39d66ed00ffb2",
+      "sha256": "da583d68cdbe2efd3db873e8d75218260b581a7f2c4264bc5fe39d66ed00ffb2"
     },
     {
       "path": "pi-dist/pi-ai/providers/cloudflare-auth.js",
@@ -7441,8 +7441,8 @@
         "integrity": "sha512-hQM/C4+1w8rHYACzDDf+0vQMnEnpzIop1tptIERVgR3ZeT/hHSzBNG8PaWPgxWQjqSeKCyBZSyp8uTT6eKK1pQ=="
       },
       "source": "dist/providers/cloudflare-workers-ai.models.js",
-      "sourceSha256": "6cc7dda625cb181225966377ecdc8d506c1067ea31f6bbc595411aeb7fd2e67c",
-      "sha256": "6cc7dda625cb181225966377ecdc8d506c1067ea31f6bbc595411aeb7fd2e67c"
+      "sourceSha256": "26cc6745c56393030dac55414f0a04d6f48500c21f269dcbcc15cb7cbf13a72a",
+      "sha256": "26cc6745c56393030dac55414f0a04d6f48500c21f269dcbcc15cb7cbf13a72a"
     },
     {
       "path": "pi-dist/pi-ai/providers/compat-schema.js",
@@ -7464,8 +7464,8 @@
         "integrity": "sha512-hQM/C4+1w8rHYACzDDf+0vQMnEnpzIop1tptIERVgR3ZeT/hHSzBNG8PaWPgxWQjqSeKCyBZSyp8uTT6eKK1pQ=="
       },
       "source": "dist/providers/data/.manifest.json",
-      "sourceSha256": "6e4ba8e8eda188882edef0e9d369e4bbb7355d6d1978ccce277f49ac28814397",
-      "sha256": "6e4ba8e8eda188882edef0e9d369e4bbb7355d6d1978ccce277f49ac28814397"
+      "sourceSha256": "8b4a3fbb81fbf43bee432a9f98243212d7282b9c2b64e13a04cf878bd01ce713",
+      "sha256": "8b4a3fbb81fbf43bee432a9f98243212d7282b9c2b64e13a04cf878bd01ce713"
     },
     {
       "path": "pi-dist/pi-ai/providers/data/amazon-bedrock.json",
@@ -7475,8 +7475,8 @@
         "integrity": "sha512-hQM/C4+1w8rHYACzDDf+0vQMnEnpzIop1tptIERVgR3ZeT/hHSzBNG8PaWPgxWQjqSeKCyBZSyp8uTT6eKK1pQ=="
       },
       "source": "dist/providers/data/amazon-bedrock.json",
-      "sourceSha256": "a089c4c885771332642d8f7e4777d83ce8c916a4b716ba33069aa6bf9add76a5",
-      "sha256": "a089c4c885771332642d8f7e4777d83ce8c916a4b716ba33069aa6bf9add76a5"
+      "sourceSha256": "7688f295f84a50aa390255a68c2e8fdc7ec0768f5737ab40358844d597e89803",
+      "sha256": "7688f295f84a50aa390255a68c2e8fdc7ec0768f5737ab40358844d597e89803"
     },
     {
       "path": "pi-dist/pi-ai/providers/data/ant-ling.json",
@@ -7497,8 +7497,8 @@
         "integrity": "sha512-hQM/C4+1w8rHYACzDDf+0vQMnEnpzIop1tptIERVgR3ZeT/hHSzBNG8PaWPgxWQjqSeKCyBZSyp8uTT6eKK1pQ=="
       },
       "source": "dist/providers/data/anthropic.json",
-      "sourceSha256": "91f5da01452c7746645d3405bc91e09f849e4e4687c7c7ff22d8976eafe64b87",
-      "sha256": "91f5da01452c7746645d3405bc91e09f849e4e4687c7c7ff22d8976eafe64b87"
+      "sourceSha256": "e462beb2e6d227b4dd1a8df22152cdebc9f3768d5dcf0939e1bf35e359129753",
+      "sha256": "e462beb2e6d227b4dd1a8df22152cdebc9f3768d5dcf0939e1bf35e359129753"
     },
     {
       "path": "pi-dist/pi-ai/providers/data/azure.json",
@@ -7508,8 +7508,8 @@
         "integrity": "sha512-hQM/C4+1w8rHYACzDDf+0vQMnEnpzIop1tptIERVgR3ZeT/hHSzBNG8PaWPgxWQjqSeKCyBZSyp8uTT6eKK1pQ=="
       },
       "source": "dist/providers/data/azure.json",
-      "sourceSha256": "97d8d180deb0ca45db08a622497fe18b3687e41c15cd60d140a3ed2320d76ea4",
-      "sha256": "97d8d180deb0ca45db08a622497fe18b3687e41c15cd60d140a3ed2320d76ea4"
+      "sourceSha256": "f95a8325f93825ab21d1d83fd2aff580f4d5cfa1a537c3108cd5ddb36f26e7fc",
+      "sha256": "f95a8325f93825ab21d1d83fd2aff580f4d5cfa1a537c3108cd5ddb36f26e7fc"
     },
     {
       "path": "pi-dist/pi-ai/providers/data/baseten.json",
@@ -7519,8 +7519,8 @@
         "integrity": "sha512-hQM/C4+1w8rHYACzDDf+0vQMnEnpzIop1tptIERVgR3ZeT/hHSzBNG8PaWPgxWQjqSeKCyBZSyp8uTT6eKK1pQ=="
       },
       "source": "dist/providers/data/baseten.json",
-      "sourceSha256": "5bd3c98c61769388b3724368ef964d16b7a58e41a6edcf4ebceb9d4ac0a21d3b",
-      "sha256": "5bd3c98c61769388b3724368ef964d16b7a58e41a6edcf4ebceb9d4ac0a21d3b"
+      "sourceSha256": "db68a67a9aff8ad2cc05be9fc935dfe0c64cf72c46cca04bb2f2631f42f7fe80",
+      "sha256": "db68a67a9aff8ad2cc05be9fc935dfe0c64cf72c46cca04bb2f2631f42f7fe80"
     },
     {
       "path": "pi-dist/pi-ai/providers/data/cerebras.json",
@@ -7541,8 +7541,8 @@
         "integrity": "sha512-hQM/C4+1w8rHYACzDDf+0vQMnEnpzIop1tptIERVgR3ZeT/hHSzBNG8PaWPgxWQjqSeKCyBZSyp8uTT6eKK1pQ=="
       },
       "source": "dist/providers/data/cloudflare-ai-gateway.json",
-      "sourceSha256": "6c4f293c27f26a7b005fdd2ea3059668836a5c21097d7df1a03ec03ca540c091",
-      "sha256": "6c4f293c27f26a7b005fdd2ea3059668836a5c21097d7df1a03ec03ca540c091"
+      "sourceSha256": "89736349f607dbe9680f7cc6431ba53302726e8984209de98f899246e63dcefb",
+      "sha256": "89736349f607dbe9680f7cc6431ba53302726e8984209de98f899246e63dcefb"
     },
     {
       "path": "pi-dist/pi-ai/providers/data/cloudflare-workers-ai.json",
@@ -7552,8 +7552,8 @@
         "integrity": "sha512-hQM/C4+1w8rHYACzDDf+0vQMnEnpzIop1tptIERVgR3ZeT/hHSzBNG8PaWPgxWQjqSeKCyBZSyp8uTT6eKK1pQ=="
       },
       "source": "dist/providers/data/cloudflare-workers-ai.json",
-      "sourceSha256": "36c80c7d7606465001706d5b5d8612d825d8c501d20efb994599960693d37d43",
-      "sha256": "36c80c7d7606465001706d5b5d8612d825d8c501d20efb994599960693d37d43"
+      "sourceSha256": "0dc5eda87ff6de3ee75ee6d547a60162319bb2d51ed09b1e7d47d8ae9ef8548e",
+      "sha256": "0dc5eda87ff6de3ee75ee6d547a60162319bb2d51ed09b1e7d47d8ae9ef8548e"
     },
     {
       "path": "pi-dist/pi-ai/providers/data/deepseek.json",
@@ -7574,8 +7574,8 @@
         "integrity": "sha512-hQM/C4+1w8rHYACzDDf+0vQMnEnpzIop1tptIERVgR3ZeT/hHSzBNG8PaWPgxWQjqSeKCyBZSyp8uTT6eKK1pQ=="
       },
       "source": "dist/providers/data/fireworks.json",
-      "sourceSha256": "dae512231a827203db11907889cf235fda8ea4ee10447d6376d83ed712b372a2",
-      "sha256": "dae512231a827203db11907889cf235fda8ea4ee10447d6376d83ed712b372a2"
+      "sourceSha256": "4c8b4942ce08b55df711ac8b1eea65bbf28135b2bf2f475c95f11b2e7aa1012d",
+      "sha256": "4c8b4942ce08b55df711ac8b1eea65bbf28135b2bf2f475c95f11b2e7aa1012d"
     },
     {
       "path": "pi-dist/pi-ai/providers/data/github-copilot.json",
@@ -7585,8 +7585,8 @@
         "integrity": "sha512-hQM/C4+1w8rHYACzDDf+0vQMnEnpzIop1tptIERVgR3ZeT/hHSzBNG8PaWPgxWQjqSeKCyBZSyp8uTT6eKK1pQ=="
       },
       "source": "dist/providers/data/github-copilot.json",
-      "sourceSha256": "c682ecc9056e9b5b831cd413fdb59a6313492c5a509a7bcf52bc0b9a93c0da6f",
-      "sha256": "c682ecc9056e9b5b831cd413fdb59a6313492c5a509a7bcf52bc0b9a93c0da6f"
+      "sourceSha256": "85330f133dac9017c97ad72dd2b356f3f03992c7ca3d5b0543060cbe13dcd34d",
+      "sha256": "85330f133dac9017c97ad72dd2b356f3f03992c7ca3d5b0543060cbe13dcd34d"
     },
     {
       "path": "pi-dist/pi-ai/providers/data/google-vertex.json",
@@ -7596,8 +7596,8 @@
         "integrity": "sha512-hQM/C4+1w8rHYACzDDf+0vQMnEnpzIop1tptIERVgR3ZeT/hHSzBNG8PaWPgxWQjqSeKCyBZSyp8uTT6eKK1pQ=="
       },
       "source": "dist/providers/data/google-vertex.json",
-      "sourceSha256": "564d692a4292ef12e98c8ec056a39948ea64e10851f5ddaaebcc37b585545231",
-      "sha256": "564d692a4292ef12e98c8ec056a39948ea64e10851f5ddaaebcc37b585545231"
+      "sourceSha256": "bc32e24bfd8ab0caedda4c11a7527a1dcc7f783ff5326ce4c72a13bd7ab47d9b",
+      "sha256": "bc32e24bfd8ab0caedda4c11a7527a1dcc7f783ff5326ce4c72a13bd7ab47d9b"
     },
     {
       "path": "pi-dist/pi-ai/providers/data/google.json",
@@ -7607,8 +7607,8 @@
         "integrity": "sha512-hQM/C4+1w8rHYACzDDf+0vQMnEnpzIop1tptIERVgR3ZeT/hHSzBNG8PaWPgxWQjqSeKCyBZSyp8uTT6eKK1pQ=="
       },
       "source": "dist/providers/data/google.json",
-      "sourceSha256": "b61fb0e27da5be60e1112e46955c5923656cb4d62bb221f834a9463d764ef5de",
-      "sha256": "b61fb0e27da5be60e1112e46955c5923656cb4d62bb221f834a9463d764ef5de"
+      "sourceSha256": "61a36b42e1436b84c8ed8d738ecb1a2a9d9267f876f7c612407a349b7ca4c301",
+      "sha256": "61a36b42e1436b84c8ed8d738ecb1a2a9d9267f876f7c612407a349b7ca4c301"
     },
     {
       "path": "pi-dist/pi-ai/providers/data/groq.json",
@@ -7629,8 +7629,8 @@
         "integrity": "sha512-hQM/C4+1w8rHYACzDDf+0vQMnEnpzIop1tptIERVgR3ZeT/hHSzBNG8PaWPgxWQjqSeKCyBZSyp8uTT6eKK1pQ=="
       },
       "source": "dist/providers/data/huggingface.json",
-      "sourceSha256": "209cdcf205961ef2ff203486da614232a86a069ebe0e98266189a14a235fac8f",
-      "sha256": "209cdcf205961ef2ff203486da614232a86a069ebe0e98266189a14a235fac8f"
+      "sourceSha256": "cf34e226723c542afc4d024a1b1270b911738410dc5cf706fef5d9d4a0e08171",
+      "sha256": "cf34e226723c542afc4d024a1b1270b911738410dc5cf706fef5d9d4a0e08171"
     },
     {
       "path": "pi-dist/pi-ai/providers/data/kimi-coding.json",
@@ -7640,8 +7640,8 @@
         "integrity": "sha512-hQM/C4+1w8rHYACzDDf+0vQMnEnpzIop1tptIERVgR3ZeT/hHSzBNG8PaWPgxWQjqSeKCyBZSyp8uTT6eKK1pQ=="
       },
       "source": "dist/providers/data/kimi-coding.json",
-      "sourceSha256": "e6d5bce9045cf533ca9e0d563a7d30a6a1ed48c89a0f539ed4c9d3ac53d4ac8b",
-      "sha256": "e6d5bce9045cf533ca9e0d563a7d30a6a1ed48c89a0f539ed4c9d3ac53d4ac8b"
+      "sourceSha256": "04e7914391e8e986d04b5cc8f84c49267d148a53a2d92bf968b7570dd8ff09b9",
+      "sha256": "04e7914391e8e986d04b5cc8f84c49267d148a53a2d92bf968b7570dd8ff09b9"
     },
     {
       "path": "pi-dist/pi-ai/providers/data/meta.json",
@@ -7684,8 +7684,8 @@
         "integrity": "sha512-hQM/C4+1w8rHYACzDDf+0vQMnEnpzIop1tptIERVgR3ZeT/hHSzBNG8PaWPgxWQjqSeKCyBZSyp8uTT6eKK1pQ=="
       },
       "source": "dist/providers/data/mistral.json",
-      "sourceSha256": "8b6dbb21d6794d3ef606147ac7b05c355748a640224da9072f1081a908fe444f",
-      "sha256": "8b6dbb21d6794d3ef606147ac7b05c355748a640224da9072f1081a908fe444f"
+      "sourceSha256": "f97d5a09edd370f2e8e731ba9880d793e8b7a00bcdee027c88ef3df56fe18cf6",
+      "sha256": "f97d5a09edd370f2e8e731ba9880d793e8b7a00bcdee027c88ef3df56fe18cf6"
     },
     {
       "path": "pi-dist/pi-ai/providers/data/moonshotai-cn.json",
@@ -7717,8 +7717,8 @@
         "integrity": "sha512-hQM/C4+1w8rHYACzDDf+0vQMnEnpzIop1tptIERVgR3ZeT/hHSzBNG8PaWPgxWQjqSeKCyBZSyp8uTT6eKK1pQ=="
       },
       "source": "dist/providers/data/nvidia.json",
-      "sourceSha256": "6f66192c21788b4555f7e77bd7c14201172edf355be8d318f96ff8d0d6921054",
-      "sha256": "6f66192c21788b4555f7e77bd7c14201172edf355be8d318f96ff8d0d6921054"
+      "sourceSha256": "e030898fb1d1778b85c5b86fdde95b28e4dd75f36302f50bcff8bf2941f919b1",
+      "sha256": "e030898fb1d1778b85c5b86fdde95b28e4dd75f36302f50bcff8bf2941f919b1"
     },
     {
       "path": "pi-dist/pi-ai/providers/data/openai-codex.json",
@@ -7739,8 +7739,8 @@
         "integrity": "sha512-hQM/C4+1w8rHYACzDDf+0vQMnEnpzIop1tptIERVgR3ZeT/hHSzBNG8PaWPgxWQjqSeKCyBZSyp8uTT6eKK1pQ=="
       },
       "source": "dist/providers/data/openai.json",
-      "sourceSha256": "176163a9a01a1b0cb699571aa692468cb29a45bce6be9aad1b43aba1a8edcf6e",
-      "sha256": "176163a9a01a1b0cb699571aa692468cb29a45bce6be9aad1b43aba1a8edcf6e"
+      "sourceSha256": "df2fe1f312051bbe29801ef903ab370c701a74a680f1370e96eb465eacd1d82d",
+      "sha256": "df2fe1f312051bbe29801ef903ab370c701a74a680f1370e96eb465eacd1d82d"
     },
     {
       "path": "pi-dist/pi-ai/providers/data/opencode-go.json",
@@ -7750,8 +7750,8 @@
         "integrity": "sha512-hQM/C4+1w8rHYACzDDf+0vQMnEnpzIop1tptIERVgR3ZeT/hHSzBNG8PaWPgxWQjqSeKCyBZSyp8uTT6eKK1pQ=="
       },
       "source": "dist/providers/data/opencode-go.json",
-      "sourceSha256": "103d43bb9560eb38dfa0c33b6569a69e5f5b5ddcab08a04b24191001d9f0f91e",
-      "sha256": "103d43bb9560eb38dfa0c33b6569a69e5f5b5ddcab08a04b24191001d9f0f91e"
+      "sourceSha256": "daed1626c48d9cec6da77f53a163aec917d5d5fc8d6e4d53c23f448f99463328",
+      "sha256": "daed1626c48d9cec6da77f53a163aec917d5d5fc8d6e4d53c23f448f99463328"
     },
     {
       "path": "pi-dist/pi-ai/providers/data/opencode.json",
@@ -7761,8 +7761,8 @@
         "integrity": "sha512-hQM/C4+1w8rHYACzDDf+0vQMnEnpzIop1tptIERVgR3ZeT/hHSzBNG8PaWPgxWQjqSeKCyBZSyp8uTT6eKK1pQ=="
       },
       "source": "dist/providers/data/opencode.json",
-      "sourceSha256": "f468fdcd3fd74600268d1cd3c5bff8c972c811495b86a67da4673ef22f765076",
-      "sha256": "f468fdcd3fd74600268d1cd3c5bff8c972c811495b86a67da4673ef22f765076"
+      "sourceSha256": "89049678c12b553fd44d3b760514ead39ebc6fa68d84b135db69c133ab443bc9",
+      "sha256": "89049678c12b553fd44d3b760514ead39ebc6fa68d84b135db69c133ab443bc9"
     },
     {
       "path": "pi-dist/pi-ai/providers/data/openrouter.json",
@@ -7772,8 +7772,8 @@
         "integrity": "sha512-hQM/C4+1w8rHYACzDDf+0vQMnEnpzIop1tptIERVgR3ZeT/hHSzBNG8PaWPgxWQjqSeKCyBZSyp8uTT6eKK1pQ=="
       },
       "source": "dist/providers/data/openrouter.json",
-      "sourceSha256": "8323ec72dd22a4203ce0776f2edf1b049f7c1ad4932e033fc5e87010b1f201f5",
-      "sha256": "8323ec72dd22a4203ce0776f2edf1b049f7c1ad4932e033fc5e87010b1f201f5"
+      "sourceSha256": "9f4113062d5c817dd27bbd4db089e6b8a4176af230c4164bcfa7afb67b9b2d48",
+      "sha256": "9f4113062d5c817dd27bbd4db089e6b8a4176af230c4164bcfa7afb67b9b2d48"
     },
     {
       "path": "pi-dist/pi-ai/providers/data/qwen-token-plan-cn.json",
@@ -7783,8 +7783,8 @@
         "integrity": "sha512-hQM/C4+1w8rHYACzDDf+0vQMnEnpzIop1tptIERVgR3ZeT/hHSzBNG8PaWPgxWQjqSeKCyBZSyp8uTT6eKK1pQ=="
       },
       "source": "dist/providers/data/qwen-token-plan-cn.json",
-      "sourceSha256": "64427a6adeb3e7dd1857d68bef9bb12097632b646ed151b740e209143e31341e",
-      "sha256": "64427a6adeb3e7dd1857d68bef9bb12097632b646ed151b740e209143e31341e"
+      "sourceSha256": "80824536f0c3cd83ab27424df2d664738cbe3f971b4e568a625432288fa53229",
+      "sha256": "80824536f0c3cd83ab27424df2d664738cbe3f971b4e568a625432288fa53229"
     },
     {
       "path": "pi-dist/pi-ai/providers/data/qwen-token-plan-individual.json",
@@ -7794,8 +7794,8 @@
         "integrity": "sha512-hQM/C4+1w8rHYACzDDf+0vQMnEnpzIop1tptIERVgR3ZeT/hHSzBNG8PaWPgxWQjqSeKCyBZSyp8uTT6eKK1pQ=="
       },
       "source": "dist/providers/data/qwen-token-plan-individual.json",
-      "sourceSha256": "0fb7cf64faf39d1a3b0a884210a86c87084b805eda15644f5f39293287b959dd",
-      "sha256": "0fb7cf64faf39d1a3b0a884210a86c87084b805eda15644f5f39293287b959dd"
+      "sourceSha256": "7d416a2af46d5ad5d7872f8edfa7727af4392827a5b77618ce89a3786628492a",
+      "sha256": "7d416a2af46d5ad5d7872f8edfa7727af4392827a5b77618ce89a3786628492a"
     },
     {
       "path": "pi-dist/pi-ai/providers/data/qwen-token-plan.json",
@@ -7805,8 +7805,8 @@
         "integrity": "sha512-hQM/C4+1w8rHYACzDDf+0vQMnEnpzIop1tptIERVgR3ZeT/hHSzBNG8PaWPgxWQjqSeKCyBZSyp8uTT6eKK1pQ=="
       },
       "source": "dist/providers/data/qwen-token-plan.json",
-      "sourceSha256": "37b9a76c54090228d1026a8f0fcb4d304b00d64b1a3a94cb2ae6e677d2c52b13",
-      "sha256": "37b9a76c54090228d1026a8f0fcb4d304b00d64b1a3a94cb2ae6e677d2c52b13"
+      "sourceSha256": "0630bf7fea9d8579c7ac990e32c40c3685f9db20b6dbfaf745b361fe5203113c",
+      "sha256": "0630bf7fea9d8579c7ac990e32c40c3685f9db20b6dbfaf745b361fe5203113c"
     },
     {
       "path": "pi-dist/pi-ai/providers/data/radius.json",
@@ -7816,8 +7816,8 @@
         "integrity": "sha512-hQM/C4+1w8rHYACzDDf+0vQMnEnpzIop1tptIERVgR3ZeT/hHSzBNG8PaWPgxWQjqSeKCyBZSyp8uTT6eKK1pQ=="
       },
       "source": "dist/providers/data/radius.json",
-      "sourceSha256": "19984e5470210b16a86ea505ac46b875360aec46c2c95b79c70f2dff62e526d8",
-      "sha256": "19984e5470210b16a86ea505ac46b875360aec46c2c95b79c70f2dff62e526d8"
+      "sourceSha256": "a9bcc74b4a1ad2e01b6360d5f9197d802c18559a58be0ccd588662a01598368a",
+      "sha256": "a9bcc74b4a1ad2e01b6360d5f9197d802c18559a58be0ccd588662a01598368a"
     },
     {
       "path": "pi-dist/pi-ai/providers/data/together.json",
@@ -7827,8 +7827,8 @@
         "integrity": "sha512-hQM/C4+1w8rHYACzDDf+0vQMnEnpzIop1tptIERVgR3ZeT/hHSzBNG8PaWPgxWQjqSeKCyBZSyp8uTT6eKK1pQ=="
       },
       "source": "dist/providers/data/together.json",
-      "sourceSha256": "2a28fa1978c996ac0a7f0fc07f0c98a37dbf282afe77c0f141dab0c36791ef83",
-      "sha256": "2a28fa1978c996ac0a7f0fc07f0c98a37dbf282afe77c0f141dab0c36791ef83"
+      "sourceSha256": "ce03a702cf835ae1d3b4fd14ea4a1eae71a81224bc4a0826182f3f87b824aeee",
+      "sha256": "ce03a702cf835ae1d3b4fd14ea4a1eae71a81224bc4a0826182f3f87b824aeee"
     },
     {
       "path": "pi-dist/pi-ai/providers/data/typesafe.json",
@@ -7849,8 +7849,8 @@
         "integrity": "sha512-hQM/C4+1w8rHYACzDDf+0vQMnEnpzIop1tptIERVgR3ZeT/hHSzBNG8PaWPgxWQjqSeKCyBZSyp8uTT6eKK1pQ=="
       },
       "source": "dist/providers/data/vercel-ai-gateway.json",
-      "sourceSha256": "16603d264e7f1d25dacc0569d5af222b7dc0bc881fbb6e6ed5d38a37990cd887",
-      "sha256": "16603d264e7f1d25dacc0569d5af222b7dc0bc881fbb6e6ed5d38a37990cd887"
+      "sourceSha256": "d44cae1fe5fd500a981446cad2907b06a6dde7da184b1c317ba6bc70cb0ef48b",
+      "sha256": "d44cae1fe5fd500a981446cad2907b06a6dde7da184b1c317ba6bc70cb0ef48b"
     },
     {
       "path": "pi-dist/pi-ai/providers/data/xai.json",
@@ -7860,8 +7860,8 @@
         "integrity": "sha512-hQM/C4+1w8rHYACzDDf+0vQMnEnpzIop1tptIERVgR3ZeT/hHSzBNG8PaWPgxWQjqSeKCyBZSyp8uTT6eKK1pQ=="
       },
       "source": "dist/providers/data/xai.json",
-      "sourceSha256": "59f8a7bdf14e79ba1b0d0a37e56251bbf100420bdac7d6af5942508fdb990f11",
-      "sha256": "59f8a7bdf14e79ba1b0d0a37e56251bbf100420bdac7d6af5942508fdb990f11"
+      "sourceSha256": "db408985a02980ba9d30f359b4f394a7d088cc75e26bd4bef30aecb43077771b",
+      "sha256": "db408985a02980ba9d30f359b4f394a7d088cc75e26bd4bef30aecb43077771b"
     },
     {
       "path": "pi-dist/pi-ai/providers/data/xiaomi-token-plan-ams.json",
@@ -7871,8 +7871,8 @@
         "integrity": "sha512-hQM/C4+1w8rHYACzDDf+0vQMnEnpzIop1tptIERVgR3ZeT/hHSzBNG8PaWPgxWQjqSeKCyBZSyp8uTT6eKK1pQ=="
       },
       "source": "dist/providers/data/xiaomi-token-plan-ams.json",
-      "sourceSha256": "bfd33741da693bdb8e8ebd4e7b90c3e90820aa18432ad081a5a98db13c6bd296",
-      "sha256": "bfd33741da693bdb8e8ebd4e7b90c3e90820aa18432ad081a5a98db13c6bd296"
+      "sourceSha256": "34fe47b0a79fec7843a01d542cb64b736e651a3e6691cc851183e5ce3eae0118",
+      "sha256": "34fe47b0a79fec7843a01d542cb64b736e651a3e6691cc851183e5ce3eae0118"
     },
     {
       "path": "pi-dist/pi-ai/providers/data/xiaomi-token-plan-cn.json",
@@ -7882,8 +7882,8 @@
         "integrity": "sha512-hQM/C4+1w8rHYACzDDf+0vQMnEnpzIop1tptIERVgR3ZeT/hHSzBNG8PaWPgxWQjqSeKCyBZSyp8uTT6eKK1pQ=="
       },
       "source": "dist/providers/data/xiaomi-token-plan-cn.json",
-      "sourceSha256": "4b61d78feae3a926fda918c3fd3a9afaf2ca60c1bba0af8270a5398fb50a983e",
-      "sha256": "4b61d78feae3a926fda918c3fd3a9afaf2ca60c1bba0af8270a5398fb50a983e"
+      "sourceSha256": "e69f9704b450dbb34b6db61a7b224dab5e5a91a39af3e505ecca4db8bfdc04f0",
+      "sha256": "e69f9704b450dbb34b6db61a7b224dab5e5a91a39af3e505ecca4db8bfdc04f0"
     },
     {
       "path": "pi-dist/pi-ai/providers/data/xiaomi-token-plan-sgp.json",
@@ -7893,8 +7893,8 @@
         "integrity": "sha512-hQM/C4+1w8rHYACzDDf+0vQMnEnpzIop1tptIERVgR3ZeT/hHSzBNG8PaWPgxWQjqSeKCyBZSyp8uTT6eKK1pQ=="
       },
       "source": "dist/providers/data/xiaomi-token-plan-sgp.json",
-      "sourceSha256": "b05a197ce24fd69fc9440f4ba929984ac7a0fefbe8083268734b422e721987ec",
-      "sha256": "b05a197ce24fd69fc9440f4ba929984ac7a0fefbe8083268734b422e721987ec"
+      "sourceSha256": "fd28cc293208617127ff888873772b7b52160538caa07ca3af641f3208d3ad20",
+      "sha256": "fd28cc293208617127ff888873772b7b52160538caa07ca3af641f3208d3ad20"
     },
     {
       "path": "pi-dist/pi-ai/providers/data/xiaomi.json",
@@ -7904,8 +7904,8 @@
         "integrity": "sha512-hQM/C4+1w8rHYACzDDf+0vQMnEnpzIop1tptIERVgR3ZeT/hHSzBNG8PaWPgxWQjqSeKCyBZSyp8uTT6eKK1pQ=="
       },
       "source": "dist/providers/data/xiaomi.json",
-      "sourceSha256": "495b5fddf3c3ec8904fecc15c4c19536f4961dce7b51512b6909d2df2e739824",
-      "sha256": "495b5fddf3c3ec8904fecc15c4c19536f4961dce7b51512b6909d2df2e739824"
+      "sourceSha256": "65bc04b2ab6c9e97594de34bcea4ef7e45befd87901b4208d1ea4142b93f0561",
+      "sha256": "65bc04b2ab6c9e97594de34bcea4ef7e45befd87901b4208d1ea4142b93f0561"
     },
     {
       "path": "pi-dist/pi-ai/providers/data/zai-coding-cn.json",
@@ -7915,8 +7915,8 @@
         "integrity": "sha512-hQM/C4+1w8rHYACzDDf+0vQMnEnpzIop1tptIERVgR3ZeT/hHSzBNG8PaWPgxWQjqSeKCyBZSyp8uTT6eKK1pQ=="
       },
       "source": "dist/providers/data/zai-coding-cn.json",
-      "sourceSha256": "cc9e0768e726ef55d2b7af853ac5f3585dc72575932cb38840a3877d18736b78",
-      "sha256": "cc9e0768e726ef55d2b7af853ac5f3585dc72575932cb38840a3877d18736b78"
+      "sourceSha256": "b335901611ad018680e5bb7fe7ba12a9f1be28e9d1530c783cbd6f4567a29a92",
+      "sha256": "b335901611ad018680e5bb7fe7ba12a9f1be28e9d1530c783cbd6f4567a29a92"
     },
     {
       "path": "pi-dist/pi-ai/providers/data/zai.json",
@@ -7926,8 +7926,8 @@
         "integrity": "sha512-hQM/C4+1w8rHYACzDDf+0vQMnEnpzIop1tptIERVgR3ZeT/hHSzBNG8PaWPgxWQjqSeKCyBZSyp8uTT6eKK1pQ=="
       },
       "source": "dist/providers/data/zai.json",
-      "sourceSha256": "58e6642fdfb736f0b9a4a277c760c536a3cea66a030abbfb2615f7b2851d5c6f",
-      "sha256": "58e6642fdfb736f0b9a4a277c760c536a3cea66a030abbfb2615f7b2851d5c6f"
+      "sourceSha256": "08b29b02416c26f0c1a219492fa7f9b23bdb90ef4e9f7693800b9e670dcc5860",
+      "sha256": "08b29b02416c26f0c1a219492fa7f9b23bdb90ef4e9f7693800b9e670dcc5860"
     },
     {
       "path": "pi-dist/pi-ai/providers/deepseek.js",
@@ -7948,8 +7948,8 @@
         "integrity": "sha512-hQM/C4+1w8rHYACzDDf+0vQMnEnpzIop1tptIERVgR3ZeT/hHSzBNG8PaWPgxWQjqSeKCyBZSyp8uTT6eKK1pQ=="
       },
       "source": "dist/providers/deepseek.models.js",
-      "sourceSha256": "a0dd589c336e29eb1b8340afae64d06ae4a932b12f735dc717c944e55210f7e0",
-      "sha256": "a0dd589c336e29eb1b8340afae64d06ae4a932b12f735dc717c944e55210f7e0"
+      "sourceSha256": "96d23f1156d903719d87187a11616fa7f0f9463b4ca5484c5e6e36057d870d85",
+      "sha256": "96d23f1156d903719d87187a11616fa7f0f9463b4ca5484c5e6e36057d870d85"
     },
     {
       "path": "pi-dist/pi-ai/providers/faux.js",
@@ -7981,8 +7981,8 @@
         "integrity": "sha512-hQM/C4+1w8rHYACzDDf+0vQMnEnpzIop1tptIERVgR3ZeT/hHSzBNG8PaWPgxWQjqSeKCyBZSyp8uTT6eKK1pQ=="
       },
       "source": "dist/providers/fireworks.models.js",
-      "sourceSha256": "ab1ad909e8779db90c44fcbb2cba9138877e81b05ed58a77d6d36caad52fed71",
-      "sha256": "ab1ad909e8779db90c44fcbb2cba9138877e81b05ed58a77d6d36caad52fed71"
+      "sourceSha256": "9e04277934b19dcfbb3012782a7404c2007d49851fe4b9aa47532a8c1e37f527",
+      "sha256": "9e04277934b19dcfbb3012782a7404c2007d49851fe4b9aa47532a8c1e37f527"
     },
     {
       "path": "pi-dist/pi-ai/providers/github-copilot.js",
@@ -8003,8 +8003,8 @@
         "integrity": "sha512-hQM/C4+1w8rHYACzDDf+0vQMnEnpzIop1tptIERVgR3ZeT/hHSzBNG8PaWPgxWQjqSeKCyBZSyp8uTT6eKK1pQ=="
       },
       "source": "dist/providers/github-copilot.models.js",
-      "sourceSha256": "5d321843bc796f50f21c0cf5ecd33c20da80a7c7f1fff0e1a7914bb5ba727432",
-      "sha256": "5d321843bc796f50f21c0cf5ecd33c20da80a7c7f1fff0e1a7914bb5ba727432"
+      "sourceSha256": "e858fe39d313e7a235b16493c18d7f1e0538bc9349f8945eec0386bfcb1dcb7f",
+      "sha256": "e858fe39d313e7a235b16493c18d7f1e0538bc9349f8945eec0386bfcb1dcb7f"
     },
     {
       "path": "pi-dist/pi-ai/providers/google-vertex.js",
@@ -8025,8 +8025,8 @@
         "integrity": "sha512-hQM/C4+1w8rHYACzDDf+0vQMnEnpzIop1tptIERVgR3ZeT/hHSzBNG8PaWPgxWQjqSeKCyBZSyp8uTT6eKK1pQ=="
       },
       "source": "dist/providers/google-vertex.models.js",
-      "sourceSha256": "0b4d455573c557a8142b4d6601673e6571ee5148c504ac1ac5e90cd71e9d41de",
-      "sha256": "0b4d455573c557a8142b4d6601673e6571ee5148c504ac1ac5e90cd71e9d41de"
+      "sourceSha256": "8a84c8a4b4098399dbfa2f01bfb342cc07a7dab74a7ba9cfeed619dc153f9364",
+      "sha256": "8a84c8a4b4098399dbfa2f01bfb342cc07a7dab74a7ba9cfeed619dc153f9364"
     },
     {
       "path": "pi-dist/pi-ai/providers/google.js",
@@ -8047,8 +8047,8 @@
         "integrity": "sha512-hQM/C4+1w8rHYACzDDf+0vQMnEnpzIop1tptIERVgR3ZeT/hHSzBNG8PaWPgxWQjqSeKCyBZSyp8uTT6eKK1pQ=="
       },
       "source": "dist/providers/google.models.js",
-      "sourceSha256": "823134094bd5a7edb97be1f5e6a0034e6e1d89b6648ba06c74f12e0b369cd61c",
-      "sha256": "823134094bd5a7edb97be1f5e6a0034e6e1d89b6648ba06c74f12e0b369cd61c"
+      "sourceSha256": "cf10bc192daf6bc1727802f5099c3d12a48bcbfe7a498354dd9a040e69fc7762",
+      "sha256": "cf10bc192daf6bc1727802f5099c3d12a48bcbfe7a498354dd9a040e69fc7762"
     },
     {
       "path": "pi-dist/pi-ai/providers/groq.js",
@@ -8069,8 +8069,8 @@
         "integrity": "sha512-hQM/C4+1w8rHYACzDDf+0vQMnEnpzIop1tptIERVgR3ZeT/hHSzBNG8PaWPgxWQjqSeKCyBZSyp8uTT6eKK1pQ=="
       },
       "source": "dist/providers/groq.models.js",
-      "sourceSha256": "1bbb0911366fadbe576544b1d4cafd61cbba5c6741a0507aa4272579cab919c8",
-      "sha256": "1bbb0911366fadbe576544b1d4cafd61cbba5c6741a0507aa4272579cab919c8"
+      "sourceSha256": "9a0e0a6cea69fa9aa927f8ed52206266a9e18a36b40dfd7ae2db94fc876833d1",
+      "sha256": "9a0e0a6cea69fa9aa927f8ed52206266a9e18a36b40dfd7ae2db94fc876833d1"
     },
     {
       "path": "pi-dist/pi-ai/providers/huggingface.js",
@@ -8091,8 +8091,8 @@
         "integrity": "sha512-hQM/C4+1w8rHYACzDDf+0vQMnEnpzIop1tptIERVgR3ZeT/hHSzBNG8PaWPgxWQjqSeKCyBZSyp8uTT6eKK1pQ=="
       },
       "source": "dist/providers/huggingface.models.js",
-      "sourceSha256": "fbf494c1f8e68d708d013d2ac9a66c6b3c876282ef3669fd702f8c1a55e94ab6",
-      "sha256": "fbf494c1f8e68d708d013d2ac9a66c6b3c876282ef3669fd702f8c1a55e94ab6"
+      "sourceSha256": "a5313c8d0ecd6b127fbaf85efb70aca8f99ce8b7b0133a8df1af84ad2037f9cd",
+      "sha256": "a5313c8d0ecd6b127fbaf85efb70aca8f99ce8b7b0133a8df1af84ad2037f9cd"
     },
     {
       "path": "pi-dist/pi-ai/providers/images/register-builtins.js",
@@ -8124,8 +8124,8 @@
         "integrity": "sha512-hQM/C4+1w8rHYACzDDf+0vQMnEnpzIop1tptIERVgR3ZeT/hHSzBNG8PaWPgxWQjqSeKCyBZSyp8uTT6eKK1pQ=="
       },
       "source": "dist/providers/kimi-coding.models.js",
-      "sourceSha256": "4ab9826c07dfd709900e424ecccd3e971c6cc38bb63436c53a1d854583602808",
-      "sha256": "4ab9826c07dfd709900e424ecccd3e971c6cc38bb63436c53a1d854583602808"
+      "sourceSha256": "1bd7e6042dbad48330e4905cc28f1a78ee9ab374582f11ad510a3da0873f871a",
+      "sha256": "1bd7e6042dbad48330e4905cc28f1a78ee9ab374582f11ad510a3da0873f871a"
     },
     {
       "path": "pi-dist/pi-ai/providers/meta.js",
@@ -8146,8 +8146,8 @@
         "integrity": "sha512-hQM/C4+1w8rHYACzDDf+0vQMnEnpzIop1tptIERVgR3ZeT/hHSzBNG8PaWPgxWQjqSeKCyBZSyp8uTT6eKK1pQ=="
       },
       "source": "dist/providers/meta.models.js",
-      "sourceSha256": "7fe34a6a5d333069a8efb92eb5e7840a9eee798602e69228deede6b6ceda6fea",
-      "sha256": "7fe34a6a5d333069a8efb92eb5e7840a9eee798602e69228deede6b6ceda6fea"
+      "sourceSha256": "bff5a7924e04988ec78decf645d62f4731c06d4d07c217a62e1dda9ff8ff72e2",
+      "sha256": "bff5a7924e04988ec78decf645d62f4731c06d4d07c217a62e1dda9ff8ff72e2"
     },
     {
       "path": "pi-dist/pi-ai/providers/minimax-cn.js",
@@ -8168,8 +8168,8 @@
         "integrity": "sha512-hQM/C4+1w8rHYACzDDf+0vQMnEnpzIop1tptIERVgR3ZeT/hHSzBNG8PaWPgxWQjqSeKCyBZSyp8uTT6eKK1pQ=="
       },
       "source": "dist/providers/minimax-cn.models.js",
-      "sourceSha256": "8684608a2950ee6ff517d5dfeb6ca23d4784107b6a367f78b77b69449418bc41",
-      "sha256": "8684608a2950ee6ff517d5dfeb6ca23d4784107b6a367f78b77b69449418bc41"
+      "sourceSha256": "bc4e43d7656e111639c608745ee9721b53240bebfa5cab6bb917aadf1956fa4d",
+      "sha256": "bc4e43d7656e111639c608745ee9721b53240bebfa5cab6bb917aadf1956fa4d"
     },
     {
       "path": "pi-dist/pi-ai/providers/minimax.js",
@@ -8190,8 +8190,8 @@
         "integrity": "sha512-hQM/C4+1w8rHYACzDDf+0vQMnEnpzIop1tptIERVgR3ZeT/hHSzBNG8PaWPgxWQjqSeKCyBZSyp8uTT6eKK1pQ=="
       },
       "source": "dist/providers/minimax.models.js",
-      "sourceSha256": "16602fd0007482bbe43d74c2fde6acda50b9bc39ae389774306c7d1e2834a5d1",
-      "sha256": "16602fd0007482bbe43d74c2fde6acda50b9bc39ae389774306c7d1e2834a5d1"
+      "sourceSha256": "94f9ad085578873ebf596312438284f9bcf5c8a6a123d4e07979c17610bbb6e3",
+      "sha256": "94f9ad085578873ebf596312438284f9bcf5c8a6a123d4e07979c17610bbb6e3"
     },
     {
       "path": "pi-dist/pi-ai/providers/mistral.js",
@@ -8212,8 +8212,8 @@
         "integrity": "sha512-hQM/C4+1w8rHYACzDDf+0vQMnEnpzIop1tptIERVgR3ZeT/hHSzBNG8PaWPgxWQjqSeKCyBZSyp8uTT6eKK1pQ=="
       },
       "source": "dist/providers/mistral.models.js",
-      "sourceSha256": "39fdbdc4d75347f3a64d767ea8bb3bde21ecb5c927c4d252485f4c9b44c3dd65",
-      "sha256": "39fdbdc4d75347f3a64d767ea8bb3bde21ecb5c927c4d252485f4c9b44c3dd65"
+      "sourceSha256": "d790b9d691cc6d810a8841e37d7e7a82dbf38032e80d6e455364dd2230540746",
+      "sha256": "d790b9d691cc6d810a8841e37d7e7a82dbf38032e80d6e455364dd2230540746"
     },
     {
       "path": "pi-dist/pi-ai/providers/model-schema.js",
@@ -8246,8 +8246,8 @@
         "integrity": "sha512-hQM/C4+1w8rHYACzDDf+0vQMnEnpzIop1tptIERVgR3ZeT/hHSzBNG8PaWPgxWQjqSeKCyBZSyp8uTT6eKK1pQ=="
       },
       "source": "dist/providers/moonshotai-cn.models.js",
-      "sourceSha256": "652b4907f9794c5fe52fce656b91f97824403a2325ccf5a5975cb42847bd8861",
-      "sha256": "652b4907f9794c5fe52fce656b91f97824403a2325ccf5a5975cb42847bd8861"
+      "sourceSha256": "d6ca5a6bfc7dc800695ff1e9c23049fc8deb68a4debaa4e448167635d1afbb77",
+      "sha256": "d6ca5a6bfc7dc800695ff1e9c23049fc8deb68a4debaa4e448167635d1afbb77"
     },
     {
       "path": "pi-dist/pi-ai/providers/moonshotai.js",
@@ -8268,8 +8268,8 @@
         "integrity": "sha512-hQM/C4+1w8rHYACzDDf+0vQMnEnpzIop1tptIERVgR3ZeT/hHSzBNG8PaWPgxWQjqSeKCyBZSyp8uTT6eKK1pQ=="
       },
       "source": "dist/providers/moonshotai.models.js",
-      "sourceSha256": "a5c3f3acee42dc2992ad225e600d6242c4e58775140f7bc655794ffba4042b85",
-      "sha256": "a5c3f3acee42dc2992ad225e600d6242c4e58775140f7bc655794ffba4042b85"
+      "sourceSha256": "21ea92f74e495252d223b1d01d034b6c50d12304b214bd918137b9785f1755fe",
+      "sha256": "21ea92f74e495252d223b1d01d034b6c50d12304b214bd918137b9785f1755fe"
     },
     {
       "path": "pi-dist/pi-ai/providers/nvidia.js",
@@ -8290,8 +8290,8 @@
         "integrity": "sha512-hQM/C4+1w8rHYACzDDf+0vQMnEnpzIop1tptIERVgR3ZeT/hHSzBNG8PaWPgxWQjqSeKCyBZSyp8uTT6eKK1pQ=="
       },
       "source": "dist/providers/nvidia.models.js",
-      "sourceSha256": "9b6db60f03107618159128fe5ff29fa30e8fc7ba5747df2cbc66180f66710472",
-      "sha256": "9b6db60f03107618159128fe5ff29fa30e8fc7ba5747df2cbc66180f66710472"
+      "sourceSha256": "d02151599cc841c6301175d06ce6a7794fe362c7d248b2fc7b38c5ca8ee73e2e",
+      "sha256": "d02151599cc841c6301175d06ce6a7794fe362c7d248b2fc7b38c5ca8ee73e2e"
     },
     {
       "path": "pi-dist/pi-ai/providers/openai-codex.js",
@@ -8312,8 +8312,8 @@
         "integrity": "sha512-hQM/C4+1w8rHYACzDDf+0vQMnEnpzIop1tptIERVgR3ZeT/hHSzBNG8PaWPgxWQjqSeKCyBZSyp8uTT6eKK1pQ=="
       },
       "source": "dist/providers/openai-codex.models.js",
-      "sourceSha256": "6cf3121e84d836dccf2c738c205884dbecce844b80a168035de4adb9ba218343",
-      "sha256": "6cf3121e84d836dccf2c738c205884dbecce844b80a168035de4adb9ba218343"
+      "sourceSha256": "7936bb7da4138b7b3598e1f2788eeea1bea7dbec3c96ee2c64a982249456db0b",
+      "sha256": "7936bb7da4138b7b3598e1f2788eeea1bea7dbec3c96ee2c64a982249456db0b"
     },
     {
       "path": "pi-dist/pi-ai/providers/openai.js",
@@ -8334,8 +8334,8 @@
         "integrity": "sha512-hQM/C4+1w8rHYACzDDf+0vQMnEnpzIop1tptIERVgR3ZeT/hHSzBNG8PaWPgxWQjqSeKCyBZSyp8uTT6eKK1pQ=="
       },
       "source": "dist/providers/openai.models.js",
-      "sourceSha256": "a83ebad953df78543c31a41c2f10bf4de1ec04ae59c30de676ef40b8b5736d35",
-      "sha256": "a83ebad953df78543c31a41c2f10bf4de1ec04ae59c30de676ef40b8b5736d35"
+      "sourceSha256": "5ecca7b91ac52df918ced1695c94ee247090bb5877fc211dfc8c64d09f89db9e",
+      "sha256": "5ecca7b91ac52df918ced1695c94ee247090bb5877fc211dfc8c64d09f89db9e"
     },
     {
       "path": "pi-dist/pi-ai/providers/opencode-go.js",
@@ -8356,8 +8356,8 @@
         "integrity": "sha512-hQM/C4+1w8rHYACzDDf+0vQMnEnpzIop1tptIERVgR3ZeT/hHSzBNG8PaWPgxWQjqSeKCyBZSyp8uTT6eKK1pQ=="
       },
       "source": "dist/providers/opencode-go.models.js",
-      "sourceSha256": "1087ff6cbfe26b315e930a660ab324d3178ae2b58b3d8b69d4e7e56189c97435",
-      "sha256": "1087ff6cbfe26b315e930a660ab324d3178ae2b58b3d8b69d4e7e56189c97435"
+      "sourceSha256": "2a6805fb41edd5e48ac401bd6a60c35b9d981a1d3630882d1f809a62929fd20a",
+      "sha256": "2a6805fb41edd5e48ac401bd6a60c35b9d981a1d3630882d1f809a62929fd20a"
     },
     {
       "path": "pi-dist/pi-ai/providers/opencode-headers.js",
@@ -8389,8 +8389,8 @@
         "integrity": "sha512-hQM/C4+1w8rHYACzDDf+0vQMnEnpzIop1tptIERVgR3ZeT/hHSzBNG8PaWPgxWQjqSeKCyBZSyp8uTT6eKK1pQ=="
       },
       "source": "dist/providers/opencode.models.js",
-      "sourceSha256": "c6b25a0fc80752e27186b179178f93660655a4d8e13bfc972b3d07b383617a5d",
-      "sha256": "c6b25a0fc80752e27186b179178f93660655a4d8e13bfc972b3d07b383617a5d"
+      "sourceSha256": "77954b67447aaf5e649b9e332c385a2751fa04e1619e50b8282baca4792258f3",
+      "sha256": "77954b67447aaf5e649b9e332c385a2751fa04e1619e50b8282baca4792258f3"
     },
     {
       "path": "pi-dist/pi-ai/providers/openrouter-api.js",
@@ -8422,8 +8422,8 @@
         "integrity": "sha512-hQM/C4+1w8rHYACzDDf+0vQMnEnpzIop1tptIERVgR3ZeT/hHSzBNG8PaWPgxWQjqSeKCyBZSyp8uTT6eKK1pQ=="
       },
       "source": "dist/providers/openrouter.models.js",
-      "sourceSha256": "9ce32674ee98465fbecbcf2500beded2744277e3915067a29e0f25ae8c2e26d8",
-      "sha256": "9ce32674ee98465fbecbcf2500beded2744277e3915067a29e0f25ae8c2e26d8"
+      "sourceSha256": "eb1097639997735d514cbe8bb7b175747b54f2847e275857fce68f79315ebf31",
+      "sha256": "eb1097639997735d514cbe8bb7b175747b54f2847e275857fce68f79315ebf31"
     },
     {
       "path": "pi-dist/pi-ai/providers/qwen-token-plan-cn.js",
@@ -8444,8 +8444,8 @@
         "integrity": "sha512-hQM/C4+1w8rHYACzDDf+0vQMnEnpzIop1tptIERVgR3ZeT/hHSzBNG8PaWPgxWQjqSeKCyBZSyp8uTT6eKK1pQ=="
       },
       "source": "dist/providers/qwen-token-plan-cn.models.js",
-      "sourceSha256": "e8d65b0d3e0e4aff0eca4dac25435696bb527d391b0eb2370feb42ab0b9ef777",
-      "sha256": "e8d65b0d3e0e4aff0eca4dac25435696bb527d391b0eb2370feb42ab0b9ef777"
+      "sourceSha256": "d119dcda8d495bd00018514dfecd4d920180115056a738e1defc69eb2a9c1a42",
+      "sha256": "d119dcda8d495bd00018514dfecd4d920180115056a738e1defc69eb2a9c1a42"
     },
     {
       "path": "pi-dist/pi-ai/providers/qwen-token-plan-individual.js",
@@ -8466,8 +8466,8 @@
         "integrity": "sha512-hQM/C4+1w8rHYACzDDf+0vQMnEnpzIop1tptIERVgR3ZeT/hHSzBNG8PaWPgxWQjqSeKCyBZSyp8uTT6eKK1pQ=="
       },
       "source": "dist/providers/qwen-token-plan-individual.models.js",
-      "sourceSha256": "20b7b02af55cedd37b228b162fe529dbc5286661ec50a4f274d33f6892644bfa",
-      "sha256": "20b7b02af55cedd37b228b162fe529dbc5286661ec50a4f274d33f6892644bfa"
+      "sourceSha256": "44c6838b3a56138ca66ec9541937cb7cec6f4a9f697ba50e4a0af7f5829e7972",
+      "sha256": "44c6838b3a56138ca66ec9541937cb7cec6f4a9f697ba50e4a0af7f5829e7972"
     },
     {
       "path": "pi-dist/pi-ai/providers/qwen-token-plan.js",
@@ -8488,8 +8488,8 @@
         "integrity": "sha512-hQM/C4+1w8rHYACzDDf+0vQMnEnpzIop1tptIERVgR3ZeT/hHSzBNG8PaWPgxWQjqSeKCyBZSyp8uTT6eKK1pQ=="
       },
       "source": "dist/providers/qwen-token-plan.models.js",
-      "sourceSha256": "ed6e45ed454723231bccb0d07b9b14fa9eabe1fce897f07c456e9ec2df4f64d0",
-      "sha256": "ed6e45ed454723231bccb0d07b9b14fa9eabe1fce897f07c456e9ec2df4f64d0"
+      "sourceSha256": "eba8420038da8787b58d254cdb906c42c5591eac27911611a73799f2c0fe0e33",
+      "sha256": "eba8420038da8787b58d254cdb906c42c5591eac27911611a73799f2c0fe0e33"
     },
     {
       "path": "pi-dist/pi-ai/providers/radius-config.js",
@@ -8521,8 +8521,8 @@
         "integrity": "sha512-hQM/C4+1w8rHYACzDDf+0vQMnEnpzIop1tptIERVgR3ZeT/hHSzBNG8PaWPgxWQjqSeKCyBZSyp8uTT6eKK1pQ=="
       },
       "source": "dist/providers/radius.models.js",
-      "sourceSha256": "62a1f3acd3b0a2b2ffe482370ea7e78de2032e6cf245aa3f2e6ac5eed3452386",
-      "sha256": "62a1f3acd3b0a2b2ffe482370ea7e78de2032e6cf245aa3f2e6ac5eed3452386"
+      "sourceSha256": "52037865a46978a32bcbeb3c96384bbe9332686dbfb827cef455d2f077adf63a",
+      "sha256": "52037865a46978a32bcbeb3c96384bbe9332686dbfb827cef455d2f077adf63a"
     },
     {
       "path": "pi-dist/pi-ai/providers/together.js",
@@ -8543,8 +8543,8 @@
         "integrity": "sha512-hQM/C4+1w8rHYACzDDf+0vQMnEnpzIop1tptIERVgR3ZeT/hHSzBNG8PaWPgxWQjqSeKCyBZSyp8uTT6eKK1pQ=="
       },
       "source": "dist/providers/together.models.js",
-      "sourceSha256": "84228cabbab1c917fcb74170eee1e99c95275899cda33ff579ec0720d15beceb",
-      "sha256": "84228cabbab1c917fcb74170eee1e99c95275899cda33ff579ec0720d15beceb"
+      "sourceSha256": "e6719ed1b6cc9ed2371fd2f0590b9cd7c076dc5177df2ce5f3cfab86e013161e",
+      "sha256": "e6719ed1b6cc9ed2371fd2f0590b9cd7c076dc5177df2ce5f3cfab86e013161e"
     },
     {
       "path": "pi-dist/pi-ai/providers/typesafe.js",
@@ -8565,8 +8565,8 @@
         "integrity": "sha512-hQM/C4+1w8rHYACzDDf+0vQMnEnpzIop1tptIERVgR3ZeT/hHSzBNG8PaWPgxWQjqSeKCyBZSyp8uTT6eKK1pQ=="
       },
       "source": "dist/providers/typesafe.models.js",
-      "sourceSha256": "01b9a4fd9a14ff0e92f93c192789322b62bdff2d07efbcabe2c10d1a1b015570",
-      "sha256": "01b9a4fd9a14ff0e92f93c192789322b62bdff2d07efbcabe2c10d1a1b015570"
+      "sourceSha256": "d5ec8cd6a5455a4b6ad52c59d8368f85f5c44da64a0d3de9db3a0c1931c2ba80",
+      "sha256": "d5ec8cd6a5455a4b6ad52c59d8368f85f5c44da64a0d3de9db3a0c1931c2ba80"
     },
     {
       "path": "pi-dist/pi-ai/providers/vercel-ai-gateway.js",
@@ -8587,8 +8587,8 @@
         "integrity": "sha512-hQM/C4+1w8rHYACzDDf+0vQMnEnpzIop1tptIERVgR3ZeT/hHSzBNG8PaWPgxWQjqSeKCyBZSyp8uTT6eKK1pQ=="
       },
       "source": "dist/providers/vercel-ai-gateway.models.js",
-      "sourceSha256": "27c68f0eaa8c7d3d6689784e9e6fdba97d4f3c7ae9819d40007ba0beea0c95b9",
-      "sha256": "27c68f0eaa8c7d3d6689784e9e6fdba97d4f3c7ae9819d40007ba0beea0c95b9"
+      "sourceSha256": "8fc9e251cdbe9fd3737c82f37cc236cc1313431b543f41496a22e757a45e2ee9",
+      "sha256": "8fc9e251cdbe9fd3737c82f37cc236cc1313431b543f41496a22e757a45e2ee9"
     },
     {
       "path": "pi-dist/pi-ai/providers/xai.js",
@@ -8609,8 +8609,8 @@
         "integrity": "sha512-hQM/C4+1w8rHYACzDDf+0vQMnEnpzIop1tptIERVgR3ZeT/hHSzBNG8PaWPgxWQjqSeKCyBZSyp8uTT6eKK1pQ=="
       },
       "source": "dist/providers/xai.models.js",
-      "sourceSha256": "b264e29d3ee5622a9881a2b199d2c71f096f96fce8a0513185a0b60924d3311c",
-      "sha256": "b264e29d3ee5622a9881a2b199d2c71f096f96fce8a0513185a0b60924d3311c"
+      "sourceSha256": "baed06118ee3d97e8969c9999f0c06a164ca0a5534c01a99fd99dbc54db444e5",
+      "sha256": "baed06118ee3d97e8969c9999f0c06a164ca0a5534c01a99fd99dbc54db444e5"
     },
     {
       "path": "pi-dist/pi-ai/providers/xiaomi-token-plan-ams.js",
@@ -8631,8 +8631,8 @@
         "integrity": "sha512-hQM/C4+1w8rHYACzDDf+0vQMnEnpzIop1tptIERVgR3ZeT/hHSzBNG8PaWPgxWQjqSeKCyBZSyp8uTT6eKK1pQ=="
       },
       "source": "dist/providers/xiaomi-token-plan-ams.models.js",
-      "sourceSha256": "7cf04ec99fe505c4f5d7d725d4bd43749b45321697bb029cbf7dc54199911df7",
-      "sha256": "7cf04ec99fe505c4f5d7d725d4bd43749b45321697bb029cbf7dc54199911df7"
+      "sourceSha256": "a15c958ab381f04cc7f7be381540483a8c816f5e954bf0ead107bb407e578ac4",
+      "sha256": "a15c958ab381f04cc7f7be381540483a8c816f5e954bf0ead107bb407e578ac4"
     },
     {
       "path": "pi-dist/pi-ai/providers/xiaomi-token-plan-cn.js",
@@ -8653,8 +8653,8 @@
         "integrity": "sha512-hQM/C4+1w8rHYACzDDf+0vQMnEnpzIop1tptIERVgR3ZeT/hHSzBNG8PaWPgxWQjqSeKCyBZSyp8uTT6eKK1pQ=="
       },
       "source": "dist/providers/xiaomi-token-plan-cn.models.js",
-      "sourceSha256": "ad162db1a8847670e3dfb4dbcc09e2a16b4638aa09433820af3cc1e0dfcaa96e",
-      "sha256": "ad162db1a8847670e3dfb4dbcc09e2a16b4638aa09433820af3cc1e0dfcaa96e"
+      "sourceSha256": "d9c6d38961661077ae40918c379031b22d3c700add5f55bf6de847efea027ddd",
+      "sha256": "d9c6d38961661077ae40918c379031b22d3c700add5f55bf6de847efea027ddd"
     },
     {
       "path": "pi-dist/pi-ai/providers/xiaomi-token-plan-sgp.js",
@@ -8675,8 +8675,8 @@
         "integrity": "sha512-hQM/C4+1w8rHYACzDDf+0vQMnEnpzIop1tptIERVgR3ZeT/hHSzBNG8PaWPgxWQjqSeKCyBZSyp8uTT6eKK1pQ=="
       },
       "source": "dist/providers/xiaomi-token-plan-sgp.models.js",
-      "sourceSha256": "77357e88c0cfcdb321300fef586d4d75e1ce23205eee70f6946fd0d6095db102",
-      "sha256": "77357e88c0cfcdb321300fef586d4d75e1ce23205eee70f6946fd0d6095db102"
+      "sourceSha256": "5d106a0560c32fb5b7aaf8551baa58e75c4711df9d332b88ed2143278445ef12",
+      "sha256": "5d106a0560c32fb5b7aaf8551baa58e75c4711df9d332b88ed2143278445ef12"
     },
     {
       "path": "pi-dist/pi-ai/providers/xiaomi.js",
@@ -8697,8 +8697,8 @@
         "integrity": "sha512-hQM/C4+1w8rHYACzDDf+0vQMnEnpzIop1tptIERVgR3ZeT/hHSzBNG8PaWPgxWQjqSeKCyBZSyp8uTT6eKK1pQ=="
       },
       "source": "dist/providers/xiaomi.models.js",
-      "sourceSha256": "04f7cceef3219404e8d6214bf93f050a02ed732c55dbe2cbc00ac9e7cd8b5351",
-      "sha256": "04f7cceef3219404e8d6214bf93f050a02ed732c55dbe2cbc00ac9e7cd8b5351"
+      "sourceSha256": "57742ce3e38bac583db502aa654ed86475a266ae091140f9616cd9389873ff8e",
+      "sha256": "57742ce3e38bac583db502aa654ed86475a266ae091140f9616cd9389873ff8e"
     },
     {
       "path": "pi-dist/pi-ai/providers/zai-coding-cn.js",
@@ -8719,8 +8719,8 @@
         "integrity": "sha512-hQM/C4+1w8rHYACzDDf+0vQMnEnpzIop1tptIERVgR3ZeT/hHSzBNG8PaWPgxWQjqSeKCyBZSyp8uTT6eKK1pQ=="
       },
       "source": "dist/providers/zai-coding-cn.models.js",
-      "sourceSha256": "a3fcf259259d3fe29f3b66cf1579c91a46da03375d4c96a5b720cae7473e687c",
-      "sha256": "a3fcf259259d3fe29f3b66cf1579c91a46da03375d4c96a5b720cae7473e687c"
+      "sourceSha256": "383554e8b492f87228c55f3dcedf4a6ce99ee226c49c8fbec045c8f20e3ffd8a",
+      "sha256": "383554e8b492f87228c55f3dcedf4a6ce99ee226c49c8fbec045c8f20e3ffd8a"
     },
     {
       "path": "pi-dist/pi-ai/providers/zai.js",
@@ -8741,8 +8741,8 @@
         "integrity": "sha512-hQM/C4+1w8rHYACzDDf+0vQMnEnpzIop1tptIERVgR3ZeT/hHSzBNG8PaWPgxWQjqSeKCyBZSyp8uTT6eKK1pQ=="
       },
       "source": "dist/providers/zai.models.js",
-      "sourceSha256": "500e17ed8ff77ba19f297d44ad9aaa087434a0e1c2accdd844838efb42605525",
-      "sha256": "500e17ed8ff77ba19f297d44ad9aaa087434a0e1c2accdd844838efb42605525"
+      "sourceSha256": "2f802c6cfc18ebb275f18e136bafc345d5522e8d1e72f9a41c5df501d5d645ee",
+      "sha256": "2f802c6cfc18ebb275f18e136bafc345d5522e8d1e72f9a41c5df501d5d645ee"
     },
     {
       "path": "pi-dist/pi-ai/sdk-bundle/chunk-22JYDZ7S.js",
@@ -8785,16 +8785,6 @@
       "rewrite": "automation/gen/bundle-pi-libraries.mjs; exact input hashes in sdk-bundle/inputs.json"
     },
     {
-      "path": "pi-dist/pi-ai/sdk-bundle/chunk-6LR6Q3FJ.js",
-      "package": {
-        "name": "@earendil-works/pi-ai",
-        "version": "1.4.0",
-        "integrity": "sha512-hQM/C4+1w8rHYACzDDf+0vQMnEnpzIop1tptIERVgR3ZeT/hHSzBNG8PaWPgxWQjqSeKCyBZSyp8uTT6eKK1pQ=="
-      },
-      "sha256": "2207e43d6067648b8f5d36ec9433a156167a9d0ab13d955cb3276488da52c728",
-      "rewrite": "automation/gen/bundle-pi-libraries.mjs; exact input hashes in sdk-bundle/inputs.json"
-    },
-    {
       "path": "pi-dist/pi-ai/sdk-bundle/chunk-ABPQ4VM7.js",
       "package": {
         "name": "@earendil-works/pi-ai",
@@ -8805,13 +8795,13 @@
       "rewrite": "automation/gen/bundle-pi-libraries.mjs; exact input hashes in sdk-bundle/inputs.json"
     },
     {
-      "path": "pi-dist/pi-ai/sdk-bundle/chunk-BSAWXRFU.js",
+      "path": "pi-dist/pi-ai/sdk-bundle/chunk-B6P6AMCE.js",
       "package": {
         "name": "@earendil-works/pi-ai",
         "version": "1.4.0",
         "integrity": "sha512-hQM/C4+1w8rHYACzDDf+0vQMnEnpzIop1tptIERVgR3ZeT/hHSzBNG8PaWPgxWQjqSeKCyBZSyp8uTT6eKK1pQ=="
       },
-      "sha256": "504bb949a2cbe65b8de460db0afab4fd7d8b301de3a9abcf635e2024892a56e9",
+      "sha256": "55f58894545f4a7c61869c172689949502b6e9bdc131d1b0868d94707fe67e73",
       "rewrite": "automation/gen/bundle-pi-libraries.mjs; exact input hashes in sdk-bundle/inputs.json"
     },
     {
@@ -8915,6 +8905,26 @@
       "rewrite": "automation/gen/bundle-pi-libraries.mjs; exact input hashes in sdk-bundle/inputs.json"
     },
     {
+      "path": "pi-dist/pi-ai/sdk-bundle/chunk-TMZLPLMV.js",
+      "package": {
+        "name": "@earendil-works/pi-ai",
+        "version": "1.4.0",
+        "integrity": "sha512-hQM/C4+1w8rHYACzDDf+0vQMnEnpzIop1tptIERVgR3ZeT/hHSzBNG8PaWPgxWQjqSeKCyBZSyp8uTT6eKK1pQ=="
+      },
+      "sha256": "a1befe37ea0d81bd69b7565167f44dd03bebb7104b2b7c8c7027ef69004cce0e",
+      "rewrite": "automation/gen/bundle-pi-libraries.mjs; exact input hashes in sdk-bundle/inputs.json"
+    },
+    {
+      "path": "pi-dist/pi-ai/sdk-bundle/chunk-TW2GTMRT.js",
+      "package": {
+        "name": "@earendil-works/pi-ai",
+        "version": "1.4.0",
+        "integrity": "sha512-hQM/C4+1w8rHYACzDDf+0vQMnEnpzIop1tptIERVgR3ZeT/hHSzBNG8PaWPgxWQjqSeKCyBZSyp8uTT6eKK1pQ=="
+      },
+      "sha256": "79d5de065075a1e7c918ca2f5e57201bd9edcbfaef988bf4250c55e52fedf72b",
+      "rewrite": "automation/gen/bundle-pi-libraries.mjs; exact input hashes in sdk-bundle/inputs.json"
+    },
+    {
       "path": "pi-dist/pi-ai/sdk-bundle/chunk-U2B7BJMX.js",
       "package": {
         "name": "@earendil-works/pi-ai",
@@ -8922,16 +8932,6 @@
         "integrity": "sha512-hQM/C4+1w8rHYACzDDf+0vQMnEnpzIop1tptIERVgR3ZeT/hHSzBNG8PaWPgxWQjqSeKCyBZSyp8uTT6eKK1pQ=="
       },
       "sha256": "057bab9ca948cc6106765f0186b616e49957926fc92a76b4c42172747c3a73ff",
-      "rewrite": "automation/gen/bundle-pi-libraries.mjs; exact input hashes in sdk-bundle/inputs.json"
-    },
-    {
-      "path": "pi-dist/pi-ai/sdk-bundle/chunk-V34LBYPQ.js",
-      "package": {
-        "name": "@earendil-works/pi-ai",
-        "version": "1.4.0",
-        "integrity": "sha512-hQM/C4+1w8rHYACzDDf+0vQMnEnpzIop1tptIERVgR3ZeT/hHSzBNG8PaWPgxWQjqSeKCyBZSyp8uTT6eKK1pQ=="
-      },
-      "sha256": "d15ff9253a61f281fc496e7b6b80c9c8aaa59bb8e751d83d01ffabd410965912",
       "rewrite": "automation/gen/bundle-pi-libraries.mjs; exact input hashes in sdk-bundle/inputs.json"
     },
     {
@@ -8961,7 +8961,7 @@
         "version": "1.4.0",
         "integrity": "sha512-hQM/C4+1w8rHYACzDDf+0vQMnEnpzIop1tptIERVgR3ZeT/hHSzBNG8PaWPgxWQjqSeKCyBZSyp8uTT6eKK1pQ=="
       },
-      "sha256": "412d89ce48b8d2e970c4cfae73190bdd7824a7799a003f52ad8316c2ce4caa86",
+      "sha256": "5de6e0e14479ac9052ea9a11a8f287b9bbcd2c940e14183f237ef1b29229165d",
       "rewrite": "automation/gen/bundle-pi-libraries.mjs; exact input hashes in sdk-bundle/inputs.json"
     },
     {
@@ -8971,7 +8971,7 @@
         "version": "1.4.0",
         "integrity": "sha512-hQM/C4+1w8rHYACzDDf+0vQMnEnpzIop1tptIERVgR3ZeT/hHSzBNG8PaWPgxWQjqSeKCyBZSyp8uTT6eKK1pQ=="
       },
-      "sha256": "bb89aeacf1c3301eaeb4d851961d28e1b65e2fd65e2165985a8eeeba6b6a3bbe",
+      "sha256": "dab384869820872dab5a4fc83e00692c81c40b52f005ecdfa4c029c41d9b6f8b",
       "rewrite": "automation/gen/bundle-pi-libraries.mjs; exact input hashes in sdk-bundle/inputs.json"
     },
     {
@@ -8981,7 +8981,7 @@
         "version": "1.4.0",
         "integrity": "sha512-hQM/C4+1w8rHYACzDDf+0vQMnEnpzIop1tptIERVgR3ZeT/hHSzBNG8PaWPgxWQjqSeKCyBZSyp8uTT6eKK1pQ=="
       },
-      "sha256": "28d45797b3f89408e990c620e84f578d0e086089598ab2eaa1f87774a51a9792",
+      "sha256": "862dec0beada9183973057ee7a6426682fcdee06c6824e43e7193abb51692857",
       "rewrite": "automation/gen/bundle-pi-libraries.mjs; exact input hashes in sdk-bundle/inputs.json"
     },
     {
@@ -9001,7 +9001,7 @@
         "version": "1.4.0",
         "integrity": "sha512-hQM/C4+1w8rHYACzDDf+0vQMnEnpzIop1tptIERVgR3ZeT/hHSzBNG8PaWPgxWQjqSeKCyBZSyp8uTT6eKK1pQ=="
       },
-      "sha256": "0e15b131e8fca46290c2290f4b87372a64ba744628d5c9f07374d8de46548203",
+      "sha256": "20dfb3821860b66e53f8aa068cf5188e1184879ea548bb7f5b840aaac4d88068",
       "rewrite": "automation/gen/bundle-pi-libraries.mjs; exact input hashes in sdk-bundle/inputs.json"
     },
     {
@@ -9011,7 +9011,7 @@
         "version": "1.4.0",
         "integrity": "sha512-hQM/C4+1w8rHYACzDDf+0vQMnEnpzIop1tptIERVgR3ZeT/hHSzBNG8PaWPgxWQjqSeKCyBZSyp8uTT6eKK1pQ=="
       },
-      "sha256": "817b272919dbc71e32fef1c5be986b103d433980f7c4d1d7884894c0ddc1353a",
+      "sha256": "5965f4c98c26797bd2f948a4cbda1c9a2bfe3ac019a64e80051865b8e170c9e1",
       "rewrite": "automation/gen/bundle-pi-libraries.mjs; exact input hashes in sdk-bundle/inputs.json"
     },
     {
@@ -9223,8 +9223,8 @@
         "integrity": "sha512-hQM/C4+1w8rHYACzDDf+0vQMnEnpzIop1tptIERVgR3ZeT/hHSzBNG8PaWPgxWQjqSeKCyBZSyp8uTT6eKK1pQ=="
       },
       "source": "dist/utils/overflow.js",
-      "sourceSha256": "3c50cf631de6ad583443c3aca3c21f8a1ff657e49ebee396bdaab0ce18d47714",
-      "sha256": "3c50cf631de6ad583443c3aca3c21f8a1ff657e49ebee396bdaab0ce18d47714"
+      "sourceSha256": "bc0b743fdbf33fe3dd2bb69b1838166ac0b6957f74051213fcaf336c11d041a3",
+      "sha256": "bc0b743fdbf33fe3dd2bb69b1838166ac0b6957f74051213fcaf336c11d041a3"
     },
     {
       "path": "pi-dist/pi-ai/utils/provider-env.js",
@@ -9256,8 +9256,8 @@
         "integrity": "sha512-hQM/C4+1w8rHYACzDDf+0vQMnEnpzIop1tptIERVgR3ZeT/hHSzBNG8PaWPgxWQjqSeKCyBZSyp8uTT6eKK1pQ=="
       },
       "source": "dist/utils/retry.js",
-      "sourceSha256": "b9b2e6914d6f99f921ddc1b680d24430ec608e26b29a9b1ab9683f8a889d4df0",
-      "sha256": "b9b2e6914d6f99f921ddc1b680d24430ec608e26b29a9b1ab9683f8a889d4df0"
+      "sourceSha256": "6ab3ea07994c28824374681d4b0c8055d42b5f9eaccb1702573f3a95b371bfd7",
+      "sha256": "6ab3ea07994c28824374681d4b0c8055d42b5f9eaccb1702573f3a95b371bfd7"
     },
     {
       "path": "pi-dist/pi-ai/utils/sanitize-unicode.js",
@@ -9512,8 +9512,8 @@
         "integrity": "sha512-Z41LpZ3yYHSC/UUps6Mr39UMFPwH8elhJBG9DY1P7kuzsE5qSK/6eMj2EHzO5evJRQWLbKSqUMw+4nCNtIyiQg=="
       },
       "source": "CHANGELOG.md",
-      "sourceSha256": "467e0dde6bffdb719806cbe5b772f56e89920893b81d5c078d1c0481269bfc91",
-      "sha256": "467e0dde6bffdb719806cbe5b772f56e89920893b81d5c078d1c0481269bfc91"
+      "sourceSha256": "c09144546d84a2aa3437d0fecd4b00f809e7751bf5217e304ac32e7d2604cc5e",
+      "sha256": "c09144546d84a2aa3437d0fecd4b00f809e7751bf5217e304ac32e7d2604cc5e"
     },
     {
       "path": "pi-dist/pi-coding-agent/cli/args.js",
@@ -9686,8 +9686,8 @@
         "integrity": "sha512-Z41LpZ3yYHSC/UUps6Mr39UMFPwH8elhJBG9DY1P7kuzsE5qSK/6eMj2EHzO5evJRQWLbKSqUMw+4nCNtIyiQg=="
       },
       "source": "dist/core/agent-session.js",
-      "sourceSha256": "436e8be3bbab2db475ce30bb5d0bb30f0046b19a3476f8cd57b8133e68891162",
-      "sha256": "9b12f70988ef73f665e40347d96407c246c3d46e979503b0febe676af983419a",
+      "sourceSha256": "1941d9608c98a3638825a8d10b5443ff7c06f96b3ae370bb37269f3a574ede65",
+      "sha256": "fb4934090cd2b96d58351531a0818a0b82f30df8debf5332573ea73e2892481b",
       "rewrite": "module specifiers"
     },
     {
@@ -9871,8 +9871,8 @@
         "integrity": "sha512-Z41LpZ3yYHSC/UUps6Mr39UMFPwH8elhJBG9DY1P7kuzsE5qSK/6eMj2EHzO5evJRQWLbKSqUMw+4nCNtIyiQg=="
       },
       "source": "dist/core/exec.js",
-      "sourceSha256": "8ef96af3a5cc562fe3be7a2ea124a905f97e3a04bee48dabe0d4e18166b9c2ef",
-      "sha256": "8ef96af3a5cc562fe3be7a2ea124a905f97e3a04bee48dabe0d4e18166b9c2ef"
+      "sourceSha256": "b9858de5bf26a6fcf90039218f831de3ebf8bfdf4fc027d3c56be190fb0ae1e7",
+      "sha256": "b9858de5bf26a6fcf90039218f831de3ebf8bfdf4fc027d3c56be190fb0ae1e7"
     },
     {
       "path": "pi-dist/pi-coding-agent/core/experimental.js",
@@ -10200,8 +10200,8 @@
         "integrity": "sha512-Z41LpZ3yYHSC/UUps6Mr39UMFPwH8elhJBG9DY1P7kuzsE5qSK/6eMj2EHzO5evJRQWLbKSqUMw+4nCNtIyiQg=="
       },
       "source": "dist/core/package-manager.js",
-      "sourceSha256": "32906b6f41c144f11d460ee5eaba1bbd4283f979738375ac204412bd502556a4",
-      "sha256": "ef35cf64dad62d27a4e1a7b46ef97165a39edc45d8c3cb1dc2affece1350d97e",
+      "sourceSha256": "efa2ad88771e2a4b69de0bc16cc81aeac37f1ba884b4b31770d33600a7bfced7",
+      "sha256": "3b413ab5aa4f714cdfedb49a6d010c31463dc2be111a8a4e9867ce4d6874ddb0",
       "rewrite": "module specifiers"
     },
     {
@@ -10212,8 +10212,8 @@
         "integrity": "sha512-Z41LpZ3yYHSC/UUps6Mr39UMFPwH8elhJBG9DY1P7kuzsE5qSK/6eMj2EHzO5evJRQWLbKSqUMw+4nCNtIyiQg=="
       },
       "source": "dist/core/pi-manifest.js",
-      "sourceSha256": "2ae94bb81155fc66766a5643f21ec38e808177ec5f2271e77c82013971ae5c03",
-      "sha256": "2ae94bb81155fc66766a5643f21ec38e808177ec5f2271e77c82013971ae5c03"
+      "sourceSha256": "8dafb501cc0bba5482cfb8c5c90a4fa3b534acdd08abd4c8dc5df0c94d85e876",
+      "sha256": "8dafb501cc0bba5482cfb8c5c90a4fa3b534acdd08abd4c8dc5df0c94d85e876"
     },
     {
       "path": "pi-dist/pi-coding-agent/core/project-trust.js",
@@ -10315,8 +10315,8 @@
         "integrity": "sha512-Z41LpZ3yYHSC/UUps6Mr39UMFPwH8elhJBG9DY1P7kuzsE5qSK/6eMj2EHzO5evJRQWLbKSqUMw+4nCNtIyiQg=="
       },
       "source": "dist/core/sdk.js",
-      "sourceSha256": "992a539079e42f9dc577064e971afa9972a01dbffedb035f7cb68ab204d36964",
-      "sha256": "766096eb8b927ce098890b4724ef168391903478ab291f435e3628fb496c59d6",
+      "sourceSha256": "c43e4e1d49ac3ec4b9f48465bf2081bc5980b55f23d44040d02e9046dea45725",
+      "sha256": "b682fd3cbfde3a04ce7079ba013a2e3665ca7dc1949499887e1f420c28c5488c",
       "rewrite": "module specifiers"
     },
     {
@@ -10384,8 +10384,8 @@
         "integrity": "sha512-Z41LpZ3yYHSC/UUps6Mr39UMFPwH8elhJBG9DY1P7kuzsE5qSK/6eMj2EHzO5evJRQWLbKSqUMw+4nCNtIyiQg=="
       },
       "source": "dist/core/settings-manager.js",
-      "sourceSha256": "f3eeaadbc97b8c36acf98b1dd5894265f7f719bab95218e66dbc8c25658d5b12",
-      "sha256": "cecc352b3f128f0bbecb90eae96a44a6fd65c56eccb2189deff304fa9f0ab521",
+      "sourceSha256": "66edb495ff9767e7f2ce0d2f4e2d102532e4b396ad7bc7c3c648c7c12c0fe71d",
+      "sha256": "57a63bf89ae8656334f7166c651077af67ed474f928854766c5ecab442e9d9fa",
       "rewrite": "module specifiers"
     },
     {
@@ -10419,8 +10419,8 @@
         "integrity": "sha512-Z41LpZ3yYHSC/UUps6Mr39UMFPwH8elhJBG9DY1P7kuzsE5qSK/6eMj2EHzO5evJRQWLbKSqUMw+4nCNtIyiQg=="
       },
       "source": "dist/core/source-info.js",
-      "sourceSha256": "67562eea112e99f4a7880913143730bd90e3655381c0f353e3dd18c5e9f1ef07",
-      "sha256": "67562eea112e99f4a7880913143730bd90e3655381c0f353e3dd18c5e9f1ef07"
+      "sourceSha256": "d60989890891992276ccd332e2c5c5a2379b3b6a5050d731fe5c58cbe023dd68",
+      "sha256": "d60989890891992276ccd332e2c5c5a2379b3b6a5050d731fe5c58cbe023dd68"
     },
     {
       "path": "pi-dist/pi-coding-agent/core/system-prompt.js",
@@ -10889,8 +10889,8 @@
         "integrity": "sha512-Z41LpZ3yYHSC/UUps6Mr39UMFPwH8elhJBG9DY1P7kuzsE5qSK/6eMj2EHzO5evJRQWLbKSqUMw+4nCNtIyiQg=="
       },
       "source": "docs/extensions.md",
-      "sourceSha256": "60241267684aa60e724867aabfc88ae663b3984d24dd648438afe9cb637d2378",
-      "sha256": "60241267684aa60e724867aabfc88ae663b3984d24dd648438afe9cb637d2378"
+      "sourceSha256": "d0e4b1f593f6fef15047d6459d6ba03bcfadd627f1e5c179860bded1f0ed5dac",
+      "sha256": "d0e4b1f593f6fef15047d6459d6ba03bcfadd627f1e5c179860bded1f0ed5dac"
     },
     {
       "path": "pi-dist/pi-coding-agent/docs/how-pi-works.md",
@@ -10977,8 +10977,8 @@
         "integrity": "sha512-Z41LpZ3yYHSC/UUps6Mr39UMFPwH8elhJBG9DY1P7kuzsE5qSK/6eMj2EHzO5evJRQWLbKSqUMw+4nCNtIyiQg=="
       },
       "source": "docs/keybindings.md",
-      "sourceSha256": "413aa1c5e95a934d216aa5aba20052fa2cf35940ba5f02d1f4b22ff53c6ec678",
-      "sha256": "413aa1c5e95a934d216aa5aba20052fa2cf35940ba5f02d1f4b22ff53c6ec678"
+      "sourceSha256": "c18864b221e3825f36fe96641f2b4aff75464584a31b8370565fbc75cf9b49d2",
+      "sha256": "c18864b221e3825f36fe96641f2b4aff75464584a31b8370565fbc75cf9b49d2"
     },
     {
       "path": "pi-dist/pi-coding-agent/docs/llama-cpp.md",
@@ -11054,8 +11054,8 @@
         "integrity": "sha512-Z41LpZ3yYHSC/UUps6Mr39UMFPwH8elhJBG9DY1P7kuzsE5qSK/6eMj2EHzO5evJRQWLbKSqUMw+4nCNtIyiQg=="
       },
       "source": "docs/packages.md",
-      "sourceSha256": "0f899bea101fc7c2f2efccf4cfc4da34d1e5ddda2009b2a71fd8b303f8c639c5",
-      "sha256": "0f899bea101fc7c2f2efccf4cfc4da34d1e5ddda2009b2a71fd8b303f8c639c5"
+      "sourceSha256": "8182554a300e06d84e6c1f5a77034f4841190cca2c2dd1f947304a9885e804d3",
+      "sha256": "8182554a300e06d84e6c1f5a77034f4841190cca2c2dd1f947304a9885e804d3"
     },
     {
       "path": "pi-dist/pi-coding-agent/docs/prompt-templates.md",
@@ -11087,8 +11087,8 @@
         "integrity": "sha512-Z41LpZ3yYHSC/UUps6Mr39UMFPwH8elhJBG9DY1P7kuzsE5qSK/6eMj2EHzO5evJRQWLbKSqUMw+4nCNtIyiQg=="
       },
       "source": "docs/quickstart.md",
-      "sourceSha256": "10c69b394304f6e7d6409b6bde02b0165f5723ff4acfd49cfa8f7414f977266a",
-      "sha256": "10c69b394304f6e7d6409b6bde02b0165f5723ff4acfd49cfa8f7414f977266a"
+      "sourceSha256": "d3d2ca438dc2fff747bae69deccf2bb512027825fe1c9b3a7b7f478f3c889850",
+      "sha256": "d3d2ca438dc2fff747bae69deccf2bb512027825fe1c9b3a7b7f478f3c889850"
     },
     {
       "path": "pi-dist/pi-coding-agent/docs/rpc-commands.md",
@@ -11175,8 +11175,8 @@
         "integrity": "sha512-Z41LpZ3yYHSC/UUps6Mr39UMFPwH8elhJBG9DY1P7kuzsE5qSK/6eMj2EHzO5evJRQWLbKSqUMw+4nCNtIyiQg=="
       },
       "source": "docs/settings.md",
-      "sourceSha256": "34e78015cb6bbab517502ece8c99d16bc18a6f92e8f0dbc740a0c9e45bb79ff8",
-      "sha256": "34e78015cb6bbab517502ece8c99d16bc18a6f92e8f0dbc740a0c9e45bb79ff8"
+      "sourceSha256": "c1a9157ba2772d46aff100ef2d6a299808fcdeecf007b4a93bf08d7b86ab1391",
+      "sha256": "c1a9157ba2772d46aff100ef2d6a299808fcdeecf007b4a93bf08d7b86ab1391"
     },
     {
       "path": "pi-dist/pi-coding-agent/docs/shell-aliases.md",
@@ -12011,8 +12011,8 @@
         "integrity": "sha512-Z41LpZ3yYHSC/UUps6Mr39UMFPwH8elhJBG9DY1P7kuzsE5qSK/6eMj2EHzO5evJRQWLbKSqUMw+4nCNtIyiQg=="
       },
       "source": "examples/extensions/preset.ts",
-      "sourceSha256": "7942b7f933f97bcc29024a87f8526969413ba6f87b0bec537648a2926a0a4e29",
-      "sha256": "7942b7f933f97bcc29024a87f8526969413ba6f87b0bec537648a2926a0a4e29"
+      "sourceSha256": "ccb374df6efb6dc677774dc480018ab12006f7f346e603a9bc17ca6fed85e900",
+      "sha256": "ccb374df6efb6dc677774dc480018ab12006f7f346e603a9bc17ca6fed85e900"
     },
     {
       "path": "pi-dist/pi-coding-agent/examples/extensions/project-trust.ts",
@@ -12121,8 +12121,8 @@
         "integrity": "sha512-Z41LpZ3yYHSC/UUps6Mr39UMFPwH8elhJBG9DY1P7kuzsE5qSK/6eMj2EHzO5evJRQWLbKSqUMw+4nCNtIyiQg=="
       },
       "source": "examples/extensions/reload-runtime.ts",
-      "sourceSha256": "911f26b872860a551572fa1d94d251ddd476d4ea9483b6052e9658d2784b38fc",
-      "sha256": "911f26b872860a551572fa1d94d251ddd476d4ea9483b6052e9658d2784b38fc"
+      "sourceSha256": "fcb575daf86cc0943215ce83b44f320eb257845b88e8b3d3b29798c7942f893f",
+      "sha256": "fcb575daf86cc0943215ce83b44f320eb257845b88e8b3d3b29798c7942f893f"
     },
     {
       "path": "pi-dist/pi-coding-agent/examples/extensions/rpc-demo.ts",
@@ -12451,8 +12451,8 @@
         "integrity": "sha512-Z41LpZ3yYHSC/UUps6Mr39UMFPwH8elhJBG9DY1P7kuzsE5qSK/6eMj2EHzO5evJRQWLbKSqUMw+4nCNtIyiQg=="
       },
       "source": "examples/extensions/tools.ts",
-      "sourceSha256": "5eaebc40cffe885fee25c95e3d8aec79cfbd595b6eac8ac5a6de6c4afec3d5d8",
-      "sha256": "5eaebc40cffe885fee25c95e3d8aec79cfbd595b6eac8ac5a6de6c4afec3d5d8"
+      "sourceSha256": "4dd3951d0673aeea540ea8f46635047ca1ea9c92be56dc747650bce20eb160c0",
+      "sha256": "4dd3951d0673aeea540ea8f46635047ca1ea9c92be56dc747650bce20eb160c0"
     },
     {
       "path": "pi-dist/pi-coding-agent/examples/extensions/trigger-compact.ts",
@@ -12794,8 +12794,8 @@
         "integrity": "sha512-Z41LpZ3yYHSC/UUps6Mr39UMFPwH8elhJBG9DY1P7kuzsE5qSK/6eMj2EHzO5evJRQWLbKSqUMw+4nCNtIyiQg=="
       },
       "source": "dist/extensions/codemode/tool.js",
-      "sourceSha256": "8915e8f8b04444018bd8a97161c8c5c0b289a24793701b94362395c0249bd814",
-      "sha256": "a3e7a346aba57addf3a456e5f54c92d8b47e4b90701eec8a550edb8be7ae0e84",
+      "sourceSha256": "05f0912683e8830c23797c7a1dedc8d2bb2580a079f44e07bcb5a46a81d732d3",
+      "sha256": "9fef1d4aeebbce2b20b4088fb95d502a373b4c021fa432ad85d2fe0a8b96420f",
       "rewrite": "module specifiers"
     },
     {
@@ -12874,8 +12874,8 @@
         "integrity": "sha512-Z41LpZ3yYHSC/UUps6Mr39UMFPwH8elhJBG9DY1P7kuzsE5qSK/6eMj2EHzO5evJRQWLbKSqUMw+4nCNtIyiQg=="
       },
       "source": "dist/extensions/llama/ui.js",
-      "sourceSha256": "7e2ca80b5caed641b68f7f7c37806fd38a16e13f3eaf798128823a945d5a43d2",
-      "sha256": "6cdff3d38ceb23bc9742981364b6b94de869ece27d5efeabf0c9238f7712957a",
+      "sourceSha256": "3c4a5d17b337cbcb0ca8e7cd3a8554f6d8a3f87922a9a079a1cea592d9cc86db",
+      "sha256": "43f579e67cded53843ed0c195c1a12b6d764b478b2560fdd9c2902ae184d49ff",
       "rewrite": "module specifiers"
     },
     {
@@ -13000,8 +13000,8 @@
         "integrity": "sha512-Z41LpZ3yYHSC/UUps6Mr39UMFPwH8elhJBG9DY1P7kuzsE5qSK/6eMj2EHzO5evJRQWLbKSqUMw+4nCNtIyiQg=="
       },
       "source": "dist/extensions/mcp/ui.js",
-      "sourceSha256": "54d5a1d62e5de51b9acdb542b6a3f54de86cca9646e89c1e039b5bd9b5d80f4a",
-      "sha256": "48c6b4b42a5bf2f62a3d5df7a63f18eb466912c545ad964b67edba132b2c4692",
+      "sourceSha256": "86ff75b0975af586314a22d0a8b9fe159a33d07e610aac10372160b299522763",
+      "sha256": "00395463d4340b6eba83670c8049c7da47dcc4a0f612bf36647e6e08aed69572",
       "rewrite": "module specifiers"
     },
     {
@@ -13047,8 +13047,8 @@
         "integrity": "sha512-Z41LpZ3yYHSC/UUps6Mr39UMFPwH8elhJBG9DY1P7kuzsE5qSK/6eMj2EHzO5evJRQWLbKSqUMw+4nCNtIyiQg=="
       },
       "source": "dist/main.js",
-      "sourceSha256": "c2e0b60ef8dcdc6cf09818abef3126e35a47bbf04be599b59f2b9f613f71e46d",
-      "sha256": "152bdbc1df4830973ad5e7681d1586198d901aa01d912b7edb9fe967aa38ac4a",
+      "sourceSha256": "21de2a0bcb6c34cfd268cc7679d34761338ec32ffd855f5a7ba71da997c18566",
+      "sha256": "cf0025b505826ea33f900bb00a961cfd1a58bb05d1977ed73a5d2c1194f4b1c7",
       "rewrite": "module specifiers"
     },
     {
@@ -13222,8 +13222,8 @@
         "integrity": "sha512-Z41LpZ3yYHSC/UUps6Mr39UMFPwH8elhJBG9DY1P7kuzsE5qSK/6eMj2EHzO5evJRQWLbKSqUMw+4nCNtIyiQg=="
       },
       "source": "dist/modes/interactive/components/custom-editor.js",
-      "sourceSha256": "000b0056f2bf645537537468bdd6f6ee0c82e4110f5417c1c70c2e8fefc04f29",
-      "sha256": "00b0cd161c5532463b0e43caf9d8ae2f9662880a5ea6a57c1bf53f16aa09a9b9",
+      "sourceSha256": "525e207f2da0a1bbda15dc529ed74b820971501ca6ae93d32c6590217e480573",
+      "sha256": "9334f6942381488003e7da744c254d96c7586a792ad1b4ccfa8082a46bf32156",
       "rewrite": "module specifiers"
     },
     {
@@ -13435,8 +13435,8 @@
         "integrity": "sha512-Z41LpZ3yYHSC/UUps6Mr39UMFPwH8elhJBG9DY1P7kuzsE5qSK/6eMj2EHzO5evJRQWLbKSqUMw+4nCNtIyiQg=="
       },
       "source": "dist/modes/interactive/components/model-selector.js",
-      "sourceSha256": "849f5f20284fbc61f8885a5bc676cd5fe77e255dd50e6cda9405e3b9e8f07d95",
-      "sha256": "b8ee91d00a5fa8f4c391a04c30b1a393e7e96c119305064802dd1597a2a5740c",
+      "sourceSha256": "9a2f5d17db853130845d2b98cd5329a900923a3e107ecbb0142a38e9b7716384",
+      "sha256": "324a6767f745e01af5f6d4ccb2d902d3c0a6f0f7fa759a51806299e542e42be6",
       "rewrite": "module specifiers"
     },
     {
@@ -13447,8 +13447,8 @@
         "integrity": "sha512-Z41LpZ3yYHSC/UUps6Mr39UMFPwH8elhJBG9DY1P7kuzsE5qSK/6eMj2EHzO5evJRQWLbKSqUMw+4nCNtIyiQg=="
       },
       "source": "dist/modes/interactive/components/oauth-selector.js",
-      "sourceSha256": "9aa24ad74415288998e98b0a53b1e9fdf3c2eea2d060af4517486045db83d99d",
-      "sha256": "35874a44b094931c2ac6c8fcb9bd5ce6c4069173ee9230bda38bbc6454471e2f",
+      "sourceSha256": "58cc6e8b4ef7ee76aa22c2bb6875f5b0d0ea800d894c3c695ba29acae17b76e9",
+      "sha256": "9acff725dadb1ed74fc8194df3416f81a9e474ac83b20bf0f99df09fca263341",
       "rewrite": "module specifiers"
     },
     {
@@ -13483,8 +13483,8 @@
         "integrity": "sha512-Z41LpZ3yYHSC/UUps6Mr39UMFPwH8elhJBG9DY1P7kuzsE5qSK/6eMj2EHzO5evJRQWLbKSqUMw+4nCNtIyiQg=="
       },
       "source": "dist/modes/interactive/components/scoped-models-selector.js",
-      "sourceSha256": "c33c26a3e191503a0d66ec3343c95904d6f6096ea2f9db643f97bb3b5f1ad997",
-      "sha256": "28055bb808dd9b2daa6fca7fbfa28bde422b127cf9937d4dc5d722805e46b7bc",
+      "sourceSha256": "4d1f50cd3facf885c1f036098003ec005c29be5538db05d1384a6dcc05f61f3f",
+      "sha256": "743d51f7932d9f34f8cae099eb6487d64bee854d87fdfab9abd8f96906eea426",
       "rewrite": "module specifiers"
     },
     {
@@ -13507,8 +13507,8 @@
         "integrity": "sha512-Z41LpZ3yYHSC/UUps6Mr39UMFPwH8elhJBG9DY1P7kuzsE5qSK/6eMj2EHzO5evJRQWLbKSqUMw+4nCNtIyiQg=="
       },
       "source": "dist/modes/interactive/components/session-selector.js",
-      "sourceSha256": "926e788829f9cb8eb1792f56b5b23e74f575db88606968a60948e2ce45806296",
-      "sha256": "1a98f649c51333156cf733ae0e2b63c1fb02832bf990385fb519ac4789cc6ec9",
+      "sourceSha256": "eb85bc1ee6b51cb9a90cb9421368eb8e4a9b925d43f13baf4ce017926f46d62f",
+      "sha256": "1011c6c3c79bd71dcf2679c4a1e678b86dbe0116979f60093d275c926868ac05",
       "rewrite": "module specifiers"
     },
     {
@@ -13531,8 +13531,8 @@
         "integrity": "sha512-Z41LpZ3yYHSC/UUps6Mr39UMFPwH8elhJBG9DY1P7kuzsE5qSK/6eMj2EHzO5evJRQWLbKSqUMw+4nCNtIyiQg=="
       },
       "source": "dist/modes/interactive/components/settings-submenu.js",
-      "sourceSha256": "744122eedbac199472ac0ded1876c90c5cb3b9103944a5dee4a8d5f27ecfab56",
-      "sha256": "c9fc8e87c153dea02e95d999e01cd6d265e6dc4d807a800fa43ec1e829e90a40",
+      "sourceSha256": "e82cae154dee236da578547373762bbf81aef56970176d75e077afd2c8770fe9",
+      "sha256": "2e297d4881bf7892e477979da99be81e931fa7f4e85e58be45f4639425e89057",
       "rewrite": "module specifiers"
     },
     {
@@ -13627,8 +13627,8 @@
         "integrity": "sha512-Z41LpZ3yYHSC/UUps6Mr39UMFPwH8elhJBG9DY1P7kuzsE5qSK/6eMj2EHzO5evJRQWLbKSqUMw+4nCNtIyiQg=="
       },
       "source": "dist/modes/interactive/components/tree-selector.js",
-      "sourceSha256": "66b8417e683ecd80ca7bec066ccb2f7c2ffacfff33a59da6a3c4d901d7b357a1",
-      "sha256": "c2bb63c92305a2d3e09d81480a6127d3e059f4191b426b87464a962e6b457533",
+      "sourceSha256": "6154552f005cce0a6938a7c24fa6f0695f3afa5748c59edf21f3a9f71a9978d4",
+      "sha256": "e30c5965cb5cfb804bf21714c51f17d1a2099d1133897b0924f88924134b6cf5",
       "rewrite": "module specifiers"
     },
     {
@@ -13651,8 +13651,8 @@
         "integrity": "sha512-Z41LpZ3yYHSC/UUps6Mr39UMFPwH8elhJBG9DY1P7kuzsE5qSK/6eMj2EHzO5evJRQWLbKSqUMw+4nCNtIyiQg=="
       },
       "source": "dist/modes/interactive/components/user-message-selector.js",
-      "sourceSha256": "563e7619c28a6ee3626ee319e32fa1ccea88910fc3b08126df8ee49664d19cd6",
-      "sha256": "7c208848bdf96a520cb6967802b713bf0395c3974a7f5b1c3ce18f75395b9a02",
+      "sourceSha256": "18e147c382db2da07dc295113a51cfe163a86aa7ba832808aae31f2364212720",
+      "sha256": "00d4c9987955c1b582022a13f22744500e270132b221a44957d58d8096d3d103",
       "rewrite": "module specifiers"
     },
     {
@@ -13698,8 +13698,8 @@
         "integrity": "sha512-Z41LpZ3yYHSC/UUps6Mr39UMFPwH8elhJBG9DY1P7kuzsE5qSK/6eMj2EHzO5evJRQWLbKSqUMw+4nCNtIyiQg=="
       },
       "source": "dist/modes/interactive/interactive-mode.js",
-      "sourceSha256": "8c41c310264e683531f92bb22b0f1b6a0a3cfe1883d20e3b80ed69997b863f0e",
-      "sha256": "c60d612a06d7d7beb114048c6f6b71d846dade7d0a12c6b808cbf785948269d8",
+      "sourceSha256": "85d641f1e5928aa109b163ed5cc64e4ae6c43bb3d6893a11af1fbaf20f92a771",
+      "sha256": "15b99537ebd26f63e2848a6d6769958514dde3ca189665c9a7a056cf83cb561a",
       "rewrite": "module specifiers; D26 PiG product identity (automation/gen/pi-identity-patches.mjs)"
     },
     {
@@ -13902,8 +13902,8 @@
         "integrity": "sha512-Z41LpZ3yYHSC/UUps6Mr39UMFPwH8elhJBG9DY1P7kuzsE5qSK/6eMj2EHzO5evJRQWLbKSqUMw+4nCNtIyiQg=="
       },
       "source": "dist/package-manager-cli.js",
-      "sourceSha256": "087a206f79d6025324d19b024a746e1c6fc86d802586750eab5f0bf219b70db5",
-      "sha256": "66ff1f928b536290d8901fdbed7301d4d3848b426d70dca037ea7e4fb3b1dc1c",
+      "sourceSha256": "a9a22ba5b72872f83ebd310dea430805892abb3680385838db9c7638c3e507f3",
+      "sha256": "936651199c8f6b59bf1b237d0dc24af351afef530088fffe1fbe5324896466a3",
       "rewrite": "module specifiers; D26 PiG product identity (automation/gen/pi-identity-patches.mjs)"
     },
     {
@@ -13949,16 +13949,6 @@
       "rewrite": "automation/gen/bundle-pi-sdk.mjs; exact input hashes in sdk-bundle/inputs.json"
     },
     {
-      "path": "pi-dist/pi-coding-agent/sdk-bundle/chunk-4XWAF7AN.js",
-      "package": {
-        "name": "@earendil-works/pi-coding-agent",
-        "version": "1.4.0",
-        "integrity": "sha512-Z41LpZ3yYHSC/UUps6Mr39UMFPwH8elhJBG9DY1P7kuzsE5qSK/6eMj2EHzO5evJRQWLbKSqUMw+4nCNtIyiQg=="
-      },
-      "sha256": "0e31d20bf7d9ad230ccd9df1b3fa9e55f964ec311741aa6bdb1237a22902bc99",
-      "rewrite": "automation/gen/bundle-pi-sdk.mjs; exact input hashes in sdk-bundle/inputs.json"
-    },
-    {
       "path": "pi-dist/pi-coding-agent/sdk-bundle/chunk-6VZPGKDV.js",
       "package": {
         "name": "@earendil-works/pi-coding-agent",
@@ -13969,13 +13959,23 @@
       "rewrite": "automation/gen/bundle-pi-sdk.mjs; exact input hashes in sdk-bundle/inputs.json"
     },
     {
-      "path": "pi-dist/pi-coding-agent/sdk-bundle/chunk-IX4XAYCN.js",
+      "path": "pi-dist/pi-coding-agent/sdk-bundle/chunk-E5B65AQW.js",
       "package": {
         "name": "@earendil-works/pi-coding-agent",
         "version": "1.4.0",
         "integrity": "sha512-Z41LpZ3yYHSC/UUps6Mr39UMFPwH8elhJBG9DY1P7kuzsE5qSK/6eMj2EHzO5evJRQWLbKSqUMw+4nCNtIyiQg=="
       },
-      "sha256": "622f357621f37aa49ad61bdabf4227bebbed920cfa064e518ba41b9534ba1772",
+      "sha256": "ff0517e8dd7f9a0ba3c2c438a423f53df0e7f19daef10948c6a005be62ea02ca",
+      "rewrite": "automation/gen/bundle-pi-sdk.mjs; exact input hashes in sdk-bundle/inputs.json"
+    },
+    {
+      "path": "pi-dist/pi-coding-agent/sdk-bundle/chunk-HXXU3UR4.js",
+      "package": {
+        "name": "@earendil-works/pi-coding-agent",
+        "version": "1.4.0",
+        "integrity": "sha512-Z41LpZ3yYHSC/UUps6Mr39UMFPwH8elhJBG9DY1P7kuzsE5qSK/6eMj2EHzO5evJRQWLbKSqUMw+4nCNtIyiQg=="
+      },
+      "sha256": "55c6dd5ad3ccde94940d8b6ccbf95397de08747ab5cee7392b89a138b1547d06",
       "rewrite": "automation/gen/bundle-pi-sdk.mjs; exact input hashes in sdk-bundle/inputs.json"
     },
     {
@@ -14006,26 +14006,6 @@
         "integrity": "sha512-Z41LpZ3yYHSC/UUps6Mr39UMFPwH8elhJBG9DY1P7kuzsE5qSK/6eMj2EHzO5evJRQWLbKSqUMw+4nCNtIyiQg=="
       },
       "sha256": "aa785fb7e1d54255b47b3371ac979ddae6ac625b5e625b5a8469cdbd9932bd1c",
-      "rewrite": "automation/gen/bundle-pi-sdk.mjs; exact input hashes in sdk-bundle/inputs.json"
-    },
-    {
-      "path": "pi-dist/pi-coding-agent/sdk-bundle/chunk-NF6AG2GL.js",
-      "package": {
-        "name": "@earendil-works/pi-coding-agent",
-        "version": "1.4.0",
-        "integrity": "sha512-Z41LpZ3yYHSC/UUps6Mr39UMFPwH8elhJBG9DY1P7kuzsE5qSK/6eMj2EHzO5evJRQWLbKSqUMw+4nCNtIyiQg=="
-      },
-      "sha256": "944d5fb16ce11a6161fadfdf3282ac8b4ebf1366695bca4ad1ac7aec9da9c442",
-      "rewrite": "automation/gen/bundle-pi-sdk.mjs; exact input hashes in sdk-bundle/inputs.json"
-    },
-    {
-      "path": "pi-dist/pi-coding-agent/sdk-bundle/chunk-NY2GJK4E.js",
-      "package": {
-        "name": "@earendil-works/pi-coding-agent",
-        "version": "1.4.0",
-        "integrity": "sha512-Z41LpZ3yYHSC/UUps6Mr39UMFPwH8elhJBG9DY1P7kuzsE5qSK/6eMj2EHzO5evJRQWLbKSqUMw+4nCNtIyiQg=="
-      },
-      "sha256": "3668092764b111f7b5e92711f264d3e77b719b810d18f8bf0c0b9dd381ee64f8",
       "rewrite": "automation/gen/bundle-pi-sdk.mjs; exact input hashes in sdk-bundle/inputs.json"
     },
     {
@@ -14069,6 +14049,16 @@
       "rewrite": "automation/gen/bundle-pi-sdk.mjs; exact input hashes in sdk-bundle/inputs.json"
     },
     {
+      "path": "pi-dist/pi-coding-agent/sdk-bundle/chunk-SKZPKAGV.js",
+      "package": {
+        "name": "@earendil-works/pi-coding-agent",
+        "version": "1.4.0",
+        "integrity": "sha512-Z41LpZ3yYHSC/UUps6Mr39UMFPwH8elhJBG9DY1P7kuzsE5qSK/6eMj2EHzO5evJRQWLbKSqUMw+4nCNtIyiQg=="
+      },
+      "sha256": "836520780c2baa3e04081644e4e0ad1830b45809d411e6872f474a252e3a2172",
+      "rewrite": "automation/gen/bundle-pi-sdk.mjs; exact input hashes in sdk-bundle/inputs.json"
+    },
+    {
       "path": "pi-dist/pi-coding-agent/sdk-bundle/chunk-T2RT6V7W.js",
       "package": {
         "name": "@earendil-works/pi-coding-agent",
@@ -14079,13 +14069,13 @@
       "rewrite": "automation/gen/bundle-pi-sdk.mjs; exact input hashes in sdk-bundle/inputs.json"
     },
     {
-      "path": "pi-dist/pi-coding-agent/sdk-bundle/chunk-T5YZVFVX.js",
+      "path": "pi-dist/pi-coding-agent/sdk-bundle/chunk-UZ243LW5.js",
       "package": {
         "name": "@earendil-works/pi-coding-agent",
         "version": "1.4.0",
         "integrity": "sha512-Z41LpZ3yYHSC/UUps6Mr39UMFPwH8elhJBG9DY1P7kuzsE5qSK/6eMj2EHzO5evJRQWLbKSqUMw+4nCNtIyiQg=="
       },
-      "sha256": "053a4f54ebeb901a9753b92dc7ceff4297bf301f5b7c82e827828a9c74c95fd4",
+      "sha256": "141736438e32a0c102492f4c28b50091ef60defc0ab6689e1d4e9aafb6f86fa1",
       "rewrite": "automation/gen/bundle-pi-sdk.mjs; exact input hashes in sdk-bundle/inputs.json"
     },
     {
@@ -14106,6 +14096,16 @@
         "integrity": "sha512-Z41LpZ3yYHSC/UUps6Mr39UMFPwH8elhJBG9DY1P7kuzsE5qSK/6eMj2EHzO5evJRQWLbKSqUMw+4nCNtIyiQg=="
       },
       "sha256": "f49d355d9e2f3fd9c88dc0a5969cc13add5233e6e73f0bd83140290aa61f211d",
+      "rewrite": "automation/gen/bundle-pi-sdk.mjs; exact input hashes in sdk-bundle/inputs.json"
+    },
+    {
+      "path": "pi-dist/pi-coding-agent/sdk-bundle/chunk-YO7W7VLN.js",
+      "package": {
+        "name": "@earendil-works/pi-coding-agent",
+        "version": "1.4.0",
+        "integrity": "sha512-Z41LpZ3yYHSC/UUps6Mr39UMFPwH8elhJBG9DY1P7kuzsE5qSK/6eMj2EHzO5evJRQWLbKSqUMw+4nCNtIyiQg=="
+      },
+      "sha256": "ea9112b2d71dbb11658a6f51c72858b1f06f884dfd0015cf6cd27ef1a40fe132",
       "rewrite": "automation/gen/bundle-pi-sdk.mjs; exact input hashes in sdk-bundle/inputs.json"
     },
     {
@@ -14135,7 +14135,7 @@
         "version": "1.4.0",
         "integrity": "sha512-Z41LpZ3yYHSC/UUps6Mr39UMFPwH8elhJBG9DY1P7kuzsE5qSK/6eMj2EHzO5evJRQWLbKSqUMw+4nCNtIyiQg=="
       },
-      "sha256": "a92fe23e05ce5fa1c15a757ffbf2abe151bac222979a2971b92c34a6f5cebf20",
+      "sha256": "1f4aa8051eb365ee98f49fe40b13ef931bbc3b42680fbd2f5e4674d9fb3646c3",
       "rewrite": "automation/gen/bundle-pi-sdk.mjs; exact input hashes in sdk-bundle/inputs.json"
     },
     {
@@ -14145,7 +14145,7 @@
         "version": "1.4.0",
         "integrity": "sha512-Z41LpZ3yYHSC/UUps6Mr39UMFPwH8elhJBG9DY1P7kuzsE5qSK/6eMj2EHzO5evJRQWLbKSqUMw+4nCNtIyiQg=="
       },
-      "sha256": "bd7fba5eff6354651c3d10af78a53c4dba0d01c1845c6ef9d762eb4e4c5b82d1",
+      "sha256": "21167daa1e736f4235c75c756c066a7a7f753e94f1158700c3653c8a66841d4d",
       "rewrite": "automation/gen/bundle-pi-sdk.mjs; exact input hashes in sdk-bundle/inputs.json"
     },
     {
@@ -14155,7 +14155,7 @@
         "version": "1.4.0",
         "integrity": "sha512-Z41LpZ3yYHSC/UUps6Mr39UMFPwH8elhJBG9DY1P7kuzsE5qSK/6eMj2EHzO5evJRQWLbKSqUMw+4nCNtIyiQg=="
       },
-      "sha256": "07e70577219bab75dc42e105dc14424bf7a5eba66dce0318056d449f1cd8ecbf",
+      "sha256": "522f099ddb27143526bbe28c7dfa4d658d7f233a6cb4873d3553af9d8989745d",
       "rewrite": "automation/gen/bundle-pi-sdk.mjs; exact input hashes in sdk-bundle/inputs.json"
     },
     {
@@ -14165,7 +14165,7 @@
         "version": "1.4.0",
         "integrity": "sha512-Z41LpZ3yYHSC/UUps6Mr39UMFPwH8elhJBG9DY1P7kuzsE5qSK/6eMj2EHzO5evJRQWLbKSqUMw+4nCNtIyiQg=="
       },
-      "sha256": "1096f7c74ad29a777238faa130fe36f455e43617f19e838cbf780c866510e7d7",
+      "sha256": "f66c9571ecd2cbad4632c4d9e2f02d61cd16495943058415b812600465a64ee5",
       "rewrite": "automation/gen/bundle-pi-sdk.mjs; exact input hashes in sdk-bundle/inputs.json"
     },
     {
@@ -14187,8 +14187,8 @@
         "integrity": "sha512-Z41LpZ3yYHSC/UUps6Mr39UMFPwH8elhJBG9DY1P7kuzsE5qSK/6eMj2EHzO5evJRQWLbKSqUMw+4nCNtIyiQg=="
       },
       "source": "dist/utils/ansi.js",
-      "sourceSha256": "c616ab4bd8da8bc5d8e94e38cc63224dbd98586cb3a7cffb75e47f1077b18031",
-      "sha256": "c616ab4bd8da8bc5d8e94e38cc63224dbd98586cb3a7cffb75e47f1077b18031"
+      "sourceSha256": "8218ad7cca4e4dbb0ac13f8b4decc78626ed87dc35cf7841ba34dbffd9db68b7",
+      "sha256": "8218ad7cca4e4dbb0ac13f8b4decc78626ed87dc35cf7841ba34dbffd9db68b7"
     },
     {
       "path": "pi-dist/pi-coding-agent/utils/changelog.js",
@@ -14336,8 +14336,8 @@
         "integrity": "sha512-Z41LpZ3yYHSC/UUps6Mr39UMFPwH8elhJBG9DY1P7kuzsE5qSK/6eMj2EHzO5evJRQWLbKSqUMw+4nCNtIyiQg=="
       },
       "source": "dist/utils/image-resize-core.js",
-      "sourceSha256": "6023f261c2d504cc0854e8f12d5ce813bd7edf944a1121fe953783f9673fb4ef",
-      "sha256": "6023f261c2d504cc0854e8f12d5ce813bd7edf944a1121fe953783f9673fb4ef"
+      "sourceSha256": "3eac5f498141a6256aab4c318761edb95352f77602e7a89e26eaaff4d48789d6",
+      "sha256": "3eac5f498141a6256aab4c318761edb95352f77602e7a89e26eaaff4d48789d6"
     },
     {
       "path": "pi-dist/pi-coding-agent/utils/image-resize-worker.js",
@@ -14859,8 +14859,8 @@
         "integrity": "sha512-4obPOjgOD7g4mGSlngIvxyujC1UPdmyI9zdVthbr8GufacFEX+Ce0+scPgHg++k2xj5+QjESM2d5TxvIuzCVmg=="
       },
       "source": "dist/components/editor.js",
-      "sourceSha256": "838ebf6af4d1b0161959a0914c59aa65b0537b099fb358402356a51894db8075",
-      "sha256": "e07b35b1ef27a47ea31caf7c666af46baefb2089a664596cd87ceae7b189d5b5",
+      "sourceSha256": "6917345b6b70cf7078a4a28e6520c1fa7372276720002917bb34fa0bcafcb978",
+      "sha256": "ba2d23fb154eed660bb2501c418dd6a158010cb400657117159df323a22c4560",
       "rewrite": "module specifiers"
     },
     {
@@ -14916,8 +14916,8 @@
         "integrity": "sha512-4obPOjgOD7g4mGSlngIvxyujC1UPdmyI9zdVthbr8GufacFEX+Ce0+scPgHg++k2xj5+QjESM2d5TxvIuzCVmg=="
       },
       "source": "dist/components/markdown.js",
-      "sourceSha256": "f1f7637810f8ce83108fc7aa1d0850a67d3ee151584e9f92bba7f29e3f232a69",
-      "sha256": "ba7ff9c45c4a0cc4b7131cd5b29300bf0ff3ac013694d7fbd51c0926a59e1260",
+      "sourceSha256": "a93bf20fe49789c6c132f009696de877a54b851c9b3c0c0a7724646a6d289dfa",
+      "sha256": "5f3d8a4345f9218add7b2bd8a3d1b40638fb772d5e9f345b7bc0accf6d2ff7f4",
       "rewrite": "module specifiers"
     },
     {
@@ -14950,8 +14950,8 @@
         "integrity": "sha512-4obPOjgOD7g4mGSlngIvxyujC1UPdmyI9zdVthbr8GufacFEX+Ce0+scPgHg++k2xj5+QjESM2d5TxvIuzCVmg=="
       },
       "source": "dist/components/select-list.js",
-      "sourceSha256": "4c8fe79d053ce465454c55bbeb7e61d84ea875f0b9bce8c6e238f3d7721c7f42",
-      "sha256": "4c8fe79d053ce465454c55bbeb7e61d84ea875f0b9bce8c6e238f3d7721c7f42"
+      "sourceSha256": "873255a3376c3cf3ee16e14b535b701fb582adab0acc1949867b8f0810447cbd",
+      "sha256": "873255a3376c3cf3ee16e14b535b701fb582adab0acc1949867b8f0810447cbd"
     },
     {
       "path": "pi-dist/pi-tui/components/settings-list.js",
@@ -14961,8 +14961,8 @@
         "integrity": "sha512-4obPOjgOD7g4mGSlngIvxyujC1UPdmyI9zdVthbr8GufacFEX+Ce0+scPgHg++k2xj5+QjESM2d5TxvIuzCVmg=="
       },
       "source": "dist/components/settings-list.js",
-      "sourceSha256": "ef0ba838df7a8ad0c6f833e9263fe6ac03033008f2283e6106033a8cf5f3af30",
-      "sha256": "ef0ba838df7a8ad0c6f833e9263fe6ac03033008f2283e6106033a8cf5f3af30"
+      "sourceSha256": "ce6d6ce5c9703f57f6b43c494d96a2a5f5eedce4d1cb7e69924fa60c894224af",
+      "sha256": "ce6d6ce5c9703f57f6b43c494d96a2a5f5eedce4d1cb7e69924fa60c894224af"
     },
     {
       "path": "pi-dist/pi-tui/components/spacer.js",
@@ -15049,8 +15049,8 @@
         "integrity": "sha512-4obPOjgOD7g4mGSlngIvxyujC1UPdmyI9zdVthbr8GufacFEX+Ce0+scPgHg++k2xj5+QjESM2d5TxvIuzCVmg=="
       },
       "source": "dist/index.js",
-      "sourceSha256": "ea3025e8da676b875597137c1f9ec7d534e725dd4f759e925376bec566ccc87c",
-      "sha256": "9bf1a011b86c040430b82a401e3c46d97b9fbfb853cff0e64ef5355af45df416",
+      "sourceSha256": "a0b6f2274522c6371c9ae512fb1fa55dbaab17d70333f22a21793645a5b2bd48",
+      "sha256": "2e497c14c6f1e66e9682c10910592c7c1c324476b9b7d9d9e59765e3eae3a23d",
       "rewrite": "module specifiers"
     },
     {
@@ -15061,8 +15061,8 @@
         "integrity": "sha512-4obPOjgOD7g4mGSlngIvxyujC1UPdmyI9zdVthbr8GufacFEX+Ce0+scPgHg++k2xj5+QjESM2d5TxvIuzCVmg=="
       },
       "source": "dist/keybindings.js",
-      "sourceSha256": "651b2366750b9149a0841c2dc9d84f5c854bae53a82b8e98eba07c0e662086a8",
-      "sha256": "651b2366750b9149a0841c2dc9d84f5c854bae53a82b8e98eba07c0e662086a8"
+      "sourceSha256": "69aef9547a5f631822e3c2bf65ceb4896df15308f5aecd108780dcbdf0641a5f",
+      "sha256": "69aef9547a5f631822e3c2bf65ceb4896df15308f5aecd108780dcbdf0641a5f"
     },
     {
       "path": "pi-dist/pi-tui/keys.js",
@@ -15379,7 +15379,7 @@
         "version": "1.4.0",
         "integrity": "sha512-4obPOjgOD7g4mGSlngIvxyujC1UPdmyI9zdVthbr8GufacFEX+Ce0+scPgHg++k2xj5+QjESM2d5TxvIuzCVmg=="
       },
-      "sha256": "f738873db71fb98c32118a83b565ef90845dc744bf977fab8385d5d78b3a1134",
+      "sha256": "811c784e95585fbb6cf7439db31bd6550ef088da61161a0e3e98b6bb23295f82",
       "rewrite": "automation/gen/bundle-pi-libraries.mjs; exact input hashes in sdk-bundle/inputs.json"
     },
     {
@@ -15389,7 +15389,7 @@
         "version": "1.4.0",
         "integrity": "sha512-4obPOjgOD7g4mGSlngIvxyujC1UPdmyI9zdVthbr8GufacFEX+Ce0+scPgHg++k2xj5+QjESM2d5TxvIuzCVmg=="
       },
-      "sha256": "3a11b8551a2c935367df5cdcc4c3f31542f93a3d0ad35570144060f7d317680c",
+      "sha256": "f4b03b6b3c4e7c623dac143a9a6b8c39f9e32361ee53d7c96c86513db88ef854",
       "rewrite": "automation/gen/bundle-pi-libraries.mjs; exact input hashes in sdk-bundle/inputs.json"
     },
     {
@@ -15444,8 +15444,8 @@
         "integrity": "sha512-4obPOjgOD7g4mGSlngIvxyujC1UPdmyI9zdVthbr8GufacFEX+Ce0+scPgHg++k2xj5+QjESM2d5TxvIuzCVmg=="
       },
       "source": "dist/tui-alt-screen.js",
-      "sourceSha256": "ef16411948439e9d348ed55073870f74032ff467d9ea0f3862ee1cad4bcc7acc",
-      "sha256": "d1e07b1ff0bb22d19bb4b4ebb7ece018616feaf8d25753240419a0aa96e53182",
+      "sourceSha256": "5b6609ac44a39cc49bbb1ce0b5c3c9550854849daba492fe530dfbaa50aac608",
+      "sha256": "2e9be6b6c5a213a6f0b651cf20e1fea8aa7d1abfe31f2b8d8b69380799fd14ff",
       "rewrite": "module specifiers"
     },
     {
@@ -15456,8 +15456,8 @@
         "integrity": "sha512-4obPOjgOD7g4mGSlngIvxyujC1UPdmyI9zdVthbr8GufacFEX+Ce0+scPgHg++k2xj5+QjESM2d5TxvIuzCVmg=="
       },
       "source": "dist/tui-main-screen.js",
-      "sourceSha256": "d993e3b50da2b10c1ca8774c75e8f678dba861e4ba870b9e67b34bbb23739f92",
-      "sha256": "d993e3b50da2b10c1ca8774c75e8f678dba861e4ba870b9e67b34bbb23739f92"
+      "sourceSha256": "f883815df24d034f9650abc4282b4fce59b781303c002d0ff519a418ace839c6",
+      "sha256": "f883815df24d034f9650abc4282b4fce59b781303c002d0ff519a418ace839c6"
     },
     {
       "path": "pi-dist/pi-tui/tui.js",

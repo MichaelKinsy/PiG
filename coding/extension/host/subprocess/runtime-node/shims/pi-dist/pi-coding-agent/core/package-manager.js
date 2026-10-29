@@ -20,7 +20,7 @@ function getEnv() {
         return process.env;
     }
 }
-import { basename, dirname, join, relative, resolve, sep } from "node:path";
+import { basename, dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import ignore from "../../../ignore/index.js";
 import { minimatch } from "../../../minimatch/dist/esm/index.js";
 import { gt, maxSatisfying, rcompare, satisfies, valid, validRange } from "../../../semver/index.js";
@@ -470,6 +470,33 @@ function collectResourceFiles(dir, resourceType) {
     }
     return collectFiles(dir, FILE_PATTERNS[resourceType]);
 }
+// A `pi` object counts as an explicit resource manifest only when it lists resources. Packages whose
+// `pi` object holds only metadata (changelogPath, gallery image/video) still use directory auto-discovery.
+function hasManifestResourceFields(manifest) {
+    return RESOURCE_TYPES.some((resourceType) => manifest[resourceType] !== undefined);
+}
+function isPathInside(parent, child) {
+    const relativePath = relative(parent, child);
+    return (relativePath !== "" && relativePath !== ".." && !relativePath.startsWith(`..${sep}`) && !isAbsolute(relativePath));
+}
+function resolvePackageChangelogPath(packageRoot, manifest) {
+    const changelogPath = manifest?.changelogPath ?? "CHANGELOG.md";
+    if (!changelogPath)
+        return undefined;
+    const resolvedPath = resolve(packageRoot, changelogPath);
+    if (!existsSync(resolvedPath))
+        return undefined;
+    const canonicalPackageRoot = canonicalizePath(packageRoot);
+    const canonicalChangelogPath = canonicalizePath(resolvedPath);
+    if (!isPathInside(canonicalPackageRoot, canonicalChangelogPath))
+        return undefined;
+    try {
+        return statSync(resolvedPath).isFile() ? resolvedPath : undefined;
+    }
+    catch {
+        return undefined;
+    }
+}
 function matchesAnyPattern(filePath, patterns, baseDir) {
     const rel = toPosixPath(relative(baseDir, filePath));
     const name = basename(filePath);
@@ -877,10 +904,13 @@ export class DefaultPackageManager {
                 gitCandidates.push({ ...entry, parsed });
             }
         }
-        const npmCheckTasks = npmCandidates.map((entry) => async () => ({
-            entry,
-            shouldUpdate: await this.shouldUpdateNpmSource(entry.parsed, entry.scope),
-        }));
+        const npmCheckTasks = npmCandidates.map((entry) => async () => {
+            const check = await this.shouldUpdateNpmSource(entry.parsed, entry.scope);
+            return {
+                entry: { ...entry, installedVersion: check.installedVersion, targetVersion: check.targetVersion },
+                shouldUpdate: check.shouldUpdate,
+            };
+        });
         const npmCheckResults = await this.runWithConcurrency(npmCheckTasks, UPDATE_CHECK_CONCURRENCY);
         const userNpmUpdates = [];
         const projectNpmUpdates = [];
@@ -914,15 +944,15 @@ export class DefaultPackageManager {
         const installedPath = this.getManagedNpmInstallPath(source, scope);
         const installedVersion = existsSync(installedPath) ? this.getInstalledNpmVersion(installedPath) : undefined;
         if (!installedVersion) {
-            return true;
+            return { shouldUpdate: true };
         }
         try {
             const targetVersion = await this.getLatestNpmVersion(source.version ? source.spec : source.name, source.range);
-            return gt(targetVersion, installedVersion);
+            return { shouldUpdate: gt(targetVersion, installedVersion), installedVersion, targetVersion };
         }
         catch {
             // Preserve existing update behavior when version lookup fails.
-            return true;
+            return { shouldUpdate: true, installedVersion };
         }
     }
     async updateNpmBatch(sources, scope) {
@@ -935,6 +965,29 @@ export class DefaultPackageManager {
         await this.withProgress("update", sourceLabel, message, async () => {
             await this.installNpmBatch(specs, scope);
         });
+        this.reportUnchangedNpmUpdates(sources, scope);
+    }
+    /**
+     * npm can resolve stale registry metadata shortly after a publish and install the old
+     * version without an error. Warn when an announced update did not change the installed version.
+     */
+    reportUnchangedNpmUpdates(sources, scope) {
+        for (const entry of sources) {
+            if (!entry.installedVersion || !entry.targetVersion) {
+                continue;
+            }
+            const installedPath = this.getManagedNpmInstallPath(entry.parsed, scope);
+            const versionAfter = this.getInstalledNpmVersion(installedPath);
+            if (versionAfter !== entry.installedVersion) {
+                continue;
+            }
+            this.emitProgress({
+                type: "progress",
+                action: "update",
+                source: entry.source,
+                message: `${entry.source} is still ${versionAfter} (registry reports ${entry.targetVersion}); npm registry metadata may be stale, try again in a few minutes`,
+            });
+        }
     }
     async installNpmBatch(specs, scope) {
         const installRoot = this.getNpmInstallRoot(scope, false);
@@ -1863,6 +1916,14 @@ export class DefaultPackageManager {
         return resolvePath(input, baseDir, { homeDir: getHomeDir(), trim: true });
     }
     collectPackageResources(packageRoot, accumulator, filter, metadata) {
+        const manifest = readPiManifest(join(packageRoot, "package.json"));
+        const changelogPath = resolvePackageChangelogPath(packageRoot, manifest);
+        if (changelogPath) {
+            metadata.changelogPath = changelogPath;
+        }
+        else {
+            delete metadata.changelogPath;
+        }
         if (filter) {
             for (const resourceType of RESOURCE_TYPES) {
                 const patterns = filter[resourceType];
@@ -1879,8 +1940,7 @@ export class DefaultPackageManager {
             }
             return true;
         }
-        const manifest = readPiManifest(join(packageRoot, "package.json"));
-        if (manifest) {
+        if (manifest && hasManifestResourceFields(manifest)) {
             for (const resourceType of RESOURCE_TYPES) {
                 const entries = manifest[resourceType];
                 this.addManifestEntries(entries, packageRoot, resourceType, this.getTargetMap(accumulator, resourceType), metadata);

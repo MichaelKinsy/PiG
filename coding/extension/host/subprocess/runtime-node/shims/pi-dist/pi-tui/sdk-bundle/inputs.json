@@ -27,7 +27,7 @@
     },
     {
       "path": "pi-dist/pi-tui/components/editor.js",
-      "sha256": "e07b35b1ef27a47ea31caf7c666af46baefb2089a664596cd87ceae7b189d5b5"
+      "sha256": "ba2d23fb154eed660bb2501c418dd6a158010cb400657117159df323a22c4560"
     },
     {
       "path": "pi-dist/pi-tui/components/h-stack.js",
@@ -47,7 +47,7 @@
     },
     {
       "path": "pi-dist/pi-tui/components/markdown.js",
-      "sha256": "ba7ff9c45c4a0cc4b7131cd5b29300bf0ff3ac013694d7fbd51c0926a59e1260"
+      "sha256": "5f3d8a4345f9218add7b2bd8a3d1b40638fb772d5e9f345b7bc0accf6d2ff7f4"
     },
     {
       "path": "pi-dist/pi-tui/components/mouse-region.js",
@@ -59,11 +59,11 @@
     },
     {
       "path": "pi-dist/pi-tui/components/select-list.js",
-      "sha256": "4c8fe79d053ce465454c55bbeb7e61d84ea875f0b9bce8c6e238f3d7721c7f42"
+      "sha256": "873255a3376c3cf3ee16e14b535b701fb582adab0acc1949867b8f0810447cbd"
     },
     {
       "path": "pi-dist/pi-tui/components/settings-list.js",
-      "sha256": "ef0ba838df7a8ad0c6f833e9263fe6ac03033008f2283e6106033a8cf5f3af30"
+      "sha256": "ce6d6ce5c9703f57f6b43c494d96a2a5f5eedce4d1cb7e69924fa60c894224af"
     },
     {
       "path": "pi-dist/pi-tui/components/spacer.js",
@@ -91,7 +91,7 @@
     },
     {
       "path": "pi-dist/pi-tui/index.js",
-      "sha256": "9bf1a011b86c040430b82a401e3c46d97b9fbfb853cff0e64ef5355af45df416"
+      "sha256": "2e497c14c6f1e66e9682c10910592c7c1c324476b9b7d9d9e59765e3eae3a23d"
     },
     {
       "path": "pi-dist/pi-tui/kill-ring.js",
@@ -135,11 +135,11 @@
     },
     {
       "path": "pi-dist/pi-tui/tui-alt-screen.js",
-      "sha256": "d1e07b1ff0bb22d19bb4b4ebb7ece018616feaf8d25753240419a0aa96e53182"
+      "sha256": "2e9be6b6c5a213a6f0b651cf20e1fea8aa7d1abfe31f2b8d8b69380799fd14ff"
     },
     {
       "path": "pi-dist/pi-tui/tui-main-screen.js",
-      "sha256": "d993e3b50da2b10c1ca8774c75e8f678dba861e4ba870b9e67b34bbb23739f92"
+      "sha256": "f883815df24d034f9650abc4282b4fce59b781303c002d0ff519a418ace839c6"
     },
     {
       "path": "pi-dist/pi-tui/undo-stack.js",

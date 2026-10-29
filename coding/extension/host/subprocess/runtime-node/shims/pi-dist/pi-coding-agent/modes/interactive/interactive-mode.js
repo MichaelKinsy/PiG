@@ -29,6 +29,7 @@ import { RADIUS_MCP_URL, RADIUS_PROVIDER_ID } from "../../core/radius.js";
 import { formatMissingSessionCwdPrompt, MissingSessionCwdError } from "../../core/session-cwd.js";
 import { SessionManager, sessionEntryToContextMessages, } from "../../core/session-manager.js";
 import { BUILTIN_SLASH_COMMANDS } from "../../core/slash-commands.js";
+import { getSourcePackageKey } from "../../core/source-info.js";
 import { isInstallTelemetryEnabled } from "../../core/telemetry.js";
 import { withBuiltInRenderers } from "../../core/tools/renderers/index.js";
 import { hasTrustRequiringProjectResources, ProjectTrustStore } from "../../core/trust-manager.js";
@@ -43,6 +44,7 @@ import { getCwdRelativePath } from "../../utils/paths.js";
 import { getPiUserAgent } from "../../utils/pi-user-agent.js";
 import { killTrackedDetachedChildren } from "../../utils/shell.js";
 import { loadAllHighlightLanguages } from "../../utils/syntax-highlight.js";
+import { stripBom } from "../../utils/text.js";
 import { ensureTool } from "../../utils/tools-manager.js";
 import { checkForNewPiVersion } from "../../utils/version-check.js";
 import { reportBug } from "./bug-report.js";
@@ -274,6 +276,7 @@ export class InteractiveMode {
     lastSigintTime = 0;
     lastEscapeTime = 0;
     changelogMarkdown = undefined;
+    extensionChangelogUpdates = [];
     startupNoticesShown = false;
     anthropicSubscriptionWarningShown = false;
     // Status line tracking (for mutating immediately-sequential status updates)
@@ -563,24 +566,44 @@ export class InteractiveMode {
             return;
         }
         this.startupNoticesShown = true;
-        if (!this.changelogMarkdown) {
+        if (!this.changelogMarkdown && this.extensionChangelogUpdates.length === 0) {
             return;
         }
         if (this.chatContainer.children.length > 0) {
             this.chatContainer.addChild(new Spacer(1));
         }
         this.chatContainer.addChild(new DynamicBorder());
-        if (this.settingsManager.getCollapseChangelog()) {
-            const versionMatch = this.changelogMarkdown.match(/##\s+\[?(\d+\.\d+\.\d+)\]?/);
-            const latestVersion = versionMatch ? versionMatch[1] : this.version;
-            const condensedText = `Updated to v${latestVersion}. Use ${theme.bold("/changelog")} to view full changelog.`;
-            this.chatContainer.addChild(new Text(condensedText, 1, 0));
+        if (this.changelogMarkdown) {
+            if (this.settingsManager.getCollapseChangelog()) {
+                const versionMatch = this.changelogMarkdown.match(/##\s+\[?(\d+\.\d+\.\d+)\]?/);
+                const latestVersion = versionMatch ? versionMatch[1] : this.version;
+                const condensedText = `Updated to v${latestVersion}. Use ${theme.bold("/changelog")} to view full changelog.`;
+                this.chatContainer.addChild(new Text(condensedText, 1, 0));
+            }
+            else {
+                this.chatContainer.addChild(new ThemedText(() => theme.bold(theme.fg("accent", "What's New")), 1, 0));
+                this.chatContainer.addChild(new Spacer(1));
+                this.chatContainer.addChild(new Markdown(this.changelogMarkdown.trim(), 1, 0, this.getMarkdownThemeWithSettings()));
+                this.chatContainer.addChild(new Spacer(1));
+            }
         }
-        else {
-            this.chatContainer.addChild(new ThemedText(() => theme.bold(theme.fg("accent", "What's New")), 1, 0));
-            this.chatContainer.addChild(new Spacer(1));
-            this.chatContainer.addChild(new Markdown(this.changelogMarkdown.trim(), 1, 0, this.getMarkdownThemeWithSettings()));
-            this.chatContainer.addChild(new Spacer(1));
+        if (this.extensionChangelogUpdates.length > 0) {
+            if (this.changelogMarkdown) {
+                this.chatContainer.addChild(new Spacer(1));
+            }
+            if (this.settingsManager.getCollapseChangelog()) {
+                const condensedText = this.extensionChangelogUpdates
+                    .map((update) => `Updated ${update.name} to v${update.version}.`)
+                    .join("\n");
+                this.chatContainer.addChild(new Text(condensedText, 1, 0));
+            }
+            else {
+                this.chatContainer.addChild(new ThemedText(() => theme.bold(theme.fg("accent", "Extension Updates")), 1, 0));
+                this.chatContainer.addChild(new Spacer(1));
+                const markdown = this.extensionChangelogUpdates.map((update) => update.markdown).join("\n\n");
+                this.chatContainer.addChild(new Markdown(markdown, 1, 0, this.getMarkdownThemeWithSettings()));
+                this.chatContainer.addChild(new Spacer(1));
+            }
         }
         this.chatContainer.addChild(new DynamicBorder());
     }
@@ -657,20 +680,15 @@ export class InteractiveMode {
         if (this.isInitialized)
             return;
         this.registerSignalHandlers();
-        // Load changelog (only show new entries, skip for resumed sessions)
+        // Load changelogs (only show new entries, skip for resumed sessions)
         this.changelogMarkdown = this.getChangelogForDisplay();
-        if (this.session.scopedModels.length > 0 && this.shouldShowStartupDetails()) {
-            const modelList = this.session.scopedModels
-                .map((sm) => {
-                const thinkingStr = sm.thinkingLevel ? `:${sm.thinkingLevel}` : "";
-                return `${sm.model.id}${thinkingStr}`;
-            })
-                .join(", ");
-            const cycleKeys = this.keybindings.getKeys("app.model.cycleForward");
-            const cycleHint = cycleKeys.length > 0
-                ? theme.fg("muted", ` (${formatKeyText(cycleKeys.join("/"), { capitalize: true })} to cycle)`)
-                : "";
-            console.log(theme.fg("dim", `Model scope: ${modelList}${cycleHint}`));
+        this.extensionChangelogUpdates = this.getExtensionChangelogUpdates();
+        // Fullscreen renders on the alternate screen, so text printed to stdout here would stay in the shell
+        // after exit. Fullscreen shows the notice in the header instead (#11508).
+        if (this.renderer.mode !== "fullscreen") {
+            const modelScopeNotice = this.getModelScopeNotice();
+            if (modelScopeNotice)
+                console.log(modelScopeNotice);
         }
         // Keep one component tree and remount it when changing renderers.
         this.renderWidgets(); // Initialize with default spacer
@@ -770,6 +788,8 @@ export class InteractiveMode {
             this.builtInHeader = new Text("", 0, 0);
             this.headerContainer.addChild(this.builtInHeader);
         }
+        if (this.renderer.mode === "fullscreen")
+            this.showFullscreenModelScopeNotice();
         this.ui.requestRender();
         // Ensure fd and rg are available after mounting the TUI (downloads if missing, adds to PATH via getBinDir)
         // so slow downloads do not make startup appear frozen.
@@ -1007,6 +1027,58 @@ export class InteractiveMode {
         }
         return undefined;
     }
+    getExtensionChangelogUpdates() {
+        // Skip changelog for resumed/continued sessions (already have messages)
+        if (this.session.state.messages.length > 0) {
+            return [];
+        }
+        const seenKeys = new Set();
+        const updates = [];
+        for (const { sourceInfo } of this.session.resourceLoader.getExtensions().extensions) {
+            if (sourceInfo.origin !== "package" || !sourceInfo.baseDir || !sourceInfo.changelogPath) {
+                continue;
+            }
+            const key = getSourcePackageKey(sourceInfo);
+            if (seenKeys.has(key)) {
+                continue;
+            }
+            seenKeys.add(key);
+            const pkg = this.readPackageJson(sourceInfo.baseDir);
+            if (!pkg?.version) {
+                continue;
+            }
+            const lastVersion = this.settingsManager.getExtensionChangelogVersion(key);
+            if (!lastVersion) {
+                // Fresh install - record the version, don't show changelog
+                this.settingsManager.setExtensionChangelogVersion(key, pkg.version);
+                continue;
+            }
+            const newEntries = getNewEntries(parseChangelog(sourceInfo.changelogPath), lastVersion);
+            if (newEntries.length > 0) {
+                this.settingsManager.setExtensionChangelogVersion(key, pkg.version);
+                const name = pkg.name || sourceInfo.source;
+                // Prefix each "## [x.y.z]" heading with the package name so entries render like Pi's own.
+                const markdown = newEntries
+                    .map((entry) => entry.content.replace(/^##\s+/, `## ${name} `))
+                    .join("\n\n")
+                    .trim();
+                updates.push({ name, version: pkg.version, markdown });
+            }
+        }
+        return updates;
+    }
+    readPackageJson(packageRoot) {
+        try {
+            const pkg = JSON.parse(stripBom(fs.readFileSync(path.join(packageRoot, "package.json"), "utf-8")));
+            return {
+                name: typeof pkg.name === "string" ? pkg.name : undefined,
+                version: typeof pkg.version === "string" ? pkg.version : undefined,
+            };
+        }
+        catch {
+            return undefined;
+        }
+    }
     reportInstallTelemetry(version) {
         if (process.env.PI_OFFLINE) {
             return;
@@ -1063,6 +1135,27 @@ export class InteractiveMode {
         return this.options.verbose === true || this.settingsManager.getQuietStartup() !== true;
     }
     /** Startup details (model scope, loaded resources). Hidden by quietStartup: true or "header". */
+    getModelScopeNotice() {
+        if (this.session.scopedModels.length === 0 || !this.shouldShowStartupDetails())
+            return undefined;
+        const modelList = this.session.scopedModels
+            .map((sm) => {
+            const thinkingStr = sm.thinkingLevel ? `:${sm.thinkingLevel}` : "";
+            return `${sm.model.id}${thinkingStr}`;
+        })
+            .join(", ");
+        const cycleKeys = this.keybindings.getKeys("app.model.cycleForward");
+        const cycleHint = cycleKeys.length > 0
+            ? theme.fg("muted", ` (${formatKeyText(cycleKeys.join("/"), { capitalize: true })} to cycle)`)
+            : "";
+        return theme.fg("dim", `Model scope: ${modelList}${cycleHint}`);
+    }
+    showFullscreenModelScopeNotice() {
+        if (!this.getModelScopeNotice())
+            return;
+        this.headerContainer.addChild(new ThemedText(() => this.getModelScopeNotice() ?? "", 1, 0));
+        this.headerContainer.addChild(new Spacer(1));
+    }
     shouldShowStartupDetails() {
         return this.options.verbose === true || this.settingsManager.getQuietStartup() === false;
     }
@@ -1433,7 +1526,7 @@ export class InteractiveMode {
             const skillDiagnostics = skillsResult.diagnostics;
             if (skillDiagnostics.length > 0) {
                 const warningLines = () => this.formatDiagnostics(skillDiagnostics, sourceInfos);
-                this.loadedResourcesContainer.addChild(new ThemedText(() => `${theme.fg("warning", "[Skill conflicts]")}\n${warningLines()}`, 0, 0));
+                this.loadedResourcesContainer.addChild(new ThemedText(() => `${theme.fg("warning", "[Skill warnings]")}\n${warningLines()}`, 0, 0));
                 this.loadedResourcesContainer.addChild(new Spacer(1));
             }
             const promptDiagnostics = promptsResult.diagnostics;

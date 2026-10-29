@@ -4,7 +4,7 @@ import {
   fetchWithRetry,
   getPiUserAgent,
   processImage
-} from "./chunk-4XWAF7AN.js";
+} from "./chunk-YO7W7VLN.js";
 import {
   SETTINGS_DEFAULTS,
   addUsageToTotals,
@@ -19,7 +19,7 @@ import {
   stripAnsi,
   truncateTail,
   wrapToolDefinition
-} from "./chunk-T5YZVFVX.js";
+} from "./chunk-SKZPKAGV.js";
 import {
   FS_WATCH_RETRY_DELAY_MS,
   closeWatcher,
@@ -663,6 +663,17 @@ var SettingsManager = class _SettingsManager {
   setLastChangelogVersion(version2) {
     this.globalSettings.lastChangelogVersion = version2;
     this.markModified("lastChangelogVersion");
+    this.save();
+  }
+  getExtensionChangelogVersion(key) {
+    return this.settings.extensionChangelogVersions?.[key];
+  }
+  setExtensionChangelogVersion(key, version2) {
+    this.globalSettings.extensionChangelogVersions = {
+      ...this.globalSettings.extensionChangelogVersions ?? {},
+      [key]: version2
+    };
+    this.markModified("extensionChangelogVersions", key);
     this.save();
   }
   getSessionDir() {
@@ -4250,6 +4261,13 @@ function createEventBus() {
 __name(createEventBus, "createEventBus");
 
 // pi-dist/pi-coding-agent/core/source-info.js
+function getSourcePackageKey(identity) {
+  return JSON.stringify({
+    source: identity.source,
+    scope: identity.scope
+  });
+}
+__name(getSourcePackageKey, "getSourcePackageKey");
 var BUILTIN_PATH_PREFIX = "builtin:";
 function getSyntheticPathSource(path2) {
   if (path2.startsWith(BUILTIN_PATH_PREFIX))
@@ -4269,7 +4287,8 @@ function createSourceInfo(path2, metadata) {
     source: metadata.source,
     scope: metadata.scope,
     origin: metadata.origin,
-    baseDir: metadata.baseDir
+    baseDir: metadata.baseDir,
+    ...metadata.changelogPath ? { changelogPath: metadata.changelogPath } : {}
   };
 }
 __name(createSourceInfo, "createSourceInfo");
@@ -4279,7 +4298,8 @@ function createSyntheticSourceInfo(path2, options) {
     source: options.source,
     scope: options.scope ?? "temporary",
     origin: options.origin ?? "top-level",
-    baseDir: options.baseDir
+    baseDir: options.baseDir,
+    ...options.changelogPath ? { changelogPath: options.changelogPath } : {}
   };
 }
 __name(createSyntheticSourceInfo, "createSyntheticSourceInfo");
@@ -4335,70 +4355,102 @@ import * as path from "node:path";
 import { fileURLToPath } from "node:url";
 
 // pi-dist/pi-coding-agent/core/exec.js
+import { constants as bufferConstants } from "node:buffer";
 import { spawn } from "node:child_process";
 import { StringDecoder as StringDecoder2 } from "node:string_decoder";
+var DEFAULT_EXEC_MAX_BUFFER = Math.min(256 * 1024 * 1024, bufferConstants.MAX_STRING_LENGTH);
+var FORCE_KILL_DELAY_MS = 5e3;
 async function execCommand(command, args, cwd, options) {
-  return new Promise((resolve9) => {
-    const proc = spawn(command, args, {
-      cwd,
-      shell: false,
-      stdio: ["ignore", "pipe", "pipe"]
-    });
-    let stdout = "";
-    let stderr = "";
-    const stdoutDecoder = new StringDecoder2("utf8");
-    const stderrDecoder = new StringDecoder2("utf8");
-    let killed = false;
-    let timeoutId;
-    const killProcess = /* @__PURE__ */ __name(() => {
-      if (!killed) {
-        killed = true;
-        proc.kill("SIGTERM");
-        setTimeout(() => {
-          if (!proc.killed) {
-            proc.kill("SIGKILL");
-          }
-        }, 5e3);
-      }
-    }, "killProcess");
-    if (options?.signal) {
-      if (options.signal.aborted) {
-        killProcess();
-      } else {
-        options.signal.addEventListener("abort", killProcess, { once: true });
-      }
-    }
-    if (options?.timeout && options.timeout > 0) {
-      timeoutId = setTimeout(() => {
-        killProcess();
-      }, options.timeout);
-    }
-    proc.stdout?.on("data", (data) => {
-      stdout += stdoutDecoder.write(data);
-    });
-    proc.stderr?.on("data", (data) => {
-      stderr += stderrDecoder.write(data);
-    });
-    waitForChildProcess(proc).then((code) => {
-      if (timeoutId)
-        clearTimeout(timeoutId);
-      stdout += stdoutDecoder.end();
-      stderr += stderrDecoder.end();
-      if (options?.signal) {
-        options.signal.removeEventListener("abort", killProcess);
-      }
-      resolve9({ stdout, stderr, code: code ?? 0, killed });
-    }).catch((error) => {
-      if (timeoutId)
-        clearTimeout(timeoutId);
-      stdout += stdoutDecoder.end();
-      stderr += stderrDecoder.end();
-      if (options?.signal) {
-        options.signal.removeEventListener("abort", killProcess);
-      }
-      resolve9({ stdout, stderr: stderr || error.message, code: 1, killed });
-    });
+  const maxBuffer = options?.maxBuffer ?? DEFAULT_EXEC_MAX_BUFFER;
+  if (!Number.isInteger(maxBuffer) || maxBuffer < 0 || maxBuffer > bufferConstants.MAX_STRING_LENGTH) {
+    throw new RangeError(`maxBuffer must be an integer between 0 and ${bufferConstants.MAX_STRING_LENGTH} bytes`);
+  }
+  const proc = spawn(command, args, {
+    cwd,
+    shell: false,
+    stdio: ["ignore", "pipe", "pipe"]
   });
+  let stdout = "";
+  let stderr = "";
+  const stdoutDecoder = new StringDecoder2("utf8");
+  const stderrDecoder = new StringDecoder2("utf8");
+  let outputBytes = 0;
+  let truncated = false;
+  let killed = false;
+  let timeoutId;
+  let forceKillId;
+  const killProcess = /* @__PURE__ */ __name(() => {
+    if (killed)
+      return;
+    killed = true;
+    proc.kill("SIGTERM");
+    forceKillId = setTimeout(() => {
+      if (proc.exitCode === null && proc.signalCode === null) {
+        proc.kill("SIGKILL");
+      }
+    }, FORCE_KILL_DELAY_MS);
+  }, "killProcess");
+  if (options?.signal) {
+    if (options.signal.aborted) {
+      killProcess();
+    } else {
+      options.signal.addEventListener("abort", killProcess, { once: true });
+    }
+  }
+  if (options?.timeout && options.timeout > 0) {
+    timeoutId = setTimeout(killProcess, options.timeout);
+  }
+  const takeWithinCap = /* @__PURE__ */ __name((data) => {
+    if (truncated)
+      return void 0;
+    const remaining = maxBuffer - outputBytes;
+    if (data.length <= remaining) {
+      outputBytes += data.length;
+      return data;
+    }
+    truncated = true;
+    proc.stdout?.destroy();
+    proc.stderr?.destroy();
+    killProcess();
+    return remaining > 0 ? data.subarray(0, remaining) : void 0;
+  }, "takeWithinCap");
+  proc.stdout?.on("data", (data) => {
+    const chunk = takeWithinCap(data);
+    if (chunk)
+      stdout += stdoutDecoder.write(chunk);
+  });
+  proc.stderr?.on("data", (data) => {
+    const chunk = takeWithinCap(data);
+    if (chunk)
+      stderr += stderrDecoder.write(chunk);
+  });
+  let code;
+  try {
+    code = await waitForChildProcess(proc);
+  } catch (error) {
+    if (!(error instanceof Error))
+      throw error;
+    code = 1;
+    if (!stderr)
+      stderr = error.message;
+  } finally {
+    clearTimeout(timeoutId);
+    clearTimeout(forceKillId);
+    options?.signal?.removeEventListener("abort", killProcess);
+  }
+  if (!truncated) {
+    stdout += stdoutDecoder.end();
+    stderr += stderrDecoder.end();
+  }
+  const exitCode = code ?? 0;
+  return {
+    stdout,
+    stderr,
+    // A truncated result must never read as success.
+    code: truncated && exitCode === 0 ? 1 : exitCode,
+    killed,
+    truncated
+  };
 }
 __name(execCommand, "execCommand");
 
@@ -4421,6 +4473,10 @@ function readPiManifest(packageJsonPath) {
       if (Array.isArray(entries) && entries.every((entry) => typeof entry === "string")) {
         manifest[field] = entries;
       }
+    }
+    const changelogPath = pkg.pi.changelogPath;
+    if (typeof changelogPath === "string") {
+      manifest.changelogPath = changelogPath;
     }
     return manifest;
   } catch {
@@ -8915,6 +8971,11 @@ function exportSessionToJsonl(sessionManager, outputPath, createTrailingEntries)
 __name(exportSessionToJsonl, "exportSessionToJsonl");
 
 // pi-dist/pi-coding-agent/core/agent-session.js
+var runtimeStreamFunctions = /* @__PURE__ */ new WeakMap();
+function markRuntimeStreamFunction(streamFn, modelRuntime) {
+  runtimeStreamFunctions.set(streamFn, modelRuntime);
+}
+__name(markRuntimeStreamFunction, "markRuntimeStreamFunction");
 function parseSkillBlock(text) {
   const match = text.match(/^<skill name="([^"]+)" location="([^"]+)">\n([\s\S]*?)\n<\/skill>(?:\n\n([\s\S]+))?$/);
   if (!match)
@@ -9110,6 +9171,9 @@ var AgentSession = class {
     }) : { model: selectedModel, thinkingLevel: this.thinkingLevel };
     if (this.agent.streamFunction === streamSimple) {
       return { ...await this._getRequiredRequestAuth(model, signal), thinkingLevel };
+    }
+    if (runtimeStreamFunctions.get(this.agent.streamFunction) === this._modelRuntime) {
+      return { model, thinkingLevel };
     }
     try {
       const result = await this._modelRuntime.getAuth(model, { signal });
@@ -9947,9 +10011,14 @@ var AgentSession = class {
    * the registered, non-hidden ones; they are declared to the model. Active tools with a
    * `prepareLoadout` hook can change the declared descriptions and hide declarations from
    * requests (see {@link _installHiddenDeclarationsProjection}).
+   *
+   * The active tools are a set: tools that stay active keep their current order and newly active
+   * ones are appended, so reordering the same names does not change the prompt (#11495).
    */
   _applyToolLoadout(toolNames) {
-    const tools = [...new Set(toolNames)].flatMap((name) => {
+    const requested = new Set(toolNames);
+    const kept = this.getActiveToolNames().filter((name) => requested.has(name));
+    const tools = [.../* @__PURE__ */ new Set([...kept, ...requested])].flatMap((name) => {
       const tool = this._toolRegistry.get(name);
       return tool && this._getToolExposure(name) !== "hidden" && this._isActivatable(name) ? [tool] : [];
     });
@@ -13774,7 +13843,7 @@ var ModelRuntime = class _ModelRuntime {
 import { createHash } from "node:crypto";
 import { chmodSync, existsSync as existsSync8, globSync, mkdirSync as mkdirSync4, readdirSync as readdirSync5, readFileSync as readFileSync7, realpathSync, rmSync, statSync as statSync5, writeFileSync as writeFileSync5 } from "node:fs";
 import { homedir } from "node:os";
-import { basename as basename6, dirname as dirname8, join as join10, relative as relative2, resolve as resolve5, sep as sep3 } from "node:path";
+import { basename as basename6, dirname as dirname8, isAbsolute, join as join10, relative as relative2, resolve as resolve5, sep as sep3 } from "node:path";
 import ignore2 from "../../../ignore/index.js";
 import { minimatch as minimatch2 } from "../../../minimatch/dist/esm/index.js";
 import { gt, maxSatisfying, rcompare, satisfies, valid, validRange } from "../../../semver/index.js";
@@ -14489,6 +14558,33 @@ function collectResourceFiles(dir, resourceType) {
   return collectFiles(dir, FILE_PATTERNS[resourceType]);
 }
 __name(collectResourceFiles, "collectResourceFiles");
+function hasManifestResourceFields(manifest) {
+  return RESOURCE_TYPES.some((resourceType) => manifest[resourceType] !== void 0);
+}
+__name(hasManifestResourceFields, "hasManifestResourceFields");
+function isPathInside(parent, child) {
+  const relativePath = relative2(parent, child);
+  return relativePath !== "" && relativePath !== ".." && !relativePath.startsWith(`..${sep3}`) && !isAbsolute(relativePath);
+}
+__name(isPathInside, "isPathInside");
+function resolvePackageChangelogPath(packageRoot, manifest) {
+  const changelogPath = manifest?.changelogPath ?? "CHANGELOG.md";
+  if (!changelogPath)
+    return void 0;
+  const resolvedPath = resolve5(packageRoot, changelogPath);
+  if (!existsSync8(resolvedPath))
+    return void 0;
+  const canonicalPackageRoot = canonicalizePath(packageRoot);
+  const canonicalChangelogPath = canonicalizePath(resolvedPath);
+  if (!isPathInside(canonicalPackageRoot, canonicalChangelogPath))
+    return void 0;
+  try {
+    return statSync5(resolvedPath).isFile() ? resolvedPath : void 0;
+  } catch {
+    return void 0;
+  }
+}
+__name(resolvePackageChangelogPath, "resolvePackageChangelogPath");
 function matchesAnyPattern(filePath, patterns, baseDir) {
   const rel = toPosixPath2(relative2(baseDir, filePath));
   const name = basename6(filePath);
@@ -14871,10 +14967,13 @@ var DefaultPackageManager = class {
         gitCandidates.push({ ...entry, parsed });
       }
     }
-    const npmCheckTasks = npmCandidates.map((entry) => async () => ({
-      entry,
-      shouldUpdate: await this.shouldUpdateNpmSource(entry.parsed, entry.scope)
-    }));
+    const npmCheckTasks = npmCandidates.map((entry) => async () => {
+      const check = await this.shouldUpdateNpmSource(entry.parsed, entry.scope);
+      return {
+        entry: { ...entry, installedVersion: check.installedVersion, targetVersion: check.targetVersion },
+        shouldUpdate: check.shouldUpdate
+      };
+    });
     const npmCheckResults = await this.runWithConcurrency(npmCheckTasks, UPDATE_CHECK_CONCURRENCY);
     const userNpmUpdates = [];
     const projectNpmUpdates = [];
@@ -14908,13 +15007,13 @@ var DefaultPackageManager = class {
     const installedPath = this.getManagedNpmInstallPath(source, scope);
     const installedVersion = existsSync8(installedPath) ? this.getInstalledNpmVersion(installedPath) : void 0;
     if (!installedVersion) {
-      return true;
+      return { shouldUpdate: true };
     }
     try {
       const targetVersion = await this.getLatestNpmVersion(source.version ? source.spec : source.name, source.range);
-      return gt(targetVersion, installedVersion);
+      return { shouldUpdate: gt(targetVersion, installedVersion), installedVersion, targetVersion };
     } catch {
-      return true;
+      return { shouldUpdate: true, installedVersion };
     }
   }
   async updateNpmBatch(sources, scope) {
@@ -14927,6 +15026,29 @@ var DefaultPackageManager = class {
     await this.withProgress("update", sourceLabel, message, async () => {
       await this.installNpmBatch(specs, scope);
     });
+    this.reportUnchangedNpmUpdates(sources, scope);
+  }
+  /**
+   * npm can resolve stale registry metadata shortly after a publish and install the old
+   * version without an error. Warn when an announced update did not change the installed version.
+   */
+  reportUnchangedNpmUpdates(sources, scope) {
+    for (const entry of sources) {
+      if (!entry.installedVersion || !entry.targetVersion) {
+        continue;
+      }
+      const installedPath = this.getManagedNpmInstallPath(entry.parsed, scope);
+      const versionAfter = this.getInstalledNpmVersion(installedPath);
+      if (versionAfter !== entry.installedVersion) {
+        continue;
+      }
+      this.emitProgress({
+        type: "progress",
+        action: "update",
+        source: entry.source,
+        message: `${entry.source} is still ${versionAfter} (registry reports ${entry.targetVersion}); npm registry metadata may be stale, try again in a few minutes`
+      });
+    }
   }
   async installNpmBatch(specs, scope) {
     const installRoot = this.getNpmInstallRoot(scope, false);
@@ -15816,6 +15938,13 @@ var DefaultPackageManager = class {
     return resolvePath(input, baseDir, { homeDir: getHomeDir(), trim: true });
   }
   collectPackageResources(packageRoot, accumulator, filter, metadata) {
+    const manifest = readPiManifest(join10(packageRoot, "package.json"));
+    const changelogPath = resolvePackageChangelogPath(packageRoot, manifest);
+    if (changelogPath) {
+      metadata.changelogPath = changelogPath;
+    } else {
+      delete metadata.changelogPath;
+    }
     if (filter) {
       for (const resourceType of RESOURCE_TYPES) {
         const patterns = filter[resourceType];
@@ -15830,8 +15959,7 @@ var DefaultPackageManager = class {
       }
       return true;
     }
-    const manifest = readPiManifest(join10(packageRoot, "package.json"));
-    if (manifest) {
+    if (manifest && hasManifestResourceFields(manifest)) {
       for (const resourceType of RESOURCE_TYPES) {
         const entries = manifest[resourceType];
         this.addManifestEntries(entries, packageRoot, resourceType, this.getTargetMap(accumulator, resourceType), metadata);
@@ -18275,6 +18403,7 @@ export {
   THINKING_LEVEL_OPTIONS,
   exportFromFile,
   createEventBus,
+  getSourcePackageKey,
   BUILTIN_PATH_PREFIX,
   isSyntheticPath,
   createSyntheticSourceInfo,
@@ -18305,6 +18434,7 @@ export {
   exportSessionToJsonl,
   VIRTUAL_MODEL_STATE_ENTRY,
   getBranchSelection,
+  markRuntimeStreamFunction,
   parseSkillBlock,
   AgentSession,
   defaultModelPerProvider,

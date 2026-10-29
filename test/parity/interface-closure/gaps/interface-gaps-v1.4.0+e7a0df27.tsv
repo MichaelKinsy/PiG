@@ -1,0 +1,1378 @@
+pkg:chord/.#ChordError	chord	child-gap	chord/host/errors.go#ChordError
+pkg:chord/.#ChordError::construct:0	chord	undecidable	chord/host/errors.go#NewChordError
+pkg:chord/.#ChordErrorCode	chord	undecidable	chord/host/errors.go#ChordErrorCode
+pkg:chord/.#NativeWatch	chord	child-gap	chord/watch_impl.go#NativeWatch
+pkg:chord/.#NativeWatch::property:abort	chord	member-missing	chord/watch_impl.go#NativeWatch
+pkg:chord/.#NativeWatch::property:abort::call:0	chord	member-missing	chord/watch_impl.go#NativeWatch
+pkg:chord/.#NativeWatch::property:fail	chord	member-missing	chord/watch_impl.go#NativeWatch
+pkg:chord/.#NativeWatch::property:fail::call:0	chord	member-missing	chord/watch_impl.go#NativeWatch
+pkg:chord/.#NativeWatch::property:observeAbort	chord	member-missing	chord/watch_impl.go#NativeWatch
+pkg:chord/.#NativeWatch::property:observeAbort::call:0	chord	member-missing	chord/watch_impl.go#NativeWatch
+pkg:chord/.#NativeWatchCall	chord	no-go-symbol	
+pkg:chord/.#RegistryTable	chord	undecidable	chord/host/registry.go#RegistryTable
+pkg:chord/.#ServeOptions	chord	undecidable	chord/host/object.go#ServeOptions
+pkg:chord/.#Watch	chord	child-gap	chord/watch_impl.go#Watch
+pkg:chord/.#Watch::property:abort	chord	member-missing	chord/watch_impl.go#Watch
+pkg:chord/.#Watch::property:abort::call:0	chord	member-missing	chord/watch_impl.go#Watch
+pkg:chord/.#Watch::property:advance	chord	child-gap	chord/watch_impl.go#Watch.Advance
+pkg:chord/.#Watch::property:advance::call:0	chord	signature-mismatch	chord/watch_impl.go#Watch.Advance
+pkg:chord/.#Watch::property:fail	chord	member-missing	chord/watch_impl.go#Watch
+pkg:chord/.#Watch::property:fail::call:0	chord	member-missing	chord/watch_impl.go#Watch
+pkg:chord/.#Watch::property:observeAbort	chord	member-missing	chord/watch_impl.go#Watch
+pkg:chord/.#Watch::property:observeAbort::call:0	chord	member-missing	chord/watch_impl.go#Watch
+pkg:chord/.#Watch::property:start	chord	child-gap	chord/watch_impl.go#Watch.Start
+pkg:chord/.#Watch::property:start::call:0	chord	signature-mismatch	chord/watch_impl.go#Watch.Start
+pkg:chord/.#WatchCall	chord	no-go-symbol	
+pkg:chord/.#WatchEnd	chord	type-mismatch	chord/watch.go#WatchEnd
+pkg:chord/.#WatchHandle	chord	child-gap	chord/watch.go#WatchHandle
+pkg:chord/.#WatchHandle::property:start	chord	child-gap	chord/watch.go#WatchHandle.Start
+pkg:chord/.#WatchHandle::property:start::call:0	chord	signature-mismatch	chord/watch.go#WatchHandle.Start
+pkg:chord/next#AcceptsTable	chord	no-go-symbol	
+pkg:chord/next#ActivityCounts	chord	no-go-symbol	
+pkg:chord/next#AddedColumn	chord	no-go-symbol	
+pkg:chord/next#Address	chord	no-go-symbol	
+pkg:chord/next#ArchiveManifest	chord	no-go-symbol	
+pkg:chord/next#ArchivePart	chord	no-go-symbol	
+pkg:chord/next#Backend	chord	no-go-symbol	
+pkg:chord/next#Backend::construct:0	chord	child-gap	
+pkg:chord/next#Backend::property:db	chord	child-gap	
+pkg:chord/next#BlockedReason	chord	type-mismatch	durable/types.go#BlockedReason
+pkg:chord/next#Bounds	chord	no-go-symbol	
+pkg:chord/next#ChordError	chord	undecidable	chord/host/errors.go#ChordError
+pkg:chord/next#ChordError::construct:0	chord	child-gap	chord/host/errors.go#ChordError
+pkg:chord/next#ChordErrorCode	chord	undecidable	chord/host/errors.go#ChordErrorCode
+pkg:chord/next#ChordErrorReason	chord	no-go-symbol	
+pkg:chord/next#ChordStore	chord	no-go-symbol	
+pkg:chord/next#ChordStore::construct:0	chord	child-gap	
+pkg:chord/next#ChordStore::property:assertUsable	chord	child-gap	
+pkg:chord/next#ChordStore::property:assertUsable::call:0	chord	child-gap	
+pkg:chord/next#ChordStore::property:attach	chord	child-gap	
+pkg:chord/next#ChordStore::property:attach::call:0	chord	child-gap	
+pkg:chord/next#ChordStore::property:batch	chord	child-gap	
+pkg:chord/next#ChordStore::property:claims	chord	child-gap	
+pkg:chord/next#ChordStore::property:close	chord	child-gap	
+pkg:chord/next#ChordStore::property:close::call:0	chord	child-gap	
+pkg:chord/next#ChordStore::property:commit	chord	child-gap	
+pkg:chord/next#ChordStore::property:commit::call:0	chord	child-gap	
+pkg:chord/next#ChordStore::property:commitInBatch	chord	child-gap	
+pkg:chord/next#ChordStore::property:commitInBatch::call:0	chord	child-gap	
+pkg:chord/next#ChordStore::property:detach	chord	child-gap	
+pkg:chord/next#ChordStore::property:detach::call:0	chord	child-gap	
+pkg:chord/next#ChordStore::property:export	chord	child-gap	
+pkg:chord/next#ChordStore::property:export::call:0	chord	child-gap	
+pkg:chord/next#ChordStore::property:ids	chord	child-gap	
+pkg:chord/next#ChordStore::property:lastSeq	chord	child-gap	
+pkg:chord/next#ChordStore::property:maintain	chord	child-gap	
+pkg:chord/next#ChordStore::property:maintain::call:0	chord	child-gap	
+pkg:chord/next#ChordStore::property:mintId	chord	child-gap	
+pkg:chord/next#ChordStore::property:mintId::call:0	chord	child-gap	
+pkg:chord/next#ChordStore::property:nextId	chord	child-gap	
+pkg:chord/next#ChordStore::property:outbox	chord	child-gap	
+pkg:chord/next#ChordStore::property:read	chord	child-gap	
+pkg:chord/next#ChordStore::property:read::call:0	chord	child-gap	
+pkg:chord/next#ChordStore::property:readTransaction	chord	child-gap	
+pkg:chord/next#ChordStore::property:readTransaction::call:0	chord	child-gap	
+pkg:chord/next#ChordStore::property:recordsOutbox	chord	child-gap	
+pkg:chord/next#ChordStore::property:replay	chord	child-gap	
+pkg:chord/next#ChordStore::property:replay::call:0	chord	child-gap	
+pkg:chord/next#ChordStore::property:table	chord	child-gap	
+pkg:chord/next#ChordStore::property:table::call:0	chord	child-gap	
+pkg:chord/next#ChordStore::property:tables	chord	child-gap	
+pkg:chord/next#ChordStore::property:take	chord	child-gap	
+pkg:chord/next#ChordStore::property:take::call:0	chord	child-gap	
+pkg:chord/next#Claimant	chord	no-go-symbol	
+pkg:chord/next#Codec	chord	no-go-symbol	
+pkg:chord/next#Codec::property:decode	chord	child-gap	
+pkg:chord/next#Codec::property:decode::call:0	chord	child-gap	
+pkg:chord/next#Codec::property:encode	chord	child-gap	
+pkg:chord/next#Codec::property:encode::call:0	chord	child-gap	
+pkg:chord/next#Codec::property:name	chord	child-gap	
+pkg:chord/next#ColumnRef	chord	no-go-symbol	
+pkg:chord/next#ColumnRef::construct:0	chord	child-gap	
+pkg:chord/next#ColumnRef::property:args	chord	child-gap	
+pkg:chord/next#ColumnRef::property:column	chord	child-gap	
+pkg:chord/next#ColumnRef::property:op	chord	child-gap	
+pkg:chord/next#ColumnRef::property:~type	chord	child-gap	
+pkg:chord/next#ColumnRef::property:~value	chord	child-gap	
+pkg:chord/next#ColumnRefs	chord	no-go-symbol	
+pkg:chord/next#Columns	chord	no-go-symbol	
+pkg:chord/next#ComposeContext	chord	no-go-symbol	
+pkg:chord/next#Compression	chord	no-go-symbol	
+pkg:chord/next#Compression::property:deflate	chord	child-gap	
+pkg:chord/next#Compression::property:deflate::call:0	chord	child-gap	
+pkg:chord/next#Compression::property:inflate	chord	child-gap	
+pkg:chord/next#Compression::property:inflate::call:0	chord	child-gap	
+pkg:chord/next#Condition	chord	no-go-symbol	
+pkg:chord/next#Condition::construct:0	chord	child-gap	
+pkg:chord/next#Condition::property:args	chord	child-gap	
+pkg:chord/next#Condition::property:op	chord	child-gap	
+pkg:chord/next#Contract	chord	child-gap	chord/host/contract.go#Contract
+pkg:chord/next#Contract::property:kind	chord	member-missing	chord/host/contract.go#Contract
+pkg:chord/next#Contract::property:name	chord	undecidable	chord/host/contract.go#Contract.Name
+pkg:chord/next#Contract::property:~shape	chord	member-missing	chord/host/contract.go#Contract
+pkg:chord/next#Contribution	chord	no-go-symbol	
+pkg:chord/next#Ctx	chord	child-gap	chord/host/types.go#Ctx
+pkg:chord/next#Ctx::property:get	chord	child-gap	chord/host/types.go#Ctx.Get
+pkg:chord/next#Ctx::property:get::call:0	chord	undecidable	chord/host/types.go#Ctx.Get
+pkg:chord/next#Ctx::property:incarnation	chord	member-missing	chord/host/types.go#Ctx
+pkg:chord/next#Ctx::property:telemetry	chord	member-missing	chord/host/types.go#Ctx
+pkg:chord/next#Ctx::property:toString	chord	member-missing	chord/host/types.go#Ctx
+pkg:chord/next#Ctx::property:toString::call:0	chord	member-missing	chord/host/types.go#Ctx
+pkg:chord/next#Ctx::property:value	chord	member-missing	chord/host/types.go#Ctx
+pkg:chord/next#Ctx::property:value::call:0	chord	member-missing	chord/host/types.go#Ctx
+pkg:chord/next#DecodedRow	chord	no-go-symbol	
+pkg:chord/next#Defaulted	chord	no-go-symbol	
+pkg:chord/next#DocumentAddress	chord	type-mismatch	durable/types.go#DocumentAddress
+pkg:chord/next#DocumentContent	chord	type-mismatch	durable/types.go#DocumentContent
+pkg:chord/next#DocumentEntry	chord	no-go-symbol	
+pkg:chord/next#DocumentHistory	chord	type-mismatch	durable/types.go#DocumentHistory
+pkg:chord/next#DocumentRecord	chord	type-mismatch	durable/types.go#DocumentRecord
+pkg:chord/next#DocumentScope	chord	type-mismatch	durable/types.go#DocumentScope
+pkg:chord/next#EncodedRow	chord	no-go-symbol	
+pkg:chord/next#Expression	chord	no-go-symbol	
+pkg:chord/next#Expression::construct:0	chord	child-gap	
+pkg:chord/next#Expression::property:args	chord	child-gap	
+pkg:chord/next#Expression::property:op	chord	child-gap	
+pkg:chord/next#Expression::property:~type	chord	child-gap	
+pkg:chord/next#Expression::property:~value	chord	child-gap	
+pkg:chord/next#Facet	chord	type-mismatch	chord/host/host.go#Facet
+pkg:chord/next#FacetHost	chord	no-go-symbol	
+pkg:chord/next#FacetHost::property:references	chord	child-gap	
+pkg:chord/next#FacetHost::property:references::call:0	chord	child-gap	
+pkg:chord/next#FacetHost::property:serve	chord	child-gap	
+pkg:chord/next#FacetHost::property:serve::call:0	chord	child-gap	
+pkg:chord/next#FacetHost::property:serve::call:1	chord	child-gap	
+pkg:chord/next#FacetSelf	chord	no-go-symbol	
+pkg:chord/next#FacetSelf::property:contribute	chord	child-gap	
+pkg:chord/next#FacetSelf::property:contribute::call:0	chord	child-gap	
+pkg:chord/next#Factory	chord	child-gap	chord/host/object.go#Factory
+pkg:chord/next#Factory::call:0	chord	undecidable	chord/host/object.go#Factory
+pkg:chord/next#FailureCause	chord	no-go-symbol	
+pkg:chord/next#FollowAttach	chord	no-go-symbol	
+pkg:chord/next#FollowAttach::call:0	chord	child-gap	
+pkg:chord/next#FollowAttachment	chord	no-go-symbol	
+pkg:chord/next#FollowObserver	chord	no-go-symbol	
+pkg:chord/next#GetOptions	chord	type-mismatch	chord/host/types.go#GetOptions
+pkg:chord/next#HandleOf	chord	no-go-symbol	
+pkg:chord/next#Held	chord	no-go-symbol	
+pkg:chord/next#Host	chord	no-go-symbol	
+pkg:chord/next#Host::property:accept	chord	child-gap	
+pkg:chord/next#Host::property:accept::call:0	chord	child-gap	
+pkg:chord/next#Host::property:activity	chord	child-gap	
+pkg:chord/next#Host::property:close	chord	child-gap	
+pkg:chord/next#Host::property:close::call:0	chord	child-gap	
+pkg:chord/next#Host::property:connect	chord	child-gap	
+pkg:chord/next#Host::property:connect::call:0	chord	child-gap	
+pkg:chord/next#Host::property:get	chord	child-gap	
+pkg:chord/next#Host::property:get::call:0	chord	child-gap	
+pkg:chord/next#Host::property:hold	chord	child-gap	
+pkg:chord/next#Host::property:hold::call:0	chord	child-gap	
+pkg:chord/next#Host::property:load	chord	child-gap	
+pkg:chord/next#Host::property:load::call:0	chord	child-gap	
+pkg:chord/next#Host::property:references	chord	child-gap	
+pkg:chord/next#Host::property:references::call:0	chord	child-gap	
+pkg:chord/next#Host::property:registry	chord	child-gap	
+pkg:chord/next#Host::property:registry::call:0	chord	child-gap	
+pkg:chord/next#Host::property:revoke	chord	child-gap	
+pkg:chord/next#Host::property:revoke::call:0	chord	child-gap	
+pkg:chord/next#Host::property:root	chord	child-gap	
+pkg:chord/next#Host::property:root::call:0	chord	child-gap	
+pkg:chord/next#Host::property:route	chord	child-gap	
+pkg:chord/next#Host::property:route::call:0	chord	child-gap	
+pkg:chord/next#HostError	chord	no-go-symbol	
+pkg:chord/next#HostKind	chord	no-go-symbol	
+pkg:chord/next#HostKind::call:0	chord	child-gap	
+pkg:chord/next#HostKind::property:kind	chord	child-gap	
+pkg:chord/next#HostKind::property:~params	chord	child-gap	
+pkg:chord/next#HostOptions	chord	type-mismatch	chord/host/host.go#HostOptions
+pkg:chord/next#Implementation	chord	undecidable	chord/host/contract.go#Implementation
+pkg:chord/next#Inflated	chord	no-go-symbol	
+pkg:chord/next#IpcPort	chord	no-go-symbol	
+pkg:chord/next#IpcPort::property:connected	chord	child-gap	
+pkg:chord/next#IpcPort::property:disconnect	chord	child-gap	
+pkg:chord/next#IpcPort::property:disconnect::call:0	chord	child-gap	
+pkg:chord/next#IpcPort::property:on	chord	child-gap	
+pkg:chord/next#IpcPort::property:on::call:disconnect	chord	child-gap	
+pkg:chord/next#IpcPort::property:on::call:message	chord	child-gap	
+pkg:chord/next#IpcPort::property:removeListener	chord	child-gap	
+pkg:chord/next#IpcPort::property:removeListener::call:disconnect	chord	child-gap	
+pkg:chord/next#IpcPort::property:removeListener::call:message	chord	child-gap	
+pkg:chord/next#IpcPort::property:send	chord	child-gap	
+pkg:chord/next#IpcPort::property:send::call:0	chord	child-gap	
+pkg:chord/next#JobAccepts	chord	no-go-symbol	
+pkg:chord/next#JobDefinition	chord	no-go-symbol	
+pkg:chord/next#JobDefinition::construct:0	chord	child-gap	
+pkg:chord/next#JobDefinition::property:accepts	chord	child-gap	
+pkg:chord/next#JobDefinition::property:args	chord	child-gap	
+pkg:chord/next#JobDefinition::property:concurrency	chord	child-gap	
+pkg:chord/next#JobDefinition::property:fingerprint	chord	child-gap	
+pkg:chord/next#JobDefinition::property:name	chord	child-gap	
+pkg:chord/next#JobDefinition::property:persist	chord	child-gap	
+pkg:chord/next#JobDefinition::property:result	chord	child-gap	
+pkg:chord/next#JobDefinition::property:state	chord	child-gap	
+pkg:chord/next#JobDefinition::property:version	chord	child-gap	
+pkg:chord/next#JobDefinition::property:~types	chord	child-gap	
+pkg:chord/next#JobError	chord	no-go-symbol	
+pkg:chord/next#JobHandle	chord	no-go-symbol	
+pkg:chord/next#JobHandle::property:abort	chord	child-gap	
+pkg:chord/next#JobHandle::property:abort::call:0	chord	child-gap	
+pkg:chord/next#JobHandle::property:outcome	chord	child-gap	
+pkg:chord/next#JobHandle::property:outcome::call:0	chord	child-gap	
+pkg:chord/next#JobHandle::property:running	chord	child-gap	
+pkg:chord/next#JobHandle::property:start	chord	child-gap	
+pkg:chord/next#JobHandle::property:start::call:0	chord	child-gap	
+pkg:chord/next#JobImplementation	chord	no-go-symbol	
+pkg:chord/next#JobOptions	chord	no-go-symbol	
+pkg:chord/next#JsonColumnOptions	chord	no-go-symbol	
+pkg:chord/next#JsonColumnSchema	chord	no-go-symbol	
+pkg:chord/next#KeyOf	chord	no-go-symbol	
+pkg:chord/next#KeyedHandle	chord	no-go-symbol	
+pkg:chord/next#KeyedHandle::property:at	chord	child-gap	
+pkg:chord/next#KeyedHandle::property:at::call:0	chord	child-gap	
+pkg:chord/next#KeyedHandle::property:change	chord	child-gap	
+pkg:chord/next#KeyedHandle::property:change::call:0	chord	child-gap	
+pkg:chord/next#KeyedHandle::property:get	chord	child-gap	
+pkg:chord/next#KeyedHandle::property:get::call:0	chord	child-gap	
+pkg:chord/next#KeyedHandle::property:keys	chord	child-gap	
+pkg:chord/next#KeyedHandle::property:keys::call:0	chord	child-gap	
+pkg:chord/next#KeyedHandle::property:retire	chord	child-gap	
+pkg:chord/next#KeyedHandle::property:retire::call:0	chord	child-gap	
+pkg:chord/next#KeyedHandle::property:watch	chord	child-gap	
+pkg:chord/next#KeyedHandle::property:watch::call:0	chord	child-gap	
+pkg:chord/next#KeyedMember	chord	no-go-symbol	
+pkg:chord/next#KeyedMember::construct:0	chord	child-gap	
+pkg:chord/next#KeyedMember::property:schema	chord	child-gap	
+pkg:chord/next#KeyedWatchable	chord	no-go-symbol	
+pkg:chord/next#KeyedWatchable::property:at	chord	child-gap	
+pkg:chord/next#KeyedWatchable::property:at::call:0	chord	child-gap	
+pkg:chord/next#KeyedWatchable::property:get	chord	child-gap	
+pkg:chord/next#KeyedWatchable::property:get::call:0	chord	child-gap	
+pkg:chord/next#KeyedWatchable::property:watch	chord	child-gap	
+pkg:chord/next#KeyedWatchable::property:watch::call:0	chord	child-gap	
+pkg:chord/next#KindShape	chord	no-go-symbol	
+pkg:chord/next#Link	chord	child-gap	chord/host/link.go#Link
+pkg:chord/next#Link::property:onMessage	chord	member-missing	chord/host/link.go#Link
+pkg:chord/next#Link::property:onMessage::call:0	chord	member-missing	chord/host/link.go#Link
+pkg:chord/next#Link::property:send	chord	child-gap	chord/host/link.go#Link.Send
+pkg:chord/next#Link::property:send::call:0	chord	signature-mismatch	chord/host/link.go#Link.Send
+pkg:chord/next#LinkOptions	chord	type-mismatch	chord/host/connection.go#LinkOptions
+pkg:chord/next#Message	chord	no-go-symbol	
+pkg:chord/next#Native	chord	no-go-symbol	
+pkg:chord/next#Native::property:value	chord	child-gap	
+pkg:chord/next#NativeCloseReason	chord	no-go-symbol	
+pkg:chord/next#NativeObservation	chord	no-go-symbol	
+pkg:chord/next#NativeObserver	chord	no-go-symbol	
+pkg:chord/next#NativeObserver::property:advance	chord	child-gap	
+pkg:chord/next#NativeObserver::property:advance::call:0	chord	child-gap	
+pkg:chord/next#NativeObserver::property:end	chord	child-gap	
+pkg:chord/next#NativeObserver::property:end::call:0	chord	child-gap	
+pkg:chord/next#NativeOptions	chord	no-go-symbol	
+pkg:chord/next#OnHandler	chord	no-go-symbol	
+pkg:chord/next#OnHandler::call:0	chord	child-gap	
+pkg:chord/next#OnLiveHandler	chord	no-go-symbol	
+pkg:chord/next#OnLiveHandler::call:0	chord	child-gap	
+pkg:chord/next#OnNativeHandler	chord	no-go-symbol	
+pkg:chord/next#OnNativeHandler::call:0	chord	child-gap	
+pkg:chord/next#Order	chord	no-go-symbol	
+pkg:chord/next#Outbox	chord	no-go-symbol	
+pkg:chord/next#Outbox::construct:0	chord	child-gap	
+pkg:chord/next#Outbox::property:floor	chord	child-gap	
+pkg:chord/next#Outbox::property:read	chord	child-gap	
+pkg:chord/next#Outbox::property:read::call:0	chord	child-gap	
+pkg:chord/next#Outbox::property:trim	chord	child-gap	
+pkg:chord/next#Outbox::property:trim::call:0	chord	child-gap	
+pkg:chord/next#OutboxCommit	chord	no-go-symbol	
+pkg:chord/next#Outcome	chord	no-go-symbol	
+pkg:chord/next#OwnedDocumentEntry	chord	no-go-symbol	
+pkg:chord/next#OwnerTable	chord	no-go-symbol	
+pkg:chord/next#OwnerTable::construct:0	chord	child-gap	
+pkg:chord/next#OwnerTable::property:definition	chord	child-gap	
+pkg:chord/next#OwnerTable::property:encode	chord	child-gap	
+pkg:chord/next#OwnerTable::property:encode::call:0	chord	child-gap	
+pkg:chord/next#OwnerTable::property:get	chord	child-gap	
+pkg:chord/next#OwnerTable::property:get::call:0	chord	child-gap	
+pkg:chord/next#OwnerTable::property:jsonVersion	chord	child-gap	
+pkg:chord/next#OwnerTable::property:jsonVersion::call:0	chord	child-gap	
+pkg:chord/next#OwnerTable::property:prepare	chord	child-gap	
+pkg:chord/next#OwnerTable::property:prepare::call:0	chord	child-gap	
+pkg:chord/next#OwnerTable::property:prepareFirst	chord	child-gap	
+pkg:chord/next#OwnerTable::property:prepareFirst::call:0	chord	child-gap	
+pkg:chord/next#OwnerTable::property:prepareGet	chord	child-gap	
+pkg:chord/next#OwnerTable::property:prepareGet::call:0	chord	child-gap	
+pkg:chord/next#OwnerTable::property:put	chord	child-gap	
+pkg:chord/next#OwnerTable::property:put::call:0	chord	child-gap	
+pkg:chord/next#OwnerTable::property:reader	chord	child-gap	
+pkg:chord/next#OwnerTable::property:reader::call:0	chord	child-gap	
+pkg:chord/next#OwnerTable::property:select	chord	child-gap	
+pkg:chord/next#OwnerTable::property:select::call:0	chord	child-gap	
+pkg:chord/next#OwnerTable::property:sql	chord	child-gap	
+pkg:chord/next#PageOptions	chord	no-go-symbol	
+pkg:chord/next#ParamsOfKind	chord	no-go-symbol	
+pkg:chord/next#PartLimits	chord	no-go-symbol	
+pkg:chord/next#PatchOf	chord	no-go-symbol	
+pkg:chord/next#PluginError	chord	no-go-symbol	
+pkg:chord/next#PluginError::construct:0	chord	child-gap	
+pkg:chord/next#PluginError::property:cause	chord	child-gap	
+pkg:chord/next#PluginError::property:code	chord	child-gap	
+pkg:chord/next#PluginError::property:details	chord	child-gap	
+pkg:chord/next#PluginError::property:message	chord	child-gap	
+pkg:chord/next#PluginError::property:name	chord	child-gap	
+pkg:chord/next#PluginError::property:stack	chord	child-gap	
+pkg:chord/next#Position	chord	no-go-symbol	
+pkg:chord/next#Presence	chord	no-go-symbol	
+pkg:chord/next#Principal	chord	type-mismatch	chord/host/types.go#Principal
+pkg:chord/next#PrincipalKeyFunction	chord	no-go-symbol	
+pkg:chord/next#PrincipalKeyFunction::call:0	chord	child-gap	
+pkg:chord/next#PutRowOf	chord	no-go-symbol	
+pkg:chord/next#Query	chord	no-go-symbol	
+pkg:chord/next#Query::construct:0	chord	child-gap	
+pkg:chord/next#Query::property:condition	chord	child-gap	
+pkg:chord/next#Query::property:order	chord	child-gap	
+pkg:chord/next#Query::property:orderBy	chord	child-gap	
+pkg:chord/next#Query::property:orderBy::call:0	chord	child-gap	
+pkg:chord/next#Query::property:table	chord	child-gap	
+pkg:chord/next#Query::property:where	chord	child-gap	
+pkg:chord/next#Query::property:where::call:0	chord	child-gap	
+pkg:chord/next#RefState	chord	no-go-symbol	
+pkg:chord/next#Registry	chord	type-mismatch	chord/host/registry.go#Registry
+pkg:chord/next#RegistryAccepts	chord	no-go-symbol	
+pkg:chord/next#RegistryConflict	chord	no-go-symbol	
+pkg:chord/next#RegistryEntry	chord	type-mismatch	chord/host/host.go#registryEntry
+pkg:chord/next#RegistryProvider	chord	no-go-symbol	
+pkg:chord/next#RegistryTable	chord	undecidable	chord/host/registry.go#RegistryTable
+pkg:chord/next#RegistryValue	chord	no-go-symbol	
+pkg:chord/next#RegistryValue::property:observe	chord	child-gap	
+pkg:chord/next#RegistryValue::property:observe::call:0	chord	child-gap	
+pkg:chord/next#RegistryValue::property:value	chord	child-gap	
+pkg:chord/next#RegistryValue::property:watch	chord	child-gap	
+pkg:chord/next#RegistryValue::property:watch::call:0	chord	child-gap	
+pkg:chord/next#RevokedBy	chord	no-go-symbol	
+pkg:chord/next#RevokedBy::call:0	chord	child-gap	
+pkg:chord/next#RouteOptions	chord	no-go-symbol	
+pkg:chord/next#RoutineDeclarations	chord	no-go-symbol	
+pkg:chord/next#RoutineDeclarations::property:on	chord	child-gap	
+pkg:chord/next#RoutineDeclarations::property:on::call:0	chord	child-gap	
+pkg:chord/next#RoutineDeclarations::property:on::call:1	chord	child-gap	
+pkg:chord/next#RoutineDeclarations::property:onLive	chord	child-gap	
+pkg:chord/next#RoutineDeclarations::property:onLive::call:0	chord	child-gap	
+pkg:chord/next#RowOf	chord	no-go-symbol	
+pkg:chord/next#Run	chord	child-gap	chord/host/object.go#Run
+pkg:chord/next#Run::property:id	chord	member-missing	chord/host/object.go#Run
+pkg:chord/next#Run::property:outcome	chord	member-missing	chord/host/object.go#Run
+pkg:chord/next#Run::property:outcome::call:0	chord	member-missing	chord/host/object.go#Run
+pkg:chord/next#RunState	chord	no-go-symbol	
+pkg:chord/next#RunState::property:change	chord	child-gap	
+pkg:chord/next#RunState::property:change::call:0	chord	child-gap	
+pkg:chord/next#RunState::property:value	chord	child-gap	
+pkg:chord/next#Self	chord	child-gap	chord/host/object.go#Self
+pkg:chord/next#Self::property:derive	chord	child-gap	chord/host/object.go#Self.Derive
+pkg:chord/next#Self::property:derive::call:0	chord	undecidable	chord/host/object.go#Self.Derive
+pkg:chord/next#Self::property:follow	chord	member-missing	chord/host/object.go#Self
+pkg:chord/next#Self::property:follow::call:0	chord	member-missing	chord/host/object.go#Self
+pkg:chord/next#Self::property:get	chord	child-gap	chord/host/object.go#Self.Get
+pkg:chord/next#Self::property:get::call:0	chord	signature-mismatch	chord/host/object.go#Self.Get
+pkg:chord/next#Self::property:job	chord	member-missing	chord/host/object.go#Self
+pkg:chord/next#Self::property:job::call:0	chord	member-missing	chord/host/object.go#Self
+pkg:chord/next#Self::property:on	chord	child-gap	chord/host/object.go#Self.On
+pkg:chord/next#Self::property:on::call:0	chord	signature-mismatch	chord/host/object.go#Self.On
+pkg:chord/next#Self::property:on::call:1	chord	signature-mismatch	chord/host/object.go#Self.On
+pkg:chord/next#Self::property:onLive	chord	member-missing	chord/host/object.go#Self
+pkg:chord/next#Self::property:onLive::call:0	chord	member-missing	chord/host/object.go#Self
+pkg:chord/next#Self::property:open	chord	member-missing	chord/host/object.go#Self
+pkg:chord/next#Self::property:open::call:0	chord	member-missing	chord/host/object.go#Self
+pkg:chord/next#Self::property:registry	chord	member-missing	chord/host/object.go#Self
+pkg:chord/next#Self::property:registry::call:0	chord	member-missing	chord/host/object.go#Self
+pkg:chord/next#Self::property:retryOn	chord	member-missing	chord/host/object.go#Self
+pkg:chord/next#Self::property:retryOn::call:0	chord	member-missing	chord/host/object.go#Self
+pkg:chord/next#Self::property:state	chord	child-gap	chord/host/object.go#Self.State
+pkg:chord/next#Self::property:state::call:0	chord	signature-mismatch	chord/host/object.go#Self.State
+pkg:chord/next#Self::property:tx	chord	member-missing	chord/host/object.go#Self
+pkg:chord/next#Self::property:tx::call:0	chord	member-missing	chord/host/object.go#Self
+pkg:chord/next#Self::property:writable	chord	member-missing	chord/host/object.go#Self
+pkg:chord/next#Self::property:writable::call:0	chord	member-missing	chord/host/object.go#Self
+pkg:chord/next#ServeOptions	chord	undecidable	chord/host/object.go#ServeOptions
+pkg:chord/next#SetOf	chord	no-go-symbol	
+pkg:chord/next#SingletonHandle	chord	no-go-symbol	
+pkg:chord/next#SingletonHandle::property:change	chord	child-gap	
+pkg:chord/next#SingletonHandle::property:change::call:0	chord	child-gap	
+pkg:chord/next#SingletonHandle::property:retire	chord	child-gap	
+pkg:chord/next#SingletonHandle::property:retire::call:0	chord	child-gap	
+pkg:chord/next#SingletonHandle::property:value	chord	child-gap	
+pkg:chord/next#SingletonHandle::property:watch	chord	child-gap	
+pkg:chord/next#SingletonHandle::property:watch::call:0	chord	child-gap	
+pkg:chord/next#StagedWrite	chord	no-go-symbol	
+pkg:chord/next#StartOptions	chord	no-go-symbol	
+pkg:chord/next#StateDefinition	chord	no-go-symbol	
+pkg:chord/next#StateDefinition::construct:0	chord	child-gap	
+pkg:chord/next#StateDefinition::property:checkpointWhen	chord	child-gap	
+pkg:chord/next#StateDefinition::property:checkpointWhen::call:0	chord	child-gap	
+pkg:chord/next#StateDefinition::property:fingerprint	chord	child-gap	
+pkg:chord/next#StateDefinition::property:initial	chord	child-gap	
+pkg:chord/next#StateDefinition::property:initial::call:0	chord	child-gap	
+pkg:chord/next#StateDefinition::property:keyed	chord	child-gap	
+pkg:chord/next#StateDefinition::property:migrate	chord	child-gap	
+pkg:chord/next#StateDefinition::property:migrate::call:0	chord	child-gap	
+pkg:chord/next#StateDefinition::property:name	chord	child-gap	
+pkg:chord/next#StateDefinition::property:persist	chord	child-gap	
+pkg:chord/next#StateDefinition::property:schema	chord	child-gap	
+pkg:chord/next#StateDefinition::property:version	chord	child-gap	
+pkg:chord/next#StateDefinition::property:~keyed	chord	child-gap	
+pkg:chord/next#StateDefinition::property:~persist	chord	child-gap	
+pkg:chord/next#Static	chord	no-go-symbol	
+pkg:chord/next#Step	chord	no-go-symbol	
+pkg:chord/next#Step::construct:0	chord	child-gap	
+pkg:chord/next#Step::property:all	chord	child-gap	
+pkg:chord/next#Step::property:all::call:0	chord	child-gap	
+pkg:chord/next#Step::property:created	chord	child-gap	
+pkg:chord/next#Step::property:executor	chord	child-gap	
+pkg:chord/next#Step::property:get	chord	child-gap	
+pkg:chord/next#Step::property:get::call:0	chord	child-gap	
+pkg:chord/next#Step::property:ids	chord	child-gap	
+pkg:chord/next#Step::property:run	chord	child-gap	
+pkg:chord/next#Step::property:run::call:0	chord	child-gap	
+pkg:chord/next#Step::property:runCounted	chord	child-gap	
+pkg:chord/next#Step::property:runCounted::call:0	chord	child-gap	
+pkg:chord/next#Step::property:seq	chord	child-gap	
+pkg:chord/next#Step::property:statements	chord	child-gap	
+pkg:chord/next#Step::property:table	chord	child-gap	
+pkg:chord/next#Step::property:table::call:0	chord	child-gap	
+pkg:chord/next#Step::property:tables	chord	child-gap	
+pkg:chord/next#Store	chord	no-go-symbol	
+pkg:chord/next#Store::property:close	chord	child-gap	
+pkg:chord/next#Store::property:close::call:0	chord	child-gap	
+pkg:chord/next#Store::property:export	chord	child-gap	
+pkg:chord/next#Store::property:export::call:0	chord	child-gap	
+pkg:chord/next#Store::property:lastSeq	chord	child-gap	
+pkg:chord/next#Store::property:outbox	chord	child-gap	
+pkg:chord/next#StoreOptions	chord	no-go-symbol	
+pkg:chord/next#StoreOwnerTables	chord	no-go-symbol	
+pkg:chord/next#StoreOwnerTables::construct:0	chord	child-gap	
+pkg:chord/next#StoreOwnerTables::property:declare	chord	child-gap	
+pkg:chord/next#StoreOwnerTables::property:declare::call:0	chord	child-gap	
+pkg:chord/next#StoreOwnerTables::property:owner	chord	child-gap	
+pkg:chord/next#StoreOwnerTables::property:prepare	chord	child-gap	
+pkg:chord/next#StoreOwnerTables::property:prepare::call:0	chord	child-gap	
+pkg:chord/next#StoreOwnerTables::property:store	chord	child-gap	
+pkg:chord/next#StoreSelf	chord	no-go-symbol	
+pkg:chord/next#StoreSelf::property:contribute	chord	child-gap	
+pkg:chord/next#StoreSelf::property:contribute::call:0	chord	child-gap	
+pkg:chord/next#StoreSelf::property:derive	chord	child-gap	
+pkg:chord/next#StoreSelf::property:derive::call:0	chord	child-gap	
+pkg:chord/next#StoreSelf::property:follow	chord	child-gap	
+pkg:chord/next#StoreSelf::property:follow::call:0	chord	child-gap	
+pkg:chord/next#StoreSelf::property:get	chord	child-gap	
+pkg:chord/next#StoreSelf::property:get::call:0	chord	child-gap	
+pkg:chord/next#StoreSelf::property:job	chord	child-gap	
+pkg:chord/next#StoreSelf::property:job::call:0	chord	child-gap	
+pkg:chord/next#StoreSelf::property:on	chord	child-gap	
+pkg:chord/next#StoreSelf::property:on::call:0	chord	child-gap	
+pkg:chord/next#StoreSelf::property:on::call:1	chord	child-gap	
+pkg:chord/next#StoreSelf::property:onLive	chord	child-gap	
+pkg:chord/next#StoreSelf::property:onLive::call:0	chord	child-gap	
+pkg:chord/next#StoreSelf::property:open	chord	child-gap	
+pkg:chord/next#StoreSelf::property:open::call:0	chord	child-gap	
+pkg:chord/next#StoreSelf::property:registry	chord	child-gap	
+pkg:chord/next#StoreSelf::property:registry::call:0	chord	child-gap	
+pkg:chord/next#StoreSelf::property:retryOn	chord	child-gap	
+pkg:chord/next#StoreSelf::property:retryOn::call:0	chord	child-gap	
+pkg:chord/next#StoreSelf::property:state	chord	child-gap	
+pkg:chord/next#StoreSelf::property:state::call:0	chord	child-gap	
+pkg:chord/next#StoreSelf::property:table	chord	child-gap	
+pkg:chord/next#StoreSelf::property:table::call:0	chord	child-gap	
+pkg:chord/next#StoreSelf::property:tx	chord	child-gap	
+pkg:chord/next#StoreSelf::property:tx::call:0	chord	child-gap	
+pkg:chord/next#StoreSelf::property:writable	chord	child-gap	
+pkg:chord/next#StoreSelf::property:writable::call:0	chord	child-gap	
+pkg:chord/next#StoreWrite	chord	no-go-symbol	
+pkg:chord/next#StoredDocument	chord	undecidable	durable/types.go#StoredDocument
+pkg:chord/next#TSchema	chord	no-go-symbol	
+pkg:chord/next#Table	chord	no-go-symbol	
+pkg:chord/next#Table::property:count	chord	child-gap	
+pkg:chord/next#Table::property:count::call:0	chord	child-gap	
+pkg:chord/next#Table::property:get	chord	child-gap	
+pkg:chord/next#Table::property:get::call:0	chord	child-gap	
+pkg:chord/next#Table::property:page	chord	child-gap	
+pkg:chord/next#Table::property:page::call:0	chord	child-gap	
+pkg:chord/next#Table::property:rows	chord	child-gap	
+pkg:chord/next#Table::property:rows::call:0	chord	child-gap	
+pkg:chord/next#TableDefinition	chord	no-go-symbol	
+pkg:chord/next#TableDefinition::construct:0	chord	child-gap	
+pkg:chord/next#TableDefinition::property:byName	chord	child-gap	
+pkg:chord/next#TableDefinition::property:column	chord	child-gap	
+pkg:chord/next#TableDefinition::property:column::call:0	chord	child-gap	
+pkg:chord/next#TableDefinition::property:columns	chord	child-gap	
+pkg:chord/next#TableDefinition::property:evolution	chord	child-gap	
+pkg:chord/next#TableDefinition::property:fingerprint	chord	child-gap	
+pkg:chord/next#TableDefinition::property:indexes	chord	child-gap	
+pkg:chord/next#TableDefinition::property:key	chord	child-gap	
+pkg:chord/next#TableDefinition::property:name	chord	child-gap	
+pkg:chord/next#TableDefinition::property:record	chord	child-gap	
+pkg:chord/next#TableDefinition::property:refs	chord	child-gap	
+pkg:chord/next#TableDefinition::property:rows	chord	child-gap	
+pkg:chord/next#TableDefinition::property:schemas	chord	child-gap	
+pkg:chord/next#TableDefinition::property:version	chord	child-gap	
+pkg:chord/next#TableDefinition::property:~columns	chord	child-gap	
+pkg:chord/next#TableDefinition::property:~key	chord	child-gap	
+pkg:chord/next#TableEditor	chord	no-go-symbol	
+pkg:chord/next#TableEditor::property:add	chord	child-gap	
+pkg:chord/next#TableEditor::property:add::call:0	chord	child-gap	
+pkg:chord/next#TableEditor::property:drop	chord	child-gap	
+pkg:chord/next#TableEditor::property:drop::call:0	chord	child-gap	
+pkg:chord/next#TableEditor::property:dropIndex	chord	child-gap	
+pkg:chord/next#TableEditor::property:dropIndex::call:0	chord	child-gap	
+pkg:chord/next#TableEditor::property:index	chord	child-gap	
+pkg:chord/next#TableEditor::property:index::call:0	chord	child-gap	
+pkg:chord/next#TableEditor::property:json	chord	child-gap	
+pkg:chord/next#TableEditor::property:json::call:0	chord	child-gap	
+pkg:chord/next#TableEditor::property:rename	chord	child-gap	
+pkg:chord/next#TableEditor::property:rename::call:0	chord	child-gap	
+pkg:chord/next#TableEditor::property:rows	chord	child-gap	
+pkg:chord/next#TableEditor::property:rows::call:0	chord	child-gap	
+pkg:chord/next#TableEditor::property:update	chord	child-gap	
+pkg:chord/next#TableEditor::property:update::call:0	chord	child-gap	
+pkg:chord/next#TableEditor::property:~columns	chord	child-gap	
+pkg:chord/next#TableEditor::property:~key	chord	child-gap	
+pkg:chord/next#TableItem	chord	no-go-symbol	
+pkg:chord/next#TableOf	chord	no-go-symbol	
+pkg:chord/next#TableOptions	chord	no-go-symbol	
+pkg:chord/next#TableTailEditor	chord	no-go-symbol	
+pkg:chord/next#TableTailEditor::property:drop	chord	child-gap	
+pkg:chord/next#TableTailEditor::property:drop::call:0	chord	child-gap	
+pkg:chord/next#TableTailEditor::property:dropIndex	chord	child-gap	
+pkg:chord/next#TableTailEditor::property:dropIndex::call:0	chord	child-gap	
+pkg:chord/next#TableTailEditor::property:index	chord	child-gap	
+pkg:chord/next#TableTailEditor::property:index::call:0	chord	child-gap	
+pkg:chord/next#TableTailEditor::property:~columns	chord	child-gap	
+pkg:chord/next#TableTailEditor::property:~key	chord	child-gap	
+pkg:chord/next#Tx	chord	child-gap	durable/types.go#Tx
+pkg:chord/next#Tx::property:delete	chord	member-missing	durable/types.go#Tx
+pkg:chord/next#Tx::property:delete::call:0	chord	member-missing	durable/types.go#Tx
+pkg:chord/next#Tx::property:deleteWhere	chord	member-missing	durable/types.go#Tx
+pkg:chord/next#Tx::property:deleteWhere::call:0	chord	member-missing	durable/types.go#Tx
+pkg:chord/next#Tx::property:draft	chord	member-missing	durable/types.go#Tx
+pkg:chord/next#Tx::property:draft::call:0	chord	member-missing	durable/types.go#Tx
+pkg:chord/next#Tx::property:draft::call:1	chord	member-missing	durable/types.go#Tx
+pkg:chord/next#Tx::property:get	chord	member-missing	durable/types.go#Tx
+pkg:chord/next#Tx::property:get::call:0	chord	member-missing	durable/types.go#Tx
+pkg:chord/next#Tx::property:page	chord	member-missing	durable/types.go#Tx
+pkg:chord/next#Tx::property:page::call:0	chord	member-missing	durable/types.go#Tx
+pkg:chord/next#Tx::property:put	chord	member-missing	durable/types.go#Tx
+pkg:chord/next#Tx::property:put::call:0	chord	member-missing	durable/types.go#Tx
+pkg:chord/next#Tx::property:retire	chord	member-missing	durable/types.go#Tx
+pkg:chord/next#Tx::property:retire::call:0	chord	member-missing	durable/types.go#Tx
+pkg:chord/next#Tx::property:retire::call:1	chord	member-missing	durable/types.go#Tx
+pkg:chord/next#Tx::property:rows	chord	member-missing	durable/types.go#Tx
+pkg:chord/next#Tx::property:rows::call:0	chord	member-missing	durable/types.go#Tx
+pkg:chord/next#Tx::property:start	chord	member-missing	durable/types.go#Tx
+pkg:chord/next#Tx::property:start::call:0	chord	member-missing	durable/types.go#Tx
+pkg:chord/next#Tx::property:update	chord	member-missing	durable/types.go#Tx
+pkg:chord/next#Tx::property:update::call:0	chord	member-missing	durable/types.go#Tx
+pkg:chord/next#Tx::property:updateWhere	chord	member-missing	durable/types.go#Tx
+pkg:chord/next#Tx::property:updateWhere::call:0	chord	member-missing	durable/types.go#Tx
+pkg:chord/next#WebSocketLike	chord	child-gap	chord/host/link.go#WebSocketLike
+pkg:chord/next#WebSocketLike::property:binaryType	chord	member-missing	chord/host/link.go#WebSocketLike
+pkg:chord/next#WebSocketLike::property:close	chord	child-gap	chord/host/link.go#WebSocketLike.Close
+pkg:chord/next#WebSocketLike::property:close::call:0	chord	signature-mismatch	chord/host/link.go#WebSocketLike.Close
+pkg:chord/next#WebSocketLike::property:removeEventListener	chord	member-missing	chord/host/link.go#WebSocketLike
+pkg:chord/next#WebSocketLike::property:removeEventListener::call:0	chord	member-missing	chord/host/link.go#WebSocketLike
+pkg:chord/next#WebSocketLike::property:removeEventListener::call:message	chord	member-missing	chord/host/link.go#WebSocketLike
+pkg:chord/next#WebSocketLike::property:send	chord	child-gap	chord/host/link.go#WebSocketLike.Send
+pkg:chord/next#WebSocketLike::property:send::call:0	chord	signature-mismatch	chord/host/link.go#WebSocketLike.Send
+pkg:chord/next#WhereNode	chord	no-go-symbol	
+pkg:chord/next#Writable	chord	no-go-symbol	
+pkg:chord/next#Writable::property:set	chord	child-gap	
+pkg:chord/next#Writable::property:set::call:0	chord	child-gap	
+pkg:chord/next#Writable::property:value	chord	child-gap	
+pkg:chord/next#Writable::property:watch	chord	child-gap	
+pkg:chord/next#Writable::property:watch::call:0	chord	child-gap	
+pkg:chord/next#add	chord	no-go-symbol	
+pkg:chord/next#add::call:0	chord	child-gap	
+pkg:chord/next#and	chord	no-go-symbol	
+pkg:chord/next#and::call:0	chord	child-gap	
+pkg:chord/next#applyBatch	chord	no-go-symbol	
+pkg:chord/next#applyBatch::call:0	chord	child-gap	
+pkg:chord/next#arr	chord	no-go-symbol	
+pkg:chord/next#arr::call:0	chord	child-gap	
+pkg:chord/next#binaryCodec	chord	no-go-symbol	
+pkg:chord/next#bool	chord	no-go-symbol	
+pkg:chord/next#bool::call:0	chord	child-gap	
+pkg:chord/next#bool::call:1	chord	child-gap	
+pkg:chord/next#broken	chord	no-go-symbol	
+pkg:chord/next#broken::call:0	chord	child-gap	
+pkg:chord/next#bytes	chord	no-go-symbol	
+pkg:chord/next#bytes::call:0	chord	child-gap	
+pkg:chord/next#coalesce	chord	no-go-symbol	
+pkg:chord/next#coalesce::call:0	chord	child-gap	
+pkg:chord/next#compareText	chord	no-go-symbol	
+pkg:chord/next#compareText::call:0	chord	child-gap	
+pkg:chord/next#concat	chord	no-go-symbol	
+pkg:chord/next#concat::call:0	chord	child-gap	
+pkg:chord/next#constant	chord	no-go-symbol	
+pkg:chord/next#constant::call:0	chord	child-gap	
+pkg:chord/next#decodeJsonl	chord	no-go-symbol	
+pkg:chord/next#decodeJsonl::call:0	chord	child-gap	
+pkg:chord/next#defineFacet	chord	child-gap	chord/host/host.go#DefineFacet
+pkg:chord/next#defineFacet::call:0	chord	signature-mismatch	chord/host/host.go#DefineFacet
+pkg:chord/next#defineJob	chord	no-go-symbol	
+pkg:chord/next#defineJob::call:0	chord	child-gap	
+pkg:chord/next#defineRegistry	chord	child-gap	chord/host/registry.go#DefineRegistry
+pkg:chord/next#defineRegistry::call:0	chord	signature-mismatch	chord/host/registry.go#DefineRegistry
+pkg:chord/next#defineState	chord	no-go-symbol	
+pkg:chord/next#defineState::call:0	chord	child-gap	
+pkg:chord/next#defineState::call:1	chord	child-gap	
+pkg:chord/next#defineTable	chord	no-go-symbol	
+pkg:chord/next#defineTable::call:0	chord	child-gap	
+pkg:chord/next#describeMessage	chord	no-go-symbol	
+pkg:chord/next#describeMessage::call:0	chord	child-gap	
+pkg:chord/next#encodeJsonl	chord	no-go-symbol	
+pkg:chord/next#encodeJsonl::call:0	chord	child-gap	
+pkg:chord/next#eq	chord	no-go-symbol	
+pkg:chord/next#eq::call:0	chord	child-gap	
+pkg:chord/next#evolve	chord	no-go-symbol	
+pkg:chord/next#evolve::call:0	chord	child-gap	
+pkg:chord/next#evolveTable	chord	no-go-symbol	
+pkg:chord/next#evolveTable::call:0	chord	child-gap	
+pkg:chord/next#findDocument	chord	no-go-symbol	
+pkg:chord/next#findDocument::call:0	chord	child-gap	
+pkg:chord/next#findDocumentEntry	chord	no-go-symbol	
+pkg:chord/next#findDocumentEntry::call:0	chord	child-gap	
+pkg:chord/next#gt	chord	no-go-symbol	
+pkg:chord/next#gt::call:0	chord	child-gap	
+pkg:chord/next#gte	chord	no-go-symbol	
+pkg:chord/next#gte::call:0	chord	child-gap	
+pkg:chord/next#hostKind	chord	no-go-symbol	
+pkg:chord/next#hostKind::call:0	chord	child-gap	
+pkg:chord/next#importStore	chord	no-go-symbol	
+pkg:chord/next#importStore::call:0	chord	child-gap	
+pkg:chord/next#inArray	chord	no-go-symbol	
+pkg:chord/next#inArray::call:0	chord	child-gap	
+pkg:chord/next#insertDocument	chord	no-go-symbol	
+pkg:chord/next#insertDocument::call:0	chord	child-gap	
+pkg:chord/next#int	chord	no-go-symbol	
+pkg:chord/next#int::call:0	chord	child-gap	
+pkg:chord/next#int::call:1	chord	child-gap	
+pkg:chord/next#ipcLink	chord	no-go-symbol	
+pkg:chord/next#ipcLink::call:0	chord	child-gap	
+pkg:chord/next#isNull	chord	no-go-symbol	
+pkg:chord/next#isNull::call:0	chord	child-gap	
+pkg:chord/next#json	chord	no-go-symbol	
+pkg:chord/next#json::call:0	chord	child-gap	
+pkg:chord/next#keyed	chord	no-go-symbol	
+pkg:chord/next#keyed::call:0	chord	child-gap	
+pkg:chord/next#keyedEntries	chord	no-go-symbol	
+pkg:chord/next#keyedEntries::call:0	chord	child-gap	
+pkg:chord/next#listDocumentEntries	chord	no-go-symbol	
+pkg:chord/next#listDocumentEntries::call:0	chord	child-gap	
+pkg:chord/next#listDocuments	chord	no-go-symbol	
+pkg:chord/next#listDocuments::call:0	chord	child-gap	
+pkg:chord/next#lit	chord	no-go-symbol	
+pkg:chord/next#lit::call:0	chord	child-gap	
+pkg:chord/next#loadContent	chord	no-go-symbol	
+pkg:chord/next#loadContent::call:0	chord	child-gap	
+pkg:chord/next#loadDocument	chord	no-go-symbol	
+pkg:chord/next#loadDocument::call:0	chord	child-gap	
+pkg:chord/next#local	chord	child-gap	chord/host/contract.go#Local
+pkg:chord/next#local::call:0	chord	signature-mismatch	chord/host/contract.go#Local
+pkg:chord/next#lt	chord	no-go-symbol	
+pkg:chord/next#lt::call:0	chord	child-gap	
+pkg:chord/next#lte	chord	no-go-symbol	
+pkg:chord/next#lte::call:0	chord	child-gap	
+pkg:chord/next#map	chord	no-go-symbol	
+pkg:chord/next#map::call:0	chord	child-gap	
+pkg:chord/next#mapShared	chord	no-go-symbol	
+pkg:chord/next#mapShared::call:0	chord	child-gap	
+pkg:chord/next#max	chord	no-go-symbol	
+pkg:chord/next#max::call:0	chord	child-gap	
+pkg:chord/next#method	chord	child-gap	chord/host/contract.go#Method
+pkg:chord/next#method::call:0	chord	undecidable	chord/host/contract.go#Method
+pkg:chord/next#method::call:1	chord	signature-mismatch	chord/host/contract.go#Method
+pkg:chord/next#method::call:2	chord	signature-mismatch	chord/host/contract.go#Method
+pkg:chord/next#method::call:3	chord	signature-mismatch	chord/host/contract.go#Method
+pkg:chord/next#min	chord	no-go-symbol	
+pkg:chord/next#min::call:0	chord	child-gap	
+pkg:chord/next#ne	chord	no-go-symbol	
+pkg:chord/next#ne::call:0	chord	child-gap	
+pkg:chord/next#not	chord	no-go-symbol	
+pkg:chord/next#not::call:0	chord	child-gap	
+pkg:chord/next#nul	chord	no-go-symbol	
+pkg:chord/next#nul::call:0	chord	child-gap	
+pkg:chord/next#num	chord	no-go-symbol	
+pkg:chord/next#num::call:0	chord	child-gap	
+pkg:chord/next#num::call:1	chord	child-gap	
+pkg:chord/next#obj	chord	no-go-symbol	
+pkg:chord/next#obj::call:0	chord	child-gap	
+pkg:chord/next#oneOf	chord	no-go-symbol	
+pkg:chord/next#oneOf::call:0	chord	child-gap	
+pkg:chord/next#openStore	chord	no-go-symbol	
+pkg:chord/next#openStore::call:0	chord	child-gap	
+pkg:chord/next#opt	chord	no-go-symbol	
+pkg:chord/next#opt::call:0	chord	child-gap	
+pkg:chord/next#or	chord	no-go-symbol	
+pkg:chord/next#or::call:0	chord	child-gap	
+pkg:chord/next#orderedEntries	chord	no-go-symbol	
+pkg:chord/next#orderedEntries::call:0	chord	child-gap	
+pkg:chord/next#prefix	chord	no-go-symbol	
+pkg:chord/next#prefix::call:0	chord	child-gap	
+pkg:chord/next#query	chord	no-go-symbol	
+pkg:chord/next#query::call:0	chord	child-gap	
+pkg:chord/next#readDocument	chord	no-go-symbol	
+pkg:chord/next#readDocument::call:0	chord	child-gap	
+pkg:chord/next#readDocumentEntry	chord	no-go-symbol	
+pkg:chord/next#readDocumentEntry::call:0	chord	child-gap	
+pkg:chord/next#remote	chord	child-gap	chord/host/contract.go#Remote
+pkg:chord/next#remote::call:0	chord	signature-mismatch	chord/host/contract.go#Remote
+pkg:chord/next#replacePrefix	chord	no-go-symbol	
+pkg:chord/next#replacePrefix::call:0	chord	child-gap	
+pkg:chord/next#retireRecord	chord	no-go-symbol	
+pkg:chord/next#retireRecord::call:0	chord	child-gap	
+pkg:chord/next#sleep	chord	no-go-symbol	
+pkg:chord/next#sleep::call:0	chord	child-gap	
+pkg:chord/next#sqliteBackend	chord	no-go-symbol	
+pkg:chord/next#sqliteBackend::call:0	chord	child-gap	
+pkg:chord/next#str	chord	no-go-symbol	
+pkg:chord/next#str::call:0	chord	child-gap	
+pkg:chord/next#str::call:1	chord	child-gap	
+pkg:chord/next#sub	chord	no-go-symbol	
+pkg:chord/next#sub::call:0	chord	child-gap	
+pkg:chord/next#textCodec	chord	no-go-symbol	
+pkg:chord/next#union	chord	no-go-symbol	
+pkg:chord/next#union::call:0	chord	child-gap	
+pkg:chord/next#unknown	chord	no-go-symbol	
+pkg:chord/next#unknown::call:0	chord	child-gap	
+pkg:chord/next#untilAborted	chord	no-go-symbol	
+pkg:chord/next#untilAborted::call:0	chord	child-gap	
+pkg:chord/next#webSocketLink	chord	no-go-symbol	
+pkg:chord/next#webSocketLink::call:0	chord	child-gap	
+pkg:chord/next#when	chord	no-go-symbol	
+pkg:chord/next#when::call:0	chord	child-gap	
+pkg:chord/next#writeContent	chord	no-go-symbol	
+pkg:chord/next#writeContent::call:0	chord	child-gap	
+pkg:coding-agent/.#CustomEditor	coding-agent	child-gap	internal/codingagent/custom_editor.go#CustomEditor
+pkg:coding-agent/.#CustomEditor::property:capturesViewportInput	coding-agent	member-missing	internal/codingagent/custom_editor.go#CustomEditor
+pkg:coding-agent/.#ExecOptions	coding-agent	child-gap	coding/extension/opaque_types.go#ExecOptions
+pkg:coding-agent/.#ExecOptions::property:maxBuffer	coding-agent	member-missing	coding/extension/opaque_types.go#ExecOptions
+pkg:coding-agent/.#ExecResult	coding-agent	child-gap	coding/extension/opaque_types.go#ExecResult
+pkg:coding-agent/.#ExecResult::property:truncated	coding-agent	member-missing	coding/extension/opaque_types.go#ExecResult
+pkg:coding-agent/.#ModelSelectorComponent	coding-agent	child-gap	tui/model_select.go#ModelSelectorComponent
+pkg:coding-agent/.#ModelSelectorComponent::property:capturesViewportInput	coding-agent	member-missing	tui/model_select.go#ModelSelectorComponent
+pkg:coding-agent/.#OAuthSelectorComponent	coding-agent	child-gap	tui/oauth_selector.go#OAuthSelectorComponent
+pkg:coding-agent/.#OAuthSelectorComponent::property:capturesViewportInput	coding-agent	member-missing	tui/oauth_selector.go#OAuthSelectorComponent
+pkg:coding-agent/.#PathMetadata	coding-agent	child-gap	internal/codingagent/resource_paths.go#PathMetadata
+pkg:coding-agent/.#PathMetadata::property:changelogPath	coding-agent	member-missing	internal/codingagent/resource_paths.go#PathMetadata
+pkg:coding-agent/.#SessionSelectorComponent	coding-agent	child-gap	internal/codingagent/session_selector.go#SessionSelectorComponent
+pkg:coding-agent/.#SessionSelectorComponent::property:capturesViewportInput	coding-agent	member-missing	internal/codingagent/session_selector.go#SessionSelectorComponent
+pkg:coding-agent/.#SettingsManager	coding-agent	child-gap	coding/services.go#SettingsManager
+pkg:coding-agent/.#SettingsManager::property:getExtensionChangelogVersion	coding-agent	member-missing	coding/services.go#SettingsManager
+pkg:coding-agent/.#SettingsManager::property:getExtensionChangelogVersion::call:0	coding-agent	member-missing	coding/services.go#SettingsManager
+pkg:coding-agent/.#SettingsManager::property:setExtensionChangelogVersion	coding-agent	member-missing	coding/services.go#SettingsManager
+pkg:coding-agent/.#SettingsManager::property:setExtensionChangelogVersion::call:0	coding-agent	member-missing	coding/services.go#SettingsManager
+pkg:coding-agent/.#SourceInfo	coding-agent	child-gap	internal/codingagent/extension_host_info.go#PiSourceInfo
+pkg:coding-agent/.#SourceInfo::property:changelogPath	coding-agent	member-missing	internal/codingagent/extension_host_info.go#PiSourceInfo
+pkg:coding-agent/.#TreeSelectorComponent	coding-agent	child-gap	tui/tree_select.go#TreeSelectorComponent
+pkg:coding-agent/.#TreeSelectorComponent::property:capturesViewportInput	coding-agent	member-missing	tui/tree_select.go#TreeSelectorComponent
+pkg:coding-agent/.#createSyntheticSourceInfo	coding-agent	child-gap	internal/codingagent/extension_host_info.go#CreateSyntheticSourceInfo
+pkg:coding-agent/.#createSyntheticSourceInfo::call:0	coding-agent	signature-mismatch	internal/codingagent/extension_host_info.go#CreateSyntheticSourceInfo
+pkg:durable/.#Agent	durable	type-mismatch	durable/harness_types.go#Agent
+pkg:durable/.#AgentChange	durable	type-mismatch	durable/harness/agent.go#AgentChange
+pkg:durable/.#AgentState	durable	type-mismatch	durable/harness/agent.go#AgentState
+pkg:durable/.#CommitObservation	durable	no-go-symbol	
+pkg:durable/.#CommitObserver	durable	no-go-symbol	
+pkg:durable/.#CompactionFailure	durable	type-mismatch	durable/harness/live.go#CompactionFailure
+pkg:durable/.#CompactionHooks	durable	child-gap	durable/harness/types.go#CompactionHooks
+pkg:durable/.#CompactionHooks::property:beforeCompact	durable	child-gap	durable/harness/types.go#CompactionHooks.BeforeCompact
+pkg:durable/.#CompactionHooks::property:beforeCompact::call:0	durable	signature-mismatch	durable/harness/types.go#CompactionHooks.BeforeCompact
+pkg:durable/.#CompactionStatus	durable	type-mismatch	durable/harness/live.go#CompactionStatus
+pkg:durable/.#Conversation	durable	child-gap	durable/harness/types.go#Conversation
+pkg:durable/.#Conversation::property:abort	durable	child-gap	durable/harness/types.go#Conversation.Abort
+pkg:durable/.#Conversation::property:abort::call:0	durable	signature-mismatch	durable/harness/types.go#Conversation.Abort
+pkg:durable/.#Conversation::property:agent	durable	child-gap	durable/harness/types.go#Conversation.Agent
+pkg:durable/.#Conversation::property:agent::call:0	durable	signature-mismatch	durable/harness/types.go#Conversation.Agent
+pkg:durable/.#Conversation::property:commit	durable	child-gap	durable/harness/types.go#Conversation.Commit
+pkg:durable/.#Conversation::property:commit::call:0	durable	signature-mismatch	durable/harness/types.go#Conversation.Commit
+pkg:durable/.#Conversation::property:compact	durable	child-gap	durable/harness/types.go#Conversation.Compact
+pkg:durable/.#Conversation::property:compact::call:0	durable	signature-mismatch	durable/harness/types.go#Conversation.Compact
+pkg:durable/.#Conversation::property:configure	durable	child-gap	durable/harness/types.go#Conversation.Configure
+pkg:durable/.#Conversation::property:configure::call:0	durable	signature-mismatch	durable/harness/types.go#Conversation.Configure
+pkg:durable/.#Conversation::property:context	durable	child-gap	durable/harness/types.go#Conversation.Context
+pkg:durable/.#Conversation::property:context::call:0	durable	signature-mismatch	durable/harness/types.go#Conversation.Context
+pkg:durable/.#Conversation::property:entries	durable	child-gap	durable/harness/types.go#Conversation.Entries
+pkg:durable/.#Conversation::property:entries::call:0	durable	signature-mismatch	durable/harness/types.go#Conversation.Entries
+pkg:durable/.#Conversation::property:fork	durable	child-gap	durable/harness/types.go#Conversation.Fork
+pkg:durable/.#Conversation::property:fork::call:0	durable	signature-mismatch	durable/harness/types.go#Conversation.Fork
+pkg:durable/.#Conversation::property:reset	durable	child-gap	durable/harness/types.go#Conversation.Reset
+pkg:durable/.#Conversation::property:reset::call:0	durable	signature-mismatch	durable/harness/types.go#Conversation.Reset
+pkg:durable/.#Conversation::property:submit	durable	child-gap	durable/harness/types.go#Conversation.Submit
+pkg:durable/.#Conversation::property:submit::call:0	durable	signature-mismatch	durable/harness/types.go#Conversation.Submit
+pkg:durable/.#Conversation::property:submit::call:1	durable	signature-mismatch	durable/harness/types.go#Conversation.Submit
+pkg:durable/.#Conversation::property:waitForIdle	durable	child-gap	durable/harness/types.go#Conversation.WaitForIdle
+pkg:durable/.#Conversation::property:waitForIdle::call:0	durable	signature-mismatch	durable/harness/types.go#Conversation.WaitForIdle
+pkg:durable/.#Conversation::property:watch	durable	child-gap	durable/harness/types.go#Conversation.Watch
+pkg:durable/.#Conversation::property:watch::call:0	durable	signature-mismatch	durable/harness/types.go#Conversation.Watch
+pkg:durable/.#ConversationHandle	durable	child-gap	durable/harness_types.go#ConversationHandle
+pkg:durable/.#ConversationHandle::property:abort	durable	child-gap	durable/harness_types.go#ConversationHandle.Abort
+pkg:durable/.#ConversationHandle::property:abort::call:0	durable	signature-mismatch	durable/harness_types.go#ConversationHandle.Abort
+pkg:durable/.#ConversationHandle::property:submit	durable	child-gap	durable/harness_types.go#ConversationHandle.Submit
+pkg:durable/.#ConversationHandle::property:submit::call:0	durable	signature-mismatch	durable/harness_types.go#ConversationHandle.Submit
+pkg:durable/.#ConversationHandle::property:submit::call:1	durable	signature-mismatch	durable/harness_types.go#ConversationHandle.Submit
+pkg:durable/.#ConversationHandle::property:waitForIdle	durable	child-gap	durable/harness_types.go#ConversationHandle.WaitForIdle
+pkg:durable/.#ConversationHandle::property:waitForIdle::call:0	durable	signature-mismatch	durable/harness_types.go#ConversationHandle.WaitForIdle
+pkg:durable/.#ConversationIdle	durable	no-go-symbol	
+pkg:durable/.#ConversationIdle::construct:0	durable	child-gap	
+pkg:durable/.#ConversationIdle::property:cause	durable	child-gap	
+pkg:durable/.#ConversationIdle::property:conversationId	durable	child-gap	
+pkg:durable/.#ConversationIdle::property:message	durable	child-gap	
+pkg:durable/.#ConversationIdle::property:name	durable	child-gap	
+pkg:durable/.#ConversationIdle::property:stack	durable	child-gap	
+pkg:durable/.#ConversationTranscript	durable	child-gap	durable/harness/transcript.go#ConversationTranscript
+pkg:durable/.#ConversationTranscript::property:fillGap	durable	child-gap	durable/harness/transcript.go#ConversationTranscript.FillGap
+pkg:durable/.#ConversationTranscript::property:fillGap::call:0	durable	signature-mismatch	durable/harness/transcript.go#ConversationTranscript.FillGap
+pkg:durable/.#ConversationTranscript::property:loadEarlier	durable	child-gap	durable/harness/transcript.go#ConversationTranscript.LoadEarlier
+pkg:durable/.#ConversationTranscript::property:loadEarlier::call:0	durable	signature-mismatch	durable/harness/transcript.go#ConversationTranscript.LoadEarlier
+pkg:durable/.#EntryLoader	durable	child-gap	durable/harness/transcript.go#EntryLoader
+pkg:durable/.#EntryLoader::call:0	durable	signature-mismatch	durable/harness/transcript.go#EntryLoader
+pkg:durable/.#GenerationCheckpoint	durable	type-mismatch	durable/harness/generation.go#GenerationCheckpoint
+pkg:durable/.#GenerationHooks	durable	child-gap	durable/harness/types.go#GenerationHooks
+pkg:durable/.#GenerationHooks::property:afterResponse	durable	child-gap	durable/harness/types.go#GenerationHooks.AfterResponse
+pkg:durable/.#GenerationHooks::property:afterResponse::call:0	durable	signature-mismatch	durable/harness/types.go#GenerationHooks.AfterResponse
+pkg:durable/.#GenerationHooks::property:afterRun	durable	member-missing	durable/harness/types.go#GenerationHooks
+pkg:durable/.#GenerationHooks::property:afterRun::call:0	durable	member-missing	durable/harness/types.go#GenerationHooks
+pkg:durable/.#GenerationHooks::property:afterTools	durable	child-gap	durable/harness/types.go#GenerationHooks.AfterTools
+pkg:durable/.#GenerationHooks::property:afterTools::call:0	durable	signature-mismatch	durable/harness/types.go#GenerationHooks.AfterTools
+pkg:durable/.#GenerationHooks::property:beforeRequest	durable	child-gap	durable/harness/types.go#GenerationHooks.BeforeRequest
+pkg:durable/.#GenerationHooks::property:beforeRequest::call:0	durable	signature-mismatch	durable/harness/types.go#GenerationHooks.BeforeRequest
+pkg:durable/.#GenerationHooks::property:onYield	durable	child-gap	durable/harness/types.go#GenerationHooks.OnYield
+pkg:durable/.#GenerationHooks::property:onYield::call:0	durable	signature-mismatch	durable/harness/types.go#GenerationHooks.OnYield
+pkg:durable/.#HarnessOptions	durable	type-mismatch	durable/harness/types.go#HarnessOptions
+pkg:durable/.#HookApi	durable	child-gap	durable/harness/types.go#HookApi
+pkg:durable/.#HookApi::property:entries	durable	member-missing	durable/harness/types.go#HookApi
+pkg:durable/.#HookApi::property:entries::call:0	durable	member-missing	durable/harness/types.go#HookApi
+pkg:durable/.#HookApi::property:entry	durable	member-missing	durable/harness/types.go#HookApi
+pkg:durable/.#HookApi::property:entry::call:0	durable	member-missing	durable/harness/types.go#HookApi
+pkg:durable/.#HookApi::property:entry::call:1	durable	member-missing	durable/harness/types.go#HookApi
+pkg:durable/.#HookApi::property:memo	durable	child-gap	durable/harness/types.go#HookApi
+pkg:durable/.#HookApi::property:memo::call:0	durable	signature-mismatch	durable/harness/types.go#HookApi.Memo
+pkg:durable/.#HookApi::property:memo::call:1	durable	signature-mismatch	durable/harness/types.go#HookApi.MemoCandidate
+pkg:durable/.#LiveRun	durable	type-mismatch	durable/harness/live.go#LiveRun
+pkg:durable/.#MemoryStorage	durable	child-gap	durable/storage/memory.go#MemoryStorage
+pkg:durable/.#MemoryStorage::property:close	durable	child-gap	durable/storage/memory.go#MemoryStorage.Close
+pkg:durable/.#MemoryStorage::property:close::call:0	durable	signature-mismatch	durable/storage/memory.go#MemoryStorage.Close
+pkg:durable/.#MemoryStorage::property:commit	durable	child-gap	durable/storage/memory.go#MemoryStorage.Commit
+pkg:durable/.#MemoryStorage::property:commit::call:0	durable	signature-mismatch	durable/storage/memory.go#MemoryStorage.Commit
+pkg:durable/.#MemoryStorage::property:conversation	durable	child-gap	durable/storage/memory.go#MemoryStorage.Conversation
+pkg:durable/.#MemoryStorage::property:conversation::call:0	durable	signature-mismatch	durable/storage/memory.go#MemoryStorage.Conversation
+pkg:durable/.#MemoryStorage::property:document	durable	child-gap	durable/storage/memory.go#MemoryStorage.Document
+pkg:durable/.#MemoryStorage::property:document::call:0	durable	signature-mismatch	durable/storage/memory.go#MemoryStorage.Document
+pkg:durable/.#MemoryStorage::property:entry	durable	child-gap	durable/storage/memory.go#MemoryStorage
+pkg:durable/.#MemoryStorage::property:entry::call:0	durable	signature-mismatch	durable/storage/memory.go#MemoryStorage.Entry
+pkg:durable/.#MemoryStorage::property:entry::call:1	durable	signature-mismatch	durable/storage/memory.go#MemoryStorage.VisibleEntry
+pkg:durable/.#MemoryStorage::property:findDocument	durable	child-gap	durable/storage/memory.go#MemoryStorage.FindDocument
+pkg:durable/.#MemoryStorage::property:findDocument::call:0	durable	signature-mismatch	durable/storage/memory.go#MemoryStorage.FindDocument
+pkg:durable/.#MemoryStorage::property:findLatestHeadMarker	durable	child-gap	durable/storage/memory.go#MemoryStorage.FindLatestHeadMarker
+pkg:durable/.#MemoryStorage::property:findLatestHeadMarker::call:0	durable	signature-mismatch	durable/storage/memory.go#MemoryStorage.FindLatestHeadMarker
+pkg:durable/.#MemoryStorage::property:scanConversations	durable	child-gap	durable/storage/memory.go#MemoryStorage.ScanConversations
+pkg:durable/.#MemoryStorage::property:scanConversations::call:0	durable	signature-mismatch	durable/storage/memory.go#MemoryStorage.ScanConversations
+pkg:durable/.#MemoryStorage::property:scanDocuments	durable	child-gap	durable/storage/memory.go#MemoryStorage.ScanDocuments
+pkg:durable/.#MemoryStorage::property:scanDocuments::call:0	durable	signature-mismatch	durable/storage/memory.go#MemoryStorage.ScanDocuments
+pkg:durable/.#MemoryStorage::property:scanEntries	durable	child-gap	durable/storage/memory.go#MemoryStorage.ScanEntries
+pkg:durable/.#MemoryStorage::property:scanEntries::call:0	durable	signature-mismatch	durable/storage/memory.go#MemoryStorage.ScanEntries
+pkg:durable/.#MemoryStorage::property:scanSubmissions	durable	child-gap	durable/storage/memory.go#MemoryStorage.ScanSubmissions
+pkg:durable/.#MemoryStorage::property:scanSubmissions::call:0	durable	signature-mismatch	durable/storage/memory.go#MemoryStorage.ScanSubmissions
+pkg:durable/.#MemoryStorage::property:scanTasks	durable	child-gap	durable/storage/memory.go#MemoryStorage.ScanTasks
+pkg:durable/.#MemoryStorage::property:scanTasks::call:0	durable	signature-mismatch	durable/storage/memory.go#MemoryStorage.ScanTasks
+pkg:durable/.#MemoryStorage::property:submission	durable	child-gap	durable/storage/memory.go#MemoryStorage.Submission
+pkg:durable/.#MemoryStorage::property:submission::call:0	durable	signature-mismatch	durable/storage/memory.go#MemoryStorage.Submission
+pkg:durable/.#MemoryStorage::property:submissionByRequest	durable	child-gap	durable/storage/memory.go#MemoryStorage.SubmissionByRequest
+pkg:durable/.#MemoryStorage::property:submissionByRequest::call:0	durable	signature-mismatch	durable/storage/memory.go#MemoryStorage.SubmissionByRequest
+pkg:durable/.#MemoryStorage::property:task	durable	child-gap	durable/storage/memory.go#MemoryStorage.Task
+pkg:durable/.#MemoryStorage::property:task::call:0	durable	signature-mismatch	durable/storage/memory.go#MemoryStorage.Task
+pkg:durable/.#NativeWatchCall	durable	no-go-symbol	
+pkg:durable/.#PhaseHandler	durable	child-gap	durable/types.go#PhaseHandler
+pkg:durable/.#PhaseHandler::call:0	durable	signature-mismatch	durable/types.go#PhaseHandler
+pkg:durable/.#PromptSection	durable	type-mismatch	durable/harness_types.go#PromptSection
+pkg:durable/.#Report	durable	no-go-symbol	
+pkg:durable/.#ReportFrom	durable	type-mismatch	durable/types.go#ReportFrom
+pkg:durable/.#ReportInfo	durable	type-mismatch	durable/types.go#ReportInfo
+pkg:durable/.#RunEndTask	durable	no-go-symbol	
+pkg:durable/.#RunFailure	durable	type-mismatch	durable/harness/live.go#RunFailure
+pkg:durable/.#RunFailureReason	durable	type-mismatch	durable/harness/live.go#RunFailureReason
+pkg:durable/.#RunSummary	durable	no-go-symbol	
+pkg:durable/.#Session	durable	child-gap	durable/types.go#Session
+pkg:durable/.#Session::property:close	durable	child-gap	durable/types.go#Session.Close
+pkg:durable/.#Session::property:close::call:0	durable	signature-mismatch	durable/types.go#Session.Close
+pkg:durable/.#Session::property:commit	durable	child-gap	durable/types.go#Session.Commit
+pkg:durable/.#Session::property:commit::call:0	durable	signature-mismatch	durable/types.go#Session.Commit
+pkg:durable/.#Session::property:observeCommits	durable	member-missing	durable/types.go#Session
+pkg:durable/.#Session::property:observeCommits::call:0	durable	member-missing	durable/types.go#Session
+pkg:durable/.#SessionEnd	durable	type-mismatch	durable/types.go#SessionEnd
+pkg:durable/.#Storage	durable	child-gap	durable/types.go#Storage
+pkg:durable/.#Storage::property:close	durable	child-gap	durable/types.go#Storage.Close
+pkg:durable/.#Storage::property:close::call:0	durable	signature-mismatch	durable/types.go#Storage.Close
+pkg:durable/.#Storage::property:commit	durable	child-gap	durable/types.go#Storage.Commit
+pkg:durable/.#Storage::property:commit::call:0	durable	signature-mismatch	durable/types.go#Storage.Commit
+pkg:durable/.#Storage::property:conversation	durable	child-gap	durable/types.go#Storage.Conversation
+pkg:durable/.#Storage::property:conversation::call:0	durable	signature-mismatch	durable/types.go#Storage.Conversation
+pkg:durable/.#Storage::property:document	durable	child-gap	durable/types.go#Storage.Document
+pkg:durable/.#Storage::property:document::call:0	durable	signature-mismatch	durable/types.go#Storage.Document
+pkg:durable/.#Storage::property:entry	durable	child-gap	durable/types.go#Storage
+pkg:durable/.#Storage::property:entry::call:0	durable	signature-mismatch	durable/types.go#Storage.Entry
+pkg:durable/.#Storage::property:entry::call:1	durable	signature-mismatch	durable/types.go#Storage.VisibleEntry
+pkg:durable/.#Storage::property:findDocument	durable	child-gap	durable/types.go#Storage.FindDocument
+pkg:durable/.#Storage::property:findDocument::call:0	durable	signature-mismatch	durable/types.go#Storage.FindDocument
+pkg:durable/.#Storage::property:findLatestHeadMarker	durable	child-gap	durable/types.go#Storage.FindLatestHeadMarker
+pkg:durable/.#Storage::property:findLatestHeadMarker::call:0	durable	signature-mismatch	durable/types.go#Storage.FindLatestHeadMarker
+pkg:durable/.#Storage::property:scanConversations	durable	child-gap	durable/types.go#Storage.ScanConversations
+pkg:durable/.#Storage::property:scanConversations::call:0	durable	signature-mismatch	durable/types.go#Storage.ScanConversations
+pkg:durable/.#Storage::property:scanDocuments	durable	child-gap	durable/types.go#Storage.ScanDocuments
+pkg:durable/.#Storage::property:scanDocuments::call:0	durable	signature-mismatch	durable/types.go#Storage.ScanDocuments
+pkg:durable/.#Storage::property:scanEntries	durable	child-gap	durable/types.go#Storage.ScanEntries
+pkg:durable/.#Storage::property:scanEntries::call:0	durable	signature-mismatch	durable/types.go#Storage.ScanEntries
+pkg:durable/.#Storage::property:scanSubmissions	durable	child-gap	durable/types.go#Storage.ScanSubmissions
+pkg:durable/.#Storage::property:scanSubmissions::call:0	durable	signature-mismatch	durable/types.go#Storage.ScanSubmissions
+pkg:durable/.#Storage::property:scanTasks	durable	child-gap	durable/types.go#Storage.ScanTasks
+pkg:durable/.#Storage::property:scanTasks::call:0	durable	signature-mismatch	durable/types.go#Storage.ScanTasks
+pkg:durable/.#Storage::property:submission	durable	child-gap	durable/types.go#Storage.Submission
+pkg:durable/.#Storage::property:submission::call:0	durable	signature-mismatch	durable/types.go#Storage.Submission
+pkg:durable/.#Storage::property:submissionByRequest	durable	child-gap	durable/types.go#Storage.SubmissionByRequest
+pkg:durable/.#Storage::property:submissionByRequest::call:0	durable	signature-mismatch	durable/types.go#Storage.SubmissionByRequest
+pkg:durable/.#Storage::property:task	durable	child-gap	durable/types.go#Storage.Task
+pkg:durable/.#Storage::property:task::call:0	durable	signature-mismatch	durable/types.go#Storage.Task
+pkg:durable/.#Submission	durable	child-gap	durable/harness_types.go#Submission
+pkg:durable/.#Submission::property:abort	durable	child-gap	durable/harness_types.go#Submission.Abort
+pkg:durable/.#Submission::property:abort::call:0	durable	signature-mismatch	durable/harness_types.go#Submission.Abort
+pkg:durable/.#Submission::property:status	durable	child-gap	durable/harness_types.go#Submission.Status
+pkg:durable/.#Submission::property:status::call:0	durable	signature-mismatch	durable/harness_types.go#Submission.Status
+pkg:durable/.#Submission::property:wait	durable	child-gap	durable/harness_types.go#Submission.Wait
+pkg:durable/.#Submission::property:wait::call:0	durable	signature-mismatch	durable/harness_types.go#Submission.Wait
+pkg:durable/.#SubmissionDraft	durable	type-mismatch	durable/harness_types.go#SubmissionDraft
+pkg:durable/.#TaskDefinition	durable	type-mismatch	durable/types.go#TaskDefinition
+pkg:durable/.#TaskRuntime	durable	child-gap	durable/types.go#TaskRuntime
+pkg:durable/.#TaskRuntime::property:abortOwned	durable	child-gap	durable/types.go#TaskRuntime.AbortOwned
+pkg:durable/.#TaskRuntime::property:abortOwned::call:0	durable	signature-mismatch	durable/types.go#TaskRuntime.AbortOwned
+pkg:durable/.#TaskRuntime::property:agent	durable	child-gap	durable/types.go#TaskRuntime.Agent
+pkg:durable/.#TaskRuntime::property:agent::call:0	durable	signature-mismatch	durable/types.go#TaskRuntime.Agent
+pkg:durable/.#TaskRuntime::property:commit	durable	child-gap	durable/types.go#TaskRuntime.Commit
+pkg:durable/.#TaskRuntime::property:commit::call:0	durable	signature-mismatch	durable/types.go#TaskRuntime.Commit
+pkg:durable/.#TaskRuntime::property:context	durable	child-gap	durable/types.go#TaskRuntime.Context
+pkg:durable/.#TaskRuntime::property:context::call:0	durable	signature-mismatch	durable/types.go#TaskRuntime.Context
+pkg:durable/.#TaskRuntime::property:conversation	durable	child-gap	durable/types.go#TaskRuntime.Conversation
+pkg:durable/.#TaskRuntime::property:conversation::call:0	durable	signature-mismatch	durable/types.go#TaskRuntime.Conversation
+pkg:durable/.#TaskRuntime::property:entries	durable	member-missing	durable/types.go#TaskRuntime
+pkg:durable/.#TaskRuntime::property:entries::call:0	durable	member-missing	durable/types.go#TaskRuntime
+pkg:durable/.#TaskRuntime::property:entry	durable	child-gap	durable/types.go#TaskRuntime
+pkg:durable/.#TaskRuntime::property:entry::call:0	durable	signature-mismatch	durable/types.go#TaskRuntime.Entry
+pkg:durable/.#TaskRuntime::property:entry::call:1	durable	signature-mismatch	durable/entries.go#TaskEntry
+pkg:durable/.#TaskRuntime::property:env	durable	child-gap	durable/types.go#TaskRuntime.Env
+pkg:durable/.#TaskRuntime::property:env::call:0	durable	signature-mismatch	durable/types.go#TaskRuntime.Env
+pkg:durable/.#TaskRuntime::property:getTask	durable	child-gap	durable/types.go#TaskRuntime.GetTask
+pkg:durable/.#TaskRuntime::property:getTask::call:0	durable	signature-mismatch	durable/types.go#TaskRuntime.GetTask
+pkg:durable/.#TaskRuntime::property:memo	durable	child-gap	durable/types.go#TaskRuntime
+pkg:durable/.#TaskRuntime::property:memo::call:0	durable	signature-mismatch	durable/types.go#TaskRuntime.Memo
+pkg:durable/.#TaskRuntime::property:memo::call:1	durable	signature-mismatch	durable/types.go#TaskRuntime.MemoCandidate
+pkg:durable/.#TaskRuntime::property:outcomes	durable	child-gap	durable/types.go#TaskRuntime.Outcomes
+pkg:durable/.#TaskRuntime::property:outcomes::call:0	durable	signature-mismatch	durable/types.go#TaskRuntime.Outcomes
+pkg:durable/.#TaskRuntime::property:ownedTasks	durable	child-gap	durable/types.go#TaskRuntime.OwnedTasks
+pkg:durable/.#TaskRuntime::property:ownedTasks::call:0	durable	signature-mismatch	durable/types.go#TaskRuntime.OwnedTasks
+pkg:durable/.#TaskRuntime::property:sleepUntil	durable	child-gap	durable/types.go#TaskRuntime.SleepUntil
+pkg:durable/.#TaskRuntime::property:sleepUntil::call:0	durable	signature-mismatch	durable/types.go#TaskRuntime.SleepUntil
+pkg:durable/.#TaskRuntime::property:waitForTask	durable	child-gap	durable/types.go#TaskRuntime.WaitForTask
+pkg:durable/.#TaskRuntime::property:waitForTask::call:0	durable	signature-mismatch	durable/types.go#TaskRuntime.WaitForTask
+pkg:durable/.#ToolExecutionApi	durable	child-gap	durable/harness_types.go#ToolExecutionApi
+pkg:durable/.#ToolExecutionApi::property:agent	durable	child-gap	durable/harness_types.go#ToolExecutionApi.Agent
+pkg:durable/.#ToolExecutionApi::property:agent::call:0	durable	signature-mismatch	durable/harness_types.go#ToolExecutionApi.Agent
+pkg:durable/.#ToolExecutionApi::property:commit	durable	child-gap	durable/harness_types.go#ToolExecutionApi.Commit
+pkg:durable/.#ToolExecutionApi::property:commit::call:0	durable	signature-mismatch	durable/harness_types.go#ToolExecutionApi.Commit
+pkg:durable/.#ToolExecutionApi::property:conversation	durable	child-gap	durable/harness_types.go#ToolExecutionApi.Conversation
+pkg:durable/.#ToolExecutionApi::property:conversation::call:0	durable	signature-mismatch	durable/harness_types.go#ToolExecutionApi.Conversation
+pkg:durable/.#ToolExecutionApi::property:createTask	durable	child-gap	durable/harness_types.go#ToolExecutionApi.CreateTaskErased
+pkg:durable/.#ToolExecutionApi::property:createTask::call:0	durable	signature-mismatch	durable/harness_types.go#ToolExecutionApi.CreateTaskErased
+pkg:durable/.#ToolExecutionApi::property:details	durable	child-gap	durable/harness_types.go#ToolExecutionApi.Details
+pkg:durable/.#ToolExecutionApi::property:details::call:0	durable	signature-mismatch	durable/harness_types.go#ToolExecutionApi.Details
+pkg:durable/.#ToolExecutionApi::property:executeTool	durable	child-gap	durable/harness_types.go#ToolExecutionApi.ExecuteTool
+pkg:durable/.#ToolExecutionApi::property:executeTool::call:0	durable	signature-mismatch	durable/harness_types.go#ToolExecutionApi.ExecuteTool
+pkg:durable/.#ToolExecutionApi::property:getTask	durable	child-gap	durable/harness_types.go#ToolExecutionApi.GetTask
+pkg:durable/.#ToolExecutionApi::property:getTask::call:0	durable	signature-mismatch	durable/harness_types.go#ToolExecutionApi.GetTask
+pkg:durable/.#ToolExecutionApi::property:memo	durable	child-gap	durable/harness_types.go#ToolExecutionApi
+pkg:durable/.#ToolExecutionApi::property:memo::call:0	durable	signature-mismatch	durable/harness_types.go#ToolExecutionApi.Memo
+pkg:durable/.#ToolExecutionApi::property:memo::call:1	durable	signature-mismatch	durable/harness_types.go#ToolExecutionApi.MemoCandidate
+pkg:durable/.#ToolExecutionApi::property:waitForTask	durable	child-gap	durable/harness_types.go#ToolExecutionApi.WaitForTask
+pkg:durable/.#ToolExecutionApi::property:waitForTask::call:0	durable	signature-mismatch	durable/harness_types.go#ToolExecutionApi.WaitForTask
+pkg:durable/.#ToolHooks	durable	child-gap	durable/harness/types.go#ToolHooks
+pkg:durable/.#ToolHooks::property:afterTool	durable	child-gap	durable/harness/types.go#ToolHooks.AfterTool
+pkg:durable/.#ToolHooks::property:afterTool::call:0	durable	signature-mismatch	durable/harness/types.go#ToolHooks.AfterTool
+pkg:durable/.#ToolHooks::property:beforeTool	durable	child-gap	durable/harness/types.go#ToolHooks.BeforeTool
+pkg:durable/.#ToolHooks::property:beforeTool::call:0	durable	signature-mismatch	durable/harness/types.go#ToolHooks.BeforeTool
+pkg:durable/.#ToolRegistration	durable	type-mismatch	durable/harness_types.go#ToolRegistration
+pkg:durable/.#ToolSlot	durable	type-mismatch	durable/harness/live.go#ToolSlot
+pkg:durable/.#ToolTaskInput	durable	type-mismatch	durable/harness/tool.go#ToolTaskInput
+pkg:durable/.#WatchCall	durable	no-go-symbol	
+pkg:durable/.#WatchEnd	durable	type-mismatch	durable/types.go#WatchEnd
+pkg:durable/.#WatchHandle	durable	child-gap	durable/types.go#WatchHandle
+pkg:durable/.#WatchHandle::property:start	durable	child-gap	chord/watch.go#WatchHandle.Start
+pkg:durable/.#WatchHandle::property:start::call:0	durable	signature-mismatch	chord/watch.go#WatchHandle.Start
+pkg:durable/.#registryReader	durable	no-go-symbol	
+pkg:durable/.#registryReader::call:0	durable	child-gap	
+pkg:durable/.#runEndTask	durable	no-go-symbol	
+pkg:durable/.#runEndTask::call:0	durable	child-gap	
+pkg:durable/.#section	durable	child-gap	durable/harness/define.go#Section
+pkg:durable/.#section::call:0	durable	signature-mismatch	durable/harness/define.go#Section
+pkg:durable/codemode#CodemodeGlobal	durable	type-mismatch	durable/codemode/tool.go#Global
+pkg:durable/env#BinaryReader	durable	child-gap	durable/env/env.go#BinaryReader
+pkg:durable/env#BinaryReader::property:close	durable	child-gap	durable/env/env.go#BinaryReader.Close
+pkg:durable/env#BinaryReader::property:close::call:0	durable	signature-mismatch	durable/env/env.go#BinaryReader.Close
+pkg:durable/env#BinaryReader::property:info	durable	child-gap	durable/env/env.go#BinaryReader.Info
+pkg:durable/env#BinaryReader::property:info::call:0	durable	signature-mismatch	durable/env/env.go#BinaryReader.Info
+pkg:durable/env#BinaryReader::property:read	durable	child-gap	durable/env/env.go#BinaryReader.Read
+pkg:durable/env#BinaryReader::property:read::call:0	durable	signature-mismatch	durable/env/env.go#BinaryReader.Read
+pkg:durable/env#BinaryReader::property:scanLines	durable	child-gap	durable/env/env.go#BinaryReader.ScanLines
+pkg:durable/env#BinaryReader::property:scanLines::call:0	durable	signature-mismatch	durable/env/env.go#BinaryReader.ScanLines
+pkg:durable/env#DirReader	durable	child-gap	durable/env/env.go#DirReader
+pkg:durable/env#DirReader::property:close	durable	child-gap	durable/env/env.go#DirReader.Close
+pkg:durable/env#DirReader::property:close::call:0	durable	signature-mismatch	durable/env/env.go#DirReader.Close
+pkg:durable/env#DirReader::property:next	durable	child-gap	durable/env/env.go#DirReader.Next
+pkg:durable/env#DirReader::property:next::call:0	durable	signature-mismatch	durable/env/env.go#DirReader.Next
+pkg:durable/env#ExecutionEnv	durable	child-gap	durable/env/env.go#ExecutionEnv
+pkg:durable/env#ExecutionEnv::property:absolutePath	durable	child-gap	durable/env/env.go#FileSystem.AbsolutePath
+pkg:durable/env#ExecutionEnv::property:absolutePath::call:0	durable	signature-mismatch	durable/env/env.go#FileSystem.AbsolutePath
+pkg:durable/env#ExecutionEnv::property:appendFile	durable	child-gap	durable/env/env.go#FileSystem.AppendFile
+pkg:durable/env#ExecutionEnv::property:appendFile::call:0	durable	signature-mismatch	durable/env/env.go#FileSystem.AppendFile
+pkg:durable/env#ExecutionEnv::property:canonicalPath	durable	child-gap	durable/env/env.go#FileSystem.CanonicalPath
+pkg:durable/env#ExecutionEnv::property:canonicalPath::call:0	durable	signature-mismatch	durable/env/env.go#FileSystem.CanonicalPath
+pkg:durable/env#ExecutionEnv::property:cleanup	durable	child-gap	durable/env/env.go#FileSystem.Cleanup
+pkg:durable/env#ExecutionEnv::property:cleanup::call:0	durable	signature-mismatch	durable/env/env.go#FileSystem.Cleanup
+pkg:durable/env#ExecutionEnv::property:createDir	durable	child-gap	durable/env/env.go#FileSystem.CreateDir
+pkg:durable/env#ExecutionEnv::property:createDir::call:0	durable	signature-mismatch	durable/env/env.go#FileSystem.CreateDir
+pkg:durable/env#ExecutionEnv::property:createTempDir	durable	child-gap	durable/env/env.go#FileSystem.CreateTempDir
+pkg:durable/env#ExecutionEnv::property:createTempDir::call:0	durable	signature-mismatch	durable/env/env.go#FileSystem.CreateTempDir
+pkg:durable/env#ExecutionEnv::property:createTempFile	durable	child-gap	durable/env/env.go#FileSystem.CreateTempFile
+pkg:durable/env#ExecutionEnv::property:createTempFile::call:0	durable	signature-mismatch	durable/env/env.go#FileSystem.CreateTempFile
+pkg:durable/env#ExecutionEnv::property:exec	durable	child-gap	durable/env/env.go#Shell.Exec
+pkg:durable/env#ExecutionEnv::property:exec::call:0	durable	signature-mismatch	durable/env/env.go#Shell.Exec
+pkg:durable/env#ExecutionEnv::property:exists	durable	child-gap	durable/env/env.go#FileSystem.Exists
+pkg:durable/env#ExecutionEnv::property:exists::call:0	durable	signature-mismatch	durable/env/env.go#FileSystem.Exists
+pkg:durable/env#ExecutionEnv::property:fileInfo	durable	child-gap	durable/env/env.go#FileSystem.FileInfo
+pkg:durable/env#ExecutionEnv::property:fileInfo::call:0	durable	signature-mismatch	durable/env/env.go#FileSystem.FileInfo
+pkg:durable/env#ExecutionEnv::property:flushFile	durable	child-gap	durable/env/env.go#FileSystem.FlushFile
+pkg:durable/env#ExecutionEnv::property:flushFile::call:0	durable	signature-mismatch	durable/env/env.go#FileSystem.FlushFile
+pkg:durable/env#ExecutionEnv::property:joinPath	durable	child-gap	durable/env/env.go#FileSystem.JoinPath
+pkg:durable/env#ExecutionEnv::property:joinPath::call:0	durable	signature-mismatch	durable/env/env.go#FileSystem.JoinPath
+pkg:durable/env#ExecutionEnv::property:listDir	durable	child-gap	durable/env/env.go#FileSystem.ListDir
+pkg:durable/env#ExecutionEnv::property:listDir::call:0	durable	signature-mismatch	durable/env/env.go#FileSystem.ListDir
+pkg:durable/env#ExecutionEnv::property:listFiles	durable	signature-mismatch	durable/env/env.go#FileSystem.ListFiles
+pkg:durable/env#ExecutionEnv::property:openBinaryReader	durable	child-gap	durable/env/env.go#FileSystem.OpenBinaryReader
+pkg:durable/env#ExecutionEnv::property:openBinaryReader::call:0	durable	signature-mismatch	durable/env/env.go#FileSystem.OpenBinaryReader
+pkg:durable/env#ExecutionEnv::property:openDirReader	durable	child-gap	durable/env/env.go#FileSystem.OpenDirReader
+pkg:durable/env#ExecutionEnv::property:openDirReader::call:0	durable	signature-mismatch	durable/env/env.go#FileSystem.OpenDirReader
+pkg:durable/env#ExecutionEnv::property:openTextLineReader	durable	child-gap	durable/env/env.go#FileSystem.OpenTextLineReader
+pkg:durable/env#ExecutionEnv::property:openTextLineReader::call:0	durable	signature-mismatch	durable/env/env.go#FileSystem.OpenTextLineReader
+pkg:durable/env#ExecutionEnv::property:readBinaryFile	durable	child-gap	durable/env/env.go#FileSystem.ReadBinaryFile
+pkg:durable/env#ExecutionEnv::property:readBinaryFile::call:0	durable	signature-mismatch	durable/env/env.go#FileSystem.ReadBinaryFile
+pkg:durable/env#ExecutionEnv::property:readTextFile	durable	child-gap	durable/env/env.go#FileSystem.ReadTextFile
+pkg:durable/env#ExecutionEnv::property:readTextFile::call:0	durable	signature-mismatch	durable/env/env.go#FileSystem.ReadTextFile
+pkg:durable/env#ExecutionEnv::property:readTextLines	durable	child-gap	durable/env/env.go#FileSystem.ReadTextLines
+pkg:durable/env#ExecutionEnv::property:readTextLines::call:0	durable	signature-mismatch	durable/env/env.go#FileSystem.ReadTextLines
+pkg:durable/env#ExecutionEnv::property:remove	durable	child-gap	durable/env/env.go#FileSystem.Remove
+pkg:durable/env#ExecutionEnv::property:remove::call:0	durable	signature-mismatch	durable/env/env.go#FileSystem.Remove
+pkg:durable/env#ExecutionEnv::property:renameFile	durable	child-gap	durable/env/env.go#FileSystem.RenameFile
+pkg:durable/env#ExecutionEnv::property:renameFile::call:0	durable	signature-mismatch	durable/env/env.go#FileSystem.RenameFile
+pkg:durable/env#ExecutionEnv::property:truncateFile	durable	child-gap	durable/env/env.go#FileSystem.TruncateFile
+pkg:durable/env#ExecutionEnv::property:truncateFile::call:0	durable	signature-mismatch	durable/env/env.go#FileSystem.TruncateFile
+pkg:durable/env#ExecutionEnv::property:watch	durable	child-gap	durable/env/env.go#FileSystem.Watch
+pkg:durable/env#ExecutionEnv::property:watch::call:0	durable	signature-mismatch	durable/env/env.go#FileSystem.Watch
+pkg:durable/env#ExecutionEnv::property:writeFile	durable	child-gap	durable/env/env.go#FileSystem.WriteFile
+pkg:durable/env#ExecutionEnv::property:writeFile::call:0	durable	signature-mismatch	durable/env/env.go#FileSystem.WriteFile
+pkg:durable/env#FileChange	durable	undecidable	durable/env/env.go#FileChange
+pkg:durable/env#FileSystem	durable	child-gap	durable/env/env.go#FileSystem
+pkg:durable/env#FileSystem::property:absolutePath	durable	child-gap	durable/env/env.go#FileSystem.AbsolutePath
+pkg:durable/env#FileSystem::property:absolutePath::call:0	durable	signature-mismatch	durable/env/env.go#FileSystem.AbsolutePath
+pkg:durable/env#FileSystem::property:appendFile	durable	child-gap	durable/env/env.go#FileSystem.AppendFile
+pkg:durable/env#FileSystem::property:appendFile::call:0	durable	signature-mismatch	durable/env/env.go#FileSystem.AppendFile
+pkg:durable/env#FileSystem::property:canonicalPath	durable	child-gap	durable/env/env.go#FileSystem.CanonicalPath
+pkg:durable/env#FileSystem::property:canonicalPath::call:0	durable	signature-mismatch	durable/env/env.go#FileSystem.CanonicalPath
+pkg:durable/env#FileSystem::property:cleanup	durable	child-gap	durable/env/env.go#FileSystem.Cleanup
+pkg:durable/env#FileSystem::property:cleanup::call:0	durable	signature-mismatch	durable/env/env.go#FileSystem.Cleanup
+pkg:durable/env#FileSystem::property:createDir	durable	child-gap	durable/env/env.go#FileSystem.CreateDir
+pkg:durable/env#FileSystem::property:createDir::call:0	durable	signature-mismatch	durable/env/env.go#FileSystem.CreateDir
+pkg:durable/env#FileSystem::property:createTempDir	durable	child-gap	durable/env/env.go#FileSystem.CreateTempDir
+pkg:durable/env#FileSystem::property:createTempDir::call:0	durable	signature-mismatch	durable/env/env.go#FileSystem.CreateTempDir
+pkg:durable/env#FileSystem::property:createTempFile	durable	child-gap	durable/env/env.go#FileSystem.CreateTempFile
+pkg:durable/env#FileSystem::property:createTempFile::call:0	durable	signature-mismatch	durable/env/env.go#FileSystem.CreateTempFile
+pkg:durable/env#FileSystem::property:exists	durable	child-gap	durable/env/env.go#FileSystem.Exists
+pkg:durable/env#FileSystem::property:exists::call:0	durable	signature-mismatch	durable/env/env.go#FileSystem.Exists
+pkg:durable/env#FileSystem::property:fileInfo	durable	child-gap	durable/env/env.go#FileSystem.FileInfo
+pkg:durable/env#FileSystem::property:fileInfo::call:0	durable	signature-mismatch	durable/env/env.go#FileSystem.FileInfo
+pkg:durable/env#FileSystem::property:flushFile	durable	child-gap	durable/env/env.go#FileSystem.FlushFile
+pkg:durable/env#FileSystem::property:flushFile::call:0	durable	signature-mismatch	durable/env/env.go#FileSystem.FlushFile
+pkg:durable/env#FileSystem::property:joinPath	durable	child-gap	durable/env/env.go#FileSystem.JoinPath
+pkg:durable/env#FileSystem::property:joinPath::call:0	durable	signature-mismatch	durable/env/env.go#FileSystem.JoinPath
+pkg:durable/env#FileSystem::property:listDir	durable	child-gap	durable/env/env.go#FileSystem.ListDir
+pkg:durable/env#FileSystem::property:listDir::call:0	durable	signature-mismatch	durable/env/env.go#FileSystem.ListDir
+pkg:durable/env#FileSystem::property:listFiles	durable	signature-mismatch	durable/env/env.go#FileSystem.ListFiles
+pkg:durable/env#FileSystem::property:openBinaryReader	durable	child-gap	durable/env/env.go#FileSystem.OpenBinaryReader
+pkg:durable/env#FileSystem::property:openBinaryReader::call:0	durable	signature-mismatch	durable/env/env.go#FileSystem.OpenBinaryReader
+pkg:durable/env#FileSystem::property:openDirReader	durable	child-gap	durable/env/env.go#FileSystem.OpenDirReader
+pkg:durable/env#FileSystem::property:openDirReader::call:0	durable	signature-mismatch	durable/env/env.go#FileSystem.OpenDirReader
+pkg:durable/env#FileSystem::property:openTextLineReader	durable	child-gap	durable/env/env.go#FileSystem.OpenTextLineReader
+pkg:durable/env#FileSystem::property:openTextLineReader::call:0	durable	signature-mismatch	durable/env/env.go#FileSystem.OpenTextLineReader
+pkg:durable/env#FileSystem::property:readBinaryFile	durable	child-gap	durable/env/env.go#FileSystem.ReadBinaryFile
+pkg:durable/env#FileSystem::property:readBinaryFile::call:0	durable	signature-mismatch	durable/env/env.go#FileSystem.ReadBinaryFile
+pkg:durable/env#FileSystem::property:readTextFile	durable	child-gap	durable/env/env.go#FileSystem.ReadTextFile
+pkg:durable/env#FileSystem::property:readTextFile::call:0	durable	signature-mismatch	durable/env/env.go#FileSystem.ReadTextFile
+pkg:durable/env#FileSystem::property:readTextLines	durable	child-gap	durable/env/env.go#FileSystem.ReadTextLines
+pkg:durable/env#FileSystem::property:readTextLines::call:0	durable	signature-mismatch	durable/env/env.go#FileSystem.ReadTextLines
+pkg:durable/env#FileSystem::property:remove	durable	child-gap	durable/env/env.go#FileSystem.Remove
+pkg:durable/env#FileSystem::property:remove::call:0	durable	signature-mismatch	durable/env/env.go#FileSystem.Remove
+pkg:durable/env#FileSystem::property:renameFile	durable	child-gap	durable/env/env.go#FileSystem.RenameFile
+pkg:durable/env#FileSystem::property:renameFile::call:0	durable	signature-mismatch	durable/env/env.go#FileSystem.RenameFile
+pkg:durable/env#FileSystem::property:truncateFile	durable	child-gap	durable/env/env.go#FileSystem.TruncateFile
+pkg:durable/env#FileSystem::property:truncateFile::call:0	durable	signature-mismatch	durable/env/env.go#FileSystem.TruncateFile
+pkg:durable/env#FileSystem::property:watch	durable	child-gap	durable/env/env.go#FileSystem.Watch
+pkg:durable/env#FileSystem::property:watch::call:0	durable	signature-mismatch	durable/env/env.go#FileSystem.Watch
+pkg:durable/env#FileSystem::property:writeFile	durable	child-gap	durable/env/env.go#FileSystem.WriteFile
+pkg:durable/env#FileSystem::property:writeFile::call:0	durable	signature-mismatch	durable/env/env.go#FileSystem.WriteFile
+pkg:durable/env#FileWatcher	durable	child-gap	durable/env/env.go#FileWatcher
+pkg:durable/env#FileWatcher::property:stop	durable	member-missing	durable/env/env.go#FileWatcher
+pkg:durable/env#FileWatcher::property:stop::call:0	durable	member-missing	durable/env/env.go#FileWatcher
+pkg:durable/env#Shell	durable	child-gap	durable/env/env.go#Shell
+pkg:durable/env#Shell::property:cleanup	durable	child-gap	durable/env/env.go#Shell.Cleanup
+pkg:durable/env#Shell::property:cleanup::call:0	durable	signature-mismatch	durable/env/env.go#Shell.Cleanup
+pkg:durable/env#Shell::property:exec	durable	child-gap	durable/env/env.go#Shell.Exec
+pkg:durable/env#Shell::property:exec::call:0	durable	signature-mismatch	durable/env/env.go#Shell.Exec
+pkg:durable/env#ShellExecOptions	durable	child-gap	durable/env/env.go#ShellExecOptions
+pkg:durable/env#ShellExecOptions::property:onOutput	durable	signature-mismatch	durable/env/env.go#ShellExecOptions.OnOutput
+pkg:durable/env#TextLineReader	durable	child-gap	durable/env/env.go#TextLineReader
+pkg:durable/env#TextLineReader::property:close	durable	child-gap	durable/env/env.go#TextLineReader.Close
+pkg:durable/env#TextLineReader::property:close::call:0	durable	signature-mismatch	durable/env/env.go#TextLineReader.Close
+pkg:durable/env#TextLineReader::property:readLine	durable	child-gap	durable/env/env.go#TextLineReader.ReadLine
+pkg:durable/env#TextLineReader::property:readLine::call:0	durable	signature-mismatch	durable/env/env.go#TextLineReader.ReadLine
+pkg:durable/env/node#NodeExecutionEnv	durable	child-gap	durable/env/node/node.go#NodeExecutionEnv
+pkg:durable/env/node#NodeExecutionEnv::property:absolutePath	durable	child-gap	durable/env/node/node.go#NodeExecutionEnv.AbsolutePath
+pkg:durable/env/node#NodeExecutionEnv::property:absolutePath::call:0	durable	signature-mismatch	durable/env/node/node.go#NodeExecutionEnv.AbsolutePath
+pkg:durable/env/node#NodeExecutionEnv::property:appendFile	durable	child-gap	durable/env/node/node.go#NodeExecutionEnv.AppendFile
+pkg:durable/env/node#NodeExecutionEnv::property:appendFile::call:0	durable	signature-mismatch	durable/env/node/node.go#NodeExecutionEnv.AppendFile
+pkg:durable/env/node#NodeExecutionEnv::property:canonicalPath	durable	child-gap	durable/env/node/node.go#NodeExecutionEnv.CanonicalPath
+pkg:durable/env/node#NodeExecutionEnv::property:canonicalPath::call:0	durable	signature-mismatch	durable/env/node/node.go#NodeExecutionEnv.CanonicalPath
+pkg:durable/env/node#NodeExecutionEnv::property:cleanup	durable	child-gap	durable/env/node/node.go#NodeExecutionEnv.Cleanup
+pkg:durable/env/node#NodeExecutionEnv::property:cleanup::call:0	durable	signature-mismatch	durable/env/node/node.go#NodeExecutionEnv.Cleanup
+pkg:durable/env/node#NodeExecutionEnv::property:createDir	durable	child-gap	durable/env/node/node.go#NodeExecutionEnv.CreateDir
+pkg:durable/env/node#NodeExecutionEnv::property:createDir::call:0	durable	signature-mismatch	durable/env/node/node.go#NodeExecutionEnv.CreateDir
+pkg:durable/env/node#NodeExecutionEnv::property:createTempDir	durable	child-gap	durable/env/node/node.go#NodeExecutionEnv.CreateTempDir
+pkg:durable/env/node#NodeExecutionEnv::property:createTempDir::call:0	durable	signature-mismatch	durable/env/node/node.go#NodeExecutionEnv.CreateTempDir
+pkg:durable/env/node#NodeExecutionEnv::property:createTempFile	durable	child-gap	durable/env/node/node.go#NodeExecutionEnv.CreateTempFile
+pkg:durable/env/node#NodeExecutionEnv::property:createTempFile::call:0	durable	signature-mismatch	durable/env/node/node.go#NodeExecutionEnv.CreateTempFile
+pkg:durable/env/node#NodeExecutionEnv::property:exec	durable	child-gap	durable/env/node/exec.go#NodeExecutionEnv.Exec
+pkg:durable/env/node#NodeExecutionEnv::property:exec::call:0	durable	signature-mismatch	durable/env/node/exec.go#NodeExecutionEnv.Exec
+pkg:durable/env/node#NodeExecutionEnv::property:exists	durable	child-gap	durable/env/node/node.go#NodeExecutionEnv.Exists
+pkg:durable/env/node#NodeExecutionEnv::property:exists::call:0	durable	signature-mismatch	durable/env/node/node.go#NodeExecutionEnv.Exists
+pkg:durable/env/node#NodeExecutionEnv::property:fileInfo	durable	child-gap	durable/env/node/node.go#NodeExecutionEnv.FileInfo
+pkg:durable/env/node#NodeExecutionEnv::property:fileInfo::call:0	durable	signature-mismatch	durable/env/node/node.go#NodeExecutionEnv.FileInfo
+pkg:durable/env/node#NodeExecutionEnv::property:flushFile	durable	child-gap	durable/env/node/node.go#NodeExecutionEnv.FlushFile
+pkg:durable/env/node#NodeExecutionEnv::property:flushFile::call:0	durable	signature-mismatch	durable/env/node/node.go#NodeExecutionEnv.FlushFile
+pkg:durable/env/node#NodeExecutionEnv::property:joinPath	durable	child-gap	durable/env/node/node.go#NodeExecutionEnv.JoinPath
+pkg:durable/env/node#NodeExecutionEnv::property:joinPath::call:0	durable	signature-mismatch	durable/env/node/node.go#NodeExecutionEnv.JoinPath
+pkg:durable/env/node#NodeExecutionEnv::property:listDir	durable	child-gap	durable/env/node/node.go#NodeExecutionEnv.ListDir
+pkg:durable/env/node#NodeExecutionEnv::property:listDir::call:0	durable	signature-mismatch	durable/env/node/node.go#NodeExecutionEnv.ListDir
+pkg:durable/env/node#NodeExecutionEnv::property:openBinaryReader	durable	child-gap	durable/env/node/binary_reader.go#NodeExecutionEnv.OpenBinaryReader
+pkg:durable/env/node#NodeExecutionEnv::property:openBinaryReader::call:0	durable	signature-mismatch	durable/env/node/binary_reader.go#NodeExecutionEnv.OpenBinaryReader
+pkg:durable/env/node#NodeExecutionEnv::property:openDirReader	durable	child-gap	durable/env/node/binary_reader.go#NodeExecutionEnv.OpenDirReader
+pkg:durable/env/node#NodeExecutionEnv::property:openDirReader::call:0	durable	signature-mismatch	durable/env/node/binary_reader.go#NodeExecutionEnv.OpenDirReader
+pkg:durable/env/node#NodeExecutionEnv::property:openTextLineReader	durable	child-gap	durable/env/node/node.go#NodeExecutionEnv.OpenTextLineReader
+pkg:durable/env/node#NodeExecutionEnv::property:openTextLineReader::call:0	durable	signature-mismatch	durable/env/node/node.go#NodeExecutionEnv.OpenTextLineReader
+pkg:durable/env/node#NodeExecutionEnv::property:readBinaryFile	durable	child-gap	durable/env/node/node.go#NodeExecutionEnv.ReadBinaryFile
+pkg:durable/env/node#NodeExecutionEnv::property:readBinaryFile::call:0	durable	signature-mismatch	durable/env/node/node.go#NodeExecutionEnv.ReadBinaryFile
+pkg:durable/env/node#NodeExecutionEnv::property:readTextFile	durable	child-gap	durable/env/node/node.go#NodeExecutionEnv.ReadTextFile
+pkg:durable/env/node#NodeExecutionEnv::property:readTextFile::call:0	durable	signature-mismatch	durable/env/node/node.go#NodeExecutionEnv.ReadTextFile
+pkg:durable/env/node#NodeExecutionEnv::property:readTextLines	durable	child-gap	durable/env/node/node.go#NodeExecutionEnv.ReadTextLines
+pkg:durable/env/node#NodeExecutionEnv::property:readTextLines::call:0	durable	signature-mismatch	durable/env/node/node.go#NodeExecutionEnv.ReadTextLines
+pkg:durable/env/node#NodeExecutionEnv::property:remove	durable	child-gap	durable/env/node/node.go#NodeExecutionEnv.Remove
+pkg:durable/env/node#NodeExecutionEnv::property:remove::call:0	durable	signature-mismatch	durable/env/node/node.go#NodeExecutionEnv.Remove
+pkg:durable/env/node#NodeExecutionEnv::property:renameFile	durable	child-gap	durable/env/node/node.go#NodeExecutionEnv.RenameFile
+pkg:durable/env/node#NodeExecutionEnv::property:renameFile::call:0	durable	signature-mismatch	durable/env/node/node.go#NodeExecutionEnv.RenameFile
+pkg:durable/env/node#NodeExecutionEnv::property:truncateFile	durable	child-gap	durable/env/node/node.go#NodeExecutionEnv.TruncateFile
+pkg:durable/env/node#NodeExecutionEnv::property:truncateFile::call:0	durable	signature-mismatch	durable/env/node/node.go#NodeExecutionEnv.TruncateFile
+pkg:durable/env/node#NodeExecutionEnv::property:watch	durable	child-gap	durable/env/node/watch.go#NodeExecutionEnv.Watch
+pkg:durable/env/node#NodeExecutionEnv::property:watch::call:0	durable	signature-mismatch	durable/env/node/watch.go#NodeExecutionEnv.Watch
+pkg:durable/env/node#NodeExecutionEnv::property:writeFile	durable	child-gap	durable/env/node/node.go#NodeExecutionEnv.WriteFile
+pkg:durable/env/node#NodeExecutionEnv::property:writeFile::call:0	durable	signature-mismatch	durable/env/node/node.go#NodeExecutionEnv.WriteFile
+pkg:durable/storage/jsonl#JsonlStorage	durable	child-gap	durable/storage/jsonl/storage.go#JsonlStorage
+pkg:durable/storage/jsonl#JsonlStorage::property:close	durable	child-gap	durable/storage/jsonl/storage.go#JsonlStorage.Close
+pkg:durable/storage/jsonl#JsonlStorage::property:close::call:0	durable	signature-mismatch	durable/storage/jsonl/storage.go#JsonlStorage.Close
+pkg:durable/storage/jsonl#JsonlStorage::property:commit	durable	child-gap	durable/storage/jsonl/storage.go#JsonlStorage.Commit
+pkg:durable/storage/jsonl#JsonlStorage::property:commit::call:0	durable	signature-mismatch	durable/storage/jsonl/storage.go#JsonlStorage.Commit
+pkg:durable/storage/jsonl#JsonlStorage::property:conversation	durable	child-gap	durable/storage/jsonl/storage.go#JsonlStorage.Conversation
+pkg:durable/storage/jsonl#JsonlStorage::property:conversation::call:0	durable	signature-mismatch	durable/storage/jsonl/storage.go#JsonlStorage.Conversation
+pkg:durable/storage/jsonl#JsonlStorage::property:document	durable	child-gap	durable/storage/jsonl/storage.go#JsonlStorage.Document
+pkg:durable/storage/jsonl#JsonlStorage::property:document::call:0	durable	signature-mismatch	durable/storage/jsonl/storage.go#JsonlStorage.Document
+pkg:durable/storage/jsonl#JsonlStorage::property:entry	durable	child-gap	durable/storage/jsonl/storage.go#JsonlStorage
+pkg:durable/storage/jsonl#JsonlStorage::property:entry::call:0	durable	signature-mismatch	durable/storage/jsonl/storage.go#JsonlStorage.Entry
+pkg:durable/storage/jsonl#JsonlStorage::property:entry::call:1	durable	signature-mismatch	durable/storage/jsonl/storage.go#JsonlStorage.VisibleEntry
+pkg:durable/storage/jsonl#JsonlStorage::property:findDocument	durable	child-gap	durable/storage/jsonl/storage.go#JsonlStorage.FindDocument
+pkg:durable/storage/jsonl#JsonlStorage::property:findDocument::call:0	durable	signature-mismatch	durable/storage/jsonl/storage.go#JsonlStorage.FindDocument
+pkg:durable/storage/jsonl#JsonlStorage::property:findLatestHeadMarker	durable	child-gap	durable/storage/jsonl/storage.go#JsonlStorage.FindLatestHeadMarker
+pkg:durable/storage/jsonl#JsonlStorage::property:findLatestHeadMarker::call:0	durable	signature-mismatch	durable/storage/jsonl/storage.go#JsonlStorage.FindLatestHeadMarker
+pkg:durable/storage/jsonl#JsonlStorage::property:scanConversations	durable	child-gap	durable/storage/jsonl/storage.go#JsonlStorage.ScanConversations
+pkg:durable/storage/jsonl#JsonlStorage::property:scanConversations::call:0	durable	signature-mismatch	durable/storage/jsonl/storage.go#JsonlStorage.ScanConversations
+pkg:durable/storage/jsonl#JsonlStorage::property:scanDocuments	durable	child-gap	durable/storage/jsonl/storage.go#JsonlStorage.ScanDocuments
+pkg:durable/storage/jsonl#JsonlStorage::property:scanDocuments::call:0	durable	signature-mismatch	durable/storage/jsonl/storage.go#JsonlStorage.ScanDocuments
+pkg:durable/storage/jsonl#JsonlStorage::property:scanEntries	durable	child-gap	durable/storage/jsonl/storage.go#JsonlStorage.ScanEntries
+pkg:durable/storage/jsonl#JsonlStorage::property:scanEntries::call:0	durable	signature-mismatch	durable/storage/jsonl/storage.go#JsonlStorage.ScanEntries
+pkg:durable/storage/jsonl#JsonlStorage::property:scanSubmissions	durable	child-gap	durable/storage/jsonl/storage.go#JsonlStorage.ScanSubmissions
+pkg:durable/storage/jsonl#JsonlStorage::property:scanSubmissions::call:0	durable	signature-mismatch	durable/storage/jsonl/storage.go#JsonlStorage.ScanSubmissions
+pkg:durable/storage/jsonl#JsonlStorage::property:scanTasks	durable	child-gap	durable/storage/jsonl/storage.go#JsonlStorage.ScanTasks
+pkg:durable/storage/jsonl#JsonlStorage::property:scanTasks::call:0	durable	signature-mismatch	durable/storage/jsonl/storage.go#JsonlStorage.ScanTasks
+pkg:durable/storage/jsonl#JsonlStorage::property:submission	durable	child-gap	durable/storage/jsonl/storage.go#JsonlStorage.Submission
+pkg:durable/storage/jsonl#JsonlStorage::property:submission::call:0	durable	signature-mismatch	durable/storage/jsonl/storage.go#JsonlStorage.Submission
+pkg:durable/storage/jsonl#JsonlStorage::property:submissionByRequest	durable	child-gap	durable/storage/jsonl/storage.go#JsonlStorage.SubmissionByRequest
+pkg:durable/storage/jsonl#JsonlStorage::property:submissionByRequest::call:0	durable	signature-mismatch	durable/storage/jsonl/storage.go#JsonlStorage.SubmissionByRequest
+pkg:durable/storage/jsonl#JsonlStorage::property:task	durable	child-gap	durable/storage/jsonl/storage.go#JsonlStorage.Task
+pkg:durable/storage/jsonl#JsonlStorage::property:task::call:0	durable	signature-mismatch	durable/storage/jsonl/storage.go#JsonlStorage.Task
+pkg:durable/storage/jsonl/node#JsonlStorage	durable	child-gap	durable/storage/jsonl/storage.go#JsonlStorage
+pkg:durable/storage/jsonl/node#JsonlStorage::property:close	durable	child-gap	durable/storage/jsonl/storage.go#JsonlStorage.Close
+pkg:durable/storage/jsonl/node#JsonlStorage::property:close::call:0	durable	signature-mismatch	durable/storage/jsonl/storage.go#JsonlStorage.Close
+pkg:durable/storage/jsonl/node#JsonlStorage::property:commit	durable	child-gap	durable/storage/jsonl/storage.go#JsonlStorage.Commit
+pkg:durable/storage/jsonl/node#JsonlStorage::property:commit::call:0	durable	signature-mismatch	durable/storage/jsonl/storage.go#JsonlStorage.Commit
+pkg:durable/storage/jsonl/node#JsonlStorage::property:conversation	durable	child-gap	durable/storage/jsonl/storage.go#JsonlStorage.Conversation
+pkg:durable/storage/jsonl/node#JsonlStorage::property:conversation::call:0	durable	signature-mismatch	durable/storage/jsonl/storage.go#JsonlStorage.Conversation
+pkg:durable/storage/jsonl/node#JsonlStorage::property:document	durable	child-gap	durable/storage/jsonl/storage.go#JsonlStorage.Document
+pkg:durable/storage/jsonl/node#JsonlStorage::property:document::call:0	durable	signature-mismatch	durable/storage/jsonl/storage.go#JsonlStorage.Document
+pkg:durable/storage/jsonl/node#JsonlStorage::property:entry	durable	child-gap	durable/storage/jsonl/storage.go#JsonlStorage
+pkg:durable/storage/jsonl/node#JsonlStorage::property:entry::call:0	durable	signature-mismatch	durable/storage/jsonl/storage.go#JsonlStorage.Entry
+pkg:durable/storage/jsonl/node#JsonlStorage::property:entry::call:1	durable	signature-mismatch	durable/storage/jsonl/storage.go#JsonlStorage.VisibleEntry
+pkg:durable/storage/jsonl/node#JsonlStorage::property:findDocument	durable	child-gap	durable/storage/jsonl/storage.go#JsonlStorage.FindDocument
+pkg:durable/storage/jsonl/node#JsonlStorage::property:findDocument::call:0	durable	signature-mismatch	durable/storage/jsonl/storage.go#JsonlStorage.FindDocument
+pkg:durable/storage/jsonl/node#JsonlStorage::property:findLatestHeadMarker	durable	child-gap	durable/storage/jsonl/storage.go#JsonlStorage.FindLatestHeadMarker
+pkg:durable/storage/jsonl/node#JsonlStorage::property:findLatestHeadMarker::call:0	durable	signature-mismatch	durable/storage/jsonl/storage.go#JsonlStorage.FindLatestHeadMarker
+pkg:durable/storage/jsonl/node#JsonlStorage::property:scanConversations	durable	child-gap	durable/storage/jsonl/storage.go#JsonlStorage.ScanConversations
+pkg:durable/storage/jsonl/node#JsonlStorage::property:scanConversations::call:0	durable	signature-mismatch	durable/storage/jsonl/storage.go#JsonlStorage.ScanConversations
+pkg:durable/storage/jsonl/node#JsonlStorage::property:scanDocuments	durable	child-gap	durable/storage/jsonl/storage.go#JsonlStorage.ScanDocuments
+pkg:durable/storage/jsonl/node#JsonlStorage::property:scanDocuments::call:0	durable	signature-mismatch	durable/storage/jsonl/storage.go#JsonlStorage.ScanDocuments
+pkg:durable/storage/jsonl/node#JsonlStorage::property:scanEntries	durable	child-gap	durable/storage/jsonl/storage.go#JsonlStorage.ScanEntries
+pkg:durable/storage/jsonl/node#JsonlStorage::property:scanEntries::call:0	durable	signature-mismatch	durable/storage/jsonl/storage.go#JsonlStorage.ScanEntries
+pkg:durable/storage/jsonl/node#JsonlStorage::property:scanSubmissions	durable	child-gap	durable/storage/jsonl/storage.go#JsonlStorage.ScanSubmissions
+pkg:durable/storage/jsonl/node#JsonlStorage::property:scanSubmissions::call:0	durable	signature-mismatch	durable/storage/jsonl/storage.go#JsonlStorage.ScanSubmissions
+pkg:durable/storage/jsonl/node#JsonlStorage::property:scanTasks	durable	child-gap	durable/storage/jsonl/storage.go#JsonlStorage.ScanTasks
+pkg:durable/storage/jsonl/node#JsonlStorage::property:scanTasks::call:0	durable	signature-mismatch	durable/storage/jsonl/storage.go#JsonlStorage.ScanTasks
+pkg:durable/storage/jsonl/node#JsonlStorage::property:submission	durable	child-gap	durable/storage/jsonl/storage.go#JsonlStorage.Submission
+pkg:durable/storage/jsonl/node#JsonlStorage::property:submission::call:0	durable	signature-mismatch	durable/storage/jsonl/storage.go#JsonlStorage.Submission
+pkg:durable/storage/jsonl/node#JsonlStorage::property:submissionByRequest	durable	child-gap	durable/storage/jsonl/storage.go#JsonlStorage.SubmissionByRequest
+pkg:durable/storage/jsonl/node#JsonlStorage::property:submissionByRequest::call:0	durable	signature-mismatch	durable/storage/jsonl/storage.go#JsonlStorage.SubmissionByRequest
+pkg:durable/storage/jsonl/node#JsonlStorage::property:task	durable	child-gap	durable/storage/jsonl/storage.go#JsonlStorage.Task
+pkg:durable/storage/jsonl/node#JsonlStorage::property:task::call:0	durable	signature-mismatch	durable/storage/jsonl/storage.go#JsonlStorage.Task
+pkg:durable/storage/jsonl/node#openNodeJsonlStorage	durable	child-gap	durable/storage/jsonl/node/node.go#OpenNodeJsonlStorage
+pkg:durable/storage/jsonl/node#openNodeJsonlStorage::call:0	durable	signature-mismatch	durable/storage/jsonl/node/node.go#OpenNodeJsonlStorage
+pkg:durable/storage/memory#MemoryStorage	durable	child-gap	durable/storage/memory.go#MemoryStorage
+pkg:durable/storage/memory#MemoryStorage::property:close	durable	child-gap	durable/storage/memory.go#MemoryStorage.Close
+pkg:durable/storage/memory#MemoryStorage::property:close::call:0	durable	signature-mismatch	durable/storage/memory.go#MemoryStorage.Close
+pkg:durable/storage/memory#MemoryStorage::property:commit	durable	child-gap	durable/storage/memory.go#MemoryStorage.Commit
+pkg:durable/storage/memory#MemoryStorage::property:commit::call:0	durable	signature-mismatch	durable/storage/memory.go#MemoryStorage.Commit
+pkg:durable/storage/memory#MemoryStorage::property:conversation	durable	child-gap	durable/storage/memory.go#MemoryStorage.Conversation
+pkg:durable/storage/memory#MemoryStorage::property:conversation::call:0	durable	signature-mismatch	durable/storage/memory.go#MemoryStorage.Conversation
+pkg:durable/storage/memory#MemoryStorage::property:document	durable	child-gap	durable/storage/memory.go#MemoryStorage.Document
+pkg:durable/storage/memory#MemoryStorage::property:document::call:0	durable	signature-mismatch	durable/storage/memory.go#MemoryStorage.Document
+pkg:durable/storage/memory#MemoryStorage::property:entry	durable	child-gap	durable/storage/memory.go#MemoryStorage
+pkg:durable/storage/memory#MemoryStorage::property:entry::call:0	durable	signature-mismatch	durable/storage/memory.go#MemoryStorage.Entry
+pkg:durable/storage/memory#MemoryStorage::property:entry::call:1	durable	signature-mismatch	durable/storage/memory.go#MemoryStorage.VisibleEntry
+pkg:durable/storage/memory#MemoryStorage::property:findDocument	durable	child-gap	durable/storage/memory.go#MemoryStorage.FindDocument
+pkg:durable/storage/memory#MemoryStorage::property:findDocument::call:0	durable	signature-mismatch	durable/storage/memory.go#MemoryStorage.FindDocument
+pkg:durable/storage/memory#MemoryStorage::property:findLatestHeadMarker	durable	child-gap	durable/storage/memory.go#MemoryStorage.FindLatestHeadMarker
+pkg:durable/storage/memory#MemoryStorage::property:findLatestHeadMarker::call:0	durable	signature-mismatch	durable/storage/memory.go#MemoryStorage.FindLatestHeadMarker
+pkg:durable/storage/memory#MemoryStorage::property:scanConversations	durable	child-gap	durable/storage/memory.go#MemoryStorage.ScanConversations
+pkg:durable/storage/memory#MemoryStorage::property:scanConversations::call:0	durable	signature-mismatch	durable/storage/memory.go#MemoryStorage.ScanConversations
+pkg:durable/storage/memory#MemoryStorage::property:scanDocuments	durable	child-gap	durable/storage/memory.go#MemoryStorage.ScanDocuments
+pkg:durable/storage/memory#MemoryStorage::property:scanDocuments::call:0	durable	signature-mismatch	durable/storage/memory.go#MemoryStorage.ScanDocuments
+pkg:durable/storage/memory#MemoryStorage::property:scanEntries	durable	child-gap	durable/storage/memory.go#MemoryStorage.ScanEntries
+pkg:durable/storage/memory#MemoryStorage::property:scanEntries::call:0	durable	signature-mismatch	durable/storage/memory.go#MemoryStorage.ScanEntries
+pkg:durable/storage/memory#MemoryStorage::property:scanSubmissions	durable	child-gap	durable/storage/memory.go#MemoryStorage.ScanSubmissions
+pkg:durable/storage/memory#MemoryStorage::property:scanSubmissions::call:0	durable	signature-mismatch	durable/storage/memory.go#MemoryStorage.ScanSubmissions
+pkg:durable/storage/memory#MemoryStorage::property:scanTasks	durable	child-gap	durable/storage/memory.go#MemoryStorage.ScanTasks
+pkg:durable/storage/memory#MemoryStorage::property:scanTasks::call:0	durable	signature-mismatch	durable/storage/memory.go#MemoryStorage.ScanTasks
+pkg:durable/storage/memory#MemoryStorage::property:submission	durable	child-gap	durable/storage/memory.go#MemoryStorage.Submission
+pkg:durable/storage/memory#MemoryStorage::property:submission::call:0	durable	signature-mismatch	durable/storage/memory.go#MemoryStorage.Submission
+pkg:durable/storage/memory#MemoryStorage::property:submissionByRequest	durable	child-gap	durable/storage/memory.go#MemoryStorage.SubmissionByRequest
+pkg:durable/storage/memory#MemoryStorage::property:submissionByRequest::call:0	durable	signature-mismatch	durable/storage/memory.go#MemoryStorage.SubmissionByRequest
+pkg:durable/storage/memory#MemoryStorage::property:task	durable	child-gap	durable/storage/memory.go#MemoryStorage.Task
+pkg:durable/storage/memory#MemoryStorage::property:task::call:0	durable	signature-mismatch	durable/storage/memory.go#MemoryStorage.Task
+pkg:durable/storage/sqlite#SqliteStorage	durable	child-gap	durable/storage/sqlite/storage.go#SqliteStorage
+pkg:durable/storage/sqlite#SqliteStorage::property:close	durable	child-gap	durable/storage/sqlite/storage.go#SqliteStorage.Close
+pkg:durable/storage/sqlite#SqliteStorage::property:close::call:0	durable	signature-mismatch	durable/storage/sqlite/storage.go#SqliteStorage.Close
+pkg:durable/storage/sqlite#SqliteStorage::property:commit	durable	child-gap	durable/storage/sqlite/storage.go#SqliteStorage.Commit
+pkg:durable/storage/sqlite#SqliteStorage::property:commit::call:0	durable	signature-mismatch	durable/storage/sqlite/storage.go#SqliteStorage.Commit
+pkg:durable/storage/sqlite#SqliteStorage::property:conversation	durable	child-gap	durable/storage/sqlite/storage.go#SqliteStorage.Conversation
+pkg:durable/storage/sqlite#SqliteStorage::property:conversation::call:0	durable	signature-mismatch	durable/storage/sqlite/storage.go#SqliteStorage.Conversation
+pkg:durable/storage/sqlite#SqliteStorage::property:document	durable	child-gap	durable/storage/sqlite/storage.go#SqliteStorage.Document
+pkg:durable/storage/sqlite#SqliteStorage::property:document::call:0	durable	signature-mismatch	durable/storage/sqlite/storage.go#SqliteStorage.Document
+pkg:durable/storage/sqlite#SqliteStorage::property:entry	durable	child-gap	durable/storage/sqlite/storage.go#SqliteStorage
+pkg:durable/storage/sqlite#SqliteStorage::property:entry::call:0	durable	signature-mismatch	durable/storage/sqlite/storage.go#SqliteStorage.Entry
+pkg:durable/storage/sqlite#SqliteStorage::property:entry::call:1	durable	signature-mismatch	durable/storage/sqlite/storage.go#SqliteStorage.VisibleEntry
+pkg:durable/storage/sqlite#SqliteStorage::property:findDocument	durable	child-gap	durable/storage/sqlite/storage.go#SqliteStorage.FindDocument
+pkg:durable/storage/sqlite#SqliteStorage::property:findDocument::call:0	durable	signature-mismatch	durable/storage/sqlite/storage.go#SqliteStorage.FindDocument
+pkg:durable/storage/sqlite#SqliteStorage::property:findLatestHeadMarker	durable	child-gap	durable/storage/sqlite/storage.go#SqliteStorage.FindLatestHeadMarker
+pkg:durable/storage/sqlite#SqliteStorage::property:findLatestHeadMarker::call:0	durable	signature-mismatch	durable/storage/sqlite/storage.go#SqliteStorage.FindLatestHeadMarker
+pkg:durable/storage/sqlite#SqliteStorage::property:scanConversations	durable	child-gap	durable/storage/sqlite/storage.go#SqliteStorage.ScanConversations
+pkg:durable/storage/sqlite#SqliteStorage::property:scanConversations::call:0	durable	signature-mismatch	durable/storage/sqlite/storage.go#SqliteStorage.ScanConversations
+pkg:durable/storage/sqlite#SqliteStorage::property:scanDocuments	durable	child-gap	durable/storage/sqlite/storage.go#SqliteStorage.ScanDocuments
+pkg:durable/storage/sqlite#SqliteStorage::property:scanDocuments::call:0	durable	signature-mismatch	durable/storage/sqlite/storage.go#SqliteStorage.ScanDocuments
+pkg:durable/storage/sqlite#SqliteStorage::property:scanEntries	durable	child-gap	durable/storage/sqlite/storage.go#SqliteStorage.ScanEntries
+pkg:durable/storage/sqlite#SqliteStorage::property:scanEntries::call:0	durable	signature-mismatch	durable/storage/sqlite/storage.go#SqliteStorage.ScanEntries
+pkg:durable/storage/sqlite#SqliteStorage::property:scanSubmissions	durable	child-gap	durable/storage/sqlite/storage.go#SqliteStorage.ScanSubmissions
+pkg:durable/storage/sqlite#SqliteStorage::property:scanSubmissions::call:0	durable	signature-mismatch	durable/storage/sqlite/storage.go#SqliteStorage.ScanSubmissions
+pkg:durable/storage/sqlite#SqliteStorage::property:scanTasks	durable	child-gap	durable/storage/sqlite/storage.go#SqliteStorage.ScanTasks
+pkg:durable/storage/sqlite#SqliteStorage::property:scanTasks::call:0	durable	signature-mismatch	durable/storage/sqlite/storage.go#SqliteStorage.ScanTasks
+pkg:durable/storage/sqlite#SqliteStorage::property:submission	durable	child-gap	durable/storage/sqlite/storage.go#SqliteStorage.Submission
+pkg:durable/storage/sqlite#SqliteStorage::property:submission::call:0	durable	signature-mismatch	durable/storage/sqlite/storage.go#SqliteStorage.Submission
+pkg:durable/storage/sqlite#SqliteStorage::property:submissionByRequest	durable	child-gap	durable/storage/sqlite/storage.go#SqliteStorage.SubmissionByRequest
+pkg:durable/storage/sqlite#SqliteStorage::property:submissionByRequest::call:0	durable	signature-mismatch	durable/storage/sqlite/storage.go#SqliteStorage.SubmissionByRequest
+pkg:durable/storage/sqlite#SqliteStorage::property:task	durable	child-gap	durable/storage/sqlite/storage.go#SqliteStorage.Task
+pkg:durable/storage/sqlite#SqliteStorage::property:task::call:0	durable	signature-mismatch	durable/storage/sqlite/storage.go#SqliteStorage.Task
+pkg:durable/storage/store#StoreStorage	durable	no-go-symbol	
+pkg:durable/storage/store#StoreStorage::property:close	durable	child-gap	
+pkg:durable/storage/store#StoreStorage::property:close::call:0	durable	child-gap	
+pkg:durable/storage/store#StoreStorage::property:commit	durable	child-gap	
+pkg:durable/storage/store#StoreStorage::property:commit::call:0	durable	child-gap	
+pkg:durable/storage/store#StoreStorage::property:conversation	durable	child-gap	
+pkg:durable/storage/store#StoreStorage::property:conversation::call:0	durable	child-gap	
+pkg:durable/storage/store#StoreStorage::property:document	durable	child-gap	
+pkg:durable/storage/store#StoreStorage::property:document::call:0	durable	child-gap	
+pkg:durable/storage/store#StoreStorage::property:entry	durable	child-gap	
+pkg:durable/storage/store#StoreStorage::property:entry::call:0	durable	child-gap	
+pkg:durable/storage/store#StoreStorage::property:entry::call:1	durable	child-gap	
+pkg:durable/storage/store#StoreStorage::property:findDocument	durable	child-gap	
+pkg:durable/storage/store#StoreStorage::property:findDocument::call:0	durable	child-gap	
+pkg:durable/storage/store#StoreStorage::property:findLatestHeadMarker	durable	child-gap	
+pkg:durable/storage/store#StoreStorage::property:findLatestHeadMarker::call:0	durable	child-gap	
+pkg:durable/storage/store#StoreStorage::property:mintId	durable	child-gap	
+pkg:durable/storage/store#StoreStorage::property:mintId::call:0	durable	child-gap	
+pkg:durable/storage/store#StoreStorage::property:scanConversations	durable	child-gap	
+pkg:durable/storage/store#StoreStorage::property:scanConversations::call:0	durable	child-gap	
+pkg:durable/storage/store#StoreStorage::property:scanDocuments	durable	child-gap	
+pkg:durable/storage/store#StoreStorage::property:scanDocuments::call:0	durable	child-gap	
+pkg:durable/storage/store#StoreStorage::property:scanEntries	durable	child-gap	
+pkg:durable/storage/store#StoreStorage::property:scanEntries::call:0	durable	child-gap	
+pkg:durable/storage/store#StoreStorage::property:scanSubmissions	durable	child-gap	
+pkg:durable/storage/store#StoreStorage::property:scanSubmissions::call:0	durable	child-gap	
+pkg:durable/storage/store#StoreStorage::property:scanTasks	durable	child-gap	
+pkg:durable/storage/store#StoreStorage::property:scanTasks::call:0	durable	child-gap	
+pkg:durable/storage/store#StoreStorage::property:submission	durable	child-gap	
+pkg:durable/storage/store#StoreStorage::property:submission::call:0	durable	child-gap	
+pkg:durable/storage/store#StoreStorage::property:submissionByRequest	durable	child-gap	
+pkg:durable/storage/store#StoreStorage::property:submissionByRequest::call:0	durable	child-gap	
+pkg:durable/storage/store#StoreStorage::property:task	durable	child-gap	
+pkg:durable/storage/store#StoreStorage::property:task::call:0	durable	child-gap	
+pkg:durable/tools#BashPrepare	durable	child-gap	durable/tools/bash.go#BashPrepare
+pkg:durable/tools#BashPrepare::call:0	durable	signature-mismatch	durable/tools/bash.go#BashPrepare
+pkg:env/.#RemoteWatcher	env	child-gap	env/watch.go#RemoteWatcher
+pkg:env/.#RemoteWatcher::property:stop	env	child-gap	env/watch.go#RemoteWatcher.stop
+pkg:env/.#RemoteWatcher::property:stop::call:0	env	signature-mismatch	env/watch.go#RemoteWatcher.stop
+pkg:tui/.#Component	tui	child-gap	tui/tui.go#Component
+pkg:tui/.#Component::property:capturesViewportInput	tui	member-missing	tui/tui.go#Component
+pkg:tui/.#Editor	tui	child-gap	tui/editor.go#Editor
+pkg:tui/.#Editor::property:capturesViewportInput	tui	member-missing	tui/editor.go#Editor
+pkg:tui/.#EditorComponent	tui	child-gap	tui/editor_component.go#EditorComponent
+pkg:tui/.#EditorComponent::property:capturesViewportInput	tui	member-missing	tui/editor_component.go#EditorComponent
+pkg:tui/.#SelectList	tui	child-gap	tui/select_list.go#SelectList
+pkg:tui/.#SelectList::property:capturesViewportInput	tui	member-missing	tui/select_list.go#SelectList
+pkg:tui/.#SettingsList	tui	child-gap	tui/settings_list.go#SettingsList
+pkg:tui/.#SettingsList::property:capturesViewportInput	tui	member-missing	tui/settings_list.go#SettingsList
+pkg:tui/.#TUI	tui	child-gap	tui/renderer.go#TUI
+pkg:tui/.#TUI::property:capturesViewportInput	tui	member-missing	tui/renderer.go#TUI
+pkg:tui/.#ViewportTUI	tui	child-gap	tui/tui_alt_screen.go#ViewportTUI
+pkg:tui/.#ViewportTUI::property:capturesViewportInput	tui	member-missing	tui/tui_alt_screen.go#ViewportTUI

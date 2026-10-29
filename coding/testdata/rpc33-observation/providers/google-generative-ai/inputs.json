@@ -1,5 +1,5 @@
 {
-  "piVersion": "1.4.0+b3a29f11",
+  "piVersion": "1.4.0+e7a0df27",
   "genaiVersion": "2.21.0",
   "axes": {
     "api": "google-generative-ai",

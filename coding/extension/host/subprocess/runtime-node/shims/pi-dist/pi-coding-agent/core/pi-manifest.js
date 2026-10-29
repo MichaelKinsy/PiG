@@ -17,6 +17,10 @@ export function readPiManifest(packageJsonPath) {
                 manifest[field] = entries;
             }
         }
+        const changelogPath = pkg.pi.changelogPath;
+        if (typeof changelogPath === "string") {
+            manifest.changelogPath = changelogPath;
+        }
         return manifest;
     }
     catch {

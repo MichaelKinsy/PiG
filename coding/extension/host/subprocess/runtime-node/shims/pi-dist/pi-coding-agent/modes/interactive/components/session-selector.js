@@ -586,6 +586,9 @@ async function deleteSessionFile(sessionPath) {
  * Component that renders a session selector
  */
 export class SessionSelectorComponent extends Container {
+    get capturesViewportInput() {
+        return this.mode !== "rename";
+    }
     handleInput(data) {
         if (this.mode === "rename") {
             const kb = getKeybindings();

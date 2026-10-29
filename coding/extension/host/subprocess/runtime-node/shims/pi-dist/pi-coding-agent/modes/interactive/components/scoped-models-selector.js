@@ -1,4 +1,4 @@
-import { Container, fuzzyFilter, getKeybindings, Input, Key, matchesKey, Spacer, Text, } from "../../../../../pi-tui.mjs";
+import { Container, fuzzyFilter, getKeybindings, getSelectPageIndex, Input, Key, matchesKey, Spacer, Text, } from "../../../../../pi-tui.mjs";
 import { getDistinctModelName, getModelSearchText } from "../model-search.js";
 import { theme } from "../theme/theme.js";
 import { DynamicBorder } from "./dynamic-border.js";
@@ -61,6 +61,7 @@ function getSortedIds(enabledIds, allIds) {
  * Changes are session-only until explicitly persisted with Ctrl+S.
  */
 export class ScopedModelsSelectorComponent extends Container {
+    capturesViewportInput = true;
     modelsById = new Map();
     allIds = [];
     enabledIds = null;
@@ -224,6 +225,14 @@ export class ScopedModelsSelectorComponent extends Container {
             if (this.filteredItems.length === 0)
                 return;
             this.selectedIndex = this.selectedIndex === this.filteredItems.length - 1 ? 0 : this.selectedIndex + 1;
+            this.updateList();
+            return;
+        }
+        const pageIndex = getSelectPageIndex(kb, data, this.selectedIndex, this.filteredItems.length, this.maxVisible);
+        if (pageIndex !== undefined) {
+            if (this.filteredItems.length === 0)
+                return;
+            this.selectedIndex = pageIndex;
             this.updateList();
             return;
         }

@@ -8,7 +8,7 @@ import {
   startToolTimer,
   str,
   toolTimerText
-} from "./chunk-T5YZVFVX.js";
+} from "./chunk-SKZPKAGV.js";
 import {
   highlightCode,
   keyHint
@@ -204,7 +204,7 @@ import { CODEMODE_SOURCE_GRAMMAR } from "../../pi-codemode/source.js";
 import { Type as Type2 } from "../../../typebox.mjs";
 
 // pi-dist/pi-coding-agent/extensions/codemode/execute.lazy.js
-var loadCodemodeExecutor = /* @__PURE__ */ __name(() => import("./chunk-NY2GJK4E.js"), "loadCodemodeExecutor");
+var loadCodemodeExecutor = /* @__PURE__ */ __name(() => import("./chunk-UZ243LW5.js"), "loadCodemodeExecutor");
 
 // pi-dist/pi-coding-agent/extensions/codemode/renderer.js
 import { Container, Spacer, Text } from "../../../pi-tui.mjs";
@@ -445,24 +445,40 @@ function describeFields(schema, depth) {
     return void 0;
   const requiredNames = new Set(Array.isArray(required) ? required : []);
   const fields = Object.entries(properties).map(([name, field]) => {
-    const nested = depth > 0 ? describeFields(field, depth - 1) : void 0;
+    const constValue = field?.const;
+    const nested = constValue !== void 0 ? JSON.stringify(constValue) : depth > 0 ? describeFields(field, depth - 1) : void 0;
     return `${name}${requiredNames.has(name) ? "" : "?"}${nested ? `: ${nested}` : ""}`;
   });
   return `{ ${fields.join(", ")} }`;
 }
 __name(describeFields, "describeFields");
-function describeOutput(schema) {
+function describeOutput(name, schema) {
   const type = renderToolOutputType(schema);
   if (type === "string")
     return "a string";
-  const fields = describeFields(schema, 1);
-  return `\`${fields ?? type.replace(/\s+/g, " ")}\``;
+  const fields = describeFields(schema, 1) ?? describeUnionFields(schema);
+  if (fields)
+    return `\`${fields}\``;
+  if (!type.includes("\n"))
+    return `\`${type}\``;
+  return `a value; \`await describeTool(${JSON.stringify(name)})\` shows its type`;
 }
 __name(describeOutput, "describeOutput");
+function describeUnionFields(schema) {
+  if (typeof schema !== "object" || schema === null)
+    return void 0;
+  const { anyOf, oneOf } = schema;
+  const variants = anyOf ?? oneOf;
+  if (!Array.isArray(variants) || variants.length === 0)
+    return void 0;
+  const described = variants.map((variant) => describeFields(variant, 0));
+  return described.every((fields) => fields !== void 0) ? described.join(" | ") : void 0;
+}
+__name(describeUnionFields, "describeUnionFields");
 function describeScriptCall(tool) {
   return `${tool.description.trim()}
 
-Codemode: \`tools.${toCodemodeIdentifier(tool.name)}(args)\` resolves to ${describeOutput(toCodemodeDeclaration(tool).outputSchema)}.`;
+Codemode: \`tools.${toCodemodeIdentifier(tool.name)}(args)\` resolves to ${describeOutput(tool.name, toCodemodeDeclaration(tool).outputSchema)}.`;
 }
 __name(describeScriptCall, "describeScriptCall");
 function prepareCodemodeLoadout(loadout, options) {

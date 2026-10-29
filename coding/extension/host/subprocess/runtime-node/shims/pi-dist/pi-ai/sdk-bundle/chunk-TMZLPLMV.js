@@ -1128,6 +1128,8 @@ var OVERFLOW_PATTERNS = [
   // OpenAI (Completions & Responses API)
   /exceeds (?:the )?(?:model'?s )?maximum context length(?: of [\d,]+ tokens?|\s*\([\d,]+\))/i,
   // OpenAI-compatible proxies (LiteLLM)
+  /context window exceeded/i,
+  // LiteLLM pre-call check (ContextWindowExceededError)
   /input token count.*exceeds the maximum/i,
   // Google (Gemini)
   /maximum prompt length is \d+/i,
@@ -1240,7 +1242,10 @@ var NON_RETRYABLE_PROVIDER_LIMIT_ERROR_PATTERN = buildProviderErrorPattern([
   "subscription_sharing_usage_limit_exceeded",
   // Sign in with ChatGPT on a ChatGPT Business plan: a usage limit set by the
   // workspace admin. Only the admin can raise it.
-  "subscription_sharing_workplace_individual_usage_limit_exceeded"
+  "subscription_sharing_workplace_individual_usage_limit_exceeded",
+  // Zhipu/Z.ai (open.bigmodel.cn) error code 1308: the plan's usage limit is
+  // reached, sent as HTTP 429. It resets after hours, not seconds (#11537).
+  '"code"\\s*:\\s*"?1308(?![0-9])'
 ]);
 var RETRYABLE_PROVIDER_ERROR_PATTERN = buildProviderErrorPattern([
   // Generic provider load, HTTP status, and server-side transient failures.

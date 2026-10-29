@@ -79,6 +79,7 @@ import {
   getLastAssistantUsage,
   getLatestCompactionEntry,
   getMissingSessionCwdIssue,
+  getSourcePackageKey,
   isBashToolResult,
   isBuiltinExtension,
   isEditToolResult,
@@ -123,7 +124,7 @@ import {
   wrapRegisteredTools,
   writeBugReportArchive,
   writeRawStdout
-} from "./chunk-IX4XAYCN.js";
+} from "./chunk-HXXU3UR4.js";
 import {
   convertToPng,
   createBashToolDefinition,
@@ -158,13 +159,13 @@ import {
   resolveReadPath,
   withFileMutationQueue,
   writeRenderers
-} from "./chunk-4XWAF7AN.js";
+} from "./chunk-YO7W7VLN.js";
 import {
   CODEMODE_TOOL_NAME,
   TOOL_SEARCH_TOOL_NAME,
   createCodemodeToolDefinition,
   createToolSearchToolDefinition
-} from "./chunk-NF6AG2GL.js";
+} from "./chunk-E5B65AQW.js";
 import {
   SETTINGS_DEFAULTS,
   addUsageToTotals,
@@ -187,7 +188,7 @@ import {
   truncateTail,
   truncateToVisualLines,
   writeOutputFile
-} from "./chunk-T5YZVFVX.js";
+} from "./chunk-SKZPKAGV.js";
 import {
   SYSTEM_THEME_NAME,
   THEME_TOKENS,
@@ -1128,6 +1129,9 @@ var McpManagerView = class {
     if (this.inputTarget)
       this.inputTarget.focused = value;
   }
+  get capturesViewportInput() {
+    return this.inputHandler?.capturesViewportInput === true;
+  }
   setContent(content, inputHandler, inputTarget) {
     if (this.inputTarget)
       this.inputTarget.focused = false;
@@ -1162,9 +1166,11 @@ var McpManagerView = class {
         const footer = `${keyHint("tui.select.confirm", menu.confirmLabel)} \u2022 ${keyHint("tui.select.cancel", menu.cancelLabel)}`;
         if (menu.items.length === 0) {
           body.push(new Text3(this.theme.fg("muted", menu.empty ?? "Nothing to show."), 1, 0));
-          this.setContent(frame(this.theme, menu.title, body, keyHint("tui.select.cancel", menu.cancelLabel)), (data) => {
-            if (this.keybindings.matches(data, "tui.select.cancel"))
-              finish(void 0);
+          this.setContent(frame(this.theme, menu.title, body, keyHint("tui.select.cancel", menu.cancelLabel)), {
+            handleInput: /* @__PURE__ */ __name((data) => {
+              if (this.keybindings.matches(data, "tui.select.cancel"))
+                finish(void 0);
+            }, "handleInput")
           });
           return;
         }
@@ -1179,7 +1185,7 @@ var McpManagerView = class {
         list.onSelect = (item) => finish(item.value);
         list.onCancel = () => finish(void 0);
         body.push(list);
-        this.setContent(frame(this.theme, menu.title, body, footer), (data) => list.handleInput(data));
+        this.setContent(frame(this.theme, menu.title, body, footer), list);
       }, "render");
       render2();
       unsubscribe = subscribe?.(() => {
@@ -1194,9 +1200,11 @@ var McpManagerView = class {
       this.setContent(frame(this.theme, title, body));
       return;
     }
-    this.setContent(frame(this.theme, title, body, keyHint("tui.select.cancel", "cancel")), (data) => {
-      if (this.keybindings.matches(data, "tui.select.cancel"))
-        onCancel();
+    this.setContent(frame(this.theme, title, body, keyHint("tui.select.cancel", "cancel")), {
+      handleInput: /* @__PURE__ */ __name((data) => {
+        if (this.keybindings.matches(data, "tui.select.cancel"))
+          onCancel();
+      }, "handleInput")
     });
   }
   redirectUrl(title, authorizationUrl, signal) {
@@ -1225,27 +1233,29 @@ var McpManagerView = class {
         new Text3(this.theme.fg("muted", "If the browser runs on another machine, paste the URL it was redirected to:"), 1, 0),
         input2
       ];
-      this.setContent(frame(this.theme, title, body, `${keyHint("tui.select.confirm", "submit")} \u2022 ${keyHint("tui.select.cancel", "cancel")}`), (data) => {
-        if (this.keybindings.matches(data, "tui.select.confirm")) {
-          const value = input2.getValue().trim();
-          if (value)
-            finish(value);
-          return;
-        }
-        if (this.keybindings.matches(data, "tui.select.cancel")) {
-          finish(void 0);
-          return;
-        }
-        if (this.keybindings.matches(data, "app.message.copy")) {
-          void link.copy();
-          return;
-        }
-        input2.handleInput(data);
+      this.setContent(frame(this.theme, title, body, `${keyHint("tui.select.confirm", "submit")} \u2022 ${keyHint("tui.select.cancel", "cancel")}`), {
+        handleInput: /* @__PURE__ */ __name((data) => {
+          if (this.keybindings.matches(data, "tui.select.confirm")) {
+            const value = input2.getValue().trim();
+            if (value)
+              finish(value);
+            return;
+          }
+          if (this.keybindings.matches(data, "tui.select.cancel")) {
+            finish(void 0);
+            return;
+          }
+          if (this.keybindings.matches(data, "app.message.copy")) {
+            void link.copy();
+            return;
+          }
+          input2.handleInput(data);
+        }, "handleInput")
       }, input2);
     });
   }
   handleInput(data) {
-    this.inputHandler?.(data);
+    this.inputHandler?.handleInput?.(data);
     this.tui.requestRender();
   }
   render(width) {
@@ -4468,6 +4478,9 @@ var SessionSelectorComponent = class extends Container7 {
   static {
     __name(this, "SessionSelectorComponent");
   }
+  get capturesViewportInput() {
+    return this.mode !== "rename";
+  }
   handleInput(data) {
     if (this.mode === "rename") {
       const kb = getKeybindings4();
@@ -5560,8 +5573,9 @@ function createLlamaProvider() {
 __name(createLlamaProvider, "createLlamaProvider");
 
 // pi-dist/pi-coding-agent/extensions/llama/ui.js
-import { Container as Container8, fuzzyFilter as fuzzyFilter2, Input as Input4, SelectList as SelectList2, Spacer as Spacer7, Text as Text8, truncateToWidth as truncateToWidth3, visibleWidth as visibleWidth3 } from "../../../pi-tui.mjs";
+import { Container as Container8, fuzzyFilter as fuzzyFilter2, getSelectPageIndex, Input as Input4, SelectList as SelectList2, Spacer as Spacer7, Text as Text8, truncateToWidth as truncateToWidth3, visibleWidth as visibleWidth3 } from "../../../pi-tui.mjs";
 var DOWNLOAD_VALUE = "\0download";
+var SEARCH_MAX_VISIBLE = 10;
 function contextLabel(model) {
   const context = model.meta?.n_ctx ?? model.meta?.n_ctx_train;
   if (context)
@@ -5626,6 +5640,7 @@ var HuggingFaceSearch = class extends Container8 {
   static {
     __name(this, "HuggingFaceSearch");
   }
+  capturesViewportInput = true;
   tui;
   theme;
   keybindings;
@@ -5666,9 +5681,8 @@ var HuggingFaceSearch = class extends Container8 {
   }
   updateResults() {
     this.resultsContainer.clear();
-    const maxVisible = 10;
-    const start = Math.max(0, Math.min(this.selectedIndex - Math.floor(maxVisible / 2), this.filteredResults.length - maxVisible));
-    const end = Math.min(start + maxVisible, this.filteredResults.length);
+    const start = Math.max(0, Math.min(this.selectedIndex - Math.floor(SEARCH_MAX_VISIBLE / 2), this.filteredResults.length - SEARCH_MAX_VISIBLE));
+    const end = Math.min(start + SEARCH_MAX_VISIBLE, this.filteredResults.length);
     for (let index = start; index < end; index++) {
       const model = this.filteredResults[index];
       if (!model)
@@ -5765,6 +5779,14 @@ var HuggingFaceSearch = class extends Container8 {
       }
       return;
     }
+    const pageIndex = getSelectPageIndex(this.keybindings, data, this.selectedIndex, this.filteredResults.length, SEARCH_MAX_VISIBLE);
+    if (pageIndex !== void 0) {
+      if (this.filteredResults.length > 0) {
+        this.selectedIndex = pageIndex;
+        this.updateResults();
+      }
+      return;
+    }
     if (this.keybindings.matches(data, "tui.select.confirm")) {
       const exact = /^[^/\s]+\/[^:\s]+(?::[^\s:]+)?$/u.test(this.query) ? this.query : void 0;
       const selected = exact ?? this.filteredResults[this.selectedIndex]?.id;
@@ -5812,6 +5834,9 @@ var LlamaView = class {
     this._focused = value;
     if (this.inputTarget)
       this.inputTarget.focused = value;
+  }
+  get capturesViewportInput() {
+    return this.inputHandler?.capturesViewportInput === true;
   }
   setContent(content, inputHandler, inputTarget) {
     if (this.inputTarget)
@@ -8292,6 +8317,10 @@ var CustomEditor = class extends Editor2 {
     if (this.onExtensionShortcut?.(data)) {
       return;
     }
+    if (this.isShowingAutocomplete() && (this.keybindings.matches(data, "tui.select.pageUp") || this.keybindings.matches(data, "tui.select.pageDown"))) {
+      super.handleInput(data);
+      return;
+    }
     if (this.keybindings.matches(data, "app.clipboard.pasteImage")) {
       this.onPasteImage?.();
       return;
@@ -9052,7 +9081,7 @@ __name(createMermaidMarkdownTransformer, "createMermaidMarkdownTransformer");
 
 // pi-dist/pi-coding-agent/modes/interactive/components/model-selector.js
 import { modelsAreEqual } from "../../pi-ai/sdk-bundle/index.js";
-import { Container as Container19, fuzzyFilter as fuzzyFilter3, getKeybindings as getKeybindings7, Input as Input6, Spacer as Spacer18, Text as Text19 } from "../../../pi-tui.mjs";
+import { Container as Container19, fuzzyFilter as fuzzyFilter3, getKeybindings as getKeybindings7, getSelectPageIndex as getSelectPageIndex2, Input as Input6, Spacer as Spacer18, Text as Text19 } from "../../../pi-tui.mjs";
 
 // pi-dist/pi-coding-agent/modes/interactive/model-catalog-refresh.js
 var ModelCatalogRefreshCoordinator = class {
@@ -9118,10 +9147,12 @@ function getModelSelectorSearchText(item) {
 __name(getModelSelectorSearchText, "getModelSelectorSearchText");
 
 // pi-dist/pi-coding-agent/modes/interactive/components/model-selector.js
+var MAX_VISIBLE = 10;
 var ModelSelectorComponent = class extends Container19 {
   static {
     __name(this, "ModelSelectorComponent");
   }
+  capturesViewportInput = true;
   searchInput;
   // Focusable implementation - propagate to searchInput for IME cursor positioning
   _focused = false;
@@ -9343,9 +9374,8 @@ var ModelSelectorComponent = class extends Container19 {
   }
   updateList() {
     this.listContainer.clear();
-    const maxVisible = 10;
-    const startIndex = Math.max(0, Math.min(this.selectedIndex - Math.floor(maxVisible / 2), this.filteredModels.length - maxVisible));
-    const endIndex = Math.min(startIndex + maxVisible, this.filteredModels.length);
+    const startIndex = Math.max(0, Math.min(this.selectedIndex - Math.floor(MAX_VISIBLE / 2), this.filteredModels.length - MAX_VISIBLE));
+    const endIndex = Math.min(startIndex + MAX_VISIBLE, this.filteredModels.length);
     for (let i = startIndex; i < endIndex; i++) {
       const item = this.filteredModels[i];
       if (!item)
@@ -9386,6 +9416,7 @@ var ModelSelectorComponent = class extends Container19 {
   }
   handleInput(keyData) {
     const kb = getKeybindings7();
+    const pageIndex = getSelectPageIndex2(kb, keyData, this.selectedIndex, this.filteredModels.length, MAX_VISIBLE);
     if (kb.matches(keyData, "tui.input.tab")) {
       if (this.scopedModelItems.length > 0) {
         const nextScope = this.scope === "all" ? "scoped" : "all";
@@ -9405,6 +9436,11 @@ var ModelSelectorComponent = class extends Container19 {
       if (this.filteredModels.length === 0)
         return;
       this.selectedIndex = this.selectedIndex === this.filteredModels.length - 1 ? 0 : this.selectedIndex + 1;
+      this.updateList();
+    } else if (pageIndex !== void 0) {
+      if (this.filteredModels.length === 0)
+        return;
+      this.selectedIndex = pageIndex;
       this.updateList();
     } else if (kb.matches(keyData, "tui.select.confirm")) {
       const selectedModel = this.filteredModels[this.selectedIndex];
@@ -9435,7 +9471,7 @@ var ModelSelectorComponent = class extends Container19 {
 };
 
 // pi-dist/pi-coding-agent/modes/interactive/components/oauth-selector.js
-import { Container as Container20, fuzzyFilter as fuzzyFilter4, getKeybindings as getKeybindings8, Input as Input7, Spacer as Spacer19, TruncatedText as TruncatedText2 } from "../../../pi-tui.mjs";
+import { Container as Container20, fuzzyFilter as fuzzyFilter4, getKeybindings as getKeybindings8, getSelectPageIndex as getSelectPageIndex3, Input as Input7, Spacer as Spacer19, TruncatedText as TruncatedText2 } from "../../../pi-tui.mjs";
 function formatAuthSelectorProviderType(authType, subscription) {
   if (authType === "api_key")
     return "API key";
@@ -9456,10 +9492,12 @@ function formatAuthSelectorProviderStatus(provider) {
   return theme.fg("success", ` \u2713 ${source}`);
 }
 __name(formatAuthSelectorProviderStatus, "formatAuthSelectorProviderStatus");
+var MAX_VISIBLE2 = 8;
 var OAuthSelectorComponent = class extends Container20 {
   static {
     __name(this, "OAuthSelectorComponent");
   }
+  capturesViewportInput = true;
   searchInput;
   // Focusable implementation - propagate to search input for IME cursor positioning
   _focused = false;
@@ -9516,9 +9554,8 @@ var OAuthSelectorComponent = class extends Container20 {
   }
   updateList() {
     this.listContainer.clear();
-    const maxVisible = 8;
-    const startIndex = Math.max(0, Math.min(this.selectedIndex - Math.floor(maxVisible / 2), this.filteredProviders.length - maxVisible));
-    const endIndex = Math.min(startIndex + maxVisible, this.filteredProviders.length);
+    const startIndex = Math.max(0, Math.min(this.selectedIndex - Math.floor(MAX_VISIBLE2 / 2), this.filteredProviders.length - MAX_VISIBLE2));
+    const endIndex = Math.min(startIndex + MAX_VISIBLE2, this.filteredProviders.length);
     for (let i = startIndex; i < endIndex; i++) {
       const provider = this.filteredProviders[i];
       if (!provider)
@@ -9548,6 +9585,7 @@ var OAuthSelectorComponent = class extends Container20 {
   }
   handleInput(keyData) {
     const kb = getKeybindings8();
+    const pageIndex = getSelectPageIndex3(kb, keyData, this.selectedIndex, this.filteredProviders.length, MAX_VISIBLE2);
     if (kb.matches(keyData, "tui.select.up")) {
       if (this.filteredProviders.length === 0)
         return;
@@ -9557,6 +9595,11 @@ var OAuthSelectorComponent = class extends Container20 {
       if (this.filteredProviders.length === 0)
         return;
       this.selectedIndex = Math.min(this.filteredProviders.length - 1, this.selectedIndex + 1);
+      this.updateList();
+    } else if (pageIndex !== void 0) {
+      if (this.filteredProviders.length === 0)
+        return;
+      this.selectedIndex = pageIndex;
       this.updateList();
     } else if (kb.matches(keyData, "tui.select.confirm")) {
       const selectedProvider = this.filteredProviders[this.selectedIndex];
@@ -9673,7 +9716,7 @@ function createLoginMenuSelector(tui, title, options, radiusOption, onSelect, on
 __name(createLoginMenuSelector, "createLoginMenuSelector");
 
 // pi-dist/pi-coding-agent/modes/interactive/components/scoped-models-selector.js
-import { Container as Container21, fuzzyFilter as fuzzyFilter5, getKeybindings as getKeybindings9, Input as Input8, Key as Key2, matchesKey, Spacer as Spacer20, Text as Text21 } from "../../../pi-tui.mjs";
+import { Container as Container21, fuzzyFilter as fuzzyFilter5, getKeybindings as getKeybindings9, getSelectPageIndex as getSelectPageIndex4, Input as Input8, Key as Key2, matchesKey, Spacer as Spacer20, Text as Text21 } from "../../../pi-tui.mjs";
 function isEnabled2(enabledIds, id) {
   return enabledIds === null || enabledIds.includes(id);
 }
@@ -9737,6 +9780,7 @@ var ScopedModelsSelectorComponent = class extends Container21 {
   static {
     __name(this, "ScopedModelsSelectorComponent");
   }
+  capturesViewportInput = true;
   modelsById = /* @__PURE__ */ new Map();
   allIds = [];
   enabledIds = null;
@@ -9886,6 +9930,14 @@ var ScopedModelsSelectorComponent = class extends Container21 {
       if (this.filteredItems.length === 0)
         return;
       this.selectedIndex = this.selectedIndex === this.filteredItems.length - 1 ? 0 : this.selectedIndex + 1;
+      this.updateList();
+      return;
+    }
+    const pageIndex = getSelectPageIndex4(kb, data, this.selectedIndex, this.filteredItems.length, this.maxVisible);
+    if (pageIndex !== void 0) {
+      if (this.filteredItems.length === 0)
+        return;
+      this.selectedIndex = pageIndex;
       this.updateList();
       return;
     }
@@ -10047,7 +10099,7 @@ var SelectSubmenu = class extends Container22 {
   handleInput(data) {
     if (this.searchInput) {
       const kb = getKeybindings10();
-      const isNav = kb.matches(data, "tui.select.up") || kb.matches(data, "tui.select.down") || kb.matches(data, "tui.select.confirm") || kb.matches(data, "tui.select.cancel");
+      const isNav = kb.matches(data, "tui.select.up") || kb.matches(data, "tui.select.down") || kb.matches(data, "tui.select.pageUp") || kb.matches(data, "tui.select.pageDown") || kb.matches(data, "tui.select.confirm") || kb.matches(data, "tui.select.cancel");
       if (isNav) {
         this.selectList.handleInput(data);
       } else {
@@ -12508,6 +12560,9 @@ var TreeSelectorComponent = class extends Container27 {
     this.treeContainer.clear();
     this.treeContainer.addChild(this.treeList);
   }
+  get capturesViewportInput() {
+    return this.labelInput === null;
+  }
   handleInput(keyData) {
     if (this.labelInput) {
       this.labelInput.handleInput(keyData);
@@ -12655,11 +12710,12 @@ var UserMessageComponent = class extends Container29 {
 };
 
 // pi-dist/pi-coding-agent/modes/interactive/components/user-message-selector.js
-import { Container as Container30, getKeybindings as getKeybindings14, Spacer as Spacer27, Text as Text30, truncateToWidth as truncateToWidth7 } from "../../../pi-tui.mjs";
+import { Container as Container30, getKeybindings as getKeybindings14, getSelectPageIndex as getSelectPageIndex5, Spacer as Spacer27, Text as Text30, truncateToWidth as truncateToWidth7 } from "../../../pi-tui.mjs";
 var UserMessageList = class {
   static {
     __name(this, "UserMessageList");
   }
+  capturesViewportInput = true;
   messages = [];
   selectedIndex = 0;
   onSelect;
@@ -12704,10 +12760,15 @@ var UserMessageList = class {
   }
   handleInput(keyData) {
     const kb = getKeybindings14();
+    const pageIndex = getSelectPageIndex5(kb, keyData, this.selectedIndex, this.messages.length, this.maxVisible);
     if (kb.matches(keyData, "tui.select.up")) {
       this.selectedIndex = this.selectedIndex === 0 ? this.messages.length - 1 : this.selectedIndex - 1;
     } else if (kb.matches(keyData, "tui.select.down")) {
       this.selectedIndex = this.selectedIndex === this.messages.length - 1 ? 0 : this.selectedIndex + 1;
+    } else if (pageIndex !== void 0) {
+      if (this.messages.length === 0)
+        return;
+      this.selectedIndex = pageIndex;
     } else if (kb.matches(keyData, "tui.select.confirm")) {
       const selected = this.messages[this.selectedIndex];
       if (selected && this.onSelect) {
@@ -13103,6 +13164,7 @@ var InteractiveMode = class _InteractiveMode {
   lastSigintTime = 0;
   lastEscapeTime = 0;
   changelogMarkdown = void 0;
+  extensionChangelogUpdates = [];
   startupNoticesShown = false;
   anthropicSubscriptionWarningShown = false;
   // Status line tracking (for mutating immediately-sequential status updates)
@@ -13374,23 +13436,40 @@ var InteractiveMode = class _InteractiveMode {
       return;
     }
     this.startupNoticesShown = true;
-    if (!this.changelogMarkdown) {
+    if (!this.changelogMarkdown && this.extensionChangelogUpdates.length === 0) {
       return;
     }
     if (this.chatContainer.children.length > 0) {
       this.chatContainer.addChild(new Spacer28(1));
     }
     this.chatContainer.addChild(new DynamicBorder());
-    if (this.settingsManager.getCollapseChangelog()) {
-      const versionMatch = this.changelogMarkdown.match(/##\s+\[?(\d+\.\d+\.\d+)\]?/);
-      const latestVersion = versionMatch ? versionMatch[1] : this.version;
-      const condensedText = `Updated to v${latestVersion}. Use ${theme.bold("/changelog")} to view full changelog.`;
-      this.chatContainer.addChild(new Text31(condensedText, 1, 0));
-    } else {
-      this.chatContainer.addChild(new ThemedText(() => theme.bold(theme.fg("accent", "What's New")), 1, 0));
-      this.chatContainer.addChild(new Spacer28(1));
-      this.chatContainer.addChild(new Markdown7(this.changelogMarkdown.trim(), 1, 0, this.getMarkdownThemeWithSettings()));
-      this.chatContainer.addChild(new Spacer28(1));
+    if (this.changelogMarkdown) {
+      if (this.settingsManager.getCollapseChangelog()) {
+        const versionMatch = this.changelogMarkdown.match(/##\s+\[?(\d+\.\d+\.\d+)\]?/);
+        const latestVersion = versionMatch ? versionMatch[1] : this.version;
+        const condensedText = `Updated to v${latestVersion}. Use ${theme.bold("/changelog")} to view full changelog.`;
+        this.chatContainer.addChild(new Text31(condensedText, 1, 0));
+      } else {
+        this.chatContainer.addChild(new ThemedText(() => theme.bold(theme.fg("accent", "What's New")), 1, 0));
+        this.chatContainer.addChild(new Spacer28(1));
+        this.chatContainer.addChild(new Markdown7(this.changelogMarkdown.trim(), 1, 0, this.getMarkdownThemeWithSettings()));
+        this.chatContainer.addChild(new Spacer28(1));
+      }
+    }
+    if (this.extensionChangelogUpdates.length > 0) {
+      if (this.changelogMarkdown) {
+        this.chatContainer.addChild(new Spacer28(1));
+      }
+      if (this.settingsManager.getCollapseChangelog()) {
+        const condensedText = this.extensionChangelogUpdates.map((update) => `Updated ${update.name} to v${update.version}.`).join("\n");
+        this.chatContainer.addChild(new Text31(condensedText, 1, 0));
+      } else {
+        this.chatContainer.addChild(new ThemedText(() => theme.bold(theme.fg("accent", "Extension Updates")), 1, 0));
+        this.chatContainer.addChild(new Spacer28(1));
+        const markdown = this.extensionChangelogUpdates.map((update) => update.markdown).join("\n\n");
+        this.chatContainer.addChild(new Markdown7(markdown, 1, 0, this.getMarkdownThemeWithSettings()));
+        this.chatContainer.addChild(new Spacer28(1));
+      }
     }
     this.chatContainer.addChild(new DynamicBorder());
   }
@@ -13466,14 +13545,11 @@ var InteractiveMode = class _InteractiveMode {
       return;
     this.registerSignalHandlers();
     this.changelogMarkdown = this.getChangelogForDisplay();
-    if (this.session.scopedModels.length > 0 && this.shouldShowStartupDetails()) {
-      const modelList = this.session.scopedModels.map((sm) => {
-        const thinkingStr = sm.thinkingLevel ? `:${sm.thinkingLevel}` : "";
-        return `${sm.model.id}${thinkingStr}`;
-      }).join(", ");
-      const cycleKeys = this.keybindings.getKeys("app.model.cycleForward");
-      const cycleHint = cycleKeys.length > 0 ? theme.fg("muted", ` (${formatKeyText(cycleKeys.join("/"), { capitalize: true })} to cycle)`) : "";
-      console.log(theme.fg("dim", `Model scope: ${modelList}${cycleHint}`));
+    this.extensionChangelogUpdates = this.getExtensionChangelogUpdates();
+    if (this.renderer.mode !== "fullscreen") {
+      const modelScopeNotice = this.getModelScopeNotice();
+      if (modelScopeNotice)
+        console.log(modelScopeNotice);
     }
     this.renderWidgets();
     const viewport = createChatViewport({
@@ -13567,6 +13643,8 @@ ${onboarding()}`, this.getStartupExpansionState(), 1, 0);
       this.builtInHeader = new Text31("", 0, 0);
       this.headerContainer.addChild(this.builtInHeader);
     }
+    if (this.renderer.mode === "fullscreen")
+      this.showFullscreenModelScopeNotice();
     this.ui.requestRender();
     const [fdPath] = await Promise.all([
       ensureTool("fd", (status) => this.showManagedToolStatus(status)),
@@ -13772,6 +13850,51 @@ ${onboarding()}`, this.getStartupExpansionState(), 1, 0);
     }
     return void 0;
   }
+  getExtensionChangelogUpdates() {
+    if (this.session.state.messages.length > 0) {
+      return [];
+    }
+    const seenKeys = /* @__PURE__ */ new Set();
+    const updates = [];
+    for (const { sourceInfo } of this.session.resourceLoader.getExtensions().extensions) {
+      if (sourceInfo.origin !== "package" || !sourceInfo.baseDir || !sourceInfo.changelogPath) {
+        continue;
+      }
+      const key = getSourcePackageKey(sourceInfo);
+      if (seenKeys.has(key)) {
+        continue;
+      }
+      seenKeys.add(key);
+      const pkg = this.readPackageJson(sourceInfo.baseDir);
+      if (!pkg?.version) {
+        continue;
+      }
+      const lastVersion = this.settingsManager.getExtensionChangelogVersion(key);
+      if (!lastVersion) {
+        this.settingsManager.setExtensionChangelogVersion(key, pkg.version);
+        continue;
+      }
+      const newEntries = getNewEntries(parseChangelog(sourceInfo.changelogPath), lastVersion);
+      if (newEntries.length > 0) {
+        this.settingsManager.setExtensionChangelogVersion(key, pkg.version);
+        const name = pkg.name || sourceInfo.source;
+        const markdown = newEntries.map((entry) => entry.content.replace(/^##\s+/, `## ${name} `)).join("\n\n").trim();
+        updates.push({ name, version: pkg.version, markdown });
+      }
+    }
+    return updates;
+  }
+  readPackageJson(packageRoot) {
+    try {
+      const pkg = JSON.parse(stripBom(fs3.readFileSync(path4.join(packageRoot, "package.json"), "utf-8")));
+      return {
+        name: typeof pkg.name === "string" ? pkg.name : void 0,
+        version: typeof pkg.version === "string" ? pkg.version : void 0
+      };
+    } catch {
+      return void 0;
+    }
+  }
   reportInstallTelemetry(version) {
     if (process.env.PI_OFFLINE) {
       return;
@@ -13825,6 +13948,23 @@ ${onboarding()}`, this.getStartupExpansionState(), 1, 0);
     return this.options.verbose === true || this.settingsManager.getQuietStartup() !== true;
   }
   /** Startup details (model scope, loaded resources). Hidden by quietStartup: true or "header". */
+  getModelScopeNotice() {
+    if (this.session.scopedModels.length === 0 || !this.shouldShowStartupDetails())
+      return void 0;
+    const modelList = this.session.scopedModels.map((sm) => {
+      const thinkingStr = sm.thinkingLevel ? `:${sm.thinkingLevel}` : "";
+      return `${sm.model.id}${thinkingStr}`;
+    }).join(", ");
+    const cycleKeys = this.keybindings.getKeys("app.model.cycleForward");
+    const cycleHint = cycleKeys.length > 0 ? theme.fg("muted", ` (${formatKeyText(cycleKeys.join("/"), { capitalize: true })} to cycle)`) : "";
+    return theme.fg("dim", `Model scope: ${modelList}${cycleHint}`);
+  }
+  showFullscreenModelScopeNotice() {
+    if (!this.getModelScopeNotice())
+      return;
+    this.headerContainer.addChild(new ThemedText(() => this.getModelScopeNotice() ?? "", 1, 0));
+    this.headerContainer.addChild(new Spacer28(1));
+  }
   shouldShowStartupDetails() {
     return this.options.verbose === true || this.settingsManager.getQuietStartup() === false;
   }
@@ -14176,7 +14316,7 @@ ${expandedBody()}`, this.getStartupExpansionState(), 0, 0);
       const skillDiagnostics = skillsResult.diagnostics;
       if (skillDiagnostics.length > 0) {
         const warningLines = /* @__PURE__ */ __name(() => this.formatDiagnostics(skillDiagnostics, sourceInfos), "warningLines");
-        this.loadedResourcesContainer.addChild(new ThemedText(() => `${theme.fg("warning", "[Skill conflicts]")}
+        this.loadedResourcesContainer.addChild(new ThemedText(() => `${theme.fg("warning", "[Skill warnings]")}
 ${warningLines()}`, 0, 0));
         this.loadedResourcesContainer.addChild(new Spacer28(1));
       }
@@ -19733,7 +19873,7 @@ ${otherErrors.join("\n")}`;
 __name(validateThemeJson, "validateThemeJson");
 
 // pi-dist/pi-coding-agent/package-manager-cli.js
-import { existsSync as existsSync8, mkdirSync as mkdirSync5, mkdtempSync as mkdtempSync3, readdirSync as readdirSync2, readFileSync as readFileSync10, renameSync as renameSync3, rmSync as rmSync6, writeFileSync as writeFileSync6 } from "node:fs";
+import { existsSync as existsSync8, mkdirSync as mkdirSync5, mkdtempSync as mkdtempSync3, readdirSync as readdirSync2, readFileSync as readFileSync11, renameSync as renameSync3, rmSync as rmSync6, writeFileSync as writeFileSync6 } from "node:fs";
 import { join as join14, resolve as resolve6 } from "node:path";
 import { Markdown as Markdown8 } from "../../../pi-tui.mjs";
 import chalk6 from "../../../chalk/source/index.js";
@@ -20578,7 +20718,7 @@ function getActiveManagedInstallRoot() {
     return void 0;
   const markerPath = join14(managedRoot, MANAGED_INSTALL_MARKER);
   try {
-    const marker = JSON.parse(stripBom(readFileSync10(markerPath, "utf8")));
+    const marker = JSON.parse(stripBom(readFileSync11(markerPath, "utf8")));
     if (marker.kind !== "pi-managed-install" || marker.schemaVersion !== 1 || marker.layout !== "releases-v1") {
       throw new Error();
     }
@@ -21368,6 +21508,9 @@ async function handlePackageCommand(args, runtimeOptions = {}) {
     if (event.type === "start") {
       process.stdout.write(chalk6.dim(`${event.message}
 `));
+    } else if (event.type === "progress" && event.message) {
+      process.stdout.write(chalk6.yellow(`${event.message}
+`));
     }
   });
   try {
@@ -21914,7 +22057,15 @@ async function main(args, options) {
     cleanupWindowsSelfUpdateQuarantine(getPackageDir());
   }
   cleanupManagedInstall();
-  const cwd = process.cwd();
+  let cwd;
+  try {
+    cwd = process.cwd();
+  } catch (error) {
+    if (error.code !== "ENOENT")
+      throw error;
+    console.error(chalk7.red("Error: The current working directory no longer exists. Change to an existing directory and try again."));
+    process.exit(1);
+  }
   const agentDir = getAgentDir();
   const bootstrapSettingsManager = SettingsManager.create(cwd, agentDir, { projectTrusted: false });
   applyHttpProxySettings(bootstrapSettingsManager.getGlobalSettings().httpProxy);

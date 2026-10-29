@@ -19,7 +19,7 @@ import {
   truncateLine,
   truncateTail,
   wrapToolDefinition
-} from "./chunk-T5YZVFVX.js";
+} from "./chunk-SKZPKAGV.js";
 import {
   getLanguageFromPath,
   highlightCode,
@@ -3049,9 +3049,10 @@ async function resizeImageInProcess(inputBytes, mimeType, options) {
     let currentWidth = targetWidth;
     let currentHeight = targetHeight;
     while (true) {
-      const candidates = tryEncodings(currentWidth, currentHeight, qualitySteps);
-      for (const candidate of candidates) {
-        if (candidate.encodedSize < opts.maxBytes) {
+      const [png, jpeg, ...lowerQualityJpegs] = tryEncodings(currentWidth, currentHeight, qualitySteps);
+      const preferred = jpeg && jpeg.encodedSize < png.encodedSize ? [jpeg, png] : [png, jpeg];
+      for (const candidate of [...preferred, ...lowerQualityJpegs]) {
+        if (candidate && candidate.encodedSize < opts.maxBytes) {
           return {
             data: candidate.data,
             mimeType: candidate.mimeType,

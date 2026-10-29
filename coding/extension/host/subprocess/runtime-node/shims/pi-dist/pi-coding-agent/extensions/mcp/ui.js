@@ -43,6 +43,9 @@ export class McpManagerView {
         if (this.inputTarget)
             this.inputTarget.focused = value;
     }
+    get capturesViewportInput() {
+        return this.inputHandler?.capturesViewportInput === true;
+    }
     setContent(content, inputHandler, inputTarget) {
         if (this.inputTarget)
             this.inputTarget.focused = false;
@@ -77,9 +80,11 @@ export class McpManagerView {
                 const footer = `${keyHint("tui.select.confirm", menu.confirmLabel)} • ${keyHint("tui.select.cancel", menu.cancelLabel)}`;
                 if (menu.items.length === 0) {
                     body.push(new Text(this.theme.fg("muted", menu.empty ?? "Nothing to show."), 1, 0));
-                    this.setContent(frame(this.theme, menu.title, body, keyHint("tui.select.cancel", menu.cancelLabel)), (data) => {
-                        if (this.keybindings.matches(data, "tui.select.cancel"))
-                            finish(undefined);
+                    this.setContent(frame(this.theme, menu.title, body, keyHint("tui.select.cancel", menu.cancelLabel)), {
+                        handleInput: (data) => {
+                            if (this.keybindings.matches(data, "tui.select.cancel"))
+                                finish(undefined);
+                        },
                     });
                     return;
                 }
@@ -94,7 +99,7 @@ export class McpManagerView {
                 list.onSelect = (item) => finish(item.value);
                 list.onCancel = () => finish(undefined);
                 body.push(list);
-                this.setContent(frame(this.theme, menu.title, body, footer), (data) => list.handleInput(data));
+                this.setContent(frame(this.theme, menu.title, body, footer), list);
             };
             render();
             unsubscribe = subscribe?.(() => {
@@ -109,9 +114,11 @@ export class McpManagerView {
             this.setContent(frame(this.theme, title, body));
             return;
         }
-        this.setContent(frame(this.theme, title, body, keyHint("tui.select.cancel", "cancel")), (data) => {
-            if (this.keybindings.matches(data, "tui.select.cancel"))
-                onCancel();
+        this.setContent(frame(this.theme, title, body, keyHint("tui.select.cancel", "cancel")), {
+            handleInput: (data) => {
+                if (this.keybindings.matches(data, "tui.select.cancel"))
+                    onCancel();
+            },
         });
     }
     redirectUrl(title, authorizationUrl, signal) {
@@ -140,27 +147,29 @@ export class McpManagerView {
                 new Text(this.theme.fg("muted", "If the browser runs on another machine, paste the URL it was redirected to:"), 1, 0),
                 input,
             ];
-            this.setContent(frame(this.theme, title, body, `${keyHint("tui.select.confirm", "submit")} • ${keyHint("tui.select.cancel", "cancel")}`), (data) => {
-                if (this.keybindings.matches(data, "tui.select.confirm")) {
-                    const value = input.getValue().trim();
-                    if (value)
-                        finish(value);
-                    return;
-                }
-                if (this.keybindings.matches(data, "tui.select.cancel")) {
-                    finish(undefined);
-                    return;
-                }
-                if (this.keybindings.matches(data, "app.message.copy")) {
-                    void link.copy();
-                    return;
-                }
-                input.handleInput(data);
+            this.setContent(frame(this.theme, title, body, `${keyHint("tui.select.confirm", "submit")} • ${keyHint("tui.select.cancel", "cancel")}`), {
+                handleInput: (data) => {
+                    if (this.keybindings.matches(data, "tui.select.confirm")) {
+                        const value = input.getValue().trim();
+                        if (value)
+                            finish(value);
+                        return;
+                    }
+                    if (this.keybindings.matches(data, "tui.select.cancel")) {
+                        finish(undefined);
+                        return;
+                    }
+                    if (this.keybindings.matches(data, "app.message.copy")) {
+                        void link.copy();
+                        return;
+                    }
+                    input.handleInput(data);
+                },
             }, input);
         });
     }
     handleInput(data) {
-        this.inputHandler?.(data);
+        this.inputHandler?.handleInput?.(data);
         this.tui.requestRender();
     }
     render(width) {

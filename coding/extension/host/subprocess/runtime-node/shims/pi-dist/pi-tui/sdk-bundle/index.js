@@ -1637,7 +1637,7 @@ function findWordForward(text, cursor, options) {
 __name(findWordForward, "findWordForward");
 
 // pi-dist/pi-tui/components/select-list.js
-import { getKeybindings as getKeybindings2 } from "../keybindings.js";
+import { getKeybindings as getKeybindings2, getSelectPageIndex } from "../keybindings.js";
 import { truncateToWidth, visibleWidth as visibleWidth3 } from "../utils.js";
 var DEFAULT_PRIMARY_COLUMN_WIDTH = 32;
 var PRIMARY_COLUMN_GAP = 2;
@@ -1648,6 +1648,7 @@ var SelectList = class {
   static {
     __name(this, "SelectList");
   }
+  capturesViewportInput = true;
   items = [];
   filteredItems = [];
   selectedIndex = 0;
@@ -1737,11 +1738,17 @@ var SelectList = class {
   }
   handleInput(keyData) {
     const kb = getKeybindings2();
+    const pageIndex = getSelectPageIndex(kb, keyData, this.selectedIndex, this.filteredItems.length, this.maxVisible);
     if (kb.matches(keyData, "tui.select.up")) {
       this.selectedIndex = this.selectedIndex === 0 ? this.filteredItems.length - 1 : this.selectedIndex - 1;
       this.notifySelectionChange();
     } else if (kb.matches(keyData, "tui.select.down")) {
       this.selectedIndex = this.selectedIndex === this.filteredItems.length - 1 ? 0 : this.selectedIndex + 1;
+      this.notifySelectionChange();
+    } else if (pageIndex !== void 0) {
+      if (this.filteredItems.length === 0 || pageIndex === this.selectedIndex)
+        return;
+      this.selectedIndex = pageIndex;
       this.notifySelectionChange();
     } else if (kb.matches(keyData, "tui.select.confirm")) {
       const selectedItem = this.filteredItems[this.selectedIndex];
@@ -1987,6 +1994,10 @@ var Editor = class {
   };
   /** Focusable interface - set by TUI when focus changes */
   focused = false;
+  /** The open autocomplete menu receives fullscreen viewport keys, such as PageUp/PageDown. */
+  get capturesViewportInput() {
+    return this.autocompleteState !== null;
+  }
   tui;
   theme;
   paddingX = 0;
@@ -2336,7 +2347,7 @@ var Editor = class {
         this.cancelAutocomplete();
         return;
       }
-      if (kb.matches(data, "tui.select.up") || kb.matches(data, "tui.select.down")) {
+      if (kb.matches(data, "tui.select.up") || kb.matches(data, "tui.select.down") || kb.matches(data, "tui.select.pageUp") || kb.matches(data, "tui.select.pageDown")) {
         this.autocompleteList.handleInput(data);
         return;
       }
@@ -5553,11 +5564,18 @@ __name(renderLatex, "renderLatex");
 
 // pi-dist/pi-tui/components/markdown.js
 import { getCapabilities as getCapabilities2, hyperlink, isImageLine } from "../terminal-image.js";
-import { applyBackgroundToLine as applyBackgroundToLine2, flattenLines as flattenLines3, visibleWidth as visibleWidth8, wrapTextWithAnsi as wrapTextWithAnsi2 } from "../utils.js";
+import { applyBackgroundToLine as applyBackgroundToLine2, cjkPunctuationRegex, flattenLines as flattenLines3, visibleWidth as visibleWidth8, wrapTextWithAnsi as wrapTextWithAnsi2 } from "../utils.js";
 var STRICT_STRIKETHROUGH_REGEX = /^(~~)(?=[^\s~])((?:\\.|[^\\])*?(?:\\.|[^\s~\\]))\1(?=[^~]|$)/;
-var StrictStrikethroughTokenizer = class extends Tokenizer {
+var MarkdownTokenizer = class extends Tokenizer {
   static {
-    __name(this, "StrictStrikethroughTokenizer");
+    __name(this, "MarkdownTokenizer");
+  }
+  url(src) {
+    const token = super.url(src);
+    if (!token)
+      return void 0;
+    const punctuationIndex = token.raw.search(cjkPunctuationRegex);
+    return punctuationIndex < 0 ? token : super.url(token.raw.slice(0, punctuationIndex));
   }
   del(src) {
     const match = STRICT_STRIKETHROUGH_REGEX.exec(src);
@@ -5705,7 +5723,7 @@ function trimPartialClosingFences(tokens) {
 __name(trimPartialClosingFences, "trimPartialClosingFences");
 var markdownParser = new Marked();
 markdownParser.setOptions({
-  tokenizer: new StrictStrikethroughTokenizer()
+  tokenizer: new MarkdownTokenizer()
 });
 markdownParser.use({
   tokenizer: { emStrong: markedCjkFriendly().tokenizer?.emStrong },
@@ -6549,12 +6567,13 @@ var ScrollView = class extends Container2 {
 };
 
 // pi-dist/pi-tui/components/settings-list.js
-import { getKeybindings as getKeybindings5 } from "../keybindings.js";
+import { getKeybindings as getKeybindings5, getSelectPageIndex as getSelectPageIndex2 } from "../keybindings.js";
 import { truncateToWidth as truncateToWidth4, visibleWidth as visibleWidth9, wrapTextWithAnsi as wrapTextWithAnsi3 } from "../utils.js";
 var SettingsList = class {
   static {
     __name(this, "SettingsList");
   }
+  capturesViewportInput = true;
   items;
   filteredItems;
   theme;
@@ -6705,6 +6724,7 @@ var SettingsList = class {
     }
     const kb = getKeybindings5();
     const displayItems = this.getDisplayItems();
+    const pageIndex = getSelectPageIndex2(kb, data, this.selectedIndex, displayItems.length, this.maxVisible);
     if (kb.matches(data, "tui.select.up")) {
       if (displayItems.length === 0)
         return;
@@ -6713,6 +6733,10 @@ var SettingsList = class {
       if (displayItems.length === 0)
         return;
       this.selectedIndex = this.selectedIndex === displayItems.length - 1 ? 0 : this.selectedIndex + 1;
+    } else if (pageIndex !== void 0) {
+      if (displayItems.length === 0)
+        return;
+      this.selectedIndex = pageIndex;
     } else if (kb.matches(data, "tui.select.confirm") || data === " " && (!this.searchEnabled || this.searchInput?.getValue().length === 0)) {
       this.activateItem();
     } else if (kb.matches(data, "tui.select.cancel")) {
@@ -6872,7 +6896,7 @@ var VStack = class extends Stack {
 };
 
 // pi-dist/pi-tui/index.js
-import { getKeybindings as getKeybindings8, KeybindingsManager, setKeybindings, TUI_KEYBINDINGS } from "../keybindings.js";
+import { getKeybindings as getKeybindings8, getSelectPageIndex as getSelectPageIndex3, KeybindingsManager, setKeybindings, TUI_KEYBINDINGS } from "../keybindings.js";
 import { decodeKittyPrintable as decodeKittyPrintable2, isKeyRelease as isKeyRelease2, isKeyRepeat, isKittyProtocolActive, Key, matchesKey as matchesKey2, parseKey, setKittyProtocolActive as setKittyProtocolActive2 } from "../keys.js";
 import { getNativeClipboard } from "../native-platform.js";
 
@@ -8883,7 +8907,10 @@ var TuiAltScreen = class extends TuiBase {
   flash(message, durationMs) {
     this.flashes.flash(message, durationMs);
   }
-  shouldDeferViewportInputToOverlay() {
+  /** Focused overlays and components that capture viewport input receive viewport keys instead of the transcript. */
+  shouldDeferViewportInput() {
+    if (this.getFocusedComponent()?.capturesViewportInput)
+      return true;
     return this.isOverlayFocused() && this.activeSearch?.overlay?.isFocused() !== true;
   }
   clearComponentMouseGesture() {
@@ -8965,7 +8992,7 @@ var TuiAltScreen = class extends TuiBase {
         return { consume: true };
       }
     }
-    if (this.shouldDeferViewportInputToOverlay())
+    if (this.shouldDeferViewportInput())
       return void 0;
     if (keybindings.matches(data, "tui.altScreen.pageUp")) {
       if (!isRelease) {
@@ -9895,6 +9922,7 @@ import * as path2 from "node:path";
 import { deleteKittyImage as deleteKittyImage2, isImageLine as isImageLine4 } from "../terminal-image.js";
 import { TuiBase as TuiBase2 } from "../tui.js";
 import { visibleWidth as visibleWidth14 } from "../utils.js";
+var OSC133_ZONE_PREFIX3 = /^(?:\x1b\]133;[ABC](?:\x07|\x1b\\))+/;
 var KITTY_SEQUENCE_PREFIX = "\x1B_G";
 var MAX_RENDER_WRITE_CHARS = 1024 * 1024;
 var BoundedTerminalWriter = class {
@@ -10114,7 +10142,7 @@ var TuiMainScreen = class extends TuiBase2 {
       const targetScreenRow = targetRow - viewportTop;
       return targetScreenRow - currentScreenRow;
     }, "computeLineDiff");
-    let newLines = this.resolveFakeCursors(this.render(width));
+    let newLines = this.resolveFakeCursors(this.render(width).map((line) => line.replace(OSC133_ZONE_PREFIX3, "")));
     if (this.hasOverlayEntries) {
       newLines = this.compositeOverlays(newLines, width, height);
     }
@@ -10496,6 +10524,7 @@ export {
   getNativeClipboard,
   getOsc8LinkAtColumn2 as getOsc8LinkAtColumn,
   getPngDimensions2 as getPngDimensions,
+  getSelectPageIndex3 as getSelectPageIndex,
   getTerminalColorMode,
   getWebpDimensions,
   hyperlink2 as hyperlink,

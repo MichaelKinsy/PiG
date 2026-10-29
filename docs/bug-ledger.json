@@ -1838,6 +1838,27 @@
       ]
     },
     {
+      "id": "BF-121ba35",
+      "title": "fix(durable/core): observers of one conversation view share its mount, and a bad window is a RangeError (Pi)",
+      "symptom": "fix(durable/core): observers of one conversation view share its mount, and a bad window is a RangeError (Pi)",
+      "rootCause": "A second observer of a mounted view only loads its window (view.ts attach: the mount exists), so its attach spends Pi's passes (F-ticks-watch: 21, not 39); the facade gives every observer of a conversation the one docs object of the mount (U-harness-view shares one mount between concurrent observers; gives each observer its own window over one mount); a window the core rejects reaches the host as the RangeError view.ts throws (U-harness-view rejects window bounds that are not integers). TestResolveWindow checks the rejection's name.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "121ba35041",
+          "date": "2026-10-27"
+        }
+      ],
+      "tests": [
+        "durable/core/view_test.go::TestResolveWindow"
+      ]
+    },
+    {
       "id": "BF-1268115",
       "title": "fix(model runtime): a cancelled request to a caller-owned provider the runtime does not know is aborted, not…",
       "symptom": "fix(model runtime): a cancelled request to a caller-owned provider the runtime does not know is aborted, not a setup error",
@@ -2726,6 +2747,25 @@
         "tui/editor_status_test.go::TestEmbeddedCompactionStatusTakesTheEditorBorderColorLikeWorking",
         "tui/terminal_image_test.go::TestHerdrWithGraphicsSignalRendersKittyImage"
       ]
+    },
+    {
+      "id": "BF-1a893bc",
+      "title": "fix(durable/core): report task_interrupted from the runtime's commit path for every task (Pi scheduler.ts)",
+      "symptom": "fix(durable/core): report task_interrupted from the runtime's commit path for every task (Pi scheduler.ts)",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "1a893bc60d",
+          "date": "2026-10-27"
+        }
+      ],
+      "tests": []
     },
     {
       "id": "BF-1b5540a",
@@ -8052,6 +8092,27 @@
       ]
     },
     {
+      "id": "BF-47aad78",
+      "title": "fix(durable/core): a phase span answer that is no uint32 handle names no span",
+      "symptom": "fix(durable/core): a phase span answer that is no uint32 handle names no span",
+      "rootCause": "The host's answer to the phaseSpan hook was converted from float64 without a range check, so a negative or out-of-range value became an implementation-defined handle.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "47aad78862",
+          "date": "2026-10-27"
+        }
+      ],
+      "tests": [
+        "durable/core/session/phase_answered_test.go::TestPhaseAnsweredTakesOnlyAUint32SpanHandle"
+      ]
+    },
+    {
       "id": "BF-47c3007",
       "title": "`/mcp` now opens at once while servers are still connecting, and connection actions (reconnect, enable…",
       "symptom": "`/mcp` now opens at once while servers are still connecting, and connection actions (reconnect, enable, disable) run in the background so the manager stays usable.",
@@ -11054,6 +11115,27 @@
         "tui/extension_dialog_bindings_test.go::TestExtensionDialogCountdownMatchesPi",
         "tui/extension_dialog_bindings_test.go::TestExtensionDialogsMatchPiBindingsAndPalette",
         "tui/markdown_streaming_reuse_test.go::TestStreamedMarkdownRendersAgainAfterHyperlinksOrColorChange"
+      ]
+    },
+    {
+      "id": "BF-5ec5204",
+      "title": "fix(durable/core): join split surrogates through jv.AppendConcat, not byte slices",
+      "symptom": "fix(durable/core): join split surrogates through jv.AppendConcat, not byte slices",
+      "rootCause": "The pending-op fold sliced a JS string at byte offsets 3. The join of a trailing high and a leading low surrogate now lives in jv beside Concat, on bytes.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "5ec5204a10",
+          "date": "2026-10-27"
+        }
+      ],
+      "tests": [
+        "durable/core/jv/append_concat_test.go::TestAppendConcatJoinsSurrogatesAtTheBoundary"
       ]
     },
     {
@@ -17565,6 +17647,27 @@
       ]
     },
     {
+      "id": "BF-78f1007",
+      "title": "fix(durable/contract): run the rows whose test has a real-time window alone, the reference's run before the…",
+      "symptom": "fix(durable/contract): run the rows whose test has a real-time window alone, the reference's run before the candidate's",
+      "rootCause": "U-codemode's 'times a script out across a restart' gives a script 300 ms to start the QuickJS sandbox and reach its first tool (148-207 ms of CPU, on both sides). The gate ran the row beside seven others, two vitest runs of four forks each, so the host starved either run: in six full runs at -j 8 the candidate missed the window four times and the reference once (the test then hangs until vitest's 5 s). A row marked exclusive now runs alone before any other row, and its two runs take turns.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "78f1007d3e",
+          "date": "2026-10-28"
+        }
+      ],
+      "tests": [
+        "durable/contract/test/exclusive.test.mjs"
+      ]
+    },
+    {
       "id": "BF-78f2d55",
       "title": "`pig mcp login --help` described `--timeout` as only the wait for the browser; it limits the whole sign-in…",
       "symptom": "`pig mcp login --help` described `--timeout` as only the wait for the browser; it limits the whole sign-in, as Pi 148622bc now says.",
@@ -18163,6 +18266,25 @@
         "mcp/oauth/url_href_oracle_test.go::TestDiscoveryRequestsTheURLWithoutItsFragment",
         "mcp/oauth/url_href_oracle_test.go::TestOAuthURLsMatchPi"
       ]
+    },
+    {
+      "id": "BF-7f9ca19",
+      "title": "fix: relocate the transcript wire encoders' perf annotations; raise the headless default size ceilings for…",
+      "symptom": "fix: relocate the transcript wire encoders' perf annotations; raise the headless default size ceilings for the Pi pin",
+      "rootCause": "The transcript items' MarshalJSON encode one small wire object each (Pi's { kind, ... The headless default linux_amd64 and darwin_arm64 ceilings move to the measured size rounded up to 8 KiB, owner-approved 2026-10-27.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "7f9ca19d10",
+          "date": "2026-10-27"
+        }
+      ],
+      "tests": []
     },
     {
       "id": "BF-7fc4ef4",
@@ -23786,6 +23908,25 @@
       "tests": []
     },
     {
+      "id": "BF-9eda512",
+      "title": "fix(durable/harness): a run's own context reads resolve no settings; the retention is read only for an idle…",
+      "symptom": "fix(durable/harness): a run's own context reads resolve no settings; the retention is read only for an idle conversation (Pi scheduler.ts runtime.context)",
+      "rootCause": "keepContext read settings.contextRetentionMs before it looked at the conversation: four resolutions in every round of one generation with a tool call, where Pi resolves the retention only in the idle branch.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "9eda51265b",
+          "date": "2026-10-28"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-9f4702c",
       "title": "A failed extension shortcut handler is now reported as `Error: Shortcut handler error: …` in the error…",
       "symptom": "Previously it was shown as a warning.",
@@ -24326,6 +24467,25 @@
       "tests": []
     },
     {
+      "id": "BF-a11fc08",
+      "title": "fix(durable): list D206 in the docs bundle; the cut-off tool case types its task id; the retry delay product…",
+      "symptom": "fix(durable): list D206 in the docs bundle; the cut-off tool case types its task id; the retry delay product is wrapped in float64",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "a11fc08376",
+          "date": "2026-10-28"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-a13bae4",
       "title": "A `read` result shown in the transcript no longer keeps the file text a second time as its structured content",
       "symptom": "A `read` result shown in the transcript no longer keeps the file text a second time as its structured content.",
@@ -24473,6 +24633,27 @@
         }
       ],
       "tests": []
+    },
+    {
+      "id": "BF-a1efda7",
+      "title": "fix(durable/core): the host resolves the Harness settings as often as the core did (Pi resolves…",
+      "symptom": "fix(durable/core): the host resolves the Harness settings as often as the core did (Pi resolves HarnessOptions.settings at each use)",
+      "rootCause": "The core counts its resolutions of the settings it was sent (a turn phase's settings, the context retention checks, the submission's queue modes) and publishes the count in a settings notice (ABI 12) at the end of the event; the host resolves them as often, as Pi's callback is seen to (harness-restart-failure.test.ts counts 49 for a round of one generation with one tool call). U-harness-restart-failure passes on native (18 tests).",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "a1efda7e2b",
+          "date": "2026-10-28"
+        }
+      ],
+      "tests": [
+        "durable/core/abi/spec/spec_test.go::TestTablesUnchanged"
+      ]
     },
     {
       "id": "BF-a1fa6d1",
@@ -24903,6 +25084,27 @@
         "test/extension-conformance/extension_api_go_test.go::TestExtensionAPIToolResultPreviewGo",
         "test/extension-conformance/extension_api_rust_test.go::TestRustSDKToolResultPreview",
         "test/extension-conformance/python_extension_api_test.go::TestPythonSDKToolResultPreview"
+      ]
+    },
+    {
+      "id": "BF-a4e2637",
+      "title": "fix(durable/core): revert the settings notice (ABI 12); the core resolves the settings from the snapshot the…",
+      "symptom": "fix(durable/core): revert the settings notice (ABI 12); the core resolves the settings from the snapshot the host sends (D206)",
+      "rootCause": "The core counted its settings resolutions and told the host in a settings notice so the host's callback would be called as often as Pi's. The notice, its counting in sweep/sched/submit/turnhost/handler and the host's loop are removed and abi_id is the one before it. The host keeps reading no extensions before a send. D206 records the difference.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "a4e263792c",
+          "date": "2026-10-28"
+        }
+      ],
+      "tests": [
+        "durable/core/abi/spec/spec_test.go::TestTablesUnchanged"
       ]
     },
     {
@@ -28622,6 +28824,25 @@
       ]
     },
     {
+      "id": "BF-c5b14a5",
+      "title": "fix(durable/contract): a vitest run keeps its cache out of the reference checkout, so E17 and E18 list the…",
+      "symptom": "fix(durable/contract): a vitest run keeps its cache out of the reference checkout, so E17 and E18 list the same directory in every pass",
+      "rootCause": "E17 and E18 run `ls` in the reference's packages/durable. The default vitest cache, packages/durable/node_modules/.vite, made the first U row add node_modules to that listing; `contract all` captures the reference once, in its first pass, before any U row, so every later pass compared a listing with node_modules against one without it and both rows failed on every fresh clone (wasm-tinygo, native and the wasm-go diagnostic, in two full runs).",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "c5b14a57be",
+          "date": "2026-10-28"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-c5ce588",
       "title": "Gemini 4 and later models send `thinkingLevel` instead of `thinkingBudget`, fixing Gemini 4 Argon on Vertex…",
       "symptom": "Gemini 4 and later models send `thinkingLevel` instead of `thinkingBudget`, fixing Gemini 4 Argon on Vertex and the ignored thinking level on the Gemini API.",
@@ -31512,6 +31733,28 @@
         "tui/markdown_blockquote_style_test.go::TestMarkdownEmphasisAndSetextMatchUpstreamBytes",
         "tui/markdown_blockquote_style_test.go::TestMarkdownParagraphSpacingBeforeInterruptingBlockMatchesUpstream",
         "tui/word_dictionary_navigation_test.go::TestEditor_WordBoundaryDictionary"
+      ]
+    },
+    {
+      "id": "BF-d91ce8f",
+      "title": "Fix in shipped code",
+      "symptom": "Fix in shipped code",
+      "rootCause": "Mark the Bedrock fallback diagnostic's Date.now() and the node:sqlite RunCounted context with the Pi lines they port, make the changes() count conversion explicit, type the cutoff-ticks harness, and split the browser target out of LoginDialogComponent.ShowAuth so it returns nothing as Pi's showAuth does.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "d91ce8f74a",
+          "date": "2026-10-27"
+        }
+      ],
+      "tests": [
+        "tui/login_dialog_device_code_test.go::TestLoginURLsOpenOnlyHTTPSignInURLs",
+        "tui/login_dialog_device_code_test.go::TestLoginURLsReplaceControlCharactersInURLsThatAreNotWebURLs"
       ]
     },
     {
@@ -39784,6 +40027,25 @@
         "internal/chord/chordjson/own_key_order_test.go::TestCopyFollowsPisKeyOrderAndMessages",
         "internal/codingagent/native_thinking_options_test.go::TestSubprocessRequestMetadataKeepsKeyOrder"
       ]
+    },
+    {
+      "id": "BF-ff225d2",
+      "title": "fix(durable/core/host/cf): the report spans carry task_interrupted's reason, as Pi 's safeReport does",
+      "symptom": "fix(durable/core/host/cf): the report spans carry task_interrupted's reason, as Pi 's safeReport does",
+      "rootCause": "task_parked is gone from ReportInfo; task_interrupted records reason, extension and task.id like task_faulted and task_outdated.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "ff225d26a5",
+          "date": "2026-10-27"
+        }
+      ],
+      "tests": []
     },
     {
       "id": "BF-ffcd800",

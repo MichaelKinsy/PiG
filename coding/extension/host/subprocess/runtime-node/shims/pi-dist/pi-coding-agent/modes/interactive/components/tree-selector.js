@@ -1232,6 +1232,9 @@ export class TreeSelectorComponent extends Container {
         this.treeContainer.clear();
         this.treeContainer.addChild(this.treeList);
     }
+    get capturesViewportInput() {
+        return this.labelInput === null;
+    }
     handleInput(keyData) {
         if (this.labelInput) {
             this.labelInput.handleInput(keyData);

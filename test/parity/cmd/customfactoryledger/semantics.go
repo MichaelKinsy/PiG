@@ -33,6 +33,7 @@ func reviewedMember(root, id string) (reviewedSemantic, bool) {
 			"render":          "calls component rendering synchronously with resolved content-cell width and returns ordered terminal lines without trailing newlines",
 			"handleInput":     "optional synchronous handler receives each eligible raw input chunk in order",
 			"wantsKeyRelease": "optional boolean opts into Kitty release delivery; omission is false",
+			"capturesViewportInput": "optional boolean; while true and focused, fullscreen viewport keys (tui.altScreen scrolling and prompt jumps) go to the component instead of the transcript, as for a focused overlay; omission is false",
 			"invalidate":      "synchronously discards component-local cached rendering state",
 			"handleMouse":     "optional synchronous handler receives each normalized mouse event with component-relative coordinates; undefined or a result claiming none of handled, capture, or focus passes the event on",
 		}[property]
@@ -98,7 +99,7 @@ func reviewedRoot(root string) (reviewedSemantic, bool) {
 }
 
 var reviewedSupportProperties = map[string]map[string]string{
-	"pkg:coding-agent/.#SourceInfo":  {"baseDir": "optional resolved source base directory", "origin": "source origin classification", "path": "optional source path", "scope": "source scope classification", "source": "source identifier"},
+	"pkg:coding-agent/.#SourceInfo":  {"baseDir": "optional resolved source base directory", "changelogPath": "optional path of the package changelog shown after an update", "origin": "source origin classification", "path": "optional source path", "scope": "source scope classification", "source": "source identifier"},
 	"pkg:tui/.#KeybindingConflict":   {"key": "conflicting normalized key identifier", "keybindings": "ordered actions bound to the same key"},
 	"pkg:tui/.#KeybindingDefinition": {"defaultKeys": "ordered default normalized key identifiers", "description": "human-readable action description"},
 	"pkg:coding-agent/.#ThemeStyle": {
@@ -149,7 +150,7 @@ var tuiBehavior = map[string]string{
 	"addChild": "appends one root component preserving insertion order", "removeChild": "removes the first strict-identical root component if mounted", "clear": "removes all root children", "getShowHardwareCursor": "returns hardware-cursor preference", "setShowHardwareCursor": "updates hardware-cursor preference and requests render", "getClearOnShrink": "returns regular-renderer shrink-clear preference", "setClearOnShrink": "updates shrink-clear preference",
 	"setFocus": "synchronously transitions strict component focus and Focusable flags", "showOverlay": "synchronously appends one mounted overlay entry, conditionally focuses it, hides terminal cursor, requests render, and returns an identity handle", "hideOverlay": "permanently removes the append-stack tail independent of visual focus order", "hasOverlay": "returns whether any mounted entry is currently visible",
 	"start": "starts terminal input/render lifecycle", "stop": "stops render timers and terminal lifecycle with optional preserve-screen behavior", "render": "renders root component lines for the supplied width", "renderNow": "cancels pending coalesced work and renders immediately; force resets renderer state", "requestRender": "coalesces demand to the 16 ms frame cadence; force marks the next frame full", "invalidate": "invalidates mounted roots and overlay components",
-	"addInputListener": "adds a listener in Set insertion order and returns an identity disposer", "removeInputListener": "removes the strict-identical listener", "handleInput": "optional Component input method inherited by TUI shape", "handleMouse": "Container mouse dispatch inherited by TUI: routes an in-bounds event to the child under its row with child-local coordinates and returns the first claiming dispatch result", "wantsKeyRelease": "optional Component release opt-in inherited by TUI shape",
+	"addInputListener": "adds a listener in Set insertion order and returns an identity disposer", "removeInputListener": "removes the strict-identical listener", "handleInput": "optional Component input method inherited by TUI shape", "handleMouse": "Container mouse dispatch inherited by TUI: routes an in-bounds event to the child under its row with child-local coordinates and returns the first claiming dispatch result", "wantsKeyRelease": "optional Component release opt-in inherited by TUI shape", "capturesViewportInput": "optional Component viewport-key capture flag inherited by TUI shape",
 	"onTerminalColorSchemeChange": "registers a color-scheme listener and returns an identity disposer", "setTerminalColorSchemeNotifications": "idempotently enables or disables terminal color notifications", "queryTerminalColors": "writes one combined OSC 10, OSC 11, OSC 4 and DA1 query and asynchronously resolves with the replies so far when DA1 or every color reply arrives or at the timeout; unreported colors are undefined and the palette is set only when all 16 arrived; replies after the timeout go to onLateReply",
 }
 

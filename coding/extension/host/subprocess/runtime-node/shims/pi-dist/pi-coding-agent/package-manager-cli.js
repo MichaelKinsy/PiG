@@ -852,6 +852,9 @@ export async function handlePackageCommand(args, runtimeOptions = {}) {
         if (event.type === "start") {
             process.stdout.write(chalk.dim(`${event.message}\n`));
         }
+        else if (event.type === "progress" && event.message) {
+            process.stdout.write(chalk.yellow(`${event.message}\n`));
+        }
     });
     try {
         switch (options.command) {

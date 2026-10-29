@@ -41658,9 +41658,9 @@
       "kind": "variable",
       "exported": false,
       "shape": {
-        "type": "[60]map[ModelThinkingLevel]*string"
+        "type": "[58]map[ModelThinkingLevel]*string"
       },
-      "shapeHash": "sha256:de7f664ae015a004f44f062e01f6b63851d67983c2917630fdc4fea57f51a0c6"
+      "shapeHash": "sha256:4fda5769169c743da539774d6d6ab831f9c6d68b66ea59ac53191e9875bac9ef"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/ai#generatedToolCallID",

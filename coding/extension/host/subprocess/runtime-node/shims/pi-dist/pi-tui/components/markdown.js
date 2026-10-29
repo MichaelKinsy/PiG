@@ -2,9 +2,18 @@ import { Marked, Tokenizer } from "../../../marked/lib/marked.esm.js";
 import markedCjkFriendly from "../../../marked-cjk-friendly/dist/index.js";
 import { renderLatex } from "../latex.js";
 import { getCapabilities, hyperlink, isImageLine } from "../terminal-image.js";
-import { applyBackgroundToLine, flattenLines, visibleWidth, wrapTextWithAnsi } from "../utils.js";
+import { applyBackgroundToLine, cjkPunctuationRegex, flattenLines, visibleWidth, wrapTextWithAnsi } from "../utils.js";
 const STRICT_STRIKETHROUGH_REGEX = /^(~~)(?=[^\s~])((?:\\.|[^\\])*?(?:\\.|[^\s~\\]))\1(?=[^~]|$)/;
-class StrictStrikethroughTokenizer extends Tokenizer {
+class MarkdownTokenizer extends Tokenizer {
+    url(src) {
+        const token = super.url(src);
+        if (!token)
+            return undefined;
+        // Bare URLs stop at CJK punctuation; explicit links and angle autolinks
+        // use separate tokenizers and can still contain these characters.
+        const punctuationIndex = token.raw.search(cjkPunctuationRegex);
+        return punctuationIndex < 0 ? token : super.url(token.raw.slice(0, punctuationIndex));
+    }
     del(src) {
         const match = STRICT_STRIKETHROUGH_REGEX.exec(src);
         if (!match) {
@@ -161,7 +170,7 @@ function trimPartialClosingFences(tokens) {
 }
 const markdownParser = new Marked();
 markdownParser.setOptions({
-    tokenizer: new StrictStrikethroughTokenizer(),
+    tokenizer: new MarkdownTokenizer(),
 });
 markdownParser.use({
     tokenizer: { emStrong: markedCjkFriendly().tokenizer?.emStrong },

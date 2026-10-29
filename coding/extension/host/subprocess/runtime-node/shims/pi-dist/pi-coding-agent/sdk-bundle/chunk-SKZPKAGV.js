@@ -287,7 +287,7 @@ import { getCapabilities, getImageDimensions, hyperlink, imageFallback } from ".
 // pi-dist/pi-coding-agent/utils/ansi.js
 var ST = "(?:\\u0007|\\u001B\\u005C|\\u009C)";
 var OSC_START = "\\u001B\\]";
-var CSI_START = "[\\u001B\\u009B][[\\]()#;?]*(?:\\d{1,4}(?:[;:]\\d{0,4})*)?";
+var CSI_START = "(?:(?:\\u001B\\[|\\u009B)[<=>]|[\\u001B\\u009B][[\\]()#;?]*)(?:\\d{1,4}(?:[;:]\\d{0,4})*)?";
 var CSI_FINAL = "[\\dA-PR-TZcf-nq-uy=><~]";
 var ansiRegex = new RegExp(`(?:${OSC_START}[\\s\\S]*?${ST})|${CSI_START}${CSI_FINAL}`, "g");
 var unfinishedAnsiAtEndRegex = new RegExp(`(?:${OSC_START}(?:[^\\u0007\\u009C\\u001B]|\\u001B(?!\\\\))*|${CSI_START})$`);

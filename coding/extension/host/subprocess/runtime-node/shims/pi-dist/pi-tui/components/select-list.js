@@ -1,4 +1,4 @@
-import { getKeybindings } from "../keybindings.js";
+import { getKeybindings, getSelectPageIndex } from "../keybindings.js";
 import { truncateToWidth, visibleWidth } from "../utils.js";
 const DEFAULT_PRIMARY_COLUMN_WIDTH = 32;
 const PRIMARY_COLUMN_GAP = 2;
@@ -6,6 +6,7 @@ const MIN_DESCRIPTION_WIDTH = 10;
 const normalizeToSingleLine = (text) => text.replace(/[\r\n]+/g, " ").trim();
 const clamp = (value, min, max) => Math.max(min, Math.min(value, max));
 export class SelectList {
+    capturesViewportInput = true;
     items = [];
     filteredItems = [];
     selectedIndex = 0;
@@ -103,6 +104,7 @@ export class SelectList {
     }
     handleInput(keyData) {
         const kb = getKeybindings();
+        const pageIndex = getSelectPageIndex(kb, keyData, this.selectedIndex, this.filteredItems.length, this.maxVisible);
         // Up arrow - wrap to bottom when at top
         if (kb.matches(keyData, "tui.select.up")) {
             this.selectedIndex = this.selectedIndex === 0 ? this.filteredItems.length - 1 : this.selectedIndex - 1;
@@ -111,6 +113,13 @@ export class SelectList {
         // Down arrow - wrap to top when at bottom
         else if (kb.matches(keyData, "tui.select.down")) {
             this.selectedIndex = this.selectedIndex === this.filteredItems.length - 1 ? 0 : this.selectedIndex + 1;
+            this.notifySelectionChange();
+        }
+        // Page up/down - move by one visible page, clamped to the list bounds
+        else if (pageIndex !== undefined) {
+            if (this.filteredItems.length === 0 || pageIndex === this.selectedIndex)
+                return;
+            this.selectedIndex = pageIndex;
             this.notifySelectionChange();
         }
         // Enter

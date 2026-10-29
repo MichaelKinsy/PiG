@@ -21,8 +21,9 @@ import {
   getToolListError,
   isInstallTelemetryEnabled,
   isToolModifier,
+  markRuntimeStreamFunction,
   time
-} from "./chunk-IX4XAYCN.js";
+} from "./chunk-HXXU3UR4.js";
 import {
   createBashTool,
   createCodingTools,
@@ -35,9 +36,9 @@ import {
   createReadTool,
   createWriteTool,
   withFileMutationQueue
-} from "./chunk-4XWAF7AN.js";
+} from "./chunk-YO7W7VLN.js";
 import "./chunk-LKHC5YTL.js";
-import "./chunk-T5YZVFVX.js";
+import "./chunk-SKZPKAGV.js";
 import "./chunk-472CZNGH.js";
 import {
   createToolNameMatcher
@@ -257,6 +258,7 @@ async function createAgentSession(options = {}) {
     thinkingBudgets: settingsManager.getThinkingBudgets(),
     maxRetryDelayMs: settingsManager.getProviderRetrySettings().maxRetryDelayMs
   });
+  markRuntimeStreamFunction(agent.streamFunction, modelRuntime);
   if (hasExistingSession) {
     if (!hasThinkingEntry) {
       sessionManager.appendThinkingLevelChange(thinkingLevel);

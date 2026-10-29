@@ -1,3 +1,9 @@
+export function getSourcePackageKey(identity) {
+    return JSON.stringify({
+        source: identity.source,
+        scope: identity.scope,
+    });
+}
 /** Prefix of built-in tool and extension paths, such as `builtin:read` or `builtin:mcp`. */
 export const BUILTIN_PATH_PREFIX = "builtin:";
 /**
@@ -21,6 +27,7 @@ export function createSourceInfo(path, metadata) {
         scope: metadata.scope,
         origin: metadata.origin,
         baseDir: metadata.baseDir,
+        ...(metadata.changelogPath ? { changelogPath: metadata.changelogPath } : {}),
     };
 }
 export function createSyntheticSourceInfo(path, options) {
@@ -30,6 +37,7 @@ export function createSyntheticSourceInfo(path, options) {
         scope: options.scope ?? "temporary",
         origin: options.origin ?? "top-level",
         baseDir: options.baseDir,
+        ...(options.changelogPath ? { changelogPath: options.changelogPath } : {}),
     };
 }
 //# sourceMappingURL=source-info.js.map

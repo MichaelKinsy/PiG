@@ -1,10 +1,11 @@
-import { Container, getKeybindings, Spacer, Text, truncateToWidth } from "../../../../../pi-tui.mjs";
+import { Container, getKeybindings, getSelectPageIndex, Spacer, Text, truncateToWidth, } from "../../../../../pi-tui.mjs";
 import { theme } from "../theme/theme.js";
 import { DynamicBorder } from "./dynamic-border.js";
 /**
  * Custom user message list component with selection
  */
 class UserMessageList {
+    capturesViewportInput = true;
     messages = [];
     selectedIndex = 0;
     onSelect;
@@ -57,6 +58,7 @@ class UserMessageList {
     }
     handleInput(keyData) {
         const kb = getKeybindings();
+        const pageIndex = getSelectPageIndex(kb, keyData, this.selectedIndex, this.messages.length, this.maxVisible);
         // Up arrow - go to previous (older) message, wrap to bottom when at top
         if (kb.matches(keyData, "tui.select.up")) {
             this.selectedIndex = this.selectedIndex === 0 ? this.messages.length - 1 : this.selectedIndex - 1;
@@ -64,6 +66,12 @@ class UserMessageList {
         // Down arrow - go to next (newer) message, wrap to top when at bottom
         else if (kb.matches(keyData, "tui.select.down")) {
             this.selectedIndex = this.selectedIndex === this.messages.length - 1 ? 0 : this.selectedIndex + 1;
+        }
+        // Page up/down
+        else if (pageIndex !== undefined) {
+            if (this.messages.length === 0)
+                return;
+            this.selectedIndex = pageIndex;
         }
         // Enter - select message and branch
         else if (kb.matches(keyData, "tui.select.confirm")) {

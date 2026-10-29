@@ -1,6 +1,6 @@
 {
-  "piVersion": "1.4.0+b3a29f11",
-  "node": "v24.19.0",
+  "piVersion": "1.4.0+e7a0df27",
+  "node": "v24.22.1",
   "scenarios": [
     {
       "name": "oneChunk",
@@ -115,7 +115,7 @@
         },
         "stopReason": "toolUse",
         "responseId": "r1",
-        "durationMs": 29
+        "durationMs": 21
       }
     },
     {
@@ -1013,7 +1013,7 @@
         },
         "stopReason": "toolUse",
         "responseId": "r1",
-        "durationMs": 1
+        "durationMs": 0
       }
     },
     {
@@ -1209,7 +1209,7 @@
         },
         "stopReason": "error",
         "errorMessage": "p stream ended without a terminal event",
-        "durationMs": 1
+        "durationMs": 0
       }
     },
     {
@@ -2036,7 +2036,7 @@
         },
         "stopReason": "error",
         "errorMessage": "Unexpected token 'o', \"oops\" is not valid JSON",
-        "durationMs": 1
+        "durationMs": 0
       }
     },
     {

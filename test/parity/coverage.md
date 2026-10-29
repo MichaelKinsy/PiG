@@ -6,7 +6,7 @@ Generated from `713` PORT_MAP entries and `825` parity scenarios.
 
 - **Porting:** 636 / 638 intended-portable entries ✅ (99.7%).
 - **Behavior verification:** 632 / 636 ported entries (99.4%); 0 weak-only, 4 untested.
-- **Upstream test porting:** 708 ported / 0 partial / 0 pending (6 other dispositions; [file mapping](interfaces/test-mapping-v1.4.0+b3a29f11.json)). Of the partial/pending files, 0 deferred to 0.3.x by the [release policy](interfaces/test-porting-policy-v1.4.0+b3a29f11.json) (`deferred-0.3.x`).
+- **Upstream test porting:** 628 ported / 0 partial / 207 pending (6 other dispositions; [file mapping](interfaces/test-mapping-v1.4.0+e7a0df27.json)). Of the partial/pending files, 0 deferred to 0.3.x by the [release policy](interfaces/test-porting-policy-v1.4.0+e7a0df27.json) (`deferred-0.3.x`).
 
 Raw PORT_MAP rows: 713. Breakdown: 75 n/a (designed out) · 2 🟡 partial. See docs/parity/DIVERGENCES.md for the documented exceptions.
 
@@ -29,7 +29,7 @@ Raw PORT_MAP rows: 713. Breakdown: 75 n/a (designed out) · 2 🟡 partial. See 
 - **Four core packages (agent, ai, coding-agent, tui):** 465 / 466 intended-portable files ✅ (99.8%) from 516 rows; 463 behavioral (99.6%), 0 weak-only, 2 untested.
 - **Shipped surface (agent, ai, codemode, coding-agent, mcp, telemetry, tui; coding-agent without ):** 500 / 501 intended-portable files ✅ (99.8%) from 559 rows; 498 behavioral (99.6%), 0 weak-only, 2 untested.
 - **Whole monorepo (11 packages):** 636 / 638 intended-portable files ✅ (99.7%) from 713 rows; 632 behavioral (99.4%), 0 weak-only, 4 untested.
-- **Interface closure:** 13476 of 13476 semantic interface IDs closed (226 designed-out, 13250 ported). A file-level ✅ does not close an interface ID.
+- **Interface closure:** 12938 of 14316 semantic interface IDs closed (231 designed-out, 1378 pending, 12707 ported). A file-level ✅ does not close an interface ID.
 
 Behavioral evidence includes paired scenarios and reviewed mutation-proven Go unit tests. Unit tests are listed separately; last run refers only to paired scenarios, not unit execution or exhaustive parity.
 
