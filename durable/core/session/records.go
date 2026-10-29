@@ -147,12 +147,10 @@ var (
 	// tasks was refused.
 	// Read-only: assigned once at initialization.
 	ErrReadOnlySession = errors.New("ReadOnlySession")
-	// errReadOnlyCommit and errReadOnlyRunning are the refusals a read-only Harness returns for a commit with writes and for a call
-	// that would run tasks; they are built once, so a refusal allocates nothing.
+	// errReadOnlyCommit is the refusal a read-only Harness returns for a commit with writes; it is built once, so a refusal allocates
+	// nothing.
 	// Read-only: assigned once at initialization.
 	errReadOnlyCommit = &ReadOnlyError{What: "a commit with writes"}
-	// Read-only: assigned once at initialization.
-	errReadOnlyRunning = &ReadOnlyError{What: "running tasks"}
 	// ErrTypeError marks an error Pi throws as a TypeError.
 	// Read-only: assigned once at initialization.
 	ErrTypeError = errors.New("TypeError")
