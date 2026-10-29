@@ -99,4 +99,3 @@ func TestSavedOpenRouterListShowsRoutingVariantsOnEveryRegistryListing(t *testin
 		t.Errorf("GetProviderModelDataByID(vendor/refreshed:nitro) = %+v, want the variant of the refreshed model", variant)
 	}
 }
-
