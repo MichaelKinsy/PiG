@@ -86,6 +86,8 @@ func run() error {
 		{"image-reserved-growth", 5, []string{image, ""}, []string{image, "", ""}, false},
 		{"cleanup-without-advertised-support", 10, []string{image}, []string{"plain"}, true},
 		{"stable-deletion-order", 10, []string{"\x1b_Ga=T,i=9;A\x1b\\", "\x1b_Ga=T,i=2;B\x1b\\", "\x1b_Ga=T,i=9;A\x1b\\"}, []string{"plain"}, true},
+		{"osc133-first-render", 24, nil, []string{"\x1b]133;A\x07prompt", "\x1b]133;B\x07\x1b]133;C\x07output"}, false},
+		{"osc133-differential", 24, []string{"\x1b]133;A\x07prompt", "\x1b]133;B\x07\x1b]133;C\x07output"}, []string{"\x1b]133;A\x07prompt", "\x1b]133;B\x07\x1b]133;C\x07output", "\x1b]133;A\x1b\\reply", "\x1b]133;B\x1b\\\x1b]133;C\x1b\\done"}, false},
 	}
 	for _, c := range cases {
 		if err := probe(c.name, c.height, c.before, c.after, c.force); err != nil {
