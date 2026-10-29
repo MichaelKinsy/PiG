@@ -61,7 +61,9 @@ func TestSettingsSubmenusMatchPi(t *testing.T) {
 		{"\x1b[B", "\r"},
 		{"\x1b[A", "\x1b[A", "\r"},
 		{"\x1b[B", "\x1b[B", "\x1b[B", "\x1b[B", "\x1b[B", "\x1b[B", "\x1b[B", "\x1b[B", "\x1b[B", "\x1b[B", "\x1b[B", "\x1b[B", "\x1b[B", "\r"},
-		// Pi 1.1.0 has no select page keys; Pig pages the selection (D155, Pi PR #7680), covered by the select page key tests, so the oracle input leaves PageUp and PageDown out.
+		{"\x1b[6~", "\r"},
+		{"\x1b[6~", "\x1b[6~", "\x1b[5~", "\r"},
+		{"b", "\x1b[6~", "\r"},
 		{"\r"},
 		{"\x1b"},
 		{"b", "e", "\x1b[B", "\r"},

@@ -29,11 +29,11 @@ type themeSelResult struct {
 }
 
 // randomThemeSelectorProbes registers 0 to 25 extra themes with random names (wide, combining, long, case variants), a current theme among them or unknown,
-// widths from 6 to 100, bindings and key scripts. PageUp and PageDown stay out: Pi 1.1.0 has no select page keys and Pig pages the selection (D155, Pi PR #7680).
+// widths from 6 to 100, bindings and key scripts. PageUp and PageDown are in the key set: the SelectList moves by one visible page.
 func randomThemeSelectorProbes() []themeSelProbe {
 	rng := rand.New(rand.NewSource(20261027))
 	pieces := []string{"custom", "theme", "Solar", "dracula", "日本語", "e\u0301", "😀", "very-long-theme-name-0123456789-abcdefghijklmnop", "-", "_", " ", "Z", "9"}
-	keys := []string{"\x1b[A", "\x1b[B", "\r", "\n", "\x1b", "\x03", "j", "k", "\x0e", "\x10", "x", "\x1b[H", "\x1b[F", "\t"}
+	keys := []string{"\x1b[A", "\x1b[B", "\r", "\n", "\x1b", "\x03", "j", "k", "\x0e", "\x10", "x", "\x1b[H", "\x1b[F", "\x1b[5~", "\x1b[6~", "\t"}
 	bindings := []map[string][]string{nil, {"tui.select.confirm": {"ctrl+s"}}, {"tui.select.down": {"ctrl+n", "j"}, "tui.select.up": {"k"}}, {"tui.select.cancel": {"ctrl+x"}}}
 	var probes []themeSelProbe
 	for range 300 {
@@ -73,7 +73,9 @@ func TestThemeSelectorMatchesPi(t *testing.T) {
 		{"\x1b"},
 		{"\x03"},
 		{"y"},
-		// Pi 1.1.0 has no select page keys; Pig pages the selection (D155, Pi PR #7680), covered by the select page key tests, so the oracle input leaves PageUp and PageDown out.
+		// PageDown and PageUp move the SelectList by one visible page.
+		{"\x1b[6~", "\r"},
+		{"\x1b[6~", "\x1b[6~", "\x1b[5~", "\r"},
 		{"\x1b[H", "\x1b[F", "\r"},
 		{"\x1b[B", "x", "\r", "\x1b"},
 		{"\x13"},

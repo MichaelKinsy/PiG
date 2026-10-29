@@ -165,7 +165,11 @@ During initial theme detection and managed-tool setup, submitting keeps the text
 ### Fullscreen transcript
 
 These actions apply when `tuiMode` is `fullscreen`. They take precedence over
-editor actions that use the same key.
+editor actions that use the same key. While an overlay or a scrollable list such as
+autocomplete, `/settings`, or the model selector has focus, the scrolling and
+prompt-jump actions go to it instead of the transcript, so `tui.select.pageUp`
+and `tui.select.pageDown` move the list selection. Transcript search actions keep
+working.
 
 | Action | Default key | Effect |
 |---|---|---|

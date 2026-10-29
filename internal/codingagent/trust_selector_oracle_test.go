@@ -74,7 +74,7 @@ func TestTrustSelectorInputMatchesPi(t *testing.T) {
 		{"j", "j", "k", "\r"},
 		{"k", "k", "\x1b"},
 		{"\x03"},
-		// Pi 1.1.0 has no select page keys; Pig pages the selection (D155, Pi PR #7680), covered by the select page key tests, so the oracle input leaves PageUp and PageDown out.
+		// Pi's trust selector does not handle the selection page keys and Pig pages it (D155), covered by the select page key tests, so the oracle input leaves PageUp and PageDown out.
 		{"x", "\x1b[H", "\t", "\r"},
 		{"\x1b[B", "\r", "\r"},
 		{"\x1b[B", "\x1b[B", "\n"},

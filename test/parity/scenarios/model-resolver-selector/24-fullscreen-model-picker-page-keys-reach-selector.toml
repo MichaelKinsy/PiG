@@ -1,0 +1,77 @@
+# Behavior family: model-resolver-selector
+# Surface: in fullscreen, PageUp and PageDown go to the open model picker, not to the transcript viewport.
+#
+# Upstream evidence (Pi e7a0df27, #7629): model-selector.ts sets capturesViewportInput and moves its selection
+# by one page (getSelectPageIndex, ten rows) on tui.select.pageUp and tui.select.pageDown. tui-alt-screen.ts
+# shouldDeferViewportInput leaves the viewport keys to a focused component that captures them, so the
+# default PageUp, which is also tui.altScreen.pageUp, reaches the picker instead of scrolling the transcript.
+# With the local two-model fixture:
+#   /model Enter, "model", Down -> "Model Name: Model One" (second of two rows)
+#   PageUp                      -> "Model Name: Model Two" (clamped to the first row)
+# The scenario first prints /hotkeys so the transcript is taller than the viewport: a PageUp that reached the viewport
+# would scroll it and leave the picker on Model One. The crop below shows only the picker.
+# The step after it waits for the background refresh, the settled state that
+# re-anchors the selection on both sides (see 11-model-picker-arrow-wrap).
+
+name = "24-fullscreen-model-picker-page-keys-reach-selector"
+description = "Fullscreen PageUp moves the model picker selection by a page instead of scrolling the viewport."
+covers = [
+  "packages/coding-agent/src/modes/interactive/components/model-selector.ts",
+  "packages/tui/src/tui-alt-screen.ts",
+]
+tags = ["fast", "hermetic", "tui"]
+driver = "interactive-tmux"
+
+[tmux]
+width = 100
+height = 35
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "$0.000"
+ready_timeout_seconds = 15
+capture_start = "Only showing models"
+capture_end = "Model Name: Model Two"
+
+[[tmux.steps]]
+keys = ["/hotkeys", "Enter"]
+wait_contains = ["Ctrl+G"]
+wait_timeout_seconds = 5
+settle_seconds = 1
+
+[[tmux.steps]]
+keys = ["/model", "Enter"]
+wait_visible_contains = ["Model Name: Model Two", "Model catalogs refreshed."]
+wait_timeout_seconds = 10
+
+[[tmux.steps]]
+keys = ["model"]
+wait_visible_contains = ["> model"]
+wait_timeout_seconds = 5
+
+[[tmux.steps]]
+keys = ["Down"]
+wait_visible_contains = ["Model Name: Model One"]
+wait_timeout_seconds = 5
+
+[[tmux.steps]]
+keys = ["PgUp"]
+wait_visible_contains = ["→ ✓ model-two [fixture]", "Model Name: Model Two"]
+wait_timeout_seconds = 5
+settle_seconds = 1
+
+[env]
+pig = ["PIG_CODING_AGENT_DIR=../model-resolver-selector/testdata/pig-agent-local"]
+pi = ["PI_CODING_AGENT_DIR=../model-resolver-selector/testdata/pi-agent-local"]
+pig_args = ["--no-extensions", "--offline", "--session-dir", "{{TEMP}}/sessions"]
+pi_args = ["--no-extensions", "--offline", "--session-dir", "{{TEMP}}/sessions"]
+
+[assert]
+both_reach_ready = true
+both_contain = [
+  "> model",
+  "→ ✓ model-two [fixture]",
+  "Model Name: Model Two",
+]
+both_not_contain = ["panic:", "goroutine ", "Could not refresh", "→   model-one"]
+output_equal = true
+escaped_output_equal = true
+runs = 3

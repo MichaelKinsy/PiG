@@ -32,12 +32,11 @@ type thinkingResult struct {
 }
 
 // randomThinkingProbes draws a subset of the levels in order, a current and a default level (or none), widths from 8 to 100, bindings and key
-// scripts mixing list keys, search text, cursor and word editing, paste, and the save key. PageUp and PageDown stay out: Pi 1.1.0 has no select
-// page keys and Pig pages the selection (D155, Pi PR #7680).
+// scripts mixing list keys, search text, cursor and word editing, paste, and the save key. PageUp and PageDown page the SelectList.
 func randomThinkingProbes(bindings []map[string][]string) []thinkingProbe {
 	rng := rand.New(rand.NewSource(20261028))
 	all := []string{"off", "minimal", "low", "medium", "high", "xhigh"}
-	keys := []string{"\x1b[A", "\x1b[B", "\r", "\n", "\x1b", "\x03", "\x13", "\x7f", "\x1b[3~", "\x1b[D", "\x1b[C", "\x01", "\x05", "\x17", "\x15", "h", "i", "m", "o", "x", "l", "e", "é", "日", " ", "\x1b[200~med\x1b[201~", "\x1b[1;5D", "\x1b[H", "\x1b[F", "\t"}
+	keys := []string{"\x1b[A", "\x1b[B", "\x1b[5~", "\x1b[6~", "\r", "\n", "\x1b", "\x03", "\x13", "\x7f", "\x1b[3~", "\x1b[D", "\x1b[C", "\x01", "\x05", "\x17", "\x15", "h", "i", "m", "o", "x", "l", "e", "é", "日", " ", "\x1b[200~med\x1b[201~", "\x1b[1;5D", "\x1b[H", "\x1b[F", "\t"}
 	var probes []thinkingProbe
 	for range 400 {
 		var levels []string

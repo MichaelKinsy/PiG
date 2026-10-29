@@ -51,7 +51,7 @@ func TestFullscreenSelectionKeepsItsPageKeys(t *testing.T) {
 }
 
 // TestRegularModeSelectorPageKeyMovesItsSelection: with no viewport listener PageDown reaches the model selector, which moves its selection a
-// page (model-selector.ts handleInput, getPageSelectionIndex) and does not refilter the search.
+// page (model-selector.ts handleInput, getSelectPageIndex) and does not refilter the search.
 func TestRegularModeSelectorPageKeyMovesItsSelection(t *testing.T) {
 	m := newSwitchTuiProbe(t)
 	if m.altScreen != nil {

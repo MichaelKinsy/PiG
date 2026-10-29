@@ -132,7 +132,7 @@ export default function (pi: any) {
       list.onSelect = (item: any) => { selected = item.value; };
       list.setSelectedIndex(2);
       list.handleInput("\u001b[6~");
-      const pageIgnored = changed === "";
+      const pageClamped = changed === "" && list.getSelectedItem()?.value === "c";
       list.handleInput("\u001b[B");
       list.handleInput("\r");
       const cancelList = new SelectList(items, 3, theme);
@@ -140,7 +140,7 @@ export default function (pi: any) {
       cancelList.onCancel = () => { cancelled = true; };
       cancelList.handleInput("\u001b");
       const renderOK = list.render(40).join("\n").includes("a");
-      ctx.ui.notify(`select-list:render=${renderOK}:pageIgnored=${pageIgnored}:wrap=${changed}:select=${selected}:cancel=${cancelled}`, "info");
+      ctx.ui.notify(`select-list:render=${renderOK}:pageClamped=${pageClamped}:wrap=${changed}:select=${selected}:cancel=${cancelled}`, "info");
     },
   });
 }

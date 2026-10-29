@@ -119,7 +119,7 @@ func (t *TuiAltScreen) handleFocusOut() {
 
 // matchViewportAction returns the viewport action bound to data: search
 // always, the search keys while the search box has focus, and navigation
-// unless another overlay has focus. Mirrors the keybinding tail of upstream
+// unless the focused component captures viewport input or another overlay has focus. Mirrors the keybinding tail of upstream
 // handleViewportInput.
 func (t *TuiAltScreen) matchViewportAction(data string) (TUIKeybinding, bool) {
 	keybindings := GetKeybindings()
@@ -133,11 +133,7 @@ func (t *TuiAltScreen) matchViewportAction(data string) (TUIKeybinding, bool) {
 			}
 		}
 	}
-	if t.shouldDeferViewportInputToOverlay() {
-		return "", false
-	}
-	// pig divergence (D155): a focused selection that handles the selection page keys keeps them, even when they are also bound to a viewport action (Pi #7629).
-	if (keybindings.Matches(data, KBSelectPageUp) || keybindings.Matches(data, KBSelectPageDown)) && CapturesSelectPageInput(t.GetFocusedComponent()) {
+	if t.shouldDeferViewportInput() {
 		return "", false
 	}
 	for _, action := range altScreenScrollActions {
@@ -190,10 +186,13 @@ func (t *TuiAltScreen) getPrimaryScrollViewLocked() *ScrollView {
 	return t.getPrimaryScrollView()
 }
 
-// shouldDeferViewportInputToOverlay reports whether a focused overlay other
-// than the search box owns the viewport keys. Mirrors upstream
-// shouldDeferViewportInputToOverlay.
-func (t *TuiAltScreen) shouldDeferViewportInputToOverlay() bool {
+// shouldDeferViewportInput reports whether the focused component or a focused
+// overlay other than the search box owns the viewport keys. Mirrors upstream
+// shouldDeferViewportInput.
+func (t *TuiAltScreen) shouldDeferViewportInput() bool {
+	if CapturesViewportInput(t.GetFocusedComponent()) {
+		return true
+	}
 	return t.isOverlayFocused() && !t.IsSearchFocused()
 }
 

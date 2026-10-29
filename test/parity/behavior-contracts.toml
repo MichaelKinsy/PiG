@@ -957,7 +957,7 @@ evidence = [
   "internal/codingagent/custom_editor_test.go#TestCustomEditorExtensionShortcutThenPasteImageComeFirst",
   "internal/codingagent/custom_editor_test.go#TestCustomEditorEscapePrefersOnEscapeThenTheInterruptActionThenTheEditor",
   "internal/codingagent/custom_editor_test.go#TestCustomEditorExitOnlyWhenTheEditorIsEmpty",
-  "internal/codingagent/custom_editor_test.go#TestCustomEditorExplicitHistoryBindingBeatsModelCycling",
+  "internal/codingagent/custom_editor_keybindings_test.go#TestCustomEditorExplicitHistoryBindingBeatsModelCycling",
   "internal/codingagent/custom_editor_test.go#TestCustomEditorRunsTheRegisteredAppActionAndReplacesIt",
   "test/parity/scenarios/custom-editor-precedence.toml",
 ]
@@ -1589,7 +1589,7 @@ claim = "an extension shortcut is tried first, then the clipboard image paste (c
 status = "ported"
 pig_targets = ["internal/codingagent/custom_editor.go#HandleInput", "internal/codingagent/interactive_input.go#handleCustomEditorKey"]
 evidence = [
-  "internal/codingagent/custom_editor_test.go#TestCustomEditorExplicitHistoryBindingBeatsModelCycling",
+  "internal/codingagent/custom_editor_keybindings_test.go#TestCustomEditorExplicitHistoryBindingBeatsModelCycling",
   "internal/codingagent/custom_editor_test.go#TestCustomEditorEscapePrefersOnEscapeThenTheInterruptActionThenTheEditor",
   "internal/codingagent/custom_editor_test.go#TestCustomEditorExitOnlyWhenTheEditorIsEmpty",
   "internal/codingagent/custom_editor_test.go#TestCustomEditorExtensionShortcutThenPasteImageComeFirst",

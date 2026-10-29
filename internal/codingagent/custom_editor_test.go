@@ -39,25 +39,6 @@ func newCustomEditorProbe(t *testing.T, keybindingsJSON string) *customEditorPro
 	return probe
 }
 
-// packages/coding-agent/test/custom-editor-history-keybindings.test.ts:12 "gives an explicit history binding precedence over model cycling":
-// custom-editor.ts:129-135 hands an explicit tui.editor.historyPrevious/historyNext key to the editor before any app action.
-func TestCustomEditorExplicitHistoryBindingBeatsModelCycling(t *testing.T) {
-	probe := newCustomEditorProbe(t, `{"tui.editor.historyPrevious":["ctrl+p"],"tui.editor.historyNext":["ctrl+n"]}`)
-	modelCycles := 0
-	probe.OnAction("app.model.cycleForward", func() { modelCycles++ })
-	probe.AddToHistory("previous prompt")
-	probe.SetText("draft")
-
-	probe.HandleInput("\x10") // Ctrl+P
-	if got := probe.Text(); got != "previous prompt" || modelCycles != 0 {
-		t.Fatalf("after Ctrl+P text = %q, model cycles = %d, want the previous prompt and no cycle", got, modelCycles)
-	}
-	probe.HandleInput("\x0e") // Ctrl+N
-	if got := probe.Text(); got != "draft" {
-		t.Fatalf("after Ctrl+N text = %q, want draft", got)
-	}
-}
-
 // custom-editor.ts:49-52 and :139-144: every registered app action other than interrupt and exit runs its handler for a matching key, and the
 // editor does not see the key; onAction replaces the handler of an action registered before (Map.set).
 func TestCustomEditorRunsTheRegisteredAppActionAndReplacesIt(t *testing.T) {

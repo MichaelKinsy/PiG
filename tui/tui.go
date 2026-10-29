@@ -1216,8 +1216,24 @@ func (t *tuiBase) composeFrameLines(root []string, width, height int) (lines []s
 		lines, _ = t.composeOverlaySnapshot(root, snapshot, width, height)
 		return lines, true
 	}
-	lines, _ = t.composeOverlaySnapshot(t.resolveFakeCursors(root), snapshot, width, height)
+	lines, _ = t.composeOverlaySnapshot(t.resolveFakeCursors(stripOsc133ZonePrefixes(root)), snapshot, width, height)
 	return lines, false
+}
+
+// stripOsc133ZonePrefixes returns lines without the leading OSC 133 zone marks of any line. The terminal reads 133;A as a new
+// shell prompt, which ends the program status (OSC 7501), so the main screen never writes them. lines is returned as is, with no
+// copy, when no line starts with a mark.
+func stripOsc133ZonePrefixes(lines []string) []string {
+	first := slices.IndexFunc(lines, func(line string) bool { return strings.HasPrefix(line, osc133ZoneMark) })
+	if first < 0 {
+		return lines
+	}
+	out := make([]string, len(lines))
+	copy(out, lines[:first])
+	for i := first; i < len(lines); i++ {
+		out[i] = stripOsc133ZonePrefix(lines[i])
+	}
+	return out
 }
 
 func (t *tuiBase) frameOverlaySnapshot(width, height int) overlayStateSnapshot {
@@ -2128,7 +2144,7 @@ func (t *TuiMainScreen) applyLineResetsCachedWithCursor(lines []string, cursorRo
 		} else if resolve {
 			line = widthx.ResolveFakeCursorLine(line, t.showHardwareCursor)
 		}
-		out[i] = widthx.ApplyLineReset(line)
+		out[i] = widthx.ApplyLineReset(stripOsc133ZonePrefix(line))
 		if ids := extractKittyImageIDs(out[i]); len(ids) > 0 {
 			if kittyIDs == nil {
 				kittyIDs = make(map[int][]int)
@@ -2195,9 +2211,10 @@ func (t *TuiMainScreen) doRender() {
 	// don't emit the marker fall back to the legacy behaviour where the
 	// cursor lands at the end of the last written line.
 	cursorPos, cursorRow, cursorFreeLine, hasCursorPos := findCursorPosition(newLines, t.height)
+	cursorFreeLine = stripOsc133ZonePrefix(cursorFreeLine)
 	if hasCursorPos && unresolved {
 		// Resolving keeps every cursor marker in place, so the marker is on the same row; the cursor-free line is the resolved one.
-		before, after, _ := strings.Cut(widthx.ResolveFakeCursorLine(newLines[cursorRow], t.showHardwareCursor), widthx.CursorMarker)
+		before, after, _ := strings.Cut(widthx.ResolveFakeCursorLine(stripOsc133ZonePrefix(newLines[cursorRow]), t.showHardwareCursor), widthx.CursorMarker)
 		cursorPos.Col, cursorFreeLine = widthx.VisibleWidth(before), before+after
 	}
 

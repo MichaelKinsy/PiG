@@ -160,6 +160,41 @@ func TestUpstreamTUIBoundedRender(t *testing.T) {
 	})
 }
 
+func TestUpstreamTUIOSC133Markers(t *testing.T) {
+	// packages/tui/test/tui-render.test.ts "TUI OSC 133 markers"
+	// Terminals read 133;A as a new shell prompt and drop the OSC 7501 program status.
+	run := func(t *testing.T, overlay bool) {
+		w := &upstreamBoundedWriteTerminal{}
+		ui := NewWithOutput(w, 80, 24)
+		c := &recordingComponent{lines: []string{"\x1b]133;A\x07prompt", "\x1b]133;B\x07\x1b]133;C\x07output"}}
+		ui.Add(c)
+		if overlay {
+			ui.ShowOverlay(&recordingComponent{lines: []string{"ov"}}, OverlayOptions{})
+		}
+		ui.Render()
+		c.lines = append(slices.Clone(c.lines), "\x1b]133;A\x1b\\reply", "\x1b]133;B\x1b\\\x1b]133;C\x1b\\done")
+		ui.Render()
+		output := strings.Join(w.writes, "")
+		upstreamExcludes(t, output, "\x1b]133;")
+		for _, text := range []string{"prompt", "output", "reply", "done"} {
+			upstreamContains(t, output, text)
+		}
+	}
+	t.Run("does not write OSC 133 prompt markers to the terminal", func(t *testing.T) { run(t, false) })
+	t.Run("does not write OSC 133 prompt markers under an overlay", func(t *testing.T) { run(t, true) })
+	t.Run("keeps a stripped line unchanged across frames", func(t *testing.T) {
+		w := &upstreamBoundedWriteTerminal{}
+		ui := NewWithOutput(w, 80, 24)
+		c := &recordingComponent{lines: []string{"\x1b]133;A\x07prompt"}}
+		ui.Add(c)
+		ui.Render()
+		w.writes = nil
+		c.lines = []string{"\x1b]133;A\x1b\\prompt"}
+		ui.Render()
+		upstreamExcludes(t, strings.Join(w.writes, ""), "prompt")
+	})
+}
+
 func TestUpstreamTUIResize(t *testing.T) {
 	// .upstream/v0.87.1/packages/tui/test/tui-render.test.ts:510
 	t.Run("triggers full re-render when terminal height changes", func(t *testing.T) {

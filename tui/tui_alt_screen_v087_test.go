@@ -432,6 +432,9 @@ func TestAltScreenModifiedNavigationReachesFocusedComponent(t *testing.T) {
 // overlap" with Ctrl+Home and Ctrl+End in rxvt form for the edges.
 func TestAltScreenKeyboardNavigationHasFourRowsOfPageOverlap(t *testing.T) {
 	useAltScreenBindings(t, nil)
+	// altScreenVisibleRows reads the last write of each addressed row and does not replay scroll regions (D205), which a TERM
+	// such as xterm-256color turns on; the scrolling frames are covered by alt_screen_term_corpus_test.go.
+	t.Setenv("PIG_TUI_SCROLL_ROWS", "0")
 	h := newAltHarness(t, 20, 8, TuiAltScreenOptions{})
 	h.tui.Add(NewText(numberedLines(12)))
 	h.start()

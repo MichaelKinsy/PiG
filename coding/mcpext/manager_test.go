@@ -5,6 +5,7 @@ package mcpext_test
 import (
 	"context"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -814,5 +815,40 @@ func TestMcpManagerServerMenuShowsTheExpandedURL(t *testing.T) {
 	want := "http://${MCP_TEST_HOST}/mcp\nconnects to: http://mcp.example.test/mcp\nconfig: test\nState: connected · 3 tools"
 	if got := ui.menus[1].Details; got != want {
 		t.Fatalf("details = %q, want %q", got, want)
+	}
+}
+
+// packages/coding-agent/test/mcp-manager-view.test.ts "MCP manager menu" "captures fullscreen viewport keys only while a menu list is shown" (#7629).
+func TestMcpManagerMenuCapturesViewportKeysOnlyWhileAMenuListIsShown(t *testing.T) {
+	h := newManagerHarness(t)
+	items := make([]mcpext.McpMenuItem, 20)
+	for i := range items {
+		items[i] = mcpext.McpMenuItem{Value: fmt.Sprintf("server-%d", i), Label: fmt.Sprintf("server-%d", i)}
+	}
+	type answer struct {
+		value string
+		ok    bool
+	}
+	result := make(chan answer, 1)
+	go func() {
+		value, ok := h.view.Menu(t.Context(), func() mcpext.McpMenu {
+			return mcpext.McpMenu{Title: "MCP servers", Items: items, ConfirmLabel: "open", CancelLabel: "close"}
+		}, nil)
+		result <- answer{value, ok}
+	}()
+	h.waitForText(t, "server-0")
+	if !tui.CapturesViewportInput(h.view) {
+		t.Fatal("a menu list must capture the viewport keys")
+	}
+
+	h.view.HandleInput("\x1b[6~") // PageDown
+	h.view.HandleInput("\r")
+	if got := <-result; got != (answer{"server-12", true}) {
+		t.Fatalf("menu answer = %+v, want server-12", got)
+	}
+
+	h.view.Status("Sign in to issues", "Connecting…", nil)
+	if tui.CapturesViewportInput(h.view) {
+		t.Fatal("a status screen must not capture the viewport keys")
 	}
 }

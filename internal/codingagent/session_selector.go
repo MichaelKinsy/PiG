@@ -296,8 +296,8 @@ func sessionFg(color, text string) string {
 
 func sessionBold(text string) string { return "\x1b[1m" + text + tui.SGRBoldDimReset }
 
-// CapturesSelectPageInput reports that the selector handles tui.select.pageUp and tui.select.pageDown.
-func (s *SessionSelectorComponent) CapturesSelectPageInput() bool { return true }
+// CapturesViewportInput is session-selector.ts capturesViewportInput: the list takes the fullscreen viewport keys except while renaming.
+func (s *SessionSelectorComponent) CapturesViewportInput() bool { return !s.renameMode }
 
 func (s *SessionSelectorComponent) HandleInput(data string) {
 	s.drainLoadUpdates()
@@ -507,15 +507,10 @@ func (s *SessionSelectorComponent) exitRenameMode() {
 
 func (s *SessionSelectorComponent) move(delta int) {
 	s.selectionTouched = true
-	// session-selector.ts handleInput: up stops at 0 and down at the last row, which is -1 for an empty list.
-	paging := delta < -1 || delta > 1
-	switch {
-	case delta < 0:
+	// session-selector.ts handleInput: up and page up stop at 0, down and page down at the last row, which is -1 for an empty list.
+	if delta < 0 {
 		s.selected = max(0, s.selected+delta)
-	case paging:
-		// pig divergence (D155): a page key keeps the index valid over an empty list, where Pi 1.1.0 leaves -1 (Pi PR #7680, "keeps the session selection valid when paging before sessions load").
-		s.selected = min(max(0, len(s.filtered)-1), s.selected+delta)
-	default:
+	} else {
 		s.selected = min(len(s.filtered)-1, s.selected+delta)
 	}
 }

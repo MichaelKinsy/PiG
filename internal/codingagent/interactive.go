@@ -1529,8 +1529,11 @@ func (m *InteractiveMode) Init(ctx context.Context) (err error) {
 	mark := m.startupMark()
 	m.initStartupTheme()
 	mark("theme-detected")
-	if line := m.modelScopeLine(); line != "" {
-		_, _ = fmt.Fprintln(os.Stdout, line)
+	// Fullscreen renders on the alternate screen, so stdout text would stay in the shell after exit; its header shows the notice.
+	if m.opts.TuiMode != "fullscreen" {
+		if notice := m.getModelScopeNotice(); notice != "" {
+			_, _ = fmt.Fprintln(os.Stdout, notice)
+		}
 	}
 
 	// Set up TUI. Fullscreen mode uses the alternate-screen renderer; both
@@ -1802,9 +1805,13 @@ func (m *InteractiveMode) Init(ctx context.Context) (err error) {
 	// fresh install and an update with new changelog entries.
 	// Mirrors upstream getChangelogForDisplay + showStartupNoticesIfNeeded
 	// (interactive-mode.ts:816-843, 487-522, 1265-1307).
-	if m.opts.SettingsManager != nil && m.opts.AppVersion != "" && m.opts.ResumePath == "" {
-		if newEntries := startupChangelog(m.opts.SettingsManager, m.opts.AppVersion); len(newEntries) > 0 {
-			m.showStartupChangelog(newEntries)
+	if m.opts.SettingsManager != nil && m.opts.ResumePath == "" {
+		var newEntries []ChangelogEntry
+		if m.opts.AppVersion != "" {
+			newEntries = startupChangelog(m.opts.SettingsManager, m.opts.AppVersion)
+		}
+		if extensionUpdates := m.getExtensionChangelogUpdates(); len(newEntries) > 0 || len(extensionUpdates) > 0 {
+			m.showStartupChangelog(newEntries, extensionUpdates)
 			m.tuiInst.Render()
 		}
 	}

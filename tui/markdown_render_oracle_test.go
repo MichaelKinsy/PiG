@@ -22,6 +22,7 @@ type markdownRenderProbe struct {
 func markdownRenderDocs() []string {
 	return []string{
 		"", "plain paragraph", "two\n\nparagraphs", "soft\nbreak and  \nhard break\\\nbackslash break",
+		"https://example.com。后面的中文 and www.example.com，后面 and https://example.com/中文?q=搜索#片段…后面", "https://example.com.，后面的中文 and https://example.com紧接着中文 and <https://example.com/中文，路径>",
 		"# H1\n## H2\n### H3\n#### H4\n##### H5\n###### H6", "Setext H1\n=========\n\nSetext H2\n---------",
 		"**bold** *italic* ***both*** ~~strike~~ `code` __under__ _it_ **bold with *nested italic* inside**",
 		"- one\n- two\n  - nested a\n  - nested b\n    - deeper\n- three", "1. first\n2. second\n   1. sub\n   2. sub\n10. tenth\n11. eleventh",

@@ -85,7 +85,7 @@ type ReloadDiag struct {
 	Themes       int
 	// Diagnostics is one human-readable line per warning/error gathered
 	// during reload. Mirrors upstream's `[Extension issues]`,
-	// `[Skill conflicts]`, `[Prompt conflicts]` sections.
+	// `[Skill warnings]`, `[Prompt conflicts]` sections.
 	Diagnostics []string
 	// Cells is the placement summary produced by the subprocess host. Empty
 	// when no subprocess host is active (e.g. headless commands).

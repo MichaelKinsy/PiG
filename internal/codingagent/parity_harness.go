@@ -91,7 +91,7 @@ func (m *InteractiveMode) probeSelectList() (string, error) {
 	list.EnableSearch = false
 	list.SetCursor(2)
 	list.HandleInput("\x1b[6~")
-	pageIgnored := list.CursorIndex() == 2
+	pageClamped := list.CursorIndex() == 2
 	list.HandleInput("\x1b[B")
 	wrapped := ""
 	if list.CursorIndex() == 0 {
@@ -106,8 +106,8 @@ func (m *InteractiveMode) probeSelectList() (string, error) {
 	cancelList.EnableSearch = false
 	cancelList.HandleInput("\x1b")
 	rendered := strings.Contains(strings.Join(list.Render(40), "\n"), "a")
-	return fmt.Sprintf("select-list:render=%t:pageIgnored=%t:wrap=%s:select=%s:cancel=%t",
-		rendered, pageIgnored, wrapped, selected, cancelList.Cancelled()), nil
+	return fmt.Sprintf("select-list:render=%t:pageClamped=%t:wrap=%s:select=%s:cancel=%t",
+		rendered, pageClamped, wrapped, selected, cancelList.Cancelled()), nil
 }
 
 func (m *InteractiveMode) probeOAuthShared() (string, error) {

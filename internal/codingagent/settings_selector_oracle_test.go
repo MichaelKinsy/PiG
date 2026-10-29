@@ -225,8 +225,7 @@ func TestSettingsSelectorMatchesPi(t *testing.T) {
 		v.Warnings = json.RawMessage(`{}`)
 		variants = append(variants, v)
 	}
-	// Pi 1.1.0 has no select page keys; Pig pages the selection (D155, Pi PR #7680), covered by the select page key tests, so the oracle input leaves PageUp and PageDown out.
-	alphabet := []string{"\x1b[A", "\x1b[A", "\x1b[B", "\x1b[B", "\x1b[B", "\x1b[B", "\x1b[B", "\r", "\r", "\r", "\r", "\x1b", " ", "\x1b[C", "\x1b[D", "\x7f", "t", "h", "e", "m", "a", "l", "p", "d", "\n", "\x03", "\t"}
+	alphabet := []string{"\x1b[A", "\x1b[5~", "\x1b[6~", "\x1b[A", "\x1b[B", "\x1b[B", "\x1b[B", "\x1b[B", "\x1b[B", "\r", "\r", "\r", "\r", "\x1b", " ", "\x1b[C", "\x1b[D", "\x7f", "t", "h", "e", "m", "a", "l", "p", "d", "\n", "\x03", "\t"}
 	rng := rand.New(rand.NewSource(20261008))
 	var probes []settingsOracleProbe
 	for _, theme := range []string{"dark", "light"} {
