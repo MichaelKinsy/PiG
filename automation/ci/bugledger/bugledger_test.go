@@ -1659,3 +1659,23 @@ func TestARetiredDivergenceEndsTheAheadOfPiClassOfAKeptNote(t *testing.T) {
 		t.Fatal("a second regeneration with no new commit changed the ledger")
 	}
 }
+
+// An Upgrading bullet that opens with "**Breaking (Go API):**" breaks a program that embeds PiG; the draft lists those under their own heading after the other Upgrading notes, which stay plain bullets, in the changelog and in a fragment.
+func TestReleaseNotesGroupBreakingGoAPIUpgrades(t *testing.T) {
+	r := newFixture(t)
+	r.write("CHANGELOG.md", "# Changelog\n\n## [Unreleased]\n\n## [0.5.0] - 2026-02-01\n\n### Upgrading from 0.4.x\n\n- **Breaking (Go API):** `a`: one moves.\n- Change your call.\n\n## [0.4.1] - 2026-01-01\n\n### Added\n\n- Old thing.\n")
+	r.commit("changelog", "CHANGELOG.md")
+	r.write("changelog.d/x.md", "### Upgrading\n\n- Go API `c`: an opt-in, not a break.\n- **Breaking (Go API):** `b`: two moves.\n")
+	notes, err := releaseNotes(r.root, "0.4.1", "0.5.0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{
+		"## Upgrading from 0.4.x\n\n- Change your call.\n\n### Breaking changes for Go embedders\n\n- **Breaking (Go API):** `a`: one moves.\n\n",
+		"## Upgrading\n\n- Go API `c`: an opt-in, not a break.\n\n### Breaking changes for Go embedders\n\n- **Breaking (Go API):** `b`: two moves.\n\n",
+	} {
+		if !strings.Contains(notes, want) {
+			t.Errorf("the draft lacks %q:\n%s", want, notes)
+		}
+	}
+}
