@@ -1688,33 +1688,6 @@
       ]
     },
     {
-      "id": "BF-0ec2cc8",
-      "title": "A durable session no longer has a data race between a call to `DeferUntilPublished` from another goroutine (a…",
-      "symptom": "A durable session no longer has a data race between a call to `DeferUntilPublished` from another goroutine (a harness's wait for idleness makes one) and the commit that arms its publication: the commit read the length of the publication's queue after it released the lock that the call appends to it under, so the race detector could report the two in a long durable/harness run.",
-      "rootCause": "The emptiness check now happens under the lock.",
-      "rootCauseSource": "commit",
-      "userImpact": "Behavior differed from Pi",
-      "platform": "All platforms",
-      "class": "own",
-      "fixedIn": "Unreleased",
-      "releaseNote": "A durable session no longer has a data race between a call to `DeferUntilPublished` from another goroutine (a harness's wait for idleness makes one) and the commit that arms its publication: the commit read the length of the publication's queue after it released the lock that the call appends to it under, so the race detector could report the two in a long durable/harness run. The commit now checks the queue under the lock.",
-      "origin": "release note",
-      "commits": [
-        {
-          "hash": "0ec2cc8d9a",
-          "date": "2026-10-29"
-        },
-        {
-          "hash": "d6110092aa",
-          "date": "2026-10-29"
-        }
-      ],
-      "tests": [
-        "durable/harness/harness_tasks_scheduling_test.go::TestTaskScheduling",
-        "durable/session/session_defer_until_published_race_test.go::TestDeferUntilPublishedFromAnotherGoroutineWhilePublicationsRun"
-      ]
-    },
-    {
       "id": "BF-0ffb06a",
       "title": "fix(tui): diff rows with a CR are wrapped like Pi's Text",
       "symptom": "fix(tui): diff rows with a CR are wrapped like Pi's Text",
@@ -30942,6 +30915,27 @@
         "internal/codingagent/interactive_tool_execution_options_test.go::TestToolExecutionOptionsDefaultWhenUndefined",
         "internal/imageprocessing/image_processing_upstream_test.go::TestFormatDimensionNoteUpstream",
         "internal/imageprocessing/input_limits_test.go::TestResizeModelProfileJPEGQualityAndSizeOnlyHint"
+      ]
+    },
+    {
+      "id": "BF-d3aa996",
+      "title": "fix(durable/session): read the queue of a publication under deferMu when arming it",
+      "symptom": "fix(durable/session): read the queue of a publication under deferMu when arming it",
+      "rootCause": "The emptiness check now happens under the lock.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "d3aa996f80",
+          "date": "2026-10-29"
+        }
+      ],
+      "tests": [
+        "durable/harness/harness_tasks_scheduling_test.go::TestTaskScheduling"
       ]
     },
     {
