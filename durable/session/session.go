@@ -1164,12 +1164,13 @@ func (session *SessionImpl) beginPublication() {
 // armPublication, the last step of adopt, lets the publication run as soon as the goroutine inside Storage's adopt is
 // parked in a wait: upstream queues its one microtask there, which runs when the storage's synchronous step ends, also
 // when the storage then works before it resolves (a JSONL reclaim). A storage that returns at once never parks:
-// finishPublication runs it.
+// finishPublication runs it. Another goroutine's DeferUntilPublished appends to the queue meanwhile, so it is read under deferMu.
 func (session *SessionImpl) armPublication() {
 	session.deferMu.Lock()
 	pub := session.pub
+	queued := pub != nil && (len(pub.dispatch) != 0 || len(pub.deferred) != 0)
 	session.deferMu.Unlock()
-	if pub == nil || (len(pub.dispatch) == 0 && len(pub.deferred) == 0) {
+	if !queued {
 		return
 	}
 	adopting := goroutineid.Current()
