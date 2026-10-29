@@ -1332,7 +1332,7 @@ call = "json.Unmarshal"
 dest = "*durable.JsonValue"
 count = 2
 
-# dev/bench tooling (linux-only harness, its RPC handshake reply); missed by a scan on macOS, which skips linux-only files
+# dev/bench tooling (linux-only harness, its RPC handshake reply)
 [[hit]]
 file = "bench/sessionscale/cmd/sessionscale/run.go"
 func = "startRPC"
