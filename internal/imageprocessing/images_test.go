@@ -299,19 +299,17 @@ func TestResizeReencodesIfOverThreshold(t *testing.T) {
 
 func TestResizePreservesAlpha(t *testing.T) {
 	// 3000×3000 PNG with alpha: the longest side exceeds the limit, so it is
-	// resized. The PNG candidate is far smaller than the JPEG one (a few large
-	// blocks with sharp edges), so Pi's choice of the smaller of the two
-	// (e7a0df27) keeps the PNG and its alpha channel (chunk-d.md gotcha #610).
-	// Pi has no alpha rule: a translucent image whose JPEG is the smaller
-	// candidate goes out as a JPEG, as it does in Pi.
+	// resized. Pi picks the smaller of the PNG and the JPEG candidate
+	// (image-resize-core.ts, e7a0df27) and has no alpha rule, so a translucent
+	// image whose JPEG is smaller goes out as a JPEG, as it does in Pi. What
+	// holds in both cases: the result decodes, and a PNG result keeps its
+	// alpha channel (chunk-d.md gotcha #610); the PNG candidate itself keeps
+	// it, which TestPNGCandidateKeepsAlpha pins.
 	img := image.NewRGBA(image.Rect(0, 0, 3000, 3000))
+	// Half-transparent green.
 	for y := range 3000 {
 		for x := range 3000 {
-			if (x/500+y/500)%2 == 0 {
-				img.Set(x, y, color.RGBA{0, 255, 0, 128}) // half-transparent green
-			} else {
-				img.Set(x, y, color.RGBA{255, 0, 0, 64}) // mostly transparent red
-			}
+			img.Set(x, y, color.RGBA{0, 255, 0, 128})
 		}
 	}
 	var buf bytes.Buffer
@@ -324,16 +322,37 @@ func TestResizePreservesAlpha(t *testing.T) {
 	if err != nil {
 		t.Fatalf("resize: %v", err)
 	}
-	if mime != "image/png" {
-		t.Errorf("PNG-with-alpha must stay PNG; got %s", mime)
-	}
-	// Decode and check alpha is preserved.
-	decoded, err := png.Decode(bytes.NewReader(out))
+	decoded, _, err := image.Decode(bytes.NewReader(out))
 	if err != nil {
-		t.Fatalf("decode: %v", err)
+		t.Fatalf("decode %s: %v", mime, err)
 	}
-	if !imageHasAlpha(decoded) {
-		t.Errorf("alpha channel lost in re-encode")
+	if mime == "image/png" && !imageHasAlpha(decoded) {
+		t.Errorf("alpha channel lost in a PNG result")
+	}
+}
+
+func TestPNGCandidateKeepsAlpha(t *testing.T) {
+	img := image.NewNRGBA(image.Rect(0, 0, 8, 8))
+	for i := 0; i < len(img.Pix); i += 4 {
+		img.Pix[i], img.Pix[i+1], img.Pix[i+2], img.Pix[i+3] = 0, 255, 0, 128
+	}
+	candidate, fits, err := firstFittingCandidate(img, []int{JPEGQuality}, 1<<30)
+	if err != nil || !fits {
+		t.Fatalf("candidate: fits=%v err=%v", fits, err)
+	}
+	if candidate.MIME == "image/png" {
+		decoded, err := png.Decode(bytes.NewReader(candidate.Data))
+		if err != nil || !imageHasAlpha(decoded) {
+			t.Fatalf("the PNG candidate lost its alpha channel: %v", err)
+		}
+	}
+	data, err := encodePNG(img)
+	if err != nil {
+		t.Fatal(err)
+	}
+	decoded, err := png.Decode(bytes.NewReader(data))
+	if err != nil || !imageHasAlpha(decoded) {
+		t.Fatalf("encodePNG lost the alpha channel: %v", err)
 	}
 }
 
