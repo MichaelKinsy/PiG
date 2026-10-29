@@ -4673,9 +4673,9 @@ rationale = "PORT_MAP records this file n/a with the reason: (Go archive/zip, us
 [[files]]
 path = "packages/durable/src/codemode/codemode.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:durable/codemode/imports_test.go"]
+rationale = "`toCodemodeIdentifier` import path: Go has no barrel; the extension builds without starting a sandbox (the QuickJS wasm inflates lazily). PiG: durable/codemode (no import-time WASM load in Go) (lane C)."
 
 [[files]]
 path = "packages/durable/src/codemode/describe.ts"
@@ -4757,23 +4757,23 @@ rationale = "Pi 5f312dac: watcher.stop(context) after an aborted open; durable/e
 [[files]]
 path = "packages/durable/src/errors.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:durable/errors_test.go"]
+rationale = "`ConversationIdle`, `ReadAfterWrite(operation)` (field `Operation`). PiG: durable/errors.go (lane C)."
 
 [[files]]
 path = "packages/durable/src/harness/agent.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:durable/harness/harness_turn_limit_test.go"]
+rationale = "`maxTurns` in `AgentState`/`AgentChange`/`Agent` with validation. PiG: durable/harness/agent.go, durable/harness_types.go (lane C)."
 
 [[files]]
 path = "packages/durable/src/harness/compaction.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "unchanged-observable"
+evidence = ["test:durable/harness/harness_compaction_test.go#TestPiLiveMigrations"]
+rationale = "only the `pi.live` v3 tests changed. PiG: durable/harness/compaction.go (lane C)."
 
 [[files]]
 path = "packages/durable/src/harness/context.ts"
@@ -4785,30 +4785,30 @@ rationale = "Pi f3255de7 deletes the exported activeEntries (the raw active entr
 [[files]]
 path = "packages/durable/src/harness/define.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:durable/harness/harness_after_run_test.go"]
+rationale = "`runEndTask` -> `RunEndTaskOf`. PiG: durable/harness/define.go (lane C)."
 
 [[files]]
 path = "packages/durable/src/harness/generation.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:durable/harness/harness_after_run_test.go"]
+rationale = "phases `finish`/`drain`, `holdRun`, `endAnsweredRun`, `endAnsweredCutOff`, `takesContinuation`, `failNothingToAnswer`, turn limit, unoffered calls, `startRun(RunStart)`; `pi.generation` v2. PiG: durable/harness/generation.go, durable/core/turn/generation*.go (lane C)."
 
 [[files]]
 path = "packages/durable/src/harness/harness.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:durable/harness/harness_submit_in_commit_test.go"]
+rationale = "`submit(tx, draft)` -> `Conversation.SubmitIn`/bound handle (Go has no overloads). PiG: durable/harness/harness.go (lane C)."
 
 [[files]]
 path = "packages/durable/src/harness/inbox.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:durable/harness/harness_continue_test.go"]
+rationale = "`BoundaryResult.First`. PiG: durable/harness/inbox.go (lane C)."
 
 [[files]]
 path = "packages/durable/src/harness/json.ts"
@@ -4820,9 +4820,9 @@ rationale = "Pi 89c921d8 stops assignJson reading a missing __proto__ member thr
 [[files]]
 path = "packages/durable/src/harness/live.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:durable/harness/harness_live_deltas_test.go"]
+rationale = "`LiveRun`, `RunFailure.First`, `pi.live` v3, `nothing_to_answer`/`turn_limit`. PiG: durable/harness/live.go (lane C)."
 
 [[files]]
 path = "packages/durable/src/harness/partial-changes.ts"
@@ -4862,37 +4862,37 @@ rationale = "PORT_MAP row is ✅ ported (durable/harness/registry.go). coverage.
 [[files]]
 path = "packages/durable/src/harness/scheduler.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:durable/harness/harness_after_run_test.go"]
+rationale = "`entries` runtime read, `endedByCrashes` (Go marks the commit context: a WeakMap on the returned state object has no Go equivalent). PiG: durable/harness/scheduler.go (lane C)."
 
 [[files]]
 path = "packages/durable/src/harness/submissions.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:durable/harness/harness_continue_test.go"]
+rationale = "continue, `whenIdle`, `admit`, `traced`. PiG: durable/harness/submissions.go (lane C)."
 
 [[files]]
 path = "packages/durable/src/harness/task-graph.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "unchanged-observable"
+evidence = ["test:durable/harness/harness_task_graph_test.go"]
+rationale = "only the D-store `closeEnds` hunk changed after 5f312dac. PiG: durable/harness/task_graph.go (lane C)."
 
 [[files]]
 path = "packages/durable/src/harness/telemetry.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:durable/harness/harness_telemetry_test.go"]
+rationale = "span description, `continue` value. PiG: durable/harness/telemetry.go (lane C)."
 
 [[files]]
 path = "packages/durable/src/harness/tool.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:durable/harness/harness_tool_hooks_test.go"]
+rationale = "`reject`, `settleFromSlot`, `afterHarnessResult`, unoffered; `pi.tool` v3. PiG: durable/harness/tool.go (lane C)."
 
 [[files]]
 path = "packages/durable/src/harness/transcript.ts"
@@ -4904,9 +4904,9 @@ rationale = "New in Pi f3255de7: ConversationTranscript, TranscriptItem (entry, 
 [[files]]
 path = "packages/durable/src/harness/types.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:durable/harness/harness_after_run_test.go"]
+rationale = "`SubmissionDraft` continue/`WhenIdle`, `HookApi.Entry/Entries`, `RunSummary`, `RunEndTask`, `GenerationHooks.AfterRun`. PiG: durable/harness/types.go, durable/harness_types.go (lane C)."
 
 [[files]]
 path = "packages/durable/src/harness/usage.ts"
@@ -4918,16 +4918,16 @@ rationale = "PORT_MAP row is ✅ ported (durable/harness/usage.go). coverage.md 
 [[files]]
 path = "packages/durable/src/harness/util.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:durable/harness/harness_hook_reads_test.go"]
+rationale = "`conversationEntries`. PiG: durable/harness/util.go (lane C)."
 
 [[files]]
 path = "packages/durable/src/harness/view.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "unchanged-observable"
+evidence = ["test:durable/harness/harness_view_test.go"]
+rationale = "only the D-store `closeEnds` hunk changed. PiG: durable/harness/view.go (lane C)."
 
 [[files]]
 path = "packages/durable/src/ids.ts"
@@ -4981,9 +4981,9 @@ rationale = "Declares Photon's WebAssembly import for TypeScript. The Go process
 [[files]]
 path = "packages/durable/src/index.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:durable/types_upstream_test.go"]
+rationale = "exports `ConversationIdle`, `LiveRun`, `RunEndTask`, `RunSummary`, `runEndTask` (`registryReader` is D-store). PiG: durable/types.go, durable/errors.go (lane C)."
 
 [[files]]
 path = "packages/durable/src/search.ts"
@@ -5002,16 +5002,16 @@ rationale = "PORT_MAP row is ✅ ported (durable/session/forks.go). coverage.md 
 [[files]]
 path = "packages/durable/src/session/session.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:durable/session/session_tx_place_submission_test.go"]
+rationale = "`ownsTransaction` -> `OwnsTransaction` (`closeEnds` hunk is D-store). PiG: durable/session/session.go (lane C)."
 
 [[files]]
 path = "packages/durable/src/session/transaction.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:durable/session/submission_change_internal_test.go"]
+rationale = "`Context`, `HasTableWrite`, ownership brand, message \"placed input or continue\". PiG: durable/session/transaction.go (lane C)."
 
 [[files]]
 path = "packages/durable/src/storage/indexeddb.ts"
@@ -5310,9 +5310,9 @@ rationale = "PORT_MAP row is ✅ ported (durable/truncate.go). coverage.md repor
 [[files]]
 path = "packages/durable/src/types.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:durable/types_upstream_test.go"]
+rationale = "`SubmissionRecord` continue, `TaskRuntime.Entries` (Observer doc is D-store). PiG: durable/types.go (lane C)."
 
 [[files]]
 path = "packages/env/src/connection.ts"
