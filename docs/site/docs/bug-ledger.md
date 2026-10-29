@@ -208,6 +208,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-3602f48](#bf-3602f48) | fix(durable/core): scheduler microtasks of the commit observer run behind the host listeners' dispatch; a… | PiG's own defect | All platforms | Unreleased |
 | [BF-364cc57](#bf-364cc57) | RPC model objects of built-in models match Pi's: each keeps its catalog entry's own member order and spelling… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-3651a90](#bf-3651a90) | A provider stream that keeps sending keepalive comments or pings but no event now ends with an error after… | A Pi defect that PiG fixed first | All platforms | 0.5.0 |
+| [BF-366ae8e](#bf-366ae8e) | An extension provider's model that another provider also catalogs, such as `gpt-6-astra` under `azure`, no… | PiG's own defect | All platforms | Unreleased |
 | [BF-369b1e1](#bf-369b1e1) | `grep` with `context` no longer loads each matched file into memory | PiG's own defect | All platforms | 0.5.0 |
 | [BF-36e192b](#bf-36e192b) | fix(lint): port Kitty chunking in UTF-16 units; clear the codemode, terminal image and exit-restore lint hits | PiG's own defect | All platforms | Unreleased |
 | [BF-36e82ad](#bf-36e82ad) | fix(durable): a non-finite number is a strict JSON error whichever JSON package a value's own encoder used | PiG's own defect | All platforms | Unreleased |
@@ -3936,6 +3937,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `00c8373052` (2026-10-10), `3651a9096a` (2026-10-10), `4b6ef3e320` (2026-10-10), `64461c2028` (2026-10-10), `b9e2b3fb9b` (2026-10-10)
 - **Tests:** `ai/sse_event_idle_test.go::TestSSEIdleTrackerRecognizesReasoningEvents`, `ai/sse_event_idle_test.go::TestSSEKeepalivesAfterANonReasoningEventStillEndTheStream`, `ai/sse_event_idle_test.go::TestSSEKeepalivesAfterAReasoningEventDoNotEndTheStream`, `ai/sse_event_idle_test.go::TestSSEStreamWithOnlyKeepalivesEndsAfterTheIdleTimeout`, `ai/sse_event_idle_test.go::TestSSEStreamWithSlowEventsIsNotCutOff`
 - **Release note:** A provider stream that keeps sending keepalive comments or pings but no event now ends with an error after `httpIdleTimeoutMs` instead of hanging for ever; the timeout restarts on each event, and on keepalives while the model is reasoning (D131, pi-mono #10761, #10762).
+
+### BF-366ae8e
+
+**An extension provider's model that another provider also catalogs, such as `gpt-6-astra` under `azure`, no…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Such a model took the other provider's API and the turn failed (`LiteLLM model gpt-6-astra declares unsupported protocol "azure-openai-responses"`).
+- **Root cause:** Not recorded.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `366ae8eb45` (2026-10-28)
+- **Tests:** `coding/build_model_catalog_scope_test.go::TestBuildModelIgnoresOtherProvidersCatalog`
+- **Release note:** An extension provider's model that another provider also catalogs, such as `gpt-6-astra` under `azure`, no longer takes that provider's API when it is built before its own provider registers. Before this fix, such a model took the other provider's API and the turn failed (`LiteLLM model gpt-6-astra declares unsupported protocol "azure-openai-responses"`). `BuildModel` now matches only the requested provider's catalog, as the CLI's startup resolution already did.
 
 ### BF-369b1e1
 

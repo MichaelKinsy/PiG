@@ -5949,6 +5949,28 @@
       ]
     },
     {
+      "id": "BF-366ae8e",
+      "title": "An extension provider's model that another provider also catalogs, such as `gpt-6-astra` under `azure`, no…",
+      "symptom": "Such a model took the other provider's API and the turn failed (`LiteLLM model gpt-6-astra declares unsupported protocol \"azure-openai-responses\"`).",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "An extension provider's model that another provider also catalogs, such as `gpt-6-astra` under `azure`, no longer takes that provider's API when it is built before its own provider registers. Before this fix, such a model took the other provider's API and the turn failed (`LiteLLM model gpt-6-astra declares unsupported protocol \"azure-openai-responses\"`). `BuildModel` now matches only the requested provider's catalog, as the CLI's startup resolution already did.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "366ae8eb45",
+          "date": "2026-10-28"
+        }
+      ],
+      "tests": [
+        "coding/build_model_catalog_scope_test.go::TestBuildModelIgnoresOtherProvidersCatalog"
+      ]
+    },
+    {
       "id": "BF-369b1e1",
       "title": "`grep` with `context` no longer loads each matched file into memory",
       "symptom": "A search over a directory of very large logs used to exhaust the heap; the output is unchanged (Pi #9276).",
