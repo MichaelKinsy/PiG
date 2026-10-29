@@ -1,0 +1,3 @@
+### Added
+
+- Go API `chord/next/contracts`, `chord/next/data`, `chord/next/state`, `chord/next/registries` and `chord/nextnode`: the foundation of Chord v2 (`@earendil-works/chord/next`, experimental) as Pi `e7a0df27` has it. Contracts declare and evolve object types with fingerprints and accepts tables, remote contracts carry a `HostAddress` (Pi `5ec24188`), `ChordError` and the failure causes of the dependency model (Pi `339847eb`), the checked params and arguments, the batch, derives and writables behind watchables, registries and their composed values, and `nextnode.NodeCompression` (raw deflate at level 1, inflate bounded by a limit). <!-- feat: chord-next-foundation -->
