@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"maps"
 	"math"
 
 	"github.com/MichaelKinsy/PiG/ai"
@@ -181,9 +182,7 @@ func persistenceBinding(binding map[string]any, options durable.CommitOptions) m
 		return binding
 	}
 	out := make(map[string]any, len(binding)+1)
-	for key, value := range binding {
-		out[key] = value
-	}
+	maps.Copy(out, binding)
 	wire := map[string]any{"kind": "deferred"}
 	if persistence.WithinMs != nil {
 		ms := *persistence.WithinMs

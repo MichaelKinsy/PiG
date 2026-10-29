@@ -111,7 +111,7 @@ func TestTheRestartLimitOnTheNormalPath(t *testing.T) {
 		counts.Lock()
 		others, retention = 0, 0
 		counts.Unlock()
-		for round := 0; round < rounds; round++ {
+		for range rounds {
 			submit("round")
 		}
 		waitForIdle(t, root)
