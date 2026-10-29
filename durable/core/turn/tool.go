@@ -10,12 +10,12 @@ import (
 	"github.com/MichaelKinsy/PiG/durable/core/session"
 )
 
-// ToolDef is the pi.tool task definition (tool.ts ToolTask, version 2): input {kind: "model", assistant, callId}, first
-// checkpoint {phase: "call"}. Version 1 had only model-issued calls and no kind (migrateToolTask).
+// ToolDef is the pi.tool task definition (tool.ts ToolTask, version 3): input {kind: "model", assistant, callId, unoffered?}, first
+// checkpoint {phase: "call"}. Version 1 had only model-issued calls and no kind (migrateToolTask); version 3 added `unoffered`.
 // Read-only: assigned once at initialization.
 var ToolDef = &session.TaskDef{
 	Name:    KindTool,
-	Version: 2,
+	Version: 3,
 	Initial: func(any) any {
 		o := jv.NewObject()
 		o.Set("phase", "call")
@@ -151,10 +151,11 @@ func recordUsageTx(tx *session.Tx, conversation ID, bucket, key string, usage *j
 	return totals.Set(key, jv.Clone(usage))
 }
 
-// migrateToolTask is the pi.tool migration from version 1 (tool.ts): `{ kind: "model", ...input }`, the checkpoint unchanged.
-func migrateToolTask(input, checkpoint any, _ int) (any, any, error) {
+// migrateToolTask is the pi.tool migration (tool.ts): from version 1 `{ kind: "model", ...input }`, the checkpoint unchanged; version 3
+// added `unoffered`, absent in a version 2 input, which is kept as it is.
+func migrateToolTask(input, checkpoint any, from int) (any, any, error) {
 	old, ok := input.(*jv.Object)
-	if !ok {
+	if !ok || from != 1 {
 		return input, checkpoint, nil
 	}
 	migrated := jobj("kind", "model")

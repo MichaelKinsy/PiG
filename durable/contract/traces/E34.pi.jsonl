@@ -1,0 +1,32 @@
+{"k":">","name":"harness.root","tick":217}
+{"k":"#","seq":1,"summary":"conversations:i document_revisions:i documents:i","tick":407,"begin":347}
+{"k":">","name":"harness.root().commit","tick":416}
+{"k":"#","seq":2,"summary":"document_revisions:i documents:i","tick":470,"begin":454}
+{"k":">","name":"harness.commit","tick":478}
+{"k":">","name":"harness.root().submit","tick":481}
+{"k":"!","name":"harness.root().submit","tick":496}
+{"k":"!","name":"harness.commit","tick":501}
+{"k":">","name":"harness.root().submit","tick":502}
+{"k":"#","seq":3,"summary":"document_revisions:d document_revisions:i entries:i submissions:i tasks:i","tick":616,"begin":588}
+{"k":">","name":"harness.commit","tick":627}
+{"k":"#","seq":4,"summary":"tasks:u","tick":662,"begin":651}
+{"k":">","name":"harness.root().submit","tick":682}
+{"k":"#","seq":5,"summary":"document_revisions:i submissions:i","tick":756,"begin":731}
+{"k":">","name":"harness.commit","tick":765}
+{"k":">","name":"harness.root().submit().wait","tick":798}
+{"k":"#","seq":6,"summary":"entries:i tasks:u","tick":927,"begin":911}
+{"k":"#","seq":7,"summary":"document_revisions:i","tick":979,"begin":966}
+{"k":"#","seq":8,"summary":"document_revisions:d document_revisions:i entries:i tasks:i tasks:u","tick":1179,"begin":1144}
+{"k":"#","seq":9,"summary":"tasks:u","tick":1215,"begin":1204}
+{"k":"#","seq":10,"summary":"document_revisions:i tasks:u","tick":1311,"begin":1293}
+{"k":"#","seq":11,"summary":"document_revisions:d document_revisions:i entries:i tasks:u","tick":1413,"begin":1390}
+{"k":"#","seq":12,"summary":"tasks:u","tick":1463,"begin":1452}
+{"k":"#","seq":13,"summary":"document_revisions:d document_revisions:i entries:i submissions:u tasks:i tasks:u","tick":1649,"begin":1609}
+{"k":"#","seq":14,"summary":"tasks:u","tick":1699,"begin":1688}
+{"k":"#","seq":15,"summary":"tasks:u","tick":1831,"begin":1820}
+{"k":"#","seq":16,"summary":"document_revisions:i","tick":1883,"begin":1870}
+{"k":"#","seq":17,"summary":"document_revisions:d document_revisions:i entries:i submissions:u tasks:u","tick":2105,"begin":2065}
+{"k":">","name":"harness.root().waitForIdle","tick":2109}
+{"k":">","name":"harness.root().entries","tick":2112}
+{"k":">","name":"harness.snapshot","tick":2154}
+{"k":">","name":"harness.close","tick":2155}

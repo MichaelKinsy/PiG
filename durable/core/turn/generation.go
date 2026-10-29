@@ -26,15 +26,25 @@ const (
 	phaseRetry   = "retry"
 	phasePoll    = "poll"
 	phaseTools   = "tools"
+	// phaseFinish: the run answered, its answer is committed and its inputs settled, and it keeps `pi.live.run` while `afterRun` hooks are
+	// asked for tasks (spec section 8.3). A crash here asks them again: nothing was created yet.
+	phaseFinish = "finish"
+	// phaseDrain: waiting on the tasks `afterRun` hooks asked for, which the generation owns; then the run ends.
+	phaseDrain = "drain"
 )
 
-// GenerationDef is the pi.generation definition: first checkpoint {phase: "prepare", attempt: 1}.
+// GenerationDef is the pi.generation definition: first checkpoint {phase: "prepare", attempt: 1}. Version 2 leaves calls to tools not
+// offered in a sequential round's `pending`, flagged `unoffered` in their slots. A version 1 Harness would start their tool tasks
+// unflagged, resolving the name, so it leaves version 2 blocked instead. A version 1 checkpoint has no such calls and is kept as it is.
 // Read-only: assigned once at initialization.
 var GenerationDef = &session.TaskDef{
 	Name:    KindGeneration,
-	Version: 1,
+	Version: 2,
 	Initial: func(any) any { return jobj("phase", phasePrepare, "attempt", 1.0) },
 }
+
+// migrateGeneration keeps a version 1 generation as it is.
+func migrateGeneration(input, checkpoint any, _ int) (any, any, error) { return input, checkpoint, nil }
 
 // jobj builds an ordered object from alternating keys and values.
 func jobj(kv ...any) *jv.Object {
@@ -100,7 +110,7 @@ type Generation struct{ Host *Host }
 
 // Impl returns the executable definition registered in the registry.
 func (g *Generation) Impl() *session.TaskImpl {
-	return &session.TaskImpl{Def: *GenerationDef, Phase: g.phase, Abort: g.abort, AbortReturnHops: abortReturnHops}
+	return &session.TaskImpl{Def: *GenerationDef, Migrate: migrateGeneration, Phase: g.phase, Abort: g.abort, AbortReturnHops: abortReturnHops}
 }
 
 // run carries what the phases of one invocation share.
@@ -148,6 +158,10 @@ func (g *Generation) phase(rt *session.Runtime, task *jv.Object, done func(error
 		r.poll(cp)
 	case phaseTools:
 		r.tools(cp)
+	case phaseFinish:
+		r.finish(cp)
+	case phaseDrain:
+		r.drain(cp)
 	default:
 		done(errors.New("Generation phase " + str(cp, "phase") + " is unknown"))
 	}
@@ -293,8 +307,8 @@ func applyBoundary(tx *session.Tx, boundary *inbox.Boundary, final bool, now flo
 }
 
 // awaitStartRun is `await startRun(...)` (generation.ts :535, :633, :639): the caller resumes one tick after the async function returns.
-func awaitStartRun(tx *session.Tx, conv ID, live *delta.Obj, inputs []ID, keepFailure bool) error {
-	if err := startRun(tx, conv, live, inputs, keepFailure); err != nil {
+func awaitStartRun(tx *session.Tx, conv ID, live *delta.Obj, run inbox.RunStart, keepFailure bool) error {
+	if err := startRun(tx, conv, live, run, keepFailure); err != nil {
 		return err
 	}
 	tx.Await(1)
@@ -438,9 +452,34 @@ func compactionFailureText(outcome *jv.Object) string {
 	return "Compaction was aborted"
 }
 
+// failNothingToAnswer ends the run without a request: its context has nothing the model would answer.
+func (r *run) failNothingToAnswer() {
+	message := "The conversation has nothing to answer"
+	r.commitDone(func(tx *session.Tx, _ *jv.Object) (*jv.Object, error) {
+		failed, err := r.prepareFailure(tx)
+		if err != nil {
+			return nil, err
+		}
+		live, err := tx.Doc(LiveDef, session.DocArgs{Owner: r.conv})
+		if err != nil {
+			return nil, err
+		}
+		if err := r.endFailedRun(tx, live, failed, Unanswered("nothing_to_answer")); err != nil {
+			return nil, err
+		}
+		return failedTerminal(message, "nothing_to_answer"), nil
+	})
+}
+
 func (r *run) prepareRequest(agent *Agent, settings Settings, window, attempt float64, compacted ID) {
 	h := r.g.Host
 	r.requestContext(0, func(view RequestContext) {
+		// The model owes an answer only to a context ending in a user message or tool results; system messages say nothing it answers.
+		// Otherwise, as for a continue after an answer or in an empty conversation, end the run before any request.
+		if !view.OwesAnswer() {
+			r.failNothingToAnswer()
+			return
+		}
 		pv := view.PromptView()
 		shown := ReplaySections(pv.Messages)
 		h.Render(r.conv, r.rt.TaskID(), agent, shown, r.rt.Signal(), func(desired *Sections, err error) {
@@ -478,19 +517,14 @@ func (r *run) prepareRequest(agent *Agent, settings Settings, window, attempt fl
 				if err != nil {
 					return nil, err
 				}
-				var cutoff ID
-				if len(page.Items) > 0 {
-					cutoff = idField(page.Items[0], "id")
-				}
+				// The context ends in a message the model answers, so the conversation has an entry.
+				cutoff := idField(page.Items[0], "id")
 				for _, e := range entries {
 					rec, err := tx.AppendEntry(r.conv, entryDraft(KindSystem, e))
 					if err != nil {
 						return nil, err
 					}
 					cutoff = idField(rec, "id")
-				}
-				if cutoff == 0 {
-					return nil, errors.New("Conversation " + itoa(int64(r.conv)) + " has no entries to send")
 				}
 				// Checked in this commit, so a compaction admitted during preparation counts.
 				if threshold == history.ThresholdBackground {

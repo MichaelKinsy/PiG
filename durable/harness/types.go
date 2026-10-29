@@ -11,7 +11,8 @@ import (
 	"github.com/MichaelKinsy/PiG/telemetry"
 )
 
-// HookApi is what a hook may use: committed reads and the asking task's memos, which hooks and the task share.
+// HookApi is what a hook may use: committed reads and the asking task's memos, which hooks and the task share. Hooks
+// run off the Session line, so reads see what is committed when they run; a hook rerun after a crash may see more.
 type HookApi interface {
 	durable.DocumentReader
 	TaskId() durable.TaskId
@@ -22,6 +23,11 @@ type HookApi interface {
 	Memo(ctx context.Context, name string) (value durable.JsonValue, ok bool, err error)
 	// MemoCandidate stores candidate unless a memo already exists and returns the durable winner.
 	MemoCandidate(ctx context.Context, name string, candidate durable.JsonValue) (durable.JsonValue, error)
+	// Entry is a committed entry visible from the task's conversation, as TaskRuntime.Entry; nil when the entry is
+	// absent or not visible. A typed read is token.As(entry).
+	Entry(ctx context.Context, id durable.EntryId) (*durable.EntryRecord, error)
+	// Entries is the committed raw history of the task's conversation, as TaskRuntime.Entries.
+	Entries(ctx context.Context, query durable.EntryQuery, limit int, cursor durable.Cursor) (durable.Page[durable.EntryRecord, durable.Cursor], error)
 }
 
 // GenerationRequest is the request a beforeRequest hook may replace.
@@ -44,6 +50,58 @@ type GenerationHooks struct {
 	OnYield func(ctx context.Context, answer ai.AssistantMessage, api HookApi) (*YieldContinue, error)
 	// AfterTools runs after every tool of the round is terminal; results are the round's result entries in call order.
 	AfterTools func(ctx context.Context, assistant durable.EntryId, results []durable.EntryId, api HookApi) error
+	// AfterRun runs after a run answered, its answer committed and its inputs settled done: a final answer, or a
+	// terminate round; not when an onYield continuation is taken, and never after a failure or an abort. The requested
+	// tasks of every hook are created together as children of the generation, which keeps the run, and the conversation
+	// busy, until they are terminal; then queued items are placed and the run ends (spec §8.3). A crash before they are
+	// created asks again; once created, never again for this run.
+	AfterRun func(ctx context.Context, run RunSummary, api HookApi) (*RunEndTasks, error)
+}
+
+// RunEndReason is how a run ended, for afterRun hooks.
+type RunEndReason string
+
+const (
+	// RunEndAnswer is a final answer.
+	RunEndAnswer RunEndReason = "answer"
+	// RunEndTerminate is a tool round whose every call asked to terminate.
+	RunEndTerminate RunEndReason = "terminate"
+)
+
+// RunSummary is how a run ended, for afterRun hooks. Read the run's history with
+// api.Entries(durable.EntryQuery{MinEntryId: &first, MaxEntryId: &last}, ...).
+type RunSummary struct {
+	Reason RunEndReason `json:"reason"`
+	// First is the run's first entry (LiveRun.First): the first one the boundary that started it placed, for a continue
+	// the failed run's it continues, otherwise its first tool-calling answer; the answer itself for a run that has none
+	// of these.
+	First durable.EntryId `json:"first"`
+	// Answer is the answer, or the terminating round's tool-calling answer, whose results follow it.
+	Answer durable.EntryId `json:"answer"`
+	// Last is the run's last entry: the answer; for a terminate round its newest result, or the reset of its handoff.
+	Last durable.EntryId `json:"last"`
+}
+
+// MarshalJSON writes the members in the order Pi stores them in a generation's finish checkpoint: the held end, then
+// first.
+func (run RunSummary) MarshalJSON() ([]byte, error) {
+	return marshalPlain(struct {
+		Reason RunEndReason    `json:"reason"`
+		Answer durable.EntryId `json:"answer"`
+		Last   durable.EntryId `json:"last"`
+		First  durable.EntryId `json:"first"`
+	}{run.Reason, run.Answer, run.Last, run.First})
+}
+
+// RunEndTask is a task an afterRun hook asks for, built by RunEndTaskOf. Input is JSON.
+type RunEndTask struct {
+	Task  durable.AnyTask
+	Input durable.JsonValue
+}
+
+// RunEndTasks is what an afterRun hook asks for: the tasks to create and wait for.
+type RunEndTasks struct {
+	Tasks []RunEndTask
 }
 
 // ToolParent is the calling task and call ID of a nested call.
@@ -243,8 +301,10 @@ type Conversation interface {
 	Agent(ctx context.Context) (durable.Agent, error)
 	// Configure applies change in its own commit.
 	Configure(ctx context.Context, change AgentChange) error
-	// Submit durably admits user input or a passive entry write. A busy conversation, or one with queued items, queues it in pi.inbox; WhenBusy reject fails with ConversationBusy instead and writes nothing.
+	// Submit durably admits user input, a passive entry write, or a continue. A busy conversation, or one with queued items, queues input and writes that affect model context in pi.inbox; WhenBusy reject rejects input with ConversationBusy instead and writes nothing. An idle conversation rejects WhenIdle reject input with ConversationIdle and writes nothing. A write of only Kind and Data (no Model, Head, or Edits) is appended at once, even mid-run, as it changes nothing the model sees. A continue starts a run on the context as it is, after placing queued items; a busy conversation rejects it with ConversationBusy, as it never queues.
 	Submit(ctx context.Context, submission durable.SubmissionDraft) (durable.Submission, error)
+	// SubmitIn admits a submission inside the caller's commit tx (Harness.Commit, Conversation.Commit, a task's runtime Commit), with the same rules, and returns its ID: the admission is stored with that commit, or not at all when the callback fails later or the commit fails. Call it before the commit's first table write (AppendEntry, CreateTask, CreateSubmission, another admission): otherwise it fails with ReadAfterWrite, on every path. Documents may be read and written before and after it. A rejection (ConversationBusy, ConversationIdle) fails before any write, so the callback may handle it. Do not call Submission or other Harness reads inside the callback: they wait for the commit holding the line. Its pi.durable.submit span covers the admission only, so its result is provisional. Fails for a transaction of another Session.
+	SubmitIn(tx durable.Tx, submission durable.SubmissionDraft) (durable.SubmissionId, error)
 	// Reset admits a write of a pi.reset entry that starts a new context, carrying handoff as a user message when non-nil. It returns after admission; while busy, it is placed at the next boundary.
 	Reset(ctx context.Context, handoff *string) error
 	// Compact admits a manual compaction task and returns its ID (spec §8.7).

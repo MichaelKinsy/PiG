@@ -2,7 +2,8 @@
 // (ABI section 8). Document drafts are Chord trackers over the value the core returns; their Op[] go back before `end`.
 // The core enforces ReadAfterWrite and every other §4 rule and answers each operation, so this proxy forwards and never
 // decides.
-import { copyJson, type JsonValue } from "@earendil-works/chord"
+import { copyJson, type Context, type JsonValue } from "@earendil-works/chord"
+import { BACKGROUND_CONTEXT } from "@earendil-works/chord/context"
 import { track, type Change, type Tracker } from "@earendil-works/chord/delta"
 import type { TxChannel } from "../client.ts"
 import type { Revision } from "./snapshots.ts"
@@ -115,6 +116,15 @@ export class TxProxy {
   createSubmission(create: unknown) { return this.tableWrite(() => this.forward("createSubmission", { create: tableJson(create) })) }
   settleSubmission(id: number, settlement: unknown): void { void this.send("settleSubmission", { id, settlement }).catch(() => {}) }
   placeSubmission(id: number, entry: number): void { void this.send("placeSubmission", { id, entry }).catch(() => {}) }
+  /**
+   * Admit a submission inside this transaction (Pi `Conversation.submit(tx, draft)`, submissions.ts admit): the core applies the rules of
+   * the `submit` event and answers `{id, status}`, or rejects (`ReadAfterWrite` after a table write, `ConversationBusy`, `ConversationIdle`).
+   * Not part of `Tx`: the Harness reaches it through `transactionOf`.
+   */
+  async admitSubmission(body: Record<string, unknown>): Promise<{ id: number; status: string; link?: Record<string, string> }> {
+    this.assertOpen()
+    return this.forward("submit", body)
+  }
 
   // Documents.
   async doc(token: AnyDocToken, ...args: unknown[]) {
@@ -247,6 +257,12 @@ export class TxProxy {
   static addressId = addressId
 }
 
+/** The transactions the commit driver handed out, by the handle the callback holds: `Conversation.submit(tx, draft)` accepts only these (a wrapped or foreign transaction is another Session's). */
+const handles = new WeakMap<object, { tx: TxProxy; context: Context }>()
+
+/** The transaction and commit context behind a handle `runCommit` gave a callback, or undefined for any other object. */
+export const transactionOf = (handle: unknown): { tx: TxProxy; context: Context } | undefined => typeof handle === "object" && handle !== null ? handles.get(handle) : undefined
+
 /** Run `change` as one Session commit: begin (waiting for the line), callback, flush drafts, end with the next task state. */
 const SYNC_SETTERS = new Set(["setTask", "settleSubmission", "placeSubmission"])
 
@@ -258,6 +274,7 @@ export async function runCommit<T>(
   onWrite?: (address: unknown, definition: { kind?: unknown }, revision: Revision) => (committed: boolean) => void,
   trackers?: LoadedTrackers,
   failed?: () => void,
+  context: Context = BACKGROUND_CONTEXT,
 ): Promise<T> {
   const channel = await begin()
   // A document's write counts as a new revision only once the commit succeeded (a rolled-back commit leaves every snapshot as it was).
@@ -274,6 +291,7 @@ export async function runCommit<T>(
       return SYNC_SETTERS.has(key) ? () => { throw settled } : () => Promise.reject(settled)
     },
   })
+  handles.set(handle, { tx, context })
   let result: T
   try {
     result = await change(handle, channel.current)

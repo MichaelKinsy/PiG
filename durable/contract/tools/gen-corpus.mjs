@@ -74,46 +74,19 @@ const U = {
 	"codemode-imports": "loop", "harness-after-run": "loop", "harness-continue": "session", "harness-hook-reads": "loop", "harness-submit-in-commit": "session", "harness-tool-hooks": "loop",
 	"harness-turn-limit": "loop", "harness-registry-reader": "loop", "store-storage": "store",
 }
-// Sources that gained, after Pi 5f312dac (the watch vocabulary the Go port implements), what a later lane of the follow ports. The row is
-// pending, with the lane that owns the feature in its reason, until that lane lands: the candidates cannot pass it, and a row that
-// reports the lane's work as `ready` would fail every candidate for the wrong reason. Lane C: durable features after the break (bb65e3e4
-// 87eff524 1c6928b3 fb524dd2 f6a9db1d 6a282511 cc9c5231 65fba65b 7e15f960 018fdcf4). Lane D-store: Durable on Chord's store and the
-// registry (14b4c56e, 6eb99ad6).
-const laneC = what => `pending lane C (Pi durable features after the 5f312dac port): ${what}`
+// Sources that gained, after Pi 5f312dac, what lane D-store of the follow ports (Durable on Chord's store and the registry: 14b4c56e,
+// 6eb99ad6). The row is pending, with the lane in its reason, until that lane lands: the candidates cannot pass it, and a row that
+// reports the lane's work as `ready` would fail every candidate for the wrong reason.
 const laneDStore = what => `pending lane D-store (Durable on Chord's store, registries): ${what}`
 const LATER = {
-	"32-tests-after-edits": laneC("afterTool runs on every tool task result, and calls to tools not offered run as tool tasks (87eff524, 1c6928b3)"),
-	"33-turn-limit-and-continue": laneC("the per-conversation turn limit and continue submissions (f6a9db1d, fb524dd2)"),
-	"34-submit-in-commit": laneC("submissions admitted inside the caller's commit with submit(tx, draft), and whenIdle (cc9c5231, 6a282511)"),
 	"35-durable-on-the-store": laneDStore("a Harness on StoreStorage over Chord's store (14b4c56e)"),
 	"36-durable-views": laneDStore("Durable views on Chord's store (14b4c56e)"),
 	"37-harness-registry": laneDStore("a Harness over a registry and host.root (6eb99ad6)"),
-	"codemode-imports": laneC("toCodemodeIdentifier is imported from pi-codemode/declarations (bb65e3e4)"),
-	"harness-after-run": laneC("run-end tasks with the afterRun hook (7e15f960)"),
-	"harness-continue": laneC("continue submissions (fb524dd2)"),
-	"harness-hook-reads": laneC("entry reads for hooks and tasks (65fba65b)"),
-	"harness-submit-in-commit": laneC("submit(tx, draft) and whenIdle (cc9c5231, 6a282511)"),
-	"harness-tool-hooks": laneC("afterTool on every tool task result and tool tasks for calls not offered (87eff524, 1c6928b3)"),
-	"harness-turn-limit": laneC("the per-conversation turn limit (f6a9db1d)"),
 	"harness-registry-reader": laneDStore("the registry reader (6eb99ad6)"),
 	"store-storage": laneDStore("StoreStorage, Durable's storage on Chord's store (14b4c56e)"),
-	"harness-compaction": laneC("pi.live version 3 gives a stored run without turns a count of 0, and the run's turns (018fdcf4, f6a9db1d)"),
-	"harness-generation-recovery": laneC("pi.live run carries turns and first (7e15f960, f6a9db1d)"),
-	"harness-generation": laneC("pi.live run and runFailure carry first, turns; unoffered tool tasks (7e15f960, f6a9db1d, 1c6928b3)"),
-	"harness-input-entries": laneC("pi.live runFailure carries first (7e15f960)"),
-	"harness-live-deltas": laneC("pi.live run turns and first, and flagged tool slots for calls not offered (7e15f960, f6a9db1d, 1c6928b3)"),
-	"harness-nested-tools": laneC("tool task version 2 input kept as it is, unoffered calls (1c6928b3)"),
-	"harness-ownership": laneC("pi.live run carries turns (f6a9db1d)"),
-	"harness-restart-failure": laneC("pi.live runFailure carries first (7e15f960)"),
-	"harness-run-failure": laneC("pi.live runFailure carries first (7e15f960)"),
-	"harness-scheduler-retention": laneC("pi.live run carries turns (f6a9db1d)"),
-	"harness-structured": laneC("pi.live runFailure carries first (7e15f960)"),
-	"harness-submissions": laneC("the submission record is tagged by type, input or continue (fb524dd2)"),
-	"harness-tools": laneC("calls to tools not offered run through a flagged tool task, afterTool on every result (1c6928b3, 87eff524)"),
-	"harness-view-run": laneC("the view's run carries turns and first, and a call not offered has its own task (7e15f960, f6a9db1d, 1c6928b3)"),
 	"harness-observers": laneDStore("a Session close fails an observer (S1) and ends a watch ended (6eb99ad6)"),
 	"session-observers": laneDStore("a Session close fails an observer (S1) and ends a watch ended (6eb99ad6)"),
-	"SC": `${laneC("the suite stores continue submissions (fb524dd2)")}; ${laneDStore("it refuses a creation and a change of one document in one commit (14b4c56e)")}`,
+	"SC": laneDStore("it refuses a creation and a change of one document in one commit (14b4c56e)"),
 }
 const out = []
 const emit = (...lines) => out.push(...lines, "")

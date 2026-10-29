@@ -138,10 +138,10 @@ var DurableTelemetrySchema = telemetry.DefineTelemetrySchema(&telemetry.Telemetr
 	Version: 1,
 	Spans: map[string]telemetry.TelemetrySpanDefinition{
 		"pi.durable.submit": {
-			Description: "Public submission admission and its commit. Inputs start root traces linked to their callers; writes are children. Internal admissions emit phase events only.",
+			Description: "Public submission admission: with its commit for submit(draft, context); the admission only for submit(tx, draft), whose result is provisional (a later throw or storage failure of the caller's commit leaves no submission) and whose commit events go to the caller's commit context. Inputs and continues start root traces linked to their callers; writes are children. Internal admissions emit phase events only.",
 			Parents:     telemetry.TelemetryParentDefinition{Kind: telemetry.TelemetryParentKindAny},
 			StartAttributes: map[string]telemetry.TelemetryStartAttributeDefinition{
-				"submission.type": attribute(attrString, true, "Submission type.", "input", "write"),
+				"submission.type": attribute(attrString, true, "Submission type.", "input", "write", "continue"),
 				"conversation.id": highCardinality(attribute(attrNumber, true, "Conversation ID.")),
 			},
 			EndAttributes: map[string]telemetry.TelemetryAttributeDefinition{

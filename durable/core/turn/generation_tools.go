@@ -4,6 +4,7 @@
 package turn
 
 import (
+	"github.com/MichaelKinsy/PiG/durable/core/internal/delta"
 	"github.com/MichaelKinsy/PiG/durable/core/jv"
 	"github.com/MichaelKinsy/PiG/durable/core/session"
 )
@@ -29,18 +30,23 @@ func (r *run) tools(cp *jv.Object) {
 		if err != nil {
 			return nil, err
 		}
-		taskID, err := createToolTask(tx, r.rt.TaskID(), assistant, next)
+		var slot *delta.Obj
+		if slots := live.Arr("tools"); slots != nil {
+			for i := range slots.Len() {
+				if s := slots.Obj(i); s != nil && s.Get("callId") == next && !s.Has("taskId") {
+					slot = s
+					break
+				}
+			}
+		}
+		unoffered := slot != nil && slot.Get("unoffered") == true
+		taskID, err := createToolTask(tx, r.rt.TaskID(), assistant, next, unoffered)
 		if err != nil {
 			return nil, err
 		}
-		if slots := live.Arr("tools"); slots != nil {
-			for i := range slots.Len() {
-				if slot := slots.Obj(i); slot != nil && slot.Get("callId") == next && !slot.Has("taskId") {
-					if err := slot.Set("taskId", float64(taskID)); err != nil {
-						return nil, err
-					}
-					break
-				}
+		if slot != nil {
+			if err := slot.Set("taskId", float64(taskID)); err != nil {
+				return nil, err
 			}
 		}
 		all := append(append([]any{}, toolList...), float64(taskID))
@@ -89,21 +95,27 @@ func (r *run) finishToolRound(assistant ID, toolList []any) {
 					r.fail(err)
 					return
 				}
+				// In call order, the slots' order; a slot without a task (faulted or orphaned before it got one) has no control.
 				controlOf := map[ID]*jv.Object{}
 				for i, id := range ids {
 					controlOf[id] = controls[i]
 				}
-				// Every call of the round, including those answered without a task, must ask to terminate.
+				ordered := make([]*jv.Object, len(slots))
+				for i, slot := range slots {
+					if slot.Has("taskId") {
+						ordered[i] = controlOf[ID(num(slot, "taskId"))]
+					}
+				}
+				// Every call of the round must ask to terminate.
 				terminate := len(slots) > 0
-				for _, slot := range slots {
-					ctl := controlOf[ID(num(slot, "taskId"))]
-					if !slot.Has("taskId") || ctl == nil || !mustTrue(ctl, "terminate") {
+				for _, ctl := range ordered {
+					if ctl == nil || !mustTrue(ctl, "terminate") {
 						terminate = false
 					}
 				}
 				var added []any
 				var handoff any
-				for _, ctl := range controls {
+				for _, ctl := range ordered {
 					if ctl == nil {
 						continue
 					}
@@ -115,9 +127,27 @@ func (r *run) finishToolRound(assistant ID, toolList []any) {
 						handoff = v
 					}
 				}
-				r.commitDone(func(tx *session.Tx, _ *jv.Object) (*jv.Object, error) {
-					return r.finishCommit(tx, assistant, terminate, handoff, added)
-				})
+				newest := assistant
+				for _, e := range results {
+					if id, _ := e.(float64); ID(id) > newest {
+						newest = ID(id)
+					}
+				}
+				// Read from the phase's agent, as every agent field; a `configure()` during the round applies at its end.
+				// The extra hop reproduces Pi e7a0df27's tick count of the F-ticks-tools rows (settled 1728 gate / 1509 node): measured,
+				// the core was one tick short of `(await runtime.agent(context)).maxTurns` after hooks.each in finishToolRound.
+				r.hops(1, func() { r.agent(func(agent *Agent) {
+					commit := func(afterRun bool) {
+						r.commitDone(func(tx *session.Tx, _ *jv.Object) (*jv.Object, error) {
+							return r.finishCommit(tx, assistant, newest, terminate, afterRun, agent.MaxTurns, handoff, added)
+						})
+					}
+					if terminate {
+						r.asksAfterRun(commit)
+						return
+					}
+					commit(false)
+				}) })
 			})
 		})
 	})
@@ -128,7 +158,7 @@ func mustTrue(o *jv.Object, key string) bool {
 	return v == true
 }
 
-func (r *run) finishCommit(tx *session.Tx, assistant ID, terminate bool, handoff any, added []any) (*jv.Object, error) {
+func (r *run) finishCommit(tx *session.Tx, assistant, newest ID, terminate, afterRun bool, maxTurns int, handoff any, added []any) (*jv.Object, error) {
 	h := r.g.Host
 	boundary, err := prepareBoundary(tx, r.conv, h.Settings().Queue)
 	if err != nil {
@@ -144,6 +174,8 @@ func (r *run) finishCommit(tx *session.Tx, assistant ID, terminate bool, handoff
 		return nil, err
 	}
 	now := r.now()
+	// The run's last entry so far: the newest result, or the assistant when no result has an entry.
+	last := newest
 	if handoff != nil {
 		// The handoff's reset precedes every queued item, so queued writes and selected steers land in its context.
 		message := jobj("role", "user", "content", handoff, "timestamp", now)
@@ -153,8 +185,24 @@ func (r *run) finishCommit(tx *session.Tx, assistant ID, terminate bool, handoff
 			return nil, err
 		}
 		boundary.Head, boundary.HasHead = idField(entry, "id"), true
+		last = idField(entry, "id")
 	}
-	if terminate {
+	turns := 0
+	if run := live.Obj("run"); run != nil && sameID(run.Get("taskId"), r.rt.TaskID()) {
+		t, _ := run.Get("turns").(float64)
+		turns = int(t)
+	}
+	if afterRun {
+		held, ok, err := r.holdRun(tx, live, "terminate", assistant, last)
+		if err != nil {
+			return nil, err
+		}
+		if ok {
+			return held, nil
+		}
+	}
+	switch {
+	case terminate:
 		applied, err := applyBoundary(tx, boundary, true, now)
 		if err != nil {
 			return nil, err
@@ -163,11 +211,25 @@ func (r *run) finishCommit(tx *session.Tx, assistant ID, terminate bool, handoff
 			return nil, err
 		}
 		if len(applied.Users) > 0 {
-			if err := awaitStartRun(tx, r.conv, live, applied.Users, false); err != nil {
+			if err := awaitStartRun(tx, r.conv, live, applied.Start(), false); err != nil {
 				return nil, err
 			}
 		}
-	} else {
+	case maxTurns > 0 && turns >= maxTurns:
+		// The turn limit ends the run like a failure: `afterFailedRun` decides the queued items, and a continue resumes it on the round's
+		// results. The table was read for the boundary already, before any write.
+		failed := failure{policy: h.Settings().AfterFailedRun}
+		if failed.policy == "continue" {
+			failed.boundary = boundary
+		}
+		detail := itoa(int64(turns)) + " turns"
+		if turns == 1 {
+			detail = "1 turn"
+		}
+		if err := r.endFailedRun(tx, live, failed, UnansweredWith("turn_limit", detail)); err != nil {
+			return nil, err
+		}
+	default:
 		applied, err := applyBoundary(tx, boundary, false, now)
 		if err != nil {
 			return nil, err
@@ -178,7 +240,7 @@ func (r *run) finishCommit(tx *session.Tx, assistant ID, terminate bool, handoff
 				return nil, err
 			}
 			if len(applied.Users) > 0 {
-				if err := awaitStartRun(tx, r.conv, live, applied.Users, true); err != nil {
+				if err := awaitStartRun(tx, r.conv, live, applied.Start(), true); err != nil {
 					return nil, err
 				}
 			}
@@ -199,7 +261,7 @@ func (r *run) finishCommit(tx *session.Tx, assistant ID, terminate bool, handoff
 			handOver(live, r.rt.TaskID(), next)
 		}
 	}
-	return jobj("status", "terminal", "outcome", jobj("status", "completed", "result", jobj("entryId", float64(assistant)))), nil
+	return completedTerminal(assistant), nil
 }
 
 // abort runs in a fresh invocation after an abort mark and commits a terminal outcome: a partial becomes an aborted
@@ -217,7 +279,21 @@ func (g *Generation) abort(rt *session.Runtime, task *jv.Object, done func(error
 				return nil, err
 			}
 			for _, call := range unstarted {
-				if _, err := AppendToolResult(tx, r.conv, call, HarnessError("aborted", "Tool "+str(call, "name")+" was aborted"), r.now(), nil); err != nil {
+				// A call its request did not offer could not have run either way.
+				unoffered := false
+				if slots := live.Arr("tools"); slots != nil {
+					for i := range slots.Len() {
+						if slot := slots.Obj(i); slot != nil && slot.Get("callId") == str(call, "id") {
+							unoffered = slot.Get("unoffered") == true
+							break
+						}
+					}
+				}
+				result := HarnessError("aborted", "Tool "+str(call, "name")+" was aborted")
+				if unoffered {
+					result = HarnessError("tool_unavailable", "Tool "+str(call, "name")+" is not available")
+				}
+				if _, err := AppendToolResult(tx, r.conv, call, result, r.now(), nil); err != nil {
 					return nil, err
 				}
 			}

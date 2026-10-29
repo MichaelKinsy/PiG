@@ -514,6 +514,8 @@ func errorName(err error) string {
 		return "StorageRequestError"
 	case errors.Is(err, inbox.ErrConversationBusy):
 		return "ConversationBusy"
+	case errors.Is(err, inbox.ErrConversationIdle):
+		return "ConversationIdle"
 	}
 	var te *typeError
 	if errors.As(err, &te) || errors.Is(err, session.ErrTypeError) {
@@ -530,6 +532,22 @@ func errorJSON(err error) []byte {
 		out = append(out[:len(out)-1], `,"conversationId":`...)
 		out = jv.Append(out, float64(busy.ConversationID))
 		out = append(out, '}')
+	}
+	if idle, ok := errors.AsType[*inbox.IdleError](err); ok {
+		out = append(out[:len(out)-1], `,"conversationId":`...)
+		out = jv.Append(out, float64(idle.ConversationID))
+		out = append(out, '}')
+	}
+	// An AggregateError carries its errors (the afterRun hook's rejected task requests).
+	if thrown, ok := errors.AsType[*ThrownError](err); ok && len(thrown.Errors) > 0 {
+		out = append(out[:len(out)-1], `,"errors":[`...)
+		for i, inner := range thrown.Errors {
+			if i > 0 {
+				out = append(out, ',')
+			}
+			out = append(out, abi.ErrorJSON(inner.Name, inner.Message)...)
+		}
+		out = append(out, ']', '}')
 	}
 	return out
 }

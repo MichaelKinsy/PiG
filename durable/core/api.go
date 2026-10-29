@@ -131,7 +131,7 @@ func (h *handler) onAPI(ev *abi.Event) error {
 			h.job.readLine = true
 			// A read that returns the Storage promise itself (readOnLine(() => storage.submission(id)): status, get) settles one tick earlier than
 			// Submissions.wait's async arrow, which awaits it (submissions.ts :63-86).
-			h.job.direct = op == "conversation" || op == "getTask" || op == "entry" || op == "scanEntries" || (op == "submission" && !req.Has("wait"))
+			h.job.direct = op == "conversation" || op == "getTask" || op == "entry" || op == "scanEntries" || op == "entries" || (op == "submission" && !req.Has("wait"))
 			value, err = h.api(op, req)
 			return err
 		}, func(err error) {
@@ -189,7 +189,7 @@ func (h *handler) answerDirect(id uint32, req *jv.Object) error {
 // snapshot whose document is not loaded.
 func (h *handler) onLine(op string, req *jv.Object) bool {
 	switch op {
-	case "conversation", "getTask", "submission", "scanEntries", "context", "entry", "taskGraph", "snapshotAsOf":
+	case "conversation", "getTask", "submission", "scanEntries", "entries", "context", "entry", "taskGraph", "snapshotAsOf":
 		return true
 	case "unloadDocuments":
 		// Storing held changes first is a Storage commit: a job on the Session line (session.ts unloadDocuments).
@@ -267,6 +267,27 @@ func (h *handler) api(op string, req *jv.Object) (any, error) {
 			return nil, nil
 		}
 		return rec, nil
+	case "entries":
+		// TaskRuntime.entries and HookApi.entries: the committed raw history of the task's conversation, as Conversation.entries
+		// (scheduler.ts runtime.entries: readOnLine(() => storage.scanEntries(conversationEntries(conversationId, query), ...))). Only the
+		// entry ID bounds and the order of the query are used.
+		var conv float64
+		if rt := h.runtimes[session.ID(numOf(req, "taskId"))]; rt != nil {
+			conv = float64(rt.ConversationID())
+		} else if t, err := h.mir.Task(session.ID(numOf(req, "taskId"))); err != nil {
+			return nil, err
+		} else if t != nil {
+			conv = numOf(t, "conversationId")
+		}
+		asked := objOf(req, "query")
+		scan := jobj("conversationId", conv)
+		for _, key := range [...]string{"minEntryId", "maxEntryId", "order"} {
+			if v, ok := asked.Get(key); ok {
+				scan.Set(key, v)
+			}
+		}
+		cursor, _ := req.Get("cursor")
+		return h.api("scanEntries", jobj("query", scan, "limit", valueOf(req, "limit"), "cursor", cursor))
 	case "scanEntries":
 		// Conversation.entries is readOnLine(() => storage.scanEntries(query, limit, cursor)) (harness.ts :127-139).
 		q := objOf(req, "query")

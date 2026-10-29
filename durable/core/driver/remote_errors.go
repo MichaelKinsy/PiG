@@ -7,17 +7,31 @@ import (
 	"github.com/MichaelKinsy/PiG/durable"
 )
 
-// As lets errors.As find the typed Pi error a remote error names: Pi's Session throws ReadAfterWrite, StorageRequestError, SessionFailed, ReadOnlySession and
-// ConversationBusy instances and callers match them with instanceof (errors.ts), so a caller of the driver matches the same
-// Go types the in-process Session returns. ConversationBusy carries its id in the structured conversationId field; ReadAfterWrite is message-only in Pi (errors.ts keeps no method property), so its method comes from the message.
+// As lets errors.As find the typed Pi error a remote error names: Pi's Session throws ReadAfterWrite, StorageRequestError, SessionFailed, ReadOnlySession,
+// ConversationBusy and ConversationIdle instances and callers match them with instanceof (errors.ts), so a caller of the driver matches the same
+// Go types the in-process Session returns. ConversationBusy and ConversationIdle carry their id in the structured conversationId field; ReadAfterWrite is message-only in Pi (errors.ts keeps no operation property), so its operation comes from the message.
 func (e *CoreError) As(target any) bool {
 	switch t := target.(type) {
 	case **durable.ReadAfterWrite:
 		if e.Name != "ReadAfterWrite" {
 			return false
 		}
-		method, _, _ := strings.Cut(strings.TrimPrefix(e.Message, "Tx."), "()")
-		*t = durable.NewReadAfterWrite(method)
+		operation, _, _ := strings.Cut(e.Message, " cannot read tables")
+		*t = durable.NewReadAfterWrite(operation)
+		return true
+	case **durable.ConversationIdle:
+		if e.Name != "ConversationIdle" {
+			return false
+		}
+		if e.ConversationID != nil {
+			*t = durable.NewConversationIdle(durable.ConversationId(*e.ConversationID))
+			return true
+		}
+		var id durable.ConversationId
+		if _, err := fmt.Sscanf(e.Message, "Conversation %d is idle", &id); err != nil {
+			return false
+		}
+		*t = durable.NewConversationIdle(id)
 		return true
 	case **durable.StorageRequestError:
 		if e.Name != "StorageRequestError" {

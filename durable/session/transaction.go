@@ -37,8 +37,9 @@ type submissionChange struct {
 }
 
 // applySubmissionChange returns the complete record after one change.
-// Placement turns a queued input placed and a queued write done; only a
-// placed input can be answered. A settled record stays.
+// Placement turns a queued input placed and a queued write done; a continue is
+// never queued, so never placed. Only a placed input or continue can be
+// answered. A settled record stays.
 func applySubmissionChange(current durable.SubmissionRecord, change submissionChange) (durable.SubmissionRecord, bool, error) {
 	if current.Status == durable.SubmissionDone || current.Status == durable.SubmissionUnanswered {
 		return current, false, nil
@@ -58,7 +59,7 @@ func applySubmissionChange(current durable.SubmissionRecord, change submissionCh
 	}
 	settlement := change.settlement
 	if settlement.Status == durable.SubmissionDone && current.Status != durable.SubmissionPlaced {
-		return current, false, fmt.Errorf("Submission %d is not a placed input", current.Id)
+		return current, false, fmt.Errorf("Submission %d is not a placed input or continue", current.Id)
 	}
 	// Queued and placed records carry no answer, reason, or detail; an unanswered input keeps its entry.
 	next := current
@@ -288,6 +289,32 @@ type Transaction struct {
 
 var _ durable.Tx = (*Transaction)(nil)
 
+// Context is internal: the context of the commit this transaction belongs to (transaction.ts `get context`). It is
+// released once the transaction settles.
+func (tx *Transaction) Context() context.Context {
+	tx.mu.Lock()
+	defer tx.mu.Unlock()
+	return tx.ctx
+}
+
+// HasTableWrite is internal: whether a table write was staged, after which table reads throw ReadAfterWrite
+// (transaction.ts `get hasTableWrite`).
+func (tx *Transaction) HasTableWrite() bool {
+	tx.mu.Lock()
+	defer tx.mu.Unlock()
+	return tx.hasTableWrite
+}
+
+// transactionOwnedBy is internal: whether tx is a transaction of a commit of the Session behind host (transaction.ts
+// `Transaction.ownedBy`). A brand check, so a wrapper of a transaction is not one.
+func transactionOwnedBy(tx durable.Tx, host *transactionHost) (*Transaction, bool) {
+	owned, ok := tx.(*Transaction)
+	if !ok || owned == nil || owned.host != host {
+		return nil, false
+	}
+	return owned, true
+}
+
 func newTransaction(host *transactionHost, ctx context.Context, scope TransactionScope) *Transaction {
 	tx := &Transaction{
 		host:                      host,
@@ -346,7 +373,7 @@ func read[T any](tx *Transaction, method string, run func() (T, error)) (T, erro
 	}
 	if tx.hasTableWrite {
 		tx.mu.Unlock()
-		return zero, durable.NewReadAfterWrite(method)
+		return zero, durable.NewReadAfterWrite("Tx." + method + "()")
 	}
 	tx.beginLocked()
 	tx.mu.Unlock()

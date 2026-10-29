@@ -1,0 +1,52 @@
+{"k":">","name":"harness.root","tick":217}
+{"k":"#","seq":1,"summary":"conversations:i document_revisions:i documents:i","tick":407,"begin":347}
+{"k":">","name":"harness.root().submit","tick":416}
+{"k":"#","seq":2,"summary":"document_revisions:d document_revisions:i entries:i submissions:i tasks:i","tick":527,"begin":499}
+{"k":">","name":"harness.root().submit().wait","tick":538}
+{"k":"#","seq":3,"summary":"tasks:u","tick":573,"begin":562}
+{"k":"#","seq":4,"summary":"entries:i tasks:u","tick":751,"begin":735}
+{"k":"#","seq":5,"summary":"document_revisions:i","tick":803,"begin":790}
+{"k":"#","seq":6,"summary":"document_revisions:d document_revisions:i entries:i tasks:i tasks:u","tick":1011,"begin":976}
+{"k":"#","seq":7,"summary":"tasks:u","tick":1047,"begin":1036}
+{"k":"#","seq":8,"summary":"document_revisions:i tasks:u","tick":1143,"begin":1125}
+{"k":"#","seq":9,"summary":"document_revisions:d document_revisions:i entries:i tasks:u","tick":1244,"begin":1221}
+{"k":"#","seq":10,"summary":"tasks:u","tick":1294,"begin":1283}
+{"k":"#","seq":11,"summary":"document_revisions:d document_revisions:i tasks:i tasks:u","tick":1437,"begin":1414}
+{"k":"#","seq":12,"summary":"tasks:u","tick":1487,"begin":1476}
+{"k":"#","seq":13,"summary":"tasks:u","tick":1619,"begin":1608}
+{"k":"#","seq":14,"summary":"document_revisions:i","tick":1671,"begin":1658}
+{"k":"#","seq":15,"summary":"document_revisions:d document_revisions:i entries:i submissions:u tasks:u","tick":1866,"begin":1831}
+{"k":">","name":"harness.snapshot","tick":1870}
+{"k":">","name":"harness.root().submit","tick":1871}
+{"k":"#","seq":16,"summary":"document_revisions:i submissions:i","tick":1928,"begin":1910}
+{"k":">","name":"harness.root().waitForIdle","tick":1939}
+{"k":"#","seq":17,"summary":"document_revisions:d document_revisions:i tasks:i tasks:u","tick":2052,"begin":2029}
+{"k":"#","seq":18,"summary":"tasks:u","tick":2088,"begin":2077}
+{"k":"#","seq":19,"summary":"document_revisions:i entries:i submissions:i tasks:u","tick":2247,"begin":2219}
+{"k":"#","seq":20,"summary":"tasks:u","tick":2283,"begin":2272}
+{"k":"#","seq":21,"summary":"document_revisions:d document_revisions:i entries:i submissions:u tasks:i tasks:u","tick":2471,"begin":2431}
+{"k":"#","seq":22,"summary":"tasks:u","tick":2507,"begin":2496}
+{"k":"#","seq":23,"summary":"tasks:u","tick":2653,"begin":2642}
+{"k":"#","seq":24,"summary":"document_revisions:i","tick":2705,"begin":2692}
+{"k":"#","seq":25,"summary":"document_revisions:d document_revisions:i entries:i submissions:u tasks:u","tick":2904,"begin":2869}
+{"k":"#","seq":26,"summary":"document_revisions:d document_revisions:i entries:i submissions:u tasks:i tasks:u","tick":3100,"begin":3060}
+{"k":"#","seq":27,"summary":"tasks:u","tick":3150,"begin":3139}
+{"k":"#","seq":28,"summary":"tasks:u","tick":3282,"begin":3271}
+{"k":"#","seq":29,"summary":"document_revisions:i","tick":3334,"begin":3321}
+{"k":"#","seq":30,"summary":"document_revisions:d document_revisions:i entries:i tasks:i tasks:u","tick":3524,"begin":3489}
+{"k":"#","seq":31,"summary":"tasks:u","tick":3560,"begin":3549}
+{"k":"#","seq":32,"summary":"document_revisions:i tasks:u","tick":3656,"begin":3638}
+{"k":"#","seq":33,"summary":"document_revisions:d document_revisions:i entries:i tasks:u","tick":3757,"begin":3734}
+{"k":"#","seq":34,"summary":"tasks:u","tick":3807,"begin":3796}
+{"k":"#","seq":35,"summary":"document_revisions:d document_revisions:i tasks:i tasks:u","tick":3950,"begin":3927}
+{"k":"#","seq":36,"summary":"tasks:u","tick":4000,"begin":3989}
+{"k":"#","seq":37,"summary":"tasks:u","tick":4132,"begin":4121}
+{"k":"#","seq":38,"summary":"document_revisions:i","tick":4184,"begin":4171}
+{"k":"#","seq":39,"summary":"document_revisions:d document_revisions:i entries:i submissions:u tasks:u","tick":4377,"begin":4342}
+{"k":"#","seq":40,"summary":"document_revisions:d document_revisions:i tasks:i tasks:u","tick":4494,"begin":4471}
+{"k":"#","seq":41,"summary":"tasks:u","tick":4530,"begin":4519}
+{"k":"#","seq":42,"summary":"entries:i tasks:u","tick":4642,"begin":4626}
+{"k":"#","seq":43,"summary":"tasks:u","tick":4692,"begin":4681}
+{"k":"#","seq":44,"summary":"document_revisions:d document_revisions:i tasks:u","tick":4790,"begin":4772}
+{"k":">","name":"harness.root().entries","tick":4794}
+{"k":">","name":"harness.close","tick":4839}

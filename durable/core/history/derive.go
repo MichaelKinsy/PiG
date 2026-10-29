@@ -152,6 +152,21 @@ func (v *View) NumSystemMessages() int { return len(v.d.sys) }
 // SystemMessage returns system message j (JSON bytes), in the order of the model messages.
 func (v *View) SystemMessage(j int) []byte { return v.st.msgBytes(v.d, v.d.sys[j]) }
 
+// OwesAnswer reports whether the model owes an answer to the context: its last message that is not a system message is a user message or
+// tool results (generation.ts prepare: system messages say nothing the model answers).
+func (v *View) OwesAnswer() bool {
+	for i := v.NumMessages() - 1; i >= 0; i-- {
+		switch v.st.role(v.d.outAt(i)) {
+		case roleSystem:
+			continue
+		case roleUser, roleToolResult:
+			return true
+		}
+		return false
+	}
+	return false
+}
+
 // MessageIdent names the stored bytes of a model message: the chain, the message's index in it and the chain's epoch. The
 // bytes behind an identity never change, so two views whose messages carry the same identity carry the same message. A
 // synthesized message (a tool result the context supplies for an unanswered call) has no identity and reports false.

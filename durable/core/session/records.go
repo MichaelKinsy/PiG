@@ -178,9 +178,10 @@ func (e *namedError) Is(target error) bool { return target == e.kind }
 // NewStorageRequestError is Pi's `new StorageRequestError(message)`.
 func NewStorageRequestError(msg string) error { return &namedError{msg, ErrStorageRequest} }
 
-// readAfterWrite is Pi's ReadAfterWrite for a method.
-func readAfterWrite(method string) error {
-	return &namedError{sprintf("Tx.%s() cannot read tables after the first table write", method), ErrReadAfterWrite}
+// ReadAfterWriteOf is Pi's ReadAfterWrite for an operation, such as "Tx.task()": a transaction read a table after its first table write,
+// or admitted a submission (`submit(tx, draft)`) after it.
+func ReadAfterWriteOf(operation string) error {
+	return &namedError{operation + " cannot read tables after the first table write", ErrReadAfterWrite}
 }
 
 // TaskStatus values of a task's state.

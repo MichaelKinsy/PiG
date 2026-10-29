@@ -66,6 +66,11 @@ func (conversation *conversationImpl) Submit(ctx context.Context, submission dur
 	return conversation.host.submissions.Submit(ctx, conversation.id, submission)
 }
 
+// SubmitIn admits a submission inside the caller's commit tx, with the same rules as Submit.
+func (conversation *conversationImpl) SubmitIn(tx durable.Tx, submission durable.SubmissionDraft) (durable.SubmissionId, error) {
+	return conversation.host.submissions.Admit(tx, conversation.id, submission)
+}
+
 func (conversation *conversationImpl) Compact(ctx context.Context, instructions *string) (durable.TaskId, error) {
 	if err := conversation.host.tasks.TryResume(); err != nil {
 		return 0, err
@@ -105,7 +110,7 @@ func (conversation *conversationImpl) Context(ctx context.Context, options *dura
 }
 
 func (conversation *conversationImpl) Entries(ctx context.Context, query durable.EntryQuery, limit int, cursor durable.Cursor) (durable.Page[durable.EntryRecord, durable.Cursor], error) {
-	bounded := durable.EntryQuery{ConversationId: conversation.id, MinEntryId: query.MinEntryId, MaxEntryId: query.MaxEntryId, Order: query.Order}
+	bounded := conversationEntries(conversation.id, query)
 	page, err := conversation.host.harness.ReadOnLine(func() (any, error) {
 		return conversation.host.storage.ScanEntries(ctx, bounded, limit, cursor)
 	})
@@ -459,7 +464,19 @@ func (bound *boundConversation) bind(ctx context.Context) context.Context {
 
 func (bound *boundConversation) Id() durable.ConversationId { return bound.id }
 
-func (bound *boundConversation) Submit(ctx context.Context, draft durable.InputSubmissionDraft) (durable.Submission, error) {
+// SubmitIn is the transaction form of Submit. The caller's commit carries its own context, so the invocation's abort is
+// checked here.
+func (bound *boundConversation) SubmitIn(tx durable.Tx, draft durable.SubmissionDraft) (durable.SubmissionId, error) {
+	if err := bound.binding.Check(); err != nil {
+		return 0, err
+	}
+	if err := bound.binding.Signal.Err(); err != nil {
+		return 0, context.Cause(bound.binding.Signal)
+	}
+	return bound.submissions.Admit(tx, bound.id, draft)
+}
+
+func (bound *boundConversation) Submit(ctx context.Context, draft durable.SubmissionDraft) (durable.Submission, error) {
 	if err := bound.binding.Check(); err != nil {
 		return nil, err
 	}

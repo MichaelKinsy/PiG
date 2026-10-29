@@ -109,6 +109,8 @@ type Agent struct {
 	Callable []Tool
 	// Instructions and Cwd are the agent's optional base instructions and working directory (the render input).
 	Instructions, Cwd string
+	// MaxTurns is the tool rounds one run takes at most (AgentState.maxTurns); 0: no limit (the stored value is an integer 1 or more).
+	MaxTurns int
 	// HookHandlers are the hook handler tables of the selected extensions in extension order: hook name to handler index
 	// (agent.ts agentHooks).
 	HookHandlers []map[string]int

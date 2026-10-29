@@ -513,6 +513,15 @@ func (r *taskRuntime) Entry(ctx context.Context, id durable.EntryId) (*durable.E
 	return &record, json.Unmarshal(raw, &record)
 }
 
+// Entries is the committed raw history of the task's conversation, as Conversation.Entries (TaskRuntime.entries).
+func (r *taskRuntime) Entries(ctx context.Context, query durable.EntryQuery, limit int, cursor durable.Cursor) (durable.Page[durable.EntryRecord, durable.Cursor], error) {
+	if err := r.check(); err != nil {
+		return durable.Page[durable.EntryRecord, durable.Cursor]{}, err
+	}
+	page, err := r.s.entriesIn(ctx, r.conversation, query, limit, cursor)
+	return page, r.ended(err)
+}
+
 func (r *taskRuntime) Context(ctx context.Context, conversationId durable.ConversationId, options *durable.ContextOptions) (durable.ContextView, error) {
 	if err := r.check(); err != nil {
 		return durable.ContextView{}, err

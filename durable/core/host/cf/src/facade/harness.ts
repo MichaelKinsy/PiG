@@ -26,9 +26,10 @@ import { resolveAddress, wireAddress, type AnyDocToken } from "./documents.ts"
 import { WatchHub } from "./watches.ts"
 import type { CommitObservation, CommitObserver, Observer } from "./watch-types.ts"
 import { ENDED, guardObserver, type GuardedObserver } from "./observation.ts"
-import { runCommit, TxProxy, wireDefinition } from "./tx.ts"
+import { runCommit, transactionOf, TxProxy, wireDefinition } from "./tx.ts"
 import type { CommitOptions } from "./hostapi.ts"
 import { forgetPublished, recordPublication } from "./publications.ts"
+import { currentCommit } from "./commit-context.ts"
 import { adaptStorage, overriddenMethods, SqlStorage, type Storage, type StorageProfile } from "./storage.ts"
 import { coreFromEnvironment } from "./core-env.ts"
 import { customTaskRunner } from "./taskruntime.ts"
@@ -593,10 +594,13 @@ export class Harness {
         if (this.inStorage > 0) this.adoptedFailure ??= observerFailure
         else { const failure = observerFailure; void SETTLED.then(() => this.failedByListener(failure.error)) }
       }
-      // The Context of the commit that published: a synchronous listener's throw is reported under its span (session.ts #notifyHosts).
-      const committing = body.span === undefined ? undefined : this.telemetry.spanContext(body.span, BACKGROUND_CONTEXT)
+      // The Context of the commit that published (session.ts #notifyHosts): the Context its caller passed, under the commit's span when it has one. A synchronous listener's throw is reported under it.
+      const caller = currentCommit(this.client) ?? BACKGROUND_CONTEXT
+      const spanned = body.span === undefined ? caller : this.telemetry.spanContext(body.span, caller)
+      // A commit under no span of its own delivers its caller's Context itself, as Pi's does.
+      const committing = spanned.telemetry === caller.telemetry ? caller : spanned
       // session.ts #notifyHosts: the host's listeners are called one microtask after the adoption, outside it and before the waits the commit resolves; the ones registered when it runs, and no dispatch for a commit adopted with none.
-      if (this.commitListeners.size > 0) void SETTLED.then(() => { for (const observer of [...this.commitListeners]) observer.advance(publication, committing ?? BACKGROUND_CONTEXT) })
+      if (this.commitListeners.size > 0) void SETTLED.then(() => { for (const observer of [...this.commitListeners]) observer.advance(publication, committing) })
     }
     for (const w of [...this.waiters]) if (w.match(body)) { this.waiters.delete(w); w.resolve() }
     // submissions.ts #observe: a settled submission resolves the waits registered for it.
@@ -1027,6 +1031,16 @@ export class Harness {
     return awaitWithContext(this.client.submit({ conversationId, ...draft, ...(invocation === undefined ? {} : { invocation }) }, placed => new Submission(this, placed.id)), context)
   }
 
+  /** submissions.ts admit: a submission admitted inside the caller's commit `tx`, with the rules of `submit`; stored or lost with that commit. */
+  async admit(tx: unknown, conversationId: number, draft: { type: string }): Promise<number> {
+    const owned = transactionOf(tx)
+    if (owned === undefined || owned.tx.channel.owner !== this.client) throw new Error("The transaction belongs to another Session")
+    this.resume()
+    const send = (fields: Record<string, unknown>) => owned.tx.admitSubmission({ conversationId, ...draft, ...fields })
+    const placed = await (this.telemetry.submit(conversationId, draft, owned.context, send) ?? send({}))
+    return placed.id
+  }
+
   compactTask(conversationId: number, instructions: string | undefined, context: Context): Promise<number> {
     // A closed Harness rejects (a promise), it does not throw: resume() is the only synchronous part that can.
     try { this.resume() } catch (error) { return Promise.reject(error) }
@@ -1109,7 +1123,13 @@ export class Conversation {
   constructor(harness: Harness, id: number) { this.harness = harness; this.id = id }
   agent(context: Context) { return this.harness.resolveAgent(this.id, undefined, context) }
   configure(change: unknown, context: Context) { return this.harness.commitWith(tx => configure(tx, this.id, change), context) }
-  submit(draft: unknown, context: Context) { return this.harness.submit(this.id, draft, context) }
+  /** `submit(draft, context)` admits in its own commit; `submit(tx, draft)` admits inside the caller's commit `tx` (harness.ts ConversationImpl.submit). */
+  submit(draft: unknown, context: Context): Promise<Submission>
+  submit(tx: unknown, draft: unknown): Promise<number>
+  submit(first: unknown, second: unknown): Promise<Submission | number> {
+    if (isDraft(first)) return this.harness.submit(this.id, first, second as Context)
+    return this.harness.admit(first, this.id, second as { type: string })
+  }
   compact(instructions: string | undefined, context: Context) { return this.harness.compactTask(this.id, instructions, context) }
   async reset(handoff: string | undefined, context: Context) {
     const model = handoff === undefined ? {} : { model: [{ role: "user", content: handoff, timestamp: this.harness.now() }] }
@@ -1129,7 +1149,9 @@ export class Conversation {
   }
   /** harness.ts :127-139: `readOnLine(() => storage.scanEntries(bounded, limit, cursor, context))`, a Session line job (api scanEntries) whose promise the caller gets as it is. */
   entries(query: Record<string, unknown>, limit: number, cursor: unknown, context: Context) {
-    return awaitWithContext(this.harness.client.api("scanEntries", { query: { ...query, conversationId: this.id }, limit, ...(cursor === undefined ? {} : { cursor }) }), context)
+    // util.ts conversationEntries: only the bounds and the order of the query, never a field an untyped caller added.
+    const bounded = { conversationId: this.id, ...(query.minEntryId === undefined ? {} : { minEntryId: query.minEntryId }), ...(query.maxEntryId === undefined ? {} : { maxEntryId: query.maxEntryId }), ...(query.order === undefined ? {} : { order: query.order }) }
+    return awaitWithContext(this.harness.client.api("scanEntries", { query: bounded, limit, ...(cursor === undefined ? {} : { cursor }) }), context)
   }
   fork(at: number, options: { ownership: unknown; agent?: unknown; init?: (tx: TxProxy, id: number) => unknown }, context: Context) {
     return this.harness.create({ kind: "fork", parentId: this.id, at, ownership: options.ownership }, options, context)
@@ -1154,9 +1176,11 @@ function boundConversation(conversation: Conversation, binding: InvocationBindin
   const bound = <T>(operation: (context: Context) => Promise<T>) => async (context: Context): Promise<T> => { binding.check(); return operation(bind(context)) }
   return {
     id: conversation.id,
-    submit: async (draft: unknown, context: Context) => {
+    submit: async (first: unknown, second: unknown) => {
       binding.check()
-      const submission = await conversation.submit(draft, bind(context))
+      // The overloads pair a draft with a context, and anything else (a transaction) with a draft; the caller's commit carries its own context, so the invocation's abort is checked here.
+      if (!isDraft(first)) { binding.signal?.throwIfAborted(); return conversation.submit(first, second) }
+      const submission = await conversation.submit(first, bind(second as Context))
       return {
         id: submission.id,
         status: bound(callContext => submission.status(callContext)),
@@ -1167,6 +1191,11 @@ function boundConversation(conversation: Conversation, binding: InvocationBindin
     abort: async (context: Context, options?: { background?: boolean }) => { binding.check(); return conversation.abort(bind(context), options) },
     waitForIdle: bound(callContext => conversation.waitForIdle(callContext)),
   }
+}
+
+/** A submission draft has a `type`; anything else is a transaction (the overloads pair a draft with a context, a transaction with a draft). */
+function isDraft(value: unknown): value is { type: string } {
+  return typeof value === "object" && value !== null && "type" in value
 }
 
 export { invocationApi, applyChange, runCommit }

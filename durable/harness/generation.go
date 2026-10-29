@@ -7,9 +7,11 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"strings"
 	"sync"
 
 	"github.com/MichaelKinsy/PiG/ai"
+	"github.com/MichaelKinsy/PiG/chord"
 	chordctx "github.com/MichaelKinsy/PiG/chord/context"
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/durable"
@@ -28,6 +30,8 @@ const (
 	generationRetry   GenerationPhase = "retry"
 	generationPoll    GenerationPhase = "poll"
 	generationTools   GenerationPhase = "tools"
+	generationFinish  GenerationPhase = "finish"
+	generationDrain   GenerationPhase = "drain"
 )
 
 // GenerationCheckpoint is the durable checkpoint of the generation task (generation.ts:49-90). Phase selects the
@@ -44,6 +48,9 @@ const (
 //   - poll: Attempt, Compacted, Model, ThinkingLevel (absent in checkpoints of earlier versions), Cutoff, Handle, PollAt.
 //   - tools: Assistant (the tool-calling answer), Tools (tool tasks created so far, in call order) and Pending (calls of
 //     a sequential round not started yet, in call order). The generation owns the tool tasks (spec §8.5).
+//   - finish: Run, the run that answered: its answer is committed and its inputs settled, and it keeps pi.live.run while
+//     afterRun hooks are asked for tasks (spec §8.3). A crash here asks them again: nothing was created yet.
+//   - drain: Answer and Tasks: waiting on the tasks afterRun hooks asked for, which the generation owns; then the run ends.
 type GenerationCheckpoint struct {
 	Phase         GenerationPhase                    `json:"phase"`
 	Attempt       int                                `json:"attempt,omitempty"`
@@ -61,6 +68,9 @@ type GenerationCheckpoint struct {
 	Assistant     *durable.EntryId                   `json:"assistant,omitempty"`
 	Tools         []durable.TaskId                   `json:"tools,omitempty"`
 	Pending       []string                           `json:"pending,omitempty"`
+	Run           *RunSummary                        `json:"run,omitempty"`
+	Answer        *durable.EntryId                   `json:"answer,omitempty"`
+	Tasks         []durable.TaskId                   `json:"tasks,omitempty"`
 }
 
 // GenerationPoll is the deferred response a retry polls again: what the poll checkpoint it came from held.
@@ -124,7 +134,18 @@ var GenerationTask durable.Task[GenerationInput, GenerationCheckpoint, Generatio
 func init() {
 	GenerationTask = durable.DefineTask(durable.TaskDefinition[GenerationInput, GenerationCheckpoint, GenerationResult, *GenerationHooks]{
 		Name:    generationKind,
-		Version: 1,
+		Version: 2,
+		// Version 2 leaves calls to tools not offered in a sequential round's pending, flagged unoffered in their slots. A
+		// version 1 Harness would start their tool tasks unflagged, resolving the name, so it leaves version 2 blocked
+		// instead. A version 1 checkpoint has no such calls and is kept as it is.
+		Migrate: func(input durable.JsonValue, checkpoint durable.JsonValue, _ int) (GenerationInput, GenerationCheckpoint, error) {
+			typedInput, err := durable.FromJsonValue[GenerationInput](input)
+			if err != nil {
+				return GenerationInput{}, GenerationCheckpoint{}, err
+			}
+			typedCheckpoint, err := durable.FromJsonValue[GenerationCheckpoint](checkpoint)
+			return typedInput, typedCheckpoint, err
+		},
 		Initial: func(GenerationInput) GenerationCheckpoint {
 			return GenerationCheckpoint{Phase: generationPrepare, Attempt: 1}
 		},
@@ -134,6 +155,8 @@ func init() {
 			string(generationRetry):   generationRetryHandler,
 			string(generationPoll):    generationPollHandler,
 			string(generationTools):   generationToolsHandler,
+			string(generationFinish):  generationFinishHandler,
+			string(generationDrain):   generationDrainHandler,
 		},
 		Abort: generationAbortHandler,
 	})
@@ -221,6 +244,11 @@ func generationPrepareHandler(ctx context.Context, task durable.RunningTask[Gene
 	if err != nil {
 		return err
 	}
+	// The model owes an answer only to a context ending in a user message or tool results; system messages say nothing it
+	// answers. Otherwise, as for a continue after an answer or in an empty conversation, end the run before any request.
+	if !endsInAnswerable(view.Messages) {
+		return failNothingToAnswer(ctx, runtime)
+	}
 	shown := ReplaySections(view.Messages)
 	environment, err := runtime.Env(ctx)
 	if err != nil {
@@ -271,11 +299,8 @@ func generationPrepareHandler(ctx context.Context, task durable.RunningTask[Gene
 		if err != nil {
 			return nil, err
 		}
-		var cutoff *durable.EntryId
-		if len(page.Items) > 0 {
-			id := page.Items[0].Id
-			cutoff = &id
-		}
+		// The context ends in a message the model answers, so the conversation has an entry.
+		cutoff := &page.Items[0].Id
 		for _, entry := range entries {
 			appended, err := durable.TxAppendEntry(tx, durable.SystemEntry, conversationId, entry)
 			if err != nil {
@@ -283,9 +308,6 @@ func generationPrepareHandler(ctx context.Context, task durable.RunningTask[Gene
 			}
 			id := appended.Id
 			cutoff = &id
-		}
-		if cutoff == nil {
-			return nil, fmt.Errorf("Conversation %d has no entries to send", conversationId)
 		}
 		// Checked in this commit, so a compaction admitted during preparation counts.
 		if threshold == "background" {
@@ -459,19 +481,15 @@ func generationToolsHandler(ctx context.Context, task durable.RunningTask[Genera
 		if err != nil {
 			return nil, err
 		}
-		taskId, err := createToolTask(tx, runtime.TaskId(), assistant, next)
+		slot := findPendingSlot(live, next)
+		unoffered := slot != nil && slot.Get("unoffered") == true
+		taskId, err := createToolTask(tx, runtime.TaskId(), assistant, next, unoffered)
 		if err != nil {
 			return nil, err
 		}
-		if slots := live.Array("tools"); slots != nil {
-			for index := range slots.Len() {
-				slot := slots.Object(index)
-				if slot != nil && slot.Get("callId") == next && !slot.Has("taskId") {
-					if err := slot.Set("taskId", float64(taskId)); err != nil {
-						return nil, err
-					}
-					break
-				}
+		if slot != nil {
+			if err := slot.Set("taskId", float64(taskId)); err != nil {
+				return nil, err
 			}
 		}
 		tools := append(append([]durable.TaskId{}, checkpoint.Tools...), taskId)
@@ -481,7 +499,7 @@ func generationToolsHandler(ctx context.Context, task durable.RunningTask[Genera
 }
 
 // generationAbortHandler runs after the round's tool tasks are terminal; calls never started get aborted results
-// (spec §8.5, generation.ts:236-272).
+// (spec §8.5, generation.ts:236-272), unoffered ones tool_unavailable.
 func generationAbortHandler(ctx context.Context, task durable.RunningTask[GenerationInput, GenerationCheckpoint, GenerationResult], runtime generationRuntime) error {
 	checkpoint := checkpointOf(task)
 	if polled := deferredOf(checkpoint); polled != nil {
@@ -505,7 +523,11 @@ func generationAbortHandler(ctx context.Context, task durable.RunningTask[Genera
 			return nil, err
 		}
 		for _, call := range unstarted {
+			// A call its request did not offer could not have run either way.
 			result := HarnessError(abortedResultCode, fmt.Sprintf("Tool %s was aborted", call.Name))
+			if unofferedSlot(live, call.ID) {
+				result = HarnessError(toolUnavailable, fmt.Sprintf("Tool %s is not available", call.Name))
+			}
 			if _, err := AppendToolResult(tx, conversationId, call, result, runtime.Now(), nil); err != nil {
 				return nil, err
 			}
@@ -667,13 +689,43 @@ func toolCallsOf(message ai.AssistantMessage) []ai.ToolCall {
 	return calls
 }
 
-// createToolTask creates a tool task for call callId, owned by the generation.
-func createToolTask(tx durable.Tx, owner durable.TaskId, assistant durable.EntryId, callId string) (durable.TaskId, error) {
-	input, err := durable.ToJsonValue(ToolTaskInput{Kind: ToolTaskModel, Assistant: assistant, CallId: callId})
+// createToolTask creates a tool task for call callId, owned by the generation; unoffered for a call to a tool its request
+// did not offer.
+func createToolTask(tx durable.Tx, owner durable.TaskId, assistant durable.EntryId, callId string, unoffered bool) (durable.TaskId, error) {
+	input, err := durable.ToJsonValue(ToolTaskInput{Kind: ToolTaskModel, Assistant: assistant, CallId: callId, Unoffered: unoffered})
 	if err != nil {
 		return 0, err
 	}
 	return tx.CreateTaskErased(ToolTask.Erased(), input, durable.TaskOptions{Ownership: durable.TaskOwnership{Kind: durable.TaskOwnedByTask, TaskId: owner}})
+}
+
+// findPendingSlot is the slot of call callId that has no task yet (a sequential round's call not started); nil when none.
+func findPendingSlot(live *delta.Object, callId string) *delta.Object {
+	slots := live.Array("tools")
+	if slots == nil {
+		return nil
+	}
+	for index := range slots.Len() {
+		slot := slots.Object(index)
+		if slot != nil && slot.Get("callId") == callId && !slot.Has("taskId") {
+			return slot
+		}
+	}
+	return nil
+}
+
+// unofferedSlot reports whether the slot of call callId is flagged: a call to a tool its request did not offer.
+func unofferedSlot(live *delta.Object, callId string) bool {
+	slots := live.Array("tools")
+	if slots == nil {
+		return false
+	}
+	for index := range slots.Len() {
+		if slot := slots.Object(index); slot != nil && slot.Get("callId") == callId {
+			return slot.Get("unoffered") == true
+		}
+	}
+	return false
 }
 
 // thresholdCompaction returns which threshold compaction preparation starts before its request (spec §8.3,
@@ -719,6 +771,43 @@ func failGenerationModelError(ctx context.Context, runtime generationRuntime, te
 	})
 }
 
+// endsInAnswerable reports whether the context's last non-system message is a user message or tool results, the only
+// messages the model owes an answer to.
+func endsInAnswerable(messages []ai.Message) bool {
+	for index := len(messages) - 1; index >= 0; index-- {
+		switch messages[index].(type) {
+		case ai.SystemMessage:
+			continue
+		case ai.UserMessage, ai.ToolResultMessage:
+			return true
+		default:
+			return false
+		}
+	}
+	return false
+}
+
+// nothingToAnswerMessage is the failure text of a run whose context has nothing the model would answer.
+const nothingToAnswerMessage = "The conversation has nothing to answer"
+
+// failNothingToAnswer ends the run without a request: its context has nothing the model would answer.
+func failNothingToAnswer(ctx context.Context, runtime generationRuntime) error {
+	return runtime.Commit(ctx, func(tx durable.Tx, _ durable.RunningTask[GenerationInput, GenerationCheckpoint, GenerationResult]) (*generationNext, error) {
+		failure, err := prepareFailure(tx, runtime)
+		if err != nil {
+			return nil, err
+		}
+		live, err := docDraft(tx, LiveDoc, runtime.ConversationId())
+		if err != nil {
+			return nil, err
+		}
+		if err := endFailedRun(tx, runtime, live, failure, runUnanswered(RunNothingToAnswer, nil)); err != nil {
+			return nil, err
+		}
+		return failedState[GenerationCheckpoint, GenerationResult](nothingToAnswerMessage, string(RunNothingToAnswer)), nil
+	})
+}
+
 // failure is what a failed run's end needs from the table, read before the commit's first table write.
 type failure struct {
 	policy   durable.AfterFailedRun
@@ -757,7 +846,7 @@ func endFailedRun(tx durable.Tx, runtime generationRuntime, live *delta.Object, 
 		return err
 	}
 	if len(placed.Users) > 0 {
-		return StartRun(tx, conversationId, live, placed.Users, &StartRunOptions{KeepFailure: true})
+		return StartRun(tx, conversationId, live, RunStart{Inputs: placed.Users, First: placed.First}, &StartRunOptions{KeepFailure: true})
 	}
 	return nil
 }
@@ -1119,10 +1208,11 @@ func classify(ctx context.Context, runtime generationRuntime, request generation
 	})
 }
 
-// answer handles a final answer; the final boundary places queued items (spec §6, generation.ts:495-523). The first
-// onYield continuation appends a user message and hands the run to a successor generation, but only when the boundary
-// selected no user item and no reset. Otherwise the run's inputs settle done, and selected user items start the next
-// run.
+// answer handles a final answer; the final boundary places queued items (spec §6, generation.ts answer). The first
+// onYield continuation appends a user message and hands the run to a successor generation, but only when the inbox holds
+// no user item and no reset. Otherwise the run's inputs settle done; with afterRun hooks selected the run waits for the
+// tasks they ask for, in finish and drain, before the final boundary; without, selected user items start the next run
+// now.
 func answer(ctx context.Context, runtime generationRuntime, message ai.AssistantMessage) error {
 	var continuation *YieldContinue
 	if err := runtime.Hooks().Each("onYield", func(hooks *GenerationHooks) error {
@@ -1136,6 +1226,10 @@ func answer(ctx context.Context, runtime generationRuntime, message ai.Assistant
 		continuation = result
 		return nil
 	}); err != nil {
+		return err
+	}
+	afterRun, err := asksAfterRun(ctx, runtime)
+	if err != nil {
 		return err
 	}
 	conversationId := runtime.ConversationId()
@@ -1154,14 +1248,33 @@ func answer(ctx context.Context, runtime generationRuntime, message ai.Assistant
 			return nil, err
 		}
 		result := completedState[GenerationCheckpoint, GenerationResult](GenerationResult{EntryId: entry.Id})
+		continues, err := takesContinuation(continuation, boundary)
+		if err != nil {
+			return nil, err
+		}
+		if !continues && afterRun {
+			held, err := holdRun(tx, live, runtime, RunSummary{Reason: RunEndAnswer, Answer: entry.Id, Last: entry.Id})
+			if err != nil {
+				return nil, err
+			}
+			if held != nil {
+				return held, nil
+			}
+		}
 		placed, err := ApplyBoundary(tx, boundary, BoundaryFinal, runtime.Now())
 		if err != nil {
 			return nil, err
 		}
-		if continuation != nil && len(placed.Users) == 0 && !placed.Reset {
+		if continues {
 			user := ai.UserMessage{Content: continuation.Continue, Timestamp: int64(runtime.Now())}
 			if _, err := durable.TxAppendEntry(tx, durable.UserEntry, conversationId, durable.TypedEntryDraft[durable.Never]{Model: []ai.Message{user}}); err != nil {
 				return nil, err
+			}
+			// The continuation starts the run's turn count over: bounding onYield loops is the extension's job.
+			if owner, ok := runTaskOf(live); ok && owner == runtime.TaskId() {
+				if err := live.Object("run").Set("turns", float64(0)); err != nil {
+					return nil, err
+				}
 			}
 			successor, err := createGeneration(tx, conversationId, nil)
 			if err != nil {
@@ -1177,7 +1290,7 @@ func answer(ctx context.Context, runtime generationRuntime, message ai.Assistant
 			return nil, err
 		}
 		if len(placed.Users) > 0 {
-			if err := StartRun(tx, conversationId, live, placed.Users, nil); err != nil {
+			if err := StartRun(tx, conversationId, live, RunStart{Inputs: placed.Users, First: placed.First}, nil); err != nil {
 				return nil, err
 			}
 		}
@@ -1185,10 +1298,198 @@ func answer(ctx context.Context, runtime generationRuntime, message ai.Assistant
 	})
 }
 
+// asksAfterRun reports whether the phase's agent selects an afterRun hook, so a run that answers waits for its tasks
+// (spec §8.3).
+func asksAfterRun(ctx context.Context, runtime generationRuntime) (bool, error) {
+	agent, err := runtime.Agent(ctx)
+	if err != nil {
+		return false, err
+	}
+	for _, hook := range AgentHooks(agent, GenerationTask.AnyDefinition().Name) {
+		if hooks, ok := hook.Handlers.(*GenerationHooks); ok && hooks != nil && hooks.AfterRun != nil {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+// holdRun is commit A of a run that answered with afterRun hooks selected (spec §8.3): settle the run's inputs done with
+// the answer and keep pi.live.run for the after-run tasks, then ask the hooks in finish. The final boundary waits for the
+// run's end, so queued items stay queued. It returns nil when the run is not the task's.
+func holdRun(tx durable.Tx, live *delta.Object, runtime generationRuntime, end RunSummary) (*generationNext, error) {
+	if owner, ok := runTaskOf(live); !ok || owner != runtime.TaskId() {
+		return nil, nil
+	}
+	run, err := liveRunOf(live)
+	if err != nil {
+		return nil, err
+	}
+	for _, id := range run.Inputs {
+		if err := tx.SettleSubmission(id, durable.SubmissionSettlement{Status: durable.SubmissionDone, Answer: end.Answer}); err != nil {
+			return nil, err
+		}
+	}
+	runDraft := live.Object("run")
+	if err := setJSON(runDraft, "inputs", []durable.SubmissionId{}); err != nil {
+		return nil, err
+	}
+	if err := setJSON(runDraft, "afterRun", LiveRunAfterRun{}); err != nil {
+		return nil, err
+	}
+	live.Delete("generation")
+	live.Delete("tools")
+	live.Delete("nestedTools")
+	// A run started before first was recorded has its answer as its first entry.
+	summary := RunSummary{Reason: end.Reason, First: end.Answer, Answer: end.Answer, Last: end.Last}
+	if run.First != nil {
+		summary.First = *run.First
+	}
+	return runningState[GenerationCheckpoint, GenerationResult](GenerationCheckpoint{Phase: generationFinish, Run: &summary}), nil
+}
+
+// preparedTask is a task an afterRun hook asked for, checked and ready to create.
+type preparedTask struct {
+	task  durable.AnyTask
+	input durable.JsonValue
+}
+
+// prepareRunEndTasks checks the tasks one afterRun hook asked for, off the line, and adds those that pass to prepared, so
+// a broken request is skipped instead of failing the creating commit: its kind must be an installed task that is not
+// built-in, its input JSON, and its definition's Initial must return a JSON checkpoint of one of its phases. The task is
+// created from the installed definition, as every task runs under it, with that checkpoint, so Initial runs once. Then
+// it returns the rejections, which Hooks().Each reports against the hook's extension.
+func prepareRunEndTasks(runtime generationRuntime, requests []RunEndTask, prepared *[]preparedTask) error {
+	var rejected []error
+	for _, request := range requests {
+		task, err := prepareRunEndTask(runtime, request)
+		if err != nil {
+			rejected = append(rejected, err)
+			continue
+		}
+		*prepared = append(*prepared, task)
+	}
+	switch len(rejected) {
+	case 0:
+		return nil
+	case 1:
+		return rejected[0]
+	}
+	return chord.NewAggregateError(fmt.Sprintf("%d afterRun task requests were rejected", len(rejected)), rejected...)
+}
+
+// prepareRunEndTask checks one request of an afterRun hook.
+func prepareRunEndTask(runtime generationRuntime, request RunEndTask) (preparedTask, error) {
+	definition := request.Task.Definition
+	if definition == nil {
+		return preparedTask{}, errors.New("An afterRun hook asked for a task without a definition")
+	}
+	name := definition.Name
+	if strings.HasPrefix(name, "pi.") {
+		return preparedTask{}, fmt.Errorf("An afterRun hook cannot start the built-in task %s", name)
+	}
+	installed := runtime.Registry().Task(name)
+	if installed.Definition == nil {
+		return preparedTask{}, fmt.Errorf("Task %s is not installed", name)
+	}
+	input, err := durable.ToJsonValue(request.Input)
+	if err != nil {
+		return preparedTask{}, err
+	}
+	var checkpoint durable.JsonValue
+	if err := runHandler(func() error {
+		initial, err := installed.Definition.Initial(input)
+		if err != nil {
+			return err
+		}
+		checkpoint, err = durable.ToJsonValue(initial)
+		return err
+	}); err != nil {
+		return preparedTask{}, err
+	}
+	phase, err := durable.FromJsonValue[struct {
+		Phase string `json:"phase"`
+	}](checkpoint)
+	if err != nil {
+		return preparedTask{}, err
+	}
+	if _, ok := installed.Definition.Phases[phase.Phase]; !ok {
+		return preparedTask{}, fmt.Errorf("Task %s starts at the unknown phase %s", name, phase.Phase)
+	}
+	// The registry erases definitions; the installed one is the definition of its kind.
+	created := *installed.Definition
+	created.Initial = func(durable.JsonValue) (durable.JsonValue, error) { return checkpoint, nil }
+	return preparedTask{task: durable.AnyTask{Definition: &created}, input: input}, nil
+}
+
+// endAnsweredRun is commit B of a run that answered (spec §8.3): its after-run tasks are terminal, or there were none.
+// It places what the final boundary selects, ends the run, and starts the next one for selected user items.
+func endAnsweredRun(ctx context.Context, runtime generationRuntime, answer durable.EntryId) error {
+	conversationId := runtime.ConversationId()
+	return runtime.Commit(ctx, func(tx durable.Tx, _ durable.RunningTask[GenerationInput, GenerationCheckpoint, GenerationResult]) (*generationNext, error) {
+		boundary, err := PrepareBoundary(tx, conversationId, QueueModesOf(runtime.Settings()))
+		if err != nil {
+			return nil, err
+		}
+		live, err := docDraft(tx, LiveDoc, conversationId)
+		if err != nil {
+			return nil, err
+		}
+		placed, err := ApplyBoundary(tx, boundary, BoundaryFinal, runtime.Now())
+		if err != nil {
+			return nil, err
+		}
+		if err := EndRun(tx, live, runtime.TaskId(), runDone(answer)); err != nil {
+			return nil, err
+		}
+		if len(placed.Users) > 0 {
+			if err := StartRun(tx, conversationId, live, RunStart{Inputs: placed.Users, First: placed.First}, nil); err != nil {
+				return nil, err
+			}
+		}
+		return completedState[GenerationCheckpoint, GenerationResult](GenerationResult{EntryId: answer}), nil
+	})
+}
+
+// endAnsweredCutOff ends a run that answered once its finish or drain phase was cut off settings.restartLimit times
+// (spec §5.4): the run answered, so it ends completed, without a failure and without the tasks it would still have waited
+// for, marked so the scheduler reports it task_interrupted. Queued items stay queued, as after a failed run.
+func endAnsweredCutOff(ctx context.Context, runtime generationRuntime, task durable.RunningTask[GenerationInput, GenerationCheckpoint, GenerationResult], answer durable.EntryId) error {
+	text := fmt.Sprintf("The generation was interrupted %s in its %s phase", CutOffCount(task.Restarts), checkpointOf(task).Phase)
+	return runtime.Commit(endedByCrashes(ctx, text), func(tx durable.Tx, _ durable.RunningTask[GenerationInput, GenerationCheckpoint, GenerationResult]) (*generationNext, error) {
+		live, err := docDraft(tx, LiveDoc, runtime.ConversationId())
+		if err != nil {
+			return nil, err
+		}
+		if err := EndRun(tx, live, runtime.TaskId(), runDone(answer)); err != nil {
+			return nil, err
+		}
+		return completedState[GenerationCheckpoint, GenerationResult](GenerationResult{EntryId: answer}), nil
+	})
+}
+
+// takesContinuation reports whether an answer's onYield continuation is taken (spec §8.3), decided from the inbox before
+// the final boundary places anything: only when it holds no user item, of which the boundary would select one, and no
+// reset, which would otherwise run first. A continuation starts the turn count over.
+func takesContinuation(continuation *YieldContinue, boundary *Boundary) (bool, error) {
+	if continuation == nil {
+		return false, nil
+	}
+	state, err := decodeDraft[InboxState](boundary.Inbox)
+	if err != nil {
+		return false, err
+	}
+	for _, item := range state.Items {
+		if item.Mode == InboxSteer || item.Mode == InboxFollowUp {
+			return false, nil
+		}
+	}
+	return !HasQueuedReset(state.Items), nil
+}
+
 // startToolRound appends the tool-calling answer and starts its tool round in one commit (spec §8.3,
-// generation.ts:531-578). A call to a tool the request did not offer gets its tool_unavailable result here; every other
-// call gets a tool task owned by the generation, only the first one now when the round is sequential. The generation
-// then waits for them in its tools phase, keeping the run.
+// generation.ts:531-578). Every call gets a tool task owned by the generation, in call order, only the first one now when
+// the round is sequential; a call to a tool the request did not offer is flagged, and its task settles tool_unavailable.
+// The generation then waits for them in its tools phase, keeping the run.
 func startToolRound(ctx context.Context, runtime generationRuntime, request generationRequestInfo, message ai.AssistantMessage, calls []ai.ToolCall) error {
 	conversationId := runtime.ConversationId()
 	messages := request.messages
@@ -1235,32 +1536,26 @@ func startToolRound(ctx context.Context, runtime generationRuntime, request gene
 		tools := []durable.TaskId{}
 		pending := []string{}
 		for _, call := range calls {
-			if !offered[call.Name] {
-				unavailable := HarnessError(toolUnavailable, fmt.Sprintf("Tool %s is not available", call.Name))
-				result, err := AppendToolResult(tx, conversationId, call, unavailable, runtime.Now(), nil)
-				if err != nil {
-					return nil, err
-				}
-				id := result.Id
-				slots = append(slots, ToolSlot{CallId: call.ID, Name: call.Name, Status: ToolSlotDone, Entry: &id})
-				continue
-			}
+			unoffered := !offered[call.Name]
 			if sequential && len(tools) > 0 {
 				pending = append(pending, call.ID)
-				slots = append(slots, ToolSlot{CallId: call.ID, Name: call.Name, Status: ToolSlotPending})
+				slots = append(slots, ToolSlot{CallId: call.ID, Name: call.Name, Status: ToolSlotPending, Unoffered: unoffered})
 				continue
 			}
 			// pig divergence (D177): the tool tasks of a parallel round run concurrently, so the order in which their calls
 			// start within the round is unspecified; Pi's event loop runs each execute's synchronous prefix in call order.
-			taskId, err := createToolTask(tx, runtime.TaskId(), entry.Id, call.ID)
+			taskId, err := createToolTask(tx, runtime.TaskId(), entry.Id, call.ID, unoffered)
 			if err != nil {
 				return nil, err
 			}
 			tools = append(tools, taskId)
-			slots = append(slots, ToolSlot{CallId: call.ID, Name: call.Name, TaskId: &taskId, Status: ToolSlotPending})
+			slots = append(slots, ToolSlot{CallId: call.ID, Name: call.Name, TaskId: &taskId, Status: ToolSlotPending, Unoffered: unoffered})
 		}
 		live.Delete("generation")
 		if err := setJSON(live, "tools", slots); err != nil {
+			return nil, err
+		}
+		if err := countTurn(live, runtime.TaskId(), entry.Id); err != nil {
 			return nil, err
 		}
 		assistant := entry.Id
@@ -1270,12 +1565,12 @@ func startToolRound(ctx context.Context, runtime generationRuntime, request gene
 }
 
 // finishToolRound applies the controls of a round whose tools are terminal, appends a handoff's reset, and then ends the
-// run at the final boundary (terminate), ends it at a queued reset, or hands it to the next generation at the postTools
-// boundary, in the handoff's new context when there is one (spec §8.5, generation.ts finishToolRound).
+// run at the final boundary (terminate), ends it like a failure at the conversation's turn limit (turn_limit), ends it at
+// a queued reset, or hands it to the next generation at the postTools boundary, in the handoff's new context when there
+// is one (spec §8.5, generation.ts finishToolRound).
 func finishToolRound(ctx context.Context, runtime generationRuntime, assistant durable.EntryId, tools []durable.TaskId) error {
 	conversationId := runtime.ConversationId()
 	controls := make(map[durable.TaskId]*durable.ToolControl, len(tools))
-	var ordered []*durable.ToolControl
 	// pig divergence (D181): this read and the commits after it race the commits of a job started in the round and not awaited
 	// (see TaskScheduler.start); their order against each other is unspecified, where Pi's microtask hops fix it.
 	outcomes, err := runtime.Outcomes(ctx, tools)
@@ -1290,7 +1585,6 @@ func finishToolRound(ctx context.Context, runtime generationRuntime, assistant d
 			}
 		}
 		controls[id] = control
-		ordered = append(ordered, control)
 	}
 	snapshot, err := durable.Snapshot[LiveState](ctx, runtime, LiveDoc, conversationId)
 	if err != nil {
@@ -1314,14 +1608,16 @@ func finishToolRound(ctx context.Context, runtime generationRuntime, assistant d
 	}); err != nil {
 		return err
 	}
-	// Every call of the round, including those answered without a task, must ask to terminate.
-	terminate := len(slots) > 0
-	for _, slot := range slots {
-		if slot.TaskId == nil {
-			terminate = false
-			break
+	// In call order, the slots' order; a slot without a task (faulted or orphaned before it got one) has no control.
+	ordered := make([]*durable.ToolControl, len(slots))
+	for index, slot := range slots {
+		if slot.TaskId != nil {
+			ordered[index] = controls[*slot.TaskId]
 		}
-		control := controls[*slot.TaskId]
+	}
+	// Every call of the round must ask to terminate.
+	terminate := len(slots) > 0
+	for _, control := range ordered {
 		if control == nil || !control.Terminate {
 			terminate = false
 			break
@@ -1337,6 +1633,18 @@ func finishToolRound(ctx context.Context, runtime generationRuntime, assistant d
 		// The last handoff in call order wins.
 		if control.Handoff != nil {
 			handoff = control.Handoff
+		}
+	}
+	// Read from the phase's agent, as every agent field; a Configure during the round applies at its end.
+	agent, err := runtime.Agent(ctx)
+	if err != nil {
+		return err
+	}
+	maxTurns := agent.MaxTurns
+	afterRun := false
+	if terminate {
+		if afterRun, err = asksAfterRun(ctx, runtime); err != nil {
+			return err
 		}
 	}
 	return runtime.Commit(ctx, func(tx durable.Tx, _ durable.RunningTask[GenerationInput, GenerationCheckpoint, GenerationResult]) (*generationNext, error) {
@@ -1355,6 +1663,11 @@ func finishToolRound(ctx context.Context, runtime generationRuntime, assistant d
 		}
 		now := runtime.Now()
 		taskId := runtime.TaskId()
+		// The run's last entry so far: the newest result, or the assistant when no result has an entry.
+		last := assistant
+		for _, id := range results {
+			last = max(last, id)
+		}
 		if handoff != nil {
 			// The handoff's reset precedes every queued item, so queued writes and selected steers land in its context.
 			message := ai.UserMessage{Content: ai.UserText(*handoff), Timestamp: int64(now)}
@@ -1364,6 +1677,24 @@ func finishToolRound(ctx context.Context, runtime generationRuntime, assistant d
 			}
 			head := entry.Id
 			boundary.Head = &head
+			last = head
+		}
+		turns := 0
+		if owner, ok := runTaskOf(live); ok && owner == taskId {
+			run, err := liveRunOf(live)
+			if err != nil {
+				return nil, err
+			}
+			turns = run.Turns
+		}
+		if afterRun {
+			held, err := holdRun(tx, live, runtime, RunSummary{Reason: RunEndTerminate, Answer: assistant, Last: last})
+			if err != nil {
+				return nil, err
+			}
+			if held != nil {
+				return held, nil
+			}
 		}
 		if terminate {
 			placed, err := ApplyBoundary(tx, boundary, BoundaryFinal, now)
@@ -1374,9 +1705,23 @@ func finishToolRound(ctx context.Context, runtime generationRuntime, assistant d
 				return nil, err
 			}
 			if len(placed.Users) > 0 {
-				if err := StartRun(tx, conversationId, live, placed.Users, nil); err != nil {
+				if err := StartRun(tx, conversationId, live, RunStart{Inputs: placed.Users, First: placed.First}, nil); err != nil {
 					return nil, err
 				}
+			}
+		} else if maxTurns != nil && turns >= *maxTurns {
+			// The turn limit ends the run like a failure: afterFailedRun decides the queued items, and a continue resumes it
+			// on the round's results. The table was read for the boundary already, before any write.
+			failed := failure{policy: runtime.Settings().AfterFailedRun}
+			if failed.policy == durable.AfterFailedRunContinue {
+				failed.boundary = boundary
+			}
+			detail := fmt.Sprintf("%d turns", turns)
+			if turns == 1 {
+				detail = "1 turn"
+			}
+			if err := endFailedRun(tx, runtime, live, failed, runUnanswered(RunTurnLimit, &detail)); err != nil {
+				return nil, err
 			}
 		} else {
 			placed, err := ApplyBoundary(tx, boundary, BoundaryPostTools, now)
@@ -1389,7 +1734,7 @@ func finishToolRound(ctx context.Context, runtime generationRuntime, assistant d
 					return nil, err
 				}
 				if len(placed.Users) > 0 {
-					if err := StartRun(tx, conversationId, live, placed.Users, &StartRunOptions{KeepFailure: true}); err != nil {
+					if err := StartRun(tx, conversationId, live, RunStart{Inputs: placed.Users, First: placed.First}, &StartRunOptions{KeepFailure: true}); err != nil {
 						return nil, err
 					}
 				}
@@ -1434,14 +1779,22 @@ type StartRunOptions struct {
 	KeepFailure bool
 }
 
-// StartRun starts a run for inputs, placed input submissions: a new generation takes pi.live.run. The generation starts
-// in its first input's trace and links to the others. It removes runFailure unless options.KeepFailure.
-func StartRun(tx durable.Tx, conversationId durable.ConversationId, live *delta.Object, inputs []durable.SubmissionId, options *StartRunOptions) error {
-	taskId, err := createGeneration(tx, conversationId, nonNil(inputs))
+// RunStart is what a run starts for: its placed inputs, and its first entry (LiveRun.First).
+type RunStart struct {
+	Inputs []durable.SubmissionId
+	First  *durable.EntryId
+}
+
+// StartRun starts a run for run.Inputs, placed input submissions, whose first entry is run.First (LiveRun.First): a new
+// generation takes pi.live.run. It removes runFailure unless options.KeepFailure: a run started in the commit that ended
+// the failed one keeps its failure.
+func StartRun(tx durable.Tx, conversationId durable.ConversationId, live *delta.Object, run RunStart, options *StartRunOptions) error {
+	inputs := nonNil(run.Inputs)
+	taskId, err := createGeneration(tx, conversationId, inputs)
 	if err != nil {
 		return err
 	}
-	if err := setJSON(live, "run", LiveRun{TaskId: taskId, Inputs: nonNil(inputs)}); err != nil {
+	if err := setJSON(live, "run", LiveRun{TaskId: taskId, Inputs: inputs, Turns: 0, First: run.First}); err != nil {
 		return err
 	}
 	if options == nil || !options.KeepFailure {
@@ -1476,6 +1829,26 @@ func createGeneration(tx durable.Tx, conversationId durable.ConversationId, subm
 func handOver(live *delta.Object, from, to durable.TaskId) error {
 	if owner, ok := runTaskOf(live); ok && owner == from {
 		return live.Object("run").Set("taskId", float64(to))
+	}
+	return nil
+}
+
+// countTurn counts a tool round as one turn of the run taskId owns (AgentState.MaxTurns). A run its boundary started
+// without placing anything, as a continue after an answer, begins at its first tool-calling answer.
+func countTurn(live *delta.Object, taskId durable.TaskId, assistant durable.EntryId) error {
+	if owner, ok := runTaskOf(live); !ok || owner != taskId {
+		return nil
+	}
+	run, err := liveRunOf(live)
+	if err != nil {
+		return err
+	}
+	draft := live.Object("run")
+	if err := draft.Set("turns", float64(run.Turns+1)); err != nil {
+		return err
+	}
+	if run.First == nil {
+		return draft.Set("first", float64(assistant))
 	}
 	return nil
 }
@@ -1535,4 +1908,65 @@ func nonNil[T any](items []T) []T {
 		return []T{}
 	}
 	return items
+}
+
+// generationFinishHandler asks the afterRun hooks for tasks and creates them, as the generation's children, in the commit
+// that moves to drain; without any, it ends the run now (generation.ts finish).
+func generationFinishHandler(ctx context.Context, task durable.RunningTask[GenerationInput, GenerationCheckpoint, GenerationResult], runtime generationRuntime) error {
+	run := *checkpointOf(task).Run
+	if CutOffTooOften(task.Restarts, runtime) {
+		return endAnsweredCutOff(ctx, runtime, task, run.Answer)
+	}
+	var prepared []preparedTask
+	if err := runtime.Hooks().Each("afterRun", func(hooks *GenerationHooks) error {
+		if hooks == nil || hooks.AfterRun == nil {
+			return nil
+		}
+		asked, err := hooks.AfterRun(ctx, run, runtime)
+		if err != nil {
+			return err
+		}
+		if asked == nil {
+			return nil
+		}
+		return prepareRunEndTasks(runtime, asked.Tasks, &prepared)
+	}); err != nil {
+		return err
+	}
+	if len(prepared) == 0 {
+		return endAnsweredRun(ctx, runtime, run.Answer)
+	}
+	return runtime.Commit(ctx, func(tx durable.Tx, _ durable.RunningTask[GenerationInput, GenerationCheckpoint, GenerationResult]) (*generationNext, error) {
+		tasks := []durable.TaskId{}
+		for _, request := range prepared {
+			id, err := tx.CreateTaskErased(request.task, request.input, durable.TaskOptions{Ownership: durable.TaskOwnership{Kind: durable.TaskOwnedByTask, TaskId: runtime.TaskId()}})
+			if err != nil {
+				return nil, err
+			}
+			tasks = append(tasks, id)
+		}
+		live, err := docDraft(tx, LiveDoc, runtime.ConversationId())
+		if err != nil {
+			return nil, err
+		}
+		if owner, ok := runTaskOf(live); ok && owner == runtime.TaskId() {
+			if afterRun := live.Object("run").Object("afterRun"); afterRun != nil {
+				if err := setJSON(afterRun, "tasks", tasks); err != nil {
+					return nil, err
+				}
+			}
+		}
+		answer := run.Answer
+		return waitingState[GenerationCheckpoint, GenerationResult](GenerationCheckpoint{Phase: generationDrain, Answer: &answer, Tasks: tasks}, tasks, durable.JoinAllSettled), nil
+	})
+}
+
+// generationDrainHandler runs once the after-run tasks are terminal, whatever their outcomes: it ends the run
+// (generation.ts drain).
+func generationDrainHandler(ctx context.Context, task durable.RunningTask[GenerationInput, GenerationCheckpoint, GenerationResult], runtime generationRuntime) error {
+	answer := *checkpointOf(task).Answer
+	if CutOffTooOften(task.Restarts, runtime) {
+		return endAnsweredCutOff(ctx, runtime, task, answer)
+	}
+	return endAnsweredRun(ctx, runtime, answer)
 }

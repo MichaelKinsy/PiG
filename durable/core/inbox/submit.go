@@ -14,8 +14,9 @@ import (
 
 // Submission types and settlement statuses (src/harness/types.ts SubmissionDraft).
 const (
-	TypeInput = "input"
-	TypeWrite = "write"
+	TypeInput    = "input"
+	TypeWrite    = "write"
+	TypeContinue = "continue"
 )
 
 // ErrConversationBusy matches a *BusyError with errors.Is.
@@ -32,8 +33,21 @@ func (e *BusyError) Error() string {
 // Is matches ErrConversationBusy.
 func (e *BusyError) Is(target error) bool { return target == ErrConversationBusy }
 
-// Draft is a SubmissionDraft: input carries Content, WhenBusy and optionally the InputEntry it is placed as (Entry), a
-// write carries Entry, the entry it appends.
+// ErrConversationIdle matches an *IdleError with errors.Is.
+// Read-only: assigned once at initialization.
+var ErrConversationIdle = errors.New("ConversationIdle")
+
+// IdleError is Pi's ConversationIdle: an input with whenIdle "reject" reached an idle conversation and was not admitted.
+type IdleError struct{ ConversationID session.ID }
+
+func (e *IdleError) Error() string {
+	return "Conversation " + jv.FormatNumber(float64(e.ConversationID)) + " is idle"
+}
+
+// Is matches ErrConversationIdle.
+func (e *IdleError) Is(target error) bool { return target == ErrConversationIdle }
+// Draft is a SubmissionDraft: input carries Content, WhenBusy, WhenIdle and optionally the InputEntry it is placed as (Entry), a
+// write carries Entry, the entry it appends, a continue carries neither.
 type Draft struct {
 	RequestID *string
 	Type      string
@@ -41,6 +55,8 @@ type Draft struct {
 	Entry     *jv.Object
 	// WhenBusy is "steer", "followUp" or "reject"; empty queues as followUp.
 	WhenBusy string
+	// WhenIdle is "reject" or empty (start a run).
+	WhenIdle string
 	// Span is the host's handle of the submission's span, which the commit's events go to (TxScope.Span); Trace is the carrier of the submission's span (propagation.inject(span)), stored on its record; nil: none.
 	Trace any
 	Span  uint32
@@ -48,11 +64,18 @@ type Draft struct {
 	Propagation bool
 }
 
+// RunStart is what startRun takes (generation.ts): the run's placed inputs, and its first entry (LiveRun.first; HasFirst: whether it has one).
+type RunStart struct {
+	Inputs   []session.ID
+	First    session.ID
+	HasFirst bool
+}
+
 // Runs is what admission needs of the generation task: the conversation's pi.live document and the start of a run for
 // placed inputs (startRun in src/harness/generation.ts). The turn package, which depends on this one, implements it.
 type Runs interface {
 	Live(tx *session.Tx, conversationID session.ID) (*delta.Obj, error)
-	Start(tx *session.Tx, conversationID session.ID, live *delta.Obj, inputs []session.ID) error
+	Start(tx *session.Tx, conversationID session.ID, live *delta.Obj, run RunStart) error
 }
 
 func idOf(record *jv.Object) session.ID {
@@ -83,6 +106,8 @@ func closedAny(s string) any {
 		return TypeInput
 	case TypeWrite:
 		return TypeWrite
+	case TypeContinue:
+		return TypeContinue
 	case "queued":
 		return "queued"
 	case "placed":
@@ -188,6 +213,40 @@ func admit(tx *session.Tx, runs Runs, conversationID session.ID, draft Draft, no
 	if busy && draft.Type == TypeInput && draft.WhenBusy == "reject" {
 		return 0, &BusyError{conversationID}
 	}
+	if !busy && draft.Type == TypeInput && draft.WhenIdle == "reject" {
+		return 0, &IdleError{conversationID}
+	}
+	if draft.Type == TypeContinue {
+		// Never queued: whether a run can continue depends on how the current one ends. Rejected before any write.
+		if busy {
+			return 0, &BusyError{conversationID}
+		}
+		boundary, err := Prepare(tx, conversationID, modes)
+		if err != nil {
+			return 0, err
+		}
+		tx.Await(1)
+		created, err := tx.CreateSubmission(submissionRecord(conversationID, draft.RequestID, draft.Trace, TypeContinue, "placed"))
+		if err != nil {
+			return 0, err
+		}
+		id := idOf(created)
+		// Items an earlier failed run left queued (`afterFailedRun: "keep"`) are placed first and join the run. Its history starts with the
+		// failed run's, so `afterRun` hooks see what that run did.
+		result, err := Apply(tx, boundary, true, now)
+		if err != nil {
+			return 0, err
+		}
+		tx.Await(1)
+		run := RunStart{Inputs: append(result.Users, id), First: result.First, HasFirst: result.HasFirst}
+		if failure := live.Obj("runFailure"); failure != nil {
+			if first, ok := failure.Get("first").(float64); ok {
+				run.First, run.HasFirst = session.ID(first), true
+			}
+		}
+		a.set("placed")
+		return id, start(tx, runs, conversationID, live, run)
+	}
 	// A boundary reads the table, so it is prepared before the first table write; a busy conversation needs none.
 	var boundary *Boundary
 	if !busy {
@@ -236,12 +295,12 @@ func admit(tx *session.Tx, runs Runs, conversationID session.ID, draft Draft, no
 	}
 	id := idOf(created)
 	a.set("placed")
-	return id, start(tx, runs, conversationID, live, []session.ID{id})
+	return id, start(tx, runs, conversationID, live, RunStart{Inputs: []session.ID{id}, First: idOf(entry), HasFirst: true})
 }
 
 // start is `await startRun(...)` (submissions.ts :189, :205): the caller resumes one tick after startRun returns.
-func start(tx *session.Tx, runs Runs, conversationID session.ID, live *delta.Obj, inputs []session.ID) error {
-	if err := runs.Start(tx, conversationID, live, inputs); err != nil {
+func start(tx *session.Tx, runs Runs, conversationID session.ID, live *delta.Obj, run RunStart) error {
+	if err := runs.Start(tx, conversationID, live, run); err != nil {
 		return err
 	}
 	tx.Await(1)
@@ -351,7 +410,7 @@ func queueAndPlace(tx *session.Tx, runs Runs, conversationID session.ID, draft D
 		a.set("queued")
 	}
 	if len(result.Users) > 0 {
-		return id, start(tx, runs, conversationID, live, result.Users)
+		return id, start(tx, runs, conversationID, live, RunStart{Inputs: result.Users, First: result.First, HasFirst: result.HasFirst})
 	}
 	return id, nil
 }

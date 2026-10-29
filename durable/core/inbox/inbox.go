@@ -55,11 +55,17 @@ type Boundary struct {
 	HasHead bool
 }
 
-// Result is the selected user items in ID order, and whether a head "self" write (a reset) was placed.
+// Result is the selected user items in ID order, the first entry the boundary placed, a write's or a user item's (a run it starts begins
+// there, LiveRun.first; HasFirst: whether it placed one), and whether a head "self" write (a reset) was placed.
 type Result struct {
-	Users []session.ID
-	Reset bool
+	Users    []session.ID
+	First    session.ID
+	HasFirst bool
+	Reset    bool
 }
+
+// Start is what startRun takes for the run the boundary's users start.
+func (r Result) Start() RunStart { return RunStart{Inputs: r.Users, First: r.First, HasFirst: r.HasFirst} }
 
 // Prepare is prepareBoundary: table reads must precede the commit's first table write, so callers prepare the boundary at
 // the start of their commit.
@@ -127,7 +133,8 @@ func Apply(tx *session.Tx, b *Boundary, final bool, now float64) (Result, error)
 		users = append(users, pick("followUp", b.Modes.FollowUp)...)
 	}
 	slices.Sort(users)
-
+	var first session.ID
+	var hasFirst bool
 	for _, index := range writes {
 		item := items.Obj(index)
 		draft := item.Obj("entry").Snapshot()
@@ -152,6 +159,9 @@ func Apply(tx *session.Tx, b *Boundary, final bool, now float64) (Result, error)
 		if err := tx.PlaceSubmission(itemID(item), session.ID(entryID.(float64))); err != nil {
 			return Result{}, err
 		}
+		if !hasFirst {
+			first, hasFirst = session.ID(entryID.(float64)), true
+		}
 	}
 	placed := make([]session.ID, 0, len(users))
 	for _, index := range users {
@@ -165,6 +175,9 @@ func Apply(tx *session.Tx, b *Boundary, final bool, now float64) (Result, error)
 			return Result{}, err
 		}
 		placed = append(placed, itemID(item))
+		if !hasFirst {
+			first, hasFirst = session.ID(entryID.(float64)), true
+		}
 	}
 	removed := append(slices.Clone(writes), users...)
 	slices.SortFunc(removed, func(a, b int) int { return b - a })
@@ -173,7 +186,7 @@ func Apply(tx *session.Tx, b *Boundary, final bool, now float64) (Result, error)
 			return Result{}, err
 		}
 	}
-	return Result{Users: placed, Reset: reset}, nil
+	return Result{Users: placed, First: first, HasFirst: hasFirst, Reset: reset}, nil
 }
 
 // IsStale is isStale: whether a head write targets an entry before the active range, so placing it would bring back cut
@@ -244,6 +257,19 @@ func HasQueuedReset(items *delta.Arr) bool {
 		}
 	}
 	return false
+}
+
+// TakesContinuation is generation.ts takesContinuation without the continuation itself: whether an answer's `onYield` continuation is
+// taken (spec section 8.3), decided from the inbox before the final boundary places anything: only when it holds no user item, of
+// which the boundary would select one, and no reset, which would otherwise run first.
+func TakesContinuation(b *Boundary) bool {
+	items := queued(b.Inbox)
+	for i := range items.Len() {
+		if mode := itemMode(items.Obj(i)); mode == "steer" || mode == "followUp" {
+			return false
+		}
+	}
+	return !HasQueuedReset(items)
 }
 
 // Unanswered is the settlement {status: "unanswered", reason}.

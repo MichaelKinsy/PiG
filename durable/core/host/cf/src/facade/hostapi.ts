@@ -57,7 +57,7 @@ export interface HostApiOptions {
 }
 
 /** Pi's runtime reads that take the caller's context but never race it (scheduler.ts :1159-1250: `#read` runs a readOnLine whose Storage call ignores the signal); a facade wrapper that raced it would spend a pass Pi does not. */
-const UNCANCELLED_READS = new Set(["context", "getTask", "entry"])
+const UNCANCELLED_READS = new Set(["context", "getTask", "entry", "entries"])
 
 const read = <T>(client: CoreClient, context: Context, op: string, args: Record<string, unknown>, revive?: (value: T) => T): Promise<T> =>
   awaitWithContext(client.api<T>(op, args, revive), context)
@@ -139,6 +139,9 @@ export function invocationApi(options: HostApiOptions, who: InvocationIdentity &
       const found = await run<unknown>(context, "entry", { conversationId: who.conversationId, entryId: id }, value => value ?? undefined)
       return found
     },
+    /** scheduler.ts entries: the raw history of the task's conversation (fork-aware); only `minEntryId`, `maxEntryId` and `order` of the query are used (util.ts conversationEntries). */
+    entries: (query: { minEntryId?: number; maxEntryId?: number; order?: string }, limit: number, cursor: unknown, context: Context) =>
+      run<unknown>(context, "entries", { taskId: who.taskId, query: { ...(query.minEntryId === undefined ? {} : { minEntryId: query.minEntryId }), ...(query.maxEntryId === undefined ? {} : { maxEntryId: query.maxEntryId }), ...(query.order === undefined ? {} : { order: query.order }) }, limit, ...(cursor === undefined ? {} : { cursor }) }),
     /** The model context of any conversation; `{at}` reads it as of that entry. */
     context: async (conversationId: number, context: Context, options?: { at?: number }) =>
       freezeView(await run<ContextViewJSON>(context, "context", { taskId: who.taskId, conversationId, ...(options?.at === undefined ? {} : { at: options.at }) })),
@@ -202,7 +205,7 @@ export function invocationCommit(options: HostApiOptions, who: { invocation?: nu
       who.invocation === undefined ? undefined : result => result, () => binding.check(),
       (_address, _definition, revision) => { const since = snapshotStamp(options.client); stageRevision(options.client, revision); return committed => { unstageRevision(options.client, revision); settleRevision(options.client, revision, committed, since) } },
       { load: (id, value) => loadedTracker(options.client, id, value), keep: (id, tracker) => keepTracker(options.client, id, tracker), ...(forkCopyHook(options.client) && { forkCopy: forkCopyHook(options.client)! }), record: record => handRecord(options.client, record) },
-      options.failed)
+      options.failed, context)
     // A side branch: the caller's promise is `done` itself.
     done.then(() => leave?.(), () => leave?.())
     return done

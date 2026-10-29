@@ -147,9 +147,14 @@ func (r *toolRun) call() {
 			return
 		}
 		name := str(call, "name")
+		if r.isUnoffered() {
+			// Settles `tool_unavailable` without resolving the name.
+			r.reject(call, nil, HarnessError("tool_unavailable", "Tool "+name+" is not available"))
+			return
+		}
 		r.findTool(name, func(tool *Tool) {
 			if tool == nil {
-				r.settle(call, completed, func(*delta.Obj) *jv.Object { return HarnessError("tool_unavailable", "Tool "+name+" is not available") }, nil)
+				r.reject(call, nil, HarnessError("tool_unavailable", "Tool "+name+" is not available"))
 				return
 			}
 			args := objField(call, "arguments")
@@ -157,7 +162,7 @@ func (r *toolRun) call() {
 				args = jv.NewObject()
 			}
 			invalid := func(text string) {
-				r.settle(call, completed, func(*delta.Obj) *jv.Object { return HarnessError("invalid_arguments", text) }, nil)
+				r.reject(call, tool, HarnessError("invalid_arguments", text))
 			}
 			h.PrepareArguments(name, args, func(prepared any, errText string, err error) {
 				if err != nil {
@@ -219,7 +224,7 @@ func (r *toolRun) beforeTool(call *jv.Object, tool *Tool, args *jv.Object, inval
 		}
 		if block != nil {
 			blocked := *block
-			r.settle(call, completed, func(*delta.Obj) *jv.Object { return HarnessError("blocked", "Tool call blocked: "+blocked) }, nil)
+			r.reject(call, tool, HarnessError("blocked", "Tool call blocked: "+blocked))
 			return
 		}
 		h.ValidateArguments(str(call, "name"), call, args, func(final *jv.Object, errText string, err error) {
@@ -264,13 +269,14 @@ func (r *toolRun) execute(cp *jv.Object) {
 	args := objField(cp, "arguments")
 	replay := str(cp, "replay")
 	r.readCall(func(call *jv.Object, _ bool) {
+		// Also before an interruption result: its `afterTool` hooks may be what cut the task off.
+		if r.cutOffTooOften(r.task) {
+			r.endCutOff(call)
+			return
+		}
 		name := str(call, "name")
 		r.findTool(name, func(tool *Tool) {
 			if replay == "safe" && tool != nil && tool.Replay == "safe" {
-				if r.cutOffTooOften(r.task) {
-					r.endCutOff(call)
-					return
-				}
 				// The rerun reports from scratch; clear what the interrupted attempt published.
 				r.commit(func(tx *session.Tx, _ *jv.Object) (*jv.Object, error) {
 					live, err := tx.Doc(LiveDef, session.DocArgs{Owner: r.conv})
@@ -285,10 +291,9 @@ func (r *toolRun) execute(cp *jv.Object) {
 				return
 			}
 			message := "Tool " + name + " was interrupted and may have partially run"
-			// failed records cancellation intent, so the call's owned conversations, left unsupervised, are aborted.
-			r.settle(call, ending{status: "failed", message: message}, func(slot *delta.Obj) *jv.Object {
-				return fromSlot(slot, "interrupted", message)
-			}, nil)
+			// failed records cancellation intent, so the call's owned conversations, left unsupervised, are aborted. Not cut off too often
+			// (checked above), so the hooks run.
+			r.settleFromSlot(call, true, tool, ending{status: "failed", message: message}, "interrupted", message)
 		})
 	})
 }
@@ -297,25 +302,41 @@ func (r *toolRun) execute(cp *jv.Object) {
 // like an interrupted call's, instead of running it again. failed, like an interruption, so its owned work is aborted.
 func (r *toolRun) endCutOff(call *jv.Object) {
 	message := "Tool " + str(call, "name") + " was interrupted " + cutOffCount(r.task) + "; it is not run again"
-	r.settle(call, ending{status: "failed", message: message, reason: "restart_limit"}, func(slot *delta.Obj) *jv.Object {
-		return fromSlot(slot, "restart_limit", message)
-	}, nil)
+	end := ending{status: "failed", message: message, reason: "restart_limit"}
+	// Past the limit the hooks may be what keeps cutting the task off (`salvageable`).
+	if r.salvageable(r.task) {
+		r.toolForLimits(str(call, "name"), func(tool *Tool) { r.settleFromSlot(call, true, tool, end, "restart_limit", message) })
+		return
+	}
+	r.settleFromSlot(call, false, nil, end, "restart_limit", message)
 }
 
 // abort ends the call aborted with the durable partial output.
 func (g *ToolTask) abort(rt *session.Runtime, task *jv.Object, done func(error)) {
 	r := g.newRun(rt, task, done)
 	r.readCall(func(call *jv.Object, _ bool) {
+		// Abandoned after a restart (abandonOnRestart): say whether the call may have run (tool.ts abort). An unoffered call could not run in
+		// any case, and its result says so.
 		code, message := "aborted", "Tool "+str(call, "name")+" was aborted"
-		// Abandoned after a restart (abandonOnRestart): say whether the call may have run (tool.ts abort).
-		if str(task, "abortReason") == "restart" {
+		switch {
+		case r.isUnoffered():
+			code, message = "tool_unavailable", "Tool "+str(call, "name")+" is not available"
+		case str(task, "abortReason") == "restart":
 			if str(checkpointOf(task), "phase") == phaseExecute {
 				code, message = "interrupted", "Tool "+str(call, "name")+" was interrupted by a restart and may have partially run"
 			} else {
 				code, message = "abandoned", "Tool "+str(call, "name")+" was not started: its caller ended with a restart"
 			}
 		}
-		r.settle(call, ending{status: "aborted"}, func(slot *delta.Obj) *jv.Object { return fromSlot(slot, code, message) }, nil)
+		// The scheduler runs an abort handler only while its restarts are below the limit, and faults the task without a result when the
+		// last attempt is cut off. That attempt skips the hooks, which may be what cuts it off.
+		if num(task, "restarts") < g.Host.Settings().RestartLimit-1 {
+			r.toolForLimits(str(call, "name"), func(tool *Tool) {
+				r.settleFromSlot(call, true, tool, ending{status: "aborted"}, code, message)
+			})
+			return
+		}
+		r.settleFromSlot(call, false, nil, ending{status: "aborted"}, code, message)
 	})
 }
 
@@ -428,37 +449,170 @@ func truncatedDiagnostic(droppedLines, droppedBytes int, retain string) *jv.Obje
 	return diagnostic("warn", "truncated", "Output truncated"+kept+": "+itoa(int64(droppedLines))+" lines, "+itoa(int64(droppedBytes))+" bytes dropped")
 }
 
-// fromSlot is an error result from the slot's durable partial output, details and diagnostics.
-func fromSlot(slot *delta.Obj, code, message string) *jv.Object {
+// fromSlot is an error result from the slot's durable partial output, details and diagnostics (tool.ts fromSlot): snap is the slot's
+// value in pi.live, nil when it lists none. truncation describes what the retained output lost, kept apart: the caller adds it after
+// the hooks, or to the diagnostics as built.
+func fromSlot(snap *jv.Object, code, message string) (result, truncation *jv.Object) {
 	var diagnostics []any
 	var output string
 	var details any
 	hasDetails := false
-	droppedBytes, droppedLines := 0, 0
-	if slot != nil {
-		snap := slot.Snapshot()
+	if snap != nil {
 		if list, ok := arrayField(snap, "diagnostics"); ok {
 			diagnostics = append(diagnostics, list...)
 		}
-		droppedBytes = int(num(snap, "droppedBytes"))
-		droppedLines = int(num(snap, "droppedLines"))
+		if droppedBytes := int(num(snap, "droppedBytes")); droppedBytes > 0 {
+			truncation = truncatedDiagnostic(int(num(snap, "droppedLines")), droppedBytes, "")
+		}
 		output = str(snap, "output")
 		details, hasDetails = snap.Get("details")
-	}
-	if droppedBytes > 0 {
-		diagnostics = append(diagnostics, truncatedDiagnostic(droppedLines, droppedBytes, ""))
 	}
 	diagnostics = append(diagnostics, diagnostic("error", code, message))
 	content := []any{}
 	if output != "" {
 		content = []any{jobj("type", "text", "text", output)}
 	}
-	result := jobj("output", content, "isError", true)
+	result = jobj("output", content, "isError", true)
 	if hasDetails {
 		result.Set("details", details)
 	}
 	result.Set("diagnostics", diagnostics)
-	return result
+	return result, truncation
+}
+
+// slotSnapshot is the slot of tool task taskID in a pi.live value, model-issued or nested; nil when pi.live no longer lists it.
+func slotSnapshot(live *jv.Object, taskID ID) *jv.Object {
+	for _, key := range [...]string{"tools", "nestedTools"} {
+		list, _ := arrayField(live, key)
+		for _, item := range list {
+			if slot, ok := item.(*jv.Object); ok && slot.Has("taskId") && ID(num(slot, "taskId")) == taskID {
+				return slot
+			}
+		}
+	}
+	return nil
+}
+
+// isUnoffered is a model-issued call to a tool its request did not offer (spec section 8.3).
+func (r *toolRun) isUnoffered() bool {
+	return !r.isNested() && r.input != nil && r.input.Has("unoffered") && mustTrue(r.input, "unoffered")
+}
+
+// toolForLimits is the tool whose output limits bound a hooks' result: the called tool, or none when it, or the agent, fails to resolve
+// (tool.ts `resolveTool(...).catch(() => undefined)`), and for an unoffered call, which never resolves its name. It is an async function
+// its caller awaits: after the tool's resolution the catch reaction (1), the adoption of the returned promise (2) and the caller's
+// await (1) follow, and an unoffered call returns at once, one hop for the await.
+func (r *toolRun) toolForLimits(name string, then func(*Tool)) {
+	if r.isUnoffered() {
+		r.hops(1, func() { then(nil) })
+		return
+	}
+	finish := func(tool *Tool) { r.hops(resolveToolReturnHops+toolForLimitsCatchHops, func() { then(tool) }) }
+	pick := func(agent *Agent) {
+		list := agent.Tools
+		if r.isNested() {
+			list = agent.Callable
+		}
+		for i := range list {
+			if nameOf(list[i].Declaration) == name {
+				finish(&list[i])
+				return
+			}
+		}
+		finish(nil)
+	}
+	if r.agentSeen {
+		r.agent(pick)
+		return
+	}
+	r.agentAfterOr(agentHops, pick, func(error) { finish(nil) })
+}
+
+// toolForLimitsCatchHops is the hops toolForLimits adds to resolveTool's own: the `.catch` reaction, the adoption of its promise by the
+// async function that returns it, and the caller's await.
+const toolForLimitsCatchHops = 3
+
+// reject settles a result the Harness decided in the `call` phase, without running the tool: the tool did not resolve, the arguments are
+// invalid, or `beforeTool` blocked the call. `afterTool` applies as to an executed call's result.
+func (r *toolRun) reject(call *jv.Object, tool *Tool, result *jv.Object) {
+	r.afterHarnessResult(call, tool, result, nil, func(settled *jv.Object, err error) {
+		if err != nil {
+			r.fail(err)
+			return
+		}
+		r.settle(call, completed, func(*delta.Obj) *jv.Object { return settled }, nil)
+	})
+}
+
+// settleFromSlot settles an error result built from the call's slot (fromSlot): an interruption, the restart limit, or an abort. The
+// tool is not running, so the slot read before the commit is still current when it commits. With hooks, the result passes `afterTool` and
+// is bounded with the limits of tool (the defaults when it is nil); without, it is settled as built, when the hooks may be what cuts the
+// task off.
+func (r *toolRun) settleFromSlot(call *jv.Object, hooks bool, tool *Tool, end ending, code, message string) {
+	r.snapshot(LiveDef, func(live *jv.Object) {
+		result, truncation := fromSlot(slotSnapshot(live, r.rt.TaskID()), code, message)
+		if hooks {
+			r.afterHarnessResult(call, tool, result, truncation, func(settled *jv.Object, err error) {
+				if err != nil {
+					r.fail(err)
+					return
+				}
+				r.settle(call, end, func(*delta.Obj) *jv.Object { return settled }, nil)
+			})
+			return
+		}
+		settled := result
+		if truncation != nil {
+			list, _ := arrayField(result, "diagnostics")
+			settled = result.Shallow()
+			settled.Set("diagnostics", append(append([]any{}, list...), truncation))
+		}
+		r.settle(call, end, func(*delta.Obj) *jv.Object { return settled }, nil)
+	})
+}
+
+// afterHarnessResult is a result the Harness wrote itself, without executing the tool, after the `afterTool` chain, normalized like an
+// executed call's: the output bounded with the tool's limits (the defaults when it did not resolve), a truncation diagnostic when that
+// dropped something, and the hooks' structuredOutput dropped, since the tool never produced one. A nested call that the hooks turned into
+// a success gets the bounded output as its value, as a schema-less tool's success does, unless the tool declares a schema. usage is kept
+// and recorded; control applies only when the task completes. truncation describes what the result's own output lost before (a slot's
+// retained output); it is kept only while the hooks keep that output.
+func (r *toolRun) afterHarnessResult(call *jv.Object, tool *Tool, result, truncation *jv.Object, then func(*jv.Object, error)) {
+	final := result
+	r.eachHook("afterTool", func() *jv.Object { return r.hookPayload(jobj("call", call, "result", final)) }, func(res any) bool {
+		if o, ok := res.(*jv.Object); ok {
+			final = o
+		}
+		return false
+	}, func(err error) {
+		if err != nil {
+			then(nil, err)
+			return
+		}
+		var harness []any
+		finalContent, _ := arrayField(final, "output")
+		resultContent, _ := arrayField(result, "output")
+		if truncation != nil && jv.Equal(finalContent, resultContent) {
+			harness = append(harness, truncation)
+		}
+		limits := OutputLimits{MaxBytes: defaultMaxBytes, MaxLines: defaultMaxLines, Retain: "head"}
+		if tool != nil {
+			limits = limitsOf(tool)
+		}
+		bounded, droppedBytes, droppedLines := boundContent(finalContent, limits)
+		if droppedBytes > 0 {
+			harness = append(harness, truncatedDiagnostic(droppedLines, droppedBytes, limits.Retain))
+		}
+		out := final.Shallow()
+		out.Delete("structuredOutput")
+		if isError, _ := out.Get("isError"); r.isNested() && isError != true && (tool == nil || !tool.StructuredOutput) {
+			out.Set("structuredOutput", outputValue(bounded))
+		}
+		out.Set("output", bounded)
+		list, _ := arrayField(final, "diagnostics")
+		out.Set("diagnostics", append(append([]any{}, list...), harness...))
+		then(out, nil)
+	})
 }
 
 // reported is what a running tool reported through its api.

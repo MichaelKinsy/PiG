@@ -15,6 +15,27 @@ import (
 	"github.com/MichaelKinsy/PiG/durable/core/turn"
 )
 
+// submissionDraft reads the draft of a submit event or of the transaction operation `submit`.
+func submissionDraft(req *jv.Object) inbox.Draft {
+	draft := inbox.Draft{Type: strOf(req, "type"), WhenBusy: strOf(req, "whenBusy"), WhenIdle: strOf(req, "whenIdle")}
+	if rid, has := req.Get("requestId"); has {
+		if s, isString := rid.(string); isString {
+			draft.RequestID = &s
+		}
+	}
+	if content, has := req.Get("content"); has {
+		draft.Content = content
+	}
+	draft.Entry = objOf(req, "entry")
+	// The submission's span (submissions.ts submit): its carrier is stored on the record, and the commit's events go to it.
+	draft.Span = uint32(numOf(req, "span"))
+	if trace, has := req.Get("trace"); has {
+		draft.Trace = trace
+	}
+	draft.Propagation, _ = boolOf(req, "propagates")
+	return draft
+}
+
 // queueModes are the steering and follow-up modes of the Harness settings, which the host sends at open over their
 // defaults (resolveSettings).
 func (h *handler) queueModes() inbox.QueueModes {
@@ -47,22 +68,7 @@ func (h *handler) onSubmit(ev *abi.Event) error {
 		return &Rejection{"Error", "submit needs a Harness; this handle is a Session"}
 	}
 	id := uint32(numOf(req, "id"))
-	draft := inbox.Draft{Type: strOf(req, "type"), WhenBusy: strOf(req, "whenBusy")}
-	if rid, has := req.Get("requestId"); has {
-		if s, isString := rid.(string); isString {
-			draft.RequestID = &s
-		}
-	}
-	if content, has := req.Get("content"); has {
-		draft.Content = content
-	}
-	draft.Entry = objOf(req, "entry")
-	// The submission's span (submissions.ts submit): its carrier is stored on the record, and the commit's events go to it.
-	draft.Span = uint32(numOf(req, "span"))
-	if trace, has := req.Get("trace"); has {
-		draft.Trace = trace
-	}
-	draft.Propagation, _ = boolOf(req, "propagates")
+	draft := submissionDraft(req)
 	conversationID := session.ID(numOf(req, "conversationId"))
 	bound := h.bound(req)
 	var admitted inbox.Admission

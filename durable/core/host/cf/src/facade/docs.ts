@@ -9,15 +9,16 @@ const conversationDoc = (kind: string, initial: () => any, checkpointWhen: (valu
 /** A copy of a version 1 compaction status or failure with `reason` renamed `trigger`, its keys in their order (live.ts renameReason). */
 const renameReason = (value: Record<string, unknown>): Record<string, unknown> => Object.fromEntries(Object.entries(value).map(([key, field]) => [key === "reason" ? "trigger" : key, field]))
 
-/** A complete base whenever nothing runs: no generation and no running tool slot (live.ts). Version 2: version 1 named a compaction's trigger `reason`, in `compactions` and `compactionFailure`. */
+/** A complete base whenever nothing runs: no generation and no running tool slot (live.ts). Version 2: version 1 named a compaction's trigger `reason`, in `compactions` and `compactionFailure`. Version 3: versions 1 and 2 may lack `run.turns`; a run in flight across the upgrade counts its turns from 0. */
 export const LiveDoc = conversationDoc("pi.live", () => ({}),
   (value: { generation?: unknown; tools?: { status?: string }[] }) => value.generation === undefined && !(value.tools ?? []).some(slot => slot.status === "running"),
   {
-    version: 2,
-    migrate: (value: { compactions?: Record<string, unknown>[]; compactionFailure?: Record<string, unknown> }) => {
-      const { compactions, compactionFailure } = value
+    version: 3,
+    migrate: (value: { run?: Record<string, unknown>; compactions?: Record<string, unknown>[]; compactionFailure?: Record<string, unknown> }) => {
+      const { run, compactions, compactionFailure } = value
       return {
         ...value,
+        ...(run === undefined ? {} : { run: { ...run, turns: typeof run.turns === "number" ? run.turns : 0 } }),
         ...(compactions === undefined ? {} : { compactions: compactions.map(renameReason) }),
         ...(compactionFailure === undefined ? {} : { compactionFailure: renameReason(compactionFailure) }),
       }
