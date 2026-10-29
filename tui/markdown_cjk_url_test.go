@@ -24,7 +24,7 @@ func renderHyperlinkMarkdown(t *testing.T, source string) string {
 // Ports the markdown.test.ts cases added with fa168515: bare URLs stop at CJK punctuation.
 func TestMarkdownBareURLCJKPunctuation(t *testing.T) {
 	t.Run("should stop bare URLs at CJK punctuation and preserve the following text", func(t *testing.T) {
-		for _, punctuation := range []rune("。，；：！？、“”‘’（）【】《》「」『』…—·・〈〉［］｛｝．｡｢｣､･") {
+		for _, punctuation := range "。，；：！？、“”‘’（）【】《》「」『』…—·・〈〉［］｛｝．｡｢｣､･" {
 			for _, url := range []string{"https://example.com", "https://example.com/中文?q=搜索#片段", "www.example.com"} {
 				source := url + string(punctuation) + "后面的中文"
 				output := renderHyperlinkMarkdown(t, source)
