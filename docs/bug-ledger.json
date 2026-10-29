@@ -24733,6 +24733,27 @@
       ]
     },
     {
+      "id": "BF-a222037",
+      "title": "A Go program that embeds PiG and also links a reflection consumer such as protobuf is no longer about 6 MB…",
+      "symptom": "A Go program that embeds PiG and also links a reflection consumer such as protobuf is no longer about 6 MB larger because of `durable/internal/ordered`: its field metadata embedded `reflect.Type` anonymously, which promoted `MethodByName` onto it and made the linker keep every exported method of every reachable type; the field is now named.",
+      "rootCause": "A Go program that embeds PiG and also links a reflection consumer such as protobuf is no longer about 6 MB larger because of `durable/internal/ordered`: its field metadata embedded `reflect.Type` anonymously, which promoted `MethodByName` onto it and made the linker keep every exported method of every reachable type; the field is now named.",
+      "rootCauseSource": "release note",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A Go program that embeds PiG and also links a reflection consumer such as protobuf is no longer about 6 MB larger because of `durable/internal/ordered`: its field metadata embedded `reflect.Type` anonymously, which promoted `MethodByName` onto it and made the linker keep every exported method of every reachable type; the field is now named.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "a222037a72",
+          "date": "2026-10-29",
+          "pr": "385"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-a238095",
       "title": "coding: fix session executor queue-prefix race and durable execMu waits",
       "symptom": "coding: fix session executor queue-prefix race and durable execMu waits",
@@ -35863,6 +35884,27 @@
       ],
       "tests": [
         "internal/codingagent/tools/find_trim_oracle_test.go::TestFindToolTrimsFdLinesLikePi"
+      ]
+    },
+    {
+      "id": "BF-eb6626f",
+      "title": "Fix in shipped code",
+      "symptom": "Fix in shipped code",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "eb6626fe9a",
+          "date": "2026-10-29"
+        }
+      ],
+      "tests": [
+        "coding/mcpext/closed_config_test.go::TestRefuseConfigFilesDropsServersFromMcpJSON"
       ]
     },
     {

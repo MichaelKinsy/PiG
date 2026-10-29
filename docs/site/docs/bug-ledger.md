@@ -869,6 +869,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-a1da44d](#bf-a1da44d) | The durable turn classifier retries on a status code (429, 500, 502, 503, 504, 520, 524) only when it stands… | PiG's own defect | All platforms | 0.5.2 |
 | [BF-a1efda7](#bf-a1efda7) | fix(durable/core): the host resolves the Harness settings as often as the core did (Pi resolves… | PiG's own defect | All platforms | Unreleased |
 | [BF-a1fa6d1](#bf-a1fa6d1) | NO_PROXY entries and ports are trimmed with JavaScript's whitespace rules, as in Pi: an entry or port that… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-a222037](#bf-a222037) | A Go program that embeds PiG and also links a reflection consumer such as protobuf is no longer about 6 MB… | PiG's own defect | All platforms | Unreleased |
 | [BF-a238095](#bf-a238095) | coding: fix session executor queue-prefix race and durable execMu waits | PiG's own defect | All platforms | Unreleased |
 | [BF-a30388b](#bf-a30388b) | GPT-5.4 and GPT-5.5 no longer fail with `Missing namespace for function_call` after switching from another… | PiG's own defect | All platforms | Unreleased |
 | [BF-a3859aa](#bf-a3859aa) | An OpenAI-compatible provider that streams a tool call without an id or a function name (OpenRouter and GLM… | A Pi defect that PiG fixed first | All platforms | 0.5.0 |
@@ -1208,6 +1209,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-eaa4ed7](#bf-eaa4ed7) | F1-F12 are recognized when the terminal reports them with the Kitty keyboard protocol: `CSI P`/`Q`/`S` and… | PiG's own defect | All platforms | Unreleased |
 | [BF-ead285d](#bf-ead285d) | Two `compact` commands of one RPC input batch no longer cancel each other; they run one after another (D147) | PiG's own defect | All platforms | 0.5.0 |
 | [BF-eb34085](#bf-eb34085) | The find tool trims each fd result line like JavaScript trim(): a name ending in U+FEFF loses it and a name… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-eb6626f](#bf-eb6626f) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
 | [BF-ebb4c0e](#bf-ebb4c0e) | An `"m"` operation whose permutation a Go caller builds as `[]int` validates and applies again, as it did in… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-ebb4c0e-2](#bf-ebb4c0e-2) | `durable.DocumentContent` decoded by `encoding/json` keeps the key order of the objects its operations carry… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-ebbdfe7](#bf-ebbdfe7) | fix(extensions): load highlight.js grammars after the startup session_start, as Pi does | PiG's own defect | All platforms | Unreleased |
@@ -13120,6 +13122,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** `ai/azure_config_oracle_test.go::TestAzureBaseURLNormalizationMatchesPi`, `ai/codex_vertex_urls_oracle_test.go::TestCodexWebSocketAndVertexVersionURLsMatchPi`, `ai/node_http_proxy_oracle_test.go::TestResolveHTTPProxyURLForTargetMatchesPiOracle`, `internal/evals/plan_oracle_test.go::TestPlanMatchesPiOnSeededProbes`
 - **Release note:** NO_PROXY entries and ports are trimmed with JavaScript's whitespace rules, as in Pi: an entry or port that starts with U+0085 is no longer stripped, and one that starts with U+FEFF is.
 
+### BF-a222037
+
+**A Go program that embeds PiG and also links a reflection consumer such as protobuf is no longer about 6 MB…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A Go program that embeds PiG and also links a reflection consumer such as protobuf is no longer about 6 MB larger because of `durable/internal/ordered`: its field metadata embedded `reflect.Type` anonymously, which promoted `MethodByName` onto it and made the linker keep every exported method of every reachable type; the field is now named.
+- **Root cause:** A Go program that embeds PiG and also links a reflection consumer such as protobuf is no longer about 6 MB larger because of `durable/internal/ordered`: its field metadata embedded `reflect.Type` anonymously, which promoted `MethodByName` onto it and made the linker keep every exported method of every reachable type; the field is now named.
+- **User impact:** Wrong output or ordering
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `a222037a72` (2026-10-29, #385)
+- **Tests:** None recorded.
+- **Release note:** A Go program that embeds PiG and also links a reflection consumer such as protobuf is no longer about 6 MB larger because of `durable/internal/ordered`: its field metadata embedded `reflect.Type` anonymously, which promoted `MethodByName` onto it and made the linker keep every exported method of every reachable type; the field is now named.
+
 ### BF-a238095
 
 **coding: fix session executor queue-prefix race and durable execMu waits**
@@ -17814,6 +17830,19 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `eb34085200` (2026-10-11)
 - **Tests:** `internal/codingagent/tools/find_trim_oracle_test.go::TestFindToolTrimsFdLinesLikePi`
 - **Release note:** The find tool trims each fd result line like JavaScript trim(): a name ending in U+FEFF loses it and a name ending in U+0085 keeps it.
+
+### BF-eb6626f
+
+**Fix in shipped code**
+
+- **Source:** PiG's own defect
+- **Symptom:** Fix in shipped code
+- **Root cause:** Not recorded.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `eb6626fe9a` (2026-10-29)
+- **Tests:** `coding/mcpext/closed_config_test.go::TestRefuseConfigFilesDropsServersFromMcpJSON`
 
 ### BF-ebb4c0e
 
