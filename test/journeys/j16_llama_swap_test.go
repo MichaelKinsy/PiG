@@ -125,6 +125,7 @@ func init() {
 		Env: func(harness.Kind) harness.Env {
 			return harness.Env{
 				NoModelArg:  true,
+				Extensions:  true, // the llama.cpp provider is a built-in extension
 				ReadyMarker: swapLoaded,
 				Models:      swapModels,
 				// The llama.cpp provider lists the gateway's catalog only with network access.
