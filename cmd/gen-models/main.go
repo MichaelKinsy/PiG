@@ -1,17 +1,19 @@
-// Command gen-models reads upstream pi's catalog and emits ai/models_generated.go. Optional raw models.dev and OpenRouter API snapshots regenerate verified effort controls before emission.
-//
-// Run via `go generate ./ai/...` or directly:
+// Command gen-models has two jobs. With -src it reads upstream pi's generated catalog (models.generated.ts or .js and the provider
+// data its shards import) and emits ai/models_generated.go and its companions:
 //
 //	go run ./cmd/gen-models \
 //	  -src .upstream/current/packages/ai/src/models.generated.ts \
 //	  -out ai/models_generated.go
+//
+// Without -src it ports packages/ai/catalog/generate.ts: it fetches models.dev (v2), OpenRouter, Vercel AI Gateway, NVIDIA NIM and
+// Radius, builds every provider's catalog (internal/modelgen/providers) and writes the provider data files (-data-output) and
+// the public catalog JSON (-json-output), byte for byte as Pi's generator writes them.
 package main
 
 import (
 	"bufio"
 	"bytes"
 	"cmp"
-	"context"
 	"encoding/json"
 	"errors"
 	"flag"
@@ -125,31 +127,37 @@ var (
 )
 
 func main() {
-	src := flag.String("src", "", "path to upstream models.generated.ts or .js")
+	src := flag.String("src", "", "path to upstream models.generated.ts or .js: emit the Go catalogs from it")
 	out := flag.String("out", "ai/models_generated.go", "output Go file for chat models")
 	imageOut := flag.String("image-out", "", "output Go file for image models (default image_models_generated.go beside -out)")
 	classifierOut := flag.String("classifier-out", "", "output Go file for classifier models (default classifier_models_generated.go beside -out)")
 	providerOut := flag.String("provider-out", "", "output Go file for the barrel's provider ids (default providers_generated.go beside -out)")
-	modelsDev := flag.String("models-dev", "", "raw models.dev API JSON snapshot for verified reasoning controls")
-	openRouter := flag.String("openrouter", "", "raw OpenRouter models API JSON snapshot for reasoning controls")
-	strict := flag.Bool("strict", false, "validate models.dev Individual model membership before publication")
-	jsonOnly := flag.Bool("json-only", false, "emit the models.dev Fireworks and Qwen Token Plan stages as JSON without changing Go catalogs")
-	jsonOutput := flag.String("json-output", "", "output directory for models.dev JSON catalogs")
-	pretty := flag.Bool("pretty", false, "indent JSON catalog output")
+	strict := flag.Bool("strict", false, "generation: fail instead of degrading when upstream data is unexpected")
+	dataOnly := flag.Bool("data-only", false, "generation: regenerate the provider data files of the providers already in -data-output")
+	jsonOnly := flag.Bool("json-only", false, "generation: write only the public catalog JSON (-json-output)")
+	jsonOutput := flag.String("json-output", "", "generation: output directory for the public catalog JSON")
+	dataOutput := flag.String("data-output", "", "generation: directory for the provider data files (<provider>.json and .manifest.json)")
+	pretty := flag.Bool("pretty", false, "generation: indent JSON output")
+	record := flag.String("record", "", "generation: store every upstream response under this directory")
+	replay := flag.String("replay", "", "generation: serve the responses recorded under this directory instead of fetching")
 	flag.Parse()
-	if *src == "" && (*strict || *jsonOnly || *jsonOutput != "") {
-		if *jsonOnly && *jsonOutput == "" {
-			fmt.Fprintln(os.Stderr, "--json-only requires --json-output")
-			os.Exit(1)
-		}
-		if err := generateModelsDev(context.Background(), modelsDevGeneratorOptions{Strict: *strict, JSONOnly: *jsonOnly, JSONOutput: *jsonOutput, Pretty: *pretty, GoOutput: *out}); err != nil {
-			fmt.Fprintln(os.Stderr, err)
-			os.Exit(1)
-		}
-		return
-	}
 	if *src == "" {
+		if *strict || *dataOnly || *jsonOnly || *jsonOutput != "" || *dataOutput != "" || *record != "" || *replay != "" {
+			if err := configureFixtures(*record, *replay); err != nil {
+				fmt.Fprintln(os.Stderr, "Error:", err)
+				os.Exit(1)
+			}
+			if err := generateModels(generatorOptions{strict: *strict, dataOnly: *dataOnly, jsonOnly: *jsonOnly, jsonOutputDir: *jsonOutput, dataOutputDir: *dataOutput, pretty: *pretty}); err != nil {
+				fmt.Fprintln(os.Stderr, "Error:", err)
+				os.Exit(1)
+			}
+			return
+		}
 		fmt.Fprintln(os.Stderr, "gen-models: -src is required")
+		os.Exit(2)
+	}
+	if *strict || *dataOnly || *jsonOnly || *jsonOutput != "" || *dataOutput != "" || *record != "" || *replay != "" {
+		fmt.Fprintln(os.Stderr, "gen-models: -strict, -data-only, -json-only, -json-output, -data-output, -record and -replay generate catalog data and cannot be combined with -src")
 		os.Exit(2)
 	}
 	if *imageOut == "" {
@@ -168,13 +176,8 @@ func main() {
 		fmt.Fprintln(os.Stderr, "load:", err)
 		os.Exit(1)
 	}
-	applyCarriedFixes(&catalog)
 	if len(catalog.Chat) == 0 {
 		fmt.Fprintln(os.Stderr, "gen-models: parsed 0 models: refusing to clobber output")
-		os.Exit(1)
-	}
-	if err := applyVendorReasoning(catalog.Chat, *modelsDev, *openRouter); err != nil {
-		fmt.Fprintln(os.Stderr, "reasoning:", err)
 		os.Exit(1)
 	}
 	if err := emit(*out, *src, catalog.Chat); err != nil {
