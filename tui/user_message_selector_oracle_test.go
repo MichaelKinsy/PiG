@@ -24,11 +24,11 @@ type userMessageProbe struct {
 	Keys     []string            `json:"keys"`
 }
 
-// randomUserMessageProbes draws (without page keys: Pi 1.1.0 has none and Pig pages the selection, D155) 0 to 30 messages of random text (newlines, tabs, wide, combining and ANSI text, blanks, very long lines) with key scripts over every selector binding, at widths from 25 to 120.
+// randomUserMessageProbes draws 0 to 30 messages of random text (newlines, tabs, wide, combining and ANSI text, blanks, very long lines) with key scripts over every selector binding, at widths from 25 to 120.
 func randomUserMessageProbes(bindings []map[string][]string) []userMessageProbe {
 	rng := rand.New(rand.NewSource(20261023))
 	pieces := []string{"fix", "the login bug", "line\nbreak", "\ttab", "  spaces   ", "日本語のメッセージ", "e\u0301", "😀", "\x1b[31mred\x1b[0m", "", "x", strings.Repeat("long ", 30), "\r\n", "a-b_c"}
-	keys := []string{"\x1b[A", "\x1b[B", "\x1b[A", "\x1b[B", "\r", "\n", "\x1b", "\x03", "\x0e", "\x10", "\x1b[H", "\x1b[F", "x", "\x19", "\t"}
+	keys := []string{"\x1b[A", "\x1b[B", "\x1b[A", "\x1b[B", "\x1b[5~", "\x1b[6~", "\r", "\n", "\x1b", "\x03", "\x0e", "\x10", "\x1b[H", "\x1b[F", "x", "\x19", "\t"}
 	var probes []userMessageProbe
 	for range 400 {
 		messages := make([]string, rng.Intn(30))

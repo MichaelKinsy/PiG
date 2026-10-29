@@ -72,8 +72,8 @@ func acProbes() []acProbe {
 	descriptions := []string{"", "Short", "A considerably longer description that has to be clipped at narrow widths", "日本語の説明 wide chars", "Tabs\tand\x1b[1mansi\x1b[0m"}
 	random := rand.New(rand.NewSource(11))
 	// Moving the cursor with the popup open and then accepting is left out: Pig re-queries the provider at the new cursor (AutocompleteAccept), Pi applies the stale popup there (Q10).
-	// Pi 1.1.0 has no select page keys; Pig pages the selection (D155, Pi PR #7680), covered by the select page key tests, so the oracle input leaves PageUp and PageDown out.
-	keys := []string{"/", "a", "b", "c", "m", "o", "l", "x", " ", "\x1b[A", "\x1b[B", "\x1b[A", "\x1b[B", "\t", "\x1b", "\x7f"}
+	// PageUp and PageDown move the open popup by one visible page, as editor.ts forwards them to the autocomplete list.
+	keys := []string{"/", "a", "b", "c", "m", "o", "l", "x", " ", "\x1b[A", "\x1b[B", "\x1b[A", "\x1b[B", "\x1b[5~", "\x1b[6~", "\t", "\x1b", "\x7f"}
 	widths := []int{1, 2, 3, 4, 5, 7, 10, 20, 33, 40, 60, 80, 120}
 	var probes []acProbe
 	for range 800 {

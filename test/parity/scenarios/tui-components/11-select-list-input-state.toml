@@ -1,13 +1,14 @@
 # Behavior family: tui-components
 # Surface: SelectList default input state machine and non-search action boundary.
 #
-# Upstream evidence (Pi 0.83.0): the shared harness sets selection to the final
-# item, proves PageDown is ignored, sends Down to wrap to `a`, confirms `a`, and
-# independently cancels another list. Pig drives its SelectList-compatible
+# Upstream evidence (Pi e7a0df27, #7629): the shared harness sets selection to the final
+# item, proves PageDown keeps it there (select-list.ts clamps a page key without
+# wrapping and reports no selection change), sends Down to wrap to `a`, confirms
+# `a`, and independently cancels another list. Pig drives its SelectList-compatible
 # FilterableList mode through the same raw inputs and reports the same result.
 
 name = "11-select-list-input-state"
-description = "SelectList wraps arrows, confirms/cancels, and ignores non-contract page input"
+description = "SelectList wraps arrows, confirms/cancels, and clamps page input at the last item"
 covers = [
   "packages/tui/src/components/select-list.ts",
   "packages/tui/src/keybindings.ts",
@@ -21,12 +22,12 @@ height = 35
 ready_pattern_pig = "(auto)"
 ready_pattern_pi = "(auto)"
 ready_timeout_seconds = 25
-capture_start = "select-list:render=true:pageIgnored=true:wrap=a:select=a:cancel=true"
-capture_end = "select-list:render=true:pageIgnored=true:wrap=a:select=a:cancel=true"
+capture_start = "select-list:render=true:pageClamped=true:wrap=a:select=a:cancel=true"
+capture_end = "select-list:render=true:pageClamped=true:wrap=a:select=a:cancel=true"
 
 [[tmux.steps]]
 keys = ["/probe-select-list", "Enter"]
-wait_contains = ["select-list:render=true:pageIgnored=true:wrap=a:select=a:cancel=true"]
+wait_contains = ["select-list:render=true:pageClamped=true:wrap=a:select=a:cancel=true"]
 wait_timeout_seconds = 15
 
 [env]
@@ -38,7 +39,7 @@ pi_extensions = ["../../testdata/batch2-ui-harness.ts"]
 
 [assert]
 both_reach_ready = true
-both_contain = ["select-list:render=true:pageIgnored=true:wrap=a:select=a:cancel=true"]
+both_contain = ["select-list:render=true:pageClamped=true:wrap=a:select=a:cancel=true"]
 both_not_contain = ["panic:", "goroutine "]
 output_equal = true
 runs = 3

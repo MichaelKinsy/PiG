@@ -5041,15 +5041,15 @@
       ]
     },
     {
-      "scenario": "test/parity/scenarios/model-resolver-selector/24-fullscreen-model-picker-page-down-scrolls-viewport.toml",
+      "scenario": "test/parity/scenarios/model-resolver-selector/24-fullscreen-model-picker-page-keys-reach-selector.toml",
       "transforms": [
         {
           "kind": "terminal_crop",
           "configuration": {
             "capture_start": "Only showing models",
-            "capture_end": "Model Name: Model One"
+            "capture_end": "Model Name: Model Two"
           },
-          "reason": "Owned visible surface: Fullscreen PageDown scrolls the viewport and leaves the model picker selection alone.",
+          "reason": "Owned visible surface: Fullscreen PageUp moves the model picker selection by a page instead of scrolling the viewport.",
           "limitations": "No claim about output outside this crop or transient terminal bytes."
         },
         {
@@ -10544,10 +10544,10 @@
         {
           "kind": "terminal_crop",
           "configuration": {
-            "capture_start": "select-list:render=true:pageIgnored=true:wrap=a:select=a:cancel=true",
-            "capture_end": "select-list:render=true:pageIgnored=true:wrap=a:select=a:cancel=true"
+            "capture_start": "select-list:render=true:pageClamped=true:wrap=a:select=a:cancel=true",
+            "capture_end": "select-list:render=true:pageClamped=true:wrap=a:select=a:cancel=true"
           },
-          "reason": "Owned visible surface: SelectList wraps arrows, confirms/cancels, and ignores non-contract page input",
+          "reason": "Owned visible surface: SelectList wraps arrows, confirms/cancels, and clamps page input at the last item",
           "limitations": "No claim about output outside this crop or transient terminal bytes."
         },
         {

@@ -60,7 +60,10 @@ func TestModelSelectorInputMatchesPi(t *testing.T) {
 		{"l", "l", "a", "m", "a", "\x1b[B", "\r"},
 		{"z", "z", "z", "\x1b[A", "\r", "\x13", "\x1b[B"},
 		{"g", "p", "t", "\x7f", "\x7f", "\x1b[D", "x", "\x13"},
-		// Pi 1.1.0 has no select page keys; Pig pages the selection (D155, Pi PR #7680), covered by the select page key tests, so the oracle input leaves PageUp and PageDown out.
+		// PageDown and PageUp move by the ten visible rows (model-selector.ts getSelectPageIndex), clamped without wrapping.
+		{"\x1b[6~", "\r"},
+		{"\x1b[6~", "\x1b[6~", "\x1b[6~", "\x1b[5~", "\r"},
+		{"l", "\x1b[6~", "\x1b[5~", "\r"},
 		{"\x1b[B", "\r"},
 		{"d", "e", "f", "\x1b[B", "\r"},
 		// JavaScript trim() strips U+FEFF and keeps U+0085 and U+00A0 around a query that is a prefix of "default" (isDefaultSearch).

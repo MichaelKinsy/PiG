@@ -1,25 +1,22 @@
 # Behavior family: model-resolver-selector
 # Surface: keys without a model-selector action reach the search input and reapply the query.
 #
-# Upstream evidence (Pi 0.87.1 model-selector.ts handleInput and filterModels):
-# handleInput matches only tui.input.tab, tui.select.up, tui.select.down,
-# tui.select.confirm, tui.select.cancel and app.models.save. Every other key,
-# including PageDown and Left, goes to searchInput.handleInput and then
-# filterModels(searchInput.getValue()). filterModels sets selectedIndex to 0
+# Upstream evidence (Pi e7a0df27 model-selector.ts handleInput and filterModels):
+# handleInput matches only tui.input.tab, tui.select.up, tui.select.down, the selection page keys,
+# tui.select.confirm, tui.select.cancel and app.models.save. Every other key, including Left, goes to
+# searchInput.handleInput and then filterModels(searchInput.getValue()). filterModels sets selectedIndex to 0
 # whenever the query is non-empty, even when the key left the query unchanged.
-# Exact Pi 0.87.1 re-probe (2026-09-29) with the local two-model fixture:
+# With the local two-model fixture:
 #   /model Enter, "model", Down  -> "Model Name: Model One"
-#   PageDown                     -> "Model Name: Model Two" (query stays "model")
 #   Down, Left                   -> "Model Name: Model Two"
-# Pig previously moved the cursor ten rows on PageDown and skipped the refilter
-# when the query did not change, so both waits below timed out on Pig.
-# Since Pi e7a0df27 PageDown is no longer an unbound picker key: model-selector.ts handleInput pages the
-# selection with getSelectPageIndex (and the focused picker keeps the fullscreen viewport keys, #7629).
+# Pig previously skipped the refilter when the query did not change, so the waits below timed out on Pig.
+# Pi e7a0df27 (#7629) handles tui.select.pageUp and tui.select.pageDown in the model selector, so PageDown
+# is no longer an unbound picker key: it moves the selection one page, clamped to the last row, and the
+# fullscreen viewport leaves it to the focused picker (24-fullscreen-model-picker-page-keys-reach-selector).
 # Right is unbound in both modes (it reaches searchInput as cursorRight and leaves the query unchanged),
 # so it carries the same refilter contract: the selection returns to the first match.
-# The last step pins the PageDown contract itself. From "Model Name: Model One" (the last of two rows),
-# PageDown stays on the last row (a page down is clamped to the list) and refilters nothing, so Down then
-# wraps to model-two.
+# The last step pins the page key contract: from "Model Name: Model One", the last of two rows, PageDown
+# stays on the last row and Down then wraps to model-two.
 # The first step waits for the background refresh, the settled state that
 # re-anchors the selection on both sides (see 11-model-picker-arrow-wrap).
 

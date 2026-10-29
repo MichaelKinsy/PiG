@@ -46,7 +46,7 @@ type dialogProbeResult struct {
 
 // randomDialogProbes draws select options (empty, blank, wide, combining, long) and input descriptions and initial values, widths from 10 to 100,
 // bindings over the select, input and expand actions, and key scripts of list keys, text, cursor and word editing, and paste. PageUp and PageDown
-// stay out: Pi 1.1.0 has no select page keys and Pig pages the selection (D155, Pi PR #7680).
+// stay out: Pi's extension-selector.ts has no select page keys and Pig pages the selection (D155).
 func randomDialogProbes() []dialogProbe {
 	rng := rand.New(rand.NewSource(20261029))
 	words := []string{"first", "second", "Yes", "No", "日本語", "e\u0301", "😀", "a very long option label that wraps or truncates at narrow widths 0123456789", "", " ", "tab\there", "x"}

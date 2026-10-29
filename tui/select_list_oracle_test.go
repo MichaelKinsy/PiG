@@ -65,7 +65,10 @@ func TestSelectListInputMatchesPi(t *testing.T) {
 		{"\x1b[B", "\x1b[B", "\x1b[A", "\r"},
 		{"\x1b[A", "\x1b[A", "\r"},
 		{"\x1b[A", "\x1b[B", "\x1b[B"},
-		// Pi 1.1.0 has no select page keys; Pig pages the selection (D155, Pi PR #7680), covered by the select page key tests, so the oracle input leaves PageUp and PageDown out.
+		// PageDown and PageUp move by one visible page and clamp; Ctrl+V and Alt+V are the remapped page keys of the last binding set.
+		{"\x1b[6~", "\x1b[6~", "\x1b[5~", "\r"},
+		{"\x1b[5~", "\x1b[6~", "\x1b[6~", "\x1b[6~", "\x1b[6~", "\x1b[6~", "\x1b[6~", "\x1b[5~"},
+		{"\x16", "\x16", "\x1bv", "\r"},
 		{"\x1b[H", "\x1b[F", "x", "\r"},
 		{"\x1b", "\x1b"},
 		{"\x03", "\x1b[B", "\x03"},
@@ -80,6 +83,7 @@ func TestSelectListInputMatchesPi(t *testing.T) {
 		{"tui.select.confirm": {"ctrl+y"}, "tui.select.cancel": {"ctrl+y"}},
 		{"tui.select.up": {"down"}},
 		{"tui.select.down": {"ctrl+n", "down"}, "tui.select.up": {"ctrl+p", "up"}, "tui.select.cancel": {"x"}},
+		{"tui.select.pageUp": {"alt+v"}, "tui.select.pageDown": {"ctrl+v"}},
 	}
 	// Rows that stress renderItem and the primary column: labels longer than the width, double-width labels, a description with line breaks and tabs, an
 	// empty description, a label that equals its value, and ANSI inside the label.

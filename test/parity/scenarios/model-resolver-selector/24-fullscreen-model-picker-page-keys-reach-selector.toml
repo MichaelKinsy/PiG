@@ -1,19 +1,18 @@
 # Behavior family: model-resolver-selector
-# Surface: in fullscreen, PageDown reaches the open model picker and pages its selection, not the transcript viewport.
+# Surface: in fullscreen, PageUp and PageDown go to the open model picker, not to the transcript viewport.
 #
-# Upstream evidence (Pi e7a0df27, "fix(tui,coding-agent): handle selection page keys in all scrolling lists",
-# #7629): ModelSelectorComponent sets capturesViewportInput, and tui-alt-screen.ts shouldDeferViewportInput
-# leaves the viewport keys to a focused component that sets it. model-selector.ts handleInput matches
-# tui.select.pageUp/pageDown through getSelectPageIndex and moves the selection by one page, clamped to the
-# list, without reapplying the query.
+# Upstream evidence (Pi e7a0df27, #7629): model-selector.ts sets capturesViewportInput and moves its selection
+# by one page (getSelectPageIndex, ten rows) on tui.select.pageUp and tui.select.pageDown. tui-alt-screen.ts
+# shouldDeferViewportInput leaves the viewport keys to a focused component that captures them, so the
+# default PageUp, which is also tui.altScreen.pageUp, reaches the picker instead of scrolling the transcript.
 # With the local two-model fixture:
-#   /model Enter, "model", Down -> "Model Name: Model One" (the last of two rows)
-#   PageDown                    -> still "Model Name: Model One" (clamped to the last row)
+#   /model Enter, "model", Down -> "Model Name: Model One" (second of two rows)
+#   PageUp                      -> "Model Name: Model Two" (clamped to the first row)
 # The first step waits for the background refresh, the settled state that
 # re-anchors the selection on both sides (see 11-model-picker-arrow-wrap).
 
-name = "24-fullscreen-model-picker-page-down-scrolls-viewport"
-description = "Fullscreen PageDown pages the model picker selection, clamped to the last row."
+name = "24-fullscreen-model-picker-page-keys-reach-selector"
+description = "Fullscreen PageUp moves the model picker selection by a page instead of scrolling the viewport."
 covers = [
   "packages/coding-agent/src/modes/interactive/components/model-selector.ts",
   "packages/tui/src/tui-alt-screen.ts",
@@ -28,7 +27,7 @@ ready_pattern_pig = "(auto)"
 ready_pattern_pi = "$0.000"
 ready_timeout_seconds = 15
 capture_start = "Only showing models"
-capture_end = "Model Name: Model One"
+capture_end = "Model Name: Model Two"
 
 [[tmux.steps]]
 keys = ["/model", "Enter"]
@@ -46,8 +45,8 @@ wait_visible_contains = ["Model Name: Model One"]
 wait_timeout_seconds = 5
 
 [[tmux.steps]]
-keys = ["PgDn"]
-wait_visible_contains = ["→   model-one [fixture]", "Model Name: Model One"]
+keys = ["PgUp"]
+wait_visible_contains = ["→ ✓ model-two [fixture]", "Model Name: Model Two"]
 wait_timeout_seconds = 5
 settle_seconds = 1
 
@@ -61,10 +60,10 @@ pi_args = ["--no-extensions", "--offline", "--session-dir", "{{TEMP}}/sessions"]
 both_reach_ready = true
 both_contain = [
   "> model",
-  "→   model-one [fixture]",
-  "Model Name: Model One",
+  "→ ✓ model-two [fixture]",
+  "Model Name: Model Two",
 ]
-both_not_contain = ["panic:", "goroutine ", "Could not refresh", "→ ✓ model-two"]
+both_not_contain = ["panic:", "goroutine ", "Could not refresh", "→   model-one"]
 output_equal = true
 escaped_output_equal = true
 runs = 3
