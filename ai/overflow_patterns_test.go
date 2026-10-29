@@ -97,6 +97,7 @@ func overflowPatternSamples() []string {
 		"Input is too long for requested model",
 		"Your input exceeds the context window of this model",
 		"Requested token count exceeds the model's maximum context length of 131,072 tokens",
+		"litellm.BadRequestError: litellm._pre_call_checks: Context Window exceeded for given call.", // Pi 36ae26b4: LiteLLM pre-call check
 		"The input token count (1196265) exceeds the maximum number of tokens allowed (1048575)",
 		"This model's maximum prompt length is 131072 but the request contains 537812 tokens",
 		"Please reduce the length of the messages or completion",

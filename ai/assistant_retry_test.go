@@ -100,6 +100,18 @@ func TestIsRetryableAssistantErrorClassification(t *testing.T) {
 	if IsRetryableAssistantError(errorFaux(`OpenAI API error (429): {"code":"subscription_sharing_workplace_individual_usage_limit_exceeded","message":"Usage limit reached."}`)) {
 		t.Error("the ChatGPT Business workspace usage limit must stay non-retryable")
 	}
+	// Pi c719d5b0 (#11572, #11537): Zhipu/Z.ai usage limit code 1308 arrives as HTTP 429 and resets after hours.
+	for _, message := range []string{
+		`429 {"error":{"code":"1308","message":"Usage limit reached for 5 hour. Your limit will reset at 2026-10-29 18:00:00"}}`,
+		`429 {"error":{"code":1308,"message":"Usage limit reached"}}`,
+	} {
+		if IsRetryableAssistantError(errorFaux(message)) {
+			t.Errorf("Zhipu usage limit code 1308 must stay non-retryable: %s", message)
+		}
+	}
+	if !IsRetryableAssistantError(errorFaux(`429 {"error":{"code":"13081","message":"Too many requests"}}`)) {
+		t.Error("a code that merely starts with 1308 must stay retryable")
+	}
 	// Pi 6e491cfa retry.test.ts (#11057): status codes inside ids or longer numbers are not status codes.
 	for _, message := range []string{
 		`401 {"type":"error","error":{"type":"authentication_error","message":"invalid x-api-key"},"request_id":"req_011CU503xyz"}`,
