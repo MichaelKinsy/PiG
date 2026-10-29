@@ -1150,6 +1150,8 @@ func Main(args []string, options *MainOptions) {
 		sessionName = ""
 	}
 	flags.Name = sessionName
+	// pig additive (D211): the active Piglet decides whether an untrusted project loads its context files.
+	flags.ContextFilesTrustedOnly = activePiglet.WithholdsUntrustedContextFiles()
 	timings.Time("createSessionManager")
 	// The builder is Pi's createRuntime closure: every mode builds its first Session
 	// and every replacement Session from the same process-fixed inputs.
@@ -1309,6 +1311,12 @@ func Main(args []string, options *MainOptions) {
 	agentToolNames := build.AgentToolNames
 	allowed, activeBuiltin, excludedTools, skipBuiltinTools := build.Allowed, build.ActiveBuiltin, build.ExcludedTools, build.SkipBuiltinTools
 	projectCtxFiles, resolvedPrompts := build.ContextFiles, build.ResolvedPrompts
+	// pig additive (D211): print, JSON and RPC runs have no transcript to hold the notice, so it goes to stderr.
+	if runMode != appModeInteractive && !loadsProjectContextFiles(flags, projectTrusted) && !flags.NoContextFiles {
+		if withheld := codingagent.WithheldProjectContextFiles(build.CWD, agentDir); len(withheld) > 0 {
+			fmt.Fprintln(os.Stderr, codingagent.ContextFilesWithheldMessage(withheld))
+		}
+	}
 	systemPrompt, systemPromptOptions := build.SystemPrompt, build.SystemPromptOptions
 	// No agent-defined beforeToolCall hooks: agent persona system is
 	// a pig-extension concern, not built into core.
@@ -1520,6 +1528,7 @@ func Main(args []string, options *MainOptions) {
 		SkillPaths:                 skillInputs,
 		NoSkills:                   flags.NoSkills,
 		ContextFiles:               projectCtxFiles,
+		ContextFilesTrustedOnly:    flags.ContextFilesTrustedOnly,
 		SystemPromptSourcePaths:    resolvedPrompts.sourcePaths,
 		SessionHandle:              codingSess,
 		ResumePath:                 displayResumePath,
