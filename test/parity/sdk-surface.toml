@@ -216,6 +216,15 @@ lisp = "pig:ctx-exec(cwd)|pig:ctx-exec-p(cwd)"
 wire = "extension.ExecOptions.cwd"
 
 [[row]]
+key = "pi.exec(options.maxBuffer)"
+node = "api.exec"
+go = "ExecOptions.MaxBuffer"
+rust = "ExecOptions.max_buffer"
+python = "Context.exec(max_buffer)"
+lisp = "pig:ctx-exec(max-buffer)|pig:ctx-exec-p(max-buffer)"
+wire = "extension.ExecOptions.maxBuffer"
+
+[[row]]
 key = "pi.exec → stdout"
 node = "api.exec"
 go = "ExecResult.Stdout"
@@ -250,6 +259,15 @@ rust = "ExecResult.killed"
 python = "ExecResult.killed"
 lisp = "pig:exec-result-killed|pig:exec-result-killed-p"
 wire = "extension.ExecResult.killed"
+
+[[row]]
+key = "pi.exec → truncated"
+node = "api.exec"
+go = "ExecResult.Truncated"
+rust = "ExecResult.truncated"
+python = "ExecResult.truncated"
+lisp = "pig:exec-result-truncated|pig:exec-result-truncated-p"
+wire = "extension.ExecResult.truncated"
 
 [[row]]
 key = "pi.getAllTools → name"
