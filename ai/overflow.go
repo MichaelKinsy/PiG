@@ -21,6 +21,7 @@ var overflowPatterns = []*lazyregexp.Regexp{
 	lazyregexp.NewJSIgnoreCase(`input is too long for requested model`),                                                                       // Amazon Bedrock
 	lazyregexp.NewJSIgnoreCase(`exceeds the context window`),                                                                                  // OpenAI (Completions & Responses API)
 	lazyregexp.NewJSIgnoreCase(`exceeds (?:the )?(?:model'?s )?maximum context length(?: of [\d,]+ tokens?|` + jsSpaceClass + `*\([\d,]+\))`), // OpenAI-compatible proxies (LiteLLM)
+	lazyregexp.NewJSIgnoreCase(`context window exceeded`),                                                                                     // LiteLLM pre-call check (ContextWindowExceededError)
 	lazyregexp.NewJSIgnoreCase(`input token count` + jsDotClass + `*exceeds the maximum`),                                                     // Google (Gemini)
 	lazyregexp.NewJSIgnoreCase(`maximum prompt length is \d+`),                                                                                // xAI (Grok)
 	lazyregexp.NewJSIgnoreCase(`reduce the length of the messages`),                                                                           // Groq

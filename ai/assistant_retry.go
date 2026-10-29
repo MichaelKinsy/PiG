@@ -31,6 +31,9 @@ var nonRetryableProviderLimitErrorPattern = buildProviderErrorPattern([]string{
 	"subscription_sharing_usage_limit_exceeded",
 	// Sign in with ChatGPT on a ChatGPT Business plan: a usage limit set by the workspace admin. Only the admin can raise it (utils/retry.ts, Pi cedefc5326).
 	"subscription_sharing_workplace_individual_usage_limit_exceeded",
+	// Zhipu/Z.ai (open.bigmodel.cn) error code 1308: the plan's usage limit is reached, sent as HTTP 429. It resets after hours, not seconds (utils/retry.ts, #11537).
+	// Upstream's `(?![0-9])` lookahead is `([^0-9]|$)` under RE2; \s is the JavaScript class (Go's is ASCII-only).
+	`"code"` + jsSpaceClass + `*:` + jsSpaceClass + `*"?1308([^0-9]|$)`,
 })
 
 var retryableProviderErrorPattern = buildProviderErrorPattern([]string{
