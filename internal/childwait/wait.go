@@ -112,10 +112,12 @@ func (p *Pipes) read(index int, file *os.File) {
 	// buffer per read cost a zeroed 64 KiB allocation each time.
 	buf := make([]byte, 64*1024)
 	for {
+		claimed, ok := p.awaitTurn(index, file)
+		if !ok {
+			return
+		}
 		n, err := file.Read(buf)
 		if n > 0 {
-			p.inflight[index].Store(true)
-			p.awaitEarlierPipes(index)
 			if p.hooks != nil && p.hooks.BeforeDeliver != nil {
 				p.hooks.BeforeDeliver()
 			}
@@ -127,11 +129,13 @@ func (p *Pipes) read(index int, file *os.File) {
 				p.hooks.AfterData(index, buf[:n])
 			}
 			p.mu.Unlock()
-			p.inflight[index].Store(false)
 			select {
 			case p.activity <- struct{}{}:
 			default:
 			}
+		}
+		if claimed {
+			p.inflight[index].Store(false)
 		}
 		if err != nil {
 			return
@@ -139,15 +143,39 @@ func (p *Pipes) read(index int, file *os.File) {
 	}
 }
 
-// awaitEarlierPipes lets the output of an earlier pipe (stdout before stderr) that is readable now, or already taken, be delivered before this
-// reader's. Node's loop polls the pipes together and handles the readable ones in registration order, so a child that writes stdout and then
-// stderr is seen in that order, which a byte cap that spans both streams makes observable; separate reader goroutines would hand it to
-// whichever the scheduler ran first. A pipe that holds nothing now is not waited for, and a reader of an earlier pipe is never blocked by a later one.
-func (p *Pipes) awaitEarlierPipes(index int) {
-	for earlier := range index {
-		for !p.stopped[earlier].Load() && (p.inflight[earlier].Load() || pollPending(p.files[earlier])) {
-			time.Sleep(10 * time.Microsecond)
+// awaitTurn waits until the pipe is readable and no earlier pipe (stdout before stderr) holds output that is readable or already taken, then claims the
+// turn so that later pipes wait for this reader's delivery. Node's loop polls the pipes together and handles the readable ones in registration order, so
+// a child that writes stdout and then stderr is seen in that order, which a byte cap that spans both streams makes observable; reader goroutines that
+// each block in their own read would hand it to whichever the scheduler ran first. A pipe that holds nothing is not waited for. claimed is false where
+// poll(2) cannot answer; ok is false once the pipe is closed.
+func (p *Pipes) awaitTurn(index int, file *os.File) (claimed, ok bool) {
+	for {
+		readable, closed := pollReadable(file, 10)
+		if closed {
+			return false, false
 		}
+		if !readable {
+			if !pollSupported {
+				return false, true
+			}
+			continue
+		}
+		if !pollSupported {
+			return false, true
+		}
+		blocked := false
+		for earlier := range index {
+			if !p.stopped[earlier].Load() && (p.inflight[earlier].Load() || pollPending(p.files[earlier])) {
+				blocked = true
+				break
+			}
+		}
+		if blocked {
+			time.Sleep(10 * time.Microsecond)
+			continue
+		}
+		p.inflight[index].Store(true)
+		return true, true
 	}
 }
 
