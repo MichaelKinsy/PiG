@@ -24,7 +24,7 @@ The entities Pig is built from, how they relate, where each lives, and the comma
 | Builder | Produces Piglet Binaries: native (needs Go and PiG source) or container (needs Docker or Podman). | `pig piglet build` | `pig setup` | [piglets.md](piglets.md) |
 | Slot | A part of PiG that a Piglet can change: keep PiG's own part, replace it with a fused member (today the frontend), or strip it. | `slots: and strip: in the Piglet file` | `pig piglet show <name>` | [piglet-strip.md](piglet-strip.md) |
 | Strip list | Disables built-in tools, commands, extensions, APIs, or features by stable ID; tools: is a ceiling, strip removes. | `strip: in the Piglet file` | `pig piglet schema, pig piglet show <name>` | [piglet-strip.md](piglet-strip.md) |
-| Overlay Piglet | A Piglet chosen at launch on a Piglet Binary that sets build.allowOverlays; it can undo runtime strips but not compiled-out ones. | `--piglet, PIG_PIGLET_PATH, PIG_PIGLET_NAME` | `/piglet` | [piglets.md](piglets.md) |
+| Overlay Piglet | A Piglet chosen at launch on a Piglet Binary that is not built with build.closed; it can undo runtime strips but not compiled-out ones. | `--piglet, PIG_PIGLET_PATH, PIG_PIGLET_NAME` | `/piglet` | [piglets.md](piglets.md) |
 | Divergence | A numbered, approved, user-visible difference from pinned Pi. | `divergences.md in this bundle` | `pig docs show divergences` | [divergences.md](divergences.md) |
 
 | From | Relation | To | Note |
@@ -47,7 +47,7 @@ The entities Pig is built from, how they relate, where each lives, and the comma
 | Piglet | declares | Strip list | tools is a ceiling; strip removes built-ins |
 | Strip list | disables | Slot | by stable ID, in runtime or binary |
 | Piglet | replaces | Slot | slots.frontend |
-| Overlay Piglet | is a | Piglet | accepted only by a Binary with build.allowOverlays |
+| Overlay Piglet | is a | Piglet | refused only by a Binary built with build.closed |
 | Overlay Piglet | applies to | Piglet Binary | at launch |
 | Divergence | documents difference from | Pi | numbered D<N> |
 

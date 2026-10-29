@@ -170913,6 +170913,17 @@
       "shapeHash": "sha256:f632619397f10a7f0e472ad47d2824ec7e080d15ac9eb0994e24800757b3fb96"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/piglet#SetRunningBinary",
+      "package": "github.com/MichaelKinsy/PiG/coding/piglet",
+      "name": "SetRunningBinary",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(fn func() (name string, closed bool, ok bool))"
+      },
+      "shapeHash": "sha256:a5a11b611ba9a56b762419979738c6238378bf7fad81d7681f3dbc41b3fb18dd"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/piglet#ShadowedWorkspacePiglet",
       "package": "github.com/MichaelKinsy/PiG/coding/piglet",
       "name": "ShadowedWorkspacePiglet",
@@ -171670,6 +171681,17 @@
         "type": "func(p *Piglet) error"
       },
       "shapeHash": "sha256:dcd85caaafafb7fe7aa297bd4862cca8f3c35e019090358abe5f191ddb6263e5"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/piglet#binaryClosure",
+      "package": "github.com/MichaelKinsy/PiG/coding/piglet",
+      "name": "binaryClosure",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(running bool, closed bool) *bool"
+      },
+      "shapeHash": "sha256:2f7c0d144c5c05918c794c54f1feea38df9b16e6507956258affc8767c96bd87"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/piglet#binaryPayload",
@@ -173735,9 +173757,9 @@
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func(info PigletInfo, jsonMode bool, stdout io.Writer, stderr io.Writer) int"
+        "type": "func(info PigletInfo, closed *bool, jsonMode bool, stdout io.Writer, stderr io.Writer) int"
       },
-      "shapeHash": "sha256:e86924005344c3f1249ef728a5b0b07ed45c020cd81294ef338d75933f96edc6"
+      "shapeHash": "sha256:1fed4bbeee649d04ac3c546004d9320cd993c0402c6c6b4a9a25a85f95d30d34"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/piglet#renderChildren",
@@ -174013,6 +174035,28 @@
         "type": "func(authored []byte, packages map[string]string) ([]byte, error)"
       },
       "shapeHash": "sha256:157af3356281928cb3ad3a9f72e0c66c972cb2b13a4014775cc322ffd834bfbc"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/piglet#runningBinary",
+      "package": "github.com/MichaelKinsy/PiG/coding/piglet",
+      "name": "runningBinary",
+      "kind": "variable",
+      "exported": false,
+      "shape": {
+        "type": "func() (name string, closed bool, ok bool)"
+      },
+      "shapeHash": "sha256:a84ca2bb9203fb88cb822ee671af422be12dd272fe80e2817b6f4d8ceb4a4f58"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/piglet#runningBinaryNamed",
+      "package": "github.com/MichaelKinsy/PiG/coding/piglet",
+      "name": "runningBinaryNamed",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(name string) (closed bool, ok bool)"
+      },
+      "shapeHash": "sha256:a672cf3f064bc9ee3018fa3599cf3495ca2112dbb0c9e0182c88348c7184aeca"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/piglet#runtimeCommands",
@@ -180285,6 +180329,17 @@
       "shapeHash": "sha256:3160edc43564d023aca15d6e596876fddd8a9c92d5f6aeb3cafc1c7d2a78ac3c"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/pigletbuild/binarypiglet#Closed",
+      "package": "github.com/MichaelKinsy/PiG/coding/pigletbuild/binarypiglet",
+      "name": "Closed",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() bool"
+      },
+      "shapeHash": "sha256:f632619397f10a7f0e472ad47d2824ec7e080d15ac9eb0994e24800757b3fb96"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/pigletbuild/binarypiglet#CompiledFrontendMember",
       "package": "github.com/MichaelKinsy/PiG/coding/pigletbuild/binarypiglet",
       "name": "CompiledFrontendMember",
@@ -180382,6 +180437,17 @@
         "type": "func(record *github.com/MichaelKinsy/PiG/coding/piglet/artifact.Record) (cacheErr error, err error)"
       },
       "shapeHash": "sha256:da014a001b3ac0a23bab762fe4072d24696ddf83892cedbfde2c7dce9e212688"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/pigletbuild/binarypiglet#closed",
+      "package": "github.com/MichaelKinsy/PiG/coding/pigletbuild/binarypiglet",
+      "name": "closed",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(p *github.com/MichaelKinsy/PiG/coding/piglet.Piglet) bool"
+      },
+      "shapeHash": "sha256:4efbabf2e98f6f9fb2026dbe8803a691955bf68b0764ac21c03bb777ad27d562"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/pigletbuild/binarypiglet#equalNameSets",
