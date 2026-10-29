@@ -388,12 +388,6 @@ func normalizeToSingleLine(s string) string {
 	return strings.TrimSpace(string(out))
 }
 
-// CapturesViewportInput reports that fullscreen viewport keys go to the list.
-//
-// pig divergence (D155): FilterableList is a PiG list that Pi has no component for and that pages on tui.select.pageUp
-// and tui.select.pageDown; it keeps the keys away from the transcript.
-func (f *FilterableList) CapturesViewportInput() bool { return true }
-
 // HandleInput updates the filter or moves the cursor.
 func (f *FilterableList) HandleInput(data string) {
 	// Route through the TUI keybinding registry so user overrides in

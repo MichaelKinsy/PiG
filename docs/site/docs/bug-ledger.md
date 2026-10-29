@@ -846,7 +846,6 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-D150](#bf-d150) | `--no-stdin` skips the startup read of piped stdin (Pi #10415) | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D151](#bf-d151) | `grep` with context reads a window of each matched file (Pi #9276) | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D153](#bf-d153) | The bash truncation notice names the size of the last line, not the bytes after the final newline (Pi #10015) | A Pi defect that PiG fixed first | All platforms | Unreleased |
-| [BF-D155](#bf-d155) | Selection lists page with PageUp and PageDown (Pi #7629) | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D156](#bf-d156) | MCP server `url` expands environment references (Pi #10654) | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D195](#bf-d195) | An empty AWS_BEARER_TOKEN_BEDROCK is no token, where Pi's AWS SDK treats the variable as set and the request… | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D196](#bf-d196) | Under skip-auth a bearer token from the process environment is not sent over an http:// endpoint, where Pi's… | A Pi defect that PiG fixed first | All platforms | Unreleased |
@@ -2655,7 +2654,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Platform:** All platforms
 - **Fixed in:** 0.5.0
 - **Fix commits:** `68a4ed2b54` (2026-10-09), `1d02c73a90` (2026-10-10)
-- **Tests:** `internal/codingagent/fullscreen_modal_viewport_test.go::TestFullscreenSelectionKeepsItsPageKeys`, `internal/codingagent/fullscreen_modal_viewport_test.go::TestRegularModeSelectorPageKeyMovesItsSelection`, `internal/codingagent/llama/ui_test.go::TestHuggingFaceSearchPageKeysMoveTenResults`, `internal/codingagent/modal_viewport_input_test.go::TestEditorSlotSelectorPageKeyMovesSelectionInEveryMode`, `internal/codingagent/select_page_keys_test.go::TestCustomEditorGivesSelectionPageKeysToAnOpenAutocomplete`, `internal/codingagent/select_page_keys_test.go::TestFirstTimeSetupPageKeysMoveToTheEnds`, `internal/codingagent/select_page_keys_test.go::TestSessionSelectorCapturesSelectionPageKeys`, `internal/codingagent/select_page_keys_test.go::TestTrustSelectorPageKeysMoveToTheEnds` and 9 more in docs/bug-ledger.json
+- **Tests:** `internal/codingagent/fullscreen_modal_viewport_test.go::TestFullscreenSelectionKeepsItsPageKeys`, `internal/codingagent/fullscreen_modal_viewport_test.go::TestRegularModeSelectorPageKeyMovesItsSelection`, `internal/codingagent/llama/ui_test.go::TestHuggingFaceSearchPageKeysMoveTenResults`, `internal/codingagent/modal_viewport_input_test.go::TestEditorSlotSelectorPageKeyMovesSelectionInEveryMode`, `internal/codingagent/select_page_keys_test.go::TestCustomEditorGivesSelectionPageKeysToAnOpenAutocomplete`, `internal/codingagent/select_page_keys_test.go::TestSessionSelectorCapturesSelectionPageKeys`, `tui/select_page_keys_test.go::TestAltScreenGivesSelectionPageKeysToACapturingFocus`, `tui/select_page_keys_test.go::TestContainerCapturesSelectPageInputFromItsChildren` and 7 more in docs/bug-ledger.json
 - **Release note:** Filters that Pi writes with `toLowerCase()` (select lists, the config selector, file autocomplete, `/model` search, minimatch `nocase`) lowercase as JavaScript does (`İ` becomes `i̇`, a final sigma `ς`), not as Go's `strings.ToLower`.
 
 ### BF-1d1c8aa
@@ -8385,7 +8384,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Platform:** All platforms
 - **Fixed in:** 0.5.0
 - **Fix commits:** `68a4ed2b54` (2026-10-09)
-- **Tests:** `internal/codingagent/fullscreen_modal_viewport_test.go::TestFullscreenSelectionKeepsItsPageKeys`, `internal/codingagent/fullscreen_modal_viewport_test.go::TestRegularModeSelectorPageKeyMovesItsSelection`, `internal/codingagent/llama/ui_test.go::TestHuggingFaceSearchPageKeysMoveTenResults`, `internal/codingagent/modal_viewport_input_test.go::TestEditorSlotSelectorPageKeyMovesSelectionInEveryMode`, `internal/codingagent/select_page_keys_test.go::TestCustomEditorGivesSelectionPageKeysToAnOpenAutocomplete`, `internal/codingagent/select_page_keys_test.go::TestFirstTimeSetupPageKeysMoveToTheEnds`, `internal/codingagent/select_page_keys_test.go::TestSessionSelectorCapturesSelectionPageKeys`, `internal/codingagent/select_page_keys_test.go::TestTrustSelectorPageKeysMoveToTheEnds` and 8 more in docs/bug-ledger.json
+- **Tests:** `internal/codingagent/fullscreen_modal_viewport_test.go::TestFullscreenSelectionKeepsItsPageKeys`, `internal/codingagent/fullscreen_modal_viewport_test.go::TestRegularModeSelectorPageKeyMovesItsSelection`, `internal/codingagent/llama/ui_test.go::TestHuggingFaceSearchPageKeysMoveTenResults`, `internal/codingagent/modal_viewport_input_test.go::TestEditorSlotSelectorPageKeyMovesSelectionInEveryMode`, `internal/codingagent/select_page_keys_test.go::TestCustomEditorGivesSelectionPageKeysToAnOpenAutocomplete`, `internal/codingagent/select_page_keys_test.go::TestSessionSelectorCapturesSelectionPageKeys`, `tui/select_page_keys_test.go::TestAltScreenGivesSelectionPageKeysToACapturingFocus`, `tui/select_page_keys_test.go::TestContainerCapturesSelectPageInputFromItsChildren` and 6 more in docs/bug-ledger.json
 - **Release note:** PageUp and PageDown move the selection by a page in selection lists and selectors (settings, model, extension, session, tree, trust, login and the open editor autocomplete) and no longer scroll the fullscreen transcript behind them (Pi #7629, PR #7680).
 
 ### BF-68a63f2
@@ -12788,21 +12787,6 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Removed when Pi fixes it:** Pi reports the size of the last counted line.
 - **Fix commits:** `983d651097` (2026-10-09)
 - **Tests:** `internal/codingagent/tools/last_line_bytes_test.go::TestBashLongLastLineNoticeNamesTheLineSize`, `internal/codingagent/tools/last_line_bytes_test.go::TestOutputAccumulatorLastLineBytes`
-
-### BF-D155
-
-**Selection lists page with PageUp and PageDown (Pi #7629)**
-
-- **Source:** A Pi defect that PiG fixed first (divergence D155)
-- **Symptom:** in a selector, PageDown moves the selection down one page and does not scroll the transcript behind it. Pi scrolls the transcript or does nothing. An open editor autocomplete list pages the same way, and a user binding of the same key to an app action does not fire while the list is open. Extension-provided overlays cannot yet report that they capture the page keys, so the viewport still takes them there.
-- **Root cause:** the selection stays where the user is looking. Pi #7629 is open, and its PR #7680 (`packages/tui/src/tui-alt-screen.ts`, `getPageSelectionIndex`, `capturesSelectPageInput`) is unmerged.
-- **User impact:** An operation failed or was rejected
-- **Platform:** All platforms
-- **Fixed in:** Unreleased
-- **Pi issue:** https://github.com/earendil-works/pi/issues/7629
-- **Removed when Pi fixes it:** Pi merges PR #7680 or another change that pages selection lists on these keys; then restore the keys in the oracle generators.
-- **Fix commits:** `68a4ed2b54` (2026-10-09), `0d867c440e` (2026-10-10)
-- **Tests:** `internal/codingagent/fullscreen_modal_viewport_test.go::TestFullscreenSelectionKeepsItsPageKeys`, `internal/codingagent/llama/ui_test.go::TestHuggingFaceSearchPageKeysMoveTenResults`, `internal/codingagent/modal_viewport_input_test.go::TestEditorSlotSelectorPageKeyMovesSelectionInEveryMode`, `tui/select_page_keys_test.go::TestAltScreenGivesSelectionPageKeysToACapturingFocus`, `tui/select_page_keys_test.go::TestEditorAutocompletePageKeys`, `tui/select_page_keys_test.go::TestPageSelectionIndex`, `tui/select_page_keys_test.go::TestSelectListPageKeysMoveByAPage`, `tui/select_page_keys_test.go::TestSelectorComponentsMoveByTheirPage` and 1 more in docs/bug-ledger.json
 
 ### BF-D156
 
@@ -19569,7 +19553,6 @@ Each divergence record is accounted for here. A divergence that fixes a Pi defec
 | D150 | `--no-stdin` skips the startup read of piped stdin (Pi #10415) | [BF-D150](#bf-d150) |
 | D151 | `grep` with context reads a window of each matched file (Pi #9276) | [BF-D151](#bf-d151) |
 | D153 | The bash truncation notice names the size of the last line, not the bytes after the final newline (Pi #10015) | [BF-D153](#bf-d153) |
-| D155 | Selection lists page with PageUp and PageDown (Pi #7629) | [BF-D155](#bf-d155) |
 | D156 | MCP server `url` expands environment references (Pi #10654) | [BF-D156](#bf-d156) |
 | D157 | PiG's startup additions stay quiet when the config root cannot be written | deliberate difference |
 | D158 | A setting of the wrong JSON type is ignored (Pi 1.4.0 throws) | deliberate difference |
