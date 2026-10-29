@@ -25,49 +25,55 @@ var reportTask = EvalTask{
 const reportSession = "{\"type\":\"session\"}\n"
 
 type reportAssertion struct {
+	caseID string
 	status ReportCaseStatus
 	meta   map[string]any
 }
 
-func writeTaskReport(t *testing.T, assertion reportAssertion) (string, string) {
+func writeTaskReport(t *testing.T, assertions ...reportAssertion) (string, string) {
 	t.Helper()
 	directory := t.TempDir()
 	reportPath := filepath.Join(directory, "vitest.json")
-	status := assertion.status
-	if status == "" {
-		status = ReportCaseStatusPassed
+	results := make([]any, 0, len(assertions))
+	count := map[ReportCaseStatus]int{}
+	for _, assertion := range assertions {
+		caseID, status, meta := assertion.caseID, assertion.status, assertion.meta
+		if caseID == "" {
+			caseID = reportTask.CaseID
+		}
+		if status == "" {
+			status = ReportCaseStatusPassed
+		}
+		if meta == nil {
+			meta = map[string]any{}
+		}
+		count[status]++
+		results = append(results, map[string]any{
+			"ancestorTitles":  []string{reportTask.EvalSet},
+			"fullName":        reportTask.EvalSet + " " + caseID,
+			"status":          status,
+			"title":           caseID,
+			"failureMessages": []string{},
+			"meta":            meta,
+		})
 	}
-	meta := assertion.meta
-	if meta == nil {
-		meta = map[string]any{}
-	}
-	passed, pending := 0, 0
-	if status == ReportCaseStatusPassed {
-		passed = 1
-	}
-	if status == ReportCaseStatusPending || status == ReportCaseStatusSkipped {
-		pending = 1
+	fileStatus := "passed"
+	if count[ReportCaseStatusFailed] > 0 {
+		fileStatus = "failed"
 	}
 	report := map[string]any{
-		"numFailedTests":  0,
-		"numPassedTests":  passed,
-		"numPendingTests": pending,
-		"numTodoTests":    0,
-		"numTotalTests":   1,
+		"numFailedTests":  count[ReportCaseStatusFailed],
+		"numPassedTests":  count[ReportCaseStatusPassed],
+		"numPendingTests": count[ReportCaseStatusPending] + count[ReportCaseStatusSkipped] + count[ReportCaseStatusDisabled],
+		"numTodoTests":    count[ReportCaseStatusTodo],
+		"numTotalTests":   len(results),
 		"startTime":       0,
-		"success":         true,
+		"success":         count[ReportCaseStatusFailed] == 0,
 		"testResults": []any{map[string]any{
-			"message": "",
-			"name":    "/repo/packages/evals/evals/example.docs.eval.ts",
-			"status":  "passed",
-			"assertionResults": []any{map[string]any{
-				"ancestorTitles":  []string{reportTask.EvalSet},
-				"fullName":        reportTask.EvalSet + " " + reportTask.CaseID,
-				"status":          status,
-				"title":           reportTask.CaseID,
-				"failureMessages": []string{},
-				"meta":            meta,
-			}},
+			"message":          "",
+			"name":             "/repo/packages/evals/evals/example.docs.eval.ts",
+			"status":           fileStatus,
+			"assertionResults": results,
 		}},
 	}
 	encoded, err := json.Marshal(report)
@@ -171,26 +177,12 @@ func requireOutcome(t *testing.T, observation EvalObservation, outcome EvalOutco
 // TestReportUpstream ports packages/evals/test/report.test.ts. Each subtest names one upstream case.
 func TestReportUpstream(t *testing.T) {
 	for _, status := range []ReportCaseStatus{ReportCaseStatusSkipped, ReportCaseStatusTodo, ReportCaseStatusDisabled} {
-		t.Run("classifyCaseStatus › maps "+string(status)+" to skipped", func(t *testing.T) {
-			// upstream: packages/evals/test/report.test.ts:106
-			if got := ClassifyCaseStatus(status); got != EvalOutcomeSkipped {
-				t.Fatalf("ClassifyCaseStatus(%q) = %q", status, got)
-			}
+		t.Run("readTaskObservation › preserves a skipped outcome for "+string(status)+" cases without harness runs", func(t *testing.T) {
+			// upstream: packages/evals/test/report.test.ts:107
+			_, observation := readObservation(t, reportAssertion{status: status})
+			requireOutcome(t, observation, EvalOutcomeSkipped)
 		})
 	}
-
-	t.Run("classifyCaseStatus › maps failed infrastructure to errored", func(t *testing.T) {
-		// upstream: packages/evals/test/report.test.ts:110
-		if got := ClassifyCaseStatus(ReportCaseStatusFailed); got != EvalOutcomeErrored {
-			t.Fatalf("ClassifyCaseStatus(failed) = %q", got)
-		}
-	})
-
-	t.Run("readTaskObservation › preserves a skipped outcome when no harness run exists", func(t *testing.T) {
-		// upstream: packages/evals/test/report.test.ts:116
-		_, observation := readObservation(t, reportAssertion{status: ReportCaseStatusSkipped})
-		requireOutcome(t, observation, EvalOutcomeSkipped)
-	})
 
 	t.Run("readTaskObservation › preserves a pending outcome when no harness run exists", func(t *testing.T) {
 		// upstream: packages/evals/test/report.test.ts:121
@@ -202,7 +194,7 @@ func TestReportUpstream(t *testing.T) {
 		// upstream: packages/evals/test/report.test.ts:126
 		directory, observation := readObservation(t, reportAssertion{
 			status: ReportCaseStatusFailed,
-			meta:   scoredMeta(scoredMetaOverrides{errors: []map[string]string{{"message": "Prompt verification failed"}}}),
+			meta:   scoredMeta(scoredMetaOverrides{}),
 		})
 		want := EvalObservation{EvalRunIdentity: taskIdentity(reportTask), EvalMetrics: fullMetrics(), Outcome: EvalOutcomeErrored}
 		if !reflect.DeepEqual(observation, want) {
@@ -225,6 +217,22 @@ func TestReportUpstream(t *testing.T) {
 			t.Fatalf("observation = %+v, want %+v", observation, want)
 		}
 		requireSessionArtifact(t, directory)
+	})
+
+	t.Run("readTaskObservation › selects the requested case when a sibling case is skipped", func(t *testing.T) {
+		// upstream: packages/evals/test/report.test.ts:178
+		directory, reportPath := writeTaskReport(t,
+			reportAssertion{caseID: "sibling case", status: ReportCaseStatusSkipped},
+			reportAssertion{meta: scoredMeta(scoredMetaOverrides{})},
+		)
+		observation, err := ReadTaskObservation(reportTask, reportPath, directory)
+		if err != nil {
+			t.Fatal(err)
+		}
+		requireOutcome(t, observation, EvalOutcomeScored)
+		if observation.Score == nil || *observation.Score != 0.5 || observation.TotalTokens == nil || *observation.TotalTokens != 15 {
+			t.Fatalf("observation = %+v, want score 0.5 and 15 total tokens", observation)
+		}
 	})
 
 	t.Run("readTaskObservation › treats a zero score as scored data", func(t *testing.T) {
