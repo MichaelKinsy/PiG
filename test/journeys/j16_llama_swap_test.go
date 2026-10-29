@@ -11,8 +11,7 @@ import (
 )
 
 // The llama-swap gateway as its source defines it (github.com/mostlygeek/llama-swap, internal/server/api.go, internal/router/loading.go):
-// GET /models and GET /v1/models list the configured models with a llama.cpp router style status.value, there is no /models/load, and a model
-// loads when a request names it in the `model` field. While it loads, a streaming chat completion carries bare reasoning_content frames
+// there is no /models/load, and a model loads when a request names it in the `model` field. While it loads, a streaming chat completion carries bare reasoning_content frames
 // (no id, no role, no finish_reason) ahead of the upstream reply, and a failed load ends the stream with an error envelope frame and [DONE].
 const (
 	swapLoaded   = "qwen3.8-q4-uncensored-layer"
@@ -60,34 +59,6 @@ func swapReply(r *harness.Request) (harness.Reply, bool) {
 	return harness.Reply{}, false
 }
 
-// mountSwap serves the catalog the way llama-swap's handleListModels does: every model carries status.value, and the model it runs is loaded.
-func mountSwap(p *harness.Provider) {
-	catalog := func(w http.ResponseWriter, _ *http.Request) {
-		var data []any
-		for _, id := range swapModels[:4] {
-			status, meta := "unloaded", map[string]any{}
-			if id == swapLoaded {
-				status, meta = "loaded", map[string]any{"n_ctx": 131072}
-			}
-			data = append(data, map[string]any{"id": id, "object": "model", "created": 1700000000, "owned_by": "llama-swap", "status": map[string]any{"value": status}, "meta": meta})
-		}
-		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(map[string]any{"object": "list", "data": data})
-	}
-	// GET /props needs ?model= and answers from that model's own server (README: "requires ?model={model_id}").
-	p.Handle("GET /props", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		if r.URL.Query().Get("model") == "" {
-			w.WriteHeader(http.StatusNotFound)
-			_, _ = w.Write([]byte(swapEnvelope("no model id could be identified", "not_found_error", "not_found")))
-			return
-		}
-		_, _ = w.Write([]byte(`{"chat_template":"{{ messages }}"}`))
-	})
-	p.Handle("GET /models", catalog)
-	p.Handle("GET /v1/models", catalog)
-}
-
 func swapServed(c *harness.Ctx, model string) {
 	reqs := c.P.Requests()
 	c.Expect(len(reqs) > 0 && reqs[len(reqs)-1].Model == model, "the newest provider request names model %q, got %v", model, lastModel(reqs))
@@ -118,22 +89,17 @@ func pickModel(c *harness.Ctx, id, name string) {
 func init() {
 	register(&harness.Journey{
 		Name: "llama-swap-models-json",
-		Doc: "A llama-swap gateway configured as a models.json provider, beside the llama.cpp provider logged in to the same gateway: /model lists the models, a second model is selected and a prompt names it in the request's model field " +
+		Doc: "A llama-swap gateway configured as a models.json provider (the path that works with llama-swap; /llama is llama.cpp router only): /model lists the models, a second model is selected and a prompt names it in the request's model field " +
 			"(llama-swap loads it on that request, streaming bare loading frames ahead of the reply), the selector switches back, a model that fails to start ends the stream with the gateway's error envelope, and an unrouted model is refused with HTTP 404.",
 		Touches:     []string{"internal/codingagent/", "ai/", "agent/", "tui/", "coding/"},
 		Normalizers: []harness.Normalizer{bugReportHint},
 		Env: func(harness.Kind) harness.Env {
 			return harness.Env{
 				NoModelArg:  true,
-				Extensions:  true, // the llama.cpp provider is a built-in extension
 				ReadyMarker: swapLoaded,
 				Models:      swapModels,
-				// The llama.cpp provider lists the gateway's catalog only with network access.
-				ExtraEnv:      []string{"PI_OFFLINE=0"},
-				AgentDirFiles: map[string]string{"auth.json": `{"llama.cpp":{"type":"api_key","key":"local","env":{"LLAMA_BASE_URL":"{{PROVIDER_URL}}"}}}`},
 			}
 		},
-		Mount:  mountSwap,
 		Script: script(swapReply),
 		Backbone: []harness.Step{
 			{Name: "launch", Run: func(c *harness.Ctx) { c.Launch("--model", "strict-wire/"+swapLoaded); c.Snap("startup") }},

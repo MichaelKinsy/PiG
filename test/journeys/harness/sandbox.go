@@ -26,8 +26,9 @@ type SandboxOpts struct {
 	Provider *Provider
 	// Settings is merged into settings.json.
 	Settings map[string]any
-	// Files and AgentFiles are created before launch (path -> content), the first under the working directory, the second under the agent directory (user prompts, skills, context files). {{PROVIDER_URL}} in a content becomes the scripted provider's base URL.
-	Files      map[string]string
+	// Files are created under the working directory before launch (path -> content).
+	Files map[string]string
+	// AgentFiles are created under the agent directory before launch (path -> content): user prompts, skills and context files.
 	AgentFiles map[string]string
 	// Bin holds executable scripts (name -> content) that shadow host commands: the sandbox bin directory leads PATH.
 	Bin map[string]string
@@ -100,7 +101,7 @@ func NewSandbox(o SandboxOpts) (*Sandbox, error) {
 		if err := os.MkdirAll(filepath.Dir(p), 0o700); err != nil {
 			return nil, err
 		}
-		if err := os.WriteFile(p, []byte(strings.ReplaceAll(content, "{{PROVIDER_URL}}", o.Provider.URL())), 0o600); err != nil {
+		if err := os.WriteFile(p, []byte(content), 0o600); err != nil {
 			return nil, err
 		}
 	}
@@ -118,7 +119,7 @@ func NewSandbox(o SandboxOpts) (*Sandbox, error) {
 		if err := os.MkdirAll(filepath.Dir(p), 0o700); err != nil {
 			return nil, err
 		}
-		if err := os.WriteFile(p, []byte(strings.ReplaceAll(content, "{{PROVIDER_URL}}", o.Provider.URL())), 0o600); err != nil {
+		if err := os.WriteFile(p, []byte(content), 0o600); err != nil {
 			return nil, err
 		}
 	}
