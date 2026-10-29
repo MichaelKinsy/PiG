@@ -192,3 +192,64 @@ func TestResizeImagePicksJPEGOverLargerPNGForPhotos(t *testing.T) {
 		t.Fatalf("len(Data) = %d, want below %d", len(result.Data), limit)
 	}
 }
+
+// Pi e7a0df27 image-resize-core.ts: the smaller of the PNG and the JPEG at the configured quality goes first, the other format next, and
+// the lower JPEG qualities only when neither fits.
+func TestFirstFittingCandidatePrefersTheSmallerOfPNGAndJPEG(t *testing.T) {
+	flat := image.NewRGBA(image.Rect(0, 0, 200, 200))
+	for i := 0; i < len(flat.Pix); i += 4 {
+		flat.Pix[i], flat.Pix[i+1], flat.Pix[i+2], flat.Pix[i+3] = 10, 20, 30, 255
+	}
+	noisy := image.NewRGBA(image.Rect(0, 0, 200, 200))
+	rng := rand.New(rand.NewPCG(3, 4))
+	for y := range 200 {
+		for x := range 200 {
+			noisy.Set(x, y, color.RGBA{uint8(x + rng.IntN(6)), uint8(y + rng.IntN(6)), uint8(128 + rng.IntN(6)), 255})
+		}
+	}
+	qualities := []int{80, 85, 70, 55, 40}
+	pngSize := func(img image.Image) int {
+		data, err := encodePNG(img)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return encodedSizeBase64(data)
+	}
+	jpegSize := func(img image.Image, quality int) int {
+		data, err := encodeJPEG(img, quality)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return encodedSizeBase64(data)
+	}
+	if png, jpegAt80 := pngSize(flat), jpegSize(flat, 80); png >= jpegAt80 {
+		t.Fatalf("fixture: flat PNG %d must be smaller than JPEG %d", png, jpegAt80)
+	}
+	if png, jpegAt80 := pngSize(noisy), jpegSize(noisy, 80); jpegAt80 >= png {
+		t.Fatalf("fixture: noisy JPEG %d must be smaller than PNG %d", jpegAt80, png)
+	}
+	for _, tc := range []struct {
+		name     string
+		img      image.Image
+		maxBytes int
+		wantMIME string
+	}{
+		{"flat image, both fit: PNG is smaller", flat, 1 << 30, "image/png"},
+		{"noisy image, both fit: JPEG is smaller", noisy, 1 << 30, "image/jpeg"},
+		// The PNG fits as well, but the smaller JPEG goes first.
+		{"noisy image, maxBytes above the PNG: the JPEG still wins", noisy, pngSize(noisy) + 1, "image/jpeg"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			candidate, fits, err := firstFittingCandidate(tc.img, qualities, tc.maxBytes)
+			if err != nil || !fits || candidate.MIME != tc.wantMIME {
+				t.Fatalf("candidate = %s fits=%v err=%v, want %s", candidate.MIME, fits, err, tc.wantMIME)
+			}
+		})
+	}
+	// Neither format at the configured quality fits: a lower JPEG quality is tried.
+	between := jpegSize(noisy, 80) - 1
+	candidate, fits, err := firstFittingCandidate(noisy, qualities, between)
+	if err != nil || !fits || candidate.MIME != "image/jpeg" || candidate.EncodedSize >= jpegSize(noisy, 80) {
+		t.Fatalf("lower quality: %s size=%d fits=%v err=%v", candidate.MIME, candidate.EncodedSize, fits, err)
+	}
+}

@@ -48,7 +48,7 @@ func decodeBase64(t *testing.T, s string) []byte {
 // TestResizeImageDimensionStrategyMatchesPi runs image-resize-core.ts resizeImageInProcess (Photon) and PiG's ResizeImage over 200 seeded PNGs and option sets. Dimensions from 1 to
 // 2,600 (narrow strips, squares, images just over or under each limit), maxWidth and maxHeight from 1 to 3,000, the default and a very large maxBytes, a one-byte maxBytes that nothing
 // satisfies, and an unset or explicit mime type. The original and resulting size, whether the image was resized, whether Pi returns null, and the mime type must match, and the
-// returned image must decode to the size it reports. Not compared: the encoded bytes (Photon's PNG/JPEG encoders differ from Go's) and which candidate wins a tight maxBytes, and the 0.75 shrink steps (reached only when every candidate misses maxBytes), which depend on those encoders.
+// returned image must decode to the size it reports. Not compared: the encoded bytes (Photon's PNG/JPEG encoders differ from Go's) which candidate wins a tight maxBytes, and which of the PNG and the JPEG is the smaller when their sizes are within a factor of 1.5 of each other (Pi picks the smaller, e7a0df27), and the 0.75 shrink steps (reached only when every candidate misses maxBytes), which depend on those encoders.
 func TestResizeImageDimensionStrategyMatchesPi(t *testing.T) {
 	rng := rand.New(rand.NewPCG(20261125, 7))
 	pickInt := func(xs ...int) int { return xs[rng.IntN(len(xs))] }
@@ -132,7 +132,7 @@ emit(out);`, cases, &want)
 		})
 	}
 	wg.Wait()
-	failures := 0
+	failures, ties := 0, 0
 	for i, c := range cases {
 		got, err := outcomes[i].got, outcomes[i].err
 		gotResult := resizeStrategyResult{Null: err != nil}
@@ -149,6 +149,12 @@ emit(out);`, cases, &want)
 			}
 		}
 		expected.Data = ""
+		// Pi picks the smaller of the PNG and the JPEG candidate (e7a0df27): when the candidates are close, Photon's encoders and Go's
+		// disagree on which is smaller, so the format is not compared for such an image.
+		if err == nil && !expected.Null && encoderTie(t, decodeBase64(t, c.Data), gotResult.Width, gotResult.Height, jpegQualityOf(c.Quality), gotResult.MimeType, expected.MimeType) {
+			ties++
+			gotResult.MimeType = expected.MimeType
+		}
 		if gotResult != expected {
 			failures++
 			if failures <= 8 {
@@ -156,5 +162,5 @@ emit(out);`, cases, &want)
 			}
 		}
 	}
-	t.Logf("%d cases, %d failures", len(cases), failures)
+	t.Logf("%d cases, %d failures, %d PNG/JPEG encoder ties", len(cases), failures, ties)
 }
