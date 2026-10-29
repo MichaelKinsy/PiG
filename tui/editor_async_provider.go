@@ -159,7 +159,7 @@ func (e *Editor) naturalAsyncAutocomplete() (bool, bool) {
 	return triggered || slash || e.AutocompleteOpen(), triggered
 }
 
-// SetAutocompleteInputHold binds the host's hold on terminal input for extension provider requests (D213). hold runs on the owner loop when
+// SetAutocompleteInputHold binds the host's hold on terminal input for extension provider requests. hold runs on the owner loop when
 // a request starts and returns the request's context, whose AutocompleteAwaitsIO releases the hold, and the end function the request calls once
 // its menu is published or it is abandoned.
 func (e *Editor) SetAutocompleteInputHold(hold func(context.Context) (context.Context, func())) {
@@ -215,7 +215,7 @@ func (e *Editor) requestAutocompleteProvider(provider *AsyncAutocompleteProvider
 	if debouncedAutocomplete(lines, cursor, provider.TriggerCharacters, force, explicit) {
 		timer = time.NewTimer(attachmentAutocompleteDebounce)
 	}
-	// pig divergence (D213): the extension provider chain's request holds the host's next read until the chain settles or announces that it awaits I/O. A
+	// the extension provider chain's request holds the host's next read until the chain settles or announces that it awaits I/O. A
 	// request behind an unfinished one, and a debounced one, cannot settle in the checkpoint after the read: neither holds.
 	runCtx, endHold := ctx, func() {}
 	launch := func() {

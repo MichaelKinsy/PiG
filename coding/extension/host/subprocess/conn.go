@@ -235,7 +235,7 @@ type Conn struct {
 	// nextID is an atomic counter for generating request IDs.
 	nextID atomic.Uint64
 
-	// autocompleteUnholds are the input-hold releases of the autocomplete.suggest requests in flight, by request id (D213).
+	// autocompleteUnholds are the input-hold releases of the autocomplete.suggest requests in flight, by request id.
 	autocompleteMu      sync.Mutex
 	autocompleteUnholds map[string]func()
 
@@ -1479,7 +1479,7 @@ func requestReportsSuspension(ctx context.Context) bool {
 
 // deliverRequestState hands a request lifecycle frame to the request waiting for it.
 // watchAutocomplete registers unhold for the autocomplete.suggest request named id until the returned function runs: the runtime's
-// NotifyUIAutocompletePending for that id, and the calls the request makes, release the host's input hold (D213).
+// NotifyUIAutocompletePending for that id, and the calls the request makes, release the host's input hold.
 func (c *Conn) watchAutocomplete(id string, unhold func()) func() {
 	c.autocompleteMu.Lock()
 	if c.autocompleteUnholds == nil {

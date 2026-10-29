@@ -73,6 +73,7 @@ type UIBridge struct {
 	autocompleteReferences map[string]autocompleteReference
 	autocompleteOrigins    map[weak.Pointer[extension.AutocompleteProvider]]autocompleteOrigin
 	autocompleteQueries    map[autocompleteQueryKey]*autocompleteQuery
+	autocompleteSuggests   map[string]func()
 
 	// editor is the extension editor component installed last
 	// (ctx.ui.setEditorComponent), and editorsByConn each connection's

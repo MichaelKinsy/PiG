@@ -46,7 +46,7 @@ func (e *Editor) requestNativeAutocomplete(force, explicit bool) {
 // sequence per call; the keys of one read all see the menu the previous read left). The owner calls FlushAutocomplete once
 // after each read, never between its sequences. An awaited argument completer or an fd search still runs on the worker and
 // publishes when it settles, as Pi's does once its child process or Promise resolves. The extension provider chain starts
-// here too, on its worker, and holds the host's next read until it settles or announces that it awaits I/O (D213).
+// here too, on its worker, and holds the host's next read until it settles or announces that it awaits I/O.
 func (e *Editor) FlushAutocomplete() {
 	pending := e.nativeAutocomplete
 	if pending == nil {

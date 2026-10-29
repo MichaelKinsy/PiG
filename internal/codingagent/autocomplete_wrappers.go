@@ -127,7 +127,7 @@ func (m *InteractiveMode) baseAutocompleteProvider(base tui.AutocompleteProvider
 			return nil, err
 		}
 		if query.AwaitsIO() {
-			// The wrapper chain waits on the base provider's awaited work: it has left Pi's microtask checkpoint (D213).
+			// The wrapper chain waits on the base provider's awaited work: it has left Pi's microtask checkpoint.
 			tui.AutocompleteAwaitsIO(ctx)
 		}
 		result, err := query.RunResult(ctx)
@@ -176,31 +176,15 @@ func (m *InteractiveMode) asyncAutocompleteProvider(provider *extension.Autocomp
 	return adapted
 }
 
-// pig divergence (D213): autocompleteHoldBound is how long a request of the extension provider chain may hold the next terminal read without settling or announcing
-// that it awaits I/O. Pi has no bound: its microtask checkpoint is over when the Promise jobs run out. The bound only keeps a hung extension
-// runtime from freezing input (D213).
-var autocompleteHoldBound = time.Second
-
-// holdAutocompleteInput holds the next terminal read for one request of the extension provider chain: Pi opens the menu of a chain that
+// holdAutocompleteInput holds the next terminal read for one request of the extension provider chain. Pi opens the menu of a chain that
 // needs no I/O in the Promise jobs after the read that typed its text, before the next read, and PiG's chain is a round trip through the
-// extension runtime that the next read would overtake (D213). The hold ends when the request ends (end), when its chain announces that it
-// awaits I/O (the returned context's tui.AutocompleteAwaitsIO), or after autocompleteHoldBound. A request that outlives the bound marks the
-// chain overdue: no request holds input until one ends without having been cancelled, that is, until the runtime answers again. It runs on
-// the owner loop.
+// extension runtime that the next read would overtake. The hold ends when the request ends (end: its answer was published, the editor
+// cancelled it, or the runtime's connection ended) or when its chain announces that it awaits real I/O (the returned context's
+// tui.AutocompleteAwaitsIO), which is when Pi's next read would have come first. A synchronous provider that blocks holds the read until it
+// returns, as it holds Pi's whole loop. It runs on the owner loop.
 func (m *InteractiveMode) holdAutocompleteInput(ctx context.Context) (context.Context, func()) {
-	if m.autocompleteOverdue.Load() {
-		return ctx, func() {
-			if ctx.Err() == nil {
-				m.autocompleteOverdue.Store(false)
-			}
-		}
-	}
 	released := make(chan struct{})
-	var (
-		mu      sync.Mutex
-		state   int // 0 holding, 1 released by the chain, 2 overdue, 3 ended
-		closeIt = sync.OnceFunc(func() { close(released) })
-	)
+	release := sync.OnceFunc(func() { close(released) })
 	gate := released
 	if previous := m.autocompletePending; previous != nil {
 		select {
@@ -222,34 +206,7 @@ func (m *InteractiveMode) holdAutocompleteInput(ctx context.Context) (context.Co
 		}
 	}
 	m.autocompletePending = gate
-	timer := time.AfterFunc(autocompleteHoldBound, func() {
-		mu.Lock()
-		defer mu.Unlock()
-		if state == 0 {
-			state = 2
-			m.autocompleteOverdue.Store(true)
-			closeIt()
-		}
-	})
-	unhold := func() {
-		mu.Lock()
-		defer mu.Unlock()
-		if state == 0 {
-			state = 1
-		}
-		closeIt()
-	}
-	end := func() {
-		mu.Lock()
-		defer mu.Unlock()
-		timer.Stop()
-		if ctx.Err() == nil {
-			m.autocompleteOverdue.Store(false)
-		}
-		state = 3
-		closeIt()
-	}
-	return tui.WithAutocompleteUnhold(ctx, unhold), end
+	return tui.WithAutocompleteUnhold(ctx, release), release
 }
 
 // startAutocompleteWork owns ordered input/factory work. The input pump waits before delivering the next chunk, while render and UI tasks remain live.

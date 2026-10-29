@@ -2,6 +2,7 @@ package extensionconformance
 
 import (
 	"slices"
+	"strings"
 	"sync/atomic"
 	"testing"
 
@@ -10,9 +11,10 @@ import (
 )
 
 // Pi's editor starts a request in the Promise jobs after the terminal read (editor.ts startAutocompleteRequest): a provider chain that settles
-// there has opened its menu before the next read, one that awaits real I/O has not. Every realization tells the host which one a chain is
-// (D213): the chain of a fast provider settles with no notice, a chain that sleeps is announced as awaiting I/O before its answer arrives, and a
-// chain that only waits on the host (the current provider's answer) is never announced, however long the host takes.
+// there has opened its menu before the next read, one that awaits real I/O has not. A synchronous provider settles when it returns, even if it blocks
+// on I/O, as it holds Pi's whole loop until it returns: the Go, Rust, Python and Lisp SDKs have only synchronous providers and never announce I/O.
+// The Node runtime's providers are async: a chain that awaits a timer announces it before its answer, and a chain that only waits on the host's
+// answer (the current provider, however slow) never does (D213).
 func TestAutocompleteSettlementAcrossSDKs(t *testing.T) {
 	t.Parallel()
 	cases := sdkHarnessCases()
@@ -48,11 +50,15 @@ func TestAutocompleteSettlementAcrossSDKs(t *testing.T) {
 			if provider == nil {
 				t.Fatal("no installed provider")
 			}
+			slowAwaits := int32(0)
+			if strings.Contains(tc.name, "node") {
+				slowAwaits = 1
+			}
 			for _, tc := range []struct {
 				input string
 				// awaits is how many times the chain announced real I/O before it answered.
 				awaits int32
-			}{{"fast", 0}, {"slow", 1}, {"hostwait", 0}, {"fast", 0}, {"slow", 1}} {
+			}{{"fast", 0}, {"slow", slowAwaits}, {"hostwait", 0}, {"fast", 0}, {"slow", slowAwaits}} {
 				var awaited atomic.Int32
 				requestCtx := tui.WithAutocompleteUnhold(t.Context(), func() { awaited.Add(1) })
 				result, err := provider.GetSuggestions(requestCtx, []string{tc.input}, 0, len(tc.input), false)

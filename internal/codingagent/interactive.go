@@ -648,8 +648,6 @@ type InteractiveMode struct {
 	autocompleteEpoch       context.Context
 	autocompleteEpochCancel context.CancelFunc
 	autocompletePending     <-chan struct{}
-	// autocompleteOverdue reports that an extension provider request outlived autocompleteHoldBound and the runtime has not answered since.
-	autocompleteOverdue atomic.Bool
 	currentInputTicket  *inputTicket
 	pendingUserInputs   []string
 	onInputCallback     func(string)

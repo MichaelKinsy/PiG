@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"runtime"
 	"sync"
-	"time"
 
 	"github.com/MichaelKinsy/PiG/extensions/sdk/json"
 )
@@ -40,77 +39,6 @@ type autocompleteRegistry struct {
 	factories map[string]AutocompleteProviderFactory
 	providers map[string]*AutocompleteProvider
 	invoked   map[string]bool
-	// suggests are the getSuggestions requests being served, by request id.
-	suggests map[string]*autocompleteSettle
-}
-
-// pig divergence (D213): autocompleteCheckpoint is how long a provider that blocks its goroutine may run, outside a call to the host, before the host is told that it awaits
-// real I/O (protocol NotifyUIAutocompletePending, D213). Pi's microtask checkpoint has no duration; a blocking provider has no event loop to end it.
-const autocompleteCheckpoint = 50 * time.Millisecond
-
-// autocompleteSettle tracks one getSuggestions request for the ui.autocomplete.pending notice: the request awaits real I/O when it has made no
-// progress for a checkpoint, unfinished and outside a host call.
-type autocompleteSettle struct {
-	mu        sync.Mutex
-	hostCalls int
-	epoch     uint64
-	done      bool
-	announced bool
-	timer     *time.Timer
-	announce  func()
-}
-
-// arm starts a checkpoint: it announces the request when nothing has happened since.
-func (s *autocompleteSettle) arm() {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	if s.done || s.announced {
-		return
-	}
-	s.epoch++
-	epoch := s.epoch
-	if s.timer != nil {
-		s.timer.Stop()
-	}
-	s.timer = time.AfterFunc(autocompleteCheckpoint, func() {
-		s.mu.Lock()
-		announce := !s.done && !s.announced && s.hostCalls == 0 && s.epoch == epoch
-		if announce {
-			s.announced = true
-		}
-		s.mu.Unlock()
-		if announce {
-			s.announce()
-		}
-	})
-}
-
-// hostCall marks the request as waiting for the host until the returned function runs.
-func (s *autocompleteSettle) hostCall() func() {
-	s.mu.Lock()
-	s.hostCalls++
-	s.mu.Unlock()
-	return func() {
-		s.mu.Lock()
-		s.hostCalls--
-		s.mu.Unlock()
-		s.arm()
-	}
-}
-
-func (s *autocompleteSettle) finish() {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	s.done = true
-	if s.timer != nil {
-		s.timer.Stop()
-	}
-}
-
-func (r *autocompleteRegistry) settleOf(requestID string) *autocompleteSettle {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	return r.suggests[requestID]
 }
 
 type autocompleteDescriptor struct {
@@ -176,17 +104,12 @@ func releaseAutocompleteLease(lease autocompleteLeaseCleanup) {
 func autocompleteCall[T any](ctx Context, lease *autocompleteLease, request autocompleteInvocation) (result T, err error) {
 	defer runtime.KeepAlive(lease)
 	request.ID = lease.id
-	if err = ctx.Err(); err != nil {
-		return result, err
-	}
-	if request.Operation == "getSuggestions" && ctx.requestID != "" {
-		if settle := ctx.ext.autocomplete.settleOf(ctx.requestID); settle != nil {
-			defer settle.hostCall()()
-		}
-	}
 	if ctx.ext != lease.owner {
 		ctx.ext = lease.owner
 		ctx.requestID = ""
+	}
+	if err = ctx.Err(); err != nil {
+		return result, err
 	}
 	response, err := ctx.callHost("ui.autocomplete.invoke", request)
 	if err = callResultError(response, err); err != nil {
@@ -254,24 +177,7 @@ func (e *Extension) dispatchAutocomplete(ctx Context, raw json.RawMessage) (any,
 	}
 	switch request.Operation {
 	case "getSuggestions":
-		if ctx.requestID != "" {
-			settle := &autocompleteSettle{announce: func() {
-				_ = e.conn.notify("ui.autocomplete.pending", map[string]string{"requestId": ctx.requestID})
-			}}
-			registry.mu.Lock()
-			if registry.suggests == nil {
-				registry.suggests = make(map[string]*autocompleteSettle)
-			}
-			registry.suggests[ctx.requestID] = settle
-			registry.mu.Unlock()
-			defer func() {
-				settle.finish()
-				registry.mu.Lock()
-				delete(registry.suggests, ctx.requestID)
-				registry.mu.Unlock()
-			}()
-			settle.arm()
-		}
+		// a blocking provider is settled when it returns, as a synchronous Pi provider holds the loop until it returns; this SDK never sends ui.autocomplete.pending (only the async Node runtime does).
 		return provider.GetSuggestions(ctx, request.Lines, request.CursorLine, request.CursorCol, request.Force)
 	case "applyCompletion":
 		return provider.ApplyCompletion(ctx, request.Lines, request.CursorLine, request.CursorCol, request.Item, request.Prefix)

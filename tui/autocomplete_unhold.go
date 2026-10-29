@@ -2,7 +2,7 @@ package tui
 
 import "context"
 
-// pig divergence (D213): the host holds the terminal read that follows a request whose provider chain may settle in Pi's microtask
+// the host holds the terminal read that follows a request whose provider chain may settle in Pi's microtask
 // checkpoint (editor.ts startAutocompleteRequest runs in the Promise jobs after the read; a provider that needs no I/O has opened its
 // menu before the next read). A chain that leaves the checkpoint, because it awaits real I/O, calls AutocompleteAwaitsIO on the
 // context the editor gave the request, and the host lets the input go on, as Pi's event loop does.

@@ -2,6 +2,7 @@ package codingagent
 
 import (
 	"context"
+	"sync"
 	"testing"
 	"time"
 
@@ -91,33 +92,42 @@ func TestEnterInTheReadAfterTheTextSubmitsWhileAnExtensionProviderAwaitsIO(t *te
 	}
 }
 
-// A runtime that neither answers nor announces anything must not freeze input: the hold ends at autocompleteHoldBound, the Enter
-// submits, and while that request is still overdue no later request holds input.
-func TestAnExtensionProviderThatNeverAnswersHoldsInputOnlyForTheBound(t *testing.T) {
-	old := autocompleteHoldBound
-	autocompleteHoldBound = 50 * time.Millisecond
-	t.Cleanup(func() { autocompleteHoldBound = old })
+// A synchronous provider that blocks has not settled when the next read arrives, and Pi's own loop is blocked with it: the Enter of the next
+// read waits for the provider to return, then accepts the menu it opened.
+func TestEnterWaitsForAnExtensionProviderThatBlocksUntilItReturns(t *testing.T) {
 	release := make(chan struct{})
-	t.Cleanup(func() { close(release) })
+	var once sync.Once
+	unblock := func() { once.Do(func() { close(release) }) }
+	t.Cleanup(unblock)
 	m, submitted, ctx := extensionCompletionMode(t, func(_ context.Context, current *extension.AutocompleteProvider) (*extension.AutocompleteProvider, error) {
-		return &extension.AutocompleteProvider{GetSuggestions: func(ctx context.Context, _ []string, _, _ int, _ bool) (*extension.AutocompleteSuggestions, error) {
-			select {
-			case <-release:
-			case <-ctx.Done():
-			}
-			return nil, ctx.Err()
+		return &extension.AutocompleteProvider{GetSuggestions: func(ctx context.Context, lines []string, line, col int, force bool) (*extension.AutocompleteSuggestions, error) {
+			<-release
+			return current.GetSuggestions(ctx, lines, line, col, force)
 		}, ApplyCompletion: current.ApplyCompletion}, nil
 	})
 	const text = "/model capture/model-two"
 	dispatchRead(t, ctx, m, splitKeys(text)...)
 	dispatchRead(t, ctx, m, "\r")
-	pumpOwnerUntil(t, m, "the Enter submit after the bound", func() bool { return len(*submitted) > 0 })
-	if !m.autocompleteOverdue.Load() {
-		t.Fatal("the request that outlived the bound did not mark the chain overdue")
+	deadline := time.Now().Add(150 * time.Millisecond)
+	for time.Now().Before(deadline) {
+		select {
+		case fn := <-m.uiTaskCh:
+			fn()
+		case <-time.After(10 * time.Millisecond):
+		}
 	}
-	dispatchRead(t, ctx, m, splitKeys(text)...)
-	if pending := m.autocompletePending; pending != nil && !closedChannel(pending) {
-		t.Fatal("a request behind an overdue one holds input")
+	if len(*submitted) != 0 || m.editor.Text() != text {
+		t.Fatalf("the Enter was handled while the provider still blocked: submitted %q, editor %q", *submitted, m.editor.Text())
+	}
+	unblock()
+	seenOpen := false
+	pumpOwnerUntil(t, m, "the menu open and the Enter accept it", func() bool {
+		seenOpen = seenOpen || m.editor.AutocompleteOpen()
+		return len(*submitted) > 0 || (seenOpen && !m.editor.AutocompleteOpen())
+	})
+	drainAutocompleteWork(t, m)
+	if len(*submitted) != 0 || m.editor.Text() != text {
+		t.Fatalf("after the provider returned: submitted %q, editor %q, want the suggestion accepted", *submitted, m.editor.Text())
 	}
 }
 

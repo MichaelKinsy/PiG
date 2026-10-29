@@ -78,12 +78,16 @@ func (b *UIBridge) handleAutocompleteInvoke(ctx context.Context, owner *Conn, pa
 	if !ok || ref.owner != owner {
 		return nil, errors.New("autocomplete provider is no longer available")
 	}
-	// A captured provider the wrapper chain of an editor request calls shares that request's input hold (D213): when the base provider waits on
+	// A captured provider the wrapper chain of an editor request calls shares that request's input hold: when the base provider waits on
 	// real I/O, the chain has left Pi's microtask checkpoint, and it is the host that knows.
-	if parentRequestID != "" {
-		if unhold := owner.autocompleteUnhold(parentRequestID); unhold != nil {
-			ctx = tui.WithAutocompleteUnhold(ctx, unhold)
-		}
+	unhold := owner.autocompleteUnhold(parentRequestID)
+	if unhold == nil && request.SuggestRequestID != "" {
+		b.mu.RLock()
+		unhold = b.autocompleteSuggests[request.SuggestRequestID]
+		b.mu.RUnlock()
+	}
+	if unhold != nil {
+		ctx = tui.WithAutocompleteUnhold(ctx, unhold)
 	}
 	// A captured provider can call a preceding subprocess provider which can itself make host calls.
 	if request.QueryID != "" {
@@ -170,12 +174,24 @@ func (b *UIBridge) handleAddAutocompleteProvider(ctx context.Context, name strin
 		provider := &extension.AutocompleteProvider{TriggerCharacters: desc.TriggerCharacters}
 		provider.GetSuggestions = func(ctx context.Context, lines []string, line, col int, force bool) (*extension.AutocompleteSuggestions, error) {
 			var result *extension.AutocompleteSuggestions
-			// pig divergence (D213): an editor request holds the host's input until its chain settles or announces that it awaits I/O; the runtime's
+			// An editor request holds the host's input until its chain settles or announces that it awaits I/O; the runtime's
 			// ui.autocomplete.pending notice names this request by its id, which the request's nested calls also name as their parent.
+			// pig divergence (D213): the request fails when the runtime's connection ends, which releases the hold; Pi's extensions share its process.
 			var requestID string
 			if unhold := tui.AutocompleteUnhold(ctx); unhold != nil {
-				requestID = owner.newRequestID()
+				requestID = "ac-" + rand.Text()
 				defer owner.watchAutocomplete(requestID, unhold)()
+				b.mu.Lock()
+				if b.autocompleteSuggests == nil {
+					b.autocompleteSuggests = make(map[string]func())
+				}
+				b.autocompleteSuggests[requestID] = unhold
+				b.mu.Unlock()
+				defer func() {
+					b.mu.Lock()
+					delete(b.autocompleteSuggests, requestID)
+					b.mu.Unlock()
+				}()
 			}
 			err := lease.requestWithID(ctx, requestID, "autocomplete.suggest", autocompleteInvocation{Operation: "getSuggestions", Lines: lines, CursorLine: line, CursorCol: col, Force: force}, &result)
 			return result, err

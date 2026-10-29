@@ -19,59 +19,6 @@ class AutocompleteProvider(Protocol):
     def apply_completion(self, ctx: Context, lines: list[str], cursor_line: int, cursor_col: int, item: dict[str, Any], prefix: str) -> dict[str, Any]: ...
 
 
-# pig divergence (D213): how long a provider that blocks its thread may run, outside a call to the host, before the host is told that it awaits real I/O
-# (the ui.autocomplete.pending notice, D213). Pi's microtask checkpoint has no duration; a blocking provider has no event loop to end it.
-AUTOCOMPLETE_CHECKPOINT = 0.05
-
-
-class _Settle:
-    """One getSuggestions request being served: it awaits real I/O when it made no progress for a checkpoint, unfinished and outside a host call."""
-
-    def __init__(self, announce):
-        self._announce = announce
-        self._lock = threading.Lock()
-        self._host_calls = 0
-        self._epoch = 0
-        self._done = False
-        self._announced = False
-        self._timer = None
-
-    def arm(self):
-        with self._lock:
-            if self._done or self._announced:
-                return
-            self._epoch += 1
-            epoch = self._epoch
-            if self._timer is not None:
-                self._timer.cancel()
-            self._timer = threading.Timer(AUTOCOMPLETE_CHECKPOINT, self._fire, args=(epoch,))
-            self._timer.daemon = True
-            self._timer.start()
-
-    def _fire(self, epoch):
-        with self._lock:
-            announce = not self._done and not self._announced and self._host_calls == 0 and self._epoch == epoch
-            if announce:
-                self._announced = True
-        if announce:
-            self._announce()
-
-    def host_call_started(self):
-        with self._lock:
-            self._host_calls += 1
-
-    def host_call_ended(self):
-        with self._lock:
-            self._host_calls -= 1
-        self.arm()
-
-    def finish(self):
-        with self._lock:
-            self._done = True
-            if self._timer is not None:
-                self._timer.cancel()
-
-
 AutocompleteProviderFactory = Callable[["Context", AutocompleteProvider], AutocompleteProvider]
 
 
@@ -95,14 +42,7 @@ class _CurrentProvider:
     def _invoke(self, ctx, operation, lines, line, col, **args):
         if ctx.is_cancelled():
             raise RuntimeError("autocomplete cancelled")
-        settle = ctx.extension._autocomplete.settle_of(ctx.request_id) if operation == "getSuggestions" else None
-        if settle is not None:
-            settle.host_call_started()
-        try:
-            return ctx._call("ui.autocomplete.invoke", {"id": self._id, "operation": operation, "lines": lines, "cursorLine": line, "cursorCol": col, **args}).get("result")
-        finally:
-            if settle is not None:
-                settle.host_call_ended()
+        return ctx._call("ui.autocomplete.invoke", {"id": self._id, "operation": operation, "lines": lines, "cursorLine": line, "cursorCol": col, **args}).get("result")
 
     def get_suggestions(self, ctx, lines, cursor_line, cursor_col, force=False):
         return self._invoke(ctx, "getSuggestions", lines, cursor_line, cursor_col, force=force)
@@ -117,13 +57,6 @@ class _AutocompleteRegistry:
         self._factories = {}
         self._invoked = set()
         self._providers = {}
-        self._suggests = {}
-
-    def settle_of(self, request_id):
-        if not request_id:
-            return None
-        with self._lock:
-            return self._suggests.get(request_id)
 
     def add(self, ctx, factory):
         if not ctx.has_ui():
@@ -156,20 +89,9 @@ class _AutocompleteRegistry:
         with self._lock:
             provider = self._providers[args["id"]]
         values = (ctx, args["lines"], args["cursorLine"], args["cursorCol"])
+        # a blocking provider is settled when it returns, as a synchronous Pi provider holds the loop until it returns; this SDK never sends ui.autocomplete.pending (only the async Node runtime does).
         if operation == "getSuggestions":
-            request_id = ctx.request_id
-            if not request_id:
-                return provider.get_suggestions(*values, bool(args.get("force")))
-            settle = _Settle(lambda: ctx.extension._notify("ui.autocomplete.pending", {"requestId": request_id}))
-            with self._lock:
-                self._suggests[request_id] = settle
-            settle.arm()
-            try:
-                return provider.get_suggestions(*values, bool(args.get("force")))
-            finally:
-                settle.finish()
-                with self._lock:
-                    self._suggests.pop(request_id, None)
+            return provider.get_suggestions(*values, bool(args.get("force")))
         if operation == "applyCompletion":
             return provider.apply_completion(*values, args["item"], args["prefix"])
         if operation == "shouldTriggerFileCompletion":

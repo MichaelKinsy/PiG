@@ -9,9 +9,9 @@ const currentLeases = new FinalizationRegistry(({ owner, id }) => {
   try { runtime.notify("ui.autocomplete.release", { id }); } catch { /* Connection close releases its captured providers. */ }
 });
 
-// pig divergence (D213): the request a provider chain is serving. Pi's editor awaits the chain in the Promise jobs after the terminal read (editor.ts
+// the request a provider chain is serving. Pi's editor awaits the chain in the Promise jobs after the terminal read (editor.ts
 // startAutocompleteRequest), so a chain that settles in that microtask checkpoint has opened its menu before the next read. The host holds
-// the next read for such a chain and lets go when the runtime reports that the chain left the checkpoint (D213): at the end of this
+// the next read for such a chain and lets go when the runtime reports that the chain left the checkpoint: at the end of this
 // runtime's macrotask the chain is neither settled nor waiting for the host's answer to a captured provider's call. The store is shared by the
 // members of a packed cell, whose providers call each other directly.
 const settling = new AsyncLocalStorage();
@@ -51,7 +51,7 @@ export class AutocompleteRuntime {
         options.signal.addEventListener("abort", abort, { once: true });
         const request = settling.getStore();
         if (request) request.hostCalls++;
-        try { return await invoke("getSuggestions", { queryId, lines, cursorLine, cursorCol, force: options.force ?? false }, false); }
+        try { return await invoke("getSuggestions", { queryId, lines, cursorLine, cursorCol, force: options.force ?? false, ...(request ? { suggestRequestId: request.id } : {}) }, false); }
         catch (error) { if (options.signal.aborted) return null; throw error; }
         finally {
           options.signal.removeEventListener("abort", abort);
@@ -92,6 +92,7 @@ export class AutocompleteRuntime {
     if (!provider) throw new Error("Autocomplete provider is no longer available");
     signal.throwIfAborted();
     const request = {
+      id: requestId,
       hostCalls: 0,
       settled: false,
       announced: false,
