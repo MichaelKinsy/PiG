@@ -39,7 +39,7 @@ func getExtensionChangelogUpdates(sm *SettingsManager, sourceInfos []PiSourceInf
 		if sourceInfo.Origin != "package" || sourceInfo.BaseDir == "" || sourceInfo.ChangelogPath == "" {
 			continue
 		}
-		key := source.GetSourcePackageKey(sourceInfo.Source, source.SourceScope(sourceInfo.Scope))
+		key := source.GetSourcePackageKey(sourceInfo.Source, sourceInfo.Scope)
 		if _, seen := seenKeys[key]; seen {
 			continue
 		}

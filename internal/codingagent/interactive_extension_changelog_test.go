@@ -65,7 +65,7 @@ func TestExtensionChangelogUpdatesUpstream(t *testing.T) {
 		return getExtensionChangelogUpdates(sm, []PiSourceInfo{info, second}, hasMessages)
 	}
 	recorded := func(sm *SettingsManager, info PiSourceInfo) (string, bool) {
-		return sm.GetExtensionChangelogVersion(source.GetSourcePackageKey(info.Source, source.SourceScope(info.Scope)))
+		return sm.GetExtensionChangelogVersion(source.GetSourcePackageKey(info.Source, info.Scope))
 	}
 
 	t.Run("records the version on first launch without showing the changelog", func(t *testing.T) {
