@@ -464,6 +464,7 @@ func runProdreach(root string) ([]byte, error) {
 	for _, l := range reachLibraries {
 		args = append(args, "-library", l)
 	}
+	//nolint:gosec // G204 (class a): program is literal go; args are "run ./test/parity/cmd/prodreach -out <temp>" plus reachTags/reachLibraries/reachPatterns package-level constants.
 	cmd := exec.Command("go", append(args, reachPatterns...)...)
 	cmd.Dir = root
 	cmd.Stderr = os.Stderr

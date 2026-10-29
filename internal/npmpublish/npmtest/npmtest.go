@@ -45,6 +45,7 @@ func Install(t testing.TB) *Fake {
 	if err := os.WriteFile(main, source, 0o644); err != nil {
 		t.Fatal(err)
 	}
+	//nolint:gosec // G204 (class a): program is literal go; args are a fixed build with -o into a t.TempDir and the generated main.go path.
 	build := exec.Command("go", "build", "-o", filepath.Join(bin, name), main)
 	build.Dir = bin
 	build.Env = append(os.Environ(), "GOWORK=off", "GOFLAGS=", "GO111MODULE=off", "CGO_ENABLED=0")

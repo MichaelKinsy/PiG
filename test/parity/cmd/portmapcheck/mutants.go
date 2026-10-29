@@ -72,6 +72,7 @@ func killed(root string, res result, mu mutant) bool {
 	}
 	for d, names := range byDir {
 		slices.Sort(names)
+		//nolint:gosec // G204 (class a): program is literal go; args are a temp -overlay file, -run regex built from tool-generated test names, and "./"+dir.
 		cmd := exec.Command("go", "test", "-count=1", "-overlay="+overlayFile, "-run", "^("+strings.Join(names, "|")+")$", "./"+d)
 		cmd.Dir = root
 		cmd.Env = evidenceEnv(dir)

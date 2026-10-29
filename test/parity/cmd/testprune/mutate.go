@@ -127,6 +127,7 @@ func listGoFiles(root, pkg, tags string) ([]string, error) {
 	if tags != "" {
 		args = append(args, "-tags="+tags)
 	}
+	//nolint:gosec // G204 (class a): program is literal go; args are fixed list flags plus -tags, with -pkg (operator flag) as the last positional and no `--`.
 	cmd := exec.Command("go", append(args, pkg)...)
 	cmd.Dir = root
 	out, err := cmd.Output()
@@ -310,6 +311,7 @@ func runMutantBinary(root, pkg, bin, skip string, timeout time.Duration) error {
 	if skip != "" {
 		testArgs = append(testArgs, "-test.skip="+skip)
 	}
+	//nolint:gosec // G204 (class b): runs bin, the test binary built earlier in the same function from the repo; args are -test.failfast/-test.timeout/-test.skip.
 	cmd := exec.Command(bin, testArgs...)
 	cmd.Dir = filepath.Join(root, strings.TrimPrefix(pkg, "./"))
 	cmd.Env = testEnv(home)
@@ -377,6 +379,7 @@ var compileErrorRE = regexp.MustCompile(`\.go:\d+:\d+: `)
 // transient failure never silently drops a mutant from the sample.
 func buildMutant(root, pkg string, build []string) (invalid bool, err error) {
 	for attempt := range 3 {
+		//nolint:gosec // G204 (class a): program is literal go; args are the -overlay temp file, -tags, and the pkg operator flag as a positional with no `--`.
 		cmd := exec.Command("go", append(build, pkg)...)
 		cmd.Dir = root
 		var buf bytes.Buffer

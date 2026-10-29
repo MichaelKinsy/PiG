@@ -1001,6 +1001,7 @@ func writeArtifactList(dir string) error {
 
 // output runs a command in dir with extra environment and returns its trimmed stdout; a failure carries its stderr.
 func output(ctx context.Context, dir string, env []string, name string, args ...string) (string, error) {
+	//nolint:gosec // G204 (class a): generic output helper whose names are literals from its callers (git, go, npm, node, sh, goBuildSteps step[0]), and the TinyGo path that exec.LookPath resolves.
 	cmd := exec.CommandContext(ctx, name, args...)
 	cmd.Dir = dir
 	if env != nil {

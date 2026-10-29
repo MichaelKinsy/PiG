@@ -28,6 +28,7 @@ func exportsOf(paths []string) (map[string]string, error) {
 			return nil, err
 		}
 		args := append([]string{"list", "-export", "-deps", "-f", "{{.ImportPath}}={{.Export}}"}, paths...)
+		//nolint:gosec // G204 (class b): program is goTool from exec.LookPath("go"); args are fixed list -export -deps -f plus import paths from the caller.
 		out, err := exec.Command(goTool, args...).Output()
 		if err != nil {
 			return nil, fmt.Errorf("go list -export: %w", err)
