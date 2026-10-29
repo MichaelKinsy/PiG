@@ -196,7 +196,7 @@ The IntelliJ terminal cannot tell `Shift+Enter` from `Enter`. Use `Ctrl+J` for a
 
 ### herdr
 
-PiG reports its state to [herdr](https://herdr.dev) as its own agent, through herdr's [third-party agent path](https://herdr.dev/docs/add-herdr-support/). Pigpen's herdr extension reports with `pane report-agent` under the source `custom:pig` and the agent `pig`. It includes the session's path and id, so herdr can resume a PiG session, and it releases the pane when PiG quits. Install it from Pigpen, or use the `herdr` or `pig-with-batteries` Piglet.
+PiG reports its state to [herdr](https://herdr.dev) as its own agent, through herdr's [third-party agent path](https://herdr.dev/docs/add-herdr-support/). Pigpen's herdr extension reports with `pane.report_agent` under the source `pig` and the agent `pig`. It includes the session's path and id, so herdr can resume a PiG session, and it releases the pane when PiG quits. Install it from Pigpen, or use the `herdr` or `pig-with-batteries` Piglet.
 
 herdr's built-in Pi integration (`herdr integration install pi`) is a different thing. It also runs in PiG, and herdr acknowledges every report it sends, but herdr keeps those reports only for a pane whose foreground process is named `pi`. PiG's executable is named `pig`, so herdr discards them and lists no agent.
 
