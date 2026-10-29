@@ -27,6 +27,8 @@ type tuiAltCaps struct {
 	Mouse           bool `json:"mouse"`
 	Focusable       bool `json:"focusable"`
 	WantsKeyRelease bool `json:"wantsKeyRelease"`
+	// CapturesViewportInput reports that the component has Component.capturesViewportInput; its value is read with a callback each time the screen asks.
+	CapturesViewportInput bool `json:"capturesViewportInput"`
 }
 
 type tuiAltTerminalBlock struct {
@@ -294,6 +296,21 @@ func (c *tuiAltComponent) HandleInput(data string) {
 }
 
 func (c *tuiAltComponent) WantsKeyRelease() bool { return c.caps.WantsKeyRelease }
+
+// CapturesViewportInput is the component's current capturesViewportInput (Component.capturesViewportInput in packages/tui/src/tui.ts), which the
+// screen reads whenever a viewport key arrives: the extension answers a callback with the value it holds now.
+func (c *tuiAltComponent) CapturesViewportInput() bool {
+	if !c.caps.CapturesViewportInput {
+		return false
+	}
+	var result struct {
+		Captures bool `json:"captures"`
+	}
+	if err := c.state.callback("capturesViewportInput", map[string]any{"key": c.key}, &result); err != nil {
+		return false
+	}
+	return result.Captures
+}
 
 func (c *tuiAltComponent) SetFocused(focused bool) {
 	if c.caps.Focusable {

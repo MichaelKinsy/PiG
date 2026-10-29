@@ -39,6 +39,8 @@ type editorRemoteState struct {
 	frame           []string
 	frameWidth      int
 	wantsKeyRelease bool
+	// capturesViewportInput is the remote component's capturesViewportInput as its latest frame reported it.
+	capturesViewportInput bool
 	// expanded is the component's getExpandedText for the mirrored text.
 	expanded        string
 	expandedFor     string
@@ -186,6 +188,13 @@ func (e *Editor) SetRemoteFrame(lines []string, width int, wantsKeyRelease bool)
 	e.remote.frameWidth = width
 	e.remote.wantsKeyRelease = wantsKeyRelease
 	e.Invalidate()
+}
+
+// SetRemoteCapturesViewportInput records the remote component's capturesViewportInput (Component.capturesViewportInput) for the frame that follows.
+func (e *Editor) SetRemoteCapturesViewportInput(captures bool) {
+	if e.remote != nil {
+		e.remote.capturesViewportInput = captures
+	}
 }
 
 // ApplyRemoteChange mirrors the remote's text (its onChange) and the same

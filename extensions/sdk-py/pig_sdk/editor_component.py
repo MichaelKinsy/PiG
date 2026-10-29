@@ -18,6 +18,8 @@ import queue
 import threading
 from typing import TYPE_CHECKING, Any, Callable
 
+from .tui_alt_screen import captures_viewport_input
+
 if TYPE_CHECKING:
     from . import Extension
     from .kit import Autocomplete
@@ -207,7 +209,10 @@ class EditorBase:
 
 
 class EditorComponent:
-    """The editor an extension installs with ``set_editor_component``. Every method defaults to the host's default editor through :attr:`base`."""
+    """The editor an extension installs with ``set_editor_component``. Every method defaults to the host's default editor through :attr:`base`.
+
+    Optional ``captures_viewport_input`` (a bool attribute, property or method; Pi's ``capturesViewportInput``): ``ui.editor.render``
+    carries ``capturesViewportInput: true`` while it is true, and a change alone sends a frame."""
 
     #: Whether the component draws the working, compaction, summarization and retry status in its top border, as Pi's
     #: CustomEditor does with ``embedWorkingStatus: true``. The host then renders the status into the rows that
@@ -257,7 +262,7 @@ class _EditorSession:
         self.factory = factory
         self.component: EditorComponent | None = None
         self.events: "queue.Queue[Any]" = queue.Queue()
-        self.last_frame: tuple[int, list[str]] | None = None
+        self.last_frame: tuple[int, list[str], bool] | None = None
         self.seq = 0
         # The working status the component was last told, and whether it was told one.
         self.last_status: EditorStatus | None = None
@@ -304,11 +309,15 @@ class _EditorSession:
         lines = self._guard("render", lambda: [str(line) for line in self.component.render(width)])
         if lines is None:
             return
-        if self.last_frame == (width, lines):
+        captures = captures_viewport_input(self.component)
+        if self.last_frame == (width, lines, captures):
             return
-        self.last_frame = (width, lines)
+        self.last_frame = (width, lines, captures)
         self.seq += 1
-        self.extension._notify("ui.editor.render", {"key": self.key, "lines": lines, "width": width, "seq": self.seq})
+        args: dict[str, Any] = {"key": self.key, "lines": lines, "width": width, "seq": self.seq}
+        if captures:
+            args["capturesViewportInput"] = True
+        self.extension._notify("ui.editor.render", args)
 
     def _run(self) -> None:
         component = self.component

@@ -72,6 +72,9 @@ type TuiFocusable interface{ SetFocused(focused bool) }
 // TuiKeyReleaseWanter is a component's optional wantsKeyRelease.
 type TuiKeyReleaseWanter interface{ WantsKeyRelease() bool }
 
+// The optional capturesViewportInput of a tui.alt component is [ViewportInputCapturer]; the host reads its value through a callback each time
+// the screen asks.
+
 // TuiMouseResult is pi-tui's TuiMouseEventResult. A nil field is absent.
 type TuiMouseResult struct {
 	Handled *bool `json:"handled,omitempty"`
@@ -312,7 +315,7 @@ func (s *TuiAltScreen) componentFields(component Component) (map[string]any, err
 		s.byKey[key] = component
 	}
 	s.mu.Unlock()
-	caps := map[string]any{"input": false, "mouse": false, "focusable": false, "wantsKeyRelease": false}
+	caps := map[string]any{"input": false, "mouse": false, "focusable": false, "wantsKeyRelease": false, "capturesViewportInput": false}
 	if _, ok := component.(TuiInputHandler); ok {
 		caps["input"] = true
 	}
@@ -321,6 +324,9 @@ func (s *TuiAltScreen) componentFields(component Component) (map[string]any, err
 	}
 	if _, ok := component.(TuiFocusable); ok {
 		caps["focusable"] = true
+	}
+	if _, ok := component.(ViewportInputCapturer); ok {
+		caps["capturesViewportInput"] = true
 	}
 	if w, ok := component.(TuiKeyReleaseWanter); ok {
 		caps["wantsKeyRelease"] = w.WantsKeyRelease()
@@ -932,6 +938,12 @@ func (e *Extension) dispatchTuiAlt(ctx Context, raw json.RawMessage) (any, error
 			f.SetFocused(request.Focused)
 		}
 		return empty, nil
+	case "capturesViewportInput":
+		c, err := component()
+		if err != nil {
+			return nil, err
+		}
+		return map[string]any{"captures": capturesViewportInput(c)}, nil
 	case "invalidate":
 		c, err := component()
 		if err != nil {

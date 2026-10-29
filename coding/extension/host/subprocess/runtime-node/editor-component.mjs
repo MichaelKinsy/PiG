@@ -88,6 +88,7 @@ export class EditorComponentHost {
       lastLines: undefined,
       lastWidth: 0,
       lastWantsKeyRelease: false,
+      lastCapturesViewportInput: false,
       renderRequested: false,
       renderTimer: undefined,
       lastRenderAt: Number.NEGATIVE_INFINITY,
@@ -282,15 +283,17 @@ export class EditorComponentHost {
     }
     const out = Array.isArray(lines) ? lines.map((line) => String(line)) : [];
     const wantsKeyRelease = session.component.wantsKeyRelease === true;
-    if (width === session.lastWidth && wantsKeyRelease === session.lastWantsKeyRelease && session.lastLines &&
+    const capturesViewportInput = session.component.capturesViewportInput === true;
+    if (width === session.lastWidth && wantsKeyRelease === session.lastWantsKeyRelease && capturesViewportInput === session.lastCapturesViewportInput && session.lastLines &&
         out.length === session.lastLines.length && out.every((line, i) => line === session.lastLines[i])) {
       return;
     }
     session.lastLines = out;
     session.lastWidth = width;
     session.lastWantsKeyRelease = wantsKeyRelease;
+    session.lastCapturesViewportInput = capturesViewportInput;
     session.frameSeq += 1;
-    runtime.notify("ui.editor.render", { key: session.key, lines: out, width, seq: session.frameSeq, wantsKeyRelease });
+    runtime.notify("ui.editor.render", { key: session.key, lines: out, width, seq: session.frameSeq, wantsKeyRelease, ...(capturesViewportInput ? { capturesViewportInput: true } : {}) });
   }
 
   // run calls one editor method for the host and renders the result, as Pi's

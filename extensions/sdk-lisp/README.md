@@ -38,14 +38,14 @@ class: `session-` / `sm-` SessionManager, `settings-` SettingsManager, `registry
 |---|---|
 | registration, events, tool results, tool options (exposure, loadout, prepare/refine arguments, constrained sampling, renderers), commands, flags | `extension`, `context`, `context-extra`, `dispatch`, `tool-schema`, `tool-order` |
 | the context: UI dialogs, status, widgets, footer/header, theme, working indicator, exec (with a signal), compact, session and model controls, nested tool calls | `context`, `context-extra`, `widgets`, `theme` |
-| component kit, `ui.custom`, overlays, mouse | `kit`, `ui-custom`, `overlay` |
-| editor components, autocomplete providers, terminal input | `editor-component`, `autocomplete`, `terminal-input` |
-| the alternate-screen TUI: `TuiAltScreen` (`make-tui-alt-screen`, `tui-alt-screen-*`), the `tui-terminal` and `tui-component` it draws on and shows, `tui-alt-overlay-*` handles | `tui-alt-screen` |
+| component kit, `ui.custom`, overlays, mouse (`make-custom-component` takes `:captures-viewport-input`, a boolean or a function of no arguments read at each frame) | `kit`, `ui-custom`, `overlay` |
+| editor components (`make-editor-component` takes `:captures-viewport-input`), autocomplete providers, terminal input | `editor-component`, `autocomplete`, `terminal-input` |
+| the alternate-screen TUI: `TuiAltScreen` (`make-tui-alt-screen`, `tui-alt-screen-*`), the `tui-terminal` and `tui-component` it draws on and shows (`:captures-viewport-input`, answered live to the host's `capturesViewportInput` callback), `tui-alt-overlay-*` handles | `tui-alt-screen` |
 | providers (config, native `Provider` objects, remote proxies), OAuth, login, sprites, message/entry/tool renderers, markdown transformer, virtual models, MCP servers | `provider`, `oauth`, `renderer`, `virtual-model`, `mcp` |
 | model calls: `modelStream`, `complete`, `classify`, `generateImages`, `ModelRegistry`, event streams, fetch transport | `model-stream`, `model-types`, `event-stream` |
 | session replacement (`new-session`, `fork`, `navigate-tree`, `switch-session`), child agent sessions, `createAgentSessionRuntime`, services | `session-ops`, `child-session`, `agent-runtime` |
 | session graph: SessionManager, SettingsManager, resource loader, package manager, project trust, host info, ModelRuntime, ExtensionRunner, extension factories, MCP options, the event bus, builtin tool delegation | `session-manager`, `settings-manager`, `resource-loader`, `package-manager`, `project-trust`, `host-info`, `model-runtime`, `create-provider`, `extension-runner`, `extension-factories`, `mcp-options`, `event-bus`, `builtin-tool` |
-| pure helpers: Type engine, pi-ai, pi-tui (width, keys, fuzzy, colors, keybindings, theme), compaction, truncation, conversation, frontmatter/diff/image/clipboard host calls | `type-engine`, `type-schema`, `pi-ai`, `tui-*`, `compaction`, `truncate`, `conversation`, `coding-helpers`, `host-helper` |
+| pure helpers: Type engine, pi-ai, pi-tui (width, keys, fuzzy, colors, keybindings incl. `tui-get-select-page-index`, theme), compaction, truncation, conversation, frontmatter/diff/image/clipboard host calls | `type-engine`, `type-schema`, `pi-ai`, `tui-*`, `compaction`, `truncate`, `conversation`, `coding-helpers`, `host-helper` |
 
 `ctx-call-host` stays the escape hatch for any wire method. A member the SDK does not serve signals `pig:unsupported-capability` naming the lane that owns
 it (the few that remain are the `gap:` cells shared with the other SDKs in `test/parity/sdk-exports.toml`).

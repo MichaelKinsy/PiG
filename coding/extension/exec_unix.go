@@ -17,6 +17,9 @@ func terminate(process *os.Process) (noExitCode bool) {
 	return false
 }
 
+// forceTerminate is proc.kill("SIGKILL"), which exec.ts sends execForceKillDelay after SIGTERM to a child that has not exited.
+func forceTerminate(process *os.Process) { _ = process.Signal(syscall.SIGKILL) }
+
 // A descendant can leave the child's process group (setsid) and still hold the output pipes, so no group tells Wait that none does; the pipes
 // themselves do (internal/childwait).
 func prepareChildGroup(*exec.Cmd)              {}

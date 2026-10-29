@@ -6,13 +6,20 @@
 
 (in-package #:pig)
 
+(defun capture-viewport-input-p (value)
+  "Read a component's CAPTURES-VIEWPORT-INPUT slot: a function of no arguments is called for the current answer, anything else is a generalized boolean."
+  (and (if (functionp value) (funcall value) value) t))
+
 (defstruct (custom-component
-            (:constructor make-custom-component (&key render view handle-input handle-view-event handle-mouse set-invalidate dispose on-focus)))
+            (:constructor make-custom-component
+                (&key render view handle-input handle-view-event handle-mouse set-invalidate dispose on-focus captures-viewport-input)))
   "A focused ui.custom component. RENDER is (lambda (width)) returning rows; VIEW is (lambda (width)) returning a kit view;
 HANDLE-INPUT is (lambda (data)); HANDLE-VIEW-EVENT is (lambda (kit-event)); HANDLE-MOUSE is (lambda (mouse-event)). Each returns a
 CUSTOM-RESULT, or NIL to stay open. SET-INVALIDATE is (lambda (callback)): the component calls CALLBACK, a function of no arguments, to
-ask for a render, and is called with NIL when it unmounts. DISPOSE runs after unmounting. ON-FOCUS is (lambda (focused-p))."
-  render view handle-input handle-view-event handle-mouse set-invalidate dispose on-focus)
+ask for a render, and is called with NIL when it unmounts. DISPOSE runs after unmounting. ON-FOCUS is (lambda (focused-p)).
+CAPTURES-VIEWPORT-INPUT (Pi's Component.capturesViewportInput) is a boolean or a function of no arguments returning one; it is read each time a frame is
+drawn and sent as capturesViewportInput when true, and a frame goes out when only it changed."
+  render view handle-input handle-view-event handle-mouse set-invalidate dispose on-focus captures-viewport-input)
 
 (defstruct (custom-result (:constructor make-custom-result (&key done value)))
   "What a component's handler returns: DONE closes the component, ctx-custom returning VALUE."
@@ -41,7 +48,7 @@ ask for a render, and is called with NIL when it unmounts. DISPOSE runs after un
 (defstruct (uc-ov (:constructor uc-make-ov (component render-width)))
   component
   render-width                          ; (lambda (terminal-width)) -> render width
-  (last-lines nil) (last-view nil) (seq 0)
+  (last-lines nil) (last-view nil) (last-captures nil) (seq 0)
   (lock (sb-thread:make-mutex :name "pig overlay"))
   (queue (sb-thread:make-waitqueue))
   (events '()) (active t) (render-pending nil) (last-render nil)
@@ -105,31 +112,35 @@ ask for a render, and is called with NIL when it unmounts. DISPOSE runs after un
 
 ;;; ---------------------------------------------------------------- rendering
 
-(defun uc-frame-args (ov args)
+(defun uc-frame-args (ov args captures)
   (when (custom-component-handle-mouse (uc-ov-component ov)) (setf (gethash "mouse" args) t))
+  (when captures (setf (gethash "capturesViewportInput" args) t))
+  (setf (uc-ov-last-captures ov) captures)
   args)
 
 (defun uc-render (ext key ov)
   (let* ((c (uc-ov-component ov))
-         (width (sb-thread:with-mutex ((extension-state-lock ext)) (extension-width ext))))
+         (width (sb-thread:with-mutex ((extension-state-lock ext)) (extension-width ext)))
+         (captures (capture-viewport-input-p (custom-component-captures-viewport-input c)))
+         (captures-changed (not (eq captures (uc-ov-last-captures ov)))))
     (setf (uc-ov-last-render ov) (get-internal-real-time))
     (if (custom-component-view c)
         (let* ((encoded (kit-encode ext (funcall (custom-component-view c) width)))
                (json (to-json (kit-encoded-body encoded)))
                (force (sb-thread:with-mutex ((uc-ov-lock ov)) (prog1 (uc-ov-force-view ov) (setf (uc-ov-force-view ov) nil)))))
-          (unless (and (not force) (uc-ov-last-view ov) (equal (car (uc-ov-last-view ov)) json) (eql (cdr (uc-ov-last-view ov)) width)
-                       (not (kit-has-unsent ext encoded)))
+          (unless (and (not force) (not captures-changed) (uc-ov-last-view ov) (equal (car (uc-ov-last-view ov)) json)
+                       (eql (cdr (uc-ov-last-view ov)) width) (not (kit-has-unsent ext encoded)))
             (setf (uc-ov-last-view ov) (cons json width))
             (sb-thread:with-mutex ((uc-ov-lock ov)) (setf (uc-ov-view-refs ov) (kit-encoded-refs encoded)))
             (incf (uc-ov-seq ov))
             (notify-host ext "ui.custom.render"
-                         (uc-frame-args ov (obj "key" key "view" (kit-wire ext encoded) "width" width "seq" (uc-ov-seq ov))))))
+                         (uc-frame-args ov (obj "key" key "view" (kit-wire ext encoded) "width" width "seq" (uc-ov-seq ov)) captures))))
         (let ((lines (map 'list #'princ-to-string (funcall (custom-component-render c) (funcall (uc-ov-render-width ov) width)))))
-          (unless (equal lines (uc-ov-last-lines ov))
+          (unless (and (not captures-changed) (equal lines (uc-ov-last-lines ov)))
             (setf (uc-ov-last-lines ov) lines)
             (incf (uc-ov-seq ov))
             (notify-host ext "ui.custom.render"
-                         (uc-frame-args ov (obj "key" key "lines" (coerce lines 'simple-vector) "width" width "seq" (uc-ov-seq ov)))))))))
+                         (uc-frame-args ov (obj "key" key "lines" (coerce lines 'simple-vector) "width" width "seq" (uc-ov-seq ov)) captures)))))))
 
 (defun kit-resend-overlays (ext refs)
   "Render again, bypassing the dedup, every view component whose last frame names an evicted image."
