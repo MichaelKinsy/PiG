@@ -1,6 +1,7 @@
 package store
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"sync"
@@ -49,6 +50,8 @@ type OutboxCommit struct {
 // through, so the element is kept as it was parsed. Its kind is its `kind` member when it has a string one.
 type UnknownWrite struct {
 	Value delta.JsonValue
+	// Panic is what decoding the element as a typed write panicked with, nil when it only did not decode to the same JSON.
+	Panic any
 }
 
 // StoreWriteKind is the `kind` member of the element, "" when it has none.
@@ -198,8 +201,8 @@ func parseRecordedWrites(text string) (raw delta.JsonValue, writes []StoreWrite,
 // (see parseRecordedWrites).
 func typedWrite(item delta.JsonValue) (write StoreWrite) {
 	defer func() {
-		if recover() != nil {
-			write = &UnknownWrite{Value: item}
+		if reason := recover(); reason != nil {
+			write = &UnknownWrite{Value: item, Panic: reason}
 		}
 	}()
 	if object, ok := item.(*delta.JsonObject); ok {
@@ -217,7 +220,7 @@ func sameJSON(a, b any) bool {
 		return false
 	}
 	second, err := jsstring.MarshalJSON(b)
-	return err == nil && string(first) == string(second)
+	return err == nil && bytes.Equal(first, second)
 }
 
 func (outbox *Outbox) trim(throughSeq int64) error {
