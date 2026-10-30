@@ -311,7 +311,9 @@ func pnmCorpus() []formatCase {
 	b.add("pam-empty-height", pam("WIDTH 2\nHEIGHT 0\nDEPTH 1\nMAXVAL 255\nTUPLTYPE GRAYSCALE\nENDHDR\n", nil))
 
 	// Header tokens of P1 to P6: whitespace, comments and signs.
-	hdr := func(magic string, header string, raster []byte) []byte { return append([]byte(magic+header), raster...) }
+	hdr := func(magic string, header string, raster []byte) []byte {
+		return append([]byte(magic+header), raster...)
+	}
 	px := []byte{9, 8, 7, 6}
 	for name, header := range map[string]string{
 		"plain":                 "\n2 2\n255\n",
