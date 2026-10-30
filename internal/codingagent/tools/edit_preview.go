@@ -8,6 +8,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/internal/nodefs"
 	"github.com/MichaelKinsy/PiG/internal/text"
+	"github.com/MichaelKinsy/PiG/internal/utf8stream"
 )
 
 // EditReplacement is one exact-text replacement of an edit call.
@@ -53,8 +54,8 @@ func ComputeEditsDiff(path string, edits []EditReplacement, cwd string) EditDiff
 	if err != nil {
 		return EditDiffError{Error: err.Error()}
 	}
-	var decoder utf8StreamDecoder
-	_, content := text.SplitBom(decoder.decode(data, false))
+	var decoder utf8stream.Decoder
+	_, content := text.SplitBom(decoder.Decode(data, false))
 	entries := make([]editEntry, len(edits))
 	for i, edit := range edits {
 		entries[i] = editEntry(edit)
