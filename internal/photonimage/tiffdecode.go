@@ -1066,10 +1066,7 @@ func (d *tiffDecoder) readTIFFImage(img *tiffImage, limits *tiffLimits) (pixels 
 	if elements > 0xFFFFFFFF {
 		return nil, 0, errTIFFLimits
 	}
-	limitUsize := limits.decodingBufferSize
-	if limitUsize > 0xFFFFFFFF {
-		limitUsize = 0xFFFFFFFF
-	}
+	limitUsize := min(limits.decodingBufferSize, 0xFFFFFFFF)
 	if elements > limitUsize/uint64(byteLen) {
 		return nil, 0, errTIFFLimits
 	}

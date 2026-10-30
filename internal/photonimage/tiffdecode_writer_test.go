@@ -185,7 +185,6 @@ func (p *tiffParts) assemble() []byte {
 	sort.SliceStable(entries, func(i, j int) bool { return entries[i].tag < entries[j].tag })
 
 	ifd := o.u16(uint16(len(entries)))
-	var external []tiffEntrySpec
 	externalAt := buf.Len() + ifdSizeIfAfter(p.ifdFirst, ifdSize)
 	var externalData bytes.Buffer
 	for _, e := range entries {
@@ -202,7 +201,6 @@ func (p *tiffParts) assemble() []byte {
 		if externalData.Len()%2 == 1 {
 			externalData.WriteByte(0)
 		}
-		external = append(external, e)
 	}
 	ifd = append(ifd, o.u32(p.nextIFD)...)
 
@@ -302,20 +300,20 @@ func (s *tiffSpec) sample(x, y, c int) uint32 {
 
 // tiffPackRow packs samples of the given width in bits into bytes in the file's byte order, most significant bit first, padded to a byte.
 func tiffPackRow(order tiffOrder, samples []uint32, bits int) []byte {
-	switch {
-	case bits == 8:
+	switch bits {
+	case 8:
 		out := make([]byte, len(samples))
 		for i, v := range samples {
 			out[i] = byte(v)
 		}
 		return out
-	case bits == 16:
+	case 16:
 		out := make([]byte, 0, 2*len(samples))
 		for _, v := range samples {
 			out = append(out, order.u16(uint16(v))...)
 		}
 		return out
-	case bits == 32:
+	case 32:
 		out := make([]byte, 0, 4*len(samples))
 		for _, v := range samples {
 			out = append(out, order.u32(v)...)

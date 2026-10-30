@@ -490,10 +490,10 @@ func addStructureCorpus(add func(string, []byte)) {
 			ifd := int(o.order().Uint32(data[4:]))
 			count := int(o.order().Uint16(data[ifd:]))
 			at := ifd + 2 + 12*count
-			switch {
-			case next == -1: // the first IFD again: a cycle
+			switch next {
+			case -1: // the first IFD again: a cycle
 				copy(data[at:], data[4:8])
-			case next == -2: // an IFD that is a copy of the first one, placed after the file
+			case -2: // an IFD that is a copy of the first one, placed after the file
 				dup := slices.Clone(data[ifd : at+4])
 				newOffset := len(data)
 				data = append(data, dup...)
@@ -936,11 +936,12 @@ func addStreamCorpus(add func(string, []byte)) {
 					chunk := rng.IntN(len(q.chunks))
 					c := slices.Clone(q.chunks[chunk])
 					pos := len(c)/2 + rng.IntN(len(c)/2)
-					if i%2 == 0 {
+					switch {
+					case i%2 == 0:
 						c[pos] ^= 1 << rng.IntN(8)
-					} else if i%4 == 1 {
+					case i%4 == 1:
 						c = c[:pos]
-					} else {
+					default:
 						c[len(c)-1-rng.IntN(4)] ^= 0x55
 					}
 					q.chunks[chunk] = c
