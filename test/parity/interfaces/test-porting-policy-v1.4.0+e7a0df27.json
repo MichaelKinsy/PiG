@@ -3356,6 +3356,24 @@
       "rationale": "Main Screen input, message/tool rendering, terminal integration, or selected presentation."
     },
     {
+      "path": "packages/coding-agent/test/exec-runtime-limit.test.ts",
+      "upstreamTestHash": "sha256:22400117e18112d9246c74b543d6759a9815ff8810b21bd57a91896400ad23ec",
+      "area": "extensions",
+      "tags": [
+        "hot-path"
+      ],
+      "rationale": "Extension host exec/launcher behavior tested by the upstream suite; the pi.exec limits are on the extension tool path."
+    },
+    {
+      "path": "packages/coding-agent/test/exec-utf8-chunks.test.ts",
+      "upstreamTestHash": "sha256:e108541bc5a28ebc229a1cd8ccf39d59caac765313af8ef09a275acda5af2b68",
+      "area": "extensions",
+      "tags": [
+        "hot-path"
+      ],
+      "rationale": "Extension host exec/launcher behavior tested by the upstream suite; the pi.exec limits are on the extension tool path."
+    },
+    {
       "path": "packages/coding-agent/test/exec.test.ts",
       "upstreamTestHash": "sha256:30aac8adea984e3b1541f59442d836cc3f6661ff58a84949dd7fb9a6f01ae365",
       "area": "tools",

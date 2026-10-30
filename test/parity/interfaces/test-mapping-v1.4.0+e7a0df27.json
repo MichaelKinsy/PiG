@@ -4438,18 +4438,41 @@
     },
     {
       "path": "packages/coding-agent/test/exec-runtime-limit.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:22400117e18112d9246c74b543d6759a9815ff8810b21bd57a91896400ad23ec"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:22400117e18112d9246c74b543d6759a9815ff8810b21bd57a91896400ad23ec",
+      "evidence": [
+        "coding/extension/exec_max_buffer_test.go#TestExecCommandDefaultCapFollowsTheRuntimeStringLimit",
+        "coding/extension/exec_max_buffer_test.go#TestExecCommandDefaultCapIs256MiB"
+      ],
+      "rationale": "All 2 upstream cases run in the evidence files (lane F)."
     },
     {
       "path": "packages/coding-agent/test/exec-utf8-chunks.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:e108541bc5a28ebc229a1cd8ccf39d59caac765313af8ef09a275acda5af2b68"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:e108541bc5a28ebc229a1cd8ccf39d59caac765313af8ef09a275acda5af2b68",
+      "evidence": [
+        "coding/extension/exec_utf8_chunks_test.go#TestExecCommandDiscardsPendingUTF8WhenAStreamExceedsTheCap"
+      ],
+      "rationale": "All 1 upstream cases run in the evidence files (lane F)."
     },
     {
       "path": "packages/coding-agent/test/exec.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:30aac8adea984e3b1541f59442d836cc3f6661ff58a84949dd7fb9a6f01ae365"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:30aac8adea984e3b1541f59442d836cc3f6661ff58a84949dd7fb9a6f01ae365",
+      "evidence": [
+        "coding/extension/exec_max_buffer_test.go#TestExecCommandResultsAreNotTruncatedWithoutACap",
+        "coding/extension/exec_max_buffer_test.go#TestExecCommandRejectsAnInvalidMaxBuffer",
+        "coding/extension/exec_max_buffer_test.go#TestExecCommandAcceptsTheMaxBufferBoundaries",
+        "coding/extension/exec_max_buffer_test.go#TestExecCommandTruncatesAllOutputWhenMaxBufferIsZero",
+        "coding/extension/exec_max_buffer_test.go#TestExecCommandCapsCombinedOutputAtMaxBuffer",
+        "coding/extension/exec_max_buffer_test.go#TestExecCommandKeepsCompleteUTF8CharactersUnderTheCap",
+        "coding/extension/exec_max_buffer_test.go#TestExecCommandFlushesIncompleteUTF8AtEOFWithoutATruncation",
+        "coding/extension/exec_max_buffer_test.go#TestExecCommandLeavesOutputUpToMaxBufferUnchanged",
+        "coding/extension/exec_tree_test.go#TestExecCommandForceKillsAChildThatIgnoresSIGTERMAfterFiveSeconds",
+        "coding/extension/exec_oracle_test.go#TestExecCommandMatchesPi",
+        "test/extension-conformance/exec_limits_test.go#TestExecLimitsAcrossSDKs"
+      ],
+      "rationale": "All 11 upstream cases run in the evidence files (lane F)."
     },
     {
       "path": "packages/coding-agent/test/experimental.test.ts",
@@ -4707,8 +4730,12 @@
     },
     {
       "path": "packages/coding-agent/test/git-merge-and-resolve-extension.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:fe2f46b53600a3a929843602ec50a482060dbf569e9531084f210dacc627be74"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:fe2f46b53600a3a929843602ec50a482060dbf569e9531084f210dacc627be74",
+      "evidence": [
+        "coding/extension/host/subprocess/upstream_examples_test.go#TestGitMergeAndResolveExample"
+      ],
+      "rationale": "All 9 upstream cases run in the evidence files (lane F)."
     },
     {
       "path": "packages/coding-agent/test/git-ssh-url.test.ts",
@@ -4799,8 +4826,12 @@
     },
     {
       "path": "packages/coding-agent/test/input-transform-streaming-example.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:162d2ce265d4d455695d4ce75ce2093b83b14c8cb15429d59c17e5db043f8f59"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:162d2ce265d4d455695d4ce75ce2093b83b14c8cb15429d59c17e5db043f8f59",
+      "evidence": [
+        "coding/extension/host/subprocess/upstream_examples_test.go#TestInputTransformStreamingExample"
+      ],
+      "rationale": "All 6 upstream cases run in the evidence files (lane F)."
     },
     {
       "path": "packages/coding-agent/test/interactive-mode-anthropic-warning.test.ts",
