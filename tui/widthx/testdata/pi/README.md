@@ -1,6 +1,6 @@
 Differential-test oracle for pi_width_diff_test.go.
 
-- utils.ts: verbatim copy of the pinned pi-mono packages/tui/src/utils.ts (automation/gen/refresh-pi-test-sources.sh) (MIT, LICENSE.pi).
+- utils.ts: the pinned pi-mono packages/tui/src/utils.ts (automation/gen/refresh-pi-test-sources.sh) plus Pi 2ce9d527 (D217 carry): the hunks of that commit, byte for byte, so the wrap oracle compares what PiG ships (MIT, LICENSE.pi). Refreshing at a pin at or past 2ce9d527 reproduces this content.
 - components/{text,truncated-text,markdown}.ts, latex.ts, terminal-image.ts: verbatim from the pinned pi-mono (used by tui/component_width_sweep_test.go); components/markdown.ts = pin + Pi fa168515 (D217 carry), byte for byte.
 - marked/: verbatim marked 18.0.11 (MIT, marked/LICENSE*), the version upstream pins.
 - marked-cjk-friendly/: verbatim marked-cjk-friendly 0.1.2 (MIT, marked-cjk-friendly/LICENSE), the version upstream pins; components/markdown.ts imports it.
