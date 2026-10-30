@@ -29,8 +29,9 @@ import (
 // error is `context.Cause(ctx)`, as `abortSignal.throwIfAborted()` throws the signal's reason. The commits run
 // without the activation's abort (a commit admitted to the step completes; the fence refuses one). The fallback
 // yield between chunks (Pi's `macrotask`: `setImmediate` or a MessageChannel message, so that other commits and
-// timers run between chunks) is `runtime.Gosched()`: Go goroutines are preempted, so no timer or channel mechanics
-// remain (designed out; see the rows).
+// timers run between chunks) is `runtime.Gosched()` (the target's yield): Go has no timer clamp nor channel fallback
+// to choose between, so those mechanics are designed out; the rule they serve is proved by a yield between every two
+// chunks that a test replaces with one running its competing task (evidence_storeB_test.go).
 
 // DeclaredTable is a declared table: its newest definition and its SQL name.
 type DeclaredTable struct {
@@ -43,12 +44,19 @@ type migrationTarget struct {
 	store *ChordStore
 	table string
 	fence CommitFence
+	// yield gives other tasks their turn between two chunks.
+	yield func()
 }
 
 // PrepareTables brings tables to their definitions: the ones the store does not have created in one commit, then
 // each older one migrated. A table the code cannot use (see PlanTable) is an error before anything is written; what
 // names the owner.
 func PrepareTables(tables []DeclaredTable, store *ChordStore, fence CommitFence, what string, ctx context.Context) error {
+	return prepareTables(tables, store, fence, what, ctx, runtime.Gosched)
+}
+
+// prepareTables is PrepareTables with the yield between the chunks of a `rows` step.
+func prepareTables(tables []DeclaredTable, store *ChordStore, fence CommitFence, what string, ctx context.Context, yield func()) error {
 	var created []StagedWrite
 	type pending struct {
 		table string
@@ -74,7 +82,7 @@ func PrepareTables(tables []DeclaredTable, store *ChordStore, fence CommitFence,
 		}
 	}
 	for _, migration := range migrations {
-		if err := migrateTable(migration.plan, migrationTarget{store: store, table: migration.table, fence: fence}, ctx); err != nil {
+		if err := migrateTable(migration.plan, migrationTarget{store: store, table: migration.table, fence: fence, yield: yield}, ctx); err != nil {
 			return err
 		}
 	}
@@ -201,7 +209,7 @@ func rowsStep(step *DataStep, v int, ready []StagedWrite, target migrationTarget
 			after[i] = stored[MigrationChunk-1][name]
 		}
 		// Other commits queued behind this one run between chunks.
-		runtime.Gosched()
+		target.yield()
 		// An abandoned activation stops here.
 		if ctx.Err() != nil {
 			return context.Cause(ctx)

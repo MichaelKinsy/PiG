@@ -16,10 +16,9 @@ import (
 // ((A), chunks of 100, (Z)), `rows` and `update` steps, index edits, resumption at `migrating`, and the refusals that
 // leave the data as it was.
 //
-// Designed out: the two "the chunk yield" cases. They watch JavaScript's timer mechanics (`setImmediate` removed,
-// `setTimeout` spied, a due timer starving under a microtask-only loop); Go has none of these: the yield between
-// chunks is `runtime.Gosched()` and goroutines are preempted. Their other assertion (the table ends version 2, ready
-// after 300 and 1000 rows) is covered by "one version at a time" (250 rows) and "resumption".
+// "the chunk yield" (2 cases) is ported in evidence_storeB_test.go as deterministic scheduler tests: Pi's timer
+// mechanics (`setImmediate` removed, `setTimeout` spied) have no Go equivalent, the rule they guard (a competing task
+// runs between the chunks) is asserted there under GOMAXPROCS(1).
 
 const migrationTable = "app.store:edits"
 
