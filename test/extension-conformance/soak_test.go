@@ -41,8 +41,11 @@ const (
 	soakP99GrossMS = 2000.0
 	// soakGoroutineGrowth is how many goroutines the host may hold after the traffic beyond what it held before it.
 	soakGoroutineGrowth = 8
-	// soakHeapGrowthBytes is how much live host heap the traffic may leave behind.
+	// soakHeapGrowthBytes caps how much live host heap the traffic may leave behind, however long the run.
 	soakHeapGrowthBytes = 32 << 20
+	// soakHeapBaseBytes and soakHeapPerCallBytes bound the live host heap that n calls may leave behind to soakHeapBaseBytes+n*soakHeapPerCallBytes. The base covers what a run adds once (pooled frame buffers, runtime thread structures); the per-call part covers the test's own latency record. A host that keeps a record of each call it serves is caught at any machine speed, where a limit fixed in bytes lets the extra calls of a faster machine carry the same retention across it.
+	soakHeapBaseBytes    = 4 << 20
+	soakHeapPerCallBytes = 128
 	// soakRSSGrowthBytes and soakRSSGrowthFraction bound the extension process memory: its resident size in the last quarter of the run may exceed its size in the third quarter by the larger of the two.
 	soakRSSGrowthBytes    = 24 << 20
 	soakRSSGrowthFraction = 0.35
@@ -345,8 +348,8 @@ func TestExtensionSoak(t *testing.T) {
 			}
 			var after runtime.MemStats
 			runtime.ReadMemStats(&after)
-			if growth := int64(after.HeapAlloc) - int64(before.HeapAlloc); growth > soakHeapGrowthBytes {
-				t.Errorf("live host heap grew by %d bytes (limit %d, seed %d)", growth, soakHeapGrowthBytes, seed)
+			if growth, limit := int64(after.HeapAlloc)-int64(before.HeapAlloc), min(soakHeapGrowthBytes, soakHeapBaseBytes+soakHeapPerCallBytes*calls.Load()); growth > limit {
+				t.Errorf("live host heap grew by %d bytes over %d calls (limit %d, seed %d)", growth, calls.Load(), limit, seed)
 			}
 			var series []string
 			for i := 0; i < len(samples); i += max(1, len(samples)/12) {
