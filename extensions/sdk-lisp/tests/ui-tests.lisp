@@ -510,6 +510,17 @@
       (kt-check-json "{\"expanded\":true}" (kth-args h :call "ui.setToolsExpanded"))
       (kt-check-json "{}" (kth-args h :call "ui.bell")))))
 
+(deftest the-thinking-run-ownership-call-sends-its-flag
+  (let ((ext (pig:make-extension "own")))
+    (pig:command ext "off" "" (lambda (ctx args) (declare (ignore args)) (pig:ctx-own-thinking-runs ctx nil)))
+    (pig:command ext "on" "" (lambda (ctx args) (declare (ignore args)) (pig:ctx-own-thinking-runs ctx) (pig:ctx-own-thinking-runs ctx t)))
+    (with-kth (h ext)
+      (kt-run-command h "off")
+      (kt-check-json "{\"enabled\":false}" (kth-args h :call "ownThinkingRuns"))
+      (kt-run-command h "on")
+      (kt-check-json "{\"enabled\":true}" (kth-args h :call "ownThinkingRuns"))
+      (kt-check-json "{\"enabled\":true}" (kth-args h :call "ownThinkingRuns")))))
+
 (defun kt-picker (log)
   "The conformance picker: logs every event and input and closes on select with the log."
   (pig:make-custom-component

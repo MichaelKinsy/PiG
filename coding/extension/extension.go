@@ -133,6 +133,9 @@ type Extension struct {
 	// shortcutOrder records the registration order of shortcuts set with SetRegisteredShortcut before the registry exists.
 	shortcutOrder []KeyID
 
+	// thinkingRuns is the extension's ownership of thinking runs (OwnsThinkingRuns), shared by every copy once initialized.
+	thinkingRuns *thinkingRunsState
+
 	// Hidden omits the extension from the startup Extensions list.
 	// upstream: .upstream/v0.99.1/packages/coding-agent/src/core/extensions/types.ts:2208 (Extension.hidden)
 	Hidden bool

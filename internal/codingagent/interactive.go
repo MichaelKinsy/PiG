@@ -602,8 +602,10 @@ type InteractiveMode struct {
 	assistantBlocks []*tui.AssistantMessageComponent
 	// hiddenThinkingLabel is the extension-set label for hidden thinking runs; nil selects the default and a pointer to the empty string is an empty label (Pi's label ?? default).
 	hiddenThinkingLabel *string
-	userBlocks          []*tui.UserMessageComponent
-	outputPad           int
+	// stopThinkingRuns ends the observation of the current runner's thinking-run ownership (bindThinkingRuns); pig additive (D214).
+	stopThinkingRuns func()
+	userBlocks       []*tui.UserMessageComponent
+	outputPad        int
 
 	// layout is the main-screen render root used for editor-slot swaps.
 	layout *tui.Container
@@ -1716,6 +1718,7 @@ func (m *InteractiveMode) Init(ctx context.Context) (err error) {
 
 	// Wire the extension runner. May be nil; event_bridge.go helpers are nil-safe.
 	m.newRunner = m.opts.ExtensionRunner
+	m.bindThinkingRuns()
 	m.installRuntimeHooks()
 	// The rebind owner installs UI/actions before dispatching session_start.
 

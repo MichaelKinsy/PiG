@@ -69,6 +69,9 @@ type registerMsg struct {
 	// MarkdownTransformer reports a registered Markdown transformer; the host
 	// runs it with markdown_transform requests.
 	MarkdownTransformer bool `json:"markdown_transformer,omitempty"`
+	// OwnsThinkingRuns reports that the extension owns the thinking runs of assistant messages (PiG-only).
+	// pig additive (D214)
+	OwnsThinkingRuns bool `json:"owns_thinking_runs,omitempty"`
 	// ToolRenderers is the number of tool renderer resolvers registered while the factory ran.
 	ToolRenderers int `json:"tool_renderers,omitempty"`
 	// McpServers and VirtualModels are the registrations made while the factory ran; the host applies them when the extension loads.

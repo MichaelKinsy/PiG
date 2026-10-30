@@ -1175,6 +1175,16 @@ fn main() {
         })();
         match result { Ok(()) => CommandResult::Ok, Err(err) => CommandResult::Error(err.to_string()) }
     });
+    // The extension owns the thinking runs from load; thinking_runs_off / thinking_runs_on change that at run time.
+    ext.own_thinking_runs(true);
+    ext.command("thinking_runs_off", "Stop owning the thinking runs", |ctx, _args| match ctx.own_thinking_runs(false) {
+        Ok(()) => CommandResult::Ok,
+        Err(err) => CommandResult::Error(err.to_string()),
+    });
+    ext.command("thinking_runs_on", "Own the thinking runs", |ctx, _args| match ctx.own_thinking_runs(true) {
+        Ok(()) => CommandResult::Ok,
+        Err(err) => CommandResult::Error(err.to_string()),
+    });
     // ui_forward_probe calls the UI members whose host effect a conformance row records (TestConformance_UIForwardingAgreesAcrossSDKs).
     ext.command("ui_forward_probe", "Call the working, paste, editor-text and tools-expanded UI members", |ctx, _args| {
         ctx.set_working_message("Thinking hard");

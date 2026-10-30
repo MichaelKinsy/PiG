@@ -189,6 +189,7 @@ type Extension struct {
 	renderers               []rendererDef
 	entryRenderers          []rendererDef
 	markdownTransform       MarkdownTransformerFunc
+	ownsThinkingRuns        bool // guarded by toolMu
 
 	// toolRenderMu guards toolRenderers and toolRenderCards: render requests
 	// run on their own goroutines.
@@ -1005,6 +1006,25 @@ func (e *Extension) MarkdownTransformer(transformer MarkdownTransformerFunc) {
 	e.markdownTransform = transformer
 }
 
+// OwnThinkingRuns declares that this extension owns the thinking runs of
+// assistant messages (PiG-only), so a hidden or zero-row thinking run leaves
+// no blank spacer rows. Before Run registers the extension the value is only
+// recorded and the last call wins; the register payload carries it when true.
+// Once the extension runs the call goes to the host at once.
+// pig additive (D214)
+func (e *Extension) OwnThinkingRuns(enabled bool) {
+	e.toolMu.Lock()
+	e.ownsThinkingRuns = enabled
+	conn := e.toolConn
+	e.toolMu.Unlock()
+	if conn != nil {
+		result, err := hostCallFor(nil, conn, "ownThinkingRuns", map[string]bool{"enabled": enabled})
+		if err = callResultError(result, err); err != nil {
+			panic(fmt.Errorf("ownThinkingRuns: %w", err))
+		}
+	}
+}
+
 // OnSessionStart registers a handler for the session_start event.
 func (e *Extension) OnSessionStart(handler EventFunc) func() {
 	return e.OnEvent("session_start", handler)
@@ -1156,6 +1176,7 @@ func (e *Extension) runWithConn(nc net.Conn, started *conn, sockPath string) err
 			Renderers:               e.renderers,
 			EntryRenderers:          e.entryRenderers,
 			MarkdownTransformer:     e.markdownTransform != nil,
+			OwnsThinkingRuns:        e.ownsThinkingRuns,
 			ToolRenderers:           e.toolRendererCount(),
 			McpServers:              e.mcpServerDecls,
 			VirtualModels:           e.virtualModelDecls,

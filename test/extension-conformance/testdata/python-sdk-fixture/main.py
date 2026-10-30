@@ -1234,6 +1234,11 @@ def new_extension() -> pig_sdk.Extension:
 
     ext.command("ui_forward_probe", "Call the working, paste, editor-text and tools-expanded UI members", ui_forward_probe)
 
+    # The extension owns the thinking runs from load; thinking_runs_off/on flip the flag through the runtime entry point (the conformance row reads the host's aggregated flag).
+    ext.own_thinking_runs(True)
+    ext.command("thinking_runs_off", "Clear the owns-thinking-runs flag", lambda ctx, _args: ctx.own_thinking_runs(False))
+    ext.command("thinking_runs_on", "Set the owns-thinking-runs flag", lambda ctx, _args: ctx.own_thinking_runs(True))
+
     # dialog-stack-probe opens its dialogs at the same time, each from its own thread, and reports each one's answer as it settles (TestConformance_ConcurrentDialogsAgreeAcrossSDKs). "pair" is a select A and a confirm B; "mix" is a select S, a confirm C, an input I and an editor E.
     def dialog_stack_probe(ctx, scenario):
         def chosen(result):
