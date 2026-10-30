@@ -27,10 +27,15 @@ const ToolName = "tool_search"
 // DefaultLimit is the number of tools a search returns unless the caller passes a limit.
 const DefaultLimit = 8
 
-// Document is a tool as the ranker sees it: its name and the text built by CreateDocument.
+// Document is a tool as the ranker sees it: its name and the texts built by CreateDocument.
+//
+// pig divergence (D217): Pi cc44fa21 (#11331) the name is a field of its own and the namespace text is separate; pinned Pi folds both into Text.
 type Document struct {
 	Name string
+	// Text is the description, schema descriptions and property names.
 	Text string
+	// NamespaceText is the name, description and instructions of the tool's namespace.
+	NamespaceText string
 }
 
 // Match is one ranked tool.
@@ -120,16 +125,18 @@ func mapsKeys(m map[string]any) func(yield func(string) bool) {
 	}
 }
 
-// CreateDocument builds the search text of a tool: the name, the name with `_` as spaces, the description, schema
-// descriptions and property names, and the namespace with its description and instructions. BM25 counts terms, so the order of the parts does not matter.
+// CreateDocument builds the search texts of a tool: the description with the schema descriptions and property names, and separately the namespace name, description and instructions. The ranker reads the name from Name. BM25 counts terms, so the order of the parts does not matter.
+//
+// pig divergence (D217): Pi cc44fa21 (#11331) pinned Pi puts the name, the name with `_` as spaces and the namespace into the one text.
 func CreateDocument(tool extension.ToolInfo, namespace *extension.ToolNamespace) Document {
-	parts := []string{tool.Name, strings.ReplaceAll(tool.Name, "_", " "), tool.Description}
+	parts := []string{tool.Description}
 	var parameters any
 	if len(tool.Parameters) > 0 && json.Unmarshal(tool.Parameters, &parameters) == nil {
 		schemaText(parameters, &parts)
 	}
+	var namespaceText string
 	if namespace != nil {
-		parts = append(parts, namespace.Name, namespace.Description, namespace.Instructions)
+		namespaceText = strings.Join([]string{namespace.Name, namespace.Description, namespace.Instructions}, " ")
 	}
 	kept := parts[:0]
 	for _, part := range parts {
@@ -137,7 +144,7 @@ func CreateDocument(tool extension.ToolInfo, namespace *extension.ToolNamespace)
 			kept = append(kept, part)
 		}
 	}
-	return Document{Name: tool.Name, Text: strings.Join(kept, " ")}
+	return Document{Name: tool.Name, Text: strings.Join(kept, " "), NamespaceText: namespaceText}
 }
 
 // normalizeName is tool.ts normalizeName: lowercase with every UTF-16 code unit that is not a script identifier character as `_`, so `dev-radius`
@@ -158,15 +165,60 @@ func normalizeName(name string) string {
 	return normalized.String()
 }
 
-// isNameQuery is tool.ts isNameQuery: whether query (already normalized) names the tool, by its full name or by a suffix after a `__` separator, so
+// isExactNameQuery is tool.ts isExactNameQuery: whether the whole query (already normalized) is the tool's name, by its full name or by a suffix after a `__` separator, so
 // `thread_read` and `app__thread_read` both name `mcp__app__thread_read`.
-func isNameQuery(query, name string) bool {
+func isExactNameQuery(query, name string) bool {
 	normalized := normalizeName(name)
 	return normalized == query || strings.HasSuffix(normalized, "__"+query)
 }
 
-// Bm25Ranker is Okapi BM25 with the usual parameters. A query that names a tool ranks that tool first, because length normalization can otherwise rank a
-// short description sharing the name's words above it. Ties keep document order.
+// indexedDocument is a document split into the fields the ranker weighs differently.
+type indexedDocument struct {
+	name string
+	// nameTerms are the terms of the name, for example `mcp`, `app`, `thread`, `read` for `mcp__app__thread_read`.
+	nameTerms map[string]struct{}
+	// localNameTerms are the terms of the last `__` segment of the name, the part models say: `thread`, `read`.
+	localNameTerms []string
+	textCounts     map[string]int
+	textLength     float64
+	namespaceTerms map[string]struct{}
+}
+
+func indexDocument(document Document) indexedDocument {
+	indexed := indexedDocument{name: document.Name, nameTerms: map[string]struct{}{}, textCounts: map[string]int{}, namespaceTerms: map[string]struct{}{}}
+	for _, term := range Tokenize(document.Text) {
+		indexed.textCounts[term]++
+		indexed.textLength++
+	}
+	for _, term := range Tokenize(document.Name) {
+		indexed.nameTerms[term] = struct{}{}
+	}
+	segments := strings.Split(document.Name, "__")
+	for _, term := range Tokenize(segments[len(segments)-1]) {
+		if !slices.Contains(indexed.localNameTerms, term) {
+			indexed.localNameTerms = append(indexed.localNameTerms, term)
+		}
+	}
+	for _, term := range Tokenize(document.NamespaceText) {
+		indexed.namespaceTerms[term] = struct{}{}
+	}
+	return indexed
+}
+
+// nameWeight is how many times its IDF a query term in the name counts. The text part of a term is at most `k1 + 1` (2.2) times its IDF and about 1 for a single mention, so a name match beats any number of mentions in the description.
+const nameWeight = 3
+
+// namespaceWeight is how many times its IDF a query term in the namespace name, description or instructions counts. They are shared by every tool of the server, so they help find the server but not the tool in it.
+const namespaceWeight = 0.5
+
+// Bm25Ranker is Okapi BM25 over the description, with the name and the namespace as separate fields:
+//   - a query term in the name scores more than any number of mentions in the description;
+//   - a tool whose whole local name is in the query (`app` in `peekaboo app` for `mcp__peekaboo__app`) gets a bonus worth one more match of every query term, so it mostly wins over tools that only mention the words;
+//   - a query that is exactly a tool's name ranks that tool first.
+//
+// The description alone is length-normalized, so a long name or long namespace instructions do not lower a tool's score. Ties keep document order.
+//
+// pig divergence (D217): Pi cc44fa21 (#11331) pinned Pi scores the name, description and namespace as one bag of words.
 type Bm25Ranker struct{ K1, B float64 }
 
 // NewBm25Ranker returns a ranker with k1 1.2 and b 0.75.
@@ -187,56 +239,64 @@ func (r *Bm25Ranker) Rank(query string, documents []Document, limit int) []Match
 	if len(queryTerms) == 0 || len(documents) == 0 || limit <= 0 {
 		return []Match{}
 	}
-	termCounts := make([]map[string]int, len(documents))
-	lengths := make([]float64, len(documents))
+	indexed := make([]indexedDocument, len(documents))
 	var total float64
 	for i, document := range documents {
-		counts := map[string]int{}
-		for _, term := range Tokenize(document.Text) {
-			counts[term]++
-			lengths[i]++
-		}
-		termCounts[i] = counts
-		total += lengths[i]
+		indexed[i] = indexDocument(document)
+		total += indexed[i].textLength
 	}
 	averageLength := total / float64(len(documents))
 	if averageLength == 0 {
 		averageLength = 1
 	}
 	idf := make(map[string]float64, len(queryTerms))
+	var fullNameBonus float64
 	for _, term := range queryTerms {
 		frequency := 0
-		for _, counts := range termCounts {
-			if _, ok := counts[term]; ok {
+		for _, document := range indexed {
+			_, inName := document.nameTerms[term]
+			_, inText := document.textCounts[term]
+			_, inNamespace := document.namespaceTerms[term]
+			if inName || inText || inNamespace {
 				frequency++
 			}
 		}
 		idf[term] = jsmath.Log(1 + (float64(len(documents)-frequency)+0.5)/(float64(frequency)+0.5))
+		fullNameBonus += idf[term]
 	}
-	nameQuery := normalizeName(query)
+	exactQuery := normalizeName(query)
 	type rankedMatch struct {
 		Match
-		named bool
+		exact bool
 	}
 	ranked := []rankedMatch{}
-	for i, document := range documents {
+	for _, document := range indexed {
+		// float64() rounds the product, so the compiler cannot fuse it into the addition below as a multiply-add (arm64 FMADD); JavaScript rounds every operation.
+		norm := float64(r.K1 * (1 - r.B + (r.B*document.textLength)/averageLength))
 		var score float64
 		for _, term := range queryTerms {
-			count := termCounts[i][term]
-			if count == 0 {
-				continue
+			count := document.textCounts[term]
+			var weight float64
+			if _, ok := document.nameTerms[term]; ok {
+				weight = nameWeight
 			}
-			// float64() rounds the product, so the compiler cannot fuse it into the addition below as a multiply-add (arm64 FMADD); JavaScript rounds every operation.
-			norm := float64(r.K1 * (1 - r.B + (r.B*lengths[i])/averageLength))
-			score += float64(idf[term] * ((float64(count) * (r.K1 + 1)) / (float64(count) + norm)))
+			if _, ok := document.namespaceTerms[term]; ok {
+				weight += namespaceWeight
+			}
+			weight += (float64(count) * (r.K1 + 1)) / (float64(count) + norm)
+			score += float64(idf[term] * weight)
 		}
-		if score > 0 {
-			ranked = append(ranked, rankedMatch{Match: Match{Name: document.Name, Score: score}, named: isNameQuery(nameQuery, document.Name)})
+		if score == 0 {
+			continue
 		}
+		if len(document.localNameTerms) > 0 && !slices.ContainsFunc(document.localNameTerms, func(term string) bool { return !slices.Contains(queryTerms, term) }) {
+			score += fullNameBonus
+		}
+		ranked = append(ranked, rankedMatch{Match: Match{Name: document.name, Score: score}, exact: isExactNameQuery(exactQuery, document.name)})
 	}
 	sort.SliceStable(ranked, func(a, b int) bool {
-		if ranked[a].named != ranked[b].named {
-			return ranked[a].named
+		if ranked[a].exact != ranked[b].exact {
+			return ranked[a].exact
 		}
 		return ranked[a].Score > ranked[b].Score
 	})
