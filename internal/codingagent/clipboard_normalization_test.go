@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/internal/nodebase64"
+	"github.com/MichaelKinsy/PiG/internal/photonimage"
 
 	"golang.org/x/image/bmp"
 )
@@ -98,7 +99,7 @@ func TestClipboardImageNormalization(t *testing.T) {
 			if mime != wantMIME {
 				t.Fatalf("MIME=%q want=%q", mime, wantMIME)
 			}
-			decoded, _, err := image.Decode(bytes.NewReader(data))
+			decoded, err := photonimage.Decode(data)
 			if err != nil {
 				t.Fatal(err)
 			}

@@ -19,15 +19,11 @@ import (
 	"fmt"
 	"image"
 	"image/draw"
-	_ "image/gif" // decoder for the GIF entry of the supported-format allowlist
-	_ "image/png" // decoder for PNG; PNG is encoded by photonimage
 	"io"
 	"math"
 	"os"
 	"slices"
 	"strings"
-
-	_ "golang.org/x/image/bmp" // decoder for the BMP entry of the supported-format allowlist
 
 	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/ai"
