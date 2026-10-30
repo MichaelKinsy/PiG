@@ -8,6 +8,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/internal/codingagent"
 	"github.com/MichaelKinsy/PiG/internal/packagemanager"
+	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
 // D215, #389: a Package installed by absolute path through one spelling of the agent directory (a symlinked PIG_HOME) still resolves when the agent
@@ -24,9 +25,7 @@ func TestInstalledAbsoluteLocalPackageResolvesThroughAnotherAgentDirSpelling(t *
 		}
 	}
 	link := filepath.Join(tmp, "h4", "a", "b", "c", "pig-home")
-	if err := os.Symlink(home, link); err != nil {
-		t.Skipf("symlinks unavailable: %v", err)
-	}
+	testenv.RequireDirectoryLink(t, home, link)
 	linkAgent := filepath.Join(link, "agent")
 
 	viaLink := codingagent.NewSettingsManager(cwd, linkAgent)
