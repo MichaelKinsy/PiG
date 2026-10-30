@@ -18,3 +18,7 @@ Add exec option `maxBuffer`/result `truncated`, `changelogPath` on SourceInfo/Pa
 - Published npm @earendil-works/pi-coding-agent 1.4.0 lacks maxBuffer/truncated/capturesViewportInput; sdk-ts follows the source-built oracle that `make parity-deps` installs.
 - The SDK `.gz` bundle copies are regenerated with `go generate`.
 - Pi MAX_STRING_LENGTH is fixed to Node 24 64-bit (536870888) in coding/extension/exec.go.
+
+## Ledger notes (follow-up)
+- `SettingsManager.getExtensionChangelogVersion` / `setExtensionChangelogVersion` stay `gap:SdkExportsLedger`: Pi's extension docs (docs/extensions.md, docs/sdk.md at e7a0df27) do not list them; interactive-mode.ts and settings-manager.ts use them for the startup changelog. (sdksurface rewrites sdk-exports.toml and drops comments, so the reason lives here.)
+- Windows: `internal/childwait` `PeekNamedPipe` ordering (pipe_windows.go) is type-checked only (`GOOS=windows go vet`); Windows CI must run the `internal/childwait` and `coding/extension` exec tests.

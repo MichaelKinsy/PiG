@@ -733,6 +733,26 @@ def new_extension() -> pig_sdk.Extension:
     ext.command("editor-install-embed", "Install a custom editor that embeds the working status", lambda ctx, _args: ctx.set_editor_component(EmbeddingEditor))
     ext.command("editor-install", "Install a custom editor component", lambda ctx, _args: ctx.set_editor_component(ConformanceEditor))
 
+    class ViewportEditor(ConformanceEditor):
+        """Captures viewport input until it receives "t", then stops; every other key goes to super like ConformanceEditor."""
+
+        captures_viewport_input = True
+
+        def handle_input(self, data):
+            if data == "t":
+                self.captures_viewport_input = False
+                return
+            super().handle_input(data)
+
+    ext.command("editor-install-viewport", "Install a custom editor that captures viewport input until it receives t", lambda ctx, _args: ctx.set_editor_component(ViewportEditor))
+
+    def select_page_probe(ctx, args):
+        a = json.loads(args)
+        index = pig_sdk.tui.get_select_page_index(pig_sdk.tui.get_keybindings(), a["data"], a["selected"], a["count"], a["page"])
+        ctx.notify("select-page=%s" % ("none" if index is None else index), "info")
+
+    ext.command("select-page-probe", "Report getSelectPageIndex for a key", select_page_probe)
+
     # headless-ui-probe hands the SDK footer, header and custom component closures; its argument is a file every closure appends a marker to when it runs (TestConformance_HeadlessModesNeverRunUIClosures).
     def headless_ui_probe(ctx, path):
         def mark(line):

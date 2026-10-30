@@ -35,6 +35,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/extensions/sdk"
 	"github.com/MichaelKinsy/PiG/extensions/sdk/kit"
+	"github.com/MichaelKinsy/PiG/extensions/sdk/tui"
 )
 
 // kitProbe is the component kit's conformance view (D107,
@@ -2760,6 +2761,28 @@ func Extension() *sdk.Extension {
 	ext.Command("editor-install-embed", "Install a custom editor that embeds the working status", func(ctx sdk.Context, args string) error {
 		return ctx.SetEditorComponent(func(base *sdk.Editor) sdk.EditorComponent { return &embeddingEditor{conformanceEditor{Editor: base}} })
 	})
+	ext.Command("editor-install-viewport", "Install a custom editor that captures viewport input until it receives t", func(ctx sdk.Context, args string) error {
+		return ctx.SetEditorComponent(func(base *sdk.Editor) sdk.EditorComponent {
+			return &viewportEditor{conformanceEditor: conformanceEditor{Editor: base}}
+		})
+	})
+	ext.Command("select-page-probe", "Report getSelectPageIndex for a key under the default keybindings", func(ctx sdk.Context, args string) error {
+		var in struct {
+			Data     string `json:"data"`
+			Selected int    `json:"selected"`
+			Count    int    `json:"count"`
+			Page     int    `json:"page"`
+		}
+		if err := json.Unmarshal([]byte(args), &in); err != nil {
+			return err
+		}
+		if index, ok := tui.GetSelectPageIndex(tui.GetKeybindings(), in.Data, in.Selected, in.Count, in.Page); ok {
+			ctx.Notify(fmt.Sprintf("select-page=%d", index), "info")
+			return nil
+		}
+		ctx.Notify("select-page=none", "info")
+		return nil
+	})
 	registerHeadlessUIProbe(ext)
 
 	ext.Command("ui-probe", "Exercise SDK UI wrappers", func(ctx sdk.Context, args string) error {
@@ -3307,6 +3330,21 @@ func (e *conformanceEditor) SetText(text string) error {
 type embeddingEditor struct{ conformanceEditor }
 
 func (*embeddingEditor) EmbedWorkingStatus() bool { return true }
+
+// viewportEditor captures viewport input until it receives "t".
+type viewportEditor struct {
+	conformanceEditor
+	released bool
+}
+
+func (e *viewportEditor) CapturesViewportInput() bool { return !e.released }
+
+func (e *viewportEditor) HandleInput(data string) error {
+	if data == "t" {
+		e.released = true
+	}
+	return e.conformanceEditor.HandleInput(data)
+}
 
 func (e *conformanceEditor) Render(width int) ([]string, error) {
 	rows, err := e.Editor.Render(width)

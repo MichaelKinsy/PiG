@@ -1045,6 +1045,19 @@ fn main() {
         ctx.notify(&format!("truncate:{result}:end"), "info");
         CommandResult::Ok
     });
+    ext.command("select-page-probe", "Report getSelectPageIndex for a key under the default keybindings", |ctx, args| {
+        let case: Value = match serde_json::from_str(args) {
+            Ok(case) => case,
+            Err(err) => return CommandResult::Error(err.to_string()),
+        };
+        let number = |name: &str| case[name].as_u64().unwrap_or(0) as usize;
+        let index = pig_sdk::tui::get_select_page_index(&pig_sdk::tui::get_keybindings(), case["data"].as_str().unwrap_or(""), number("selected"), number("count"), number("page"));
+        match index {
+            Some(index) => ctx.notify(&format!("select-page={index}"), "info"),
+            None => ctx.notify("select-page=none", "info"),
+        }
+        CommandResult::Ok
+    });
     // builtin_probe: see the Go fixture (testfixture/builtin_tool.go).
     ext.command("builtin_probe", "Delegate to a built-in tool through the SDK and report what it returned", |ctx, args| {
         let case: Value = match serde_json::from_str(&args) {
@@ -1317,6 +1330,12 @@ fn main() {
     });
     ext.command("editor-install-embed", "Install a custom editor that embeds the working status", |ctx, _args| {
         match ctx.set_editor_component(|base| Box::new(EmbeddingEditor(ConformanceEditor { base }))) {
+            Ok(()) => CommandResult::Ok,
+            Err(err) => CommandResult::Error(err.to_string()),
+        }
+    });
+    ext.command("editor-install-viewport", "Install a custom editor that captures viewport input until it receives t", |ctx, _args| {
+        match ctx.set_editor_component(|base| Box::new(ViewportCapturingEditor { inner: ConformanceEditor { base }, captures: true })) {
             Ok(()) => CommandResult::Ok,
             Err(err) => CommandResult::Error(err.to_string()),
         }
@@ -4141,6 +4160,33 @@ impl EditorComponent for EmbeddingEditor {
     }
     fn render(&mut self, width: u32) -> Result<Vec<JsString>, String> {
         self.0.render(width)
+    }
+}
+
+/// Captures viewport input until it receives "t"; every key goes to the delegated editor.
+struct ViewportCapturingEditor {
+    inner: ConformanceEditor,
+    captures: bool,
+}
+
+impl EditorComponent for ViewportCapturingEditor {
+    fn base(&self) -> &EditorBase {
+        self.inner.base()
+    }
+    fn captures_viewport_input(&self) -> bool {
+        self.captures
+    }
+    fn handle_input(&mut self, data: &JsString) -> Result<(), String> {
+        if data == "t" {
+            self.captures = false;
+        }
+        self.inner.handle_input(data)
+    }
+    fn set_text(&mut self, text: &JsString) -> Result<(), String> {
+        self.inner.set_text(text)
+    }
+    fn render(&mut self, width: u32) -> Result<Vec<JsString>, String> {
+        self.inner.render(width)
     }
 }
 

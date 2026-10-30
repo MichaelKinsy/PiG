@@ -36,11 +36,7 @@ None.
 
 ## Realized cells no fixture reaches
 
-| Export | Runtimes | Lane | Closing row |
-|---|---|---|---|
-| `pi-coding-agent: CustomEditor.capturesViewportInput` | lisp | SdkTuiHelpers | an editor viewport probe in the Lisp conformance fixture (the Lisp editor frame flag is covered by tests/editor-tests.lisp) |
-| `pi-tui: Editor.capturesViewportInput` | lisp | SdkTuiHelpers | an editor viewport probe in the Lisp conformance fixture (the Lisp editor frame flag is covered by tests/editor-tests.lisp) |
-| `pi-tui: getSelectPageIndex` | go, python | SdkTuiHelpers | a select-page-probe command in every conformance fixture that answers Pi's getSelectPageIndex vectors (keybindings.ts) |
+None.
 
 ## pi-coding-agent
 
@@ -220,7 +216,7 @@ None.
 | `CustomEditor.actionHandlers` | 0 | served | native:Editor.ActionHandlers | native:EditorBase::action_handlers | native:EditorBase.action_handlers | native:pig:editor-base-action-handlers |
 | `CustomEditor.addToHistory` | 0 | served | native:EditorComponent.AddToHistory | native:EditorComponent::add_to_history | native:EditorComponent.add_to_history | native:pig:editor-component-add-to-history |
 | `CustomEditor.borderColor` | 0 | served | native:Editor.BorderColor | native:EditorBase::border_color | native:EditorBase.border_color | native:pig:editor-base-border-color |
-| `CustomEditor.capturesViewportInput` | 0 | served | native:ViewportInputCapturer.CapturesViewportInput | native:EditorComponent::captures_viewport_input | native:EditorComponent.captures_viewport_input | native:pig:editor-component-captures-viewport-input |
+| `CustomEditor.capturesViewportInput` | 0 | served | native:ViewportInputCapturer.CapturesViewportInput | native:EditorComponent::captures_viewport_input | native:EditorComponent.captures_viewport_input | native:pig:make-editor-component |
 | `CustomEditor.disableSubmit` | 0 | served | native:Editor.DisableSubmit | native:EditorBase::disable_submit | native:EditorBase.disable_submit | native:pig:editor-base-disable-submit |
 | `CustomEditor.embedWorkingStatus` | 0 | served | native:EditorStatusEmbedder.EmbedWorkingStatus | native:EditorComponent::embed_working_status | native:EditorComponent.embed_working_status | native:pig:editor-component-embed-working-status |
 | `CustomEditor.focused` | 0 | served | native:Editor.Focused | native:EditorBase::focused | native:EditorBase.focused | native:pig:editor-base-focused |
@@ -1019,7 +1015,7 @@ None.
 | `Editor` | 20 | served | native:Editor | native:EditorBase | native:EditorBase | native:pig:editor-base |
 | `Editor.addToHistory` | 0 | served | native:Editor.AddToHistory | native:EditorBase::add_to_history | native:EditorBase.add_to_history | native:pig:editor-base-add-to-history |
 | `Editor.borderColor` | 0 | served | kit:Editor | kit:Editor | kit:Editor | kit:pig:kit-editor |
-| `Editor.capturesViewportInput` | 0 | served | native:ViewportInputCapturer.CapturesViewportInput | native:EditorComponent::captures_viewport_input | native:EditorComponent.captures_viewport_input | native:pig:editor-component-captures-viewport-input |
+| `Editor.capturesViewportInput` | 0 | served | native:ViewportInputCapturer.CapturesViewportInput | native:EditorComponent::captures_viewport_input | native:EditorComponent.captures_viewport_input | native:pig:make-editor-component |
 | `Editor.disableSubmit` | 0 | served | kit:Editor | kit:Editor | kit:Editor | kit:pig:kit-editor |
 | `Editor.focused` | 0 | served | kit:Editor | kit:Editor | kit:Editor | kit:pig:kit-editor |
 | `Editor.getAutocompleteMaxVisible` | 0 | served | kit:Editor | kit:Editor | kit:Editor | kit:pig:kit-editor |
