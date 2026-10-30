@@ -433,8 +433,8 @@ func (s *SettingsList) visibleRange(display []int) (start, end int) {
 	return start, end
 }
 
-// CapturesSelectPageInput reports that the list handles tui.select.pageUp and tui.select.pageDown.
-func (s *SettingsList) CapturesSelectPageInput() bool { return true }
+// CapturesViewportInput reports that the list handles tui.select.pageUp and tui.select.pageDown.
+func (s *SettingsList) CapturesViewportInput() bool { return true }
 
 // HandleInput processes keystrokes.
 func (s *SettingsList) HandleInput(data string) {
@@ -458,7 +458,7 @@ func (s *SettingsList) HandleInput(data string) {
 		}
 	case pageSelectionKey(kb, data):
 		if len(display) > 0 {
-			s.cursor, _ = PageSelectionIndex(kb, data, s.cursor, len(display), s.maxVisible)
+			s.cursor, _ = GetSelectPageIndex(kb, data, s.cursor, len(display), s.maxVisible)
 		}
 	case kb.Matches(data, KBSelectConfirm) || (data == " " && (!s.searchEnabled || s.searchInput.GetValue() == "")):
 		// Space changes the value unless it types into a non-empty search.

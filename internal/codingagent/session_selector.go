@@ -296,8 +296,9 @@ func sessionFg(color, text string) string {
 
 func sessionBold(text string) string { return "\x1b[1m" + text + tui.SGRBoldDimReset }
 
-// CapturesSelectPageInput reports that the selector handles tui.select.pageUp and tui.select.pageDown.
-func (s *SessionSelectorComponent) CapturesSelectPageInput() bool { return true }
+// CapturesViewportInput is session-selector.ts capturesViewportInput: the list takes the fullscreen viewport keys except while renaming.
+// pig divergence (D217): Pi 3bae8527 (#7629) rename mode gives the viewport keys back, because the rename input is not a list.
+func (s *SessionSelectorComponent) CapturesViewportInput() bool { return !s.renameMode }
 
 func (s *SessionSelectorComponent) HandleInput(data string) {
 	s.drainLoadUpdates()

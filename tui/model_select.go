@@ -373,8 +373,8 @@ func (m *ModelSelectorComponent) Dispose() {
 // modelSelectorPageSize is the visible rows and the rows a selection page key moves (PAGE_SIZE of Pi PR #7680's model-selector.ts).
 const modelSelectorPageSize = 10
 
-// CapturesSelectPageInput reports that the selector handles tui.select.pageUp and tui.select.pageDown.
-func (m *ModelSelectorComponent) CapturesSelectPageInput() bool { return true }
+// CapturesViewportInput reports that the selector handles tui.select.pageUp and tui.select.pageDown.
+func (m *ModelSelectorComponent) CapturesViewportInput() bool { return true }
 
 // HandleInput mirrors upstream model-selector.ts handleInput: it checks tui.input.tab, tui.select.up, tui.select.down, tui.select.confirm, tui.select.cancel and app.models.save in that order, and passes every other key to the search input before it reapplies the query.
 func (m *ModelSelectorComponent) HandleInput(data string) {
@@ -393,7 +393,7 @@ func (m *ModelSelectorComponent) HandleInput(data string) {
 	case kb.Matches(data, KBSelectDown):
 		m.moveCursor(1, true)
 	case pageSelectionKey(kb, data):
-		m.cursor, _ = PageSelectionIndex(kb, data, m.cursor, len(m.filtered), modelSelectorPageSize)
+		m.cursor, _ = GetSelectPageIndex(kb, data, m.cursor, len(m.filtered), modelSelectorPageSize)
 		m.updateList()
 	case kb.Matches(data, KBSelectConfirm):
 		m.selectHighlighted()

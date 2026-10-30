@@ -219,8 +219,8 @@ func (l *SelectList) HandleMouse(event TuiMouseEvent) *TuiMouseDispatchResult {
 	return &TuiMouseDispatchResult{TuiMouseEventResult: TuiMouseEventResult{Handled: true}}
 }
 
-// CapturesSelectPageInput reports that the list handles tui.select.pageUp and tui.select.pageDown.
-func (l *SelectList) CapturesSelectPageInput() bool { return true }
+// CapturesViewportInput reports that the list handles tui.select.pageUp and tui.select.pageDown.
+func (l *SelectList) CapturesViewportInput() bool { return true }
 
 // HandleInput moves the selection (wrapping at both ends), confirms or cancels through the tui.select.* keybindings.
 func (l *SelectList) HandleInput(data string) {
@@ -247,7 +247,7 @@ func (l *SelectList) HandleInput(data string) {
 		if len(l.filteredItems) == 0 {
 			return
 		}
-		l.selectedIndex, _ = PageSelectionIndex(kb, data, l.selectedIndex, len(l.filteredItems), l.maxVisible)
+		l.selectedIndex, _ = GetSelectPageIndex(kb, data, l.selectedIndex, len(l.filteredItems), l.maxVisible)
 		l.notifySelectionChange()
 		l.Invalidate()
 	case kb.Matches(data, KBSelectConfirm):

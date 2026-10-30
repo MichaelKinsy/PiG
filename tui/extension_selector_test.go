@@ -406,7 +406,7 @@ func TestExtensionSelectorComponentHasNoPreviewWithoutOptionsAndCapturesThePageK
 	if !strings.Contains(strings.Join(build([]string{"a"}).Render(120), "\n"), "preview line") {
 		t.Error("a selector with an option lost the preview")
 	}
-	if !build([]string{"a"}).CapturesSelectPageInput() {
+	if !build([]string{"a"}).CapturesViewportInput() {
 		t.Error("the selector must capture tui.select.pageUp and pageDown")
 	}
 }
