@@ -476,3 +476,23 @@ path = "internal/photonimage/testdata/gif-real/go/*.gif"
 precedence = "closest"
 SPDX-FileCopyrightText = "The Go Authors"
 SPDX-License-Identifier = "BSD-3-Clause"
+
+# The PNG files of the Photon PNG decoder corpus (internal/photonimage/testdata/png-real): PngSuite by Willem van Schaik, the PNG test files of the
+# image-rs repository (tests/images/png, v0.24.9) and those of the Go repository (src/image/png/testdata and src/image/testdata).
+[[annotations]]
+path = "internal/photonimage/testdata/png-real/pngsuite/**"
+precedence = "closest"
+SPDX-FileCopyrightText = "Willem van Schaik, 1996, 2011"
+SPDX-License-Identifier = "LicenseRef-PngSuite"
+
+[[annotations]]
+path = "internal/photonimage/testdata/png-real/image-rs/*.png"
+precedence = "closest"
+SPDX-FileCopyrightText = "The image-rs Developers"
+SPDX-License-Identifier = "MIT OR Apache-2.0"
+
+[[annotations]]
+path = "internal/photonimage/testdata/png-real/go/*.png"
+precedence = "closest"
+SPDX-FileCopyrightText = "The Go Authors"
+SPDX-License-Identifier = "BSD-3-Clause"
