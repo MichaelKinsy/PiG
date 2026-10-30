@@ -29,3 +29,7 @@ known-gaps: store-storage.test.ts (D-store), harness-registry-reader.test.ts par
 
 ## Ratchet
 See `ratchet-breakdown.md`.
+
+## Gate round on 4d2ba21be2 (heavy round, pushed)
+Both Main prerequisites done: PORT_MAP rows for the D5a support.ts/examples tests (31 rows) added; coverage runs with the `.upstream/current` mirror copied into the rivendell tree (coverage exit 0). Reds: known-gaps and generate (expected: store-storage, registry-reader partial, cloudflare partial); upstream-delta 8, async 3, port-map 8 pending (registry-reader.ts + durable store); interface gap ids 968 -> 363 (chord/next 329, durable 34); `TestReachLibrariesPortPublishedEntryPoints` (D-store).
+Unexpected: (1) `go test -p 1 ./...`: `chord/next/host` TestExample09Calls (host_examples_test.go) HUNG for 60 min (package timeout) in the full run, passed in `-race -count=3 ./chord/...` earlier: a D5a flake/hang for FollowD5a. (2) `bench/k8s/cmd/k8sbench` 7 tests: "k8sbench has no pins for Pi's coding agent built from commit e7a0df27" (pireference_test.go:278; sourceAgentPins): the pin bump 0b5ddbd9e1 never added agent pins: base-caused. (3) `go test -race ./chord/host/`: TestLinksADeadLinkIsClosedAndReleasesEverythingHeld (link_upstream_test.go:599) and TestLinksCheckContractTokensAcrossLinks (:617) fail, identically at the base 2345dc3fcf: base-caused (legacy chord/host under -race). The full run was stopped after the hang; packages after chord/next/host were not run to completion.
