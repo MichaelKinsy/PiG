@@ -826,6 +826,8 @@ func icoCorpus() []formatCase {
 		b.add("png-signature-wrong-last", icoSingle(4, 4, 32, append([]byte("\x89PNG\r\n\x1a\x0b"), base[8:]...)))
 	}
 
+	icoPNGCorpus(&b)
+
 	// Seeded corruptions of small bitmap files (every position).
 	{
 		d := newDIB(3, 2, 32)
