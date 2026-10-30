@@ -438,7 +438,7 @@ func gifCorpus() []formatCase {
 		}
 		h := len(indices) / w
 		invalid := append(append([]int{}, codes[:len(codes)-1]...), 4000)
-		for pad := 0; pad < 300; pad++ {
+		for pad := range 300 {
 			for name, c := range map[string][]int{"valid": codes, "invalid-after-last": invalid} {
 				img := gifImage{width: uint16(w), height: uint16(h), minCode: minCode, data: gifSubBlocks(gifPackCodes(minCode, c), 255)}
 				add(fmt.Sprintf("window-%s-pad%d", name, pad), gifSpec{width: uint16(w), height: uint16(h), global: gifPalette(256, 2), blocks: [][]byte{gifExtension(0xFE, make([]byte, 17+pad)), img.bytes()}})
@@ -501,7 +501,7 @@ func gifCorpus() []formatCase {
 		s := gifValid(5, 3, 2, "noise", 8)
 		s.blocks = append([][]byte{gifControl(1, 5, 2)}, s.blocks...)
 		full := s.bytes()
-		for cut := 0; cut < len(full); cut++ {
+		for cut := range full {
 			b.add(fmt.Sprintf("cut-%d", cut), full[:cut])
 		}
 	}
