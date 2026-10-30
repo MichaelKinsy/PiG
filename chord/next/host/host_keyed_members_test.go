@@ -3,6 +3,8 @@ package host
 import (
 	"context"
 	"errors"
+	"sync"
+	"sync/atomic"
 	"testing"
 	"weak"
 
@@ -11,628 +13,764 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/chord/next/contracts"
 	"github.com/MichaelKinsy/PiG/chord/next/data"
+	"github.com/MichaelKinsy/PiG/chord/next/documents"
 	"github.com/MichaelKinsy/PiG/chord/next/internal/nexttest"
-	"github.com/MichaelKinsy/PiG/chord/next/state"
+	"github.com/MichaelKinsy/PiG/chord/next/store"
+	"github.com/MichaelKinsy/PiG/chord/sqlite"
 )
 
-// Tests of packages/chord/test/next/host/keyed-members.test.ts. Every case of the upstream file serves objects through a
-// whole host (`loaded`, `serve`, `ChordObject` attempts, `failLive`, `defineState` keyed documents, `createHost`), so none
-// is ported yet: they are `missing` for the host core. The tests below are own tests of keyedMembers over fakes of its
-// two seams (keyedSlot, and keyedProvider as an object with keyedMembers of its own, as Pi's ChordObject.pinKey is); each
-// names the upstream case whose behavior it mirrors.
+// Ports packages/chord/test/next/host/keyed-members.test.ts: keyed members across attempts (slice 6a §1.2, §1.4, §12):
+// the keys references hold on an object's keyed members, frozen while it is failed, re-bound by name (loaded first)
+// when its next attempt goes live, released once. Every case serves objects through a whole host.
 
-// keyedFakeSlot is a keyed document handle's slot: its keys' values (the store), the keys in memory with their pins, and
-// the loads it can hold. Its state belongs to the loop. A key with no pin leaves memory (its value stays).
-type keyedFakeSlot struct {
-	h      *memberHarness
-	values map[string]float64
-	keys   map[string]*keyedFakeKey
-	// gate, when set, holds every Ensure after its read until it is closed; entered gets a value once one reached it.
-	gate      chan struct{}
-	entered   chan struct{}
-	ensureErr error
-	releases  int
-	// pinErr is what Pin returns, when set.
-	pinErr error
-}
+var kmSchema = contracts.Obj(contracts.Prop("n", contracts.Int()))
 
-type keyedFakeKey struct {
-	pins int
-	doc  *memberDoc
-}
-
-func newKeyedFakeSlot(h *memberHarness) *keyedFakeSlot {
-	return &keyedFakeSlot{h: h, values: map[string]float64{}, keys: map[string]*keyedFakeKey{}, entered: make(chan struct{}, 16)}
-}
-
-var _ keyedSlot = (*keyedFakeSlot)(nil)
-
-// Pin pins key; the release is idempotent, and the last one drops the key from memory.
-func (s *keyedFakeSlot) Pin(key string, _ context.Context) (func(), error) {
-	if s.pinErr != nil {
-		return nil, s.pinErr
-	}
-	entry, ok := s.keys[key]
-	if !ok {
-		entry = &keyedFakeKey{}
-		s.keys[key] = entry
-	}
-	entry.pins++
-	released := false
-	return func() {
-		if released {
-			return
-		}
-		released = true
-		s.releases++
-		entry.pins--
-		if entry.pins == 0 && s.keys[key] == entry {
-			delete(s.keys, key)
-		}
-	}, nil
-}
-
-// Ensure loads key from the store when it is not in memory.
-func (s *keyedFakeSlot) Ensure(key string, _ context.Context) error {
-	var gate chan struct{}
-	var err error
-	s.h.loop.Run(func() { gate, err = s.gate, s.ensureErr })
-	if gate != nil {
-		s.entered <- struct{}{}
-		<-gate
-	}
+func kmDefine(name string, options documents.StateOptions) *documents.StateDefinition {
+	options.Schema, options.Version = kmSchema, 1
+	options.Initial = func() *delta.JsonObject { return jsonObject("n", float64(0)) }
+	definition, err := documents.DefineState(name, options)
 	if err != nil {
+		panic(err)
+	}
+	return definition
+}
+
+var (
+	kmNotes = kmDefine("notes", documents.StateOptions{Keyed: true})
+	kmOwn   = kmDefine("own", documents.StateOptions{})
+	// kmStored is a persisted keyed state whose keys a new host loads from the store.
+	kmStored = kmDefine("notes", documents.StateOptions{
+		Keyed: true, Persist: true,
+		CheckpointWhen: func(*delta.JsonObject, []delta.Op, documents.CheckpointInfo) bool { return false },
+	})
+	kmProvider = mustContract(contracts.Local("app.provider", contracts.LocalDeclaration{
+		Version: 1, Params: contracts.Params{contracts.Prop("id", contracts.Str())},
+		Members: []contracts.LocalEntry{contracts.Mem("notes", contracts.Keyed(kmSchema))},
+	}))
+	kmExposer = mustContract(contracts.Local("app.exposer", contracts.LocalDeclaration{
+		Params:  contracts.Params{},
+		Version: 1, Members: []contracts.LocalEntry{contracts.Mem("notes", contracts.Keyed(kmSchema))},
+	}))
+	// kmViewer is a viewer with params: it ends with its last reference (an object with empty params lives as long as its
+	// host).
+	kmViewer = mustContract(contracts.Local("app.viewer", contracts.LocalDeclaration{
+		Version: 1, Params: contracts.Params{contracts.Prop("id", contracts.Int())},
+		Members: []contracts.LocalEntry{contracts.Mem("value", kmSchema), contracts.Mem("double", contracts.Int())},
+	}))
+	kmColdProvider = mustContract(contracts.Local("app.cold-provider", contracts.LocalDeclaration{
+		Params:  contracts.Params{},
+		Version: 1, Members: []contracts.LocalEntry{contracts.Mem("notes", contracts.Keyed(kmSchema))},
+	}))
+)
+
+// kmRegistry is what a case's factories write and its test goroutine reads.
+type kmRegistry struct {
+	mu        sync.Mutex
+	providers map[string]*documents.Keyed
+	exposers  []Self
+	which     string
+}
+
+func newKmRegistry(which string) *kmRegistry {
+	return &kmRegistry{providers: map[string]*documents.Keyed{}, which: which}
+}
+
+func (r *kmRegistry) provider(id string) *documents.Keyed {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return r.providers[id]
+}
+
+func (r *kmRegistry) setProvider(id string, notes *documents.Keyed) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.providers[id] = notes
+}
+
+func (r *kmRegistry) addExposer(self Self) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.exposers = append(r.exposers, self)
+}
+
+func (r *kmRegistry) exposer(index int) Self {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if index < 0 {
+		index += len(r.exposers)
+	}
+	return r.exposers[index]
+}
+
+func (r *kmRegistry) setWhich(id string) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.which = id
+}
+
+func (r *kmRegistry) current() string {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return r.which
+}
+
+// kmKeyed is a keyed member of an implementation: the handle, or a reference's keyed member re-exposed.
+func kmKeyed(handle any) map[string]contracts.KeyedWatchable[delta.JsonValue] {
+	return map[string]contracts.KeyedWatchable[delta.JsonValue]{"notes": ExposeKeyed(handle)}
+}
+
+// kmViewerFactory is a viewer of key `k` of the exposer's notes.
+func kmViewerFactory(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+	value, err := self.Get(kmExposer, jsonObject()).Keyed("notes").At("k")
+	if err != nil {
+		return contracts.Implementation{}, err
+	}
+	double := self.Derive([]any{value}, func(values []any) (delta.JsonValue, error) {
+		return values[0].(*delta.JsonObject).Value("n").(float64) * 2, nil
+	})
+	return contracts.Implementation{Members: contracts.VariantImplementation{
+		State: map[string]chord.Watchable[delta.JsonValue]{"value": Expose(value), "double": double},
+	}}, nil
+}
+
+// kmServeProviders serves the providers `a` and `b` (in memory) and the exposer re-exposing the registry's `which`.
+func kmServeProviders(h FacetHost, registry *kmRegistry) error {
+	if err := h.Serve(kmProvider, func(params *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		notes := self.State(kmNotes).(*documents.Keyed)
+		registry.setProvider(params.Value("id").(string), notes)
+		return contracts.Implementation{Members: contracts.VariantImplementation{Keyed: kmKeyed(notes)}}, nil
+	}, ServeOptions{}); err != nil {
 		return err
 	}
-	s.h.loop.Run(func() {
-		if entry := s.keys[key]; entry != nil && entry.doc == nil {
-			entry.doc = newMemberDoc(s.h.batch, memberCount(s.values[key]))
+	return h.Serve(kmExposer, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		registry.addExposer(self)
+		self.State(kmOwn)
+		notes := self.Get(kmProvider, jsonObject("id", registry.current())).Keyed("notes")
+		return contracts.Implementation{Members: contracts.VariantImplementation{Keyed: kmKeyed(notes)}}, nil
+	}, ServeOptions{})
+}
+
+// kmSet sets the n of key `key` of notes.
+func kmSet(t testing.TB, notes *documents.Keyed, key string, n float64) {
+	t.Helper()
+	_, err := notes.Change(key, func(draft *delta.Object) (any, error) { return nil, draft.Set("n", n) }, background)
+	must(t, err)
+}
+
+// kmPins is the pins on key `k` of notes (-1: none: Pi's undefined).
+func kmPins(host Host, notes *documents.Keyed) int {
+	pins := -1
+	host.(*chordHost).loop().Run(func() {
+		if source := notes.Slot.KeySourceOf("k"); source != nil {
+			pins = source.Pins()
 		}
 	})
-	return nil
+	return pins
 }
 
-func (s *keyedFakeSlot) Source(key string) state.DeriveSource { return s.keys[key].doc }
+// kmServed is a host with providers `a` and `b` (key `k`: 1 and 2), an exposer re-exposing `registry.which`'s notes and a
+// viewer of its key `k` (Pi's `served`).
+type kmServed struct {
+	Host     Host
+	Registry *kmRegistry
+	A, B     *Reference
+	Exposer  *Reference
+	Viewer   *Reference
+}
 
-// set changes the value of key in the store and in memory (the caller is not in a section).
-func (s *keyedFakeSlot) set(t *testing.T, key string, n float64) {
+func (s *kmServed) fail() {
+	failLive(s.Registry.exposer(-1), data.NewChordError(data.ChordErrorInit{Code: data.CodeUnavailable, Message: "boom"}, nil))
+}
+
+func kmServe(t *testing.T, which string) *kmServed {
 	t.Helper()
-	s.h.loop.Run(func() {
-		s.values[key] = n
-		if entry := s.keys[key]; entry != nil && entry.doc != nil {
-			entry.doc.set(t, memberCount(n))
+	registry := newKmRegistry(which)
+	host, _ := loaded(t, func(h FacetHost, _ FacetSelf) error {
+		if err := kmServeProviders(h, registry); err != nil {
+			return err
 		}
-	})
+		return h.Serve(kmViewer, kmViewerFactory, ServeOptions{})
+	}, loadedOptions{})
+	served := &kmServed{Host: host, Registry: registry}
+	var err error
+	served.A, err = host.Get(kmProvider, jsonObject("id", "a"), background, GetOptions{})
+	must(t, err)
+	served.B, err = host.Get(kmProvider, jsonObject("id", "b"), background, GetOptions{})
+	must(t, err)
+	kmSet(t, registry.provider("a"), "k", 1)
+	kmSet(t, registry.provider("b"), "k", 2)
+	served.Exposer, err = host.Get(kmExposer, jsonObject(), background, GetOptions{})
+	must(t, err)
+	served.Viewer, err = host.Get(kmViewer, jsonObject("id", float64(1)), background, GetOptions{})
+	must(t, err)
+	return served
 }
 
-// load makes key a key in memory with no pin, as the handle's own `change` leaves it (the caller is not in a section).
-func (s *keyedFakeSlot) pinsOf(key string) (pins int, inMemory bool) {
-	s.h.loop.Run(func() {
-		if entry := s.keys[key]; entry != nil {
-			pins, inMemory = entry.pins, true
-		}
-	})
-	return pins, inMemory
-}
-
-// keyedFakeObject is an object with keyed members: its keyedMembers and what each member is on its live attempt;
-// PinKey is `ChordObject.pinKey`, which a re-exposing object reaches through a Binding.
-type keyedFakeObject struct {
-	keys     *keyedMembers
-	bindings *contracts.NamedMap[*keyedBinding]
-}
-
-var _ keyedProvider = (*keyedFakeObject)(nil)
-
-func (h *memberHarness) keyedObject(binding *keyedBinding) *keyedFakeObject {
-	bindings := contracts.NewNamedMap[*keyedBinding](1)
-	bindings.Set("notes", binding)
-	return &keyedFakeObject{keys: newKeyedMembers(h.batch, h.scheduler, h.loop, memberBackground), bindings: bindings}
-}
-
-// PinKey pins key of member on the object's live attempt.
-func (o *keyedFakeObject) PinKey(member, key string, ctx context.Context) (pinnedKey, error) {
-	return o.keys.pin(member, key, o.bindings.Value(member), ctx)
-}
-
-func ownBinding(slot keyedSlot) *keyedBinding { return &keyedBinding{kind: keyedOwn, slot: slot} }
-
-func reexposedBinding(provider *keyedFakeObject) *keyedBinding {
-	return &keyedBinding{kind: keyedReexposed, binding: provider, member: "notes"}
-}
-
-// bindingsOf is the keyed members of an attempt: notes is binding.
-func bindingsOf(binding *keyedBinding) *contracts.NamedMap[*keyedBinding] {
-	bindings := contracts.NewNamedMap[*keyedBinding](1)
-	bindings.Set("notes", binding)
-	return bindings
-}
-
-// pinAsync starts keys.pin(...) on a task of the loop, as a reference's call (an awaited Promise of Pi) waiting meanwhile.
-func (h *memberHarness) pinAsync(keys *keyedMembers, binding *keyedBinding, key string, ctx context.Context) <-chan pinResult {
-	result := make(chan pinResult, 1)
-	h.loop.Go(func() {
-		pin, err := keys.pin("notes", key, binding, ctx)
-		result <- pinResult{pin: pin, err: err}
-	})
-	return result
-}
-
-// pinned pins key and fails the test when it fails.
-func (h *memberHarness) pinned(t *testing.T, keys *keyedMembers, binding *keyedBinding, key string) pinnedKey {
+// kmMember is the current value of a state member.
+func kmMember(t testing.TB, ref *Reference, member string) any {
 	t.Helper()
-	pin, err := keys.pin("notes", key, binding, memberBackground)
-	if err != nil {
-		t.Fatalf("pin %q: %v", key, err)
-	}
-	return pin
+	value, err := ref.Member(member).Value()
+	must(t, err)
+	return value
 }
 
-func asHandle(t *testing.T, source state.DeriveSource) state.SourceHandle {
+func kmWatch(t testing.TB, member *ReferenceMember) *nexttest.Collector[chord.WatchCall[delta.JsonValue]] {
 	t.Helper()
-	handle, ok := source.(state.SourceHandle)
-	if !ok {
-		t.Fatalf("%T is not a source", source)
-	}
-	return handle
+	watch, err := member.Watch(background)
+	must(t, err)
+	return nexttest.ChangesOf(watch)
 }
 
-// doubled is a derive over source of twice its `n`.
-func (h *memberHarness) doubled(t *testing.T, source state.DeriveSource) *state.Derive {
+func kmKeyWatch(t testing.TB, keyed *ReferenceKeyed) chord.WatchHandle[delta.JsonValue] {
 	t.Helper()
-	return h.derive(t, []any{source}, func(values []any) (delta.JsonValue, error) { return memberCountOf(values[0]) * 2, nil })
+	watch, err := keyed.Watch(background, "k")
+	must(t, err)
+	if watch == nil {
+		t.Fatalf("the key is absent")
+	}
+	return watch
 }
 
-var keyedBoom = data.NewChordError(data.ChordErrorInit{Code: data.CodeUnavailable, Message: "boom"}, nil)
+func kmN(n float64) *delta.JsonObject { return jsonObject("n", n) }
 
-// fail is the live attempt of keys failing: the keys following another object's member freeze at once, then every key.
-func (h *memberHarness) fail(keys *keyedMembers) {
-	h.loop.Run(func() {
-		keys.freeze(freezeForeign, keyedBoom)
-		keys.freeze(freezeAll, keyedBoom)
-	})
+// kmRetry asks the exposer for its next attempt and waits for it: `exposer.retry(); (await host.get(Exposer)).release()`.
+func kmRetry(t testing.TB, host Host, exposer *Reference) {
+	t.Helper()
+	exposer.Retry()
+	again, err := host.Get(kmExposer, jsonObject(), background, GetOptions{})
+	must(t, err)
+	again.Release()
 }
 
-// Own test, mirrors keyed-members.test.ts › a failed object's held keys › keep their last values and get no frames (at,
-// watch, a derive over at); the provider goes on.
-func TestKeyedMembersAFailedObjectsHeldKeysKeepTheirLastValuesAndGetNoFramesTheProviderGoesOn(t *testing.T) {
-	h := newMemberHarness(t)
-	slot := newKeyedFakeSlot(h)
-	slot.values["k"] = 1
-	provider := h.keyedObject(ownBinding(slot))
-	exposer := newKeyedMembers(h.batch, h.scheduler, h.loop, memberBackground)
-	viewed := h.pinned(t, exposer, reexposedBinding(provider), "k")
-	double := h.doubled(t, viewed.source)
-	values := nexttest.ChangesOf(h.watch(t, asHandle(t, viewed.source)))
-	doubles := nexttest.ChangesOf(h.watch(t, double))
-	// The provider's own watch pins the key, as a handle's `watch` does: the provider goes on while the exposer lets go.
-	h.loop.Run(func() {
-		if _, err := slot.Pin("k", memberBackground); err != nil {
-			t.Errorf("pin: %v", err)
-		}
-	})
-	direct := nexttest.ChangesOf(h.watch(t, asHandle(t, slot.keys["k"].doc)))
-	h.fail(exposer)
-	slot.set(t, "k", 3)
-	h.delivered()
-	expectEqual(t, "value", h.read(t, viewed.source), delta.JsonValue(memberCount(1)))
-	if v, _ := h.value(double); v != float64(2) {
-		t.Fatalf("double = %v, want 2", v)
+// keyed-members.test.ts › a failed object's held keys › keep their last values and get no frames (at, watch, a derive over
+// at); the provider goes on.
+func TestKeyedMembersAFailedObjectsHeldKeysKeepTheirLastValuesAndGetNoFramesAtWatchADeriveOverAtTheProviderGoesOn(t *testing.T) {
+	s := kmServe(t, "a")
+	values := kmWatch(t, s.Viewer.Member("value"))
+	keyWatch := kmKeyWatch(t, s.Exposer.Keyed("notes"))
+	keyed := nexttest.ChangesOf(keyWatch)
+	direct, err := s.A.Keyed("notes").Watch(background, "k")
+	must(t, err)
+	directCalls := nexttest.ChangesOf(direct)
+	s.fail()
+	kmSet(t, s.Registry.provider("a"), "k", 3)
+	deliveredOn(s.Host)
+	if kind := s.Exposer.State().Value().Kind; kind != RefStateFailed {
+		t.Fatalf("exposer state = %s, want failed", kind)
 	}
-	expectEqual(t, "frames while failed", [2]int{len(values.Items()), len(doubles.Items())}, [2]int{0, 0})
-	expectEqual(t, "the provider's own watch", nexttest.ValuesOf(direct.Items()), []any{delta.JsonValue(memberCount(3))})
+	nexttest.RequireJSONEqual(t, []any{kmMember(t, s.Viewer, "value"), kmMember(t, s.Viewer, "double"), keyWatch.Value()},
+		[]any{kmN(1), float64(2), kmN(1)})
+	nexttest.RequireJSONEqual(t, []any{msCalls(values.Items()), msCalls(keyed.Items())}, []any{[]any{}, []any{}})
+	nexttest.RequireJSONEqual(t, nexttest.ValuesOf(directCalls.Items()), []any{kmN(3)})
+	must(t, s.Host.Close(background))
 }
 
-// Own test, mirrors keyed-members.test.ts › re-binding when a new attempt goes live › follows the new attempt's member of
-// the same name (one frame); the old provider's pin is released.
-func TestKeyedMembersRebindingFollowsTheNewAttemptsMemberOfTheSameNameOneFrameAndTheOldProvidersPinIsReleased(t *testing.T) {
-	h := newMemberHarness(t)
-	a, b := newKeyedFakeSlot(h), newKeyedFakeSlot(h)
-	a.values["k"], b.values["k"] = 1, 2
-	providerA, providerB := h.keyedObject(ownBinding(a)), h.keyedObject(ownBinding(b))
-	exposer := newKeyedMembers(h.batch, h.scheduler, h.loop, memberBackground)
-	viewed := h.pinned(t, exposer, reexposedBinding(providerA), "k")
-	double := h.doubled(t, viewed.source)
-	values := nexttest.ChangesOf(h.watch(t, asHandle(t, viewed.source)))
-	doubles := nexttest.ChangesOf(h.watch(t, double))
-	if pins, _ := a.pinsOf("k"); pins != 1 {
-		t.Fatalf("pins of a = %d, want 1", pins)
+// keyed-members.test.ts › re-binding when a new attempt goes live › follows the new attempt's member of the same name (one
+// frame); the old provider's pin is released.
+func TestKeyedMembersRebindingFollowsTheNewAttemptsMemberOfTheSameNameOneFrameTheOldProvidersPinIsReleased(t *testing.T) {
+	s := kmServe(t, "a")
+	values := kmWatch(t, s.Viewer.Member("value"))
+	doubles := kmWatch(t, s.Viewer.Member("double"))
+	keyWatch := kmKeyWatch(t, s.Exposer.Keyed("notes"))
+	keyed := nexttest.ChangesOf(keyWatch)
+	pins := func(id string) int { return kmPins(s.Host, s.Registry.provider(id)) }
+	if got := pins("a"); got != 1 {
+		t.Fatalf("pins(a) = %d, want 1", got)
 	}
-	h.fail(exposer)
-	next := bindingsOf(reexposedBinding(providerB))
-	if _, err := h.prepare(exposer, next, memberBackground).await(); err != nil {
-		t.Fatalf("prepare: %v", err)
+	s.fail()
+	s.Registry.setWhich("b")
+	kmRetry(t, s.Host, s.Exposer)
+	deliveredOn(s.Host)
+	nexttest.RequireJSONEqual(t, []any{kmMember(t, s.Viewer, "value"), kmMember(t, s.Viewer, "double"), keyWatch.Value()},
+		[]any{kmN(2), float64(4), kmN(2)})
+	if a, b := pins("a"), pins("b"); a != -1 || b != 1 {
+		t.Fatalf("pins = %d, %d, want none and 1", a, b)
 	}
-	h.within(t, exposer.rebind)
-	h.delivered()
-	expectEqual(t, "value", h.read(t, viewed.source), delta.JsonValue(memberCount(2)))
-	if v, _ := h.value(double); v != float64(4) {
-		t.Fatalf("double = %v, want 4", v)
-	}
-	_, aInMemory := a.pinsOf("k")
-	bPins, _ := b.pinsOf("k")
-	expectEqual(t, "a in memory, pins of b", []any{aInMemory, bPins}, []any{false, 1})
-	b.set(t, "k", 4)
-	a.set(t, "k", 5)
-	h.delivered()
-	expectEqual(t, "values", nexttest.ValuesOf(values.Items()), []any{delta.JsonValue(memberCount(2)), delta.JsonValue(memberCount(4))})
-	expectEqual(t, "doubles", nexttest.ValuesOf(doubles.Items()), []any{float64(4), float64(8)})
+	kmSet(t, s.Registry.provider("b"), "k", 4)
+	kmSet(t, s.Registry.provider("a"), "k", 5)
+	deliveredOn(s.Host)
+	nexttest.RequireJSONEqual(t, nexttest.ValuesOf(values.Items()), []any{kmN(2), kmN(4)})
+	nexttest.RequireJSONEqual(t, nexttest.ValuesOf(keyed.Items()), []any{kmN(2), kmN(4)})
+	nexttest.RequireJSONEqual(t, nexttest.ValuesOf(doubles.Items()), []any{float64(4), float64(8)})
+	must(t, s.Host.Close(background))
 }
 
-// Own test, mirrors keyed-members.test.ts › re-binding when a new attempt goes live › loads a cold persisted key of the new
-// member before the new attempt goes live: prepare loads the key, which the live key follows only at rebind.
+// keyed-members.test.ts › re-binding when a new attempt goes live › loads a cold persisted key of the new member before the
+// new attempt goes live.
 func TestKeyedMembersRebindingLoadsAColdPersistedKeyOfTheNewMemberBeforeTheNewAttemptGoesLive(t *testing.T) {
-	h := newMemberHarness(t)
-	memory, cold := newKeyedFakeSlot(h), newKeyedFakeSlot(h)
-	memory.values["k"], cold.values["k"] = 1, 10
-	providerMemory, providerCold := h.keyedObject(ownBinding(memory)), h.keyedObject(ownBinding(cold))
-	exposer := newKeyedMembers(h.batch, h.scheduler, h.loop, memberBackground)
-	viewed := h.pinned(t, exposer, reexposedBinding(providerMemory), "k")
-	if _, inMemory := cold.pinsOf("k"); inMemory {
-		t.Fatalf("the cold key is in memory before the new attempt")
+	durable := mustContract(contracts.Local("app.durable", contracts.LocalDeclaration{
+		Params:  contracts.Params{},
+		Version: 1, Members: []contracts.LocalEntry{contracts.Mem("notes", contracts.Keyed(kmSchema))},
+	}))
+	st := memoryStore(t)
+	var memos atomic.Pointer[documents.Keyed]
+	serveDurable := func(h FacetHost) error {
+		return h.Serve(durable, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+			notes := self.State(kmStored).(*documents.Keyed)
+			memos.Store(notes)
+			return contracts.Implementation{Members: contracts.VariantImplementation{Keyed: kmKeyed(notes)}}, nil
+		}, ServeOptions{})
 	}
-	h.fail(exposer)
-	if _, err := h.prepare(exposer, bindingsOf(reexposedBinding(providerCold)), memberBackground).await(); err != nil {
-		t.Fatalf("prepare: %v", err)
-	}
-	// Loaded before it goes live; the key still shows what the failed attempt had.
-	if pins, inMemory := cold.pinsOf("k"); !inMemory || pins != 1 {
-		t.Fatalf("the cold key after prepare: pins %d, in memory %v, want 1, true", pins, inMemory)
-	}
-	expectEqual(t, "value before the attempt is live", h.read(t, viewed.source), delta.JsonValue(memberCount(1)))
-	h.within(t, exposer.rebind)
-	expectEqual(t, "value once live", h.read(t, viewed.source), delta.JsonValue(memberCount(10)))
+	seed, _ := loaded(t, func(h FacetHost, _ FacetSelf) error { return serveDurable(h) }, loadedOptions{Store: st})
+	_, err := seed.Get(durable, jsonObject(), background, GetOptions{})
+	must(t, err)
+	kmSet(t, memos.Load(), "k", 10)
+	must(t, seed.Close(background))
+	// A new host: the key is in the store only.
+	registry := newKmRegistry("a")
+	var runs atomic.Int32
+	host, _ := loaded(t, func(h FacetHost, _ FacetSelf) error {
+		if err := h.Serve(kmProvider, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+			return contracts.Implementation{Members: contracts.VariantImplementation{Keyed: kmKeyed(self.State(kmNotes))}}, nil
+		}, ServeOptions{}); err != nil {
+			return err
+		}
+		if err := serveDurable(h); err != nil {
+			return err
+		}
+		if err := h.Serve(kmExposer, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+			registry.addExposer(self)
+			self.State(kmOwn)
+			var notes *ReferenceKeyed
+			if runs.Add(1) == 1 {
+				notes = self.Get(kmProvider, jsonObject("id", "a")).Keyed("notes")
+			} else {
+				notes = self.Get(durable, jsonObject()).Keyed("notes")
+			}
+			return contracts.Implementation{Members: contracts.VariantImplementation{Keyed: kmKeyed(notes)}}, nil
+		}, ServeOptions{}); err != nil {
+			return err
+		}
+		return h.Serve(kmViewer, kmViewerFactory, ServeOptions{})
+	}, loadedOptions{Store: st})
+	exposer, err := host.Get(kmExposer, jsonObject(), background, GetOptions{})
+	must(t, err)
+	viewer, err := host.Get(kmViewer, jsonObject("id", float64(1)), background, GetOptions{})
+	must(t, err)
+	failLive(registry.exposer(0), data.NewChordError(data.ChordErrorInit{Code: data.CodeUnavailable, Message: "boom"}, nil))
+	kmRetry(t, host, exposer)
+	nexttest.RequireJSONEqual(t, []any{kmMember(t, viewer, "value"), kmMember(t, viewer, "double")}, []any{kmN(10), float64(20)})
+	must(t, host.Close(background))
 }
 
-// keyedLoading is a cold key of an exposer's provider whose first pin is held at the load, and the exposer pinning it.
-type keyedLoading struct {
-	h        *memberHarness
-	cold     *keyedFakeSlot
-	warm     *keyedFakeSlot
-	exposer  *keyedMembers
-	provider *keyedFakeObject
-	other    *keyedFakeObject
+// readGate holds the first read of a store once armed, after it ran (Pi's `persistence.read` wrapper that resolves
+// `entered`, then awaits `gate`).
+type readGate struct {
+	armed   atomic.Bool
+	entered chan struct{}
+	release chan struct{}
+	once    sync.Once
+	freed   sync.Once
 }
 
-func (h *memberHarness) loading() *keyedLoading {
-	cold, warm := newKeyedFakeSlot(h), newKeyedFakeSlot(h)
-	cold.values["k"], warm.values["k"] = 1, 2
-	cold.gate = make(chan struct{})
-	return &keyedLoading{
-		h: h, cold: cold, warm: warm,
-		exposer:  newKeyedMembers(h.batch, h.scheduler, h.loop, memberBackground),
-		provider: h.keyedObject(ownBinding(cold)),
-		other:    h.keyedObject(ownBinding(warm)),
+func newReadGate() *readGate {
+	return &readGate{entered: make(chan struct{}), release: make(chan struct{})}
+}
+
+func (g *readGate) hit() {
+	if !g.armed.Load() {
+		return
 	}
+	held := false
+	g.once.Do(func() { held = true })
+	if !held {
+		return
+	}
+	close(g.entered)
+	<-g.release
 }
 
-// settle lets the held load finish and waits for every task the pins started.
-func (l *keyedLoading) settle() {
-	close(l.cold.gate)
-	l.h.loop.Wait()
+func (g *readGate) Release() { g.freed.Do(func() { close(g.release) }) }
+
+type gatedReads struct {
+	sqlite.SqliteExecutor
+	gate *readGate
 }
 
-// Own test, mirrors keyed-members.test.ts › a key whose first pin still loads › the object fails and re-binds meanwhile:
-// the consumer retries on the new member, the late pin is released.
+func (e *gatedReads) Get(sql string, params ...sqlite.SqliteValue) (sqlite.SqliteRow, error) {
+	row, err := e.SqliteExecutor.Get(sql, params...)
+	e.gate.hit()
+	return row, err
+}
+
+func (e *gatedReads) All(sql string, params ...sqlite.SqliteValue) ([]sqlite.SqliteRow, error) {
+	rows, err := e.SqliteExecutor.All(sql, params...)
+	e.gate.hit()
+	return rows, err
+}
+
+// readGateDatabase is a database whose reads, once armed, are held after they ran.
+type readGateDatabase struct {
+	sqlite.SqliteDatabase
+	gate *readGate
+}
+
+func (db *readGateDatabase) Get(sql string, params ...sqlite.SqliteValue) (sqlite.SqliteRow, error) {
+	return (&gatedReads{SqliteExecutor: db.SqliteDatabase, gate: db.gate}).Get(sql, params...)
+}
+
+func (db *readGateDatabase) All(sql string, params ...sqlite.SqliteValue) ([]sqlite.SqliteRow, error) {
+	return (&gatedReads{SqliteExecutor: db.SqliteDatabase, gate: db.gate}).All(sql, params...)
+}
+
+func (db *readGateDatabase) Transaction(callback func(transaction sqlite.SqliteExecutor) error) error {
+	return db.SqliteDatabase.Transaction(func(transaction sqlite.SqliteExecutor) error {
+		return callback(&gatedReads{SqliteExecutor: transaction, gate: db.gate})
+	})
+}
+
+// kmCold is Pi's `cold`: provider `a` (its key `k` in the store only, its loads held at the gate once Hold is called) and
+// `b` (in memory), an exposer re-exposing `which`'s notes, and a viewer of key `k`.
+type kmCold struct {
+	Host     Host
+	Errors   *hostErrors
+	Registry *kmRegistry
+	Exposer  *Reference
+	Gate     *readGate
+	Store    *store.ChordStore
+}
+
+func (c *kmCold) hold() { c.Gate.armed.Store(true) }
+
+func (c *kmCold) fail() {
+	failLive(c.Registry.exposer(-1), data.NewChordError(data.ChordErrorInit{Code: data.CodeUnavailable, Message: "boom"}, nil))
+}
+
+func kmColdServe(t *testing.T, which string) *kmCold {
+	t.Helper()
+	gate := newReadGate()
+	st := openMemoryStore(t, func(db sqlite.SqliteDatabase) sqlite.SqliteDatabase {
+		return &readGateDatabase{SqliteDatabase: db, gate: gate}
+	}, nil)
+	t.Cleanup(gate.Release)
+	var seeded atomic.Pointer[documents.Keyed]
+	seed, _ := loaded(t, func(h FacetHost, _ FacetSelf) error {
+		return h.Serve(kmColdProvider, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+			notes := self.State(kmStored).(*documents.Keyed)
+			seeded.Store(notes)
+			return contracts.Implementation{Members: contracts.VariantImplementation{Keyed: kmKeyed(notes)}}, nil
+		}, ServeOptions{})
+	}, loadedOptions{Store: st})
+	_, err := seed.Get(kmColdProvider, jsonObject(), background, GetOptions{})
+	must(t, err)
+	kmSet(t, seeded.Load(), "k", 1)
+	must(t, seed.Close(background))
+	// A new host: the key is in the store only.
+	registry := newKmRegistry(which)
+	host, errs := loaded(t, func(h FacetHost, _ FacetSelf) error {
+		if err := h.Serve(kmColdProvider, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+			notes := self.State(kmStored).(*documents.Keyed)
+			registry.setProvider("a", notes)
+			return contracts.Implementation{Members: contracts.VariantImplementation{Keyed: kmKeyed(notes)}}, nil
+		}, ServeOptions{}); err != nil {
+			return err
+		}
+		if err := h.Serve(kmProvider, func(params *delta.JsonObject, self Self) (contracts.Implementation, error) {
+			notes := self.State(kmNotes).(*documents.Keyed)
+			registry.setProvider(params.Value("id").(string), notes)
+			return contracts.Implementation{Members: contracts.VariantImplementation{Keyed: kmKeyed(notes)}}, nil
+		}, ServeOptions{}); err != nil {
+			return err
+		}
+		if err := h.Serve(kmExposer, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+			registry.addExposer(self)
+			self.State(kmOwn)
+			var notes *ReferenceKeyed
+			if registry.current() == "a" {
+				notes = self.Get(kmColdProvider, jsonObject()).Keyed("notes")
+			} else {
+				notes = self.Get(kmProvider, jsonObject("id", "b")).Keyed("notes")
+			}
+			return contracts.Implementation{Members: contracts.VariantImplementation{Keyed: kmKeyed(notes)}}, nil
+		}, ServeOptions{}); err != nil {
+			return err
+		}
+		return h.Serve(kmViewer, kmViewerFactory, ServeOptions{})
+	}, loadedOptions{Store: st})
+	_, err = host.Get(kmColdProvider, jsonObject(), background, GetOptions{})
+	must(t, err)
+	_, err = host.Get(kmProvider, jsonObject("id", "b"), background, GetOptions{})
+	must(t, err)
+	kmSet(t, registry.provider("b"), "k", 2)
+	exposer, err := host.Get(kmExposer, jsonObject(), background, GetOptions{})
+	must(t, err)
+	return &kmCold{Host: host, Errors: errs, Registry: registry, Exposer: exposer, Gate: gate, Store: st}
+}
+
+// getAsync is `host.get` started on a task: the result arrives on the channel.
+type kmGot struct {
+	ref *Reference
+	err error
+}
+
+func kmGetViewer(host Host, ctx context.Context) <-chan kmGot {
+	done := make(chan kmGot, 1)
+	go func() {
+		ref, err := host.Get(kmViewer, jsonObject("id", float64(1)), ctx, GetOptions{})
+		done <- kmGot{ref: ref, err: err}
+	}()
+	return done
+}
+
+// keyed-members.test.ts › a key whose first pin still loads › the object fails and re-binds meanwhile: the consumer retries
+// on the new member, the late pin is released.
 func TestKeyedMembersAKeyWhoseFirstPinStillLoadsTheObjectFailsAndRebindsMeanwhileTheConsumerRetriesOnTheNewMemberTheLatePinIsReleased(t *testing.T) {
-	h := newMemberHarness(t)
-	l := h.loading()
-	loading := h.pinAsync(l.exposer, reexposedBinding(l.provider), "k", memberBackground)
-	<-l.cold.entered
-	h.fail(l.exposer)
-	if first := <-loading; !errors.Is(first.err, keyedBoom) {
-		t.Fatalf("the wait on the failed object = %v, want its failure", first.err)
+	c := kmColdServe(t, "a")
+	c.hold()
+	loading := kmGetViewer(c.Host, background)
+	<-c.Gate.entered
+	c.fail()
+	c.Registry.setWhich("b")
+	kmRetry(t, c.Host, c.Exposer)
+	c.Gate.Release()
+	got := <-loading
+	must(t, got.err)
+	viewer := got.ref
+	deliveredOn(c.Host)
+	nexttest.RequireJSONEqual(t, []any{kmMember(t, viewer, "value"), kmMember(t, viewer, "double")}, []any{kmN(2), float64(4)})
+	scopeEventually(t, "the late pin on a is released and b is pinned once", func() bool {
+		return kmPins(c.Host, c.Registry.provider("a")) == -1 && kmPins(c.Host, c.Registry.provider("b")) == 1
+	})
+	// The pin's failed load parked the viewer (a dependency failure is not its own): nothing failed it.
+	if got := failures(c.Errors.All()); len(got) != 0 {
+		t.Fatalf("activation failures = %v, want none", got)
 	}
-	l.settle()
-	if _, inMemory := l.cold.pinsOf("k"); inMemory {
-		t.Fatalf("the late pin of the failed object was not released")
-	}
-	// The consumer retries on the new attempt's member.
-	viewed := h.pinned(t, l.exposer, reexposedBinding(l.other), "k")
-	expectEqual(t, "value", h.read(t, viewed.source), delta.JsonValue(memberCount(2)))
-	_, coldInMemory := l.cold.pinsOf("k")
-	warmPins, _ := l.warm.pinsOf("k")
-	expectEqual(t, "cold in memory, pins of the new member", []any{coldInMemory, warmPins}, []any{false, 1})
-	values := nexttest.ChangesOf(h.watch(t, asHandle(t, viewed.source)))
-	l.cold.set(t, "k", 3)
-	l.warm.set(t, "k", 4)
-	h.delivered()
-	expectEqual(t, "values", nexttest.ValuesOf(values.Items()), []any{delta.JsonValue(memberCount(4))})
+	values := kmWatch(t, viewer.Member("value"))
+	kmSet(t, c.Registry.provider("a"), "k", 3)
+	kmSet(t, c.Registry.provider("b"), "k", 4)
+	deliveredOn(c.Host)
+	nexttest.RequireJSONEqual(t, nexttest.ValuesOf(values.Items()), []any{kmN(4)})
+	must(t, c.Host.Close(background))
 }
 
-// Own test, mirrors keyed-members.test.ts › a key whose first pin still loads › the object fails and stays failed: the
-// pin's wait rejects with the failure, the late pin is released, and a wait that was aborted rejects with its reason.
-func TestKeyedMembersAKeyWhoseFirstPinStillLoadsTheObjectFailsAndStaysFailedTheWaitsRejectAndTheLatePinIsReleased(t *testing.T) {
-	h := newMemberHarness(t)
-	l := h.loading()
-	abort, cancel := chordctx.WithCancel(memberBackground)
-	loading := h.pinAsync(l.exposer, reexposedBinding(l.provider), "k", abort)
-	<-l.cold.entered
-	h.fail(l.exposer)
-	if first := <-loading; !errors.Is(first.err, keyedBoom) {
-		t.Fatalf("the wait on the failed object = %v, want its failure", first.err)
+// keyed-members.test.ts › a key whose first pin still loads › the object fails and stays failed: the consumer parks failed {
+// waiting } on it, never live on it.
+func TestKeyedMembersAKeyWhoseFirstPinStillLoadsTheObjectFailsAndStaysFailedTheConsumerParksFailedWaitingOnItNeverLiveOnIt(t *testing.T) {
+	c := kmColdServe(t, "a")
+	c.hold()
+	abort, cancel := chordctx.WithCancel(background)
+	viewer, err := c.Host.Hold(kmViewer, jsonObject("id", float64(1)), background, GetOptions{})
+	must(t, err)
+	loading := kmGetViewer(c.Host, abort)
+	<-c.Gate.entered
+	c.fail()
+	c.Gate.Release()
+	deliveredOn(c.Host)
+	scopeEventually(t, "the viewer parks failed { waiting }", func() bool {
+		state := viewer.State().Value()
+		return state.Kind == RefStateFailed && state.Cause.Kind == data.FailureWaiting
+	})
+	if kind := c.Exposer.State().Value().Kind; kind != RefStateFailed {
+		t.Fatalf("exposer state = %s, want failed", kind)
 	}
-	cancel(errors.New("viewer released"))
-	l.settle()
-	if _, inMemory := l.cold.pinsOf("k"); inMemory {
-		t.Fatalf("the late pin of the failed object was not released")
+	viewer.Release()
+	cancel(errors.New("aborted"))
+	if got := <-loading; got.err == nil {
+		t.Fatalf("the get of the viewer = %v, want a rejection", got.ref)
 	}
-	if !l.exposer.empty() {
-		t.Fatalf("a failed first pin is kept")
+	if got := kmPins(c.Host, c.Registry.provider("a")); got != -1 {
+		t.Fatalf("pins(a) = %d, want none", got)
 	}
+	must(t, c.Host.Close(background))
 }
 
-// Own test, mirrors keyed-members.test.ts › a key whose first pin still loads › the object ends meanwhile: the consumer's
-// wait rejects, the late pin is released.
-func TestKeyedMembersAKeyWhoseFirstPinStillLoadsTheObjectEndsMeanwhileTheWaitRejectsAndTheLatePinIsReleased(t *testing.T) {
-	h := newMemberHarness(t)
-	l := h.loading()
-	loading := h.pinAsync(l.exposer, reexposedBinding(l.provider), "k", memberBackground)
-	<-l.cold.entered
-	ended := data.NewChordError(data.ChordErrorInit{Code: data.CodeReleased, Reason: data.ReasonEnded, Message: "app.exposer: ended"}, nil)
-	h.loop.Run(func() { l.exposer.end(ended) })
-	if first := <-loading; !errors.Is(first.err, ended) {
-		t.Fatalf("the wait on the ended object = %v, want its end", first.err)
+// keyed-members.test.ts › a key whose first pin still loads › the object ends meanwhile: the consumer's wait rejects, the
+// late pin is released.
+func TestKeyedMembersAKeyWhoseFirstPinStillLoadsTheObjectEndsMeanwhileTheConsumersWaitRejectsTheLatePinIsReleased(t *testing.T) {
+	c := kmColdServe(t, "a")
+	c.hold()
+	loading := kmGetViewer(c.Host, background)
+	<-c.Gate.entered
+	closing := make(chan error, 1)
+	go func() { closing <- c.Host.Close(background) }()
+	c.Gate.Release()
+	if got := <-loading; got.err == nil {
+		t.Fatalf("the get of the viewer = %v, want a rejection", got.ref)
 	}
-	l.settle()
-	if _, inMemory := l.cold.pinsOf("k"); inMemory {
-		t.Fatalf("the late pin of the ended object was not released")
-	}
-	if !l.exposer.empty() {
-		t.Fatalf("an ended object keeps pinned keys")
-	}
-}
-
-// Own test, mirrors keyed-members.ts `pin` (`context` ends only this caller's wait): one user aborts its wait and gets its
-// abort reason; the other still gets the key, and the entry stays for it.
-func TestKeyedMembersAContextEndsOnlyItsCallersWait(t *testing.T) {
-	h := newMemberHarness(t)
-	l := h.loading()
-	binding := reexposedBinding(l.provider)
-	abort, cancel := chordctx.WithCancel(memberBackground)
-	aborted := h.pinAsync(l.exposer, binding, "k", abort)
-	patient := h.pinAsync(l.exposer, binding, "k", memberBackground)
-	<-l.cold.entered
-	reason := errors.New("viewer left")
-	cancel(reason)
-	if got := <-aborted; !errors.Is(got.err, reason) {
-		t.Fatalf("the aborted wait = %v, want its reason", got.err)
-	}
-	l.settle()
-	got := <-patient
-	if got.err != nil {
-		t.Fatalf("the patient wait = %v", got.err)
-	}
-	expectEqual(t, "value", h.read(t, got.pin.source), delta.JsonValue(memberCount(1)))
-	if pins, _ := l.cold.pinsOf("k"); pins != 1 {
-		t.Fatalf("pins = %d, want 1", pins)
-	}
-	got.pin.release()
-	if _, inMemory := l.cold.pinsOf("k"); inMemory {
-		t.Fatalf("the last release left the key pinned")
-	}
-	if !l.exposer.empty() {
-		t.Fatalf("the last release left the entry")
+	must(t, <-closing)
+	if got := kmPins(c.Host, c.Registry.provider("a")); got != -1 {
+		t.Fatalf("pins(a) = %d, want none", got)
 	}
 }
 
-// Own test: a wait on a context aborted before the pin returns its reason and leaves nothing pinned (keyed-members.ts
-// `pin`, `awaitWithContext`: an aborted signal rejects at once).
-func TestKeyedMembersAContextAbortedBeforeThePinRejectsAtOnceAndLeavesNothingPinned(t *testing.T) {
-	h := newMemberHarness(t)
-	slot := newKeyedFakeSlot(h)
-	slot.values["k"] = 1
-	keys := newKeyedMembers(h.batch, h.scheduler, h.loop, memberBackground)
-	abort, cancel := chordctx.WithCancel(memberBackground)
-	reason := errors.New("already aborted")
-	cancel(reason)
-	_, err := keys.pin("notes", "k", ownBinding(slot), abort)
-	if !errors.Is(err, reason) {
-		t.Fatalf("pin = %v, want the abort reason", err)
-	}
-	h.loop.Wait()
-	if _, inMemory := slot.pinsOf("k"); inMemory || !keys.empty() {
-		t.Fatalf("an aborted pin left a pin or an entry behind")
-	}
-}
-
-// Own test, mirrors keyed-members.test.ts › a keyed watch whose object closes while it is set up › rejects with the
-// object's end error, whichever microtask the close lands in: the pin settles with the key or the end error, and every
-// pin is released exactly once.
-func TestKeyedMembersAKeyedWatchWhoseObjectClosesWhileItIsSetUpSettlesWithTheKeyOrTheEndWhicheverMicrotaskTheCloseLandsIn(t *testing.T) {
-	ended := data.NewChordError(data.ChordErrorInit{Code: data.CodeReleased, Reason: data.ReasonEnded, Message: "app.exposer: ended"}, nil)
+// keyed-members.test.ts › a keyed watch whose object closes while it is set up › rejects with the object's end error,
+// whichever microtask the close lands in. Pi's gap counts the microtasks before the close; Go's close races the watch's
+// task, started first, over the same number of turns (`runtime.Gosched` each).
+func TestKeyedMembersAKeyedWatchWhoseObjectClosesWhileItIsSetUpRejectsWithTheObjectsEndErrorWhicheverMicrotaskTheCloseLandsIn(t *testing.T) {
 	for gap := range 40 {
-		h := newMemberHarness(t)
-		slot := newKeyedFakeSlot(h)
-		slot.values["a"] = 1
-		keys := newKeyedMembers(h.batch, h.scheduler, h.loop, memberBackground)
-		watching := h.pinAsync(keys, ownBinding(slot), "a", memberBackground)
-		var hop func(turns int)
-		hop = func(turns int) {
-			if turns == 0 {
-				keys.end(ended)
+		var notes atomic.Pointer[documents.Keyed]
+		host, _ := loaded(t, func(h FacetHost, _ FacetSelf) error {
+			return h.Serve(kmExposer, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+				handle := self.State(kmNotes).(*documents.Keyed)
+				notes.Store(handle)
+				return contracts.Implementation{Members: contracts.VariantImplementation{Keyed: kmKeyed(handle)}}, nil
+			}, ServeOptions{})
+		}, loadedOptions{})
+		exposer, err := host.Get(kmExposer, jsonObject(), background, GetOptions{})
+		must(t, err)
+		kmSet(t, notes.Load(), "a", 1)
+		outcome := make(chan string, 1)
+		go func() {
+			watch, err := exposer.Keyed("notes").Watch(background, "a")
+			if err == nil {
+				_ = watch
+				outcome <- "watch"
 				return
 			}
-			h.loop.Queue(func() { hop(turns - 1) })
+			chordErr, _ := data.IsChordError(err)
+			outcome <- string(chordErr.Code) + "/" + string(chordErr.Reason)
+		}()
+		for range gap {
+			host.(*chordHost).loop().Run(func() {})
 		}
-		h.loop.Run(func() { hop(gap) })
-		got := <-watching
-		if got.err != nil && !errors.Is(got.err, ended) {
-			t.Fatalf("gap %d: pin = %v, want the key or the object's end", gap, got.err)
-		}
-		if got.err == nil {
-			got.pin.release()
-		}
-		h.loop.Wait()
-		pins, inMemory := slot.pinsOf("a")
-		if inMemory {
-			t.Fatalf("gap %d: %d pins left on the slot", gap, pins)
+		must(t, host.Close(background))
+		if got := <-outcome; got != "watch" && got != "released/ended" {
+			t.Fatalf("gap %d: the watch = %s, want watch or released/ended", gap, got)
 		}
 	}
 }
 
-// Own test, mirrors keyed-members.test.ts › chains and releases › a key re-exposed through two objects freezes with the
-// middle one and follows its next attempt.
+// keyed-members.test.ts › chains and releases › a key re-exposed through two objects freezes with the middle one and
+// follows its next attempt.
 func TestKeyedMembersAKeyReexposedThroughTwoObjectsFreezesWithTheMiddleOneAndFollowsItsNextAttempt(t *testing.T) {
-	h := newMemberHarness(t)
-	a, b := newKeyedFakeSlot(h), newKeyedFakeSlot(h)
-	a.values["k"], b.values["k"] = 1, 2
-	providerA, providerB := h.keyedObject(ownBinding(a)), h.keyedObject(ownBinding(b))
-	middle := h.keyedObject(reexposedBinding(providerA))
-	outer := newKeyedMembers(h.batch, h.scheduler, h.loop, memberBackground)
-	viewed := h.pinned(t, outer, reexposedBinding(middle), "k")
-	values := nexttest.ChangesOf(h.watch(t, asHandle(t, viewed.source)))
-	h.fail(middle.keys)
-	a.set(t, "k", 3)
-	h.delivered()
-	expectEqual(t, "value and frames while the middle one is failed", []any{h.read(t, viewed.source), len(values.Items())}, []any{delta.JsonValue(memberCount(1)), 0})
-	if _, err := h.prepare(middle.keys, bindingsOf(reexposedBinding(providerB)), memberBackground).await(); err != nil {
-		t.Fatalf("prepare: %v", err)
+	outer := mustContract(contracts.Local("app.outer", contracts.LocalDeclaration{
+		Params:  contracts.Params{},
+		Version: 1, Members: []contracts.LocalEntry{contracts.Mem("notes", contracts.Keyed(kmSchema))},
+	}))
+	outerViewer := mustContract(contracts.Local("app.outer-viewer", contracts.LocalDeclaration{
+		Params:  contracts.Params{},
+		Version: 1, Members: []contracts.LocalEntry{contracts.Mem("value", kmSchema)},
+	}))
+	registry := newKmRegistry("a")
+	host, _ := loaded(t, func(h FacetHost, _ FacetSelf) error {
+		if err := kmServeProviders(h, registry); err != nil {
+			return err
+		}
+		if err := h.Serve(outer, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+			return contracts.Implementation{Members: contracts.VariantImplementation{
+				Keyed: kmKeyed(self.Get(kmExposer, jsonObject()).Keyed("notes")),
+			}}, nil
+		}, ServeOptions{}); err != nil {
+			return err
+		}
+		return h.Serve(outerViewer, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+			value, err := self.Get(outer, jsonObject()).Keyed("notes").At("k")
+			return contracts.Implementation{Members: contracts.VariantImplementation{
+				State: map[string]chord.Watchable[delta.JsonValue]{"value": Expose(value)},
+			}}, err
+		}, ServeOptions{})
+	}, loadedOptions{})
+	for _, id := range []string{"a", "b"} {
+		_, err := host.Get(kmProvider, jsonObject("id", id), background, GetOptions{})
+		must(t, err)
+		n := float64(2)
+		if id == "a" {
+			n = 1
+		}
+		kmSet(t, registry.provider(id), "k", n)
 	}
-	h.within(t, middle.keys.rebind)
-	h.delivered()
-	expectEqual(t, "value", h.read(t, viewed.source), delta.JsonValue(memberCount(2)))
-	expectEqual(t, "values", nexttest.ValuesOf(values.Items()), []any{delta.JsonValue(memberCount(2))})
+	middle, err := host.Get(kmExposer, jsonObject(), background, GetOptions{})
+	must(t, err)
+	viewer, err := host.Get(outerViewer, jsonObject(), background, GetOptions{})
+	must(t, err)
+	values := kmWatch(t, viewer.Member("value"))
+	failLive(registry.exposer(0), data.NewChordError(data.ChordErrorInit{Code: data.CodeUnavailable, Message: "boom"}, nil))
+	kmSet(t, registry.provider("a"), "k", 3)
+	deliveredOn(host)
+	nexttest.RequireJSONEqual(t, []any{kmMember(t, viewer, "value"), msCalls(values.Items())}, []any{kmN(1), []any{}})
+	registry.setWhich("b")
+	kmRetry(t, host, middle)
+	deliveredOn(host)
+	nexttest.RequireJSONEqual(t, kmMember(t, viewer, "value"), kmN(2))
+	nexttest.RequireJSONEqual(t, nexttest.ValuesOf(values.Items()), []any{kmN(2)})
+	must(t, host.Close(background))
 }
 
-// Own test, mirrors keyed-members.test.ts › chains and releases › a consumer released while the object re-activates leaves
-// no hold behind; nothing is kept for it.
-func TestKeyedMembersAConsumerReleasedWhileTheObjectReactivatesLeavesNoHoldBehindAndNothingIsKeptForIt(t *testing.T) {
-	h := newMemberHarness(t)
-	a, b := newKeyedFakeSlot(h), newKeyedFakeSlot(h)
-	a.values["k"], b.values["k"] = 1, 2
-	providerA, providerB := h.keyedObject(ownBinding(a)), h.keyedObject(ownBinding(b))
-	exposer := newKeyedMembers(h.batch, h.scheduler, h.loop, memberBackground)
-	var doc weak.Pointer[memberDoc]
+// keyed-members.test.ts › chains and releases › a consumer released while the object re-activates leaves no hold behind;
+// nothing is kept for it.
+func TestKeyedMembersAConsumerReleasedWhileTheObjectReactivatesLeavesNoHoldBehindNothingIsKeptForIt(t *testing.T) {
+	var refs []weak.Pointer[Reference]
+	var providerA []weak.Pointer[documents.Keyed]
 	func() {
-		viewed := h.pinned(t, exposer, reexposedBinding(providerA), "k")
-		doc = weak.Make(a.keys["k"].doc)
-		h.fail(exposer)
-		viewed.release()
+		s := kmServe(t, "a")
+		pins := func(id string) int { return kmPins(s.Host, s.Registry.provider(id)) }
+		s.fail()
+		s.Registry.setWhich("b")
+		s.Exposer.Retry()
+		s.Viewer.Release()
+		again, err := s.Host.Get(kmExposer, jsonObject(), background, GetOptions{})
+		must(t, err)
+		again.Release()
+		// The viewer's teardown releases its references.
+		scopeEventually(t, "no pins left", func() bool { return pins("a") == -1 && pins("b") == -1 })
+		refs = append(refs, weak.Make(s.Viewer))
+		providerA = append(providerA, weak.Make(s.Registry.provider("a")))
+		must(t, s.Host.Close(background))
 	}()
-	// The re-activating attempt has no key to prepare: nothing was kept for the released consumer.
-	if preparing := h.prepare(exposer, bindingsOf(reexposedBinding(providerB)), memberBackground); preparing != nil {
-		t.Fatalf("prepare with no pinned key returned a promise")
-	}
-	h.within(t, exposer.rebind)
-	_, aInMemory := a.pinsOf("k")
-	_, bInMemory := b.pinsOf("k")
-	expectEqual(t, "a and b in memory", []bool{aInMemory, bInMemory}, []bool{false, false})
-	if !exposer.empty() || !providerA.keys.empty() || !providerB.keys.empty() {
-		t.Fatalf("keys are kept for a released consumer")
-	}
-	nexttest.ExpectCollected(t, doc)
+	nexttest.ExpectCollected(t, refs...)
+	nexttest.ExpectCollected(t, providerA...)
 }
 
-// Own test, mirrors keyed-members.ts `prepare`/`discard`: what prepare pinned on a new attempt that did not go live is
-// released, and the keys go on following the failed attempt's member; a load that fails rejects prepare.
-func TestKeyedMembersDiscardReleasesWhatPreparePinnedAndAFailedLoadRejectsPrepare(t *testing.T) {
-	h := newMemberHarness(t)
-	a, b := newKeyedFakeSlot(h), newKeyedFakeSlot(h)
-	a.values["k"], b.values["k"] = 1, 2
-	exposer := newKeyedMembers(h.batch, h.scheduler, h.loop, memberBackground)
-	viewed := h.pinned(t, exposer, ownBinding(a), "k")
-	h.fail(exposer)
-	next := bindingsOf(ownBinding(b))
-	if _, err := h.prepare(exposer, next, memberBackground).await(); err != nil {
-		t.Fatalf("prepare: %v", err)
+// keyed-members.test.ts › a key whose first pin still loads at startup (scenario 20, Astra) › keeps the first pass pending
+// during an otherwise-ready dependency's delayed keyed pin. Pi delays `ChordObject.prototype.pinKey` with a spy; Go has
+// no such hook, so the pin is delayed where it waits for real: the persisted key's cold load, held at the store.
+func TestKeyedMembersAKeyWhoseFirstPinStillLoadsAtStartupScenario20AstraKeepsTheFirstPassPendingDuringAnOtherwiseReadyDependencysDelayedKeyedPin(t *testing.T) {
+	pinStore := mustContract(contracts.Local("app.pin-store", contracts.LocalDeclaration{
+		Params:  contracts.Params{},
+		Version: 1, Members: []contracts.LocalEntry{contracts.Mem("notes", contracts.Keyed(kmSchema))},
+	}))
+	reader := mustContract(contracts.Local("app.pin-reader", contracts.LocalDeclaration{
+		Params:  contracts.Params{},
+		Version: 1, Members: []contracts.LocalEntry{contracts.Mem("value", kmSchema)},
+	}))
+	data4 := kmDefine("app.pin-data", documents.StateOptions{
+		Keyed: true, Persist: true,
+		CheckpointWhen: func(*delta.JsonObject, []delta.Op, documents.CheckpointInfo) bool { return false },
+	})
+	gate := newReadGate()
+	st := openMemoryStore(t, func(db sqlite.SqliteDatabase) sqlite.SqliteDatabase {
+		return &readGateDatabase{SqliteDatabase: db, gate: gate}
+	}, nil)
+	t.Cleanup(gate.Release)
+	var memos atomic.Pointer[documents.Keyed]
+	facet := func(h FacetHost, _ FacetSelf) error {
+		if err := h.Serve(pinStore, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+			notes := self.State(data4).(*documents.Keyed)
+			memos.Store(notes)
+			return contracts.Implementation{Members: contracts.VariantImplementation{Keyed: kmKeyed(notes)}}, nil
+		}, ServeOptions{}); err != nil {
+			return err
+		}
+		return h.Serve(reader, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+			value, err := self.Get(pinStore, jsonObject()).Keyed("notes").At("k")
+			return contracts.Implementation{Members: contracts.VariantImplementation{
+				State: map[string]chord.Watchable[delta.JsonValue]{"value": Expose(value)},
+			}}, err
+		}, ServeOptions{})
 	}
-	if pins, _ := b.pinsOf("k"); pins != 1 {
-		t.Fatalf("pins of the prepared member = %d, want 1", pins)
+	seed, _ := loaded(t, facet, loadedOptions{Store: st})
+	_, err := seed.Get(pinStore, jsonObject(), background, GetOptions{})
+	must(t, err)
+	kmSet(t, memos.Load(), "k", 4)
+	must(t, seed.Close(background))
+	gate.armed.Store(true)
+	host := newHost(t, HostOptions{OnError: func(HostError) {}, Store: st})
+	loading := make(chan error, 1)
+	go func() {
+		loading <- host.Load([]HostFacet{{Name: "@test/pin", Facet: DefineFacet(facet)}}, background)
+	}()
+	<-gate.entered
+	select {
+	case err := <-loading:
+		t.Fatalf("load finished (%v) while the keyed pin still loads", err)
+	default:
 	}
-	h.loop.Run(exposer.discard)
-	if _, inMemory := b.pinsOf("k"); inMemory {
-		t.Fatalf("discard left the prepared pin")
-	}
-	expectEqual(t, "value", h.read(t, viewed.source), delta.JsonValue(memberCount(1)))
-	// A failing load rejects prepare; the key keeps what it has.
-	loadFailed := errors.New("store failed")
-	b.ensureErr = loadFailed
-	if _, err := h.prepare(exposer, next, memberBackground).await(); !errors.Is(err, loadFailed) {
-		t.Fatalf("prepare = %v, want the failed load", err)
-	}
-	if _, inMemory := b.pinsOf("k"); inMemory {
-		t.Fatalf("a failed load left its pin")
-	}
-}
-
-// Own test: a pin on a slot that refuses it rejects with its error (keyed-members.ts `pinned`: `slot.pin` throws), and a
-// failed load releases the pin and rejects every user.
-func TestKeyedMembersAFailedPinOrLoadRejectsAndReleasesThePin(t *testing.T) {
-	h := newMemberHarness(t)
-	slot := newKeyedFakeSlot(h)
-	slot.values["k"] = 1
-	keys := newKeyedMembers(h.batch, h.scheduler, h.loop, memberBackground)
-	refused := errors.New("slot closed")
-	slot.pinErr = refused
-	if _, err := keys.pin("notes", "k", ownBinding(slot), memberBackground); !errors.Is(err, refused) {
-		t.Fatalf("pin = %v, want the slot's error", err)
-	}
-	slot.pinErr = nil
-	slot.ensureErr = errors.New("store failed")
-	if _, err := keys.pin("notes", "k", ownBinding(slot), memberBackground); !errors.Is(err, slot.ensureErr) {
-		t.Fatalf("pin = %v, want the failed load", err)
-	}
-	h.loop.Wait()
-	if _, inMemory := slot.pinsOf("k"); inMemory || !keys.empty() {
-		t.Fatalf("a failed pin left a pin or an entry behind")
-	}
-	if slot.releases != 1 {
-		t.Fatalf("releases = %d, want 1", slot.releases)
-	}
-}
-
-// Own test, mirrors keyed-members.ts `end`: the object ended: every key ends with its error (the watches of its member
-// source end `ended`), releases what it pins once, and a release of the pin after it is a no-op.
-func TestKeyedMembersEndEndsEveryKeyAndReleasesWhatItPinsOnce(t *testing.T) {
-	h := newMemberHarness(t)
-	slot := newKeyedFakeSlot(h)
-	slot.values["k"], slot.values["j"] = 1, 2
-	keys := newKeyedMembers(h.batch, h.scheduler, h.loop, memberBackground)
-	k, j := h.pinned(t, keys, ownBinding(slot), "k"), h.pinned(t, keys, ownBinding(slot), "j")
-	watch := h.watch(t, asHandle(t, k.source))
-	ended := data.NewChordError(data.ChordErrorInit{Code: data.CodeReleased, Reason: data.ReasonEnded, Message: "app.exposer: ended"}, nil)
-	h.within(t, func() { keys.end(ended) })
-	<-watch.Closed()
-	expectEqual(t, "end", watch.End(), chord.WatchEnd{Kind: chord.WatchEnded})
-	if _, err := h.value(k.source); !errors.Is(err, ended) {
-		t.Fatalf("read after the end = %v, want its error", err)
-	}
-	k.release()
-	j.release()
-	j.release()
-	expectEqual(t, "releases", slot.releases, 2)
-	if _, inMemory := slot.pinsOf("k"); inMemory || !keys.empty() {
-		t.Fatalf("an ended object keeps pins or keys")
-	}
-}
-
-// Own test, mirrors keyed-members.ts `freeze`: `foreign` takes only the keys of re-exposed members, `all` every key; the
-// release of a pin is idempotent and the last user drops the entry.
-func TestKeyedMembersFreezeForeignTakesOnlyReexposedMembersAndTheLastReleaseDropsTheEntry(t *testing.T) {
-	h := newMemberHarness(t)
-	own, foreign := newKeyedFakeSlot(h), newKeyedFakeSlot(h)
-	own.values["k"], foreign.values["j"] = 1, 2
-	provider := h.keyedObject(ownBinding(foreign))
-	keys := newKeyedMembers(h.batch, h.scheduler, h.loop, memberBackground)
-	mine := h.pinned(t, keys, ownBinding(own), "k")
-	theirs := h.pinned(t, keys, reexposedBinding(provider), "j")
-	h.loop.Run(func() { keys.freeze(freezeForeign, keyedBoom) })
-	expectEqual(t, "releases after foreign", []int{own.releases, foreign.releases}, []int{0, 1})
-	// The own key still follows its slot; the foreign one kept its value.
-	own.set(t, "k", 5)
-	h.delivered()
-	expectEqual(t, "own value", h.read(t, mine.source), delta.JsonValue(memberCount(5)))
-	foreign.set(t, "j", 6)
-	expectEqual(t, "foreign value", h.read(t, theirs.source), delta.JsonValue(memberCount(2)))
-	h.loop.Run(func() { keys.freeze(freezeAll, keyedBoom) })
-	expectEqual(t, "releases after all", []int{own.releases, foreign.releases}, []int{1, 1})
-	mine.release()
-	mine.release()
-	theirs.release()
-	if !keys.empty() || !provider.keys.empty() {
-		t.Fatalf("the last releases left entries")
-	}
+	gate.Release()
+	must(t, <-loading)
+	ref, err := host.Get(reader, jsonObject(), background, GetOptions{})
+	must(t, err)
+	nexttest.RequireJSONEqual(t, kmMember(t, ref, "value"), kmN(4))
+	must(t, host.Close(background))
 }
 
 // Own test of keyedPromise, the stored Promise of Pi's `ready` (several awaiters): its reactions run as microtasks of the

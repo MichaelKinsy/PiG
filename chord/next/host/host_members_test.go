@@ -3,8 +3,10 @@ package host
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 
+	"github.com/MichaelKinsy/PiG/chord"
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/chord/next/contracts"
 	"github.com/MichaelKinsy/PiG/chord/next/data"
@@ -12,40 +14,37 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/state"
 )
 
-// Tests of packages/chord/test/next/host/members.test.ts. Both upstream cases serve a contract through a whole host
-// (`loaded`, `host.serve`, `host.get`) and assert the message the host builds from the object's label and the cause: they
-// are `missing` for the host core. The tests below are own tests of the member check and of the resolution behind
-// derives and contributions, driven directly; each names the upstream case whose behavior it mirrors.
+// Tests of packages/chord/test/next/host/members.test.ts: its two cases (TestHostGet...) serve a contract through a whole
+// host and assert the message the host builds from the object's label and the cause. The other tests are own tests of the
+// member check and of the resolution behind derives and contributions, driven directly; each names the upstream case
+// whose behavior it mirrors.
 
-// errMembersGetter is what the getter of a throwing value throws.
-var errMembersGetter = errors.New("getter threw")
+// membersGone is a type no host serves: a reference held to it has a member whose getter throws (the check that left it
+// unbound failed it `waiting`), and a keyed member a re-exposing object could follow.
+var membersGone = mustContract(contracts.Local("app.gone", contracts.LocalDeclaration{
+	Params:  contracts.Params{},
+	Version: 1,
+	Members: []contracts.LocalEntry{contracts.Mem("n", contracts.Int()), contracts.Mem("notes", contracts.Keyed(contracts.Int()))},
+}))
 
-// membersThrowing is a value whose resolution throws (a reference member's getter).
-type membersThrowing struct{}
-
-// membersResolver is the resolveWatchable the host injects, for the values these tests use: a derive or a constant is a
-// Chord watchable, a throwing value throws, anything else is not (`undefined`).
-func membersResolver(value any) (state.DeriveSource, error) {
-	switch typed := value.(type) {
-	case *state.Derive:
-		return typed, nil
-	case *state.Constant:
-		return typed, nil
-	case membersThrowing:
-		return nil, errMembersGetter
-	}
-	return nil, nil
+// membersHeld is a reference on a loaded host held to membersGone: its state member `n` is a ReferenceMember whose
+// getter throws not_served (Pi's reference member getter), its keyed member `notes` a ReferenceKeyed.
+func membersHeld(t *testing.T) *Reference {
+	t.Helper()
+	host, _ := loaded(t, func(FacetHost, FacetSelf) error { return nil }, loadedOptions{})
+	held, err := host.Hold(membersGone, jsonObject(), background, GetOptions{})
+	must(t, err)
+	t.Cleanup(held.Release)
+	return held
 }
 
-// membersKeyedResolver is the resolveKeyed the host injects: a *keyedBinding is a keyed document handle.
-func membersKeyedResolver(value any) (*keyedBinding, error) {
-	switch typed := value.(type) {
-	case *keyedBinding:
-		return typed, nil
-	case membersThrowing:
-		return nil, errMembersGetter
+// wantMembersNotServed fails the test unless err is the failure the getter of membersHeld's member throws.
+func wantMembersNotServed(t *testing.T, err error) {
+	t.Helper()
+	chordErr, ok := data.IsChordErrorCode(err, data.CodeUnavailable)
+	if !ok || chordErr == nil {
+		t.Fatalf("error = %v, want the not-served failure of the held reference", err)
 	}
-	return nil, nil
 }
 
 func membersLocal(t *testing.T, name string, params contracts.Params, members ...contracts.LocalEntry) *contracts.Contract {
@@ -72,7 +71,7 @@ func membersRemote(t *testing.T, name string, variants ...contracts.VariantEntry
 }
 
 func membersCheck(contract *contracts.Contract, result factoryResult) (*string, *members, error) {
-	return checkImplementation(membersResolver, membersKeyedResolver, contract, result)
+	return checkImplementation(contract, result)
 }
 
 func wantMembersError(t *testing.T, err error, want string) {
@@ -116,7 +115,7 @@ func TestMemberCheckNamesADeriveInErrorsByItsMemberWhenExposedElseByItsPosition(
 	label := state.NewDerive([]any{inner, bad}, compute, h.batch)
 	exposed := contracts.NewNamedMap[state.DeriveSource](1)
 	exposed.Set("label", label)
-	err := attachDerives(membersResolver, []*state.Derive{inner, label}, exposed, report)
+	err := attachDerives([]*state.Derive{inner, label}, exposed, report)
 	wantMembersError(t, err, "label: source 1 is not a Chord watchable")
 
 	// n == 2: `inner` reads `[bad]` and is not exposed: it is named by its position; `label` reads `[inner]`.
@@ -124,7 +123,7 @@ func TestMemberCheckNamesADeriveInErrorsByItsMemberWhenExposedElseByItsPosition(
 	label = state.NewDerive([]any{inner}, compute, h.batch)
 	exposed = contracts.NewNamedMap[state.DeriveSource](1)
 	exposed.Set("label", label)
-	err = attachDerives(membersResolver, []*state.Derive{inner, label}, exposed, report)
+	err = attachDerives([]*state.Derive{inner, label}, exposed, report)
 	wantMembersError(t, err, "derive #1: source 0 is not a Chord watchable")
 }
 
@@ -147,7 +146,7 @@ func TestAttachDerivesReportsUnderTheExposingMemberAcceptsNativeSourcesAndPropag
 		asked = append(asked, reported{member, isExposed})
 		return func(err error) { failures = append(failures, member+": "+err.Error()) }
 	}
-	if err := attachDerives(membersResolver, []*state.Derive{bare, exposedDerive}, exposed, report); err != nil {
+	if err := attachDerives([]*state.Derive{bare, exposedDerive}, exposed, report); err != nil {
 		t.Fatalf("attach: %v", err)
 	}
 	expectEqual(t, "reports asked", asked, []reported{{"", false}, {"label", true}})
@@ -160,14 +159,12 @@ func TestAttachDerivesReportsUnderTheExposingMemberAcceptsNativeSourcesAndPropag
 	// A native source is a derive source though it is no JSON watchable.
 	native := state.NewWritableSource[any](1, membersOwner{}, h.batch)
 	viaNative := state.NewDerive([]any{native}, func([]any) (delta.JsonValue, error) { return float64(1), nil }, h.batch)
-	if err := attachDerives(membersResolver, []*state.Derive{viaNative}, contracts.NewNamedMap[state.DeriveSource](0), report); err != nil {
+	if err := attachDerives([]*state.Derive{viaNative}, contracts.NewNamedMap[state.DeriveSource](0), report); err != nil {
 		t.Fatalf("attach over a native source: %v", err)
 	}
-	throwing := state.NewDerive([]any{membersThrowing{}}, failing, h.batch)
-	err := attachDerives(membersResolver, []*state.Derive{throwing}, contracts.NewNamedMap[state.DeriveSource](0), report)
-	if !errors.Is(err, errMembersGetter) {
-		t.Fatalf("attach over a throwing getter = %v, want the getter's error", err)
-	}
+	throwing := state.NewDerive([]any{membersHeld(t).Member("n")}, failing, h.batch)
+	err := attachDerives([]*state.Derive{throwing}, contracts.NewNamedMap[state.DeriveSource](0), report)
+	wantMembersNotServed(t, err)
 }
 
 // Own test of checkImplementation (members.ts): a local contract's members are checked as given: methods are functions,
@@ -182,7 +179,7 @@ func TestCheckImplementationChecksALocalContractsMembersAsGiven(t *testing.T) {
 	)
 	count := state.NewConstant(float64(1))
 	list := state.NewDerive(nil, func([]any) (delta.JsonValue, error) { return float64(2), nil }, h.batch)
-	notes := &keyedBinding{kind: keyedOwn}
+	notes := membersHeld(t).Keyed("notes")
 	good := implementation{
 		{"notes", notes}, {"list", list}, {"count", count}, {"add", membersPlainMethod},
 	}
@@ -195,8 +192,8 @@ func TestCheckImplementationChecksALocalContractsMembersAsGiven(t *testing.T) {
 	if checked.state.Value("count") != state.DeriveSource(count) || checked.state.Value("list") != state.DeriveSource(list) {
 		t.Fatalf("the state members are not resolved to what Chord follows")
 	}
-	if checked.keyed.Value("notes") != notes {
-		t.Fatalf("the keyed member is not its binding")
+	if got := checked.keyed.Value("notes"); got.kind != keyedReexposed || got.binding != notes.binding || got.member != "notes" {
+		t.Fatalf("the keyed member = %+v, want the re-exposed member of the reference", got)
 	}
 	if out, err := checked.methods.Value("add")(nil, memberBackground); out != nil || err != nil {
 		t.Fatalf("the method = %v, %v", out, err)
@@ -218,11 +215,14 @@ func TestCheckImplementationChecksALocalContractsMembersAsGiven(t *testing.T) {
 		{"a state member that is no watchable", implementation{{"add", membersPlainMethod}, {"count", 5}}, "count: a state member is a JSON watchable"},
 		{"a missing state member", implementation{{"add", membersPlainMethod}}, "count: a state member is a JSON watchable"},
 		{"a keyed member that is no keyed handle", implementation{{"add", membersPlainMethod}, {"count", count}, {"list", list}, {"notes", count}}, "notes: a keyed member is a keyed document handle"},
-		{"a throwing state getter", implementation{{"add", membersPlainMethod}, {"count", membersThrowing{}}}, "getter threw"},
-		{"a throwing keyed getter", implementation{{"add", membersPlainMethod}, {"count", count}, {"list", list}, {"notes", membersThrowing{}}}, "getter threw"},
+		{"a throwing state getter", implementation{{"add", membersPlainMethod}, {"count", membersHeld(t).Member("n")}}, ""},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			_, _, err := membersCheck(store, factoryResult{members: tc.members})
+			if tc.want == "" {
+				wantMembersNotServed(t, err)
+				return
+			}
 			wantMembersError(t, err, tc.want)
 		})
 	}
@@ -269,7 +269,7 @@ func TestContributionOfFollowsWatchablesAndNativesLeavesOtherValuesPlainAndRefus
 		{"nothing", nil, registries.ContributionContent{Kind: registries.ContributionPlain}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			got, err := contentOf(membersResolver, tc.value)
+			got, err := contentOf(tc.value)
 			if err != nil {
 				t.Fatalf("content: %v", err)
 			}
@@ -277,23 +277,82 @@ func TestContributionOfFollowsWatchablesAndNativesLeavesOtherValuesPlainAndRefus
 		})
 	}
 	// A value with methods is a plain value (registries carry natives).
-	if got, err := contentOf(membersResolver, membersPlainMethod); err != nil || got.Kind != registries.ContributionPlain || got.Value == nil {
+	if got, err := contentOf(membersPlainMethod); err != nil || got.Kind != registries.ContributionPlain || got.Value == nil {
 		t.Fatalf("content of a function = %#v, %v, want it as a plain value", got, err)
 	}
-	if _, err := contentOf(membersResolver, membersThrowing{}); !errors.Is(err, errMembersGetter) {
-		t.Fatalf("content of a throwing getter = %v", err)
-	}
-	contribution, err := contributionOf(membersResolver, record, contributor, 1, "text", nil)
+	throwing := membersHeld(t).Member("n")
+	_, err := contentOf(throwing)
+	wantMembersNotServed(t, err)
+	contribution, err := contributionOf(record, contributor, 1, "text", nil)
 	if err != nil || contribution.Record != record || contribution.Contributor != contributor || contribution.Version != 1 {
 		t.Fatalf("contribution = %#v, %v", contribution, err)
 	}
-	if _, err := contributionOf(membersResolver, record, contributor, 1, membersThrowing{}, nil); !errors.Is(err, errMembersGetter) {
-		t.Fatalf("contribution of a throwing getter = %v", err)
-	}
+	_, err = contributionOf(record, contributor, 1, throwing, nil)
+	wantMembersNotServed(t, err)
 	// A registry's own value contributed to it closes a cycle of one registry.
 	own := registries.NewRegistryValueSource(record, 1, h.batch)
-	_, err = contributionOf(membersResolver, record, contributor, 1, own, nil)
+	_, err = contributionOf(record, contributor, 1, own, nil)
 	if chordErr, ok := data.IsChordErrorCode(err, data.CodeInvalid); !ok || chordErr.Reason != data.ReasonCycle {
 		t.Fatalf("a registry contributing its own value = %v, want invalid/cycle", err)
+	}
+}
+
+// members.test.ts › the member check (Q14) › refuses an inherited property for a member.
+func TestHostGetRefusesAnInheritedPropertyForAMember(t *testing.T) {
+	named := mustContract(contracts.Local("app.named", contracts.LocalDeclaration{
+		Version: 1,
+		Params:  contracts.Params{contracts.Prop("id", contracts.Int())},
+		Members: []contracts.LocalEntry{contracts.Mem("toString", contracts.NewMethod())},
+	}))
+	host, _ := loaded(t, func(h FacetHost, _ FacetSelf) error {
+		// Pi's `{}`: no own member, whatever the prototype has.
+		return h.Serve(named, func(*delta.JsonObject, Self) (contracts.Implementation, error) {
+			return contracts.Implementation{}, nil
+		}, ServeOptions{})
+	}, loadedOptions{})
+	_, err := host.Get(named, jsonObject("id", float64(1)), background, GetOptions{})
+	if err == nil || !strings.Contains(err.Error(), "app.named(1): toString: a method is a function") {
+		t.Fatalf("get = %v, want it to fail with app.named(1): toString: a method is a function", err)
+	}
+}
+
+// members.test.ts › the member check (Q14) › names a derive in errors by its member when exposed, else by its position.
+func TestHostGetNamesADeriveInErrorsByItsMemberWhenExposedElseByItsPosition(t *testing.T) {
+	named := mustContract(contracts.Local("app.named", contracts.LocalDeclaration{
+		Version: 1,
+		Params:  contracts.Params{contracts.Prop("n", contracts.Int())},
+		Members: []contracts.LocalEntry{contracts.Mem("label", contracts.Int())},
+	}))
+	bad := struct{ value int }{1}
+	host, _ := loaded(t, func(h FacetHost, _ FacetSelf) error {
+		return h.Serve(named, func(params *delta.JsonObject, self Self) (contracts.Implementation, error) {
+			compute := func(value float64) func([]any) (delta.JsonValue, error) {
+				return func([]any) (delta.JsonValue, error) { return value, nil }
+			}
+			first := params.Value("n") == float64(1)
+			var inner, label chord.Watchable[delta.JsonValue]
+			if first {
+				inner = self.Derive(nil, compute(1))
+				label = self.Derive([]any{inner, bad}, compute(2))
+			} else {
+				inner = self.Derive([]any{bad}, compute(1))
+				label = self.Derive([]any{inner}, compute(2))
+			}
+			return contracts.Implementation{Members: contracts.VariantImplementation{
+				State: map[string]chord.Watchable[delta.JsonValue]{"label": label},
+			}}, nil
+		}, ServeOptions{})
+	}, loadedOptions{})
+	for _, tc := range []struct {
+		n    float64
+		want string
+	}{
+		{1, "app.named(1): label: source 1 is not a Chord watchable"},
+		{2, "app.named(2): derive #1: source 0 is not a Chord watchable"},
+	} {
+		_, err := host.Get(named, jsonObject("n", tc.n), background, GetOptions{})
+		if err == nil || !strings.Contains(err.Error(), tc.want) {
+			t.Fatalf("get n=%v = %v, want it to fail with %q", tc.n, err, tc.want)
+		}
 	}
 }

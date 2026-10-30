@@ -1,13 +1,11 @@
 package host
 
 import (
-	"context"
 	"errors"
 	"sync"
 	"testing"
 	"time"
 
-	"github.com/MichaelKinsy/PiG/chord/next/contracts"
 )
 
 // Test support of host_ctx, host_root, host_routines and host_route tests: a loop with vitest's fake timers and the real
@@ -31,86 +29,6 @@ func (l *scopeLoop) Queue(job func()) { l.real.Queue(job) }
 func (l *scopeLoop) barrier()         { l.real.Run(func() {}) }
 func (l *scopeLoop) AfterFunc(d time.Duration, job func()) Timer {
 	return l.fakeLoop.AfterFunc(d, func() { l.real.Run(job) })
-}
-
-// scopeBinding is the acquired a scopeHost returns: its release is counted.
-type scopeBinding struct {
-	mu        sync.Mutex
-	reference any
-	releases  int
-}
-
-func (b *scopeBinding) Release() {
-	b.mu.Lock()
-	defer b.mu.Unlock()
-	b.releases++
-}
-
-func (b *scopeBinding) Reference() any { return b.reference }
-
-func (b *scopeBinding) released() int {
-	b.mu.Lock()
-	defer b.mu.Unlock()
-	return b.releases
-}
-
-// scopeAcquire is what a scopeHost's Acquire got.
-type scopeAcquire struct {
-	Type    *contracts.Contract
-	params  any
-	caller  caller
-	ctx     context.Context
-	options GetOptions
-}
-
-// scopeHost is a callHost and routineHost whose Acquire is the test's: `acquire` runs in place of `host.acquire`.
-type scopeHost struct {
-	loopOf      *scopeLoop
-	incarnation string
-	acquire     func(call scopeAcquire) (acquired, error)
-
-	mu       sync.Mutex
-	acquires []scopeAcquire
-	reports  []HostError
-}
-
-var _ routineHost = (*scopeHost)(nil)
-
-func newScopeHost(loop *scopeLoop) *scopeHost {
-	return &scopeHost{loopOf: loop, incarnation: "host-incarnation"}
-}
-
-func (h *scopeHost) Incarnation() string { return h.incarnation }
-func (h *scopeHost) loop() sectionLoop   { return h.loopOf }
-
-func (h *scopeHost) Acquire(typ *contracts.Contract, params any, from caller, ctx context.Context, options GetOptions) (acquired, error) {
-	call := scopeAcquire{Type: typ, params: params, caller: from, ctx: ctx, options: options}
-	h.mu.Lock()
-	h.acquires = append(h.acquires, call)
-	acquire := h.acquire
-	h.mu.Unlock()
-	if acquire == nil {
-		return &scopeBinding{reference: params}, nil
-	}
-	return acquire(call)
-}
-
-func (h *scopeHost) Report(err HostError) {
-	h.mu.Lock()
-	defer h.mu.Unlock()
-	h.reports = append(h.reports, err)
-}
-
-func (h *scopeHost) acquireCount() int {
-	h.mu.Lock()
-	defer h.mu.Unlock()
-	return len(h.acquires)
-}
-
-func (h *scopeHost) reported() []HostError {
-	h.mu.Lock()
-	defer h.mu.Unlock()
-	return append([]HostError{}, h.reports...)
 }
 
 // scopeEventually waits for cond, which a goroutine of the code under test makes true. It polls: the code under test hands
