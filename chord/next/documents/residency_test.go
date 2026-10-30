@@ -28,7 +28,7 @@ func idle() (*Residency, *fakeClock, func(key string) *Resident, *evictLog) {
 
 func expectEvicted(t *testing.T, log *evictLog, want ...string) {
 	t.Helper()
-	if !slices.Equal(log.keys, want) && !(len(log.keys) == 0 && len(want) == 0) {
+	if !(slices.Equal(log.keys, want) || len(log.keys) == 0 && len(want) == 0) {
 		t.Fatalf("evicted = %v, want %v", log.keys, want)
 	}
 }

@@ -220,7 +220,8 @@ func requireReleased(t testing.TB, err error, want string) {
 func requirePanicRevoked(t testing.TB, use func()) {
 	t.Helper()
 	defer func() {
-		if recovered := recover(); recovered != delta.ErrRevoked {
+		recovered := recover()
+		if err, _ := recovered.(error); !errors.Is(err, delta.ErrRevoked) {
 			t.Fatalf("recovered %v, want ErrRevoked", recovered)
 		}
 	}()
@@ -904,7 +905,7 @@ func TestTablesInATransactionCommitRowsAndDocumentsInOneStepTheDocumentsAdoptIns
 	if row := s.tableRow(t, s.edits[0], "e1"); !reflect.DeepEqual(row, rowOf("e1", 1)) {
 		t.Fatalf("row = %v", row)
 	}
-	watch.Stop()
+	_, _ = watch.Stop()
 }
 
 func TestTablesInATransactionInMemoryOnlyCommitsTakeNoStepAndNoSeq(t *testing.T) {
@@ -995,11 +996,9 @@ func TestTablesInATransactionWriteNothingOnAThrowOrAnAbortAndRefuseACallbackThat
 	release := holdBackend(t, s.store)
 	var read sync.WaitGroup
 	_, err = s.self().Tx(func(tx *Transaction) (any, error) {
-		read.Add(1)
-		go func() {
-			defer read.Done()
+		read.Go(func() {
 			_, _ = tx.Get(edits, store.Row{"id": "e1"})
-		}()
+		})
 		waitFor(t, "the read underway", func() bool { return pendingOf(s.o, tx) == 1 })
 		return nil, tx.Put(edits, rowOf("e1", 1))
 	}, background)
@@ -1245,11 +1244,9 @@ func TestPersistedDocumentsInATransactionDraftAColdKeyedDocumentByLoadingItInsid
 	release := holdBackend(t, s.store)
 	var loading sync.WaitGroup
 	_, err = s.self().Tx(func(tx *Transaction) (any, error) {
-		loading.Add(1)
-		go func() {
-			defer loading.Done()
+		loading.Go(func() {
 			_, _ = tx.Draft(k, "b")
-		}()
+		})
 		waitFor(t, "the load underway", func() bool { return pendingOf(s.o, tx) == 1 })
 		return nil, nil
 	}, background)

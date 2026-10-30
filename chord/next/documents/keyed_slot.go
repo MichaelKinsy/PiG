@@ -639,7 +639,7 @@ type KeySource struct {
 
 func newKeySource(slot *KeyedSlot, key string, initial *JsonObject, ready bool) *KeySource {
 	source := &KeySource{slot: slot, Key: key, ready: ready, initial: initial}
-	source.AddressSource.Init(slot.owner.Batch(), source)
+	source.Init(slot.owner.Batch(), source)
 	return source
 }
 

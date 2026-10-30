@@ -151,7 +151,7 @@ type SingletonSlot struct {
 // NewSingletonSlot is the slot of definition on owner, persisted when persistence is not nil.
 func NewSingletonSlot(owner *Documents, definition AnyDefinition, persistence *Persistence) *SingletonSlot {
 	slot := &SingletonSlot{owner: owner, definition: NewSlotDefinition(definition), persistence: persistence, loaded: persistence == nil}
-	slot.AddressSource.Init(owner.Batch(), slot)
+	slot.Init(owner.Batch(), slot)
 	return slot
 }
 

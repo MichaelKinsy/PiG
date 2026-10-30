@@ -598,7 +598,7 @@ func TestKeyedSlotInMemoryTooOneKeyPerSpellingNULRefused(t *testing.T) {
 	ksRequireDoc(t, ksGet(t, memos, "x\uFFFD"), "one")
 	ksRequireStrings(t, ksKeysOf(t, memos), []string{"x\uFFFD"})
 	_, err := memos.Change("\x00", ksTitle("nul"), background)
-	ksRequireCode(t, err, data.CodeInvalid)
+	_ = ksRequireCode(t, err, data.CodeInvalid)
 	o.End()
 }
 
@@ -1044,7 +1044,7 @@ func TestKeyedSlotARetirementCutByItsAttemptsSealWhileItFindsTheDocumentFailsNoS
 	}
 	gate.open()
 	res := ksRecv(t, retired)
-	ksRequireCode(t, res.err, data.CodeReleased)
+	_ = ksRequireCode(t, res.err, data.CodeReleased)
 	nexttest.Flushed()
 	// The cut retirement failed nothing: the successor stays live (the host's `reference.state` and `object_failed`
 	// reports: PENDING(host); the documents report no failure).
@@ -1065,7 +1065,7 @@ func TestKeyedSlotASealedHandleReadsCachedDocumentsAColdReadIsRefusedReleased(t 
 	}
 	ksRequireDoc(t, ksGet(t, old, "a"), "x")
 	_, err := old.Get("b", background)
-	ksRequireCode(t, err, data.CodeReleased)
+	_ = ksRequireCode(t, err, data.CodeReleased)
 	p.close()
 }
 
