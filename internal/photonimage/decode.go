@@ -16,7 +16,7 @@ import (
 
 // Decode decodes the bytes Photon's `PhotonImage.new_from_byteslice` decodes: image 0.24.9 `load_from_memory` guesses the format from
 // the magic bytes (guess_format, io/free_functions.rs:266-312) and decodes JPEG with jpeg-decoder 0.3.1 (DecodeJPEG), WebP with its own
-// decoder (DecodeWebP), TIFF with tiff 0.9.1 (DecodeTIFF), farbfeld (DecodeFarbfeld), all pixel for pixel. The other formats Photon
+// decoder (DecodeWebP), TIFF with tiff 0.9.1 (DecodeTIFF), Radiance HDR (DecodeHDR), farbfeld (DecodeFarbfeld), all pixel for pixel. The other formats Photon
 // enables are decoded by the standard library decoders this package registers (PNG, GIF, BMP), which are lossless and give the same
 // pixels as Photon's. Bytes that no signature of guess_format matches are an error, as in Photon (TGA has no signature, io/free_functions.rs:295,
 // and AVIF, OpenEXR and QOI are not compiled into Photon's wasm). The result is not premultiplied.
@@ -31,6 +31,8 @@ func Decode(data []byte) (image.Image, error) {
 		return decodeNRGBA(DecodeWebP, data)
 	case isTIFF(data):
 		return decodeNRGBA(DecodeTIFF, data)
+	case isHDR(data):
+		return decodeNRGBA(DecodeHDR, data)
 	case isFarbfeld(data):
 		return decodeNRGBA(DecodeFarbfeld, data)
 	}

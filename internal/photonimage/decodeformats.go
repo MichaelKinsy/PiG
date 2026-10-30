@@ -8,6 +8,7 @@ import (
 	"errors"
 	"image"
 	"math"
+	"strings"
 )
 
 // What the decoders of image 0.24.9 that this package ports share when Photon (photon-rs 0.3.3 lib.rs:93-105,
@@ -67,4 +68,26 @@ func newImageNRGBA(width, height uint32) *image.NRGBA {
 // downscale16 is image color.rs:408-421 `FromPrimitive<u16> for u8`, `(c + 128) / 257`.
 func downscale16(v uint16) byte {
 	return byte((uint32(v) + 128) / 257)
+}
+
+// rustParseUint is `str::parse::<u8>`, `<u16>` and `<u32>` (bits 8, 16, 32): an optional `+` and then decimal digits that fit. A `-`,
+// even of zero, an empty string, whitespace and every other character are errors.
+func rustParseUint(s string, bits int) (uint64, bool) {
+	s = strings.TrimPrefix(s, "+")
+	if s == "" {
+		return 0, false
+	}
+	limit := uint64(1)<<bits - 1
+	var v uint64
+	for i := range len(s) {
+		c := s[i]
+		if c < '0' || c > '9' {
+			return 0, false
+		}
+		v = v*10 + uint64(c-'0')
+		if v > limit {
+			return 0, false
+		}
+	}
+	return v, true
 }
