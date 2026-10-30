@@ -4,6 +4,8 @@
 // table exercises every SDK. Keep each driver a straight reading of the Spec:
 // behavior belongs in the scenario, not here.
 import fs from "node:fs";
+import v8 from "node:v8";
+import vm from "node:vm";
 
 // A "${name}" in a string is the answer of the prompt kept as name.
 function substitute(value, vars) {
@@ -49,6 +51,17 @@ function providerObject(provider) {
 
 const never = () => new Promise(() => {});
 
+// collectGarbage runs a full collection, twice so that what a weak reference or a finalizer held goes too. A process has no gc function unless it was started with --expose-gc; this makes one, as the runtime's own test switch does (xref.mjs installTestCollect).
+let collect;
+function collectGarbage() {
+  if (!collect) {
+    v8.setFlagsFromString("--expose-gc");
+    collect = vm.runInNewContext("gc");
+  }
+  collect();
+  collect();
+}
+
 // retained is what the "retain" tool keeps of its calls.
 const retained = [];
 
@@ -70,8 +83,8 @@ function registerTool(pi, tool) {
         case "echo":
           return { content: [{ type: "text", text: "echo:" + (params.text ?? "") }] };
         case "retain":
-          // A leak per call: 64 KiB (8192 values of 8 bytes) that nothing ever frees.
-          retained.push(new Array(8192).fill(0));
+          // A leak per call: 16 KiB (2048 values of 8 bytes) that nothing ever frees.
+          retained.push(new Array(2048).fill(0));
           return { content: [{ type: "text", text: "echo:" + (params.text ?? "") }] };
         case "fail":
           throw new Error("boom");
@@ -161,6 +174,12 @@ function registerCommand(pi, command) {
         case "ping":
           fs.writeFileSync(path, "pong");
           return;
+        case "live-memory": {
+          collectGarbage();
+          const { heapUsed, external } = process.memoryUsage();
+          fs.writeFileSync(path, String(heapUsed + external));
+          return;
+        }
         case "echo":
           fs.writeFileSync(".echo-args", path);
           return;

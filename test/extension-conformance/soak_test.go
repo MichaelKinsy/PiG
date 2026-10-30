@@ -43,9 +43,13 @@ const (
 	soakGoroutineGrowth = 8
 	// soakHeapGrowthBytes is how much live host heap the traffic may leave behind.
 	soakHeapGrowthBytes = 32 << 20
-	// soakRSSGrowthBytes and soakRSSGrowthFraction bound the extension process memory: its resident size in the last quarter of the run may exceed its size in the third quarter by the larger of the two.
+	// soakRSSGrowthBytes and soakRSSGrowthFraction bound the memory of an extension process that cannot report its live memory: its resident size in the last quarter of the run may exceed its size in the third quarter by the larger of the two.
 	soakRSSGrowthBytes    = 24 << 20
 	soakRSSGrowthFraction = 0.35
+	// soakLiveGrowthBytes bounds the live memory of an extension process that reports it (soakMemory): after a full collection it may hold this much more at the end of the traffic than it held at the middle of the run. A clean Node extension moved by -0.2 to +0.2 MiB over the second half in every loaded run measured; a leak shows in it from about soakLiveGrowthBytes divided by the calls of the second half, a few hundred bytes per call.
+	soakLiveGrowthBytes = 1 << 20
+	// soakLiveMemoryCommand is the command of an extension that reports its live memory after a collection.
+	soakLiveMemoryCommand = "live-memory"
 )
 
 type soakOp struct {
@@ -184,6 +188,15 @@ func soakSpec() sdkscenarios.Spec {
 	return spec
 }
 
+// soakSpecFor is soakSpec for sdk's driver: an SDK that can report its live memory gets the command that does.
+func soakSpecFor(sdk sdkscenarios.SDK) sdkscenarios.Spec {
+	spec := soakSpec()
+	if sdk == sdkscenarios.Node {
+		spec.Commands = append(spec.Commands, sdkscenarios.Command{Name: soakLiveMemoryCommand, Description: "Collect garbage and report live memory", Op: sdkscenarios.CommandLiveMemory})
+	}
+	return spec
+}
+
 // descendantRSS is the resident memory, in bytes, of every process below this
 // one, and their number. It is 0, 0 where /proc is unavailable.
 func descendantRSS() (bytes int64, processes int) {
@@ -264,7 +277,7 @@ func TestExtensionSoak(t *testing.T) {
 	}
 	for _, sdk := range sdkscenarios.SDKs {
 		t.Run(string(sdk), func(t *testing.T) {
-			rig := newScenarioRig(t, sdk, sdkscenarios.Scenario{Spec: soakSpec()})
+			rig := newScenarioRig(t, sdk, sdkscenarios.Scenario{Spec: soakSpecFor(sdk)})
 			if len(rig.loadFailure) != 0 {
 				t.Fatalf("load: %v", rig.loadFailure)
 			}
@@ -307,11 +320,11 @@ func TestExtensionSoak(t *testing.T) {
 				})
 			}
 			// Watch the extension process memory through the run.
-			var memory soakMemory
+			memory := newSoakMemory(rig, t.TempDir())
 			sampler := make(chan struct{})
 			go func() {
 				defer close(sampler)
-				memory.watch(deadline)
+				memory.watch(t.Context(), deadline)
 			}()
 			wg.Wait()
 			<-sampler
@@ -345,7 +358,7 @@ func TestExtensionSoak(t *testing.T) {
 			if growth := int64(after.HeapAlloc) - int64(before.HeapAlloc); growth > soakHeapGrowthBytes {
 				t.Errorf("live host heap grew by %d bytes (limit %d, seed %d)", growth, soakHeapGrowthBytes, seed)
 			}
-			if growth := memory.verdict(t, seed); growth != "" {
+			if growth := memory.verdict(t.Context(), t, seed); growth != "" {
 				t.Error(growth)
 			}
 
