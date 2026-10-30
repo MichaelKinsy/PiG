@@ -234,7 +234,7 @@ closing = "Pure helpers ported per SDK with vector tests from Pi at the pin (tes
 "pi-coding-agent: CustomEditor.actionHandlers" = { go = "native:Editor.ActionHandlers", rust = "native:EditorBase::action_handlers", python = "native:EditorBase.action_handlers", lisp = "native:pig:editor-base-action-handlers" }
 "pi-coding-agent: CustomEditor.addToHistory" = { go = "native:EditorComponent.AddToHistory", rust = "native:EditorComponent::add_to_history", python = "native:EditorComponent.add_to_history", lisp = "native:pig:editor-component-add-to-history" }
 "pi-coding-agent: CustomEditor.borderColor" = { go = "native:Editor.BorderColor", rust = "native:EditorBase::border_color", python = "native:EditorBase.border_color", lisp = "native:pig:editor-base-border-color" }
-"pi-coding-agent: CustomEditor.capturesViewportInput" = { go = "native:ViewportInputCapturer.CapturesViewportInput", rust = "native:EditorComponent::captures_viewport_input", python = "native:EditorComponent.captures_viewport_input", lisp = "native:pig:editor-component-captures-viewport-input" }
+"pi-coding-agent: CustomEditor.capturesViewportInput" = { go = "native:ViewportInputCapturer.CapturesViewportInput", rust = "native:EditorComponent::captures_viewport_input", python = "native:EditorComponent.captures_viewport_input", lisp = "native:pig:make-editor-component" }
 "pi-coding-agent: CustomEditor.disableSubmit" = { go = "native:Editor.DisableSubmit", rust = "native:EditorBase::disable_submit", python = "native:EditorBase.disable_submit", lisp = "native:pig:editor-base-disable-submit" }
 "pi-coding-agent: CustomEditor.embedWorkingStatus" = { go = "native:EditorStatusEmbedder.EmbedWorkingStatus", rust = "native:EditorComponent::embed_working_status", python = "native:EditorComponent.embed_working_status", lisp = "native:pig:editor-component-embed-working-status" }
 "pi-coding-agent: CustomEditor.focused" = { go = "native:Editor.Focused", rust = "native:EditorBase::focused", python = "native:EditorBase.focused", lisp = "native:pig:editor-base-focused" }
@@ -1029,7 +1029,7 @@ closing = "Pure helpers ported per SDK with vector tests from Pi at the pin (tes
 "pi-tui: Editor" = { go = "native:Editor", rust = "native:EditorBase", python = "native:EditorBase", lisp = "native:pig:editor-base" }
 "pi-tui: Editor.addToHistory" = { go = "native:Editor.AddToHistory", rust = "native:EditorBase::add_to_history", python = "native:EditorBase.add_to_history", lisp = "native:pig:editor-base-add-to-history" }
 "pi-tui: Editor.borderColor" = { go = "kit:Editor", rust = "kit:Editor", python = "kit:Editor", lisp = "kit:pig:kit-editor" }
-"pi-tui: Editor.capturesViewportInput" = { go = "native:ViewportInputCapturer.CapturesViewportInput", rust = "native:EditorComponent::captures_viewport_input", python = "native:EditorComponent.captures_viewport_input", lisp = "native:pig:editor-component-captures-viewport-input" }
+"pi-tui: Editor.capturesViewportInput" = { go = "native:ViewportInputCapturer.CapturesViewportInput", rust = "native:EditorComponent::captures_viewport_input", python = "native:EditorComponent.captures_viewport_input", lisp = "native:pig:make-editor-component" }
 "pi-tui: Editor.disableSubmit" = { go = "kit:Editor", rust = "kit:Editor", python = "kit:Editor", lisp = "kit:pig:kit-editor" }
 "pi-tui: Editor.focused" = { go = "kit:Editor", rust = "kit:Editor", python = "kit:Editor", lisp = "kit:pig:kit-editor" }
 "pi-tui: Editor.getAutocompleteMaxVisible" = { go = "kit:Editor", rust = "kit:Editor", python = "kit:Editor", lisp = "kit:pig:kit-editor" }

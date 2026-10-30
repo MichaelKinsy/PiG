@@ -542,20 +542,24 @@ func TestEditorComponentCapturesViewportInputReachesTheHost(t *testing.T) {
 				defer host.mu.Unlock()
 				return slices.Clone(host.captures)
 			}
-			waitCaptures := func(step string, want []bool) {
+			// A key may draw more than one frame; the latest one is what the host reads.
+			waitLast := func(step string, want bool) {
 				t.Helper()
 				deadline := time.Now().Add(15 * time.Second)
-				for !slices.Equal(captured(), want) {
+				for {
+					if frames := captured(); len(frames) > 0 && frames[len(frames)-1] == want {
+						return
+					}
 					if time.Now().After(deadline) {
-						t.Fatalf("%s: frames carried capturesViewportInput %v, want %v", step, captured(), want)
+						t.Fatalf("%s: frames carried capturesViewportInput %v, want the latest to be %v", step, captured(), want)
 					}
 					time.Sleep(5 * time.Millisecond)
 				}
 			}
 			editor.Input("x")
-			waitCaptures("after x", []bool{true})
+			waitLast("after x", true)
 			editor.Input("t")
-			waitCaptures("after t", []bool{true, false})
+			waitLast("after t", false)
 		})
 	}
 }
