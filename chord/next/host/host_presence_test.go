@@ -52,6 +52,31 @@ func (r *presenceRig) frames(t testing.TB) *nexttest.Collector[nexttest.Frame[de
 	return nexttest.FramesOf(watch)
 }
 
+// batchSubscriber is a synchronous subscriber of the list (a hold over a link): it is fed once per batch that published,
+// inside the batch, so it sees what a watch would fold.
+type batchSubscriber struct {
+	frames *nexttest.Collector[nexttest.Frame[delta.JsonValue]]
+}
+
+func (s batchSubscriber) Advance(call chord.WatchCall[delta.JsonValue], _ context.Context) {
+	if call.Kind == chord.WatchCallValue {
+		s.frames.Append(nexttest.Frame[delta.JsonValue]{Value: call.Value, Ops: call.Ops})
+	}
+}
+func (batchSubscriber) End(chord.WatchEnd) {}
+func (batchSubscriber) EndAfterDelivery()  {}
+
+// batches follows the list as a subscriber does: after reading it, one frame per batch.
+func (r *presenceRig) batches(t testing.TB) *nexttest.Collector[nexttest.Frame[delta.JsonValue]] {
+	t.Helper()
+	if _, err := r.refs.Value(); err != nil {
+		t.Fatal(err)
+	}
+	frames := &nexttest.Collector[nexttest.Frame[delta.JsonValue]]{}
+	r.refs.Subscribe(batchSubscriber{frames: frames})
+	return frames
+}
+
 // entry is a presence entry as the list publishes it.
 func presenceEntry(params *delta.JsonObject, principal *delta.JsonObject, incarnation string) *delta.JsonObject {
 	object := delta.NewJsonObject(3)
@@ -121,7 +146,9 @@ func TestReferencesChangeInTheBatchWhereAReferenceBindsOrEndsAWatchGetsOneSplice
 	}
 	one, two := presenceHolderOf(owner, "client"), presenceHolderOf(owner, "client")
 	rig.refs.add(object("S1"), one, presenceBackground)
+	rig.scheduler.Wait()
 	rig.refs.add(object("S2"), two, presenceBackground)
+	rig.scheduler.Wait()
 	rig.refs.remove([]presenceHolder{one}, presenceBackground)
 	rig.scheduler.Wait()
 	s1, s2 := presenceEntry(presenceSession("S1"), owner, "client"), presenceEntry(presenceSession("S2"), owner, "client")
@@ -150,7 +177,7 @@ func TestReferencesRemovesABulkDepartureWithOneListAndOneSpliceOpPerEntryInOneFr
 		holders = append(holders, each)
 		rig.refs.add(presenceFakeObject{params: presenceSession("S1"), kind: contracts.KindRemote}, each, presenceBackground)
 	}
-	frames := rig.frames(t)
+	frames := rig.batches(t)
 	if len(presenceList(t, rig.refs)) != 4 {
 		t.Fatalf("list = %v, want four entries", presenceList(t, rig.refs))
 	}
@@ -173,7 +200,7 @@ func TestReferencesPutsADepartureDiscoveredWhileACommitSendsIntoTheNextBatch(t *
 	object := presenceFakeObject{params: presenceSession("S1"), kind: contracts.KindRemote}
 	first, second := presenceHolderOf(owner, "client"), presenceHolderOf(owner, "client")
 	rig.refs.add(object, first, presenceBackground)
-	frames := rig.frames(t)
+	frames := rig.batches(t)
 	// One commit adds the second reference; while it sends, the first one's link closes.
 	err := rig.batch.Commit(func() error {
 		rig.refs.add(object, second, presenceBackground)
@@ -222,7 +249,7 @@ func TestReferencesAnEntryAddedAndRemovedInOneBatchPublishesNothing(t *testing.T
 	object := presenceFakeObject{params: presenceSession("S1"), kind: contracts.KindRemote}
 	kept, gone := presenceHolderOf(owner, "kept"), presenceHolderOf(owner, "gone")
 	rig.refs.add(object, kept, presenceBackground)
-	frames := rig.frames(t)
+	frames := rig.batches(t)
 	err := rig.batch.Commit(func() error {
 		rig.refs.add(object, gone, presenceBackground)
 		rig.refs.remove([]presenceHolder{gone}, presenceBackground)

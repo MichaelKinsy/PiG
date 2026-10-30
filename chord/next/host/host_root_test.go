@@ -129,13 +129,13 @@ func TestHostRootLeavesNoListenerOnTheCallersSignalOnceHostCloseRejectedAnFnThat
 		outcome <- err
 	}()
 	<-entered
-	if callers.listeners() == 0 {
+	if callers.count() == 0 {
 		t.Fatal("the running scope has no listener on the caller's signal")
 	}
 	loop.Run(func() { scopes.close(scopeClosed()) })
 	wantScopeError(t, <-outcome, data.CodeReleased, data.ReasonClosed, "host closed")
-	if callers.listeners() != 0 {
-		t.Fatalf("listeners on the caller's signal = %d, want none", callers.listeners())
+	if callers.count() != 0 {
+		t.Fatalf("listeners on the caller's signal = %d, want none", callers.count())
 	}
 }
 

@@ -7,7 +7,6 @@ import (
 	"testing"
 	"time"
 
-	chordctx "github.com/MichaelKinsy/PiG/chord/context"
 	"github.com/MichaelKinsy/PiG/chord/next/contracts"
 )
 
@@ -131,42 +130,69 @@ func scopeEventually(t testing.TB, what string, cond func() bool) {
 // scopeReason is an abort reason: `new Error(text)` as an abort(reason) argument.
 func scopeReason(text string) error { return errors.New(text) }
 
-// scopeCounting is a context.Context with a Done channel whose AfterFunc registrations are counted
-// (`getEventListeners(signal, "abort")`): context.AfterFunc calls its AfterFunc method when it has one.
+// scopeCounting is an abort signal (`new AbortController().signal`) whose listeners are counted
+// (`getEventListeners(signal, "abort")`). It is its own context.Context, not one derived from the standard library's:
+// context.AfterFunc calls the AfterFunc method of a context of another implementation, which is how a listener is
+// counted, and Cause of such a context is its Err, which is the reason it was aborted with here.
 type scopeCounting struct {
-	context.Context
-	mu     sync.Mutex
-	active int
+	mu        sync.Mutex
+	done      chan struct{}
+	reason    error
+	listeners map[*func()]struct{}
 }
 
 func newScopeCounting() (*scopeCounting, func(cause error)) {
-	parent, cancel := chordctx.WithCancel(chordctx.Background())
-	return &scopeCounting{Context: parent}, cancel
+	signal := &scopeCounting{done: make(chan struct{}), listeners: map[*func()]struct{}{}}
+	return signal, signal.abort
 }
 
-func (c *scopeCounting) AfterFunc(f func()) func() bool {
+func (c *scopeCounting) abort(reason error) {
 	c.mu.Lock()
-	c.active++
-	c.mu.Unlock()
-	stop := context.AfterFunc(c.Context, func() {
-		c.mu.Lock()
-		c.active--
+	if c.reason != nil {
 		c.mu.Unlock()
-		f()
-	})
-	return func() bool {
-		stopped := stop()
-		if stopped {
-			c.mu.Lock()
-			c.active--
-			c.mu.Unlock()
-		}
-		return stopped
+		return
+	}
+	c.reason = reason
+	close(c.done)
+	fired := c.listeners
+	c.listeners = map[*func()]struct{}{}
+	c.mu.Unlock()
+	for listener := range fired {
+		go (*listener)()
 	}
 }
 
-func (c *scopeCounting) listeners() int {
+func (c *scopeCounting) Deadline() (time.Time, bool) { return time.Time{}, false }
+func (c *scopeCounting) Done() <-chan struct{}       { return c.done }
+func (c *scopeCounting) Value(any) any               { return nil }
+func (c *scopeCounting) Err() error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	return c.active
+	return c.reason
+}
+
+// AfterFunc adds a listener: it runs once on a goroutine of its own when the signal is aborted, unless stopped first.
+func (c *scopeCounting) AfterFunc(f func()) func() bool {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.reason != nil {
+		go f()
+		return func() bool { return false }
+	}
+	listener := &f
+	c.listeners[listener] = struct{}{}
+	return func() bool {
+		c.mu.Lock()
+		defer c.mu.Unlock()
+		_, pending := c.listeners[listener]
+		delete(c.listeners, listener)
+		return pending
+	}
+}
+
+// count is `getEventListeners(signal, "abort").length`.
+func (c *scopeCounting) count() int {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return len(c.listeners)
 }

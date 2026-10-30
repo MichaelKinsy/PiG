@@ -161,12 +161,12 @@ func TestLinkedAbortSignalsDetachFromBothSourcesOnReleaseALaterAbortReachesNothi
 	callerCtx, abortCaller := newScopeCounting()
 	callCtx, abortCall := newScopeCounting()
 	linked := withLinkedAbortSignal(callCtx, callerCtx)
-	if callerCtx.listeners() != 1 || callCtx.listeners() != 1 {
-		t.Fatalf("listeners before release = %d and %d, want one on each source", callerCtx.listeners(), callCtx.listeners())
+	if callerCtx.count() != 1 || callCtx.count() != 1 {
+		t.Fatalf("listeners before release = %d and %d, want one on each source", callerCtx.count(), callCtx.count())
 	}
 	linked.release()
-	if callerCtx.listeners() != 0 || callCtx.listeners() != 0 {
-		t.Fatalf("listeners after release = %d and %d, want none", callerCtx.listeners(), callCtx.listeners())
+	if callerCtx.count() != 0 || callCtx.count() != 0 {
+		t.Fatalf("listeners after release = %d and %d, want none", callerCtx.count(), callCtx.count())
 	}
 	abortCaller(scopeReason("late"))
 	abortCall(scopeReason("late"))

@@ -51,6 +51,7 @@ func newRoutineRig(t testing.TB) *routineRig {
 	rig := &routineRig{t: t, loop: loop, host: newScopeHost(loop), sched: chord.NewDeliveryScheduler()}
 	ctx, end := chordctx.WithCancel(chordctx.Background())
 	rig.end = end
+	t.Cleanup(func() { end(errors.New("the test ended")) })
 	rig.resolve = func(any) (state.DeriveSource, error) { return nil, nil }
 	rig.routines = newRoutines(func(value any) (state.DeriveSource, error) { return rig.resolve(value) })
 	rig.owner = routineOwner{
@@ -648,7 +649,8 @@ func TestOnNeverOverlapsCallsChangesDuringACallFoldIntoTheNextWhichIsNotAbortedB
 	rig.start()
 	rig.deliver()
 	source.change(1, setN(1))
-	rig.deliver()
+	rig.sched.Wait()
+	scopeEventually(t, "the second call, which waits for the gate", func() bool { return log.len() == 2 })
 	source.change(2, setN(2))
 	source.change(3, setN(3))
 	rig.sched.Wait()
@@ -775,7 +777,11 @@ func TestOnAfterAThrowRetriesAChangeFoldedBehindTheThrowingCallAfterTheBackoffOn
 	rig.sched.Wait()
 	close(gate)
 	rig.quiesce()
-	rig.loop.Advance(5_000)
+	// Pi advances 5 s in one call: the retry at 1 s runs with the clock at 1 s. Its handler reads the clock on its own
+	// task here, so the clock moves to the timer first.
+	rig.loop.Advance(1_000)
+	rig.quiesce()
+	rig.loop.Advance(4_000)
 	rig.quiesce()
 	wantCalls(t, log.all(), wantCall(nObject(0), replaceOps(nObject(0)), 0), wantCall(nObject(1), replaceOps(nObject(1)), 1_000))
 	if rig.loop.TimerCount() != 0 {
@@ -799,7 +805,7 @@ func TestOnAfterAThrowBacksOffEvenWhenTheFailedCallChangedItsOwnSourceNoBurst(t 
 	}))
 	rig.start()
 	rig.quiesce()
-	wantCalls(t, log.all(), wantCall(nObject(0), nil, 0))
+	wantCalls(t, log.all(), wantCall(nObject(0), replaceOps(nObject(0)), 0))
 	rig.loop.Advance(1_000)
 	rig.quiesce()
 	rig.loop.Advance(2_000)
