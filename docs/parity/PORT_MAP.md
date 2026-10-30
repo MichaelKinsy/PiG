@@ -893,6 +893,37 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/chord/src/next/remote/replica.ts` | `chord/next/host/remote_replica.go` | ✅ |
 | `packages/chord/src/next/remote/internal.ts` | `(barrel for Chord's own layers: Go imports the package; what it exported (Path, Upstream, HostLink, HoldRequest, actingFor, ...) is unexported in Go (DESIGN-go-layout.md section 2))` | n/a |
 | `packages/chord/src/next/jobs/job.ts` | `chord/next/host/jobs_job.go` | ✅ |
+| `packages/chord/test/next/examples/01-objects.ts` | `chord/next/host/host_examples_test.go` | ✅ |
+| `packages/chord/test/next/examples/02-documents.ts` | `chord/next/host/host_examples_test.go` | ✅ |
+| `packages/chord/test/next/examples/03-derives.ts` | `chord/next/host/host_examples_test.go` | ✅ |
+| `packages/chord/test/next/examples/04-watches.ts` | `chord/next/host/host_examples_test.go` | ✅ |
+| `packages/chord/test/next/examples/05-errors.ts` | `chord/next/host/host_examples_test.go` | ✅ |
+| `packages/chord/test/next/examples/06-natives.ts` | `chord/next/host/host_examples_test.go` | ✅ |
+| `packages/chord/test/next/examples/07-failures.ts` | `chord/next/host/host_examples_test.go` | ✅ |
+| `packages/chord/test/next/examples/08-remote.ts` | `chord/next/host/host_examples_test.go` | ✅ |
+| `packages/chord/test/next/examples/09-calls.ts` | `chord/next/host/host_examples_test.go` | ✅ |
+| `packages/chord/test/next/examples/10-drops.ts` | `chord/next/host/host_examples_test.go` | ✅ |
+| `packages/chord/test/next/examples/11-linger-and-retry.ts` | `chord/next/host/host_examples_test.go` | ✅ |
+| `packages/chord/test/next/examples/12-routes.ts` | `chord/next/host/host_examples_test.go` | ✅ |
+| `packages/chord/test/next/examples/13-relay.ts` | `chord/next/host/host_examples_test.go` | ✅ |
+| `packages/chord/test/next/examples/14-flow-control.ts` | `chord/next/host/host_examples_test.go` | ✅ |
+| `packages/chord/test/next/examples/15-revocation.ts` | `chord/next/host/host_examples_test.go` | ✅ |
+| `packages/chord/test/next/examples/16-presence-and-activity.ts` | `chord/next/host/host_examples_test.go` | ✅ |
+| `packages/chord/test/next/examples/17-limits-and-compression.ts` | `chord/next/host/host_examples_test.go` | ✅ |
+| `packages/chord/test/next/examples/18-routines.ts` | `chord/next/host/host_examples_test.go` | ✅ |
+| `packages/chord/test/next/examples/19-jobs.ts` | `chord/next/host/host_examples_test.go` | ✅ |
+| `packages/chord/test/next/examples/20-tables.ts` | `chord/next/host/host_examples_test.go` | ✅ |
+| `packages/chord/test/next/examples/21-persisted-documents.ts` | `chord/next/host/host_examples_test.go` | ✅ |
+| `packages/chord/test/next/examples/22-migrations.ts` | `chord/next/host/host_examples_test.go` | ✅ |
+| `packages/chord/test/next/examples/23-keyed-watches.ts` | `chord/next/host/host_examples_test.go` | ✅ |
+| `packages/chord/test/next/examples/24-keyed-members.ts` | `chord/next/host/host_examples_test.go` | ✅ |
+| `packages/chord/test/next/examples/25-export-import.ts` | `chord/next/host/host_examples_test.go` | ✅ |
+| `packages/chord/test/next/examples/28-persisted-jobs.ts` | `chord/next/host/host_examples_test.go` | ✅ |
+| `packages/chord/test/next/examples/29-registries.ts` | `chord/next/host/host_examples_test.go` | ✅ |
+| `packages/chord/test/next/examples/30-host-root.ts` | `chord/next/host/host_examples_test.go` | ✅ |
+| `packages/chord/test/next/examples/31-parked-dependencies.ts` | `chord/next/host/host_examples_test.go` | ✅ |
+| `packages/chord/test/next/examples/32-startup.ts` | `chord/next/host/host_examples_test.go` | ✅ |
+| `packages/chord/test/next/support.ts` | `chord/next/host/host_next_support_test.go` | ✅ |
 
 ## `packages/protocol/src/`
 

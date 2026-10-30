@@ -381,7 +381,6 @@ func (s *Session) commitWrites(tx *Tx, writes []Write) (*Publication, error) {
 	return pub, nil
 }
 
-
 // InJob reports whether a Loop line job body is running.
 func (s *Session) InJob() bool { return s.inJob }
 

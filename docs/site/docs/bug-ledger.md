@@ -1274,7 +1274,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-ebec8e2](#bf-ebec8e2) | A URL host with an `xn--` label that is empty after IDNA mapping (`ws://xn--。`, `https://..\ufeffxn--`) or… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-ebfeed0](#bf-ebfeed0) | `getSystemPromptOptions().hiddenTools` lists hidden tools in the order the `prepareLoadout` hooks hid them… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-ec2080a](#bf-ec2080a) | A subprocess extension's `ctx.ui.custom` component now learns when another component shown over it takes… | PiG's own defect | All platforms | 0.5.0 |
-| [BF-ecc7b76](#bf-ecc7b76) | A session with an extension that registers a markdown transformer no longer crashes while an assistant reply… | PiG's own defect | All platforms | Unreleased |
+| [BF-ecc7b76](#bf-ecc7b76) | fix(tui): an async markdown completion no longer rebuilds the assistant block off the owner loop | PiG's own defect | All platforms | Unreleased |
 | [BF-ed05099](#bf-ed05099) | An extension's `ui.setHiddenThinkingLabel` now changes the label shown for hidden thinking in the chat… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-ed05099-2](#bf-ed05099-2) | Tab at the start of a line no longer forces file completion while the text before the cursor is a… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-ed05099-3](#bf-ed05099-3) | `pi.exec` called while an extension loads, before the session binds, no longer fails with `extension… | PiG's own defect | All platforms | 0.5.0 |
@@ -18786,17 +18786,16 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 
 ### BF-ecc7b76
 
-**A session with an extension that registers a markdown transformer no longer crashes while an assistant reply…**
+**fix(tui): an async markdown completion no longer rebuilds the assistant block off the owner loop**
 
 - **Source:** PiG's own defect
-- **Symptom:** A session with an extension that registers a markdown transformer no longer crashes while an assistant reply streams.
+- **Symptom:** fix(tui): an async markdown completion no longer rebuilds the assistant block off the owner loop
 - **Root cause:** interactive mode handed each assistant block's async markdown transforms block.Invalidate as their completion hook. The hook runs on the background worker that finished the extension's transform chain, and AssistantMessageComponent.Invalidate rebuilds the block's content container (updateContent: the segment list, spacers, thinking-run regions and the scratch child list) while the owner loop streams the next delta into the same block. Two goroutines in updateContent let one clear the shared scratch list while the other passed it to SetChildren, so the container held nil children and the next frame panicked in Container.renderChildLocked with a nil child interface. Only a session with an…
-- **User impact:** Crash, hang or runaway process
+- **User impact:** Behavior differed from Pi
 - **Platform:** All platforms
 - **Fixed in:** Unreleased
-- **Fix commits:** `ecc7b7683c` (2026-10-29), `a654570024` (2026-10-29)
-- **Tests:** `internal/codingagent/assistant_block_async_race_test.go::TestAssistantBlockAsyncMarkdownCompletionLeavesTheBlockToTheOwnerLoop`, `tui/assistant_message_async_test.go::TestAssistantMessageAsyncCompletionMarksBlockDirty`
-- **Release note:** A session with an extension that registers a markdown transformer no longer crashes while an assistant reply streams. The transformer runs on a background worker, and its completion rebuilt the reply's content from that worker while the interface was streaming the next delta into the same reply, so both could rebuild it at once and the next frame panicked in `Container.renderChildLocked` with a nil child. A finished transform now only marks the reply for redraw, as it already did for a user message, and the interface rebuilds the reply on its own loop.
+- **Fix commits:** `ecc7b7683c` (2026-10-29)
+- **Tests:** None recorded.
 
 ### BF-ed05099
 
