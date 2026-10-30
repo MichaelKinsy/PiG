@@ -62,6 +62,19 @@ matching installation receipt.
 Each release tags the root module (`v0.2.0`) and the nested Go extension SDK
 module (`extensions/sdk/v0.2.0`) on the same commit; `go install` needs both.
 
+Install or run the command with Nix:
+
+```bash
+nix run github:MichaelKinsy/PiG -- --version
+nix profile add github:MichaelKinsy/PiG
+```
+
+Nix before 2.30 and Lix spell the second command `nix profile install`.
+
+The Nix package wraps the command with `fd`, `ripgrep` and the clipboard
+commands. Extensions build and run with the toolchains on `PATH`, as in any
+other installation. Update the flake input to update it.
+
 After the project publishes a release, you can also download an artifact from
 its release page. Verify the published checksum before you place `pig` on
 `PATH`.
