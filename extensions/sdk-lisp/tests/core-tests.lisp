@@ -234,3 +234,17 @@
         (answer-call host call (pig:obj "prompt" "edited")))
       (hread-type host "response")
       (check-equal '("edited" "base") seen))))
+
+;; pig divergence (D217) test: Pi c466a359 (#11360) exec.ts maxBuffer. The option crosses as options.maxBuffer and the result's truncated is read.
+(deftest exec-max-buffer-goes-in-the-options-and-truncated-comes-back
+  (with-host (host (core-extension))
+    (setf *core-thunk* (lambda (ctx) (let ((r (pig:ctx-exec ctx "yes" :max-buffer 16)))
+                                       (list (pig:exec-result-truncated r) (pig:exec-result-killed r) (pig:exec-result-exit-code r)
+                                             (pig:exec-result-stdout r)))))
+    (request host "r" "command" "tool" "c" "args" "")
+    (let* ((call (hread-type host "call")) (args (pig:jget (pig:jget call "call") "args")))
+      (check-equal "exec" (pig:jget (pig:jget call "call") "method"))
+      (check-equal "{\"maxBuffer\":16}" (pig:to-json (pig:jget args "options")))
+      (answer-call host call (pig:obj "stdout" "yyyyyyyy" "stderr" "" "code" 143 "killed" t "truncated" t))
+      (hread-type host "response")
+      (check-equal '(t t 143 "yyyyyyyy") *core-result*))))

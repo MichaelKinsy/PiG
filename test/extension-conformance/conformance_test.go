@@ -1942,6 +1942,11 @@ func makeInprocFixture(ui extension.UIContext, actions *[]string) extension.Exte
 				Name: "exec-abort-probe", Description: "Abort a running exec through its signal",
 				Handler: func(context.Context, string) error { return nil },
 			},
+			// The in-process reference for exec_limits_test.go's SDK rows: the host's own ExecCommand, which that test runs itself.
+			"exec-limits-probe": {
+				Name: "exec-limits-probe", Description: "Exec with a maxBuffer",
+				Handler: func(context.Context, string) error { return nil },
+			},
 			"exec-reject-probe": {
 				Name: "exec-reject-probe", Description: "Report exec outcomes",
 				Handler: func(ctx context.Context, args string) error {

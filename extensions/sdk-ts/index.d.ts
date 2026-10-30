@@ -110,6 +110,19 @@ declare module "@earendil-works/pi-coding-agent" {
     /** In a tool's `execute`: `JSON.stringify` of the call's arguments, members in the model's order. */
     readonly toolInput?: string;
   }
+  // pig divergence (D217): Pi c466a359 (#11360) adds ExecOptions.maxBuffer and ExecResult.truncated, merged after the pinned 1.4.0 declarations. PiG's
+  // host implements them, so the declarations are added here; the re-exported Pi declarations stay the pinned ones.
+  interface ExecOptions {
+    /**
+     * Combined stdout/stderr byte limit; exceeding it terminates the command with `truncated: true`.
+     * Nonnegative integer up to the runtime string limit. Default: 256 MiB, capped by that limit.
+     */
+    maxBuffer?: number;
+  }
+  interface ExecResult {
+    /** Output exceeded `maxBuffer`; stdout and stderr are incomplete and `code` is nonzero. */
+    truncated: boolean;
+  }
   interface ExtensionUIContext {
     /** Subscribe to changes of the host's theme; the handler receives `ui.theme` after it took the new palette. Returns the unsubscribe function. */
     onThemeChange(handler: (theme: Theme) => void): () => void;

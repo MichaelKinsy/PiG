@@ -410,6 +410,24 @@ func Extension() *sdk.Extension {
 		ctx.Notify(fmt.Sprintf("exec-abort:killed=%t;code=%d;stdout=%s", result.Killed, result.ExitCode, strings.TrimSpace(result.Stdout)), "info")
 		return nil
 	})
+	// pig divergence (D217) test fixture: Pi c466a359 (#11360) exec's maxBuffer and truncated, through the Go SDK.
+	ext.Command("exec-limits-probe", "Run a command under exec's maxBuffer and report truncation", func(ctx sdk.Context, args string) error {
+		var probe struct {
+			Command   string   `json:"command"`
+			Args      []string `json:"args"`
+			MaxBuffer *float64 `json:"maxBuffer"`
+		}
+		if err := json.Unmarshal([]byte(args), &probe); err != nil {
+			return err
+		}
+		result, err := ctx.ExecWithOptions(probe.Command, probe.Args, sdk.ExecOptions{MaxBuffer: probe.MaxBuffer})
+		if err != nil {
+			ctx.Notify("rejected:"+err.Error(), "info")
+			return nil
+		}
+		ctx.Notify(fmt.Sprintf("exec-limits:truncated=%t;killed=%t;code=%d;stdout=%s;stderr=%s", result.Truncated, result.Killed, result.ExitCode, strings.TrimSpace(result.Stdout), strings.TrimSpace(result.Stderr)), "info")
+		return nil
+	})
 	ext.Command("thinking-model", "Read the thinking level and switch the model", func(ctx sdk.Context, _ string) error {
 		level, err := ctx.GetThinkingLevel()
 		if err != nil {

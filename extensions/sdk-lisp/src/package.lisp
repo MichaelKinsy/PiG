@@ -18,7 +18,7 @@
    #:ctx-wait-cancelled #:ctx-signal #:ctx-tool-call-id #:ctx-request-id #:ctx-on-update
    #:ctx-notify #:ctx-set-status #:ctx-clear-status #:ctx-set-title
    #:ctx-select #:ctx-confirm #:ctx-input #:ctx-editor
-   #:ctx-exec #:exec-result #:exec-result-stdout #:exec-result-stderr #:exec-result-exit-code #:exec-result-killed
+   #:ctx-exec #:exec-result #:exec-result-stdout #:exec-result-stderr #:exec-result-exit-code #:exec-result-killed #:exec-result-truncated
    #:ctx-is-idle-p #:ctx-abort #:ctx-has-pending-messages-p #:ctx-shutdown #:ctx-compact #:ctx-reload
    #:ctx-get-flag #:ctx-get-system-prompt #:ctx-get-thinking-level #:ctx-get-all-tools #:ctx-get-active-tools
    #:ctx-send-message #:ctx-send-user-message #:ctx-append-entry #:ctx-set-session-name

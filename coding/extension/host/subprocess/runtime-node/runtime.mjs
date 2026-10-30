@@ -8,6 +8,7 @@ import { dispatchNativeProvider, nativeDeclaration } from "./native-provider.mjs
 import { dispatchProviderObjectSync, dispatchProviderObjectCallback, remoteProvider } from "./provider-object.mjs";
 import { isWaiting, ProviderSocket, setProviderSocketsRef, shareDecodedFrames } from "./provider-socket.mjs";
 import { MessageChannel } from "node:worker_threads";
+import { constants as bufferConstants } from "node:buffer";
 import net from "node:net";
 import { closeSync, openSync, readSync } from "node:fs";
 import { basename } from "node:path";
@@ -2554,6 +2555,11 @@ export class Runtime {
   //
   // core/exec.ts:46-52 kills the child when options.signal aborts, and the call has no other signal. An AbortSignal cannot cross the process boundary: the call names itself by an exec id and carries ownSignal, which detaches it from the calling request, and the abort reaches the Host as exec.cancel.
   exec(request) {
+    // pig divergence (D217): Pi c466a359 (#11360) rejects an invalid maxBuffer before it spawns (core/exec.ts RangeError); pinned Pi has no such option. NaN and the infinities would reach the Host as null, which means undefined, so the check runs here with the runtime's own limit.
+    const maxBuffer = request.options?.maxBuffer;
+    if (maxBuffer != null && (!Number.isInteger(maxBuffer) || maxBuffer < 0 || maxBuffer > bufferConstants.MAX_STRING_LENGTH)) {
+      return Promise.reject(new RangeError(`maxBuffer must be an integer between 0 and ${bufferConstants.MAX_STRING_LENGTH} bytes`));
+    }
     const signal = request.options?.signal;
     if (!signal || typeof signal.addEventListener !== "function") return this.execCall(request, false, () => {});
     const { signal: _signal, ...options } = request.options;

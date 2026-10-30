@@ -1362,6 +1362,21 @@ def new_extension() -> pig_sdk.Extension:
 
     ext.command("exec-abort-probe", "Abort a running exec through its signal", exec_abort_probe)
 
+    def exec_limits_probe(ctx, args):
+        probe = json.loads(args)
+        try:
+            options = {"max_buffer": probe["maxBuffer"]} if "maxBuffer" in probe else {}
+            result = ctx.exec(probe["command"], probe["args"], **options)
+            ctx.notify(
+                f"exec-limits:truncated={str(result.truncated).lower()};killed={str(result.killed).lower()};code={result.exit_code}"
+                f";stdout={result.stdout.strip()};stderr={result.stderr.strip()}",
+                "info",
+            )
+        except RuntimeError as error:
+            ctx.notify(f"rejected:{error}", "info")
+
+    ext.command("exec-limits-probe", "Run a command with a max_buffer and report truncation", exec_limits_probe)
+
     def language_probe(ctx, args):
         ctx.notify("language:%s:end" % json.dumps({"lang": pig_sdk.get_language_from_path(json.loads(args)["path"])}, separators=(",", ":")), "info")
 

@@ -97,6 +97,15 @@ export default function (pi) {
       ctx.ui.notify(`rejected:${error.message}`, "info");
     }
   }});
+  pi.registerCommand("exec-limits-probe", { description: "Exec with a maxBuffer", handler: async (args, ctx) => {
+    const probe = JSON.parse(args);
+    try {
+      const result = await pi.exec(probe.command, probe.args, probe.maxBuffer === undefined ? undefined : { maxBuffer: probe.maxBuffer });
+      ctx.ui.notify(`exec-limits:truncated=${result.truncated};killed=${result.killed};code=${result.code};stdout=${result.stdout.trim()};stderr=${result.stderr.trim()}`, "info");
+    } catch (error) {
+      ctx.ui.notify(`rejected:${error.message}`, "info");
+    }
+  }});
   pi.registerCommand("thinking-model", { description: "Read the thinking level and switch the model", handler: async (_args, ctx) => {
     pi.setThinkingLevel("high");
     const ok = await pi.setModel({ provider: "probe", id: "model" });

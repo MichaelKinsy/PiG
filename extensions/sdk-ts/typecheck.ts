@@ -119,6 +119,12 @@ export function toolDefinitionFields(): ToolDefinition {
 }
 
 export function apiAdditions(pi: ExtensionAPI): void {
+  // pig divergence (D217): Pi c466a359 (#11360) maxBuffer and truncated, declared by the PiG augmentation (the pinned declarations have neither).
+  void pi.exec("git", ["log"], { maxBuffer: 1024 * 1024 }).then((result) => {
+    const truncated: boolean = result.truncated;
+    const killed: boolean = result.killed;
+    void [truncated, killed];
+  });
   pi.ownThinkingRuns();
   pi.ownThinkingRuns(false);
   const config: McpServerConfig = { url: "https://mcp.example.com/jira" };

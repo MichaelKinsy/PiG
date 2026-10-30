@@ -54,6 +54,12 @@ table.viewLines = { list: { items: tracks.map((t) => ({ label: t.title, detail: 
 The terminal draws the override too. `viewLines` reaches only a frontend, and
 its `list` needs one item per row.
 
+Importing the package also declares `ExecOptions.maxBuffer` and
+`ExecResult.truncated`, which `pi.exec()` has in Pi after the pinned 1.4.0
+declarations (Pi commit `c466a359`): `maxBuffer` limits stdout and stderr
+combined, and `truncated` is true when output exceeded it. The re-exported Pi
+declarations stay the pinned ones.
+
 PiG's Node host supplies Pi-compatible runtime shims. This package only provides
 editor and compiler types for the PiG additions. The package stays private until
 the public release process approves publication.
