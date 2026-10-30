@@ -10,6 +10,7 @@ import (
 	"image/png"
 	"math/rand/v2"
 	"reflect"
+	"strings"
 	"testing"
 
 	"golang.org/x/image/bmp"
@@ -106,13 +107,24 @@ for (const c of input) {
 }
 emit(out);`, cases, &want)
 
-	failures := 0
+	failures, carried := 0, 0
 	for i, c := range cases {
 		raw, _ := base64.StdEncoding.DecodeString(c.Data)
-		_, mime, hints, err := ProcessImage(raw, c.MimeType, c.AutoResize, &ai.ModelImageResizeOptions{MaxWidth: c.MaxWidth, MaxHeight: c.MaxHeight})
+		data, mime, hints, err := ProcessImage(raw, c.MimeType, c.AutoResize, &ai.ModelImageResizeOptions{MaxWidth: c.MaxWidth, MaxHeight: c.MaxHeight})
 		got := processImageOutcome{OK: err == nil, MimeType: mime, Hints: hints}
 		if err != nil {
 			got.Message = err.Error()
+		}
+		// D217, Pi e7a0df27: PiG answers the smaller of PNG and JPEG where the pinned Pi answers the PNG that fits. The conversion hint
+		// names the format, so it is compared with the format masked.
+		if got.OK && want[i].OK && got.MimeType == "image/jpeg" && want[i].MimeType == "image/png" {
+			if config, _, configErr := image.DecodeConfig(bytes.NewReader(data)); configErr == nil && carriedJPEGOverPNG(t, raw, config.Width, config.Height, 0, 0) {
+				masked := strings.NewReplacer("image/jpeg", "image/*", "image/png", "image/*")
+				if masked.Replace(got.Hints) == masked.Replace(want[i].Hints) {
+					want[i].MimeType, want[i].Hints = got.MimeType, got.Hints
+					carried++
+				}
+			}
 		}
 		if !reflect.DeepEqual(got, want[i]) {
 			failures++
@@ -121,5 +133,5 @@ emit(out);`, cases, &want)
 			}
 		}
 	}
-	t.Logf("%d cases, %d failures", len(cases), failures)
+	t.Logf("%d cases, %d failures, %d answered JPEG over the pinned Pi's PNG (D217)", len(cases), failures, carried)
 }

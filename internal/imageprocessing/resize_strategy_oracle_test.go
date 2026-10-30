@@ -132,7 +132,7 @@ emit(out);`, cases, &want)
 		})
 	}
 	wg.Wait()
-	failures := 0
+	failures, carried := 0, 0
 	for i, c := range cases {
 		got, err := outcomes[i].got, outcomes[i].err
 		gotResult := resizeStrategyResult{Null: err != nil}
@@ -149,6 +149,15 @@ emit(out);`, cases, &want)
 			}
 		}
 		expected.Data = ""
+		// D217, Pi e7a0df27: PiG answers the smaller of PNG and JPEG where the pinned Pi answers the PNG that fits.
+		if err == nil && gotResult.MimeType == "image/jpeg" && expected.MimeType == "image/png" {
+			sameButFormat := expected
+			sameButFormat.MimeType = gotResult.MimeType
+			if gotResult == sameButFormat && carriedJPEGOverPNG(t, decodeBase64(t, c.Data), got.Width, got.Height, c.Quality, c.MaxBytes) {
+				expected = sameButFormat
+				carried++
+			}
+		}
 		if gotResult != expected {
 			failures++
 			if failures <= 8 {
@@ -156,5 +165,5 @@ emit(out);`, cases, &want)
 			}
 		}
 	}
-	t.Logf("%d cases, %d failures", len(cases), failures)
+	t.Logf("%d cases, %d failures, %d answered JPEG over the pinned Pi's PNG (D217)", len(cases), failures, carried)
 }
