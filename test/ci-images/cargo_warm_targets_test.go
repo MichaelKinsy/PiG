@@ -70,7 +70,7 @@ func TestWarmScriptBuildsEverySharedCargoTarget(t *testing.T) {
 	if loop == nil {
 		t.Fatal("automation/ci/test-warm.sh has no `for pkg in ...; do` loop over the packages that build Rust cells")
 	}
-	for _, pkg := range strings.Fields(string(loop[1])) {
+	for pkg := range strings.FieldsSeq(string(loop[1])) {
 		warmed[pkg] = true
 	}
 	for _, match := range warmCargotargetCall.FindAllSubmatch(script, -1) {
