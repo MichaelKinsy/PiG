@@ -72,6 +72,7 @@ func run(root string) (problems []string, baseline string, err error) {
 
 // goCommand runs the go command with the workspace off, so the baseline resolves from the module cache.
 func goCommand(dir string, args ...string) (string, error) {
+	//nolint:gosec // G204 (class a): program is literal go; args are fixed subcommands and the SDK module at the version go list -m reports for the repo's own go.mod.
 	cmd := exec.Command("go", args...)
 	cmd.Dir = dir
 	cmd.Env = append(os.Environ(), "GOWORK=off", "GOFLAGS=-mod=mod")
@@ -130,6 +131,7 @@ func incompatibleChanges(tool, oldDir, newDir string) ([]string, error) {
 	defer func() { _ = os.RemoveAll(scratch) }()
 	export := func(dir, name string) (string, error) {
 		file := filepath.Join(scratch, name)
+		//nolint:gosec // G204 (class b): program is tool, the apidiff path printed by go tool -n apidiff (toolchain); args are fixed flags, a temp-dir output file, and the constant sdkModule.
 		cmd := exec.Command(tool, "-m", "-w", file, sdkModule)
 		cmd.Dir = dir
 		cmd.Env = append(os.Environ(), "GOWORK=off", "GOFLAGS=-mod=mod")
@@ -146,6 +148,7 @@ func incompatibleChanges(tool, oldDir, newDir string) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
+	//nolint:gosec // G204 (class b): program is tool from go tool -n apidiff; args are fixed -m -incompatible plus two temp-dir API files written by the export step.
 	out, err := exec.Command(tool, "-m", "-incompatible", oldAPI, newAPI).Output()
 	if err != nil {
 		return nil, fmt.Errorf("apidiff -incompatible: %w", err)

@@ -142,3 +142,53 @@ func TestReplicatedStateIsIdleAfterAMessageFromAgentSettled(t *testing.T) {
 		}
 	})
 }
+
+// Pi's runner.ts createContext reads the Session's isIdle live on every call (agent-session.ts isIdle), so a callback that runs after the extension's last subscribed event reads the Session as it is then. agent_end fires while the run is still busy and no event follows it, so an SDK that answers from a snapshot pushed with the last event keeps reporting a busy Session after the run ended. Every SDK polls isIdle from a background callback it starts in its agent_end handler and reports the last answer.
+func TestReplicatedStateIsIdleIsLiveInABackgroundCallback(t *testing.T) {
+	runReplicatedStateRow(t, func(t *testing.T, h *harness, session *coding.Session, faux *ai.FauxProviderHandle) {
+		faux.SetResponses([]ai.FauxResponseStep{
+			ai.FauxStaticStep(ai.FauxResponse{Content: []ai.FauxContentBlock{ai.FauxText("done")}, StopReason: "stop"}),
+		})
+		runConformanceCommand(t, h, "rw_idle_background")
+		if err := session.Prompt(t.Context(), "go"); err != nil {
+			t.Fatal(err)
+		}
+		if got, want := reportedLine(t, h, "rw_idle_background="), "rw_idle_background=true"; got != want {
+			t.Fatalf("the background callback read %q, want %q", got, want)
+		}
+	})
+}
+
+// Pi's runner.ts createContext reads the Session's isIdle live on every call (agent-session.ts isIdle), so an SDK reads the Session as it is when the call runs, with no event in between. The command starts a poll that subscribes to nothing and notifies the sequence of answers it has seen at each change. The run's only response waits for the test, which advances only once the poll has reported the previous answer: idle before the run, busy while it is held, idle once it ends. An SDK that answers from a snapshot or with a constant (a fallback, or a value it never refreshes) never reports the whole sequence.
+func TestReplicatedStateIsIdleLiveSequenceAcrossSDKs(t *testing.T) {
+	runReplicatedStateRow(t, func(t *testing.T, h *harness, session *coding.Session, faux *ai.FauxProviderHandle) {
+		release := make(chan struct{})
+		faux.SetResponses([]ai.FauxResponseStep{
+			ai.FauxFactoryStep(func(ai.TranscriptContext, ai.StreamOptions, *ai.FauxProviderState, *ai.Model) (ai.AssistantMessage, error) {
+				<-release
+				return ai.FauxResponse{Content: []ai.FauxContentBlock{ai.FauxText("done")}, StopReason: "stop"}.AssistantMessage(), nil
+			}),
+		})
+		waitForLine := func(want string) {
+			t.Helper()
+			pollUntilConformance(t, "the SDK never reported "+want, func() bool {
+				for _, recorded := range h.ui.Recorded() {
+					if strings.TrimSuffix(recorded, ":info") == want {
+						return true
+					}
+				}
+				return false
+			})
+		}
+		runConformanceCommand(t, h, "rw_idle_live")
+		waitForLine("rw_idle_live=true")
+		prompted := make(chan error, 1)
+		go func() { prompted <- session.Prompt(t.Context(), "go") }()
+		waitForLine("rw_idle_live=true,false")
+		close(release)
+		if err := <-prompted; err != nil {
+			t.Fatal(err)
+		}
+		waitForLine("rw_idle_live=true,false,true")
+	})
+}

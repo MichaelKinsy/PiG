@@ -16,11 +16,15 @@ const (
 // Ports packages/coding-agent/src/modes/interactive/components/assistant-message.ts.
 type AssistantMessageComponent struct {
 	Container
-	contentContainer  *Container
-	thinking          string
-	text              string
-	hidden            bool // whether thinking trace is hidden
-	hiddenLabel       string
+	contentContainer *Container
+	thinking         string
+	text             string
+	hidden           bool // whether thinking trace is hidden
+	hiddenLabel      string
+	// ownedRuns is whether an extension owns the thinking runs (SetOwnedThinkingRuns); runDrawsNothing holds, per thinking run, whether
+	// its last render drew no rows.
+	ownedRuns         bool
+	runDrawsNothing   []bool
 	stopReason        string
 	errorMessage      string
 	hasToolCalls      bool // skip error/abort rendering when tools handle their own
@@ -354,8 +358,9 @@ func (b *AssistantMessageComponent) SetMarkdownTransformState(fn func() string) 
 	b.updateContent()
 }
 
-// SetAsyncMarkdownTransforms installs separately contextualized text and thinking rewrites. Each retained segment owns its replaceable worker generation.
+// SetAsyncMarkdownTransforms installs separately contextualized text and thinking rewrites. Each retained segment owns its replaceable worker generation. A completion runs on a worker goroutine and only marks the block dirty (completionDirtying) before the transform's Invalidate: every rebuild of the block's content stays on the owner loop.
 func (b *AssistantMessageComponent) SetAsyncMarkdownTransforms(text, thinking *AsyncMarkdownTransform) {
+	text, thinking = completionDirtying(&b.invalidatable, text), completionDirtying(&b.invalidatable, thinking)
 	b.asyncText, b.asyncThinking = text, thinking
 	b.md.AsyncTransform = text
 	for _, seg := range b.segments {
@@ -365,6 +370,50 @@ func (b *AssistantMessageComponent) SetAsyncMarkdownTransforms(text, thinking *A
 		}
 	}
 	b.updateContent()
+}
+
+// SetOwnedThinkingRuns declares that an extension owns the thinking runs of this message. A run that is hidden, or whose rendering
+// draws no rows (an extension's transform rewrote it to nothing), then leaves no spacing: no spacer before it, none after it, and no
+// stub for a hidden one. It is Pi's hidden run with an empty label (assistant-message.ts updateContent `continue`), decided from what
+// the run draws at render time and not only from its visibility. Without ownership the block is Pi's frame for frame.
+// pig additive (D214): a subprocess extension cannot patch AssistantMessageComponent.updateContent as an in-process Pi extension can.
+func (b *AssistantMessageComponent) SetOwnedThinkingRuns(owned bool) {
+	if b.ownedRuns == owned {
+		return
+	}
+	b.ownedRuns = owned
+	b.runDrawsNothing = b.runDrawsNothing[:0]
+	b.updateContent()
+}
+
+// measureOwnedRuns renders each visible thinking run at width, so the spacing around a run that draws nothing is left out of the
+// content, and rebuilds the content when a run changed between drawing rows and drawing none. Only an owning extension's block measures.
+// A run whose rewrite is not published yet draws no rows, so it leaves no spacing until it does.
+func (b *AssistantMessageComponent) measureOwnedRuns(width int) {
+	changed := false
+	run := 0
+	for _, seg := range b.segments {
+		if !seg.thinking {
+			continue
+		}
+		index := run
+		run++
+		for len(b.runDrawsNothing) <= index {
+			b.runDrawsNothing = append(b.runDrawsNothing, false)
+		}
+		if b.thinkingRunHidden(index) {
+			continue // a hidden run draws nothing in an owned block: updateContent leaves it out
+		}
+		seg.md.SetDefaultColor(ActiveTheme().ThinkingText)
+		nothing := len(seg.md.Render(width)) == 0
+		if b.runDrawsNothing[index] != nothing {
+			b.runDrawsNothing[index] = nothing
+			changed = true
+		}
+	}
+	if changed {
+		b.updateContent()
+	}
 }
 
 // Thinking returns the accumulated thinking content.
@@ -392,7 +441,7 @@ func (b *AssistantMessageComponent) SetTerminalError(stopReason, errorMessage st
 	b.updateContent()
 }
 
-// Invalidate rebuilds the content so theme-baked colors follow the active theme (assistant-message.ts invalidate).
+// Invalidate rebuilds the content so theme-baked colors follow the active theme (assistant-message.ts invalidate). It runs on the goroutine that owns the block, as Pi's runs on its event loop; a transform worker marks the block dirty through SetAsyncMarkdownTransforms instead.
 func (b *AssistantMessageComponent) Invalidate() {
 	b.Container.Invalidate()
 	b.updateContent()
@@ -402,6 +451,9 @@ func (b *AssistantMessageComponent) Invalidate() {
 func (b *AssistantMessageComponent) Render(width int) []string {
 	if width < 1 {
 		width = 1
+	}
+	if b.ownedRuns {
+		b.measureOwnedRuns(width)
 	}
 	out := b.renderCopy(width)
 	if b.hasToolCalls || len(out) == 0 {
@@ -417,29 +469,41 @@ func (b *AssistantMessageComponent) Render(width int) []string {
 // streamed delta neither allocates them again nor makes the container render them again.
 func (b *AssistantMessageComponent) updateContent() {
 	children := b.childScratch[:0]
-	if len(b.segments) > 0 {
-		children = append(children, b.spacer(0))
-	}
+	// Spacers are added lazily, right before the next visible block: one before the first visible block and one after each visible
+	// thinking run that is followed by more visible content. A hidden run with an empty label renders nothing, including no spacing.
+	needsSpacer, spacerIndex := true, 0
 	run := 0
-	for i, seg := range b.segments {
+	for _, seg := range b.segments {
 		if seg.md.paddingX != b.outputPad {
 			seg.md.paddingX = b.outputPad
 			seg.md.Invalidate()
 		}
 		if !seg.thinking {
+			if needsSpacer {
+				children = append(children, b.spacer(spacerIndex))
+				needsSpacer = false
+			}
 			children = append(children, seg.md)
 			continue
 		}
 		hidden := b.thinkingRunHidden(run)
+		runIndex := run
+		run++
+		if hidden && (jsstring.Trim(b.hiddenLabel) == "" || b.ownedRuns) {
+			continue
+		}
+		if b.ownedRuns && runIndex < len(b.runDrawsNothing) && b.runDrawsNothing[runIndex] {
+			continue // an owning extension's run that draws no rows leaves no spacing either
+		}
 		if hidden && b.finished {
 			seg.md.dropStreamingMemos() // a run hidden after FinishStreaming does not render its Markdown again
 		}
-		children = append(children, b.thinkingRun(run, seg.md, hidden))
-		run++
-		// Upstream adds a spacer after a thinking run only when visible content follows it.
-		if i+1 < len(b.segments) {
-			children = append(children, b.spacer(run))
+		if needsSpacer {
+			children = append(children, b.spacer(spacerIndex))
 		}
+		children = append(children, b.thinkingRun(runIndex, seg.md, hidden))
+		// Spacing follows only when another visible block follows, which avoids a blank line before separately rendered tool executions.
+		needsSpacer, spacerIndex = true, run
 	}
 	children = append(children, b.terminalErrorChildren()...)
 	b.contentContainer.SetChildren(children...)

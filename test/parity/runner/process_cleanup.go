@@ -65,6 +65,7 @@ func retainDescendants(owned map[int]bool, processes []processParent) []int {
 }
 
 func tmuxSessionProcesses(ctx context.Context, session string) (map[int]bool, error) {
+	//nolint:gosec // G204 (class a): program is literal tmux; args are fixed list-panes with a harness-generated session.
 	out, err := exec.CommandContext(ctx, "tmux", tmuxArgs("list-panes", "-s", "-t", session, "-F", "#{pane_pid}")...).Output()
 	if err != nil {
 		return nil, fmt.Errorf("inspect panes for %s: %w (%s)", session, err, tmuxServerReport(ctx, session))

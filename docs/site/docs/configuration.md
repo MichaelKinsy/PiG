@@ -1,6 +1,6 @@
 # Configuration
 
-PiG reads configuration from two places: the agent directory, which applies to every project you open, and the `.pig` directory inside a project. PiG also loads instruction files such as `AGENTS.md` from the directories around your working directory. The layout follows Pi 1.4.0 ([Pi's configuration reference](https://github.com/earendil-works/pi/blob/v1.2.0/packages/coding-agent/docs/configuration.md)), with PiG's directory names.
+PiG reads configuration from two places: the agent directory, which applies to every project you open, and the `.pig` directory inside a project. PiG also loads instruction files such as `AGENTS.md` from the directories around your working directory. The layout follows Pi 1.4.0 ([Pi's configuration reference](https://github.com/earendil-works/pi/blob/main/packages/coding-agent/docs/configuration.md)), with PiG's directory names.
 
 PiG keeps its state under `~/.pig` by default. It does not read or write Pi's `~/.pi` directory unless you explicitly select shared directories, so PiG and Pi can run side by side without sharing settings, credentials or sessions. This separation and its opt-in are divergence D2.
 

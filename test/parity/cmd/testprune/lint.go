@@ -84,6 +84,7 @@ func isGoldenFile(p string) bool {
 }
 
 func gitFiles(root string, args ...string) ([]string, error) {
+	//nolint:gosec // G204 (class a): program is literal git; args are fixed per caller (ls-files -z).
 	cmd := exec.Command("git", append([]string{"-C", root}, args...)...)
 	out, err := cmd.Output()
 	if err != nil {
@@ -236,6 +237,7 @@ func checkCoEdits(root string, rangeSpec string, from time.Time, piNames map[str
 			continue
 		}
 		seen[e.Commit+e.Path] = true
+		//nolint:gosec // G204 (class a): program is literal git; e.Commit is a hash parsed from git log output.
 		msg, err := exec.Command("git", "-C", root, "show", "-s", "--format=%B", e.Commit).Output()
 		if err != nil {
 			return nil, err
@@ -278,6 +280,7 @@ func checkCoEdits(root string, rangeSpec string, from time.Time, piNames map[str
 
 // commitsInRange returns the full SHA of every commit rangeSpec selects.
 func commitsInRange(root, rangeSpec string) ([]string, error) {
+	//nolint:gosec // G204 (class a): program is literal git; rangeSpec is the operator -base/-head value concatenated as "base..head" and passed to rev-list without `--`.
 	out, err := exec.Command("git", "-C", root, "rev-list", rangeSpec).Output()
 	if err != nil {
 		return nil, fmt.Errorf("git rev-list %s: %w", rangeSpec, err)

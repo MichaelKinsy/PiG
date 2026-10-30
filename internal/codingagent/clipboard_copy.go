@@ -64,6 +64,7 @@ func runClipboardCommandContext(parent context.Context, name string, args []stri
 	}
 	ctx, cancel := context.WithCancel(parent)
 	defer cancel()
+	//nolint:gosec // G204 (class a): program and args are a clipboard helper from PiG's fixed table (pbcopy, clip, wl-copy, xclip, xsel, termux-clipboard-set and the readers); the text goes to stdin, never to argv.
 	cmd := exec.CommandContext(ctx, name, args...)
 	hideClipboardWindow(cmd)
 	detachClipboardChild(cmd)

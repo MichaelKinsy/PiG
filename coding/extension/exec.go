@@ -83,6 +83,7 @@ func ExecCommand(ctx context.Context, cwd, command string, args []string, opts *
 		_ = stdoutWrite.Close()
 		return ExecResult{Code: 1}, nil
 	}
+	//nolint:gosec // G204 (class c): program and args are what an installed extension passes to its exec call, as Pi's pi.exec(command, args) passes them to spawn; extensions are code the user chose to install.
 	cmd := exec.Command(command, args...)
 	cmd.Dir = dir
 	cmd.Stdout = stdoutWrite

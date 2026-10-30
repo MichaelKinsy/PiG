@@ -602,8 +602,10 @@ type InteractiveMode struct {
 	assistantBlocks []*tui.AssistantMessageComponent
 	// hiddenThinkingLabel is the extension-set label for hidden thinking runs; nil selects the default and a pointer to the empty string is an empty label (Pi's label ?? default).
 	hiddenThinkingLabel *string
-	userBlocks          []*tui.UserMessageComponent
-	outputPad           int
+	// stopThinkingRuns ends the observation of the current runner's thinking-run ownership (bindThinkingRuns); pig additive (D214).
+	stopThinkingRuns func()
+	userBlocks       []*tui.UserMessageComponent
+	outputPad        int
 
 	// layout is the main-screen render root used for editor-slot swaps.
 	layout *tui.Container
@@ -1200,6 +1202,10 @@ type InteractiveModeOptions struct {
 	// getSystemPromptSource and getAppendSystemPromptSources report them.
 	SystemPromptSourcePaths []string
 
+	// ContextFilesTrustedOnly marks a run that withholds an untrusted project's context files, and that warns of them.
+	// pig additive (D211).
+	ContextFilesTrustedOnly bool
+
 	// ReplacementResources returns the cwd-bound options of the build that owns session.
 	ReplacementResources func(session InteractiveSessionHandle) InteractiveReplacement
 
@@ -1618,6 +1624,8 @@ func (m *InteractiveMode) Init(ctx context.Context) (err error) {
 	m.editor.SetAutocomplete(m.buildAutocompleteProvider())
 	m.applyEditorMaxVisible()
 	m.statusLine = m.newFooter() // timings rebound after agent constructed
+	m.thinkingLevel = m.sessionThinkingLevel()
+	m.editor.ThinkingLevel = m.thinkingLevel
 	m.statusLine.SetCwd(m.opts.CWD)
 	// Set auto-compact indicator from settings (nil == true default).
 	autoCompact := m.opts.Settings.Compaction == nil ||
@@ -1710,6 +1718,7 @@ func (m *InteractiveMode) Init(ctx context.Context) (err error) {
 
 	// Wire the extension runner. May be nil; event_bridge.go helpers are nil-safe.
 	m.newRunner = m.opts.ExtensionRunner
+	m.bindThinkingRuns()
 	m.installRuntimeHooks()
 	// The rebind owner installs UI/actions before dispatching session_start.
 

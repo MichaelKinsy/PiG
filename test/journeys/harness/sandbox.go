@@ -40,6 +40,8 @@ type SandboxOpts struct {
 	Images bool
 	// ContextWindow overrides the scripted model's context window.
 	ContextWindow int
+	// Models are further model ids of the scripted provider, listed after "strict" in models.json.
+	Models []string
 }
 
 // Sandbox holds the directories one product instance runs in.
@@ -78,10 +80,13 @@ func NewSandbox(o SandboxOpts) (*Sandbox, error) {
 	if window == 0 {
 		window = 128000
 	}
+	var scripted []any
+	for _, id := range append([]string{"strict"}, o.Models...) {
+		scripted = append(scripted, map[string]any{"id": id, "name": id, "reasoning": o.Reasoning, "input": input,
+			"cost": json.RawMessage(`{"input":0,"output":0,"cacheRead":0,"cacheWrite":0}`), "contextWindow": window, "maxTokens": 4096})
+	}
 	models := map[string]any{"providers": map[string]any{"strict-wire": map[string]any{
-		"api": "openai-completions", "baseUrl": o.Provider.URL(), "apiKey": "fixture-key",
-		"models": []any{map[string]any{"id": "strict", "name": "strict", "reasoning": o.Reasoning, "input": input,
-			"cost": json.RawMessage(`{"input":0,"output":0,"cacheRead":0,"cacheWrite":0}`), "contextWindow": window, "maxTokens": 4096}},
+		"api": "openai-completions", "baseUrl": o.Provider.URL(), "apiKey": "fixture-key", "models": scripted,
 	}}}
 	if err := writeJSON(filepath.Join(s.Agent, "models.json"), models); err != nil {
 		return nil, err

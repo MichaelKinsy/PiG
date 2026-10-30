@@ -1477,7 +1477,7 @@ pkg:ai/utils/models-error#ModelsError::property:stack
 
 ## RR14: provider compat and routing types (49 rows)
 
-`OpenRouterRouting`, `VercelGatewayRouting`, `OpenAICompletionsCompat` are `ai/openai.go#OpenAICompat` and its `OpenRouterRouting`/`VercelGatewayRouting` fields (`map[string]any`, which carry the pass-through JSON object Pi types as a record); `BedrockCompat` and `MistralConversationsCompat` have no Go declaration because those APIs read no compat flags in Go (`ai/bedrock.go`, `ai/mistral.go`). Request: confirm that last statement against the two upstream compat interfaces before designing them out.
+`OpenRouterRouting`, `VercelGatewayRouting`, `OpenAICompletionsCompat` are `ai/openai.go#OpenAICompat` and its `OpenRouterRouting`/`VercelGatewayRouting` fields (`map[string]any`, which carry the pass-through JSON object Pi types as a record); `BedrockCompat` and `MistralConversationsCompat` have no Go declaration because those APIs read no compat flags in Go (`ai/providers/bedrock/bedrock.go`, `ai/mistral.go`). Request: confirm that last statement against the two upstream compat interfaces before designing them out.
 
 ```
 pkg:ai/.#BedrockCompat

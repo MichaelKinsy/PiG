@@ -221,7 +221,9 @@ export class TxProxy {
     if (prepared.ops.length > 0) {
       // Pi runs checkpointWhen at settlement on the prepared value and ops; the host has both here. A migration writes the required
       // version base without asking the predicate (session/documents.ts: the required base resets the count).
-      const checkpoint = open.migrated !== true && open.deltasSinceBase !== undefined && open.definition.checkpointWhen(prepared.value, prepared.ops, { deltasSinceBase: open.deltasSinceBase }) === true
+      // The local is `change` as in transaction.ts: a definition without the function throws a TypeError whose message names the expression, which a tool reports.
+      const change = open
+      const checkpoint = open.migrated !== true && open.deltasSinceBase !== undefined && change.definition.checkpointWhen(prepared.value, prepared.ops, { deltasSinceBase: open.deltasSinceBase }) === true
       await this.send("doc.write", { address: wireAddress(open.address), def: wireDefinition(open.definition), ops: prepared.ops, baseRevision: prepared.baseRevision, ...(open.entry === undefined ? {} : { entry: open.entry }), ...(checkpoint ? { checkpoint } : {}) })
     }
     // The revision the Storage write, the publication and the next snapshot carry (snapshots.ts Revision): a document with operations, a created one, and a migration's required base.

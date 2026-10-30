@@ -238,7 +238,7 @@ func TestDurableTelemetryReportsTelemetryAdaptersThatThrowWhileACommitIsPublishe
 	adapter := throwingTelemetry{TelemetrySpan: telemetry.NoopTelemetryContext, metrics: throwingMetrics{TelemetryMetrics: telemetry.NoopTelemetryMetrics, upDown: true}}
 	opened := tkOpenRoot(t, []durable.AnyTask{idle.Erased()}, tkOptions{telemetry: adapter})
 	harness, root := opened.harness, opened.root
-	view := must(root.Watch(testContext))
+	view := must(root.Watch(testContext, nil))
 	var mu sync.Mutex
 	var shown []durable.EntryId
 	view.Start(func(_ context.Context, change chord.WatchChange[ConversationView]) error {

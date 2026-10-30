@@ -896,6 +896,7 @@ func parseGoFile(ctx context.Context, root, repositoryPrefix, targetCommit, rela
 	if err != nil {
 		return nil, nil, nil, err
 	}
+	//nolint:gosec // G204 (class a): program is literal git; object is resolveCommitPath(targetCommit, path), with targetCommit validated as a 40-hex commit.
 	command := exec.CommandContext(ctx, "git", "show", object)
 	command.Dir = root
 	stdout := newBoundedBuffer(extractorOutputLimit)

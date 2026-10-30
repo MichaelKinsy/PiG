@@ -136,6 +136,32 @@ Validation resolves, builds, starts, and registers the selected extension set
 without changing package settings. Use it before publishing or before claiming
 that a piglet's extensions work together.
 
+### Check the configured local Packages
+
+```bash
+pig install --validate-only
+pig install --validate-only --json
+```
+
+With no source, `--validate-only` checks each local-path entry of `packages[]`
+in your user settings and your trusted project settings. It resolves the entry
+against its settings directory under the current agent directory, names every
+entry whose directory does not exist with the path it resolved to and the
+`pig remove` command that drops it, and exits 1 when any is missing. A session
+start warns about the same entry; Pi skips a missing local Package without a
+word (D216). npm and git entries are not checked, because that needs the
+network.
+
+```json
+{"valid": false, "checked": 2, "missing": [{"source": "/abs/gone", "scope": "user", "path": "/abs/gone", "error": "Path does not exist: /abs/gone", "remove": "pig remove /abs/gone"}]}
+```
+
+`valid` is true when `missing` is empty, `checked` counts the local entries
+examined, and `missing` is always an array. A project entry's `remove` ends in
+` -l`. `path` is omitted when the source does not resolve to a path. With a
+source or `--set`, the command validates those sources and does not read
+`packages[]`.
+
 ## Scope
 
 Installs are user-scoped by default. `--local` records a workspace dependency in
@@ -207,6 +233,7 @@ pig update --self
 pig update <source>
 pig update --extension <source>
 pig update --extensions
+pig update --models
 pig update --all
 pig update --force
 pig remove <source>
@@ -223,7 +250,17 @@ npm updates batch eligible Packages by scope. Git updates reconcile the configur
 Bare update, `--self`, and the `self`/`pig` positional targets update PiG.
 `--extensions` updates installed Packages only; `--all` updates Packages before
 PiG. `--extension` names one Package and `--force` reinstalls the current PiG
-release. Conflicting targets fail before either update path starts.
+release. `--models` forces a model-catalog refresh through the shared model
+runtime without updating PiG or installed Packages. It cannot be combined with
+another update target. Conflicting targets fail before either update path starts.
+
+At startup, an npm Package needs an installed manifest version that satisfies its
+configured pin or range. If installation fails or offline mode prevents it, the
+old installation does not supply Resources.
+
+With the global `extensionsAutoUpgrade` setting on, `pig update` also runs the
+`pig extension upgrade` rules on Go extensions written for an older SDK
+([Extensions](extensions.md)).
 
 PiG's owned management surface uses full-word noun/verb commands such as
 `pig package list`, while retaining upstream-compatible install, remove, and

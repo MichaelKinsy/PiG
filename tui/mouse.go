@@ -209,10 +209,18 @@ func measureMouseChildren(components []Component, width int) []mouseChild {
 // input; Go embedding has no subclass identity, so a type that embeds
 // Container and handles input must override HandleMouse to do the same.
 func (c *Container) HandleMouse(event TuiMouseEvent) *TuiMouseDispatchResult {
+	return c.handleMouse(event, false)
+}
+
+// handleMouse is HandleMouse; held says the calling goroutine holds c.mu, as the goroutine rendering the container does while a child's Render calls back
+// into the renderer.
+func (c *Container) handleMouse(event TuiMouseEvent, held bool) *TuiMouseDispatchResult {
 	if event.Y < 0 || event.Y >= event.Height {
 		return nil
 	}
-	c.mu.RLock()
+	if !held {
+		c.mu.RLock()
+	}
 	var children []mouseChild
 	if c.layoutValid && c.layoutWidth == event.Width {
 		children = make([]mouseChild, len(c.builtKids))
@@ -223,7 +231,9 @@ func (c *Container) HandleMouse(event TuiMouseEvent) *TuiMouseDispatchResult {
 		}
 	}
 	components := append([]Component(nil), c.children...)
-	c.mu.RUnlock()
+	if !held {
+		c.mu.RUnlock()
+	}
 	if children == nil {
 		children = measureMouseChildren(components, event.Width)
 	}

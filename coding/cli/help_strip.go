@@ -110,10 +110,10 @@ func stripHelpLine(line string) (string, bool) {
 
 // stripHelpExtensionInit lists only the extension languages whose SDK this process has.
 func stripHelpExtensionInit(line string) (string, bool) {
-	const all = "Create a Go, Python, or Rust extension"
+	const all = "Create a Go, Python, Rust, or Lisp extension"
 	var languages []string
 	for _, sdk := range []struct{ id, language string }{
-		{pigstrip.ExtensionSDKGo, "Go"}, {pigstrip.ExtensionSDKPython, "Python"}, {pigstrip.ExtensionSDKRust, "Rust"},
+		{pigstrip.ExtensionSDKGo, "Go"}, {pigstrip.ExtensionSDKPython, "Python"}, {pigstrip.ExtensionSDKRust, "Rust"}, {pigstrip.ExtensionSDKLisp, "Lisp"},
 	} {
 		if !pigstrip.Has(pigstrip.ListFeatures, sdk.id) {
 			languages = append(languages, sdk.language)
@@ -126,6 +126,8 @@ func stripHelpExtensionInit(line string) (string, bool) {
 		return strings.Replace(line, all, "Create a "+languages[0]+" extension", 1), true
 	case 2:
 		return strings.Replace(line, all, "Create a "+languages[0]+" or "+languages[1]+" extension", 1), true
+	case 3:
+		return strings.Replace(line, all, "Create a "+languages[0]+", "+languages[1]+", or "+languages[2]+" extension", 1), true
 	}
 	return line, true
 }

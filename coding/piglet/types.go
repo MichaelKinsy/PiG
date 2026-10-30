@@ -101,6 +101,7 @@ type Piglet struct {
 	Extensions       []ExtensionEntry    `yaml:"extensions,omitempty"`
 	Skills           []SkillEntry        `yaml:"skills,omitempty"`
 	Discovery        *Discovery          `yaml:"discovery,omitempty"`
+	ContextFiles     string              `yaml:"contextFiles,omitempty"` // pig additive (D211): trusted-only withholds an untrusted project's context files.
 	SystemPrompt     *PromptRef          `yaml:"systemPrompt,omitempty"`
 	AgentEnv         *AgentEnvironment   `yaml:"agentEnv,omitempty"`
 	Model            *ModelConfig        `yaml:"model,omitempty"`
@@ -119,14 +120,17 @@ type Piglet struct {
 	lineage          []LineageEntry  // exact resolved lineage; never serialized
 	effectiveDigest  string
 	graphDigest      string
-	workspaceRoot    string // invocation-selected workspace; never serialized
-	devContainerPath string // resolved workspace-anchored path; never serialized
+	workspaceRoot    string          // invocation-selected workspace; never serialized
+	bakedSkills      map[string]bool // skills a Piglet Binary baked that an overlay left unchanged; never serialized
+	devContainerPath string          // resolved workspace-anchored path; never serialized
 }
 
 // ExtendsSpec selects one base Piglet source plus an optional author version
-// constraint. Resolution pins the exact content digest in lineage.
+// constraint. Resolution pins the exact content digest in lineage. A block
+// without a source extends the Piglet Binary that runs the Piglet as an
+// overlay (D202), so it carries only remove and allowWiden.
 type ExtendsSpec struct {
-	Source     string      `yaml:"source"`
+	Source     string      `yaml:"source,omitempty"`
 	Version    string      `yaml:"version,omitempty"`
 	AllowWiden bool        `yaml:"allowWiden,omitempty"`
 	Remove     *RemoveSpec `yaml:"remove,omitempty"`
@@ -375,12 +379,13 @@ type BuildSpec struct {
 	Targets              []string `yaml:"targets,omitempty"`
 	OutputName           string   `yaml:"outputName,omitempty"`
 	ExtensionRealization string   `yaml:"extensionRealization,omitempty"`
-	// AllowOverlays lets the Piglet Binary built from this Piglet accept a Piglet selected at launch (--piglet,
-	// PIG_PIGLET_PATH, PIG_PIGLET_NAME) as an overlay on its baked Piglet. Default off; like all of build it is
-	// authored on the Piglet that is built and is not inherited through extends.
+	// Closed makes the Piglet Binary built from this Piglet run only its baked Piglet: it refuses a Piglet selected at
+	// launch (--piglet, PIG_PIGLET_PATH, PIG_PIGLET_NAME) and --system-prompt, and discovers no ambient extensions or
+	// skills. Default false: the Binary behaves as stock pig started with its Piglet. Like all of build it is authored on
+	// the Piglet that is built and is not inherited through extends.
 	//
-	// pig additive (D202): a Piglet Binary can declare that it accepts overlay Piglets.
-	AllowOverlays bool `yaml:"allowOverlays,omitempty"`
+	// pig additive (D202): a Piglet Binary accepts overlay Piglets unless built closed.
+	Closed bool `yaml:"closed,omitempty"`
 }
 
 // ReleaseSpec carries Piglet release identity, separate from portable build
@@ -482,6 +487,9 @@ func (p *Piglet) Validate() error {
 	if err := validateDiscovery(p.Discovery); err != nil {
 		return err
 	}
+	if err := validateContextFiles(p.ContextFiles); err != nil {
+		return err
+	}
 	if err := validateStrip("strip", p.Strip); err != nil {
 		return err
 	}
@@ -492,12 +500,19 @@ func (p *Piglet) Validate() error {
 		return err
 	}
 	if p.Extends != nil {
-		ref, err := validateTypedSource(p.Extends.Source, sourceref.BareReject)
-		if err != nil {
-			return fmt.Errorf("extends.source: %w", err)
-		}
-		if ref.Kind == sourceref.KindContributed && !installresolver.SupportsSourceScheme(ref.Scheme) {
-			return fmt.Errorf("extends.source: source scheme %q has no installed resolver", ref.Scheme)
+		// pig additive (D202): no source means the Piglet Binary that runs this Piglet as an overlay. Resolution refuses it anywhere else.
+		if p.Extends.Source == "" {
+			if p.Extends.Version != "" {
+				return fmt.Errorf("extends.version requires extends.source: an extends block without a source extends a Piglet Binary, which has no release version to constrain")
+			}
+		} else {
+			ref, err := validateTypedSource(p.Extends.Source, sourceref.BareReject)
+			if err != nil {
+				return fmt.Errorf("extends.source: %w", err)
+			}
+			if ref.Kind == sourceref.KindContributed && !installresolver.SupportsSourceScheme(ref.Scheme) {
+				return fmt.Errorf("extends.source: source scheme %q has no installed resolver", ref.Scheme)
+			}
 		}
 		if p.Extends.Version != strings.TrimSpace(p.Extends.Version) {
 			return fmt.Errorf("extends.version must not have surrounding whitespace")
@@ -664,6 +679,25 @@ func validateToolAllowlist(location string, values *[]string, allowed []string) 
 		seen[name] = struct{}{}
 	}
 	return nil
+}
+
+// Context file modes a Piglet may set. ContextFilesAll is Pi's behaviour: every project context file loads. ContextFilesTrustedOnly withholds the project's context files until the project is trusted.
+const (
+	ContextFilesAll         = "all"
+	ContextFilesTrustedOnly = "trusted-only"
+)
+
+func validateContextFiles(mode string) error {
+	switch mode {
+	case "", ContextFilesAll, ContextFilesTrustedOnly:
+		return nil
+	}
+	return fmt.Errorf("contextFiles must be %q or %q, got %q", ContextFilesAll, ContextFilesTrustedOnly, mode)
+}
+
+// WithholdsUntrustedContextFiles reports whether the Piglet withholds an untrusted project's context files. A nil Piglet does not.
+func (p *Piglet) WithholdsUntrustedContextFiles() bool {
+	return p != nil && p.ContextFiles == ContextFilesTrustedOnly
 }
 
 func validateDiscovery(discovery *Discovery) error {

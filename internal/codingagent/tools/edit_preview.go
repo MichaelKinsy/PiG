@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/MichaelKinsy/PiG/internal/nodefs"
 	"github.com/MichaelKinsy/PiG/internal/text"
 )
 
@@ -39,7 +40,7 @@ func ComputeEditsDiff(path string, edits []EditReplacement, cwd string) EditDiff
 	if err != nil {
 		return EditDiffError{Error: fmt.Sprintf("Could not edit file: %s. Error: %s.", path, err.Error())}
 	}
-	file, err := os.Open(absolutePath)
+	file, err := nodefs.OpenFile(absolutePath, os.O_RDONLY, 0)
 	if err != nil {
 		detail := "Error: " + err.Error()
 		if code := nodeErrorCode(err); code != "" {
@@ -48,7 +49,7 @@ func ComputeEditsDiff(path string, edits []EditReplacement, cwd string) EditDiff
 		return EditDiffError{Error: fmt.Sprintf("Could not edit file: %s. %s.", path, detail)}
 	}
 	_ = file.Close()
-	data, err := os.ReadFile(absolutePath)
+	data, err := nodefs.ReadFile(absolutePath)
 	if err != nil {
 		return EditDiffError{Error: err.Error()}
 	}

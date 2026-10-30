@@ -1,0 +1,160 @@
+[
+ {
+  "upstream": "packages/durable/src/harness/transcript.ts",
+  "package": "./durable/harness",
+  "tests": [
+   "TestConversationTranscript",
+   "TestConversationTranscriptLoads"
+  ],
+  "upstream_reference": "packages/durable/src/harness/transcript.ts:185-190 (the first range is all the client knows; #tail = max(#tail, hi)); packages/durable/src/harness/transcript.ts:1-285",
+  "mutation": "durable/harness/transcript.go: replace 'transcript.tail = math.Max(transcript.tail, hi)' with 'transcript.tail = lo'; compiling go test -overlay -run exact test -count=1 fails TestConversationTranscript, TestConversationTranscriptLoads."
+ },
+ {
+  "upstream": "packages/durable/src/harness/transcript.ts",
+  "package": "./durable/harness",
+  "tests": [
+   "TestConversationTranscript",
+   "TestConversationTranscriptLoads",
+   "TestConversationTranscriptOverAHarness"
+  ],
+  "upstream_reference": "packages/durable/src/harness/transcript.ts:181-183 (appended entries grow the items at their end); packages/durable/src/harness/transcript.ts:1-285",
+  "mutation": "durable/harness/transcript.go: replace 'transcript.entries = slices.Concat(held, items)' with 'transcript.entries = slices.Concat(items, held)'; compiling go test -overlay -run exact test -count=1 fails TestConversationTranscript, TestConversationTranscriptLoads, TestConversationTranscriptOverAHarness."
+ },
+ {
+  "upstream": "packages/durable/src/harness/transcript.ts",
+  "package": "./durable/examples",
+  "tests": [
+   "TestExample31Transcript"
+  ],
+  "upstream_reference": "packages/durable/src/harness/transcript.ts:181-183 (appended entries grow the items at their end); packages/durable/src/harness/transcript.ts:1-285",
+  "mutation": "durable/harness/transcript.go: replace 'transcript.entries = slices.Concat(held, items)' with 'transcript.entries = slices.Concat(items, held)'; compiling go test -overlay -run exact test -count=1 fails TestExample31Transcript."
+ },
+ {
+  "upstream": "packages/durable/src/harness/transcript.ts",
+  "package": "./durable/harness",
+  "tests": [
+   "TestConversationTranscript",
+   "TestConversationTranscriptLoads",
+   "TestConversationTranscriptOverAHarness"
+  ],
+  "upstream_reference": "packages/durable/src/harness/transcript.ts:274-284 (mergeById keeps entries in ID order); packages/durable/src/harness/transcript.ts:1-285",
+  "mutation": "durable/harness/transcript.go: replace 'if left[i].Entry.Id < right[j].Entry.Id {' with 'if left[i].Entry.Id > right[j].Entry.Id {'; compiling go test -overlay -run exact test -count=1 fails TestConversationTranscript, TestConversationTranscriptLoads, TestConversationTranscriptOverAHarness."
+ },
+ {
+  "upstream": "packages/durable/src/harness/transcript.ts",
+  "package": "./durable/examples",
+  "tests": [
+   "TestExample31Transcript"
+  ],
+  "upstream_reference": "packages/durable/src/harness/transcript.ts:274-284 (mergeById keeps entries in ID order); packages/durable/src/harness/transcript.ts:1-285",
+  "mutation": "durable/harness/transcript.go: replace 'if left[i].Entry.Id < right[j].Entry.Id {' with 'if left[i].Entry.Id > right[j].Entry.Id {'; compiling go test -overlay -run exact test -count=1 fails TestExample31Transcript."
+ },
+ {
+  "upstream": "packages/durable/src/harness/transcript.ts",
+  "package": "./durable/harness",
+  "tests": [
+   "TestConversationTranscript",
+   "TestConversationTranscriptLoads",
+   "TestConversationTranscriptOverAHarness"
+  ],
+  "upstream_reference": "packages/durable/src/harness/transcript.ts:191-196 (a window past the newest known ID opens a gap); packages/durable/src/harness/transcript.ts:1-285",
+  "mutation": "durable/harness/transcript.go: replace '\\tcase lo > transcript.tail:' with '\\tcase lo < transcript.tail:'; compiling go test -overlay -run exact test -count=1 fails TestConversationTranscript, TestConversationTranscriptLoads, TestConversationTranscriptOverAHarness."
+ },
+ {
+  "upstream": "packages/durable/src/harness/transcript.ts",
+  "package": "./durable/harness",
+  "tests": [
+   "TestConversationTranscript",
+   "TestConversationTranscriptLoads"
+  ],
+  "upstream_reference": "packages/durable/src/harness/transcript.ts:138-170 (fillGap loads from after+1 up to upTo-1); packages/durable/src/harness/transcript.ts:1-285",
+  "mutation": "durable/harness/transcript.go: replace 'MinEntryId: new(current.After + 1),' with 'MinEntryId: new(current.After),'; compiling go test -overlay -run exact test -count=1 fails TestConversationTranscript, TestConversationTranscriptLoads."
+ },
+ {
+  "upstream": "packages/durable/src/harness/transcript.ts",
+  "package": "./durable/examples",
+  "tests": [
+   "TestExample31Transcript"
+  ],
+  "upstream_reference": "packages/durable/src/harness/transcript.ts:138-170 (fillGap loads from after+1 up to upTo-1); packages/durable/src/harness/transcript.ts:1-285",
+  "mutation": "durable/harness/transcript.go: replace 'MinEntryId: new(current.After + 1),' with 'MinEntryId: new(current.After),'; compiling go test -overlay -run exact test -count=1 fails TestExample31Transcript."
+ },
+ {
+  "upstream": "packages/durable/src/harness/transcript.ts",
+  "package": "./durable/harness",
+  "tests": [
+   "TestConversationTranscript",
+   "TestConversationTranscriptLoads"
+  ],
+  "upstream_reference": "packages/durable/src/harness/transcript.ts:108-125 (loadEarlier covers from oldest.id - 1 to the old low bound); packages/durable/src/harness/transcript.ts:1-285",
+  "mutation": "durable/harness/transcript.go: replace 'transcript.cover(float64(items[0].Id)-1, low, items)' with 'transcript.cover(float64(items[0].Id), low, items)'; compiling go test -overlay -run exact test -count=1 fails TestConversationTranscript, TestConversationTranscriptLoads."
+ },
+ {
+  "upstream": "packages/durable/src/harness/transcript.ts",
+  "package": "./durable/harness",
+  "tests": [
+   "TestConversationTranscriptLoads",
+   "TestConversationTranscriptOverAHarness"
+  ],
+  "upstream_reference": "packages/durable/src/harness/transcript.ts:93-97 (resume is { from: newest + 1 }); packages/durable/src/harness/transcript.ts:1-285",
+  "mutation": "durable/harness/transcript.go: replace 'From: new(newest + 1)' with 'From: new(newest)'; compiling go test -overlay -run exact test -count=1 fails TestConversationTranscriptLoads, TestConversationTranscriptOverAHarness."
+ },
+ {
+  "upstream": "packages/durable/src/harness/transcript.ts",
+  "package": "./durable/examples",
+  "tests": [
+   "TestExample31Transcript"
+  ],
+  "upstream_reference": "packages/durable/src/harness/transcript.ts:93-97 (resume is { from: newest + 1 }); packages/durable/src/harness/transcript.ts:1-285",
+  "mutation": "durable/harness/transcript.go: replace 'From: new(newest + 1)' with 'From: new(newest)'; compiling go test -overlay -run exact test -count=1 fails TestExample31Transcript."
+ },
+ {
+  "upstream": "packages/durable/src/harness/transcript.ts",
+  "package": "./durable/harness",
+  "tests": [
+   "TestConversationTranscript",
+   "TestConversationTranscriptLoads",
+   "TestConversationTranscriptOverAHarness"
+  ],
+  "upstream_reference": "packages/durable/src/harness/transcript.ts:253-267 (an unchanged merge returns the previous view and items); packages/durable/src/harness/transcript.ts:1-285",
+  "mutation": "durable/harness/transcript.go: replace 'transcript.viewItem == transcript.itemsRevision' with 'transcript.viewItem != transcript.itemsRevision'; compiling go test -overlay -run exact test -count=1 fails TestConversationTranscript, TestConversationTranscriptLoads, TestConversationTranscriptOverAHarness."
+ },
+ {
+  "upstream": "packages/durable/src/harness/transcript.ts",
+  "package": "./durable/examples",
+  "tests": [
+   "TestExample31Transcript"
+  ],
+  "upstream_reference": "packages/durable/src/harness/transcript.ts:253-267 (an unchanged merge returns the previous view and items); packages/durable/src/harness/transcript.ts:1-285",
+  "mutation": "durable/harness/transcript.go: replace 'transcript.viewItem == transcript.itemsRevision' with 'transcript.viewItem != transcript.itemsRevision'; compiling go test -overlay -run exact test -count=1 fails TestExample31Transcript."
+ },
+ {
+  "upstream": "packages/durable/src/harness/transcript.ts",
+  "package": "./durable/harness",
+  "tests": [
+   "TestConversationTranscript",
+   "TestConversationTranscriptLoads",
+   "TestConversationTranscriptOverAHarness"
+  ],
+  "upstream_reference": "packages/durable/src/harness/transcript.ts:240-251 (the earlier marker is first until the start is known); packages/durable/src/harness/transcript.ts:1-285",
+  "mutation": "durable/harness/transcript.go: replace '\\tif !math.IsInf(transcript.low, -1) {\\n\\t\\titems = append(items, TranscriptEarlier{})' with '\\tif math.IsInf(transcript.low, -1) {\\n\\t\\titems = append(items, TranscriptEarlier{})'; compiling go test -overlay -run exact test -count=1 fails TestConversationTranscript, TestConversationTranscriptLoads, TestConversationTranscriptOverAHarness."
+ },
+ {
+  "upstream": "packages/durable/src/harness/transcript.ts",
+  "package": "./durable/examples",
+  "tests": [
+   "TestExample31Transcript"
+  ],
+  "upstream_reference": "packages/durable/src/harness/transcript.ts:240-251 (the earlier marker is first until the start is known); packages/durable/src/harness/transcript.ts:1-285",
+  "mutation": "durable/harness/transcript.go: replace '\\tif !math.IsInf(transcript.low, -1) {\\n\\t\\titems = append(items, TranscriptEarlier{})' with '\\tif math.IsInf(transcript.low, -1) {\\n\\t\\titems = append(items, TranscriptEarlier{})'; compiling go test -overlay -run exact test -count=1 fails TestExample31Transcript."
+ },
+ {
+  "upstream": "packages/durable/src/harness/transcript.ts",
+  "package": "./durable/harness",
+  "tests": [
+   "TestTranscriptItemsAreWrittenWithPisKind"
+  ],
+  "upstream_reference": "packages/durable/src/harness/transcript.ts:7-12 (TranscriptItem kinds entry, gap, earlier); packages/durable/src/harness/transcript.ts:1-285",
+  "mutation": "durable/harness/transcript.go: replace 'func (TranscriptGap) Kind() string { return \"gap\" }' with 'func (TranscriptGap) Kind() string { return \"hole\" }'; compiling go test -overlay -run exact test -count=1 fails TestTranscriptItemsAreWrittenWithPisKind."
+ }
+]

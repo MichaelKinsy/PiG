@@ -500,6 +500,10 @@ fn register_host_surface(ext: &mut Extension) {
     static LOADED: Mutex<Option<Value>> = Mutex::new(None);
     static THEME_SUB: Mutex<Option<HostSubscription>> = Mutex::new(None);
     static EXPANDED_SUB: Mutex<Option<HostSubscription>> = Mutex::new(None);
+    // The theme gate: a handler that holds its delivery until c3_theme_gate_release, and whether it took one.
+    static GATE_SUB: Mutex<Option<HostSubscription>> = Mutex::new(None);
+    static GATE_ENTERED: Mutex<bool> = Mutex::new(false);
+    static GATE_OPEN: (Mutex<bool>, std::sync::Condvar) = (Mutex::new(false), std::sync::Condvar::new());
 
     ext.events()
         .on("c3:factory", |_, data| {
@@ -546,6 +550,28 @@ fn register_host_surface(ext: &mut Extension) {
         ToolResult::text(json!({"ok": true}).to_string())
     });
     ext.tool("c3_theme_log", "c3_theme_log", empty_schema(), |_, _| ToolResult::text(json!({"log": *THEME_LOG.lock().unwrap()}).to_string()));
+    // Armed before c3_theme_arm the gate runs ahead of the logger in every delivery, so the logger receives a change after the host changed the theme again: each handler must still get the theme of its own change.
+    ext.tool("c3_theme_gate_arm", "c3_theme_gate_arm", empty_schema(), |ctx, _| {
+        let subscription = ctx.on_theme_change(|_| {
+            *GATE_ENTERED.lock().unwrap() = true;
+            let (open, opened) = &GATE_OPEN;
+            let mut open = open.lock().unwrap();
+            while !*open {
+                open = opened.wait(open).unwrap();
+            }
+        });
+        *GATE_SUB.lock().unwrap() = Some(subscription);
+        ToolResult::text(json!({"ok": true}).to_string())
+    });
+    ext.tool("c3_theme_gate_state", "c3_theme_gate_state", empty_schema(), |ctx, _| {
+        ToolResult::text(json!({"entered": *GATE_ENTERED.lock().unwrap(), "live": ctx.theme().name}).to_string())
+    });
+    ext.tool("c3_theme_gate_release", "c3_theme_gate_release", empty_schema(), |_, _| {
+        let (open, opened) = &GATE_OPEN;
+        *open.lock().unwrap() = true;
+        opened.notify_all();
+        ToolResult::text(json!({"ok": true}).to_string())
+    });
     ext.tool("c3_expanded_arm", "c3_expanded_arm", empty_schema(), |ctx, _| {
         let subscription = ctx.on_tools_expanded_change(|expanded| EXPANDED_LOG.lock().unwrap().push(expanded));
         *EXPANDED_SUB.lock().unwrap() = Some(subscription);

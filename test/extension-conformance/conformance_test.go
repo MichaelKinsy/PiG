@@ -131,6 +131,7 @@ func allHarnessCases() []harnessCase {
 		{name: "subprocess-node-packed", make: makeSubprocessNodePackedHarness, extName: "node-sdk-fixture"},
 		{name: "subprocess-rust", make: makeSubprocessRustHarness, extName: "rust-sdk-fixture"},
 		{name: "subprocess-python", make: makeSubprocessPythonHarness, extName: "python-sdk-fixture"},
+		{name: "subprocess-lisp", make: makeSubprocessLispHarness, extName: lispFixtureName},
 		{name: "fused-go", make: makeFusedGoHarness, extName: "sdk-fixture"},
 	}
 }
@@ -140,12 +141,12 @@ func sdkHarnessCases() []harnessCase {
 	return cases[1:]
 }
 
-// packedSDKHarnessCases are the Go, Rust and Python SDKs loaded into one shared runtime cell beside a peer extension, through the production
+// packedSDKHarnessCases are the Go, Rust, Python and Lisp SDKs loaded into one shared runtime cell beside a peer extension, through the production
 // factory builder. Node's packed case is in allHarnessCases.
 func packedSDKHarnessCases() []harnessCase {
 	var cases []harnessCase
-	for _, language := range []string{"go", "rust", "python"} {
-		extName := map[string]string{"go": "sdk-fixture", "rust": "rust-sdk-fixture", "python": "python-sdk-fixture"}[language]
+	for _, language := range []string{"go", "rust", "python", "lisp"} {
+		extName := map[string]string{"go": "sdk-fixture", "rust": "rust-sdk-fixture", "python": "python-sdk-fixture", "lisp": lispFixtureName}[language]
 		cases = append(cases, harnessCase{name: "subprocess-" + language + "-packed", extName: extName, make: func(t *testing.T) *harness { return makePackedUIHarness(t, language) }})
 	}
 	return cases
@@ -3620,7 +3621,7 @@ func TestConformance_TerminalInput(t *testing.T) {
 	t.Parallel()
 
 	cases := allHarnessCases()
-	for _, language := range []string{"go", "rust", "python"} {
+	for _, language := range []string{"go", "rust", "python", "lisp"} {
 		cases = append(cases, harnessCase{name: "packed-" + language, make: func(t *testing.T) *harness { return makePackedUIHarness(t, language) }})
 	}
 

@@ -14,13 +14,14 @@ import (
 type Runtime struct {
 	s     *Scheduler
 	inv   *invocation
-	task  func() *TaskImpl
-	snap  func() Snapshot
+	snap  *Snapshot
 	agent any
+	// ended is what the commit that last ended the task for crashes ended it for, until ReportEnded reports it.
+	ended interruption
 }
 
-func (s *Scheduler) newRuntime(inv *invocation, task func() *TaskImpl, snap func() Snapshot) *Runtime {
-	return &Runtime{s: s, inv: inv, task: task, snap: snap}
+func (s *Scheduler) newRuntime(inv *invocation, snap *Snapshot) *Runtime {
+	return &Runtime{s: s, inv: inv, snap: snap}
 }
 
 func (r *Runtime) agentReset() { r.agent = nil }
@@ -46,10 +47,10 @@ func (r *Runtime) ConversationID() ID { return r.inv.conversationID }
 
 // Signal is aborted when the run is signalled by AbortTask, the Harness closes
 // or the invocation ends.
-func (r *Runtime) Signal() *Cancel { return r.inv.signal }
+func (r *Runtime) Signal() *Cancel { return &r.inv.signal }
 
 // Snapshot is the registry snapshot of the current phase.
-func (r *Runtime) Snapshot() Snapshot { return r.snap() }
+func (r *Runtime) Snapshot() Snapshot { return *r.snap }
 
 // Now is the Harness clock.
 func (r *Runtime) Now() (float64, error) {
@@ -67,19 +68,19 @@ func (r *Runtime) Report(err error, from ...ReportFrom) error {
 		return endedError(r.inv)
 	}
 	if len(from) == 0 {
-		r.s.report(err, aboutInvocation("task_error", r.inv))
+		r.s.reportAt(err, aboutInvocation("task_error", r.inv), r.inv.span)
 		return nil
 	}
 	task := reportTask(r.inv.taskID, r.inv.kind, r.inv.conversationID)
 	if f := from[0]; f.Callback != "" {
-		r.s.report(err, obj("type", "host_error", "callback", f.Callback, "task", task))
+		r.s.reportAt(err, obj("type", "host_error", "callback", f.Callback, "task", task), r.inv.span)
 		return nil
 	} else {
 		info := obj("type", "extension_error", "task", task)
 		if f.Extension != "" {
 			info.Set("extension", f.Extension)
 		}
-		r.s.report(err, info)
+		r.s.reportAt(err, info, r.inv.span)
 	}
 	return nil
 }
@@ -94,7 +95,20 @@ type ReportFrom struct{ Extension, Callback string }
 // invocation ended, the Harness is closing or, in a run invocation, the task
 // carries an abort mark.
 func (r *Runtime) Commit(change func(tx *Tx, current *jv.Object) (next *jv.Object, err error), then func(error)) {
-	r.gated(func(tx *Tx, current *jv.Object) error {
+	r.commit(false, change, then)
+}
+
+// CommitDeferred is Commit with CommitOptions{persistence: {kind: "deferred"}} (harness/live.ts PROGRESS_COMMIT): a commit that
+// changes only latest, initial-fork conversation documents is adopted in memory and stored later (held.go), by the Session's
+// default window. A commit that returns a state is stored at once.
+func (r *Runtime) CommitDeferred(change func(tx *Tx, current *jv.Object) (next *jv.Object, err error), then func(error)) {
+	r.commit(true, change, then)
+}
+
+func (r *Runtime) commit(deferred bool, change func(tx *Tx, current *jv.Object) (next *jv.Object, err error), then func(error)) {
+	// runtime.commit is an async function that awaits `#gated` (scheduler.ts, Pi 6c384aa3: it adds the checkpoint event after the await), where it
+	// returned the promise itself: its caller resumes a tick after the commit's resolution (the late job).
+	r.gatedWith(true, deferred, func(tx *Tx, current *jv.Object) error {
 		next, err := change(tx, current)
 		if err != nil {
 			return err
@@ -107,6 +121,13 @@ func (r *Runtime) Commit(change func(tx *Tx, current *jv.Object) (next *jv.Objec
 		overlay := stagedTasks(tx)
 		err = r.s.commitState(tx, r.inv, current, next)
 		tx.ticks = hopcost.RuntimeCommit(u, true, commitStateTicks(next, overlay))
+		if err == nil {
+			// A task that ends for crashes says so (task_interrupted), so a host keeps a crash-loop signal: reported once the
+			// commit resolved, before its caller resumes (scheduler.ts runtime.commit).
+			if r.ended = interruptionOf(current, next); r.ended.reason != nil {
+				r.s.loop.endedBy(r)
+			}
+		}
 		return err
 	}, then)
 }
@@ -114,7 +135,7 @@ func (r *Runtime) Commit(change func(tx *Tx, current *jv.Object) (next *jv.Objec
 // BeginHost opens a commit whose callback runs in the host, one operation per event (ABI section 8): the checks of Commit
 // run now, at the moment the host's transaction takes the Session line, and the returned transaction is scoped to the
 // task. The caller must hold the line until FinishHost or AbandonHost.
-func (r *Runtime) BeginHost() (tx *Tx, current *jv.Object, err error) {
+func (r *Runtime) BeginHost(span uint32, trace any) (tx *Tx, current *jv.Object, err error) {
 	s, inv := r.s, r.inv
 	if inv.ended {
 		return nil, nil, endedError(inv)
@@ -132,13 +153,14 @@ func (r *Runtime) BeginHost() (tx *Tx, current *jv.Object, err error) {
 	if !inv.abortMode && getBool(found, "abortRequested") {
 		return nil, nil, errorf("Task %d has a durable abort mark", inv.taskID)
 	}
-	tx, err = s.sess.Begin(TxScope{ConversationID: inv.conversationID, TaskID: inv.taskID})
+	tx, err = s.sess.Begin(TxScope{ConversationID: inv.conversationID, TaskID: inv.taskID, Span: span, Trace: trace})
 	return tx, found, err
 }
 
 // FinishHost commits the host transaction of BeginHost: next, when not nil, is the state the task commits for itself.
 func (r *Runtime) FinishHost(tx *Tx, current, next *jv.Object) (*Publication, error) {
 	u := tx.ticks
+	r.ended = interruption{}
 	if next != nil {
 		overlay := stagedTasks(tx)
 		if err := r.s.commitState(tx, r.inv, current, next); err != nil {
@@ -146,6 +168,7 @@ func (r *Runtime) FinishHost(tx *Tx, current, next *jv.Object) (*Publication, er
 			return nil, err
 		}
 		tx.ticks = hopcost.RuntimeCommit(u, true, commitStateTicks(next, overlay))
+		r.ended = interruptionOf(current, next)
 	} else {
 		tx.ticks = hopcost.RuntimeCommit(u, false, 0)
 	}
@@ -162,13 +185,18 @@ func (r *Runtime) FinishHostSettled(tx *Tx) (*Publication, error) { return r.s.s
 func (r *Runtime) AbandonHost(tx *Tx, err error) { r.s.sess.Abandon(tx, err) }
 
 // gated runs change as a job guarded by the invocation (scheduler.ts #gated).
-func (r *Runtime) gated(change func(tx *Tx, current *jv.Object) error, then func(error)) {
+func (r *Runtime) gated(late bool, change func(tx *Tx, current *jv.Object) error, then func(error)) {
+	r.gatedWith(late, false, change, then)
+}
+
+// gatedWith is gated for a commit that may be deferred (CommitOptions.persistence).
+func (r *Runtime) gatedWith(late, deferred bool, change func(tx *Tx, current *jv.Object) error, then func(error)) {
 	s, inv := r.s, r.inv
 	if inv.ended {
-		s.loop.Defer(func() { then(endedError(inv)) })
+		s.loop.DeferDone(then, endedError(inv), late)
 		return
 	}
-	s.commitQueued(func(tx *Tx) error {
+	s.commitQueued(late, func(tx *Tx) error {
 		if inv.ended {
 			return endedError(inv)
 		}
@@ -186,14 +214,14 @@ func (r *Runtime) gated(change func(tx *Tx, current *jv.Object) error, then func
 			return errorf("Task %d has a durable abort mark", inv.taskID)
 		}
 		return change(tx, found)
-	}, TxScope{ConversationID: inv.conversationID, TaskID: inv.taskID}, then)
+	}, TxScope{ConversationID: inv.conversationID, TaskID: inv.taskID, Deferred: deferred, WithinMs: -1, Span: inv.span, Trace: inv.carrier()}, then)
 }
 
 // Memo stores candidate unless a memo of that name exists and returns the
 // durable winner.
 func (r *Runtime) Memo(name string, candidate any, then func(winner any, err error)) {
 	var winner any
-	r.gated(func(tx *Tx, current *jv.Object) error {
+	r.gated(false, func(tx *Tx, current *jv.Object) error {
 		if w, ok := memoOf(current, name); ok {
 			winner = w
 			return nil
@@ -246,7 +274,7 @@ func (r *Runtime) WaitForTask(id ID, then func(rec *jv.Object, err error, waited
 		r.s.loop.Defer(func() { then(nil, endedError(r.inv), false) })
 		return
 	}
-	r.s.WaitForTaskFound(id, r.inv.signal, then)
+	r.s.WaitForTaskFound(id, &r.inv.signal, then)
 }
 
 // AbortOwned aborts a task this task owns and calls then once it is terminal (scheduler.ts abortOwned).
@@ -268,7 +296,7 @@ func (r *Runtime) AbortOwned(id ID, then func(error)) {
 			then(nil)
 			return
 		}
-		r.s.Abort(id, true, r.inv.signal, func(_ string, err error) {
+		r.s.Abort(id, true, &r.inv.signal, func(_ string, err error) {
 			if err != nil {
 				then(err)
 				return
@@ -344,7 +372,7 @@ func (r *Runtime) Outcomes(ids []ID, then func([]*jv.Object, error)) {
 // SleepUntil commits a sleep: the task holds no invocation until the Harness clock reaches until, then resumes at checkpoint.
 // then runs once the sleep is stored, not when the time comes (scheduler.ts sleepUntil, a #gated #commitState).
 func (r *Runtime) SleepUntil(until float64, checkpoint any, then func(error)) {
-	r.gated(func(tx *Tx, current *jv.Object) error {
+	r.gated(false, func(tx *Tx, current *jv.Object) error {
 		tx.ticks = hopcost.GatedChange(1)
 		return r.s.commitState(tx, r.inv, current, obj("status", StatusSleeping, "checkpoint", jv.Clone(checkpoint), "until", until))
 	}, then)

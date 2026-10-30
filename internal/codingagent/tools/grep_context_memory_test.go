@@ -111,7 +111,7 @@ func samplePeakHeap(t *testing.T) func() uint64 {
 func referenceGrepLines(data []byte) []string {
 	var decoder utf8StreamDecoder
 	content := strings.ReplaceAll(decoder.decode(data, false), "\r\n", "\n")
-	return strings.Split(strings.ReplaceAll(content, "\r", "\n"), "\n")
+	return strings.Split(content, "\n")
 }
 
 // referenceGrepBlock is upstream formatBlock over a whole-file line array.

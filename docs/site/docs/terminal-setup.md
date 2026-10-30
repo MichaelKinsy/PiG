@@ -1,6 +1,6 @@
 # Terminal setup
 
-PiG runs in any terminal. Some features need terminal support, and PiG turns each one on only when it detects that support. This page lists what PiG detects, and what to change when a key or an image does not work. The terminal setup is the same as for Pi 1.4.0 ([Pi's terminal guide](https://github.com/earendil-works/pi/blob/v1.2.0/packages/coding-agent/docs/terminal-setup.md)), apart from the differences named below.
+PiG runs in any terminal. Some features need terminal support, and PiG turns each one on only when it detects that support. This page lists what PiG detects, and what to change when a key or an image does not work. The terminal setup is the same as for Pi 1.4.0 ([Pi's terminal guide](https://github.com/earendil-works/pi/blob/main/packages/coding-agent/docs/terminal-setup.md)), apart from the differences named below.
 
 ## Troubleshooting
 
@@ -196,7 +196,7 @@ The IntelliJ terminal cannot tell `Shift+Enter` from `Enter`. Use `Ctrl+J` for a
 
 ### herdr
 
-PiG reports its state to [herdr](https://herdr.dev) as its own agent, through herdr's [third-party agent path](https://herdr.dev/docs/add-herdr-support/). Pigpen's herdr extension reports with `pane report-agent` under the source `custom:pig` and the agent `pig`. It includes the session's path and id, so herdr can resume a PiG session, and it releases the pane when PiG quits. Install it from Pigpen, or use the `herdr` or `pig-with-batteries` Piglet.
+PiG reports its state to [herdr](https://herdr.dev) as its own agent, through herdr's [third-party agent path](https://herdr.dev/docs/add-herdr-support/). Pigpen's herdr extension reports with `pane.report_agent` under the source `pig` and the agent `pig`. It includes the session's path and id, so herdr can resume a PiG session, and it releases the pane when PiG quits. Install it from Pigpen, or use the `herdr` or `pig-with-batteries` Piglet.
 
 herdr's built-in Pi integration (`herdr integration install pi`) is a different thing. It also runs in PiG, and herdr acknowledges every report it sends, but herdr keeps those reports only for a pane whose foreground process is named `pi`. PiG's executable is named `pig`, so herdr discards them and lists no agent.
 
@@ -250,6 +250,9 @@ On Unix, `SIGTERM` and `SIGHUP` request shutdown even when `/scoped-models`, `/s
 | PiG exits with `Rendered line N exceeds terminal width` | a component wrote a row wider than the terminal | fix the component to truncate its rows to the render width; the crash log lists every rendered row with its width |
 | colors look wrong | the terminal reports no true color | set `COLORTERM=truecolor` if the terminal supports it |
 | a stray `[?62;22c` appears | the terminal answered a capability query late | PiG consumes this answer; report it with the terminal name |
+| in fullscreen mode, rows show text that belongs elsewhere after the transcript scrolls | the terminal does not move rows inside a scroll region correctly | set `PIG_TUI_SCROLL_ROWS=0`, and report it with the terminal name |
+
+In fullscreen mode, when the transcript grows or scrolls, PiG moves the rows that only moved with a scroll region and draws only the rows that changed. Pi draws every row that changed (D205). The screen is the same, and PiG writes a fraction of the bytes to the terminal, which matters most through tmux or ssh. PiG does this only when `TERM` names a terminal with scroll regions and PiG is not inside Zellij; with `TERM` unset, `dumb`, `unknown` or `vt52` it draws every changed row, as Pi does. Set `PIG_TUI_SCROLL_ROWS=0` to draw every changed row, as Pi does.
 
 When a terminal sends a device-attributes reply in several slow reads, PiG waits for the reply's final byte and does not pass the fragments to the editor. Pi 1.4.0 can type the rest of the reply, such as `24;28;32;42c`, into the editor (D143, [Pi #10657](https://github.com/earendil-works/pi/issues/10657)). A typed `ESC[?` then waits for the next key instead of 150 ms.
 

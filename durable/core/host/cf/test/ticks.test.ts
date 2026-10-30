@@ -1,5 +1,6 @@
-// Microtask passes a client call spends, against the reference's numbers: this test's own sequence run through Pi 1.2.0's Harness under
-// the contract hooks, gate profile (SqliteStorage over the capsql facade). A call that follows another is queued behind the previous line
+// Microtask passes a client call spends, against the reference's numbers: this test's own sequence run through Pi 1.4.0+6c384aa3's Harness under
+// the contract hooks, gate profile (SqliteStorage over the capsql facade). The submit and the running wait are the rows F-ticks-gate and F-ticks-tools-gate
+// (PIN `ticks`: `node durable/contract/cli/contract.mjs run F-ticks-gate F-ticks-tools-gate --impl native`) less the lazy proxy's hops: Pi 6c384aa3 counts 102 and 408. A call that follows another is queued behind the previous line
 // job: scheduler.resume() queues a reserve pass (a commit job) on the Session line, and session.ts #enqueue starts the next job through
 // `#tail.then(job)`, where the tail is `run.then(...)` of the previous job, so a job queued behind a commit job starts two ticks after that run settles.
 import assert from "node:assert/strict"
@@ -43,21 +44,21 @@ test("a call queued behind the reserve pass of the previous call's resume() star
   const get = await measure(() => harness.submission(first.id, context))
   const snapshot = await measure(() => (harness as any).snapshot({ definition: { kind: "diff.none", version: 1, scope: "conversation", history: "latest", initial: () => ({}) } }, root_.id, context).catch(() => undefined))
   await harness.close(context)
-  // Pi 1.2.0: 14, 17, 19. A job queued behind the previous commit job's tail starts a tick later than one on an idle line.
+  // Pi 6c384aa3: 14, 17, 19. A job queued behind the previous commit job's tail starts a tick later than one on an idle line.
   assert.deepEqual({ settled, again, entries }, { settled: 14, again: 17, entries: 19 })
-  // The other reads of the same scenario (Pi 1.2.0): inspect is readOnLine(tasks.inspect, two scanAll pages) returned as it is
+  // The other reads of the same scenario (Pi 6c384aa3): inspect is readOnLine(tasks.inspect, two scanAll pages) returned as it is
   // (harness.ts); getTask, status, get and conversation are one single-statement line read, the last three awaited by an async
   // method (harness.ts, submissions.ts).
   assert.deepEqual({ fresh, conversation, getTask, missing, status, get }, { fresh: 25, conversation: 11, getTask: 10, missing: 10, status: 11, get: 11 })
   // submit on a cold conversation: the admission commit through admitSubmission, whose `await prepareBoundary` and `await startRun` resume one tick
-  // after those async functions return (submissions.ts); Pi 1.2.0 counts 100.
-  assert.equal(submit, 100)
+  // after those async functions return (submissions.ts); Pi 6c384aa3 counts 102: Submissions.submit returns the span of pi.durable.submit (two hops more than Pi 1.2.0's 100).
+  assert.equal(submit, 102)
   // wait on a submission whose turn is running: the whole generation lifecycle, from the admission commit to the answer commit. Every
   // await of generation.ts between its commits spends its tick: the helper async functions of a commit body (prepareBoundary, appendAssistant,
   // applyBoundary), the settle's reads (transaction.ts), the run's context read (context.ts, scheduler.ts), hooks.each (scheduler.ts),
   // ensureProviderSessionId (provider.ts), the stream's end and the start of a commit queued on an idle line (session.ts). Pi 1.2.0 counted 409; Pi 8b0caefc publishes a commit when Storage adopts it, hopcost.AdoptTail (3 over capsql) ticks before #runCommit resumes, so the wait on the last commit's publication resolves that much earlier: 406.
-  assert.equal(running, 406)
+  assert.equal(running, 408)
   // snapshot of a document that does not exist: Session.snapshot awaits the line load once and returns (session.ts); the migration retry of
-  // the host's read settles the same promise, so a success spends no pass of its own (Pi 1.2.0 counts 13; the `.catch` adds one in both).
+  // the host's read settles the same promise, so a success spends no pass of its own (Pi 6c384aa3 counts 13; the `.catch` adds one in both).
   assert.equal(snapshot, 13)
 })

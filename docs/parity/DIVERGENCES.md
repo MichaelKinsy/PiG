@@ -904,7 +904,7 @@ Why: PiG is not Pi; providers, diagnostics, and their logs should distinguish Pi
 Observable effect: every default provider `User-Agent` (Anthropic Messages, OpenAI Completions, OpenAI/Azure/Codex Responses, Google Generative AI/Vertex, Mistral Conversations) and the `report.json` environment identity in an exported bug report read `pig/...` instead of one of Pi's `pi...` forms. A user-configured provider `User-Agent` header overrides the default, including for OpenAI Codex Responses (`buildBaseCodexHeaders` sets `originator` and `User-Agent` first, #10429). An Anthropic OAuth (subscription-token) request keeps sending `claude-cli/2.1.280` regardless (D63's sibling decision, Q3): that identity is not `getPiUserAgent()`'s output and is untouched by this divergence.
 
 Call sites:
-- `ai/identity.go`: `FormatUserAgent` (detailed `pig/<version> (<platform> <release>; <arch>)`, short `pig`). `ai/anthropic_client.go`: `anthropicIdentityHeaders` (seeds the `User-Agent` key below the other client headers; an Anthropic OAuth request sends the Claude Code identity instead, as upstream). `ai/bedrock.go`: `bedrockUserAgent` adds `pig/<version>` to the AWS SDK for Go user agent, where Pi adds `pi/<version>` to the SDK for JavaScript.
+- `ai/identity.go`: `FormatUserAgent` (detailed `pig/<version> (<platform> <release>; <arch>)`, short `pig`). `ai/anthropic_client.go`: `anthropicIdentityHeaders` (seeds the `User-Agent` key below the other client headers; an Anthropic OAuth request sends the Claude Code identity instead, as upstream). `ai/providers/bedrock/bedrock.go`: `bedrockUserAgent` adds `pig/<version>` to the AWS SDK for Go user agent, where Pi adds `pi/<version>` to the SDK for JavaScript.
 - `ai/openai.go`, `ai/openai_responses.go` (also reached by `ai/azure_openai_responses.go` and `ai/openai_codex_responses.go`, which delegate to the same request builder), `ai/google.go` (also reached by `ai/google_vertex.go`), `ai/mistral.go`: the `User-Agent` header construction. Model and request headers override the default, as upstream; Codex sets its `originator` and `User-Agent` defaults before them (`buildBaseCodexHeaders`, Pi 1.4.0).
 - `internal/codingagent/bug_report.go`: `codingAgentUserAgent`, used for the local bug-report metadata field retained by D62.
 - `internal/codingagent/selfupdate.go`: `FetchUpdateManifest`, which sends the identity with the update-manifest request as upstream `getLatestPiRelease` sends its `User-Agent` and `accept` headers to the version-check API.
@@ -1606,13 +1606,13 @@ Pi bug: Pi's Bedrock Converse request can put two user messages side by side, fo
 
 Why: the Converse API requires the roles of a conversation to alternate and rejects two consecutive messages of one role with a ValidationException (HTTP 400). The shape is common: aborting a turn while tools run and then sending a new prompt gives `assistant(toolUse), user(toolResult...), user(prompt)`, and every later turn of the session then fails.
 
-Scope: `convertBedrockMessages` in `ai/bedrock.go`, for every Bedrock Converse model. An already alternating conversation produces Pi's request byte for byte. The final cache point still goes on the last user message.
+Scope: `convertBedrockMessages` in `ai/providers/bedrock/bedrock.go`, for every Bedrock Converse model. An already alternating conversation produces Pi's request byte for byte. The final cache point still goes on the last user message.
 
 Owner decision: 2026-10-10, owner rule "fix every confirmed bug now, Pi's included", relayed by the lead; number assigned by the lead.
 
-Call-site markers: `ai/bedrock.go` (`push` in `convertBedrockMessages`).
+Call-site markers: `ai/providers/bedrock/bedrock.go` (`push` in `convertBedrockMessages`).
 
-Evidence: `TestBedrockMergesAdjacentSameRoleMessagesD116` (`ai/bedrock_alternation_d116_test.go`, red before the fix: roles [user assistant user user]), `TestBedrockConvertMessages_SkipsEmptyAssistant`, the Pi-derived `TestBedrockUpstreamConvertMessages` case, and `TestBedrockConversePayloadMatchesPi` (Pi's payload rewritten by `piBedrockPayloadWithD116`).
+Evidence: `TestBedrockMergesAdjacentSameRoleMessagesD116` (`ai/providers/bedrock/bedrock_alternation_d116_test.go`, red before the fix: roles [user assistant user user]), `TestBedrockConvertMessages_SkipsEmptyAssistant`, the Pi-derived `TestBedrockUpstreamConvertMessages` case, and `TestBedrockConversePayloadMatchesPi` (Pi's payload rewritten by `piBedrockPayloadWithD116`).
 
 Parity allowance: `test/parity/scenarios/providers-faux-streaming/29-bedrock-ecmascript-whitespace.toml` runs a Bedrock conversation that starts with two user messages. Its Pi probe (`test/parity/testdata/bedrock-whitespace-pi.mjs`) merges adjacent same-role messages in the captured Pi request, content blocks in order. The scenario compares the complete captured message arrays with `json_output_equal`, so block contents, order and presence still have to match.
 
@@ -2545,9 +2545,9 @@ Workaround: none needed in PiG. In Pi, unset the variable instead of exporting i
 
 Owner decision: approved by owner Michael Kinsy on 2026-10-24 (record the difference, do not mirror the SDK's presence check: a stray empty variable must not break a working credential setup).
 
-Call-site markers: `ai/bedrock.go` (`loadBedrockConfig`, the bearer token selection).
+Call-site markers: `ai/providers/bedrock/bedrock.go` (`loadBedrockConfig`, the bearer token selection).
 
-Evidence: `TestBedrockBearerTokenDivergencesFromPi` (`ai/bedrock_bearer_divergence_test.go`) runs Pi's `bedrock-converse-stream` through the Node oracle and PiG's provider against a loopback server with the variable empty, under skip-auth and under static keys: Pi sends nothing and ends with the signing error, PiG sends a SigV4 request; its controls (variable unset, with keys) agree. The test fails when either side changes.
+Evidence: `TestBedrockBearerTokenDivergencesFromPi` (`ai/providers/bedrock/bedrock_bearer_divergence_test.go`) runs Pi's `bedrock-converse-stream` through the Node oracle and PiG's provider against a loopback server with the variable empty, under skip-auth and under static keys: Pi sends nothing and ends with the signing error, PiG sends a SigV4 request; its controls (variable unset, with keys) agree. The test fails when either side changes.
 
 Parity allowance: none needed beyond that test. The paired Bedrock oracles (`TestBedrockRequestBodyMatchesPi` and the others) scrub every `AWS_*` variable before they run Pi, so they do not see the difference.
 
@@ -2569,9 +2569,9 @@ Workaround: none needed in PiG. Use an `https://` endpoint, or unset the variabl
 
 Owner decision: approved by owner Michael Kinsy on 2026-10-24 (record the difference, do not mirror: PiG keeps the Go SDK's HTTPS-only bearer guard where skip-auth leaves the token to the SDK).
 
-Call-site markers: `ai/bedrock.go` (`loadBedrockConfig`, the bearer token selection; `bedrockClientOptions`, the bearer signer).
+Call-site markers: `ai/providers/bedrock/bedrock.go` (`loadBedrockConfig`, the bearer token selection; `bedrockClientOptions`, the bearer signer).
 
-Evidence: `TestBedrockBearerTokenDivergencesFromPi` (`ai/bedrock_bearer_divergence_test.go`) runs Pi through the Node oracle and PiG's provider against an `http://` loopback server with skip-auth and a token: Pi's request arrives with `Authorization: Bearer tok`, PiG sends nothing and ends with the HTTPS error; its control (a token without skip-auth over `http://`) sends `Bearer tok` in both. The test fails when either side changes.
+Evidence: `TestBedrockBearerTokenDivergencesFromPi` (`ai/providers/bedrock/bedrock_bearer_divergence_test.go`) runs Pi through the Node oracle and PiG's provider against an `http://` loopback server with skip-auth and a token: Pi's request arrives with `Authorization: Bearer tok`, PiG sends nothing and ends with the HTTPS error; its control (a token without skip-auth over `http://`) sends `Bearer tok` in both. The test fails when either side changes.
 
 Parity allowance: none needed beyond that test. The paired Bedrock oracles scrub every `AWS_*` variable before they run Pi.
 
@@ -2625,17 +2625,17 @@ Evidence: `TestTypeOmitsTheCodecFamily` (`extensions/sdk/type_vectors_test.go`) 
 
 ## D199 PiG lists OpenRouter's :nitro and :floor routing variants beside every OpenRouter model, where Pi lists only what OpenRouter's /models returns
 
-What: for every `openrouter` chat model of Pi's catalog that does not already end in a routing variant, PiG also lists `<id>:nitro` and `<id>:floor` (named `<name> (nitro)` and `<name> (floor)`), right after the model, and resolves a lookup of either. The variants are derived from the base entry when listed or looked up; the bundled catalog (`ai.GeneratedModels`) stays exactly Pi's. A variant is a copy of its base entry in everything but its id, name and JSON record: API, base URL, prices, limits, input types, reasoning and thinking levels are the base model's. `--list-models`, the model selector, `/scoped-models`, RPC `get_available_models` and the SDKs list them like any other built-in model.
+What: for every `openrouter` chat model of Pi's catalog that does not already end in a routing variant, PiG also lists `<id>:nitro` and `<id>:floor` (named `<name> (nitro)` and `<name> (floor)`), right after the model, and resolves a lookup of either. The variants are derived from the base entry when listed or looked up, from the current OpenRouter list: the bundled catalog, or the list `pig update --models` saved, which replaces it (the saved list never holds a derived variant); the bundled catalog (`ai.GeneratedModels`) stays exactly Pi's. A variant is a copy of its base entry in everything but its id, name and JSON record: API, base URL, prices, limits, input types, reasoning and thinking levels are the base model's. `--list-models`, the model selector, `/scoped-models`, RPC `get_available_models` and the SDKs list them like any other built-in model.
 
 Why: OpenRouter accepts `:nitro` (providers sorted by throughput, priority service tier endpoints admitted) and `:floor` (providers sorted by price, flex service tier endpoints admitted) on every model ID but never lists them in `GET /api/v1/models`, which is where Pi's catalog comes from, so a user cannot pick them in Pi's selector (issue #315). OpenRouter's variants page (https://openrouter.ai/docs/guides/routing/model-variants/overview, "Offering routing variants in a model picker") tells clients to derive them from the base entries and to read the metadata from the base entry.
 
-Scope: one rule, `ai/openrouter_variants.go` (`OpenRouterRoutingVariants`, `OpenRouterVariant`, `WithOpenRouterRoutingVariants`), data-driven from OpenRouter's documented suffix list; no model is named. Used by `ai.ListModels` (OpenRouter and the whole catalog), `ai.LookupModel` and `ai.LookupModelExact` (a variant the catalog does not list is derived from its base and cached), `builtinChatCatalogListed` (the registry's selector, `--list-models`, RPC and SDK lists; built on first use, so a caller that only resolves a model builds none), `GetProviderModelDataByID` and the model reference resolver (`withNamedRoutingVariants`: a reference that names `:nitro` or `:floor` finds the variant of the model it means). A partial model text (`--model 4o`, scoped-model patterns, the resolver's fuzzy match) is not matched against a variant unless the text itself names `:nitro` or `:floor`, so every text Pi resolves resolves to the same model here (Pi's reverse-collation tie break would otherwise prefer `:nitro`). The listed price is the base model's rate; OpenRouter bills a request at the rate of the endpoint that served it (a priority endpoint for `:nitro`, a flex endpoint for `:floor`). Image and classifier models, other providers, the remote catalog overlay and the other routing variants (`:exacto`, `:online`) are unchanged.
+Scope: one rule, `ai/openrouter_variants.go` (`OpenRouterRoutingVariants`, `OpenRouterVariant`, `WithOpenRouterRoutingVariants`, and `WithOpenRouterRoutingVariantModels` for a saved list), data-driven from OpenRouter's documented suffix list; no model is named. Used by `ai.ListModels` (OpenRouter and the whole catalog), `ai.LookupModel` and `ai.LookupModelExact` (a variant the catalog does not list is derived from its base and cached), `builtinChatCatalogListed` (the registry's selector, `--list-models`, RPC and SDK lists; built on first use, so a caller that only resolves a model builds none), `GetProviderModelDataByID` and the model reference resolver (`withNamedRoutingVariants`: a reference that names `:nitro` or `:floor` finds the variant of the model it means). A partial model text (`--model 4o`, scoped-model patterns, the resolver's fuzzy match) is not matched against a variant unless the text itself names `:nitro` or `:floor`, so every text Pi resolves resolves to the same model here (Pi's reverse-collation tie break would otherwise prefer `:nitro`). The listed price is the base model's rate; OpenRouter bills a request at the rate of the endpoint that served it (a priority endpoint for `:nitro`, a flex endpoint for `:floor`). Image and classifier models, other providers, the remote catalog overlay and the other routing variants (`:exacto`, `:online`) are unchanged.
 
 Owner decision: approved by owner Michael Kinsy on 2026-10-24 (issue #315, an additive extension that overlaps Pi's catalog).
 
-Call-site markers: `ai/openrouter_variants.go` (`OpenRouterVariant`), `ai/registry.go` (`ListModels`, `LookupModel`, `LookupModelExact`), `internal/codingagent/builtin_chat_catalog.go` (`builtinChatCatalogListed`), `internal/codingagent/model_catalog_data.go` (`GetProviderModelDataByID`), `internal/codingagent/model_pattern.go` (`withNamedRoutingVariants`, `fuzzyMatches`).
+Call-site markers: `ai/openrouter_variants.go` (`OpenRouterVariant`), `ai/registry.go` (`ListModels`, `LookupModel`, `LookupModelExact`), `internal/codingagent/builtin_chat_catalog.go` (`builtinChatCatalogListed`), `internal/codingagent/model_catalog_data.go` (`GetProviderModelData`, `GetProviderModelDataByID`), `internal/codingagent/remote_catalog_provider.go` (`withPersonalizedCatalogOverlay`), `internal/codingagent/model_pattern.go` (`withNamedRoutingVariants`, `fuzzyMatches`).
 
-Evidence: `TestOpenRouterRoutingVariantsMirrorTheirBaseEntries`, `TestOpenRouterRoutingVariantsAreLookedUpFromTheirBase` and `TestRewriteRecordIdentity` (`ai/openrouter_variants_test.go`) pin the rule from OpenRouter's documentation: both variants after each base entry, equal to the base but for id, name and record, found by lookup, none on another provider, none stored in `GeneratedModels`; `TestPartialModelTextIgnoresOpenRouterRoutingVariants` (`internal/codingagent/model_pattern_openrouter_variants_test.go`) pins the resolver rule against the failure the paired `TestResolveCliModelAndScopeMatchPi` showed when a variant was a candidate (`--model 4o` resolved to `:nitro`, Pi to `:batch`).
+Evidence: `TestRefreshedOpenRouterProviderListsRoutingVariantsOfTheRefreshedList`, `TestSavedOpenRouterListShowsRoutingVariantsOnEveryRegistryListing` (`internal/codingagent/remote_catalog_openrouter_variants_test.go`) and `TestRegistryPersonalizesTheOpenRouterCatalogThroughTheConfiguredBaseURL` pin the refreshed list; `TestOpenRouterRoutingVariantsMirrorTheirBaseEntries`, `TestOpenRouterRoutingVariantsAreLookedUpFromTheirBase` and `TestRewriteRecordIdentity` (`ai/openrouter_variants_test.go`) pin the rule from OpenRouter's documentation: both variants after each base entry, equal to the base but for id, name and record, found by lookup, none on another provider, none stored in `GeneratedModels`; `TestPartialModelTextIgnoresOpenRouterRoutingVariants` (`internal/codingagent/model_pattern_openrouter_variants_test.go`) pins the resolver rule against the failure the paired `TestResolveCliModelAndScopeMatchPi` showed when a variant was a candidate (`--model 4o` resolved to `:nitro`, Pi to `:batch`).
 
 Parity allowance: the bundled catalog and every comparison of it with Pi (`TestCatalogModelJSONMatchesPiForEveryBuiltinModel`, `TestGeneratedCatalogsMatchPublishedPackage`, `TestModelObjectsMatchPisModelObjects`) are unchanged. The tests that compare a provider list with Pi's (`TestBuiltinCatalogsMatchPinnedProviderDataModules`, `TestProviderCatalogExportsMatchPinnedData`, the Anthropic catalog denominators, `TestModelRegistryMatchesPi`) leave the derived variants out of the comparison. `TestResolveCliModelAndScopeMatchPi` is unchanged and still equal to Pi.
 
@@ -2687,24 +2687,154 @@ Remove when: Pi treats `""` as missing in `configuredApiKey`, or the SDK API gai
 
 SCRUTINIZED:approved
 
-## D204 The Go, Rust and Python SDKs do not yet export TuiAltScreen, Pi's alternate-screen TUI host, where the Node SDK does
+## D205 Fullscreen frames scroll the rows that only moved
 
-What: Pi's `pi-tui` exports `TuiAltScreen` (the alternate-screen, viewport-scrolling host that `createInteractiveTui` constructs beside `TuiMainScreen`) and its members. The Node SDK serves it, as Pi's own module. The Go, Rust and Python SDKs export no `TuiAltScreen` and none of its members (`mode`, `scrollBy`, `scrollToTop`, `scrollToBottom`, `viewportTop`, `isFollowingOutput`, `flash`, selection and copy-on-select calls, overlay and render members); a Go, Rust or Python extension cannot construct one. PiG's own interactive mode paints through its own alternate-screen renderer and is not affected.
+What: when the transcript grows by a line or is scrolled, every row of the fullscreen viewport changes, though all but a few rows only moved. Pi 1.4.0, whose default `tuiMode` is fullscreen, clears and writes every row that differs from the previous frame (`packages/tui/src/tui-alt-screen.ts` `doRender`). PiG finds the distance at which the most rows of the changed part of the screen are rows of the previous frame. It scrolls that part inside a scroll region (`CSI top;bottom r`, then line feeds at its bottom or reverse index at its top, then `CSI r`) and draws only the rows that differ after the move. A frame scrolls only when this saves at least three row writes and no row of the moved part holds an image, because images are placed by their own sequences. The screen after every frame is the one Pi's frame shows; the bytes differ. A 20,000-character answer streamed into a 160x48 tmux pane made PiG write 3,578 KB to the terminal; with rows scrolled it writes 544 KB, and the tmux server's CPU for that answer falls from 0.97 s to 0.23 s (medians of four runs). `PIG_TUI_SCROLL_ROWS=0` draws every changed row, as Pi does.
 
-Why: the host is a terminal-bound renderer whose members only make sense together with the rest of the `pi-tui` helper port (`TuiMainScreen`, `Terminal`, the component base), which the SdkTuiHelpers lane ports as one unit. Landing the export in all three SDKs needs that unit and its vector tests; it is not part of 0.6.0.
+Why: the bytes are work for the terminal, and traffic for a multiplexer or an ssh connection between PiG and the screen. The technique comes from Pi-Bolt (MIT; see THIRD_PARTY_NOTICES.md).
+
+Owner decision: approved by owner Michael Kinsy on 2026-10-27, contingent on terminal-compatibility proof, and confirmed the same day with that proof. The proof: a terminal PiG does not trust with scroll regions (`TERM` unset, `dumb`, `unknown` or a terminal with no scroll-region capability such as `vt52`, or Zellij) and `PIG_TUI_SCROLL_ROWS=0` get Pi's bytes (`scrollRegionsUsable` in `tui/tui_alt_screen_scroll.go`); the tmux parity families that touch the alternate screen (`interactive-rendering`, `fullscreen`, `tui-components`) pass with their comparators unchanged; `make test-term-engines` shows the same screens and scroll margins with and without scroll regions in xterm.js, alacritty_terminal, wezterm-term, libvterm and pyte; the owner compared both by hand in Ghostty, Terminal.app and Tern.app; and Windows conhost gets Pi's bytes. The owner accepted landing without a Windows Terminal run: native Windows consoles leave `TERM` unset and so get Pi's bytes, and `PIG_TUI_SCROLL_ROWS=0` restores them everywhere else.
+
+Call-site markers: `tui/tui_alt_screen.go` (`doRender`), `tui/tui_alt_screen_scroll.go` (`minRowsSavedByScrolling`).
+
+Evidence: `TestAltScreenScrolledFramesShowPisScreens` (`tui/alt_screen_oracle_test.go`) replays Pi's bytes and PiG's for every step of the 500 scenarios of the pinned Pi's alternate-screen fixture on a terminal model with scroll regions, and requires equal rows after every step; 55 steps scroll. `TestAltScreenFramesMatchPiOracle` still compares the bytes, with scrolling off. `TestAltScreenScrolledFramesShowEveryRow` (`tui/tui_alt_screen_scroll_test.go`) draws random frames (lines added, extended, deleted, inserted and changed, the viewport scrolled, the dock changed) and requires the terminal model to show each frame's rows. `TestAltScreenScrollsTheRowsThatMoved`, `TestAltScreenScrollsRowsDownWhenScrolledBack`, `TestAltScreenDoesNotScrollImageRows`, `TestAltScreenDoesNotScrollAnImageRowThatStays` and `TestAltScreenScrollRowsOff` cover the moves, images and the switch. `BenchmarkAltScreenFrameWhileTheTranscriptGrows` writes 153 bytes per frame against 5,417.
+
+Terminal-engine evidence: `make test-term-engines` (`docs/testing/term-engines.md`) replays a deterministic corpus (streamed transcripts, wheel and PageUp scrolling, resizes, wide and styled text, overlays, random edits and the pinned fixture's scenarios) twice, as the scroll-region frames and as Pi's bytes (`PIG_TUI_SCROLL_ROWS=0`), through xterm.js, `alacritty_terminal`, `wezterm-term`, libvterm and pyte, and requires the same screen (rows, styles, shown cursor) and the whole-screen scroll margins after every frame in every engine. Removing the region reset after a move fails all five.
+
+Known visible difference (accepted by the owner on 2026-10-27): a component that renders a row wider than the screen. Pi clips such a row after it has added the row's closing SGR reset (`applyLineResets`, then `sliceByColumn(line, 0, width, true)` in `packages/tui/src/tui-alt-screen.ts` `doRender`; `applyLineResets` is in `tui.ts`), so the reset is cut off with the clipped text and the row's attributes stay on in the terminal; Pi's own recorded bytes show this (`tui/testdata/alt-screen-oracle.json.gz`, scenario 485 step 3: a component renders a bold row 157 columns wide, and Pi writes its clipped text followed directly by the next row's cursor move, with no reset). The attributes color the rows written after the clipped row, so which rows show them depends on which rows a frame writes. Pi writes every changed row and PiG's scroll frames move the others, so where the leaked attributes appear differs between the two (`known-clipped-sgr-leak` in `tui/alt_screen_term_corpus_test.go`, which the engines must keep showing; fixture scenarios 173 and 485 in `termLeakingOracleScenarios`). Rows that fit the screen never leak, and with the clipped rows closed by a reset the same scenarios are equal in all five engines. The Pi-identical bytes (`PIG_TUI_SCROLL_ROWS=0`) are unchanged.
+
+Fallback evidence: `TestAltScreenScrollFallsBackToPisBytes` (`tui/alt_screen_oracle_test.go`) replays the 500 scenarios with `TERM` unset, `dumb`, `vt52` and `unknown`, and with `PIG_TUI_SCROLL_ROWS=0` in an xterm, and requires each step's bytes to equal Pi's exactly; `TestScrollRegionsUsableIn` lists which terminals are trusted, Zellij included.
+
+Parity allowance: the fullscreen parity scenarios compare the captured screen, which is the same, and the alternate-screen oracle compares Pi's bytes with scrolling off and Pi's screens with it on.
+
+Remove when: Pi scrolls the rows that moved, or an owner decision reverses this one. Then every changed row is drawn again, and the markers, `tui/tui_alt_screen_scroll.go` and this record go.
+
+SCRUTINIZED:approved
+
+## D206 The Durable core resolves HarnessOptions.settings once before each event, where Pi resolves it at each use
+
+What: Pi calls `HarnessOptions.settings` at each use: the scheduler, a generation's phases, the context retention checks, the queue modes of a submission and `resolveAgent` each resolve it (`packages/durable/src/harness/harness.ts`), so a settings callback sees every resolution (`harness-restart-failure.test.ts` counts 49 reads of `extensions` for a round of one generation with one tool call). The Durable core reads the settings from the snapshot the host sends before each event it delivers (`durable/core/host/cf/src/facade/harness.ts` `syncSettings`; `sqlhost` `Options.Settings` for the Go host), and only `resolveAgent`, which stays with the host, resolves the callback at its use. The callback is therefore called once per event, and a change of the settings takes effect at the next event rather than at the next use within an event. The host reads no `extensions` for that snapshot, so the test above counts PiG's 6 agent resolutions of a round where Pi counts 49.
+
+Why: the core runs in a Wasm module with no import to call the host's callback at each use; a host call at each use costs a crossing at every phase, retention check and queue-mode read, and a settings notice that made the host call the callback as often as the core read it (ABI 12) cost an ABI change and a count per event for a callback no consumer observes by its count.
+
+Owner decision: approved by owner Michael Kinsy on 2026-10-28.
+
+Call-site markers: `durable/core/host/cf/src/facade/harness.ts` (`syncSettings`), `durable/core/turnhost.go` (`turnSettings`), `durable/core/sched.go` (`contextRetentionMs`).
+
+Evidence: the `U-harness-restart-failure` row of `durable/contract/corpus.toml` states the measured value (`measured_test`, `measured_failure`, `measured_divergence = "D206"`): the candidate fails Pi's own test "resolves the settings no more often than before" with `expected 6 to be 49`, and the row fails if it passes or fails otherwise (`durable/contract/lib/gate.mjs`; `vitest-paired.test.mjs` pins the three cases). `TestCoreTheRestartLimitOnTheNormalPath` (`durable/core/driver/harness_restart_failure_core_test.go`) counts the calls of the settings source over the core for the same round and asserts 9 a round, where Pi's callback is called 49 times; `TestTheRestartLimitOnTheNormalPath` (`durable/harness/harness_restart_failure_test.go`) asserts the reference Harness's 15 + about 34 resolutions, as Pi's 49.
+
+Parity allowance: the measured row above is the allowance; no other row changes.
+
+Remove when: the core can read the settings by a host call at each use without a measurable cost (the count budgets of `make durable-counts`), or Pi resolves the settings once per step. Then the snapshot, `syncSettings` and this record go.
+
+SCRUTINIZED:approved
+
+## D207 TuiAltScreen.children is a copy in the Go, Rust, Python and Lisp SDKs, where Pi's is a live array
+
+What: Pi's `TuiAltScreen.children` is the container's own array: a caller that holds it sees every later change of the screen's children, and can change them by writing to it. The Go (`TuiAltScreen.Children`), Rust (`TuiAltScreen::children`) Python (`TuiAltScreen.children`) and Lisp (`tui-alt-screen-children`) SDKs return a snapshot of the children as the SDK knows them after its last `addChild`, `removeChild` or `clear`. Writing to the snapshot changes nothing, and the snapshot does not follow later changes: read `children` again after the call that changed it. `addChild`, `removeChild` and `clear` are the only ways to change the children; the SDKs have no `setChildren`.
+
+Why: the renderer, with the screen's child list, runs in the host process and the extension's components in the extension's process, so an array in the extension cannot be the renderer's array. The SDKs keep the children they sent to the host and update that list after each call returns; a list a caller could write to would need a call to the host on every write and a way for the host to change the extension's list, which Pi's array is not.
 
 Pi bug: none claimed.
 
-Scope: the 46 `pi-tui: TuiAltScreen` rows of `test/parity/sdk-exports.toml` (the class and each member) carry `divergence:D204` in the `go`, `rust` and `python` cells in place of `gap:SdkTuiHelpers`; `docs/extension-sdk-exports.md` is generated from that file. The Node cells are unchanged. No SDK source changes: the divergence is the absence of the export.
+Scope: `TuiAltScreen.children` of the Go, Rust, Python and Lisp SDKs. Every other member behaves as Pi's, and a read after `addChild`, `removeChild` or `clear` returns what Pi's `children` holds then, in order, with equal-content components kept distinct and a duplicate child kept twice.
 
-Owner decision: approved by owner Michael Kinsy on 2026-10-26 (record the missing `TuiAltScreen` export as a divergence for 0.6.0 so the `sdk-exports-release` gate does not block on a high-use gap; the export ships in 0.6.1).
+Owner decision: approved by owner Michael Kinsy on 2026-10-28.
 
-Call-site markers: none in code; the ledger rows named in Scope are the declaration `make sdk-surface-drift` and `make sdk-exports-release` read.
+Call-site markers: `extensions/sdk/tui_alt_screen.go` (`Children`), `extensions/sdk-rs/src/tui_alt_screen.rs` (`children`), `extensions/sdk-py/pig_sdk/tui_alt_screen.py` (the `children` property), `extensions/sdk-lisp/src/tui-alt-screen.lisp` (`tui-alt-screen-children`).
 
-Evidence: `make sdk-surface-drift` and `make sdk-exports-release` read the rows: a `divergence:D204` cell needs this record, and the release gate no longer counts the high-use `TuiAltScreen` export (6 scanned packages in `test/parity/extension-import-usage.json`) as a gap.
+Evidence: `TestTuiAltScreenChildrenAcrossSDKs` (`test/extension-conformance/tui_alt_screen_test.go`) reads `children` after each `addChild`, `removeChild` (of a child and of a component that is not one), a duplicate `addChild`, `removeChild` of the first of two equal entries and `clear`, with three components of equal content, and requires the order Pi's own class reports in the Node cell, in every isolated and packed SDK cell.
 
-Parity allowance: the `divergence:D204` cells are the allowance; no paired Pi corpus constructs `TuiAltScreen` through an SDK, so none changes.
+Parity allowance: no paired Pi corpus holds `TuiAltScreen.children` across a change of the children, so none changes.
 
-Remove when: the 0.6.1 export of `TuiAltScreen` lands in the Go, Rust and Python SDKs; then the 46 cells become `native:` cells with their conformance or vector reach, and this record goes.
+Remove when: Pi's `children` stops being a public live array, or an owner decision asks for a live view across the process boundary; then the four markers, the evidence note and this record go.
+
+SCRUTINIZED:approved
+
+## D208 From inside a component's render, a TuiAltScreen of the Go, Rust, Python and Lisp SDKs fails the calls that re-enter its frame
+
+What: Pi runs a component's `render` on the one thread that draws the frame, so a render that calls a member of its screen is a nested call, and Pi lets it recurse or re-enter: `renderNow()` and `render()` render the document again inside the frame, `start()` and `stop()` nest a terminal start or stop, `copyActiveSelectionToClipboard()` and `queryTerminalColors()` start Promise-returning work from inside the frame, and the `onInput` callback that `Terminal.start` received dispatches input from inside it. In the Go, Rust, Python and Lisp SDKs every other call a render makes to its screen runs at once, while the host holds the frame lock for that render, and a later read in the same render sees it, as in Pi. These six calls and the input callback would take the frame lock again, which the frame holds and does not release for the render it waits on: from inside a callback the frame waits for (a component's render, an overlay's `visible` callback, a style callback, an `invalidate` or focus change the frame triggered) they return the host's error `tui.alt: <op> cannot run while a component renders`, and the screen goes on. Called from any other thread they wait for the frame, as before.
+
+Why: the renderer takes one non-reentrant lock for the whole frame, and a re-entered frame would need it while the frame waits for the render that re-enters it, which is a deadlock; supporting Pi's recursion needs a frame that renders again inside itself, which the renderer's single pass and its differential state do not allow.
+
+Pi bug: none claimed.
+
+Scope: the calls `render`, `renderNow`, `start`, `stop`, `copyActiveSelectionToClipboard`, `queryTerminalColors` and the terminal's `onInput` callback, made from a callback the frame waits for, in the Go, Rust, Python and Lisp SDKs (the host serves `tui.alt` calls; the SDKs report the host's error as the call's error). The Node SDK serves Pi's own class and recurses as Pi does.
+
+Owner decision: approved by owner Michael Kinsy on 2026-10-28, for the six calls and for the terminal `input` callback.
+
+Call-site markers: `coding/extension/host/subprocess/tui_alt_bridge.go` (`run`).
+
+Evidence: `TestTuiAltScreenFrameReentryAcrossSDKs` (`test/extension-conformance/tui_alt_screen_test.go`) calls each of the six from inside a render in every isolated and packed Go, Rust, Python and Lisp cell, requires the error for each, and requires the screen to answer the next call in the same render (`setShowHardwareCursor` then `getShowHardwareCursor`).
+
+Parity allowance: no paired Pi corpus constructs `TuiAltScreen` through an SDK and recurses in a render, so none changes.
+
+Remove when: the host's frame can be entered again from inside a render and these calls run as Pi's do; then the call-site marker, the error and this record go.
+
+SCRUTINIZED:approved
+
+## D212 `/llama` explains a 404 from llama-swap's missing load and unload endpoints, where Pi shows "llama.cpp returned HTTP 404"
+
+What: Pi's `/llama` loads and unloads a model with `POST /models/load` and `POST /models/unload` (`extensions/llama/client.ts`, `load` and `unload`) and shows an HTTP error as the server's `error.message`, else `llama.cpp returned HTTP <status>`. llama-swap lists its models at `/models` with a `status.value`, so the `/llama` list renders, but it has no load or unload endpoint of that shape: it loads a model when a request names it in `model`, and Pi's `/llama` ends in the bare `llama.cpp returned HTTP 404` (reported as #380). When `/models/load` or `/models/unload` answers 404, PiG asks whether the server is llama-swap, by the `"src": "llama-swap"` of the 404's error envelope or a `GET /running` that answers `{"running": [...]}`, and if it is, shows: `/llama cannot load or unload models on llama-swap: it loads a model when a request names it. Add llama-swap to models.json as an openai-completions provider with baseUrl <server>/v1, then pick models with /model. See <docs link>.` Any other 404, and every other status, keeps Pi's text. `GET /running` is the one request PiG sends that Pi does not, and only after such a 404.
+
+Why: Pi's text names neither the server nor the way that works, and the reporter took it for a PiG bug. The way that works is the models.json provider, where PiG and Pi behave the same (journey `llama-swap-models-json`); `/llama` stays a llama.cpp router manager.
+
+Pi bug: none claimed.
+
+Scope: the `Load` and `Unload` calls of the llama.cpp client, so the `/llama` load, unload, restore-after-failed-load and stop-loading paths. `Download` (`POST /models`) and every other request keep Pi's text.
+
+Owner decision: approved by owner Michael Kinsy on 2026-10-29.
+
+Call-site markers: `internal/codingagent/llama/client.go` (`explainLlamaSwap`).
+
+Evidence: `TestLlamaClientAndCatalogAgainstLlamaSwapAndLlamaServerMatchPi` (`internal/codingagent/llama/llamaswap_test.go`) runs Pi's client and PiG's against a fake llama-swap and a plain llama-server, requires Pi's `llama.cpp returned HTTP 404` from Pi for load, unload and unload-and-wait on both, the llama-swap message from PiG on llama-swap, Pi's text from PiG on the plain server, and every other outcome and request equal. `TestLlamaCommandAgainstLlamaSwapExplainsTheMissingEndpoints` runs the `/llama` command, `TestLoadAndUnloadRecognizeLlamaSwapByItsErrorEnvelope` the envelope, and `TestLoadAndUnloadKeepPisTextForA404ThatIsNotLlamaSwap` and `TestLlamaCommandKeepsPisTextForARouter404` the 404s that keep Pi's text.
+
+Parity allowance: `TestLlamaClientRequestsMatchPi` compares load and unload against Pi over random statuses and bodies, 404 included; its server answers `GET /running` with 404, which is not llama-swap's, so every outcome there stays Pi's.
+
+Remove when: Pi's `/llama` names llama-swap itself, or can manage llama-swap models; or the owner withdraws the decision. Then the call-site marker, the `GET /running` probe, the docs section and this record go.
+
+SCRUTINIZED:approved
+
+## D213 A crashed or exited extension runtime releases the read the host holds for an autocomplete provider chain
+
+What: Pi's editor awaits an autocomplete request in the Promise jobs that follow the terminal read that typed the text (`editor.ts` `requestAutocomplete`, `startAutocompleteRequest`), and its extensions run in Pi's own process. A provider chain that needs no I/O therefore opens its menu before the next read, and a chain that awaits real I/O (a timer, a socket, a process) has not settled when the next read arrives. PiG's extension chain crosses a process boundary, so after each read PiG starts the request of the extension chain and holds the next read until the chain settles and its menu is published, or until the chain announces that it awaits real I/O (`ui.autocomplete.pending`), which is when Pi's next read would have come first. The Node runtime announces at the end of its macrotask (`setImmediate`), Pi's rule exactly; the base provider's awaited work (an `@` file search, a command's Promise-returning argument completer) is announced by the host, also through a chain another packed member calls directly. The Go, Rust, Python and Lisp SDKs have only synchronous providers, which settle when they return, as a synchronous Pi provider holds the loop until it returns, so they announce nothing. No timer releases the read. The one difference a user can see: when the extension runtime exits or its connection ends while the chain is unsettled, the request fails and the host releases the read; in Pi a crashing extension takes the whole process with it.
+
+Why: the hold is the mechanism that carries Pi's event-loop order across the process boundary. A runtime that dies cannot answer, and a frozen editor would be worse than Pi, where the process would have ended.
+
+Pi bug: none claimed.
+
+Scope: requests of the extension provider chain that start at the end of a read: natural slash, argument and mention requests of text typed or pasted. Debounced symbol requests (a later task in Pi too), forced Tab requests and a request made behind an unfinished one never hold the read. The native provider chain without an extension provider is unchanged.
+
+Owner decision: owner Michael Kinsy ordered Pi's exact rule for 0.6.0 on 2026-10-29 ("don't care about delay, most correct") and a numbered record for what remains.
+
+Call-site markers: `coding/extension/host/subprocess/autocomplete_bridge.go` (`GetSuggestions` of the remote provider).
+
+Evidence: journey `extension-completion-fast-enter` (j18, packed Node runtime) runs Pi and PiG through `/model provider/id` and `/thinking level` typed and entered at once. `TestAutocompleteSettlementAcrossSDKs` runs a fast chain, a chain that sleeps and a chain that waits on a slow host answer in the Go, Node (isolated and packed), Rust, Python and Lisp realizations, fused and packed Go included, and requires the sleeping chain to be announced in Node only. `TestNodeAutocompleteChainTellsTheHostWhenItAwaitsIO` pins the Node rule in isolated and packed mode and `TestPackedNodeMembersShareTheBaseProvidersIOAnnouncement` the packed case. `TestEnterInTheReadAfterTheTextAcceptsTheMenuAnExtensionProviderOpened`, `TestEnterWaitsForAnExtensionProviderThatBlocksUntilItReturns`, `TestEnterInTheReadAfterTheTextSubmitsWhileAnExtensionProviderAwaitsIO` and `TestBaseProviderAnnouncesItsAwaitedWork` cover the host, and `tui/editor_autocomplete_hold_test.go` the editor.
+
+Parity allowance: none needed for the journey: a provider that needs no I/O matches Pi, and no journey can observe a runtime exit.
+
+Remove when: Pi's extensions run outside the editor's process, or the owner withdraws the decision. Then the release on runtime exit, the call-site marker and this record go.
+
+SCRUTINIZED:approved
+
+## D215 A local Package typed by absolute path is stored as typed
+
+What: Pi's `pi install <path>` records every local Package in `packages[]` relative to the settings directory as it was spelled at install (`package-manager.ts` `normalizePackageSourceForSettings`). An install made through one spelling of the agent directory (a symlinked `PIG_HOME`, such as an XDG link) writes, for example, `../../../../../../pkgsrc/my-pkg`; a start through another spelling at another depth resolves it to a path that does not exist, and the Package's tools are gone. PiG stores a path typed absolute (`/abs/pkg`, `~/pkg`, a `file://` URL) as typed, trimmed; a path typed relative (`./pkg`, `../pkg`) is still stored relative to the settings directory, as Pi stores it.
+
+Why: 20 of 21 Packages on one host disappeared after a re-registration run through a symlinked `PIG_HOME`, with only a boot line on stderr to show it (#389). An absolute path resolves the same way from every spelling of the agent directory.
+
+Pi bug: Pi writes the same relative record (`package-manager.ts` `normalizePackageSourceForSettings` at the pin, b3a29f11); not reported upstream.
+
+Scope: `PackageManager.NormalizeSourceForSettings` (`pig install`, `pig remove` matching is unchanged: both forms resolve to the same path), through `resolvepath.IsAbsolutePackagePath`. Entries already in `settings.json` are read as before; running `pig install <absolute path>` again rewrites an entry that still resolves to the absolute form. The SDK resource loader is unchanged.
+
+Owner decision: approved by owner Michael Kinsy on 2026-10-30 (store an absolute path as typed rather than always absolute or symlink-resolved relative). The report of a Package that does not resolve is not part of this record: Pi skips it silently, so it is the additive D216.
+
+Call-site marker: `internal/packagemanager/package_manager.go` (`NormalizeSourceForSettings`).
+
+Evidence: `TestInstalledAbsoluteLocalPackageResolvesThroughAnotherAgentDirSpelling` (`coding/cli/package_local_path_test.go`, red with the call site reverted), `TestNormalizePackageSourceForSettings_UsesScopeBase` (`coding/cli/package_commands_test.go`), `TestPackageManagerAddAndRemoveSourceInTheScopeSettings` (`internal/packagemanager/package_manager_ops_gaps_test.go`: an absolute spelling of a relative entry replaces it with the absolute path); `TestSessionGraphDefaultPackageManagerAcrossSDKs` and `TestSessionGraphLispPackedAcrossSDKs` (`test/extension-conformance/session_graph_test.go`: the script installs an absolute path, so every PiG row reports `<root>/pkgs/localpkg` where the Node row, Pi itself, reports the settings-relative spelling).
+
+Parity allowance: the ported case `package-command-paths.test.ts:431` ("allows local package install to initialize fresh project settings", `TestPortWave10PackageCommandPaths`) installs an absolute path and expects the entry relative to `.pi`; PiG's port asserts the path as typed. Scenario `cli-utils/04-package-install-local` installs a relative path, which is stored as Pi stores it.
+
+Remove when: Pi stores an absolute local path as typed, or the owner reverses the decision. Then the branch, the call-site marker and the tests' D215 cases go.
 
 SCRUTINIZED:approved

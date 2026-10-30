@@ -64,6 +64,7 @@ type commandResult struct {
 }
 
 func runCommand(dir string, env []string, timeout time.Duration, name string, args ...string) (commandResult, error) {
+	//nolint:gosec // G204 (class a): runCommand's name is literal npx at its callers, with the pinned conformancePackage constant and computed args.
 	cmd := exec.Command(name, args...)
 	cmd.Dir = dir
 	cmd.Env = env
@@ -367,6 +368,7 @@ func realMain() int {
 		return 1
 	}
 	client := filepath.Join(workDir, "client")
+	//nolint:gosec // G204 (class a): program is literal go; args are fixed build -o with a computed client path under workDir.
 	build := exec.CommandContext(context.Background(), "go", "build", "-o", client, "./"+filepath.ToSlash(filepath.Join(*here, "client")))
 	build.Dir, build.Stdout, build.Stderr = root, os.Stdout, os.Stderr
 	if err := build.Run(); err != nil {

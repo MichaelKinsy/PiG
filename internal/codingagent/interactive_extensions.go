@@ -516,7 +516,11 @@ func (m *InteractiveMode) wireSubprocessHostCallbacks() func() {
 		if m.newRunner != nil {
 			runner = m.newRunner
 		}
-		return ExtensionToolInfos(runner, m.opts.ToolRegistryAllowed, m.opts.ExcludedTools)
+		var scope *extension.ToolScope
+		if session, ok := m.opts.SessionHandle.(interface{ ToolScope() *extension.ToolScope }); ok {
+			scope = session.ToolScope()
+		}
+		return ExtensionToolInfosScoped(runner, m.opts.ToolRegistryAllowed, m.opts.ExcludedTools, scope)
 	})
 	// upstream: agent-session.ts:3339, 3382-3383 bind getSettings, executeTool and getCallableTools to the session in every mode.
 	b.SetHostAction("getSettings", func() extension.Settings {

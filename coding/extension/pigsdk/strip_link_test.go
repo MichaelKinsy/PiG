@@ -27,13 +27,14 @@ func stripGoListDeps(t *testing.T, tags string) []string {
 	return strings.Fields(string(out))
 }
 
-// D92: a pig_strip_extension_sdk_rust or pig_strip_extension_sdk_python build
+// D92: a pig_strip_extension_sdk_rust, _python or _lisp build
 // of cmd/pig does not link that SDK's embedded sources; the stock build does.
 func TestStripExtensionSDKRustAndPythonBuildOmitsSDKPackages(t *testing.T) {
 	stock := stripGoListDeps(t, "")
 	for _, tc := range []struct{ tag, pkg string }{
 		{"pig_strip_extension_sdk_rust", pigModule + "/extensions/sdk-rs"},
 		{"pig_strip_extension_sdk_python", pigModule + "/extensions/sdk-py"},
+		{"pig_strip_extension_sdk_lisp", pigModule + "/extensions/sdk-lisp"},
 	} {
 		if !slices.Contains(stock, tc.pkg) {
 			t.Errorf("the stock cmd/pig does not link %s", tc.pkg)

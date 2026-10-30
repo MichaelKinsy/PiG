@@ -628,11 +628,14 @@ type managedExt struct {
 	toolUpdates  toolUpdateStreams
 	facetBridge  *FacetBridge
 	pendingReady *Envelope
-	nodeEntry    string
-	replacement  atomic.Pointer[managedExt]
-	config       ExtConfig
-	host         *Host
-	supervisor   *Supervisor
+	// earlyOwnsThinkingRuns is an ownThinkingRuns call that arrived before the registration built the Extension; Host.mu guards it.
+	// pig additive (D214)
+	earlyOwnsThinkingRuns *bool
+	nodeEntry             string
+	replacement           atomic.Pointer[managedExt]
+	config                ExtConfig
+	host                  *Host
+	supervisor            *Supervisor
 	// conn is the current connection. Only setConnLocked stores it, and only while holding Host.mu, so a Host.mu holder reads a stable value; every other reader loads it once through connection() and keeps that snapshot for the whole operation.
 	conn atomic.Pointer[Conn]
 	// procMu guards the process handle: proc, processTree, cmd and exitedCh. An automatic restart replaces them in startExt while a stop, a crash handler or a status reader can run; it is a leaf lock, never held while calling out.
@@ -1975,14 +1978,15 @@ func (h *Host) runtimeCommandsDrained(conn *Conn, lanes *callLanes, report *Enve
 	return report.Notify.Method == notifyRuntimeCommandsDrained
 }
 
-// goDrainTask runs fn as a task Shutdown joins: a drain finish or a crash-restart backoff. Once Shutdown waits, nothing is left to act on either, so fn does not run.
-func (h *Host) goDrainTask(fn func()) {
+// goDrainTask runs fn as a task Shutdown joins: a drain finish or a crash-restart backoff, and reports whether it started. Once Shutdown waits, nothing is left to act on either, so fn does not run.
+func (h *Host) goDrainTask(fn func()) bool {
 	h.drainTasksMu.Lock()
 	defer h.drainTasksMu.Unlock()
 	if h.drainTasksClosed {
-		return
+		return false
 	}
 	h.drainTasks.Go(fn)
+	return true
 }
 
 // SetRuntimeDrainHandler installs the process-owner callback for a Node event-loop drain after input end. A drain is not handler completion; the callback must not resume pending extension work.
@@ -3183,7 +3187,14 @@ func (h *Host) connectExt(ctx, extCtx context.Context, cancel context.CancelFunc
 		cancel()
 		return nil, newLoadError(me.config.Name, "spawn", "socket_dir_failed", fmt.Errorf("write harness arguments: %w", err))
 	}
-	var cmd = buildExtCommandSelected(extCtx, binPath, me.config.RuntimeLanguage, runtime.GOOS, exec.LookPath, tsSelection)
+	cmd, err := h.lispCommand(ctx, extCtx, me.config.RuntimeLanguage, binPath)
+	if err != nil {
+		cancel()
+		return nil, newLoadError(me.config.Name, "spawn", "build_failed", err)
+	}
+	if cmd == nil {
+		cmd = buildExtCommandSelected(extCtx, binPath, me.config.RuntimeLanguage, runtime.GOOS, exec.LookPath, tsSelection)
+	}
 	nodeOutput := usesNodeRuntime(binPath, me.config.RuntimeLanguage)
 	cmd.Env = append(append(os.Environ(), harnessEnv...),
 		fmt.Sprintf("PIG_EXT_SOCKET=%s", address),
@@ -3543,7 +3554,12 @@ func (h *Host) adoptConn(ctx context.Context, me *managedExt, rawConn net.Conn, 
 		ext = adoptRestartedExtension(me.ext, ext)
 	}
 	me.ext = ext
+	early := me.earlyOwnsThinkingRuns
+	me.earlyOwnsThinkingRuns = nil
 	h.mu.Unlock()
+	if early != nil {
+		ext.SetOwnsThinkingRuns(*early) // pig additive (D214): a call that arrived before the registration was applied
+	}
 	me.supervisor.RecordSuccess()
 
 	return ext, nil
@@ -3733,6 +3749,7 @@ func adoptRestartedExtension(previous, built *extension.Extension) *extension.Ex
 	previous.ReplaceEventHandlers(built)
 	previous.ReplaceRegisteredTools(built)
 	previous.ReplaceDeclarations(built)
+	previous.SetOwnsThinkingRuns(built.OwnsThinkingRuns()) // pig additive (D214): the new process's own value, not the old one's
 	return previous
 }
 
@@ -3887,6 +3904,8 @@ func (h *Host) buildExtension(me *managedExt, reg *RegisterPayload) *extension.E
 
 	ext.InitializeToolRegistry()
 	ext.InitializeDeclarationRegistry()
+	ext.InitializeThinkingRuns()
+	ext.SetOwnsThinkingRuns(reg.OwnsThinkingRuns) // pig additive (D214): the register frame carries the extension's value at load
 	return ext
 }
 
@@ -4806,6 +4825,15 @@ func (h *Host) handleIncoming(me *managedExt, conn *Conn) {
 			}
 			h.uiBridge.HandleNotifyFrom(me.config.Name, conn, env.Notify)
 		}
+	}
+
+	// pig additive (D214): the extension no longer draws anything, so it owns no thinking runs. Its earlier calls apply first, or a late
+	// ownThinkingRuns(true) would restore what the exit withdrew; once Shutdown waits no call is left to apply.
+	if !h.goDrainTask(func() {
+		lanes.barrier()
+		h.dropOwnedThinkingRuns(me, conn)
+	}) {
+		h.dropOwnedThinkingRuns(me, conn)
 	}
 
 	if completed := h.noteRuntimeConnClosed(me, conn); len(completed) > 0 {

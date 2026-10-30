@@ -44,7 +44,11 @@ func Select(journeys []*Journey, changed []string) []string {
 
 // ChangedFiles lists the files changed since the merge base with base, plus uncommitted and untracked files, relative to the repository root.
 func ChangedFiles(dir, base string) ([]string, error) {
+	if strings.HasPrefix(base, "-") {
+		return nil, fmt.Errorf("changed-files base %q begins with a dash and would reach git as an option", base)
+	}
 	run := func(args ...string) ([]string, error) {
+		//nolint:gosec // G204 (class a): program is the literal git; args are fixed diff --name-only plus the JOURNEY_CHANGED_BASE value from the operator's environment, which ChangedFiles rejects when it begins with a dash.
 		cmd := exec.Command("git", args...)
 		cmd.Dir = dir
 		out, err := cmd.Output()

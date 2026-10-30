@@ -155,7 +155,7 @@ PiG applies these migrations only to the selected directories. It does not impor
 
 ## Diagnostics
 
-`pig diagnose` prints the PiG and pinned Pi versions, the build, the Go runtime, the platform, the binary path, the staged extension SDKs, the resolved configuration paths, the providers with stored credentials, and the built-in tools.
+`pig diagnose` prints the PiG and pinned Pi versions, the build, the Go runtime, the platform, the binary path, the staged extension SDKs, the resolved configuration paths, the project trust decision, the active Piglet, the providers with stored credentials, the built-in tools, and the default model that a session starts with. It names the settings file of each default model setting, and it does not count the `defaultModel` of an untrusted project. Pi reads `defaultModel` as a model id, so `"bench/bench-2"` is not split into a provider and a model, and diagnose shows the model that startup falls back to.
 
 Set `PIG_STARTUP_TRACE=1` to print the time of each startup step. See [environment variables](environment-variables.md) for the other diagnostic variables.
 

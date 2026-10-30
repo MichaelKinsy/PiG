@@ -3,7 +3,7 @@
 //
 // Every export has the declaration of @earendil-works/pi-durable: the implementations below are structurally looser (they take
 // ids as numbers and documents as plain definitions), so each is cast to its upstream type here and nowhere else. A caller sees
-// exactly pi-durable's types; `test/examples-types` compiles the 32 upstream examples against this module to prove it.
+// exactly pi-durable's types; `test/examples-types` compiles the upstream examples (at the follow pin) against this module to prove it.
 import type * as P from "@earendil-works/pi-durable"
 import { BACKGROUND_CONTEXT } from "@earendil-works/chord/context"
 import * as agent from "./agent.ts"
@@ -13,12 +13,12 @@ import * as documents from "./documents.ts"
 import * as entries from "./entries.ts"
 import { Harness as Core } from "./harness.ts"
 import { createRegistry as createHostRegistry } from "./registry.ts"
-import { watchEvents as hostWatchEvents } from "./events.ts"
-import { createLazySession } from "./session.ts"
+import { createSession as createSessionOver } from "./session/session.ts"
 import * as storage from "./storage.ts"
+import { ConversationTranscript as HostConversationTranscript } from "./transcript.ts"
 
 export type * from "@earendil-works/pi-durable"
-export { ConversationBusy, ReadAfterWrite, SessionFailed, StorageRequestError } from "../errors.ts"
+export { ConversationBusy, ReadAfterWrite, ReadOnlySession, SessionFailed, StorageRequestError } from "../errors.ts"
 export { DEFAULT_HARNESS_IDENTITY, ROOT_CONVERSATION_ID, useCore } from "./harness.ts"
 
 export const AgentDoc = agent.AgentDoc as unknown as typeof P.AgentDoc
@@ -46,6 +46,7 @@ export const UsageDoc = docs.UsageDoc as unknown as typeof P.UsageDoc
 export const defineDoc = documents.defineDoc as typeof P.defineDoc
 export const defineDocFamily = documents.defineDocFamily as typeof P.defineDocFamily
 
+export const ConversationTranscript = HostConversationTranscript as unknown as typeof P.ConversationTranscript
 export const defineEntry = entries.defineEntry as unknown as typeof P.defineEntry
 export const AssistantEntry = entries.AssistantEntry as unknown as typeof P.AssistantEntry
 export const CompactionEntry = entries.CompactionEntry as unknown as typeof P.CompactionEntry
@@ -63,10 +64,8 @@ export const Harness: typeof P.Harness = {
 }
 
 /** `createSession` opens lazily: it returns at once, as pi-durable's does, and each method waits for the core's cold open. */
-export const createSession = ((store: P.Storage) => createLazySession(store as never)) as typeof P.createSession
+export const createSession = ((store: P.Storage, options?: object) => createSessionOver(store as never, options)) as typeof P.createSession
 
 /** Storage constructors of the subpath exports (`storage/sqlite/node`, `storage/cloudflare`): a store handle for `Harness.open`. */
 export const openNodeSqliteStorage = (path: string) => Promise.resolve(storage.openNodeSqliteStorage(path) as unknown as P.Storage)
 export const openDurableObjectSqliteStorage = (durableObjectStorage: DurableObjectStorage) => storage.openDurableObjectSqliteStorage(durableObjectStorage) as unknown as P.Storage
-
-export const watchEvents = hostWatchEvents as unknown as typeof P.watchEvents

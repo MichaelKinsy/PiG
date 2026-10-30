@@ -32,7 +32,12 @@ const bound = () => {
     return {};
   };
   runtime.fireAndForget = (method) => { sent.push(method); };
-  runtime.writeSync = (method) => { sent.push(method); };
+  runtime.writeSync = (method) => {
+    sent.push(method);
+    // Pi's _startRun claims the run before a triggering send returns, except
+    // during settlement, when sendCustomMessage defers it (agent-session.ts:2344-2349).
+    if (method === "sendMessage" && runtime.activeRequest()?.event !== "agent_settled") host.idle = false;
+  };
   runtime.state.systemPrompt = "pushed prompt";
   runtime.state.systemPromptOptions = { selectedTools: ["pushed"] };
   return { runtime, host, sent };

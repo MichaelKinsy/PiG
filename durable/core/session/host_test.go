@@ -78,7 +78,9 @@ func TestLoadedReportsTheSnapshotCache(t *testing.T) {
 	}, session.TxScope{}); err != nil {
 		t.Fatal(err)
 	}
-	s.UnloadDocuments()
+	if err := s.UnloadDocuments(); err != nil {
+		t.Fatal(err)
+	}
 	if s.Loaded(def, args) {
 		t.Fatal("an unloaded document reports loaded")
 	}
@@ -181,7 +183,9 @@ func TestLoadedIsFalseForADocumentTheRunningJobLoaded(t *testing.T) {
 	}, session.TxScope{}); err != nil {
 		t.Fatal(err)
 	}
-	s.UnloadDocuments()
+	if err := s.UnloadDocuments(); err != nil {
+		t.Fatal(err)
+	}
 	loop := &session.Loop{Session: s}
 	var during, after bool
 	loop.Line(func() error {

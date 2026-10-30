@@ -17,16 +17,14 @@ const Notes = defineDoc({ kind: "example.notes", checkpointWhen: () => false, ve
  * A core that answers watch.open with `first` and replays `frames` (published notices) when the test sends a `registry` event
  * (the test's way of making the core publish). `sameStep` publishes the frames in the answer's own step.
  */
-function watching(first: unknown, options: { sameStep?: { value: unknown; ops: unknown[] }[]; frames?: (watchId: number) => Notice[]; completing?: number[]; attached?: number[] } = {}) {
+function watching(first: unknown, options: { sameStep?: { value: unknown; ops: unknown[] }[]; frames?: (watchId: number) => Notice[] } = {}) {
   let watchId = 0
   const core = new ScriptedCore((ev: Seen) => {
     if (ev.kind === EVENT.api && ev.body.op === "watch.open") {
       watchId = ev.body.watchId
       const frames = (options.sameStep ?? []).map(f => published({ watchId, frame: f }))
-      return { notices: [apiResult(ev.id!, { ok: { value: first, ...(ev.body.target.completing ? { completing: options.completing ?? [] } : {}) } }), ...frames] }
+      return { notices: [apiResult(ev.id!, { ok: { value: first } }), ...frames] }
     }
-    // An observer joining a mounted view is a line job of its own: the answer carries the completing generations it read.
-    if (ev.kind === EVENT.api && ev.body.op === "view.attach") return { notices: [apiResult(ev.id!, { ok: ev.body.completing ? { completing: options.attached ?? [] } : {} })] }
     if (ev.kind === EVENT.api && ev.body.op === "watch.close") return { notices: [apiResult(ev.id!, { ok: null })] }
     if (ev.kind === EVENT.registry) return { notices: options.frames?.(watchId) ?? [] }
     return undefined
@@ -195,9 +193,9 @@ test("the task graph watch and a conversation's view watch name their targets", 
   const viewCore = watching({ messages: [] })
   const h2 = await open(viewCore)
   await (h2 as any).conversationState(7, context)
-  await (h2 as any).watchConversation(7, context)
+  await (h2 as any).watchConversation(7, context, { min: 10, max: 20, from: 5 })
   assert.deepEqual(apis(core).map(e => e.body.target), [{ kind: "graph" }], "the state and the watch of the graph share its mount")
-  assert.deepEqual(viewOpens(viewCore).map(e => e.body.target), [{ kind: "view", conversationId: 7, changes: true }], "the state and the watch of one conversation share its mount, opened with the commit's records for an event stream")
+  assert.deepEqual(viewOpens(viewCore).map(e => e.body.target), [{ kind: "view", conversationId: 7 }, { kind: "view", conversationId: 7, window: { min: 10, max: 20, from: 5 } }], "each observer of a conversation's view opens its own watch, with its own window")
 })
 
 test("a rejected watch.open surfaces the core's error and leaves no watch behind", async () => {
@@ -206,29 +204,26 @@ test("a rejected watch.open surfaces the core's error and leaves no watch behind
   await assert.rejects(h.watchDoc(Notes, context), /no such document/)
 })
 
-test("a view frame carries ops only: the host applies them to the value it holds and hands the commit's records to an observer", async () => {
-  const first = { conversation: { id: 1 }, entries: [{ id: 3, kind: "a" }], docs: { "pi.live": {} } }
-  const changes = { entries: [{ id: 4, kind: "b" }], tasks: [], submissions: [] }
+test("a view frame carries ops only: the host applies them to the value it holds, a set of `before` included", async () => {
+  const first = { conversation: { id: 1 }, entries: [{ id: 3, kind: "a" }, { id: 4, kind: "b" }], docs: { "pi.live": {} } }
   const core = watching(first, { frames: id => [
-    published({ watchId: id, frame: { ops: [["s", ["docs", "pi.live", "run"], { taskId: 9 }], ["p", ["entries"], 1, 0, [{ id: 4, kind: "b" }]]], changes } }),
-    published({ watchId: id, frame: { ops: [], changes: { entries: [], tasks: [{ id: 7 }], submissions: [] } } }),
+    published({ watchId: id, frame: { ops: [["s", ["docs", "pi.live", "run"], { taskId: 9 }], ["p", ["entries"], 2, 0, [{ id: 5, kind: "c" }]]] } }),
+    published({ watchId: id, frame: { ops: [["p", ["entries"], 3, 0, [{ id: 6, kind: "d" }]], ["p", ["entries"], 0, 2, []], ["s", ["before"], 4]] } }),
   ] })
   const h = await open(core)
   const seen: any[] = []
-  const sink = await (h as any).watches.attach({ kind: "view", conversationId: 1, changes: true }, context, (value: unknown, release: () => void) => ({
-    advance: ({ value: after, ops }: { value: unknown; ops: unknown[] }) => seen.push(["advance", after, ops]),
-    publication: (before: unknown, after: unknown, ops: unknown[], c: unknown) => seen.push(["publication", before, after, ops.length, c]),
+  const sink = await (h as any).watches.attach({ kind: "view", conversationId: 1, window: { min: 2, max: 3 } }, context, (value: unknown, release: () => void) => ({
+    advance: ({ value: after, ops }: { value: unknown; ops: unknown[] }) => seen.push([after, ops.length]),
     end: release,
   }))
   assert.ok(sink)
-  assert.deepEqual(apis(core)[0]!.body.target, { kind: "view", conversationId: 1, changes: true }, "the open request asks for the commit's records")
+  assert.deepEqual(apis(core)[0]!.body.target, { kind: "view", conversationId: 1, window: { min: 2, max: 3 } }, "the open request names the observer's window")
   pump(h)
   await tick()
-  const after = { conversation: { id: 1 }, entries: [{ id: 3, kind: "a" }, { id: 4, kind: "b" }], docs: { "pi.live": { run: { taskId: 9 } } } }
-  assert.deepEqual(seen[0], ["advance", after, [["s", ["docs", "pi.live", "run"], { taskId: 9 }], ["p", ["entries"], 1, 0, [{ id: 4, kind: "b" }]]]])
-  assert.deepEqual(seen[1], ["publication", first, after, 2, changes])
-  assert.equal(seen.length, 3, "a frame without ops reaches publication only")
-  assert.deepEqual(seen[2], ["publication", after, after, 0, { entries: [], tasks: [{ id: 7 }], submissions: [] }])
+  assert.deepEqual(seen, [
+    [{ conversation: { id: 1 }, entries: [{ id: 3, kind: "a" }, { id: 4, kind: "b" }, { id: 5, kind: "c" }], docs: { "pi.live": { run: { taskId: 9 } } } }, 2],
+    [{ conversation: { id: 1 }, entries: [{ id: 5, kind: "c" }, { id: 6, kind: "d" }], before: 4, docs: { "pi.live": { run: { taskId: 9 } } } }, 3],
+  ])
 })
 
 // The core publishes a graph frame as {ops} alone (core/graph.go publishGraph): serializing the whole graph per commit made a task commit cost O(live tasks).
@@ -256,43 +251,21 @@ test("a graph frame carries ops only: the host applies them to the graph it hold
   ])
 })
 
-// view.ts advance: one mount per conversation hands every observer the new revision, then every observer the publication. A view state
-// and an event stream of one conversation were two mounts (two core watches) and heard a commit in core notice order instead (the
-// differential rows F-*, seed 2).
-test("a view state and event observers of one conversation share one core watch; a frame advances every observer before any publication", async () => {
-  const first = { conversation: { id: 1 }, entries: [], docs: {} }
-  const core = watching(first, { frames: id => [published({ watchId: id, frame: { ops: [["p", ["entries"], 0, 0, [{ id: 4, kind: "b" }]]], changes: { entries: [{ id: 4, kind: "b" }], tasks: [], submissions: [] } } })] })
-  const h = await open(core)
-  const order: string[] = []
-  const observer = (name: string) => (_value: unknown, release: () => void) => ({ advance: () => order.push(`${name} advance`), publication: () => order.push(`${name} publication`), end: release })
-  await (h as any).attachView(1, context, observer("a"))
-  const state = await (h as any).conversationState(1, context)
-  await (h as any).attachView(1, context, observer("b"))
-  assert.ok(state)
-  assert.equal(apis(core).filter(e => e.body.op === "watch.open").length, 1, "one core watch serves the state and both observers")
-  pump(h)
-  await tick()
-  assert.deepEqual(order, ["a advance", "b advance", "a publication", "b publication"])
-})
-
 const viewOpens = (core: ScriptedCore) => apis(core).filter(e => e.body.op === "watch.open" && e.body.target.kind === "view")
 
-test("observers of one conversation's view share one mount: one watch.open, one value object, closed with the last observer", async () => {
+// view.ts: each observer has its own window over the entries, which the core keeps per watch: observers of one conversation's view do
+// not share a mount, and each core watch is closed with its observer.
+test("observers of one conversation's view each open and close a watch of their own", async () => {
   const core = watching({ conversation: { id: 1 }, entries: [], docs: {} })
   const h = await open(core)
   const [first, second] = await Promise.all([(h as any).conversationState(1, context), (h as any).conversationState(1, context)]) as any[]
-  assert.equal(viewOpens(core).length, 1)
-  assert.ok(first.value === second.value, "both observers hold the same revision object")
+  assert.equal(viewOpens(core).length, 2)
   first.dispose()
   await tick()
-  assert.equal(closes(core).length, 0, "an observer is left")
+  assert.deepEqual(closes(core).map(e => e.body.watchId), [viewOpens(core)[0]!.body.watchId], "the first observer's watch closes with it")
   second.dispose()
   await tick()
-  assert.equal(closes(core).length, 1)
-  assert.equal(closes(core)[0]!.body.watchId, viewOpens(core)[0]!.body.watchId)
-  const again = await (h as any).conversationState(1, context)
-  assert.equal(viewOpens(core).length, 2, "a new mount after the last observer detached")
-  again!.dispose()
+  assert.deepEqual(closes(core).map(e => e.body.watchId), viewOpens(core).map(e => e.body.watchId))
 })
 
 /** A core that answers watch.open only when the test pumps it (a registry event), as one does when the Session line is held. */
@@ -347,132 +320,4 @@ test("observers of the task graph share one mount and one value object, closed w
   assert.equal(closes(core).length, 0)
   await second.stop(); await tick()
   assert.equal(closes(core).length, 1)
-})
-
-// view.ts attach / events.ts watchEvents: the generations in `completing` are read on the line job that attaches the observer, with the
-// mount's build for the first observer (watch.open answers them) and in the observer's own job for one that joins (view.attach).
-test("watchEvents' completing generations come from the core's line job: watch.open for the mount's first observer, view.attach for a joined one", async () => {
-  const core = watching({ conversation: { id: 1 }, entries: [], docs: {} }, { completing: [5], attached: [6] })
-  const h = await open(core)
-  const seen: (readonly number[] | undefined)[] = []
-  const make = (_value: unknown, release: () => void, completing?: readonly number[]) => { seen.push(completing); return { advance: () => {}, end: release } }
-  await (h as any).attachView(1, context, make)
-  await (h as any).attachView(1, context, make)
-  assert.deepEqual(seen, [[5], [6]])
-  assert.deepEqual(viewOpens(core).map(e => e.body.target.completing), [true], "the mount is opened once, asking for the generations")
-  assert.deepEqual(apis(core).filter(e => e.body.op === "view.attach").map(e => e.body), [{ op: "view.attach", conversationId: 1, completing: true }])
-})
-
-test("a state joining a mounted view attaches through the core without asking for generations", async () => {
-  const core = watching({ conversation: { id: 1 }, entries: [], docs: {} })
-  const h = await open(core)
-  const first = await (h as any).conversationState(1, context)
-  const second = await (h as any).conversationState(1, context)
-  assert.equal(viewOpens(core).length, 1)
-  assert.deepEqual(apis(core).filter(e => e.body.op === "view.attach").map(e => e.body.completing), [false])
-  first.dispose()
-  second.dispose()
-})
-
-// The joined observer's job is queued when the observer asks, behind the job that builds the mount (a Session line keeps its order), not
-// when the mount's answer reaches the host (F-gate-3: the event stream attached after the first commit).
-test("an observer joining a mount still being built asks the core to attach it before the mount's answer", async () => {
-  const late: Notice[] = []
-  const order: string[] = []
-  const core = new ScriptedCore((ev: Seen) => {
-    if (ev.kind === EVENT.api && ev.body.op === "watch.open") { order.push("open"); late.push(apiResult(ev.id!, { ok: { value: { n: 1 } } })); return undefined }
-    if (ev.kind === EVENT.api && ev.body.op === "view.attach") { order.push("attach"); late.push(apiResult(ev.id!, { ok: {} })); return undefined }
-    if (ev.kind === EVENT.registry) { order.push("answers"); return { notices: late.splice(0) } }
-    return undefined
-  })
-  const h = await open(core)
-  const states = Promise.all([(h as any).conversationState(1, context), (h as any).conversationState(1, context)])
-  await tick()
-  assert.deepEqual(order, ["open", "attach"], "both jobs are asked before either answers")
-  pump(h)
-  const [first, second] = await states as any[]
-  first.dispose()
-  second.dispose()
-})
-
-// A view's creator that gives up leaves the frames of its answer's step to the observer that joined it. That observer waits for its own
-// line job (view.attach), and commits between the two jobs publish meanwhile: it must start from the committed value at its job, with
-// the answer's step applied first and once (view.ts attach builds or finds the mount on the line).
-async function joinedAfterTheCreatorGaveUp(abortAfterAnswer: boolean) {
-  const held: Notice[] = []
-  let watchId = 0
-  const core = new ScriptedCore((ev: Seen) => {
-    if (ev.kind === EVENT.api && ev.body.op === "watch.open") {
-      watchId = ev.body.watchId
-      held.push(apiResult(ev.id!, { ok: { value: { n: 1 } } }), published({ watchId, frame: { ops: [["r", { n: 1.5 }]] } }))
-      return undefined
-    }
-    if (ev.kind === EVENT.api && ev.body.op === "view.attach") { held.push(apiResult(ev.id!, { ok: {} })); return undefined }
-    if (ev.kind === EVENT.api && ev.body.op === "watch.close") return { notices: [apiResult(ev.id!, { ok: null })] }
-    if (ev.kind === EVENT.registry) return { notices: held.splice(0, ev.body.n ?? held.length) }
-    return undefined
-  })
-  const h = await open(core)
-  const send = (n?: number) => (h as any).host.sendJSON(EVENT.registry, n === undefined ? {} : { n })
-  const controller = new AbortController()
-  const creator = (h as any).conversationState(1, { ...context, abortSignal: controller.signal })
-  creator.catch(() => {})
-  const joiner = (h as any).watchConversation(1, context)
-  await tick()
-  if (!abortAfterAnswer) controller.abort(new Error("cancelled"))
-  send(2) // the build job's answer and a frame of its step
-  if (abortAfterAnswer) controller.abort(new Error("cancelled"))
-  await assert.rejects(creator, /cancelled/)
-  await tick()
-  held.unshift(published({ watchId, frame: { ops: [["r", { n: 2 }]] } }))
-  send(1); await tick() // a commit between the two jobs
-  send(); await tick() // the joiner's job answers
-  const watch = await joiner
-  const seen: unknown[] = [watch.value]
-  watch.start(async ({ value }: { value: unknown }) => { seen.push(value) })
-  await tick(); await tick()
-  return seen
-}
-
-test("an observer joining a view whose creator gave up before the answer starts from the value at its own job", async () => {
-  assert.deepEqual(await joinedAfterTheCreatorGaveUp(false), [{ n: 2 }])
-})
-
-test("an observer joining a view whose creator gave up as the answer arrived starts from the value at its own job", async () => {
-  assert.deepEqual(await joinedAfterTheCreatorGaveUp(true), [{ n: 2 }])
-})
-
-test("a view's creator takes the frames of its answer's step while an observer joins it; the joiner starts from the value at its own job", async () => {
-  const held: Notice[] = []
-  let watchId = 0
-  const core = new ScriptedCore((ev: Seen) => {
-    if (ev.kind === EVENT.api && ev.body.op === "watch.open") {
-      watchId = ev.body.watchId
-      held.push(apiResult(ev.id!, { ok: { value: { n: 1 } } }), published({ watchId, frame: { ops: [["r", { n: 1.5 }]] } }))
-      return undefined
-    }
-    if (ev.kind === EVENT.api && ev.body.op === "view.attach") { held.push(apiResult(ev.id!, { ok: {} })); return undefined }
-    if (ev.kind === EVENT.api && ev.body.op === "watch.close") return { notices: [apiResult(ev.id!, { ok: null })] }
-    if (ev.kind === EVENT.registry) return { notices: held.splice(0, ev.body.n ?? held.length) }
-    return undefined
-  })
-  const h = await open(core)
-  const send = (n?: number) => (h as any).host.sendJSON(EVENT.registry, n === undefined ? {} : { n })
-  // A cancellable creator resumes a tick after the shared answer, behind the joiner's continuation.
-  const creator = (h as any).watchConversation(1, { ...context, abortSignal: new AbortController().signal })
-  const joiner = (h as any).watchConversation(1, context)
-  await tick()
-  send(2); await tick()
-  const first = await creator
-  const seenFirst: unknown[] = [first.value]
-  first.start(async ({ value }: { value: unknown }) => { seenFirst.push(value) })
-  held.unshift(published({ watchId, frame: { ops: [["r", { n: 2 }]] } }))
-  send(1); await tick()
-  send(); await tick()
-  const second = await joiner
-  const seenSecond: unknown[] = [second.value]
-  second.start(async ({ value }: { value: unknown }) => { seenSecond.push(value) })
-  await tick(); await tick()
-  assert.deepEqual(seenFirst, [{ n: 1 }, { n: 2 }], "the frames that arrive while the listener is not running fold into one call")
-  assert.deepEqual(seenSecond, [{ n: 2 }])
 })

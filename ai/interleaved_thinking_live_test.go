@@ -14,7 +14,7 @@ func TestInterleavedThinkingLiveUpstream(t *testing.T) {
 			if tc.provider == "amazon-bedrock" {
 				// .upstream/v0.87.1/packages/ai/test/bedrock-utils.ts:13
 				requireBedrockLiveCredentials(t)
-				p = NewBedrockProvider(tc.id, "")
+				p = NewBedrockTestProvider(tc.id, "", "")
 			} else {
 				key := liveProviderKey(t, tc.provider)
 				model := mustGeneratedModel(t, tc.provider, tc.id)

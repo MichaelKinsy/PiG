@@ -16,6 +16,7 @@ import (
 	durableenv "github.com/MichaelKinsy/PiG/durable/env"
 
 	"github.com/MichaelKinsy/PiG/internal/nodeerrno"
+	"github.com/MichaelKinsy/PiG/internal/nodefs"
 )
 
 // pig divergence (D96): the Go daemon takes its target system from the build instead of Rust's cfg!.
@@ -109,7 +110,7 @@ func mkdir(path string, recursive bool) (Object, *Failure) {
 // openWrite opens a file in one of Node's write modes. Windows reports a directory in the way as access denied,
 // where libuv reports EISDIR.
 func openWrite(path string, flags int) (*os.File, error) {
-	file, err := os.OpenFile(path, flags, 0o666)
+	file, err := nodefs.OpenFile(path, flags, 0o666)
 	if err != nil && windowsOS && errorCode(err) != "EISDIR" {
 		if stats, statErr := os.Stat(path); statErr == nil && stats.IsDir() {
 			return nil, synthetic("EISDIR")

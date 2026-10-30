@@ -1,6 +1,10 @@
 # Durable core conformance gate
 
-The gate every lane of the Durable core uses ([CONTRACT.md](../../docs/plan/durable-core/CONTRACT.md) sections 5-7). It runs the corpus (E00-E31, U, SC, I, W1-W4, X1, H) against pi-durable at the pinned reference commit (`PIN`, Pi 1.2.0 `06a46693`, which writes task `startedAt`/`endedAt` and message `durationMs`) and against a candidate, and compares the two at the store, commit, context, output and order levels (order: the scenario's API calls and the commits in one sequence, CONTRACT 5.8). One Pi commit is one row of `commit` lines, so a difference names the first divergent commit seq, the table, the column and whether the text differs in value, key order or number format.
+The gate every lane of the Durable core uses ([CONTRACT.md](../../docs/plan/durable-core/CONTRACT.md) sections 5-7). It runs the corpus (E00-E31, U, SC, I, W1-W4, X1, H) against pi-durable at the pinned reference commit (`PIN` `main`, Pi 1.4.0 `b3a29f11`, the commit PiG pins) and against a candidate, and compares the two at the store, commit, context, output and order levels (order: the scenario's API calls and the commits in one sequence, CONTRACT 5.8). One Pi commit is one row of `commit` lines, so a difference names the first divergent commit seq, the table, the column and whether the text differs in value, key order or number format.
+
+## References
+
+`PIN` names the reference: `main` is Pi 1.4.0 `b3a29f11` (the commit PiG pins), the reference of every E, U, SC, I, W, X, H and F row (the tick rows F-ticks-*, F-split-* and `tools/gen-hopticks.mjs` included); the candidate runs over the same checkout. `release` names v1.0.4, whose stores the R rows read.
 
 ## Run it
 
@@ -36,7 +40,7 @@ A row is `pass`, `fail`, `pending` (the implementation cannot run it yet, with t
 | inject | `lib/inject.mjs` | unknown-field injection (X1): entry, `pi.usage` and `pi.live` bases at rest; live task, state, checkpoint, input and submission at the crash |
 | gate | `lib/gate.mjs`, `cli/contract.mjs` | runs rows, memoises the reference captures, summarises per lane |
 
-Every scenario runs in its own process with `HOME` and `TMPDIR` set to one fixed directory per scenario (`<tmp>/pig-contract/<id>`, serialised by a lock), so a path a scenario stores is the same for every implementation. A run always starts from an empty store directory.
+Every scenario runs in its own process with `HOME` and `TMPDIR` set to one fixed directory per scenario (`<tmp>/pig-contract/<id>`, serialised by a lock), so a path a scenario stores is the same for every implementation. A run always starts from an empty store directory. The scenarios' working directory is the reference's `packages/durable`, which E17 and E18 list with `ls`, so no run writes the reference checkout: a U row's vitest keeps its cache (`CONTRACT_VITEST_CACHE`, `cacheDir`) in the run's output directory, where its default, `packages/durable/node_modules/.vite`, made the first U row add `node_modules` to that listing and `contract all` (which captures the reference once, in its first pass) failed E17 and E18 on every fresh clone.
 
 ### Trace format
 
@@ -105,6 +109,14 @@ A facade candidate also names `wasm` (the core module its build produces, passed
 ## Real-time tests (`real_time_tests`)
 
 A U row may name tests whose assertion depends on a real-time window the reference shares, for example a test that sleeps 20 ms inside the 100 ms output throttle window. A process stall longer than the window fails such a test in the reference as well as in the candidate. When the candidate fails only tests named in `real_time_tests`, the row reruns the file once and passes only if those tests pass the second time. The row's detail then says `retried once`. A second failure fails the row. Add a test to the list only after measuring that the reference fails it at the same stall.
+
+## Exclusive rows (`exclusive`)
+
+A U row whose upstream test asserts inside a real-time window that the run itself has to fill carries `exclusive = true` (`U-codemode`, `U-harness-tools`). `U-codemode`'s `times a script out across a restart` gives a script 300 ms to start the QuickJS sandbox and reach its first tool call, which costs the reference 150-230 ms of CPU; a process the host gives under about 65% of a CPU in that stretch misses the window, and the test then hangs until vitest's 5 s limit. The gate's own load did that: its rows run `-j 8`, each U row with two vitest runs of four forks, so a full run starved either side (of six full runs at `-j 8` the candidate missed the window in four and the reference in one). The gate therefore runs an exclusive row alone, before any other row starts (`runRows`), and its reference run and candidate run one after the other, the reference first (`runVitestRow`). Nothing is retried and nothing is excused: a window the reference misses is still a failure of that run and is named, a window only the candidate misses fails the row. `test/exclusive.test.mjs` fixes the order with stand-in rows, no clock involved. Mark a row only after probing that the test's window binds the reference too, and keep the real-time work out of the other rows.
+
+## Measured divergences (`measured_test`, `measured_failure`, `measured_divergence`)
+
+A U row may state the measured value of an approved divergence in a test of the reference's own file. `measured_test` names the test (a prefix of its full name), `measured_failure` the text the candidate's failure carries, and `measured_divergence` the divergence whose record (`docs/parity/divergences/D<N>.md`, `SCRUTINIZED:approved`) the corpus check requires. The row passes only when the candidate fails that test with that failure: a pass fails the row (the divergence is over; delete the fields and the record), and any other failure fails it like every other test. The control never takes it. `U-harness-restart-failure` carries D206: Pi's test counts 49 reads of `extensions` for a round, and the core's host reads them 6 times (`expected 6 to be 49`).
 
 ## Count budgets (`cli/counts.mjs`)
 

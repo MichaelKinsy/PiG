@@ -84,6 +84,8 @@ export class Capture {
 		countWrite()
 		if (!this.session) { if (params.length) return Number(this.#prepare(text).run(...params).changes); this.db.exec(text); return 0 }
 		this.stmts.push({ q: this.#q(text), k: "w", p: params.map(plain) })
+		// The core's migration of an older store runs its DROP and ALTER as recorded writes (exec() below sets the flag for a host that execs them).
+		if (/^\s*(DROP|ALTER)\b/i.test(text)) this.schemaChanged = true
 		if (params.length) return Number(this.#prepare(text).run(...params).changes)
 		this.db.exec(text)
 		return 0
@@ -101,10 +103,17 @@ export class Capture {
 		countRead(rows.length)
 		return rows
 	}
-	exec(text) { this.db.exec(text) }
+	exec(text) {
+		// A DROP or ALTER of a table the session watches (the schema migration of a store an older release wrote) makes changeset() fail.
+		if (this.session && /^\s*(DROP|ALTER)\b/i.test(text)) this.schemaChanged = true
+		this.db.exec(text)
+	}
 
 	commit() {
-		const changes = canonicalOrder(decodeChangeset(new Uint8Array(this.session.changeset())).filter(c => !EXCLUDED.test(c.table)))
+		// A migration that drops a table the session already watches (a store an older release wrote) has no changeset and is not a Pi commit.
+		let changes
+		try { changes = canonicalOrder(decodeChangeset(new Uint8Array(this.session.changeset())).filter(c => !EXCLUDED.test(c.table))) } catch (error) { if (!this.schemaChanged) throw error; changes = [] }
+		this.schemaChanged = false
 		this.session.close()
 		this.session = undefined
 		this.db.exec("COMMIT")
@@ -127,7 +136,7 @@ export class Capture {
 		this.cols ??= this.db.prepare("PRAGMA table_info(durable_metadata)").all().map(c => c.name)
 		return row[this.cols.indexOf("next_seq")]
 	}
-	rollback() { this.session?.close(); this.session = undefined; this.db.exec("ROLLBACK"); this.stmts = [] }
+	rollback() { this.session?.close(); this.session = undefined; this.schemaChanged = false; this.db.exec("ROLLBACK"); this.stmts = [] }
 
 	/** Per-table digests of the Pi tables, in rowid order (the `final` line of the trace). */
 	digests() {

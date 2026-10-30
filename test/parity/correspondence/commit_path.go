@@ -15,6 +15,7 @@ func resolveCommitPath(ctx context.Context, root, commit, currentPrefix, relativ
 	candidates := prefixCandidates(currentPrefix)
 	for _, candidate := range candidates {
 		object := commit + ":" + candidate + relativePath
+		//nolint:gosec // G204 (class a): program is literal git; object is a validated commit (snapshot TargetCommit/UpstreamCommit) plus ":" plus a repo path.
 		command := exec.CommandContext(ctx, "git", "cat-file", "-e", object)
 		command.Dir = root
 		if command.Run() == nil {

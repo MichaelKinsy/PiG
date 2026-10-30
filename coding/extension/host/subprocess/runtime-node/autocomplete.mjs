@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { AsyncLocalStorage } from "node:async_hooks";
 
 // A packed Node cell can pass a captured provider directly between its members, without blocking one member's socket pump on another member's JavaScript callback.
 const localProviders = new Map();
@@ -7,6 +8,13 @@ const currentLeases = new FinalizationRegistry(({ owner, id }) => {
   if (!runtime?.conn || runtime.conn.closed) return;
   try { runtime.notify("ui.autocomplete.release", { id }); } catch { /* Connection close releases its captured providers. */ }
 });
+
+// the request a provider chain is serving. Pi's editor awaits the chain in the Promise jobs after the terminal read (editor.ts
+// startAutocompleteRequest), so a chain that settles in that microtask checkpoint has opened its menu before the next read. The host holds
+// the next read for such a chain and lets go when the runtime reports that the chain left the checkpoint: at the end of this
+// runtime's macrotask the chain is neither settled nor waiting for the host's answer to a captured provider's call. The store is shared by the
+// members of a packed cell, whose providers call each other directly.
+const settling = new AsyncLocalStorage();
 
 export class AutocompleteRuntime {
   constructor(runtime) {
@@ -41,9 +49,14 @@ export class AutocompleteRuntime {
         const queryId = randomUUID();
         const abort = () => this.runtime.fireAndForget("ui.autocomplete.cancel", { queryId });
         options.signal.addEventListener("abort", abort, { once: true });
-        try { return await invoke("getSuggestions", { queryId, lines, cursorLine, cursorCol, force: options.force ?? false }, false); }
+        const request = settling.getStore();
+        if (request) request.hostCalls++;
+        try { return await invoke("getSuggestions", { queryId, lines, cursorLine, cursorCol, force: options.force ?? false, ...(request ? { suggestRequestId: request.id } : {}) }, false); }
         catch (error) { if (options.signal.aborted) return null; throw error; }
-        finally { options.signal.removeEventListener("abort", abort); }
+        finally {
+          options.signal.removeEventListener("abort", abort);
+          if (request) { request.hostCalls--; request.checkpoint(); }
+        }
       },
       applyCompletion: (lines, cursorLine, cursorCol, item, prefix) => invoke("applyCompletion", { lines, cursorLine, cursorCol, item, prefix }, true),
     };
@@ -74,11 +87,27 @@ export class AutocompleteRuntime {
     throw new Error(`Unknown autocomplete operation: ${args.operation}`);
   }
 
-  async suggest(args, signal) {
+  async suggest(args, signal, requestId) {
     const provider = this.providers.get(args.id);
     if (!provider) throw new Error("Autocomplete provider is no longer available");
     signal.throwIfAborted();
-    return await provider.getSuggestions(args.lines, args.cursorLine, args.cursorCol, { signal, force: args.force });
+    const request = {
+      id: requestId,
+      hostCalls: 0,
+      settled: false,
+      announced: false,
+      // The chain awaits real I/O when a macrotask ends with it unsettled and not waiting for the host.
+      checkpoint: () => setImmediate(() => {
+        if (request.settled || request.announced || request.hostCalls > 0) return;
+        request.announced = true;
+        try { this.runtime.notify("ui.autocomplete.pending", { requestId }); } catch { /* A closed connection drops the request. */ }
+      }),
+    };
+    return await settling.run(request, async () => {
+      request.checkpoint();
+      try { return await provider.getSuggestions(args.lines, args.cursorLine, args.cursorCol, { signal, force: args.force }); }
+      finally { request.settled = true; }
+    });
   }
 
   release(id) {

@@ -80,6 +80,14 @@ var publishedAgentPins = agentPins{
 // is a launcher whose bytes equal the release's; its chunks differ. A pin bump to a commit adds its entry
 // (TestCommittedPinHasAgentPins).
 var sourceAgentPins = map[string]agentPins{
+	"b3a29f1111114fac696e2cfcd65acdb382a6ed5e": {
+		files: map[string]string{
+			"pi-agent/package.json":      "6a649aef6e7fa11cb4904c07b7daf57a8d40409cf3f1708e12ee144d4bdbe624",
+			"pi-agent/package-lock.json": "d026b90e696c79ba2248ad16e2ccde0ee8fbd3111d70f1ae92aa5b818b8fe1f0",
+			piAgentCLI:                   "e79626f2dd6f94aa45d30f3fa63cd84319a6eefcd150b353cfaf274366926774",
+		},
+		tree: "910ded60a80e724b425b048f5d565e45632b6df2bd7a29ce71e77a283e7dde55",
+	},
 	"6c384aa30f619d7b28963f2bab24d8dacbe73cb6": {
 		files: map[string]string{
 			"pi-agent/package.json":      "6a649aef6e7fa11cb4904c07b7daf57a8d40409cf3f1708e12ee144d4bdbe624",
@@ -1001,6 +1009,7 @@ func writeArtifactList(dir string) error {
 
 // output runs a command in dir with extra environment and returns its trimmed stdout; a failure carries its stderr.
 func output(ctx context.Context, dir string, env []string, name string, args ...string) (string, error) {
+	//nolint:gosec // G204 (class a): generic output helper whose names are literals from its callers (git, go, npm, node, sh, goBuildSteps step[0]), and the TinyGo path that exec.LookPath resolves.
 	cmd := exec.CommandContext(ctx, name, args...)
 	cmd.Dir = dir
 	if env != nil {

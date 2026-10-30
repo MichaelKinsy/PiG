@@ -32,6 +32,10 @@ type textSDK struct {
 	notifySink []*regexp.Regexp
 	// python bodies end by indentation, the others at the closing brace.
 	python bool
+	// wrapperFiles says a file that defines its own function of a sender's name without a method parameter calls that function, not the sender: TuiAltScreen's
+	// `_call(op, ...)` in Python and `call(&self, op, ...)` in Rust each wrap one `tui.alt` call, so their calls name ops of it and the file names no wire
+	// method. Node sets it false: its `transport.call(...)` shares its name with a member of another object in its file.
+	wrapperFiles bool
 }
 
 func readSourceTree(t *testing.T, rel, suffix string) []sourceFile {
@@ -110,19 +114,21 @@ func sdkSources(t *testing.T) []*textSDK {
 			notifySink: []*regexp.Regexp{regexp.MustCompile(`type:\s*"notify",\s*notify:\s*\{\s*method\b`)},
 		},
 		{
-			name:       "py",
-			files:      readSourceTree(t, "extensions/sdk-py/pig_sdk", ".py"),
-			def:        regexp.MustCompile(`(?m)^[ \t]*def[ \t]+(\w+)\(([^)]*)\)`),
-			sink:       []*regexp.Regexp{regexp.MustCompile(`"type":\s*"call"`), regexp.MustCompile(`\{"method":\s*method\b`)},
-			notifySink: []*regexp.Regexp{regexp.MustCompile(`"type":\s*"notify",\s*"notify":\s*\{"method":\s*method\b`)},
-			python:     true,
+			name:         "py",
+			files:        readSourceTree(t, "extensions/sdk-py/pig_sdk", ".py"),
+			def:          regexp.MustCompile(`(?m)^[ \t]*def[ \t]+(\w+)\(([^)]*)\)`),
+			sink:         []*regexp.Regexp{regexp.MustCompile(`"type":\s*"call"`), regexp.MustCompile(`\{"method":\s*method\b`)},
+			notifySink:   []*regexp.Regexp{regexp.MustCompile(`"type":\s*"notify",\s*"notify":\s*\{"method":\s*method\b`)},
+			python:       true,
+			wrapperFiles: true,
 		},
 		{
-			name:       "rust",
-			files:      readSourceTree(t, "extensions/sdk-rs/src", ".rs"),
-			def:        regexp.MustCompile(`(?m)^[ \t]*(?:pub(?:\([^)]*\))?[ \t]+)?fn[ \t]+(\w+)(?:<[^>]*>)?\(([^)]*)\)`),
-			sink:       []*regexp.Regexp{regexp.MustCompile(`Call\s*\{\s*method\b`)},
-			notifySink: []*regexp.Regexp{regexp.MustCompile(`msg_type:\s*"notify"`), regexp.MustCompile(`\bmethod(?::\s*method\b|,)`)},
+			name:         "rust",
+			files:        readSourceTree(t, "extensions/sdk-rs/src", ".rs"),
+			def:          regexp.MustCompile(`(?m)^[ \t]*(?:pub(?:\([^)]*\))?[ \t]+)?fn[ \t]+(\w+)(?:<[^>]*>)?\(([^)]*)\)`),
+			sink:         []*regexp.Regexp{regexp.MustCompile(`Call\s*\{\s*method\b`)},
+			notifySink:   []*regexp.Regexp{regexp.MustCompile(`msg_type:\s*"notify"`), regexp.MustCompile(`\bmethod(?::\s*method\b|,)`)},
+			wrapperFiles: true,
 		},
 	}
 }
@@ -270,10 +276,19 @@ func (s *textSDK) sentFrames(sink []*regexp.Regexp) methodSet {
 			}
 		}
 	}
+	shadowed := map[[2]string]bool{}
+	for _, fn := range fns {
+		if _, sender := senders[fn.name]; sender && s.wrapperFiles && !slices.Contains(fn.params, "method") {
+			shadowed[[2]string{fn.file.path, fn.name}] = true
+		}
+	}
 	sent := methodSet{}
 	for i := range s.files {
 		file := &s.files[i]
 		for name, at := range senders {
+			if shadowed[[2]string{file.path, name}] {
+				continue
+			}
 			calls, offsets := callArgs(file.text, name)
 			for j, args := range calls {
 				if at < len(args) {
@@ -382,5 +397,22 @@ func TestStripRustTestsKeepsProductionAfterATestModule(t *testing.T) {
 	}
 	if !strings.Contains(got, "fn a()") || !strings.Contains(got, "fn b()") || !strings.Contains(got, "const C") || strings.Contains(got, "send(") || strings.Contains(got, "fn u()") {
 		t.Fatalf("stripRustTests = %q", got)
+	}
+}
+
+// A Python or Rust file that wraps one wire call in its own function of a sender's name (TuiAltScreen's `_call(op, ...)` sends `tui.alt`) names no wire
+// method with it: its `_call("addChild")` is an op of that call, while the same name with a method parameter in another file sends the method it is given.
+func TestLocalWrapperCallsNameNoWireMethod(t *testing.T) {
+	py := *sdkSources(t)[1]
+	py.files = []sourceFile{
+		{path: "pig_sdk/extension.py", text: "class Extension:\n    def _call(self, method, params=None):\n        return {\"type\": \"call\", \"call\": {\"method\": method, \"params\": params}}\n\n    def setup(self):\n        self._call(\"setLabel\")\n"},
+		{path: "pig_sdk/screen.py", text: "class Screen:\n    def _call(self, op, fields=None):\n        return self._extension._call(\"tui.alt\", {\"op\": op})\n\n    def add(self):\n        self._call(\"addChild\")\n"},
+	}
+	got := py.sentMethods()
+	if !got.has("setLabel") {
+		t.Errorf("sent methods = %v, want setLabel, which the other file's sender is given", got.sorted())
+	}
+	if got.has("addChild") {
+		t.Errorf("sent methods = %v: the wrapper's op addChild is not a wire method", got.sorted())
 	}
 }

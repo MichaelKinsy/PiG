@@ -10,6 +10,10 @@ import (
 
 // tools is the tools phase: wait on the round's tool tasks, starting the next call of a sequential round, or finish the round.
 func (r *run) tools(cp *jv.Object) {
+	if r.cutOffTooOften(r.task) {
+		r.endCutOff(cp)
+		return
+	}
 	assistant := idField(cp, "assistant")
 	toolList, _ := arrayField(cp, "tools")
 	pending, _ := arrayField(cp, "pending")
@@ -45,9 +49,9 @@ func (r *run) tools(cp *jv.Object) {
 	})
 }
 
-// finishToolRound runs when the round's tools are terminal: it applies their controls and either ends the run at the
-// final boundary (terminate, handoff, or a queued reset) or hands it to the next generation at the postTools boundary
-// (spec section 8.5).
+// finishToolRound runs when the round's tools are terminal: it applies their controls, appends a handoff's reset, and then
+// ends the run at the final boundary (terminate), ends it at a queued reset, or hands it to the next generation at the
+// postTools boundary, in the handoff's new context when there is one (spec section 8.5).
 func (r *run) finishToolRound(assistant ID, toolList []any) {
 	ids := make([]ID, len(toolList))
 	for i, v := range toolList {
@@ -140,25 +144,26 @@ func (r *run) finishCommit(tx *session.Tx, assistant ID, terminate bool, handoff
 		return nil, err
 	}
 	now := r.now()
-	if terminate || handoff != nil {
-		if handoff != nil {
-			message := jobj("role", "user", "content", handoff, "timestamp", now)
-			fields := jobj("head", "self", "model", []any{message})
-			entry, err := tx.AppendEntry(r.conv, entryDraft(KindReset, fields))
-			if err != nil {
-				return nil, err
-			}
-			boundary.Head, boundary.HasHead = idField(entry, "id"), true
+	if handoff != nil {
+		// The handoff's reset precedes every queued item, so queued writes and selected steers land in its context.
+		message := jobj("role", "user", "content", handoff, "timestamp", now)
+		fields := jobj("head", "self", "model", []any{message})
+		entry, err := tx.AppendEntry(r.conv, entryDraft(KindReset, fields))
+		if err != nil {
+			return nil, err
 		}
+		boundary.Head, boundary.HasHead = idField(entry, "id"), true
+	}
+	if terminate {
 		applied, err := applyBoundary(tx, boundary, true, now)
 		if err != nil {
 			return nil, err
 		}
-		if err := EndRun(tx, live, r.rt.TaskID(), jobj("status", "done", "answer", float64(assistant))); err != nil {
+		if err := EndRun(tx, live, r.rt.TaskID(), Answered(assistant)); err != nil {
 			return nil, err
 		}
 		if len(applied.Users) > 0 {
-			if err := awaitStartRun(tx, r.conv, live, applied.Users); err != nil {
+			if err := awaitStartRun(tx, r.conv, live, applied.Users, false); err != nil {
 				return nil, err
 			}
 		}
@@ -169,11 +174,11 @@ func (r *run) finishCommit(tx *session.Tx, assistant ID, terminate bool, handoff
 		}
 		if applied.Reset {
 			// The queued reset cut the run's context before an answer.
-			if err := EndRun(tx, live, r.rt.TaskID(), jobj("status", "unanswered", "reason", "reset")); err != nil {
+			if err := EndRun(tx, live, r.rt.TaskID(), Unanswered("reset")); err != nil {
 				return nil, err
 			}
 			if len(applied.Users) > 0 {
-				if err := awaitStartRun(tx, r.conv, live, applied.Users); err != nil {
+				if err := awaitStartRun(tx, r.conv, live, applied.Users, true); err != nil {
 					return nil, err
 				}
 			}
@@ -187,7 +192,7 @@ func (r *run) finishCommit(tx *session.Tx, assistant ID, terminate bool, handoff
 					}
 				}
 			}
-			next, err := createGeneration(tx, r.conv)
+			next, err := createGeneration(tx, r.conv, nil)
 			if err != nil {
 				return nil, err
 			}
@@ -202,7 +207,6 @@ func (r *run) finishCommit(tx *session.Tx, assistant ID, terminate bool, handoff
 func (g *Generation) abort(rt *session.Runtime, task *jv.Object, done func(error)) {
 	r := g.newRun(rt, done)
 	cp := checkpointOf(task)
-	h := g.Host
 	finish := func(unstarted []*jv.Object) {
 		r.commitDone(func(tx *session.Tx, _ *jv.Object) (*jv.Object, error) {
 			live, err := tx.Doc(LiveDef, session.DocArgs{Owner: r.conv})
@@ -217,7 +221,7 @@ func (g *Generation) abort(rt *session.Runtime, task *jv.Object, done func(error
 					return nil, err
 				}
 			}
-			if err := EndRun(tx, live, rt.TaskID(), jobj("status", "unanswered", "reason", "aborted")); err != nil {
+			if err := EndRun(tx, live, rt.TaskID(), Unanswered("aborted")); err != nil {
 				return nil, err
 			}
 			return jobj("status", "terminal", "outcome", jobj("status", "aborted")), nil
@@ -248,17 +252,9 @@ func (g *Generation) abort(rt *session.Runtime, task *jv.Object, done func(error
 			finish(calls)
 		})
 	}
-	if phase == phasePoll {
-		ref := modelRefOf(objField(cp, "model"))
-		if _, ok := h.ContextWindow(ref); ok {
-			h.CancelDeferred(ref, objField(cp, "handle"), rt.Signal(), func(err error) {
-				if err != nil {
-					_ = rt.Report(err, session.ReportFrom{Callback: "models"})
-				}
-				readUnstarted()
-			})
-			return
-		}
+	if model, handle := deferredOf(cp); handle != nil {
+		r.cancelDeferred(model, handle, readUnstarted)
+		return
 	}
 	readUnstarted()
 }

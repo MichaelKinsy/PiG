@@ -382,6 +382,28 @@ func makeStrictJSONSchemaWithOrder(parameters map[string]any, order schemaObject
 	return cloned, order, nil
 }
 
+// prefersJSONSchemaStrictSampling reports whether tool asks for strict JSON-schema sampling only when possible (strict: "prefer").
+// Mirrors upstream prefersJsonSchemaStrictSampling.
+func prefersJSONSchemaStrictSampling(tool ToolSchema) bool {
+	config := tool.ConstrainedSampling
+	return config != nil && config.Type == ConstrainedSamplingJSONSchema && config.Strict == ConstrainedSamplingStrictPrefer
+}
+
+// strictToolLimitErrorMessages are the messages Claude rejects a request with, on the Anthropic API and on Bedrock, when its strict
+// tools exceed its limits. Observed limits: 20 strict tools, and 16 optional or union-typed parameters across all strict tools.
+// Mirrors upstream STRICT_TOOL_LIMIT_ERROR_MESSAGES.
+var strictToolLimitErrorMessages = []string{
+	"The compiled grammar is too large",
+	"Too many strict tools (",
+	"Schemas contains too many parameters with union types (",
+}
+
+// isStrictToolLimitErrorMessage reports whether a provider error message says the request's strict tools exceed the provider's limits.
+// Mirrors upstream isStrictToolLimitErrorMessage.
+func isStrictToolLimitErrorMessage(message string) bool {
+	return slices.ContainsFunc(strictToolLimitErrorMessages, func(limitMessage string) bool { return strings.Contains(message, limitMessage) })
+}
+
 // jsonSchemaToolParameters is the schema getJSONSchemaToolParameters returns, with the member order of its objects.
 type jsonSchemaToolParameters struct {
 	Schema map[string]any

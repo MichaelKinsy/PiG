@@ -53,6 +53,7 @@ jobs:
       macos: ${{ steps.plan.outputs.macos }}
       run-node-runtime: ${{ steps.plan.outputs.run-node-runtime }}
       run-durable-cf-host: ${{ steps.plan.outputs.run-durable-cf-host }}
+      run-durable-contract: ${{ steps.plan.outputs.run-durable-contract }}
       run-android: ${{ steps.plan.outputs.run-android }}
       run-node-loader: ${{ steps.plan.outputs.run-node-loader }}
     steps:
@@ -332,6 +333,14 @@ jobs:
         with:
           path: ~/.cache/pig-sdk-py
           key: sdk-py-${{ runner.os }}-${{ steps.python.outputs.python-version }}-${{ hashFiles('extensions/sdk-py/requirements-dev.txt') }}
+      # make test-term-engines builds libvterm, the Rust engine runners and the pyte venv under $PIG_CACHE_HOME/pig-term-engines (~/.cache here), each
+      # in a directory named for the lock or pin that produced it, so this key changes exactly when something there would be rebuilt.
+      - name: Restore the terminal-engine builds
+        if: matrix.shard == 'toolchains'
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/pig-term-engines
+          key: term-engines-${{ runner.os }}-${{ runner.arch }}-${{ steps.python.outputs.python-version }}-${{ env.RUST_VERSION }}-${{ hashFiles('test/term-engines/alacritty/Cargo.lock', 'test/term-engines/alacritty/Cargo.toml', 'test/term-engines/alacritty/src/**', 'test/term-engines/wezterm/Cargo.lock', 'test/term-engines/wezterm/Cargo.toml', 'test/term-engines/wezterm/src/**', 'test/term-engines/libvterm/run.c', 'test/term-engines/pyte/requirements.txt', 'automation/dev/toolchains.lock', 'automation/ci/test-term-engines.sh') }}
       # An unresponsive package mirror fails this step within its timeout instead of holding the job.
       - name: Install native test packages
         shell: bash
@@ -346,6 +355,23 @@ jobs:
           set -euo pipefail
           rustup toolchain install "$RUST_VERSION" --profile minimal
           rustup default "$RUST_VERSION"
+      # The pinned SBCL (automation/dev/toolchains.lock) builds and runs Lisp extension images; the conformance rows, make test-sdk-lisp and the portmap shards (portmap-check requires it through test-prereqs)
+      # fail without it. install-sbcl.sh installs the checksummed official binary, and the cache keeps the prefix for the pin.
+      - name: Restore the pinned SBCL
+        if: startsWith(matrix.shard, 'test-') || startsWith(matrix.shard, 'portmap-') || matrix.shard == 'toolchains'
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/pig-sbcl
+          key: sbcl-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('automation/dev/toolchains.lock', 'automation/ci/install-sbcl.sh') }}
+      - name: Install the pinned SBCL
+        if: startsWith(matrix.shard, 'test-') || startsWith(matrix.shard, 'portmap-') || matrix.shard == 'toolchains'
+        shell: bash
+        run: |
+          set -euo pipefail
+          prefix="$(automation/ci/install-sbcl.sh)"
+          echo "PIG_SBCL=$prefix/bin/sbcl" >> "$GITHUB_ENV"
+          echo "SBCL_HOME=$prefix/lib/sbcl" >> "$GITHUB_ENV"
+          echo "$prefix/bin" >> "$GITHUB_PATH"
       - name: Install pinned npm
         shell: bash
         run: |
@@ -372,8 +398,9 @@ jobs:
           test "$(node --version)" = "v$(cat .node-version)"
           test "$(npm --version)" = "$NPM_VERSION"
           test "$(rustc --version | cut -d' ' -f2)" = "$RUST_VERSION"
+          if [ -n "${PIG_SBCL:-}" ]; then test "$("$PIG_SBCL" --version)" = "SBCL $(awk -F'\t' '!/^#/ && $1=="sbcl-source" {print $2}' automation/dev/toolchains.lock)"; fi
           python3 automation/pin/pin.py check-oracle
-      # Rust SDK dependencies and Pi's env daemon build into persistent targets (internal/testenv.SharedCargoTargetDir) named for a hash of their lockfiles, so a lock change selects a new directory and a hit skips the compile.
+      # Rust SDK dependencies and Pi's env daemon build into persistent targets (internal/testenv.SharedCargoTargetDir) named for a hash of their lockfiles, so a lock change selects a new directory and a hit skips the compile. The key also hashes automation/ci/test-warm.sh, the list of targets: actions/cache saves only on a key miss, so a target the script gains needs a new key to reach the cache.
       - name: Restore the Cargo registry and test targets
         if: startsWith(matrix.shard, 'test-') || matrix.shard == 'toolchains'
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
@@ -382,7 +409,7 @@ jobs:
             ~/.cargo/registry
             ~/.cargo/git
             ~/.cache/pig-dev/cargo-target
-          key: cargo-${{ runner.os }}-${{ env.RUST_VERSION }}-${{ hashFiles('extensions/sdk-rs/Cargo.lock', 'extensions/sdk-rs/Cargo.toml') }}
+          key: cargo-${{ runner.os }}-${{ env.RUST_VERSION }}-${{ hashFiles('extensions/sdk-rs/Cargo.lock', 'extensions/sdk-rs/Cargo.toml', 'automation/ci/test-warm.sh') }}
           restore-keys: |
             cargo-${{ runner.os }}-${{ env.RUST_VERSION }}-
       # The PORT_MAP evidence tests of the extension, CLI and env packages build the Rust SDK cells and Pi's env daemon into the same
@@ -396,7 +423,7 @@ jobs:
             ~/.cargo/registry
             ~/.cargo/git
             ~/.cache/pig-dev/cargo-target
-          key: cargo-${{ runner.os }}-${{ env.RUST_VERSION }}-${{ hashFiles('extensions/sdk-rs/Cargo.lock', 'extensions/sdk-rs/Cargo.toml') }}
+          key: cargo-${{ runner.os }}-${{ env.RUST_VERSION }}-${{ hashFiles('extensions/sdk-rs/Cargo.lock', 'extensions/sdk-rs/Cargo.toml', 'automation/ci/test-warm.sh') }}
           restore-keys: |
             cargo-${{ runner.os }}-${{ env.RUST_VERSION }}-
       - name: Warm the fixture caches
@@ -426,6 +453,8 @@ jobs:
           TARGET: ${{ matrix.target }}
           # ci-build-pr lints the changed files against the base branch (a pull request run has the base as a remote ref only).
           LINT_BASE: origin/main
+          # ci-test-changed (the light run's test-fast) selects the packages the pull request changed against its base branch.
+          TEST_BASE: origin/${{ github.base_ref || 'main' }}
           # A shard that groups several gates runs every one of them and fails if any failed.
           MAKEFLAGS: -k
         run: make "$TARGET"
@@ -596,7 +625,7 @@ jobs:
         with:
           path: ~/.cache/pig-dev/pi-builds
           key: pi-oracle-${{ runner.os }}-${{ hashFiles('.upstream/pin', 'automation/pin/frozen/**', 'automation/pin/*.py', '.node-version', 'automation/ci/npm-toolchain/package-lock.json') }}
-      # TinyGo 0.42.0 (the tinygo row of automation/dev/toolchains.lock, digest-checked) builds the codemode module and the
+      # TinyGo (the tinygo row of automation/dev/toolchains.lock, digest-checked) builds the codemode module and the
       # TinyGo pass's core; the Pi reference the conformance tests read is the checkout durable/contract/PIN names.
       - name: Restore TinyGo and the Pi reference
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
@@ -618,6 +647,64 @@ jobs:
       - name: Check the Durable core budget
         shell: bash
         run: automation/ci/with-isolated-pig-home.sh make durable-core-budget
+
+  durable-contract:
+    name: Durable contract / ${{ matrix.impl }}
+    needs: [changes, bookkeeping]
+    if: needs.changes.outputs.product == 'true' && needs.changes.outputs.run-durable-contract == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        # make durable-contract runs every corpus row against Pi and one build of the core: pi is the control (the reference
+        # against itself), wasm-tinygo the shipped Wasm build, native the same source natively. Three jobs keep each inside its
+        # limit; each recomputes the reference captures it compares with.
+        impl: [pi, wasm-tinygo, native]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: .go-version
+          cache: true
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .node-version
+      - name: Install pinned npm
+        shell: bash
+        run: |
+          set -euo pipefail
+          automation/ci/install-npm-toolchain.sh
+          bin="$PWD/automation/ci/npm-toolchain/node_modules/.bin"
+          echo "$bin" >> "$GITHUB_PATH"
+          export PATH="$bin:$PATH"
+          test "$(npm --version)" = "$NPM_VERSION"
+      # The same Pi oracle build, TinyGo and reference checkout as the Cloudflare host job; the cache keys are shared with it, so
+      # whichever job runs first warms the other.
+      - name: Restore the Pi oracle build
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/pig-dev/pi-builds
+          key: pi-oracle-${{ runner.os }}-${{ hashFiles('.upstream/pin', 'automation/pin/frozen/**', 'automation/pin/*.py', '.node-version', 'automation/ci/npm-toolchain/package-lock.json') }}
+      - name: Restore TinyGo and the Pi reference
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.cache/pig-dev/tinygo
+            durable/contract/.cache
+          key: durable-cf-host-${{ runner.os }}-${{ hashFiles('automation/dev/toolchains.lock', 'durable/contract/PIN') }}
+      - name: Install the pinned TinyGo
+        shell: bash
+        run: echo "TINYGO=$(sh durable/core/budget/tinygo-install.sh)" >> "$GITHUB_ENV"
+      # durable-contract: durable-contract-setup (the Pi reference and its npm tree), durable-core-host-deps for the host, then
+      # cd durable/contract && node cli/contract.mjs all --impls <impl>: every row, per-lane table, exit 1 on a row that differs.
+      - name: Run the Durable core conformance gate
+        shell: bash
+        env:
+          DURABLE_CONTRACT_ARGS: --impls ${{ matrix.impl }} -j 4
+        run: automation/ci/with-isolated-pig-home.sh make ci-durable-contract
 
   verify:
     name: Linux verification
@@ -811,6 +898,11 @@ jobs:
           # TestMain dumps every goroutine if its setup has not reached m.Run by then; the test alarm covers only m.Run.
           PIG_TEST_STALL_DUMP: 4m
         run: automation/ci/windows-cli-units.sh
+      - name: Install the pinned SBCL
+        # The Lisp SDK rows run in the extension jobs; SBCL's official Windows installer is checked against the lock's SHA-256.
+        if: startsWith(matrix.shard, 'extension-')
+        shell: pwsh
+        run: ./automation/ci/install-sbcl.ps1 -GithubEnv
       - name: Select this job's extension tests
         # Each extension job runs its half of the package's tests, split by automation/ci/test-shard-pattern.sh so every test runs in exactly one job.
         if: startsWith(matrix.shard, 'extension-')
@@ -878,7 +970,7 @@ jobs:
     needs: [changes, preflight]
     if: needs.changes.outputs.product == 'true'
     runs-on: macos-15
-    timeout-minutes: 60
+    timeout-minutes: 40
     env:
       # brew install would otherwise update every tap first and clean up afterwards.
       HOMEBREW_NO_AUTO_UPDATE: '1'
@@ -923,6 +1015,20 @@ jobs:
           rustup toolchain install "$RUST_VERSION" --profile minimal
           rustup default "$RUST_VERSION"
           test "$(rustc --version | cut -d' ' -f2)" = "$RUST_VERSION"
+      - name: Restore the pinned SBCL
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/pig-sbcl
+          key: sbcl-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('automation/dev/toolchains.lock', 'automation/ci/install-sbcl.sh') }}
+      - name: Install the pinned SBCL
+        # SBCL publishes no binary of the pinned release for arm64 macOS: the script builds the checksummed release source with the arm64 macOS binary row of automation/dev/toolchains.lock.
+        shell: bash
+        run: |
+          set -euo pipefail
+          prefix="$(automation/ci/install-sbcl.sh)"
+          echo "PIG_SBCL=$prefix/bin/sbcl" >> "$GITHUB_ENV"
+          echo "SBCL_HOME=$prefix/lib/sbcl" >> "$GITHUB_ENV"
+          echo "$prefix/bin" >> "$GITHUB_PATH"
       - name: Restore the Pi oracle build
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
@@ -1063,7 +1169,7 @@ jobs:
     # is label) a pull request's result fails unless this run is the full run
     # on the pull request's current head, so a head that only the light run
     # tested can never satisfy the required check.
-    needs: [changes, bookkeeping, docs, preflight, verify, node-runtime, windows, macos, android, node-loader, durable-cf-host]
+    needs: [changes, bookkeeping, docs, preflight, verify, node-runtime, windows, macos, android, node-loader, durable-cf-host, durable-contract]
     if: ${{ always() }}
     runs-on: ubuntu-24.04
     timeout-minutes: 5
@@ -1085,6 +1191,7 @@ jobs:
           RUN_NODE_LOADER: ${{ needs.changes.outputs.run-node-loader }}
           RUN_ANDROID: ${{ needs.changes.outputs.run-android }}
           RUN_DURABLE_CF_HOST: ${{ needs.changes.outputs.run-durable-cf-host }}
+          RUN_DURABLE_CONTRACT: ${{ needs.changes.outputs.run-durable-contract }}
           CHANGES: ${{ needs.changes.result }}
           DOCS: ${{ needs.docs.result }}
           BOOKKEEPING: ${{ needs.bookkeeping.result }}
@@ -1095,6 +1202,7 @@ jobs:
           ANDROID: ${{ needs.android.result }}
           NODE_LOADER: ${{ needs.node-loader.result }}
           DURABLE_CF_HOST: ${{ needs.durable-cf-host.result }}
+          DURABLE_CONTRACT: ${{ needs.durable-contract.result }}
           PREFLIGHT: ${{ needs.preflight.result }}
         shell: bash
         run: |
@@ -1148,4 +1256,5 @@ jobs:
           expect "Android" "$ANDROID" "$(skip_unless_planned "$RUN_ANDROID")"
           expect "Node loader" "$NODE_LOADER" "$(skip_unless_planned "$RUN_NODE_LOADER")"
           expect "Durable Cloudflare host" "$DURABLE_CF_HOST" "$(skip_unless_planned "$RUN_DURABLE_CF_HOST")"
+          expect "Durable contract" "$DURABLE_CONTRACT" "$(skip_unless_planned "$RUN_DURABLE_CONTRACT")"
           exit "$status"

@@ -98,7 +98,8 @@ func TestConformance_EditorComponentGetterAgreesAcrossSDKs(t *testing.T) {
 		{command: "another extension restores the host editor", host: restoreHostEditorFromPeer},
 		{command: "editor-get-probe", want: "absent"},
 	}
-	for _, tc := range append(sdkHarnessCases(), packedSDKHarnessCases()...) {
+	cases := append(sdkHarnessCases(), packedSDKHarnessCases()...)
+	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			h := tc.make(t)
 			cleanupHarness(t, h)

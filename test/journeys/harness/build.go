@@ -53,6 +53,7 @@ func BuildPig(moduleRoot, out string, v Variant) (time.Duration, error) {
 		args = append(args, "-cover", "-coverpkg=github.com/MichaelKinsy/PiG/...")
 	}
 	args = append(args, "./cmd/pig")
+	//nolint:gosec // G204 (class a): program is literal go; args are fixed build flags (-tags, -race, -cover) plus a computed overlay file and ./cmd/pig, with moduleRoot as Dir.
 	cmd := exec.Command("go", args...)
 	cmd.Dir = moduleRoot
 	var buf bytes.Buffer
@@ -63,7 +64,7 @@ func BuildPig(moduleRoot, out string, v Variant) (time.Duration, error) {
 	return time.Since(start), nil
 }
 
-// writeLockOverlay rewrites sync.Mutex and sync.RWMutex to the lockorder wrappers in every non-test file of the module's own packages and returns the path of the overlay JSON for go build.
+// writeLockOverlay rewrites sync.Mutex and sync.RWMutex to the lockorder wrappers in every non-test file of the module's own packages and returns the path of the overlay JSON for go build. internal/lockorder and the package it imports, internal/goroutineid, keep the stock types: rewritten, goroutineid would import lockorder, which imports it.
 func writeLockOverlay(moduleRoot, dir string) (string, error) {
 	gen := filepath.Join(dir, "lockorder-overlay")
 	if err := os.MkdirAll(gen, 0o755); err != nil {
@@ -81,7 +82,7 @@ func writeLockOverlay(moduleRoot, dir string) (string, error) {
 			switch {
 			case rel == ".":
 				return nil
-			case d.Name() == "node_modules" || d.Name() == "testdata" || strings.HasPrefix(d.Name(), ".") || rel == filepath.Join("internal", "lockorder") || rel == "test":
+			case d.Name() == "node_modules" || d.Name() == "testdata" || strings.HasPrefix(d.Name(), ".") || rel == filepath.Join("internal", "lockorder") || rel == filepath.Join("internal", "goroutineid") || rel == "test":
 				return filepath.SkipDir
 			}
 			if _, err := os.Stat(filepath.Join(path, "go.mod")); err == nil {

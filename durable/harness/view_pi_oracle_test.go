@@ -31,10 +31,19 @@ type viewItem struct {
 	Names  []string        `json:"names"`
 }
 
+// viewWindowSpec is the window of an attach step: bounds as given, and `from` as the ID of the entry fromRef refers to plus FromPlus.
+type viewWindowSpec struct {
+	Min      *int `json:"min,omitempty"`
+	Max      *int `json:"max,omitempty"`
+	FromRef  *int `json:"fromRef,omitempty"`
+	FromPlus int  `json:"fromPlus,omitempty"`
+}
+
 type viewStep struct {
-	Op    string     `json:"op"`
-	Ops   []viewItem `json:"ops,omitempty"`
-	Label string     `json:"label,omitempty"`
+	Op     string          `json:"op"`
+	Ops    []viewItem      `json:"ops,omitempty"`
+	Label  string          `json:"label,omitempty"`
+	Window *viewWindowSpec `json:"window,omitempty"`
 }
 
 func viewPrograms() [][]viewStep {
@@ -100,7 +109,22 @@ func viewPrograms() [][]viewStep {
 		for range 4 + random.Intn(14) {
 			switch random.Intn(8) {
 			case 0, 1:
-				program = append(program, viewStep{Op: "attach", Label: pick("a", "b")})
+				step := viewStep{Op: "attach", Label: pick("a", "b")}
+				if random.Intn(3) != 0 {
+					window := &viewWindowSpec{}
+					if random.Intn(8) != 0 {
+						window.Min = new(1 + random.Intn(4))
+					}
+					if random.Intn(3) != 0 {
+						window.Max = new(1 + random.Intn(8))
+					}
+					if random.Intn(3) == 0 {
+						window.FromRef = new(random.Intn(30))
+						window.FromPlus = random.Intn(3)
+					}
+					step.Window = window
+				}
+				program = append(program, step)
 			case 2:
 				program = append(program, viewStep{Op: "detach", Label: pick("a", "b")})
 			default:
@@ -268,11 +292,18 @@ func TestConversationViewsMatchPi(t *testing.T) {
 					break
 				}
 				entry := &viewLog{}
-				_, detach, err := views.Attach(ctx, conversations[0], func(value ConversationView, _ func(), _ durable.Storage) (*ViewObserver, error) {
+				var window *ConversationWindow
+				if spec := op.Window; spec != nil {
+					window = &ConversationWindow{Min: spec.Min, Max: spec.Max}
+					if spec.FromRef != nil && len(entries) > 0 {
+						window.From = new(entries[*spec.FromRef%len(entries)] + durable.EntryId(spec.FromPlus))
+					}
+				}
+				_, detach, err := views.Attach(ctx, conversations[0], window, func(value ConversationView, _ func()) *ViewObserver {
 					entry.Initial = value
 					return &ViewObserver{Advance: func(_ context.Context, change chord.WatchChange[ConversationView]) {
 						entry.Events = append(entry.Events, recorded{current, change.Value, change.Ops})
-					}, End: func(error) {}}, nil
+					}, End: func(error) {}}
 				})
 				gotErr = err
 				if err == nil {

@@ -2208,8 +2208,10 @@ impl Context {
 
     /// Declare a CLI flag after load, as `pi.registerFlag` does when a handler calls it.
     pub fn register_flag(&self, name: impl Into<String>, options: crate::FlagOptions) -> io::Result<()> {
+        let name = name.into();
+        let default = options.default.clone();
         let flag = crate::protocol::FlagDef {
-            name: name.into(),
+            name: name.clone(),
             description: options.description,
             flag_type: options.flag_type.as_str().to_string(),
             default: options.default,
@@ -2217,6 +2219,10 @@ impl Context {
         let declaration = serde_json::json!({"flags": [flag]});
         let _registration = self.conn.tool_registration_lock.lock().unwrap();
         self.call_host("registerDeclaration", Some(declaration))?;
+        // The host answers a late flag nothing until it holds a value, so the extension keeps the default itself, as Pi's registerFlag keeps it in the extension's own Map.
+        if let Some(default) = default {
+            self.conn.late_declarations.set_flag_default(name, default);
+        }
         Ok(())
     }
 
@@ -2419,6 +2425,13 @@ impl Context {
         )?)
     }
 
+    /// PiG-only: set whether this extension owns the thinking runs of assistant messages (see [`Extension::own_thinking_runs`](crate::Extension::own_thinking_runs)).
+    /// The host ORs the flag across extensions; the last write of an extension wins.
+    /// pig additive (D214)
+    pub fn own_thinking_runs(&self, enabled: bool) -> io::Result<()> {
+        call_result_to_io(self.call_wire("ownThinkingRuns", Some(serde_json::json!({"enabled": enabled})))?)
+    }
+
     /// Restore the default hidden-thinking label: Pi's `setHiddenThinkingLabel()` with no argument.
     pub fn clear_hidden_thinking_label(&self) -> io::Result<()> {
         call_result_to_io(self.call_wire("ui.setHiddenThinkingLabel", Some(serde_json::json!({})))?)
@@ -2613,7 +2626,9 @@ impl Context {
     /// Return the host flag value or its first registered default; false and empty strings remain values. `None` is Pi's undefined; a host failure is an error, not the default.
     pub fn get_flag(&self, name: &str) -> io::Result<Option<serde_json::Value>> {
         let value = self.reply_field("getFlag", Some(serde_json::json!({"name": name})), "value")?;
-        Ok(value.or_else(|| self.flag_defaults.get(name).cloned()))
+        Ok(value
+            .or_else(|| self.flag_defaults.get(name).cloned())
+            .or_else(|| self.conn.late_declarations.flag_default(name)))
     }
 
     /// Get the current thinking level.

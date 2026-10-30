@@ -1,6 +1,6 @@
 # Sessions
 
-A session is one conversation with its full history. By default, PiG saves its log from the first user message. Use `--no-session` to keep the Session log in memory. Sessions work as in Pi 1.4.0 ([Pi's sessions guide](https://github.com/earendil-works/pi/blob/v1.2.0/packages/coding-agent/docs/sessions.md)), apart from the differences named on this page.
+A session is one conversation with its full history. By default, PiG saves its log from the first user message. Use `--no-session` to keep the Session log in memory. Sessions work as in Pi 1.4.0 ([Pi's sessions guide](https://github.com/earendil-works/pi/blob/main/packages/coding-agent/docs/sessions.md)), apart from the differences named on this page.
 
 Every Session has an ID, including print (`-p`), JSON, RPC, and `--no-session` runs. A new Session gets a UUIDv7 unless you supply `--session-id`. Extensions can read the ID before the first model response. `--no-session` disables Session file persistence; it does not remove the ID or prevent an extension from keeping its own session-keyed data.
 

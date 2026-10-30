@@ -4,13 +4,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"os"
 	"strings"
 
 	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/internal/jsdiff"
 	"github.com/MichaelKinsy/PiG/internal/jsonstringify"
+	"github.com/MichaelKinsy/PiG/internal/nodefs"
 	"github.com/MichaelKinsy/PiG/internal/orderedjson"
 	"github.com/MichaelKinsy/PiG/internal/text"
 )
@@ -47,7 +47,7 @@ func (t *EditTool) operations() EditOperations {
 	if t.Operations != nil {
 		return *t.Operations
 	}
-	return EditOperations{ReadFile: os.ReadFile, WriteFile: writeFileString, Access: accessReadWrite}
+	return EditOperations{ReadFile: nodefs.ReadFile, WriteFile: writeFileString, Access: accessReadWrite}
 }
 
 func (t *EditTool) Name() string  { return "edit" }

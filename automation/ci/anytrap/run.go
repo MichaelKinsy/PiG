@@ -80,6 +80,7 @@ func isAnyTrap(t types.Type) bool {
 // scan returns the decodes into interface-typed destinations in the non-test code of pkgs, with file names relative to root.
 func scan(root string, pkgs []*packages.Package) []finding {
 	counts := map[string]*finding{}
+	scanned := map[string]bool{}
 	for _, pkg := range pkgs {
 		for _, file := range pkg.Syntax {
 			name := pkg.Fset.Position(file.Pos()).Filename
@@ -94,6 +95,12 @@ func scan(root string, pkgs []*packages.Package) []finding {
 			if isToolingPath(rel) {
 				continue
 			}
+			// load reads the repository under several build contexts; a file
+			// common to them is the same source, so scan it once.
+			if scanned[rel] {
+				continue
+			}
+			scanned[rel] = true
 			for _, decl := range file.Decls {
 				fn, ok := decl.(*ast.FuncDecl)
 				if !ok || fn.Body == nil {
@@ -185,21 +192,31 @@ func declarationName(fn *ast.FuncDecl) string {
 	}
 }
 
+// scanPlatforms lists the build contexts the ratchet reads. A baseline entry can
+// name a file that only one host builds, so the host's own GOOS is not enough:
+// every host must see the same files or the gate fails only on some machines.
+var scanPlatforms = []string{"linux", "darwin", "windows"}
+
 func load(root string, patterns []string) ([]*packages.Package, error) {
-	cfg := &packages.Config{
-		Dir:  root,
-		Mode: packages.NeedName | packages.NeedFiles | packages.NeedSyntax | packages.NeedTypes | packages.NeedTypesInfo | packages.NeedImports | packages.NeedDeps,
-	}
-	pkgs, err := packages.Load(cfg, patterns...)
-	if err != nil {
-		return nil, err
-	}
-	for _, pkg := range pkgs {
-		if len(pkg.Errors) > 0 {
-			return nil, fmt.Errorf("load %s: %w", pkg.PkgPath, pkg.Errors[0])
+	var all []*packages.Package
+	for _, goos := range scanPlatforms {
+		cfg := &packages.Config{
+			Dir:  root,
+			Mode: packages.NeedName | packages.NeedFiles | packages.NeedSyntax | packages.NeedTypes | packages.NeedTypesInfo | packages.NeedImports | packages.NeedDeps,
+			Env:  append(os.Environ(), "GOOS="+goos, "CGO_ENABLED=0"),
 		}
+		pkgs, err := packages.Load(cfg, patterns...)
+		if err != nil {
+			return nil, err
+		}
+		for _, pkg := range pkgs {
+			if len(pkg.Errors) > 0 {
+				return nil, fmt.Errorf("load %s (%s): %w", pkg.PkgPath, goos, pkg.Errors[0])
+			}
+		}
+		all = append(all, pkgs...)
 	}
-	return pkgs, nil
+	return all, nil
 }
 
 func entry(f finding) string {

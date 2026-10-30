@@ -41,6 +41,7 @@ func (k execKubectl) args(args []string) []string {
 }
 
 func (k execKubectl) run(ctx context.Context, stdin []byte, args ...string) ([]byte, error) {
+	//nolint:gosec // G204 (class c): program is execKubectl.bin from the -kubectl flag (default "kubectl"); args are kubeconfig, context, and namespace flags plus the caller's kubectl verbs.
 	cmd := exec.CommandContext(ctx, k.bin, k.args(args)...)
 	if stdin != nil {
 		cmd.Stdin = bytes.NewReader(stdin)

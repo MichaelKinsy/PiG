@@ -55,6 +55,7 @@ await (async () => {
 })();
 process.stdout.write(JSON.stringify(result));
 `
+	//nolint:gosec // G204 (class b): program is node from exec.LookPath; args are fixed --input-type=module -e with a constant script, and the input is on stdin.
 	cmd := exec.CommandContext(t.Context(), node, "--input-type=module", "-e", script)
 	cmd.Stdin = bytes.NewReader(payload)
 	cmd.Env = append(os.Environ(), "PI_ORACLE_ROOT="+Root(t))

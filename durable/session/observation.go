@@ -15,12 +15,6 @@ func NewSessionWatch[T any](session *SessionImpl, value T, detach func()) *chord
 	return chord.NewWatch(value, detach, session.reportListener).On(session.scheduler)
 }
 
-// NewSessionNativeWatch is NewSessionWatch for a native value (events.ts): every value is delivered in order, one call each;
-// replace gives the value an overflow delivers, and nil delivers the newest value.
-func NewSessionNativeWatch[T any](session *SessionImpl, value T, detach func(), replace func() T) *chord.NativeWatch[T] {
-	return chord.NewNativeWatch(value, detach, session.reportListener, replace).On(session.scheduler)
-}
-
 // GuardedObserver is a host's Observer behind the rule for observers that run inside Storage's adopt (session.ts
 // guardObserver): one that panics is reported through report, detached, and ended with the error, so the panic never reaches
 // adopt; nothing reaches it after its detach or end, and from then on the guard references neither it nor its source.

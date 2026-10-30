@@ -316,9 +316,13 @@ func validateTranslationOriginalHashes(root string, submission *AgentBundleSubmi
 	if submission.Translator == nil {
 		return nil
 	}
+	if submission.Packet != nil && strings.HasPrefix(submission.Packet.Target.Revision, "-") {
+		return fmt.Errorf("packet target revision %q begins with a dash and would reach git as an option", submission.Packet.Target.Revision)
+	}
 	for _, translation := range submission.Translator.Translations {
 		edits := append(slices.Clone(translation.ProductionEdits), translation.TestEdits...)
 		for _, edit := range edits {
+			//nolint:gosec // G204 (class a): program is the literal git; args are show plus the packet's target revision and an edit path, and validateTranslationOriginalHashes rejects a revision that begins with a dash.
 			command := exec.Command("git", "show", submission.Packet.Target.Revision+":"+edit.Path)
 			command.Dir = root
 			data, err := command.Output()

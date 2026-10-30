@@ -11,7 +11,7 @@ import (
 	"github.com/MichaelKinsy/PiG/durable/session"
 )
 
-// TestAdvanceViewFollowsOnlyTheMountedIncarnation pins view.ts:196-210 for publications the harness itself never
+// TestAdvanceViewFollowsOnlyTheMountedIncarnation pins view.ts advance for publications the harness itself never
 // produces: a retirement or an update of an incarnation other than the mounted one. Pi removes the document only when
 // the retired incarnation is the mounted one, applies ops only when incarnation and definition version both match,
 // and otherwise sets the published value whole.
@@ -23,8 +23,8 @@ func TestAdvanceViewFollowsOnlyTheMountedIncarnation(t *testing.T) {
 	newMount := func() *viewMount {
 		document := delta.JsonObjectOf("tools", []any{"a"})
 		return &viewMount{
-			value: ConversationView{Docs: ViewDocsOf(ViewDocs{}, kind, document)},
-			docs:  map[string]docIncarnation{kind: {id: mountedID, version: 1}},
+			docs:         ViewDocsOf(ViewDocs{}, kind, document),
+			incarnations: map[string]docIncarnation{kind: {id: mountedID, version: 1}},
 		}
 	}
 	change := func(id durable.DocumentId, v *int, value durable.JsonObject, ops ...durable.Op) session.ObservedCommit {
@@ -85,10 +85,11 @@ func TestAdvanceViewFollowsOnlyTheMountedIncarnation(t *testing.T) {
 			mount := newMount()
 			var advanced []durable.Op
 			observer := &ViewObserver{Advance: func(_ context.Context, change chord.WatchChange[ConversationView]) { advanced = change.Ops }}
-			advanceView(t.Context(), conversation, mount, []*ViewObserver{observer}, tc.publication, func(err error) { t.Errorf("observer reported %v", err) })
+			windowed := &windowedObserver{min: 50, max: 100, value: ConversationView{Docs: mount.docs}, observer: observer}
+			advanceView(t.Context(), conversation, mount, []*windowedObserver{windowed}, tc.publication, func(err error) { t.Errorf("observer reported %v", err) })
 			expectSameJSON(t, advanced, tc.ops)
-			expectSameJSON(t, mount.value.Docs, tc.docs)
-			got, mounted := mount.docs[kind]
+			expectSameJSON(t, mount.docs, tc.docs)
+			got, mounted := mount.incarnations[kind]
 			switch {
 			case tc.incarnation == nil && mounted:
 				t.Fatalf("incarnation %+v is still mounted", got)

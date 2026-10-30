@@ -11,6 +11,7 @@ import (
 	"github.com/MichaelKinsy/PiG/coding"
 	"github.com/MichaelKinsy/PiG/internal/codingagent"
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
+	"github.com/MichaelKinsy/PiG/internal/jsstring/localecompare"
 	"github.com/MichaelKinsy/PiG/tui"
 )
 
@@ -165,10 +166,10 @@ func modelListLines(entries []codingagent.ModelEntry, search string) []string {
 	}
 	entries = slices.Clone(entries)
 	slices.SortFunc(entries, func(a, b codingagent.ModelEntry) int {
-		if c := jsstring.LocaleCompare(a.ProviderID, b.ProviderID); c != 0 {
+		if c := localecompare.Compare(a.ProviderID, b.ProviderID); c != 0 {
 			return c
 		}
-		return jsstring.LocaleCompare(a.ModelID, b.ModelID)
+		return localecompare.Compare(a.ModelID, b.ModelID)
 	})
 	type row [6]string
 	rows := []row{{"provider", "model", "context", "max-out", "thinking", "images"}}

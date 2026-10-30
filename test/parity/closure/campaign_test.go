@@ -16,7 +16,7 @@ func threeUnitGraph(t *testing.T) (*Graph, map[string]WorkUnit) {
 	records := []Record{snapshot}
 	records = append(records, behaviorBundle(snapshot, "alpha", "wire:a", "ai/openai.go")...)
 	records = append(records, behaviorBundle(snapshot, "beta", "wire:b", "ai/anthropic.go")...)
-	records = append(records, behaviorBundle(snapshot, "gamma", "wire:g", "ai/bedrock.go")...)
+	records = append(records, behaviorBundle(snapshot, "gamma", "wire:g", "ai/providers/bedrock/bedrock.go")...)
 	return planUnits(t, records)
 }
 

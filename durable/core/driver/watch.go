@@ -35,8 +35,6 @@ type rawFrame struct {
 	ops   []durable.Op
 	// retired and end are the document frames {retired: true} and {end: true}; they carry no value.
 	retired, end bool
-	// changes are the records the commit wrote for the conversation of a view opened with changes: true.
-	changes json.RawMessage
 }
 
 // watchHub routes the core's watch frames to the watches the session opened.
@@ -159,16 +157,15 @@ func (h *watchHub) notice(n abi.Notice) {
 			Value json.RawMessage `json:"value"`
 			// Ops decode through chord's JSON, so an object an operation carries keeps its key order and the applier can
 			// traverse it: encoding/json would hold map[string]any objects the applier cannot enter.
-			Ops     delta.Ops       `json:"ops"`
-			Changes json.RawMessage `json:"changes"`
-			Retired bool            `json:"retired"`
-			End     bool            `json:"end"`
+			Ops     delta.Ops `json:"ops"`
+			Retired bool      `json:"retired"`
+			End     bool      `json:"end"`
 		} `json:"frame"`
 	}
 	if json.Unmarshal(n.Payload, &p) != nil || p.WatchID == nil || p.Frame == nil {
 		return
 	}
-	frame := rawFrame{value: p.Frame.Value, ops: p.Frame.Ops, changes: p.Frame.Changes, retired: p.Frame.Retired, end: p.Frame.End}
+	frame := rawFrame{value: p.Frame.Value, ops: p.Frame.Ops, retired: p.Frame.Retired, end: p.Frame.End}
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	if advance, bound := h.sinks[*p.WatchID]; bound {
@@ -414,8 +411,8 @@ func openDocWatch(ctx context.Context, s *coreSession, def *durable.AnyDocDefini
 	})
 }
 
-func (c *conversation) Watch(ctx context.Context) (harness.ConversationWatch, error) {
-	m, err := openWatch(ctx, c.s, map[string]any{"kind": "view", "conversationId": c.id}, typed[harness.ConversationView], viewReducer())
+func (c *conversation) Watch(ctx context.Context, window *harness.ConversationWindow) (harness.ConversationWatch, error) {
+	m, err := openWatch(ctx, c.s, viewTarget(c.id, window), typed[harness.ConversationView], viewReducer())
 	if err != nil || m == nil {
 		return nil, err
 	}
@@ -429,4 +426,24 @@ func (s *coreSession) WatchTaskGraph(ctx context.Context) (harness.TaskGraphWatc
 		return nil, err
 	}
 	return watchOf(ctx, m), nil
+}
+
+// viewTarget is the watch.open target of a conversation view: the window's fields as given, so the core applies Pi's defaults.
+func viewTarget(id durable.ConversationId, window *harness.ConversationWindow) map[string]any {
+	target := map[string]any{"kind": "view", "conversationId": id}
+	if window == nil {
+		return target
+	}
+	bounds := map[string]any{}
+	if window.From != nil {
+		bounds["from"] = *window.From
+	}
+	if window.Min != nil {
+		bounds["min"] = *window.Min
+	}
+	if window.Max != nil {
+		bounds["max"] = *window.Max
+	}
+	target["window"] = bounds
+	return target
 }

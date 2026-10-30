@@ -121,7 +121,7 @@ func TestLateProviderUnregisterDropsOperationsAcrossSDKs(t *testing.T) {
 // model-runtime.ts:921-940: Pi keeps one effective registration per provider and merges a later registration's defined values over it, whichever extension makes it. A partial re-registration by another extension process therefore leaves the earlier registrant's streamSimple, images and classifiers in the effective registration, and the host keeps calling them in the earlier registrant's process after it told that process provider_superseded. The successor runs in its own process and defines no operation, so every value asserted comes from the superseded author's callbacks.
 // The authors are the native SDKs, whose registration no successor merges. A Node author is not in this row: the Node runtime's provider_superseded handler drops those callbacks (runtime.mjs forgetProviderOwnership), so a Node author superseded by a successor that does not merge its root fails it.
 func TestLateProviderSupersededByAnotherExtensionKeepsOperationsAcrossSDKs(t *testing.T) {
-	eachModelTypesPlacementOf(t, []string{"go", "rust", "python"}, func(t *testing.T, r *modelTypesRig) {
+	eachModelTypesPlacementOf(t, []string{"go", "rust", "python", "lisp"}, func(t *testing.T, r *modelTypesRig) {
 		r.toolWith("late_provider", map[string]any{"mode": "register"})
 		successor := filepath.Join(t.TempDir(), "late-successor.mjs")
 		if err := os.WriteFile(successor, []byte(`export default function (pi) { pi.registerProvider("late", { baseUrl: "https://late.test/v2" }); }`+"\n"), 0o600); err != nil {

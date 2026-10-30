@@ -15,7 +15,7 @@ ready_pattern_pig = "(auto)"
 ready_pattern_pi = "(auto)"
 ready_timeout_seconds = 30
 capture_start = "post-login-state:"
-capture_end = "post-login-state: current=openai/gpt-5.5 default=openai/gpt-5.5"
+capture_end = "post-login-state: current=openai/gpt-6.1-sol default=openai/gpt-6.1-sol"
 settle_seconds = 1
 cwd = "../selectors/testdata/login-empty-project"
 
@@ -30,10 +30,10 @@ keys = ["openai", "Enter"]
 wait_contains = ["API key"]
 [[tmux.steps]]
 keys = ["parity-key", "Enter"]
-wait_contains = ["Saved API key for OpenAI. Selected gpt-5.5."]
+wait_contains = ["Saved API key for OpenAI. Selected gpt-6.1-sol."]
 [[tmux.steps]]
 keys = ["/post-login-state", "Enter"]
-wait_visible_contains = ["post-login-state: current=openai/gpt-5.5 default=openai/gpt-5.5"]
+wait_visible_contains = ["post-login-state: current=openai/gpt-6.1-sol default=openai/gpt-6.1-sol"]
 
 [env]
 pig = ["PIG_CODING_AGENT_DIR=../selectors/testdata/pi-agent-noauth", "PI_CODING_AGENT_DIR=", "PIG_HOME=../selectors/testdata/pig-home-noauth", "HOME={{TEMP}}/home", "PATH={{FAKE_BIN}}:{{PATH}}"]
@@ -45,6 +45,6 @@ pi_extensions = ["../../testdata/post-login-state.ts"]
 
 [assert]
 both_reach_ready = true
-both_contain = ["post-login-state: current=openai/gpt-5.5 default=openai/gpt-5.5"]
+both_contain = ["post-login-state: current=openai/gpt-6.1-sol default=openai/gpt-6.1-sol"]
 output_equal = true
 runs = 3

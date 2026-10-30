@@ -81,7 +81,7 @@ export function createGrepToolDefinition(cwd, options) {
                             if (!lines) {
                                 try {
                                     const content = await ops.readFile(filePath);
-                                    lines = content.replace(/\r\n/g, "\n").replace(/\r/g, "\n").split("\n");
+                                    lines = content.replace(/\r\n/g, "\n").split("\n");
                                 }
                                 catch {
                                     lines = [];

@@ -2,7 +2,7 @@
 
 This page takes you from nothing installed to one finished task. It has four steps: install, choose a model, run a walkthrough and leave. Each step shows what PiG prints.
 
-PiG's first start asks three short questions (theme, header picture and usage data). It does not help you pick a model or run a first task. This page is the guide for those steps. It covers the same ground as Pi 1.4.0's quickstart ([Pi's quickstart](https://github.com/earendil-works/pi/blob/v1.2.0/packages/coding-agent/docs/quickstart.md)), with PiG's commands and folders.
+PiG's first start asks three short questions (theme, header picture and usage data). It does not help you pick a model or run a first task. This page is the guide for those steps. It covers the same ground as Pi 1.4.0's quickstart ([Pi's quickstart](https://github.com/earendil-works/pi/blob/main/packages/coding-agent/docs/quickstart.md)), with PiG's commands and folders.
 
 ## 1. Install
 

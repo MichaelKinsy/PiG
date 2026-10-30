@@ -12,7 +12,7 @@ import (
 
 var (
 	// package-manager.ts:1821-1838 (getGitDependencyInstallArgs), npm and pnpm.
-	npmPeerlessInstall  = []string{"install", "--omit=dev", "--legacy-peer-deps"}
+	npmPeerlessInstall  = []string{"install", "--omit=dev", "--legacy-peer-deps", "--no-audit", "--no-fund"}
 	pnpmPeerlessInstall = []string{"install", "--prod", "--config.auto-install-peers=false", "--config.strict-peer-dependencies=false", "--config.strict-dep-builds=false"}
 )
 

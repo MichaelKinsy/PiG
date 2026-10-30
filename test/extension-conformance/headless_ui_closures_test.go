@@ -45,6 +45,8 @@ func headlessUIFamily(extName string) string {
 		return "rust"
 	case "python-sdk-fixture":
 		return "python"
+	case lispFixtureName:
+		return "lisp"
 	default:
 		return "node"
 	}

@@ -2802,10 +2802,11 @@ func TestRecordBashResultPreservesTruncationProvenance(t *testing.T) {
 	}
 }
 
-func TestAppendBashFailureRetainsEntryProvenanceWithoutRefreshingAgent(t *testing.T) {
+func TestAppendBashFailureKeepsNoEntryAndDoesNotRefreshAgent(t *testing.T) {
 	sess := buildSessionWithMessages(t, newTestServices(t), 1)
 	defer func() { _ = sess.Close() }()
 	before := len(sess.Messages())
+	projected := len(sess.Inner().BuildSessionProjection().Messages)
 	sess.Inner().SetPath(t.TempDir())
 
 	sess.mu.Lock()
@@ -2819,11 +2820,9 @@ func TestAppendBashFailureRetainsEntryProvenanceWithoutRefreshingAgent(t *testin
 	if len(sess.Messages()) != before {
 		t.Fatal("failed append refreshed Agent context")
 	}
-	// Pi appends to the Session entry list before attempting persistence.
-	messages := sess.Inner().BuildSessionProjection().Messages
-	last := messages[len(messages)-1]
-	if last.Custom["truncated"] != true || last.Custom["fullOutputPath"] != "/tmp/original-output" {
-		t.Fatalf("failed Bash entry = %#v", last.Custom)
+	// Pi's _appendEntry undoes the in-memory append when persistence fails (807a5c05): the failed Bash entry is not kept.
+	if got := len(sess.Inner().BuildSessionProjection().Messages); got != projected {
+		t.Fatalf("failed Bash entry was kept: %d projected messages, want %d", got, projected)
 	}
 }
 

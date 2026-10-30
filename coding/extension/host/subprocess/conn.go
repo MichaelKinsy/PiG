@@ -235,6 +235,10 @@ type Conn struct {
 	// nextID is an atomic counter for generating request IDs.
 	nextID atomic.Uint64
 
+	// autocompleteUnholds are the input-hold releases of the autocomplete.suggest requests in flight, by request id.
+	autocompleteMu      sync.Mutex
+	autocompleteUnholds map[string]func()
+
 	abortForwards abortForwards
 
 	// lastLargeSize/lastLargeAtNs record the most recent frame written to
@@ -845,6 +849,8 @@ func (c *Conn) requestWithOrder(ctx context.Context, env *Envelope, inactivity t
 	}
 	// Wait for response or meaningful request activity.
 	cancelled := ctx.Done()
+	// A caller that must serve the calls the request's handler makes on its own goroutine (withRequestInterjections) receives them here, while it waits.
+	interjected := requestInterjections(ctx)
 	var abortGraceC <-chan time.Time
 	suspensionApplied := false
 	for {
@@ -876,6 +882,8 @@ func (c *Conn) requestWithOrder(ctx context.Context, env *Envelope, inactivity t
 				}
 			}
 			return resp, nil
+		case run := <-interjected:
+			run()
 		case state := <-stateCh:
 			suspensionApplied = suspensionApplied || state.State == "suspended"
 			applyRequestSuspension(ctx, state)
@@ -1214,6 +1222,11 @@ func (c *Conn) readLoop(ctx context.Context) {
 			continue
 		}
 		// The host forwards a turn before this reader routes the response that follows it, so the forwarded frame precedes on every other connection whatever the host sends after that response.
+		// The notice that a provider chain awaits I/O precedes its response on the wire, and the hold it releases must be released before the response ends the request.
+		if env.Type == MsgNotify && env.Notify != nil && env.Notify.Method == NotifyUIAutocompletePending {
+			c.deliverAutocompletePending(env.Notify.Args)
+			continue
+		}
 		if env.Type == MsgNotify && env.Notify != nil && env.Notify.Method == NotifyLoopTurned {
 			if c.onLoopTurned != nil {
 				c.onLoopTurned(env.Notify.Args)
@@ -1465,6 +1478,41 @@ func requestReportsSuspension(ctx context.Context) bool {
 }
 
 // deliverRequestState hands a request lifecycle frame to the request waiting for it.
+// watchAutocomplete registers unhold for the autocomplete.suggest request named id until the returned function runs: the runtime's
+// NotifyUIAutocompletePending for that id, and the calls the request makes, release the host's input hold.
+func (c *Conn) watchAutocomplete(id string, unhold func()) func() {
+	c.autocompleteMu.Lock()
+	if c.autocompleteUnholds == nil {
+		c.autocompleteUnholds = make(map[string]func())
+	}
+	c.autocompleteUnholds[id] = unhold
+	c.autocompleteMu.Unlock()
+	return func() {
+		c.autocompleteMu.Lock()
+		delete(c.autocompleteUnholds, id)
+		c.autocompleteMu.Unlock()
+	}
+}
+
+// autocompleteUnhold returns the release function of the autocomplete.suggest request id, or nil.
+func (c *Conn) autocompleteUnhold(id string) func() {
+	c.autocompleteMu.Lock()
+	defer c.autocompleteMu.Unlock()
+	return c.autocompleteUnholds[id]
+}
+
+func (c *Conn) deliverAutocompletePending(args json.RawMessage) {
+	var request struct {
+		RequestID string `json:"requestId"`
+	}
+	if json.Unmarshal(args, &request) != nil {
+		return
+	}
+	if unhold := c.autocompleteUnhold(request.RequestID); unhold != nil {
+		unhold()
+	}
+}
+
 func (c *Conn) deliverRequestState(state RequestStatePayload) {
 	c.stateMu.Lock()
 	sink, ok := c.requestStates[state.RequestID]
@@ -2262,6 +2310,20 @@ func withRequestWindow(ctx context.Context, window requestWindowHandle) context.
 func requestWindow(ctx context.Context) requestWindowHandle {
 	window, _ := ctx.Value(requestWindowKey{}).(requestWindowHandle)
 	return window
+}
+
+type requestInterjectionsKey struct{}
+
+// withRequestInterjections has request run each function sent on runs, on the goroutine that waits for the response, while it waits. A host call made by
+// the request's handler is a child of the request (CallPayload.ParentRequestID); the waiting goroutine runs it itself when it holds what the call needs,
+// as the goroutine that renders a TuiAltScreen frame holds the frame's locks while it waits for a component's render.
+func withRequestInterjections(ctx context.Context, runs <-chan func()) context.Context {
+	return context.WithValue(ctx, requestInterjectionsKey{}, runs)
+}
+
+func requestInterjections(ctx context.Context) <-chan func() {
+	runs, _ := ctx.Value(requestInterjectionsKey{}).(<-chan func())
+	return runs
 }
 
 type requestHostCallsKey struct{}

@@ -28,6 +28,17 @@ export class SessionFailed extends Error {
   }
 }
 
+/**
+ * The Harness was opened read-only (`HarnessOptions.readOnly`): a commit with writes, or a call that would run tasks, was refused. Nothing
+ * was written, and the Harness stays usable for reads.
+ */
+export class ReadOnlySession extends Error {
+  constructor(what: string) {
+    super(`Read-only Harness: ${what} refused`)
+    this.name = "ReadOnlySession"
+  }
+}
+
 /** A submission reached a busy conversation and was not admitted. */
 export class ConversationBusy extends Error {
   readonly conversationId: number
@@ -62,8 +73,10 @@ export function reviveError(body: WireErrorBody, failure?: Error): Error {
       error.message = message || error.message
       break
     }
+    case "ReadOnlySession": error = Object.assign(new ReadOnlySession("a commit with writes"), { message }); break
     case "ReadAfterWrite": error = Object.assign(new ReadAfterWrite("doc"), { message }); break
     case "StorageRequestError": error = new StorageRequestError(message); break
+    case "RangeError": error = new RangeError(message); break
     default: {
       error = new Error(message)
       // An Error keeps its prototype's name; only another name becomes an own property.

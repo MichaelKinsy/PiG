@@ -149,11 +149,11 @@ func (h *baseEditorHost) snapshot() (string, [][]string) {
 func delegatedEditorCases() []harnessCase {
 	var cases []harnessCase
 	for _, tc := range allHarnessCases() {
-		if tc.name == "subprocess-go" || tc.name == "subprocess-rust" || tc.name == "subprocess-python" {
+		if tc.name == "subprocess-go" || tc.name == "subprocess-rust" || tc.name == "subprocess-python" || tc.name == "subprocess-lisp" {
 			cases = append(cases, tc)
 		}
 	}
-	for _, language := range []string{"go", "python", "rust"} {
+	for _, language := range []string{"go", "python", "rust", "lisp"} {
 		cases = append(cases, harnessCase{name: "packed-" + language, make: func(t *testing.T) *harness { return makePackedUIHarness(t, language) }})
 	}
 	return cases

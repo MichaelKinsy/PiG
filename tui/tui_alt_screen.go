@@ -91,6 +91,9 @@ type TuiAltScreen struct {
 	// wezTerm is isWezTermSession as Start read it. Upstream reads process.env each frame, a property read; a Windows
 	// environment read allocates its UTF-16 key and value, so the alt screen reads it once per start, with the capabilities.
 	wezTerm bool
+	// scrollRows is whether a frame scrolls the rows that only moved (findMovedRows): PIG_TUI_SCROLL_ROWS=0 or a terminal not trusted with scroll regions (scrollRegionsUsable) turns it off.
+	// Start reads it, as it reads wezTerm.
+	scrollRows bool
 
 	// savedCapabilities holds the pre-enter terminal capabilities when the
 	// alt-screen suppressed iTerm2 inline images (they do not render correctly in
@@ -207,9 +210,9 @@ type altScreenDocument struct {
 	base *tuiBase
 }
 
-func (d *altScreenDocument) Render(width int) []string { return d.base.Container.Render(width) }
+func (d *altScreenDocument) Render(width int) []string { return d.base.renderBase(width, false) }
 func (d *altScreenDocument) renderBorrowed(width int) []string {
-	return d.base.renderBorrowed(width)
+	return d.base.renderBase(width, true)
 }
 
 // HandleMouse dispatches to the base children. Mirrors upstream
@@ -376,14 +379,21 @@ func (t *TuiAltScreen) GetScreenLines() []string {
 // document. Mirrors upstream setLayoutRoot.
 func (t *TuiAltScreen) SetLayoutRoot(component Component) {
 	t.mu.Lock()
+	changed := t.setLayoutRootLocked(component)
+	t.mu.Unlock()
+	if changed {
+		t.RequestRender()
+	}
+}
+
+// setLayoutRootLocked installs component and reports whether it replaced another. t.mu must be held.
+func (t *TuiAltScreen) setLayoutRootLocked(component Component) bool {
 	if t.layoutRoot == component {
-		t.mu.Unlock()
-		return
+		return false
 	}
 	t.layoutRoot = component
 	t.currentLayout = nil
-	t.mu.Unlock()
-	t.RequestRender()
+	return true
 }
 
 func (t *TuiAltScreen) getPrimaryScrollView() *ScrollView {
@@ -426,6 +436,7 @@ func (t *TuiAltScreen) enterAltScreen() {
 	caps := GetCapabilities()
 	t.imageProtocol = caps.Images
 	t.wezTerm = t.imageProtocol == "kitty" && isWezTermSession()
+	t.scrollRows = scrollRegionsUsable()
 	clear(t.uploadedKittyImages)
 	t.uploadedKittyImagesOrder = nil
 	t.lastDocument = nil
@@ -569,7 +580,11 @@ func (t *TuiAltScreen) StopWithOptions(options StopOptions) {
 		}
 		return
 	}
+	// The exit dump renders the components under mu as a frame does: a call a component's Render makes back to the renderer runs on this goroutine
+	// (Frame), and a render request it makes is dropped (the renderer is stopped).
+	t.enterFrame()
 	document := t.renderDocument(width)
+	t.leaveFrame()
 	var buf strings.Builder
 	buf.WriteString(altBeginSynchronizedOutput + exit + altDisableAutowrap)
 	for row := range document {
@@ -601,7 +616,7 @@ func (t *TuiAltScreen) renderDocument(width int) []string {
 	if t.layoutRoot != nil {
 		frameLines = t.layoutRoot.Render(width)
 	} else {
-		frameLines = t.Container.Render(width)
+		frameLines = t.renderBase(width, false)
 	}
 	frameLines = t.resolveFakeCursors(frameLines)
 	lines := make([]string, len(frameLines))
@@ -714,7 +729,7 @@ func (t *TuiAltScreen) RenderSnapshot(width int) []string {
 	if t.layoutRoot != nil {
 		return t.layoutRoot.Render(width)
 	}
-	return t.Container.Render(width)
+	return t.renderBase(width, false)
 }
 
 // SetShowHardwareCursor toggles the hardware cursor and requests a frame, as
@@ -722,13 +737,25 @@ func (t *TuiAltScreen) RenderSnapshot(width int) []string {
 // changes made together share one). Mirrors TUI.SetShowHardwareCursor.
 func (t *TuiAltScreen) SetShowHardwareCursor(enabled bool) {
 	t.mu.Lock()
+	changed, hasRendered := t.setShowHardwareCursorLocked(enabled)
+	t.mu.Unlock()
+	t.showHardwareCursorChanged(enabled, changed, hasRendered)
+}
+
+// setShowHardwareCursorLocked records enabled and reports whether it changed the setting and whether a frame was drawn. t.mu must be held.
+func (t *TuiAltScreen) setShowHardwareCursorLocked(enabled bool) (changed, hasRendered bool) {
 	if t.showHardwareCursor == enabled {
-		t.mu.Unlock()
-		return
+		return false, false
 	}
 	t.showHardwareCursor = enabled
-	hasRendered := len(t.previousScreen) > 0
-	t.mu.Unlock()
+	return true, len(t.previousScreen) > 0
+}
+
+// showHardwareCursorChanged is what follows a change of the setting: the cursor is hidden when it was turned off, and a frame is requested once one was drawn.
+func (t *TuiAltScreen) showHardwareCursorChanged(enabled, changed, hasRendered bool) {
+	if !changed {
+		return
+	}
 	if !enabled {
 		t.HideCursor()
 	}
@@ -973,12 +1000,25 @@ func (t *TuiAltScreen) doRender() {
 			}
 		}
 	} else {
+		// pig divergence (D205): rows that only moved are scrolled by the terminal, and only the rows that differ afterwards are drawn.
+		moved, scrolled := movedRows{}, false
+		if t.scrollRows && !repaintAll {
+			moved, scrolled = findMovedRows(screen, t.previousScreen, height)
+		}
+		if scrolled {
+			writeRowsMove(&buf, moved)
+		}
 		for row := range height {
-			if repaint(row) {
-				writeCursorTo(&buf, row+1, 1)
-				buf.WriteString("\x1b[2K")
-				buf.WriteString(altScreenRow(preparedLines, row))
+			if scrolled {
+				if shown, known := moved.shownAfter(t.previousScreen, row); known && altScreenRow(screen, row) == shown {
+					continue
+				}
+			} else if !repaint(row) {
+				continue
 			}
+			writeCursorTo(&buf, row+1, 1)
+			buf.WriteString("\x1b[2K")
+			buf.WriteString(altScreenRow(preparedLines, row))
 		}
 	}
 

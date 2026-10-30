@@ -714,7 +714,7 @@ func (u *ExtUIContext) RunRemoteOverlay(opts extension.RemoteOverlayOptions, hos
 			// rather than being wrapped in a second modal shell (interactive-mode.ts pushExtensionDialog).
 			// upstream: showExtensionCustom restoreEditor puts back the editor text saved when the component opened.
 			savedText := u.m.editor.Text()
-			entry := &extensionDialog{component: overlay}
+			entry := &extensionDialog{component: overlay, blocked: blockedStatusOf(opts.Blocked)}
 			u.m.pushExtensionDialog(entry)
 			cleanup = func() {
 				u.m.removeExtensionDialog(entry)

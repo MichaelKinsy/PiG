@@ -11,19 +11,115 @@ const schedScanPage = 256
 // Read-only: assigned once at initialization.
 var liveStatuses = [...]string{StatusPending, StatusRunning, StatusWaiting, StatusSleeping, StatusCompleting}
 
+// abortResumer signals the run of its invocation once the hops chain Scheduler.abortLater parked it on ends (Loop.Hops); it lives in the invocation.
+type abortResumer struct{ inv *invocation }
+
+func (a *abortResumer) of(inv *invocation) *abortResumer { a.inv = inv; return a }
+
+func (a *abortResumer) Resume() { a.inv.signal.Abort() }
+
 type invocation struct {
-	taskID ID
-	kind   string
+	aborter abortResumer
+	taskID  ID
+	kind    string
 	// extension is the extension that installed the definition this invocation runs, as of its reservation; empty for a
 	// built-in task.
 	extension      string
 	conversationID ID
 	abortMode      bool
-	signal         *Cancel
+	signal         Cancel
 	ended          bool
 	finished       bool
 	doneWaiters    []func()
 	watches        []func()
+	loop           *Loop
+	// next is what afterSpan resumes, and stage where it is on the way: the span's hops, the microtask after them, then next itself.
+	next  func()
+	stage spanStage
+	tick  bool
+
+	// span is the host's handle of the span of the phase running; it is zero outside a phase (invocation.context) and without a
+	// Telemetry. record is the latest committed record of the task (#track).
+	span   uint32
+	record *jv.Object
+	// spanFirst makes the next afterSpan continuation start with the host's span for the phase (ask), which then runs the phase.
+	spanFirst bool
+	// spanAsk makes the phase continuation ask the host for the span first (start is that continuation, run again when the host answered).
+	spanAsk bool
+	s       *Scheduler
+	// tel is what only a Harness with a Telemetry keeps of an invocation; nil without one, so an invocation is a fraction of the size
+	// (a 20,000-task chain holds one each).
+	tel *invTel
+}
+
+// invTel is the part of an invocation a Telemetry uses: carrier is the span's carrier, which the tasks the phase creates inherit as
+// their trace; fault is the outcome the scheduler's own step gave a task that threw; info and start are a phase's span start waiting
+// for the host (start is run when it answers, abort for an abort handler); links are the record's creation-time carriers, kept for
+// the invocation that finds the task unstarted.
+type invTel struct {
+	carrier any
+	fault   *jv.Object
+	info    PhaseInfo
+	start   func()
+	abort   abortRun
+	links   any
+}
+
+// telemetry is the invocation's invTel, made when it is first needed.
+func (inv *invocation) telemetry() *invTel {
+	if inv.tel == nil {
+		inv.tel = &invTel{}
+	}
+	return inv.tel
+}
+
+// carrier is the carrier of the span of the phase running, nil outside a phase.
+func (inv *invocation) carrier() any {
+	if inv.tel == nil {
+		return nil
+	}
+	return inv.tel.carrier
+}
+
+type spanStage uint8
+
+const (
+	spanHops spanStage = iota + 1
+	spanDeferred
+)
+
+// afterSpan runs then once the span of a phase that just ended has returned (span: it has one), a tick later still when tick: the
+// phaseSpanHops hops and the microtask after them are the invocation's own Resume, so no closure is made for them.
+func (inv *invocation) afterSpan(span bool, then func(), tick bool) {
+	inv.next, inv.tick = then, tick
+	if span && inv.loop.Hops != nil {
+		inv.stage = spanHops
+		if inv.loop.Hops(phaseSpanHops, inv) {
+			return
+		}
+	}
+	inv.stage = 0
+	inv.Resume()
+}
+
+// Resume is the Resumer of afterSpan.
+func (inv *invocation) Resume() {
+	if inv.stage == spanHops {
+		inv.stage = spanDeferred
+		inv.loop.DeferResumer(inv)
+		return
+	}
+	then := inv.next
+	inv.next, inv.stage = nil, 0
+	if inv.spanFirst {
+		inv.spanFirst = false
+		inv.telemetry().start, inv.spanAsk = then, true
+	}
+	if inv.tick {
+		inv.loop.NextTick(then)
+		return
+	}
+	then()
 }
 
 func (inv *invocation) finish() {
@@ -133,9 +229,13 @@ type Scheduler struct {
 		cancel func()
 	}
 	wakeScheduled bool
-	// parkedTasks holds the tasks a pass left out as parked; each pass checks them again, as settings.restartLimit may
-	// have risen.
-	parkedTasks *orderedSet[ID]
+	// resumed holds the tasks found live at open that have not run a phase since: the span of the first invocation is
+	// `resumed` (scheduler.ts #resumed).
+	resumed []ID
+	// idScratch is the list takeIDs lends.
+	idScratch []ID
+	// reportSpan is the span of the report being delivered (ReportSpan).
+	reportSpan uint32
 	// reconcilingWork counts the reconcile passes underway with work: their commits finalize held outcomes and mark
 	// cascades.
 	reconcilingWork int
@@ -151,6 +251,10 @@ type Scheduler struct {
 	closing            bool
 	dirty              bool
 	draining           bool
+	reserveSkip        uint8 // the decision of the reservation job's first run, which a later run of the same job keeps (reserve)
+
+	// observing is set while the commit observer runs (it runs inside the Storage's adopt).
+	observing bool
 }
 
 // NewScheduler returns a scheduler over the Session, on the Loop.
@@ -160,11 +264,18 @@ func NewScheduler(sess *Session, loop *Loop, env Env) *Scheduler {
 		live: newTaskMap(), invocations: map[ID]*invocation{},
 		taskWaiters: map[ID][]*taskWaiter{}, idleWaiters: map[ID][]*idleWaiter{},
 		contexts: map[ID]*keptContext{}, failedMigrations: map[ID]failedMigration{}, migrations: map[ID]*migration{}, edges: map[ID]ID{}, settled: map[ID]taskNode{},
-		below: map[treeNode]*orderedSet[treeNode]{}, roots: newOrderedSet[ID](), unloaded: newOrderedSet[ID](), intent: newOrderedSet[ID](), runnable: newOrderedSet[ID](), finalizeChecks: newOrderedSet[ID](), waiters: map[ID]*orderedSet[ID]{}, sleeping: newOrderedSet[ID](), dropQueue: newOrderedSet[treeNode](), abandoned: newOrderedSet[ID](), parkedTasks: newOrderedSet[ID](),
+		below: map[treeNode]*orderedSet[treeNode]{}, roots: newOrderedSet[ID](), unloaded: newOrderedSet[ID](), intent: newOrderedSet[ID](), runnable: newOrderedSet[ID](), finalizeChecks: newOrderedSet[ID](), waiters: map[ID]*orderedSet[ID]{}, sleeping: newOrderedSet[ID](), dropQueue: newOrderedSet[treeNode](), abandoned: newOrderedSet[ID](),
 	}
 	sess.OnFail = func(err error) { s.report(err, obj("type", "session_failed")) }
 	return s
 }
+
+// reserveSkip values: not decided yet, decided to reserve, decided to reserve nothing.
+const (
+	pinUnset uint8 = iota
+	pinRun
+	pinSkip
+)
 
 // failSession fails the Session, which reports it, for a failure in one of the scheduler's own commits: no extension code runs
 // in them, so a failure is a storage failure, a host callback, or a bug, and running the pass again fixes none. Ignored once
@@ -189,6 +300,10 @@ func (s *Scheduler) report(err error, info *jv.Object) {
 	}
 }
 
+// ReportSpan is the span of the Context the report being delivered is made under (scheduler.ts #report's context), 0 for none: the
+// host records the report event there. It is set only while Env.Report runs.
+func (s *Scheduler) ReportSpan() uint32 { return s.reportSpan }
+
 // restartLimit is settings.restartLimit, 5 unless the host set another.
 func (s *Scheduler) restartLimit() float64 {
 	if s.env.RestartLimit != nil {
@@ -197,13 +312,17 @@ func (s *Scheduler) restartLimit() float64 {
 	return defaultRestartLimit
 }
 
+// limitsRestarts reports whether the phases of the task's kind end it themselves at the restart limit.
+func (s *Scheduler) limitsRestarts(rec *jv.Object) bool {
+	if s.env.LimitsRestarts == nil {
+		return false
+	}
+	kind, _ := getStr(rec, "kind")
+	return s.env.LimitsRestarts(kind)
+}
+
 // defaultRestartLimit is the default of settings.restartLimit.
 const defaultRestartLimit = 5
-
-// parked is a task cut off restartLimit times in a row; an abort mark still runs its abort handler (scheduler.ts #parked).
-func (s *Scheduler) parked(rec *jv.Object) bool {
-	return !getBool(rec, "abortRequested") && restartsOf(rec) > 0 && restartsOf(rec) >= s.restartLimit()
-}
 
 // notifyBlocked tells the host that blocked reasons may have changed without a commit.
 func (s *Scheduler) notifyBlocked() {
@@ -253,25 +372,19 @@ func (s *Scheduler) commitWith(cancel *Cancel, change func(tx *Tx) error, scope 
 
 // commitQueued is commit for a call a caller makes through `Session.commitWith` (session.ts :95-102): on an idle line the job starts
 // a tick after the call.
-func (s *Scheduler) commitQueued(change func(tx *Tx) error, scope TxScope, then func(error)) {
+func (s *Scheduler) commitQueued(late bool, change func(tx *Tx) error, scope TxScope, then func(error)) {
+	if late {
+		s.loop.LateNext()
+	}
 	s.commitJob(s.loop.LineAfterTail, nil, change, scope, then)
 }
 
 func (s *Scheduler) commitJob(line func(func() error, func(error)), cancel *Cancel, change func(tx *Tx) error, scope TxScope, then func(error)) {
-	s.commitJobAfter(line, cancel, change, scope, nil, then)
-}
-
-// commitJobAfter is commitJob that also runs after, when the commit succeeded, as the job completes: right after the commit's
-// publication, before the line's next job.
-func (s *Scheduler) commitJobAfter(line func(func() error, func(error)), cancel *Cancel, change func(tx *Tx) error, scope TxScope, after func(), then func(error)) {
 	line(func() error {
 		if err := cancel.Err(); err != nil {
 			return err
 		}
 		_, err := s.sess.RunCommit(change, scope)
-		if err == nil && after != nil {
-			s.loop.OnComplete(after)
-		}
 		return err
 	}, then)
 }
@@ -297,10 +410,7 @@ func (s *Scheduler) scanAllTasks(tx *Tx, q TaskQuery) ([]*jv.Object, error) {
 func (s *Scheduler) Open(done func(error)) {
 	s.sess.SubscribeCommits(s.observe)
 	s.sess.SubscribeClose(s.Seal)
-	limit := s.restartLimit()
-	var parked []*jv.Object
 	s.commit(func(tx *Tx) error {
-		parked = nil
 		var scans [][]*jv.Object
 		for _, st := range liveStatuses {
 			recs, err := s.scanAllTasks(tx, TaskQuery{Status: st})
@@ -312,6 +422,11 @@ func (s *Scheduler) Open(done func(error)) {
 		for _, recs := range scans {
 			for _, rec := range recs {
 				s.track(nil, rec)
+				s.addResumed(mustInt(rec, "id"))
+				// Read-only, open only loads them: a running task stays as committed, running in another process.
+				if s.sess.ReadOnly {
+					continue
+				}
 				if getBool(rec, "abandonOnRestart") {
 					s.abandoned.Add(mustInt(rec, "id"))
 				}
@@ -323,9 +438,6 @@ func (s *Scheduler) Open(done func(error)) {
 					if err := tx.stageTask(pending); err != nil {
 						return err
 					}
-					if restarts >= limit && !getBool(rec, "abortRequested") {
-						parked = append(parked, rec)
-					}
 				}
 				if taskStatus(rec) == StatusWaiting {
 					if pol, _ := getStr(state, "policy"); pol == "failFast" {
@@ -336,40 +448,12 @@ func (s *Scheduler) Open(done func(error)) {
 		}
 		return nil
 	}, TxScope{}, func(err error) {
-		if err == nil {
-			for _, rec := range parked {
-				kind, _ := getStr(rec, "kind")
-				restarts := restartsOf(rec) + 1
-				s.report(errorf("Task %d (%s) was cut off %d times without progress; it is parked until retryTask()", mustInt(rec, "id"), kind, restarts), s.aboutRecord("task_parked", rec))
-			}
+		if err == nil && !s.sess.ReadOnly {
 			s.cascadePending = true
 			s.scheduleReconcile()
 			s.scheduleWake()
 		}
 		done(err)
-	})
-}
-
-// Retry runs a task parked by the restart limit again: it clears its restart count and enables scheduling. It does nothing
-// for a task that is not parked, and fails for an unknown one (scheduler.ts retry).
-func (s *Scheduler) Retry(id ID, cancel *Cancel, then func(error)) {
-	s.commitWith(cancel, func(tx *Tx) error {
-		current, err := tx.Task(id)
-		if err != nil {
-			return err
-		}
-		if current == nil {
-			return errorf("Task %d does not exist", id)
-		}
-		if st := taskStatus(current); st == StatusTerminal || st == StatusCompleting || !s.parked(current) {
-			return nil
-		}
-		return tx.stageTask(progressed(current))
-	}, TxScope{}, func(err error) {
-		if err == nil {
-			s.Resume()
-		}
-		then(err)
 	})
 }
 
@@ -382,13 +466,21 @@ func (s *Scheduler) addFailFast(id ID) {
 // Resume enables scheduling, makes sleeping tasks that are due runnable (a host wakeup, such as an alarm, calls this), and
 // starts any reservable task.
 func (s *Scheduler) Resume() {
+	// A read-only Harness runs nothing; the host refuses the call before it reaches here (scheduler.ts resume throws ReadOnlySession).
+	if s.sess.ReadOnly {
+		return
+	}
 	s.enabled = true
 	s.wakeDue()
 	s.kick()
 }
 
-// RegistryChanged is the registry subscription: a new snapshot may make blocked tasks runnable.
-func (s *Scheduler) RegistryChanged() { s.kick() }
+// RegistryChanged is the registry subscription (scheduler.ts open): a new snapshot may change the blocked reasons, which the graph derives
+// again at once, and may make blocked tasks runnable.
+func (s *Scheduler) RegistryChanged() {
+	s.notifyBlocked()
+	s.kick()
+}
 
 // Join calls then once every running invocation has ended.
 func (s *Scheduler) Join(then func()) {
@@ -607,6 +699,9 @@ func (s *Scheduler) resolveTaskWaiters(id ID, rec *jv.Object) {
 	}
 }
 
+// IsIdle reports whether WaitForIdle(conversationID) answers at once: the Scheduler is open and the scope has no live task.
+func (s *Scheduler) IsIdle(conversationID ID) bool { return !s.closing && s.idle(conversationID) }
+
 // WaitForIdle calls then when the conversation (0: every root) has no live
 // non-background task or queued input below it.
 func (s *Scheduler) WaitForIdle(conversationID ID, cancel *Cancel, then func(error)) {
@@ -726,7 +821,7 @@ func (s *Scheduler) AbortConversation(conversationID ID, background bool, cancel
 // task without a running invocation yields a signal already aborted as ended.
 func (s *Scheduler) Bound(taskID ID) *Cancel {
 	if inv := s.invocations[taskID]; inv != nil {
-		return inv.signal
+		return &inv.signal
 	}
 	c := &Cancel{}
 	c.AbortWith(errorf("Task %d invocation has ended", taskID))
@@ -735,6 +830,7 @@ func (s *Scheduler) Bound(taskID ID) *Cancel {
 
 // Seal stops scheduling: waiters reject, and the invocation signals abort in a microtask (signalInvocations).
 func (s *Scheduler) Seal() {
+	s.sealActive()
 	s.closing = true
 	// session.ts close queues `Promise.resolve().then(beforeClose)` before it runs the close listeners, and beforeClose is join(),
 	// which signals every invocation: one microtask on, ahead of the reactions of the waits this seal rejects, not inside it.
@@ -769,6 +865,11 @@ func (s *Scheduler) Seal() {
 // running task back as pending: its invocation was stopped by the close, or its reservation settled while the close began. It
 // reads the records as they stand now, so the write keeps what commits admitted before the seal wrote, such as an abort mark.
 func (s *Scheduler) CloseWrites() []*jv.Object {
+	// A read-only Harness reserved nothing: the running tasks it loaded run in another process (scheduler.ts join writes back only the tasks
+	// its own invocations ran).
+	if s.sess.ReadOnly {
+		return nil
+	}
 	var records []*jv.Object
 	for _, rec := range s.live.values() {
 		if taskStatus(rec) != StatusRunning {
@@ -787,7 +888,7 @@ func (s *Scheduler) WriteBack(records []*jv.Object) error { return s.sess.WriteT
 
 // signalInvocations aborts the signal of every running invocation, in task order (scheduler.ts join).
 func (s *Scheduler) signalInvocations() {
-	ids := make([]ID, 0, len(s.invocations))
+	ids := s.takeIDs()
 	for id := range s.invocations {
 		ids = append(ids, id)
 	}
@@ -795,6 +896,15 @@ func (s *Scheduler) signalInvocations() {
 	for _, id := range ids {
 		s.invocations[id].signal.Abort()
 	}
+	s.idScratch = ids
+}
+
+// takeIDs hands out the scheduler's scratch ID list, empty; the caller gives it back by setting s.idScratch, so a pass over the
+// IDs of a map allocates once for the life of the scheduler. A pass that runs inside another finds none and starts its own.
+func (s *Scheduler) takeIDs() []ID {
+	ids := s.idScratch[:0]
+	s.idScratch = nil
+	return ids
 }
 
 func (s *Scheduler) idle(conversationID ID) bool {

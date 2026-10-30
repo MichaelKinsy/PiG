@@ -412,6 +412,10 @@ func TestProjectPackageDeltaDrivesStartupStatusAndResourceCollectors(t *testing.
 			t.Errorf("%s enabled beta count = %d, want 1", kind, betaEnabled[kind])
 		}
 	}
+	// Status applies the project's settings only when the project is trusted, as a print run does.
+	if err := codingagent.NewProjectTrustStore(agentDir).Set(cwd, new(true)); err != nil {
+		t.Fatal(err)
+	}
 	status := collectStatus()
 	if status.Packages.Total != 1 || status.Packages.User != 1 || status.Packages.Project != 0 || len(status.Errors) != 0 {
 		t.Fatalf("status Package delta projection = %#v", status)

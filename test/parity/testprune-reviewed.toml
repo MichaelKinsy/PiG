@@ -412,3 +412,136 @@ commit = "dcc5ef43ee75a3d4110b5159424fa0ab4d016428"
 class = "CITE"
 cite = "packages/durable/src/harness/harness.ts:193"
 reason = "Pi adc5fa9f80 and 04a93bad8f give the Harness a view of the host's Models that adds the Harness identity, withClientIdentity (harness.ts:193-197 currentModels; identity.ts:154), shared by the tools and the hooks (harness-tools.test.ts: seen[0] is seen[1]): the models a tool reads are no longer the host's own value, so the test expects a view that lists the same models and returns the same model for faux/faux-1."
+
+[[entry]]
+path = "durable/core/turn/live_test.go"
+commit = "42fc4e620ef0b4ccf6a3c4a7b1a1818a98955298"
+class = "CITE"
+cite = "packages/durable/src/harness/live.ts:179"
+reason = "Pi f3255de7 makes endRun record `runFailure` in pi.live when a run ends without an answer (live.ts:179-212) and keeps it until a later run starts: the core's EndRun, and the run ends of its generation, now leave `{runFailure: {taskId, inputs, reason, detail?}}` where pi.live was empty, so the turn tests expect that document after an aborted, faulted, orphaned or model-error run and after the compactions of a failed run end."
+
+[[entry]]
+path = "durable/core/view_test.go"
+commit = "42fc4e620ef0b4ccf6a3c4a7b1a1818a98955298"
+class = "CITE"
+cite = "packages/durable/src/harness/view.ts:358"
+reason = "Pi f3255de7 makes ConversationView.entries a window over the transcript (view.ts advance, :358-396): an entry is appended wherever it was written, a head marker included, and past the window's max the oldest leave in one splice with a set of `before`, so the core's view frames carry those ops where a head marker used to replace the entries before its head."
+
+[[entry]]
+path = "internal/jsstring/localecompare/localecompare_test.go"
+commit = "40b9b1829f2cc3afb197746fa40d7412d31e6cf5"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "The commit moves the root-locale collator from internal/jsstring into internal/jsstring/localecompare and renames LocaleCompare to Compare, so the three changed lines are the oracle tests' calls and failure messages (got := Compare(a, b) against the Node localeCompare answer, and the Errorf that names the function). The expected values are Node's own localeCompare results computed in each test, and they are unchanged: no Pi line moves, the ordering stays the one Pi's localeCompare call sites get."
+
+[[entry]]
+path = "coding/extension/pigsdk/strip_test.go"
+commit = "2eec1d23fb5778618c8cdd80dcce6905738c645c"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "The multi-language extension SDK bridges are PiG-only (docs/additive-features.md D19), so no Pi line governs them. The commit adds the Lisp SDK as a fourth strippable SDK language: the strip test gains its Lisp row, and the count of SDKs left unstripped after stripping one language is three where it was two. The expectation follows the number of SDK languages the build carries."
+
+[[entry]]
+path = "durable/core/sweep_test.go"
+commit = "1fa0792e5db2dae1fd5dc5b523188e35d98c96b9"
+class = "CITE"
+cite = "packages/durable/src/session/session.ts:736"
+reason = "Pi 6c2fd73b0 adds `held`, the number of documents with held changes, to documentCacheSizes (session.ts:722-737), so the core's doc-cache notice carries `\"held\":0` after `sweeps`, and a sweep job is the async function `#enqueue` runs and whose rejection is caught (session.ts:777-781), so the core's EnqueueSweep job returns an error."
+
+[[entry]]
+path = "durable/core/turn/generation_test.go"
+commit = "1fa0792e5db2dae1fd5dc5b523188e35d98c96b9"
+class = "CITE"
+cite = "packages/durable/src/harness/live.ts:143"
+reason = "Pi 6c2fd73b0 commits a streamed partial with PROGRESS_COMMIT, a deferred commit (live.ts:138-143, generation.ts:484): memory has each partial at once and Storage the folded ops of them all within persistWithinMs. The partial test expects no stored commit when the second partial arrives, memory holding it, and one stored commit at the deadline whose last op appends the new text."
+
+[[entry]]
+path = "durable/core/turn/tool_round_controls_pi_test.go"
+commit = "d94328677410f7437d3bc0371fcf84e0b9b323d0"
+class = "CITE"
+cite = "packages/durable/src/harness/generation.ts:729"
+reason = "Pi 38ff99177 makes finishToolRound append the last handoff's reset (generation.ts:728-739) and end the run only when the round also terminates (generation.ts:741-744); otherwise the run continues at the postTools boundary in the reset's context. The handoff test expects another model request after a handoff alone and none after a terminating round, with the reset entry carrying the last handoff."
+
+[[entry]]
+path = "durable/core/view_test.go"
+commit = "121ba35041cbdd862404532e67e864b4fee5fe3f"
+class = "CITE"
+cite = "packages/durable/src/harness/view.ts:114"
+reason = "Pi f3255de7's resolveWindow throws a RangeError for a window bound that is not an integer or a max below min (view.ts:114-121): the core rejects such a window as a Rejection named RangeError, which the host rebuilds as the RangeError, where it returned a plain error. The test asserts the rejection's name and message."
+
+[[entry]]
+path = "coding/piglet/scope_mcp_test.go"
+commit = "227a4c1bff5e42573122263bf2a3ca8caceccf9d"
+class = "CITE"
+cite = "packages/coding-agent/src/core/agent-session.ts:1557"
+reason = "A Piglet's tool scope now bounds the Session's tool registry as Pi's _isAllowedTool bounds it for --tools and --exclude-tools (agent-session.ts:1557-1561, 3571-3574). codemode and tool_search are ordinary tools that reach what the registry keeps, so the table no longer expects them hidden when no MCP tool stays visible; the MCP resource tools follow the pig-mcp-adapter entry by name."
+
+[[entry]]
+path = "coding/extension/tool_filter_test.go"
+commit = "f322041adf29d06ebac9dc58733d32c8b3a881d4"
+class = "CITE"
+cite = "packages/coding-agent/src/core/agent-session.ts:1557"
+reason = "The test is this range's own test of the Piglet scope in the registry filter (ToolFilter.WithScope, AllowsTool), written against Pi's _isAllowedTool intersection (agent-session.ts:1557-1561, 3571-3574); the commit replaces the predicate form of the scope with the data form the filter holds, and the expectations are the same intersection."
+
+[[entry]]
+path = "coding/session_tool_scope_test.go"
+commit = "f322041adf29d06ebac9dc58733d32c8b3a881d4"
+class = "CITE"
+cite = "packages/coding-agent/src/core/agent-session.ts:1557"
+reason = "The test is this range's own test that the Session registry admits the intersection of --tools/--exclude-tools and the Piglet scope (Pi's _isAllowedTool, agent-session.ts:1557-1561, 3571-3574); the commit replaces the predicate form of the scope with the data form, and the expectations are the same intersection."
+
+[[entry]]
+path = "coding/piglet/overlay_test.go"
+commit = "f71fa007f7d83c87156bb2a8cb64182a35f85871"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "Overlay Piglets on a Piglet Binary are PiG-additive (D202) and have no Pi counterpart, so no Pi line governs the test. The owner approved the D202 redesign on 2026-10-28: an overlay merges as an extends child of the Binary's baked Piglet, and only what the Binary compiled in is refused (setting a frontend, re-enabling a build-tag strip, naming a fused or embedded member again with origins). TestOverlayRefusesWhatChangesTheBinary moves from the old refusal list (baked extension or skill replaced or removed, systemPrompt set, ceilings widened, runtime strips re-enabled) to those three refusals, each message naming the field, the Binary and the reason; the newly allowed cases have their own tests in the same commit range."
+
+[[entry]]
+path = "internal/codingagent/prompts/piglet_topic_test.go"
+commit = "568a15b72e1efa79ef7cc8d15e33dff8531352de"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "The Piglets topic of the docs section is PiG-additive (D23): Pi has no Piglets, so no Pi line governs the test. The commit adds the bundle page piglet-strip.md to the topic text, so the expected topic string names two pages. Pi's own topics (system-prompt.ts:166-169) and the stock prompt bytes are unchanged, and the test still asserts that the stock section never names the Piglet docs."
+
+[[entry]]
+path = "coding/cli/introspection_truth_test.go"
+commit = "6ea3ba872073f71d456b85ccdc86a45a062f5a55"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "The test file was added on this branch in the commit before. `pig status` and its Piglet inventory are PiG-additive (D41, D209) and have no Pi counterpart. This commit changes one expectation of the new file: a Piglet Binary named by PIG_ACTIVE_PIGLET_SOURCE is no longer assumed closed, because only the Binary itself knows whether it accepts overlays (D202), so status names the Binary and applies no discovery when it is another executable. TestStatusActivePigletBinaryExcludesEveryAmbientExtensionAndSkill became TestStatusNamesAPigletBinaryItCannotApply."
+
+[[entry]]
+path = "coding/cli/piglet_overlay_test.go"
+commit = "eb562ce1a8ad6fb5b1316c74110981cd57de2ddf"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "Piglet Binary overlays are PiG-original (a Piglet Binary has no Pi counterpart), so no Pi line governs the test. The commit replaces the opt-in build.allowOverlays with the opt-out build.closed (D202), so a Binary accepts overlays by default and the test's fixture, expected refusal text and accepting/refusing roles swap: the closed Binary now names build.closed, and the default Binary accepts what it refused."
+
+[[entry]]
+path = "coding/piglet/overlay_test.go"
+commit = "eb562ce1a8ad6fb5b1316c74110981cd57de2ddf"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "Piglet Binary overlays are PiG-original (a Piglet Binary has no Pi counterpart), so no Pi line governs the test. The commit replaces the opt-in build.allowOverlays with the opt-out build.closed (D202), so a Binary accepts overlays by default and the test's fixture, expected refusal text and accepting/refusing roles swap: the closed Binary now names build.closed, and the default Binary accepts what it refused."
+
+[[entry]]
+path = "coding/pigletbuild/overlay_binary_test.go"
+commit = "eb562ce1a8ad6fb5b1316c74110981cd57de2ddf"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "Piglet Binary overlays are PiG-original (a Piglet Binary has no Pi counterpart), so no Pi line governs the test. The commit replaces the opt-in build.allowOverlays with the opt-out build.closed (D202), so a Binary accepts overlays by default and the test's fixture, expected refusal text and accepting/refusing roles swap: the closed Binary now names build.closed, and the default Binary accepts what it refused."
+
+[[entry]]
+path = "coding/pigletbuild/overlay_build_test.go"
+commit = "eb562ce1a8ad6fb5b1316c74110981cd57de2ddf"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "Piglet Binary overlays are PiG-original (a Piglet Binary has no Pi counterpart), so no Pi line governs the test. The commit replaces the opt-in build.allowOverlays with the opt-out build.closed (D202), so a Binary accepts overlays by default and the test's fixture, expected refusal text and accepting/refusing roles swap: the closed Binary now names build.closed, and the default Binary accepts what it refused."
+
+[[entry]]
+path = "coding/cli/package_commands_test.go"
+commit = "7e160533d7ded8fa84cc825e12797e8b987ce6d6"
+class = "DIVERGENCE"
+cite = "D215"
+reason = "TestNormalizePackageSourceForSettings_UsesScopeBase pinned Pi's relative record for an absolute input (package-manager.ts normalizePackageSourceForSettings). D215 stores a path typed absolute as typed (#389), so the absolute cases now expect the typed path and the relative case keeps Pi's expectation."

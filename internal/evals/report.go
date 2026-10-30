@@ -20,6 +20,7 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/jsnumber"
 	"github.com/MichaelKinsy/PiG/internal/jsonstringify"
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
+	"github.com/MichaelKinsy/PiG/internal/jsstring/localecompare"
 )
 
 // PiSessionSnapshotArtifact is the harness artifact that carries the Session JSONL snapshot.
@@ -379,7 +380,7 @@ func groupPairs(expectedRuns []ExpectedEvalRun, observations []EvalObservation) 
 		group := getGroup(observation.EvalRunIdentity)
 		group.observations[observation.Variant] = append(group.observations[observation.Variant], observation)
 	}
-	collator := jsstring.NewCollator()
+	collator := localecompare.NewCollator()
 	slices.SortStableFunc(order, func(left, right *pairGroup) int {
 		if c := collator.CompareString(left.evalSet, right.evalSet); c != 0 {
 			return c
@@ -550,7 +551,7 @@ func SummarizeEvalObservations(protocolDigest string, expectedRuns []ExpectedEva
 			pairsByEvalSet[group.evalSet] = append(pairsByEvalSet[group.evalSet], *p)
 		}
 	}
-	collator := jsstring.NewCollator()
+	collator := localecompare.NewCollator()
 	slices.SortStableFunc(evalSets, collator.CompareString)
 	comparisons := []EvalSetComparison{}
 	for _, evalSet := range evalSets {

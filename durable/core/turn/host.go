@@ -40,6 +40,8 @@ type Settings struct {
 	Queue         inbox.QueueModes
 	// AfterFailedRun is settings.afterFailedRun: "keep", "continue" or "withdraw".
 	AfterFailedRun string
+	// RestartLimit is settings.restartLimit: how many times in a row a task may be cut off before it ends instead of running again.
+	RestartLimit float64
 }
 
 // Tool is a registered tool of the resolved agent: its transcript declaration, execution mode, replay policy and output limits.
@@ -133,6 +135,8 @@ type StreamRequest struct {
 	Replaced     []*jv.Object
 	// Options are the request options without the signal: the pinned stream options, the provider session ID and the reasoning level.
 	Options *jv.Object
+	// Span is the host's handle of the span of the phase making the request: its Context.telemetry.
+	Span uint32
 }
 
 // CompleteRequest is a non-streaming model request (completeSimple): the compaction summarizer.

@@ -9,6 +9,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
+	"github.com/MichaelKinsy/PiG/internal/jsstring/localecompare"
 	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
 )
 
@@ -414,7 +415,7 @@ func bestFuzzyMatch(matches []RuntimeModel) *RuntimeModel {
 	if len(candidates) == 0 {
 		return nil
 	}
-	collator := jsstring.NewCollator()
+	collator := localecompare.NewCollator()
 	slices.SortStableFunc(candidates, func(a, b RuntimeModel) int {
 		return collator.CompareString(b.ID, a.ID)
 	})

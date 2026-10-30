@@ -48,10 +48,11 @@ func (r *run) classify(req requestInfo, message *jv.Object) {
 			if err != nil {
 				return nil, err
 			}
-			if err := live.Set("generation", jobj("attempt", req.attempt, "deferred", jobj("pollAt", pollAt))); err != nil {
+			at, attempt := any(pollAt), any(req.attempt)
+			if err := live.Set("generation", jobj("attempt", attempt, "deferred", jobj("pollAt", at))); err != nil {
 				return nil, err
 			}
-			cp := jobj("phase", phasePoll, "attempt", req.attempt)
+			cp := jobj("phase", phasePoll, "attempt", attempt)
 			withCompacted(cp, req.compacted)
 			cp.Set("model", req.model.object())
 			if req.thinking != nil {
@@ -59,8 +60,8 @@ func (r *run) classify(req requestInfo, message *jv.Object) {
 			}
 			cp.Set("cutoff", float64(req.cutoff))
 			cp.Set("handle", handle)
-			cp.Set("pollAt", pollAt)
-			return jobj("status", "sleeping", "checkpoint", cp, "until", pollAt), nil
+			cp.Set("pollAt", at)
+			return jobj("status", "sleeping", "checkpoint", cp, "until", at), nil
 		})
 		return
 	}
@@ -148,22 +149,23 @@ func (r *run) retryOrFail(req requestInfo, message *jv.Object, settings Settings
 			return nil, err
 		}
 		if retry {
-			if err := live.Set("generation", jobj("attempt", req.attempt, "retry", jobj("at", until, "error", str(message, "errorMessage")))); err != nil {
+			at, attempt := any(until), any(req.attempt)
+			if err := live.Set("generation", jobj("attempt", attempt, "retry", jobj("at", at, "error", str(message, "errorMessage")))); err != nil {
 				return nil, err
 			}
-			cp := jobj("phase", phaseRetry, "attempt", req.attempt)
+			cp := jobj("phase", phaseRetry, "attempt", attempt)
 			withCompacted(cp, req.compacted)
-			cp.Set("until", until)
-			return jobj("status", "sleeping", "checkpoint", cp, "until", until), nil
+			cp.Set("until", at)
+			return jobj("status", "sleeping", "checkpoint", cp, "until", at), nil
 		}
 		text, ok := stringField(message, "errorMessage")
 		if !ok {
 			text = "Model response ended with stop reason " + stop
 		}
-		if err := r.endFailedRun(tx, live, failed, jobj("status", "unanswered", "reason", "model_error", "detail", text)); err != nil {
+		if err := r.endFailedRun(tx, live, failed, UnansweredWith("model_error", text)); err != nil {
 			return nil, err
 		}
-		return jobj("status", "terminal", "outcome", modelErrorOutcome(text)), nil
+		return failedTerminal(text, "model_error"), nil
 	})
 }
 
@@ -190,11 +192,11 @@ func (r *run) prepareFailure(tx *session.Tx) (failure, error) {
 	return failure{policy: policy, boundary: boundary}, nil
 }
 
-// endFailedRun ends a failed run, settling its inputs with settlement, and does with the inputs queued behind it what
+// endFailedRun ends a failed run, settling its inputs and recording why, and does with the inputs queued behind it what
 // settings.afterFailedRun says (spec section 6): keep them, start the next run with them, or withdraw them (generation.ts
 // endFailedRun, an async function its caller awaits).
-func (r *run) endFailedRun(tx *session.Tx, live *delta.Obj, failed failure, settlement *jv.Object) error {
-	if err := EndRun(tx, live, r.rt.TaskID(), settlement); err != nil {
+func (r *run) endFailedRun(tx *session.Tx, live *delta.Obj, failed failure, end RunEnd) error {
+	if err := EndRun(tx, live, r.rt.TaskID(), end); err != nil {
 		return err
 	}
 	if failed.policy == "withdraw" {
@@ -209,7 +211,7 @@ func (r *run) endFailedRun(tx *session.Tx, live *delta.Obj, failed failure, sett
 			return err
 		}
 		if len(applied.Users) > 0 {
-			if err := awaitStartRun(tx, r.conv, live, applied.Users); err != nil {
+			if err := awaitStartRun(tx, r.conv, live, applied.Users, true); err != nil {
 				return err
 			}
 		}
@@ -261,7 +263,7 @@ func (r *run) answer(message *jv.Object) {
 				if _, err := tx.AppendEntry(r.conv, entryDraft(KindUser, jobj("model", []any{user}))); err != nil {
 					return nil, err
 				}
-				next, err := createGeneration(tx, r.conv)
+				next, err := createGeneration(tx, r.conv, nil)
 				if err != nil {
 					return nil, err
 				}
@@ -269,11 +271,11 @@ func (r *run) answer(message *jv.Object) {
 				live.Delete("generation")
 				return result, nil
 			}
-			if err := EndRun(tx, live, r.rt.TaskID(), jobj("status", "done", "answer", float64(entryID))); err != nil {
+			if err := EndRun(tx, live, r.rt.TaskID(), Answered(entryID)); err != nil {
 				return nil, err
 			}
 			if len(applied.Users) > 0 {
-				if err := awaitStartRun(tx, r.conv, live, applied.Users); err != nil {
+				if err := awaitStartRun(tx, r.conv, live, applied.Users, false); err != nil {
 					return nil, err
 				}
 			}
@@ -282,18 +284,26 @@ func (r *run) answer(message *jv.Object) {
 	})
 }
 
-// createGeneration creates a generation owned by its conversation.
-func createGeneration(tx *session.Tx, conv ID) (ID, error) {
-	return tx.CreateTask(GenerationDef, jv.NewObject(), session.TaskOptions{ConversationID: conv})
+// createGeneration creates a generation owned by its conversation; a run's inputs are the submissions whose carriers it takes as its
+// trace and links (generation.ts createGeneration, `submissionIds`).
+func createGeneration(tx *session.Tx, conv ID, inputs []ID) (ID, error) {
+	return tx.CreateTask(GenerationDef, jv.NewObject(), session.TaskOptions{ConversationID: conv, Submissions: inputs})
 }
 
-// startRun starts a run for inputs, placed input submissions: a new generation takes pi.live.run.
-func startRun(tx *session.Tx, conv ID, live *delta.Obj, inputs []ID) error {
-	id, err := createGeneration(tx, conv)
+// startRun starts a run for inputs, placed input submissions: a new generation takes pi.live.run. It removes `runFailure`, unless
+// keepFailure: a run started in the commit that ended the failed one keeps its failure.
+func startRun(tx *session.Tx, conv ID, live *delta.Obj, inputs []ID, keepFailure bool) error {
+	id, err := createGeneration(tx, conv, inputs)
 	if err != nil {
 		return err
 	}
-	return live.Set("run", jobj("taskId", float64(id), "inputs", idList(inputs)))
+	if err := live.Set("run", jobj("taskId", float64(id), "inputs", idList(inputs))); err != nil {
+		return err
+	}
+	if !keepFailure {
+		live.Delete("runFailure")
+	}
+	return nil
 }
 
 // handOver hands run control from one task to another; the run's inputs move with it.
@@ -313,7 +323,7 @@ func (Runs) Live(tx *session.Tx, conv ID) (*delta.Obj, error) {
 
 // Start is startRun.
 func (Runs) Start(tx *session.Tx, conv ID, live *delta.Obj, inputs []ID) error {
-	return startRun(tx, conv, live, inputs)
+	return startRun(tx, conv, live, inputs, false)
 }
 
 func createToolTask(tx *session.Tx, owner, assistant ID, callID string) (ID, error) {
@@ -391,8 +401,9 @@ func (r *run) startRoundWith(message *jv.Object, calls []*jv.Object, offered map
 				return nil, err
 			}
 			tools = append(tools, taskID)
-			started = append(started, float64(taskID))
-			slots = append(slots, jobj("callId", id, "name", name, "taskId", float64(taskID), "status", "pending"))
+			taskValue := any(float64(taskID))
+			started = append(started, taskValue)
+			slots = append(slots, jobj("callId", id, "name", name, "taskId", taskValue, "status", "pending"))
 		}
 		live.Delete("generation")
 		if slots == nil {

@@ -1,6 +1,6 @@
 # RPC commands
 
-This page lists the commands an RPC client writes to PiG on standard input, with example records and their responses. [RPC mode](/docs/latest/rpc) describes how to start the process and frame records. The commands are those of Pi 1.4.0's `RpcCommand` union ([Pi's RPC command reference](https://github.com/earendil-works/pi/blob/v1.2.0/packages/coding-agent/docs/rpc-commands.md)), plus `get_extensions` (D101).
+This page lists the commands an RPC client writes to PiG on standard input, with example records and their responses. [RPC mode](/docs/latest/rpc) describes how to start the process and frame records. The commands are those of Pi 1.4.0's `RpcCommand` union ([Pi's RPC command reference](https://github.com/earendil-works/pi/blob/main/packages/coding-agent/docs/rpc-commands.md)), plus `get_extensions` (D101).
 
 ## Supported commands
 

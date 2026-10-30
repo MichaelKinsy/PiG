@@ -33,7 +33,7 @@ func TestBuildModelUsesGeneratedProviderAPI(t *testing.T) {
 		{"google/gemini-2.5-flash", "*ai.googleProvider"},
 		{"google-vertex/gemini-2.5-flash", "*ai.googleVertexProvider"},
 		{"mistral/codestral-latest", "*ai.mistralProvider"},
-		{"amazon-bedrock/amazon.nova-2-lite-v1:0", "*ai.BedrockProvider"},
+		{"amazon-bedrock/amazon.nova-2-lite-v1:0", "*bedrock.BedrockProvider"},
 		{"xai/grok-4.3", "*ai.openAIResponsesProvider"},
 	}
 

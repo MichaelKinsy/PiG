@@ -4,12 +4,16 @@ package examples_test
 
 import (
 	"context"
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/ai"
+	"github.com/MichaelKinsy/PiG/chord"
+	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/durable"
 	"github.com/MichaelKinsy/PiG/durable/env"
 	envnode "github.com/MichaelKinsy/PiG/durable/env/node"
@@ -78,10 +82,8 @@ func TestExample17Print(t *testing.T) {
 	closeSession(t, opened)
 }
 
-// 18-json.ts: the same coding turn over each storage the script offers (sqlite, jsonl, memory). Not ported: the
-// script's two output modes. `--ops` prints the conversation watch (Conversation.Watch, which durable/harness still
-// stubs: view.go waits on durable/session observation exports) and the default mode prints watchEvents
-// (harness/events.ts, not in durable/harness yet). The OPENAI_API_KEY path needs a live key.
+// 18-json.ts: the same coding turn over each storage the script offers (sqlite, jsonl, memory). The script's two output modes are
+// TestExample18JsonOps and TestExample18JsonState. The OPENAI_API_KEY path needs a live key.
 func TestExample18JsonStorages(t *testing.T) {
 	stores := map[string]func(t *testing.T) durable.Storage{
 		"memory": func(*testing.T) durable.Storage { return storage.NewMemoryStorage() },
@@ -114,4 +116,128 @@ func TestExample18JsonStorages(t *testing.T) {
 			closeSession(t, opened)
 		})
 	}
+}
+
+// viewLines are the lines a JSON-mode run of 18-json.ts prints: the watch's callbacks, serialized, in delivery order.
+type viewLines struct {
+	mu     sync.Mutex
+	values []harness.ConversationView
+	ops    [][]durable.Op
+}
+
+func (lines *viewLines) add(change chord.WatchChange[harness.ConversationView]) {
+	lines.mu.Lock()
+	defer lines.mu.Unlock()
+	lines.values = append(lines.values, change.Value)
+	lines.ops = append(lines.ops, change.Ops)
+}
+
+// runJson attaches before submitting, so the watch covers the whole run, runs the prompt and waits for the last value of the run.
+func runJson(t *testing.T) (initial harness.ConversationView, lines *viewLines) {
+	t.Helper()
+	opened, root := codingAssistant(t, storage.NewMemoryStorage(), t.TempDir())
+	watch := must(root.Watch(background, nil))
+	initial = watch.Value()
+	lines = &viewLines{}
+	watch.Start(func(_ context.Context, change chord.WatchChange[harness.ConversationView]) error {
+		lines.add(change)
+		return nil
+	})
+	submission := must(root.Submit(background, durable.SubmissionDraft{Type: durable.SubmissionTypeInput, Content: ai.UserText("What is in this directory?")}))
+	must(submission.Wait(background))
+	if err := opened.WaitForIdle(background); err != nil {
+		t.Fatal(err)
+	}
+	// Let the last value reach the listener before stopping.
+	eventually(t, func() bool {
+		lines.mu.Lock()
+		defer lines.mu.Unlock()
+		if len(lines.values) == 0 {
+			return false
+		}
+		last := lines.values[len(lines.values)-1]
+		return liveState(t, last).Run == nil && len(last.Entries) == 5
+	})
+	must(watch.Stop())
+	closeSession(t, opened)
+	return initial, lines
+}
+
+// 18-json.ts --ops (the default): the raw frames, starting with the view itself; each later line holds the ops of the commits since.
+// Applying the lines' ops to the first line's view gives each value the watch delivered.
+func TestExample18JsonOps(t *testing.T) {
+	initial, lines := runJson(t)
+	value := orderedViewJSON(t, initial)
+	for index, ops := range lines.ops {
+		converted := make([]durable.Op, len(ops))
+		for position, op := range orderedViewJSON(t, ops).([]any) {
+			converted[position] = op.([]any)
+		}
+		next, err := delta.ApplyImmutable(value, converted)
+		if err != nil {
+			t.Fatal(err)
+		}
+		value = next
+		if got, want := viewJSON(t, value), viewJSON(t, lines.values[index]); got != want {
+			t.Fatalf("line %d: the ops give %s, the watch delivered %s", index, got, want)
+		}
+	}
+	if len(lines.ops) == 0 {
+		t.Fatal("the run printed no ops line")
+	}
+}
+
+// 18-json.ts --state: per call, the entries appended since the previous one and the current `pi.live`, state a renderer draws.
+func TestExample18JsonState(t *testing.T) {
+	initial, lines := runJson(t)
+	newest := durable.EntryId(0)
+	if len(initial.Entries) > 0 {
+		newest = initial.Entries[len(initial.Entries)-1].Id
+	}
+	var appended []string
+	for _, value := range lines.values {
+		for _, entry := range value.Entries {
+			if entry.Id > newest {
+				appended = append(appended, entry.Kind)
+			}
+		}
+		if len(value.Entries) > 0 {
+			newest = value.Entries[len(value.Entries)-1].Id
+		}
+	}
+	expectEqual(t, "entries printed", appended, []string{"pi.user", "pi.system", "pi.assistant", "pi.tool-result", "pi.assistant"})
+	last := lines.values[len(lines.values)-1]
+	if live := liveState(t, last); live.Run != nil || live.RunFailure != nil || live.Generation != nil {
+		t.Fatalf("pi.live after the run = %+v, want nothing", live)
+	}
+}
+
+func orderedViewJSON(t *testing.T, value any) any {
+	t.Helper()
+	encoded, err := json.Marshal(value)
+	if err != nil {
+		t.Fatal(err)
+	}
+	decoded, err := delta.DecodeJson(encoded)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return decoded
+}
+
+func viewJSON(t *testing.T, value any) string {
+	t.Helper()
+	encoded, err := json.Marshal(value)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var decoded any
+	if err := json.Unmarshal(encoded, &decoded); err != nil {
+		t.Fatal(err)
+	}
+	canonical, err := json.Marshal(decoded)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return string(canonical)
 }

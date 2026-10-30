@@ -97,12 +97,13 @@ func newRig(t *testing.T) *rig {
 	t.Helper()
 	r := &rig{t: t, mem: sessiontest.New(), loop: &session.Loop{}, now: 1000, hooks: map[string]func(int, *jv.Object) (any, error){}}
 	r.settings = turn.Settings{
-		RetryEnabled: true, MaxRetries: 3, BaseDelayMs: 2000,
+		RetryEnabled: true, MaxRetries: 3, BaseDelayMs: 2000, RestartLimit: 5,
 		Compaction:        history.Policy{Enabled: true, ReserveTokens: 16384, KeepRecentTokens: 20000, BackgroundTokens: 32768},
 		PartialIntervalMs: 100, OutputIntervalMs: 100, ToolExecution: "parallel",
 	}
 	r.agent = turn.Agent{Model: &turn.ModelRef{Provider: "faux", ModelID: "m"}, ThinkingLevel: "off"}
 	r.sess = session.New(r.mem, r.mem.NextID(), func() float64 { return r.now })
+	r.hookSession()
 	h := &turn.Host{
 		Now:      func() float64 { return r.now },
 		Settings: func() turn.Settings { return r.settings },
@@ -219,11 +220,23 @@ func (r *rig) timer(at float64, fire func()) func() {
 
 // restart simulates a crash: volatile state (pending model requests, tool runs, timers) is lost, the store survives, and a new
 // Session and Scheduler open over it.
+// hookSession gives the Session what a deferred commit's deadline needs (held.go): a foreground timer on the rig's clock and a
+// detached job on its line.
+func (r *rig) hookSession() {
+	r.sess.ArmForeground = func(at float64, fire func()) func() {
+		tm := &pendingTimer{at: at, fire: fire}
+		r.timers = append(r.timers, tm)
+		return func() { tm.dead = true }
+	}
+	r.sess.EnqueueSweep = func(job func() error) { r.loop.LineAfterTail(job, nil) }
+}
+
 func (r *rig) restart() {
 	r.t.Helper()
 	r.loop = &session.Loop{}
 	r.requests, r.toolRuns, r.complete, r.timers = nil, nil, nil, nil
 	r.sess = session.New(r.mem, r.mem.NextID(), func() float64 { return r.now })
+	r.hookSession()
 	r.boot()
 	r.resume()
 }
@@ -483,8 +496,8 @@ func TestGenerationFailsAFatalError(t *testing.T) {
 	if got := outcomeOf(t, r.tasks(turn.KindGeneration)[0]); got != `{"status":"failed","error":{"message":"invalid api key","detail":{"reason":"model_error"}}}` {
 		t.Fatalf("outcome = %s", got)
 	}
-	if got := r.doc(turn.LiveDef, conv); got != `{}` {
-		t.Fatalf("live = %s", got)
+	if got, want := r.doc(turn.LiveDef, conv), fmt.Sprintf(`{"runFailure":{"taskId":%d,"inputs":[%d],"reason":"model_error","detail":"invalid api key"}}`, taskID(t, r.tasks(turn.KindGeneration)[0]), submission); got != want {
+		t.Fatalf("live = %s, want %s", got, want)
 	}
 }
 
@@ -547,10 +560,11 @@ func TestGenerationAnswersAnUnofferedTool(t *testing.T) {
 }
 
 // TestPartialsCommitAsLeafDeltas: a partial that extends the committed one writes a string append, not the whole message
-// again (json.ts assignJson: only a longer string leaf is an append).
+// again (json.ts assignJson: only a longer string leaf is an append). Partials are deferred commits (live.ts PROGRESS_COMMIT): memory
+// has each at once and Storage the folded ops of them all within persistWithinMs.
 func TestPartialsCommitAsLeafDeltas(t *testing.T) {
 	r := newRig(t)
-	r.start("hi")
+	conv, _ := r.start("hi")
 	r.resume()
 	req := r.requests[0]
 	partial := func(text string) {
@@ -560,8 +574,15 @@ func TestPartialsCommitAsLeafDeltas(t *testing.T) {
 	partial("hel")
 	before := len(r.mem.Commits)
 	partial("hello world")
+	if len(r.mem.Commits) != before {
+		t.Fatalf("a held partial was stored: commits %d -> %d", before, len(r.mem.Commits))
+	}
+	if live := r.doc(turn.LiveDef, conv); !strings.Contains(live, "hello world") {
+		t.Fatalf("memory lacks the second partial: %s", live)
+	}
+	r.advance(1000)
 	if len(r.mem.Commits) != before+1 {
-		t.Fatalf("commits %d -> %d", before, len(r.mem.Commits))
+		t.Fatalf("the deadline stored %d commits", len(r.mem.Commits)-before)
 	}
 	var ops []string
 	for _, w := range r.mem.Commits[len(r.mem.Commits)-1].Writes {
@@ -571,8 +592,8 @@ func TestPartialsCommitAsLeafDeltas(t *testing.T) {
 			}
 		}
 	}
-	if len(ops) != 1 || !strings.HasSuffix(ops[0], ":lo world") {
-		t.Fatalf("ops of the second partial = %v, want one append of the new text", ops)
+	if len(ops) == 0 || !strings.HasSuffix(ops[len(ops)-1], ":lo world") {
+		t.Fatalf("ops of the stored partials = %v, want the new text as an append last", ops)
 	}
 }
 

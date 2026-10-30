@@ -88,6 +88,7 @@ func (l *library) mutantKills(d *detector, s *sym, tests []string, work string) 
 		pkg := "./" + filepath.ToSlash(filepath.Dir(file))
 		run := func(extra ...string) (string, error) {
 			args := append([]string{"test", "-count=1", "-run", "^" + name + "$", pkg}, extra...)
+			//nolint:gosec // G204 (class a): program is literal go; args are "test -count=1 -run ^name$ ./<dir>" from test refs parsed from repo test files, plus a temp -overlay.
 			cmd := exec.Command("go", args...)
 			cmd.Dir = l.root
 			var out bytes.Buffer

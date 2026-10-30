@@ -120,7 +120,7 @@ func directAPIProviderFor(api API, model *Model, key string, env ProviderEnv) (P
 		return NewOpenAICodexResponsesProvider(OpenAICodexResponsesConfig{ModelMetadata: model, APIKey: key, Model: model.ID, ProviderID: meta.ProviderID, BaseURL: meta.BaseURL, ExtraHeaders: meta.Headers, Compat: meta.Compat, ThinkingLevelMap: model.ThinkingLevelMap}), nil
 	case APIBedrockConverseStream:
 		// pig additive (D92): the API constructors report a stripped API (strip.apis).
-		return NewBedrockAPIProvider(*model)
+		return NewOptionalAPIProvider(api, *model)
 	case APIGoogleGenerativeAI:
 		return NewGoogleProvider(GoogleConfig{ModelMetadata: model, APIKey: key, Model: model.ID, ProviderID: meta.ProviderID, BaseURL: meta.BaseURL, ExtraHeaders: meta.Headers, ThinkingLevelMap: model.ThinkingLevelMap}), nil
 	case APIGoogleVertex:

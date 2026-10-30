@@ -1,9 +1,11 @@
-// Type-check the 32 upstream examples against the candidate API: the examples run unmodified (CONTRACT section 6), so every
-// export they use must have pi-durable's declaration. The temporary tree is the reference's `packages/durable` with the
+// Type-check the upstream examples against the candidate API: the examples run unmodified (CONTRACT section 6), so every
+// export they use must have pi-durable's declaration. The reference is the FOLLOW pin's source mirror (`.upstream/current`, which
+// `make durable-core-host-deps` installs: packages/durable/src and test/examples at the Pi the facade's types come from), not the
+// corpus pin's checkout (durable/contract/PIN), which is older. The temporary tree is the reference's `packages/durable` with the
 // candidate's index.ts and storage modules over it; `@earendil-works/pi-durable` (the facade's type source) maps to the
 // reference's own index, so both sides of every type are one declaration tree.
 //
-//   node tools/check-examples-types.mjs [--keep]      CONTRACT_PI_SOURCE or the gate's cache names the reference checkout
+//   node tools/check-examples-types.mjs [--keep]      DURABLE_EXAMPLES_PI_SOURCE names another reference checkout
 import { execFileSync } from "node:child_process"
 import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, renameSync, rmSync, symlinkSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
@@ -12,9 +14,9 @@ import { fileURLToPath } from "node:url"
 
 const cf = resolve(dirname(fileURLToPath(import.meta.url)), "..")
 const repo = resolve(cf, "..", "..", "..", "..")
-const pi = resolve(process.env.CONTRACT_PI_SOURCE ?? join(process.env.DURABLE_CONTRACT_CACHE ?? join(repo, "durable", "contract", ".cache"), "pi-main"))
+const pi = resolve(process.env.DURABLE_EXAMPLES_PI_SOURCE ?? join(repo, ".upstream", "current"))
 const durable = join(pi, "packages", "durable")
-if (!existsSync(join(durable, "src", "index.ts"))) { console.error(`reference checkout not found at ${pi}; run make durable-contract-setup or set CONTRACT_PI_SOURCE`); process.exit(2) }
+if (!existsSync(join(durable, "src", "index.ts"))) { console.error(`reference checkout not found at ${pi}; run make durable-core-host-deps or set DURABLE_EXAMPLES_PI_SOURCE`); process.exit(2) }
 
 const work = mkdtempSync(join(tmpdir(), "durable-examples-types-"))
 cpSync(join(durable, "src"), join(work, "src"), { recursive: true })

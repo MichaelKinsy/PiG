@@ -52,6 +52,7 @@ features.changelog kept
 features.docs kept
 features.export-html kept
 features.extension-sdk-go kept
+features.extension-sdk-lisp kept
 features.extension-sdk-python kept
 features.extension-sdk-rust kept
 features.mermaid kept

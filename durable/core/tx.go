@@ -10,11 +10,20 @@ import (
 	"github.com/MichaelKinsy/PiG/durable/core/internal/delta"
 	"github.com/MichaelKinsy/PiG/durable/core/jv"
 	"github.com/MichaelKinsy/PiG/durable/core/session"
+	"github.com/MichaelKinsy/PiG/durable/core/session/hopcost"
 	"github.com/MichaelKinsy/PiG/durable/core/turn"
 )
 
 // hostTx is one extension transaction (ABI section 8): a Session transaction whose callback runs in the host, one
 // operation per tx event, from begin to end or abort.
+// lineWait is one waiter of the Session line in Session mode (no Loop): a host transaction, or a read job that waits its turn
+// behind the transactions queued before it (session.ts #enqueue is one FIFO).
+type lineWait struct {
+	tx  uint32
+	api uint32 // the request ID of a queued api request (read job), 0 for a transaction
+	req *jv.Object
+}
+
 type hostTx struct {
 	id    uint32
 	scope session.TxScope
@@ -127,6 +136,12 @@ func (h *handler) txRun(t *hostTx, name string, op *jv.Object) {
 		return
 	}
 	t.mintDone, t.convDone = false, false
+	if session.IsNeedGate(err) {
+		// The operation stored held changes (session/held.go) and the host's Storage holds that commit: it runs again, from the
+		// start, once the Storage answered.
+		h.cg.retry, h.cg.retryTx, h.cg.retryName, h.cg.retryOp = retryTx, t, name, op
+		return
+	}
 	if err != nil {
 		if need, ok := session.IsNeedRead(err); ok && len(need.Reads) != 0 {
 			h.txResultNeed(t.id, need.Reads[0].Kind, result)
@@ -219,6 +234,16 @@ func (h *handler) txBegin(id uint32, op *jv.Object) error {
 	}
 	t := &hostTx{id: id, docs: map[string]*hostDoc{}}
 	t.scope.ConversationID = session.ID(numOf(op, "conversationId"))
+	// The Context of the commit: the span its entry and settlement events go to, and its carrier, which a task it creates inherits.
+	t.scope.Span = uint32(numOf(op, "span"))
+	t.scope.Trace, _ = op.Get("trace")
+	if persistence := objOf(op, "persistence"); persistence != nil && strOf(persistence, "kind") == "deferred" {
+		// CommitOptions.persistence (spec section 4.1): the host checked withinMs; absent means the Session's default window.
+		t.scope.Deferred, t.scope.WithinMs = true, -1
+		if within, ok := valueOf(persistence, "withinMs").(float64); ok {
+			t.scope.WithinMs = within
+		}
+	}
 	if invocation := session.ID(numOf(op, "invocation")); invocation != 0 {
 		if t.rt = h.runtimes[invocation]; t.rt == nil {
 			return &Rejection{"Error", "transaction begin: no running invocation of task " + itoa(int64(invocation))}
@@ -234,7 +259,7 @@ func (h *handler) txBegin(id uint32, op *jv.Object) error {
 		return nil
 	}
 	if h.holder != 0 {
-		h.queue = append(h.queue, id)
+		h.queue = append(h.queue, lineWait{tx: id})
 		h.txAnswer(id, []byte(`{"waiting":true}`))
 		return nil
 	}
@@ -251,7 +276,7 @@ func (h *handler) grant(t *hostTx) error {
 	var tx *session.Tx
 	var err error
 	if t.rt != nil {
-		tx, t.current, err = t.rt.BeginHost()
+		tx, t.current, err = t.rt.BeginHost(t.scope.Span, t.scope.Trace)
 	} else {
 		tx, err = h.sess.Begin(t.scope)
 	}
@@ -259,6 +284,9 @@ func (h *handler) grant(t *hostTx) error {
 		delete(h.txs, t.id)
 		h.txRejected(t.id, err)
 		return nil
+	}
+	if t.scope.Deferred {
+		tx.DeferWithin(t.scope.WithinMs)
 	}
 	t.tx = tx
 	h.holder = t.id
@@ -284,10 +312,12 @@ func (h *handler) release(t *hostTx) {
 		return
 	}
 	for h.holder == 0 && len(h.queue) != 0 {
-		next := h.txs[h.queue[0]]
+		next := h.queue[0]
 		h.queue = h.queue[1:]
-		if next != nil {
-			_ = h.grant(next)
+		if next.req != nil {
+			_ = h.answerDirect(next.api, next.req)
+		} else if t := h.txs[next.tx]; t != nil {
+			_ = h.grant(t)
 		}
 	}
 }
@@ -346,7 +376,28 @@ func (h *handler) txEndSettled(t *hostTx) {
 		h.txRejected(t.id, err)
 		return
 	}
+	if h.cg.state == gateApplied {
+		// The Storage adopted the batch: the commit is published inside the adoption, and the end is answered when the call settles.
+		for _, pub := range pubs {
+			h.sess.Publish(pub)
+		}
+		h.cg.applied = t
+		return
+	}
 	h.txCommitted(t, pubs)
+}
+
+// txAnswered ends the transaction whose adopted commit the Storage's call has now settled; a call that failed after adopting fails the
+// Session, and the transaction with it.
+func (h *handler) txAnswered(t *hostTx, err error) {
+	if err != nil {
+		h.sess.Fail(err)
+		h.sess.TakeTicks()
+		h.release(t)
+		h.txRejected(t.id, err)
+		return
+	}
+	h.txCommitted(t, nil)
 }
 
 // txCommitted ends a committed transaction. The commit resolves at the end of Pi's job (the change's awaits, settle,
@@ -356,7 +407,13 @@ func (h *handler) txCommitted(t *hostTx, pubs []*session.Publication) {
 	t.tx = nil
 	total := max(h.jobHops()-t.elapsed, 0)
 	h.job = jobStats{mintStart: h.sess.NextID()}
-	answer := func() { h.txResult(t.id, nil) }
+	answer := func() {
+		// The host's end() returns to the task: a task that ended for crashes is reported (scheduler.ts runtime.commit).
+		if t.rt != nil {
+			t.rt.ReportEnded()
+		}
+		h.txResult(t.id, nil)
+	}
 	publish := func() {
 		for _, pub := range pubs {
 			h.sess.Publish(pub)
@@ -369,24 +426,40 @@ func (h *handler) txCommitted(t *hostTx, pubs []*session.Publication) {
 		answer()
 		return
 	}
-	s := hostCommitSchedule(total)
+	adoptTail := hopcost.AdoptTail(h.hopProfile())
+	if memoryOnly(pubs) {
+		// A deferred commit held in memory publishes as #runCommit returns: there is no Storage adoption to wait for.
+		adoptTail = 0
+	}
+	s := hostCommitSchedule(total, adoptTail)
 	steps := []holdStep{{s.publish, publish}, {s.answer, answer}}
 	if !h.holdSteps(s.release, steps, end) {
 		end()
 	}
 }
 
+// memoryOnly reports whether every publication is a deferred commit held in memory.
+func memoryOnly(pubs []*session.Publication) bool {
+	for _, pub := range pubs {
+		if !pub.Memory {
+			return false
+		}
+	}
+	return len(pubs) != 0
+}
+
 // hostCommitSchedule is when, in hops after the transaction's last host operation, the core publishes a host-driven commit, answers its end and frees the
 // line, for a Pi job whose caller resumes total hops later (jobHops less the passes the host's callback already spent). Pi's job frees the line one hop
 // before its caller resumes, so the next line job starts with the caller, and publishes pubBeforeEnd hops before it frees the line, as a core line job
 // does (session.ts #runCommit :548-549 under #enqueue :647-654; stamped in Pi ea448f45 on F-ticks-node's root create: publication 137, root()'s caller
-// and the sweep job 140). The facade needs hostAnswerTicks passes from the core's answer to its caller, so the answer goes out that much earlier.
+// and the sweep job 140; since Pi 8b0caefc the publication is the Storage's adoption, adoptTail (hopcost.AdoptTail) hops before the session resumes from
+// Storage.commit, as for a core line job: publishAt). The facade needs hostAnswerTicks passes from the core's answer to its caller, so the answer goes out that much earlier.
 // F-ticks-{node,gate} (cold submit 89/103) and F-ticks-runtime-drift-{node,gate} (waitForTask on a live task 109/119) bind the publication and release.
 type hostCommitHops struct{ publish, answer, release int }
 
-func hostCommitSchedule(total int) hostCommitHops {
+func hostCommitSchedule(total, adoptTail int) hostCommitHops {
 	release := max(total-1, 0)
-	return hostCommitHops{publish: max(release-pubBeforeEnd, 0), answer: max(total-hostAnswerTicks, 0), release: release}
+	return hostCommitHops{publish: max(release-pubBeforeEnd-adoptTail, 0), answer: max(total-hostAnswerTicks, 0), release: release}
 }
 
 // hostAnswerTicks is the microtask passes the facade spends from the core's tx_result to its caller's resumption: end()'s one reaction and the adoption of
@@ -396,9 +469,23 @@ const hostAnswerTicks = 3
 // publish emits the published notice of one commit (durable/core/host/PROTOCOL.md, Notices). The notice is written an
 // item at a time into abi.Chunks, so a 20,000-task commit's (megabytes) needs no block of its size.
 func (h *handler) publish(pub *session.Publication) {
+	if pub.Span != 0 && !pub.Memory {
+		h.publishEvents(pub)
+	}
 	var out abi.Chunks
-	item := append(make([]byte, 0, 128), `{"seq":`...)
-	out.Append(jv.AppendNumber(item, float64(pub.Seq)))
+	item := make([]byte, 0, 128)
+	if pub.Memory {
+		// A commit held in memory (session/held.go) is shown to watches and views now and to the host's subscribeCommits listeners
+		// once stored. The host's internal observers (observeCommits) see it in a notice with no sequence number and no tables.
+		if h.changes {
+			out.Append(h.appendChanges(append(item, `{"memory":true,"changes":`...), pub.Changes, valueFromOps))
+			out.Append(append(item[:0], '}'))
+			h.b.NoticeChunks(abi.NoticePublished, out)
+		}
+		h.publishWatches(pub)
+		return
+	}
+	out.Append(appendPublishedSpan(jv.AppendNumber(append(item, `{"seq":`...), float64(pub.Seq)), pub))
 	for _, kind := range [...]session.WriteKind{session.WriteSubmission, session.WriteEntry, session.WriteTask} {
 		item = append(item[:0], `,"`...)
 		switch kind {
@@ -449,7 +536,11 @@ func (h *handler) publish(pub *session.Publication) {
 		out.Append(append(item[:0], ']'))
 	}
 	if h.changes {
-		out.Append(jv.Append(append(item[:0], `,"changes":`...), commitChanges(pub)))
+		out.Append(h.appendChanges(append(item[:0], `,"changes":`...), pub.StoredChanges(), storedMode(pub)))
+		if pub.Stored != nil {
+			// The Session's own observers see this commit's own changes only (session.ts #publish `observed`); a deadline's store shows them none.
+			out.Append(h.appendChanges(append(item[:0], `,"observed":`...), pub.Changes, valueFromOps))
+		}
 	}
 	out.Append(append(item[:0], '}'))
 	h.b.NoticeChunks(abi.NoticePublished, out)
@@ -730,7 +821,19 @@ func (h *handler) createTaskWith(tx *session.Tx, def *session.TaskDef, op *jv.Ob
 	to.ConversationID = session.ID(numOf(opts, "conversationId"))
 	to.Background, _ = boolOf(opts, "background")
 	to.AbandonOnRestart, _ = boolOf(opts, "abandonOnRestart")
+	// TaskOptions.trace: `"root"` stores no carrier; an omitted one is the transaction's own, and a carrier is the host's.
+	if trace, ok := opts.Get("trace"); ok {
+		if s, isString := trace.(string); isString && s == "root" {
+			to.NoTrace = true
+		} else {
+			to.Trace = trace
+		}
+	}
+	if links, ok := opts.Get("links"); ok {
+		to.Links, _ = links.([]any)
+	}
 	input, _ := op.Get("input")
+	to.Owned = true
 	id, err := tx.CreateTask(def, input, to)
 	if err != nil {
 		return nil, err
@@ -905,6 +1008,86 @@ func asObject(v any) *jv.Object {
 	return o
 }
 
+// sentValues is the documents whose value a published notice carried to the host's commit listeners, for as long as one is subscribed;
+// nil while none is. The host keeps the latest value of each (memory notices omit the value of one it holds).
+func (h *handler) sentValues() *idSet {
+	if !h.changes {
+		return nil
+	}
+	return &h.sent
+}
+
+// appendChanges appends the commit changes as JSON (one place that boxes them, for the three notices that carry them).
+func (h *handler) appendChanges(dst []byte, changes []session.Change, mode valueMode) []byte {
+	return jv.Append(dst, commitChanges(changes, h.sentValues(), mode))
+}
+
+// idSet is a set of record IDs, as a sorted slice: the documents with a commit listener's value are few, and a slice allocates nothing a
+// map would per entry.
+type idSet []session.ID
+
+func (s *idSet) at(id session.ID) (int, bool) {
+	low, high := 0, len(*s)
+	for low < high {
+		middle := (low + high) >> 1
+		if (*s)[middle] < id {
+			low = middle + 1
+		} else {
+			high = middle
+		}
+	}
+	return low, low < len(*s) && (*s)[low] == id
+}
+
+func (s *idSet) has(id session.ID) bool {
+	if s == nil {
+		return false
+	}
+	_, ok := s.at(id)
+	return ok
+}
+
+func (s *idSet) add(id session.ID) {
+	if s == nil {
+		return
+	}
+	if at, ok := s.at(id); !ok {
+		*s = append(*s, 0)
+		copy((*s)[at+1:], (*s)[at:])
+		(*s)[at] = id
+	}
+}
+
+func (s *idSet) remove(id session.ID) {
+	if s == nil {
+		return
+	}
+	if at, ok := s.at(id); ok {
+		*s = append((*s)[:at], (*s)[at+1:]...)
+	}
+}
+
+// valueMode is how commitChanges treats the value of a document change the host may already hold (sentValues).
+type valueMode uint8
+
+const (
+	// valueWhole: the value always travels.
+	valueWhole valueMode = iota
+	// valueFromOps: the value is left out when the host holds the previous one and the change has operations to apply to it.
+	valueFromOps
+	// valueCurrent: the value is left out, with `current: true`, when the host holds it: it is the one memory has.
+	valueCurrent
+)
+
+// storedMode is how the changes a storage transaction stored travel: a transaction that stored held changes (or only them) stored the
+// value memory has; any other commit's value is its own.
+func storedMode(pub *session.Publication) valueMode {
+	if pub.Stored != nil {
+		return valueCurrent
+	}
+	return valueWhole
+}
+
 // commitChanges renders the CommitPublication changes of Session.subscribeCommits (types.ts CommitChange): a table
 // write is {type, value: record}; a document change {type: "document", record, conversationId, version, value, ops}
 // with null value and version absent for a retirement; a copy {type: "document.copy", record, conversationId, source}.
@@ -912,9 +1095,9 @@ func asObject(v any) *jv.Object {
 // Not inlined: only a commit listener asks for changes, and an inlined copy would be compiled by V8 with its hot caller, publish.
 //
 //go:noinline
-func commitChanges(pub *session.Publication) []any {
-	out := make([]any, 0, len(pub.Changes))
-	for _, c := range pub.Changes {
+func commitChanges(changes []session.Change, sent *idSet, mode valueMode) []any {
+	out := make([]any, 0, len(changes))
+	for _, c := range changes {
 		o := jv.NewObject()
 		switch c.Kind {
 		case session.ChangeTable:
@@ -926,11 +1109,23 @@ func commitChanges(pub *session.Publication) []any {
 			if c.ConversationID != 0 {
 				o.Set("conversationId", float64(c.ConversationID))
 			}
-			if c.Value == nil {
+			id := session.ID(numOf(c.Record, "id"))
+			switch {
+			case c.Value == nil:
+				sent.remove(id)
 				o.Set("value", nil)
-			} else {
+			case mode == valueFromOps && sent.has(id) && len(c.Ops) > 0 && c.Ops[0].Verb != delta.Replace:
+				// The host holds the value this document had (a notice carried it) and applies the operations to it: a partial commit's
+				// notice costs its new text, not the length of the answer so far (host/cf/src/facade/harness.ts onNotice).
+				o.Set("version", float64(c.Version))
+			case mode == valueCurrent && sent.has(id):
+				// What a storage transaction stored of a held document is the value memory has, which the host holds.
+				o.Set("version", float64(c.Version))
+				o.Set("current", true)
+			default:
 				o.Set("version", float64(c.Version))
 				o.Set("value", c.Value)
+				sent.add(id)
 			}
 			o.Set("ops", delta.OpsValue(c.Ops))
 		case session.ChangeDocumentCopy:

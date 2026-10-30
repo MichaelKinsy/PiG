@@ -50,6 +50,7 @@ func tmuxKeyboardSetup(query func(string) string) string {
 func tmuxShowOption(option string) string {
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second) // upstream: coding-agent/src/modes/interactive/interactive-mode.ts:runTmuxShow
 	defer cancel()
+	//nolint:gosec // G204 (class a): program is the literal tmux; args are fixed show -gv and one of two fixed option names.
 	cmd := exec.CommandContext(ctx, "tmux", "show", "-gv", option)
 	// Upstream's spawn finds tmux with libuv's search on Windows.
 	nodespawn.SetProgram(cmd)

@@ -259,7 +259,7 @@
     },
     {
       "path": "pi-dist/pi-ai/providers/data/.manifest.json",
-      "sha256": "89371af2dc83dca0ba1ef1978df3226a009e6b81d62129aed4d05bcdabd5eaac"
+      "sha256": "6e4ba8e8eda188882edef0e9d369e4bbb7355d6d1978ccce277f49ac28814397"
     },
     {
       "path": "pi-dist/pi-ai/providers/data/amazon-bedrock.json",
@@ -359,19 +359,19 @@
     },
     {
       "path": "pi-dist/pi-ai/providers/data/openai.json",
-      "sha256": "46f15c1a3f059ca9924475a01249de36e6b38094c9a12e6a0d7567e879f59abe"
+      "sha256": "176163a9a01a1b0cb699571aa692468cb29a45bce6be9aad1b43aba1a8edcf6e"
     },
     {
       "path": "pi-dist/pi-ai/providers/data/opencode-go.json",
-      "sha256": "8047701bebc473b5b83c758c5f381bfb69abd363fcadc793204383a2457a4822"
+      "sha256": "103d43bb9560eb38dfa0c33b6569a69e5f5b5ddcab08a04b24191001d9f0f91e"
     },
     {
       "path": "pi-dist/pi-ai/providers/data/opencode.json",
-      "sha256": "4f60d45e15410afd156c36f98fb44e12eeeb812faf5713877932c6864730edcb"
+      "sha256": "f468fdcd3fd74600268d1cd3c5bff8c972c811495b86a67da4673ef22f765076"
     },
     {
       "path": "pi-dist/pi-ai/providers/data/openrouter.json",
-      "sha256": "2ea50d036a570efca37cc32a676b762b7f5c31f181ce79782f63f0a13b6743c7"
+      "sha256": "8323ec72dd22a4203ce0776f2edf1b049f7c1ad4932e033fc5e87010b1f201f5"
     },
     {
       "path": "pi-dist/pi-ai/providers/data/qwen-token-plan-cn.json",
@@ -387,7 +387,7 @@
     },
     {
       "path": "pi-dist/pi-ai/providers/data/radius.json",
-      "sha256": "49da11ea2e6881e72b3cc32b05f5326cf539332896b47751636f4c19a69911c4"
+      "sha256": "19984e5470210b16a86ea505ac46b875360aec46c2c95b79c70f2dff62e526d8"
     },
     {
       "path": "pi-dist/pi-ai/providers/data/together.json",
@@ -587,7 +587,7 @@
     },
     {
       "path": "pi-dist/pi-ai/providers/opencode.js",
-      "sha256": "36e5c35c6f449783c672d44b4cc59eb97c4bad858df8ad5ce52612ed7d3951f8"
+      "sha256": "04f3cacca930d54738fbd81b1cdbb9283b40706d74b37515d9561075a1fbb309"
     },
     {
       "path": "pi-dist/pi-ai/providers/opencode.models.js",

@@ -194,8 +194,10 @@ func (htDriver) Run(ctx context.Context, t *testing.T, bin BinaryRef, sc *Scenar
 
 	// Register cleanup.
 	t.Cleanup(func() {
+		//nolint:gosec // G204 (class a): program is literal ht; args are "stop" plus a generated session name beginning with "parity-".
 		_ = exec.Command("ht", "stop", sessionName).Run()
 		time.Sleep(200 * time.Millisecond)
+		//nolint:gosec // G204 (class a): program is literal ht; args are "remove" plus the same generated session name.
 		_ = exec.Command("ht", "remove", sessionName).Run()
 	})
 
@@ -277,6 +279,7 @@ func (htDriver) Run(ctx context.Context, t *testing.T, bin BinaryRef, sc *Scenar
 // must not enter either, so it is kept only to explain a failure.
 func htOutput(ctx context.Context, args ...string) ([]byte, error) {
 	var stderr bytes.Buffer
+	//nolint:gosec // G204 (class a): program is literal ht; args come from htOutput callers, including scenario keys in "send <session> <keys>" with no `--`.
 	command := exec.CommandContext(ctx, "ht", args...)
 	command.Stderr = &stderr
 	output, err := command.Output()

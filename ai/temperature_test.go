@@ -55,7 +55,7 @@ func TestProvidersSendExplicitZeroTemperature(t *testing.T) {
 		env      ProviderEnv
 	}{
 		{name: "anthropic", provider: NewAnthropicProvider(AnthropicConfig{APIKey: "test", Model: "claude-test", BaseURL: "https://example.test", ProviderID: "anthropic"})},
-		{name: "amazon_bedrock", provider: NewBedrockProvider("anthropic.claude-test", "https://example.test"), env: ProviderEnv{"AWS_BEDROCK_SKIP_AUTH": "1", "AWS_REGION": "us-east-1"}},
+		{name: "amazon_bedrock", provider: NewBedrockTestProvider("anthropic.claude-test", "", "https://example.test"), env: ProviderEnv{"AWS_BEDROCK_SKIP_AUTH": "1", "AWS_REGION": "us-east-1"}},
 		{name: "openai_completions", provider: NewOpenAIProvider(OpenAIConfig{APIKey: "test", Model: "model", BaseURL: "https://example.test/v1", ProviderID: "openai"})},
 		{name: "openai_responses", provider: NewOpenAIResponsesProvider(OpenAIResponsesConfig{APIKey: "test", Model: "model", BaseURL: "https://example.test/v1", ProviderID: "openai"})},
 		{name: "google", provider: NewGoogleProvider(GoogleConfig{APIKey: "test", Model: "model", BaseURL: "https://example.test", ProviderID: "google"})},

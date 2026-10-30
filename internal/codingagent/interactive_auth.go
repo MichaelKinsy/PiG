@@ -374,7 +374,8 @@ func (m *InteractiveMode) runLoginRegisteredOAuth(loginCtx context.Context, prov
 			notify()
 		},
 		OnAuth: func(info ai.OAuthAuthInfo) {
-			target := dlg.ShowAuth(info.URL, info.Instructions)
+			dlg.ShowAuth(info.URL, info.Instructions)
+			target := tui.LoginBrowserTarget(info.URL)
 			notify()
 			if target != "" && !parityHarnessEnabled() {
 				_ = openBrowser(target)
@@ -561,7 +562,8 @@ func (m *InteractiveMode) runLoginOpenAICodex(loginCtx context.Context) error {
 			notify()
 		},
 		OnAuth: func(info ai.OAuthAuthInfo) {
-			target := dlg.ShowAuth(info.URL, info.Instructions)
+			dlg.ShowAuth(info.URL, info.Instructions)
+			target := tui.LoginBrowserTarget(info.URL)
 			notify()
 			if target != "" && !parityHarnessEnabled() {
 				_ = openBrowser(target)
@@ -826,6 +828,7 @@ func (m *InteractiveMode) newFooter() *FooterComponent {
 	footer := NewFooterComponentForSession(m, NewFooterDataProvider())
 	footer.SetSubscriptionResolver(m.footerUsingSubscription)
 	footer.SetModel(m.opts.Model)
+	footer.SetThinkingLevel(m.sessionThinkingLevel())
 	return footer
 }
 
@@ -859,7 +862,8 @@ func (m *InteractiveMode) footerUsageTotals() footerUsageTotals {
 func notifyAuthDialog(dlg *tui.LoginDialogComponent, event ai.AuthEvent) {
 	switch e := event.(type) {
 	case ai.AuthURLEvent:
-		if target := dlg.ShowAuth(e.URL, e.Instructions); target != "" && !parityHarnessEnabled() {
+		dlg.ShowAuth(e.URL, e.Instructions)
+		if target := tui.LoginBrowserTarget(e.URL); target != "" && !parityHarnessEnabled() {
 			_ = openBrowser(target)
 		}
 	case ai.AuthDeviceCodeEvent:
@@ -911,6 +915,7 @@ func browserCommand(target string) *exec.Cmd {
 		cmd = "xdg-open"
 		args = []string{target}
 	}
+	//nolint:gosec // G204 (class a): program is the literal open, rundll32 or xdg-open by OS, with no shell; the single argument is the sign-in URL of the provider's login flow, as Pi's openBrowser passes it.
 	command := exec.Command(cmd, args...)
 	// Upstream's spawn finds the launcher with libuv's search on Windows.
 	nodespawn.SetProgram(command)

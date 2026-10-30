@@ -11,10 +11,9 @@ import (
 
 func init() {
 	register(&harness.Journey{
-		Name:        "resize-mouse-scroll",
-		Doc:         "Terminal resizes while idle, while an answer streams and under an overlay; mouse clicks expand and collapse a tool result, the wheel scrolls the fullscreen transcript and the jump-to-latest button returns to the bottom (fullscreen mode, mouse regions of tool-execution.ts).",
-		Touches:     []string{"tui/", "internal/codingagent/"},
-		Normalizers: []harness.Normalizer{d80SettingsCount},
+		Name:    "resize-mouse-scroll",
+		Doc:     "Terminal resizes while idle, while an answer streams and under an overlay; mouse clicks expand and collapse a tool result, the wheel scrolls the fullscreen transcript and the jump-to-latest button returns to the bottom (fullscreen mode, mouse regions of tool-execution.ts).",
+		Touches: []string{"tui/", "internal/codingagent/"},
 		Script: script(
 			onPrompt("LONGOUT", fixed(harness.Say("Listing numbers.").Then(harness.Use(
 				harness.Call{Name: "bash", Args: map[string]any{"command": "seq 1 30"}})))),

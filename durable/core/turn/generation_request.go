@@ -13,6 +13,16 @@ import (
 // request is the request phase: it clears a stale partial and marks the attempt, runs the beforeRequest hooks, streams
 // the response and classifies it.
 func (r *run) request(cp *jv.Object) {
+	// Charging the attempt may itself be what keeps failing, such as converting a huge partial: the limit ends it.
+	if r.cutOffTooOften(r.task) {
+		r.endCutOff(cp)
+		return
+	}
+	// The host stopped while this request was in flight: a failed attempt, not a resend (spec section 8.3).
+	if r.task.Has("restarts") {
+		r.interrupted(cp)
+		return
+	}
 	h := r.g.Host
 	attempt := num(cp, "attempt")
 	compacted := idField(cp, "compacted")
@@ -262,25 +272,25 @@ type requestInfo struct {
 func (r *run) streamResponse(req *StreamRequest, attempt float64, then func(*jv.Object, error)) {
 	h := r.g.Host
 	interval := h.Settings().PartialIntervalMs
-	var (
-		pending  jv.Raw
+	// The state the closures share is one variable: each variable they capture is an allocation of its own.
+	var st struct {
+		acc      partialAcc
 		cancel   func()
 		inFlight bool
 		stopped  bool
 		waiting  func()
-	)
+	}
 	var flush func()
-	arm := func() { cancel = h.After(interval, flush) }
+	arm := func() { st.cancel = h.After(interval, flush) }
 	flush = func() {
-		cancel = nil
-		partial := pending
-		pending = nil
-		if partial == nil || stopped {
+		st.cancel = nil
+		if !st.acc.dirty || st.stopped {
 			return
 		}
-		inFlight = true
-		message := parseObjectText(partial)
-		r.rt.Commit(func(tx *session.Tx, _ *jv.Object) (*jv.Object, error) {
+		st.acc.dirty = false
+		st.inFlight = true
+		message := st.acc.message()
+		r.rt.CommitDeferred(func(tx *session.Tx, _ *jv.Object) (*jv.Object, error) {
 			live, err := tx.Doc(LiveDef, session.DocArgs{Owner: r.conv})
 			if err != nil {
 				return nil, err
@@ -298,13 +308,13 @@ func (r *run) streamResponse(req *StreamRequest, attempt float64, then func(*jv.
 			if err != nil && !r.rt.Signal().Aborted() {
 				_ = r.rt.Report(err)
 			}
-			inFlight = false
-			if pending != nil && !stopped {
+			st.inFlight = false
+			if st.acc.dirty && !st.stopped {
 				arm()
 			}
-			if waiting != nil {
-				w := waiting
-				waiting = nil
+			if st.waiting != nil {
+				w := st.waiting
+				st.waiting = nil
 				w()
 			}
 		})
@@ -314,22 +324,24 @@ func (r *run) streamResponse(req *StreamRequest, attempt float64, then func(*jv.
 		if !hasContent(partial) {
 			return
 		}
-		pending = partial
-		if cancel == nil && !inFlight {
+		// The partials of a throttle window add up: each is a patch of the one before (partial_patch.go).
+		st.acc.apply(parseObjectText(partial))
+		st.acc.dirty = true
+		if st.cancel == nil && !st.inFlight {
 			arm()
 		}
 	}
 	h.Stream(req, onPartial, r.rt.Signal(), func(message *jv.Object, err error) {
 		// generation.ts :364-416. The terminal event reaches the loop; `for await` then ends (1), `await events.result()` resumes (1), and
-		// the finally block awaits inFlight: undefined resumes one tick later, the in-flight partial commit's promise chain
+		// the finally block awaits st.inFlight: undefined resumes one tick later, the in-flight partial commit's promise chain
 		// (the IIFE's await, .catch, .finally with its thenable adoption) settles five ticks after the commit resolves and its await
 		// resumes one more. The async function's return and its caller's await take one tick (:207).
-		stopped = true
-		if cancel != nil {
-			cancel()
-			cancel = nil
+		st.stopped = true
+		if st.cancel != nil {
+			st.cancel()
+			st.cancel = nil
 		}
-		resulted, flushed := false, !inFlight
+		resulted, flushed := false, !st.inFlight
 		if flushed {
 			// No partial commit is in flight: the loop's two ticks and the return's two follow each other with nothing between.
 			r.hops(2+2, func() { then(message, err) })
@@ -342,7 +354,7 @@ func (r *run) streamResponse(req *StreamRequest, attempt float64, then func(*jv.
 		}
 		r.hops(2, func() { resulted = true; join() })
 		if !flushed {
-			waiting = func() { r.hops(inFlightSettleHops, func() { flushed = true; join() }) }
+			st.waiting = func() { r.hops(inFlightSettleHops, func() { flushed = true; join() }) }
 		}
 	})
 }
@@ -366,29 +378,44 @@ func parseObjectText(text jv.Raw) *jv.Object {
 // thenable job and a reaction (2).
 const inFlightSettleHops = 5
 
-// retry is the retry phase: sleep until the backoff ends, then prepare the next attempt.
+// retry is the retry phase: sleep until the backoff ends, then prepare the next attempt, or poll the deferred response a host
+// death interrupted the poll of again.
 func (r *run) retry(cp *jv.Object) {
 	attempt := num(cp, "attempt")
-	compacted := idField(cp, "compacted")
 	until := num(cp, "until")
+	if r.cutOffTooOften(r.task) {
+		r.endCutOff(cp)
+		return
+	}
 	// After the backoff's sleep; a run before until (an early wake, or a record of an earlier version) sleeps again.
 	if until > r.now() {
 		r.rt.SleepUntil(until, cp, func(err error) { r.done(err) })
 		return
 	}
+	poll := objField(cp, "poll")
 	r.commitDone(func(tx *session.Tx, _ *jv.Object) (*jv.Object, error) {
 		live, err := tx.Doc(LiveDef, session.DocArgs{Owner: r.conv})
 		if err != nil {
 			return nil, err
 		}
-		if err := live.Set("generation", jobj("attempt", attempt+1)); err != nil {
+		next := any(attempt + 1)
+		generation := jobj("attempt", next)
+		checkpoint := jobj("phase", phasePrepare, "attempt", next)
+		if compacted, ok := cp.Get("compacted"); ok {
+			checkpoint.Set("compacted", compacted)
+		}
+		// A poll the host died during polls its response again, as the next attempt.
+		if poll != nil {
+			pollAt := any(r.now())
+			generation.Set("deferred", jobj("pollAt", pollAt))
+			checkpoint.Set("phase", phasePoll)
+			poll.Members(func(key string, value any) bool { checkpoint.Set(key, value); return true })
+			checkpoint.Set("pollAt", pollAt)
+		}
+		if err := live.Set("generation", generation); err != nil {
 			return nil, err
 		}
-		next := jobj("phase", phasePrepare, "attempt", attempt+1)
-		if compacted != 0 {
-			next.Set("compacted", float64(compacted))
-		}
-		return jobj("status", "running", "checkpoint", next), nil
+		return jobj("status", "running", "checkpoint", checkpoint), nil
 	})
 }
 
@@ -397,6 +424,16 @@ func (r *run) poll(cp *jv.Object) {
 	h := r.g.Host
 	ref := modelRefOf(objField(cp, "model"))
 	pollAt := num(cp, "pollAt")
+	if r.cutOffTooOften(r.task) {
+		r.endCutOff(cp)
+		return
+	}
+	// The host stopped while the poll's fetch was in flight: a failed attempt, as for a request. Checked before the time, which
+	// may have moved backwards on a replacement host; a sleeping poll is never cut off.
+	if r.task.Has("restarts") {
+		r.interrupted(cp)
+		return
+	}
 	// After the sleep until pollAt; a run before it (an early wake, or a record of an earlier version) sleeps again.
 	if pollAt > r.now() {
 		r.rt.SleepUntil(pollAt, cp, func(err error) { r.done(err) })

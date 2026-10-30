@@ -242,8 +242,8 @@ func TestAFailedStorageCall(t *testing.T) {
 		go func() { _, err := harness.WaitForTask(testContext, id); task <- err }()
 		go func() { idle <- harness.WaitForIdle(testContext) }()
 		watch := must(harness.WatchDocErased(testContext, LiveDoc, root.Id()))
-		stream := must(WatchEvents(testContext, harness, root.Id()))
-		stream.Start(func(context.Context, chord.NativeWatchChange[[]AgentEvent]) error { return nil })
+		view := must(root.Watch(testContext, nil))
+		view.Start(func(context.Context, chord.WatchChange[ConversationView]) error { return nil })
 		flush()
 
 		failure := errors.New("disk gone")
@@ -258,9 +258,9 @@ func TestAFailedStorageCall(t *testing.T) {
 		if end := watch.End(); end.Reason != durable.WatchFailed || !errors.Is(end.Error, failure) {
 			t.Fatalf("watch ended %+v, want failed with the first error", end)
 		}
-		<-stream.Closed()
-		if end := stream.End(); end.Reason != durable.WatchFailed || !errors.Is(end.Error, failure) {
-			t.Fatalf("stream ended %+v, want failed with the first error", end)
+		<-view.Closed()
+		if end := view.End(); end.Reason != durable.WatchFailed || !errors.Is(end.Error, failure) {
+			t.Fatalf("view ended %+v, want failed with the first error", end)
 		}
 		// Every later call, and a wait that starts now.
 		_, err := harness.GetTask(testContext, id)

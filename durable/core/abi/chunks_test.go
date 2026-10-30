@@ -68,6 +68,31 @@ func TestAppendHopsChunksIsAppendHops(t *testing.T) {
 	}
 }
 
+// ConsumeHopsChunks writes AppendHopsChunks's bytes and lets go of each statement's parameters once it is in the payload, so the
+// collector can take them while the rest of a large commit is still being encoded.
+func TestConsumeHopsChunksWritesTheSameBytesAndReleasesTheParameters(t *testing.T) {
+	text := Text(string(bytes.Repeat([]byte("t"), 200)))
+	var commits []Commit
+	for seq := range 2000 {
+		commits = append(commits, Commit{Seq: int64(seq), Stmts: []Stmt{{SQL: 3, Params: []Value{Int(int64(seq)), text, Null()}}, {SQL: 4}}})
+	}
+	h := Hops{N: 6, At: 1, Commits: commits}
+	var want Chunks
+	AppendHopsChunks(&want, h)
+	var got Chunks
+	ConsumeHopsChunks(&got, h)
+	if !bytes.Equal(bytes.Join(got, nil), bytes.Join(want, nil)) {
+		t.Fatal("ConsumeHopsChunks wrote other bytes than AppendHopsChunks")
+	}
+	for i := range commits {
+		for j := range commits[i].Stmts {
+			if commits[i].Stmts[j].Params != nil {
+				t.Fatalf("statement %d of commit %d kept its parameters", j, i)
+			}
+		}
+	}
+}
+
 // A chunked notice or effect has the wire form of its payload in one slice. AppendStepParts hands each block to the
 // host as a part of its own, and StepSizeInline does not count the blocks.
 func TestChunkedPayloadsKeepTheWireForm(t *testing.T) {

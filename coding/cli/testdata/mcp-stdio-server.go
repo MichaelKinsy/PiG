@@ -4,7 +4,8 @@
 //
 //	mcp-stdio-server NAME
 //
-// It serves one tool, `search`, which answers "<query> guide". MCP_FIXTURE_LOG names a file each tool call appends
+// It serves one tool, `search`, which answers "<query> guide"; MCP_FIXTURE_TOOLS (comma-separated names) serves those tools
+// instead, each answering the same way. MCP_FIXTURE_LOG names a file each tool call appends
 // `<server>:<tool>:<arguments>` to. MCP_FIXTURE_INITIALIZE_DELAY_MS delays the answer to `initialize`; a negative value never
 // answers it, like a server that hangs while starting. MCP_FIXTURE_INSTRUCTIONS sets the server instructions.
 // MCP_FIXTURE_START_LOG names a file the process appends `<server>:start` to when it starts.
@@ -16,6 +17,7 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -27,6 +29,10 @@ func main() {
 			fmt.Fprintf(file, "%s:start\n", name)
 			_ = file.Close()
 		}
+	}
+	toolNames := []string{"search"}
+	if names := os.Getenv("MCP_FIXTURE_TOOLS"); names != "" {
+		toolNames = strings.Split(names, ",")
 	}
 	delay, _ := strconv.Atoi(os.Getenv("MCP_FIXTURE_INITIALIZE_DELAY_MS"))
 	out := json.NewEncoder(os.Stdout)
@@ -60,10 +66,14 @@ func main() {
 			}
 			result = init
 		case "tools/list":
-			result = map[string]any{"tools": []any{map[string]any{
-				"name": "search", "description": "Search the docs.",
-				"inputSchema": map[string]any{"type": "object", "properties": map[string]any{"query": map[string]any{"type": "string"}}, "required": []string{"query"}},
-			}}}
+			listed := []any{}
+			for _, toolName := range toolNames {
+				listed = append(listed, map[string]any{
+					"name": toolName, "description": "Search the docs with " + toolName + ".",
+					"inputSchema": map[string]any{"type": "object", "properties": map[string]any{"query": map[string]any{"type": "string"}}, "required": []string{"query"}},
+				})
+			}
+			result = map[string]any{"tools": listed}
 		case "tools/call":
 			arguments, _ := json.Marshal(message.Params.Arguments)
 			if log := os.Getenv("MCP_FIXTURE_LOG"); log != "" {

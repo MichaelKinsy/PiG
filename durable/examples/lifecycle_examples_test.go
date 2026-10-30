@@ -54,10 +54,9 @@ func liveState(t *testing.T, view harness.ConversationView) harness.LiveState {
 }
 
 // 20-late-join.ts: a client attaches while a run is already underway. It gets the current state first, the
-// conversation view or the snapshot event, and then only what changes after that.
-// Pi source: packages/durable/src/harness/events.ts, packages/durable/src/harness/types.ts
-// mutation-checked: zeroing the results of AgentEventStream.Start, Conversation.Watch fails it
-// mutation-checked: dropping the reads and writes of AgentEventStream.Snapshot fails it
+// conversation view, and then only what changes after that.
+// Pi source: packages/durable/src/harness/view.ts, packages/durable/src/harness/types.ts
+// mutation-checked: zeroing the results of Conversation.Watch fails it
 func TestExample20LateJoin(t *testing.T) {
 	// The tool prints "1\n" to "5\n", waits at the gate (upstream's 500 ms pause is the join), then prints "6\n"
 	// to "10\n".
@@ -97,15 +96,30 @@ func TestExample20LateJoin(t *testing.T) {
 	submission := must(root.Submit(background, durable.SubmissionDraft{Type: durable.SubmissionTypeInput, Content: ai.UserText("Count to ten, then tell me.")}))
 
 	// Join while the tool is halfway through: the view holds the running tool's output.
-	view := must(root.Watch(background))
-	var viewOutputs []string
+	view := must(root.Watch(background, nil))
 	var viewMu sync.Mutex
+	var viewOutputs, viewAnswers []string
+	var finalKinds []string
 	view.Start(func(_ context.Context, change chord.WatchChange[harness.ConversationView]) error {
 		value := change.Value
-		if tools := liveState(t, value).Tools; len(tools) == 1 && tools[0].Status == harness.ToolSlotRunning && tools[0].Output != nil {
-			viewMu.Lock()
-			viewOutputs = append(viewOutputs, *tools[0].Output)
-			viewMu.Unlock()
+		state := liveState(t, value)
+		viewMu.Lock()
+		defer viewMu.Unlock()
+		if len(state.Tools) == 1 && state.Tools[0].Status == harness.ToolSlotRunning && state.Tools[0].Output != nil {
+			viewOutputs = append(viewOutputs, *state.Tools[0].Output)
+		}
+		// The answer being streamed shows in the generation's partial.
+		if state.Generation != nil && state.Generation.Message != nil {
+			shown := assistantText(*state.Generation.Message)
+			if shown != "" && (len(viewAnswers) == 0 || viewAnswers[len(viewAnswers)-1] != shown) {
+				viewAnswers = append(viewAnswers, shown)
+			}
+		}
+		if state.Run == nil {
+			finalKinds = finalKinds[:0]
+			for _, entry := range value.Entries {
+				finalKinds = append(finalKinds, entry.Kind)
+			}
 		}
 		return nil
 	})
@@ -127,57 +141,6 @@ func TestExample20LateJoin(t *testing.T) {
 	}
 	expectEqual(t, "view entries", kinds, []string{"pi.user", "pi.system", "pi.assistant"})
 
-	// Event client: the snapshot event carries the same state; later events apply on top of it.
-	stream := must(harness.WatchEvents(background, opened, root.Id()))
-	if len(stream.Snapshot.Tools) != 1 || stream.Snapshot.Tools[0].Name != "count" || stream.Snapshot.Tools[0].Status != harness.ToolSlotRunning {
-		t.Fatalf("snapshot tools: %+v", stream.Snapshot.Tools)
-	}
-	output := ""
-	if stream.Snapshot.Tools[0].Output != nil {
-		output = *stream.Snapshot.Tools[0].Output
-	}
-	snapshotOutput := output
-	var mu sync.Mutex
-	var seen []string
-	var textDeltas, answers []string
-	stream.Start(func(_ context.Context, change chord.NativeWatchChange[[]harness.AgentEvent]) error {
-		events := change.Value
-		mu.Lock()
-		defer mu.Unlock()
-		for _, event := range events {
-			seen = append(seen, event.EventType())
-			switch event := event.(type) {
-			case harness.ToolExecutionUpdateEvent:
-				if event.Output == nil {
-					continue
-				}
-				if event.Output.Set != nil {
-					output = *event.Output.Set
-					continue
-				}
-				if event.Output.TrimStart != nil {
-					output = output[min(*event.Output.TrimStart, len(output)):]
-				}
-				if event.Output.Append != nil {
-					output += *event.Output.Append
-				}
-			case harness.MessageUpdateEvent:
-				for _, change := range event.Changes {
-					if change.Type == "text_delta" {
-						textDeltas = append(textDeltas, change.Delta)
-					}
-				}
-			case harness.MessageEndEvent:
-				if event.Entry.Kind == "pi.assistant" {
-					if text := assistantText(event.Entry.Model[0].(ai.AssistantMessage)); text != "" {
-						answers = append(answers, text)
-					}
-				}
-			}
-		}
-		return nil
-	})
-
 	close(joined)
 	if _, err := submission.Wait(background); err != nil {
 		t.Fatal(err)
@@ -185,36 +148,17 @@ func TestExample20LateJoin(t *testing.T) {
 	if err := opened.WaitForIdle(background); err != nil {
 		t.Fatal(err)
 	}
-	// Event callbacks run after their commit: the answer's message end is awaited before the stream stops.
+	// Watch callbacks run after their commit: the value that ends the run is awaited before the watch stops.
 	eventually(t, func() bool {
-		mu.Lock()
-		defer mu.Unlock()
-		return len(answers) == 1
+		viewMu.Lock()
+		defer viewMu.Unlock()
+		return len(finalKinds) > 0
 	})
-	if _, err := stream.Stop(); err != nil {
-		t.Fatal(err)
-	}
 	must(view.Stop())
 
-	mu.Lock()
-	defer mu.Unlock()
-	// The events after the snapshot carry only the rest: the output grew from the snapshot's, never restarted.
-	const everything = "1\n2\n3\n4\n5\n6\n7\n8\n9\n10\n"
-	if !strings.HasPrefix(output, snapshotOutput) || !strings.HasPrefix(everything, output) {
-		t.Fatalf("event output = %q after snapshot %q", output, snapshotOutput)
-	}
-	// The answer streams after the join: its deltas are a contiguous piece of the answer the message end commits.
-	expectEqual(t, "committed answers", answers, []string{"Counted to ten, and this answer streams slowly."})
-	if got := strings.Join(textDeltas, ""); got == "" || !strings.Contains(answers[0], got) {
-		t.Fatalf("event text deltas = %q of %q", got, answers[0])
-	}
-	for _, kind := range seen {
-		if kind == "snapshot" {
-			t.Fatalf("a snapshot event after attachment: %v", seen)
-		}
-	}
 	viewMu.Lock()
 	defer viewMu.Unlock()
+	const everything = "1\n2\n3\n4\n5\n6\n7\n8\n9\n10\n"
 	for _, shown := range viewOutputs {
 		// The view is acquired while the tool is already running, so its first frame may hold fewer lines than the
 		// poll above waits for; whatever it shows is the start of the count, never a restart of it.
@@ -222,6 +166,18 @@ func TestExample20LateJoin(t *testing.T) {
 			t.Fatalf("view output %q restarted", shown)
 		}
 	}
+	// The answer streams after the join: each partial the view shows extends the one before it, toward the answer the run
+	// appends.
+	const answer = "Counted to ten, and this answer streams slowly."
+	if len(viewAnswers) == 0 {
+		t.Fatal("the view showed no partial of the streamed answer")
+	}
+	for index, shown := range viewAnswers {
+		if !strings.HasPrefix(answer, shown) || index > 0 && len(shown) <= len(viewAnswers[index-1]) {
+			t.Fatalf("view answers %q: %q does not extend the answer so far", viewAnswers, shown)
+		}
+	}
+	expectEqual(t, "view entries after the run", finalKinds, []string{"pi.user", "pi.system", "pi.assistant", "pi.tool-result", "pi.assistant"})
 	closeSession(t, opened)
 }
 
@@ -302,15 +258,16 @@ func subagentExtension() *durable.Extension {
 }
 
 // 21-subagent-foreground.ts: the parent delegates, the child answers, and the parent reports. A UI finds the child
-// through the tool's running details and shows its events under the call.
+// through the tool's running details and shows its view under the call.
 //
 // The tool does not wait for the UI's callback, which runs on a goroutine of its own after the commit that published the
 // details, so the UI attaches to the child at a point the child's turn does not wait for: before its submission, during
-// its turn, or after it answered. Whichever it is, the UI shows the answer once: from the snapshot it attached with if
-// the answer was already committed, from the event that follows otherwise. The second run holds the attachment until
-// the parent settled, so the child has answered by then on every schedule and only the snapshot can show the answer.
+// its turn, or after it answered. Whichever it is, the UI shows the answer once: from the view it attached with if the
+// answer was already committed, from the value that follows otherwise. The second run holds the attachment until the
+// parent settled, so the child has answered by then on every schedule and only the view it attached with can show the
+// answer.
 //
-// mutation-checked: a UI that shows nothing from AgentEventStream.Snapshot fails the second run
+// mutation-checked: a UI that shows nothing from the view it attached with fails the second run
 func TestExample21SubagentForeground(t *testing.T) {
 	t.Run("attached as the details arrive", func(t *testing.T) { subagentForeground(t, false) })
 	t.Run("attached after the parent settled", func(t *testing.T) { subagentForeground(t, true) })
@@ -329,11 +286,11 @@ func subagentForeground(t *testing.T, attachAfterSettled bool) {
 	}
 	root := must(opened.Root(background, &harness.RootOptions{Agent: &harness.AgentChange{Model: harness.SetTo(fauxModel)}}))
 
-	// The UI: the parent's events, with each subagent's events under its call.
+	// The UI: the parent's transcript, with each subagent's under its call.
 	var mu sync.Mutex
 	lines := map[durable.ConversationId][]string{}
 	attached := map[durable.ConversationId]bool{}
-	var streams []*harness.AgentEventStream
+	var watches []harness.ConversationWatch
 	settled := make(chan struct{})
 	settle := sync.OnceFunc(func() { close(settled) })
 	defer settle()
@@ -345,47 +302,54 @@ func subagentForeground(t *testing.T, attachAfterSettled bool) {
 		if attachAfterSettled && id != root.Id() {
 			<-settled
 		}
-		stream := must(harness.WatchEvents(background, opened, id))
-		// The snapshot is the conversation as of the attachment and the events that follow carry only what it lacks, so
-		// what the conversation already holds is shown from the snapshot before the stream starts.
-		mu.Lock()
-		for _, entry := range stream.Snapshot.Entries {
-			if entry.Kind == "pi.assistant" {
-				if text := assistantText(entry.Model[0].(ai.AssistantMessage)); text != "" {
-					lines[id] = append(lines[id], "assistant: "+text)
+		watch := must(must(opened.Conversation(background, id)).Watch(background, nil))
+		// The view is the conversation as of the attachment and the values that follow carry what it lacks, so each entry is
+		// shown once, from the first view that holds it.
+		newest := durable.EntryId(0)
+		show := func(value harness.ConversationView) {
+			for _, entry := range value.Entries {
+				if entry.Id <= newest {
+					continue
+				}
+				newest = entry.Id
+				if entry.Kind != "pi.assistant" {
+					continue
+				}
+				message, _ := entry.Model[0].(ai.AssistantMessage)
+				for _, block := range message.Content {
+					switch block := block.(type) {
+					case ai.TextContent:
+						if block.Text != "" {
+							mu.Lock()
+							lines[id] = append(lines[id], "assistant: "+block.Text)
+							mu.Unlock()
+						}
+					case ai.ToolCall:
+						mu.Lock()
+						lines[id] = append(lines[id], "tool "+block.Name)
+						mu.Unlock()
+					}
 				}
 			}
 		}
-		streams = append(streams, stream)
+		show(watch.Value())
+		mu.Lock()
+		watches = append(watches, watch)
 		mu.Unlock()
-		stream.Start(func(_ context.Context, change chord.NativeWatchChange[[]harness.AgentEvent]) error {
-			events := change.Value
-			for _, event := range events {
-				switch event := event.(type) {
-				case harness.MessageEndEvent:
-					if event.Entry.Kind == "pi.assistant" {
-						if text := assistantText(event.Entry.Model[0].(ai.AssistantMessage)); text != "" {
-							mu.Lock()
-							lines[id] = append(lines[id], "assistant: "+text)
-							mu.Unlock()
-						}
-					}
-				case harness.ToolExecutionStartEvent:
-					mu.Lock()
-					lines[id] = append(lines[id], "tool "+event.ToolName)
-					mu.Unlock()
-				case harness.ToolExecutionUpdateEvent:
-					if !event.HasDetails || event.Details == nil {
-						continue
-					}
-					details, _ := event.Details.(*delta.JsonObject)
-					child, ok := details.Value("conversationId").(float64)
-					mu.Lock()
-					known := attached[durable.ConversationId(child)]
-					mu.Unlock()
-					if ok && !known {
-						attach(durable.ConversationId(child))
-					}
+		watch.Start(func(_ context.Context, change chord.WatchChange[harness.ConversationView]) error {
+			show(change.Value)
+			// A running subagent call names its child conversation in its details.
+			for _, slot := range liveState(t, change.Value).Tools {
+				if slot.Details == nil {
+					continue
+				}
+				details, _ := (*slot.Details).(*delta.JsonObject)
+				child, ok := details.Value("conversationId").(float64)
+				mu.Lock()
+				known := attached[durable.ConversationId(child)]
+				mu.Unlock()
+				if ok && !known {
+					attach(durable.ConversationId(child))
 				}
 			}
 			return nil
@@ -401,7 +365,7 @@ func subagentForeground(t *testing.T, attachAfterSettled bool) {
 		t.Fatal(err)
 	}
 	settle()
-	// Event callbacks run after their commit, so the last ones are awaited before the streams stop.
+	// Watch callbacks run after their commit, so the last ones are awaited before the watches stop.
 	eventually(t, func() bool {
 		mu.Lock()
 		defer mu.Unlock()
@@ -415,10 +379,10 @@ func subagentForeground(t *testing.T, attachAfterSettled bool) {
 		}()
 	})
 	mu.Lock()
-	all := append([]*harness.AgentEventStream(nil), streams...)
+	all := append([]harness.ConversationWatch(nil), watches...)
 	mu.Unlock()
-	for _, stream := range all {
-		if _, err := stream.Stop(); err != nil {
+	for _, watch := range all {
+		if _, err := watch.Stop(); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -427,10 +391,10 @@ func subagentForeground(t *testing.T, attachAfterSettled bool) {
 	if len(attached) != 2 {
 		t.Fatalf("attached conversations = %v, want the parent and one child", attached)
 	}
-	expectEqual(t, "parent events", lines[root.Id()], []string{"tool subagent", "assistant: The subagent says: 2, 3, and 5."})
+	expectEqual(t, "parent transcript", lines[root.Id()], []string{"tool subagent", "assistant: The subagent says: 2, 3, and 5."})
 	for id, got := range lines {
 		if id != root.Id() {
-			expectEqual(t, "child events", got, []string{"assistant: 2, 3, and 5."})
+			expectEqual(t, "child transcript", got, []string{"assistant: 2, 3, and 5."})
 		}
 	}
 	// The child is owned by the tool call's task.

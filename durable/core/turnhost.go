@@ -85,6 +85,7 @@ func (h *handler) newTurnHost() *turn.Host {
 }
 
 // turnSettings reads the Harness settings the host resolved over their defaults (open payload, resolveSettings).
+// pig divergence (D206): these are the settings the host sent before the event, not a resolution of the callback at this use as in Pi.
 func (h *handler) turnSettings() turn.Settings {
 	s := objOf(h.open, "settings")
 	retry, compaction, progress := objOf(s, "retry"), objOf(s, "compaction"), objOf(s, "progress")
@@ -93,7 +94,7 @@ func (h *handler) turnSettings() turn.Settings {
 		Compaction: history.Policy{ReserveTokens: numOf(compaction, "reserveTokens"), KeepRecentTokens: numOf(compaction, "keepRecentTokens"),
 			BackgroundTokens: numOf(compaction, "backgroundTokens")},
 		PartialIntervalMs: numOf(progress, "partialIntervalMs"), OutputIntervalMs: numOf(progress, "outputIntervalMs"),
-		Stream: objOf(s, "stream"), ToolExecution: strOf(s, "toolExecution"), Queue: h.queueModes(), AfterFailedRun: h.afterFailedRun(),
+		Stream: objOf(s, "stream"), ToolExecution: strOf(s, "toolExecution"), Queue: h.queueModes(), AfterFailedRun: h.afterFailedRun(), RestartLimit: h.restartLimit(),
 	}
 	out.RetryEnabled, _ = boolOf(retry, "enabled")
 	out.Compaction.Enabled, _ = boolOf(compaction, "enabled")
@@ -227,7 +228,11 @@ func (h *handler) startTool(run *turn.ToolRun, io *turn.ToolIO, cancel *session.
 		body.Set("handler", float64(handler))
 	}
 	var remove func()
-	id := h.startEffect(abi.EffectTool, jv.Append(nil, body), &pending{
+	var span uint32
+	if h.sched != nil {
+		span = h.sched.SpanOf(run.Task)
+	}
+	id := h.startEffect(abi.EffectTool, withSpan(jv.Append(nil, body), span), &pending{
 		progress: func(ev *abi.Event) bool {
 			payload := append([]byte(nil), ev.Payload...)
 			switch ev.Phase {
@@ -314,7 +319,11 @@ func (h *handler) completion(kind abi.EffectKind, body *jv.Object, cancel *sessi
 		left++
 		h.hopsThen(envCallHops, resume)
 	}
-	id := h.startEffect(kind, jv.Append(nil, body), &pending{done: func(outcome uint8, payload []byte) {
+	var span uint32
+	if cancel != nil {
+		span = cancel.Span
+	}
+	id := h.startEffect(kind, withSpan(jv.Append(nil, body), span), &pending{done: func(outcome uint8, payload []byte) {
 		if remove != nil {
 			remove()
 		}
@@ -502,6 +511,9 @@ func (h *handler) renderSections(conv, task turn.ID, agent *turn.Agent, shown *t
 // forwarded as the text the host sent (the request keeps only the last one it commits), and only the message that ends the
 // request is built.
 func (h *handler) stream(req *turn.StreamRequest, onPartial func(jv.Raw), cancel *session.Cancel, then func(*jv.Object, error)) {
+	if cancel != nil {
+		req.Span = cancel.Span
+	}
 	out := h.modelContextPayload(req)
 	h.keepPayload(out)
 	var remove func()

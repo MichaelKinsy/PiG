@@ -58,7 +58,7 @@ func startsAsync(method string) bool {
 // holdsForLoopTurn reports whether a call the runtime marks Timer can wait for the loop's next turn: its upstream API returns nothing, so no code waits for its answer. A call whose answer the extension waits for (a dialog, a getter) runs at once.
 func holdsForLoopTurn(method string) bool {
 	switch method {
-	case "ui.notify", "ui.setStatus", "ui.setWorkingMessage", "ui.setWorkingIndicator", "ui.setWorkingVisible", "ui.setHiddenThinkingLabel",
+	case "ui.notify", "ui.setStatus", "ui.setWorkingMessage", "ui.setWorkingIndicator", "ui.setWorkingVisible", "ui.setHiddenThinkingLabel", CallOwnThinkingRuns,
 		"ui.setWidget", "ui.setFooter", "ui.setHeader", "ui.setTitle", "ui.pasteToEditor", "ui.setEditorText", "ui.setToolsExpanded",
 		"appendEntry", "sendMessage", "sendUserMessage", "setThinkingLevel", "setActiveTools", "abort":
 		return true
@@ -443,6 +443,8 @@ func (h *Host) runCall(me *managedExt, conn *Conn, callID string, call *CallPayl
 		result, err = h.handleToolRegistration(callCtx, me, conn, call)
 	case call.Method == CallRegisterDeclaration:
 		result, err = h.handleDeclarationRegistration(callCtx, me, call)
+	case call.Method == CallOwnThinkingRuns:
+		result, err = h.handleOwnThinkingRuns(me, call)
 	case call.Method == callXrefHello || call.Method == callXrefOp:
 		result, err = h.handleXrefCall(callCtx, me, conn, callID, call)
 	case call.Method == callEventsOn || call.Method == callEventsOff || call.Method == callEventsEmit || call.Method == callEventsSettle:

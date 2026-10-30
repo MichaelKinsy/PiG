@@ -808,6 +808,7 @@ func run(args []string) error {
 		var cold, warm, opens, rss, cpu, bytes []float64
 		var all []float64
 		for i := range *samples {
+			//nolint:gosec // G204 (class b): program is self from os.Executable; args are fixed sample plus flag values (-model, -provider, fixture path from -dir and size, counts).
 			command := exec.Command(self, "sample", "-model", modelVariant, "-provider", providerKind, "-fixture", fixturePath(*dir, size), "-turns", strconv.Itoa(size), "-sample", strconv.Itoa(i))
 			command.Stderr = os.Stderr
 			output, err := command.Output()

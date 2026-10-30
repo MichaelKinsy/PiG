@@ -464,4 +464,101 @@ func TestSessionFileCreationUpstream(t *testing.T) {
 			t.Fatalf("roles = %v", got)
 		}
 	})
+	// .upstream/current/packages/coding-agent/test/session-manager/file-operations.test.ts:477 (#10166, #10661, #11460: a failed write must not leave later entries pointing to a missing parent)
+	t.Run("does not keep an entry in memory when writing it fails", func(t *testing.T) {
+		if os.Geteuid() == 0 || os.PathSeparator == '\\' {
+			t.Skip("file permissions do not stop the root user or Windows")
+		}
+		dir := t.TempDir()
+		s, err := NewSessionManagerWithDir(dir, dir).Create("", "")
+		if err != nil {
+			t.Fatal(err)
+		}
+		firstID := upstreamSessionUser(t, s, "first question")
+		file := s.Path()
+
+		if err := os.Chmod(file, 0o444); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := s.AppendMessage(mkAssistantMsg("lost answer")); err == nil {
+			t.Fatal("AppendMessage into a read-only session file succeeded")
+		}
+		if got := s.GetLeafID(); got == nil || *got != firstID {
+			t.Fatalf("leaf = %v, want %q", got, firstID)
+		}
+		if got := sessionEntryIDs(s.GetEntries()); !slices.Equal(got, []string{firstID}) {
+			t.Fatalf("entries = %v, want [%s]", got, firstID)
+		}
+
+		if err := os.Chmod(file, 0o644); err != nil {
+			t.Fatal(err)
+		}
+		secondID, err := s.AppendMessage(mkAssistantMsg("second answer"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		second, ok := s.GetEntry(secondID)
+		if !ok || second.Base().ParentID == nil || *second.Base().ParentID != firstID {
+			t.Fatalf("second entry = %+v, want parent %q", second, firstID)
+		}
+
+		reopened, err := NewSessionManagerWithDir(dir, dir).Open(file)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got := sessionEntryIDs(reopened.GetBranch()); !slices.Equal(got, []string{firstID, secondID}) {
+			t.Fatalf("reopened branch = %v, want [%s %s]", got, firstID, secondID)
+		}
+	})
+	// .upstream/current/packages/coding-agent/test/session-manager/file-operations.test.ts:495
+	t.Run("does not keep an entry in memory when creating the file fails", func(t *testing.T) {
+		if os.Geteuid() == 0 || os.PathSeparator == '\\' {
+			t.Skip("file permissions do not stop the root user or Windows")
+		}
+		dir := t.TempDir()
+		sessionDir := filepath.Join(dir, "sessions")
+		if err := os.Mkdir(sessionDir, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		s, err := NewSessionManagerWithDir(dir, sessionDir).Create("", "")
+		if err != nil {
+			t.Fatal(err)
+		}
+		modelChangeID, err := s.AppendModelChange("anthropic", "claude-sonnet-4-5")
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if err := os.Chmod(sessionDir, 0o555); err != nil {
+			t.Fatal(err)
+		}
+		_, appendErr := s.AppendMessage(mkUserMsg("first question"))
+		if err := os.Chmod(sessionDir, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if appendErr == nil {
+			t.Fatal("AppendMessage into a read-only session directory succeeded")
+		}
+		if got := s.GetLeafID(); got == nil || *got != modelChangeID {
+			t.Fatalf("leaf = %v, want %q", got, modelChangeID)
+		}
+		if got := sessionEntryIDs(s.GetEntries()); !slices.Equal(got, []string{modelChangeID}) {
+			t.Fatalf("entries = %v, want [%s]", got, modelChangeID)
+		}
+
+		if _, err := s.AppendMessage(mkUserMsg("second question")); err != nil {
+			t.Fatal(err)
+		}
+		if got := readSessionFileRoles(t, s.Path()); !slices.Equal(got, []string{"session", "model_change", "user"}) {
+			t.Fatalf("roles = %v", got)
+		}
+	})
+}
+
+func sessionEntryIDs(entries []SessionEntry) []string {
+	ids := make([]string, 0, len(entries))
+	for _, entry := range entries {
+		ids = append(ids, entry.Base().ID)
+	}
+	return ids
 }

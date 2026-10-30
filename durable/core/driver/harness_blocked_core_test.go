@@ -6,6 +6,7 @@ package driver_test
 import (
 	"context"
 	"errors"
+	"fmt"
 	"math"
 	"os"
 	"path/filepath"
@@ -250,8 +251,8 @@ func graphNode(graph harness.TaskGraphWatch, id durable.TaskId) (harness.TaskGra
 }
 
 func TestBlockedTasks(t *testing.T) {
-	// harness-blocked.test.ts:156 "parks a task cut off restartLimit times in a row, shows why, and runs it again on retryTask()"
-	t.Run("parks a task cut off restartLimit times in a row, shows why, and runs it again on retryTask()", func(t *testing.T) {
+	// harness-blocked.test.ts:136 "faults an extension's task cut off restartLimit times in a row instead of running it again" (#11139)
+	t.Run("faults an extension's task cut off restartLimit times in a row instead of running it again", func(t *testing.T) {
 		eachEngine(t, func(t *testing.T, core bool) {
 			state := &crashLoopState{crashing: true}
 			registry := harness.CreateRegistry()
@@ -271,10 +272,7 @@ func TestBlockedTasks(t *testing.T) {
 			if record := taskOf(t, h, id); record == nil || record.Restarts != 3 {
 				t.Fatalf("restarts %+v, want 3", record)
 			}
-			want := []durable.ReportInfo{{Type: durable.ReportTaskParked, Task: &durable.ReportTask{Id: id, Kind: "test.crash-loop", ConversationId: root.Id()}, Extension: "loop"}}
-			if got := current.infos.infos(); !reflect.DeepEqual(got, want) {
-				t.Fatalf("report infos %+v, want %+v", got, want)
-			}
+			// Nothing is parked: the task is ready, and the host is asked to run, which ends it.
 			inspection, err := h.Inspect(t.Context())
 			if err != nil {
 				t.Fatal(err)
@@ -285,37 +283,29 @@ func TestBlockedTasks(t *testing.T) {
 					inspected = task.State
 				}
 			}
-			if inspected.Kind != harness.TaskInspectionBlocked || inspected.Reason != "restart_limit" {
-				t.Fatalf("inspection %+v, want blocked: restart_limit", inspected)
+			if inspected.Kind != harness.TaskInspectionReady || inspected.Migrates {
+				t.Fatalf("inspection %+v, want ready", inspected)
 			}
-			graph, err := startedTaskGraph(t.Context(), h)
-			if err != nil {
-				t.Fatal(err)
+			if !h.Wake().Active {
+				t.Fatalf("wake %+v, want active", h.Wake())
 			}
-			if node, ok := graphNode(graph, id); !ok || node.Blocked != "restart_limit" {
-				t.Fatalf("graph node %+v, want blocked: restart_limit", node)
-			}
-			// Parked work needs no process: nothing is active.
-			pollUntil(t, "the wake idle", func() bool { return !h.Wake().Active })
-			expectWake(t, h.Wake(), false)
 			h.Resume()
-			// A scheduling pass runs within a few turns; it leaves the parked task out.
-			settleScheduling(t, h)
+			outcome := waitFinished2(t, h, id).State.Outcome
+			wantMessage := fmt.Sprintf("Task %d (test.crash-loop) was cut off 3 times without progress", id)
+			if outcome == nil || outcome.Status != durable.OutcomeFaulted || outcome.Error == nil || outcome.Error.Message != wantMessage {
+				t.Fatalf("outcome %+v, want faulted with %q", outcome, wantMessage)
+			}
+			if detail, ok := outcome.Error.Detail.(durable.JsonObject); !ok || mustGet(detail, "reason") != "restart_limit" {
+				t.Fatalf("outcome detail %+v, want reason restart_limit", outcome.Error.Detail)
+			}
 			if _, started := state.get(); started != 3 {
-				t.Fatalf("the parked task started again: %d starts, want 3", started)
+				t.Fatalf("the task started again: %d starts, want 3", started)
 			}
-
-			state.set(false)
-			if err := h.RetryTask(t.Context(), id); err != nil {
-				t.Fatal(err)
+			pollUntil(t, "the report", func() bool { return len(current.infos.all()) > 0 })
+			want := []durable.ReportInfo{{Type: durable.ReportTaskFaulted, Task: &durable.ReportTask{Id: id, Kind: "test.crash-loop", ConversationId: root.Id()}, Extension: "loop", Reason: "restart_limit"}}
+			if got := current.infos.infos(); !reflect.DeepEqual(got, want) {
+				t.Fatalf("report infos %+v, want %+v", got, want)
 			}
-			if outcome := waitFinished2(t, h, id).State.Outcome; outcome == nil || outcome.Status != durable.OutcomeCompleted {
-				t.Fatalf("outcome %+v, want completed", outcome)
-			}
-			if _, started := state.get(); started != 4 {
-				t.Fatalf("starts %d, want 4", started)
-			}
-			_, _ = graph.Stop()
 		})
 	})
 
@@ -397,8 +387,8 @@ func TestBlockedTasks(t *testing.T) {
 		})
 	})
 
-	// harness-blocked.test.ts:290 "runs a parked task once a raised restartLimit no longer parks it"
-	t.Run("runs a parked task once a raised restartLimit no longer parks it", func(t *testing.T) {
+	// harness-blocked.test.ts:270 "reads restartLimit when it reserves the task: a raised one runs it again" (#11139)
+	t.Run("reads restartLimit when it reserves the task: a raised one runs it again", func(t *testing.T) {
 		eachEngine(t, func(t *testing.T, core bool) {
 			state := &crashLoopState{crashing: true}
 			registry := harness.CreateRegistry()
@@ -410,16 +400,11 @@ func TestBlockedTasks(t *testing.T) {
 			pollUntil(t, "the phase started", func() bool { _, started := state.get(); return started == 1 })
 			rig.kill() // a crash: a close would not count
 			current = rig.open()
-			graph, err := startedTaskGraph(t.Context(), current.h)
-			if err != nil {
-				t.Fatal(err)
+			if record := taskOf(t, current.h, id); record == nil || record.Restarts != 1 {
+				t.Fatalf("restarts %+v, want 1", record)
 			}
-			current.h.Resume()
-			pollUntil(t, "the graph shows the park", func() bool { node, ok := graphNode(graph, id); return ok && node.Blocked == "restart_limit" })
-			// Let a scheduling pass leave the parked task out.
-			settleScheduling(t, current.h)
 			state.set(false)
-			// The host's live settings change; the next pass runs the task.
+			// The host's live settings change before the task is reserved; it runs instead of ending.
 			rig.settings.Store(&harness.HarnessSettings{RestartLimit: new(math.Inf(1))})
 			current.h.Resume()
 			if outcome := waitFinished2(t, current.h, id).State.Outcome; outcome == nil || outcome.Status != durable.OutcomeCompleted {
@@ -428,12 +413,11 @@ func TestBlockedTasks(t *testing.T) {
 			if _, started := state.get(); started != 2 {
 				t.Fatalf("starts %d, want 2", started)
 			}
-			_, _ = graph.Stop()
 		})
 	})
 
-	// harness-blocked.test.ts:321 "still runs the abort handler of a parked task"
-	t.Run("still runs the abort handler of a parked task", func(t *testing.T) {
+	// harness-blocked.test.ts:306 "runs the abort handler of a task at the limit"
+	t.Run("runs the abort handler of a task at the limit", func(t *testing.T) {
 		eachEngine(t, func(t *testing.T, core bool) {
 			state := &crashLoopState{crashing: true}
 			var mu sync.Mutex
@@ -514,12 +498,16 @@ func TestBlockedTasks(t *testing.T) {
 			if record := taskOf(t, current.h, id); record == nil || record.Restarts != 2 {
 				t.Fatalf("restarts %+v, want 2", record)
 			}
-			inspection, err := current.h.Inspect(t.Context())
-			if err != nil {
-				t.Fatal(err)
+			current.h.Resume()
+			outcome := waitFinished2(t, current.h, id).State.Outcome
+			if outcome == nil || outcome.Status != durable.OutcomeFaulted || outcome.Error == nil {
+				t.Fatalf("outcome %+v, want faulted", outcome)
 			}
-			if state := inspection.Tasks[0].State; state.Kind != harness.TaskInspectionBlocked || state.Reason != "restart_limit" {
-				t.Fatalf("inspection %+v, want blocked: restart_limit", state)
+			if detail, ok := outcome.Error.Detail.(durable.JsonObject); !ok || mustGet(detail, "reason") != "restart_limit" {
+				t.Fatalf("outcome detail %+v, want reason restart_limit", outcome.Error.Detail)
+			}
+			if got := started.Load(); got != 2 {
+				t.Fatalf("starts %d, want 2", got)
 			}
 		})
 	})

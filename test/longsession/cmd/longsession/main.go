@@ -288,6 +288,7 @@ type rpcHarness struct {
 }
 
 func startRPC(bin, session, work string, env []string) (*rpcHarness, error) {
+	//nolint:gosec // G204 (class c): program is the -bin flag value (default pig), passed through startRPC with fixed --mode rpc --session args.
 	cmd := exec.Command(bin, "--mode", "rpc", "--session", session)
 	cmd.Dir, cmd.Env, cmd.Stderr = work, env, os.Stderr
 	stdin, err := cmd.StdinPipe()
@@ -384,10 +385,12 @@ func startTmux(bin, session, work string, env []string) (*tmuxHarness, error) {
 		quoted = append(quoted, shellQuote(kv))
 	}
 	quoted = append(quoted, shellQuote(bin), "--session", shellQuote(session))
+	//nolint:gosec // G204 (class a): program is literal tmux; new-session with a generated name, and the shell string built from bin and env through shellQuote.
 	cmd := exec.Command("tmux", "new-session", "-d", "-s", name, "-x", "200", "-y", "50", "-c", work, strings.Join(quoted, " "))
 	if out, err := cmd.CombinedOutput(); err != nil {
 		return nil, fmt.Errorf("tmux: %w: %s", err, out)
 	}
+	//nolint:gosec // G204 (class a): program is literal tmux; display-message with a generated session name.
 	out, err := exec.Command("tmux", "display-message", "-p", "-t", name, "#{pane_pid}").Output()
 	if err != nil {
 		return nil, err
@@ -402,6 +405,7 @@ func startTmux(bin, session, work string, env []string) (*tmuxHarness, error) {
 func (h *tmuxHarness) pid() int { return h.panePID }
 
 func (h *tmuxHarness) screen() string {
+	//nolint:gosec // G204 (class a): program is literal tmux; capture-pane on a generated session name.
 	out, _ := exec.Command("tmux", "capture-pane", "-p", "-t", h.name).Output()
 	return string(out)
 }
@@ -441,9 +445,11 @@ func (h *tmuxHarness) settle(ctx context.Context) error {
 
 // prompt types the text and waits until the model has answered it and the screen has not changed for a second.
 func (h *tmuxHarness) prompt(ctx context.Context, text string, model *scriptedModel, want int64) error {
+	//nolint:gosec // G204 (class a): program is literal tmux; send-keys -l with the scripted prompt text and a generated session name.
 	if err := exec.Command("tmux", "send-keys", "-t", h.name, "-l", text).Run(); err != nil {
 		return err
 	}
+	//nolint:gosec // G204 (class a): program is literal tmux; send-keys Enter on a generated session name.
 	if err := exec.Command("tmux", "send-keys", "-t", h.name, "Enter").Run(); err != nil {
 		return err
 	}
@@ -455,10 +461,13 @@ func (h *tmuxHarness) prompt(ctx context.Context, text string, model *scriptedMo
 
 func (h *tmuxHarness) exit(timeout time.Duration) error {
 	// The session ends with the harness; killing it covers a harness that did not exit, and fails when it is already gone.
+	//nolint:gosec // G204 (class a): program is literal tmux; kill-session on a generated session name in the deferred exit cleanup.
 	defer func() { _ = exec.Command("tmux", "kill-session", "-t", h.name).Run() }()
+	//nolint:gosec // G204 (class a): program is literal tmux; send-keys -l "/quit" with a generated session name.
 	if err := exec.Command("tmux", "send-keys", "-t", h.name, "-l", "/quit").Run(); err != nil {
 		return err
 	}
+	//nolint:gosec // G204 (class a): program is literal tmux; send-keys Enter in exit(), on a generated session name.
 	if err := exec.Command("tmux", "send-keys", "-t", h.name, "Enter").Run(); err != nil {
 		return err
 	}

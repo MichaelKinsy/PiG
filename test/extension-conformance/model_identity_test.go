@@ -40,6 +40,7 @@ func TestSDKModelCallsCarryPiGIdentityNeverPis(t *testing.T) {
 		{"go", "", true},
 		{"python", "testdata/model-call-python", false},
 		{"rust", "testdata/model-call-rust", false},
+		{"lisp", "testdata/model-call-lisp", false},
 	}
 	providers := []struct {
 		id   string
@@ -89,13 +90,20 @@ func TestSDKModelCallsCarryPiGIdentityNeverPis(t *testing.T) {
 				if sdk.fused {
 					loaded, err = host.LoadInProcess(t.Context(), subprocess.ExtConfig{Name: "model-call", Enabled: true}, func(conn net.Conn) error { return testfixture.ModelCall().RunWithConn(conn) })
 				} else {
-					source, resolveErr := filepath.Abs(sdk.source)
-					if resolveErr != nil {
-						t.Fatal(resolveErr)
-					}
-					cfg, _, resolveErr := subprocess.ResolveExtConfigWithIdentity(source, "model-call")
-					if resolveErr != nil {
-						t.Fatal(resolveErr)
+					var cfg subprocess.ExtConfig
+					if sdk.name == "lisp" {
+						cfg = lispFixtureConfig(t, "model-call-lisp", "model-call")
+					} else {
+						source, resolveErr := filepath.Abs(sdk.source)
+						if resolveErr != nil {
+							t.Fatal(resolveErr)
+						}
+						var resolved subprocess.ExtConfig
+						resolved, _, resolveErr = subprocess.ResolveExtConfigWithIdentity(source, "model-call")
+						if resolveErr != nil {
+							t.Fatal(resolveErr)
+						}
+						cfg = resolved
 					}
 					cfg.Isolation = "isolated"
 					extensions, loadErrors := host.LoadAll(t.Context(), []subprocess.ExtConfig{cfg})

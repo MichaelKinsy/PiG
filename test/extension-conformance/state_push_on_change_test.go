@@ -47,7 +47,7 @@ func TestHostStateChangeReachesABackgroundReaderAcrossSDKs(t *testing.T) {
 
 // statePushLanguage is the SDK a harness case loads.
 func statePushLanguage(caseName string) string {
-	for _, language := range []string{"node", "rust", "python", "go"} {
+	for _, language := range []string{"node", "rust", "python", "go", "lisp"} {
 		if strings.Contains(caseName, language) {
 			return language
 		}

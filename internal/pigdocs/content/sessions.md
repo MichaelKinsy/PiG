@@ -22,8 +22,8 @@ Set `sessionDir` in [settings](settings.md) to store sessions elsewhere.
 | `/new` | Start a session with no history |
 | `/resume` | Open the session picker |
 | `/tree` | Show the session as a tree and move to any point |
-| `/fork` | Continue from the current point in a new session |
-| `/clone` | Copy the session |
+| `/fork` | Select a user message and continue from before it in a new session |
+| `/clone` | Duplicate the active branch at the current position and switch to the copy |
 | `/name` | Give the session a name |
 | `/export` | Write the session to a file |
 | `/share` | Upload the session to PiG's unlisted, expiring share service. |
@@ -34,7 +34,7 @@ Set `sessionDir` in [settings](settings.md) to store sessions elsewhere.
 
 HTML export requires a Session file that has been written. `/export` uses the first path argument, with optional quotes, exactly as supplied. It does not append `.html` or create parent directories. Use a `.jsonl` path to export the current branch as JSON Lines.
 
-After `/clone`, `/new`, or `/resume`, the transcript and footer reflect the current Session. Resuming an unnamed Session clears the previous name.
+After `/fork`, `/clone`, `/new`, or `/resume`, the transcript and footer reflect the current Session. Resuming an unnamed Session clears the previous name.
 
 ## Sharing a session
 

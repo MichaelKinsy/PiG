@@ -5,7 +5,6 @@ package core
 
 import (
 	"math/rand"
-	"slices"
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/durable/core/internal/delta"
@@ -13,41 +12,24 @@ import (
 	"github.com/MichaelKinsy/PiG/durable/core/session"
 )
 
-// referenceView is the view watch as it was before the watch stopped holding the view's value: it keeps the whole value and
-// finds the entries a head marker drops by scanning that value. It is the oracle the slim watch is compared with.
+// referenceView is the view watch that holds the whole value: it appends each entry to the entries it holds and, past its max,
+// slices them down to its min, finding `before` in the value itself. It is the oracle the id-keeping watch is compared with.
 type referenceView struct {
-	conv  session.ID
-	value *jv.Object
-	docs  map[string]viewDoc
+	conv     session.ID
+	min, max int
+	value    *jv.Object
+	docs     map[string]viewDoc
 }
 
 func (w *referenceView) advance(pub *session.Publication) ([]delta.Op, error) {
-	var docOps, entryOps []delta.Op
-	list, _ := w.value.Get("entries")
-	entries, _ := list.([]any)
+	var docOps []delta.Op
+	var appended []any
 	for _, c := range pub.Changes {
 		switch c.Kind {
 		case session.ChangeTable:
-			if numOf(c.Record, "conversationId") != float64(w.conv) || c.Table != session.WriteEntry {
-				continue
+			if numOf(c.Record, "conversationId") == float64(w.conv) && c.Table == session.WriteEntry {
+				appended = append(appended, c.Record)
 			}
-			head, hasHead := c.Record.Get("head")
-			if !hasHead || head == nil {
-				entryOps = append(entryOps, delta.Op{Verb: delta.Splice, Path: delta.Path{delta.Key("entries")}, Index: len(entries), Items: []any{c.Record}})
-				entries = append(append([]any{}, entries...), c.Record)
-				continue
-			}
-			target, _ := head.(float64)
-			kept := len(entries)
-			for i, e := range entries {
-				eo, _ := e.(*jv.Object)
-				if !eo.Has("head") && numOf(eo, "id") >= target {
-					kept = i
-					break
-				}
-			}
-			entryOps = append(entryOps, delta.Op{Verb: delta.Splice, Path: delta.Path{delta.Key("entries")}, Index: 0, Remove: kept, Items: []any{c.Record}})
-			entries = append([]any{c.Record}, entries[kept:]...)
 		case session.ChangeDocument:
 			if c.ConversationID != w.conv {
 				continue
@@ -76,7 +58,18 @@ func (w *referenceView) advance(pub *session.Publication) ([]delta.Op, error) {
 			}
 		}
 	}
-	ops := slices.Concat(docOps, entryOps)
+	ops := docOps
+	if len(appended) > 0 {
+		list, _ := w.value.Get("entries")
+		held, _ := list.([]any)
+		ops = append(ops, delta.Op{Verb: delta.Splice, Path: delta.Path{delta.Key("entries")}, Index: len(held), Items: appended})
+		held = append(append([]any{}, held...), appended...)
+		if len(held) > w.max {
+			drop := len(held) - w.min
+			before := numOf(held[drop-1].(*jv.Object), "id")
+			ops = append(ops, delta.Op{Verb: delta.Splice, Path: delta.Path{delta.Key("entries")}, Remove: drop}, delta.Op{Verb: delta.Set, Path: delta.Path{delta.Key("before")}, Value: before})
+		}
+	}
 	if len(ops) > 0 {
 		next, err := delta.Apply(w.value, ops)
 		if err != nil {
@@ -87,13 +80,13 @@ func (w *referenceView) advance(pub *session.Publication) ([]delta.Op, error) {
 	return ops, nil
 }
 
-// Random commits of entries, head markers (including a null head) and mounted-document changes give the same ops and the same
-// value from the slim watch as from the watch that holds the whole view.
+// Random commits of entries (heads included, which are entries like any other) and mounted-document changes give the same ops and
+// the same value from the watch that keeps only the window's IDs as from the watch that holds the whole view.
 func TestViewAdvanceMatchesTheWatchThatHeldTheValue(t *testing.T) {
 	for seed := int64(1); seed <= 40; seed++ {
 		rng := rand.New(rand.NewSource(seed))
 		slim := newView(t)
-		ref := &referenceView{conv: 1, value: parsed(t, jv.Stringify(slim.value)), docs: map[string]viewDoc{"pi.live": {id: 2, version: 1}}}
+		ref := &referenceView{conv: 1, min: slim.min, max: slim.max, value: parsed(t, jv.Stringify(slim.value)), docs: map[string]viewDoc{"pi.live": {id: 2, version: 1}}}
 		nextID, docID := 4, 2
 		for step := range 200 {
 			var changes []session.Change
@@ -128,7 +121,7 @@ func TestViewAdvanceMatchesTheWatchThatHeldTheValue(t *testing.T) {
 			}
 			pub := &session.Publication{Changes: changes}
 			want, wantErr := ref.advance(pub)
-			got, _, gotErr := slim.advance(pub)
+			got, gotErr := slim.advance(pub)
 			if (wantErr != nil) != (gotErr != nil) {
 				t.Fatalf("seed %d step %d: error %v vs %v", seed, step, gotErr, wantErr)
 			}

@@ -3,6 +3,8 @@ package cli
 import (
 	"errors"
 	"fmt"
+	"slices"
+	"strings"
 
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	piglet "github.com/MichaelKinsy/PiG/coding/piglet"
@@ -109,6 +111,10 @@ func resolveAndLoadSkills(p *piglet.Piglet, collectedSkillInputs []string) (*ski
 		byName[d.Name] = d
 	}
 
+	// pig additive (D202): the Piglet's own skills follow its declaration order, inline and file-origin alike, as one Piglet file's
+	// merge with a base lists them; a Binary bakes its skills inline and an overlay adds file-origin ones after them.
+	orderedNames = orderPigletSkills(p, resolved, marketDefs, pigletDefs, orderedNames)
+
 	// Assemble the final deduplicated list in stable order.
 	var defs []*codingagent.SkillDef
 	for _, name := range orderedNames {
@@ -119,4 +125,48 @@ func resolveAndLoadSkills(p *piglet.Piglet, collectedSkillInputs []string) (*ski
 	allPaths := dedupStrings(append(append([]string{}, pigletSkillInputs...), collectedSkillInputs...))
 
 	return &skillLoadResult{Defs: defs, Paths: allPaths, Diagnostics: append(diagnostics, pigletDiagnostics...)}, nil
+}
+
+// orderPigletSkills keeps the ambient skills where they are and puts the skills the Piglet adds in the Piglet's declaration order.
+func orderPigletSkills(p *piglet.Piglet, resolved []piglet.ResolvedSkill, marketDefs, pigletDefs []*codingagent.SkillDef, names []string) []string {
+	ambient := make(map[string]bool, len(marketDefs))
+	for _, d := range marketDefs {
+		ambient[d.Name] = true
+	}
+	var declared []string
+	for _, entry := range p.Skills {
+		if entry.Content != "" {
+			declared = append(declared, entry.Name)
+			continue
+		}
+		for _, r := range resolved {
+			if r.Entry.Name != entry.Name {
+				continue
+			}
+			for _, d := range pigletDefs {
+				if strings.HasPrefix(d.FilePath, r.Path) {
+					declared = append(declared, d.Name)
+				}
+			}
+		}
+	}
+	var out, added []string
+	for _, name := range names {
+		if ambient[name] {
+			out = append(out, name)
+		} else {
+			added = append(added, name)
+		}
+	}
+	slices.SortStableFunc(added, func(a, b string) int {
+		return indexOrEnd(declared, a, len(added)) - indexOrEnd(declared, b, len(added))
+	})
+	return append(out, added...)
+}
+
+func indexOrEnd(list []string, name string, end int) int {
+	if i := slices.Index(list, name); i >= 0 {
+		return i
+	}
+	return len(list) + end
 }

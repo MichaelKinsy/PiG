@@ -7,7 +7,7 @@
    "ai/simple_options.go#AdjustMaxTokensForThinking"
   ],
   "production": [
-   "call:ai/bedrock.go#buildBedrockAdditionalFields"
+   "call:ai/providers/bedrock/bedrock.go#buildBedrockAdditionalFields"
   ],
   "evidence": [
    "test:ai/simple_options_test.go#TestAdjustMaxTokensForThinking",
@@ -113,7 +113,7 @@
    "ai/transcript.go#CollapseSystemMessages"
   ],
   "production": [
-   "call:ai/bedrock.go#BedrockProvider.Stream"
+   "call:ai/providers/bedrock/bedrock.go#BedrockProvider.Stream"
   ],
   "evidence": [
    "test:ai/system_message_replay_test.go#TestSystemMessageReplayCollapseKeepsNonSystemMessagesAfterReplayedHead",
@@ -220,7 +220,7 @@
    "ai/errors.go#FormatProviderError"
   ],
   "production": [
-   "call:ai/bedrock.go#formatBedrockError"
+   "call:ai/providers/bedrock/bedrock.go#formatBedrockError"
   ],
   "evidence": [
    "test:ai/error_body_upstream_test.go#TestFormatProviderErrorUpstream"

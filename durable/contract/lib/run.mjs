@@ -3,7 +3,7 @@
 import { killGroup, spawnGroup } from "./procs.mjs"
 import { appendFileSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync, existsSync, mkdtempSync } from "node:fs"
 import { tmpdir } from "node:os"
-import { dirname, join, resolve } from "node:path"
+import { basename, dirname, join, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
 
 export const CONTRACT_DIR = resolve(dirname(fileURLToPath(import.meta.url)), "..")
@@ -61,6 +61,11 @@ export function piSource() {
 	const dir = process.env.CONTRACT_PI_SOURCE ?? join(process.env.DURABLE_CONTRACT_CACHE ?? join(CONTRACT_DIR, ".cache"), "pi-main")
 	if (!existsSync(join(dir, "packages", "durable", "src", "index.ts"))) throw new Error(`reference checkout not found at ${dir}; run make durable-contract-setup or set CONTRACT_PI_SOURCE`)
 	return resolve(dir)
+}
+
+/** The short commit of the PIN `main` entry: the meta line of a trace names the reference it was captured from. */
+function pinOf() {
+	return readFileSync(join(CONTRACT_DIR, "PIN"), "utf8").split("\n").map(l => l.split(/\s+/)).find(f => f[0] === "main")?.[1]?.slice(0, 8)
 }
 
 /** The release the corpus keeps readable (PIN `release`): CONTRACT_PI_104_SOURCE, else the cache `make durable-contract-setup` fills. */
@@ -129,7 +134,7 @@ export async function runScenario(o) {
 	clearTimeout(timer)
 	release()
 	const trace = join(o.out, `${o.name}.trace`)
-	writeFileSync(trace, JSON.stringify({ t: "meta", scenario: o.scenario ?? o.name, impl: o.impl ?? "pi-durable", pin: "06a46693", clock: Number(env.DETENV_EPOCH), seed: Number(env.DETENV_SEED), crashAfter: o.crashAfter }) + "\n")
+	writeFileSync(trace, JSON.stringify({ t: "meta", scenario: o.scenario ?? o.name, impl: o.impl ?? "pi-durable", pin: pinOf(), clock: Number(env.DETENV_EPOCH), seed: Number(env.DETENV_SEED), crashAfter: o.crashAfter }) + "\n")
 	if (existsSync(childTrace)) appendFileSync(trace, readFileSync(childTrace, "utf8"))
 	for (const line of stdout.split("\n").filter(Boolean)) appendFileSync(trace, JSON.stringify({ t: "out", stream: "stdout", text: line }) + "\n")
 	appendFileSync(trace, JSON.stringify({ t: "end", code, signal }) + "\n")

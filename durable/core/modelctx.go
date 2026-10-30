@@ -31,6 +31,10 @@ func (h *handler) modelContextPayload(req *turn.StreamRequest) []byte {
 	out = jv.AppendString(out, req.Model.ModelID)
 	out = append(out, `},"conversationId":`...)
 	out = jv.AppendNumber(out, float64(req.Conversation))
+	if req.Span != 0 {
+		out = append(out, `,"span":`...)
+		out = jv.AppendNumber(out, float64(req.Span))
+	}
 	out = append(out, `,"context":{"messages":[`...)
 	switch {
 	case req.Replaced != nil:

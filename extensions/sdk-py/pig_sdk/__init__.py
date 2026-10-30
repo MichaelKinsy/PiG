@@ -9,7 +9,6 @@ returned extension over a host-provided subprocess socket.
 """
 
 from __future__ import annotations
-# pig divergence (D204): this SDK does not yet export TuiAltScreen, Pi's alternate-screen TUI host (the Node SDK does); the 0.6.1 export ends this.
 
 import base64
 import copy
@@ -66,6 +65,21 @@ from .branch_summary import (
     prepare_branch_entries as prepare_branch_entries,
 )
 from .child_session import AgentSession as AgentSession, CreateAgentSessionOptions as CreateAgentSessionOptions, ResourceOptions as ResourceOptions, SessionStartEvent as SessionStartEvent, _ChildSessions, create_agent_session as _create_agent_session
+from .tui_alt_screen import (
+    OverlayBounds as OverlayBounds,
+    ProgramStatus as ProgramStatus,
+    RgbColor as RgbColor,
+    Terminal as Terminal,
+    TerminalColors as TerminalColors,
+    TuiAltOverlayHandle as TuiAltOverlayHandle,
+    TuiAltScreen as TuiAltScreen,
+    TuiAltScreenOptions as TuiAltScreenOptions,
+    TuiInputListenerResult as TuiInputListenerResult,
+    TuiMouseEventResult as TuiMouseEventResult,
+    TuiOverlayOptions as TuiOverlayOptions,
+    _TuiAltScreens,
+)
+from .tui_alt_screen import Component as TuiAltComponent
 from .agent_session_services import (
     AgentSessionServices as AgentSessionServices,
     CreateAgentSessionFromServicesOptions as CreateAgentSessionFromServicesOptions,
@@ -2899,6 +2913,13 @@ class Context:
         label and shows an empty one (``label ?? defaultHiddenThinkingLabel``)."""
         self._call("ui.setHiddenThinkingLabel", {} if label is None else {"label": label})
 
+    # pig additive (D214)
+    def own_thinking_runs(self, enabled: bool = True) -> None:
+        """Declare that this extension owns the thinking runs of assistant messages (see :meth:`Extension.own_thinking_runs`); the host ORs the flag across extensions."""
+        if not isinstance(enabled, bool):
+            raise TypeError("own_thinking_runs requires a boolean")
+        self._call("ownThinkingRuns", {"enabled": enabled})
+
     def set_title(self, title: str) -> None:
         self._call("ui.setTitle", {"title": title})
 
@@ -3561,7 +3582,7 @@ class Context:
         return self.extension._add_width_change_handler(handler)
 
     def on_theme_change(self, handler: "Callable[[Theme], Any]") -> "Callable[[], None]":
-        """Subscribe to changes of the host's theme: the user switching theme, a custom theme's file reloading, the terminal reporting new colors. ``handler(theme)`` receives :attr:`theme` after it took the new palette.
+        """Subscribe to changes of the host's theme: the user switching theme, a custom theme's file reloading, the terminal reporting new colors. ``handler(theme)`` receives the theme of the change it is delivered for: a snapshot of :attr:`theme` as it was when the palette came in, so a handler that runs after the host changed the theme again still sees the palette it was called for (:attr:`theme` itself stays live).
 
         Pi calls a widget component's ``invalidate()`` on a theme change, and the component reads ``ctx.ui.theme`` at its next render, so it never paints the colors of an old theme. A subprocess extension pushes rows that were colored when it built them, so it re-renders from this subscription. :meth:`set_widget_renderer` colors through the live theme at every render and needs no handler for it.
 
@@ -4116,6 +4137,7 @@ class Extension:
         self._renderers: list[dict[str, Any]] = []
         self._entry_renderers: list[dict[str, Any]] = []
         self._markdown_transformer: Callable[[str, dict[str, Any]], Any] | None = None
+        self._owns_thinking_runs = False
         self._tool_renderer_resolvers: list[ToolRendererResolver] = []
         self._resolved_tool_renderers: dict[str, ToolRenderers] = {}
         self._oauth_providers: dict[str, OAuthProvider] = {}
@@ -4124,6 +4146,7 @@ class Extension:
         # The nodes of each tool's parameter schema that carry refinements (Type.refine), which the host asks for with tool_refine_arguments.
         self._tool_refine_sites: dict[str, dict[str, list[Refinement]]] = {}
         self._children = _ChildSessions()
+        self._tui_alt = _TuiAltScreens()
         self._tool_batches = _ToolBatches()
         self._request_starts = _RequestStartOrder()
         self._command_handlers: dict[str, CommandHandler] = {}
@@ -4888,6 +4911,19 @@ class Extension:
         keeps the input."""
         self._markdown_transformer = transformer
 
+    # pig additive (D214)
+    def own_thinking_runs(self, enabled: bool = True) -> None:
+        """Declare that this extension owns the thinking runs of assistant messages, so a thinking run that is hidden or draws no rows leaves no blank spacer rows
+        around it. PiG-only and product-neutral. Before the extension registers this records the value (last call wins; ``False`` sends nothing); once it is
+        live the same call is a host call. The host ORs the flag across extensions and drops it when the extension unloads."""
+        if not isinstance(enabled, bool):
+            raise TypeError("own_thinking_runs requires a boolean")
+        with self._tool_registration_lock:
+            self._owns_thinking_runs = enabled
+            live = self._tools_live
+        if live:
+            self._call("ownThinkingRuns", {"enabled": enabled})
+
     def on_project_trust(self, handler: ProjectTrustHandler) -> Callable[[], None]:
         """Register an awaited pre-runtime project_trust handler and return its unsubscribe function."""
         return self.on_event("project_trust", handler)
@@ -4959,7 +4995,7 @@ class Extension:
     def _serve(self) -> None:
         self._bus.register_pending()
         with self._tool_registration_lock:
-            self._send({"type": "register", "register": {"name": self._name, "tools": self._tools, "commands": self._commands, "shortcuts": self._shortcuts, "handlers": self._handlers, "flags": self._flags, "providers": self._providers, "message_renderers": self._renderers, "entry_renderers": self._entry_renderers, **({"markdown_transformer": True} if self._markdown_transformer is not None else {}), **({"tool_renderers": len(self._tool_renderer_resolvers)} if self._tool_renderer_resolvers else {}), **({"mcp_servers": self._mcp_servers_pending} if self._mcp_servers_pending else {}), **({"virtual_models": self._virtual_models_pending} if self._virtual_models_pending else {}), **({"unregister_virtual_models": self._virtual_model_unregistrations} if self._virtual_model_unregistrations else {})}})
+            self._send({"type": "register", "register": {"name": self._name, "tools": self._tools, "commands": self._commands, "shortcuts": self._shortcuts, "handlers": self._handlers, "flags": self._flags, "providers": self._providers, "message_renderers": self._renderers, "entry_renderers": self._entry_renderers, **({"markdown_transformer": True} if self._markdown_transformer is not None else {}), **({"owns_thinking_runs": True} if self._owns_thinking_runs else {}), **({"tool_renderers": len(self._tool_renderer_resolvers)} if self._tool_renderer_resolvers else {}), **({"mcp_servers": self._mcp_servers_pending} if self._mcp_servers_pending else {}), **({"virtual_models": self._virtual_models_pending} if self._virtual_models_pending else {}), **({"unregister_virtual_models": self._virtual_model_unregistrations} if self._virtual_model_unregistrations else {})}})
             ready = self._read_during_load()
             if ready.get("type") != "ready":
                 raise RuntimeError(f"expected ready, got {ready.get('type')}")
@@ -5078,6 +5114,7 @@ class Extension:
         self._shutdown.set()
         # The sessions end with the connection, as the host disposes them: no listener runs after it.
         self._children.close_all()
+        self._tui_alt.close_all()
         with self._state_lock:
             pending = list(self._pending.values())
             active = list(self._active.values())
@@ -5165,7 +5202,8 @@ class Extension:
 
     def _handle_request_thread(self, env: dict[str, Any], ctx: Context) -> None:
         try:
-            if (env.get("request") or {}).get("method") != "events.dispatch":
+            # A tui.alt.cb request answers a screen the extension created, which can be an on_loaded handler's: it must not wait for that handler to return.
+            if (env.get("request") or {}).get("method") not in ("events.dispatch", "tui.alt.cb"):
                 self._loaded.wait()
             self._handle_request(env, ctx)
         finally:
@@ -5416,13 +5454,14 @@ class Extension:
                         print(f"pig: width change handler failed:\n{traceback.format_exc()}", file=sys.stderr, end="")
 
     def _set_theme_palette(self, palette: dict[str, Any]) -> None:
-        """Install the host's palette and deliver it to the on_theme_change handlers when it differs from the one before. The caller holds the state lock."""
+        """Install the host's palette and deliver a snapshot of the theme to the on_theme_change handlers when it differs from the one before. The caller holds the state lock."""
         changed = self._theme_known and self._theme_palette != palette
         self._theme._set_palette(palette)
         self._theme_palette = palette
         self._theme_known = True
         if changed:
-            self._theme_feed.publish(self._theme)
+            # _set_palette binds new dicts and never mutates one in place: the shallow copy shares nothing that changes later, so a handler that runs after the next change still sees this one's theme.
+            self._theme_feed.publish(copy.copy(self._theme))
 
     def _apply_ui_state(self, state: dict[str, Any]) -> None:
         """Record the snapshot's replicated values: hasUI, theme, settings, MCP servers, the model and the session name. The ready state and every state_update pass through here. Caller holds _state_lock."""
@@ -5477,6 +5516,8 @@ class Extension:
             method = req.get("method")
             if method in {"autocomplete.sync", "autocomplete.suggest"}:
                 self._respond(req_id, self._autocomplete.dispatch(ctx, req.get("args") or {}), None)
+            elif method == "tui.alt.cb":
+                self._respond(req_id, self._tui_alt.dispatch(ctx, req.get("args") or {}), None)
             elif method in {"provider_call", "provider_stream", "provider_sync"}:
                 self._respond(req_id, _dispatch_provider(self, ctx, req), None)
             elif method in {"provider_object_callback", "provider_object_callback_sync"}:

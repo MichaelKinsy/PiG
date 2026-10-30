@@ -29,6 +29,10 @@ func TestDependabotCoversMaintainedManifests(t *testing.T) {
 		"/piglets/porter/extensions/pig-porter",
 		"/piglets/standard",
 		"/test/extension-conformance/testdata/rust-sdk-fixture",
+		"/test/term-engines/alacritty",
+		"/test/term-engines/pyte",
+		"/test/term-engines/wezterm",
+		"/test/term-engines/xterm",
 	} {
 		// A directory is listed either alone or in a grouped entry's list.
 		if !strings.Contains(config, "directory: "+directory+"\n") && !strings.Contains(config, "- "+directory+"\n") {

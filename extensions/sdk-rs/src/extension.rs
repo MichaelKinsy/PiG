@@ -355,6 +355,7 @@ pub(crate) struct LateDeclarations {
     shortcuts: Mutex<HashMap<String, Arc<ShortcutHandler>>>,
     message_renderers: Mutex<HashMap<String, Arc<MessageRenderFn>>>,
     entry_renderers: Mutex<HashMap<String, Arc<EntryRenderFn>>>,
+    flag_defaults: Mutex<HashMap<String, Value>>,
 }
 
 impl LateDeclarations {
@@ -381,6 +382,13 @@ impl LateDeclarations {
     }
     pub(crate) fn entry_renderer(&self, custom_type: &str) -> Option<Arc<EntryRenderFn>> {
         self.entry_renderers.lock().unwrap().get(custom_type).cloned()
+    }
+    /// Keeps the default of a flag registered after load; the first default registered for a name stays, as Pi's registerFlag keeps the first.
+    pub(crate) fn set_flag_default(&self, name: String, default: Value) {
+        self.flag_defaults.lock().unwrap().entry(name).or_insert(default);
+    }
+    pub(crate) fn flag_default(&self, name: &str) -> Option<Value> {
+        self.flag_defaults.lock().unwrap().get(name).cloned()
     }
 }
 
@@ -703,6 +711,8 @@ pub struct Extension {
     renderer_fns: HashMap<String, MessageRenderFn>,
     entry_renderer_fns: HashMap<String, EntryRenderFn>,
     markdown_transformer: Option<MarkdownTransformerHandler>,
+    /// PiG-only: the extension owns the thinking runs of assistant messages (`own_thinking_runs`); the register frame carries it.
+    owns_thinking_runs: bool,
     // oauth_fns holds OAuth closures for providers registered with an OAuth
     // capability, keyed by provider name for oauth_* dispatch.
     oauth_fns: HashMap<String, OAuthProvider>,
@@ -740,6 +750,7 @@ impl Extension {
             renderer_fns: HashMap::new(),
             entry_renderer_fns: HashMap::new(),
             markdown_transformer: None,
+            owns_thinking_runs: false,
             oauth_fns: HashMap::new(),
             tool_renderers: ToolRenderers::default(),
             command_completion_fns: HashMap::new(),
@@ -1400,6 +1411,14 @@ impl Extension {
         self.markdown_transformer = Some(Box::new(transformer));
     }
 
+    /// PiG-only, product-neutral: declare that this extension owns the thinking runs of assistant messages, so a thinking run that is hidden or draws
+    /// zero rows leaves no blank spacer rows around it. The value goes in the register frame (omitted when false); the last call wins. Runs before the
+    /// extension is live; afterwards use [`crate::Context::own_thinking_runs`].
+    /// pig additive (D214)
+    pub fn own_thinking_runs(&mut self, enabled: bool) {
+        self.owns_thinking_runs = enabled;
+    }
+
     /// Register a tool renderer resolver (Pi's `pi.registerToolRenderer`). Resolvers run in extension load order, and
     /// an extension's resolvers in registration order. After loading, use [`crate::Context::register_tool_renderer`].
     pub fn tool_renderer(
@@ -1530,6 +1549,7 @@ impl Extension {
                 renderers: self.renderers.clone(),
                 entry_renderers: self.entry_renderers.clone(),
                 markdown_transformer: self.markdown_transformer.is_some(),
+                owns_thinking_runs: self.owns_thinking_runs,
                 tool_renderers: self.tool_renderers.resolvers.len(),
                 mcp_servers: self.mcp_servers.clone(),
                 virtual_models: self.virtual_models.iter().map(|model| model.declaration()).collect(),
@@ -2213,6 +2233,15 @@ impl Extension {
                 let ctx = base_ctx.clone_for_request(cancel.clone(), None, id.to_string());
                 let result = conn.autocomplete.dispatch(&ctx, req.args.clone().unwrap_or_default());
                 let (value, error) = match result { Ok(value) => (Some(value), None), Err(err) => (None, Some(ErrorInfo { code: None, message: err.to_string() })) };
+                let _ = conn.respond(id, value, error);
+            }
+            "tui.alt.cb" => {
+                // The host sends it while the extension's own thread may be blocked in a tui.alt call: it runs on this request's thread.
+                let ctx = base_ctx.clone_for_request(cancel.clone(), None, id.to_string());
+                let (value, error) = match crate::tui_alt_screen::dispatch_callback(&conn.tui_alt, &ctx, req.args.as_ref().unwrap_or(&Value::Null)) {
+                    Ok(value) => (Some(value), None),
+                    Err(message) => (None, Some(ErrorInfo { code: None, message })),
+                };
                 let _ = conn.respond(id, value, error);
             }
             "model_stream_callback" => {

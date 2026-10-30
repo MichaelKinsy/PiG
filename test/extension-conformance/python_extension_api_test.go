@@ -38,6 +38,16 @@ type pyAPIRig struct {
 // newPyAPIRig loads the fixtures under one isolation: strict runs each in its own process, shared-ok packs them in one cell (upstream behavior must not depend on it).
 func newPyAPIRig(t *testing.T, isolation string, actions *subprocess.HostCallbacks, fixtures ...pyAPIFixture) *pyAPIRig {
 	t.Helper()
+	return newAPIRig(t, "python", isolation, actions, fixtures...)
+}
+
+// newAPIRig is newPyAPIRig for the SDK of language ("python" or "lisp"): a fixture's code is the source of its extension file.
+func newAPIRig(t *testing.T, language, isolation string, actions *subprocess.HostCallbacks, fixtures ...pyAPIFixture) *pyAPIRig {
+	t.Helper()
+	fileType, strategy := ".py", subprocess.CellStrategy("packed-python")
+	if language == "lisp" {
+		fileType, strategy = ".lisp", subprocess.CellStrategyPackedLisp
+	}
 	root := findModuleRoot(t)
 	notify, status := &[]string{}, &[]string{}
 	ui := newRecordingUI(notify, status)
@@ -52,10 +62,10 @@ func newPyAPIRig(t *testing.T, isolation string, actions *subprocess.HostCallbac
 	t.Cleanup(func() { h.Shutdown("test complete") })
 	var configs []subprocess.ExtConfig
 	for _, f := range fixtures {
-		cfg := packedFlagFactory(t, root, "python", f.name, false)
+		cfg := packedFlagFactory(t, root, language, f.name, false)
 		cfg.Isolation = isolation
-		cfg.ContentHash = "python-extension-api-" + f.name + "-" + fmt.Sprint(len(f.code))
-		if err := os.WriteFile(filepath.Join(cfg.Source, cfg.Package+".py"), []byte(f.code), 0o600); err != nil {
+		cfg.ContentHash = language + "-extension-api-" + f.name + "-" + fmt.Sprint(len(f.code))
+		if err := os.WriteFile(filepath.Join(cfg.Source, cfg.Package+fileType), []byte(f.code), 0o600); err != nil {
 			t.Fatal(err)
 		}
 		configs = append(configs, cfg)
@@ -68,7 +78,7 @@ func newPyAPIRig(t *testing.T, isolation string, actions *subprocess.HostCallbac
 		if err != nil {
 			t.Fatalf("reload: %v (%+v)", err, h.LastReloadReport())
 		}
-		if report := h.LastReloadReport(); report == nil || len(report.Cells) != 1 || report.Cells[0].Strategy != subprocess.CellStrategy("packed-python") {
+		if report := h.LastReloadReport(); report == nil || len(report.Cells) != 1 || report.Cells[0].Strategy != strategy {
 			t.Fatalf("expected one packed python cell: %+v", report)
 		}
 	} else {
@@ -93,7 +103,7 @@ func newPyAPIRig(t *testing.T, isolation string, actions *subprocess.HostCallbac
 func eachPyAPIIsolation(t *testing.T, body func(t *testing.T, isolation string)) {
 	t.Helper()
 	if testing.Short() {
-		t.Skip("skipping conformance suite in short mode (starts Python subprocesses)")
+		t.Skip("skipping conformance suite in short mode (starts SDK subprocesses)")
 	}
 	for _, isolation := range pyAPIIsolations {
 		t.Run(isolation, func(t *testing.T) { body(t, isolation) })

@@ -103,8 +103,8 @@ func reduceTaskGraph(prev harness.TaskGraph, ops []durable.Op) (harness.TaskGrap
 	return harness.TaskGraph{Tasks: tasks}, true
 }
 
-// viewReducer returns the reducer of one view mount. It applies ["p", ["entries"], index, remove, items], ["s"|"d", ["docs", kind]]
-// and the ops inside a document (["docs", kind, ...]). The entries of the value it last returned are a prefix of a slice it owns,
+// viewReducer returns the reducer of one view mount. It applies ["p", ["entries"], index, remove, items], ["s", ["before"], id],
+// ["s"|"d", ["docs", kind]] and the ops inside a document (["docs", kind, ...]). The entries of the value it last returned are a prefix of a slice it owns,
 // so appending an entry (a commit's usual change) is amortized O(1); the slice a value carries has no spare capacity, so a holder
 // that appends to it copies.
 func viewReducer() reducer[harness.ConversationView] {
@@ -141,6 +141,13 @@ func viewReducer() reducer[harness.ConversationView] {
 					owned = slices.Concat(entries[:index], records, entries[index+remove:])
 					entries = owned[:len(owned):len(owned)]
 				}
+			case path[0] == "before" && len(path) == 1 && delta.Verb(op) == "s" && len(op) == 3:
+				before, ok := intOf(op[2])
+				if !ok {
+					return prev, false
+				}
+				id := durable.EntryId(before)
+				next.Before = &id
 			case path[0] == "docs" && len(path) == 2 && delta.Verb(op) == "s" && len(op) == 3:
 				document, ok := op[2].(durable.JsonObject)
 				if !ok {

@@ -12,8 +12,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/MichaelKinsy/PiG/chord"
-
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/durable"
 )
@@ -30,47 +28,6 @@ func nestedTasksOf(t *testing.T, harness Harness) []anyTaskRecord {
 		}
 	}
 	return nested
-}
-
-// toolEnds collects the tool_execution_end events of a conversation from now on.
-type toolEnds struct {
-	mu   sync.Mutex
-	ends []ToolExecutionEndEvent
-	stop func()
-}
-
-func collectToolEnds(t *testing.T, harness Harness, conversationId durable.ConversationId) *toolEnds {
-	t.Helper()
-	collected := &toolEnds{}
-	stream := must(WatchEvents(testContext, harness, conversationId))
-	stream.Start(func(_ context.Context, change chord.NativeWatchChange[[]AgentEvent]) error {
-		batch := change.Value
-		collected.mu.Lock()
-		defer collected.mu.Unlock()
-		for _, event := range batch {
-			if end, ok := event.(ToolExecutionEndEvent); ok {
-				collected.ends = append(collected.ends, end)
-			}
-		}
-		return nil
-	})
-	collected.stop = func() {
-		if _, err := stream.Stop(); err != nil {
-			t.Error(err)
-		}
-	}
-	return collected
-}
-
-func (collected *toolEnds) result(callId string) *durable.NestedToolExecutionResult {
-	collected.mu.Lock()
-	defer collected.mu.Unlock()
-	for _, end := range collected.ends {
-		if end.ToolCallId == callId {
-			return end.Result
-		}
-	}
-	return nil
 }
 
 // harness-nested-tools-restart.test.ts:93 it("abandons a replay-unsafe caller's unfinished nested calls before they run again"):
@@ -131,7 +88,8 @@ func TestAReplayUnsafeCallersUnfinishedNestedCallsAreAbandonedBeforeTheyRunAgain
 	}
 
 	harness, root = openChat(t, openSqlite(t, path), setup)
-	ends := collectToolEnds(t, harness, root.Id())
+	history := viewHistory(t, harness, root.Id())
+	nested := nestedResults(harness)
 	harness.Resume()
 	sub := must(harness.Submission(testContext, id))
 	if settled := must(sub.Wait(testContext)); settled.Status != durable.SubmissionDone {
@@ -140,27 +98,29 @@ func TestAReplayUnsafeCallersUnfinishedNestedCallsAreAbandonedBeforeTheyRunAgain
 	if err := harness.WaitForIdle(testContext); err != nil {
 		t.Fatal(err)
 	}
-	ends.stop()
+	history.Detach()
 	mu.Lock()
 	gotRuns := map[string]int{"started": runs["started"], "gated": runs["gated"]}
 	mu.Unlock()
 	if gotRuns["started"] != 1 || gotRuns["gated"] != 0 {
 		t.Fatalf("runs %v, want started 1 and gated 0", gotRuns)
 	}
-	nested := nestedTasksOf(t, harness)
-	if len(nested) != 2 {
-		t.Fatalf("%d nested tasks, want 2", len(nested))
+	nestedTasks := nestedTasksOf(t, harness)
+	if len(nestedTasks) != 2 {
+		t.Fatalf("%d nested tasks, want 2", len(nestedTasks))
 	}
-	for _, task := range nested {
+	for _, task := range nestedTasks {
 		if !task.AbandonOnRestart || !task.AbortRequested || task.AbortReason != durable.AbortedByRestart ||
 			task.State.Status != durable.TaskTerminal || task.State.Outcome == nil || task.State.Outcome.Status != durable.OutcomeAborted {
 			t.Fatalf("nested task %d = %+v, want abandoned on restart, abort requested for it, terminal aborted", task.Id, task)
 		}
 	}
-	started, gate := ends.result("c1/1"), ends.result("c1/2")
-	if started == nil || gate == nil {
-		t.Fatalf("end results c1/1 %v, c1/2 %v, want both", started, gate)
+	startedResult, startedFound := nested.nestedResultOf(history.Live(), "c1/1")
+	gateResult, gateFound := nested.nestedResultOf(history.Live(), "c1/2")
+	if !startedFound || !gateFound {
+		t.Fatalf("end results c1/1 %v, c1/2 %v, want both", startedFound, gateFound)
 	}
+	started, gate := &startedResult, &gateResult
 	if details, _ := json.Marshal(started.Details); !slices.Equal(diagnosticCodes(*started), []string{"interrupted"}) || !started.IsError || started.HasStructuredOutput ||
 		!started.HasDetails || string(details) != `{"step":1}` {
 		t.Fatalf("c1/1 end result = %+v, want an interrupted error that keeps its details and no structured output", started)

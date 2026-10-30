@@ -23,8 +23,8 @@ type Object struct {
 	keys   []string // insertion order; a slot Delete retired holds a stale key and a tombstone in vals
 	vals   []any
 	index  map[string]int // live key -> slot; nil while the object is small, and then no slot is retired
-	nIndex int            // live keys that are canonical array indexes
-	dead   int            // retired slots
+	nIndex int32          // live keys that are canonical array indexes
+	dead   int32          // retired slots (int32 both: the two counters share one word, so an object is a word smaller)
 }
 
 // tombstone marks a slot Delete retired. Retiring leaves the other slots where they are, so deleting members oldest
@@ -59,7 +59,7 @@ func NewObjectCap(n int) *Object {
 }
 
 // Len returns the number of members.
-func (o *Object) Len() int { return len(o.keys) - o.dead }
+func (o *Object) Len() int { return len(o.keys) - int(o.dead) }
 
 func (o *Object) find(key string) int {
 	if o.index != nil {
@@ -134,7 +134,7 @@ func (o *Object) Delete(key string) bool {
 	delete(o.index, key)
 	o.vals[at] = tombstone{}
 	o.dead++
-	if o.dead*2 > len(o.keys) {
+	if int(o.dead)*2 > len(o.keys) {
 		o.compact()
 	}
 	return true
@@ -143,7 +143,7 @@ func (o *Object) Delete(key string) bool {
 // compact squeezes the retired slots out into fresh slices (a slice Keys returned earlier stays as it was) and numbers
 // the index again.
 func (o *Object) compact() {
-	live := len(o.keys) - o.dead
+	live := len(o.keys) - int(o.dead)
 	keys := make([]string, 0, live+1)
 	vals := make([]any, 0, live+1)
 	for at, k := range o.keys {
@@ -282,6 +282,43 @@ func Clone(value any) any {
 	}
 	return value
 }
+
+// SameOrdered reports whether a and b are the same value with the same member order in every object: what Equal says, and that
+// they serialize alike, so one may stand for the other.
+func SameOrdered(a, b any) bool {
+	switch x := a.(type) {
+	case *Object:
+		y, ok := b.(*Object)
+		if !ok || x.Len() != y.Len() || x.nIndex != y.nIndex {
+			return false
+		}
+		if x == y {
+			return true
+		}
+		kx, ky := x.Keys(), y.Keys()
+		for i, k := range kx {
+			if k != ky[i] || !SameOrdered(x.vals[x.slotOf(k)], y.vals[y.slotOf(k)]) {
+				return false
+			}
+		}
+		return true
+	case []any:
+		y, ok := b.([]any)
+		if !ok || len(x) != len(y) {
+			return false
+		}
+		for i := range x {
+			if !SameOrdered(x[i], y[i]) {
+				return false
+			}
+		}
+		return true
+	}
+	return Equal(a, b)
+}
+
+// slotOf is the slot of key, which is a member.
+func (o *Object) slotOf(key string) int { return o.find(key) }
 
 // Equal reports deep equality. Object key order is ignored, as in a deep
 // comparison of the decoded values.

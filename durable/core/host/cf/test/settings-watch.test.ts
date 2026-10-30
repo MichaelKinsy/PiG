@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 // The live-settings change detector (facade/settings-watch.ts) against the exact comparison it replaces: the JSON text of
-// `{...resolveSettings(raw), extensions: names}`. The fast path may answer `true` only when the texts are equal; it may answer `false`
+// `resolveSettings(raw)` without `extensions`, which the core never reads. The fast path may answer `true` only when the texts are equal; it may answer `false`
 // for anything it cannot prove. Every live mutation of every field must be seen.
 import assert from "node:assert/strict"
 import { constants, PerformanceObserver } from "node:perf_hooks"
@@ -10,7 +10,7 @@ import { test } from "node:test"
 import { resolveSettings } from "../src/facade/agent.ts"
 import { SentSettings } from "../src/facade/settings-watch.ts"
 
-const wire = (raw: any) => { const s = resolveSettings(raw); return JSON.stringify({ ...s, extensions: s.extensions?.map((e: { name: string }) => e.name) }) }
+const wire = (raw: any) => { const { extensions: _extensions, ...s } = resolveSettings(raw); return JSON.stringify(s) }
 const sentOf = (raw: any) => { const s = new SentSettings(); s.set(wire(raw)); return s }
 
 const ext = (name: string) => ({ name, hooks: () => {} })
@@ -77,6 +77,18 @@ for (const [name, mutate] of mutations) {
     const again = new SentSettings(); again.set(wire(raw)); assert.equal(again.unchanged(raw), true, `${name}: unchanged after refresh`)
   })
 }
+
+// Pi resolves the host settings where it needs them (harness-restart-failure.test.ts counts the reads of `extensions`: 49 for a round), and the
+// core reports its own resolutions (the settings notice), so the detector that runs before every send must not read what the core is not sent.
+test("the extensions are neither sent nor read by the detector", () => {
+  let reads = 0
+  const raw = new Proxy({} as Record<string, unknown>, { get(target, key) { if (key === "extensions") reads++; return Reflect.get(target, key) } })
+  const sent = sentOf(raw)
+  assert.equal(JSON.parse(sent.text).extensions, undefined)
+  reads = 0
+  assert.equal(sent.unchanged(raw), true)
+  assert.equal(reads, 0, "the detector read the extensions")
+})
 
 test("values the fast path cannot prove fall back to the text comparison (never a false unchanged)", () => {
   const odd: any[] = [

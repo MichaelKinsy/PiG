@@ -229,8 +229,8 @@ func TestVerifyRegisteredClosure_UnexpectedPackedFails(t *testing.T) {
 	}
 }
 
-// TestOverlayBase: only a Piglet Binary whose baked Piglet sets build.allowOverlays offers a base for an overlay, with the
-// digest of the baked bytes; stock pig, an unmarked Binary and a Binary that sets the flag false offer none. Name is the
+// TestOverlayBase: only a Piglet Binary whose baked Piglet does not set build.closed offers a base for an overlay, with the
+// digest of the baked bytes; stock pig and a Binary that sets build.closed offer none. Name is the
 // baked Piglet's name from the closure.
 func TestOverlayBase(t *testing.T) {
 	swapBaked(t, nil, nil)
@@ -242,10 +242,10 @@ func TestOverlayBase(t *testing.T) {
 		yaml string
 		want bool
 	}{
-		{"set", "name: t\nmodel:\n  provider: p\n  name: m\nbuild:\n  allowOverlays: true\n", true},
-		{"flag only", "name: t\nbuild:\n  allowOverlays: true\n", true},
-		{"false", "name: t\nmodel:\n  provider: p\n  name: m\nbuild:\n  allowOverlays: false\n", false},
-		{"unset", "name: t\nmodel:\n  provider: p\n  name: m\n", false},
+		{"closed", "name: t\nmodel:\n  provider: p\n  name: m\nbuild:\n  closed: true\n", false},
+		{"closed flag only", "name: t\nbuild:\n  closed: true\n", false},
+		{"closed false", "name: t\nmodel:\n  provider: p\n  name: m\nbuild:\n  closed: false\n", true},
+		{"unset", "name: t\nmodel:\n  provider: p\n  name: m\n", true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			yaml := []byte(tc.yaml)

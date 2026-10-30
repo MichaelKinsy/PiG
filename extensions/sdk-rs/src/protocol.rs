@@ -120,6 +120,9 @@ pub struct RegisterMsg {
     /// `markdown_transform` requests.
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub markdown_transformer: bool,
+    /// PiG-only: the extension owns the thinking runs of assistant messages, so a hidden or zero-row run leaves no spacer rows. Omitted when false.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub owns_thinking_runs: bool,
     /// The number of tool renderer resolvers (upstream `registerToolRenderer`); the host asks them with
     /// `resolve_tool_renderers` requests.
     #[serde(default, skip_serializing_if = "is_zero_usize")]
@@ -655,6 +658,8 @@ pub struct Connection {
     /// Tool renderer resolvers registered after loading.
     pub(crate) late_tool_renderers: crate::tool_render::LateToolRendererResolvers,
     pub(crate) autocomplete: crate::autocomplete::AutocompleteRegistry,
+    /// The TuiAltScreens this connection created, which the host's `tui.alt.cb` requests name.
+    pub(crate) tui_alt: crate::tui_alt_screen::TuiAltRegistry,
     pub(crate) provider_objects: std::sync::OnceLock<Arc<crate::provider::ProviderObjects>>,
     pub(crate) provider_callbacks: std::sync::OnceLock<Arc<crate::provider::ProviderCallbacks>>,
     /// Settings, MCP servers and callable tools the host replicates for synchronous getters.
@@ -789,6 +794,7 @@ impl Connection {
             footer: Default::default(),
             late_tool_renderers: Default::default(),
             autocomplete: crate::autocomplete::AutocompleteRegistry::default(),
+            tui_alt: crate::tui_alt_screen::TuiAltRegistry::default(),
         }
     }
 

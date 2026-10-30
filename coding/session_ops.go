@@ -135,6 +135,7 @@ func (s *Session) Clone() (*Session, error) {
 		Tools:              s.tools,
 		AllowedTools:       s.toolRegistry.allowed,
 		ExcludedTools:      s.toolRegistry.excluded,
+		ToolScope:          s.toolRegistry.scope,
 		toolRegistry:       &s.toolRegistry,
 		skipExtensionTools: s.toolRegistry.skipExtensions,
 		SkipBuiltinTools:   true,

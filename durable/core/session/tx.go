@@ -30,6 +30,18 @@ type TaskOptions struct {
 	Background     bool
 	// AbandonOnRestart marks a task its creator awaits only in memory: a later Harness abort-marks it with reason restart.
 	AbandonOnRestart bool
+	// Trace is the carrier the task's phase spans start under (types.ts TaskOptions.trace); nil inherits the creating
+	// transaction's carrier (TxScope.Trace), and NoTrace stores none (`trace: "root"`).
+	Trace   any
+	NoTrace bool
+	// Links are the immutable creation-time links of the task's first invocation (types.ts TaskOptions.links).
+	Links []any
+	// Submissions are the input submissions of a run (transaction.ts TaskCreationOptions.submissionIds): the first one's
+	// carrier is the task's trace, and the carriers of the others are its links.
+	Submissions []ID
+	// Owned says the input and the initial checkpoint belong to the transaction (a host's operation parsed them for it and nothing
+	// else holds them), so the record keeps them instead of copies: a 20,000-task commit would hold two more objects per task.
+	Owned bool
 }
 
 // Ownership is how a created conversation is attributed.
@@ -43,6 +55,15 @@ type Ownership struct {
 type TxScope struct {
 	ConversationID ID
 	TaskID         ID
+	// Span is the host's handle of the span of the commit's Context (Context.telemetry): the commit's entry and settlement
+	// events go to it. Zero is the NOOP span, which takes none (src/session/session.ts #publish).
+	Span uint32
+	// Trace is the carrier of that span (propagation.inject(span)): the trace of a task the commit creates without one.
+	Trace any
+	// Deferred marks the commit deferrable (durable CommitPersistence): see held.go. WithinMs is its window in milliseconds,
+	// or negative for the Session's default (PersistWithin).
+	Deferred bool
+	WithinMs float64
 }
 
 type txTask struct {
@@ -108,6 +129,10 @@ type docPlan struct {
 	content   *Write
 	change    *planChange
 	convID    ID
+	// held is set (hasHeld) when this commit also stores held changes of the incarnation (held.go takeHeld), whose content is stored.
+	held    heldPlan
+	hasHeld bool
+	stored  Write
 }
 
 // Tx stages one atomic commit. Every method must run inside the callback that
@@ -121,6 +146,10 @@ type Tx struct {
 
 	writes  []Write
 	settled []Write // the writes of a commit a *NeedGate held
+	// taken is the holds whose changes this commit stores with its own (held.go takeHeld); settledTaken marks the settled writes
+	// as already carrying them.
+	taken        []*loadedDoc
+	settledTaken bool
 	// The maps below are made by their first write: most transactions of a step write none of them, and a nil map reads as empty.
 	createdConvs      map[ID]bool
 	forkSourceConvs   map[ID]bool
@@ -144,6 +173,10 @@ type Tx struct {
 	// Scheduler wrapper's).
 	ticks int
 }
+
+// DeferWithin marks the commit deferrable (durable CommitPersistence) with a window of ms milliseconds, negative for the Session's
+// default: a transaction of a task invocation takes its scope from the task (Runtime.BeginHost).
+func (tx *Tx) DeferWithin(ms float64) { tx.scope.Deferred, tx.scope.WithinMs = true, ms }
 
 // charge adds the ticks of one Transaction method await.
 func (tx *Tx) charge(n int) { tx.ticks += n }
@@ -471,6 +504,12 @@ func (tx *Tx) CreateTask(def *TaskDef, input any, opts TaskOptions) (ID, error) 
 	if err := tx.write(); err != nil {
 		return 0, err
 	}
+	if len(opts.Submissions) != 0 {
+		var err error
+		if opts.Trace, opts.NoTrace, opts.Links, err = tx.traceOfRun(opts.Submissions); err != nil {
+			return 0, err
+		}
+	}
 	ownerStaged, ownerCached := tx.taskTicksState(opts.OwnerTask)
 	defer func() {
 		conv := opts.ConversationID
@@ -517,7 +556,23 @@ func (tx *Tx) CreateTask(def *TaskDef, input any, opts TaskOptions) (ID, error) 
 	}
 	checkpoint := def.Initial(input)
 	id := tx.mint()
-	rec := obj("id", idv(id), "conversationId", idv(conv), "kind", def.Name, "version", float64(def.Version), "input", jv.Clone(input))
+	if opts.Owned {
+		checkpoint = shared(&tx.s.lastCheckpoint, checkpoint)
+	} else {
+		input, checkpoint = jv.Clone(input), jv.Clone(checkpoint)
+	}
+	rec := obj("id", idv(id), "conversationId", idv(conv), "kind", def.Name, "version", float64(def.Version), "input", input)
+	// transaction.ts createTask: `trace: "root"` stores none; an omitted one is the creating Context's carrier.
+	trace := opts.Trace
+	if trace == nil && !opts.NoTrace {
+		trace = tx.scope.Trace
+	}
+	if trace != nil {
+		rec.Set("trace", jv.Clone(trace))
+	}
+	if opts.Links != nil {
+		rec.Set("links", jv.Clone(opts.Links))
+	}
 	if owner != nil {
 		rec.Set("owner", idv(mustInt(owner, "id")))
 	}
@@ -526,10 +581,38 @@ func (tx *Tx) CreateTask(def *TaskDef, input any, opts TaskOptions) (ID, error) 
 	if opts.AbandonOnRestart {
 		rec.Set("abandonOnRestart", true)
 	}
-	rec.Set("state", obj("status", StatusPending, "checkpoint", jv.Clone(checkpoint)))
+	rec.Set("state", obj("status", StatusPending, "checkpoint", checkpoint))
 	t := tx.taskEntry(id)
 	t.write, t.writeIsNew = rec, true
 	return id, nil
+}
+
+// traceOfRun resolves a run's carriers from its input submissions (transaction.ts createTask, `submissionIds`): the first
+// submission's carrier is the task's trace (none: the task starts at the root), and the others' carriers are its links. A
+// submission the transaction did not stage is read from Storage.
+func (tx *Tx) traceOfRun(submissions []ID) (trace any, noTrace bool, links []any, err error) {
+	for i, id := range submissions {
+		rec := tx.submissions[id]
+		if rec == nil {
+			tx.readTicks(hopcost.ReadRow)
+			if rec, err = tx.s.store.Submission(id); err != nil {
+				return nil, false, nil, err
+			}
+		}
+		var carrier any
+		if rec != nil {
+			carrier, _ = rec.Get("trace")
+		}
+		switch {
+		case i == 0 && carrier == nil:
+			noTrace = true
+		case i == 0:
+			trace = carrier
+		case carrier != nil:
+			links = append(links, carrier)
+		}
+	}
+	return trace, noTrace, links, nil
 }
 
 // CreateSubmission stages a submission; its record is {...create, id}.
@@ -582,7 +665,7 @@ func (tx *Tx) PlaceSubmission(id, entry ID) error {
 // SetTask stages a replacement of a task record, stamping start and end times. The staged record is a deep copy, as Pi's
 // copyJson makes it, so the caller's value stays its own.
 func (tx *Tx) SetTask(value *jv.Object) error {
-	_, err := tx.setTask(value, true)
+	_, err := tx.setTask(value, true, false)
 	return err
 }
 
@@ -591,12 +674,19 @@ func (tx *Tx) SetTask(value *jv.Object) error {
 // record itself, stamped. The copy SetTask makes would be the second record of each task a transaction writes: a finalize
 // that ends a 20,000-deep chain in one transaction held both, about 1 KB per task on the TinyGo core.
 func (tx *Tx) stageTask(value *jv.Object) error {
-	_, err := tx.setTask(value, false)
+	_, err := tx.setTask(value, false, false)
+	return err
+}
+
+// stageFresh is stageTask for a record whose top level nothing else holds (the copy with, withState or withAbortMark returned, not
+// a live record): stamping its times sets them on it instead of on a copy of it.
+func (tx *Tx) stageFresh(value *jv.Object) error {
+	_, err := tx.setTask(value, false, true)
 	return err
 }
 
 // setTask stages value, a deep copy of it when clone is set, and returns the staged record.
-func (tx *Tx) setTask(value *jv.Object, clone bool) (*jv.Object, error) {
+func (tx *Tx) setTask(value *jv.Object, clone, fresh bool) (*jv.Object, error) {
 	if err := tx.assertOpen(); err != nil {
 		return nil, err
 	}
@@ -610,7 +700,7 @@ func (tx *Tx) setTask(value *jv.Object, clone bool) (*jv.Object, error) {
 	if candidate != nil && mustInt(candidate, "conversationId") != mustInt(value, "conversationId") {
 		return nil, errorf("Task %d cannot change conversations", id)
 	}
-	staged := tx.stampTimes(value, candidate)
+	staged := tx.stampTimes(value, candidate, fresh)
 	if clone {
 		staged = jv.Clone(staged).(*jv.Object)
 	}
@@ -619,7 +709,7 @@ func (tx *Tx) setTask(value *jv.Object, clone bool) (*jv.Object, error) {
 	return staged, nil
 }
 
-func (tx *Tx) stampTimes(value, candidate *jv.Object) *jv.Object {
+func (tx *Tx) stampTimes(value, candidate *jv.Object, fresh bool) *jv.Object {
 	status := taskStatus(value)
 	pick := func(key string, stamps bool) (any, bool) {
 		if candidate != nil {
@@ -642,7 +732,12 @@ func (tx *Tx) stampTimes(value, candidate *jv.Object) *jv.Object {
 	if hasStarted == curHas1 && hasEnded == curHas2 && (!hasStarted || curStarted == started) && (!hasEnded || curEnded == ended) {
 		return value
 	}
-	out := spread(value)
+	// A record the scheduler built for this write is stamped in place: a copy would be the second record of each task the
+	// transaction writes.
+	out := value
+	if !fresh {
+		out = spread(value)
+	}
 	if hasStarted {
 		out.Set("startedAt", started)
 	}

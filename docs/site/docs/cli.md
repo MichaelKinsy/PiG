@@ -1,6 +1,6 @@
 # Command line
 
-This page lists the `pig` command-line verbs and subcommands, and the `pig docs` commands for the embedded reference bundle. [Command line by example](/docs/latest/cli-examples) runs the common ones and shows their output. PiG follows the command line of Pi 1.4.0 ([Pi's command line reference](https://github.com/earendil-works/pi/blob/v1.2.0/packages/coding-agent/docs/cli.md)). Run `pig --help` or append `--help` to a command for the exact interface of the installed binary.
+This page lists the `pig` command-line verbs and subcommands, and the `pig docs` commands for the embedded reference bundle. [Command line by example](/docs/latest/cli-examples) runs the common ones and shows their output. PiG follows the command line of Pi 1.4.0 ([Pi's command line reference](https://github.com/earendil-works/pi/blob/main/packages/coding-agent/docs/cli.md)). Run `pig --help` or append `--help` to a command for the exact interface of the installed binary.
 
 ## CLI verbs
 
@@ -39,8 +39,9 @@ Product distributions may contribute additional top-level or nested command path
 | `pig remove <source> [-l]` | Remove a package from settings. `pig uninstall` is an alias. |
 | `pig update [self\|pig\|<source>] [--self\|--extensions\|--models\|--all] [--extension <source>] [--force]` | Bare `pig update` updates the pig binary, as `pi update` does. `<source>` (or `--extension <source>`) updates one package, `--extensions` updates every package, `--models` refreshes the model catalogs, and `--all` updates packages and then pig. `--force` reinstalls pig even when it is the latest version. |
 | `pig install <path> --validate-only [--json]` | Validate without installing; emits structured diagnostics. |
+| `pig install --validate-only [--json]` | With no source, check that every configured local Package path resolves; exit 1 and name each missing one (D216). |
 | `pig install --validate-only --set "<p1>,<p2>"` | Validate a piglet-style extension set. |
-| `pig extension init <path> [--name <matching-name>] [--lang go\|python\|rust] [--login] [--isolated] [--force] [--json]` | Scaffold an extension that resolves the staged SDK offline (Go default). `--login` scaffolds a Go login factory with standard PiG art. |
+| `pig extension init <path> [--name <matching-name>] [--lang go\|python\|rust\|lisp] [--login] [--isolated] [--force] [--json]` | Scaffold an extension that resolves the staged SDK offline (Go default). `--login` scaffolds a Go login factory with standard PiG art. |
 | `pig extension upgrade [<name\|path>...] [--all] [--dry-run] [--summary]` | Rewrite Go extensions written for an older SDK with the SDK's tested rules: back up, show a diff, rebuild, report per extension (D109). See [Upgrade a Go extension](extensions.md#upgrade-a-go-extension-written-for-an-older-sdk). |
 | `pig extension preview-login <path>` | Start exactly one extension and render the login set during `session_start`; no model session starts. |
 | `pig extensions cache stats [--json]` | Inspect extension and runtime-cell cache classifications without changing use metadata. |
@@ -51,7 +52,7 @@ Product distributions may contribute additional top-level or nested command path
 | `pig package list [--json]` | Inspect configured Package state without starting runtimes. |
 | `pig package validate <dir> [--json]` | Validate ordinary Package source and Resource membership without installing. |
 | `pig package publish [<dir>] --to npm [--yes] [--tag <dist-tag>] [--access public\|restricted] [--otp <code>]` | Optional sugar over `npm publish` for a Package: validate it, check the catalog fields and that `name@version` is free, show npm's dry run, and publish only with `--yes`. PiG never handles an npm token. |
-| `pig status [--json]` | Side-effect-free Package/Resource/Piglet health and canonical path overview; invalid state exits non-zero. |
+| `pig status [--json]` | Side-effect-free Package/Resource/Piglet health and canonical path overview; invalid state exits non-zero. It shows the project trust decision, marks resources that a run ignores (`ignored: untrusted` or `ignored: piglet-discovery`), and gives a skill or theme that the loader rejects a `health` text and `enabled: false`. |
 | `pig login --list [--json]` | List generic built-in and contributed authentication targets without reading credentials. |
 | `pig piglet list\|show\|validate\|schema\|add\|pull\|update\|publish\|remove\|prune\|build\|keygen\|verify\|tree\|lineage\|trust` | Current Piglet source, signed release distribution, inspection, build, and Binary-signing surface (D18). Owned verbs use full words. |
 | `pig piglet build <name> --format script --out <path\|->` | Write an explicit source-bound entry script: a POSIX shell script, or a cmd.exe batch file on Windows (D69). Creates no PiG state or records. |
@@ -70,7 +71,7 @@ Product distributions may contribute additional top-level or nested command path
 | `pig mcp add\|remove\|list\|login\|logout` | Configure and check MCP servers without starting a session. See [MCP servers](mcp.md#mcp-commands). |
 | `pig docs [sync\|path\|list\|show <name>]` | Materialize and read the documentation bundled with Stock PiG. |
 
-`pig install` accepts one source. Missing sources and unknown options show the ordinary single-source usage. Use `pig install --help` for the separate multi-source `--validate-only` forms (D28).
+`pig install` accepts one source. Missing sources and unknown options show the ordinary single-source usage, except that `--validate-only` with no source checks the configured local Packages (D216). Use `pig install --help` for the separate multi-source `--validate-only` forms (D28).
 
 ## Options
 
@@ -105,7 +106,7 @@ These options apply to `pig [options] [prompt]`. Run `pig --help` for the full l
 | `--no-approve`, `-na` | Ignore project-local files for this run. |
 | `--offline` | Turn off startup network operations, as `PI_OFFLINE=1` does. |
 | `--no-stdin` | Ignore piped stdin. Use it when the process that starts PiG leaves the stdin pipe open and never closes it. Without it, PiG waits for end of input, as Pi does. Pi 1.4.0 has no such option and treats `--no-stdin` as an unknown extension flag (D150, [Pi #10415](https://github.com/earendil-works/pi/issues/10415)). |
-| `--piglet <name\|path>` | Run a named Piglet or the Piglet file at a path. A Piglet Binary refuses it unless its Piglet set `build.allowOverlays`, which lays the selected Piglet over the Binary's own ([Accept overlay Piglets](/docs/latest/piglet-binaries#accept-overlay-piglets)). See [Piglets](/docs/latest/piglets). |
+| `--piglet <name\|path>` | Run a named Piglet or the Piglet file at a path. A Piglet Binary lays the selected Piglet over its own, unless it was built with `build.closed: true`, which makes it refuse the option ([Accept overlay Piglets](/docs/latest/piglet-binaries#accept-overlay-piglets)). See [Piglets](/docs/latest/piglets). |
 
 Extensions can register their own options, such as `--plan` from a plan-mode extension.
 

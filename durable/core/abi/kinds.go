@@ -70,6 +70,7 @@ const (
 	NoticeIndexSizes
 	NoticeWake
 	NoticeOriginFree
+	NoticeTelemetry
 )
 
 // Status is the outcome of a step (ABI section 4.4).

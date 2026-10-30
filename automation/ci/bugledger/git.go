@@ -19,6 +19,7 @@ type repo struct{ root string }
 func (r repo) git(args ...string) (string, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), gitTimeout)
 	defer cancel()
+	//nolint:gosec // G204 (class a): program is the literal git; args are each caller's subcommand and revisions, and resolve appends ^{commit} to a name taken from a commit trailer, so git rev-parse --verify cannot read it as an option.
 	cmd := exec.CommandContext(ctx, "git", append([]string{"-C", r.root}, args...)...)
 	var out, errb bytes.Buffer
 	cmd.Stdout = &out

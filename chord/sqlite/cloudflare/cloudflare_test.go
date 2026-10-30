@@ -8,6 +8,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"maps"
 	"reflect"
 	"runtime"
 	"slices"
@@ -20,6 +21,7 @@ import (
 
 	chordsqlite "github.com/MichaelKinsy/PiG/chord/sqlite"
 	"github.com/MichaelKinsy/PiG/chord/sqlite/cloudflare"
+	"github.com/MichaelKinsy/PiG/chord/sqlite/sqlitetest"
 )
 
 // fakeStorage is a stand-in for a SQLite-backed Durable Object's `ctx.storage` over a native SQLite connection, with
@@ -157,6 +159,24 @@ func check(t *testing.T, err error) {
 }
 
 func TestDurableObjectSqliteDriver(t *testing.T) {
+	// packages/chord/test/sqlite/cloudflare.test.ts (Pi 8025c414) "reports the rows a statement changed, without index writes"
+	t.Run("reports the rows a statement changed, without index writes", func(t *testing.T) {
+		database := cloudflare.NewDurableObjectSqliteDatabase(newFakeStorage(t))
+		changes, err := sqlitetest.RunChanges(database)
+		check(t, err)
+		if !maps.Equal(changes, sqlitetest.RunChangesExpected) {
+			t.Fatalf("changes = %v, want %v", changes, sqlitetest.RunChangesExpected)
+		}
+		var inTransaction int64
+		check(t, database.Transaction(func(handle chordsqlite.SqliteExecutor) (err error) {
+			inTransaction, err = handle.RunCounted("INSERT INTO changes_probe VALUES (?, ?, ?)", "t", "t/1", 1)
+			return err
+		}))
+		if inTransaction != 1 {
+			t.Fatalf("changes in a transaction = %d, want 1", inTransaction)
+		}
+	})
+
 	// packages/chord/test/sqlite/cloudflare.test.ts (moved from packages/durable/test/sqlite-cloudflare.test.ts in Pi c268154c), was durable:60
 	t.Run("binds and returns BLOB values as []byte", func(t *testing.T) {
 		var storage cloudflare.DurableObjectSqliteStorage = newFakeStorage(t)

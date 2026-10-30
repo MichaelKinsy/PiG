@@ -44,7 +44,7 @@ func GetGitDependencyInstallArgs(sm *codingagent.SettingsManager, opts ...Instal
 	case "pnpm":
 		args = []string{"install", "--prod", "--config.auto-install-peers=false", "--config.strict-peer-dependencies=false", "--config.strict-dep-builds=false"}
 	case "npm":
-		args = []string{"install", "--omit=dev", "--legacy-peer-deps"}
+		args = []string{"install", "--omit=dev", "--legacy-peer-deps", "--no-audit", "--no-fund"}
 	default:
 		args = []string{"install"}
 	}
@@ -411,7 +411,8 @@ func NpmInstallArgs(manager, spec, installRoot, registry string, opts ...Install
 			"--config.strict-dep-builds=false",
 		}
 	default:
-		args = []string{"install", spec, "--prefix", installRoot, "--legacy-peer-deps"}
+		// npm audit fix would run without --legacy-peer-deps and install pi peers, so skip audit advice.
+		args = []string{"install", spec, "--prefix", installRoot, "--legacy-peer-deps", "--no-audit", "--no-fund"}
 	}
 	if registry != "" {
 		args = append(args, "--registry", registry)

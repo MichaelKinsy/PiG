@@ -95,7 +95,7 @@
     },
     {
       "path": "pi-dist/pi-coding-agent/core/compaction/branch-summarization.js",
-      "sha256": "5886f5f07f80e24d7ad3e20eb391d430c17145f4a9dee2f1e465c3d578ec2852"
+      "sha256": "af3335a68d2b9a541a544c77523bf2bdaea600b484bf4e77783dce7242dfbe36"
     },
     {
       "path": "pi-dist/pi-coding-agent/core/compaction/compaction.js",
@@ -207,7 +207,7 @@
     },
     {
       "path": "pi-dist/pi-coding-agent/core/model-resolver.js",
-      "sha256": "cc3058349b62deb1d42be00ff71e4c2fedb2fd0529530f0c5b95462c5900efe2"
+      "sha256": "d9b337a9015a68854a4d9cc3b208687bdc03cbfc1e3f1c50b71b9e1c500cfe7a"
     },
     {
       "path": "pi-dist/pi-coding-agent/core/model-runtime.js",
@@ -227,7 +227,7 @@
     },
     {
       "path": "pi-dist/pi-coding-agent/core/package-manager.js",
-      "sha256": "6ee7e73a7b110051b20d765c2a7ce4c2a4db4f5abc1aec8d82130250bf027042"
+      "sha256": "ef35cf64dad62d27a4e1a7b46ef97165a39edc45d8c3cb1dc2affece1350d97e"
     },
     {
       "path": "pi-dist/pi-coding-agent/core/pi-manifest.js",
@@ -279,7 +279,7 @@
     },
     {
       "path": "pi-dist/pi-coding-agent/core/session-manager.js",
-      "sha256": "14bed314bf4e42b7c44a8adec222ba27b33e20d699b3c0c076f196e4914bdd62"
+      "sha256": "47905b6ec8cc9777afa1966786a697337e320ff1791967eb38f62847eced9fd3"
     },
     {
       "path": "pi-dist/pi-coding-agent/core/settings-defaults.js",
@@ -335,7 +335,7 @@
     },
     {
       "path": "pi-dist/pi-coding-agent/core/tools/grep.js",
-      "sha256": "cc36b5dfba80598d9c0026e57fc09020f94ff8e27cf7a9c8841724fadf05fa01"
+      "sha256": "202a6a04fb90e645788665777fc07974b01960f14a793e87894f83493c5cc1cb"
     },
     {
       "path": "pi-dist/pi-coding-agent/core/tools/index.js",
@@ -547,7 +547,7 @@
     },
     {
       "path": "pi-dist/pi-coding-agent/modes/interactive/components/assistant-message.js",
-      "sha256": "75ec73111a6a2c7cf5e3e7d2e1bcf833b80d5ec9b7e18d97db3eebcc081469a7"
+      "sha256": "1ce4b84c26144aeed1520545d3dc6cc16ec56b6d6006494873400083901ec23a"
     },
     {
       "path": "pi-dist/pi-coding-agent/modes/interactive/components/auth-url.js",
@@ -739,7 +739,7 @@
     },
     {
       "path": "pi-dist/pi-coding-agent/modes/interactive/interactive-mode.js",
-      "sha256": "4981866572b5602988f210d8d933fd35af14e73a11052143285015e34384fbe8"
+      "sha256": "c60d612a06d7d7beb114048c6f6b71d846dade7d0a12c6b808cbf785948269d8"
     },
     {
       "path": "pi-dist/pi-coding-agent/modes/interactive/model-catalog-refresh.js",

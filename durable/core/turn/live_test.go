@@ -96,7 +96,7 @@ func TestLiveRunLifecycle(t *testing.T) {
 	}
 
 	// endRun of another task leaves run in place but still removes generation and tools.
-	settle := parse(t, `{"status":"unanswered","reason":"aborted"}`).(*jv.Object)
+	settle := turn.Unanswered("aborted")
 	pub, err = s.Commit(func(tx *session.Tx) error {
 		live, err := tx.Doc(turn.LiveDef, session.DocArgs{Owner: 1})
 		if err != nil {
@@ -137,8 +137,10 @@ func TestLiveRunLifecycle(t *testing.T) {
 	if len(settled) != 2 || settled[0] != inputs[0] || settled[1] != inputs[1] {
 		t.Fatalf("settled %v, want %v", settled, inputs)
 	}
-	if got := liveValue(t, s); got != `{}` {
-		t.Fatalf("after endRun: %s", got)
+	// A run that ended without an answer records why.
+	failure := `{"runFailure":{"taskId":7,"inputs":[` + jv.Stringify(inputs[0]) + `,` + jv.Stringify(inputs[1]) + `],"reason":"aborted"}`
+	if got, want := liveValue(t, s), failure+`}`; got != want {
+		t.Fatalf("after endRun:\n got %s\nwant %s", got, want)
 	}
 
 	// Compaction statuses: appended in order, found by task, removed with the list once empty.
@@ -159,7 +161,7 @@ func TestLiveRunLifecycle(t *testing.T) {
 	}, session.TxScope{}); err != nil {
 		t.Fatal(err)
 	}
-	if got, want := liveValue(t, s), `{"compactions":[{"taskId":5,"reason":"threshold","blocking":false,"attempt":1}]}`; got != want {
+	if got, want := liveValue(t, s), failure+`,"compactions":[{"taskId":5,"reason":"threshold","blocking":false,"attempt":1}]}`; got != want {
 		t.Fatalf("compactions:\n got %s\nwant %s", got, want)
 	}
 	if _, err := s.Commit(func(tx *session.Tx) error {
@@ -171,7 +173,7 @@ func TestLiveRunLifecycle(t *testing.T) {
 	}, session.TxScope{}); err != nil {
 		t.Fatal(err)
 	}
-	if got := liveValue(t, s); got != `{}` {
+	if got, want := liveValue(t, s), failure+`}`; got != want {
 		t.Fatalf("emptied compactions: %s", got)
 	}
 }

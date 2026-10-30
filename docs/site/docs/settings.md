@@ -1,6 +1,6 @@
 # Settings
 
-PiG reads settings from `~/.pig/agent/settings.json`. The file is optional. Every key is optional, and a key you leave out keeps its default. PiG uses the settings keys of Pi 1.4.0 ([Pi's settings reference](https://github.com/earendil-works/pi/blob/v1.2.0/packages/coding-agent/docs/settings.md)) and adds the PiG-only keys marked below.
+PiG reads settings from `~/.pig/agent/settings.json`. The file is optional. Every key is optional, and a key you leave out keeps its default. PiG uses the settings keys of Pi 1.4.0 ([Pi's settings reference](https://github.com/earendil-works/pi/blob/main/packages/coding-agent/docs/settings.md)) and adds the PiG-only keys marked below.
 
 Set `PIG_HOME` to move the whole configuration root. Set `PIG_CODING_AGENT_DIR` to move only this directory.
 

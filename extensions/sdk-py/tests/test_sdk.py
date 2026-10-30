@@ -678,3 +678,66 @@ def test_get_all_tools_and_commands_return_upstream_info() -> None:
     assert ctx.get_all_tools() == [tool]
     assert ctx.get_commands() == [command]
     assert calls == ["getAllTools", "getCommands"]
+
+
+def _register_payload_for(configure) -> dict:
+    tmp = tempfile.mkdtemp()
+    sock_path = os.path.join(tmp, "ext.sock")
+    listener = _start_fake_host(sock_path)
+    ext = pig_sdk.Extension("py-owns-thinking")
+    configure(ext)
+    thread = threading.Thread(target=ext.run_with_socket, args=(sock_path,), daemon=True)
+    thread.start()
+    conn, _ = listener.accept()
+    conn.settimeout(10)
+    try:
+        reg = _read_frame(conn)
+        assert reg["type"] == "register"
+        return reg["register"]
+    finally:
+        _write_frame(conn, {"type": "shutdown", "shutdown": {"reason": "test"}})
+        conn.close()
+        listener.close()
+        thread.join(timeout=2)
+
+
+def test_own_thinking_runs_register_payload() -> None:
+    assert _register_payload_for(lambda ext: ext.own_thinking_runs(True))["owns_thinking_runs"] is True
+    assert _register_payload_for(lambda ext: ext.own_thinking_runs())["owns_thinking_runs"] is True
+    assert "owns_thinking_runs" not in _register_payload_for(lambda ext: None)
+    assert "owns_thinking_runs" not in _register_payload_for(lambda ext: ext.own_thinking_runs(False))
+
+    def last_wins(ext: pig_sdk.Extension) -> None:
+        ext.own_thinking_runs(True)
+        ext.own_thinking_runs(False)
+
+    assert "owns_thinking_runs" not in _register_payload_for(last_wins)
+
+
+def test_own_thinking_runs_runtime_call() -> None:
+    tmp = tempfile.mkdtemp()
+    sock_path = os.path.join(tmp, "ext.sock")
+    listener = _start_fake_host(sock_path)
+    ext = pig_sdk.Extension("py-owns-thinking-rt")
+    ext.command("off", "off", lambda ctx, _args: ctx.own_thinking_runs(False))
+    ext.command("on", "on", lambda ctx, _args: ctx.own_thinking_runs())
+    thread = threading.Thread(target=ext.run_with_socket, args=(sock_path,), daemon=True)
+    thread.start()
+    conn, _ = listener.accept()
+    conn.settimeout(10)
+    try:
+        assert _read_frame(conn)["type"] == "register"
+        _write_frame(conn, {"type": "ready", "ready": {"cwd": tmp, "width": 80}})
+        for rid, name, enabled in (("r1", "off", False), ("r2", "on", True)):
+            _write_frame(conn, {"type": "request", "id": rid, "request": {"method": "command", "tool": name}})
+            env = _read_frame(conn)
+            assert env["type"] == "call", env
+            assert env["call"]["method"] == "ownThinkingRuns"
+            assert env["call"]["args"] == {"enabled": enabled}
+            _write_frame(conn, {"type": "call_result", "id": env["id"], "call_result": {}})
+            assert _read_frame(conn)["type"] == "response"
+    finally:
+        _write_frame(conn, {"type": "shutdown", "shutdown": {"reason": "test"}})
+        conn.close()
+        listener.close()
+        thread.join(timeout=2)

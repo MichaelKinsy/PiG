@@ -1,6 +1,7 @@
 package core
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/durable/core/abi"
@@ -24,27 +25,23 @@ type viewHarness struct {
 	value *jv.Object
 }
 
-func (v *viewHarness) advance(pub *session.Publication) ([]delta.Op, *jv.Object, error) {
-	ops, changes := v.viewWatch.advance(pub)
+func (v *viewHarness) advance(pub *session.Publication) ([]delta.Op, error) {
+	ops := v.viewWatch.advance(pub)
 	if len(ops) > 0 {
 		next, err := delta.Apply(v.value, ops)
 		if err != nil {
-			return nil, nil, err
+			return nil, err
 		}
 		v.value = next.(*jv.Object)
 	}
-	return ops, changes, nil
+	return ops, nil
 }
 
+// newView is the view of conversation 1 with a window of at least 2 and at most 4 entries, holding entry 3.
 func newView(t *testing.T) *viewHarness {
 	value := parsed(t, `{"conversation":{"id":1},"entries":[{"id":3,"conversationId":1,"kind":"a"}],"docs":{"pi.live":{}}}`)
-	list, _ := value.Get("entries")
-	var slim []viewEntry
-	for _, e := range list.([]any) {
-		slim = append(slim, viewEntryOf(e.(*jv.Object)))
-	}
 	return &viewHarness{
-		viewWatch: &viewWatch{conv: 1, entries: slim, docs: map[string]viewDoc{"pi.live": {id: 2, version: 1}}},
+		viewWatch: &viewWatch{conv: 1, min: 2, max: 4, ids: []float64{3}, docs: map[string]viewDoc{"pi.live": {id: 2, version: 1}}},
 		value:     value,
 	}
 }
@@ -53,11 +50,11 @@ func entryChange(t *testing.T, text string) session.Change {
 	return session.Change{Kind: session.ChangeTable, Table: session.WriteEntry, Record: parsed(t, text)}
 }
 
-// view.ts advance(): an entry without a head appends; a head marker replaces the entries before the first kept one; a
+// view.ts advance(): entries append to the window, which past its max drops its oldest down to its min and sets `before`; a
 // document op of a mounted document is prefixed with its path; every op is applied to the value the watch holds.
 func TestViewAdvanceMatchesViewTs(t *testing.T) {
 	w := newView(t)
-	ops, _, err := w.advance(&session.Publication{Changes: []session.Change{
+	ops, err := w.advance(&session.Publication{Changes: []session.Change{
 		{Kind: session.ChangeDocument, ConversationID: 1, Record: parsed(t, `{"id":2,"kind":"pi.live"}`), Version: 1, Value: parsed(t, `{"run":{"taskId":9}}`),
 			Ops: []delta.Op{{Verb: delta.Set, Path: delta.Path{delta.Key("run")}, Value: parsed(t, `{"taskId":9}`)}}},
 		entryChange(t, `{"id":4,"conversationId":1,"kind":"b"}`),
@@ -72,16 +69,35 @@ func TestViewAdvanceMatchesViewTs(t *testing.T) {
 	if got := jv.Stringify(w.value); got != `{"conversation":{"id":1},"entries":[{"id":3,"conversationId":1,"kind":"a"},{"id":4,"conversationId":1,"kind":"b"}],"docs":{"pi.live":{"run":{"taskId":9}}}}` {
 		t.Fatalf("value %s", got)
 	}
-	// A head marker at 4 keeps the entries from 4 on, placed after the marker.
-	ops, _, err = w.advance(&session.Publication{Changes: []session.Change{entryChange(t, `{"id":6,"conversationId":1,"kind":"pi.head","head":4}`)}})
+	// Two more entries fill the window to its max of 4: nothing is dropped.
+	ops, err = w.advance(&session.Publication{Changes: []session.Change{
+		entryChange(t, `{"id":6,"conversationId":1,"kind":"c"}`),
+		entryChange(t, `{"id":7,"conversationId":1,"kind":"d"}`),
+	}})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got := jv.Stringify(delta.OpsValue(ops)); got != `[["p",["entries"],0,1,[{"id":6,"conversationId":1,"kind":"pi.head","head":4}]]]` {
-		t.Fatalf("head ops %s", got)
+	if got := jv.Stringify(delta.OpsValue(ops)); got != `[["p",["entries"],2,0,[{"id":6,"conversationId":1,"kind":"c"},{"id":7,"conversationId":1,"kind":"d"}]]]` {
+		t.Fatalf("ops at max %s", got)
 	}
-	if got := jv.Stringify(objOf(w.value, "docs")); got != `{"pi.live":{"run":{"taskId":9}}}` {
-		t.Fatalf("docs %s", got)
+	// One more would hold 5 > 4: the window drops its oldest down to its min of 2, in one splice, and `before` is the last dropped.
+	ops, err = w.advance(&session.Publication{Changes: []session.Change{entryChange(t, `{"id":8,"conversationId":1,"kind":"e"}`)}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := jv.Stringify(delta.OpsValue(ops)); got != `[["p",["entries"],4,0,[{"id":8,"conversationId":1,"kind":"e"}]],["p",["entries"],0,3,[]],["s",["before"],6]]` {
+		t.Fatalf("ops past max %s", got)
+	}
+	if got := jv.Stringify(w.value); got != `{"conversation":{"id":1},"entries":[{"id":7,"conversationId":1,"kind":"d"},{"id":8,"conversationId":1,"kind":"e"}],"docs":{"pi.live":{"run":{"taskId":9}}},"before":6}` {
+		t.Fatalf("value %s", got)
+	}
+	// A head marker is an entry like any other: it sits where it was written.
+	ops, err = w.advance(&session.Publication{Changes: []session.Change{entryChange(t, `{"id":9,"conversationId":1,"kind":"pi.head","head":7}`)}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := jv.Stringify(delta.OpsValue(ops)); got != `[["p",["entries"],2,0,[{"id":9,"conversationId":1,"kind":"pi.head","head":7}]]]` {
+		t.Fatalf("head ops %s", got)
 	}
 }
 
@@ -89,7 +105,7 @@ func TestViewAdvanceMatchesViewTs(t *testing.T) {
 // document and a keyed one are ignored.
 func TestViewAdvanceRetiresAndReplacesMountedDocuments(t *testing.T) {
 	w := newView(t)
-	ops, _, err := w.advance(&session.Publication{Changes: []session.Change{
+	ops, err := w.advance(&session.Publication{Changes: []session.Change{
 		{Kind: session.ChangeDocument, ConversationID: 1, Record: parsed(t, `{"id":9,"kind":"app.other"}`), Version: 1, Value: parsed(t, `{}`)},
 		{Kind: session.ChangeDocument, ConversationID: 1, Record: parsed(t, `{"id":10,"kind":"pi.live","key":"k"}`), Version: 1, Value: parsed(t, `{}`)},
 		{Kind: session.ChangeDocument, ConversationID: 1, Record: parsed(t, `{"id":11,"kind":"pi.live"}`), Version: 1, Value: parsed(t, `{"x":1}`)},
@@ -100,20 +116,20 @@ func TestViewAdvanceRetiresAndReplacesMountedDocuments(t *testing.T) {
 	if got := jv.Stringify(delta.OpsValue(ops)); got != `[["s",["docs","pi.live"],{"x":1}]]` {
 		t.Fatalf("a new incarnation replaces the document whole: %s", got)
 	}
-	ops, _, _ = w.advance(&session.Publication{Changes: []session.Change{
+	ops, _ = w.advance(&session.Publication{Changes: []session.Change{
 		{Kind: session.ChangeDocument, ConversationID: 1, Record: parsed(t, `{"id":99,"kind":"pi.live"}`), Version: 1, Value: nil},
 	}})
 	if len(ops) != 0 {
 		t.Fatalf("retiring an incarnation the view does not hold changes nothing: %v", ops)
 	}
-	ops, _, _ = w.advance(&session.Publication{Changes: []session.Change{
+	ops, _ = w.advance(&session.Publication{Changes: []session.Change{
 		{Kind: session.ChangeDocument, ConversationID: 1, Record: parsed(t, `{"id":11,"kind":"pi.live"}`), Version: 2, Value: parsed(t, `{"x":2}`),
 			Ops: []delta.Op{{Verb: delta.Set, Path: delta.Path{delta.Key("x")}, Value: float64(2)}}},
 	}})
 	if got := jv.Stringify(delta.OpsValue(ops)); got != `[["s",["docs","pi.live"],{"x":2}]]` {
 		t.Fatalf("a new definition version replaces the document whole: %s", got)
 	}
-	ops, _, _ = w.advance(&session.Publication{Changes: []session.Change{
+	ops, _ = w.advance(&session.Publication{Changes: []session.Change{
 		{Kind: session.ChangeDocument, ConversationID: 1, Record: parsed(t, `{"id":11,"kind":"pi.live"}`), Version: 2, Value: nil},
 	}})
 	if got := jv.Stringify(delta.OpsValue(ops)); got != `[["d",["docs","pi.live"]]]` {
@@ -121,21 +137,34 @@ func TestViewAdvanceRetiresAndReplacesMountedDocuments(t *testing.T) {
 	}
 }
 
-// With changes, a frame carries the conversation's records of the commit.
-func TestViewAdvanceCarriesTheCommitsRecordsWhenAsked(t *testing.T) {
-	w := newView(t)
-	w.changes = true
-	_, changes, err := w.advance(&session.Publication{Changes: []session.Change{
-		entryChange(t, `{"id":4,"conversationId":1,"kind":"b"}`),
-		{Kind: session.ChangeTable, Table: session.WriteTask, Record: parsed(t, `{"id":7,"conversationId":1,"kind":"t"}`)},
-		{Kind: session.ChangeTable, Table: session.WriteTask, Record: parsed(t, `{"id":8,"conversationId":2,"kind":"t"}`)},
-		{Kind: session.ChangeTable, Table: session.WriteSubmission, Record: parsed(t, `{"id":9,"conversationId":1,"status":"queued"}`)},
-	}})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if got := jv.Stringify(changes); got != `{"entries":[{"id":4,"conversationId":1,"kind":"b"}],"tasks":[{"id":7,"conversationId":1,"kind":"t"}],"submissions":[{"id":9,"conversationId":1,"status":"queued"}]}` {
-		t.Fatalf("changes %s", got)
+// view.ts resolveWindow: the defaults of a window, and the bounds it rejects.
+func TestResolveWindow(t *testing.T) {
+	target := func(text string) *jv.Object { return parsed(t, `{"kind":"view","conversationId":1`+text+`}`) }
+	for _, c := range []struct {
+		target string
+		want   windowBounds
+		err    string
+	}{
+		{"", windowBounds{min: 50, max: 100}, ""},
+		{`,"window":{}`, windowBounds{min: 50, max: 100}, ""},
+		{`,"window":{"min":10}`, windowBounds{min: 10, max: 20}, ""},
+		{`,"window":{"min":10,"max":10,"from":7}`, windowBounds{min: 10, max: 10, from: 7, hasFrom: true}, ""},
+		{`,"window":{"max":30}`, windowBounds{min: 50, max: 30}, "Window max must be an integer >= min (50), got 30"},
+		{`,"window":{"min":0}`, windowBounds{}, "Window min must be an integer >= 1, got 0"},
+		{`,"window":{"min":1.5}`, windowBounds{}, "Window min must be an integer, got 1.5"},
+	} {
+		got, err := resolveWindow(target(c.target))
+		if c.err != "" {
+			// The host rebuilds view.ts's RangeError from the rejection's name.
+			var rejection *Rejection
+			if !errors.As(err, &rejection) || rejection.Name != "RangeError" || rejection.Text() != c.err { // view.ts:114
+				t.Fatalf("window %s: error %v, want a RangeError %q", c.target, err, c.err)
+			}
+			continue
+		}
+		if err != nil || got != c.want {
+			t.Fatalf("window %s: %+v, %v, want %+v", c.target, got, err, c.want)
+		}
 	}
 }
 
@@ -143,14 +172,14 @@ func TestViewAdvanceCarriesTheCommitsRecordsWhenAsked(t *testing.T) {
 // carries its record, conversation, version, value and ops, with a null value and no version for a retirement; a copy
 // names its source.
 func TestCommitChangesAreTheSessionPublicationShape(t *testing.T) {
-	got := jv.Stringify(commitChanges(&session.Publication{Seq: 5, Changes: []session.Change{
+	got := jv.Stringify(commitChanges([]session.Change{
 		{Kind: session.ChangeTable, Table: session.WriteTask, Record: parsed(t, `{"id":7}`)},
 		{Kind: session.ChangeDocument, ConversationID: 1, Record: parsed(t, `{"id":2}`), Version: 1, Value: parsed(t, `{"a":1}`),
 			Ops: []delta.Op{{Verb: delta.Set, Path: delta.Path{delta.Key("a")}, Value: 1.0}}},
 		{Kind: session.ChangeDocument, ConversationID: 1, Record: parsed(t, `{"id":3}`), Version: 1},
 		{Kind: session.ChangeDocumentCopy, ConversationID: 4, Record: parsed(t, `{"id":8}`), Source: session.DocCopySource{ID: 2, At: session.AsOf(6)}},
 		{Kind: session.ChangeDocumentCopy, ConversationID: 4, Record: parsed(t, `{"id":9}`), Source: session.DocCopySource{ID: 3, At: session.Current}},
-	}}))
+	}, nil, valueWhole))
 	want := `[{"type":"task","value":{"id":7}},` +
 		`{"type":"document","record":{"id":2},"conversationId":1,"version":1,"value":{"a":1},"ops":[["s",["a"],1]]},` +
 		`{"type":"document","record":{"id":3},"conversationId":1,"value":null,"ops":[]},` +
@@ -173,5 +202,33 @@ func TestSettingsEventReplacesTheLiveSettings(t *testing.T) {
 	}
 	if h.queueModes().FollowUp != "all" {
 		t.Fatalf("follow-up mode %q after the settings event", h.queueModes().FollowUp)
+	}
+}
+
+// A memory notice omits the value of a document the host already holds (a partial commit costs its new text), and carries it for one the
+// host does not hold, for a replacement, and for a change that has no operations (a migration's base).
+func TestMemoryNoticesOmitTheValueOfADocumentTheHostHolds(t *testing.T) {
+	change := func(ops ...delta.Op) []session.Change {
+		return []session.Change{{Kind: session.ChangeDocument, ConversationID: 1, Record: parsed(t, `{"id":2}`), Version: 1, Value: parsed(t, `{"a":"xy"}`), Ops: ops}}
+	}
+	appendOp := delta.Op{Verb: delta.Append, Path: delta.Path{delta.Key("a")}, Text: "y"}
+	sent := &idSet{}
+	first := jv.Stringify(commitChanges(change(appendOp), sent, valueFromOps))
+	if want := `[{"type":"document","record":{"id":2},"conversationId":1,"version":1,"value":{"a":"xy"},"ops":[["a",["a"],"y"]]}]`; first != want {
+		t.Fatalf("first %s\nwant  %s", first, want)
+	}
+	second := jv.Stringify(commitChanges(change(appendOp), sent, valueFromOps))
+	if want := `[{"type":"document","record":{"id":2},"conversationId":1,"version":1,"ops":[["a",["a"],"y"]]}]`; second != want {
+		t.Fatalf("second %s\nwant   %s", second, want)
+	}
+	if got := jv.Stringify(commitChanges(change(appendOp), sent, valueWhole)); got == second {
+		t.Fatalf("a stored notice left out the value: %s", got)
+	}
+	if got := jv.Stringify(commitChanges(change(), sent, valueFromOps)); got == "" || got == second {
+		t.Fatalf("a change without operations left out the value: %s", got)
+	}
+	replace := delta.Op{Verb: delta.Replace, Value: parsed(t, `{"a":"xy"}`)}
+	if got := jv.Stringify(commitChanges(change(replace), sent, valueFromOps)); got == second {
+		t.Fatalf("a replacement left out the value: %s", got)
 	}
 }

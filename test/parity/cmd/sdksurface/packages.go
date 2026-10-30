@@ -158,6 +158,7 @@ func runProbe(root string, packages []probePackage) (*probeResult, error) {
 		return nil, err
 	}
 	outputPath := filepath.Join(dir, "report.json")
+	//nolint:gosec // G204 (class a): program is literal node; args are the repo probe.mjs, runtime dir from root, and temp request/output paths.
 	cmd := exec.Command("node", probe, runtimeDir, requestPath, outputPath)
 	cmd.Dir = dir
 	if output, err := cmd.CombinedOutput(); err != nil {

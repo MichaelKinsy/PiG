@@ -1,5 +1,5 @@
 {
-  "piVersion": "1.4.0+6c384aa3",
+  "piVersion": "1.4.0+b3a29f11",
   "node": "v24.19.0",
   "scenarios": [
     {
@@ -2777,7 +2777,7 @@
         "stopReason": "toolUse",
         "responseId": "r1",
         "rawStopReason": "tool_calls",
-        "durationMs": 1
+        "durationMs": 0
       }
     },
     {
@@ -2965,7 +2965,7 @@
         "responseId": "r1",
         "rawStopReason": "error",
         "errorMessage": "Provider stopped with: error (server error)",
-        "durationMs": 1
+        "durationMs": 0
       }
     },
     {
@@ -3137,7 +3137,7 @@
         "stopReason": "length",
         "responseId": "r1",
         "rawStopReason": "model_length",
-        "durationMs": 1
+        "durationMs": 0
       }
     },
     {
@@ -3254,7 +3254,7 @@
         "stopReason": "error",
         "responseId": "r1",
         "errorMessage": "Mistral stream ended without a finish reason",
-        "durationMs": 0
+        "durationMs": 1
       }
     },
     {
@@ -3450,7 +3450,7 @@
         "stopReason": "toolUse",
         "responseId": "r1",
         "rawStopReason": "tool_calls",
-        "durationMs": 1
+        "durationMs": 0
       }
     },
     {
@@ -3868,7 +3868,7 @@
         "stopReason": "error",
         "responseId": "r1",
         "errorMessage": "Unexpected token 'o', \"oops\" is not valid JSON",
-        "durationMs": 0
+        "durationMs": 1
       }
     },
     {
@@ -4172,7 +4172,7 @@
         "stopReason": "stop",
         "responseId": "r1",
         "rawStopReason": "stop",
-        "durationMs": 0
+        "durationMs": 1
       }
     },
     {

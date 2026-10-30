@@ -16,6 +16,7 @@ import (
 	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
+	"github.com/MichaelKinsy/PiG/internal/nodefs"
 	"github.com/MichaelKinsy/PiG/internal/nodespawn"
 )
 
@@ -73,7 +74,7 @@ func (t *GrepTool) operations() GrepOperations {
 // readFile does.
 func (t *GrepTool) openFile(path string) (io.ReadCloser, error) {
 	if t.Operations == nil || t.Operations.ReadFile == nil {
-		return os.Open(path)
+		return nodefs.OpenFile(path, os.O_RDONLY, 0)
 	}
 	text, err := t.Operations.ReadFile(path)
 	if err != nil {
@@ -252,6 +253,7 @@ type ripgrepRun struct {
 // nor drop later matches; at the match limit rg is killed and the rest of
 // its output discarded.
 func runRipgrep(ctx context.Context, rgPath, dir string, args []string, limit float64) ([]grepMatch, ripgrepRun, error) {
+	//nolint:gosec // G204 (class b): program is rg resolved by PiG's tools manager; args are fixed flags, then -- and the pattern and search path from the grep tool call, so the model cannot reach an rg option.
 	cmd := exec.CommandContext(ctx, rgPath, args...)
 	// Upstream's spawn has no cwd option, so on Windows libuv finds rg from
 	// PiG's working directory: the lookup precedes cmd.Dir.

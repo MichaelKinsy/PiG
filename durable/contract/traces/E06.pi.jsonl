@@ -1,6 +1,16 @@
-{"k":">","name":"harness.root","tick":177}
-{"k":"#","seq":1,"summary":"conversations:i document_revisions:i documents:i","tick":395,"begin":326}
-{"k":">","name":"harness.snapshot","tick":404}
-{"k":">","name":"harness.snapshot","tick":405}
-{"k":">","name":"harness.root().agent","tick":406}
-{"k":">","name":"harness.close","tick":408}
+{"k":">","name":"harness.root","tick":200}
+{"k":"#","seq":1,"summary":"conversations:i document_revisions:i documents:i","tick":388,"begin":328}
+{"k":">","name":"harness.root().agent","tick":397}
+{"k":">","name":"harness.root().configure","tick":400}
+{"k":"#","seq":2,"summary":"document_revisions:i","tick":422,"begin":410}
+{"k":">","name":"harness.snapshot","tick":430}
+{"k":">","name":"harness.root().agent","tick":431}
+{"k":">","name":"harness.root().agent","tick":433}
+{"k":">","name":"harness.root().configure","tick":436}
+{"k":"#","seq":3,"summary":"document_revisions:i","tick":457,"begin":445}
+{"k":">","name":"harness.root().agent","tick":465}
+{"k":">","name":"harness.root().configure","tick":468}
+{"k":"#","seq":4,"summary":"document_revisions:i","tick":489,"begin":477}
+{"k":">","name":"harness.root().agent","tick":497}
+{"k":">","name":"harness.root().agent","tick":500}
+{"k":">","name":"harness.close","tick":503}

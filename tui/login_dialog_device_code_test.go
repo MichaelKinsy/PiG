@@ -231,16 +231,19 @@ func TestDeviceCodeLoginOpensOnlyWebURLs(t *testing.T) {
 	}
 }
 
-// Ports login-dialog-device-code.test.ts "login URLs" / "opens only http(s) sign-in URLs": ShowAuth names the URL its caller opens.
+// Ports login-dialog-device-code.test.ts "login URLs" / "opens only http(s) sign-in URLs": LoginBrowserTarget names the URL the caller opens after ShowAuth.
 func TestLoginURLsOpenOnlyHTTPSignInURLs(t *testing.T) {
 	dialog := NewLoginDialogComponent(nil, "custom-provider", nil, "")
-	if target := dialog.ShowAuth("file:///Users/victim/Downloads/payload.app", ""); target != "" {
+	dialog.ShowAuth("file:///Users/victim/Downloads/payload.app", "")
+	if target := LoginBrowserTarget("file:///Users/victim/Downloads/payload.app"); target != "" {
 		t.Fatalf("a file: URL is opened as %q", target)
 	}
-	if target := dialog.ShowAuth("https://example.com/authorize", ""); target != "https://example.com/authorize" {
+	dialog.ShowAuth("https://example.com/authorize", "")
+	if target := LoginBrowserTarget("https://example.com/authorize"); target != "https://example.com/authorize" {
 		t.Fatalf("target = %q", target)
 	}
-	if target := dialog.ShowAuth("HTTPS://Example.com", ""); target != "https://example.com/" {
+	dialog.ShowAuth("HTTPS://Example.com", "")
+	if target := LoginBrowserTarget("HTTPS://Example.com"); target != "https://example.com/" {
 		t.Fatalf("a web URL is opened as its normalized href, got %q", target)
 	}
 }
@@ -269,7 +272,8 @@ func TestLoginURLsKeepControlCharactersFromEndingTerminalHyperlinks(t *testing.T
 func TestLoginURLsReplaceControlCharactersInURLsThatAreNotWebURLs(t *testing.T) {
 	injected := "x\x07\x1b]52;c;Zm9v\x07"
 	dialog := NewLoginDialogComponent(nil, "custom-provider", nil, "")
-	if target := dialog.ShowAuth("file:///tmp/"+injected, ""); target != "" {
+	dialog.ShowAuth("file:///tmp/"+injected, "")
+	if target := LoginBrowserTarget("file:///tmp/" + injected); target != "" {
 		t.Fatalf("a file: URL is opened as %q", target)
 	}
 	if raw := strings.Join(dialog.Render(120), "\n"); strings.Contains(raw, "\x1b]52") {

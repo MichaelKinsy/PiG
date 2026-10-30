@@ -31,6 +31,7 @@ func Sh(t testing.TB) string {
 func ScriptCommand(t testing.TB, path string, args ...string) *exec.Cmd {
 	t.Helper()
 	if !needsInterpreter {
+		//nolint:gosec // G204 (class a): program is the repository script path the test passes to ScriptCommand (a fixed test fixture on POSIX), with test-given args.
 		return exec.Command(path, args...)
 	}
 	interpreter := ShebangInterpreter(t, path)
@@ -47,6 +48,7 @@ func ScriptCommand(t testing.TB, path string, args ...string) *exec.Cmd {
 	default:
 		t.Skipf("%s: Windows cannot run a #!%s script", path, interpreter)
 	}
+	//nolint:gosec // G204 (class b): program is the bash, sh, python3, or node path from Bash/Sh (posixTool) or exec.LookPath in the testenv helpers; argv[0] is the script path.
 	return exec.Command(program, append([]string{path}, args...)...)
 }
 

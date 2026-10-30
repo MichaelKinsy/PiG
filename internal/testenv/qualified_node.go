@@ -17,6 +17,7 @@ func RequireQualifiedNode(t testing.TB) string {
 	if err != nil {
 		t.Fatalf("the qualified Node release: %v", err)
 	}
+	//nolint:gosec // G204 (class b): program is node from testenv node(t), i.e. exec.LookPath("node"); the only arg is fixed --version.
 	out, err := exec.CommandContext(t.Context(), path, "--version").Output()
 	if err != nil {
 		t.Fatalf("%s --version: %v", path, err)

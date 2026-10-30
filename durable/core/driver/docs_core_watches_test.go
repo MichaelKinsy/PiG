@@ -596,3 +596,39 @@ func TestCoreWatchContinuesAfterASnapshotRead(t *testing.T) {
 	}
 	_, _ = w.Stop()
 }
+
+// session-observers.test.ts "attaches atomically on the line: a commit queued before the attachment is in its value": opening a
+// watch is a job on the Session line, so the core answers it only once the transaction that holds the line ended.
+func TestCoreWatchOpenWaitsBehindTheTransactionHoldingTheLine(t *testing.T) {
+	r := openCoreRigMode(t, "session", nil, nil)
+	client := r.s.ClientForTest()
+	tx, err := client.Begin(t.Context(), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	answered := make(chan error, 1)
+	go func() {
+		_, err := client.API(t.Context(), "watch.open", map[string]any{"watchId": 1, "target": map[string]any{
+			"kind":    "doc",
+			"address": map[string]any{"scope": "session", "definition": "test.state"},
+			"def":     map[string]any{"kind": "test.state", "version": 1, "scope": "session"},
+		}})
+		answered <- err
+	}()
+	select {
+	case err := <-answered:
+		t.Fatalf("the watch opened while a transaction held the line: %v", err)
+	case <-time.After(300 * time.Millisecond):
+	}
+	if err := tx.End(t.Context(), nil); err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case err := <-answered:
+		if err != nil {
+			t.Fatal(err)
+		}
+	case <-time.After(10 * time.Second):
+		t.Fatal("the watch did not open after the transaction ended")
+	}
+}

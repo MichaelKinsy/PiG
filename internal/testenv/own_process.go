@@ -35,6 +35,7 @@ func InOwnProcess(t *testing.T) bool {
 		left := time.Until(deadline)
 		args = append(args, "-test.timeout="+(left-min(left/10, 5*time.Second)).String())
 	}
+	//nolint:gosec // G204 (class b): program is executable from os.Executable; args are -test.* flags computed from t.Name and the deadline.
 	cmd := exec.CommandContext(t.Context(), executable, args...)
 	cmd.Env = append(os.Environ(), ownProcessEnv+"="+name)
 	output, err := cmd.CombinedOutput()

@@ -6,7 +6,7 @@ func packedRunnerName(goos, language string) string {
 	switch strings.ToLower(language) {
 	case "python":
 		return "runner.py"
-	case "go", "rust":
+	case "go", "rust", "lisp":
 		if goos == "windows" {
 			return "runner.exe"
 		}

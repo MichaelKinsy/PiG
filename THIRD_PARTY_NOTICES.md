@@ -123,6 +123,19 @@ Distributed file: `internal/codingagent/stdin_buffer.go`
 
 Upstream Pi identifies its `stdin-buffer.ts` implementation as based on OpenTUI. PiG ports that implementation to Go.
 
+## Pi-Bolt-derived alternate-screen scroll moves
+
+Source: <https://github.com/opensec-git/Pi-Bolt/blob/bolt-v1.0.4/packages/tui/src/tui-alt-screen.ts>
+
+Distributed files: `tui/tui_alt_screen_scroll.go`, `tui/tui_alt_screen_scroll_test.go`
+
+- Copyright (c) 2025 Mario Zechner
+- Copyright (c) 2026 OpenSec (Pi-Bolt)
+- License: MIT
+- License text: `LICENSES/MIT.txt`
+
+`findMovedRows` and `writeRowsMove` port Pi-Bolt's `TuiAltScreen.findMovedRows` and the scroll-region writes of its `doRender` to Go (D205). The randomized test follows Pi-Bolt's `packages/tui/test/tui-alt-screen-scroll.test.ts`.
+
 ## ansi-regex and strip-ansi
 
 Sources:

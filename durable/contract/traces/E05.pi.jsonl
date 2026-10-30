@@ -1,2 +1,6 @@
-{"k":"#","seq":1,"summary":"conversations:i document_revisions:i documents:i","tick":199,"begin":179}
-{"k":"#","seq":2,"summary":"document_revisions:i","tick":234,"begin":221}
+{"k":">","name":"harness.root","tick":200}
+{"k":"#","seq":1,"summary":"conversations:i document_revisions:i documents:i","tick":418,"begin":349}
+{"k":">","name":"harness.snapshot","tick":427}
+{"k":">","name":"harness.snapshot","tick":428}
+{"k":">","name":"harness.root().agent","tick":429}
+{"k":">","name":"harness.close","tick":431}

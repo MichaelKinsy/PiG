@@ -1,5 +1,5 @@
 {
- "pin": "1.4.0+6c384aa3",
+ "pin": "1.4.0+b3a29f11",
  "package": "pi-tui@1.4.0",
  "module": "pi-tui",
  "export": "decodeKittyPrintable",
@@ -3200,7 +3200,9 @@
    "args": [
     "\u001b[57358:33;65u"
    ],
-   "result": ""
+   "result": {
+    "$": "undefined"
+   }
   },
   {
    "name": "case 0376",
@@ -3354,7 +3356,9 @@
    "args": [
     "\u001b[57427:97:99;1:3u"
    ],
-   "result": ""
+   "result": {
+    "$": "undefined"
+   }
   },
   {
    "name": "case 0394",

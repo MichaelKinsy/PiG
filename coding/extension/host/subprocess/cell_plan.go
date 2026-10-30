@@ -19,6 +19,7 @@ const (
 	CellStrategyPackedGo     CellStrategy = "packed-go"
 	CellStrategyPackedRust   CellStrategy = "packed-rust"
 	CellStrategyPackedPython CellStrategy = "packed-python"
+	CellStrategyPackedLisp   CellStrategy = "packed-lisp"
 	// CellStrategyPackedNode hosts every packable TS/JS extension in one Node
 	// process, the way upstream pi loads all its extensions in one process
 	// (N8). Unlike the other packed strategies this needs no compiled runner:
@@ -94,7 +95,7 @@ func PlanCells(configs []ExtConfig, quarantined map[string]string) []CellSpec {
 			node.configs = append(node.configs, indexedConfig{config: cfg, index: index})
 			continue
 		}
-		if isPackableGoFactory(cfg) || isPackableRustFactory(cfg) || isPackablePythonFactory(cfg) {
+		if isPackableFactory(cfg) {
 			key := packGroupKey(cfg)
 			compatible := current != nil && current.key == key
 			if compatible && cfg.RuntimeLanguage == "go" {
@@ -106,12 +107,11 @@ func PlanCells(configs []ExtConfig, quarantined map[string]string) []CellSpec {
 					}
 				}
 			}
-			if compatible && cfg.RuntimeLanguage == "python" {
-				module, _, _ := strings.Cut(cfg.Package, ".")
+			if compatible && (cfg.RuntimeLanguage == "python" || cfg.RuntimeLanguage == "lisp") {
+				namespace := packageNamespace(cfg)
 				for _, previous := range current.configs {
-					other, _, _ := strings.Cut(previous.config.Package, ".")
-					// pig additive (D20): Python caches imports by module name, so independent roots for one module need separate interpreters.
-					if module == other && cfg.Source != previous.config.Source {
+					// pig additive (D20): Python caches imports by module name, so independent roots for one module need separate interpreters. The members of one Lisp image share its package namespace and its ASDF system names, so two roots that name the same system or file cannot share it.
+					if namespace == packageNamespace(previous.config) && cfg.Source != previous.config.Source {
 						compatible = false
 						break
 					}
@@ -154,22 +154,33 @@ func isShareableIsolation(isolation string) bool {
 	return isolation == "" || strings.EqualFold(isolation, "shared-ok")
 }
 
-func isPackableGoFactory(cfg ExtConfig) bool {
-	return isShareableIsolation(cfg.Isolation) &&
-		cfg.RuntimeKind == "subprocess" && cfg.RuntimeLanguage == "go" &&
-		cfg.EntrypointKind == "factory" && cfg.Source != "" && cfg.Package != "" && cfg.Factory == "Extension"
+// conventionalFactory is the name of the factory function a runner image of language hosts, or "" for a language that has none.
+func conventionalFactory(language string) string {
+	switch language {
+	case "go":
+		return "Extension"
+	case "rust", "python":
+		return "new_extension"
+	case "lisp":
+		return "new-extension"
+	}
+	return ""
 }
 
-func isPackableRustFactory(cfg ExtConfig) bool {
-	return isShareableIsolation(cfg.Isolation) &&
-		cfg.RuntimeKind == "subprocess" && cfg.RuntimeLanguage == "rust" &&
-		cfg.EntrypointKind == "factory" && cfg.Source != "" && cfg.Package != "" && cfg.Factory == "new_extension"
+// isPackableFactory reports whether cfg is the conventional Go, Rust, Python or Lisp factory of a package of its source, and may share a runner image.
+func isPackableFactory(cfg ExtConfig) bool {
+	factory := conventionalFactory(cfg.RuntimeLanguage)
+	return isShareableIsolation(cfg.Isolation) && factory != "" && cfg.Factory == factory &&
+		cfg.RuntimeKind == "subprocess" && cfg.EntrypointKind == "factory" && cfg.Source != "" && cfg.Package != ""
 }
 
-func isPackablePythonFactory(cfg ExtConfig) bool {
-	return isShareableIsolation(cfg.Isolation) &&
-		cfg.RuntimeKind == "subprocess" && cfg.RuntimeLanguage == "python" &&
-		cfg.EntrypointKind == "factory" && cfg.Source != "" && cfg.Package != "" && cfg.Factory == "new_extension"
+// packageNamespace is the name the members of one runner process share: the top-level module of a Python package, the system or file name of a Lisp extension.
+func packageNamespace(cfg ExtConfig) string {
+	if cfg.RuntimeLanguage == "python" {
+		module, _, _ := strings.Cut(cfg.Package, ".")
+		return module
+	}
+	return cfg.Package
 }
 
 // isPackableNode reports whether cfg is a TS/JS extension the Node cell can
@@ -259,6 +270,10 @@ func packedCellAt(groupKey string, configs []ExtConfig, order int) CellSpec {
 	if first.RuntimeLanguage == "python" {
 		strategy = CellStrategyPackedPython
 		prefix = "packed-python"
+	}
+	if first.RuntimeLanguage == "lisp" {
+		strategy = CellStrategyPackedLisp
+		prefix = "packed-lisp"
 	}
 	if first.RuntimeLanguage == "node" {
 		strategy = CellStrategyPackedNode

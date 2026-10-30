@@ -190,6 +190,8 @@ type StreamableHTTPTransport struct {
 	ctx    context.Context
 	cancel context.CancelFunc
 	wg     sync.WaitGroup
+	// requests counts the fetch calls in flight (see do): Close waits for them before it sends the session DELETE.
+	requests sync.WaitGroup
 
 	mu              sync.Mutex
 	started         bool
@@ -199,7 +201,8 @@ type StreamableHTTPTransport struct {
 	// lastToken is the access token of the latest request, which Close reuses instead of asking the auth provider.
 	lastToken      string
 	getStreamStart bool
-	// getStreamWritten reports that the GET stream's first request was written or failed; nil until the stream starts.
+	// getStreamWritten reports that the GET stream's first request was written (issued, for a fetch that cannot report
+	// its writes) or failed; nil until the stream starts.
 	getStreamWritten func()
 }
 
@@ -358,9 +361,14 @@ func (t *StreamableHTTPTransport) Send(ctx context.Context, message JSONRPCMessa
 	}
 }
 
-// Close aborts every in-flight request and stream, ends the session with a
-// DELETE when the server assigned one, and waits for the transport's
-// goroutines.
+// Close aborts every in-flight request and stream, waits for the aborted requests to leave fetch, ends the session
+// with a DELETE when the server assigned one, and waits for the transport's goroutines.
+//
+// The DELETE waits for the aborted requests because net/http can fail a request with the context error of an
+// aborted one: a response without a body (a GET stream answered 405, a 202) is handed over after its connection went
+// back to the idle pool, and a round trip that sees its context end in between closes that connection, which the
+// DELETE may already have taken from the pool. Pi's close() (streamable-http.ts) sends the DELETE right after
+// aborting, which is safe there: Node's fetch has no such cross-request failure.
 func (t *StreamableHTTPTransport) Close() error {
 	t.mu.Lock()
 	if t.closed {
@@ -369,13 +377,14 @@ func (t *StreamableHTTPTransport) Close() error {
 	}
 	t.closed = true
 	started, sessionID := t.started, t.sessionID
-	t.mu.Unlock()
+	// Under the lock, so that a request that do finds the transport closed is one whose context has ended.
 	t.cancel()
+	t.mu.Unlock()
+	t.requests.Wait()
 	if started && sessionID != "" {
 		// Best effort: the session expires on the server anyway. The auth provider may refresh tokens over the
-		// network, so it is not asked here and closing never waits for a refresh.
+		// network, so it is not asked here and closing never waits for a refresh (streamable-http.ts close, #10565).
 		ctx, cancel := context.WithTimeout(context.Background(), sessionDeleteTimeout)
-		// Best effort: the session expires on the server anyway. The auth provider may refresh tokens over the network, so it is not asked here and closing never waits for a refresh (streamable-http.ts close, #10565).
 		t.mu.Lock()
 		token := t.lastToken
 		t.mu.Unlock()
@@ -446,7 +455,12 @@ func (t *StreamableHTTPTransport) authorizedFetch(method string, extra map[strin
 			}))
 		}
 		request.Header = headers
-		response, err := t.fetch.Do(request)
+		if _, reportsWrites := t.fetch.(*http.Client); method == http.MethodGet && !reportsWrites {
+			// Another McpFetch may not report its writes: the stream's first request counts as sent once it is issued to
+			// the fetch, with its token read.
+			t.signalGetStreamWritten()
+		}
+		response, err := t.do(request)
 		if err != nil {
 			return nil, err
 		}
@@ -459,6 +473,21 @@ func (t *StreamableHTTPTransport) authorizedFetch(method string, extra map[strin
 			return nil, err
 		}
 	}
+}
+
+// do sends a request through the fetch. Close waits for the calls started before it, so that a request Close aborted
+// has left the fetch before the session DELETE enters it. A request that finds the transport closed carries an ended
+// context (see Close) and fails before it reaches a connection, so it needs no wait.
+func (t *StreamableHTTPTransport) do(request *http.Request) (*http.Response, error) {
+	t.mu.Lock()
+	if t.closed {
+		t.mu.Unlock()
+		return t.fetch.Do(request)
+	}
+	t.requests.Add(1)
+	t.mu.Unlock()
+	defer t.requests.Done()
+	return t.fetch.Do(request)
 }
 
 func (t *StreamableHTTPTransport) headers(ctx context.Context, extra map[string]string) (http.Header, string, error) {
@@ -643,13 +672,12 @@ func (t *StreamableHTTPTransport) startGetStream() {
 		t.runGetStream()
 	}()
 	// The upstream transport issues the GET request before send returns, so it reaches the server before the client's
-	// next request. A goroutine can start late: wait until the first attempt has written its request or failed. Another
-	// McpFetch may not report its writes and is not waited for.
-	if _, ok := t.fetch.(*http.Client); ok {
-		select {
-		case <-written:
-		case <-t.ctx.Done():
-		}
+	// next request and has read its token by then. A goroutine can start late: wait until the first attempt has written
+	// its request, or failed. A fetch that cannot report its writes is waited for until the request is issued to it
+	// (see authorizedFetch).
+	select {
+	case <-written:
+	case <-t.ctx.Done():
 	}
 }
 

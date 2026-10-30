@@ -109,6 +109,7 @@ func run(root string, pkgs []string, benchtime string) ([]entry, error) {
 			slices.Sort(names)
 			args = append(args, "-skip", strings.Join(names, "|"))
 		}
+		//nolint:gosec // G204 (class a): program is literal go; args are fixed test flags, -benchtime from its flag, and the package from -packages or the default list (the skipped map is empty).
 		command := exec.Command("go", append(args, pkg)...)
 		command.Dir = root
 		command.Env = append(os.Environ(), "GOMAXPROCS=1")

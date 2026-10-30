@@ -52,7 +52,7 @@ func TestCoreDropsAThrowingOnReportForAFailingListener(t *testing.T) {
 		reported <- err
 		panic(errors.New("report broke"))
 	}})
-	watch, err := root.Watch(t.Context())
+	watch, err := root.Watch(t.Context(), nil)
 	if err != nil {
 		t.Fatal(err)
 	}

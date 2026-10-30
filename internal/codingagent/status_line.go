@@ -17,6 +17,7 @@ import (
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/internal/jsnumber"
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
+	"github.com/MichaelKinsy/PiG/internal/jsstring/localecompare"
 	"github.com/MichaelKinsy/PiG/internal/nodepath"
 	"github.com/MichaelKinsy/PiG/internal/nodespawn"
 	"github.com/MichaelKinsy/PiG/tui"
@@ -602,7 +603,7 @@ func footerExtensionStatuses(statuses map[string]string) []string {
 		return nil
 	}
 	keys := slices.Collect(maps.Keys(statuses))
-	collator := jsstring.NewCollator()
+	collator := localecompare.NewCollator()
 	slices.SortStableFunc(keys, func(a, b string) int { return collator.CompareString(a, b) })
 	parts := make([]string, len(keys))
 	for i, key := range keys {

@@ -233,6 +233,31 @@ func makeTestEntries() []codingagent.SessionEntry {
 	return []codingagent.SessionEntry{makeMessageEntry("1", nil, 10)}
 }
 
+// branch-summarization.test.ts "passes the thinking level only for reasoning-capable models" (:47): a reasoning model
+// at xhigh requests xhigh, at off requests nothing, and a non-reasoning model requests nothing.
+func TestGenerateBranchSummaryPassesThinkingLevelOnlyForReasoningModels(t *testing.T) {
+	recorder := &summaryRecorder{}
+	for _, tc := range []struct {
+		model *ai.Model
+		level ai.ModelThinkingLevel
+	}{
+		{createSummaryModel(true, 8192, nil), ai.ThinkingXHigh},
+		{createSummaryModel(true, 8192, nil), ai.ThinkingOff},
+		{createSummaryModel(false, 8192, nil), ai.ThinkingHigh},
+	} {
+		if result := GenerateBranchSummary(t.Context(), makeTestEntries(), GenerateBranchSummaryOptions{Model: tc.model, Completer: recorder, ThinkingLevel: tc.level}); result.Error != "" {
+			t.Fatal(result.Error)
+		}
+	}
+	var seen []ai.ThinkingLevel
+	for _, call := range recorder.calls {
+		seen = append(seen, call.options.Thinking)
+	}
+	if want := []ai.ThinkingLevel{ai.ThinkingLevelXHigh, "", ""}; !slices.Equal(seen, want) {
+		t.Fatalf("reasoning = %q, want %q", seen, want)
+	}
+}
+
 // TestGenerateBranchSummary_Abort: fake completer returns aborted context →
 // BranchSummaryResult{Aborted: true}.
 // Pi: packages/coding-agent/src/core/compaction/branch-summarization.ts:39 (BranchSummaryResult.aborted).

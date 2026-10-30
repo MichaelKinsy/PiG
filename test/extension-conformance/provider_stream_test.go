@@ -27,6 +27,7 @@ func TestProviderProducersAcrossSDKs(t *testing.T) {
 		{"go-isolated", "testdata/provider-go", false, false}, {"go-packed", "testdata/provider-go", false, true},
 		{"python-isolated", "testdata/provider-python", false, false}, {"python-packed", "testdata/provider-python", false, true},
 		{"rust-isolated", "testdata/provider-rust", false, false}, {"rust-packed", "testdata/provider-rust", false, true},
+		{"lisp-isolated", "testdata/provider-lisp", false, false}, {"lisp-packed", "testdata/provider-lisp", false, true},
 		{"node-isolated", "../../coding/testdata/provider-stream-producer.mjs", false, false}, {"node-packed", "../../coding/testdata/provider-stream-producer.mjs", false, true},
 		{"fused-go", "", true, false},
 	}

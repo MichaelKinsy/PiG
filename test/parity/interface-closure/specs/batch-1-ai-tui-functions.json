@@ -28,7 +28,7 @@
    "ai/errors.go#NormalizeProviderError"
   ],
   "production": [
-   "call:ai/bedrock.go#formatBedrockError"
+   "call:ai/providers/bedrock/bedrock.go#formatBedrockError"
   ],
   "evidence": [
    "test:ai/error_body_upstream_test.go#TestNormalizeProviderErrorUpstream",
@@ -44,7 +44,7 @@
    "ai/node_http_proxy.go#ResolveHTTPProxyURLForTarget"
   ],
   "production": [
-   "call:ai/bedrock.go#loadBedrockConfig"
+   "call:ai/providers/bedrock/bedrock.go#loadBedrockConfig"
   ],
   "evidence": [
    "test:ai/node_http_proxy_upstream_test.go#TestNodeHTTPProxyUpstream"

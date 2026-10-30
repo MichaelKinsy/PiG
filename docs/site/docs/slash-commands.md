@@ -1,6 +1,6 @@
 # Slash commands
 
-PiG has the built-in slash commands of Pi 1.4.0 ([Pi's slash command reference](https://github.com/earendil-works/pi/blob/v1.2.0/packages/coding-agent/docs/slash-commands.md)). Rows marked `[pig]` are PiG additions. Extensions can register more slash commands.
+PiG has the built-in slash commands of Pi 1.4.0 ([Pi's slash command reference](https://github.com/earendil-works/pi/blob/main/packages/coding-agent/docs/slash-commands.md)). Rows marked `[pig]` are PiG additions. Extensions can register more slash commands.
 
 ## Core
 

@@ -44,7 +44,7 @@ func TestStripHasAndUndo(t *testing.T) {
 func TestFeatureIDsAreStable(t *testing.T) {
 	want := []string{
 		"themes", "skills", "prompt-templates",
-		"node-extensions", "extension-sdk-go", "extension-sdk-rust", "extension-sdk-python",
+		"node-extensions", "extension-sdk-go", "extension-sdk-rust", "extension-sdk-python", "extension-sdk-lisp",
 		"syntax-highlight", "word-dictionaries", "export-html", "self-update", "changelog",
 		"docs", "mermaid", "piglet-builder",
 	}

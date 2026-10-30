@@ -25,8 +25,7 @@ type OverlayMarginAll int
 func (OverlayMarginAll) overlayMarginOption()  {}
 func (OverlayMarginSpec) overlayMarginOption() {}
 
-// OverlaySpec is the serialisable subset of upstream pi-tui OverlayOptions
-// (everything except the visible callback). It lets callers outside this
+// OverlaySpec is upstream pi-tui OverlayOptions as a caller outside this package builds it; a subprocess extension carries Visible as a callback. It lets callers outside this
 // package, such as the subprocess extension bridge, open a component-framed
 // overlay whose geometry resolves exactly like upstream showOverlay.
 type OverlaySpec struct {
@@ -40,6 +39,8 @@ type OverlaySpec struct {
 	Col          *OverlayValue
 	Margin       OverlayMarginOption
 	NonCapturing bool
+	// Visible is upstream's visible(termWidth, termHeight) callback; nil is always visible.
+	Visible func(termWidth, termHeight int) bool
 }
 
 func (v *OverlayValue) size() overlaySize {
@@ -61,6 +62,7 @@ func (s OverlaySpec) Options() OverlayOptions {
 		row:          s.Row.size(),
 		col:          s.Col.size(),
 		nonCapturing: s.NonCapturing,
+		visible:      s.Visible,
 	}
 	if s.MinWidth != nil {
 		opts.minWidth = *s.MinWidth

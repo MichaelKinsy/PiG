@@ -152,7 +152,7 @@ func ResolveExtensions(p *Piglet) ([]ResolvedExtension, []error) {
 	for _, ext := range p.Extensions {
 		// Scoping-only entry: name + tools but no origin. The extension is
 		// loaded elsewhere (e.g. agent-server's -e flags) and this entry only
-		// scopes its tools by name in ScopeTools, which never reads origin.
+		// scopes its tools by name in CompileToolScope, which never reads origin.
 		// Skip it here rather than reporting it as an unresolvable load.
 		if len(ext.Origins) == 0 {
 			continue

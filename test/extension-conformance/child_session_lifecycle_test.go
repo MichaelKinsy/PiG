@@ -192,9 +192,20 @@ func loadChildRust(t *testing.T, host *subprocess.Host, isolation string) extens
 	return loaded[0]
 }
 
-// TestChildAgentSessionNativeSDKsLifecycleAndModelErrors runs the Python and Rust fixtures' lifecycle and model-error scenarios against the same Pi-derived golden as the Go rows.
+func loadChildLisp(t *testing.T, host *subprocess.Host, isolation string) extension.Extension {
+	t.Helper()
+	cfg := lispFixtureConfig(t, "child-session-lisp", childsession.Name)
+	cfg.Isolation = isolation
+	loaded, failures := host.LoadAll(t.Context(), []subprocess.ExtConfig{cfg})
+	if len(failures) != 0 || len(loaded) != 1 {
+		t.Fatalf("load: %v", failures)
+	}
+	return loaded[0]
+}
+
+// TestChildAgentSessionNativeSDKsLifecycleAndModelErrors runs the Python, Rust and Lisp fixtures' lifecycle and model-error scenarios against the same Pi-derived golden as the Go rows.
 func TestChildAgentSessionNativeSDKsLifecycleAndModelErrors(t *testing.T) {
-	for name, load := range map[string]func(*testing.T, *subprocess.Host, string) extension.Extension{"python": loadChildPython, "rust": loadChildRust} {
+	for name, load := range map[string]func(*testing.T, *subprocess.Host, string) extension.Extension{"python": loadChildPython, "rust": loadChildRust, "lisp": loadChildLisp} {
 		t.Run(name, func(t *testing.T) {
 			host, _ := newChildSessionHost(t)
 			ext := load(t, host, "strict")

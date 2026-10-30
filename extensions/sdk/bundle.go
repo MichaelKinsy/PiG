@@ -24,8 +24,8 @@ import (
 //
 // bundle_embed.go lists every non-test .go file, the module declaration, and
 // the license: go:embed cannot leave test files out of a pattern, so the list is
-// generated (go generate) rather than written as a glob. A file of 32 KiB or
-// more is listed as its gzip, <name>.gz, which go generate writes beside it
+// generated (go generate) rather than written as a glob. Every source file is listed as its
+// gzip, <name>.gz, which go generate writes beside it
 // and the stager writes back as <name>: the sources are most of the weight
 // this package adds to every binary that stages them, and source text is a
 // fifth of its size compressed. A named list silently
@@ -34,7 +34,7 @@ import (
 // an SDK missing it. TestBundledFilesCoversModule fails when the list and the
 // source tree disagree, and its message names the command that regenerates it.
 //
-//go:generate go run ../../automation/gen/embed-bundle.go -pkg sdk -out bundle_embed.go -gzip-over 32768 -skip _test.go -skip bundle.go -skip bundle_embed.go LICENSE go.mod *.go json/*.go json/LICENSE frontend/*.go kit/*.go internal/jsloop/*.go internal/kitwire/*.go tui/*.go tui/internal/*/*.go upgrade/*.go
+//go:generate go run ../../automation/gen/embed-bundle.go -pkg sdk -out bundle_embed.go -gzip-over 1 -skip _test.go -skip bundle.go -skip bundle_embed.go LICENSE go.mod *.go json/*.go json/LICENSE frontend/*.go kit/*.go internal/jsloop/*.go internal/kitwire/*.go tui/*.go tui/internal/*/*.go upgrade/*.go
 
 // BundledFiles lists the embedded filenames in a stable order. It is the
 // canonical set a stager must write to produce a compilable SDK module. A name

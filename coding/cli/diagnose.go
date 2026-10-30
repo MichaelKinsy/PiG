@@ -10,7 +10,6 @@ import (
 	"strings"
 
 	"github.com/MichaelKinsy/PiG/ai"
-	"github.com/MichaelKinsy/PiG/coding"
 	"github.com/MichaelKinsy/PiG/coding/extension/pigsdk"
 	"github.com/MichaelKinsy/PiG/internal/codingagent"
 	"github.com/MichaelKinsy/PiG/internal/codingagent/tools"
@@ -66,6 +65,19 @@ func runDiagnose(w io.Writer, binaryPath string) {
 	_, _ = fmt.Fprintf(w, "auth.json:         %s\n", agentDirForModel()+"/auth.json")
 	if cwd, err := os.Getwd(); err == nil {
 		_, _ = fmt.Fprintf(w, "cwd:               %s\n", cwd)
+	}
+	// pig additive (D41): the report states the project trust decision and the active Piglet of the session that started it.
+	workDir, _ := os.Getwd()
+	trust := reportProjectTrust(workDir, agentDirForModel())
+	_, _ = fmt.Fprintf(w, "project trust:     %s (%s)\n", trust.State, trust.Reason)
+	active := inspectActivePiglet(workDir)
+	switch {
+	case active == nil:
+		_, _ = fmt.Fprintf(w, "active Piglet:     none\n")
+	case active.Err != nil:
+		_, _ = fmt.Fprintf(w, "active Piglet:     %s (%v)\n", active.Source, active.Err)
+	default:
+		_, _ = fmt.Fprintf(w, "active Piglet:     %s (%s); its discovery excludes ambient extensions and skills it does not list\n", active.Name, active.Source)
 	}
 	// pig additive (D102): where a vanished session leaves its trace.
 	_, _ = fmt.Fprintf(w, "crash log:         %s\n", codingagent.CrashLogPath(agentDirForModel()))
@@ -134,21 +146,7 @@ func runDiagnose(w io.Writer, binaryPath string) {
 
 	// ─── Default model ────────────────────────────────────
 	_, _ = fmt.Fprintf(w, "\ndefault model\n%s\n", hr)
-	services, servErr := coding.CreateAgentSessionServices(coding.CreateAgentSessionServicesOptions{AgentDir: agentDirForModel()})
-	if servErr != nil {
-		_, _ = fmt.Fprintf(w, "  (could not load services: %v)\n", servErr)
-	} else {
-		defer services.Close()
-		settings := services.Settings()
-		switch {
-		case settings.DefaultProvider != "" && settings.DefaultModel != "":
-			_, _ = fmt.Fprintf(w, "  %s/%s (from settings)\n", settings.DefaultProvider, settings.DefaultModel)
-		case settings.DefaultModel != "":
-			_, _ = fmt.Fprintf(w, "  %s (from settings: no provider)\n", settings.DefaultModel)
-		default:
-			_, _ = fmt.Fprintf(w, "  (none: falls back to compiled-in default)\n")
-		}
-	}
+	writeDiagnoseDefaultModel(w, workDir, agentDirForModel(), trust, active)
 
 	// ─── Env vars ─────────────────────────────────────────
 	_, _ = fmt.Fprintf(w, "\nenvironment\n%s\n", hr)

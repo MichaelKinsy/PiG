@@ -188,6 +188,7 @@ func run(args []string) (err error) {
 	if *mode == "rpc" {
 		argv = append(argv, "--mode", "rpc")
 	}
+	//nolint:gosec // G204 (class c): argv is strings.Fields of the -cmd flag (a user-configured runtime command line; profiles set "{root}/bin/pig -ne") plus --session and --mode rpc.
 	cmd := exec.Command(argv[0], argv[1:]...)
 	cmd.Dir = cwd
 	cmd.Env = runtimeEnv(home, agentDir, heapDir, extraEnv)

@@ -10,7 +10,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/MichaelKinsy/PiG/internal/jsstring"
+	"github.com/MichaelKinsy/PiG/internal/jsstring/localecompare"
 	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
 
 	"github.com/MichaelKinsy/PiG/agent"
@@ -250,7 +250,7 @@ func CreateMcpResourceToolDefinitions(options ResourceToolsOptions) []extension.
 			return nil, "", errors.New("cursor can only be used when a server is specified")
 		}
 		servers := slices.Clone(options.Servers())
-		slices.SortFunc(servers, func(a, b McpResourceServer) int { return jsstring.LocaleCompare(a.Name(), b.Name()) })
+		slices.SortFunc(servers, func(a, b McpResourceServer) int { return localecompare.Compare(a.Name(), b.Name()) })
 		type outcome struct {
 			items []any
 			err   error

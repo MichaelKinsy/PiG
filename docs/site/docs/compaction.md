@@ -2,7 +2,7 @@
 
 A model has a fixed context window. A long session eventually fills it. Compaction replaces the older part of the conversation with a summary, so the session continues instead of failing.
 
-Compaction works as in Pi 1.4.0 ([Pi's compaction reference](https://github.com/earendil-works/pi/blob/v1.2.0/packages/coding-agent/docs/compaction.md)), apart from the differences named on this page.
+Compaction works as in Pi 1.4.0 ([Pi's compaction reference](https://github.com/earendil-works/pi/blob/main/packages/coding-agent/docs/compaction.md)), apart from the differences named on this page.
 
 ## When PiG compacts
 

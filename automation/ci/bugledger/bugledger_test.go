@@ -1659,3 +1659,54 @@ func TestARetiredDivergenceEndsTheAheadOfPiClassOfAKeptNote(t *testing.T) {
 		t.Fatal("a second regeneration with no new commit changed the ledger")
 	}
 }
+
+// An Upgrading bullet that opens with "**Breaking (Go API):**" breaks a program that embeds PiG; the draft lists those under their own heading after the other Upgrading notes, which stay plain bullets, in the changelog and in a fragment.
+func TestReleaseNotesGroupBreakingGoAPIUpgrades(t *testing.T) {
+	r := newFixture(t)
+	r.write("CHANGELOG.md", "# Changelog\n\n## [Unreleased]\n\n## [0.5.0] - 2026-02-01\n\n### Upgrading from 0.4.x\n\n- **Breaking (Go API):** `a`: one moves.\n- Change your call.\n\n## [0.4.1] - 2026-01-01\n\n### Added\n\n- Old thing.\n")
+	r.commit("changelog", "CHANGELOG.md")
+	r.write("changelog.d/x.md", "### Upgrading\n\n- Go API `c`: an opt-in, not a break.\n- **Breaking (Go API):** `b`: two moves.\n")
+	notes, err := releaseNotes(r.root, "0.4.1", "0.5.0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{
+		"## Upgrading from 0.4.x\n\n- Change your call.\n\n### Breaking changes for Go embedders\n\n- **Breaking (Go API):** `a`: one moves.\n\n",
+		"## Upgrading\n\n- Go API `c`: an opt-in, not a break.\n\n### Breaking changes for Go embedders\n\n- **Breaking (Go API):** `b`: two moves.\n\n",
+	} {
+		if !strings.Contains(notes, want) {
+			t.Errorf("the draft lacks %q:\n%s", want, notes)
+		}
+	}
+}
+
+// A release's notes cover the changes since the release before it. Without an explicit since, the draft starts after the newest released section of CHANGELOG.md that is older than the target, so 0.6.0 prints no 0.5.x bullet, and it links the notes of the earlier releases.
+func TestReleaseNotesStartAfterThePreviousRelease(t *testing.T) {
+	r := newFixture(t)
+	r.write("CHANGELOG.md", "# Changelog\n\n## [Unreleased]\n\n## [0.5.3] - 2026-02-03\n\n### Upgrading\n\n- Change a 0.5.3 call.\n\n### Added\n\n- A 0.5.3 flag.\n\n## [0.5.0] - 2026-02-01\n\n### Upgrading from 0.4.x\n\n- Change a 0.5.0 call.\n\n### Added\n\n- A 0.5.0 flag.\n\n## [0.4.1] - 2026-01-01\n\n### Added\n\n- Old thing.\n")
+	r.commit("changelog", "CHANGELOG.md")
+	r.write("changelog.d/x.md", "### Added\n\n- A 0.6.0 flag.\n")
+	notes, err := releaseNotes(r.root, "", "0.6.0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{"- A 0.6.0 flag.", "since PiG 0.5.3.", "https://github.com/MichaelKinsy/PiG/releases"} {
+		if !strings.Contains(notes, want) {
+			t.Errorf("the draft lacks %q:\n%s", want, notes)
+		}
+	}
+	for _, bad := range []string{"A 0.5.3 flag", "Change a 0.5.3 call", "A 0.5.0 flag", "Change a 0.5.0 call", "Old thing"} {
+		if strings.Contains(notes, bad) {
+			t.Errorf("the 0.6.0 draft includes %q of an earlier release:\n%s", bad, notes)
+		}
+	}
+}
+
+func TestPreviousRelease(t *testing.T) {
+	text := "## [Unreleased]\n\n## [0.5.3] - x\n\n## [0.5.10] - x\n\n## [0.6.0] - x\n\n## [0.5.0] - x\n"
+	for target, want := range map[string]string{"0.6.0": "0.5.10", "0.7.0": "0.6.0", "0.5.3": "0.5.0", "0.5.0": ""} {
+		if got := previousRelease(text, target); got != want {
+			t.Errorf("previousRelease(%q) = %q, want %q", target, got, want)
+		}
+	}
+}

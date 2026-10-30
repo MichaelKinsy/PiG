@@ -34,8 +34,8 @@ const API_TRACE = "contract-api-trace:"
 
 export async function resolve(specifier, context, nextResolve) {
 	const real = specifier.includes("?real")
-	// CONTRACT_STORAGE_PROFILE=node: the reference's Node SQLite adapter runs unchanged over a capsql DatabaseSync (impls/node-sqlite-capture.mjs).
-	if (cfg.storageProfile === "node" && specifier === "node:sqlite" && /\/storage\/sqlite\/node\.ts/.test(context.parentURL ?? "")) return { url: new URL("impls/node-sqlite-capture.mjs", cfg.contract).href, shortCircuit: true }
+	// CONTRACT_STORAGE_PROFILE=node: the reference's Node SQLite adapter (durable's storage/sqlite/node.ts, or chord/sqlite/node.ts where the driver moved there) runs unchanged over a capsql DatabaseSync (impls/node-sqlite-capture.mjs).
+	if (cfg.storageProfile === "node" && specifier === "node:sqlite" && /\/sqlite\/node\.ts/.test(context.parentURL ?? "")) return { url: new URL("impls/node-sqlite-capture.mjs", cfg.contract).href, shortCircuit: true }
 	// The wrappers, the tools and a candidate live outside the checkout: their package imports resolve from the checkout.
 	if (isBare(specifier) && context.parentURL && !context.parentURL.startsWith(cfg.piRoot)) context = { ...context, parentURL: `${cfg.piRoot}packages/durable/src/index.ts` }
 	let result

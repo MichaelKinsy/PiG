@@ -12,7 +12,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/internal/coding/pigversion"
-	"github.com/MichaelKinsy/PiG/internal/jsstring"
+	"github.com/MichaelKinsy/PiG/internal/jsstring/localecompare"
 	"github.com/MichaelKinsy/PiG/tui"
 )
 
@@ -106,7 +106,7 @@ func TestLoadedResourcesFormattingMatchesPi(t *testing.T) {
 	tui.SetCapabilities(tui.TerminalCapabilities{TrueColor: true})
 	tui.SetTheme("dark")
 	t.Setenv("HOME", home)
-	collator := jsstring.NewCollator()
+	collator := localecompare.NewCollator()
 	failures := 0
 	for i, probe := range probes {
 		var got string

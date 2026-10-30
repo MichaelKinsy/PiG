@@ -4,6 +4,8 @@
 package core
 
 import (
+	"math"
+
 	"github.com/MichaelKinsy/PiG/durable/core/jv"
 	"github.com/MichaelKinsy/PiG/durable/core/session"
 )
@@ -14,7 +16,7 @@ import (
 // notice that may follow later steps. handled is false for an op that is not the scheduler's.
 func (h *handler) apiTasks(id uint32, op string, req *jv.Object) (handled bool) {
 	switch op {
-	case "memo.get", "memo.put", "waitForTask", "waitForIdle", "outcomes", "ownedTasks", "sleepUntil", "wake", "retryTask":
+	case "memo.get", "memo.put", "waitForTask", "waitForIdle", "outcomes", "ownedTasks", "sleepUntil", "wake":
 	default:
 		return false
 	}
@@ -33,15 +35,21 @@ func (h *handler) apiTasks(id uint32, op string, req *jv.Object) (handled bool) 
 		reply(wakeJSON(h.sched.Wake()), nil)
 		return true
 	}
-	if op == "retryTask" {
-		// Harness.retryTask (scheduler.ts retry): clears a parked task's restart count and enables scheduling.
-		h.sched.Retry(session.ID(numOf(req, "taskId")), nil, func(err error) { reply(nil, err) })
-		return true
-	}
 	if op == "waitForIdle" {
 		// Harness.waitForIdle / Conversation.waitForIdle (scheduler.ts waitForIdle): idle answers in the same microtask checkpoint,
 		// closed rejects, otherwise the waiter settles with the scope's last live task.
-		h.sched.WaitForIdle(session.ID(numOf(req, "conversationId")), nil, func(err error) { reply(nil, err) })
+		// The client methods (Harness.waitForIdle, Conversation.waitForIdle) are async functions that return the scheduler's promise (Pi 6c384aa3,
+		// harness.ts). The handle an invocation gets is bound and returns it as it is.
+		scope := session.ID(numOf(req, "conversationId"))
+		hops := 0
+		if !req.Has("invocation") {
+			hops = asyncReturnHops(h.sched.IsIdle(scope))
+		}
+		h.sched.WaitForIdle(scope, nil, func(err error) {
+			if err != nil || !h.holdLate(hops, answerOK, id, nil) {
+				reply(nil, err)
+			}
+		})
 		return true
 	}
 	owner := session.ID(numOf(req, "by"))
@@ -71,7 +79,12 @@ func (h *handler) apiTasks(id uint32, op string, req *jv.Object) (handled bool) 
 			if waited {
 				hops = 1
 			}
-			if err != nil || !h.holdFor(hops, func() { reply(record, err) }) {
+			// Harness.waitForTask is an async function that returns the scheduler's promise (harness.ts, Pi 6c384aa3); a wait made by the
+			// runtime of a task returns it as it is.
+			if rt == nil {
+				hops += asyncReturnHops(false)
+			}
+			if err != nil || !h.holdLate(hops, answerOK, id, record) {
 				reply(record, err)
 			}
 		}
@@ -106,9 +119,22 @@ func (h *handler) apiTasks(id uint32, op string, req *jv.Object) (handled bool) 
 		})
 	case "sleepUntil":
 		checkpoint, _ := req.Get("checkpoint")
-		rt.SleepUntil(numOf(req, "until"), checkpoint, func(err error) { reply(nil, err) })
+		rt.SleepUntil(sleepTime(req), checkpoint, func(err error) { reply(nil, err) })
 	}
 	return true
+}
+
+// answerOK is the work parked on a hops chain (holdLate) that answers the api request id with val.
+func answerOK(h *handler, id uint32, val any) { h.apiOK(id, val) }
+
+// asyncReturnHops is the ticks an async function adds when it returns a promise another function made, to the caller that awaits it: the thenable job
+// registers the function's promise on the inner one a tick after the return, and the reaction that settles it runs a tick after the inner promise
+// settled. A promise that has already settled at the return costs two; a pending one costs one.
+func asyncReturnHops(settled bool) int {
+	if settled {
+		return 2
+	}
+	return 1
 }
 
 // wakeJSON is a Wake on the wire: {active, at?}.
@@ -119,4 +145,22 @@ func wakeJSON(w session.Wake) *jv.Object {
 		o.Set("at", w.At)
 	}
 	return o
+}
+
+// sleepTime is the `until` of a sleepUntil request. JSON cannot carry NaN or the infinities, so the host sends them as the strings
+// "NaN", "Infinity" and "-Infinity"; the scheduler's validation then rejects them as scheduler.ts validateSleep does.
+func sleepTime(req *jv.Object) float64 {
+	if v, _ := req.Get("until"); v != nil {
+		if s, ok := v.(string); ok {
+			switch s {
+			case "NaN":
+				return math.NaN()
+			case "Infinity":
+				return math.Inf(1)
+			case "-Infinity":
+				return math.Inf(-1)
+			}
+		}
+	}
+	return numOf(req, "until")
 }

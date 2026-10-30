@@ -8,7 +8,13 @@ differently (e.g. rendering, command output, prompts).
 
 Each record uses a global `D<N>` ID. Put one short
 `pig additive (D<N>)` marker at each implementation point. Keep the full
-rationale in this file.
+rationale in this file. Give each record one `Summary: <sentence>` line right
+after its heading: what PiG adds, in the words of an installed user, in one
+sentence of at most 200 characters. Add an `Audience: author` line when the record
+changes how a user extends or modifies PiG (extensions, SDKs, Piglets, Binaries,
+diagnostic commands), or `Audience: runtime` for performance, crash, security, and
+platform notes. `make additive-list` copies the author records into the agent
+docs page `additive-features.md`.
 
 If an upstream behavior changes such that one of these additive features starts
 *conflicting* with upstream, promote it to `docs/parity/DIVERGENCES.md` with a numbered D
@@ -21,6 +27,10 @@ entry and a SCRUTINIZED tag.
 ---
 
 ## D18 Piglet management and build dispatch
+
+Summary: PiG manages, validates, runs, and builds Piglets with generic commands, and Pi has no Piglets.
+
+Audience: author
 
 Stock disposition: required substrate. A Piglet cannot supply the parser, resolver, verifier, or builder needed to select and load itself.
 
@@ -116,12 +126,17 @@ PORT_MAP path: n/a.
 SCRUTINIZED:approved
 ## D19 Multi-language subprocess SDK bridges
 
+Summary: PiG ships extension SDKs for Go, Rust, Python, and Lisp that use the same wire protocol and the same features.
+
+Audience: author
+
 Stock disposition: required substrate. PiG Standard selects extensions but does not own the cross-language SDK or wire contract.
 
 Embedding hosts bind `HostCallbacks.AppendEntry` through `coding.Session.AppendExtensionEntry`. It preserves the subprocess-assigned ID and timestamp, validates the identity and appends under the native Session mutation lock, and emits `entry_appended` only for `pi.appendEntry`. `TestAppendExtensionEntryThroughNodeHost` exercises isolated and packed Node extensions through the public host API; rejection and concurrent native appends are covered in `coding/session_custom_entries_test.go`.
 
-What: pig ships SDKs in three languages: Go (`extensions/sdk`), Rust
-(`extensions/sdk-rs`), and Python (`extensions/sdk-py`): that all author
+What: pig ships SDKs in four languages: Go (`extensions/sdk`), Rust
+(`extensions/sdk-rs`), Python (`extensions/sdk-py`), and Common Lisp on SBCL
+(`extensions/sdk-lisp`): that all author
 into the **same** pig subprocess extension API. Upstream pi ships a single
 TypeScript SDK and loads extensions in-process.
 
@@ -158,6 +173,16 @@ the SDKs send the list as a `ui.setWidget` call instead, so the host writes
 one request per call in call order, as `rpc-mode.ts` does.
 The wire has no independent version or compatibility
 negotiation; it changes atomically with the running Pig binary and staged SDKs.
+
+The Common Lisp SDK (`extensions/sdk-lisp`, package `pig`) is an inert capability: Stock PiG ships its source, stages it like the
+Python SDK (`pig_strip_extension_sdk_lisp` removes it), and runs it only when an extension resolves to `language == "lisp"`. Pig builds a
+Lisp factory (an ASDF system or one file defining `new-extension`) into a cached executable SBCL image through the runtime-cell build
+and cache machinery (`runtimecell.BuildLispPackedCell`), and starts it with the packed-cell runner protocol, one socket and one register
+handshake per member. The Lisp image build, the Quicklisp resolver, the Lisp staging of the extension host and the Lisp source resolver are linked only
+into a program that imports `coding/extension/host/lispcell` (`cmd/pig` does), which calls `subprocess.EnableLisp` and `source.EnableLisp` from its `init`;
+the host reaches them only through the hooks those functions install, so the linker drops them from an embedding program such as `examples/headless`, and a
+Lisp extension does not load there: its source resolves as an unsupported language, and a Lisp cell fails with "this program was built without Lisp extension support". It serves the same extension API as the other SDKs (`extensions/sdk-lisp/README.md`); a member it does not serve
+signals `unsupported-capability` naming the lane that owns it, the same `gap:` lanes as the other SDKs' cells in `test/parity/sdk-exports.toml`.
 
 Transport: each extension process connects to one host socket named by `PIG_EXT_SOCKET` (a packed cell gets one variable per member). The socket is AF_UNIX. On Windows, a Node extension instead gets a named pipe with an unguessable name that only the current user can open, because Node's `net` module treats every Windows path as a named pipe. The Python SDK reaches AF_UNIX on Windows through Winsock, because CPython does not expose `socket.AF_UNIX` there; the Rust SDK does the same. Framing and handshake are identical on both carriers, and extension code never names the transport.
 
@@ -278,6 +303,10 @@ Evidence:
 - `coding/extension/host/subprocess/ts_runtime_test.go` `TestTypeScriptRuntimeRetriesOnlyStartFailures` keeps the after-start retry to spawn, exit and register failures.
 
 ## D20 Packed runtime-cell substrate for factory extensions
+
+Summary: PiG can pack several Go factory extensions into one host process, and the result looks the same as separate processes.
+
+Audience: runtime
 
 Generated Go cells read requirements, SDK pins, local replacements, and checksums from both extension roots and their workspace modules. They retain the highest declared requirement for a workspace module, even when its source uses a local replacement. A local source path does not remove Go's minimum-version constraint. `TestBuildGoPackedCellKeepsRequiredWorkspaceVersions` checks the generated module and compiles two consumers with different version requirements; `make porter-check` exercises the released root and SDK pins through the real loader.
 
@@ -400,6 +429,10 @@ SCRUTINIZED:approved
 
 ## D21 Reload placement report
 
+Summary: The /reload --explain command shows how the last reload placed, built, and replaced each extension.
+
+Audience: runtime
+
 Stock disposition: product-neutral diagnostics. Keep this in Stock PiG because it explains the generic host's placement decisions without activating a product workflow.
 
 What: Pig records the latest subprocess reload decision for `/reload --explain`.
@@ -422,6 +455,10 @@ SCRUTINIZED:approved
 
 ## D22 Stock documentation materialization
 
+Summary: PiG carries its own manual, and the pig docs command writes it to the config directory so no source checkout is needed.
+
+Audience: author
+
 Stock disposition: required substrate. The materialized bundle documents Stock PiG contracts and activates no optional Product Resource.
 
 What: Stock Pig embeds its public documentation and materializes it under
@@ -443,6 +480,10 @@ file until it exits, so the pages its system prompt names stay for as long as th
 session runs.
 The stock system prompt points at this build's bundle so the agent can inspect
 the exact extension, Package, and Piglet contracts implemented by its binary.
+While a Piglet is active, its "When asked about" list adds one topic after Pi's last
+one, "Piglets and their tool scope (docs/piglets.md, docs/piglet-strip.md)" (owner-approved 2026-10-28). The
+`docs` feature owns it, as it owns the whole section. Without a Piglet the section is
+Pi's text, byte for byte.
 The `codemode` description and the argument errors of its `models` globals name
 the bundle's `codemode.md` where Pi names `CODEMODE_DOCS_PATH` in its package.
 When the config root cannot be written and holds no bundle of the running
@@ -477,6 +518,10 @@ PORT_MAP path: n/a (standalone distribution support).
 SCRUTINIZED:approved
 ## D23 Per-tool source metadata and piglet-scoped active-tool Context API
 
+Summary: Extensions can list all tools with their source, read and change the active tools, and read flag values.
+
+Audience: author
+
 Stock disposition: inert capability. The API changes no active tools unless a selected Piglet applies a scope.
 
 What: pig adds four methods to `extension.Context` (`GetAllTools`,
@@ -500,10 +545,44 @@ surprises):
   (`scope.MCPAdapterExtensionName`). Listing the adapter enables its MCP tools
   (optionally filtered by that entry's `tools` scope); omitting it from a
   positive-only piglet hides them. A piglet with no `extensions:` section at
-  all keeps the permissive default (all MCP tools visible). This closes a prior
-  leak where a positive-only piglet that omitted the adapter still exposed all
-  MCP tools, and makes `extensions: [pig-mcp-adapter]` meaningful rather than a
-  no-op.
+  all keeps the permissive default (all MCP tools visible).
+- Built-in MCP tools (`builtin:mcp`; namespace `mcp__<server>`, names
+  `mcp__<server>__<tool>`) are scoped exactly like the adapter's `mcp:<server>`
+  source, by the same entry (step 2 of `docs/design/builtin-mcp.md`). Choice where
+  the design was silent, taking the conservative reading: a positive-only piglet
+  that does not name the adapter hides every MCP server's tools and the MCP
+  resource tools (`list_mcp_resources`, `list_mcp_resource_templates`,
+  `read_mcp_resource`), which the same entry governs by name. Stock pig without a
+  piglet is unchanged.
+
+Registry scope (owner-approved 2026-10-28): a piglet's tool scope bounds the
+Session's tool registry, not only its active set. Pi's `--tools` and
+`--exclude-tools` remove tools from the registry itself (`agent-session.ts:1557-1561, 3571-3574`,
+`_isAllowedTool`; PiG ports it as `extension.ToolFilter`); a piglet scope that only
+narrowed the active set left a hidden tool callable from `codemode` and findable by
+`tool_search`, which read the registry. There is one mechanism: the piglet compiles
+into `extension.ToolScope` (`piglet.CompileToolScope`), which `ToolFilter.WithScope`
+holds, so `ToolFilter.AllowsTool` keeps a tool only when `--tools`/`--exclude-tools`
+and the scope both keep it. It applies wherever `_isAllowedTool` applies: the
+definitions, the registry, `getAllTools` (in-process and the extension host's),
+activation and the refresh after a late registration. The rules are on
+`extension.ToolScope`: a built-in tool follows the root `tools` list, an extension's
+tool follows its entry's `tools` list, and an MCP tool (source `mcp:<server>`,
+namespace `mcp__<server>`, or an MCP resource tool) follows the `pig-mcp-adapter`
+entry. `coding.SessionOptions.ToolScope` carries the scope; without a piglet it is
+nil and the registry is exactly what `--tools` and `--exclude-tools` leave (stock
+pig keeps Pi's `--tools` semantics: a bare allowlist keeps MCP tools reachable
+through `codemode` and `tool_search`). `followsMCPServers` (hiding `codemode` and
+`tool_search` when no MCP tool stayed visible) is deleted: they are ordinary tools
+that reach only what the registry keeps. The scope records the tools it removed;
+the piglet extension notifies the user once per change (server, tools and reason)
+and `pig piglet show` prints the MCP scope line, and the agent gets one
+line naming the active piglet (and the Binary an overlay sits on), the most its tool
+scope lets it reach, what the strip lists removed, an untrusted project and `pig piglet show <source>`
+(`AgentToolScopeLine`; a Piglet Binary has no docs section, so this line is all its
+agent learns). The rule
+table in `internal/pigdocs/content/piglets.md` and `mcp.md` is computed from the code
+(`coding/piglet/scope_table.go`) and a test keeps it equal.
 
 Upstream pi stamps `sourceInfo` automatically in the in-process extension loader
 (`loader.ts:221 sourceInfo: extension.sourceInfo`). Pig's subprocess host must
@@ -534,6 +613,15 @@ Call-site markers:
 - `coding/extension/context.go`: `GetAllTools`, `GetActiveTools`,
   `SetActiveTools`, `GetFlagValue`
 - `coding/extension/context_actions.go`: `ContextActions` struct
+- `coding/extension/tool_filter.go`: `ToolScope`, `ToolFilter.WithScope`, `ToolFilter.AllowsTool`
+- `coding/session.go`: `SessionOptions.ToolScope`
+- `coding/session_tool_registry.go`: `sessionToolRegistry.compileFilter`, `Session.ToolScope`
+- `coding/piglet/scope.go`: `CompileToolScope`
+- `coding/piglet/scope_summary.go`: `MCPScopeLine`, `ToolScopeNotice`, `AgentToolScopeLine`
+- `coding/piglet/scope_table.go`: `ToolScopeTableMarkdown`
+- `internal/codingagent/prompts/docs_section.go`: `pigletTopic`
+- `internal/codingagent/prompts/piglet_topic.go`: `SetPigletDocsTopic`
+- `coding/cli/main.go`: the `prompts.SetPigletDocsTopic` call
 - `coding/extension/host/subprocess/protocol.go`: `ToolDecl.Source`
 - `extensions/sdk/protocol.go`: `toolDef.Source`
 - `extensions/sdk/extension.go`: `ToolWithSource()`
@@ -543,7 +631,7 @@ Call-site markers:
 - `coding/extension/host/subprocess/host.go`: `buildExtension()` reads
   `ToolDecl.Source` into `RegisteredTool.SourceInfo`
 - `internal/codingagent/interactive_extensions.go`: wires `ContextActions`
-- `coding/piglet/scope.go`: `ScopeTools()` MCP branch
+- `coding/piglet/scope.go`: `CompileToolScope()`, `extension.ToolScope` MCP branch (coding/extension/tool_filter.go)
 - `coding/piglet/main.go`: `BuildExtension()` calls
   `SetActiveTools`
 
@@ -557,6 +645,10 @@ Tests:
 PORT_MAP path: n/a (downstream piglet-scoping and per-tool source plumbing).
 SCRUTINIZED:approved
 ## D28 Extension validation report surface (`pig install --validate-only --json`)
+
+Summary: The pig install --validate-only command loads and starts an extension without installing it and prints a machine-readable report.
+
+Audience: author
 
 Stock disposition: required substrate. Package publishers and Piglets may consume the report, but PiG Standard does not own validation.
 
@@ -621,6 +713,10 @@ SCRUTINIZED:approved
 
 ## D31 Fused in-process extension runtime for Piglet Binaries
 
+Summary: A Piglet Binary can run a Go extension inside the host process instead of in a separate process.
+
+Audience: author
+
 Stock disposition: inert capability. Stock PiG never selects the fused path; an explicitly built Piglet Binary activates it through its verified component plan.
 
 What: an additive extension load path, `subprocess.Host.LoadInProcess`
@@ -684,6 +780,10 @@ Locked by: the shared `fused-go` rows in `test/extension-conformance/`; `TestBui
 SCRUTINIZED:approved
 ## D36 Insecure TLS opt-in for OpenAI-compatible providers
 
+Summary: A provider entry can turn off TLS certificate checks for an OpenAI-compatible endpoint that uses a self-signed or internal certificate.
+
+Audience: runtime
+
 Stock disposition: explicit unsafe opt-in. It remains off by default and must not be enabled by PiG Standard. Prefer a trusted CA whenever one is available.
 
 What: pig adds an `Insecure bool` field to `ai.OpenAIConfig`,
@@ -733,6 +833,10 @@ SCRUTINIZED:approved
 
 ## D40 Extension-contributed authentication targets
 
+Summary: The pig login --list command shows every sign-in method, including the methods that extensions add.
+
+Audience: author
+
 Stock disposition: inert capability. Stock PiG owns product-neutral discovery and dispatch; selected extensions and Piglets own provider identity and authentication policy.
 
 What: Pig keeps upstream-compatible built-in OAuth login/logout behavior and
@@ -781,6 +885,10 @@ Ratification: explicitly approved by the user for section SHA-256 `73a5ebf45b3f9
 SCRUTINIZED:approved
 ## D41 Additive typed status and Piglet inventory
 
+Summary: The pig package list, pig status, and pig piglet list commands can print Packages, Resources, and Piglets as JSON.
+
+Audience: author
+
 Stock disposition: product-neutral diagnostics. Stock PiG reports installed state; PiG Standard may consume the inventory but does not own its schema or collection.
 
 What: Pig retains upstream-compatible `pig list` Package output and adds
@@ -792,6 +900,14 @@ preserves independently configured user and project entries. `pig status
 matched by canonical identity across settings scopes, and a matching project
 filter entry is applied as a delta over the inherited user Package. The JSON
 envelopes use one strict current unversioned shape. `--no-input` never prompts.
+`pig status` and `pig diagnose` report the project trust decision a
+non-interactive run makes (saved decision, then `defaultProjectTrust`, else
+untrusted). A project resource of an untrusted project stays in the status
+inventory with `enabled: false` and `ignored: untrusted`, a skill or theme that the loader rejects has `enabled: false` and a `health` text, and the project's
+settings and Packages do not count. `pig diagnose` reports the effective default
+model by Pi's `findInitialModel` rule and the settings file that each of
+`defaultProvider` and `defaultModel` came from. It does not split a
+provider-qualified `defaultModel`, as Pi does not.
 
 Why: upstream Pi has no independent Piglet entity, Piglet Binary/Image records,
 or machine-readable aggregate health and provenance. Resource filtering remains
@@ -803,11 +919,12 @@ Pig removes its Piglet and Package-health additions.
 
 Call-site markers:
 - `coding/cli/package_inventory.go`: additive Package JSON inventory.
-- `coding/cli/status_command.go`: typed aggregate inventory, health, and paths.
+- `coding/cli/status_command.go`: typed aggregate inventory, health, paths, project trust and ignored resources.
+- `coding/cli/project_trust_report.go`, `coding/cli/diagnose_default_model.go`: the trust decision and the effective default model that `pig status` and `pig diagnose` report.
 - `coding/piglet/resolve.go`: source/Piglet Binary inventory
   and record/artifact validation.
 
-Locked by: `coding/cli/package_inventory_test.go`, `coding/cli/status_command_test.go`,
+Locked by: `coding/cli/introspection_truth_test.go` (the trust, ignored-resource and default-model cases), `coding/cli/package_inventory_test.go`, `coding/cli/status_command_test.go`,
 `coding/cli/configured_resources_test.go`
 (`TestProjectConfigPackageOverrideIsDeltaOverInheritedGlobalPackage` and
 canonical cross-scope source identity cases), and
@@ -820,6 +937,10 @@ list parity; additive status and Piglet record inventory have no upstream path.
 Ratification: explicitly approved by the user for section SHA-256 `84552a728172209b60df6a68f7d120207cd2e29e0346ef8afb4782eac6b56485`.
 SCRUTINIZED:approved
 ## D52 Extension terminal-geometry context (`ctx.width` / `ctx.height`)
+
+Summary: Extensions can read the terminal width and height and learn when either one changes.
+
+Audience: author
 
 Stock disposition: inert capability. Geometry changes no behavior until a selected extension reads it.
 
@@ -889,6 +1010,10 @@ parity matrix records the surface as complete (pig-additive).
 
 ## D60 Typed native login extension API
 
+Summary: An extension can replace the header with a native login screen by calling ui.setLogin.
+
+Audience: author
+
 Stock disposition: inert capability. Stock PiG supplies validation and rendering; only a selected extension supplies identity and activates the surface. PiG Standard owns its selected login identity.
 
 What: Pig adds typed `UIContext.SetLogin` and the direct `ui.setLogin` wire call.
@@ -951,6 +1076,10 @@ SCRUTINIZED:approved
 
 ## D67 Windows container builds use the image default user
 
+Summary: Container builds on Windows use the default user of the image because Windows has no numeric user ID.
+
+Audience: runtime
+
 Stock disposition: required substrate. Native identity mapping belongs to the generic Piglet builder, not a selected product.
 
 What: Linux and macOS container builds pass `--user <uid>:<gid>` for the invoking user. Windows has SIDs rather than numeric host uid/gid values, so its Docker or Podman invocation omits `--user` and uses the Linux builder image's default user. The VM maps bind-mounted output to the Windows host user. The builder does not attempt a Windows numeric account lookup.
@@ -967,6 +1096,10 @@ SCRUTINIZED:approved
 
 ## D69 Windows Piglet scripts are cmd.exe launchers
 
+Summary: The Piglet script build writes a cmd.exe launcher on Windows and a shell launcher on other systems.
+
+Audience: runtime
+
 Stock disposition: required substrate. The generic builder emits a launcher for the selected host platform without activating product behavior.
 
 What: `pig piglet build --format script` emits a POSIX launcher on Unix and a two-line CRLF cmd.exe launcher on Windows: `@setlocal DisableDelayedExpansion`, then `@pig --piglet "<source>" %*`. Double quoting and doubled percent signs preserve spaces, ampersands, carets, apostrophes and percent signs; disabling delayed expansion preserves exclamation marks. Windows output uses the requested `--out` name, which the caller names `.cmd`; `--out -` prints the same bytes. Unix retains mode 0755 and `exec pig --piglet '<source>' "$@"`.
@@ -982,6 +1115,10 @@ Remove when: never, unless Windows runs POSIX shell scripts natively.
 SCRUTINIZED:approved
 
 ## D81 Same-manager helper download coalescing
+
+Summary: When two requests need the same missing helper tool, PiG downloads it only once.
+
+Audience: runtime
 
 Stock disposition: required substrate. Coordination protects the generic helper installer from competing writes without selecting product behavior.
 
@@ -1006,6 +1143,10 @@ SCRUTINIZED:approved
 ---
 
 ## D91 Piglet frontend members draw the interactive mode
+
+Summary: A Piglet Binary can include a Go frontend member that draws the interactive screen.
+
+Audience: author
 
 Stock disposition: required substrate. A Piglet cannot supply the seam that lets its own frontend member take the interactive screen; the seam selects nothing on its own.
 
@@ -1092,6 +1233,10 @@ SCRUTINIZED:approved
 
 ## D92 Piglet strip lists disable built-ins and compile them out of a Piglet Binary
 
+Summary: A Piglet can strip built-in tools, commands, extensions, APIs, and features, and a Piglet Binary compiles out what the Piglet strips.
+
+Audience: author
+
 Stock disposition: required substrate. A Piglet cannot remove a built-in from the binary that loads it, so the resolver, the ID table, the registration shims and the runtime gates live in Stock PiG; Stock PiG builds no strip tag and runs no strip list, so every built-in stays linked and enabled.
 
 What: a Piglet's `strip` key lists stable IDs in five lists: `tools` (built-in tools), `commands` (built-in slash commands with the leading slash, and `/piglet`, the active Piglet's inspection command), `extensions` (built-in extensions), `apis` (model API implementations, `ai.StrippableAPIs`) and `features`. The IDs come from `internal/pigstrip/ids_generated.go` (`pigstrip.Lists`, `pigstrip.Known`), which `go run ./coding/piglet/internal/genstripids` (`make piglet-strip-ids`, part of `make generate`) builds from the built-in tool registry, `BuiltinSlashCommands` with `piglet.InspectCommand`, the built-in extension list (`codingagent.LlamaExtensionPath` and `builtin.All`), `ai.StrippableAPIs` and `pigstrip.Features` (the runtime features plus `pigstrip.BinaryFeatures`). An unknown ID is a resolve-time error that names it; `TestCommittedStripIDsMatchRegistrations` and `make piglet-strip-ids-drift` fail when a registration changes without the table. Strip lists union down `extends`; `extends.remove.strip` re-enables an entry and requires `allowWiden`. Strip and D91's `slots` are one Piglet model (keep, replace, strip): `RemoveSpec` carries both `slots` and `strip`, both merge down `extends`, and `pig piglet show` lists the replaced frontend and every stripped ID in one `Slots` section named by manifest path (`frontend  replaced(<dir>)`, `extensions.mcp  stripped(binary)`, `tools.grep  stripped(runtime)`).
@@ -1130,7 +1275,7 @@ Build tags (`pigstrip.Tag`: `pig_strip_` plus the ID with non-alphanumerics as `
 | `extensions: tool-search` | `pig_strip_tool_search` | its registration (`builtin/toolsearch` with codemode) | not loaded |
 | `extensions: pig-login` | `pig_strip_pig_login` | its registration (`/sprite`) | not loaded |
 | `extensions: llama.cpp` | `pig_strip_llama_cpp` | `internal/codingagent/llama` | no llama host, `/llama` or llama.cpp login |
-| `apis: bedrock-converse-stream` | `pig_strip_bedrock_converse_stream` | the AWS SDK and smithy (89 packages) | its models are offered nowhere (see below); naming or building one fails with the strip message; a `models.json` custom model under its provider still takes its base URL from the full generated catalog, so the strip adds no `"baseUrl" is required` error |
+| `apis: bedrock-converse-stream` | `pig_strip_bedrock_converse_stream` | the AWS SDK and smithy (89 packages); `ai/providers/bedrock` compiles to the strip registration, and a program that does not import the package links none of them | its models are offered nowhere (see below); naming or building one fails with the strip message; a `models.json` custom model under its provider still takes its base URL from the full generated catalog, so the strip adds no `"baseUrl" is required` error |
 | `apis: google-vertex` | `pig_strip_google_vertex` | `golang.org/x/oauth2`, `compute/metadata` | same |
 | `apis: mistral-conversations` | `pig_strip_mistral_conversations` | the Mistral provider files | same |
 | `features: node-extensions` | `pig_strip_node_extensions` | the embedded Node runtime (10.5 MB), zstd | a TypeScript or JavaScript extension fails to load with the message |
@@ -1143,6 +1288,8 @@ Build tags (`pigstrip.Tag`: `pig_strip_` plus the ID with non-alphanumerics as `
 | `features: changelog` | `pig_strip_changelog` | the root package (`CHANGELOG.md`) | no `/changelog` (it leaves `BuiltinSlashCommands`, `featureCommands`); no What's New, so no update telemetry ping |
 | `features: docs` | `pig_strip_docs` | `internal/pigdocs` | `pig docs` reports the message; no docs prompt section |
 | `features: piglet-builder` | `pig_strip_piglet_builder` | `coding/pigletbuild` | `pig piglet build` and `publish` report the message |
+
+Provider packages: `bedrock-converse-stream` is implemented in `ai/providers/bedrock`, not in `ai`, so a program that imports `ai` alone does not link the AWS SDK. The package registers itself from `init` (`ai.RegisterOptionalAPI`), `ai/all` imports every provider package, and `cmd/pig` imports `ai/all`. With the tag `pig_strip_bedrock_converse_stream` every file of the package but `bedrock_stripped.go` is compiled out, and that file records the strip from `init`, so the OFF shim stays in the package that the ON shim lives in. A model of an optional API that no package registered fails with `Provider <id>: API <api> is not linked into this program; import <package>` (`ai.NewOptionalAPIProvider`); a runtime strip (`strip.apis`) takes precedence and reports the strip message. This is a PiG-internal layout change: Pi has no counterpart and the `pig` command's providers, models and errors are unchanged.
 
 A stripped API's models are offered nowhere: not by `--list-models`, `/model` and the model selector, model cycling, the `--models` scope, startup's saved-default and provider-default fallback, RPC `get_available_models`, or the extension model registry (`getAll`, `getAvailable`, the replicated catalog). The filter is one predicate, `ai.OfferedModels`, applied where the catalog leaves its sources: the generated catalog listing (`ai.ListModels`), every read of an `ai.Models` collection (`GetModels`, `GetAllModels`, `GetAvailable`, `GetAllAvailable`), and the composed per-provider catalog (`ModelRegistry.GetProviderModelData`, which also covers `models.json` and extension definitions on a stripped API, and `GetAll`). `/model <provider>/<id>` naming one opens the model selector with no match, as for any model the selector does not offer. An exact catalog lookup (`ai.LookupModel`, `ai.LookupModelExact`) still finds such a model, so building one reports the strip. `--model` and `--provider` name the strip too: when resolution finds no offered model, `ai.StrippedModelError` reports the strip of the named catalog model, or of a provider whose catalog models are all on stripped APIs, instead of `Model ... not found` or `Unknown provider`. A `models.json` model on a stripped API under a provider of its own is not a catalog model, so `--model` naming it reports `Model ... not found`.
 
@@ -1175,6 +1322,10 @@ SCRUTINIZED:approved
 
 ## D95 Install-change restart warning for a running native executable
 
+Summary: PiG warns you to restart when an update or removal replaced the pig executable that is running.
+
+Audience: runtime
+
 Stock disposition: inert capability. It detects a changed install and shows one warning. It selects no product behavior and runs no extension code.
 
 What: Pi 1.4.0 (since 1.0.4, #10439) warns when an update or removal replaced the install a running process loads code from. Pi's `detectInstallChange` (`packages/coding-agent/src/config.ts`) re-reads the `package.json` the process started from, and `InteractiveMode.maybeShowInstallChangeWarning` shows the warning in place of the bug report hint. Pi returns no change for its Bun executable, because that code is embedded. PiG is one native executable, so the package-based check cannot apply. PiG builds the same behavior from what can change under a running `pig`:
@@ -1201,6 +1352,10 @@ SCRUTINIZED:approved
 
 ## D97 Packaged remote execution daemons live next to the pig executable
 
+Summary: PiG finds the remote execution daemons in a pi-env folder next to the pig executable, or in the folder that PI_ENV_DAEMON_DIR names.
+
+Audience: runtime
+
 Stock disposition: inert capability. It only locates a program that the caller asks to deploy; it selects no product behavior.
 
 What: Pi resolves the daemon of `@earendil-works/pi-env` from `bin/pi-env-<platform>-<arch>/pi-env[.exe]` inside its npm package (`ssh.ts`). A PiG binary cannot embed eight daemons, so `env.PackagedDaemon` resolves `<directory of the pig executable>/pi-env/pi-env-<platform>-<arch>/pi-env[.exe]`. `PI_ENV_DAEMON_DIR` replaces that directory, and `SshConnectOptions.Binary` names one file. `make build-env-daemons` cross-builds all eight into a directory. Without a daemon in place, `SshConnection` fails with `No pi-env daemon for <platform> <arch>`, as Pi does when its package lacks the binary.
@@ -1217,6 +1372,10 @@ Approval: approved by owner Michael Kinsy 2026-10-06.
 SCRUTINIZED:approved
 
 ## D100 Crash attribution reads Go panic traces
+
+Summary: The crash log recognizes Go panic stack traces and names the code that crashed.
+
+Audience: runtime
 
 Stock disposition: required substrate. Pi attributes a crash to an extension from a JavaScript stack. PiG's own crashes carry a Go trace, and without this form no crash in the PiG process could be attributed.
 
@@ -1236,6 +1395,10 @@ SCRUTINIZED:approved
 ---
 
 ## D101 The get_extensions RPC command lists the loaded extensions
+
+Summary: The get_extensions RPC command returns the list of loaded extensions.
+
+Audience: runtime
 
 Stock disposition: inert capability. It reports the extensions the session already loaded and selects no behavior.
 
@@ -1257,6 +1420,10 @@ SCRUTINIZED:approved
 ---
 
 ## D102 Exit log, crash-output markers and uncaught-goroutine handling for interactive sessions
+
+Summary: PiG writes an exit log and crash markers when a signal, a dead terminal, or a Go panic ends an interactive session.
+
+Audience: runtime
 
 Stock disposition: product-neutral diagnostics. They record why an interactive session ended and select no product behavior.
 
@@ -1286,6 +1453,10 @@ SCRUTINIZED:approved
 
 ## D104 Durable read path
 
+Summary: Durable storage keeps a bounded working set of decoded entries, so it does not re-read the whole transcript for each context read.
+
+Audience: runtime
+
 Stock disposition: inert capability. Each part is a cache or a read accessor behind an existing contract; no extension or Piglet selects it, and a caller that does not use the new members sees PiG's earlier behavior.
 
 What: Pi Durable re-reads and re-decodes the stored transcript for every context read (pi-durable 1.0.4 reads about 212,000 rows per eight-tool turn at 3,500 turns). PiG's Go Durable keeps that contract and adds:
@@ -1314,6 +1485,10 @@ SCRUTINIZED:approved
 
 ## D107 Extension component kit
 
+Summary: An extension can describe its screen as a tree of standard UI components that the host renders.
+
+Audience: author
+
 Stock disposition: required substrate. Go, Rust and Python extension authors get Pi's tui component library for Pi parity of their extension UI, which a subprocess could not pass before. The frontend structure is inert without a frontend member.
 
 What: an extension surface (`ctx.ui.custom`, widgets, header, footer, tool, message and entry renderers) may carry a view: a tree of Pi's tui components (container, box, text, truncated text, markdown, spacer, dynamic border, select list, settings list, image, loader, stacks) with opaque `lines` ranges for custom `render(width)` components. Go, Rust and Python send an authoritative view, which the host renders with PiG's tui ports. The host owns the focused list's state, keeps the keys it binds, and reports its callbacks as `ui.view.event`. The Node runtime reads its real pi-tui components into the same view while a frontend draws, and the host keeps such a view only when rendering it reproduces the frame's lines byte for byte. Image bytes cross once per connection, under bounds. A surface may override a closed set of theme tokens for itself. A D91 frontend receives the view as `Lines.View`, `Overlay.View` and `ToolCard.ResultView`. The full contract is `docs/plan/extension-component-kit.md`.
@@ -1341,6 +1516,10 @@ SCRUTINIZED:approved
 
 ## D109 Extension SDK upgrade
 
+Summary: When a Go extension fails to build because the SDK changed, PiG says that it was written for an older SDK and shows each changed API.
+
+Audience: author
+
 Stock disposition: required substrate. It classifies a build failure, rewrites source only when the user asks (or turns on `extensionsAutoUpgrade`), and selects no product behavior.
 
 What: PiG compiles a Go extension against the SDK of the running pig, so an SDK release can break an extension written for an earlier one. Pi loads extension source in process and has no SDK to drift from. PiG adds (1) a build-failure classification: a `go build` whose every compile error is an SDK change reports `written for an older SDK` with each changed API's old and new shape (`BuildFailure.Drift`); (2) `pig extension upgrade [<name|path>...] [--all] [--dry-run] [--summary]`, which applies the rules of `extensions/sdk/upgrade` (typed analysis with `go/types`, source edits formatted with `go/format`), backs up the originals under `<config root>/state/extension-upgrade/`, prints a diff, rebuilds and reports per extension; (3) an interactive startup question `Run pig extension upgrade <path>... now? [y/N]` before Pi's exit on an extension load error, which on yes reloads the resources in the same process, with print, JSON and RPC modes printing the command and exiting 1 with unchanged standard output; (4) the global setting `extensionsAutoUpgrade` (default false) that runs the rules at startup and after `pig update`, one line per extension, rules only; (5) a stale-copy warning when two loaded extensions register the same tool and one directory is a copy of the other; (6) `make sdk-apidiff`, which fails an incompatible change to any package of the SDK module since the pinned release that has no rule and no release note. Completeness (0.5.2): startup type checks every Go extension whose build failed with the same changed-API table the rewriter uses, so each extension the upgrade would touch is offered, including builtin shapes such as `len(ctx.GetAllTools())`; one run rewrites every changed API it safely can (a `Context.ConfigHome` in a function with no error result reports the error through `ctx.Notify` and returns; a getter that cannot move before its statement calls a generated helper in `pig_upgrade_getters.go`), applies those rewrites even when other uses remain, and lists the rest with file, line and the form to write (`partly upgraded`, exit 1); `--dry-run` builds the rewritten tree in a temporary directory with the go command overlay and says `would upgrade` only when it builds. Tool conflicts between two installs of one extension stay Pi's error and exit (resource-loader.ts addExtensionConflictDiagnostics, main.ts hasRuntimeErrors); the stale-copy warning names both install paths, also for an edited copy with the same Go module path.
@@ -1359,6 +1538,10 @@ Approval: owner Michael Kinsy, 2026-10-08 (task ext-upgrade); the setting name `
 SCRUTINIZED:approved
 
 ## D112 Bounded performance caches and pooled buffers
+
+Summary: PiG caches compiled tool schemas and reuses buffers within fixed limits to save time and memory.
+
+Audience: runtime
 
 Stock disposition: inert capability. It selects no product behavior and changes no output.
 
@@ -1401,6 +1584,10 @@ SCRUTINIZED:approved
 
 ## D160 Tool results carry a collapsed-view preview
 
+Summary: A tool result can carry a short preview that the TUI shows while the result is collapsed.
+
+Audience: runtime
+
 Stock disposition: inert capability. A subprocess extension selects it by setting the member; no extension sets it by default.
 
 What: a tool result from a subprocess extension can carry `preview`, a short text the TUI shows while the result is collapsed, in place of the default tail of the output. Ctrl+O expands to the full content, which is the model-facing result. The member is on the wire result of every SDK: `ToolResult.Preview` (Go), `ToolResult::with_preview` (Rust) and a `"preview"` key of the result dict (Python). A result without it shows the default tail. The collapsed footer reads `Took 1.5s`, `Took 1m 15s` or `Took 1h 2m 3s`, as Pi formats a tool row's duration (`core/tools/render-utils.ts:100-110`, `formatToolDuration`).
@@ -1420,6 +1607,10 @@ SCRUTINIZED:approved
 
 ## D170 Piglet tree, lineage and provenance diagnostics
 
+Summary: The pig piglet tree and pig piglet lineage commands show how installed Piglets extend each other and where each one comes from.
+
+Audience: author
+
 Stock disposition: product-neutral diagnostics. They report data Stock PiG already resolves (`extends` lineage, the inventory `pig piglet list` reads, a Piglet Binary's signed manifest) and add no behavior to a session.
 
 What: `pig piglet tree [name] [--depth <n>] [--json]` arranges the installed Piglets by `extends` with box-drawing characters; `*` marks the Piglet the environment selects (`PIG_PIGLET_NAME`, `PIG_PIGLET_PATH`), `[installed]` one with a built Binary, `(external)` a base outside the inventory. `pig piglet lineage <name|path|binary> [--source <name|path>] [--workspace <dir>] [--json]` prints the chain root first with each link's name, version, source digest and what it adds, removes or alters against its base: extensions, packages, skills, built-in tools, permissions (the agent environment), slots, strip lists, other settings. For a signed Binary it prints the result of the signature check and the identity its manifest records (name, version, Piglet digest, source digest, signer and trust state); a Binary whose signature does not verify (bytes changed after signing, a revoked signer, or a trust policy that rejects the signer) is reported with the failure and exits 1, because its identity is then only a claim; the Binary records digests, not the chain, so `--source` supplies the chain and checks the digests. `pig piglet verify <binary> --source <name|path> [--workspace <dir>]` additionally recomputes that source's digest and the digest of the Piglet definition it bakes into a Binary (`piglet.Bake`, the function the build uses, so a changed base, prompt file or skill also fails), and fails (exit 1) when the Binary's signed manifest records different ones. For both commands `--workspace` anchors `workspace:` paths as the build's `--workspace` did; it defaults to the current directory, as the build does. Everything reads local files; no command touches the network. The `advisories` list is empty: stock Pig has no advisory data, and the field is where a Piglet source that supplies advisories would put them. Output is plain text with no colour: Pig has no Piglet theme data to take colours from, and a Piglet's own presentation stays its own.
@@ -1438,6 +1629,10 @@ Approval: owner, 2026-10-14T00:15:47Z (TERN-CLAUDE-CHANNEL: "D170 and D172 appro
 SCRUTINIZED:approved
 
 ## D172 Idle spinner parking and idle heap return
+
+Summary: An idle interactive session stops its spinner timer and returns unused memory after 500 ms without input.
+
+Audience: runtime
 
 Stock disposition: inert capability. It selects no product behavior and changes no output, and no option turns it on or off: frames, cadence and rendered output while a status indicator is active are unchanged.
 
@@ -1463,6 +1658,10 @@ Approval: owner ruling 2026-10-13 (LW-ROADMAP.md section 6, ruling 5: "S6: spinn
 SCRUTINIZED:approved
 
 ## D174 GOMAXPROCS 2 runtime policy (1 in rpc mode); loaders the user waits on run at the default width
+
+Summary: PiG limits GOMAXPROCS to 2, or to 1 in RPC mode, unless you set it yourself.
+
+Audience: runtime
 
 Stock disposition: inert capability. It selects no product behavior and changes no output, and no option turns it on or off: every mode prints what it printed before; only how many Ps the Go runtime schedules on changes.
 
@@ -1493,6 +1692,10 @@ SCRUTINIZED:approved
 
 ## D175 Print, json and rpc runs collect at GOGC 400 until the live heap passes 64 MiB
 
+Summary: Print, JSON, and RPC runs use a garbage-collection percent of 400 until the live heap passes 64 MiB, unless you set GOGC.
+
+Audience: runtime
+
 Stock disposition: inert capability. It selects no product behavior and a user's `GOGC` turns it off: stdout, session files and model requests are the same; only when the Go collector runs changes.
 
 What: when the environment does not set `GOGC`, `cli.Main` sets the GC percent to 400 for a print (`-p`, or a stdin or stdout that is not a terminal), json (`--mode json`) or rpc (`--mode rpc`) run, before the session loads. After every collection a cleanup on an unreachable sentinel reads `/gc/heap/live:bytes`; the first one that finds more than 64 MiB live sets the percent back to 100 for the rest of the process. Interactive runs are untouched, a user's `GOGC` is never overridden, and neither GOMAXPROCS (D174) nor GOMEMLIMIT is read or set.
@@ -1511,6 +1714,10 @@ Approval: owner, F1 (print/json GOGC step), TERN-CLAUDE-CHANNEL 2026-10-13T17:31
 SCRUTINIZED:approved
 
 ## D176 A running bash block keeps only the output window it shows
+
+Summary: A running bash block keeps only the last part of the output that it shows, about 50 KB.
+
+Audience: runtime
 
 Stock disposition: inert capability. It selects no product behavior and no option turns it on or off: the rows a `!cmd` or `!!cmd` block draws, the bash execution message saved to the session and the output sent to the model are unchanged.
 
@@ -1531,6 +1738,10 @@ SCRUTINIZED:approved
 
 ## D189 Host calls made by deferred work carry a timer mark, and the host holds them for Pi's loop turn
 
+Summary: A call that an extension timer makes waits for the same loop turn as in Pi, so timer order matches Pi.
+
+Audience: runtime
+
 Stock disposition: required substrate. A subprocess extension runtime is another process, so only the wire can tell the host which calls Pi's single event loop would have run later; no product selects it.
 
 What: Pi runs an extension's `setTimeout`, `setImmediate` and `process.nextTick` callbacks on the thread that runs the agent, so such a callback runs only when the agent's run awaits real work or the loop is idle after `agent_settled`. A runtime's own loop runs the callback at once and writes the host calls it makes. `CallPayload.Timer` (`timer`) marks a call made by deferred work, and `CallPayload.Tick` (`tick`) marks a Node `nextTick` call or a timer call made while another tool call is still running. A tick call of a callback that a tool call's handler queued also carries `CallPayload.OriginToolCallID` (`origin_tool_call_id`), and the host runs the call after that call's `tool_execution_end` whether the call reaches the host before or after the event, because the runtime is another process and the time between its answer and the callback's call decides nothing about Pi's order. The Node runtime derives the marks from an `AsyncLocalStorage` store the timer, immediate and `nextTick` callbacks run in. The Go, Python and Rust SDKs mark a call made through a request's context after its handler returned (`timer`), never `tick`: they cannot tell such a call from a handler that awaits a call through an earlier request's context, and holding that call behind the handler hangs it. The host notification `timer_defer` (`on`, `seq`) tells a Node runtime to keep its timer and immediate callbacks waiting while a stdin command runs, and `timer_defer_ack` answers it. `jsloop.Turns` models Pi's loop in the host: a marked call is held while the RPC run chains microtasks and runs at the next real wait or at the end of `agent_settled`; a tick call is released after the `tool_execution_end` the RPC mode wrote. Print, JSON and interactive modes install no `Turns`, so nothing is held there.
@@ -1550,6 +1761,10 @@ SCRUTINIZED:approved
 
 ## D191 Outbound TLS refuses chains through the compromised eMudhra intermediates and the roots NSS removed after them
 
+Summary: PiG refuses TLS connections whose certificate chain uses the compromised eMudhra intermediate certificates or the roots that NSS removed.
+
+Audience: runtime
+
 Stock disposition: required substrate. A TLS client that accepts a certificate any third party can mint cannot protect the provider keys, OAuth tokens and update downloads it carries; no option turns the check off.
 
 What: On 2026-10-17 the private keys of eight eMudhra intermediate CAs (EM DV, OV and EV TLS CA G3B and G3C, EM OV CS CA G3B and G3C) were reported compromised: each is a P-384 key whose private scalar is below 256, recoverable from the public certificate (Mozilla bug 2083449). Sectigo's `AAA Certificate Services`, which Apple and Microsoft still trust, cross-signed all eight. Chrome blocks them with its CRLSet and Firefox with OneCRL, but Go's verifier checks neither revocation nor Certificate Transparency, and an operating system trust store keeps a removed root until its vendor ships an update. Every outbound TLS client of PiG now applies `internal/tlsdistrust.Verify` as `tls.Config.VerifyConnection`, after Go's own verification: a connection is refused when any certificate of any verified chain, leaf and trust anchor included, has a SubjectPublicKeyInfo SHA-256 on the blocklist. The blocklist holds one digest for each of the eight intermediates (the certificate eMudhra issued and the one Sectigo cross-signed share the key, so one digest catches both paths) and for the three roots that NSS 3.131.1 removed: `emSign ECC Root CA - G3` (the root above the eight, Mozilla bug 2084101), `emSign Root CA - C1` and `emSign ECC Root CA - C3` (Mozilla bug 2083709). `emSign Root CA - G1` is still trusted by NSS and is not blocked. The refusal is an error that names the server, the CA and its digest and wraps `tlsdistrust.ErrDistrusted`. Go 1.27.3's `crypto/x509` (`verify.go`, `distrustedSPKIHashes`) carries the same eight intermediate digests, found independently of this list, and refuses those chains first with `x509: no valid chains built`; the hook is what refuses the three roots, what covers a build with an older Go toolchain (`go.mod` says `go 1.26.0`), and what gives the error that names the CA. A connection with `InsecureSkipVerify` (D36) has no verified chain and is not checked. A sidecar CA for the update transport adds a trust anchor and does not lift the refusal.
@@ -1562,7 +1777,7 @@ Why: the keys can be recovered by anyone from the public certificates, so a forg
 
 Source of every digest: `internal/tlsdistrust/tlsdistrust.go`. The eight intermediates come from the `emudhra-attestation.zip` and `emudhra-attestation-aaa-cross.zip` attachments of Mozilla bug 2083449 (their certificate SHA-256 fingerprints equal the ones the bug lists, `TestFingerprintsMatchTheBug`), with the CCADB IDs the bug gives (direct A012294 to A012308, cross-signed A012333 to A012354). The three roots come from `lib/ckfw/builtins/certdata.txt` at NSS_3_131_RTM, the last tag that carries them (the serial of `emSign ECC Root CA - G3`, `3cf607a968700eda8b84`, is the one in Mozilla bug 2084101).
 
-Call-site markers: `internal/tlsdistrust/tlsdistrust.go`, `ai/http_transport.go` (`newStreamingTransport`, `dialStreamingTLS`), `ai/http_proxy.go` (`proxyOriginTransport`), `ai/openai_codex_websocket.go` (`codexWebSocketTLSConfig`), `ai/bedrock.go` (`newBedrockHTTPClient`), `internal/codingagent/selfupdate.go` (`clientWithUpdateTransportCA`), and the package imports of the clients that use `http.DefaultTransport`.
+Call-site markers: `internal/tlsdistrust/tlsdistrust.go`, `ai/http_transport.go` (`newStreamingTransport`, `dialStreamingTLS`), `ai/http_proxy.go` (`proxyOriginTransport`), `ai/openai_codex_websocket.go` (`codexWebSocketTLSConfig`), `ai/providers/bedrock/bedrock.go` (`newBedrockHTTPClient`), `internal/codingagent/selfupdate.go` (`clientWithUpdateTransportCA`), and the package imports of the clients that use `http.DefaultTransport`.
 
 Locked by: `TestForgedCertificateIsRefused` (a server certificate signed with the recovered key of each of the six TLS intermediates, issued and cross-signed, never completes a handshake with the hardened client), `TestHookRefusesWhatGoAccepts` (a synthetic CA that Go's verifier accepts is refused by the hook alone, in a real handshake, once its key is on the blocklist), `TestVerifyRejectsEveryCompromisedIntermediateOnBothPaths`, `TestVerifyRejectsTheRemovedRootsAndKeepsG1`, `TestBlocklist` and `TestFingerprintsMatchTheBug` (digests re-derived from the public certificates), `TestDefaultTransportRefusesAForgedServer`, `TestStreamingTransportRefusesACompromisedCA` (`ai`), `TestCodexWebSocketTLSConfigChecksTheChain`, `TestBedrockHTTPClientsCheckTheChain`, `TestSelfUpdateRefusesACompromisedCAEvenWhenTheSidecarTrustsIt` (`internal/codingagent`), and the two coverage guards above. The test certificate is signed in memory with a key recovered from a public certificate, and `TestNoProductionCodeImportsTheTestHelper` keeps that code out of production.
 
@@ -1572,6 +1787,10 @@ Approval: owner order, 2026-10-21 (security patch for the eMudhra CA compromise,
 SCRUTINIZED:approved
 
 ## D194 Piglet resolution installs npm and Git Packages with lifecycle scripts disabled unless the command opts in
+
+Summary: Resolving a Piglet installs npm and Git Packages with lifecycle scripts turned off unless the command allows them.
+
+Audience: author
 
 Stock disposition: explicit unsafe opt-in. The capability that stays off is a Package's lifecycle scripts during a Piglet's install; `--allow-install-scripts` turns it on for one `pig piglet validate` or `pig piglet add` command, is visible in the command line, and no Piglet or PiG Standard can select it.
 
@@ -1592,6 +1811,10 @@ SCRUTINIZED:approved
 
 ## D201 The SDK resource loader takes the runtime its extensions register against
 
+Summary: The SDK resource loader accepts a runtime, so the extensions it loads register against the runtime that you supply.
+
+Audience: author
+
 Stock disposition: required substrate. It is an optional argument of the SDK loaders that a program building an ExtensionRunner needs, and a load without it behaves as Pi's does.
 
 What: The `DefaultResourceLoader` of the Go, Rust and Python SDKs takes an optional `runtime` (Go `Runtime`, Rust `runtime`, Python `runtime`), a value `createExtensionRuntime()` returned. The extensions the loader loads register against that runtime, so an `ExtensionRunner` built over them with the same runtime sees their flags, provider registrations and MCP servers. Without it each reload makes its own runtime, as Pi's does, and `getExtensions().runtime` returns the runtime of the load.
@@ -1609,23 +1832,136 @@ Remove when: Pi's `DefaultResourceLoader` takes a runtime, or Pi exports `loadEx
 Approval: owner decision (3) on the extension runner spec (2026-10-24), recorded by Main as D201.
 SCRUTINIZED:approved
 
-## D202 A Piglet Binary can declare that it accepts overlay Piglets (`build.allowOverlays`)
+## D202 A Piglet Binary accepts overlay Piglets unless it is built closed (`build.closed`)
 
-Stock disposition: inert capability. Stock PiG runs one Piglet per process and has no baked Piglet, so `build.allowOverlays` does nothing for `pig --piglet`; it only changes what a Piglet Binary built from the Piglet does with a Piglet selected at launch. The default is off, and a Binary built without it behaves exactly as before.
+Summary: A Piglet Binary accepts a Piglet that you choose at launch as an overlay, as stock PiG does, unless you build it with build.closed.
 
-What: A Piglet Binary refused `--piglet`, `PIG_PIGLET_PATH` and `PIG_PIGLET_NAME` (`enforcePigletBinaryScope`), so a custom base Piglet (Pigpen's `pig-tern`, any fused base) could not be combined with another Piglet without building a third Binary for each pair. `build.allowOverlays: true` in the Piglet you build lets its Binary take those selectors. The selected Piglet resolves through the same code as on stock PiG (`piglet.ResolveWithTrust`: project trust for workspace names, the user and system Piglet directories, no bare name read from the working directory; then `ResolveEffectiveWithOptions`, so its Packages install by the D194 flow and its own `extends` chain works) with the Binary's baked Piglet as the implicit base of the chain root (`ResolveOptions.Base`, merged by `mergePiglets` as `extends` merges a child). The setting is one boolean of `build`, so like all of `build` it belongs to the Piglet that is built and is not inherited through `extends`. `piglet.Bake` keeps `build.allowOverlays` and no other `build` key in the baked Piglet, so the digest of the baked Piglet (the effective digest of the resolution record, the `pigletDigest` of the signed manifest) covers it; no record field, no version field and no reader branch were added. `pig piglet verify --source` and the container builder's localized Piglet bake it the same way.
+Audience: author
 
-The effective Piglet keeps the Binary's name, its lineage starts with `binary:<name>` (the baked digest) and `/piglet` adds `Overlay of: <name> (Piglet Binary)`. The Binary's own contents stay what was verified: after merging, `checkOverlay` compares the effective Piglet with the baked one and refuses, naming the field and the Binary, an overlay that replaces or removes a baked extension or skill, sets `slots.frontend` (a frontend member is Go compiled in at build time), sets `systemPrompt` (as `--system-prompt` is refused on a Binary), widens `tools`, `discovery`, `agentEnv` or an extension's `tools`, drops or changes a declared secret, or re-enables a stripped built-in. An overlay can add extensions, skills and Packages with origins (resolved at run time like a stock `--piglet`), set `model`, narrow `tools` and strip more. The checks run on the final Piglet, so a later link of the overlay's own `extends` chain cannot undo them, and a Piglet that was requested and fails never falls back to the Binary's own Piglet, including an unresolvable `PIG_PIGLET_NAME`. A Binary without the setting refuses the selectors with `pig: this Piglet Binary (<name>) runs only its built-in Piglet and does not accept --piglet overlays ...`, naming the setting. Signature, baked Piglet and component closure verification, the update ownership tiers and the startup without a selector are unchanged.
+Stock disposition: inert capability. Stock PiG runs one Piglet per process and has no baked Piglet, so `build.closed` does nothing for `pig --piglet`; it only changes what a Piglet Binary built from the Piglet does with a Piglet selected at launch. The default is false: a Binary is open and behaves as stock PiG started with its baked Piglet. Owner decision (2026-10-28): defaults serve developers and match stock, and an organization opts in to the restrained Binary with `build.closed: true`, which keeps the behavior of a 0.5.3 Binary. One more stock-visible effect: `extends.source` is optional in the schema and parser, because an overlay's `extends` block without a source extends the Binary; stock resolution of such a Piglet fails with `extends.source is required unless a Piglet Binary that is not built closed runs the Piglet as an overlay`.
+
+What: A 0.5.3 Piglet Binary refused `--piglet`, `PIG_PIGLET_PATH` and `PIG_PIGLET_NAME` (`enforcePigletBinaryScope`), so a custom base Piglet (Pigpen's `pig-tern`, any fused base) could not be combined with another Piglet without building a third Binary for each pair. A Binary now takes those selectors by default; `build.closed: true` in the Piglet you build makes it refuse them with a message that names `build.closed`, and the Binary is then a base harness that feels like vanilla pig with a different starting Piglet. The selected Piglet resolves through the same code as on stock PiG (`piglet.ResolveWithTrust`, then `ResolveEffectiveWithOptions`, so its Packages install by the D194 flow and its own `extends` chain works) with the Binary's baked Piglet as the implicit base of the chain root (`ResolveOptions.Base`, `resolveOverlayRoot`). The root merges exactly as an `extends` child merges onto its base (`mergePiglets`): `systemPrompt` replaces; `extends.remove` removes extensions, skills, Packages, the `frontend` slot and strip entries; `extends.allowWiden: true` widens `tools`, `discovery`, `agentEnv`, an extension's `tools` and the runtime strip lists, and without it the extends error `capability widening [...] requires extends.allowWiden: true` applies. A root overlay with no `extends` block, or one whose block has no `source`, is a child of the Binary; an `extends` block without `source` carries only `remove` and `allowWiden`. The effective Piglet keeps the Binary's name, its lineage starts with `binary:<name>` (`Piglet.OverlayOf`) and `/piglet` adds `Overlay of: <name> (Piglet Binary)`.
+
+Refused, because it is compiled into the Binary (`checkOverlay`; each message names the field, the Binary and the reason): (1) setting `slots.frontend`, whether the Binary has none (a frontend is Go linked in at build time) or has its own (removing it with `extends.remove.slots: [frontend]` is allowed, and the Binary then starts without its frontend: `overlayRemovedFrontend`, `frontendpack.SelectedIf`); (2) removing a strip entry whose built-in a build tag compiled out (`stripBuildTag`: built-in extensions, APIs and the compile-out features, `stripped(binary)`), while runtime entries (tools, commands, runtime-only features, `stripped(runtime)`) can be re-enabled, and the Binary's recorded strip is undone before the overlay's list applies (`undoBinaryStrip`); (3) naming a fused or embedded extension again with `origins`. Removing such an extension is allowed: `droppedBinaryMembers` keeps the Binary from starting the fused config (`withFusedExtensionConfigs`, `/reload` included) and the embedded cell member (`withoutDroppedMembers`). A declared secret, `agentEnv`, a skill and a system prompt are not compiled in and follow the extends rules.
+
+`--system-prompt` on an open Binary is accepted with stock precedence; a closed Binary refuses it and names `build.closed` (`pigletBinarySystemPromptRefusal`). An open Binary discovers ambient extensions and skills from its effective Piglet's `discovery`, as stock PiG running a Piglet does (`cliRuntimeBuilder.ambientScopes`); a closed Binary discovers none. A closed Binary also refuses `-e`/`--extension` (`pigletBinaryExtensionFlagRefusal`), `pig install`, `pig remove` and the updates of installed packages (`pigletBinaryPackageCommandRefusal`) and `pig mcp add` (`pigletBinaryMcpRefusal`) with one message that names the option, the Binary and `build.closed` and exit 1; it ignores `settings.extensions` (`pigletBinarySettingsExtensionsRefusal`) and the servers of the user and project `mcp.json` (`mcpext.Options.RefuseConfigFiles`) and reports a notice. The open default accepts all of them and stock PiG is unchanged (`TestOpenPigletBinaryAcceptsExtensionFlag`, `TestOpenPigletBinaryAcceptsPackageCommands`; the `-e`, install and mcp parity scenarios). Locked by: `TestClosedPigletBinaryRefusesExtensionFlag`, `TestClosedPigletBinaryRefusesSettingsExtensions`, `TestClosedPigletBinaryRefusesPackageCommands`, `TestClosedPigletBinaryPackageCommandExitsOneBeforeTouchingPackages`, `TestClosedPigletBinaryRefusesMcpAdd`, `TestRefuseConfigFilesDropsServersFromMcpJSON`. `build.closed` is part of the baked Piglet (`Bake` keeps it), so the Piglet digest, the record and the signed manifest cover it and `pig piglet verify --source` fails when a source flips it; `pig piglet show` prints `closed: true` under the build defaults, and `pig piglet show` on a Binary reports whether it is closed.
+
+Audit against stock `pig --piglet` (about 1,100 pairs on xd670: every `--help` flag, subcommands, environment variables, settings, Packages and `pig install`, `-e`, `/reload`, `/piglet`, discovery of extensions, skills, prompts and themes; Binaries with and without a fused extension and a frontend). Differences fixed: an overlay's skill location for a baked skill (`Piglet.BakedSkill`), the interactive `/skill:` block of an inline skill having no location, Piglet skill order (`orderPigletSkills`), the package-command trust load starting the Binary's fused configs (`loadSubprocessExtensionSet`), and an unresolvable `PIG_PIGLET_NAME` printing an extra warning. Differences kept, each with its reason: fused extensions, prebuilt cells and the frontend start from the executable (no build caches); `stripped(binary)` entries stay off and their subcommands say so (build tag); `pig update` refuses a Binary whose Piglet sets `release.version` (update ownership); `pig version`/`pig diagnose` build identity; a baked skill or fused extension has no file location (`builtin:piglet`); `/piglet` names the Binary; a standalone overlay file inherits the Binary's members and `PIG_PIGLET_NAME`/`PIG_PIGLET_PATH` select the overlay without `--piglet` (the Binary's Piglet is the base); an overlay load error names the overlay and the Binary; subcommands run before any overlay resolves.
 
 Pi source: none. Pi has no Piglet, no Piglet Binary and no overlay.
 
-Why: a fused base such as `pig-tern` is the right place for the compiled parts (a frontend slot, stripped built-ins, fused extensions), but users also layer ordinary Piglets (an extra extension, a model, a stricter strip list) on top of stock PiG with `--piglet`. Without this, every pair needs its own fused Piglet. The overlay is user input outside the verified closure, so the Binary's author opts in, and what the Binary baked cannot be changed by it.
+Why: a fused base such as `pig-tern` is the right place for the compiled parts (a frontend slot, stripped built-ins, fused extensions), but users also layer ordinary Piglets on top of stock PiG with `--piglet`, and want the Binary to behave like stock with a different starting Piglet: replace the prompt, drop the compiled frontend, drop a member. Without this, every pair needs its own fused Piglet. Only what is physically in the executable cannot change.
 
-Call-site markers: `coding/piglet/types.go` (`BuildSpec.AllowOverlays`), `coding/piglet/overlay.go` (`OverlayBase`, `resolveOverlayRoot`, `checkOverlay`), `coding/piglet/extends.go` (`ResolveOptions.Base`), `coding/piglet/bake.go`, `coding/piglet/lineage_cli.go`, `coding/pigletbuild/container_builder.go`, `coding/pigletbuild/binarypiglet/binarypiglet.go` (`OverlayBase`, `Name`), `coding/cli/main.go` (`pigletBinaryOverlayRefusal`, `resolvePiglet`) and `coding/cli/cli_runtime_build.go`.
+Call-site markers: `coding/piglet/types.go` (`BuildSpec.Closed`, `ExtendsSpec.Source` optional), `coding/piglet/overlay.go` (`OverlayBase`, `resolveOverlayRoot`, `checkOverlay`, `unchangedBakedSkills`), `coding/piglet/extends.go` (`ResolveOptions.Base`, `Piglet.OverlayOf`, `Piglet.BakedSkill`), `coding/piglet/lineage.go`, `coding/piglet/piglet.schema.json`, `coding/piglet/bake.go`, `coding/piglet/lineage_cli.go`, `coding/pigletbuild/container_builder.go`, `coding/pigletbuild/binarypiglet/binarypiglet.go` (`OverlayBase`, `CompiledFrontendMember`, `Name`), `internal/frontendpack/frontendpack.go` (`Fused`, `SelectedIf`), `coding/cli/main.go` (`pigletBinaryOverlayRefusal`, `pigletBinarySystemPromptRefusal`, `resolvePiglet`, `undoBinaryStrip`, `droppedBinaryMembers`, `overlayRemovedFrontend`), `coding/cli/extensions.go` (`withFusedExtensionConfigs`, `loadSubprocessExtensionSet`), `coding/cli/cli_runtime_build.go` (`ambientScopes`), `coding/cli/piglet_skills.go` (`orderPigletSkills`) and `coding/cli/rpc_mode.go` (`rpcResolvedSkills`).
 
-Locked by: `TestOverlayAddsToTheBinaryPigletAndKeepsItsIdentity`, `TestOverlayResolutionLeavesTheBakedPigletUnchanged`, `TestOverlayChainResolvesOnTheBinary`, `TestOverlayRefusesWhatChangesTheBinary` (one case for each refusal above, each asserting the field and the Binary in the message), `TestOverlayChecksAgentEnvironmentSecretsAndKeepModeOnTheFinalPiglet`, `TestBuildAllowOverlaysIsStrictDefaultOffAndNotInherited`, `TestBakeKeepsOnlyAllowOverlaysFromBuild`, `TestProvenanceCoversAllowOverlays`, `TestAC1SchemaParserAgreement` (the schema takes a boolean `allowOverlays`), `TestOverlayBase`, `TestContainerLocalizedPigletKeepsAllowOverlays`, `TestPigletBinaryWithoutAllowOverlaysRefusesEverySelector`, `TestPigletBinaryWithAllowOverlaysAcceptsEverySelector`, `TestResolvePigletLaysAnOverlayOnAnAcceptingBinary`, `TestResolvePigletNeverFallsBackToTheBinaryWhenAnOverlayDoesNotResolve`, and `TestPigletBinaryAcceptsOverlaysOnlyWhenItsPigletSaysSo` (builds a signed accepting Binary and a closed one with a fused extension, launches each with `--piglet`, `PIG_PIGLET_PATH` and `PIG_PIGLET_NAME`, asserts the overlay's extension flag and strip list apply, the closed Binary's refusal, and each forbidden override's refusal).
+Locked by: `TestOverlayAddsToTheBinaryPigletAndKeepsItsIdentity`, `TestOverlayResolutionLeavesTheBakedPigletUnchanged`, `TestOverlayChainResolvesOnTheBinary`, `TestOverlayRefusesWhatChangesTheBinary` (one case for each of the three refusals), `TestOverlayMergesAsAnExtendsChild`, `TestOverlayWideningNeedsAllowWidenAsExtendsDoes`, `TestOverlayRemovesOnlyWhatTheBinaryHas`, `TestExtendsWithoutSourceNeedsAPigletBinary`, `TestOverlayRecordsItsPigletBinary`, `TestCheckOverlayStripDispositions`, `TestBuildClosedIsStrictDefaultOffAndNotInherited`, `TestBakeKeepsOnlyClosedFromBuild`, `TestProvenanceCoversClosed`, `TestAC1SchemaParserAgreement`, `TestOverlayBase`, `TestContainerLocalizedPigletKeepsClosed`, `TestClosedPigletBinaryRefusesEverySelector`, `TestDefaultPigletBinaryAcceptsEverySelector`, `TestResolvePigletOverlayReplacesPromptAndRemovesMembers`, `TestOverlayRemovesFrontendWhenTheBinaryHasOne`, `TestOverlayDropsRemovedCompiledInMembers`, `TestOverlaySkillsKeepDeclarationOrderAndBakedSkillsKeepTheirLocation`, `TestSystemPromptOnAPigletBinary`, `TestAmbientScopesOfAPigletBinary` and the real-Binary `TestPigletBinaryAcceptsOverlaysUnlessBuiltClosed`.
 
 Remove when: upstream Pi provides Piglet composition and immutable build artifacts that accept an overlay, or PiG drops Piglet Binaries.
 
-Approval: owner request (Nicholas Recht's feedback on the Tern renderer, 2026-10-25) for PiG 0.6.0; design reviewed and approved by the release lead 2026-10-25.
+Approval: owner request (Nicholas Recht's feedback on the Tern renderer, 2026-10-25) for PiG 0.6.0; redesign to extends-child semantics approved by the owner 2026-10-28.
+SCRUTINIZED:approved
+
+## D209 A session exports its active Piglet to its tool processes (`PIG_ACTIVE_PIGLET_SOURCE`)
+
+Summary: A running session sets PIG_ACTIVE_PIGLET_SOURCE for its tools, so pig status, pig diagnose, and pig piglet show can name the active Piglet.
+
+Audience: author
+
+Stock disposition: product-neutral diagnostics. The variable is informational. No run selects a Piglet from it, and a run with no Piglet clears it.
+
+What: A pig session that runs a Piglet sets `PIG_ACTIVE_PIGLET_SOURCE` in its own environment, so every process its tools start inherits it, including the `bash` tool. The value is the path of the Piglet file, or the Piglet's name for a Piglet Binary, whose Piglet has no source file. A session with no Piglet removes the variable, so a nested pig never reports its parent's Piglet. Three read-only commands read it. `pig status` marks the extensions and skills that the Piglet's `discovery` excludes as `ignored: piglet-discovery` and reports the Piglet in `activePiglet`. `pig diagnose` prints an `active Piglet:` line and the model the Piglet sets. `pig piglet show` with no argument shows the Piglet. A process that is itself a Piglet Binary needs no variable: `status` and `diagnose` use its baked Piglet, whose discovery excludes every ambient extension and skill unless the Binary accepts overlays (D202). When the variable names a Piglet Binary and the pig that runs is another executable, `status` warns that it cannot apply the Binary's discovery.
+
+Pi source: none. Pi has no Piglet.
+
+Why: the agent runs `pig status` from `bash` to learn what its session loaded. Without the variable those commands could not see the Piglet, so `pig status` listed ambient resources that the Piglet's `discovery` excluded, and `pig piglet show` had no way to name the Piglet of the session.
+
+Call-site markers: `coding/piglet/active_source.go` (`ActiveSourceEnv`), `coding/cli/active_piglet_source.go` (`exportActivePigletSource`, `inspectActivePiglet`), `coding/cli/main.go` (the call to `exportActivePigletSource`), `coding/piglet/main.go` (`cmdShow`).
+
+Locked by: `TestExportActivePigletSourceReachesToolProcesses`, `TestStatusAppliesTheActivePigletDiscovery`, `TestStatusNamesAPigletBinaryItCannotApply`, `TestStatusWarnsWhenTheActivePigletSourceDoesNotLoad`, `TestDiagnoseNamesTheActivePiglet` (`coding/cli/introspection_truth_test.go`); `TestActiveSourceValue`, `TestShowWithoutAnArgumentUsesTheActivePigletSource` (`coding/piglet/active_source_test.go`).
+
+Remove when: PiG drops Piglets, or a session passes its Piglet to the commands that report on it by another route.
+
+Approval: owner request (self-inspection review, section 9.2, item 4), approved by owner Michael Kinsy on 2026-10-28, for PiG 0.6.0.
+SCRUTINIZED:approved
+
+## D211 A Piglet can withhold a project's context files until the project is trusted (`contextFiles: trusted-only`)
+
+Summary: A Piglet with `contextFiles: trusted-only` loads no AGENTS.md or CLAUDE.md of a project that is not trusted, and says which files it skipped.
+
+Audience: author
+
+Stock disposition: inert capability. A run with no Piglet, and a Piglet without the field or with `contextFiles: all`, loads context files as Pi does, with no trust check.
+
+What: The Piglet field `contextFiles` takes `all` (the default, Pi's behaviour) or `trusted-only`. With `trusted-only`, a project that has a context file (`AGENTS.override.md`, `AGENTS.md` or `CLAUDE.md` in the working directory or a parent directory) needs a trust decision, as a project with `.pig/settings.json` does. While the project is not trusted, the run loads only the context file in the agent directory and the one in the user's home directory, when that directory is a strict ancestor of the working directory. It does not read the other files. Print, JSON and RPC runs write one line to stderr that names the skipped files. Interactive mode adds the names to the project-trust warning. A trusted project, `--no-context-files` and the SDK `NoContextFiles` option work as before. A Piglet that extends a `trusted-only` Piglet and sets `contextFiles: all` widens the base, so it needs `allowWiden`, as a wider `tools` or `discovery` does.
+
+Pi source: `packages/coding-agent/src/core/trust-manager.ts` lists the resources that need trust. It has no context file, and `resource-loader.ts` loads context files with no trust check. Pi has no Piglet.
+
+Why: a repository can carry an `AGENTS.md` that steers the model before the user has made a trust decision. Stock pig keeps Pi's behaviour. An organization that wants the check opts in through its Piglet, and a Piglet Binary carries the setting to every user.
+
+Call-site markers: `coding/piglet/types.go` (`Piglet.ContextFiles`, `validateContextFiles`, `WithholdsUntrustedContextFiles`), `coding/piglet/extends.go` (`mergePiglets`, `rejectUnsafeWidening`, `clonePiglet`), `coding/piglet/lineage.go`, `coding/piglet/piglet.schema.json`, `coding/pigletbuild/binarypiglet/binarypiglet.go` (`parse`), `internal/codingagent/context_files.go` (`LoadProjectContextFiles`, `WithheldProjectContextFiles`), `internal/codingagent/project_trust_warning.go`, `internal/codingagent/interactive.go` (`ContextFilesTrustedOnly`), `coding/cli/resource_prompts.go` (`loadsProjectContextFiles`), `coding/cli/cli_runtime_build.go`, `coding/cli/project_trust.go`, `coding/cli/args.go` (`ContextFilesTrustedOnly`), `coding/cli/main.go`.
+
+Locked by: `TestTrustedOnlyPigletWithholdsProjectContextFilesInEveryMode` (`coding/cli/context_files_trust_binary_test.go`); `TestWithheldProjectKeepsGlobalAndHomeContextFilesOnly`, `TestWithheldHomeProjectWithholdsItsOwnContextFile`, `TestContextFileAloneIsNotTrustRequiringProjectResource` (`internal/codingagent/context_files_trust_test.go`); `TestParse_ContextFiles`, `TestContextFilesWideningNeedsAllowWiden` (`coding/piglet/context_files_test.go`).
+
+Remove when: Pi puts context files in its trust list, or PiG drops Piglets.
+
+Approval: owner decision on S4, 2026-10-28: the Piglet setting, with stock pig unchanged. Organizations opt in.
+SCRUTINIZED:approved
+
+---
+
+## D214 An extension can own thinking runs, so a run that draws no rows leaves no blank rows (`ownThinkingRuns`)
+
+Summary: An extension that calls ownThinkingRuns() leaves no blank rows around a thinking run that is hidden or rewritten to empty text, and can turn that on and off while it runs.
+
+Audience: author
+
+Stock disposition: inert capability. With no loaded extension that owns thinking runs, an assistant message draws its thinking runs and the spacing around them exactly as Pi does.
+
+What: An extension calls `pi.ownThinkingRuns(enabled = true)` (Go `Extension.OwnThinkingRuns(bool)` while loading and `Context.OwnThinkingRuns(bool) error` later, Rust `Extension::own_thinking_runs` and `Context::own_thinking_runs`, Python `ext.own_thinking_runs(enabled=True)` and `ctx.own_thinking_runs(enabled=True)`, Lisp `own-thinking-runs` and `ctx-own-thinking-runs`, in-process Go `extension.API.OwnThinkingRuns(bool)`). While loading, the value travels in the register payload (`owns_thinking_runs`); after the register frame, each call is the host call `ownThinkingRuns` with `{"enabled": bool}`, which applies in call order on the extension's connection. The flag belongs to the extension, the last call wins, and the host ORs the flags of every loaded extension. It drops when the extension stops, crashes, unloads or reloads (a restart takes the value its new process registers). While any extension owns thinking runs, the assistant message treats a thinking run that is hidden (Ctrl+T or a click), or that draws no rows, as absent: no stub label for a hidden run, no blank row before it and no blank row after it. A run draws no rows when an `assistant-thinking` Markdown transformer rewrote it to empty text, and also while its off-loop rewrite has not been published. The spacing around the remaining text and runs and the length, error and abort line are unchanged; a visible run with content, a click on it (it hides the run) and Ctrl+T (it shows every run again) work as in Pi. The thinking blocks stay in the message and the session. Only the interactive transcript is affected; a frontend that draws structured parts draws its own spacing.
+
+Pi source: `packages/coding-agent/src/modes/interactive/components/assistant-message.ts` `updateContent` adds a blank row before the first visible block and after each visible thinking run that another visible block follows, and skips a hidden run whose label is empty. Pi has no option to skip the spacing of a run that draws nothing: its extensions run in the host process, so compact-ui patches `AssistantMessageComponent.prototype.updateContent`. An extension of a separate process cannot.
+
+Why: a compact-UI extension draws thinking in its own activity tree. Without this, the built-in message leaves one or two blank rows per thinking run (issue #384).
+
+Call-site markers: `tui/assistant_message_block.go` (`SetOwnedThinkingRuns`, `measureOwnedRuns`, `updateContent`), `internal/codingagent/interactive_thinking_runs.go` (`bindThinkingRuns`), `internal/codingagent/interactive_chat.go` (`newAssistantMessageBlock`), `coding/extension/thinking_runs.go`, `coding/extension/api.go` (`OwnThinkingRuns`), `coding/extension/factoryload/api.go`, `coding/extension/host/inproc/runner.go` (`OwnsThinkingRuns`, `ObserveThinkingRuns`), `coding/extension/host/subprocess/protocol.go` (`OwnsThinkingRuns`, `CallOwnThinkingRuns`), `coding/extension/host/subprocess/own_thinking_runs.go`, `coding/extension/host/subprocess/host.go` (`buildExtension`, `adoptRestartedExtension`, the connection-end drop), `coding/extension/host/subprocess/runtime-node/runtime.mjs`, `extensions/sdk-ts/index.d.ts`, `extensions/sdk`, `extensions/sdk-rs`, `extensions/sdk-py`, `extensions/sdk-lisp`.
+
+Locked by: `TestOwnedThinkingRunsLeaveNoSpacing`, `TestOwnedThinkingRunsToggles`, `TestOwnedThinkingRunsKeepClickToHide`, `TestOwnedThinkingRunsAsyncRewrite` (`tui/assistant_message_owned_runs_test.go`); `TestAssistantMessageHiddenThinkingLabelMatchesPi` and `TestAssistantMessageRenderMatchesPi` (unchanged, Pi's frames without ownership); `TestInteractiveModeFollowsOwnedThinkingRuns` (`internal/codingagent/thinking_runs_owned_test.go`); `TestHostAppliesOwnsThinkingRuns`, `TestOwnsThinkingRunsDropsWhenTheExtensionStops`, `TestNodeRuntimeOwnThinkingRuns`; `TestConformance_OwnThinkingRunsAcrossSDKs` (in-process Go, Go, Node, Rust, Python and Lisp, isolated and packed, and fused Go: owned from load, withdrawn and declared again by a call, four calls in order).
+
+Remove when: Pi gives an extension an official way to own its thinking rows, or the compact-UI extensions that use it are gone.
+
+Approval: owner decision on issue #384, 2026-10-29: build the hook for 0.6.0 as `ownThinkingRuns(enabled = true)`, with a runtime toggle, keeping click-to-hide.
+SCRUTINIZED:approved
+
+---
+
+## D216 A configured local Package that does not exist is reported at startup and by `pig install --validate-only`
+
+Summary: A local Package in packages[] whose directory is gone shows as a session warning and fails `pig install --validate-only`, with its resolved path and the `pig remove` that drops it.
+
+Audience: author
+
+Stock disposition: product-neutral diagnostics. The report describes the Stock Package resolver; it selects, loads and installs nothing.
+
+What: Pi skips a configured local Package whose directory does not exist without a word (`package-manager.ts` `resolveLocalExtensionSource`: `if (!existsSync(resolved)) return;`; the resource loader calls `resolve()` without `onMissing`). PiG reports it twice:
+
+- At startup, as an extension warning in the session: `Extension package "<source>": failed to install (Path does not exist: <resolved path>). Run "pig remove <source>" to remove it from settings.json.` It is the warning Pi gives an npm or git Package that fails to install. The `[pig] Could not install` stderr line, whose advice (`run pig update when online`) does not apply to a path, leaves a local Package out.
+- By `pig install --validate-only [--json]` with no source, which checks every `packages[]` entry of the user settings and of the trusted project settings that is a local path, resolved against its scope's settings directory under the current agent directory. It exits 1 when any does not resolve to a directory. npm and git entries are not checked: resolving them needs the network. With a source (or `--set`) the command validates those sources as before and does not read `packages[]`.
+
+JSON (`--json`, always one object on stdout, strict shape):
+
+```json
+{"valid": false, "checked": 2, "missing": [{"source": "/abs/gone", "scope": "user", "path": "/abs/gone", "error": "Path does not exist: /abs/gone", "remove": "pig remove /abs/gone"}]}
+```
+
+`valid` is true exactly when `missing` is empty; `checked` counts the local entries examined; `missing` is always an array. Each entry has `source` as written in settings, `scope` (`user` or `project`), `path` (the resolved directory; omitted when the source does not resolve to a path, for example a malformed `file://` URL), `error`, and `remove`, the command that drops it (`pig remove <source>`, with ` -l` for a project entry). Text mode prints one `missing <scope> package "<source>": <error>. Run "<remove>"` line per entry on stderr, or `valid: 1 configured local package resolves` / `valid: N configured local packages resolve` on stdout.
+
+Why: 20 of 21 Packages on one host disappeared after a re-registration run through a symlinked `PIG_HOME`, with only a boot line on stderr to show it (#389). The owner took the two follow-ups: a Package that cannot load shows up in the session, and `--validate-only` checks that each entry resolves. The check runs with no source so a deployment can run it in the isolated `PIG_HOME` it already uses for validation, without naming a Package.
+
+Call-site markers: `coding/cli/cli_runtime_build.go` (the startup Package check), `coding/cli/package_validate_configured.go` (`validateConfiguredPackages`), `coding/cli/package_commands.go` (the no-source `--validate-only` dispatch), `internal/packagemanager/updates.go` (`MissingLocalPackages`).
+
+Locked by: `TestStartupWarnsAboutAConfiguredLocalPackageThatDoesNotExist` and `TestInstallValidateOnlyWithoutSourceReportsConfiguredLocalPackages` (`coding/cli/package_local_path_test.go`).
+
+Remove when: Pi reports a configured local Package that does not exist, or PiG drops the check.
+
+Approval: owner comment on issue #389, 2026-10-30: "we'll take both of your other points too, so a package that can't load shows up in the session and `--validate-only` checks that each entry actually resolves."
 SCRUTINIZED:approved

@@ -86,10 +86,15 @@ func buildSmallPigletBinary(t *testing.T, extraArgs ...string) string {
 // startPigletBinary runs startup verification without a model call or access to the caller's home, project, or trust stores. It returns the exit code (-1 when the OS killed it) and combined output.
 func startPigletBinary(t *testing.T, path string, args ...string) (int, string) {
 	t.Helper()
+	return startPigletBinaryHome(t, t.TempDir(), path, args...)
+}
+
+// startPigletBinaryHome is startPigletBinary with a home directory the caller may fill first.
+func startPigletBinaryHome(t *testing.T, home, path string, args ...string) (int, string) {
+	t.Helper()
 	if len(args) == 0 {
 		args = []string{"--offline", "--list-models"}
 	}
-	home := t.TempDir()
 	cmd := exec.CommandContext(t.Context(), path, args...)
 	cmd.Dir = t.TempDir()
 	// Agent-directory overrides take precedence over HOME, including Pi's override when shared-directory mode is selected.

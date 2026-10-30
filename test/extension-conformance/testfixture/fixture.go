@@ -330,6 +330,11 @@ func Extension() *sdk.Extension {
 	ext.Flag("flag-string", sdk.FlagOptions{Type: sdk.FlagString, Default: "default"})
 	ext.Flag("flag-empty", sdk.FlagOptions{Type: sdk.FlagString, Default: ""})
 	ext.Flag("flag-unset", sdk.FlagOptions{Type: sdk.FlagString})
+	ext.Command("tui-alt-frame-probe", "Read a TuiAltScreen from a component's render and exercise overlay visibility", tuiAltFrameProbe)
+	ext.Command("tui-alt-children-probe", "Read TuiAltScreen children after addChild, removeChild and clear, with components of equal content", tuiAltChildrenProbe)
+	ext.Command("tui-alt-reentry-probe", "Call the frame's own members from a component's render and report that they fail", tuiAltReentryProbe)
+	ext.Command("tui-alt-go-identity-probe", "Pass component values and equal-content pointers to a TuiAltScreen", tuiAltGoIdentityProbe)
+	ext.Command("tui-alt-screen-probe", "Drive a TuiAltScreen over a recording terminal", tuiAltProbe)
 	ext.Command("flag-probe", "Report registered flag values", func(ctx sdk.Context, _ string) error {
 		values := []any{}
 		for _, name := range []string{"flag-true", "flag-false", "flag-string", "flag-empty", "flag-unset", "unregistered"} {
@@ -1072,6 +1077,37 @@ func Extension() *sdk.Extension {
 		return nil
 	})
 
+	// rw_idle_background subscribes to agent_end and, from a background goroutine the handler leaves running, polls isIdle with the handler's Context until the Session reports idle (or 3s pass), then reports the last answer. No event reaches the extension after agent_end, which fires while the run is still busy.
+	ext.Command("rw_idle_background", "Poll isIdle from a background callback after agent_end", func(sdk.Context, string) error {
+		ext.OnEvent("agent_end", func(hctx sdk.Context, _ map[string]any) (any, error) {
+			go func() {
+				idle := false
+				for deadline := time.Now().Add(3 * time.Second); !idle && time.Now().Before(deadline); time.Sleep(10 * time.Millisecond) {
+					idle, _ = hctx.IsIdle()
+				}
+				hctx.Notify(fmt.Sprintf("rw_idle_background=%t", idle), "info")
+			}()
+			return nil, nil
+		})
+		return nil
+	})
+	// rw_idle_live polls isIdle with the command's Context, with no event subscription at all, and notifies the whole sequence of answers at each change until it has seen three (idle, busy, idle), or for 10s. An answer that never changes, a constant, or one held at the last event's snapshot cannot report the three.
+	ext.Command("rw_idle_live", "Poll isIdle live and report the sequence of answers", func(ctx sdk.Context, _ string) error {
+		go func() {
+			var seen []string
+			for deadline := time.Now().Add(10 * time.Second); len(seen) < 3 && time.Now().Before(deadline); time.Sleep(10 * time.Millisecond) {
+				answer := "error"
+				if idle, err := ctx.IsIdle(); err == nil {
+					answer = strconv.FormatBool(idle)
+				}
+				if len(seen) == 0 || seen[len(seen)-1] != answer {
+					seen = append(seen, answer)
+					ctx.Notify("rw_idle_live="+strings.Join(seen, ","), "info")
+				}
+			}
+		}()
+		return nil
+	})
 	ext.Command("set_model", "Switch to the model in the arguments", func(ctx sdk.Context, args string) error {
 		ok, err := ctx.SetModel(args)
 		if err != nil {
@@ -1561,6 +1597,18 @@ func Extension() *sdk.Extension {
 			return err
 		}
 		ctx.Notify(fmt.Sprintf("overlay-width default=%v percent=%v", defaultWidth, percentWidth), "info")
+		return nil
+	})
+
+	// An inline component reports blocked program status through ui.custom's blocked option (conformance TestConformance_CustomBlockedOption).
+	ext.Command("blocked-custom-probe", "Open inline custom components with and without the blocked option", func(ctx sdk.Context, _ string) error {
+		if _, err := ctx.Custom(&overlayWidthProbe{}, sdk.RemoteOverlayOptions{Blocked: &sdk.RemoteOverlayBlocked{Kind: "permission", Message: "Approve?"}}); err != nil {
+			return err
+		}
+		if _, err := ctx.Custom(&overlayWidthProbe{}, sdk.RemoteOverlayOptions{}); err != nil {
+			return err
+		}
+		ctx.Notify("blocked-custom done", "info")
 		return nil
 	})
 
@@ -2541,6 +2589,14 @@ func Extension() *sdk.Extension {
 			report(title, value, ok)
 		}
 		return nil
+	})
+	// The extension owns thinking runs from load; thinking_runs_off and thinking_runs_on change that while it runs (TestConformance_OwnThinkingRunsAcrossSDKs).
+	ext.OwnThinkingRuns(true)
+	ext.Command("thinking_runs_off", "Withdraw thinking-run ownership", func(ctx sdk.Context, _ string) error {
+		return ctx.OwnThinkingRuns(false)
+	})
+	ext.Command("thinking_runs_on", "Declare thinking-run ownership", func(ctx sdk.Context, _ string) error {
+		return ctx.OwnThinkingRuns(true)
 	})
 	// ui_forward_probe calls the UI members whose host effect a conformance row records (TestConformance_UIForwardingAgreesAcrossSDKs).
 	ext.Command("ui_forward_probe", "Call the working, paste, editor-text and tools-expanded UI members", func(ctx sdk.Context, args string) error {

@@ -49,15 +49,6 @@
     "mutation": "durable/harness/json.go:58 `if items, isArray := value.([]any); isArray && array.Len() <= len(item` -> `if items, isArray := value.([]any); isArray && array.Len() < len(items` (TestExample20LateJoin FAIL); durable/harness/json.go:71 `if isLeaf(current) && isLeaf(value) && current == value {` -> `if isLeaf(current) && isLeaf(value) && current != value {` (TestExample20LateJoin FAIL); durable/harness/json.go:50 `if err := assignSlot(objectSlot{object, name}, record[name]); err != n` -> `if err := assignSlot(objectSlot{object, name}, record[name]); err == n` (TestExample20LateJoin FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
   },
   {
-    "upstream": "packages/durable/src/harness/json.ts",
-    "package": "./durable/harness",
-    "tests": [
-      "TestAgentEvents"
-    ],
-    "upstream_reference": "packages/durable/src/harness/json.ts:1-32; packages/durable/test/harness-events.test.ts",
-    "mutation": "durable/harness/json.go:58 `if items, isArray := value.([]any); isArray && array.Len() <= len(item` -> `if items, isArray := value.([]any); isArray && array.Len() < len(items` (TestAgentEvents FAIL); durable/harness/json.go:71 `if isLeaf(current) && isLeaf(value) && current == value {` -> `if isLeaf(current) && isLeaf(value) && current != value {` (TestAgentEvents FAIL); durable/harness/json.go:50 `if err := assignSlot(objectSlot{object, name}, record[name]); err != n` -> `if err := assignSlot(objectSlot{object, name}, record[name]); err == n` (TestAgentEvents FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
-  },
-  {
     "upstream": "packages/durable/src/harness/task-graph.ts",
     "package": "./durable/harness",
     "tests": [
@@ -201,11 +192,10 @@
     "upstream": "packages/durable/src/harness/live.ts",
     "package": "./durable/harness",
     "tests": [
-      "TestAgentEvents",
       "TestGeneration"
     ],
     "upstream_reference": "packages/durable/src/harness/live.ts:1-176; packages/durable/src/harness/live.ts:149 (SettleSchedulerOutcome); packages/durable/test/harness-events.test.ts; packages/durable/test/harness-generation.test.ts",
-    "mutation": "durable/harness/live.go:209 `slots := live.Array(\"tools\")` -> `slots := live.Array(\"toolsX\")` (TestAgentEvents FAIL); durable/harness/live.go:282 `if outcome.Status == durable.OutcomeFaulted {` -> `if outcome.Status != durable.OutcomeFaulted {` (TestGeneration FAIL); durable/harness/live.go:100 `return false` -> `return true` (TestGeneration FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+    "mutation": "durable/harness/live.go:209 `slots := live.Array(\"tools\")` -> `slots := live.Array(\"toolsX\")` ( FAIL); durable/harness/live.go:282 `if outcome.Status == durable.OutcomeFaulted {` -> `if outcome.Status != durable.OutcomeFaulted {` (TestGeneration FAIL); durable/harness/live.go:100 `return false` -> `return true` (TestGeneration FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
   },
   {
     "upstream": "packages/durable/src/harness/live.ts",
@@ -573,16 +563,6 @@
     "mutation": "durable/env/line_scan.go:115 `from = index + 1` -> `from = index + 2` (TestLineScanner FAIL); durable/env/line_scan.go:92 `return scanner.hasEnd && line == scanner.endLine-1` -> `return scanner.hasEnd || line == scanner.endLine-1` (TestLineScanner FAIL); durable/env/line_scan.go:172 `if scanner.firstLine != nil {` -> `if scanner.firstLine == nil {` (TestLineScanner FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
   },
   {
-    "upstream": "packages/durable/src/harness/events.ts",
-    "package": "./durable/harness",
-    "tests": [
-      "TestAgentEvents",
-      "TestCompactionEdgeCasesLater"
-    ],
-    "upstream_reference": "packages/durable/src/harness/events.ts:66 (MarshalJSON); packages/durable/src/harness/events.ts:1-426; packages/durable/test/harness-events.test.ts; packages/durable/test/harness-compaction.test.ts",
-    "mutation": "durable/harness/events.go:313 `value := map[string]any{\"toolCallId\": event.ToolCallId, \"toolName\": ev` -> `value := map[string]any{\"toolCallIdX\": event.ToolCallId, \"toolName\": e` (TestAgentEvents FAIL); durable/harness/events.go:496 `if a == nil || b == nil {` -> `if a == nil || b != nil {` (TestCompactionEdgeCasesLater FAIL); durable/harness/events.go:829 `runChanged := nowHas != wasHas || nowFirst != wasFirst` -> `runChanged := nowHas != wasHas && nowFirst != wasFirst` (TestAgentEvents FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
-  },
-  {
     "upstream": "packages/durable/src/harness/provider.ts",
     "package": "./durable/harness",
     "tests": [
@@ -681,12 +661,11 @@
     "upstream": "packages/durable/src/harness/generation.ts",
     "package": "./durable/harness",
     "tests": [
-      "TestAgentEvents",
       "TestBackgroundThresholdCompaction",
       "TestOverflowCompaction"
     ],
     "upstream_reference": "packages/durable/src/harness/generation.ts:419 (classify); packages/durable/src/harness/generation.ts:545 (startToolRound); packages/durable/src/harness/generation.ts:1-681; packages/durable/test/harness-events.test.ts; packages/durable/test/harness-compaction.test.ts",
-    "mutation": "durable/harness/generation.go:781 `if err != nil {` -> `if err == nil {` (TestOverflowCompaction FAIL); durable/harness/generation.go:960 `if err != nil {` -> `if err == nil {` (TestAgentEvents FAIL); durable/harness/generation.go:261 `if _, err := CreateCompaction(tx, conversationId, CompactionInput{Reas` -> `if _, err := CreateCompaction(tx, conversationId, CompactionInput{Reas` (TestBackgroundThresholdCompaction FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+    "mutation": "durable/harness/generation.go:781 `if err != nil {` -> `if err == nil {` (TestOverflowCompaction FAIL); durable/harness/generation.go:960 `if err != nil {` -> `if err == nil {` ( FAIL); durable/harness/generation.go:261 `if _, err := CreateCompaction(tx, conversationId, CompactionInput{Reas` -> `if _, err := CreateCompaction(tx, conversationId, CompactionInput{Reas` (TestBackgroundThresholdCompaction FAIL); compiled test FAIL (go test -overlay without -cover), baseline PASS"
   },
   {
     "upstream": "packages/durable/src/harness/registry.ts",

@@ -5,7 +5,7 @@
 // The fast path answers `true` ONLY when it has proven every sent leaf equal, in the sent order; it answers `false` for anything it
 // cannot prove (a value JSON would convert, a class instance, a throwing getter), and the caller then runs the exact text comparison.
 // So a wrong `false` costs one stringify and a wrong `true` is the only defect: every branch below returns `false` when unsure.
-import { DEFAULT_COMPACTION_POLICY, DEFAULT_CONTEXT_RETENTION_MS, DEFAULT_PROGRESS_POLICY, DEFAULT_RETRY_POLICY, documentRetentionWire } from "./agent.ts"
+import { DEFAULT_COMPACTION_POLICY, DEFAULT_CONTEXT_RETENTION_MS, DEFAULT_PROGRESS_POLICY, DEFAULT_RETRY_POLICY, documentRetentionWire, persistWithin, persistWithinWire, restartLimitWire } from "./agent.ts"
 
 const hasOwn = Object.prototype.hasOwnProperty
 const ownEnumerable = Object.prototype.propertyIsEnumerable
@@ -106,21 +106,14 @@ export class SentSettings {
     this.progress = keys(sent.progress).length
   }
 
-  /** True only when `resolveSettings(raw)` (with the extensions as names) serialises to the text last sent. */
+  /**
+   * True only when `resolveSettings(raw)` without `extensions` serialises to the text last sent. The core never reads the extensions (the
+   * host's resolveAgent does), so they are neither sent nor read here: the host resolves the settings where Pi does.
+   */
   unchanged(raw: any): boolean {
     try {
       const sent = this.sent, top = this.top
       let i = 0
-      const extensions = raw?.extensions
-      if (extensions !== undefined) {
-        if (!Array.isArray(extensions) || top[i++] !== "extensions") return false
-        const names = sent.extensions
-        if (!Array.isArray(names) || names.length !== extensions.length) return false
-        for (let n = 0; n < extensions.length; n++) {
-          const e = extensions[n]
-          if (typeof e !== "object" || e === null || typeof e.name !== "string" || e.name !== names[n]) return false
-        }
-      }
       if (top[i++] !== "stream" || !merged(NO_DEFAULTS, raw?.stream, this.stream, sent.stream)) return false
       if (top[i++] !== "retry" || !merged(RETRY, raw?.retry, this.retry, sent.retry)) return false
       if (top[i++] !== "compaction" || !merged(COMPACTION, raw?.compaction, this.compaction, sent.compaction)) return false
@@ -129,15 +122,20 @@ export class SentSettings {
       const p = raw?.progress
       const partial = p?.partialIntervalMs ?? DEFAULT_PROGRESS_POLICY.partialIntervalMs
       const output = p?.outputIntervalMs ?? DEFAULT_PROGRESS_POLICY.outputIntervalMs
-      if (!same(partial, progress.partialIntervalMs) || !same(output, progress.outputIntervalMs)) return false
-      if (this.progress !== 2) return false
+      const persist = persistWithinWire(persistWithin(p?.persistWithinMs))
+      if (!same(partial, progress.partialIntervalMs) || !same(output, progress.outputIntervalMs) || !same(persist, progress.persistWithinMs)) return false
+      if (this.progress !== 3) return false
       if (top[i++] !== "contextRetentionMs" || !same(raw?.contextRetentionMs ?? DEFAULT_CONTEXT_RETENTION_MS, sent.contextRetentionMs)) return false
       if (top[i++] !== "toolExecution" || !same(raw?.toolExecution ?? "parallel", sent.toolExecution)) return false
       if (top[i++] !== "steeringMode" || !same(raw?.steeringMode ?? "one-at-a-time", sent.steeringMode)) return false
       if (top[i++] !== "followUpMode" || !same(raw?.followUpMode ?? "one-at-a-time", sent.followUpMode)) return false
+      if (raw?.afterFailedRun !== undefined && (top[i++] !== "afterFailedRun" || !same(raw.afterFailedRun, sent.afterFailedRun))) return false
       // The retention is live too and travels last, only when it is not the core's default.
       const retention = documentRetentionWire(raw)
       if (retention !== undefined && (top[i++] !== "documentRetentionMs" || !same(retention, sent.documentRetentionMs))) return false
+      // The restart limit is live too and travels after it, only when it is not the default.
+      const limit = restartLimitWire(raw)
+      if (limit !== undefined && (top[i++] !== "restartLimit" || !same(limit, sent.restartLimit))) return false
       return i === top.length
     } catch {
       return false

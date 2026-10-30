@@ -179,9 +179,15 @@ func loginKeyHint(action TUIKeybinding, description string) string {
 	return ActiveTheme().Fg("dim", key) + ActiveTheme().Fg("muted", " "+description)
 }
 
-// ShowAuth replaces the dialog content with a URL and optional instructions. It returns the URL the caller opens in the browser, which is the normalized
-// href of a web URL and empty for any other URL (login-dialog.ts showAuth opens only that target).
-func (d *LoginDialogComponent) ShowAuth(url, instructions string) (browserTarget string) {
+// LoginBrowserTarget is the URL login-dialog.ts showAuth opens in the browser: the normalized href of a web URL, empty for any other URL. showAuth opens it
+// itself; Go leaves the launch to the caller, which opens what this returns after ShowAuth.
+func LoginBrowserTarget(url string) string {
+	target, _ := webURL(url)
+	return target
+}
+
+// ShowAuth replaces the dialog content with a URL and optional instructions (login-dialog.ts showAuth); the caller opens LoginBrowserTarget(url).
+func (d *LoginDialogComponent) ShowAuth(url, instructions string) {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 	d.clearDeviceCodeActionLocked()
@@ -204,7 +210,6 @@ func (d *LoginDialogComponent) ShowAuth(url, instructions string) (browserTarget
 		d.addLine(" " + ActiveTheme().Fg("warning", d.redactLocked(instructions)))
 	}
 	d.Invalidate()
-	return target
 }
 
 // OAuthDeviceCodeInfo is the user code and verification URL a device-code login shows (Pi's OAuthDeviceCodeInfo, ai compat/extension-oauth-types.ts:17). OpenBrowserOnConfirm and CopyCodeOnConfirm

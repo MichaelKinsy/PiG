@@ -602,7 +602,7 @@ func (m *Markdown) renderBlocks(content string, width int, from *resumePoint, re
 			if tok, ok := tokenizeBlockLatex(remaining); ok {
 				block := widthx.JSTrim(tok.raw)
 				if m.latexEnabled() {
-					block = renderBlockLatex(tok)
+					block = renderBlockLatex(tok, width)
 				}
 				for bl := range strings.SplitSeq(block, "\n") {
 					emit(m.applyDefaultStyle(bl))

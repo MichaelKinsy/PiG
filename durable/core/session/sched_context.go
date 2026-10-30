@@ -57,7 +57,7 @@ func (s *Scheduler) KeepContext(conversationID, head, tail ID, invocationEnded b
 // #settleIdle).
 func (s *Scheduler) expireContexts() {
 	now, retention := s.env.Now(), s.retention()
-	ids := make([]ID, 0, len(s.contexts))
+	ids := s.takeIDs()
 	for id := range s.contexts {
 		ids = append(ids, id)
 	}
@@ -77,6 +77,7 @@ func (s *Scheduler) expireContexts() {
 			s.dropContext(id)
 		}
 	}
+	s.idScratch = ids
 	s.scheduleExpiry()
 }
 

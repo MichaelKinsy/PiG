@@ -12,7 +12,7 @@ import (
 
 func TestPackedToolSchemaRejectionAcrossSDKs(t *testing.T) {
 	root := findModuleRoot(t)
-	for _, language := range []string{"go", "python", "rust"} {
+	for _, language := range []string{"go", "python", "rust", "lisp"} {
 		t.Run(language, func(t *testing.T) {
 			t.Parallel()
 			h := subprocess.NewHostWithConfigRoot(t.TempDir(), t.TempDir())
@@ -101,6 +101,19 @@ def new_extension():
  e.command("schema-probe", "", lambda ctx,args: ctx.notify(e.name+":"+str(rejected).lower(), "info"))
  return e
 `, name)
+	case "lisp":
+		path = filepath.Join(cfg.Source, name+".lisp")
+		code = fmt.Sprintf(`(defpackage %q (:use "COMMON-LISP"))
+(in-package %q)
+(defun new-extension ()
+  (let ((e (pig:make-extension %q)) (rejected nil))
+    (handler-case (pig:tool e "schema-invalid" "" nil (lambda (ctx args) (declare (ignore ctx args)) (pig:tool-result "bad")))
+      (error () (setf rejected t)))
+    (pig:tool e "schema-valid" "" (pig:obj) (lambda (ctx args) (declare (ignore ctx args)) (pig:tool-result "ok")))
+    (pig:command e "schema-probe" "" (lambda (ctx args) (declare (ignore args))
+                                        (pig:ctx-notify ctx (format nil "~A:~A" %q (if rejected "true" "false")) "info")))
+    e))
+`, name, name, name, name)
 	case "rust":
 		path = filepath.Join(cfg.Source, "src", "lib.rs")
 		code = fmt.Sprintf(`use pig_sdk::{Extension,Schema,ToolResult,CommandResult};

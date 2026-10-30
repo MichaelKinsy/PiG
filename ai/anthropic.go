@@ -781,17 +781,10 @@ var anthropicStrictUnsupportedKeywords = []string{
 // anthropicStrictStringFormats are the string formats strict mode accepts (ANTHROPIC_STRICT_STRING_FORMATS).
 var anthropicStrictStringFormats = []string{"date-time", "time", "date", "duration", "email", "hostname", "uri", "ipv4", "ipv6", "uuid"}
 
-// anthropicStrictToolLimitMessages are the texts of Anthropic's 400s for a strict tool set over its limits: grammar size, tool count and union parameters.
+// anthropicStrictToolLimitsExceeded reports whether a rejected request is the APIError Pi downgrades: status 400, error type
+// invalid_request_error, and an SDK message that carries one of the strict tool limit texts (isStrictToolLimitErrorMessage). It returns that message.
 //
 // upstream: packages/ai/src/api/anthropic-messages.ts:stream (the strict tool fallback's error test, :664-677)
-var anthropicStrictToolLimitMessages = []string{
-	"The compiled grammar is too large",
-	"Too many strict tools (",
-	"Schemas contains too many parameters with union types (",
-}
-
-// anthropicStrictToolLimitsExceeded reports whether a rejected request is the APIError Pi downgrades: status 400, error type
-// invalid_request_error, and an SDK message that contains one of the strict tool limit texts. It returns that message.
 func anthropicStrictToolLimitsExceeded(status int, body []byte) (string, bool) {
 	if status != http.StatusBadRequest {
 		return "", false
@@ -801,20 +794,14 @@ func anthropicStrictToolLimitsExceeded(status int, body []byte) (string, bool) {
 		return "", false
 	}
 	message := anthHTTPErrorMessage(status, body)
-	for _, limit := range anthropicStrictToolLimitMessages {
-		if strings.Contains(message, limit) {
-			return message, true
-		}
-	}
-	return "", false
+	return message, isStrictToolLimitErrorMessage(message)
 }
 
 // anthropicMarksPreferredStrict reports whether a converted tool is strict because its constrainedSampling prefers strict: the
 // definitions that make hasPreferredStrictTools true (anthropic-messages.ts:1184-1191).
 func anthropicMarksPreferredStrict(tools []ToolSchema, definitions []anthTool) bool {
 	for i, definition := range definitions {
-		config := tools[i].ConstrainedSampling
-		if definition.Strict != nil && *definition.Strict && config != nil && config.Type == ConstrainedSamplingJSONSchema && config.Strict == ConstrainedSamplingStrictPrefer {
+		if definition.Strict != nil && *definition.Strict && prefersJSONSchemaStrictSampling(tools[i]) {
 			return true
 		}
 	}
@@ -845,7 +832,7 @@ func anthConvertTools(tools []ToolSchema, isOAuthToken, supportsEagerToolInputSt
 	out := make([]anthTool, len(tools))
 	for i, tool := range tools {
 		var strict *bool
-		if config := tool.ConstrainedSampling; !disablePreferredStrictTools || config == nil || config.Type != ConstrainedSamplingJSONSchema || config.Strict != ConstrainedSamplingStrictPrefer {
+		if !disablePreferredStrictTools || !prefersJSONSchemaStrictSampling(tool) {
 			var err error
 			if strict, err = resolveJSONSchemaStrictSampling(tool, supportsStrictTools, anthropicStrictUnsupportedKeyword); err != nil {
 				return nil, err

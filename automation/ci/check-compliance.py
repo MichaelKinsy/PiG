@@ -11,7 +11,7 @@ Checks:
   citation     CITATION.cff has the required CFF 1.2.0 fields and names this repository
   actions      every workflow action is pinned to a full commit SHA
   permissions  every workflow's top-level token permissions are read-only
-  pins         every copy of the Go, Node, Rust, and Pi pins matches its one source
+  pins         every copy of the Go, Node, Rust, npm, and Pi pins matches its one source
   reuse        `reuse lint` passes (version pinned in security.yml)
   govulncheck  `go tool govulncheck ./...` reports no reachable vulnerability
                (GOVULNDB=file:///path selects a local vulndb.zip copy)
@@ -165,6 +165,7 @@ def check_pins() -> list[str]:
         for name in ("UpstreamVersion", "UpstreamPackageVersion", "UpstreamCommit")
     }
     rust = search(r"^\s+RUST_VERSION:\s*(\S+)", ".github/workflows/ci.yml", "RUST_VERSION")
+    npm = search(r"^\s+NPM_VERSION:\s*(\S+)", ".github/workflows/ci.yml", "NPM_VERSION")
 
     def minor(version: str) -> str:
         return ".".join(version.split(".")[:2])
@@ -176,6 +177,7 @@ def check_pins() -> list[str]:
     go_tag = search(r"^IMAGE_TAG=(\S+)$", "automation/images/ci-go/metadata.env", "IMAGE_TAG")
     copies = [
         ("Go", go, ".devcontainer/devcontainer.json go feature", devcontainer["ghcr.io/devcontainers/features/go:1"]["version"]),
+        ("Go", go, "AGENTS.md documented setup Go version", search(r"documented setup commands use Go ([\d.]+)\.", "AGENTS.md", "Go version")),
         ("Go", go, "ci-parity Dockerfile ARG GO_VERSION", search(r"^ARG GO_VERSION=(\S+)$", "automation/images/ci-parity/Dockerfile", "GO_VERSION")),
         ("Go", go, "ci-parity image tag", re.match(r"go([\d.]+)-", parity_tag).group(1)),
         ("Go", go, "ci-go GO_IMAGE", search(r"^ARG GO_IMAGE=golang:([\d.]+)-", "automation/images/ci-go/Dockerfile", "GO_IMAGE")),
@@ -188,6 +190,12 @@ def check_pins() -> list[str]:
         ("Node extension runtime", node_runtime, "site troubleshooting extension runtime floor", search(r"Node and TypeScript extensions \| Node.js ([\d.]+) or newer", "docs/site/docs/install-troubleshooting.md", "Node extension runtime floor")),
         ("Rust", rust, ".devcontainer/devcontainer.json rust feature", devcontainer["ghcr.io/devcontainers/features/rust:1"]["version"]),
         ("Rust", minor(rust), "ci-parity image tag", re.search(r"-rust([\d.]+)-", parity_tag).group(1)),
+        ("npm", npm, "automation/ci/npm-toolchain/package.json npm", json.loads(read("automation/ci/npm-toolchain/package.json"))["dependencies"]["npm"]),
+        ("npm", npm, "automation/images/npm-runtime/package.json npm", json.loads(read("automation/images/npm-runtime/package.json"))["dependencies"]["npm"]),
+        ("npm", npm, "ci-parity Dockerfile npm check", search(r'npm-cli\.js --version\)" = "([\d.]+)"', "automation/images/ci-parity/Dockerfile", "npm check")),
+        ("npm", npm, "README npm requirement", search(r"Node\.js [\d.]+ and npm ([\d.]+) for parity tooling", "README.md", "npm requirement")),
+        ("npm", npm, "development guide npm requirement", search(r"^- npm ([\d.]+);$", "docs/site/docs/development.md", "npm requirement")),
+        ("npm", npm, "quickstart npm requirement", search(r"Node\.js [\d.]+ and npm ([\d.]+);", "docs/site/docs/quickstart.md", "npm requirement")),
         ("Pi", pi, "extensions/sdk-ts devDependency", sdk.get("devDependencies", {}).get("@earendil-works/pi-coding-agent", "")),
         ("Pi", pi, "extensions/sdk-ts peerDependency", sdk.get("peerDependencies", {}).get("@earendil-works/pi-coding-agent", "")),
         ("Pi", pi, "ci-parity Dockerfile ARG PI_VERSION", search(r"^ARG PI_VERSION=(\S+)$", "automation/images/ci-parity/Dockerfile", "PI_VERSION")),
@@ -217,6 +225,7 @@ def check_pins() -> list[str]:
         "Node": ".node-version",
         "Node extension runtime": "coding/extension/host/subprocess/builder_node.go minimumNodeRuntimeVersion",
         "Rust": ".github/workflows/ci.yml RUST_VERSION",
+        "npm": ".github/workflows/ci.yml NPM_VERSION",
         "Pi": ".upstream/pin",
     }
     problems = []

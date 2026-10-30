@@ -26,7 +26,7 @@ func scopedModelsWireValue(models []extension.ScopedModel) []map[string]any {
 func TestScopedModelsAcrossSDKs(t *testing.T) {
 	t.Parallel()
 	cases := allHarnessCases()
-	for _, language := range []string{"go", "python", "rust"} {
+	for _, language := range []string{"go", "python", "rust", "lisp"} {
 		cases = append(cases, harnessCase{name: "packed-" + language, make: func(t *testing.T) *harness { return makePackedScopeHarness(t, language) }})
 	}
 	for _, tc := range cases {

@@ -12,22 +12,22 @@
     },
     {
       "source": "test/parity/runner/default_cwd.go",
-      "sha256": "87f96d163240967c16b07d885ae32e092d5bd23d6a9955b0500903b6c33c6e6d",
+      "sha256": "e85fe12c62886177b009eabd0b5f919e20fe5c3fbf13489ed2880ed304f1d2d1",
       "reason": "D2/D22 fixture control balances prompt paths. Only terminal captures use length-preserving cwd digit substitution; process records retain raw paths unless an explicit JSON alias selects them."
     },
     {
       "source": "test/parity/runner/driver_ht.go",
-      "sha256": "824387e750c2c0b0ee97d3b49255a9b42655b2003a1e31b0681e23b08ff86c69",
+      "sha256": "69a91a07c9bc69269eca4ae4325da959194a5689037ff44f122d6995eb7416cf",
       "reason": "Headless terminal state capture compares the declared visible surface, not transient bytes. Tool stderr is diagnostic transport noise, not product stderr."
     },
     {
       "source": "test/parity/runner/driver_rpc.go",
-      "sha256": "7970de354d9b59f85ed5a00c4179dccc53cd05c108d7aaed0acb144e5a4a668d",
+      "sha256": "9e1aec0393b4e3185b23766f31cd4ad623a5770684b79c4cd46b3b997e9f481a",
       "reason": "canonical_json sorts JSON object keys only and preserves terminal framing. Raw stdout and stderr are retained. wait_contains/wait_event are new-output barriers, not acceptance assertions. A poll_until step resends one read-only query until its response holds the awaited state and then leaves every response to that query out of the compared and raw output, because their count follows timing; every other record, including the commands that prove the settled state, is compared."
     },
     {
       "source": "test/parity/runner/driver_tmux.go",
-      "sha256": "4589a75c48e5103aadb9fcc9acbc08f84ab88fb282a0ddad24e2850e06a7a8d3",
+      "sha256": "b76c6974a5eaad47d77e42e17c9d4f5d6ae73bd6fc8b2150bd0a6806d2aa5305",
       "reason": "Terminal state capture is not a byte-stream assertion. A scenario explicitly selects viewport or retained history and its crop. History capture uses session-local maximum retention without changing pane size or shared defaults; required anchors and source-derived assertions reject incomplete history. Readiness and new-output barriers are synchronization, not behavioral coverage."
     },
     {
@@ -62,7 +62,7 @@
     },
     {
       "source": "test/parity/testdata/provider-wire-pig/main.go",
-      "sha256": "655543c20ca024ef74ec392531c1472e99fc928e216ad114e0a1b2c85ad3a798",
+      "sha256": "048e77319ec5758485dc9110a354596b5bd4c9fe5ac5e7951ef25461726289ef",
       "reason": "Legacy role/key/auth summaries are diagnostic only: wireBody now compares the entire captured HTTP request body alongside them. Aggregated provider response summaries do not prove mode events; real-provider RPC/JSON scenarios compare those separately."
     },
     {
@@ -5388,7 +5388,7 @@
           "kind": "terminal_crop",
           "configuration": {
             "capture_start": "post-login-state:",
-            "capture_end": "post-login-state: current=openai/gpt-5.5 default=openai/gpt-5.5"
+            "capture_end": "post-login-state: current=openai/gpt-6.1-sol default=openai/gpt-6.1-sol"
           },
           "reason": "Owned visible surface: API key login from unknown selects and persists the provider default",
           "limitations": "No claim about output outside this crop or transient terminal bytes."

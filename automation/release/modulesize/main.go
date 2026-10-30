@@ -245,6 +245,7 @@ func proveInstall(root string, files []modzip.File) error {
 		"GOBIN="+bin,
 	)
 	fmt.Printf("module-size: go install %s from a file:// GOPROXY\n", target)
+	//nolint:gosec // G204 (class a): program is literal go; args are fixed install -modcacherw plus target = repo go.mod module path and a freshly generated version string.
 	cmd := exec.Command("go", "install", "-modcacherw", target)
 	cmd.Dir = work
 	cmd.Env = env
@@ -256,6 +257,7 @@ func proveInstall(root string, files []modzip.File) error {
 	if _, err := os.Stat(exe); err != nil {
 		exe += ".exe"
 	}
+	//nolint:gosec // G204 (class b): program is exe, the pig binary that the preceding go install built into the private work/bin; the only arg is fixed --version.
 	probe := exec.Command(exe, "--version")
 	probe.Dir = work
 	probe.Env = append(os.Environ(),
@@ -280,6 +282,7 @@ func fileProxyURL(dir string) string {
 }
 
 func goEnv(dir, key string) (string, error) {
+	//nolint:gosec // G204 (class a): program is literal go; args are fixed env plus a constant key (GOPROXY or GOMODCACHE) from proveInstall.
 	cmd := exec.Command("go", "env", key)
 	cmd.Dir = dir
 	out, err := cmd.Output()

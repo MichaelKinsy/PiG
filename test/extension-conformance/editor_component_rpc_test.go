@@ -16,7 +16,7 @@ import (
 // editor ever binds. A factory that calls super would otherwise wait for a bind that cannot come.
 func TestEditorComponentFactoryDoesNotRunInRPCMode(t *testing.T) {
 	t.Parallel()
-	for _, language := range []string{"go", "python", "rust"} {
+	for _, language := range []string{"go", "python", "rust", "lisp"} {
 		t.Run(language, func(t *testing.T) {
 			t.Parallel()
 			notify, status, actions := &[]string{}, &[]string{}, &[]string{}
@@ -36,13 +36,25 @@ func TestEditorComponentFactoryDoesNotRunInRPCMode(t *testing.T) {
 				config.Name, config.Path, config.RuntimeLanguage = "python-sdk-fixture", buildPythonSDKFixture(t), "python"
 			case "rust":
 				config.Name, config.Path = "rust-sdk-fixture", buildRustSDKFixture(t)
+			case "lisp":
+				config = lispFixtureConfig(t, "lisp-sdk-fixture", lispFixtureName)
 			}
-			ext, err := host.Load(context.Background(), config)
-			if err != nil {
-				t.Fatal(err)
+			var loaded []extension.Extension
+			if language == "lisp" {
+				// Host.Load builds from source with the Go and Rust toolchains only; the Lisp image is built through the cell loader.
+				var errs []error
+				if loaded, errs = host.LoadAll(context.Background(), []subprocess.ExtConfig{config}); len(errs) > 0 || len(loaded) != 1 {
+					t.Fatalf("lisp load: %d extensions, errors %v", len(loaded), errs)
+				}
+			} else {
+				ext, err := host.Load(context.Background(), config)
+				if err != nil {
+					t.Fatal(err)
+				}
+				loaded = []extension.Extension{*ext}
 			}
 			t.Cleanup(func() { host.Shutdown("test done") })
-			runner := inproc.NewRunner([]extension.Extension{*ext}, t.TempDir())
+			runner := inproc.NewRunner(loaded, t.TempDir())
 			bridge.SetUIPromptScope(runner)
 			done := make(chan bool, 1)
 			go func() { done <- runner.ExecuteCommand(context.Background(), "editor-install-eager", "") }()

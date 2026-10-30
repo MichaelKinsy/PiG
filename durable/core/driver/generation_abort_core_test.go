@@ -6,8 +6,8 @@ package driver_test
 import (
 	"context"
 	"path/filepath"
+	"slices"
 	"strings"
-	"sync"
 	"testing"
 	"time"
 
@@ -17,9 +17,9 @@ import (
 	"github.com/MichaelKinsy/PiG/durable/harness"
 )
 
-// harness-events.test.ts:599 over the core: a streamed assistant message starts at its first committed partial, and an abort ends
-// it once with the converted entry; the run never starts a second assistant message.
-func TestCoreAStreamedMessageStartsAtItsFirstPartialAndEndsOnceWithTheConvertedEntryOnAbort(t *testing.T) {
+// harness-view-run.test.ts:408 over the core: an abort converts the streamed partial into one aborted answer entry, appended in the
+// commit that ends the run, which has no second assistant message and says why it ended.
+func TestCoreAStreamedMessageEndsOnceWithTheConvertedEntryOnAbort(t *testing.T) {
 	one := 1
 	faux := ai.NewFauxProvider(ai.FauxConfig{TokensPerSecond: 100, TokenSize: &ai.FauxTokenSize{Min: &one, Max: &one}})
 	models := ai.CreateModels()
@@ -35,33 +35,14 @@ func TestCoreAStreamedMessageStartsAtItsFirstPartialAndEndsOnceWithTheConvertedE
 		t.Fatal(err)
 	}
 	h.Resume()
-	var mu sync.Mutex
-	var events []harness.AgentEvent
-	stream, err := harness.WatchEvents(t.Context(), h, root.Id())
-	if err != nil {
-		t.Fatal(err)
-	}
-	stream.Start(func(_ context.Context, change durable.NativeWatchChange[[]harness.AgentEvent]) error {
-		batch := change.Value
-		mu.Lock()
-		defer mu.Unlock()
-		events = append(events, batch...)
-		return nil
-	})
+	history := viewHistory(t, h, root.Id())
 	sub, err := root.Submit(t.Context(), durable.SubmissionDraft{Type: durable.SubmissionTypeInput, Content: ai.UserText("hi")})
 	if err != nil {
 		t.Fatal(err)
 	}
-	assistantStarts := func() int {
-		mu.Lock()
-		defer mu.Unlock()
-		return assistantStartsOf(events)
-	}
-	for deadline := time.Now().Add(20 * time.Second); assistantStarts() == 0; time.Sleep(5 * time.Millisecond) {
-		if time.Now().After(deadline) {
-			t.Fatal("no assistant message_start")
-		}
-	}
+	pollUntil(t, "a streamed partial", func() bool {
+		return slices.ContainsFunc(history.Live(), func(state harness.LiveState) bool { return state.Generation != nil && state.Generation.Message != nil })
+	})
 	live, err := durable.Snapshot(t.Context(), h, harness.LiveDoc, root.Id())
 	if err != nil || live == nil || live.Run == nil {
 		t.Fatalf("live state %+v, %v, want a run", live, err)
@@ -78,36 +59,25 @@ func TestCoreAStreamedMessageStartsAtItsFirstPartialAndEndsOnceWithTheConvertedE
 	if err := h.WaitForIdle(ctx); err != nil {
 		t.Fatal(err)
 	}
-	assistantEnds := func() int {
-		mu.Lock()
-		defer mu.Unlock()
-		ends := 0
-		for _, event := range events {
-			if end, ok := event.(harness.MessageEndEvent); ok && end.Entry.Kind == "pi.assistant" {
-				ends++
-			}
-		}
-		return ends
+	// The core delivers on its own goroutine, so wait for the view that ends the run.
+	pollUntil(t, "the run's failure", func() bool {
+		states := history.Live()
+		return states[len(states)-1].RunFailure != nil
+	})
+	history.Detach()
+	states, views := history.Live(), history.All()
+	ended := liveIndexAfter(states, 0, func(state harness.LiveState) bool { return state.Run == nil })
+	if ended < 1 || states[ended-1].Generation == nil || states[ended-1].Generation.Message == nil {
+		t.Fatalf("run ends at %d without a partial before it", ended)
 	}
-	// Pi's drained() lets the deliveries of the commits already published run before it reads the events. The core delivers on
-	// its own goroutine, and Stop ends the frames still queued, so wait for the abort's message_end to arrive before stopping.
-	waitFor(t, "the assistant message_end", func() bool { return assistantEnds() > 0 })
-	if _, err := stream.Stop(); err != nil {
-		t.Fatal(err)
+	appended := views[ended].Entries[len(views[ended-1].Entries):]
+	if len(appended) != 1 || appended[0].Kind != "pi.assistant" {
+		t.Fatalf("the ending commit appends %+v, want one pi.assistant", appended)
 	}
-	if starts, ends := assistantStarts(), assistantEnds(); starts != 1 || ends != 1 {
-		t.Fatalf("assistant starts %d, ends %d, want one of each", starts, ends)
+	if message, ok := appended[0].Model[0].(ai.AssistantMessage); !ok || message.StopReason != "aborted" {
+		t.Fatalf("the appended message = %+v, want an aborted assistant message", appended[0].Model[0])
 	}
-}
-
-func assistantStartsOf(events []harness.AgentEvent) int {
-	count := 0
-	for _, event := range events {
-		if start, ok := event.(harness.MessageStartEvent); ok {
-			if _, isAssistant := start.Message.(ai.AssistantMessage); isAssistant {
-				count++
-			}
-		}
+	if failure := states[ended].RunFailure; failure == nil || failure.Reason != harness.RunAborted {
+		t.Fatalf("runFailure = %+v, want aborted", failure)
 	}
-	return count
 }

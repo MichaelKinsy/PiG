@@ -41,7 +41,7 @@ func TestUpstreamResourceLoaderContextOptions(t *testing.T) {
 			t.Setenv("PIG_HOME", filepath.Join(root, "config"))
 			writeResourceTestFiles(t, root, tc.files)
 			cwd, agentDir := filepath.Join(root, "project"), filepath.Join(root, "agent")
-			files := loadContextFiles(cwd, agentDir, tc.noContext)
+			files := loadContextFiles(cwd, agentDir, tc.noContext, true)
 			if tc.wantContext {
 				found := false
 				for _, file := range files {
@@ -93,7 +93,7 @@ func TestUpstreamResourceLoaderUntrustedProject(t *testing.T) {
 	if inputs.custom != "Global system prompt." {
 		t.Fatalf("untrusted system prompt = %q", inputs.custom)
 	}
-	files := loadContextFiles(cwd, agentDir, false)
+	files := loadContextFiles(cwd, agentDir, false, true)
 	for _, expected := range []string{filepath.Join(agentDir, "AGENTS.md"), filepath.Join(cwd, "AGENTS.md")} {
 		found := false
 		for _, file := range files {

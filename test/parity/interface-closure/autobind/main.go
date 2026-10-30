@@ -366,7 +366,7 @@ var (
 // `export ... from` closure of its source).
 var libraryEntries = map[string][]string{
 	"env:.":                               {"./env"},
-	"durable:.":                           {"./durable", "./durable/harness", "./durable/session", "./durable/storage"},
+	"durable:.":                           {"./durable", "./durable/core", "./durable/core/session", "./durable/harness", "./durable/session", "./durable/storage"},
 	"durable:./env":                       {"./durable/env"},
 	"durable:./env/node":                  {"./durable/env/node"},
 	"durable:./codemode":                  {"./durable/codemode"},
@@ -464,6 +464,7 @@ func runProdreach(root string) ([]byte, error) {
 	for _, l := range reachLibraries {
 		args = append(args, "-library", l)
 	}
+	//nolint:gosec // G204 (class a): program is literal go; args are "run ./test/parity/cmd/prodreach -out <temp>" plus reachTags/reachLibraries/reachPatterns package-level constants.
 	cmd := exec.Command("go", append(args, reachPatterns...)...)
 	cmd.Dir = root
 	cmd.Stderr = os.Stderr

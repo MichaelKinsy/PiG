@@ -792,3 +792,38 @@ func TestRetiringAnAcquiredDocumentStillWritesItsFinalContent(t *testing.T) {
 		t.Fatalf("ops = %s, want doc,retireDoc,doc.write", got)
 	}
 }
+
+// session.ts close runs the scheduler's seal and the close listeners in one synchronous pass, so nothing a listener frees can reach
+// the scheduler before its seal. The host's own close listeners cancel the waits of calls in flight (closeAware); the goroutine such a
+// cancel frees posts its completion, here a tool's toolDone, as soon as it runs, and the core must already be sealed when it arrives.
+// Otherwise a tool that ends because the close freed it is settled by a core that does not yet know it is closing: it aborts the
+// nested calls of the interrupted caller, and the store keeps those marks for the next Harness (TestCoreAbandonedNestedCallsAfterARestartSettleInterruptedOrAbandoned).
+func TestCloseSealsTheCoreBeforeTheEventsItsCloseListenersFree(t *testing.T) {
+	s, core, _ := sessionRig(t, nil, nil)
+	s.SubscribeClose(func() {
+		// The listener returns once the goroutine it freed has posted, so the order of the two posts does not depend on scheduling.
+		posted := make(chan struct{})
+		go func() {
+			defer close(posted)
+			s.Host().Post(abi.Event{Kind: abi.EventToolDone, ID: 1, Phase: abi.OutcomeResult, Payload: []byte(`{}`)})
+		}()
+		<-posted
+	})
+	if err := s.Close(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+	core.mu.Lock()
+	defer core.mu.Unlock()
+	seal, freed := -1, -1
+	for i, ev := range core.seen {
+		switch ev.Kind {
+		case abi.EventSeal:
+			seal = i
+		case abi.EventToolDone:
+			freed = i
+		}
+	}
+	if seal < 0 || freed < 0 || seal > freed {
+		t.Fatalf("the core saw the seal as event %d and the completion a close listener freed as event %d, want the seal first", seal, freed)
+	}
+}

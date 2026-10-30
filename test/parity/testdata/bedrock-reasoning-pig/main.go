@@ -12,6 +12,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws/protocol/eventstream"
 
 	"github.com/MichaelKinsy/PiG/ai"
+	"github.com/MichaelKinsy/PiG/ai/providers/bedrock"
 )
 
 func main() {
@@ -74,7 +75,7 @@ func run() error {
 		}
 	}))
 	defer server.Close()
-	provider := ai.NewBedrockProvider("global.openai.gpt-5.6-terra", server.URL)
+	provider := bedrock.NewBedrockProvider("global.openai.gpt-5.6-terra", server.URL)
 	defer func() { _ = provider.Close() }()
 	opts := ai.StreamOptions{CacheRetention: ai.CacheRetentionNone, Env: ai.ProviderEnv{"AWS_BEDROCK_SKIP_AUTH": "1", "AWS_REGION": "us-east-1"}}
 	user := ai.UserMessage{Content: ai.UserText("hello"), Timestamp: 1}

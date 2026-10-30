@@ -24,7 +24,7 @@ const resumeToolsActive = "active"
 
 func TestResumeActivatesExtensionToolsTheBranchNeverMentionedAcrossSDKs(t *testing.T) {
 	root := findModuleRoot(t)
-	for _, language := range []string{"go", "python", "rust", "node", "fused-go"} {
+	for _, language := range []string{"go", "python", "rust", "node", "fused-go", "lisp"} {
 		for _, isolation := range []string{"strict", "shared-ok"} {
 			if language == "fused-go" && isolation == "shared-ok" {
 				continue
@@ -200,6 +200,23 @@ def new_extension():
  e.command("active","",active)
  return e
 `, name)
+	case "lisp":
+		path = filepath.Join(cfg.Source, name+".lisp")
+		code = fmt.Sprintf(`(defpackage %q (:use "COMMON-LISP"))
+(in-package %q)
+(defun new-extension ()
+  (let ((e (pig:make-extension %q)))
+    (dolist (n '("stable" "retired" "fresh" "quiet"))
+      (let ((n n))
+        (pig:register-tool e n :label n :description n :parameters (pig:obj "type" "object" "properties" (pig:obj))
+                               :execute (lambda (ctx args) (declare (ignore ctx args)) n)
+                               :default-active (if (equal n "quiet") :false nil))))
+    (pig:command e "active" ""
+      (lambda (ctx args)
+        (let ((got (format nil "~{~A~^,~}" (sort (coerce (pig:ctx-get-active-tools ctx) 'list) #'string<))))
+          (unless (string= got args) (error "getActiveTools=~A want ~A" got args)))))
+    e))
+`, name, name, name)
 	case "rust":
 		path = filepath.Join(cfg.Source, "src", "lib.rs")
 		code = fmt.Sprintf(`use pig_sdk::{Extension,ToolDefinition,ToolResult,CommandResult,Schema};

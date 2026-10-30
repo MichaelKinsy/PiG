@@ -57,9 +57,15 @@ func (h *handler) onSubmit(ev *abi.Event) error {
 		draft.Content = content
 	}
 	draft.Entry = objOf(req, "entry")
+	// The submission's span (submissions.ts submit): its carrier is stored on the record, and the commit's events go to it.
+	draft.Span = uint32(numOf(req, "span"))
+	if trace, has := req.Get("trace"); has {
+		draft.Trace = trace
+	}
+	draft.Propagation, _ = boolOf(req, "propagates")
 	conversationID := session.ID(numOf(req, "conversationId"))
 	bound := h.bound(req)
-	var submission session.ID
+	var admitted inbox.Admission
 	// Submissions.submit queues through Session.commitWith (submissions.ts :54-60), whose #enqueue starts the job a tick after the call on
 	// an idle line (session.ts :530-531).
 	h.loop.LineAfterTail(func() error {
@@ -67,10 +73,8 @@ func (h *handler) onSubmit(ev *abi.Event) error {
 			return err
 		}
 		_, err := h.sess.RunCommit(func(tx *session.Tx) error {
-			var e error
-			submission, e = inbox.Admit(tx, turn.Runs{}, conversationID, draft, h.now, h.queueModes())
-			return e
-		}, session.TxScope{})
+			return inbox.AdmitStatus(tx, turn.Runs{}, conversationID, draft, h.now, h.queueModes(), &admitted)
+		}, session.TxScope{Span: draft.Span, Trace: draft.Trace})
 		return err
 	}, func(err error) {
 		if err != nil {
@@ -78,11 +82,57 @@ func (h *handler) onSubmit(ev *abi.Event) error {
 			return
 		}
 		answer := jv.NewObject()
-		answer.Set("id", float64(submission))
-		h.apiOK(id, answer)
+		answer.Set("id", float64(admitted.ID))
+		if draft.Span != 0 {
+			// The span's result (`submission.id`, `result`) and the carrier of the run it links to.
+			// Constants: a status the core wrote is one of three.
+			switch admitted.Status {
+			case "queued":
+				answer.Set("status", "queued")
+			case "placed":
+				answer.Set("status", "placed")
+			default:
+				answer.Set("status", "done")
+			}
+			if admitted.Link != nil {
+				answer.Set("link", admitted.Link)
+			}
+		}
+		// Submissions.submit returns the span of "pi.durable.submit" (submissions.ts, Pi 2ec55d80): the no-op span's startSpan is an async
+		// function that returns the callback's promise, and the async submit returns that one, two adoptions on top of the commit's return.
+		h.holdLate(submitSpanHops, deferAnswer, id, answer)
 	})
 	return nil
 }
+
+// lateAnswer is an answer to an api request that waits for its microtask (deferAnswer).
+type lateAnswer struct {
+	id  uint32
+	val any
+}
+
+// deferAnswer is the work parked on a hops chain (holdLate) that answers the api request id with val as a microtask: hopsThen for an
+// answer, without a closure. The handler is the Resumer of every such microtask, and they run in the order they were queued.
+func deferAnswer(h *handler, id uint32, val any) {
+	h.lateAnswers = append(h.lateAnswers, lateAnswer{id, val})
+	h.loop.DeferResumer(h)
+}
+
+// Resume answers the oldest request deferAnswer queued.
+func (h *handler) Resume() {
+	a := h.lateAnswers[0]
+	n := copy(h.lateAnswers, h.lateAnswers[1:])
+	h.lateAnswers[n] = lateAnswer{}
+	h.lateAnswers = h.lateAnswers[:n]
+	h.apiOK(a.id, a.val)
+}
+
+// resumeHop is the work parked on a hops chain (holdLate) that resumes the Resumer val where the chain ended (Loop.Hops).
+func resumeHop(_ *handler, _ uint32, val any) { val.(session.Resumer).Resume() }
+
+// submitSpanHops is the ticks the "pi.durable.submit" span adds to the return of Submissions.submit (Pi 6c384aa3, F-ticks-gate: cold submit 105
+// against 103).
+const submitSpanHops = 2
 
 // onAbort serves the abort event (ABI section 5, kind 15): {requestId, submissionId, conversationId?} withdraws a queued
 // submission, {requestId, taskId} aborts a task, {requestId, conversationId, background?} aborts a conversation. The answer

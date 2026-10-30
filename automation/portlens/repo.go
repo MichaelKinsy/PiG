@@ -140,6 +140,7 @@ func pinTargets(committed string, versions []string) []string {
 
 // gitOut runs git in root and returns its trimmed standard output.
 func gitOut(root string, args ...string) (string, error) {
+	//nolint:gosec // G204 (class a): program is literal git; args are callers' fixed subcommands with -C root, and revisions or paths passed after -- or hex hashes from git output.
 	cmd := exec.Command("git", append([]string{"-C", root}, args...)...)
 	b, err := cmd.Output()
 	return strings.TrimSpace(string(b)), err

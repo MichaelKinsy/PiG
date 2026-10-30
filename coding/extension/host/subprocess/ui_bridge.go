@@ -61,6 +61,10 @@ type UIBridge struct {
 	// "<extName>:<key>" so render/close notifications from the TS
 	// shim runtime can be routed back to the originating overlay.
 	customOverlays map[string]extension.RemoteOverlayHandle
+	// tuiAltState holds the *tuiAltRegistry of the TuiAltScreens extensions constructed (CallTuiAlt), created by the first call that needs it (tuiAlt). It is
+	// an atomic.Value so that UIBridge, which every program links, does not name the renderer's types: they stay out of a program that never calls
+	// EnableTuiAltScreens.
+	tuiAltState atomic.Value
 
 	// extConns holds the per-extension socket connection so the
 	// bridge can forward overlay input notifications back to the
@@ -69,6 +73,7 @@ type UIBridge struct {
 	autocompleteReferences map[string]autocompleteReference
 	autocompleteOrigins    map[weak.Pointer[extension.AutocompleteProvider]]autocompleteOrigin
 	autocompleteQueries    map[autocompleteQueryKey]*autocompleteQuery
+	autocompleteSuggests   map[string]func()
 
 	// editor is the extension editor component installed last
 	// (ctx.ui.setEditorComponent), and editorsByConn each connection's
@@ -1408,6 +1413,8 @@ func (b *UIBridge) handleCall(ctx context.Context, extName string, owner *Conn, 
 		return b.handleInput(ctx, ui, call.Args)
 	case CallUICustomControl:
 		return b.handleCustomControl(ctx, extName, owner, call.Args)
+	case CallTuiAlt:
+		return b.callTuiAlt(owner, call.ParentRequestID, call.Args)
 	case CallUICustomShowOverlay:
 		return b.handleCustomShowOverlay(ctx, extName, owner, ui, call.Args)
 	case CallUICustomHideOverlay:
@@ -1466,7 +1473,7 @@ func (b *UIBridge) handleCall(ctx context.Context, extName string, owner *Conn, 
 	case "ui.addAutocompleteProvider":
 		return b.handleAddAutocompleteProvider(ctx, extName, owner, ui, call.Args)
 	case "ui.autocomplete.invoke":
-		return b.handleAutocompleteInvoke(ctx, owner, call.Args)
+		return b.handleAutocompleteInvoke(ctx, owner, call.ParentRequestID, call.Args)
 	case "ui.autocomplete.cancel":
 		return b.handleAutocompleteCancel(owner, call.Args)
 	case "ui.autocomplete.current":
@@ -1812,6 +1819,7 @@ func (b *UIBridge) clearExtension(extName string, owner *Conn, ownerOnly bool) {
 		handle.Close(nil)
 	}
 	b.clearEditorConn(extName, owner, ownerOnly)
+	b.clearTuiAlt(extName, owner, ownerOnly)
 }
 
 // SetModelCatalog installs equivalent value and JSON projections atomically. Publication uses the encoder without changing the value getter or its notification boundary. Replacing the getter through SetHostAction or SetActions clears the encoder.
@@ -2839,6 +2847,7 @@ func (b *UIBridge) handleCustom(ctx context.Context, extName string, owner *Conn
 			HeightFraction: p.HeightFraction,
 			Overlay:        p.Overlay,
 			Layout:         p.OverlayOptions,
+			Blocked:        p.Blocked,
 		},
 		host,
 		func(h extension.RemoteOverlayHandle) {

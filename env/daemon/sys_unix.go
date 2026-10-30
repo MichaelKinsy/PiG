@@ -15,6 +15,8 @@ import (
 	"syscall"
 	"unicode"
 	"unicode/utf8"
+
+	"github.com/MichaelKinsy/PiG/internal/nodefs"
 )
 
 const pathSeparator = "/"
@@ -83,8 +85,8 @@ func isLinkRefusal(err error) bool {
 	return errnoIs(err, syscall.ELOOP) || errnoIs(err, syscall.EMLINK)
 }
 
-// openForRead is Node's open(path, "r"): any kind of file, blocking.
-func openForRead(path string) (*os.File, error) { return os.OpenFile(path, os.O_RDONLY, 0) }
+// openForRead is Node's open(path, "r"): any kind of file, blocking. A FIFO is opened where no signal can interrupt the wait for a writer, as libuv opens it on a worker thread (see nodefs.OpenFile).
+func openForRead(path string) (*os.File, error) { return nodefs.OpenFile(path, os.O_RDONLY, 0) }
 
 // identity is the device and inode of a path's metadata, which identify a file across renames.
 func identity(_ string, info os.FileInfo, _ bool) (dev, ino uint64) {

@@ -9,7 +9,7 @@ import (
 	"strings"
 
 	"github.com/MichaelKinsy/PiG/coding/extension"
-	"github.com/MichaelKinsy/PiG/internal/jsstring"
+	"github.com/MichaelKinsy/PiG/internal/jsstring/localecompare"
 	"github.com/MichaelKinsy/PiG/mcp/oauth"
 )
 
@@ -114,7 +114,7 @@ func (e *Extension) serversMenu() McpMenu {
 		if rank := e.attentionRank(a) - e.attentionRank(b); rank != 0 {
 			return rank
 		}
-		return jsstring.LocaleCompare(a.entry.Name, b.entry.Name)
+		return localecompare.Compare(a.entry.Name, b.entry.Name)
 	})
 	items := make([]McpMenuItem, len(servers))
 	for i, s := range servers {
