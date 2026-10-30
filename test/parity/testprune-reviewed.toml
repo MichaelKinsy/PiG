@@ -545,3 +545,80 @@ commit = "b9a7f94c508033078d114203a2d5d2236403b6ce"
 class = "NOBEHAVIOR"
 cite = ""
 reason = "The commit renames the test's helper identifiers (Backoff, NewBackoff, Failed, Waiting, Until, Skip, Ended, Delete, Clear to the unexported backoff, newBackoff, failed, waiting, until, skip, ended, delete, clear) after chord/next/DESIGN-go-layout.md section 2 made Pi's internal classes unexported. No expected value changes: the windows, delays and counts asserted are those of packages/chord/test/next/host/backoff.test.ts."
+
+[[entry]]
+path = "chord/next/host/host_activity_test.go"
+commit = "0b76ae5e5feed52171c3a8bda3cc0edf9f38e33f"
+class = "CITE"
+cite = "packages/chord/test/next/host/activity.test.ts:67"
+reason = "The red commit expected a later watch of the activity to read references:1 for a host whose test holds one reference of its own to a local object. Pi's activity counts only holds that arrive over links and are served here, never the host's own references: activity.test.ts:67 (and :93) expects references: 0 with the counter got by host.get on the same host, and :111 expects only calls: 1 in the test this one mirrors. The expected text is now references 0, calls 1, as Pi's."
+
+[[entry]]
+path = "chord/next/host/host_attempt_test.go"
+commit = "0b76ae5e5feed52171c3a8bda3cc0edf9f38e33f"
+class = "CITE"
+cite = "packages/chord/test/next/host/attempt.test.ts:419"
+reason = "The flagged lines are one failure message and the description of a wait. The drain test still asserts what Pi asserts at attempt.test.ts:419-420, calls 0 and no references held by the stuck handler after the close timeout; the Go form waits for it (until) because the teardown that releases them is a task, where the red commit read it right after the clock moved. No expected value differs from Pi's."
+
+[[entry]]
+path = "chord/next/host/host_examples_test.go"
+commit = "0b76ae5e5feed52171c3a8bda3cc0edf9f38e33f"
+class = "CITE"
+cite = "packages/chord/test/next/host/native.test.ts:199"
+reason = "The changed expectations are the Go form of Pi's examples (test/next/examples/*.ts, which run the host and print what it reports) corrected to what Pi's host does. 06-natives: a close that threw while the host closes is returned by host.close as an AggregateError and not reported; only a close past its timeout is (native.ts:118-122; native.test.ts:199-200 expects the aggregate), so close_failed leaves the reported list. 07 and 11: an activation failure's message carries the object, `example.mirror(1): no mirror configured`, as object.test.ts:187 and :201 expect `app.svc(1): bug` and `app.svc(1): offline`. 14-flow-control.ts:93: a paused tab's end of the link holds what arrives, so the tab shows no characters (0, and an empty text for the slow tab of the relay) where the red commit expected the window's first two appends. The remaining flagged lines are descriptions of waits (the run rerun, the router with /files, the mirror's failed state)."
+
+[[entry]]
+path = "chord/next/host/host_keyed_members_test.go"
+commit = "0b76ae5e5feed52171c3a8bda3cc0edf9f38e33f"
+class = "CITE"
+cite = "packages/chord/test/next/host/keyed-members.test.ts:333"
+reason = "keyed-members.test.ts:333 expects the late pin on provider a to be gone (pinsOf(providers.a) undefined) once the viewer and the aborted get are released; the red commit's Go test read the pins once and expected none, and now waits until the release, which the object's teardown makes on a task. The expected value (no pin) is Pi's."
+
+[[entry]]
+path = "chord/next/host/host_keyed_slot_host_test.go"
+commit = "0b76ae5e5feed52171c3a8bda3cc0edf9f38e33f"
+class = "CITE"
+cite = "packages/chord/test/next/documents/keyed-slot.test.ts:162"
+reason = "The host halves of keyed-slot.test.ts assert what it does: a migration that throws `cannot migrate` rejects the get with a message containing it (:160), reports object_failed twice (:162) and leaves the reference failed broken (:163); at(key) outside the factory throws `valid only in the factory` (:351); a plugin's `plugin says no` is the rejection and one object_failed (:703-705). The red commit's Go expectations compared the same texts and kinds by exact match or by a count of reports; the changed lines compare the same values on the report kinds, the panic text and the rejection (a substring where Pi's message is expect.stringContaining), so none of them differs from Pi's."
+
+[[entry]]
+path = "chord/next/host/host_object_test.go"
+commit = "0b76ae5e5feed52171c3a8bda3cc0edf9f38e33f"
+class = "CITE"
+cite = "packages/chord/test/next/host/object.test.ts:193"
+reason = "The red commit's Go test expected the factory of a broken failure to have run 4 times after the last get; Pi's test (object.test.ts:177-193) expects bug toHaveBeenCalledTimes(3): the 2 of :190 (the core's activation at load and the first get's) and the third get of the ended object. The first value was wrong against Pi, now 3. The other changed lines move the clock through advanceSettled."
+
+[[entry]]
+path = "chord/next/host/host_reference_test.go"
+commit = "0b76ae5e5feed52171c3a8bda3cc0edf9f38e33f"
+class = "CITE"
+cite = "packages/chord/test/next/host/reference.test.ts:177"
+reason = "The flat-memory test keeps Pi's threshold, a growth under 500,000 bytes over 10,000 calls (reference.test.ts:177); it now fails only when two rounds in a row grow past it, because the Go heap carries the garbage of other tests' background work in one round, which a leak (about 350 B per call, reference.test.ts:176) shows in both; the failure message names both rounds. The keyed-state test waits for the first view's teardown (a task) before asserting that the shared source stays and is then dropped, as reference.test.ts:491-496 expects after its flushed()."
+
+[[entry]]
+path = "chord/next/host/host_revocation_test.go"
+commit = "0b76ae5e5feed52171c3a8bda3cc0edf9f38e33f"
+class = "CITE"
+cite = "packages/chord/test/next/host/revocation.test.ts:262"
+reason = "revocation.test.ts:262 expects the parent to have received no message (kinds() empty) for a hold sent before its revoke while the host waits for load: gone, never bound; the Go test now sends both messages in one turn on the host's microtask queue (as Pi's peer does) and only the failure message differs. The live states of the relayed tab (revocation.test.ts:431 and :450) are now awaited, because a Go link delivers on tasks of its own; the values expected are Pi's."
+
+[[entry]]
+path = "chord/next/host/host_route_test.go"
+commit = "0b76ae5e5feed52171c3a8bda3cc0edf9f38e33f"
+class = "CITE"
+cite = "packages/chord/test/next/host/route.test.ts:210"
+reason = "route.test.ts:210 expects the third resolve (toHaveLength(3)) after the second drop; the Go test waits for it (a Go link settles on tasks the clock does not wait for) and then for the reference live on its worker, with the same expected count. The other flagged strings are descriptions of waits; the resolver's context value is expected as in route.test.ts:373, compared on a slice under a mutex."
+
+[[entry]]
+path = "chord/next/host/host_routines_test.go"
+commit = "0b76ae5e5feed52171c3a8bda3cc0edf9f38e33f"
+class = "CITE"
+cite = "packages/chord/test/next/host/routines.test.ts:386"
+reason = "routines.test.ts:386 expects no timer left once the item is released (the retry timer cleared with the object's end, :383-386); the Go test waits until the watch's abort has cleared it, where the red commit read the count at once. The sleeping handler of onLive sleeps 60 s as routines.test.ts:923 does, written as a continuation instead of a parked task. The expected values are Pi's."
+
+[[entry]]
+path = "chord/next/host/remote_host_link_test.go"
+commit = "0b76ae5e5feed52171c3a8bda3cc0edf9f38e33f"
+class = "CITE"
+cite = "packages/chord/test/next/remote/host-link.test.ts:135"
+reason = "host-link.test.ts:135 expects the worker to receive an ack without origin and an ack of origin 1, one for each of the two holds' messages, each acknowledged by its consumer. The red commit's Go test counted two received messages after a sync; the changed lines read the acks in order (each one's origin), once for the two `bound` messages and once for the two `state` messages, and wait for the count 5 of both references, as the test of :111-135 reads them after transported()."

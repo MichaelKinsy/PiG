@@ -1493,8 +1493,18 @@ func TestExample11LingerAndRetry(t *testing.T) {
 	exEqual(t, "after linger", exValue(t, draftRef, "text"), "")
 	draftRef.Release()
 	// 2. The mirror: broken, then transient, then live.
-	held := exHold(t, host, mirror, jsonObject("id", float64(1)))
-	watch, kinds := exStateKinds(t, held)
+	// Pi's `host.hold(...)` and `ref.state.watch(...)` run in one synchronous section: the mirror's open fails in a later turn,
+	// so the watch opens at `loading` and its first frame is the broken failure. Taken after the hold's section, the watch
+	// could open at the failure already, and its first frame would be the retry's.
+	var (
+		held  *Reference
+		watch chord.NativeWatchHandle[*RefState]
+		kinds *exCollector
+	)
+	host.(*chordHost).enter(func() {
+		held = exHold(t, host, mirror, jsonObject("id", float64(1)))
+		watch, kinds = exStateKinds(t, held)
+	})
 	want := []string{"failed, broken, no automatic retry: example.mirror(1): no mirror configured"}
 	exWaitState(t, held, want[0])
 	setFlag(&configured, true)

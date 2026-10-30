@@ -8,7 +8,6 @@ import (
 	"strconv"
 	"strings"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	"github.com/MichaelKinsy/PiG/chord"
@@ -1443,17 +1442,11 @@ func (a *attempt) assertDeclaring(declaration string) {
 	}
 }
 
-// awaitTasksRunning counts the awaitTask tasks still running (or waiting for their resumption section): what a test that
-// moves a fake clock waits for between timers, as Pi's `advanceTimersByTimeAsync` awaits the microtasks between them.
-var awaitTasksRunning atomic.Int64
-
 // awaitTask is `await work()` for work that blocks (a store, a native, a followed runtime): work runs on an owned task of the
 // host's loop, outside a section, and its outcome settles the returned promise in a section (the resumption).
 func awaitTask[T any](host *chordHost, work func() (T, error)) *keyedPromise[T] {
 	promise := newKeyedPromise[T](host.loop())
-	awaitTasksRunning.Add(1)
 	host.loop().Go(func() {
-		defer awaitTasksRunning.Add(-1)
 		value, err := work()
 		host.enter(func() { promise.settle(value, err) })
 	})

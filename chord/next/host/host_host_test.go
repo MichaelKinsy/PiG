@@ -821,20 +821,37 @@ func TestHostCloseEndsEveryObjectTheLastToGoLiveFirstAndRejectsNewCalls(t *testi
 			return readsAs(self, hostInfo, jsonObject(), "title", "title"), nil
 		}, ServeOptions{})
 	}, loadedOptions{})
-	var ends seenList[string]
 	outer, err := host.Get(hostOuter, jsonObject(), background, GetOptions{})
 	must(t, err)
 	info, err := host.Get(hostInfo, jsonObject(), background, GetOptions{})
 	must(t, err)
-	for name, ref := range map[string]*Reference{"outer": outer, "info": info} {
-		watch, err := ref.Member("title").Watch(background)
-		must(t, err)
-		go func() { <-watch.Closed(); ends.add(name) }()
-	}
+	outerWatch, err := outer.Member("title").Watch(background)
+	must(t, err)
+	infoWatch, err := info.Member("title").Watch(background)
+	must(t, err)
+	// The close ends the objects one after the other in one section: when the last to go live ended first, outer's watch
+	// is closed by the time info's is seen closed (goroutines observing both ends would race each other's wake-up).
+	outerEndedFirst := make(chan bool, 1)
+	go func() {
+		<-infoWatch.Closed()
+		select {
+		case <-outerWatch.Closed():
+			outerEndedFirst <- true
+		default:
+			outerEndedFirst <- false
+		}
+	}()
 	must(t, host.Close(background))
-	scopeEventually(t, "both watches ended", func() bool { return ends.len() == 2 })
-	if got := ends.all(); !reflect.DeepEqual(got, []string{"outer", "info"}) {
-		t.Fatalf("ends = %v, want [outer info]", got)
+	scopeEventually(t, "both watches ended", func() bool {
+		select {
+		case <-outerWatch.Closed():
+			return true
+		default:
+			return false
+		}
+	})
+	if !<-outerEndedFirst {
+		t.Fatal("info's watch ended before outer's: the last to go live must end first")
 	}
 	_, err = host.Get(hostInfo, jsonObject(), background, GetOptions{})
 	wantChordError(t, err, data.CodeReleased, data.ReasonClosed, "the host is closed")

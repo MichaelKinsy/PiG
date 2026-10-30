@@ -40,6 +40,9 @@ type sharedLoad struct {
 	err     error
 	tokens  map[*SealToken]struct{}
 	refused map[*SealToken]struct{}
+	// value is the loaded document's value (nil: the store has none), kept for the waiters: an ending object drops its
+	// residents once the line settled, which can be before a waiter resumed (Pi's microtask order puts the waiter first).
+	value *JsonObject
 }
 
 // KeyedSlot is a keyed slot: one resident per document in memory, one source per pinned key.
@@ -120,12 +123,15 @@ func (slot *KeyedSlot) get(key string, access Access, ctx context.Context) (*Jso
 	if failure != nil || settled {
 		return value, failure
 	}
-	if err := slot.loadShared(key, access.Token, ctx); err != nil {
+	loaded, err := slot.loadShared(key, access.Token, ctx)
+	if err != nil {
 		return nil, err
 	}
 	slot.owner.Do(func() {
 		if resident := slot.residents[key]; resident != nil {
 			value = resident.Tracker.Value()
+		} else {
+			value = loaded
 		}
 	})
 	return value, nil
@@ -526,7 +532,7 @@ func (slot *KeyedSlot) Drop() {
 // loadShared is a cold persisted key's load, one in flight per key, on the line under the owner's context (rule 11).
 // The load is every waiter's: when it takes the line, a waiter whose handle was sealed meanwhile (its attempt failed
 // live, the object still open) is refused `released`, and with no other waiter the load does not run (rule 4).
-func (slot *KeyedSlot) loadShared(key string, token *SealToken, ctx context.Context) error {
+func (slot *KeyedSlot) loadShared(key string, token *SealToken, ctx context.Context) (*JsonObject, error) {
 	var load *sharedLoad
 	var failure error
 	slot.owner.Do(func() {
@@ -541,23 +547,23 @@ func (slot *KeyedSlot) loadShared(key string, token *SealToken, ctx context.Cont
 		load.tokens[token] = struct{}{}
 	})
 	if failure != nil {
-		return failure
+		return nil, failure
 	}
 	parking.Park(ctx)
 	select {
 	case <-load.done:
 	case <-ctx.Done():
-		return context.Cause(ctx)
+		return nil, context.Cause(ctx)
 	}
 	if load.err != nil {
-		return load.err
+		return nil, load.err
 	}
 	var refused bool
 	slot.owner.Do(func() { _, refused = load.refused[token] })
 	if refused {
-		return slot.owner.Released()
+		return nil, slot.owner.Released()
 	}
-	return nil
+	return load.value, nil
 }
 
 // startLoad starts the shared load of key; it leaves `loads` when it settles. A section.
@@ -582,7 +588,15 @@ func (slot *KeyedSlot) startLoad(key string) *sharedLoad {
 			if failure != nil {
 				return failure
 			}
-			return slot.Load(key, slot.owner.Context(), nil)
+			if failure = slot.Load(key, slot.owner.Context(), nil); failure != nil {
+				return failure
+			}
+			slot.owner.Do(func() {
+				if resident := slot.residents[key]; resident != nil {
+					load.value = resident.Tracker.Value()
+				}
+			})
+			return nil
 		}, nil)
 		slot.owner.Do(func() {
 			load.err = err

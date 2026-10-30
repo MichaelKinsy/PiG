@@ -117,28 +117,6 @@
   "mutation": "chord/next/host/host_ref_state.go: `if current == r.last {` -> `if false {` (TestRefStateAnnouncesOnlyAnotherStateObject FAILS)"
  },
  {
-  "upstream": "packages/chord/src/next/host/dependencies.ts",
-  "package": "./chord/next/host",
-  "tests": [
-   "TestTheDependencyCheckBreaksADependentOffACycleWithTheCyclesError",
-   "TestTheDependencyCheckBreaksADependentWhoseDependencyEnded",
-   "TestTheDependencyCheckBreaksADependentWhoseDependencyWasRefusedAuthority",
-   "TestTheDependencyCheckGoesLiveOnceEveryDependencyIs",
-   "TestTheDependencyCheckNamesTheFirstFailedBlocker",
-   "TestTheDependencyCheckFirstPassAndRemoteLoading",
-   "TestTheDependencyCheckOfRegistryValues",
-   "TestWaitingOnIsAFailedWaitingStateWithoutRetryAt",
-   "TestParkedLongIsReportedOncePerParkingEpisodeAfterReadyTimeout",
-   "TestParkedLongStartsItsClockWhenTheHoldGetsOnALink",
-   "TestParkedLongIsNotReportedWhileNoRemoteBlockerIsOnALink",
-   "TestParkedLongStopsWhenTheBlockerIsGone",
-   "TestParkedLongNamesTheBlockerOfTheMomentWithOneTimer",
-   "TestParkedLongDelayIsTheTimeLeft"
-  ],
-  "upstream_reference": "packages/chord/test/next/host/dependencies.test.ts",
-  "mutation": "chord/next/host/host_dependencies.go: `|| err.Code == data.CodeForbidden` -> `|| false` (TestTheDependencyCheckBreaksADependentWhoseDependencyWasRefusedAuthority FAILS)"
- },
- {
   "upstream": "packages/chord/src/next/host/parked.ts",
   "package": "./chord/next/host",
   "tests": [
@@ -204,19 +182,6 @@
   "mutation": "chord/next/host/host_member_source.go: `m.changed()` (the last statement of bind, after `// Marks the derives downstream: a failed one recomputes too (self-healing).`) -> removed (TestMemberSourceRebindingSendsOneFrameFromTheLastValueWhenTheNewAttemptsMemberDiffers FAILS)"
  },
  {
-  "upstream": "packages/chord/src/next/host/keyed-members.ts",
-  "package": "./chord/next/host",
-  "tests": [
-   "TestKeyedMembersAKeyWhoseFirstPinStillLoadsTheObjectFailsAndRebindsMeanwhileTheConsumerRetriesOnTheNewMemberTheLatePinIsReleased",
-   "TestKeyedMembersAKeyWhoseFirstPinStillLoadsTheObjectEndsMeanwhileTheWaitRejectsAndTheLatePinIsReleased",
-   "TestKeyedMembersRebindingFollowsTheNewAttemptsMemberOfTheSameNameOneFrameAndTheOldProvidersPinIsReleased",
-   "TestKeyedMembersAKeyedWatchWhoseObjectClosesWhileItIsSetUpSettlesWithTheKeyOrTheEndWhicheverMicrotaskTheCloseLandsIn",
-   "TestKeyedPromiseCallbacksRunAsMicrotasksInTheOrderTheyWereRegistered"
-  ],
-  "upstream_reference": "packages/chord/test/next/host/keyed-members.test.ts",
-  "mutation": "chord/next/host/host_keyed_members.go: `if entry.state.kind != entryLoading {` -> `if false {` (TestKeyedMembersAKeyWhoseFirstPinStillLoadsTheObjectEndsMeanwhileTheWaitRejectsAndTheLatePinIsReleased FAILS)"
- },
- {
   "upstream": "packages/chord/src/next/host/members.ts",
   "package": "./chord/next/host",
   "tests": [
@@ -272,17 +237,6 @@
   ],
   "upstream_reference": "packages/chord/test/next/host/facet.test.ts",
   "mutation": "chord/next/host/host_facet.go: `if each.registry.Name == registry.Name {` -> `if each.registry.Name == \"\" {` (TestFacetsContributeAtMostOneValuePerRegistryOnlyWhileTheirSetupRuns FAILS: err = <nil>, want the twice error)"
- },
- {
-  "upstream": "packages/chord/src/next/host/presence.ts",
-  "package": "./chord/next/host",
-  "tests": [
-   "TestReferencesChangeInTheBatchWhereAReferenceBindsOrEndsAWatchGetsOneSplicePerChange",
-   "TestReferencesRemovesABulkDepartureWithOneListAndOneSpliceOpPerEntryInOneFrame",
-   "TestReferencesAnEntryAddedAndRemovedInOneBatchPublishesNothing"
-  ],
-  "upstream_reference": "packages/chord/test/next/host/presence.test.ts (own tests: every upstream case builds hosts and links)",
-  "mutation": "chord/next/host/host_presence.go: `if r.Watched() && r.hasList {` -> `if false {` (TestReferencesChangeInTheBatchWhereAReferenceBindsOrEndsAWatchGetsOneSplicePerChange FAILS: frames = 0, want 3)"
  },
  {
   "upstream": "packages/chord/src/next/host/route.ts",
