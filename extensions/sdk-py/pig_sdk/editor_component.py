@@ -214,6 +214,10 @@ class EditorComponent:
     Optional ``captures_viewport_input`` (a bool attribute, property or method; Pi's ``capturesViewportInput``): ``ui.editor.render``
     carries ``capturesViewportInput: true`` while it is true, and a change alone sends a frame."""
 
+    #: Pi's optional ``capturesViewportInput``: while true, the host's fullscreen viewport keys (page, scroll) go to the editor
+    #: instead of the transcript. Read when each frame is drawn; override with a bool attribute, property or method.
+    captures_viewport_input: bool = False
+
     #: Whether the component draws the working, compaction, summarization and retry status in its top border, as Pi's
     #: CustomEditor does with ``embedWorkingStatus: true``. The host then renders the status into the rows that
     #: :meth:`EditorBase.render` returns instead of showing it above the editor. Read once, after the factory returns.
