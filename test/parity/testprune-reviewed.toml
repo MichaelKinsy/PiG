@@ -546,6 +546,7 @@ class = "NOBEHAVIOR"
 cite = ""
 reason = "The commit renames the test's helper identifiers (Backoff, NewBackoff, Failed, Waiting, Until, Skip, Ended, Delete, Clear to the unexported backoff, newBackoff, failed, waiting, until, skip, ended, delete, clear) after chord/next/DESIGN-go-layout.md section 2 made Pi's internal classes unexported. No expected value changes: the windows, delays and counts asserted are those of packages/chord/test/next/host/backoff.test.ts."
 
+[[entry]]
 path = "internal/photonimage/decode_routing_test.go"
 commit = "6445df7c9d"
 class = "CITE"
