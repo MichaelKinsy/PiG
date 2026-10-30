@@ -637,7 +637,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-7dc9b09-2](#bf-7dc9b09-2) | `--prompt-template` and `--theme` paths are now merged after the project, user and Package resources, as in… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-7e09ec0](#bf-7e09ec0) | fix(codingagent): the idle collection runs one forced GC cycle (D172) | PiG's own defect | All platforms | Unreleased |
 | [BF-7e16053](#bf-7e16053) | `pig install /abs/path` (and `~/path` or a `file://` URL) records the path as you typed it in `packages[]` | A Pi defect that PiG fixed first | All platforms | Unreleased |
-| [BF-7e16053-2](#bf-7e16053-2) | A configured local Package whose directory does not exist is now a startup warning in the session, with the… | PiG's own defect | All platforms | Unreleased |
+| [BF-7e16053-2](#bf-7e16053-2) | A configured local Package whose directory does not exist is now a startup warning in the session, and an… | PiG's own defect | All platforms | Unreleased |
 | [BF-7e1a05c](#bf-7e1a05c) | Resource resolution follows Pi's `DefaultPackageManager.resolve` in two cases: built-in extensions come after… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-7ea21f3](#bf-7ea21f3) | RPC output writes summed usage (a tool result's usage with nested model calls, a compaction summary's usage)… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-7f2c05b](#bf-7f2c05b) | A `ChordError` of code `invalid` from a failed args, result, state or input check carries TypeBox's whole… | PiG's own defect | All platforms | Unreleased |
@@ -9897,17 +9897,17 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 
 ### BF-7e16053-2
 
-**A configured local Package whose directory does not exist is now a startup warning in the session, with the…**
+**A configured local Package whose directory does not exist is now a startup warning in the session, and an…**
 
 - **Source:** PiG's own defect
-- **Symptom:** A configured local Package whose directory does not exist is now a startup warning in the session, with the path it resolved to and the `pig remove` command that drops it, instead of a `[pig] Could not install ... (run pig update when online)` line on stderr (D215, #389).
+- **Symptom:** A configured local Package whose directory does not exist is now a startup warning in the session, and an extension warning for programs that embed PiG, with the path it resolved to and the `pig remove` command that drops it, instead of a `[pig] Could not install ... (run pig update when online)` line on stderr (D215, #389).
 - **Root cause:** pig install recorded every local Package relative to the agent directory as spelled at install, as Pi does. An install through a symlinked PIG_HOME wrote ../../../../../../pkgsrc/my-pkg, and a start through another spelling at another depth resolved it to nothing: the Package's tools vanished with one stderr line.
 - **User impact:** An operation failed or was rejected
 - **Platform:** All platforms
 - **Fixed in:** Unreleased
-- **Fix commits:** `7e160533d7` (2026-10-29)
-- **Tests:** `coding/cli/package_commands_test.go::TestNormalizePackageSourceForSettings_UsesScopeBase`, `coding/cli/package_local_path_test.go::TestInstalledAbsoluteLocalPackageResolvesThroughAnotherAgentDirSpelling`, `coding/cli/package_local_path_test.go::TestStartupWarnsAboutAConfiguredLocalPackageThatDoesNotExist`
-- **Release note:** A configured local Package whose directory does not exist is now a startup warning in the session, with the path it resolved to and the `pig remove` command that drops it, instead of a `[pig] Could not install ... (run pig update when online)` line on stderr (D215, #389).
+- **Fix commits:** `7e160533d7` (2026-10-29), `9a388567fd` (2026-10-30)
+- **Tests:** `coding/cli/package_commands_test.go::TestNormalizePackageSourceForSettings_UsesScopeBase`, `coding/cli/package_local_path_test.go::TestInstalledAbsoluteLocalPackageResolvesThroughAnotherAgentDirSpelling`, `coding/cli/package_local_path_test.go::TestStartupWarnsAboutAConfiguredLocalPackageThatDoesNotExist`, `coding/resource_loader_extension_files_test.go::TestDefaultResourceLoaderWarnsAboutAConfiguredLocalPackageThatDoesNotExist`
+- **Release note:** A configured local Package whose directory does not exist is now a startup warning in the session, and an extension warning for programs that embed PiG, with the path it resolved to and the `pig remove` command that drops it, instead of a `[pig] Could not install ... (run pig update when online)` line on stderr (D215, #389).
 
 ### BF-7e1a05c
 
