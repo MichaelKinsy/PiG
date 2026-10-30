@@ -14,14 +14,13 @@ import (
 	"github.com/MichaelKinsy/PiG/chord"
 	chordctx "github.com/MichaelKinsy/PiG/chord/context"
 	"github.com/MichaelKinsy/PiG/chord/delta"
+	"github.com/MichaelKinsy/PiG/chord/internal/parking"
 	"github.com/MichaelKinsy/PiG/chord/next/contracts"
 	"github.com/MichaelKinsy/PiG/chord/next/data"
 	"github.com/MichaelKinsy/PiG/chord/next/documents"
 	"github.com/MichaelKinsy/PiG/chord/next/registries"
 	"github.com/MichaelKinsy/PiG/chord/next/state"
 	"github.com/MichaelKinsy/PiG/chord/next/store"
-	"github.com/MichaelKinsy/PiG/internal/entered"
-	"github.com/MichaelKinsy/PiG/internal/goroutineid"
 )
 
 // Ports packages/chord/src/next/host/attempt.ts. Attempts (§6, §13, §14, §15): one activation of an object, a fresh
@@ -247,18 +246,6 @@ type attempt struct {
 	endedEarly *data.ChordError
 	// registry are its registry reads, contributions, wake signals and writables, made by the first: most attempts have none.
 	registry *registryDeclarations
-	// lastStart is the handler start of the newest call: the next call's task waits until that handler has entered (is parked
-	// in a wait or returned), so handlers run up to their first await in the order their calls were admitted (Pi runs each
-	// one's synchronous part inside its admitting section, in order).
-	lastStart *handlerStart
-}
-
-// handlerStart is where a call's handler is: id is its goroutine's, set before started is closed; done is closed when it
-// returned and settled its call.
-type handlerStart struct {
-	started chan struct{}
-	id      uint64
-	done    chan struct{}
 }
 
 var (
@@ -674,19 +661,14 @@ func (a *attempt) call(method string, args any, ctx context.Context, from caller
 	// The caller's wait ends at once when the call's context is aborted: awaitWithContext(running, callContext).
 	stopWait := context.AfterFunc(callContext, func() { result.settle(nil, context.Cause(callContext)) })
 	loop := host.loop()
-	previous := a.lastStart
-	start := &handlerStart{started: make(chan struct{}), done: make(chan struct{})}
-	a.lastStart = start
-	loop.Go(func() {
-		defer close(start.done)
-		if previous != nil {
-			<-previous.started
-			entered.Await(previous.id, previous.done)
-		}
-		start.id = goroutineid.Current()
-		close(start.started)
+	// The handler's synchronous part runs inside this section, as Pi's does: the section is lent to it (Loop.Lend) until it
+	// returns or parks (Park of its ctx, at the first wait for something that is not a section of the host).
+	signal := parking.New()
+	handlerCtx.signal = signal
+	loop.Lend(signal, func() {
 		// Plugin code, not type-checked: a panic becomes the rejection.
 		value, err := tryPlugin(func() (any, error) { return handler(checked.Args, handlerCtx) })
+		signal.Raise()
 		loop.Run(func() {
 			stopWait()
 			settle(err)

@@ -15,7 +15,9 @@ import (
 // the activation's loads and the residency of keyed documents.
 //
 // Async contract: OnLine, Tx, Load and Settled block (the line, the store); everything else is a section the host
-// serializes (see the package documentation). A section never blocks.
+// serializes (see the package documentation). A section never blocks. A blocking call that is given a handler's ctx (or a
+// context derived from it) parks the handler where it starts to wait (chord/internal/parking), so the section that admitted
+// the handler's call goes on: Pi's handler runs up to its first `await` inside that section.
 
 // DocumentsOwner is who owns an object's documents: the object's name, batch and context, its store address, its live
 // failure and the host's serialization and time.
@@ -79,7 +81,7 @@ func NewDocuments(owner DocumentsOwner) *Documents {
 	// does not fail): nothing to report.
 	d.residency = NewResidency(owner, func(sweep func()) {
 		go func() {
-			_ = d.OnLine(func() error {
+			_ = d.OnLine(context.Background(), func() error {
 				d.Do(sweep)
 				return nil
 			}, nil)
@@ -188,7 +190,7 @@ func (d *Documents) Load(ctx context.Context) error {
 	if len(persisted) == 0 {
 		return nil
 	}
-	return d.OnLine(func() error {
+	return d.OnLine(ctx, func() error {
 		for _, slot := range persisted {
 			if err := slot.LoadDeclared(ctx); err != nil {
 				return err
@@ -201,11 +203,11 @@ func (d *Documents) Load(ctx context.Context) error {
 // OnLine runs job on the line (a cold load, a page of keys, an eviction sweep); refused `released` once the object is
 // ending or token (the handle's that asks, when the job is one handle's; nil otherwise) is sealed, a job queued before
 // either included (anything taking the line after the seal is refused, rule 4).
-func (d *Documents) OnLine(job func() error, token *SealToken) error {
+func (d *Documents) OnLine(ctx context.Context, job func() error, token *SealToken) error {
 	if err := d.refusedOnLine(token); err != nil {
 		return err
 	}
-	release := d.line.Acquire()
+	release := d.line.Acquire(ctx)
 	defer release()
 	if err := d.refusedOnLine(token); err != nil {
 		return err
@@ -239,7 +241,7 @@ func (d *Documents) Tx(fn func(tx *Transaction) (any, error), token *SealToken, 
 	if err != nil {
 		return nil, err
 	}
-	release := d.line.Acquire()
+	release := d.line.Acquire(ctx)
 	var tx *Transaction
 	defer func() {
 		d.Do(func() {
@@ -322,7 +324,7 @@ func (d *Documents) Seal() {
 // Settled blocks until the line is free. After Seal only an admitted step can hold it (every other holder was cut):
 // the object's teardown waits here, so the step adopts into documents that still exist (slice 6a §1.3).
 func (d *Documents) Settled() {
-	d.line.Acquire()()
+	d.line.Acquire(context.Background())()
 }
 
 // End drops every document and pin; watches end `ended`, and every later use returns `released`. A section.

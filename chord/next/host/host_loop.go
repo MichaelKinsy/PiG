@@ -5,6 +5,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/MichaelKinsy/PiG/chord/internal/parking"
 	"github.com/MichaelKinsy/PiG/internal/goroutineid"
 )
 
@@ -106,6 +107,26 @@ func (l *Loop) drain() {
 func (l *Loop) Go(fn func()) {
 	//portlint:allow golifetime joined by Loop.Wait through l.tasks; the host's close waits for its background tasks
 	l.tasks.Go(fn)
+}
+
+// Lend runs fn as the synchronous part of an async function inside the running section: on a goroutine of its own, as the
+// section's continuation. The section waits until fn returns or raises signal (a Park of its ctx), and meanwhile the
+// loop's owner is fn's goroutine: its calls to Run run inline, as nested synchronous calls do in Pi, and the rest of the
+// section does not run. Raise gives the loop back to the section. fn is an owned background task as Go's. Lend called
+// outside a section only waits for the signal.
+func (l *Loop) Lend(signal *parking.Signal, fn func()) {
+	section := goroutineid.Current()
+	lent := l.owner.Load() == section
+	if lent {
+		signal.Lend(&l.owner, section)
+	}
+	l.Go(func() {
+		if lent {
+			l.owner.Store(goroutineid.Current())
+		}
+		fn()
+	})
+	signal.Wait()
 }
 
 // Wait blocks until every task started with Go (and every timer job already running) has returned.

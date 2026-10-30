@@ -1056,7 +1056,7 @@ func (o *chordObject) tearDown(td teardown, reason NativeCloseReason) []*closeFa
 	}
 	if td.previous != nil {
 		// An ending never rejects.
-		_, _ = td.previous.await()
+		_, _ = td.previous.await(context.Background())
 	}
 	var failures []*closeFailed
 	if td.kind == teardownClose {

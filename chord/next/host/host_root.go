@@ -7,6 +7,7 @@ import (
 	"slices"
 
 	chordctx "github.com/MichaelKinsy/PiG/chord/context"
+	"github.com/MichaelKinsy/PiG/chord/internal/parking"
 	"github.com/MichaelKinsy/PiG/chord/next/data"
 )
 
@@ -107,6 +108,7 @@ func (r *rootScopes) run(fn func(ctx Ctx) (any, error), principal data.Principal
 		})
 	})
 	// A method's caller gets `released` when its object ends, whatever the handler still does: so does this one.
+	parking.Park(ctx)
 	select {
 	case result := <-results:
 		return result.value, result.err

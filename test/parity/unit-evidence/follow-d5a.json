@@ -817,5 +817,26 @@
   ],
   "upstream_reference": "packages/chord/test/next/examples/08-remote.ts",
   "mutation": "chord/next/host/host_next_support_test.go: `kind, _ := principal.Value(\"kind\").(string)` -> `kind, _ := principal.Value(\"kinds\").(string)` in principalKind (TestExample08Remote FAILS: host_examples_test.go:1127: guest variant = \"editor\", want reader; TestExample12Routes FAILS: host_examples_test.go:1644: session|S1: not authorized)"
+ },
+ {
+  "upstream": "packages/chord/src/next/host/parked.ts",
+  "package": "./chord/next/host",
+  "tests": [
+   "TestHostParkedCallsStopBeingSentWhenOnesHandlerReleasesTheReference"
+  ],
+  "upstream_reference": "packages/chord/test/next/host/parked.test.ts",
+  "mutation": "chord/next/host/host_loop.go: `signal.Wait()` -> `_ = signal` in Loop.Lend (the section no longer waits for the handler's first synchronous part) (TestHostParkedCallsStopBeingSentWhenOnesHandlerReleasesTheReference FAILS: host_parked_test.go:571: err = <nil> (<nil>), want a ChordError)"
+ },
+ {
+  "upstream": "packages/chord/src/next/host/routines.ts",
+  "package": "./chord/next/host",
+  "tests": [
+   "TestRoutinesStartInTheTurnTheirObjectWentLiveNextToAMethodCallAdmittedInThatTurn",
+   "TestLoopLendRunsAHandlersFirstPartInsideTheSectionAndGivesItBackWhenItParks",
+   "TestLoopLendGivesTheSectionBackWhenTheHandlerReturns",
+   "TestLoopLendOutsideASectionLendsNothing"
+  ],
+  "upstream_reference": "packages/chord/test/next/host/routines.test.ts",
+  "mutation": "chord/next/host/host_loop.go: `signal.Wait()` -> `_ = signal` in Loop.Lend (TestRoutinesStartInTheTurnTheirObjectWentLiveNextToAMethodCallAdmittedInThatTurn FAILS: host_routines_test.go:1573: order = [onLive on 0 bump on 1], want [bump onLive on 0 on 1]; the Lend tests fail on the order of the section's rest)"
  }
 ]

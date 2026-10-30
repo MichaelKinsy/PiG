@@ -5,6 +5,7 @@ import (
 
 	chordctx "github.com/MichaelKinsy/PiG/chord/context"
 	"github.com/MichaelKinsy/PiG/chord/delta"
+	"github.com/MichaelKinsy/PiG/chord/internal/parking"
 	"github.com/MichaelKinsy/PiG/chord/next/documents"
 )
 
@@ -267,6 +268,7 @@ func (set *waiters) wait(ctx context.Context) (AnyOutcome, error) {
 	if immediate != nil {
 		return immediate.outcome, immediate.err
 	}
+	parking.Park(ctx)
 	select {
 	case settled := <-each.settled:
 		return settled.outcome, settled.err
@@ -329,6 +331,7 @@ func (set *joins) wait(ctx context.Context) error {
 	if ready {
 		return nil
 	}
+	parking.Park(ctx)
 	select {
 	case <-each.over:
 		return nil
