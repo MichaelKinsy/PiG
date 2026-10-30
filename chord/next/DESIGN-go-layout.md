@@ -110,7 +110,7 @@ A `contracts.MethodFunction` is blocking Go code, so `attempt.call` does what Pi
 
    Fix: `chordctx.Suspend(ctx)` before the receive, `chordctx.Receive(ctx, gate)` (which also ends at the call's abort), or `UntilAborted(ctx)`.
 5. A goroutine a handler starts is not part of its synchronous part: `go c.Get(...)` runs when the section ends or the handler suspends (Pi's unawaited `void ctx.get()` runs its synchronous part at once; the Go port suspends the handler before it waits for the get's effect). A ctx that is not the handler's (`context.Background()`, an owner's) does not suspend; hand the handler's ctx through, as Pi hands its context.
-6. Diagnostics, no behaviour change: built with `-tags chordstall`, a section that waits for its handler longer than `parking.StallAfter` reports once, with the stacks of every goroutine (the handler's among them), and keeps waiting. The default build has no timer and no allocation for it.
+6. Diagnostics, no behaviour change: `parking.Watch(after, report)` makes a section that waits for its handler longer than `after` report once, with the stacks of every goroutine (the handler's among them), and keep waiting. Nothing in the host calls it, so a production binary has no timer and no allocation for it (one atomic load, nil). The host package's tests install it in `TestMain` with a 2 s duration and a reporter that panics with the text, so a handler that blocks on a raw channel or a lock before its first host call fails the test binary with the stacks instead of hanging silently.
 
 The mechanism replaces D5b's ordering of handler starts by polling goroutine states (`internal/entered`): the section itself orders handlers, since it does not go on before the handler it admitted returned or suspended.
 

@@ -57,8 +57,8 @@ func (s *Signal) Raise() {
 // Raised reports whether Raise ran.
 func (s *Signal) Raised() bool { return s.raised.Load() }
 
-// Wait blocks until Raise. Built with the chordstall tag it also reports (and goes on waiting) when that takes longer than
-// StallAfter: see stall_on.go.
+// Wait blocks until Raise. With a stall report installed (Watch, for test binaries) it also reports, and goes on waiting,
+// when that takes longer than the report's duration; otherwise it is the bare wait.
 func (s *Signal) Wait() { s.wait() }
 
 // Park raises the Signal ctx carries, if any: the caller is about to wait for something the host's section cannot give it,

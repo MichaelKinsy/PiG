@@ -383,38 +383,7 @@
   "designedOut": [
    "routines and the end › type their handler by the source's kind: ops and retired for a JSON watchable, the value alone for a native one: owner class (a) type-level check; Go mechanism: OnHandler[delta.JsonValue] takes chord.WatchCall (Ops, Retired) and OnNativeHandler[any] takes chord.NativeWatchCall (the value alone); Go test TestOnTypesTheirHandlerByTheSourcesKindOpsAndRetiredForAJSONWatchableTheValueAloneForANativeOne (reflect on the handler types)"
   ],
-  "note": [
-   "o",
-   "n",
-   "l",
-   "y",
-   " ",
-   "t",
-   "h",
-   "e",
-   "c",
-   "a",
-   "s",
-   "d",
-   "r",
-   "m",
-   "(",
-   "D",
-   "5",
-   "b",
-   "-",
-   "i",
-   "g",
-   ",",
-   ")",
-   ";",
-   "f",
-   "'",
-   "A",
-   "p",
-   "O",
-   "j"
-  ]
+  "note": "Every case of routines.test.ts is ported (41) or designed out (1, a type-level check named by its Go mechanism); none is missing, the D5b-missing cases of this file included. (The earlier note was stored as a list of single characters and its text did not survive; this one restates what the lists above show.)"
  },
  "packages/chord/test/next/host/facet.test.ts": {
   "ported": [

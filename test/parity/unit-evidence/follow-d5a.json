@@ -431,13 +431,13 @@
   "mutation": "chord/next/host/jobs_job.go: `handle.records.cut(run, err)` -> `_, _ = run, err` (TestRecordsARunCutOffByItsAttemptsSealEndsAbortedRestartAndIsFinishedOnTheNextLiveAttempt FAILS: jobs_records_test.go:83: timed out waiting for the run to wait finishing)"
  },
  {
- "upstream": "packages/chord/src/next/jobs/records.ts",
- "package": "./chord/next/host",
- "tests": [
-  "TestJobStartCompilesTheArgsCheckOncePerDefinition"
- ],
- "upstream_reference": "packages/chord/test/next/jobs/job.test.ts",
- "mutation": "chord/next/host/jobs_records.go: `data.Check(validator, args, data.ReasonArgs, ctx)` -> `data.Check(validator, float64(1), data.ReasonArgs, ctx)` (TestJobStartCompilesTheArgsCheckOncePerDefinition FAILS: jobs_job_test.go:70: args: must be object)"
+  "upstream": "packages/chord/src/next/jobs/records.ts",
+  "package": "./chord/next/host",
+  "tests": [
+   "TestJobStartCompilesTheArgsCheckOncePerDefinition"
+  ],
+  "upstream_reference": "packages/chord/test/next/jobs/job.test.ts",
+  "mutation": "chord/next/host/jobs_records.go: `data.Check(validator, args, data.ReasonArgs, ctx)` -> `data.Check(validator, float64(1), data.ReasonArgs, ctx)` (TestJobStartCompilesTheArgsCheckOncePerDefinition FAILS: jobs_job_test.go:70: args: must be object)"
  },
  {
   "upstream": "packages/chord/src/next/documents/line.ts",
@@ -838,5 +838,14 @@
   ],
   "upstream_reference": "packages/chord/test/next/host/routines.test.ts",
   "mutation": "chord/next/host/host_loop.go: `signal.Wait()` -> `_ = signal` in Loop.Lend (TestRoutinesStartInTheTurnTheirObjectWentLiveNextToAMethodCallAdmittedInThatTurn FAILS: host_routines_test.go:1573: order = [onLive on 0 bump on 1], want [bump onLive on 0 on 1]; the Lend tests fail on the order of the section's rest)"
+ },
+ {
+  "upstream": "packages/chord/src/next/host/routines.ts",
+  "package": "./chord/next/host",
+  "tests": [
+   "TestStallABlockOnARawChannelBeforeTheFirstHostCallIsReported"
+  ],
+  "upstream_reference": "packages/chord/test/next/host/routines.test.ts",
+  "mutation": "chord/internal/parking/stall.go: `if w == nil {` -> `if w == nil || true {` in Signal.wait (the stall report is never made) (TestStallABlockOnARawChannelBeforeTheFirstHostCallIsReported FAILS: host_stall_test.go:61: no stall report for a handler that blocks on a raw channel before its first host call; TestWaitReportsAHandlerThatHoldsTheSectionAndGoesOnWaiting FAILS: stall_test.go:25: no stall report)"
  }
 ]

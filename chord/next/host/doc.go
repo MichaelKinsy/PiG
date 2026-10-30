@@ -33,6 +33,7 @@
 //	},
 //
 // Write chordctx.Suspend(ctx) before the receive, or chordctx.Receive(ctx, gate). A goroutine the handler starts is not
-// part of its synchronous part; pass it the handler's ctx. Built with -tags chordstall, a section that waits for its handler
-// longer than parking.StallAfter prints the stacks of every goroutine once and goes on waiting.
+// part of its synchronous part; pass it the handler's ctx. The package's own tests install parking.Watch in
+// TestMain: a section that waits for its handler longer than 2 s reports the stacks of every goroutine and fails the test
+// binary, so a raw block before the first host call is visible there; production builds start no timer.
 package host
