@@ -2120,7 +2120,7 @@ SCRUTINIZED:approved
 
 What: PageUp and PageDown (`tui.select.pageUp` and `tui.select.pageDown`) move the selection by one visible page, clamped at both ends without wrapping, in the select list, settings list, the open editor autocomplete list, and the extension, model, OAuth, scoped-models, tree, user-message, config, session, trust, first-time-setup and llama.cpp selectors. A component that takes these keys reports it through `tui.CapturesSelectPageInput`, and the fullscreen viewport and the modal host loops then leave the keys to it. The tree selector keeps paging on Left and Right and also pages on these keys. Pi 1.4.0 scrolls the fullscreen transcript on these keys while a selector is open and ignores them in the lists that have no page action.
 
-Why: the selection stays where the user is looking. Pi #7629 is open, and its PR #7680 (`packages/tui/src/tui-alt-screen.ts`, `getPageSelectionIndex`, `capturesSelectPageInput`) is unmerged.
+Why: the selection stays where the user is looking. Pi #7629 is fixed on Pi main by `3bae8527` (`handle selection page keys in all scrolling lists`, after the 1.4.0+b3a29f11 pin), the merged form of PR #7680 (`packages/tui/src/tui-alt-screen.ts`, `getPageSelectionIndex`, `capturesSelectPageInput`). PiG already does this; the residual deltas against the merged commit (Pi names `getSelectPageIndex` and `capturesViewportInput` against PiG's `PageSelectionIndex` and `CapturesSelectPageInput`, the `/mcp` manager and `SelectSubmenu` capture, the session selector rename mode and tree label input that must not capture) are carried under D217.
 
 Observable effect: in a selector, PageDown moves the selection down one page and does not scroll the transcript behind it. Pi scrolls the transcript or does nothing. An open editor autocomplete list pages the same way, and a user binding of the same key to an app action does not fire while the list is open. Extension-provided overlays cannot yet report that they capture the page keys, so the viewport still takes them there.
 
@@ -2130,7 +2130,7 @@ Locked by: `tui/select_page_keys_test.go` (`TestPageSelectionIndex`, `TestSelect
 
 Parity allowance: the Pi-oracle input generators for the select list, settings list, model, OAuth, theme, show-images, trust, settings and submenu selectors, the editor autocomplete and the llama view leave PageUp and PageDown out, because Pi 1.4.0 ignores them there.
 
-Remove when: Pi merges PR #7680 or another change that pages selection lists on these keys; then restore the keys in the oracle generators.
+Remove when: the pin is at or past `3bae8527` (Pi's merge of this change); then restore the keys in the oracle generators and delete this record.
 
 SCRUTINIZED:approved
 
@@ -2836,5 +2836,60 @@ Evidence: `TestInstalledAbsoluteLocalPackageResolvesThroughAnotherAgentDirSpelli
 Parity allowance: the ported case `package-command-paths.test.ts:431` ("allows local package install to initialize fresh project settings", `TestPortWave10PackageCommandPaths`) installs an absolute path and expects the entry relative to `.pi`; PiG's port asserts the path as typed. Scenario `cli-utils/04-package-install-local` installs a relative path, which is stored as Pi stores it.
 
 Remove when: Pi stores an absolute local path as typed, or the owner reverses the decision. Then the branch, the call-site marker and the tests' D215 cases go.
+
+SCRUTINIZED:approved
+
+## D217 Pi bug fixes after the pin that 0.6.0 carries (Pi b3a29f11..c2760d32)
+
+What: PiG 0.6.0 pins Pi 1.4.0+b3a29f11 and carries every Pi bug fix that landed on Pi main between that pin and `c2760d32` and that PiG can take. Each fix behaves as Pi's merged commit does, so PiG differs from the pinned Pi oracle by exactly these fixes. The table lists the carried commits oldest first. Beyond Pi's fix commits it carries the row removal of `2e0f175b` (realtime and image models that models.dev does not type as chat models leave the chat catalog), the help and description text of `2a46c420` and the wording of `88ffcdc7`. `3bae8527` is the merged form of D155 and is not a row of this record's own behavior: D155 stays its own record, and the table row names the residual deltas that bring PiG to the merged commit. `c2760d32` (`pi update` naming the package manager) needs no change: PiG probes ownership (D39). `c466a359` adds `maxBuffer` to the `pi.exec` options and `truncated` to its result in the Go, Rust, Python and Lisp SDKs and as a PiG-only augmentation of the TS SDK. Pi's `391e83fb`, `018fdcf4` and the Rust, JS-import-graph and V8 fixes (`92c1da1f`, `bb65e3e4`, `a9228305`, `068e972c`) are not carried: they depend on post-pin features or have no Go counterpart.
+
+Why: owner decision 2026-10-30 to carry Pi's post-pin fixes in 0.6.0 ("make all fixes in 0.6.0, no rush"). Three fixes close real exposure: a saved "Do not trust" decision is ignored for projects without trust-requiring resources (`31ade0e0`), `pi.exec` output has no cap (`c466a359`), and the daemon dies on an oversized change event or leaves commands running when it is terminated (`102d1287`, `b6d5c2ec`).
+
+Scope: Go production code and the four SDKs (`extensions/sdk`, `sdk-rs`, `sdk-py`, `sdk-lisp`) and the `durable/core/turn` mirrors. The vendored Pi dist under `coding/extension/host/subprocess/runtime-node/shims/pi-dist` and the TS SDK's re-exported Pi declarations are unchanged, so a Node extension that calls the pi-ai helpers (`isContextOverflow`, `isRetryableAssistantError`) or pi-tui functions sees the pinned behavior; the TS SDK gains only the `maxBuffer` and `truncated` augmentation for `pi.exec`. Public surface added: `ExecOptions.maxBuffer` and `ExecResult.truncated` (`c466a359`).
+
+Owner decision: 2026-10-30, owner ruling to carry Pi's post-pin bug fixes in 0.6.0, including `c466a359` with its public API (`maxBuffer`, `truncated`) in all four SDKs and the TS augmentation, the `2e0f175b` row removal, the `2a46c420` help text and the `88ffcdc7` wording.
+
+Call-site markers: each carried site has a marker `pig divergence (D217): Pi <sha> (#issue)`; the lane that lands a fix adds it. The catalog rows (`44f6851b`, `2e0f175b`) are generated data in `cmd/gen-models/carried_fixes.go` and carry no marker.
+
+| Pi sha | Pi issue | Subject | Lane | Go sites | Oracle and scenario allowance |
+|---|---|---|---|---|---|
+| `d3398f82` | #11492 | detect LiteLLM ContextWindowExceededError as context overflow (#11494) | D | `ai/overflow.go` and the pi-ai mirrors; exact sites TBD by the lane | TBD by the lane |
+| `44f6851b` | #9534 (refs) | use Anthropic Messages for OpenRouter ~anthropic latest aliases | D | `cmd/gen-models/carried_fixes.go`, `ai/models_generated.go`; exact sites TBD by the lane | TBD by the lane |
+| `88ffcdc7` | #11509 | report a deleted working directory instead of crashing on startup (#11511); wording only | C | `coding/cli/main.go` (`Getwd` message); exact sites TBD by the lane | TBD by the lane |
+| `7391dbb0` | #11508 | show model scope in the fullscreen header instead of the shell (#11512) | B | `internal/codingagent/interactive.go`, `model_scope_line.go`, `startup_header.go`; exact sites TBD by the lane | TBD by the lane |
+| `f6ee9ce9` | #11501 | summarize union and multi-line codemode output types in tool descriptions (#11513) | E | `coding/extension/builtin/codemode/tool.go`; exact sites TBD by the lane | TBD by the lane |
+| `b9e3eef6` | #11495 | keep active tool order when the same tools are set again (#11514) | E | `coding/session_loadout.go`; exact sites TBD by the lane | TBD by the lane |
+| `fa168515` | #10933 | stop bare URLs at CJK punctuation (#10934) | A | `tui/markdown_marked.go`; exact sites TBD by the lane | TBD by the lane |
+| `2e0f175b` | #11368 (partial) | drop the models.dev realtime and image rows from the chat catalog (row removal of the provider-definitions refactor) | D | `cmd/gen-models/carried_fixes.go`, `ai/models_generated.go`; exact sites TBD by the lane | TBD by the lane |
+| `3bae8527` | #7629 | handle selection page keys in all scrolling lists: residual deltas over D155, which stays its own record | A | `tui/select_submenu.go`, `coding/mcpext/manager.go`, `tui/selection_navigation.go`, `tui/tui_alt_screen_input.go`; exact sites TBD by the lane | TBD by the lane |
+| `b5fc6dc8` | #11377 | strip private-parameter CSI sequences in stripAnsi | D | `internal/text/strip_ansi.go`, `internal/codingagent/tools/sanitize.go`; exact sites TBD by the lane | TBD by the lane |
+| `b6d5c2ec` | - | kill the daemon's commands when it is terminated | D | `env/daemon/server.go`, `env/cmd/pi-env/main.go`; exact sites TBD by the lane | TBD by the lane |
+| `c466a359` | #11360 | cap pi.exec output at 256 MiB (#11546), with `maxBuffer`, `truncated` and the SIGKILL after SIGTERM | F | `coding/extension/exec.go`, `opaque_types.go`, the extension wire, the four SDKs and the TS augmentation; exact sites TBD by the lane | TBD by the lane |
+| `6fed3cfb` | #11520 | let the SDK stream resolve auth for summaries (#11556) | E | `coding/session_summarization_auth.go`; exact sites TBD by the lane | TBD by the lane |
+| `19ce8059` | #11519 | stop writing OSC 133 prompt markers in regular mode (#11565) | A | `tui/tui.go`; exact sites TBD by the lane | TBD by the lane |
+| `f14813e9` | #11521 | label skill diagnostics as [Skill warnings] (#11566) | B | `internal/codingagent/loaded_resources.go`; exact sites TBD by the lane | TBD by the lane |
+| `c719d5b0` | #11537 | do not retry Zhipu usage limit errors, code 1308 (#11572) | D | `ai/assistant_retry.go` and the pi-ai mirrors; exact sites TBD by the lane | TBD by the lane |
+| `0d23d534` | #11536 | warn when an npm package update leaves the installed version unchanged (#11571) | C | `internal/packagemanager/package_update_operations.go`, `package_npm_metadata.go`, `coding/cli/package_commands.go`; exact sites TBD by the lane | TBD by the lane |
+| `e7a0df27` | #11551 | pick the smaller of PNG and JPEG when resizing images (#11577) | A | `internal/imageprocessing/images.go`; exact sites TBD by the lane | TBD by the lane |
+| `86dc686c` | #11559 | treat ESC+Return with native Shift held as Shift+Enter | A | `tui/terminal_native_shift_enter.go`; exact sites TBD by the lane | TBD by the lane |
+| `31ade0e0` | #10947 | honor saved project trust for projects without trust-requiring resources | C | `coding/cli/project_trust.go`, `cli_runtime_build.go`, `main.go`; exact sites TBD by the lane | TBD by the lane |
+| `cd6a8f7f` | #11375 | refresh unpinned temporary npm extensions when a newer version exists | C | `internal/packagemanager/temporary.go`, `package_npm_metadata.go`; exact sites TBD by the lane | TBD by the lane |
+| `bec60c54` | #11375 | refresh temporary git sources pinned to a branch ref | C | `internal/packagemanager/temporary.go`; exact sites TBD by the lane | TBD by the lane |
+| `1be312b4` | #10488 | compare paths case-insensitively on Windows (#11588); also the `~` prefix shortening of `/home/me2/x` | B (`~` prefix), C (path keys) | `tui/tool_path_render.go`, `internal/resolvepath/*`, `internal/codingagent/paths.go`, `internal/packagemanager/*`, `coding/source/*`; exact sites TBD by the lane | TBD by the lane |
+| `2ce9d527` | #10925 | drop space after styled word at wrap boundary, reset strikethrough at line end (#11591) | A | `tui/widthx/wrap.go`, `tracker.go`; exact sites TBD by the lane | TBD by the lane |
+| `f09d01b8` | #9329 | detect Orca terminals as Kitty-image capable (#9329) | A | `tui/terminal_image.go`; exact sites TBD by the lane | TBD by the lane |
+| `102d1287` | #10516 | report watch overflow when a change list exceeds the frame limit (#11605) | D | `env/daemon/watch.go`; exact sites TBD by the lane | TBD by the lane |
+| `50d9f823` | #11604 | remove whole ANSI escape sequences from tool output (#11607) | D | `chord/output/output.go`, `durable/core/turn/output.go`, `durable/core/host/cf/src/output.ts`; exact sites TBD by the lane | TBD by the lane |
+| `04414839` | #11015 | return image blocks from read in Code Mode scripts (#11606) | D | `durable/tools/read.go`; exact sites TBD by the lane | TBD by the lane |
+| `be15fe3c` | - | accept -l in pi mcp login and logout | B | `coding/mcpext/cli.go`; exact sites TBD by the lane | TBD by the lane |
+| `2a46c420` | #11532 | document which working directory resumed sessions use: the `--continue`, `--resume`, `--session`, `--session-id` and `--fork` help text and the `/resume` and `/import` descriptions | B | `coding/cli` help text, `internal/codingagent` slash command descriptions; exact sites TBD by the lane | TBD by the lane |
+| `6454d07e` | #11592 | start WSL interop helpers from / and report external editor failures (#11627) | B | `internal/codingagent/clipboard_copy.go`, `interactive_auth.go`, `interactive_editor.go`, `extension_editor.go`; exact sites TBD by the lane | TBD by the lane |
+| `cc44fa21` | #11331 | weigh tool names above descriptions in tool search (#11625) | E | `coding/extension/builtin/toolsearch/toolsearch.go`, `tool.go`; exact sites TBD by the lane | TBD by the lane |
+
+Parity allowance: the pinned Pi still has the old behavior, so these paired checks are owned by this record and each lane adds its allowance with the fix. Known items: scenario `startup/09-startup-package-glob-collisions` (asserts `[Skill conflicts]`, `f14813e9`) and `extensions-runtime/51-tool-prompt-contributions` (asserts the old tool order, `b9e3eef6`) get a D217 allowance (`normalize_replace` with reason "D217" or per-side asserts). The Pi-oracle input generators leave out the carried inputs: `toolsearch_oracle_test.go`, `tui/widthx/pi_width_diff_test.go`, `tui/markdown_*_oracle_test.go`, `chord/output/output_pi_oracle_test.go`, `internal/codingagent/tools/ansi_oracle_test.go`, `ai/overflow_oracle_test.go`, `ai/assistant_retry_classifier_oracle_test.go`, `internal/imageprocessing/*_oracle_test.go`, `coding/mcpext/cli_oracle_test.go`, `coding/extension/exec_oracle_test.go`, `internal/codingagent/clipboard_copy_oracle_test.go`, the trust store and package-manager oracles. A test beside each pins the carried behavior. `test/parity/sdk-vectors/pi-ai/isContextOverflow.json` and `isRetryableAssistantError.json` are generated from the pinned oracle and cannot gain the LiteLLM and Zhipu 1308 cases, so a hand test per SDK covers them; `durable/core/turn/patterns.go` is regenerated by `oracle/gen_patterns.mjs`, which carries the new patterns. The `core/exec.ts` row of `test/parity/async-contracts.toml` is rewritten for the SIGKILL after SIGTERM.
+
+Remove when: the pin is at or past `c2760d32`, which deletes this record and every marker. When the pin moves to an intermediate Pi commit, the rows for the commits up to it go (table order is Pi order, oldest first) with their markers, allowances and the `carried_fixes.go` rows.
+
+Pin re-check: at every pin move, check each row's sha with `git merge-base --is-ancestor <sha> <new pin>`; a row whose sha is an ancestor is deleted with its markers and allowances and its behavior becomes the pinned Pi behavior. If Pi reverts or reworks a carried fix, align PiG to Pi and drop the row. D155's `3bae8527` residuals go at the same time.
 
 SCRUTINIZED:approved

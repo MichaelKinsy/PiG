@@ -51,3 +51,4 @@ D179: reserved, retired before release (the Windows host manager is ported; dura
 D180: a provider transport failure records its Go cause as a provider_transport_failure diagnostic (additive, #87); owner, 2026-10-14 (in session): option A, non-invasive.
 Next free ID: D119.
 D198: the Go, Rust and Python `Type` (pi-ai) has no Codec family (Codec, Decode, Encode, DecodeBuilder, EncodeBuilder, IsCodec): the callbacks have no consumer in any SDK; sdk-export-gaps; owner approved 2026-10-24.
+D217: Pi bug fixes after the pin that 0.6.0 carries (Pi b3a29f11..c2760d32; see docs/parity/divergences/D217.md); owner decision 2026-10-30, number allocated for the 0.6.0 carry.

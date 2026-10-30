@@ -40899,6 +40899,10 @@
       "id": "D215",
       "title": "A local Package typed by absolute path is stored as typed",
       "entry": "BF-7e16053"
+    },
+    {
+      "id": "D217",
+      "title": "Pi bug fixes after the pin that 0.6.0 carries (Pi b3a29f11..c2760d32)"
     }
   ],
   "exemptCommits": {
