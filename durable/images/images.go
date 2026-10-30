@@ -6,6 +6,7 @@ package images
 import (
 	"context"
 	"encoding/base64"
+	"errors"
 	"image"
 	"image/color"
 	"math"
@@ -89,7 +90,13 @@ func encodeWithin(ctx context.Context, img *image.NRGBA, size tools.ImageSize, m
 		mimeType string
 		encode   func() ([]byte, error)
 	}
-	pngCandidate := candidate{"image/png", func() ([]byte, error) { return photonimage.EncodePNG(scaled), nil }}
+	pngCandidate := candidate{"image/png", func() ([]byte, error) {
+		// The png crate refuses a width or a height of zero, which Photon's `get_bytes().unwrap()` turns into an exception.
+		if scaled.Bounds().Empty() {
+			return nil, errors.New("png: image has no pixels")
+		}
+		return photonimage.EncodePNG(scaled), nil
+	}}
 	var jpegs []candidate
 	for _, quality := range jpegQualities {
 		jpegs = append(jpegs, candidate{"image/jpeg", func() ([]byte, error) { return photonimage.EncodeJPEG(scaled, uint8(quality)) }})
