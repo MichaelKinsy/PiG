@@ -11,7 +11,7 @@ func TestSessionGraphLispPackedAcrossSDKs(t *testing.T) {
 		{"settings_manager", sessionGraphSettingsManagerWant},
 		{"project_trust_store", sessionGraphProjectTrustStoreWant},
 		{"resource_loader", sessionGraphDefaultResourceLoaderWant},
-		{"package_manager", sessionGraphDefaultPackageManagerWant},
+		{"package_manager", sessionGraphDefaultPackageManagerWantFor("lisp-packed")},
 	} {
 		t.Run(row.tool, func(t *testing.T) {
 			eachSessionGraphCellWith(t, newSessionGraphRig, lisp, func(t *testing.T, r *sessionGraphRig, _ string) {
