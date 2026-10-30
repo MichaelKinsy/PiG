@@ -1100,8 +1100,16 @@ func TestKeyedSlotColdReadsQueuedOnTheLineBeforeTheObjectsEndAreRefusedReleasedW
 	p := ksPersistedOver(t, chordStore, nil)
 	gate := db.holdNextLoad()
 	notes := p.notes()
-	first := ksGo(func() (*JsonObject, error) { return notes.Get("a", background) })
+	firstGoroutine := make(chan uint64, 1)
+	first := ksGo(func() (*JsonObject, error) {
+		firstGoroutine <- goroutineID()
+		return notes.Get("a", background)
+	})
 	ksWaitClosed(t, gate.entered)
+	// The first read resumes only after the object's end ran: Pi's microtask order puts its continuation before the
+	// end's, so the document it loaded must reach it whatever order the goroutines take.
+	resume := &loopStall{id: <-firstGoroutine, release: make(chan struct{})}
+	p.o.loop.stall.Store(resume)
 	get := ksGo(func() (*JsonObject, error) { return notes.Get("b", background) })
 	watch := ksGo(func() (*JsonObject, error) {
 		w, err := notes.Watch("c", background)
@@ -1118,13 +1126,14 @@ func TestKeyedSlotColdReadsQueuedOnTheLineBeforeTheObjectsEndAreRefusedReleasedW
 	gate.open()
 	_ = ksRequireCode(t, ksRecv(t, get).err, data.CodeReleased)
 	_ = ksRequireCode(t, ksRecv(t, watch).err, data.CodeReleased)
+	ksRecv(t, closing)
+	close(resume.release)
 	// The load holding the line before the end finishes.
 	res := ksRecv(t, first)
 	if res.err != nil {
 		t.Fatalf("first: %v", res.err)
 	}
 	ksRequireDoc(t, res.value, "x")
-	ksRecv(t, closing)
 }
 
 func TestKeyedSlotColdReadsQueuedBehindAnAdmittedStepAreRefusedReleasedWhenTheirAttemptFailedLiveMeanwhile(t *testing.T) {
