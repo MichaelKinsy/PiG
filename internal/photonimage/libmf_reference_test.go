@@ -239,15 +239,16 @@ func powf(x, y float32) float32 {
 	pH := float32(y1 * t1)
 	z := float32(pL + pH)
 	j := f32bits(z)
-	if j > 0x43000000 { // z > 128
+	switch {
+	case j > 0x43000000: // z > 128
 		return float32(float32(sn*powfHuge) * powfHuge)
-	} else if j == 0x43000000 { // z == 128
+	case j == 0x43000000: // z == 128
 		if float32(pL+powfOvt) > float32(z-pH) {
 			return float32(float32(sn*powfHuge) * powfHuge)
 		}
-	} else if (j & 0x7fffffff) > 0x43160000 { // z < -150
+	case (j & 0x7fffffff) > 0x43160000: // z < -150
 		return float32(float32(sn*powfTiny) * powfTiny)
-	} else if uint32(j) == 0xc3160000 && pL <= float32(z-pH) { // z == -150
+	case uint32(j) == 0xc3160000 && pL <= float32(z-pH): // z == -150
 		return float32(float32(sn*powfTiny) * powfTiny)
 	}
 

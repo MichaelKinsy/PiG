@@ -666,7 +666,7 @@ func (p *bmpPixels) zeroRest() {
 // set8BitRun and set4BitRun write the palette colour of each index (a byte for RLE8, two nibbles for RLE4) to the next pixels, as `set_8bit_pixel_run` and
 // `set_4bit_pixel_run` do; false when the row has no more pixels.
 func (d *icoBMP) set8BitRun(pixels *bmpPixels, indices func(i int) (byte, bool), n int) bool {
-	for i := 0; i < n; i++ {
+	for i := range n {
 		idx, ok := indices(i)
 		if !ok {
 			break

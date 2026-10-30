@@ -221,18 +221,15 @@ func ddsCorpus() []formatCase {
 	damaged("size-0", func(h *ddsHeader) { h.size = 0 })
 	for _, flags := range []uint32{0, 0x1, 0x7, 0x1007, 0x1006, 0x1005, 0x1003, 0x1007 | 0x8, 0x1007 | 0x20000, 0x1007 | 0x80000, 0x1007 | 0x800000, 0x1007 | 0x10, 0x1007 | 0x40, 0x1007 | 0x100000,
 		0x1007 | 0x80000000, 0x1007 | 0x2000, 0x1007 | 0x4000, 0x1007 | 0x1000000, 0xFFFFFFFF, 0x1007 | 0x20000 | 0x80000 | 0x800000 | 0x8} {
-		flags := flags
 		damaged(fmt.Sprintf("flags-%08x", flags), func(h *ddsHeader) { h.flags = flags })
 	}
 	damaged("pixel-format-size-31", func(h *ddsHeader) { h.pixelFormatSize = 31 })
 	damaged("pixel-format-size-33", func(h *ddsHeader) { h.pixelFormatSize = 33 })
 	damaged("pixel-format-size-0", func(h *ddsHeader) { h.pixelFormatSize = 0 })
 	for _, flags := range []uint32{0, 0x1, 0x2, 0x4, 0x5, 0x6, 0x40, 0x41, 0x44, 0x200, 0x204, 0x20000, 0xFFFFFFFB, 0xFFFFFFFF} {
-		flags := flags
 		damaged(fmt.Sprintf("pixel-format-flags-%08x", flags), func(h *ddsHeader) { h.pixelFormatFlags = flags })
 	}
 	for _, cc := range []string{"DXT1", "DXT2", "DXT3", "DXT4", "DXT5", "dxt1", "DXt1", "ATI1", "ATI2", "BC4U", "BC5U", "DX10", "DXT0", "DXT6", "RGBG", "GRGB", "UYVY", "YUY2", "\x00\x00\x00\x00", "DXT\x00", " XT1", "DXT1\x00"} {
-		cc := cc
 		damaged("fourcc-"+fmt.Sprintf("%x", cc), func(h *ddsHeader) { h.fourCC = cc })
 	}
 	damaged("caps-zero", func(h *ddsHeader) { h.caps = 0 })
@@ -262,7 +259,6 @@ func ddsCorpus() []formatCase {
 		dx10(fmt.Sprintf("dxgi-%d", format), func(h *ddsHeader) { h.dxgiFormat = format })
 	}
 	for _, format := range []uint32{255, 256, 1000, 0xFFFFFFFF, 0x80000000} {
-		format := format
 		dx10(fmt.Sprintf("dxgi-%d", format), func(h *ddsHeader) { h.dxgiFormat = format })
 	}
 	for dim := uint32(0); dim <= 6; dim++ {
@@ -271,17 +267,14 @@ func ddsCorpus() []formatCase {
 	}
 	dx10("dimension-max", func(h *ddsHeader) { h.resourceDimension = 0xFFFFFFFF })
 	for _, flag := range []uint32{0, 1, 2, 3, 4, 5, 8, 0x10, 0xFFFFFFFF} {
-		flag := flag
 		dx10(fmt.Sprintf("misc-flag-%d", flag), func(h *ddsHeader) { h.miscFlag = flag })
 	}
 	for _, size := range []uint32{0, 1, 2, 6, 0xFFFFFFFF} {
-		size := size
 		dx10(fmt.Sprintf("array-size-%d-2d", size), func(h *ddsHeader) { h.arraySize = size })
 		dx10(fmt.Sprintf("array-size-%d-3d", size), func(h *ddsHeader) { h.arraySize = size; h.resourceDimension = 4 })
 		dx10(fmt.Sprintf("array-size-%d-1d", size), func(h *ddsHeader) { h.arraySize = size; h.resourceDimension = 2 })
 	}
 	for _, flag := range []uint32{0, 1, 2, 3, 4, 5, 6, 0xFFFFFFFF} {
-		flag := flag
 		dx10(fmt.Sprintf("misc-flags-2-%d", flag), func(h *ddsHeader) { h.miscFlags2 = flag })
 	}
 	dx10("bc3", func(h *ddsHeader) { h.dxgiFormat = 77 })

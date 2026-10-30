@@ -39,12 +39,16 @@ func (photon) Prepare(ctx context.Context, data []byte, mimeType string, limits 
 	inline := tools.INLINE_IMAGE_TYPES[mimeType]
 	// Decoded even when it is returned as it is: a damaged file is an error, not an image the provider rejects.
 	decoded, err := photonimage.Decode(data)
-	if err != nil || decoded.Bounds().Empty() {
+	if err != nil {
 		return nil, nil
 	}
 	if bounds := decoded.Bounds(); inline && orientation == 1 && bounds.Dx() <= limits.MaxWidth && bounds.Dy() <= limits.MaxHeight &&
 		tools.Base64Length(int64(len(data))) <= int64(limits.MaxBytes) {
 		return &tools.PreparedImage{Data: tools.ToBase64(data), MimeType: mimeType}, nil
+	}
+	// An image with no pixels that is not returned as it is cannot be resized or encoded (Photon throws).
+	if decoded.Bounds().Empty() {
+		return nil, nil
 	}
 	upright := orient(toNRGBA(decoded), orientation)
 	bounds := upright.Bounds()

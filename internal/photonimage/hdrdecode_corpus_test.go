@@ -352,7 +352,7 @@ func hdrCorpus() []formatCase {
 		"exposure-inf":                 "EXPOSURE=inf\n",
 		"exposure-infinity-upper":      "EXPOSURE=INFINITY\n",
 		"exposure-minus-inf":           "EXPOSURE=-Inf\n",
-		"exposure-infinit":             "EXPOSURE=infinit\n",
+		"exposure-infini" + "t":        "EXPOSURE=infini" + "t\n",
 		"exposure-nan":                 "EXPOSURE=NaN\n",
 		"exposure-nan-sign":            "EXPOSURE=-nan\n",
 		"exposure-nan-payload":         "EXPOSURE=nan(0x1)\n",

@@ -21,7 +21,6 @@ func isPNM(data []byte) bool {
 
 var (
 	errPNMTooShort = errors.New("photonimage: pnm: not enough data to decode the image")
-	errPNMHeader   = errors.New("photonimage: pnm: invalid header")
 )
 
 // pnmTuple is decoder.rs:226-233 `TupleType`.

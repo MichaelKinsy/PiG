@@ -21,7 +21,6 @@ func isICO(data []byte) bool {
 
 var (
 	errICO      = errors.New("photonimage: ico: invalid or truncated file")
-	errICOPNG   = errors.New("photonimage: ico: invalid embedded PNG")
 	errICOEntry = errors.New("photonimage: ico: image does not match its directory entry")
 )
 

@@ -35,7 +35,7 @@ type pngInfo struct {
 	hasTRNS    bool
 
 	// Chunks that may appear once before the image data.
-	phys, chrm, gama, srgb, iccp bool
+	phys, chrm, gama, srgb bool
 
 	// fcTL of the default image (an animated PNG whose first frame is the IDAT data): the size of the subframe.
 	frame           bool
@@ -435,13 +435,12 @@ func (r *pngRowReader) decode(out []byte, subW, subH uint32) error {
 		}
 		return nil
 	}
-	pixel := make([]byte, 0)
 	for _, pass := range pngAdam7(subW, subH) {
 		n := rowLen(pass.width)
 		prev := make([]byte, n)
 		row := make([]byte, n)
 		line := make([]byte, 1)
-		pixel = make([]byte, int(pass.width)*4)
+		pixel := make([]byte, int(pass.width)*4)
 		for l := range pass.lines {
 			if _, err := io.ReadFull(r.inflater, line); err != nil {
 				return errPNG
