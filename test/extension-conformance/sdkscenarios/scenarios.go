@@ -137,6 +137,8 @@ const (
 	// ToolSoftError returns the text "soft failure" with isError set: a failure
 	// reported without throwing.
 	ToolSoftError = "soft-error"
+	// ToolRetain echoes like ToolEcho and keeps 16 KiB of the process's heap for every call it serves, as an extension that leaks per call does. Only the Node driver implements it: the soak's memory gate on Node is tested against it.
+	ToolRetain = "retain"
 	// ToolEmpty returns a result with no content at all.
 	ToolEmpty = "empty"
 	// ToolBlocks returns two text blocks, "a" then "b".
@@ -172,6 +174,8 @@ const (
 	CommandRegisteredProvider = "registered-provider"
 	// CommandFlag writes the JSON of the extension's getFlag(Arg).
 	CommandFlag = "flag"
+	// CommandLiveMemory runs a full garbage collection and writes the bytes of live memory the process holds after it, as a decimal number: Node's heapUsed plus external. Only the Node driver implements it, because only a Node process's resident size moves with the schedule of a collector the host cannot make run (V8 keeps garbage it has not collected yet and does not give the pages back), so the soak reads what the collection left instead.
+	CommandLiveMemory = "live-memory"
 	// CommandNoop returns at once and writes nothing: the cheapest round trip
 	// the host can make to the extension.
 	CommandNoop = "noop"
