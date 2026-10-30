@@ -60,6 +60,12 @@
 (defconstant +tk-home+ -14)
 (defconstant +tk-end+ -15)
 
+;; F1..F12 are -21..-32 (pi-tui's FUNCTIONAL_CODEPOINTS); Kitty reserves 57344..63743 for functional keys, never text.
+(defconstant +tk-f1+ -21)
+(defconstant +tk-f12+ -32)
+(defconstant +tk-functional-pua-start+ 57344)
+(defconstant +tk-functional-pua-end+ 63743)
+
 (defparameter *tk-functional-equivalents*
   `((57399 . 48) (57400 . 49) (57401 . 50) (57402 . 51) (57403 . 52) (57404 . 53) (57405 . 54) (57406 . 55) (57407 . 56) (57408 . 57)
     (57409 . 46) (57410 . 47) (57411 . 42) (57412 . 45) (57413 . 43) (57415 . 61) (57416 . 44)
@@ -188,14 +194,26 @@ Return the digit groups (NIL for an absent one) and the final character, or NIL.
     (when g
       (let* ((key (tk-num (first g)))
              (codepoint (and (integerp key) (cdr (assoc key `((2 . ,+tk-insert+) (3 . ,+tk-delete+) (5 . ,+tk-page-up+) (6 . ,+tk-page-down+)
-                                                                (7 . ,+tk-home+) (8 . ,+tk-end+)))))))
+                                                                (7 . ,+tk-home+) (8 . ,+tk-end+)
+                                                                (11 . -21) (12 . -22) (13 . -23) (14 . -24) (15 . -25) (17 . -26)
+                                                                (18 . -27) (19 . -28) (20 . -29) (21 . -30) (23 . -31) (24 . -32)))))))
         (when codepoint
           (return-from tk-parse-kitty
             (values codepoint nil nil (let ((m (if (second g) (tk-num (second g)) 1))) (if (integerp m) (1- m) m))))))))
   (let ((g (tk-match data "1;" '((#\: 1)) "HF")))
     (when g
-      (values (if (char= (third g) #\H) +tk-home+ +tk-end+) nil nil
-              (let ((m (tk-num (first g)))) (if (integerp m) (1- m) m))))))
+      (return-from tk-parse-kitty
+        (values (if (char= (third g) #\H) +tk-home+ +tk-end+) nil nil
+                (let ((m (tk-num (first g)))) (if (integerp m) (1- m) m))))))
+  ;; F1, F2, F4: ESC [ P/Q/S, ESC [ 1 ; mod P/Q/S or ESC [ 1 ; mod : event P/Q/S (F3 is ESC [ 13 ~).
+  (let ((n (length data)))
+    (when (and (>= n 3) (char= (char data 0) +tui-esc+) (char= (char data 1) #\[) (find (char data (1- n)) "PQS"))
+      (let ((codepoint (ecase (char data (1- n)) (#\P +tk-f1+) (#\Q -22) (#\S -24))))
+        (if (= n 3)
+            (values codepoint nil nil 0)
+            (let ((g (tk-match data "1;" '((#\: 1)) "PQS")))
+              (when g
+                (values codepoint nil nil (let ((m (tk-num (first g)))) (if (integerp m) (1- m) m))))))))))
 
 (defun tk-parse-modify-other (data)
   "Values: key code and modifier of an xterm modifyOtherKeys sequence, or NIL."
@@ -334,7 +352,8 @@ Return the digit groups (NIL for an absent one) and the final character, or NIL.
                    ((= modifier 0) (or (tk-legacy data key *tk-legacy*) (kit code 0)))
                    (t (or (tk-legacy-modifier data key modifier) (kit code modifier))))))
           ((and (member key '("f1" "f2" "f3" "f4" "f5" "f6" "f7" "f8" "f9" "f10" "f11" "f12") :test #'string=))
-           (and (= modifier 0) (tk-legacy data key *tk-legacy*)))
+           (let ((code (- -20 (parse-integer key :start 1))))
+             (or (and (= modifier 0) (tk-legacy data key *tk-legacy*)) (kit code modifier))))
           ((and (= (length key) 1) (or (char<= #\a (char key 0) #\z) (char<= #\0 (char key 0) #\9) (find (char key 0) *tk-symbol-keys*)))
            (let* ((char (char key 0)) (codepoint (char-code char)) (raw-ctrl (tk-raw-ctrl-char key)) (letter (char<= #\a char #\z)))
              (when (and (= modifier (+ +tk-ctrl+ +tk-alt+)) (not kitty) raw-ctrl (string= data (tui-cat (tstr 27) raw-ctrl)))
@@ -356,11 +375,11 @@ Return the digit groups (NIL for an absent one) and the final character, or NIL.
 
 (defun tui-key-release-p (data)
   "Whether DATA is a Kitty key-release event (pi-tui's isKeyRelease)."
-  (tk-any-marker data '(":3u" ":3~" ":3A" ":3B" ":3C" ":3D" ":3H" ":3F")))
+  (tk-any-marker data '(":3u" ":3~" ":3A" ":3B" ":3C" ":3D" ":3H" ":3F" ":3P" ":3Q" ":3S")))
 
 (defun tui-key-repeat-p (data)
   "Whether DATA is a Kitty key-repeat event (pi-tui's isKeyRepeat)."
-  (tk-any-marker data '(":2u" ":2~" ":2A" ":2B" ":2C" ":2D" ":2H" ":2F")))
+  (tk-any-marker data '(":2u" ":2~" ":2A" ":2B" ":2C" ":2D" ":2H" ":2F" ":2P" ":2Q" ":2S")))
 
 (defun tk-format-key-name (key-name modifier)
   (let ((effective (logandc2 (tk-i32 modifier) +tk-lock-mask+)))
@@ -380,6 +399,7 @@ Return the digit groups (NIL for an absent one) and the final character, or NIL.
                                                 (,+tk-insert+ . "insert") (,+tk-home+ . "home") (,+tk-end+ . "end") (,+tk-page-up+ . "pageUp")
                                                 (,+tk-page-down+ . "pageDown") (,+tk-up+ . "up") (,+tk-down+ . "down") (,+tk-left+ . "left")
                                                 (,+tk-right+ . "right")))))
+                   (and (integerp effective) (<= +tk-f12+ effective +tk-f1+) (format nil "f~D" (- +tk-f1+ effective -1)))
                    (and (or (tk-between 48 effective 57) (tk-between 97 effective 122) (tk-in effective *tk-symbol-keys*))
                         (string (code-char (logand (tk-i32 effective) #xFFFF)))))))
     (and name (plusp (length name)) (tk-format-key-name name modifier))))
@@ -450,7 +470,9 @@ Return the digit groups (NIL for an absent one) and the final character, or NIL.
              (modifier (if (integerp mod-value) (tk-i32 (1- mod-value)) 0)))
         (unless (or (logtest modifier (lognot (logior +tk-shift+ +tk-lock-mask+))) (logtest modifier (logior +tk-alt+ +tk-ctrl+)))
           (let ((effective (tk-normalize-functional (if (and (logtest modifier +tk-shift+) shifted) shifted codepoint))))
-            (and (integerp effective) (>= effective 32) (tk-from-code-point effective))))))))
+            (and (integerp effective) (>= effective 32)
+                 (not (<= +tk-functional-pua-start+ effective +tk-functional-pua-end+))
+                 (tk-from-code-point effective))))))))
 
 (defun tui-decode-printable-key (data)
   "TUI-DECODE-KITTY-PRINTABLE, or the character of a modifyOtherKeys event (pi-tui's decodePrintableKey)."

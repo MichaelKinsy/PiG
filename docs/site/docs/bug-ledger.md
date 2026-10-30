@@ -328,6 +328,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-504869b-3](#bf-504869b-3) | A JSON-RPC number id is a JavaScript number | PiG's own defect | All platforms | 0.5.0 |
 | [BF-50f526d](#bf-50f526d) | The Go, Rust and Python SDKs export Pi's `CURRENT_SESSION_VERSION`, `VIRTUAL_MODEL_STATE_ENTRY`… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-5144418](#bf-5144418) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
+| [BF-51c8f1c](#bf-51c8f1c) | The Rust, Python and Lisp extension SDKs now recognize F1-F12 reported with the Kitty keyboard protocol, as… | PiG's own defect | All platforms | Unreleased |
 | [BF-5229b7d](#bf-5229b7d) | fix(durable/core): unloadDocuments with held changes is an api read job, memory notice shares the publish… | PiG's own defect | All platforms | Unreleased |
 | [BF-5260e5c](#bf-5260e5c) | The Rust SDK's `get_model_info()` reads Pi's `maxTokens` and `cost` (it reported 0 for the output limit and… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-52858aa](#bf-52858aa) | `setWorkingMessage` with no message restores the default working label and an empty string shows an empty… | PiG's own defect | All platforms | 0.5.0 |
@@ -5604,6 +5605,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `5144418192` (2026-10-21)
 - **Tests:** None recorded.
+
+### BF-51c8f1c
+
+**The Rust, Python and Lisp extension SDKs now recognize F1-F12 reported with the Kitty keyboard protocol, as…**
+
+- **Source:** PiG's own defect
+- **Symptom:** The Rust, Python and Lisp extension SDKs now recognize F1-F12 reported with the Kitty keyboard protocol, as the Go SDK and Pi do: `CSI P`/`Q`/`S` and `CSI 1;<mod> P`/`Q`/`S` for F1, F2 and F4, and a modifier on any F-key such as `CSI 15;5~` for Ctrl+F5.
+- **Root cause:** Not recorded.
+- **User impact:** Wrong output or ordering
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `2768108d4b` (2026-10-29), `51c8f1cb12` (2026-10-29), `9fbcd3b82e` (2026-10-29)
+- **Tests:** None recorded.
+- **Release note:** The Rust, Python and Lisp extension SDKs now recognize F1-F12 reported with the Kitty keyboard protocol, as the Go SDK and Pi do: `CSI P`/`Q`/`S` and `CSI 1;<mod> P`/`Q`/`S` for F1, F2 and F4, and a modifier on any F-key such as `CSI 15;5~` for Ctrl+F5. Their `matchesKey("f5", ...)`-style checks match `ctrl+f5` and `shift+f4`, `parseKey` names the keys, `isKeyRelease` and `isKeyRepeat` accept `:3` and `:2` on `P`/`Q`/`S`, and `decodeKittyPrintable` returns nothing for the Kitty functional-key Private Use Area instead of an invisible character. The pi-tui bulk vectors (`test/parity/sdk-bulk`), last generated from Pi 1.3.0, are regenerated from the pinned Pi build, so the Go SDK tests no longer assert that `\x1b[P` is no key. Ports Pi's `keys.ts` F-key changes to the Rust, Python and Lisp SDKs.
 
 ### BF-5229b7d
 
