@@ -1,0 +1,3 @@
+### Added
+
+- Go API `chord/next/host` (helpers): the host-side helpers of Chord v2 (`@earendil-works/chord/next`, experimental) as Pi `e7a0df27` has them. Retry backoff and the activation deadline, `Sleep` and `UntilAborted`, the handler `Ctx` and root scopes, routines (`on`, `onLive`) with their backoff, facets, natives, followed sources, member sources and keyed members across attempts, the member check, presence lists, the unbound-request index, dependency checks and parked calls, `ref.state`, retry wake signals, revocation keys, routes and destinations, and the host's event `Loop`. One package carries Pi's `host`, `jobs` and `remote` directories (see `chord/next/DESIGN-go-layout.md`). <!-- feat: chord-next-host-helpers -->
