@@ -682,6 +682,37 @@
         (kt-run-command h "read" "" "again")
         (check-equal "third" (pig:jget (kth-args h :call "ui.notify") "message") "a held theme follows the host")))))
 
+(deftest a-theme-handler-gets-the-theme-of-its-own-change-though-the-host-changed-it-again-before-the-handler-ran
+  ;; the first handler holds the delivery of "second"; the host moves on to "third"; the second handler, behind it, must still get "second"
+  (let ((ext (pig:make-extension "feeds")) (themes '()) (lock (sb-thread:make-mutex))
+        (entered (sb-thread:make-semaphore)) (gate (sb-thread:make-semaphore)) (logged (sb-thread:make-semaphore)))
+    (pig:command ext "sub" "" (lambda (ctx args) (declare (ignore args))
+                                (pig:ctx-on-theme-change ctx (lambda (theme) (declare (ignore theme))
+                                                               (sb-thread:signal-semaphore entered)
+                                                               (sb-thread:wait-on-semaphore gate)
+                                                               (sb-thread:signal-semaphore gate)))
+                                (pig:ctx-on-theme-change ctx (lambda (theme)
+                                                               (sb-thread:with-mutex (lock) (push (list (pig:theme-name theme) (pig:theme-fg theme "success" "x")) themes))
+                                                               (sb-thread:signal-semaphore logged)))))
+    (pig:command ext "read" "" (lambda (ctx args) (declare (ignore args)) (pig:ctx-notify ctx (pig:theme-name (pig:ctx-theme ctx)))))
+    (flet ((palette (name rgb) (pig:from-json (format nil "{\"name\":\"~A\",\"foregrounds\":{\"success\":\"\\u001b[38;2;~A;~A;~Am\"},\"backgrounds\":{}}" name rgb rgb rgb))))
+      (with-kth (h ext :state (pig:obj "hasUI" t "theme" (palette "first" 1)))
+        (unwind-protect
+             (progn
+               (kt-run-command h "sub")
+               (kt-notify-event (kth-host h) "theme_change" (palette "second" 2))
+               (check (sb-thread:wait-on-semaphore entered :timeout 30) "the first handler took the delivery of the second theme")
+               (kt-notify-event (kth-host h) "theme_change" (palette "third" 3))
+               (kt-run-command h "read")
+               (check-equal "third" (pig:jget (kth-args h :call "ui.notify") "message") "the extension holds the newest theme while the delivery is held")
+               (check (zerop (sb-thread:semaphore-count logged)) "the second handler waits behind the first")
+               (sb-thread:signal-semaphore gate)
+               (check (and (sb-thread:wait-on-semaphore logged :timeout 30) (sb-thread:wait-on-semaphore logged :timeout 30)))
+               (check-equal (list (list "second" (concatenate 'string (kt-esc "38;2;2;2;2m") "x" (kt-esc "39m")))
+                                  (list "third" (concatenate 'string (kt-esc "38;2;3;3;3m") "x" (kt-esc "39m"))))
+                            (sb-thread:with-mutex (lock) (reverse themes))))
+          (sb-thread:signal-semaphore gate))))))
+
 (deftest ctx-custom-does-nothing-without-a-ui-and-keeps-the-dialog-scope-in-rpc-mode
   (let ((ext (pig:make-extension "custom-modes")) (results '()))
     (pig:command ext "go" "" (lambda (ctx args) (declare (ignore args))

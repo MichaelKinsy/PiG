@@ -475,6 +475,7 @@ func loadModelTypesRust(packed bool) modelTypesLoader {
 }
 
 const modelTypesPython = `import json
+import threading
 import time
 import pig_sdk
 
@@ -632,6 +633,24 @@ def register_host_surface(ext):
         log["theme_off"]()
         return json.dumps({"ok": True})
 
+    # The theme gate: a handler that holds its delivery until c3_theme_gate_release. Armed before c3_theme_arm it runs ahead of the logger in every delivery, so the logger receives a change after the host changed the theme again: each handler must still get the theme of its own change.
+    gate = {"entered": False, "open": threading.Event()}
+
+    def hold(theme):
+        gate["entered"] = True
+        gate["open"].wait()
+
+    def theme_gate_arm(ctx, args):
+        ctx.on_theme_change(hold)
+        return json.dumps({"ok": True})
+
+    def theme_gate_state(ctx, args):
+        return json.dumps({"entered": gate["entered"], "live": ctx.theme.name})
+
+    def theme_gate_release(ctx, args):
+        gate["open"].set()
+        return json.dumps({"ok": True})
+
     def expanded_arm(ctx, args):
         log["expanded_off"] = ctx.on_tools_expanded_change(lambda expanded: log["expanded"].append(expanded))
         return json.dumps({"ok": True})
@@ -659,6 +678,7 @@ def register_host_surface(ext):
 
     handlers = {
         "c3_theme_arm": theme_arm, "c3_theme_disarm": theme_disarm, "c3_theme_log": lambda ctx, args: json.dumps({"log": log["theme"]}),
+        "c3_theme_gate_arm": theme_gate_arm, "c3_theme_gate_state": theme_gate_state, "c3_theme_gate_release": theme_gate_release,
         "c3_expanded_arm": expanded_arm, "c3_expanded_disarm": expanded_disarm, "c3_expanded_log": lambda ctx, args: json.dumps({"log": log["expanded"]}),
         "c3_widget_arm": widget_arm, "c3_widget_clear": widget_clear, "c3_bell": bell, "c3_tool_call": tool_call,
         "c3_source": lambda ctx, args: json.dumps({"info": ctx.extension_source_info()}),

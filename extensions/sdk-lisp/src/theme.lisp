@@ -183,13 +183,16 @@ An unknown token signals \"Unknown theme color: <token>\"."
   (theme-of (ctx-extension ctx)))
 
 (defun theme-apply-palette (ext palette)
-  "Install the host's palette and deliver the theme to the ON-THEME-CHANGE handlers when it differs from the one before."
-  (let* ((kit (kit-state ext)) (json (to-json palette)) (theme (theme-of ext)) changed)
+  "Install the host's palette and deliver a snapshot of the theme to the ON-THEME-CHANGE handlers when it differs from the one before. The
+snapshot is taken with the palette, so a handler that runs after a later change still sees the theme of the change it was delivered for."
+  (let* ((kit (kit-state ext)) (json (to-json palette)) (theme (theme-of ext)) changed snapshot)
     (sb-thread:with-mutex ((kit-state-lock kit))
       (setf changed (and (kit-state-palette-json kit) (not (equal json (kit-state-palette-json kit)))))
       (theme-set-palette theme palette)
-      (setf (kit-state-palette-json kit) json))
-    (when changed (kit-feed-publish ext (kit-state-theme-feed kit) theme))))
+      (setf (kit-state-palette-json kit) json)
+      ;; THEME-SET-PALETTE gives the live theme new tables and never mutates one in place: the slot copy shares nothing that changes later
+      (when changed (setf snapshot (copy-theme theme))))
+    (when changed (kit-feed-publish ext (kit-state-theme-feed kit) snapshot))))
 
 (defun theme-apply-state (ext state)
   (when (hash-table-p state)
@@ -211,9 +214,11 @@ An unknown token signals \"Unknown theme color: <token>\"."
 
 (defun ctx-on-theme-change (ctx handler)
   "Subscribe to changes of the host's theme: the user switching theme, a custom theme's file reloading, the terminal reporting new colors.
-HANDLER, (lambda (theme)), receives CTX-THEME after it took the new palette. Handlers run on a worker thread, one at a time in the order the
-changes arrived, never on the thread that reads the host's replies, so a handler can make a blocking host call; one that signals is
-reported on stderr and does not stop the others. Returns the idempotent unsubscribe function. A palette equal to the one before is not a change."
+HANDLER, (lambda (theme)), receives the theme of the change it is delivered for: a snapshot of CTX-THEME as it was when the palette came in,
+so a handler that runs after the host changed the theme again still sees the palette it was called for (CTX-THEME itself stays live).
+Handlers run on a worker thread, one at a time in the order the changes arrived, never on the thread that reads the host's replies, so a
+handler can make a blocking host call; one that signals is reported on stderr and does not stop the others. Returns the idempotent
+unsubscribe function. A palette equal to the one before is not a change."
   (unless (functionp handler) (error 'type-error :datum handler :expected-type 'function))
   (kit-feed-subscribe (kit-state-theme-feed (kit-state (ctx-extension ctx))) handler))
 
