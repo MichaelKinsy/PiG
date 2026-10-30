@@ -171,10 +171,8 @@ func (h *memberHarness) read(t *testing.T, source state.DeriveSource) delta.Json
 	return value
 }
 
+// valueCall is a value call as a watch's listener gets it: a call without ops carries a nil slice (Pi's `[]`).
 func valueCall(value delta.JsonValue, retired bool, ops ...delta.Op) chord.WatchCall[delta.JsonValue] {
-	if ops == nil {
-		ops = []delta.Op{}
-	}
 	return chord.WatchCall[delta.JsonValue]{Kind: chord.WatchCallValue, Value: value, Ops: ops, Retired: retired}
 }
 
@@ -535,4 +533,29 @@ func TestFollowAnEndedObjectsFollowedSourcesAreCollectedAndTheirObserversDetache
 	h.loop.Run(func() { observers = len(a.observers) })
 	expectEqual(t, "observers", observers, 0)
 	nexttest.ExpectCollected(t, ref)
+}
+
+// Own test, mirrors follow.ts `subscribe` and `deliver`: a member source over a followed source passes its frames on, its
+// watch ends `ended` once what the runtime gave is delivered, and a subscriber of an ended source ends at once (a
+// reference's watch through its member source, follow.test.ts › ends (R4) › ended).
+func TestFollowASubscriberOfAnEndedSourceEndsAtOnceAndAMemberSourceOverItEndsItsWatchesAfterTheirFrames(t *testing.T) {
+	h := newMemberHarness(t)
+	a := newFollowRuntime(h.loop)
+	left := h.follow(a, "app.view(): follow #1")
+	if err := left.source.attach(memberBackground); err != nil {
+		t.Fatalf("attach: %v", err)
+	}
+	m := h.member(left.source)
+	watch := h.watch(t, m)
+	calls := nexttest.ChangesOf(watch)
+	h.loop.Run(func() {
+		a.set(1, false)
+		a.end(chord.WatchEnd{Kind: chord.WatchEnded})
+	})
+	<-watch.Closed()
+	expectEqual(t, "end", watch.End(), chord.WatchEnd{Kind: chord.WatchEnded})
+	expectCalls(t, calls.Items(), []chord.WatchCall[delta.JsonValue]{valueCall(memberCount(1), false, setOp(1))})
+	subscriber := &recorded{}
+	h.loop.Run(func() { left.source.Subscribe(subscriber) })
+	expectEqual(t, "events", subscriber.events, []any{"ended"})
 }

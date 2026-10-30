@@ -240,7 +240,7 @@ func TestKeyedMembersRebindingFollowsTheNewAttemptsMemberOfTheSameNameOneFrameAn
 	}
 	h.fail(exposer)
 	next := bindingsOf(reexposedBinding(providerB))
-	if _, err := exposer.prepare(next, memberBackground).await(); err != nil {
+	if _, err := h.prepare(exposer, next, memberBackground).await(); err != nil {
 		t.Fatalf("prepare: %v", err)
 	}
 	h.within(t, exposer.rebind)
@@ -272,7 +272,7 @@ func TestKeyedMembersRebindingLoadsAColdPersistedKeyOfTheNewMemberBeforeTheNewAt
 		t.Fatalf("the cold key is in memory before the new attempt")
 	}
 	h.fail(exposer)
-	if _, err := exposer.prepare(bindingsOf(reexposedBinding(providerCold)), memberBackground).await(); err != nil {
+	if _, err := h.prepare(exposer, bindingsOf(reexposedBinding(providerCold)), memberBackground).await(); err != nil {
 		t.Fatalf("prepare: %v", err)
 	}
 	// Loaded before it goes live; the key still shows what the failed attempt had.
@@ -486,7 +486,7 @@ func TestKeyedMembersAKeyReexposedThroughTwoObjectsFreezesWithTheMiddleOneAndFol
 	a.set(t, "k", 3)
 	h.delivered()
 	expectEqual(t, "value and frames while the middle one is failed", []any{h.read(t, viewed.source), len(values.Items())}, []any{delta.JsonValue(memberCount(1)), 0})
-	if _, err := middle.keys.prepare(bindingsOf(reexposedBinding(providerB)), memberBackground).await(); err != nil {
+	if _, err := h.prepare(middle.keys, bindingsOf(reexposedBinding(providerB)), memberBackground).await(); err != nil {
 		t.Fatalf("prepare: %v", err)
 	}
 	h.within(t, middle.keys.rebind)
@@ -511,7 +511,7 @@ func TestKeyedMembersAConsumerReleasedWhileTheObjectReactivatesLeavesNoHoldBehin
 		viewed.release()
 	}()
 	// The re-activating attempt has no key to prepare: nothing was kept for the released consumer.
-	if preparing := exposer.prepare(bindingsOf(reexposedBinding(providerB)), memberBackground); preparing != nil {
+	if preparing := h.prepare(exposer, bindingsOf(reexposedBinding(providerB)), memberBackground); preparing != nil {
 		t.Fatalf("prepare with no pinned key returned a promise")
 	}
 	h.within(t, exposer.rebind)
@@ -521,7 +521,7 @@ func TestKeyedMembersAConsumerReleasedWhileTheObjectReactivatesLeavesNoHoldBehin
 	if !exposer.empty() || !providerA.keys.empty() || !providerB.keys.empty() {
 		t.Fatalf("keys are kept for a released consumer")
 	}
-	nexttest.ExpectCollected(t, refs.doc)
+	nexttest.ExpectCollected(t, doc)
 }
 
 // Own test, mirrors keyed-members.ts `prepare`/`discard`: what prepare pinned on a new attempt that did not go live is
@@ -534,7 +534,7 @@ func TestKeyedMembersDiscardReleasesWhatPreparePinnedAndAFailedLoadRejectsPrepar
 	viewed := h.pinned(t, exposer, ownBinding(a), "k")
 	h.fail(exposer)
 	next := bindingsOf(ownBinding(b))
-	if _, err := exposer.prepare(next, memberBackground).await(); err != nil {
+	if _, err := h.prepare(exposer, next, memberBackground).await(); err != nil {
 		t.Fatalf("prepare: %v", err)
 	}
 	if pins, _ := b.pinsOf("k"); pins != 1 {
@@ -548,7 +548,7 @@ func TestKeyedMembersDiscardReleasesWhatPreparePinnedAndAFailedLoadRejectsPrepar
 	// A failing load rejects prepare; the key keeps what it has.
 	loadFailed := errors.New("store failed")
 	b.ensureErr = loadFailed
-	if _, err := exposer.prepare(next, memberBackground).await(); err != loadFailed {
+	if _, err := h.prepare(exposer, next, memberBackground).await(); err != loadFailed {
 		t.Fatalf("prepare = %v, want the failed load", err)
 	}
 	if _, inMemory := b.pinsOf("k"); inMemory {

@@ -8,6 +8,7 @@ import (
 	"weak"
 
 	"github.com/MichaelKinsy/PiG/chord"
+	chordctx "github.com/MichaelKinsy/PiG/chord/context"
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/chord/next/data"
 	"github.com/MichaelKinsy/PiG/chord/next/internal/nexttest"
@@ -416,4 +417,26 @@ func TestMemberSourceAnEndedObjectsMemberSourcesAreCollectedWithIt(t *testing.T)
 		return weak.Make(m)
 	}()
 	nexttest.ExpectCollected(t, ref)
+}
+
+// Own test of memberSource.OpenWatch (member-source.ts `openWatch`: `watch.observeAbort`): aborting the context a watch was
+// opened with ends it `aborted`, and it stops following the member source.
+func TestMemberSourceAWatchEndsAbortedWithItsContextAndStopsFollowing(t *testing.T) {
+	h := newMemberHarness(t)
+	m := h.member(newMemberDoc(h.batch, memberCount(0)))
+	abort, cancel := chordctx.WithCancel(memberBackground)
+	var watch *chord.Watch[delta.JsonValue]
+	var err error
+	h.loop.Run(func() { watch, err = m.OpenWatch(abort) })
+	if err != nil {
+		t.Fatalf("open watch: %v", err)
+	}
+	reason := errors.New("viewer left")
+	cancel(reason)
+	<-watch.Closed()
+	expectEqual(t, "end kind", watch.End().Kind, chord.WatchAborted)
+	h.delivered()
+	if m.Watched() {
+		t.Fatalf("an aborted watch still follows the member source")
+	}
 }
