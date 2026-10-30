@@ -15,15 +15,11 @@ import (
 )
 
 // Ports the "listener and report errors" group of packages/durable/test/harness-storage-failure.test.ts (Pi 1.2.0). The
-// cases about rejecting promises and thenables have no Go counterpart (a Go callback returns no promise) and skip.
+// cases about rejecting promises, fulfilled thenables and rejected promises of another realm (:431, :510, :533) are
+// designed out: a Go listener or OnReport returns no promise, and session.Contained recovers a panicking callback
+// (TestListenerAndReportErrors below, TestSafeNow for OnReport).
 
 func TestListenerAndReportErrors(t *testing.T) {
-	// harness-storage-failure.test.ts:431 it("reports a listener or onReport whose promise rejects, without an unhandled rejection")
-	t.Run("reports a listener or onReport whose promise rejects, without an unhandled rejection", func(t *testing.T) {
-		t.Skip("Pi harness-storage-failure.test.ts:431: a Go listener or OnReport returns no promise, so there is no rejection to " +
-			"report and no unhandledRejection to observe; a panicking listener is the next case, a panicking OnReport is TestSafeNow")
-	})
-
 	// harness-storage-failure.test.ts:466 it("reports a throwing commit or close listener and runs the others; the commit stands")
 	t.Run("reports a throwing commit or close listener and runs the others; the commit stands", func(t *testing.T) {
 		harness, root, reports := sfStarted(t, newControlledStorage(), &signalLog{})
@@ -88,17 +84,6 @@ func TestListenerAndReportErrors(t *testing.T) {
 		if end := watch.End(); end.Kind != durable.WatchEnded {
 			t.Fatalf("the watch ended %+v, want ended", end)
 		}
-	})
-
-	// harness-storage-failure.test.ts:510 it("contains a fulfilled thenable that calls only its fulfillment handler")
-	t.Run("contains a fulfilled thenable that calls only its fulfillment handler", func(t *testing.T) {
-		t.Skip("Pi harness-storage-failure.test.ts:510: Go has no thenables; session.Contained runs a plain callback")
-	})
-
-	// harness-storage-failure.test.ts:533 it("contains a rejected promise from another realm")
-	t.Run("contains a rejected promise from another realm", func(t *testing.T) {
-		t.Skip("Pi harness-storage-failure.test.ts:533: Go has no promises or realms (node:vm); a panicking callback is contained " +
-			"by the cases above")
 	})
 
 	// PiG coverage beyond the Pi file: the task graph's observers, contained as view.ts is.

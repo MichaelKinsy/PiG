@@ -405,7 +405,7 @@ func (r *run) prepareWith(cp *jv.Object, agent *Agent) {
 	overflowText, hasOverflow := stringField(cp, "overflow")
 	proceed := func() { r.prepareRequest(agent, settings, window, attempt, compacted) }
 	if compacted != 0 && hasOverflow {
-		r.rt.Outcomes([]ID{compacted}, func(outcomes []*jv.Object, err error) {
+		r.outcomes([]ID{compacted}, func(outcomes []*jv.Object, err error) {
 			if err != nil {
 				r.fail(err)
 				return
@@ -425,7 +425,7 @@ func (r *run) prepareWith(cp *jv.Object, agent *Agent) {
 	// A threshold compaction that found nothing to compact or was declined leaves a request that may still fit. One that failed
 	// left a context it judged too large: sending it would at best leave no room for the answer.
 	if threshold, _ := cp.Get("threshold"); compacted != 0 && threshold == true {
-		r.rt.Outcomes([]ID{compacted}, func(outcomes []*jv.Object, err error) {
+		r.outcomes([]ID{compacted}, func(outcomes []*jv.Object, err error) {
 			if err != nil {
 				r.fail(err)
 				return

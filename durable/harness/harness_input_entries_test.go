@@ -159,11 +159,6 @@ func TestInputEntries(t *testing.T) {
 		closeHarness(t, harness)
 	})
 
-	// harness-input-entries.test.ts:138 it("takes only kind and data from an untyped caller's entry")
-	t.Run("takes only kind and data from an untyped caller's entry", func(t *testing.T) {
-		t.Skip("Pi harness-input-entries.test.ts:138: the typed InputEntry carries only Kind and Data, so no caller can add model, head or edits; durable/core/inbox TestAnUntypedCallersInputEntryGivesOnlyItsKindAndData ports the case on the JSON draft path")
-	})
-
 	// harness-input-entries.test.ts:172 it("queues busy inputs with their entries in the inbox and places them as those entries at boundaries")
 	t.Run("queues busy inputs with their entries in the inbox and places them as those entries at boundaries", func(t *testing.T) {
 		setup := chatSetup(t)
