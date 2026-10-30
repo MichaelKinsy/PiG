@@ -2483,6 +2483,156 @@
       "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
     },
     {
+      "path": "packages/chord/test/next/documents/address-source.test.ts",
+      "upstreamTestHash": "sha256:caba395f728e00a841500af27750708fef75ee729090da9e8685042bfc830e44",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
+    },
+    {
+      "path": "packages/chord/test/next/documents/definition.test.ts",
+      "upstreamTestHash": "sha256:ccb1a14cd7a37ac9142304271345b10873f4ed5e59ce7071c92fc6310adb0e11",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
+    },
+    {
+      "path": "packages/chord/test/next/documents/documents.test.ts",
+      "upstreamTestHash": "sha256:caf9cf9466c30aa03ae676a305cbdcd736dd7f92c340a016a5c3c93947ac176f",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
+    },
+    {
+      "path": "packages/chord/test/next/documents/fence.test.ts",
+      "upstreamTestHash": "sha256:506cb98bf9d9786685b821643979a1426e9680e8c48125192a13101f62deb852",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
+    },
+    {
+      "path": "packages/chord/test/next/documents/handles.test.ts",
+      "upstreamTestHash": "sha256:11f837c80a6d1ed3f7b14eb0eab1fb9b04ffd17c5ee68ec8fbcc74a2fcbec8b4",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
+    },
+    {
+      "path": "packages/chord/test/next/documents/keyed-slot.test.ts",
+      "upstreamTestHash": "sha256:f83cdf667e0ad36d8f4a77c1ef036ce695eb222ee24adc9fd27d3eeced775aee",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
+    },
+    {
+      "path": "packages/chord/test/next/documents/line.test.ts",
+      "upstreamTestHash": "sha256:34fe0364ecd9025a31e12bf8c1263072e558c1aa5d04e4937e1e3db720c3ae8d",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
+    },
+    {
+      "path": "packages/chord/test/next/documents/persistence.test.ts",
+      "upstreamTestHash": "sha256:384dfa99b4b4968a9cd212ec08daa072133ddf6b7e73e4b22ccd993bf659d882",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
+    },
+    {
+      "path": "packages/chord/test/next/documents/residency.test.ts",
+      "upstreamTestHash": "sha256:d8c43c911ce675cf72125d78a76efaf7fcd9fa05bc115ca0687940cc6ab7834a",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
+    },
+    {
+      "path": "packages/chord/test/next/documents/slot.test.ts",
+      "upstreamTestHash": "sha256:affee1f2aa5f6c7d3978a293df1670cf97e9b64bb203e05dff6d6b8b1b8566d1",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
+    },
+    {
+      "path": "packages/chord/test/next/documents/transaction.test.ts",
+      "upstreamTestHash": "sha256:5a257cf56e3220119119ac4ff81904cedf7dd0fac570b7ca040fd3ed24d6769c",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
+    },
+    {
+      "path": "packages/chord/test/next/host/backoff.test.ts",
+      "upstreamTestHash": "sha256:d90ff26bb1d85f666cde366466dc319f9fb9699f47cee60ff8599cfa4d4ec390",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
+    },
+    {
+      "path": "packages/chord/test/next/host/ctx.test.ts",
+      "upstreamTestHash": "sha256:b8404874876544b6cc66d5b5e3cc2577aea26840610f241f7a40445091fa242b",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
+    },
+    {
+      "path": "packages/chord/test/next/host/deadline.test.ts",
+      "upstreamTestHash": "sha256:ce5fce58f527657fd2c4c370fb508c5310c29a0a94b6adc887fddcb20078b205",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
+    },
+    {
+      "path": "packages/chord/test/next/host/facet.test.ts",
+      "upstreamTestHash": "sha256:4ed05b408883b1543ca1c4d2f352bbcbab272a513ecd87c6bb831bd4f8da10c4",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path. SCRUTINIZED:approved by the owner (2026-10-30) under the type-level class (verified per row): [facets \u203a only declare: a setup takes the host and a self that only contributes; no documents, routines or natives]: owner class (a) type-level check; Go mechanism: FacetHost/FacetSelf have only Serve+References and Contribute; Go test TestFacetsOnlyDeclareASetupTakesTheHostAndASelfThatOnlyContributes (reflect) [facets \u203a are typed by exactly the app's principal type]: owner class (a) type-level check; Go mechanism: no principal type parameter (principals are data.Principal), Facet is exactly its Setup; Go test TestFacetsAreTypedByExactlyTheAppsPrincipalType SCRUTINIZED:approved by the owner (2026-10-30) under the type-level class (verified per row): [facets \u203a only declare: a setup takes the host and a self that only contributes; no documents, routines or natives]: owner class (a) type-level check; Go mechanism: FacetHost/FacetSelf have only Serve+References and Contribute; Go test TestFacetsOnlyDeclareASetupTakesTheHostAndASelfThatOnlyContributes (reflect) [facets \u203a are typed by exactly the app's principal type]: owner class (a) type-level check; Go mechanism: no principal type parameter (principals are data.Principal), Facet is exactly its Setup; Go test TestFacetsAreTypedByExactlyTheAppsPrincipalType SCRUTINIZED:approved by the owner (2026-10-30) under the type-level class (verified per row): [facets \u203a only declare: a setup takes the host and a self that only contributes; no documents, routines or natives]: owner class (a) type-level check; Go mechanism: FacetHost/FacetSelf have only Serve+References and Contribute; Go test TestFacetsOnlyDeclareASetupTakesTheHostAndASelfThatOnlyContributes (reflect) [facets \u203a are typed by exactly the app's principal type]: owner class (a) type-level check; Go mechanism: no principal type parameter (principals are data.Principal), Facet is exactly its Setup; Go test TestFacetsAreTypedByExactlyTheAppsPrincipalType",
+      "designedOutCases": [
+        "facets \u203a only declare: a setup takes the host and a self that only contributes; no documents, routines or natives",
+        "facets \u203a are typed by exactly the app's principal type"
+      ]
+    },
+    {
+      "path": "packages/chord/test/next/host/follow.test.ts",
+      "upstreamTestHash": "sha256:f5855c8a86ae64d3a1bd6ede2c10d33f608ad3ae0e2f7044624bee92d6a5efda",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path. SCRUTINIZED:approved by the owner (2026-10-30) under the type-level class (verified per row): [types \u203a infers the value type from the attachment, without a type argument]: class (a) TypeScript type-level check (expectTypeOf); Go mechanism: generic FollowAttach[T] / FollowAttachment[T]; Go test TestFollowAttachIsTypedByItsAttachment (host_follow_test.go) SCRUTINIZED:approved by the owner (2026-10-30) under the type-level class (verified per row): [types \u203a infers the value type from the attachment, without a type argument]: class (a) TypeScript type-level check (expectTypeOf); Go mechanism: generic FollowAttach[T] / FollowAttachment[T]; Go test TestFollowAttachIsTypedByItsAttachment (host_follow_test.go) SCRUTINIZED:approved by the owner (2026-10-30) under the type-level class (verified per row): [types \u203a infers the value type from the attachment, without a type argument]: class (a) TypeScript type-level check (expectTypeOf); Go mechanism: generic FollowAttach[T] / FollowAttachment[T]; Go test TestFollowAttachIsTypedByItsAttachment (host_follow_test.go)",
+      "designedOutCases": [
+        "types \u203a infers the value type from the attachment, without a type argument"
+      ]
+    },
+    {
+      "path": "packages/chord/test/next/host/root.test.ts",
+      "upstreamTestHash": "sha256:6f8dbefee8bdfba91647a97b5b7752444b62cd7a08413b98547e07be5809d99c",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
+    },
+    {
+      "path": "packages/chord/test/next/host/routines.test.ts",
+      "upstreamTestHash": "sha256:9b4fbf15256a599b4e39fdcd0cb406704abcb5aac51fb24b6d083fa93a0721fd",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path. SCRUTINIZED:approved by the owner (2026-10-30) under the type-level class (verified per row): [routines and the end \u203a type their handler by the source's kind: ops and retired for a JSON watchable, the value alone for a native one]: owner class (a) type-level check; Go mechanism: OnHandler[delta.JsonValue]/OnNativeHandler[any] take chord.WatchCall / chord.NativeWatchCall (no Ops/Retired) and RoutineDeclarations has On/OnNative/OnLive; Go test TestOnTypesTheirHandlerByTheSourcesKindOpsAndRetiredForAJSONWatchableTheValueAloneForANativeOne SCRUTINIZED:approved by the owner (2026-10-30) under the type-level class (verified per row): [routines and the end \u203a type their handler by the source's kind: ops and retired for a JSON watchable, the value alone for a native one]: owner class (a) type-level check; Go mechanism: OnHandler[delta.JsonValue]/OnNativeHandler[any] take chord.WatchCall / chord.NativeWatchCall (no Ops/Retired) and RoutineDeclarations has On/OnNative/OnLive; Go test TestOnTypesTheirHandlerByTheSourcesKindOpsAndRetiredForAJSONWatchableTheValueAloneForANativeOne SCRUTINIZED:approved by the owner (2026-10-30) under the type-level class (verified per row): [routines and the end \u203a type their handler by the source's kind: ops and retired for a JSON watchable, the value alone for a native one]: owner class (a) type-level check; Go mechanism: OnHandler[delta.JsonValue]/OnNativeHandler[any] take chord.WatchCall / chord.NativeWatchCall (no Ops/Retired) and RoutineDeclarations has On/OnNative/OnLive; Go test TestOnTypesTheirHandlerByTheSourcesKindOpsAndRetiredForAJSONWatchableTheValueAloneForANativeOne",
+      "designedOutCases": [
+        "routines and the end \u203a type their handler by the source's kind: ops and retired for a JSON watchable, the value alone for a native one"
+      ]
+    },
+    {
+      "path": "packages/chord/test/next/host/sleep.test.ts",
+      "upstreamTestHash": "sha256:d3e22acbac93831c7ab84b38ac45178014278910a560ab7f00c2b231f20040b5",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
+    },
+    {
+      "path": "packages/chord/test/next/host/unbound.test.ts",
+      "upstreamTestHash": "sha256:98b4f8388e80d3dc74d967855663a2c02e269b9f24976fe06414033599f6c396",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
+    },
+    {
       "path": "packages/chord/test/next/link/channel.test.ts",
       "upstreamTestHash": "sha256:3795f2abac8cbcd27858a7c7fda97ae55db8eec74eb20eb936c22c726a6e8ff5",
       "area": "extensions",
@@ -2648,7 +2798,7 @@
       "upstreamTestHash": "sha256:5f27d851df51ebfa1ab288b3a8cb74726df055c369a0033b1f421575de2cc1c7",
       "area": "extensions",
       "tags": [],
-      "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) store: used by Durable's store adapter. Designed-out case (row types: types rows with optional opt(...) fields): TypeScript type-level Equal checks only; owner approval pending: the Go mechanism that enforces the same constraint is not yet named (lane D3 to supply, owner 2026-10-29 class rule).",
+      "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) store: used by Durable's store adapter. SCRUTINIZED:approved by the owner (2026-10-30) under the type-level class (verified per row): the designed-out case 'row types \u203a types rows with optional opt(...) fields and puts with optional defaulted fields' is a TypeScript type-level check; the Go mechanism is the typed API (Row = map[string]any; an optional column is a ColumnSchema made by Opt with Optional set, carried by Column and ColumnRecord) with compile-time assertions and a runtime check, TestEvidenceStoreAColumnsOptionalRowType in chord/next/store/evidence_storeA_test.go.",
       "designedOutCases": [
         "row types \u203a types rows with optional opt(...) fields and puts with optional defaulted fields"
       ]
@@ -2777,11 +2927,7 @@
       "upstreamTestHash": "sha256:ba79e414401d888351ad54d01e0fc00064015eea0b6b5993fa4ad7a8dce3ab1b",
       "area": "extensions",
       "tags": [],
-      "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) store: used by Durable's store adapter. Designed-out cases (the chunk yield, 2): JS timer mechanics (setImmediate deleted, setTimeout spy, timer starvation); Go preempts goroutines and runtime.Gosched() yields. Owner approval pending: not in an approved class (class approvals cover type-level checks with a named Go mechanism, Promise/thenable mechanics, TypeBox accumulators).",
-      "designedOutCases": [
-        "the chunk yield \u203a yields between chunks without Node's setImmediate (Workers, browsers), through a message, not a timer",
-        "the chunk yield \u203a yields between chunks without a timer (no 1 ms clamp), while timers due run in between (a latency guard)"
-      ]
+      "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) store: used by Durable's store adapter."
     },
     {
       "path": "packages/chord/test/next/store/table-writes.test.ts",
