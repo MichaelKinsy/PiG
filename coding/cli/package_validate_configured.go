@@ -38,10 +38,11 @@ func validateConfiguredPackages(cwd string, sm *codingagent.SettingsManager, jso
 		}
 	}
 	for _, failure := range packagemanager.MissingLocalPackages(cwd, sm.AgentDir(), sm) {
-		remove := codingagent.AppName + " remove " + failure.Source
+		scopeFlag := ""
 		if failure.Scope == "project" {
-			remove += " -l"
+			scopeFlag = " -l"
 		}
+		remove := codingagent.AppName + " remove " + failure.Source + scopeFlag
 		report.Missing = append(report.Missing, missingConfiguredPackage{Source: failure.Source, Scope: failure.Scope, Path: failure.Path, Error: failure.Message, Remove: remove})
 	}
 	report.Valid = len(report.Missing) == 0
