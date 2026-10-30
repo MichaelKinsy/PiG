@@ -381,11 +381,6 @@ func (s *Session) commitWrites(tx *Tx, writes []Write) (*Publication, error) {
 	return pub, nil
 }
 
-// newPublication is the one place a Publication is allocated.
-//
-//go:fix inline
-func (s *Session) newPublication(p Publication) *Publication { return new(p) }
-
 // InJob reports whether a Loop line job body is running.
 func (s *Session) InJob() bool { return s.inJob }
 
