@@ -49,8 +49,8 @@ func farbfeldCorpus() []formatCase {
 		samples := make([]uint16, 4*65536)
 		for v := range 65536 {
 			for c := range 4 {
-				switch {
-				case c == channel:
+				switch c {
+				case channel:
 					samples[4*v+c] = uint16(v)
 				default:
 					samples[4*v+c] = uint16(v * 7 * (c + 1))
