@@ -604,52 +604,52 @@ rationale = "Promise appears only in the declared type of a provided call (args.
 
 [[files]]
 path = "packages/chord/src/next/documents/documents.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited", "microtask-ordering", "cancellable"]
+evidence = ["test:chord/next/documents/handles_test.go#TestSealedHandlesStill", "test:chord/next/documents/transaction_test.go#TestTheSealFence", "test:chord/next/documents/keyed_slot_test.go#TestKeyedSlotColdReadsQueuedOnTheLineBeforeTheObjectsEndAreRefusedReleasedWhenTheyRunAfterIt"]
+rationale = "`OnLine`/`Tx`/`Load`/`Settled` block; admission is checked before queuing and again once the line is taken; `Tx` releases the line and settles staged changes in a `defer`; in-memory commits take no step. `Fence`/`Seal` are sections that cut the holder. (lane D4)"
 
 [[files]]
 path = "packages/chord/src/next/documents/handles.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited"]
+evidence = ["test:chord/next/documents/handles_test.go#TestKeyedHandlesListKeysInCodePointOrderNotUTF16Order", "test:chord/next/documents/handles_test.go#TestSealedHandles"]
+rationale = "thin blocking views over the slots and `Documents.Tx`. (lane D4)"
 
 [[files]]
 path = "packages/chord/src/next/documents/keyed-slot.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited", "concurrent-joined", "cancellable", "detached-owned"]
+evidence = ["test:chord/next/documents/keyed_slot_test.go#TestKeyedSlotTwoReadersShareOneLoadACancelledWaiterRejectsAlone", "test:chord/next/documents/keyed_slot_test.go#TestKeyedSlotAStillValidWaiterSharingThatLoad", "test:chord/next/documents/keyed_slot_test.go#TestKeyedSlotKeysComeFromTheStoreInCodePointOrderAPagePerLineJob", "test:chord/next/documents/keyed_slot_test.go#TestKeyedSlotAStoppedWatchUnpinsItsKey"]
+rationale = "a cold load is one goroutine per key (the shared promise) whose error every waiter reads; a waiter's ctx ends only its own wait; the key iterator takes one line job per page; a watch's release runs from a goroutine waiting on the watch's `Closed()` (detached, owned by the watch). (lane D4)"
 
 [[files]]
 path = "packages/chord/src/next/documents/line.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["microtask-ordering", "awaited"]
+evidence = ["test:chord/next/documents/line_test.go#TestTheLineHandsItToEachHolderInTheOrderTheyAskedOnceThePreviousOneReleased", "test:chord/next/documents/line_test.go#TestTheLineIgnoresASecondReleaseOfTheSameHolder"]
+rationale = "`Acquire` takes its place under a mutex at the call and blocks until the holder before it released; the release is idempotent (`sync.Once`). Tests wait for `waitingHolders()` to see a place taken. (lane D4)"
 
 [[files]]
 path = "packages/chord/src/next/documents/persistence.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited", "cancellable"]
+evidence = ["test:chord/next/documents/persistence_test.go#TestFindALiveRecordWithoutLoadingItAndListKeysInCodePointOrderByPages"]
+rationale = "`Read`/`Find`/`Keys` block on one guarded `store.Read` each (ctx as the store's). (lane D4)"
 
 [[files]]
 path = "packages/chord/src/next/documents/slot.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited"]
+evidence = ["test:chord/next/documents/slot_test.go#TestPersistedSingletonsLoadOncePerObjectAtActivationNotAgainOnARetryAndSurviveTheHost"]
+rationale = "`SingletonSlot.Load` blocks on one store read outside the section, then decodes inside one; a loaded slot never reads again. (lane D4)"
 
 [[files]]
 path = "packages/chord/src/next/documents/transaction.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited", "cancellable", "concurrent-joined"]
+evidence = ["test:chord/next/documents/transaction_test.go#TestTablesInATransactionACommitQueuedBehindAnotherOwnersStep", "test:chord/next/documents/transaction_test.go#TestPersistedDocumentsInATransactionACommitCutAtTheSealWhileItWaitsInTheStoresQueue", "test:chord/next/documents/transaction_test.go#TestPersistedDocumentsInATransactionAHostClosingWhileAnAdmittedCommitIsInTheSQL"]
+rationale = "the store's step runs on a goroutine and is raced (`select`) against the `queued` channel `Cut` writes (Pi's `Promise.race`); once queued the caller's abort no longer counts (`WithoutAbortSignal`); `Draft` of a cold document and `Retire`'s find count as pending while they block (rule 3). (lane D4)"
 
 [[files]]
 path = "packages/chord/src/next/host/attempt.ts"
@@ -751,10 +751,10 @@ rationale = ""
 
 [[files]]
 path = "packages/chord/src/next/host/sleep.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited", "cancellable"]
+evidence = ["test:chord/next/host/host_sleep_test.go#TestSleepRejectsWithTheAbortReasonAndClearsItsTimer", "test:chord/next/host/host_sleep_test.go#TestSleepChainsTimersForDelaysAbove2Pow31Minus1MsAnAbortClearsTheChainedTimer", "test:chord/next/host/host_sleep_test.go#TestUntilAbortedResolvesOnceItsContextIsAbortedAtOnceWhenItAlreadyIs"]
+rationale = "`sleep` is a blocking call returning nil or `context.Cause(ctx)`; the chained timer is cleared on abort (mutex between the wake-up job and the abort); `untilAborted` blocks on `ctx.Done()`. (lane D5b)"
 
 [[files]]
 path = "packages/chord/src/next/jobs/job.ts"

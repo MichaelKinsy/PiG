@@ -1768,100 +1768,100 @@ rationale = "`ValidatorFor`, `Check` over `internal/typebox` (counters `chord.da
 [[files]]
 path = "packages/chord/src/next/documents/address-source.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/documents/address_source_test.go#TestAddressFramesARetirementReadsInitialWithTheFlagARecreationInTheSameBatchIsOneRootReplacementFlagged"]
+rationale = "`AddressSource` embeds `state.Source` and takes its embedder as `AddressImpl` (`Owner`, `Value`); `Replaced` returns the error `value` may throw. PiG: chord/next/documents/address_source.go (lane D4)."
 
 [[files]]
 path = "packages/chord/src/next/documents/definition.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/documents/definition_test.go#TestInitialIsCheckedAgainstTheSchemaOnceTheFirstTimeItIsUsed"]
+rationale = "`DefineState(name, StateOptions)`, `StateDefinition`; the three `defineState` overloads and `DocumentOf<S>`/`StateDefinition<T,K,P>` are type-level (designed out: `*JsonObject`, one struct); validator is the one of the definition's schema snapshot. PiG: chord/next/documents/definition.go (lane D4)."
 
 [[files]]
 path = "packages/chord/src/next/documents/documents.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/documents/documents_test.go#TestWhenTheOwnerEndsDocumentsAreDroppedEveryUseThrowsReleasedAndWatchesEnd"]
+rationale = "`DocumentsOwner` is an interface (adds `Do`, `Now`, `AfterFunc`); `Hydrate` takes the declarations in order (a slice, Pi's Map order); `Tx` returns `(any, error)`. PiG: chord/next/documents/documents.go (lane D4)."
 
 [[files]]
 path = "packages/chord/src/next/documents/fence.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/documents/fence_test.go#TestSealTokensStartOpenAndStaySealedOnceSealed"]
+rationale = "`SealToken` over an atomic bool (read by the line's waiters outside sections). PiG: chord/next/documents/fence.go (lane D4)."
 
 [[files]]
 path = "packages/chord/src/next/documents/handles.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/documents/handles_test.go#TestSealedHandlesStillReadSynchronouslyAndFromMemoryChangesAndRetirementsAreRefusedReleased"]
+rationale = "`SingletonHandle`/`KeyedHandle` interfaces, `Singleton`/`Keyed`; `HandleOf<D>` is type-level. PiG: chord/next/documents/handles.go (lane D4)."
 
 [[files]]
 path = "packages/chord/src/next/documents/index.ts"
 change = "added"
-disposition = "pending"
+disposition = "designed-out"
 evidence = []
-rationale = ""
+rationale = "re-export barrel; the app-facing set is listed in doc.go (lane D4)."
 
 [[files]]
 path = "packages/chord/src/next/documents/internal.ts"
 change = "added"
-disposition = "pending"
+disposition = "designed-out"
 evidence = []
-rationale = ""
+rationale = "re-export barrel for Chord's layers (lane D4)."
 
 [[files]]
 path = "packages/chord/src/next/documents/keyed-slot.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/documents/keyed_slot_test.go"]
+rationale = "`KeyedSlot`, `KeySource`; shared cold load = one goroutine whose result every waiter reads; `Pin`/`Ensure`/`Source` are what D5b's keyed members take. PiG: chord/next/documents/keyed_slot.go (lane D4)."
 
 [[files]]
 path = "packages/chord/src/next/documents/line.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/documents/line_test.go#TestTheLineHandsItToEachHolderInTheOrderTheyAskedOnceThePreviousOneReleased"]
+rationale = "FIFO ticket under a mutex (the store's commit-queue form); `Acquire` blocks and returns the idempotent release. PiG: chord/next/documents/line.go (lane D4)."
 
 [[files]]
 path = "packages/chord/src/next/documents/persistence.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/documents/persistence_test.go"]
+rationale = "store reads through `store.Read`; `StoredChange` is one struct tagged by `Kind`; `Stage` returns the error JSON serialization may give. PiG: chord/next/documents/persistence.go (lane D4)."
 
 [[files]]
 path = "packages/chord/src/next/documents/residency.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/documents/residency_test.go#TestTheIdleStructureEvictsIdleDocumentsOldestFirstOnceTheirRetentionPassedWithOneTimer"]
+rationale = "`Date.now`/`setTimeout` are the `Clock` the owner gives (`Now`, `AfterFunc`: D5b's `Loop`), driven by a fake clock in tests (JS timer mechanics are ported, not designed out); the idle map is an ordered slice (cleared on removal so evicted documents are collectable). PiG: chord/next/documents/residency.go (lane D4)."
 
 [[files]]
 path = "packages/chord/src/next/documents/slot.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/documents/slot_test.go"]
+rationale = "`DocumentSlot`/`PersistedSlot` interfaces, `SlotDefinition`, `SingletonSlot`; `Current` returns the migration failure Pi throws. PiG: chord/next/documents/slot.go (lane D4)."
 
 [[files]]
 path = "packages/chord/src/next/documents/transaction.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/documents/transaction_test.go"]
+rationale = "`Tx` interface, `Transaction`, `Staged`; table params are the store's `*TableHandle` (type-level generics designed out); the commit step runs on a goroutine raced against a `queued` channel `Cut` writes (Pi's `Promise.race`); `JobHandle`/`Run`/`StartOptions` in `job.go`. PiG: chord/next/documents/transaction.go, chord/next/documents/job.go (lane D4)."
 
 [[files]]
 path = "packages/chord/src/next/host/activity.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "deferred"
+evidence = ["test:chord/next/host/host_activity_test.go#TestActivityPublishesOncePerMicrotaskTurnWithChanges"]
+rationale = "Partial: partial (9 of 9 upstream cases missing: need a whole host, pending for D5a). all 9 upstream cases build a host (createHost/linked): `missing` in tests.json; own tests cover the Source behavior. `Activity` -> unexported `activity` (only `ActivityCounts` is exported by index.ts); `count(kind, delta)` is `count(kind activityKind, by int)`; takes `eventLoop` for `queueMicrotask`. PiG: chord/next/host/host_activity.go (lane D5b)."
 
 [[files]]
 path = "packages/chord/src/next/host/attempt.ts"
@@ -1873,51 +1873,51 @@ rationale = ""
 [[files]]
 path = "packages/chord/src/next/host/backoff.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/host/host_backoff_test.go#TestBackoffOpensAWindowOf1sAfterTheFirstFailureDoublingUpTo60sAndCallsDueAtItsEnd"]
+rationale = "`nextDelay(previous time.Duration)` takes 0 for Pi's `undefined`; `backoff` is unexported (only `nextDelay` is in host/internal.ts); timers are `eventLoop.AfterFunc` so the tests drive `fakeLoop` as vitest's fake timers. Not an approved class: JS timers are ported as deterministic Go tests. PiG: chord/next/host/host_backoff.go (lane D5b)."
 
 [[files]]
 path = "packages/chord/src/next/host/ctx.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "deferred"
+evidence = ["test:chord/next/host/host_ctx_test.go#TestCtxAGetFinishingAfterItsHandlerSettledIsReleasedAtOnceRace11"]
+rationale = "Partial: partial (3 of 10 upstream cases missing: need a whole host, pending for D5a). Ctx is an interface (Principal(), Incarnation(), Get(...) (any, error)); `caller`, `callContext` unexported (internal.ts only). Seam callHost = Incarnation, Acquire (blocking, off-loop), loop() sectionLoop; `acquired` = Release, Reference. `settled` is `settledRefusal` (a base test, host_sleep_test.go, declares `settled`). withLinkedAbortSignal returns a struct with release and an extra `abort` (AfterFunc runs on its own goroutine; the owner aborts the child in the same turn). PiG: chord/next/host/host_ctx.go (lane D5b)."
 
 [[files]]
 path = "packages/chord/src/next/host/deadline.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/host/host_deadline_test.go#TestDeadlineExpiresOnceAfterItsBudget"]
+rationale = "`deadline` unexported; budget is a `time.Duration`; `Date.now()` is `eventLoop.Now()`. PiG: chord/next/host/host_deadline.go (lane D5b)."
 
 [[files]]
 path = "packages/chord/src/next/host/dependencies.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "deferred"
+evidence = ["test:chord/next/host/host_dependencies_test.go#TestTheDependencyCheckBreaksADependentWhoseDependencyWasRefusedAuthority"]
+rationale = "Partial: partial (11 of 11 upstream cases missing: need a whole host, pending for D5a). all 11 upstream cases need a host/peers: `missing`; own tests exercise `checkDependencies`, `waitingOn`, `parkedLong` with fakes. Seams: `dependencyBinding{refState(), label(), target() dependencyTarget}`, `dependencyTarget{BlocksFirstPass(), HeldOnLink(), Label()}` (nil interface = Pi's undefined target), `parkedLongObject{label(), readyTimeout() time.Duration, report(HostError)}` (flat, not `object.host.timeouts.ready`: Go has no covariant return). `Check` -> `check` (kind checkLive/checkParked/checkBroken), `remoteLoading *string`. PiG: chord/next/host/host_dependencies.go (lane D5b)."
 
 [[files]]
 path = "packages/chord/src/next/host/destination.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/host/host_destination_test.go#TestDestinationHoldGoesOverTheRouteOfItsKindElseOverTheParentLinkUnlessItCameOnTheParentLinkOrThereWasNone"]
+rationale = "No upstream test: own tests mirror the doc comments. `hold` takes the request's `address` and `type` as arguments instead of a HoldRequest (D6's type); params of reference/misplaced are *delta.JsonObject (contracts.HostAddress). PiG: chord/next/host/host_destination.go (lane D5b)."
 
 [[files]]
 path = "packages/chord/src/next/host/facet.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/host/host_facet_test.go#TestFacetsContributeAtMostOneValuePerRegistryOnlyWhileTheirSetupRuns"]
+rationale = "FacetHost.Serve(Type any, implementation any, options) error; Contribute(registries.Registry[any,any], any) error; Facet{Setup func(host, self) error}; DefineFacet; ServedEntry/FacetContribution/setUp unexported (internal). Registry tokens convert with registries.Registry[any,any](token) (identical fields); providers via RegistryProvider.Erase(). PiG: chord/next/host/host_facet.go (lane D5b)."
 
 [[files]]
 path = "packages/chord/src/next/host/follow.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "deferred"
+evidence = ["test:chord/next/host/host_follow_test.go#TestEndsDuringActivationAndInOneBatchAnEndBeforeTheAttachmentResolvedKeepsTheAttachmentsValueOnTheSource"]
+rationale = "Partial: partial (12 of 16 upstream cases missing: need a whole host, pending for D5a). 3 of 16 upstream cases ported, 1 designed out (class a), 12 missing (host); FollowObserver/FollowAttachment/FollowAttach exported (host/index.ts), FollowSource/FollowOwner -> followSource/followOwner. Forced Go differences: `attach` takes a `*Loop` (constructor argument, Pi has none) because the resumption after Pi's `await` is a section; `FollowAttach` returns `(*FollowAttachment[T], error)`, nil attachment = Pi's `undefined`; `#value === undefined` is `hasValue`; the watch's empty ops reach a listener as a nil slice. PiG: chord/next/host/host_follow.go (lane D5b)."
 
 [[files]]
 path = "packages/chord/src/next/host/host.ts"
@@ -1929,44 +1929,44 @@ rationale = ""
 [[files]]
 path = "packages/chord/src/next/host/index.ts"
 change = "added"
-disposition = "pending"
+disposition = "designed-out"
 evidence = []
-rationale = ""
+rationale = "barrel: Go imports the package (DESIGN-go-layout.md section 2); what it exports is exported by the files above (`Ctx`, `Facet`, `FacetHost`, `Host`...`, `Sleep`, `UntilAborted`, `Presence`, `RefState`, `RevokedBy`, `RootOptions`, `RouteOptions`, `RoutineDeclarations`, `Native*`, `Follow*`, `GetOptions`, `HostError`, `Position`; `Host`, `HostOptions`, `LinkOptions`, `createHost`, `Factory`, `Self`, `StoreSelf`, `Held`, `Reference`, `RefIn` are D5a's) (lane D5b)."
 
 [[files]]
 path = "packages/chord/src/next/host/internal.ts"
 change = "added"
-disposition = "pending"
+disposition = "designed-out"
 evidence = []
-rationale = ""
+rationale = "barrel for jobs/remote: one package, identifiers are unexported where Pi keeps them out of index.ts (DESIGN-go-layout.md sections 1-2) (lane D5b)."
 
 [[files]]
 path = "packages/chord/src/next/host/keyed-members.ts"
 change = "added"
-disposition = "pending"
+disposition = "deferred"
 evidence = []
-rationale = ""
+rationale = "Partial: partial (10 of 10 upstream cases missing: need a whole host, pending for D5a). 0 of 10 ported (host); 16 own tests. Forced Go differences: Pi's `Map<member, Map<key, Entry>>` with live iterators across awaits is `keyedMap` (insertion order, live iteration, compaction only when nothing iterates); `ready` and the pin promises are `keyedPromise` (reactions as loop microtasks in registration order); `newKeyedMembers(batch, scheduler, loop, ctx)` (scheduler for member sources, loop for sections); `pin` is blocking and called outside a section; `prepare` returns `*keyedPromise` (nil = undefined); `freeze(which)` takes `freezeForeign|freezeAll`; `PinnedKey`->`pinnedKey`. PiG: chord/next/host/host_keyed_members.go (lane D5b)."
 
 [[files]]
 path = "packages/chord/src/next/host/member-source.ts"
 change = "added"
-disposition = "pending"
+disposition = "deferred"
 evidence = []
-rationale = ""
+rationale = "Partial: partial (13 of 13 upstream cases missing: need a whole host, pending for D5a). 0 of 13 upstream cases ported (every one builds a host); 13 own tests mirror them on documents/derives of the state package. Forced Go differences: (1) `Source.Changed()` reads the base `Watched()`, so memberSource has its own `changed()` (list in the batch when its own `Watched()`, then mark dependents); (2) `Batch.deliveries()` is unexported, so `newMemberSource` takes the batch's delivery scheduler (nil = process-wide); (3) `Start()` cannot throw: an ended member source starts as a failure with no last value, which `OpenWatch` returns as its error (Pi: `start()` throws the end); (4) a Watch is a subscriber through the small adapter `memberWatch` (Pi's Watch has the subscriber shape itself); (5) `#passed` (a Set) is a slice in insertion order, iterated as a snapshot (state's own `Source.Forward` does the same); (6) `instanceof Source` is `state.SourceHandle` (a Constant is not one). PiG: chord/next/host/host_member_source.go (lane D5b)."
 
 [[files]]
 path = "packages/chord/src/next/host/members.ts"
 change = "added"
-disposition = "pending"
+disposition = "deferred"
 evidence = []
-rationale = ""
+rationale = "Partial: partial (2 of 2 upstream cases missing: need a whole host, pending for D5a). 0 of 2 ported (both assert host.get's labelled failure); 6 own tests. Plugin implementation = `implementation` (ordered own properties, `[]implementationMember`), remote factory result = `factoryResult{variant *string, members}` (nil variant = undefined -> \"variant undefined: ...\"); `Method` = `contracts.MethodFunction` (Go functions always take the argument, so the `takesNoArgs` wrapper is not needed); `resolveWatchable`/`resolveKeyed` are injected parameters (`watchableResolver`, `keyedResolver`), nil,nil = undefined, error = a getter's throw, propagated; `attachDerives(resolve, derives, exposedState, report func(member string, exposed bool) func(error))`; `contributionOf` returns `(*RegistryContribution, error)` (the cycle refusal); keyedSlot/keyedProvider/keyedBinding/pinnedKey are declared in host_members.go / host_keyed_members.go. PiG: chord/next/host/host_members.go (lane D5b)."
 
 [[files]]
 path = "packages/chord/src/next/host/native.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "deferred"
+evidence = ["test:chord/next/host/host_native_test.go#TestNativeReportsACloseStillRunningAfterItsCloseTimeoutAndAbortsItsContext"]
+rationale = "Partial: partial (8 of 9 upstream cases missing: need a whole host, pending for D5a). 8 upstream cases need a host: `missing`; `facets \u203a cannot open natives` proposed designed-out (class a). Exported: `Native[T]` (`Value() (T, error)`), `NativeCloseReason`/`NativeCloseKind`, `NativeOptions{CloseTimeout *time.Duration}`. `NativeSlot` -> `nativeSlot` (`open(ctx) error`, `close(reason) *closeFailed`); `NativeOwner` gains `loop sectionLoop` (Run/Go). Milliseconds are `time.Duration` as backoff/deadline/sleep do. PiG: chord/next/host/host_native.go (lane D5b)."
 
 [[files]]
 path = "packages/chord/src/next/host/object.ts"
@@ -1978,23 +1978,23 @@ rationale = ""
 [[files]]
 path = "packages/chord/src/next/host/parked.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "deferred"
+evidence = ["test:chord/next/host/host_parked_test.go#TestParkedCallsAreCheckedAgainstTheirDeadlineWhenSent"]
+rationale = "Partial: partial (11 of 11 upstream cases missing: need a whole host, pending for D5a). all 11 upstream cases need a host/peers: `missing`. `park` returns `*parkedCallResult` (done channel, `wait()`, `then(loop, f)`); `send` returns one too; takes a `sectionLoop` (timers, clock, and `Run` for the abort listener's goroutine). The queue is a slice with a removed mark (JS Set iteration sees calls added during `flush`). PiG: chord/next/host/host_parked.go (lane D5b)."
 
 [[files]]
 path = "packages/chord/src/next/host/presence.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "deferred"
+evidence = ["test:chord/next/host/host_presence_test.go#TestReferencesChangeInTheBatchWhereAReferenceBindsOrEndsAWatchGetsOneSplicePerChange"]
+rationale = "Partial: partial (11 of 11 upstream cases missing: need a whole host, pending for D5a). `references` embeds state.Source (Value/Deliver); entries are *delta.JsonObject by identity in an insertion-ordered holder list; seams presenceObject{Params(), ServedKind()}, presenceHolder{Caller()}. Every upstream case needs hosts and links: all 11 are `missing`, covered by own tests. PiG: chord/next/host/host_presence.go (lane D5b)."
 
 [[files]]
 path = "packages/chord/src/next/host/ref-state.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "deferred"
+evidence = ["test:chord/next/host/host_ref_state_test.go#TestRefStateIsWatchedFromItsCurrentStateAndReleaseEndsIt"]
+rationale = "Partial: partial (8 of 8 upstream cases missing: need a whole host, pending for D5a). all 8 upstream cases need a host/remote: `missing`. `RefState` is one struct (Kind, Cause, RetryAt *int64, Error) used as a pointer: LOADING/LIVE are `refLoading`/`refLive` (compared by pointer identity; non-zero-size struct so identities are distinct); `Failed`/`Ended` are aliases `failed`/`ended` of it. Consumers (D5a/D6) must use these names. `referenceState` takes the batch's `*chord.DeliveryScheduler` (seam note: host passes the batch's scheduler; state.Batch.deliveries is unexported). `Watch` is exported (it is `NativeWatchable`). PiG: chord/next/host/host_ref_state.go (lane D5b)."
 
 [[files]]
 path = "packages/chord/src/next/host/reference.ts"
@@ -2006,58 +2006,58 @@ rationale = ""
 [[files]]
 path = "packages/chord/src/next/host/retry-on.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "deferred"
+evidence = ["test:chord/next/host/host_retry_on_test.go#TestRetryWakesOnValueCallsOnly"]
+rationale = "Partial: partial (8 of 8 upstream cases missing: need a whole host, pending for D5a). all 8 upstream cases need a host/attempt: `missing`. Pi's type `RetrySource` and function `retrySource` collide once unexported: the type is `retrySourceType` (struct with `value *registries.RegistryValueSource` or `constant *state.Constant`). PiG: chord/next/host/host_retry_on.go (lane D5b)."
 
 [[files]]
 path = "packages/chord/src/next/host/revocation.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "deferred"
+evidence = ["test:chord/next/host/host_revocation_test.go#TestRevocationKeysAreComputedOncePerPrincipalObjectComparedAsCanonicalJSON"]
+rationale = "Partial: partial (19 of 19 upstream cases missing: need a whole host, pending for D5a). `RevokedBy[R]` is exported (index.ts) and returns `([]R, error)` (a throw is a returned error); only R is generic (a principal is always `data.Principal`); `.erased()` is the host's cast. WeakMap = `weak.Pointer` map + AddCleanup under a mutex. 19 upstream cases need a host: `missing`. PiG: chord/next/host/host_revocation.go (lane D5b)."
 
 [[files]]
 path = "packages/chord/src/next/host/root.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "deferred"
+evidence = ["test:chord/next/host/host_root_test.go#TestHostRootLeavesNoListenerOnTheCallersSignalOnceHostCloseRejectedAnFnThatNeverSettles"]
+rationale = "Partial: partial (5 of 10 upstream cases missing: need a whole host, pending for D5a). RootOptions{Principal}; rootScopes.run returns (any, error) (typed T is the host's layer); fn runs on Loop.Go; Promise.race+awaitWithContext is a select. Helpers tryPlugin/recoveredError (recover a panic as the throw) are new package names. PiG: chord/next/host/host_root.go (lane D5b)."
 
 [[files]]
 path = "packages/chord/src/next/host/route.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "deferred"
+evidence = ["test:chord/next/host/host_route_test.go#TestResolveFailuresAndReResolvesARejectedResolveLeavesTheHoldsLoadingIsReportedAndResolvesAgainAfterTheAddressesBackoffRace2"]
+rationale = "Partial: 18 of 18 upstream cases need a whole host and are pending for D5a. PiG: chord/next/host/host_route.go (lane D5b)."
 
 [[files]]
 path = "packages/chord/src/next/host/routines.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "deferred"
+evidence = ["test:chord/next/host/host_routines_test.go#TestOnAfterAThrowReportsKeepsTheWatchAndCallsAgainWithTheWholeValueAfter1sDoublingSuccessResets"]
+rationale = "Partial: partial (31 of 41 upstream cases missing: need a whole host, pending for D5a). `on` has no overloads: RoutineDeclarations has On (chord.Watchable[delta.JsonValue]), OnNative (chord.NativeWatchable[any]) and OnLive; the class of the watch is the method. `declared instanceof NativeSource` = state.NativeSourceHandle, `start().kind === \"failed\"` = CurrentAny() error. resolveWatchable is a field of the literal func type. OnRoutine/live/call are in-section callbacks with loop.Queue as the microtask (not Loop.Go, see async.md); handlers run on Loop.Go. PiG: chord/next/host/host_routines.go (lane D5b)."
 
 [[files]]
 path = "packages/chord/src/next/host/sleep.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/host/host_sleep_test.go#TestSleepResolvesAfterItsDelay"]
+rationale = "`Sleep(ms time.Duration, ctx) error` blocks (Pi's Promise); the abort reason is `context.Cause(ctx)`; `sleepOn(loop, ...)` runs on a loop's timers (tests use `fakeLoop`, `routines` the host's); `UntilAborted(ctx)` blocks for good on a context without a Done channel as Pi's promise never resolves; no timer is left behind (TimerCount 0 asserted). PiG: chord/next/host/host_sleep.go (lane D5b)."
 
 [[files]]
 path = "packages/chord/src/next/host/unbound.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "deferred"
+evidence = ["test:chord/next/host/host_unbound_test.go#TestTheIndexWakesEveryRequestAtThePublicationOutOfTheIndexFirstADeletedOneIsNotWoken"]
+rationale = "Partial: partial (5 of 7 upstream cases missing: need a whole host, pending for D5a). 2 of 7 upstream cases ported; 5 build a host (`missing`). Map/Set insertion order kept with a linked ordered set (`unboundSet`) for requests and for names. `unboundRequest` is an interface (`principal()`, `wake()`, `end(*data.ChordError)`; must be comparable). PiG: chord/next/host/host_unbound.go (lane D5b)."
 
 [[files]]
 path = "packages/chord/src/next/host/uuid.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/host/host_uuid_test.go#TestUuidv7HasTheVersionAndVariantBitsAndTheTimestamp"]
+rationale = "Pi has no test file for uuid.ts; the tests are the properties its comment states. `uuidv7` unexported (internal.ts); `crypto/rand`; the RangeError is a panic with Pi's text. PiG: chord/next/host/host_uuid.go (lane D5b)."
 
 [[files]]
 path = "packages/chord/src/next/index.ts"

@@ -831,6 +831,44 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/chord/src/next/store/schema.ts` | `chord/next/store/schema.go` | ✅ |
 | `packages/chord/src/next/store/step.ts` | `chord/next/store/step.go` | ✅ |
 | `packages/chord/src/next/store/writes.ts` | `(type-only: the StoreWrite union; chord/next/store/writes.go StoreWrite interface)` | n/a |
+| `packages/chord/src/next/documents/address-source.ts` | `chord/next/documents/address_source.go` | ✅ |
+| `packages/chord/src/next/documents/definition.ts` | `chord/next/documents/definition.go` | ✅ |
+| `packages/chord/src/next/documents/documents.ts` | `chord/next/documents/documents.go` | ✅ |
+| `packages/chord/src/next/documents/fence.ts` | `chord/next/documents/fence.go` | ✅ |
+| `packages/chord/src/next/documents/handles.ts` | `chord/next/documents/handles.go` | ✅ |
+| `packages/chord/src/next/documents/index.ts` | `(re-export barrel; the app-facing set is listed in doc.go)` | n/a |
+| `packages/chord/src/next/documents/internal.ts` | `(re-export barrel for Chord's layers)` | n/a |
+| `packages/chord/src/next/documents/keyed-slot.ts` | `chord/next/documents/keyed_slot.go` | ✅ |
+| `packages/chord/src/next/documents/line.ts` | `chord/next/documents/line.go` | ✅ |
+| `packages/chord/src/next/documents/persistence.ts` | `chord/next/documents/persistence.go` | ✅ |
+| `packages/chord/src/next/documents/residency.ts` | `chord/next/documents/residency.go` | ✅ |
+| `packages/chord/src/next/documents/slot.ts` | `chord/next/documents/slot.go` | ✅ |
+| `packages/chord/src/next/documents/transaction.ts` | `chord/next/documents/transaction.go, chord/next/documents/job.go` | ✅ |
+| `packages/chord/src/next/host/backoff.ts` | `chord/next/host/host_backoff.go` | ✅ |
+| `packages/chord/src/next/host/deadline.ts` | `chord/next/host/host_deadline.go` | ✅ |
+| `packages/chord/src/next/host/sleep.ts` | `chord/next/host/host_sleep.go` | ✅ |
+| `packages/chord/src/next/host/uuid.ts` | `chord/next/host/host_uuid.go` | ✅ |
+| `packages/chord/src/next/host/activity.ts` | `chord/next/host/host_activity.go` | ✅ |
+| `packages/chord/src/next/host/revocation.ts` | `chord/next/host/host_revocation.go` | ✅ |
+| `packages/chord/src/next/host/unbound.ts` | `chord/next/host/host_unbound.go` | ✅ |
+| `packages/chord/src/next/host/retry-on.ts` | `chord/next/host/host_retry_on.go` | ✅ |
+| `packages/chord/src/next/host/ref-state.ts` | `chord/next/host/host_ref_state.go` | ✅ |
+| `packages/chord/src/next/host/dependencies.ts` | `chord/next/host/host_dependencies.go` | ✅ |
+| `packages/chord/src/next/host/parked.ts` | `chord/next/host/host_parked.go` | ✅ |
+| `packages/chord/src/next/host/native.ts` | `chord/next/host/host_native.go` | ✅ |
+| `packages/chord/src/next/host/follow.ts` | `chord/next/host/host_follow.go` | ✅ |
+| `packages/chord/src/next/host/member-source.ts` | `chord/next/host/host_member_source.go` | ✅ |
+| `packages/chord/src/next/host/keyed-members.ts` | `chord/next/host/host_keyed_members.go` | ✅ |
+| `packages/chord/src/next/host/members.ts` | `chord/next/host/host_members.go` | ✅ |
+| `packages/chord/src/next/host/ctx.ts` | `chord/next/host/host_ctx.go` | ✅ |
+| `packages/chord/src/next/host/root.ts` | `chord/next/host/host_root.go` | ✅ |
+| `packages/chord/src/next/host/routines.ts` | `chord/next/host/host_routines.go` | ✅ |
+| `packages/chord/src/next/host/facet.ts` | `chord/next/host/host_facet.go` | ✅ |
+| `packages/chord/src/next/host/presence.ts` | `chord/next/host/host_presence.go` | ✅ |
+| `packages/chord/src/next/host/route.ts` | `chord/next/host/host_route.go` | ✅ |
+| `packages/chord/src/next/host/destination.ts` | `chord/next/host/host_destination.go` | ✅ |
+| `packages/chord/src/next/host/index.ts` | `(barrel: Go imports the package (DESIGN-go-layout.md section 2); what it exports is exported by the files above (Ctx, Facet, FacetHost, Host..., Sleep, UntilAborted, Presence, RefState, RevokedBy, RootOptions, RouteOptions, RoutineDeclarations, Native*, Follow*, GetOptions, HostError, Position; Host, HostOptions, LinkOptions, createHost, Factory, Self, StoreSelf, Held, Reference, RefIn are D5a's))` | n/a |
+| `packages/chord/src/next/host/internal.ts` | `(barrel for jobs/remote: one package, identifiers are unexported where Pi keeps them out of index.ts (DESIGN-go-layout.md sections 1-2))` | n/a |
 
 ## `packages/protocol/src/`
 
