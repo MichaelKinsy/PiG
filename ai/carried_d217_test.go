@@ -43,3 +43,12 @@ func d217CarriedPiJSON(provider, id, raw string) string {
 	raw = strings.Replace(raw, `"baseUrl":"https://openrouter.ai/api/v1"`, `"baseUrl":"https://openrouter.ai/api"`, 1)
 	return d217CompatMember.ReplaceAllLiteralString(raw, `,"compat":{"forceAdaptiveThinking":true}`)
 }
+
+// d217CarriedDroppedChatRow is Pi 2e0f175b (#11368): the pinned catalog lists these realtime and image models as chat models; the carried fix removes them.
+func d217CarriedDroppedChatRow(provider, id string) bool {
+	switch provider + "/" + id {
+	case "azure/gpt-realtime-2.1", "openai/gpt-realtime-2.1", "google/gemini-3.1-flash-live-preview", "google/gemini-3.1-flash-lite-image", "google-vertex/gemini-3.1-flash-lite-image":
+		return true
+	}
+	return false
+}

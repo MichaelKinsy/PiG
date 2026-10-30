@@ -134,3 +134,29 @@ output_equal = true
 both_not_contain = ["panic:", "Error:", "UnhandledPromiseRejection"]
 runtime_ratio_max = 5.0
 runs = 3
+
+# normalize-rationale: Pi 2e0f175b (D217) is carried past the pin, so PiG's catalog has no realtime or image chat models. The pinned Pi still counts them in four providers and in the total; each rule rewrites only Pi's count of one provider to PiG's, so the first and last ids, the apis and every other provider stay compared.
+[[assert.normalize_replace]]
+pattern = '(?s)("azure": \{[^{}]*?"count": )44(,[^{}]*?"imageInputCount": )41(,[^{}]*?"reasoningCount": )33'
+with = '${1}43${2}40${3}32'
+reason = "D217: Pi 2e0f175b is carried past the pin; gpt-realtime-2.1 no longer count as chat models."
+
+[[assert.normalize_replace]]
+pattern = '(?s)("google": \{[^{}]*?"count": )24(,[^{}]*?"imageInputCount": )24(,[^{}]*?"reasoningCount": )24'
+with = '${1}22${2}22${3}22'
+reason = "D217: Pi 2e0f175b is carried past the pin; gemini-3.1-flash-lite-image and gemini-3.1-flash-live-preview no longer count as chat models."
+
+[[assert.normalize_replace]]
+pattern = '(?s)("google-vertex": \{[^{}]*?"count": )14(,[^{}]*?"imageInputCount": )14(,[^{}]*?"reasoningCount": )14'
+with = '${1}13${2}13${3}13'
+reason = "D217: Pi 2e0f175b is carried past the pin; gemini-3.1-flash-lite-image no longer count as chat models."
+
+[[assert.normalize_replace]]
+pattern = '(?s)("openai": \{[^{}]*?"count": )43(,[^{}]*?"imageInputCount": )41(,[^{}]*?"reasoningCount": )32'
+with = '${1}42${2}40${3}31'
+reason = "D217: Pi 2e0f175b is carried past the pin; gpt-realtime-2.1 no longer count as chat models."
+
+[[assert.normalize_replace]]
+pattern = '"totalModels": 1602'
+with = '"totalModels": 1597'
+reason = "D217: Pi 2e0f175b is carried past the pin; the five realtime and image rows are no longer chat models."

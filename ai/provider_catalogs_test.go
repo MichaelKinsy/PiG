@@ -63,6 +63,8 @@ func TestProviderCatalogExportsMatchPinnedData(t *testing.T) {
 	for _, tc := range providerCatalogCases() {
 		t.Run(tc.provider, func(t *testing.T) {
 			want := pinnedCatalogIDs(t, tc.provider)
+			// pig divergence (D217): Pi 2e0f175b is carried past the pin; its realtime and image rows are not chat models.
+			want["chat"] = slices.DeleteFunc(slices.Clone(want["chat"]), func(id string) bool { return d217CarriedDroppedChatRow(tc.provider, id) })
 			chat, image, classifier := tc.chat(), tc.image(), tc.classifier()
 			// OpenRouter's :nitro and :floor variants are PiG's addition (D199); the pinned data has none.
 			var chatIDs []string

@@ -163,7 +163,7 @@ func TestModelCatalogTypes(t *testing.T) {
 
 // Pi 44f6851b (#9534; pig divergence (D217)) deleted packages/ai/test/openrouter-cache-control-models.test.ts, which kept these aliases on
 // Chat Completions with Anthropic cache control: they use the Anthropic Messages API with adaptive thinking, like the versioned Claude models.
-func TestOpenRouterAnthropicLatestAliasesUseMessages(t *testing.T) {
+func TestOpenRouterCacheControlModels(t *testing.T) {
 	for _, id := range []string{"~anthropic/claude-fable-latest", "~anthropic/claude-haiku-latest", "~anthropic/claude-opus-latest", "~anthropic/claude-sonnet-latest"} {
 		t.Run(id, func(t *testing.T) {
 			m := mustGeneratedModel(t, "openrouter", id)
@@ -174,5 +174,15 @@ func TestOpenRouterAnthropicLatestAliasesUseMessages(t *testing.T) {
 				t.Fatalf("the Chat Completions compat survived: %+v", m.Compat)
 			}
 		})
+	}
+}
+
+// Pi 2e0f175b (#11368; pig divergence (D217), row removal only): models.dev types these as realtime or image models, so the catalog no longer
+// offers them as chat models.
+func TestRealtimeAndImageModelsAreNotChatModels(t *testing.T) {
+	for _, spec := range []string{"azure/gpt-realtime-2.1", "openai/gpt-realtime-2.1", "google/gemini-3.1-flash-live-preview", "google/gemini-3.1-flash-lite-image", "google-vertex/gemini-3.1-flash-lite-image"} {
+		if m, ok := LookupModel(spec); ok {
+			t.Errorf("LookupModel(%q) = %s, want no chat model", spec, m.ID)
+		}
 	}
 }

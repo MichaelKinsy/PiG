@@ -7,7 +7,6 @@ import (
 	"os/exec"
 	"path/filepath"
 	"reflect"
-	"slices"
 	"testing"
 )
 
@@ -137,10 +136,14 @@ func TestGeneratedCatalogsMatchPublishedPackage(t *testing.T) {
 		want := published[name]
 		if name == "chat" {
 			// pig divergence (D217): Pi 44f6851b is carried past the pin; the published row is read with the carried edit applied.
-			want = slices.Clone(want)
-			for i, model := range want {
-				want[i] = d217CarriedPiModel(model)
+			// Pi 2e0f175b is carried too: its realtime and image rows are not chat models.
+			kept := want[:0:0]
+			for _, model := range want {
+				if provider, _ := model["provider"].(string); !d217CarriedDroppedChatRow(provider, model["id"].(string)) {
+					kept = append(kept, d217CarriedPiModel(model))
+				}
 			}
+			want = kept
 		}
 		if len(got) != len(want) {
 			t.Errorf("%s catalog has %d models, published %s has %d", name, len(got), UpstreamVersionString(), len(want))

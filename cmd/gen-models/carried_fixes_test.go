@@ -1,6 +1,7 @@
 package main
 
 import (
+	"slices"
 	"strings"
 	"testing"
 )
@@ -76,6 +77,36 @@ func TestCarriedOpenRouterAnthropicLatestMessages(t *testing.T) {
 	again := modelCatalog{Chat: got}
 	applyCarriedFixes(&again)
 	if again.Chat[0].Record != messages || again.Chat[0].BaseURL != "https://openrouter.ai/api" {
+		t.Error("the rule is not a no-op on an already-fixed catalog")
+	}
+}
+
+// Pi 2e0f175b (#11368, row removal only): models.dev types gpt-realtime-2.1, gemini-3.1-flash-live-preview and
+// gemini-3.1-flash-lite-image as realtime or image models, so they are no longer offered as chat models.
+func TestCarriedRealtimeAndImageRowsAreNotChatModels(t *testing.T) {
+	rows := []modelRow{
+		{Provider: "azure", ID: "gpt-realtime-2.1"},
+		{Provider: "openai", ID: "gpt-realtime-2.1"},
+		{Provider: "google", ID: "gemini-3.1-flash-live-preview"},
+		{Provider: "google", ID: "gemini-3.1-flash-lite-image"},
+		{Provider: "google-vertex", ID: "gemini-3.1-flash-lite-image"},
+		{Provider: "openai", ID: "gpt-5.6-luna"},
+		{Provider: "openrouter", ID: "google/gemini-3.1-flash-lite-image"},
+		{Provider: "google", ID: "gemini-3.1-flash-preview"},
+	}
+	catalog := modelCatalog{Chat: rows}
+	applyCarriedFixes(&catalog)
+	var got []string
+	for _, row := range catalog.Chat {
+		got = append(got, row.Provider+"/"+row.ID)
+	}
+	want := []string{"openai/gpt-5.6-luna", "openrouter/google/gemini-3.1-flash-lite-image", "google/gemini-3.1-flash-preview"}
+	if !slices.Equal(got, want) {
+		t.Fatalf("rows = %q, want %q", got, want)
+	}
+	again := modelCatalog{Chat: catalog.Chat}
+	applyCarriedFixes(&again)
+	if len(again.Chat) != len(want) {
 		t.Error("the rule is not a no-op on an already-fixed catalog")
 	}
 }

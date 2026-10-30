@@ -19,6 +19,7 @@ type carriedFix struct {
 var carriedFixes = []carriedFix{
 	{Sha: "195120a9", Apply: opencodeInferenceEndpoints},
 	{Sha: "44f6851b", Apply: openRouterAnthropicLatestMessages},
+	{Sha: "2e0f175b", Apply: realtimeAndImageRowsAreNotChat},
 }
 
 // applyCarriedFixes applies every carried fix to the flattened catalog.
@@ -28,6 +29,28 @@ func applyCarriedFixes(catalog *modelCatalog) {
 		catalog.Image = fix.Apply(catalog.Image)
 		catalog.Classifier = fix.Apply(catalog.Classifier)
 	}
+}
+
+// realtimeAndImageChatRows are the chat rows Pi 2e0f175b (#11368) drops: models.dev types them as realtime or image models.
+var realtimeAndImageChatRows = map[string]bool{
+	"azure/gpt-realtime-2.1":                    true,
+	"openai/gpt-realtime-2.1":                   true,
+	"google/gemini-3.1-flash-live-preview":      true,
+	"google/gemini-3.1-flash-lite-image":        true,
+	"google-vertex/gemini-3.1-flash-lite-image": true,
+}
+
+// realtimeAndImageRowsAreNotChat is the row removal of Pi 2e0f175b (the catalog generator rewrite and the data it added are not carried):
+// models.dev's realtime and image models (gpt-realtime-2.1, gemini-3.1-flash-live-preview, gemini-3.1-flash-lite-image) are no longer
+// offered as chat models.
+func realtimeAndImageRowsAreNotChat(rows []modelRow) []modelRow {
+	kept := rows[:0:0]
+	for _, row := range rows {
+		if !realtimeAndImageChatRows[row.Provider+"/"+row.ID] {
+			kept = append(kept, row)
+		}
+	}
+	return kept
 }
 
 var reCompatMember = regexp.MustCompile(`,"compat":\{[^{}]*\}`)

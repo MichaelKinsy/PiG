@@ -37,7 +37,12 @@ func TestImageCatalogPin(t *testing.T) {
 }
 
 func TestRegistryHasModels(t *testing.T) {
-	want := len(loadPublishedCatalog(t)["chat"]) // Count of the exact published @earendil-works/pi-ai MODELS export.
+	want := 0 // Count of the exact published @earendil-works/pi-ai MODELS export, less the rows D217 carries out (Pi 2e0f175b).
+	for _, model := range loadPublishedCatalog(t)["chat"] {
+		if provider, _ := model["provider"].(string); !d217CarriedDroppedChatRow(provider, model["id"].(string)) {
+			want++
+		}
+	}
 	if got := len(GeneratedModels); got != want {
 		t.Fatalf("catalog size = %d want %d", got, want)
 	}
@@ -550,21 +555,6 @@ func TestGeneratedCatalogUpgradeSpotChecks(t *testing.T) {
 				ThinkingXHigh: new("xhigh"),
 				ThinkingMax:   new("max"),
 			},
-		},
-		{
-			spec:               "azure/gpt-realtime-2.1",
-			wantProvider:       "azure",
-			wantName:           "GPT-Realtime-2.1",
-			wantAPI:            "azure-openai-responses",
-			wantMaxTokens:      32000,
-			wantContext:        128000,
-			wantInputCost:      4,
-			wantOutputCost:     24,
-			wantCacheReadCost:  0.4,
-			wantCacheWriteCost: 0,
-			wantReasoning:      true,
-			wantCapabilities:   []string{"text", "image"},
-			wantBaseURL:        "",
 		},
 	}
 

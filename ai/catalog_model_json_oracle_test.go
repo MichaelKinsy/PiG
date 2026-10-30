@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"os/exec"
 	"slices"
+	"strings"
 	"sync"
 	"testing"
 )
@@ -34,6 +35,13 @@ import(url).then(({ MODELS }) => {
 	var want map[string]string
 	if err := json.Unmarshal(raw, &want); err != nil {
 		t.Fatal(err)
+	}
+	// pig divergence (D217): Pi 2e0f175b is carried past the pin; its realtime and image rows are not chat models.
+	for key := range want {
+		provider, id, _ := strings.Cut(key, "/")
+		if d217CarriedDroppedChatRow(provider, id) {
+			delete(want, key)
+		}
 	}
 	if len(want) != len(GeneratedModels) {
 		t.Fatalf("Pi has %d chat models, the Go catalog %d", len(want), len(GeneratedModels))
