@@ -716,9 +716,20 @@ func TestOnAfterAThrowReportsKeepsTheWatchAndCallsAgainWithTheWholeValueAfter1sD
 	rig.quiesce()
 	rig.loop.Advance(1_000)
 	rig.quiesce()
-	rig.loop.Advance(2_000)
+	// The window doubles: nothing is called a millisecond before its end (the clock is where the timer is, as Pi's).
+	rig.loop.Advance(1_999)
 	rig.quiesce()
-	rig.loop.Advance(4_000)
+	if log.len() != 2 {
+		t.Fatalf("calls before the doubled window ended = %d, want 2", log.len())
+	}
+	rig.loop.Advance(1)
+	rig.quiesce()
+	rig.loop.Advance(3_999)
+	rig.quiesce()
+	if log.len() != 3 {
+		t.Fatalf("calls before the window of 4 s ended = %d, want 3", log.len())
+	}
+	rig.loop.Advance(1)
 	rig.quiesce()
 	times := func() (out []int64) {
 		for _, call := range log.all() {
