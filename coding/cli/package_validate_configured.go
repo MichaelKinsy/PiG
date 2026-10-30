@@ -38,17 +38,21 @@ func validateConfiguredPackages(cwd string, sm *codingagent.SettingsManager, jso
 		}
 	}
 	for _, failure := range packagemanager.MissingLocalPackages(cwd, sm.AgentDir(), sm) {
-		remove := codingagent.AppName + " remove " + failure.Source
+		scopeFlag := ""
 		if failure.Scope == "project" {
-			remove += " -l"
+			scopeFlag = " -l"
 		}
+		remove := codingagent.AppName + " remove " + failure.Source + scopeFlag
 		report.Missing = append(report.Missing, missingConfiguredPackage{Source: failure.Source, Scope: failure.Scope, Path: failure.Path, Error: failure.Message, Remove: remove})
 	}
 	report.Valid = len(report.Missing) == 0
 	switch {
 	case jsonOut:
-		data, _ := json.MarshalIndent(report, "", "  ")
-		_, _ = fmt.Fprintln(os.Stdout, string(data))
+		// JSON.stringify(value, null, 2) writes <, > and & as they are; Go's default encoder escapes them.
+		encoder := json.NewEncoder(os.Stdout)
+		encoder.SetEscapeHTML(false)
+		encoder.SetIndent("", "  ")
+		_ = encoder.Encode(report)
 	case report.Valid:
 		if report.Checked == 1 {
 			_, _ = fmt.Fprintln(os.Stdout, "valid: 1 configured local package resolves")
