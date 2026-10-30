@@ -18,18 +18,15 @@ import (
 )
 
 // Pi decodes the bytes of an image attachment, a clipboard image, a tool result image and a durable read with Photon
-// (`PhotonImage.new_from_byteslice`). Go's JPEG, WebP and TIFF decoders give other pixels (or accept other files), so no production code
-// may hand those bytes to them: every decode goes through Decode. The stdlib decoders stay registered only for the lossless formats Decode falls back to.
+// (`PhotonImage.new_from_byteslice`). Go's decoders give other pixels (or accept other files), so no production code may hand image bytes to
+// them or register them: every decode goes through Decode, which has a port of every decoder Photon has.
 
 // goDecoderPackages are the packages whose Decode and DecodeConfig read an image file.
 var goDecoderPackages = []string{"image", "image/jpeg", "image/png", "image/gif", "golang.org/x/image/bmp", "golang.org/x/image/tiff", "golang.org/x/image/webp"}
 
 // lossyDecoderPackages must not be registered by production code: with them registered a stray image.Decode would
-// silently decode a JPEG, a WebP or a TIFF with Go's pixels (or Go's idea of what is a valid file) instead of Photon's.
-var lossyDecoderPackages = []string{"image/jpeg", "golang.org/x/image/webp", "golang.org/x/image/tiff"}
-
-// decodeFallbackFile is the one production file that calls the standard library: Decode's fallback for the lossless formats.
-const decodeFallbackFile = "internal/photonimage/decode.go"
+// silently decode a PNG, a JPEG, a GIF, a BMP, a WebP or a TIFF with Go's pixels (or Go's idea of what is a valid file) instead of Photon's.
+var lossyDecoderPackages = []string{"image/png", "image/jpeg", "image/gif", "golang.org/x/image/bmp", "golang.org/x/image/webp", "golang.org/x/image/tiff"}
 
 func repositoryRoot(t *testing.T) string {
 	t.Helper()
@@ -92,7 +89,7 @@ func decoderUses(t *testing.T, fset *token.FileSet, file string, src any) []stri
 		}
 		if spec.Name != nil && spec.Name.Name == "_" {
 			if slices.Contains(lossyDecoderPackages, importPath) {
-				uses = append(uses, fset.Position(spec.Pos()).String()+": blank import of "+importPath+" registers Go's lossy decoder; JPEG and WebP are decoded by photonimage.Decode")
+				uses = append(uses, fset.Position(spec.Pos()).String()+": blank import of "+importPath+" registers Go's lossy decoder; every format is decoded by photonimage.Decode")
 			}
 			continue
 		}
@@ -130,10 +127,6 @@ func TestNoProductionCodeDecodesWithTheGoDecoders(t *testing.T) {
 	fset := token.NewFileSet()
 	checked := 0
 	for _, file := range productionGoFiles(t, root) {
-		relative := filepath.ToSlash(strings.TrimPrefix(file, root+string(filepath.Separator)))
-		if relative == decodeFallbackFile {
-			continue
-		}
 		imports, err := parser.ParseFile(fset, file, nil, parser.ImportsOnly)
 		if err != nil {
 			continue // a file the Go tool chain rejects too
@@ -177,32 +170,7 @@ func f(data []byte) {
 }
 `
 	uses := decoderUses(t, token.NewFileSet(), "p.go", source)
-	if len(uses) != 5 {
-		t.Fatalf("found %d uses, want 5 (a blank webp import, image.Decode, image.DecodeConfig, jpeg.Decode, xwebp.Decode): %q", len(uses), uses)
-	}
-}
-
-// Decode falls back to the standard library for the lossless formats, so it registers those decoders itself instead of relying on its callers.
-func TestDecodeRegistersTheLosslessDecodersItFallsBackTo(t *testing.T) {
-	parsed, err := parser.ParseFile(token.NewFileSet(), "decode.go", nil, parser.ImportsOnly)
-	if err != nil {
-		t.Fatal(err)
-	}
-	var blank []string
-	for _, spec := range parsed.Imports {
-		if spec.Name != nil && spec.Name.Name == "_" {
-			importPath, _ := strconv.Unquote(spec.Path.Value)
-			blank = append(blank, importPath)
-		}
-	}
-	for _, want := range []string{"image/gif", "image/png", "golang.org/x/image/bmp"} {
-		if !slices.Contains(blank, want) {
-			t.Errorf("decode.go does not register %s (blank imports: %v)", want, blank)
-		}
-	}
-	for _, forbidden := range lossyDecoderPackages {
-		if slices.Contains(blank, forbidden) {
-			t.Errorf("decode.go registers %s", forbidden)
-		}
+	if len(uses) != 6 {
+		t.Fatalf("found %d uses, want 6 (blank png and webp imports, image.Decode, image.DecodeConfig, jpeg.Decode, xwebp.Decode): %q", len(uses), uses)
 	}
 }

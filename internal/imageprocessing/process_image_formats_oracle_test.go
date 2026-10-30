@@ -117,12 +117,8 @@ func icoPNGInput(width, height int, seed uint32) []byte {
 // Photon's resize, which guesses the format from the bytes. Whether an image is returned, its type, the hints, the omission message and the
 // returned bytes must be Pi's. Some inputs are larger than the resize limits, some are damaged.
 func TestProcessImageDecodedFormatsMatchPi(t *testing.T) {
-	type input struct {
-		name string
-		data []byte
-	}
-	var inputs []input
-	add := func(name string, data []byte) { inputs = append(inputs, input{name, data}) }
+	var inputs []namedImage
+	add := func(name string, data []byte) { inputs = append(inputs, namedImage{name, data}) }
 	add("farbfeld-17x9", farbfeldInput(17, 9, 1))
 	add("farbfeld-2050x120", farbfeldInput(2050, 120, 2))
 	add("farbfeld-0x4", farbfeldInput(0, 4, 3)[:16])
@@ -153,10 +149,24 @@ func TestProcessImageDecodedFormatsMatchPi(t *testing.T) {
 	add("truncated-pnm", append([]byte("P6\n8 8\n255\n"), formatNoise(20, 100)...))
 	add("dds-bc4", func() []byte { d := ddsInput(8, 8, "ATI1", 21); return d }())
 
+	compareProcessImageWithPi(t, inputs, []string{"image/x-icon", "image/png", "", "application/octet-stream", "image/jpeg; q=1"})
+}
+
+// namedImage is an input of an oracle test.
+type namedImage struct {
+	name string
+	data []byte
+}
+
+// compareProcessImageWithPi runs image-process.ts processImage and PiG's ProcessImage over every input under every declared type, with and
+// without resizing, with the default limit and with 16: whether an image is returned, its type, the hints, the omission message and the
+// returned bytes must be Pi's.
+func compareProcessImageWithPi(t *testing.T, inputs []namedImage, mimes []string) {
+	t.Helper()
 	var cases []processImageCase
 	var names []string
 	for _, in := range inputs {
-		for _, mime := range []string{"image/x-icon", "image/png", "", "application/octet-stream", "image/jpeg; q=1"} {
+		for _, mime := range mimes {
 			for _, resize := range []bool{true, false} {
 				for _, limit := range []int{0, 16} {
 					cases = append(cases, processImageCase{Data: base64.StdEncoding.EncodeToString(in.data), MimeType: mime, AutoResize: resize, MaxWidth: limit, MaxHeight: limit})

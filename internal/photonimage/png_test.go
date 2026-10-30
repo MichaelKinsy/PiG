@@ -30,7 +30,7 @@ func TestEncodePhotonPNGWritesPhotonsBytes(t *testing.T) {
 	}
 	scene := image.NewNRGBA(decoded.Bounds())
 	draw.Draw(scene, scene.Rect, decoded, image.Point{}, draw.Src)
-	if got := EncodePNG(scene); !bytes.Equal(got, fixture) {
+	if got, _ := EncodePNG(scene); !bytes.Equal(got, fixture) {
 		t.Errorf("scene: %d bytes, want Photon's %d", len(got), len(fixture))
 	}
 
@@ -66,7 +66,7 @@ func TestEncodePhotonPNGWritesPhotonsBytes(t *testing.T) {
 		{"pixels 4000x1000", pixels(4000, 1000), 79244, "4b206cb1a02ee262bcedba224d02245bb39f4b24aea72afe9dc84f36ebb0301e"},
 		{"noisy 1100x1100", noisy(1100, 1100), 4841533, "0ff500396af0d58acc92d2f9c308d18a9afafb15850fca7f3bf59f9e3bdb09c7"},
 	} {
-		got := EncodePNG(tc.img)
+		got, _ := EncodePNG(tc.img)
 		sum := sha256.Sum256(got)
 		if len(got) != tc.length || hex.EncodeToString(sum[:]) != tc.sha256 {
 			t.Errorf("%s: %d bytes, SHA-256 %x; want Photon's %d bytes, %s", tc.name, len(got), sum, tc.length, tc.sha256)

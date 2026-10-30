@@ -124,28 +124,41 @@ Distributed file: `internal/photonimage/sinf.go`
 
 `internal/photonimage/sinf.go` ports the single-precision sine that Photon's WebAssembly calls (compiler_builtins' copy of libm), so that the Lanczos3 weights are Photon's own.
 
-## image 0.24.9 decoders (WebP, ICO, BMP in ICO, PNM, DDS and DXT, Radiance HDR, farbfeld)
+## image 0.24.9 decoders (WebP, BMP, GIF, ICO, PNM, DDS and DXT, Radiance HDR, farbfeld)
 
-Source: <https://github.com/image-rs/image/tree/v0.24.9/src/codecs> (`webp/`, `ico/decoder.rs`, `bmp/decoder.rs`, `pnm/decoder.rs`, `pnm/header.rs`, `dds.rs`, `dxt.rs`, `hdr/decoder.rs`, `farbfeld.rs`, with `io/free_functions.rs`, `dynimage.rs`, `color.rs` and `utils/mod.rs` for the format guess, the limits and the sample conversions)
+Source: <https://github.com/image-rs/image/tree/v0.24.9/src/codecs> (`webp/`, `bmp/decoder.rs`, `gif.rs`, `ico/decoder.rs`, `pnm/decoder.rs`, `pnm/header.rs`, `dds.rs`, `dxt.rs`, `hdr/decoder.rs`, `farbfeld.rs`, with `io/free_functions.rs`, `io/mod.rs`, `dynimage.rs`, `color.rs` and `utils/mod.rs` for the format guess, the limits and the sample conversions)
 
-Distributed files: `internal/photonimage/webpdecode*.go`, `icodecode.go`, `icodecode_bmp.go`, `pnmdecode.go`, `ddsdecode.go`, `hdrdecode.go`, `farbfelddecode.go` and `decodeformats.go`
+Distributed files: `internal/photonimage/webpdecode*.go`, `bmpdecode.go`, `gifdecode.go`, `icodecode.go`, `pnmdecode.go`, `ddsdecode.go`, `hdrdecode.go`, `farbfelddecode.go` and `decodeformats.go`
 
 - image: Copyright (c) 2015 nwin; The image-rs Developers
 - License: MIT OR Apache-2.0; PiG uses the MIT option for this derived code
 
 These files port the decoders Photon 0.3.3 and 0.3.4 run (`PhotonImage.new_from_byteslice`), so that PiG returns Photon's pixels or its error. The required MIT copyright and permission notice is preserved here, and the canonical MIT text is in `LICENSES/MIT.txt`.
 
-## png 0.17.14 reader
+## gif 0.13.1 reader and weezl 0.1.8 LZW decoder (GIF)
 
-Source: <https://github.com/image-rs/image-png/tree/v0.17.14> (`src/decoder/stream.rs`, `src/decoder/mod.rs`, `src/decoder/zlib.rs`, `src/decoder/transform.rs`, `src/decoder/transform/palette.rs`, `src/adam7.rs`) and the zlib header rules of fdeflate 0.3.7 (`src/decompress.rs`)
+Sources: <https://github.com/image-rs/image-gif/tree/v0.13.1> (`src/reader/mod.rs`, `src/reader/decoder.rs`, `src/reader/converter.rs`) and <https://github.com/image-rs/lzw/tree/v0.1.8> (`src/decode.rs`)
 
-Distributed file: `internal/photonimage/icopng.go`
+Distributed files: `internal/photonimage/gifdecode.go` and `gifdecode_lzw.go`
+
+- gif: Copyright (c) 2015 nwin
+- weezl: Copyright (c) HeroicKatora 2020
+- License: gif is MIT OR Apache-2.0; weezl is MIT OR Apache-2.0; PiG uses the MIT option for this derived code
+
+The files port the first-frame decoding of the GIF decoder Photon runs (image 0.24.9's `GifDecoder` over the gif crate and its LZW decoder), so that PiG returns Photon's pixels or its error. The required MIT copyright and permission notice is preserved here, and the canonical MIT text is in `LICENSES/MIT.txt`.
+
+## png 0.17.14 reader and fdeflate 0.3.6 inflater
+
+Sources: <https://github.com/image-rs/image-png/tree/v0.17.14> (`src/decoder/stream.rs`, `src/decoder/mod.rs`, `src/decoder/zlib.rs`, `src/decoder/transform.rs`, `src/decoder/transform/palette.rs`, `src/decoder/interlace_info.rs`, `src/adam7.rs`, `src/filter.rs`), <https://github.com/image-rs/fdeflate/tree/v0.3.6> (`src/decompress.rs`, `src/huffman.rs`, `src/tables.rs`) and image 0.24.9 (`src/codecs/png.rs`, `src/color.rs`)
+
+Distributed files: `internal/photonimage/pngdecode.go`, `internal/photonimage/pngdecode_inflate.go`
 
 - png: Copyright (c) 2015 nwin; The image-rs Developers
 - fdeflate: The image-rs Developers
+- image: The image-rs Developers
 - License: MIT OR Apache-2.0; PiG uses the MIT option for this derived code
 
-`internal/photonimage/icopng.go` reproduces what the png crate does with the PNG an ICO entry holds, which is not what Go's decoder does for damaged files. The required MIT copyright and permission notice is preserved here, and the canonical MIT text is in `LICENSES/MIT.txt`.
+`pngdecode.go` and `pngdecode_inflate.go` reproduce what the png crate, its inflater and image's `PngDecoder` do with a PNG file, which is not what Go's decoder does for damaged files and for PNG features Go does not read the same way. The required MIT copyright and permission notice is preserved here, and the canonical MIT text is in `LICENSES/MIT.txt`. The test files of PngSuite (Willem van Schaik, 1996 and 2011; <http://www.schaik.com/pngsuite/>, permission to use, copy, modify and distribute for any purpose and without fee) under `internal/photonimage/testdata/png-real/pngsuite` carry their own notice there and in `LICENSES/LicenseRef-PngSuite.txt`.
 
 ## tiff 0.9.1, weezl 0.1.8 and miniz_oxide 0.7.1
 

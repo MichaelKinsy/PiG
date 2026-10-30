@@ -14,6 +14,7 @@ package photonimage
 import (
 	"bytes"
 	"encoding/binary"
+	"errors"
 	"hash"
 	"hash/adler32"
 	"hash/crc32"
@@ -26,10 +27,17 @@ import (
 // is not smaller. EncodePNG ports that encoder, so the PNG read gives the model has Photon's bytes, and with them
 // Photon's size, which decides whether a PNG fits the byte limit or the next encoding is tried.
 
+// ErrPNGNoPixels is the exception Photon's `get_bytes()` throws for an image with a width or a height of zero: the png crate's encoder refuses
+// it (`ZeroWidth`, `ZeroHeight`, encoder.rs:431-437), and the `unwrap` after it traps the WebAssembly instance.
+var ErrPNGNoPixels = errors.New("photonimage: png: image has no pixels")
+
 // EncodePNG is img as an RGBA 8-bit PNG: the signature, IHDR, one IDAT chunk and IEND (png encoder.rs
-// write_image_data with Compression::Fast).
-func EncodePNG(img *image.NRGBA) []byte {
+// write_image_data with Compression::Fast). An image with no pixels is ErrPNGNoPixels, as Photon throws for it.
+func EncodePNG(img *image.NRGBA) ([]byte, error) {
 	width, height := img.Rect.Dx(), img.Rect.Dy()
+	if width == 0 || height == 0 {
+		return nil, ErrPNGNoPixels
+	}
 	rowLength := width * 4
 	rows := make([][]byte, height)
 	for y := range height {
@@ -65,7 +73,7 @@ func EncodePNG(img *image.NRGBA) []byte {
 	// MAX_IDAT_CHUNK_LEN is u32::MAX >> 1, more than any image here holds.
 	writePNGChunk(&out, "IDAT", compressed)
 	writePNGChunk(&out, "IEND", nil)
-	return out.Bytes()
+	return out.Bytes(), nil
 }
 
 func writePNGChunk(out *bytes.Buffer, name string, data []byte) {

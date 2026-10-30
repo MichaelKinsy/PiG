@@ -107,18 +107,22 @@ func pngRawInterlaced(width, height, bitsPerPixel int, seed uint32, first int) [
 	return raw
 }
 
-// icoPNGCorpus adds the PNG streams that Go's encoder never writes: every filter, interlacing, split and empty IDAT chunks, damaged zlib
-// streams and headers with valid checksums, chunk order and chunk contents the png crate checks, and animated PNGs.
+// icoPNGCorpus is pngStreamCorpus in ICO files: the entry names the size in the PNG's IHDR (when there is one), so that the entry check passes.
 func icoPNGCorpus(b *formatCorpusBuilder) {
-	// The entry names the size in the PNG's IHDR (when there is one), so that the entry check passes.
-	ico := func(png []byte) []byte {
+	pngStreamCorpus(b, func(png []byte) []byte {
 		entry := icoEntry{planes: 1, bpp: 32}
 		if len(png) >= 24 {
 			entry.width = byte(min(binary.BigEndian.Uint32(png[16:]), 256))
 			entry.height = byte(min(binary.BigEndian.Uint32(png[20:]), 256))
 		}
 		return icoFile(1, []icoEntry{entry}, [][]byte{png})
-	}
+	})
+}
+
+// pngStreamCorpus adds the PNG streams that Go's encoder never writes: every filter, interlacing, split and empty IDAT chunks, damaged zlib
+// streams and headers with valid checksums, chunk order and chunk contents the png crate checks, and animated PNGs. wrap puts each PNG in
+// the file the corpus is of (an ICO file; for the PNG corpus itself it returns the PNG).
+func pngStreamCorpus(b *formatCorpusBuilder, ico func([]byte) []byte) {
 	idat := func(z []byte) [2]any { return [2]any{"IDAT", z} }
 	iend := [2]any{"IEND", []byte{}}
 	rgba := func(w, h int) [2]any { return [2]any{"IHDR", pngIHDR(uint32(w), uint32(h), 8, 6, 0)} }
@@ -419,7 +423,7 @@ func pngRawRowsPalette(width, height, entries int) []byte {
 	return raw
 }
 
-// testAbs and testAdam7 are the corpus's own copies of the helpers of icopng.go, so that the corpus builds without the decoder: for each pass
+// testAbs and testAdam7 are the corpus's own copies of the helpers of pngdecode.go, so that the corpus builds without the decoder: for each pass
 // the first column and row, the steps, the number of pixels in a line and the number of lines.
 func testAbs(x int) int {
 	if x < 0 {

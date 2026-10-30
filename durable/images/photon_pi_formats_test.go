@@ -6,6 +6,11 @@ import (
 	"fmt"
 	"image"
 	"image/png"
+	"os"
+	"path/filepath"
+	"slices"
+	"strings"
+	"testing"
 
 	"github.com/MichaelKinsy/PiG/durable/tools"
 )
@@ -135,11 +140,108 @@ func formatOracleCases(def tools.ImageLimits) []oracleCase {
 				oracleCase{name: f.name + " as " + mime + " beyond a small limit", data: f.data, mime: mime, limits: tools.ImageLimits{MaxWidth: 16, MaxHeight: 16, MaxBytes: def.MaxBytes}})
 		}
 	}
-	// An image with no pixels is returned as it is under a type providers take inline. Under another type it would have to be encoded:
-	// Pi answers prepared there, PiG does not (open: the PNG Photon 0.3.3 writes for a width of zero is not reproduced).
-	empty := farbfeldFile(0, 4, 14)[:16]
-	for _, mime := range []string{"image/png", "image/jpeg"} {
-		cases = append(cases, oracleCase{name: "farbfeld with no pixels as " + mime, data: empty, mime: mime, limits: def})
+	cases = append(cases, emptyImageOracleCases(def)...)
+	return cases
+}
+
+// gifNoRows is a GIF whose screen and interlaced frame are width x 0: Photon decodes it to an image with no pixels.
+func gifNoRows(width int) []byte {
+	out := []byte("GIF89a")
+	out = binary.LittleEndian.AppendUint16(out, uint16(width))
+	out = binary.LittleEndian.AppendUint16(out, 0)
+	out = append(out, 0x81, 0, 0)
+	out = append(out, formatNoise(3, 12)...)
+	out = append(out, 0x2C, 0, 0, 0, 0)
+	out = binary.LittleEndian.AppendUint16(out, uint16(width))
+	out = binary.LittleEndian.AppendUint16(out, 0)
+	out = append(out, 0x40, 2, 1, 0x2C, 0, 0x3B)
+	return out
+}
+
+// emptyImageOracleCases are images with a width or a height of zero, which Photon decodes. An image with no pixels is returned as it is under a
+// type providers take inline (once it decodes). Under any other type Pi encodes it: the target size is at least 1x1 (`Math.max(1, Math.round(0))`,
+// and `Math.min(1, maxWidth / 0)` is 1), so `resize` makes pixels of it (transparent black) and the PNG or JPEG of those is written; the PNG
+// of the image itself would be an exception (`get_bytes` of a zero width or height), but it is never asked for. A byte limit nothing fits
+// leaves the image unprepared at 1x1, as for any image. The farbfeld files have their header only.
+func emptyImageOracleCases(def tools.ImageLimits) []oracleCase {
+	var cases []oracleCase
+	files := []struct {
+		name string
+		data []byte
+	}{
+		{"farbfeld 0x4", farbfeldFile(0, 4, 14)[:16]},
+		{"farbfeld 4x0", farbfeldFile(4, 0, 14)[:16]},
+		{"farbfeld 0x0", farbfeldFile(0, 0, 14)[:16]},
+		{"farbfeld 0x3000", farbfeldFile(0, 3000, 14)[:16]},
+		{"farbfeld 3000x0", farbfeldFile(3000, 0, 14)[:16]},
+		{"interlaced gif 5x0", gifNoRows(5)},
+		{"interlaced gif 0x0", gifNoRows(0)},
+	}
+	limits := []struct {
+		name string
+		l    tools.ImageLimits
+	}{
+		{"", def},
+		{" with a limit of 2x2", tools.ImageLimits{MaxWidth: 2, MaxHeight: 2, MaxBytes: def.MaxBytes}},
+		{" with a limit of 8 bytes", tools.ImageLimits{MaxWidth: 2000, MaxHeight: 2000, MaxBytes: 8}},
+		{" with a limit of 100 bytes", tools.ImageLimits{MaxWidth: 2000, MaxHeight: 2000, MaxBytes: 100}},
+		{" with a limit of 200 bytes", tools.ImageLimits{MaxWidth: 2000, MaxHeight: 2000, MaxBytes: 200}},
+	}
+	for _, f := range files {
+		for _, mime := range []string{"image/x-icon", "application/octet-stream", "image/bmp", "image/gif", "image/png", "image/jpeg", "image/webp"} {
+			for _, l := range limits {
+				cases = append(cases, oracleCase{name: f.name + " as " + mime + l.name, data: f.data, mime: mime, limits: l.l})
+			}
+		}
 	}
 	return cases
+}
+
+// pngOracleCases are the real PNG files of the Photon decoder corpus (PngSuite, image-rs, Go) under declared types of their own and of others, with
+// the default limits and with a limit of 16 pixels (which resizes them), and damaged copies of some of them: Photon's png crate decodes or refuses
+// them, and the pixels, the resize and the encoders are the ports of Photon's, byte for byte.
+func pngOracleCases(t *testing.T, def tools.ImageLimits) []oracleCase {
+	t.Helper()
+	files, err := filepath.Glob("../../internal/photonimage/testdata/png-real/*/*.png")
+	if err != nil || len(files) < 200 {
+		t.Fatalf("PNG files: %d, %v", len(files), err)
+	}
+	damaged := map[string]bool{"basn2c08": true, "basn6a16": true, "basi3p04": true, "tbbn3p08": true, "tbrn2c08": true, "basn0g01": true, "cs3n3p08": true, "ball": true, "basi4a16": true}
+	type input struct {
+		name string
+		data []byte
+	}
+	var inputs []input
+	for _, file := range files {
+		data, err := os.ReadFile(file)
+		if err != nil {
+			t.Fatal(err)
+		}
+		name := filepath.Base(filepath.Dir(file)) + "/" + filepath.Base(file)
+		inputs = append(inputs, input{name, data})
+		for stem := range damaged {
+			if !strings.HasSuffix(strings.TrimSuffix(filepath.Base(file), ".png"), stem) {
+				continue
+			}
+			for _, cut := range []int{len(data) - 1, len(data) - 12, len(data) / 2, 70} {
+				inputs = append(inputs, input{fmt.Sprintf("%s cut at %d", name, cut), data[:cut]})
+			}
+			flipped := slices.Clone(data)
+			flipped[len(data)/2] ^= 0x55
+			inputs = append(inputs, input{name + " with a byte changed", flipped})
+		}
+	}
+	var cases []oracleCase
+	for _, in := range inputs {
+		for _, mime := range []string{"image/png", "image/x-icon", "application/octet-stream"} {
+			cases = append(cases,
+				oracleCase{name: in.name + " as " + mime, data: in.data, mime: mime, limits: def},
+				oracleCase{name: in.name + " as " + mime + " beyond a small limit", data: in.data, mime: mime, limits: tools.ImageLimits{MaxWidth: 16, MaxHeight: 16, MaxBytes: def.MaxBytes}})
+		}
+	}
+	return cases
+}
+
+func TestPhotonImagesMatchPiOnPNGFiles(t *testing.T) {
+	comparePhotonToPi(t, pngOracleCases(t, tools.DEFAULT_IMAGE_LIMITS))
 }
