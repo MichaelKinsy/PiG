@@ -698,9 +698,10 @@ carefulLoop:
 			distEntry := d.distTable[bitsv&0x1ff]
 			var distBase uint16
 			var distExtraBits, distCodeBits uint8
-			if distEntry&fdLiteralEntry != 0 {
+			switch {
+			case distEntry&fdLiteralEntry != 0:
 				distBase, distExtraBits, distCodeBits = uint16(distEntry>>16), uint8(distEntry>>8)&0xf, uint8(distEntry)
-			} else if int(d.nbits) > int(litlenCodeBits)+int(lengthExtraBits)+9 {
+			case int(d.nbits) > int(litlenCodeBits)+int(lengthExtraBits)+9:
 				if distEntry>>8 == 0 {
 					return outputIndex, errFdInvalidDistanceCode
 				}
@@ -711,7 +712,7 @@ carefulLoop:
 					return outputIndex, errFdInvalidDistanceCode
 				}
 				distBase, distExtraBits, distCodeBits = fdDistSymToDistBase[distSymbol], fdDistSymToDistExtra[distSymbol], uint8(secondaryEntry&0xf)
-			} else {
+			default:
 				break carefulLoop
 			}
 			bitsv >>= distCodeBits
@@ -751,7 +752,8 @@ func (d *fdDecompressor) afterBlock() fdState {
 // and queues what does not fit into the output; stop is whether the output is full.
 func (d *fdDecompressor) copyBackReference(output []byte, outputIndex, length, dist int) (int, bool) {
 	copyLength := min(length, len(output)-outputIndex)
-	if dist == 1 {
+	switch {
+	case dist == 1:
 		last := output[outputIndex-1]
 		for i := range copyLength {
 			output[outputIndex+i] = last
@@ -760,7 +762,7 @@ func (d *fdDecompressor) copyBackReference(output []byte, outputIndex, length, d
 			d.queuedRLE, d.queuedRLEByte, d.queuedRLELen = true, last, length-copyLength
 			return len(output), true
 		}
-	} else if outputIndex+length+15 <= len(output) {
+	case outputIndex+length+15 <= len(output):
 		start := outputIndex - dist
 		copy(output[outputIndex:outputIndex+16], output[start:start+16])
 		if length > 16 || dist < 16 {
@@ -769,7 +771,7 @@ func (d *fdDecompressor) copyBackReference(output []byte, outputIndex, length, d
 				copy(output[outputIndex+i:outputIndex+i+16], output[start+i:start+i+16])
 			}
 		}
-	} else {
+	default:
 		if dist < copyLength {
 			for i := range copyLength {
 				output[outputIndex+i] = output[outputIndex+i-dist]
