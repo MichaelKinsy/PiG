@@ -130,7 +130,7 @@ packages/chord/src/next/host/routines.ts | ported | chord/next/host/host_routine
 ## Out-of-lane edits
 
 - `chord/watch_impl.go`: `DeliveryScheduler.Busy` (the routines need to know whether deliveries are in flight at a call's settlement; `Wait` blocks and cannot be asked inside a section). Outside `chord/next`, which `wt-d5a-sync.sh` syncs: copied to the private tree by hand.
-- Production counters read only by tests: `awaitTasksRunning` (`host_attempt.go`: `awaitTask` tasks running) and `settleTasksRunning` (`host_routines.go`: routine settle tasks); a test that moves a fake clock waits for them between timers, as `advanceTimersByTimeAsync` awaits microtasks.
+- Test-side task counts: `scopeLoop` (`host_scope_support_test.go`) counts, per loop, the `awaitTask` and routine settle tasks it starts (told by their starter's function name); a test that moves a fake clock waits for them between timers, as `advanceTimersByTimeAsync` awaits microtasks. No production counter.
 
 ## Failures and flakes known at the end of the run (not my files)
 

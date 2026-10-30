@@ -1200,6 +1200,8 @@ func TestAttemptEagerMigrationsPauseTheReadyTimeoutDeadlineAndResumeItWithTheBud
 	if got := loop.Now(); got != 3_100 {
 		t.Fatalf("now = %d, want 3100", got)
 	}
+	// The deadline resumes in the section after the migration's task: its timer is what the clock is moved against.
+	until(t, "the deadline's timer with the budget left", func() bool { return hasTimerAt(loop, 3_500) })
 	// 399 ms then 1 ms of the budget left.
 	loop.AdvanceAsync(399)
 	loop.AdvanceAsync(1)

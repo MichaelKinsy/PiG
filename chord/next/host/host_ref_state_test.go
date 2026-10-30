@@ -432,9 +432,15 @@ func TestRefStateOfALocalReferenceRetryRenewsABrokenObjectLoadingThenLive(t *tes
 	host := flaky(t, 1, true, nil)
 	ref := mustHold(t, host, refFlaky, jsonObject("id", 1.0))
 	untilKind(t, ref, RefStateFailed)
-	ref.Retry()
-	if got := stateOfRef(ref); got.Kind != RefStateLoading {
-		t.Fatalf("state after retry = %+v, want loading", got)
+	// Pi reads the state right after `ref.retry()`, in the same synchronous section: the attempt's open runs in a later
+	// turn. Read in a section of its own, the open (a task on another goroutine) may have gone live already.
+	var afterRetry *RefState
+	ref.binding.loop.Run(func() {
+		ref.Retry()
+		afterRetry = ref.State().Value()
+	})
+	if afterRetry.Kind != RefStateLoading {
+		t.Fatalf("state after retry = %+v, want loading", afterRetry)
 	}
 	untilKind(t, ref, RefStateLive)
 	got, err := refCall(ref, "get", nil)

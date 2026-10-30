@@ -688,10 +688,6 @@ func (o *onRoutine) called(done called) {
 	o.state = onState{kind: stateBackoff, timer: timer}
 }
 
-// settleTasksRunning counts the tasks of afterDeliveries still waiting: what a test that moves a fake clock waits for, as
-// Pi's `advanceTimersByTimeAsync` awaits the microtasks between timers.
-var settleTasksRunning atomic.Int64
-
 // deliveriesWait is the Timer of a routine that settles once the host's deliveries in flight entered: Stop cancels it.
 type deliveriesWait struct{ stopped atomic.Bool }
 
@@ -703,9 +699,7 @@ func (d *deliveriesWait) Stop() bool { return !d.stopped.Swap(true) }
 func (o *onRoutine) afterDeliveries() Timer {
 	wait := &deliveriesWait{}
 	host := o.owner.host
-	settleTasksRunning.Add(1)
 	host.loop().Go(func() {
-		defer settleTasksRunning.Add(-1)
 		host.scheduler.Wait()
 		host.enter(func() {
 			if !wait.stopped.Swap(true) {

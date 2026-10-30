@@ -2,7 +2,10 @@ package host
 
 import (
 	"errors"
+	"runtime"
+	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 )
@@ -18,14 +21,42 @@ type scopeLoop struct {
 	real *Loop
 	// intervals fakes `setInterval` too (the host's heartbeat runs on the fake clock): a test whose `toFake` has it.
 	intervals bool
+	// awaiting and settling count this loop's tasks that end in a section of their own, until that section ran: the
+	// awaitTask tasks and the tasks of a routine settling after the deliveries in flight. A test that moves the clock waits
+	// for them between timers, as Pi's `advanceTimersByTimeAsync` awaits the microtasks between them; tasks a test holds
+	// on purpose (a gate) or that wait for a close are not among them.
+	awaiting, settling atomic.Int64
 }
 
 var _ sectionLoop = (*scopeLoop)(nil)
 
 func newScopeLoop() *scopeLoop { return &scopeLoop{fakeLoop: newFakeLoop(), real: NewLoop()} }
 
-func (l *scopeLoop) Run(work func())  { l.real.Run(work) }
-func (l *scopeLoop) Go(fn func())     { l.real.Go(fn) }
+func (l *scopeLoop) Run(work func()) { l.real.Run(work) }
+
+// Go starts fn as the real loop does, counting it when the host starts it as an awaitTask or a settle task: the starter
+// is told by its function, so the host keeps no counter for the test.
+func (l *scopeLoop) Go(fn func()) {
+	var running *atomic.Int64
+	if pc, _, _, ok := runtime.Caller(1); ok {
+		switch name := runtime.FuncForPC(pc).Name(); {
+		case strings.Contains(name, ".awaitTask["):
+			running = &l.awaiting
+		case strings.HasSuffix(name, ".afterDeliveries"):
+			running = &l.settling
+		}
+	}
+	if running == nil {
+		l.real.Go(fn)
+		return
+	}
+	running.Add(1)
+	l.real.Go(func() {
+		defer running.Add(-1)
+		fn()
+	})
+}
+
 func (l *scopeLoop) Queue(job func()) { l.real.Queue(job) }
 func (l *scopeLoop) barrier()         { l.real.Run(func() {}) }
 

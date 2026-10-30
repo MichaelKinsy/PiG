@@ -287,11 +287,11 @@ func (e *routinesEnv) quiet() {
 		started := e.started.Load()
 		e.act.idle()
 		// The tasks whose resumption is a section (a routine settling after the deliveries in flight).
-		for settleTasksRunning.Load() != 0 {
+		for e.loop.settling.Load() != 0 {
 			time.Sleep(time.Millisecond)
 		}
 		turn(e.host)
-		if e.started.Load() == started && settleTasksRunning.Load() == 0 {
+		if e.started.Load() == started && e.loop.settling.Load() == 0 {
 			return
 		}
 	}
