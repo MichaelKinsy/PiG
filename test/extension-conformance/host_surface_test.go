@@ -99,11 +99,7 @@ func TestOnThemeChangeDeliversEachChangesOwnThemeAcrossSDKs(t *testing.T) {
 		if entry(dark) == entry(light) {
 			t.Fatal("the two themes are indistinguishable")
 		}
-		t.Cleanup(func() {
-			if t.Failed() {
-				r.tool("c3_theme_gate_release") // a held handler must not keep the extension from stopping
-			}
-		})
+		defer r.tool("c3_theme_gate_release") // a handler held at the gate must not keep the extension from stopping; releasing twice is harmless
 
 		r.setTheme(codingagent.ExtensionThemePalette(dark))
 		r.tool("c3_theme_log") // the first state carries the dark palette: not a change
