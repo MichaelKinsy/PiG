@@ -653,101 +653,101 @@ rationale = "the store's step runs on a goroutine and is raced (`select`) agains
 
 [[files]]
 path = "packages/chord/src/next/host/attempt.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited", "cancellable", "microtask-ordering", "detached-owned"]
+evidence = ["test:chord/next/host/host_attempt_test.go#TestAttemptEagerMigrationsPauseTheReadyTimeoutDeadlineAndResumeItWithTheBudgetLeft", "test:chord/next/host/host_attempt_test.go#TestAttemptParkedAttemptsGoOnPastTheDependencyCheckADependencyLeavingLiveDuringTheOwnStepsChangesNothingR18", "test:chord/next/host/host_attempt_test.go#TestAttemptEndingRejectsTheirCallersAtOnceTheHandlerRunsOnWithItsContextAbortedAndCannotCommit", "test:chord/next/host/host_attempt_test.go#TestAttemptEndingRejectsACallWhoseCallersContextIsAlreadyAbortedBeforeTheHandlerRuns", "test:chord/next/host/host_examples_test.go#TestExample10Drops", "test:chord/next/host/host_attempt_test.go#TestAttemptEndingWaitsForTheRunningHandlersOwnPromisesTheDrainBeforeTheNativesClose", "test:chord/next/host/host_attempt_test.go#TestAttemptTheDrainIsBoundedByCloseTimeoutAHandlerStillRunningThenSeesItsNativesCloseWhichIsReported", "test:chord/next/host/host_attempt_test.go#TestAttemptTheDrainAHandlerStuckPastItNoLongerCountsAsACallNorHoldsItsCtxGetReferences", "test:chord/next/host/host_attempt_test.go#TestAttemptAnAttemptNotLiveWithinReadyTimeoutIsAbandonedAndFailsTransientTheOpenersContextAbortedWhatOpenedClosed", "test:chord/next/host/host_attempt_test.go#TestAttemptParkedAttemptsPauseTheReadyTimeoutDeadlineWhileParkedTheOwnStepsGetTheBudgetLeft", "test:chord/next/host/host_attempt_test.go#TestAttemptEndingRefusesTransactionsAtOnceDocumentsStayReadableUntilTheClosesAreDone"]
+rationale = "attempt.ts #activate and its steps: each `await` is a `Queue` or the `then` of a `keyedPromise` settled in a section; a blocking step (`documents.load`, `prepareTables`, `job.load`, `native.open`, `follow.attach`) is an `awaitTask` that settles in a section, cancelled with the attempt's opening context. | attempt.ts call (handler, awaitWithContext): admitted to the drain in the caller's section; the handler runs on an owned task started after the previous call's handler entered; the caller's wait ends at the abort of the call's linked context (`AfterFunc`), an abort that came before the handler returned wins. | attempt.ts drain and closes (close): blocks outside a section on an owned task (the object's teardown); the drain's timer is a loop timer; work stuck past it stops counting. | attempt.ts ready-timeout deadline: `deadline` on the host's loop; paused while parked, resumed with the budget left. | attempt.ts opener and AbortSignals (opening, linked call contexts): the opening `context.Context` is aborted by the seal; `withLinkedAbortSignal` links a caller's context to it. (lane D5a)"
 
 [[files]]
 path = "packages/chord/src/next/host/ctx.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["cancellable", "microtask-ordering"]
+evidence = ["test:chord/next/host/host_ctx_test.go#TestLinkedAbortSignalsAbortWithTheCallersSignalOrTheCallsTheCallersReasonFirst", "test:chord/next/host/host_attempt_test.go#TestAttemptEndingWaitsForTheRunningHandlersOwnPromisesTheDrainBeforeTheNativesClose"]
+rationale = "ctx.ts withLinkedAbortSignal (AbortSignal.any-like, two listeners): listeners are `context.AfterFunc` goroutines in any order, so the reason is the earliest abort by `chordctx.AbortOrder` (a sequence stamped by `chordctx.WithCancel`'s cancel), sources aborted before the link by the order given. | ctx.ts CallContext.get, root.ts RootScopes.run/close, parked.ts, native.ts, dependencies.ts ParkedLong, deadline.ts, backoff.ts, sleep.ts, activity.ts: restated; the host cases above are the whole-host evidence (TestHostRootAbortsTheScopesOwnSignalWhenFnSettlesAndAtHostCloseTheCallersContextHavingOne, TestHostParkedCallsRejectAtTheReferencesReadyTimeoutMeasuredFromEachCall, TestHostNativesReportACloseStillRunningAfterItsCloseTimeoutAbortItsContextAndCloseTheOthers, TestParkedLongIsReportedOncePerParkingEpisodeAfterReadyTimeout, TestHostActivityPublishesOncePerMicrotaskTurnWithChanges). (lane D5a)"
 
 [[files]]
 path = "packages/chord/src/next/host/follow.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited", "microtask-ordering"]
+evidence = ["test:chord/next/host/host_follow_test.go#TestHostFollowCallsBeforeTheAttachmentResolvedAppliedInOrderOnItsValue", "test:chord/next/host/host_follow_test.go#TestHostFollowCallsOutsideAnyBatchQueuedAndAppliedInOneBatchOnTheNextMicrotask"]
+rationale = "follow.ts attach, #schedule (batch.soon): attach blocks outside a section (called from the object's activation task); calls outside a batch are queued and applied by `Batch.Soon` (a `Loop.Queue` microtask). (lane D5a)"
 
 [[files]]
 path = "packages/chord/src/next/host/host.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited", "concurrent-joined", "cancellable", "microtask-ordering", "detached-owned"]
+evidence = ["test:chord/next/host/host_host_test.go#TestHostStartBarrierResolvesOnceEveryHostLifetimeObjectHadItsFirstOutcome", "test:chord/next/host/host_host_test.go#TestHostStartBarrierIsSettledByHostClose", "test:chord/next/host/host_host_test.go#TestHostDeadlinesOfGetsArePerGetter", "test:chord/next/host/host_host_test.go#TestHostAcquiringACancelledContextNoEffectOnAHoldAGetReleasesItsReferenceAndRejects", "test:chord/next/host/host_host_test.go#TestHostRegistryEndsAWaitingHostRegistryAtTheCloseWithReleasedClosed", "test:chord/next/host/host_host_test.go#TestHostRegistryEndsOneStillWaitingForThePublicationAtTheClose", "test:chord/next/host/host_host_test.go#TestHostCloseReturnsOneClosingToEveryCaller", "test:chord/next/host/host_host_test.go#TestHostCloseTearsDownWhatAFailedDependentHoldsWithCloseAndWaitsForIt", "test:chord/next/host/host_host_test.go#TestHostCloseJoinsAnEndingRunningInTheBackground", "test:chord/next/host/host_host_test.go#TestHostCloseGoesOnWhenOnErrorThrows", "test:chord/next/host/host_dependencies_test.go#TestParkedLongIsNotReportedForARemoteBlockerThatFailed", "test:chord/next/host/host_host_test.go#TestHostStoreReportsStorageFailedOnceAndClosesTheHostTheAppStillClosesTheStore"]
+rationale = "host.ts load (async; await Promise.all(firstOutcomes)): `Load` is a blocking call: the setup, the publication batch and the objects' creation are one section; the start barrier awaits each object's `firstOutcome` (a once-settled `keyedPromise`) off the loop. A setup that fails closes the host (`closeOnce`) and returns its error. | host.ts get/acquire (setTimeout(expire), withLinkedAbortSignal, await binding.live): `acquire` makes the binding and the deadline timer (`events.AfterFunc`, abort with the last failure or `notLive`) in one section, awaits `binding.live(ctx)`, and releases its binding on failure; the getter's context and the deadline are linked by `withLinkedAbortSignal`. | host.ts registry (Promise.withResolvers publication, awaitWithContext, addEventListener(\"abort\")): the publication is a channel closed once; waiting is a `select` on it and the linked context; the host's close aborts through `context.AfterFunc(routing)`; its deadline timer is stopped in the finishing section. | host.ts untilUsable (queueMicrotask(() => changed.resolve()), closed reject): a `registries.RegistryWaiter` whose `DependencyMoved` is a `Loop.Queue` job signalling a 1-buffered channel; `Closed` signals an error channel; the loop checks `usable()` in a section each wake. | host.ts close/#close (#closing ??=, await Promise.all(endings), await tearDown()): `closePromise` (done channel, err written before the close) is the one closing every `Close` returns; its synchronous part (links, roots, (lane D5a)"
 
 [[files]]
 path = "packages/chord/src/next/host/keyed-members.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited", "concurrent-joined", "cancellable"]
+evidence = ["test:chord/next/host/host_keyed_members_test.go#TestKeyedMembersAKeyWhoseFirstPinStillLoadsTheObjectEndsMeanwhileTheConsumersWaitRejectsTheLatePinIsReleased", "test:chord/next/host/host_keyed_members_test.go#TestKeyedMembersAKeyedWatchWhoseObjectClosesWhileItIsSetUpRejectsWithTheObjectsEndErrorWhicheverMicrotaskTheCloseLandsIn", "test:chord/next/host/host_keyed_members_test.go#TestKeyedPromiseAwaitWithContextCallsBackOnceWhicheverComesFirst"]
+rationale = "keyed-members.ts pin (awaits ready with awaitWithContext), prepare (awaits each pin), pinned (await slot.ensure): `keyedPromise` (once-only, `then` callbacks queued in registration order as microtasks); `Ensure` runs on a `Loop.Go` task; the caller's ctx ends only its wait. (lane D5a)"
 
 [[files]]
 path = "packages/chord/src/next/host/members.ts"
-disposition = "pending"
+disposition = "no-runtime-async"
 contracts = []
 evidence = []
-rationale = ""
+rationale = "Declarations and synchronous source resolution only: the sole Promise in the pinned file is the type of `Method` (`(args, context) => Promise<unknown>`); no function in members.ts awaits, chains or schedules a promise. The Go counterpart is chord/next/host/host_members.go, which resolves members synchronously (lane D5a)."
 
 [[files]]
 path = "packages/chord/src/next/host/native.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited", "cancellable", "detached-owned"]
+evidence = ["test:chord/next/host/host_native_test.go#TestNativeALateValueIsClosedOnce", "test:chord/next/host/host_native_test.go#TestNativeAPartlyFailedAttemptClosesWhatItOpenedWithReasonEnd", "test:chord/next/host/host_native_test.go#TestNativeAnOpenerThatPanicsRejectsTheOpen", "test:chord/next/host/host_native_test.go#TestNativeReportsACloseStillRunningAfterItsCloseTimeoutAndAbortsItsContext", "test:chord/next/host/host_native_test.go#TestNativeACloseThatThrowsIsReturnedAsCloseFailed", "test:chord/next/host/host_native_test.go#TestNativeACloseInTimeReportsNothingAndLeavesNoTimer", "test:chord/next/host/host_native_test.go#TestNativeAFailingCloseOfALateValueIsReported", "test:chord/next/host/host_native_test.go#TestWithin", "test:chord/next/host/host_native_test.go#TestDrained"]
+rationale = "native.ts open (await this.#opened(await this.#open(context))): `nativeHandle.open(ctx) error` blocks in the opener (called off the loop, as an `await` yields it); a returned error or panic is the rejection and leaves the state `opening` as Pi does. A value arriving after an abandon is closed at once, its failure reported through `loop.Run(report)`. | native.ts close / #closeValue (IIFE promise started synchronously, within(closing, closeTimeout), abort at timeout): The closer runs as an owned task (`sectionLoop.Go`, joined by `Loop.Wait`), settling a `nativeWork`; `close` blocks in `within`. At the timeout the task is not stopped (Pi's promise runs on): its ctx, derived from the object's context with `chordctx.WithCancel` (synchronous abort, as `AbortSignal.any`), is cancelled with an `aborted` ChordError `<name>: close timed out`, and the timeout is reported. A closer must return when its ctx is aborted (the Go form of Pi's abortable promise; one that never returns would hold `Loop.Wait`). A throw/panic is `close_failed`, returned. | native.ts within (Promise.race([promise.then(settled), timeout]), clearTimeout): select over the work's done channel and a timer job closing a channel; a work settled before the timer ran wins; the work's error is returned when it rejects first; the timer is stopped on return. | native.ts drained (Promise.allSettled): the same race over every piece of work; empty drain is `settled` without a timer; a rejected piece counts as settled. (lane D5a)"
 
 [[files]]
 path = "packages/chord/src/next/host/object.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited", "microtask-ordering", "cancellable", "detached-owned"]
+evidence = ["test:chord/next/host/host_object_test.go#TestObjectRetriesStartANewInstanceOnlyAfterThePreviousOneClosed", "test:chord/next/host/host_object_test.go#TestObjectParkedShowsEveryChangeOfADependencyLoadingFailedANewCauseLoadingAgainLive", "test:chord/next/host/host_object_test.go#TestObjectRetriesRetryATransientFailureAfter1sDoublingUpTo60sAndStartOverAfterASuccess", "test:chord/next/host/host_object_test.go#TestObjectLingerAReuseCancelsTheExpiryTheHolderCountDecidesALaterReleaseStartsANewWindowRace8", "test:chord/next/host/host_documents_host_test.go#TestObjectALiveObjectFailingStartsARetrysFactoryOnlyOnceACommitAdmittedBeforeTheFailureAdopted", "test:chord/next/host/host_object_test.go#TestObjectAFailedActivationsCleanupClosesTheNativesThatOpenedBeforeItReleasesItsReferencesACloseMayUseThem"]
+rationale = "object.ts #run / start barrier / first outcome: the next attempt starts when the previous one's closing promise settled; state changes are published in sections. | object.ts backoff retries: `backoff` timers (`eventLoop.AfterFunc`), driven by the fake clock in tests. | object.ts linger timer: one timer; a new reference stops it. | object.ts failLive (an admitted commit adopts first) and teardown: the teardown is an owned task joined by the host's `endings`; a retry's factory waits for the closing promise. (lane D5a)"
 
 [[files]]
 path = "packages/chord/src/next/host/parked.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited", "cancellable"]
+evidence = ["test:chord/next/host/host_parked_test.go#TestParkedCallsAreQueuedAndSentInTheOrderTheyWereMade", "test:chord/next/host/host_parked_test.go#TestParkedCallResultSettlesOnceAndThenRunsAsAMicrotask", "test:chord/next/host/host_parked_test.go#TestParkedCallsRejectAtTheReadyTimeoutMeasuredFromEachCall", "test:chord/next/host/host_parked_test.go#TestParkedCallsKeepOneDeadlineAcrossReconnects", "test:chord/next/host/host_parked_test.go#TestParkedCallsTheTimeoutInTheMessageIsAJavaScriptNumber", "test:chord/next/host/host_parked_test.go#TestParkedCallsRejectAtOnceWhenTheirCallerCancels", "test:chord/next/host/host_parked_test.go#TestParkedCallsAnAbortedCallerIsNotQueued", "test:chord/next/host/host_parked_test.go#TestParkedCallsKeepTheirOrderAfterManyLeft"]
+rationale = "parked.ts Promise.withResolvers returned by park: `parkedCallResult`: small struct with a `done` channel closed once (settle is once-only), result written before the close; `wait()` is the await (called off the loop). | parked.ts setTimeout(expire, timeout) / clearTimeout: `eventLoop.AfterFunc`; `unavailable/park_timeout`, measured from each call, never renewed. | parked.ts signal.addEventListener(\"abort\", cancel, {once}): `context.AfterFunc(ctx, ...)`; the listener runs on a goroutine of its own, so it enters the host's `Loop.Run` (`sectionLoop.Run`) and no-ops when the call already left the queue (sent, expired, rejected). Rejects with `context.Cause(ctx)` (`signal.reason`); an already-aborted ctx returns that error from `park` (`throwIfAborted`). | parked.ts send(...).then(call.resolve, call.reject): `parkedCallResult.then(loop, f)` runs `f` through `loop.Queue` after the sent call's result settled (also when it was settled already). No goroutine is started; errors propagate as the settled error of the caller's result. Order of the sends in one `flush` is the queue's order, including calls queued while it runs (TestParkedCallsKeepTheirOrderWhenAHandlerCallsWhileTheyAreSent). (lane D5a)"
 
 [[files]]
 path = "packages/chord/src/next/host/ref-state.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited", "cancellable"]
+evidence = ["test:chord/next/host/host_ref_state_test.go#TestRefStateAWatchInsideACommitIsRefused", "test:chord/next/host/host_ref_state_test.go#TestRefStateIsWatchedFromItsCurrentStateAndReleaseEndsIt", "test:chord/next/host/host_ref_state_test.go#TestRefStateAWatchEndsAbortedWithItsContext", "test:chord/next/host/host_ref_state_test.go#TestRefStateMarksTheDerivesReadingIt"]
+rationale = "ref-state.ts async watch(context): Go: blocking-free `Watch(ctx) (handle, error)`; the rejection is the returned error. Deliveries run on the batch's `DeliveryScheduler`, a constructor parameter of `newReferenceState` (the host owns both; `state.Batch.deliveries` is unexported), the Go form of the host's microtask queue for watches. Every state in order, one call each, in the context the watch was taken in (TestRefStateEachWatchGetsEveryNewStateInItsOwnContext). | ref-state.ts watch.observeAbort(signal): `NativeWatch.ObserveAbort(ctx)`; the watch ends `aborted` and removes itself from the watches (locked: it ends from the context's goroutine). | ref-state.ts released (batch.within(...end)): Within runs inline in a commit, as a commit of its own outside one; the end is the notification (`EndWith(ended)`), pending frames are dropped by it as in Pi (the test delivers before releasing, as the awaits of Pi's test do). (lane D5a)"
 
 [[files]]
 path = "packages/chord/src/next/host/reference.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited", "cancellable", "microtask-ordering", "detached-owned"]
+evidence = ["test:chord/next/host/host_reference_test.go#TestReleaseRejectsTheCallsMadeThroughTheReferenceWithReleasedAndAbortsTheirHandlersContexts", "test:chord/next/host/host_reference_test.go#TestRemoteReferencesHaveEveryMemberOfEveryVariantVariantIsUndefinedBeforeLiveAndReleasedAfterRelease", "test:chord/next/host/host_reference_test.go#TestGC10000CallsOnOneReferenceRetainFlatMemory", "test:chord/next/host/host_reference_test.go#TestKeyedStateMembersAWatchKeySettlingAfterItsReferenceWasReleasedIsEndedAtOnceWithItsPinItRejectsReleased", "test:chord/next/host/host_reference_test.go#TestReferencesThrowReleasedOnEveryUseAfterReleaseWhichIsIdempotent", "test:chord/next/host/host_reference_test.go#TestReferencesEndTheirWatchesWhenReleasedWhileOtherReferencesKeepTheObject", "test:chord/next/host/host_reference_test.go#TestGCAReleasedHoldKeepsNeitherItsObjectNorItsStatesWatchesNorARemoteObjectWithoutALink", "test:chord/next/host/host_reference_test.go#TestKeyedStateMembersAConsumersAtKeyIsTheProvidersPerKeySourceLoadedBeforeItGoesLiveRetirementCarriesTheFlag", "test:chord/next/host/host_reference_test.go#TestKeyedStateMembersAPersistedKeyAConsumerPinsIsLoadedFromTheStoreBeforeTheConsumerGoesLive"]
+rationale = "reference.ts Binding.#call (async method; parks while loading): `Reference.Call` blocks: it enters one section (`binding.call`) that returns the call promise `*parkedCallResult` (a parked call or the target's admission, in Pi's order) and waits on it outside the loop; release aborts the call context (`chordctx.WithCancel`) and rejects the parked queue. | reference.ts Binding.#send .finally(linked.release): `target.call(...).then(loop, f)` queues `f` through `Loop.Queue` after the call's result settled; `f` releases the linked abort and settles the outer result. | reference.ts Binding.#until (waiters, signal.addEventListener(\"abort\")): `until` returns a `keyedPromise[struct{}]` settled once (waiters are removed on settle); the abort listener is `context.AfterFunc`, whose goroutine enters `Loop.Run` to settle; `binding.end` rejects every waiter. | reference.ts Binding.watch / hydrated (await then openWatch): blocking call with one section per step (check, wait on the promise outside the loop, open and follow in a section). | reference.ts follow void watch.closed.then(() => this.#watches.delete(watch)): `Loop.Go` task waits on `watch.Closed()` and removes the watch in a section; `binding.end` clears the list so a retained released reference keeps nothing. | reference.ts pinKeys / KeyedMemberAt.pin / ReferenceKeyed.get/watch (await of pinKey, hydrated, slot.get): `pinKeys` runs the pins one after the other on one `Loop.Go` task and settles a `keyedPromise` in a section; each `pin (lane D5a)"
 
 [[files]]
 path = "packages/chord/src/next/host/root.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited", "concurrent-joined", "cancellable", "detached-owned", "ui-handoff", "microtask-ordering"]
+evidence = ["test:chord/next/host/host_root_test.go#TestHostRootHostCloseRejectsTheCallerAtOnceWhateverAnUncooperativeFnStillDoes", "test:chord/next/host/host_root_test.go#TestHostRootAnAbortedContextRejectsBeforeFnRunsASynchronousThrowIsARejection", "test:chord/next/host/host_root_test.go#TestHostRootAbortsTheScopesOwnSignalWhenFnSettlesAndAtHostCloseTheCallersContextHavingOne", "test:chord/next/host/host_root_test.go#TestHostRootLeavesNoListenerOnTheCallersSignalOnceHostCloseRejectedAnFnThatNeverSettles"]
+rationale = "root.ts RootScopes.run (async-like, awaited by host.root's caller): `Promise.race([running, open.closed.promise])` inside `awaitWithContext(.., context)` is one `select` over the result channel, the scope's `closed` channel and `ctx.Done()` (error: the fn's error, the host's close reason, `context.Cause(ctx)`). `throwIfAborted` first. | root.ts running = (async () => fn(ctx))() + running.then(settled, settled) (unawaited, outlives the caller's wait): fn runs on a task of its own through `tryPlugin` (a panic is the rejection, Pi's synchronous throw). The seal (`Run`) happens before the result is handed to the waiter, as Pi's `running.then(settled)` is registered before the race's. An uncooperative fn keeps its task (joined by `Loop.Wait`: the host's close must not wait for root fns; D5a). | root.ts scope.abortSignal.addEventListener(\"abort\", aborted) / removeEventListener: `context.AfterFunc(scope, ...)` whose goroutine does `loop.Run(seal(cause))`; seal stops it. | root.ts RootScopes.close (open.closed.reject(reason)): Inside a section: `seal(reason)`, then `closeReason` is stored and `closed` is closed once (a settled scope left the set at its seal, so it is never closed twice). (lane D5a)"
 
 [[files]]
 path = "packages/chord/src/next/host/route.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited", "detached-owned", "cancellable", "microtask-ordering"]
+evidence = ["test:chord/next/host/host_route_test.go#TestRouteAdmissionRunsOneResolvePerAddressSharedByTheHoldsThatWaitForItRace1", "test:chord/next/host/host_route_test.go#TestResolveFailuresAndReResolvesAResolveWhoseHoldsWereAllReleasedMeanwhileFinishesAndItsLinkIsKeptRace3", "test:chord/next/host/host_route_test.go#TestRouteGCHoldsReleasedWhileTheirResolveNeverSettlesAreNotKept", "test:chord/next/host/host_route_test.go#TestHostCloseDuringAResolveRace7AbortsTheResolvesContextAndClosesALinkReturnedAfterwards", "test:chord/next/host/host_route_test.go#TestResolveFailuresAndReResolvesARejectedResolveLeavesTheHoldsLoadingIsReportedAndResolvesAgainAfterTheAddressesBackoffRace2"]
+rationale = "route.ts void this.#resolve(routed) (await resolve): `Loop.Go` task calls the blocking `Resolve` off the loop and handles its result in one `Loop.Run`; one resolve per address (`routed.resolving`). | route.ts route context (AbortSignal aborted at host.close): the route's context is `chordctx.WithCancel(ctx)` cancelled by `runClose` in the same section (a `WithAbortSignal` listener would cancel on a goroutine, not as `AbortSignal.any`). | route.ts backoff setTimeout: `backoff` on the host loop's timers; the due job runs as a section. (lane D5a)"
 
 [[files]]
 path = "packages/chord/src/next/host/routines.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited", "cancellable", "microtask-ordering", "detached-owned"]
+evidence = ["test:chord/next/host/host_routines_test.go#TestOnAfterAThrowMakesOneRetryPerThrowAChangeDuringAFailingRetryWaitsForItsBackoffNoTimerLeft", "test:chord/next/host/host_routines_test.go#TestOnFoldsEveryChangeMadeDuringTheFirstCallIntoOneNextCall03Not013", "test:chord/next/host/host_routines_test.go#TestOnTakesEveryValueABusyCallLeftBufferedBeforeCallingAgain0And20AlsoWhenItSetThemItself", "test:chord/next/host/host_routines_test.go#TestOnReleasesItsWatchWhenItsObjectEndsACallThatThrowsAsItEndsIsNotReported", "test:chord/next/host/host_routines_test.go#TestRoutinesLeaveNothingOfAnEndedObjectItsWatchesAndContextsAreCollected", "test:chord/next/host/host_routines_test.go#TestOnLiveRestartsAfterAThrowWithTheBackoffResetAfterARunOfAtLeastAMinute", "test:chord/next/host/host_routines_test.go#TestOnLiveIsAbortedByItsOwnersEndNoReportNoRestart", "test:chord/next/host/host_routines_test.go#TestOnStartsOnASourceFailedNowNoCallAndNoReportUntilItsFirstGoodValueAReferenceMember"]
+rationale = "routines.ts on calls and retries: in-section continuations: the call's synchronous part in the calling section, its settlement a `Queue` microtask (or the `then` of a `Handled`); the retry is a loop timer stopped by the watch's end. | routines.ts settling after a busy call: a 1 ms loop timer when frames are pending, an owned task waiting for `DeliveryScheduler.Wait` when deliveries are in flight (Pi's replay of buffered native values one per microtask). | routines.ts void watch.closed.then(...): the one owned task of a routine: it waits on the watch's `Closed()` channel and ends the routine in a section; the owner's end stops the watch from a section (`context.AfterFunc` then `enter`). | routines.ts onLive loop and sleep: `sleep(delay, owner.context)` is a loop timer plus an abort listener entering a section; the owner's end clears the timer. | routines.ts first value of a failed source: a subscriber of the source resumes `start` a microtask after the first good value, or after the owner's abort. (lane D5a)"
 
 [[files]]
 path = "packages/chord/src/next/host/sleep.ts"
@@ -758,38 +758,38 @@ rationale = "`sleep` is a blocking call returning nil or `context.Cause(ctx)`; t
 
 [[files]]
 path = "packages/chord/src/next/jobs/job.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited", "cancellable", "detached-owned", "microtask-ordering"]
+evidence = ["test:chord/next/host/jobs_job_test.go#TestJobStartCreatesNothingForAnAbortedCallerACallerAbortedAfterTheCommitDoesNotCancelTheRun", "test:chord/next/host/jobs_persisted_test.go#TestPersistedASealDuringTheReservationAReservationRefusedAtAdmissionAfterTheSealTheNextLiveAttemptInvokesTheRun", "test:chord/next/host/jobs_persisted_test.go#TestPersistedASealDuringTheReservationAReservationQueuedBehindAHeldCommitQueuePastTheSealTheNextLiveAttemptInvokesTheRun", "test:chord/next/host/jobs_persisted_test.go#TestPersistedASealDuringTheReservationAnAbortJoinedToAReservationThatCommitsAfterTheSealReturnsMarked", "test:chord/next/host/jobs_job_runs_test.go#TestRunCommitsChangesMadeAfterAnAbortWhileRunStopsAThrowThenEndsAbortedNotThrew", "test:chord/next/host/jobs_persisted_test.go#TestPersistedInvocationsAfterASealAnInvocationReplacedAfterTheBoundedDrainWritesNothingAndRecordsNothing", "test:chord/next/host/jobs_job_runs_test.go#TestFinishThrowingIsRetriedAfter1SDoublingEachFailureReportedALaterSuccessFinishesTheRun", "test:chord/next/host/jobs_job_runs_test.go#TestFinishThrowingBlocksTheRunAfterFiveFailuresInARowOutcomeStateAndKeyKeptNotCountedAbortDropsIt", "test:chord/next/host/jobs_job_runs_test.go#TestFinishBackingOffLeavesNoTimerBehindWhenItsObjectEndsDuringTheBackoff", "test:chord/next/host/jobs_records_test.go#TestRecordsAFinishSealedMidWayIsNotCountedAsAFailureAndRunsAgainOnTheNextLiveAttempt", "test:chord/next/host/jobs_job_runs_test.go#TestRunCommitsAChangeStillWaitingForTheLineWhenRunSettlesBeforeTheOutcomeIsRecorded", "test:chord/next/host/jobs_job_runs_test.go#TestRunRefusesStateChangesOnceRunSettledReleasedAndNeverRecreatesTheRetiredDocument"]
+rationale = "job.ts start (await documents.tx(...)): `Start` blocks in `documents.Tx` (the line, the store); the caller's context ends only its wait; `Stage` runs in `Documents.Do` (a section) as `tx.Start` does. | job.ts invoke (reservation documents.tx(...).then(ok, err) + owner.admit(reserving)): `admit` is called before the task starts (Pi admits before plugin code runs); the task is `Loop.Go`; its continuation (`then`/`catch`) is one `host.enter` section; `settle(err)` settles the admission after the handlers ran. | job.ts #start (async run + .then(settled).finally(ended).then(work.resolve)): `run` is called on an owned goroutine (`Loop.Go`) off the loop; its settling (`invocation.settle`, `#failed`/`#settled`, `ended`) is one section, in Pi's order; the work admitted to the drain settles when the task returns. | job.ts #finish (await documents.tx, await records.record, await sleep(delay, withAbortSignal(signal, context))): One owned task per finish; the backoff is `sleepOn(records.loop, ...)` on the host's timers (virtual in tests) under the attempt's signal; a seal returns without a report or a count. | job.ts RunState.change (documents.tx(..., invocation.token, unaborted, persistence)): Blocks in `Documents.Tx` under the invocation's seal token and the caller's context without its abort signal; admission and the fence are checked in a section before the call. (lane D5a)"
 
 [[files]]
 path = "packages/chord/src/next/jobs/persisted.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited", "cancellable"]
+evidence = ["test:chord/next/host/jobs_persisted_test.go#TestPersistedVersionsWithIncompatibleStateARunOfAnotherVersionIsBlockedBeforeItsStateIsDecoded"]
+rationale = "persisted.ts load, findBlockedState (await ...read/keys/find): Blocking guarded store reads, cancellable by the context. (lane D5a)"
 
 [[files]]
 path = "packages/chord/src/next/jobs/records.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited", "cancellable", "concurrent-joined", "detached-owned", "microtask-ordering"]
+evidence = ["test:chord/next/host/jobs_job_end_test.go#TestGCKeepsNothingOfACancelledWaitWhileItsRunStillRuns", "test:chord/next/host/jobs_run_test.go#TestARunGivesEveryWaiterTheOutcomeLateOnesTooAWaitersContextEndsOnlyItsWait", "test:chord/next/host/jobs_persisted_test.go#TestPersistedInvocationsAfterASealAbortJoinsTheResumedInvocationNotTheFirst", "test:chord/next/host/jobs_persisted_test.go#TestPersistedGCSettledRunsCancelledAbortWaitsAndAnEndedObjectWithAHeldChangeAndItsTimerAreCollected", "test:chord/next/host/jobs_persisted_test.go#TestPersistedLoadingAStateDocumentThatFailsToLoadFailsTheActivationTheRetryWithFixedCodeLoadsTheRun", "test:chord/next/host/jobs_persisted_test.go#TestPersistedLoadingALoadThatFailsLosesNothingTheRetryLoadsTheRunsAgainAndCountsTheCrashOnce", "test:chord/next/host/jobs_persisted_test.go#TestPersistedFinishFailuresAreCountedOnTheRecordAcrossACrash", "test:chord/next/host/jobs_persisted_test.go#TestPersistedTheCleanStopAndTheCloseWriterHostCloseWritesTheStoppedRunsBackTheNextStartResumesThemWithoutCounting", "test:chord/next/host/jobs_persisted_test.go#TestPersistedDeferredStateIsStoredByTheCloseWriterAtACleanStopAndAfterWithinMsByTheObjectsTimer", "test:chord/next/host/jobs_job_runs_test.go#TestRunCommitsChangesMadeAfterAnAbortWhileRunStopsAThrowThenEndsAbortedNotThrew", "test:chord/next/host/jobs_persisted_test.go#TestPersistedCrashesAbandonARunCutOffByACrashFinishesFailedAbortedRestartWithoutRun", "test:chord/next/host/jobs_job_test.go#TestJobStartStartsRunAfterTheCommitOutsideTheBatchOnceTheTransactionSettled"]
+rationale = "records.ts outcome / Waiters.wait: A wait registers in a section, then waits on its own channel and the caller's context; the cancelled wait deletes its registration (`Promise.withResolvers` + `removeEventListener`). | records.ts abort (await this.record, await run.over(context)): The mark is a blocking `record`; the join is `Invocation.over`, whose registration is removed when its context ends. | records.ts load (await persisted.load, await #restored, documents.tx(...)): Blocking reads outside sections; what is known of the store and the state documents is installed in sections; a failure drops everything of the load. | records.ts record, flushHeld, writeAtClose (await documents.tx / store.commit, errors swallowed): Blocking; the object's end is not an error of theirs (Pi's `catch {}`): they return nothing. | records.ts void this.#recordOutcome(...) (x4: settled, cut, dispatch aborted, dispatch abandoned): `Loop.Go` tasks joined by `Loop.Wait` at the host's close; the outcome is recorded behind the state changes admitted before it (line order). | records.ts queueMicrotask(() => this.#need(run)): `Loop.Queue`: the run is invoked after the commit, outside the batch, once the transaction settled. | records.ts Date.now() (held deadlines), run-states.ts Date.now() + withinMs, async load() {}: `Loop.Now()` milliseconds (int64); `Infinity` is `math.MaxInt64`; the no-op `load` returns nil. (lane D5a)"
 
 [[files]]
 path = "packages/chord/src/next/jobs/run-states.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["microtask-ordering"]
+evidence = ["test:chord/next/host/jobs_persisted_test.go#TestPersistedDeferredStateIsStoredByTheCloseWriterAtACleanStopAndAfterWithinMsByTheObjectsTimer"]
+rationale = "run-states.ts `Date.now() + withinMs`, `async load() {}`: microtask-ordering (clock): Loop.Now() milliseconds (int64); the no-op load returns at once (lane D5a)."
 
 [[files]]
 path = "packages/chord/src/next/jobs/run.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited", "cancellable"]
+evidence = ["test:chord/next/host/jobs_run_test.go#TestARunGivesEveryWaiterTheOutcomeLateOnesTooAWaitersContextEndsOnlyItsWait"]
+rationale = "run.ts Waiters/Joins (Promise.withResolvers, signal.addEventListener(\"abort\")): Channels settled once under the loop; `context.Cause(ctx)` is `signal.reason`. (lane D5a)"
 
 [[files]]
 path = "packages/chord/src/next/link/channel.ts"
@@ -807,38 +807,38 @@ rationale = "inflateAsync (part.ts:142-154) awaits the stream-based inflate; Abo
 
 [[files]]
 path = "packages/chord/src/next/remote/consumer.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited", "cancellable", "microtask-ordering"]
+evidence = ["test:chord/next/host/remote_consumer_test.go#TestConsumerReferencesOverALink", "test:chord/next/host/remote_consumer_test.go#TestConsumerCallWindow", "test:chord/next/host/remote_consumer_test.go#TestConsumerLimitsPerPart"]
+rationale = "consumer.ts call (Promise.withResolvers, signal.addEventListener(\"abort\", cancel, {once}), signal.throwIfAborted()): `parkedCallResult` (settled once); `context.AfterFunc(ctx, \u2026)` whose callback enters `Loop.Run` and takes the call out of the window; an aborted context is rejected with `context.Cause` before anything is queued. | consumer.ts message(): void \\| Promise<void>, #reply: `(*link.Handling, error)`; a result with a deflated part is handled again after its inflate. (lane D5a)"
 
 [[files]]
 path = "packages/chord/src/next/remote/hold.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited"]
+evidence = ["test:chord/next/host/remote_provider_test.go#TestProviderCallsArrivingOnALink", "test:chord/next/host/remote_provider_test.go#TestProviderOrigins", "test:chord/next/host/host_examples_test.go#TestExample10Drops"]
+rationale = "hold.ts call(): Promise<unknown> (returns object.call(...)): `hold.call` returns `*parkedCallResult` and calls `chordObject.call` inside the section that dispatched the `call` message, so handlers start in message order (a goroutine per call swapped two parked `add` calls). The result settles in a later section. (lane D5a)"
 
 [[files]]
 path = "packages/chord/src/next/remote/host-link.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["detached-owned", "cancellable", "microtask-ordering"]
+evidence = ["test:chord/next/host/remote_consumer_test.go#TestConsumerLimitsPerPart", "test:chord/next/host/remote_host_link_test.go#TestHostLinkPartsCompressionAndLimits", "test:chord/next/host/remote_provider_test.go#TestProviderLimitsPerPart"]
+rationale = "host-link.ts async inflate (await inflateAsync per part; stops when the link closes): `inflate` runs on `Loop.Go` (joined by `Loop.Wait` in the host's close); `link.InflateAsync` gets the link's `closing` context; after each part the closing context is checked; `handle()` runs in `Loop.Run`; the returned `*link.Handling` holds the channel's later messages until it settles. A rejected `handle` rejects the Handling (a protocol error). | host-link.ts message(): void \\| Promise<void>: `(*link.Handling, error)`; the section that handled the message has ended when the Handling is returned. | host-link.ts #closing = new AbortController(): `context.WithCancel`, cancelled in `Closed`. (lane D5a)"
 
 [[files]]
 path = "packages/chord/src/next/remote/provider.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited", "cancellable", "microtask-ordering"]
+evidence = ["test:chord/next/host/remote_provider_test.go#TestProviderCallsArrivingOnALink", "test:chord/next/host/remote_provider_test.go#TestProviderRaces", "test:chord/next/host/host_examples_test.go#TestExample10Drops", "test:chord/next/host/remote_provider_test.go#TestProviderLimitsPerPart"]
+rationale = "provider.ts void this.#run(...) and async #run (await call.hold.call(...), per-call AbortController): `run` starts the handler in the dispatch section; the reply is a `then` reaction (microtask of the host's loop); a cancel, release or `gone` before it removes the call (`p.calls`), so the reaction sends nothing. | provider.ts message(): void \\| Promise<void>, #call returning a promise while arguments inflate: `(*link.Handling, error)` as above; the call is handled again (`hold.call`) inside `handle`. (lane D5a)"
 
 [[files]]
 path = "packages/chord/src/next/remote/remote-object.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited", "cancellable"]
+evidence = ["test:chord/next/host/remote_remote_object_test.go#TestRemoteObjectReHoldsAfterADrop"]
+rationale = "remote-object.ts async call: `call` returns a `parkedCallResult` that adopts the consumer side's result with `then(loop, result.settle)`; an unknown method settles it `invalid/member` at once. No goroutine. | remote-object.ts async pinKey: `pinKey` returns `(pinnedKey, error)`: the rejection is the returned `invalid/member` error. (lane D5a)"
 
 [[files]]
 path = "packages/chord/src/next/state/native-source.ts"

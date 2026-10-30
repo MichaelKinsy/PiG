@@ -869,6 +869,30 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/chord/src/next/host/destination.ts` | `chord/next/host/host_destination.go` | ✅ |
 | `packages/chord/src/next/host/index.ts` | `(barrel: Go imports the package (DESIGN-go-layout.md section 2); what it exports is exported by the files above (Ctx, Facet, FacetHost, Host..., Sleep, UntilAborted, Presence, RefState, RevokedBy, RootOptions, RouteOptions, RoutineDeclarations, Native*, Follow*, GetOptions, HostError, Position; Host, HostOptions, LinkOptions, createHost, Factory, Self, StoreSelf, Held, Reference, RefIn are D5a's))` | n/a |
 | `packages/chord/src/next/host/internal.ts` | `(barrel for jobs/remote: one package, identifiers are unexported where Pi keeps them out of index.ts (DESIGN-go-layout.md sections 1-2))` | n/a |
+| `packages/chord/src/next/host/host.ts` | `chord/next/host/host_host.go, host_error.go` | ✅ |
+| `packages/chord/src/next/host/attempt.ts` | `chord/next/host/host_attempt.go` | ✅ |
+| `packages/chord/src/next/host/object.ts` | `chord/next/host/host_object.go` | ✅ |
+| `packages/chord/src/next/host/reference.ts` | `chord/next/host/host_reference.go` | ✅ |
+| `packages/chord/src/next/jobs/definition.ts` | `chord/next/host/jobs_definition.go` | ✅ |
+| `packages/chord/src/next/jobs/persisted.ts` | `chord/next/host/jobs_persisted.go` | ✅ |
+| `packages/chord/src/next/jobs/records.ts` | `chord/next/host/jobs_records.go` | ✅ |
+| `packages/chord/src/next/jobs/run-states.ts` | `chord/next/host/jobs_run_states.go` | ✅ |
+| `packages/chord/src/next/jobs/run.ts` | `chord/next/host/jobs_run.go` | ✅ |
+| `packages/chord/src/next/jobs/running.ts` | `chord/next/host/jobs_running.go` | ✅ |
+| `packages/chord/src/next/jobs/stored.ts` | `chord/next/host/jobs_stored.go` | ✅ |
+| `packages/chord/src/next/jobs/index.ts` | `(barrel: Go imports the package (DESIGN-go-layout.md section 2); what it exports is exported by the files above: DefineJob, JobAccepts, JobDefinition, JobError, JobOptions, Outcome, JobCtx, JobHandle, JobImplementation, RunState, StartOptions, BlockedReason, Run; RunningEntry is type-level (jobs_running.go))` | n/a |
+| `packages/chord/src/next/jobs/internal.ts` | `(barrel for host/remote: one package, Job, JobRecords, JobContext, Staging, ... are unexported where Pi keeps them out of index.ts (DESIGN-go-layout.md sections 1-2))` | n/a |
+| `packages/chord/src/next/remote/hold.ts` | `chord/next/host/remote_hold.go` | ✅ |
+| `packages/chord/src/next/remote/remote-object.ts` | `chord/next/host/remote_remote_object.go` | ✅ |
+| `packages/chord/src/next/remote/host-link.ts` | `chord/next/host/remote_host_link.go` | ✅ |
+| `packages/chord/src/next/remote/path.ts` | `chord/next/host/remote_path.go` | ✅ |
+| `packages/chord/src/next/remote/calls.ts` | `chord/next/host/remote_calls.go` | ✅ |
+| `packages/chord/src/next/remote/provider.ts` | `chord/next/host/remote_provider.go` | ✅ |
+| `packages/chord/src/next/remote/consumer.ts` | `chord/next/host/remote_consumer.go` | ✅ |
+| `packages/chord/src/next/remote/relay.ts` | `chord/next/host/remote_relay.go` | ✅ |
+| `packages/chord/src/next/remote/replica.ts` | `chord/next/host/remote_replica.go` | ✅ |
+| `packages/chord/src/next/remote/internal.ts` | `(barrel for Chord's own layers: Go imports the package; what it exported (Path, Upstream, HostLink, HoldRequest, actingFor, ...) is unexported in Go (DESIGN-go-layout.md section 2))` | n/a |
+| `packages/chord/src/next/jobs/job.ts` | `chord/next/host/jobs_job.go` | ✅ |
 
 ## `packages/protocol/src/`
 
