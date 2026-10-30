@@ -5755,6 +5755,15 @@
       "rationale": "Production-path review at Pi 1.2.0: Durable code mode (the tool description and system-prompt section), the tool a durable turn runs scripts and model calls through (PiG durable/codemode, durable/toolsearch); hot-path with the sibling packages/durable/test/ rows."
     },
     {
+      "path": "packages/durable/test/codemode-imports.test.ts",
+      "upstreamTestHash": "sha256:2abdc6758279c53d873a8e764d3b06e0bf73ac37e07dfb930832a088df2d7426",
+      "area": "cli",
+      "tags": [
+        "hot-path"
+      ],
+      "rationale": "New or changed durable harness test; area and tags follow the sibling tests under packages/durable/test/ (production-path review pending)."
+    },
+    {
       "path": "packages/durable/test/codemode-models.test.ts",
       "upstreamTestHash": "sha256:f05c7c77d80a627038352c872dc8cf0790fad7cf5a0968575002948f9d563860",
       "area": "tools",
@@ -5827,6 +5836,15 @@
       "rationale": "New in 0.99.1; area and tags follow the sibling tests under packages/durable/test/ until the production-path review."
     },
     {
+      "path": "packages/durable/test/harness-after-run.test.ts",
+      "upstreamTestHash": "sha256:887a7f1a78ea3ebe19c89ac4c8836c6910e7fed18350cdbc73e23d2ca6a84d85",
+      "area": "cli",
+      "tags": [
+        "hot-path"
+      ],
+      "rationale": "New or changed durable harness test; area and tags follow the sibling tests under packages/durable/test/ (production-path review pending)."
+    },
+    {
       "path": "packages/durable/test/harness-blocked.test.ts",
       "upstreamTestHash": "sha256:4b334f8d229d0ba2219b7af6541161ec941ade803219d560ad48cc37e57e14cd",
       "area": "cli",
@@ -5872,6 +5890,15 @@
       "rationale": "New in 0.99.1; area and tags follow the sibling tests under packages/durable/test/ until the production-path review."
     },
     {
+      "path": "packages/durable/test/harness-continue.test.ts",
+      "upstreamTestHash": "sha256:8ed81a038ea0f4cdfccd81ecda6354cad100dfa9cd0bded8170b8a4496824cf1",
+      "area": "cli",
+      "tags": [
+        "hot-path"
+      ],
+      "rationale": "New or changed durable harness test; area and tags follow the sibling tests under packages/durable/test/ (production-path review pending)."
+    },
+    {
       "path": "packages/durable/test/harness-conversations.test.ts",
       "upstreamTestHash": "sha256:9de21114fcad5d101a8d3e42e7b516c507338356b8d2e95ec965af827a893b81",
       "area": "cli",
@@ -5915,6 +5942,15 @@
         "hot-path"
       ],
       "rationale": "New in 0.99.1; area and tags follow the sibling tests under packages/durable/test/ until the production-path review."
+    },
+    {
+      "path": "packages/durable/test/harness-hook-reads.test.ts",
+      "upstreamTestHash": "sha256:d04265c97672ba7fde44d525a7195821a090b7156bb44210696760af9deec07b",
+      "area": "cli",
+      "tags": [
+        "hot-path"
+      ],
+      "rationale": "New or changed durable harness test; area and tags follow the sibling tests under packages/durable/test/ (production-path review pending)."
     },
     {
       "path": "packages/durable/test/harness-host-inputs.test.ts",
@@ -6112,7 +6148,12 @@
       "tags": [
         "hot-path"
       ],
-      "rationale": "New with the Durable 1.1.0 line; area and tags follow the sibling tests under packages/durable/test/ until the production-path review."
+      "rationale": "New with the Durable 1.1.0 line; area and tags follow the sibling tests under packages/durable/test/ until the production-path review. Designed-out cases (JS promise/thenable mechanics; owner approval pending, not approved): [listener and report errors \u203a reports a listener or onReport whose promise rejects, without an unhandled rejection] Go callbacks (SubscribeCommits/OnReport listeners) return no promise, so there is no rejection to observe; a Go listener's failure is a panic, which session.Contained recovers and reports once: asserted by harness TestListenerAndReportErrors 'reports a throwing commit or close listener and runs the others; the commit stands' and TestSafeNow [listener and report errors \u203a contains a fulfilled thenable that calls only its fulfillment handler] Go has no thenables: every listener is a plain func run inside session.Contained, which recovers its panic (TestListenerAndReportErrors 'reports a throwing commit or close listener...') [listener and report errors \u203a contains a rejected promise from another realm] Go has no promises or node:vm realms; a panic in a listener from any goroutine/package is recovered by the same session.Contained path (TestListenerAndReportErrors 'reports a throwing commit or close listener...')",
+      "designedOutCases": [
+        "listener and report errors \u203a reports a listener or onReport whose promise rejects, without an unhandled rejection",
+        "listener and report errors \u203a contains a fulfilled thenable that calls only its fulfillment handler",
+        "listener and report errors \u203a contains a rejected promise from another realm"
+      ]
     },
     {
       "path": "packages/durable/test/harness-structured-output.test.ts",
@@ -6140,6 +6181,15 @@
         "hot-path"
       ],
       "rationale": "New in 0.99.1; area and tags follow the sibling tests under packages/durable/test/ until the production-path review."
+    },
+    {
+      "path": "packages/durable/test/harness-submit-in-commit.test.ts",
+      "upstreamTestHash": "sha256:d2e281a68dc8cfe7799d5764f6dc2ede789fb38f7a7991762792c044cd717d31",
+      "area": "cli",
+      "tags": [
+        "hot-path"
+      ],
+      "rationale": "New or changed durable harness test; area and tags follow the sibling tests under packages/durable/test/ (production-path review pending)."
     },
     {
       "path": "packages/durable/test/harness-task-graph.test.ts",
@@ -6184,7 +6234,19 @@
       "tags": [
         "hot-path"
       ],
-      "rationale": "Telemetry recording, propagation, storage, or rendering (Pi 2ec55d80 and d9025a5f). SCRUTINIZED:approved by the owner (2026-10-20) \u2014 Durable telemetry: only the async-listener case (:899) is designed out: Go commit listeners (SubscribeCommits) return no value, so a Promise-returning listener has no Go form. Re-review pending: the upstream test changed in Pi e7a0df27 and its mapping entry was regenerated as pending."
+      "rationale": "Telemetry recording, propagation, storage, or rendering (Pi 2ec55d80 and d9025a5f). SCRUTINIZED:approved by the owner (2026-10-20) \u2014 Durable telemetry: only the async-listener case (:899) is designed out: Go commit listeners (SubscribeCommits) return no value, so a Promise-returning listener has no Go form.",
+      "designedOutCases": [
+        "Durable telemetry \u203a preserves async listener error containment and report counting"
+      ]
+    },
+    {
+      "path": "packages/durable/test/harness-tool-hooks.test.ts",
+      "upstreamTestHash": "sha256:12668d785c9ce1cf263fdac4912914500e772a47d33593db126cd7ae619591e6",
+      "area": "cli",
+      "tags": [
+        "hot-path"
+      ],
+      "rationale": "New or changed durable harness test; area and tags follow the sibling tests under packages/durable/test/ (production-path review pending)."
     },
     {
       "path": "packages/durable/test/harness-tools-recovery.test.ts",
@@ -6203,6 +6265,15 @@
         "hot-path"
       ],
       "rationale": "New in 0.99.1; area and tags follow the sibling tests under packages/durable/test/ until the production-path review."
+    },
+    {
+      "path": "packages/durable/test/harness-turn-limit.test.ts",
+      "upstreamTestHash": "sha256:5dcefe326f589ebd90732a756ed7a7648060a6c3168f46ca9c4bf47f8481868e",
+      "area": "cli",
+      "tags": [
+        "hot-path"
+      ],
+      "rationale": "New or changed durable harness test; area and tags follow the sibling tests under packages/durable/test/ (production-path review pending)."
     },
     {
       "path": "packages/durable/test/harness-view-run.test.ts",

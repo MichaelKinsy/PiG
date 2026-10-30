@@ -7835,8 +7835,12 @@
     },
     {
       "path": "packages/durable/test/codemode-imports.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:2abdc6758279c53d873a8e764d3b06e0bf73ac37e07dfb930832a088df2d7426"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:2abdc6758279c53d873a8e764d3b06e0bf73ac37e07dfb930832a088df2d7426",
+      "evidence": [
+        "durable/codemode/imports_test.go"
+      ],
+      "rationale": "All 1 upstream cases run in the evidence files (lane C)."
     },
     {
       "path": "packages/durable/test/codemode-models.test.ts",
@@ -7849,13 +7853,26 @@
     },
     {
       "path": "packages/durable/test/codemode.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:667a48093efb522682a54824929bd79d0bc196870127a416b1a67537458375ca"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:667a48093efb522682a54824929bd79d0bc196870127a416b1a67537458375ca",
+      "evidence": [
+        "durable/codemode/codemode_test.go",
+        "durable/codemode/codemode_test.go#TestDurableCodeMode",
+        "durable/codemode/output_tool_test.go#TestDurableCodeModeOutputAndToolSearch"
+      ],
+      "rationale": "All 41 upstream cases run in the evidence files (lane C)."
     },
     {
       "path": "packages/durable/test/conversation-transcript.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:775ef73de2f397ffc2fea610e24afbdb18572982d3c549893f05dddd7826b621"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:775ef73de2f397ffc2fea610e24afbdb18572982d3c549893f05dddd7826b621",
+      "evidence": [
+        "durable/harness/conversation_transcript_test.go",
+        "durable/harness/conversation_transcript_test.go#TestConversationTranscript",
+        "durable/harness/conversation_transcript_test.go#TestConversationTranscriptLoads",
+        "durable/harness/conversation_transcript_test.go#TestConversationTranscriptOverAHarness"
+      ],
+      "rationale": "All 16 upstream cases run in the evidence files (lane C)."
     },
     {
       "path": "packages/durable/test/env-line-scan.test.ts",
@@ -7908,13 +7925,23 @@
     },
     {
       "path": "packages/durable/test/harness-after-run.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:887a7f1a78ea3ebe19c89ac4c8836c6910e7fed18350cdbc73e23d2ca6a84d85"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:887a7f1a78ea3ebe19c89ac4c8836c6910e7fed18350cdbc73e23d2ca6a84d85",
+      "evidence": [
+        "durable/harness/harness_after_run_test.go"
+      ],
+      "rationale": "All 29 upstream cases run in the evidence files (lane C)."
     },
     {
       "path": "packages/durable/test/harness-blocked.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:4b334f8d229d0ba2219b7af6541161ec941ade803219d560ad48cc37e57e14cd"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:4b334f8d229d0ba2219b7af6541161ec941ade803219d560ad48cc37e57e14cd",
+      "evidence": [
+        "durable/harness/harness_blocked_test.go",
+        "durable/core/driver/harness_blocked_core_test.go#TestBlockedTasks",
+        "durable/harness/harness_blocked_test.go#TestBlockedTasksOnTheReference"
+      ],
+      "rationale": "All 12 upstream cases run in the evidence files (lane C)."
     },
     {
       "path": "packages/durable/test/harness-callers.test.ts",
@@ -7942,8 +7969,17 @@
     },
     {
       "path": "packages/durable/test/harness-compaction.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:e636f6208791332942ab04246184ca14af140c375de756e69f422126c4c8fa82"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:e636f6208791332942ab04246184ca14af140c375de756e69f422126c4c8fa82",
+      "evidence": [
+        "durable/harness/harness_compaction_test.go",
+        "durable/harness/harness_compaction_test.go#TestManualCompaction",
+        "durable/core/driver/compaction_failure_core_test.go#TestCoreACompactionFailureIsVisibleUntilASummaryIsProduced",
+        "durable/harness/harness_compaction_test.go#TestCompactionOutcomes",
+        "durable/harness/harness_compaction_test.go#TestCompactionRecovery",
+        "durable/harness/harness_compaction_test.go#TestBackgroundThresholdCompaction"
+      ],
+      "rationale": "All 98 upstream cases run in the evidence files (lane C)."
     },
     {
       "path": "packages/durable/test/harness-context.test.ts",
@@ -7961,8 +7997,12 @@
     },
     {
       "path": "packages/durable/test/harness-continue.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:8ed81a038ea0f4cdfccd81ecda6354cad100dfa9cd0bded8170b8a4496824cf1"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:8ed81a038ea0f4cdfccd81ecda6354cad100dfa9cd0bded8170b8a4496824cf1",
+      "evidence": [
+        "durable/harness/harness_continue_test.go"
+      ],
+      "rationale": "All 13 upstream cases run in the evidence files (lane C)."
     },
     {
       "path": "packages/durable/test/harness-conversations.test.ts",
@@ -7989,8 +8029,17 @@
     },
     {
       "path": "packages/durable/test/harness-deferred-progress.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:c0c1aa38ec884f479f13e383caa30731224b2abb24b8a94962745d3c5a796dda"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:c0c1aa38ec884f479f13e383caa30731224b2abb24b8a94962745d3c5a796dda",
+      "evidence": [
+        "durable/harness/harness_deferred_progress_upstream_test.go",
+        "durable/core/driver/harness_restart_failure_core_test.go#TestCoreDeferredGenerationPartialsAfterACrash",
+        "durable/core/driver/harness_restart_failure_core_test.go#TestCoreDeferredToolOutputIsNotProgress",
+        "durable/harness/harness_deferred_progress_upstream_test.go#TestDeferredGenerationPartials",
+        "durable/harness/harness_deferred_progress_upstream_test.go#TestDeferredToolOutput",
+        "durable/harness/harness_deferred_progress_upstream_test.go#TestReadingPiLiveInACommitStoresTheHeldPartial"
+      ],
+      "rationale": "All 11 upstream cases run in the evidence files (lane C)."
     },
     {
       "path": "packages/durable/test/harness-failed-run-inbox.test.ts",
@@ -8003,18 +8052,34 @@
     },
     {
       "path": "packages/durable/test/harness-generation-recovery.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:3af8f443ad4e08b3907e5150fe1f21333142653825464eed8f285a73366cba46"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:3af8f443ad4e08b3907e5150fe1f21333142653825464eed8f285a73366cba46",
+      "evidence": [
+        "durable/harness/harness_generation_recovery_test.go",
+        "durable/harness/harness_generation_recovery_test.go#TestGenerationRecovery"
+      ],
+      "rationale": "All 9 upstream cases run in the evidence files (lane C)."
     },
     {
       "path": "packages/durable/test/harness-generation.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:0c88bca32e91338f4a342a2a2f16c12b7fd55109c59941b0a9de291e29d6e2af"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:0c88bca32e91338f4a342a2a2f16c12b7fd55109c59941b0a9de291e29d6e2af",
+      "evidence": [
+        "durable/harness/harness_generation_test.go",
+        "durable/harness/harness_generation_recovery_test.go",
+        "durable/harness/harness_generation_test.go#TestGeneration",
+        "durable/harness/harness_run_failure_test.go#TestRunFailure"
+      ],
+      "rationale": "All 26 upstream cases run in the evidence files (lane C)."
     },
     {
       "path": "packages/durable/test/harness-hook-reads.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:d04265c97672ba7fde44d525a7195821a090b7156bb44210696760af9deec07b"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:d04265c97672ba7fde44d525a7195821a090b7156bb44210696760af9deec07b",
+      "evidence": [
+        "durable/harness/harness_hook_reads_test.go"
+      ],
+      "rationale": "All 2 upstream cases run in the evidence files (lane C)."
     },
     {
       "path": "packages/durable/test/harness-host-inputs.test.ts",
@@ -8027,18 +8092,37 @@
     },
     {
       "path": "packages/durable/test/harness-inbox.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:ca2884a8f7dac42e0bea8492dd34bb0942dfd0ceaa493d22962347c039f92c62"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:ca2884a8f7dac42e0bea8492dd34bb0942dfd0ceaa493d22962347c039f92c62",
+      "evidence": [
+        "durable/harness/harness_inbox_test.go",
+        "durable/harness/harness_inbox_test.go#TestInbox",
+        "durable/harness/harness_inbox_test.go#TestUsage",
+        "durable/harness/harness_inbox_test.go#func queuedNote"
+      ],
+      "rationale": "All 37 upstream cases run in the evidence files (lane C)."
     },
     {
       "path": "packages/durable/test/harness-input-entries.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:c1cbec807cec25b100c544eb75f5ae97bf3ec0b563e95d8de9993fe7a2d7e87d"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:c1cbec807cec25b100c544eb75f5ae97bf3ec0b563e95d8de9993fe7a2d7e87d",
+      "evidence": [
+        "durable/harness/harness_input_entries_test.go",
+        "durable/harness/harness_input_entries_test.go#TestInputEntries",
+        "durable/harness/harness_input_entries_test.go#TestDataOnlyWrites",
+        "durable/core/inbox/inbox_test.go#TestAQueuedInputCarriesItsEntryAndABoundaryPlacesItAsThatEntry"
+      ],
+      "rationale": "All 11 upstream cases run in the evidence files (lane C)."
     },
     {
       "path": "packages/durable/test/harness-inspect.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:685d8063e16b24310d3270d174803368e4d62bcbbcbf91e308e455fc41e28b90"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:685d8063e16b24310d3270d174803368e4d62bcbbcbf91e308e455fc41e28b90",
+      "evidence": [
+        "durable/harness/harness_inspect_test.go",
+        "durable/harness/harness_inspect_test.go#TestHarnessInspect"
+      ],
+      "rationale": "All 2 upstream cases run in the evidence files (lane C)."
     },
     {
       "path": "packages/durable/test/harness-json.test.ts",
@@ -8051,33 +8135,73 @@
     },
     {
       "path": "packages/durable/test/harness-lifecycle.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:9966a51dc5f85703cb9972786c4c06fd049bcbeaa8268103df6885b49f4eeed4"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:9966a51dc5f85703cb9972786c4c06fd049bcbeaa8268103df6885b49f4eeed4",
+      "evidence": [
+        "durable/harness/harness_lifecycle_test.go",
+        "durable/core/driver/harness_lifecycle_core_test.go#TestCoreHarnessCloseJoinsATaskHandlerThatIgnoresItsSignal",
+        "durable/core/driver/harness_lifecycle_core_test.go#TestCoreHarnessCloseJoinsAToolAndAHookThatIgnoreTheirSignal",
+        "durable/harness/harness_lifecycle_test.go#TestHarnessClose",
+        "durable/harness/harness_lifecycle_test.go#TestHarnessOpen",
+        "durable/harness/harness_lifecycle_test.go#TestRegistryChangesBeforeResume",
+        "durable/harness/harness_lifecycle_test.go#TestSchedulingOnAPausedHarness"
+      ],
+      "rationale": "All 14 upstream cases run in the evidence files (lane C)."
     },
     {
       "path": "packages/durable/test/harness-live-deltas.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:80386749a7dfe46deb0b6862bb6c1fb88b2cca4d4400bdc480e7d850959bbad7"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:80386749a7dfe46deb0b6862bb6c1fb88b2cca4d4400bdc480e7d850959bbad7",
+      "evidence": [
+        "durable/harness/harness_live_deltas_test.go",
+        "durable/harness/harness_live_deltas_test.go#TestLiveDeltas"
+      ],
+      "rationale": "All 11 upstream cases run in the evidence files (lane C)."
     },
     {
       "path": "packages/durable/test/harness-nested-tools-restart.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:06762903976feb0e8f9dfd9cea4cdbca8292e459025c9b067dffd156b13c72e3"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:06762903976feb0e8f9dfd9cea4cdbca8292e459025c9b067dffd156b13c72e3",
+      "evidence": [
+        "durable/harness/tool_nested_restart_test.go#TestANestedCallAnEarlierAttemptLeftRunningAndTheRerunNeverMadeAgainIsAborted",
+        "durable/core/driver/tool_nested_restart_core_test.go#TestCoreAbandonedNestedCallsAfterARestartSettleInterruptedOrAbandoned",
+        "durable/harness/tool_nested_records_test.go#TestNestedCallsAndChildTasksOfACallerThatNeverResumesAreAbandonedOnRestart"
+      ],
+      "rationale": "All 11 upstream cases run in the evidence files (lane C)."
     },
     {
       "path": "packages/durable/test/harness-nested-tools.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:ac01ebc37ed46f7907801b74857fa6036fe6ea23a5f5944f5744dbe8563a703a"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:ac01ebc37ed46f7907801b74857fa6036fe6ea23a5f5944f5744dbe8563a703a",
+      "evidence": [
+        "durable/harness/tool_nested_test.go#TestARunningNestedCallIsAbortedWhenItsCallerThrows",
+        "durable/core/driver/harness_nested_core_test.go#TestCoreNestedCallsAreListedInTheViewWithTheirParent",
+        "durable/harness/tool_nested_records_test.go#TestARunningNestedCallSlotKeepsPiMemberOrder"
+      ],
+      "rationale": "All 35 upstream cases run in the evidence files (lane C)."
     },
     {
       "path": "packages/durable/test/harness-observers.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:c8b376851540438d54f27f413898d741d60b035bc3a2d4af0e50cd6834dc3480"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:c8b376851540438d54f27f413898d741d60b035bc3a2d4af0e50cd6834dc3480",
+      "evidence": [
+        "durable/harness/harness_observers_test.go",
+        "durable/harness/harness_observers_test.go#TestObserveConversationAndObserveTaskGraph"
+      ],
+      "rationale": "All 15 upstream cases run in the evidence files (lane C)."
     },
     {
       "path": "packages/durable/test/harness-ownership.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:d479f9fd6337004e47a5127e52e2002944b292e3ae4692c53e636d5e005d8747"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:d479f9fd6337004e47a5127e52e2002944b292e3ae4692c53e636d5e005d8747",
+      "evidence": [
+        "durable/harness/harness_ownership_test.go",
+        "durable/harness/harness_ownership_ended_test.go",
+        "durable/harness/harness_ownership_tools_test.go",
+        "durable/harness/harness_ownership_tools_test.go#TestOwnedConversationsFromTools",
+        "durable/harness/harness_ownership_test.go#TestOwnership"
+      ],
+      "rationale": "All 37 upstream cases run in the evidence files (lane C)."
     },
     {
       "path": "packages/durable/test/harness-partial-changes.test.ts",
@@ -8107,8 +8231,13 @@
     },
     {
       "path": "packages/durable/test/harness-read-only.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:ab194b95e69f2855c837d0efffbb10ddf69a7054b284dfa31f301047590a8eaf"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:ab194b95e69f2855c837d0efffbb10ddf69a7054b284dfa31f301047590a8eaf",
+      "evidence": [
+        "durable/harness/harness_read_only_test.go",
+        "durable/harness/harness_read_only_test.go#TestReadOnlyHarness"
+      ],
+      "rationale": "All 4 upstream cases run in the evidence files (lane C)."
     },
     {
       "path": "packages/durable/test/harness-registry-reader.test.ts",
@@ -8131,18 +8260,39 @@
     },
     {
       "path": "packages/durable/test/harness-reports.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:dff2a3965f2c320c52a81a3a4ba9606571dcb20ebba73cf44186925229d9b362"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:dff2a3965f2c320c52a81a3a4ba9606571dcb20ebba73cf44186925229d9b362",
+      "evidence": [
+        "durable/harness/harness_reports_test.go",
+        "durable/core/driver/harness_reports_core_test.go#TestReports",
+        "durable/harness/harness_reports_test.go#TestAFailedSessionIsReportedAsSessionFailed"
+      ],
+      "rationale": "All 4 upstream cases run in the evidence files (lane C)."
     },
     {
       "path": "packages/durable/test/harness-restart-failure.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:b3728b374242b3ae3baa1d8fdc9f491982edfd2fba594c9cb31c7f06bd7c1b5f"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:b3728b374242b3ae3baa1d8fdc9f491982edfd2fba594c9cb31c7f06bd7c1b5f",
+      "evidence": [
+        "durable/harness/harness_restart_failure_test.go",
+        "durable/core/driver/harness_restart_failure_core_test.go#TestCoreAGenerationInterruptedWhileTheModelAnswers",
+        "durable/core/driver/harness_restart_failure_core_test.go#TestCoreOtherTasksCutOffRestartLimitTimesInARow",
+        "durable/core/driver/harness_restart_failure_core_test.go#TestCoreCrashEdges",
+        "durable/core/driver/harness_restart_failure_core_test.go#TestCoreReportsOfWorkCrashesEnded",
+        "durable/core/driver/harness_restart_failure_core_test.go#TestCoreTheRestartLimitOnTheNormalPath",
+        "durable/harness/harness_restart_failure_test.go#TestTheRestartLimitOnTheNormalPath"
+      ],
+      "rationale": "All 18 upstream cases run in the evidence files (lane C)."
     },
     {
       "path": "packages/durable/test/harness-run-failure.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:e98593bf231696af77f76774cf9db708abd4cf3668cf39227d618c91289e3186"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:e98593bf231696af77f76774cf9db708abd4cf3668cf39227d618c91289e3186",
+      "evidence": [
+        "durable/harness/harness_run_failure_test.go",
+        "durable/harness/harness_run_failure_test.go#TestRunFailure"
+      ],
+      "rationale": "All 5 upstream cases run in the evidence files (lane C)."
     },
     {
       "path": "packages/durable/test/harness-scheduler-indexes.test.ts",
@@ -8159,8 +8309,16 @@
     },
     {
       "path": "packages/durable/test/harness-scheduler-retention.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:ca3ea7f81236bb901312cdcfed091a4b5d198dd3098f51c2f480dee857f21b0e"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:ca3ea7f81236bb901312cdcfed091a4b5d198dd3098f51c2f480dee857f21b0e",
+      "evidence": [
+        "durable/harness/scheduler_retention_test.go#TestSchedulerRetention",
+        "durable/harness/scheduler_retention_chains_test.go#TestSchedulerRetentionBelowAForgottenConversation",
+        "durable/harness/scheduler_retention_test.go#holds a live owner for work later created in a forgotten conversation, loading its chain again",
+        "durable/harness/scheduler_retention_test.go#does not scan queued submissions for an input when nothing cancels",
+        "durable/harness/scheduler_retention_test.go#lets a task wait on a forgotten ended owner"
+      ],
+      "rationale": "All 14 upstream cases run in the evidence files (lane C)."
     },
     {
       "path": "packages/durable/test/harness-sleep.test.ts",
@@ -8173,43 +8331,136 @@
     },
     {
       "path": "packages/durable/test/harness-storage-failure.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:c4c3e3e3440d2c1e1b1970aa22e37c630c39e97bd02ed184dc3a51a37704a58a"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:c4c3e3e3440d2c1e1b1970aa22e37c630c39e97bd02ed184dc3a51a37704a58a",
+      "evidence": [
+        "durable/harness/harness_storage_failure_test.go",
+        "durable/harness/harness_storage_failure_test.go#TestAFailedStorageCall",
+        "durable/core/driver/listener_reports_core_test.go#TestCoreReportsAFailingWatchListenerAndEndsTheWatch"
+      ],
+      "rationale": "All 21 upstream cases run in the evidence files (lane C); 3 type-level cases are designed out.",
+      "designedOutCases": [
+        "listener and report errors › reports a listener or onReport whose promise rejects, without an unhandled rejection",
+        "listener and report errors › contains a fulfilled thenable that calls only its fulfillment handler",
+        "listener and report errors › contains a rejected promise from another realm"
+      ]
     },
     {
       "path": "packages/durable/test/harness-structured-output.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:981186aeb7755ef5feead64e3637a2367a8b68d55df77ad64042306a2a4f2557"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:981186aeb7755ef5feead64e3637a2367a8b68d55df77ad64042306a2a4f2557",
+      "evidence": [
+        "durable/harness/tool_nested_records_test.go#TestANestedCallsBrokenStructuredOutputIsAnErrorResult",
+        "durable/core/driver/tool_structured_callers_core_test.go#TestCoreCallersGetASchemaToolsValidatedStructuredOutput"
+      ],
+      "rationale": "All 10 upstream cases run in the evidence files (lane C)."
     },
     {
       "path": "packages/durable/test/harness-structured.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:60705c17557ad75d75ac5b378575476c88300980662a180d81365c79ce3f685f"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:60705c17557ad75d75ac5b378575476c88300980662a180d81365c79ce3f685f",
+      "evidence": [
+        "durable/harness/harness_structured_test.go",
+        "durable/harness/harness_structured_test.go#TestTaskOwnership",
+        "durable/harness/harness_structured_test.go#TestWaiting",
+        "durable/harness/harness_structured_test.go#TestCompleting",
+        "durable/core/driver/tool_structured_callers_core_test.go#TestCoreShowsAToolCallsSlotFromPendingThroughItsRunningOutputToItsResultEntry"
+      ],
+      "rationale": "All 56 upstream cases run in the evidence files (lane C)."
     },
     {
       "path": "packages/durable/test/harness-submissions.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:2e17390334de32c04fc2244427fc9dc6fefbb89a58d840cb7bd966857f2b6e09"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:2e17390334de32c04fc2244427fc9dc6fefbb89a58d840cb7bd966857f2b6e09",
+      "evidence": [
+        "durable/harness/harness_submissions_test.go",
+        "durable/harness/harness_submissions_test.go#TestSubmissions"
+      ],
+      "rationale": "All 11 upstream cases run in the evidence files (lane C)."
     },
     {
       "path": "packages/durable/test/harness-submit-in-commit.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:d2e281a68dc8cfe7799d5764f6dc2ede789fb38f7a7991762792c044cd717d31"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:d2e281a68dc8cfe7799d5764f6dc2ede789fb38f7a7991762792c044cd717d31",
+      "evidence": [
+        "durable/harness/harness_submit_in_commit_test.go"
+      ],
+      "rationale": "All 23 upstream cases run in the evidence files (lane C)."
     },
     {
       "path": "packages/durable/test/harness-task-graph.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:add260b22476cf10db182c05b768f9f89c0ca1ffd0679598cad32ef40a17b8c1"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:add260b22476cf10db182c05b768f9f89c0ca1ffd0679598cad32ef40a17b8c1",
+      "evidence": [
+        "durable/harness/harness_task_graph_test.go",
+        "durable/harness/harness_task_graph_test.go#TestTaskGraphView"
+      ],
+      "rationale": "All 6 upstream cases run in the evidence files (lane C)."
     },
     {
       "path": "packages/durable/test/harness-tasks-recovery.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:2054cf93822a42a8cbcf2b08745d763d336f18399875db94505048f29a5baec7"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:2054cf93822a42a8cbcf2b08745d763d336f18399875db94505048f29a5baec7",
+      "evidence": [
+        "durable/harness/harness_tasks_recovery_test.go",
+        "durable/harness/harness_tasks_recovery_test.go#TestTaskRecovery",
+        "durable/harness/harness_tasks_times_test.go#TestTaskTimes"
+      ],
+      "rationale": "All 25 upstream cases run in the evidence files (lane C)."
     },
     {
       "path": "packages/durable/test/harness-tasks.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:069ff1217d0ed1a7befabf3bc6f2ad4cc4f9a55feb163f185df54472206b6e2b"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:069ff1217d0ed1a7befabf3bc6f2ad4cc4f9a55feb163f185df54472206b6e2b",
+      "evidence": [
+        "durable/harness/harness_tasks_test.go",
+        "durable/harness/harness_tasks_recovery_test.go",
+        "durable/harness/harness_tasks_scheduling_test.go",
+        "durable/harness/harness_tasks_times_test.go",
+        "durable/core/driver/fault_tasks_core_test.go#TestCoreFaultCloseStopsWithoutOutcomesAndStartsNoFreshPhaseOrAbortInvocation",
+        "durable/core/driver/fault_tasks_core_test.go#TestCoreFaultJoinsAReservationThatSettlesWhileClosingWithoutStartingItsHandler",
+        "durable/core/driver/fault_tasks_core_test.go#TestCoreFaultLetsAnAbortMarkWinOverAFaultThatRacesIt",
+        "durable/core/driver/fault_tasks_core_test.go#TestCoreFaultNeverStartsPhaseOneWhenTheAbortLandsWhileTheReservationSettles",
+        "durable/core/driver/fault_tasks_core_test.go#TestCoreFaultOrdersRuntimeCommitsAgainstTheStep",
+        "durable/core/driver/fault_tasks_core_test.go#TestCoreFaultRejectsARuntimeCommitQueuedOnTheLineWhenCloseSealedIt",
+        "durable/core/driver/fault_tasks_core_test.go#TestCoreFaultStartsNoAbortHandlerWhoseReservationSettlesWhileClosing",
+        "durable/core/driver/fault_tasks_core_test.go#TestCoreFaultWritesNoFaultWhenCloseSealsWhileTheStepAfterAFailedPhaseIsQueued",
+        "durable/core/driver/harness_tasks_core_test.go#TestCoreAbortingATaskSignalsItsPhaseAndRunsItsAbortHandler",
+        "durable/core/driver/harness_tasks_core_test.go#TestCoreRegistrySnapshotToolsPairEachToolWithItsExtensionInInstallOrder",
+        "durable/core/driver/harness_tasks_core_test.go#TestCoreTaskAbortSignalsAndJoinsTheRunBeforeReturning",
+        "durable/core/driver/harness_tasks_core_test.go#TestCoreTaskAbortsWaitingWorkAndFaultsAbortHandlersThatThrowOrSettleNothing",
+        "durable/core/driver/harness_tasks_core_test.go#TestCoreTaskFaultsAPhaseWithoutDurableProgressAndAThrowingPhase",
+        "durable/core/driver/harness_tasks_core_test.go#TestCoreTaskKeepsACommittedTerminalOutcomeWhenTheHandlerThrowsAfterwards",
+        "durable/core/driver/harness_tasks_core_test.go#TestCoreTaskKeepsOneRegistrySnapshotPerPhase",
+        "durable/core/driver/harness_tasks_core_test.go#TestCoreTaskRejectsRuntimeOperationsAfterTheInvocationEndsAndStopsItsWatches",
+        "durable/core/driver/harness_tasks_core_test.go#TestCoreTaskRejectsTheRunsCommitsAndMemoWritesAfterTheMark",
+        "durable/core/driver/harness_tasks_core_test.go#TestCoreTaskResolvesTheAgentAtFirstUseKeepsItForThePhaseAndAnewAtTheNext",
+        "durable/core/driver/harness_tasks_core_test.go#TestCoreTaskRunsPhasesOfOneInvocationOnOneRuntime",
+        "durable/core/driver/harness_tasks_core_test.go#TestCoreTaskStartsNoFurtherPhaseAfterAMarkDuringAPhaseWithProgress",
+        "durable/core/driver/harness_tasks_more_core_test.go#TestCoreTaskDoesNotSignalARunningAbortHandlerWhenAbortedAgainAndACancelledCallerLeavesTheMarkDurable",
+        "durable/core/driver/harness_tasks_more_core_test.go#TestCoreTaskKeepsATerminalOutcomeCommittedByAnAbortHandlerThatThrowsAfterwards",
+        "durable/core/driver/harness_tasks_more_core_test.go#TestCoreTaskRejectsACancelledWaitWithItsReasonAndPendingWaitsOnClose",
+        "durable/core/driver/harness_tasks_more_core_test.go#TestCoreTaskRejectsUnknownTasksAndReportsTerminalOnes",
+        "durable/core/driver/harness_tasks_more_core_test.go#TestCoreTaskResumesAWaitingTaskOnceEveryTaskInOnIsTerminalWhateverTheOutcome",
+        "durable/core/driver/harness_tasks_more_core_test.go#TestCoreTaskStampsStartedAtAndEndedAtKeepingStartedAtThroughAWait",
+        "durable/core/driver/harness_tasks_port2_core_test.go#TestCoreCloseSealsAdmissionBeforeSignallingHandlersAndStopsWatchesBeforeJoiningThem",
+        "durable/core/driver/harness_tasks_port2_core_test.go#TestCoreConversationContextDecodesItsMessages",
+        "durable/core/driver/harness_tasks_port2_core_test.go#TestCoreTaskCommitsResultsWithEntriesKeepsMemosUntilTerminalAndRetiresDocuments",
+        "durable/core/driver/harness_tasks_port2_core_test.go#TestCoreTaskComparesCheckpointsByValueIncludingArrays",
+        "durable/core/driver/harness_tasks_port2_core_test.go#TestCoreTaskObservesAFailedAgentResolutionWhoseOnlyCallerStoppedWaiting",
+        "durable/core/driver/harness_tasks_port2_core_test.go#TestCoreTaskReadsCommittedDocumentsAndContextThroughTheRuntimeAndForwardsClockAndReports",
+        "durable/core/driver/harness_tasks_port2_core_test.go#TestCoreTaskRejectsAnAgentWaitWhoseCallerIsCancelledWithoutAffectingTheResolution",
+        "durable/core/driver/harness_tasks_port2_core_test.go#TestCoreTaskScanPagesTheNewestFirst",
+        "durable/core/driver/harness_tasks_port2_core_test.go#TestCoreWaitForIdleCountsBlockedWorkAndIgnoresBackgroundTasks",
+        "durable/harness/harness_tasks_scheduling_test.go#TestTaskAbort",
+        "durable/harness/harness_tasks_scheduling_test.go#TestTaskClose",
+        "durable/harness/harness_tasks_scheduling_test.go#TestTaskCloseSignalsHandlersOnlyAfterEveryCloseListenerRan",
+        "durable/harness/harness_tasks_scheduling_test.go#TestTaskRuntime",
+        "durable/harness/harness_tasks_scheduling_test.go#TestTaskScanPagesTheNewestFirst",
+        "durable/harness/harness_tasks_scheduling_test.go#TestTaskScheduling",
+        "durable/harness/harness_tasks_test.go#TestTaskPhases"
+      ],
+      "rationale": "All 47 upstream cases run in the evidence files (lane C)."
     },
     {
       "path": "packages/durable/test/harness-telemetry-options.test.ts",
@@ -8222,13 +8473,52 @@
     },
     {
       "path": "packages/durable/test/harness-telemetry.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:1c7d6b87bf1c904405958fa102cce6fba55264e1fe1803da481dd094631ffa4d"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:1c7d6b87bf1c904405958fa102cce6fba55264e1fe1803da481dd094631ffa4d",
+      "evidence": [
+        "durable/harness/harness_telemetry_test.go",
+        "durable/harness/harness_telemetry_admission_test.go",
+        "durable/harness/harness_telemetry_events_test.go",
+        "durable/harness/harness_telemetry_options_test.go",
+        "durable/harness/harness_telemetry_support_test.go",
+        "durable/harness/harness_telemetry_test.go#TestDurableTelemetryRecordsContentFreeSubmitAndPhaseSpans",
+        "durable/harness/harness_telemetry_test.go#TestDurableTelemetryRecordsAttributesInPisKeyOrder",
+        "durable/harness/harness_telemetry_admission_test.go#TestDurableTelemetryReturnsAdmissionResultsWithoutRereadingRecordsOrProbingRootLinkTargets",
+        "durable/harness/harness_telemetry_admission_test.go#TestDurableTelemetryInheritsOmittedOrUndefinedTaskTracesAndStoresNoCarrierForAnExplicitRoot",
+        "durable/harness/harness_telemetry_admission_test.go#TestDurableTelemetryRecordsCheckpointsOnlyWhenTheRunningPhaseChanges",
+        "durable/harness/harness_telemetry_admission_test.go#TestDurableTelemetryStartsEachQueuedInputsRunInItsAdmissionTraceAndLinksInputRootsToTheirCaller",
+        "durable/harness/harness_telemetry_admission_test.go#TestDurableTelemetryLinksTheOtherQueuedInputsToTheFirstInvocationOfTheirSharedRun",
+        "durable/harness/harness_telemetry_admission_test.go#TestDurableTelemetryLinksASteerAdmissionToTheCurrentRunWithoutMovingItsWorkIntoTheSteersTrace",
+        "durable/harness/harness_telemetry_admission_test.go#TestDurableTelemetryKeepsAPublicWriteAdmissionOpenThroughCommitAsAChildOfItsCaller",
+        "durable/harness/harness_telemetry_admission_test.go#TestDurableTelemetryLinksAnInputSubmittedInsideATurnToTheCallingPhaseWithoutParentingIt",
+        "durable/harness/harness_telemetry_admission_test.go#TestDurableTelemetryParentsBackgroundCompactionToThePreparePhaseThatCreatesIt",
+        "durable/harness/harness_telemetry_admission_test.go#TestDurableTelemetryMarksOnlyTheFirstInvocationAfterReopenResumedRetainingItsStoredParent",
+        "durable/harness/harness_telemetry_events_test.go#TestDurableTelemetryEmitsEntryAndSettlementEventsOnlyAfterSuccessfulStorageCommits",
+        "durable/harness/harness_telemetry_events_test.go#TestDurableTelemetryRecordsInternalCompactionAdmissionsAsPhaseEventsWithoutASubmitSpan",
+        "durable/harness/harness_telemetry_events_test.go#TestDurableTelemetryRecordsAFixedCategoryAndABoundedDiagnostic",
+        "durable/harness/harness_telemetry_events_test.go#TestDurableTelemetryKeepsBothInterruptedRunsAndExplicitAbortHandlersAtStatusOk",
+        "durable/harness/harness_telemetry_events_test.go#TestDurableTelemetryMirrorsRuntimeReportsAsFixedFieldPhaseEventsAndTypeOnlyCounters",
+        "durable/harness/harness_telemetry_events_test.go#TestDurableTelemetryReportsHookFailuresOnThePhaseAndClockFailuresWithoutAPhaseContext",
+        "durable/harness/harness_telemetry_events_test.go#TestDurableTelemetryCountsAnOutsideSpanSessionFailureWithoutStartingASpan",
+        "durable/harness/harness_telemetry_events_test.go#TestDurableTelemetryCountsReportsRaisedWithANoopSpanWithoutCreatingARoot",
+        "durable/harness/harness_telemetry_events_test.go#TestDurableTelemetryAttachesSynchronousCommitListenerReportsToTheActiveSubmissionSpan",
+        "durable/codemode/telemetry_replay_test.go#TestDurableTelemetryEmitsReplayForACodemodeJournalResultWithoutRerunningItsNestedTool",
+        "durable/storage/record_carriers_test.go#TestStorageKeepsTaskAndSubmissionTelemetryCarriers",
+        "durable/record_carriers_wire_test.go#TestRecordCarriersAreOptionalPlainJsonMembers"
+      ],
+      "rationale": "All 23 upstream cases run in the evidence files (lane C); 1 type-level cases are designed out.",
+      "designedOutCases": [
+        "Durable telemetry › preserves async listener error containment and report counting"
+      ]
     },
     {
       "path": "packages/durable/test/harness-tool-hooks.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:12668d785c9ce1cf263fdac4912914500e772a47d33593db126cd7ae619591e6"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:12668d785c9ce1cf263fdac4912914500e772a47d33593db126cd7ae619591e6",
+      "evidence": [
+        "durable/harness/harness_tool_hooks_test.go"
+      ],
+      "rationale": "All 18 upstream cases run in the evidence files (lane C)."
     },
     {
       "path": "packages/durable/test/harness-tools-recovery.test.ts",
@@ -8242,23 +8532,69 @@
     },
     {
       "path": "packages/durable/test/harness-tools.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:07c71c84c796c337869ffd6ba82608d9167eb66bc1d97961e4249aebe630123c"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:07c71c84c796c337869ffd6ba82608d9167eb66bc1d97961e4249aebe630123c",
+      "evidence": [
+        "durable/harness/harness_tools_test.go",
+        "durable/harness/harness_tools_models_test.go",
+        "durable/harness/harness_tools_progress_test.go",
+        "durable/harness/harness_tools_recovery_test.go",
+        "durable/harness/agent_regression_test.go#TestAddToolsEditsTheStoredToolFilter",
+        "durable/harness/agent_regression_test.go#TestResolveAgentDropsTargetOfWrapperReturningNil",
+        "durable/harness/harness_coding_tools_test.go#TestCodingTools",
+        "durable/harness/harness_tools_models_test.go#TestToolResultRecordsHowLongExecuteTook",
+        "durable/harness/harness_tools_models_test.go#TestToolsAndHooksSeeTheHarnessModels",
+        "durable/harness/harness_tools_progress_test.go#TestToolProgressAndLifetime",
+        "durable/harness/harness_tools_test.go#TestGenerationHooks",
+        "durable/harness/harness_tools_test.go#TestToolExecutionApi",
+        "durable/harness/harness_tools_test.go#TestToolResults",
+        "durable/harness/harness_tools_test.go#TestToolRound"
+      ],
+      "rationale": "All 40 upstream cases run in the evidence files (lane C)."
     },
     {
       "path": "packages/durable/test/harness-turn-limit.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:5dcefe326f589ebd90732a756ed7a7648060a6c3168f46ca9c4bf47f8481868e"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:5dcefe326f589ebd90732a756ed7a7648060a6c3168f46ca9c4bf47f8481868e",
+      "evidence": [
+        "durable/harness/harness_turn_limit_test.go"
+      ],
+      "rationale": "All 11 upstream cases run in the evidence files (lane C)."
     },
     {
       "path": "packages/durable/test/harness-view-run.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:cf4b013d04f5b637c04546000b765f6a105e0d3e85838f5e00de202fe31a92f9"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:cf4b013d04f5b637c04546000b765f6a105e0d3e85838f5e00de202fe31a92f9",
+      "evidence": [
+        "durable/harness/harness_view_run_test.go",
+        "durable/harness/harness_view_run_test.go#TestARunAsTheConversationViewShowsIt",
+        "durable/harness/harness_view_run_test.go#TestStreamedPartials",
+        "durable/harness/streamed_partials_memory_test.go#TestStreamedPartialsCommitAtACostThatFollowsTheNewText",
+        "durable/harness/streamed_partials_memory_test.go#TestStreamedPartialsKeepAWatchersMemoryProportionalToTheText",
+        "durable/core/driver/generation_abort_core_test.go#TestCoreAStreamedMessageEndsOnceWithTheConvertedEntryOnAbort",
+        "durable/core/driver/tool_structured_callers_core_test.go#TestCoreShowsAToolCallsSlotFromPendingThroughItsRunningOutputToItsResultEntry",
+        "durable/core/driver/tool_structured_callers_core_test.go#TestCoreEndsACallThatNeverRunsAndAToolAbortedWithItsGeneration"
+      ],
+      "rationale": "All 13 upstream cases run in the evidence files (lane C)."
     },
     {
       "path": "packages/durable/test/harness-view.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:b7a28e72a989b36c21bdd61d705eefa5782076d7ab4525279ef0b033a04f4dff"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:b7a28e72a989b36c21bdd61d705eefa5782076d7ab4525279ef0b033a04f4dff",
+      "evidence": [
+        "durable/harness/harness_view_test.go",
+        "durable/harness/harness_view_run_test.go",
+        "durable/harness/harness_view_test.go#TestConversationView",
+        "durable/harness/harness_view_test.go#TestConversationViewWindow",
+        "durable/core/driver/view_window_core_test.go#TestCoreViewWindowStartsWithTheNewestMinEntriesAndTheEntryBeforeThem",
+        "durable/core/driver/view_window_core_test.go#TestCoreViewWindowDropsItsOldestPastMaxInOneSplice",
+        "durable/core/driver/view_window_core_test.go#TestCoreViewWindowKeepsTheNewestMinOfACommitThatAppendsMoreThanMax",
+        "durable/core/driver/view_window_core_test.go#TestCoreViewWindowStartsAtFromWhenTheEntriesSinceFitInMax",
+        "durable/core/driver/view_window_core_test.go#TestCoreViewWindowRejectsBoundsOutOfRange",
+        "durable/core/driver/view_window_core_test.go#TestCoreViewWindowGivesEachObserverItsOwnWindow",
+        "durable/core/view_test.go"
+      ],
+      "rationale": "All 23 upstream cases run in the evidence files (lane C)."
     },
     {
       "path": "packages/durable/test/images-wasm-module.test.ts",
