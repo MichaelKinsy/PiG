@@ -10024,6 +10024,12 @@
           "reason": "D2: only the independently allocated agent-root prefix differs. Keep the complete skipped skill path and warning."
         },
         {
+          "kind": "normalize_replace",
+          "pattern": "\\[Skill (?:conflicts|warnings)\\]",
+          "with": "[Skill diagnostics]",
+          "reason": "D217: the pinned Pi prints [Skill conflicts], PiG carries Pi f14813e9 and prints [Skill warnings]; pi_contains and pig_contains assert each side's own heading."
+        },
+        {
           "kind": "terminal_crop",
           "configuration": {
             "capture_start": "[Skills]",

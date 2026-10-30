@@ -135,7 +135,8 @@ func (m *InteractiveMode) showLoadedResources(force, showDiagnosticsWhenQuiet bo
 				m.loadedResourcesContainer.Add(tui.NewSpacer(1))
 			}
 		}
-		addDiagnostics("Skill conflicts", m.opts.SkillDiagnostics)
+		// pig divergence (D217): Pi f14813e9 (#11521) labels skill diagnostics [Skill warnings]; Pi 1.4.0+b3a29f11 says [Skill conflicts].
+		addDiagnostics("Skill warnings", m.opts.SkillDiagnostics)
 		addDiagnostics("Prompt conflicts", m.promptDiagnostics)
 		addDiagnostics("Extension issues", m.extensionDiagnostics())
 		addDiagnostics("Theme conflicts", m.themeDiagnostics)
