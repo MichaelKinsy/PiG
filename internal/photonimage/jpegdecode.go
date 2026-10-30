@@ -40,6 +40,13 @@ type jpegDecoder struct {
 
 	isJFIF, isMJPEG bool
 
+	// raw is set for a JPEG inside a TIFF strip: tiff 0.9.1 calls jpeg-decoder directly, so the pixels stay the bytes of
+	// `Decoder::decode` (no RGBA conversion, no 512 MiB limit of image's `load_inner`), and `set_color_transform` has been called
+	// with colorTransform.
+	raw            bool
+	colorTransform *jpegColorTransform
+	rawPixels      []byte
+
 	// Used for progressive JPEGs.
 	coefficients [][]int16
 	// Bitmask of which coefficients has been completely decoded.
@@ -216,7 +223,7 @@ scans:
 			default:
 				format = jpegCMYK32
 			}
-			if uint64(frame.outputSize.width)*uint64(frame.outputSize.height)*uint64(bytesPerPixel) > jpegMaxAlloc {
+			if !d.raw && uint64(frame.outputSize.width)*uint64(frame.outputSize.height)*uint64(bytesPerPixel) > jpegMaxAlloc {
 				return nil, errors.New("photonimage: jpeg: image exceeds the 512 MiB allocation limit of image 0.24.9")
 			}
 
@@ -425,7 +432,16 @@ func (d *jpegDecoder) decodePlanes(worker *jpegWorker, planes [][]byte, planesU1
 		if err != nil {
 			return nil, err
 		}
+		if d.raw {
+			d.rawPixels = pixels
+			return nil, nil
+		}
 		return jpegLosslessToNRGBA(frame, pixels, format)
+	}
+	if d.raw {
+		pixels, err := computeImageRaw(frame.components, planes, frame.outputSize, d.determineColorTransform())
+		d.rawPixels = pixels
+		return nil, err
 	}
 	return computeImageRGBA(frame.components, planes, frame.outputSize, d.determineColorTransform())
 }
@@ -433,6 +449,9 @@ func (d *jpegDecoder) decodePlanes(worker *jpegWorker, planes [][]byte, planesU1
 // determineColorTransform is decoder.rs:698-764 determine_color_transform (`set_color_transform` is never called by the image
 // crate), after the logic of https://entropymine.wordpress.com/2018/10/22/how-is-a-jpeg-images-color-type-determined/.
 func (d *jpegDecoder) determineColorTransform() jpegColorTransform {
+	if d.colorTransform != nil {
+		return *d.colorTransform
+	}
 	frame := d.frame
 	count := len(frame.components)
 	if count == 1 {

@@ -50,6 +50,16 @@ func BenchmarkClipboardBMPNormalization(b *testing.B) {
 	}
 }
 
+// tiffFixture is a file of ../imageprocessing/testdata/tiff.
+func tiffFixture(t *testing.T, name string) []byte {
+	t.Helper()
+	data, err := os.ReadFile("../imageprocessing/testdata/tiff/" + name + ".tif")
+	if err != nil {
+		t.Fatal(err)
+	}
+	return data
+}
+
 // Pi clipboard-image.ts:70-86,238-249 decodes unsupported formats without EXIF rotation, omits failed conversions, and passes declared supported formats through unchanged.
 func TestClipboardImageNormalization(t *testing.T) {
 	jpeg := nodebase64.Decode(jpegWithXmpBeforeOrientation(t))
@@ -63,6 +73,10 @@ func TestClipboardImageNormalization(t *testing.T) {
 		{name: "corrupt unsupported image", mime: "image/bmp", data: []byte("not an image"), absent: true},
 		{name: "unsupported JPEG does not rotate", mime: "image/x-example", data: jpeg, width: 2, height: 1, converted: true},
 		{name: "supported JPEG stays byte-identical", mime: "image/jpeg", data: jpeg, width: 2, height: 1},
+		// Photon decodes TIFF (image 0.24.9 with tiff 0.9.1), so the X11 and Wayland image/tiff targets become PNG; the formats tiff refuses do not.
+		{name: "TIFF becomes PNG", mime: "image/tiff", data: tiffFixture(t, "grid-le-gray8-lzw-p2-strip"), width: 37, height: 23, converted: true},
+		{name: "CMYK TIFF becomes PNG", mime: "image/tiff", data: tiffFixture(t, "grid-le-cmyk8-lzw-p0-strip"), width: 37, height: 23, converted: true},
+		{name: "TIFF that Photon refuses", mime: "image/tiff", data: tiffFixture(t, "refuse-be-gray-1bit"), absent: true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			withEnv(t, map[string]string{"WAYLAND_DISPLAY": "wayland-0"})

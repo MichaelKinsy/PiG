@@ -177,9 +177,8 @@ func jpegNearFarRows(row, inputHeight int) (near, far int) {
 	return near, min(near+1, inputHeight-1)
 }
 
-// jpegColorTransform is decoder.rs:76-98 ColorTransform. `None` and `Unknown` are not here: determine_color_transform gives
-// `None` only through `set_color_transform`, which the image crate never calls, and `Unknown` only for a frame of other than 1, 3
-// or 4 components, which decode_internal has refused.
+// jpegColorTransform is decoder.rs:76-98 ColorTransform. `Unknown` is not here: determine_color_transform gives it only for a frame
+// of other than 1, 3 or 4 components, which decode_internal has refused. `None` comes only from `set_color_transform` (a JPEG in a TIFF).
 type jpegColorTransform uint8
 
 const (
@@ -190,6 +189,7 @@ const (
 	jpegTransformYCCK
 	jpegTransformJcsBgYcc
 	jpegTransformJcsBgRgb
+	jpegTransformNone
 )
 
 // jpegConvert is the colour conversion of choose_color_convert_func.
@@ -200,6 +200,7 @@ const (
 	jpegConvertYCbCr
 	jpegConvertCMYK
 	jpegConvertYCCK
+	jpegConvertNone
 )
 
 // chooseJPEGColorConvert is decoder.rs:1339-1389 choose_color_convert_func for the combinations determine_color_transform gives.
@@ -208,6 +209,8 @@ func chooseJPEGColorConvert(componentCount int, transform jpegColorTransform) (j
 		return jpegFormatError("Invalid number of channels (%d) for %s data", channels, what)
 	}
 	switch {
+	case transform == jpegTransformNone && (componentCount == 3 || componentCount == 4):
+		return jpegConvertNone, nil
 	case transform == jpegTransformJcsBgYcc:
 		return 0, jpegUnsupported("ColorTransform(JcsBgYcc)")
 	case transform == jpegTransformJcsBgRgb:
@@ -375,4 +378,91 @@ func computeImageRGBA(components []jpegComponent, data [][]byte, outputSize jpeg
 		jpegConvertRow(kind, img.Pix[row*img.Stride:][:4*width], &lines)
 	}
 	return img, nil
+}
+
+// jpegConvertRowRaw is decoder.rs:1391-1484 color_convert_line_* for one row: the bytes jpeg-decoder's `decode` returns, n pixels of
+// the upsampled lines of the components (three bytes of RGB, four of CMYK or YCCK, or what color_no_convert gives).
+func jpegConvertRowRaw(kind jpegConvert, dst []byte, lines *[jpegMaxComponents][]byte, count, lineBufferSize int) {
+	n := len(dst) / count
+	switch kind {
+	case jpegConvertRGB:
+		r, g, b := lines[0][:n], lines[1][:n], lines[2][:n]
+		for i := range n {
+			dst[3*i], dst[3*i+1], dst[3*i+2] = r[i], g[i], b[i]
+		}
+	case jpegConvertYCbCr:
+		y, cb, cr := lines[0][:n], lines[1][:n], lines[2][:n]
+		for i := range n {
+			dst[3*i], dst[3*i+1], dst[3*i+2] = jpegYCbCrToRGB(y[i], cb[i], cr[i])
+		}
+	case jpegConvertCMYK:
+		c, m, y, k := lines[0][:n], lines[1][:n], lines[2][:n], lines[3][:n]
+		for i := range n {
+			dst[4*i], dst[4*i+1], dst[4*i+2], dst[4*i+3] = 255-c[i], 255-m[i], 255-y[i], 255-k[i]
+		}
+	case jpegConvertYCCK:
+		c, m, y, k := lines[0][:n], lines[1][:n], lines[2][:n], lines[3][:n]
+		for i := range n {
+			dst[4*i], dst[4*i+1], dst[4*i+2] = jpegYCbCrToRGB(c[i], m[i], y[i])
+			dst[4*i+3] = 255 - k[i]
+		}
+	default: // jpegConvertNone
+		// color_no_convert writes the whole line buffer of the first component, then of the next, and panics when the row runs out.
+		if lineBufferSize*count > len(dst) {
+			panic("color_no_convert: output exhausted")
+		}
+		for i := range count {
+			copy(dst[i*lineBufferSize:(i+1)*lineBufferSize], lines[i][:n])
+		}
+	}
+}
+
+// computeImageRaw is decoder.rs:1300-1337 compute_image and worker/mod.rs:97-128 compute_image_parallel: the upsampled and converted
+// samples of the planes as bytes, the result of jpeg-decoder's `decode`.
+func computeImageRaw(components []jpegComponent, data [][]byte, outputSize jpegDimensions, transform jpegColorTransform) ([]byte, error) {
+	if len(data) == 0 {
+		return nil, jpegFormatError("not all components have data")
+	}
+	for _, plane := range data {
+		if len(plane) == 0 {
+			return nil, jpegFormatError("not all components have data")
+		}
+	}
+	width, height := int(outputSize.width), int(outputSize.height)
+
+	if len(components) == 1 {
+		component := &components[0]
+		lineStride := int(component.blockSize.width) * component.dctScale
+		out := make([]byte, int(component.size.width)*int(component.size.height))
+		cw := int(component.size.width)
+		for y := range int(component.size.height) {
+			copy(out[y*cw:(y+1)*cw], data[0][y*lineStride:][:cw])
+		}
+		return out, nil
+	}
+
+	kind, err := chooseJPEGColorConvert(len(components), transform)
+	if err != nil {
+		return nil, err
+	}
+	upsampler, err := newJPEGUpsampler(components, outputSize.width, outputSize.height)
+	if err != nil {
+		return nil, err
+	}
+	count := len(components)
+	out := make([]byte, width*count*height)
+	var buffers [jpegMaxComponents][]byte
+	for i := range components {
+		if upsampler.components[i].kind != jpegUpsampleH1V1 {
+			buffers[i] = make([]byte, upsampler.lineBufferSize)
+		}
+	}
+	for row := range height {
+		var lines [jpegMaxComponents][]byte
+		for i := range components {
+			lines[i] = upsampler.components[i].line(data[i], row, width, buffers[i])
+		}
+		jpegConvertRowRaw(kind, out[row*width*count:(row+1)*width*count], &lines, count, upsampler.lineBufferSize)
+	}
+	return out, nil
 }
