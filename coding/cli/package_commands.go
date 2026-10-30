@@ -394,7 +394,7 @@ func runPackageCommand(args []string, runtimeOptions ...packageCommandRuntimeOpt
 		return 1
 	}
 	// pig additive (D216): --validate-only with no source checks the configured local Packages.
-	if (opts.command == packageInstall || opts.command == packageRemove) && opts.source == "" && !(opts.command == packageInstall && opts.validateOnly) {
+	if (opts.command == packageInstall || opts.command == packageRemove) && opts.source == "" && (opts.command == packageRemove || !opts.validateOnly) {
 		fmt.Fprintln(os.Stderr, chalkRed(fmt.Sprintf("Missing %s source.", opts.command)))
 		fmt.Fprintln(os.Stderr, chalkDim("Usage: "+packageUsage(opts.command)))
 		return 1

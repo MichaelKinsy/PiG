@@ -45,12 +45,13 @@ func validateConfiguredPackages(cwd string, sm *codingagent.SettingsManager, jso
 		report.Missing = append(report.Missing, missingConfiguredPackage{Source: failure.Source, Scope: failure.Scope, Path: failure.Path, Error: failure.Message, Remove: remove})
 	}
 	report.Valid = len(report.Missing) == 0
-	if jsonOut {
+	switch {
+	case jsonOut:
 		data, _ := json.MarshalIndent(report, "", "  ")
 		_, _ = fmt.Fprintln(os.Stdout, string(data))
-	} else if report.Valid {
+	case report.Valid:
 		_, _ = fmt.Fprintf(os.Stdout, "valid: %d configured local packages resolve\n", report.Checked)
-	} else {
+	default:
 		for _, missing := range report.Missing {
 			_, _ = fmt.Fprintf(os.Stderr, "missing %s package %q: %s. Run \"%s\"\n", missing.Scope, missing.Source, missing.Error, missing.Remove)
 		}
