@@ -1902,6 +1902,30 @@ levels = ["store", "commit", "context", "output", "order"]
 status = "ready"
 
 [[scenario]]
+id = "F-ticks-seq-gate"
+family = "differential"
+runner = "diff"
+source = "durable/contract/scenarios/ticks-sequence.mjs"
+seed = 0
+profile = "gate"
+owner = "dcore-host"
+about = "microtask passes of the calls of the cf host's ticks.test.ts sequence (inspect, conversation, submit, wait, entries, getTask, status, submission, snapshot) on the gate storage profile"
+levels = ["store", "commit", "context", "output", "order"]
+status = "ready"
+
+[[scenario]]
+id = "F-ticks-seq-node"
+family = "differential"
+runner = "diff"
+source = "durable/contract/scenarios/ticks-sequence.mjs"
+seed = 0
+profile = "node"
+owner = "dcore-host"
+about = "microtask passes of the calls of the cf host's ticks.test.ts sequence (inspect, conversation, submit, wait, entries, getTask, status, submission, snapshot) on the node storage profile"
+levels = ["store", "commit", "context", "output", "order"]
+status = "ready"
+
+[[scenario]]
 id = "F-ticks-tools-gate"
 family = "differential"
 runner = "diff"

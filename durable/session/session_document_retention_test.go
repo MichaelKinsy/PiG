@@ -620,11 +620,6 @@ func TestSessionDocumentCacheRetention(t *testing.T) {
 		opened.close(t)
 	})
 
-	// Pi 1.2.0 packages/durable/test/session-document-retention.test.ts:451 "keeps no timer where timers cannot be unreferenced, and evicts on commits"
-	t.Run("keeps no timer where timers cannot be unreferenced, and evicts on commits", func(t *testing.T) {
-		t.Skip("JS mechanic: the case replaces globalThis.setTimeout with one returning plain numbers without unref (as in Cloudflare Workers); Go has no global timer function to replace and its timers have no unref, so they never keep the process alive")
-	})
-
 	// Pi 1.2.0 packages/durable/test/session-document-retention.test.ts:539 "keeps a reloaded newer version cached while an observer of the older one is attached"
 	t.Run("keeps a reloaded newer version cached while an observer of the older one is attached", func(t *testing.T) {
 		v1 := defineDoc("test.retention.versioned", 1, sessionScope, func() obj { return delta.JsonObjectOf("count", 3) })

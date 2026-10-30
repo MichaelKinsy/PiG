@@ -838,3 +838,25 @@ func TestAnAbortedToolFaultsWithTheAgentErrorWhenTheAgentCannotBeResolved(t *tes
 		t.Fatalf("tool outcome = %s", got)
 	}
 }
+
+// finishToolRound's `await runtime.outcomes(...)` resumes a hop after the line job that read the outcomes: `#read` is an async function that
+// returns the job's pending promise, which it adopts a hop after it settles (scheduler.ts:2235-2246, :2347-2350). The hops of the round
+// after the tool's result are then that one, the cached snapshot of pi.live (3), the agent resolution of the afterTools walk (2), the end
+// of hooks.each (1) and the `runtime.agent` of maxTurns (2) (generation.ts:1050-1070). The F-ticks-tools rows hold the same count against
+// Pi's (settled 1728 gate / 1509 node).
+func TestToolRoundResumesAHopAfterItsOutcomes(t *testing.T) {
+	r := newRig(t)
+	r.agent.Tools = []turn.Tool{echoTool()}
+	r.start("hi")
+	r.resume()
+	r.finish(toolUseWith("echo", `{"text":"x"}`))
+	before := len(r.hops)
+	r.toolRuns[0].then(mustParse(t, `{"output":[{"type":"text","text":"hello world"}]}`), nil)
+	r.run()
+	// The tool machine's own two five-hop chains come first.
+	got := r.hops[before:]
+	want := []int{5, 5, 1, 3, 2, 1, 2}
+	if len(got) < len(want) || fmt.Sprint(got[:len(want)]) != fmt.Sprint(want) {
+		t.Fatalf("hops after the tool's result = %v, want a prefix %v", got, want)
+	}
+}

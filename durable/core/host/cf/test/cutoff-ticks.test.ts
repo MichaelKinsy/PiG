@@ -6,7 +6,7 @@
 // its store with the reference's Harness (the pinned build of b3a29f11 that `make link-durable-host` links), killed as a crash does,
 // and then opens a copy of it with the reference and a copy with the core and counts the passes each call keeps pending, as
 // scenarios/client-ticks.mjs does: the reference's count is measured here, not recorded, and the core must spend the same.
-// The reference's own numbers at b3a29f11 (gate-less Node SQLite adapter, profile `node`) are pinned beside the comparison so a
+// The reference's own numbers at e7a0df27 (gate-less Node SQLite adapter, profile `node`) are measured by every run of this file (the `pi` side of `counts`) and pinned beside the comparison so a
 // change of the pin shows as a changed number.
 import assert from "node:assert/strict"
 import { copyFileSync, existsSync, readFileSync } from "node:fs"
@@ -92,7 +92,7 @@ async function counts(name: string, crash: Crash, configure: (api: Api, setup: S
 }
 
 /**
- * PiG's passes are at most Pi's, in the open of the Harness and in the run to the task's end. Measured at Pi b3a29f11 with the Go build
+ * PiG's passes are at most Pi's, in the open of the Harness and in the run to the task's end. Measured at Pi e7a0df27 (the `pi` entries of each case's `passes <case>:` line) with the Go build
  * of the core: Harness.open spends 53 passes in the core against Pi's 56 in every case (an idle store 30 against 34; 3 of Pi's passes lie
  * between its storage and the end of its open); the end of the task spends fewer or as many passes as Pi's, each case stating both numbers at its call. The contract traces equal
  * Pi's (`make durable-contract`: the same calls and commits in the same order), so the fewer passes are the core's cheaper way to the same
@@ -205,7 +205,7 @@ test("a tool call cut off restartLimit times ends with an error result in Pi's p
     opened.harness.resume()
   }
   const result = await counts("tool", { path: copyStore(path, path + ".crash"), taskId, setup: () => setupOf(piApi) }, (api, next) => { const made = make(api); Object.assign(next, { settings: made.settings, registry: made.registry, faux: made.faux, models: made.models }) })
-  // Pi e7a0df27 spends 184 passes to the cut-off tool's end (173 at b3a29f11: afterTool now runs on every tool task result, 87eff524); the core's count is reported by the failing assertion if it exceeds Pi's. Harness.open 53 against Pi's 56. The contract traces equal Pi's.
+  // Pi e7a0df27 spends 184 passes to the cut-off tool's end (173 at b3a29f11: afterTool now runs on every tool task result, 87eff524). The number is measured, not inferred: the `pi` entry of this test's own `passes tool:` line (`DURABLE_CORE_TOOLCHAIN=go node --test test/cutoff-ticks.test.ts`), which `assertNoMoreThanPi` pins; the core spends 180 (4 fewer, as the contract traces equal Pi's). Harness.open 53 against Pi's 56.
   assertNoMoreThanPi(result, 184)
 })
 

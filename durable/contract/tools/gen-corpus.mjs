@@ -185,6 +185,12 @@ for (const profile of ["gate", "node"]) {
 	emit("[[scenario]]", `id = ${q(`F-ticks-${profile}`)}`, `family = "differential"`, `runner = "diff"`, `source = "durable/contract/scenarios/client-ticks.mjs"`, `seed = 0`, `profile = ${q(profile)}`, `owner = "dcore-host"`,
 		`about = ${q(`microtask passes each client call spends (submit, wait, entries, inspect, abort) on the ${profile} storage profile`)}`, `levels = ["store", "commit", "context", "output", "order"]`, `status = "ready"`)
 }
+// F-ticks-seq: the sequence of durable/core/host/cf/test/ticks.test.ts (scenarios/ticks-sequence.mjs): the passes of inspect, conversation, submit, wait, entries, getTask, status, submission and snapshot, whose
+// numbers the test pins; Pi's own are the reference run of this row.
+for (const profile of ["gate", "node"]) {
+	emit("[[scenario]]", `id = ${q(`F-ticks-seq-${profile}`)}`, `family = "differential"`, `runner = "diff"`, `source = "durable/contract/scenarios/ticks-sequence.mjs"`, `seed = 0`, `profile = ${q(profile)}`, `owner = "dcore-host"`,
+		`about = ${q(`microtask passes of the calls of the cf host's ticks.test.ts sequence (inspect, conversation, submit, wait, entries, getTask, status, submission, snapshot) on the ${profile} storage profile`)}`, `levels = ["store", "commit", "context", "output", "order"]`, `status = "ready"`)
+}
 // F-ticks-tools: the pass at which each of three parallel tool calls runs its beforeTool hook, `execute`, return and afterTool hook
 // (scenarios/tool-start-ticks.mjs): the gap between two calls' hooks decides whose hook wait starts first (F-gate seeds 26, 61, 67, 77).
 for (const profile of ["gate", "node"]) {
