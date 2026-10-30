@@ -103,8 +103,8 @@ func (d *destination) hold(address link.WireAddress, requestType string, from ro
 // `invalid/host_address` when its `hostAddress` puts the object on another host (code skew: the consumer computed this
 // host), nil when it lives here. A `hostAddress` that fails returns its error (the provider's own code). The address a
 // request names only routes it.
-func (d *destination) misplaced(Type *contracts.Contract, params *delta.JsonObject) (*data.ChordError, error) {
-	address, err := hostAddressOf(Type, params)
+func (d *destination) misplaced(typ *contracts.Contract, params *delta.JsonObject) (*data.ChordError, error) {
+	address, err := hostAddressOf(typ, params)
 	if err != nil {
 		return nil, err
 	}
@@ -112,7 +112,7 @@ func (d *destination) misplaced(Type *contracts.Contract, params *delta.JsonObje
 		return nil, nil
 	}
 	// A host serving a remote type has an address (`serve` refuses one without).
-	return data.Invalid(data.ReasonHostAddress, Type.Name+": placed on "+address.Kind+", this host is "+d.address.Key), nil
+	return data.Invalid(data.ReasonHostAddress, typ.Name+": placed on "+address.Kind+", this host is "+d.address.Key), nil
 }
 
 // pathTo is the path to address when this host routes its kind (its params checked, `authorize` run for principal); nil
@@ -131,8 +131,8 @@ func (d *destination) isHere(address link.WireAddress) bool {
 }
 
 // hostAddressOf is the address a remote Type's `hostAddress` computes for params.
-func hostAddressOf(Type *contracts.Contract, params *delta.JsonObject) (link.WireAddress, error) {
-	contract, err := contracts.ContractDataOf(Type)
+func hostAddressOf(typ *contracts.Contract, params *delta.JsonObject) (link.WireAddress, error) {
+	contract, err := contracts.ContractDataOf(typ)
 	if err != nil {
 		return link.WireAddress{}, err
 	}

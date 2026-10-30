@@ -165,7 +165,7 @@ func TestAttachDerivesReportsUnderTheExposingMemberAcceptsNativeSourcesAndPropag
 	}
 	throwing := state.NewDerive([]any{membersThrowing{}}, failing, h.batch)
 	err := attachDerives(membersResolver, []*state.Derive{throwing}, contracts.NewNamedMap[state.DeriveSource](0), report)
-	if err != errMembersGetter {
+	if !errors.Is(err, errMembersGetter) {
 		t.Fatalf("attach over a throwing getter = %v, want the getter's error", err)
 	}
 }
@@ -280,14 +280,14 @@ func TestContributionOfFollowsWatchablesAndNativesLeavesOtherValuesPlainAndRefus
 	if got, err := contentOf(membersResolver, membersPlainMethod); err != nil || got.Kind != registries.ContributionPlain || got.Value == nil {
 		t.Fatalf("content of a function = %#v, %v, want it as a plain value", got, err)
 	}
-	if _, err := contentOf(membersResolver, membersThrowing{}); err != errMembersGetter {
+	if _, err := contentOf(membersResolver, membersThrowing{}); !errors.Is(err, errMembersGetter) {
 		t.Fatalf("content of a throwing getter = %v", err)
 	}
 	contribution, err := contributionOf(membersResolver, record, contributor, 1, "text", nil)
 	if err != nil || contribution.Record != record || contribution.Contributor != contributor || contribution.Version != 1 {
 		t.Fatalf("contribution = %#v, %v", contribution, err)
 	}
-	if _, err := contributionOf(membersResolver, record, contributor, 1, membersThrowing{}, nil); err != errMembersGetter {
+	if _, err := contributionOf(membersResolver, record, contributor, 1, membersThrowing{}, nil); !errors.Is(err, errMembersGetter) {
 		t.Fatalf("contribution of a throwing getter = %v", err)
 	}
 	// A registry's own value contributed to it closes a cycle of one registry.

@@ -168,7 +168,7 @@ func TestNativeAPartlyFailedAttemptClosesWhatItOpenedWithReasonEnd(t *testing.T)
 	if err := a.open(chordctx.Background()); err != nil {
 		t.Fatalf("open a: %v", err)
 	}
-	if err := b.open(chordctx.Background()); err != offline {
+	if err := b.open(chordctx.Background()); !errors.Is(err, offline) {
 		t.Fatalf("open b = %v, want the opener's error", err)
 	}
 	for _, native := range []*nativeHandle[string]{b, a} {
@@ -381,7 +381,7 @@ func TestWithin(t *testing.T) {
 		waiting := nativeAsync(func() error { _, err := within(loop, work, time.Second); return err })
 		nativeWaitForTimers(t, loop, 1)
 		work.settle(boom)
-		if err := nativeResultOf(t, waiting); err != boom {
+		if err := nativeResultOf(t, waiting); !errors.Is(err, boom) {
 			t.Fatalf("within error = %v, want boom", err)
 		}
 		nativeWaitForTimers(t, loop, 0)

@@ -290,7 +290,7 @@ func TestParkedCallsRejectedWithTheQueue(t *testing.T) {
 	released := data.NewChordError(data.ChordErrorInit{Code: data.CodeReleased, Message: "app.gated: released"}, nil)
 	h.in(func() { h.calls.reject(released) })
 	for i, result := range results {
-		if _, err := parkedResultOf(t, result); err != released {
+		if _, err := parkedResultOf(t, result); !errors.Is(err, released) {
 			t.Fatalf("call %d error = %v, want the released error", i, err)
 		}
 	}
@@ -312,7 +312,7 @@ func TestParkedCallsStopBeingSentWhenAHandlerReleasesTheReference(t *testing.T) 
 	first, second := h.park("release", chordctx.Background()), h.park("b", chordctx.Background())
 	h.flush()
 	h.loop.Flush()
-	if _, err := parkedResultOf(t, second); err != released {
+	if _, err := parkedResultOf(t, second); !errors.Is(err, released) {
 		t.Fatalf("second error = %v, want the released error", err)
 	}
 	if _, err := parkedResultOf(t, first); err != nil {

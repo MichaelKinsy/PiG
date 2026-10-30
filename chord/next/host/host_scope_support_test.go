@@ -83,8 +83,8 @@ func newScopeHost(loop *scopeLoop) *scopeHost {
 func (h *scopeHost) Incarnation() string { return h.incarnation }
 func (h *scopeHost) loop() sectionLoop   { return h.loopOf }
 
-func (h *scopeHost) Acquire(Type *contracts.Contract, params any, from caller, ctx context.Context, options GetOptions) (acquired, error) {
-	call := scopeAcquire{Type: Type, params: params, caller: from, ctx: ctx, options: options}
+func (h *scopeHost) Acquire(typ *contracts.Contract, params any, from caller, ctx context.Context, options GetOptions) (acquired, error) {
+	call := scopeAcquire{Type: typ, params: params, caller: from, ctx: ctx, options: options}
 	h.mu.Lock()
 	h.acquires = append(h.acquires, call)
 	acquire := h.acquire

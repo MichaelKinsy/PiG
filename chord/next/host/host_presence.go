@@ -73,7 +73,7 @@ var _ state.SourceImpl = (*references)(nil)
 
 func newReferences(batch *state.Batch) *references {
 	r := &references{byHolder: map[presenceHolder]*holderEntry{}, removed: map[*delta.JsonObject]struct{}{}}
-	r.Source.Init(batch, r)
+	r.Init(batch, r)
 	return r
 }
 

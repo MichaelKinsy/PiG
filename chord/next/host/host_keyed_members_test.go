@@ -320,7 +320,7 @@ func TestKeyedMembersAKeyWhoseFirstPinStillLoadsTheObjectFailsAndRebindsMeanwhil
 	loading := h.pinAsync(l.exposer, reexposedBinding(l.provider), "k", memberBackground)
 	<-l.cold.entered
 	h.fail(l.exposer)
-	if first := <-loading; first.err != error(keyedBoom) {
+	if first := <-loading; !errors.Is(first.err, keyedBoom) {
 		t.Fatalf("the wait on the failed object = %v, want its failure", first.err)
 	}
 	l.settle()
@@ -349,7 +349,7 @@ func TestKeyedMembersAKeyWhoseFirstPinStillLoadsTheObjectFailsAndStaysFailedTheW
 	loading := h.pinAsync(l.exposer, reexposedBinding(l.provider), "k", abort)
 	<-l.cold.entered
 	h.fail(l.exposer)
-	if first := <-loading; first.err != error(keyedBoom) {
+	if first := <-loading; !errors.Is(first.err, keyedBoom) {
 		t.Fatalf("the wait on the failed object = %v, want its failure", first.err)
 	}
 	cancel(errors.New("viewer released"))
@@ -371,7 +371,7 @@ func TestKeyedMembersAKeyWhoseFirstPinStillLoadsTheObjectEndsMeanwhileTheWaitRej
 	<-l.cold.entered
 	ended := data.NewChordError(data.ChordErrorInit{Code: data.CodeReleased, Reason: data.ReasonEnded, Message: "app.exposer: ended"}, nil)
 	h.loop.Run(func() { l.exposer.end(ended) })
-	if first := <-loading; first.err != error(ended) {
+	if first := <-loading; !errors.Is(first.err, ended) {
 		t.Fatalf("the wait on the ended object = %v, want its end", first.err)
 	}
 	l.settle()
@@ -395,7 +395,7 @@ func TestKeyedMembersAContextEndsOnlyItsCallersWait(t *testing.T) {
 	<-l.cold.entered
 	reason := errors.New("viewer left")
 	cancel(reason)
-	if got := <-aborted; got.err != reason {
+	if got := <-aborted; !errors.Is(got.err, reason) {
 		t.Fatalf("the aborted wait = %v, want its reason", got.err)
 	}
 	l.settle()
@@ -427,7 +427,7 @@ func TestKeyedMembersAContextAbortedBeforeThePinRejectsAtOnceAndLeavesNothingPin
 	reason := errors.New("already aborted")
 	cancel(reason)
 	_, err := keys.pin("notes", "k", ownBinding(slot), abort)
-	if err != reason {
+	if !errors.Is(err, reason) {
 		t.Fatalf("pin = %v, want the abort reason", err)
 	}
 	h.loop.Wait()
@@ -457,7 +457,7 @@ func TestKeyedMembersAKeyedWatchWhoseObjectClosesWhileItIsSetUpSettlesWithTheKey
 		}
 		h.loop.Run(func() { hop(gap) })
 		got := <-watching
-		if got.err != nil && got.err != error(ended) {
+		if got.err != nil && !errors.Is(got.err, ended) {
 			t.Fatalf("gap %d: pin = %v, want the key or the object's end", gap, got.err)
 		}
 		if got.err == nil {
@@ -548,7 +548,7 @@ func TestKeyedMembersDiscardReleasesWhatPreparePinnedAndAFailedLoadRejectsPrepar
 	// A failing load rejects prepare; the key keeps what it has.
 	loadFailed := errors.New("store failed")
 	b.ensureErr = loadFailed
-	if _, err := h.prepare(exposer, next, memberBackground).await(); err != loadFailed {
+	if _, err := h.prepare(exposer, next, memberBackground).await(); !errors.Is(err, loadFailed) {
 		t.Fatalf("prepare = %v, want the failed load", err)
 	}
 	if _, inMemory := b.pinsOf("k"); inMemory {
@@ -565,12 +565,12 @@ func TestKeyedMembersAFailedPinOrLoadRejectsAndReleasesThePin(t *testing.T) {
 	keys := newKeyedMembers(h.batch, h.scheduler, h.loop, memberBackground)
 	refused := errors.New("slot closed")
 	slot.pinErr = refused
-	if _, err := keys.pin("notes", "k", ownBinding(slot), memberBackground); err != refused {
+	if _, err := keys.pin("notes", "k", ownBinding(slot), memberBackground); !errors.Is(err, refused) {
 		t.Fatalf("pin = %v, want the slot's error", err)
 	}
 	slot.pinErr = nil
 	slot.ensureErr = errors.New("store failed")
-	if _, err := keys.pin("notes", "k", ownBinding(slot), memberBackground); err != slot.ensureErr {
+	if _, err := keys.pin("notes", "k", ownBinding(slot), memberBackground); !errors.Is(err, slot.ensureErr) {
 		t.Fatalf("pin = %v, want the failed load", err)
 	}
 	h.loop.Wait()
@@ -595,7 +595,7 @@ func TestKeyedMembersEndEndsEveryKeyAndReleasesWhatItPinsOnce(t *testing.T) {
 	h.within(t, func() { keys.end(ended) })
 	<-watch.Closed()
 	expectEqual(t, "end", watch.End(), chord.WatchEnd{Kind: chord.WatchEnded})
-	if _, err := h.value(k.source); err != error(ended) {
+	if _, err := h.value(k.source); !errors.Is(err, ended) {
 		t.Fatalf("read after the end = %v, want its error", err)
 	}
 	k.release()

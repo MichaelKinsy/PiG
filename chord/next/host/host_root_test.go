@@ -237,7 +237,7 @@ func TestRootScopesRunSealsTheContextWhenFnSettles(t *testing.T) {
 	if _, err := scopes.run(func(ctx Ctx) (any, error) {
 		kept = ctx
 		return nil, failure
-	}, nil, chordctx.Background()); err != failure {
+	}, nil, chordctx.Background()); !errors.Is(err, failure) {
 		t.Fatalf("err = %v, want fn's own", err)
 	}
 	if kept.Err() == nil {
@@ -302,10 +302,10 @@ func TestRootScopesCloseSealsEveryOpenScopeAndRejectsItsCaller(t *testing.T) {
 	reason := scopeClosed()
 	loop.Run(func() { scopes.close(reason) })
 	for range 2 {
-		if cause := <-ended; cause != reason {
+		if cause := <-ended; !errors.Is(cause, reason) {
 			t.Fatalf("a scope ended with %v, want the host's reason", cause)
 		}
-		if err := <-outcomes; err != reason {
+		if err := <-outcomes; !errors.Is(err, reason) {
 			t.Fatalf("a caller got %v, want the host's reason", err)
 		}
 	}

@@ -340,7 +340,7 @@ func TestMemberSourceAnEndedObjectsMembersMarkTheDerivesOverThemAndEndTheirWatch
 	}
 	// An ended member source keeps no re-bind.
 	h.within(t, func() { m.bind(state.NewConstant(float64(9))) })
-	if _, err := h.value(m); err != released {
+	if _, err := h.value(m); !errors.Is(err, released) {
 		t.Fatalf("read after a bind = %v, want the end", err)
 	}
 }

@@ -100,7 +100,7 @@ type facetSetUp struct {
 
 // setUp runs a facet's setup and returns the types and registries it served and its contributions, in order; references
 // is the host's.
-func setUp(name string, facet Facet, references func(Type *contracts.Contract) state.SourceHandle) (facetSetUp, error) {
+func setUp(name string, facet Facet, references func(typ *contracts.Contract) state.SourceHandle) (facetSetUp, error) {
 	scope := &facetScope{name: name, open: true, references: references}
 	err := func() error {
 		defer func() { scope.open = false }()
@@ -126,13 +126,13 @@ func (f *facetScope) assertOpen(what string) error {
 }
 
 // Serve implements FacetHost.
-func (f *facetScope) Serve(Type any, implementation any, options ServeOptions) error {
+func (f *facetScope) Serve(typ any, implementation any, options ServeOptions) error {
 	if err := f.assertOpen("host.serve"); err != nil {
 		return err
 	}
 	// Served types and registries are dispatched by their kind; a factory matches its own contract, a provider its own
 	// registry.
-	switch served := Type.(type) {
+	switch served := typ.(type) {
 	case registries.Registry[any, any]:
 		provider, ok := implementation.(registries.RegistryProvider[any, any])
 		if !ok {
@@ -142,14 +142,14 @@ func (f *facetScope) Serve(Type any, implementation any, options ServeOptions) e
 	case *contracts.Contract:
 		f.served = append(f.served, servedEntry{kind: servedType, contract: served, factory: implementation, options: options})
 	default:
-		return errors.New(f.name + ": host.serve takes a contract or a registry, not " + fmt.Sprintf("%T", Type))
+		return errors.New(f.name + ": host.serve takes a contract or a registry, not " + fmt.Sprintf("%T", typ))
 	}
 	return nil
 }
 
 // References implements FacetHost.
-func (f *facetScope) References(Type *contracts.Contract) state.SourceHandle {
-	return f.references(Type)
+func (f *facetScope) References(typ *contracts.Contract) state.SourceHandle {
+	return f.references(typ)
 }
 
 // Contribute implements FacetSelf.

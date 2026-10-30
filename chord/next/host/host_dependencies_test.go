@@ -1,6 +1,7 @@
 package host
 
 import (
+	"errors"
 	"reflect"
 	"strings"
 	"testing"
@@ -64,7 +65,7 @@ func TestTheDependencyCheckBreaksADependentOffACycleWithTheCyclesError(t *testin
 		referenceDependency(&fakeBinding{state: dependencyFailedWith(data.FailureBroken, cycle), name: "app.ping"}),
 		referenceDependency(&fakeBinding{state: refLoading, name: "app.later"}),
 	})
-	if got.kind != checkBroken || got.err != cycle {
+	if got.kind != checkBroken || !errors.Is(got.err, cycle) {
 		t.Fatalf("check = %+v, want broken with the cycle's error", got)
 	}
 }
@@ -77,7 +78,7 @@ func TestTheDependencyCheckBreaksADependentWhoseDependencyEnded(t *testing.T) {
 		referenceDependency(&fakeBinding{state: dependencyFailedWith(data.FailureTransient, dependencyErrorOf(data.CodeUnavailable, "", "offline")), name: "app.first"}),
 		referenceDependency(&fakeBinding{state: dependencyEndedWith(revoked), name: "app.notes(S1)"}),
 	})
-	if got.kind != checkBroken || got.err != revoked {
+	if got.kind != checkBroken || !errors.Is(got.err, revoked) {
 		t.Fatalf("check = %+v, want broken with the revoked error", got)
 	}
 }
@@ -87,7 +88,7 @@ func TestTheDependencyCheckBreaksADependentWhoseDependencyEnded(t *testing.T) {
 func TestTheDependencyCheckBreaksADependentWhoseDependencyWasRefusedAuthority(t *testing.T) {
 	forbidden := dependencyErrorOf(data.CodeForbidden, "", "session|S1: not authorized")
 	got := checkDependencies([]dependency{referenceDependency(&fakeBinding{state: dependencyFailedWith(data.FailureBroken, forbidden), name: "app.notes(S1)"})})
-	if got.kind != checkBroken || got.err != forbidden {
+	if got.kind != checkBroken || !errors.Is(got.err, forbidden) {
 		t.Fatalf("check = %+v, want broken with the forbidden error", got)
 	}
 	// Another invalid reason is no cycle: it parks.

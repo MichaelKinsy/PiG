@@ -126,7 +126,7 @@ func TestRouteAdmissionFailsAHoldBrokenWithWhatAuthorizeThrows(t *testing.T) {
 	rig := newRouteRig(t)
 	threw := errors.New("authorize threw")
 	rig.authorize = func(data.Principal, contracts.Address) (bool, error) { return false, threw }
-	if _, err := rig.pathAs("S1", delta.JsonObjectOf("kind", "owner")); err != threw {
+	if _, err := rig.pathAs("S1", delta.JsonObjectOf("kind", "owner")); !errors.Is(err, threw) {
 		t.Fatalf("err = %v, want what authorize returned", err)
 	}
 	routeWantKeys(t, rig.keysAttempted())
