@@ -69,6 +69,8 @@ nix run github:MichaelKinsy/PiG -- --version
 nix profile add github:MichaelKinsy/PiG
 ```
 
+Nix before 2.30 and Lix spell the second command `nix profile install`.
+
 The Nix package wraps the command with `fd`, `ripgrep` and the clipboard
 commands. Extensions build and run with the toolchains on `PATH`, as in any
 other installation. Update the flake input to update it.
