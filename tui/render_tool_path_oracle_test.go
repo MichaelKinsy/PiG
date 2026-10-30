@@ -41,9 +41,10 @@ func renderToolPathProbe(t testing.TB, probe toolPathProbe) string {
 	return renderToolPathArg(path, probe.Path != nil, probe.Cwd, fallback)
 }
 
+// pig divergence (D217) allowance, Pi 1be312b4 (#10488): the corpus leaves out "/home/probex/f.go" and "/home/probe/". Pinned Pi shortens them by bare string prefix ("~x/f.go", "~/"); PiG anchors the home directory at a path segment and normalizes the rest ("/home/probex/f.go", "~"). TestRenderToolPathHonorsPiGeneratedExpectations pins PiG's result.
 func toolPathProbes() []toolPathProbe {
 	str := func(s string) *string { return &s }
-	paths := []*string{nil, str(""), str("a.txt"), str("src/main.go"), str("./x/../y"), str("/abs/file.go"), str("/home/probe/proj/f.go"), str("/home/probe"), str("/home/probex/f.go"), str("/home/probe/"), str("~"), str("~/notes.md"), str("~user/x"),
+	paths := []*string{nil, str(""), str("a.txt"), str("src/main.go"), str("./x/../y"), str("/abs/file.go"), str("/home/probe/proj/f.go"), str("/home/probe"), str("~"), str("~/notes.md"), str("~user/x"),
 		str("with space/ü ñ 日本語.txt"), str("hash#and?query%percent"), str("quote'\"<>|\\back"), str("dir/"), str("//double//slash"), str("C:\\Users\\x\\f.txt"), str("a\tb"), str("\x1b[31mred"), str(".hidden"), str("../up/f"), str("/")}
 	var probes []toolPathProbe
 	for _, theme := range []string{"dark", "light"} {
@@ -61,7 +62,7 @@ func toolPathProbes() []toolPathProbe {
 }
 
 // renderToolPath (core/tools/render-utils.ts) against pinned Pi: a null path is the invalid-arg text, an empty one the muted "..." or the fallback,
-// otherwise the accent path with the home directory shortened (by prefix, as Pi does) and, with hyperlink support, an OSC 8 link to the file URL
+// otherwise the accent path with the home directory shortened (as a path-segment prefix since Pi 1be312b4; see toolPathProbes) and, with hyperlink support, an OSC 8 link to the file URL
 // of the path resolved against the working directory (spaces, unicode and reserved characters percent-encoded as pathToFileURL does).
 func TestRenderToolPathMatchesPi(t *testing.T) {
 	probes := toolPathProbes()
