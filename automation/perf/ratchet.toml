@@ -199,14 +199,15 @@
 # default, owner-approved 2026-10-29 (Michael Kinsy) for the combined Pi follow b3a29f11 + full 0.6.0 batch (53eb473a40): measured by TestHeadlessEmbedBinarySizeGate on the merged head linux_amd64 36,700,320 and windows_amd64 38,026,752 B, each rounded up to 8 KiB: linux_amd64 36,708,352, windows_amd64 38,027,264; linux_arm64 34,283,520 and darwin_arm64 35,299,328 are unchanged.
 # default windows_amd64, owner-approved 2026-10-29 (Michael Kinsy) for the 0.6.0 closed-Piglet-Binary refusals (#382, D202): measured by TestHeadlessEmbedBinarySizeGate on the merged head 38,027,776 B (+512 B over 38,027,264), rounded up to 8 KiB: 38,035,456; the other three default platforms are unchanged.
 # default linux_amd64, owner-approved 2026-10-29 (Michael Kinsy) for the Pi e7a0df27 follow: Photon's byte-exact PNG, JPEG and WebP codecs and Lanczos3 (internal/photonimage) replace Go's image encoders in the headless program; measured by TestHeadlessEmbedBinarySizeGate on the merged head 36,737,184 B, rounded up to 8 KiB: 36,741,120 (36,708,352 before).
-"binary.headless.default.linux_amd64.bytes" = 36741120
-"binary.headless.default.linux_arm64.bytes" = 34283520
-"binary.headless.default.darwin_arm64.bytes" = 35299328
-"binary.headless.default.windows_amd64.bytes" = 38035456
-"binary.headless.stripped.linux_amd64.bytes" = 30384128
+# headless ceilings, owner approved 2026-10-30 (Michael Kinsy), Photon formats TIFF/ICO/PNM/DDS/HDR/farbfeld (fix/follow-photon-decode-d): linux_amd64 default 36,937,728 approved by the owner; the other targets are measured by TestHeadlessEmbedBinarySizeGate on the integration head ba33bfe21a and rounded up to 8 KiB: default linux_arm64 34,406,560, darwin_arm64 35,508,658, windows_amd64 38,262,784; stripped linux_amd64 30,421,152, darwin_arm64 29,012,818, windows_amd64 31,728,128 (stripped linux_arm64 is unchanged).
+"binary.headless.default.linux_amd64.bytes" = 36937728
+"binary.headless.default.linux_arm64.bytes" = 34414592
+"binary.headless.default.darwin_arm64.bytes" = 35512320
+"binary.headless.default.windows_amd64.bytes" = 38264832
+"binary.headless.stripped.linux_amd64.bytes" = 30425088
 "binary.headless.stripped.linux_arm64.bytes" = 28057600
-"binary.headless.stripped.darwin_arm64.bytes" = 28999680
-"binary.headless.stripped.windows_amd64.bytes" = 31686656
+"binary.headless.stripped.darwin_arm64.bytes" = 29016064
+"binary.headless.stripped.windows_amd64.bytes" = 31735808
 
 # process: interactive start to the first ready frame, then Ctrl+D (test/integration TestInteractiveFirstFrameProcessGate, integration tag, tmux). The idle time between the frame and Ctrl+D adds timer work, so the margin is wider.
 "process.interactive_first_frame.allocs" = 22700
