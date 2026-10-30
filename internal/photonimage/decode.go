@@ -7,19 +7,29 @@ import (
 	"bytes"
 	"image"
 
-	// The decoders Decode falls back to for every format but JPEG and WebP. Go's JPEG and WebP decoders stay unregistered: they give other pixels than Photon.
+	// The decoders Decode falls back to for the lossless formats. Go's JPEG, WebP and TIFF decoders stay unregistered: they give other pixels than Photon.
 	_ "image/gif"
 	_ "image/png"
 
 	_ "golang.org/x/image/bmp"
 )
 
-// Decode decodes the bytes Photon's `PhotonImage.new_from_byteslice` decodes: image 0.24.9 `load_from_memory` guesses the format from
-// the magic bytes (guess_format, io/free_functions.rs:266-312) and decodes JPEG with jpeg-decoder 0.3.1 (DecodeJPEG), WebP with its own
-// decoder (DecodeWebP), TIFF with tiff 0.9.1 (DecodeTIFF), DDS (DecodeDDS), ICO (DecodeICO), Radiance HDR (DecodeHDR), PNM (DecodePNM), farbfeld (DecodeFarbfeld), all pixel for pixel. The other formats Photon
-// enables are decoded by the standard library decoders this package registers (PNG, GIF, BMP), which are lossless and give the same
-// pixels as Photon's. Bytes that no signature of guess_format matches are an error, as in Photon (TGA has no signature, io/free_functions.rs:295,
-// and AVIF, OpenEXR and QOI are not compiled into Photon's wasm). The result is not premultiplied.
+// Decode decodes the bytes Photon's `PhotonImage.new_from_byteslice` decodes: image 0.24.9 `load_from_memory` guesses the format from the
+// magic bytes (guess_format, io/free_functions.rs:266-312) and decodes it, then Photon converts the result with `to_rgba8`. Every format
+// Photon enables, but PNG, GIF and BMP, is decoded by a port of the Rust decoder that gives its pixels or its error:
+//
+//	JPEG      DecodeJPEG      jpeg-decoder 0.3.1
+//	WebP      DecodeWebP      image 0.24.9
+//	TIFF      DecodeTIFF      tiff 0.9.1
+//	DDS       DecodeDDS       image 0.24.9 (DXT1, DXT3 and DXT5)
+//	ICO       DecodeICO       image 0.24.9, over its BMP decoder and the png 0.17.14 reader
+//	Radiance  DecodeHDR       image 0.24.9
+//	PNM       DecodePNM       image 0.24.9
+//	farbfeld  DecodeFarbfeld  image 0.24.9
+//
+// PNG, GIF and BMP are decoded by the standard library decoders this package registers, which are lossless and give the same pixels as
+// Photon's. Bytes that no signature of guess_format matches are an error, as in Photon (TGA has no signature, io/free_functions.rs:295, and
+// AVIF, OpenEXR and QOI are not compiled into Photon's wasm). The result is not premultiplied.
 //
 // The cases follow the order of guess_format's table, whose first matching signature wins; no signature is a prefix of another, so the
 // order only documents it.
