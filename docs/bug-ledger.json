@@ -2,26 +2,6 @@
   "since": "0.4.1",
   "entries": [
     {
-      "id": "BF-0021db7",
-      "title": "The Go Durable SDK's scheduler no longer resolves the Harness settings for the context a run itself reads…",
-      "symptom": "The Go Durable SDK's scheduler no longer resolves the Harness settings for the context a run itself reads: `contextRetentionMs` is read only when the conversation is idle, as Pi's `runtime.context` does, which removes four settings resolutions from every round of one generation with a tool call.",
-      "rootCause": "keepContext read settings.contextRetentionMs before it looked at the conversation: four resolutions in every round of one generation with a tool call, where Pi resolves the retention only in the idle branch.",
-      "rootCauseSource": "commit",
-      "userImpact": "Behavior differed from Pi",
-      "platform": "All platforms",
-      "class": "own",
-      "fixedIn": "Unreleased",
-      "releaseNote": "The Go Durable SDK's scheduler no longer resolves the Harness settings for the context a run itself reads: `contextRetentionMs` is read only when the conversation is idle, as Pi's `runtime.context` does, which removes four settings resolutions from every round of one generation with a tool call.",
-      "origin": "release note",
-      "commits": [
-        {
-          "hash": "0021db7cfc",
-          "date": "2026-10-28"
-        }
-      ],
-      "tests": []
-    },
-    {
       "id": "BF-003f6f0",
       "title": "Ctrl+U, Ctrl+K and the word-delete keys leave an open autocomplete list open, as Pi's editor does",
       "symptom": "Ctrl+U, Ctrl+K and the word-delete keys leave an open autocomplete list open, as Pi's editor does.",
@@ -52,7 +32,7 @@
       "userImpact": "Behavior differed from Pi",
       "platform": "All platforms",
       "class": "own",
-      "fixedIn": "Unreleased",
+      "fixedIn": "0.6.0",
       "releaseNote": "The faux provider no longer counts newly cached prompt tokens as input as well as cache writes: with a session every prompt token is a cache read or a cache write.",
       "origin": "release note",
       "commits": [
@@ -258,6 +238,42 @@
       "tests": [
         "bench/k8s/cmd/k8sbench/pireference_test.go::TestCommittedPinHasAgentPins",
         "internal/codingagent/changelog_test.go::TestParseChangelog_RealFile"
+      ]
+    },
+    {
+      "id": "BF-0367abc",
+      "title": "The agent docs bundle no longer contradicts the site",
+      "symptom": "The agent docs bundle no longer contradicts the site.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "0.6.0",
+      "releaseNote": "The agent docs bundle no longer contradicts the site. `/fork` continues from before an earlier user message, the `PIG_HOME` default names `XDG_CONFIG_HOME`, `defaultThinkingLevel` defaults to `medium`, the site lists all nine Resource kinds, the bundle's Package page documents `pig update --models`, and the Piglet Image is marked as planned.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "0367abc801",
+          "date": "2026-10-28"
+        }
+      ],
+      "tests": [
+        "test/docs-drift/bundle_generated_test.go::TestBundleLinksStayInsideTheFlatBundle",
+        "test/docs-drift/bundle_generated_test.go::TestEveryBundlePageHasOneOwner",
+        "test/docs-drift/bundle_generated_test.go::TestGeneratedBlockEditedByHandFails",
+        "test/docs-drift/bundle_generated_test.go::TestGeneratedBundlePageEditedByHandFails",
+        "test/docs-drift/bundle_generated_test.go::TestGeneratedBundlePagesAreCurrent",
+        "test/docs-drift/bundle_generated_test.go::TestGeneratedBundlePagesCarryTheDoNotEditHeader",
+        "test/docs-drift/bundle_generated_test.go::TestGlossaryHasEveryContextTerm",
+        "test/docs-drift/bundle_generated_test.go::TestNoLinkPinsAStalePiTag",
+        "test/docs-drift/bundle_generated_test.go::TestSiteEditOfASharedPageStalesTheBundle",
+        "test/docs-drift/docs_contradictions_test.go::TestDefaultThinkingLevelIsMedium",
+        "test/docs-drift/docs_contradictions_test.go::TestForkIsDescribedAsAnEarlierUserMessage",
+        "test/docs-drift/docs_contradictions_test.go::TestPigHomeDefaultNamesXDG",
+        "test/docs-drift/docs_contradictions_test.go::TestPigletImageIsPlanned",
+        "test/docs-drift/docs_contradictions_test.go::TestResourceKindListHasNineKinds",
+        "test/docs-drift/docs_contradictions_test.go::TestUpdateModelsIsDocumentedWhereUpdateIs"
       ]
     },
     {
@@ -668,7 +684,7 @@
       "userImpact": "An operation failed or was rejected",
       "platform": "All platforms",
       "class": "pi-port",
-      "fixedIn": "Unreleased",
+      "fixedIn": "0.6.0",
       "releaseNote": "A configured package or `-e` source that cannot be installed no longer ends startup. It is skipped, as in offline mode, and reported as an extension warning that says how to remove it (`pig remove \u003csource\u003e`, with `--local` for a project package) or to check the source; `--help` and `--list-models` print it too.",
       "origin": "release note",
       "commits": [
@@ -887,6 +903,39 @@
       ]
     },
     {
+      "id": "BF-0920a00",
+      "title": "`/llama` pointed at llama-swap no longer ends in a bare \"llama.cpp returned HTTP 404\" when you load or unload…",
+      "symptom": "`/llama` pointed at llama-swap no longer ends in a bare \"llama.cpp returned HTTP 404\" when you load or unload a model (#380). llama-swap lists its models like a llama.cpp router but has no load or unload endpoint, because it loads a model when a request names it, and Pi shows the same 404.",
+      "rootCause": "`/llama` pointed at llama-swap no longer ends in a bare \"llama.cpp returned HTTP 404\" when you load or unload a model (#380). llama-swap lists its models like a llama.cpp router but has no load or unload endpoint, because it loads a model when a request names it, and Pi shows the same 404.",
+      "rootCauseSource": "release note",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "ahead-of-pi",
+      "divergence": "D212",
+      "removeWhen": "Pi's `/llama` names llama-swap itself, or can manage llama-swap models; or the owner withdraws the decision. Then the call-site marker, the `GET /running` probe, the docs section and this record go.",
+      "fixedIn": "0.6.0",
+      "releaseNote": "`/llama` pointed at llama-swap no longer ends in a bare \"llama.cpp returned HTTP 404\" when you load or unload a model (#380). llama-swap lists its models like a llama.cpp router but has no load or unload endpoint, because it loads a model when a request names it, and Pi shows the same 404. PiG now recognises llama-swap (its error envelope, or a `GET /running` that answers like it) and says to add it to `models.json` as an `openai-completions` provider and pick models with `/model`; a 404 from a real llama.cpp router keeps Pi's text (D212). The llama.cpp docs page has a new llama-swap section with the `models.json` setup.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "0920a0090e",
+          "date": "2026-10-28"
+        },
+        {
+          "hash": "4da5fb55c8",
+          "date": "2026-10-28"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/llama/client_http_oracle_test.go::TestLlamaClientRequestsMatchPi",
+        "internal/codingagent/llama/llamaswap_test.go::TestLlamaClientAndCatalogAgainstLlamaSwapAndLlamaServerMatchPi",
+        "internal/codingagent/llama/llamaswap_test.go::TestLlamaCommandAgainstLlamaSwapExplainsTheMissingEndpoints",
+        "internal/codingagent/llama/llamaswap_test.go::TestLlamaCommandKeepsPisTextForARouter404",
+        "internal/codingagent/llama/llamaswap_test.go::TestLoadAndUnloadKeepPisTextForA404ThatIsNotLlamaSwap",
+        "internal/codingagent/llama/llamaswap_test.go::TestLoadAndUnloadRecognizeLlamaSwapByItsErrorEnvelope"
+      ]
+    },
+    {
       "id": "BF-093cf5c",
       "title": "Provider error text is written the way Pi writes it",
       "symptom": "Provider error text is written the way Pi writes it.",
@@ -1032,7 +1081,7 @@
       "userImpact": "An operation failed or was rejected",
       "platform": "All platforms",
       "class": "own",
-      "fixedIn": "Unreleased",
+      "fixedIn": "0.6.0",
       "releaseNote": "A provider that an extension registers while it loads no longer fails the load when the model registry rejects it. The host asked the registry at once and reported `Failed to load extension: Provider x, model y: no \"api\" specified.`, with the `pig -ne` hint. Pi queues the registration and applies it after every extension has loaded. PiG now does the same: the extension stays loaded, the other registrations apply, and startup reports `Error: Extension \"\u003cpath\u003e\" error: Provider x, model y: no \"api\" specified. Set it at model level or provider level.` as Pi does. A registration that an extension makes after it loaded still applies at once and returns its error to the extension.",
       "origin": "release note",
       "commits": [
@@ -1718,7 +1767,7 @@
       "userImpact": "An operation failed or was rejected",
       "platform": "All platforms",
       "class": "own",
-      "fixedIn": "Unreleased",
+      "fixedIn": "0.6.0",
       "releaseNote": "The `/tree` Summarize option sends the session's thinking level with the branch summary request when the model supports reasoning, as compaction does. Before, the request carried no reasoning, and a reasoning model on OpenAI Responses or Azure Responses that rejects an effort of `none` failed the summary with a 400 error.",
       "origin": "release note",
       "commits": [
@@ -1760,7 +1809,7 @@
       "userImpact": "An operation failed or was rejected",
       "platform": "All platforms",
       "class": "own",
-      "fixedIn": "Unreleased",
+      "fixedIn": "0.6.0",
       "releaseNote": "`WaitForIdle` on the Harness or a Conversation no longer fails with \"Harness is closed\" when a close begins after the commit that made the work idle and before the wait wakes. Pi settles the idle waits at the commit, so a later close cannot reach them; PiG decided and settled them only after the host listeners, and the close's seal rejected them. They are now settled at the commit and only wake after the listeners.",
       "origin": "release note",
       "commits": [
@@ -1839,15 +1888,16 @@
     },
     {
       "id": "BF-121ba35",
-      "title": "fix(durable/core): observers of one conversation view share its mount, and a bad window is a RangeError (Pi)",
-      "symptom": "fix(durable/core): observers of one conversation view share its mount, and a bad window is a RangeError (Pi)",
+      "title": "The Durable core's conversation view follows Pi f3255de7's mount: a second observer of a conversation only…",
+      "symptom": "The Durable core's conversation view follows Pi f3255de7's mount: a second observer of a conversation only loads its own window and takes the one `docs` object of the mount, so attaching to a mounted view spends Pi's microtask passes and the observers of one conversation share their documents; a window the core rejects (a bound that is not an integer, `max` below `min`) reaches the host as the `RangeError` Pi throws.",
       "rootCause": "A second observer of a mounted view only loads its window (view.ts attach: the mount exists), so its attach spends Pi's passes (F-ticks-watch: 21, not 39); the facade gives every observer of a conversation the one docs object of the mount (U-harness-view shares one mount between concurrent observers; gives each observer its own window over one mount); a window the core rejects reaches the host as the RangeError view.ts throws (U-harness-view rejects window bounds that are not integers). TestResolveWindow checks the rejection's name.",
       "rootCauseSource": "commit",
       "userImpact": "Behavior differed from Pi",
       "platform": "All platforms",
       "class": "own",
-      "fixedIn": "Unreleased",
-      "origin": "commit",
+      "fixedIn": "0.6.0",
+      "releaseNote": "The Durable core's conversation view follows Pi f3255de7's mount: a second observer of a conversation only loads its own window and takes the one `docs` object of the mount, so attaching to a mounted view spends Pi's microtask passes and the observers of one conversation share their documents; a window the core rejects (a bound that is not an integer, `max` below `min`) reaches the host as the `RangeError` Pi throws.",
+      "origin": "release note",
       "commits": [
         {
           "hash": "121ba35041",
@@ -2799,7 +2849,7 @@
       "userImpact": "Crash, hang or runaway process",
       "platform": "Windows",
       "class": "own",
-      "fixedIn": "Unreleased",
+      "fixedIn": "0.6.0",
       "releaseNote": "Closing a Chord host no longer hangs when a hold arrives over a link that closes at the same time. A frame the link had handed to the host loop before it closed could run after Close took its last look at the host's objects and after the connection had released what it held, so it created an object nothing disposed or released, and Close waited for that object's resource open for good (seen as a 30 minute `chord/host` test timeout on Windows after a `ready_timeout` get). A connection now ignores frames once its link closed, as Pi's link delivers none.",
       "origin": "release note",
       "commits": [
@@ -2863,7 +2913,7 @@
       "userImpact": "Behavior differed from Pi",
       "platform": "All platforms",
       "class": "own",
-      "fixedIn": "Unreleased",
+      "fixedIn": "0.6.0",
       "releaseNote": "A Session that an extension creates with `createAgentSession`, or that `coding.CreateAgentSession` returns, now reports `entry_appended` to its listeners when an extension that its resource loader loaded calls `pi.appendEntry`, as Pi does. The event arrives before the event the extension was handling, and `ctx.sessionManager.appendCustomEntry` still writes the log without an event. The Session wrote the entry and told no listener.",
       "origin": "release note",
       "commits": [
@@ -3512,7 +3562,7 @@
       "userImpact": "Lost or altered data",
       "platform": "macOS, Linux",
       "class": "own",
-      "fixedIn": "Unreleased",
+      "fixedIn": "0.6.0",
       "releaseNote": "On Linux and macOS, the bash tool, a `!` command and an extension's `exec` no longer report no output for a command that printed, when the machine is too busy to run PiG's pipe reader within 100 ms of the command's exit. PiG ended the wait for the output pipe after Pi's 100 ms post-exit grace even though the command had written its output before it exited and the reader had not yet taken it, so the output was lost; on a loaded machine `echo answer` came back as `(no output)`. PiG now asks the pipe itself when the grace elapses: a pipe that no process holds is read to its end, a pipe that holds output nobody has read yet keeps the wait going, and only a pipe that a background process still holds and that is quiet is released after the grace, as in Pi.",
       "origin": "release note",
       "commits": [
@@ -3533,6 +3583,33 @@
         "internal/codingagent/tools/bash_output_complete_test.go::TestLocalShellOperationsReadToEOFAfterTheGrace",
         "internal/codingagent/tools/bash_output_complete_test.go::TestShellToolReturnsTheOutputOfACommandThatExitedBeforeItsReaderRan",
         "internal/codingagent/tools/bash_output_holder_unix_test.go::TestLocalShellOperationsKeepTheOutputOfAnExitedShellWhileADescendantHoldsThePipe"
+      ]
+    },
+    {
+      "id": "BF-227a4c1",
+      "title": "A Piglet's tool scope now bounds the Session's tool registry, not only its active tools",
+      "symptom": "A Piglet's tool scope now bounds the Session's tool registry, not only its active tools.",
+      "rootCause": "A Piglet that allowed some MCP tools, or hid some tools of an extension, still left the others callable from a `codemode` script (the MCP server logged the call) and loadable with `tool_search`, because both read the registry.",
+      "rootCauseSource": "release note",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "0.6.0",
+      "releaseNote": "A Piglet's tool scope now bounds the Session's tool registry, not only its active tools. A Piglet that allowed some MCP tools, or hid some tools of an extension, still left the others callable from a `codemode` script (the MCP server logged the call) and loadable with `tool_search`, because both read the registry. The Piglet scope now composes with `--tools` and `--exclude-tools` as an intersection wherever Pi applies its allowlist: definitions, the registry, `getAllTools`, activation and the refresh after a late registration. A hidden tool fails in `codemode` as it does under `--tools` (`tools.\u003cname\u003e does not exist`) and `tool_search` cannot find it. `codemode` and `tool_search` are no longer hidden when a Piglet leaves no MCP tool visible; they just reach nothing hidden. The MCP resource tools (`list_mcp_resources`, `list_mcp_resource_templates`, `read_mcp_resource`) are governed by the `pig-mcp-adapter` entry by name. Stock PiG without a Piglet is unchanged.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "227a4c1bff",
+          "date": "2026-10-28"
+        }
+      ],
+      "tests": [
+        "coding/cli/piglet_mcp_tool_scope_test.go::TestPigletScopesBuiltinMCPToolsInRPCMode",
+        "coding/extension/tool_filter_test.go::TestToolFilterScopeIntersects",
+        "coding/piglet/scope_mcp_test.go::TestScopeToolsScopesBuiltinMCPNamespaceLikeMCPSource",
+        "coding/session_tool_scope_test.go::TestNilToolScopeLeavesTheRegistryUnchanged",
+        "coding/session_tool_scope_test.go::TestToolScopeIntersectsWithToolsFlags",
+        "coding/session_tool_scope_test.go::TestToolScopeRemovesToolsFromTheRegistry"
       ]
     },
     {
@@ -3677,7 +3754,7 @@
       "userImpact": "An operation failed or was rejected",
       "platform": "Windows",
       "class": "own",
-      "fixedIn": "Unreleased",
+      "fixedIn": "0.6.0",
       "releaseNote": "On Windows, a Go extension's source hash no longer fails, or makes a build beside it fail, with `The process cannot access the file because it is being used by another process`. The hash listed every directory of the extension and of the modules its `go.mod` replaces through a handle that did not share delete, so a build that deleted or renamed a directory in those trees while the hash had it open (Cargo and rustc remove temp directories under a replaced repository root) failed with a sharing violation, and the hash failed in turn when it opened a directory that build was deleting. The hash now lists directories with every share mode. A directory that is there and denies the listing (an ACL deny) still fails the hash.",
       "origin": "release note",
       "commits": [
@@ -4049,28 +4126,6 @@
       ]
     },
     {
-      "id": "BF-26d3370",
-      "title": "The Durable core's host no longer reads the extensions of the Harness settings before every event it sends…",
-      "symptom": "The Durable core's host no longer reads the extensions of the Harness settings before every event it sends: the core never reads them, so they are neither sent nor compared by the change detector (the host made about 187 such reads in a round of one generation with one tool call).",
-      "rootCause": "The core counts its resolutions of the settings it was sent (a turn phase's settings, the context retention checks, the submission's queue modes) and publishes the count in a settings notice (ABI 12) at the end of the event; the host resolves them as often, as Pi's callback is seen to (harness-restart-failure.test.ts counts 49 for a round of one generation with one tool call). U-harness-restart-failure passes on native (18 tests).",
-      "rootCauseSource": "commit",
-      "userImpact": "Behavior differed from Pi",
-      "platform": "All platforms",
-      "class": "own",
-      "fixedIn": "Unreleased",
-      "releaseNote": "The Durable core's host no longer reads the extensions of the Harness settings before every event it sends: the core never reads them, so they are neither sent nor compared by the change detector (the host made about 187 such reads in a round of one generation with one tool call). The core reads `HarnessOptions.settings` from the snapshot the host sends before each event, where Pi resolves the callback at each use (recorded as D206).",
-      "origin": "release note",
-      "commits": [
-        {
-          "hash": "26d33706d4",
-          "date": "2026-10-28"
-        }
-      ],
-      "tests": [
-        "durable/core/abi/spec/spec_test.go::TestTablesUnchanged"
-      ]
-    },
-    {
       "id": "BF-27a1650",
       "title": "The keybindings manager's key text and key matching now cover every keybinding the merged table defines…",
       "symptom": "A `tui.*` id had no key text and matched nothing through the coding-agent manager, and an unknown id echoed its user keys.",
@@ -4163,7 +4218,7 @@
       "userImpact": "An operation failed or was rejected",
       "platform": "All platforms",
       "class": "own",
-      "fixedIn": "Unreleased",
+      "fixedIn": "0.6.0",
       "releaseNote": "A native Provider object an extension registers (`registerNativeProvider`, `pi.registerProvider(provider)`) whose models declare no `baseUrl` now reaches the model catalog, as in Pi: the host composes the Provider object untouched, so its models keep the base URL they declare (or none) and its name, models and streams work. Before, such a provider never composed (no models, its name replaced by its id, every stream an error), and a provider-level `baseUrl` was copied onto its models, which Pi does not do (it is only the context of `refreshModels`).",
       "origin": "release note",
       "commits": [
@@ -4427,7 +4482,7 @@
       "userImpact": "Behavior differed from Pi",
       "platform": "All platforms",
       "class": "own",
-      "fixedIn": "Unreleased",
+      "fixedIn": "0.6.0",
       "releaseNote": "Node extensions read live `ctx.isIdle()` state, so background callbacks detect when a run finishes or starts.",
       "origin": "release note",
       "commits": [
@@ -4495,7 +4550,7 @@
       "userImpact": "Wrong output or ordering",
       "platform": "All platforms",
       "class": "own",
-      "fixedIn": "Unreleased",
+      "fixedIn": "0.6.0",
       "releaseNote": "The Lisp and Python extension SDKs now give each `onThemeChange` handler the theme of its own change, in order, as the Go and Rust SDKs do. They delivered one live theme object to handlers that run on a worker thread, so a handler that ran after the host had switched themes again read the newer palette: two quick changes reached their subscribers as the newer theme twice instead of the second and the third theme, and the Lisp SDK test `theme-and-tools-expanded-changes-reach-their-subscribers-in-order` reported that on a loaded machine in up to a quarter of its runs. Each delivery now carries a snapshot taken with its palette; `ctx.ui.theme` stays live. A new conformance row, `TestOnThemeChangeDeliversEachChangesOwnThemeAcrossSDKs`, holds the first delivery in a gate handler while the host switches themes and requires the handler behind it to log the theme of its own change in every SDK.",
       "origin": "release note",
       "commits": [
@@ -5253,7 +5308,7 @@
       "userImpact": "An operation failed or was rejected",
       "platform": "All platforms",
       "class": "own",
-      "fixedIn": "Unreleased",
+      "fixedIn": "0.6.0",
       "releaseNote": "The Durable core's Session opens a document watch, a conversation view and the task graph as a job on the Session line, so an attachment made after a commit was queued starts at that commit's value; `watchDoc` and `observeDoc` reject on a closed Session with `Session is closed`; a watch keeps its Session alive while it runs and, once stopped or retired, no earlier incarnation's value; a Session subclass's `report(error, info)` receives the reports of its watches and observers.",
       "origin": "release note",
       "commits": [
@@ -6027,7 +6082,7 @@
       "userImpact": "An operation failed or was rejected",
       "platform": "All platforms",
       "class": "own",
-      "fixedIn": "Unreleased",
+      "fixedIn": "0.6.0",
       "releaseNote": "An extension provider's model that another provider also catalogs, such as `gpt-6-astra` under `azure`, no longer takes that provider's API when it is built before its own provider registers. Before this fix, such a model took the other provider's API and the turn failed (`LiteLLM model gpt-6-astra declares unsupported protocol \"azure-openai-responses\"`). `BuildModel` now matches only the requested provider's catalog, as the CLI's startup resolution already did.",
       "origin": "release note",
       "commits": [
@@ -6103,30 +6158,6 @@
         }
       ],
       "tests": []
-    },
-    {
-      "id": "BF-36fe3a6",
-      "title": "`pig install \u003cpath\u003e --validate-only` called a `.mjs` file, or a directory with only `index.mjs`, a valid…",
-      "symptom": "`pig install \u003cpath\u003e --validate-only` called a `.mjs` file, or a directory with only `index.mjs`, a valid extension without saying that auto-discovery ignores it.",
-      "rootCause": "A top-level .mjs file or a directory with only index.mjs validated as a valid extension, and auto-discovery of an extensions directory ignores both, as Pi's does (.ts and .js only). The report keeps valid: true, because -e and a settings path load the source, and now adds autoDiscovered and a warning that names the rule.",
-      "rootCauseSource": "commit",
-      "userImpact": "Behavior differed from Pi",
-      "platform": "All platforms",
-      "class": "own",
-      "fixedIn": "Unreleased",
-      "releaseNote": "`pig install \u003cpath\u003e --validate-only` called a `.mjs` file, or a directory with only `index.mjs`, a valid extension without saying that auto-discovery ignores it. Pi discovers only `.ts` and `.js` files in an extensions directory. The report stays valid, because `-e` and a settings path load the source, and now says what discovery does.",
-      "origin": "release note",
-      "commits": [
-        {
-          "hash": "36fe3a67b3",
-          "date": "2026-10-28"
-        }
-      ],
-      "tests": [
-        "coding/cli/config_command_test.go::TestProjectPackageDeltaDrivesStartupStatusAndResourceCollectors",
-        "coding/cli/introspection_truth_test.go::TestInstallValidateOnlyReportsWhatDiscoveryWouldLoad",
-        "coding/cli/introspection_truth_test.go::TestNotAutoDiscoveredWarningFollowsPiDiscovery"
-      ]
     },
     {
       "id": "BF-37c6048",
@@ -6295,7 +6326,7 @@
       "userImpact": "Behavior differed from Pi",
       "platform": "All platforms",
       "class": "own",
-      "fixedIn": "Unreleased",
+      "fixedIn": "0.6.0",
       "releaseNote": "The faux provider (`ai.NewFauxProvider`) no longer ends a streamed chunk inside a multibyte character. It cut a response at byte offsets where Pi slices a JavaScript string, so a text delta of non-ASCII text could end halfway through a character, and the partial arguments of a tool call that such a chunk extended were not valid text: every one of those chunks copied and checked all the arguments again. A tool call of 180 KB of mixed-width text allocated 3.2 GB and took 12.7 s (74 s under `-race`) before it ran; it now allocates 25 MB and takes 48 ms. A chunk is `tokenSize * 4` UTF-16 units, as in Pi's `splitStringByTokenSize`, and ends at the first character boundary at or after that size.",
       "origin": "release note",
       "commits": [
@@ -6350,7 +6381,7 @@
       "userImpact": "Wrong output or ordering",
       "platform": "All platforms",
       "class": "own",
-      "fixedIn": "Unreleased",
+      "fixedIn": "0.6.0",
       "releaseNote": "A `Provider` object that an extension registers while it loads is now applied after every extension has loaded, like a provider configuration, instead of at once. When the model registry rejects a registration, PiG now leaves nothing of it behind: the login it declared, its entry in the model list that extensions read, and its claim on the provider are given back, so a registration of the same provider by another extension stays as it was. Pi's registry validates a registration before it stores anything of it.",
       "origin": "release note",
       "commits": [
@@ -6837,39 +6868,6 @@
         "test/parity/runner/upstream_mirror_test.go::TestUpstreamMirrorMissingNamesTheMakeTarget",
         "test/parity/scenarios/rpc/62-rpc-parallel-tool-dialog-order.toml",
         "tui/render_scheduler_test.go::TestTUIRequestRender_RendersAtOnceAfterMinInterval"
-      ]
-    },
-    {
-      "id": "BF-3f46dee",
-      "title": "`/llama` pointed at llama-swap no longer ends in a bare \"llama.cpp returned HTTP 404\" when you load or unload…",
-      "symptom": "`/llama` pointed at llama-swap no longer ends in a bare \"llama.cpp returned HTTP 404\" when you load or unload a model (#380). llama-swap lists its models like a llama.cpp router but has no load or unload endpoint, because it loads a model when a request names it, and Pi shows the same 404.",
-      "rootCause": "`/llama` pointed at llama-swap no longer ends in a bare \"llama.cpp returned HTTP 404\" when you load or unload a model (#380). llama-swap lists its models like a llama.cpp router but has no load or unload endpoint, because it loads a model when a request names it, and Pi shows the same 404.",
-      "rootCauseSource": "release note",
-      "userImpact": "An operation failed or was rejected",
-      "platform": "All platforms",
-      "class": "ahead-of-pi",
-      "divergence": "D212",
-      "removeWhen": "Pi's `/llama` names llama-swap itself, or can manage llama-swap models; or the owner withdraws the decision. Then the call-site marker, the `GET /running` probe, the docs section and this record go.",
-      "fixedIn": "Unreleased",
-      "releaseNote": "`/llama` pointed at llama-swap no longer ends in a bare \"llama.cpp returned HTTP 404\" when you load or unload a model (#380). llama-swap lists its models like a llama.cpp router but has no load or unload endpoint, because it loads a model when a request names it, and Pi shows the same 404. PiG now recognises llama-swap (its error envelope, or a `GET /running` that answers like it) and says to add it to `models.json` as an `openai-completions` provider and pick models with `/model`; a 404 from a real llama.cpp router keeps Pi's text (D212). The llama.cpp docs page has a new llama-swap section with the `models.json` setup.",
-      "origin": "release note",
-      "commits": [
-        {
-          "hash": "2d23f814c2",
-          "date": "2026-10-28"
-        },
-        {
-          "hash": "3f46dee992",
-          "date": "2026-10-28"
-        }
-      ],
-      "tests": [
-        "internal/codingagent/llama/client_http_oracle_test.go::TestLlamaClientRequestsMatchPi",
-        "internal/codingagent/llama/llamaswap_test.go::TestLlamaClientAndCatalogAgainstLlamaSwapAndLlamaServerMatchPi",
-        "internal/codingagent/llama/llamaswap_test.go::TestLlamaCommandAgainstLlamaSwapExplainsTheMissingEndpoints",
-        "internal/codingagent/llama/llamaswap_test.go::TestLlamaCommandKeepsPisTextForARouter404",
-        "internal/codingagent/llama/llamaswap_test.go::TestLoadAndUnloadKeepPisTextForA404ThatIsNotLlamaSwap",
-        "internal/codingagent/llama/llamaswap_test.go::TestLoadAndUnloadRecognizeLlamaSwapByItsErrorEnvelope"
       ]
     },
     {
@@ -7377,7 +7375,7 @@
       "userImpact": "Crash, hang or runaway process",
       "platform": "All platforms",
       "class": "own",
-      "fixedIn": "Unreleased",
+      "fixedIn": "0.6.0",
       "releaseNote": "Durable core: a Harness opened through the TypeScript host honours `HarnessOptions.setTimer` and `onWake` (sleeping tasks arm host timers or wake the host once per change, a background timer the host declines is dropped, a foreground one it declines or throws on falls back to `setTimeout` and is reported once, `TaskRuntime.setTimer` timers end with their invocation) and `settings.restartLimit` (including `Infinity`) reaches the core, so a crash-looping task parks. A reservation commit that the host's Storage holds while `close()` seals the Harness now lands and is written back as pending instead of being dropped, and a `sleepUntil` of `NaN` or an infinity is rejected as Pi rejects it.",
       "origin": "release note",
       "commits": [
@@ -7570,7 +7568,7 @@
       "userImpact": "An operation failed or was rejected",
       "platform": "All platforms",
       "class": "own",
-      "fixedIn": "Unreleased",
+      "fixedIn": "0.6.0",
       "releaseNote": "Device-code logins (GitHub Copilot, Kimi Code, Meta, Radius) use the `verification_uri` a server sends only when it is an `http:` or `https:` URL, and open and show its normalized form, so a malicious login server cannot make `pig` launch a `file:` or custom protocol URL. Ports Pi's `trustedHttpUrl` use in every login that opens a server-supplied URL.",
       "origin": "release note",
       "commits": [
@@ -7597,7 +7595,7 @@
       "userImpact": "An operation failed or was rejected",
       "platform": "All platforms",
       "class": "own",
-      "fixedIn": "Unreleased",
+      "fixedIn": "0.6.0",
       "releaseNote": "A pi-messages event whose `contentIndex` is not an integer naming the next block (for a `_start` event) or an existing block (for any other event) now fails with `Invalid contentIndex \u003cvalue\u003e in pi-messages \u003ctype\u003e event`, as Pi's does, instead of indexing the message's content with a value from the wire.",
       "origin": "release note",
       "commits": [
@@ -8677,7 +8675,7 @@
       "userImpact": "Wrong output or ordering",
       "platform": "All platforms",
       "class": "own",
-      "fixedIn": "Unreleased",
+      "fixedIn": "0.6.0",
       "releaseNote": "A description decoded from the wire is written back with every schema member in the order it was declared in, as Pi writes it, and `normalize` returns the input's members in their own order followed by the defaults in the schema's declared order; the top-level members of a decoded schema came out sorted and a normalized value's defaults in sorted order.",
       "origin": "release note",
       "commits": [
@@ -8785,7 +8783,7 @@
       "userImpact": "Behavior differed from Pi",
       "platform": "All platforms",
       "class": "own",
-      "fixedIn": "Unreleased",
+      "fixedIn": "0.6.0",
       "releaseNote": "`Math.exp` in `internal/jsmath` returns Node's bits on arm64. V8's fdlibm build contracts products into multiply-adds there, and `Exp` rounded them, so the last bit differed from `Math.exp` for about 1 in 2500 arguments on arm64 hosts. GOARCH=amd64 results are unchanged.",
       "origin": "release note",
       "commits": [
@@ -9069,28 +9067,6 @@
         }
       ],
       "tests": []
-    },
-    {
-      "id": "BF-4fb7dc6",
-      "title": "The Durable core's conversation view follows Pi f3255de7's mount: a second observer of a conversation only…",
-      "symptom": "The Durable core's conversation view follows Pi f3255de7's mount: a second observer of a conversation only loads its own window and takes the one `docs` object of the mount, so attaching to a mounted view spends Pi's microtask passes and the observers of one conversation share their documents; a window the core rejects (a bound that is not an integer, `max` below `min`) reaches the host as the `RangeError` Pi throws.",
-      "rootCause": "A second observer of a mounted view only loads its window (view.ts attach: the mount exists), so its attach spends Pi's passes (F-ticks-watch: 21, not 39); the facade gives every observer of a conversation the one docs object of the mount (U-harness-view shares one mount between concurrent observers; gives each observer its own window over one mount); a window the core rejects reaches the host as the RangeError view.ts throws (U-harness-view rejects window bounds that are not integers). TestResolveWindow checks the rejection's name.",
-      "rootCauseSource": "commit",
-      "userImpact": "Behavior differed from Pi",
-      "platform": "All platforms",
-      "class": "own",
-      "fixedIn": "Unreleased",
-      "releaseNote": "The Durable core's conversation view follows Pi f3255de7's mount: a second observer of a conversation only loads its own window and takes the one `docs` object of the mount, so attaching to a mounted view spends Pi's microtask passes and the observers of one conversation share their documents; a window the core rejects (a bound that is not an integer, `max` below `min`) reaches the host as the `RangeError` Pi throws.",
-      "origin": "release note",
-      "commits": [
-        {
-          "hash": "4fb7dc6de7",
-          "date": "2026-10-27"
-        }
-      ],
-      "tests": [
-        "durable/core/view_test.go::TestResolveWindow"
-      ]
     },
     {
       "id": "BF-4fc8c2e",
@@ -9533,7 +9509,7 @@
       "userImpact": "Wrong output or ordering",
       "platform": "All platforms",
       "class": "own",
-      "fixedIn": "Unreleased",
+      "fixedIn": "0.6.0",
       "releaseNote": "The Rust, Python and Lisp extension SDKs now recognize F1-F12 reported with the Kitty keyboard protocol, as the Go SDK and Pi do: `CSI P`/`Q`/`S` and `CSI 1;\u003cmod\u003e P`/`Q`/`S` for F1, F2 and F4, and a modifier on any F-key such as `CSI 15;5~` for Ctrl+F5. Their `matchesKey(\"f5\", ...)`-style checks match `ctrl+f5` and `shift+f4`, `parseKey` names the keys, `isKeyRelease` and `isKeyRepeat` accept `:3` and `:2` on `P`/`Q`/`S`, and `decodeKittyPrintable` returns nothing for the Kitty functional-key Private Use Area instead of an invisible character. The pi-tui bulk vectors (`test/parity/sdk-bulk`), generated from an older pi-tui, are regenerated from the pinned Pi build, so the Go SDK tests no longer assert that `\\x1b[P` is no key. Ports Pi's `keys.ts` F-key changes to the Rust, Python and Lisp SDKs.",
       "origin": "release note",
       "commits": [
@@ -10264,6 +10240,30 @@
       ]
     },
     {
+      "id": "BF-570c037",
+      "title": "`pig install \u003cpath\u003e --validate-only` called a `.mjs` file, or a directory with only `index.mjs`, a valid…",
+      "symptom": "`pig install \u003cpath\u003e --validate-only` called a `.mjs` file, or a directory with only `index.mjs`, a valid extension without saying that auto-discovery ignores it.",
+      "rootCause": "A top-level .mjs file or a directory with only index.mjs validated as a valid extension, and auto-discovery of an extensions directory ignores both, as Pi's does (.ts and .js only). The report keeps valid: true, because -e and a settings path load the source, and now adds autoDiscovered and a warning that names the rule.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "0.6.0",
+      "releaseNote": "`pig install \u003cpath\u003e --validate-only` called a `.mjs` file, or a directory with only `index.mjs`, a valid extension without saying that auto-discovery ignores it. Pi discovers only `.ts` and `.js` files in an extensions directory. The report stays valid, because `-e` and a settings path load the source, and now says what discovery does.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "570c037353",
+          "date": "2026-10-28"
+        }
+      ],
+      "tests": [
+        "coding/cli/config_command_test.go::TestProjectPackageDeltaDrivesStartupStatusAndResourceCollectors",
+        "coding/cli/introspection_truth_test.go::TestInstallValidateOnlyReportsWhatDiscoveryWouldLoad",
+        "coding/cli/introspection_truth_test.go::TestNotAutoDiscoveredWarningFollowsPiDiscovery"
+      ]
+    },
+    {
       "id": "BF-570f857",
       "title": "Fixed interactive sessions leaving extension prompt sections, such as the MCP `mcp_servers` list, out of the…",
       "symptom": "Fixed interactive sessions leaving extension prompt sections, such as the MCP `mcp_servers` list, out of the transcript's system message.",
@@ -10526,7 +10526,7 @@
       "userImpact": "Behavior differed from Pi",
       "platform": "All platforms",
       "class": "own",
-      "fixedIn": "Unreleased",
+      "fixedIn": "0.6.0",
       "releaseNote": "Text typed and followed at once by Enter no longer skips the autocomplete menu Pi opens: `/model provider/id` typed and entered in one go switched the model in PiG, where Pi accepts the suggestion into the editor on the first Enter and switches on the second (the same holds for `/thinking level`, any command with argument completions, and a partially typed slash command, which Pi accepts and submits). Pi's editor resolves its autocomplete request in the Promise jobs that follow the terminal read that typed the text, so the menu is open when the next read arrives; PiG started the request on a worker and published the menu through two later owner-loop tasks that the Enter overtook, so the Enter found no menu and submitted what was typed. The editor now starts the request of a read when the read has been handled (`Editor.FlushAutocomplete`, called by the interactive loop after each read), and an Enter in the same read as the text still submits it, as in Pi. Typed at human speed both behaved like Pi already.",
       "origin": "release note",
       "commits": [
@@ -10607,7 +10607,7 @@
       "userImpact": "Wrong output or ordering",
       "platform": "All platforms",
       "class": "own",
-      "fixedIn": "Unreleased",
+      "fixedIn": "0.6.0",
       "releaseNote": "OpenCode and OpenCode Go requests go to the protocol-specific endpoints instead of the shared base: OpenAI-compatible models at `/inference/openai/v1`, Anthropic models at `/inference/anthropic`, Google models at `/inference/google/v1beta` and Jev at `/inference/systemone/v1` (the same paths under `/inference/go` for OpenCode Go). Ports Pi's #11434.",
       "origin": "release note",
       "commits": [
@@ -10713,7 +10713,7 @@
       "userImpact": "An operation failed or was rejected",
       "platform": "Linux",
       "class": "own",
-      "fixedIn": "Unreleased",
+      "fixedIn": "0.6.0",
       "releaseNote": "Starting an extension no longer fails with `fork/exec …: text file busy` when the host builds or starts other extensions at the same moment (seen as a `ci-test-conformance` failure in `TestModelTypesVirtualModelsAcrossSDKs/rust-isolated`). The host copies a compiled extension binary into its cache and starts the copy as soon as it is published: a Rust cell runner when `CARGO_TARGET_DIR` puts the compiler output outside the build directory, a standalone Rust extension, and the embedded cells of a Piglet Binary. A process that another goroutine started while the copy was open still held the copy's write descriptor, and Linux refuses to start a file that any process holds open for writing. The host now starts no process from before the copy is opened until after it is closed, so a start waits for at most one 256 KiB chunk of a copy (about 0.2 ms), not the whole copy. A standalone Rust extension build also no longer reads the whole binary into memory to copy it.",
       "origin": "release note",
       "commits": [
@@ -10893,7 +10893,7 @@
       "userImpact": "Behavior differed from Pi",
       "platform": "All platforms",
       "class": "own",
-      "fixedIn": "Unreleased",
+      "fixedIn": "0.6.0",
       "releaseNote": "Durable partial commits of a streamed answer no longer compare every growing text, thinking and tool-call argument string in full on each commit and re-assign the arguments snapshot: they append new text with `AppendText` and apply the argument changes of their own parse of the streamed argument text.",
       "origin": "release note",
       "commits": [
@@ -10927,7 +10927,7 @@
       "userImpact": "Behavior differed from Pi",
       "platform": "All platforms",
       "class": "own",
-      "fixedIn": "Unreleased",
+      "fixedIn": "0.6.0",
       "releaseNote": "An append op whose text starts with the low half of a surrogate pair joins the high half that ends the string it appends to, as JavaScript string concatenation does.",
       "origin": "release note",
       "commits": [
@@ -11614,42 +11614,6 @@
       ]
     },
     {
-      "id": "BF-618ca75",
-      "title": "The agent docs bundle no longer contradicts the site",
-      "symptom": "The agent docs bundle no longer contradicts the site.",
-      "rootCause": "",
-      "rootCauseSource": "",
-      "userImpact": "Behavior differed from Pi",
-      "platform": "All platforms",
-      "class": "own",
-      "fixedIn": "Unreleased",
-      "releaseNote": "The agent docs bundle no longer contradicts the site. `/fork` continues from before an earlier user message, the `PIG_HOME` default names `XDG_CONFIG_HOME`, `defaultThinkingLevel` defaults to `medium`, the site lists all nine Resource kinds, the bundle's Package page documents `pig update --models`, and the Piglet Image is marked as planned.",
-      "origin": "release note",
-      "commits": [
-        {
-          "hash": "618ca75612",
-          "date": "2026-10-28"
-        }
-      ],
-      "tests": [
-        "test/docs-drift/bundle_generated_test.go::TestBundleLinksStayInsideTheFlatBundle",
-        "test/docs-drift/bundle_generated_test.go::TestEveryBundlePageHasOneOwner",
-        "test/docs-drift/bundle_generated_test.go::TestGeneratedBlockEditedByHandFails",
-        "test/docs-drift/bundle_generated_test.go::TestGeneratedBundlePageEditedByHandFails",
-        "test/docs-drift/bundle_generated_test.go::TestGeneratedBundlePagesAreCurrent",
-        "test/docs-drift/bundle_generated_test.go::TestGeneratedBundlePagesCarryTheDoNotEditHeader",
-        "test/docs-drift/bundle_generated_test.go::TestGlossaryHasEveryContextTerm",
-        "test/docs-drift/bundle_generated_test.go::TestNoLinkPinsAStalePiTag",
-        "test/docs-drift/bundle_generated_test.go::TestSiteEditOfASharedPageStalesTheBundle",
-        "test/docs-drift/docs_contradictions_test.go::TestDefaultThinkingLevelIsMedium",
-        "test/docs-drift/docs_contradictions_test.go::TestForkIsDescribedAsAnEarlierUserMessage",
-        "test/docs-drift/docs_contradictions_test.go::TestPigHomeDefaultNamesXDG",
-        "test/docs-drift/docs_contradictions_test.go::TestPigletImageIsPlanned",
-        "test/docs-drift/docs_contradictions_test.go::TestResourceKindListHasNineKinds",
-        "test/docs-drift/docs_contradictions_test.go::TestUpdateModelsIsDocumentedWhereUpdateIs"
-      ]
-    },
-    {
       "id": "BF-619443a",
       "title": "MCP sign-in now rejects authorization endpoints and other OAuth metadata URLs that are not `http:` or…",
       "symptom": "MCP sign-in now rejects authorization endpoints and other OAuth metadata URLs that are not `http:` or `https:`, so a malicious server cannot make pig launch a `file:` or custom protocol URL.",
@@ -11658,7 +11622,7 @@
       "userImpact": "An operation failed or was rejected",
       "platform": "All platforms",
       "class": "pi-port",
-      "fixedIn": "Unreleased",
+      "fixedIn": "0.6.0",
       "releaseNote": "MCP sign-in now rejects authorization endpoints and other OAuth metadata URLs that are not `http:` or `https:`, so a malicious server cannot make pig launch a `file:` or custom protocol URL.",
       "origin": "release note",
       "commits": [
@@ -11782,7 +11746,7 @@
       "userImpact": "Wrong display",
       "platform": "All platforms",
       "class": "own",
-      "fixedIn": "Unreleased",
+      "fixedIn": "0.6.0",
       "releaseNote": "Hidden thinking with an empty label (`ctx.ui.setHiddenThinkingLabel(\"\")`) renders no rows: thinking before a tool call no longer draws blank rows, and thinking before text draws one spacer.",
       "origin": "release note",
       "commits": [
@@ -12118,7 +12082,7 @@
       "userImpact": "An operation failed or was rejected",
       "platform": "All platforms",
       "class": "own",
-      "fixedIn": "Unreleased",
+      "fixedIn": "0.6.0",
       "releaseNote": "Starting a Go extension no longer fails with `hash \u003cdir\u003e after its build: open …/release/deps/rmeta…: no such file or directory` when a Cargo build runs in a directory its `go.mod` replaces. The source hash that guards a build against an edit made while it ran walked every replaced module in full, including a Cargo target directory not named `target`, and a temp directory rustc deleted between the listing and the read failed the whole hash. The walk now skips a tree marked with a `CACHEDIR.TAG` signature, as Cargo marks every target directory it creates, and a directory that vanishes mid-walk, as the packed-cell hash already did. A source file that cannot be read still fails the hash.",
       "origin": "release note",
       "commits": [
@@ -15431,7 +15395,7 @@
       "userImpact": "Lost or altered data",
       "platform": "All platforms",
       "class": "own",
-      "fixedIn": "Unreleased",
+      "fixedIn": "0.6.0",
       "releaseNote": "A session entry whose write to the session file fails (a full disk, a busy or timed-out network drive) is no longer kept in memory: the error is returned, the session keeps its last written entry as the leaf, and the next entry is written as that entry's child. Before, the next entry pointed to the lost one, and resuming the session dropped the history before the gap, including the first system message that declares the tools.",
       "origin": "release note",
       "commits": [
@@ -15998,30 +15962,6 @@
       ]
     },
     {
-      "id": "BF-6b85cb7",
-      "title": "`pig status --json` now gives a skill without a `description` and a theme that fails the theme schema…",
-      "symptom": "`pig status --json` now gives a skill without a `description` and a theme that fails the theme schema `enabled: false` as well as the `health` text and the warning, so one field says whether the session has the resource.",
-      "rootCause": "",
-      "rootCauseSource": "",
-      "userImpact": "An operation failed or was rejected",
-      "platform": "All platforms",
-      "class": "own",
-      "fixedIn": "Unreleased",
-      "releaseNote": "`pig status --json` now gives a skill without a `description` and a theme that fails the theme schema `enabled: false` as well as the `health` text and the warning, so one field says whether the session has the resource. They were `enabled: true` before. They count as disabled in `resources`.",
-      "origin": "release note",
-      "commits": [
-        {
-          "hash": "6b85cb7e8b",
-          "date": "2026-10-28"
-        }
-      ],
-      "tests": [
-        "coding/cli/introspection_truth_test.go::TestStatusReportsASkillWithoutDescriptionAsNotLoaded",
-        "coding/cli/introspection_truth_test.go::TestStatusReportsAThemeWithAnUnknownColorRoleAsInvalid",
-        "coding/piglet/active_source_test.go::TestActiveSourceValue"
-      ]
-    },
-    {
       "id": "BF-6b97207",
       "title": "An extension that overrides the `edit` tool with a definition built by the Go, Rust or Python SDK's…",
       "symptom": "An extension that overrides the `edit` tool with a definition built by the Go, Rust or Python SDK's `createEditToolDefinition` now has the model's legacy edit shapes normalised, as Pi's `{ ...createEditToolDefinition(cwd), execute }` does.",
@@ -16030,7 +15970,7 @@
       "userImpact": "Lost or altered data",
       "platform": "All platforms",
       "class": "own",
-      "fixedIn": "Unreleased",
+      "fixedIn": "0.6.0",
       "releaseNote": "An extension that overrides the `edit` tool with a definition built by the Go, Rust or Python SDK's `createEditToolDefinition` now has the model's legacy edit shapes normalised, as Pi's `{ ...createEditToolDefinition(cwd), execute }` does. The SDK definition dropped the built-in's `prepareArguments`, so `edits` sent as a JSON string, a single edit object or the legacy top-level `{path, oldText, newText}` reached the override unnormalised and the edit was silently not applied, while the model's turn still reported success. The definition's `PrepareArguments` / `prepare_arguments` now runs the built-in's own normaliser on the host (a new `builtinTool.prepareArguments` host call; a fused Go extension calls it directly), and write, read and the other built-ins have none, as in Pi.",
       "origin": "release note",
       "commits": [
@@ -16051,7 +15991,7 @@
       "userImpact": "Lost or altered data",
       "platform": "All platforms",
       "class": "own",
-      "fixedIn": "Unreleased",
+      "fixedIn": "0.6.0",
       "releaseNote": "A submission's `Wait` no longer fails with \"Harness is closed\" when a close begins before the wait wakes: a host `SubscribeCommits` listener that closes the Harness on the commit that settled the submission, or a close that comes between that commit's adoption and its publication. Pi resolves the wait at the commit, so a later close cannot reach it; PiG settled it only after the host listeners, and the close's seal rejected it, turning a settled submission into an error for its waiter. The record is now fixed at the commit and the wait only wakes after the listeners.",
       "origin": "release note",
       "commits": [
@@ -16368,6 +16308,28 @@
       ]
     },
     {
+      "id": "BF-6ea3ba8",
+      "title": "`pig status` now gives a skill without a `description` the health `not loaded: description is required`, and…",
+      "symptom": "`pig status` now gives a skill without a `description` the health `not loaded: description is required`, and a theme with an unknown color role or another schema error an `invalid:` health, with a warning for each.",
+      "rootCause": "Pi leaves out a skill with no description and rejects a theme with an unknown color role, with a warning. Status listed both as enabled with empty health. Status now runs the loader on each enabled skill and theme and reports the verdict as health and a warning. An open Piglet Binary applies its Piglet's discovery; a Binary other than the running pig is named, not guessed.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "0.6.0",
+      "releaseNote": "`pig status` now gives a skill without a `description` the health `not loaded: description is required`, and a theme with an unknown color role or another schema error an `invalid:` health, with a warning for each. Pi leaves out the skill and rejects the theme; status listed both as enabled with no health problem.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "6ea3ba8720",
+          "date": "2026-10-28"
+        }
+      ],
+      "tests": [
+        "coding/cli/introspection_truth_test.go::TestStatusNamesAPigletBinaryItCannotApply"
+      ]
+    },
+    {
       "id": "BF-6ee6eae",
       "title": "A Session delivers each event to its listeners the way Pi's `AgentSession` does",
       "symptom": "Every delivery used the list as it was when the delivery began.",
@@ -16656,7 +16618,7 @@
       "userImpact": "An operation failed or was rejected",
       "platform": "All platforms",
       "class": "own",
-      "fixedIn": "Unreleased",
+      "fixedIn": "0.6.0",
       "releaseNote": "A pi-env connection whose daemon exits (or fails) before `hello` now adds the end of the daemon's stderr (the last 20 lines or 2000 characters, terminal escapes and control characters removed) to the start error, for example `pi-env exited with code 3 before it was ready` followed by `remote stderr:` and the profile's message. stderr is decoded as UTF-8 across reads, and a start that fails because the daemon exited waits for its pipes to end so the tail is complete; a ready session still fails as soon as the daemon exits.",
       "origin": "release note",
       "commits": [
@@ -16746,7 +16708,7 @@
       "userImpact": "Wrong display",
       "platform": "All platforms",
       "class": "own",
-      "fixedIn": "Unreleased",
+      "fixedIn": "0.6.0",
       "releaseNote": "A Kitty image in a padded or colored box, or with text beside it, is no longer dropped from the fullscreen view once its first row scrolls above the viewport: the visible rows are cropped.",
       "origin": "release note",
       "commits": [
@@ -17551,7 +17513,7 @@
       "userImpact": "Behavior differed from Pi",
       "platform": "All platforms",
       "class": "own",
-      "fixedIn": "Unreleased",
+      "fixedIn": "0.6.0",
       "releaseNote": "A tool call that streams many argument deltas no longer costs time and memory that grow with the square of its text: every provider (Anthropic Messages, Bedrock Converse Stream, Mistral, OpenAI Completions and Responses, Pi messages), the faux provider and the proxy stream read each delta once. A 500 KB `write` call streams in well under a second.",
       "origin": "release note",
       "commits": [
@@ -17575,7 +17537,7 @@
       "userImpact": "Behavior differed from Pi",
       "platform": "All platforms",
       "class": "own",
-      "fixedIn": "Unreleased",
+      "fixedIn": "0.6.0",
       "releaseNote": "A grammar (custom) tool input no longer copies the whole input so far on every delta.",
       "origin": "release note",
       "commits": [
@@ -17658,7 +17620,7 @@
       "userImpact": "Behavior differed from Pi",
       "platform": "All platforms",
       "class": "own",
-      "fixedIn": "Unreleased",
+      "fixedIn": "0.6.0",
       "releaseNote": "`--model \u003cprovider\u003e/\u003cid\u003e` now resolves when the provider id itself contains a `/`, such as a URL-derived id like `llama-server=http://host:10800`. Before, the reference was split at its first `/`, so the prefix never named a provider and resolution ended in \"not found\". The longest matching provider id wins.",
       "origin": "release note",
       "commits": [
@@ -17719,28 +17681,6 @@
       "tests": []
     },
     {
-      "id": "BF-777e981",
-      "title": "The Durable core conformance gate runs `U-codemode` and `U-harness-tools` alone, their reference run before…",
-      "symptom": "The Durable core conformance gate runs `U-codemode` and `U-harness-tools` alone, their reference run before their candidate run.",
-      "rootCause": "U-codemode's 'times a script out across a restart' gives a script 300 ms to start the QuickJS sandbox and reach its first tool (148-207 ms of CPU, on both sides). The gate ran the row beside seven others, two vitest runs of four forks each, so the host starved either run: in six full runs at -j 8 the candidate missed the window four times and the reference once (the test then hangs until vitest's 5 s). A row marked exclusive now runs alone before any other row, and its two runs take turns.",
-      "rootCauseSource": "commit",
-      "userImpact": "Behavior differed from Pi",
-      "platform": "All platforms",
-      "class": "own",
-      "fixedIn": "Unreleased",
-      "releaseNote": "The Durable core conformance gate runs `U-codemode` and `U-harness-tools` alone, their reference run before their candidate run. Their upstream tests assert inside a real-time window that the run fills itself (`times a script out across a restart` gives a script 300 ms to start the sandbox and reach a tool, 148-207 ms of CPU); next to the other rows, the host starved either run, and in six full runs at `-j 8` the candidate missed the window four times and the reference once.",
-      "origin": "release note",
-      "commits": [
-        {
-          "hash": "777e981085",
-          "date": "2026-10-28"
-        }
-      ],
-      "tests": [
-        "durable/contract/test/exclusive.test.mjs"
-      ]
-    },
-    {
       "id": "BF-779318a",
       "title": "OpenAI-compatible streams where one chunk carries reasoning and content (LiteLLM and similar proxies) now…",
       "symptom": "OpenAI-compatible streams where one chunk carries reasoning and content (LiteLLM and similar proxies) now place the thinking block before the text.",
@@ -17775,7 +17715,7 @@
       "userImpact": "An operation failed or was rejected",
       "platform": "All platforms",
       "class": "own",
-      "fixedIn": "Unreleased",
+      "fixedIn": "0.6.0",
       "releaseNote": "Schema errors of a `ChordError` of code `invalid` list their members in the order the value arrived in, as Pi's do (the `additionalProperties`, `propertyNames` and `unevaluatedProperties` lists and the order of the errors); they came out in sorted key order.",
       "origin": "release note",
       "commits": [
@@ -17812,15 +17752,16 @@
     },
     {
       "id": "BF-78f1007",
-      "title": "fix(durable/contract): run the rows whose test has a real-time window alone, the reference's run before the…",
-      "symptom": "fix(durable/contract): run the rows whose test has a real-time window alone, the reference's run before the candidate's",
+      "title": "The Durable core conformance gate runs `U-codemode` and `U-harness-tools` alone, their reference run before…",
+      "symptom": "The Durable core conformance gate runs `U-codemode` and `U-harness-tools` alone, their reference run before their candidate run.",
       "rootCause": "U-codemode's 'times a script out across a restart' gives a script 300 ms to start the QuickJS sandbox and reach its first tool (148-207 ms of CPU, on both sides). The gate ran the row beside seven others, two vitest runs of four forks each, so the host starved either run: in six full runs at -j 8 the candidate missed the window four times and the reference once (the test then hangs until vitest's 5 s). A row marked exclusive now runs alone before any other row, and its two runs take turns.",
       "rootCauseSource": "commit",
       "userImpact": "Behavior differed from Pi",
       "platform": "All platforms",
       "class": "own",
-      "fixedIn": "Unreleased",
-      "origin": "commit",
+      "fixedIn": "0.6.0",
+      "releaseNote": "The Durable core conformance gate runs `U-codemode` and `U-harness-tools` alone, their reference run before their candidate run. Their upstream tests assert inside a real-time window that the run fills itself (`times a script out across a restart` gives a script 300 ms to start the sandbox and reach a tool, 148-207 ms of CPU); next to the other rows, the host starved either run, and in six full runs at `-j 8` the candidate missed the window four times and the reference once.",
+      "origin": "release note",
       "commits": [
         {
           "hash": "78f1007d3e",
@@ -18080,28 +18021,6 @@
       "tests": []
     },
     {
-      "id": "BF-7bf1cbb",
-      "title": "`pig status` now gives a skill without a `description` the health `not loaded: description is required`, and…",
-      "symptom": "`pig status` now gives a skill without a `description` the health `not loaded: description is required`, and a theme with an unknown color role or another schema error an `invalid:` health, with a warning for each.",
-      "rootCause": "Pi leaves out a skill with no description and rejects a theme with an unknown color role, with a warning. Status listed both as enabled with empty health. Status now runs the loader on each enabled skill and theme and reports the verdict as health and a warning. An open Piglet Binary applies its Piglet's discovery; a Binary other than the running pig is named, not guessed.",
-      "rootCauseSource": "commit",
-      "userImpact": "An operation failed or was rejected",
-      "platform": "All platforms",
-      "class": "own",
-      "fixedIn": "Unreleased",
-      "releaseNote": "`pig status` now gives a skill without a `description` the health `not loaded: description is required`, and a theme with an unknown color role or another schema error an `invalid:` health, with a warning for each. Pi leaves out the skill and rejects the theme; status listed both as enabled with no health problem.",
-      "origin": "release note",
-      "commits": [
-        {
-          "hash": "7bf1cbb246",
-          "date": "2026-10-28"
-        }
-      ],
-      "tests": [
-        "coding/cli/introspection_truth_test.go::TestStatusNamesAPigletBinaryItCannotApply"
-      ]
-    },
-    {
       "id": "BF-7c59949",
       "title": "fix(codingagent): session selector keeps Pi's out-of-range selected index",
       "symptom": "fix(codingagent): session selector keeps Pi's out-of-range selected index",
@@ -18242,8 +18161,8 @@
       "platform": "All platforms",
       "class": "ahead-of-pi",
       "divergence": "D215",
-      "removeWhen": "Pi stores an absolute local path as typed and warns about a missing local Package, or the owner reverses the decision. Then the two branches, the call-site markers and the tests' D215 cases go.",
-      "fixedIn": "Unreleased",
+      "removeWhen": "Pi stores an absolute local path as typed, or the owner reverses the decision. Then the branch, the call-site marker and the tests' D215 cases go.",
+      "fixedIn": "0.6.0",
       "releaseNote": "`pig install /abs/path` (and `~/path` or a `file://` URL) records the path as you typed it in `packages[]`. It was stored relative to the agent directory as spelled at install, so a later start through another spelling of `PIG_HOME` (a symlinked `~/.local/share/...` directory, a synced config) resolved it to nothing and the Package's tools disappeared with only a stderr line. A relative path is still stored relative to the settings directory. Running `pig install \u003cabsolute path\u003e` again rewrites an existing entry for the same Package (D215, #389).",
       "origin": "release note",
       "commits": [
@@ -18255,6 +18174,11 @@
         {
           "hash": "7e160533d7",
           "date": "2026-10-29"
+        },
+        {
+          "hash": "b368be57f5",
+          "date": "2026-10-30",
+          "pr": "389"
         }
       ],
       "tests": [
@@ -18262,7 +18186,9 @@
         "coding/cli/package_local_path_test.go::TestInstalledAbsoluteLocalPackageResolvesThroughAnotherAgentDirSpelling",
         "coding/cli/package_local_path_test.go::TestStartupWarnsAboutAConfiguredLocalPackageThatDoesNotExist",
         "coding/cli/port_wave_10_package_command_paths_test.go::TestPortWave10PackageCommandPaths",
-        "internal/packagemanager/package_manager_ops_gaps_test.go::TestPackageManagerAddAndRemoveSourceInTheScopeSettings"
+        "internal/packagemanager/package_manager_ops_gaps_test.go::TestPackageManagerAddAndRemoveSourceInTheScopeSettings",
+        "test/extension-conformance/session_graph_lisp_test.go::TestSessionGraphLispPackedAcrossSDKs",
+        "test/extension-conformance/session_graph_test.go::TestSessionGraphDefaultPackageManagerAcrossSDKs"
       ]
     },
     {
@@ -18274,7 +18200,7 @@
       "userImpact": "An operation failed or was rejected",
       "platform": "All platforms",
       "class": "own",
-      "fixedIn": "Unreleased",
+      "fixedIn": "0.6.0",
       "releaseNote": "A configured local Package whose directory does not exist is now a startup warning in the session, with the path it resolved to and the `pig remove` command that drops it, instead of a `[pig] Could not install ... (run pig update when online)` line on stderr (D215, #389).",
       "origin": "release note",
       "commits": [
@@ -18412,7 +18338,7 @@
       "userImpact": "An operation failed or was rejected",
       "platform": "All platforms",
       "class": "own",
-      "fixedIn": "Unreleased",
+      "fixedIn": "0.6.0",
       "releaseNote": "A `ChordError` of code `invalid` from a failed args, result, state or input check carries TypeBox's whole error objects as `details` (keyword, schemaPath, instancePath, params and message), as Pi's does; it carried only instancePath and message.",
       "origin": "release note",
       "commits": [
@@ -18773,7 +18699,7 @@
       "userImpact": "Credential or permission exposure",
       "platform": "Windows",
       "class": "own",
-      "fixedIn": "Unreleased",
+      "fixedIn": "0.6.0",
       "releaseNote": "A failed install-receipt write during `pig update` or install, such as one rejected because the update CA file is not owner-only, no longer keeps its staged `.install-receipt-*` temp file open. The handle is closed before the temp file is removed, so no stray file is left on Windows.",
       "origin": "release note",
       "commits": [
@@ -18919,7 +18845,7 @@
       "userImpact": "Behavior differed from Pi",
       "platform": "All platforms",
       "class": "own",
-      "fixedIn": "Unreleased",
+      "fixedIn": "0.6.0",
       "releaseNote": "A tool round whose results request `Handoff` no longer ends the run on the tool-calling answer: the handoff's `pi.reset` entry is written and the same run continues with a new generation in the new context, so the submission settles with the eventual answer. Queued writes and selected steers are placed after the handoff text, follow-ups wait for the run's final boundary, and a queued reset still ends the run `unanswered` with reason `reset`. A round whose every result also sets `Terminate` ends the run after the handoff.",
       "origin": "release note",
       "commits": [
@@ -18941,7 +18867,7 @@
       "userImpact": "An operation failed or was rejected",
       "platform": "All platforms",
       "class": "own",
-      "fixedIn": "Unreleased",
+      "fixedIn": "0.6.0",
       "releaseNote": "Streaming a tool call's arguments allocates less per delta. The incremental parser no longer records changes nobody reads, and a streamed message's published copy keeps the parser's validated snapshot instead of copying it again (an invalid byte in an argument string is still rewritten as before). A 250 KB `write` call streams about 13% faster with about 22% fewer allocations; the print-mode allocation ceilings per delta fall from 20 and 35 to the measured 18.5 and 18.3 (faux provider and OpenAI Completions).",
       "origin": "release note",
       "commits": [
@@ -19472,6 +19398,29 @@
       ]
     },
     {
+      "id": "BF-85d3119",
+      "title": "A Piglet's tool scope now covers the built-in MCP tools",
+      "symptom": "A Piglet's tool scope now covers the built-in MCP tools.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "0.6.0",
+      "releaseNote": "A Piglet's tool scope now covers the built-in MCP tools. A Piglet with an `extensions:` section that does not list `pig-mcp-adapter` still offered `mcp__\u003cserver\u003e__\u003ctool\u003e` from `builtin:mcp`, and `codemode` with them. `ScopeTools` now treats a tool in namespace `mcp__\u003cserver\u003e` like the adapter's `mcp:\u003cserver\u003e` source: the `pig-mcp-adapter` entry and its `tools` list govern it, and the MCP resource tools follow the same entry by name. Stock PiG without a Piglet is unchanged.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "85d311939a",
+          "date": "2026-10-27"
+        }
+      ],
+      "tests": [
+        "coding/cli/piglet_mcp_tool_scope_test.go::TestPigletScopesBuiltinMCPToolsInRPCMode",
+        "coding/piglet/scope_mcp_test.go::TestScopeToolsScopesBuiltinMCPNamespaceLikeMCPSource"
+      ]
+    },
+    {
       "id": "BF-860776a",
       "title": "A Google provider built from a model id without catalog metadata now sends its own earlier thinking blocks as…",
       "symptom": "The missing API made every earlier turn look like another model and the signature was dropped (found by the provider-wire parity scenario against the pinned Pi).",
@@ -19515,33 +19464,13 @@
       "userImpact": "An operation failed or was rejected",
       "platform": "All platforms",
       "class": "own",
-      "fixedIn": "Unreleased",
+      "fixedIn": "0.6.0",
       "releaseNote": "The SDK `DefaultResourceLoader` lists a tool or flag that two extensions register as an error of the extension load result (`Tool \"x\" conflicts with \u003cpath\u003e`), and an extension it loads from `additionalExtensionPaths` has the source `cli`, as Pi's loader reports them.",
       "origin": "release note",
       "commits": [
         {
           "hash": "8620e9eac5",
           "date": "2026-10-25"
-        }
-      ],
-      "tests": []
-    },
-    {
-      "id": "BF-862d453",
-      "title": "The Durable core conformance gate no longer writes the reference checkout from a vitest run: its cache lives…",
-      "symptom": "The Durable core conformance gate no longer writes the reference checkout from a vitest run: its cache lives in the run's output directory.",
-      "rootCause": "E17 and E18 run `ls` in the reference's packages/durable. The default vitest cache, packages/durable/node_modules/.vite, made the first U row add node_modules to that listing; `contract all` captures the reference once, in its first pass, before any U row, so every later pass compared a listing with node_modules against one without it and both rows failed on every fresh clone (wasm-tinygo, native and the wasm-go diagnostic, in two full runs).",
-      "rootCauseSource": "commit",
-      "userImpact": "An operation failed or was rejected",
-      "platform": "All platforms",
-      "class": "own",
-      "fixedIn": "Unreleased",
-      "releaseNote": "The Durable core conformance gate no longer writes the reference checkout from a vitest run: its cache lives in the run's output directory. The default, `packages/durable/node_modules/.vite`, added `node_modules` to the listing E17 and E18 print with `ls`, which they capture once for the reference before any U row ran, so `make durable-contract` failed both rows against every build on a fresh clone.",
-      "origin": "release note",
-      "commits": [
-        {
-          "hash": "862d4534e4",
-          "date": "2026-10-28"
         }
       ],
       "tests": []
@@ -19652,7 +19581,7 @@
       "userImpact": "Wrong display",
       "platform": "All platforms",
       "class": "own",
-      "fixedIn": "Unreleased",
+      "fixedIn": "0.6.0",
       "releaseNote": "The footer's thinking level no longer reads `thinking off` in the first frames of an interactive start. PiG drew the footer and the editor border before the startup bind told them the Session's level, so a frame painted in that window showed `• thinking off` (and the neutral border) where Pi shows the configured level, `• medium` by default; with an extension loaded the bind comes later and the window is longer. The Session's level was right all along (`get_state` and the first request carry it); only the presentation lagged. Pi builds its footer with the Session and reads `session.state.thinkingLevel` on every render (`footer.ts` `render`, `interactive-mode.ts` `init`), so the footer and the editor are now seeded with the Session's level when they are built, for the default level, `--thinking` and settings overrides, and `off`, whichever extension host is loaded.",
       "origin": "release note",
       "commits": [
@@ -19867,7 +19796,7 @@
       "userImpact": "An operation failed or was rejected",
       "platform": "All platforms",
       "class": "own",
-      "fixedIn": "Unreleased",
+      "fixedIn": "0.6.0",
       "releaseNote": "Closing a session with an MCP server that signs in with OAuth no longer fails at random. The `DELETE` that ends the session could be refused with the `context canceled` of the stream the connection opens to hear from the server, when closing began while that stream's answer was still being handed over, so the server kept the session until it expired; closing now sends the `DELETE` only after the requests it aborted have returned. The stream's first request also reads its token before the connection is reported ready, as in Pi: a stream that started late could refresh a token that was about to expire, and closing then waited up to 15 seconds for the authorization server.",
       "origin": "release note",
       "commits": [
@@ -19903,7 +19832,7 @@
       "userImpact": "Lost or altered data",
       "platform": "Windows",
       "class": "own",
-      "fixedIn": "Unreleased",
+      "fixedIn": "0.6.0",
       "releaseNote": "On Windows, a custom theme edited in a rapid burst of writes no longer stays on a stale version. A burst that overflowed the native change buffer made the watcher treat the overflow as a failure and close its watch, so writes after the overflow were never seen and the theme kept an older version of the file (seen as `accent=\"#123456\" want=\"#000064\"` in Windows CI, only while the machine was loaded). An overflow now reloads the theme file, as Pi reloads on a change without a filename, and the watcher keeps watching; any other watch failure still closes it, as in Pi.",
       "origin": "release note",
       "commits": [
@@ -20006,7 +19935,7 @@
       "userImpact": "Wrong output or ordering",
       "platform": "All platforms",
       "class": "own",
-      "fixedIn": "Unreleased",
+      "fixedIn": "0.6.0",
       "releaseNote": "`grep` with `context` numbers a file's lines at line feeds only, as ripgrep does: a lone carriage return no longer adds a line, so the context lines after it keep their line numbers and the match is no longer shown on the wrong line. The carriage return is dropped from the printed line.",
       "origin": "release note",
       "commits": [
@@ -20540,7 +20469,7 @@
       "userImpact": "An operation failed or was rejected",
       "platform": "All platforms",
       "class": "own",
-      "fixedIn": "Unreleased",
+      "fixedIn": "0.6.0",
       "releaseNote": "Closing a Durable Harness while a tool waited on a nested call could leave an abort mark on that nested call in the store, so the next Harness reported it `aborted` instead of `interrupted` (it had started) or `abandoned` (it had not). The native core driver ran the close listeners, which cancel the waits in flight, before it told the core it was closing. The tool that the cancel freed could report its end first, and the core then aborted the nested calls of a caller the close had interrupted. The core is now told first. It failed once in a CI run under load (the nested-call restart test).",
       "origin": "release note",
       "commits": [
@@ -20563,7 +20492,7 @@
       "userImpact": "Behavior differed from Pi",
       "platform": "All platforms",
       "class": "own",
-      "fixedIn": "Unreleased",
+      "fixedIn": "0.6.0",
       "releaseNote": "A Rust extension that registers a flag after load (`Context::register_flag` from a handler) now reads its default through `Context::get_flag` before any value is set, as the Go, Node, Python and Lisp SDKs do and as Pi's `registerFlag` does. The Rust SDK kept flag defaults only from the load-time snapshot, so a flag registered later read `None`.",
       "origin": "release note",
       "commits": [
@@ -20627,12 +20556,16 @@
       "class": "ahead-of-pi",
       "divergence": "D213",
       "removeWhen": "Pi's extensions run outside the editor's process, or the owner withdraws the decision. Then the release on runtime exit, the call-site marker and this record go.",
-      "fixedIn": "Unreleased",
+      "fixedIn": "0.6.0",
       "releaseNote": "Text typed over an extension's autocomplete provider and followed at once by Enter no longer skips the menu Pi opens. With an extension that wraps the provider through `ctx.ui.addAutocompleteProvider` and answers without I/O, `/model provider/id` typed and entered in one go switched the model in PiG, where Pi accepts the suggestion into the editor on the first Enter and switches on the second (the same holds for `/thinking level`, any command with argument completions, and a command name). Pi awaits the whole wrapper chain in the Promise jobs after the terminal read, so a chain that needs no I/O has opened its menu before the next read, and a chain that awaits a timer, a socket or a process has not. PiG's chain is a round trip through the extension runtime that the next read overtook. The editor now starts the extension chain's request at the end of each read and the host holds the next read until the menu is published or the chain says it awaits real I/O; a provider that awaits a timer or a socket still lets the Enter submit at once, as in Pi, and a synchronous provider that blocks holds the read until it returns, as it holds Pi's loop. The Node runtime says so at the end of its macrotask (microtasks, `queueMicrotask` and `process.nextTick` stay inside Pi's checkpoint, a timer or `setImmediate` leaves it), including for a chain another extension of the same runtime calls (D213). Extension authors change nothing.",
       "origin": "release note",
       "commits": [
         {
           "hash": "8e3613da73",
+          "date": "2026-10-29"
+        },
+        {
+          "hash": "9936d84718",
           "date": "2026-10-29"
         }
       ],
@@ -20738,7 +20671,7 @@
       "userImpact": "Wrong output or ordering",
       "platform": "Windows",
       "class": "own",
-      "fixedIn": "Unreleased",
+      "fixedIn": "0.6.0",
       "releaseNote": "On Windows, an extension's `exec` no longer returns no output for a command that printed, when the machine is too busy to run PiG's pipe reader within 100 ms of the command's exit. The command now starts suspended and joins a job object before it can start another process, as the bash tool's shell already did, so PiG knows when no process holds the output pipes any more and reads them to the end instead of dropping what the command had written before it exited.",
       "origin": "release note",
       "commits": [
@@ -22827,7 +22760,7 @@
       "userImpact": "An operation failed or was rejected",
       "platform": "All platforms",
       "class": "own",
-      "fixedIn": "Unreleased",
+      "fixedIn": "0.6.0",
       "releaseNote": "Claude models with per-message effort no longer fail with `Invalid effort level` on accounts whose organization caps effort below `high`: the fixed top-level effort is `low`.",
       "origin": "release note",
       "commits": [
@@ -22850,7 +22783,7 @@
       "userImpact": "Behavior differed from Pi",
       "platform": "All platforms",
       "class": "own",
-      "fixedIn": "Unreleased",
+      "fixedIn": "0.6.0",
       "releaseNote": "A closed Harness or Session no longer stays reachable from Go's timer heap. `durable.NativeTimer`, the default `SetTimer`, stopped a timer without dropping its callback, and Go keeps a stopped timer and the function it was armed with until the runtime next removes it from the timer heap, which is not at `Stop` and can be as late as the timer's delay (ten minutes for the document sweep); the sweep's callback reaches the Session, so a closed Harness stayed alive that long, where Pi's `clearTimeout` leaves nothing of the callback. A disarmed timer now keeps nothing of its callback.",
       "origin": "release note",
       "commits": [
@@ -23119,7 +23052,7 @@
       "userImpact": "Crash, hang or runaway process",
       "platform": "All platforms",
       "class": "own",
-      "fixedIn": "Unreleased",
+      "fixedIn": "0.6.0",
       "releaseNote": "A tool call whose arguments hold a number out of float64 range (`1e999`, `-1e999`) no longer ends the session with a panic (`clone validated JSON value: json: unsupported value: +Inf`). Pi reads such a number as an infinity, keeps it in the call's arguments, and writes `null` wherever it serializes them (events, the session file, requests); PiG now does the same, for a streamed argument text, a tool call a Go caller or the faux provider supplies, and an Anthropic `content_block_start` input, which used to end the turn with a decode error.",
       "origin": "release note",
       "commits": [
@@ -23207,26 +23140,6 @@
         "test/longsession/session_oracle_test.go::TestSessionManagerMatchesPi",
         "test/parity/scenarios/rpc/58-rpc-session-wrong-typed-members.toml"
       ]
-    },
-    {
-      "id": "BF-970c503",
-      "title": "The Cloudflare host's report spans record the reason, extension and task of a `task_interrupted` report, as…",
-      "symptom": "The Cloudflare host's report spans record the reason, extension and task of a `task_interrupted` report, as Pi b3a29f11's telemetry does (`task_parked` no longer exists).",
-      "rootCause": "task_parked is gone from ReportInfo; task_interrupted records reason, extension and task.id like task_faulted and task_outdated.",
-      "rootCauseSource": "commit",
-      "userImpact": "Behavior differed from Pi",
-      "platform": "All platforms",
-      "class": "own",
-      "fixedIn": "Unreleased",
-      "releaseNote": "The Cloudflare host's report spans record the reason, extension and task of a `task_interrupted` report, as Pi b3a29f11's telemetry does (`task_parked` no longer exists).",
-      "origin": "release note",
-      "commits": [
-        {
-          "hash": "970c503b05",
-          "date": "2026-10-27"
-        }
-      ],
-      "tests": []
     },
     {
       "id": "BF-9721c48",
@@ -23482,7 +23395,7 @@
       "userImpact": "An operation failed or was rejected",
       "platform": "All platforms",
       "class": "own",
-      "fixedIn": "Unreleased",
+      "fixedIn": "0.6.0",
       "releaseNote": "Closing a Harness over the TypeScript host no longer rejects when the write-back of the tasks the close stopped fails, for example because another process advanced the store. Pi catches that write and the Session reports the failure, so the close resolves.",
       "origin": "release note",
       "commits": [
@@ -23580,7 +23493,7 @@
       "userImpact": "Lost or altered data",
       "platform": "All platforms",
       "class": "own",
-      "fixedIn": "Unreleased",
+      "fixedIn": "0.6.0",
       "releaseNote": "`WaitForTask` on a task whose terminal commit was adopted no longer fails with \"Harness is closed\" when a close begins before the wait wakes: a host `SubscribeCommits` listener that closes the Harness on that commit, or a close that comes between the commit's adoption and its publication. Pi settles the wait at the commit, so a later close cannot reach it; PiG settled it only after the host listeners, and the close's seal rejected it, turning a completed task into an error for its waiter. The receipt is now fixed at the commit and the wait only wakes after the listeners.",
       "origin": "release note",
       "commits": [
@@ -24121,7 +24034,7 @@
       "userImpact": "Behavior differed from Pi",
       "platform": "All platforms",
       "class": "own",
-      "fixedIn": "Unreleased",
+      "fixedIn": "0.6.0",
       "releaseNote": "Gemini tool schemas send string and number `const` values as single-value `enum`s, which Gemini honors where it ignores `const`; literal data such as `default` and `examples` is left as written.",
       "origin": "release note",
       "commits": [
@@ -24229,15 +24142,16 @@
     },
     {
       "id": "BF-9eda512",
-      "title": "fix(durable/harness): a run's own context reads resolve no settings; the retention is read only for an idle…",
-      "symptom": "fix(durable/harness): a run's own context reads resolve no settings; the retention is read only for an idle conversation (Pi scheduler.ts runtime.context)",
+      "title": "The Go Durable SDK's scheduler no longer resolves the Harness settings for the context a run itself reads…",
+      "symptom": "The Go Durable SDK's scheduler no longer resolves the Harness settings for the context a run itself reads: `contextRetentionMs` is read only when the conversation is idle, as Pi's `runtime.context` does, which removes four settings resolutions from every round of one generation with a tool call.",
       "rootCause": "keepContext read settings.contextRetentionMs before it looked at the conversation: four resolutions in every round of one generation with a tool call, where Pi resolves the retention only in the idle branch.",
       "rootCauseSource": "commit",
       "userImpact": "Behavior differed from Pi",
       "platform": "All platforms",
       "class": "own",
-      "fixedIn": "Unreleased",
-      "origin": "commit",
+      "fixedIn": "0.6.0",
+      "releaseNote": "The Go Durable SDK's scheduler no longer resolves the Harness settings for the context a run itself reads: `contextRetentionMs` is read only when the conversation is idle, as Pi's `runtime.context` does, which removes four settings resolutions from every round of one generation with a tool call.",
+      "origin": "release note",
       "commits": [
         {
           "hash": "9eda51265b",
@@ -24956,15 +24870,16 @@
     },
     {
       "id": "BF-a1efda7",
-      "title": "fix(durable/core): the host resolves the Harness settings as often as the core did (Pi resolves…",
-      "symptom": "fix(durable/core): the host resolves the Harness settings as often as the core did (Pi resolves HarnessOptions.settings at each use)",
+      "title": "The Durable core's host no longer reads the extensions of the Harness settings before every event it sends…",
+      "symptom": "The Durable core's host no longer reads the extensions of the Harness settings before every event it sends: the core never reads them, so they are neither sent nor compared by the change detector (the host made about 187 such reads in a round of one generation with one tool call).",
       "rootCause": "The core counts its resolutions of the settings it was sent (a turn phase's settings, the context retention checks, the submission's queue modes) and publishes the count in a settings notice (ABI 12) at the end of the event; the host resolves them as often, as Pi's callback is seen to (harness-restart-failure.test.ts counts 49 for a round of one generation with one tool call). U-harness-restart-failure passes on native (18 tests).",
       "rootCauseSource": "commit",
       "userImpact": "Behavior differed from Pi",
       "platform": "All platforms",
       "class": "own",
-      "fixedIn": "Unreleased",
-      "origin": "commit",
+      "fixedIn": "0.6.0",
+      "releaseNote": "The Durable core's host no longer reads the extensions of the Harness settings before every event it sends: the core never reads them, so they are neither sent nor compared by the change detector (the host made about 187 such reads in a round of one generation with one tool call). The core reads `HarnessOptions.settings` from the snapshot the host sends before each event, where Pi resolves the callback at each use (recorded as D206).",
+      "origin": "release note",
       "commits": [
         {
           "hash": "a1efda7e2b",
@@ -25017,7 +24932,7 @@
       "userImpact": "Wrong output or ordering",
       "platform": "All platforms",
       "class": "own",
-      "fixedIn": "Unreleased",
+      "fixedIn": "0.6.0",
       "releaseNote": "A Go program that embeds PiG and also links a reflection consumer such as protobuf is no longer about 6 MB larger because of `durable/internal/ordered`: its field metadata embedded `reflect.Type` anonymously, which promoted `MethodByName` onto it and made the linker keep every exported method of every reachable type; the field is now named.",
       "origin": "release note",
       "commits": [
@@ -25057,7 +24972,7 @@
       "userImpact": "An operation failed or was rejected",
       "platform": "All platforms",
       "class": "own",
-      "fixedIn": "Unreleased",
+      "fixedIn": "0.6.0",
       "releaseNote": "GPT-5.4 and GPT-5.5 no longer fail with `Missing namespace for function_call` after switching from another model that called tools. On the OpenAI and OpenCode providers they declare their tools in the top-level tool list instead of loading them through `additional_tools` or tool search; GPT-5.6 and later keep `additional_tools`. Ports Pi's #11415.",
       "origin": "release note",
       "commits": [
@@ -25855,7 +25770,7 @@
       "userImpact": "An operation failed or was rejected",
       "platform": "All platforms",
       "class": "own",
-      "fixedIn": "Unreleased",
+      "fixedIn": "0.6.0",
       "releaseNote": "A tool running under the Durable core's Cloudflare host and `pi-durable` facade now has `api.now()`, the Harness clock (`HarnessOptions.now`, the wall clock when none is given), which throws once the tool call's invocation has ended, as Pi 1.4's `ToolExecutionApi.now` does. Code mode reads its start time, journaled clock and deadline through it, so every code mode call, and every `models.*` call from a script, failed with `api.now is not a function` before.",
       "origin": "release note",
       "commits": [
@@ -26123,7 +26038,7 @@
       "userImpact": "Behavior differed from Pi",
       "platform": "All platforms",
       "class": "own",
-      "fixedIn": "Unreleased",
+      "fixedIn": "0.6.0",
       "releaseNote": "A durable code mode script's journal now records the calls a script had issued after a batch of results in one commit, as Pi does, and none after the script ended. A batch of results delivered to the script was acknowledged in two or more commits, because the VM reports each result on its own goroutine, and a script that ended on the last result of a batch still had the acknowledgment of the one before it written after its end.",
       "origin": "release note",
       "commits": [
@@ -26155,7 +26070,7 @@
       "userImpact": "An operation failed or was rejected",
       "platform": "All platforms",
       "class": "own",
-      "fixedIn": "Unreleased",
+      "fixedIn": "0.6.0",
       "releaseNote": "A script that ends in its first run while a journaled tool call replays after a restart no longer shows that call as `cancelled` in the error result of a divergence (\"it ended after result 0, where it went on before\"). The script's end decided the outcome before the replayed call's row had finished, where Pi finishes the row first; the end now waits for the replayed calls the VM issued.",
       "origin": "release note",
       "commits": [
@@ -26345,34 +26260,6 @@
       ]
     },
     {
-      "id": "BF-ad49f9f",
-      "title": "`pig status` no longer reports a shared extension name as an unhealthy duplicate",
-      "symptom": "`pig status` no longer reports a shared extension name as an unhealthy duplicate.",
-      "rootCause": "`pig status` built each resource identity from the public name alone, so two Packages that both expose `src/index.ts` resolved to the same \"src\" name and the second one became a fatal duplicate. The loader does not work that way: it identifies an extension by its path, and DisambiguateIdentities renames the later copies (\"src:2\", \"src:3\") and loads them all, as Pi loads every extension path. A shared extension name is therefore a supported condition, and `pig status` exited 1 while the session it described was healthy.",
-      "rootCauseSource": "commit",
-      "userImpact": "Crash, hang or runaway process",
-      "platform": "All platforms",
-      "class": "own",
-      "fixedIn": "Unreleased",
-      "releaseNote": "`pig status` no longer reports a shared extension name as an unhealthy duplicate. Two Packages that both expose `src/index.ts` resolve to the same `\"src\"` public name, and the loader identifies an extension by its path: it renames the later copies (`\"src:2\"`) and loads them all, as Pi loads every extension path. The report keeps them enabled and moves the finding to a new `warnings` list, so `pig status` exits 0 and `pig status --json` stays `\"healthy\": true`. Skills, prompts and themes key their runtime set by name, so their duplicates remain errors.",
-      "origin": "release note",
-      "commits": [
-        {
-          "hash": "ad49f9f02e",
-          "date": "2026-10-23"
-        },
-        {
-          "hash": "ee5fdb16d8",
-          "date": "2026-10-25",
-          "pr": "348"
-        }
-      ],
-      "tests": [
-        "coding/cli/status_command_test.go::TestStatusStillFailsOnDuplicateNonExtensionResourceIdentity",
-        "coding/cli/status_command_test.go::TestStatusWarnsOnDuplicatePackageExtensionIdentity"
-      ]
-    },
-    {
       "id": "BF-ad9ed64",
       "title": "Appending a tool result whose details are a tool's own value (a truncated `read`, `bash` output details, an…",
       "symptom": "Appending a tool result whose details are a tool's own value (a truncated `read`, `bash` output details, an extension's details object) no longer parses the session record it has just written.",
@@ -26435,7 +26322,7 @@
       "userImpact": "Behavior differed from Pi",
       "platform": "All platforms",
       "class": "own",
-      "fixedIn": "Unreleased",
+      "fixedIn": "0.6.0",
       "releaseNote": "The login dialog opens and prints only `http:` and `https:` URLs, in their normalized form (percent-encoded control characters); any other URL is shown with its control characters replaced and is not opened in the browser, and no terminal hyperlink is made for it. Before, a URL from a login server could end a terminal hyperlink early or send its own escape sequences.",
       "origin": "release note",
       "commits": [
@@ -26462,7 +26349,7 @@
       "userImpact": "Behavior differed from Pi",
       "platform": "All platforms",
       "class": "own",
-      "fixedIn": "Unreleased",
+      "fixedIn": "0.6.0",
       "releaseNote": "A terminal title that holds a control character (a session name from a session file with an ESC or BEL) no longer ends the title sequence early and sends the rest to the terminal as escape sequences: control characters become spaces, as in Pi's `setTitle`.",
       "origin": "release note",
       "commits": [
@@ -26489,7 +26376,7 @@
       "userImpact": "Wrong display",
       "platform": "All platforms",
       "class": "pi-port",
-      "fixedIn": "Unreleased",
+      "fixedIn": "0.6.0",
       "releaseNote": "A line of many `\u003e` characters no longer makes the Markdown renderer's output grow exponentially with the nesting depth.",
       "origin": "release note",
       "commits": [
@@ -26539,7 +26426,7 @@
       "userImpact": "An operation failed or was rejected",
       "platform": "All platforms",
       "class": "own",
-      "fixedIn": "Unreleased",
+      "fixedIn": "0.6.0",
       "releaseNote": "The pi-env daemon runs a command whose `timeoutMs` is above 2^31-1 ms without a deadline, as Pi's daemon does, instead of refusing it; the clients still refuse such a timeout, as Pi's do.",
       "origin": "release note",
       "commits": [
@@ -26605,6 +26492,28 @@
         "ai/streaming_json_oracle_test.go::TestStreamingJSONMatchesPiOnSeededInput",
         "ai/tool_call_argument_order_test.go::TestSetStreamingArgumentsKeepsMemberOrder",
         "ai/tool_call_non_object_arguments_test.go::TestStreamedToolArgumentsThatAreNotAnObjectAreKeptAsPiKeepsThem"
+      ]
+    },
+    {
+      "id": "BF-af66ca5",
+      "title": "The CI image version-literal test no longer reports the Pi part of an image tag (`1.4.0.b3a29f11`, written by…",
+      "symptom": "The CI image version-literal test no longer reports the Pi part of an image tag (`1.4.0.b3a29f11`, written by `make pin-sync` and checked by `make pin-check`) as a hard-coded version when the pinned commit starts with a letter.",
+      "rootCause": "pin.py ci_tag writes the pin's dotted build metadata (1.4.0.) into IMAGE_TAG and make pin-check checks it. A commit starting with a digit read as a fourth number and was skipped; the Pi pin starts with a letter, so TestBuildAutomationNamesNoUnrecordedVersionLiteral reported automation/images/ci-parity/metadata.env:5 as a hard-coded 1.4.0.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "0.6.0",
+      "releaseNote": "The CI image version-literal test no longer reports the Pi part of an image tag (`1.4.0.b3a29f11`, written by `make pin-sync` and checked by `make pin-check`) as a hard-coded version when the pinned commit starts with a letter.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "af66ca50b1",
+          "date": "2026-10-28"
+        }
+      ],
+      "tests": [
+        "test/ci-images/version_literals_test.go::TestBuildAutomationNamesNoUnrecordedVersionLiteral"
       ]
     },
     {
@@ -26830,7 +26739,7 @@
       "userImpact": "Credential or permission exposure",
       "platform": "All platforms",
       "class": "own",
-      "fixedIn": "Unreleased",
+      "fixedIn": "0.6.0",
       "releaseNote": "The pi-env daemon answers as Pi's daemon does where a differential test found it did not: an error for an empty path carries `path`, `realpath` of a symbolic link loop is `ELOOP`, a directory renamed over a non-empty directory is `ENOTEMPTY` and a file over a directory `EISDIR` (also in the Durable Node environment's `renameFile`), `opendir` of a file is `ENOTDIR` before any permission check, errors the daemon's table does not name are `UNKNOWN` with the system's text, an empty write to a full device succeeds, an exec timeout is `timeout` and `timeoutMs: 0` times out at once, spawn and spill failures read as Rust's `io::Error`, and a command is the leader of a new session as Node's detached spawn makes it.",
       "origin": "release note",
       "commits": [
@@ -26959,7 +26868,7 @@
       "userImpact": "Crash, hang or runaway process",
       "platform": "All platforms",
       "class": "own",
-      "fixedIn": "Unreleased",
+      "fixedIn": "0.6.0",
       "releaseNote": "`pig install --validate-only [--json]` with no source now checks every local-path entry of `packages[]` (user and trusted project settings): it names each one whose directory does not exist with the path it resolved to and the `pig remove` command that drops it, and exits 1 when any is missing. Before, a Package whose folder was gone passed unnoticed (D216, #389).",
       "origin": "release note",
       "commits": [
@@ -27654,7 +27563,7 @@
       "userImpact": "Behavior differed from Pi",
       "platform": "All platforms",
       "class": "own",
-      "fixedIn": "Unreleased",
+      "fixedIn": "0.6.0",
       "releaseNote": "`pig install` and `pig remove` no longer add ever deeper nested entries to the npm `package-lock.json` when the agent directory is reached through a symlink, such as `~/.pi` linked into a dotfiles repository. PiG now passes the resolved real path to npm as `--prefix` (or `--cwd` for Bun).",
       "origin": "release note",
       "commits": [
@@ -27992,7 +27901,7 @@
       "userImpact": "Lost or altered data",
       "platform": "All platforms",
       "class": "own",
-      "fixedIn": "Unreleased",
+      "fixedIn": "0.6.0",
       "releaseNote": "An extension served in-process now refuses to serve a second connection while it serves one, with the error `this extension is already serving a connection; an Extension serves one connection at a time, so build a new one per connection`. A second serve of the same `sdk.Extension` used to overwrite the first one's state and leave the second host waiting for a registration that never came.",
       "origin": "release note",
       "commits": [
@@ -28272,123 +28181,6 @@
       ]
     },
     {
-      "id": "BF-bede0f0",
-      "title": "`pig status` no longer lists the resources of an untrusted project as enabled",
-      "symptom": "`pig status` no longer lists the resources of an untrusted project as enabled.",
-      "rootCause": "pig status listed an untrusted project's resources as enabled and ignored the active Piglet's discovery; pig diagnose reported an untrusted project's defaultModel and printed a provider-qualified defaultModel as provider/provider/id. A skill without a description and a theme with an unknown color role showed no health.",
-      "rootCauseSource": "commit",
-      "userImpact": "Behavior differed from Pi",
-      "platform": "All platforms",
-      "class": "own",
-      "fixedIn": "Unreleased",
-      "releaseNote": "`pig status` no longer lists the resources of an untrusted project as enabled. It resolves project trust as a print run does (saved decision, then `defaultProjectTrust`, else untrusted), shows the decision, and marks each project extension, skill, prompt and theme `ignored: untrusted` and not enabled. The settings and Packages of an untrusted project no longer count.",
-      "origin": "release note",
-      "commits": [
-        {
-          "hash": "bede0f0edf",
-          "date": "2026-10-28"
-        }
-      ],
-      "tests": [
-        "coding/cli/introspection_truth_test.go::TestDefaultModelResolutionDoesNotSplitAProviderPrefix",
-        "coding/cli/introspection_truth_test.go::TestDiagnoseDefaultModelWithoutProviderIsIgnoredLikePi",
-        "coding/cli/introspection_truth_test.go::TestDiagnoseIgnoresUntrustedProjectDefaultModel",
-        "coding/cli/introspection_truth_test.go::TestDiagnoseNamesTheActivePiglet",
-        "coding/cli/introspection_truth_test.go::TestDiagnoseQualifiedDefaultModelFallsBackAsPiDoes",
-        "coding/cli/introspection_truth_test.go::TestDiagnoseReportsTrustedProjectDefaultModelAndItsFile",
-        "coding/cli/introspection_truth_test.go::TestExportActivePigletSourceReachesToolProcesses",
-        "coding/cli/introspection_truth_test.go::TestReportProjectTrustNamesTheDeciding",
-        "coding/cli/introspection_truth_test.go::TestStatusAppliesTheActivePigletDiscovery",
-        "coding/cli/introspection_truth_test.go::TestStatusHumanOutputNamesTrustAndIgnoredResources",
-        "coding/cli/introspection_truth_test.go::TestStatusMarksUntrustedProjectResourcesIgnored",
-        "coding/cli/introspection_truth_test.go::TestStatusReportsASkillWithoutDescriptionAsNotLoaded",
-        "coding/cli/introspection_truth_test.go::TestStatusReportsAThemeWithAnUnknownColorRoleAsInvalid",
-        "coding/cli/introspection_truth_test.go::TestStatusTrustedProjectResourcesApply",
-        "coding/cli/introspection_truth_test.go::TestStatusWarnsWhenTheActivePigletSourceDoesNotLoad",
-        "coding/piglet/active_source_test.go::TestActiveSourceIsPath",
-        "coding/piglet/active_source_test.go::TestActiveSourceValue",
-        "coding/piglet/active_source_test.go::TestShowWithoutAnArgumentUsesTheActivePigletSource"
-      ]
-    },
-    {
-      "id": "BF-bede0f0-2",
-      "title": "`pig diagnose` no longer reports the `defaultModel` of an untrusted project, which the session does not use",
-      "symptom": "`pig diagnose` no longer reports the `defaultModel` of an untrusted project, which the session does not use.",
-      "rootCause": "pig status listed an untrusted project's resources as enabled and ignored the active Piglet's discovery; pig diagnose reported an untrusted project's defaultModel and printed a provider-qualified defaultModel as provider/provider/id. A skill without a description and a theme with an unknown color role showed no health.",
-      "rootCauseSource": "commit",
-      "userImpact": "Behavior differed from Pi",
-      "platform": "All platforms",
-      "class": "own",
-      "fixedIn": "Unreleased",
-      "releaseNote": "`pig diagnose` no longer reports the `defaultModel` of an untrusted project, which the session does not use. It reports the effective default model and the settings file of each part. A provider-qualified `defaultModel` such as `\"bench/bench-2\"` was printed as `bench/bench/bench-2`. Pi reads `defaultModel` as a model id and does not split it, so startup falls back to the first available model, as before; diagnose now says so and names the fix.",
-      "origin": "release note",
-      "commits": [
-        {
-          "hash": "bede0f0edf",
-          "date": "2026-10-28"
-        }
-      ],
-      "tests": [
-        "coding/cli/introspection_truth_test.go::TestDefaultModelResolutionDoesNotSplitAProviderPrefix",
-        "coding/cli/introspection_truth_test.go::TestDiagnoseDefaultModelWithoutProviderIsIgnoredLikePi",
-        "coding/cli/introspection_truth_test.go::TestDiagnoseIgnoresUntrustedProjectDefaultModel",
-        "coding/cli/introspection_truth_test.go::TestDiagnoseNamesTheActivePiglet",
-        "coding/cli/introspection_truth_test.go::TestDiagnoseQualifiedDefaultModelFallsBackAsPiDoes",
-        "coding/cli/introspection_truth_test.go::TestDiagnoseReportsTrustedProjectDefaultModelAndItsFile",
-        "coding/cli/introspection_truth_test.go::TestExportActivePigletSourceReachesToolProcesses",
-        "coding/cli/introspection_truth_test.go::TestReportProjectTrustNamesTheDeciding",
-        "coding/cli/introspection_truth_test.go::TestStatusAppliesTheActivePigletDiscovery",
-        "coding/cli/introspection_truth_test.go::TestStatusHumanOutputNamesTrustAndIgnoredResources",
-        "coding/cli/introspection_truth_test.go::TestStatusMarksUntrustedProjectResourcesIgnored",
-        "coding/cli/introspection_truth_test.go::TestStatusReportsASkillWithoutDescriptionAsNotLoaded",
-        "coding/cli/introspection_truth_test.go::TestStatusReportsAThemeWithAnUnknownColorRoleAsInvalid",
-        "coding/cli/introspection_truth_test.go::TestStatusTrustedProjectResourcesApply",
-        "coding/cli/introspection_truth_test.go::TestStatusWarnsWhenTheActivePigletSourceDoesNotLoad",
-        "coding/piglet/active_source_test.go::TestActiveSourceIsPath",
-        "coding/piglet/active_source_test.go::TestActiveSourceValue",
-        "coding/piglet/active_source_test.go::TestShowWithoutAnArgumentUsesTheActivePigletSource"
-      ]
-    },
-    {
-      "id": "BF-bede0f0-3",
-      "title": "`pig status` run from the agent's shell no longer lists ambient extensions and skills that the active…",
-      "symptom": "`pig status` run from the agent's shell no longer lists ambient extensions and skills that the active Piglet's `discovery` excludes.",
-      "rootCause": "pig status listed an untrusted project's resources as enabled and ignored the active Piglet's discovery; pig diagnose reported an untrusted project's defaultModel and printed a provider-qualified defaultModel as provider/provider/id. A skill without a description and a theme with an unknown color role showed no health.",
-      "rootCauseSource": "commit",
-      "userImpact": "Behavior differed from Pi",
-      "platform": "All platforms",
-      "class": "own",
-      "fixedIn": "Unreleased",
-      "releaseNote": "`pig status` run from the agent's shell no longer lists ambient extensions and skills that the active Piglet's `discovery` excludes. Such resources show `ignored: piglet-discovery`.",
-      "origin": "release note",
-      "commits": [
-        {
-          "hash": "bede0f0edf",
-          "date": "2026-10-28"
-        }
-      ],
-      "tests": [
-        "coding/cli/introspection_truth_test.go::TestDefaultModelResolutionDoesNotSplitAProviderPrefix",
-        "coding/cli/introspection_truth_test.go::TestDiagnoseDefaultModelWithoutProviderIsIgnoredLikePi",
-        "coding/cli/introspection_truth_test.go::TestDiagnoseIgnoresUntrustedProjectDefaultModel",
-        "coding/cli/introspection_truth_test.go::TestDiagnoseNamesTheActivePiglet",
-        "coding/cli/introspection_truth_test.go::TestDiagnoseQualifiedDefaultModelFallsBackAsPiDoes",
-        "coding/cli/introspection_truth_test.go::TestDiagnoseReportsTrustedProjectDefaultModelAndItsFile",
-        "coding/cli/introspection_truth_test.go::TestExportActivePigletSourceReachesToolProcesses",
-        "coding/cli/introspection_truth_test.go::TestReportProjectTrustNamesTheDeciding",
-        "coding/cli/introspection_truth_test.go::TestStatusAppliesTheActivePigletDiscovery",
-        "coding/cli/introspection_truth_test.go::TestStatusHumanOutputNamesTrustAndIgnoredResources",
-        "coding/cli/introspection_truth_test.go::TestStatusMarksUntrustedProjectResourcesIgnored",
-        "coding/cli/introspection_truth_test.go::TestStatusReportsASkillWithoutDescriptionAsNotLoaded",
-        "coding/cli/introspection_truth_test.go::TestStatusReportsAThemeWithAnUnknownColorRoleAsInvalid",
-        "coding/cli/introspection_truth_test.go::TestStatusTrustedProjectResourcesApply",
-        "coding/cli/introspection_truth_test.go::TestStatusWarnsWhenTheActivePigletSourceDoesNotLoad",
-        "coding/piglet/active_source_test.go::TestActiveSourceIsPath",
-        "coding/piglet/active_source_test.go::TestActiveSourceValue",
-        "coding/piglet/active_source_test.go::TestShowWithoutAnArgumentUsesTheActivePigletSource"
-      ]
-    },
-    {
       "id": "BF-beeb36a",
       "title": "Running with no home directory now fails the way Pi's package manager does, instead of reading the project's…",
       "symptom": "With no `HOME` and no entry for your user in the system's user database (a container run as a user its passwd file does not list), `pig` used to take the home directory to be empty, so the `.agents/skills` directory of the current project was listed as the user's `~/.agents/skills`, with user scope and without the project-trust prompt.",
@@ -28397,7 +28189,7 @@
       "userImpact": "An operation failed or was rejected",
       "platform": "All platforms",
       "class": "own",
-      "fixedIn": "Unreleased",
+      "fixedIn": "0.6.0",
       "releaseNote": "Running with no home directory now fails the way Pi's package manager does, instead of reading the project's `.agents/skills` as your own. With no `HOME` and no entry for your user in the system's user database (a container run as a user its passwd file does not list), `pig` used to take the home directory to be empty, so the `.agents/skills` directory of the current project was listed as the user's `~/.agents/skills`, with user scope and without the project-trust prompt. Startup in print and RPC mode, a reload and `pig config` now stop with `A system error occurred: uv_os_homedir returned ENOENT (no such file or directory)` and exit status 1, which is what Node's `os.homedir()`, and so Pi, reports there. Pi stops even earlier, at load, whatever the mode; PiG, which can run without a home directory by setting `PIG_HOME`, stops when it loads resources.",
       "origin": "release note",
       "commits": [
@@ -28427,7 +28219,7 @@
       "userImpact": "Wrong output or ordering",
       "platform": "All platforms",
       "class": "own",
-      "fixedIn": "Unreleased",
+      "fixedIn": "0.6.0",
       "releaseNote": "Go embedding hosts can bind extension appends through `coding.Session.AppendExtensionEntry`, retaining subprocess IDs and timestamps through the native Session writer and preserving `entry_appended` semantics. Previously, calling `AppendCustomEntry` allocated a new identity instead of retaining the subprocess ID and timestamp because the public Session API lacked a way to pass them through, leaving duplicate entries in the Node session mirror.",
       "origin": "release note",
       "commits": [
@@ -28473,7 +28265,7 @@
       "userImpact": "Behavior differed from Pi",
       "platform": "All platforms",
       "class": "own",
-      "fixedIn": "Unreleased",
+      "fixedIn": "0.6.0",
       "releaseNote": "Fullscreen double-click selection no longer splits paths and tokens at `~`, `.`, `\\`, `+` and `_`: the word characters are iTerm2 defaults.",
       "origin": "release note",
       "commits": [
@@ -28878,7 +28670,7 @@
       "userImpact": "Wrong output or ordering",
       "platform": "All platforms",
       "class": "own",
-      "fixedIn": "Unreleased",
+      "fixedIn": "0.6.0",
       "releaseNote": "Fixed incorrect MCP reconnect behavior after cancellation during transport cleanup. Previously, reconnect still started a replacement connection after the caller had canceled. Reconnect did not check caller cancellation after closing the previous client, so it could still start a replacement connection. Reconnect now completes cleanup and returns the original cancellation cause before starting a replacement.",
       "origin": "release note",
       "commits": [
@@ -29187,15 +28979,16 @@
     },
     {
       "id": "BF-c5b14a5",
-      "title": "fix(durable/contract): a vitest run keeps its cache out of the reference checkout, so E17 and E18 list the…",
-      "symptom": "fix(durable/contract): a vitest run keeps its cache out of the reference checkout, so E17 and E18 list the same directory in every pass",
+      "title": "The Durable core conformance gate no longer writes the reference checkout from a vitest run: its cache lives…",
+      "symptom": "The Durable core conformance gate no longer writes the reference checkout from a vitest run: its cache lives in the run's output directory.",
       "rootCause": "E17 and E18 run `ls` in the reference's packages/durable. The default vitest cache, packages/durable/node_modules/.vite, made the first U row add node_modules to that listing; `contract all` captures the reference once, in its first pass, before any U row, so every later pass compared a listing with node_modules against one without it and both rows failed on every fresh clone (wasm-tinygo, native and the wasm-go diagnostic, in two full runs).",
       "rootCauseSource": "commit",
-      "userImpact": "Behavior differed from Pi",
+      "userImpact": "An operation failed or was rejected",
       "platform": "All platforms",
       "class": "own",
-      "fixedIn": "Unreleased",
-      "origin": "commit",
+      "fixedIn": "0.6.0",
+      "releaseNote": "The Durable core conformance gate no longer writes the reference checkout from a vitest run: its cache lives in the run's output directory. The default, `packages/durable/node_modules/.vite`, added `node_modules` to the listing E17 and E18 print with `ls`, which they capture once for the reference before any U row ran, so `make durable-contract` failed both rows against every build on a fresh clone.",
+      "origin": "release note",
       "commits": [
         {
           "hash": "c5b14a57be",
@@ -29754,7 +29547,7 @@
       "userImpact": "Behavior differed from Pi",
       "platform": "All platforms",
       "class": "own",
-      "fixedIn": "Unreleased",
+      "fixedIn": "0.6.0",
       "releaseNote": "After `pig update --models`, OpenRouter's `:nitro` and `:floor` routing variants no longer disappear from `--list-models`, the model selector, `/scoped-models`, RPC `get_available_models` and the SDK lists. The refreshed list replaces the bundled OpenRouter list, and the variants were derived from the bundled models only; they are now derived from whichever list is current (D199).",
       "origin": "release note",
       "commits": [
@@ -30588,7 +30381,7 @@
       "userImpact": "Crash, hang or runaway process",
       "platform": "All platforms",
       "class": "own",
-      "fixedIn": "Unreleased",
+      "fixedIn": "0.6.0",
       "releaseNote": "The crash message of a deterministic code mode VM that is told a result number it cannot take now reads as Pi's does, `Error: Result 2 has sequence number 5, expected 1 or later, once`, and names `undefined` for a result that carries no number, where it read `Result 2 has sequence number 0, ...`.",
       "origin": "release note",
       "commits": [
@@ -30611,7 +30404,7 @@
       "userImpact": "An operation failed or was rejected",
       "platform": "All platforms",
       "class": "own",
-      "fixedIn": "Unreleased",
+      "fixedIn": "0.6.0",
       "releaseNote": "The errors that name a code mode tool or global (`Tool \"x\" is already registered`, `Invalid global name \"x\"`, `Global \"x\" is already registered`, `Global \"x\" conflicts with the namespace \"x\"`) write the name as it was given, as Pi does, instead of Go-escaped (`\"we\\\"ird\"`).",
       "origin": "release note",
       "commits": [
@@ -30634,7 +30427,7 @@
       "userImpact": "An operation failed or was rejected",
       "platform": "All platforms",
       "class": "own",
-      "fixedIn": "Unreleased",
+      "fixedIn": "0.6.0",
       "releaseNote": "A code mode `done` message that carries no store writes now fails the execution with Pi's `store writes is not valid JSON` instead of `unknown message from the worker`.",
       "origin": "release note",
       "commits": [
@@ -31050,7 +30843,7 @@
       "userImpact": "An operation failed or was rejected",
       "platform": "All platforms",
       "class": "own",
-      "fixedIn": "Unreleased",
+      "fixedIn": "0.6.0",
       "releaseNote": "Bedrock requests no longer fail when `strict: \"prefer\"` tools exceed Claude's strict tool limits, such as more than 16 optional parameters across all strict tools. The request is sent once more with the preferred tools non-strict while `strict: \"require\"` tools stay strict, as the Anthropic provider already does, and the reply carries a `bedrock_strict_tools_fallback` diagnostic. Ports Pi's #11416.",
       "origin": "release note",
       "commits": [
@@ -31194,7 +30987,7 @@
       "userImpact": "Behavior differed from Pi",
       "platform": "All platforms",
       "class": "own",
-      "fixedIn": "Unreleased",
+      "fixedIn": "0.6.0",
       "releaseNote": "A durable session no longer has a data race between a call to `DeferUntilPublished` from another goroutine (a harness's wait for idleness makes one) and the commit that arms its publication: the commit read the length of the publication's queue after it released the lock that the call appends to it under, so the race detector could report the two in a long durable/harness run. The commit now checks the queue under the lock.",
       "origin": "release note",
       "commits": [
@@ -31210,33 +31003,6 @@
       "tests": [
         "durable/harness/harness_tasks_scheduling_test.go::TestTaskScheduling",
         "durable/session/session_defer_until_published_race_test.go::TestDeferUntilPublishedFromAnotherGoroutineWhilePublicationsRun"
-      ]
-    },
-    {
-      "id": "BF-d3adcfe",
-      "title": "A Piglet's tool scope now bounds the Session's tool registry, not only its active tools",
-      "symptom": "A Piglet's tool scope now bounds the Session's tool registry, not only its active tools.",
-      "rootCause": "A Piglet that allowed some MCP tools, or hid some tools of an extension, still left the others callable from a `codemode` script (the MCP server logged the call) and loadable with `tool_search`, because both read the registry.",
-      "rootCauseSource": "release note",
-      "userImpact": "An operation failed or was rejected",
-      "platform": "All platforms",
-      "class": "own",
-      "fixedIn": "Unreleased",
-      "releaseNote": "A Piglet's tool scope now bounds the Session's tool registry, not only its active tools. A Piglet that allowed some MCP tools, or hid some tools of an extension, still left the others callable from a `codemode` script (the MCP server logged the call) and loadable with `tool_search`, because both read the registry. The Piglet scope now composes with `--tools` and `--exclude-tools` as an intersection wherever Pi applies its allowlist: definitions, the registry, `getAllTools`, activation and the refresh after a late registration. A hidden tool fails in `codemode` as it does under `--tools` (`tools.\u003cname\u003e does not exist`) and `tool_search` cannot find it. `codemode` and `tool_search` are no longer hidden when a Piglet leaves no MCP tool visible; they just reach nothing hidden. The MCP resource tools (`list_mcp_resources`, `list_mcp_resource_templates`, `read_mcp_resource`) are governed by the `pig-mcp-adapter` entry by name. Stock PiG without a Piglet is unchanged.",
-      "origin": "release note",
-      "commits": [
-        {
-          "hash": "d3adcfebef",
-          "date": "2026-10-28"
-        }
-      ],
-      "tests": [
-        "coding/cli/piglet_mcp_tool_scope_test.go::TestPigletScopesBuiltinMCPToolsInRPCMode",
-        "coding/extension/tool_filter_test.go::TestToolFilterScopeIntersects",
-        "coding/piglet/scope_mcp_test.go::TestScopeToolsScopesBuiltinMCPNamespaceLikeMCPSource",
-        "coding/session_tool_scope_test.go::TestNilToolScopeLeavesTheRegistryUnchanged",
-        "coding/session_tool_scope_test.go::TestToolScopeIntersectsWithToolsFlags",
-        "coding/session_tool_scope_test.go::TestToolScopeRemovesToolsFromTheRegistry"
       ]
     },
     {
@@ -31267,7 +31033,7 @@
       "userImpact": "Crash, hang or runaway process",
       "platform": "All platforms",
       "class": "own",
-      "fixedIn": "Unreleased",
+      "fixedIn": "0.6.0",
       "releaseNote": "A host that crashes during a model request no longer resends it forever, adding an aborted entry each time: the interrupted request is a failed attempt under the retry policy, and the run ends with `runFailure` reason `interrupted` once no retry is left; other work cut off `settings.restartLimit` times ends instead of keeping its conversation busy.",
       "origin": "release note",
       "commits": [
@@ -31281,8 +31047,7 @@
         }
       ],
       "tests": [
-        "durable/core/driver/harness_blocked_core_test.go::TestBlockedTasks",
-        "durable/harness/harness_restart_failure_test.go::TestTheRestartLimitOnTheNormalPath"
+        "durable/core/driver/harness_blocked_core_test.go::TestBlockedTasks"
       ]
     },
     {
@@ -31468,7 +31233,7 @@
       "userImpact": "Lost or altered data",
       "platform": "All platforms",
       "class": "own",
-      "fixedIn": "Unreleased",
+      "fixedIn": "0.6.0",
       "releaseNote": "Replacing the editor component with `ctx.ui.setEditorComponent()` while an extension dialog is open no longer closes a model selector shown over that dialog.",
       "origin": "release note",
       "commits": [
@@ -31748,7 +31513,7 @@
       "userImpact": "Behavior differed from Pi",
       "platform": "All platforms",
       "class": "own",
-      "fixedIn": "Unreleased",
+      "fixedIn": "0.6.0",
       "releaseNote": "Stored assistant messages of a durable conversation now carry `thinkingLevel`: a generation records the thinking level its request asked for on the response, also after polling a deferred one. A poll checkpoint written by an earlier version has no level and records none.",
       "origin": "release note",
       "commits": [
@@ -32182,7 +31947,7 @@
       "userImpact": "Behavior differed from Pi",
       "platform": "All platforms",
       "class": "own",
-      "fixedIn": "Unreleased",
+      "fixedIn": "0.6.0",
       "releaseNote": "A tool's `handoff` control now continues the run in the new context in the Durable core as it does in Pi: the handoff's reset is written first, queued writes and selected steers land after it and join the continuing run, a follow-up queued across the handoff waits for the continuing run's final boundary, and a queued reset ends the handed-off run. The core used to end the run at the handoff and answer it without another model request.",
       "origin": "release note",
       "commits": [
@@ -32205,7 +31970,7 @@
       "userImpact": "An operation failed or was rejected",
       "platform": "All platforms",
       "class": "own",
-      "fixedIn": "Unreleased",
+      "fixedIn": "0.6.0",
       "releaseNote": "`HarnessSettings.afterFailedRun` reaches the Durable core from the TypeScript host, so inputs queued behind a failed run start the next run with `continue` and settle `run_failed` with `withdraw`.",
       "origin": "release note",
       "commits": [
@@ -32269,7 +32034,7 @@
       "userImpact": "Wrong display",
       "platform": "All platforms",
       "class": "own",
-      "fixedIn": "Unreleased",
+      "fixedIn": "0.6.0",
       "releaseNote": "Display math (`$$...$$`, `\\[...\\]`) wider than the Markdown content width renders as its raw LaTeX source, which wraps like text, instead of wrapping each row of the 2D layout on its own and splitting fractions and sums apart. Layouts that fit render as before. Ports Pi's `latexBlock` width check.",
       "origin": "release note",
       "commits": [
@@ -32283,6 +32048,30 @@
         "tui/markdown_latex_width_test.go::TestMarkdownDisplayMathWiderThanTheContentWidthFallsBackToRawSource",
         "tui/markdown_latex_width_test.go::TestMarkdownDisplayMathWidthFallbackMatchesPi",
         "tui/markdown_unicode_space_oracle_test.go::TestMarkdownUnicodeSpaceLinesMatchPi"
+      ]
+    },
+    {
+      "id": "BF-d9a9c51",
+      "title": "`pig status --json` now gives a skill without a `description` and a theme that fails the theme schema…",
+      "symptom": "`pig status --json` now gives a skill without a `description` and a theme that fails the theme schema `enabled: false` as well as the `health` text and the warning, so one field says whether the session has the resource.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "0.6.0",
+      "releaseNote": "`pig status --json` now gives a skill without a `description` and a theme that fails the theme schema `enabled: false` as well as the `health` text and the warning, so one field says whether the session has the resource. They were `enabled: true` before. They count as disabled in `resources`.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "d9a9c51ff7",
+          "date": "2026-10-28"
+        }
+      ],
+      "tests": [
+        "coding/cli/introspection_truth_test.go::TestStatusReportsASkillWithoutDescriptionAsNotLoaded",
+        "coding/cli/introspection_truth_test.go::TestStatusReportsAThemeWithAnUnknownColorRoleAsInvalid",
+        "coding/piglet/active_source_test.go::TestActiveSourceValue"
       ]
     },
     {
@@ -32786,7 +32575,7 @@
       "userImpact": "An operation failed or was rejected",
       "platform": "macOS",
       "class": "own",
-      "fixedIn": "Unreleased",
+      "fixedIn": "0.6.0",
       "releaseNote": "On macOS, reading or writing a named pipe (FIFO) through the read, edit, write and grep tools, the node and local execution environments or the JSONL session storage could lose the other end's bytes: a signal that ended the wait for the writer (the Go runtime's SIGURG preemption signal, a child's SIGCHLD) made macOS drop the open from the pipe, so the writer failed with EPIPE and the reader returned an empty file or waited for a writer that had gone (about one open in seven under a steady stream of signals). Pi does not lose them, as Node opens on a libuv worker thread that signals are not delivered to; PiG now opens a FIFO on a thread that blocks every signal. Other platforms and files that are not FIFOs are unchanged.",
       "origin": "release note",
       "commits": [
@@ -34781,7 +34570,7 @@
       "userImpact": "An operation failed or was rejected",
       "platform": "All platforms",
       "class": "own",
-      "fixedIn": "Unreleased",
+      "fixedIn": "0.6.0",
       "releaseNote": "A lone UTF-16 surrogate in a tool result's details, in a nested tool call's result, or in a code mode call's argument or error preview now stays a lone surrogate through the Durable entry and its stored values, written as the `\\ud83d` escape that Pi's `JSON.stringify` writes, with `\u003c`, `\u003e` and `\u0026` left as they are. Before, it became three U+FFFD characters (`encoding/json` has no lone-surrogate string), so the preview bytes in a stored result differed from Pi's. The session file, JSON mode and RPC mode already wrote the escape and are unchanged.",
       "origin": "release note",
       "commits": [
@@ -35158,7 +34947,7 @@
       "userImpact": "Behavior differed from Pi",
       "platform": "All platforms",
       "class": "own",
-      "fixedIn": "Unreleased",
+      "fixedIn": "0.6.0",
       "releaseNote": "Tool search ranks a tool first when the query is its name, with `-` and other non-identifier characters read as `_` and the `mcp__app__` prefix optional (`thread_read` and `app__thread_read` name `mcp__app__thread_read`). Before, BM25 length normalization could rank a tool with a short description sharing the name's words above it.",
       "origin": "release note",
       "commits": [
@@ -35765,7 +35554,7 @@
       "userImpact": "An operation failed or was rejected",
       "platform": "All platforms",
       "class": "own",
-      "fixedIn": "Unreleased",
+      "fixedIn": "0.6.0",
       "releaseNote": "`WaitForIdle` on the Harness or a Conversation no longer resumes before the `SubscribeCommits` listeners saw the commit that made the work idle. The idle settle that ends a reconcile pass, and the one the context expiry timer runs, could decide on a commit another goroutine had just adopted and resolve the waits ahead of its host listeners; Pi's continuation there cannot run between an adoption and its publication, and PiG's now leaves the decision to the settle queued behind the listeners.",
       "origin": "release note",
       "commits": [
@@ -35859,28 +35648,6 @@
         "internal/codingagent/external_editor_test.go::TestEditorHelperProcess",
         "internal/codingagent/external_editor_test.go::TestExternalEditorUpstream",
         "internal/codingagent/wsl_test.go::TestIsWSL"
-      ]
-    },
-    {
-      "id": "BF-e79abfb",
-      "title": "The CI image version-literal test no longer reports the Pi part of an image tag (`1.4.0.b3a29f11`, written by…",
-      "symptom": "The CI image version-literal test no longer reports the Pi part of an image tag (`1.4.0.b3a29f11`, written by `make pin-sync` and checked by `make pin-check`) as a hard-coded version when the pinned commit starts with a letter.",
-      "rootCause": "pin.py ci_tag writes the pin's dotted build metadata (1.4.0.) into IMAGE_TAG and make pin-check checks it. A commit starting with a digit read as a fourth number and was skipped; the Pi pin starts with a letter, so TestBuildAutomationNamesNoUnrecordedVersionLiteral reported automation/images/ci-parity/metadata.env:5 as a hard-coded 1.4.0.",
-      "rootCauseSource": "commit",
-      "userImpact": "Behavior differed from Pi",
-      "platform": "All platforms",
-      "class": "own",
-      "fixedIn": "Unreleased",
-      "releaseNote": "The CI image version-literal test no longer reports the Pi part of an image tag (`1.4.0.b3a29f11`, written by `make pin-sync` and checked by `make pin-check`) as a hard-coded version when the pinned commit starts with a letter.",
-      "origin": "release note",
-      "commits": [
-        {
-          "hash": "e79abfb60a",
-          "date": "2026-10-28"
-        }
-      ],
-      "tests": [
-        "test/ci-images/version_literals_test.go::TestBuildAutomationNamesNoUnrecordedVersionLiteral"
       ]
     },
     {
@@ -36176,7 +35943,7 @@
       "userImpact": "Wrong output or ordering",
       "platform": "All platforms",
       "class": "own",
-      "fixedIn": "Unreleased",
+      "fixedIn": "0.6.0",
       "releaseNote": "F1-F12 are recognized when the terminal reports them with the Kitty keyboard protocol: `CSI P`/`Q`/`S` and `CSI 1;\u003cmod\u003e P`/`Q`/`S` for F1, F2 and F4, and a modifier on any F-key such as `CSI 15;5~` for Ctrl+F5, so shortcuts bound to `f1` or `ctrl+f5` fire and `parseKey` names them. Releases and repeats of F1, F2 and F4 are no longer taken for presses. F13-F35 and the other Kitty functional keys in the Private Use Area are dropped instead of inserting invisible characters into the prompt. Ports Pi's `matchesKey`, `parseKey`, `isKeyRelease`, `isKeyRepeat` and `decodeKittyPrintable` changes.",
       "origin": "release note",
       "commits": [
@@ -36582,16 +36349,16 @@
       "userImpact": "Crash, hang or runaway process",
       "platform": "All platforms",
       "class": "own",
-      "fixedIn": "Unreleased",
+      "fixedIn": "0.6.0",
       "releaseNote": "A session with an extension that registers a markdown transformer no longer crashes while an assistant reply streams. The transformer runs on a background worker, and its completion rebuilt the reply's content from that worker while the interface was streaming the next delta into the same reply, so both could rebuild it at once and the next frame panicked in `Container.renderChildLocked` with a nil child. A finished transform now only marks the reply for redraw, as it already did for a user message, and the interface rebuilds the reply on its own loop.",
       "origin": "release note",
       "commits": [
         {
-          "hash": "ecc7b7683c",
+          "hash": "a654570024",
           "date": "2026-10-29"
         },
         {
-          "hash": "a654570024",
+          "hash": "ecc7b7683c",
           "date": "2026-10-29"
         }
       ],
@@ -36814,6 +36581,30 @@
         "test/parity/scenarios/extensions-runtime/73-shutdown-from-session-before-fork.toml",
         "test/parity/scenarios/extensions-runtime/73-shutdown-from-session-before-switch.toml",
         "test/parity/scenarios/extensions-runtime/73-shutdown-from-session-start.toml"
+      ]
+    },
+    {
+      "id": "BF-ee5fdb1",
+      "title": "`pig status` no longer reports a shared extension name as an unhealthy duplicate",
+      "symptom": "`pig status` no longer reports a shared extension name as an unhealthy duplicate.",
+      "rootCause": "Fix-Commit: Fix-Commit: Fix-Commit: Fix-Commit: Fix-Commit:",
+      "rootCauseSource": "commit",
+      "userImpact": "Crash, hang or runaway process",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "0.6.0",
+      "releaseNote": "`pig status` no longer reports a shared extension name as an unhealthy duplicate. Two Packages that both expose `src/index.ts` resolve to the same `\"src\"` public name, and the loader identifies an extension by its path: it renames the later copies (`\"src:2\"`) and loads them all, as Pi loads every extension path. The report keeps them enabled and moves the finding to a new `warnings` list, so `pig status` exits 0 and `pig status --json` stays `\"healthy\": true`. Skills, prompts and themes key their runtime set by name, so their duplicates remain errors.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "ee5fdb16d8",
+          "date": "2026-10-25",
+          "pr": "348"
+        }
+      ],
+      "tests": [
+        "coding/cli/status_command_test.go::TestStatusStillFailsOnDuplicateNonExtensionResourceIdentity",
+        "coding/cli/status_command_test.go::TestStatusWarnsOnDuplicatePackageExtensionIdentity"
       ]
     },
     {
@@ -37105,6 +36896,123 @@
         "test/parity/scenarios/extensions-runtime/75-robust-notes-node.toml",
         "test/parity/scenarios/extensions-runtime/75-robust-notes-python.toml",
         "test/parity/scenarios/extensions-runtime/75-robust-notes-rust.toml"
+      ]
+    },
+    {
+      "id": "BF-f21be69",
+      "title": "`pig status` no longer lists the resources of an untrusted project as enabled",
+      "symptom": "`pig status` no longer lists the resources of an untrusted project as enabled.",
+      "rootCause": "pig status listed an untrusted project's resources as enabled and ignored the active Piglet's discovery; pig diagnose reported an untrusted project's defaultModel and printed a provider-qualified defaultModel as provider/provider/id. A skill without a description and a theme with an unknown color role showed no health.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "0.6.0",
+      "releaseNote": "`pig status` no longer lists the resources of an untrusted project as enabled. It resolves project trust as a print run does (saved decision, then `defaultProjectTrust`, else untrusted), shows the decision, and marks each project extension, skill, prompt and theme `ignored: untrusted` and not enabled. The settings and Packages of an untrusted project no longer count.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "f21be69251",
+          "date": "2026-10-28"
+        }
+      ],
+      "tests": [
+        "coding/cli/introspection_truth_test.go::TestDefaultModelResolutionDoesNotSplitAProviderPrefix",
+        "coding/cli/introspection_truth_test.go::TestDiagnoseDefaultModelWithoutProviderIsIgnoredLikePi",
+        "coding/cli/introspection_truth_test.go::TestDiagnoseIgnoresUntrustedProjectDefaultModel",
+        "coding/cli/introspection_truth_test.go::TestDiagnoseNamesTheActivePiglet",
+        "coding/cli/introspection_truth_test.go::TestDiagnoseQualifiedDefaultModelFallsBackAsPiDoes",
+        "coding/cli/introspection_truth_test.go::TestDiagnoseReportsTrustedProjectDefaultModelAndItsFile",
+        "coding/cli/introspection_truth_test.go::TestExportActivePigletSourceReachesToolProcesses",
+        "coding/cli/introspection_truth_test.go::TestReportProjectTrustNamesTheDeciding",
+        "coding/cli/introspection_truth_test.go::TestStatusAppliesTheActivePigletDiscovery",
+        "coding/cli/introspection_truth_test.go::TestStatusHumanOutputNamesTrustAndIgnoredResources",
+        "coding/cli/introspection_truth_test.go::TestStatusMarksUntrustedProjectResourcesIgnored",
+        "coding/cli/introspection_truth_test.go::TestStatusReportsASkillWithoutDescriptionAsNotLoaded",
+        "coding/cli/introspection_truth_test.go::TestStatusReportsAThemeWithAnUnknownColorRoleAsInvalid",
+        "coding/cli/introspection_truth_test.go::TestStatusTrustedProjectResourcesApply",
+        "coding/cli/introspection_truth_test.go::TestStatusWarnsWhenTheActivePigletSourceDoesNotLoad",
+        "coding/piglet/active_source_test.go::TestActiveSourceIsPath",
+        "coding/piglet/active_source_test.go::TestActiveSourceValue",
+        "coding/piglet/active_source_test.go::TestShowWithoutAnArgumentUsesTheActivePigletSource"
+      ]
+    },
+    {
+      "id": "BF-f21be69-2",
+      "title": "`pig diagnose` no longer reports the `defaultModel` of an untrusted project, which the session does not use",
+      "symptom": "`pig diagnose` no longer reports the `defaultModel` of an untrusted project, which the session does not use.",
+      "rootCause": "pig status listed an untrusted project's resources as enabled and ignored the active Piglet's discovery; pig diagnose reported an untrusted project's defaultModel and printed a provider-qualified defaultModel as provider/provider/id. A skill without a description and a theme with an unknown color role showed no health.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "0.6.0",
+      "releaseNote": "`pig diagnose` no longer reports the `defaultModel` of an untrusted project, which the session does not use. It reports the effective default model and the settings file of each part. A provider-qualified `defaultModel` such as `\"bench/bench-2\"` was printed as `bench/bench/bench-2`. Pi reads `defaultModel` as a model id and does not split it, so startup falls back to the first available model, as before; diagnose now says so and names the fix.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "f21be69251",
+          "date": "2026-10-28"
+        }
+      ],
+      "tests": [
+        "coding/cli/introspection_truth_test.go::TestDefaultModelResolutionDoesNotSplitAProviderPrefix",
+        "coding/cli/introspection_truth_test.go::TestDiagnoseDefaultModelWithoutProviderIsIgnoredLikePi",
+        "coding/cli/introspection_truth_test.go::TestDiagnoseIgnoresUntrustedProjectDefaultModel",
+        "coding/cli/introspection_truth_test.go::TestDiagnoseNamesTheActivePiglet",
+        "coding/cli/introspection_truth_test.go::TestDiagnoseQualifiedDefaultModelFallsBackAsPiDoes",
+        "coding/cli/introspection_truth_test.go::TestDiagnoseReportsTrustedProjectDefaultModelAndItsFile",
+        "coding/cli/introspection_truth_test.go::TestExportActivePigletSourceReachesToolProcesses",
+        "coding/cli/introspection_truth_test.go::TestReportProjectTrustNamesTheDeciding",
+        "coding/cli/introspection_truth_test.go::TestStatusAppliesTheActivePigletDiscovery",
+        "coding/cli/introspection_truth_test.go::TestStatusHumanOutputNamesTrustAndIgnoredResources",
+        "coding/cli/introspection_truth_test.go::TestStatusMarksUntrustedProjectResourcesIgnored",
+        "coding/cli/introspection_truth_test.go::TestStatusReportsASkillWithoutDescriptionAsNotLoaded",
+        "coding/cli/introspection_truth_test.go::TestStatusReportsAThemeWithAnUnknownColorRoleAsInvalid",
+        "coding/cli/introspection_truth_test.go::TestStatusTrustedProjectResourcesApply",
+        "coding/cli/introspection_truth_test.go::TestStatusWarnsWhenTheActivePigletSourceDoesNotLoad",
+        "coding/piglet/active_source_test.go::TestActiveSourceIsPath",
+        "coding/piglet/active_source_test.go::TestActiveSourceValue",
+        "coding/piglet/active_source_test.go::TestShowWithoutAnArgumentUsesTheActivePigletSource"
+      ]
+    },
+    {
+      "id": "BF-f21be69-3",
+      "title": "`pig status` run from the agent's shell no longer lists ambient extensions and skills that the active…",
+      "symptom": "`pig status` run from the agent's shell no longer lists ambient extensions and skills that the active Piglet's `discovery` excludes.",
+      "rootCause": "pig status listed an untrusted project's resources as enabled and ignored the active Piglet's discovery; pig diagnose reported an untrusted project's defaultModel and printed a provider-qualified defaultModel as provider/provider/id. A skill without a description and a theme with an unknown color role showed no health.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "0.6.0",
+      "releaseNote": "`pig status` run from the agent's shell no longer lists ambient extensions and skills that the active Piglet's `discovery` excludes. Such resources show `ignored: piglet-discovery`.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "f21be69251",
+          "date": "2026-10-28"
+        }
+      ],
+      "tests": [
+        "coding/cli/introspection_truth_test.go::TestDefaultModelResolutionDoesNotSplitAProviderPrefix",
+        "coding/cli/introspection_truth_test.go::TestDiagnoseDefaultModelWithoutProviderIsIgnoredLikePi",
+        "coding/cli/introspection_truth_test.go::TestDiagnoseIgnoresUntrustedProjectDefaultModel",
+        "coding/cli/introspection_truth_test.go::TestDiagnoseNamesTheActivePiglet",
+        "coding/cli/introspection_truth_test.go::TestDiagnoseQualifiedDefaultModelFallsBackAsPiDoes",
+        "coding/cli/introspection_truth_test.go::TestDiagnoseReportsTrustedProjectDefaultModelAndItsFile",
+        "coding/cli/introspection_truth_test.go::TestExportActivePigletSourceReachesToolProcesses",
+        "coding/cli/introspection_truth_test.go::TestReportProjectTrustNamesTheDeciding",
+        "coding/cli/introspection_truth_test.go::TestStatusAppliesTheActivePigletDiscovery",
+        "coding/cli/introspection_truth_test.go::TestStatusHumanOutputNamesTrustAndIgnoredResources",
+        "coding/cli/introspection_truth_test.go::TestStatusMarksUntrustedProjectResourcesIgnored",
+        "coding/cli/introspection_truth_test.go::TestStatusReportsASkillWithoutDescriptionAsNotLoaded",
+        "coding/cli/introspection_truth_test.go::TestStatusReportsAThemeWithAnUnknownColorRoleAsInvalid",
+        "coding/cli/introspection_truth_test.go::TestStatusTrustedProjectResourcesApply",
+        "coding/cli/introspection_truth_test.go::TestStatusWarnsWhenTheActivePigletSourceDoesNotLoad",
+        "coding/piglet/active_source_test.go::TestActiveSourceIsPath",
+        "coding/piglet/active_source_test.go::TestActiveSourceValue",
+        "coding/piglet/active_source_test.go::TestShowWithoutAnArgumentUsesTheActivePigletSource"
       ]
     },
     {
@@ -37888,7 +37796,7 @@
       "userImpact": "Behavior differed from Pi",
       "platform": "All platforms",
       "class": "own",
-      "fixedIn": "Unreleased",
+      "fixedIn": "0.6.0",
       "releaseNote": "`pig install`, `pig remove` and `pig update --extensions` run npm with `--no-audit --no-fund`, wherever they already pass `--legacy-peer-deps`, so npm no longer prints audit advice that, followed in the managed package root, would install the host-provided pi packages a second time. bun and pnpm arguments are unchanged.",
       "origin": "release note",
       "commits": [
@@ -38190,7 +38098,7 @@
       "userImpact": "An operation failed or was rejected",
       "platform": "All platforms",
       "class": "own",
-      "fixedIn": "Unreleased",
+      "fixedIn": "0.6.0",
       "releaseNote": "Schemas decoded from a wire description (a Node child's contracts, a hold token) keep their declared property order, so a failed args, result, state or input check lists its errors in that order as Pi does, and a description is written back in the declared order; they were sorted by name.",
       "origin": "release note",
       "commits": [
@@ -38761,7 +38669,7 @@
       "userImpact": "Crash, hang or runaway process",
       "platform": "All platforms",
       "class": "own",
-      "fixedIn": "Unreleased",
+      "fixedIn": "0.6.0",
       "releaseNote": "The Node SQLite driver keeps the 256 most recently used prepared statements per connection instead of every statement it ever prepared, closing the evicted ones, so callers that generate SQL of unbounded shapes no longer grow it without bound.",
       "origin": "release note",
       "commits": [
@@ -38783,7 +38691,7 @@
       "userImpact": "Crash, hang or runaway process",
       "platform": "Windows",
       "class": "own",
-      "fixedIn": "Unreleased",
+      "fixedIn": "0.6.0",
       "releaseNote": "On Windows, stopping a terminal reader whose input is a pipe no longer hangs. The reader waited on the input handle for input, but a pipe handle reads as ready whether or not input is queued, so a reader over a pipe went into a read that cancellation could not end, and `Stop`, shutdown and an external-editor handoff waited on it for good (seen as a 30 minute `internal/codingagent` test timeout in Windows CI). A pipe is now waited on in a zero-byte read, as Node's libuv does, which takes no input and which cancelling the reader ends, so a cancelled reader returns at once and leaves later input to the next reader. A console, which `pig` itself reads, is waited on as before.",
       "origin": "release note",
       "commits": [
@@ -40233,29 +40141,6 @@
       ]
     },
     {
-      "id": "BF-fd68cf8",
-      "title": "A Piglet's tool scope now covers the built-in MCP tools",
-      "symptom": "A Piglet's tool scope now covers the built-in MCP tools.",
-      "rootCause": "",
-      "rootCauseSource": "",
-      "userImpact": "Behavior differed from Pi",
-      "platform": "All platforms",
-      "class": "own",
-      "fixedIn": "Unreleased",
-      "releaseNote": "A Piglet's tool scope now covers the built-in MCP tools. A Piglet with an `extensions:` section that does not list `pig-mcp-adapter` still offered `mcp__\u003cserver\u003e__\u003ctool\u003e` from `builtin:mcp`, and `codemode` with them. `ScopeTools` now treats a tool in namespace `mcp__\u003cserver\u003e` like the adapter's `mcp:\u003cserver\u003e` source: the `pig-mcp-adapter` entry and its `tools` list govern it, and the MCP resource tools follow the same entry by name. Stock PiG without a Piglet is unchanged.",
-      "origin": "release note",
-      "commits": [
-        {
-          "hash": "fd68cf8c38",
-          "date": "2026-10-27"
-        }
-      ],
-      "tests": [
-        "coding/cli/piglet_mcp_tool_scope_test.go::TestPigletScopesBuiltinMCPToolsInRPCMode",
-        "coding/piglet/scope_mcp_test.go::TestScopeToolsScopesBuiltinMCPNamespaceLikeMCPSource"
-      ]
-    },
-    {
       "id": "BF-fd7f660",
       "title": "A resumed session keeps the tools that were active when it was saved (an optional or deferred tool a command…",
       "symptom": "A resumed session keeps the tools that were active when it was saved (an optional or deferred tool a command or extension had enabled no longer drops out and gets recorded as removed on the next turn); an explicit `--tools` list, `--no-tools` or `--no-builtin-tools` still wins (pi-mono #10785).",
@@ -40288,7 +40173,7 @@
       "userImpact": "Behavior differed from Pi",
       "platform": "All platforms",
       "class": "own",
-      "fixedIn": "Unreleased",
+      "fixedIn": "0.6.0",
       "releaseNote": "Automatic `fd` and `rg` downloads no longer fetch x86-64 binaries on ARM32 and other architectures without a prebuilt release. PiG now warns and recommends installing the tool with the system package manager.",
       "origin": "release note",
       "commits": [
@@ -40494,15 +40379,16 @@
     },
     {
       "id": "BF-ff225d2",
-      "title": "fix(durable/core/host/cf): the report spans carry task_interrupted's reason, as Pi 's safeReport does",
-      "symptom": "fix(durable/core/host/cf): the report spans carry task_interrupted's reason, as Pi 's safeReport does",
+      "title": "The Cloudflare host's report spans record the reason, extension and task of a `task_interrupted` report, as…",
+      "symptom": "The Cloudflare host's report spans record the reason, extension and task of a `task_interrupted` report, as Pi b3a29f11's telemetry does (`task_parked` no longer exists).",
       "rootCause": "task_parked is gone from ReportInfo; task_interrupted records reason, extension and task.id like task_faulted and task_outdated.",
       "rootCauseSource": "commit",
       "userImpact": "Behavior differed from Pi",
       "platform": "All platforms",
       "class": "own",
-      "fixedIn": "Unreleased",
-      "origin": "commit",
+      "fixedIn": "0.6.0",
+      "releaseNote": "The Cloudflare host's report spans record the reason, extension and task of a `task_interrupted` report, as Pi b3a29f11's telemetry does (`task_parked` no longer exists).",
+      "origin": "release note",
       "commits": [
         {
           "hash": "ff225d26a5",
@@ -40888,7 +40774,7 @@
     {
       "id": "D212",
       "title": "`/llama` explains a 404 from llama-swap's missing load and unload endpoints, where Pi shows \"llama.cpp…",
-      "entry": "BF-3f46dee"
+      "entry": "BF-0920a00"
     },
     {
       "id": "D213",
