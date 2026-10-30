@@ -57,6 +57,7 @@ func LoadExtensionFromFactory(factory extension.ExtensionFactory, cwd string, ev
 	}
 	ext.InitializeEventHandlers()
 	ext.InitializeToolRegistry()
+	ext.InitializeThinkingRuns()
 	load := newAPI(ext, runtime, cwd, eventBus)
 	defer func() {
 		// upstream: loader.ts:623-629 catches whatever the factory throws, discards its changes and rethrows it.

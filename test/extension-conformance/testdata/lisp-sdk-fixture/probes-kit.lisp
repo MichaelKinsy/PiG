@@ -565,6 +565,11 @@ kit-widget-event=<type>:<value> (a change report is not one). It never closes it
                  (pig:ctx-set-widget ctx "wide" (list (concatenate 'string (make-string 60 :initial-element #\A) " tail") "short"))))
   (pig:command ext "report_geometry" "Report the terminal geometry"
                (lambda (ctx args) (declare (ignore args)) (kp-notify ctx (format nil "geometry:~Dx~D" (pig:ctx-width ctx) (pig:ctx-height ctx)))))
+  (pig:own-thinking-runs ext t)
+  (pig:command ext "thinking_runs_off" "Stop owning the thinking runs"
+               (lambda (ctx args) (declare (ignore args)) (pig:ctx-own-thinking-runs ctx nil)))
+  (pig:command ext "thinking_runs_on" "Own the thinking runs"
+               (lambda (ctx args) (declare (ignore args)) (pig:ctx-own-thinking-runs ctx t)))
   (pig:command ext "ui_forward_probe" "Call the working, paste, editor-text and tools-expanded UI members"
                (lambda (ctx args) (declare (ignore args))
                  (pig:ctx-set-working-message ctx "Thinking hard")

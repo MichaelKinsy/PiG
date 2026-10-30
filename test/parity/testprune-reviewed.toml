@@ -552,3 +552,10 @@ commit = "6445df7c9d"
 class = "CITE"
 cite = "packages/coding-agent/src/utils/image-convert.ts:11"
 reason = "Pi decodes every PNG it reads with Photon's `PhotonImage.new_from_byteslice` (image-convert.ts:11, and image-resize-core.ts, clipboard-image.ts, the durable images/index.ts), whose png crate accepts and refuses other files than Go's image/png: PNG joins the formats whose Go decoder no production code may register or call (the banned list gains image/png, so the sample of the self-test has six uses: its blank png import and its blank webp import)."
+
+[[entry]]
+path = "coding/cli/package_commands_test.go"
+commit = "7e160533d7ded8fa84cc825e12797e8b987ce6d6"
+class = "DIVERGENCE"
+cite = "D215"
+reason = "TestNormalizePackageSourceForSettings_UsesScopeBase pinned Pi's relative record for an absolute input (package-manager.ts normalizePackageSourceForSettings). D215 stores a path typed absolute as typed (#389), so the absolute cases now expect the typed path and the relative case keeps Pi's expectation."

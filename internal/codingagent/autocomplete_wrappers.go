@@ -125,6 +125,10 @@ func (m *InteractiveMode) baseAutocompleteProvider(base tui.AutocompleteProvider
 		if err := m.autocompleteOnMain(ctx, func() { query = tui.NewAutocompleteQuery(base, lines, line, col, force) }); err != nil {
 			return nil, err
 		}
+		if query.AwaitsIO() {
+			// The wrapper chain waits on the base provider's awaited work: it has left Pi's microtask checkpoint.
+			tui.AutocompleteAwaitsIO(ctx)
+		}
 		result, err := query.RunResult(ctx)
 		return extensionSuggestions(result), err
 	}
@@ -169,6 +173,39 @@ func (m *InteractiveMode) asyncAutocompleteProvider(provider *extension.Autocomp
 		}
 	}
 	return adapted
+}
+
+// holdAutocompleteInput holds the next terminal read for one request of the extension provider chain. Pi opens the menu of a chain that
+// needs no I/O in the Promise jobs after the read that typed its text, before the next read, and PiG's chain is a round trip through the
+// extension runtime that the next read would overtake. The hold ends when the request ends (end: its answer was published, the editor
+// cancelled it, or the runtime's connection ended) or when its chain announces that it awaits real I/O (the returned context's
+// tui.AutocompleteAwaitsIO), which is when Pi's next read would have come first. A synchronous provider that blocks holds the read until it
+// returns, as it holds Pi's whole loop. It runs on the owner loop.
+func (m *InteractiveMode) holdAutocompleteInput(ctx context.Context) (context.Context, func()) {
+	released := make(chan struct{})
+	release := sync.OnceFunc(func() { close(released) })
+	gate := released
+	if previous := m.autocompletePending; previous != nil {
+		select {
+		case <-previous:
+		default:
+			// An earlier hold (a completion apply, a provider rebuild) still gates input: this one opens after it.
+			gate = make(chan struct{})
+			lifetime := m.autocompleteContext()
+			m.backgroundTasks.Go(func() {
+				defer close(gate)
+				for _, wait := range []<-chan struct{}{previous, released} {
+					select {
+					case <-wait:
+					case <-lifetime.Done():
+						return
+					}
+				}
+			})
+		}
+	}
+	m.autocompletePending = gate
+	return tui.WithAutocompleteUnhold(ctx, release), release
 }
 
 // startAutocompleteWork owns ordered input/factory work. The input pump waits before delivering the next chunk, while render and UI tasks remain live.
@@ -264,6 +301,7 @@ func (m *InteractiveMode) rebuildAutocompleteWrappers(base tui.AutocompleteProvi
 			}
 			m.autocompleteProvider = provider
 			m.editor.SetAsyncAutocomplete(adapted, epoch, m.backgroundTasks.Go, func(work tui.AutocompleteWork) { m.startAutocompleteWork(work, nil, nil) }, m.reportAutocompleteError)
+			m.editor.SetAutocompleteInputHold(m.holdAutocompleteInput)
 		}, nil
 	}, result, func(ctx context.Context) error {
 		if epoch.Err() != nil {
@@ -294,6 +332,7 @@ func (m *InteractiveMode) resetAutocompleteWrappers() {
 	m.autocompleteProvider = nil
 	m.editor.SetAutocompleteChanged(nil)
 	m.editor.SetAsyncAutocomplete(nil, nil, nil, nil, nil)
+	m.editor.SetAutocompleteInputHold(nil)
 	m.editor.SetAutocompleteTaskOwner(m.autocompleteContext(), m.backgroundTasks.Go, m.reportAutocompleteError)
 }
 

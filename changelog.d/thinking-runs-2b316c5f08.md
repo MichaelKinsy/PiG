@@ -1,0 +1,3 @@
+### Added
+
+- An extension can own thinking runs with `pi.ownThinkingRuns(enabled = true)` (Go `OwnThinkingRuns`, Rust and Python `own_thinking_runs`, Lisp `own-thinking-runs`, in-process Go `extension.API.OwnThinkingRuns`), at load or later, and turn it off again. While any extension owns them, a thinking run that is hidden, or that a Markdown transformer rewrote to empty text, leaves no stub row and no blank rows before or after it; the thinking stays in the message, click-to-hide and Ctrl+T work as before, and without such an extension the message draws as Pi does (D214, issue #384). <!-- feat: 2b316c5f08 -->

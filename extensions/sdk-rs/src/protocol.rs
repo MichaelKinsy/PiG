@@ -120,6 +120,9 @@ pub struct RegisterMsg {
     /// `markdown_transform` requests.
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub markdown_transformer: bool,
+    /// PiG-only: the extension owns the thinking runs of assistant messages, so a hidden or zero-row run leaves no spacer rows. Omitted when false.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub owns_thinking_runs: bool,
     /// The number of tool renderer resolvers (upstream `registerToolRenderer`); the host asks them with
     /// `resolve_tool_renderers` requests.
     #[serde(default, skip_serializing_if = "is_zero_usize")]

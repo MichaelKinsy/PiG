@@ -1,0 +1,52 @@
+# SPDX-License-Identifier: MIT
+
+name: Nix vendor hash
+
+# Fails when `vendorHash` in nix/package.nix no longer matches the Go modules cmd/pig links, and names the hash to set. It builds
+# only the fixed-output module cache on one system (the hash is the same on every system), so it runs on any Go change: a new
+# import of an already-required module changes the cache without touching go.sum. nix.yml builds the whole package.
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/nix-vendor-hash.yml'
+      - 'flake.lock'
+      - 'flake.nix'
+      - 'nix/**'
+      - 'go.mod'
+      - 'go.sum'
+      - 'go.work'
+      - 'go.work.sum'
+      - '.go-version'
+      - '**/*.go'
+  push:
+    branches: [main]
+  schedule:
+    - cron: '17 4 * * 2'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  vendor-hash:
+    name: Nix vendor hash
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: cachix/install-nix-action@13d8dd58da0234aa297dedd986986ccb8e7f3e24 # v31.11.1
+        with:
+          github_access_token: ${{ github.token }}
+          extra_nix_config: |
+            sandbox = true
+            sandbox-fallback = false
+
+      - name: Check vendorHash
+        run: nix/vendor-hash.sh check

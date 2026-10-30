@@ -1237,6 +1237,16 @@ fn main() {
         })();
         match result { Ok(()) => CommandResult::Ok, Err(err) => CommandResult::Error(err.to_string()) }
     });
+    // The extension owns the thinking runs from load; thinking_runs_off / thinking_runs_on change that at run time.
+    ext.own_thinking_runs(true);
+    ext.command("thinking_runs_off", "Stop owning the thinking runs", |ctx, _args| match ctx.own_thinking_runs(false) {
+        Ok(()) => CommandResult::Ok,
+        Err(err) => CommandResult::Error(err.to_string()),
+    });
+    ext.command("thinking_runs_on", "Own the thinking runs", |ctx, _args| match ctx.own_thinking_runs(true) {
+        Ok(()) => CommandResult::Ok,
+        Err(err) => CommandResult::Error(err.to_string()),
+    });
     // ui_forward_probe calls the UI members whose host effect a conformance row records (TestConformance_UIForwardingAgreesAcrossSDKs).
     ext.command("ui_forward_probe", "Call the working, paste, editor-text and tools-expanded UI members", |ctx, _args| {
         ctx.set_working_message("Thinking hard");
@@ -2968,6 +2978,23 @@ fn main() {
             }
             Ok(())
         })();
+        match result { Ok(()) => CommandResult::Ok, Err(err) => CommandResult::Error(err.to_string()) }
+    });
+    ext.command("autocomplete-settle-register", "Register a provider whose answer settles or awaits real I/O", |ctx, _| {
+        let result = ctx.add_autocomplete_provider(std::sync::Arc::new(|_, current| {
+            let get = current.clone();
+            let apply = current.clone();
+            Ok(std::sync::Arc::new(pig_sdk::AutocompleteProvider {
+                trigger_characters: vec![],
+                get_suggestions: std::sync::Arc::new(move |ctx, lines, line, col, force| {
+                    (get.get_suggestions)(ctx, lines, line, col, force)?;
+                    if lines[0] == "slow" { std::thread::sleep(std::time::Duration::from_millis(400)); }
+                    Ok(Some(pig_sdk::AutocompleteSuggestions { prefix: lines[0].clone(), items: vec![pig_sdk::AutocompleteItem { value: lines[0].clone(), label: Some(format!("settled:{}", lines[0])), description: None }] }))
+                }),
+                apply_completion: std::sync::Arc::new(move |ctx, lines, line, col, item, prefix| (apply.apply_completion)(ctx, lines, line, col, item, prefix)),
+                should_trigger_file_completion: None,
+            }))
+        }));
         match result { Ok(()) => CommandResult::Ok, Err(err) => CommandResult::Error(err.to_string()) }
     });
     // Upstream ctx.cwd, ctx.mode, ctx.hasUI and ctx.model throw the stale message after invalidation (runner.ts:571-600).

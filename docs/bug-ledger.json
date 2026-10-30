@@ -4676,6 +4676,36 @@
       ]
     },
     {
+      "id": "BF-2c3897f",
+      "title": "The Lisp and Python extension SDKs now give each `onThemeChange` handler the theme of its own change, in…",
+      "symptom": "The Lisp and Python extension SDKs now give each `onThemeChange` handler the theme of its own change, in order, as the Go and Rust SDKs do.",
+      "rootCause": "theme-apply-palette (extensions/sdk-lisp/src/theme.lisp) and Extension._set_theme_palette (extensions/sdk-py/pig_sdk/__init__.py) published the single per-extension theme that THEME-SET-PALETTE / Theme._set_palette mutate in place. They now publish a snapshot taken under the state lock together with the palette; ctx.theme / ctx.ui.theme stays live.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "The Lisp and Python extension SDKs now give each `onThemeChange` handler the theme of its own change, in order, as the Go and Rust SDKs do. They delivered one live theme object to handlers that run on a worker thread, so a handler that ran after the host had switched themes again read the newer palette: two quick changes reached their subscribers as the newer theme twice instead of the second and the third theme, and the Lisp SDK test `theme-and-tools-expanded-changes-reach-their-subscribers-in-order` reported that on a loaded machine in up to a quarter of its runs. Each delivery now carries a snapshot taken with its palette; `ctx.ui.theme` stays live. A new conformance row, `TestOnThemeChangeDeliversEachChangesOwnThemeAcrossSDKs`, holds the first delivery in a gate handler while the host switches themes and requires the handler behind it to log the theme of its own change in every SDK.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "2c3897fdfa",
+          "date": "2026-10-29"
+        },
+        {
+          "hash": "b3c3d66b4b",
+          "date": "2026-10-29"
+        },
+        {
+          "hash": "fecee913ad",
+          "date": "2026-10-29"
+        }
+      ],
+      "tests": [
+        "test/extension-conformance/host_surface_test.go::TestOnThemeChangeDeliversEachChangesOwnThemeAcrossSDKs"
+      ]
+    },
+    {
       "id": "BF-2c5db8b",
       "title": "A Piglet Binary with a fused Go extension starts within a few milliseconds of Stock PiG",
       "symptom": "A Piglet Binary with a fused Go extension starts within a few milliseconds of Stock PiG.",
@@ -6498,6 +6528,39 @@
         "tui/highlight_test.go::TestHighlightCode_ColorsEachLineOfPythonDocstringsIndependently",
         "tui/syntax_highlight_upstream_test.go::TestSyntaxHighlightInterpolationEndsWithTheString",
         "tui/syntax_highlight_upstream_test.go::TestSyntaxHighlightInterpolationTakesTheTextColor"
+      ]
+    },
+    {
+      "id": "BF-38e6506",
+      "title": "The faux provider (`ai.NewFauxProvider`) no longer ends a streamed chunk inside a multibyte character",
+      "symptom": "The faux provider (`ai.NewFauxProvider`) no longer ends a streamed chunk inside a multibyte character.",
+      "rootCause": "splitByTokenSize cut a response at byte offsets where faux.ts slices a JavaScript string, so a chunk of non-ASCII text could end inside a UTF-8 character. The partial arguments of a tool call that such a chunk extended were not valid text, which the stream's snapshots cannot share: each of those chunks copied and checked all the arguments again, and a tool call of 180 KB of mixed-width text allocated 3.2 GB (12.7 s, 74 s under -race).",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "The faux provider (`ai.NewFauxProvider`) no longer ends a streamed chunk inside a multibyte character. It cut a response at byte offsets where Pi slices a JavaScript string, so a text delta of non-ASCII text could end halfway through a character, and the partial arguments of a tool call that such a chunk extended were not valid text: every one of those chunks copied and checked all the arguments again. A tool call of 180 KB of mixed-width text allocated 3.2 GB and took 12.7 s (74 s under `-race`) before it ran; it now allocates 25 MB and takes 48 ms. A chunk is `tokenSize * 4` UTF-16 units, as in Pi's `splitStringByTokenSize`, and ends at the first character boundary at or after that size.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "38e6506b0e",
+          "date": "2026-10-30"
+        },
+        {
+          "hash": "6b64bc1bee",
+          "date": "2026-10-30"
+        },
+        {
+          "hash": "b119c53026",
+          "date": "2026-10-30"
+        }
+      ],
+      "tests": [
+        "ai/faux_chunks_test.go::TestSplitByTokenSizeCountsUTF16Units",
+        "ai/faux_chunks_test.go::TestSplitByTokenSizeKeepsEveryCharacterWhole",
+        "ai/faux_stream_scaling_norace_test.go::TestScalingFauxToolCallWithMultibyteArguments",
+        "ai/faux_token_size_oracle_test.go::TestFauxTokenSizeMatchesPi"
       ]
     },
     {
@@ -9901,6 +9964,34 @@
       "tests": []
     },
     {
+      "id": "BF-51c8f1c",
+      "title": "The Rust, Python and Lisp extension SDKs now recognize F1-F12 reported with the Kitty keyboard protocol, as…",
+      "symptom": "The Rust, Python and Lisp extension SDKs now recognize F1-F12 reported with the Kitty keyboard protocol, as the Go SDK and Pi do: `CSI P`/`Q`/`S` and `CSI 1;\u003cmod\u003e P`/`Q`/`S` for F1, F2 and F4, and a modifier on any F-key such as `CSI 15;5~` for Ctrl+F5.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "The Rust, Python and Lisp extension SDKs now recognize F1-F12 reported with the Kitty keyboard protocol, as the Go SDK and Pi do: `CSI P`/`Q`/`S` and `CSI 1;\u003cmod\u003e P`/`Q`/`S` for F1, F2 and F4, and a modifier on any F-key such as `CSI 15;5~` for Ctrl+F5. Their `matchesKey(\"f5\", ...)`-style checks match `ctrl+f5` and `shift+f4`, `parseKey` names the keys, `isKeyRelease` and `isKeyRepeat` accept `:3` and `:2` on `P`/`Q`/`S`, and `decodeKittyPrintable` returns nothing for the Kitty functional-key Private Use Area instead of an invisible character. The pi-tui bulk vectors (`test/parity/sdk-bulk`), generated from an older pi-tui, are regenerated from the pinned Pi build, so the Go SDK tests no longer assert that `\\x1b[P` is no key. Ports Pi's `keys.ts` F-key changes to the Rust, Python and Lisp SDKs.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "2768108d4b",
+          "date": "2026-10-29"
+        },
+        {
+          "hash": "51c8f1cb12",
+          "date": "2026-10-29"
+        },
+        {
+          "hash": "9fbcd3b82e",
+          "date": "2026-10-29"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-5229b7d",
       "title": "fix(durable/core): unloadDocuments with held changes is an api read job, memory notice shares the publish…",
       "symptom": "fix(durable/core): unloadDocuments with held changes is an api read job, memory notice shares the publish buffer, host fail op",
@@ -10886,14 +10977,14 @@
     {
       "id": "BF-58f6697",
       "title": "Text typed and followed at once by Enter no longer skips the autocomplete menu Pi opens: `/model provider/id`…",
-      "symptom": "Text typed and followed at once by Enter no longer skips the autocomplete menu Pi opens: `/model provider/id` typed and entered in one go switched the model in PiG, where Pi accepts the suggestion into the editor on the first Enter and switches on the second (the same holds for `/thinking level`, any command with argument completions, and a command name such as `/settin`, which Pi accepts and submits).",
+      "symptom": "Text typed and followed at once by Enter no longer skips the autocomplete menu Pi opens: `/model provider/id` typed and entered in one go switched the model in PiG, where Pi accepts the suggestion into the editor on the first Enter and switches on the second (the same holds for `/thinking level`, any command with argument completions, and a partially typed slash command, which Pi accepts and submits).",
       "rootCause": "Pi's editor only schedules an autocomplete request from the key handlers (editor.ts requestAutocomplete); startAutocompleteRequest runs as a Promise job after the terminal read's last sequence, and a provider that needs no I/O (a command name, a command's argument completions such as /model provider/id and /thinking level) answers in the same microtask checkpoint, before the next read is handled. An Enter sent right behind the text therefore finds the menu open: the first Enter accepts the suggestion, a second submits.",
       "rootCauseSource": "commit",
       "userImpact": "Behavior differed from Pi",
       "platform": "All platforms",
       "class": "own",
       "fixedIn": "Unreleased",
-      "releaseNote": "Text typed and followed at once by Enter no longer skips the autocomplete menu Pi opens: `/model provider/id` typed and entered in one go switched the model in PiG, where Pi accepts the suggestion into the editor on the first Enter and switches on the second (the same holds for `/thinking level`, any command with argument completions, and a command name such as `/settin`, which Pi accepts and submits). Pi's editor resolves its autocomplete request in the Promise jobs that follow the terminal read that typed the text, so the menu is open when the next read arrives; PiG started the request on a worker and published the menu through two later owner-loop tasks that the Enter overtook, so the Enter found no menu and submitted what was typed. The editor now starts the request of a read when the read has been handled (`Editor.FlushAutocomplete`, called by the interactive loop after each read), and an Enter in the same read as the text still submits it, as in Pi. Typed at human speed both behaved like Pi already.",
+      "releaseNote": "Text typed and followed at once by Enter no longer skips the autocomplete menu Pi opens: `/model provider/id` typed and entered in one go switched the model in PiG, where Pi accepts the suggestion into the editor on the first Enter and switches on the second (the same holds for `/thinking level`, any command with argument completions, and a partially typed slash command, which Pi accepts and submits). Pi's editor resolves its autocomplete request in the Promise jobs that follow the terminal read that typed the text, so the menu is open when the next read arrives; PiG started the request on a worker and published the menu through two later owner-loop tasks that the Enter overtook, so the Enter found no menu and submitted what was typed. The editor now starts the request of a read when the read has been handled (`Editor.FlushAutocomplete`, called by the interactive loop after each read), and an Enter in the same read as the text still submits it, as in Pi. Typed at human speed both behaved like Pi already.",
       "origin": "release note",
       "commits": [
         {
@@ -18732,6 +18823,63 @@
       "tests": []
     },
     {
+      "id": "BF-7e16053",
+      "title": "`pig install /abs/path` (and `~/path` or a `file://` URL) records the path as you typed it in `packages[]`",
+      "symptom": "`pig install /abs/path` (and `~/path` or a `file://` URL) records the path as you typed it in `packages[]`.",
+      "rootCause": "pig install recorded every local Package relative to the agent directory as spelled at install, as Pi does. An install through a symlinked PIG_HOME wrote ../../../../../../pkgsrc/my-pkg, and a start through another spelling at another depth resolved it to nothing: the Package's tools vanished with one stderr line.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "ahead-of-pi",
+      "divergence": "D215",
+      "removeWhen": "Pi stores an absolute local path as typed and warns about a missing local Package, or the owner reverses the decision. Then the two branches, the call-site markers and the tests' D215 cases go.",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`pig install /abs/path` (and `~/path` or a `file://` URL) records the path as you typed it in `packages[]`. It was stored relative to the agent directory as spelled at install, so a later start through another spelling of `PIG_HOME` (a symlinked `~/.local/share/...` directory, a synced config) resolved it to nothing and the Package's tools disappeared with only a stderr line. A relative path is still stored relative to the settings directory. Running `pig install \u003cabsolute path\u003e` again rewrites an existing entry for the same Package (D215, #389).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "4cf8dea070",
+          "date": "2026-10-29",
+          "pr": "389"
+        },
+        {
+          "hash": "7e160533d7",
+          "date": "2026-10-29"
+        }
+      ],
+      "tests": [
+        "coding/cli/package_commands_test.go::TestNormalizePackageSourceForSettings_UsesScopeBase",
+        "coding/cli/package_local_path_test.go::TestInstalledAbsoluteLocalPackageResolvesThroughAnotherAgentDirSpelling",
+        "coding/cli/package_local_path_test.go::TestStartupWarnsAboutAConfiguredLocalPackageThatDoesNotExist",
+        "coding/cli/port_wave_10_package_command_paths_test.go::TestPortWave10PackageCommandPaths",
+        "internal/packagemanager/package_manager_ops_gaps_test.go::TestPackageManagerAddAndRemoveSourceInTheScopeSettings"
+      ]
+    },
+    {
+      "id": "BF-7e16053-2",
+      "title": "A configured local Package whose directory does not exist is now a startup warning in the session, with the…",
+      "symptom": "A configured local Package whose directory does not exist is now a startup warning in the session, with the path it resolved to and the `pig remove` command that drops it, instead of a `[pig] Could not install ... (run pig update when online)` line on stderr (D215, #389).",
+      "rootCause": "pig install recorded every local Package relative to the agent directory as spelled at install, as Pi does. An install through a symlinked PIG_HOME wrote ../../../../../../pkgsrc/my-pkg, and a start through another spelling at another depth resolved it to nothing: the Package's tools vanished with one stderr line.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A configured local Package whose directory does not exist is now a startup warning in the session, with the path it resolved to and the `pig remove` command that drops it, instead of a `[pig] Could not install ... (run pig update when online)` line on stderr (D215, #389).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "7e160533d7",
+          "date": "2026-10-29"
+        }
+      ],
+      "tests": [
+        "coding/cli/package_commands_test.go::TestNormalizePackageSourceForSettings_UsesScopeBase",
+        "coding/cli/package_local_path_test.go::TestInstalledAbsoluteLocalPackageResolvesThroughAnotherAgentDirSpelling",
+        "coding/cli/package_local_path_test.go::TestStartupWarnsAboutAConfiguredLocalPackageThatDoesNotExist"
+      ]
+    },
+    {
       "id": "BF-7e1a05c",
       "title": "Resource resolution follows Pi's `DefaultPackageManager.resolve` in two cases: built-in extensions come after…",
       "symptom": "Resource resolution follows Pi's `DefaultPackageManager.resolve` in two cases: built-in extensions come after file and package extensions, and a Package listed twice in the same project settings uses its last entry (and its filters), keeping the first position.",
@@ -20086,6 +20234,32 @@
       ]
     },
     {
+      "id": "BF-8780292",
+      "title": "The footer's thinking level no longer reads `thinking off` in the first frames of an interactive start",
+      "symptom": "The footer's thinking level no longer reads `thinking off` in the first frames of an interactive start.",
+      "rootCause": "The footer and the editor border learned the Session's thinking level only when the startup bind ran, after the TUI had started drawing, so a startup frame painted before the bind showed 'thinking off' where Pi shows the configured level. Pi's footer reads session.state.thinkingLevel on every render (footer.ts:236, interactive-mode.ts:2351) and is built with the Session (interactive-mode.ts:659); the footer and the editor are now seeded with the Session's level when they are built.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong display",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "The footer's thinking level no longer reads `thinking off` in the first frames of an interactive start. PiG drew the footer and the editor border before the startup bind told them the Session's level, so a frame painted in that window showed `• thinking off` (and the neutral border) where Pi shows the configured level, `• medium` by default; with an extension loaded the bind comes later and the window is longer. The Session's level was right all along (`get_state` and the first request carry it); only the presentation lagged. Pi builds its footer with the Session and reads `session.state.thinkingLevel` on every render (`footer.ts` `render`, `interactive-mode.ts` `init`), so the footer and the editor are now seeded with the Session's level when they are built, for the default level, `--thinking` and settings overrides, and `off`, whichever extension host is loaded.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "8780292204",
+          "date": "2026-10-29"
+        },
+        {
+          "hash": "b48dfa93ff",
+          "date": "2026-10-29"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/footer_startup_thinking_test.go::TestNewFooterShowsTheSessionThinkingLevelBeforeTheStartupBind"
+      ]
+    },
+    {
       "id": "BF-87a6ac5",
       "title": "Fix in shipped code",
       "symptom": "Fix in shipped code",
@@ -20272,6 +20446,42 @@
       "tests": [
         "test/docs-drift/changelog_fragments_test.go::TestChangelogFragmentsFollowTheRules",
         "test/docs-drift/public_claims_test.go::TestPublicClaimsMatchTheEvidence"
+      ]
+    },
+    {
+      "id": "BF-8a44836",
+      "title": "Closing a session with an MCP server that signs in with OAuth no longer fails at random",
+      "symptom": "Closing a session with an MCP server that signs in with OAuth no longer fails at random.",
+      "rootCause": "Close cancelled the transport's context, which aborts the requests in flight, and sent the session DELETE at once. A response without a body (the GET stream answered 405, a 202) is handed to its round trip after the connection went back to the idle pool (net/http transport.go readLoop: tryPutIdleConn before the send on rc.ch). When the transport's context ends in that window the round trip finds no response yet and closes the connection with its context error (persistConn.roundTrip, `case \u003c-ctxDoneChan`), although the DELETE may already have taken the connection from the pool. The DELETE then fails with the aborted request's `context canceled` after about 100 microseconds and the server…",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Closing a session with an MCP server that signs in with OAuth no longer fails at random. The `DELETE` that ends the session could be refused with the `context canceled` of the stream the connection opens to hear from the server, when closing began while that stream's answer was still being handed over, so the server kept the session until it expired; closing now sends the `DELETE` only after the requests it aborted have returned. The stream's first request also reads its token before the connection is reported ready, as in Pi: a stream that started late could refresh a token that was about to expire, and closing then waited up to 15 seconds for the authorization server.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "320d389221",
+          "date": "2026-10-29"
+        },
+        {
+          "hash": "680815deac",
+          "date": "2026-10-29"
+        },
+        {
+          "hash": "8a4483647c",
+          "date": "2026-10-29"
+        },
+        {
+          "hash": "d5d34e7742",
+          "date": "2026-10-29"
+        }
+      ],
+      "tests": [
+        "coding/mcp_oauth_session_upstream_test.go::TestAgentSessionMCPOAuthClosesTheSessionWithoutRefreshingAnExpiringToken",
+        "mcp/streamable_http_close_order_test.go::TestStreamableHTTPTransportSendsTheSessionDeleteOnlyAfterTheAbortedRequestsReturned",
+        "mcp/streamable_http_get_stream_token_test.go::TestStreamableHTTPTransportReadsTheGETStreamsTokenBeforeTheInitializedNotificationReturns"
       ]
     },
     {
@@ -20994,6 +21204,43 @@
       "tests": [
         "internal/codingagent/settings_key_order_test.go::TestSaveSettingsPatchKeepsTheFileKeyOrder",
         "internal/codingagent/settings_key_order_test.go::TestSaveSettingsPatchReplacesInPlace"
+      ]
+    },
+    {
+      "id": "BF-8e3613d",
+      "title": "Text typed over an extension's autocomplete provider and followed at once by Enter no longer skips the menu…",
+      "symptom": "Text typed over an extension's autocomplete provider and followed at once by Enter no longer skips the menu Pi opens.",
+      "rootCause": "Pi's editor awaits the whole extension wrapper chain in the Promise jobs after the terminal read (editor.ts requestAutocomplete, startAutocompleteRequest): a chain that needs no I/O has opened its menu before the next read, so an Enter sent right behind `/model provider/id` accepts the suggestion and only a second Enter submits; a chain that awaits a timer, socket or process has not, and the next read is handled first. PiG's chain is a round trip through the extension runtime, and the next read overtook it: the Enter submitted on the first press. An earlier change fixed the built-in provider only.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "ahead-of-pi",
+      "divergence": "D213",
+      "removeWhen": "Pi's extensions run outside the editor's process, or the owner withdraws the decision. Then the release on runtime exit, the call-site marker and this record go.",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Text typed over an extension's autocomplete provider and followed at once by Enter no longer skips the menu Pi opens. With an extension that wraps the provider through `ctx.ui.addAutocompleteProvider` and answers without I/O, `/model provider/id` typed and entered in one go switched the model in PiG, where Pi accepts the suggestion into the editor on the first Enter and switches on the second (the same holds for `/thinking level`, any command with argument completions, and a command name). Pi awaits the whole wrapper chain in the Promise jobs after the terminal read, so a chain that needs no I/O has opened its menu before the next read, and a chain that awaits a timer, a socket or a process has not. PiG's chain is a round trip through the extension runtime that the next read overtook. The editor now starts the extension chain's request at the end of each read and the host holds the next read until the menu is published or the chain says it awaits real I/O; a provider that awaits a timer or a socket still lets the Enter submit at once, as in Pi, and a synchronous provider that blocks holds the read until it returns, as it holds Pi's loop. The Node runtime says so at the end of its macrotask (microtasks, `queueMicrotask` and `process.nextTick` stay inside Pi's checkpoint, a timer or `setImmediate` leaves it), including for a chain another extension of the same runtime calls (D213). Extension authors change nothing.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "8e3613da73",
+          "date": "2026-10-29"
+        }
+      ],
+      "tests": [
+        "coding/extension/host/subprocess/autocomplete_lifetime_test.go::TestAutocompleteCancellationPrecedesDispatchAndReleasesReferences",
+        "coding/extension/host/subprocess/autocomplete_settle_test.go::TestNodeAutocompleteChainTellsTheHostWhenItAwaitsIO",
+        "coding/extension/host/subprocess/autocomplete_settle_test.go::TestPackedNodeMembersShareTheBaseProvidersIOAnnouncement",
+        "internal/codingagent/autocomplete_extension_read_test.go::TestBaseProviderAnnouncesItsAwaitedWork",
+        "internal/codingagent/autocomplete_extension_read_test.go::TestEnterInTheReadAfterTheTextAcceptsTheMenuAnExtensionProviderOpened",
+        "internal/codingagent/autocomplete_extension_read_test.go::TestEnterInTheReadAfterTheTextSubmitsWhileAnExtensionProviderAwaitsIO",
+        "internal/codingagent/autocomplete_extension_read_test.go::TestEnterWaitsForAnExtensionProviderThatBlocksUntilItReturns",
+        "test/extension-conformance/autocomplete_settle_test.go::TestAutocompleteSettlementAcrossSDKs",
+        "tui/async_autocomplete_race_test.go::TestAsyncAutocomplete_NoRaceWithInput",
+        "tui/editor_async_provider_test.go::TestForcedAutocompleteQueryDoesNotHoldInput",
+        "tui/editor_autocomplete_hold_test.go::TestDebouncedExtensionRequestDoesNotHold",
+        "tui/editor_autocomplete_hold_test.go::TestExtensionChainAwaitingIOReleasesTheHold",
+        "tui/editor_autocomplete_hold_test.go::TestExtensionChainBehindAnUnfinishedRequestDoesNotHold",
+        "tui/editor_autocomplete_hold_test.go::TestFlushAutocompleteStartsTheExtensionChainOncePerRead"
       ]
     },
     {
@@ -27455,6 +27702,27 @@
       ]
     },
     {
+      "id": "BF-b368be5",
+      "title": "`pig install --validate-only [--json]` with no source now checks every local-path entry of `packages[]` (user…",
+      "symptom": "A Package whose folder was gone passed unnoticed (D216, #389).",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Crash, hang or runaway process",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`pig install --validate-only [--json]` with no source now checks every local-path entry of `packages[]` (user and trusted project settings): it names each one whose directory does not exist with the path it resolved to and the `pig remove` command that drops it, and exits 1 when any is missing. Before, a Package whose folder was gone passed unnoticed (D216, #389).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "b368be57f5",
+          "date": "2026-10-30",
+          "pr": "389"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-b430c7a",
       "title": "Extension widgets now appear in the order they were set when Node or other extension-process widgets and Go…",
       "symptom": "Extension widgets now appear in the order they were set when Node or other extension-process widgets and Go in-process widgets share a side of the editor, as in Pi.",
@@ -31808,6 +32076,33 @@
         "internal/codingagent/interactive_tool_execution_options_test.go::TestToolExecutionOptionsDefaultWhenUndefined",
         "internal/imageprocessing/image_processing_upstream_test.go::TestFormatDimensionNoteUpstream",
         "internal/imageprocessing/input_limits_test.go::TestResizeModelProfileJPEGQualityAndSizeOnlyHint"
+      ]
+    },
+    {
+      "id": "BF-d3aa996",
+      "title": "A durable session no longer has a data race between a call to `DeferUntilPublished` from another goroutine (a…",
+      "symptom": "A durable session no longer has a data race between a call to `DeferUntilPublished` from another goroutine (a harness's wait for idleness makes one) and the commit that arms its publication: the commit read the length of the publication's queue after it released the lock that the call appends to it under, so the race detector could report the two in a long durable/harness run.",
+      "rootCause": "The emptiness check now happens under the lock.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A durable session no longer has a data race between a call to `DeferUntilPublished` from another goroutine (a harness's wait for idleness makes one) and the commit that arms its publication: the commit read the length of the publication's queue after it released the lock that the call appends to it under, so the race detector could report the two in a long durable/harness run. The commit now checks the queue under the lock.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "5352452911",
+          "date": "2026-10-29"
+        },
+        {
+          "hash": "d3aa996f80",
+          "date": "2026-10-29"
+        }
+      ],
+      "tests": [
+        "durable/harness/harness_tasks_scheduling_test.go::TestTaskScheduling",
+        "durable/session/session_defer_until_published_race_test.go::TestDeferUntilPublishedFromAnotherGoroutineWhilePublicationsRun"
       ]
     },
     {
@@ -37232,6 +37527,33 @@
       ]
     },
     {
+      "id": "BF-ecc7b76",
+      "title": "A session with an extension that registers a markdown transformer no longer crashes while an assistant reply…",
+      "symptom": "A session with an extension that registers a markdown transformer no longer crashes while an assistant reply streams.",
+      "rootCause": "interactive mode handed each assistant block's async markdown transforms block.Invalidate as their completion hook. The hook runs on the background worker that finished the extension's transform chain, and AssistantMessageComponent.Invalidate rebuilds the block's content container (updateContent: the segment list, spacers, thinking-run regions and the scratch child list) while the owner loop streams the next delta into the same block. Two goroutines in updateContent let one clear the shared scratch list while the other passed it to SetChildren, so the container held nil children and the next frame panicked in Container.renderChildLocked with a nil child interface. Only a session with an…",
+      "rootCauseSource": "commit",
+      "userImpact": "Crash, hang or runaway process",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A session with an extension that registers a markdown transformer no longer crashes while an assistant reply streams. The transformer runs on a background worker, and its completion rebuilt the reply's content from that worker while the interface was streaming the next delta into the same reply, so both could rebuild it at once and the next frame panicked in `Container.renderChildLocked` with a nil child. A finished transform now only marks the reply for redraw, as it already did for a user message, and the interface rebuilds the reply on its own loop.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "ecc7b7683c",
+          "date": "2026-10-29"
+        },
+        {
+          "hash": "a654570024",
+          "date": "2026-10-29"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/assistant_block_async_race_test.go::TestAssistantBlockAsyncMarkdownCompletionLeavesTheBlockToTheOwnerLoop",
+        "tui/assistant_message_async_test.go::TestAssistantMessageAsyncCompletionMarksBlockDirty"
+      ]
+    },
+    {
       "id": "BF-ed05099",
       "title": "An extension's `ui.setHiddenThinkingLabel` now changes the label shown for hidden thinking in the chat…",
       "symptom": "An extension's `ui.setHiddenThinkingLabel` now changes the label shown for hidden thinking in the chat, including assistant messages already on screen.",
@@ -41647,11 +41969,22 @@
       "id": "D212",
       "title": "`/llama` explains a 404 from llama-swap's missing load and unload endpoints, where Pi shows \"llama.cpp…",
       "entry": "BF-3f46dee"
+    },
+    {
+      "id": "D213",
+      "title": "A crashed or exited extension runtime releases the read the host holds for an autocomplete provider chain",
+      "entry": "BF-8e3613d"
+    },
+    {
+      "id": "D215",
+      "title": "A local Package typed by absolute path is stored as typed",
+      "entry": "BF-7e16053"
     }
   ],
   "exemptCommits": {
     "Failure found by the integration build of unreleased work": 2,
     "Fix reverted before release": 1,
+    "Follow-up to unreleased work": 1,
     "Repair of a merge between development branches": 8,
     "Review follow-up to unreleased work": 3,
     "test-only": 1

@@ -2639,6 +2639,14 @@ func Extension() *sdk.Extension {
 		}
 		return nil
 	})
+	// The extension owns thinking runs from load; thinking_runs_off and thinking_runs_on change that while it runs (TestConformance_OwnThinkingRunsAcrossSDKs).
+	ext.OwnThinkingRuns(true)
+	ext.Command("thinking_runs_off", "Withdraw thinking-run ownership", func(ctx sdk.Context, _ string) error {
+		return ctx.OwnThinkingRuns(false)
+	})
+	ext.Command("thinking_runs_on", "Declare thinking-run ownership", func(ctx sdk.Context, _ string) error {
+		return ctx.OwnThinkingRuns(true)
+	})
 	// ui_forward_probe calls the UI members whose host effect a conformance row records (TestConformance_UIForwardingAgreesAcrossSDKs).
 	ext.Command("ui_forward_probe", "Call the working, paste, editor-text and tools-expanded UI members", func(ctx sdk.Context, args string) error {
 		ctx.SetWorkingMessage("Thinking hard")

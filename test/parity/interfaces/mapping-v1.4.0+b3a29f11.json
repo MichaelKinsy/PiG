@@ -136636,7 +136636,9 @@
         "call:coding/extension/autocomplete.go#SetupAutocompleteProvider"
       ],
       "evidence": [
-        "test:internal/codingagent/autocomplete_wrappers_test.go#TestAutocompleteFactoriesRebuildOnOwnerLoop"
+        "test:internal/codingagent/autocomplete_wrappers_test.go#TestAutocompleteFactoriesRebuildOnOwnerLoop",
+        "test:internal/codingagent/autocomplete_extension_read_test.go#TestEnterInTheReadAfterTheTextAcceptsTheMenuAnExtensionProviderOpened",
+        "test:internal/codingagent/autocomplete_extension_read_test.go#TestEnterInTheReadAfterTheTextSubmitsWhileAnExtensionProviderAwaitsIO"
       ]
     },
     {
@@ -136656,7 +136658,9 @@
         "call:coding/extension/autocomplete.go#SetupAutocompleteProvider"
       ],
       "evidence": [
-        "test:internal/codingagent/autocomplete_wrappers_test.go#TestAutocompleteFactoriesRebuildOnOwnerLoop"
+        "test:internal/codingagent/autocomplete_wrappers_test.go#TestAutocompleteFactoriesRebuildOnOwnerLoop",
+        "test:internal/codingagent/autocomplete_extension_read_test.go#TestEnterInTheReadAfterTheTextAcceptsTheMenuAnExtensionProviderOpened",
+        "test:internal/codingagent/autocomplete_extension_read_test.go#TestEnterInTheReadAfterTheTextSubmitsWhileAnExtensionProviderAwaitsIO"
       ]
     },
     {
@@ -146738,7 +146742,8 @@
       "evidence": [
         "test:tui/editor_autocomplete_boundary_upstream_test.go#TestEditorResetsCustomTriggerCharactersWhenProviderChanges",
         "test:tui/editor_kill_undo_upstream_test.go#TestUpstreamEditorUndo",
-        "test:internal/codingagent/autocomplete_read_checkpoint_test.go#TestEnterInTheReadAfterTheTextAcceptsTheMenuThatReadOpened"
+        "test:internal/codingagent/autocomplete_read_checkpoint_test.go#TestEnterInTheReadAfterTheTextAcceptsTheMenuThatReadOpened",
+        "test:internal/codingagent/autocomplete_extension_read_test.go#TestEnterInTheReadAfterTheTextAcceptsTheMenuAnExtensionProviderOpened"
       ]
     },
     {
@@ -146760,7 +146765,8 @@
       "evidence": [
         "test:tui/editor_autocomplete_boundary_upstream_test.go#TestEditorResetsCustomTriggerCharactersWhenProviderChanges",
         "test:tui/editor_kill_undo_upstream_test.go#TestUpstreamEditorUndo",
-        "test:internal/codingagent/autocomplete_read_checkpoint_test.go#TestEnterInTheReadAfterTheTextAcceptsTheMenuThatReadOpened"
+        "test:internal/codingagent/autocomplete_read_checkpoint_test.go#TestEnterInTheReadAfterTheTextAcceptsTheMenuThatReadOpened",
+        "test:internal/codingagent/autocomplete_extension_read_test.go#TestEnterInTheReadAfterTheTextAcceptsTheMenuAnExtensionProviderOpened"
       ]
     },
     {
@@ -200432,7 +200438,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:tui/assistant_message_block.go#AssistantMessageComponent.terminalErrorText"
+        "call:tui/assistant_message_block.go#AssistantMessageComponent.measureOwnedRuns"
       ],
       "evidence": [
         "test:coding/cli/max_thinking_upstream_test.go#TestMaxThinkingCodingAgentUpstream",
@@ -249956,8 +249962,8 @@
       ],
       "evidence": [
         "test:mcp/streamable_http_url_oracle_test.go#TestStreamableHTTPTransportSendsTheWHATWGRequestTarget",
-        "test:mcp/streamable_http_send_signal_test.go#TestStreamableHTTPTransportSendDoesNotDispatchOnceItsContextEnds",
-        "test:mcp/streamable_http_set_protocol_version_test.go#TestStreamableHTTPTransportSetProtocolVersionSetsTheHeaderOfLaterRequests"
+        "test:mcp/streamable_http_close_order_test.go#TestStreamableHTTPTransportSendsTheSessionDeleteOnlyAfterTheAbortedRequestsReturned",
+        "test:mcp/streamable_http_get_stream_token_test.go#TestStreamableHTTPTransportReadsTheGETStreamsTokenBeforeTheInitializedNotificationReturns"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -249979,8 +249985,8 @@
       ],
       "evidence": [
         "test:mcp/streamable_http_url_oracle_test.go#TestStreamableHTTPTransportSendsTheWHATWGRequestTarget",
-        "test:mcp/streamable_http_send_signal_test.go#TestStreamableHTTPTransportSendDoesNotDispatchOnceItsContextEnds",
-        "test:mcp/streamable_http_set_protocol_version_test.go#TestStreamableHTTPTransportSetProtocolVersionSetsTheHeaderOfLaterRequests"
+        "test:mcp/streamable_http_close_order_test.go#TestStreamableHTTPTransportSendsTheSessionDeleteOnlyAfterTheAbortedRequestsReturned",
+        "test:mcp/streamable_http_get_stream_token_test.go#TestStreamableHTTPTransportReadsTheGETStreamsTokenBeforeTheInitializedNotificationReturns"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -250066,8 +250072,8 @@
       ],
       "evidence": [
         "test:mcp/streamable_http_url_oracle_test.go#TestStreamableHTTPTransportSendsTheWHATWGRequestTarget",
-        "test:mcp/streamable_http_send_signal_test.go#TestStreamableHTTPTransportSendDoesNotDispatchOnceItsContextEnds",
-        "test:mcp/streamable_http_set_protocol_version_test.go#TestStreamableHTTPTransportSetProtocolVersionSetsTheHeaderOfLaterRequests"
+        "test:mcp/streamable_http_close_order_test.go#TestStreamableHTTPTransportSendsTheSessionDeleteOnlyAfterTheAbortedRequestsReturned",
+        "test:mcp/streamable_http_get_stream_token_test.go#TestStreamableHTTPTransportReadsTheGETStreamsTokenBeforeTheInitializedNotificationReturns"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -250089,8 +250095,8 @@
       ],
       "evidence": [
         "test:mcp/streamable_http_url_oracle_test.go#TestStreamableHTTPTransportSendsTheWHATWGRequestTarget",
-        "test:mcp/streamable_http_send_signal_test.go#TestStreamableHTTPTransportSendDoesNotDispatchOnceItsContextEnds",
-        "test:mcp/streamable_http_set_protocol_version_test.go#TestStreamableHTTPTransportSetProtocolVersionSetsTheHeaderOfLaterRequests"
+        "test:mcp/streamable_http_close_order_test.go#TestStreamableHTTPTransportSendsTheSessionDeleteOnlyAfterTheAbortedRequestsReturned",
+        "test:mcp/streamable_http_get_stream_token_test.go#TestStreamableHTTPTransportReadsTheGETStreamsTokenBeforeTheInitializedNotificationReturns"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -250179,8 +250185,8 @@
       ],
       "evidence": [
         "test:mcp/goroutines_test.go#TestStreamableHTTPClientLeavesNoGoroutineBehindAfterClose",
-        "test:mcp/streamable_http_send_signal_test.go#TestStreamableHTTPTransportDoesNotRetryRequestsThatWereCancelledWhileAuthorizationWasRecovering",
-        "test:mcp/streamable_http_test.go#TestStreamableHTTPTransportRoutesEveryRequestThroughTheFetchInUse"
+        "test:mcp/streamable_http_close_order_test.go#TestStreamableHTTPTransportSendsTheSessionDeleteOnlyAfterTheAbortedRequestsReturned",
+        "test:mcp/streamable_http_get_stream_token_test.go#TestStreamableHTTPTransportReadsTheGETStreamsTokenBeforeTheInitializedNotificationReturns"
       ]
     },
     {
@@ -261603,7 +261609,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:tui/editor_async_provider.go#Editor.requestAutocompleteProvider"
+        "call:tui/editor_async_provider.go#Editor.requestAsyncAutocomplete"
       ],
       "evidence": [
         "test:tui/editor_async_provider_test.go#TestForcedAutocompleteAsksShouldTriggerFileCompletion"
@@ -264726,7 +264732,8 @@
       "evidence": [
         "test:tui/editor_autocomplete_boundary_upstream_test.go#TestEditorResetsCustomTriggerCharactersWhenProviderChanges",
         "test:tui/editor_kill_undo_upstream_test.go#TestUpstreamEditorUndo",
-        "test:internal/codingagent/autocomplete_read_checkpoint_test.go#TestEnterInTheReadAfterTheTextAcceptsTheMenuThatReadOpened"
+        "test:internal/codingagent/autocomplete_read_checkpoint_test.go#TestEnterInTheReadAfterTheTextAcceptsTheMenuThatReadOpened",
+        "test:internal/codingagent/autocomplete_extension_read_test.go#TestEnterInTheReadAfterTheTextAcceptsTheMenuAnExtensionProviderOpened"
       ]
     },
     {
@@ -264748,7 +264755,8 @@
       "evidence": [
         "test:tui/editor_autocomplete_boundary_upstream_test.go#TestEditorResetsCustomTriggerCharactersWhenProviderChanges",
         "test:tui/editor_kill_undo_upstream_test.go#TestUpstreamEditorUndo",
-        "test:internal/codingagent/autocomplete_read_checkpoint_test.go#TestEnterInTheReadAfterTheTextAcceptsTheMenuThatReadOpened"
+        "test:internal/codingagent/autocomplete_read_checkpoint_test.go#TestEnterInTheReadAfterTheTextAcceptsTheMenuThatReadOpened",
+        "test:internal/codingagent/autocomplete_extension_read_test.go#TestEnterInTheReadAfterTheTextAcceptsTheMenuAnExtensionProviderOpened"
       ]
     },
     {

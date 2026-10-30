@@ -564,6 +564,10 @@ The session belongs to the extension's connection: closing the connection aborts
 
 Differences from Pi, each tested: a `model` the host's registry does not hold raises `Model <provider>/<id> not found` (Pi uses the object as given; a wire object carries no stream function), and Pi's `sessionManager`, `settingsManager`, `resourceLoader` and `modelRuntime` objects are in-process handles that do not cross the wire (`settings` and `resources` select what they would). `Dispose` is Pi's: the session is disconnected and its listeners dropped, a later prompt still runs the agent, and the host releases the session when the connection closes. The expected observations (event order, the leading system message, error messages) come from running Pi's own `createAgentSession` (`test/extension-conformance/testdata/child-session-want.json`).
 
+## Thinking runs
+
+An extension that draws the model's thinking itself, for example in an activity tree, calls `pi.ownThinkingRuns()` (Go `ext.OwnThinkingRuns(true)`, Rust `ext.own_thinking_runs(true)`, Python `ext.own_thinking_runs()`, Lisp `(own-thinking-runs ext)`) while it loads, and rewrites the visible run to an empty string with a Markdown transformer for `assistant-thinking`. The built-in message then draws no blank rows for a run that is hidden or empty (D214). Call it again with `false` through the runtime entry point (`ctx.OwnThinkingRuns(false)`, `ctx.own_thinking_runs(False)`, `ctx-own-thinking-runs`, Node `pi.ownThinkingRuns(false)`) to give the rows back; the flag is yours alone, the host ORs it with other extensions', and it leaves with your extension. In Node the call is a void setter ordered after your earlier UI calls; elsewhere it returns once the host applied it.
+
 ## Adding a new extension API surface
 
 1. Read upstream Pi behavior in Pi's `packages/coding-agent/docs/extensions.md` and the upstream source under `.upstream/current/`.

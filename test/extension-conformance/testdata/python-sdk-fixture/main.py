@@ -1271,6 +1271,11 @@ def new_extension() -> pig_sdk.Extension:
 
     ext.command("ui_forward_probe", "Call the working, paste, editor-text and tools-expanded UI members", ui_forward_probe)
 
+    # The extension owns the thinking runs from load; thinking_runs_off/on flip the flag through the runtime entry point (the conformance row reads the host's aggregated flag).
+    ext.own_thinking_runs(True)
+    ext.command("thinking_runs_off", "Clear the owns-thinking-runs flag", lambda ctx, _args: ctx.own_thinking_runs(False))
+    ext.command("thinking_runs_on", "Set the owns-thinking-runs flag", lambda ctx, _args: ctx.own_thinking_runs(True))
+
     # dialog-stack-probe opens its dialogs at the same time, each from its own thread, and reports each one's answer as it settles (TestConformance_ConcurrentDialogsAgreeAcrossSDKs). "pair" is a select A and a confirm B; "mix" is a select S, a confirm C, an input I and an editor E.
     def dialog_stack_probe(ctx, scenario):
         def chosen(result):
@@ -2391,6 +2396,21 @@ def new_extension() -> pig_sdk.Extension:
             ctx.notify("registered:" + tag, "info")
 
     ext.command("autocomplete-register", "Register retained provider wrappers", autocomplete_register)
+    def autocomplete_settle_register(ctx, args):
+        def factory(ctx, current):
+            class Settling:
+                trigger_characters = []
+                def get_suggestions(self, ctx, lines, line, col, force=False):
+                    current.get_suggestions(ctx, lines, line, col, force)
+                    if lines[0] == "slow":
+                        time.sleep(0.4)
+                    return {"items": [{"value": lines[0], "label": "settled:" + lines[0]}], "prefix": lines[0]}
+                def apply_completion(self, ctx, lines, line, col, item, prefix):
+                    return current.apply_completion(ctx, lines, line, col, item, prefix)
+            return Settling()
+        ctx.add_autocomplete_provider(factory)
+
+    ext.command("autocomplete-settle-register", "Register a provider whose answer settles or awaits real I/O", autocomplete_settle_register)
     def signal_probe(ctx: pig_sdk.Context, args: str) -> None:
         signal = ctx.signal
         ctx.notify("signal:" + ("none" if signal is None else "aborted" if signal.is_set() else "live"), "info")

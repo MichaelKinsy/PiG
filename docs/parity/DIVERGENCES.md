@@ -2741,3 +2741,47 @@ Parity allowance: `TestLlamaClientRequestsMatchPi` compares load and unload agai
 Remove when: Pi's `/llama` names llama-swap itself, or can manage llama-swap models; or the owner withdraws the decision. Then the call-site marker, the `GET /running` probe, the docs section and this record go.
 
 SCRUTINIZED:approved
+
+## D213 A crashed or exited extension runtime releases the read the host holds for an autocomplete provider chain
+
+What: Pi's editor awaits an autocomplete request in the Promise jobs that follow the terminal read that typed the text (`editor.ts` `requestAutocomplete`, `startAutocompleteRequest`), and its extensions run in Pi's own process. A provider chain that needs no I/O therefore opens its menu before the next read, and a chain that awaits real I/O (a timer, a socket, a process) has not settled when the next read arrives. PiG's extension chain crosses a process boundary, so after each read PiG starts the request of the extension chain and holds the next read until the chain settles and its menu is published, or until the chain announces that it awaits real I/O (`ui.autocomplete.pending`), which is when Pi's next read would have come first. The Node runtime announces at the end of its macrotask (`setImmediate`), Pi's rule exactly; the base provider's awaited work (an `@` file search, a command's Promise-returning argument completer) is announced by the host, also through a chain another packed member calls directly. The Go, Rust, Python and Lisp SDKs have only synchronous providers, which settle when they return, as a synchronous Pi provider holds the loop until it returns, so they announce nothing. No timer releases the read. The one difference a user can see: when the extension runtime exits or its connection ends while the chain is unsettled, the request fails and the host releases the read; in Pi a crashing extension takes the whole process with it.
+
+Why: the hold is the mechanism that carries Pi's event-loop order across the process boundary. A runtime that dies cannot answer, and a frozen editor would be worse than Pi, where the process would have ended.
+
+Pi bug: none claimed.
+
+Scope: requests of the extension provider chain that start at the end of a read: natural slash, argument and mention requests of text typed or pasted. Debounced symbol requests (a later task in Pi too), forced Tab requests and a request made behind an unfinished one never hold the read. The native provider chain without an extension provider is unchanged.
+
+Owner decision: owner Michael Kinsy ordered Pi's exact rule for 0.6.0 on 2026-10-29 ("don't care about delay, most correct") and a numbered record for what remains.
+
+Call-site markers: `coding/extension/host/subprocess/autocomplete_bridge.go` (`GetSuggestions` of the remote provider).
+
+Evidence: journey `extension-completion-fast-enter` (j18, packed Node runtime) runs Pi and PiG through `/model provider/id` and `/thinking level` typed and entered at once. `TestAutocompleteSettlementAcrossSDKs` runs a fast chain, a chain that sleeps and a chain that waits on a slow host answer in the Go, Node (isolated and packed), Rust, Python and Lisp realizations, fused and packed Go included, and requires the sleeping chain to be announced in Node only. `TestNodeAutocompleteChainTellsTheHostWhenItAwaitsIO` pins the Node rule in isolated and packed mode and `TestPackedNodeMembersShareTheBaseProvidersIOAnnouncement` the packed case. `TestEnterInTheReadAfterTheTextAcceptsTheMenuAnExtensionProviderOpened`, `TestEnterWaitsForAnExtensionProviderThatBlocksUntilItReturns`, `TestEnterInTheReadAfterTheTextSubmitsWhileAnExtensionProviderAwaitsIO` and `TestBaseProviderAnnouncesItsAwaitedWork` cover the host, and `tui/editor_autocomplete_hold_test.go` the editor.
+
+Parity allowance: none needed for the journey: a provider that needs no I/O matches Pi, and no journey can observe a runtime exit.
+
+Remove when: Pi's extensions run outside the editor's process, or the owner withdraws the decision. Then the release on runtime exit, the call-site marker and this record go.
+
+SCRUTINIZED:approved
+
+## D215 A local Package typed by absolute path is stored as typed
+
+What: Pi's `pi install <path>` records every local Package in `packages[]` relative to the settings directory as it was spelled at install (`package-manager.ts` `normalizePackageSourceForSettings`). An install made through one spelling of the agent directory (a symlinked `PIG_HOME`, such as an XDG link) writes, for example, `../../../../../../pkgsrc/my-pkg`; a start through another spelling at another depth resolves it to a path that does not exist, and the Package's tools are gone. PiG stores a path typed absolute (`/abs/pkg`, `~/pkg`, a `file://` URL) as typed, trimmed; a path typed relative (`./pkg`, `../pkg`) is still stored relative to the settings directory, as Pi stores it.
+
+Why: 20 of 21 Packages on one host disappeared after a re-registration run through a symlinked `PIG_HOME`, with only a boot line on stderr to show it (#389). An absolute path resolves the same way from every spelling of the agent directory.
+
+Pi bug: Pi writes the same relative record (`package-manager.ts` `normalizePackageSourceForSettings` at the pin, b3a29f11); not reported upstream.
+
+Scope: `PackageManager.NormalizeSourceForSettings` (`pig install`, `pig remove` matching is unchanged: both forms resolve to the same path), through `resolvepath.IsAbsolutePackagePath`. Entries already in `settings.json` are read as before; running `pig install <absolute path>` again rewrites an entry that still resolves to the absolute form. The SDK resource loader is unchanged.
+
+Owner decision: approved by owner Michael Kinsy on 2026-10-30 (store an absolute path as typed rather than always absolute or symlink-resolved relative). The report of a Package that does not resolve is not part of this record: Pi skips it silently, so it is the additive D216.
+
+Call-site marker: `internal/packagemanager/package_manager.go` (`NormalizeSourceForSettings`).
+
+Evidence: `TestInstalledAbsoluteLocalPackageResolvesThroughAnotherAgentDirSpelling` (`coding/cli/package_local_path_test.go`, red with the call site reverted), `TestNormalizePackageSourceForSettings_UsesScopeBase` (`coding/cli/package_commands_test.go`), `TestPackageManagerAddAndRemoveSourceInTheScopeSettings` (`internal/packagemanager/package_manager_ops_gaps_test.go`: an absolute spelling of a relative entry replaces it with the absolute path); `TestSessionGraphDefaultPackageManagerAcrossSDKs` and `TestSessionGraphLispPackedAcrossSDKs` (`test/extension-conformance/session_graph_test.go`: the script installs an absolute path, so every PiG row reports `<root>/pkgs/localpkg` where the Node row, Pi itself, reports the settings-relative spelling).
+
+Parity allowance: the ported case `package-command-paths.test.ts:431` ("allows local package install to initialize fresh project settings", `TestPortWave10PackageCommandPaths`) installs an absolute path and expects the entry relative to `.pi`; PiG's port asserts the path as typed. Scenario `cli-utils/04-package-install-local` installs a relative path, which is stored as Pi stores it.
+
+Remove when: Pi stores an absolute local path as typed, or the owner reverses the decision. Then the branch, the call-site marker and the tests' D215 cases go.
+
+SCRUTINIZED:approved

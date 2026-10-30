@@ -133,6 +133,28 @@ const PAGE_UP: f64 = -12.0;
 const PAGE_DOWN: f64 = -13.0;
 const HOME: f64 = -14.0;
 const END: f64 = -15.0;
+const F1: f64 = -21.0;
+
+/// The internal codepoint of function key `n` (1-12); they run downward from F1.
+fn f_key_codepoint(n: u32) -> f64 {
+    F1 - (n as f64 - 1.0)
+}
+
+/// The sentinel codepoint of a `\x1b[<n>~` parameter.
+fn func_key_code(n: f64) -> Option<f64> {
+    Some(match n as i64 {
+        2 => INSERT,
+        3 => DELETE,
+        5 => PAGE_UP,
+        6 => PAGE_DOWN,
+        7 => HOME,
+        8 => END,
+        11..=15 => f_key_codepoint((n as i64 - 10) as u32),
+        17..=21 => f_key_codepoint((n as i64 - 11) as u32),
+        23 | 24 => f_key_codepoint((n as i64 - 12) as u32),
+        _ => return None,
+    })
+}
 
 fn functional_equivalent(codepoint: f64) -> f64 {
     let mapped = match codepoint as i64 {
@@ -421,7 +443,30 @@ fn parse_kitty(data: &str) -> Option<Kitty> {
     }
     // Arrow, functional and home/end forms: \x1b[1;<mod>[:<event>]<A-D|H|F> and \x1b[<n>[;<mod>][:<event>]~
     let b = data.as_bytes();
-    if !data.starts_with("\x1b[") || b.len() < 4 {
+    if !data.starts_with("\x1b[") {
+        return None;
+    }
+    if matches!(b.last(), Some(b'P' | b'Q' | b'S')) {
+        // F1, F2, F4: \x1b[P/Q/S, \x1b[1;<mod>P/Q/S or \x1b[1;<mod>:<event>P/Q/S
+        let last = *b.last().unwrap();
+        let body = &data[2..data.len() - 1];
+        let mut modifier = 0.0;
+        if !body.is_empty() {
+            let (m, e) = body.strip_prefix("1;")?.split_once(':').map_or((body.strip_prefix("1;")?, None), |(m, e)| (m, Some(e)));
+            let digits = |s: &str| !s.is_empty() && s.bytes().all(|c| c.is_ascii_digit());
+            if !digits(m) || e.is_some_and(|e| !digits(e)) {
+                return None;
+            }
+            modifier = num(m) - 1.0;
+        }
+        let codepoint = f_key_codepoint(match last {
+            b'P' => 1,
+            b'Q' => 2,
+            _ => 4,
+        });
+        return Some(Kitty { codepoint, shifted: None, base: None, modifier });
+    }
+    if b.len() < 4 {
         return None;
     }
     let last = *b.last().unwrap();
@@ -464,15 +509,7 @@ fn parse_kitty(data: &str) -> Option<Kitty> {
                     (n_text, None)
                 }
             };
-            let codepoint = match num(n_str) as i64 {
-                2 => INSERT,
-                3 => DELETE,
-                5 => PAGE_UP,
-                6 => PAGE_DOWN,
-                7 => HOME,
-                8 => END,
-                _ => return None,
-            };
+            let codepoint = func_key_code(num(n_str))?;
             Some(Kitty { codepoint, shifted: None, base: None, modifier: mod_value.unwrap_or(1.0) - 1.0 })
         }
         b'~' => {
@@ -481,15 +518,7 @@ fn parse_kitty(data: &str) -> Option<Kitty> {
             if !all_digits(n) || !all_digits(e) || tail.is_some() {
                 return None;
             }
-            let codepoint = match num(n) as i64 {
-                2 => INSERT,
-                3 => DELETE,
-                5 => PAGE_UP,
-                6 => PAGE_DOWN,
-                7 => HOME,
-                8 => END,
-                _ => return None,
-            };
+            let codepoint = func_key_code(num(n))?;
             Some(Kitty { codepoint, shifted: None, base: None, modifier: 0.0 })
         }
         _ => None,
@@ -739,10 +768,11 @@ pub fn matches_key(data: &str, key_id: &str) -> bool {
             return matches_kitty(data, code, modifier);
         }
         "f1" | "f2" | "f3" | "f4" | "f5" | "f6" | "f7" | "f8" | "f9" | "f10" | "f11" | "f12" => {
-            if modifier != 0 {
-                return false;
+            let code = f_key_codepoint(key[1..].parse().unwrap());
+            if modifier == 0 && legacy_key_sequences(key).contains(&data) {
+                return true;
             }
-            return legacy_key_sequences(key).contains(&data);
+            return matches_kitty(data, code, modifier);
         }
         _ => {}
     }
@@ -793,7 +823,7 @@ pub fn is_key_release(data: &str) -> bool {
     if data.contains("\x1b[200~") {
         return false;
     }
-    [":3u", ":3~", ":3A", ":3B", ":3C", ":3D", ":3H", ":3F"].iter().any(|m| data.contains(m))
+    [":3u", ":3~", ":3A", ":3B", ":3C", ":3D", ":3H", ":3F", ":3P", ":3Q", ":3S"].iter().any(|m| data.contains(m))
 }
 
 /// pi-tui's `isKeyRepeat`: whether `data` is a Kitty key-repeat event.
@@ -801,7 +831,7 @@ pub fn is_key_repeat(data: &str) -> bool {
     if data.contains("\x1b[200~") {
         return false;
     }
-    [":2u", ":2~", ":2A", ":2B", ":2C", ":2D", ":2H", ":2F"].iter().any(|m| data.contains(m))
+    [":2u", ":2~", ":2A", ":2B", ":2C", ":2D", ":2H", ":2F", ":2P", ":2Q", ":2S"].iter().any(|m| data.contains(m))
 }
 
 fn format_key_name(key_name: &str, modifier: f64) -> Option<String> {
@@ -851,6 +881,7 @@ fn format_parsed_key(codepoint: f64, modifier: f64, base_layout_key: Option<f64>
     };
     let key_name = match named {
         Some(name) => name.to_string(),
+        None if (-32.0..=-21.0).contains(&effective) => format!("f{}", (F1 - effective) as i32 + 1),
         None => {
             if (48.0..=57.0).contains(&effective) || (97.0..=122.0).contains(&effective) || is_symbol(effective) {
                 from_char_code(effective).to_string()
@@ -980,6 +1011,10 @@ pub fn decode_kitty_printable(data: &str) -> Option<String> {
         }
     }
     effective = normalize_functional(effective);
+    // Drop unmapped Kitty functional keys (F13-F35, media keys, ...).
+    if (57344.0..=63743.0).contains(&effective) {
+        return None;
+    }
     if !effective.is_finite() || effective < 32.0 {
         return None;
     }

@@ -123,7 +123,8 @@ A pull request must:
 - include tests or explain why the existing tests prove the change;
 - update `docs/parity/DIVERGENCES.md` for an approved observable difference;
 - update extension conformance coverage for an SDK contract change;
-- update SBOM, notice, or provenance inputs when dependencies or copied material change; and
+- update SBOM, notice, or provenance inputs when dependencies or copied material change;
+- update `vendorHash` in `nix/package.nix` when Go modules change (the `Nix vendor hash` check prints the value; `nix/vendor-hash.sh update` computes it where Nix is installed); and
 - resolve review findings before merge.
 
 Do not edit generated files by hand. Use the repository generator named by the file or gate.

@@ -22,3 +22,4 @@ bfc03c667c see b1cea06458
 9286e75ef1 Review follow-up to unreleased work: places the arrival-order start in the request scope (no behaviour change), drops one omitempty that conflated an empty operations list with an absent one, and adds tests for the emptydrop claims
 4935bcbfcc see 958e80d99f
 f3fd868442 see ab1d07097c
+33c8d77650 Follow-up to unreleased work: regenerates the embedded SDK copies of the unreleased ownThinkingRuns feature (D214) and extends the failed-factory probe, no product behaviour

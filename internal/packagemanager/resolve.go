@@ -25,7 +25,9 @@ type ResolvedPaths struct {
 type PackageInstallFailure struct {
 	Source string
 	// Scope is "user", "project" or "temporary".
-	Scope   string
+	Scope string
+	// Path is the resolved directory of a local Package; empty when the source did not resolve to one.
+	Path    string
 	Message string
 }
 

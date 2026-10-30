@@ -119,6 +119,8 @@ export function toolDefinitionFields(): ToolDefinition {
 }
 
 export function apiAdditions(pi: ExtensionAPI): void {
+  pi.ownThinkingRuns();
+  pi.ownThinkingRuns(false);
   const config: McpServerConfig = { url: "https://mcp.example.com/jira" };
   pi.registerMcpServer("jira", config);
   const servers: RegisteredMcpServer[] = pi.getMcpServers();

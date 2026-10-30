@@ -16,11 +16,15 @@ const (
 // Ports packages/coding-agent/src/modes/interactive/components/assistant-message.ts.
 type AssistantMessageComponent struct {
 	Container
-	contentContainer  *Container
-	thinking          string
-	text              string
-	hidden            bool // whether thinking trace is hidden
-	hiddenLabel       string
+	contentContainer *Container
+	thinking         string
+	text             string
+	hidden           bool // whether thinking trace is hidden
+	hiddenLabel      string
+	// ownedRuns is whether an extension owns the thinking runs (SetOwnedThinkingRuns); runDrawsNothing holds, per thinking run, whether
+	// its last render drew no rows.
+	ownedRuns         bool
+	runDrawsNothing   []bool
 	stopReason        string
 	errorMessage      string
 	hasToolCalls      bool // skip error/abort rendering when tools handle their own
@@ -368,6 +372,50 @@ func (b *AssistantMessageComponent) SetAsyncMarkdownTransforms(text, thinking *A
 	b.updateContent()
 }
 
+// SetOwnedThinkingRuns declares that an extension owns the thinking runs of this message. A run that is hidden, or whose rendering
+// draws no rows (an extension's transform rewrote it to nothing), then leaves no spacing: no spacer before it, none after it, and no
+// stub for a hidden one. It is Pi's hidden run with an empty label (assistant-message.ts updateContent `continue`), decided from what
+// the run draws at render time and not only from its visibility. Without ownership the block is Pi's frame for frame.
+// pig additive (D214): a subprocess extension cannot patch AssistantMessageComponent.updateContent as an in-process Pi extension can.
+func (b *AssistantMessageComponent) SetOwnedThinkingRuns(owned bool) {
+	if b.ownedRuns == owned {
+		return
+	}
+	b.ownedRuns = owned
+	b.runDrawsNothing = b.runDrawsNothing[:0]
+	b.updateContent()
+}
+
+// measureOwnedRuns renders each visible thinking run at width, so the spacing around a run that draws nothing is left out of the
+// content, and rebuilds the content when a run changed between drawing rows and drawing none. Only an owning extension's block measures.
+// A run whose rewrite is not published yet draws no rows, so it leaves no spacing until it does.
+func (b *AssistantMessageComponent) measureOwnedRuns(width int) {
+	changed := false
+	run := 0
+	for _, seg := range b.segments {
+		if !seg.thinking {
+			continue
+		}
+		index := run
+		run++
+		for len(b.runDrawsNothing) <= index {
+			b.runDrawsNothing = append(b.runDrawsNothing, false)
+		}
+		if b.thinkingRunHidden(index) {
+			continue // a hidden run draws nothing in an owned block: updateContent leaves it out
+		}
+		seg.md.SetDefaultColor(ActiveTheme().ThinkingText)
+		nothing := len(seg.md.Render(width)) == 0
+		if b.runDrawsNothing[index] != nothing {
+			b.runDrawsNothing[index] = nothing
+			changed = true
+		}
+	}
+	if changed {
+		b.updateContent()
+	}
+}
+
 // Thinking returns the accumulated thinking content.
 func (b *AssistantMessageComponent) Thinking() string { return b.thinking }
 
@@ -404,6 +452,9 @@ func (b *AssistantMessageComponent) Render(width int) []string {
 	if width < 1 {
 		width = 1
 	}
+	if b.ownedRuns {
+		b.measureOwnedRuns(width)
+	}
 	out := b.renderCopy(width)
 	if b.hasToolCalls || len(out) == 0 {
 		return out
@@ -438,8 +489,11 @@ func (b *AssistantMessageComponent) updateContent() {
 		hidden := b.thinkingRunHidden(run)
 		runIndex := run
 		run++
-		if hidden && jsstring.Trim(b.hiddenLabel) == "" {
+		if hidden && (jsstring.Trim(b.hiddenLabel) == "" || b.ownedRuns) {
 			continue
+		}
+		if b.ownedRuns && runIndex < len(b.runDrawsNothing) && b.runDrawsNothing[runIndex] {
+			continue // an owning extension's run that draws no rows leaves no spacing either
 		}
 		if hidden && b.finished {
 			seg.md.dropStreamingMemos() // a run hidden after FinishStreaming does not render its Markdown again

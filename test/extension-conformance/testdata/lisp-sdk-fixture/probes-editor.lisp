@@ -185,10 +185,28 @@ the host's working status and invalidate. Each handler writes what ran into the 
        :should-trigger-file-completion
        (lambda (ctx lines line col) (pig:autocomplete-should-trigger-file-completion current ctx lines line col))))))
 
+(defun lfx-settle-factory ()
+  "A provider that asks the current one, sleeps when the line is \"slow\" and answers a single item labelled settled:<line>."
+  (lambda (ctx current)
+    (pig:make-autocomplete-provider
+     :get-suggestions
+     (lambda (ctx lines line col force)
+       (pig:autocomplete-get-suggestions current ctx lines line col force)
+       (let ((text (aref lines 0)))
+         (when (string= text "slow") (sleep 0.4))
+         (pig:obj "items" (vector (pig:obj "value" text "label" (concatenate 'string "settled:" text))) "prefix" text)))
+     :apply-completion
+     (lambda (ctx lines line col item prefix)
+       (pig:autocomplete-apply-completion current ctx lines line col item prefix)))))
+
 (def-fixture "autocomplete" (ext)
   (pig:command ext "autocomplete-register" "Register retained provider wrappers"
                (lambda (ctx args)
                  (declare (ignore args))
                  (dolist (tag '("A" "B"))
                    (pig:ctx-add-autocomplete-provider ctx (lfx-autocomplete-factory tag))
-                   (pig:ctx-notify ctx (concatenate 'string "registered:" tag) "info")))))
+                   (pig:ctx-notify ctx (concatenate 'string "registered:" tag) "info"))))
+  (pig:command ext "autocomplete-settle-register" "Register a provider whose answer settles or awaits real I/O"
+               (lambda (ctx args)
+                 (declare (ignore args))
+                 (pig:ctx-add-autocomplete-provider ctx (lfx-settle-factory)))))

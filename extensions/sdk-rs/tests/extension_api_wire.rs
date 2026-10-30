@@ -954,3 +954,35 @@ fn mcp_servers_change_and_provider_stream_event_reach_handlers() {
     drop(seen);
     host.finish();
 }
+
+// ownThinkingRuns (PiG-only): a load-time call(true) puts `owns_thinking_runs: true` in the register frame; call(false) or no call omits the key;
+// the last load-time call wins; the runtime call sends the `ownThinkingRuns` host call with `enabled` always present.
+#[test]
+fn own_thinking_runs_reaches_the_register_frame_and_the_runtime_call() {
+    let mut ext = Extension::new("api");
+    ext.own_thinking_runs(false);
+    ext.own_thinking_runs(true);
+    ext.command("own_off", "Off", |ctx, _| match ctx.own_thinking_runs(false) {
+        Ok(()) => pig_sdk::CommandResult::Ok,
+        Err(err) => pig_sdk::CommandResult::Error(err.to_string()),
+    });
+    let mut host = Host::start(ext, json!({}));
+    assert_eq!(host.register["register"]["owns_thinking_runs"], json!(true), "register: {}", host.register);
+    host.request("c1", json!({"method":"command","tool":"own_off","args":""}));
+    let call = host.expect_call("ownThinkingRuns");
+    assert_eq!(call["call"]["args"], json!({"enabled": false}));
+    host.reply(&call, Value::Null);
+    host.response("c1");
+    host.finish();
+
+    let mut ext = Extension::new("api");
+    ext.own_thinking_runs(true);
+    ext.own_thinking_runs(false);
+    let host = Host::start(ext, json!({}));
+    assert!(host.register["register"].get("owns_thinking_runs").is_none(), "register: {}", host.register);
+    host.finish();
+
+    let host = Host::start(Extension::new("api"), json!({}));
+    assert!(host.register["register"].get("owns_thinking_runs").is_none(), "register: {}", host.register);
+    host.finish();
+}

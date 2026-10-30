@@ -206,6 +206,7 @@
 "binary.headless.default.darwin_arm64.bytes" = 35561472
 "binary.headless.default.windows_amd64.bytes" = 38313984
 "binary.headless.stripped.linux_amd64.bytes" = 30474240
+# default linux_amd64, darwin_arm64 and windows_amd64, owner-approved 2026-10-29 (Michael Kinsy) for the 0.6.0 features that landed after the closed-Piglet-Binary approval (ext-autocomplete-v2, ownThinkingRuns across the SDKs, SDK key vectors, the MCP close fix): measured by TestHeadlessEmbedBinarySizeGate on the 0.6.0 head linux_amd64 36,724,896, darwin_arm64 35,310,370 and windows_amd64 38,052,352 B, each rounded up to 8 KiB: linux_amd64 36,732,928, darwin_arm64 35,315,712, windows_amd64 38,060,032; linux_arm64 is unchanged. On this line the ceilings above (Photon decoders) are the ones in force; the merged head is measured against them.
 "binary.headless.stripped.linux_arm64.bytes" = 28057600
 "binary.headless.stripped.darwin_arm64.bytes" = 29065216
 "binary.headless.stripped.windows_amd64.bytes" = 31784960
