@@ -43,7 +43,7 @@ AGENTS.md "TypeScript async/Promise parity" governs. In this package:
 - An awaited Promise is a blocking Go call returning `(value, error)`; a rejected Promise is the returned error. A section never blocks on the loop's own lock while waiting: a blocking call from inside a section releases nothing (Pi's `await` yields the loop; the Go call is made off the loop by the code that Pi writes after the `await`, i.e. the caller splits at the `await` as Pi's microtask does). Where Pi's method is `async` and awaits a host-internal step, the Go method is blocking and enters the loop (`Run`) at each resumption, as `documents` does (`Do`).
 - A `Promise` stored and awaited later by several parties (`keyed-members.ts` `ready`, `routines.ts` `settled`, `parked.ts` call promises) is a small struct with a `done` channel closed once, a result field written before the close, and waits that select on the caller's context (`context.Context`, see below). No `chan` is closed twice (settle is once-only under the loop).
 - `AbortSignal` is the `context.Context` of `chord/context` (`WithAbortSignal`, `WithoutAbortSignal`, `WithCancel(parent) (ctx, cancel(cause))`). `signal.reason` is `context.Cause(ctx)`. `throwIfAborted` is `ctx.Err() != nil` returning `context.Cause`.
-- Intentionally unawaited Promises (`void this.#resolve(...)`, routines' `void new OnRoutine(...).start()`) are owned background goroutines started with `Loop.Go(fn)`, joined by `Loop.Wait()` in the host's close (shutdown draining), never naked `go`.
+- Intentionally unawaited Promises (`void this.#resolve(...)` in `route.ts`, the handler calls and the `watch.closed` waiter of `routines.ts`) are owned background goroutines started with `Loop.Go(fn)`, joined by `Loop.Wait()` in the host's close (shutdown draining), never naked `go`. Where the unawaited call is only a state machine step (`void new OnRoutine(...).start()`, `void live(...)`), it is an in-section callback queued with `Loop.Queue` instead, so Pi's ordering is kept (`d5b-async.md`).
 - `Promise.withResolvers` + `Promise.race` between a work promise and a close promise (`root.ts`) is a `select` over the work's result channel, the close channel and the caller's `ctx.Done()`.
 
 ## 5. Seams between D5b files and the files of later lanes
@@ -75,3 +75,10 @@ D5a/D6 finish what the seams leave: the upstream tests of the helper files that 
 ## 7. D5b files
 
 Ported: `activity`, `backoff`, `deadline`, `uuid`, `sleep`, `revocation`, `unbound`, `retry-on`, `ref-state`, `follow`, `member-source`, `keyed-members`, `members`, `native`, `parked`, `dependencies`, `presence`, `ctx`, `facet`, `root`, `route`, `destination`, `routines`. Designed out (barrels, Go imports the package): `index`, `internal`. `host_loop.go` and `host_error.go` are D5b's Go-only/hoisted files.
+
+## 8. Amendments made while porting
+
+- `sectionLoop` (`host_ctx.go`): `eventLoop` plus `Run` and `Go`; what every helper that resumes after a blocking wait takes (`*Loop` satisfies it). `callHost`, `routineHost`, `rootHost`, `routeHost` also carry `loop() sectionLoop`.
+- Seams beyond the table in section 5 are listed in `handoffs/next/rows/d5b.md` ("What D5a must satisfy"): `dependencyBinding`, `parkedLongObject`, `unboundRequest`, `nativeOwner`, `routedHolder`, `keyedProvider`, `keyedBinding`, `watchableResolver`, `keyedResolver`.
+- The batch's `*chord.DeliveryScheduler` is a constructor argument (`referenceState`, `memberSource`, `keyedMembers`): `state.Batch.deliveries` is unexported and the host owns both.
+- Name collisions between helper files are resolved by suffixing the internal name (`routineFailed`, `retrySourceType`, `settledRefusal`); the list is in the rows file.
