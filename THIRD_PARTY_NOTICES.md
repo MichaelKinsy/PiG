@@ -147,17 +147,18 @@ Distributed files: `internal/photonimage/gifdecode.go` and `gifdecode_lzw.go`
 
 The files port the first-frame decoding of the GIF decoder Photon runs (image 0.24.9's `GifDecoder` over the gif crate and its LZW decoder), so that PiG returns Photon's pixels or its error. The required MIT copyright and permission notice is preserved here, and the canonical MIT text is in `LICENSES/MIT.txt`.
 
-## png 0.17.14 reader
+## png 0.17.14 reader and fdeflate 0.3.6 inflater
 
-Source: <https://github.com/image-rs/image-png/tree/v0.17.14> (`src/decoder/stream.rs`, `src/decoder/mod.rs`, `src/decoder/zlib.rs`, `src/decoder/transform.rs`, `src/decoder/transform/palette.rs`, `src/adam7.rs`) and the zlib header rules of fdeflate 0.3.7 (`src/decompress.rs`)
+Sources: <https://github.com/image-rs/image-png/tree/v0.17.14> (`src/decoder/stream.rs`, `src/decoder/mod.rs`, `src/decoder/zlib.rs`, `src/decoder/transform.rs`, `src/decoder/transform/palette.rs`, `src/decoder/interlace_info.rs`, `src/adam7.rs`, `src/filter.rs`), <https://github.com/image-rs/fdeflate/tree/v0.3.6> (`src/decompress.rs`, `src/huffman.rs`, `src/tables.rs`) and image 0.24.9 (`src/codecs/png.rs`, `src/color.rs`)
 
-Distributed file: `internal/photonimage/icopng.go`
+Distributed files: `internal/photonimage/pngdecode.go`, `internal/photonimage/pngdecode_inflate.go`
 
 - png: Copyright (c) 2015 nwin; The image-rs Developers
 - fdeflate: The image-rs Developers
+- image: The image-rs Developers
 - License: MIT OR Apache-2.0; PiG uses the MIT option for this derived code
 
-`internal/photonimage/icopng.go` reproduces what the png crate does with the PNG an ICO entry holds, which is not what Go's decoder does for damaged files. The required MIT copyright and permission notice is preserved here, and the canonical MIT text is in `LICENSES/MIT.txt`.
+`pngdecode.go` and `pngdecode_inflate.go` reproduce what the png crate, its inflater and image's `PngDecoder` do with a PNG file, which is not what Go's decoder does for damaged files and for PNG features Go does not read the same way. The required MIT copyright and permission notice is preserved here, and the canonical MIT text is in `LICENSES/MIT.txt`. The test files of PngSuite (Willem van Schaik, 1996 and 2011; <http://www.schaik.com/pngsuite/>, permission to use, copy, modify and distribute for any purpose and without fee) under `internal/photonimage/testdata/png-real/pngsuite` carry their own notice there and in `LICENSES/LicenseRef-PngSuite.txt`.
 
 ## tiff 0.9.1, weezl 0.1.8 and miniz_oxide 0.7.1
 
