@@ -248,6 +248,14 @@ var sourceAgentPins = map[string]agentPins{
 		},
 		tree: "a370325fce00b85dd7639908e2548f21ff28056cc66a6db41012af45b60b5b34",
 	},
+	"e7a0df27c09d11bf4161d3605246cbf57a129cb2": {
+		files: map[string]string{
+			"pi-agent/package.json":      "6a649aef6e7fa11cb4904c07b7daf57a8d40409cf3f1708e12ee144d4bdbe624",
+			"pi-agent/package-lock.json": "729d2abc0debadf2d1d4ecebdb2aca8224b9a0937adf342b83cfcd40110607e4",
+			piAgentCLI:                   "e79626f2dd6f94aa45d30f3fa63cd84319a6eefcd150b353cfaf274366926774",
+		},
+		tree: "33c54058aaa189d1f8eb9b23b63c8c240ed6e522b4c62496d22f6854cdac2ad3",
+	},
 }
 
 // pinnedAgentPins are the pins of the committed Pi pin.
