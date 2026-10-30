@@ -5,16 +5,30 @@
 package photonimage
 
 import (
+	"bytes"
 	"errors"
 	"image"
 	"math"
 	"math/bits"
 )
 
-// The bitmap decoder of image 0.24.9 (codecs/bmp/decoder.rs) as the ICO decoder uses it, `BmpDecoder::new_with_ico_format`: no
-// BITMAPFILEHEADER (the bitmap starts at the entry's offset and its data where the header and palette end), an alpha channel (RGBA8 output,
-// so every 32-bit bitmap is BGRA and no bitmap is RGB32), and the height field doubled for the AND mask. The routing of plain BMP files
-// stays with the standard library decoders and decodeBitfieldBMP: they decode what Photon decodes.
+// The bitmap decoder of image 0.24.9 (codecs/bmp/decoder.rs), `BmpDecoder`, in the two forms Photon reaches: `BmpDecoder::new` for a BMP file
+// (guess_format `BM`, DecodeBMP) and `BmpDecoder::new_with_ico_format` for the bitmap of an ICO entry (icoDecodeBMP). The ICO form has no
+// BITMAPFILEHEADER (the bitmap starts at the entry's offset and its data where the header and palette end), always has an alpha channel (RGBA8
+// output, so every 32-bit bitmap is BGRA and none is RGB32) and doubles the height field for the AND mask. A BMP file has an alpha channel
+// only when a bitfield mask names one, and is RGB8 otherwise: `to_rgba8` then makes the alpha 255 for every pixel, including the ones an RLE
+// bitmap leaves unwritten.
+//
+// The decoder fills a four-byte-per-pixel buffer in both forms (the bytes that the three-channel form would not have are overwritten with 255
+// at the end); the sizes the limits and the overflow checks see are the three- or four-byte ones of the form.
+
+// bmpSignature is image 0.24.9's guess_format signature for BMP (io/free_functions.rs:272).
+var bmpSignature = []byte("BM")
+
+// isBMP is image::guess_format's test for a BMP file.
+func isBMP(data []byte) bool {
+	return bytes.HasPrefix(data, bmpSignature)
+}
 
 const (
 	bmpCoreHeaderSize = 12
@@ -28,7 +42,10 @@ const (
 	bmpMaxWidthHeight = 0xFFFF
 )
 
-var errBMP = errors.New("photonimage: bmp: invalid or truncated bitmap")
+var (
+	errBMP        = errors.New("photonimage: bmp: invalid or truncated bitmap")
+	errBMPCorrupt = errors.New("photonimage: bmp: corrupt RLE data")
+)
 
 type bmpImageType int
 
@@ -36,6 +53,7 @@ const (
 	bmpPalette bmpImageType = iota
 	bmpRGB16
 	bmpRGB24
+	bmpRGB32
 	bmpRGBA32
 	bmpRLE8
 	bmpRLE4
@@ -128,9 +146,13 @@ func bmpBitfieldsFromMask(r, g, b, a, maxLen uint32) (*bmpBitfields, bool) {
 	return &f, true
 }
 
-// icoBMP is decoder.rs:476-495 `BmpDecoder` in ICO mode.
-type icoBMP struct {
+// bmpDecoder is decoder.rs:476-495 `BmpDecoder`.
+type bmpDecoder struct {
 	r *icoCursor
+
+	// noFileHeader and addAlpha are set for an ICO entry's bitmap (read_metadata_in_ico_format); addAlpha is also set by a bitfield alpha mask.
+	noFileHeader bool
+	addAlpha     bool
 
 	headerSize uint32
 	width      int32
@@ -145,78 +167,91 @@ type icoBMP struct {
 	bitfields  *bmpBitfields
 }
 
-// bmpCheckForOverflow is `check_for_overflow(width, height, 4)` (decoder.rs:241-266) in wasm32's 32-bit `usize`: false for an empty image or a
-// buffer length that does not fit.
-func bmpCheckForOverflow(width, height int32) bool {
+// channels is `num_channels`: the bytes of a pixel of the decoder's own output, with no indexed colour.
+func (d *bmpDecoder) channels() uint64 {
+	if d.addAlpha {
+		return 4
+	}
+	return 3
+}
+
+// bmpCheckForOverflow is `check_for_overflow(width, height, channels)` (decoder.rs:241-266) in wasm32's 32-bit `usize`: false for an empty image
+// or a buffer length that does not fit.
+func bmpCheckForOverflow(width, height int32, channels uint64) bool {
 	if width <= 0 || height <= 0 {
 		return false
 	}
-	n := uint64(4) * uint64(width)
+	n := channels * uint64(width)
 	if n > math.MaxUint32 {
 		return false
 	}
 	return n*uint64(height) <= math.MaxUint32
 }
 
-// icoDecodeBMP is the BMP arm of IcoDecoder (ico/decoder.rs:334-402) over BmpDecoder::new_with_ico_format.
-func icoDecodeBMP(r *icoCursor, entry icoDirEntry) (*image.NRGBA, error) {
-	d := &icoBMP{r: r}
+// DecodeBMP returns the RGBA8 pixels Photon's `PhotonImage.new_from_byteslice(data).get_raw_pixels()` returns for a BMP file: image 0.24.9's
+// `BmpDecoder::new` (codecs/bmp/decoder.rs) driven by `load_from_memory`, then `to_rgba8`. The file header's size and reserved fields are
+// not read, the bitmap is read from the header's data offset, and every layout the decoder knows is accepted: the core header, the
+// BITMAPINFOHEADER and its V2 to V5 extensions with the palette, RLE4 and RLE8, 16-bit, 24-bit and 32-bit colour, bitfields, top-down
+// bitmaps. The result has an alpha channel only through an alpha bitfield mask. Everything else is an error, as is an image of more than
+// 512 MiB of RGB8 (or RGBA8) or whose buffer length overflows wasm32's `usize`.
+func DecodeBMP(data []byte) (*image.NRGBA, error) {
+	if !isBMP(data) {
+		return nil, errors.New("photonimage: bmp: not a BMP (no BM signature)")
+	}
+	d := &bmpDecoder{r: &icoCursor{data: data}}
 	if err := d.readMetadata(); err != nil {
 		return nil, err
 	}
-	// The height field of an ICO is doubled to account for the AND mask.
-	d.height /= 2
 	width, height := uint32(d.width), uint32(d.height)
-
-	// load_inner: total_bytes of Rgba8 against the allocation limit.
-	if err := reserveTotalBytes(width, height, 4); err != nil {
+	// load_inner: total_bytes of Rgb8 or Rgba8 against the allocation limit, then the two buffer lengths of decoder_to_image and to_rgba8.
+	if err := reserveTotalBytes(width, height, d.channels()); err != nil {
 		return nil, err
 	}
-	if !entry.matchesDimensions(width, height) {
-		return nil, errICOEntry
-	}
-	if err := checkRGBAConversion(width, height, 4); err != nil {
+	if err := checkRGBAConversion(width, height, d.channels()); err != nil {
 		return nil, err
 	}
 	out := newImageNRGBA(width, height)
 	if err := d.readImageData(out.Pix); err != nil {
 		return nil, err
 	}
-
-	imageEnd := r.pos
-	dataEnd := uint64(entry.imageOffset) + uint64(entry.imageLength)
-	maskRowBytes := uint64((width+31)/32) * 4
-	maskLength := maskRowBytes * uint64(height)
-	// data_end should be image_end plus the mask; a bitmap without a mask is accepted.
-	switch {
-	case dataEnd >= imageEnd+maskLength:
-		for y := range height {
-			x := uint32(0)
-			for range maskRowBytes {
-				maskByte, ok := r.u8()
-				if !ok {
-					return nil, errBMP
-				}
-				for bit := 7; bit >= 0; bit-- {
-					if x >= width {
-						break
-					}
-					if maskByte&(1<<bit) != 0 {
-						out.Pix[((uint64(height-y-1)*uint64(width)+uint64(x))*4)+3] = 0
-					}
-					x++
-				}
-			}
+	if !d.addAlpha {
+		for i := 3; i < len(out.Pix); i += 4 {
+			out.Pix[i] = 0xFF
 		}
-		return out, nil
-	case dataEnd == imageEnd:
-		return out, nil
 	}
-	return nil, errors.New("photonimage: ico: image data size did not match the expected size")
+	return out, nil
 }
 
-// readMetadata is `read_metadata` (decoder.rs:783-847) for a bitmap without a file header.
-func (d *icoBMP) readMetadata() error {
+// readFileHeader is `read_file_header` (decoder.rs:564-583).
+func (d *bmpDecoder) readFileHeader() error {
+	if d.noFileHeader {
+		return nil
+	}
+	r := d.r
+	signature, ok := r.take(2)
+	if !ok || !bytes.Equal(signature, bmpSignature) {
+		return errBMP
+	}
+	// The file size and the reserved fields.
+	if _, ok := r.u32(); !ok {
+		return errBMP
+	}
+	if _, ok := r.u32(); !ok {
+		return errBMP
+	}
+	offset, ok := r.u32()
+	if !ok {
+		return errBMP
+	}
+	d.dataOffset = uint64(offset)
+	return nil
+}
+
+// readMetadata is `read_metadata` (decoder.rs:783-847).
+func (d *bmpDecoder) readMetadata() error {
+	if err := d.readFileHeader(); err != nil {
+		return err
+	}
 	r := d.r
 	headerOffset := r.pos
 	size, ok := r.u32()
@@ -251,13 +286,15 @@ func (d *icoBMP) readMetadata() error {
 			return err
 		}
 	}
-	// No file header: the data starts where the metadata ends.
-	d.dataOffset = r.pos
+	if d.noFileHeader {
+		// Use the offset of the end of metadata instead of reading a BMP file header.
+		d.dataOffset = r.pos
+	}
 	return nil
 }
 
 // readCoreHeader is `read_bitmap_core_header` (decoder.rs:588-615).
-func (d *icoBMP) readCoreHeader() error {
+func (d *bmpDecoder) readCoreHeader() error {
 	r := d.r
 	w, ok1 := r.u16()
 	h, ok2 := r.u16()
@@ -265,7 +302,7 @@ func (d *icoBMP) readCoreHeader() error {
 		return errBMP
 	}
 	d.width, d.height = int32(w), int32(h)
-	if !bmpCheckForOverflow(d.width, d.height) {
+	if !bmpCheckForOverflow(d.width, d.height, d.channels()) {
 		return errBMP
 	}
 	planes, ok := r.u16()
@@ -286,8 +323,8 @@ func (d *icoBMP) readCoreHeader() error {
 	return nil
 }
 
-// readInfoHeader is `read_bitmap_info_header` (decoder.rs:621-752) with `add_alpha_channel` set.
-func (d *icoBMP) readInfoHeader() error {
+// readInfoHeader is `read_bitmap_info_header` (decoder.rs:621-752).
+func (d *bmpDecoder) readInfoHeader() error {
 	r := d.r
 	w, ok1 := r.u32()
 	h, ok2 := r.u32()
@@ -308,7 +345,7 @@ func (d *icoBMP) readInfoHeader() error {
 		d.height = -d.height
 		d.topDown = true
 	}
-	if !bmpCheckForOverflow(d.width, d.height) {
+	if !bmpCheckForOverflow(d.width, d.height, d.channels()) {
 		return errBMP
 	}
 	planes, ok := r.u16()
@@ -336,7 +373,11 @@ func (d *icoBMP) readInfoHeader() error {
 		case 24:
 			d.imageType = bmpRGB24
 		case 32:
-			d.imageType = bmpRGBA32 // add_alpha_channel is set
+			if d.addAlpha {
+				d.imageType = bmpRGBA32
+			} else {
+				d.imageType = bmpRGB32
+			}
 		default:
 			return errBMP
 		}
@@ -378,8 +419,9 @@ func (d *icoBMP) readInfoHeader() error {
 	return nil
 }
 
-// readBitmasks is `read_bitmasks` (decoder.rs:754-781): the alpha mask is part of the V3 header and later ones.
-func (d *icoBMP) readBitmasks() error {
+// readBitmasks is `read_bitmasks` (decoder.rs:754-781): the alpha mask is part of the V3 header and later ones, and a mask that names an
+// alpha channel gives the bitmap one.
+func (d *bmpDecoder) readBitmasks() error {
 	r := d.r
 	rMask, ok1 := r.u32()
 	gMask, ok2 := r.u32()
@@ -402,12 +444,15 @@ func (d *icoBMP) readBitmasks() error {
 	if d.bitfields, ok = bmpBitfieldsFromMask(rMask, gMask, bMask, aMask, maxLen); !ok {
 		return errBMP
 	}
+	if aMask != 0 {
+		d.addAlpha = true
+	}
 	return nil
 }
 
 // readPalette is `read_palette` (decoder.rs:885-924): 256 entries are kept whatever the palette size; a short palette is an error and
 // one with more than 256 entries cannot occur (colors_used is limited to 1 << bit_count).
-func (d *icoBMP) readPalette() error {
+func (d *bmpDecoder) readPalette() error {
 	r := d.r
 	bytesPerColor := uint64(4)
 	if d.headerSize == bmpCoreHeaderSize {
@@ -441,23 +486,20 @@ func (d *icoBMP) readPalette() error {
 	return nil
 }
 
-// rowOrder is the order of the rows of `with_rows` and `rows` (decoder.rs:270-297, :941-952): bottom-up unless the DIB is top-down.
-func (d *icoBMP) rowOrder() []int {
-	order := make([]int, d.height)
-	for i := range order {
-		if d.topDown {
-			order[i] = i
-		} else {
-			order[i] = int(d.height) - 1 - i
-		}
+// rowIndex is the buffer row of the i-th row of the file: the order of `with_rows` and `rows` (decoder.rs:270-297, :941-952), bottom-up
+// unless the DIB is top-down.
+func (d *bmpDecoder) rowIndex(i int) int {
+	if d.topDown {
+		return i
 	}
-	return order
+	return int(d.height) - 1 - i
 }
 
 // withRows calls fn with each row of buf (four bytes per pixel) in file order.
-func (d *icoBMP) withRows(buf []byte, fn func(row []byte) bool) bool {
+func (d *bmpDecoder) withRows(buf []byte, fn func(row []byte) bool) bool {
 	stride := int(d.width) * 4
-	for _, y := range d.rowOrder() {
+	for i := range int(d.height) {
+		y := d.rowIndex(i)
 		if !fn(buf[y*stride : (y+1)*stride]) {
 			return false
 		}
@@ -466,7 +508,7 @@ func (d *icoBMP) withRows(buf []byte, fn func(row []byte) bool) bool {
 }
 
 // readImageData is `read_image_data` (decoder.rs:1305-1329).
-func (d *icoBMP) readImageData(buf []byte) error {
+func (d *bmpDecoder) readImageData(buf []byte) error {
 	var ok bool
 	switch d.imageType {
 	case bmpPalette:
@@ -475,6 +517,8 @@ func (d *icoBMP) readImageData(buf []byte) error {
 		ok = d.read16BitPixelData(buf, &bmpR5G5B5)
 	case bmpRGB24:
 		ok = d.readFullBytePixelData(buf, bmpFormatRGB24)
+	case bmpRGB32:
+		ok = d.readFullBytePixelData(buf, bmpFormatRGB32)
 	case bmpRGBA32:
 		ok = d.readFullBytePixelData(buf, bmpFormatRGBA32)
 	case bmpRLE8, bmpRLE4:
@@ -497,8 +541,9 @@ func (d *icoBMP) readImageData(buf []byte) error {
 	return nil
 }
 
-// readPalettizedPixelData is decoder.rs:954-1003.
-func (d *icoBMP) readPalettizedPixelData(buf []byte) bool {
+// readPalettizedPixelData is decoder.rs:954-1003. Each row is read whole (`read_exact` of the row's padded bytes), so a short row fails
+// before any of its pixels is set.
+func (d *bmpDecoder) readPalettizedPixelData(buf []byte) bool {
 	r := d.r
 	rowByteLength := uint64((int32(d.bitCount)*d.width + 31) / 32 * 4)
 	width := int(d.width)
@@ -514,15 +559,8 @@ func (d *icoBMP) readPalettizedPixelData(buf []byte) bool {
 		switch d.bitCount {
 		case 1:
 			// set_1bit_pixel_run: every bit of every byte until the row is full.
-			x := 0
-			for _, idx := range indices {
-				for bit := byte(0x80); bit != 0; bit >>= 1 {
-					if x >= width {
-						return true
-					}
-					d.setPixel(row, x, d.palette[b2i(idx&bit != 0)])
-					x++
-				}
+			for x := range width {
+				d.setPixel(row, x, d.palette[indices[x/8]>>(7-x%8)&1])
 			}
 		case 2:
 			for x := range width {
@@ -541,30 +579,24 @@ func (d *icoBMP) readPalettizedPixelData(buf []byte) bool {
 	})
 }
 
-func b2i(b bool) int {
-	if b {
-		return 1
-	}
-	return 0
-}
-
 // setPixel writes the colour into the first three channels of pixel x of row (the alpha channel is left as it is).
-func (d *icoBMP) setPixel(row []byte, x int, c [3]byte) {
+func (d *bmpDecoder) setPixel(row []byte, x int, c [3]byte) {
 	row[4*x], row[4*x+1], row[4*x+2] = c[0], c[1], c[2]
 }
 
 // read16BitPixelData is decoder.rs:1005-1047.
-func (d *icoBMP) read16BitPixelData(buf []byte, f *bmpBitfields) bool {
+func (d *bmpDecoder) read16BitPixelData(buf []byte, f *bmpBitfields) bool {
 	r := d.r
-	padding := uint64(d.width) % 2 * 2
+	width := int(d.width)
+	rowBytes := uint64(width)*2 + uint64(width)%2*2
 	r.pos = d.dataOffset
 	return d.withRows(buf, func(row []byte) bool {
-		for x := range int(d.width) {
-			v, ok := r.u16()
-			if !ok {
-				return false
-			}
-			data := uint32(v)
+		src, ok := r.take(rowBytes)
+		if !ok {
+			return false
+		}
+		for x := range width {
+			data := uint32(src[2*x]) | uint32(src[2*x+1])<<8
 			row[4*x], row[4*x+1], row[4*x+2] = f.r.read(data), f.g.read(data), f.b.read(data)
 			if f.a.length != 0 {
 				row[4*x+3] = f.a.read(data)
@@ -572,22 +604,23 @@ func (d *icoBMP) read16BitPixelData(buf []byte, f *bmpBitfields) bool {
 				row[4*x+3] = 0xFF
 			}
 		}
-		_, ok := r.take(padding)
-		return ok
+		return true
 	})
 }
 
 // read32BitPixelData is decoder.rs:1050-1084.
-func (d *icoBMP) read32BitPixelData(buf []byte) bool {
+func (d *bmpDecoder) read32BitPixelData(buf []byte) bool {
 	r := d.r
 	f := d.bitfields
+	width := int(d.width)
 	r.pos = d.dataOffset
 	return d.withRows(buf, func(row []byte) bool {
-		for x := range int(d.width) {
-			data, ok := r.u32()
-			if !ok {
-				return false
-			}
+		src, ok := r.take(uint64(width) * 4)
+		if !ok {
+			return false
+		}
+		for x := range width {
+			data := uint32(src[4*x]) | uint32(src[4*x+1])<<8 | uint32(src[4*x+2])<<16 | uint32(src[4*x+3])<<24
 			row[4*x], row[4*x+1], row[4*x+2] = f.r.read(data), f.g.read(data), f.b.read(data)
 			if f.a.length != 0 {
 				row[4*x+3] = f.a.read(data)
@@ -603,42 +636,46 @@ type bmpFullBytes int
 
 const (
 	bmpFormatRGB24 bmpFullBytes = iota
+	bmpFormatRGB32
 	bmpFormatRGBA32
 	bmpFormat888
 )
 
-// readFullBytePixelData is decoder.rs:1087-1137: colours stored as bytes, blue first.
-func (d *icoBMP) readFullBytePixelData(buf []byte, format bmpFullBytes) bool {
+// readFullBytePixelData is decoder.rs:1087-1137: colours stored as bytes, blue first. RGB24 pads its rows to four bytes, RGB32 skips the
+// fourth byte of a pixel, Format888 skips the first and RGBA32 reads the alpha channel as the fourth.
+func (d *bmpDecoder) readFullBytePixelData(buf []byte, format bmpFullBytes) bool {
 	r := d.r
-	padding := uint64(0)
+	width := int(d.width)
+	pixelBytes, padding := 4, uint64(0)
 	if format == bmpFormatRGB24 {
-		padding = (4 - uint64(d.width)*3%4) % 4
+		pixelBytes, padding = 3, (4-uint64(width)*3%4)%4
 	}
+	rowBytes := uint64(width*pixelBytes) + padding
 	r.pos = d.dataOffset
 	return d.withRows(buf, func(row []byte) bool {
-		for x := range int(d.width) {
-			if format == bmpFormat888 {
-				if _, ok := r.u8(); !ok {
-					return false
-				}
+		src, ok := r.take(rowBytes)
+		if !ok {
+			return false
+		}
+		switch format {
+		case bmpFormatRGB24:
+			for x := range width {
+				row[4*x], row[4*x+1], row[4*x+2], row[4*x+3] = src[3*x+2], src[3*x+1], src[3*x], 0xFF
 			}
-			bgr, ok := r.take(3)
-			if !ok {
-				return false
+		case bmpFormatRGB32:
+			for x := range width {
+				row[4*x], row[4*x+1], row[4*x+2], row[4*x+3] = src[4*x+2], src[4*x+1], src[4*x], 0xFF
 			}
-			row[4*x], row[4*x+1], row[4*x+2] = bgr[2], bgr[1], bgr[0]
-			if format == bmpFormatRGBA32 {
-				a, ok := r.u8()
-				if !ok {
-					return false
-				}
-				row[4*x+3] = a
-			} else {
-				row[4*x+3] = 0xFF
+		case bmpFormatRGBA32:
+			for x := range width {
+				row[4*x], row[4*x+1], row[4*x+2], row[4*x+3] = src[4*x+2], src[4*x+1], src[4*x], src[4*x+3]
+			}
+		case bmpFormat888:
+			for x := range width {
+				row[4*x], row[4*x+1], row[4*x+2], row[4*x+3] = src[4*x+3], src[4*x+2], src[4*x+1], 0xFF
 			}
 		}
-		_, ok := r.take(padding)
-		return ok
+		return true
 	})
 }
 
@@ -665,7 +702,7 @@ func (p *bmpPixels) zeroRest() {
 
 // set8BitRun and set4BitRun write the palette colour of each index (a byte for RLE8, two nibbles for RLE4) to the next pixels, as `set_8bit_pixel_run` and
 // `set_4bit_pixel_run` do; false when the row has no more pixels.
-func (d *icoBMP) set8BitRun(pixels *bmpPixels, indices func(i int) (byte, bool), n int) bool {
+func (d *bmpDecoder) set8BitRun(pixels *bmpPixels, indices func(i int) (byte, bool), n int) bool {
 	for i := range n {
 		idx, ok := indices(i)
 		if !ok {
@@ -681,7 +718,7 @@ func (d *icoBMP) set8BitRun(pixels *bmpPixels, indices func(i int) (byte, bool),
 	return true
 }
 
-func (d *icoBMP) set4BitRun(pixels *bmpPixels, indices func(i int) (byte, bool), n int) bool {
+func (d *bmpDecoder) set4BitRun(pixels *bmpPixels, indices func(i int) (byte, bool), n int) bool {
 	for i := 0; ; i++ {
 		idx, ok := indices(i)
 		if !ok {
@@ -703,19 +740,17 @@ func (d *icoBMP) set4BitRun(pixels *bmpPixels, indices func(i int) (byte, bool),
 }
 
 // readRLEData is decoder.rs:1139-1301.
-func (d *icoBMP) readRLEData(buf []byte) error {
+func (d *bmpDecoder) readRLEData(buf []byte) error {
 	r := d.r
 	r.pos = d.dataOffset
-	corrupt := errors.New("photonimage: bmp: corrupt RLE data")
 
 	stride := int(d.width) * 4
-	order := d.rowOrder()
 	nextIndex := 0
 	nextRow := func() ([]byte, bool) {
-		if nextIndex >= len(order) {
+		if nextIndex >= int(d.height) {
 			return nil, false
 		}
-		y := order[nextIndex]
+		y := d.rowIndex(nextIndex)
 		nextIndex++
 		return buf[y*stride : (y+1)*stride], true
 	}
@@ -755,25 +790,25 @@ func (d *icoBMP) readRLEData(buf []byte) error {
 					if !ok1 || !ok2 {
 						return errBMP
 					}
-					// The skipped pixels become black (and transparent).
+					// The skipped pixels become black (and transparent where there is an alpha channel).
 					if yDelta > 0 {
 						pixels.zeroRest()
 						for range int(yDelta) - 1 {
 							skipped, ok := nextRow()
 							if !ok {
-								return corrupt
+								return errBMPCorrupt
 							}
 							clear(skipped)
 						}
 						next, ok := nextRow()
 						if !ok {
-							return corrupt
+							return errBMPCorrupt
 						}
 						pixels = &bmpPixels{row: next}
 						for range x {
 							px, ok := pixels.next()
 							if !ok {
-								return corrupt
+								return errBMPCorrupt
 							}
 							clear(px)
 						}
@@ -781,7 +816,7 @@ func (d *icoBMP) readRLEData(buf []byte) error {
 					for range int(xDelta) {
 						px, ok := pixels.next()
 						if !ok {
-							return corrupt
+							return errBMPCorrupt
 						}
 						clear(px)
 					}
@@ -804,10 +839,10 @@ func (d *icoBMP) readRLEData(buf []byte) error {
 					}
 					if d.imageType == bmpRLE8 {
 						if !d.set8BitRun(pixels, at, int(op)) {
-							return corrupt
+							return errBMPCorrupt
 						}
 					} else if !d.set4BitRun(pixels, at, int(op)) {
-						return corrupt
+						return errBMPCorrupt
 					}
 					x += int(op)
 				}
@@ -821,10 +856,10 @@ func (d *icoBMP) readRLEData(buf []byte) error {
 			forever := func(int) (byte, bool) { return index, true }
 			if d.imageType == bmpRLE8 {
 				if !d.set8BitRun(pixels, forever, int(control)) {
-					return corrupt
+					return errBMPCorrupt
 				}
 			} else if !d.set4BitRun(pixels, forever, int(control)) {
-				return corrupt
+				return errBMPCorrupt
 			}
 			x += int(control)
 		}

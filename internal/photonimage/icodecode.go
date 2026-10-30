@@ -99,7 +99,7 @@ func (e icoDirEntry) matchesDimensions(width, height uint32) bool {
 //
 // An entry that starts with the PNG signature is a PNG, decoded as the png crate does (icopng.go), which must be 8-bit RGBA after its EXPAND
 // transformation (RGBA, or RGB or palette with a tRNS chunk) and the size the entry names (compared up to 256); anything else is a bitmap (BmpDecoder in ICO
-// format, icoBMP), with an AND mask that makes pixels transparent when the entry's length leaves room for one. A bitmap of more than 2^29
+// format, bmpDecoder with noFileHeader and addAlpha), with an AND mask that makes pixels transparent when the entry's length leaves room for one. A bitmap of more than 2^29
 // bytes of RGBA (width * height / 2 * 4) or an empty image whose RGBA buffer length overflows wasm32's `usize` is an error, as is every
 // other file image rejects.
 func DecodeICO(data []byte) (*image.NRGBA, error) {
@@ -150,6 +150,63 @@ func DecodeICO(data []byte) (*image.NRGBA, error) {
 	}
 	r.pos = uint64(best.imageOffset)
 	return icoDecodeBMP(r, best)
+}
+
+// icoDecodeBMP is the BMP arm of IcoDecoder (ico/decoder.rs:334-402) over BmpDecoder::new_with_ico_format.
+func icoDecodeBMP(r *icoCursor, entry icoDirEntry) (*image.NRGBA, error) {
+	d := &bmpDecoder{r: r, noFileHeader: true, addAlpha: true}
+	if err := d.readMetadata(); err != nil {
+		return nil, err
+	}
+	// The height field of an ICO is doubled to account for the AND mask.
+	d.height /= 2
+	width, height := uint32(d.width), uint32(d.height)
+
+	// load_inner: total_bytes of Rgba8 against the allocation limit.
+	if err := reserveTotalBytes(width, height, 4); err != nil {
+		return nil, err
+	}
+	if !entry.matchesDimensions(width, height) {
+		return nil, errICOEntry
+	}
+	if err := checkRGBAConversion(width, height, 4); err != nil {
+		return nil, err
+	}
+	out := newImageNRGBA(width, height)
+	if err := d.readImageData(out.Pix); err != nil {
+		return nil, err
+	}
+
+	imageEnd := r.pos
+	dataEnd := uint64(entry.imageOffset) + uint64(entry.imageLength)
+	maskRowBytes := uint64((width+31)/32) * 4
+	maskLength := maskRowBytes * uint64(height)
+	// data_end should be image_end plus the mask; a bitmap without a mask is accepted.
+	switch {
+	case dataEnd >= imageEnd+maskLength:
+		for y := range height {
+			x := uint32(0)
+			for range maskRowBytes {
+				maskByte, ok := r.u8()
+				if !ok {
+					return nil, errBMP
+				}
+				for bit := 7; bit >= 0; bit-- {
+					if x >= width {
+						break
+					}
+					if maskByte&(1<<bit) != 0 {
+						out.Pix[((uint64(height-y-1)*uint64(width)+uint64(x))*4)+3] = 0
+					}
+					x++
+				}
+			}
+		}
+		return out, nil
+	case dataEnd == imageEnd:
+		return out, nil
+	}
+	return nil, errors.New("photonimage: ico: image data size did not match the expected size")
 }
 
 // icoReadEntry is decoder.rs:166-193 `read_entry`.
