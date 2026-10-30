@@ -27,6 +27,9 @@ func registerHostSurface(e *sdk.Extension) {
 		loaded      any
 		themeOff    func()
 		expandedOff func()
+		// gateEntered is whether the theme gate's handler took a delivery; gateOpen is closed by c3_theme_gate_release.
+		gateEntered bool
+		gateOpen    = make(chan struct{})
 	)
 	tool := func(name string, execute func(ctx sdk.Context, args map[string]any) (any, error)) {
 		e.RegisterTool(sdk.ToolDefinition{Name: name, Label: name, Description: name, Parameters: object, Execute: execute})
@@ -106,6 +109,34 @@ func registerHostSurface(e *sdk.Extension) {
 		mu.Lock()
 		defer mu.Unlock()
 		return text(map[string]any{"log": themeLog})
+	})
+	// The gate is a theme handler that holds its delivery until c3_theme_gate_release. Armed before c3_theme_arm it runs ahead of the logger in every delivery, so the logger receives a change after the host changed the theme again: each handler must still get the theme of its own change.
+	tool("c3_theme_gate_arm", func(ctx sdk.Context, _ map[string]any) (any, error) {
+		_, err := ctx.OnThemeChange(func(sdk.Context, sdk.UITheme) {
+			mu.Lock()
+			gateEntered = true
+			mu.Unlock()
+			<-gateOpen
+		})
+		if err != nil {
+			return nil, err
+		}
+		return text(map[string]any{"ok": true})
+	})
+	tool("c3_theme_gate_state", func(ctx sdk.Context, _ map[string]any) (any, error) {
+		mu.Lock()
+		defer mu.Unlock()
+		return text(map[string]any{"entered": gateEntered, "live": ctx.UITheme().Name})
+	})
+	tool("c3_theme_gate_release", func(sdk.Context, map[string]any) (any, error) {
+		mu.Lock()
+		defer mu.Unlock()
+		select {
+		case <-gateOpen:
+		default:
+			close(gateOpen)
+		}
+		return text(map[string]any{"ok": true})
 	})
 	tool("c3_expanded_arm", func(ctx sdk.Context, _ map[string]any) (any, error) {
 		off, err := ctx.OnToolsExpandedChange(func(_ sdk.Context, expanded bool) {
