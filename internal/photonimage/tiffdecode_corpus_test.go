@@ -8,6 +8,8 @@ import (
 	"compress/zlib"
 	"fmt"
 	"math/rand/v2"
+	"os"
+	"path/filepath"
 	"slices"
 	"strings"
 )
@@ -305,6 +307,7 @@ func tiffCorpus() []tiffCase {
 	addLimitCorpus(add)
 	addStreamCorpus(add)
 	addDeflateCorpus(add)
+	addRealCorpus(add)
 	addValueCountCorpus(addLazy)
 	return cases
 }
@@ -1146,5 +1149,22 @@ func addValueCountCorpus(add func(string, func() []byte)) {
 			p.set(tiffEntrySpec{tag: tiffTagSampleFormat, typ: tiffTypeShort, count: uint32(count), data: bytes.Repeat(o.u16(1), count)})
 			return p.assemble()
 		})
+	}
+}
+
+// addRealCorpus is files other software wrote, in testdata/tiff-real: macOS `sips` (the TIFF of an NSBitmapImageRep: RGBA, LZW with the
+// predictor, gray with alpha) and libtiff 4.7 `tiffcp` over them (every compression it writes, with the predictors, strips of a few
+// rows, tiles, planar and both byte orders, and a BigTIFF).
+func addRealCorpus(add func(string, []byte)) {
+	files, err := filepath.Glob("testdata/tiff-real/*.tif")
+	if err != nil || len(files) == 0 {
+		panic(fmt.Sprintf("no files in testdata/tiff-real: %v", err))
+	}
+	for _, file := range files {
+		data, err := os.ReadFile(file)
+		if err != nil {
+			panic(err)
+		}
+		add("real-"+strings.TrimSuffix(filepath.Base(file), ".tif"), data)
 	}
 }
