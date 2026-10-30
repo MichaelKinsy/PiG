@@ -64,6 +64,16 @@ func (r *run) entry(id ID, then func(*jv.Object)) {
 	}, func() { then(entry) })
 }
 
+// outcomes is runtime.outcomes(ids) (scheduler.ts:2235-2246): `#read(invocation, () => session.readOnLine(...))`, where `#read` is an
+// async function that returns the pending promise of the line job (scheduler.ts:2347-2350). The async return adopts that promise a hop
+// after it settles, so the awaiting phase (generation.ts:1050, :190, :198) resumes one hop after the job's end, which the Session
+// Loop's done marks (the line tail is released at the job's end, the caller of a `#read` is not). Measured on Pi e7a0df27 with
+// scenarios/tool-start-ticks.mjs: the job starts 8 hops after the call and the phase resumes 11 hops after that start with one tool
+// (7 per read, as the core's job charges).
+func (r *run) outcomes(ids []ID, then func([]*jv.Object, error)) {
+	r.rt.Outcomes(ids, func(outcomes []*jv.Object, err error) { r.hops(1, func() { then(outcomes, err) }) })
+}
+
 // snapshot is runtime.snapshot(def, conversation): `#read(() => session.snapshot(...))` (scheduler.ts:1175-1178). Session.snapshot
 // answers a cached document at once without a line job (session.ts:168-172); the async call resolves immediately, `#read`'s async
 // return adopts the settled promise two hops later and the awaiting phase resumes one hop after (3). A miss is a line job.
