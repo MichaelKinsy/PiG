@@ -137,6 +137,8 @@ const (
 	// ToolSoftError returns the text "soft failure" with isError set: a failure
 	// reported without throwing.
 	ToolSoftError = "soft-error"
+	// ToolRetain echoes like ToolEcho and keeps 64 KiB of the process's heap for every call it serves, as an extension that leaks per call does. Only the Node driver implements it: the soak's memory gate on Node is tested against it.
+	ToolRetain = "retain"
 	// ToolEmpty returns a result with no content at all.
 	ToolEmpty = "empty"
 	// ToolBlocks returns two text blocks, "a" then "b".

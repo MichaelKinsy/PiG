@@ -154,6 +154,18 @@ func soakOps() []soakOp {
 	}
 }
 
+// soakPick draws an operation, each with its weight's share of the draws.
+func soakPick(rng *rand.Rand, ops []soakOp, totalWeight int) soakOp {
+	pick := rng.IntN(totalWeight)
+	for _, candidate := range ops {
+		if pick < candidate.weight {
+			return candidate
+		}
+		pick -= candidate.weight
+	}
+	panic("soak: the weights of the operations do not sum to totalWeight")
+}
+
 func soakSpec() sdkscenarios.Spec {
 	spec := sdkscenarios.Spec{
 		Tools: []sdkscenarios.Tool{
@@ -278,15 +290,7 @@ func TestExtensionSoak(t *testing.T) {
 				wg.Go(func() {
 					w := &soakWorker{rig: rig, rng: rand.New(rand.NewPCG(seed, uint64(worker+1))), dir: t.TempDir()}
 					for time.Now().Before(deadline) {
-						pick := w.rng.IntN(totalWeight)
-						var op soakOp
-						for _, candidate := range ops {
-							if pick < candidate.weight {
-								op = candidate
-								break
-							}
-							pick -= candidate.weight
-						}
+						op := soakPick(w.rng, ops, totalWeight)
 						ctx, cancel := context.WithTimeout(t.Context(), soakCallGrace)
 						start := time.Now()
 						err := op.run(ctx, w)
@@ -302,19 +306,12 @@ func TestExtensionSoak(t *testing.T) {
 					}
 				})
 			}
-			// Sample the extension process memory through the run.
-			var samples []int64
+			// Watch the extension process memory through the run.
+			var memory soakMemory
 			sampler := make(chan struct{})
 			go func() {
 				defer close(sampler)
-				ticker := time.NewTicker(250 * time.Millisecond)
-				defer ticker.Stop()
-				for time.Now().Before(deadline) {
-					<-ticker.C
-					if rss, _ := descendantRSS(); rss > 0 {
-						samples = append(samples, rss)
-					}
-				}
+				memory.watch(deadline)
 			}()
 			wg.Wait()
 			<-sampler
@@ -348,20 +345,8 @@ func TestExtensionSoak(t *testing.T) {
 			if growth := int64(after.HeapAlloc) - int64(before.HeapAlloc); growth > soakHeapGrowthBytes {
 				t.Errorf("live host heap grew by %d bytes (limit %d, seed %d)", growth, soakHeapGrowthBytes, seed)
 			}
-			var series []string
-			for i := 0; i < len(samples); i += max(1, len(samples)/12) {
-				series = append(series, fmt.Sprintf("%.0f", float64(samples[i])/(1<<20)))
-			}
-			t.Logf("extension process resident MiB over the run: %s", strings.Join(series, " "))
-			if len(samples) >= 8 {
-				// A runtime's heap ramps up while it warms (Node's takes minutes), so the slope is read over the second half: the third quarter of the samples against the last.
-				quarter := len(samples) / 4
-				mid, late := mean(samples[2*quarter:3*quarter]), mean(samples[len(samples)-quarter:])
-				limit := max(float64(soakRSSGrowthBytes), mid*soakRSSGrowthFraction)
-				t.Logf("extension process resident size: %.1f MiB in the third quarter, %.1f MiB in the last", mid/(1<<20), late/(1<<20))
-				if late-mid > limit {
-					t.Errorf("extension process grew from %.1f to %.1f MiB over the second half (limit +%.1f MiB, seed %d)", mid/(1<<20), late/(1<<20), limit/(1<<20), seed)
-				}
+			if growth := memory.verdict(t, seed); growth != "" {
+				t.Error(growth)
 			}
 
 			rig.host.Shutdown("soak done")

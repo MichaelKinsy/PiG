@@ -49,6 +49,9 @@ function providerObject(provider) {
 
 const never = () => new Promise(() => {});
 
+// retained is what the "retain" tool keeps of its calls.
+const retained = [];
+
 // recorded counts the record-counted lines this process wrote.
 let recorded = 0;
 
@@ -65,6 +68,10 @@ function registerTool(pi, tool) {
     async execute(_id, params, signal) {
       switch (tool.behavior) {
         case "echo":
+          return { content: [{ type: "text", text: "echo:" + (params.text ?? "") }] };
+        case "retain":
+          // A leak per call: 64 KiB (8192 values of 8 bytes) that nothing ever frees.
+          retained.push(new Array(8192).fill(0));
           return { content: [{ type: "text", text: "echo:" + (params.text ?? "") }] };
         case "fail":
           throw new Error("boom");
