@@ -917,6 +917,8 @@ func browserCommand(target string) *exec.Cmd {
 	}
 	//nolint:gosec // G204 (class a): program is the literal open, rundll32 or xdg-open by OS, with no shell; the single argument is the sign-in URL of the provider's login flow, as Pi's openBrowser passes it.
 	command := exec.Command(cmd, args...)
+	// pig divergence (D217): Pi 6454d07e (#11592) starts the launcher from /: xdg-open on WSL runs explorer.exe, which fails when the cwd's \\wsl.localhost\... path exceeds MAX_PATH. The target is a URL, so no launcher needs the cwd.
+	command.Dir = "/"
 	// Upstream's spawn finds the launcher with libuv's search on Windows.
 	nodespawn.SetProgram(command)
 	detachLauncher(command)
