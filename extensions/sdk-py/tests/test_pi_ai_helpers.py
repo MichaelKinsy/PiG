@@ -92,6 +92,14 @@ def test_the_default_retry_delay_cap_is_pis():
     assert helpers.DEFAULT_MAX_AGENT_RETRY_DELAY_MS == 60_000
 
 
+def test_litellm_context_window_exceeded_is_overflow():
+    # Pi d3398f82 (#11492, pig divergence (D217)): the pinned vectors cannot gain a case, so the carried pattern is pinned by hand.
+    litellm = "400: litellm.ContextWindowExceededError: litellm.BadRequestError: litellm._pre_call_checks: Context Window exceeded for given call."
+    assert helpers.is_context_overflow({"role": "assistant", "stopReason": "error", "errorMessage": litellm})
+    assert not helpers.is_context_overflow({"role": "assistant", "stopReason": "stop", "errorMessage": litellm})
+    assert not helpers.is_context_overflow({"role": "assistant", "stopReason": "error", "errorMessage": "Throttling error: Context Window exceeded for given call"})
+
+
 def test_the_golden_file_covers_every_helper():
     called = {case["fn"] for case in GOLDEN["cases"]}
     assert set(CALLS) <= called

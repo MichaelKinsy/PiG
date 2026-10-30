@@ -288,6 +288,16 @@ fn a_stream_the_sdk_makes_for_a_host_operation_is_not_timed() {
     assert!(stream.next().unwrap()["message"].get("durationMs").is_none());
 }
 
+/// Pi d3398f82 (#11492, pig divergence (D217)): LiteLLM's pre-call check ContextWindowExceededError is a context overflow. The pinned vectors cannot gain a case, so the carried pattern is pinned by hand.
+#[test]
+fn litellm_context_window_exceeded_is_overflow() {
+    let message = |stop: &str, text: &str| json!({"role": "assistant", "stopReason": stop, "errorMessage": text});
+    let litellm = "400: litellm.ContextWindowExceededError: litellm.BadRequestError: litellm._pre_call_checks: Context Window exceeded for given call.";
+    assert!(is_context_overflow(&message("error", litellm), None));
+    assert!(!is_context_overflow(&message("stop", litellm), None));
+    assert!(!is_context_overflow(&message("error", "Throttling error: Context Window exceeded for given call"), None));
+}
+
 #[test]
 fn the_default_retry_delay_cap_is_pis() {
     assert_eq!(DEFAULT_MAX_AGENT_RETRY_DELAY_MS, 60_000.0);

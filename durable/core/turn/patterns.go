@@ -100,6 +100,7 @@ var overflowPatterns = []string{
 	`too many tokens`,
 	`token limit exceeded`,
 	`^(?:[\w -]+ API error \(413\):|413(?:\s|:|$))`,
+	`context window exceeded`, // pig divergence (D217): Pi d3398f82 (#11492) LiteLLM pre-call check (ContextWindowExceededError) is a context overflow
 }
 
 // Read-only: assigned once at initialization.

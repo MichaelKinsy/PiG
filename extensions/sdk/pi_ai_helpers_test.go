@@ -262,6 +262,24 @@ func runGoldenCase(t *testing.T, c goldenCase) string {
 }
 
 // envApiKeyAuth resolves and logs in as Pi's does.
+// Pi d3398f82 (#11492, pig divergence (D217)): LiteLLM's pre-call check ContextWindowExceededError is a context overflow. The pinned
+// vectors cannot gain a case, so the carried pattern is pinned by hand.
+func TestLiteLLMContextWindowExceededIsOverflow(t *testing.T) {
+	message := func(stop, text string) map[string]any {
+		return map[string]any{"role": "assistant", "stopReason": stop, "errorMessage": text}
+	}
+	const litellm = "400: litellm.ContextWindowExceededError: litellm.BadRequestError: litellm._pre_call_checks: Context Window exceeded for given call."
+	if !IsContextOverflow(message("error", litellm), 0) {
+		t.Error("the LiteLLM pre-call ContextWindowExceededError is not a context overflow")
+	}
+	if IsContextOverflow(message("stop", litellm), 0) {
+		t.Error("a message that did not fail is not an overflow")
+	}
+	if IsContextOverflow(message("error", "Throttling error: Context Window exceeded for given call"), 0) {
+		t.Error("the Bedrock throttling prefix still excludes the overflow patterns")
+	}
+}
+
 func TestEnvAPIKeyAuthMatchesThePinnedPackage(t *testing.T) {
 	_, golden := loadGolden(t)
 	for _, c := range golden.Cases {

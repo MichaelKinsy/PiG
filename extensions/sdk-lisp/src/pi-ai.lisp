@@ -463,6 +463,8 @@ only the end of the text. Supported: literals, . [] [^] \\d \\w \\s \\S, (?:) ()
   (ai-compile-each
    "prompt (?:is )?too long" "prompt exceeds max length" "request_too_large" "input is too long for requested model"
    "exceeds the context window" "exceeds (?:the )?(?:model'?s )?maximum context length(?: of [\\d,]+ tokens?|\\s*\\([\\d,]+\\))"
+   ;; pig divergence (D217): Pi d3398f82 (#11492) LiteLLM's pre-call check ContextWindowExceededError is a context overflow.
+   "context window exceeded"
    "input token count.*exceeds the maximum" "maximum prompt length is \\d+" "reduce the length of the messages"
    "maximum context length is \\d+ tokens" "exceeds (?:the )?maximum allowed input length of [\\d,]+ tokens?"
    "input \\(\\d+ tokens\\) is longer than the model'?s context length \\(\\d+ tokens\\)" "exceeds the limit of \\d+"

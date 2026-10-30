@@ -439,6 +439,8 @@ _OVERFLOW_PATTERNS = _compile_each(
     r"input is too long for requested model",
     r"exceeds the context window",
     r"exceeds (?:the )?(?:model'?s )?maximum context length(?: of [\d,]+ tokens?|\s*\([\d,]+\))",
+    # pig divergence (D217): Pi d3398f82 (#11492) LiteLLM's pre-call check ContextWindowExceededError is a context overflow.
+    r"context window exceeded",
     r"input token count.*exceeds the maximum",
     r"maximum prompt length is \d+",
     r"reduce the length of the messages",
