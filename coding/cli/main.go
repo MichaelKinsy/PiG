@@ -922,7 +922,7 @@ func Main(args []string, options *MainOptions) {
 	// main.ts:593 process.cwd(): the physical directory, not os.Getwd's $PWD, which may reach it through a symlink.
 	initialCWD, err := nodepath.Cwd()
 	if err != nil {
-		printCLIError("get cwd: %v", err)
+		printCLIError("%s", workingDirectoryErrorMessage(err))
 		exitProcess(1)
 	}
 
