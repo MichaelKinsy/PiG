@@ -168,14 +168,29 @@ type toolLoadoutPlan struct {
 }
 
 // planToolLoadout reads the registry for [Session.applyToolLoadout]. The loadout view is a snapshot, so the hooks can read it without toolRegistryMu. The caller holds toolRegistryMu.
+//
+// The requested names are a set: tools that stay active keep their current order and newly active ones follow in the requested order, so setting the same tools in another order leaves the prompt unchanged.
+//
+// pig divergence (D217): Pi b9e3eef6 (#11495) keep the active tool order when the same tools are set again; pinned Pi declares the requested order.
 func (s *Session) planToolLoadout(names []string) toolLoadoutPlan {
 	registry := make(map[string]agent.AgentTool, len(s.tools))
 	for _, tool := range s.tools {
 		registry[tool.Name()] = tool
 	}
+	requested := make(map[string]struct{}, len(names))
+	for _, name := range names {
+		requested[name] = struct{}{}
+	}
+	ordered := make([]string, 0, len(names))
+	for _, tool := range s.agent.Tools() {
+		if _, ok := requested[tool.Name()]; ok {
+			ordered = append(ordered, tool.Name())
+		}
+	}
+	ordered = append(ordered, names...)
 	var plan toolLoadoutPlan
 	seen := map[string]struct{}{}
-	for _, name := range names {
+	for _, name := range ordered {
 		if _, duplicate := seen[name]; duplicate {
 			continue
 		}
