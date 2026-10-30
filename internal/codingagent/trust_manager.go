@@ -24,6 +24,7 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/nodeerrno"
 	"github.com/MichaelKinsy/PiG/internal/nodefs"
 	"github.com/MichaelKinsy/PiG/internal/orderedjson"
+	"github.com/MichaelKinsy/PiG/internal/resolvepath"
 	"github.com/MichaelKinsy/PiG/internal/text"
 )
 
@@ -136,7 +137,12 @@ func HasTrustRequiringProjectResources(cwd string) bool {
 	}
 
 	for {
-		if !probe.Set(current, ".agents", "skills").Is(userAgentsSkills) && probe.Exists() {
+		isUserSkills := probe.Set(current, ".agents", "skills").Is(userAgentsSkills)
+		// pig divergence (D217): Pi 1be312b4 (#10488) compares the user's directory with pathsEqual, which ignores case on Windows; Pi 1.4.0+b3a29f11 compared strings, so a home that differs only in casing from the working directory's made ~/.agents/skills a project resource.
+		if !isUserSkills && resolvepath.FoldsCase() {
+			isUserSkills = resolvepath.PathsEqual(filepath.Join(current, ".agents", "skills"), userAgentsSkills)
+		}
+		if !isUserSkills && probe.Exists() {
 			return true
 		}
 		parent := filepath.Dir(current)
@@ -177,6 +183,23 @@ func NewProjectTrustStore(agentDir string) *ProjectTrustStore {
 		abs = agentDir
 	}
 	return &ProjectTrustStore{trustPath: filepath.Join(abs, "trust.json")}
+}
+
+// trustFileKeys are the keys of data that name path, in key order: usually one, several on Windows when the decision was saved with different casing.
+// pig divergence (D217): Pi 1be312b4 (#10488) findTrustFileKeys matches keys with pathsEqual, so a Windows decision is found and replaced whatever its casing; Pi 1.4.0+b3a29f11 looked the exact string up.
+func trustFileKeys(data map[string]*bool, path string) []string {
+	if len(data) == 0 {
+		return nil
+	}
+	want := resolvepath.ComparisonKey(path)
+	var keys []string
+	for key := range data {
+		if resolvepath.ComparisonKey(key) == want {
+			keys = append(keys, key)
+		}
+	}
+	slices.Sort(keys)
+	return keys
 }
 
 func (s *ProjectTrustStore) read() (map[string]*bool, error) {
@@ -276,9 +299,11 @@ func (s *ProjectTrustStore) GetEntry(cwd string) (entry *ProjectTrustStoreEntry,
 			return readErr
 		}
 		for current := normalizeTrustCwd(cwd); ; current = filepath.Dir(current) {
-			if value, ok := data[current]; ok && value != nil {
-				entry = &ProjectTrustStoreEntry{Path: current, Decision: *value}
-				return nil
+			for _, key := range trustFileKeys(data, current) {
+				if value := data[key]; value != nil {
+					entry = &ProjectTrustStoreEntry{Path: key, Decision: *value}
+					return nil
+				}
 			}
 			parent := filepath.Dir(current)
 			if parent == current {
@@ -304,8 +329,10 @@ func (s *ProjectTrustStore) SetMany(updates []ProjectTrustUpdate) error {
 		}
 		for _, update := range updates {
 			key := normalizeTrustCwd(update.Path)
+			for _, existing := range trustFileKeys(data, key) {
+				delete(data, existing)
+			}
 			if update.Decision == nil {
-				delete(data, key)
 				continue
 			}
 			data[key] = new(*update.Decision)

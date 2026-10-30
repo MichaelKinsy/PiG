@@ -14,7 +14,7 @@ import (
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	icodingagent "github.com/MichaelKinsy/PiG/internal/codingagent"
 	"github.com/MichaelKinsy/PiG/internal/nodeerrno"
-	"github.com/MichaelKinsy/PiG/internal/nodepath"
+	"github.com/MichaelKinsy/PiG/internal/resolvepath"
 )
 
 // ImportFromJsonl copies the session file at inputPath into the session
@@ -71,7 +71,8 @@ func (s *Session) ImportFromJsonl(ctx context.Context, inputPath, cwdOverride st
 // until the name is free.
 func importDestination(sessionDir, resolvedPath string) (destinationPath string, sourceAlreadyStored bool) {
 	destinationPath = filepath.Join(sessionDir, filepath.Base(resolvedPath))
-	if resolved, err := nodepath.Resolve(destinationPath); err == nil && resolved == resolvedPath {
+	// pig divergence (D217): Pi 1be312b4 (#10488) pathsEqual(destinationPath, resolvedPath); on Windows a source stored under a directory spelled with other casing is still already stored.
+	if resolvepath.PathsEqual(destinationPath, resolvedPath) {
 		return destinationPath, true
 	}
 	base := filepath.Base(destinationPath)

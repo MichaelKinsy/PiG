@@ -5,9 +5,9 @@ import (
 	"cmp"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/MichaelKinsy/PiG/internal/nodefs"
+	"github.com/MichaelKinsy/PiG/internal/resolvepath"
 	"github.com/MichaelKinsy/PiG/internal/text"
 )
 
@@ -135,7 +135,7 @@ func discoverContextFiles(cwd, agentDir string, loadProject bool) (loaded []Cont
 			// A run that withholds the project keeps the home directory's file, unless the project is the home directory itself.
 			if !loadProject && !home.isAncestorHome(dir, cwd) {
 				if path := firstContextFilePathProbed(&probe, dir); path != "" {
-					isShadowed := shadowed != "" && filepath.Join(canonicalPath(dir), filepath.Base(path)) == shadowed
+					isShadowed := shadowed != "" && resolvepath.PathsEqual(filepath.Join(canonicalPath(dir), filepath.Base(path)), shadowed)
 					if _, dup := seen[path]; !dup && !isShadowed {
 						seen[path] = struct{}{}
 						skipped = append([]string{path}, skipped...)
@@ -143,7 +143,7 @@ func discoverContextFiles(cwd, agentDir string, loadProject bool) (loaded []Cont
 				}
 			} else if cf := loadContextFileProbed(&probe, dir); cf != nil {
 				// upstream: packages/coding-agent/src/core/resource-loader.ts:loadProjectContextFiles compares the directory's real path plus the file name, so a symlinked context file never equals the shadowed path.
-				isShadowed := shadowed != "" && filepath.Join(canonicalPath(dir), filepath.Base(cf.Path)) == shadowed
+				isShadowed := shadowed != "" && resolvepath.PathsEqual(filepath.Join(canonicalPath(dir), filepath.Base(cf.Path)), shadowed)
 				if _, dup := seen[cf.Path]; !dup && !isShadowed {
 					seen[cf.Path] = struct{}{}
 					ancestors = append([]ContextFile{*cf}, ancestors...)
@@ -214,13 +214,18 @@ func findShadowedContextFile(cwd string) string {
 	if !ok {
 		return ""
 	}
-	commonGitDir := canonicalPath(paths.commonGitDir)
-	worktreeRoot := canonicalPath(paths.repoDir)
+	return shadowedContextFileOf(canonicalPath(paths.commonGitDir), canonicalPath(paths.repoDir), canonicalPath)
+}
+
+// shadowedContextFileOf is findShadowedContextFile once git has named the canonical common git directory and worktree root: the context file of the main worktree that
+// the linked worktree's own context file shadows, or "". canonical resolves a path for the comparison of the main repository's .git with the common git directory.
+func shadowedContextFileOf(commonGitDir, worktreeRoot string, canonical func(string) string) string {
 	mainRepoRoot := filepath.Dir(commonGitDir)
-	if !strings.HasPrefix(worktreeRoot, mainRepoRoot+string(filepath.Separator)) {
+	// pig divergence (D217): Pi 1be312b4 (#10488) isPathWithin and pathsEqual ignore case on Windows, where git's paths and the working directory may be spelled differently; Pi 1.4.0+b3a29f11 compared the strings.
+	if !resolvepath.IsPathWithin(mainRepoRoot, worktreeRoot) || resolvepath.PathsEqual(worktreeRoot, mainRepoRoot) {
 		return ""
 	}
-	if canonicalPath(filepath.Join(mainRepoRoot, ".git")) != commonGitDir {
+	if !resolvepath.PathsEqual(canonical(filepath.Join(mainRepoRoot, ".git")), commonGitDir) {
 		return ""
 	}
 	worktreeContext := loadContextFileFromDir(worktreeRoot)

@@ -9,7 +9,6 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
-	"strings"
 	"sync"
 
 	"github.com/MichaelKinsy/PiG/coding/extension"
@@ -486,11 +485,12 @@ func (l *DefaultResourceLoader) mergePaths(primary, additional []string) ([]stri
 		if err != nil {
 			return nil, err
 		}
-		canonical := icodingagent.CanonicalizePath(resolved)
-		if _, duplicate := seen[canonical]; duplicate {
+		// pig divergence (D217): Pi 1be312b4 (#10488) mergePaths keys by getResourcePathKey, which folds the case of a Windows path and leaves a synthetic path as it is.
+		pathKey := icodingagent.ResourcePathKey(resolved)
+		if _, duplicate := seen[pathKey]; duplicate {
 			continue
 		}
-		seen[canonical] = struct{}{}
+		seen[pathKey] = struct{}{}
 		merged = append(merged, resolved)
 	}
 	return merged, nil
@@ -529,11 +529,8 @@ func (i *pathMetadataIndex) sourceInfo(resourcePath string) (icodingagent.PiSour
 		return metadata.SourceInfo(resourcePath), true
 	}
 	for _, sourcePath := range i.paths {
-		source, err := filepath.Abs(sourcePath)
-		if err != nil {
-			source = sourcePath
-		}
-		if normalized == source || strings.HasPrefix(normalized, source+string(filepath.Separator)) {
+		// pig divergence (D217): Pi 1be312b4 (#10488) isPathWithin(sourcePath, normalizedResourcePath), which ignores case on Windows.
+		if resolvepath.IsPathWithin(sourcePath, normalized) {
 			return i.metadata[sourcePath].SourceInfo(resourcePath), true
 		}
 	}
