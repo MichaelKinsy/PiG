@@ -435,9 +435,8 @@ const (
 )
 
 // decodeAutoOriented decodes an image with DecodeImage and applies its EXIF orientation tag,
-// mirroring upstream Photon decode plus applyExifOrientation. Only the formats
-// whose decoders this package links are decodable; see
-// DetectSupportedImageMimeType.
+// mirroring upstream Photon decode plus applyExifOrientation. What decodes is
+// what photonimage.Decode decodes: PNG, JPEG, GIF, WebP, BMP and TIFF.
 func decodeAutoOriented(data []byte) (image.Image, error) {
 	img, err := DecodeImage(data)
 	if err != nil {

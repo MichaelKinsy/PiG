@@ -62,6 +62,22 @@ func oracleCorpus(t *testing.T) []oracleCase {
 			data: withOrientation(jpegSource, orientation, orientation%2 == 0, orientation == 5), mime: "image/jpeg", limits: def,
 		})
 	}
+	// TIFF: Photon decodes it (tiff 0.9.1 in image 0.24.9), so a TIFF whose declared type is one providers take inline is returned as it
+	// is, and any other type makes it a PNG; files Photon refuses are not prepared.
+	tiffFiles, err := filepath.Glob("../../internal/imageprocessing/testdata/tiff/*.tif")
+	if err != nil || len(tiffFiles) == 0 {
+		t.Fatalf("no TIFF files: %v", err)
+	}
+	for _, file := range tiffFiles {
+		data, err := os.ReadFile(file)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, mime := range []string{"image/png", "image/tiff", "image/bmp"} {
+			cases = append(cases, oracleCase{name: "tiff " + filepath.Base(file) + " as " + mime, data: data, mime: mime, limits: def},
+				oracleCase{name: "tiff " + filepath.Base(file) + " as " + mime + " beyond a small limit", data: data, mime: mime, limits: tools.ImageLimits{MaxWidth: 16, MaxHeight: 16, MaxBytes: def.MaxBytes}})
+		}
+	}
 	cases = append(cases, oracleCase{name: "jpeg that must be resized", data: withOrientation(encodeJPEG(t, pixels(3000, 1500)), 3, false, false), mime: "image/jpeg", limits: def})
 	return cases
 }
