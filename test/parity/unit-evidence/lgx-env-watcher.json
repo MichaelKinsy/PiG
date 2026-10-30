@@ -39,18 +39,18 @@
   "upstream": "packages/env/src/watch.ts",
   "package": "./env",
   "tests": [
-   "TestRemoteWatcherIsolatesAThrowingCallbackAndStopsAfterAnErrorOrClose"
+   "TestRemoteWatcherIsolatesAThrowingCallbackAndStopsAfterAnErrorOrStop"
   ],
   "upstream_reference": "packages/env/src/watch.ts",
-  "mutation": "env/watch.go: replace `templateString(event, \"message\"), \"\", nil)})\n\t\t\tw.stop()` with `templateString(event, \"message\"), \"\", nil)})`; TestRemoteWatcherIsolatesAThrowingCallbackAndStopsAfterAnErrorOrClose fails."
+  "mutation": "env/watch.go: replace `templateString(event, \"message\"), \"\", nil)})\n\t\t\tw.stop()` with `templateString(event, \"message\"), \"\", nil)})`; TestRemoteWatcherIsolatesAThrowingCallbackAndStopsAfterAnErrorOrStop fails."
  },
  {
   "upstream": "packages/env/src/watch.ts",
   "package": "./env",
   "tests": [
-   "TestRemoteWatcherIsolatesAThrowingCallbackAndStopsAfterAnErrorOrClose"
+   "TestRemoteWatcherIsolatesAThrowingCallbackAndStopsAfterAnErrorOrStop"
   ],
   "upstream_reference": "packages/env/src/watch.ts",
-  "mutation": "env/watch.go: replace `if w.isClosed() {\n\t\treturn\n\t}\n\tdefer func() { _ = recover() }()` with `defer func() { _ = recover() }()`; TestRemoteWatcherIsolatesAThrowingCallbackAndStopsAfterAnErrorOrClose fails."
+  "mutation": "env/watch.go: replace `if w.isClosed() {\n\t\treturn\n\t}\n\tdefer func() { _ = recover() }()` with `defer func() { _ = recover() }()`; TestRemoteWatcherIsolatesAThrowingCallbackAndStopsAfterAnErrorOrStop fails."
  }
 ]

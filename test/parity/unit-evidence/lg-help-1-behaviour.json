@@ -1376,7 +1376,7 @@
     "tests": [
       "TestNewSessionSelectorComponentLoaderReceivesTheSignalAndProgressCallback",
       "TestNewSessionSelectorComponentOptionsAndCurrentSessionPath",
-      "TestPR7680SessionSelectionStaysValidWhenPagingBeforeTheLoad",
+      "TestSessionSelectorCapturesSelectionPageKeys",
       "TestSessionSelectorConstructorCallbacksMatchUpstream",
       "TestSessionSelectorConstructorEnterCallsOnSelectAndAbortsLoads",
       "TestSessionSelectorConstructorEscapeCallsOnCancel",
@@ -1787,7 +1787,7 @@
     "upstream_reference": "system-one-shared.ts SystemOneWireRequest, SystemOneTransport, classifySystemOne (wire request, usage before answers, abort-aware stop reason, timestamp: Date.now())"
   },
   {
-    "mutation": "env/watch.go: 10 operator mutants; env/remote_env.go: 72 operator mutants (every unique line with a comparison). Survivors killed by new tests: watcher Close not awaiting the request (TestRemoteWatcherCloseReturnsOnlyAfterTheWatchRequestHasFinished), the exec timeout bounds (<= 0 and the maximum), and the skipped endsWithNewline/newline counts. Survivors left, all unobservable through the public API with the daemon: the 2 GiB and 2^53 constants (a file of exactly that size), the read and write pipeline depth and chunk-boundary comparisons (L110, L129, L576, L598, L723, L745, L754: only the request count changes, not the bytes), L378 buffered-reader empty check, L534/L537 stat kind and size limit, L734/L757 first-write-error bookkeeping; not proven equivalent.",
+    "mutation": "env/watch.go: 10 operator mutants; env/remote_env.go: 72 operator mutants (every unique line with a comparison). Survivors killed by new tests: watcher Close not awaiting the request (TestRemoteWatcherStopReturnsOnlyAfterTheWatchRequestHasFinished), the exec timeout bounds (<= 0 and the maximum), and the skipped endsWithNewline/newline counts. Survivors left, all unobservable through the public API with the daemon: the 2 GiB and 2^53 constants (a file of exactly that size), the read and write pipeline depth and chunk-boundary comparisons (L110, L129, L576, L598, L723, L745, L754: only the request count changes, not the bytes), L378 buffered-reader empty check, L534/L537 stat kind and size limit, L734/L757 first-write-error bookkeeping; not proven equivalent.",
     "package": "./env",
     "tests": [
       "TestExecFailureOfATimeoutWithoutATimeout",
@@ -1805,10 +1805,10 @@
       "TestRemoteExecutionEnvShellEnvReachesInheritingCommands",
       "TestRemoteExecutionEnvShellPathRunsStringCommands",
       "TestRemoteWatchOptionsModeForcesTheWatcherMode",
-      "TestRemoteWatcherCloseReturnsOnlyAfterTheWatchRequestHasFinished",
-      "TestRemoteWatcherCloseWakesAPendingReconnect",
+      "TestRemoteWatcherStopReturnsOnlyAfterTheWatchRequestHasFinished",
+      "TestRemoteWatcherStopWakesAPendingReconnect",
       "TestRemoteWatcherDeliversAnOverflowChangeOnlyForOverflowTrue",
-      "TestRemoteWatcherIsolatesAThrowingCallbackAndStopsAfterAnErrorOrClose",
+      "TestRemoteWatcherIsolatesAThrowingCallbackAndStopsAfterAnErrorOrStop",
       "TestRemoteWatcherOpensAgainAfterALostConnectionAndReportsOverflow",
       "TestRemoteWatcherOutlivesTheContextThatOpenedIt",
       "TestRemoteWatcherReportsTheDaemonsWatchErrors",
@@ -2398,11 +2398,11 @@
     "upstream_reference": "line-scan.ts LineScanner (range validation, begin/endFirstLine/endSelection, byte-order-mark handling, Finish)"
   },
   {
-    "mutation": "FileWatcher implemented by nodeFileWatcher (durable/env/node/watch.go Mode, Close, stop): 6 mutants; 5 killed by existing tests (idempotence gate inverted, stop() dropped, TryLock inverted, Mode constant, closed flag unset); Close not waiting on the rescan in progress survived and is killed by the new TestFileWatcherCloseWaitsForTheRescanInProgress.",
+    "mutation": "FileWatcher implemented by nodeFileWatcher (durable/env/node/watch.go Mode, Close, stop): 6 mutants; 5 killed by existing tests (idempotence gate inverted, stop() dropped, TryLock inverted, Mode constant, closed flag unset); Close not waiting on the rescan in progress survived and is killed by the new TestFileWatcherStopWaitsForTheRescanInProgress.",
     "package": "./durable/env/node",
     "tests": [
-      "TestFileWatcherCloseIsIdempotentAndEndsReporting",
-      "TestFileWatcherCloseWaitsForTheRescanInProgress",
+      "TestFileWatcherStopIsIdempotentAndEndsReporting",
+      "TestFileWatcherStopWaitsForTheRescanInProgress",
       "TestNodeWatchOptionsForceTheModeAndSetThePollInterval",
       "TestWatcherDeliversOnlyWhileOpenAndSurvivesAThrowingCallback"
     ],
