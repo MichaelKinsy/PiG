@@ -11,6 +11,8 @@ import (
 
 	sourceref "github.com/MichaelKinsy/PiG/coding/source"
 	"github.com/MichaelKinsy/PiG/internal/codingagent"
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
+	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
 	"github.com/MichaelKinsy/PiG/internal/nodepath"
 )
 
@@ -113,7 +115,7 @@ func TemporaryPackagePath(agentDir, prefix, suffix string) (string, error) {
 	return ResolveManagedPackagePath(root, fmt.Sprintf("%x", digest[:4]), filepath.FromSlash(suffix))
 }
 
-// resolveTemporaryGitSource waits for an unpinned cache refresh and its progress callbacks before discovering resources. Offline cache misses contribute no resources; refresh failures report an error event and retain the existing checkout.
+// resolveTemporaryGitSource waits for a cache refresh and its progress callbacks before discovering resources. Offline cache misses contribute no resources; refresh failures report an error event and retain the existing checkout.
 // Ports packages/coding-agent/src/core/package-manager.ts (resolvePackageSources, refreshTemporaryGitSource, getTemporaryDir).
 func resolveTemporaryGitSource(sm *codingagent.SettingsManager, source string, progress ProgressCallback) (string, error) {
 	ref, err := sourceref.Parse(source, sourceref.Options{Bare: sourceref.BareReject})
@@ -136,16 +138,35 @@ func resolveTemporaryGitSource(sm *codingagent.SettingsManager, source string, p
 		}
 	case statErr != nil:
 		return "", statErr
-	case ref.GitRef == "" && !IsOfflineModeEnabled():
-		// upstream: packages/coding-agent/src/core/package-manager.ts:refreshTemporaryGitSource
-		_ = WithProgress(progress, "pull", source, fmt.Sprintf("Refreshing %s...", source), func() error {
-			return InstallGitCheckout(sm, ref, checkout, packageRoot, "")
-		})
+	case !IsOfflineModeEnabled():
+		refreshTemporaryGitSource(sm, ref, source, checkout, packageRoot, progress)
 	}
 	if err := RequireGitSubdirectoryWithinCheckout(checkout, packageRoot); err != nil {
 		return "", err
 	}
 	return packageRoot, nil
+}
+
+// commitHashRef is a ref that spells a commit hash, abbreviated or not.
+var commitHashRef = lazyregexp.New(`^[0-9a-fA-F]{7,64}$`)
+
+// refreshTemporaryGitSource is package-manager.ts refreshTemporaryGitSource. Every failure keeps the cached checkout.
+// pig divergence (D217): Pi bec60c54 (#11375) refreshes a temporary Git source pinned to a ref too, because a ref can name a moving branch; pinned Pi refreshed unpinned sources only, so git:host/repo@main stayed on its first checkout.
+// The network call is skipped only when the ref is a commit hash that is already checked out.
+func refreshTemporaryGitSource(sm *codingagent.SettingsManager, ref sourceref.Ref, source, checkout, packageRoot string, progress ProgressCallback) {
+	if commitHashRef.MatchString(ref.GitRef) {
+		head, err := RunPackageCapture(checkout, "git", "rev-parse", "HEAD")
+		if err != nil {
+			return
+		}
+		if strings.HasPrefix(jsstring.ToLower(jsstring.Trim(head)), jsstring.ToLower(ref.GitRef)) {
+			return
+		}
+	}
+	// upstream: packages/coding-agent/src/core/package-manager.ts:refreshTemporaryGitSource
+	_ = WithProgress(progress, "pull", source, fmt.Sprintf("Refreshing %s...", source), func() error {
+		return InstallGitCheckout(sm, ref, checkout, packageRoot, "")
+	})
 }
 
 // TemporaryGitCheckoutPath is a temporary Git source's checkout below the agent temporary extension root; paths outside that root are refused.
