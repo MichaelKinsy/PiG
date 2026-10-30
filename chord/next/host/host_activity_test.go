@@ -130,7 +130,9 @@ func TestActivityGivesASlowWatcherTheNewestCountsOnceItIsFree(t *testing.T) {
 	if err := h.scheduler.AwaitEntered(chordctx.Background()); err != nil {
 		t.Fatalf("AwaitEntered: %v", err)
 	}
-	// More publications while the watcher is busy with the first.
+	// More publications while the watcher is busy with the first: the bumps settle and two more run, ending at 0.
+	h.activity.count(activityCalls, -1)
+	h.loop.Flush()
 	for range 2 {
 		h.activity.count(activityCalls, 1)
 		h.loop.Flush()

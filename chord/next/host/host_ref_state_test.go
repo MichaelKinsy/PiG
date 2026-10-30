@@ -104,11 +104,15 @@ func TestRefStateIsWatchedFromItsCurrentStateAndReleaseEndsIt(t *testing.T) {
 	states := refStatesOf(watch)
 	failed := refStateTransientFailure("app.flaky(1): offline", 1_000)
 	h.move(failed)
+	// Each state is delivered before the next move, as the awaits of upstream's test let it.
+	h.scheduler.Wait()
 	if got := h.state.Value(); got != failed || got.RetryAt == nil || *got.RetryAt != 1_000 {
 		t.Fatalf("value = %+v, want the failed state with retryAt 1000", got)
 	}
 	h.move(refLoading)
+	h.scheduler.Wait()
 	h.move(refLive)
+	h.scheduler.Wait()
 	released := refStateReleased()
 	h.current = released
 	h.state.released(released)

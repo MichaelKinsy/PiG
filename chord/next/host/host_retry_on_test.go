@@ -66,6 +66,19 @@ func (e *modelsEnv) set(n int) {
 	}
 }
 
+// contribute adds a contribution of n by plugin and leaves it there (another object's models), inside a commit.
+func (e *modelsEnv) contribute(plugin string, n int) {
+	e.t.Helper()
+	err := e.batch.Commit(func() error {
+		e.record.Add(registries.NewRegistryContribution(e.record, registries.Contributor{Plugin: plugin, Type: "app.runtime"}, 1,
+			registries.ContributionContent{Kind: registries.ContributionPlain, Value: n}))
+		return nil
+	}, chordctx.Background())
+	if err != nil {
+		e.t.Fatalf("commit: %v", err)
+	}
+}
+
 // retry is a retryOn source of the registry value.
 func (e *modelsEnv) retry() retrySourceType {
 	e.t.Helper()

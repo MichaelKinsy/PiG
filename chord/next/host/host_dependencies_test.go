@@ -185,7 +185,8 @@ func TestTheDependencyCheckOfRegistryValues(t *testing.T) {
 	if got := checkDependencies([]dependency{live}); got.kind != checkLive {
 		t.Fatalf("check of a registry composed to 1 = %+v, want live", got)
 	}
-	e.set(-1)
+	// Another object's models make the composition fail, while the one it was composed from stays in the table.
+	e.contribute("@test/other", -5)
 	if got := checkDependencies([]dependency{live}); got.kind != checkLive {
 		t.Fatalf("check of a registry with a last good value = %+v, want live", got)
 	}
