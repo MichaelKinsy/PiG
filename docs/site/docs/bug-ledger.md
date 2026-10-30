@@ -636,6 +636,8 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-7dc9b09](#bf-7dc9b09) | `-e <local Package>` now contributes its prompts, skills and themes, loaded before the project, user and… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-7dc9b09-2](#bf-7dc9b09-2) | `--prompt-template` and `--theme` paths are now merged after the project, user and Package resources, as in… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-7e09ec0](#bf-7e09ec0) | fix(codingagent): the idle collection runs one forced GC cycle (D172) | PiG's own defect | All platforms | Unreleased |
+| [BF-7e16053](#bf-7e16053) | `pig install /abs/path` (and `~/path` or a `file://` URL) records the path as you typed it in `packages[]` | A Pi defect that PiG fixed first | All platforms | Unreleased |
+| [BF-7e16053-2](#bf-7e16053-2) | A configured local Package whose directory does not exist is now a startup warning in the session, with the… | PiG's own defect | All platforms | Unreleased |
 | [BF-7e1a05c](#bf-7e1a05c) | Resource resolution follows Pi's `DefaultPackageManager.resolve` in two cases: built-in extensions come after… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-7ea21f3](#bf-7ea21f3) | RPC output writes summed usage (a tool result's usage with nested model calls, a compaction summary's usage)… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-7f2c05b](#bf-7f2c05b) | A `ChordError` of code `invalid` from a failed args, result, state or input check carries TypeBox's whole… | PiG's own defect | All platforms | Unreleased |
@@ -9876,6 +9878,36 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `7e09ec03c8` (2026-10-13)
 - **Tests:** None recorded.
+
+### BF-7e16053
+
+**`pig install /abs/path` (and `~/path` or a `file://` URL) records the path as you typed it in `packages[]`**
+
+- **Source:** A Pi defect that PiG fixed first (divergence D215)
+- **Symptom:** `pig install /abs/path` (and `~/path` or a `file://` URL) records the path as you typed it in `packages[]`.
+- **Root cause:** pig install recorded every local Package relative to the agent directory as spelled at install, as Pi does. An install through a symlinked PIG_HOME wrote ../../../../../../pkgsrc/my-pkg, and a start through another spelling at another depth resolved it to nothing: the Package's tools vanished with one stderr line.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Pi issue:** none recorded
+- **Removed when Pi fixes it:** Pi stores an absolute local path as typed and warns about a missing local Package, or the owner reverses the decision. Then the two branches, the call-site markers and the tests' D215 cases go.
+- **Fix commits:** `4cf8dea070` (2026-10-29, #389), `7e160533d7` (2026-10-29)
+- **Tests:** `coding/cli/package_commands_test.go::TestNormalizePackageSourceForSettings_UsesScopeBase`, `coding/cli/package_local_path_test.go::TestInstalledAbsoluteLocalPackageResolvesThroughAnotherAgentDirSpelling`, `coding/cli/package_local_path_test.go::TestStartupWarnsAboutAConfiguredLocalPackageThatDoesNotExist`, `coding/cli/port_wave_10_package_command_paths_test.go::TestPortWave10PackageCommandPaths`, `internal/packagemanager/package_manager_ops_gaps_test.go::TestPackageManagerAddAndRemoveSourceInTheScopeSettings`
+- **Release note:** `pig install /abs/path` (and `~/path` or a `file://` URL) records the path as you typed it in `packages[]`. It was stored relative to the agent directory as spelled at install, so a later start through another spelling of `PIG_HOME` (a symlinked `~/.local/share/...` directory, a synced config) resolved it to nothing and the Package's tools disappeared with only a stderr line. A relative path is still stored relative to the settings directory. Running `pig install <absolute path>` again rewrites an existing entry for the same Package (D215, #389).
+
+### BF-7e16053-2
+
+**A configured local Package whose directory does not exist is now a startup warning in the session, with the…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A configured local Package whose directory does not exist is now a startup warning in the session, with the path it resolved to and the `pig remove` command that drops it, instead of a `[pig] Could not install ... (run pig update when online)` line on stderr (D215, #389).
+- **Root cause:** pig install recorded every local Package relative to the agent directory as spelled at install, as Pi does. An install through a symlinked PIG_HOME wrote ../../../../../../pkgsrc/my-pkg, and a start through another spelling at another depth resolved it to nothing: the Package's tools vanished with one stderr line.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `7e160533d7` (2026-10-29)
+- **Tests:** `coding/cli/package_commands_test.go::TestNormalizePackageSourceForSettings_UsesScopeBase`, `coding/cli/package_local_path_test.go::TestInstalledAbsoluteLocalPackageResolvesThroughAnotherAgentDirSpelling`, `coding/cli/package_local_path_test.go::TestStartupWarnsAboutAConfiguredLocalPackageThatDoesNotExist`
+- **Release note:** A configured local Package whose directory does not exist is now a startup warning in the session, with the path it resolved to and the `pig remove` command that drops it, instead of a `[pig] Could not install ... (run pig update when online)` line on stderr (D215, #389).
 
 ### BF-7e1a05c
 
@@ -19783,6 +19815,7 @@ Each divergence record is accounted for here. A divergence that fixes a Pi defec
 | D208 | From inside a component's render, a TuiAltScreen of the Go, Rust, Python and Lisp SDKs fails the calls that… | [BF-D208](#bf-d208) |
 | D212 | `/llama` explains a 404 from llama-swap's missing load and unload endpoints, where Pi shows "llama.cpp… | [BF-3f46dee](#bf-3f46dee) |
 | D213 | A crashed or exited extension runtime releases the read the host holds for an autocomplete provider chain | [BF-8e3613d](#bf-8e3613d) |
+| D215 | A local Package typed by absolute path is stored as typed, and one that does not exist warns at startup | [BF-7e16053](#bf-7e16053) |
 
 ## Fix-titled commits that are not bugs in a release
 
