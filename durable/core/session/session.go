@@ -364,7 +364,7 @@ func (s *Session) commitWrites(tx *Tx, writes []Write) (*Publication, error) {
 	}
 	tables := len(changes)
 	changes = append(changes, docs...)
-	pub := s.newPublication(Publication{Seq: seq, Changes: changes, Span: tx.scope.Span})
+	pub := new(Publication{Seq: seq, Changes: changes, Span: tx.scope.Span})
 	if storedDocs != nil {
 		pub.Stored = append(append([]Change(nil), changes[:tables]...), storedDocs...)
 		docs = storedDocs
@@ -382,7 +382,9 @@ func (s *Session) commitWrites(tx *Tx, writes []Write) (*Publication, error) {
 }
 
 // newPublication is the one place a Publication is allocated.
-func (s *Session) newPublication(p Publication) *Publication { return &p }
+//
+//go:fix inline
+func (s *Session) newPublication(p Publication) *Publication { return new(p) }
 
 // InJob reports whether a Loop line job body is running.
 func (s *Session) InJob() bool { return s.inJob }

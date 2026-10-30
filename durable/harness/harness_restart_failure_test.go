@@ -107,7 +107,7 @@ func TestTheRestartLimitOnTheNormalPath(t *testing.T) {
 		submit("warm up")
 		others.Store(0)
 		retention.Store(0)
-		for round := 0; round < rounds; round++ {
+		for range rounds {
 			submit("round")
 		}
 		waitForIdle(t, root)

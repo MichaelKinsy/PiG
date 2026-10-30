@@ -14,7 +14,7 @@ func TestStringHelpersAndAiLinkNoCollationTables(t *testing.T) {
 		if err != nil {
 			t.Fatalf("go list -deps %s: %v", pkg, err)
 		}
-		for _, dep := range strings.Fields(string(out)) {
+		for dep := range strings.FieldsSeq(string(out)) {
 			if dep == "golang.org/x/text/collate" || strings.HasSuffix(dep, "/internal/jsstring/localecompare") {
 				t.Errorf("%s links %s", pkg, dep)
 			}
