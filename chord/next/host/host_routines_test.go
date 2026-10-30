@@ -531,9 +531,8 @@ func TestOnFollowsANativeSourceOneCallPerNewValueWithoutOpsEndsWithIt(t *testing
 	want := []chord.NativeWatchCall[any]{{Kind: "value", Value: "a"}, {Kind: "value", Value: "b"}, {Kind: "value", Value: "c"}}
 	got := append([]chord.NativeWatchCall[any]{}, calls...)
 	mu.Unlock()
-	// Values arriving while a call runs fold: the call for "b" may be skipped, "a" and "c" never.
-	if len(got) < 2 || got[0] != want[0] || got[len(got)-1] != want[2] {
-		t.Fatalf("calls = %+v, want a first and c last", got)
+	if fmt.Sprint(got) != fmt.Sprint(want) {
+		t.Fatalf("calls = %+v, want a, b, c", got)
 	}
 	source.end()
 	scopeEventually(t, "the watch released", func() bool { return source.count() == 0 })
@@ -928,7 +927,8 @@ func TestOnAfterAThrowClearsItsRetryTimerWhenItsOwnerEndsDuringTheBackoff(t *tes
 	scopeEventually(t, "the retry timer cleared", func() bool { return rig.loop.TimerCount() == 0 })
 }
 
-// Mirrors "on › after a throw › reports a retirement again on the retry after the call that got it threw".
+// Ports "on › after a throw › reports a retirement again on the retry after the call that got it threw" (its source is the
+// test's own `jsonSource`; the owner is the fake).
 func TestOnAfterAThrowReportsARetirementAgainOnTheRetryAfterTheCallThatGotItThrew(t *testing.T) {
 	rig := newRoutineRig(t)
 	source := newJSONFake(rig, nObject(0))
