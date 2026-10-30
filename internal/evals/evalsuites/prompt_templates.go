@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"github.com/MichaelKinsy/PiG/coding"
@@ -41,11 +42,11 @@ var promptTemplateScenarios = []promptTemplateScenario{
 
 // lastUserText is the text of the last user message of the Session, trimmed; "" when there is none.
 func lastUserText(messages []map[string]any) string {
-	for index := len(messages) - 1; index >= 0; index-- {
-		if messages[index]["role"] != "user" {
+	for _, message := range slices.Backward(messages) {
+		if message["role"] != "user" {
 			continue
 		}
-		switch content := messages[index]["content"].(type) {
+		switch content := message["content"].(type) {
 		case string:
 			return strings.TrimSpace(content)
 		case []any:

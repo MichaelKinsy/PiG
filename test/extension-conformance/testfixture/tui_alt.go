@@ -383,14 +383,14 @@ func tuiAltChildrenProbe(ctx sdk.Context, _ string) error {
 		return "?"
 	}
 	order := func() string {
-		var s string
+		var s strings.Builder
 		for _, k := range screen.Children() {
-			s += name(k)
+			s.WriteString(name(k))
 		}
-		if s == "" {
+		if s.String() == "" {
 			return "-"
 		}
-		return s
+		return s.String()
 	}
 	f := []string{"empty=" + order()}
 	must(screen.AddChild(a))

@@ -395,7 +395,7 @@ func withStderr(message, stderr string) string {
 		}
 	}
 	var lines []string
-	for _, line := range strings.Split(text.String(), "\n") {
+	for line := range strings.SplitSeq(text.String(), "\n") {
 		if line = jsstring.TrimEnd(line); line != "" {
 			lines = append(lines, line)
 		}
@@ -788,8 +788,7 @@ func (c *Connection) start() (RemoteInfo, *session, error) {
 	}
 	if err != nil {
 		// The captured stderr joins whatever ended the start.
-		var remote *RemoteError
-		if errors.As(err, &remote) {
+		if remote, ok := errors.AsType[*RemoteError](err); ok {
 			failure := *remote
 			failure.Message = withStderr(remote.Message, s.tail())
 			err = &failure

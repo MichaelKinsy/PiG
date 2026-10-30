@@ -250,7 +250,7 @@ func (s *Session) hold(tx *Tx) (*Publication, error) {
 		return nil, err
 	}
 	s.armHoldTimer()
-	pub := s.newPublication(Publication{Memory: true, Changes: docs})
+	pub := new(Publication{Memory: true, Changes: docs})
 	if s.holdPubs {
 		s.heldPubs = append(s.heldPubs, pub)
 	} else {
@@ -298,7 +298,7 @@ func (s *Session) storeHolds(holds []*loadedDoc) error {
 		}
 	}
 	s.release(holds)
-	pub := s.newPublication(Publication{Seq: seq, Stored: changes})
+	pub := new(Publication{Seq: seq, Stored: changes})
 	if s.holdPubs {
 		s.heldPubs = append(s.heldPubs, pub)
 	} else {

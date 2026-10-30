@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
 	"sync"
 	"time"
 
@@ -130,9 +131,7 @@ type tuiAltWait struct {
 // goroutine runs it, while it holds the frame lock: the call applies at once and a later read sees it, as in Pi.
 func (s *tuiAltScreenState) callback(kind string, fields map[string]any, result any) error {
 	args := map[string]any{"id": s.id, "kind": kind}
-	for k, v := range fields {
-		args[k] = v
-	}
+	maps.Copy(args, fields)
 	//portlint:allow ctxbackground the screen outlives the call that built it; a callback ends with the connection (Request returns when it closes)
 	ctx := context.Background()
 	frame, inFrame := s.screen.Frame()
@@ -197,9 +196,7 @@ type tuiAltTerminal struct {
 
 func (t *tuiAltTerminal) send(method string, fields map[string]any) {
 	args := map[string]any{"method": method}
-	for k, v := range fields {
-		args[k] = v
-	}
+	maps.Copy(args, fields)
 	_ = t.state.callback("terminal", args, nil)
 }
 
