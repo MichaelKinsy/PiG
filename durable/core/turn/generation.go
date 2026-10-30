@@ -273,10 +273,12 @@ func (r *run) failNoModel(ref *ModelRef) {
 // appendAssistant appends a provider result and adds its usage to pi.usage in the same commit: every built-in writer of
 // assistant entries goes through here, so the usage ledger stays complete.
 func appendAssistant(tx *session.Tx, conv ID, message *jv.Object) (*jv.Object, error) {
+	// generation.ts appendAssistant: `await recordUsage(...)`, an async function whose caller resumes one tick after it returns.
 	if usage := objField(message, "usage"); usage != nil {
 		if err := recordUsageTx(tx, conv, UsageModels, str(message, "provider")+"/"+str(message, "model"), usage); err != nil {
 			return nil, err
 		}
+		tx.Await(1)
 	}
 	entry, err := tx.AppendEntry(conv, entryDraft(KindAssistant, jobj("model", []any{message})))
 	if err != nil {
@@ -332,8 +334,12 @@ func convertPartial(tx *session.Tx, live *delta.Obj, conv ID) error {
 	}
 	message := jv.Clone(partial).(*jv.Object)
 	message.Set("stopReason", "aborted")
-	_, err := appendAssistant(tx, conv, message)
-	return err
+	if _, err := appendAssistant(tx, conv, message); err != nil {
+		return err
+	}
+	// convertPartial is async and its caller awaits it: the caller resumes a tick after it returns (generation.ts convertPartial).
+	tx.Await(1)
+	return nil
 }
 
 // createCompaction creates a compaction task with its status in this commit. owner is the generation that waits for it (a

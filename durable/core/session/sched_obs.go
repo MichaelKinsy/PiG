@@ -440,10 +440,14 @@ func (s *Scheduler) drain() {
 				finish()
 				return
 			}
-			for _, r := range res {
-				s.start(r)
-			}
-			loop()
+			// `for (const reservation of await this.#reserve())` (scheduler.ts #drain): #reserve is an async function, so #drain resumes a tick after it
+			// returns, and then starts each reservation and asks for the next pass.
+			s.loop.NextTick(func() {
+				for _, r := range res {
+					s.start(r)
+				}
+				loop()
+			})
 		})
 	}
 	loop()

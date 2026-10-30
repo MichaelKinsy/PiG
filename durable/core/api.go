@@ -214,28 +214,69 @@ func (h *handler) api(op string, req *jv.Object) (any, error) {
 		// session.ts unloadDocuments: the loaded-document cache is dropped, held changes stored first; later reads load from the
 		// store (and migrate again).
 		return nil, h.sess.UnloadDocuments()
-	case "snapshot":
-		def, args, err := docDef(req)
+	case "snapshot", "snapshotAsOf":
+		return h.apiSnapshot(op, req)
+	case "conversation", "getTask", "submission", "entry":
+		return h.apiRecord(op, req)
+	case "context":
+		conv := int64(numOf(req, "conversationId"))
+		tail, head, found, err := h.contextBounds(conv, int64(numOf(req, "at")))
 		if err != nil {
 			return nil, err
 		}
-		migrating := hostMigration(def, req)
-		v, err := h.sess.Snapshot(def, args)
-		if err != nil || v == nil {
-			return nil, migrating.need(err)
+		return contextAnswer{conv, head, tail, found}, nil
+	case "entries", "scanEntries":
+		return h.apiEntries(op, req)
+	case "taskGraph":
+		if h.graph != nil {
+			return jv.Clone(h.graph.value), nil
 		}
-		return v, nil
-	case "snapshotAsOf":
-		def, args, err := docDef(req)
-		if err != nil {
-			return nil, err
+		return h.buildTaskGraph(), nil
+	case "usage":
+		return h.usage()
+	case "commits":
+		h.changes, _ = boolOf(req, "on")
+		h.sess.TrackDropped = h.changes
+		if !h.changes {
+			h.sent = h.sent[:0]
 		}
-		migrating := hostMigration(def, req)
+		return nil, nil
+	case "watch.open":
+		return h.watchOpen(req)
+	case "watch.close":
+		return h.watchClose(req)
+	}
+	return nil, ErrNotImplemented
+}
+
+// apiSnapshot answers the read-only document reads "snapshot" and "snapshotAsOf".
+//
+//go:noinline
+func (h *handler) apiSnapshot(op string, req *jv.Object) (any, error) {
+	def, args, err := docDef(req)
+	if err != nil {
+		return nil, err
+	}
+	migrating := hostMigration(def, req)
+	if op == "snapshotAsOf" {
 		v, err := h.sess.SnapshotAsOf(def, args, session.ID(numOf(req, "at")))
 		if err != nil || v == nil {
 			return nil, migrating.need(err)
 		}
 		return v, nil
+	}
+	v, err := h.sess.Snapshot(def, args)
+	if err != nil || v == nil {
+		return nil, migrating.need(err)
+	}
+	return v, nil
+}
+
+// apiRecord answers the single-row reads "conversation", "getTask", "submission" and "entry": one Storage read on the line each.
+//
+//go:noinline
+func (h *handler) apiRecord(op string, req *jv.Object) (any, error) {
+	switch op {
 	case "conversation":
 		// readOnLine(() => storage.conversation(id)): one single-statement Storage read (harness.ts :313-316).
 		h.read(hopcost.ReadRow)
@@ -252,13 +293,6 @@ func (h *handler) api(op string, req *jv.Object) (any, error) {
 			return nil, err
 		}
 		return t, nil
-	case "context":
-		conv := int64(numOf(req, "conversationId"))
-		tail, head, found, err := h.contextBounds(conv, int64(numOf(req, "at")))
-		if err != nil {
-			return nil, err
-		}
-		return contextAnswer{conv, head, tail, found}, nil
 	case "submission":
 		// Submissions.status/get/wait read the record on the Session line (submissions.ts :63-86): one single-statement Storage read.
 		h.read(hopcost.ReadRow)
@@ -267,7 +301,21 @@ func (h *handler) api(op string, req *jv.Object) (any, error) {
 			return nil, nil
 		}
 		return rec, nil
-	case "entries":
+	}
+	// readOnLine(() => storage.entry(conversationId, id, context)) (scheduler.ts :1216-1228): the conversation's row, then the entry.
+	h.read(hopcost.ReadEntryIn)
+	e, _, err := h.mir.EntryIn(session.ID(numOf(req, "conversationId")), session.ID(numOf(req, "entryId")))
+	if err != nil || e == nil {
+		return nil, err
+	}
+	return e, nil
+}
+
+// apiEntries answers "entries" (a task's view of its conversation's history) and "scanEntries".
+//
+//go:noinline
+func (h *handler) apiEntries(op string, req *jv.Object) (any, error) {
+	if op == "entries" {
 		// TaskRuntime.entries and HookApi.entries: the committed raw history of the task's conversation, as Conversation.entries
 		// (scheduler.ts runtime.entries: readOnLine(() => storage.scanEntries(conversationEntries(conversationId, query), ...))). Only the
 		// entry ID bounds and the order of the query are used.
@@ -288,54 +336,26 @@ func (h *handler) api(op string, req *jv.Object) (any, error) {
 		}
 		cursor, _ := req.Get("cursor")
 		return h.api("scanEntries", jobj("query", scan, "limit", valueOf(req, "limit"), "cursor", cursor))
-	case "scanEntries":
-		// Conversation.entries is readOnLine(() => storage.scanEntries(query, limit, cursor)) (harness.ts :127-139).
-		q := objOf(req, "query")
-		if q == nil {
-			q = jv.NewObject()
-		}
-		cursor, _ := req.Get("cursor")
-		order, after, err := scanStart(q, cursor, "descending")
-		if err != nil {
-			return nil, err
-		}
-		h.read(hopcost.ReadScanEntries)
-		items, next, err := h.mir.scanEntriesRaw(session.EntryQuery{
-			ConversationID: session.ID(numOf(q, "conversationId")), MinEntryID: session.ID(numOf(q, "minEntryId")),
-			MaxEntryID: session.ID(numOf(q, "maxEntryId")), Ascending: order == "ascending",
-		}, int(numOf(req, "limit")), after)
-		if err != nil {
-			return nil, err
-		}
-		return rawPage(items, next, order), nil
-	case "taskGraph":
-		if h.graph != nil {
-			return jv.Clone(h.graph.value), nil
-		}
-		return h.buildTaskGraph(), nil
-	case "usage":
-		return h.usage()
-	case "commits":
-		h.changes, _ = boolOf(req, "on")
-		h.sess.TrackDropped = h.changes
-		if !h.changes {
-			h.sent = h.sent[:0]
-		}
-		return nil, nil
-	case "watch.open":
-		return h.watchOpen(req)
-	case "watch.close":
-		return h.watchClose(req)
-	case "entry":
-		// readOnLine(() => storage.entry(conversationId, id, context)) (scheduler.ts :1216-1228): the conversation's row, then the entry.
-		h.read(hopcost.ReadEntryIn)
-		e, _, err := h.mir.EntryIn(session.ID(numOf(req, "conversationId")), session.ID(numOf(req, "entryId")))
-		if err != nil || e == nil {
-			return nil, err
-		}
-		return e, nil
 	}
-	return nil, ErrNotImplemented
+	// Conversation.entries is readOnLine(() => storage.scanEntries(query, limit, cursor)) (harness.ts :127-139).
+	q := objOf(req, "query")
+	if q == nil {
+		q = jv.NewObject()
+	}
+	cursor, _ := req.Get("cursor")
+	order, after, err := scanStart(q, cursor, "descending")
+	if err != nil {
+		return nil, err
+	}
+	h.read(hopcost.ReadScanEntries)
+	items, next, err := h.mir.scanEntriesRaw(session.EntryQuery{
+		ConversationID: session.ID(numOf(q, "conversationId")), MinEntryID: session.ID(numOf(q, "minEntryId")),
+		MaxEntryID: session.ID(numOf(q, "maxEntryId")), Ascending: order == "ascending",
+	}, int(numOf(req, "limit")), after)
+	if err != nil {
+		return nil, err
+	}
+	return rawPage(items, next, order), nil
 }
 
 // migration is the host-run migrate of one read-only document access: the definition's migrate(value, from) is host code, so

@@ -127,17 +127,19 @@ func deferredOf(cp *jv.Object) (model, handle *jv.Object) {
 	return nil, nil
 }
 
-// cancelDeferred cancels a deferred response no attempt will poll again; a failure is reported, never thrown. then runs after.
+// cancelDeferred cancels a deferred response no attempt will poll again; a failure is reported, never thrown. then runs after: the
+// caller awaits an async function (generation.ts cancelDeferred), so it resumes a hop after the cancel returns, or after the function
+// returns at once for a model the host does not have.
 func (r *run) cancelDeferred(model, handle *jv.Object, then func()) {
 	ref := modelRefOf(model)
 	if _, ok := r.g.Host.ContextWindow(ref); !ok {
-		then()
+		r.hops(1, then)
 		return
 	}
 	r.g.Host.CancelDeferred(ref, handle, r.rt.Signal(), func(err error) {
 		if err != nil {
 			_ = r.rt.Report(err, session.ReportFrom{Callback: "models"})
 		}
-		then()
+		r.hops(1, then)
 	})
 }

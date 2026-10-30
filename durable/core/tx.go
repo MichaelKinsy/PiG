@@ -452,17 +452,17 @@ func memoryOnly(pubs []*session.Publication) bool {
 }
 
 // hostCommitSchedule is when, in hops after the transaction's last host operation, the core publishes a host-driven commit, answers its end and frees the
-// line, for a Pi job whose caller resumes total hops later (jobHops less the passes the host's callback already spent). Pi's job frees the line one hop
-// before its caller resumes, so the next line job starts with the caller, and publishes pubBeforeEnd hops before it frees the line, as a core line job
-// does (session.ts #runCommit :548-549 under #enqueue :647-654; stamped in Pi ea448f45 on F-ticks-node's root create: publication 137, root()'s caller
-// and the sweep job 140; since Pi 8b0caefc the publication is the Storage's adoption, adoptTail (hopcost.AdoptTail) hops before the session resumes from
-// Storage.commit, as for a core line job: publishAt). The facade needs hostAnswerTicks passes from the core's answer to its caller, so the answer goes out that much earlier.
-// F-ticks-{node,gate} (cold submit 89/103) and F-ticks-runtime-drift-{node,gate} (waitForTask on a live task 109/119) bind the publication and release.
+// line, for a Pi job whose run settles total hops later (jobHops less the passes the host's callback already spent). The publication is the Storage's
+// adoption, pubBeforeEnd + adoptTail (hopcost.AdoptTail) hops before the job's run settles, as for a core line job (publishAt; session.ts #runCommit under
+// #enqueue). Measured on Pi e7a0df27 with F-ticks-runtime-drift (a custom task's terminal commit: the job starts at pass 78, its change ends at 83, the
+// adoption is at 114 = 83 + total - 5 with total 36) and with a root create (adoption 151). The facade needs hostAnswerTicks passes from the core's answer
+// to its caller, so the answer goes out that much earlier. The line is freed total-1 hops after the last host operation: the F-ticks rows bind it (a release
+// at total+1 moves F-ticks-{node,gate} and F-ticks-runtime-drift-{node,gate} two passes late).
 type hostCommitHops struct{ publish, answer, release int }
 
 func hostCommitSchedule(total, adoptTail int) hostCommitHops {
 	release := max(total-1, 0)
-	return hostCommitHops{publish: max(release-pubBeforeEnd-adoptTail, 0), answer: max(total-hostAnswerTicks, 0), release: release}
+	return hostCommitHops{publish: max(total-pubBeforeEnd-adoptTail, 0), answer: max(total-hostAnswerTicks, 0), release: release}
 }
 
 // hostAnswerTicks is the microtask passes the facade spends from the core's tx_result to its caller's resumption: end()'s one reaction and the adoption of

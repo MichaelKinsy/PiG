@@ -252,6 +252,7 @@ type Scheduler struct {
 	dirty              bool
 	draining           bool
 	reserveSkip        uint8 // the decision of the reservation job's first run, which a later run of the same job keeps (reserve)
+	stateAwaits        int   // the `await #loadChain` calls of #loadScopes in the terminal #commitState just staged (runtime.go commitStateTicks)
 
 	// observing is set while the commit observer runs (it runs inside the Storage's adopt).
 	observing bool
