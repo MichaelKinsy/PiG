@@ -47,8 +47,11 @@ func validateConfiguredPackages(cwd string, sm *codingagent.SettingsManager, jso
 	report.Valid = len(report.Missing) == 0
 	switch {
 	case jsonOut:
-		data, _ := json.MarshalIndent(report, "", "  ")
-		_, _ = fmt.Fprintln(os.Stdout, string(data))
+		// JSON.stringify(value, null, 2) writes <, > and & as they are; Go's default encoder escapes them.
+		encoder := json.NewEncoder(os.Stdout)
+		encoder.SetEscapeHTML(false)
+		encoder.SetIndent("", "  ")
+		_ = encoder.Encode(report)
 	case report.Valid:
 		if report.Checked == 1 {
 			_, _ = fmt.Fprintln(os.Stdout, "valid: 1 configured local package resolves")
