@@ -477,6 +477,20 @@ func TestDefaultResourceLoaderWarnsAndKeepsLoadingWhenAConfiguredPackageCannotBe
 	}
 }
 
+// D215: a configured local Package whose directory does not exist warns with the path it resolved to and the pig remove hint, as a failed npm
+// install does, and the load goes on; Pi skips it without a word. The pig command reports it the same way (TestStartupWarnsAboutAConfiguredLocalPackageThatDoesNotExist).
+func TestDefaultResourceLoaderWarnsAboutAConfiguredLocalPackageThatDoesNotExist(t *testing.T) {
+	loader := installFailureLoader(t, map[string]string{"agent/settings.json": `{"packages": ["../gone-package"]}`}, DefaultResourceLoaderOptions{})
+	if err := loader.Reload(); err != nil {
+		t.Fatal(err)
+	}
+	resolved := filepath.Join(filepath.Dir(loader.agentDir), "gone-package")
+	warnings := loader.GetExtensions().Warnings
+	if len(warnings) != 1 || warnings[0].Path != "../gone-package" || warnings[0].Warning != `failed to install (Path does not exist: `+resolved+`). Run "pig remove ../gone-package" to remove it from settings.json.` {
+		t.Fatalf("warnings = %+v, want one warning naming %s and pig remove", warnings, resolved)
+	}
+}
+
 // Pi 6dfb54678 resource-loader.test.ts "should point temporary extension sources at the source instead of pi remove".
 func TestDefaultResourceLoaderPointsTemporaryExtensionSourcesAtTheSource(t *testing.T) {
 	loader := installFailureLoader(t, map[string]string{"agent/settings.json": `{` + failingNpmCommand(t) + `}`}, DefaultResourceLoaderOptions{AdditionalExtensionPaths: []string{"npm:broken-package"}})

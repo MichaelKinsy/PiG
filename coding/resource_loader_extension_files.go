@@ -42,7 +42,8 @@ func (l *DefaultResourceLoader) loadExtensionFiles(ctx context.Context, request 
 		if err != nil {
 			return LoadExtensionsResult{}, fmt.Errorf("coding: %w", err)
 		}
-		installFailures = append([][]packagemanager.PackageInstallFailure{resolved.InstallFailures}, installFailures...)
+		// pig divergence (D215): a configured local Package whose directory does not exist warns after the failed installs; Pi skips it silently.
+		installFailures = append([][]packagemanager.PackageInstallFailure{resolved.InstallFailures, packagemanager.MissingLocalPackages(l.cwd, l.agentDir, l.settings)}, installFailures...)
 		enabled = append(append([]string{}, enabled...), enabledExtensionPaths(resolved.Extensions)...)
 		for _, resource := range resolved.Extensions {
 			packageRoots[resource.Path] = resource.Metadata.PackageRoot
