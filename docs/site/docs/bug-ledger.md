@@ -221,6 +221,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-380ea0e](#bf-380ea0e) | fix(durable/core): a settled outcome without error detail is no cut-off (Pi) | PiG's own defect | All platforms | Unreleased |
 | [BF-3840820](#bf-3840820) | MCP tool results whose content blocks carry members of another type than the protocol's (a numeric `text`, a… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-38b0f0c](#bf-38b0f0c) | Syntax highlighting keeps its colors after the first line of multiline strings and comments in fenced code… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-38e6506](#bf-38e6506) | The faux provider (`ai.NewFauxProvider`) no longer ends a streamed chunk inside a multibyte character | PiG's own defect | All platforms | Unreleased |
 | [BF-397866f](#bf-397866f) | A Go MCP client that declares an empty capability, such as `sampling` or `elicitation`, now sends it as `{}` | PiG's own defect | All platforms | 0.5.0 |
 | [BF-3a0d0e1](#bf-3a0d0e1) | A `Provider` object that an extension registers while it loads is now applied after every extension has… | PiG's own defect | All platforms | Unreleased |
 | [BF-3a708ed](#bf-3a708ed) | fix(durable): list D206 in the docs bundle; the cut-off tool case types its task id; the retry delay product… | PiG's own defect | All platforms | Unreleased |
@@ -4137,6 +4138,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `38b0f0c036` (2026-10-05)
 - **Tests:** `tui/highlight_test.go::TestCliHighlightThemeColorsSubstitutionsWithTheTextColor`, `tui/highlight_test.go::TestHighlightCode_ColorsEachLineOfPythonDocstringsIndependently`, `tui/syntax_highlight_upstream_test.go::TestSyntaxHighlightInterpolationEndsWithTheString`, `tui/syntax_highlight_upstream_test.go::TestSyntaxHighlightInterpolationTakesTheTextColor`
 - **Release note:** Syntax highlighting keeps its colors after the first line of multiline strings and comments in fenced code blocks.
+
+### BF-38e6506
+
+**The faux provider (`ai.NewFauxProvider`) no longer ends a streamed chunk inside a multibyte character**
+
+- **Source:** PiG's own defect
+- **Symptom:** The faux provider (`ai.NewFauxProvider`) no longer ends a streamed chunk inside a multibyte character.
+- **Root cause:** splitByTokenSize cut a response at byte offsets where faux.ts slices a JavaScript string, so a chunk of non-ASCII text could end inside a UTF-8 character. The partial arguments of a tool call that such a chunk extended were not valid text, which the stream's snapshots cannot share: each of those chunks copied and checked all the arguments again, and a tool call of 180 KB of mixed-width text allocated 3.2 GB (12.7 s, 74 s under -race).
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `38e6506b0e` (2026-10-30), `6b64bc1bee` (2026-10-30), `b119c53026` (2026-10-30)
+- **Tests:** `ai/faux_chunks_test.go::TestSplitByTokenSizeCountsUTF16Units`, `ai/faux_chunks_test.go::TestSplitByTokenSizeKeepsEveryCharacterWhole`, `ai/faux_stream_scaling_norace_test.go::TestScalingFauxToolCallWithMultibyteArguments`, `ai/faux_token_size_oracle_test.go::TestFauxTokenSizeMatchesPi`
+- **Release note:** The faux provider (`ai.NewFauxProvider`) no longer ends a streamed chunk inside a multibyte character. It cut a response at byte offsets where Pi slices a JavaScript string, so a text delta of non-ASCII text could end halfway through a character, and the partial arguments of a tool call that such a chunk extended were not valid text: every one of those chunks copied and checked all the arguments again. A tool call of 180 KB of mixed-width text allocated 3.2 GB and took 12.7 s (74 s under `-race`) before it ran; it now allocates 25 MB and takes 48 ms. A chunk is `tokenSize * 4` UTF-16 units, as in Pi's `splitStringByTokenSize`, and ends at the first character boundary at or after that size.
 
 ### BF-397866f
 
