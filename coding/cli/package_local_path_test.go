@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
@@ -46,7 +47,7 @@ func TestInstalledAbsoluteLocalPackageResolvesThroughAnotherAgentDirSpelling(t *
 	}
 }
 
-// D215: a configured local Package whose directory does not exist is an extension warning of the startup, naming the path it resolved to and how to
+// D216: a configured local Package whose directory does not exist is an extension warning of the startup, naming the path it resolved to and how to
 // drop it, where Pi skips it without a word.
 func TestStartupWarnsAboutAConfiguredLocalPackageThatDoesNotExist(t *testing.T) {
 	f := newPackageProcessFixture(t, "process.exit(1);")
@@ -68,5 +69,68 @@ func TestStartupWarnsAboutAConfiguredLocalPackageThatDoesNotExist(t *testing.T) 
 		if !warned {
 			t.Fatalf("no warning %q in %+v", want, build.ExtensionDiagnostics)
 		}
+	}
+}
+
+// D216, #389: `pig install --validate-only` with no source checks each configured local Package. A deleted directory makes it exit 1 and name the
+// entry, its resolved path and the `pig remove` that drops it; a Package that resolves passes.
+func TestInstallValidateOnlyWithoutSourceReportsConfiguredLocalPackages(t *testing.T) {
+	tmp := t.TempDir()
+	pigHome := filepath.Join(tmp, "home")
+	t.Setenv("PIG_HOME", pigHome)
+	cwd := filepath.Join(tmp, "work")
+	present := filepath.Join(tmp, "pkgsrc", "present")
+	gone := filepath.Join(tmp, "pkgsrc", "gone")
+	for _, dir := range []string{present, cwd} {
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	t.Chdir(cwd)
+	sm := codingagent.NewSettingsManager(cwd, codingagent.AgentDir())
+	if err := sm.SetPackages([]codingagent.PackageSource{{Source: present}}); err != nil {
+		t.Fatal(err)
+	}
+
+	stdout, stderr, code := captureStdoutStderr(t, func() int { return runPackageCommand([]string{"install", "--validate-only", "--json"}) })
+	if code != 0 {
+		t.Fatalf("code = %d with every Package present, want 0\nstdout=%s\nstderr=%s", code, stdout, stderr)
+	}
+	type missingPackage struct {
+		Source string `json:"source"`
+		Scope  string `json:"scope"`
+		Path   string `json:"path"`
+		Error  string `json:"error"`
+		Remove string `json:"remove"`
+	}
+	type report struct {
+		Valid   bool             `json:"valid"`
+		Checked int              `json:"checked"`
+		Missing []missingPackage `json:"missing"`
+	}
+	var ok report
+	if err := json.Unmarshal([]byte(stdout), &ok); err != nil || !ok.Valid || ok.Checked != 1 || len(ok.Missing) != 0 {
+		t.Fatalf("report = %s (%v), want valid, checked 1, none missing", stdout, err)
+	}
+
+	if err := sm.SetPackages([]codingagent.PackageSource{{Source: present}, {Source: gone}}); err != nil {
+		t.Fatal(err)
+	}
+	stdout, stderr, code = captureStdoutStderr(t, func() int { return runPackageCommand([]string{"install", "--validate-only", "--json"}) })
+	if code != 1 {
+		t.Fatalf("code = %d with a deleted Package, want 1\nstdout=%s\nstderr=%s", code, stdout, stderr)
+	}
+	var bad report
+	if err := json.Unmarshal([]byte(stdout), &bad); err != nil {
+		t.Fatalf("report %q: %v", stdout, err)
+	}
+	want := missingPackage{Source: gone, Scope: "user", Path: gone, Error: "Path does not exist: " + gone, Remove: codingagent.AppName + " remove " + gone}
+	if bad.Valid || bad.Checked != 2 || len(bad.Missing) != 1 || bad.Missing[0] != want {
+		t.Fatalf("report = %s, want invalid, checked 2, one missing %+v", stdout, want)
+	}
+
+	_, stderr, code = captureStdoutStderr(t, func() int { return runPackageCommand([]string{"install", "--validate-only"}) })
+	if code != 1 || !strings.Contains(stderr, gone) || !strings.Contains(stderr, `Run "`+codingagent.AppName+` remove `+gone+`"`) {
+		t.Fatalf("text mode code = %d stderr = %q, want 1 naming %s and its remove command", code, stderr, gone)
 	}
 }
