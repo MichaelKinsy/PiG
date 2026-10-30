@@ -64,7 +64,7 @@ func EnsureConfiguredPackagesInstalled(cwd, agentDir string, sm *codingagent.Set
 }
 
 // MissingLocalPackages lists each configured local Package whose directory does not exist, resolved against its scope's settings directory, as the
-// install failure the session warns about (D215). Pi skips such a Package without a word.
+// install failure the session warns about and `pig install --validate-only` reports (D216). Pi skips such a Package without a word.
 func MissingLocalPackages(cwd, agentDir string, sm *codingagent.SettingsManager) []PackageInstallFailure {
 	var failures []PackageInstallFailure
 	for _, pkg := range ConfiguredPackagesForResolution(cwd, agentDir, sm) {
@@ -72,13 +72,15 @@ func MissingLocalPackages(cwd, agentDir string, sm *codingagent.SettingsManager)
 			continue
 		}
 		root, err := ResolveLocalPackageRoot(SettingsBaseDir(cwd, agentDir, pkg.Scope == "project"), pkg.Source.Source)
+		path := ""
 		if err == nil {
+			path = root
 			if _, statErr := os.Stat(root); statErr == nil {
 				continue
 			}
 			err = fmt.Errorf("Path does not exist: %s", root)
 		}
-		failures = append(failures, PackageInstallFailure{Source: pkg.Source.Source, Scope: pkg.Scope, Message: err.Error()})
+		failures = append(failures, PackageInstallFailure{Source: pkg.Source.Source, Scope: pkg.Scope, Path: path, Message: err.Error()})
 	}
 	return failures
 }

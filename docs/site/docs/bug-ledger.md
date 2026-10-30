@@ -941,6 +941,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-b2c219f](#bf-b2c219f) | fix(runtimecell): satisfy the divergence, port and perf gates for the usage-lease and fingerprint changes | PiG's own defect | All platforms | Unreleased |
 | [BF-b341a82](#bf-b341a82) | `go install github.com/MichaelKinsy/PiG/cmd/pig@latest` works again | PiG's own defect | All platforms | 0.5.2 |
 | [BF-b3543f8](#bf-b3543f8) | Fixed MCP stdio servers staying alive after PiG exited because the terminal closed, it crashed, or it… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-b368be5](#bf-b368be5) | `pig install --validate-only [--json]` with no source now checks every local-path entry of `packages[]` (user… | PiG's own defect | All platforms | Unreleased |
 | [BF-b430c7a](#bf-b430c7a) | Extension widgets now appear in the order they were set when Node or other extension-process widgets and Go… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-b4504dd](#bf-b4504dd) | Amazon Bedrock request bodies match Pi's: PiG writes the ConverseStream body itself in the member order Pi's… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-b47b6bc](#bf-b47b6bc) | fix(tui): number the editor wrap divergence D159 (lead block), cite Pi's measured RangeError; add… | PiG's own defect | All platforms | Unreleased |
@@ -14138,6 +14139,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** `ai/abort_race_test.go::TestOperationSignalKeepsASignalAndSuppliesAnUncancelledOne`, `ai/abort_race_test.go::TestRaceWithAbortSignalSettlesWithTheFirstOfOperationAndAbort`, `ai/abort_utils_oracle_test.go::TestAbortUtilsMatchPi`, `internal/codingagent/tools/shell_tracked_test.go::TestKillTrackedDetachedChildrenEndsRunningMCPStdioServers`, `test/parity/scenarios/slash-commands/16-mcp-manager-while-connecting.toml`
 - **Release note:** Fixed MCP stdio servers staying alive after PiG exited because the terminal closed, it crashed, or it received a termination signal. Pi ends their process groups from an exit hook; PiG now does the same on those exits.
 
+### BF-b368be5
+
+**`pig install --validate-only [--json]` with no source now checks every local-path entry of `packages[]` (user…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A Package whose folder was gone passed unnoticed (D216, #389).
+- **Root cause:** Not recorded.
+- **User impact:** Crash, hang or runaway process
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `b368be57f5` (2026-10-30, #389)
+- **Tests:** None recorded.
+- **Release note:** `pig install --validate-only [--json]` with no source now checks every local-path entry of `packages[]` (user and trusted project settings): it names each one whose directory does not exist with the path it resolved to and the `pig remove` command that drops it, and exits 1 when any is missing. Before, a Package whose folder was gone passed unnoticed (D216, #389).
+
 ### BF-b430c7a
 
 **Extension widgets now appear in the order they were set when Node or other extension-process widgets and Go…**
@@ -19845,7 +19860,7 @@ Each divergence record is accounted for here. A divergence that fixes a Pi defec
 | D208 | From inside a component's render, a TuiAltScreen of the Go, Rust, Python and Lisp SDKs fails the calls that… | [BF-D208](#bf-d208) |
 | D212 | `/llama` explains a 404 from llama-swap's missing load and unload endpoints, where Pi shows "llama.cpp… | [BF-3f46dee](#bf-3f46dee) |
 | D213 | A crashed or exited extension runtime releases the read the host holds for an autocomplete provider chain | [BF-8e3613d](#bf-8e3613d) |
-| D215 | A local Package typed by absolute path is stored as typed, and one that does not exist warns at startup | [BF-7e16053](#bf-7e16053) |
+| D215 | A local Package typed by absolute path is stored as typed | [BF-7e16053](#bf-7e16053) |
 
 ## Fix-titled commits that are not bugs in a release
 

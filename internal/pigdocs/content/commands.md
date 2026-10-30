@@ -40,6 +40,7 @@ Product distributions may contribute additional top-level or nested command path
 | `pig remove <source> [-l]` | Remove a package from settings. `pig uninstall` is an alias. |
 | `pig update [self\|pig\|<source>] [--self\|--extensions\|--models\|--all] [--extension <source>] [--force]` | Bare `pig update` updates the pig binary, as `pi update` does. `<source>` (or `--extension <source>`) updates one package, `--extensions` updates every package, `--models` refreshes the model catalogs, and `--all` updates packages and then pig. `--force` reinstalls pig even when it is the latest version. |
 | `pig install <path> --validate-only [--json]` | Validate without installing; emits structured diagnostics. |
+| `pig install --validate-only [--json]` | With no source, check that every configured local Package path resolves; exit 1 and name each missing one (D216). |
 | `pig install --validate-only --set "<p1>,<p2>"` | Validate a piglet-style extension set. |
 | `pig extension init <path> [--name <matching-name>] [--lang go\|python\|rust\|lisp] [--login] [--isolated] [--force] [--json]` | Scaffold an extension that resolves the staged SDK offline (Go default). `--login` scaffolds a Go login factory with standard PiG art. |
 | `pig extension upgrade [<name\|path>...] [--all] [--dry-run] [--summary]` | Rewrite Go extensions written for an older SDK with the SDK's tested rules: back up, show a diff, rebuild, report per extension (D109). See [Upgrade a Go extension](extensions.md). |
