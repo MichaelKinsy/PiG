@@ -58,23 +58,6 @@ owner = "SdkTuiHelpers lane (pi-tui helpers, keys, keybindings, theme and render
 opened = "0.5.2"
 closing = "Pure helpers ported per SDK with vector tests from Pi at the pin (test/parity/sdk-vectors), keybinding and theme helpers with a conformance row per SDK"
 
-[[unreached]]
-key = "pi-coding-agent: CustomEditor.capturesViewportInput"
-sdks = ["lisp"]
-lane = "SdkTuiHelpers"
-row = "an editor viewport probe in the Lisp conformance fixture (the Lisp editor frame flag is covered by tests/editor-tests.lisp)"
-
-[[unreached]]
-key = "pi-tui: Editor.capturesViewportInput"
-sdks = ["lisp"]
-lane = "SdkTuiHelpers"
-row = "an editor viewport probe in the Lisp conformance fixture (the Lisp editor frame flag is covered by tests/editor-tests.lisp)"
-
-[[unreached]]
-key = "pi-tui: getSelectPageIndex"
-sdks = ["go", "python"]
-lane = "SdkTuiHelpers"
-row = "a select-page-probe command in every conformance fixture that answers Pi's getSelectPageIndex vectors (keybindings.ts)"
 
 [export]
 "pi-coding-agent: AgentSession" = { go = "gap:C2Sessions", rust = "gap:C2Sessions", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
@@ -667,6 +650,7 @@ row = "a select-page-probe command in every conformance fixture that answers Pi'
 "pi-coding-agent: SettingsManager.getEnableInstallTelemetry" = { go = "native:SettingsManager.GetEnableInstallTelemetry", rust = "native:SettingsManager::get_enable_install_telemetry", python = "native:SettingsManager.get_enable_install_telemetry", lisp = "native:pig:settings-get-enable-install-telemetry" }
 "pi-coding-agent: SettingsManager.getEnableSkillCommands" = { go = "native:SettingsManager.GetEnableSkillCommands", rust = "native:SettingsManager::get_enable_skill_commands", python = "native:SettingsManager.get_enable_skill_commands", lisp = "native:pig:settings-get-enable-skill-commands" }
 "pi-coding-agent: SettingsManager.getEnabledModels" = { go = "native:SettingsManager.GetEnabledModels", rust = "native:SettingsManager::get_enabled_models", python = "native:SettingsManager.get_enabled_models", lisp = "native:pig:settings-get-enabled-models" }
+# SettingsManager.getExtensionChangelogVersion and setExtensionChangelogVersion are not in Pi's extension docs (docs/extensions.md, docs/sdk.md at e7a0df27): interactive-mode.ts and settings-manager.ts use them for the startup changelog, so no SDK wraps them.
 "pi-coding-agent: SettingsManager.getExtensionChangelogVersion" = { go = "gap:SdkExportsLedger", rust = "gap:SdkExportsLedger", python = "gap:SdkExportsLedger", lisp = "gap:SdkExportsLedger" }
 "pi-coding-agent: SettingsManager.getExtensionPaths" = { go = "native:SettingsManager.GetExtensionPaths", rust = "native:SettingsManager::get_extension_paths", python = "native:SettingsManager.get_extension_paths", lisp = "native:pig:settings-get-extension-paths" }
 "pi-coding-agent: SettingsManager.getExternalEditorCommand" = { go = "native:SettingsManager.GetExternalEditorCommand", rust = "native:SettingsManager::get_external_editor_command", python = "native:SettingsManager.get_external_editor_command", lisp = "native:pig:settings-get-external-editor-command" }

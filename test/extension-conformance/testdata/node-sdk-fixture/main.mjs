@@ -96,6 +96,11 @@ export default function (pi) {
       ctx.ui.notify(`rejected:${error.message}`, "info");
     }
   }});
+  pi.registerCommand("select-page-probe", { description: "Answer getSelectPageIndex", handler: async (args, ctx) => {
+    const probe = JSON.parse(args);
+    const index = piTui.getSelectPageIndex(piTui.getKeybindings(), probe.data, probe.selected, probe.count, probe.page);
+    ctx.ui.notify(`select-page=${index === undefined ? "none" : index}`, "info");
+  }});
   pi.registerCommand("exec-limits-probe", { description: "Exec with a maxBuffer", handler: async (args, ctx) => {
     const probe = JSON.parse(args);
     try {
