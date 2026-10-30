@@ -24,10 +24,21 @@ type HookApi interface {
 	// MemoCandidate stores candidate unless a memo already exists and returns the durable winner.
 	MemoCandidate(ctx context.Context, name string, candidate durable.JsonValue) (durable.JsonValue, error)
 	// Entry is a committed entry visible from the task's conversation, as TaskRuntime.Entry; nil when the entry is
-	// absent or not visible. A typed read is token.As(entry).
+	// absent or not visible. A typed read is HookEntry.
 	Entry(ctx context.Context, id durable.EntryId) (*durable.EntryRecord, error)
 	// Entries is the committed raw history of the task's conversation, as TaskRuntime.Entries.
 	Entries(ctx context.Context, query durable.EntryQuery, limit int, cursor durable.Cursor) (durable.Page[durable.EntryRecord, durable.Cursor], error)
+}
+
+// HookEntry is the typed overload of HookApi.entry (harness/types.ts:953): the committed entry visible from the task's
+// conversation when it is present and has the token's kind, nil otherwise. A method cannot take the token's type parameter, so
+// the read is a function, as durable.TaskEntry is for a task's runtime.
+func HookEntry[D any](ctx context.Context, api HookApi, token durable.Entry[D], id durable.EntryId) (*durable.TypedEntry[D], error) {
+	entry, err := api.Entry(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	return token.As(entry)
 }
 
 // GenerationRequest is the request a beforeRequest hook may replace.
