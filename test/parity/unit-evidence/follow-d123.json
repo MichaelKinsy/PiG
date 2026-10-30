@@ -1,0 +1,1105 @@
+[
+ {
+  "upstream": "packages/chord/src/next/contracts/accepts.ts",
+  "package": "./chord/next/contracts",
+  "tests": [
+   "TestAcceptsVersions"
+  ],
+  "upstream_reference": "packages/chord/src/next/contracts/accepts.ts",
+  "mutation": "chord/next/contracts/accepts.go: `index == -1 || index == len(data.Versions)-1` -> `index == -1` (TestAcceptsVersions FAILS)"
+ },
+ {
+  "upstream": "packages/chord/src/next/contracts/contract.ts",
+  "package": "./chord/next/contracts",
+  "tests": [
+   "TestContractHandles"
+  ],
+  "upstream_reference": "packages/chord/src/next/contracts/contract.ts",
+  "mutation": "chord/next/contracts/contract.go: `contract.self != contract ||` removed from ContractDataOf (TestContractHandles FAILS)"
+ },
+ {
+  "upstream": "packages/chord/src/next/contracts/declare.ts",
+  "package": "./chord/next/contracts",
+  "tests": [
+   "TestReservedMemberNames"
+  ],
+  "upstream_reference": "packages/chord/src/next/contracts/declare.ts",
+  "mutation": "chord/next/contracts/declare.go: `\"then\": true, ` removed from reservedMembers (TestReservedMemberNames FAILS)"
+ },
+ {
+  "upstream": "packages/chord/src/next/contracts/evolve.ts",
+  "package": "./chord/next/contracts",
+  "tests": [
+   "TestEvolveEdits",
+   "TestEvolveHistory"
+  ],
+  "upstream_reference": "packages/chord/src/next/contracts/evolve.ts",
+  "mutation": "chord/next/contracts/evolve.go: `version := current.Version + 1` -> `+ 2` (TestEvolveEdits FAILS)"
+ },
+ {
+  "upstream": "packages/chord/src/next/contracts/fingerprint.ts",
+  "package": "./chord/next/contracts",
+  "tests": [
+   "TestFingerprints"
+  ],
+  "upstream_reference": "packages/chord/src/next/contracts/fingerprint.ts",
+  "mutation": "chord/next/contracts/fingerprint.go: `0x01000193` -> `0x01000195` (TestFingerprints FAILS)"
+ },
+ {
+  "upstream": "packages/chord/src/next/contracts/history.ts",
+  "package": "./chord/next/contracts",
+  "tests": [
+   "TestMemberHelpers"
+  ],
+  "upstream_reference": "packages/chord/src/next/contracts/history.ts",
+  "mutation": "chord/next/contracts/history.go: `seen[name] = true` -> `seen[name] = false` (TestMemberHelpers FAILS)"
+ },
+ {
+  "upstream": "packages/chord/src/next/contracts/host-kind.ts",
+  "package": "./chord/next/contracts",
+  "tests": [
+   "TestHostKinds"
+  ],
+  "upstream_reference": "packages/chord/src/next/contracts/host-kind.ts",
+  "mutation": "chord/next/contracts/host_kind.go: `name == \"client\"` -> `name == \"clientx\"` (TestHostKinds FAILS)"
+ },
+ {
+  "upstream": "packages/chord/src/next/contracts/names.ts",
+  "package": "./chord/next/contracts",
+  "tests": [
+   "TestHostKinds",
+   "TestDeclarationChecks"
+  ],
+  "upstream_reference": "packages/chord/src/next/contracts/names.ts",
+  "mutation": "chord/next/contracts/names.go: `c == '@' ||` removed from CheckName (TestHostKinds FAILS)"
+ },
+ {
+  "upstream": "packages/chord/src/next/contracts/params.ts",
+  "package": "./chord/next/contracts",
+  "tests": [
+   "TestJoinKey"
+  ],
+  "upstream_reference": "packages/chord/src/next/contracts/params.ts",
+  "mutation": "chord/next/contracts/params.go: JoinKey `\"|\", `\\|`` -> `\"|\", `|`` (TestJoinKey FAILS)"
+ },
+ {
+  "upstream": "packages/chord/src/next/contracts/schema.ts",
+  "package": "./chord/next/contracts",
+  "tests": [
+   "TestSchemaHelpers",
+   "TestSchemaBytes"
+  ],
+  "upstream_reference": "packages/chord/src/next/contracts/schema.ts",
+  "mutation": "chord/next/contracts/schema.go: `o.min = &n` -> `o.max = &n` (TestSchemaHelpers FAILS)"
+ },
+ {
+  "upstream": "packages/chord/src/next/contracts/schema.ts",
+  "package": "./chord/next/contracts",
+  "tests": [
+   "TestDeclarationChecks",
+   "TestEvolveEdits"
+  ],
+  "upstream_reference": "packages/chord/src/next/contracts/schema.ts",
+  "mutation": "chord/next/contracts/namedmap.go: Keys() returns `sortStrings(m.names)` instead of `m.names` (TestDeclarationChecks FAILS)"
+ },
+ {
+  "upstream": "packages/chord/src/next/contracts/schema.ts",
+  "package": "./chord/next/contracts",
+  "tests": [
+   "TestContractVariantNames",
+   "TestFingerprints"
+  ],
+  "upstream_reference": "packages/chord/src/next/contracts/schema.ts",
+  "mutation": "chord/next/contracts/jsorder.go: compare16 `return sign(c)` -> `return sign(-c)` (TestContractVariantNames FAILS)"
+ },
+ {
+  "upstream": "packages/chord/src/next/contracts/snapshot.ts",
+  "package": "./chord/next/contracts",
+  "tests": [
+   "TestSnapshotVocabulary"
+  ],
+  "upstream_reference": "packages/chord/src/next/contracts/snapshot.ts",
+  "mutation": "chord/next/contracts/snapshot.go: `cyclic schema` error text -> `cyclicX schema` (TestSnapshotVocabulary FAILS)"
+ },
+ {
+  "upstream": "packages/chord/src/next/data/args.ts",
+  "package": "./chord/next/data",
+  "tests": [
+   "TestCheckArgs"
+  ],
+  "upstream_reference": "packages/chord/test/next/data/args.test.ts",
+  "mutation": "chord/next/data/args.go: `if entry.mapArgs != nil {` -> `if false {` (TestCheckArgs FAILS)"
+ },
+ {
+  "upstream": "packages/chord/src/next/data/errors.ts",
+  "package": "./chord/next/data",
+  "tests": [
+   "TestChordError"
+  ],
+  "upstream_reference": "packages/chord/test/next/data/errors.test.ts",
+  "mutation": "chord/next/data/errors.go: `if err.Reason != \"\" {` -> `if false {` in ToJSON (TestChordError FAILS)"
+ },
+ {
+  "upstream": "packages/chord/src/next/data/failure.ts",
+  "package": "./chord/next/data",
+  "tests": [
+   "TestWaitingCause"
+  ],
+  "upstream_reference": "packages/chord/test/next/data/failure.test.ts",
+  "mutation": "chord/next/data/failure.go: `label = clipped(label, room-utf16Len(root))` -> `label = clipped(label, room-utf16Len(root)-1)` (TestWaitingCause FAILS)"
+ },
+ {
+  "upstream": "packages/chord/src/next/data/params.ts",
+  "package": "./chord/next/data",
+  "tests": [
+   "TestCheckParams"
+  ],
+  "upstream_reference": "packages/chord/test/next/data/params.test.ts",
+  "mutation": "chord/next/data/params.go: `parts[index] = fieldText(member(raw, field))` -> `parts[index] = fieldText(member(raw, field)) + \"!\"` (TestCheckParams FAILS)"
+ },
+ {
+  "upstream": "packages/chord/src/next/data/principal.ts",
+  "package": "./chord/next/data",
+  "tests": [
+   "TestCanonicalJson"
+  ],
+  "upstream_reference": "packages/chord/test/next/data/principal.test.ts",
+  "mutation": "chord/next/data/principal.go: `slices.SortFunc(keys, compareUTF16)` -> `slices.Sort(keys)` (TestCanonicalJson FAILS)"
+ },
+ {
+  "upstream": "packages/chord/src/next/data/validator.ts",
+  "package": "./chord/next/data",
+  "tests": [
+   "TestFailedChecks"
+  ],
+  "upstream_reference": "packages/chord/test/next/data/validator.test.ts",
+  "mutation": "chord/next/data/validator.go: `return err.InstancePath + \"/\" + first, \"missing\"` -> `return \"/\" + first, \"missing\"` (TestFailedChecks FAILS)"
+ },
+ {
+  "upstream": "packages/chord/src/next/registries/contribution.ts",
+  "package": "./chord/next/registries",
+  "tests": [
+   "TestTheTable"
+  ],
+  "upstream_reference": "packages/chord/test/next/registries/registry.test.ts",
+  "mutation": "chord/next/registries/contribution.go: `if c.Version > version || (c.Version < version && adapter == nil) {` -> `if c.Version > version {` (TestTheTable FAILS)"
+ },
+ {
+  "upstream": "packages/chord/src/next/registries/entries.ts",
+  "package": "./chord/next/registries",
+  "tests": [
+   "TestKeyedEntries"
+  ],
+  "upstream_reference": "packages/chord/test/next/registries/entries.test.ts",
+  "mutation": "chord/next/registries/entries.go: remove `keyed.keys = append(keyed.keys, item.Key)` (TestKeyedEntries FAILS)"
+ },
+ {
+  "upstream": "packages/chord/src/next/registries/internal.ts",
+  "package": "./chord/next/registries",
+  "tests": [
+   "TestCompose"
+  ],
+  "upstream_reference": "packages/chord/src/next/registries/internal.ts",
+  "mutation": "chord/next/registries/internal.go: `value, err = nil, asError(recovered)` -> `value, err = nil, nil` (TestCompose FAILS)"
+ },
+ {
+  "upstream": "packages/chord/src/next/registries/record.ts",
+  "package": "./chord/next/registries",
+  "tests": [
+   "TestTheTable",
+   "TestProviderServing"
+  ],
+  "upstream_reference": "packages/chord/test/next/registries/record.test.ts",
+  "mutation": "chord/next/registries/record.go: `return strings.Compare(left.Type, right.Type)` -> `return strings.Compare(right.Type, left.Type)` (TestTheTable FAILS); `return fmt.Errorf(\"registry %s is served twice\", r.Name)` -> `return nil` (TestProviderServing FAILS)"
+ },
+ {
+  "upstream": "packages/chord/src/next/registries/registry.ts",
+  "package": "./chord/next/registries",
+  "tests": [
+   "TestTokens"
+  ],
+  "upstream_reference": "packages/chord/test/next/registries/registry.test.ts",
+  "mutation": "chord/next/registries/registry.go: `options.Version < 1 ||` -> `options.Version < 0 ||` (TestTokens FAILS)"
+ },
+ {
+  "upstream": "packages/chord/src/next/registries/value.ts",
+  "package": "./chord/next/registries",
+  "tests": [
+   "TestOlderReaders"
+  ],
+  "upstream_reference": "packages/chord/test/next/registries/value.test.ts",
+  "mutation": "chord/next/registries/value.go: `!record.InTable(v.mapped.contributions)` -> `record.InTable(v.mapped.contributions)` (TestOlderReaders FAILS)"
+ },
+ {
+  "upstream": "packages/chord/src/next-node/compression.ts",
+  "package": "./chord/nextnode",
+  "tests": [
+   "TestNodeCompression"
+  ],
+  "upstream_reference": "packages/chord/test/next-node/compression.test.ts",
+  "mutation": "chord/nextnode/compression.go: `if float64(len(inflated)) > limit {` -> `if float64(len(inflated)) > limit+1 {` (TestNodeCompression FAILS)"
+ },
+ {
+  "upstream": "packages/chord/src/next/link/binary.ts",
+  "package": "./chord/next/link",
+  "tests": [
+   "TestTheBinaryCodec"
+  ],
+  "upstream_reference": "packages/chord/src/next/link/binary.ts (binary.test.ts via TestTheBinaryCodec)",
+  "mutation": "chord/next/link/binary.go: `deflatedFlag = 1` -> `deflatedFlag = 0` (TestTheBinaryCodec FAILS)"
+ },
+ {
+  "upstream": "packages/chord/src/next/link/channel.ts",
+  "package": "./chord/next/link",
+  "tests": [
+   "TestTheHeartbeat"
+  ],
+  "upstream_reference": "packages/chord/src/next/link/channel.ts (channel.test.ts heartbeat)",
+  "mutation": "chord/next/link/channel.go: `if silent >= close {` -> `if silent > close {` (TestTheHeartbeat FAILS)"
+ },
+ {
+  "upstream": "packages/chord/src/next/link/channel.ts",
+  "package": "./chord/next/link",
+  "tests": [
+   "TestTheHandshake"
+  ],
+  "upstream_reference": "packages/chord/src/next/link/channel.ts (channel.test.ts handshake)",
+  "mutation": "chord/next/link/channel.go: `if hello.Protocol != data.ProtocolVersion {` -> `if false {` (TestTheHandshake FAILS)"
+ },
+ {
+  "upstream": "packages/chord/src/next/link/errors.ts",
+  "package": "./chord/next/link",
+  "tests": [
+   "TestErrorsOnTheWire"
+  ],
+  "upstream_reference": "packages/chord/src/next/link/errors.ts",
+  "mutation": "chord/next/link/errors.go: `if details, has := wire.Get(\"details\"); has {` -> `...; !has {` (TestErrorsOnTheWire FAILS)"
+ },
+ {
+  "upstream": "packages/chord/src/next/link/ipc.ts",
+  "package": "./chord/next/link",
+  "tests": [
+   "TestIPCLinksOverAFakePort"
+  ],
+  "upstream_reference": "packages/chord/src/next/link/ipc.ts",
+  "mutation": "chord/next/link/ipc.go: Close's `if port.Connected() {` -> `if !port.Connected() {` (TestIPCLinksOverAFakePort FAILS)"
+ },
+ {
+  "upstream": "packages/chord/src/next/link/ipc.ts",
+  "package": "./chord/next/link",
+  "tests": [
+   "TestIPCLinksToAChild"
+  ],
+  "upstream_reference": "packages/chord/src/next/link/ipc.ts",
+  "mutation": "chord/next/link/ipc.go: send callback `if err != nil {\\n end.end()` -> `if err == nil {` (TestIPCLinksToAChild FAILS)"
+ },
+ {
+  "upstream": "packages/chord/src/next/link/link.ts",
+  "package": "./chord/next/link",
+  "tests": [
+   "TestMemoryLinks"
+  ],
+  "upstream_reference": "packages/chord/src/next/link/link.ts",
+  "mutation": "chord/next/link/link.go: `end.queue.post(peer.end)` -> `_ = peer` (TestMemoryLinks FAILS)"
+ },
+ {
+  "upstream": "packages/chord/src/next/link/message.ts",
+  "package": "./chord/next/link",
+  "tests": [
+   "TestMessages"
+  ],
+  "upstream_reference": "packages/chord/src/next/link/message.ts",
+  "mutation": "chord/next/link/message.go: `return !origin.Ok || origin.Value >= 1` -> `>= 0` (TestMessages FAILS)"
+ },
+ {
+  "upstream": "packages/chord/src/next/link/part.ts",
+  "package": "./chord/next/link",
+  "tests": [
+   "TestLimitsPerPart"
+  ],
+  "upstream_reference": "packages/chord/src/next/link/part.ts",
+  "mutation": "chord/next/link/part.go: `Decoded: 64 * mib` -> `Decoded: 65 * mib` (TestLimitsPerPart FAILS)"
+ },
+ {
+  "upstream": "packages/chord/src/next/link/part.ts",
+  "package": "./chord/next/link",
+  "tests": [
+   "TestOpeningAPart",
+   "TestTheAsynchronousInflate"
+  ],
+  "upstream_reference": "packages/chord/src/next/link/part.ts",
+  "mutation": "chord/next/link/part.go: `> limit {` in InflateAsync -> `> limit+1 {` (TestOpeningAPart, TestTheAsynchronousInflate FAIL)"
+ },
+ {
+  "upstream": "packages/chord/src/next/link/text.ts",
+  "package": "./chord/next/link",
+  "tests": [
+   "TestTheTextCodec"
+  ],
+  "upstream_reference": "packages/chord/src/next/link/text.ts",
+  "mutation": "chord/next/link/text.go: `strconv.Itoa(origin.Value)` -> `strconv.Itoa(origin.Value+1)` (TestTheTextCodec FAILS)"
+ },
+ {
+  "upstream": "packages/chord/src/next/link/values.ts",
+  "package": "./chord/next/link",
+  "tests": [
+   "TestPayloads"
+  ],
+  "upstream_reference": "packages/chord/src/next/link/values.ts",
+  "mutation": "chord/next/link/values.go: `index >= float64(len(segments))` -> `index > float64(len(segments))` (TestPayloads FAILS)"
+ },
+ {
+  "upstream": "packages/chord/src/next/link/websocket.ts",
+  "package": "./chord/next/link",
+  "tests": [
+   "TestWebSocketLinksOverAFakeSocket"
+  ],
+  "upstream_reference": "packages/chord/src/next/link/websocket.ts",
+  "mutation": "chord/next/link/websocket.go: `socket.SetBinaryType(\"arraybuffer\")` -> `_ = socket` (TestWebSocketLinksOverAFakeSocket FAILS)"
+ },
+ {
+  "upstream": "packages/chord/src/next/state/batch.ts",
+  "package": "./chord/next/state",
+  "tests": [
+   "TestBatchWithin"
+  ],
+  "upstream_reference": "packages/chord/src/next/state/batch.ts",
+  "mutation": "chord/next/state/batch.go: `b.sending = true` -> `b.sending = false` in Commit (TestBatchWithin FAILS)"
+ },
+ {
+  "upstream": "packages/chord/src/next/state/derive.ts",
+  "package": "./chord/next/state",
+  "tests": [
+   "TestDeriveFailures"
+  ],
+  "upstream_reference": "packages/chord/src/next/state/derive.ts",
+  "mutation": "chord/next/state/derive.go: `if !d.failing && d.report != nil {` -> `if d.report != nil {` (TestDeriveFailures FAILS)"
+ },
+ {
+  "upstream": "packages/chord/src/next/state/native-source.ts",
+  "package": "./chord/next/state",
+  "tests": [
+   "TestFollowedSourceFrames"
+  ],
+  "upstream_reference": "packages/chord/src/next/state/native-source.ts",
+  "mutation": "chord/next/state/native_source.go: `if none || (current.kind == shownValue && Identical(current.value, start.Value)) {` -> `if none {` (TestFollowedSourceFrames FAILS)"
+ },
+ {
+  "upstream": "packages/chord/src/next/state/watchable.ts",
+  "package": "./chord/next/state",
+  "tests": [
+   "TestSourceSubscribers"
+  ],
+  "upstream_reference": "packages/chord/src/next/state/watchable.ts",
+  "mutation": "chord/next/state/watchable.go: `Watched()` `s.watches.Len() > 0 || s.subscribers.Len() > 0` -> `s.watches.Len() > 0` (TestSourceSubscribers FAILS)"
+ },
+ {
+  "upstream": "packages/chord/src/next/state/watchable.ts",
+  "package": "./chord/next/state",
+  "tests": [
+   "TestIdentical"
+  ],
+  "upstream_reference": "packages/chord/src/next/state/watchable.ts (Object.is semantics of identical.go)",
+  "mutation": "chord/next/state/identical.go: float64 case `return ok && x == y` -> `return ok && (x == y || (x != x && y != y))` (TestIdentical FAILS)"
+ },
+ {
+  "upstream": "packages/chord/src/next/state/watchable.ts",
+  "package": "./chord/next/state",
+  "tests": [
+   "TestDependentSetHoldsEachMemberOnce"
+  ],
+  "upstream_reference": "packages/chord/src/next/state/watchable.ts (dependents is a Set); new test chord/next/state/evidence_linkstate_test.go",
+  "mutation": "chord/next/state/set.go: Add's `if slices.Contains(set.items, key) { return }` -> `if false { return }` (TestDependentSetHoldsEachMemberOnce FAILS)"
+ },
+ {
+  "upstream": "packages/chord/src/next/state/writable.ts",
+  "package": "./chord/next/state",
+  "tests": [
+   "TestWritable"
+  ],
+  "upstream_reference": "packages/chord/src/next/state/writable.ts",
+  "mutation": "chord/next/state/writable.go: `if Identical(value, w.value) {` -> `if false {` (TestWritable FAILS)"
+ },
+ {
+  "upstream": "packages/chord/src/next/store/table-writes.ts",
+  "package": "./chord/next/store",
+  "tests": [
+   "TestEvidenceStoreAClearedJSONRecordsNoVersion"
+  ],
+  "upstream_reference": "packages/chord/src/next/store/table-writes.ts (RecordedVersions: a clear records no json version); packages/chord/test/next/store/table-writes.test.ts row writes",
+  "mutation": "chord/next/store/table_writes.go: `if ok && entry.Node.Op != ExprNull {` -> `if ok {` (TestEvidenceStoreAClearedJSONRecordsNoVersion FAILS)"
+ },
+ {
+  "upstream": "packages/chord/src/next/store/table-writes.ts",
+  "package": "./chord/next/store",
+  "tests": [
+   "TestEvidenceStoreADropIndexRecord"
+  ],
+  "upstream_reference": "packages/chord/src/next/store/table-writes.ts (applyDropIndex); packages/chord/test/next/store/table-writes.test.ts schema writes",
+  "mutation": "chord/next/store/table_writes.go: `if index.Name != write.Name {` -> `if index.Name == write.Name {` (TestEvidenceStoreADropIndexRecord FAILS)"
+ },
+ {
+  "upstream": "packages/chord/src/next/store/table-changes.ts",
+  "package": "./chord/next/store",
+  "tests": [
+   "TestTableChanges"
+  ],
+  "upstream_reference": "packages/chord/test/next/store/table-changes.test.ts (tx.get overlay)",
+  "mutation": "chord/next/store/table_changes.go: `writes[start-1].kind == keyUpdate` -> `writes[start-1].kind == keyDelete` (TestTableChanges FAILS)"
+ },
+ {
+  "upstream": "packages/chord/src/next/store/table-handle.ts",
+  "package": "./chord/next/store",
+  "tests": [
+   "TestTableHandle"
+  ],
+  "upstream_reference": "packages/chord/test/next/store/table-handle.test.ts (page limit + 1, rows)",
+  "mutation": "chord/next/store/table_handle.go: `order, after, limit+1, nil)` -> `order, after, limit, nil)` (TestTableHandle FAILS)"
+ },
+ {
+  "upstream": "packages/chord/src/next/store/table-handle.ts",
+  "package": "./chord/next/store",
+  "tests": [
+   "TestTableHandle"
+  ],
+  "upstream_reference": "packages/chord/test/next/store/table-handle.test.ts (page next cursor)",
+  "mutation": "chord/next/store/table_handle.go: `more := int64(len(stored)) > limit` -> `more := int64(len(stored)) >= limit` (TestTableHandle FAILS)"
+ },
+ {
+  "upstream": "packages/chord/src/next/store/engine.ts",
+  "package": "./chord/next/store",
+  "tests": [
+   "TestEngineHistoryRules"
+  ],
+  "upstream_reference": "packages/chord/test/next/store/engine.test.ts (history rules)",
+  "mutation": "chord/next/store/engine.go: `content.Kind == ContentBase && history != HistoryRewindable` -> `content.Kind == ContentBase && history == HistoryRewindable` (TestEngineHistoryRules FAILS)"
+ },
+ {
+  "upstream": "packages/chord/src/next/store/engine.ts",
+  "package": "./chord/next/store",
+  "tests": [
+   "TestEngineHistoryRules"
+  ],
+  "upstream_reference": "packages/chord/test/next/store/engine.test.ts (history rules, retired latest)",
+  "mutation": "chord/next/store/engine.go: `if history == HistoryNone { (dropRetired DELETE FROM documents)` -> `if history != HistoryNone {` (TestEngineHistoryRules FAILS)"
+ },
+ {
+  "upstream": "packages/chord/src/next/store/outbox.ts",
+  "package": "./chord/next/store",
+  "tests": [
+   "TestEvidenceStoreAOutboxBounds"
+  ],
+  "upstream_reference": "packages/chord/test/next/store/outbox.test.ts (read bounds, trim)",
+  "mutation": "chord/next/store/outbox.go: `afterSeq < floor ||` -> `afterSeq <= floor ||` (TestEvidenceStoreAOutboxBounds FAILS)"
+ },
+ {
+  "upstream": "packages/chord/src/next/store/outbox.ts",
+  "package": "./chord/next/store",
+  "tests": [
+   "TestEvidenceStoreAOutboxBounds"
+  ],
+  "upstream_reference": "packages/chord/test/next/store/outbox.test.ts (trim beyond lastSeq)",
+  "mutation": "chord/next/store/outbox.go: `throughSeq > lastSeq {` -> `throughSeq >= lastSeq {` (TestEvidenceStoreAOutboxBounds FAILS)"
+ },
+ {
+  "upstream": "packages/chord/src/next/store/outbox.ts",
+  "package": "./chord/next/store",
+  "tests": [
+   "TestEvidenceStoreAOutboxBounds"
+  ],
+  "upstream_reference": "packages/chord/test/next/store/outbox.test.ts (read limit)",
+  "mutation": "chord/next/store/outbox.go: `if limit < 1 {` -> `if limit < 0 {` (TestEvidenceStoreAOutboxBounds FAILS)"
+ },
+ {
+  "upstream": "packages/chord/src/next/store/store.ts",
+  "package": "./chord/next/store",
+  "tests": [
+   "TestStore"
+  ],
+  "upstream_reference": "packages/chord/test/next/store/store.test.ts (commit step seqs)",
+  "mutation": "chord/next/store/store.go: `seq := lastSeq + 1` -> `seq := lastSeq + 2` (TestStore FAILS)"
+ },
+ {
+  "upstream": "packages/chord/src/next/store/applier.ts",
+  "package": "./chord/next/store",
+  "tests": [
+   "TestApplyBatch"
+  ],
+  "upstream_reference": "packages/chord/src/next/store/applier.ts applyCounted recorded counts; packages/chord/test/next/store/apply-batch.test.ts",
+  "mutation": "chord/next/store/applier.go: `if changed != count {` -> `if changed == count {` (TestApplyBatch FAILS)"
+ },
+ {
+  "upstream": "packages/chord/src/next/store/applier.ts",
+  "package": "./chord/next/store",
+  "tests": [
+   "TestApplier"
+  ],
+  "upstream_reference": "packages/chord/test/next/store/applier.test.ts (applied writes, refusals)",
+  "mutation": "chord/next/store/applier.go: `if len(write.Key) == 0 {` -> `if len(write.Key) != 0 {` (TestApplier FAILS)"
+ },
+ {
+  "upstream": "packages/chord/src/next/store/apply-batch.ts",
+  "package": "./chord/next/store",
+  "tests": [
+   "TestEvidenceStoreABatchSeqGap"
+  ],
+  "upstream_reference": "packages/chord/test/next/store/apply-batch.test.ts (a commit that does not follow the one before)",
+  "mutation": "chord/next/store/apply_batch.go: `commit.Seq != lastSeq+1` -> `commit.Seq < lastSeq+1` (TestEvidenceStoreABatchSeqGap FAILS)"
+ },
+ {
+  "upstream": "packages/chord/src/next/store/apply-batch.ts",
+  "package": "./chord/next/store",
+  "tests": [
+   "TestApplyBatch"
+  ],
+  "upstream_reference": "packages/chord/test/next/store/apply-batch.test.ts (next id not above a created document)",
+  "mutation": "chord/next/store/apply_batch.go: `if id < nextID ||` -> `if id <= nextID ||` (TestApplyBatch FAILS)"
+ },
+ {
+  "upstream": "packages/chord/src/next/store/archive.ts",
+  "package": "./chord/next/store",
+  "tests": [
+   "TestArchivePartSchema"
+  ],
+  "upstream_reference": "packages/chord/test/next/store/archive.test.ts",
+  "mutation": "chord/next/store/archive.go: `contracts.Prop(\"optional\", contracts.Opt(contracts.Lit(true)))` -> `contracts.Prop(\"optional\", contracts.Opt(contracts.Lit(false)))` (TestArchivePartSchema FAILS)"
+ },
+ {
+  "upstream": "packages/chord/src/next/store/archive.ts",
+  "package": "./chord/next/store",
+  "tests": [
+   "TestArchivePartSchema"
+  ],
+  "upstream_reference": "packages/chord/test/next/store/archive.test.ts (negative count, version 0)",
+  "mutation": "chord/next/store/archive.go: `contracts.Min(float64(min))` -> `contracts.Min(float64(min)-1)` (TestArchivePartSchema FAILS)"
+ },
+ {
+  "upstream": "packages/chord/src/next/store/export.ts",
+  "package": "./chord/next/store",
+  "tests": [
+   "TestExportParts"
+  ],
+  "upstream_reference": "packages/chord/test/next/store/export.test.ts (paged puts)",
+  "mutation": "chord/next/store/export.go: `if int64(len(rows)) < ExportPage {` -> `if int64(len(rows)) <= ExportPage {` (TestExportParts FAILS)"
+ },
+ {
+  "upstream": "packages/chord/src/next/store/export.ts",
+  "package": "./chord/next/store",
+  "tests": [
+   "TestExportRevisions"
+  ],
+  "upstream_reference": "packages/chord/test/next/store/export.test.ts (a history longer than a page)",
+  "mutation": "chord/next/store/export.go: `if int64(len(page)) < ExportPage {` -> `if int64(len(page)) <= ExportPage {` (TestExportRevisions FAILS)"
+ },
+ {
+  "upstream": "packages/chord/src/next/store/import.ts",
+  "package": "./chord/next/store",
+  "tests": [
+   "TestImportRefusals"
+  ],
+  "upstream_reference": "packages/chord/test/next/store/import.test.ts (a wrong end count)",
+  "mutation": "chord/next/store/import.go: `end.Writes != archive.writes` -> `end.Writes == archive.writes` (TestImportRefusals FAILS)"
+ },
+ {
+  "upstream": "packages/chord/src/next/store/import.ts",
+  "package": "./chord/next/store",
+  "tests": [
+   "TestImportRefusals"
+  ],
+  "upstream_reference": "packages/chord/test/next/store/import.test.ts (schema newer than the store)",
+  "mutation": "chord/next/store/import.go: `manifest.Schema > StoreSchema` -> `manifest.Schema >= StoreSchema` (TestImportRefusals FAILS)"
+ },
+ {
+  "upstream": "packages/chord/src/next/store/text.ts",
+  "package": "./chord/next/store",
+  "tests": [
+   "TestCompareText"
+  ],
+  "upstream_reference": "packages/chord/test/next/store/text.test.ts (compareText)",
+  "mutation": "chord/next/store/text.go: `return strings.Compare(a, b)` -> `return strings.Compare(b, a)` (TestCompareText FAILS)"
+ },
+ {
+  "upstream": "packages/chord/src/next/store/text.ts",
+  "package": "./chord/next/store",
+  "tests": [
+   "TestEvidenceStoreAStoredTextNULAtStart"
+  ],
+  "upstream_reference": "packages/chord/test/next/store/text.test.ts (storedText refuses NUL)",
+  "mutation": "chord/next/store/text.go: `strings.IndexByte(text, 0) >= 0` -> `strings.IndexByte(text, 0) > 0` (TestEvidenceStoreAStoredTextNULAtStart FAILS)"
+ },
+ {
+  "upstream": "packages/chord/src/next/store/text.ts",
+  "package": "./chord/next/store",
+  "tests": [
+   "TestPrefixUpperBound"
+  ],
+  "upstream_reference": "packages/chord/test/next/store/text.test.ts (prefixUpperBound)",
+  "mutation": "chord/next/store/text.go: `next := last + 1` -> `next := last + 2` (TestPrefixUpperBound FAILS)"
+ },
+ {
+  "upstream": "packages/chord/src/next/store/allocator.ts",
+  "package": "./chord/next/store",
+  "tests": [
+   "TestAllocator"
+  ],
+  "upstream_reference": "packages/chord/test/next/store/allocator.test.ts (saturation)",
+  "mutation": "chord/next/store/allocator.go: `ids.next >= MaxSafeInteger` -> `ids.next > MaxSafeInteger` (TestAllocator FAILS)"
+ },
+ {
+  "upstream": "packages/chord/src/next/store/allocator.ts",
+  "package": "./chord/next/store",
+  "tests": [
+   "TestEvidenceStoreAAllocatorRaiseToValue"
+  ],
+  "upstream_reference": "packages/chord/test/next/store/allocator.test.ts (raise above an explicit id)",
+  "mutation": "chord/next/store/allocator.go: `if id >= ids.next {` -> `if id > ids.next {` (TestEvidenceStoreAAllocatorRaiseToValue FAILS)"
+ },
+ {
+  "upstream": "packages/chord/src/next/store/claims.ts",
+  "package": "./chord/next/store",
+  "tests": [
+   "TestClaims"
+  ],
+  "upstream_reference": "packages/chord/test/next/store/claims.test.ts",
+  "mutation": "chord/next/store/claims.go: `held && holder == claimant` -> `held && holder != claimant` (TestClaims FAILS)"
+ },
+ {
+  "upstream": "packages/chord/src/next/store/refusal.ts",
+  "package": "./chord/next/store",
+  "tests": [
+   "TestCheckFailureCode"
+  ],
+  "upstream_reference": "packages/chord/test/next/store/refusal.test.ts (check code)",
+  "mutation": "chord/next/store/refusal.go: `coded.Code() == sqliteConstraintCheck` -> `coded.Code() != sqliteConstraintCheck` (TestCheckFailureCode FAILS)"
+ },
+ {
+  "upstream": "packages/chord/src/next/store/refusal.ts",
+  "package": "./chord/next/store",
+  "tests": [
+   "TestClassification"
+  ],
+  "upstream_reference": "packages/chord/test/next/store/refusal.test.ts (classification by message)",
+  "mutation": "chord/next/store/refusal.go: `\"CHECK constraint failed\"` -> `\"CHECK constraint failedX\"` (TestClassification FAILS)"
+ },
+ {
+  "upstream": "packages/chord/src/next/store/columns.ts",
+  "package": "./chord/next/store",
+  "tests": [
+   "TestColumnDescriptors"
+  ],
+  "upstream_reference": "packages/chord/test/next/store/columns.test.ts (descriptors, names)",
+  "mutation": "chord/next/store/columns.go: ``^[A-Za-z_][A-Za-z0-9_]*$`` -> ``^[A-Za-z][A-Za-z0-9_]*$`` (TestColumnDescriptors FAILS)"
+ },
+ {
+  "upstream": "packages/chord/src/next/store/columns.ts",
+  "package": "./chord/next/store",
+  "tests": [
+   "TestColumnDescriptors"
+  ],
+  "upstream_reference": "packages/chord/test/next/store/columns.test.ts (descriptors: records)",
+  "mutation": "chord/next/store/columns.go: `Type: column.Type, Optional: column.Optional, Default: column.Default` -> `Type: column.Type, Default: column.Default` (TestColumnDescriptors FAILS)"
+ },
+ {
+  "upstream": "packages/chord/src/next/store/columns.ts",
+  "package": "./chord/next/store",
+  "tests": [
+   "TestEvidenceStoreAColumnsOptionalRowType"
+  ],
+  "upstream_reference": "designed out under the type-level class: packages/chord/test/next/store/columns.test.ts 'row types > types rows with optional opt(...) fields' is a TypeScript Equal<RowOf<>> check; in Go the nullable column exists only through Opt (func(ColumnSchema) ColumnSchema) setting the Optional bool, and a Row is map[string]any with a NULL optional column absent, checked by the compiler through the `var _ ...` assertions and asserted by TestEvidenceStoreAColumnsOptionalRowType",
+  "mutation": "chord/next/store/columns.go: `Type: typ, Optional: schema.Optional, Default: fallback}` -> `Type: typ, Default: fallback}` (TestEvidenceStoreAColumnsOptionalRowType FAILS)"
+ },
+ {
+  "upstream": "packages/chord/src/next/store/json-column.ts",
+  "package": "./chord/next/store",
+  "tests": [
+   "TestReadingACell"
+  ],
+  "upstream_reference": "packages/chord/test/next/store/json-column.test.ts",
+  "mutation": "chord/next/store/json_column.go: `if version > column.Version {` -> `if version > column.Version+1000 {` (TestReadingACell FAILS)"
+ },
+ {
+  "upstream": "packages/chord/src/next/store/json-column.ts",
+  "package": "./chord/next/store",
+  "tests": [
+   "TestJsonColumnDeclaration"
+  ],
+  "upstream_reference": "packages/chord/test/next/store/json-column.test.ts",
+  "mutation": "chord/next/store/json_column.go: `version < 1 ||` -> `version < 0 ||` (TestJsonColumnDeclaration FAILS)"
+ },
+ {
+  "upstream": "packages/chord/src/next/store/rows.ts",
+  "package": "./chord/next/store",
+  "tests": [
+   "TestDecoding"
+  ],
+  "upstream_reference": "packages/chord/test/next/store/rows.test.ts",
+  "mutation": "chord/next/store/rows.go: `row[column.Name] = value == int64(1)` -> `row[column.Name] = value == int64(0)` (TestDecoding FAILS)"
+ },
+ {
+  "upstream": "packages/chord/src/next/store/rows.ts",
+  "package": "./chord/next/store",
+  "tests": [
+   "TestPutRows"
+  ],
+  "upstream_reference": "packages/chord/test/next/store/rows.test.ts",
+  "mutation": "chord/next/store/rows.go: `params = append(params, int64(version))` -> `params = append(params, int64(version+1))` (TestPutRows FAILS)"
+ },
+ {
+  "upstream": "packages/chord/src/next/store/rows.ts",
+  "package": "./chord/next/store",
+  "tests": [
+   "TestKeys",
+   "TestPutRows"
+  ],
+  "upstream_reference": "packages/chord/test/next/store/rows.test.ts",
+  "mutation": "chord/next/store/rows.go: `if !names[field] {` -> `if false {` (TestKeys and TestPutRows FAILS)"
+ },
+ {
+  "upstream": "packages/chord/src/next/store/sql.ts",
+  "package": "./chord/next/store",
+  "tests": [
+   "TestSqlDDL"
+  ],
+  "upstream_reference": "packages/chord/test/next/store/sql.test.ts",
+  "mutation": "chord/next/store/sql.go: `rowid = first.Type == ColInt` -> `rowid = first.Type == ColStr` (TestSqlDDL FAILS)"
+ },
+ {
+  "upstream": "packages/chord/src/next/store/sql.ts",
+  "package": "./chord/next/store",
+  "tests": [
+   "TestSqlStatements"
+  ],
+  "upstream_reference": "packages/chord/test/next/store/sql.test.ts",
+  "mutation": "chord/next/store/sql.go: `\"INSERT OR REPLACE INTO \"` -> `\"INSERT INTO \"` (TestSqlStatements FAILS)"
+ },
+ {
+  "upstream": "packages/chord/src/next/store/sql.ts",
+  "package": "./chord/next/store",
+  "tests": [
+   "TestSqlStatements"
+  ],
+  "upstream_reference": "packages/chord/test/next/store/sql.test.ts",
+  "mutation": "chord/next/store/sql.go: `return Quote(node.Column) + \" >= ?\"` -> `return Quote(node.Column) + \" > ?\"` (TestSqlStatements FAILS)"
+ },
+ {
+  "upstream": "packages/chord/src/next/store/jsonl.ts",
+  "package": "./chord/next/store",
+  "tests": [
+   "TestJsonl"
+  ],
+  "upstream_reference": "packages/chord/test/next/store/jsonl.test.ts",
+  "mutation": "chord/next/store/jsonl.go: `strconv.Itoa(decoder.line+1)+\" is not UTF-8\"` -> `strconv.Itoa(decoder.line)+\" is not UTF-8\"` (TestJsonl FAILS)"
+ },
+ {
+  "upstream": "packages/chord/src/next/store/jsonl.ts",
+  "package": "./chord/next/store",
+  "tests": [
+   "TestJsonl"
+  ],
+  "upstream_reference": "packages/chord/test/next/store/jsonl.test.ts",
+  "mutation": "chord/next/store/jsonl.go: `encoder.lines = append(encoder.lines, '\\n')` -> `encoder.lines = append(encoder.lines, ' ')` (TestJsonl FAILS)"
+ },
+ {
+  "upstream": "packages/chord/src/next/store/catalog.ts",
+  "package": "./chord/next/store",
+  "tests": [
+   "TestCatalog"
+  ],
+  "upstream_reference": "packages/chord/test/next/store/catalog.test.ts",
+  "mutation": "chord/next/store/catalog.go: `record.Version = int(version)` -> `record.Version = int(version) + 1` (TestCatalog FAILS)"
+ },
+ {
+  "upstream": "packages/chord/src/next/store/expression.ts",
+  "package": "./chord/next/store",
+  "tests": [
+   "TestCompilingSets"
+  ],
+  "upstream_reference": "packages/chord/test/next/store/expression.test.ts",
+  "mutation": "chord/next/store/expression.go: `if slices.Contains(table.Key, name) {` -> `if false {` (TestCompilingSets FAILS)"
+ },
+ {
+  "upstream": "packages/chord/src/next/store/expression.ts",
+  "package": "./chord/next/store",
+  "tests": [
+   "TestCompilingConditions"
+  ],
+  "upstream_reference": "packages/chord/test/next/store/expression.test.ts",
+  "mutation": "chord/next/store/expression.go: `if column.Type != ColStr {` (the prefix case of CompileWhere) -> `if false {` (TestCompilingConditions FAILS)"
+ },
+ {
+  "upstream": "packages/chord/src/next/store/expression.ts",
+  "package": "./chord/next/store",
+  "tests": [
+   "TestCompilingSets"
+  ],
+  "upstream_reference": "packages/chord/test/next/store/expression.test.ts",
+  "mutation": "chord/next/store/expression.go: `if compiled.nullable && !column.Optional {` -> `if false {` (TestCompilingSets FAILS)"
+ },
+ {
+  "upstream": "packages/chord/src/next/store/evaluate.ts",
+  "package": "./chord/next/store",
+  "tests": [
+   "TestEvaluator",
+   "TestEvaluatorAgreesWithSQLite"
+  ],
+  "upstream_reference": "packages/chord/test/next/store/evaluate.test.ts",
+  "mutation": "chord/next/store/evaluate.go: `return fromBool(!present)` -> `return fromBool(present)` (TestEvaluator and TestEvaluatorAgreesWithSQLite FAILS)"
+ },
+ {
+  "upstream": "packages/chord/src/next/store/evaluate.ts",
+  "package": "./chord/next/store",
+  "tests": [
+   "TestEvaluatorAgreesWithSQLite"
+  ],
+  "upstream_reference": "packages/chord/test/next/store/evaluate.test.ts",
+  "mutation": "chord/next/store/evaluate.go: `if CompareScalar(a, b) >= 0 {` -> `if CompareScalar(a, b) < 0 {` (TestEvaluatorAgreesWithSQLite FAILS)"
+ },
+ {
+  "upstream": "packages/chord/src/next/store/evaluate.ts",
+  "package": "./chord/next/store",
+  "tests": [
+   "TestEvaluator"
+  ],
+  "upstream_reference": "packages/chord/test/next/store/evaluate.test.ts",
+  "mutation": "chord/next/store/evaluate.go: `if result > float64(MaxSafeInteger) || result < -float64(MaxSafeInteger) {` -> `if result > float64(MaxSafeInteger)*2 || result < -float64(MaxSafeInteger)*2 {` (TestEvaluator FAILS)"
+ },
+ {
+  "upstream": "packages/chord/src/next/store/query.ts",
+  "package": "./chord/next/store",
+  "tests": [
+   "TestQueries"
+  ],
+  "upstream_reference": "packages/chord/test/next/store/query.test.ts",
+  "mutation": "chord/next/store/query.go: `if slices.Contains(query.orderBy, column.Name) {` -> `if false {` (TestQueries FAILS)"
+ },
+ {
+  "upstream": "packages/chord/src/next/store/query.ts",
+  "package": "./chord/next/store",
+  "tests": [
+   "TestQueries"
+  ],
+  "upstream_reference": "packages/chord/test/next/store/query.test.ts",
+  "mutation": "chord/next/store/query.go: `if !slices.Contains(query.orderBy, column) {` -> `if true {` (TestQueries FAILS)"
+ },
+ {
+  "upstream": "packages/chord/src/next/store/query.ts",
+  "package": "./chord/next/store",
+  "tests": [
+   "TestCursors"
+  ],
+  "upstream_reference": "packages/chord/test/next/store/query.test.ts",
+  "mutation": "chord/next/store/query.go: `d != order.Direction {` -> `d != order.Direction && false {` (TestCursors FAILS)"
+ },
+ {
+  "upstream": "packages/chord/src/next/store/table.ts",
+  "package": "./chord/next/store",
+  "tests": [
+   "TestDefineTable"
+  ],
+  "upstream_reference": "packages/chord/test/next/store/table.test.ts",
+  "mutation": "chord/next/store/table.go: `options.Version < 1 ||` -> `options.Version < 0 ||` (TestDefineTable FAILS)"
+ },
+ {
+  "upstream": "packages/chord/src/next/store/table.ts",
+  "package": "./chord/next/store",
+  "tests": [
+   "TestDefineTable"
+  ],
+  "upstream_reference": "packages/chord/test/next/store/table.test.ts",
+  "mutation": "chord/next/store/table.go: `if len(key) == 0 {` -> `if false {` (TestDefineTable FAILS)"
+ },
+ {
+  "upstream": "packages/chord/src/next/store/table.ts",
+  "package": "./chord/next/store",
+  "tests": [
+   "TestDefineTable"
+  ],
+  "upstream_reference": "packages/chord/test/next/store/table.test.ts",
+  "mutation": "chord/next/store/table.go: `column.Optional || (column.Type != ColStr && column.Type != ColInt)` -> `(column.Type != ColStr && column.Type != ColInt)` (TestDefineTable FAILS)"
+ },
+ {
+  "upstream": "packages/chord/src/next/store/table-history.ts",
+  "package": "./chord/next/store",
+  "tests": [
+   "TestPlans",
+   "TestPlanRefusals"
+  ],
+  "upstream_reference": "packages/chord/test/next/store/table-history.test.ts",
+  "mutation": "chord/next/store/table_history.go: `if version > definition.Version {` -> `if version >= definition.Version {` (TestPlans and TestPlanRefusals FAILS)"
+ },
+ {
+  "upstream": "packages/chord/src/next/store/table-history.ts",
+  "package": "./chord/next/store",
+  "tests": [
+   "TestPlans"
+  ],
+  "upstream_reference": "packages/chord/test/next/store/table-history.test.ts",
+  "mutation": "chord/next/store/table_history.go: `if each.Version >= version {` -> `if each.Version > version {` (TestPlans FAILS)"
+ },
+ {
+  "upstream": "packages/chord/src/next/store/table-history.ts",
+  "package": "./chord/next/store",
+  "tests": [
+   "TestPlanRefusals"
+  ],
+  "upstream_reference": "packages/chord/test/next/store/table-history.test.ts",
+  "mutation": "chord/next/store/table_history.go: `if state == StateReady && version == definition.Version {` -> `if version == definition.Version {` (TestPlanRefusals FAILS)"
+ },
+ {
+  "upstream": "packages/chord/src/next/store/table-evolve.ts",
+  "package": "./chord/next/store",
+  "tests": [
+   "TestEvolveChecks"
+  ],
+  "upstream_reference": "packages/chord/test/next/store/table-evolve.test.ts",
+  "mutation": "chord/next/store/table_evolve.go: `if slices.Contains(e.key, name) {` -> `if false {` (TestEvolveChecks FAILS)"
+ },
+ {
+  "upstream": "packages/chord/src/next/store/table-evolve.ts",
+  "package": "./chord/next/store",
+  "tests": [
+   "TestEvolveEdits"
+  ],
+  "upstream_reference": "packages/chord/test/next/store/table-evolve.test.ts",
+  "mutation": "chord/next/store/table_evolve.go: `e.key[i] = rename(e.key[i])` -> `_ = rename(e.key[i])` (TestEvolveEdits FAILS)"
+ },
+ {
+  "upstream": "packages/chord/src/next/store/table-evolve.ts",
+  "package": "./chord/next/store",
+  "tests": [
+   "TestEvolveChecks"
+  ],
+  "upstream_reference": "packages/chord/test/next/store/table-evolve.test.ts",
+  "mutation": "chord/next/store/table_evolve.go: `if position < 0 {` -> `if false {` (TestEvolveChecks FAILS)"
+ },
+ {
+  "upstream": "packages/chord/src/next/store/table-migration.ts",
+  "package": "./chord/next/store",
+  "tests": [
+   "TestMigrationYieldsBetweenChunksOfAThreeChunkMigration",
+   "TestMigrationRunsADueCallbackBetweenChunksOfATenChunkMigration"
+  ],
+  "upstream_reference": "packages/chord/test/next/store/table-migration.test.ts describe(\"the chunk yield\"): deterministic ports in evidence_storeB_test.go (owner decision: no timer class); the yield is the injected target.yield (production: runtime.Gosched)",
+  "mutation": "chord/next/store/table_migration.go: `target.yield()` (the yield between two chunks) -> `_ = target.yield` (TestMigrationYieldsBetweenChunksOfAThreeChunkMigration and TestMigrationRunsADueCallbackBetweenChunksOfATenChunkMigration FAILS)"
+ },
+ {
+  "upstream": "packages/chord/src/next/store/table-migration.ts",
+  "package": "./chord/next/store",
+  "tests": [
+   "TestMigrationYieldsBetweenChunksOfAThreeChunkMigration",
+   "TestMigrationRunsADueCallbackBetweenChunksOfATenChunkMigration"
+  ],
+  "upstream_reference": "packages/chord/test/next/store/table-migration.test.ts (eager migrations: chunks of 100)",
+  "mutation": "chord/next/store/table_migration.go: `last := len(stored) <= MigrationChunk` -> `last := len(stored) < MigrationChunk` (TestMigrationYieldsBetweenChunksOfAThreeChunkMigration and TestMigrationRunsADueCallbackBetweenChunksOfATenChunkMigration FAILS)"
+ },
+ {
+  "upstream": "packages/chord/src/next/store/table-migration.ts",
+  "package": "./chord/next/store",
+  "tests": [
+   "TestMigrationResumption"
+  ],
+  "upstream_reference": "packages/chord/test/next/store/table-migration.test.ts (resumption)",
+  "mutation": "chord/next/store/table_migration.go: `if from == FirstBegin {` -> `if true {` (TestMigrationResumption FAILS)"
+ },
+ {
+  "upstream": "packages/chord/src/next/store/adapter.ts",
+  "package": "./chord/next/store",
+  "tests": [
+   "TestOwnerTablePutStampsTheStepsSeqAndReadsDecode"
+  ],
+  "upstream_reference": "packages/chord/src/next/store/adapter.ts (no Pi test file; Go tests in evidence_storeB_adapter_test.go follow the source)",
+  "mutation": "chord/next/store/adapter.go: `params[index] = step.Seq` -> `params[index] = int64(0)` (TestOwnerTablePutStampsTheStepsSeqAndReadsDecode FAILS)"
+ },
+ {
+  "upstream": "packages/chord/src/next/store/adapter.ts",
+  "package": "./chord/next/store",
+  "tests": [
+   "TestOwnerTablePreparedTexts"
+  ],
+  "upstream_reference": "packages/chord/src/next/store/adapter.ts (no Pi test file; Go tests in evidence_storeB_adapter_test.go follow the source)",
+  "mutation": "chord/next/store/adapter.go: `sql = before + \"LIMIT 1\"` -> `sql = before + \"LIMIT 2\"` (TestOwnerTablePreparedTexts FAILS)"
+ },
+ {
+  "upstream": "packages/chord/src/next/store/adapter.ts",
+  "package": "./chord/next/store",
+  "tests": [
+   "TestOwnerTableJsonVersionAndReader"
+  ],
+  "upstream_reference": "packages/chord/src/next/store/adapter.ts (no Pi test file; Go tests in evidence_storeB_adapter_test.go follow the source)",
+  "mutation": "chord/next/store/adapter.go: `return 0, table.notJson(column)` -> `return 0, nil` (TestOwnerTableJsonVersionAndReader FAILS)"
+ },
+ {
+  "upstream": "packages/chord/src/next/store/adapter.ts",
+  "package": "./chord/next/store",
+  "tests": [
+   "TestStoreOwnerTablesDeclareAndPrepare"
+  ],
+  "upstream_reference": "packages/chord/src/next/store/adapter.ts (no Pi test file; Go tests in evidence_storeB_adapter_test.go follow the source)",
+  "mutation": "chord/next/store/adapter.go: `if err := owned.Store.Claims.Table(table.Sql.Table, owned.claimant); err != nil {` -> `if err := owned.Store.Claims.Table(table.Sql.Table, owned.claimant); err != nil && false {` (TestStoreOwnerTablesDeclareAndPrepare FAILS)"
+ },
+ {
+  "upstream": "packages/chord/src/next/store/adapter.ts",
+  "package": "./chord/next/store",
+  "tests": [
+   "TestStoreOwnerTablesDeclareAndPrepare",
+   "TestOwnerTablePutStampsTheStepsSeqAndReadsDecode"
+  ],
+  "upstream_reference": "packages/chord/src/next/store/adapter.ts (no Pi test file; Go tests in evidence_storeB_adapter_test.go follow the source)",
+  "mutation": "chord/next/store/adapter.go: `return PrepareTables(tables, owned.Store, fence, owned.Owner, ctx)` -> `return PrepareTables(tables[:0], owned.Store, fence, owned.Owner, ctx)` (TestStoreOwnerTablesDeclareAndPrepare and TestOwnerTablePutStampsTheStepsSeqAndReadsDecode FAILS)"
+ },
+ {
+  "upstream": "packages/chord/src/next/store/backend.ts",
+  "package": "./chord/next/store",
+  "tests": [
+   "TestSqliteBackendRunsOnTheGivenDatabase"
+  ],
+  "upstream_reference": "packages/chord/src/next/store/backend.ts (no Pi test file; chord/next/store/evidence_storeB_backend_test.go)",
+  "mutation": "chord/next/store/backend.go: `&Backend{DB: db}` -> `&Backend{DB: nil}` (TestSqliteBackendRunsOnTheGivenDatabase FAILS)"
+ },
+ {
+  "upstream": "packages/chord/src/next/store/schema.ts",
+  "package": "./chord/next/store",
+  "tests": [
+   "TestStore"
+  ],
+  "upstream_reference": "packages/chord/src/next/store/schema.ts (no Pi test file; every store test opens the schema: TestStore opening)",
+  "mutation": "chord/next/store/schema.go: `if name != \"UTF-8\" {` -> `if false {` (TestStore FAILS)"
+ },
+ {
+  "upstream": "packages/chord/src/next/store/schema.ts",
+  "package": "./chord/next/store",
+  "tests": [
+   "TestStore",
+   "TestOutbox"
+  ],
+  "upstream_reference": "packages/chord/src/next/store/schema.ts (no Pi test file; every store test opens the schema: TestStore opening)",
+  "mutation": "chord/next/store/schema.go: `VALUES (1, 0, 2, 0, 0)` -> `VALUES (1, 0, 3, 0, 0)` (TestStore and TestOutbox FAILS)"
+ },
+ {
+  "upstream": "packages/chord/src/next/store/schema.ts",
+  "package": "./chord/next/store",
+  "tests": [
+   "TestApplyBatch"
+  ],
+  "upstream_reference": "packages/chord/src/next/store/schema.ts (no Pi test file; every store test opens the schema: TestStore opening)",
+  "mutation": "chord/next/store/schema.go: `CHECK (history IN ('none', 'latest', 'rewindable'))` -> `CHECK (history IN ('none', 'latest'))` (TestApplyBatch FAILS)"
+ },
+ {
+  "upstream": "packages/chord/src/next/store/step.ts",
+  "package": "./chord/next/store",
+  "tests": [
+   "TestCatalog"
+  ],
+  "upstream_reference": "packages/chord/src/next/store/step.ts (no Pi test file; exercised by every commit test)",
+  "mutation": "chord/next/store/step.go: `if record, ok := step.Tables[name]; ok {` -> `if record, ok := step.Tables[name]; ok && false {` (TestCatalog FAILS)"
+ },
+ {
+  "upstream": "packages/chord/src/next/store/step.ts",
+  "package": "./chord/next/store",
+  "tests": [
+   "TestStore"
+  ],
+  "upstream_reference": "packages/chord/src/next/store/step.ts (no Pi test file; exercised by every commit test)",
+  "mutation": "chord/next/store/step.go: `step.Statements++` in Step.RunCounted -> removed (TestStore FAILS)"
+ }
+]
