@@ -108,6 +108,10 @@ func TestInstallValidateOnlyWithoutSourceReportsConfiguredLocalPackages(t *testi
 		Checked int              `json:"checked"`
 		Missing []missingPackage `json:"missing"`
 	}
+	out, _, _ := captureStdoutStderr(t, func() int { return runPackageCommand([]string{"install", "--validate-only"}) })
+	if want := "valid: 1 configured local package resolves\n"; out != want {
+		t.Fatalf("text summary = %q, want %q", out, want)
+	}
 	var ok report
 	if err := json.Unmarshal([]byte(stdout), &ok); err != nil || !ok.Valid || ok.Checked != 1 || len(ok.Missing) != 0 {
 		t.Fatalf("report = %s (%v), want valid, checked 1, none missing", stdout, err)
