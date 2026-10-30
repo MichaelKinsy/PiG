@@ -462,3 +462,17 @@ path = "internal/photonimage/testdata/bmp-real/**"
 precedence = "closest"
 SPDX-FileCopyrightText = "The image-rs Developers"
 SPDX-License-Identifier = "MIT OR Apache-2.0"
+
+# Test GIF files of the image-rs repository (tests/images/gif, v0.24.9) and of the Go repository (src/image/testdata, in the go directory), which the Photon GIF
+# decoder corpus reads (internal/photonimage/testdata/gif-real).
+[[annotations]]
+path = "internal/photonimage/testdata/gif-real/*.gif"
+precedence = "closest"
+SPDX-FileCopyrightText = "The image-rs Developers"
+SPDX-License-Identifier = "MIT OR Apache-2.0"
+
+[[annotations]]
+path = "internal/photonimage/testdata/gif-real/go/*.gif"
+precedence = "closest"
+SPDX-FileCopyrightText = "The Go Authors"
+SPDX-License-Identifier = "BSD-3-Clause"
