@@ -18,15 +18,15 @@ import (
 )
 
 // Pi decodes the bytes of an image attachment, a clipboard image, a tool result image and a durable read with Photon
-// (`PhotonImage.new_from_byteslice`). Go's JPEG and WebP decoders give other pixels, so no production code may hand
-// those bytes to them: every decode goes through Decode. The stdlib decoders stay registered only for the lossless formats Decode falls back to.
+// (`PhotonImage.new_from_byteslice`). Go's JPEG, WebP and TIFF decoders give other pixels (or accept other files), so no production code
+// may hand those bytes to them: every decode goes through Decode. The stdlib decoders stay registered only for the lossless formats Decode falls back to.
 
 // goDecoderPackages are the packages whose Decode and DecodeConfig read an image file.
 var goDecoderPackages = []string{"image", "image/jpeg", "image/png", "image/gif", "golang.org/x/image/bmp", "golang.org/x/image/tiff", "golang.org/x/image/webp"}
 
 // lossyDecoderPackages must not be registered by production code: with them registered a stray image.Decode would
-// silently decode a JPEG or a WebP with Go's pixels instead of Photon's.
-var lossyDecoderPackages = []string{"image/jpeg", "golang.org/x/image/webp"}
+// silently decode a JPEG, a WebP or a TIFF with Go's pixels (or Go's idea of what is a valid file) instead of Photon's.
+var lossyDecoderPackages = []string{"image/jpeg", "golang.org/x/image/webp", "golang.org/x/image/tiff"}
 
 // decodeFallbackFile is the one production file that calls the standard library: Decode's fallback for the lossless formats.
 const decodeFallbackFile = "internal/photonimage/decode.go"
