@@ -330,11 +330,8 @@ func RunMcpCommand(ctx context.Context, args []string, options McpCommandOptions
 			}
 			// pig divergence (D217): Pi be15fe3c suggests the first configured name within edit distance 2.
 			suggestion := ""
-			for _, candidate := range names {
-				if editDistance(candidate, name) <= 2 {
-					suggestion = fmt.Sprintf(` Did you mean "%s"?`, candidate)
-					break
-				}
+			if index := slices.IndexFunc(names, func(candidate string) bool { return editDistance(candidate, name) <= 2 }); index >= 0 {
+				suggestion = fmt.Sprintf(` Did you mean "%s"?`, names[index])
 			}
 			c.error(fmt.Sprintf(`No MCP server named "%s".%s%s Configured: %s.`, name, suggestion, note, configured))
 			return 1
