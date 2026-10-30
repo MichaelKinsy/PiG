@@ -163,6 +163,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-2bc49c1](#bf-2bc49c1) | Node extensions read live `ctx.isIdle()` state, so background callbacks detect when a run finishes or starts | PiG's own defect | All platforms | Unreleased |
 | [BF-2be0883](#bf-2be0883) | fix(extensions): parallel Node runtime linking reports the walk-order first failure under every schedule | PiG's own defect | All platforms | Unreleased |
 | [BF-2c1959c](#bf-2c1959c) | A Mistral stream is no longer aborted mid-generation by the request timeout: the timeout now covers only the… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-2c3897f](#bf-2c3897f) | The Lisp and Python extension SDKs now give each `onThemeChange` handler the theme of its own change, in… | PiG's own defect | All platforms | Unreleased |
 | [BF-2c5db8b](#bf-2c5db8b) | A Piglet Binary with a fused Go extension starts within a few milliseconds of Stock PiG | PiG's own defect | All platforms | 0.5.0 |
 | [BF-2c88c5f](#bf-2c88c5f) | Ill-formed UTF-8 in a string that PiG re-encodes as JSON (an extension's raw JSON, tool schemas, code-mode… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-2d05dc8](#bf-2d05dc8) | A models.json cost that sets `tiers: []` (a custom model's cost, or a `modelOverrides` cost) keeps… | PiG's own defect | All platforms | 0.5.0 |
@@ -3335,6 +3336,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `2c1959cb36` (2026-10-09)
 - **Tests:** `ai/mistral_header_timeout_test.go::TestMistralTimeoutCoversOnlyResponseHeaders`, `ai/mistral_regression_test.go::TestMistralRequestLifetimeClosesBodyOnce`
 - **Release note:** A Mistral stream is no longer aborted mid-generation by the request timeout: the timeout now covers only the wait for response headers (D127, pi-mono #10609, ported from Pi commit 6b07b4e5).
+
+### BF-2c3897f
+
+**The Lisp and Python extension SDKs now give each `onThemeChange` handler the theme of its own change, in…**
+
+- **Source:** PiG's own defect
+- **Symptom:** The Lisp and Python extension SDKs now give each `onThemeChange` handler the theme of its own change, in order, as the Go and Rust SDKs do.
+- **Root cause:** theme-apply-palette (extensions/sdk-lisp/src/theme.lisp) and Extension._set_theme_palette (extensions/sdk-py/pig_sdk/__init__.py) published the single per-extension theme that THEME-SET-PALETTE / Theme._set_palette mutate in place. They now publish a snapshot taken under the state lock together with the palette; ctx.theme / ctx.ui.theme stays live.
+- **User impact:** Wrong output or ordering
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `2c3897fdfa` (2026-10-29), `b3c3d66b4b` (2026-10-29), `fecee913ad` (2026-10-29)
+- **Tests:** `test/extension-conformance/host_surface_test.go::TestOnThemeChangeDeliversEachChangesOwnThemeAcrossSDKs`
+- **Release note:** The Lisp and Python extension SDKs now give each `onThemeChange` handler the theme of its own change, in order, as the Go and Rust SDKs do. They delivered one live theme object to handlers that run on a worker thread, so a handler that ran after the host had switched themes again read the newer palette: two quick changes reached their subscribers as the newer theme twice instead of the second and the third theme, and the Lisp SDK test `theme-and-tools-expanded-changes-reach-their-subscribers-in-order` reported that on a loaded machine in up to a quarter of its runs. Each delivery now carries a snapshot taken with its palette; `ctx.ui.theme` stays live. A new conformance row, `TestOnThemeChangeDeliversEachChangesOwnThemeAcrossSDKs`, holds the first delivery in a gate handler while the host switches themes and requires the handler behind it to log the theme of its own change in every SDK.
 
 ### BF-2c5db8b
 

@@ -4487,6 +4487,36 @@
       ]
     },
     {
+      "id": "BF-2c3897f",
+      "title": "The Lisp and Python extension SDKs now give each `onThemeChange` handler the theme of its own change, in…",
+      "symptom": "The Lisp and Python extension SDKs now give each `onThemeChange` handler the theme of its own change, in order, as the Go and Rust SDKs do.",
+      "rootCause": "theme-apply-palette (extensions/sdk-lisp/src/theme.lisp) and Extension._set_theme_palette (extensions/sdk-py/pig_sdk/__init__.py) published the single per-extension theme that THEME-SET-PALETTE / Theme._set_palette mutate in place. They now publish a snapshot taken under the state lock together with the palette; ctx.theme / ctx.ui.theme stays live.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "The Lisp and Python extension SDKs now give each `onThemeChange` handler the theme of its own change, in order, as the Go and Rust SDKs do. They delivered one live theme object to handlers that run on a worker thread, so a handler that ran after the host had switched themes again read the newer palette: two quick changes reached their subscribers as the newer theme twice instead of the second and the third theme, and the Lisp SDK test `theme-and-tools-expanded-changes-reach-their-subscribers-in-order` reported that on a loaded machine in up to a quarter of its runs. Each delivery now carries a snapshot taken with its palette; `ctx.ui.theme` stays live. A new conformance row, `TestOnThemeChangeDeliversEachChangesOwnThemeAcrossSDKs`, holds the first delivery in a gate handler while the host switches themes and requires the handler behind it to log the theme of its own change in every SDK.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "2c3897fdfa",
+          "date": "2026-10-29"
+        },
+        {
+          "hash": "b3c3d66b4b",
+          "date": "2026-10-29"
+        },
+        {
+          "hash": "fecee913ad",
+          "date": "2026-10-29"
+        }
+      ],
+      "tests": [
+        "test/extension-conformance/host_surface_test.go::TestOnThemeChangeDeliversEachChangesOwnThemeAcrossSDKs"
+      ]
+    },
+    {
       "id": "BF-2c5db8b",
       "title": "A Piglet Binary with a fused Go extension starts within a few milliseconds of Stock PiG",
       "symptom": "A Piglet Binary with a fused Go extension starts within a few milliseconds of Stock PiG.",
