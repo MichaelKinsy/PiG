@@ -10,8 +10,8 @@ Use counts (`uses`) are the number of the 255 scanned npm packages that import t
 
 | Module | Rows | type-only (identity by kind) | Node served | Go gaps | Rust gaps | Python gaps | Lisp gaps |
 |---|---|---|---|---|---|---|---|
-| `pi-coding-agent` | 920 | 306 | 910 | 319 | 319 | 319 | 319 |
-| `pi-tui` | 366 | 85 | 365 | 102 | 102 | 102 | 102 |
+| `pi-coding-agent` | 927 | 306 | 917 | 325 | 325 | 325 | 325 |
+| `pi-tui` | 370 | 85 | 369 | 102 | 102 | 102 | 102 |
 | `pi-ai` | 105 | 199 | 105 | 73 | 73 | 73 | 73 |
 | `pi-ai/compat` | 164 | 206 | 164 | 129 | 129 | 129 | 129 |
 | `pi-agent-core` | 45 | 34 | 45 | 45 | 45 | 45 | 45 |
@@ -21,7 +21,7 @@ Use counts (`uses`) are the number of the 255 scanned npm packages that import t
 | Lane | Owner | Opened | Gap cells | Closing row |
 |---|---|---|---|---|
 | C2Sessions | C2Sessions lane (createAgentSession family, E1/E6) | 0.5.2 | 468 | Conformance rows for createAgentSession, createAgentSessionRuntime and the pi-agent-core Agent loop in all four SDKs (branch feat/sdk-child-agent-sessions) |
-| SdkExportsLedger | SdkExportsLedger lane (Pi application internals no extension scan imports) | 0.5.2 | 1548 | Owner decision per export, listed with usage counts in handoffs/0.5.2/sdk-exports-internals.md: a numbered divergence in docs/parity/DIVERGENCES.md (cells become divergence:D<n>), or a real lane with a port and a conformance row |
+| SdkExportsLedger | SdkExportsLedger lane (Pi application internals no extension scan imports) | 0.5.2 | 1572 | Owner decision per export, listed with usage counts in handoffs/0.5.2/sdk-exports-internals.md: a numbered divergence in docs/parity/DIVERGENCES.md (cells become divergence:D<n>), or a real lane with a port and a conformance row |
 | SdkPiAiHelpers | SdkPiAiHelpers lane (pi-ai pure helpers, StringEnum, host getters, E17-E22) | 0.5.2 | 256 | Pure helpers with vector tests from Pi at the pin; host getters and the pi-ai compat calls with a conformance row per SDK |
 | SdkSessionGraph | SdkSessionGraph lane (SessionManager/SettingsManager/ModelRuntime/resource loader, E2-E5) | 0.5.2 | 252 | Host calls for session open/list/inMemory, scoped settings, standalone model runtime, resource loader and package manager, with a conformance row per SDK |
 | SdkTuiHelpers | SdkTuiHelpers lane (pi-tui helpers, keys, keybindings, theme and rendering helpers, E8-E16) | 0.5.2 | 148 | Pure helpers ported per SDK with vector tests from Pi at the pin (test/parity/sdk-vectors), keybinding and theme helpers with a conformance row per SDK |
@@ -36,7 +36,11 @@ None.
 
 ## Realized cells no fixture reaches
 
-None.
+| Export | Runtimes | Lane | Closing row |
+|---|---|---|---|
+| `pi-coding-agent: CustomEditor.capturesViewportInput` | lisp | SdkTuiHelpers | an editor viewport probe in the Lisp conformance fixture (the Lisp editor frame flag is covered by tests/editor-tests.lisp) |
+| `pi-tui: Editor.capturesViewportInput` | lisp | SdkTuiHelpers | an editor viewport probe in the Lisp conformance fixture (the Lisp editor frame flag is covered by tests/editor-tests.lisp) |
+| `pi-tui: getSelectPageIndex` | go, python | SdkTuiHelpers | a select-page-probe command in every conformance fixture that answers Pi's getSelectPageIndex vectors (keybindings.ts) |
 
 ## pi-coding-agent
 
@@ -216,6 +220,7 @@ None.
 | `CustomEditor.actionHandlers` | 0 | served | native:Editor.ActionHandlers | native:EditorBase::action_handlers | native:EditorBase.action_handlers | native:pig:editor-base-action-handlers |
 | `CustomEditor.addToHistory` | 0 | served | native:EditorComponent.AddToHistory | native:EditorComponent::add_to_history | native:EditorComponent.add_to_history | native:pig:editor-component-add-to-history |
 | `CustomEditor.borderColor` | 0 | served | native:Editor.BorderColor | native:EditorBase::border_color | native:EditorBase.border_color | native:pig:editor-base-border-color |
+| `CustomEditor.capturesViewportInput` | 0 | served | native:ViewportInputCapturer.CapturesViewportInput | native:EditorComponent::captures_viewport_input | native:EditorComponent.captures_viewport_input | native:pig:editor-component-captures-viewport-input |
 | `CustomEditor.disableSubmit` | 0 | served | native:Editor.DisableSubmit | native:EditorBase::disable_submit | native:EditorBase.disable_submit | native:pig:editor-base-disable-submit |
 | `CustomEditor.embedWorkingStatus` | 0 | served | native:EditorStatusEmbedder.EmbedWorkingStatus | native:EditorComponent::embed_working_status | native:EditorComponent.embed_working_status | native:pig:editor-component-embed-working-status |
 | `CustomEditor.focused` | 0 | served | native:Editor.Focused | native:EditorBase::focused | native:EditorBase.focused | native:pig:editor-base-focused |
@@ -485,6 +490,7 @@ None.
 | `ModelRuntime.unregisterVirtualModel` | 0 | served | native:ModelRuntime.UnregisterVirtualModel | native:ModelRuntime::unregister_virtual_model | native:ModelRuntime.unregister_virtual_model | native:pig:runtime-unregister-virtual-model |
 | `ModelSelectorComponent` | 3 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
 | `ModelSelectorComponent.addChild` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `ModelSelectorComponent.capturesViewportInput` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
 | `ModelSelectorComponent.children` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
 | `ModelSelectorComponent.clear` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
 | `ModelSelectorComponent.dispose` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
@@ -497,6 +503,7 @@ None.
 | `ModelSelectorComponent.render` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
 | `OAuthSelectorComponent` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
 | `OAuthSelectorComponent.addChild` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `OAuthSelectorComponent.capturesViewportInput` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
 | `OAuthSelectorComponent.children` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
 | `OAuthSelectorComponent.clear` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
 | `OAuthSelectorComponent.focused` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
@@ -591,6 +598,7 @@ None.
 | `SessionManager.usesDefaultSessionDir` | 0 | served | native:SessionManager.UsesDefaultSessionDir | native:SessionManager::uses_default_session_dir | native:SessionManager.uses_default_session_dir | native:pig:sm-uses-default-session-dir |
 | `SessionSelectorComponent` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
 | `SessionSelectorComponent.addChild` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `SessionSelectorComponent.capturesViewportInput` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
 | `SessionSelectorComponent.children` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
 | `SessionSelectorComponent.clear` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
 | `SessionSelectorComponent.focused` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
@@ -628,6 +636,7 @@ None.
 | `SettingsManager.getEnableInstallTelemetry` | 0 | served | native:SettingsManager.GetEnableInstallTelemetry | native:SettingsManager::get_enable_install_telemetry | native:SettingsManager.get_enable_install_telemetry | native:pig:settings-get-enable-install-telemetry |
 | `SettingsManager.getEnableSkillCommands` | 0 | served | native:SettingsManager.GetEnableSkillCommands | native:SettingsManager::get_enable_skill_commands | native:SettingsManager.get_enable_skill_commands | native:pig:settings-get-enable-skill-commands |
 | `SettingsManager.getEnabledModels` | 0 | served | native:SettingsManager.GetEnabledModels | native:SettingsManager::get_enabled_models | native:SettingsManager.get_enabled_models | native:pig:settings-get-enabled-models |
+| `SettingsManager.getExtensionChangelogVersion` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
 | `SettingsManager.getExtensionPaths` | 0 | served | native:SettingsManager.GetExtensionPaths | native:SettingsManager::get_extension_paths | native:SettingsManager.get_extension_paths | native:pig:settings-get-extension-paths |
 | `SettingsManager.getExternalEditorCommand` | 0 | served | native:SettingsManager.GetExternalEditorCommand | native:SettingsManager::get_external_editor_command | native:SettingsManager.get_external_editor_command | native:pig:settings-get-external-editor-command |
 | `SettingsManager.getFollowUpMode` | 0 | served | native:SettingsManager.GetFollowUpMode | native:SettingsManager::get_follow_up_mode | native:SettingsManager.get_follow_up_mode | native:pig:settings-get-follow-up-mode |
@@ -695,6 +704,7 @@ None.
 | `SettingsManager.setEnableInstallTelemetry` | 0 | served | native:SettingsManager.SetEnableInstallTelemetry | native:SettingsManager::set_enable_install_telemetry | native:SettingsManager.set_enable_install_telemetry | native:pig:settings-set-enable-install-telemetry |
 | `SettingsManager.setEnableSkillCommands` | 0 | served | native:SettingsManager.SetEnableSkillCommands | native:SettingsManager::set_enable_skill_commands | native:SettingsManager.set_enable_skill_commands | native:pig:settings-set-enable-skill-commands |
 | `SettingsManager.setEnabledModels` | 0 | served | native:SettingsManager.SetEnabledModels | native:SettingsManager::set_enabled_models | native:SettingsManager.set_enabled_models | native:pig:settings-set-enabled-models |
+| `SettingsManager.setExtensionChangelogVersion` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
 | `SettingsManager.setExtensionPaths` | 0 | served | native:SettingsManager.SetExtensionPaths | native:SettingsManager::set_extension_paths | native:SettingsManager.set_extension_paths | native:pig:settings-set-extension-paths |
 | `SettingsManager.setFollowUpMode` | 0 | served | native:SettingsManager.SetFollowUpMode | native:SettingsManager::set_follow_up_mode | native:SettingsManager.set_follow_up_mode | native:pig:settings-set-follow-up-mode |
 | `SettingsManager.setFullscreenCopyOnSelect` | 0 | served | native:SettingsManager.SetFullscreenCopyOnSelect | native:SettingsManager::set_fullscreen_copy_on_select | native:SettingsManager.set_fullscreen_copy_on_select | native:pig:settings-set-fullscreen-copy-on-select |
@@ -822,6 +832,7 @@ None.
 | `ToolExecutionComponent.updateResult` | 0 | served | kit:ToolExecution | kit:ToolExecution | kit:ToolExecution | kit:pig:kit-tool-execution |
 | `TreeSelectorComponent` | 1 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
 | `TreeSelectorComponent.addChild` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `TreeSelectorComponent.capturesViewportInput` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
 | `TreeSelectorComponent.children` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
 | `TreeSelectorComponent.clear` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
 | `TreeSelectorComponent.focused` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
@@ -1008,6 +1019,7 @@ None.
 | `Editor` | 20 | served | native:Editor | native:EditorBase | native:EditorBase | native:pig:editor-base |
 | `Editor.addToHistory` | 0 | served | native:Editor.AddToHistory | native:EditorBase::add_to_history | native:EditorBase.add_to_history | native:pig:editor-base-add-to-history |
 | `Editor.borderColor` | 0 | served | kit:Editor | kit:Editor | kit:Editor | kit:pig:kit-editor |
+| `Editor.capturesViewportInput` | 0 | served | native:ViewportInputCapturer.CapturesViewportInput | native:EditorComponent::captures_viewport_input | native:EditorComponent.captures_viewport_input | native:pig:editor-component-captures-viewport-input |
 | `Editor.disableSubmit` | 0 | served | kit:Editor | kit:Editor | kit:Editor | kit:pig:kit-editor |
 | `Editor.focused` | 0 | served | kit:Editor | kit:Editor | kit:Editor | kit:pig:kit-editor |
 | `Editor.getAutocompleteMaxVisible` | 0 | served | kit:Editor | kit:Editor | kit:Editor | kit:pig:kit-editor |
@@ -1127,6 +1139,7 @@ None.
 | `ScrollView.updateLayout` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
 | `ScrollView.viewportHeight` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
 | `SelectList` | 28 | served | kit:SelectList | kit:SelectList | kit:SelectList | kit:pig:kit-select-list |
+| `SelectList.capturesViewportInput` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
 | `SelectList.getSelectedItem` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
 | `SelectList.handleInput` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
 | `SelectList.handleMouse` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
@@ -1138,6 +1151,7 @@ None.
 | `SelectList.setFilter` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
 | `SelectList.setSelectedIndex` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
 | `SettingsList` | 24 | served | kit:SettingsList | kit:SettingsList | kit:SettingsList | kit:pig:kit-settings-list |
+| `SettingsList.capturesViewportInput` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
 | `SettingsList.handleInput` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
 | `SettingsList.handleMouse` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
 | `SettingsList.invalidate` | 0 | served | divergence:D107 | divergence:D107 | divergence:D107 | divergence:D107 |
@@ -1295,6 +1309,7 @@ None.
 | `getNativeClipboard` | 1 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
 | `getOsc8LinkAtColumn` | 0 | served | native:tui.GetOsc8LinkAtColumn | native:tui::get_osc8_link_at_column | native:tui.get_osc8_link_at_column | native:pig:tui-get-osc8-link-at-column |
 | `getPngDimensions` | 1 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
+| `getSelectPageIndex` | 0 | served | native:tui.GetSelectPageIndex | native:tui::get_select_page_index | native:tui.get_select_page_index | native:pig:tui-get-select-page-index |
 | `getTerminalColorMode` | 1 | served | native:tui.GetTerminalColorMode | native:tui::get_terminal_color_mode | native:tui.get_terminal_color_mode | native:pig:tui-get-terminal-color-mode |
 | `getWebpDimensions` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
 | `hyperlink` | 3 | served | native:tui.Hyperlink | native:tui::hyperlink | native:tui.hyperlink | native:pig:tui-hyperlink |

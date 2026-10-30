@@ -58,6 +58,24 @@ owner = "SdkTuiHelpers lane (pi-tui helpers, keys, keybindings, theme and render
 opened = "0.5.2"
 closing = "Pure helpers ported per SDK with vector tests from Pi at the pin (test/parity/sdk-vectors), keybinding and theme helpers with a conformance row per SDK"
 
+[[unreached]]
+key = "pi-coding-agent: CustomEditor.capturesViewportInput"
+sdks = ["lisp"]
+lane = "SdkTuiHelpers"
+row = "an editor viewport probe in the Lisp conformance fixture (the Lisp editor frame flag is covered by tests/editor-tests.lisp)"
+
+[[unreached]]
+key = "pi-tui: Editor.capturesViewportInput"
+sdks = ["lisp"]
+lane = "SdkTuiHelpers"
+row = "an editor viewport probe in the Lisp conformance fixture (the Lisp editor frame flag is covered by tests/editor-tests.lisp)"
+
+[[unreached]]
+key = "pi-tui: getSelectPageIndex"
+sdks = ["go", "python"]
+lane = "SdkTuiHelpers"
+row = "a select-page-probe command in every conformance fixture that answers Pi's getSelectPageIndex vectors (keybindings.ts)"
+
 [export]
 "pi-coding-agent: AgentSession" = { go = "gap:C2Sessions", rust = "gap:C2Sessions", python = "gap:C2Sessions", lisp = "gap:C2Sessions" }
 "pi-coding-agent: AgentSession.abort" = { go = "native:AgentSession.Abort", rust = "native:AgentSession::abort", python = "native:AgentSession.abort", lisp = "native:pig:agent-session-abort" }
@@ -233,6 +251,7 @@ closing = "Pure helpers ported per SDK with vector tests from Pi at the pin (tes
 "pi-coding-agent: CustomEditor.actionHandlers" = { go = "native:Editor.ActionHandlers", rust = "native:EditorBase::action_handlers", python = "native:EditorBase.action_handlers", lisp = "native:pig:editor-base-action-handlers" }
 "pi-coding-agent: CustomEditor.addToHistory" = { go = "native:EditorComponent.AddToHistory", rust = "native:EditorComponent::add_to_history", python = "native:EditorComponent.add_to_history", lisp = "native:pig:editor-component-add-to-history" }
 "pi-coding-agent: CustomEditor.borderColor" = { go = "native:Editor.BorderColor", rust = "native:EditorBase::border_color", python = "native:EditorBase.border_color", lisp = "native:pig:editor-base-border-color" }
+"pi-coding-agent: CustomEditor.capturesViewportInput" = { go = "native:ViewportInputCapturer.CapturesViewportInput", rust = "native:EditorComponent::captures_viewport_input", python = "native:EditorComponent.captures_viewport_input", lisp = "native:pig:editor-component-captures-viewport-input" }
 "pi-coding-agent: CustomEditor.disableSubmit" = { go = "native:Editor.DisableSubmit", rust = "native:EditorBase::disable_submit", python = "native:EditorBase.disable_submit", lisp = "native:pig:editor-base-disable-submit" }
 "pi-coding-agent: CustomEditor.embedWorkingStatus" = { go = "native:EditorStatusEmbedder.EmbedWorkingStatus", rust = "native:EditorComponent::embed_working_status", python = "native:EditorComponent.embed_working_status", lisp = "native:pig:editor-component-embed-working-status" }
 "pi-coding-agent: CustomEditor.focused" = { go = "native:Editor.Focused", rust = "native:EditorBase::focused", python = "native:EditorBase.focused", lisp = "native:pig:editor-base-focused" }
@@ -502,6 +521,7 @@ closing = "Pure helpers ported per SDK with vector tests from Pi at the pin (tes
 "pi-coding-agent: ModelRuntime.unregisterVirtualModel" = { go = "native:ModelRuntime.UnregisterVirtualModel", rust = "native:ModelRuntime::unregister_virtual_model", python = "native:ModelRuntime.unregister_virtual_model", lisp = "native:pig:runtime-unregister-virtual-model" }
 "pi-coding-agent: ModelSelectorComponent" = { go = "gap:SdkExportsLedger", rust = "gap:SdkExportsLedger", python = "gap:SdkExportsLedger", lisp = "gap:SdkExportsLedger" }
 "pi-coding-agent: ModelSelectorComponent.addChild" = { go = "gap:SdkExportsLedger", rust = "gap:SdkExportsLedger", python = "gap:SdkExportsLedger", lisp = "gap:SdkExportsLedger" }
+"pi-coding-agent: ModelSelectorComponent.capturesViewportInput" = { go = "gap:SdkExportsLedger", rust = "gap:SdkExportsLedger", python = "gap:SdkExportsLedger", lisp = "gap:SdkExportsLedger" }
 "pi-coding-agent: ModelSelectorComponent.children" = { go = "gap:SdkExportsLedger", rust = "gap:SdkExportsLedger", python = "gap:SdkExportsLedger", lisp = "gap:SdkExportsLedger" }
 "pi-coding-agent: ModelSelectorComponent.clear" = { go = "gap:SdkExportsLedger", rust = "gap:SdkExportsLedger", python = "gap:SdkExportsLedger", lisp = "gap:SdkExportsLedger" }
 "pi-coding-agent: ModelSelectorComponent.dispose" = { go = "gap:SdkExportsLedger", rust = "gap:SdkExportsLedger", python = "gap:SdkExportsLedger", lisp = "gap:SdkExportsLedger" }
@@ -514,6 +534,7 @@ closing = "Pure helpers ported per SDK with vector tests from Pi at the pin (tes
 "pi-coding-agent: ModelSelectorComponent.render" = { go = "gap:SdkExportsLedger", rust = "gap:SdkExportsLedger", python = "gap:SdkExportsLedger", lisp = "gap:SdkExportsLedger" }
 "pi-coding-agent: OAuthSelectorComponent" = { go = "gap:SdkExportsLedger", rust = "gap:SdkExportsLedger", python = "gap:SdkExportsLedger", lisp = "gap:SdkExportsLedger" }
 "pi-coding-agent: OAuthSelectorComponent.addChild" = { go = "gap:SdkExportsLedger", rust = "gap:SdkExportsLedger", python = "gap:SdkExportsLedger", lisp = "gap:SdkExportsLedger" }
+"pi-coding-agent: OAuthSelectorComponent.capturesViewportInput" = { go = "gap:SdkExportsLedger", rust = "gap:SdkExportsLedger", python = "gap:SdkExportsLedger", lisp = "gap:SdkExportsLedger" }
 "pi-coding-agent: OAuthSelectorComponent.children" = { go = "gap:SdkExportsLedger", rust = "gap:SdkExportsLedger", python = "gap:SdkExportsLedger", lisp = "gap:SdkExportsLedger" }
 "pi-coding-agent: OAuthSelectorComponent.clear" = { go = "gap:SdkExportsLedger", rust = "gap:SdkExportsLedger", python = "gap:SdkExportsLedger", lisp = "gap:SdkExportsLedger" }
 "pi-coding-agent: OAuthSelectorComponent.focused" = { go = "gap:SdkExportsLedger", rust = "gap:SdkExportsLedger", python = "gap:SdkExportsLedger", lisp = "gap:SdkExportsLedger" }
@@ -608,6 +629,7 @@ closing = "Pure helpers ported per SDK with vector tests from Pi at the pin (tes
 "pi-coding-agent: SessionManager.usesDefaultSessionDir" = { go = "native:SessionManager.UsesDefaultSessionDir", rust = "native:SessionManager::uses_default_session_dir", python = "native:SessionManager.uses_default_session_dir", lisp = "native:pig:sm-uses-default-session-dir" }
 "pi-coding-agent: SessionSelectorComponent" = { go = "gap:SdkExportsLedger", rust = "gap:SdkExportsLedger", python = "gap:SdkExportsLedger", lisp = "gap:SdkExportsLedger" }
 "pi-coding-agent: SessionSelectorComponent.addChild" = { go = "gap:SdkExportsLedger", rust = "gap:SdkExportsLedger", python = "gap:SdkExportsLedger", lisp = "gap:SdkExportsLedger" }
+"pi-coding-agent: SessionSelectorComponent.capturesViewportInput" = { go = "gap:SdkExportsLedger", rust = "gap:SdkExportsLedger", python = "gap:SdkExportsLedger", lisp = "gap:SdkExportsLedger" }
 "pi-coding-agent: SessionSelectorComponent.children" = { go = "gap:SdkExportsLedger", rust = "gap:SdkExportsLedger", python = "gap:SdkExportsLedger", lisp = "gap:SdkExportsLedger" }
 "pi-coding-agent: SessionSelectorComponent.clear" = { go = "gap:SdkExportsLedger", rust = "gap:SdkExportsLedger", python = "gap:SdkExportsLedger", lisp = "gap:SdkExportsLedger" }
 "pi-coding-agent: SessionSelectorComponent.focused" = { go = "gap:SdkExportsLedger", rust = "gap:SdkExportsLedger", python = "gap:SdkExportsLedger", lisp = "gap:SdkExportsLedger" }
@@ -645,6 +667,7 @@ closing = "Pure helpers ported per SDK with vector tests from Pi at the pin (tes
 "pi-coding-agent: SettingsManager.getEnableInstallTelemetry" = { go = "native:SettingsManager.GetEnableInstallTelemetry", rust = "native:SettingsManager::get_enable_install_telemetry", python = "native:SettingsManager.get_enable_install_telemetry", lisp = "native:pig:settings-get-enable-install-telemetry" }
 "pi-coding-agent: SettingsManager.getEnableSkillCommands" = { go = "native:SettingsManager.GetEnableSkillCommands", rust = "native:SettingsManager::get_enable_skill_commands", python = "native:SettingsManager.get_enable_skill_commands", lisp = "native:pig:settings-get-enable-skill-commands" }
 "pi-coding-agent: SettingsManager.getEnabledModels" = { go = "native:SettingsManager.GetEnabledModels", rust = "native:SettingsManager::get_enabled_models", python = "native:SettingsManager.get_enabled_models", lisp = "native:pig:settings-get-enabled-models" }
+"pi-coding-agent: SettingsManager.getExtensionChangelogVersion" = { go = "gap:SdkExportsLedger", rust = "gap:SdkExportsLedger", python = "gap:SdkExportsLedger", lisp = "gap:SdkExportsLedger" }
 "pi-coding-agent: SettingsManager.getExtensionPaths" = { go = "native:SettingsManager.GetExtensionPaths", rust = "native:SettingsManager::get_extension_paths", python = "native:SettingsManager.get_extension_paths", lisp = "native:pig:settings-get-extension-paths" }
 "pi-coding-agent: SettingsManager.getExternalEditorCommand" = { go = "native:SettingsManager.GetExternalEditorCommand", rust = "native:SettingsManager::get_external_editor_command", python = "native:SettingsManager.get_external_editor_command", lisp = "native:pig:settings-get-external-editor-command" }
 "pi-coding-agent: SettingsManager.getFollowUpMode" = { go = "native:SettingsManager.GetFollowUpMode", rust = "native:SettingsManager::get_follow_up_mode", python = "native:SettingsManager.get_follow_up_mode", lisp = "native:pig:settings-get-follow-up-mode" }
@@ -712,6 +735,7 @@ closing = "Pure helpers ported per SDK with vector tests from Pi at the pin (tes
 "pi-coding-agent: SettingsManager.setEnableInstallTelemetry" = { go = "native:SettingsManager.SetEnableInstallTelemetry", rust = "native:SettingsManager::set_enable_install_telemetry", python = "native:SettingsManager.set_enable_install_telemetry", lisp = "native:pig:settings-set-enable-install-telemetry" }
 "pi-coding-agent: SettingsManager.setEnableSkillCommands" = { go = "native:SettingsManager.SetEnableSkillCommands", rust = "native:SettingsManager::set_enable_skill_commands", python = "native:SettingsManager.set_enable_skill_commands", lisp = "native:pig:settings-set-enable-skill-commands" }
 "pi-coding-agent: SettingsManager.setEnabledModels" = { go = "native:SettingsManager.SetEnabledModels", rust = "native:SettingsManager::set_enabled_models", python = "native:SettingsManager.set_enabled_models", lisp = "native:pig:settings-set-enabled-models" }
+"pi-coding-agent: SettingsManager.setExtensionChangelogVersion" = { go = "gap:SdkExportsLedger", rust = "gap:SdkExportsLedger", python = "gap:SdkExportsLedger", lisp = "gap:SdkExportsLedger" }
 "pi-coding-agent: SettingsManager.setExtensionPaths" = { go = "native:SettingsManager.SetExtensionPaths", rust = "native:SettingsManager::set_extension_paths", python = "native:SettingsManager.set_extension_paths", lisp = "native:pig:settings-set-extension-paths" }
 "pi-coding-agent: SettingsManager.setFollowUpMode" = { go = "native:SettingsManager.SetFollowUpMode", rust = "native:SettingsManager::set_follow_up_mode", python = "native:SettingsManager.set_follow_up_mode", lisp = "native:pig:settings-set-follow-up-mode" }
 "pi-coding-agent: SettingsManager.setFullscreenCopyOnSelect" = { go = "native:SettingsManager.SetFullscreenCopyOnSelect", rust = "native:SettingsManager::set_fullscreen_copy_on_select", python = "native:SettingsManager.set_fullscreen_copy_on_select", lisp = "native:pig:settings-set-fullscreen-copy-on-select" }
@@ -839,6 +863,7 @@ closing = "Pure helpers ported per SDK with vector tests from Pi at the pin (tes
 "pi-coding-agent: ToolExecutionComponent.updateResult" = { go = "kit:ToolExecution", rust = "kit:ToolExecution", python = "kit:ToolExecution", lisp = "kit:pig:kit-tool-execution" }
 "pi-coding-agent: TreeSelectorComponent" = { go = "gap:SdkExportsLedger", rust = "gap:SdkExportsLedger", python = "gap:SdkExportsLedger", lisp = "gap:SdkExportsLedger" }
 "pi-coding-agent: TreeSelectorComponent.addChild" = { go = "gap:SdkExportsLedger", rust = "gap:SdkExportsLedger", python = "gap:SdkExportsLedger", lisp = "gap:SdkExportsLedger" }
+"pi-coding-agent: TreeSelectorComponent.capturesViewportInput" = { go = "gap:SdkExportsLedger", rust = "gap:SdkExportsLedger", python = "gap:SdkExportsLedger", lisp = "gap:SdkExportsLedger" }
 "pi-coding-agent: TreeSelectorComponent.children" = { go = "gap:SdkExportsLedger", rust = "gap:SdkExportsLedger", python = "gap:SdkExportsLedger", lisp = "gap:SdkExportsLedger" }
 "pi-coding-agent: TreeSelectorComponent.clear" = { go = "gap:SdkExportsLedger", rust = "gap:SdkExportsLedger", python = "gap:SdkExportsLedger", lisp = "gap:SdkExportsLedger" }
 "pi-coding-agent: TreeSelectorComponent.focused" = { go = "gap:SdkExportsLedger", rust = "gap:SdkExportsLedger", python = "gap:SdkExportsLedger", lisp = "gap:SdkExportsLedger" }
@@ -1020,6 +1045,7 @@ closing = "Pure helpers ported per SDK with vector tests from Pi at the pin (tes
 "pi-tui: Editor" = { go = "native:Editor", rust = "native:EditorBase", python = "native:EditorBase", lisp = "native:pig:editor-base" }
 "pi-tui: Editor.addToHistory" = { go = "native:Editor.AddToHistory", rust = "native:EditorBase::add_to_history", python = "native:EditorBase.add_to_history", lisp = "native:pig:editor-base-add-to-history" }
 "pi-tui: Editor.borderColor" = { go = "kit:Editor", rust = "kit:Editor", python = "kit:Editor", lisp = "kit:pig:kit-editor" }
+"pi-tui: Editor.capturesViewportInput" = { go = "native:ViewportInputCapturer.CapturesViewportInput", rust = "native:EditorComponent::captures_viewport_input", python = "native:EditorComponent.captures_viewport_input", lisp = "native:pig:editor-component-captures-viewport-input" }
 "pi-tui: Editor.disableSubmit" = { go = "kit:Editor", rust = "kit:Editor", python = "kit:Editor", lisp = "kit:pig:kit-editor" }
 "pi-tui: Editor.focused" = { go = "kit:Editor", rust = "kit:Editor", python = "kit:Editor", lisp = "kit:pig:kit-editor" }
 "pi-tui: Editor.getAutocompleteMaxVisible" = { go = "kit:Editor", rust = "kit:Editor", python = "kit:Editor", lisp = "kit:pig:kit-editor" }
@@ -1139,6 +1165,7 @@ closing = "Pure helpers ported per SDK with vector tests from Pi at the pin (tes
 "pi-tui: ScrollView.updateLayout" = { go = "divergence:D107", rust = "divergence:D107", python = "divergence:D107", lisp = "divergence:D107" }
 "pi-tui: ScrollView.viewportHeight" = { go = "divergence:D107", rust = "divergence:D107", python = "divergence:D107", lisp = "divergence:D107" }
 "pi-tui: SelectList" = { go = "kit:SelectList", rust = "kit:SelectList", python = "kit:SelectList", lisp = "kit:pig:kit-select-list" }
+"pi-tui: SelectList.capturesViewportInput" = { go = "divergence:D107", rust = "divergence:D107", python = "divergence:D107", lisp = "divergence:D107" }
 "pi-tui: SelectList.getSelectedItem" = { go = "divergence:D107", rust = "divergence:D107", python = "divergence:D107", lisp = "divergence:D107" }
 "pi-tui: SelectList.handleInput" = { go = "divergence:D107", rust = "divergence:D107", python = "divergence:D107", lisp = "divergence:D107" }
 "pi-tui: SelectList.handleMouse" = { go = "divergence:D107", rust = "divergence:D107", python = "divergence:D107", lisp = "divergence:D107" }
@@ -1150,6 +1177,7 @@ closing = "Pure helpers ported per SDK with vector tests from Pi at the pin (tes
 "pi-tui: SelectList.setFilter" = { go = "divergence:D107", rust = "divergence:D107", python = "divergence:D107", lisp = "divergence:D107" }
 "pi-tui: SelectList.setSelectedIndex" = { go = "divergence:D107", rust = "divergence:D107", python = "divergence:D107", lisp = "divergence:D107" }
 "pi-tui: SettingsList" = { go = "kit:SettingsList", rust = "kit:SettingsList", python = "kit:SettingsList", lisp = "kit:pig:kit-settings-list" }
+"pi-tui: SettingsList.capturesViewportInput" = { go = "divergence:D107", rust = "divergence:D107", python = "divergence:D107", lisp = "divergence:D107" }
 "pi-tui: SettingsList.handleInput" = { go = "divergence:D107", rust = "divergence:D107", python = "divergence:D107", lisp = "divergence:D107" }
 "pi-tui: SettingsList.handleMouse" = { go = "divergence:D107", rust = "divergence:D107", python = "divergence:D107", lisp = "divergence:D107" }
 "pi-tui: SettingsList.invalidate" = { go = "divergence:D107", rust = "divergence:D107", python = "divergence:D107", lisp = "divergence:D107" }
@@ -1307,6 +1335,7 @@ closing = "Pure helpers ported per SDK with vector tests from Pi at the pin (tes
 "pi-tui: getNativeClipboard" = { go = "gap:SdkExportsLedger", rust = "gap:SdkExportsLedger", python = "gap:SdkExportsLedger", lisp = "gap:SdkExportsLedger" }
 "pi-tui: getOsc8LinkAtColumn" = { go = "native:tui.GetOsc8LinkAtColumn", rust = "native:tui::get_osc8_link_at_column", python = "native:tui.get_osc8_link_at_column", lisp = "native:pig:tui-get-osc8-link-at-column" }
 "pi-tui: getPngDimensions" = { go = "gap:SdkExportsLedger", rust = "gap:SdkExportsLedger", python = "gap:SdkExportsLedger", lisp = "gap:SdkExportsLedger" }
+"pi-tui: getSelectPageIndex" = { go = "native:tui.GetSelectPageIndex", rust = "native:tui::get_select_page_index", python = "native:tui.get_select_page_index", lisp = "native:pig:tui-get-select-page-index" }
 "pi-tui: getTerminalColorMode" = { go = "native:tui.GetTerminalColorMode", rust = "native:tui::get_terminal_color_mode", python = "native:tui.get_terminal_color_mode", lisp = "native:pig:tui-get-terminal-color-mode" }
 "pi-tui: getWebpDimensions" = { go = "gap:SdkExportsLedger", rust = "gap:SdkExportsLedger", python = "gap:SdkExportsLedger", lisp = "gap:SdkExportsLedger" }
 "pi-tui: hyperlink" = { go = "native:tui.Hyperlink", rust = "native:tui::hyperlink", python = "native:tui.hyperlink", lisp = "native:pig:tui-hyperlink" }
