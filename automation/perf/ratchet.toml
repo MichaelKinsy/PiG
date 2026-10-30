@@ -198,10 +198,11 @@
 # default, owner-approved 2026-10-28 (Michael Kinsy) for the combined Pi follow b3a29f11 + batch-gate (the sum of the two lanes' growth exceeds each lane's own approval): measured by TestHeadlessEmbedBinarySizeGate on the merged head linux_amd64 36,696,224, linux_arm64 34,275,488, darwin_arm64 35,292,962 B, each rounded up to 8 KiB: linux_amd64 36,700,160, linux_arm64 34,283,520, darwin_arm64 35,299,328; windows_amd64 stays 38,023,168.
 # default, owner-approved 2026-10-29 (Michael Kinsy) for the combined Pi follow b3a29f11 + full 0.6.0 batch (53eb473a40): measured by TestHeadlessEmbedBinarySizeGate on the merged head linux_amd64 36,700,320 and windows_amd64 38,026,752 B, each rounded up to 8 KiB: linux_amd64 36,708,352, windows_amd64 38,027,264; linux_arm64 34,283,520 and darwin_arm64 35,299,328 are unchanged.
 # default windows_amd64, owner-approved 2026-10-29 (Michael Kinsy) for the 0.6.0 closed-Piglet-Binary refusals (#382, D202): measured by TestHeadlessEmbedBinarySizeGate on the merged head 38,027,776 B (+512 B over 38,027,264), rounded up to 8 KiB: 38,035,456; the other three default platforms are unchanged.
-"binary.headless.default.linux_amd64.bytes" = 36708352
+# default linux_amd64, darwin_arm64 and windows_amd64, owner-approved 2026-10-29 (Michael Kinsy) for the 0.6.0 features that landed after the closed-Piglet-Binary approval (ext-autocomplete-v2, ownThinkingRuns across the SDKs, SDK key vectors, the MCP close fix): measured by TestHeadlessEmbedBinarySizeGate on the merged head linux_amd64 36,724,896, darwin_arm64 35,310,370 and windows_amd64 38,052,352 B, each rounded up to 8 KiB: linux_amd64 36,732,928, darwin_arm64 35,315,712, windows_amd64 38,060,032; linux_arm64 is unchanged.
+"binary.headless.default.linux_amd64.bytes" = 36732928
 "binary.headless.default.linux_arm64.bytes" = 34283520
-"binary.headless.default.darwin_arm64.bytes" = 35299328
-"binary.headless.default.windows_amd64.bytes" = 38035456
+"binary.headless.default.darwin_arm64.bytes" = 35315712
+"binary.headless.default.windows_amd64.bytes" = 38060032
 "binary.headless.stripped.linux_amd64.bytes" = 30384128
 "binary.headless.stripped.linux_arm64.bytes" = 28057600
 "binary.headless.stripped.darwin_arm64.bytes" = 28999680
