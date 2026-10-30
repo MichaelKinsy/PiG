@@ -46,8 +46,10 @@ func (photon) Prepare(ctx context.Context, data []byte, mimeType string, limits 
 		tools.Base64Length(int64(len(data))) <= int64(limits.MaxBytes) {
 		return &tools.PreparedImage{Data: tools.ToBase64(data), MimeType: mimeType}, nil
 	}
-	// An image with no pixels that is not returned as it is cannot be resized or encoded (Photon throws).
-	if decoded.Bounds().Empty() {
+	// An image with no pixels is not given up: the target size is at least 1x1, so the resize makes pixels of it (Photon's `resize` of an image of
+	// width or height zero gives transparent black) and they are encoded. Only the rotation of such an image throws: `new PhotonImage(pixels, w, h)`
+	// of zero bytes is an exception (index.ts:57-62).
+	if decoded.Bounds().Empty() && orientation >= 5 {
 		return nil, nil
 	}
 	upright := orient(toNRGBA(decoded), orientation)
@@ -60,6 +62,10 @@ func (photon) Prepare(ctx context.Context, data []byte, mimeType string, limits 
 			return nil, err
 		}
 		encoded, err := encodeWithin(ctx, upright, target, limits.MaxBytes, mimeType == "image/jpeg")
+		if errors.Is(err, errPhotonThrew) {
+			// An exception of the encoder leaves `prepare` through its catch (index.ts:84-86): no image.
+			return nil, nil
+		}
 		if err != nil {
 			return nil, err
 		}
@@ -80,6 +86,9 @@ func (photon) Prepare(ctx context.Context, data []byte, mimeType string, limits 
 	}
 }
 
+// errPhotonThrew is an exception of Photon's encoders (an image with no pixels for PNG, a side over 65535 for JPEG).
+var errPhotonThrew = errors.New("images: photon threw")
+
 // jsRound is Math.round: halves round up.
 func jsRound(x float64) int { return int(math.Floor(x + 0.5)) } //portlint:allow numbers callers pass a finite image size (index.ts:66), so the floored value is an integer that fits an int
 
@@ -94,13 +103,7 @@ func encodeWithin(ctx context.Context, img *image.NRGBA, size tools.ImageSize, m
 		mimeType string
 		encode   func() ([]byte, error)
 	}
-	pngCandidate := candidate{"image/png", func() ([]byte, error) {
-		// The png crate refuses a width or a height of zero, which Photon's `get_bytes().unwrap()` turns into an exception.
-		if scaled.Bounds().Empty() {
-			return nil, errors.New("png: image has no pixels")
-		}
-		return photonimage.EncodePNG(scaled), nil
-	}}
+	pngCandidate := candidate{"image/png", func() ([]byte, error) { return photonimage.EncodePNG(scaled) }}
 	var jpegs []candidate
 	for _, quality := range jpegQualities {
 		jpegs = append(jpegs, candidate{"image/jpeg", func() ([]byte, error) { return photonimage.EncodeJPEG(scaled, uint8(quality)) }})
@@ -115,7 +118,7 @@ func encodeWithin(ctx context.Context, img *image.NRGBA, size tools.ImageSize, m
 		}
 		encoded, err := c.encode()
 		if err != nil {
-			return nil, nil
+			return nil, errPhotonThrew
 		}
 		if tools.Base64Length(int64(len(encoded))) <= int64(maxBytes) {
 			return &tools.PreparedImage{Data: base64.StdEncoding.EncodeToString(encoded), MimeType: c.mimeType}, nil
