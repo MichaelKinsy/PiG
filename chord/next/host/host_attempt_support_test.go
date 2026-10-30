@@ -167,7 +167,7 @@ func hasTimerAt(loop *scopeLoop, ms int64) bool {
 func advanceSettled(loop *scopeLoop, host Host, ms int64) {
 	settle := func() {
 		// A task a test holds on purpose (a gate) is not waited for past a bound.
-		for waited := 0; awaitTasksRunning.Load() != 0 && waited < 200; waited++ {
+		for waited := 0; loop.awaiting.Load() != 0 && waited < 200; waited++ {
 			time.Sleep(time.Millisecond)
 		}
 		turn(host)
