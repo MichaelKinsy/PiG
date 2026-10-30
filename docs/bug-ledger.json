@@ -40843,7 +40843,7 @@
     },
     {
       "id": "D215",
-      "title": "A local Package typed by absolute path is stored as typed, and one that does not exist warns at startup",
+      "title": "A local Package typed by absolute path is stored as typed",
       "entry": "BF-7e16053"
     }
   ],

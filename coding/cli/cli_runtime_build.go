@@ -362,7 +362,7 @@ func (b *cliRuntimeBuilder) buildResources(ctx context.Context, in cliBuildInput
 	if err := validateConfiguredPackageSources(services.SettingsManager(), projectTrusted); err != nil {
 		return nil, cliCLIError("%v", err)
 	}
-	// pig divergence (D215): a configured local Package whose directory does not exist warns in the session with its resolved path; Pi skips it silently.
+	// pig additive (D216): a configured local Package whose directory does not exist warns in the session with its resolved path; Pi skips it silently.
 	missingLocal := packagemanager.MissingLocalPackages(cwd, services.SettingsManager().AgentDir(), services.SettingsManager())
 	if reinstalled, missingPkgs := packagemanager.EnsureConfiguredPackagesInstalled(cwd, services.SettingsManager().AgentDir(), services.SettingsManager()); len(reinstalled)+len(missingPkgs) > 0 {
 		if len(reinstalled) > 0 {

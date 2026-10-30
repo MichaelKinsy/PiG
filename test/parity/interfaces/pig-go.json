@@ -90173,6 +90173,17 @@
       "shapeHash": "sha256:7a984d96f6c91a59ff955020f3bccbc113038982fbf77a794ec58dc59fbac19f"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#configuredPackagesReport",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "configuredPackagesReport",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "configuredPackagesReport"
+      },
+      "shapeHash": "sha256:c8b070a8823340fb16285eb4ab4257020f39ba68091fc085cb19be3a44f5ac18"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/cli#configuredThemeName",
       "package": "github.com/MichaelKinsy/PiG/coding/cli",
       "name": "configuredThemeName",
@@ -93273,6 +93284,17 @@
         "type": "*github.com/MichaelKinsy/PiG/internal/lazyregexp.Regexp"
       },
       "shapeHash": "sha256:b2bada16c90e0a1f7a12c5d87c11865788ab6be78d85f83e367aec2254fdade4"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#missingConfiguredPackage",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "missingConfiguredPackage",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "missingConfiguredPackage"
+      },
+      "shapeHash": "sha256:7ed8a4580226d2f1a882806620712d2229f3aeb965299627fd83ada7fe202c10"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/cli#missingSessionCWD",
@@ -101523,6 +101545,17 @@
         "type": "func(sm *github.com/MichaelKinsy/PiG/internal/codingagent.SettingsManager, projectTrusted bool) error"
       },
       "shapeHash": "sha256:672064126b458153cddea24402c5fdc780fdd6dbca135502877b784d770acc8f"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#validateConfiguredPackages",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "validateConfiguredPackages",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(cwd string, sm *github.com/MichaelKinsy/PiG/internal/codingagent.SettingsManager, jsonOut bool) int"
+      },
+      "shapeHash": "sha256:6d26d32cdfae87a523da677cf93fe2f2b9ae3a01f9fb1ce93482ab76f300802e"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/cli#validateConfiguredPackagesForStartup",
