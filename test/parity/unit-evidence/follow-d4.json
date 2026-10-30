@@ -1,0 +1,158 @@
+[
+ {
+  "upstream": "packages/chord/src/next/documents/line.ts",
+  "package": "./chord/next/documents",
+  "tests": [
+   "TestTheLineHandsItToEachHolderInTheOrderTheyAskedOnceThePreviousOneReleased",
+   "TestTheLineIgnoresASecondReleaseOfTheSameHolder"
+  ],
+  "upstream_reference": "packages/chord/src/next/documents/line.ts",
+  "mutation": "chord/next/documents/line.go: `\t<-previous\n` -> `\t_ = previous\n` (TestTheLineHandsItToEachHolderInTheOrderTheyAskedOnceThePreviousOneReleased FAILS)"
+ },
+ {
+  "upstream": "packages/chord/src/next/documents/fence.ts",
+  "package": "./chord/next/documents",
+  "tests": [
+   "TestSealTokensStartOpenAndStaySealedOnceSealed"
+  ],
+  "upstream_reference": "packages/chord/src/next/documents/fence.ts",
+  "mutation": "chord/next/documents/fence.go: `token.sealed.Store(true)` -> `token.sealed.Store(false)` (TestSealTokensStartOpenAndStaySealedOnceSealed FAILS)"
+ },
+ {
+  "upstream": "packages/chord/src/next/documents/residency.ts",
+  "package": "./chord/next/documents",
+  "tests": [
+   "TestTheIdleStructureEvictsIdleDocumentsOldestFirstOnceTheirRetentionPassedWithOneTimer",
+   "TestKeyedSlotAnUnpinnedKeyIdleForTheRetentionLeavesMemoryAPinnedOneStays"
+  ],
+  "upstream_reference": "packages/chord/src/next/documents/residency.ts",
+  "mutation": "chord/next/documents/residency.go: `at := r.idle[0].since + RetentionMs` -> `at := r.idle[0].since + 2*RetentionMs` (TestTheIdleStructureEvictsIdleDocumentsOldestFirstOnceTheirRetentionPassedWithOneTimer FAILS)"
+ },
+ {
+  "upstream": "packages/chord/src/next/documents/residency.ts",
+  "package": "./chord/next/documents",
+  "tests": [
+   "TestTheIdleStructureMovesATouchedDocumentToTheBackAtMostOncePerGranule"
+  ],
+  "upstream_reference": "packages/chord/src/next/documents/residency.ts",
+  "mutation": "chord/next/documents/residency.go: `now-r.idle[i].since < granuleMs` -> `now-r.idle[i].since < 0` (TestTheIdleStructureMovesATouchedDocumentToTheBackAtMostOncePerGranule FAILS)"
+ },
+ {
+  "upstream": "packages/chord/src/next/documents/definition.ts",
+  "package": "./chord/next/documents",
+  "tests": [
+   "TestInitialIsCheckedAgainstTheSchemaOnceTheFirstTimeItIsUsed"
+  ],
+  "upstream_reference": "packages/chord/src/next/documents/definition.ts",
+  "mutation": "chord/next/documents/definition.go: `if definition.checked {` -> `if false {` (TestInitialIsCheckedAgainstTheSchemaOnceTheFirstTimeItIsUsed FAILS)"
+ },
+ {
+  "upstream": "packages/chord/src/next/documents/definition.ts",
+  "package": "./chord/next/documents",
+  "tests": [
+   "TestMigrateRefusesAnOlderValueWithoutAMigrate"
+  ],
+  "upstream_reference": "packages/chord/src/next/documents/definition.ts",
+  "mutation": "chord/next/documents/definition.go: `definition.Name, from, definition.Version)` -> `definition.Name, definition.Version, from)` (TestMigrateRefusesAnOlderValueWithoutAMigrate FAILS)"
+ },
+ {
+  "upstream": "packages/chord/src/next/documents/address-source.ts",
+  "package": "./chord/next/documents",
+  "tests": [
+   "TestAddressFramesARetirementReadsInitialWithTheFlagARecreationInTheSameBatchIsOneRootReplacementFlagged"
+  ],
+  "upstream_reference": "packages/chord/src/next/documents/address-source.ts",
+  "mutation": "chord/next/documents/address_source.go: `if prepared.Base() == before && !source.retired {` -> `if prepared.Base() == before {` (TestAddressFramesARetirementReadsInitialWithTheFlagARecreationInTheSameBatchIsOneRootReplacementFlagged FAILS)"
+ },
+ {
+  "upstream": "packages/chord/src/next/documents/address-source.ts",
+  "package": "./chord/next/documents",
+  "tests": [
+   "TestUnwatchedAddressesKeepNoOpsOfAWriteNoFrameTakesThem"
+  ],
+  "upstream_reference": "packages/chord/src/next/documents/address-source.ts",
+  "mutation": "chord/next/documents/address_source.go: `\tif source.Watched() {\n\t\tif prepared.Base()` -> `\tif true {\n\t\tif prepared.Base()` (TestUnwatchedAddressesKeepNoOpsOfAWriteNoFrameTakesThem FAILS)"
+ },
+ {
+  "upstream": "packages/chord/src/next/documents/persistence.ts",
+  "package": "./chord/next/documents",
+  "tests": [
+   "TestLoadsRefuseAStoredVersionNewerThanTheCodesAndTheSameVersionWithAnotherFingerprint"
+  ],
+  "upstream_reference": "packages/chord/src/next/documents/persistence.ts",
+  "mutation": "chord/next/documents/persistence.go: `if version > code {` -> `if version >= code {` (TestLoadsRefuseAStoredVersionNewerThanTheCodesAndTheSameVersionWithAnotherFingerprint FAILS)"
+ },
+ {
+  "upstream": "packages/chord/src/next/documents/persistence.ts",
+  "package": "./chord/next/documents",
+  "tests": [
+   "TestStagedWritesStoreACreationAsABaseChangesAsDeltasUntilCheckpointWhenAsksForABase"
+  ],
+  "upstream_reference": "packages/chord/src/next/documents/persistence.ts",
+  "mutation": "chord/next/documents/persistence.go: `deltas := stored.DeltasSinceBase + 1` -> `deltas := stored.DeltasSinceBase` (TestStagedWritesStoreACreationAsABaseChangesAsDeltasUntilCheckpointWhenAsksForABase FAILS)"
+ },
+ {
+  "upstream": "packages/chord/src/next/documents/slot.ts",
+  "package": "./chord/next/documents",
+  "tests": [
+   "TestAcrossAttemptsFailTheAttemptBrokenForAFlippedKeyedAnOlderVersionOrASchemaChangedWithoutABump"
+  ],
+  "upstream_reference": "packages/chord/src/next/documents/slot.ts",
+  "mutation": "chord/next/documents/slot.go: `if definition.Keyed != current.Keyed {` -> `if definition.Keyed == current.Keyed {` (TestAcrossAttemptsFailTheAttemptBrokenForAFlippedKeyedAnOlderVersionOrASchemaChangedWithoutABump FAILS)"
+ },
+ {
+  "upstream": "packages/chord/src/next/documents/slot.ts",
+  "package": "./chord/next/documents",
+  "tests": [
+   "TestPersistedSingletonsLoadOncePerObjectAtActivationNotAgainOnARetryAndSurviveTheHost"
+  ],
+  "upstream_reference": "packages/chord/src/next/documents/slot.ts",
+  "mutation": "chord/next/documents/slot.go: `\tif loaded {\n\t\treturn nil\n\t}\n\tdocument, err := slot.persistence.Read(` -> `\tif loaded && false {\n\t\treturn nil\n\t}\n\tdocument, err := slot.persistence.Read(` (TestPersistedSingletonsLoadOncePerObjectAtActivationNotAgainOnARetryAndSurviveTheHost FAILS)"
+ },
+ {
+  "upstream": "packages/chord/src/next/documents/documents.ts",
+  "package": "./chord/next/documents",
+  "tests": [
+   "TestKeyedSlotASealedHandleReadsCachedDocumentsAColdReadIsRefusedReleased",
+   "TestKeyedSlotColdReadsQueuedBehindAnAdmittedStepAreRefusedReleasedWhenTheirAttemptFailedLiveMeanwhile"
+  ],
+  "upstream_reference": "packages/chord/src/next/documents/documents.ts",
+  "mutation": "chord/next/documents/documents.go: `if d.state != documentsOpen || (token != nil && token.Sealed()) {` -> `if d.state != documentsOpen {` (TestKeyedSlotASealedHandleReadsCachedDocumentsAColdReadIsRefusedReleased FAILS)"
+ },
+ {
+  "upstream": "packages/chord/src/next/documents/handles.ts",
+  "package": "./chord/next/documents",
+  "tests": [
+   "TestSealedHandlesStillReadSynchronouslyAndFromMemoryChangesAndRetirementsAreRefusedReleased"
+  ],
+  "upstream_reference": "packages/chord/src/next/documents/handles.ts",
+  "mutation": "chord/next/documents/handles.go: `Token: token, Version: version, declarer: declarer` -> `Token: nil, Version: version, declarer: declarer` (TestSealedHandlesStillReadSynchronouslyAndFromMemoryChangesAndRetirementsAreRefusedReleased FAILS)"
+ },
+ {
+  "upstream": "packages/chord/src/next/documents/transaction.ts",
+  "package": "./chord/next/documents",
+  "tests": [
+   "TestTransactionsRefuseAnotherObjectsDocuments"
+  ],
+  "upstream_reference": "packages/chord/src/next/documents/transaction.ts",
+  "mutation": "chord/next/documents/transaction.go: `if slot.Owner() != tx.documents {` -> `if false {` (TestTransactionsRefuseAnotherObjectsDocuments FAILS)"
+ },
+ {
+  "upstream": "packages/chord/src/next/documents/transaction.ts",
+  "package": "./chord/next/documents",
+  "tests": [
+   "TestTransactionsCommitNothingWhenNothingChanged"
+  ],
+  "upstream_reference": "packages/chord/src/next/documents/transaction.ts",
+  "mutation": "chord/next/documents/transaction.go: `if len(prepared.Ops()) == 0 {` -> `if false {` (TestTransactionsCommitNothingWhenNothingChanged FAILS)"
+ },
+ {
+  "upstream": "packages/chord/src/next/documents/keyed-slot.ts",
+  "package": "./chord/next/documents",
+  "tests": [
+   "TestKeyedSlotALoneSurrogateInAKeyIsUFFFDAtEveryEntryPointInMemoryAndInTheStoreNULIsRefused"
+  ],
+  "upstream_reference": "packages/chord/src/next/documents/keyed-slot.ts",
+  "mutation": "chord/next/documents/keyed_slot.go: `return store.StoredText(key, slot.keyWhat)` -> `return key, nil` (TestKeyedSlotALoneSurrogateInAKeyIsUFFFDAtEveryEntryPointInMemoryAndInTheStoreNULIsRefused FAILS)"
+ }
+]
