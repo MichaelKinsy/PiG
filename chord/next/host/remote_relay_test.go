@@ -592,7 +592,7 @@ func TestRelayUpstreamDrop(t *testing.T) {
 			call := startCall(t, notes, "wait", nil, background)
 			first.Next("call")
 			first.Close()
-			_, err := call.wait()
+			_, err := call.wait(background)
 			_ = requireChordError(t, err, data.CodeUnavailable, "")
 			settleRelay(r)
 			if kind := refStateKind(notes); kind != RefStateLoading {
@@ -902,7 +902,7 @@ func TestRelayMixedCodecs(t *testing.T) {
 		cancellable, cancel := chordctx.WithCancel(background)
 		waiting := startCall(t, notes, "wait", nil, cancellable)
 		cancel(errStop)
-		if _, err := waiting.wait(); err == nil || err.Error() != "stop" {
+		if _, err := waiting.wait(background); err == nil || err.Error() != "stop" {
 			t.Fatalf("waiting error = %v, want stop", err)
 		}
 	})
@@ -1059,7 +1059,7 @@ func TestRelayLimitsAndCompression(t *testing.T) {
 			call := worker.Next("call").(*link.CallMessage)
 			long := string(repeatBytes('y', 60))
 			worker.Send(&link.ResultMessage{Origin: held.origin, Call: call.Call, Value: mustJSONPart(t, long)})
-			result, err := added.wait()
+			result, err := added.wait(background)
 			must(t, err)
 			nexttest.RequireJSONEqual(t, result, long)
 			flushRelay(rel, workers)

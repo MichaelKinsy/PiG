@@ -85,7 +85,7 @@ func startCalls(t testing.TB, ref *Reference, method string, n int) []*parkedCal
 func awaitCalls(t testing.TB, results []*parkedCallResult) {
 	t.Helper()
 	for _, result := range results {
-		_, err := result.wait()
+		_, err := result.wait(background)
 		must(t, err)
 	}
 }
@@ -1755,7 +1755,7 @@ func TestHostAcquiringHostCloseQueuedCallsRejectReleasedReferencesGoReleasedThei
 	must(t, err)
 	must(t, host.Close(background))
 	must(t, remoteHost.Close(background))
-	_, err = call.wait()
+	_, err = call.wait(background)
 	wantChordError(t, err, data.CodeReleased, data.ReasonClosed, "the host is closed")
 	for i, ref := range []*Reference{local, remote} {
 		if kind := refStateOf(ref).Kind; kind != RefStateEnded {

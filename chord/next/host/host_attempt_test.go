@@ -385,7 +385,7 @@ func TestAttemptEndingRejectsTheirCallersAtOnceTheHandlerRunsOnWithItsContextAbo
 				State: map[string]chord.Watchable[delta.JsonValue]{"label": constant("")},
 				Methods: map[string]contracts.MethodFunction{"slow": func(_ delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
 					started.fire()
-					proceed.wait(t)
+					proceed.await(t, ctx)
 					_, err := self.Tx(func(tx *documents.Transaction) (any, error) { return tx.Draft(list) }, background)
 					finished <- outcome{aborted: ctx.Err() != nil, err: err}
 					return nil, nil
@@ -448,9 +448,9 @@ func TestAttemptEndingWaitsForTheRunningHandlersOwnPromisesTheDrainBeforeTheNati
 			})
 			return contracts.Implementation{Members: contracts.VariantImplementation{
 				State: map[string]chord.Watchable[delta.JsonValue]{"label": constant("")},
-				Methods: map[string]contracts.MethodFunction{"slow": func(delta.JsonValue, context.Context) (delta.JsonValue, error) {
+				Methods: map[string]contracts.MethodFunction{"slow": func(_ delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
 					started.fire()
-					proceed.wait(t)
+					proceed.await(t, ctx)
 					events.add("handler settled")
 					return nil, nil
 				}},
@@ -486,9 +486,9 @@ func TestAttemptEndingDrainsAHandlerThatReleasesItsObjectsLastReferenceBeforeItR
 			return contracts.Implementation{Members: contracts.VariantImplementation{
 				State: map[string]chord.Watchable[delta.JsonValue]{"label": constant("")},
 				// The release runs before the handler has anything to return.
-				Methods: map[string]contracts.MethodFunction{"slow": func(delta.JsonValue, context.Context) (delta.JsonValue, error) {
+				Methods: map[string]contracts.MethodFunction{"slow": func(_ delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
 					page.Release()
-					proceed.wait(t)
+					proceed.await(t, ctx)
 					events.add("handler settled")
 					return nil, nil
 				}},
@@ -559,7 +559,9 @@ func TestAttemptTheDrainIsBoundedByCloseTimeoutAHandlerStillRunningThenSeesItsNa
 			selfOpen(self, func(context.Context) error { return nil }, func(NativeCloseReason) { closed.Add(1) })
 			return contracts.Implementation{Members: contracts.VariantImplementation{
 				State: map[string]chord.Watchable[delta.JsonValue]{"label": constant("")},
-				Methods: map[string]contracts.MethodFunction{"slow": func(delta.JsonValue, context.Context) (delta.JsonValue, error) {
+				Methods: map[string]contracts.MethodFunction{"slow": func(_ delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
+					// Pi: `await new Promise(() => {})`.
+					chordctx.Suspend(ctx)
 					<-forever
 					return nil, nil
 				}},
@@ -610,6 +612,7 @@ func TestAttemptTheDrainAHandlerStuckPastItNoLongerCountsAsACallNorHoldsItsCtxGe
 						return nil, err
 					}
 					got.fire()
+					chordctx.Suspend(ctx)
 					<-forever
 					return nil, nil
 				}},

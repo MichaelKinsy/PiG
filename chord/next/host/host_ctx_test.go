@@ -132,7 +132,9 @@ func desk(t *testing.T) (Host, *deskSeen, *Reference) {
 				"late": func(_ delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
 					c := ctx.(Ctx)
 					go func() { _, err := c.Get(ctxItem, jsonObject("id", float64(3)), GetOptions{}); seen.late <- err }()
-					// The get's synchronous part ran (its object is created) before the handler settles, as in Pi.
+					// The get's synchronous part ran (its object is created) before the handler settles, as in Pi. In Go the
+					// get runs on a goroutine of its own, and the handler suspends (Pi's `await`) while it waits for it.
+					chordctx.Suspend(ctx)
 					scopeEventually(t, "the late get created its object", func() bool { return seen.factoryCount() >= 1 })
 					return nil, nil
 				},
@@ -205,9 +207,11 @@ func TestCtxGetOfAHandlerWhoseCallWasAbortedChecksTheSignalFirstNothingIsCreated
 			return contracts.Implementation{Members: contracts.VariantImplementation{Methods: map[string]contracts.MethodFunction{
 				"use": func(_ delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
 					close(entered)
+					// Pi: `await gate.promise`, then `await untilAborted(ctx)`.
+					chordctx.Suspend(ctx)
 					<-gate
 					// The caller's abort reaches the call's context through a listener of its own.
-					<-ctx.Done()
+					UntilAborted(ctx)
 					_, err := ctx.(Ctx).Get(ctxItem, jsonObject("id", float64(1)), GetOptions{})
 					got <- err
 					return float64(0), nil
@@ -287,7 +291,8 @@ func TestCtxAGetStillWaitingWhenItsHandlerSettlesGivesUpItsReferenceIsReleasedAt
 				"start": func(_ delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
 					c := ctx.(Ctx)
 					go func() { _, err := c.Get(far, jsonObject(), GetOptions{}); pending <- err }()
-					// The get's hold is on the parent link before the handler settles.
+					// The get's hold is on the parent link before the handler settles: `await parent.next("hold")`.
+					chordctx.Suspend(ctx)
 					holds <- parent.Next("hold").(*link.HoldMessage)
 					return nil, nil
 				},

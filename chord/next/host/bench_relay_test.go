@@ -946,7 +946,7 @@ func BenchmarkRelayCalls(b *testing.B) {
 			}
 			done.Go(func() {
 				for _, result := range results {
-					if _, err := result.wait(); err != nil {
+					if _, err := result.wait(background); err != nil {
 						b.Error(err)
 					}
 				}

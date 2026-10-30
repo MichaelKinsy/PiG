@@ -1522,6 +1522,59 @@ func TestOnLiveIsAbortedByItsOwnersEndNoReportNoRestart(t *testing.T) {
 
 // --- routines and the end ---------------------------------------------------------------------------------------------
 
+// Mirrors routines.test.ts "routines and the end › start in the turn their object went live, next to a method call admitted
+// in that turn". The parked call runs as the object goes live: its handler's first synchronous part ("bump") runs inside
+// the section that admits it, then `onLive` in that turn and the first `on` call after its watch; the call's commit lands
+// afterwards, and `on 1` is the call after it.
+func TestRoutinesStartInTheTurnTheirObjectWentLiveNextToAMethodCallAdmittedInThatTurn(t *testing.T) {
+	e := newRoutinesEnv(t)
+	var mu sync.Mutex
+	var order []string
+	record := func(text string) {
+		mu.Lock()
+		order = append(order, text)
+		mu.Unlock()
+	}
+	e.host, e.errs = loaded(t, func(h FacetHost, _ FacetSelf) error {
+		return h.Serve(routinesItem, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+			doc := stateOf(self, routinesDoc)
+			self.On(doc.s, func(call chord.WatchCall[delta.JsonValue], _ Ctx) *Handled {
+				record(fmt.Sprintf("on %v", call.Value.(*delta.JsonObject).Value("n")))
+				return nil
+			})
+			self.OnLive(func(Ctx) *Handled {
+				record("onLive")
+				return nil
+			})
+			implementation := e.implementation(self, doc)
+			implementation.Members.Methods["bump"] = func(_ delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
+				record("bump")
+				return nil, bumpDoc(doc, ctx)
+			}
+			return implementation, nil
+		}, ServeOptions{})
+	}, loadedOptions{Loop: e.loop})
+	// `host.hold(...)` and `item.bump(context)` are one synchronous section: the activation's microtasks run after the call.
+	var item *Reference
+	var bumped *parkedCallResult
+	e.host.(*chordHost).enter(func() {
+		item = mustHold(t, e.host, routinesItem, jsonObject("id", 1.0))
+		bumped = startCall(t, item, "bump", nil, background)
+	})
+	untilState(t, item, func(s *RefState) bool { return s.Kind == RefStateLive })
+	if _, err := bumped.wait(background); err != nil {
+		t.Fatal(err)
+	}
+	e.quiet()
+	mu.Lock()
+	got := slices.Clone(order)
+	mu.Unlock()
+	if want := []string{"bump", "onLive", "on 0", "on 1"}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("order = %v, want %v", got, want)
+	}
+	e.close()
+}
+
 func TestRoutinesNeverStartARoutineCallOnceTheObjectEndedInItsFirstTurnNoCallNoReportNoRejection(t *testing.T) {
 	e := newRoutinesEnv(t)
 	var mu sync.Mutex

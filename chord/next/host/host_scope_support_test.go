@@ -5,6 +5,8 @@ import (
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/MichaelKinsy/PiG/chord/internal/parking"
 )
 
 // Test support of host_ctx, host_root, host_routines and host_route tests: a loop with vitest's fake timers and the real
@@ -24,10 +26,11 @@ var _ sectionLoop = (*scopeLoop)(nil)
 
 func newScopeLoop() *scopeLoop { return &scopeLoop{fakeLoop: newFakeLoop(), real: NewLoop()} }
 
-func (l *scopeLoop) Run(work func())  { l.real.Run(work) }
-func (l *scopeLoop) Go(fn func())     { l.real.Go(fn) }
-func (l *scopeLoop) Queue(job func()) { l.real.Queue(job) }
-func (l *scopeLoop) barrier()         { l.real.Run(func() {}) }
+func (l *scopeLoop) Run(work func())                        { l.real.Run(work) }
+func (l *scopeLoop) Go(fn func())                           { l.real.Go(fn) }
+func (l *scopeLoop) Queue(job func())                       { l.real.Queue(job) }
+func (l *scopeLoop) Lend(signal *parking.Signal, fn func()) { l.real.Lend(signal, fn) }
+func (l *scopeLoop) barrier()                               { l.real.Run(func() {}) }
 
 // fakeIntervals makes the loop fake `setInterval` as well (`toFake: [..., "setInterval", "clearInterval"]`).
 func (l *scopeLoop) fakeIntervals() *scopeLoop { l.intervals = true; return l }
