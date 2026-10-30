@@ -15,30 +15,34 @@ import (
 )
 
 // Decode decodes the bytes Photon's `PhotonImage.new_from_byteslice` decodes: image 0.24.9 `load_from_memory` guesses the format from
-// the magic bytes (io/free_functions.rs:268) and decodes JPEG with jpeg-decoder 0.3.1 (DecodeJPEG), WebP with its own decoder
-// (DecodeWebP) and TIFF with tiff 0.9.1 (DecodeTIFF), all pixel for pixel. Every other format is decoded by the standard library
-// decoders this package registers (PNG, GIF, BMP), which are lossless and give the same pixels as Photon's. The result is not premultiplied.
+// the magic bytes (guess_format, io/free_functions.rs:266-312) and decodes JPEG with jpeg-decoder 0.3.1 (DecodeJPEG), WebP with its own
+// decoder (DecodeWebP), TIFF with tiff 0.9.1 (DecodeTIFF), farbfeld (DecodeFarbfeld), all pixel for pixel. The other formats Photon
+// enables are decoded by the standard library decoders this package registers (PNG, GIF, BMP), which are lossless and give the same
+// pixels as Photon's. Bytes that no signature of guess_format matches are an error, as in Photon (TGA has no signature, io/free_functions.rs:295,
+// and AVIF, OpenEXR and QOI are not compiled into Photon's wasm). The result is not premultiplied.
+//
+// The cases follow the order of guess_format's table, whose first matching signature wins; no signature is a prefix of another, so the
+// order only documents it.
 func Decode(data []byte) (image.Image, error) {
 	switch {
 	case bytes.HasPrefix(data, []byte{0xFF, 0xD8, 0xFF}):
-		img, err := DecodeJPEG(data)
-		if err != nil {
-			return nil, err
-		}
-		return img, nil
+		return decodeNRGBA(DecodeJPEG, data)
 	case len(data) >= 12 && bytes.HasPrefix(data, []byte("RIFF")) && bytes.Equal(data[8:12], []byte("WEBP")):
-		img, err := DecodeWebP(data)
-		if err != nil {
-			return nil, err
-		}
-		return img, nil
+		return decodeNRGBA(DecodeWebP, data)
 	case isTIFF(data):
-		img, err := DecodeTIFF(data)
-		if err != nil {
-			return nil, err
-		}
-		return img, nil
+		return decodeNRGBA(DecodeTIFF, data)
+	case isFarbfeld(data):
+		return decodeNRGBA(DecodeFarbfeld, data)
 	}
 	img, _, err := image.Decode(bytes.NewReader(data))
 	return img, err
+}
+
+// decodeNRGBA is a Decode case: an *image.NRGBA that is nil on error must not become a non-nil image.Image.
+func decodeNRGBA(decode func([]byte) (*image.NRGBA, error), data []byte) (image.Image, error) {
+	img, err := decode(data)
+	if err != nil {
+		return nil, err
+	}
+	return img, nil
 }
