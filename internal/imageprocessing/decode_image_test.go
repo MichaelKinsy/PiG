@@ -4,6 +4,7 @@ package imageprocessing
 
 import (
 	"bytes"
+	"crypto/sha256"
 	"encoding/base64"
 	"encoding/binary"
 	"encoding/hex"
@@ -111,25 +112,40 @@ func setBMPHeaderSize(bmp []byte, size uint32) []byte {
 	return bmp
 }
 
-func TestDecodeBitfieldBMPRejectsMalformed(t *testing.T) {
+// Each want is the SHA-256 of Photon 0.3.4's get_raw_pixels() for a 2x2 bitmap (the 32-bit BITFIELDS one of bitfieldBMP) with one field damaged
+// ("" means Photon throws), measured with the pinned @silvia-odwyer/photon-node 0.3.4 WASM. A pixel array offset inside the header is not an error
+// to image 0.24.9's BMP decoder: it reads the pixels from there.
+func TestDecodeImageMatchesPhotonOnMalformedBitfieldBMP(t *testing.T) {
 	good := bitfieldBMP(40, 32, 3, []uint32{0xff0000, 0xff00, 0xff}, 2, 2, nil)
-	if _, err := decodeBitfieldBMP(bytes.Clone(good)); err != nil {
-		t.Fatalf("unmodified bitmap: %v", err)
-	}
-	for name, mutate := range map[string]func([]byte) []byte{
-		"truncated pixels":       func(b []byte) []byte { return b[:len(b)-1] },
-		"truncated masks":        func(b []byte) []byte { return b[:14+40+8] },
-		"zero colour mask":       func(b []byte) []byte { binary.LittleEndian.PutUint32(b[14+40:], 0); return b },
-		"zero width":             func(b []byte) []byte { binary.LittleEndian.PutUint32(b[18:], 0); return b },
-		"huge height":            func(b []byte) []byte { binary.LittleEndian.PutUint32(b[22:], 0x7fffffff); return b },
-		"pixel offset in header": func(b []byte) []byte { binary.LittleEndian.PutUint32(b[10:], 20); return b },
-		"unknown header size":    func(b []byte) []byte { binary.LittleEndian.PutUint32(b[14:], 64); return b },
-		"RLE compression":        func(b []byte) []byte { binary.LittleEndian.PutUint32(b[30:], 2); return b },
-		"two planes":             func(b []byte) []byte { binary.LittleEndian.PutUint16(b[26:], 2); return b },
+	for _, tc := range []struct {
+		name   string
+		mutate func([]byte) []byte
+		want   string
+	}{
+		{"unmodified", func(b []byte) []byte { return b }, "cc0fa51d4d0a97b664030be5052f3b2b69a1267f89ace4c9bbc65007566725df"},
+		{"truncated pixels", func(b []byte) []byte { return b[:len(b)-1] }, ""},
+		{"truncated masks", func(b []byte) []byte { return b[:14+40+8] }, ""},
+		{"zero colour mask", func(b []byte) []byte { binary.LittleEndian.PutUint32(b[14+40:], 0); return b }, ""},
+		{"zero width", func(b []byte) []byte { binary.LittleEndian.PutUint32(b[18:], 0); return b }, ""},
+		{"huge height", func(b []byte) []byte { binary.LittleEndian.PutUint32(b[22:], 0x7fffffff); return b }, ""},
+		{"pixel offset in header", func(b []byte) []byte { binary.LittleEndian.PutUint32(b[10:], 20); return b }, "ff3efde722ed71274d1acfaa26e7de5118f1de520be309809906f8ba51b93054"},
+		{"unknown header size", func(b []byte) []byte { binary.LittleEndian.PutUint32(b[14:], 64); return b }, ""},
+		{"RLE compression", func(b []byte) []byte { binary.LittleEndian.PutUint32(b[30:], 2); return b }, ""},
+		{"two planes", func(b []byte) []byte { binary.LittleEndian.PutUint16(b[26:], 2); return b }, ""},
 	} {
-		t.Run(name, func(t *testing.T) {
-			if decoded, err := decodeBitfieldBMP(mutate(bytes.Clone(good))); err == nil {
-				t.Fatalf("decoded %v", decoded.Bounds())
+		t.Run(tc.name, func(t *testing.T) {
+			decoded, err := DecodeImage(tc.mutate(bytes.Clone(good)))
+			got := ""
+			if err == nil {
+				raw, decodeErr := hex.DecodeString(rgbaHex(decoded))
+				if decodeErr != nil {
+					t.Fatal(decodeErr)
+				}
+				sum := sha256.Sum256(raw)
+				got = hex.EncodeToString(sum[:])
+			}
+			if got != tc.want {
+				t.Fatalf("pixels sha256=%q error=%v, want %q", got, err, tc.want)
 			}
 		})
 	}

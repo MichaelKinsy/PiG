@@ -124,16 +124,28 @@ Distributed file: `internal/photonimage/sinf.go`
 
 `internal/photonimage/sinf.go` ports the single-precision sine that Photon's WebAssembly calls (compiler_builtins' copy of libm), so that the Lanczos3 weights are Photon's own.
 
-## image 0.24.9 decoders (WebP, ICO, BMP in ICO, PNM, DDS and DXT, Radiance HDR, farbfeld)
+## image 0.24.9 decoders (WebP, BMP, GIF, ICO, PNM, DDS and DXT, Radiance HDR, farbfeld)
 
-Source: <https://github.com/image-rs/image/tree/v0.24.9/src/codecs> (`webp/`, `ico/decoder.rs`, `bmp/decoder.rs`, `pnm/decoder.rs`, `pnm/header.rs`, `dds.rs`, `dxt.rs`, `hdr/decoder.rs`, `farbfeld.rs`, with `io/free_functions.rs`, `dynimage.rs`, `color.rs` and `utils/mod.rs` for the format guess, the limits and the sample conversions)
+Source: <https://github.com/image-rs/image/tree/v0.24.9/src/codecs> (`webp/`, `bmp/decoder.rs`, `gif.rs`, `ico/decoder.rs`, `pnm/decoder.rs`, `pnm/header.rs`, `dds.rs`, `dxt.rs`, `hdr/decoder.rs`, `farbfeld.rs`, with `io/free_functions.rs`, `io/mod.rs`, `dynimage.rs`, `color.rs` and `utils/mod.rs` for the format guess, the limits and the sample conversions)
 
-Distributed files: `internal/photonimage/webpdecode*.go`, `icodecode.go`, `icodecode_bmp.go`, `pnmdecode.go`, `ddsdecode.go`, `hdrdecode.go`, `farbfelddecode.go` and `decodeformats.go`
+Distributed files: `internal/photonimage/webpdecode*.go`, `bmpdecode.go`, `gifdecode.go`, `icodecode.go`, `pnmdecode.go`, `ddsdecode.go`, `hdrdecode.go`, `farbfelddecode.go` and `decodeformats.go`
 
 - image: Copyright (c) 2015 nwin; The image-rs Developers
 - License: MIT OR Apache-2.0; PiG uses the MIT option for this derived code
 
 These files port the decoders Photon 0.3.3 and 0.3.4 run (`PhotonImage.new_from_byteslice`), so that PiG returns Photon's pixels or its error. The required MIT copyright and permission notice is preserved here, and the canonical MIT text is in `LICENSES/MIT.txt`.
+
+## gif 0.13.1 reader and weezl 0.1.8 LZW decoder (GIF)
+
+Sources: <https://github.com/image-rs/image-gif/tree/v0.13.1> (`src/reader/mod.rs`, `src/reader/decoder.rs`, `src/reader/converter.rs`) and <https://github.com/image-rs/lzw/tree/v0.1.8> (`src/decode.rs`)
+
+Distributed files: `internal/photonimage/gifdecode.go` and `gifdecode_lzw.go`
+
+- gif: Copyright (c) 2015 nwin
+- weezl: Copyright (c) HeroicKatora 2020
+- License: gif is MIT OR Apache-2.0; weezl is MIT OR Apache-2.0; PiG uses the MIT option for this derived code
+
+The files port the first-frame decoding of the GIF decoder Photon runs (image 0.24.9's `GifDecoder` over the gif crate and its LZW decoder), so that PiG returns Photon's pixels or its error. The required MIT copyright and permission notice is preserved here, and the canonical MIT text is in `LICENSES/MIT.txt`.
 
 ## png 0.17.14 reader
 

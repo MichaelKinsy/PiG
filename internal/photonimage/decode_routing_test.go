@@ -26,7 +26,7 @@ var goDecoderPackages = []string{"image", "image/jpeg", "image/png", "image/gif"
 
 // lossyDecoderPackages must not be registered by production code: with them registered a stray image.Decode would
 // silently decode a JPEG, a WebP or a TIFF with Go's pixels (or Go's idea of what is a valid file) instead of Photon's.
-var lossyDecoderPackages = []string{"image/jpeg", "golang.org/x/image/webp", "golang.org/x/image/tiff"}
+var lossyDecoderPackages = []string{"image/jpeg", "image/gif", "golang.org/x/image/bmp", "golang.org/x/image/webp", "golang.org/x/image/tiff"}
 
 // decodeFallbackFile is the one production file that calls the standard library: Decode's fallback for the lossless formats.
 const decodeFallbackFile = "internal/photonimage/decode.go"
@@ -195,7 +195,7 @@ func TestDecodeRegistersTheLosslessDecodersItFallsBackTo(t *testing.T) {
 			blank = append(blank, importPath)
 		}
 	}
-	for _, want := range []string{"image/gif", "image/png", "golang.org/x/image/bmp"} {
+	for _, want := range []string{"image/png"} {
 		if !slices.Contains(blank, want) {
 			t.Errorf("decode.go does not register %s (blank imports: %v)", want, blank)
 		}
