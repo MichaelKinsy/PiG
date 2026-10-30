@@ -76,7 +76,8 @@ pkg:chord/next#Host::property:root::call:0	chord	child-gap
 pkg:chord/next#Host::property:route	chord	child-gap	
 pkg:chord/next#Host::property:route::call:0	chord	child-gap	
 pkg:chord/next#HostError	chord	type-mismatch	chord/next/host/host_error.go#HostError
-pkg:chord/next#HostKind::call:0	chord	child-gap	chord/next/contracts/host_kind.go#HostKind
+pkg:chord/next#HostKind	chord	child-gap	chord/next/contracts/host_kind.go#HostKind
+pkg:chord/next#HostKind::call:0	chord	undecidable	chord/next/contracts/host_kind.go#HostKind.Address
 pkg:chord/next#HostOptions	chord	type-mismatch	chord/host/host.go#HostOptions
 pkg:chord/next#Implementation	chord	undecidable	chord/host/contract.go#Implementation
 pkg:chord/next#IpcPort	chord	child-gap	chord/next/link/ipc.go#IpcPort

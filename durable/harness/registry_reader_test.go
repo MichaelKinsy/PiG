@@ -102,7 +102,7 @@ func TestRegistryReader(t *testing.T) {
 		failure := errors.New("registry has no composition")
 		reader := NewRegistryReader(testContext, &compositionValue{registry: CreateRegistry(), observeErr: failure})
 		defer func() {
-			if got := recover(); got != failure {
+			if got, ok := recover().(error); !ok || !errors.Is(got, failure) {
 				t.Fatalf("recovered %v, want %v", got, failure)
 			}
 		}()

@@ -553,10 +553,36 @@ func (d *detector) evalWith(e *upstreamEntry, parts idParts, c *sym) map[string]
 		d.evalValue(e, c, chk, out)
 	case "interface", "class":
 		d.evalType(e, parts, c, chk, out)
+		d.evalCallableType(e, chk, out)
 	case "type-alias":
 		d.evalAlias(e, c, chk, out)
 	}
 	return out
+}
+
+// evalCallableType judges the call overloads of a callable interface (`interface HostKind { (params): Address; kind: string }`), which evalType
+// does not reach. Go has no callable struct, so the overload is the method a documented rename names (HostKind.Address); it is judged against that
+// method's signature and exercised exactly when its decided owner is. Without a rename, or while the owner is a gap, the row stays undecided.
+func (d *detector) evalCallableType(e *upstreamEntry, chk *checker, out map[string]*decision) {
+	owner := out[e.ID]
+	if owner == nil || owner.Gap {
+		return
+	}
+	for _, row := range d.l.callRows(e.ID) {
+		if out[row.ID] != nil {
+			continue
+		}
+		target, ok := d.renames[row.ID]
+		if !ok {
+			continue
+		}
+		if m := d.renamedMember(target, e.Name); m != nil {
+			if fn, isFunc := m.Obj.(*types.Func); isFunc {
+				out[row.ID] = d.callDecision(row, m, fn.Type().(*types.Signature), owner)
+			}
+		}
+	}
+	d.foldChildren(e, owner, out)
 }
 
 // refute turns a refuting or undecided verdict into its gap; it returns nil for a verdict that holds.

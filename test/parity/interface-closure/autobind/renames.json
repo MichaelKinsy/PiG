@@ -616,6 +616,7 @@
  "pkg:chord/delta#assertValidOp": "chord/delta/delta.go#AssertValidOpValue",
  "pkg:chord/delta#decoder": "chord/delta/codec.go#NewDecoder",
  "pkg:chord/delta#encoder": "chord/delta/codec.go#NewEncoder",
+ "pkg:chord/next#HostKind::call:0": "chord/next/contracts/host_kind.go#HostKind.Address",
  "pkg:chord/node#ControlMessage": "chord/host/manager.go#ControlMessage",
  "pkg:chord/node#Instance::property:exited": "chord/host/manager.go#Instance.Exited",
  "pkg:chord/node#Instance::property:pid": "chord/host/manager.go#Instance.PID",

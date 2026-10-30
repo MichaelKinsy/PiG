@@ -117176,25 +117176,8 @@
     },
     {
       "id": "pkg:chord/next#HostKind",
-      "disposition": "ported",
-      "upstreamShapeHash": "sha256:1c98df9fb08a38e627e7ab819c1f63a74e7254dab533da098b691204fd305a49",
-      "rationale": "Derived by the interface gap detector: HostKind is Go chord/next/contracts/host_kind.go#HostKind (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
-      "pigTargets": [
-        "chord/next/contracts/host_kind.go#HostKind"
-      ],
-      "layers": {
-        "behavior": "complete",
-        "production": "complete",
-        "shape": "complete"
-      },
-      "production": [
-        "call:chord/next/contracts/host_kind.go#KindParams"
-      ],
-      "evidence": [
-        "test:chord/next/contracts/derived_runtime_test.go#TestHostAddressParams",
-        "test:chord/next/contracts/host_kind_test.go#TestHostAddress",
-        "test:chord/next/contracts/host_kind_test.go#TestHostKinds"
-      ]
+      "disposition": "pending",
+      "upstreamShapeHash": "sha256:1c98df9fb08a38e627e7ab819c1f63a74e7254dab533da098b691204fd305a49"
     },
     {
       "id": "pkg:chord/next#hostKind::call:0",
