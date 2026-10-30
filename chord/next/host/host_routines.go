@@ -172,7 +172,7 @@ func (l *liveRoutine) run() {
 		if !done.failed || owner.context.Err() != nil {
 			return
 		}
-		failed(owner, l.declaration.at, done.err)
+		routineFailed(owner, l.declaration.at, done.err)
 		if loop.Now()-started >= longRun.Milliseconds() {
 			l.delay = 0
 		}
@@ -221,8 +221,8 @@ func call(owner routineOwner, invoke func(ctx Ctx) error, after func(done called
 	})
 }
 
-// failed reports a failed routine call or source.
-func failed(owner routineOwner, routine Position, err error) {
+// routineFailed reports a failed routine call or source (Pi's `failed`; renamed: `failed` is the reference state alias).
+func routineFailed(owner routineOwner, routine Position, err error) {
 	owner.host.Report(HostError{Kind: ErrRoutineFailed, Object: owner.label, Routine: routine, Error: err})
 }
 
@@ -385,7 +385,7 @@ func (o *onRoutine) watching(failing failingKind, opened openedWatch, err error)
 	if err != nil {
 		o.state = onState{kind: stateEnded}
 		if o.owner.context.Err() == nil {
-			failed(o.owner, o.declaration.at, err)
+			routineFailed(o.owner, o.declaration.at, err)
 		}
 		return
 	}
@@ -597,7 +597,7 @@ func (o *onRoutine) called(done called) {
 	if o.aborted() {
 		return
 	}
-	failed(o.owner, o.declaration.at, done.err)
+	routineFailed(o.owner, o.declaration.at, done.err)
 	o.basis = basisNone
 	// The handler may not have applied the retirement either.
 	if o.lastRetired {
@@ -629,7 +629,7 @@ func (o *onRoutine) end(end chord.WatchEnd) {
 	o.pendingOps.Take()
 	o.retired = false
 	if end.Kind == chord.WatchFailed && !o.aborted() {
-		failed(o.owner, o.declaration.at, end.Error)
+		routineFailed(o.owner, o.declaration.at, end.Error)
 	}
 }
 

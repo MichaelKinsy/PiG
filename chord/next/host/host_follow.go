@@ -90,7 +90,7 @@ type followSource struct {
 	state.Source
 	attachFn FollowAttach[delta.JsonValue]
 	owner    followOwner
-	loop     *Loop
+	loop     sectionLoop
 	state    followState
 	value    delta.JsonValue
 	hasValue bool
@@ -109,7 +109,7 @@ var _ state.SourceHandle = (*followSource)(nil)
 
 // newFollowSource makes the source of attach, owned by owner, on batch. loop is the host's: the continuation of attach
 // runs in one of its sections.
-func newFollowSource(attach FollowAttach[delta.JsonValue], owner followOwner, batch *state.Batch, loop *Loop) *followSource {
+func newFollowSource(attach FollowAttach[delta.JsonValue], owner followOwner, batch *state.Batch, loop sectionLoop) *followSource {
 	s := &followSource{attachFn: attach, owner: owner, loop: loop, state: followState{kind: followAttaching}}
 	s.Source.Init(batch, s)
 	return s

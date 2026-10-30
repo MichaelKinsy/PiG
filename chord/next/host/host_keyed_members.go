@@ -79,7 +79,7 @@ type keyedMembers struct {
 	// scheduler is the delivery scheduler of batch, for the watches of the member sources.
 	scheduler *chord.DeliveryScheduler
 	// loop is the host's: the resumptions after an await are its sections.
-	loop *Loop
+	loop sectionLoop
 	// ctx is the object's context: a key's first load runs under it, shared by every user.
 	ctx     context.Context
 	entries keyedMap[*keyedMap[*keyEntry]]
@@ -87,7 +87,7 @@ type keyedMembers struct {
 
 // newKeyedMembers makes the pinned keys of an object whose batch, delivery scheduler (nil for the process-wide one) and
 // loop are the host's, and whose context is ctx.
-func newKeyedMembers(batch *state.Batch, scheduler *chord.DeliveryScheduler, loop *Loop, ctx context.Context) *keyedMembers {
+func newKeyedMembers(batch *state.Batch, scheduler *chord.DeliveryScheduler, loop sectionLoop, ctx context.Context) *keyedMembers {
 	return &keyedMembers{batch: batch, scheduler: scheduler, loop: loop, ctx: ctx}
 }
 
@@ -401,7 +401,7 @@ func (k *keyedMembers) forget(entry *keyEntry) {
 // pinOn pins key on keyed: on the object's own slot it is pinned and loaded; on a re-exposed member it is pinned on the
 // provider's member (whose own keys follow its attempts). The promise settles in a section of the loop; the slot's
 // Pin runs in the caller's section, as the synchronous start of Pi's async function does.
-func pinOn(loop *Loop, keyed *keyedBinding, key string, ctx context.Context) *keyedPromise[pinnedKey] {
+func pinOn(loop sectionLoop, keyed *keyedBinding, key string, ctx context.Context) *keyedPromise[pinnedKey] {
 	if keyed.kind == keyedReexposed {
 		promise := newKeyedPromise[pinnedKey](loop)
 		loop.Go(func() {
@@ -414,7 +414,7 @@ func pinOn(loop *Loop, keyed *keyedBinding, key string, ctx context.Context) *ke
 }
 
 // pinned pins key on slot and loads it when it is not in memory; a failed load releases the pin.
-func pinned(loop *Loop, slot keyedSlot, key string, ctx context.Context) *keyedPromise[pinnedKey] {
+func pinned(loop sectionLoop, slot keyedSlot, key string, ctx context.Context) *keyedPromise[pinnedKey] {
 	promise := newKeyedPromise[pinnedKey](loop)
 	release, err := slot.Pin(key, ctx)
 	if err != nil {
@@ -439,7 +439,7 @@ func pinned(loop *Loop, slot keyedSlot, key string, ctx context.Context) *keyedP
 // settled once, in a section of the host's loop. Callbacks registered with then run as microtasks of that loop in the
 // order they were registered, as Promise reactions do; await blocks outside a section until it settled.
 type keyedPromise[T any] struct {
-	loop      *Loop
+	loop      sectionLoop
 	done      chan struct{}
 	settled   bool
 	value     T
@@ -447,7 +447,7 @@ type keyedPromise[T any] struct {
 	callbacks []func(value T, err error)
 }
 
-func newKeyedPromise[T any](loop *Loop) *keyedPromise[T] {
+func newKeyedPromise[T any](loop sectionLoop) *keyedPromise[T] {
 	return &keyedPromise[T]{loop: loop, done: make(chan struct{})}
 }
 
