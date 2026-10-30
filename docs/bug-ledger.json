@@ -26918,6 +26918,27 @@
       ]
     },
     {
+      "id": "BF-b368be5",
+      "title": "`pig install --validate-only [--json]` with no source now checks every local-path entry of `packages[]` (user…",
+      "symptom": "A Package whose folder was gone passed unnoticed (D216, #389).",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Crash, hang or runaway process",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`pig install --validate-only [--json]` with no source now checks every local-path entry of `packages[]` (user and trusted project settings): it names each one whose directory does not exist with the path it resolved to and the `pig remove` command that drops it, and exits 1 when any is missing. Before, a Package whose folder was gone passed unnoticed (D216, #389).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "b368be57f5",
+          "date": "2026-10-30",
+          "pr": "389"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-b430c7a",
       "title": "Extension widgets now appear in the order they were set when Node or other extension-process widgets and Go…",
       "symptom": "Extension widgets now appear in the order they were set when Node or other extension-process widgets and Go in-process widgets share a side of the editor, as in Pi.",
