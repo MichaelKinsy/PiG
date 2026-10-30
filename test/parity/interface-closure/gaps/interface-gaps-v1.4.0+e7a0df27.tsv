@@ -1,9 +1,7 @@
 pkg:chord/next#AcceptsTable	chord	undecidable	chord/next/contracts/accepts.go#AcceptsTable
-pkg:chord/next#ActivityCounts	chord	not-exercised	chord/next/host/host_activity.go#ActivityCounts
 pkg:chord/next#AddedColumn	chord	no-go-symbol	
 pkg:chord/next#Address	chord	undecidable	chord/next/contracts/host_kind.go#Address
 pkg:chord/next#ArchiveManifest	chord	no-go-symbol	
-pkg:chord/next#BlockedReason	chord	type-mismatch	durable/types.go#BlockedReason
 pkg:chord/next#Bounds	chord	no-go-symbol	
 pkg:chord/next#ChordError	chord	undecidable	chord/host/errors.go#ChordError
 pkg:chord/next#ChordError::construct:0	chord	child-gap	chord/host/errors.go#ChordError
@@ -24,15 +22,14 @@ pkg:chord/next#Contract::property:kind	chord	member-missing	chord/host/contract.
 pkg:chord/next#Contract::property:name	chord	undecidable	chord/host/contract.go#Contract.Name
 pkg:chord/next#Contract::property:~shape	chord	member-missing	chord/host/contract.go#Contract
 pkg:chord/next#Contribution	chord	no-go-symbol	
-pkg:chord/next#Ctx	chord	child-gap	chord/host/types.go#Ctx
-pkg:chord/next#Ctx::property:get	chord	child-gap	chord/host/types.go#Ctx.Get
-pkg:chord/next#Ctx::property:get::call:0	chord	undecidable	chord/host/types.go#Ctx.Get
-pkg:chord/next#Ctx::property:incarnation	chord	member-missing	chord/host/types.go#Ctx
-pkg:chord/next#Ctx::property:telemetry	chord	member-missing	chord/host/types.go#Ctx
-pkg:chord/next#Ctx::property:toString	chord	member-missing	chord/host/types.go#Ctx
-pkg:chord/next#Ctx::property:toString::call:0	chord	member-missing	chord/host/types.go#Ctx
-pkg:chord/next#Ctx::property:value	chord	member-missing	chord/host/types.go#Ctx
-pkg:chord/next#Ctx::property:value::call:0	chord	member-missing	chord/host/types.go#Ctx
+pkg:chord/next#Ctx	chord	child-gap	chord/next/host/host_ctx.go#Ctx
+pkg:chord/next#Ctx::property:get	chord	child-gap	chord/next/host/host_ctx.go#Ctx.Get
+pkg:chord/next#Ctx::property:get::call:0	chord	undecidable	chord/next/host/host_ctx.go#Ctx.Get
+pkg:chord/next#Ctx::property:telemetry	chord	member-missing	chord/next/host/host_ctx.go#Ctx
+pkg:chord/next#Ctx::property:toString	chord	member-missing	chord/next/host/host_ctx.go#Ctx
+pkg:chord/next#Ctx::property:toString::call:0	chord	member-missing	chord/next/host/host_ctx.go#Ctx
+pkg:chord/next#Ctx::property:value	chord	child-gap	../../../../../usr/local/go/src/context/context.go#Context.Value
+pkg:chord/next#Ctx::property:value::call:0	chord	undecidable	../../../../../usr/local/go/src/context/context.go#Context.Value
 pkg:chord/next#Defaulted	chord	no-go-symbol	
 pkg:chord/next#EncodedRow	chord	type-mismatch	chord/next/store/rows.go#EncodedRow
 pkg:chord/next#Expression	chord	child-gap	chord/next/store/expression.go#Expression
@@ -40,7 +37,7 @@ pkg:chord/next#Expression::property:~type	chord	member-missing	chord/next/store/
 pkg:chord/next#Expression::property:~value	chord	member-missing	chord/next/store/expression.go#Expression
 pkg:chord/next#Facet	chord	type-mismatch	chord/host/host.go#Facet
 pkg:chord/next#FacetHost	chord	child-gap	chord/next/host/host_facet.go#FacetHost
-pkg:chord/next#FacetHost::property:references	chord	not-exercised	chord/next/host/host_facet.go#FacetHost.References
+pkg:chord/next#FacetHost::property:references	chord	child-gap	chord/next/host/host_facet.go#FacetHost.References
 pkg:chord/next#FacetHost::property:references::call:0	chord	undecidable	chord/next/host/host_facet.go#FacetHost.References
 pkg:chord/next#FacetHost::property:serve	chord	child-gap	chord/next/host/host_facet.go#FacetHost.Serve
 pkg:chord/next#FacetHost::property:serve::call:0	chord	undecidable	chord/next/host/host_facet.go#FacetHost.Serve
@@ -50,35 +47,22 @@ pkg:chord/next#FacetSelf::property:contribute	chord	child-gap	chord/next/host/ho
 pkg:chord/next#FacetSelf::property:contribute::call:0	chord	undecidable	chord/next/host/host_facet.go#FacetSelf.Contribute
 pkg:chord/next#Factory	chord	child-gap	chord/host/object.go#Factory
 pkg:chord/next#Factory::call:0	chord	undecidable	chord/host/object.go#Factory
-pkg:chord/next#Held	chord	undecidable	chord/next/documents/persistence.go#Held
-pkg:chord/next#Host	chord	no-go-symbol	
-pkg:chord/next#Host::property:accept	chord	child-gap	
-pkg:chord/next#Host::property:accept::call:0	chord	child-gap	
-pkg:chord/next#Host::property:activity	chord	child-gap	
-pkg:chord/next#Host::property:close	chord	child-gap	
-pkg:chord/next#Host::property:close::call:0	chord	child-gap	
-pkg:chord/next#Host::property:connect	chord	child-gap	
-pkg:chord/next#Host::property:connect::call:0	chord	child-gap	
-pkg:chord/next#Host::property:get	chord	child-gap	
-pkg:chord/next#Host::property:get::call:0	chord	child-gap	
-pkg:chord/next#Host::property:hold	chord	child-gap	
-pkg:chord/next#Host::property:hold::call:0	chord	child-gap	
-pkg:chord/next#Host::property:load	chord	child-gap	
-pkg:chord/next#Host::property:load::call:0	chord	child-gap	
-pkg:chord/next#Host::property:references	chord	child-gap	
-pkg:chord/next#Host::property:references::call:0	chord	child-gap	
-pkg:chord/next#Host::property:registry	chord	child-gap	
-pkg:chord/next#Host::property:registry::call:0	chord	child-gap	
-pkg:chord/next#Host::property:revoke	chord	child-gap	
-pkg:chord/next#Host::property:revoke::call:0	chord	child-gap	
-pkg:chord/next#Host::property:root	chord	child-gap	
-pkg:chord/next#Host::property:root::call:0	chord	child-gap	
-pkg:chord/next#Host::property:route	chord	child-gap	
-pkg:chord/next#Host::property:route::call:0	chord	child-gap	
+pkg:chord/next#Held	chord	undecidable	chord/next/host/host_reference.go#Held
+pkg:chord/next#Host	chord	child-gap	chord/next/host/host_host.go#Host
+pkg:chord/next#Host::property:activity	chord	undecidable	chord/next/host/host_host.go#Host.Activity
+pkg:chord/next#Host::property:close	chord	not-exercised	chord/next/host/host_host.go#Host.Close
+pkg:chord/next#Host::property:close::call:0	chord	not-exercised	chord/next/host/host_host.go#Host.Close
+pkg:chord/next#Host::property:get	chord	child-gap	chord/next/host/host_host.go#Host.Get
+pkg:chord/next#Host::property:get::call:0	chord	signature-mismatch	chord/next/host/host_host.go#Host.Get
+pkg:chord/next#Host::property:hold	chord	child-gap	chord/next/host/host_host.go#Host.Hold
+pkg:chord/next#Host::property:hold::call:0	chord	signature-mismatch	chord/next/host/host_host.go#Host.Hold
+pkg:chord/next#Host::property:references	chord	child-gap	chord/next/host/host_host.go#Host.References
+pkg:chord/next#Host::property:references::call:0	chord	undecidable	chord/next/host/host_host.go#Host.References
+pkg:chord/next#Host::property:registry	chord	child-gap	chord/next/host/host_host.go#Host.Registry
+pkg:chord/next#Host::property:registry::call:0	chord	signature-mismatch	chord/next/host/host_host.go#Host.Registry
 pkg:chord/next#HostError	chord	type-mismatch	chord/next/host/host_error.go#HostError
 pkg:chord/next#HostKind	chord	child-gap	chord/next/contracts/host_kind.go#HostKind
 pkg:chord/next#HostKind::call:0	chord	undecidable	chord/next/contracts/host_kind.go#HostKind.Address
-pkg:chord/next#HostOptions	chord	type-mismatch	chord/host/host.go#HostOptions
 pkg:chord/next#Implementation	chord	undecidable	chord/host/contract.go#Implementation
 pkg:chord/next#IpcPort	chord	child-gap	chord/next/link/ipc.go#IpcPort
 pkg:chord/next#IpcPort::property:on	chord	member-missing	chord/next/link/ipc.go#IpcPort
@@ -87,45 +71,24 @@ pkg:chord/next#IpcPort::property:on::call:message	chord	member-missing	chord/nex
 pkg:chord/next#IpcPort::property:removeListener	chord	member-missing	chord/next/link/ipc.go#IpcPort
 pkg:chord/next#IpcPort::property:removeListener::call:disconnect	chord	member-missing	chord/next/link/ipc.go#IpcPort
 pkg:chord/next#IpcPort::property:removeListener::call:message	chord	member-missing	chord/next/link/ipc.go#IpcPort
-pkg:chord/next#JobAccepts	chord	no-go-symbol	
-pkg:chord/next#JobDefinition	chord	no-go-symbol	
-pkg:chord/next#JobDefinition::construct:0	chord	child-gap	
-pkg:chord/next#JobDefinition::property:accepts	chord	child-gap	
-pkg:chord/next#JobDefinition::property:args	chord	child-gap	
-pkg:chord/next#JobDefinition::property:concurrency	chord	child-gap	
-pkg:chord/next#JobDefinition::property:fingerprint	chord	child-gap	
-pkg:chord/next#JobDefinition::property:name	chord	child-gap	
-pkg:chord/next#JobDefinition::property:persist	chord	child-gap	
-pkg:chord/next#JobDefinition::property:result	chord	child-gap	
-pkg:chord/next#JobDefinition::property:state	chord	child-gap	
-pkg:chord/next#JobDefinition::property:version	chord	child-gap	
-pkg:chord/next#JobDefinition::property:~types	chord	child-gap	
-pkg:chord/next#JobError	chord	no-go-symbol	
-pkg:chord/next#JobHandle	chord	child-gap	chord/next/documents/job.go#JobHandle
-pkg:chord/next#JobHandle::property:abort	chord	member-missing	chord/next/documents/job.go#JobHandle
-pkg:chord/next#JobHandle::property:abort::call:0	chord	member-missing	chord/next/documents/job.go#JobHandle
-pkg:chord/next#JobHandle::property:outcome	chord	member-missing	chord/next/documents/job.go#JobHandle
-pkg:chord/next#JobHandle::property:outcome::call:0	chord	member-missing	chord/next/documents/job.go#JobHandle
-pkg:chord/next#JobHandle::property:running	chord	member-missing	chord/next/documents/job.go#JobHandle
-pkg:chord/next#JobHandle::property:start	chord	member-missing	chord/next/documents/job.go#JobHandle
-pkg:chord/next#JobHandle::property:start::call:0	chord	member-missing	chord/next/documents/job.go#JobHandle
-pkg:chord/next#JobImplementation	chord	no-go-symbol	
-pkg:chord/next#JobOptions	chord	no-go-symbol	
+pkg:chord/next#JobAccepts	chord	undecidable	chord/next/host/jobs_definition.go#JobAccepts
+pkg:chord/next#JobDefinition	chord	child-gap	chord/next/host/jobs_definition.go#JobDefinition
+pkg:chord/next#JobDefinition::property:~types	chord	member-missing	chord/next/host/jobs_definition.go#JobDefinition
+pkg:chord/next#JobHandle	chord	child-gap	chord/next/host/jobs_job.go#JobHandle
+pkg:chord/next#JobHandle::property:outcome	chord	not-exercised	chord/next/host/jobs_job.go#JobHandle.Outcome
+pkg:chord/next#JobHandle::property:outcome::call:0	chord	not-exercised	chord/next/host/jobs_job.go#JobHandle.Outcome
+pkg:chord/next#JobHandle::property:running	chord	undecidable	chord/next/host/jobs_job.go#JobHandle.Running
 pkg:chord/next#JsonColumnSchema	chord	no-go-symbol	
 pkg:chord/next#KeyedHandle	chord	child-gap	chord/next/documents/handles.go#KeyedHandle
-pkg:chord/next#KeyedHandle::property:at	chord	not-exercised	chord/next/documents/handles.go#KeyedHandle.At
+pkg:chord/next#KeyedHandle::property:at	chord	child-gap	chord/next/documents/handles.go#KeyedHandle.At
 pkg:chord/next#KeyedHandle::property:at::call:0	chord	undecidable	chord/next/documents/handles.go#KeyedHandle.At
 pkg:chord/next#KeyedHandle::property:change	chord	not-exercised	chord/next/documents/handles.go#KeyedHandle.Change
 pkg:chord/next#KeyedHandle::property:change::call:0	chord	signature-mismatch	chord/next/documents/handles.go#KeyedHandle.Change
-pkg:chord/next#KeyedHandle::property:get	chord	not-exercised	chord/next/documents/handles.go#KeyedHandle.Get
-pkg:chord/next#KeyedHandle::property:get::call:0	chord	not-exercised	chord/next/documents/handles.go#KeyedHandle.Get
 pkg:chord/next#KeyedHandle::property:keys	chord	child-gap	chord/next/documents/handles.go#KeyedHandle.Keys
 pkg:chord/next#KeyedHandle::property:keys::call:0	chord	undecidable	chord/next/documents/handles.go#KeyedHandle.Keys
 pkg:chord/next#KeyedHandle::property:retire	chord	not-exercised	chord/next/documents/handles.go#KeyedHandle.Retire
 pkg:chord/next#KeyedHandle::property:retire::call:0	chord	not-exercised	chord/next/documents/handles.go#KeyedHandle.Retire
-pkg:chord/next#KeyedHandle::property:watch	chord	not-exercised	chord/next/documents/handles.go#KeyedHandle.Watch
-pkg:chord/next#KeyedHandle::property:watch::call:0	chord	not-exercised	chord/next/documents/handles.go#KeyedHandle.Watch
-pkg:chord/next#KeyedWatchable	chord	not-exercised	chord/next/contracts/contract.go#KeyedWatchable
+pkg:chord/next#KeyedWatchable	chord	child-gap	chord/next/contracts/contract.go#KeyedWatchable
 pkg:chord/next#KeyedWatchable::property:at	chord	not-exercised	chord/next/contracts/contract.go#KeyedWatchable.At
 pkg:chord/next#KeyedWatchable::property:at::call:0	chord	not-exercised	chord/next/contracts/contract.go#KeyedWatchable.At
 pkg:chord/next#KeyedWatchable::property:get	chord	not-exercised	chord/next/contracts/contract.go#KeyedWatchable.Get
@@ -133,11 +96,14 @@ pkg:chord/next#KeyedWatchable::property:get::call:0	chord	not-exercised	chord/ne
 pkg:chord/next#KeyedWatchable::property:watch	chord	not-exercised	chord/next/contracts/contract.go#KeyedWatchable.Watch
 pkg:chord/next#KeyedWatchable::property:watch::call:0	chord	not-exercised	chord/next/contracts/contract.go#KeyedWatchable.Watch
 pkg:chord/next#KindShape	chord	no-go-symbol	
-pkg:chord/next#LinkOptions	chord	type-mismatch	chord/host/connection.go#LinkOptions
 pkg:chord/next#Native	chord	child-gap	chord/next/host/host_native.go#Native
 pkg:chord/next#Native::property:value	chord	not-exercised	chord/next/host/host_native.go#Native.Value
-pkg:chord/next#NativeOptions	chord	not-exercised	chord/next/host/host_native.go#NativeOptions
-pkg:chord/next#Outcome	chord	no-go-symbol	
+pkg:chord/next#OnHandler	chord	child-gap	chord/next/host/host_routines.go#OnHandler
+pkg:chord/next#OnHandler::call:0	chord	signature-mismatch	chord/next/host/host_routines.go#OnHandler
+pkg:chord/next#OnLiveHandler	chord	child-gap	chord/next/host/host_routines.go#OnLiveHandler
+pkg:chord/next#OnLiveHandler::call:0	chord	signature-mismatch	chord/next/host/host_routines.go#OnLiveHandler
+pkg:chord/next#OnNativeHandler	chord	child-gap	chord/next/host/host_routines.go#OnNativeHandler
+pkg:chord/next#OnNativeHandler::call:0	chord	signature-mismatch	chord/next/host/host_routines.go#OnNativeHandler
 pkg:chord/next#OwnerTable	chord	child-gap	chord/next/store/adapter.go#OwnerTable
 pkg:chord/next#OwnerTable::property:get	chord	child-gap	chord/next/store/adapter.go#OwnerTable.Get
 pkg:chord/next#OwnerTable::property:get::call:0	chord	signature-mismatch	chord/next/store/adapter.go#OwnerTable.Get
@@ -150,45 +116,26 @@ pkg:chord/next#Query::construct:0	chord	signature-mismatch	chord/next/store/quer
 pkg:chord/next#Registry	chord	type-mismatch	chord/host/registry.go#Registry
 pkg:chord/next#RegistryAccepts	chord	undecidable	chord/next/registries/registry.go#RegistryAccepts
 pkg:chord/next#RoutineDeclarations	chord	child-gap	chord/next/host/host_routines.go#RoutineDeclarations
-pkg:chord/next#RoutineDeclarations::property:on	chord	not-exercised	chord/next/host/host_routines.go#RoutineDeclarations.On
-pkg:chord/next#RoutineDeclarations::property:on::call:0	chord	not-exercised	chord/next/host/host_routines.go#RoutineDeclarations.On
-pkg:chord/next#RoutineDeclarations::property:on::call:1	chord	undecidable	chord/next/host/host_routines.go#RoutineDeclarations.On
-pkg:chord/next#RoutineDeclarations::property:onLive	chord	not-exercised	chord/next/host/host_routines.go#RoutineDeclarations.OnLive
-pkg:chord/next#RoutineDeclarations::property:onLive::call:0	chord	not-exercised	chord/next/host/host_routines.go#RoutineDeclarations.OnLive
-pkg:chord/next#Run	chord	child-gap	chord/host/object.go#Run
-pkg:chord/next#Run::property:id	chord	member-missing	chord/host/object.go#Run
-pkg:chord/next#Run::property:outcome	chord	member-missing	chord/host/object.go#Run
-pkg:chord/next#Run::property:outcome::call:0	chord	member-missing	chord/host/object.go#Run
-pkg:chord/next#RunState	chord	no-go-symbol	
-pkg:chord/next#RunState::property:change	chord	child-gap	
-pkg:chord/next#RunState::property:change::call:0	chord	child-gap	
-pkg:chord/next#RunState::property:value	chord	child-gap	
-pkg:chord/next#Self	chord	child-gap	chord/host/object.go#Self
-pkg:chord/next#Self::property:derive	chord	child-gap	chord/host/object.go#Self.Derive
-pkg:chord/next#Self::property:derive::call:0	chord	undecidable	chord/host/object.go#Self.Derive
-pkg:chord/next#Self::property:follow	chord	member-missing	chord/host/object.go#Self
-pkg:chord/next#Self::property:follow::call:0	chord	member-missing	chord/host/object.go#Self
-pkg:chord/next#Self::property:get	chord	child-gap	chord/host/object.go#Self.Get
-pkg:chord/next#Self::property:get::call:0	chord	signature-mismatch	chord/host/object.go#Self.Get
-pkg:chord/next#Self::property:job	chord	member-missing	chord/host/object.go#Self
-pkg:chord/next#Self::property:job::call:0	chord	member-missing	chord/host/object.go#Self
-pkg:chord/next#Self::property:on	chord	child-gap	chord/host/object.go#Self.On
-pkg:chord/next#Self::property:on::call:0	chord	signature-mismatch	chord/host/object.go#Self.On
-pkg:chord/next#Self::property:on::call:1	chord	signature-mismatch	chord/host/object.go#Self.On
-pkg:chord/next#Self::property:onLive	chord	member-missing	chord/host/object.go#Self
-pkg:chord/next#Self::property:onLive::call:0	chord	member-missing	chord/host/object.go#Self
-pkg:chord/next#Self::property:open	chord	member-missing	chord/host/object.go#Self
-pkg:chord/next#Self::property:open::call:0	chord	member-missing	chord/host/object.go#Self
-pkg:chord/next#Self::property:registry	chord	member-missing	chord/host/object.go#Self
-pkg:chord/next#Self::property:registry::call:0	chord	member-missing	chord/host/object.go#Self
-pkg:chord/next#Self::property:retryOn	chord	member-missing	chord/host/object.go#Self
-pkg:chord/next#Self::property:retryOn::call:0	chord	member-missing	chord/host/object.go#Self
-pkg:chord/next#Self::property:state	chord	child-gap	chord/host/object.go#Self.State
-pkg:chord/next#Self::property:state::call:0	chord	signature-mismatch	chord/host/object.go#Self.State
-pkg:chord/next#Self::property:tx	chord	member-missing	chord/host/object.go#Self
-pkg:chord/next#Self::property:tx::call:0	chord	member-missing	chord/host/object.go#Self
-pkg:chord/next#Self::property:writable	chord	member-missing	chord/host/object.go#Self
-pkg:chord/next#Self::property:writable::call:0	chord	member-missing	chord/host/object.go#Self
+pkg:chord/next#RoutineDeclarations::property:on	chord	child-gap	chord/next/host/host_routines.go#RoutineDeclarations.On
+pkg:chord/next#RoutineDeclarations::property:on::call:0	chord	undecidable	chord/next/host/host_routines.go#RoutineDeclarations.On
+pkg:chord/next#RoutineDeclarations::property:on::call:1	chord	signature-mismatch	chord/next/host/host_routines.go#RoutineDeclarations.On
+pkg:chord/next#RunState	chord	child-gap	chord/next/host/jobs_job.go#RunState
+pkg:chord/next#RunState::property:change	chord	child-gap	chord/next/host/jobs_job.go#RunState.Change
+pkg:chord/next#RunState::property:change::call:0	chord	signature-mismatch	chord/next/host/jobs_job.go#RunState.Change
+pkg:chord/next#Self	chord	child-gap	chord/next/host/host_attempt.go#Self
+pkg:chord/next#Self::property:derive	chord	child-gap	chord/next/host/host_attempt.go#Self.Derive
+pkg:chord/next#Self::property:derive::call:0	chord	undecidable	chord/next/host/host_attempt.go#Self.Derive
+pkg:chord/next#Self::property:follow	chord	not-exercised	chord/next/host/host_attempt.go#Self.Follow
+pkg:chord/next#Self::property:follow::call:0	chord	not-exercised	chord/next/host/host_attempt.go#Self.Follow
+pkg:chord/next#Self::property:get	chord	child-gap	chord/next/host/host_attempt.go#Self.Get
+pkg:chord/next#Self::property:get::call:0	chord	undecidable	chord/next/host/host_attempt.go#Self.Get
+pkg:chord/next#Self::property:on	chord	child-gap	chord/next/host/host_routines.go#RoutineDeclarations.On
+pkg:chord/next#Self::property:on::call:0	chord	undecidable	chord/next/host/host_routines.go#RoutineDeclarations.On
+pkg:chord/next#Self::property:on::call:1	chord	signature-mismatch	chord/next/host/host_routines.go#RoutineDeclarations.On
+pkg:chord/next#Self::property:registry	chord	child-gap	chord/next/host/host_attempt.go#Self.Registry
+pkg:chord/next#Self::property:registry::call:0	chord	undecidable	chord/next/host/host_attempt.go#Self.Registry
+pkg:chord/next#Self::property:state	chord	child-gap	chord/next/host/host_attempt.go#Self.State
+pkg:chord/next#Self::property:state::call:0	chord	undecidable	chord/next/host/host_attempt.go#Self.State
 pkg:chord/next#SingletonHandle	chord	child-gap	chord/next/documents/handles.go#SingletonHandle
 pkg:chord/next#SingletonHandle::property:change	chord	not-exercised	chord/next/documents/handles.go#SingletonHandle.Change
 pkg:chord/next#SingletonHandle::property:change::call:0	chord	signature-mismatch	chord/next/documents/handles.go#SingletonHandle.Change
@@ -207,36 +154,24 @@ pkg:chord/next#Store::property:export	chord	child-gap	chord/next/store/store.go#
 pkg:chord/next#Store::property:export::call:0	chord	undecidable	chord/next/store/store.go#Store.Export
 pkg:chord/next#Store::property:lastSeq	chord	not-exercised	chord/next/store/store.go#Store.LastSeq
 pkg:chord/next#Store::property:outbox	chord	not-exercised	chord/next/store/store.go#Store.Outbox
-pkg:chord/next#StoreSelf	chord	no-go-symbol	
-pkg:chord/next#StoreSelf::property:contribute	chord	child-gap	
-pkg:chord/next#StoreSelf::property:contribute::call:0	chord	child-gap	
-pkg:chord/next#StoreSelf::property:derive	chord	child-gap	
-pkg:chord/next#StoreSelf::property:derive::call:0	chord	child-gap	
-pkg:chord/next#StoreSelf::property:follow	chord	child-gap	
-pkg:chord/next#StoreSelf::property:follow::call:0	chord	child-gap	
-pkg:chord/next#StoreSelf::property:get	chord	child-gap	
-pkg:chord/next#StoreSelf::property:get::call:0	chord	child-gap	
-pkg:chord/next#StoreSelf::property:job	chord	child-gap	
-pkg:chord/next#StoreSelf::property:job::call:0	chord	child-gap	
-pkg:chord/next#StoreSelf::property:on	chord	child-gap	
-pkg:chord/next#StoreSelf::property:on::call:0	chord	child-gap	
-pkg:chord/next#StoreSelf::property:on::call:1	chord	child-gap	
-pkg:chord/next#StoreSelf::property:onLive	chord	child-gap	
-pkg:chord/next#StoreSelf::property:onLive::call:0	chord	child-gap	
-pkg:chord/next#StoreSelf::property:open	chord	child-gap	
-pkg:chord/next#StoreSelf::property:open::call:0	chord	child-gap	
-pkg:chord/next#StoreSelf::property:registry	chord	child-gap	
-pkg:chord/next#StoreSelf::property:registry::call:0	chord	child-gap	
-pkg:chord/next#StoreSelf::property:retryOn	chord	child-gap	
-pkg:chord/next#StoreSelf::property:retryOn::call:0	chord	child-gap	
-pkg:chord/next#StoreSelf::property:state	chord	child-gap	
-pkg:chord/next#StoreSelf::property:state::call:0	chord	child-gap	
-pkg:chord/next#StoreSelf::property:table	chord	child-gap	
-pkg:chord/next#StoreSelf::property:table::call:0	chord	child-gap	
-pkg:chord/next#StoreSelf::property:tx	chord	child-gap	
-pkg:chord/next#StoreSelf::property:tx::call:0	chord	child-gap	
-pkg:chord/next#StoreSelf::property:writable	chord	child-gap	
-pkg:chord/next#StoreSelf::property:writable::call:0	chord	child-gap	
+pkg:chord/next#StoreSelf	chord	child-gap	chord/next/host/host_attempt.go#StoreSelf
+pkg:chord/next#StoreSelf::property:contribute	chord	child-gap	chord/next/host/host_attempt.go#StoreSelf.Contribute
+pkg:chord/next#StoreSelf::property:contribute::call:0	chord	undecidable	chord/next/host/host_attempt.go#StoreSelf.Contribute
+pkg:chord/next#StoreSelf::property:derive	chord	child-gap	chord/next/host/host_attempt.go#Self.Derive
+pkg:chord/next#StoreSelf::property:derive::call:0	chord	undecidable	chord/next/host/host_attempt.go#Self.Derive
+pkg:chord/next#StoreSelf::property:follow	chord	not-exercised	chord/next/host/host_attempt.go#Self.Follow
+pkg:chord/next#StoreSelf::property:follow::call:0	chord	not-exercised	chord/next/host/host_attempt.go#Self.Follow
+pkg:chord/next#StoreSelf::property:get	chord	child-gap	chord/next/host/host_attempt.go#Self.Get
+pkg:chord/next#StoreSelf::property:get::call:0	chord	undecidable	chord/next/host/host_attempt.go#Self.Get
+pkg:chord/next#StoreSelf::property:on	chord	child-gap	chord/next/host/host_routines.go#RoutineDeclarations.On
+pkg:chord/next#StoreSelf::property:on::call:0	chord	undecidable	chord/next/host/host_routines.go#RoutineDeclarations.On
+pkg:chord/next#StoreSelf::property:on::call:1	chord	signature-mismatch	chord/next/host/host_routines.go#RoutineDeclarations.On
+pkg:chord/next#StoreSelf::property:registry	chord	child-gap	chord/next/host/host_attempt.go#Self.Registry
+pkg:chord/next#StoreSelf::property:registry::call:0	chord	undecidable	chord/next/host/host_attempt.go#Self.Registry
+pkg:chord/next#StoreSelf::property:state	chord	child-gap	chord/next/host/host_attempt.go#Self.State
+pkg:chord/next#StoreSelf::property:state::call:0	chord	undecidable	chord/next/host/host_attempt.go#Self.State
+pkg:chord/next#StoreSelf::property:table	chord	not-exercised	chord/next/host/host_attempt.go#StoreSelf.Table
+pkg:chord/next#StoreSelf::property:table::call:0	chord	undecidable	chord/next/host/host_attempt.go#StoreSelf.Table
 pkg:chord/next#StoreWrite	chord	undecidable	chord/next/store/writes.go#StoreWrite
 pkg:chord/next#Table	chord	no-go-symbol	
 pkg:chord/next#Table::property:count	chord	child-gap	
@@ -273,12 +208,12 @@ pkg:chord/next#TableTailEditor::property:index	chord	child-gap
 pkg:chord/next#TableTailEditor::property:index::call:0	chord	child-gap	
 pkg:chord/next#TableTailEditor::property:~columns	chord	child-gap	
 pkg:chord/next#TableTailEditor::property:~key	chord	child-gap	
-pkg:chord/next#Tx	chord	not-exercised	chord/next/documents/transaction.go#Tx
+pkg:chord/next#Tx	chord	child-gap	chord/next/documents/transaction.go#Tx
 pkg:chord/next#Tx::property:delete	chord	not-exercised	chord/next/documents/transaction.go#Tx.Delete
 pkg:chord/next#Tx::property:delete::call:0	chord	undecidable	chord/next/documents/transaction.go#Tx.Delete
 pkg:chord/next#Tx::property:deleteWhere	chord	not-exercised	chord/next/documents/transaction.go#Tx.DeleteWhere
 pkg:chord/next#Tx::property:deleteWhere::call:0	chord	undecidable	chord/next/documents/transaction.go#Tx.DeleteWhere
-pkg:chord/next#Tx::property:draft	chord	not-exercised	chord/next/documents/transaction.go#Tx.Draft
+pkg:chord/next#Tx::property:draft	chord	child-gap	chord/next/documents/transaction.go#Tx.Draft
 pkg:chord/next#Tx::property:draft::call:0	chord	undecidable	chord/next/documents/transaction.go#Tx.Draft
 pkg:chord/next#Tx::property:draft::call:1	chord	signature-mismatch	chord/next/documents/transaction.go#Tx.Draft
 pkg:chord/next#Tx::property:get	chord	not-exercised	chord/next/documents/transaction.go#Tx.Get
@@ -292,8 +227,6 @@ pkg:chord/next#Tx::property:retire::call:0	chord	undecidable	chord/next/document
 pkg:chord/next#Tx::property:retire::call:1	chord	signature-mismatch	chord/next/documents/transaction.go#Tx.Retire
 pkg:chord/next#Tx::property:rows	chord	not-exercised	chord/next/documents/transaction.go#Tx.Rows
 pkg:chord/next#Tx::property:rows::call:0	chord	undecidable	chord/next/documents/transaction.go#Tx.Rows
-pkg:chord/next#Tx::property:start	chord	not-exercised	chord/next/documents/transaction.go#Tx.Start
-pkg:chord/next#Tx::property:start::call:0	chord	not-exercised	chord/next/documents/transaction.go#Tx.Start
 pkg:chord/next#Tx::property:update	chord	not-exercised	chord/next/documents/transaction.go#Tx.Update
 pkg:chord/next#Tx::property:update::call:0	chord	undecidable	chord/next/documents/transaction.go#Tx.Update
 pkg:chord/next#Tx::property:updateWhere	chord	not-exercised	chord/next/documents/transaction.go#Tx.UpdateWhere
@@ -307,9 +240,6 @@ pkg:chord/next#WebSocketLike::property:removeEventListener	chord	member-missing	
 pkg:chord/next#WebSocketLike::property:removeEventListener::call:0	chord	member-missing	chord/next/link/websocket.go#WebSocketLike
 pkg:chord/next#WebSocketLike::property:removeEventListener::call:message	chord	member-missing	chord/next/link/websocket.go#WebSocketLike
 pkg:chord/next#WhereNode	chord	type-mismatch	chord/next/store/expression.go#WhereNode
-pkg:chord/next#Writable	chord	child-gap	chord/next/state/writable.go#Writable
-pkg:chord/next#Writable::property:set	chord	not-exercised	chord/next/state/writable.go#Writable.Set
-pkg:chord/next#Writable::property:set::call:0	chord	not-exercised	chord/next/state/writable.go#Writable.Set
 pkg:chord/next#add	chord	child-gap	chord/next/store/expression.go#Add
 pkg:chord/next#add::call:0	chord	undecidable	chord/next/store/expression.go#Add
 pkg:chord/next#arr	chord	child-gap	chord/next/contracts/schema.go#Arr
@@ -327,8 +257,6 @@ pkg:chord/next#constant	chord	no-go-symbol
 pkg:chord/next#constant::call:0	chord	child-gap	
 pkg:chord/next#decodeJsonl	chord	child-gap	chord/next/store/jsonl.go#DecodeJsonl
 pkg:chord/next#decodeJsonl::call:0	chord	undecidable	chord/next/store/jsonl.go#DecodeJsonl
-pkg:chord/next#defineJob	chord	no-go-symbol	
-pkg:chord/next#defineJob::call:0	chord	child-gap	
 pkg:chord/next#encodeJsonl	chord	child-gap	chord/next/store/jsonl.go#EncodeJsonl
 pkg:chord/next#encodeJsonl::call:0	chord	undecidable	chord/next/store/jsonl.go#EncodeJsonl
 pkg:chord/next#findDocument	chord	child-gap	chord/next/store/engine.go#FindDocument

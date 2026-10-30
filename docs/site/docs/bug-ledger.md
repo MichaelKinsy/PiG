@@ -372,6 +372,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-570f857](#bf-570f857) | Fixed interactive sessions leaving extension prompt sections, such as the MCP `mcp_servers` list, out of the… | A fix Pi shipped that PiG ported | All platforms | 0.5.0 |
 | [BF-5732479](#bf-5732479) | `auth.json` keeps each credential's properties in the order they were read or returned by an extension's… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-5774749](#bf-5774749) | A Piglet found by name in `<project>/.pig/piglets` now follows project trust: it is used only when the… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-578804d](#bf-578804d) | fix(photonimage): the remaining if-else chains of the inflater are switches | PiG's own defect | All platforms | Unreleased |
 | [BF-578c1a3](#bf-578c1a3) | The "Applied use cases" page in the manual that ships inside PiG now links the Security page on the website | PiG's own defect | All platforms | 0.5.0 |
 | [BF-57a1687](#bf-57a1687) | fix(ai,agent): return a projection's blocks apart from its scalars so the caller's buffer stays on its stack | PiG's own defect | All platforms | Unreleased |
 | [BF-57ee33b](#bf-57ee33b) | A model an extension registers with `registerProvider` reaches `ctx.modelRegistry`, `ctx.model` and RPC as… | PiG's own defect | All platforms | 0.5.0 |
@@ -432,6 +433,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-633152d](#bf-633152d) | Starting a Go extension no longer fails with `hash <dir> after its build: open …/release/deps/rmeta…: no… | PiG's own defect | All platforms | Unreleased |
 | [BF-63b4fc8](#bf-63b4fc8) | `NodeExecutionEnv.Watch` gives a directory replaced at the same path a new watcher, reports changes to the… | A fix Pi shipped that PiG ported | macOS | 0.5.0 |
 | [BF-63bb0b7](#bf-63bb0b7) | `pig extension upgrade` now rewrites a `Context` getter call that is the only argument of a variadic call… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-6445df7](#bf-6445df7) | PNG images are now decoded the way Pi decodes them, byte for byte, where PiG used to use Go's `image/png` | PiG's own defect | All platforms | Unreleased |
 | [BF-644a9f2](#bf-644a9f2) | Changelog link rewriting and `git` source parsing match a URL scheme case-insensitively as Pi's regex with… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-644a9f2-2](#bf-644a9f2-2) | A Node extension's `ctx.ui.custom` factory can call `tui.showOverlay`, `tui.hideOverlay` and `tui.setFocus`… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-644b3e0](#bf-644b3e0) | A codemode script that calls `text()` tens of thousands of times no longer blocks the process: adjacent text… | PiG's own defect | All platforms | 0.5.0 |
@@ -906,6 +908,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-a3859aa](#bf-a3859aa) | An OpenAI-compatible provider that streams a tool call without an id or a function name (OpenRouter and GLM… | A Pi defect that PiG fixed first | All platforms | 0.5.0 |
 | [BF-a3bfab2](#bf-a3bfab2) | A Radius gateway config cached on an OAuth credential is sanitized as Pi does | PiG's own defect | All platforms | 0.5.0 |
 | [BF-a40a16d](#bf-a40a16d) | fix(codingagent): typed input restarts the idle collection's wait on every route | PiG's own defect | All platforms | Unreleased |
+| [BF-a422947](#bf-a422947) | fix(chord/next/documents): a shared cold load hands its document to the waiters, which an ending object may… | PiG's own defect | All platforms | Unreleased |
 | [BF-a46f930](#bf-a46f930) | A Package configured as a settings object reads a resource kind its `pi` manifest does not declare (or… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-a4753ec](#bf-a4753ec) | A panic in a background goroutine of an interactive session no longer ends PiG with only a stderr dump | PiG's own defect | All platforms | 0.5.0 |
 | [BF-a4753ec-2](#bf-a4753ec-2) | The prompt-cache refresh that fires minutes after a prompt now treats a panic in the extension decision or in… | PiG's own defect | All platforms | 0.5.0 |
@@ -1066,6 +1069,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-cb20ec0](#bf-cb20ec0) | After `pig update --models`, OpenRouter's `:nitro` and `:floor` routing variants no longer disappear from… | PiG's own defect | All platforms | Unreleased |
 | [BF-cb21ee0](#bf-cb21ee0) | Markdown resolves link reference definitions as Pi does: `[text][label]`, `[label][]` and `[label]` link to a… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-cb3eb3b](#bf-cb3eb3b) | fix(durable/core): memory-held commits record no telemetry events | PiG's own defect | All platforms | Unreleased |
+| [BF-cbc986b](#bf-cbc986b) | BMP and GIF images are now decoded the way Pi decodes them, byte for byte, where PiG used to use Go's decoders | PiG's own defect | All platforms | Unreleased |
 | [BF-cc9370b](#bf-cc9370b) | A Node extension's `setWidget`, `setHeader` and `setFooter` factories receive the same `tui` as a… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-ccaade2](#bf-ccaade2) | The `/thinking` selector edits its search like Pi's input, selects with the input's submit key, and no longer… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-cd7fa1c](#bf-cd7fa1c) | A read-only config root no longer prints warnings at every start | PiG's own defect | All platforms | 0.5.0 |
@@ -1239,6 +1243,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-e69d018](#bf-e69d018) | Closing an `env` connection, or losing it, now ends its daemon process with SIGTERM, as in Pi, instead of… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-e73e536](#bf-e73e536) | Codemode scripts no longer fail immediately when both codemode workers are busy, for example with parallel… | A fix Pi shipped that PiG ported | All platforms | 0.5.2 |
 | [BF-e75a8b9](#bf-e75a8b9) | The external editor (`ctrl+g`) now edits `prompt.md` inside a private `pi-editor-*` directory under the… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-e77f039](#bf-e77f039) | The durable `read` tool prepares an image with a width or a height of zero (a farbfeld file with no pixels… | PiG's own defect | All platforms | Unreleased |
 | [BF-e79abfb](#bf-e79abfb) | The CI image version-literal test no longer reports the Pi part of an image tag (`1.4.0.b3a29f11`, written by… | PiG's own defect | All platforms | Unreleased |
 | [BF-e79c70e](#bf-e79c70e) | fix(ai): Codex WebSocket, OpenRouter images, pi-messages and replaced Anthropic bodies write JSON.stringify… | PiG's own defect | All platforms | Unreleased |
 | [BF-e8489d4](#bf-e8489d4) | A key hint for an app action the user unbound shows no key, as in Pi, instead of the action's default key | PiG's own defect | All platforms | 0.5.0 |
@@ -1298,6 +1303,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-f474c30](#bf-f474c30) | fix(evals): drop an unused import from the prompt-template eval | PiG's own defect | All platforms | Unreleased |
 | [BF-f4d85f8](#bf-f4d85f8) | A large file written through a tool call no longer slows down as it streams: each streamed piece of the… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-f589900](#bf-f589900) | fix(tui): delete D155; PageUp and PageDown paging follows Pi | PiG's own defect | All platforms | Unreleased |
+| [BF-f5dd13f](#bf-f5dd13f) | fix(photonimage): lint findings of the PNG inflater and the GIF decoder | PiG's own defect | All platforms | Unreleased |
 | [BF-f5ecdc2](#bf-f5ecdc2) | Settings and `models.json` compat objects keep the members PiG does not model, as Pi 1.2.0 does | PiG's own defect | All platforms | 0.5.0 |
 | [BF-f6305d9](#bf-f6305d9) | A `new_session`, `fork`, `clone` or `switch_session` in the same RPC batch as a `compact` aborts the… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-f6575ff](#bf-f6575ff) | `pig install`, `pig remove` and `pig update --extensions` run npm with `--no-audit --no-fund`, wherever they… | PiG's own defect | All platforms | Unreleased |
@@ -6244,6 +6250,19 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** `coding/cli/main_test.go::TestResolvePigletResolvesExtends`, `coding/cli/main_test.go::TestResolvePiglet_FlagOverridesEnv`, `coding/cli/main_test.go::TestResolvePiglet_FromEnvPath`, `coding/cli/main_test.go::TestResolvePiglet_NoFlagNoEnv`, `coding/cli/mcp_builtin_binary_test.go::TestBuiltinMCPExtensionStartsProjectServersOnlyInATrustedProject`, `coding/cli/strip_app_features_test.go::TestStripExportHTMLBuildOmitsExportPackage`, `coding/piglet/workspace_trust_test.go::TestResolveNamesAnIgnoredUntrustedWorkspacePiglet`, `coding/piglet/workspace_trust_test.go::TestResolveSkipsAnUntrustedWorkspacePigletAndPrefersTheUsers` and 1 more in docs/bug-ledger.json
 - **Release note:** A Piglet found by name in `<project>/.pig/piglets` now follows project trust: it is used only when the project has a stored trust decision of yes or the run passes `--approve`, and an ignored workspace Piglet is named in the error. A bare `--piglet <name>` is never read as a file in the working directory. Before, a cloned repository could shadow the user's Piglet of that name, with its system prompt, extensions and model, with no prompt and no flag.
 
+### BF-578804d
+
+**fix(photonimage): the remaining if-else chains of the inflater are switches**
+
+- **Source:** PiG's own defect
+- **Symptom:** fix(photonimage): the remaining if-else chains of the inflater are switches
+- **Root cause:** Not recorded.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `578804df41` (2026-10-30)
+- **Tests:** None recorded.
+
 ### BF-578c1a3
 
 **The "Applied use cases" page in the manual that ships inside PiG now links the Security page on the website**
@@ -7070,6 +7089,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `63bb0b7eac` (2026-10-12), `974050757c` (2026-10-12), `d305b76bda` (2026-10-12)
 - **Tests:** `coding/cli/extension_upgrade_test.go::TestUpgraderRestoresEveryFileWhenTheRebuildFails`, `coding/cli/extension_upgrade_test.go::TestUpgraderRestoresWrittenFilesWhenAWriteFails`, `coding/extension/host/runtimecell/go_sdk_override_test.go::TestGoSDKPathOverrideIgnoresRetiredStagedSDK`, `coding/extension/host/runtimecell/go_sdk_override_test.go::TestGoSDKPathOverrideKeepsCurrentStagedSDK`, `coding/extension/host/runtimecell/go_sdk_override_test.go::TestRustSDKPathOverrideIgnoresRetiredStagedSDK`, `coding/extension/host/subprocess/builder_test.go::TestGoNeedsStagedSDK`, `coding/extension/host/subprocess/builder_test.go::TestRustNeedsStagedSDK`, `extensions/sdk/upgrade/fixtures_test.go::TestFixturesUpgradeAndBuild` and 3 more in docs/bug-ledger.json
 - **Release note:** `pig extension upgrade` now rewrites a `Context` getter call that is the only argument of a variadic call, such as `fmt.Println(ctx.ConfigHome())`. That call still compiles against the current SDK because the value and the error both become arguments, so the error was printed or passed on instead of handled and the upgrade reported nothing. It is now rewritten like the other uses: the function returns the error, or, for `ConfigHome` in a function that does not return an error, the line is listed for you to change.
+
+### BF-6445df7
+
+**PNG images are now decoded the way Pi decodes them, byte for byte, where PiG used to use Go's `image/png`**
+
+- **Source:** PiG's own defect
+- **Symptom:** PNG images are now decoded the way Pi decodes them, byte for byte, where PiG used to use Go's `image/png`.
+- **Root cause:** DecodePNG ports png 0.17.14's streaming decoder and reader and fdeflate 0.3.6's inflater as image 0.24.9's PngDecoder drives them: every EXPAND output type, Adam7, palette and tRNS, the 16-bit conversion of to_rgba8, the default image of an APNG, the crate's limits in wasm32's usize, the critical and ancillary checksum rules, and the chunk header that has to follow the image data. It replaces the ICO-only reader (icopng.go), which ICO entries now share. Decode routes the PNG signature to it; image/png is no longer registered by photonimage and the routing test bans it.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `6445df7c9d` (2026-10-30)
+- **Tests:** `internal/photonimage/pngdecode_oracle_test.go::TestDecodePNGMatchesPhoton`
+- **Release note:** PNG images are now decoded the way Pi decodes them, byte for byte, where PiG used to use Go's `image/png`. A PNG is read as Photon's png crate reads it: every colour type and bit depth with its transparency chunk (a grayscale or RGB tRNS chunk longer than its colour, one shorter than the palette), Adam7 interlacing, 16-bit samples converted the way Photon converts them, the first image of an animated PNG, ancillary chunks with a wrong checksum skipped and critical ones refused, a file that stops right after its image data, the memory limit of the crate, and a zlib stream read by its own inflater (which refuses and accepts other streams than zlib's). A clipboard image, an attachment, a tool-result image, an ICO entry and a file handed to the terminal image conversion or to the durable `read` tool are converted or resized as Pi converts or resizes them, and a damaged PNG is accepted or refused as Pi accepts or refuses it. PiG no longer registers Go's PNG decoder for its own use.
 
 ### BF-644a9f2
 
@@ -13671,6 +13704,19 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `a40a16d205` (2026-10-13)
 - **Tests:** None recorded.
 
+### BF-a422947
+
+**fix(chord/next/documents): a shared cold load hands its document to the waiters, which an ending object may…**
+
+- **Source:** PiG's own defect
+- **Symptom:** fix(chord/next/documents): a shared cold load hands its document to the waiters, which an ending object may drop first
+- **Root cause:** Not recorded.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `a422947b5f` (2026-10-30)
+- **Tests:** None recorded.
+
 ### BF-a46f930
 
 **A Package configured as a settings object reads a resource kind its `pi` manifest does not declare (or…**
@@ -15883,6 +15929,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `cb3eb3bea2` (2026-10-27)
 - **Tests:** None recorded.
+
+### BF-cbc986b
+
+**BMP and GIF images are now decoded the way Pi decodes them, byte for byte, where PiG used to use Go's decoders**
+
+- **Source:** PiG's own defect
+- **Symptom:** BMP and GIF images are now decoded the way Pi decodes them, byte for byte, where PiG used to use Go's decoders.
+- **Root cause:** BMP is decoded by DecodeBMP, the BmpDecoder of image 0.24.9 that the ICO decoder already ported, with its file header and RGB output: it accepts every layout the crate accepts (non-zero reserved bytes, every header version, 16 and 32 bits, bitfields, RLE, top-down, a pixel array offset inside the headers) and refuses the rest. GIF is decoded by DecodeGIF, the first frame of image 0.24.9's GifDecoder over the gif crate 0.13.1 with the LZW decoder of weezl 0.1.8. Decode routes both by guess_format's signatures; golang.org/x/image/bmp and image/gif are no longer registered and the routing test bans them. decodeBitfieldBMP is deleted: the port subsumes it, and the test of its malformed inputs…
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `cbc986b4ca` (2026-10-30)
+- **Tests:** `internal/imageprocessing/decode_image_test.go::TestDecodeImageMatchesPhotonBitfieldBMP`, `internal/imageprocessing/decode_image_test.go::TestDecodeImageMatchesPhotonOnMalformedBitfieldBMP`, `internal/imageprocessing/decode_image_test.go::TestNormalizeToolResultImagesConvertsBitfieldBMP`
+- **Release note:** BMP and GIF images are now decoded the way Pi decodes them, byte for byte, where PiG used to use Go's decoders. A BMP with non-zero reserved bytes in its file header, an OS/2 core header, any header version, a 16-bit or bitfield layout, RLE4 or RLE8 data, a pixel array offset inside the headers or a top-down height decodes as Photon decodes it (and the ones Photon refuses are refused), and a GIF is read as its first frame placed on the logical screen, with Photon's rules for local and global palettes, transparency, interlacing, frames that do not fit the screen and damaged LZW data. A clipboard bitmap, an attachment, a tool-result image and a file handed to the terminal image conversion or to the durable `read` tool are converted or resized as Pi converts them.
 
 ### BF-cc9370b
 
@@ -18280,6 +18340,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** `internal/codingagent/external_editor_test.go::TestEditorHelperProcess`, `internal/codingagent/external_editor_test.go::TestExternalEditorUpstream`, `internal/codingagent/wsl_test.go::TestIsWSL`
 - **Release note:** The external editor (`ctrl+g`) now edits `prompt.md` inside a private `pi-editor-*` directory under the system temp directory and removes the directory afterwards, as Pi does. It previously wrote a `pig-editor-*.md` file directly in the shared temp directory.
 
+### BF-e77f039
+
+**The durable `read` tool prepares an image with a width or a height of zero (a farbfeld file with no pixels…**
+
+- **Source:** PiG's own defect
+- **Symptom:** The durable `read` tool prepares an image with a width or a height of zero (a farbfeld file with no pixels, an interlaced GIF with no rows) as Pi does: under a type providers do not take inline, or beyond a limit, the image is resized to at least one pixel and encoded, with the resize recorded from the empty size, instead of being left out.
+- **Root cause:** Photon decodes an image of width or height zero (farbfeld, an interlaced GIF), and Pi's durable prepare does not give it up: the target size is at least 1x1 (Math.max(1, Math.round(0)), and Math.min(1, maxWidth / 0) is 1), so the Lanczos resize makes transparent black pixels of it and the PNG or the JPEG of those is written, with the resized record from the zero size. Only the PNG of the empty image itself is an exception (get_bytes of a zero width), and an exception of an encoder leaves prepare through its catch instead of shrinking the target. EncodePNG reports ErrPNGNoPixels where Photon throws; the coding agent paths (resizeImage, convertToPng, the clipboard) already omitted such an…
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `e77f039733` (2026-10-30)
+- **Tests:** `internal/photonimage/png_test.go::TestEncodePhotonPNGWritesPhotonsBytes`
+- **Release note:** The durable `read` tool prepares an image with a width or a height of zero (a farbfeld file with no pixels, an interlaced GIF with no rows) as Pi does: under a type providers do not take inline, or beyond a limit, the image is resized to at least one pixel and encoded, with the resize recorded from the empty size, instead of being left out. A resize that would need the PNG of the empty image itself fails as it does in Pi.
+
 ### BF-e79abfb
 
 **The CI image version-literal test no longer reports the Pi part of an image tag (`1.4.0.b3a29f11`, written by…**
@@ -19100,6 +19174,19 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Platform:** All platforms
 - **Fixed in:** Unreleased
 - **Fix commits:** `f589900c55` (2026-10-29)
+- **Tests:** None recorded.
+
+### BF-f5dd13f
+
+**fix(photonimage): lint findings of the PNG inflater and the GIF decoder**
+
+- **Source:** PiG's own defect
+- **Symptom:** fix(photonimage): lint findings of the PNG inflater and the GIF decoder
+- **Root cause:** Not recorded.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `f5dd13f465` (2026-10-30)
 - **Tests:** None recorded.
 
 ### BF-f5ecdc2

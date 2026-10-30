@@ -431,7 +431,7 @@
   "mutation": "chord/next/host/jobs_job.go: `handle.records.cut(run, err)` -> `_, _ = run, err` (TestRecordsARunCutOffByItsAttemptsSealEndsAbortedRestartAndIsFinishedOnTheNextLiveAttempt FAILS: jobs_records_test.go:83: timed out waiting for the run to wait finishing)"
  },
  {
-  "upstream": "packages/chord/test/next/bench/jobs.ts",
+  "upstream": "packages/chord/src/next/jobs/job.ts",
   "package": "./chord/next/host",
   "tests": [
    "BenchmarkJobsStart"
