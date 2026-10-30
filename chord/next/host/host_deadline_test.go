@@ -11,7 +11,7 @@ import (
 func TestDeadlineExpiresOnceAfterItsBudget(t *testing.T) {
 	loop := newFakeLoop()
 	expired := 0
-	NewDeadline(loop, 100*time.Millisecond, func() { expired++ })
+	newDeadline(loop, 100*time.Millisecond, func() { expired++ })
 	loop.Advance(99)
 	if expired != 0 {
 		t.Fatal("expired before its budget")
@@ -25,11 +25,11 @@ func TestDeadlineExpiresOnceAfterItsBudget(t *testing.T) {
 func TestDeadlinePausedTimeDoesNotCountResumedWithTheBudgetItHadLeft(t *testing.T) {
 	loop := newFakeLoop()
 	expired := 0
-	deadline := NewDeadline(loop, 100*time.Millisecond, func() { expired++ })
+	deadline := newDeadline(loop, 100*time.Millisecond, func() { expired++ })
 	loop.Advance(60)
-	deadline.Pause()
+	deadline.pause()
 	loop.Advance(1_000)
-	deadline.Resume()
+	deadline.resume()
 	loop.Advance(39)
 	if expired != 0 {
 		t.Fatal("expired with budget left")
@@ -43,10 +43,10 @@ func TestDeadlinePausedTimeDoesNotCountResumedWithTheBudgetItHadLeft(t *testing.
 func TestDeadlineAClearedDeadlineNeverExpiresAlsoWhenResumed(t *testing.T) {
 	loop := newFakeLoop()
 	expired := 0
-	deadline := NewDeadline(loop, 100*time.Millisecond, func() { expired++ })
-	deadline.Pause()
-	deadline.Clear()
-	deadline.Resume()
+	deadline := newDeadline(loop, 100*time.Millisecond, func() { expired++ })
+	deadline.pause()
+	deadline.clear()
+	deadline.resume()
 	loop.Advance(1_000)
 	if expired != 0 {
 		t.Fatalf("expired %d times, want 0", expired)

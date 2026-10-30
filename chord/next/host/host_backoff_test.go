@@ -9,22 +9,22 @@ import (
 // Ports packages/chord/test/next/host/backoff.test.ts.
 
 // backoffWindow is the length of the window `failed` opens for identity, measured until `due` runs (the test's `window`).
-func backoffWindow(loop *fakeLoop, backoff *Backoff, dues *[]string, identity string) int64 {
+func backoffWindow(loop *fakeLoop, backoff *backoff, dues *[]string, identity string) int64 {
 	calls := len(*dues)
 	start := loop.Now()
-	backoff.Failed(identity)
+	backoff.failed(identity)
 	for len(*dues) == calls {
 		loop.Advance(100)
 	}
 	return loop.Now() - start
 }
 
-func newTestBackoff(loop *fakeLoop) (*Backoff, *[]string) {
+func newTestBackoff(loop *fakeLoop) (*backoff, *[]string) {
 	dues := &[]string{}
-	return NewBackoff(loop, func(identity string) { *dues = append(*dues, identity) }), dues
+	return newBackoff(loop, func(identity string) { *dues = append(*dues, identity) }), dues
 }
 
-func untilOf(backoff *Backoff, identity string) (int64, bool) { return backoff.Until(identity) }
+func untilOf(backoff *backoff, identity string) (int64, bool) { return backoff.until(identity) }
 
 func TestBackoffOpensAWindowOf1sAfterTheFirstFailureDoublingUpTo60sAndCallsDueAtItsEnd(t *testing.T) {
 	loop := newFakeLoop()
@@ -45,9 +45,9 @@ func TestBackoffOpensAWindowOf1sAfterTheFirstFailureDoublingUpTo60sAndCallsDueAt
 
 func TestBackoffTellsWhenARunningWindowEndsAFailedReferencesRetryAt(t *testing.T) {
 	loop := newFakeLoop()
-	backoff := NewBackoff(loop, func(string) {})
+	backoff := newBackoff(loop, func(string) {})
 	loop.Advance(5_000)
-	backoff.Failed("a")
+	backoff.failed("a")
 	a, aOK := untilOf(backoff, "a")
 	_, bOK := untilOf(backoff, "b")
 	if a != 6_000 || !aOK || bOK {
@@ -57,11 +57,11 @@ func TestBackoffTellsWhenARunningWindowEndsAFailedReferencesRetryAt(t *testing.T
 	if _, ok := untilOf(backoff, "a"); ok {
 		t.Fatal("until of a passed window is defined")
 	}
-	backoff.Failed("a")
+	backoff.failed("a")
 	if a, ok := untilOf(backoff, "a"); a != 8_000 || !ok {
 		t.Fatalf("until = %d %v, want 8000", a, ok)
 	}
-	backoff.Skip("a")
+	backoff.skip("a")
 	if _, ok := untilOf(backoff, "a"); ok {
 		t.Fatal("until after skip is defined")
 	}
@@ -69,13 +69,13 @@ func TestBackoffTellsWhenARunningWindowEndsAFailedReferencesRetryAt(t *testing.T
 
 func TestBackoffIsWaitingOnlyInsideAWindow(t *testing.T) {
 	loop := newFakeLoop()
-	backoff := NewBackoff(loop, func(string) {})
-	backoff.Failed("a")
-	if !backoff.Waiting("a") || backoff.Waiting("b") {
-		t.Fatalf("waiting = %v %v, want true false", backoff.Waiting("a"), backoff.Waiting("b"))
+	backoff := newBackoff(loop, func(string) {})
+	backoff.failed("a")
+	if !backoff.waiting("a") || backoff.waiting("b") {
+		t.Fatalf("waiting = %v %v, want true false", backoff.waiting("a"), backoff.waiting("b"))
 	}
 	loop.Advance(1000)
-	if backoff.Waiting("a") {
+	if backoff.waiting("a") {
 		t.Fatal("waiting after the window")
 	}
 }
@@ -83,16 +83,16 @@ func TestBackoffIsWaitingOnlyInsideAWindow(t *testing.T) {
 func TestBackoffSkipEndsAWindowWithoutDueAndKeepsItsDelayDeleteStartsOver(t *testing.T) {
 	loop := newFakeLoop()
 	backoff, dues := newTestBackoff(loop)
-	backoff.Failed("a")
-	backoff.Skip("a")
+	backoff.failed("a")
+	backoff.skip("a")
 	loop.Advance(5000)
-	if backoff.Waiting("a") || len(*dues) != 0 {
-		t.Fatalf("waiting %v, dues %d, want false 0", backoff.Waiting("a"), len(*dues))
+	if backoff.waiting("a") || len(*dues) != 0 {
+		t.Fatalf("waiting %v, dues %d, want false 0", backoff.waiting("a"), len(*dues))
 	}
 	if got := backoffWindow(loop, backoff, dues, "a"); got != 2000 {
 		t.Fatalf("window after skip = %d, want 2000", got)
 	}
-	backoff.Delete("a")
+	backoff.delete("a")
 	if got := backoffWindow(loop, backoff, dues, "a"); got != 1000 {
 		t.Fatalf("window after delete = %d, want 1000", got)
 	}
@@ -101,13 +101,13 @@ func TestBackoffSkipEndsAWindowWithoutDueAndKeepsItsDelayDeleteStartsOver(t *tes
 func TestBackoffEndedKeepsARunningWindowAndDropsAPassedOne(t *testing.T) {
 	loop := newFakeLoop()
 	backoff, dues := newTestBackoff(loop)
-	backoff.Failed("a")
-	backoff.Ended("a")
-	if !backoff.Waiting("a") {
+	backoff.failed("a")
+	backoff.ended("a")
+	if !backoff.waiting("a") {
 		t.Fatal("ended dropped a running window")
 	}
 	loop.Advance(1000)
-	backoff.Ended("a")
+	backoff.ended("a")
 	if got := backoffWindow(loop, backoff, dues, "a"); got != 1000 {
 		t.Fatalf("window after ended of a passed one = %d, want 1000", got)
 	}
@@ -116,8 +116,8 @@ func TestBackoffEndedKeepsARunningWindowAndDropsAPassedOne(t *testing.T) {
 func TestBackoffAFailureInsideARunningWindowReplacesItOneDueAfterTheDoubledDelay(t *testing.T) {
 	loop := newFakeLoop()
 	backoff, dues := newTestBackoff(loop)
-	backoff.Failed("a")
-	backoff.Failed("a")
+	backoff.failed("a")
+	backoff.failed("a")
 	loop.Advance(1999)
 	if len(*dues) != 0 || loop.TimerCount() != 1 {
 		t.Fatalf("dues %d timers %d, want 0 1", len(*dues), loop.TimerCount())
@@ -130,12 +130,12 @@ func TestBackoffAFailureInsideARunningWindowReplacesItOneDueAfterTheDoubledDelay
 
 func TestBackoffClearForgetsEveryIdentityWithItsTimer(t *testing.T) {
 	loop := newFakeLoop()
-	backoff := NewBackoff(loop, func(string) {})
-	backoff.Failed("a")
-	backoff.Failed("b")
-	backoff.Clear()
-	if backoff.Waiting("a") || backoff.Waiting("b") || loop.TimerCount() != 0 {
-		t.Fatalf("waiting %v %v timers %d, want false false 0", backoff.Waiting("a"), backoff.Waiting("b"), loop.TimerCount())
+	backoff := newBackoff(loop, func(string) {})
+	backoff.failed("a")
+	backoff.failed("b")
+	backoff.clear()
+	if backoff.waiting("a") || backoff.waiting("b") || loop.TimerCount() != 0 {
+		t.Fatalf("waiting %v %v timers %d, want false false 0", backoff.waiting("a"), backoff.waiting("b"), loop.TimerCount())
 	}
 }
 

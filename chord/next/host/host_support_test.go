@@ -2,14 +2,16 @@ package host
 
 import (
 	"sort"
+	"sync"
 	"time"
 )
 
 // fakeLoop is a deterministic eventLoop for helper tests, as vitest's fake timers are for Pi's: `fakeTimers()` fakes
 // setTimeout, clearTimeout and Date from 0 (test/next/support.ts) and leaves microtasks real. The clock moves only
 // through Advance and AdvanceAsync; Queue jobs run when Flush (or AdvanceAsync) runs them, as promise callbacks run at an
-// await. It is for one goroutine: the test's.
+// await. Its state is locked (a blocking helper such as sleepOn runs on a goroutine of its own); jobs run unlocked.
 type fakeLoop struct {
+	mu     sync.Mutex
 	now    int64
 	seq    int
 	timers []*fakeTimer
@@ -32,13 +34,23 @@ var _ eventLoop = (*fakeLoop)(nil)
 func newFakeLoop() *fakeLoop { return &fakeLoop{} }
 
 // Now is the fake Date.now().
-func (l *fakeLoop) Now() int64 { return l.now }
+func (l *fakeLoop) Now() int64 {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	return l.now
+}
 
 // Queue queues a microtask for Flush.
-func (l *fakeLoop) Queue(job func()) { l.queue = append(l.queue, job) }
+func (l *fakeLoop) Queue(job func()) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	l.queue = append(l.queue, job)
+}
 
 // AfterFunc is the fake setTimeout: Node's delay rule applies (nodeDelay), as the real Loop's.
 func (l *fakeLoop) AfterFunc(d time.Duration, job func()) Timer {
+	l.mu.Lock()
+	defer l.mu.Unlock()
 	l.seq++
 	t := &fakeTimer{loop: l, at: l.now + nodeDelay(d).Milliseconds(), seq: l.seq, job: job}
 	l.timers = append(l.timers, t)
@@ -47,6 +59,8 @@ func (l *fakeLoop) AfterFunc(d time.Duration, job func()) Timer {
 
 // Stop is the fake clearTimeout.
 func (t *fakeTimer) Stop() bool {
+	t.loop.mu.Lock()
+	defer t.loop.mu.Unlock()
 	if t.stopped || t.done {
 		return false
 	}
@@ -65,13 +79,23 @@ func removeTimer(timers []*fakeTimer, t *fakeTimer) []*fakeTimer {
 }
 
 // TimerCount is vi.getTimerCount(): the timers still pending.
-func (l *fakeLoop) TimerCount() int { return len(l.timers) }
+func (l *fakeLoop) TimerCount() int {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	return len(l.timers)
+}
 
 // Flush runs the queued microtasks, and those they queue, in order.
 func (l *fakeLoop) Flush() {
-	for len(l.queue) > 0 {
+	for {
+		l.mu.Lock()
+		if len(l.queue) == 0 {
+			l.mu.Unlock()
+			return
+		}
 		job := l.queue[0]
 		l.queue = l.queue[1:]
+		l.mu.Unlock()
 		job()
 	}
 }
@@ -84,11 +108,14 @@ func (l *fakeLoop) Advance(ms int64) { l.advance(ms, false) }
 func (l *fakeLoop) AdvanceAsync(ms int64) { l.advance(ms, true) }
 
 func (l *fakeLoop) advance(ms int64, flush bool) {
+	l.mu.Lock()
 	end := l.now + ms
+	l.mu.Unlock()
 	if flush {
 		l.Flush()
 	}
 	for {
+		l.mu.Lock()
 		sort.SliceStable(l.timers, func(i, j int) bool {
 			if l.timers[i].at != l.timers[j].at {
 				return l.timers[i].at < l.timers[j].at
@@ -96,18 +123,18 @@ func (l *fakeLoop) advance(ms int64, flush bool) {
 			return l.timers[i].seq < l.timers[j].seq
 		})
 		if len(l.timers) == 0 || l.timers[0].at > end {
-			break
+			l.now = end
+			l.mu.Unlock()
+			return
 		}
 		t := l.timers[0]
 		l.timers = l.timers[1:]
-		if t.at > l.now {
-			l.now = t.at
-		}
+		l.now = max(l.now, t.at)
 		t.done = true
+		l.mu.Unlock()
 		t.job()
 		if flush {
 			l.Flush()
 		}
 	}
-	l.now = end
 }
