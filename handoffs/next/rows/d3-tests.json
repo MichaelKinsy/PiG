@@ -1,0 +1,349 @@
+{
+ "packages/chord/test/next/store/allocator.test.ts": {
+  "ported": [
+   "the allocator › mints from its value, and an explicit id raises it above itself, never lowering it",
+   "the allocator › saturates at Number.MAX_SAFE_INTEGER: that id may be written, every later mint is refused"
+  ],
+  "missing": [],
+  "designedOut": []
+ },
+ "packages/chord/test/next/store/applier.test.ts": {
+  "ported": [
+   "applied writes › a table and its rows as recorded: NULL for absent opt cells, booleans as 0 and 1, json(...) as text",
+   "applied writes › refuses %s"
+  ],
+  "missing": [],
+  "designedOut": []
+ },
+ "packages/chord/test/next/store/apply-batch.test.ts": {
+  "ported": [
+   "replay › a store's outbox replayed into an empty store gives the same archive, manifest included",
+   "replay › restores the allocator: a replica mints above every id it holds",
+   "replay › writes the applied commits to the replica's own outbox when it has one",
+   "refusals › while an owner holds a claim on the store (its memory would go stale)",
+   "refusals › a claim taken between the call and its turn in the queue refuses the batch; a claim is refused while it applies",
+   "refusals › a batch queued behind one that diverges is refused at its turn",
+   "refusals › a commit whose next id is not above a document it creates (a saturated id aside)",
+   "refusals › a first commit that does not follow lastSeq, or one that does not follow the one before; nothing applied",
+   "refusals › a write the records refuse rolls the batch back, and the store goes on",
+   "refusals › a recorded count the store does not reproduce stops applying and marks the store diverged (S17)"
+  ],
+  "missing": [],
+  "designedOut": []
+ },
+ "packages/chord/test/next/store/archive.test.ts": {
+  "ported": [
+   "the archive part schema › takes every part an export yields",
+   "the archive part schema › refuses %s"
+  ],
+  "missing": [],
+  "designedOut": []
+ },
+ "packages/chord/test/next/store/catalog.test.ts": {
+  "ported": [
+   "the catalog › is read once at open: a reopened store knows its tables",
+   "the catalog › changes in memory only after COMMIT returned"
+  ],
+  "missing": [],
+  "designedOut": []
+ },
+ "packages/chord/test/next/store/claims.test.ts": {
+  "ported": [
+   "claims › refuse a second claimant of a table or of an owner's namespace; one claimant may claim again",
+   "claims › are refused while locked (a batch applies), taken again once unlocked"
+  ],
+  "missing": [
+   "claims › an object claims its tables and documents when it declares them, and releases them at its end"
+  ],
+  "designedOut": []
+ },
+ "packages/chord/test/next/store/columns.test.ts": {
+  "ported": [
+   "column descriptors › describes the helpers in declaration order",
+   "column descriptors › checks names: the pattern, no two equal ignoring case, no $",
+   "column descriptors › refuses other schemas, bounds, patterns, opt defaults and defaults of another type"
+  ],
+  "missing": [],
+  "designedOut": [
+   "row types › types rows with optional opt(...) fields and puts with optional defaulted fields"
+  ]
+ },
+ "packages/chord/test/next/store/engine.test.ts": {
+  "ported": [
+   "documents › load as their base with the deltas after it applied; a new base prunes the older revisions",
+   "documents › list live keys in code point order, paging after a key",
+   "documents › retire a none record with its row and revisions (R1); the address takes a new incarnation",
+   "documents › refuse two live records at one address and a delta on another version: the step is refused",
+   "history rules (R1) and reads at a point › keep a retired latest record's row without revisions, and every revision of a rewindable one",
+   "history rules (R1) and reads at a point › find a record at a point by its half-open lifetime, and load a rewindable one at any point inside it",
+   "history rules (R1) and reads at a point › find a retired latest record at a point, whose content is gone",
+   "history rules (R1) and reads at a point › insert a create-plus-retire as an empty lifetime that never holds the live address",
+   "counters at the safe-integer limit › allocate document ids up to the safe range after an import near it; past it the commit is refused",
+   "counters at the safe-integer limit › count revisions up to the safe range after an import near it; a change past it is refused"
+  ],
+  "missing": [],
+  "designedOut": []
+ },
+ "packages/chord/test/next/store/evaluate.test.ts": {
+  "ported": [
+   "the evaluator › follows SQL's NULL rules: a comparison with NULL never matches, not and ne included",
+   "the evaluator › evaluates every right side against the row before (a swap)",
+   "the evaluator › leaves a value without the prefix unchanged and refuses integers outside the safe range (rule 10)",
+   "one semantics: the evaluator agrees with SQLite › selects the rows the evaluator matches",
+   "one semantics: the evaluator agrees with SQLite › agrees on every operator's NULL truth under not, and, or and when",
+   "one semantics: the evaluator agrees with SQLite › binds a long inArray list as one parameter (beyond SQLite's 32,766 variables)",
+   "one semantics: the evaluator agrees with SQLite › updates rows as the evaluator does"
+  ],
+  "missing": [],
+  "designedOut": []
+ },
+ "packages/chord/test/next/store/export.test.ts": {
+  "ported": [
+   "parts › come in archive order: manifest, per table its table write, puts and indexes, each record and its revisions, end",
+   "parts › are lossless: stored values and versions, NULL cells absent, a migrating table's state, revisions as stored",
+   "revisions › a history longer than a page is read page by page and exported whole, in seq order",
+   "the commit queue › is held from the first next() until the export ends: a commit waits",
+   "the commit queue › is given back by return(); the closed iterator keeps nothing",
+   "the commit queue › is given back at once when ctx aborts while the consumer is suspended; a later next() rejects aborted",
+   "the commit queue › a retained aborted iterator keeps no page",
+   "the commit queue › code that commits while consuming its own export waits until ctx aborts",
+   "the commit queue › closing the store ends a held export: its next() rejects released, also for a part that needs no read",
+   "the commit queue › an abort while next() waits for the queue rejects at once; no abort listener is left",
+   "the commit queue › closing the store before an export's first next() rejects it released: not even a manifest",
+   "the commit queue › closing the store while an export waits for the queue rejects its next() released"
+  ],
+  "missing": [],
+  "designedOut": []
+ },
+ "packages/chord/test/next/store/expression.test.ts": {
+  "ported": [
+   "compiling conditions › compiles every operator into data",
+   "compiling conditions › refuses undefined and null operands (rule 16), wrong types, json and unknown columns",
+   "compiling conditions › makes text operands storable",
+   "compiling sets › compiles plain values and expressions into one vocabulary, a clear as null (rule 14)",
+   "compiling sets › refuses an empty set, key columns (rule 13), unknown columns and clears of non-opt columns",
+   "compiling sets › undefined clears an opt column; null is a json(...) cell's JSON null and refused for scalar columns",
+   "compiling sets › refuses integer arithmetic outside int columns (rule 10), type mismatches and nullable results into non-opt columns"
+  ],
+  "missing": [],
+  "designedOut": []
+ },
+ "packages/chord/test/next/store/import.test.ts": {
+  "ported": [
+   "round trips › an imported archive exports the same parts: lossless, at the manifest's lastSeq and next document id",
+   "round trips › the store keeps its ids, seqs and folded documents; the outbox, when asked, starts after lastSeq",
+   "round trips › a migrating table resumes on the imported store; rows written at version 1 read as the table's",
+   "json(...) cells holding null › a JSON null round-trips, required and optional, put and updated; an absent optional cell stays absent",
+   "json(...) cells holding null › a JSON null at an older cell version round-trips with its version and migrates on access in the copy",
+   "refusals › %s",
+   "refusals › a non-empty backend is refused; a refused import closes its backend and leaves it as it was",
+   "refusals › an input that stalls is cancelled by ctx: the import rejects aborted and the input is closed"
+  ],
+  "missing": [],
+  "designedOut": []
+ },
+ "packages/chord/test/next/store/json-column.test.ts": {
+  "ported": [
+   "json(...) › is a schema carrying its column: version and the fingerprint of the schema's normal form",
+   "json(...) › refuses a version that is not a positive integer",
+   "reading a cell › parses a cell of the current version with no check",
+   "reading a cell › migrates an older cell and checks the result once (R8)",
+   "reading a cell › refuses a newer cell, a missing or throwing migrate and an invalid result"
+  ],
+  "missing": [],
+  "designedOut": []
+ },
+ "packages/chord/test/next/store/jsonl.test.ts": {
+  "ported": [
+   "jsonl › encodes one part per line and decodes it back, from chunks split anywhere",
+   "jsonl › skips blank lines and takes a last line without a newline",
+   "jsonl › refuses a line that is no JSON, naming it",
+   "jsonl › refuses bytes that are no UTF-8"
+  ],
+  "missing": [],
+  "designedOut": []
+ },
+ "packages/chord/test/next/store/outbox.test.ts": {
+  "ported": [
+   "the outbox › is off for a new store, on from the seq it is turned on at, kept when omitted, dropped when turned off",
+   "the outbox › records creations with their ids and seqs; trim is idempotent and refuses beyond lastSeq",
+   "the outbox › overlapping trims run one at a time: the stored floor never moves back and equals the one in memory",
+   "the outbox › a read waits for a trim whose commit has not returned: the trimmed floor refuses it, never an empty page",
+   "the outbox › a trim waits for a read in flight: the read gets the commits it was admitted for",
+   "the outbox › a commit stored in a newer format is refused unavailable; the data stays"
+  ],
+  "missing": [],
+  "designedOut": []
+ },
+ "packages/chord/test/next/store/query.test.ts": {
+  "ported": [
+   "queries › are immutable; several wheres are and-ed",
+   "queries › order by the key ascending by default and append the key as the tie-break, not repeated",
+   "queries › refuse duplicate orderBy columns, two directions and opt columns (rule 17)",
+   "cursors › round-trip the order values, also across conditions with the same order",
+   "cursors › are a trust boundary: another table, order or direction, garbage and bad values are invalid/args"
+  ],
+  "missing": [],
+  "designedOut": []
+ },
+ "packages/chord/test/next/store/refusal.test.ts": {
+  "ported": [
+   "classification › a CHECK failure by SQLite's extended code or by its message; everything else broken; the store's own errors pass"
+  ],
+  "missing": [
+   "Chord's owners › an int out of range fails only its transaction; the object stays live"
+  ],
+  "designedOut": []
+ },
+ "packages/chord/test/next/store/rows.test.ts": {
+  "ported": [
+   "put rows › encodes a row in physical order, defaults filled, booleans as 0 and 1, json serialized with its version",
+   "put rows › is a closed check: missing and unknown columns, wrong types, unsafe integers, non-finite numbers, NUL",
+   "put rows › serializes json cells at staging: a cycle or a BigInt fails there (rule 8)",
+   "put rows › replaces lone surrogates in text",
+   "keys › takes exactly the key columns",
+   "decoding › reads booleans, leaves NULL opt columns absent and parses json cells",
+   "decoding › refuses a json cell of a newer version"
+  ],
+  "missing": [],
+  "designedOut": []
+ },
+ "packages/chord/test/next/store/sql.test.ts": {
+  "ported": [
+   "names › renders <host kind>:<object type>:<table>, quoted",
+   "DDL › renders a STRICT WITHOUT ROWID table with checks, defaults, hidden version columns and the key",
+   "DDL › keeps int columns within ±(2^53 - 1) and bool columns within 0 and 1 (rule 10)",
+   "statements › renders the fixed statements once",
+   "statements › stamps a json column's version with its value, NULL with a clear",
+   "statements › binds every value: one text per query shape, whatever the values (rule 18)"
+  ],
+  "missing": [],
+  "designedOut": []
+ },
+ "packages/chord/test/next/store/store.test.ts": {
+  "ported": [
+   "opening › creates a new store at seq 0 without an outbox, and reopens a file at its last seq and ids",
+   "opening › refuses a database that is not UTF-8, closing the backend (rule 12)",
+   "the commit step › assigns one seq per commit, applies retirements before creations, and adopts before the next step",
+   "the commit step › rejects a commit its fence refuses at the entry released, writing nothing; an empty commit takes no seq",
+   "the commit step › numbers up to Number.MAX_SAFE_INTEGER after an import near it, then fails storage_failed: no seq repeats",
+   "the commit step › counts one commit and three statements for a delta, four with an outbox (cost guard)",
+   "refusals and unknown outcomes (D4) › a step whose own code throws is refused: the commit rejects with that error, nothing is adopted, the store goes on",
+   "refusals and unknown outcomes (D4) › a failed %s is an unknown outcome: the store stops storage_failed, its host told once",
+   "refusals and unknown outcomes (D4) › an adopt that throws stops the store, an empty commit's too; a conditional update on another revision is refused",
+   "refusals and unknown outcomes (D4) › spare a read whose context was aborted (aborted), and reject a read that settles after the stop",
+   "refusals and unknown outcomes (D4) › runs a read transaction's queries on one state, guarded as a read",
+   "the id allocator (D3) › starts at 2, takes a creation's id as it applies, and gives a mint during a running step the next one",
+   "the id allocator (D3) › leaves a refused step's ids unused and keeps the raised value",
+   "the id allocator (D3) › saturates at Number.MAX_SAFE_INTEGER across reopen: mints and Chord creations are refused, the store goes on",
+   "one host per store (rule 7) › refuses a second attachment until the first detaches",
+   "close › waits for the running step, rejects queued commits and later reads released, and closes the backend"
+  ],
+  "missing": [],
+  "designedOut": []
+ },
+ "packages/chord/test/next/store/table-changes.test.ts": {
+  "ported": [
+   "staging › checks at the call, appends in order, and touches no backend before the commit",
+   "the tx.get overlay › replays the transaction's own put, update and delete over the committed row",
+   "the tx.get overlay › an update of an absent key changes nothing",
+   "the tx.get overlay › is refused on a table after an updateWhere or deleteWhere (W10); other tables are unaffected"
+  ],
+  "missing": [],
+  "designedOut": []
+ },
+ "packages/chord/test/next/store/table-evolve.test.ts": {
+  "ported": [
+   "versions › each evolveTable appends version + 1, materialized and fingerprinted, linked to the one before",
+   "versions › the edit must return the editor it was given (contracts' rule)",
+   "edits › are recorded before and after the data step; the step reads the columns as they stand there",
+   "edits › a rename carries the key and the indexes",
+   "edits › an update step is compiled at declaration against the columns there",
+   "edits › a json edit changes the column's version and keeps its nullability",
+   "checks › a rename may change only the case of its own column",
+   "checks › refuses %s at declaration"
+  ],
+  "missing": [],
+  "designedOut": []
+ },
+ "packages/chord/test/next/store/table-handle.test.ts": {
+  "ported": [
+   "reads outside a transaction › get takes a key object and reads committed rows as stored",
+   "reads outside a transaction › page fetches limit + 1 for next, and the cursor continues in order with the key tie-break",
+   "reads outside a transaction › rows reads every page; count counts",
+   "reads outside a transaction › refuses a query of another table, a bad limit and a foreign cursor before the backend",
+   "reads outside a transaction › reads go through the store's guard: refused once the store closed",
+   "unreadable cells › a json cell of a newer version fails the owner and the read, the data intact"
+  ],
+  "missing": [],
+  "designedOut": []
+ },
+ "packages/chord/test/next/store/table-history.test.ts": {
+  "ported": [
+   "plans › create a table the store does not have; use one recorded at the newest version",
+   "plans › migrate through every later version, oldest first; resume a version recorded migrating",
+   "refusals › %s"
+  ],
+  "missing": [],
+  "designedOut": []
+ },
+ "packages/chord/test/next/store/table-migration.test.ts": {
+  "ported": [
+   "fresh tables › are created at the newest version, ready, with their indexes, in one commit (no replay)",
+   "fresh tables › a table at the newest version, ready, is used as recorded: nothing is written",
+   "eager migrations › one version at a time: (A), chunks of 100 in key order, (Z) with the later edits and ready",
+   "eager migrations › the data step reads the columns as they stand at its version and fills the one it adds",
+   "eager migrations › the migration's rows carry the internal form: the patch and the version stamped as $v",
+   "eager migrations › an empty table still runs (A) and (Z); a version without a data step is one commit",
+   "eager migrations › a dropped column's indexes are dropped first, in the same commit",
+   "eager migrations › an update step is one updateWhere over the rows below its version, stamping it, with ready",
+   "eager migrations › a json(...) version change records the column's version: no DDL, cells migrate on access",
+   "patches › a rows patch writes a JSON null into a json(...) cell and clears an opt column with undefined",
+   "resumption › a data step that throws leaves the table migrating with its committed chunks; the next run continues",
+   "resumption › a refused commit (the activation abandoned) stops the migration between chunks",
+   "refusals › %s (the store at version 2) throws before anything is written"
+  ],
+  "missing": [],
+  "designedOut": [
+   "the chunk yield › yields between chunks without Node's setImmediate (Workers, browsers), through a message, not a timer",
+   "the chunk yield › yields between chunks without a timer (no 1 ms clamp), while timers due run in between (a latency guard)"
+  ]
+ },
+ "packages/chord/test/next/store/table-writes.test.ts": {
+  "ported": [
+   "schema writes › record the table and its indexes; the table write carries version, state, columns, key, fingerprint",
+   "schema writes › an index write for a table the store does not have refuses the step (D4: the store goes on)",
+   "row writes in the outbox › carry what a replica needs: put with v and json versions, update and delete with counts, the canonical set",
+   "row writes in the outbox › a put is an upsert: the whole row replaced",
+   "row writes in the outbox › updateWhere and deleteWhere are one statement each, recorded with where, set and count",
+   "alter writes › rename a column: a json(...) one's version column, the key and the indexes follow",
+   "alter writes › add a column: existing rows get its default; an opt(...) json(...) one adds its version column",
+   "alter writes › drop a column (with its version column); a json edit changes the record only",
+   "alter writes › are recorded as alter writes with the migration's version; index edits as index and dropIndex"
+  ],
+  "missing": [],
+  "designedOut": []
+ },
+ "packages/chord/test/next/store/table.test.ts": {
+  "ported": [
+   "defineTable › materializes columns, key, indexes and the record",
+   "defineTable › checks the table name, the version, key, index names and index columns",
+   "defineTable › fingerprints columns, key and indexes, not their declaration order"
+  ],
+  "missing": [],
+  "designedOut": []
+ },
+ "packages/chord/test/next/store/text.test.ts": {
+  "ported": [
+   "compareText › orders by code point: a supplementary character after every BMP character, U+E000 to U+FFFF included",
+   "compareText › agrees with UTF-8 byte order",
+   "storedText › keeps well-formed text as it is and replaces a lone surrogate with U+FFFD",
+   "storedText › refuses NUL with invalid/args",
+   "prefixUpperBound › is the next code point after the last one",
+   "prefixUpperBound › skips the surrogates and carries past U+10FFFF",
+   "prefixUpperBound › bounds exactly the strings starting with the prefix, in code point order"
+  ],
+  "missing": [],
+  "designedOut": []
+ }
+}
