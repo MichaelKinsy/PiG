@@ -14,7 +14,7 @@ import (
 	"strings"
 	"testing"
 
-	. "github.com/MichaelKinsy/PiG/internal/modelgen" //nolint:staticcheck // ST1001: same dot import as the provider files
+	. "github.com/MichaelKinsy/PiG/internal/modelgen"
 )
 
 // provBSpec is one models.dev v2 model entry.

@@ -915,6 +915,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-a53f72f](#bf-a53f72f) | A context an extension kept across a session replacement or reload now raises Pi's stale message from `cwd`… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-a5524c8](#bf-a5524c8) | In print and JSON mode, an extension whose `session_shutdown` handler throws after SIGTERM or SIGHUP now has… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-a5524c8-2](#bf-a5524c8-2) | In print and JSON mode, SIGTERM or SIGHUP during a tool call stops the run where Pi does while the… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-a58649c](#bf-a58649c) | fix(chord/next/host): the merged helpers share one package: routineFailed, sectionLoop in follow and keyed… | PiG's own defect | All platforms | Unreleased |
 | [BF-a690122](#bf-a690122) | `PIG_PROFILE=heap` and the `heap_live_bytes` of `PIG_PROFILE=metrics` count only memory PiG retains | PiG's own defect | All platforms | 0.5.0 |
 | [BF-a6932b4](#bf-a6932b4) | fix(coding): pass a Node extension request's client identity to the provider | PiG's own defect | All platforms | Unreleased |
 | [BF-a6e0ce8](#bf-a6e0ce8) | fix(codingagent): session selector page keys keep the index valid (Pi #7680) | PiG's own defect | All platforms | Unreleased |
@@ -948,6 +949,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-ae1ee6d](#bf-ae1ee6d) | The login dialog opens and prints only `http:` and `https:` URLs, in their normalized form (percent-encoded… | PiG's own defect | All platforms | Unreleased |
 | [BF-ae1ee6d-2](#bf-ae1ee6d-2) | A terminal title that holds a control character (a session name from a session file with an ESC or BEL) no… | PiG's own defect | All platforms | Unreleased |
 | [BF-ae498eb](#bf-ae498eb) | A line of many `>` characters no longer makes the Markdown renderer's output grow exponentially with the… | A fix Pi shipped that PiG ported | All platforms | Unreleased |
+| [BF-ae49fdd](#bf-ae49fdd) | fix(gen-models): link the TLS distrust hook into the catalog generator | PiG's own defect | All platforms | Unreleased |
 | [BF-aeaaf97](#bf-aeaaf97) | Model requests reuse their HTTP connection | PiG's own defect | All platforms | 0.5.0 |
 | [BF-aec0042](#bf-aec0042) | The pi-env daemon runs a command whose `timeoutMs` is above 2^31-1 ms without a deadline, as Pi's daemon… | PiG's own defect | All platforms | Unreleased |
 | [BF-af1fe1a](#bf-af1fe1a) | Cycling models in the interactive UI goes through the Session as in Pi: the new model persists as the… | PiG's own defect | All platforms | 0.5.0 |
@@ -13794,6 +13796,19 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** None recorded.
 - **Release note:** In print and JSON mode, SIGTERM or SIGHUP during a tool call stops the run where Pi does while the extensions' `session_shutdown` handlers finish without waiting: no further provider request and no tool result. A handler that waits on a timer or I/O lets the run continue, as in Pi, and text mode then prints the run's result.
 
+### BF-a58649c
+
+**fix(chord/next/host): the merged helpers share one package: routineFailed, sectionLoop in follow and keyed…**
+
+- **Source:** PiG's own defect
+- **Symptom:** fix(chord/next/host): the merged helpers share one package: routineFailed, sectionLoop in follow and keyed members
+- **Root cause:** Not recorded.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `a58649c0ad` (2026-10-30)
+- **Tests:** None recorded.
+
 ### BF-a690122
 
 **`PIG_PROFILE=heap` and the `heap_live_bytes` of `PIG_PROFILE=metrics` count only memory PiG retains**
@@ -14249,6 +14264,19 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `ae498ebdc6` (2026-10-23)
 - **Tests:** `tui/markdown_upstream_test.go::TestMarkdownRendersQuotesNestedDeeperThanTheWidthAllowsWithoutExploding`
 - **Release note:** A line of many `>` characters no longer makes the Markdown renderer's output grow exponentially with the nesting depth.
+
+### BF-ae49fdd
+
+**fix(gen-models): link the TLS distrust hook into the catalog generator**
+
+- **Source:** PiG's own defect
+- **Symptom:** fix(gen-models): link the TLS distrust hook into the catalog generator
+- **Root cause:** Not recorded.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `ae49fdd701` (2026-10-30)
+- **Tests:** None recorded.
 
 ### BF-aeaaf97
 

@@ -25886,6 +25886,25 @@
       "tests": []
     },
     {
+      "id": "BF-a58649c",
+      "title": "fix(chord/next/host): the merged helpers share one package: routineFailed, sectionLoop in follow and keyed…",
+      "symptom": "fix(chord/next/host): the merged helpers share one package: routineFailed, sectionLoop in follow and keyed members",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "a58649c0ad",
+          "date": "2026-10-30"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-a690122",
       "title": "`PIG_PROFILE=heap` and the `heap_live_bytes` of `PIG_PROFILE=metrics` count only memory PiG retains",
       "symptom": "`PIG_PROFILE=heap` and the `heap_live_bytes` of `PIG_PROFILE=metrics` count only memory PiG retains.",
@@ -26907,6 +26926,25 @@
       "tests": [
         "tui/markdown_upstream_test.go::TestMarkdownRendersQuotesNestedDeeperThanTheWidthAllowsWithoutExploding"
       ]
+    },
+    {
+      "id": "BF-ae49fdd",
+      "title": "fix(gen-models): link the TLS distrust hook into the catalog generator",
+      "symptom": "fix(gen-models): link the TLS distrust hook into the catalog generator",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "ae49fdd701",
+          "date": "2026-10-30"
+        }
+      ],
+      "tests": []
     },
     {
       "id": "BF-aeaaf97",

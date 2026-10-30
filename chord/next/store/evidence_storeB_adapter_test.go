@@ -208,7 +208,7 @@ func TestOwnerTableJsonVersionAndReader(t *testing.T) {
 	}), "dur:notes")
 	read, err = notes.Reader("meta")
 	must(t, err)
-	var ctx context.Context = background
+	ctx := background
 	cell, err = read(`{"a":5}`, 1, ctx)
 	must(t, err)
 	qEqual(t, cell, delta.JsonObjectOf("a", float64(5), "b", float64(0)))

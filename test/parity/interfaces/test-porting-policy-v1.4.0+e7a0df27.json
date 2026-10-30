@@ -2560,6 +2560,20 @@
       "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
     },
     {
+      "path": "packages/chord/test/next/host/activity.test.ts",
+      "upstreamTestHash": "sha256:c5d96e72aa82bde6adc20ee1344bd7bb5306f0359340b766b0cd84fdff8b75cd",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
+    },
+    {
+      "path": "packages/chord/test/next/host/attempt.test.ts",
+      "upstreamTestHash": "sha256:72652ff1f656372c6008dc3934600944028029b1a3f605315d9379b7d9555950",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
+    },
+    {
       "path": "packages/chord/test/next/host/backoff.test.ts",
       "upstreamTestHash": "sha256:d90ff26bb1d85f666cde366466dc319f9fb9699f47cee60ff8599cfa4d4ec390",
       "area": "extensions",
@@ -2576,6 +2590,13 @@
     {
       "path": "packages/chord/test/next/host/deadline.test.ts",
       "upstreamTestHash": "sha256:ce5fce58f527657fd2c4c370fb508c5310c29a0a94b6adc887fddcb20078b205",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
+    },
+    {
+      "path": "packages/chord/test/next/host/dependencies.test.ts",
+      "upstreamTestHash": "sha256:a7e716e5c5867fa2a3a649fd6c85774948d094c5968b55cde7cae47d5fa08622",
       "area": "extensions",
       "tags": [],
       "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
@@ -2602,8 +2623,99 @@
       ]
     },
     {
+      "path": "packages/chord/test/next/host/host.test.ts",
+      "upstreamTestHash": "sha256:804ee795f584196548ecc6ac1b8cd34499c98716a5214aa6565baf1d452b5797",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
+    },
+    {
+      "path": "packages/chord/test/next/host/keyed-members.test.ts",
+      "upstreamTestHash": "sha256:389df7412898a6279590b2960bfe477277b36d35da264da985a79eee946b1aab",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
+    },
+    {
+      "path": "packages/chord/test/next/host/member-source.test.ts",
+      "upstreamTestHash": "sha256:84ef2ade33d50f1a3ae6f6859c1b42b901d3522d68337c5be740cd39935011ba",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
+    },
+    {
+      "path": "packages/chord/test/next/host/members.test.ts",
+      "upstreamTestHash": "sha256:ef755257540ad9615ead06b82cfc863c9347860d44d52be72628d5e19570dacb",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
+    },
+    {
+      "path": "packages/chord/test/next/host/native.test.ts",
+      "upstreamTestHash": "sha256:32b4297351e0d257e32b0b1b711c911c3ddb078ac610c12cfe3e4ee5c43191a7",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
+    },
+    {
+      "path": "packages/chord/test/next/host/object.test.ts",
+      "upstreamTestHash": "sha256:5578e70ee39f425287aa0a38fd69e31b431ff77051027812e35a1404809425ba",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
+    },
+    {
+      "path": "packages/chord/test/next/host/parked.test.ts",
+      "upstreamTestHash": "sha256:d60a168b81dc1d993ce24cdcea5474c09df25a5fd16cc8a197d2b0c17749b5f0",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
+    },
+    {
+      "path": "packages/chord/test/next/host/presence.test.ts",
+      "upstreamTestHash": "sha256:8b9926456172448303f81381c538150ea8e33871d91538e13f140d4bc709a947",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
+    },
+    {
+      "path": "packages/chord/test/next/host/ref-state.test.ts",
+      "upstreamTestHash": "sha256:51a8c7ea6705c19ada0cd6cd2d046beba44fd718f027011b9e6f50183d2ee60c",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
+    },
+    {
+      "path": "packages/chord/test/next/host/reference.test.ts",
+      "upstreamTestHash": "sha256:f2a73834701262f28dc618978447ac09a475f5f3cdb84744f731ddeb3fda418e",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
+    },
+    {
+      "path": "packages/chord/test/next/host/retry-on.test.ts",
+      "upstreamTestHash": "sha256:7867d445159303cbc65beffa763f35995f49272c3573b6a56cb07f18ec0b0fff",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
+    },
+    {
+      "path": "packages/chord/test/next/host/revocation.test.ts",
+      "upstreamTestHash": "sha256:37a131655b1e86fdb57aeccd62437981372a9401ca8a14cc9e8986bd8be55d56",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
+    },
+    {
       "path": "packages/chord/test/next/host/root.test.ts",
       "upstreamTestHash": "sha256:6f8dbefee8bdfba91647a97b5b7752444b62cd7a08413b98547e07be5809d99c",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
+    },
+    {
+      "path": "packages/chord/test/next/host/route.test.ts",
+      "upstreamTestHash": "sha256:4fd52ae91bde73503c42a7fee5cfc75ed616061a0d75281dcc95703ddfeef37f",
       "area": "extensions",
       "tags": [],
       "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
@@ -2628,6 +2740,48 @@
     {
       "path": "packages/chord/test/next/host/unbound.test.ts",
       "upstreamTestHash": "sha256:98b4f8388e80d3dc74d967855663a2c02e269b9f24976fe06414033599f6c396",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
+    },
+    {
+      "path": "packages/chord/test/next/jobs/definition.test.ts",
+      "upstreamTestHash": "sha256:73944e1a77a391a412169a97df6102ed49adbf1a07f69822d9534f99a4a63532",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
+    },
+    {
+      "path": "packages/chord/test/next/jobs/job.test.ts",
+      "upstreamTestHash": "sha256:246b507e3248d4cc8f23b73fba39613b11e58ee61674c9f3c5a2b4e69ebc0b1c",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
+    },
+    {
+      "path": "packages/chord/test/next/jobs/persisted.test.ts",
+      "upstreamTestHash": "sha256:096283f4442c63b3a2e2ac7724da1c1b4a4623c9fe8d1c26d0e03388377b1628",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
+    },
+    {
+      "path": "packages/chord/test/next/jobs/records.test.ts",
+      "upstreamTestHash": "sha256:3b0a563eef254d193b52bd69cfff6dfe1b237c2b32c8d67e4e9ec06cce076959",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
+    },
+    {
+      "path": "packages/chord/test/next/jobs/run.test.ts",
+      "upstreamTestHash": "sha256:35c837060dd33363a4206137e70e5a9f4cb8ffe2c424125f996e7f0078160e6f",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
+    },
+    {
+      "path": "packages/chord/test/next/jobs/running.test.ts",
+      "upstreamTestHash": "sha256:5a3b70344f539c10e6ccdd2a3b93a31927f216c9923f70c11b3f7c3e273528bc",
       "area": "extensions",
       "tags": [],
       "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
@@ -2712,6 +2866,69 @@
     {
       "path": "packages/chord/test/next/registries/value.test.ts",
       "upstreamTestHash": "sha256:17b5272b8e52523053901d91e7a9ae1f588caefbb8b6d906926d51361791eeb6",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
+    },
+    {
+      "path": "packages/chord/test/next/remote/calls.test.ts",
+      "upstreamTestHash": "sha256:ca014caa90fe8338453ced99a16b4a9c8b9c20bc5473dd813d28a8cf60b3d139",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
+    },
+    {
+      "path": "packages/chord/test/next/remote/consumer.test.ts",
+      "upstreamTestHash": "sha256:19f6aad1ee57e8bdf3ff984e00bc922fed5d30bc640602a327722c8c39cac6b3",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
+    },
+    {
+      "path": "packages/chord/test/next/remote/hold.test.ts",
+      "upstreamTestHash": "sha256:342d5b9782da0455f24c6d2aa1b68eb7ad829912d37642d0aad19bdf71425f39",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
+    },
+    {
+      "path": "packages/chord/test/next/remote/host-link.test.ts",
+      "upstreamTestHash": "sha256:c4ada47e23350c1cef0d5b29ac594cdd3558bfb547bc2e0387401f4a917f8a57",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
+    },
+    {
+      "path": "packages/chord/test/next/remote/path.test.ts",
+      "upstreamTestHash": "sha256:274399f71e047b1fea8d352732c77057dd00991407e5acb34529705ba6debd22",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
+    },
+    {
+      "path": "packages/chord/test/next/remote/provider.test.ts",
+      "upstreamTestHash": "sha256:9a497c53103952d156b8959b708d7aac3125b07a96d40e8568d079d48974fa9a",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
+    },
+    {
+      "path": "packages/chord/test/next/remote/relay.test.ts",
+      "upstreamTestHash": "sha256:56bcb9f5513fb1cac7b87b7eadf1ba68ede132907f4db7bca9622d1c6a4392e9",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
+    },
+    {
+      "path": "packages/chord/test/next/remote/remote-object.test.ts",
+      "upstreamTestHash": "sha256:667da17ef702a8ef3579adeb09560a835a60a8201bf69ad6111483ad3b25f26b",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
+    },
+    {
+      "path": "packages/chord/test/next/remote/replica.test.ts",
+      "upstreamTestHash": "sha256:64c6b03196b7f261e1884dca267769f6f0ce470fab775941b41f64bdc93499a7",
       "area": "extensions",
       "tags": [],
       "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
@@ -3660,6 +3877,15 @@
       "rationale": "Selected Provider catalog, credentials, request conversion, streaming, replay, or error handling."
     },
     {
+      "path": "packages/coding-agent/test/custom-editor-keybindings.test.ts",
+      "upstreamTestHash": "sha256:0532c4e7a7e3d521ed62f9987e2cdd600796a10000821ac62a1515d04a513a2c",
+      "area": "tui",
+      "tags": [
+        "hot-path"
+      ],
+      "rationale": "Production-path review at Pi e7a0df27: Interactive editor key handling on every prompt (replaces the deleted custom-editor-history-keybindings test)."
+    },
+    {
       "path": "packages/coding-agent/test/custom-message.test.ts",
       "upstreamTestHash": "sha256:345716cc20a80dbe8072a3ed92bbff232f36ec83cfd02241b2ea4cb54945cc20",
       "area": "tui",
@@ -3676,6 +3902,15 @@
         "hot-path"
       ],
       "rationale": "Tool admission, arguments, execution, cancellation, or returned output on coding turns."
+    },
+    {
+      "path": "packages/coding-agent/test/deleted-cwd.test.ts",
+      "upstreamTestHash": "sha256:7e5f398357ca22bc93e316a8f9b3a234033af1e8a0aedb121a9d307fd0c0fe6b",
+      "area": "cli",
+      "tags": [
+        "hot-path"
+      ],
+      "rationale": "Production-path review at Pi e7a0df27: Startup in a deleted working directory: the CLI reports it instead of crashing (Pi 88ffcdc7)."
     },
     {
       "path": "packages/coding-agent/test/documentation.test.ts",
@@ -4036,6 +4271,15 @@
       "rationale": "Session context, persistence, turn lifecycle, compaction, or recovery."
     },
     {
+      "path": "packages/coding-agent/test/interactive-mode-extension-changelog.test.ts",
+      "upstreamTestHash": "sha256:cdc72029f64b5b7d8fdaf8696c00cbc900643dd57882ff919b59fef4988c134d",
+      "area": "cli",
+      "tags": [
+        "hot-path"
+      ],
+      "rationale": "Production-path review at Pi e7a0df27: Startup changelog shown after an extension update (Pi b4b72a35)."
+    },
+    {
       "path": "packages/coding-agent/test/interactive-mode-extension-dialogs.test.ts",
       "upstreamTestHash": "sha256:f614c5b33464cf1d4c92a36c6a48e94b541a299cecb2b0c85a52d863acecb7c1",
       "area": "tui",
@@ -4052,6 +4296,15 @@
         "hot-path"
       ],
       "rationale": "Main Screen input, message/tool rendering, terminal integration, or selected presentation."
+    },
+    {
+      "path": "packages/coding-agent/test/interactive-mode-model-scope.test.ts",
+      "upstreamTestHash": "sha256:4d0f30135d06ca974939bd2e08d4e7e939e6f8f68d9948c209cd6f5319ff83a6",
+      "area": "cli",
+      "tags": [
+        "hot-path"
+      ],
+      "rationale": "Production-path review at Pi e7a0df27: Model scope notice in the fullscreen header at startup (Pi 7391dbb0)."
     },
     {
       "path": "packages/coding-agent/test/interactive-mode-startup-input.test.ts",
@@ -5073,6 +5326,15 @@
         "hot-path"
       ],
       "rationale": "Session context, persistence, turn lifecycle, compaction, or recovery."
+    },
+    {
+      "path": "packages/coding-agent/test/suite/regressions/11520-sdk-summary-oauth-auth.test.ts",
+      "upstreamTestHash": "sha256:0b7ea193c558f0ab6963829116594003a9c37e9db987400627d98c5c0e49b80e",
+      "area": "sessions",
+      "tags": [
+        "hot-path"
+      ],
+      "rationale": "Production-path review at Pi e7a0df27: SDK compaction and branch summaries resolve auth through the stream (Pi 6fed3cfb)."
     },
     {
       "path": "packages/coding-agent/test/suite/regressions/1717-2113-agent-session-event-settlement.test.ts",
@@ -6428,6 +6690,15 @@
       "rationale": "New in Pi 1.4.0+74f46864; area and tags follow the sibling tests under packages/durable/test/ until the production-path review."
     },
     {
+      "path": "packages/durable/test/harness-registry-reader.test.ts",
+      "upstreamTestHash": "sha256:4b53c3cbeea9d414bf159641293e3a5edc60834a624beaca15b0496e047d053c",
+      "area": "cli",
+      "tags": [
+        "hot-path"
+      ],
+      "rationale": "Durable on the Chord v2 store (Pi 14b4c56e, 6eb99ad6); area and tags follow the sibling tests under packages/durable/test/ until the production-path review."
+    },
+    {
       "path": "packages/durable/test/harness-registry.test.ts",
       "upstreamTestHash": "sha256:c3d153beb78134f9ab192094d6eb4b914754d1759d146b9c8c196191588d70cc",
       "area": "cli",
@@ -6831,6 +7102,15 @@
         "hot-path"
       ],
       "rationale": "CLI startup, selected execution mode, settings, or command routing."
+    },
+    {
+      "path": "packages/durable/test/store-storage.test.ts",
+      "upstreamTestHash": "sha256:1aae7057f4a21dfbb38f79118a11514bf94b10bd08a075a6a198ba0c318fed5c",
+      "area": "cli",
+      "tags": [
+        "hot-path"
+      ],
+      "rationale": "Durable on the Chord v2 store (Pi 14b4c56e, 6eb99ad6); area and tags follow the sibling tests under packages/durable/test/ until the production-path review."
     },
     {
       "path": "packages/durable/test/system-order-cache-e2e.test.ts",

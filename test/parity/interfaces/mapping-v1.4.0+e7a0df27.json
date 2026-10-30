@@ -106008,7 +106008,7 @@
       "evidence": [
         "test:chord/delta/apply_pi_oracle_test.go#TestTruncateInsideASurrogatePairKeepsTheLowHalf",
         "test:chord/delta/delta_upstream_test.go#TestDeltaPathAndPrototypeSafety",
-        "test:chord/delta/compat_test.go#TestAnIntPermutationStillApplies"
+        "test:chord/next/host/host_follow_test.go#TestEndsDuringActivationAndInOneBatchACallAndAnEndOutsideABatchWithNothingWatchingALaterWatchOpensAtTheValueAndEnds"
       ]
     },
     {
@@ -111057,7 +111057,7 @@
       "evidence": [
         "test:chord/watch_upstream_test.go#TestWatchableWatchHoldsTheCurrentValueThenOneFramePerChangeAndEndsWithItsContext",
         "test:durable/session/session_deferred_commits_upstream_test.go#TestPublicationsOfDeferredCommits",
-        "test:chord/next/state/derive_own_test.go#TestDeriveDetach"
+        "test:chord/next/documents/keyed_slot_test.go#TestKeyedSlotALoneSurrogateInAKeyIsUFFFDAtEveryEntryPointInMemoryAndInTheStoreNULIsRefused"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -111079,8 +111079,8 @@
       ],
       "evidence": [
         "test:chord/watch_upstream_test.go#TestWatchableWatchHoldsTheCurrentValueThenOneFramePerChangeAndEndsWithItsContext",
-        "test:chord/next/state/derive_own_test.go#TestDeriveDetach",
-        "test:chord/next/state/derive_own_test.go#TestDeriveGC"
+        "test:chord/next/documents/keyed_slot_test.go#TestKeyedSlotWatchKeyIsUndefinedWhenAbsentItFollowsTheAddressThroughARetirementAndARecreation",
+        "test:chord/next/host/host_follow_test.go#TestEndsDuringActivationAndInOneBatchACallAndAnEndOutsideABatchWithNothingWatchingALaterWatchOpensAtTheValueAndEnds"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -111144,8 +111144,8 @@
       ],
       "evidence": [
         "test:durable/session/session_deferred_commits_upstream_test.go#TestPublicationsOfDeferredCommits",
-        "test:chord/next/state/watchable_own_test.go#TestConstantOf",
-        "test:chord/next/state/watchable_own_test.go#TestSourceWatches"
+        "test:chord/next/documents/keyed_slot_test.go#TestKeyedSlotAStoppedWatchUnpinsItsKeyItsSourceIsCollected",
+        "test:chord/next/documents/keyed_slot_test.go#TestKeyedSlotAnUnpinnedKeyIdleForTheRetentionLeavesMemoryAPinnedOneStays"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -111167,8 +111167,8 @@
       ],
       "evidence": [
         "test:durable/session/session_deferred_commits_upstream_test.go#TestPublicationsOfDeferredCommits",
-        "test:chord/next/state/watchable_own_test.go#TestConstantOf",
-        "test:chord/next/state/watchable_own_test.go#TestSourceWatches"
+        "test:chord/next/documents/keyed_slot_test.go#TestKeyedSlotAStoppedWatchUnpinsItsKeyItsSourceIsCollected",
+        "test:chord/next/documents/keyed_slot_test.go#TestKeyedSlotAnUnpinnedKeyIdleForTheRetentionLeavesMemoryAPinnedOneStays"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -113075,7 +113075,7 @@
       "evidence": [
         "test:chord/delta/apply_pi_oracle_test.go#TestTruncateInsideASurrogatePairKeepsTheLowHalf",
         "test:chord/delta/delta_upstream_test.go#TestDeltaPathAndPrototypeSafety",
-        "test:chord/delta/compat_test.go#TestAnIntPermutationStillApplies"
+        "test:chord/next/host/host_follow_test.go#TestEndsDuringActivationAndInOneBatchACallAndAnEndOutsideABatchWithNothingWatchingALaterWatchOpensAtTheValueAndEnds"
       ]
     },
     {
@@ -114175,7 +114175,8 @@
         "public-api:chord/next/store/apply_batch.go#ApplyBatch"
       ],
       "evidence": [
-        "test:chord/next/store/apply_batch_test.go#TestApplyBatch"
+        "test:chord/next/store/apply_batch_test.go#TestApplyBatch",
+        "test:chord/next/store/evidence_storeA_test.go#TestEvidenceStoreABatchSeqGap"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -114196,7 +114197,8 @@
         "public-api:chord/next/store/apply_batch.go#ApplyBatch"
       ],
       "evidence": [
-        "test:chord/next/store/apply_batch_test.go#TestApplyBatch"
+        "test:chord/next/store/apply_batch_test.go#TestApplyBatch",
+        "test:chord/next/store/evidence_storeA_test.go#TestEvidenceStoreABatchSeqGap"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -114222,9 +114224,9 @@
         "public-api:chord/next/store/archive.go#ArchivePart"
       ],
       "evidence": [
+        "test:chord/next/documents/transaction_test.go#TestPersistedDocumentsInATransactionAssignTheCreatedDocumentsIdsByTheirOrderInTheCommitRetireAndRecreateInOneCommit",
         "test:chord/next/store/apply_batch_test.go#TestApplyBatch",
-        "test:chord/next/store/export_test.go#TestExportParts",
-        "test:chord/next/store/import_test.go#TestImportJSONCellsHoldingNull"
+        "test:chord/next/store/export_test.go#TestExportParts"
       ]
     },
     {
@@ -114259,6 +114261,7 @@
         "public-api:chord/next/store/backend.go#Backend"
       ],
       "evidence": [
+        "test:chord/next/store/evidence_storeB_backend_test.go#TestSqliteBackendRunsOnTheGivenDatabase",
         "test:chord/next/store/import_test.go#TestImportRefusals"
       ]
     },
@@ -114545,7 +114548,7 @@
         "public-api:chord/next/store/store.go#ChordStore.Commit"
       ],
       "evidence": [
-        "test:chord/next/store/catalog_test.go#TestCatalog"
+        "test:chord/next/documents/persistence_test.go#TestStagedWritesStageARetirementBeforeARecreationAndNumberCreationsByTheirOrderInTheCommit"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -114566,7 +114569,7 @@
         "public-api:chord/next/store/store.go#ChordStore.Commit"
       ],
       "evidence": [
-        "test:chord/next/store/catalog_test.go#TestCatalog"
+        "test:chord/next/documents/persistence_test.go#TestStagedWritesStageARetirementBeforeARecreationAndNumberCreationsByTheirOrderInTheCommit"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -114652,7 +114655,7 @@
         "public-api:chord/next/store/store.go#ChordStore.LastSeq"
       ],
       "evidence": [
-        "test:chord/next/store/apply_batch_test.go#TestApplyBatch"
+        "test:chord/next/documents/transaction_test.go#TestPersistedDocumentsInATransactionACommitCutAtTheSealWhileItWaitsInTheStoresQueueRejectsReleasedAtOnceWritingNothing"
       ]
     },
     {
@@ -114742,7 +114745,7 @@
         "public-api:chord/next/store/store.go#ChordStore.Outbox"
       ],
       "evidence": [
-        "test:chord/next/store/import_test.go#TestImportRoundTrips"
+        "test:chord/next/documents/transaction_test.go#TestPersistedDocumentsInATransactionAssignTheCreatedDocumentsIdsByTheirOrderInTheCommitRetireAndRecreateInOneCommit"
       ]
     },
     {
@@ -114762,9 +114765,9 @@
         "public-api:chord/next/store/store.go#Read"
       ],
       "evidence": [
+        "test:chord/next/documents/keyed_slot_test.go#TestKeyedSlotTxRetireOfAColdKeyStoredAtANewerVersionOrAnotherFingerprintFailsTheOwnerBrokenAsAReadWouldAndKeepsIt",
         "test:chord/next/store/engine_test.go#TestEngineDocuments",
-        "test:chord/next/store/engine_test.go#TestEngineHistoryRules",
-        "test:chord/next/store/import_test.go#TestImportRoundTrips"
+        "test:chord/next/store/engine_test.go#TestEngineHistoryRules"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -114785,9 +114788,9 @@
         "public-api:chord/next/store/store.go#Read"
       ],
       "evidence": [
+        "test:chord/next/documents/keyed_slot_test.go#TestKeyedSlotTxRetireOfAColdKeyStoredAtANewerVersionOrAnotherFingerprintFailsTheOwnerBrokenAsAReadWouldAndKeepsIt",
         "test:chord/next/store/engine_test.go#TestEngineDocuments",
-        "test:chord/next/store/engine_test.go#TestEngineHistoryRules",
-        "test:chord/next/store/import_test.go#TestImportRoundTrips"
+        "test:chord/next/store/engine_test.go#TestEngineHistoryRules"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -115198,9 +115201,9 @@
         "public-api:chord/next/registries/registry.go#ComposeContext"
       ],
       "evidence": [
-        "test:chord/next/registries/record_test.go#TestCompose",
-        "test:chord/next/registries/record_test.go#TestContributions",
-        "test:chord/next/registries/record_test.go#TestTheLastGoodComposition"
+        "test:chord/next/host/host_facet_test.go#TestFacetsContributeAtMostOneValuePerRegistryOnlyWhileTheirSetupRuns",
+        "test:chord/next/host/host_facet_test.go#TestSetUpReturnsServedEntriesAndContributionsInOrderByKind",
+        "test:chord/next/registries/record_test.go#TestCompose"
       ]
     },
     {
@@ -115578,8 +115581,23 @@
     },
     {
       "id": "pkg:chord/next#DecodedRow",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:f50a531d7695e50b0207f44e41a99e2dc75e3fa4ead390b03104ba68e07d276d"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:f50a531d7695e50b0207f44e41a99e2dc75e3fa4ead390b03104ba68e07d276d",
+      "rationale": "Derived by the interface gap detector: DecodedRow is Go chord/next/store/adapter.go#DecodedRow (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/store/adapter.go#DecodedRow"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:chord/next/store/adapter.go#DecodedRow"
+      ],
+      "evidence": [
+        "test:chord/next/store/evidence_storeB_adapter_test.go#TestOwnerTablePutStampsTheStepsSeqAndReadsDecode"
+      ]
     },
     {
       "id": "pkg:chord/next#decodeJsonl",
@@ -115598,13 +115616,47 @@
     },
     {
       "id": "pkg:chord/next#defineFacet",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:c4288b0d7080667a4d81dd2a7394dbc3325bbe6f80b217afa525e0fbbdd43147"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:c4288b0d7080667a4d81dd2a7394dbc3325bbe6f80b217afa525e0fbbdd43147",
+      "rationale": "Derived by the interface gap detector: defineFacet is Go chord/next/host/host_facet.go#DefineFacet (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/host/host_facet.go#DefineFacet"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:chord/next/host/host_facet.go#DefineFacet"
+      ],
+      "evidence": [
+        "test:chord/next/host/host_facet_test.go#TestFacetsAreTypedByExactlyTheAppsPrincipalType",
+        "test:chord/next/host/host_facet_test.go#TestSetUpReturnsServedEntriesAndContributionsInOrderByKind",
+        "test:chord/next/host/host_facet_test.go#TestFacetsContributeAtMostOneValuePerRegistryOnlyWhileTheirSetupRuns"
+      ]
     },
     {
       "id": "pkg:chord/next#defineFacet::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:5d4461811da2481807ea5b1d1a3f602644909e763fd4876aec210ef8f1cffcb4"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:5d4461811da2481807ea5b1d1a3f602644909e763fd4876aec210ef8f1cffcb4",
+      "rationale": "Derived by the interface gap detector: defineFacet::call:0 is Go chord/next/host/host_facet.go#DefineFacet (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/host/host_facet.go#DefineFacet"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:chord/next/host/host_facet.go#DefineFacet"
+      ],
+      "evidence": [
+        "test:chord/next/host/host_facet_test.go#TestFacetsAreTypedByExactlyTheAppsPrincipalType",
+        "test:chord/next/host/host_facet_test.go#TestSetUpReturnsServedEntriesAndContributionsInOrderByKind",
+        "test:chord/next/host/host_facet_test.go#TestFacetsContributeAtMostOneValuePerRegistryOnlyWhileTheirSetupRuns"
+      ]
     },
     {
       "id": "pkg:chord/next#defineJob",
@@ -115633,9 +115685,9 @@
         "public-api:chord/next/registries/registry.go#DefineRegistry"
       ],
       "evidence": [
-        "test:chord/next/registries/registry_test.go#TestTokens",
-        "test:chord/next/registries/record_test.go#TestCompose",
-        "test:chord/next/registries/record_test.go#TestContributions"
+        "test:chord/next/host/host_facet_test.go#TestFacetsContributeAtMostOneValuePerRegistryOnlyWhileTheirSetupRuns",
+        "test:chord/next/host/host_facet_test.go#TestSetUpRefusesWhatIsNeitherAContractNorARegistryAndKeepsTheSetupsError",
+        "test:chord/next/host/host_facet_test.go#TestSetUpReturnsServedEntriesAndContributionsInOrderByKind"
       ]
     },
     {
@@ -115655,25 +115707,76 @@
         "public-api:chord/next/registries/registry.go#DefineRegistry"
       ],
       "evidence": [
-        "test:chord/next/registries/registry_test.go#TestTokens",
-        "test:chord/next/registries/record_test.go#TestCompose",
-        "test:chord/next/registries/record_test.go#TestContributions"
+        "test:chord/next/host/host_facet_test.go#TestFacetsContributeAtMostOneValuePerRegistryOnlyWhileTheirSetupRuns",
+        "test:chord/next/host/host_facet_test.go#TestSetUpRefusesWhatIsNeitherAContractNorARegistryAndKeepsTheSetupsError",
+        "test:chord/next/host/host_facet_test.go#TestSetUpReturnsServedEntriesAndContributionsInOrderByKind"
       ]
     },
     {
       "id": "pkg:chord/next#defineState",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:84a66ecf0d56ee1a4aeecbfd974f6178789a827217ac40a1da33c9cbaa222aad"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:84a66ecf0d56ee1a4aeecbfd974f6178789a827217ac40a1da33c9cbaa222aad",
+      "rationale": "Derived by the interface gap detector: defineState is Go chord/next/documents/definition.go#DefineState (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/documents/definition.go#DefineState"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:chord/next/documents/definition.go#DefineState"
+      ],
+      "evidence": [
+        "test:chord/next/documents/definition_test.go#TestDefineStateTakesARestrictedNameOnly",
+        "test:chord/next/documents/definition_test.go#TestDefineStateTypesTheValueAndWhetherItIsKeyed",
+        "test:chord/next/documents/definition_test.go#TestFingerprintsAreComputedOnceFromTheSchemasStructure"
+      ]
     },
     {
       "id": "pkg:chord/next#defineState::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:0d61f996b0799c907964263e59582a6072b1e5050ec4acb5fb6ab72a54ad2c69"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:0d61f996b0799c907964263e59582a6072b1e5050ec4acb5fb6ab72a54ad2c69",
+      "rationale": "Derived by the interface gap detector: defineState::call:0 is Go chord/next/documents/definition.go#DefineState (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/documents/definition.go#DefineState"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:chord/next/documents/definition.go#DefineState"
+      ],
+      "evidence": [
+        "test:chord/next/documents/definition_test.go#TestDefineStateTakesARestrictedNameOnly",
+        "test:chord/next/documents/definition_test.go#TestDefineStateTypesTheValueAndWhetherItIsKeyed",
+        "test:chord/next/documents/definition_test.go#TestFingerprintsAreComputedOnceFromTheSchemasStructure"
+      ]
     },
     {
       "id": "pkg:chord/next#defineState::call:1",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:d00cc53f3adbe21dc25a261e54c5eac59b31497b2741bb2e562e8215c252802c"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:d00cc53f3adbe21dc25a261e54c5eac59b31497b2741bb2e562e8215c252802c",
+      "rationale": "Derived by the interface gap detector: defineState::call:1 is Go chord/next/documents/definition.go#DefineState (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/documents/definition.go#DefineState"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:chord/next/documents/definition.go#DefineState"
+      ],
+      "evidence": [
+        "test:chord/next/documents/definition_test.go#TestDefineStateTakesARestrictedNameOnly",
+        "test:chord/next/documents/definition_test.go#TestDefineStateTypesTheValueAndWhetherItIsKeyed",
+        "test:chord/next/documents/definition_test.go#TestFingerprintsAreComputedOnceFromTheSchemasStructure"
+      ]
     },
     {
       "id": "pkg:chord/next#defineTable",
@@ -115830,7 +115933,8 @@
       ],
       "evidence": [
         "test:chord/next/store/apply_batch_test.go#TestApplyBatch",
-        "test:chord/next/store/engine_test.go#TestEngineHistoryRules"
+        "test:chord/next/store/engine_test.go#TestEngineHistoryRules",
+        "test:chord/next/store/evidence_storeA_test.go#TestEvidenceStoreABatchSeqGap"
       ]
     },
     {
@@ -115872,9 +115976,9 @@
         "public-api:chord/next/store/engine.go#DocumentRecord"
       ],
       "evidence": [
+        "test:chord/next/documents/transaction_test.go#TestPersistedDocumentsInATransactionAssignTheCreatedDocumentsIdsByTheirOrderInTheCommitRetireAndRecreateInOneCommit",
         "test:chord/next/store/apply_batch_test.go#TestApplyBatch",
-        "test:chord/next/store/engine_test.go#TestEngineCounters",
-        "test:chord/next/store/engine_test.go#TestEngineDocuments"
+        "test:chord/next/store/engine_test.go#TestEngineCounters"
       ]
     },
     {
@@ -116019,7 +116123,7 @@
       "evidence": [
         "test:chord/next/store/import_test.go#TestImportJSONCellsHoldingNull",
         "test:chord/next/store/table_evolve_test.go#TestEvolveChecks",
-        "test:chord/next/store/table_evolve_test.go#TestEvolveEdits"
+        "test:chord/next/store/evidence_storeB_test.go#TestMigrationRunsADueCallbackBetweenChunksOfATenChunkMigration"
       ]
     },
     {
@@ -116041,7 +116145,7 @@
       "evidence": [
         "test:chord/next/store/import_test.go#TestImportJSONCellsHoldingNull",
         "test:chord/next/store/table_evolve_test.go#TestEvolveChecks",
-        "test:chord/next/store/table_evolve_test.go#TestEvolveEdits"
+        "test:chord/next/store/evidence_storeB_test.go#TestMigrationRunsADueCallbackBetweenChunksOfATenChunkMigration"
       ]
     },
     {
@@ -116152,7 +116256,8 @@
       ],
       "evidence": [
         "test:chord/next/data/failure_test.go#TestFailureCauses",
-        "test:chord/next/data/failure_test.go#TestWaitingCause"
+        "test:chord/next/data/failure_test.go#TestWaitingCause",
+        "test:chord/next/host/host_dependencies_test.go#TestTheDependencyCheckNamesTheFirstFailedBlocker"
       ]
     },
     {
@@ -116177,28 +116282,111 @@
     },
     {
       "id": "pkg:chord/next#FollowAttach",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:2f7e8953e89deb7ce0fa66ba821071580fb5345b2dfa772cc07e0e5bbb6e1f81"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:2f7e8953e89deb7ce0fa66ba821071580fb5345b2dfa772cc07e0e5bbb6e1f81",
+      "rationale": "Derived by the interface gap detector: FollowAttach is Go chord/next/host/host_follow.go#FollowAttach (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/host/host_follow.go#FollowAttach"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:chord/next/host/host_follow.go#FollowAttach"
+      ],
+      "evidence": [
+        "test:chord/next/host/host_follow_test.go#TestFollowAttachIsTypedByItsAttachment"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:chord/next#FollowAttach::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:8d5ce4754d584c0db20b8dc031f980f5d25c3d514be79fb2a5a910031fa9464f"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:8d5ce4754d584c0db20b8dc031f980f5d25c3d514be79fb2a5a910031fa9464f",
+      "rationale": "Derived by the interface gap detector: FollowAttach::call:0 is Go chord/next/host/host_follow.go#FollowAttach (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/host/host_follow.go#FollowAttach"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:chord/next/host/host_follow.go#FollowAttach"
+      ],
+      "evidence": [
+        "test:chord/next/host/host_follow_test.go#TestFollowAttachIsTypedByItsAttachment"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:chord/next#FollowAttachment",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:63523fafaf369149f981aef95ce532f36122442d5039114ac953b25ccc9b8e45"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:63523fafaf369149f981aef95ce532f36122442d5039114ac953b25ccc9b8e45",
+      "rationale": "Derived by the interface gap detector: FollowAttachment is Go chord/next/host/host_follow.go#FollowAttachment (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/host/host_follow.go#FollowAttachment"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:chord/next/host/host_follow.go#FollowAttachment"
+      ],
+      "evidence": [
+        "test:chord/next/host/host_follow_test.go#TestEndsDuringActivationAndInOneBatchACallAndAnEndOutsideABatchWithNothingWatchingALaterWatchOpensAtTheValueAndEnds",
+        "test:chord/next/host/host_follow_test.go#TestEndsDuringActivationAndInOneBatchARetirementAndAnEndInsideOneBatchTheWatchGetsTheRetirementThenEnds",
+        "test:chord/next/host/host_follow_test.go#TestEndsDuringActivationAndInOneBatchAnEndBeforeTheAttachmentResolvedKeepsTheAttachmentsValueOnTheSource"
+      ]
     },
     {
       "id": "pkg:chord/next#FollowObserver",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:06e844bd806b3c6fe8b1c5c7ebca9d0f89341408d1670279cfa170104d9dfb68"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:06e844bd806b3c6fe8b1c5c7ebca9d0f89341408d1670279cfa170104d9dfb68",
+      "rationale": "Derived by the interface gap detector: FollowObserver is Go chord/next/host/host_follow.go#FollowObserver (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/host/host_follow.go#FollowObserver"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:chord/next/host/host_follow.go#FollowObserver"
+      ],
+      "evidence": [
+        "test:chord/next/host/host_follow_test.go#TestEndsDuringActivationAndInOneBatchACallAndAnEndOutsideABatchWithNothingWatchingALaterWatchOpensAtTheValueAndEnds",
+        "test:chord/next/host/host_follow_test.go#TestEndsDuringActivationAndInOneBatchARetirementAndAnEndInsideOneBatchTheWatchGetsTheRetirementThenEnds",
+        "test:chord/next/host/host_follow_test.go#TestEndsDuringActivationAndInOneBatchAnEndBeforeTheAttachmentResolvedKeepsTheAttachmentsValueOnTheSource"
+      ]
     },
     {
       "id": "pkg:chord/next#GetOptions",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:2e0ecde754dbabbabe9da8365972f03d3c8cdb85a0f9e557e8c268c853dc6470"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:2e0ecde754dbabbabe9da8365972f03d3c8cdb85a0f9e557e8c268c853dc6470",
+      "rationale": "Derived by the interface gap detector: GetOptions is Go chord/next/host/host_error.go#GetOptions (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/host/host_error.go#GetOptions"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:chord/next/host/host_error.go#GetOptions"
+      ],
+      "evidence": [
+        "test:chord/next/host/host_ctx_test.go#TestCallContextGetErrorsAndString",
+        "test:chord/next/host/host_ctx_test.go#TestCallContextGetPassesTheCallerAndOptionsAndReturnsTheReference",
+        "test:chord/next/host/host_ctx_test.go#TestCallContextSettleReleasesEveryReferenceTakenOnce"
+      ]
     },
     {
       "id": "pkg:chord/next#gt",
@@ -116290,8 +116478,12 @@
     },
     {
       "id": "pkg:chord/next#HandleOf",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:0321e7b28701377a1e2450e2c125f3a0f50df20488eb154b7c1217cafee86b6b"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:0321e7b28701377a1e2450e2c125f3a0f50df20488eb154b7c1217cafee86b6b",
+      "rationale": "TL: HandleOf<D> is a TypeScript type-level computation over its type parameters (D extends StateDefinition<infer T, infer K, boolean> ? K extends true ? KeyedHandle<T> : SingletonHandle<T> : never); it has no value, member or call, so nothing of it exists at run time and Go generics cannot express it. PiG's concrete Go types carry the shapes it computes where they are used, here chord/next/documents/definition.go#StateDefinition. Designed out as a TypeScript-only artifact with no Go runtime meaning (reason class c of the design-out audit; the lead ruling LEAD-RULINGS-1520 of 2026-10-07 names the class).",
+      "pigTargets": [
+        "chord/next/documents/definition.go#StateDefinition"
+      ]
     },
     {
       "id": "pkg:chord/next#Held",
@@ -116963,8 +117155,8 @@
       ],
       "evidence": [
         "test:chord/next/store/columns_test.go#TestColumnDescriptors",
-        "test:chord/next/store/expression_test.go#TestCompilingSets",
-        "test:chord/next/store/import_test.go#TestImportJSONCellsHoldingNull"
+        "test:chord/next/store/evidence_storeB_adapter_test.go#TestOwnerTableJsonVersionAndReader",
+        "test:chord/next/store/expression_test.go#TestCompilingSets"
       ]
     },
     {
@@ -116976,9 +117168,9 @@
       "id": "pkg:chord/next#JsonObject",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:ae2f6c5c427412f3954e9db3aade47ecded4174c3ac3ca8df2aaab44fad0af08",
-      "rationale": "Derived by the interface gap detector: JsonObject is Go chord/delta/json.go#JsonObject (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: JsonObject is Go chord/next/documents/definition.go#JsonObject (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
-        "chord/delta/json.go#JsonObject"
+        "chord/next/documents/definition.go#JsonObject"
       ],
       "layers": {
         "behavior": "complete",
@@ -117012,7 +117204,8 @@
       ],
       "evidence": [
         "test:chord/next/contracts/declare_test.go#TestKeyedMembers",
-        "test:chord/next/contracts/schema_test.go#TestSchemaMethod"
+        "test:chord/next/contracts/schema_test.go#TestSchemaMethod",
+        "test:chord/next/host/host_members_test.go#TestCheckImplementationChecksALocalContractsMembersAsGiven"
       ]
     },
     {
@@ -117033,7 +117226,8 @@
       ],
       "evidence": [
         "test:chord/next/contracts/declare_test.go#TestKeyedMembers",
-        "test:chord/next/contracts/schema_test.go#TestSchemaMethod"
+        "test:chord/next/contracts/schema_test.go#TestSchemaMethod",
+        "test:chord/next/host/host_members_test.go#TestCheckImplementationChecksALocalContractsMembersAsGiven"
       ]
     },
     {
@@ -117758,8 +117952,25 @@
     },
     {
       "id": "pkg:chord/next#NativeCloseReason",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:26e4751d9ba221894604a5fb7fc6c7ebeaad7e5da4f6fddb36f58751797b3f2c"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:26e4751d9ba221894604a5fb7fc6c7ebeaad7e5da4f6fddb36f58751797b3f2c",
+      "rationale": "Derived by the interface gap detector: NativeCloseReason is Go chord/next/host/host_native.go#NativeCloseReason (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/host/host_native.go#NativeCloseReason"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:chord/next/host/host_native.go#NativeCloseReason"
+      ],
+      "evidence": [
+        "test:chord/next/host/host_native_test.go#TestNativeACloseInTimeReportsNothingAndLeavesNoTimer",
+        "test:chord/next/host/host_native_test.go#TestNativeACloseThatThrowsIsReturnedAsCloseFailed",
+        "test:chord/next/host/host_native_test.go#TestNativeAFailingCloseOfALateValueIsReported"
+      ]
     },
     {
       "id": "pkg:chord/next#NativeObservation",
@@ -117948,33 +118159,133 @@
     },
     {
       "id": "pkg:chord/next#OnHandler",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:107a5e71a8b059a82a5b47b21553aa1cb38723eabc98b150aa94b06a833c990e"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:107a5e71a8b059a82a5b47b21553aa1cb38723eabc98b150aa94b06a833c990e",
+      "rationale": "Derived by the interface gap detector: OnHandler is Go chord/next/host/host_routines.go#OnHandler (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/host/host_routines.go#OnHandler"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:chord/next/host/host_routines.go#OnHandler"
+      ],
+      "evidence": [
+        "test:chord/next/host/host_routines_test.go#TestOnTypesTheirHandlerByTheSourcesKindOpsAndRetiredForAJSONWatchableTheValueAloneForANativeOne",
+        "test:chord/next/host/host_routines_test.go#TestOnAfterAThrowBacksOffEvenWhenTheFailedCallChangedItsOwnSourceNoBurst",
+        "test:chord/next/host/host_routines_test.go#TestOnAfterAThrowCallsAtOnceWithTheNewestWholeValueWhenTheSourceChangesDuringTheBackoff"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:chord/next#OnHandler::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:f73f8f3f6c08bbf9adbd1d9b367345c8a9bcf5d14f96de690bdf5c993a9b831a"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:f73f8f3f6c08bbf9adbd1d9b367345c8a9bcf5d14f96de690bdf5c993a9b831a",
+      "rationale": "Derived by the interface gap detector: OnHandler::call:0 is Go chord/next/host/host_routines.go#OnHandler (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/host/host_routines.go#OnHandler"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:chord/next/host/host_routines.go#OnHandler"
+      ],
+      "evidence": [
+        "test:chord/next/host/host_routines_test.go#TestOnTypesTheirHandlerByTheSourcesKindOpsAndRetiredForAJSONWatchableTheValueAloneForANativeOne",
+        "test:chord/next/host/host_routines_test.go#TestOnAfterAThrowBacksOffEvenWhenTheFailedCallChangedItsOwnSourceNoBurst",
+        "test:chord/next/host/host_routines_test.go#TestOnAfterAThrowCallsAtOnceWithTheNewestWholeValueWhenTheSourceChangesDuringTheBackoff"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:chord/next#OnLiveHandler",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:0ab5e1cf57ed796a7709df29da5ff8c504f35d75535b6833695672c04a1825d2"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:0ab5e1cf57ed796a7709df29da5ff8c504f35d75535b6833695672c04a1825d2",
+      "rationale": "Derived by the interface gap detector: OnLiveHandler is Go chord/next/host/host_routines.go#OnLiveHandler (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/host/host_routines.go#OnLiveHandler"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:chord/next/host/host_routines.go#OnLiveHandler"
+      ],
+      "evidence": [
+        "test:chord/next/host/host_routines_test.go#TestRoutinesNeverStartARoutineCallOnceTheOwnerEndedInItsFirstTurn"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:chord/next#OnLiveHandler::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:33dc26252e1d020a64f9379ababd69cd88b7378dcc70a6f954a433b0c2324857"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:33dc26252e1d020a64f9379ababd69cd88b7378dcc70a6f954a433b0c2324857",
+      "rationale": "Derived by the interface gap detector: OnLiveHandler::call:0 is Go chord/next/host/host_routines.go#OnLiveHandler (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/host/host_routines.go#OnLiveHandler"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:chord/next/host/host_routines.go#OnLiveHandler"
+      ],
+      "evidence": [
+        "test:chord/next/host/host_routines_test.go#TestRoutinesNeverStartARoutineCallOnceTheOwnerEndedInItsFirstTurn"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:chord/next#OnNativeHandler",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:7d10d699cd9e0092326792d356b01fc8df561b3758315022fe455c90126a738a"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:7d10d699cd9e0092326792d356b01fc8df561b3758315022fe455c90126a738a",
+      "rationale": "Derived by the interface gap detector: OnNativeHandler is Go chord/next/host/host_routines.go#OnNativeHandler (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/host/host_routines.go#OnNativeHandler"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:chord/next/host/host_routines.go#OnNativeHandler"
+      ],
+      "evidence": [
+        "test:chord/next/host/host_routines_test.go#TestOnTypesTheirHandlerByTheSourcesKindOpsAndRetiredForAJSONWatchableTheValueAloneForANativeOne"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:chord/next#OnNativeHandler::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:efb551fe19ce9a4d15ccb0411eaea21f65a6c2f98c545d86a9609d35b25b04da"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:efb551fe19ce9a4d15ccb0411eaea21f65a6c2f98c545d86a9609d35b25b04da",
+      "rationale": "Derived by the interface gap detector: OnNativeHandler::call:0 is Go chord/next/host/host_routines.go#OnNativeHandler (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/host/host_routines.go#OnNativeHandler"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:chord/next/host/host_routines.go#OnNativeHandler"
+      ],
+      "evidence": [
+        "test:chord/next/host/host_routines_test.go#TestOnTypesTheirHandlerByTheSourcesKindOpsAndRetiredForAJSONWatchableTheValueAloneForANativeOne"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:chord/next#openStore",
@@ -118093,9 +118404,9 @@
         "public-api:chord/next/store/sql.go#Order"
       ],
       "evidence": [
-        "test:chord/next/store/query_test.go#TestCursors",
-        "test:chord/next/store/query_test.go#TestQueries",
-        "test:chord/next/store/sql_test.go#TestSqlStatements"
+        "test:chord/next/store/evidence_storeB_adapter_test.go#TestOwnerTablePreparedTexts",
+        "test:chord/next/store/evidence_storeB_adapter_test.go#TestOwnerTablePutStampsTheStepsSeqAndReadsDecode",
+        "test:chord/next/store/query_test.go#TestCursors"
       ]
     },
     {
@@ -118185,7 +118496,7 @@
         "public-api:chord/next/store/outbox.go#Outbox.Read"
       ],
       "evidence": [
-        "test:chord/next/store/import_test.go#TestImportRoundTrips"
+        "test:chord/next/documents/transaction_test.go#TestPersistedDocumentsInATransactionAssignTheCreatedDocumentsIdsByTheirOrderInTheCommitRetireAndRecreateInOneCommit"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -118206,7 +118517,7 @@
         "public-api:chord/next/store/outbox.go#Outbox.Read"
       ],
       "evidence": [
-        "test:chord/next/store/import_test.go#TestImportRoundTrips"
+        "test:chord/next/documents/transaction_test.go#TestPersistedDocumentsInATransactionAssignTheCreatedDocumentsIdsByTheirOrderInTheCommitRetireAndRecreateInOneCommit"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -118269,9 +118580,9 @@
         "public-api:chord/next/store/outbox.go#OutboxCommit"
       ],
       "evidence": [
+        "test:chord/next/documents/transaction_test.go#TestPersistedDocumentsInATransactionAssignTheCreatedDocumentsIdsByTheirOrderInTheCommitRetireAndRecreateInOneCommit",
         "test:chord/next/store/apply_batch_test.go#TestApplyBatch",
-        "test:chord/next/store/outbox_test.go#TestOutbox",
-        "test:chord/next/store/outbox_test.go#TestOutboxReadsStoredWritesAsJSONParse"
+        "test:chord/next/store/evidence_storeA_test.go#TestEvidenceStoreABatchSeqGap"
       ]
     },
     {
@@ -118291,8 +118602,23 @@
     },
     {
       "id": "pkg:chord/next#OwnerTable::construct:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:97854ee03f5beb035973a1b3796fd50dd5f7c1d0361835cb7ea799f029b16daf"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:97854ee03f5beb035973a1b3796fd50dd5f7c1d0361835cb7ea799f029b16daf",
+      "rationale": "Derived by the interface gap detector: OwnerTable::construct:0 is Go chord/next/store/adapter.go#NewOwnerTable (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/store/adapter.go#NewOwnerTable"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:chord/next/store/adapter.go#NewOwnerTable"
+      ],
+      "evidence": [
+        "test:chord/next/store/evidence_storeB_adapter_test.go#TestOwnerTableJsonVersionAndReader"
+      ]
     },
     {
       "id": "pkg:chord/next#OwnerTable::property:definition",
@@ -118411,6 +118737,7 @@
         "public-api:chord/next/store/table_handle.go#Page"
       ],
       "evidence": [
+        "test:chord/next/documents/transaction_test.go#TestTablesInATransactionReadCommittedRowsWithPageAndRowsOverlayOwnWritesWithGet",
         "test:chord/next/store/table_handle_test.go#TestTableHandle",
         "test:chord/next/store/table_writes_test.go#TestTableWrites"
       ]
@@ -118471,6 +118798,7 @@
         "public-api:chord/next/link/part.go#PartLimits"
       ],
       "evidence": [
+        "test:chord/next/host/host_route_test.go#TestRouteResolvePassesTheRoutesContextAndTheResolvedLinksOptionsAndClearsTheBackoffOfAGreetedPeer",
         "test:chord/next/link/part_test.go#TestLimitsPerPart"
       ]
     },
@@ -118615,8 +118943,25 @@
     },
     {
       "id": "pkg:chord/next#Position",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:dd2563535565a216a2473c5c2ba927bc3cc38cd81dafb0a3f0b03b896e2617bf"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:dd2563535565a216a2473c5c2ba927bc3cc38cd81dafb0a3f0b03b896e2617bf",
+      "rationale": "Derived by the interface gap detector: Position is Go chord/next/host/host_error.go#Position (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/host/host_error.go#Position"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:chord/next/host/host_error.go#Position"
+      ],
+      "evidence": [
+        "test:chord/next/host/host_native_test.go#TestNativeACloseThatThrowsIsReturnedAsCloseFailed",
+        "test:chord/next/host/host_native_test.go#TestNativeAFailingCloseOfALateValueIsReported",
+        "test:chord/next/host/host_native_test.go#TestNativeReportsACloseStillRunningAfterItsCloseTimeoutAndAbortsItsContext"
+      ]
     },
     {
       "id": "pkg:chord/next#prefix",
@@ -118906,8 +119251,25 @@
     },
     {
       "id": "pkg:chord/next#RefState",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:d0395546c735f296c2508b05624f4c90efa39072aa7381c4adb4e8109475e997"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:d0395546c735f296c2508b05624f4c90efa39072aa7381c4adb4e8109475e997",
+      "rationale": "Derived by the interface gap detector: RefState is Go chord/next/host/host_ref_state.go#RefState (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/host/host_ref_state.go#RefState"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:chord/next/host/host_ref_state.go#RefState"
+      ],
+      "evidence": [
+        "test:chord/next/host/host_dependencies_test.go#TestTheDependencyCheckFirstPassAndRemoteLoading",
+        "test:chord/next/host/host_dependencies_test.go#TestTheDependencyCheckNamesTheFirstFailedBlocker",
+        "test:chord/next/host/host_dependencies_test.go#TestTheDependencyCheckOfRegistryValues"
+      ]
     },
     {
       "id": "pkg:chord/next#Registry",
@@ -118978,9 +119340,9 @@
         "public-api:chord/next/registries/registry.go#RegistryProvider"
       ],
       "evidence": [
-        "test:chord/next/registries/record_test.go#TestProviderServing",
-        "test:chord/next/registries/record_test.go#TestCompose",
-        "test:chord/next/registries/record_test.go#TestContributions"
+        "test:chord/next/host/host_facet_test.go#TestFacetsContributeAtMostOneValuePerRegistryOnlyWhileTheirSetupRuns",
+        "test:chord/next/host/host_facet_test.go#TestSetUpReturnsServedEntriesAndContributionsInOrderByKind",
+        "test:chord/next/registries/record_test.go#TestProviderServing"
       ]
     },
     {
@@ -119103,7 +119465,8 @@
       ],
       "evidence": [
         "test:chord/next/store/apply_batch_test.go#TestApplyBatch",
-        "test:chord/next/store/engine_test.go#TestEngineHistoryRules"
+        "test:chord/next/store/engine_test.go#TestEngineHistoryRules",
+        "test:chord/next/store/evidence_storeA_test.go#TestEvidenceStoreABatchSeqGap"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -119125,19 +119488,54 @@
       ],
       "evidence": [
         "test:chord/next/store/apply_batch_test.go#TestApplyBatch",
-        "test:chord/next/store/engine_test.go#TestEngineHistoryRules"
+        "test:chord/next/store/engine_test.go#TestEngineHistoryRules",
+        "test:chord/next/store/evidence_storeA_test.go#TestEvidenceStoreABatchSeqGap"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:chord/next#RevokedBy",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:318609cb6258600dac623ffbc80cd51c5c3dbf61aacd64ad808abf5735807bd9"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:318609cb6258600dac623ffbc80cd51c5c3dbf61aacd64ad808abf5735807bd9",
+      "rationale": "Derived by the interface gap detector: RevokedBy is Go chord/next/host/host_revocation.go#RevokedBy (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/host/host_revocation.go#RevokedBy"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:chord/next/host/host_revocation.go#RevokedBy"
+      ],
+      "evidence": [
+        "test:chord/next/host/host_revocation_test.go#TestRevocationKeysAreComputedOncePerPrincipalObjectComparedAsCanonicalJSON",
+        "test:chord/next/host/host_revocation_test.go#TestRevocationKeysKeepNoPrincipalAlive",
+        "test:chord/next/host/host_revocation_test.go#TestRevocationKeysWithoutRevokedByRevokeNothing"
+      ]
     },
     {
       "id": "pkg:chord/next#RevokedBy::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:9093fc1a4dac43887875be958b8336bf53f0dc3bdaeab5bb6505164b625774ef"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:9093fc1a4dac43887875be958b8336bf53f0dc3bdaeab5bb6505164b625774ef",
+      "rationale": "Derived by the interface gap detector: RevokedBy::call:0 is Go chord/next/host/host_revocation.go#RevokedBy (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/host/host_revocation.go#RevokedBy"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:chord/next/host/host_revocation.go#RevokedBy"
+      ],
+      "evidence": [
+        "test:chord/next/host/host_revocation_test.go#TestRevocationKeysAreComputedOncePerPrincipalObjectComparedAsCanonicalJSON",
+        "test:chord/next/host/host_revocation_test.go#TestRevocationKeysKeepNoPrincipalAlive",
+        "test:chord/next/host/host_revocation_test.go#TestRevocationKeysWithoutRevokedByRevokeNothing"
+      ]
     },
     {
       "id": "pkg:chord/next#RootOptions",
@@ -119163,8 +119561,25 @@
     },
     {
       "id": "pkg:chord/next#RouteOptions",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:24f37c5d56f87f860034063e15cafe486b53713da6fe5551c84a3e264ca29b4e"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:24f37c5d56f87f860034063e15cafe486b53713da6fe5551c84a3e264ca29b4e",
+      "rationale": "Derived by the interface gap detector: RouteOptions is Go chord/next/host/host_route.go#RouteOptions (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/host/host_route.go#RouteOptions"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:chord/next/host/host_route.go#RouteOptions"
+      ],
+      "evidence": [
+        "test:chord/next/host/host_route_test.go#TestNewRouteRefusesAKindNotDeclaredByHostKind",
+        "test:chord/next/host/host_destination_test.go#TestDestinationHoldGoesOverTheRouteOfItsKindElseOverTheParentLinkUnlessItCameOnTheParentLinkOrThereWasNone",
+        "test:chord/next/host/host_destination_test.go#TestDestinationHoldIsHereWhenTheAddressIsThisHostsARelayNeverCapturesAHoldForServingTheSameName"
+      ]
     },
     {
       "id": "pkg:chord/next#RoutineDeclarations",
@@ -119425,8 +119840,23 @@
     },
     {
       "id": "pkg:chord/next#SingletonHandle::property:value",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:6b6dc5080cb94abee579e0a7dce40a0e29358c6286c4040d4fa8540aced7613e"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:6b6dc5080cb94abee579e0a7dce40a0e29358c6286c4040d4fa8540aced7613e",
+      "rationale": "Derived by the interface gap detector: SingletonHandle::property:value is Go chord/next/documents/handles.go#SingletonHandle.Value (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/documents/handles.go#SingletonHandle.Value"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:chord/next/documents/handles.go#SingletonHandle.Value"
+      ],
+      "evidence": [
+        "test:chord/next/documents/documents_test.go#TestSingletonDocumentsReadInitialUntilWrittenAndAgainAfterARetireWhoseFrameReplacesTheRoot"
+      ]
     },
     {
       "id": "pkg:chord/next#SingletonHandle::property:watch",
@@ -119466,8 +119896,8 @@
       ],
       "evidence": [
         "test:chord/next/store/catalog_test.go#TestCatalog",
-        "test:chord/next/store/import_test.go#TestImportRefusals",
-        "test:chord/next/store/store_test.go#TestStore"
+        "test:chord/next/store/evidence_storeB_backend_test.go#TestSqliteBackendRunsOnTheGivenDatabase",
+        "test:chord/next/store/import_test.go#TestImportRefusals"
       ]
     },
     {
@@ -119488,8 +119918,8 @@
       ],
       "evidence": [
         "test:chord/next/store/catalog_test.go#TestCatalog",
-        "test:chord/next/store/import_test.go#TestImportRefusals",
-        "test:chord/next/store/store_test.go#TestStore"
+        "test:chord/next/store/evidence_storeB_backend_test.go#TestSqliteBackendRunsOnTheGivenDatabase",
+        "test:chord/next/store/import_test.go#TestImportRefusals"
       ]
     },
     {
@@ -119539,18 +119969,63 @@
     },
     {
       "id": "pkg:chord/next#StateDefinition::property:initial",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:9b8fc333a6a48e9c7824a7caa4a6f7cfeeb93689a4b1f35ef8fde685eed99d62"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:9b8fc333a6a48e9c7824a7caa4a6f7cfeeb93689a4b1f35ef8fde685eed99d62",
+      "rationale": "Derived by the interface gap detector: StateDefinition::property:initial is Go chord/next/documents/definition.go#StateDefinition.Initial (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/documents/definition.go#StateDefinition.Initial"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:chord/next/documents/definition.go#StateDefinition.Initial"
+      ],
+      "evidence": [
+        "test:chord/next/documents/persistence_test.go#TestStagedWritesStageARetirementBeforeARecreationAndNumberCreationsByTheirOrderInTheCommit"
+      ]
     },
     {
       "id": "pkg:chord/next#StateDefinition::property:initial::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:d816aa814f244e9dcaccf0d19d93b8412d4cc15a280bdaf7b52dbcbea9884187"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:d816aa814f244e9dcaccf0d19d93b8412d4cc15a280bdaf7b52dbcbea9884187",
+      "rationale": "Derived by the interface gap detector: StateDefinition::property:initial::call:0 is Go chord/next/documents/definition.go#StateDefinition.Initial (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/documents/definition.go#StateDefinition.Initial"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:chord/next/documents/definition.go#StateDefinition.Initial"
+      ],
+      "evidence": [
+        "test:chord/next/documents/persistence_test.go#TestStagedWritesStageARetirementBeforeARecreationAndNumberCreationsByTheirOrderInTheCommit"
+      ]
     },
     {
       "id": "pkg:chord/next#StateDefinition::property:keyed",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:3e2dff98a5946943ed3ad776248a8cd4afd7907c28fb34373a9a772d4928173d"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:3e2dff98a5946943ed3ad776248a8cd4afd7907c28fb34373a9a772d4928173d",
+      "rationale": "Derived by the interface gap detector: StateDefinition::property:keyed is Go chord/next/documents/definition.go#StateDefinition.Keyed (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/documents/definition.go#StateDefinition.Keyed"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:chord/next/documents/definition.go#StateDefinition.Keyed"
+      ],
+      "evidence": [
+        "test:chord/next/documents/definition_test.go#TestDefineStateTypesTheValueAndWhetherItIsKeyed"
+      ]
     },
     {
       "id": "pkg:chord/next#StateDefinition::property:migrate",
@@ -119564,8 +120039,23 @@
     },
     {
       "id": "pkg:chord/next#StateDefinition::property:name",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:2e90b2656ea0c887525328582c78a1512ccdc80c48f9de26047d9bb31fda9cb9"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:2e90b2656ea0c887525328582c78a1512ccdc80c48f9de26047d9bb31fda9cb9",
+      "rationale": "Derived by the interface gap detector: StateDefinition::property:name is Go chord/next/documents/definition.go#StateDefinition.Name (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/documents/definition.go#StateDefinition.Name"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:chord/next/documents/definition.go#StateDefinition.Name"
+      ],
+      "evidence": [
+        "test:chord/next/documents/slot_test.go#TestPersistedSingletonsRefusePersistingWithoutAStableIdentityOrAStoreAndAFlippedPersist"
+      ]
     },
     {
       "id": "pkg:chord/next#StateDefinition::property:persist",
@@ -119840,8 +120330,25 @@
     },
     {
       "id": "pkg:chord/next#StoreOwnerTables::construct:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:25db571112cb05894dedcf0329b2710f776172b46b97588b41e7a18607eeeb34"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:25db571112cb05894dedcf0329b2710f776172b46b97588b41e7a18607eeeb34",
+      "rationale": "Derived by the interface gap detector: StoreOwnerTables::construct:0 is Go chord/next/store/adapter.go#NewStoreOwnerTables (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/store/adapter.go#NewStoreOwnerTables"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:chord/next/store/adapter.go#NewStoreOwnerTables"
+      ],
+      "evidence": [
+        "test:chord/next/store/evidence_storeB_adapter_test.go#TestStoreOwnerTablesDeclareAndPrepare",
+        "test:chord/next/store/evidence_storeB_adapter_test.go#TestOwnerTableEncodeIsTheTrustBoundary",
+        "test:chord/next/store/evidence_storeB_adapter_test.go#TestOwnerTableJsonVersionAndReader"
+      ]
     },
     {
       "id": "pkg:chord/next#StoreOwnerTables::property:declare",
@@ -120780,13 +121287,47 @@
     },
     {
       "id": "pkg:chord/next#untilAborted",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:882b6f9e0d9baea3ef99a8e30814074dcfe1faeee796da9719de40b99dbc690f"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:882b6f9e0d9baea3ef99a8e30814074dcfe1faeee796da9719de40b99dbc690f",
+      "rationale": "Derived by the interface gap detector: untilAborted is Go chord/next/host/host_sleep.go#UntilAborted (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/host/host_sleep.go#UntilAborted"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:chord/next/host/host_sleep.go#UntilAborted"
+      ],
+      "evidence": [
+        "test:chord/next/host/host_routines_test.go#TestOnReleasesItsWatchWhenItsOwnerEndsACallThatThrowsAsItEndsIsNotReported",
+        "test:chord/next/host/host_sleep_test.go#TestUntilAbortedResolvesOnceItsContextIsAbortedAtOnceWhenItAlreadyIs"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:chord/next#untilAborted::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:dd1140ca0b327cdd5f41bc1b9810f9ffa44d096d8c1261b15b28ea9774b1b48e"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:dd1140ca0b327cdd5f41bc1b9810f9ffa44d096d8c1261b15b28ea9774b1b48e",
+      "rationale": "Derived by the interface gap detector: untilAborted::call:0 is Go chord/next/host/host_sleep.go#UntilAborted (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/host/host_sleep.go#UntilAborted"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:chord/next/host/host_sleep.go#UntilAborted"
+      ],
+      "evidence": [
+        "test:chord/next/host/host_routines_test.go#TestOnReleasesItsWatchWhenItsOwnerEndsACallThatThrowsAsItEndsIsNotReported",
+        "test:chord/next/host/host_sleep_test.go#TestUntilAbortedResolvesOnceItsContextIsAbortedAtOnceWhenItAlreadyIs"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:chord/next#Watchable",
@@ -121150,7 +121691,8 @@
       ],
       "evidence": [
         "test:chord/next/store/apply_batch_test.go#TestApplyBatch",
-        "test:chord/next/store/engine_test.go#TestEngineHistoryRules"
+        "test:chord/next/store/engine_test.go#TestEngineHistoryRules",
+        "test:chord/next/store/evidence_storeA_test.go#TestEvidenceStoreABatchSeqGap"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -121172,7 +121714,8 @@
       ],
       "evidence": [
         "test:chord/next/store/apply_batch_test.go#TestApplyBatch",
-        "test:chord/next/store/engine_test.go#TestEngineHistoryRules"
+        "test:chord/next/store/engine_test.go#TestEngineHistoryRules",
+        "test:chord/next/store/evidence_storeA_test.go#TestEvidenceStoreABatchSeqGap"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -123579,7 +124122,7 @@
       "evidence": [
         "test:durable/storage/sqlite/sqlite_executor_upstream_test.go#TestSqliteExecutorExecRunGetAllOnDatabaseAndTransaction",
         "test:durable/storage/sqlite/sqlite_executor_upstream_test.go#TestSqliteValueMembersBindAndReadBack",
-        "test:chord/next/store/import_test.go#TestImportRefusals"
+        "test:chord/next/store/evidence_storeB_backend_test.go#TestSqliteBackendRunsOnTheGivenDatabase"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -123668,7 +124211,7 @@
       "evidence": [
         "test:durable/storage/sqlite/sqlite_executor_upstream_test.go#TestSqliteExecutorExecRunGetAllOnDatabaseAndTransaction",
         "test:durable/storage/sqlite/sqlite_executor_upstream_test.go#TestSqliteValueMembersBindAndReadBack",
-        "test:chord/next/store/import_test.go#TestImportRefusals"
+        "test:chord/next/store/evidence_storeB_backend_test.go#TestSqliteBackendRunsOnTheGivenDatabase"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -123691,7 +124234,7 @@
       "evidence": [
         "test:durable/storage/sqlite/sqlite_executor_upstream_test.go#TestSqliteExecutorExecRunGetAllOnDatabaseAndTransaction",
         "test:durable/storage/sqlite/sqlite_executor_upstream_test.go#TestSqliteValueMembersBindAndReadBack",
-        "test:chord/next/store/import_test.go#TestImportRefusals"
+        "test:chord/next/store/evidence_storeB_backend_test.go#TestSqliteBackendRunsOnTheGivenDatabase"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -123939,8 +124482,8 @@
       ],
       "evidence": [
         "test:chord/next/store/catalog_test.go#TestCatalog",
-        "test:chord/next/store/import_test.go#TestImportRefusals",
-        "test:chord/next/store/outbox_test.go#TestOutbox"
+        "test:chord/next/store/evidence_storeB_backend_test.go#TestSqliteBackendRunsOnTheGivenDatabase",
+        "test:chord/next/store/import_test.go#TestImportRefusals"
       ]
     },
     {
@@ -123961,8 +124504,8 @@
       ],
       "evidence": [
         "test:chord/next/store/catalog_test.go#TestCatalog",
-        "test:chord/next/store/import_test.go#TestImportRefusals",
-        "test:chord/next/store/outbox_test.go#TestOutbox"
+        "test:chord/next/store/evidence_storeB_backend_test.go#TestSqliteBackendRunsOnTheGivenDatabase",
+        "test:chord/next/store/import_test.go#TestImportRefusals"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -123984,8 +124527,8 @@
       ],
       "evidence": [
         "test:chord/next/store/catalog_test.go#TestCatalog",
-        "test:chord/next/store/import_test.go#TestImportRefusals",
-        "test:chord/next/store/outbox_test.go#TestOutbox"
+        "test:chord/next/store/evidence_storeB_backend_test.go#TestSqliteBackendRunsOnTheGivenDatabase",
+        "test:chord/next/store/import_test.go#TestImportRefusals"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -124049,8 +124592,8 @@
       ],
       "evidence": [
         "test:durable/storage/sqlite/sqlite_executor_upstream_test.go#TestSqliteExecutorExecRunGetAllOnDatabaseAndTransaction",
-        "test:chord/next/store/evaluate_test.go#TestEvaluatorAgreesWithSQLite",
-        "test:chord/next/store/outbox_test.go#TestOutboxReadsStoredWritesAsJSONParse"
+        "test:chord/next/documents/keyed_slot_test.go#TestKeyedSlotTxRetireOfAColdKeyStoredAtANewerVersionOrAnotherFingerprintFailsTheOwnerBrokenAsAReadWouldAndKeepsIt",
+        "test:chord/next/store/evaluate_test.go#TestEvaluatorAgreesWithSQLite"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -124072,8 +124615,8 @@
       ],
       "evidence": [
         "test:durable/storage/sqlite/sqlite_executor_upstream_test.go#TestSqliteExecutorExecRunGetAllOnDatabaseAndTransaction",
-        "test:chord/next/store/evaluate_test.go#TestEvaluatorAgreesWithSQLite",
-        "test:chord/next/store/table_writes_test.go#TestTableWrites"
+        "test:chord/next/documents/keyed_slot_test.go#TestKeyedSlotTxRetireOfAColdKeyStoredAtANewerVersionOrAnotherFingerprintFailsTheOwnerBrokenAsAReadWouldAndKeepsIt",
+        "test:chord/next/store/evaluate_test.go#TestEvaluatorAgreesWithSQLite"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -124095,8 +124638,8 @@
       ],
       "evidence": [
         "test:durable/storage/sqlite/sqlite_executor_upstream_test.go#TestSqliteExecutorExecRunGetAllOnDatabaseAndTransaction",
-        "test:chord/next/store/evaluate_test.go#TestEvaluatorAgreesWithSQLite",
-        "test:chord/next/store/table_writes_test.go#TestTableWrites"
+        "test:chord/next/documents/keyed_slot_test.go#TestKeyedSlotTxRetireOfAColdKeyStoredAtANewerVersionOrAnotherFingerprintFailsTheOwnerBrokenAsAReadWouldAndKeepsIt",
+        "test:chord/next/store/evaluate_test.go#TestEvaluatorAgreesWithSQLite"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -124388,8 +124931,8 @@
       ],
       "evidence": [
         "test:durable/storage/sqlite/sqlite_executor_upstream_test.go#TestSqliteExecutorExecRunGetAllOnDatabaseAndTransaction",
-        "test:chord/next/store/evaluate_test.go#TestEvaluatorAgreesWithSQLite",
-        "test:chord/next/store/outbox_test.go#TestOutboxReadsStoredWritesAsJSONParse"
+        "test:chord/next/documents/keyed_slot_test.go#TestKeyedSlotTxRetireOfAColdKeyStoredAtANewerVersionOrAnotherFingerprintFailsTheOwnerBrokenAsAReadWouldAndKeepsIt",
+        "test:chord/next/store/evaluate_test.go#TestEvaluatorAgreesWithSQLite"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -124411,8 +124954,8 @@
       ],
       "evidence": [
         "test:durable/storage/sqlite/sqlite_executor_upstream_test.go#TestSqliteExecutorExecRunGetAllOnDatabaseAndTransaction",
-        "test:chord/next/store/evaluate_test.go#TestEvaluatorAgreesWithSQLite",
-        "test:chord/next/store/table_writes_test.go#TestTableWrites"
+        "test:chord/next/documents/keyed_slot_test.go#TestKeyedSlotTxRetireOfAColdKeyStoredAtANewerVersionOrAnotherFingerprintFailsTheOwnerBrokenAsAReadWouldAndKeepsIt",
+        "test:chord/next/store/evaluate_test.go#TestEvaluatorAgreesWithSQLite"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -124434,8 +124977,8 @@
       ],
       "evidence": [
         "test:durable/storage/sqlite/sqlite_executor_upstream_test.go#TestSqliteExecutorExecRunGetAllOnDatabaseAndTransaction",
-        "test:chord/next/store/evaluate_test.go#TestEvaluatorAgreesWithSQLite",
-        "test:chord/next/store/table_writes_test.go#TestTableWrites"
+        "test:chord/next/documents/keyed_slot_test.go#TestKeyedSlotTxRetireOfAColdKeyStoredAtANewerVersionOrAnotherFingerprintFailsTheOwnerBrokenAsAReadWouldAndKeepsIt",
+        "test:chord/next/store/evaluate_test.go#TestEvaluatorAgreesWithSQLite"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -124658,8 +125201,8 @@
       ],
       "evidence": [
         "test:chord/next/store/evaluate_test.go#TestEvaluatorAgreesWithSQLite",
-        "test:chord/next/store/outbox_test.go#TestOutbox",
-        "test:chord/next/store/query_test.go#TestCursors"
+        "test:chord/next/store/evidence_storeB_adapter_test.go#TestOwnerTableEncodeIsTheTrustBoundary",
+        "test:chord/next/store/evidence_storeB_adapter_test.go#TestOwnerTablePutStampsTheStepsSeqAndReadsDecode"
       ]
     },
     {
@@ -217493,7 +218036,7 @@
       "evidence": [
         "test:chord/watch_upstream_test.go#TestWatchableWatchHoldsTheCurrentValueThenOneFramePerChangeAndEndsWithItsContext",
         "test:durable/session/session_deferred_commits_upstream_test.go#TestPublicationsOfDeferredCommits",
-        "test:chord/next/state/derive_own_test.go#TestDeriveDetach"
+        "test:chord/next/documents/keyed_slot_test.go#TestKeyedSlotALoneSurrogateInAKeyIsUFFFDAtEveryEntryPointInMemoryAndInTheStoreNULIsRefused"
       ]
     },
     {
@@ -218722,7 +219265,7 @@
       "evidence": [
         "test:chord/watch_upstream_test.go#TestWatchableWatchHoldsTheCurrentValueThenOneFramePerChangeAndEndsWithItsContext",
         "test:durable/session/session_deferred_commits_upstream_test.go#TestPublicationsOfDeferredCommits",
-        "test:chord/next/state/derive_own_test.go#TestDeriveDetach"
+        "test:chord/next/documents/keyed_slot_test.go#TestKeyedSlotALoneSurrogateInAKeyIsUFFFDAtEveryEntryPointInMemoryAndInTheStoreNULIsRefused"
       ]
     },
     {
@@ -223661,7 +224204,7 @@
       "evidence": [
         "test:chord/watch_upstream_test.go#TestWatchableWatchHoldsTheCurrentValueThenOneFramePerChangeAndEndsWithItsContext",
         "test:durable/session/session_deferred_commits_upstream_test.go#TestPublicationsOfDeferredCommits",
-        "test:chord/next/state/derive_own_test.go#TestDeriveDetach"
+        "test:chord/next/documents/keyed_slot_test.go#TestKeyedSlotALoneSurrogateInAKeyIsUFFFDAtEveryEntryPointInMemoryAndInTheStoreNULIsRefused"
       ]
     },
     {
@@ -227075,8 +227618,8 @@
       ],
       "evidence": [
         "test:chord/watch_upstream_test.go#TestWatchableWatchHoldsTheCurrentValueThenOneFramePerChangeAndEndsWithItsContext",
-        "test:chord/next/state/derive_own_test.go#TestDeriveDetach",
-        "test:chord/next/state/derive_own_test.go#TestDeriveGC"
+        "test:chord/next/documents/keyed_slot_test.go#TestKeyedSlotWatchKeyIsUndefinedWhenAbsentItFollowsTheAddressThroughARetirementAndARecreation",
+        "test:chord/next/host/host_follow_test.go#TestEndsDuringActivationAndInOneBatchACallAndAnEndOutsideABatchWithNothingWatchingALaterWatchOpensAtTheValueAndEnds"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -227108,8 +227651,8 @@
       ],
       "evidence": [
         "test:durable/session/session_deferred_commits_upstream_test.go#TestPublicationsOfDeferredCommits",
-        "test:chord/next/state/watchable_own_test.go#TestConstantOf",
-        "test:chord/next/state/watchable_own_test.go#TestSourceWatches"
+        "test:chord/next/documents/keyed_slot_test.go#TestKeyedSlotAStoppedWatchUnpinsItsKeyItsSourceIsCollected",
+        "test:chord/next/documents/keyed_slot_test.go#TestKeyedSlotAnUnpinnedKeyIdleForTheRetentionLeavesMemoryAPinnedOneStays"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -227131,8 +227674,8 @@
       ],
       "evidence": [
         "test:durable/session/session_deferred_commits_upstream_test.go#TestPublicationsOfDeferredCommits",
-        "test:chord/next/state/watchable_own_test.go#TestConstantOf",
-        "test:chord/next/state/watchable_own_test.go#TestSourceWatches"
+        "test:chord/next/documents/keyed_slot_test.go#TestKeyedSlotAStoppedWatchUnpinsItsKeyItsSourceIsCollected",
+        "test:chord/next/documents/keyed_slot_test.go#TestKeyedSlotAnUnpinnedKeyIdleForTheRetentionLeavesMemoryAPinnedOneStays"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -232770,7 +233313,7 @@
       "evidence": [
         "test:durable/storage/sqlite/sqlite_executor_upstream_test.go#TestSqliteExecutorExecRunGetAllOnDatabaseAndTransaction",
         "test:durable/storage/sqlite/sqlite_executor_upstream_test.go#TestSqliteValueMembersBindAndReadBack",
-        "test:chord/next/store/import_test.go#TestImportRefusals"
+        "test:chord/next/store/evidence_storeB_backend_test.go#TestSqliteBackendRunsOnTheGivenDatabase"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -232860,7 +233403,7 @@
       "evidence": [
         "test:durable/storage/sqlite/sqlite_executor_upstream_test.go#TestSqliteExecutorExecRunGetAllOnDatabaseAndTransaction",
         "test:durable/storage/sqlite/sqlite_executor_upstream_test.go#TestSqliteValueMembersBindAndReadBack",
-        "test:chord/next/store/import_test.go#TestImportRefusals"
+        "test:chord/next/store/evidence_storeB_backend_test.go#TestSqliteBackendRunsOnTheGivenDatabase"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -232883,7 +233426,7 @@
       "evidence": [
         "test:durable/storage/sqlite/sqlite_executor_upstream_test.go#TestSqliteExecutorExecRunGetAllOnDatabaseAndTransaction",
         "test:durable/storage/sqlite/sqlite_executor_upstream_test.go#TestSqliteValueMembersBindAndReadBack",
-        "test:chord/next/store/import_test.go#TestImportRefusals"
+        "test:chord/next/store/evidence_storeB_backend_test.go#TestSqliteBackendRunsOnTheGivenDatabase"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -233356,8 +233899,8 @@
       ],
       "evidence": [
         "test:durable/storage/sqlite/sqlite_executor_upstream_test.go#TestSqliteExecutorExecRunGetAllOnDatabaseAndTransaction",
-        "test:chord/next/store/evaluate_test.go#TestEvaluatorAgreesWithSQLite",
-        "test:chord/next/store/outbox_test.go#TestOutboxReadsStoredWritesAsJSONParse"
+        "test:chord/next/documents/keyed_slot_test.go#TestKeyedSlotTxRetireOfAColdKeyStoredAtANewerVersionOrAnotherFingerprintFailsTheOwnerBrokenAsAReadWouldAndKeepsIt",
+        "test:chord/next/store/evaluate_test.go#TestEvaluatorAgreesWithSQLite"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -233379,8 +233922,8 @@
       ],
       "evidence": [
         "test:durable/storage/sqlite/sqlite_executor_upstream_test.go#TestSqliteExecutorExecRunGetAllOnDatabaseAndTransaction",
-        "test:chord/next/store/evaluate_test.go#TestEvaluatorAgreesWithSQLite",
-        "test:chord/next/store/table_writes_test.go#TestTableWrites"
+        "test:chord/next/documents/keyed_slot_test.go#TestKeyedSlotTxRetireOfAColdKeyStoredAtANewerVersionOrAnotherFingerprintFailsTheOwnerBrokenAsAReadWouldAndKeepsIt",
+        "test:chord/next/store/evaluate_test.go#TestEvaluatorAgreesWithSQLite"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -233402,8 +233945,8 @@
       ],
       "evidence": [
         "test:durable/storage/sqlite/sqlite_executor_upstream_test.go#TestSqliteExecutorExecRunGetAllOnDatabaseAndTransaction",
-        "test:chord/next/store/evaluate_test.go#TestEvaluatorAgreesWithSQLite",
-        "test:chord/next/store/table_writes_test.go#TestTableWrites"
+        "test:chord/next/documents/keyed_slot_test.go#TestKeyedSlotTxRetireOfAColdKeyStoredAtANewerVersionOrAnotherFingerprintFailsTheOwnerBrokenAsAReadWouldAndKeepsIt",
+        "test:chord/next/store/evaluate_test.go#TestEvaluatorAgreesWithSQLite"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -233695,8 +234238,8 @@
       ],
       "evidence": [
         "test:durable/storage/sqlite/sqlite_executor_upstream_test.go#TestSqliteExecutorExecRunGetAllOnDatabaseAndTransaction",
-        "test:chord/next/store/evaluate_test.go#TestEvaluatorAgreesWithSQLite",
-        "test:chord/next/store/outbox_test.go#TestOutboxReadsStoredWritesAsJSONParse"
+        "test:chord/next/documents/keyed_slot_test.go#TestKeyedSlotTxRetireOfAColdKeyStoredAtANewerVersionOrAnotherFingerprintFailsTheOwnerBrokenAsAReadWouldAndKeepsIt",
+        "test:chord/next/store/evaluate_test.go#TestEvaluatorAgreesWithSQLite"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -233718,8 +234261,8 @@
       ],
       "evidence": [
         "test:durable/storage/sqlite/sqlite_executor_upstream_test.go#TestSqliteExecutorExecRunGetAllOnDatabaseAndTransaction",
-        "test:chord/next/store/evaluate_test.go#TestEvaluatorAgreesWithSQLite",
-        "test:chord/next/store/table_writes_test.go#TestTableWrites"
+        "test:chord/next/documents/keyed_slot_test.go#TestKeyedSlotTxRetireOfAColdKeyStoredAtANewerVersionOrAnotherFingerprintFailsTheOwnerBrokenAsAReadWouldAndKeepsIt",
+        "test:chord/next/store/evaluate_test.go#TestEvaluatorAgreesWithSQLite"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -233741,8 +234284,8 @@
       ],
       "evidence": [
         "test:durable/storage/sqlite/sqlite_executor_upstream_test.go#TestSqliteExecutorExecRunGetAllOnDatabaseAndTransaction",
-        "test:chord/next/store/evaluate_test.go#TestEvaluatorAgreesWithSQLite",
-        "test:chord/next/store/table_writes_test.go#TestTableWrites"
+        "test:chord/next/documents/keyed_slot_test.go#TestKeyedSlotTxRetireOfAColdKeyStoredAtANewerVersionOrAnotherFingerprintFailsTheOwnerBrokenAsAReadWouldAndKeepsIt",
+        "test:chord/next/store/evaluate_test.go#TestEvaluatorAgreesWithSQLite"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
