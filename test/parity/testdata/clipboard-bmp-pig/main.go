@@ -7,6 +7,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"image"
+	_ "image/png" // the clipboard BMP is converted to PNG
 	"os"
 	"path/filepath"
 	"slices"

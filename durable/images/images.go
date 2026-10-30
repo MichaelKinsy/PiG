@@ -11,12 +11,6 @@ import (
 	"math"
 	"slices"
 
-	// The decoders of the lossless formats read accepts: PNG, GIF and BMP, which is converted. JPEG and WebP are decoded by photonimage.
-	_ "image/gif"
-	_ "image/png"
-
-	_ "golang.org/x/image/bmp"
-
 	"github.com/MichaelKinsy/PiG/durable/tools"
 	"github.com/MichaelKinsy/PiG/internal/photonimage"
 )

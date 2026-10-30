@@ -15,8 +15,9 @@ import (
 
 // convertToPng decodes with Photon (`PhotonImage.new_from_byteslice`, image-convert.ts:encodePng), not with Go's decoders, so the
 // PNG it returns for a JPEG or a WebP carries Photon's pixels. This runs Pi's convertToPng on the fixtures of
-// TestImageConvertDecodedPixels and requires the same PNG bytes, which fixes the pixels the Go decoders disagree on
-// (the 2x2 JPEG of image-processing.test.ts has a pixel Go's image/jpeg decodes one level off).
+// TestImageConvertDecodedPixels and requires the same PNG bytes, which fixes the pixels the Go decoders disagree on:
+// the 2x1 JPEG of image-processing.test.ts that the EXIF fixture wraps decodes to {254 3 0 255} with Photon and to
+// {253 2 0 255} with Go's image/jpeg, and Go's golang.org/x/image/webp is not even registered by the production code.
 func TestConvertToPngMatchesPiBytes(t *testing.T) {
 	var gifBytes bytes.Buffer
 	palette := image.NewPaletted(image.Rect(0, 0, 2, 1), color.Palette{color.Black, color.White})

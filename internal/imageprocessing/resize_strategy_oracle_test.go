@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"image"
 	"image/color"
+	_ "image/jpeg" // image.DecodeConfig reads the JPEG results; the dimensions are the same for every decoder
 	"image/png"
 	"math/rand/v2"
 	"runtime"
