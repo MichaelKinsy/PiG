@@ -130,12 +130,21 @@ func (h *handler) openFinished(err error) {
 	h.openWaiters = nil
 }
 
+// openedReturnHops is the hops from the end of the scheduler's open job to Harness.open resolving: `await commitWith` in the scheduler's
+// open (1), `await harness.openTasks()` in Harness.open (1) and the caller's await of Harness.open (1) (scheduler.ts open, harness.ts
+// Harness.open). Measured on Pi e7a0df27 with the cut-off tests of host/cf/test/cutoff-ticks.test.ts: Harness.open 56 passes over an
+// idle store's recovery commit.
+const openedReturnHops = 3
+
 func (h *handler) answerOpened(id uint32) {
-	if h.openErr != nil {
-		h.apiError(id, h.openErr)
-		return
-	}
-	h.apiOK(id, nil)
+	err := h.openErr
+	h.hopsThen(openedReturnHops, func() {
+		if err != nil {
+			h.apiError(id, err)
+			return
+		}
+		h.apiOK(id, nil)
+	})
 }
 
 // freshSnapshot is registry.snapshot() inside a step job (scheduler.ts:955 #decide): the host calls the user's reader

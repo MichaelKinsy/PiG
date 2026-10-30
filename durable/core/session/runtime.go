@@ -128,7 +128,7 @@ func (r *Runtime) commit(deferred bool, change func(tx *Tx, current *jv.Object) 
 		}
 		overlay := stagedTasks(tx)
 		err = r.s.commitState(tx, r.inv, current, next)
-		tx.ticks = hopcost.RuntimeCommit(u, true, commitStateTicks(next, overlay))
+		tx.ticks = hopcost.RuntimeCommit(u, true, commitStateTicks(next, overlay, r.s.stateAwaits))
 		if err == nil {
 			// A task that ends for crashes says so (task_interrupted), so a host keeps a crash-loop signal: reported once the
 			// commit resolved, before its caller resumes (scheduler.ts runtime.commit).
@@ -185,7 +185,7 @@ func (r *Runtime) FinishHost(tx *Tx, current, next *jv.Object) (*Publication, er
 			r.s.sess.Abandon(tx, err)
 			return nil, err
 		}
-		tx.ticks = hopcost.RuntimeCommit(u, true, commitStateTicks(next, overlay))
+		tx.ticks = hopcost.RuntimeCommit(u, true, commitStateTicks(next, overlay, r.s.stateAwaits))
 		r.ended = interruptionOf(current, next)
 	} else {
 		tx.ticks = hopcost.RuntimeCommit(u, false, 0)
@@ -424,15 +424,16 @@ func stagedTasks(tx *Tx) int {
 	return n
 }
 
-// commitStateTicks is the awaits of scheduler.ts #commitState beyond its own return: #validateWait for a waiting state
-// (loadChain and the async call's return: 2), and for a terminal state `await #loadScopes(false)` and one loadChain per
-// task the transaction staged before the state (overlay), at least one.
-func commitStateTicks(next *jv.Object, overlay int) int {
+// commitStateTicks is the awaits of scheduler.ts #commitState beyond its own return: `await #validateWait` for a waiting state (the
+// async call's return, and awaits more for a wait that checks a cycle), and for a terminal state `await #loadScopes(false)` (its own
+// return, and one `await #loadChain` per task still unloaded, awaits) and one loadChain per task the transaction staged before the state
+// (overlay). awaits is what commitState left in Scheduler.stateAwaits.
+func commitStateTicks(next *jv.Object, overlay, awaits int) int {
 	switch status, _ := getStr(next, "status"); status {
 	case StatusWaiting:
-		return 2
+		return 1 + awaits
 	case StatusTerminal:
-		return 1 + max(1, overlay)
+		return 1 + awaits + overlay
 	}
 	return 0
 }

@@ -98,7 +98,7 @@ func (r *run) snapshotResult(def *session.DocDef, then func(*jv.Object, error)) 
 	r.rt.Read(func() error {
 		value, rerr = r.g.Host.Snapshot(def, r.conv)
 		return rerr
-	}, func(err error) { then(value, err) })
+	}, func(err error) { r.hops(snapshotMissReturnHops, func() { then(value, err) }) })
 }
 
 // snapshotCached is the answer of a cached Session.snapshot, if the document is cached (a hit takes snapshotHitHops to reach its caller).
@@ -112,6 +112,13 @@ func (r *run) snapshotCached(def *session.DocDef) (value *jv.Object, err error, 
 
 // snapshotHitHops is the hops from a cached Session.snapshot call to its awaiting caller (dcore-trace E23).
 const snapshotHitHops = 3
+
+// snapshotMissReturnHops is the hops from the end of a missed Session.snapshot's line job to its awaiting caller. Session.snapshot is an
+// async function that awaits `#enqueue(...)` (session.ts snapshot), so its promise settles a hop after the run's and `#read`'s async
+// return adopts that pending promise (scheduler.ts:2347-2350): the caller resumes two hops after the point where runtime.outcomes'
+// caller resumes one (reads.go outcomes). Measured on Pi e7a0df27 with the cut-off tool task of cutoff-ticks.test.ts (settleFromSlot's
+// snapshot of pi.live on a restarted host).
+const snapshotMissReturnHops = 2
 
 // agentHops is the hops from the phase's first runtime.agent() to its awaiting caller when pi.agent is cached: Pi resolves the
 // agent in its own code, `await snapshot` (1), the resolution's return into phase.agent (1) and awaitWithContext's reaction (1)

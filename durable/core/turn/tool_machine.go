@@ -576,8 +576,11 @@ func (r *toolRun) settleFromSlot(call *jv.Object, hooks bool, tool *Tool, end en
 // dropped something, and the hooks' structuredOutput dropped, since the tool never produced one. A nested call that the hooks turned into
 // a success gets the bounded output as its value, as a schema-less tool's success does, unless the tool declares a schema. usage is kept
 // and recorded; control applies only when the task completes. truncation describes what the result's own output lost before (a slot's
-// retained output); it is kept only while the hooks keep that output.
-func (r *toolRun) afterHarnessResult(call *jv.Object, tool *Tool, result, truncation *jv.Object, then func(*jv.Object, error)) {
+// retained output); it is kept only while the hooks keep that output. It is an async function its caller awaits: the caller resumes a hop
+// after it returns or throws (tool.ts afterHarnessResult). Measured on Pi e7a0df27 with the cut-off tool task of cutoff-ticks.test.ts: 3 hops
+// from settleFromSlot's await to settle with no handler (hooks.each's two and this).
+func (r *toolRun) afterHarnessResult(call *jv.Object, tool *Tool, result, truncation *jv.Object, resume func(*jv.Object, error)) {
+	then := func(settled *jv.Object, err error) { r.hops(1, func() { resume(settled, err) }) }
 	final := result
 	r.eachHook("afterTool", func() *jv.Object { return r.hookPayload(jobj("call", call, "result", final)) }, func(res any) bool {
 		if o, ok := res.(*jv.Object); ok {

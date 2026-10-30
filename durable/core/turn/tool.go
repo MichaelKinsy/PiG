@@ -114,6 +114,8 @@ func AppendToolResult(tx *session.Tx, conversation ID, call, result *jv.Object, 
 			if err := recordUsageTx(tx, conversation, UsageTools, jsString(name), u); err != nil {
 				return nil, err
 			}
+			// `await recordUsage(...)`: an async function whose caller resumes one tick after it returns.
+			tx.Await(1)
 		}
 	}
 	data := jv.NewObject()
@@ -121,7 +123,14 @@ func AppendToolResult(tx *session.Tx, conversation ID, call, result *jv.Object, 
 	fields := jv.NewObject()
 	fields.Set("model", []any{message})
 	fields.Set("data", data)
-	return tx.AppendEntry(conversation, entryDraft(KindToolResult, fields))
+	entry, err := tx.AppendEntry(conversation, entryDraft(KindToolResult, fields))
+	if err != nil {
+		return nil, err
+	}
+	// appendToolResult is an async function that returns tx.appendEntry's promise, and every caller awaits it: the caller resumes one tick
+	// after it returns (tool.ts appendToolResult).
+	tx.Await(1)
+	return entry, nil
 }
 
 func jsString(v any) string {
