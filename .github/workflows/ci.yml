@@ -373,7 +373,7 @@ jobs:
           test "$(npm --version)" = "$NPM_VERSION"
           test "$(rustc --version | cut -d' ' -f2)" = "$RUST_VERSION"
           python3 automation/pin/pin.py check-oracle
-      # Rust SDK dependencies and Pi's env daemon build into persistent targets (internal/testenv.SharedCargoTargetDir) named for a hash of their lockfiles, so a lock change selects a new directory and a hit skips the compile.
+      # Rust SDK dependencies and Pi's env daemon build into persistent targets (internal/testenv.SharedCargoTargetDir) named for a hash of their lockfiles, so a lock change selects a new directory and a hit skips the compile. The key also hashes automation/ci/test-warm.sh, the list of targets: actions/cache saves only on a key miss, so a target the script gains needs a new key to reach the cache.
       - name: Restore the Cargo registry and test targets
         if: startsWith(matrix.shard, 'test-') || matrix.shard == 'toolchains'
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
@@ -382,7 +382,7 @@ jobs:
             ~/.cargo/registry
             ~/.cargo/git
             ~/.cache/pig-dev/cargo-target
-          key: cargo-${{ runner.os }}-${{ env.RUST_VERSION }}-${{ hashFiles('extensions/sdk-rs/Cargo.lock', 'extensions/sdk-rs/Cargo.toml') }}
+          key: cargo-${{ runner.os }}-${{ env.RUST_VERSION }}-${{ hashFiles('extensions/sdk-rs/Cargo.lock', 'extensions/sdk-rs/Cargo.toml', 'automation/ci/test-warm.sh') }}
           restore-keys: |
             cargo-${{ runner.os }}-${{ env.RUST_VERSION }}-
       # The PORT_MAP evidence tests of the extension, CLI and env packages build the Rust SDK cells and Pi's env daemon into the same
@@ -396,7 +396,7 @@ jobs:
             ~/.cargo/registry
             ~/.cargo/git
             ~/.cache/pig-dev/cargo-target
-          key: cargo-${{ runner.os }}-${{ env.RUST_VERSION }}-${{ hashFiles('extensions/sdk-rs/Cargo.lock', 'extensions/sdk-rs/Cargo.toml') }}
+          key: cargo-${{ runner.os }}-${{ env.RUST_VERSION }}-${{ hashFiles('extensions/sdk-rs/Cargo.lock', 'extensions/sdk-rs/Cargo.toml', 'automation/ci/test-warm.sh') }}
           restore-keys: |
             cargo-${{ runner.os }}-${{ env.RUST_VERSION }}-
       - name: Warm the fixture caches
