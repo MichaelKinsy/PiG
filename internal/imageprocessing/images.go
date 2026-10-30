@@ -713,6 +713,10 @@ func encodedSizeBase64(data []byte) int {
 // encodePNG is the PNG Photon's `get_bytes()` writes for img (see photonimage.EncodePNG): its size decides whether the PNG or the JPEG
 // candidate of a resize is the smaller one, so it must be Photon's.
 func encodePNG(img image.Image) ([]byte, error) {
+	// The png crate refuses a width or a height of zero (`ZeroWidth`, `ZeroHeight`), which Photon's `get_bytes().unwrap()` turns into an exception.
+	if img.Bounds().Empty() {
+		return nil, errors.New("png: image has no pixels")
+	}
 	return photonimage.EncodePNG(toNRGBA(img)), nil
 }
 

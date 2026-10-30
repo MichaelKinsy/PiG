@@ -124,6 +124,63 @@ Distributed file: `internal/photonimage/sinf.go`
 
 `internal/photonimage/sinf.go` ports the single-precision sine that Photon's WebAssembly calls (compiler_builtins' copy of libm), so that the Lanczos3 weights are Photon's own.
 
+## image 0.24.9 decoders (WebP, ICO, BMP in ICO, PNM, DDS and DXT, Radiance HDR, farbfeld)
+
+Source: <https://github.com/image-rs/image/tree/v0.24.9/src/codecs> (`webp/`, `ico/decoder.rs`, `bmp/decoder.rs`, `pnm/decoder.rs`, `pnm/header.rs`, `dds.rs`, `dxt.rs`, `hdr/decoder.rs`, `farbfeld.rs`, with `io/free_functions.rs`, `dynimage.rs`, `color.rs` and `utils/mod.rs` for the format guess, the limits and the sample conversions)
+
+Distributed files: `internal/photonimage/webpdecode*.go`, `icodecode.go`, `icodecode_bmp.go`, `pnmdecode.go`, `ddsdecode.go`, `hdrdecode.go`, `farbfelddecode.go` and `decodeformats.go`
+
+- image: Copyright (c) 2015 nwin; The image-rs Developers
+- License: MIT OR Apache-2.0; PiG uses the MIT option for this derived code
+
+These files port the decoders Photon 0.3.3 and 0.3.4 run (`PhotonImage.new_from_byteslice`), so that PiG returns Photon's pixels or its error. The required MIT copyright and permission notice is preserved here, and the canonical MIT text is in `LICENSES/MIT.txt`.
+
+## png 0.17.14 reader
+
+Source: <https://github.com/image-rs/image-png/tree/v0.17.14> (`src/decoder/stream.rs`, `src/decoder/mod.rs`, `src/decoder/zlib.rs`, `src/decoder/transform.rs`, `src/decoder/transform/palette.rs`, `src/adam7.rs`) and the zlib header rules of fdeflate 0.3.7 (`src/decompress.rs`)
+
+Distributed file: `internal/photonimage/icopng.go`
+
+- png: Copyright (c) 2015 nwin; The image-rs Developers
+- fdeflate: The image-rs Developers
+- License: MIT OR Apache-2.0; PiG uses the MIT option for this derived code
+
+`internal/photonimage/icopng.go` reproduces what the png crate does with the PNG an ICO entry holds, which is not what Go's decoder does for damaged files. The required MIT copyright and permission notice is preserved here, and the canonical MIT text is in `LICENSES/MIT.txt`.
+
+## tiff 0.9.1, weezl 0.1.8 and miniz_oxide 0.7.1
+
+Sources: <https://github.com/image-rs/image-tiff/tree/v0.9.1>, <https://github.com/image-rs/lzw/tree/v0.1.8> and <https://github.com/Frommi/miniz_oxide/tree/0.7.1>
+
+Distributed files: `internal/photonimage/tiffdecode.go`, `tiffdecode_lzw.go`, `tiffdecode_inflate.go` and `tiffdecode_jpeg.go`
+
+- tiff: Copyright (c) 2018 PistonDevelopers
+- weezl: Copyright (c) HeroicKatora 2020
+- miniz_oxide: Copyright (c) 2017 Frommi; derived from miniz by Rich Geldreich and Tenacious Software LLC and RAD Game Tools and Valve Software
+- License: tiff is MIT; weezl is MIT OR Apache-2.0; miniz_oxide is MIT OR Zlib OR Apache-2.0; PiG uses the MIT option for this derived code
+
+The files port the TIFF decoder Photon runs (image 0.24.9's `TiffDecoder` over tiff 0.9.1), its LZW decoder and its Deflate decoder. The required MIT copyright and permission notices are preserved here, and the canonical MIT text is in `LICENSES/MIT.txt`.
+
+## jpeg-decoder 0.3.1
+
+Source: <https://github.com/image-rs/jpeg-decoder/tree/v0.3.1>
+
+Distributed files: `internal/photonimage/jpegdecode*.go`
+
+- Copyright (c) 2016 The jpeg-decoder Developers
+- License: MIT OR Apache-2.0; PiG uses the MIT option for this derived code
+
+The files port the JPEG decoder Photon runs. The required MIT copyright and permission notice is preserved here, and the canonical MIT text is in `LICENSES/MIT.txt`.
+
+## libm 0.2.16 powf and exp2f (FreeBSD msun)
+
+Sources: <https://github.com/rust-lang/libm/tree/libm-v0.2.16/src/math> (`powf.rs`, `exp2f.rs`), from FreeBSD `e_powf.c` and `s_exp2f.c`.
+
+Distributed file: `internal/photonimage/libmf_reference_test.go` (test code: the reference that proves the Radiance HDR conversion table)
+
+- FreeBSD msun: Copyright (C) 1993 by Sun Microsystems, Inc. All rights reserved.; Copyright (c) 2005 David Schultz
+- libm: Copyright (c) Rust Project Developers; MIT
+- License: `LICENSES/SunPro.txt` for `powf`, `LICENSES/BSD-2-Clause.txt` for `exp2f` and `LICENSES/MIT.txt` for the Rust translation
+
 ## Pi TUI 0.87.1
 
 Source: <https://github.com/earendil-works/pi/tree/v0.87.1/packages/tui>

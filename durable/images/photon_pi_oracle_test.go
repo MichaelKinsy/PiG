@@ -78,6 +78,7 @@ func oracleCorpus(t *testing.T) []oracleCase {
 				oracleCase{name: "tiff " + filepath.Base(file) + " as " + mime + " beyond a small limit", data: data, mime: mime, limits: tools.ImageLimits{MaxWidth: 16, MaxHeight: 16, MaxBytes: def.MaxBytes}})
 		}
 	}
+	cases = append(cases, formatOracleCases(def)...)
 	cases = append(cases, oracleCase{name: "jpeg that must be resized", data: withOrientation(encodeJPEG(t, pixels(3000, 1500)), 3, false, false), mime: "image/jpeg", limits: def})
 	return cases
 }
