@@ -311,15 +311,15 @@ func TestRunEndsThrewWhenRunThrowsReportedAsJobFailedAPlainErrorBecomesPluginErr
 	}}, jobHostOptions{})
 	job := fixture.Job
 	first := runOutcome(t, jobStart(t, job, textArgs("plugin"), background))
-	if first.Kind != OutcomeFailed || first.Error.Kind != JobThrew || first.Error.Error != error(plugin) {
+	if first.Kind != OutcomeFailed || first.Error.Kind != JobThrew || !errors.Is(first.Error.Error, plugin) {
 		t.Fatalf("first = %+v", first)
 	}
 	second := runOutcome(t, jobStart(t, job, textArgs("plain"), background))
 	if second.Kind != OutcomeFailed || second.Error.Kind != JobThrew {
 		t.Fatalf("second = %+v", second)
 	}
-	thrown, ok := second.Error.Error.(*data.PluginError)
-	if !ok || thrown.Code != "internal" || thrown.Message != "plain" {
+	var thrown *data.PluginError
+	if !errors.As(second.Error.Error, &thrown) || thrown.Code != "internal" || thrown.Message != "plain" {
 		t.Fatalf("thrown = %#v", second.Error.Error)
 	}
 	reports := jobReports(fixture.Errors.All())
@@ -461,23 +461,27 @@ func TestFinishGetsEachOutcomeKindTheRecordKeyAndStateDocumentGoInItsCommitAtomi
 		}
 		return nil
 	})
+	// Each frame is read before the next run starts, as Pi's microtask reads it right after the commit.
+	framesSeen := func(n int) {
+		eventually(t, "the log's frames", func() bool {
+			hostDelivered(fixture.Host)
+			seenMu.Lock()
+			defer seenMu.Unlock()
+			return len(seen) >= n
+		})
+	}
 	runOutcome(t, jobStart(t, job, commandArgs("ok"), background, "k"))
+	framesSeen(1)
 	runOutcome(t, jobStart(t, job, commandArgs("fail"), background, "k"))
-	hostDelivered(fixture.Host)
+	framesSeen(2)
 	mu.Lock()
 	if strings.Join(outcomes, "|") != "done out ok|failed out fail" {
 		t.Fatalf("outcomes = %v", outcomes)
 	}
 	mu.Unlock()
-	eventually(t, "the log's frames", func() bool {
-		seenMu.Lock()
-		defer seenMu.Unlock()
-		return len(seen) >= 2
-	})
 	seenMu.Lock()
 	defer seenMu.Unlock()
-	// The first frame is the watch's current value: its list may be empty when the frame precedes the first commit.
-	if got := seen[len(seen)-2:]; got[0] != [2]int{1, 0} || got[1] != [2]int{2, 0} {
+	if len(seen) != 2 || seen[0] != [2]int{1, 0} || seen[1] != [2]int{2, 0} {
 		t.Fatalf("seen = %v", seen)
 	}
 	if entries := jobRunning(t, job); len(entries) != 0 {
@@ -502,10 +506,14 @@ func TestFinishOnlyCleansUpWithoutAFinish(t *testing.T) {
 	}
 }
 
-// advanceFinishBackoff waits for the finish's backoff timer and advances the virtual clock by delay.
+// advanceBackoff waits for the finish's backoff timer and advances the virtual clock to it: the timer must be due delay
+// after now (1 s doubling), so the finish that follows runs at the time Pi's flushed timer would run it.
 func advanceBackoff(t *testing.T, loop *virtualLoop, delay int64) {
 	t.Helper()
 	eventually(t, "the backoff timer", func() bool { return loop.fake.TimerCount() == 1 })
+	if due := loop.nextDue() - loop.fake.Now(); due != delay {
+		t.Fatalf("the backoff timer is due in %d ms, want %d", due, delay)
+	}
 	loop.fake.Advance(delay)
 }
 

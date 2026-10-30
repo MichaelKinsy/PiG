@@ -1,0 +1,3 @@
+### Added
+
+- Go API `chord/next/host` (core, jobs and remote): the Chord v2 host of Pi `e7a0df27` (`createHost`, `Host.Load/Get/Hold/Accept/Connect/Route/Revoke/Registry/Root/Close`), attempts and objects (`Self`, factories, documents, natives, routines, jobs), references and `Held`, the remote side (holds, remote objects, host links, paths, provider and consumer sides, relays, replicas) and jobs (`DefineJob`, persisted runs). Link handshakes no longer lose a message sent while the channel opens, `Source.Changed` honors an embedder's `Watched`, and a memory link pair can run on a caller's microtask queue (`MemoryLinkPairOn`). <!-- feat: chord-next-host-core -->

@@ -176,8 +176,8 @@ type countedLink struct {
 	last     []byte
 	// receivedBytes is what this end received.
 	receivedBytes int
-	closed   chan struct{}
-	once     sync.Once
+	closed        chan struct{}
+	once          sync.Once
 }
 
 func newCountedLink(end link.Link) *countedLink {
@@ -584,4 +584,3 @@ func benchSettledHeap() uint64 {
 	runtime.ReadMemStats(&stats)
 	return stats.HeapAlloc
 }
-

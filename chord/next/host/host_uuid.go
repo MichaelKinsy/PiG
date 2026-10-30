@@ -56,16 +56,18 @@ func uuidv7() string {
 	return fmt.Sprintf("%x-%x-%x-%x-%x", bytes[0:4], bytes[4:6], bytes[6:8], bytes[8:10], bytes[10:])
 }
 
-// setUUIDClock replaces the clock uuidv7 reads (tests: Pi's tests fake Date) and returns the restore.
+// setUUIDClock replaces the clock uuidv7 reads (tests: Pi's tests fake Date) and returns the restore. The generator starts
+// from the new clock: ids minted before (by hosts of other tests, on the real clock) must not hold a fake one back, and
+// the restore gives the real clock's last timestamp back, so the ids after it stay ordered after the earlier ones.
 func setUUIDClock(now func() int64) (restore func()) {
 	uuidState.Lock()
 	defer uuidState.Unlock()
-	previous := uuidState.now
-	uuidState.now = now
+	previous, last := uuidState.now, uuidState.lastTimestamp
+	uuidState.now, uuidState.lastTimestamp = now, -1
 	return func() {
 		uuidState.Lock()
 		defer uuidState.Unlock()
-		uuidState.now = previous
+		uuidState.now, uuidState.lastTimestamp = previous, last
 	}
 }
 

@@ -142,7 +142,8 @@ func (m *memberSource) OpenWatch(ctx context.Context) (*chord.Watch[delta.JsonVa
 		value = start.Last
 	}
 	subscriber := &memberWatch{}
-	watch := chord.NewWatch(value, func() { m.Unsubscribe(subscriber) }, m.Batch().ReportListener)
+	// The watch ends from goroutines of its own too (an aborted context's listener): its detach is a section of the host.
+	watch := chord.NewWatch(value, func() { m.Batch().Section(func() { m.Unsubscribe(subscriber) }) }, m.Batch().ReportListener)
 	subscriber.watch = watch
 	if m.scheduler != nil {
 		watch.On(m.scheduler)
@@ -233,7 +234,7 @@ func (m *memberSource) bind(source state.DeriveSource) {
 	m.state = memberState{kind: memberBound, source: source}
 	m.hook(source)
 	// Marks the derives downstream: a failed one recomputes too (self-healing).
-	m.changed()
+	m.Changed()
 }
 
 // vanish is a new attempt's variant lacks the member, inside a batch: reads fail with err; watches and subscribers get
@@ -246,7 +247,7 @@ func (m *memberSource) vanish(err *data.ChordError, ctx context.Context) {
 	m.leave()
 	m.state = memberState{kind: memberFailed, err: err, last: last, hasLast: hasLast}
 	m.call(chord.WatchCall[delta.JsonValue]{Kind: chord.WatchCallFailed, Error: state.HandedOut(err)}, ctx)
-	m.changed()
+	m.Changed()
 }
 
 // objectEnded is its object ended, inside a batch: reads fail with err, watches end `ended`, and derives over it are
@@ -295,17 +296,6 @@ func (m *memberSource) Deliver(ctx context.Context) error {
 		m.call(chord.WatchCall[delta.JsonValue]{Kind: chord.WatchCallValue, Value: after, Ops: ops}, ctx)
 	}
 	return nil
-}
-
-// changed records a change in the current batch: listed for a frame when it has watches or subscribers, and every
-// dependent marked. Pi's inherited `changed`, which reads its own `watched`; Source.Changed reads the base one.
-func (m *memberSource) changed() {
-	if m.Watched() {
-		m.Batch().Changed(m)
-	}
-	for _, dependent := range m.DependentSet().Snapshot() {
-		dependent.Invalidate()
-	}
 }
 
 // call is a call of its own (a re-bind's frame, a vanished member) to its watches and subscribers.

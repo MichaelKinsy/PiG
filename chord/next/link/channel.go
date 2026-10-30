@@ -292,10 +292,10 @@ func (c *Channel) handle(bytes []byte) {
 
 func (c *Channel) handleBytes(bytes []byte) error {
 	c.mu.Lock()
-	state, queued := c.state, c.queued
+	state := c.state
 	c.mu.Unlock()
 	if state == channelGreeting {
-		return c.greet(bytes, queued)
+		return c.greet(bytes)
 	}
 	message, err := c.decode(bytes)
 	if err != nil {
@@ -398,7 +398,7 @@ func (c *Channel) decode(bytes []byte) (Message, error) {
 }
 
 // greet handles the first message: the peer's `hello` in this link's codec and protocol version.
-func (c *Channel) greet(bytes []byte, queued [][]byte) error {
+func (c *Channel) greet(bytes []byte) error {
 	message, err := c.decode(bytes)
 	if err != nil {
 		return &causedError{message: fmt.Sprintf("handshake: the first message is no %s message", c.codec.Name()), cause: err}
@@ -410,12 +410,15 @@ func (c *Channel) greet(bytes []byte, queued [][]byte) error {
 	if hello.Protocol != data.ProtocolVersion {
 		return fmt.Errorf("handshake: protocol %d, this host speaks %d", hello.Protocol, data.ProtocolVersion)
 	}
+	// The queue is taken and flushed under the lock that opens the channel: a Send racing with the handshake either queues
+	// before it (and is flushed here, in order) or finds the channel open after the queued ones went out. A copy taken
+	// earlier would lose a message queued in between.
 	c.mu.Lock()
-	c.state, c.peer, c.peerCalls, c.queued = channelOpen, hello.Incarnation, hello.Calls, nil
-	c.mu.Unlock()
-	for _, bytes := range queued {
+	for _, bytes := range c.queued {
 		c.link.Send(bytes)
 	}
+	c.state, c.peer, c.peerCalls, c.queued = channelOpen, hello.Incarnation, hello.Calls, nil
+	c.mu.Unlock()
 	c.handler.Opened()
 	return nil
 }

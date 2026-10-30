@@ -15,27 +15,6 @@ import (
 // still without its first outcome, decision (a)), and the remote blocker that is only loading; and the `parked_long` report
 // a long wait on that blocker makes.
 
-// dependencyTarget is what a binding's target says of the object that answers for it (Pi's `Target`, which `reference.ts`
-// declares): D5a's `Target` satisfies it.
-type dependencyTarget interface {
-	// BlocksFirstPass: a blocker here that is still without its first outcome.
-	BlocksFirstPass() bool
-	// HeldOnLink: its hold is on a link.
-	HeldOnLink() bool
-	// Label names it in a report.
-	Label() string
-}
-
-// dependencyBinding is a reference's binding as the check reads it (Pi's `Binding`): D5a's `*Binding` satisfies it.
-type dependencyBinding interface {
-	// refState is the reference's state now.
-	refState() *RefState
-	// label names the reference for what waits on it.
-	label() string
-	// target is what answers for it; nil is Pi's undefined (a binding not yet placed).
-	target() dependencyTarget
-}
-
 // dependencyKind is what a dependency is.
 type dependencyKind string
 
@@ -48,7 +27,7 @@ const (
 // value is set).
 type dependency struct {
 	kind    dependencyKind
-	binding dependencyBinding
+	binding *binding
 	value   *registries.RegistryValueSource
 }
 
@@ -112,17 +91,17 @@ func checkDependencies(dependencies []dependency) check {
 				firstFailed = waitingOn(binding.label(), err)
 			}
 			// Parked `waiting` on something here still in its first attempt: no first outcome yet (fix round 1).
-			if target := binding.target(); target != nil && target.BlocksFirstPass() {
+			if target := binding.target(); target != nil && target.blocksFirstPass() {
 				firstPass = false
 			}
 		case RefStateLoading:
 			loading = true
 			target := binding.target()
-			if target != nil && target.BlocksFirstPass() {
+			if target != nil && target.blocksFirstPass() {
 				firstPass = false
 			}
-			if target != nil && target.HeldOnLink() && remoteLoading == nil {
-				label := target.Label()
+			if target != nil && target.heldOnLink() && remoteLoading == nil {
+				label := target.label()
 				remoteLoading = &label
 			}
 		}
@@ -149,17 +128,6 @@ func waitingOn(label string, err *data.ChordError) *failed {
 	return &RefState{Kind: RefStateFailed, Cause: data.WaitingFor(label, err), RetryAt: nil}
 }
 
-// parkedLongObject is the object whose attempt parks, as ParkedLong reads it (Pi's `ChordObject` and its `host`): D5a's
-// `*ChordObject` satisfies it.
-type parkedLongObject interface {
-	// label is the object's label, which a report names it by.
-	label() string
-	// readyTimeout is its host's `timeouts.ready`.
-	readyTimeout() time.Duration
-	// report is its host's `report`.
-	report(HostError)
-}
-
 // parkedLong is the `parked_long` report of one parking episode (dependency model §7): once, when the attempt has waited
 // `readyTimeout` on a remote blocker that is only loading with its hold on a link (a ring across hosts started at the same
 // moment stays parked so; nothing fails or retries). The clock, and the report's `since`, start when such a blocker is
@@ -167,7 +135,7 @@ type parkedLongObject interface {
 // the wait counts. Its one timer runs only meanwhile. It is used inside the host's sections.
 type parkedLong struct {
 	loop   eventLoop
-	object parkedLongObject
+	object *chordObject
 	// since is when the attempt began to wait on a remote blocker that is only loading on a link, while it does (Date.now()
 	// time); nil is Pi's undefined.
 	since *int64
@@ -177,7 +145,7 @@ type parkedLong struct {
 	reported bool
 }
 
-func newParkedLong(loop eventLoop, object parkedLongObject) *parkedLong {
+func newParkedLong(loop eventLoop, object *chordObject) *parkedLong {
 	return &parkedLong{loop: loop, object: object}
 }
 
@@ -195,7 +163,7 @@ func (p *parkedLong) waitingOn(blocker *string) {
 		now := p.loop.Now()
 		p.since = &now
 	}
-	due := time.Duration(*p.since-p.loop.Now())*time.Millisecond + p.object.readyTimeout()
+	due := time.Duration(*p.since-p.loop.Now())*time.Millisecond + p.object.host.timeouts.ready
 	p.timer = p.loop.AfterFunc(max(0, due), p.report)
 }
 
@@ -216,5 +184,5 @@ func (p *parkedLong) report() {
 		return
 	}
 	p.reported = true
-	p.object.report(HostError{Kind: ErrParkedLong, Object: p.object.label(), WaitingFor: *waitingFor, Since: *since})
+	p.object.host.report(HostError{Kind: ErrParkedLong, Object: p.object.label(), WaitingFor: *waitingFor, Since: *since})
 }

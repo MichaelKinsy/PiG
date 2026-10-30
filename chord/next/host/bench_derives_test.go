@@ -40,7 +40,7 @@ var benchDiamond = mustContract(contracts.Local("bench.diamond", contracts.Local
 
 // benchDiamondOver is the diamond over list: its bottom derive.
 func benchDiamondOver(self Self, list *documents.Singleton) chord.Watchable[delta.JsonValue] {
-	var previous chord.Watchable[delta.JsonValue] = self.Derive([]any{list}, func(values []any) (delta.JsonValue, error) {
+	previous := self.Derive([]any{list}, func(values []any) (delta.JsonValue, error) {
 		return float64(len(values[0].(*delta.JsonObject).Value("items").([]any))), nil
 	})
 	for range benchDiamondLayers {

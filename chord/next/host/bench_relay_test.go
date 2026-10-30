@@ -9,7 +9,6 @@ import (
 	"net/http/httptest"
 	"runtime"
 	"slices"
-	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -151,7 +150,9 @@ func relayWorkerHost(b testing.TB, start relayStart) Host {
 func startRelayWorker(b testing.TB, start relayStart, end link.Link) Host {
 	worker := relayWorkerHost(b, start)
 	must(b, worker.Connect(end, LinkOptions{Principal: serverPrincipal(), Trusted: true, Codec: link.BinaryCodec}, background))
-	go func() { _ = worker.Load([]HostFacet{{Name: "@bench/worker", Facet: DefineFacet(relayWorkerFacet(start))}}, background) }()
+	go func() {
+		_ = worker.Load([]HostFacet{{Name: "@bench/worker", Facet: DefineFacet(relayWorkerFacet(start))}}, background)
+	}()
 	return worker
 }
 
@@ -458,8 +459,9 @@ func benchRelayWebSocketTab(b testing.TB, on *benchRelayServer) (Host, *countedL
 		socket.start()
 		accepted <- counted
 	}))
-	conn, _, err := websocket.DefaultDialer.Dial("ws"+strings.TrimPrefix(httpServer.URL, "http"), nil)
+	conn, resp, err := websocket.DefaultDialer.Dial("ws"+strings.TrimPrefix(httpServer.URL, "http"), nil)
 	must(b, err)
+	must(b, resp.Body.Close())
 	socket := newGorillaSocket(conn)
 	end := link.WebSocketLink(socket)
 	host := benchRelayTab(b, end)
@@ -837,7 +839,7 @@ func runThrottled(b *testing.B, relayed bool, pause relayPause, throttle *thrott
 		settle()
 	}
 	b.ReportAllocs()
-	for b.Loop() {
+	if b.Loop() {
 		for range 2000 / relayStep {
 			step(true, false)
 		}
@@ -867,7 +869,6 @@ func runThrottled(b *testing.B, relayed bool, pause relayPause, throttle *thrott
 		b.ReportMetric(float64(outside.Microseconds())/float64(max(outsideCount, 1)), "commit-us-outside")
 		b.ReportMetric(float64(during.Microseconds())/float64(max(duringCount, 1)), "commit-us-during")
 		b.ReportMetric(float64(providerEnd.longestHandling().Microseconds()), "longest-handling-us")
-		break
 	}
 	store.Release()
 	view.Release()
@@ -916,7 +917,7 @@ func BenchmarkRelayCalls(b *testing.B) {
 			}
 			times = append(times, time.Since(start))
 		}
-		sort.Slice(times, func(i, j int) bool { return times[i] < times[j] })
+		slices.Sort(times)
 		return times
 	}
 	percentile := func(times []time.Duration, p float64) float64 {
@@ -935,7 +936,7 @@ func BenchmarkRelayCalls(b *testing.B) {
 		b.ReportMetric(float64(len(alone)), "calls")
 	})
 	b.Run("tab B while tab A has 10,000 calls in flight or queued; tab A until the last result", func(b *testing.B) {
-		for b.Loop() {
+		if b.Loop() {
 			var done sync.WaitGroup
 			finished := make(chan struct{})
 			start := time.Now()
@@ -943,16 +944,14 @@ func BenchmarkRelayCalls(b *testing.B) {
 			for i := range results {
 				results[i] = startCall(b, viewA, "ping", float64(i), background)
 			}
-			done.Add(1)
-			go func() {
-				defer done.Done()
+			done.Go(func() {
 				for _, result := range results {
 					if _, err := result.wait(); err != nil {
 						b.Error(err)
 					}
 				}
 				close(finished)
-			}()
+			})
 			during := latencies(func() bool {
 				select {
 				case <-finished:
@@ -970,7 +969,6 @@ func BenchmarkRelayCalls(b *testing.B) {
 				b.ReportMetric(float64(len(during)), "calls")
 			}
 			b.ReportMetric(float64(total.Microseconds()), "tab-A-total-us")
-			break
 		}
 	})
 	runtime.KeepAlive(viewA)

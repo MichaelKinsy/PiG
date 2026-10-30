@@ -144,7 +144,7 @@ func (r *funcRequest) end(err *data.ChordError) {
 // --- upstream unbound.test.ts cases that run on hosts -------------------------------------------------------------------
 
 var (
-	unboundInfo = mustContract(declareLocal("app.info", contracts.LocalDeclaration{
+	unboundInfo = mustContract(declareLocal("app.info", contracts.LocalDeclaration{Params: contracts.Params{},
 		Version: 1,
 		Members: []contracts.LocalEntry{contracts.Mem("title", contracts.Str())},
 	}))
@@ -204,27 +204,27 @@ func TestHostReferencesWaitingInTheIndexBeforeThePublicationAreLoadingPlacedByIt
 	missing, err := host.Hold(unboundMissing, jsonObject("id", float64(1)), background, GetOptions{})
 	must(t, err)
 	for _, ref := range []*Reference{info, missing} {
-		if kind := ref.State().Value().Kind; kind != RefStateLoading {
+		if kind := refStateOf(ref).Kind; kind != RefStateLoading {
 			t.Fatalf("state before the publication = %s, want loading", kind)
 		}
 	}
 	must(t, host.Load([]HostFacet{{Name: "@test/a", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error { return serveInfo(h) })}}, background))
 	turn(host)
-	if kind := info.State().Value().Kind; kind != RefStateLive {
+	if kind := refStateOf(info).Kind; kind != RefStateLive {
 		t.Fatalf("info state = %s, want live", kind)
 	}
-	got := missing.State().Value()
+	got := refStateOf(missing)
 	if got.Kind != RefStateFailed || got.Cause.Kind != data.FailureWaiting || got.Cause.Error.Code != data.CodeUnavailable ||
 		got.Cause.Error.Message != "app.missing is not served here" || got.RetryAt != nil {
 		t.Fatalf("missing state = %+v, want failed waiting unavailable without retryAt", got)
 	}
 	// A retry leaves it waiting: an event wakes it, nothing else.
 	missing.Retry()
-	if got := missing.State().Value(); got.Kind != RefStateFailed || got.Cause.Kind != data.FailureWaiting {
+	if got := refStateOf(missing); got.Kind != RefStateFailed || got.Cause.Kind != data.FailureWaiting {
 		t.Fatalf("missing state after retry = %+v, want failed waiting", got)
 	}
 	must(t, host.Close(background))
-	if got := missing.State().Value(); got.Kind != RefStateEnded || got.Error.Reason != data.ReasonClosed {
+	if got := refStateOf(missing); got.Kind != RefStateEnded || got.Error.Reason != data.ReasonClosed {
 		t.Fatalf("missing state after close = %+v, want ended closed", got)
 	}
 }
@@ -273,7 +273,7 @@ func TestHostReferencesWaitingInTheIndexLeaveNothingBehindOnceReleased(t *testin
 
 // Mirrors "references waiting in the index › end at the start of the host's close, not after its slow native closes (fix round 1, Sol 6)".
 func TestHostReferencesWaitingInTheIndexEndAtTheStartOfTheHostsClose(t *testing.T) {
-	core := mustContract(declareLocal("app.core", contracts.LocalDeclaration{
+	core := mustContract(declareLocal("app.core", contracts.LocalDeclaration{Params: contracts.Params{},
 		Version: 1,
 		Members: []contracts.LocalEntry{contracts.Mem("n", contracts.Int())},
 	}))
@@ -305,7 +305,7 @@ func TestHostReferencesWaitingInTheIndexEndAtTheStartOfTheHostsClose(t *testing.
 		t.Fatalf("the get's outcome = %v, want released/closed", err)
 	}
 	turn(host)
-	if got := held.State().Value(); got.Kind != RefStateEnded || got.Error.Reason != data.ReasonClosed {
+	if got := refStateOf(held); got.Kind != RefStateEnded || got.Error.Reason != data.ReasonClosed {
 		t.Fatalf("held state = %+v, want ended closed", got)
 	}
 	close(closeGate)

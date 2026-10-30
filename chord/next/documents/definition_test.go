@@ -7,6 +7,7 @@ import (
 	"reflect"
 	"regexp"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/chord/delta"
@@ -185,4 +186,29 @@ func TestMigrateRefusesAnOlderValueWithoutAMigrate(t *testing.T) {
 	if err == nil || !strings.Contains(err.Error(), "doc: no migrate from version 1 to 2") {
 		t.Errorf("err = %v", err)
 	}
+}
+
+// A definition is a package-level value shared by every host of a process (the Go hosts run on their own goroutines, Pi's on
+// one thread): Initial's first check must be safe to race.
+func TestStateDefinitionInitialIsSafeToShareBetweenHosts(t *testing.T) {
+	definition, err := DefineState("race.doc", StateOptions{
+		Schema:  contracts.Obj(contracts.Prop("n", contracts.Int())),
+		Version: 1,
+		Initial: func() *JsonObject { return delta.JsonObjectOf("n", float64(0)) },
+	})
+	if err != nil {
+		t.Fatalf("DefineState: %v", err)
+	}
+	var group sync.WaitGroup
+	for range 8 {
+		group.Go(func() {
+			for range 50 {
+				if _, err := definition.Initial(background); err != nil {
+					t.Errorf("Initial: %v", err)
+					return
+				}
+			}
+		})
+	}
+	group.Wait()
 }

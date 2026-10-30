@@ -15,7 +15,6 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/chord/next/contracts"
 	"github.com/MichaelKinsy/PiG/chord/next/data"
-	"github.com/MichaelKinsy/PiG/chord/next/internal/nexttest"
 	"github.com/MichaelKinsy/PiG/chord/next/link"
 )
 
@@ -238,7 +237,10 @@ func TestObjectCyclesAcrossHostsMissACycleEnteringAnActivationThatStartedAlready
 	// The server's `Near` activates for the tab and holds `Far` with its chain.
 	ms := 100 * time.Millisecond
 	getting := make(chan error, 1)
-	go func() { _, err := r.Tab.Get(cycNear, jsonObject("session", "S1"), background, GetOptions{ReadyTimeout: &ms}); getting <- err }()
+	go func() {
+		_, err := r.Tab.Get(cycNear, jsonObject("session", "S1"), background, GetOptions{ReadyTimeout: &ms})
+		getting <- err
+	}()
 	chain := worker.Next("hold").(*link.HoldMessage).Chain
 	// The worker's own activation, started at the same moment, holds that `Near` back with a chain of its own.
 	worker.Send(nearHold(t, 0, []string{"0190f5a2-7c3e-7d4a-9b1c-000000000001"}))
@@ -255,25 +257,53 @@ func TestObjectCyclesAcrossHostsMissACycleEnteringAnActivationThatStartedAlready
 }
 
 func TestObjectCyclesAcrossHostsKeepNoObjectAndSoNoChainOnceReleasedGC(t *testing.T) {
-	r := cyclic(t, "near")
-	_, err := r.Tab.Get(cycNear, jsonObject("session", "S1"), background, GetOptions{})
-	if err == nil {
-		t.Fatal("the cycle was not refused")
-	}
-	var refs []weak.Pointer[chordObject]
-	for _, host := range []Host{r.Server, r.Worker("S1")} {
-		h := host.(*chordHost)
-		h.enter(func() {
-			for _, object := range h.objectList() {
-				refs = append(refs, weak.Make(object))
-			}
+	// As Pi's IIFE: only the weak references leave the function; the hosts are unreachable once closed.
+	refs := func() []weak.Pointer[chordObject] {
+		r := cyclic(t, "near")
+		hosts := []Host{r.Server}
+		r.Workers.Range(func(_, worker any) bool {
+			hosts = append(hosts, worker.(Host))
+			return true
 		})
-	}
-	if len(refs) < 2 {
-		t.Fatalf("objects = %d, want at least 2 on the server and the worker", len(refs))
-	}
-	closeHosts(t, r.Tab, r.Server)
-	nexttest.ExpectCollected(t, refs...)
+		// Every object attempted meanwhile, weakly (Pi's `attempted`): they may be gone from the hosts when the get ends.
+		seen := map[weak.Pointer[chordObject]]struct{}{}
+		done := make(chan struct{})
+		collected := make(chan struct{})
+		go func() {
+			defer close(collected)
+			for {
+				for _, host := range hosts {
+					h := host.(*chordHost)
+					h.enter(func() {
+						for _, object := range h.objectList() {
+							seen[weak.Make(object)] = struct{}{}
+						}
+					})
+				}
+				select {
+				case <-done:
+					return
+				default:
+				}
+			}
+		}()
+		_, err := r.Tab.Get(cycNear, jsonObject("session", "S1"), background, GetOptions{})
+		close(done)
+		<-collected
+		if err == nil {
+			t.Fatal("the cycle was not refused")
+		}
+		var refs []weak.Pointer[chordObject]
+		for ref := range seen {
+			refs = append(refs, ref)
+		}
+		if len(refs) < 2 {
+			t.Fatalf("objects = %d, want at least 2 on the server and the worker", len(refs))
+		}
+		closeHosts(t, append([]Host{r.Tab}, hosts...)...)
+		return refs
+	}()
+	expectCollected(t, refs...)
 }
 
 // GC of released references.
@@ -297,7 +327,8 @@ func TestObjectGCOfReleasedReferencesKeepsNothingInAReleasedReferenceOrAStoppedW
 	}()
 	_, err := refCall(held, "add", jsonObject("text", "x"))
 	must(t, err)
-	nexttest.ExpectCollected(t, refs...)
+	untilEnded(t, host)
+	expectCollected(t, refs...)
 }
 
 func TestObjectGCOfReleasedReferencesKeepsNeitherTheDeclaringObjectNorTheHostInAReleasedSelfGetReference(t *testing.T) {
@@ -321,13 +352,13 @@ func TestObjectGCOfReleasedReferencesKeepsNeitherTheDeclaringObjectNorTheHostInA
 	}, loadedOptions{})
 	mustGet(t, host, attemptPage, jsonObject("id", 1.0)).Release()
 	turn(host)
+	untilEnded(t, host)
 	mu.Lock()
 	held := slices.Clone(attempts)
 	mu.Unlock()
-	nexttest.ExpectCollected(t, held...)
+	expectCollected(t, held...)
 	hostRef := weak.Make(host.(*chordHost))
-	host = nil
-	nexttest.ExpectCollected(t, hostRef)
+	expectCollected(t, hostRef)
 	if declared == nil {
 		t.Fatal("the reference was not declared")
 	}

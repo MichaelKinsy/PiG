@@ -162,7 +162,7 @@ func revokedByApp(principal data.Principal) ([]delta.JsonValue, error) {
 var revocationS1 = guestPrincipal("S1")
 
 // barrierType is a host-lifetime type whose activation waits for an open: `load` waits for it (the start barrier).
-var barrierType = mustContract(declareLocal("app.barrier", contracts.LocalDeclaration{
+var barrierType = mustContract(declareLocal("app.barrier", contracts.LocalDeclaration{Params: contracts.Params{},
 	Version: 1,
 	Members: []contracts.LocalEntry{contracts.Mem("n", contracts.Int())},
 }))
@@ -417,7 +417,7 @@ func TestHostRevokeNeverRevokesTheHostsOwnPrincipal(t *testing.T) {
 		own, err := host.Get(Notes, jsonObject("session", "S1"), background, GetOptions{})
 		must(t, err)
 		must(t, host.Revoke(jsonObject("session", "S1"), background))
-		if kind := own.State().Value().Kind; kind != RefStateLive {
+		if kind := refStateOf(own).Kind; kind != RefStateLive {
 			t.Fatalf("state = %s, want live", kind)
 		}
 	})
@@ -433,7 +433,7 @@ func TestHostRevokeEndsAHoldTheParentSentBeforeItsRevokeWhileItStillWaitsForLoad
 				address := serverAddress()
 				host := newHost(t, HostOptions{Address: &address, Principal: workerPrincipal("S1"), RevokedBy: revokedByApp, OnError: func(HostError) {}})
 				defer closeHosts(t, host)
-				parent, ends := rawParentLinks(t, host)
+				parent, ends, loop := rawParentOnLoop(t, host)
 				facet := DefineFacet(func(h FacetHost, _ FacetSelf) error {
 					if _, err := serveNotes(h, nil); err != nil {
 						return err
@@ -450,8 +450,12 @@ func TestHostRevokeEndsAHoldTheParentSentBeforeItsRevokeWhileItStillWaitsForLoad
 				})
 				loading := make(chan error, 1)
 				go func() { loading <- host.Load([]HostFacet{{Name: "@test/worker", Facet: facet}}, background) }()
-				holdAs(t, parent, 0, revocationS1, Notes)
-				parent.Send(&link.RevokeMessage{Revocation: jsonObject("session", "S1")})
+				// Pi's peer sends both in one turn, over a memory link on the one microtask queue: the hold is delivered, its
+				// `bound` flush is queued behind the revoke's delivery, and the revoke ends the hold before any `bound` leaves.
+				loop.Run(func() {
+					holdAs(t, parent, 0, revocationS1, Notes)
+					parent.Send(&link.RevokeMessage{Revocation: jsonObject("session", "S1")})
+				})
 				transported(ends[0], ends[1])
 				close(opened)
 				must(t, <-loading)
@@ -462,7 +466,7 @@ func TestHostRevokeEndsAHoldTheParentSentBeforeItsRevokeWhileItStillWaitsForLoad
 				}
 				nexttest.RequireJSONEqual(t, gone.Error.Value("error").(*delta.JsonObject).Value("reason"), "revoked")
 				if kinds := parent.Kinds(); len(kinds) != 0 {
-					t.Fatalf("kinds = %v, want none", kinds)
+					t.Fatalf("kinds = %v, want none: the hold was never bound", kinds)
 				}
 				if text := nexttest.JSONText(t, sourceValue(t, host, host.References(Notes))); text != "[]" {
 					t.Fatalf("presence = %s, want []", text)
@@ -507,6 +511,8 @@ func TestHostRevokeEndsARelayedHoldStillWaitingForItsRoutesLink(t *testing.T) {
 		}
 		nexttest.RequireJSONEqual(t, gone.Error.Value("error").(*delta.JsonObject).Value("reason"), "revoked")
 		close(resolving)
+		// The resolve runs to its end (its link is made, the route keeps it until it closes) before the test ends.
+		scopeEventually(t, "the resolve finished", func() bool { mu.Lock(); defer mu.Unlock(); return len(routed) == 1 })
 		transported(ends[0], ends[1])
 		transported(ends[0], ends[1])
 		mu.Lock()
@@ -632,20 +638,26 @@ func TestHostRevokeSendsRevokeOnEveryRouteLinkAndOnNoneMadeLater(t *testing.T) {
 		defer closeHosts(t, r.Tab, r.Server)
 		_, err := r.Tab.Hold(PlacedNotes, jsonObject("session", "S1"), background, GetOptions{})
 		must(t, err)
+		scopeEventually(t, "the first worker was resolved", func() bool { return len(workers.Peers()) >= 1 })
 		r.Transported()
 		must(t, r.Server.Revoke(jsonObject("session", "S7"), background))
-		r.Transported()
-		var revokes []link.Message
-		for _, message := range workers.Peers()[0].Received() {
-			if message.Kind() == "revoke" {
-				revokes = append(revokes, message)
+		revokesOf := func(peer *RawPeer) []link.Message {
+			var revokes []link.Message
+			for _, message := range peer.Received() {
+				if message.Kind() == "revoke" {
+					revokes = append(revokes, message)
+				}
 			}
+			return revokes
 		}
-		if len(revokes) != 1 || !reflect.DeepEqual(revokes[0], &link.RevokeMessage{Revocation: jsonObject("session", "S7")}) {
+		scopeEventually(t, "the revoke reached the worker", func() bool { return len(revokesOf(workers.Peers()[0])) >= 1 })
+		r.Transported()
+		if revokes := revokesOf(workers.Peers()[0]); len(revokes) != 1 || !reflect.DeepEqual(revokes[0], &link.RevokeMessage{Revocation: jsonObject("session", "S7")}) {
 			t.Fatalf("revokes = %v, want one revoke of S7", revokes)
 		}
 		_, err = r.Tab.Hold(PlacedNotes, jsonObject("session", "S2"), background, GetOptions{})
 		must(t, err)
+		scopeEventually(t, "the second worker was resolved", func() bool { return len(workers.Peers()) >= 2 })
 		r.Transported()
 		if slices.Contains(workers.Peers()[1].Kinds(), "revoke") {
 			t.Fatal("a link made later got a revoke")
@@ -691,9 +703,7 @@ func TestHostRevocationAcrossARelayClosesARevokedTabsLinkAndEndsItsObjectsOnTheW
 		must(t, err)
 		r.Transported()
 		r.Transported()
-		if kind := notes.State().Value().Kind; kind != RefStateLive {
-			t.Fatalf("state = %s, want live", kind)
-		}
+		awaitRefState(t, "live", notes, func(s *RefState) bool { return s.Kind == RefStateLive })
 		worker := r.Worker("session|S1")
 		present := worker.References(PlacedNotes)
 		if text := nexttest.JSONText(t, sourceValue(t, worker, present)); !strings.HasPrefix(text, "[{") || strings.Contains(text, "},{") {
@@ -703,7 +713,7 @@ func TestHostRevocationAcrossARelayClosesARevokedTabsLinkAndEndsItsObjectsOnTheW
 		r.Transported()
 		r.Transported()
 		// The tab's link closed: its reference waits for a new link, its holds on the worker are released.
-		if kind := notes.State().Value().Kind; kind != RefStateLoading {
+		if kind := refStateOf(notes).Kind; kind != RefStateLoading {
 			t.Fatalf("state = %s, want loading", kind)
 		}
 		if text := nexttest.JSONText(t, sourceValue(t, worker, present)); text != "[]" {
@@ -722,13 +732,11 @@ func TestHostRevocationAcrossARelayEndsTheWorkersObjectsThroughTheRevokeMessageA
 		must(t, err)
 		r.Transported()
 		r.Transported()
-		if kind := notes.State().Value().Kind; kind != RefStateLive {
-			t.Fatalf("state = %s, want live", kind)
-		}
+		awaitRefState(t, "live", notes, func(s *RefState) bool { return s.Kind == RefStateLive })
 		must(t, r.Server.Revoke(jsonObject("session", "S1"), background))
 		r.Transported()
 		r.Transported()
-		if kind := notes.State().Value().Kind; kind != RefStateEnded {
+		if kind := refStateOf(notes).Kind; kind != RefStateEnded {
 			t.Fatalf("state = %s, want ended", kind)
 		}
 		worker := r.Worker("session|S1")
@@ -741,7 +749,7 @@ func TestHostRevocationAcrossARelayEndsTheWorkersObjectsThroughTheRevokeMessageA
 		// The tab's link stayed open: a new hold binds.
 		again, err := r.Tab.Get(PlacedNotes, jsonObject("session", "S1"), background, GetOptions{})
 		must(t, err)
-		if kind := again.State().Value().Kind; kind != RefStateLive {
+		if kind := refStateOf(again).Kind; kind != RefStateLive {
 			t.Fatalf("state = %s, want live", kind)
 		}
 	})
@@ -928,4 +936,17 @@ func TestHostRevokeEndsAGuestsReferenceOverARouteLinkThatDroppedAndNothingHoldsI
 		}
 	}
 	closeHosts(t, host)
+}
+
+// rawParentOnLoop is rawParentLinks over a memory link on the host's own microtask queue (link.MemoryLinkPairOn), as Pi's
+// memory link is on the one global queue the host queues its microtasks on; the returned function runs a section of the
+// host's loop, where a peer sends several messages in one turn.
+func rawParentOnLoop(t testing.TB, host Host) (*RawPeer, [2]*link.MemoryLink, sectionLoop) {
+	t.Helper()
+	loop := host.(*chordHost).loop()
+	a, b := link.MemoryLinkPairOn(loop.Queue, func() { loop.Run(func() {}); loop.Run(func() {}) })
+	must(t, host.Connect(a, LinkOptions{Principal: serverPrincipal(), Codec: testCodec()}, background))
+	peer := newRawPeer(t, b, rawPeerOptions{})
+	peer.Next("hello")
+	return peer, [2]*link.MemoryLink{a, b}, loop
 }

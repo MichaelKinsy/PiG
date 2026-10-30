@@ -51,7 +51,9 @@ func presenceEntry(session string, principal data.Principal, incarnation string)
 
 func presenceList(t testing.TB, host Host, typ *contracts.Contract) []any {
 	t.Helper()
-	value, err := host.References(typ).Value()
+	var value delta.JsonValue
+	var err error
+	host.(*chordHost).loop().Run(func() { value, err = host.References(typ).Value() })
 	must(t, err)
 	return value.([]any)
 }
@@ -234,8 +236,7 @@ func rawViewedTab(t testing.TB, server Host, viewed *contracts.Contract, drop *a
 // message per commit (race 9).
 func TestHostReferencesPutsADepartureDiscoveredWhileACommitSendsIntoTheNextBatchOneStateMessagePerCommitRace9(t *testing.T) {
 	viewed := presenceViewed("count", "viewers")
-	var server Host
-	server = presenceServer(t, func(h FacetHost) error {
+	server := presenceServer(t, func(h FacetHost) error {
 		if _, err := serveNotes(h, nil); err != nil {
 			return err
 		}
@@ -297,8 +298,7 @@ func TestHostReferencesPutsADepartureDiscoveredWhileACommitSendsIntoTheNextBatch
 func TestHostReferencesCompletesAHoldsBookkeepingBeforeItsPresenceEntryPublishesALinkClosingThenLeaksNothing(t *testing.T) {
 	viewed := presenceViewed("viewers")
 	linger := 60 * time.Second
-	var server Host
-	server = presenceServer(t, func(h FacetHost) error {
+	server := presenceServer(t, func(h FacetHost) error {
 		return h.Serve(viewed, func(_ *delta.JsonObject, _ data.Principal, self Self) (contracts.Implementation, error) {
 			viewers := self.Derive([]any{h.References(viewed)}, func(values []any) (delta.JsonValue, error) {
 				return float64(len(values[0].([]any))), nil
@@ -476,6 +476,6 @@ func TestHostReferencesKeepsNoReleasedReferenceGC(t *testing.T) {
 	notes.Release()
 	transported(hosts.Links[0], hosts.Links[1])
 	nexttest.RequireJSONEqual(t, presenceList(t, server, Notes), []any{})
-	nexttest.ExpectCollected(t, refs...)
+	expectCollectedEventually(t, refs...)
 	nexttest.RequireJSONEqual(t, presenceList(t, server, Notes), []any{})
 }

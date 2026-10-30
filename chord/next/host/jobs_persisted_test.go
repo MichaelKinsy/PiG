@@ -1420,8 +1420,8 @@ func TestPersistedGCSettledRunsCancelledAbortWaitsAndAnEndedObjectWithAHeldChang
 		}
 		jobs.Close()
 	}()
-	nexttest.ExpectCollected(t, runRefs...)
-	nexttest.ExpectCollected(t, objectRefs...)
+	collectedWithin(t, runRefs...)
+	collectedWithin(t, objectRefs...)
 	hanging := opened(t, open(), hang(t), nil)
 	run := jobStart(t, hanging.Imports, pathArgs("c"), background)
 	waitRecord(t, hanging.Store, run.ID(), map[string]any{"phase": "running"})

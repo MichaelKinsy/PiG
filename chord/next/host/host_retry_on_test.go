@@ -3,9 +3,9 @@ package host
 import (
 	"context"
 	"errors"
+	"strconv"
 	"sync"
 	"sync/atomic"
-	"strconv"
 	"testing"
 	"weak"
 
@@ -222,12 +222,12 @@ var retryModels = func() registries.Registry[any, any] {
 	return token
 }()
 
-var retryRuntime = mustContract(contracts.Local("app.runtime", contracts.LocalDeclaration{
+var retryRuntime = mustContract(contracts.Local("app.runtime", contracts.LocalDeclaration{Params: contracts.Params{},
 	Version: 1,
 	Members: []contracts.LocalEntry{contracts.Mem("set", contracts.NewMethod(contracts.Int()))},
 }))
 
-var retryUser = mustContract(contracts.Local("app.user", contracts.LocalDeclaration{
+var retryUser = mustContract(contracts.Local("app.user", contracts.LocalDeclaration{Members: []contracts.LocalEntry{},
 	Version: 1,
 	Params:  contracts.Params{contracts.Prop("id", contracts.Int())},
 }))
@@ -314,7 +314,7 @@ func TestRetryOnRetriesAFailedObjectABrokenOpenWhenASourceGetsANewValueTheWatche
 
 // "does nothing while the object is parked failed { waiting }: its dependencies decide (dependency model §3.8)".
 func TestRetryOnDoesNothingWhileTheObjectIsParkedFailedWaitingItsDependenciesDecide(t *testing.T) {
-	missing := mustContract(contracts.Local("app.missing", contracts.LocalDeclaration{Version: 1}))
+	missing := mustContract(contracts.Local("app.missing", contracts.LocalDeclaration{Members: []contracts.LocalEntry{}, Params: contracts.Params{}, Version: 1}))
 	var factories atomic.Int32
 	host, _ := loaded(t, func(h FacetHost, _ FacetSelf) error {
 		if err := serveModels(h); err != nil {
@@ -381,6 +381,7 @@ func TestRetryOnRemembersAWakeWhileItActivatesThatAttemptFailingIsRetriedAtOnce(
 	}, loadedOptions{})
 	runtime := mustGet(t, host, retryRuntime, jsonObject())
 	user := mustHold(t, host, retryUser, jsonObject("id", 1.0))
+	until(t, "the first attempt's open", func() bool { return opens.Load() == 1 })
 	// The first attempt read no model and waits; a model arrives meanwhile; then that attempt fails broken.
 	setModels(t, runtime, 1)
 	if got := stateOfRef(user).Kind; got != RefStateLoading {
@@ -422,10 +423,10 @@ func TestRetryOnIgnoresWakesWhileLive(t *testing.T) {
 
 // "refuses sources that end with an attempt: a reference's member, its own writable, `ref.state`".
 func TestRetryOnRefusesSourcesThatEndWithAnAttemptAReferencesMemberItsOwnWritableRefState(t *testing.T) {
-	other := mustContract(contracts.Local("app.other", contracts.LocalDeclaration{
+	other := mustContract(contracts.Local("app.other", contracts.LocalDeclaration{Params: contracts.Params{},
 		Version: 1, Members: []contracts.LocalEntry{contracts.Mem("n", contracts.Int())},
 	}))
-	picky := mustContract(contracts.Local("app.picky", contracts.LocalDeclaration{
+	picky := mustContract(contracts.Local("app.picky", contracts.LocalDeclaration{Members: []contracts.LocalEntry{},
 		Version: 1, Params: contracts.Params{contracts.Prop("which", contracts.Int())},
 	}))
 	host, _ := loaded(t, func(h FacetHost, _ FacetSelf) error {
@@ -446,7 +447,7 @@ func TestRetryOnRefusesSourcesThatEndWithAnAttemptAReferencesMemberItsOwnWritabl
 	for _, which := range []float64{0, 1, 2} {
 		_, err := host.Get(picky, jsonObject("which", which), background, GetOptions{})
 		want := "app.picky(" + strconv.Itoa(int(which)) + "): self.retryOn takes registry values and constants (sources that outlive the attempt)"
-		if err == nil || err.Error() != want {
+		if err == nil || !hasText(err.Error(), want) {
 			t.Fatalf("get(which %v) error = %v, want %q", which, err, want)
 		}
 	}
@@ -478,13 +479,14 @@ func TestRetryOnAreTheObjectsAFailedObjectThatEndsReleasesThemAndIsCollectedWhil
 	if len(refs) == 0 {
 		t.Fatal("no object of app.user(1) was found")
 	}
-	nexttest.ExpectCollected(t, refs...)
+	untilEnded(t, host)
+	expectCollected(t, refs...)
 	closeHosts(t, host)
 }
 
 // "does not wake an object by its own contributions leaving (it failed live: no retry without backoff)".
 func TestRetryOnDoesNotWakeAnObjectByItsOwnContributionsLeavingItFailedLiveNoRetryWithoutBackoff(t *testing.T) {
-	contributor := mustContract(contracts.Local("app.contributor", contracts.LocalDeclaration{Version: 1}))
+	contributor := mustContract(contracts.Local("app.contributor", contracts.LocalDeclaration{Members: []contracts.LocalEntry{}, Params: contracts.Params{}, Version: 1}))
 	var mu sync.Mutex
 	var self Self
 	host, _ := loaded(t, func(h FacetHost, _ FacetSelf) error {

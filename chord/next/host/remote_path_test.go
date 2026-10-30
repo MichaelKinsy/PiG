@@ -1,9 +1,10 @@
 package host
 
 import (
-	"github.com/MichaelKinsy/PiG/chord/next/data"
 	"slices"
 	"testing"
+
+	"github.com/MichaelKinsy/PiG/chord/next/data"
 )
 
 // Ports packages/chord/test/next/remote/path.test.ts.

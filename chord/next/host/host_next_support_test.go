@@ -3,12 +3,13 @@ package host
 import (
 	"context"
 	"errors"
-	"fmt"
 	"math"
 	"slices"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
+	"weak"
 
 	"github.com/MichaelKinsy/PiG/chord"
 	chordctx "github.com/MichaelKinsy/PiG/chord/context"
@@ -16,7 +17,6 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/contracts"
 	"github.com/MichaelKinsy/PiG/chord/next/data"
 	"github.com/MichaelKinsy/PiG/chord/next/documents"
-	"github.com/MichaelKinsy/PiG/chord/next/internal/nexttest"
 	"github.com/MichaelKinsy/PiG/chord/next/link"
 	"github.com/MichaelKinsy/PiG/chord/next/store"
 	"github.com/MichaelKinsy/PiG/chord/nextnode"
@@ -56,6 +56,16 @@ func newHost(t testing.TB, options HostOptions) Host {
 	t.Helper()
 	host, err := CreateHost(options)
 	must(t, err)
+	// The host is closed when the test ends, so no timer or task of it runs into the next test; the cleanup holds it weakly,
+	// for a test that asserts the host's collection.
+	if made, ok := host.(*chordHost); ok {
+		weakHost := weak.Make(made)
+		t.Cleanup(func() {
+			if alive := weakHost.Value(); alive != nil {
+				_ = alive.Close(background)
+			}
+		})
+	}
 	return host
 }
 
@@ -294,25 +304,6 @@ func loaded(t testing.TB, setup func(host FacetHost, self FacetSelf) error, opti
 	return host, errs
 }
 
-// loadedPlugin is one plugin of loadedPlugins: its name and setup.
-type loadedPlugin struct {
-	Name  string
-	Setup func(host FacetHost, self FacetSelf) error
-}
-
-// loadedPlugins is a host with background errors collected, loaded with one facet per plugin, in the order given.
-func loadedPlugins(t testing.TB, setups []loadedPlugin, options loadedOptions) (Host, *hostErrors) {
-	t.Helper()
-	errs := &hostErrors{}
-	host := newHost(t, HostOptions{Telemetry: telemetryOf(options.Telemetry), ReadyTimeout: options.ReadyTimeout, OnError: errs.push, loop: options.Loop})
-	facets := make([]HostFacet, len(setups))
-	for i, plugin := range setups {
-		facets[i] = HostFacet{Name: plugin.Name, Facet: DefineFacet(plugin.Setup)}
-	}
-	must(t, host.Load(facets, background))
-	return host, errs
-}
-
 // failures is the kinds and objects of the reported `activation_failed` errors, with their causes' kinds.
 func failures(errs []HostError) []string {
 	var out []string
@@ -512,19 +503,6 @@ func openFence() store.CommitFence {
 	return store.CommitFence{Admit: func() bool { return true }, Adopt: func(int64, []int64) error { return nil }}
 }
 
-// tableIn creates definition (and its indexes) in st as `app.store:<name>` and returns a handle to it.
-func tableIn(t testing.TB, st *store.ChordStore, definition *store.TableDefinition, owner ...*testOwner) *store.TableHandle {
-	t.Helper()
-	handleOwner := tableOwner()
-	if len(owner) > 0 {
-		handleOwner = owner[0]
-	}
-	table := "app.store:" + definition.Name
-	err := store.PrepareTables([]store.DeclaredTable{{Definition: definition, Table: table}}, st, openFence(), "app.store", background)
-	must(t, err)
-	return store.NewTableHandle(definition, table, st, handleOwner)
-}
-
 // rejection is the error err is, as ChordError JSON when it is one; the test fails when err is nil.
 func rejection(t testing.TB, err error) any {
 	t.Helper()
@@ -539,7 +517,7 @@ func rejection(t testing.TB, err error) any {
 
 // transported waits until messages and closes in flight on memory links (one task per hop) have arrived.
 func transported(links ...*link.MemoryLink) {
-	for hop := 0; hop < 6; hop++ {
+	for range 6 {
 		for _, end := range links {
 			end.Flushed()
 		}
@@ -572,20 +550,25 @@ var serverWireAddress = link.WireAddress{Kind: "server", Params: jsonObject()}
 // RAW_PEER is the incarnation a raw peer greets with.
 const rawPeerIncarnation = "00000000-0000-7000-8000-000000000000"
 
-// currentCodec is the codec of the protocol test running now (forEachCodec).
-var currentCodec link.Codec = link.BinaryCodec
+// currentCodec is the codec of the protocol test running now (forEachCodec); atomic: a goroutine of a host a test left open
+// reads it while the next test sets it.
+var currentCodec atomic.Pointer[codecBox]
+
+type codecBox struct{ codec link.Codec }
+
+func init() { currentCodec.Store(&codecBox{link.BinaryCodec}) }
 
 // testCodec is the codec of the protocol test running now; links in tests use it at both ends.
-func testCodec() link.Codec { return currentCodec }
+func testCodec() link.Codec { return currentCodec.Load().codec }
 
 // forEachCodec runs suite once per codec, as `binary codec` and `text codec`.
 func forEachCodec(t *testing.T, suite func(t *testing.T)) {
 	t.Helper()
 	for _, codec := range []link.Codec{link.BinaryCodec, link.TextCodec} {
 		t.Run(codec.Name()+" codec", func(t *testing.T) {
-			previous := currentCodec
-			currentCodec = codec
-			defer func() { currentCodec = previous }()
+			previous := currentCodec.Load()
+			currentCodec.Store(&codecBox{codec})
+			defer currentCodec.Store(previous)
 			suite(t)
 		})
 	}
@@ -1413,10 +1396,14 @@ func relay(t testing.TB, options relayedOptions) *relayed {
 	})}}, ctx))
 	tab := newHost(t, HostOptions{Compression: options.TabCompression, OnError: result.Errors.Tab.push, loop: options.Loop})
 	must(t, tab.Load(nil, ctx))
-	result.Tab = tab
 	a, b := link.MemoryLinkPair()
+	// A worker may be resolving already (a host object of the server started it during its load): its resolve appends to
+	// the same fields.
+	result.mu.Lock()
+	result.Tab = tab
 	result.TabLink = a
 	result.peers = append(result.peers, b)
+	result.mu.Unlock()
 	tabCodec := options.TabCodec
 	if tabCodec == nil {
 		tabCodec = testCodec()
@@ -1534,150 +1521,4 @@ func (c *countingCompression) Bytes() int {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	return c.bytes
-}
-
-// archiveTableSet is Pi's `ArchiveTables`: the tables of `archiveStore`: edits (v1 with an index; v2 adds `done`) and
-// notes, whose v2 migration crashed.
-type archiveTableSet struct {
-	EditsV1, EditsV2, NotesV1, NotesV2 *store.TableDefinition
-}
-
-var archiveTables = func() archiveTableSet {
-	define := func(name string, options store.TableOptions) *store.TableDefinition {
-		definition, err := store.DefineTable(name, options)
-		if err != nil {
-			panic(err)
-		}
-		return definition
-	}
-	evolve := func(previous *store.TableDefinition, edit func(t *store.TableEditor) *store.TableEditor) *store.TableDefinition {
-		definition, err := store.EvolveTable(previous, edit)
-		if err != nil {
-			panic(err)
-		}
-		return definition
-	}
-	editsV1 := define("edits", store.TableOptions{
-		Version: 1,
-		Columns: []store.ColumnProp{
-			store.Col("id", store.Str()),
-			store.Col("path", store.Str()),
-			store.Col("at", store.Int()),
-			store.Col("note", store.Opt(store.Str())),
-			store.Col("meta", store.Opt(store.Json(contracts.Obj(contracts.Prop("a", contracts.Int())), store.JsonColumnOptions{Version: 1}))),
-		},
-		Key:     []string{"id"},
-		Indexes: store.IndexRecords{{Name: "by_path", Columns: []string{"path", "at"}}},
-	})
-	editsV2 := evolve(editsV1, func(t *store.TableEditor) *store.TableEditor {
-		return t.Add("done", store.Bool(contracts.Default(false)))
-	})
-	notesV1 := define("notes", store.TableOptions{
-		Version: 1, Columns: []store.ColumnProp{store.Col("id", store.Int()), store.Col("text", store.Str())}, Key: []string{"id"},
-	})
-	notesV2 := evolve(notesV1, func(t *store.TableEditor) *store.TableEditor {
-		return t.Rows(func(row store.Row) (any, error) {
-			if row["id"] == int64(120) {
-				return nil, errors.New("crash")
-			}
-			return store.Row{"text": row["text"].(string) + "!"}, nil
-		})
-	})
-	return archiveTableSet{editsV1, editsV2, notesV1, notesV2}
-}()
-
-// archiveStore is a store holding a bit of everything an archive carries: `app.store:edits` at version 2 with 150 rows
-// (two export pages; some written at version 1, `NULL` and `json(...)` cells, an index), `app.store:notes` left
-// `migrating` at version 2 after one committed chunk, and documents: a singleton, keyed ones with deltas after their
-// base, and a retired one.
-func archiveStore(t *testing.T, outbox ...bool) *store.ChordStore {
-	t.Helper()
-	tables := archiveTables
-	st := memoryStore(t, outbox...)
-	edits := archiveTableAt(t, st, "app.store:edits", tables.EditsV1)
-	notes := archiveTableAt(t, st, "app.store:notes", tables.NotesV1)
-	var staged []store.StagedWrite
-	editChanges := store.NewTableChanges(edits, &staged)
-	for i := range 150 {
-		row := store.Row{"id": fmt.Sprintf("e%03d", i), "path": fmt.Sprintf("p/%d", i%4), "at": int64(i)}
-		if i%2 == 0 {
-			row["note"] = fmt.Sprintf("n%d", i)
-		}
-		if i%3 == 0 {
-			row["meta"] = delta.JsonObjectOf("a", float64(i))
-		}
-		must(t, editChanges.Put(row))
-	}
-	noteChanges := store.NewTableChanges(notes, &staged)
-	for i := range 150 {
-		must(t, noteChanges.Put(store.Row{"id": int64(i), "text": fmt.Sprintf("t%d", i)}))
-	}
-	if _, err := st.Commit(staged, openFence(), background); err != nil {
-		t.Fatalf("archiveStore: commit: %v", err)
-	}
-	prepare := func(definition *store.TableDefinition, table string) error {
-		return store.PrepareTables([]store.DeclaredTable{{Definition: definition, Table: table}}, st, openFence(), "app", background)
-	}
-	must(t, prepare(tables.EditsV2, "app.store:edits"))
-	// The notes migration crashes after its first committed chunk: the table stays `migrating`.
-	_ = prepare(tables.NotesV2, "app.store:notes")
-	address := store.DocumentAddress{Namespace: "chord", Owner: "app.store", Kind: "memo"}
-	var ids []int64
-	created := store.CommitFence{
-		Admit: func() bool { return true },
-		Adopt: func(_ int64, created []int64) error {
-			ids = created
-			return nil
-		},
-	}
-	var creations []store.StagedWrite
-	for _, key := range []string{"", "a", "b", "gone"} {
-		keyed := address
-		keyed.Key = new(key)
-		value := delta.JsonObjectOf("title", key)
-		base := store.DocumentBase{Version: 1, Fingerprint: "f1", Value: value}
-		creations = append(creations, store.CreateDocument(keyed, base, nexttest.JSONText(t, value), nil))
-	}
-	if _, err := st.Commit(creations, created, background); err != nil {
-		t.Fatalf("archiveStore: create documents: %v", err)
-	}
-	a, b, gone := ids[1], ids[2], ids[3]
-	change := func(id, revision int64, title string) store.StagedWrite {
-		ops := []delta.Op{{"s", []any{"title"}, title}}
-		content := store.DocumentContent{Kind: "delta", Version: 1, Ops: ops}
-		return store.ChangeDocument(id, revision, content, nexttest.JSONText(t, ops))
-	}
-	commit := func(writes ...store.StagedWrite) {
-		if _, err := st.Commit(writes, openFence(), background); err != nil {
-			t.Fatalf("archiveStore: commit: %v", err)
-		}
-	}
-	commit(change(a, 1, "a2"), store.RetireDocument(gone, 1))
-	commit(change(a, 2, "a3"))
-	commit(change(b, 1, "b2"))
-	return st
-}
-
-// archiveTableAt is definition prepared as table in st, and a handle to it.
-func archiveTableAt(t testing.TB, st *store.ChordStore, table string, definition *store.TableDefinition) *store.TableHandle {
-	t.Helper()
-	err := store.PrepareTables([]store.DeclaredTable{{Definition: definition, Table: table}}, st, openFence(), "app", background)
-	must(t, err)
-	return store.NewTableHandle(definition, table, st, tableOwner())
-}
-
-// exported is every part of st's export.
-func exported(t testing.TB, st store.Store, ctx context.Context) []store.ArchivePart {
-	t.Helper()
-	export, err := st.Export(ctx)
-	must(t, err)
-	var parts []store.ArchivePart
-	for {
-		part, ok, err := export.Next(ctx)
-		must(t, err)
-		if !ok {
-			return parts
-		}
-		parts = append(parts, part)
-	}
 }

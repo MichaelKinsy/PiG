@@ -5,7 +5,6 @@ import (
 	"sync"
 	"testing"
 	"time"
-
 )
 
 // Test support of host_ctx, host_root, host_routines and host_route tests: a loop with vitest's fake timers and the real
@@ -17,6 +16,8 @@ import (
 type scopeLoop struct {
 	*fakeLoop
 	real *Loop
+	// intervals fakes `setInterval` too (the host's heartbeat runs on the fake clock): a test whose `toFake` has it.
+	intervals bool
 }
 
 var _ sectionLoop = (*scopeLoop)(nil)
@@ -27,6 +28,18 @@ func (l *scopeLoop) Run(work func())  { l.real.Run(work) }
 func (l *scopeLoop) Go(fn func())     { l.real.Go(fn) }
 func (l *scopeLoop) Queue(job func()) { l.real.Queue(job) }
 func (l *scopeLoop) barrier()         { l.real.Run(func() {}) }
+
+// fakeIntervals makes the loop fake `setInterval` as well (`toFake: [..., "setInterval", "clearInterval"]`).
+func (l *scopeLoop) fakeIntervals() *scopeLoop { l.intervals = true; return l }
+
+// AfterInterval implements intervalLoop: the heartbeat is on the fake clock only when the test fakes `setInterval`.
+func (l *scopeLoop) AfterInterval(d time.Duration, job func()) (Timer, bool) {
+	if !l.intervals {
+		return nil, false
+	}
+	return l.AfterFunc(d, job), true
+}
+
 func (l *scopeLoop) AfterFunc(d time.Duration, job func()) Timer {
 	return l.fakeLoop.AfterFunc(d, func() { l.real.Run(job) })
 }

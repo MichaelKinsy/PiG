@@ -2,12 +2,13 @@ package host
 
 import (
 	"context"
-	"github.com/MichaelKinsy/PiG/chord"
 	"reflect"
+	"slices"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/MichaelKinsy/PiG/chord"
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/chord/next/contracts"
 	"github.com/MichaelKinsy/PiG/chord/next/data"
@@ -27,15 +28,20 @@ var (
 		Members: []contracts.LocalEntry{contracts.Mem("n", contracts.Int())},
 	}))
 	// depPing and depPong are local types with empty params and one member, `n`.
-	depPing = mustContract(declareLocal("app.ping", contracts.LocalDeclaration{Version: 1, Members: []contracts.LocalEntry{contracts.Mem("n", contracts.Int())}}))
-	depPong = mustContract(declareLocal("app.pong", contracts.LocalDeclaration{Version: 1, Members: []contracts.LocalEntry{contracts.Mem("n", contracts.Int())}}))
+	depPing = mustContract(declareLocal("app.ping", contracts.LocalDeclaration{Params: contracts.Params{}, Version: 1, Members: []contracts.LocalEntry{contracts.Mem("n", contracts.Int())}}))
+	depPong = mustContract(declareLocal("app.pong", contracts.LocalDeclaration{Params: contracts.Params{}, Version: 1, Members: []contracts.LocalEntry{contracts.Mem("n", contracts.Int())}}))
 )
 
 // readsN is `{ n: self.get(Type, params).n }`: a state member `n` following another reference's.
 func readsN(self Self, typ *contracts.Contract, params *delta.JsonObject, member string) contracts.Implementation {
+	return readsAs(self, typ, params, member, "n")
+}
+
+// readsAs is `{ [as]: self.get(Type, params)[member] }`.
+func readsAs(self Self, typ *contracts.Contract, params *delta.JsonObject, member, as string) contracts.Implementation {
 	n := self.Get(typ, params).Member(member)
 	return contracts.Implementation{Members: contracts.VariantImplementation{State: map[string]chord.Watchable[delta.JsonValue]{
-		"n": self.Derive([]any{n}, func(values []any) (delta.JsonValue, error) { return values[0], nil }),
+		as: self.Derive([]any{n}, func(values []any) (delta.JsonValue, error) { return values[0], nil }),
 	}}}
 }
 
@@ -51,7 +57,7 @@ func awaitRefState(t testing.TB, what string, ref *Reference, pred func(*RefStat
 	t.Helper()
 	var current *RefState
 	scopeEventually(t, what, func() bool {
-		current = ref.State().Value()
+		current = refStateOf(ref)
 		return pred(current)
 	})
 	return current
@@ -104,12 +110,7 @@ func TestTheDependencyCheckBreaksADependentOffACycleWithTheCyclesError(t *testin
 
 // contains is slices.Contains for the file's strings.
 func contains(list []string, want string) bool {
-	for _, each := range list {
-		if each == want {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(list, want)
 }
 
 // depClient is a client host with errors collected, a raw parent peer and View (reading Notes S1's count) loaded.
@@ -163,7 +164,7 @@ func TestTheDependencyCheckGoesLiveOnceEveryDependencyIs(t *testing.T) {
 	second := peer.Next("hold").(*link.HoldMessage)
 	bindHold(t, peer, first.Hold, jsonObject("text", "a"))
 	transported(ends[0], ends[1])
-	if kind := view.State().Value().Kind; kind != RefStateLoading {
+	if kind := refStateOf(view).Kind; kind != RefStateLoading {
 		t.Fatalf("state = %s, want loading", kind)
 	}
 	bindHold(t, peer, second.Hold, jsonObject("text", "b"), jsonObject("text", "c"))
@@ -249,6 +250,7 @@ func TestTheDependencyCheckSettlesAWaitingRingAcrossHostsAfterOneRound(t *testin
 		},
 	})
 	defer closeHosts(t, r.Tab, r.Server)
+	scopeEventually(t, "the server's host object started the worker", func() bool { return r.Worker("session|S1") != nil })
 	r.Transported()
 	worker := r.Worker("session|S1")
 	held, err := worker.Hold(b, jsonObject(), background, GetOptions{})
@@ -256,7 +258,7 @@ func TestTheDependencyCheckSettlesAWaitingRingAcrossHostsAfterOneRound(t *testin
 	for range 50 {
 		r.Transported()
 	}
-	watch, err := held.State().Watch(background)
+	watch, err := inSection(worker, func() (chord.NativeWatchHandle[*RefState], error) { return held.State().Watch(background) })
 	must(t, err)
 	states := statesOf(t, watch)
 	for range 50 {
@@ -265,7 +267,7 @@ func TestTheDependencyCheckSettlesAWaitingRingAcrossHostsAfterOneRound(t *testin
 	if got := states.All(); len(got) != 0 {
 		t.Fatalf("states = %v, want none", got)
 	}
-	state := held.State().Value()
+	state := refStateOf(held)
 	if state.Kind != RefStateFailed || state.Cause.Kind != data.FailureWaiting || !strings.HasSuffix(state.Cause.Error.Message, ": app.x is not served here") {
 		t.Fatalf("state = %+v, want failed waiting ending in app.x is not served here", state)
 	}
@@ -320,7 +322,7 @@ func TestParkedLongIsNotReportedWhileThePathHasNoLink(t *testing.T) {
 	if errs.Len() != 0 {
 		t.Fatalf("errors = %v, want none", errs.All())
 	}
-	if kind := view.State().Value().Kind; kind != RefStateLoading {
+	if kind := refStateOf(view).Kind; kind != RefStateLoading {
 		t.Fatalf("state = %s, want loading", kind)
 	}
 	// Once a link holds it and the remote attempt is only loading, it is.
@@ -361,7 +363,7 @@ func TestParkedLongIsReportedOncePerParkingEpisodeAfterReadyTimeout(t *testing.T
 	if errs.Len() != 1 {
 		t.Fatalf("errors = %d, want 1", errs.Len())
 	}
-	if kind := view.State().Value().Kind; kind != RefStateLoading {
+	if kind := refStateOf(view).Kind; kind != RefStateLoading {
 		t.Fatalf("state = %s, want loading", kind)
 	}
 	view.Release()
@@ -386,7 +388,8 @@ func TestParkedLongIsNotReportedForARemoteBlockerThatFailed(t *testing.T) {
 	if errs.Len() != 0 {
 		t.Fatalf("errors = %v, want none", errs.All())
 	}
-	if state := view.State().Value(); state.Kind != RefStateFailed || state.Cause.Kind != data.FailureWaiting {
+	state := awaitRefState(t, "the parked view shows its cause", view, func(s *RefState) bool { return s.Kind == RefStateFailed })
+	if state.Cause.Kind != data.FailureWaiting {
 		t.Fatalf("state = %+v, want failed waiting", state)
 	}
 	if got := loop.TimerCount(); got != 0 {

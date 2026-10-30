@@ -245,8 +245,8 @@ var objCounterPersisted = func() *documents.StateDefinition {
 }()
 
 func TestObjectALiveObjectFailingLetsACommitAdmittedBeforeTheFailureAdoptAndPublishOnceDerivesAndDependentsIncluded(t *testing.T) {
-	doubled := mustContract(contracts.Local("app.doubled", contracts.LocalDeclaration{Version: 1, Members: []contracts.LocalEntry{contracts.Mem("double", contracts.Int())}}))
-	viewerType := mustContract(contracts.Local("app.double-viewer", contracts.LocalDeclaration{Version: 1, Members: []contracts.LocalEntry{contracts.Mem("tens", contracts.Int())}}))
+	doubled := mustContract(contracts.Local("app.doubled", contracts.LocalDeclaration{Params: contracts.Params{}, Version: 1, Members: []contracts.LocalEntry{contracts.Mem("double", contracts.Int())}}))
+	viewerType := mustContract(contracts.Local("app.double-viewer", contracts.LocalDeclaration{Params: contracts.Params{}, Version: 1, Members: []contracts.LocalEntry{contracts.Mem("tens", contracts.Int())}}))
 	chordStore, _, holdNextCommit := faultyStore(t)
 	var mu sync.Mutex
 	var self Self
@@ -257,7 +257,9 @@ func TestObjectALiveObjectFailingLetsACommitAdmittedBeforeTheFailureAdoptAndPubl
 			self, counter = s, &singletonDoc{s: s.(StoreSelf).State(objCounterPersisted).(*documents.Singleton)}
 			mu.Unlock()
 			return contracts.Implementation{Members: contracts.VariantImplementation{State: map[string]chord.Watchable[delta.JsonValue]{
-				"double": s.Derive([]any{counter.s}, func(values []any) (delta.JsonValue, error) { return values[0].(*delta.JsonObject).Value("n").(float64) * 2, nil }),
+				"double": s.Derive([]any{counter.s}, func(values []any) (delta.JsonValue, error) {
+					return values[0].(*delta.JsonObject).Value("n").(float64) * 2, nil
+				}),
 			}}}, nil
 		}, ServeOptions{}); err != nil {
 			return err
@@ -367,7 +369,7 @@ func TestObjectALiveObjectFailingStartsARetrysFactoryOnlyOnceACommitAdmittedBefo
 }
 
 func TestObjectALiveObjectFailingKeepsItsStateMembersLastValuesForSameHostReadsALiveDependentsDeriveOverThemStaysLive(t *testing.T) {
-	viewerType := mustContract(contracts.Local("app.count-viewer", contracts.LocalDeclaration{Version: 1, Members: []contracts.LocalEntry{contracts.Mem("tens", contracts.Int())}}))
+	viewerType := mustContract(contracts.Local("app.count-viewer", contracts.LocalDeclaration{Params: contracts.Params{}, Version: 1, Members: []contracts.LocalEntry{contracts.Mem("tens", contracts.Int())}}))
 	var mu sync.Mutex
 	var storeSelf Self
 	host, errs := loaded(t, func(h FacetHost, _ FacetSelf) error {
@@ -432,7 +434,7 @@ func TestObjectALiveObjectFailingKeepsItsStateMembersLastValuesForSameHostReadsA
 // before the object ends; the store stays usable".
 func TestTransactionPersistedDocumentsAHandlersCommitHeldInTheSQLPastCloseTimeoutStillAdoptsBeforeTheObjectEndsTheStoreStaysUsable(t *testing.T) {
 	loop := newScopeLoop()
-	writer := mustContract(contracts.Local("app.writer", contracts.LocalDeclaration{Version: 1, Members: []contracts.LocalEntry{contracts.Mem("write", contracts.NewMethod())}}))
+	writer := mustContract(contracts.Local("app.writer", contracts.LocalDeclaration{Params: contracts.Params{}, Version: 1, Members: []contracts.LocalEntry{contracts.Mem("write", contracts.NewMethod())}}))
 	chordStore, _, holdNextCommit := faultyStore(t, true)
 	var counter *singletonDoc
 	closeTimeout := 20 * time.Millisecond
@@ -440,7 +442,9 @@ func TestTransactionPersistedDocumentsAHandlersCommitHeldInTheSQLPastCloseTimeou
 		return h.Serve(writer, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
 			counter = &singletonDoc{s: self.(StoreSelf).State(objCounterPersisted).(*documents.Singleton)}
 			return contracts.Implementation{Members: contracts.VariantImplementation{Methods: map[string]contracts.MethodFunction{
-				"write": func(_ delta.JsonValue, ctx context.Context) (delta.JsonValue, error) { return nil, bumpDoc(counter, ctx) },
+				"write": func(_ delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
+					return nil, bumpDoc(counter, ctx)
+				},
 			}}}, nil
 		}, ServeOptions{})
 	}, loadedOptions{Store: chordStore, CloseTimeout: &closeTimeout, Loop: loop})

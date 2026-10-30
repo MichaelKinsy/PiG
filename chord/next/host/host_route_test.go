@@ -23,11 +23,17 @@ import (
 // `forEachCodec`. Pi's fake timers are the scopeLoop every host of a case runs on (relayedOptions.Loop): `elapse` moves
 // its clock and lets links settle.
 
-// elapse advances the fake clock by ms, then lets links and promises settle.
+// routeElapse is `vi.advanceTimersByTimeAsync(ms)` then `transported()`: the fake clock moves in steps of at most 500 ms
+// and the links settle after each, as vitest lets promises (the links' events) run between timers. A Go link delivers its
+// events on tasks of its own, which the clock does not wait for.
 func routeElapse(r *relayed, timers *scopeLoop, ms int64) {
-	timers.AdvanceAsync(ms)
-	timers.barrier()
-	r.Transported()
+	for ms > 0 {
+		step := min(ms, 500)
+		timers.AdvanceAsync(step)
+		timers.barrier()
+		r.Transported()
+		ms -= step
+	}
 }
 
 // waitBackoff waits until the server's route has a backoff window for key (its link closed: the close is an event of a
@@ -39,6 +45,18 @@ func waitBackoff(t *testing.T, r *relayed, key string) {
 		waiting := false
 		h.loop().Run(func() { waiting = h.destination.routes["session"].backoff.waiting(key) })
 		return waiting
+	})
+}
+
+// waitServerLinks waits until the server host has n open links (the route's resolve made one): the fake clock must not move
+// before, since a link's silence is counted from its creation.
+func waitServerLinks(t *testing.T, r *relayed, n int) {
+	t.Helper()
+	h := r.Server.(*chordHost)
+	scopeEventually(t, fmt.Sprintf("the server has %d links", n), func() bool {
+		got := 0
+		h.loop().Run(func() { got = len(h.links) })
+		return got == n
 	})
 }
 
@@ -73,6 +91,11 @@ type closeWatched struct {
 	closed atomic.Bool
 }
 
+func (c *closeWatched) Close() {
+	c.closed.Store(true)
+	c.Link.Close()
+}
+
 func (c *closeWatched) OnClose(listener func()) {
 	c.Link.OnClose(func() {
 		c.closed.Store(true)
@@ -87,13 +110,11 @@ func TestRouteAdmissionRunsOneResolvePerAddressSharedByTheHoldsThatWaitForItRace
 		var refs [2]*Reference
 		var wg sync.WaitGroup
 		for i := range refs {
-			wg.Add(1)
-			go func() {
-				defer wg.Done()
+			wg.Go(func() {
 				ref, err := r.Tab.Get(PlacedNotes, routeS("S1"), background, GetOptions{})
 				must(t, err)
 				refs[i] = ref
-			}()
+			})
 		}
 		wg.Wait()
 		wantResolves(t, r, "session|S1")
@@ -304,9 +325,7 @@ func TestResolveFailuresAndReResolvesADroppedLinkResolvesAgainWhileHeldReference
 		waitBackoff(t, r, "session|S1")
 		routeElapse(r, timers, 1000)
 		wantResolves(t, r, "session|S1", "session|S1")
-		if r.Worker("session|S1") == first {
-			t.Fatalf("the worker is the first one")
-		}
+		scopeEventually(t, "a fresh worker", func() bool { return r.Worker("session|S1") != first })
 		wantRouteState(t, notes, RefStateLive)
 		addNote(t, r.Worker("session|S1"), "S1", "fresh")
 		r.Transported()
@@ -321,6 +340,7 @@ func TestResolveFailuresAndReResolvesOnlyALinkThatCompletedItsHandshakeResetsThe
 	forEachCodec(t, func(t *testing.T) {
 		timers := newScopeLoop()
 		var silent atomic.Int32
+		var timed atomic.Bool
 		r := relay(t, relayedOptions{Loop: timers, Resolve: func(address contracts.Address, worker func() resolved, _ context.Context) (resolved, error) {
 			if silent.Add(-1) < 0 {
 				return worker(), nil
@@ -328,6 +348,7 @@ func TestResolveFailuresAndReResolvesOnlyALinkThatCompletedItsHandshakeResetsThe
 			// A link whose other end never greets and closes.
 			a, b := link.MemoryLinkPair()
 			timers.AfterFunc(10*time.Millisecond, b.Close)
+			timed.Store(true)
 			return resolved{Link: a, Principal: workerPrincipal(address.Params.Value("id").(string))}, nil
 		}})
 		notes, err := r.Tab.Get(PlacedNotes, routeS("S1"), background, GetOptions{})
@@ -336,6 +357,7 @@ func TestResolveFailuresAndReResolvesOnlyALinkThatCompletedItsHandshakeResetsThe
 		r.RouteLinks()[0].Close()
 		waitBackoff(t, r, "session|S1")
 		routeElapse(r, timers, 1000)
+		scopeEventually(t, "the silent link was made", timed.Load)
 		// The silent link closed before its handshake: the window doubles.
 		routeElapse(r, timers, 10)
 		waitBackoff(t, r, "session|S1")
@@ -349,9 +371,9 @@ func TestResolveFailuresAndReResolvesOnlyALinkThatCompletedItsHandshakeResetsThe
 		links[len(links)-1].Close()
 		waitBackoff(t, r, "session|S1")
 		routeElapse(r, timers, 1000)
-		if got := len(r.Resolves()); got != 3 {
-			t.Fatalf("resolves = %d, want 3", got)
-		}
+		scopeEventually(t, "a third resolve ran", func() bool { return len(r.Resolves()) == 3 })
+		// Its worker is made on a task of the route: the test ends once the reference is live on it.
+		wantRouteState(t, notes, RefStateLive)
 	})
 }
 
@@ -359,7 +381,8 @@ func TestResolveFailuresAndReResolvesOnlyALinkThatCompletedItsHandshakeResetsThe
 // address backs off, then resolves again while held.
 func TestResolveFailuresAndReResolvesALinkWhosePeerNeverGreetsClosesAfter30sOfSilenceTheAddressBacksOffThenResolvesAgainWhileHeld(t *testing.T) {
 	forEachCodec(t, func(t *testing.T) {
-		timers := newScopeLoop()
+		// The heartbeat's timer too (Pi: `toFake` adds setInterval), before the hosts start it.
+		timers := newScopeLoop().fakeIntervals()
 		var silent atomic.Bool
 		silent.Store(true)
 		r := relay(t, relayedOptions{Loop: timers, Resolve: func(address contracts.Address, worker func() resolved, _ context.Context) (resolved, error) {
@@ -373,12 +396,12 @@ func TestResolveFailuresAndReResolvesALinkWhosePeerNeverGreetsClosesAfter30sOfSi
 		}})
 		notes, err := r.Tab.Hold(PlacedNotes, routeS("S1"), background, GetOptions{})
 		must(t, err)
+		waitServerLinks(t, r, 2)
 		routeElapse(r, timers, 29_000)
 		wantResolves(t, r)
 		wantRouteState(t, notes, RefStateLoading)
 		// The heartbeat checks every 1.5 s: the silent link closes within it, then its address waits 1 s.
 		routeElapse(r, timers, 2_500)
-		waitBackoff(t, r, "session|S1")
 		routeElapse(r, timers, 1_000)
 		wantResolves(t, r, "session|S1")
 		r.Transported()
@@ -407,12 +430,13 @@ func TestResolveFailuresAndReResolvesAResolveWhoseHoldsWereAllReleasedMeanwhileF
 	forEachCodec(t, func(t *testing.T) {
 		timers := newScopeLoop()
 		finish := make(chan struct{})
-		var watched *closeWatched
+		var watchedLink atomic.Pointer[closeWatched]
 		r := relay(t, relayedOptions{Loop: timers, Resolve: func(_ contracts.Address, worker func() resolved, _ context.Context) (resolved, error) {
 			<-finish
 			made := worker()
-			watched = &closeWatched{Link: made.Link}
-			made.Link = watched
+			watching := &closeWatched{Link: made.Link}
+			watchedLink.Store(watching)
+			made.Link = watching
 			return made, nil
 		}})
 		notes, err := r.Tab.Hold(PlacedNotes, routeS("S1"), background, GetOptions{})
@@ -424,7 +448,8 @@ func TestResolveFailuresAndReResolvesAResolveWhoseHoldsWereAllReleasedMeanwhileF
 		r.Transported()
 		wantResolves(t, r, "session|S1")
 		routeElapse(r, timers, 60_000)
-		if watched.closed.Load() {
+		scopeEventually(t, "the resolve returned its link", func() bool { return watchedLink.Load() != nil })
+		if watchedLink.Load().closed.Load() {
 			t.Fatalf("the kept link closed")
 		}
 		// The kept link serves the next hold without a resolve.
@@ -432,7 +457,7 @@ func TestResolveFailuresAndReResolvesAResolveWhoseHoldsWereAllReleasedMeanwhileF
 		must(t, err)
 		wantResolves(t, r, "session|S1")
 		must(t, r.Server.Close(background))
-		if !watched.closed.Load() {
+		if !watchedLink.Load().closed.Load() {
 			t.Fatalf("the link is open after host.close")
 		}
 	})
@@ -443,18 +468,20 @@ func TestHostCloseDuringAResolveRace7AbortsTheResolvesContextAndClosesALinkRetur
 	forEachCodec(t, func(t *testing.T) {
 		finish := make(chan struct{})
 		var routing atomic.Value
-		var watched *closeWatched
+		var watchedLink atomic.Pointer[closeWatched]
 		r := relay(t, relayedOptions{Resolve: func(_ contracts.Address, worker func() resolved, ctx context.Context) (resolved, error) {
 			routing.Store(ctx)
 			<-finish
 			made := worker()
-			watched = &closeWatched{Link: made.Link}
-			made.Link = watched
+			watching := &closeWatched{Link: made.Link}
+			watchedLink.Store(watching)
+			made.Link = watching
 			return made, nil
 		}})
 		_, err := r.Tab.Hold(PlacedNotes, routeS("S1"), background, GetOptions{})
 		must(t, err)
 		r.Transported()
+		scopeEventually(t, "the resolve ran", func() bool { return routing.Load() != nil })
 		ctx := routing.Load().(context.Context)
 		if ctx.Err() != nil {
 			t.Fatalf("the resolve's context is aborted before the close")
@@ -465,9 +492,10 @@ func TestHostCloseDuringAResolveRace7AbortsTheResolvesContextAndClosesALinkRetur
 		}
 		close(finish)
 		r.Transported()
-		if !watched.closed.Load() {
-			t.Fatalf("the link returned after the close stays open")
-		}
+		scopeEventually(t, "the late link was closed", func() bool {
+			watching := watchedLink.Load()
+			return watching != nil && watching.closed.Load()
+		})
 	})
 }
 
@@ -565,7 +593,11 @@ func TestARoutesContextIsTheParentOfItsResolvesAndOfTheWorkArrivingOnItsLinks(t 
 		if got != "the app's" {
 			t.Fatalf("app = %v, want the app's", got)
 		}
-		nexttest.RequireJSONEqual(t, resolvedBy, []any{"the app's"})
+		mu.Lock()
+		if !slices.Equal(resolvedBy, []string{"the app's"}) {
+			t.Fatalf("resolved by %v, want [the app's]", resolvedBy)
+		}
+		mu.Unlock()
 	})
 }
 
@@ -592,12 +624,11 @@ func TestRouteGCAClosedRouteLinkAndItsReleasedReferencesKeepNoRouteState(t *test
 			r.mu.Lock()
 			r.routeLinks = nil
 			r.mu.Unlock()
-			routeLinks = nil
 			r.Transported()
 		}()
-		nexttest.ExpectCollected(t, references...)
-		nexttest.ExpectCollected(t, workers...)
-		nexttest.ExpectCollected(t, links...)
+		expectCollectedEventually(t, references...)
+		expectCollectedEventually(t, workers...)
+		expectCollectedEventually(t, links...)
 		if tab == nil {
 			t.Fatal("the tab is gone")
 		}
@@ -622,7 +653,7 @@ func TestRouteGCHoldsReleasedWhileTheirResolveNeverSettlesAreNotKept(t *testing.
 			r.Transported()
 			references = append(references, weak.Make(notes))
 		}()
-		nexttest.ExpectCollected(t, references...)
+		expectCollectedEventually(t, references...)
 		if server == nil {
 			t.Fatal("the server is gone")
 		}

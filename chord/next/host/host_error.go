@@ -1,6 +1,8 @@
 package host
 
 import (
+	"time"
+
 	"github.com/MichaelKinsy/PiG/chord/next/data"
 	"github.com/MichaelKinsy/PiG/chord/next/registries"
 	"github.com/MichaelKinsy/PiG/chord/next/state"
@@ -103,6 +105,6 @@ func RegistryHostError(err registries.RegistryError) HostError {
 // GetOptions is what `host.get` and `host.hold` take besides the type, the params and the context.
 type GetOptions struct {
 	// ReadyTimeout is a getter's deadline for its whole wait, and how long a call made while the reference is loading waits
-	// (the park deadline), in milliseconds; nil is the host's `readyTimeout`.
-	ReadyTimeout *float64
+	// (the park deadline); nil is the host's `readyTimeout`.
+	ReadyTimeout *time.Duration
 }

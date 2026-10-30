@@ -3,10 +3,12 @@ package host
 import (
 	"context"
 	"fmt"
+	"math"
 	"runtime"
 	"sync"
 	"testing"
 	"time"
+	"weak"
 
 	"github.com/MichaelKinsy/PiG/chord"
 	"github.com/MichaelKinsy/PiG/chord/delta"
@@ -140,12 +142,23 @@ type virtualLoop struct {
 
 func newVirtualLoop() *virtualLoop { return &virtualLoop{Loop: NewLoop(), fake: newFakeLoop()} }
 
+// nextDue is the time of the earliest pending timer.
+func (l *virtualLoop) nextDue() int64 {
+	l.fake.mu.Lock()
+	defer l.fake.mu.Unlock()
+	due := int64(math.MaxInt64)
+	for _, timer := range l.fake.timers {
+		due = min(due, timer.at)
+	}
+	return due
+}
+
 // Now is the fake Date.now().
 func (l *virtualLoop) Now() int64 { return l.fake.Now() }
 
 // AfterFunc is the fake setTimeout; its job runs as a section.
 func (l *virtualLoop) AfterFunc(d time.Duration, job func()) Timer {
-	return l.fake.AfterFunc(d, func() { l.Loop.Run(job) })
+	return l.fake.AfterFunc(d, func() { l.Run(job) })
 }
 
 // jobHostOptions is the options of declaredJob: Pi's `loaded` options and fake timers.
@@ -346,4 +359,19 @@ func newJobHost(t testing.TB, options HostOptions) Host {
 	host, err := CreateHost(options)
 	must(t, err)
 	return host
+}
+
+// collectedWithin expects every referent to be collected: nothing of the host's background work (a closing host's last
+// tasks and timers) is awaited by the test, so the collection is retried until the tasks that hold them returned.
+func collectedWithin[T any](t testing.TB, refs ...weak.Pointer[T]) {
+	t.Helper()
+	eventually(t, "the referents to be collected", func() bool {
+		runtime.GC()
+		for _, ref := range refs {
+			if ref.Value() != nil {
+				return false
+			}
+		}
+		return true
+	})
 }

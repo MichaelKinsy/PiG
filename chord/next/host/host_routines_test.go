@@ -46,7 +46,7 @@ var routinesDoc = func() *documents.StateDefinition {
 }()
 
 // routinesStore is a host-lifetime object with a counter document and `bump`; its factory declares routines.
-var routinesStore = mustContract(contracts.Local("app.store", contracts.LocalDeclaration{
+var routinesStore = mustContract(contracts.Local("app.store", contracts.LocalDeclaration{Params: contracts.Params{},
 	Version: 1,
 	Members: []contracts.LocalEntry{contracts.Mem("n", contracts.Int()), contracts.Mem("bump", contracts.NewMethod())},
 }))
@@ -219,12 +219,16 @@ func (e *routinesEnv) bump() {
 // awaiting is what a handler awaits: fn runs on an owned task and settles the handler's Handled; the test's quiet waits for
 // it while it runs (not while it is parked on a gate).
 func (e *routinesEnv) awaiting(self Self, fn func() error) *Handled {
-	loop := self.(*attempt).loop()
+	host := self.(*attempt).object.host
+	loop := host.loop()
 	e.act.add(1)
 	e.started.Add(1)
 	handled := Pending(loop)
 	loop.Go(func() {
 		err := fn()
+		// Pi's drain microtask enters a watch's listener before the code that awaited a commit resumes: the resumption
+		// awaits the deliveries the handler's changes scheduled.
+		_ = host.scheduler.AwaitEntered(context.Background())
 		loop.Run(func() {
 			if err != nil {
 				handled.Reject(err)
@@ -233,6 +237,40 @@ func (e *routinesEnv) awaiting(self Self, fn func() error) *Handled {
 			handled.Resolve()
 		})
 		e.act.add(-1)
+	})
+	return handled
+}
+
+// sleeping is what a handler awaits when it sleeps d and then returns what then says: Pi's `await sleep(d, ctx)` is a
+// timer made in the microtask that calls it and an abort listener, both continuations here (no task: the timer exists
+// before the section ends, and its wake-up and the abort enter the loop as sections).
+func (e *routinesEnv) sleeping(self Self, d time.Duration, ctx context.Context, then func() error) *Handled {
+	host := self.(*attempt).object.host
+	loop := host.loop()
+	handled := Pending(loop)
+	settled := false
+	var stopAbort func() bool
+	finish := func(err error) {
+		if settled {
+			return
+		}
+		settled = true
+		stopAbort()
+		if err != nil {
+			handled.Reject(err)
+			return
+		}
+		handled.Resolve()
+	}
+	if ctx.Err() != nil {
+		return Threw(context.Cause(ctx))
+	}
+	timer := loop.AfterFunc(d, func() { host.enter(func() { finish(then()) }) })
+	stopAbort = context.AfterFunc(ctx, func() {
+		host.enter(func() {
+			timer.Stop()
+			finish(context.Cause(ctx))
+		})
 	})
 	return handled
 }
@@ -248,8 +286,12 @@ func (e *routinesEnv) quiet() {
 	for {
 		started := e.started.Load()
 		e.act.idle()
+		// The tasks whose resumption is a section (a routine settling after the deliveries in flight).
+		for settleTasksRunning.Load() != 0 {
+			time.Sleep(time.Millisecond)
+		}
 		turn(e.host)
-		if e.started.Load() == started {
+		if e.started.Load() == started && settleTasksRunning.Load() == 0 {
 			return
 		}
 	}
@@ -468,12 +510,6 @@ func (s *jsonFake) advance(call chord.WatchCall[delta.JsonValue]) {
 
 func (s *jsonFake) change(n float64, ops ...delta.Op) {
 	s.advance(chord.WatchCall[delta.JsonValue]{Kind: chord.WatchCallValue, Value: nObject(n), Ops: ops})
-}
-
-func (s *jsonFake) end() {
-	for _, watch := range s.snapshot() {
-		watch.EndWith(chord.WatchEnd{Kind: chord.WatchEnded})
-	}
 }
 
 // nativeFake is Pi's `writable`: a native watchable the test sets and ends by hand.
@@ -792,7 +828,8 @@ func TestOnAfterAThrowFoldsChangesMadeDuringASlowRetryIntoOneCallWithTheNewestVa
 		e.bump()
 	}
 	gate.fire()
-	e.advance(0)
+	// The call after a busy one waits one macrotask (a 1 ms timer on this clock).
+	e.advance(1)
 	wantCalls(t, log.all(),
 		wantCall(nObject(0), replaceOps(nObject(0)), -1), wantCall(nObject(0), replaceOps(nObject(0)), -1),
 		wantCall(nObject(3), []delta.Op{setN(3)}, -1))
@@ -849,10 +886,8 @@ func TestOnAfterAThrowClearsItsRetryTimerWhenItsObjectEndsDuringTheBackoff(t *te
 		t.Fatalf("timers = %d, want 1", got)
 	}
 	e.ref.Release()
-	e.advance(0)
-	if got := e.timers(); got != 0 {
-		t.Fatalf("timers after release = %d, want 0", got)
-	}
+	// The watch's end (its context's abort) clears the timer: a hand-off between tasks, waited for.
+	until(t, "the retry timer to be cleared", func() bool { e.advance(0); return e.timers() == 0 })
 	e.close()
 }
 
@@ -1238,7 +1273,7 @@ func TestOnDropsAValueQueuedBehindABusyCallWhenAFailureFollowsItTheNextCallIsThe
 }
 
 var (
-	routinesFailing = mustContract(contracts.Local("app.failing", contracts.LocalDeclaration{
+	routinesFailing = mustContract(contracts.Local("app.failing", contracts.LocalDeclaration{Params: contracts.Params{},
 		Version: 1,
 		Members: []contracts.LocalEntry{contracts.Mem("t", contracts.Int()), contracts.Mem("set", contracts.NewMethod(contracts.Int()))},
 	}))
@@ -1341,9 +1376,13 @@ func TestOnConvergesWhenItWritesItsOwnSourceAnUnchangedDraftCommitsNothing(t *te
 			return e.awaiting(self, func() error { return setDoc(doc, min(value+1, 3), ctx) })
 		})
 	})
-	// 0 → 1 → 2 → 3, then the write of 3 changes nothing and nothing calls again (the handlers' tasks and the deliveries
-	// they cause are waited for, not timed).
-	e.quiet()
+	// 0 → 1 → 2 → 3, then the write of 3 changes nothing and nothing calls again (`vi.waitFor` under fake timers advances
+	// them, which a macrotask of the routine waits for).
+	until(t, "4 calls", func() bool {
+		e.advance(50)
+		return calls.Load() == 4
+	})
+	e.settled()
 	if got := calls.Load(); got != 4 {
 		t.Fatalf("calls = %d, want 4", got)
 	}
@@ -1405,6 +1444,7 @@ func TestOnReleasesItsWatchWhenItsObjectEndsACallThatThrowsAsItEndsIsNotReported
 		t.Fatalf("watches = %d, want 1", got)
 	}
 	e.ref.Release()
+	until(t, "the watch to be released", func() bool { e.quiet(); return source.count() == 0 })
 	e.quiet()
 	if got := source.count(); got != 0 || e.errs.Len() != 0 {
 		t.Fatalf("watches = %d, errors = %v, want none", got, e.errs.All())
@@ -1442,12 +1482,7 @@ func TestOnLiveRestartsAfterAThrowWithTheBackoffResetAfterARunOfAtLeastAMinute(t
 			n := len(starts)
 			mu.Unlock()
 			if n == 3 {
-				return e.parked(self, func() error {
-					if err := sleepOn(self.(*attempt).loop(), 60*time.Second, ctx); err != nil {
-						return err
-					}
-					return fmt.Errorf("run %d", n)
-				})
+				return e.sleeping(self, 60*time.Second, ctx, func() error { return fmt.Errorf("run %d", n) })
 			}
 			return Threw(fmt.Errorf("run %d", n))
 		})
@@ -1472,12 +1507,13 @@ func TestOnLiveIsAbortedByItsOwnersEndNoReportNoRestart(t *testing.T) {
 	e.item(nil, func(_ *singletonDoc, self Self) {
 		self.OnLive(func(ctx Ctx) *Handled {
 			calls.Add(1)
-			return e.parked(self, func() error { return sleepOn(self.(*attempt).loop(), 1_000_000*time.Millisecond, ctx) })
+			return e.sleeping(self, 1_000_000*time.Millisecond, ctx, func() error { return nil })
 		})
 	})
 	e.advance(0)
 	e.ref.Release()
-	e.advance(10_000)
+	// The sleep's abort listener clears its timer on a goroutine of its own: waited for.
+	until(t, "the sleep's timer to be cleared", func() bool { e.advance(10_000); return e.timers() == 0 })
 	if got, errs, timers := calls.Load(), e.errs.Len(), e.timers(); got != 1 || errs != 0 || timers != 0 {
 		t.Fatalf("calls %d, errors %d, timers %d, want 1, 0, 0", got, errs, timers)
 	}
@@ -1515,7 +1551,8 @@ func TestRoutinesNeverStartARoutineCallOnceTheObjectEndedInItsFirstTurnNoCallNoR
 			return e.implementation(self, doc), nil
 		}, ServeOptions{})
 	}, loadedOptions{Loop: e.loop})
-	held = mustHold(t, e.host, routinesItem, jsonObject("id", 1.0))
+	// `held = host.hold(...)` is one synchronous section: the activation's microtasks run after the assignment.
+	e.host.(*chordHost).enter(func() { held = mustHold(t, e.host, routinesItem, jsonObject("id", 1.0)) })
 	e.quiet()
 	e.advance(10)
 	mu.Lock()
@@ -1563,7 +1600,12 @@ func TestRoutinesAreInTheDrainBeforeTheirHandlerRunsAHandlerReleasingTheLastRefe
 		t.Fatalf("events = %v, want none yet", early)
 	}
 	gate.fire()
-	e.quiet()
+	until(t, "the handler and the native's close", func() bool {
+		e.quiet()
+		mu.Lock()
+		defer mu.Unlock()
+		return len(events) >= 2
+	})
 	mu.Lock()
 	defer mu.Unlock()
 	if !reflect.DeepEqual(events, []string{"handler done", "native closed"}) {
@@ -1635,7 +1677,7 @@ func TestRoutinesReleaseTheirCallsCtxGetReferencesWhenEachCallSettles(t *testing
 
 func TestRoutinesActAsTheOwnersCallerPrincipal(t *testing.T) {
 	seen := make(chan any, 1)
-	watcher := mustContract(contracts.Remote("app.watcher", contracts.RemoteDeclaration{
+	watcher := mustContract(contracts.Remote("app.watcher", contracts.RemoteDeclaration{Params: contracts.Params{},
 		Version:     1,
 		HostAddress: func(*delta.JsonObject) (contracts.Address, error) { return Server.Address(nil), nil },
 		Variants:    []contracts.VariantEntry{contracts.Var("v", contracts.VariantDeclaration{})},
@@ -1753,26 +1795,30 @@ func TestRoutinesLeaveNothingOfAnEndedObjectItsWatchesAndContextsAreCollected(t 
 	})
 	e.quiet()
 	e.ref.Release()
-	e.quiet()
+	until(t, "the watches to end", func() bool { e.quiet(); return source.count() == 0 })
 	mu.Lock()
 	held := slices.Clone(refs)
 	mu.Unlock()
 	if got := source.count(); got != 0 || len(held) != 2 {
 		t.Fatalf("watches %d, calls %d, want 0 and 2", got, len(held))
 	}
-	nexttest.ExpectCollected(t, held...)
+	expectCollected(t, held...)
 }
 
 // --- the routines cases that need raw peers or links ------------------------------------------------------------------------
 
-var routinesViewerOnly = mustContract(contracts.Local("app.viewer", contracts.LocalDeclaration{
+var routinesViewerOnly = mustContract(contracts.Local("app.viewer", contracts.LocalDeclaration{Members: []contracts.LocalEntry{},
 	Version: 1, Params: contracts.Params{contracts.Prop("id", contracts.Int())},
 }))
 
 // refStateSource is `ref.state` as an OnNative source: the watch of its *RefState values with the value type erased.
-type refStateSource struct{ source chord.NativeWatchable[*RefState] }
+type refStateSource struct {
+	source chord.NativeWatchable[*RefState]
+}
 
-type erasedStateWatch struct{ chord.NativeWatchHandle[*RefState] }
+type erasedStateWatch struct {
+	chord.NativeWatchHandle[*RefState]
+}
 
 func (w erasedStateWatch) Value() any { return w.NativeWatchHandle.Value() }
 func (w erasedStateWatch) Start(listener func(ctx context.Context, call chord.NativeWatchCall[any]) error) {
@@ -1787,6 +1833,19 @@ func (s refStateSource) Watch(ctx context.Context) (chord.NativeWatchHandle[any]
 		return nil, err
 	}
 	return erasedStateWatch{watch}, nil
+}
+
+// rawParentQueued is rawParent over a link whose deliveries are microtasks of the host's loop, as Pi's memory link queues
+// them on the one microtask queue the host queues its own on: two messages sent together are handled before a microtask
+// the first one queued.
+func rawParentQueued(t testing.TB, host Host) *RawPeer {
+	t.Helper()
+	h := host.(*chordHost)
+	a, b := link.MemoryLinkPairOn(h.loop().Queue, func() { turn(host) })
+	must(t, host.Connect(a, LinkOptions{Principal: serverPrincipal(), Codec: testCodec(), Limits: link.PartLimits{}}, background))
+	peer := newRawPeer(t, b, rawPeerOptions{})
+	peer.Next("hello")
+	return peer
 }
 
 // "on a remote member with no value yet, a first value followed at once by a failure calls nothing".
@@ -1806,7 +1865,7 @@ func TestOnOnARemoteMemberWithNoValueYetAFirstValueFollowedAtOnceByAFailureCalls
 				return contracts.Implementation{}, nil
 			}, ServeOptions{})
 		})}}, background))
-		peer := rawParent(t, client, link.PartLimits{})
+		peer := rawParentQueued(t, client)
 		getting := asyncGet(client, routinesViewerOnly, jsonObject("id", 1.0), background, GetOptions{})
 		hold := peer.Next("hold").(*link.HoldMessage).Hold
 		editor := editorWire(t)

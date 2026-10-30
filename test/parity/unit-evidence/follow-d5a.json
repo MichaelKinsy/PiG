@@ -1,0 +1,821 @@
+[
+ {
+  "upstream": "packages/chord/src/next/host/host.ts",
+  "package": "./chord/next/host",
+  "tests": [
+   "TestHostLoadRefusesInvalidAndDuplicatePluginNamesDoubleServesAndASecondLoad"
+  ],
+  "upstream_reference": "packages/chord/test/next/host/host.test.ts",
+  "mutation": "chord/next/host/host_host.go: `if _, ok := names[named.Name]; ok {` -> `if _, ok := names[named.Name]; ok && false {` (TestHostLoadRefusesInvalidAndDuplicatePluginNamesDoubleServesAndASecondLoad FAILS: host_host_test.go:266: load = <nil>, want \"plugin \\\"a\\\" is loaded twice\")"
+ },
+ {
+  "upstream": "packages/chord/src/next/host/host.ts",
+  "package": "./chord/next/host",
+  "tests": [
+   "TestHostRevokeNeverRevokesTheHostsOwnPrincipal"
+  ],
+  "upstream_reference": "packages/chord/test/next/host/revocation.test.ts",
+  "mutation": "chord/next/host/host_host.go: `return data.PrincipalKey(own, ctx, h.principalKey) == data.PrincipalKey(principal, ctx, h.principalKey)` -> `return false` (TestHostRevokeNeverRevokesTheHostsOwnPrincipal FAILS: host_revocation_test.go:421: state = ended, want live)"
+ },
+ {
+  "upstream": "packages/chord/src/next/host/host.ts",
+  "package": "./chord/next/host",
+  "tests": [
+   "TestHostCloseFailsAGetWaitingForLoad",
+   "TestHostReferencesWaitingInTheIndexEndAtTheStartOfTheHostsClose"
+  ],
+  "upstream_reference": "packages/chord/test/next/host/host.test.ts",
+  "mutation": "chord/next/host/host_host.go: `h.unbound.close(closed)` -> `_ = closed` (TestHostCloseFailsAGetWaitingForLoad FAILS: host_host_test.go:856: err = app.info: did not become live within 60000 ms, want {released closed \"the host is closed\"}; TestHostReferencesWaitingInTheIndexEndAtTheStartOfTheHostsClose FAILS: host_unbound_test.go:305: the get's outcome = app.missing is not served here, want released/closed)"
+ },
+ {
+  "upstream": "packages/chord/src/next/host/activity.ts",
+  "package": "./chord/next/host",
+  "tests": [
+   "TestHostActivityPublishesOncePerMicrotaskTurnWithChanges"
+  ],
+  "upstream_reference": "packages/chord/test/next/host/activity.test.ts",
+  "mutation": "chord/next/host/host_activity.go: `if a.scheduled || (!a.Watched()` -> `if false || (!a.Watched()` (TestHostActivityPublishesOncePerMicrotaskTurnWithChanges FAILS: host_activity_test.go:383: frames = 12, want 1 for the ten starts and one per settling turn (2 to 11))"
+ },
+ {
+  "upstream": "packages/chord/src/next/host/revocation.ts",
+  "package": "./chord/next/host",
+  "tests": [
+   "TestHostRevokeEndsThePrincipalsObjectsAtOnceWhateverReferencesRemain"
+  ],
+  "upstream_reference": "packages/chord/test/next/host/revocation.test.ts",
+  "mutation": "chord/next/host/host_revocation.go: `_, revoked := keys[key]` -> `revoked := false` (TestHostRevokeEndsThePrincipalsObjectsAtOnceWhateverReferencesRemain FAILS: host_revocation_test.go:216: link closed before gone)"
+ },
+ {
+  "upstream": "packages/chord/src/next/host/unbound.ts",
+  "package": "./chord/next/host",
+  "tests": [
+   "TestHostReferencesWaitingInTheIndexBeforeThePublicationAreLoadingPlacedByIt"
+  ],
+  "upstream_reference": "packages/chord/test/next/host/unbound.test.ts",
+  "mutation": "chord/next/host/host_unbound.go: `request.wake()` -> `_ = request` (TestHostReferencesWaitingInTheIndexBeforeThePublicationAreLoadingPlacedByIt FAILS: host_unbound_test.go:214: info state = loading, want live)"
+ },
+ {
+  "upstream": "packages/chord/src/next/host/root.ts",
+  "package": "./chord/next/host",
+  "tests": [
+   "TestHostRootSealsTheContextWhenFnSettles"
+  ],
+  "upstream_reference": "packages/chord/test/next/host/root.test.ts",
+  "mutation": "chord/next/host/host_root.go: `call.settle()` -> `_ = call` (TestHostRootSealsTheContextWhenFnSettles FAILS: host_root_test.go:110: state = &{Kind:live ...}, want ended released)"
+ },
+ {
+  "upstream": "packages/chord/src/next/host/ctx.ts",
+  "package": "./chord/next/host",
+  "tests": [
+   "TestCtxGetAfterTheHandlerSettledThrowsReleased"
+  ],
+  "upstream_reference": "packages/chord/test/next/host/ctx.test.ts",
+  "mutation": "chord/next/host/host_ctx.go: `c.settledOnce = true` -> `c.settledOnce = false` (TestCtxGetAfterTheHandlerSettledThrowsReleased FAILS: host_ctx_test.go:184: err = context canceled (*errors.errorString), want a ChordError)"
+ },
+ {
+  "upstream": "packages/chord/src/next/host/dependencies.ts",
+  "package": "./chord/next/host",
+  "tests": [
+   "TestHostStartBarrierWaitsForALocalBlockerParkedWaitingOnOneStillInItsFirstAttempt"
+  ],
+  "upstream_reference": "packages/chord/test/next/host/host.test.ts",
+  "mutation": "chord/next/host/host_dependencies.go: `if target := binding.target(); target != nil && target.blocksFirstPass() {` -> `if target := binding.target(); false && target != nil && target.blocksFirstPass() {` (TestHostStartBarrierWaitsForALocalBlockerParkedWaitingOnOneStillInItsFirstAttempt FAILS: host_host_test.go:481: load returned early: <nil>)"
+ },
+ {
+  "upstream": "packages/chord/src/next/host/parked.ts",
+  "package": "./chord/next/host",
+  "tests": [
+   "TestHostParkedCallsAreCheckedAgainstTheirDeadlineWhenSent"
+  ],
+  "upstream_reference": "packages/chord/test/next/host/parked.test.ts",
+  "mutation": "chord/next/host/host_parked.go: `if float64(p.loop.Now()) >= call.due {` -> `if false {` (TestHostParkedCallsAreCheckedAgainstTheirDeadlineWhenSent FAILS: host_parked_test.go:574: call = <nil>, want unavailable/park_timeout)"
+ },
+ {
+  "upstream": "packages/chord/src/next/host/native.ts",
+  "package": "./chord/next/host",
+  "tests": [
+   "TestHostNativesReportACloseStillRunningAfterItsCloseTimeoutAbortItsContextAndCloseTheOthers"
+  ],
+  "upstream_reference": "packages/chord/test/next/host/native.test.ts",
+  "mutation": "chord/next/host/host_native.go: `owner.loop.Run(func() { owner.report(timedOut) })` -> `_ = timedOut` (TestHostNativesReportACloseStillRunningAfterItsCloseTimeoutAbortItsContextAndCloseTheOthers FAILS: host_native_test.go:751: errors = [], want [{Kind:close_timeout Object:app.res(1) ...}])"
+ },
+ {
+  "upstream": "packages/chord/src/next/host/backoff.ts",
+  "package": "./chord/next/host",
+  "tests": [
+   "TestBackoffOpensAWindowOf1sAfterTheFirstFailureDoublingUpTo60sAndCallsDueAtItsEnd",
+   "TestNextDelay"
+  ],
+  "upstream_reference": "packages/chord/test/next/host/backoff.test.ts",
+  "mutation": "chord/next/host/host_backoff.go: `return min(previous*2, maxDelay)` -> `return previous * 2` (TestBackoffOpensAWindowOf1sAfterTheFirstFailureDoublingUpTo60sAndCallsDueAtItsEnd, TestNextDelay FAIL)"
+ },
+ {
+  "upstream": "packages/chord/src/next/host/deadline.ts",
+  "package": "./chord/next/host",
+  "tests": [
+   "TestDeadlinePausedTimeDoesNotCountResumedWithTheBudgetItHadLeft"
+  ],
+  "upstream_reference": "packages/chord/test/next/host/deadline.test.ts",
+  "mutation": "chord/next/host/host_deadline.go: `d.remaining = max(0, d.remaining-time.Duration(d.loop.Now()-d.started)*time.Millisecond)` -> `d.remaining = max(0, d.remaining)` (TestDeadlinePausedTimeDoesNotCountResumedWithTheBudgetItHadLeft FAILS)"
+ },
+ {
+  "upstream": "packages/chord/src/next/host/sleep.ts",
+  "package": "./chord/next/host",
+  "tests": [
+   "TestSleepChainsTimersForDelaysAbove2Pow31Minus1MsAnAbortClearsTheChainedTimer"
+  ],
+  "upstream_reference": "packages/chord/test/next/host/sleep.test.ts",
+  "mutation": "chord/next/host/host_sleep.go: `timer = loop.AfterFunc(min(left, maxTimer), func() {` -> `timer = loop.AfterFunc(left, func() {` (TestSleepChainsTimersForDelaysAbove2Pow31Minus1MsAnAbortClearsTheChainedTimer FAILS)"
+ },
+ {
+  "upstream": "packages/chord/src/next/host/uuid.ts",
+  "package": "./chord/next/host",
+  "tests": [
+   "TestUuidv7HasTheVersionAndVariantBitsAndTheTimestamp"
+  ],
+  "upstream_reference": "packages/chord/src/next/host/uuid.ts",
+  "mutation": "chord/next/host/host_uuid.go: `bytes[6] = 0x70 | byte((sequence>>37)&0x0f)` -> `bytes[6] = 0x40 | byte((sequence>>37)&0x0f)` (TestUuidv7HasTheVersionAndVariantBitsAndTheTimestamp FAILS)"
+ },
+ {
+  "upstream": "packages/chord/src/next/host/uuid.ts",
+  "package": "./chord/next/host",
+  "tests": [
+   "TestUuidv7IdsAreOrderedWithinAMillisecondAndAcrossABackwardsClock"
+  ],
+  "upstream_reference": "packages/chord/src/next/host/uuid.ts",
+  "mutation": "chord/next/host/host_uuid.go: `timestamp := max(state.now(), state.lastTimestamp)` -> `timestamp := state.now()` (TestUuidv7IdsAreOrderedWithinAMillisecondAndAcrossABackwardsClock FAILS)"
+ },
+ {
+  "upstream": "packages/chord/src/next/host/routines.ts",
+  "package": "./chord/next/host",
+  "tests": [
+   "TestOnAfterAThrowReportsKeepsTheWatchAndCallsAgainWithTheWholeValueAfter1sDoublingSuccessResets"
+  ],
+  "upstream_reference": "packages/chord/test/next/host/routines.test.ts",
+  "mutation": "chord/next/host/host_routines.go: `o.delay = nextDelay(o.delay)` -> `o.delay = time.Second` (TestOnAfterAThrowReportsKeepsTheWatchAndCallsAgainWithTheWholeValueAfter1sDoublingSuccessResets FAILS: host_routines_test.go:674: calls at [0 1000 2000 3000], want [0 1000 3000 7000])"
+ },
+ {
+  "upstream": "packages/chord/src/next/host/routines.ts",
+  "package": "./chord/next/host",
+  "tests": [
+   "TestOnAfterAThrowRetriesWithTheValueThatArrivedDuringTheFailedCallAsAWholeValue"
+  ],
+  "upstream_reference": "packages/chord/test/next/host/routines.test.ts",
+  "mutation": "chord/next/host/host_routines.go: `o.basis = basisNone\\n// The handler may not have applied` -> `o.basis = basisLast\\n// The handler may not have applied` (TestOnAfterAThrowRetriesWithTheValueThatArrivedDuringTheFailedCallAsAWholeValue FAILS: host_routines_test.go:809: call 1 = {value:0x3d29f3ac2210 ops:[[s [n] 1]] retired:false at:1000}, want {value:0x3d29f39b52f0 ops:[[r 0x3d29f39b5350]] retired:false at:1000})"
+ },
+ {
+  "upstream": "packages/chord/src/next/host/routines.ts",
+  "package": "./chord/next/host",
+  "tests": [
+   "TestOnTakesEveryValueABusyCallLeftBufferedBeforeCallingAgain0And20AlsoWhenItSetThemItself"
+  ],
+  "upstream_reference": "packages/chord/test/next/host/routines.test.ts",
+  "mutation": "chord/next/host/host_routines.go: `case o.owner.host.scheduler.Busy():` -> `case false:` (TestOnTakesEveryValueABusyCallLeftBufferedBeforeCallingAgain0And20AlsoWhenItSetThemItself FAILS: host_routines_test.go:1093: calls = [0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20], want [0 20])"
+ },
+ {
+  "upstream": "packages/chord/src/next/host/routines.ts",
+  "package": "./chord/next/host",
+  "tests": [
+   "TestOnReleasesItsWatchWhenItsObjectEndsACallThatThrowsAsItEndsIsNotReported"
+  ],
+  "upstream_reference": "packages/chord/test/next/host/routines.test.ts",
+  "mutation": "chord/next/host/host_routines.go: `stopAbort := context.AfterFunc(o.owner.context, func() { o.owner.host.enter(opened.stop) })` -> `stopAbort := func() bool { return true }` (TestOnReleasesItsWatchWhenItsObjectEndsACallThatThrowsAsItEndsIsNotReported FAILS: host_routines_test.go:1453: never happened: the watch to be released)"
+ },
+ {
+  "upstream": "packages/chord/src/next/host/routines.ts",
+  "package": "./chord/next/host",
+  "tests": [
+   "TestOnLiveRestartsAfterAThrowWithTheBackoffResetAfterARunOfAtLeastAMinute"
+  ],
+  "upstream_reference": "packages/chord/test/next/host/routines.test.ts",
+  "mutation": "chord/next/host/host_routines.go: `l.delay = 0\\n` -> `l.delay = l.delay\\n` (TestOnLiveRestartsAfterAThrowWithTheBackoffResetAfterARunOfAtLeastAMinute FAILS: host_routines_test.go:1504: starts = [0 1000 3000], want [0 1000 3000 64000])"
+ },
+ {
+  "upstream": "packages/chord/src/next/host/attempt.ts",
+  "package": "./chord/next/host",
+  "tests": [
+   "TestAttemptEndingRejectsACallWhoseCallersContextIsAlreadyAbortedBeforeTheHandlerRuns"
+  ],
+  "upstream_reference": "packages/chord/test/next/host/attempt.test.ts",
+  "mutation": "chord/next/host/host_attempt.go: `if ctx.Err() != nil {\\nresult.settle(nil, context.Cause(ctx))\\nreturn result\\n}\\nobject := a.object` -> `if false {\\nresult.settle(nil, context.Cause(ctx))\\nreturn result\\n}\\nobject := a.object` (TestAttemptEndingRejectsACallWhoseCallersContextIsAlreadyAbortedBeforeTheHandlerRuns FAILS: host_attempt_test.go:435: handler ran 1 times, want 0)"
+ },
+ {
+  "upstream": "packages/chord/src/next/host/attempt.ts",
+  "package": "./chord/next/host",
+  "tests": [
+   "TestAttemptTheDrainIsBoundedByCloseTimeoutAHandlerStillRunningThenSeesItsNativesCloseWhichIsReported"
+  ],
+  "upstream_reference": "packages/chord/test/next/host/attempt.test.ts",
+  "mutation": "chord/next/host/host_attempt.go: `if drained(host.loop(), drain, host.timeouts.close) == withinTimeout {` -> `if drained(host.loop(), drain, host.timeouts.close) != withinTimeout {` (TestAttemptTheDrainIsBoundedByCloseTimeoutAHandlerStillRunningThenSeesItsNativesCloseWhichIsReported FAILS: host_attempt_test.go:584: errors = [], want one drain_timeout of app.page(1))"
+ },
+ {
+  "upstream": "packages/chord/src/next/host/attempt.ts",
+  "package": "./chord/next/host",
+  "tests": [
+   "TestAttemptReleasesTheReferencesItAcquired"
+  ],
+  "upstream_reference": "packages/chord/test/next/host/attempt.test.ts",
+  "mutation": "chord/next/host/host_attempt.go: `each.binding.release()\\n` -> `_ = each\\n` (TestAttemptReleasesTheReferencesItAcquired FAILS: host_attempt_test.go:368: pages = 1, want 2)"
+ },
+ {
+  "upstream": "packages/chord/src/next/host/object.ts",
+  "package": "./chord/next/host",
+  "tests": [
+   "TestObjectCyclesAcrossHostsKeepTheLast32EntriesOfALongerChainTheOldestIsDroppedALongerCycleGoesUndetected"
+  ],
+  "upstream_reference": "packages/chord/test/next/host/object.test.ts",
+  "mutation": "chord/next/host/host_object.go: `if len(chain) >= link.CHAIN {` -> `if len(chain) >= 100000 {` (TestObjectCyclesAcrossHostsKeepTheLast32EntriesOfALongerChainTheOldestIsDroppedALongerCycleGoesUndetected FAILS: host_next_support_test.go:703: RawPeer: check: message: fails the message schema)"
+ },
+ {
+  "upstream": "packages/chord/src/next/host/object.ts",
+  "package": "./chord/next/host",
+  "tests": [
+   "TestObjectLingerKeepsALiveObjectLiveForLingerAfterItsLastReleaseAGetWithinItReusesItWithItsDocuments"
+  ],
+  "upstream_reference": "packages/chord/test/next/host/object.test.ts",
+  "mutation": "chord/next/host/host_object.go: `|| o.served.linger == 0 {` -> `|| true {` (TestObjectLingerKeepsALiveObjectLiveForLingerAfterItsLastReleaseAGetWithinItReusesItWithItsDocuments FAILS: host_object_test.go:904: n 0, factory 2, closes [1 end], want 1, 1, none)"
+ },
+ {
+  "upstream": "packages/chord/src/next/host/object.ts",
+  "package": "./chord/next/host",
+  "tests": [
+   "TestObjectRefRetrySkipsATransientFailuresBackoffWindowAnAttemptNow",
+   "TestObjectRefRetryStartsAnObjectWaitingForItsIdentitysBackoffWindowAtOnce"
+  ],
+  "upstream_reference": "packages/chord/test/next/host/object.test.ts",
+  "mutation": "chord/next/host/host_object.go: `o.host.backoff.skip(o.identity)\\no.attempt()\\n}` -> `o.host.backoff.skip(o.identity)\\n}` (TestObjectRefRetrySkipsATransientFailuresBackoffWindowAnAttemptNow, TestObjectRefRetryStartsAnObjectWaitingForItsIdentitysBackoffWindowAtOnce FAIL: host_object_test.go:748: the reference never reached the awaited state; it is failed)"
+ },
+ {
+  "upstream": "packages/chord/src/next/host/reference.ts",
+  "package": "./chord/next/host",
+  "tests": [
+   "TestReferencesThrowReleasedOnEveryUseAfterReleaseWhichIsIdempotent"
+  ],
+  "upstream_reference": "packages/chord/test/next/host/reference.test.ts",
+  "mutation": "chord/next/host/host_reference.go: `b.name + \": released\"` -> `b.name + \": gone\"` (TestReferencesThrowReleasedOnEveryUseAfterReleaseWhichIsIdempotent FAILS: `host_reference_test.go:123: doc.value = app.counter: gone, want app.counter: released`)"
+ },
+ {
+  "upstream": "packages/chord/src/next/host/reference.ts",
+  "package": "./chord/next/host",
+  "tests": [
+   "TestKeyedStateMembersRefMemberGetAndWatchWorkAnywhereAtKeyOnlyInAFactory"
+  ],
+  "upstream_reference": "packages/chord/test/next/host/reference.test.ts",
+  "mutation": "chord/next/host/host_reference.go: `if b.state.kind != bindingUnbound || b.state.dependent == nil {` -> `if false {` (TestKeyedStateMembersRefMemberGetAndWatchWorkAnywhereAtKeyOnlyInAFactory FAILS: `host_reference_test.go:908: at = <nil>, want it valid only in the factory`)"
+ },
+ {
+  "upstream": "packages/chord/src/next/host/member-source.ts",
+  "package": "./chord/next/host",
+  "tests": [
+   "TestHostMemberSourceAMemberTheNewAttemptsVariantLacksFailsItsWatchGetsOneFailureCallAndStaysOpenReadsThrowInvalidMemberALaterAttemptBringsItBack",
+   "TestMemberSourceAMemberTheNewAttemptsVariantLacksFailsItsWatchGetsOneFailureCallAndStaysOpenAndALaterAttemptBringsItBack"
+  ],
+  "upstream_reference": "packages/chord/test/next/host/member-source.test.ts",
+  "mutation": "chord/next/host/host_member_source.go: `m.call(chord.WatchCall[delta.JsonValue]{Kind: chord.WatchCallFailed, Error: state.HandedOut(err)}, ctx)` -> `_ = ctx` (both FAIL: `host_member_source_test.go:1139: calls = [], want one failure`, `host_member_source_test.go:306: calls = []chord.WatchCall[interface {}]{}, want one failure call`)"
+ },
+ {
+  "upstream": "packages/chord/src/next/host/keyed-members.ts",
+  "package": "./chord/next/host",
+  "tests": [
+   "TestKeyedMembersAConsumerReleasedWhileTheObjectReactivatesLeavesNoHoldBehindNothingIsKeptForIt",
+   "TestKeyedStateMembersTwoConsumersOfOneKeyShareOneSourceAndOnePinEachHoldIsReleasedOnceWithItsReference"
+  ],
+  "upstream_reference": "packages/chord/test/next/host/keyed-members.test.ts",
+  "mutation": "chord/next/host/host_keyed_members.go (releaseAll): `current.following.pin.release()` -> `_ = current.following` (both FAIL: `host_keyed_members_test.go:703: never happened: no pins left`, `host_reference_test.go:867: never happened: the key's source is dropped`)"
+ },
+ {
+  "upstream": "packages/chord/src/next/host/members.ts",
+  "package": "./chord/next/host",
+  "tests": [
+   "TestHostGetRefusesAnInheritedPropertyForAMember",
+   "TestMemberCheckRefusesAMethodTheImplementationDoesNotOwn"
+  ],
+  "upstream_reference": "packages/chord/test/next/host/members.test.ts",
+  "mutation": "chord/next/host/host_members.go: `\": a method is a function\"` -> `\": a method is callable\"` (both FAIL: `host_members_test.go:315: get = app.named(1): toString: a method is callable, want it to fail with app.named(1): toString: a method is a function`, `host_members_test.go:98: error = toString: a method is callable, want \"toString: a method is a function\"`)"
+ },
+ {
+  "upstream": "packages/chord/src/next/host/follow.ts",
+  "package": "./chord/next/host",
+  "tests": [
+   "TestHostFollowCallsOutsideAnyBatchQueuedAndAppliedInOneBatchOnTheNextMicrotask",
+   "TestFollowCallsOutsideAnyBatchQueuedAndAppliedInOneBatchOnTheNextMicrotask"
+  ],
+  "upstream_reference": "packages/chord/test/next/host/follow.test.ts",
+  "mutation": "chord/next/host/host_follow.go (advance): `if kind == followAttaching || !s.Batch().Running() {` -> `if kind == followAttaching {` (both FAIL: `host_follow_test.go:712: got {\"n\":1}, want {\"n\":0}`, `host_follow_test.go:318: value in the section of the calls = ...{key:\"n\", value:1...}, want ...{key:\"n\", value:0...}`)"
+ },
+ {
+  "upstream": "packages/chord/src/next/host/presence.ts",
+  "package": "./chord/next/host",
+  "tests": [
+   "TestHostReferencesListsEveryReferenceWithTheObjectsParamsItsPrincipalAndItsIncarnation"
+  ],
+  "upstream_reference": "packages/chord/test/next/host/presence.test.ts",
+  "mutation": "chord/next/host/host_presence.go (record): `entry.Set(\"incarnation\", from.incarnation)` -> `entry.Set(\"incarnation\", \"\")` (TestHostReferencesListsEveryReferenceWithTheObjectsParamsItsPrincipalAndItsIncarnation FAILS: `host_presence_test.go:95: got [{\"params\":{\"session\":\"S1\"},...,\"incarnation\":\"\"},...], want [...\"incarnation\":\"01a18dff-...\"...]`)"
+ },
+ {
+  "upstream": "packages/chord/src/next/host/route.ts",
+  "package": "./chord/next/host",
+  "tests": [
+   "TestResolveFailuresAndReResolvesARejectedResolveLeavesTheHoldsLoadingIsReportedAndResolvesAgainAfterTheAddressesBackoffRace2"
+  ],
+  "upstream_reference": "packages/chord/test/next/host/route.test.ts",
+  "mutation": "chord/next/host/host_route.go (check): `if !r.backoff.waiting(address.Key) {` -> `if true {` (TestResolveFailuresAndReResolvesARejectedResolveLeavesTheHoldsLoadingIsReportedAndResolvesAgainAfterTheAddressesBackoffRace2 FAILS: `host_route_test.go:274: never happened: the server reported the resolve failures`)"
+ },
+ {
+  "upstream": "packages/chord/src/next/host/destination.ts",
+  "package": "./chord/next/host",
+  "tests": [
+   "TestDestinationHoldGoesOverTheRouteOfItsKindElseOverTheParentLinkUnlessItCameOnTheParentLinkOrThereWasNone"
+  ],
+  "upstream_reference": "none: destination.ts has no upstream test file; its cases run through packages/chord/test/next/host/route.test.ts and the own tests of host_destination_test.go",
+  "mutation": "chord/next/host/host_destination.go (hold): `from.role == linkRoleParent || !d.parent.linked()` -> `!d.parent.linked()` (TestDestinationHoldGoesOverTheRouteOfItsKindElseOverTheParentLinkUnlessItCameOnTheParentLinkOrThereWasNone FAILS: `host_destination_test.go:201: err = <nil> (<nil>), want a ChordError`)"
+ },
+ {
+  "upstream": "packages/chord/src/next/jobs/definition.ts",
+  "package": "./chord/next/host",
+  "tests": [
+   "TestDefineJobRefusesABadNameVersionOrConcurrency"
+  ],
+  "upstream_reference": "packages/chord/test/next/jobs/definition.test.ts",
+  "mutation": "chord/next/host/jobs_definition.go: `if version < 1 {` -> `if version < 0 {` (TestDefineJobRefusesABadNameVersionOrConcurrency FAILS: jobs_definition_test.go:98: DefineJob(\"j\") = <nil>, want an error containing \"j.version: expected a positive integer\")"
+ },
+ {
+  "upstream": "packages/chord/src/next/jobs/run.ts",
+  "package": "./chord/next/host",
+  "tests": [
+   "TestARunHasAnEntryPerPhaseArgsAndStateWhileRunningOrFinishingNeitherWhenBlockedWithItsReason"
+  ],
+  "upstream_reference": "packages/chord/test/next/jobs/run.test.ts",
+  "mutation": "chord/next/host/jobs_run.go: `entry.Set(\"reason\", string(*run.blocked))` -> `entry.Set(\"reason\", \"finish_failed\")` (TestARunHasAnEntryPerPhaseArgsAndStateWhileRunningOrFinishingNeitherWhenBlockedWithItsReason FAILS: jobs_run_test.go:43: entry = &{[{id r1 true} {version 2 true} {phase blocked true} {reason finish_failed true}] map[] 0 false})"
+ },
+ {
+  "upstream": "packages/chord/src/next/jobs/run.ts",
+  "package": "./chord/next/host",
+  "tests": [
+   "TestGCKeepsNothingOfACancelledWaitWhileItsRunStillRuns"
+  ],
+  "upstream_reference": "packages/chord/test/next/jobs/job.test.ts",
+  "mutation": "chord/next/host/jobs_run.go: `set.loop.Run(func() { delete(set.waiting, each) })` -> `set.loop.Run(func() {})` (TestGCKeepsNothingOfACancelledWaitWhileItsRunStillRuns FAILS: jobs_job_end_test.go:359: 1 cancelled waits left registered)"
+ },
+ {
+  "upstream": "packages/chord/src/next/jobs/running.ts",
+  "package": "./chord/next/host",
+  "tests": [
+   "TestRunningsListRePathsEveryKindOfStateOpUnderItsEntryAReplacementBecomesASet"
+  ],
+  "upstream_reference": "packages/chord/test/next/jobs/running.test.ts",
+  "mutation": "chord/next/host/jobs_running.go: `return delta.Op{\"s\", prefix, op[1]}` -> `return delta.Op{\"r\", op[1]}` (TestRunningsListRePathsEveryKindOfStateOpUnderItsEntryAReplacementBecomesASet FAILS: jobs_running_test.go:126: got [[\"r\",{\"list\":[],\"text\":\"\",\"n\":0}],[\"s\",[0,\"state\",\"n\"],1],[\"p\",[0,\"state\",\"list\"],0,0,[2]],[\"a\",[0,\"state\",\"text\"],\"t\"],[\"d\",[0,\"state\",\"gone\"]],[\"t\",[0,\"state\",\"text\"],1],[\"m\",[0,\"state\",\"list\"],[0]]], want [[\"s\",[0,\"state\"],{\"list\":[],\"text\":\"\",\"n\":0}],[\"s\",[0,\"state\",\"n\"],1],[\"p\",[0,\"state\",\"list\"],0,0,[2]],[\"a\",[0,\"state\",\"text\"],\"t\"],[\"d\",[0,\"state\",\"gone\"]],[\"t)"
+ },
+ {
+  "upstream": "packages/chord/src/next/jobs/stored.ts",
+  "package": "./chord/next/host",
+  "tests": [
+   "TestPersistedAbortOfAFinishingRunStoresTheMarkAndKeepsTheRecordedOutcome"
+  ],
+  "upstream_reference": "packages/chord/test/next/jobs/persisted.test.ts",
+  "mutation": "chord/next/host/jobs_stored.go: `record.Set(\"abort\", true)` -> `record.Set(\"abort\", false)` (TestPersistedAbortOfAFinishingRunStoresTheMarkAndKeepsTheRecordedOutcome FAILS: jobs_persisted_test.go:1059: record[\"abort\"] = false, want true (record map[abort:false args:map[path:a] fingerprint:c280624818bc83ab finishFailures:1 outcome:map[kind:done result:map[count:1]] phase:finishing restarts:0 version:1]))"
+ },
+ {
+  "upstream": "packages/chord/src/next/jobs/persisted.ts",
+  "package": "./chord/next/host",
+  "tests": [
+   "TestPersistedVersionsWithoutAStateAnAbortOfARunBlockedUnderAVersionWithoutAStateRetiresTheOldStateDocumentToo",
+   "TestPersistedVersionsWithIncompatibleStateARunOfAnotherVersionIsBlockedBeforeItsStateIsDecoded"
+  ],
+  "upstream_reference": "packages/chord/test/next/jobs/persisted.test.ts",
+  "mutation": "chord/next/host/jobs_persisted.go: `if state, found := runs.blockedStates[id]; found {` -> `if state, found := runs.blockedStates[id]; found && false {` (TestPersistedVersionsWithoutAStateAnAbortOfARunBlockedUnderAVersionWithoutAStateRetiresTheOldStateDocumentToo and TestPersistedVersionsWithIncompatibleStateARunOfAnotherVersionIsBlockedBeforeItsStateIsDecoded FAILS: jobs_persisted_test.go:497: state documents = [notes.import/01a18e00-74d7-73af-b6b8-14e49845e9c8])"
+ },
+ {
+  "upstream": "packages/chord/src/next/jobs/run-states.ts",
+  "package": "./chord/next/host",
+  "tests": [
+   "TestPersistedDeferredStateIsAdoptedAtOnceHeldAndStoredWithTheOutcome"
+  ],
+  "upstream_reference": "packages/chord/test/next/jobs/persisted.test.ts",
+  "mutation": "chord/next/host/jobs_run_states.go: `was != nil && !change.Retires` -> `was != nil && false && !change.Retires` (TestPersistedDeferredStateIsAdoptedAtOnceHeldAndStoredWithTheOutcome FAILS: jobs_persisted_test.go:1176: revisions = [{base 0x28c943f16de0} {delta [[s [done] 1]]}])"
+ },
+ {
+  "upstream": "packages/chord/src/next/jobs/records.ts",
+  "package": "./chord/next/host",
+  "tests": [
+   "TestPersistedCrashesARunCutOffWhileRunningIsCountedAndRerunFiveInARowEndIt"
+  ],
+  "upstream_reference": "packages/chord/test/next/jobs/persisted.test.ts",
+  "mutation": "chord/next/host/jobs_records.go: `if restarts < restartLimit {` -> `if restarts < restartLimit+10 {` (TestPersistedCrashesARunCutOffWhileRunningIsCountedAndRerunFiveInARowEndIt FAILS: jobs_persisted_test.go:365: timed out waiting for the finished outcomes)"
+ },
+ {
+  "upstream": "packages/chord/src/next/jobs/records.ts",
+  "package": "./chord/next/host",
+  "tests": [
+   "TestJobStartReturnsTheUnsettledRunWithTheSameKeyAcrossTransactionsWhateverItsArgs"
+  ],
+  "upstream_reference": "packages/chord/test/next/jobs/job.test.ts",
+  "mutation": "chord/next/host/jobs_records.go: `known = records.keys[*key]` -> `known = nil` (TestJobStartReturnsTheUnsettledRunWithTheSameKeyAcrossTransactionsWhateverItsArgs FAILS: jobs_job_test.go:94: the second start returned another run)"
+ },
+ {
+  "upstream": "packages/chord/src/next/jobs/job.ts",
+  "package": "./chord/next/host",
+  "tests": [
+   "TestFinishThrowingIsRetriedAfter1SDoublingEachFailureReportedALaterSuccessFinishesTheRun"
+  ],
+  "upstream_reference": "packages/chord/test/next/jobs/job.test.ts",
+  "mutation": "chord/next/host/jobs_job.go: `delay = nextDelay(delay)` -> `delay = firstDelay` (TestFinishThrowingIsRetriedAfter1SDoublingEachFailureReportedALaterSuccessFinishesTheRun FAILS: jobs_job_runs_test.go:539: the backoff timer is due in 1000 ms, want 2000)"
+ },
+ {
+  "upstream": "packages/chord/src/next/jobs/job.ts",
+  "package": "./chord/next/host",
+  "tests": [
+   "TestRecordsARunCutOffByItsAttemptsSealEndsAbortedRestartAndIsFinishedOnTheNextLiveAttempt"
+  ],
+  "upstream_reference": "packages/chord/test/next/jobs/records.test.ts",
+  "mutation": "chord/next/host/jobs_job.go: `handle.records.cut(run, err)` -> `_, _ = run, err` (TestRecordsARunCutOffByItsAttemptsSealEndsAbortedRestartAndIsFinishedOnTheNextLiveAttempt FAILS: jobs_records_test.go:83: timed out waiting for the run to wait finishing)"
+ },
+ {
+  "upstream": "packages/chord/test/next/bench/jobs.ts",
+  "package": "./chord/next/host",
+  "tests": [
+   "BenchmarkJobsStart"
+  ],
+  "upstream_reference": "packages/chord/test/next/bench/jobs.ts",
+  "mutation": "chord/next/host/jobs_records.go: `data.Check(validator, args, data.ReasonArgs, ctx)` -> `data.Check(validator, float64(1), data.ReasonArgs, ctx)` (BenchmarkJobsStart FAILS: go test -run ^$ -bench ^BenchmarkJobsStart$ -benchtime 1x: jobs_bench_test.go:126: args: must be object)"
+ },
+ {
+  "upstream": "packages/chord/src/next/documents/line.ts",
+  "package": "./chord/next/documents",
+  "tests": [
+   "TestTheLineReportsItsWaitingHoldersToTheHostsTests"
+  ],
+  "upstream_reference": "packages/chord/test/next/documents/line.test.ts",
+  "mutation": "chord/next/documents/line.go: `func (line *Line) WaitingHolders() int { return line.waitingHolders() }` -> `func (line *Line) WaitingHolders() int { return 0 }` (TestTheLineReportsItsWaitingHoldersToTheHostsTests FAILS: line_test.go:99: WaitingHolders with two asking = 0, want 2)"
+ },
+ {
+  "upstream": "packages/chord/src/next/remote/calls.ts",
+  "package": "./chord/next/host",
+  "tests": [
+   "TestCallWindowSendsNothingBeforeHelloThenUpToN"
+  ],
+  "upstream_reference": "packages/chord/test/next/remote/calls.test.ts",
+  "mutation": "chord/next/host/remote_calls.go: `if w.inFlight >= w.limit {` (in drain) -> `if w.inFlight > w.limit {` (TestCallWindowSendsNothingBeforeHelloThenUpToN FAILS: `remote_calls_test.go:48: sent = [a b c], want [a b]`)"
+ },
+ {
+  "upstream": "packages/chord/src/next/remote/path.ts",
+  "package": "./chord/next/host",
+  "tests": [
+   "TestPathTellsHoldersWhenItsLinkDrops"
+  ],
+  "upstream_reference": "packages/chord/test/next/remote/path.test.ts",
+  "mutation": "chord/next/host/remote_path.go: `if p.current != link {` -> `if false {` (TestPathTellsHoldersWhenItsLinkDrops FAILS: `remote_path_test.go:90: log = [a@1 a dropped a@2 a dropped], want [a@1 a dropped a@2]`)"
+ },
+ {
+  "upstream": "packages/chord/src/next/remote/replica.ts",
+  "package": "./chord/next/host",
+  "tests": [
+   "TestReplicasFailOncePerEpisodeASecondFailureWhileFailedGivesNoCallARetirementMeanwhileWaitsForTheValue"
+  ],
+  "upstream_reference": "packages/chord/test/next/remote/replica.test.ts",
+  "mutation": "chord/next/host/remote_replica.go: `if previous.kind != replicaFailed {` (in fail) -> `if true {` (TestReplicasFailOncePerEpisodeASecondFailureWhileFailedGivesNoCallARetirementMeanwhileWaitsForTheValue FAILS: `remote_replica_test.go:126: calls = [{Kind:failed ... Error:first} {Kind:failed ... Error:second} {Kind:value ...}], want a failure and a value`)"
+ },
+ {
+  "upstream": "packages/chord/src/next/remote/provider.ts",
+  "package": "./chord/next/host",
+  "tests": [
+   "TestProviderWindow"
+  ],
+  "upstream_reference": "packages/chord/test/next/remote/provider.test.ts",
+  "mutation": "chord/next/host/remote_provider.go: `const providerWindow = 2` -> `const providerWindow = 3` (TestProviderWindow FAILS: `remote_provider_test.go:879: got [\"state\" \"state\"], want [\"state\"]`)"
+ },
+ {
+  "upstream": "packages/chord/src/next/remote/hold.ts",
+  "package": "./chord/next/host",
+  "tests": [
+   "TestHoldRetiredMembers"
+  ],
+  "upstream_reference": "packages/chord/test/next/remote/hold.test.ts",
+  "mutation": "chord/next/host/remote_hold.go: `if len(retired) > 0 && len(failures) > 0 {` (in entryOf: a failed member's retirement waits for its next value) -> `if false {` (TestHoldRetiredMembers FAILS: `remote_hold_test.go:1084: retired = [0,1,2], want [0,1]`)"
+ },
+ {
+  "upstream": "packages/chord/src/next/remote/remote-object.ts",
+  "package": "./chord/next/host",
+  "tests": [
+   "TestRemoteObjectRetiredMembers"
+  ],
+  "upstream_reference": "packages/chord/test/next/remote/remote-object.test.ts",
+  "mutation": "chord/next/host/remote_remote_object.go: `if _, twice := retirements[target]; twice {` (in prepare: a member retired twice in one state is a protocol error) -> `if false {` (TestRemoteObjectRetiredMembers FAILS: `remote_remote_object_test.go:233: condition never held` (the link is not closed by `that names a member twice`))"
+ },
+ {
+  "upstream": "packages/chord/src/next/remote/host-link.ts",
+  "package": "./chord/next/host",
+  "tests": [
+   "TestHostLinkPartsCompressionAndLimits"
+  ],
+  "upstream_reference": "packages/chord/test/next/remote/host-link.test.ts",
+  "mutation": "chord/next/host/remote_host_link.go: `return link.OriginPart(json, l.host.compression, ctx)` (in part) -> `return link.Text(json)` (TestHostLinkPartsCompressionAndLimits FAILS: `remote_host_link_test.go:572: server deflates = 0, want 1`)"
+ },
+ {
+  "upstream": "packages/chord/src/next/remote/consumer.ts",
+  "package": "./chord/next/host",
+  "tests": [
+   "TestConsumerCallWindow"
+  ],
+  "upstream_reference": "packages/chord/test/next/remote/consumer.test.ts",
+  "mutation": "chord/next/host/remote_consumer.go: `c.calls.delete(id)\\n\\t\\tc.window.freed()\\n\\t\\tfailed = append(failed, call)` (in failCalls: each in-flight call of a released/gone hold frees its slot) -> `c.calls.delete(id)\\n\\t\\tfailed = append(failed, call)` (TestConsumerCallWindow FAILS: `remote_consumer_test.go:743: calls = [0], want [0 1]`)"
+ },
+ {
+  "upstream": "packages/chord/src/next/remote/relay.ts",
+  "package": "./chord/next/host",
+  "tests": [
+   "TestRelayLimitsAndCompression"
+  ],
+  "upstream_reference": "packages/chord/test/next/remote/relay.test.ts",
+  "mutation": "chord/next/host/remote_relay.go: `Limit:       h.request.Limit,` (in attach: the admitting link's decoded limit is stamped on the upstream hold) -> `Limit:       link.Optional[int]{},` (TestRelayLimitsAndCompression FAILS: `remote_relay_test.go:984: upstream limit = {Value:0 Ok:false}, want 4096`)"
+ },
+ {
+  "upstream": "packages/chord/test/next/examples/01-objects.ts",
+  "package": "./chord/next/host",
+  "tests": [
+   "TestExample01Objects"
+  ],
+  "upstream_reference": "packages/chord/test/next/examples/01-objects.ts",
+  "mutation": "chord/next/host/host_examples_test.go: `\"Hallo Mario\")` -> `\"Hallo Maria\")` (TestExample01Objects FAILS: greet = \"Hallo Mario\", want \"Hallo Maria\")"
+ },
+ {
+  "upstream": "packages/chord/test/next/examples/02-documents.ts",
+  "package": "./chord/next/host",
+  "tests": [
+   "TestExample02Documents"
+  ],
+  "upstream_reference": "packages/chord/test/next/examples/02-documents.ts",
+  "mutation": "chord/next/host/host_examples_test.go: `exEqual(t, \"first\", first, float64(1))` -> `exEqual(t, \"first\", first, float64(2))` (TestExample02Documents FAILS: first = 1, want 2)"
+ },
+ {
+  "upstream": "packages/chord/test/next/examples/03-derives.ts",
+  "package": "./chord/next/host",
+  "tests": [
+   "TestExample03Derives"
+  ],
+  "upstream_reference": "packages/chord/test/next/examples/03-derives.ts",
+  "mutation": "chord/next/host/host_examples_test.go: `\"mario: 3 notes\"` -> `\"mario: 2 notes\"` (TestExample03Derives FAILS: badge = \"mario: 3 notes\", want \"mario: 2 notes\")"
+ },
+ {
+  "upstream": "packages/chord/test/next/examples/04-watches.ts",
+  "package": "./chord/next/host",
+  "tests": [
+   "TestExample04Watches"
+  ],
+  "upstream_reference": "packages/chord/test/next/examples/04-watches.ts",
+  "mutation": "chord/next/host/host_examples_test.go: `\"failed: 3 has no half\", \"frame 0\"}` -> `\"failed: 3 has no half\", \"frame 9\"}` (TestExample04Watches FAILS: half calls = [failed: 1 has no half frame 1 failed: 3 has no half frame 0], want [failed: 1 has no half frame 1 failed: 3 has no half frame 9])"
+ },
+ {
+  "upstream": "packages/chord/test/next/examples/05-errors.ts",
+  "package": "./chord/next/host",
+  "tests": [
+   "TestExample05Errors"
+  ],
+  "upstream_reference": "packages/chord/test/next/examples/05-errors.ts",
+  "mutation": "chord/next/host/host_examples_test.go: `exCode(t, err, data.CodeInvalid, data.ReasonCycle)` -> `exCode(t, err, data.CodeInvalid, data.ReasonParams)` (TestExample05Errors FAILS: err reason = \"cycle\", want \"params\" (dependency cycle: example.ping → example.pong → example.ping))"
+ },
+ {
+  "upstream": "packages/chord/test/next/examples/06-natives.ts",
+  "package": "./chord/next/host",
+  "tests": [
+   "TestExample06Natives"
+  ],
+  "upstream_reference": "packages/chord/test/next/examples/06-natives.ts",
+  "mutation": "chord/next/host/host_examples_test.go: `\"[vienna] starting\")` -> `\"[vienna] started\")` (TestExample06Natives FAILS: now = \"[vienna] starting\", want \"[vienna] started\")"
+ },
+ {
+  "upstream": "packages/chord/test/next/examples/07-failures.ts",
+  "package": "./chord/next/host",
+  "tests": [
+   "TestExample07Failures"
+  ],
+  "upstream_reference": "packages/chord/test/next/examples/07-failures.ts",
+  "mutation": "chord/next/host/host_examples_test.go: `\"mario: connected\")` -> `\"mario: offline\")` (TestExample07Failures FAILS: inbox status = \"mario: connected\", want \"mario: offline\")"
+ },
+ {
+  "upstream": "packages/chord/test/next/examples/08-remote.ts",
+  "package": "./chord/next/host",
+  "tests": [
+   "TestExample08Remote"
+  ],
+  "upstream_reference": "packages/chord/test/next/examples/08-remote.ts",
+  "mutation": "chord/next/host/host_examples_test.go: `exEqual(t, \"guest count\", exValue(t, guest, \"count\"), float64(1))` -> `exEqual(t, \"guest count\", exValue(t, guest, \"count\"), float64(2))` (TestExample08Remote FAILS: guest count = 1, want 2)"
+ },
+ {
+  "upstream": "packages/chord/test/next/examples/09-calls.ts",
+  "package": "./chord/next/host",
+  "tests": [
+   "TestExample09Calls"
+  ],
+  "upstream_reference": "packages/chord/test/next/examples/09-calls.ts",
+  "mutation": "chord/next/host/host_examples_test.go: `float64(1024*1024))` -> `float64(1024*1023))` (TestExample09Calls FAILS: uploaded bytes = 1048576, want 1047552)"
+ },
+ {
+  "upstream": "packages/chord/test/next/examples/10-drops.ts",
+  "package": "./chord/next/host",
+  "tests": [
+   "TestExample10Drops"
+  ],
+  "upstream_reference": "packages/chord/test/next/examples/10-drops.ts",
+  "mutation": "chord/next/host/host_examples_test.go: `\"last notes\", exValue(t, held, \"notes\"), exJSON(t, `[\"written while loading\"]`)` -> `\"last notes\", exValue(t, held, \"notes\"), exJSON(t, `[\"written while loadin\"]`)` (TestExample10Drops FAILS: last notes = [\"written while loading\"], want [\"written while loadin\"])"
+ },
+ {
+  "upstream": "packages/chord/test/next/examples/11-linger-and-retry.ts",
+  "package": "./chord/next/host",
+  "tests": [
+   "TestExample11LingerAndRetry"
+  ],
+  "upstream_reference": "packages/chord/test/next/examples/11-linger-and-retry.ts",
+  "mutation": "chord/next/host/host_examples_test.go: `exEqual(t, \"within linger\", exValue(t, draftRef, \"text\"), \"hello\")` -> `exEqual(t, \"within linger\", exValue(t, draftRef, \"text\"), \"hellp\")` (TestExample11LingerAndRetry FAILS: within linger = \"hello\", want \"hellp\")"
+ },
+ {
+  "upstream": "packages/chord/test/next/examples/12-routes.ts",
+  "package": "./chord/next/host",
+  "tests": [
+   "TestExample12Routes"
+  ],
+  "upstream_reference": "packages/chord/test/next/examples/12-routes.ts",
+  "mutation": "chord/next/host/host_examples_test.go: ``reader variant, {\"kind\":\"guest\",\"session\":\"S1\"}`` -> ``reader variant, {\"kind\":\"guest\",\"session\":\"S2\"}`` (TestExample12Routes FAILS: guest via the lobby = \"reader variant, {\\\"kind\\\":\\\"guest\\\",\\\"session\\\":\\\"S1\\\"}\", want \"reader variant, {\\\"kind\\\":\\\"guest\\\",\\\"session\\\":\\\"S2\\\"}\")"
+ },
+ {
+  "upstream": "packages/chord/test/next/examples/13-relay.ts",
+  "package": "./chord/next/host",
+  "tests": [
+   "TestExample13Relay"
+  ],
+  "upstream_reference": "packages/chord/test/next/examples/13-relay.ts",
+  "mutation": "chord/next/host/host_examples_test.go: `\"tab: S2 notes\", exValue(t, s2, \"notes\"), exJSON(t, `[]`)` -> `\"tab: S2 notes\", exValue(t, s2, \"notes\"), exJSON(t, `[1]`)` (TestExample13Relay FAILS: tab: S2 notes = [], want [1])"
+ },
+ {
+  "upstream": "packages/chord/test/next/examples/14-flow-control.ts",
+  "package": "./chord/next/host",
+  "tests": [
+   "TestExample14FlowControl"
+  ],
+  "upstream_reference": "packages/chord/test/next/examples/14-flow-control.ts",
+  "mutation": "chord/next/host/host_examples_test.go: `\"the worker has\", exValue(t, reply2, \"reply\"), exJSON(t, `{\"text\":\" t0 t1 t2 t3 t4\"}`)` -> `\"the worker has\", exValue(t, reply2, \"reply\"), exJSON(t, `{\"text\":\" t0 t1 t2 t3\"}`)` (TestExample14FlowControl FAILS: the worker has = {\"text\":\" t0 t1 t2 t3 t4\"}, want {\"text\":\" t0 t1 t2 t3\"})"
+ },
+ {
+  "upstream": "packages/chord/test/next/examples/15-revocation.ts",
+  "package": "./chord/next/host",
+  "tests": [
+   "TestExample15Revocation"
+  ],
+  "upstream_reference": "packages/chord/test/next/examples/15-revocation.ts",
+  "mutation": "chord/next/host/host_examples_test.go: `exEqual(t, \"owner notes\", exValue(t, ownerNotes, \"notes\"), exJSON(t, `[]`))` -> `exEqual(t, \"owner notes\", exValue(t, ownerNotes, \"notes\"), exJSON(t, `[1]`))` (TestExample15Revocation FAILS: owner notes = [], want [1])"
+ },
+ {
+  "upstream": "packages/chord/test/next/examples/16-presence-and-activity.ts",
+  "package": "./chord/next/host",
+  "tests": [
+   "TestExample16PresenceAndActivity"
+  ],
+  "upstream_reference": "packages/chord/test/next/examples/16-presence-and-activity.ts",
+  "mutation": "chord/next/host/host_examples_test.go: `present[2][:3] != \"bob\"` -> `present[2][:3] != \"bab\"` (TestExample16PresenceAndActivity FAILS: references = [ada @ ee07 ada @ 4215 bob @ 5d3e], want ada, ada, bob)"
+ },
+ {
+  "upstream": "packages/chord/test/next/examples/17-limits-and-compression.ts",
+  "package": "./chord/next/host",
+  "tests": [
+   "TestExample17LimitsAndCompression"
+  ],
+  "upstream_reference": "packages/chord/test/next/examples/17-limits-and-compression.ts",
+  "mutation": "chord/next/host/host_examples_test.go: `snapshotBytes[0] < 500*1000` -> `snapshotBytes[0] < 5000*1000` (TestExample17LimitsAndCompression FAILS: received bytes (uncompressed, deflated) = [512727 146192]: want >= 500 KB and the deflated snapshot well below half)"
+ },
+ {
+  "upstream": "packages/chord/test/next/examples/18-routines.ts",
+  "package": "./chord/next/host",
+  "tests": [
+   "TestExample18Routines"
+  ],
+  "upstream_reference": "packages/chord/test/next/examples/18-routines.ts",
+  "mutation": "chord/next/host/host_examples_test.go: `failed: closing the forward of s2 timed out\"}` -> `failed: closing the forward of s3 timed out\"}` (TestExample18Routines FAILS: reported = [\"example.forwards on #1 failed: closing the forward of s2 timed out\"], want [\"example.forwards on #1 failed: closing the forward of s3 timed out\"])"
+ },
+ {
+  "upstream": "packages/chord/test/next/examples/19-jobs.ts",
+  "package": "./chord/next/host",
+  "tests": [
+   "TestExample19Jobs"
+  ],
+  "upstream_reference": "packages/chord/test/next/examples/19-jobs.ts",
+  "mutation": "chord/next/host/host_examples_test.go: `\"npm test: exit 0, 5 lines\"` -> `\"npm test: exit 0, 6 lines\"` (TestExample19Jobs FAILS: never happened: entries after the first run)"
+ },
+ {
+  "upstream": "packages/chord/test/next/examples/20-tables.ts",
+  "package": "./chord/next/host",
+  "tests": [
+   "TestExample20Tables"
+  ],
+  "upstream_reference": "packages/chord/test/next/examples/20-tables.ts",
+  "mutation": "chord/next/host/host_examples_test.go: `\"open, first page\", first.Value(\"ids\"), exJSON(t, `[\"e3\"]`)` -> `\"open, first page\", first.Value(\"ids\"), exJSON(t, `[\"e2\"]`)` (TestExample20Tables FAILS: open, first page = [\"e3\"], want [\"e2\"])"
+ },
+ {
+  "upstream": "packages/chord/test/next/examples/21-persisted-documents.ts",
+  "package": "./chord/next/host",
+  "tests": [
+   "TestExample21PersistedDocuments"
+  ],
+  "upstream_reference": "packages/chord/test/next/examples/21-persisted-documents.ts",
+  "mutation": "chord/next/host/host_examples_test.go: `\"second host, tags\", exValue(t, ref, \"tags\").(*delta.JsonObject).Value(\"tags\"), exJSON(t, `[\"home\",\"work\"]`)` -> `\"second host, tags\", exValue(t, ref, \"tags\").(*delta.JsonObject).Value(\"tags\"), exJSON(t, `[\"home\"]`)` (TestExample21PersistedDocuments FAILS: second host, tags = [\"home\",\"work\"], want [\"home\"])"
+ },
+ {
+  "upstream": "packages/chord/test/next/examples/22-migrations.ts",
+  "package": "./chord/next/host",
+  "tests": [
+   "TestExample22Migrations"
+  ],
+  "upstream_reference": "packages/chord/test/next/examples/22-migrations.ts",
+  "mutation": "chord/next/host/host_examples_test.go: `lib/e9.ts` -> `lib/e8.ts` (TestExample22Migrations FAILS: version 3 = [...\"lib/e9.ts\"...], want [...\"lib/e8.ts\"...])"
+ },
+ {
+  "upstream": "packages/chord/test/next/examples/23-keyed-watches.ts",
+  "package": "./chord/next/host",
+  "tests": [
+   "TestExample23KeyedWatches"
+  ],
+  "upstream_reference": "packages/chord/test/next/examples/23-keyed-watches.ts",
+  "mutation": "chord/next/host/host_examples_test.go: `exJSON(t, `{\"body\":\"buy milk\"}`)` -> `exJSON(t, `{\"body\":\"buy mil\"}`)` (TestExample23KeyedWatches FAILS: pinned = {\"body\":\"buy milk\"}, want {\"body\":\"buy mil\"})"
+ },
+ {
+  "upstream": "packages/chord/test/next/examples/24-keyed-members.ts",
+  "package": "./chord/next/host",
+  "tests": [
+   "TestExample24KeyedMembers"
+  ],
+  "upstream_reference": "packages/chord/test/next/examples/24-keyed-members.ts",
+  "mutation": "chord/next/host/host_examples_test.go: `\"Ana (away)\")` -> `\"Ana (gone)\")` (TestExample24KeyedMembers FAILS: badge after a change = \"Ana (away)\", want \"Ana (gone)\")"
+ },
+ {
+  "upstream": "packages/chord/test/next/examples/25-export-import.ts",
+  "package": "./chord/next/host",
+  "tests": [
+   "TestExample25ExportImport"
+  ],
+  "upstream_reference": "packages/chord/test/next/examples/25-export-import.ts",
+  "mutation": "chord/next/host/host_examples_test.go: `exCall(t, ref, \"visit\", \"/\"), float64(3))` -> `exCall(t, ref, \"visit\", \"/\"), float64(4))` (TestExample25ExportImport FAILS: next visit of / = 3, want 4)"
+ },
+ {
+  "upstream": "packages/chord/test/next/examples/28-persisted-jobs.ts",
+  "package": "./chord/next/host",
+  "tests": [
+   "TestExample28PersistedJobs"
+  ],
+  "upstream_reference": "packages/chord/test/next/examples/28-persisted-jobs.ts",
+  "mutation": "chord/next/host/host_examples_test.go: `\"once settled\", exCall(t, notesRef, \"abort\", second), \"terminal\"` -> `\"once settled\", exCall(t, notesRef, \"abort\", second), \"marked\"` (TestExample28PersistedJobs FAILS: once settled = \"terminal\", want \"marked\")"
+ },
+ {
+  "upstream": "packages/chord/test/next/examples/29-registries.ts",
+  "package": "./chord/next/host",
+  "tests": [
+   "TestExample29Registries"
+  ],
+  "upstream_reference": "packages/chord/test/next/examples/29-registries.ts",
+  "mutation": "chord/next/host/host_examples_test.go: `jsonObject(\"path\", \"/broken\")), \"500\")` -> `jsonObject(\"path\", \"/broken\")), \"200\")` (TestExample29Registries FAILS: /broken = \"500\", want \"200\")"
+ },
+ {
+  "upstream": "packages/chord/test/next/examples/30-host-root.ts",
+  "package": "./chord/next/host",
+  "tests": [
+   "TestExample30HostRoot"
+  ],
+  "upstream_reference": "packages/chord/test/next/examples/30-host-root.ts",
+  "mutation": "chord/next/host/host_examples_test.go: `[\"first (by server)\"]` -> `[\"first (by owner)\"]` (TestExample30HostRoot FAILS: after a tool call = [\"first (by server)\"], want [\"first (by owner)\"])"
+ },
+ {
+  "upstream": "packages/chord/test/next/examples/31-parked-dependencies.ts",
+  "package": "./chord/next/host",
+  "tests": [
+   "TestExample31ParkedDependencies"
+  ],
+  "upstream_reference": "packages/chord/test/next/examples/31-parked-dependencies.ts",
+  "mutation": "chord/next/host/host_examples_test.go: `exValue(t, live, \"count\"), float64(0))` -> `exValue(t, live, \"count\"), float64(1))` (TestExample31ParkedDependencies FAILS: panel live, count = 0, want 1)"
+ },
+ {
+  "upstream": "packages/chord/test/next/examples/32-startup.ts",
+  "package": "./chord/next/host",
+  "tests": [
+   "TestExample32Startup"
+  ],
+  "upstream_reference": "packages/chord/test/next/examples/32-startup.ts",
+  "mutation": "chord/next/host/host_examples_test.go: `\"agents\"), float64(3))` -> `\"agents\"), float64(4))` (TestExample32Startup FAILS: Bootstrap sees models through the worker = 3, want 4)"
+ },
+ {
+  "upstream": "packages/chord/test/next/support.ts",
+  "package": "./chord/next/host",
+  "tests": [
+   "TestExample12Routes"
+  ],
+  "upstream_reference": "packages/chord/test/next/examples/12-routes.ts",
+  "mutation": "chord/next/host/host_next_support_test.go: `return delta.JsonObjectOf(\"kind\", \"owner\")` -> `return delta.JsonObjectOf(\"kind\", \"ownr\")` in ownerPrincipal (TestExample12Routes FAILS: host_examples_test.go:1644: session|S1: not authorized)"
+ },
+ {
+  "upstream": "packages/chord/test/next/support.ts",
+  "package": "./chord/next/host",
+  "tests": [
+   "TestExample08Remote",
+   "TestExample12Routes"
+  ],
+  "upstream_reference": "packages/chord/test/next/examples/08-remote.ts",
+  "mutation": "chord/next/host/host_next_support_test.go: `kind, _ := principal.Value(\"kind\").(string)` -> `kind, _ := principal.Value(\"kinds\").(string)` in principalKind (TestExample08Remote FAILS: host_examples_test.go:1127: guest variant = \"editor\", want reader; TestExample12Routes FAILS: host_examples_test.go:1644: session|S1: not authorized)"
+ }
+]

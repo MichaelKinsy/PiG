@@ -18,8 +18,7 @@ import (
 // object of `data.Principal`, nil for Pi's `undefined`. An AbortSignal is a context.Context (`signal.reason` is
 // context.Cause); a listener on a signal is a context.AfterFunc whose stop function removes it. `ctx.get` is an awaited
 // Promise, so Get blocks and returns (reference, error): it is called from a goroutine off the host's loop (a handler's)
-// and enters the loop (callHost.loop().Run) for each synchronous section Pi has between its awaits. The reference
-// `Get` returns is the seam's `acquired.Reference()` as `any` (it is never inspected here).
+// and enters the loop (host.loop().Run) for each synchronous section Pi has between its awaits.
 
 // sectionLoop is what the call helpers ask of the host's loop beyond eventLoop: entering a synchronous section from the
 // goroutine of a blocking call (an `await` resumption), and owned background tasks (an unawaited Promise). *Loop is one.
@@ -41,7 +40,7 @@ type Ctx interface {
 	Incarnation() string
 	// Get takes a reference as the caller (Principal) sees it, released when the handler settles; afterwards Get returns
 	// `released`. It blocks until the reference is acquired.
-	Get(Type *contracts.Contract, params any, options GetOptions) (any, error)
+	Get(Type *contracts.Contract, params any, options GetOptions) (*Reference, error)
 }
 
 // caller is who makes a call: the principal it acts as and its host's incarnation.
@@ -50,33 +49,16 @@ type caller struct {
 	incarnation string
 }
 
-// acquired is a reference a host acquired for a call (Pi's `Binding`): released once, and the reference it stands for.
-type acquired interface {
-	Release()
-	// Reference is the reference the binding was built for, as `any`: CallContext never inspects it.
-	Reference() any
-}
-
-// callHost is what a call context asks of its host (DESIGN-go-layout.md section 5).
-type callHost interface {
-	// Incarnation is this host's incarnation.
-	Incarnation() string
-	// Acquire is Pi's `host.acquire`: it blocks until the reference is bound or fails, and is called off the loop (it
-	// enters the loop itself). A rejection is the returned error.
-	Acquire(Type *contracts.Contract, params any, caller caller, ctx context.Context, options GetOptions) (acquired, error)
-	loop() sectionLoop
-}
-
 // callContext is the ctx of one handler run (or root scope): its references are released by settle when it settled.
 type callContext struct {
 	context.Context
 	principal   data.Principal
 	incarnation string
-	host        callHost
+	host        *chordHost
 	// settledOnce is set once the handler settled (Pi's `#references` being undefined).
 	settledOnce bool
 	// references are the references taken with Get; nil once the handler settled.
-	references []acquired
+	references []*binding
 	// settling is cancelled when the handler settles: a Get still waiting gives up and releases its reference. By the
 	// first.
 	settling       context.Context
@@ -85,7 +67,7 @@ type callContext struct {
 
 var _ Ctx = (*callContext)(nil)
 
-func newCallContext(ctx context.Context, from caller, host callHost) *callContext {
+func newCallContext(ctx context.Context, from caller, host *chordHost) *callContext {
 	return &callContext{Context: ctx, principal: from.principal, incarnation: from.incarnation, host: host}
 }
 
@@ -99,7 +81,7 @@ func (c *callContext) Incarnation() string { return c.incarnation }
 func (c *callContext) String() string { return fmt.Sprint(c.Context) + ".Ctx" }
 
 // Get implements Ctx. The two sections around the acquire are Pi's synchronous parts of `get`.
-func (c *callContext) Get(typ *contracts.Contract, params any, options GetOptions) (any, error) {
+func (c *callContext) Get(typ *contracts.Contract, params any, options GetOptions) (*Reference, error) {
 	loop := c.host.loop()
 	var scoped linkedAbort
 	var from caller
@@ -124,8 +106,8 @@ func (c *callContext) Get(typ *contracts.Contract, params any, options GetOption
 	if err != nil {
 		return nil, err
 	}
-	binding, acquireErr := c.host.Acquire(typ, params, from, scoped.context, options)
-	var reference any
+	binding, acquireErr := c.host.acquire(typ, params, from, scoped.context, options)
+	var reference *Reference
 	loop.Run(func() {
 		scoped.release()
 		if acquireErr != nil {
@@ -138,12 +120,12 @@ func (c *callContext) Get(typ *contracts.Contract, params any, options GetOption
 		}
 		// A get that finished in the turn its handler settled: nobody releases its reference later.
 		if c.settledOnce {
-			binding.Release()
+			binding.release()
 			err = settledRefusal(typ)
 			return
 		}
 		c.references = append(c.references, binding)
-		reference = binding.Reference()
+		reference = binding.reference
 	})
 	if err != nil {
 		return nil, err
@@ -161,7 +143,7 @@ func (c *callContext) settle() {
 		c.settlingCancel(nil)
 	}
 	for _, binding := range references {
-		binding.Release()
+		binding.release()
 	}
 }
 
@@ -215,6 +197,8 @@ func withLinkedAbortSignal(signal context.Context, ctx context.Context) linkedAb
 			}
 		}
 	}
+	// Sources aborted before the link: the first of them in the order given (AbortSignal.any's constructor takes the first
+	// aborted input of its array, whenever each aborted).
 	for _, source := range sources {
 		if source.Err() != nil {
 			abort(context.Cause(source))
@@ -225,11 +209,29 @@ func withLinkedAbortSignal(signal context.Context, ctx context.Context) linkedAb
 	for i, source := range sources {
 		stops[i] = context.AfterFunc(source, func() {
 			release()
-			abort(context.Cause(source))
+			abort(linkedCause(sources))
 		})
 	}
 	// A source aborted while the listeners were added runs its listener on a goroutine of its own, which waits here for
 	// the stops.
 	mu.Unlock()
 	return linkedAbort{context: linked, release: release, abort: abort}
+}
+
+// linkedCause is the reason of the source that aborted first (`AbortSignal.any`): the listeners of the sources run on
+// goroutines of their own, in any order, so the earliest abort is told by chordctx.AbortOrder; sources it cannot order (a
+// context of another package) rank in the order given, the caller's first.
+func linkedCause(sources [2]context.Context) error {
+	var first context.Context
+	var firstOrder uint64
+	for _, source := range sources {
+		if source.Err() == nil {
+			continue
+		}
+		order := chordctx.AbortOrder(source)
+		if first == nil || order != 0 && (firstOrder == 0 || order < firstOrder) {
+			first, firstOrder = source, order
+		}
+	}
+	return context.Cause(first)
 }

@@ -116,11 +116,13 @@ func (l *Loop) Now() int64 { return time.Now().UnixMilli() }
 
 // AfterFunc is setTimeout: job runs as a section once d has elapsed (see nodeDelay), unless the timer is stopped first.
 func (l *Loop) AfterFunc(d time.Duration, job func()) Timer {
-	t := &loopTimer{}
+	t := &loopTimer{job: job}
 	t.timer = time.AfterFunc(nodeDelay(d), func() {
 		l.Run(func() {
 			if t.state.CompareAndSwap(timerPending, timerFired) {
-				job()
+				run := t.job
+				t.job = nil
+				run()
 			}
 		})
 	})
@@ -138,6 +140,10 @@ const (
 type loopTimer struct {
 	state atomic.Int32
 	timer *time.Timer
+	// job is what the timer runs; whoever wins the state change from pending takes it (the timer, or Stop, which drops it:
+	// a stopped time.Timer stays in the runtime's timer heap until the heap is cleaned, and its callback must not keep what
+	// the job captured, an ended object for one, reachable until then).
+	job func()
 }
 
 // Stop implements Timer.
@@ -145,6 +151,7 @@ func (t *loopTimer) Stop() bool {
 	if !t.state.CompareAndSwap(timerPending, timerStopped) {
 		return false
 	}
+	t.job = nil
 	t.timer.Stop()
 	return true
 }
@@ -159,4 +166,34 @@ func nodeDelay(d time.Duration) time.Duration {
 		return time.Millisecond
 	}
 	return d.Truncate(time.Millisecond)
+}
+
+// dropTimer is a time.AfterFunc whose callback Stop drops: a stopped time.Timer stays in the runtime's timer heap until the
+// heap is cleaned, and what its callback captured (a host, for one) would stay reachable until then.
+type dropTimer struct {
+	mu    sync.Mutex
+	fn    func()
+	timer *time.Timer
+}
+
+func newDropTimer(d time.Duration, fn func()) *dropTimer {
+	t := &dropTimer{fn: fn}
+	t.timer = time.AfterFunc(d, func() {
+		t.mu.Lock()
+		run := t.fn
+		t.fn = nil
+		t.mu.Unlock()
+		if run != nil {
+			run()
+		}
+	})
+	return t
+}
+
+// Stop drops the callback and stops the timer.
+func (t *dropTimer) Stop() bool {
+	t.mu.Lock()
+	t.fn = nil
+	t.mu.Unlock()
+	return t.timer.Stop()
 }

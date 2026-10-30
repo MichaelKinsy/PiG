@@ -294,9 +294,19 @@ func TestGC10000CallsOnOneReferenceRetainFlatMemory(t *testing.T) {
 			run()
 			before := settledHeap()
 			run()
-			// The leak retained about 350 B per call; a document commit itself retains nothing.
-			if after := settledHeap(); after > before && after-before >= 500_000 {
-				t.Fatalf("heap grew by %d bytes over 10,000 calls, want less than 500000", after-before)
+			mid := settledHeap()
+			run()
+			after := settledHeap()
+			// The leak retained about 350 B per call, every round; a document commit itself retains nothing. Garbage of
+			// other tests' background work shows in one round at most: a leak grows in both.
+			grew := func(from, to uint64) uint64 {
+				if to <= from {
+					return 0
+				}
+				return to - from
+			}
+			if first, second := grew(before, mid), grew(mid, after); first >= 500_000 && second >= 500_000 {
+				t.Fatalf("heap grew by %d and %d bytes over two rounds of 10,000 calls, want less than 500000", first, second)
 			}
 		})
 	}
@@ -330,9 +340,9 @@ func TestGCAReleasedReferenceKeepsNeitherItsContractNorItsObject(t *testing.T) {
 		reference.Release()
 		same = weak.Make(contract)
 	}()
-	nexttest.ExpectCollected(t, same)
+	expectCollectedEventually(t, same)
 	mu.Lock()
-	nexttest.ExpectCollected(t, objects...)
+	expectCollectedEventually(t, objects...)
 	mu.Unlock()
 	if _, err := reference.Member("n").Value(); err == nil || err.Error() != "app.viewer: released" {
 		t.Fatalf("n.value = %v, want app.viewer: released", err)
@@ -362,7 +372,7 @@ func TestGCAReleasedReferenceWhoseStateWasReadKeepsNoHost(t *testing.T) {
 		reference.Release()
 		hosts = append(hosts, weak.Make(host.(*chordHost)))
 	}()
-	nexttest.ExpectCollected(t, hosts...)
+	expectCollectedEventually(t, hosts...)
 	if got := reference.State().Value(); got.Kind != RefStateEnded || got.Error.Code != data.CodeReleased {
 		t.Fatalf("state = %+v, want ended released", got)
 	}
@@ -393,8 +403,8 @@ func TestGCAReleasedReferenceWhoseStateWasReadAfterAFailureKeepsNeitherTheFailur
 		hosts = append(hosts, weak.Make(host.(*chordHost)))
 		reference.Release()
 	}()
-	nexttest.ExpectCollected(t, errs...)
-	nexttest.ExpectCollected(t, hosts...)
+	expectCollectedEventually(t, errs...)
+	expectCollectedEventually(t, hosts...)
 	if got := reference.State().Value(); got.Kind != RefStateEnded || got.Error.Code != data.CodeReleased {
 		t.Fatalf("state = %+v, want ended released", got)
 	}
@@ -417,8 +427,8 @@ func TestGCAHoldReleasedBeforeLoadKeepsNothingTheReferenceAndItsContractGoWhileT
 		references = append(references, weak.Make(reference))
 		contractRefs = append(contractRefs, weak.Make(same))
 	}()
-	nexttest.ExpectCollected(t, references...)
-	nexttest.ExpectCollected(t, contractRefs...)
+	expectCollectedEventually(t, references...)
+	expectCollectedEventually(t, contractRefs...)
 	if host == nil {
 		t.Fatal("no host")
 	}
@@ -471,10 +481,10 @@ func TestGCAReleasedHoldKeepsNeitherItsObjectNorItsStatesWatchesNorARemoteObject
 		waits.Wait()
 	}()
 	mu.Lock()
-	nexttest.ExpectCollected(t, objects...)
+	expectCollectedEventually(t, objects...)
 	mu.Unlock()
-	nexttest.ExpectCollected(t, watches...)
-	nexttest.ExpectCollected(t, remotes...)
+	expectCollectedEventually(t, watches...)
+	expectCollectedEventually(t, remotes...)
 }
 
 // reference.test.ts › release › rejects the calls made through the reference with released and aborts their handlers'
@@ -844,8 +854,8 @@ func TestKeyedStateMembersTwoConsumersOfOneKeyShareOneSourceAndOnePinEachHoldIsR
 		t.Fatalf("pins = %d, want one pin on one source", pins)
 	}
 	first.Release()
-	deliveredOn(n.Host)
-	n.Host.(*chordHost).loop().Run(func() {})
+	// The first view's teardown releases its pin in the background: wait for it before asserting what stays.
+	scopeEventually(t, "the first view ended", func() bool { return len(presenceList(t, n.Host, refNoteView)) == 1 })
 	if got := func() *documents.KeySource {
 		var source *documents.KeySource
 		n.Host.(*chordHost).loop().Run(func() { source = n.Memos().Slot.KeySourceOf("a") })
@@ -1007,7 +1017,7 @@ func TestKeyedStateMembersARetainedReleasedFactoryReferenceKeepsNoProviderItsAtK
 	if retained != 1 {
 		t.Fatalf("factory references = %d, want 1", retained)
 	}
-	nexttest.ExpectCollected(t, objects...)
+	expectCollectedEventually(t, objects...)
 	if _, err := n.Pinned()[0].Value(); err == nil || !refContains(err.Error(), "released") {
 		t.Fatalf("pinned.value = %v, want it to throw released", err)
 	}

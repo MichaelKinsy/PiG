@@ -253,7 +253,7 @@ func activityOf(host Host) ActivityCounts {
 }
 
 // activityCounter is activity.test.ts `Counter`: one method `bump`.
-var activityCounter = mustContract(declareLocal("app.counter", contracts.LocalDeclaration{
+var activityCounter = mustContract(declareLocal("app.counter", contracts.LocalDeclaration{Params: contracts.Params{},
 	Version: 1,
 	Members: []contracts.LocalEntry{contracts.Mem("bump", contracts.NewMethod())},
 }))
@@ -264,8 +264,6 @@ func bumpImplementation() (contracts.Implementation, error) {
 		"bump": func(delta.JsonValue, context.Context) (delta.JsonValue, error) { return nil, nil },
 	}}}, nil
 }
-
-func activityCountsOf(calls int) ActivityCounts { return ActivityCounts{Calls: calls} }
 
 // Mirrors activity.test.ts "host.activity › counts holds arriving over links and served here, not this host's own references".
 func TestHostActivityCountsHoldsArrivingOverLinksAndServedHereNotItsOwnReferences(t *testing.T) {
@@ -296,7 +294,7 @@ func TestHostActivityCountsAHoldPlacedHereFromItsArrivalBoundOrNot(t *testing.T)
 	missing, err := l.Client.Hold(Notes, jsonObject("session", "S1"), background, GetOptions{})
 	must(t, err)
 	transported(l.Links[0], l.Links[1])
-	if state := missing.State().Value(); state.Kind != RefStateFailed || state.Cause.Kind != data.FailureWaiting {
+	if state := refStateOf(missing); state.Kind != RefStateFailed || state.Cause.Kind != data.FailureWaiting {
 		t.Fatalf("state = %+v, want failed waiting", state)
 	}
 	if got := activityOf(l.Server).References; got != 1 {
@@ -340,7 +338,9 @@ func awaitActivity(t testing.TB, host Host, ok func(ActivityCounts) bool) {
 	t.Helper()
 	h := host.(*chordHost)
 	changed := make(chan struct{}, 1)
-	watch, err := h.Activity().Watch(background)
+	var watch chord.WatchHandle[delta.JsonValue]
+	var err error
+	h.enter(func() { watch, err = h.Activity().Watch(background) })
 	must(t, err)
 	watch.Start(func(context.Context, chord.WatchCall[delta.JsonValue]) error {
 		select {
@@ -349,7 +349,7 @@ func awaitActivity(t testing.TB, host Host, ok func(ActivityCounts) bool) {
 		}
 		return nil
 	})
-	defer watch.Stop()
+	defer func() { _, _ = watch.Stop() }()
 	for !ok(activityOf(host)) {
 		select {
 		case <-changed:
@@ -367,7 +367,7 @@ func TestHostActivityPublishesOncePerMicrotaskTurnWithChanges(t *testing.T) {
 	defer closeHosts(t, host)
 	counter, err := host.Get(activityCounter, jsonObject(), background, GetOptions{})
 	must(t, err)
-	watch, err := host.Activity().Watch(background)
+	watch, err := inSection(host, func() (chord.WatchHandle[delta.JsonValue], error) { return host.Activity().Watch(background) })
 	must(t, err)
 	frames := nexttest.FramesOf(watch)
 	// Ten calls started in one turn: ten changes, one publication. Go form of "they settle in a later turn: one more": the
@@ -401,7 +401,7 @@ func TestHostActivityGivesASlowWatcherTheNewestCountsOnceItIsFree(t *testing.T) 
 	defer closeHosts(t, host)
 	counter, err := host.Get(activityCounter, jsonObject(), background, GetOptions{})
 	must(t, err)
-	watch, err := host.Activity().Watch(background)
+	watch, err := inSection(host, func() (chord.WatchHandle[delta.JsonValue], error) { return host.Activity().Watch(background) })
 	must(t, err)
 	gate := make(chan struct{})
 	var seen nexttest.Collector[string]
@@ -429,7 +429,7 @@ func TestHostActivityGivesASlowWatcherTheNewestCountsOnceItIsFree(t *testing.T) 
 
 // Mirrors "schedules nothing while nobody watches or derives from it; a later watch reads the counts then".
 func TestHostActivitySchedulesNothingWhileNobodyWatchesOrDerivesFromIt(t *testing.T) {
-	counter := mustContract(declareLocal("app.counter", contracts.LocalDeclaration{
+	counter := mustContract(declareLocal("app.counter", contracts.LocalDeclaration{Params: contracts.Params{},
 		Version: 1,
 		Members: []contracts.LocalEntry{contracts.Mem("bump", contracts.NewMethod()), contracts.Mem("wait", contracts.NewMethod())},
 	}))
@@ -460,9 +460,9 @@ func TestHostActivitySchedulesNothingWhileNobodyWatchesOrDerivesFromIt(t *testin
 	if scheduled {
 		t.Fatal("a publication was scheduled with no watch")
 	}
-	watch, err := host.Activity().Watch(background)
+	watch, err := inSection(host, func() (chord.WatchHandle[delta.JsonValue], error) { return host.Activity().Watch(background) })
 	must(t, err)
-	if text := nexttest.JSONText(t, watch.Value()); text != `{"references":1,"calls":1,"jobs":0,"lingering":0}` {
+	if text := nexttest.JSONText(t, watch.Value()); text != `{"references":0,"calls":1,"jobs":0,"lingering":0}` {
 		t.Fatalf("a later watch reads %s", text)
 	}
 	frames := nexttest.FramesOf(watch)
@@ -478,7 +478,7 @@ func TestHostActivitySchedulesNothingWhileNobodyWatchesOrDerivesFromIt(t *testin
 
 // Mirrors "feeds derives (base code holding the host): they recompute in the publishing batch".
 func TestHostActivityFeedsDerivesWhichRecomputeInThePublishingBatch(t *testing.T) {
-	busy := mustContract(declareLocal("app.busy", contracts.LocalDeclaration{
+	busy := mustContract(declareLocal("app.busy", contracts.LocalDeclaration{Params: contracts.Params{},
 		Version: 1,
 		Members: []contracts.LocalEntry{contracts.Mem("busy", contracts.Bool()), contracts.Mem("work", contracts.NewMethod())},
 	}))

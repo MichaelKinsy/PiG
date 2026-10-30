@@ -4,16 +4,16 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/MichaelKinsy/PiG/chord"
-	"github.com/MichaelKinsy/PiG/chord/delta"
-	"github.com/MichaelKinsy/PiG/chord/next/contracts"
 	"reflect"
 	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
 
+	"github.com/MichaelKinsy/PiG/chord"
 	chordctx "github.com/MichaelKinsy/PiG/chord/context"
+	"github.com/MichaelKinsy/PiG/chord/delta"
+	"github.com/MichaelKinsy/PiG/chord/next/contracts"
 	"github.com/MichaelKinsy/PiG/chord/next/data"
 	"github.com/MichaelKinsy/PiG/chord/next/internal/nexttest"
 )
@@ -524,9 +524,17 @@ func TestHostNativesOpenNothingForAnObjectEndedBeforeItsFirstOpenStarted(t *test
 	host, _ := loaded(t, serveRes(func(_ float64, self Self) {
 		self.Open(func(context.Context) (any, error) { opens.Add(1); return nil, nil }, func(any, NativeCloseReason, context.Context) error { return nil })
 	}), loadedOptions{})
-	ref, err := host.Hold(nativeRes, jsonObject("id", float64(1)), background, GetOptions{})
+	// Held and released in one synchronous section: its attempt did not start its first open yet.
+	h := host.(*chordHost)
+	var err error
+	h.enter(func() {
+		var ref *Reference
+		ref, err = host.Hold(nativeRes, jsonObject("id", float64(1)), background, GetOptions{})
+		if err == nil {
+			ref.Release()
+		}
+	})
 	must(t, err)
-	ref.Release()
 	turn(host)
 	must(t, host.Close(background))
 	if got := opens.Load(); got != 0 {

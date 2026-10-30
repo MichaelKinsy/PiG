@@ -1,0 +1,1249 @@
+{
+ "packages/chord/test/next/host/host.test.ts": {
+  "ported": [
+   "load › runs every setup and activates the types with empty params before it resolves (TestHostLoadRunsEverySetupAndActivatesTheTypesWithEmptyParamsBeforeItResolves)",
+   "load › refuses invalid and duplicate plugin names, double serves and a second load (TestHostLoadRefusesInvalidAndDuplicatePluginNamesDoubleServesAndASecondLoad)",
+   "load › makes a get before it resolves wait for it (TestHostLoadMakesAGetBeforeItResolvesWaitForIt)",
+   "the start barrier › resolves once every host-lifetime object had its first outcome; a failed one is reported and retried (TestHostStartBarrierResolvesOnceEveryHostLifetimeObjectHadItsFirstOutcome)",
+   "the start barrier › is not held by a hanging open: its attempt is abandoned at readyTimeout (TestHostStartBarrierIsNotHeldByAHangingOpen)",
+   "the start barrier › waits for a local blocker's first outcome: a host object parked on another one here (CodeMode → Harness) (TestHostStartBarrierWaitsForALocalBlockersFirstOutcome)",
+   "the start barrier › ends its pass at a local blocker's own failure: the dependent parked failed { waiting } has its first outcome (TestHostStartBarrierEndsItsPassAtALocalBlockersOwnFailure)",
+   "the start barrier › ends its pass at a remote blocker: a wait on another host is a first outcome (TestHostStartBarrierEndsItsPassAtARemoteBlocker)",
+   "the start barrier › is settled by host.close: an object of its cohort that ends before its first outcome settles it as ended (TestHostStartBarrierIsSettledByHostClose)",
+   "the start barrier › waits for a local blocker parked failed { waiting } on one still in its first attempt (fix round 1, Sol 4) (TestHostStartBarrierWaitsForALocalBlockerParkedWaitingOnOneStillInItsFirstAttempt)",
+   "the start barrier › waits for it whichever it declares first (fix round 1, Astra 3) (TestHostStartBarrierWaitsForItWhicheverItDeclaresFirst)",
+   "startup across hosts (dependency model §6) › starts two hosts that would have deadlocked (Sol's probe): an acyclic graph needs no timeout (TestHostStartupAcrossHostsStartsTwoHostsThatWouldHaveDeadlocked)",
+   "startup across hosts (dependency model §6) › places a hold arriving before the publication here, not over the parent (TestHostStartupAcrossHostsPlacesAHoldArrivingBeforeThePublicationHereNotOverTheParent)",
+   "startup across hosts (dependency model §6) › wakes a parked chain over three hosts in order, its causes passed on (tab → worker → server) (TestHostStartupAcrossHostsWakesAParkedChainOverThreeHostsInOrder)",
+   "get › waits for an unserved type and a contract mismatch until its readyTimeout, then rejects with the cause (TestHostGetWaitsForAnUnservedTypeAndAContractMismatchUntilItsReadyTimeout)",
+   "get › checks params with L1 (invalid/params) (TestHostGetChecksParamsWithL1)",
+   "deadlines of gets › reject with unavailable while no attempt has failed (the last failure: see attempt.test.ts) (TestHostDeadlinesOfGetsRejectWithUnavailableWhileNoAttemptHasFailed)",
+   "deadlines of gets › include the wait for load (TestHostDeadlinesOfGetsIncludeTheWaitForLoad)",
+   "deadlines of gets › are per getter: the first to pass releases only its own reference, the attempt goes on for the other (TestHostDeadlinesOfGetsArePerGetter)",
+   "close › ends every object, the last to go live first, and rejects new calls (TestHostCloseEndsEveryObjectTheLastToGoLiveFirstAndRejectsNewCalls)",
+   "close › fails a get waiting for load (TestHostCloseFailsAGetWaitingForLoad)",
+   "close › ends every object at once: calls fail released before any close ran (TestHostCloseEndsEveryObjectAtOnceCallsFailReleasedBeforeAnyCloseRan)",
+   "close › aborts a pending open and does not wait for it; its late value is closed with close (TestHostCloseAbortsAPendingOpenAndDoesNotWaitForItItsLateValueIsClosedWithClose)",
+   "close › joins an ending running in the background (TestHostCloseJoinsAnEndingRunningInTheBackground)",
+   "close › closes object by object, a dependent before its dependencies (TestHostCloseClosesObjectByObjectADependentBeforeItsDependencies)",
+   "close, its order and its races › returns one closing to every caller: a second close waits for the first (TestHostCloseReturnsOneClosingToEveryCaller)",
+   "close, its order and its races › tears down what a failed dependent holds with close, and waits for it (TestHostCloseTearsDownWhatAFailedDependentHoldsWithCloseAndWaitsForIt)",
+   "close, its order and its races › goes on when onError throws: failures are still classified, teardowns still finish (TestHostCloseGoesOnWhenOnErrorThrows)",
+   "close, its order and its races › with a backoff window running › ends an object waiting for its window and clears every timer (TestHostCloseWithABackoffWindowRunningEndsAnObjectWaitingForItsWindowAndClearsEveryTimer)",
+   "getters › one cancelled while another waits for the same object: the other gets it, the object lives (TestHostGettersOneCancelledWhileAnotherWaitsForTheSameObjectTheOtherGetsIt)",
+   "principals and where a reference goes › host.get acts as the host's principal; a host without one (a client) serves no remote type (TestHostPrincipalsHostGetActsAsTheHostsPrincipalAHostWithoutOneServesNoRemoteType)",
+   "principals and where a reference goes › a host without an address serves no remote type, whatever its principal (TestHostPrincipalsAHostWithoutAnAddressServesNoRemoteType)",
+   "principals and where a reference goes › ctx.get acts as ctx.principal: a guest's call gets the guest's view; a local handler's acts as the host (TestHostPrincipalsCtxGetActsAsCtxPrincipal)",
+   "principals and where a reference goes › self.get acts as a remote object's principal, a local object's as the host's (TestHostPrincipalsSelfGetActsAsARemoteObjectsPrincipalALocalObjectsAsTheHosts)",
+   "principals and where a reference goes › identity includes the principal key: equal keys share one object (TestHostPrincipalsIdentityIncludesThePrincipalKeyEqualKeysShareOneObject)",
+   "principals and where a reference goes › remote objects with empty params are not activated by load; they live while referenced (TestHostPrincipalsRemoteObjectsWithEmptyParamsAreNotActivatedByLoadTheyLiveWhileReferenced)",
+   "principals and where a reference goes › a local type never crosses a link; a remote type without a parent link waits for one (TestHostPrincipalsALocalTypeNeverCrossesALinkARemoteTypeWithoutAParentLinkWaitsForOne)",
+   "principals and where a reference goes › connect takes one open parent link (TestHostPrincipalsConnectTakesOneOpenParentLink)",
+   "principals and where a reference goes › close closes the links first: the consumer sees the link drop, no gone (TestHostPrincipalsCloseClosesTheLinksFirstTheConsumerSeesTheLinkDropNoGone)",
+   "host.registry and the host's close (fix round 1) › ends a waiting host.registry at the close with released/closed, its deadline timer with it (Sol 5, Astra 5) (TestHostRegistryEndsAWaitingHostRegistryAtTheCloseWithReleasedClosed)",
+   "host.registry and the host's close (fix round 1) › ends one still waiting for the publication at the close (TestHostRegistryEndsOneStillWaitingForThePublicationAtTheClose)",
+   "the selected provider's own checks for a request made here (fix round 1) › waits a same-host remote request the provider's code places elsewhere: invalid/host_address (Astra 4) (TestHostProviderChecksWaitsASameHostRemoteRequestTheProvidersCodePlacesElsewhere)",
+   "the selected provider's own checks for a request made here (fix round 1) › fails broken when the provider's hostAddress throws: its own code (Sol 7) (TestHostProviderChecksFailsBrokenWhenTheProvidersHostAddressThrows)",
+   "a load whose setup throws › closes the host as close does, links included, and rejects with the setup's error (TestHostALoadWhoseSetupThrowsClosesTheHostAsCloseDoesLinksIncluded)",
+   "acquiring: hold and get › invalid params at once; a local type not served here: hold waits failed, get rejects at its readyTimeout (TestHostAcquiringInvalidParamsAtOnceALocalTypeNotServedHereHoldWaitsGetRejectsAtItsReadyTimeout)",
+   "acquiring: hold and get › before load resolved: hold is loading, get waits; once it resolved both bind, or an unserved type waits (TestHostAcquiringBeforeLoadResolvedHoldIsLoadingGetWaits)",
+   "acquiring: hold and get › invalid params before load resolved: hold throws and get rejects invalid/params at once (audit, 7a) (TestHostAcquiringInvalidParamsBeforeLoadResolvedHoldThrowsAndGetRejectsInvalidParamsAtOnce)",
+   "acquiring: hold and get › a hold released before load resolved makes nothing once it did (TestHostAcquiringAHoldReleasedBeforeLoadResolvedMakesNothingOnceItDid)",
+   "acquiring: hold and get › through transient failures: hold is failed with retryAt, then loading; get waits, then rejects with the last cause (TestHostAcquiringThroughTransientFailuresHoldIsFailedWithRetryAtThenLoadingGetWaitsThenRejects)",
+   "acquiring: hold and get › a broken failure: hold is failed without retryAt; get releases its reference and rejects at once (TestHostAcquiringABrokenFailureHoldIsFailedWithoutRetryAtGetRejectsAtOnce)",
+   "acquiring: hold and get › a cancelled context: no effect on a hold; a get releases its reference and rejects (TestHostAcquiringACancelledContextNoEffectOnAHoldAGetReleasesItsReferenceAndRejects)",
+   "acquiring: hold and get › host.close: queued calls reject released, references go released, their watches end (race 10) (TestHostAcquiringHostCloseQueuedCallsRejectReleasedReferencesGoReleasedTheirWatchesEnd)",
+   "connect after a drop › throws while the previous parent link is open or still closing, and takes the next once it closed (race 4) (TestHostConnectAfterADropThrowsWhileThePreviousParentLinkIsOpenOrStillClosing)",
+   "where a reference or an arriving hold goes (section 1's table) › binds a hold of a type served here that names this host's address (TestHostWhereAHoldGoesBindsAHoldOfATypeServedHereThatNamesThisHostsAddress)",
+   "where a reference or an arriving hold goes (section 1's table) › keeps a hold naming this host whose params the code here places elsewhere waiting: invalid/host_address (code skew, M§1) (TestHostWhereAHoldGoesKeepsAHoldNamingThisHostWhoseParamsTheCodeHerePlacesElsewhereWaiting)",
+   "where a reference or an arriving hold goes (section 1's table) › places a hold by the address it names, never by the name it serves (a relay never captures it) (TestHostWhereAHoldGoesPlacesAHoldByTheAddressItNamesNeverByTheNameItServes)",
+   "where a reference or an arriving hold goes (section 1's table) › sends a reference made here whose host address is another host over the parent link, though it serves the type (TestHostWhereAHoldGoesSendsAReferenceMadeHereWhoseHostAddressIsAnotherHostOverTheParentLink)",
+   "where a reference or an arriving hold goes (section 1's table) › sends a hold it cannot serve or route over the parent link, unparsed (TestHostWhereAHoldGoesSendsAHoldItCannotServeOrRouteOverTheParentLinkUnparsed)",
+   "where a reference or an arriving hold goes (section 1's table) › never sends a hold from the parent back to it: unavailable (race 8) (TestHostWhereAHoldGoesNeverSendsAHoldFromTheParentBackToItUnavailable)",
+   "where a reference or an arriving hold goes (section 1's table) › refuses a hold it cannot serve or route without a parent link: unavailable (TestHostWhereAHoldGoesRefusesAHoldItCannotServeOrRouteWithoutAParentLink)",
+   "where a reference or an arriving hold goes (section 1's table) › fails a reference broken with what its hostAddress throws (TestHostWhereAHoldGoesFailsAReferenceBrokenWithWhatItsHostAddressThrows)",
+   "the host's store › belongs to one open host at a time (rule 7) (TestHostStoreBelongsToOneOpenHostAtATime)",
+   "the host's store › reports storage_failed once and closes the host; the app still closes the store (TestHostStoreReportsStorageFailedOnceAndClosesTheHostTheAppStillClosesTheStore)"
+  ],
+  "missing": [],
+  "designedOut": []
+ },
+ "packages/chord/test/next/host/activity.test.ts": {
+  "ported": [
+   "host.activity › counts holds arriving over links and served here, not this host's own references (TestHostActivityCountsHoldsArrivingOverLinksAndServedHereNotItsOwnReferences)",
+   "host.activity › counts a hold placed here from its arrival, bound or not: a missing provider keeps the worker alive (M§10) (TestHostActivityCountsAHoldPlacedHereFromItsArrivalBoundOrNot)",
+   "host.activity › counts method calls running on this host, local and remote, until they settle (TestHostActivityCountsMethodCallsRunningOnThisHostUntilTheySettle)",
+   "host.activity › publishes once per microtask turn with changes; a slow watcher gets the newest counts (TestActivityPublishesOncePerMicrotaskTurnWithChanges, TestHostActivityPublishesOncePerMicrotaskTurnWithChanges)",
+   "host.activity › gives a slow watcher the newest counts once it is free: its pending frames fold (TestActivityGivesASlowWatcherTheNewestCountsOnceItIsFree, TestHostActivityGivesASlowWatcherTheNewestCountsOnceItIsFree)",
+   "host.activity › schedules nothing while nobody watches or derives from it; a later watch reads the counts then (TestActivitySchedulesNothingWhileNobodyFollowsIt, TestHostActivitySchedulesNothingWhileNobodyWatchesOrDerivesFromIt)",
+   "host.activity › feeds derives (base code holding the host): they recompute in the publishing batch (TestActivityFeedsDerivesWhichRecomputeInThePublishingBatch, TestHostActivityFeedsDerivesWhichRecomputeInThePublishingBatch)",
+   "host.activity › lingering › counts live objects kept by their type's linger after their last reference, until they end (TestHostActivityLingeringCountsLiveObjectsKeptByTheirTypesLinger)",
+   "host.activity › counts no jobs before slice 5 (TestActivityCountsEachKindApartAndNoJobsBeforeSlice5, TestHostActivityCountsNoJobsOnAHost)"
+  ],
+  "missing": [],
+  "designedOut": []
+ },
+ "packages/chord/test/next/host/revocation.test.ts": {
+  "ported": [
+   "revocation keys › are computed once per principal object, compared as canonical JSON (TestRevocationKeysAreComputedOncePerPrincipalObjectComparedAsCanonicalJSON, TestHostRevocationKeysAreComputedOncePerPrincipalObjectComparedAsCanonicalJSON)",
+   "revocation keys › keep no principal alive (a WeakMap keyed by the principal the host cached them for) (TestHostRevocationKeysKeepNoPrincipalAlive)",
+   "revoke on one host › ends the principal's objects at once, whatever references remain: each hold gets gone forbidden (TestHostRevokeEndsThePrincipalsObjectsAtOnceWhateverReferencesRemain)",
+   "revoke on one host › aborts running calls (race 2): the handler's context, no result; a call crossing the gone is ignored (TestHostRevokeAbortsRunningCalls)",
+   "revoke on one host › abandons an activation in progress (race 1): its open's context is aborted, its holders get gone (TestHostRevokeAbandonsAnActivationInProgress)",
+   "revoke on one host › never revokes the host's own principal (TestHostRevokeNeverRevokesTheHostsOwnPrincipal)",
+   "revoke on one host › ends a hold the parent sent before its revoke while it still waits for load (race 3): gone, never bound (TestHostRevokeEndsAHoldTheParentSentBeforeItsRevokeWhileItStillWaitsForLoad)",
+   "revoke on one host › ends a relayed hold of the principal still waiting for its route's link: never held there (TestHostRevokeEndsARelayedHoldStillWaitingForItsRoutesLink)",
+   "revoke on one host › ends an unbound hold of the principal (refused, waiting for a provider): gone, nothing left of it (TestHostRevokeEndsAnUnboundHoldOfThePrincipal)",
+   "revoke on one host › binds a hold made for a revoked principal, then the parent's revoke after it ends it (race 3, R10's window) (TestHostRevokeBindsAHoldMadeForARevokedPrincipalThenTheParentsRevokeEndsIt)",
+   "links and revoke messages › closes the child links whose principal it revokes, never the parent link (TestHostRevokeClosesTheChildLinksWhosePrincipalItRevokesNeverTheParentLink)",
+   "links and revoke messages › ignores a revoke from a child link (race 6) (TestHostIgnoresARevokeFromAChildLink)",
+   "links and revoke messages › sends revoke on every route link, and on none made later (race 5: nothing is replayed) (TestHostRevokeSendsRevokeOnEveryRouteLinkAndOnNoneMadeLater)",
+   "GC of revoked objects › keeps no revoked object, however many references its holders still have (TestHostRevokeKeepsNoRevokedObject)",
+   "revocation across a relay › closes a revoked tab's link at the server and ends its objects on the worker (TestHostRevocationAcrossARelayClosesARevokedTabsLinkAndEndsItsObjectsOnTheWorker)",
+   "revocation across a relay › ends the worker's objects of the principal through the revoke message alone; the relay forwards their gone (TestHostRevocationAcrossARelayEndsTheWorkersObjectsThroughTheRevokeMessageAlone)",
+   "revocation of this host's own requests over its paths (fix round 1) › ends a guest's ctx.get waiting for its route before any link exists, at once (Astra 1, Sol 1) (TestHostRevokeEndsAGuestsCtxGetWaitingForItsRouteBeforeAnyLinkExists)",
+   "revocation of this host's own requests over its paths (fix round 1) › never lets the revoked request bind on the route's later link (Astra 1) (TestHostRevokeNeverLetsTheRevokedRequestBindOnTheRoutesLaterLink)",
+   "revocation of this host's own requests over its paths (fix round 1) › ends a guest's reference over a route link that dropped, and nothing holds it on the next one (TestHostRevokeEndsAGuestsReferenceOverARouteLinkThatDroppedAndNothingHoldsItOnTheNextOne)"
+  ],
+  "missing": [],
+  "designedOut": []
+ },
+ "packages/chord/test/next/host/unbound.test.ts": {
+  "ported": [
+   "the index › wakes every request at the publication, out of the index first; a deleted one is not woken (TestTheIndexWakesEveryRequestAtThePublicationOutOfTheIndexFirstADeletedOneIsNotWoken)",
+   "the index › ends the requests of a revoked principal only, and every request at the host's close (TestTheIndexEndsTheRequestsOfARevokedPrincipalOnlyAndEveryRequestAtTheHostsClose)",
+   "references waiting in the index › before the publication: loading, placed by it; a type not served then waits failed { waiting } (TestHostReferencesWaitingInTheIndexBeforeThePublicationAreLoadingPlacedByIt)",
+   "references waiting in the index › leave nothing behind once released, before and after the publication (GC) (TestHostReferencesWaitingInTheIndexLeaveNothingBehindOnceReleased)",
+   "references waiting in the index › end at the start of the host's close, not after its slow native closes (fix round 1, Sol 6) (TestHostReferencesWaitingInTheIndexEndAtTheStartOfTheHostsClose)",
+   "holds waiting in the index › wait for the publication without a word, then are refused failed { waiting } and kept (TestHostHoldsWaitingInTheIndexWaitForThePublicationWithoutAWordThenAreRefused)",
+   "holds waiting in the index › leave nothing behind once their link closed, before and after the publication (GC) (TestHostHoldsWaitingInTheIndexLeaveNothingBehindOnceTheirLinkClosed)"
+  ],
+  "missing": [],
+  "designedOut": []
+ },
+ "packages/chord/test/next/host/root.test.ts": {
+  "ported": [
+   "host.root › gives fn a call context: the host's principal (or the given one), this host's incarnation, `ctx.get` (TestHostRootGivesFnACallContext)",
+   "host.root › seals the context when fn settles: its references released, its signal aborted, `ctx.get` refused `released` (TestHostRootSealsTheContextWhenFnSettles)",
+   "host.root › an abort rejects at once and seals: a running call through its reference rejects, a later get is `released` (TestHostRootAnAbortRejectsAtOnceAndSeals)",
+   "host.root › an aborted context rejects before fn runs; a synchronous throw is a rejection (TestHostRootAnAbortedContextRejectsBeforeFnRunsASynchronousThrowIsARejection)",
+   "host.root › a `ctx.get` before `load` resolved parks until it did (TestHostRootACtxGetBeforeLoadResolvedParksUntilItDid)",
+   "host.root › `host.close` seals every open scope (an fn sleeping on its ctx ends); after it, `root` rejects `released` (TestHostRootHostCloseSealsEveryOpenScopeAndAfterItRootRejectsReleased)",
+   "host.root › aborts the scope's own signal when fn settles and at `host.close`, the caller's context having one (Fable, Opus, Sol) (TestHostRootAbortsTheScopesOwnSignalWhenFnSettlesAndAtHostCloseTheCallersContextHavingOne)",
+   "host.root › `host.close` rejects the caller at once, whatever an uncooperative fn still does (Sol) (TestHostRootHostCloseRejectsTheCallerAtOnceWhateverAnUncooperativeFnStillDoes)",
+   "host.root › leaves no listener on the caller's signal once `host.close` rejected an fn that never settles (Astra) (TestHostRootLeavesNoListenerOnTheCallersSignalOnceHostCloseRejectedAnFnThatNeverSettles)",
+   "host.root › keeps nothing once sealed: its scope and references are collected while the caller's signal lives on (TestHostRootKeepsNothingOnceSealedItsScopeAndReferencesAreCollected)"
+  ],
+  "missing": [],
+  "designedOut": []
+ },
+ "packages/chord/test/next/host/ctx.test.ts": {
+  "ported": [
+   "ctx › ctx.get references are released when the handler settles (TestCtxGetReferencesAreReleasedWhenTheHandlerSettles)",
+   "ctx › ctx.get after the handler settled throws released (TestCtxGetAfterTheHandlerSettledThrowsReleased)",
+   "ctx › ctx.get of a handler whose call was aborted checks the signal first: nothing is created (TestCtxGetOfAHandlerWhoseCallWasAbortedChecksTheSignalFirstNothingIsCreated)",
+   "ctx › a ctx.get finishing after its handler settled is released at once (race 11) (TestCtxAGetFinishingAfterItsHandlerSettledIsReleasedAtOnceRace11)",
+   "ctx › a ctx.get still waiting when its handler settles gives up: its reference is released at once (TestCtxAGetStillWaitingWhenItsHandlerSettlesGivesUpItsReferenceIsReleasedAtOnce)",
+   "ctx › a local handler's ctx.principal is the host's, its incarnation this host's (TestCtxALocalHandlersPrincipalIsTheHostsItsIncarnationThisHosts)",
+   "local handlers act as the host (§4, audit) › a local object called from a remote handler's ctx.get runs with this host's principal and incarnation (TestLocalHandlersActAsTheHostALocalObjectCalledFromARemoteHandlersCtxGetRunsAsTheHost)",
+   "linked abort signals › abort with the caller's signal or the call's, the caller's reason first (TestLinkedAbortSignalsAbortWithTheCallersSignalOrTheCallsTheCallersReasonFirst)",
+   "linked abort signals › detach from both sources on release: a later abort reaches nothing (TestLinkedAbortSignalsDetachFromBothSourcesOnReleaseALaterAbortReachesNothing)",
+   "linked abort signals › is the call's own signal without a caller's (TestLinkedAbortSignalsIsTheCallsOwnSignalWithoutACallers: the identity assertion is the behavior: aborted by the call's signal with its reason, release a no-op)"
+  ],
+  "missing": [],
+  "designedOut": []
+ },
+ "packages/chord/test/next/host/dependencies.test.ts": {
+  "ported": [
+   "the dependency check › breaks a dependent off a cycle with the cycle's error: it would wait on a ring that never heals (TestTheDependencyCheckBreaksADependentOffACycleWithTheCyclesError)",
+   "the dependency check › breaks a dependent whose dependency ended (gone): the request cannot come back (TestTheDependencyCheckBreaksADependentWhoseDependencyEndedGone)",
+   "the dependency check › goes live once every dependency is: one parked on two, the second binding last (TestTheDependencyCheckGoesLiveOnceEveryDependencyIs)",
+   "the dependency check › breaks a dependent whose dependency a relay's authorize refused: forbidden heals only by retry() (fix round 1, Fable) (TestTheDependencyCheckBreaksADependentWhoseDependencyARelaysAuthorizeRefused)",
+   "the dependency check › settles a waiting ring across hosts after one round: the root cause kept (fix round 1, Opus F1) (TestTheDependencyCheckSettlesAWaitingRingAcrossHostsAfterOneRound)",
+   "parked_long (dependency model §7) › starts its clock when the hold gets on a link: a late link is not reported at once (fix round 2, Opus F2) (TestParkedLongStartsItsClockWhenTheHoldGetsOnALinkALateLinkIsNotReportedAtOnce)",
+   "parked_long (dependency model §7) › is not reported while the path has no link: no remote attempt answers for it (fix round 1, Opus F2) (TestParkedLongIsNotReportedWhileThePathHasNoLink)",
+   "parked_long (dependency model §7) › is reported once per parking episode, after readyTimeout on a remote attempt only loading; nothing fails (TestParkedLongIsReportedOncePerParkingEpisodeAfterReadyTimeout)",
+   "parked_long (dependency model §7) › is not reported for a remote blocker that failed: the parked attempt shows its cause instead (TestParkedLongIsNotReportedForARemoteBlockerThatFailed)",
+   "parked_long (dependency model §7) › is not reported for a local blocker: its own deadline bounds it (TestParkedLongIsNotReportedForALocalBlocker)",
+   "a getter of a parked object (fix round 1, Astra 6) › rejects with the last parked cause after its dependency fell back to loading, the newest of several (TestAGetterOfAParkedObjectRejectsWithTheLastParkedCauseAfterItsDependencyFellBackToLoading)"
+  ],
+  "missing": [],
+  "designedOut": []
+ },
+ "packages/chord/test/next/host/parked.test.ts": {
+  "ported": [
+   "calls on a loading local reference › are queued and sent in the order they were made once it is live, before later calls (TestParkedCallsAreQueuedAndSentInTheOrderTheyWereMade, TestHostParkedCallsOnALoadingLocalReferenceAreQueuedAndSentInTheOrderTheyWereMade)",
+   "calls on a loading local reference › keep their order when a handler calls the reference while they are sent: its call queues behind them (TestParkedCallsKeepTheirOrderWhenAHandlerCallsWhileTheyAreSent, TestHostParkedCallsKeepTheirOrderWhenAHandlerCallsTheReferenceWhileTheyAreSent)",
+   "calls on a loading local reference › are checked against their deadline when sent: one that passed while earlier ones ran is not sent (TestParkedCallsAreCheckedAgainstTheirDeadlineWhenSent, TestHostParkedCallsAreCheckedAgainstTheirDeadlineWhenSent)",
+   "calls on a loading local reference › reject unavailable/park_timeout at the reference's readyTimeout, measured from each call (TestParkedCallsRejectAtTheReadyTimeoutMeasuredFromEachCall, TestHostParkedCallsRejectAtTheReferencesReadyTimeoutMeasuredFromEachCall)",
+   "calls on a loading local reference › reject at once when their caller cancels; the others stay queued (TestParkedCallsRejectAtOnceWhenTheirCallerCancels, TestHostParkedCallsRejectAtOnceWhenTheirCallerCancelsTheOthersStayQueued)",
+   "calls on a loading local reference › reject released when the reference is released; nothing runs (TestParkedCallsRejectedWithTheQueue, TestHostParkedCallsRejectReleasedWhenTheReferenceIsReleasedNothingRuns)",
+   "calls on a loading local reference › reject with the cause when the object fails (TestParkedCallsRejectedWithTheQueue, TestHostParkedCallsRejectWithTheCauseWhenTheObjectFails)",
+   "calls on a loading remote reference › keep one deadline across reconnects; nothing is sent for them on either link (TestParkedCallsKeepOneDeadlineAcrossReconnects, TestHostParkedCallsOnALoadingRemoteReferenceKeepOneDeadlineAcrossReconnects)",
+   "calls on a loading remote reference › are resolved against the binding they are sent on: indexes from the new variant, missing methods invalid (TestHostParkedCallsOnALoadingRemoteReferenceAreResolvedAgainstTheBindingTheyAreSentOn)",
+   "calls on a loading remote reference › on a reference released while loading without a link: nothing is sent, the next connect holds nothing (race 3) (TestHostParkedCallsOnAReferenceReleasedWhileLoadingWithoutALinkNothingIsSent)"
+  ],
+  "missing": [],
+  "designedOut": [],
+  "pendingOwner": [
+   "calls on a loading local reference › stop being sent when one's handler releases the reference: the rest reject released (race 15): pending the owner's decision on first-suspension handoff (the same root as routines › start in the turn their object went live, next to a method call admitted in that turn): a Go method handler runs on its own goroutine, so its first statement is not ordered inside the sending section; the Go test TestHostParkedCallsStopBeingSentWhenOnesHandlerReleasesTheReference is NOT in this branch (it would be red) and lands red-to-green on fix/follow-d5a-handoff"
+  ]
+ },
+ "packages/chord/test/next/host/native.test.ts": {
+  "ported": [
+   "opening › opens one after another in declaration order; a later opener reads an earlier handle (TestHostNativesOpenOneAfterAnotherInDeclarationOrderALaterOpenerReadsAnEarlierHandle)",
+   "opening › opens nothing for an object ended before its first open started (TestHostNativesOpenNothingForAnObjectEndedBeforeItsFirstOpenStarted)",
+   "opening › throws not_ready before its open resolved and released once its close started (TestNativeThrowsNotReadyBeforeItsOpenResolvedAndReleasedOnceItsCloseStarted, TestHostNativesThrowNotReadyBeforeTheirOpenResolvedAndReleasedOnceTheirCloseStarted)",
+   "opening › a partly failed attempt closes what it opened, with reason end (TestNativeAPartlyFailedAttemptClosesWhatItOpenedWithReasonEnd, TestHostNativesAPartlyFailedAttemptClosesWhatItOpenedWithReasonEnd)",
+   "opening › aborts the opener's context when the object ends while opening; a late value is closed once (%s) (TestHostNativesAbortTheOpenersContextWhenTheObjectEndsWhileOpeningALateValueIsClosedOnce)",
+   "closing › closes in reverse, with reason end when the object ends and close when the host closes (TestHostNativesCloseInReverseWithReasonEndWhenTheObjectEndsAndCloseWhenTheHostCloses)",
+   "closing › collects every throwing close in host.close; an object ending in the background reports each (TestNativeACloseThatThrowsIsReturnedAsCloseFailed, TestHostNativesCollectEveryThrowingCloseInHostCloseAnObjectEndingInTheBackgroundReportsEach)",
+   "closing › timeouts › report a close still running after its closeTimeout, abort its context then, and close the others (TestNativeReportsACloseStillRunningAfterItsCloseTimeoutAndAbortsItsContext, TestHostNativesReportACloseStillRunningAfterItsCloseTimeoutAbortItsContextAndCloseTheOthers)"
+  ],
+  "missing": [],
+  "designedOut": [
+   "facets › cannot open natives: TypeScript type-level check (expectTypeOf<FacetHost>().not.toHaveProperty(\"open\")); the Go mechanism is the method sets of the Go types: neither FacetHost, FacetSelf nor the facetScope behind them declares Open, which is a member of Self alone; named by TestFacetsCannotOpenNativesFacetHostDeclaresNoOpenMember (host_facet_test.go)"
+  ]
+ },
+ "packages/chord/test/next/host/backoff.test.ts": {
+  "ported": [
+   "backoff › opens a window of 1 s after the first failure, doubling up to 60 s, and calls due at its end (TestBackoffOpensAWindowOf1sAfterTheFirstFailureDoublingUpTo60sAndCallsDueAtItsEnd)",
+   "backoff › tells when a running window ends: a failed reference's retryAt (TestBackoffTellsWhenARunningWindowEndsAFailedReferencesRetryAt)",
+   "backoff › is waiting only inside a window (TestBackoffIsWaitingOnlyInsideAWindow)",
+   "backoff › skip ends a window without due and keeps its delay; delete starts over (TestBackoffSkipEndsAWindowWithoutDueAndKeepsItsDelayDeleteStartsOver)",
+   "backoff › ended keeps a running window and drops a passed one (TestBackoffEndedKeepsARunningWindowAndDropsAPassedOne)",
+   "backoff › a failure inside a running window replaces it: one due, after the doubled delay (TestBackoffAFailureInsideARunningWindowReplacesItOneDueAfterTheDoubledDelay)",
+   "backoff › clear forgets every identity with its timer (TestBackoffClearForgetsEveryIdentityWithItsTimer)"
+  ],
+  "missing": [],
+  "designedOut": []
+ },
+ "packages/chord/test/next/host/deadline.test.ts": {
+  "ported": [
+   "deadline › expires once after its budget (TestDeadlineExpiresOnceAfterItsBudget)",
+   "deadline › paused time does not count: resumed with the budget it had left (TestDeadlinePausedTimeDoesNotCountResumedWithTheBudgetItHadLeft)",
+   "deadline › a cleared deadline never expires, also when resumed (TestDeadlineAClearedDeadlineNeverExpiresAlsoWhenResumed)"
+  ],
+  "missing": [],
+  "designedOut": []
+ },
+ "packages/chord/test/next/host/sleep.test.ts": {
+  "ported": [
+   "sleep › resolves after its delay (TestSleepResolvesAfterItsDelay)",
+   "sleep › rejects with the abort reason and clears its timer (TestSleepRejectsWithTheAbortReasonAndClearsItsTimer)",
+   "sleep › rejects at once when its context is aborted already (TestSleepRejectsAtOnceWhenItsContextIsAbortedAlready)",
+   "sleep › chains timers for delays above 2^31-1 ms; an abort clears the chained timer (TestSleepChainsTimersForDelaysAbove2Pow31Minus1MsAnAbortClearsTheChainedTimer)",
+   "untilAborted › resolves once its context is aborted, at once when it is already (TestUntilAbortedResolvesOnceItsContextIsAbortedAtOnceWhenItAlreadyIs)"
+  ],
+  "missing": [],
+  "designedOut": []
+ },
+ "packages/chord/test/next/host/attempt.test.ts": {
+  "ported": [
+   "failure kinds › an open that throws fails transient: reported, the get waits through retries (TestAttemptAnOpenThatThrowsFailsTransientReportedTheGetWaitsThroughRetries)",
+   "failure kinds › an attempt not live within readyTimeout › is abandoned and fails transient: the opener's context aborted, what opened closed (TestAttemptAnAttemptNotLiveWithinReadyTimeoutIsAbandonedAndFailsTransientTheOpenersContextAbortedWhatOpenedClosed)",
+   "failure kinds › an attempt waiting for its previous instance's teardown › is bounded by readyTimeout too: abandoned transient without running its factory, retried after it (TestAttemptAnAttemptWaitingForItsPreviousInstancesTeardownIsBoundedByReadyTimeoutTooAbandonedTransientWithoutRunningItsFactoryRetriedAfterIt)",
+   "failure kinds › a keyed document's initial() failing its schema fails that transaction, not the object (TestAttemptAKeyedDocumentsInitialFailingItsSchemaFailsThatTransactionNotTheObject)",
+   "failure kinds › releases the references it acquired (TestAttemptReleasesTheReferencesItAcquired)",
+   "ending › rejects their callers at once; the handler runs on with its context aborted and cannot commit (TestAttemptEndingRejectsTheirCallersAtOnceTheHandlerRunsOnWithItsContextAbortedAndCannotCommit)",
+   "ending › rejects a call whose caller's context is already aborted, before the handler runs (TestAttemptEndingRejectsACallWhoseCallersContextIsAlreadyAbortedBeforeTheHandlerRuns)",
+   "ending › waits for the running handlers' own promises (the drain) before the natives close (TestAttemptEndingWaitsForTheRunningHandlersOwnPromisesTheDrainBeforeTheNativesClose)",
+   "ending › drains a handler that releases its object's last reference before it returns its promise (TestAttemptEndingDrainsAHandlerThatReleasesItsObjectsLastReferenceBeforeItReturnsItsPromise)",
+   "ending › refuses transactions at once; documents stay readable until the closes are done (TestAttemptEndingRefusesTransactionsAtOnceDocumentsStayReadableUntilTheClosesAreDone)",
+   "ending › the drain › is bounded by closeTimeout: a handler still running then sees its natives close, which is reported (TestAttemptTheDrainIsBoundedByCloseTimeoutAHandlerStillRunningThenSeesItsNativesCloseWhichIsReported)",
+   "ending › the drain › a handler stuck past it no longer counts as a call nor holds its ctx.get references (TestAttemptTheDrainAHandlerStuckPastItNoLongerCountsAsACallNorHoldsItsCtxGetReferences)",
+   "declarations › are valid only while the factory runs (TestAttemptDeclarationsAreValidOnlyWhileTheFactoryRuns)",
+   "declarations › contribute only in host-lifetime objects (R21): `Self` has no `contribute`, a declaration error at runtime (TestAttemptDeclarationsContributeOnlyInHostLifetimeObjectsR21SelfHasNoContributeADeclarationErrorAtRuntime)",
+   "declarations › refuse a document definition declared twice (TestAttemptDeclarationsRefuseADocumentDefinitionDeclaredTwice)",
+   "calls › check arguments with L1 and pass arguments and results by reference (TestAttemptCallsCheckArgumentsWithL1AndPassArgumentsAndResultsByReference)",
+   "calls › take a plain value or a synchronous throw from a handler that is no async function (TestAttemptCallsTakeAPlainValueOrASynchronousThrowFromAHandlerThatIsNoAsyncFunction)",
+   "calls › cost one validation per call and one compilation per method (TestAttemptCallsCostOneValidationPerCallAndOneCompilationPerMethod)",
+   "remote variants › the factory chooses one; the reference narrows on its variant (TestAttemptRemoteVariantsTheFactoryChoosesOneTheReferenceNarrowsOnItsVariant)",
+   "remote variants › a member outside the bound variant fails invalid/member (TestAttemptRemoteVariantsAMemberOutsideTheBoundVariantFailsInvalidMember)",
+   "tables › a fresh table is created at activation at its version, with its indexes, in one commit (TestAttemptTablesAFreshTableIsCreatedAtActivationAtItsVersionWithItsIndexesInOneCommit)",
+   "tables › needs a local type with empty params (P3) and a host with a store (TestAttemptTablesNeedALocalTypeWithEmptyParamsP3AndAHostWithAStore)",
+   "eager migrations at activation (slice 6a §9) › pause the readyTimeout deadline and resume it with the budget left (TestAttemptEagerMigrationsPauseTheReadyTimeoutDeadlineAndResumeItWithTheBudgetLeft)",
+   "eager migrations at activation (slice 6a §9) › a timer firing during a long migration: another activation's deadline keeps its bound (TestAttemptEagerMigrationsATimerFiringDuringALongMigrationAnotherActivationsDeadlineKeepsItsBound)",
+   "eager migrations at activation (slice 6a §9) › a throwing rows fails the object broken, the table migrating; a retry resumes after the committed chunks (TestAttemptEagerMigrationsAThrowingRowsFailsTheObjectBrokenTheTableMigratingARetryResumesAfterTheCommittedChunks)",
+   "parked attempts (dependency model §3) › run no timer while parked: no dependency deadline, no backoff, the factory run once (TestAttemptParkedAttemptsRunNoTimerWhileParkedNoDependencyDeadlineNoBackoffTheFactoryRunOnce)",
+   "parked attempts (dependency model §3) › pause the readyTimeout deadline while parked: the own steps get the budget left (TestAttemptParkedAttemptsPauseTheReadyTimeoutDeadlineWhileParkedTheOwnStepsGetTheBudgetLeft)",
+   "parked attempts (dependency model §3) › go on past the dependency check: a dependency leaving live during the own steps changes nothing (R18) (TestAttemptParkedAttemptsGoOnPastTheDependencyCheckADependencyLeavingLiveDuringTheOwnStepsChangesNothingR18)",
+   "failure kinds › a throwing factory fails broken: reported, the get rejects at once with a ChordError, nothing is left (TestAttemptFailureKindsFailBrokenReportedTheGetRejectsAtOnceWithAChordErrorNothingIsLeft/a_throwing_factory)",
+   "failure kinds › a missing member fails broken: reported, the get rejects at once with a ChordError, nothing is left (TestAttemptFailureKindsFailBrokenReportedTheGetRejectsAtOnceWithAChordErrorNothingIsLeft/a_missing_member)",
+   "failure kinds › an unknown member fails broken: reported, the get rejects at once with a ChordError, nothing is left (TestAttemptFailureKindsFailBrokenReportedTheGetRejectsAtOnceWithAChordErrorNothingIsLeft/an_unknown_member)",
+   "failure kinds › a native watchable as state (Q14) fails broken: reported, the get rejects at once with a ChordError, nothing is left (TestAttemptFailureKindsFailBrokenReportedTheGetRejectsAtOnceWithAChordErrorNothingIsLeft/a_native_watchable_as_state_(Q14))",
+   "failure kinds › a throwing first derive fails broken: reported, the get rejects at once with a ChordError, nothing is left (TestAttemptFailureKindsFailBrokenReportedTheGetRejectsAtOnceWithAChordErrorNothingIsLeft/a_throwing_first_derive)",
+   "failure kinds › an initial() that fails its schema fails broken: reported, the get rejects at once with a ChordError, nothing is left (TestAttemptFailureKindsFailBrokenReportedTheGetRejectsAtOnceWithAChordErrorNothingIsLeft/an_initial()_that_fails_its_schema)",
+   "failure kinds › an open that throws broken(error) fails broken: reported, the get rejects at once with a ChordError, nothing is left (TestAttemptFailureKindsFailBrokenReportedTheGetRejectsAtOnceWithAChordErrorNothingIsLeft/an_open_that_throws_broken(error))",
+   "remote variants › an unknown variant fails the activation broken (TestAttemptRemoteVariantsFailTheActivationBroken/an_unknown_variant)",
+   "remote variants › a missing member fails the activation broken (TestAttemptRemoteVariantsFailTheActivationBroken/a_missing_member)",
+   "remote variants › an extra member fails the activation broken (TestAttemptRemoteVariantsFailTheActivationBroken/an_extra_member)",
+   "tables › fails the activation broken: declared twice (TestAttemptTablesFailTheActivationBroken/declared_twice)",
+   "tables › fails the activation broken: another version recorded (TestAttemptTablesFailTheActivationBroken/another_version_recorded)",
+   "tables › fails the activation broken: another definition at the same version (TestAttemptTablesFailTheActivationBroken/another_definition_at_the_same_version)"
+  ],
+  "missing": [],
+  "designedOut": [
+   "the call path's cost › makes at most 19 promises per local call (a guard: the drain and the cleanups share one reaction): Pi counts promises with async_hooks, which Go has none of; the Go form carries the same guard on the cost a call has here, the microtasks it queues on the host's Loop (the drain's admission and the cleanup share one: at most two); Go test TestAttemptTheCallPathsCostAtMostTwoMicrotasksPerLocalCallTheDrainAndTheCleanupsShareOneReaction"
+  ]
+ },
+ "packages/chord/test/next/host/object.test.ts": {
+  "ported": [
+   "identity and lifetime › one object per params key; a params type lives from its first get to its last release (TestObjectIdentityOneObjectPerParamsKeyAParamsTypeLivesFromItsFirstGetToItsLastRelease)",
+   "identity and lifetime › keeps a type with empty params across releases (TestObjectIdentityKeepsATypeWithEmptyParamsAcrossReleases)",
+   "identity and lifetime › drops an ended object's documents and detaches its derives from other objects' members (TestObjectIdentityDropsAnEndedObjectsDocumentsAndDetachesItsDerivesFromOtherObjectsMembers)",
+   "retries › retry a transient failure after 1 s, doubling up to 60 s, and start over after a success (TestObjectRetriesRetryATransientFailureAfter1sDoublingUpTo60sAndStartOverAfterASuccess)",
+   "retries › share one attempt among concurrent gets (TestObjectRetriesShareOneAttemptAmongConcurrentGets)",
+   "retries › never retry a broken failure; a new object after its end tries at once (TestObjectRetriesNeverRetryABrokenFailureANewObjectAfterItsEndTriesAtOnce)",
+   "retries › end a failed object with its last reference; its backoff entry expires on its own (TestObjectRetriesEndAFailedObjectWithItsLastReferenceItsBackoffEntryExpiresOnItsOwn)",
+   "retries › make a get right after a failure wait for the scheduled retry (TestObjectRetriesMakeAGetRightAfterAFailureWaitForTheScheduledRetry)",
+   "retries › start a new instance only after the previous one closed (TestObjectRetriesStartANewInstanceOnlyAfterThePreviousOneClosed)",
+   "parked on dependencies (dependency model §3) › parks a dependent of a failed dependency failed { waiting } naming it, with no timer; it goes on when the dependency is live (TestObjectParkedParksADependentOfAFailedDependencyFailedWaitingNamingItWithNoTimerItGoesOnWhenTheDependencyIsLive)",
+   "parked on dependencies (dependency model §3) › keeps its references while parked; a getter rejects with the waiting cause at its deadline; releasing ends the wait (TestObjectParkedKeepsItsReferencesWhileParkedAGetterRejectsWithTheWaitingCauseAtItsDeadlineReleasingEndsTheWait)",
+   "parked on dependencies (dependency model §3) › shows every change of a dependency: loading, failed, a new cause, loading again, live (TestObjectParkedShowsEveryChangeOfADependencyLoadingFailedANewCauseLoadingAgainLive)",
+   "parked on dependencies (dependency model §3) › passes a retry on to its broken dependency, once through a diamond (TestObjectParkedPassesARetryOnToItsBrokenDependencyOnceThroughADiamond)",
+   "parked on dependencies (dependency model §3) › fails every object of a cycle broken; none is retried (TestObjectParkedFailsEveryObjectOfACycleBrokenNoneIsRetried)",
+   "cycle checks › stay linear on shared dependencies (a layered graph, every object depending on the whole next layer) (TestObjectCycleChecksStayLinearOnSharedDependenciesALayeredGraphEveryObjectDependingOnTheWholeNextLayer)",
+   "GC › collects an ended object with its documents, derives and watches (TestObjectGCCollectsAnEndedObjectWithItsDocumentsDerivesAndWatches)",
+   "GC › keeps nothing in a released reference or a stopped watch (TestObjectGCOfReleasedReferencesKeepsNothingInAReleasedReferenceOrAStoppedWatch)",
+   "GC of released references › keeps neither the declaring object nor the host in a released self.get reference (TestObjectGCOfReleasedReferencesKeepsNeitherTheDeclaringObjectNorTheHostInAReleasedSelfGetReference)",
+   "GC of failed objects › collects one after its last reference while its backoff entry exists; the entry expires on its own (TestObjectGCOfFailedObjectsCollectsOneAfterItsLastReferenceWhileItsBackoffEntryExistsTheEntryExpiresOnItsOwn)",
+   "GC of a parked chain › collects a chain parked on a type not served, released from its top: objects, attempts and index entries (TestObjectGCOfAParkedChainCollectsAChainParkedOnATypeNotServedReleasedFromItsTopObjectsAttemptsAndIndexEntries)",
+   "ref.retry() › skips a transient failure's backoff window: an attempt now (TestObjectRefRetrySkipsATransientFailuresBackoffWindowAnAttemptNow)",
+   "ref.retry() › starts an object waiting for its identity's backoff window at once (TestObjectRefRetryStartsAnObjectWaitingForItsIdentitysBackoffWindowAtOnce)",
+   "ref.retry() › is ignored while an attempt runs and once live (race 11) (TestObjectRefRetryIsIgnoredWhileAnAttemptRunsAndOnceLiveRace11)",
+   "ref.retry() › renews a broken object for every reference (race 13) (TestObjectRefRetryRenewsABrokenObjectForEveryReferenceRace13)",
+   "linger › keeps a live object live for linger after its last release: a get within it reuses it, with its documents (TestObjectLingerKeepsALiveObjectLiveForLingerAfterItsLastReleaseAGetWithinItReusesItWithItsDocuments)",
+   "linger › a reuse cancels the expiry: the holder count decides, a later release starts a new window (race 8) (TestObjectLingerAReuseCancelsTheExpiryTheHolderCountDecidesALaterReleaseStartsANewWindowRace8)",
+   "linger › only a live object lingers: an activating or failed one ends with its last reference (race 9) (TestObjectLingerOnlyALiveObjectLingersAnActivatingOrFailedOneEndsWithItsLastReferenceRace9)",
+   "linger › a failed state member does not end a lingering object (TestObjectLingerAFailedStateMemberDoesNotEndALingeringObject)",
+   "linger › host.close ends a lingering object at once (TestObjectLingerHostCloseEndsALingeringObjectAtOnce)",
+   "linger › a lingering object is collected after its expiry (TestObjectLingerALingeringObjectIsCollectedAfterItsExpiry)",
+   "cycles across hosts (Q5) › refuse a hold whose chain names the activation it would bind: server → worker → server (TestObjectCyclesAcrossHostsRefuseAHoldWhoseChainNamesTheActivationItWouldBindServerWorkerServer)",
+   "cycles across hosts (Q5) › find a cycle closed on one host through another: server → worker → server, then a local get (TestObjectCyclesAcrossHostsFindACycleClosedOnOneHostThroughAnotherServerWorkerServerThenALocalGet)",
+   "cycles across hosts (Q5) › carry the chain through a relay (race 7): worker → server → worker → server → worker (TestObjectCyclesAcrossHostsCarryTheChainThroughARelayRace7WorkerServerWorkerServerWorker)",
+   "cycles across hosts (Q5) › drop the chain from holds arriving on untrusted links, and send none for holds made outside an activation (TestObjectCyclesAcrossHostsDropTheChainFromHoldsArrivingOnUntrustedLinksAndSendNoneForHoldsMadeOutsideAnActivation)",
+   "cycles across hosts (Q5) › never match a restarted object: its new instance has a new id (race 8) (TestObjectCyclesAcrossHostsNeverMatchARestartedObjectItsNewInstanceHasANewIdRace8)",
+   "cycles across hosts (Q5) › keep the last 32 entries of a longer chain: the oldest is dropped (a longer cycle goes undetected) (TestObjectCyclesAcrossHostsKeepTheLast32EntriesOfALongerChainTheOldestIsDroppedALongerCycleGoesUndetected)",
+   "cycles across hosts (Q5) › miss a cycle entering an activation that started already (documented limitation): both wait, transient (TestObjectCyclesAcrossHostsMissACycleEnteringAnActivationThatStartedAlreadyDocumentedLimitationBothWaitTransient)",
+   "cycles across hosts (Q5) › keep no object, and so no chain, once released (GC) (TestObjectCyclesAcrossHostsKeepNoObjectAndSoNoChainOnceReleasedGC)",
+   "a failed activation's cleanup (audit) › closes the natives that opened before it releases its references: a close may use them (TestObjectAFailedActivationsCleanupClosesTheNativesThatOpenedBeforeItReleasesItsReferencesACloseMayUseThem)",
+   "a live object failing (slice 6a §1.4) › fails broken: calls reject with the cause, one object_failed report, natives close, then references go (TestObjectALiveObjectFailingFailsBrokenCallsRejectWithTheCauseOneObjectFailedReportNativesCloseThenReferencesGo)",
+   "a live object failing (slice 6a §1.4) › keeps its state members' last values for same-host reads; a live dependent's derive over them stays live (TestObjectALiveObjectFailingKeepsItsStateMembersLastValuesForSameHostReadsALiveDependentsDeriveOverThemStaysLive)",
+   "a live object failing (slice 6a §1.4) › lets a commit admitted before the failure adopt and publish once, derives and dependents included (TestObjectALiveObjectFailingLetsACommitAdmittedBeforeTheFailureAdoptAndPublishOnceDerivesAndDependentsIncluded)",
+   "a live object failing (slice 6a §1.4) › starts a retry's factory only once a commit admitted before the failure adopted (TestObjectALiveObjectFailingStartsARetrysFactoryOnlyOnceACommitAdmittedBeforeTheFailureAdopted)",
+   "a live object failing (slice 6a §1.4) › is recovered by ref.retry(): a new attempt, the documents as they were (TestObjectALiveObjectFailingIsRecoveredByRefRetryANewAttemptTheDocumentsAsTheyWere)"
+  ],
+  "missing": [],
+  "designedOut": []
+ },
+ "packages/chord/test/next/host/routines.test.ts": {
+  "ported": [
+   "on › calls first with the current value as [['r', value]], then once per change with its ops (TestOnCallsFirstWithTheCurrentValueAsRThenOncePerChangeWithItsOps)",
+   "on › never overlaps calls: changes during a call fold into the next, which is not aborted by them (TestOnNeverOverlapsCallsChangesDuringACallFoldIntoTheNextWhichIsNotAbortedByThem)",
+   "on › after a throw › reports, keeps the watch, and calls again with [['r', value]] after 1 s doubling; success resets (TestOnAfterAThrowReportsKeepsTheWatchAndCallsAgainWithTheWholeValueAfter1sDoublingSuccessResets)",
+   "on › after a throw › retries a change folded behind the throwing call after the backoff, once: no third call, no timer (TestOnAfterAThrowRetriesAChangeFoldedBehindTheThrowingCallAfterTheBackoffOnceNoThirdCallNoTimer)",
+   "on › after a throw › makes one retry per throw; a change during a failing retry waits for its backoff; no timer left (TestOnAfterAThrowMakesOneRetryPerThrowAChangeDuringAFailingRetryWaitsForItsBackoffNoTimerLeft)",
+   "on › after a throw › backs off after a throw even when the failed call changed its own source: no burst (TestOnAfterAThrowBacksOffEvenWhenTheFailedCallChangedItsOwnSourceNoBurst)",
+   "on › after a throw › retries with the value that arrived during the failed call, as a whole value (TestOnAfterAThrowRetriesWithTheValueThatArrivedDuringTheFailedCallAsAWholeValue)",
+   "on › after a throw › folds changes made during a slow retry into one call with the newest value (TestOnAfterAThrowFoldsChangesMadeDuringASlowRetryIntoOneCallWithTheNewestValue)",
+   "on › after a throw › waits for the next good value when its source fails during the backoff: the retry is dropped (TestOnAfterAThrowWaitsForTheNextGoodValueWhenItsSourceFailsDuringTheBackoffTheRetryIsDropped)",
+   "on › after a throw › clears its retry timer when its object ends during the backoff (TestOnAfterAThrowClearsItsRetryTimerWhenItsObjectEndsDuringTheBackoff)",
+   "on › after a throw › reports a retirement again on the retry after the call that got it threw (TestOnAfterAThrowReportsARetirementAgainOnTheRetryAfterTheCallThatGotItThrew)",
+   "on › after a throw › calls at once with the newest whole value when the source changes during the backoff (TestOnAfterAThrowCallsAtOnceWithTheNewestWholeValueWhenTheSourceChangesDuringTheBackoff)",
+   "on › folds every change made during the first call into one next call: [0, 3], not [0, 1, 3] (TestOnFoldsEveryChangeMadeDuringTheFirstCallIntoOneNextCall03Not013)",
+   "on › follows an app's JSON watchable whose watch is Chord's shared Watch with ops, as its type says (TestOnFollowsAnAppsJSONWatchableWhoseWatchIsChordsSharedWatchWithOpsAsItsTypeSays)",
+   "on › reports a retirement as retired, folded with the changes around it into one call, and goes on (TestOnReportsARetirementAsRetiredFoldedWithTheChangesAroundItIntoOneCallAndGoesOn)",
+   "on › folds a native source to its newest value after a busy call (TestOnFoldsANativeSourceToItsNewestValueAfterABusyCall)",
+   "on › takes every value a busy call left buffered before calling again: [0, 20], also when it set them itself (TestOnTakesEveryValueABusyCallLeftBufferedBeforeCallingAgain0And20AlsoWhenItSetThemItself)",
+   "on › reports a source whose watch cannot be taken; a source that ended meanwhile ends it quietly (TestOnReportsASourceWhoseWatchCannotBeTakenASourceThatEndedMeanwhileEndsItQuietly)",
+   "on › ends without a report when its source ends (TestOnEndsWithoutAReportWhenItsSourceEnds)",
+   "on › is not called for its source's failures: it waits for the next value (a derive healing) (TestOnIsNotCalledForItsSourcesFailuresItWaitsForTheNextValueADeriveHealing)",
+   "on › drops a value queued behind a busy call when a failure follows it; the next call is the healed value (TestOnDropsAValueQueuedBehindABusyCallWhenAFailureFollowsItTheNextCallIsTheHealedValue)",
+   "on › starts on a source failed now: no call and no report until its first good value (a reference member) (TestOnStartsOnASourceFailedNowNoCallAndNoReportUntilItsFirstGoodValueAReferenceMember)",
+   "on › follows a reference member: the provider's value first, then its changes (TestOnFollowsAReferenceMemberTheProvidersValueFirstThenItsChanges)",
+   "on › converges when it writes its own source: an unchanged draft commits nothing (TestOnConvergesWhenItWritesItsOwnSourceAnUnchangedDraftCommitsNothing)",
+   "on › follows a native source: one call per new value, without ops; ends with it (TestOnFollowsANativeSourceOneCallPerNewValueWithoutOpsEndsWithIt)",
+   "on › on a remote member with no value yet, a first value followed at once by a failure calls nothing (TestOnOnARemoteMemberWithNoValueYetAFirstValueFollowedAtOnceByAFailureCallsNothing)",
+   "on › on a remote member failed since its binding (no value yet), waits for its first value (TestOnOnARemoteMemberFailedSinceItsBindingNoValueYetWaitsForItsFirstValue (remote_host_link_test.go, the remote lane's file))",
+   "on › follows ref.state: a reference over a link going loading and live again (TestOnFollowsRefStateAReferenceOverALinkGoingLoadingAndLiveAgain)",
+   "on › releases its watch when its object ends; a call that throws as it ends is not reported (TestOnReleasesItsWatchWhenItsObjectEndsACallThatThrowsAsItEndsIsNotReported)",
+   "onLive › is called once when its object is live; returning ends it (TestOnLiveIsCalledOnceWhenItsObjectIsLiveReturningEndsIt)",
+   "onLive › restarts after a throw with the backoff, reset after a run of at least a minute (TestOnLiveRestartsAfterAThrowWithTheBackoffResetAfterARunOfAtLeastAMinute)",
+   "onLive › is aborted by its object's end: no report, no restart (TestOnLiveIsAbortedByItsOwnersEndNoReportNoRestart)",
+   "routines and the end › never start a routine call once the object ended in its first turn: no call, no report, no rejection (TestRoutinesNeverStartARoutineCallOnceTheObjectEndedInItsFirstTurnNoCallNoReportNoRejection)",
+   "routines and the end › are in the drain before their handler runs: a handler releasing the last reference keeps natives open (TestRoutinesAreInTheDrainBeforeTheirHandlerRunsAHandlerReleasingTheLastReferenceKeepsNativesOpen)",
+   "routines and the end › make no call queued behind a busy one once the object ended (TestRoutinesMakeNoCallQueuedBehindABusyOneOnceTheObjectEnded)",
+   "routines and the end › release their calls' ctx.get references when each call settles (TestRoutinesReleaseTheirCallsCtxGetReferencesWhenEachCallSettles)",
+   "routines and the end › act as a remote object's principal (TestRoutinesActAsTheOwnersCallerPrincipal)",
+   "routines and the end › are aborted by host.close, which drains their running calls (bounded by closeTimeout) (TestRoutinesAreAbortedByHostCloseWhichDrainsTheirRunningCallsBoundedByCloseTimeout)",
+   "routines and the end › leave nothing of an ended object: its routines' watches and contexts are collected (TestRoutinesLeaveNothingOfAnEndedObjectItsWatchesAndContextsAreCollected)",
+   "on › on a remote member failed since its binding (no value yet), waits for its first value (TestOnOnARemoteMemberFailedSinceItsBindingNoValueYetWaitsForItsFirstValue)"
+  ],
+  "missing": [],
+  "designedOut": [
+   "routines and the end › type their handler by the source's kind: ops and retired for a JSON watchable, the value alone for a native one: owner class (a) type-level check; Go mechanism: OnHandler[delta.JsonValue] takes chord.WatchCall (Ops, Retired) and OnNativeHandler[any] takes chord.NativeWatchCall (the value alone); Go test TestOnTypesTheirHandlerByTheSourcesKindOpsAndRetiredForAJSONWatchableTheValueAloneForANativeOne (reflect on the handler types)"
+  ],
+  "pendingOwner": [
+   "routines and the end › start in the turn their object went live, next to a method call admitted in that turn: the order is Pi's microtask order only if a handler's first synchronous section runs inside the section that admits its call (the first-suspension handoff decision): a method handler is a blocking Go function on an owned task, started in call order (attempt.call waits for the previous handler to enter), so its first statement is not ordered against `onLive` and the first `on` call, which are in-section continuations; no Go test is written for the case until the handoff is decided"
+  ],
+  "note": [
+   "o",
+   "n",
+   "l",
+   "y",
+   " ",
+   "t",
+   "h",
+   "e",
+   "c",
+   "a",
+   "s",
+   "d",
+   "r",
+   "m",
+   "(",
+   "D",
+   "5",
+   "b",
+   "-",
+   "i",
+   "g",
+   ",",
+   ")",
+   ";",
+   "f",
+   "'",
+   "A",
+   "p",
+   "O",
+   "j"
+  ]
+ },
+ "packages/chord/test/next/host/facet.test.ts": {
+  "ported": [
+   "facets › declare only while their setup runs (TestFacetsDeclareOnlyWhileTheirSetupRuns)",
+   "facets › contribute at most one value per registry, only while their setup runs (TestFacetsContributeAtMostOneValuePerRegistryOnlyWhileTheirSetupRuns)"
+  ],
+  "missing": [],
+  "designedOut": [
+   "facets › only declare: a setup takes the host and a self that only contributes; no documents, routines or natives: owner class (a) type-level check; Go mechanism: FacetHost/FacetSelf have only Serve, References and Contribute; Go test TestFacetsOnlyDeclareASetupTakesTheHostAndASelfThatOnlyContributes (reflect)",
+   "facets › are typed by exactly the app's principal type: owner class (a) type-level check; Go mechanism: there is no principal type parameter (principals are data.Principal) and Facet is exactly its setup function; Go test TestFacetsAreTypedByExactlyTheAppsPrincipalType"
+  ]
+ },
+ "packages/chord/test/next/host/retry-on.test.ts": {
+  "ported": [
+   "retryOn › retries a failed object (a broken open) when a source gets a new value: the watches were installed before the open (TestRetryOnRetriesAFailedObjectABrokenOpenWhenASourceGetsANewValueTheWatchesWereInstalledBeforeTheOpen)",
+   "retryOn › does nothing while the object is parked failed { waiting }: its dependencies decide (dependency model §3.8) (TestRetryOnDoesNothingWhileTheObjectIsParkedFailedWaitingItsDependenciesDecide)",
+   "retryOn › wakes on value calls only: a throwing compose wakes nothing, its next good composition does (TestRetryOnWakesOnValueCallsOnlyAThrowingComposeWakesNothingItsNextGoodCompositionDoes)",
+   "retryOn › remembers a wake while it activates: that attempt failing is retried at once (TestRetryOnRemembersAWakeWhileItActivatesThatAttemptFailingIsRetriedAtOnce)",
+   "retryOn › ignores wakes while live (TestRetryOnIgnoresWakesWhileLive)",
+   "retryOn › refuses sources that end with an attempt: a reference's member, its own writable, `ref.state` (TestRetryOnRefusesSourcesThatEndWithAnAttemptAReferencesMemberItsOwnWritableRefState)",
+   "retryOn › are the object's: a failed object that ends releases them, and is collected while the registry lives (TestRetryOnAreTheObjectsAFailedObjectThatEndsReleasesThemAndIsCollectedWhileTheRegistryLives)",
+   "retryOn › does not wake an object by its own contributions leaving (it failed live: no retry without backoff) (TestRetryOnDoesNotWakeAnObjectByItsOwnContributionsLeavingItFailedLiveNoRetryWithoutBackoff)"
+  ],
+  "missing": [],
+  "designedOut": []
+ },
+ "packages/chord/test/next/host/ref-state.test.ts": {
+  "ported": [
+   "ref.state of a local reference › is watched from its current state: failed with retryAt, loading on the next attempt, live; release ends it (TestRefStateOfALocalReferenceIsWatchedFromItsCurrentStateFailedWithRetryAtLoadingOnTheNextAttemptLiveReleaseEndsIt)",
+   "ref.state of a local reference › reads and calls follow the state: not_ready before live, the cause's error while failed, released after (TestRefStateOfALocalReferenceReadsAndCallsFollowTheStateNotReadyBeforeLiveTheCausesErrorWhileFailedReleasedAfter)",
+   "ref.state of a local reference › retry renews a broken object: loading, then live (TestRefStateOfALocalReferenceRetryRenewsABrokenObjectLoadingThenLive)",
+   "ref.state of a local reference › is made on first access, once; a watch taken after release has ended (TestRefStateOfALocalReferenceIsMadeOnFirstAccessOnceAWatchTakenAfterReleaseHasEnded)",
+   "ref.state of a local reference › a watch ends cancelled with its context (TestRefStateOfALocalReferenceAWatchEndsCancelledWithItsContext)",
+   "ref.state of a local reference › ref.state of a remote reference › loading until bound, loading while its link is down, failed with retryAt from retryIn, live again (TestRefStateOfARemoteReference/{binary,text}_codec/loading_until_bound,_loading_while_its_link_is_down,_failed_with_retryAt_from_retryIn,_live_again)",
+   "ref.state of a local reference › ref.state of a remote reference › a failed with retryIn 0 retries now: retryAt is the current time (TestRefStateOfARemoteReference/{binary,text}_codec/a_failed_with_retryIn_0_retries_now:_retryAt_is_the_current_time)",
+   "ref.state of a local reference › ref.state of a remote reference › variant: undefined before the first binding, the last bound one while loading or failed (TestRefStateOfARemoteReference/{binary,text}_codec/variant:_undefined_before_the_first_binding,_the_last_bound_one_while_loading_or_failed)"
+  ],
+  "missing": [],
+  "designedOut": []
+ },
+ "packages/chord/test/next/documents/slot.test.ts": {
+  "ported": [
+   "across attempts › keep them across a throwing factory: only a factory that returns drops what it does not declare [host half] (TestSlotAcrossAttemptsKeepThemAcrossAThrowingFactoryOnlyAFactoryThatReturnsDropsWhatItDoesNotDeclare)",
+   "across attempts › fail the attempt broken for a flipped keyed, an older version or a schema changed without a bump [host half] (TestSlotAcrossAttemptsFailTheAttemptBrokenForAFlippedKeyedAnOlderVersionOrASchemaChangedWithoutABump/a_flipped_keyed, /a_schema_changed_without_a_bump, /an_older_version)",
+   "persisted singletons › fail the activation broken for a newer stored version or another fingerprint at the same version (D9) [host half] (TestSlotPersistedSingletonsFailTheActivationBrokenForANewerStoredVersionOrAnotherFingerprintAtTheSameVersionD9)",
+   "persisted singletons › refuse persisting without a stable identity or a store, and a flipped persist [host half] (TestSlotPersistedSingletonsRefusePersistingWithoutAStableIdentityOrAStoreAndAFlippedPersist)"
+  ],
+  "missing": [],
+  "designedOut": []
+ },
+ "packages/chord/test/next/documents/transaction.test.ts": {
+  "ported": [
+   "persisted documents in a transaction › a handler's commit held in the SQL past closeTimeout still adopts before the object ends; the store stays usable [host half] (TestTransactionPersistedDocumentsAHandlersCommitHeldInTheSQLPastCloseTimeoutStillAdoptsBeforeTheObjectEndsTheStoreStaysUsable)"
+  ],
+  "missing": [],
+  "designedOut": []
+ },
+ "packages/chord/test/next/documents/keyed-slot.test.ts": {
+  "ported": [
+   "at(key) › only in the factory [host half] (TestKeyedSlotAtKeyOnlyInTheFactory)",
+   "migration on access › a newer version migrates each in-memory key when it is read; a key whose migrate fails fails the owner then [host half] (TestKeyedSlotMigrationOnAccessANewerVersionMigratesEachInMemoryKeyWhenItIsReadAKeyWhoseMigrateFailsFailsTheOwnerThen)",
+   "cold keyed loads on the line › tx.retire of a cold key stored at %s fails the owner broken as a read would and keeps it (R15, audit) [host half] (TestKeyedSlotColdKeyedLoadsTxRetireOfAColdKeyStoredAtANewerVersionOrAnotherFingerprintFailsTheOwnerBrokenAsAReadWouldAndKeepsIt/a_newer_version, /another_fingerprint_at_its_version)",
+   "cold keyed loads on the line › a retirement cut by its attempt's seal while it finds the document fails no successor (audit) [host half] (TestKeyedSlotColdKeyedLoadsARetirementCutByItsAttemptsSealWhileItFindsTheDocumentFailsNoSuccessor)",
+   "cold keyed loads on the line › a plugin migrate throwing a ChordError fails its owner like any other error [host half] (TestKeyedSlotColdKeyedLoadsAPluginMigrateThrowingAChordErrorFailsItsOwnerLikeAnyOtherError)",
+   "cold keyed loads on the line › a key whose migrate fails fails its owner broken; the get rejects with the cause [host half] (TestKeyedSlotColdKeyedLoadsAKeyWhoseMigrateFailsFailsItsOwnerBrokenTheGetRejectsWithTheCause)",
+   "at(key) › only in the factory (TestKeyedSlotAtKeyOnlyInTheFactory)",
+   "migration on access › a newer version migrates each in-memory key when it is read; a key whose migrate fails fails the owner then (TestKeyedSlotMigrationOnAccessANewerVersionMigratesEachInMemoryKeyWhenItIsReadAKeyWhoseMigrateFailsFailsTheOwnerThen)",
+   "cold keyed loads on the line › tx.retire of a cold key stored at a newer version fails the owner broken as a read would and keeps it (R15, audit) (TestKeyedSlotColdKeyedLoadsTxRetireOfAColdKeyStoredAtANewerVersionOrAnotherFingerprintFailsTheOwnerBrokenAsAReadWouldAndKeepsIt/a_newer_version)",
+   "cold keyed loads on the line › tx.retire of a cold key stored at another fingerprint at its version fails the owner broken as a read would and keeps it (R15, audit) (TestKeyedSlotColdKeyedLoadsTxRetireOfAColdKeyStoredAtANewerVersionOrAnotherFingerprintFailsTheOwnerBrokenAsAReadWouldAndKeepsIt/another_fingerprint_at_its_version)",
+   "cold keyed loads on the line › a retirement cut by its attempt's seal while it finds the document fails no successor (audit) (TestKeyedSlotColdKeyedLoadsARetirementCutByItsAttemptsSealWhileItFindsTheDocumentFailsNoSuccessor)",
+   "cold keyed loads on the line › a plugin migrate throwing a ChordError fails its owner like any other error (TestKeyedSlotColdKeyedLoadsAPluginMigrateThrowingAChordErrorFailsItsOwnerLikeAnyOtherError)",
+   "cold keyed loads on the line › a key whose migrate fails fails its owner broken; the get rejects with the cause (TestKeyedSlotColdKeyedLoadsAKeyWhoseMigrateFailsFailsItsOwnerBrokenTheGetRejectsWithTheCause)"
+  ],
+  "missing": [],
+  "designedOut": []
+ },
+ "packages/chord/test/next/host/reference.test.ts": {
+  "ported": [
+   "references › are hydrated when got; their state members are watchables (TestReferencesAreHydratedWhenGotTheirStateMembersAreWatchables)",
+   "references › throw released on every use after release, which is idempotent (TestReferencesThrowReleasedOnEveryUseAfterReleaseWhichIsIdempotent)",
+   "references › end their watches when released, while other references keep the object (TestReferencesEndTheirWatchesWhenReleasedWhileOtherReferencesKeepTheObject)",
+   "references › declared with self.get keep their object alive and are released when the declaring object ends (TestReferencesDeclaredWithSelfGetKeepTheirObjectAliveAndAreReleasedWhenTheDeclaringObjectEnds)",
+   "cycles (Q5) › fail a two-object cycle with invalid/cycle and keep nothing (TestCyclesQ5FailATwoObjectCycleWithInvalidCycleAndKeepNothing)",
+   "cycles (Q5) › fail a three-object cycle (TestCyclesQ5FailAThreeObjectCycle)",
+   "cycles (Q5) › fail an object that gets itself (TestCyclesQ5FailAnObjectThatGetsItself)",
+   "GC › 10,000 calls on one reference retain flat memory, without a caller's signal (TestGC10000CallsOnOneReferenceRetainFlatMemory)",
+   "GC › 10,000 calls on one reference retain flat memory, with a long-lived caller's signal (TestGC10000CallsOnOneReferenceRetainFlatMemory)",
+   "GC › a released reference keeps neither its contract nor its object (TestGCAReleasedReferenceKeepsNeitherItsContractNorItsObject)",
+   "GC › a released reference whose state was read keeps no host (TestGCAReleasedReferenceWhoseStateWasReadKeepsNoHost)",
+   "GC › a released reference whose state was read after a failure keeps neither the failure's error nor the host (TestGCAReleasedReferenceWhoseStateWasReadAfterAFailureKeepsNeitherTheFailuresErrorNorTheHost)",
+   "GC › a hold released before load keeps nothing: the reference and its contract go while the host waits (TestGCAHoldReleasedBeforeLoadKeepsNothingTheReferenceAndItsContractGoWhileTheHostWaits)",
+   "GC › a released hold keeps neither its object, nor its state's watches, nor a remote object without a link (TestGCAReleasedHoldKeepsNeitherItsObjectNorItsStatesWatchesNorARemoteObjectWithoutALink)",
+   "release › rejects the calls made through the reference with released and aborts their handlers' contexts (TestReleaseRejectsTheCallsMadeThroughTheReferenceWithReleasedAndAbortsTheirHandlersContexts)",
+   "release › reads, watches and calls after the object ended carry the end's reason; the holder's own release has none (TestReleaseReadsWatchesAndCallsAfterTheObjectEndedCarryTheEndsReasonTheHoldersOwnReleaseHasNone)",
+   "remote references › have every member of every variant; variant is undefined before live and released after release (TestRemoteReferencesHaveEveryMemberOfEveryVariantVariantIsUndefinedBeforeLiveAndReleasedAfterRelease)",
+   "keyed state members (slice 6a §12) › a consumer's at(key) is the provider's per-key source, loaded before it goes live; retirement carries the flag (TestKeyedStateMembersAConsumersAtKeyIsTheProvidersPerKeySourceLoadedBeforeItGoesLiveRetirementCarriesTheFlag)",
+   "keyed state members (slice 6a §12) › two consumers of one key share one source and one pin; each hold is released once, with its reference (TestKeyedStateMembersTwoConsumersOfOneKeyShareOneSourceAndOnePinEachHoldIsReleasedOnceWithItsReference)",
+   "keyed state members (slice 6a §12) › a re-exposed keyed member resolves to the ultimate provider's source (no second tracker) (TestKeyedStateMembersAReExposedKeyedMemberResolvesToTheUltimateProvidersSourceNoSecondTracker)",
+   "keyed state members (slice 6a §12) › ref.member.get and watch work anywhere; at(key) only in a factory (TestKeyedStateMembersRefMemberGetAndWatchWorkAnywhereAtKeyOnlyInAFactory)",
+   "keyed state members (slice 6a §12) › a watch(key) settling after its reference was released is ended at once with its pin; it rejects released (TestKeyedStateMembersAWatchKeySettlingAfterItsReferenceWasReleasedIsEndedAtOnceWithItsPinItRejectsReleased)",
+   "keyed state members (slice 6a §12) › a retained released factory reference keeps no provider: its at(key) drops the source (TestKeyedStateMembersARetainedReleasedFactoryReferenceKeepsNoProviderItsAtKeyDropsTheSource)",
+   "keyed state members (slice 6a §12) › a persisted key a consumer pins is loaded from the store before the consumer goes live (TestKeyedStateMembersAPersistedKeyAConsumerPinsIsLoadedFromTheStoreBeforeTheConsumerGoesLive)",
+   "keyed state members (slice 6a §12) › a pin load that fails its provider parks the consumer failed { waiting } on it (a dependency failure) (TestKeyedStateMembersAPinLoadThatFailsItsProviderParksTheConsumerFailedWaitingOnItADependencyFailure)",
+   "keyed state members (slice 6a §12) › a failed provider's ref.member.get rejects with the failure's cause (TestKeyedStateMembersAFailedProvidersRefMemberGetRejectsWithTheFailuresCause)",
+   "keyed state members (slice 6a §12) › a provider returning something else for a keyed member fails broken (TestKeyedStateMembersAProviderReturningSomethingElseForAKeyedMemberFailsBroken)"
+  ],
+  "missing": [],
+  "designedOut": [
+   "remote reference types › narrow on variant; RefIn picks variants: type-level check (expectTypeOf, RefIn); Go form: Reference.Variant() (variant, bound, err) names the variant a remote reference is bound to and none before the first binding, exercised by TestRemoteReferenceTypesNarrowOnVariantRefInPicksVariants",
+   "remote reference types › a held reference's variant may be undefined (before its first binding) and still narrows: type-level check (expectTypeOf, RefIn); Go form: Reference.Variant() (variant, bound, err) names the variant a remote reference is bound to and none before the first binding, exercised by TestRemoteReferenceTypesAHeldReferencesVariantMayBeUndefinedBeforeItsFirstBindingAndStillNarrows"
+  ]
+ },
+ "packages/chord/test/next/host/member-source.test.ts": {
+  "ported": [
+   "following the live attempt › passes the member's frames on as they are, and keeps a derive member lazy while nothing watches it (TestHostMemberSourceFollowingTheLiveAttemptPassesTheMembersFramesOnAsTheyAreAndKeepsADeriveMemberLazyWhileNothingWatchesIt, TestMemberSourceFollowingTheLiveAttemptPassesTheMembersFramesOnAsTheyAreAndKeepsADeriveMemberLazyWhileNothingWatchesIt)",
+   "a failed object's members › keep their last values and get no frames; a new watch opens at the last value (slice 6a §1.4) (TestHostMemberSourceAFailedObjectsMembersKeepTheirLastValuesAndGetNoFramesANewWatchOpensAtTheLastValue, TestMemberSourceAFailedObjectsMembersKeepTheirLastValuesAndGetNoFramesANewWatchOpensAtTheLastValue)",
+   "a failed object's members › re-exposed from another object freeze with the re-exposing object; the provider's source goes on (TestHostMemberSourceReExposedFromAnotherObjectFreezeWithTheReExposingObjectTheProvidersSourceGoesOn)",
+   "the window of a live failure › members following another object's sources freeze at once, while an admitted commit of the object runs (TestHostMemberSourceMembersFollowingAnotherObjectsSourcesFreezeAtOnceWhileAnAdmittedCommitOfTheObjectRuns)",
+   "re-binding when a new attempt goes live › recovers a consumer's derive that failed on the provider's earlier error, and the derives downstream (TestHostMemberSourceRebindingRecoversAConsumersDeriveThatFailedOnTheProvidersEarlierErrorAndTheDerivesDownstream, TestMemberSourceRebindingRecoversAConsumersDeriveThatFailedOnTheProvidersEarlierErrorAndTheDerivesDownstream)",
+   "re-binding when a new attempt goes live › re-binds a consumer's derive over a retried provider's derive member, and its watches get frames again (TestHostMemberSourceRebindingReBindsAConsumersDeriveOverARetriedProvidersDeriveMemberAndItsWatchesGetFramesAgain, TestMemberSourceRebindingRebindsAConsumersDeriveOverARetriedProvidersDeriveMemberAndItsWatchesGetFramesAgain)",
+   "re-binding when a new attempt goes live › sends one frame from the last value when the new attempt's member differs (TestHostMemberSourceRebindingSendsOneFrameFromTheLastValueWhenTheNewAttemptsMemberDiffers, TestMemberSourceRebindingSendsOneFrameFromTheLastValueWhenTheNewAttemptsMemberDiffers)",
+   "subscribers › a hold over a link on a remote object re-exposing a local member gets frames again after the local retry (TestHostMemberSourceSubscribersAHoldOverALinkOnARemoteObjectReExposingALocalMemberGetsFramesAgainAfterTheLocalRetry)",
+   "subscribers, directly › are fed the member's calls: a failure, then its recovery at the re-bind as a root replacement (TestHostMemberSourceSubscribersDirectlyAreFedTheMembersCallsAFailureThenItsRecoveryAtTheRebindAsARootReplacement, TestMemberSourceSubscribersDirectlyAreFedTheMembersCallsAFailureThenItsRecoveryAtTheRebindAsARootReplacement)",
+   "a member the new attempt's variant lacks › fails: its watch gets one failure call and stays open, reads throw invalid/member; a later attempt brings it back (TestHostMemberSourceAMemberTheNewAttemptsVariantLacksFailsItsWatchGetsOneFailureCallAndStaysOpenReadsThrowInvalidMemberALaterAttemptBringsItBack, TestMemberSourceAMemberTheNewAttemptsVariantLacksFailsItsWatchGetsOneFailureCallAndStaysOpenAndALaterAttemptBringsItBack)",
+   "an ended object's members › mark the derives over them: a consumer's derive keeps no cached value, its read throws released (TestHostMemberSourceAnEndedObjectsMembersMarkTheDerivesOverThemAConsumersDeriveKeepsNoCachedValueItsReadThrowsReleased, TestMemberSourceAnEndedObjectsMembersMarkTheDerivesOverThemAndEndTheirWatches)",
+   "member sources and memory › a failed attempt is collected after a retry while the object, its member source and a retained watch live (TestHostMemberSourceAFailedAttemptIsCollectedAfterARetryWhileTheObjectItsMemberSourceAndARetainedWatchLive, TestMemberSourceAFailedAttemptIsCollectedAfterARebindWhileTheMemberSourceAndARetainedWatchLive)",
+   "member sources and memory › an ended object's member sources are collected with it (TestHostMemberSourceAnEndedObjectsMemberSourcesAreCollectedWithIt, TestMemberSourceAnEndedObjectsMemberSourcesAreCollectedWithIt)"
+  ],
+  "missing": [],
+  "designedOut": []
+ },
+ "packages/chord/test/next/host/keyed-members.test.ts": {
+  "ported": [
+   "a failed object's held keys › keep their last values and get no frames (at, watch, a derive over at); the provider goes on (TestKeyedMembersAFailedObjectsHeldKeysKeepTheirLastValuesAndGetNoFramesAtWatchADeriveOverAtTheProviderGoesOn)",
+   "re-binding when a new attempt goes live › follows the new attempt's member of the same name (one frame); the old provider's pin is released (TestKeyedMembersRebindingFollowsTheNewAttemptsMemberOfTheSameNameOneFrameTheOldProvidersPinIsReleased)",
+   "re-binding when a new attempt goes live › loads a cold persisted key of the new member before the new attempt goes live (TestKeyedMembersRebindingLoadsAColdPersistedKeyOfTheNewMemberBeforeTheNewAttemptGoesLive)",
+   "a key whose first pin still loads › the object fails and re-binds meanwhile: the consumer retries on the new member, the late pin is released (TestKeyedMembersAKeyWhoseFirstPinStillLoadsTheObjectFailsAndRebindsMeanwhileTheConsumerRetriesOnTheNewMemberTheLatePinIsReleased)",
+   "a key whose first pin still loads › the object fails and stays failed: the consumer parks failed { waiting } on it, never live on it (TestKeyedMembersAKeyWhoseFirstPinStillLoadsTheObjectFailsAndStaysFailedTheConsumerParksFailedWaitingOnItNeverLiveOnIt)",
+   "a key whose first pin still loads › the object ends meanwhile: the consumer's wait rejects, the late pin is released (TestKeyedMembersAKeyWhoseFirstPinStillLoadsTheObjectEndsMeanwhileTheConsumersWaitRejectsTheLatePinIsReleased)",
+   "a keyed watch whose object closes while it is set up › rejects with the object's end error, whichever microtask the close lands in (TestKeyedMembersAKeyedWatchWhoseObjectClosesWhileItIsSetUpRejectsWithTheObjectsEndErrorWhicheverMicrotaskTheCloseLandsIn)",
+   "chains and releases › a key re-exposed through two objects freezes with the middle one and follows its next attempt (TestKeyedMembersAKeyReexposedThroughTwoObjectsFreezesWithTheMiddleOneAndFollowsItsNextAttempt)",
+   "chains and releases › a consumer released while the object re-activates leaves no hold behind; nothing is kept for it (TestKeyedMembersAConsumerReleasedWhileTheObjectReactivatesLeavesNoHoldBehindNothingIsKeptForIt)",
+   "a key whose first pin still loads at startup (scenario 20, Astra) › keeps the first pass pending during an otherwise-ready dependency's delayed keyed pin (TestKeyedMembersAKeyWhoseFirstPinStillLoadsAtStartupScenario20AstraKeepsTheFirstPassPendingDuringAnOtherwiseReadyDependencysDelayedKeyedPin)"
+  ],
+  "missing": [],
+  "designedOut": []
+ },
+ "packages/chord/test/next/host/members.test.ts": {
+  "ported": [
+   "the member check (Q14) › refuses an inherited property for a member (TestHostGetRefusesAnInheritedPropertyForAMember, TestMemberCheckRefusesAMethodTheImplementationDoesNotOwn)",
+   "the member check (Q14) › names a derive in errors by its member when exposed, else by its position (TestHostGetNamesADeriveInErrorsByItsMemberWhenExposedElseByItsPosition, TestMemberCheckNamesADeriveInErrorsByItsMemberWhenExposedElseByItsPosition)"
+  ],
+  "missing": [],
+  "designedOut": []
+ },
+ "packages/chord/test/next/host/follow.test.ts": {
+  "ported": [
+   "calls › inside a running batch: one frame per commit, and a derive over two views computes once with both (TestHostFollowCallsInsideARunningBatchOneFramePerCommitAndADeriveOverTwoViewsComputesOnceWithBoth, TestFollowCallsInsideARunningBatchOneFramePerCommitAndADeriveOverTwoViewsComputesOnceWithBoth)",
+   "calls › outside any batch: queued and applied in one batch on the next microtask (TestHostFollowCallsOutsideAnyBatchQueuedAndAppliedInOneBatchOnTheNextMicrotask, TestFollowCallsOutsideAnyBatchQueuedAndAppliedInOneBatchOnTheNextMicrotask)",
+   "calls › before the attachment resolved: applied in order on its value (TestHostFollowCallsBeforeTheAttachmentResolvedAppliedInOrderOnItsValue, TestFollowCallsBeforeTheAttachmentResolvedAppliedInOrderOnItsValue)",
+   "activation › an absent address fails the activation transient; a failed activation detaches what attached (TestHostFollowActivationAnAbsentAddressFailsTheActivationTransientAFailedActivationDetachesWhatAttached, TestFollowActivationAnAbsentAddressFailsAndAFailedActivationDetachesWhatAttached)",
+   "ends (R4) › failed: the live object fails transient once, reported, and its retry attaches again (TestHostFollowEndsFailedTheLiveObjectFailsTransientOnceReportedAndItsRetryAttachesAgain, TestFollowEndsFailedTheOwnerIsToldOnceTheValueStaysAndARetryAttachesAgain)",
+   "ends (R4) › ended: final; a queued retirement reaches the watch first, the value stays, a new watch ends at once (TestHostFollowEndsEndedIsFinalAQueuedRetirementReachesTheWatchFirstTheValueStaysANewWatchEndsAtOnce, TestFollowEndsEndedIsFinalAQueuedRetirementReachesTheWatchFirstTheValueStaysAndANewWatchEndsAtOnce)",
+   "ends during activation and in one batch (review regressions) › an end before the attachment resolved keeps the attachment's value on the source (TestEndsDuringActivationAndInOneBatchAnEndBeforeTheAttachmentResolvedKeepsTheAttachmentsValueOnTheSource)",
+   "ends during activation and in one batch (review regressions) › an ended end before the attachment resolved fails the activation transient (TestHostFollowAnEndedOrFailedEndBeforeTheAttachmentResolvedFailsTheActivationTransient)",
+   "ends during activation and in one batch (review regressions) › an failed end before the attachment resolved fails the activation transient (TestHostFollowAnEndedOrFailedEndBeforeTheAttachmentResolvedFailsTheActivationTransient)",
+   "ends during activation and in one batch (review regressions) › an end while the object activates (after its sources attached) fails the activation transient (TestHostFollowAnEndWhileTheObjectActivatesAfterItsSourcesAttachedFailsTheActivationTransient, TestFollowAnEndWhileTheObjectActivatesTellsTheOwner)",
+   "ends during activation and in one batch (review regressions) › a retirement and an end inside one batch: the watch gets the retirement, then ends (TestEndsDuringActivationAndInOneBatchARetirementAndAnEndInsideOneBatchTheWatchGetsTheRetirementThenEnds)",
+   "ends during activation and in one batch (review regressions) › a call and an end outside a batch with nothing watching: a later watch opens at the value and ends (TestEndsDuringActivationAndInOneBatchACallAndAnEndOutsideABatchWithNothingWatchingALaterWatchOpensAtTheValueAndEnds)",
+   "ends during activation and in one batch (review regressions) › an end outside a batch after calls of two views: the views of one commit are delivered together (TestHostFollowAnEndOutsideABatchAfterCallsOfTwoViewsTheViewsOfOneCommitAreDeliveredTogether, TestFollowAnEndOutsideABatchAfterCallsOfTwoViewsTheViewsOfOneCommitAreDeliveredTogether)",
+   "GC › a source its runtime ended is still detached at the object's end, then collected (TestHostFollowGCASourceItsRuntimeEndedIsStillDetachedAtTheObjectsEndThenCollected, TestFollowASourceItsRuntimeEndedIsStillDetachedAtTheObjectsEndThenCollected)",
+   "GC › an ended object's followed sources are collected, and their observers detached (TestHostFollowGCAnEndedObjectsFollowedSourcesAreCollectedAndTheirObserversDetached, TestFollowAnEndedObjectsFollowedSourcesAreCollectedAndTheirObserversDetached)"
+  ],
+  "missing": [],
+  "designedOut": [
+   "types › infers the value type from the attachment, without a type argument: type-level check (expectTypeOf); Go form: generic FollowAttach[T]/FollowAttachment[T], named by TestFollowAttachIsTypedByItsAttachment"
+  ]
+ },
+ "packages/chord/test/next/host/presence.test.ts": {
+  "ported": [
+   "host.references › lists every reference with the object's params, its principal and its incarnation (TestHostReferencesListsEveryReferenceWithTheObjectsParamsItsPrincipalAndItsIncarnation)",
+   "host.references › is made for the first ask with the references that exist then, and kept (TestHostReferencesIsMadeForTheFirstAskWithTheReferencesThatExistThenAndKept)",
+   "host.references › changes in the batch where a reference binds or ends: a watch gets one splice per change (TestHostReferencesChangesInTheBatchWhereAReferenceBindsOrEndsAWatchGetsOneSplicePerChange)",
+   "host.references › feeds derives in factories: viewers per session, a link drop a departure in its batch (race 9) (TestHostReferencesFeedsDerivesInFactoriesViewersPerSessionALinkDropADepartureInItsBatchRace9)",
+   "host.references › puts a departure discovered while a commit sends into the next batch: one state message per commit (race 9) (TestHostReferencesPutsADepartureDiscoveredWhileACommitSendsIntoTheNextBatchOneStateMessagePerCommitRace9)",
+   "host.references › completes a hold's bookkeeping before its presence entry publishes: a link closing then leaks nothing (TestHostReferencesCompletesAHoldsBookkeepingBeforeItsPresenceEntryPublishesALinkClosingThenLeaksNothing)",
+   "host.references › completes a release's bookkeeping before its departure publishes: a link closing then leaves no lingering (TestHostReferencesCompletesAReleasesBookkeepingBeforeItsDeparturePublishesALinkClosingThenLeavesNoLingering)",
+   "host.references › removes a bulk departure with one list and one splice op per entry, in one frame (a revoke of many holds) (TestHostReferencesRemovesABulkDepartureWithOneListAndOneSpliceOpPerEntryInOneFrameARevokeOfManyHolds)",
+   "host.references › counts two tabs through a relay as two incarnations on the worker (TestHostReferencesCountsTwoTabsThroughARelayAsTwoIncarnationsOnTheWorker)",
+   "host.references › has no entries for lingering objects (TestHostReferencesHasNoEntriesForLingeringObjects)",
+   "host.references › keeps no released reference (GC) (TestHostReferencesKeepsNoReleasedReferenceGC)"
+  ],
+  "missing": [],
+  "designedOut": []
+ },
+ "packages/chord/test/next/host/route.test.ts": {
+  "ported": [
+   "route admission › runs one resolve per address, shared by the holds that wait for it (race 1) (TestRouteAdmissionRunsOneResolvePerAddressSharedByTheHoldsThatWaitForItRace1)",
+   "route admission › authorizes every hold with its principal: a refusal is broken forbidden, other principals still resolve (race 4) (TestRouteAdmissionAuthorizesEveryHoldWithItsPrincipalARefusalIsBrokenForbiddenOtherPrincipalsStillResolveRace4)",
+   "route admission › ref.retry() holds a refused hold again: authorize admitting it later, over a link and on this host (audit) (TestRouteAdmissionRefRetryHoldsARefusedHoldAgainAuthorizeAdmittingItLaterOverALinkAndOnThisHostAudit)",
+   "route admission › ref.retry() of a reference refused on this host after host.close ends it released, nothing resolved (audit) (TestRouteAdmissionRefRetryOfAReferenceRefusedOnThisHostAfterHostCloseEndsItReleasedNothingResolvedAudit)",
+   "route admission › fails a hold broken with what authorize throws (TestRouteAdmissionFailsAHoldBrokenWithWhatAuthorizeThrows)",
+   "route admission › fails a hold broken invalid/host_address for an address whose params do not fit the kind (TestRouteAdmissionFailsAHoldBrokenInvalidHostAddressForAnAddressWhoseParamsDoNotFitTheKind)",
+   "resolve failures and re-resolves › a rejected resolve leaves the holds loading, is reported, and resolves again after the address's backoff (race 2) (TestResolveFailuresAndReResolvesARejectedResolveLeavesTheHoldsLoadingIsReportedAndResolvesAgainAfterTheAddressesBackoffRace2)",
+   "resolve failures and re-resolves › a returned link that is closed already starts the backoff (TestResolveFailuresAndReResolvesAReturnedLinkThatIsClosedAlreadyStartsTheBackoff)",
+   "resolve failures and re-resolves › a dropped link resolves again while held: references go loading, then live on a fresh worker (race 6) (TestResolveFailuresAndReResolvesADroppedLinkResolvesAgainWhileHeldReferencesGoLoadingThenLiveOnAFreshWorkerRace6)",
+   "resolve failures and re-resolves › only a link that completed its handshake resets the backoff (TestResolveFailuresAndReResolvesOnlyALinkThatCompletedItsHandshakeResetsTheBackoff)",
+   "resolve failures and re-resolves › a link whose peer never greets closes after 30 s of silence; the address backs off, then resolves again while held (TestResolveFailuresAndReResolvesALinkWhosePeerNeverGreetsClosesAfter30sOfSilenceTheAddressBacksOffThenResolvesAgainWhileHeld)",
+   "resolve failures and re-resolves › an address without holds is not resolved again after its link drops (TestResolveFailuresAndReResolvesAnAddressWithoutHoldsIsNotResolvedAgainAfterItsLinkDrops)",
+   "resolve failures and re-resolves › a resolve whose holds were all released meanwhile finishes and its link is kept (race 3) (TestResolveFailuresAndReResolvesAResolveWhoseHoldsWereAllReleasedMeanwhileFinishesAndItsLinkIsKeptRace3)",
+   "host.close during a resolve (race 7) › aborts the resolve's context and closes a link returned afterwards (TestHostCloseDuringAResolveRace7AbortsTheResolvesContextAndClosesALinkReturnedAfterwards)",
+   "declaring routes › is done before load, once per kind (TestDeclaringRoutesIsDoneBeforeLoadOncePerKind)",
+   "a route's context › is the parent of its resolves and of the work arriving on its links (TestARoutesContextIsTheParentOfItsResolvesAndOfTheWorkArrivingOnItsLinks)",
+   "GC › a closed route link and its released references keep no route state (TestRouteGCAClosedRouteLinkAndItsReleasedReferencesKeepNoRouteState)",
+   "GC › holds released while their resolve never settles are not kept (TestRouteGCHoldsReleasedWhileTheirResolveNeverSettlesAreNotKept)"
+  ],
+  "missing": [],
+  "designedOut": []
+ },
+ "packages/chord/test/next/jobs/definition.test.ts": {
+  "ported": [
+   "defineJob › keeps its name, version, Chord's copies of its schemas, its state and concurrency (TestDefineJobKeepsItsNameVersionChordsCopiesOfItsSchemasItsStateAndConcurrency)",
+   "defineJob › takes a restricted name only: lowercase [a-z0-9@/._~-] (decision \"Restricted names\") (TestDefineJobTakesARestrictedNameOnly)",
+   "defineJob › refuses a bad name, version, unknown option or concurrency (TestDefineJobRefusesABadNameVersionOrConcurrency)",
+   "defineJob › requires closed JSON args, as a method's: open objects and bytes are refused; records are fine (TestDefineJobRequiresClosedJSONArgs)",
+   "defineJob › takes a singleton document definition as its state (TestDefineJobTakesASingletonDocumentDefinitionAsItsState)",
+   "defineJob › checks accepts at declaration: older versions only, each with an args and a result function (TestDefineJobChecksAcceptsAtDeclaration)",
+   "defineJob › takes persist with a resume rule, a persisted state and a JSON-only result (slice 6b §4) (TestDefineJobTakesPersistWithAResumeRuleAPersistedStateAndAJSONOnlyResult)",
+   "defineJob › fingerprints args, result and state: a schema change without a version bump changes it (TestDefineJobFingerprintsArgsResultAndState)"
+  ],
+  "missing": [],
+  "designedOut": []
+ },
+ "packages/chord/test/next/jobs/job.test.ts": {
+  "ported": [
+   "start › checks the args against the definition (invalid/args) before anything is recorded (TestJobStartChecksTheArgsAgainstTheDefinitionBeforeAnythingIsRecorded)",
+   "start › compiles the args check once per definition (cost guard) (TestJobStartCompilesTheArgsCheckOncePerDefinition)",
+   "start › returns the unsettled run with the same key, across transactions, whatever its args (TestJobStartReturnsTheUnsettledRunWithTheSameKeyAcrossTransactionsWhateverItsArgs)",
+   "start › commits nothing for a start that only dedupes (TestJobStartCommitsNothingForAStartThatOnlyDedupes)",
+   "start › returns the same run for a key started twice in one transaction (TestJobStartReturnsTheSameRunForAKeyStartedTwiceInOneTransaction)",
+   "start › at the concurrency limit › rejects unavailable/busy: running and finishing runs count (TestJobStartAtTheConcurrencyLimitRejectsUnavailableBusyRunningAndFinishingRunsCount)",
+   "start › counts runs started earlier in the same transaction (TestJobStartCountsRunsStartedEarlierInTheSameTransaction)",
+   "start › lets finish chain the same job at concurrency 1: its own run is not counted (TestJobStartLetsFinishChainTheSameJobAtConcurrency1ItsOwnRunIsNotCounted)",
+   "start › lets finish start the same job again with the same key: a new run, not the finishing one (TestJobStartLetsFinishStartTheSameJobAgainWithTheSameKeyANewRunNotTheFinishingOne)",
+   "start › tx.start commits with the transaction's other writes, both or neither (TestJobStartTxStartCommitsWithTheTransactionsOtherWritesBothOrNeither)",
+   "start › gives a short run's handle its outcome however late the caller waits (TestJobStartGivesAShortRunsHandleItsOutcomeHoweverLateTheCallerWaits)",
+   "start › waits by id for unsettled runs only: settled and unknown ids reject gone (TestJobStartWaitsByIDForUnsettledRunsOnlySettledAndUnknownIDsRejectGone)",
+   "start › starts run after the commit, outside the batch, once the transaction settled (TestJobStartStartsRunAfterTheCommitOutsideTheBatchOnceTheTransactionSettled)",
+   "start › an abort between the commit and the start is marked, then the signal fires; the abort joins run (D7) (TestJobStartAnAbortBetweenTheCommitAndTheStartIsMarkedThenTheSignalFiresTheAbortJoinsRun)",
+   "start › creates nothing for an aborted caller; a caller aborted after the commit does not cancel the run (TestJobStartCreatesNothingForAnAbortedCallerACallerAbortedAfterTheCommitDoesNotCancelTheRun)",
+   "start › rolls back the transaction's other writes when the state's initial() fails, naming the definition (TestJobStartRollsBackTheTransactionsOtherWritesWhenTheStatesInitialFailsNamingTheDefinition)",
+   "start › is refused before its object is live and once it ended (TestJobStartIsRefusedBeforeItsObjectIsLiveAndOnceItEnded)",
+   "self.job › is declared once per job name, only while the factory runs (TestSelfJobIsDeclaredOncePerJobNameOnlyWhileTheFactoryRuns)",
+   "run › gets a ctx with the run's id, the host's principal for a local object, and no state without one (TestRunGetsACtxWithTheRunsIDTheHostsPrincipalForALocalObjectAndNoStateWithoutOne)",
+   "run › reads and changes its state document; `running` carries it (TestRunReadsAndChangesItsStateDocumentRunningCarriesIt)",
+   "run › keeps its state documents apart from the object's own documents of the same definition (TestRunKeepsItsStateDocumentsApartFromTheObjectsOwnDocumentsOfTheSameDefinition)",
+   "run › refuses state changes once run settled (released), and never recreates the retired document (TestRunRefusesStateChangesOnceRunSettledReleasedAndNeverRecreatesTheRetiredDocument)",
+   "run › commits a change still waiting for the line when run settles, before the outcome is recorded (TestRunCommitsAChangeStillWaitingForTheLineWhenRunSettlesBeforeTheOutcomeIsRecorded)",
+   "run › commits changes made after an abort while run stops; a throw then ends aborted, not threw (TestRunCommitsChangesMadeAfterAnAbortWhileRunStopsAThrowThenEndsAbortedNotThrew)",
+   "run › keeps a result returned after an abort (TestRunKeepsAResultReturnedAfterAnAbort)",
+   "run › ends threw when run throws, reported as job_failed; a plain error becomes PluginError internal (TestRunEndsThrewWhenRunThrowsReportedAsJobFailedAPlainErrorBecomesPluginErrorInternal)",
+   "run › releases its ctx.get references when it settles (TestRunReleasesItsCtxGetReferencesWhenItSettles)",
+   "run › that ignores its signal at the object's end is drained up to closeTimeout; its later changes are refused (TestRunThatIgnoresItsSignalAtTheObjectsEndIsDrainedUpToCloseTimeoutItsLaterChangesAreRefused)",
+   "run › may start the same job again from run (recursion): a new run (TestRunMayStartTheSameJobAgainFromRunRecursionANewRun)",
+   "finish › gets each outcome kind; the record, key and state document go in its commit, atomically with its writes (TestFinishGetsEachOutcomeKindTheRecordKeyAndStateDocumentGoInItsCommitAtomicallyWithItsWrites)",
+   "finish › only cleans up without a finish (TestFinishOnlyCleansUpWithoutAFinish)",
+   "finish › throwing › is retried after 1 s doubling, each failure reported; a later success finishes the run (TestFinishThrowingIsRetriedAfter1SDoublingEachFailureReportedALaterSuccessFinishesTheRun)",
+   "finish › throwing › blocks the run after five failures in a row: outcome, state and key kept, not counted; abort drops it (TestFinishThrowingBlocksTheRunAfterFiveFailuresInARowOutcomeStateAndKeyKeptNotCountedAbortDropsIt)",
+   "finish › backing off › leaves no timer behind when its object ends during the backoff (TestFinishBackingOffLeavesNoTimerBehindWhenItsObjectEndsDuringTheBackoff)",
+   "finish › ignores an abort while it runs (TestFinishIgnoresAnAbortWhileItRuns)",
+   "finish › does not run when its object ends while the outcome and finish wait for the line: no call, no report (TestFinishDoesNotRunWhenItsObjectEndsWhileTheOutcomeAndFinishWaitForTheLineNoCallNoReport)",
+   "finish › is drained at the object's end when it runs: its commit is refused, nothing is reported (TestFinishIsDrainedAtTheObjectsEndWhenItRunsItsCommitIsRefusedNothingIsReported)",
+   "running › has one entry per unsettled run, in start order, tagged by phase; a key when given (TestRunningHasOneEntryPerUnsettledRunInStartOrderTaggedByPhaseAKeyWhenGiven)",
+   "running › replaces only the entry whose state changed, with ops under its entry (cost guard: no walk of other runs) (TestRunningReplacesOnlyTheEntryWhoseStateChangedWithOpsUnderItsEntry)",
+   "running › does no validation, walk or compilation for a state change (cost guard) (TestRunningDoesNoValidationWalkOrCompilationForAStateChange)",
+   "running › frames record changes as splices and sets of the list (TestRunningFramesRecordChangesAsSplicesAndSetsOfTheList)",
+   "keep-alive › keeps an object without holders while runs run, and ends it after the last one and its linger (TestKeepAliveKeepsAnObjectWithoutHoldersWhileRunsRunAndEndsItAfterTheLastOneAndItsLinger)",
+   "keep-alive › keeps an object whose last run's finish chains another job: the chained run runs, then the object ends (TestKeepAliveKeepsAnObjectWhoseLastRunsFinishChainsAnotherJobTheChainedRunRunsThenTheObjectEnds)",
+   "keep-alive › keeps an object whose last reference goes while its start's commit publishes (a link closing as it sends) (TestKeepAliveKeepsAnObjectWhoseLastReferenceGoesWhileItsStartsCommitPublishes)",
+   "keep-alive › drops blocked runs, reported, when the object ends after its last run (TestKeepAliveDropsBlockedRunsReportedWhenTheObjectEndsAfterItsLastRun)",
+   "keep-alive › keeps a lingering object when a run starts during its linger (TestKeepAliveKeepsALingeringObjectWhenARunStartsDuringItsLinger)",
+   "object end › revocation (R11): runs' signals fire with the end's error, the drain waits for them, no finish (TestObjectEndRevocationR11RunsSignalsFireWithTheEndsErrorTheDrainWaitsForThemNoFinish)",
+   "object end › drains a run that ends its own object before its first await: its natives stay open until it stops (TestObjectEndDrainsARunThatEndsItsOwnObjectBeforeItsFirstAwaitItsNativesStayOpenUntilItStops)",
+   "object end › host.close: signals fire, close waits for the run (drain), no finish, waiters rejected released (TestObjectEndHostCloseSignalsFireCloseWaitsForTheRunDrainNoFinishWaitersRejectedReleased)",
+   "GC › finished and dropped runs leave nothing on their object (TestGCFinishedAndDroppedRunsLeaveNothingOnTheirObject)",
+   "GC › of dropped runs › a dropped blocked run leaves nothing on its object (TestGCOfDroppedRunsADroppedBlockedRunLeavesNothingOnItsObject)",
+   "GC › keeps nothing of a cancelled wait while its run still runs (TestGCKeepsNothingOfACancelledWaitWhileItsRunStillRuns)",
+   "GC › keeps no ended run's args or state in a job handle kept after its object ended (TestGCKeepsNoEndedRunsArgsOrStateInAJobHandleKeptAfterItsObjectEnded)",
+   "GC › an ended object releases its runs, their documents and waiters (TestGCAnEndedObjectReleasesItsRunsTheirDocumentsAndWaiters)"
+  ],
+  "missing": [],
+  "designedOut": []
+ },
+ "packages/chord/test/next/jobs/persisted.test.ts": {
+  "ported": [
+   "records › a run's record and state live in the store while it is unsettled; finish deletes the record, retires the state (TestPersistedRecordsARunsRecordAndStateLiveInTheStoreWhileItIsUnsettledFinishDeletesTheRecordRetiresTheState)",
+   "crashes and restarts (D6) › a run cut off while running is counted and rerun; a state change resets the count; five in a row end it (TestPersistedCrashesARunCutOffWhileRunningIsCountedAndRerunFiveInARowEndIt)",
+   "crashes and restarts (D6) › a state change resets the restart count, stored at once (TestPersistedCrashesAStateChangeResetsTheRestartCountStoredAtOnce)",
+   "crashes and restarts (D6) › abandon: a run cut off by a crash finishes failed { aborted, restart } without run (TestPersistedCrashesAbandonARunCutOffByACrashFinishesFailedAbortedRestartWithoutRun)",
+   "versions › a run stored by another version is blocked (version): kept as stored, never run, listed blocked (TestPersistedVersionsARunStoredByAnotherVersionOrFingerprintIsBlockedKeptAsStoredNeverRunListedBlocked)",
+   "versions › a run stored by the same version with another fingerprint is blocked (version): kept as stored, never run, listed blocked (TestPersistedVersionsARunStoredByAnotherVersionOrFingerprintIsBlockedKeptAsStoredNeverRunListedBlocked)",
+   "versions with incompatible state (review regression) › a run of another version is blocked before its state is decoded: no migration, no activation failure (TestPersistedVersionsWithIncompatibleStateARunOfAnotherVersionIsBlockedBeforeItsStateIsDecoded)",
+   "versions without a state (review regression) › an abort of a run blocked under a version without a state retires the old state document too (TestPersistedVersionsWithoutAStateAnAbortOfARunBlockedUnderAVersionWithoutAStateRetiresTheOldStateDocumentToo)",
+   "a seal during the reservation (review regressions) › a reservation refused at admission after the seal: the next live attempt invokes the run (TestPersistedASealDuringTheReservationAReservationRefusedAtAdmissionAfterTheSealTheNextLiveAttemptInvokesTheRun)",
+   "a seal during the reservation (review regressions) › a reservation queued behind a held commit queue past the seal: the next live attempt invokes the run (TestPersistedASealDuringTheReservationAReservationQueuedBehindAHeldCommitQueuePastTheSealTheNextLiveAttemptInvokesTheRun)",
+   "a seal during the reservation (review regressions) › an abort joined to a reservation that commits after the seal returns marked (TestPersistedASealDuringTheReservationAnAbortJoinedToAReservationThatCommitsAfterTheSealReturnsMarked)",
+   "the clean stop and the close writer › host close writes the stopped runs back: the next start resumes them without counting (TestPersistedTheCleanStopAndTheCloseWriterHostCloseWritesTheStoppedRunsBackTheNextStartResumesThemWithoutCounting)",
+   "the clean stop and the close writer › a seal (a live failure) stops the run; the retry resumes it once its old invocation settled, uncounted (R3) (TestPersistedTheCleanStopAndTheCloseWriterASealStopsTheRunTheRetryResumesItOnceItsOldInvocationSettledUncounted)",
+   "the clean stop and the close writer › a close writer that cannot commit leaves the records running: the next start counts a restart (TestPersistedTheCleanStopAndTheCloseWriterACloseWriterThatCannotCommitLeavesTheRecordsRunningTheNextStartCountsARestart)",
+   "invocations after a seal (R3, review regressions) › an invocation replaced after the bounded drain writes nothing and records nothing (TestPersistedInvocationsAfterASealAnInvocationReplacedAfterTheBoundedDrainWritesNothingAndRecordsNothing)",
+   "invocations after a seal (R3, review regressions) › a resumed invocation gets a fresh abort signal (TestPersistedInvocationsAfterASealAResumedInvocationGetsAFreshAbortSignal)",
+   "invocations after a seal (R3, review regressions) › abort joins the resumed invocation, not the first (TestPersistedInvocationsAfterASealAbortJoinsTheResumedInvocationNotTheFirst)",
+   "invocations after a seal (R3, review regressions) › resume abandon: a run the seal stopped finishes failed { aborted, restart } without a second run (TestPersistedInvocationsAfterASealResumeAbandonARunTheSealStoppedFinishesFailedAbortedRestartWithoutASecondRun)",
+   "loading (review regressions) › a refused recovery commit loses nothing: the retry loads the runs again and counts the crash once (TestPersistedLoadingALoadThatFailsLosesNothingTheRetryLoadsTheRunsAgainAndCountsTheCrashOnce)",
+   "loading (review regressions) › a state document that fails to load fails the activation; the retry with fixed code loads the run (TestPersistedLoadingAStateDocumentThatFailsToLoadFailsTheActivationTheRetryWithFixedCodeLoadsTheRun)",
+   "finish failures › are counted on the record, across a crash (TestPersistedFinishFailuresAreCountedOnTheRecordAcrossACrash)",
+   "abort (D7) › is stored and joined: marked once run settled, terminal for an unknown id (TestPersistedAbortIsStoredAndJoinedMarkedOnceRunSettledTerminalForAnUnknownID)",
+   "abort (D7) › an abort-marked run not invoked yet finishes aborted without run after a crash (TestPersistedAbortAnAbortMarkedRunNotInvokedYetFinishesAbortedWithoutRunAfterACrash)",
+   "abort of a finishing run (review regression) › stores the mark and keeps the recorded outcome (TestPersistedAbortOfAFinishingRunStoresTheMarkAndKeepsTheRecordedOutcome)",
+   "abort racing an outcome › an abort that comes as run returns keeps its result: marked or terminal, the outcome done (TestPersistedAbortRacingAnOutcomeAnAbortThatComesAsRunReturnsKeepsItsResultMarkedOrTerminalTheOutcomeDone)",
+   "pinning › an unsettled run's state never idles: past the residency retention it is in memory, read synchronously (TestPersistedPinningAnUnsettledRunsStateNeverIdlesPastTheResidencyRetentionItIsInMemoryReadSynchronously)",
+   "deferred state (D8) › is adopted at once, held, and stored with the outcome (TestPersistedDeferredStateIsAdoptedAtOnceHeldAndStoredWithTheOutcome)",
+   "deferred state (D8) › merges held ops into the next immediate change: one delta on the stored revision (TestPersistedDeferredStateMergesHeldOpsIntoTheNextImmediateChangeOneDeltaOnTheStoredRevision)",
+   "deferred state (D8) › folds held writes: 100 sets of one leaf keep one op; past the pending bound the next change stores a base (TestPersistedDeferredStateFoldsHeldWrites100SetsOfOneLeafKeepOneOp)",
+   "deferred state (D8) › an overflow of held ops stores the next change as a base (TestPersistedDeferredStateAnOverflowOfHeldOpsStoresTheNextChangeAsABase)",
+   "deferred state (D8) › is stored by the close writer at a clean stop, and after withinMs by the object's timer (TestPersistedDeferredStateIsStoredByTheCloseWriterAtACleanStopAndAfterWithinMsByTheObjectsTimer)",
+   "deferred state (D8) › refuses a negative withinMs (TestPersistedDeferredStateRefusesANegativeWithinMs)",
+   "GC › settled runs, cancelled abort waits, and an ended object with a held change and its timer are collected (TestPersistedGCSettledRunsCancelledAbortWaitsAndAnEndedObjectWithAHeldChangeAndItsTimerAreCollected)"
+  ],
+  "missing": [],
+  "designedOut": []
+ },
+ "packages/chord/test/next/jobs/records.test.ts": {
+  "ported": [
+   "runs across attempts › a run cut off by its attempt's seal ends aborted (restart) and is finished on the next live attempt (TestRecordsARunCutOffByItsAttemptsSealEndsAbortedRestartAndIsFinishedOnTheNextLiveAttempt)",
+   "runs across attempts › refuses the cut run's changes made while it stops; its settling records nothing more (TestRecordsRefusesTheCutRunsChangesMadeWhileItStopsItsSettlingRecordsNothingMore)",
+   "runs across attempts › a finish sealed mid-way is not counted as a failure and runs again on the next live attempt (TestRecordsAFinishSealedMidWayIsNotCountedAsAFailureAndRunsAgainOnTheNextLiveAttempt)",
+   "keep-alive › a run waiting for a live attempt keeps a failed object no longer: it ends with its last reference (TestRecordsKeepAliveARunWaitingForALiveAttemptKeepsAFailedObjectNoLongerItEndsWithItsLastReference)",
+   "the object's end during an admitted commit › a run started in a commit held in the SQL while the host closes ends with the object; no run is left counted (TestRecordsTheObjectsEndDuringAnAdmittedCommitARunStartedInACommitHeldInTheSQLWhileTheHostClosesEndsWithTheObjectNoRunIsLeftCounted)"
+  ],
+  "missing": [],
+  "designedOut": []
+ },
+ "packages/chord/test/next/jobs/run.test.ts": {
+  "ported": [
+   "a run › has an entry per phase: args and state while running or finishing, neither when blocked, with its reason (TestARunHasAnEntryPerPhaseArgsAndStateWhileRunningOrFinishingNeitherWhenBlockedWithItsReason)",
+   "a run › gives every waiter the outcome, late ones too; a waiter's context ends only its wait (TestARunGivesEveryWaiterTheOutcomeLateOnesTooAWaitersContextEndsOnlyItsWait)"
+  ],
+  "missing": [],
+  "designedOut": []
+ },
+ "packages/chord/test/next/jobs/running.test.ts": {
+  "ported": [
+   "running's list › copies the list per change, keeps other entries identical, and frames apply to the previous value (TestRunningsListCopiesTheListPerChangeKeepsOtherEntriesIdenticalAndFramesApplyToThePreviousValue)",
+   "running's list › re-paths every kind of state op under its entry; a replacement becomes a set (TestRunningsListRePathsEveryKindOfStateOpUnderItsEntryAReplacementBecomesASet)",
+   "running's list › builds no op for a state change while unwatched (cost guard: the ops are not even walked) (TestRunningsListBuildsNoOpForAStateChangeWhileUnwatched)",
+   "running's list › keeps nothing once ended: reads throw released (TestRunningsListKeepsNothingOnceEndedReadsReturnReleased)",
+   "running's list › records no ops while unwatched, and marks derives over it at every change (TestRunningsListRecordsNoOpsWhileUnwatchedAndMarksDerivesOverItAtEveryChange)"
+  ],
+  "missing": [],
+  "designedOut": []
+ },
+ "packages/chord/test/next/remote/hold.test.ts": {
+  "ported": [
+   "the parts of a hold › are its members, each with its own encoder: the snapshot by member, then the changed members' ops (TestHoldParts)",
+   "failed members › are listed in the header of the state that carries the failure, never in its part; they recover in the same hold (TestHoldFailedMembers)",
+   "failed members › reach a client's watch over the link as one failure call, then the healed value: the watch stays open (TestHoldFailedMembers)",
+   "failed members › are listed in bound for a hold made after the failure (TestHoldFailedMembers)",
+   "transient failures › a new hold of an object failed transiently is sent the failure at once (TestHoldTransientFailures)",
+   "GC › a closed link retained by the test keeps no hold, encoder or object (TestHoldGC)",
+   "GC › a released pending hold is kept neither by its object, still activating for another hold, nor by its waits (TestHoldGCPending)",
+   "GC › a pending activation on a closed link keeps no hold (TestHoldGCPending)",
+   "GC › a hold released while waiting for load is not kept by the wait (TestHoldGCPending)",
+   "notices of a failed object › its holds get failed with the rest of its window, loading for each attempt, then bound (race 6) (TestHoldNoticesOfAFailedObject)",
+   "notices of a failed object › a retry from one consumer renews a broken object for every holder: loading, then bound (races 12, 13) (TestHoldNoticesOfAFailedObject)",
+   "notices of a failed object › a retry skips a transient failure's window for every holder (race 12) (TestHoldNoticesOfAFailedObject)",
+   "notices of a failed object › a retry of a live or an unknown hold does nothing (TestHoldNoticesOfAFailedObject)",
+   "holds that bind to nothing yet (dependency model §1, §3) › a refused hold waits failed { waiting }, counted; a retry re-runs its start (loading, failed); its link's close drops it (TestHoldsThatBindToNothingYet)",
+   "holds that bind to nothing yet (dependency model §1, §3) › a hold on an object parked on a failed dependency is told each new cause, then loading, then bound (TestHoldsThatBindToNothingYet)",
+   "a reconnecting consumer › finds a lingering object as it left it: its in-memory documents kept; one without linger is new (race 7) (TestHoldAReconnectingConsumer)",
+   "a reconnecting consumer › re-holds an object whose previous instance still tears down: bound once that ended (race 17) (TestHoldAReconnectingConsumer)",
+   "One retirement mechanism › are listed in the state that carries the retirement, a derive whose value stayed without ops (TestHoldRetiredMembers)",
+   "One retirement mechanism › are kept while the window is full and sent once with the folded ops (TestHoldRetiredMembers)",
+   "One retirement mechanism › of a member failed again before its entry leaves wait for its next value, never with its failure (TestHoldRetiredMembers)",
+   "failures while the window is full › fold per member: 1000 failing commits leave one failure entry, the member's ops dropped; bounded (TestHoldFailuresWhileTheWindowIsFull)",
+   "failures while the window is full › are replaced by a value that follows them: the value as a root replacement, no failure (TestHoldFailuresWhileTheWindowIsFull)",
+   "retry operations across links (fix rounds 1 and 2, Sol 3) › quiesce after 1 concurrent Retries round a waiting ring across hosts: each stops after one lap (TestHoldRetryOperationsQuiesceAcrossHosts, subtest \"1\")",
+   "retry operations across links (fix rounds 1 and 2, Sol 3) › quiesce after 9 concurrent Retries round a waiting ring across hosts: each stops after one lap (TestHoldRetryOperationsQuiesceAcrossHosts, subtest \"9\")",
+   "retry operations across links (fix rounds 1 and 2, Sol 3) › quiesce after 50 concurrent Retries round a waiting ring across hosts: each stops after one lap (TestHoldRetryOperationsQuiesceAcrossHosts, subtest \"50\")"
+  ],
+  "missing": [],
+  "designedOut": []
+ },
+ "packages/chord/test/next/remote/remote-object.test.ts": {
+  "ported": [
+   "a hold over the parent link › reject a broken failure at once (TestRemoteObjectHoldOverTheParentLink)",
+   "a hold over the parent link › gone: the reference ends, its pending calls reject with the error (TestRemoteObjectHoldOverTheParentLink)",
+   "a hold over the parent link › two references from one host are two holds (TestRemoteObjectHoldOverTheParentLink)",
+   "a hold over the parent link › a member failure fails only that replica: reads throw it, its watch gets a failure call and stays open; the others update (TestRemoteObjectHoldOverTheParentLink)",
+   "retired members › reach the replicas' watches with the flag: with the member's ops, or alone (TestRemoteObjectRetiredMembers)",
+   "retired members › of a failed member wait for its next value: never read from the failed replica; the link stays open (TestRemoteObjectRetiredMembers)",
+   "retired members › that names a member outside the variant closes the link (TestRemoteObjectRetiredMembers, subtest \"names a member outside the variant\")",
+   "retired members › that names a member twice closes the link (TestRemoteObjectRetiredMembers, subtest \"names a member twice\")",
+   "a snapshot › that misses a member closes the link; the reference stays loading (TestRemoteObjectASnapshot, subtest \"misses a member\")",
+   "a snapshot › that names a member twice closes the link; the reference stays loading (TestRemoteObjectASnapshot, subtest \"names a member twice\")",
+   "a snapshot › that names a member outside the variant closes the link; the reference stays loading (TestRemoteObjectASnapshot, subtest \"names a member outside the variant\")",
+   "a snapshot › that names a variant outside the version closes the link; the reference stays loading (TestRemoteObjectASnapshot, subtest \"names a variant outside the version\")",
+   "transient failures over a link › are waited through; the deadline rejects with the last cause and releases the hold (TestRemoteObjectTransientFailuresOverALink)",
+   "GC of a released remote reference › a released reference retained by the test keeps no hold, replica or object (TestRemoteObjectGCOfAReleasedReference)",
+   "GC of a released remote reference › a failure call's error kept by the app keeps neither the replica nor the remote object (TestRemoteObjectGCOfAReleasedReference)",
+   "self.get of a type over the link (dependency model §3) › a failed hold parks the dependent failed { waiting }: no new attempt or hold; bound wakes it (TestRemoteObjectSelfGetOverTheLink)",
+   "self.get through a relay whose upstream dropped (R18) › a loading notice while loading changes nothing: the dependent goes on waiting and goes live when bound (TestRemoteObjectSelfGetThroughARelayWhoseUpstreamDropped)",
+   "a dependent of an object failed transiently over the link › parks at once on the real cause when its load holds it (no wait for a timeout) (TestRemoteObjectDependentOfAnObjectFailedTransientlyOverTheLink)",
+   "re-holds after a drop › hold every reference not released again on the next link, with that link's fresh ids, in order (TestRemoteObjectReHoldsAfterADrop)",
+   "re-holds after a drop › apply bound in one batch: each member gets one frame [['r', value]] and a fresh decoder (TestRemoteObjectReHoldsAfterADrop)",
+   "re-holds after a drop › a derive over two members of a re-held reference sees the snapshot whole: one batch (TestRemoteObjectReHoldsAfterADrop)",
+   "re-holds after a drop › another variant: vanished members fail (watches stay open), derives over them fail, new members get values, parked calls are checked (race 14) (TestRemoteObjectReHoldsAfterADrop)",
+   "re-holds after a drop › calls sent before a drop fail unavailable, never resent; an old link's leftovers never reach the next (race 1) (TestRemoteObjectReHoldsAfterADrop)",
+   "re-holds after a drop › a drop before bound, or during the next link's handshake, leaves it loading; the next connect holds again (race 5) (TestRemoteObjectReHoldsAfterADrop)",
+   "re-holds after a drop › a re-hold refused after a provider upgrade stays failed; the next connect holds it again (TestRemoteObjectReHoldsAfterADrop)",
+   "re-holds after a drop › ref.retry() of a broken failure sends retry on the same hold: no release, no new hold (audit) (TestRemoteObjectReHoldsAfterADrop)",
+   "re-holds after a drop › ref.retry() of an object whose factory threw, held twice: failed, loading, live; a call made then succeeds (audit) (TestRemoteObjectReHoldsAfterADrop)",
+   "re-holds after a drop › a drop while failed: loading, held again on the next link (race 19) (TestRemoteObjectReHoldsAfterADrop)",
+   "re-holds after a drop › a member watch before the first binding waits for it, and rejects when it fails or is released (race 16) (TestRemoteObjectReHoldsAfterADrop)",
+   "a get across a drop › keeps waiting within its one deadline, from the moment it was called (TestRemoteObjectAGetAcrossADrop)",
+   "an activating dependent whose remote dependency's link drops (audit; supersedes race 18) › stays loading through the drop, no failure reported, and goes live when the next link binds it (TestRemoteObjectActivatingDependentWhoseLinkDrops)",
+   "an activating dependent whose remote dependency's link drops (audit; supersedes race 18) › dropped and never bound again, stays parked loading: nothing fails, no parked_long without a link (TestRemoteObjectActivatingDependentWhoseLinkDrops)",
+   "an activating dependent whose remote dependency's link drops (audit; supersedes race 18) › without any link stays loading past its readyTimeout and goes live when the first link binds its one hold (TestRemoteObjectActivatingDependentWhoseLinkDrops)",
+   "GC across a drop › a reference that lived through a drop keeps nothing of the closed link (TestRemoteObjectGCAcrossADrop)"
+  ],
+  "missing": [],
+  "designedOut": []
+ },
+ "packages/chord/test/next/remote/host-link.test.ts": {
+  "ported": [
+   "two-sided links › carry the server's holds of a worker type and the worker's holds of a server type over one route link (TestHostLinkTwoSidedLinks)",
+   "two-sided links › carry calls both ways with equal ids: each side's ids are its own (TestHostLinkTwoSidedLinks)",
+   "two-sided links › let a worker reach another worker through the server (TestHostLinkTwoSidedLinks)",
+   "two-sided links › apply this host's own messages and forward the tab origin's, each acknowledged by its consumer (TestHostLinkTwoSidedLinks)",
+   "principals on holds (section 4's table) › a relayed hold acts as the link's principal: a forged principal from a tab is ignored (race 9) (TestHostLinkPrincipalsOnHolds)",
+   "principals on holds (section 4's table) › a hold relayed over a parent path names nobody: a child's principal and incarnation stay behind (TestHostLinkPrincipalsOnHolds)",
+   "principals on holds (section 4's table) › host.get through a route acts as the host: its principal and incarnation (TestHostLinkPrincipalsOnHolds)",
+   "principals on holds (section 4's table) › ctx.get in a guest's call acts as the guest, with the tab's incarnation (race 10) (TestHostLinkPrincipalsOnHolds)",
+   "principals on holds (section 4's table) › self.get in a remote object acts as that object's principal, with this host's incarnation (TestHostLinkPrincipalsOnHolds)",
+   "principals on holds (section 4's table) › self.get in a local object acts as the host (TestHostLinkPrincipalsOnHolds)",
+   "principals on holds (section 4's table) › two origins with equal principal keys but other incarnations are two upstream holds (TestHostLinkPrincipalsOnHolds)",
+   "principals on holds (section 4's table) › upward is a boundary: a worker's hold of a server type acts as the worker, whoever it serves (race 11) (TestHostLinkPrincipalsOnHolds)",
+   "trusted links › work as untrusted ones do (TestHostLinkTrustedLinks)",
+   "parts: compression at the origin and limits › deflate JSON parts above 16 KiB at their origin and inflate them where owned, synchronously; never up a parent link's arguments (TestHostLinkPartsCompressionAndLimits)",
+   "parts: compression at the origin and limits › inflate asynchronously without a compressor: later messages of the link wait, in order (TestHostLinkPartsCompressionAndLimits)",
+   "parts: compression at the origin and limits › fail only the hold of a compressed bomb, on either inflate path (race 11): the link stays (TestHostLinkPartsCompressionAndLimits)",
+   "parts: compression at the origin and limits › cost nothing for uncompressed messages at a host without a compressor: no inflate, no stream (TestHostLinkPartsCompressionAndLimits)",
+   "parts: compression at the origin and limits › send every part uncompressed from a host without a compressor (TestHostLinkPartsCompressionAndLimits)"
+  ],
+  "missing": [],
+  "designedOut": []
+ },
+ "packages/chord/test/next/remote/path.test.ts": {
+  "ported": [
+   "a path › asks for a link when it gets a holder without one; holds every holder on each link it gets (TestPathAsksForALinkAndHoldsEveryHolderOnEachLink)",
+   "a path › tells every holder when its link drops, then asks for the next; a stale link's drop is ignored (TestPathTellsHoldersWhenItsLinkDrops)",
+   "a path › reports its last holder's detach: no later link holds it (TestPathReportsItsLastHoldersDetach)"
+  ],
+  "missing": [],
+  "designedOut": []
+ },
+ "packages/chord/test/next/remote/calls.test.ts": {
+  "ported": [
+   "the call window › sends nothing before the peer's hello, then up to its N; the rest waits (TestCallWindowSendsNothingBeforeHelloThenUpToN)",
+   "the call window › sends waiting calls in order as slots free (TestCallWindowSendsWaitingCallsInOrder)",
+   "the call window › never preempts: a call that waits does not overtake while every slot is taken (TestCallWindowNeverPreempts)",
+   "the call window › takes out a cancelled waiting call, and every waiting call of a hold that rebinds (TestCallWindowTakesOutCancelledAndRebindingCalls)",
+   "the call window › keeps no call that went out or was taken (TestCallWindowKeepsNoCallThatWentOutOrWasTaken)"
+  ],
+  "missing": [],
+  "designedOut": []
+ },
+ "packages/chord/test/next/remote/provider.test.ts": {
+  "ported": [
+   "holds arriving on a link › bind as the link's principal: bound with the variant and the snapshot (TestProviderHoldsArrivingOnALink)",
+   "holds arriving on a link › keep a type not served here refused, failed { waiting } (TestProviderHoldsArrivingOnALink, subtest \"a type not served here\")",
+   "holds arriving on a link › keep a local type refused, failed { waiting } (TestProviderHoldsArrivingOnALink, subtest \"a local type\")",
+   "holds arriving on a link › keep another version refused, failed { waiting } (TestProviderHoldsArrivingOnALink, subtest \"another version\")",
+   "holds arriving on a link › keep another fingerprint refused, failed { waiting } (TestProviderHoldsArrivingOnALink, subtest \"another fingerprint\")",
+   "holds arriving on a link › refuse invalid params with a broken failed (TestProviderHoldsArrivingOnALink)",
+   "holds arriving on a link › arriving before the publication wait for it, and bind before the start barrier is over (TestProviderHoldsArrivingOnALink)",
+   "calls arriving on a link › run as the link's principal with the child's incarnation; results and errors go back (TestProviderCallsArrivingOnALink)",
+   "calls arriving on a link › outside the binding's variant cannot be named: an index past its methods, forged at the wire, closes the link (TestProviderCallsArrivingOnALink)",
+   "calls arriving on a link › check their arguments (TestProviderCallsArrivingOnALink)",
+   "calls arriving on a link › before bound are refused not_ready (race 3) (TestProviderCallsArrivingOnALink)",
+   "calls arriving on a link › cancelled are aborted and get no reply; a result crossing the cancel is never sent (race 1) (TestProviderCallsArrivingOnALink)",
+   "ids › a link ignores ids it does not know and messages for the other direction (TestProviderIDs)",
+   "ids › a hold reusing a live id closes the link (TestProviderIDs)",
+   "ids › a call reusing a live id closes the link (TestProviderIDs)",
+   "ids › a message the codec cannot decode closes the link (TestProviderIDs)",
+   "one message per link per commit (W1) › three holds on one link: one state message, one part per hold, one encode each (TestProviderOneMessagePerLinkPerCommit)",
+   "one message per link per commit (W1) › a derive travels with its source in the same part (TestProviderOneMessagePerLinkPerCommit)",
+   "one message per link per commit (W1) › two links: one message each; when one closes, the other keeps updating (race 8) (TestProviderOneMessagePerLinkPerCommit)",
+   "races at the provider › a new hold and the old one's release in one turn hand the object over without ending it (R18) (TestProviderRaces)",
+   "races at the provider › a hold released right after it was sent keeps no object (TestProviderRaces)",
+   "races at the provider › a hold released while it waits for load takes nothing once load resolves (TestProviderRaces)",
+   "races at the provider › a release while activating unholds; bound is never sent (race 6) (TestProviderRaces)",
+   "races at the provider › a hold while the previous instance of its identity tears down waits for it (race 7) (TestProviderRaces)",
+   "races at the provider › a commit right after the binding continues exactly from the snapshot (race 2) (TestProviderRaces)",
+   "races at the provider › closing a link during a batch drops its state message and releases its holds (race 9) (TestProviderRaces)",
+   "local types over a link › never cross one: a hold naming one is not served (failed { waiting }) (TestProviderLocalTypesOverALinkNeverCrossOne)",
+   "the window at the provider › holds at most two unacknowledged bound and state messages; what waits goes out folded, encoded once (TestProviderWindow)",
+   "the window at the provider › ignores acks that cross nothing: they never open the window past two (race 18) (TestProviderWindow)",
+   "the window at the provider › lets a hold that binds while the window is full wait: the waiting state first, its bound at the next slot (TestProviderWindow)",
+   "the window at the provider › overflows past 10,000 pending ops to a replacement with the current value (race 23) (TestProviderWindow)",
+   "origins at the provider › key holds and calls by (origin, id): the same ids on two origins are two holds; answers carry the origin (TestProviderOrigins)",
+   "origins at the provider › keep a window per origin: a stalled origin folds its commits, another keeps receiving each (TestProviderOrigins)",
+   "origins at the provider › count calls per origin against N: 256 on each of two origins run, one more on one closes the link (TestProviderOrigins)",
+   "origins at the provider › ignore a call on a hold they do not know before counting it (Q1) (TestProviderOrigins)",
+   "origins at the provider › closed releases the origin's holds and aborts its calls; another origin keeps its own (TestProviderOrigins)",
+   "origins at the provider › carry constants and failed members, and an empty variant's binding, in a first bound (race 24) (TestProviderOrigins)",
+   "GC of the window › a closed origin drops its pending queue's ops: nothing keeps them (TestProviderGCOfTheWindowAClosedOriginDropsItsPendingQueuesOps)",
+   "the call limit › closes a link whose peer sends more calls than this side announced (TestProviderCallLimit)",
+   "the call limit › frees a slot per reply, cancel and release (TestProviderCallLimit)",
+   "limits per part at the provider › fails a call whose argument part is past the wire limit with too_large/part; the link stays (TestProviderLimitsPerPart)",
+   "limits per part at the provider › fails a hold whose params are past the limit broken too_large/part (TestProviderLimitsPerPart)",
+   "limits per part at the provider › fails a call whose deflated argument inflates past the decoded limit, on both inflate paths (TestProviderLimitsPerPart)",
+   "limits per part at the provider › inflates a deflated argument within the hold's stamped decoded limit, a bomb included (both paths) (TestProviderLimitsPerPart)",
+   "limits per part at the provider › checks a deflated argument's wire size before inflating it (both paths) (TestProviderLimitsPerPart)",
+   "limits per part at the provider › inflates nothing for a call it ignores: an unknown hold (Q1), a refused one (both paths) (TestProviderLimitsPerPart)",
+   "limits per part at the provider › refuses compressed arguments from a child, and compressed params on any link: protocol errors (TestProviderLimitsPerPart)",
+   "limits per part at the provider › honours a stamped decoded limit only on a parent link: a child's is ignored (race 12) (TestProviderLimitsPerPart)"
+  ],
+  "missing": [],
+  "designedOut": []
+ },
+ "packages/chord/test/next/remote/consumer.test.ts": {
+  "ported": [
+   "references over a link › are live and hydrated when got, with the variant of the link's principal (TestConsumerReferencesOverALink)",
+   "references over a link › apply one state message as one batch: a derive over two members never sees half a commit (TestConsumerReferencesOverALink)",
+   "references over a link › call methods: results, ChordErrors, PluginErrors and other throws (TestConsumerReferencesOverALink)",
+   "references over a link › carry bytes as raw segments both ways (TestConsumerReferencesOverALink)",
+   "references over a link › cancel a call: the caller is rejected at once, the provider's handler aborted (TestConsumerReferencesOverALink)",
+   "references over a link › release: pending calls reject released, the provider aborts their handlers and lets the object go (TestConsumerReferencesOverALink)",
+   "references over a link › a closing link rejects sent calls unavailable; references go loading, gets keep waiting (TestConsumerReferencesOverALink)",
+   "races at the consumer › ignores a bound and a state for a hold it released, and a result crossing its cancel (TestConsumerRaces)",
+   "protocol errors at the consumer › close the link: wire ops failing Delta's checks (TestConsumerProtocolErrors, subtest \"wire ops failing Delta's checks\")",
+   "protocol errors at the consumer › close the link: a member index outside the variant (TestConsumerProtocolErrors, subtest \"a member index outside the variant\")",
+   "protocol errors at the consumer › close the link: a member twice (TestConsumerProtocolErrors, subtest \"a member twice\")",
+   "protocol errors at the consumer › close the link: a member's changes that are no list (TestConsumerProtocolErrors, subtest \"a member's changes that are no list\")",
+   "protocol errors at the consumer › close the link: ops that are no JSON (TestConsumerProtocolErrors, subtest \"ops that are no JSON\")",
+   "protocol errors at the consumer › close the link: ops that do not apply to the member (TestConsumerProtocolErrors, subtest \"ops that do not apply to the member\")",
+   "protocol errors at the consumer › reject the call and close the link on a malformed reply: a result that is no JSON (TestConsumerProtocolErrors, subtest \"a result that is no JSON\")",
+   "protocol errors at the consumer › reject the call and close the link on a malformed reply: a $bytes reference without its segment (TestConsumerProtocolErrors, subtest \"a $bytes reference without its segment\")",
+   "protocol errors at the consumer › reject the call and close the link on a malformed reply: a malformed ChordError envelope (TestConsumerProtocolErrors, subtest \"a malformed ChordError envelope\")",
+   "protocol errors at the consumer › ignore a gone for a hold it does not know before reading its error (Q1) (TestConsumerProtocolErrors)",
+   "protocol errors at the consumer › close the link on a malformed error envelope (TestConsumerProtocolErrors)",
+   "the wire format of a hold › is the snapshot by member, then each commit's changed members with their ops (TestConsumerWireFormatOfAHold)",
+   "cost guards at the consumer › applies state without validating, walking or copying it: unchanged parts stay the same objects (TestConsumerCostGuards)",
+   "GC at the consumer › a closed link retained by the test, with its host, keeps no hold, replica or released reference (TestConsumerGC)",
+   "one state message over several holds › is applied as one batch: a derive over both holds never sees half of it, a failed member included (TestConsumerOneStateMessageOverSeveralHolds)",
+   "one state message over several holds › with a malformed later entry applies nothing and closes the link (TestConsumerOneStateMessageOverSeveralHolds)",
+   "$bytes outside methods with bytes › is plain data: {$bytes: 0} round-trips unchanged through a method without bytes (TestConsumerBytesOutsideMethodsWithBytes)",
+   "the call window at the consumer › frees a slot once when a hold with a call in flight and one waiting is released (TestConsumerCallWindow)",
+   "the call window at the consumer › frees a slot once on gone (TestConsumerCallWindow)",
+   "the call window at the consumer › rejects a call still waiting when its hold rebinds: unavailable (race 26) (TestConsumerCallWindow)",
+   "limits per part at the consumer › rejects a call whose result is past the link's limits with too_large/part; the link stays (TestConsumerLimitsPerPart)",
+   "limits per part at the consumer › fails a hold whose snapshot is past the limits broken, releases it, and binds the message's others (TestConsumerLimitsPerPart)",
+   "limits per part at the consumer › acknowledges a message waiting for its asynchronous inflate only once applied, in order (race 14) (TestConsumerLimitsPerPart)",
+   "limits per part at the consumer › drops a message whose asynchronous inflate is in flight when the link closes, and those behind it (race 13) (TestConsumerLimitsPerPart)",
+   "limits per part at the consumer › inflates nothing it gave up (Q1): a corrupt deflated result of an unknown call, an entry of a released hold (both paths) (TestConsumerLimitsPerPart)",
+   "limits per part at the consumer › checks a deflated part's wire size before inflating it: corrupt data past the limit only fails its hold (TestConsumerLimitsPerPart)",
+   "limits per part at the consumer › keeps a hold failed for a part past the limits off the next link until retry, offline retry included (TestConsumerLimitsPerPart)",
+   "limits per part at the consumer › stops an asynchronous inflate at once when the link closes: nothing of the link stays (GC) (TestConsumerLimitsPerPart)",
+   "limits per part at the consumer › fails only the hold of a state part past the limits (race 10); the others of the message apply (TestConsumerLimitsPerPart)"
+  ],
+  "missing": [],
+  "designedOut": []
+ },
+ "packages/chord/test/next/remote/relay.test.ts": {
+  "ported": [
+   "ids and origins › keep the downstream ids upstream, under the downstream link's origin; answers come back by it (TestRelayIDsAndOrigins)",
+   "ids and origins › give each downstream link its own origin, never reused (TestRelayIDsAndOrigins)",
+   "ids and origins › drop entries, notices and replies for holds of the origin relayed over another link (TestRelayIDsAndOrigins)",
+   "ids and origins › ignore answers for an origin from a link it relayed nothing to (TestRelayIDsAndOrigins)",
+   "parts at a relay › are never parsed: params, snapshots, ops, arguments and results travel as they came (TestRelayPartsAreNeverParsed)",
+   "the window through a relay › forwards every bound and state at once and relays each ack to its worker (TestRelayWindow)",
+   "the window through a relay › acknowledges to the right worker in order: two workers sharing one tab (TestRelayWindow)",
+   "the window through a relay › never tears a commit: a slow tab's states fold at the worker, a derive over two holds sees both at one moment (race 21) (TestRelayWindow)",
+   "an upstream drop › sends loading downstream, fails relayed calls unavailable, holds again with the same id and forwards the new bound, another variant allowed (race 12) (TestRelayUpstreamDrop)",
+   "an upstream drop › answers a call that crossed the loading notice unavailable (race 13) (TestRelayUpstreamDrop)",
+   "a parent link that is down (audit) › holds a hold arriving meanwhile on the parent path: it waits loading and binds on the next parent link (TestRelayParentLinkThatIsDown)",
+   "a downstream release › before the upstream hold was sent drops it; after, releases it upstream; messages crossing it are dropped (race 14) (TestRelayDownstreamRelease)",
+   "a downstream drop › closes its origin upstream: one closed per worker, no release or cancel (race 15) (TestRelayDownstreamDrop)",
+   "gone from upstream › is forwarded and the relayed hold forgotten (race 16) (TestRelayGoneFromUpstream)",
+   "GC at a relay › a released relayed hold and a closed downstream link keep no relay state (TestRelayGC)",
+   "received buffers at a relay › are not kept by the parts of a relayed hold after its message was handled (TestRelayReceivedBuffers)",
+   "mixed codecs › relay between a binary tab link and a text route link (TestRelayMixedCodecs)",
+   "mixed codecs › limits and compression through a relay › check an argument's size on the admitting link at the relay: too_large/part, nothing forwarded (TestRelayLimitsAndCompression)",
+   "mixed codecs › limits and compression through a relay › stamp the admitting link's decoded limit on the upstream hold; a tab's own is ignored (race 12) (TestRelayLimitsAndCompression)",
+   "mixed codecs › limits and compression through a relay › enforce the stamped limit where the part is decoded: the worker refuses the tab's large argument (TestRelayLimitsAndCompression)",
+   "mixed codecs › limits and compression through a relay › forward deflated parts as they came: the relay inflates nothing (a counter) (TestRelayLimitsAndCompression)",
+   "mixed codecs › limits and compression through a relay › forward deflated parts as they came at a relay without a compressor: nothing inflated there (TestRelayLimitsAndCompression)",
+   "mixed codecs › limits and compression through a relay › forward answers from upstream unchecked: the end that parses a part checks it against its own link (TestRelayLimitsAndCompression)",
+   "mixed codecs › limits and compression through a relay › detach a reference failed too_large from its route; retry 0 ms after the drop places it anew, a new hold (TestRelayLimitsAndCompression, subtest \"0\")",
+   "mixed codecs › limits and compression through a relay › detach a reference failed too_large from its route; retry 1200 ms after the drop places it anew, a new hold (TestRelayLimitsAndCompression, subtest \"1200\")",
+   "mixed codecs › limits and compression through a relay › let a tab without a compressor inflate the worker's deflated parts asynchronously, in order (TestRelayLimitsAndCompression)"
+  ],
+  "missing": [],
+  "designedOut": []
+ },
+ "packages/chord/test/next/remote/replica.test.ts": {
+  "ported": [
+   "replicas › adopt a value and its ops inside a batch: one frame, derives recomputed (TestReplicasAdoptAValueAndItsOpsInsideABatchOneFrameDerivesRecomputed)",
+   "replicas › fail: reads throw the error, watches and derives over it get one failure call and recover with a root replacement (TestReplicasFailReadsReturnTheErrorWatchesAndDerivesOverItGetOneFailureCallAndRecoverWithARootReplacement)",
+   "replicas › fail once per episode: a second failure while failed gives no call; a retirement meanwhile waits for the value (TestReplicasFailOncePerEpisodeASecondFailureWhileFailedGivesNoCallARetirementMeanwhileWaitsForTheValue)",
+   "replicas › open a new watch while failed at the last value, the failure first; with no value yet, reject it (TestReplicasOpenANewWatchWhileFailedAtTheLastValueTheFailureFirstWithNoValueYetRejectIt)",
+   "replicas › end with their hold: reads throw its error, watches end (TestReplicasEndWithTheirHoldReadsReturnItsErrorWatchesEnd)"
+  ],
+  "missing": [],
+  "designedOut": []
+ },
+ "packages/chord/test/next/examples/01-objects.ts": {
+  "ported": [
+   "01-objects.ts (the script's whole scenario, every console.log line an assertion) (TestExample01Objects)"
+  ],
+  "missing": [],
+  "designedOut": []
+ },
+ "packages/chord/test/next/examples/02-documents.ts": {
+  "ported": [
+   "02-documents.ts (the script's whole scenario, every console.log line an assertion) (TestExample02Documents)"
+  ],
+  "missing": [],
+  "designedOut": []
+ },
+ "packages/chord/test/next/examples/03-derives.ts": {
+  "ported": [
+   "03-derives.ts (the script's whole scenario, every console.log line an assertion) (TestExample03Derives)"
+  ],
+  "missing": [],
+  "designedOut": []
+ },
+ "packages/chord/test/next/examples/04-watches.ts": {
+  "ported": [
+   "04-watches.ts (the script's whole scenario, every console.log line an assertion) (TestExample04Watches)"
+  ],
+  "missing": [],
+  "designedOut": []
+ },
+ "packages/chord/test/next/examples/05-errors.ts": {
+  "ported": [
+   "05-errors.ts (the script's whole scenario, every console.log line an assertion) (TestExample05Errors)"
+  ],
+  "missing": [],
+  "designedOut": []
+ },
+ "packages/chord/test/next/examples/06-natives.ts": {
+  "ported": [
+   "06-natives.ts (the script's whole scenario, every console.log line an assertion) (TestExample06Natives)"
+  ],
+  "missing": [],
+  "designedOut": []
+ },
+ "packages/chord/test/next/examples/07-failures.ts": {
+  "ported": [
+   "07-failures.ts (the script's whole scenario, every console.log line an assertion) (TestExample07Failures)"
+  ],
+  "missing": [],
+  "designedOut": []
+ },
+ "packages/chord/test/next/examples/08-remote.ts": {
+  "ported": [
+   "08-remote.ts (the script's whole scenario, every console.log line an assertion) (TestExample08Remote)"
+  ],
+  "missing": [],
+  "designedOut": []
+ },
+ "packages/chord/test/next/examples/09-calls.ts": {
+  "ported": [
+   "09-calls.ts (the script's whole scenario, every console.log line an assertion) (TestExample09Calls)"
+  ],
+  "missing": [],
+  "designedOut": []
+ },
+ "packages/chord/test/next/examples/10-drops.ts": {
+  "ported": [
+   "10-drops.ts (the script's whole scenario, every console.log line an assertion) (TestExample10Drops)"
+  ],
+  "missing": [],
+  "designedOut": []
+ },
+ "packages/chord/test/next/examples/11-linger-and-retry.ts": {
+  "ported": [
+   "11-linger-and-retry.ts (the script's whole scenario, every console.log line an assertion) (TestExample11LingerAndRetry)"
+  ],
+  "missing": [],
+  "designedOut": []
+ },
+ "packages/chord/test/next/examples/12-routes.ts": {
+  "ported": [
+   "12-routes.ts (the script's whole scenario, every console.log line an assertion) (TestExample12Routes)"
+  ],
+  "missing": [],
+  "designedOut": []
+ },
+ "packages/chord/test/next/examples/13-relay.ts": {
+  "ported": [
+   "13-relay.ts (the script's whole scenario, every console.log line an assertion) (TestExample13Relay)"
+  ],
+  "missing": [],
+  "designedOut": []
+ },
+ "packages/chord/test/next/examples/14-flow-control.ts": {
+  "ported": [
+   "14-flow-control.ts (the script's whole scenario, every console.log line an assertion) (TestExample14FlowControl)"
+  ],
+  "missing": [],
+  "designedOut": []
+ },
+ "packages/chord/test/next/examples/15-revocation.ts": {
+  "ported": [
+   "15-revocation.ts (the script's whole scenario, every console.log line an assertion) (TestExample15Revocation)"
+  ],
+  "missing": [],
+  "designedOut": []
+ },
+ "packages/chord/test/next/examples/16-presence-and-activity.ts": {
+  "ported": [
+   "16-presence-and-activity.ts (the script's whole scenario, every console.log line an assertion) (TestExample16PresenceAndActivity)"
+  ],
+  "missing": [],
+  "designedOut": []
+ },
+ "packages/chord/test/next/examples/17-limits-and-compression.ts": {
+  "ported": [
+   "17-limits-and-compression.ts (the script's whole scenario, every console.log line an assertion) (TestExample17LimitsAndCompression)"
+  ],
+  "missing": [],
+  "designedOut": []
+ },
+ "packages/chord/test/next/examples/18-routines.ts": {
+  "ported": [
+   "18-routines.ts (the script's whole scenario, every console.log line an assertion) (TestExample18Routines)"
+  ],
+  "missing": [],
+  "designedOut": []
+ },
+ "packages/chord/test/next/examples/19-jobs.ts": {
+  "ported": [
+   "19-jobs.ts (the script's whole scenario, every console.log line an assertion) (TestExample19Jobs)"
+  ],
+  "missing": [],
+  "designedOut": []
+ },
+ "packages/chord/test/next/examples/20-tables.ts": {
+  "ported": [
+   "20-tables.ts (the script's whole scenario, every console.log line an assertion) (TestExample20Tables)"
+  ],
+  "missing": [],
+  "designedOut": []
+ },
+ "packages/chord/test/next/examples/21-persisted-documents.ts": {
+  "ported": [
+   "21-persisted-documents.ts (the script's whole scenario, every console.log line an assertion) (TestExample21PersistedDocuments)"
+  ],
+  "missing": [],
+  "designedOut": []
+ },
+ "packages/chord/test/next/examples/22-migrations.ts": {
+  "ported": [
+   "22-migrations.ts (the script's whole scenario, every console.log line an assertion) (TestExample22Migrations)"
+  ],
+  "missing": [],
+  "designedOut": []
+ },
+ "packages/chord/test/next/examples/23-keyed-watches.ts": {
+  "ported": [
+   "23-keyed-watches.ts (the script's whole scenario, every console.log line an assertion) (TestExample23KeyedWatches)"
+  ],
+  "missing": [],
+  "designedOut": []
+ },
+ "packages/chord/test/next/examples/24-keyed-members.ts": {
+  "ported": [
+   "24-keyed-members.ts (the script's whole scenario, every console.log line an assertion) (TestExample24KeyedMembers)"
+  ],
+  "missing": [],
+  "designedOut": []
+ },
+ "packages/chord/test/next/examples/25-export-import.ts": {
+  "ported": [
+   "25-export-import.ts (the script's whole scenario, every console.log line an assertion) (TestExample25ExportImport)"
+  ],
+  "missing": [],
+  "designedOut": []
+ },
+ "packages/chord/test/next/examples/28-persisted-jobs.ts": {
+  "ported": [
+   "28-persisted-jobs.ts (the script's whole scenario, every console.log line an assertion) (TestExample28PersistedJobs)"
+  ],
+  "missing": [],
+  "designedOut": []
+ },
+ "packages/chord/test/next/examples/29-registries.ts": {
+  "ported": [
+   "29-registries.ts (the script's whole scenario, every console.log line an assertion) (TestExample29Registries)"
+  ],
+  "missing": [],
+  "designedOut": []
+ },
+ "packages/chord/test/next/examples/30-host-root.ts": {
+  "ported": [
+   "30-host-root.ts (the script's whole scenario, every console.log line an assertion) (TestExample30HostRoot)"
+  ],
+  "missing": [],
+  "designedOut": []
+ },
+ "packages/chord/test/next/examples/31-parked-dependencies.ts": {
+  "ported": [
+   "31-parked-dependencies.ts (the script's whole scenario, every console.log line an assertion) (TestExample31ParkedDependencies)"
+  ],
+  "missing": [],
+  "designedOut": []
+ },
+ "packages/chord/test/next/examples/32-startup.ts": {
+  "ported": [
+   "32-startup.ts (the script's whole scenario, every console.log line an assertion) (TestExample32Startup)"
+  ],
+  "missing": [],
+  "designedOut": []
+ }
+}

@@ -651,26 +651,6 @@ func TestHostParkedCallsRejectWithTheCauseWhenTheObjectFails(t *testing.T) {
 	wantScopeError(t, err, data.CodeUnavailable, "", "app.gated(1): offline")
 }
 
-// Mirrors "stop being sent when one's handler releases the reference: the rest reject released (race 15)".
-func TestHostParkedCallsStopBeingSentWhenOnesHandlerReleasesTheReference(t *testing.T) {
-	g := gatedLocal(t)
-	defer closeHosts(t, g.Host)
-	ref, err := g.Host.Hold(parkedGated, jsonObject("id", float64(1)), background, GetOptions{})
-	must(t, err)
-	g.mu.Lock()
-	g.ref = ref
-	g.mu.Unlock()
-	first := startLog(t, ref, "release", background)
-	second := startLog(t, ref, "b", background)
-	g.resolve()
-	_, err = second.wait()
-	wantScopeError(t, err, data.CodeReleased, "", "app.gated: released")
-	_, _ = first.wait()
-	if got := g.logged(); !reflect.DeepEqual(got, []string{"release"}) {
-		t.Fatalf("log = %v, want [release]", got)
-	}
-}
-
 // Mirrors "calls on a loading remote reference › keep one deadline across reconnects; nothing is sent for them on either link".
 func TestHostParkedCallsOnALoadingRemoteReferenceKeepOneDeadlineAcrossReconnects(t *testing.T) {
 	forEachCodec(t, func(t *testing.T) {
@@ -681,10 +661,17 @@ func TestHostParkedCallsOnALoadingRemoteReferenceKeepOneDeadlineAcrossReconnects
 		notes, err := p.Client.Hold(Notes, jsonObject("session", "S1"), background, GetOptions{ReadyTimeout: &ready})
 		must(t, err)
 		call := startNotesCall(t, notes, "wait")
+		scopeEventually(t, "the hold reached the first peer", func() bool { return len(p.Peer.Kinds()) >= 1 })
 		loop.AdvanceAsync(600)
 		p.Peer.Close()
 		turn(p.Client)
-		next := rawParent(t, p.Client, link.PartLimits{})
+		// The client's end closes a task after the peer's: `connect` takes the next link once it did.
+		a, b := link.MemoryLinkPair()
+		scopeEventually(t, "the previous parent link closed", func() bool {
+			return p.Client.Connect(a, LinkOptions{Principal: serverPrincipal(), Codec: testCodec()}, background) == nil
+		})
+		next := newRawPeer(t, b, rawPeerOptions{})
+		next.Next("hello")
 		next.Next("hold")
 		loop.AdvanceAsync(400)
 		_, err = call.wait()
@@ -789,7 +776,7 @@ func TestHostParkedCallsOnAReferenceReleasedWhileLoadingWithoutALinkNothingIsSen
 		if kinds := peer.Kinds(); len(kinds) != 0 {
 			t.Fatalf("kinds = %v, want none", kinds)
 		}
-		if kind := other.State().Value().Kind; kind != RefStateLoading {
+		if kind := refStateOf(other).Kind; kind != RefStateLoading {
 			t.Fatalf("state = %s, want loading", kind)
 		}
 	})

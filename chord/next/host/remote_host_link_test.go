@@ -217,8 +217,12 @@ func TestHostLinkTwoSidedLinks(t *testing.T) {
 			}
 			rhBindPlaced(t, worker, second)
 			serverNotes, tabs := own.must(t), relayedHold.must(t)
-			rhSync(t, worker)
-			worker.Next("hello")
+			// The acks of the two `bound` messages.
+			for _, origin := range []link.Optional[int]{{}, link.Some(1)} {
+				if ack := worker.Next("ack").(*link.AckMessage); ack.Origin != origin {
+					t.Fatalf("ack = %+v, want %+v", ack.Origin, origin)
+				}
+			}
 			editor := editorWire(t)
 			ops, err := link.JsonPart([]any{[]any{"r", float64(5)}})
 			must(t, err)
@@ -228,22 +232,17 @@ func TestHostLinkTwoSidedLinks(t *testing.T) {
 					Failed: []link.FailedMember{}, Retired: link.NoRetired,
 				}}})
 			}
-			rhSync(t, worker)
-			for _, ref := range []*Reference{serverNotes, tabs} {
-				if got := rhRefValue(t, ref, "count"); got != float64(5) {
-					t.Fatalf("count = %v, want 5", got)
+			// Each state is acknowledged by its consumer once applied, the tab origin's with its origin.
+			for _, origin := range []link.Optional[int]{{}, link.Some(1)} {
+				if ack := worker.Next("ack").(*link.AckMessage); ack.Origin != origin {
+					t.Fatalf("ack = %+v, want %+v", ack.Origin, origin)
 				}
 			}
-			received := worker.Received()
-			if len(received) != 2 {
-				t.Fatalf("received = %v, want two acks", worker.Kinds())
+			for _, ref := range []*Reference{serverNotes, tabs} {
+				rhAwaitValue(t, ref, "count", float64(5))
 			}
-			if ack, ok := received[0].(*link.AckMessage); !ok || ack.Origin.Ok {
-				t.Fatalf("first = %+v, want ack without origin", received[0])
-			}
-			if ack, ok := received[1].(*link.AckMessage); !ok || !ack.Origin.Ok || ack.Origin.Value != 1 {
-				t.Fatalf("second = %+v, want ack of origin 1", received[1])
-			}
+			rhSync(t, worker)
+			rhKindsAre(t, worker, "hello")
 		})
 	})
 }
@@ -716,7 +715,7 @@ func TestOnOnARemoteMemberFailedSinceItsBindingNoValueYetWaitsForItsFirstValue(t
 	must(t, err)
 	_, err = ref.Call("set", float64(2), background)
 	must(t, err)
-	viewer := mustContract(contracts.Local("app.viewer", contracts.LocalDeclaration{
+	viewer := mustContract(contracts.Local("app.viewer", contracts.LocalDeclaration{Members: []contracts.LocalEntry{},
 		Version: 1, Params: contracts.Params{contracts.Prop("id", contracts.Int())},
 	}))
 	var mu sync.Mutex

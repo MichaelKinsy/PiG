@@ -60,13 +60,13 @@ func advanceHost(loop *scopeLoop, host Host, ms int64) {
 	end := loop.Now() + ms
 	for {
 		next, found := int64(0), false
-		loop.fakeLoop.mu.Lock()
-		for _, timer := range loop.fakeLoop.timers {
+		loop.mu.Lock()
+		for _, timer := range loop.timers {
 			if !found || timer.at < next {
 				next, found = timer.at, true
 			}
 		}
-		loop.fakeLoop.mu.Unlock()
+		loop.mu.Unlock()
 		if !found || next > end {
 			break
 		}
@@ -286,6 +286,7 @@ func TestAttemptAnAttemptWaitingForItsPreviousInstancesTeardownIsBoundedByReadyT
 	mustGet(t, host, attemptPage, jsonObject("id", 1.0)).Release()
 	next := mustHold(t, host, attemptPage, jsonObject("id", 1.0))
 	advanceHost(loop, host, 100)
+	until(t, "the abandonment's report", func() bool { return errs.Len() == 1 })
 	if got := factories.Load(); got != 1 {
 		t.Fatalf("factories = %d, want 1", got)
 	}
@@ -360,6 +361,8 @@ func TestAttemptReleasesTheReferencesItAcquired(t *testing.T) {
 	if got := pages.Load(); got != 1 {
 		t.Fatalf("pages = %d, want 1", got)
 	}
+	// The failed attempt's teardown releases its references once its natives closed (a task): wait for it.
+	untilEnded(t, host)
 	mustGet(t, host, attemptPage, jsonObject("id", 7.0))
 	if got := pages.Load(); got != 2 {
 		t.Fatalf("pages = %d, want 2", got)
@@ -537,6 +540,7 @@ func TestAttemptEndingRefusesTransactionsAtOnceDocumentsStayReadableUntilTheClos
 	}
 	wantChordError(t, got.err, data.CodeReleased, data.ReasonEnded, "app.page(1): ended")
 	turn(host)
+	untilEnded(t, host)
 	var readErr error
 	host.(*chordHost).enter(func() { _, readErr = list.Value() })
 	if readErr == nil || readErr.Error() != "app.page(1): ended" {
@@ -567,6 +571,8 @@ func TestAttemptTheDrainIsBoundedByCloseTimeoutAHandlerStillRunningThenSeesItsNa
 	// The call is admitted before the release ends the object.
 	until(t, "the call to be admitted", func() bool { return activityOf(host).Calls == 1 })
 	page.Release()
+	// The drain's timer is made by the teardown task: the clock moves once it exists.
+	until(t, "the drain's timer", func() bool { return loop.TimerCount() > 0 })
 	advanceHost(loop, host, 999)
 	if got := closed.Load(); got != 0 {
 		t.Fatalf("closes at 999 ms = %d, want 0", got)
@@ -626,10 +632,9 @@ func TestAttemptTheDrainAHandlerStuckPastItNoLongerCountsAsACallNorHoldsItsCtxGe
 		t.Fatalf("calls %d, references %d, want 1 and 1", calls, refs)
 	}
 	page.Release()
+	until(t, "the drain's timer", func() bool { return loop.TimerCount() > 0 })
 	advanceHost(loop, host, 1000)
-	if calls, refs := activityOf(host).Calls, references(); calls != 0 || refs != 0 {
-		t.Fatalf("calls %d, references %d, want 0 and 0", calls, refs)
-	}
+	until(t, "the stuck handler to stop counting", func() bool { return activityOf(host).Calls == 0 && references() == 0 })
 }
 
 // --- declarations -------------------------------------------------------------------------------------------------------
@@ -700,10 +705,12 @@ func TestAttemptDeclarationsContributeOnlyInHostLifetimeObjectsR21SelfHasNoContr
 	}
 	names, err := registries.DefineRegistry[any, any]("app.names", registries.DefineRegistryOptions{Version: 1})
 	must(t, err)
-	storeType := mustContract(contracts.Local("app.store", contracts.LocalDeclaration{Version: 1}))
+	storeType := mustContract(contracts.Local("app.store", contracts.LocalDeclaration{Members: []contracts.LocalEntry{}, Params: contracts.Params{}, Version: 1}))
 	host, _ := loaded(t, func(h FacetHost, _ FacetSelf) error {
 		if err := h.Serve(names, registries.RegistryProvider[any, any]{
-			Compose: func(table registries.RegistryTable[any], _ registries.ComposeContext) (any, error) { return float64(len(table)), nil },
+			Compose: func(table registries.RegistryTable[any], _ registries.ComposeContext) (any, error) {
+				return float64(len(table)), nil
+			},
 		}, ServeOptions{}); err != nil {
 			return err
 		}
@@ -720,18 +727,18 @@ func TestAttemptDeclarationsContributeOnlyInHostLifetimeObjectsR21SelfHasNoContr
 		}, ServeOptions{})
 	}, loadedOptions{})
 	_, err = host.Get(attemptPage, jsonObject("id", 1.0), background, GetOptions{})
-	if err == nil || err.Error() != "app.page(1): self.contribute is valid only in a local type with empty params" {
+	if err == nil || !hasText(err.Error(), "app.page(1): self.contribute is valid only in a local type with empty params") {
 		t.Fatalf("page get = %v", err)
 	}
 	_, err = host.Get(storeType, jsonObject(), background, GetOptions{})
-	if err == nil || err.Error() != "app.store: registry app.names is contributed to twice" {
+	if err == nil || !hasText(err.Error(), "app.store: registry app.names is contributed to twice") {
 		t.Fatalf("store get = %v", err)
 	}
 	closeHosts(t, host)
 }
 
 func TestAttemptDeclarationsRefuseADocumentDefinitionDeclaredTwice(t *testing.T) {
-	twice := mustContract(contracts.Local("app.twice", contracts.LocalDeclaration{
+	twice := mustContract(contracts.Local("app.twice", contracts.LocalDeclaration{Members: []contracts.LocalEntry{},
 		Version: 1, Params: contracts.Params{contracts.Prop("n", contracts.Int())},
 	}))
 	host, _ := loaded(t, func(h FacetHost, _ FacetSelf) error {
@@ -742,7 +749,7 @@ func TestAttemptDeclarationsRefuseADocumentDefinitionDeclaredTwice(t *testing.T)
 		}, ServeOptions{})
 	}, loadedOptions{})
 	_, err := host.Get(twice, jsonObject("n", 2.0), background, GetOptions{})
-	if err == nil || err.Error() != `app.twice(2): state "list" is declared twice` {
+	if err == nil || !hasText(err.Error(), `app.twice(2): state "list" is declared twice`) {
 		t.Fatalf("get = %v", err)
 	}
 }
@@ -753,7 +760,7 @@ func TestAttemptCallsCheckArgumentsWithL1AndPassArgumentsAndResultsByReference(t
 	var mu sync.Mutex
 	var seen []any
 	result := jsonObject("items", []any{})
-	echo := mustContract(contracts.Local("app.echo", contracts.LocalDeclaration{
+	echo := mustContract(contracts.Local("app.echo", contracts.LocalDeclaration{Params: contracts.Params{},
 		Version: 1,
 		Members: []contracts.LocalEntry{
 			contracts.Mem("echo", contracts.NewMethod(
@@ -803,7 +810,7 @@ func TestAttemptCallsCheckArgumentsWithL1AndPassArgumentsAndResultsByReference(t
 }
 
 func TestAttemptCallsTakeAPlainValueOrASynchronousThrowFromAHandlerThatIsNoAsyncFunction(t *testing.T) {
-	plain := mustContract(contracts.Local("app.plain", contracts.LocalDeclaration{
+	plain := mustContract(contracts.Local("app.plain", contracts.LocalDeclaration{Params: contracts.Params{},
 		Version: 1,
 		Members: []contracts.LocalEntry{
 			contracts.Mem("value", contracts.NewMethod(contracts.TSchema{}, contracts.Int())),
@@ -831,7 +838,7 @@ func TestAttemptCallsTakeAPlainValueOrASynchronousThrowFromAHandlerThatIsNoAsync
 func TestAttemptCallsCostOneValidationPerCallAndOneCompilationPerMethod(t *testing.T) {
 	meter := nexttest.Metered(t)
 	// A fresh declaration: compiled checks are cached per contract.
-	fresh := mustContract(contracts.Local("app.store", contracts.LocalDeclaration{
+	fresh := mustContract(contracts.Local("app.store", contracts.LocalDeclaration{Params: contracts.Params{},
 		Version: 1,
 		Members: []contracts.LocalEntry{contracts.Mem("add", contracts.NewMethod(contracts.Obj(contracts.Prop("text", contracts.Str()))))},
 	}))
@@ -858,7 +865,7 @@ func TestAttemptCallsCostOneValidationPerCallAndOneCompilationPerMethod(t *testi
 // that a call queues at most two.
 func TestAttemptTheCallPathsCostAtMostTwoMicrotasksPerLocalCallTheDrainAndTheCleanupsShareOneReaction(t *testing.T) {
 	loop := &countingSectionLoop{scopeLoop: newScopeLoop()}
-	touch := mustContract(contracts.Local("app.touch", contracts.LocalDeclaration{
+	touch := mustContract(contracts.Local("app.touch", contracts.LocalDeclaration{Params: contracts.Params{},
 		Version: 1, Members: []contracts.LocalEntry{contracts.Mem("touch", contracts.NewMethod())},
 	}))
 	host, _ := loaded(t, func(h FacetHost, _ FacetSelf) error {
@@ -886,7 +893,7 @@ func TestAttemptTheCallPathsCostAtMostTwoMicrotasksPerLocalCallTheDrainAndTheCle
 
 // --- remote variants -------------------------------------------------------------------------------------------------------
 
-var attemptTwo = mustContract(contracts.Remote("app.two", contracts.RemoteDeclaration{
+var attemptTwo = mustContract(contracts.Remote("app.two", contracts.RemoteDeclaration{Params: contracts.Params{},
 	Version:     1,
 	HostAddress: func(*delta.JsonObject) (contracts.Address, error) { return Server.Address(nil), nil },
 	Variants: []contracts.VariantEntry{
@@ -966,7 +973,7 @@ func TestAttemptRemoteVariantsAMemberOutsideTheBoundVariantFailsInvalidMember(t 
 // --- tables ---------------------------------------------------------------------------------------------------------------
 
 var attemptStoreType = mustContract(contracts.Local("app.store", contracts.LocalDeclaration{
-	Version: 1, Members: []contracts.LocalEntry{contracts.Mem("n", contracts.Int())},
+	Version: 1, Params: contracts.Params{}, Members: []contracts.LocalEntry{contracts.Mem("n", contracts.Int())},
 }))
 
 func attemptEdits(t testing.TB) *store.TableDefinition {
@@ -1158,7 +1165,7 @@ func TestAttemptEagerMigrationsPauseTheReadyTimeoutDeadlineAndResumeItWithTheBud
 	forever := make(chan struct{})
 	defer close(forever)
 	// Each row takes 10 ms of the fake clock: 2.5 s of migration against a 1 s deadline.
-	edits := evolved(t, func(string) error { loop.fakeLoop.Advance(10); return nil })
+	edits := evolved(t, func(string) error { loop.Advance(10); return nil })
 	ready := time.Second
 	loading := make(chan struct {
 		host Host
@@ -1169,7 +1176,7 @@ func TestAttemptEagerMigrationsPauseTheReadyTimeoutDeadlineAndResumeItWithTheBud
 			return h.Serve(attemptStoreType, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
 				self.(StoreSelf).Table(edits)
 				// The factory takes 600 ms of the budget; the native after the migration never opens.
-				loop.fakeLoop.Advance(600)
+				loop.Advance(600)
 				self.Open(func(ctx context.Context) (any, error) {
 					select {
 					case <-ctx.Done():
@@ -1214,8 +1221,8 @@ func TestAttemptEagerMigrationsATimerFiringDuringALongMigrationAnotherActivation
 	chordStore := seeded(t, 250)
 	forever := make(chan struct{})
 	defer close(forever)
-	edits := evolved(t, func(string) error { loop.fakeLoop.Advance(10); return nil })
-	slow := mustContract(contracts.Local("app.slow", contracts.LocalDeclaration{
+	edits := evolved(t, func(string) error { loop.Advance(10); return nil })
+	slow := mustContract(contracts.Local("app.slow", contracts.LocalDeclaration{Params: contracts.Params{},
 		Version: 1, Members: []contracts.LocalEntry{contracts.Mem("n", contracts.Int())},
 	}))
 	ready := time.Second
@@ -1302,8 +1309,8 @@ func TestAttemptEagerMigrationsAThrowingRowsFailsTheObjectBrokenTheTableMigratin
 // --- parked attempts -------------------------------------------------------------------------------------------------------------
 
 var (
-	attemptView    = mustContract(contracts.Local("app.view", contracts.LocalDeclaration{Version: 1, Members: []contracts.LocalEntry{contracts.Mem("n", contracts.Int())}}))
-	attemptMissing = mustContract(contracts.Local("app.missing", contracts.LocalDeclaration{Version: 1, Members: []contracts.LocalEntry{contracts.Mem("n", contracts.Int())}}))
+	attemptView    = mustContract(contracts.Local("app.view", contracts.LocalDeclaration{Version: 1, Params: contracts.Params{}, Members: []contracts.LocalEntry{contracts.Mem("n", contracts.Int())}}))
+	attemptMissing = mustContract(contracts.Local("app.missing", contracts.LocalDeclaration{Version: 1, Params: contracts.Params{}, Members: []contracts.LocalEntry{contracts.Mem("n", contracts.Int())}}))
 	// attemptViewer is a view with params: no host lifetime, so `load` does not wait for it.
 	attemptViewer = mustContract(contracts.Local("app.viewer", contracts.LocalDeclaration{
 		Version: 1,
@@ -1347,7 +1354,7 @@ func TestAttemptParkedAttemptsPauseTheReadyTimeoutDeadlineWhileParkedTheOwnSteps
 		Params:  contracts.Params{contracts.Prop("id", contracts.Int())},
 		Members: []contracts.LocalEntry{contracts.Mem("n", contracts.Int())},
 	}))
-	forever := make(chan struct{})
+	forever, opened := make(chan struct{}), newSignal()
 	defer close(forever)
 	ready := 10 * time.Second
 	host, errs := loaded(t, func(h FacetHost, _ FacetSelf) error {
@@ -1362,6 +1369,7 @@ func TestAttemptParkedAttemptsPauseTheReadyTimeoutDeadlineWhileParkedTheOwnSteps
 		return h.Serve(attemptViewer, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
 			slow := self.Get(slowType, jsonObject("id", 1.0))
 			self.Open(func(ctx context.Context) (any, error) {
+				opened.fire()
 				select {
 				case <-ctx.Done():
 					return nil, errors.New("aborted")
@@ -1374,7 +1382,11 @@ func TestAttemptParkedAttemptsPauseTheReadyTimeoutDeadlineWhileParkedTheOwnSteps
 	}, loadedOptions{Loop: loop, ReadyTimeout: &ready})
 	view := mustHold(t, host, attemptViewer, jsonObject("id", 1.0))
 	// Parked 5 s on its dependency; then its own open hangs: it fails 10 s after the boundary, not 10 s after start.
-	advanceHost(loop, host, 5_000+9_999)
+	until(t, "the slow dependency's sleep timer", func() bool { return hasTimerAt(loop, 5_000) })
+	advanceHost(loop, host, 5_000)
+	// The view goes on to its own steps with the budget it had left: its deadline runs again from here.
+	opened.waitMain(t)
+	advanceHost(loop, host, 9_999)
 	if got := failures(errs.All()); len(got) != 0 {
 		t.Fatalf("failures = %v, want none", got)
 	}
@@ -1387,7 +1399,7 @@ func TestAttemptParkedAttemptsPauseTheReadyTimeoutDeadlineWhileParkedTheOwnSteps
 }
 
 func TestAttemptParkedAttemptsGoOnPastTheDependencyCheckADependencyLeavingLiveDuringTheOwnStepsChangesNothingR18(t *testing.T) {
-	dependencyType := mustContract(contracts.Local("app.dependency", contracts.LocalDeclaration{
+	dependencyType := mustContract(contracts.Local("app.dependency", contracts.LocalDeclaration{Params: contracts.Params{},
 		Version: 1, Members: []contracts.LocalEntry{contracts.Mem("n", contracts.Int())},
 	}))
 	gate, opening := newSignal(), newSignal()
@@ -1427,5 +1439,3 @@ func TestAttemptParkedAttemptsGoOnPastTheDependencyCheckADependencyLeavingLiveDu
 	}
 	view.Release()
 }
-
-

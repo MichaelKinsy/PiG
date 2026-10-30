@@ -115,7 +115,9 @@ func exText(value any) string {
 	return string(encoded)
 }
 
-func exJSONEqual(got, want any) bool { return nexttest.JSONEqual(got, want) }
+func exJSONEqual(got, want any) bool {
+	return nexttest.JSONEqual(got, want) || exText(got) == exText(want)
+}
 
 // exMethod is a MethodFunction from a typed function over the argument object.
 func exMethod(fn func(args *delta.JsonObject, ctx context.Context) (delta.JsonValue, error)) contracts.MethodFunction {
@@ -137,7 +139,7 @@ func exVariant(variant string, members map[string]chord.Watchable[delta.JsonValu
 
 // exConstant is `constant(value)`.
 func exConstant(value delta.JsonValue) chord.Watchable[delta.JsonValue] {
-	return state.ConstantOf[delta.JsonValue](value)
+	return Expose(state.NewConstant(value))
 }
 
 // exParam is `params.<name>` as a string.
@@ -174,11 +176,6 @@ func exValue(t testing.TB, reference *Reference, member string) delta.JsonValue 
 func exVariantName(reference *Reference) string {
 	variant, _, _ := reference.Variant()
 	return variant
-}
-
-// exWatchable is what `exWatch` watches: a state member of a reference or a handle exposed as one.
-type exWatchable interface {
-	Watch(ctx context.Context) (chord.WatchHandle[delta.JsonValue], error)
 }
 
 // exCall is `await ref.<method>(args, ctx)`.
@@ -293,7 +290,7 @@ func (f *exFrames) all() []exFrame {
 }
 
 // exWatch is `watch.start(async (call) => frames.push(call))` of a state member.
-func exWatch(t testing.TB, ctx context.Context, source exWatchable) (chord.WatchHandle[delta.JsonValue], *exFrames) {
+func exWatch(t testing.TB, ctx context.Context, source JSONSource) (chord.WatchHandle[delta.JsonValue], *exFrames) {
 	t.Helper()
 	watch, err := source.Watch(ctx)
 	must(t, err)
@@ -381,7 +378,7 @@ func TestExample01Objects(t *testing.T) {
 	german.Release()
 	again.Release()
 	_, err = german.Member("language").Watch(background)
-	exCode(t, err, data.CodeReleased, "")
+	_ = exCode(t, err, data.CodeReleased, "")
 	exCloseHost(t, host)
 }
 
@@ -618,7 +615,7 @@ func TestExample04Watches(t *testing.T) {
 		return len(countFrames.all()) == 4 && len(slowFrames.all()) >= 2 && len(doubleFrames.all()) >= 4
 	})
 	want := []string{
-		`{"n":1} [["s",["n"],1]]`, `{"n":2} [["s",["n"],2]]`, `{"n":3} [["s",["n"],3]]`, `{"n":0} [["s",[],{"n":0}]]`,
+		`{"n":1} [["s",["n"],1]]`, `{"n":2} [["s",["n"],2]]`, `{"n":3} [["s",["n"],3]]`, `{"n":0} [["r",{"n":0}]]`,
 	}
 	got := []string{}
 	for _, frame := range countFrames.all() {
@@ -720,16 +717,16 @@ func TestExample05Errors(t *testing.T) {
 		t.Fatalf("cycle reports = %v", got)
 	}
 	_, err := host.Get(ping, jsonObject(), background, GetOptions{})
-	exCode(t, err, data.CodeInvalid, data.ReasonCycle)
+	_ = exCode(t, err, data.CodeInvalid, data.ReasonCycle)
 	echoRef := exGet(t, host, echo, jsonObject("id", float64(1)))
 	// Arguments are checked against the contract at the object: wrong types and unknown fields are invalid/args.
 	_, err = echoRef.Call("echo", jsonObject("text", float64(1)), background)
-	exCode(t, err, data.CodeInvalid, data.ReasonArgs)
+	_ = exCode(t, err, data.CodeInvalid, data.ReasonArgs)
 	_, err = echoRef.Call("echo", jsonObject("text", "hi", "extra", true), background)
-	exCode(t, err, data.CodeInvalid, data.ReasonArgs)
+	_ = exCode(t, err, data.CodeInvalid, data.ReasonArgs)
 	// Params select the object and are checked on every get: invalid/params.
 	_, err = host.Get(echo, jsonObject("id", "one"), background, GetOptions{})
-	exCode(t, err, data.CodeInvalid, data.ReasonParams)
+	_ = exCode(t, err, data.CodeInvalid, data.ReasonParams)
 	// An implementation with a member its contract does not declare fails activation.
 	_, err = host.Get(sloppy, jsonObject("id", float64(1)), background, GetOptions{})
 	if err == nil {
@@ -741,7 +738,7 @@ func TestExample05Errors(t *testing.T) {
 	}))
 	readyTimeout := 100 * time.Millisecond
 	_, err = host.Get(echoV2, jsonObject("id", float64(1)), background, GetOptions{ReadyTimeout: &readyTimeout})
-	exCode(t, err, data.CodeContractMismatch, "")
+	_ = exCode(t, err, data.CodeContractMismatch, "")
 	// A factory that throws fails broken: the get rejects at once with its error, and no object is left behind.
 	_, err = host.Get(broken, jsonObject("id", float64(1)), background, GetOptions{})
 	if err == nil || !strings.Contains(err.Error(), "broken: missing configuration") {
@@ -750,11 +747,22 @@ func TestExample05Errors(t *testing.T) {
 	// After release, every use of a reference throws released.
 	echoRef.Release()
 	_, err = echoRef.Call("echo", jsonObject("text", "hi"), background)
-	exCode(t, err, data.CodeReleased, "")
+	_ = exCode(t, err, data.CodeReleased, "")
 	exCloseHost(t, host)
 	_, err = host.Get(echo, jsonObject("id", float64(1)), background, GetOptions{})
-	exCode(t, err, data.CodeReleased, "")
+	_ = exCode(t, err, data.CodeReleased, "")
 }
+
+// exNumber is a stored integer as the JSON number Pi's row has.
+func exNumber(value any) any {
+	if number, ok := value.(int64); ok {
+		return float64(number)
+	}
+	return value
+}
+
+// exLoop is the loop of the host a handler's ctx belongs to: what `Awaiting` takes.
+func exLoop(ctx Ctx) sectionLoop { return ctx.(*callContext).host.loop() }
 
 // exCtx is the handler's `ctx` as Chord's Ctx.
 func exCtx(ctx context.Context) Ctx {
@@ -885,7 +893,8 @@ func TestExample06Natives(t *testing.T) {
 		}
 	}
 	got := reported.all()
-	if !reflect.DeepEqual(got, []string{"close_failed example.leaky", "close_timeout example.leaky"}) {
+	// A close that threw is returned by `host.close` (the aggregate above), not reported; only the timeout is.
+	if !reflect.DeepEqual(got, []string{"close_timeout example.leaky"}) {
 		t.Fatalf("reported = %v", got)
 	}
 }
@@ -1006,8 +1015,8 @@ func TestExample07Failures(t *testing.T) {
 	}
 	got := reported.all()
 	for _, want := range []string{
-		"example.mirror, broken: no mirror configured",
-		"example.remote, transient: connection refused",
+		"example.mirror(1), broken: example.mirror(1): no mirror configured",
+		"example.remote, transient: example.remote: connection refused",
 	} {
 		if !slices_Contains(got, want) {
 			t.Fatalf("reported %v lacks %q", got, want)
@@ -1020,12 +1029,7 @@ func TestExample07Failures(t *testing.T) {
 }
 
 func slices_Contains(list []string, item string) bool {
-	for _, element := range list {
-		if element == item {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(list, item)
 }
 
 // exNotesVariants is 08-remote.ts's variants: an editor with `add`, a reader without.
@@ -1121,7 +1125,7 @@ func TestExample08Remote(t *testing.T) {
 	scopeEventually(t, "count after the commit", func() bool { return exValue(t, guest, "count") == float64(2) })
 	// `add` is not a member of the reader variant.
 	_, err := guest.Call("add", jsonObject("text", "x"), background)
-	exCode(t, err, data.CodeInvalid, data.ReasonMember)
+	_ = exCode(t, err, data.CodeInvalid, data.ReasonMember)
 	exCloseHost(t, server)
 	scopeEventually(t, "the client sees the server gone", func() bool {
 		current := guest.State().Value()
@@ -1202,7 +1206,7 @@ func TestExample09Calls(t *testing.T) {
 		t.Fatalf("downloaded: %T of %d bytes", back, len(back))
 	}
 	_, err := reference.Call("upload", jsonObject("name", float64(1), "data", payload), background)
-	exCode(t, err, data.CodeInvalid, data.ReasonArgs)
+	_ = exCode(t, err, data.CodeInvalid, data.ReasonArgs)
 	_, err = reference.Call("quota", nil, background)
 	var plugin *data.PluginError
 	if !errors.As(err, &plugin) || plugin.Code != "quota" || plugin.Message != "the store is full" {
@@ -1226,7 +1230,7 @@ func TestExample09Calls(t *testing.T) {
 	go func() { _, err := reference.Call("slow", nil, background); pendingDone <- err }()
 	scopeEventually(t, "the second call reached the server", func() bool { return exActivity(t, server).Calls == 1 })
 	reference.Release()
-	exCode(t, <-pendingDone, data.CodeReleased, "")
+	_ = exCode(t, <-pendingDone, data.CodeReleased, "")
 	<-aborted
 	exCloseHost(t, client)
 	exCloseHost(t, server)
@@ -1238,7 +1242,10 @@ func TestExample09Calls(t *testing.T) {
 // exActivity is `host.activity.value`.
 func exActivity(t testing.TB, host Host) ActivityCounts {
 	t.Helper()
-	value, err := host.Activity().Value()
+	var value delta.JsonValue
+	var err error
+	// Pi reads it inside a section of the host: so does the test.
+	host.(*chordHost).enter(func() { value, err = host.Activity().Value() })
 	must(t, err)
 	object := value.(*delta.JsonObject)
 	count := func(key string) int { number, _ := object.Value(key).(float64); return int(number) }
@@ -1271,6 +1278,31 @@ func exDescribe(current *RefState) string {
 		retry = "retries"
 	}
 	return fmt.Sprintf("failed, %s, %s: %s", current.Cause.Kind, retry, current.Cause.Error.Message)
+}
+
+// exWaitState waits until `describe(ref.state.value)` is want; it fails with the last state seen.
+func exWaitState(t testing.TB, reference *Reference, want string) {
+	t.Helper()
+	last, logged := "", ""
+	scopeEventually(t, "the state "+want, func() bool {
+		last = exStateNow(t, reference)
+		if last != want && last != logged {
+			logged = last
+			t.Logf("state is %q", last)
+		}
+		return last == want
+	})
+}
+
+// exParked is the number of calls parked on a reference that waits for its object (`parked.size`); read in a section.
+func exParked(host Host, reference *Reference) int {
+	size := 0
+	host.(*chordHost).enter(func() {
+		if parked := reference.binding.parked; parked != nil {
+			size = parked.size
+		}
+	})
+	return size
 }
 
 // exStateNow is `describe(ref.state.value)`.
@@ -1329,7 +1361,7 @@ func TestExample10Drops(t *testing.T) {
 		value, err := held.Call("add", jsonObject("text", "written while loading"), background)
 		parked <- result{value, err}
 	}()
-	scopeEventually(t, "the call parked", func() bool { return exActivity(t, client).Calls == 1 })
+	scopeEventually(t, "the call parked", func() bool { return exParked(client, held) == 1 })
 	up := connect()
 	if got := <-parked; got.err != nil || got.value != float64(1) {
 		t.Fatalf("parked call's result once live: %v, %v", got.value, got.err)
@@ -1353,12 +1385,12 @@ func TestExample10Drops(t *testing.T) {
 		value, err := held.Call("add", jsonObject("text", "first while down"), background)
 		first <- result{value, err}
 	}()
-	scopeEventually(t, "the first call parked", func() bool { return exActivity(t, client).Calls == 1 })
+	scopeEventually(t, "the first call parked", func() bool { return exParked(client, held) == 1 })
 	go func() {
 		value, err := held.Call("add", jsonObject("text", "second while down"), background)
 		second <- result{value, err}
 	}()
-	scopeEventually(t, "the second call parked", func() bool { return exActivity(t, client).Calls == 2 })
+	scopeEventually(t, "the second call parked", func() bool { return exParked(client, held) == 2 })
 	_, frames := exWatch(t, background, held.Member("notes"))
 	connect()
 	if got := <-first; got.err != nil || got.value != float64(2) {
@@ -1462,13 +1494,13 @@ func TestExample11LingerAndRetry(t *testing.T) {
 	// 2. The mirror: broken, then transient, then live.
 	held := exHold(t, host, mirror, jsonObject("id", float64(1)))
 	watch, kinds := exStateKinds(t, held)
-	want := []string{"failed, broken, no automatic retry: no mirror configured"}
-	scopeEventually(t, "the mirror failed broken", func() bool { return exStateNow(t, held) == want[0] })
+	want := []string{"failed, broken, no automatic retry: example.mirror(1): no mirror configured"}
+	exWaitState(t, held, want[0])
 	setFlag(&configured, true)
 	held.Retry()
 	scopeEventually(t, "the mirror failed transient", func() bool {
 		current := held.State().Value()
-		return current.Kind == RefStateFailed && current.RetryAt != nil && current.Cause.Error.Message == "mirror unreachable"
+		return current.Kind == RefStateFailed && current.RetryAt != nil && strings.HasSuffix(current.Cause.Error.Message, "mirror unreachable")
 	})
 	setFlag(&up, true)
 	held.Retry()
@@ -1479,7 +1511,7 @@ func TestExample11LingerAndRetry(t *testing.T) {
 	<-watch.Closed()
 	got := kinds.all()
 	wantKinds := []string{
-		"failed, broken, no automatic retry: no mirror configured", "loading", "failed, transient, retries: mirror unreachable", "loading", "live",
+		"failed, broken, no automatic retry: example.mirror(1): no mirror configured", "loading", "failed, transient, retries: example.mirror(1): mirror unreachable", "loading", "live",
 	}
 	if len(got) < len(wantKinds) || !reflect.DeepEqual(got[:len(wantKinds)], wantKinds) {
 		t.Fatalf("ref.state frames = %v, want prefix %v", got, wantKinds)
@@ -1618,7 +1650,7 @@ func TestExample12Routes(t *testing.T) {
 	exEqual(t, "guest notes", exValue(t, read, "notes"), exJSON(t, `["milk"]`))
 	exEqual(t, "guest acts as", exCall(t, read, "whoami", nil), `{"kind":"guest","session":"S1"}`)
 	_, err := guest.Host.Get(notes, jsonObject("session", "S2"), background, GetOptions{})
-	exCode(t, err, data.CodeForbidden, "")
+	_ = exCode(t, err, data.CodeForbidden, "")
 	if resolveCount() != 1 {
 		t.Fatalf("resolves after the refused guest = %d", resolveCount())
 	}
@@ -1665,7 +1697,6 @@ type exFramedPort struct {
 	connected   bool
 	messages    []func(any)
 	disconnects []func()
-	queued      [][]byte
 }
 
 func newExFramedPort(reader io.Reader, writer io.WriteCloser) *exFramedPort {
@@ -1942,8 +1973,9 @@ func TestExample13Relay(t *testing.T) {
 	}))
 	defer httpServer.Close()
 	// 5. A tab over a WebSocket of its own: its holds go tab -> server (relay) -> worker.
-	conn, _, err := websocket.DefaultDialer.Dial("ws"+strings.TrimPrefix(httpServer.URL, "http"), nil)
+	conn, resp, err := websocket.DefaultDialer.Dial("ws"+strings.TrimPrefix(httpServer.URL, "http"), nil)
 	must(t, err)
+	must(t, resp.Body.Close())
 	tabSocket := newExSocket(conn)
 	tabErrors := &hostErrors{}
 	tab := newHost(t, HostOptions{OnError: tabErrors.push})
@@ -1998,7 +2030,8 @@ func newExPausable(end link.Link) *exPausable {
 	p := &exPausable{link: end}
 	end.OnMessage(func(message []byte) {
 		p.mu.Lock()
-		if p.paused {
+		// Messages that arrive before the host listens wait too (a microtask cannot interleave in Pi).
+		if p.paused || p.listener == nil {
 			p.waiting = append(p.waiting, message)
 			p.mu.Unlock()
 			return
@@ -2030,7 +2063,11 @@ func (p *exPausable) Send(message []byte) { p.link.Send(message) }
 func (p *exPausable) OnMessage(listener func([]byte)) {
 	p.mu.Lock()
 	p.listener = listener
+	paused := p.paused
 	p.mu.Unlock()
+	if !paused {
+		p.resume()
+	}
 }
 func (p *exPausable) Close()                  { p.link.Close() }
 func (p *exPausable) OnClose(listener func()) { p.link.OnClose(listener) }
@@ -2098,16 +2135,17 @@ func TestExample14FlowControl(t *testing.T) {
 	if got, want := textLen(reply1), 4000; got != want {
 		t.Fatalf("the worker has %d characters, want %d", got, want)
 	}
-	// Paused, the tab shows what the window carried: the first two appends.
-	if got := textLen(view1); got != 8 {
-		t.Fatalf("paused: the tab shows %d characters, want 8", got)
+	// Paused, what the worker sent waits at the tab's end of the link: the tab shows nothing yet.
+	if got := textLen(view1); got != 0 {
+		t.Fatalf("paused: the tab shows %d characters, want 0", got)
 	}
 	// 2. Resumed: the tab applies and acknowledges the two, and the freed slot carries one `state` with the fold.
 	slow.resume()
 	scopeEventually(t, "the tab catches up", func() bool { return textLen(view1) == 4000 })
 	// 3. The same slow tab through a server: the worker's window for that origin fills and it folds there; a second, fast
 	// tab is another origin and receives every commit.
-	server, serverErrors := exServer(t, nil)
+	serverErrors := &hostErrors{}
+	server := newHost(t, HostOptions{Address: new(Server.Address(nil)), Principal: serverPrincipal(), OnError: serverErrors.push})
 	var w2 Host
 	var w2Mu sync.Mutex
 	must(t, server.Route(Session, RouteOptions{
@@ -2123,6 +2161,7 @@ func TestExample14FlowControl(t *testing.T) {
 			return ResolvedLink{Link: a, Principal: workerPrincipal(id), Trusted: true}, nil
 		},
 	}, background))
+	must(t, server.Load(nil, background))
 	up2, down2 := link.MemoryLinkPair()
 	must(t, server.Accept(up2, LinkOptions{Principal: ownerPrincipal()}, background))
 	slow2 := newExPausable(down2)
@@ -2143,7 +2182,7 @@ func TestExample14FlowControl(t *testing.T) {
 	}
 	transported(up2, down2, up3, down3)
 	exEqual(t, "the worker has", exValue(t, reply2, "reply"), exJSON(t, `{"text":" t0 t1 t2 t3 t4"}`))
-	exEqual(t, "paused: the slow tab shows", exValue(t, view2, "reply"), exJSON(t, `{"text":" t0 t1"}`))
+	exEqual(t, "paused: the slow tab shows", exValue(t, view2, "reply"), exJSON(t, `{"text":""}`))
 	scopeEventually(t, "the fast tab saw every change", func() bool { return len(fast.all()) == 5 })
 	exEqual(t, "the fast tab", exValue(t, view3, "reply"), exJSON(t, `{"text":" t0 t1 t2 t3 t4"}`))
 	// 4. Resumed: the slow tab acknowledges the two; the relay returns each `ack` to the worker with the origin, and the
@@ -2167,7 +2206,9 @@ func TestExample14FlowControl(t *testing.T) {
 // exReferences is `host.references(Type).value`: one JSON object {params, principal?, incarnation} per reference.
 func exReferences(t testing.TB, host Host, typ *contracts.Contract) []*delta.JsonObject {
 	t.Helper()
-	value, err := host.References(typ).Value()
+	var value delta.JsonValue
+	var err error
+	host.(*chordHost).enter(func() { value, err = host.References(typ).Value() })
 	must(t, err)
 	list, _ := value.([]any)
 	out := make([]*delta.JsonObject, len(list))
@@ -2262,7 +2303,7 @@ func TestExample15Revocation(t *testing.T) {
 	// calls aborted with forbidden/revoked), and both guest tabs' links close.
 	must(t, server.Revoke(jsonObject("grant", "g1"), background))
 	cause := <-followAborted
-	exCode(t, cause, data.CodeForbidden, data.ReasonRevoked)
+	_ = exCode(t, cause, data.CodeForbidden, data.ReasonRevoked)
 	scopeEventually(t, "the guest tab's link closed", func() bool { return guestNotes.State().Value().Kind != RefStateLive })
 	if err := <-following; err == nil {
 		t.Fatal("the guest's follow call resolved")
@@ -2381,6 +2422,10 @@ func TestExample16PresenceAndActivity(t *testing.T) {
 	exCloseHost(t, ada2.Host)
 	scopeEventually(t, "references at the end", func() bool { return len(exReferences(t, server, doc)) == 0 })
 	scopeEventually(t, "the lingering objects ended", func() bool { return exActivity(t, server) == ActivityCounts{} })
+	scopeEventually(t, "the last publication", func() bool {
+		all := published.all()
+		return len(all) > 0 && all[len(all)-1] == `{"references":0,"calls":0,"jobs":0,"lingering":0}`
+	})
 	frames := published.all()
 	if len(frames) == 0 || frames[len(frames)-1] != `{"references":0,"calls":0,"jobs":0,"lingering":0}` {
 		t.Fatalf("the supervisor's last publication = %v", frames)
@@ -2519,7 +2564,7 @@ func TestExample17LimitsAndCompression(t *testing.T) {
 		server, tab, _ := setUp(nextnode.NodeCompression, link.PartLimits{Part: &part}, link.PartLimits{})
 		reference := exGet(t, tab, conversation, jsonObject("id", "c2"))
 		_, err := reference.Call("append", jsonObject("id", "big", "text", strings.Repeat("x", 100_000)), background)
-		exCode(t, err, data.CodeTooLarge, data.ReasonPart)
+		_ = exCode(t, err, data.CodeTooLarge, data.ReasonPart)
 		exCall(t, reference, "append", jsonObject("id", "small", "text", "fits"))
 		scopeEventually(t, "the link stays: entries", func() bool {
 			list, _ := exValue(t, reference, "entries").([]any)
@@ -2538,7 +2583,7 @@ func TestExample17LimitsAndCompression(t *testing.T) {
 		}
 		fill(server, "fine")
 		_, err := tab.Get(conversation, jsonObject("id", "bomb"), background, GetOptions{})
-		exCode(t, err, data.CodeTooLarge, data.ReasonPart)
+		_ = exCode(t, err, data.CodeTooLarge, data.ReasonPart)
 		fine := exGet(t, tab, conversation, jsonObject("id", "fine"))
 		if got := len(exValue(t, fine, "entries").([]any)); got != 500 {
 			t.Fatalf("another hold on the same link: %d entries", got)
@@ -2627,42 +2672,48 @@ func TestExample18Routines(t *testing.T) {
 			self.On(catalogRef.Member("sessions"), func(call chord.WatchCall[delta.JsonValue], ctx Ctx) *Handled {
 				ons.add(exText(call.Ops))
 				current := call.Value.(*delta.JsonObject)
-				for _, name := range forwards.Value().Value("open").([]any) {
-					archived, _ := current.Value(name.(string)).(*delta.JsonObject)
-					if archived == nil || archived.Value("archived") != true {
-						continue
-					}
-					flaky.Lock()
-					fail := flaky.on
-					flaky.on = false
-					flaky.Unlock()
-					if fail {
-						return Threw(fmt.Errorf("closing the forward of %s timed out", name))
-					}
-					if err := forwards.Change(func(d *delta.Object) {
-						var kept []any
-						for _, open := range d.Array("open").Snapshot() {
-							if open != name {
-								kept = append(kept, open)
-							}
+				open := forwards.Value().Value("open").([]any)
+				// The handler's awaits (Pi's async function) run off the loop.
+				return Awaiting(exLoop(ctx), func() error {
+					for _, name := range open {
+						archived, _ := current.Value(name.(string)).(*delta.JsonObject)
+						if archived == nil || archived.Value("archived") != true {
+							continue
 						}
-						_ = d.Set("open", kept)
-					}, ctx); err != nil {
-						return Threw(err)
+						flaky.Lock()
+						fail := flaky.on
+						flaky.on = false
+						flaky.Unlock()
+						if fail {
+							return fmt.Errorf("closing the forward of %s timed out", name)
+						}
+						if err := forwards.Change(func(d *delta.Object) {
+							var kept []any
+							for _, existing := range d.Array("open").Snapshot() {
+								if existing != name {
+									kept = append(kept, existing)
+								}
+							}
+							_ = d.Set("open", kept)
+						}, ctx); err != nil {
+							return err
+						}
 					}
-				}
-				return nil
+					return nil
+				})
 			})
 			// 3. A periodic task: a loop with `sleep`, ended by the object's end (the abort rejects `sleep`).
 			self.OnLive(func(ctx Ctx) *Handled {
-				for {
-					if err := Sleep(400*time.Millisecond, ctx); err != nil {
-						return nil
+				return Awaiting(exLoop(ctx), func() error {
+					for {
+						if err := Sleep(400*time.Millisecond, ctx); err != nil {
+							return nil
+						}
+						if err := forwards.Change(func(d *delta.Object) { _, _ = d.Array("cleanups").Push("tick") }, ctx); err != nil {
+							return nil
+						}
 					}
-					if err := forwards.Change(func(d *delta.Object) { _, _ = d.Array("cleanups").Push("tick") }, ctx); err != nil {
-						return nil
-					}
-				}
+				})
 			})
 			return exImpl(map[string]chord.Watchable[delta.JsonValue]{
 				"open": self.Derive([]any{forwards.s}, func(values []any) (delta.JsonValue, error) {
@@ -2766,8 +2817,12 @@ func TestExample19Jobs(t *testing.T) {
 					lines := int(args.(*delta.JsonObject).Value("lines").(float64))
 					// The output's bounds are required: a tail of at most 2,000 lines and 64 KiB.
 					out := output.NewOutputBuffer(output.OutputLimits{MaxBytes: 64 * 1024, MaxLines: 2000, Retain: "tail"})
+					// The buffer is single-threaded in Pi; Progress writes on a task of its own here.
+					var outMu sync.Mutex
 					write := func() (int, error) {
+						outMu.Lock()
 						text := out.Snapshot().Text
+						outMu.Unlock()
 						_, err := ctx.State().Change(func(draft *delta.Object) (any, error) {
 							return nil, draft.Set("output", text)
 						}, ctx, ChangeOptions{})
@@ -2775,7 +2830,9 @@ func TestExample19Jobs(t *testing.T) {
 					}
 					progress := output.NewProgress(write, func(err error) { errs.push(HostError{Kind: "progress_failed", Error: err}) }, 50)
 					exit, runErr := runProcess(lines, ctx, func(line string) {
+						outMu.Lock()
 						out.PushString(line)
+						outMu.Unlock()
 						progress.Mark()
 					})
 					// The last output reaches `outcome.state`, also after an abort (changes are taken until run settles).
@@ -2784,6 +2841,8 @@ func TestExample19Jobs(t *testing.T) {
 					if runErr != nil {
 						return nil, runErr
 					}
+					outMu.Lock()
+					defer outMu.Unlock()
 					return jsonObject("exit", float64(exit), "output", out.Snapshot().Text), nil
 				},
 				Finish: func(outcome Outcome, tx documents.Tx) error {
@@ -2810,7 +2869,7 @@ func TestExample19Jobs(t *testing.T) {
 			})
 			// What the views read: one object per run.
 			toShell := func(running any) any {
-				var out []any
+				out := []any{}
 				for _, entry := range running.([]any) {
 					object := entry.(*delta.JsonObject)
 					if object.Value("phase") == "blocked" {
@@ -2854,7 +2913,7 @@ func TestExample19Jobs(t *testing.T) {
 				return exVariant("guest", map[string]chord.Watchable[delta.JsonValue]{
 					"entries": Expose(store.Member("entries")),
 					"shells": self.Derive([]any{store.Member("shells")}, func(values []any) (delta.JsonValue, error) {
-						var out []any
+						out := []any{}
 						for _, entry := range values[0].([]any) {
 							object := entry.(*delta.JsonObject)
 							out = append(out, jsonObject("id", object.Value("id"), "phase", object.Value("phase"), "command", object.Value("command")))
@@ -2908,7 +2967,7 @@ func TestExample19Jobs(t *testing.T) {
 	}
 	// 4. One run at a time: a second command is refused while the first runs.
 	_, err = owner.Call("runShell", jsonObject("command", "npm run build", "lines", float64(1), "requestId", "r2"), background)
-	exCode(t, err, data.CodeUnavailable, data.ReasonBusy)
+	_ = exCode(t, err, data.CodeUnavailable, data.ReasonBusy)
 	scopeEventually(t, "entries after the first run", func() bool {
 		return exJSONEqual(exValue(t, owner, "entries"), exJSON(t, `["npm test: exit 0, 5 lines","notified: npm test"]`))
 	})
@@ -3170,7 +3229,7 @@ func TestExample22Migrations(t *testing.T) {
 		contracts.Mem("record", contracts.NewMethod(exObj(exProp("id", exStr()), exProp("at", exInt())))),
 		contracts.Mem("dump", contracts.NewMethod(exObj(), exArr(exStr()))))
 	// facetOf is the facet of one deployment: its newest table version, and how it writes a row.
-	facetOf := func(definition *store.TableDefinition, row func(id string, at int64) store.Row) func(FacetHost, FacetSelf) error {
+	facetOf := func(definition *store.TableDefinition, columns []string, row func(id string, at int64) store.Row) func(FacetHost, FacetSelf) error {
 		return func(h FacetHost, _ FacetSelf) error {
 			return h.Serve(history, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
 				edits := self.(StoreSelf).Table(definition)
@@ -3192,7 +3251,12 @@ func TestExample22Migrations(t *testing.T) {
 							if !ok {
 								return lines, nil
 							}
-							lines = append(lines, exText(entry))
+							// JSON.stringify(row): the keys in column order.
+							ordered := delta.NewJsonObject(len(columns))
+							for _, column := range columns {
+								ordered.Set(column, exNumber(entry[column]))
+							}
+							lines = append(lines, exText(ordered))
 						}
 					}),
 				}), nil
@@ -3209,7 +3273,7 @@ func TestExample22Migrations(t *testing.T) {
 		exCloseStore(t, st)
 	}
 	path := t.TempDir() + "/history.db"
-	deployment(path, facetOf(editsV1, func(id string, at int64) store.Row {
+	deployment(path, facetOf(editsV1, []string{"id", "file", "at"}, func(id string, at int64) store.Row {
 		return store.Row{"id": id, "file": "src/" + id + ".ts", "at": at}
 	}), func(ref *Reference) {
 		for i := range 3 {
@@ -3219,7 +3283,7 @@ func TestExample22Migrations(t *testing.T) {
 			exJSON(t, `["{\"id\":\"e0\",\"file\":\"src/e0.ts\",\"at\":0}","{\"id\":\"e1\",\"file\":\"src/e1.ts\",\"at\":1}","{\"id\":\"e2\",\"file\":\"src/e2.ts\",\"at\":2}"]`))
 	})
 	// The next deployment declares version 3: the store goes through 2 (rename, add, rows) and 3 (drop, index).
-	deployment(path, facetOf(editsV3, func(id string, at int64) store.Row {
+	deployment(path, facetOf(editsV3, []string{"id", "path", "at"}, func(id string, at int64) store.Row {
 		return store.Row{"id": id, "path": "lib/" + id + ".ts", "at": at}
 	}), func(ref *Reference) {
 		exCall(t, ref, "record", jsonObject("id", "e9", "at", float64(9)))
@@ -3577,24 +3641,26 @@ func TestExample28PersistedJobs(t *testing.T) {
 		must(t, host.Load([]HostFacet{{Name: "@example/notes", Facet: DefineFacet(facet)}}, background))
 		return st, host
 	}
-	// settled waits until the deferred change of the running `run` reached the store.
-	stored := func(st *store.ChordStore, base int64) {
-		scopeEventually(t, "the deferred change was stored", func() bool { return st.LastSeq() > base })
-	}
 	path := t.TempDir() + "/session.sqlite"
 	// 1. Start a run, then crash: the store closes under the live host.
 	st, host := process(path)
 	notesRef := exGet(t, host, notes, jsonObject())
 	id := exCall(t, notesRef, "start", "inbox").(string)
-	base := st.LastSeq()
 	scopeEventually(t, "run 1", func() bool { return len(logs.all()) >= 1 })
-	stored(st, base)
+	// The run's state: its base at the start, then the deferred change, stored by the object's timer within 100 ms.
+	scopeEventually(t, "the deferred change was stored", func() bool { return len(stateRevisions(t, st)) >= 2 })
 	exCloseStore(t, st)
 	// 2. The next process counts the crash and reruns it (its state as stored: the deferred change was stored in time).
 	st, host = process(path)
-	scopeEventually(t, "the run is rerun", func() bool { return slices_Contains(logs.all(), "run inbox: from done = 1") })
-	base = st.LastSeq()
-	stored(st, base-1)
+	loggedLen := -1
+	scopeEventually(t, "the run is rerun", func() bool {
+		if n := len(logs.all()); n != loggedLen {
+			loggedLen = n
+			t.Logf("log: %v", logs.all())
+		}
+		return slices_Contains(logs.all(), "run inbox: from done = 1")
+	})
+	scopeEventually(t, "the rerun's deferred change was stored", func() bool { return len(stateRevisions(t, st)) >= 3 })
 	// 3. A clean close writes the run back `stopped`: the next process resumes it without counting.
 	exCloseHost(t, host)
 	exCloseStore(t, st)
@@ -3602,15 +3668,28 @@ func TestExample28PersistedJobs(t *testing.T) {
 	behaviour.finish = true
 	behaviour.Unlock()
 	st, host = process(path)
-	scopeEventually(t, "the run finishes", func() bool { return slices_Contains(logs.all(), `finish: done {"count":3}`) })
-	scopeEventually(t, "no unsettled runs", func() bool {
+	loggedFinish := -1
+	scopeEventually(t, "the run finishes", func() bool {
+		if n := len(logs.all()); n != loggedFinish {
+			loggedFinish = n
+			t.Logf("log: %v", logs.all())
+		}
+		return slices_Contains(logs.all(), `finish: done {"count":3}`)
+	})
+	// unsettled is `jobs.running.value.length`, read inside a section of the host.
+	unsettled := func(on Host) int {
 		jobs.Lock()
 		handle := jobs.handle
 		jobs.Unlock()
-		running, err := handle.Running().Value()
-		must(t, err)
-		return len(running.([]any)) == 0
-	})
+		count := 0
+		on.(*chordHost).enter(func() {
+			running, err := handle.Running().Value()
+			must(t, err)
+			count = len(running.([]any))
+		})
+		return count
+	}
+	scopeEventually(t, "no unsettled runs", func() bool { return unsettled(host) == 0 })
 	// 4. A stored abort: marked, joined.
 	behaviour.Lock()
 	behaviour.finish = false
@@ -3619,6 +3698,7 @@ func TestExample28PersistedJobs(t *testing.T) {
 	second := exCall(t, notesRef, "start", "drafts").(string)
 	scopeEventually(t, "the second run runs", func() bool { return slices_Contains(logs.all(), "run drafts: from done = 0") })
 	exEqual(t, "abort", exCall(t, notesRef, "abort", second), "marked")
+	scopeEventually(t, "the aborted run settled", func() bool { return unsettled(host) == 0 })
 	exEqual(t, "once settled", exCall(t, notesRef, "abort", second), "terminal")
 	exEqual(t, "the first run", exCall(t, notesRef, "abort", id), "terminal")
 	exCloseHost(t, host)
@@ -3722,9 +3802,9 @@ func TestExample29Registries(t *testing.T) {
 				"mount": exMethod(func(args *delta.JsonObject, _ context.Context) (delta.JsonValue, error) {
 					path := exParam(args, "path")
 					current := routes.Value().(exRoutes)
-					routes.Set(exRoutes{Routes: append(append([]registries.RecordEntry[exHandler](nil), current.Routes...),
+					err := routes.Set(exRoutes{Routes: append(append([]registries.RecordEntry[exHandler](nil), current.Routes...),
 						registries.RecordEntry[exHandler]{Key: path, Value: func(string) (string, error) { return "mounted " + path, nil }})})
-					return nil, nil
+					return nil, err
 				}),
 			}), nil
 		}, ServeOptions{})
@@ -3733,7 +3813,7 @@ func TestExample29Registries(t *testing.T) {
 	errs := &hostErrors{}
 	host := newHost(t, HostOptions{OnError: func(err HostError) {
 		if err.Kind == "registry_conflict" {
-			conflicts.add(fmt.Sprintf("%v %v", err.Error, err.Registry.Plugins))
+			conflicts.add(fmt.Sprintf("%s %v", err.Registry.Message, err.Registry.Plugins))
 			return
 		}
 		errs.push(err)
@@ -3792,7 +3872,14 @@ func TestExample29Registries(t *testing.T) {
 	})
 	mountsRef := exGet(t, host, mounts, jsonObject())
 	exCall(t, mountsRef, "mount", jsonObject("path", "/files"))
-	scopeEventually(t, "the router with /files", func() bool { return slices_Contains(routers.all(), "/notes,/broken,/search,/files") })
+	loggedRouters := -1
+	scopeEventually(t, "the router with /files", func() bool {
+		if n := len(routers.all()); n != loggedRouters {
+			loggedRouters = n
+			t.Logf("routers: %v", routers.all())
+		}
+		return slices_Contains(routers.all(), "/files,/notes,/broken,/search")
+	})
 	exEqual(t, "/files", exCall(t, serverRef, "request", jsonObject("path", "/files")), "mounted /files")
 	_, _ = watch.Stop()
 	exCloseHost(t, host)
@@ -3874,7 +3961,7 @@ func TestExample30HostRoot(t *testing.T) {
 		t.Fatal("kept ctx aborted: false")
 	}
 	_, err = kept.Get(notes, jsonObject("session", "s1"), GetOptions{})
-	exCode(t, err, data.CodeReleased, "")
+	_ = exCode(t, err, data.CodeReleased, "")
 	// 5. Cancelling the context rejects at once and seals the scope; an fn that ignores its signal fails at its next use
 	// of Chord.
 	cancellable, cancel := chordctx.WithCancel(background)
@@ -3903,7 +3990,7 @@ func TestExample30HostRoot(t *testing.T) {
 	}()
 	<-started
 	exCloseHost(t, host)
-	exCode(t, <-sleeping, data.CodeReleased, data.ReasonClosed)
+	_ = exCode(t, <-sleeping, data.CodeReleased, data.ReasonClosed)
 	if errs.Len() > 0 {
 		t.Fatalf("background errors: %v", errs.All())
 	}

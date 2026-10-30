@@ -1,14 +1,15 @@
 package host
 
 import (
-	"errors"
 	"context"
+	"errors"
 	"slices"
 	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
+	"weak"
 
 	"github.com/MichaelKinsy/PiG/chord"
 	"github.com/MichaelKinsy/PiG/chord/delta"
@@ -290,7 +291,7 @@ func TestProviderHoldsArrivingOnALink(t *testing.T) {
 		t.Run("arriving before the publication wait for it, and bind before the start barrier is over", func(t *testing.T) {
 			server := newHost(t, HostOptions{Address: new(Server.Address(nil)), Principal: serverPrincipal(), OnError: func(HostError) {}})
 			a, b := link.MemoryLinkPair()
-			server.Accept(a, LinkOptions{Principal: ownerPrincipal(), Codec: testCodec()}, background)
+			must(t, server.Accept(a, LinkOptions{Principal: ownerPrincipal(), Codec: testCodec()}, background))
 			peer := newRawPeer(t, b, rawPeerOptions{})
 			provHold(t, peer, 0, specOf(Notes), jsonObject("session", "S1"))
 			settle(peer)
@@ -506,7 +507,7 @@ func TestProviderOneMessagePerLinkPerCommit(t *testing.T) {
 		t.Run("two links: one message each; when one closes, the other keeps updating (race 8)", func(t *testing.T) {
 			s := notesServer(t, nil)
 			a, b := link.MemoryLinkPair()
-			s.Server.Accept(a, LinkOptions{Principal: ownerPrincipal(), Codec: testCodec()}, background)
+			must(t, s.Server.Accept(a, LinkOptions{Principal: ownerPrincipal(), Codec: testCodec()}, background))
 			other := newRawPeer(t, b, rawPeerOptions{})
 			provHold(t, s.Peer, 0, specOf(Notes), jsonObject("session", "S1"))
 			provHold(t, other, 0, specOf(Notes), jsonObject("session", "S1"))
@@ -588,7 +589,7 @@ func TestProviderRaces(t *testing.T) {
 			events := newEventLog()
 			server := newHost(t, HostOptions{Address: new(Server.Address(nil)), Principal: serverPrincipal(), OnError: func(HostError) {}})
 			a, b := link.MemoryLinkPair()
-			server.Accept(a, LinkOptions{Principal: ownerPrincipal(), Codec: testCodec()}, background)
+			must(t, server.Accept(a, LinkOptions{Principal: ownerPrincipal(), Codec: testCodec()}, background))
 			peer := newRawPeer(t, b, rawPeerOptions{})
 			settle(peer)
 			provHold(t, peer, 0, specOf(providerKept), jsonObject("id", 1.0))
@@ -750,7 +751,7 @@ func TestProviderRaces(t *testing.T) {
 				}, ServeOptions{})
 			}, rawLinkedOptions{})
 			a, b := link.MemoryLinkPair()
-			s.Server.Accept(a, LinkOptions{Principal: ownerPrincipal(), Codec: testCodec()}, background)
+			must(t, s.Server.Accept(a, LinkOptions{Principal: ownerPrincipal(), Codec: testCodec()}, background))
 			peer := newRawPeer(t, b, rawPeerOptions{})
 			provHold(t, peer, 0, specOf(Counter), jsonObject("id", 1.0))
 			peer.Next("bound")
@@ -855,7 +856,7 @@ func slowConsumer(t testing.TB) *slowConsumerHost {
 		return serveGrid(h)
 	})}}, background))
 	a, b := link.MemoryLinkPair()
-	server.Accept(a, LinkOptions{Principal: ownerPrincipal(), Codec: testCodec()}, meter.Context)
+	must(t, server.Accept(a, LinkOptions{Principal: ownerPrincipal(), Codec: testCodec()}, meter.Context))
 	peer := newRawPeer(t, b, rawPeerOptions{NoAck: true})
 	settle(peer)
 	return &slowConsumerHost{Server: server, Peer: peer, Meter: meter}
@@ -1402,5 +1403,49 @@ func TestProviderLimitsPerPart(t *testing.T) {
 				t.Fatalf("result call = %d, want 0", call)
 			}
 		})
+	})
+}
+
+// servedHoldsOf are the holds served on origin of a host's links now, weakly.
+func servedHoldsOf(host Host, origin int) []weak.Pointer[hold] {
+	var refs []weak.Pointer[hold]
+	h := host.(*chordHost)
+	h.loop().Run(func() {
+		for _, each := range h.links {
+			side, found := each.providers.get(origin)
+			if !found {
+				continue
+			}
+			for _, entry := range side.entries.values() {
+				if served, ok := entry.(*hold); ok {
+					refs = append(refs, weak.Make(served))
+				}
+			}
+		}
+	})
+	return refs
+}
+
+// Ports provider.test.ts "GC of the window › a closed origin drops its pending queue's ops: nothing keeps them". Pi
+// patches PendingOps.prototype.push to watch the ops it queues; Go has no such hook, so the holds that own the pending
+// queues (and the ops in them) are watched instead: a closed origin must leave nothing of them.
+func TestProviderGCOfTheWindowAClosedOriginDropsItsPendingQueuesOps(t *testing.T) {
+	forEachCodec(t, func(t *testing.T) {
+		s := slowConsumer(t)
+		provHold(t, s.Peer, 0, specOf(Notes), jsonObject("session", "S1"), 1)
+		s.Peer.Next("bound")
+		for _, text := range []string{"a", "b", "c"} {
+			addNote(t, s.Server, "S1", text)
+		}
+		refs := servedHoldsOf(s.Server, 1)
+		if len(refs) != 1 {
+			t.Fatalf("served holds of origin 1 = %d, want 1", len(refs))
+		}
+		s.Peer.Send(&link.ClosedMessage{Origin: 1})
+		settle(s.Peer)
+		nexttest.ExpectCollected(t, refs...)
+		if s.Peer.Closed() {
+			t.Fatal("the link closed")
+		}
 	})
 }

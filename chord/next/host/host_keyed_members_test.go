@@ -568,9 +568,7 @@ func TestKeyedMembersAKeyWhoseFirstPinStillLoadsTheObjectFailsAndStaysFailedTheC
 	if got := <-loading; got.err == nil {
 		t.Fatalf("the get of the viewer = %v, want a rejection", got.ref)
 	}
-	if got := kmPins(c.Host, c.Registry.provider("a")); got != -1 {
-		t.Fatalf("pins(a) = %d, want none", got)
-	}
+	scopeEventually(t, "the late pin on a is released", func() bool { return kmPins(c.Host, c.Registry.provider("a")) == -1 })
 	must(t, c.Host.Close(background))
 }
 
@@ -707,8 +705,8 @@ func TestKeyedMembersAConsumerReleasedWhileTheObjectReactivatesLeavesNoHoldBehin
 		providerA = append(providerA, weak.Make(s.Registry.provider("a")))
 		must(t, s.Host.Close(background))
 	}()
-	nexttest.ExpectCollected(t, refs...)
-	nexttest.ExpectCollected(t, providerA...)
+	expectCollectedEventually(t, refs...)
+	expectCollectedEventually(t, providerA...)
 }
 
 // keyed-members.test.ts › a key whose first pin still loads at startup (scenario 20, Astra) › keeps the first pass pending

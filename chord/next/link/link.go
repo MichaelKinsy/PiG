@@ -111,6 +111,11 @@ func (end *LinkEnd) ended() {
 // memoryQueue is the pair's microtask queue: jobs run in order, one at a time, on a goroutine started when the queue
 // was idle and gone when it drained (queueMicrotask's Go form: an owned task, nothing left running).
 type memoryQueue struct {
+	// post and flush, when set, are another microtask queue the pair runs on (MemoryLinkPairOn): deliveries and closes are
+	// its jobs, in its order, and flush waits until it ran what was queued.
+	post_ func(job func())
+	flush func()
+
 	mu      sync.Mutex
 	idle    *sync.Cond
 	jobs    []func()
@@ -124,6 +129,10 @@ func newMemoryQueue() *memoryQueue {
 }
 
 func (queue *memoryQueue) post(job func()) {
+	if queue.post_ != nil {
+		queue.post_(job)
+		return
+	}
 	queue.mu.Lock()
 	queue.jobs = append(queue.jobs, job)
 	start := !queue.running
@@ -152,6 +161,10 @@ func (queue *memoryQueue) drain() {
 }
 
 func (queue *memoryQueue) wait() {
+	if queue.flush != nil {
+		queue.flush()
+		return
+	}
 	queue.mu.Lock()
 	defer queue.mu.Unlock()
 	for queue.running || len(queue.jobs) > 0 {
@@ -163,6 +176,18 @@ func (queue *memoryQueue) wait() {
 // on the pair's queue), in order.
 func MemoryLinkPair() (*MemoryLink, *MemoryLink) {
 	queue := newMemoryQueue()
+	a, b := &MemoryLink{queue: queue}, &MemoryLink{queue: queue}
+	a.peer, b.peer = b, a
+	return a, b
+}
+
+// MemoryLinkPairOn is MemoryLinkPair on a microtask queue of the caller's: what one end sends is a job of post, delivered
+// in post's order with its other jobs (Pi's memory link queues its deliveries on the one global microtask queue the hosts
+// queue theirs on, so a host's microtask queued while it handles a message runs after the deliveries queued before it).
+// flush blocks until post's queue ran what was queued: Flushed calls it.
+func MemoryLinkPairOn(post func(job func()), flush func()) (*MemoryLink, *MemoryLink) {
+	queue := newMemoryQueue()
+	queue.post_, queue.flush = post, flush
 	a, b := &MemoryLink{queue: queue}, &MemoryLink{queue: queue}
 	a.peer, b.peer = b, a
 	return a, b

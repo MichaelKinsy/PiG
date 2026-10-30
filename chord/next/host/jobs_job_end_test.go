@@ -32,7 +32,7 @@ type jobClosingLink struct {
 // Send closes the link instead of sending when closeOnSend is set (once).
 func (l *jobClosingLink) Send(message []byte) {
 	if l.closeOnSend.CompareAndSwap(true, false) {
-		l.Link.Close()
+		l.Close()
 		return
 	}
 	l.Link.Send(message)
@@ -289,8 +289,8 @@ func TestGCFinishedAndDroppedRunsLeaveNothingOnTheirObject(t *testing.T) {
 	nexttest.Flushed()
 	mu.Lock()
 	defer mu.Unlock()
-	nexttest.ExpectCollected(t, args...)
-	nexttest.ExpectCollected(t, ctxs...)
+	collectedWithin(t, args...)
+	collectedWithin(t, ctxs...)
 }
 
 // job.test.ts › GC › of dropped runs › a dropped blocked run leaves nothing on its object
@@ -325,8 +325,8 @@ func TestGCOfDroppedRunsADroppedBlockedRunLeavesNothingOnItsObject(t *testing.T)
 	eventually(t, "the entry to be removed", func() bool { return len(jobRunning(t, job)) == 0 })
 	mu.Lock()
 	defer mu.Unlock()
-	nexttest.ExpectCollected(t, args...)
-	nexttest.ExpectCollected(t, ctxs...)
+	collectedWithin(t, args...)
+	collectedWithin(t, ctxs...)
 }
 
 // job.test.ts › GC › keeps nothing of a cancelled wait while its run still runs
@@ -389,8 +389,8 @@ func TestGCKeepsNoEndedRunsArgsOrStateInAJobHandleKeptAfterItsObjectEnded(t *tes
 	started.Wait()
 	must(t, fixture.Host.Close(background))
 	mu.Lock()
-	nexttest.ExpectCollected(t, args...)
-	nexttest.ExpectCollected(t, states...)
+	collectedWithin(t, args...)
+	collectedWithin(t, states...)
 	mu.Unlock()
 	var err error
 	recordsOf(job).loop.Run(func() { _, err = job.Running().Value() })
@@ -441,8 +441,8 @@ func TestGCAnEndedObjectReleasesItsRunsTheirDocumentsAndWaiters(t *testing.T) {
 	_ = item
 	mu.Lock()
 	defer mu.Unlock()
-	nexttest.ExpectCollected(t, args...)
-	nexttest.ExpectCollected(t, ctxs...)
-	nexttest.ExpectCollected(t, states...)
-	nexttest.ExpectCollected(t, handles...)
+	collectedWithin(t, args...)
+	collectedWithin(t, ctxs...)
+	collectedWithin(t, states...)
+	collectedWithin(t, handles...)
 }

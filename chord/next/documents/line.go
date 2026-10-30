@@ -45,3 +45,7 @@ func (line *Line) waitingHolders() int {
 	defer line.mu.Unlock()
 	return line.waiting
 }
+
+// WaitingHolders is the number of holders that asked for the line and have not been handed it yet: what a test of the
+// host reads to know that a transaction took its place (Pi's tests rely on the order of promise calls).
+func (line *Line) WaitingHolders() int { return line.waitingHolders() }

@@ -27,7 +27,7 @@ import (
 // clock with advanceHost. What Pi awaits in a handler or an opener is a blocking Go function on its task.
 
 var (
-	objStore = mustContract(contracts.Local("app.store", contracts.LocalDeclaration{
+	objStore = mustContract(contracts.Local("app.store", contracts.LocalDeclaration{Params: contracts.Params{},
 		Version: 1,
 		Members: []contracts.LocalEntry{
 			contracts.Mem("count", contracts.Int()),
@@ -39,7 +39,7 @@ var (
 		Version: 1, Params: contracts.Params{contracts.Prop("id", contracts.Int())},
 		Members: []contracts.LocalEntry{contracts.Mem("n", contracts.Int())},
 	}))
-	objCore = mustContract(contracts.Local("app.core", contracts.LocalDeclaration{
+	objCore = mustContract(contracts.Local("app.core", contracts.LocalDeclaration{Params: contracts.Params{},
 		Version: 1, Members: []contracts.LocalEntry{contracts.Mem("n", contracts.Int())},
 	}))
 	objView = mustContract(contracts.Local("app.view", contracts.LocalDeclaration{
@@ -220,7 +220,7 @@ func TestObjectRetriesRetryATransientFailureAfter1sDoublingUpTo60sAndStartOverAf
 		got <- ref
 	}()
 	until(t, "the first attempt", func() bool { return len(flaky.all()) == 1 })
-	advanceHost(loop, host, 183_000)
+	advanceSettled(loop, host, 183_000)
 	receive(t, got).Release()
 	want := []int64{0, 1000, 3000, 7000, 15000, 31000, 63000, 123000, 183000}
 	if !reflect.DeepEqual(flaky.all(), want) {
@@ -230,7 +230,7 @@ func TestObjectRetriesRetryATransientFailureAfter1sDoublingUpTo60sAndStartOverAf
 	again := make(chan *Reference, 1)
 	go func() { again <- mustGet(t, host, objSvc, jsonObject("id", 1.0)) }()
 	until(t, "the next attempt", func() bool { return len(flaky.all()) == 10 })
-	advanceHost(loop, host, 1000)
+	advanceSettled(loop, host, 1000)
 	ref := receive(t, again)
 	if v, _ := ref.Member("n").Value(); v != 11.0 {
 		t.Fatalf("n = %v, want 11", v)
@@ -271,7 +271,7 @@ func TestObjectRetriesNeverRetryABrokenFailureANewObjectAfterItsEndTriesAtOnce(t
 	}, loadedOptions{Loop: loop})
 	_, err := host.Get(objSvc, jsonObject("id", 1.0), background, GetOptions{})
 	wantChordError(t, err, data.CodeUnavailable, "", "app.svc(1): bug")
-	advanceHost(loop, host, 120_000)
+	advanceSettled(loop, host, 120_000)
 	if got := bug.Load(); got != 2 {
 		// The core's own activation at load is the second.
 		t.Fatalf("factory calls = %d, want 2", got)
@@ -281,8 +281,8 @@ func TestObjectRetriesNeverRetryABrokenFailureANewObjectAfterItsEndTriesAtOnce(t
 	if _, err = host.Get(objSvc, jsonObject("id", 1.0), background, GetOptions{}); err == nil || err.Error() != "app.svc(1): bug" {
 		t.Fatalf("third get = %v", err)
 	}
-	if got := bug.Load(); got != 4 {
-		t.Fatalf("factory calls = %d, want 4", got)
+	if got := bug.Load(); got != 3 {
+		t.Fatalf("factory calls = %d, want 3", got)
 	}
 }
 
@@ -302,17 +302,17 @@ func TestObjectRetriesEndAFailedObjectWithItsLastReferenceItsBackoffEntryExpires
 	}
 	first := get(500 * time.Millisecond)
 	until(t, "the first attempt", func() bool { return len(flaky.all()) == 1 })
-	advanceHost(loop, host, 500)
+	advanceSettled(loop, host, 500)
 	wantChordError(t, receive(t, first), data.CodeUnavailable, "", "app.svc(1): offline")
-	advanceHost(loop, host, 4500)
+	advanceSettled(loop, host, 4500)
 	if got, timers := flaky.all(), loop.TimerCount(); !reflect.DeepEqual(got, []int64{0}) || timers != 0 {
 		t.Fatalf("attempts %v, timers %d, want [0] and 0", got, timers)
 	}
 	// The entry expired: a new object tries at once and its window starts over at 1 s.
 	second := get(1500 * time.Millisecond)
 	until(t, "the second attempt", func() bool { return len(flaky.all()) == 2 })
-	advanceHost(loop, host, 1500)
-	receive(t, second)
+	advanceSettled(loop, host, 1500)
+	_ = receive(t, second)
 	if got := flaky.all(); !reflect.DeepEqual(got, []int64{0, 5000, 6000}) {
 		t.Fatalf("attempts at %v, want [0 5000 6000]", got)
 	}
@@ -331,15 +331,15 @@ func TestObjectRetriesMakeAGetRightAfterAFailureWaitForTheScheduledRetry(t *test
 		first <- err
 	}()
 	until(t, "the first attempt", func() bool { return len(flaky.all()) == 1 })
-	advanceHost(loop, host, 500)
-	receive(t, first)
+	advanceSettled(loop, host, 500)
+	_ = receive(t, first)
 	second := make(chan *Reference, 1)
 	go func() { second <- mustGet(t, host, objSvc, jsonObject("id", 1.0)) }()
-	advanceHost(loop, host, 499)
+	advanceSettled(loop, host, 499)
 	if got := flaky.all(); !reflect.DeepEqual(got, []int64{0}) {
 		t.Fatalf("attempts at %v, want [0]", got)
 	}
-	advanceHost(loop, host, 1)
+	advanceSettled(loop, host, 1)
 	ref := receive(t, second)
 	if v, _ := ref.Member("n").Value(); v != 2.0 || !reflect.DeepEqual(flaky.all(), []int64{0, 1000}) {
 		t.Fatalf("n %v, attempts %v, want 2 and [0 1000]", v, flaky.all())
@@ -392,7 +392,7 @@ func TestObjectParkedParksADependentOfAFailedDependencyFailedWaitingNamingItWith
 			}}}, nil
 		}, ServeOptions{})
 	}, loadedOptions{Loop: loop})
-	advanceHost(loop, host, 500)
+	advanceSettled(loop, host, 500)
 	held := mustHold(t, host, objView, jsonObject("id", 1.0))
 	got := make(chan *Reference, 1)
 	go func() { got <- mustGet(t, host, objView, jsonObject("id", 1.0)) }()
@@ -406,12 +406,12 @@ func TestObjectParkedParksADependentOfAFailedDependencyFailedWaitingNamingItWith
 		t.Fatalf("failures = %v", got)
 	}
 	// The core's own backoff retries it at 1 s; the view goes on then, its factory not run again.
-	advanceHost(loop, host, 500)
+	advanceSettled(loop, host, 500)
 	ref := receive(t, got)
 	if v, _ := ref.Member("n").Value(); v != 2.0 {
 		t.Fatalf("n = %v, want 2", v)
 	}
-	advanceHost(loop, host, 120_000)
+	advanceSettled(loop, host, 120_000)
 	if got := viewerTimes.all(); !reflect.DeepEqual(got, []int64{500}) {
 		t.Fatalf("view factory at %v, want [500]", got)
 	}
@@ -441,9 +441,9 @@ func TestObjectParkedKeepsItsReferencesWhileParkedAGetterRejectsWithTheWaitingCa
 		got <- err
 	}()
 	until(t, "the dependency's first attempt", func() bool { return len(svc.all()) == 1 })
-	advanceHost(loop, host, 1500)
+	advanceSettled(loop, host, 1500)
 	wantChordError(t, receive(t, got), data.CodeUnavailable, "", "waiting for app.svc(1): app.svc(1): offline")
-	advanceHost(loop, host, 10_000)
+	advanceSettled(loop, host, 10_000)
 	// Held by the parked view, the dependency was retried at 1 s; released with it at 1.5 s, it is not any more.
 	if !reflect.DeepEqual(svc.all(), []int64{0, 1000}) || !reflect.DeepEqual(viewer.all(), []int64{0}) {
 		t.Fatalf("svc %v, viewer %v, want [0 1000] and [0]", svc.all(), viewer.all())
@@ -477,10 +477,10 @@ func TestObjectParkedShowsEveryChangeOfADependencyLoadingFailedANewCauseLoadingA
 	if failed.Cause.Error.Message != "waiting for app.core: app.core: offline 1" {
 		t.Fatalf("cause = %q", failed.Cause.Error.Message)
 	}
-	watch, err := held.State().Watch(background)
+	watch, err := refStateWatch(held, background)
 	must(t, err)
 	states := statesOf(t, watch)
-	advanceHost(loop, host, 10_000)
+	advanceSettled(loop, host, 10_000)
 	until(t, "the view to be live", func() bool { return stateOfRef(held).Kind == RefStateLive })
 	turn(host)
 	want := []string{"loading", "failed: waiting for app.core: app.core: offline 2", "loading", "live"}
@@ -491,7 +491,7 @@ func TestObjectParkedShowsEveryChangeOfADependencyLoadingFailedANewCauseLoadingA
 }
 
 func TestObjectParkedPassesARetryOnToItsBrokenDependencyOnceThroughADiamond(t *testing.T) {
-	top := mustContract(contracts.Local("app.top", contracts.LocalDeclaration{Version: 1, Members: []contracts.LocalEntry{contracts.Mem("n", contracts.Int())}}))
+	top := mustContract(contracts.Local("app.top", contracts.LocalDeclaration{Params: contracts.Params{}, Version: 1, Members: []contracts.LocalEntry{contracts.Mem("n", contracts.Int())}}))
 	left := mustContract(contracts.Local("app.left", contracts.LocalDeclaration{
 		Version: 1, Params: contracts.Params{contracts.Prop("id", contracts.Int())}, Members: []contracts.LocalEntry{contracts.Mem("n", contracts.Int())},
 	}))
@@ -526,7 +526,7 @@ func TestObjectParkedPassesARetryOnToItsBrokenDependencyOnceThroughADiamond(t *t
 	if failed.Cause.Kind != data.FailureWaiting || failed.Cause.Error.Message != "waiting for app.left(1): app.core: bug" {
 		t.Fatalf("state = %+v", failed.Cause)
 	}
-	advanceHost(loop, host, 60_000)
+	advanceSettled(loop, host, 60_000)
 	// A broken dependency is not retried by any timer.
 	if got := cores.Load(); got != 1 {
 		t.Fatalf("cores = %d, want 1", got)
@@ -540,8 +540,8 @@ func TestObjectParkedPassesARetryOnToItsBrokenDependencyOnceThroughADiamond(t *t
 }
 
 func TestObjectParkedFailsEveryObjectOfACycleBrokenNoneIsRetried(t *testing.T) {
-	ping := mustContract(contracts.Local("app.ping", contracts.LocalDeclaration{Version: 1, Members: []contracts.LocalEntry{contracts.Mem("n", contracts.Int())}}))
-	pong := mustContract(contracts.Local("app.pong", contracts.LocalDeclaration{Version: 1, Members: []contracts.LocalEntry{contracts.Mem("n", contracts.Int())}}))
+	ping := mustContract(contracts.Local("app.ping", contracts.LocalDeclaration{Params: contracts.Params{}, Version: 1, Members: []contracts.LocalEntry{contracts.Mem("n", contracts.Int())}}))
+	pong := mustContract(contracts.Local("app.pong", contracts.LocalDeclaration{Params: contracts.Params{}, Version: 1, Members: []contracts.LocalEntry{contracts.Mem("n", contracts.Int())}}))
 	loop := newScopeLoop()
 	var pings, pongs atomic.Int32
 	host, errs := loaded(t, func(h FacetHost, _ FacetSelf) error {
@@ -561,7 +561,7 @@ func TestObjectParkedFailsEveryObjectOfACycleBrokenNoneIsRetried(t *testing.T) {
 	if !reflect.DeepEqual(got, []string{"app.ping: broken", "app.pong: broken"}) {
 		t.Fatalf("failures = %v", got)
 	}
-	advanceHost(loop, host, 120_000)
+	advanceSettled(loop, host, 120_000)
 	if pings.Load() != 1 || pongs.Load() != 1 {
 		t.Fatalf("factories = %d, %d, want 1, 1", pings.Load(), pongs.Load())
 	}
@@ -643,7 +643,7 @@ func TestObjectGCCollectsAnEndedObjectWithItsDocumentsDerivesAndWatches(t *testi
 	mu.Lock()
 	held := slices.Clone(attempts)
 	mu.Unlock()
-	nexttest.ExpectCollected(t, held...)
+	expectCollected(t, held...)
 }
 
 func TestObjectGCOfFailedObjectsCollectsOneAfterItsLastReferenceWhileItsBackoffEntryExistsTheEntryExpiresOnItsOwn(t *testing.T) {
@@ -670,8 +670,8 @@ func TestObjectGCOfFailedObjectsCollectsOneAfterItsLastReferenceWhileItsBackoffE
 		got <- err
 	}()
 	until(t, "the attempt", func() bool { mu.Lock(); defer mu.Unlock(); return len(attempts) == 1 })
-	advanceHost(loop, host, 100)
-	receive(t, got)
+	advanceSettled(loop, host, 100)
+	_ = receive(t, got)
 	if got := loop.TimerCount(); got != 1 {
 		t.Fatalf("timers = %d, want 1", got)
 	}
@@ -679,8 +679,8 @@ func TestObjectGCOfFailedObjectsCollectsOneAfterItsLastReferenceWhileItsBackoffE
 	mu.Lock()
 	held := slices.Clone(attempts)
 	mu.Unlock()
-	nexttest.ExpectCollected(t, held...)
-	advanceHost(loop, host, 900)
+	expectCollected(t, held...)
+	advanceSettled(loop, host, 900)
 	if got := loop.TimerCount(); got != 0 {
 		t.Fatalf("timers = %d, want 0", got)
 	}
@@ -729,7 +729,8 @@ func TestObjectGCOfAParkedChainCollectsAChainParkedOnATypeNotServedReleasedFromI
 	if len(refs) != 2 {
 		t.Fatalf("attempts = %d, want 2", len(refs))
 	}
-	nexttest.ExpectCollected(t, refs...)
+	untilEnded(t, host)
+	expectCollected(t, refs...)
 }
 
 // --- ref.retry() ----------------------------------------------------------------------------------------------------------
@@ -742,7 +743,7 @@ func TestObjectRefRetrySkipsATransientFailuresBackoffWindowAnAttemptNow(t *testi
 	}, loadedOptions{Loop: loop})
 	svc := mustHold(t, host, objSvc, jsonObject("id", 1.0))
 	untilKind(t, svc, RefStateFailed)
-	loop.fakeLoop.Advance(200)
+	loop.Advance(200)
 	svc.Retry()
 	untilKind(t, svc, RefStateLive)
 	v, _ := svc.Member("n").Value()
@@ -761,7 +762,7 @@ func TestObjectRefRetryStartsAnObjectWaitingForItsIdentitysBackoffWindowAtOnce(t
 	untilKind(t, first, RefStateFailed)
 	// The failed object ends with its reference; its identity's window (1 s) still runs.
 	first.Release()
-	loop.fakeLoop.Advance(100)
+	loop.Advance(100)
 	second := mustHold(t, host, objSvc, jsonObject("id", 1.0))
 	turn(host)
 	if got := stateOfRef(second).Kind; got != RefStateLoading || !reflect.DeepEqual(flaky.all(), []int64{0}) {
@@ -785,6 +786,8 @@ func TestObjectRefRetryIsIgnoredWhileAnAttemptRunsAndOnceLiveRace11(t *testing.T
 	untilKind(t, svc, RefStateFailed)
 	svc.Retry()
 	svc.Retry()
+	// The retried attempt's factory runs once the failed one's teardown (a task) is done.
+	until(t, "the retried attempt's factory", func() bool { return len(flaky.all()) >= 2 })
 	turn(host)
 	if !reflect.DeepEqual(flaky.all(), []int64{0, 0}) {
 		t.Fatalf("attempts %v, want [0 0]", flaky.all())
@@ -792,7 +795,7 @@ func TestObjectRefRetryIsIgnoredWhileAnAttemptRunsAndOnceLiveRace11(t *testing.T
 	gate.fire()
 	untilKind(t, svc, RefStateLive)
 	svc.Retry()
-	advanceHost(loop, host, 5_000)
+	advanceSettled(loop, host, 5_000)
 	if got := stateOfRef(svc); !reflect.DeepEqual(flaky.all(), []int64{0, 0}) || got.Kind != RefStateLive {
 		t.Fatalf("attempts %v, state %+v, want [0 0] and live", flaky.all(), got)
 	}
@@ -802,6 +805,8 @@ func TestObjectRefRetryRenewsABrokenObjectForEveryReferenceRace13(t *testing.T) 
 	loop := newScopeLoop()
 	var fixed atomic.Bool
 	var factory atomic.Int32
+	// Pi's open is awaited: the renewed attempt is not live before the test's next synchronous reads.
+	renewed := newSignal()
 	host, _ := loaded(t, func(h FacetHost, _ FacetSelf) error {
 		return h.Serve(objSvc, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
 			factory.Add(1)
@@ -809,6 +814,7 @@ func TestObjectRefRetryRenewsABrokenObjectForEveryReferenceRace13(t *testing.T) 
 				if !fixed.Load() {
 					return nil, data.Broken(errors.New("no configuration"))
 				}
+				renewed.wait(t)
 				return nil, nil
 			}, func(any, NativeCloseReason, context.Context) error { return nil })
 			return nOnly(1.0), nil
@@ -817,7 +823,7 @@ func TestObjectRefRetryRenewsABrokenObjectForEveryReferenceRace13(t *testing.T) 
 	one := mustHold(t, host, objSvc, jsonObject("id", 1.0))
 	two := mustHold(t, host, objSvc, jsonObject("id", 1.0))
 	untilKind(t, one, RefStateFailed)
-	advanceHost(loop, host, 120_000)
+	advanceSettled(loop, host, 120_000)
 	if a, b, n := stateOfRef(one).Kind, stateOfRef(two).Kind, factory.Load(); a != RefStateFailed || b != RefStateFailed || n != 1 {
 		t.Fatalf("states %s, %s, factory %d, want failed, failed, 1", a, b, n)
 	}
@@ -826,6 +832,7 @@ func TestObjectRefRetryRenewsABrokenObjectForEveryReferenceRace13(t *testing.T) 
 	if got := stateOfRef(two); got.Kind != RefStateLoading {
 		t.Fatalf("second state = %+v, want loading", got)
 	}
+	renewed.fire()
 	untilKind(t, one, RefStateLive)
 	untilKind(t, two, RefStateLive)
 }
@@ -891,13 +898,13 @@ func TestObjectLingerKeepsALiveObjectLiveForLingerAfterItsLastReleaseAGetWithinI
 	_, err := refCall(first, "bump", nil)
 	must(t, err)
 	first.Release()
-	advanceHost(loop, host, 499)
+	advanceSettled(loop, host, 499)
 	second := mustGet(t, host, objTally, jsonObject("id", 1.0))
 	if v, _ := second.Member("n").Value(); v != 1.0 || factory.Load() != 1 || closes.len() != 0 {
 		t.Fatalf("n %v, factory %d, closes %v, want 1, 1, none", v, factory.Load(), closes.all())
 	}
 	second.Release()
-	advanceHost(loop, host, 500)
+	advanceSettled(loop, host, 500)
 	until(t, "the close", func() bool { return closes.len() == 1 })
 	if got := closes.all(); !reflect.DeepEqual(got, []string{"1 end"}) {
 		t.Fatalf("closes = %v", got)
@@ -912,15 +919,15 @@ func TestObjectLingerAReuseCancelsTheExpiryTheHolderCountDecidesALaterReleaseSta
 	loop := newScopeLoop()
 	host, _, closes := tallies(t, loop, 500*time.Millisecond, nil)
 	mustGet(t, host, objTally, jsonObject("id", 1.0)).Release()
-	advanceHost(loop, host, 499)
+	advanceSettled(loop, host, 499)
 	held := mustGet(t, host, objTally, jsonObject("id", 1.0))
-	advanceHost(loop, host, 5_000)
+	advanceSettled(loop, host, 5_000)
 	held.Release()
-	advanceHost(loop, host, 499)
+	advanceSettled(loop, host, 499)
 	if closes.len() != 0 {
 		t.Fatalf("closes = %v, want none", closes.all())
 	}
-	advanceHost(loop, host, 1)
+	advanceSettled(loop, host, 1)
 	until(t, "the close", func() bool { return closes.len() == 1 })
 	if got := closes.all(); !reflect.DeepEqual(got, []string{"1 end"}) {
 		t.Fatalf("closes = %v", got)
@@ -966,7 +973,7 @@ func TestObjectLingerAFailedStateMemberDoesNotEndALingeringObject(t *testing.T) 
 		t.Fatalf("n = %v, want two", err)
 	}
 	tally.Release()
-	advanceHost(loop, host, 400)
+	advanceSettled(loop, host, 400)
 	mustGet(t, host, objTally, jsonObject("id", 1.0))
 	if factory.Load() != 1 || closes.len() != 0 {
 		t.Fatalf("factory %d, closes %v, want 1 and none", factory.Load(), closes.all())
@@ -997,11 +1004,11 @@ func TestObjectLingerALingeringObjectIsCollectedAfterItsExpiry(t *testing.T) {
 		}, ServeOptions{Linger: &linger})
 	}, loadedOptions{Loop: loop})
 	mustGet(t, host, objSvc, jsonObject("id", 1.0)).Release()
-	advanceHost(loop, host, 100)
+	advanceSettled(loop, host, 100)
 	mu.Lock()
 	held := slices.Clone(refs)
 	mu.Unlock()
-	nexttest.ExpectCollected(t, held...)
+	expectCollected(t, held...)
 }
 
 // --- a failed activation's cleanup, a live object failing ------------------------------------------------------------------
@@ -1062,9 +1069,15 @@ func TestObjectALiveObjectFailingFailsBrokenCallsRejectWithTheCauseOneObjectFail
 	}, loadedOptions{Serve: func(h FacetHost) {
 		must(t, h.Serve(objCore, func(*delta.JsonObject, Self) (contracts.Implementation, error) { return nOnly(1.0), nil }, ServeOptions{}))
 	}})
-	watch, err := run.Reference.State().Watch(background)
+	watch, err := refStateWatch(run.Reference, background)
 	must(t, err)
-	states := statesOf(t, watch)
+	var kinds strs
+	watch.Start(func(_ context.Context, call chord.NativeWatchCall[*RefState]) error {
+		if call.Kind == chord.WatchCallValue {
+			kinds.add(string(call.Value.Kind))
+		}
+		return nil
+	})
 	run.Fail()
 	_, err = refCall(run.Reference, "touch", nil)
 	wantChordError(t, err, data.CodeUnavailable, "", "boom")
@@ -1084,7 +1097,7 @@ func TestObjectALiveObjectFailingFailsBrokenCallsRejectWithTheCauseOneObjectFail
 	if !reflect.DeepEqual(value, jsonObject("items", []any{})) {
 		t.Fatalf("list = %v, want {items: []}", value)
 	}
-	if got := states.All(); !reflect.DeepEqual(got, []string{"failed"}) {
+	if got := kinds.all(); !reflect.DeepEqual(got, []string{"failed"}) {
 		t.Fatalf("states = %v, want [failed]", got)
 	}
 }

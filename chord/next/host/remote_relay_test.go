@@ -593,7 +593,7 @@ func TestRelayUpstreamDrop(t *testing.T) {
 			first.Next("call")
 			first.Close()
 			_, err := call.wait()
-			requireChordError(t, err, data.CodeUnavailable, "")
+			_ = requireChordError(t, err, data.CodeUnavailable, "")
 			settleRelay(r)
 			if kind := refStateKind(notes); kind != RefStateLoading {
 				t.Fatalf("state = %s, want loading", kind)
@@ -719,7 +719,7 @@ func TestRelayDownstreamRelease(t *testing.T) {
 			if acks := countKind(worker, "ack"); acks != 2 {
 				t.Fatalf("worker acks = %d, want 2", acks)
 			}
-			})
+		})
 	})
 }
 
@@ -920,7 +920,9 @@ type countingInflates struct {
 	inflates int
 }
 
-func (c *countingInflates) Deflate(input []byte) []byte { return nextnode.NodeCompression.Deflate(input) }
+func (c *countingInflates) Deflate(input []byte) []byte {
+	return nextnode.NodeCompression.Deflate(input)
+}
 
 func (c *countingInflates) Inflate(input []byte, limit float64) nextnode.Inflated {
 	c.mu.Lock()
@@ -992,7 +994,7 @@ func TestRelayLimitsAndCompression(t *testing.T) {
 			must(t, err)
 			// Within the tab link's wire limit, past its decoded limit, which the trusted worker link does not have.
 			_, err = notes.Call("add", jsonObject("text", string(repeatBytes('x', 2000))), background)
-			requireChordError(t, err, data.CodeTooLarge, data.ReasonPart)
+			_ = requireChordError(t, err, data.CodeTooLarge, data.ReasonPart)
 			added, err := notes.Call("add", jsonObject("text", "small"), background)
 			must(t, err)
 			nexttest.RequireJSONEqual(t, added, 1.0)
@@ -1083,7 +1085,7 @@ func TestRelayLimitsAndCompression(t *testing.T) {
 				if released := first.Next("release").(*link.ReleaseMessage); released.Hold != held.hold {
 					t.Fatalf("released hold = %d, want %d", released.Hold, held.hold)
 				}
-				state := notes.State().Value()
+				state := liveStateOf(notes)
 				if state.Kind != RefStateFailed || state.Cause.Error.Code != data.CodeTooLarge {
 					t.Fatalf("state = %+v, want failed too_large", state)
 				}

@@ -55,6 +55,8 @@ type Batch struct {
 	scheduler *chord.DeliveryScheduler
 	// microtasks queues a job to run after the current step of the host, which Soon needs.
 	microtasks func(job func())
+	// section runs work as a synchronous section of the host (nil: inline, the caller's own).
+	section func(work func())
 	// running is set while adopting, delivering or computing a derive; one flag per host.
 	running bool
 	// computing is set while a pure compute runs (a derive's, a registry's compose): nothing may change a source then.
@@ -90,6 +92,23 @@ func (b *Batch) UseScheduler(scheduler *chord.DeliveryScheduler) *Batch {
 func (b *Batch) UseMicrotasks(queue func(job func())) *Batch {
 	b.microtasks = queue
 	return b
+}
+
+// UseSection gives the batch the host's way to run work as one of its sections: what ends a watch from a goroutine of its
+// own (an aborted context's listener) runs its detach there, with the other code that touches the host's sources. It is
+// called once, right after NewBatch, and returns the batch.
+func (b *Batch) UseSection(run func(work func())) *Batch {
+	b.section = run
+	return b
+}
+
+// Section runs work as a section of the host when the batch has one (UseSection), inline otherwise.
+func (b *Batch) Section(work func()) {
+	if b.section == nil {
+		work()
+		return
+	}
+	b.section(work)
 }
 
 // ReportListener reports a failing watch listener's error (to the host's report function): what watches get as their

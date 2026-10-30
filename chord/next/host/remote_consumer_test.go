@@ -83,7 +83,11 @@ func memberValue(t testing.TB, ref *Reference, member string) delta.JsonValue {
 	return value
 }
 
-func refStateKind(ref *Reference) RefStateKind { return ref.State().Value().Kind }
+// refStateKind is the kind of the reference's state, read in a section of its host.
+func refStateKind(ref *Reference) RefStateKind {
+	kind := liveStateOf(ref).Kind
+	return kind
+}
 
 // settleLinked is `await transported()` over the links of `linked`.
 func settleLinked(l *linkedHosts) { transported(l.Links[0], l.Links[1]) }
@@ -131,8 +135,8 @@ func TestConsumerReferencesOverALink(t *testing.T) {
 			client := newHost(t, HostOptions{OnError: func(HostError) {}})
 			// Connected first (W6): the view's factory references a server type.
 			a, b := link.MemoryLinkPair()
-			l.Server.Accept(a, LinkOptions{Principal: ownerPrincipal(), Codec: testCodec()}, background)
-			client.Connect(b, LinkOptions{Principal: serverPrincipal(), Codec: testCodec()}, background)
+			must(t, l.Server.Accept(a, LinkOptions{Principal: ownerPrincipal(), Codec: testCodec()}, background))
+			must(t, client.Connect(b, LinkOptions{Principal: serverPrincipal(), Codec: testCodec()}, background))
 			must(t, client.Load([]HostFacet{{Name: "@test/view", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error {
 				return h.Serve(View, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
 					notes := self.Get(Notes, jsonObject("session", "S1"))
@@ -194,7 +198,7 @@ func TestConsumerReferencesOverALink(t *testing.T) {
 				t.Fatalf("error = %v (%T), want the internal PluginError", err, err)
 			}
 			_, err = notes.Call("add", jsonObject("text", 1.0), background)
-			requireChordError(t, err, data.CodeInvalid, data.ReasonArgs)
+			_ = requireChordError(t, err, data.CodeInvalid, data.ReasonArgs)
 		})
 
 		// Ports "carry bytes as raw segments both ways".
@@ -407,7 +411,7 @@ func TestConsumerProtocolErrors(t *testing.T) {
 				p.Peer.Send(each.reply)
 				// The text codec cannot even decode a result that is no JSON: the link closes and the call with it.
 				_, err := call.wait()
-				requireChordError(t, err, data.CodeUnavailable, "")
+				_ = requireChordError(t, err, data.CodeUnavailable, "")
 				settle(p.Peer)
 				if !p.Peer.Closed() {
 					t.Fatal("the link stayed open")
@@ -469,7 +473,7 @@ func TestConsumerWireFormatOfAHold(t *testing.T) {
 		t.Run("is the snapshot by member, then each commit's changed members with their ops", func(t *testing.T) {
 			l := linked(t, func(h FacetHost) error { _, err := serveNotes(h, nil); return err }, linkedOptions{})
 			a, b := link.MemoryLinkPair()
-			l.Server.Accept(a, LinkOptions{Principal: ownerPrincipal(), Codec: testCodec()}, background)
+			must(t, l.Server.Accept(a, LinkOptions{Principal: ownerPrincipal(), Codec: testCodec()}, background))
 			peer := newRawPeer(t, b, rawPeerOptions{})
 			spec := specOf(Notes)
 			peer.Send(&link.HoldMessage{
@@ -504,8 +508,8 @@ func TestConsumerCostGuards(t *testing.T) {
 			client := newHost(t, HostOptions{OnError: func(HostError) {}})
 			must(t, client.Load(nil, background))
 			a, b := link.MemoryLinkPair()
-			l.Server.Accept(a, LinkOptions{Principal: ownerPrincipal(), Codec: testCodec()}, background)
-			client.Connect(b, LinkOptions{Principal: serverPrincipal(), Codec: testCodec()}, meter.Context)
+			must(t, l.Server.Accept(a, LinkOptions{Principal: ownerPrincipal(), Codec: testCodec()}, background))
+			must(t, client.Connect(b, LinkOptions{Principal: serverPrincipal(), Codec: testCodec()}, meter.Context))
 			addNote(t, l.Server, "S1", "a")
 			notes, err := client.Get(Notes, jsonObject("session", "S1"), background, GetOptions{})
 			must(t, err)
@@ -583,7 +587,7 @@ func pairOf(t testing.TB) *pairHost {
 	errs := &hostErrors{}
 	client := newHost(t, HostOptions{OnError: errs.push})
 	a, b := link.MemoryLinkPair()
-	client.Connect(a, LinkOptions{Principal: serverPrincipal(), Codec: testCodec()}, background)
+	must(t, client.Connect(a, LinkOptions{Principal: serverPrincipal(), Codec: testCodec()}, background))
 	peer := newRawPeer(t, b, rawPeerOptions{})
 	facet := DefineFacet(func(h FacetHost, _ FacetSelf) error {
 		return h.Serve(Pair, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
@@ -696,7 +700,7 @@ func narrow(t testing.TB) *narrowHost {
 	client := newHost(t, HostOptions{OnError: func(HostError) {}})
 	must(t, client.Load(nil, background))
 	a, b := link.MemoryLinkPair()
-	client.Connect(a, LinkOptions{Principal: serverPrincipal(), Codec: testCodec()}, background)
+	must(t, client.Connect(a, LinkOptions{Principal: serverPrincipal(), Codec: testCodec()}, background))
 	peer := newRawPeer(t, b, rawPeerOptions{Calls: 1})
 	one := asyncGet(client, Notes, jsonObject("session", "S1"), background, GetOptions{})
 	first := bindNext(t, peer)
@@ -731,7 +735,7 @@ func TestConsumerCallWindow(t *testing.T) {
 			n.One.Release()
 			for _, call := range []*parkedCallResult{sent, waiting} {
 				_, err := call.wait()
-				requireChordError(t, err, data.CodeReleased, "")
+				_ = requireChordError(t, err, data.CodeReleased, "")
 			}
 			settle(n.Peer)
 			if got := callsOf(n.Peer); !slices.Equal(got, []int{n.Holds[0], n.Holds[1]}) {
@@ -805,7 +809,7 @@ func TestConsumerLimitsPerPart(t *testing.T) {
 			call := p.Peer.Next("call").(*link.CallMessage).Call
 			p.Peer.Send(&link.ResultMessage{Call: call, Value: mustJSONPart(t, string(repeatBytes('y', 60)))})
 			_, err = added.wait()
-			requireChordError(t, err, data.CodeTooLarge, data.ReasonPart)
+			_ = requireChordError(t, err, data.CodeTooLarge, data.ReasonPart)
 			again := startCall(t, notes, "add", jsonObject("text", "x"), background)
 			p.Peer.Send(&link.ResultMessage{Call: p.Peer.Next("call").(*link.CallMessage).Call, Value: link.Text("2")})
 			result, err := again.wait()
@@ -831,7 +835,7 @@ func TestConsumerLimitsPerPart(t *testing.T) {
 			if ack := p.Peer.Next("ack").(*link.AckMessage); ack.Origin.Ok {
 				t.Fatalf("ack = %+v, want none origin", ack)
 			}
-			state := big.State().Value()
+			state := liveStateOf(big)
 			if state.Kind != RefStateFailed || state.Cause.Kind != data.FailureBroken || state.Cause.Error.Code != data.CodeTooLarge {
 				t.Fatalf("big state = %+v, want failed broken too_large", state)
 			}
@@ -940,7 +944,7 @@ func TestConsumerLimitsPerPart(t *testing.T) {
 				if released := p.Peer.Next("release").(*link.ReleaseMessage); released.Hold != hold {
 					t.Fatalf("released hold = %d, want %d", released.Hold, hold)
 				}
-				state := notes.State().Value()
+				state := liveStateOf(notes)
 				if state.Kind != RefStateFailed || state.Cause.Error.Code != data.CodeTooLarge {
 					t.Fatalf("state = %+v, want failed too_large", state)
 				}
@@ -998,10 +1002,13 @@ func TestConsumerLimitsPerPart(t *testing.T) {
 					Members: boundMembers(t, link.NewDeflatedPart(nextnode.NodeCompression.Deflate([]byte("[]"))), link.Text("1")),
 					Failed:  []link.FailedMember{},
 				}}})
+				// The binding is applied once its asynchronous inflate ran: its ack says so.
+				p.Peer.Next("ack")
 				settle(p.Peer)
 				p.Peer.Close()
 				settle(p.Peer)
 				must(t, p.Client.Close(background))
+				rhQuiesce(p.Client)
 				clientRef = weak.Make(p.Client.(*chordHost))
 			}()
 			nexttest.ExpectCollected(t, clientRef)
@@ -1031,7 +1038,7 @@ func TestConsumerLimitsPerPart(t *testing.T) {
 				t.Fatalf("released hold = %d, want %d", released.Hold, a)
 			}
 			settle(p.Peer)
-			state := one.State().Value()
+			state := liveStateOf(one)
 			if state.Kind != RefStateFailed || state.Cause.Error.Code != data.CodeTooLarge {
 				t.Fatalf("state = %+v, want failed too_large", state)
 			}
@@ -1041,4 +1048,11 @@ func TestConsumerLimitsPerPart(t *testing.T) {
 			}
 		})
 	})
+}
+
+// liveStateOf is the reference's state, read in a section of its host.
+func liveStateOf(ref *Reference) *RefState {
+	var state *RefState
+	ref.binding.loop.Run(func() { state = ref.State().Value() })
+	return state
 }

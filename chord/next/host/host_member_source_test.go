@@ -402,8 +402,8 @@ func TestMemberSourceAFailedAttemptIsCollectedAfterARebindWhileTheMemberSourceAn
 	h.setDoc(t, second, 1)
 	h.delivered()
 	expectEqual(t, "frames", nexttest.ValuesOf(frames.Items()), []any{float64(1)})
-	nexttest.ExpectCollected(t, oldDoc)
-	nexttest.ExpectCollected(t, oldMember)
+	expectCollectedEventually(t, oldDoc)
+	expectCollectedEventually(t, oldMember)
 }
 
 // Own test, mirrors member-source.test.ts › member sources and memory › an ended object's member sources are collected
@@ -421,7 +421,7 @@ func TestMemberSourceAnEndedObjectsMemberSourcesAreCollectedWithIt(t *testing.T)
 		})
 		return weak.Make(m)
 	}()
-	nexttest.ExpectCollected(t, ref)
+	expectCollectedEventually(t, ref)
 }
 
 // Own test of memberSource.OpenWatch (member-source.ts `openWatch`: `watch.observeAbort`): aborting the context a watch was
@@ -990,6 +990,10 @@ func TestHostMemberSourceSubscribersAHoldOverALinkOnARemoteObjectReExposingALoca
 		_, err = countRef.Call("add", nil, background)
 		must(t, err)
 		transported(hosts.Links[0], hosts.Links[1])
+		scopeEventually(t, "the view shows the first count", func() bool {
+			value, err := viewRef.Member("n").Value()
+			return err == nil && nexttest.JSONEqual(value, kmN(10))
+		})
 		failLive(attempts.at(0), data.NewChordError(data.ChordErrorInit{Code: data.CodeUnavailable, Message: "boom"}, nil))
 		countRef.Retry()
 		again, err := server.Get(count, jsonObject(), background, GetOptions{})
@@ -997,6 +1001,11 @@ func TestHostMemberSourceSubscribersAHoldOverALinkOnARemoteObjectReExposingALoca
 		_, err = again.Call("add", nil, background)
 		must(t, err)
 		transported(hosts.Links[0], hosts.Links[1])
+		scopeEventually(t, "the view shows the retried count", func() bool {
+			value, err := viewRef.Member("n").Value()
+			return err == nil && nexttest.JSONEqual(value, kmN(20))
+		})
+		deliveredOn(server, client)
 		nexttest.RequireJSONEqual(t, kmMember(t, viewRef, "n"), kmN(20))
 		nexttest.RequireJSONEqual(t, nexttest.ValuesOf(frames.Items()), []any{kmN(10), kmN(20)})
 		must(t, client.Close(background))
@@ -1230,7 +1239,7 @@ func TestHostMemberSourceAFailedAttemptIsCollectedAfterARetryWhileTheObjectItsMe
 	msAdd(t, store, "a")
 	deliveredOn(host)
 	nexttest.RequireJSONEqual(t, nexttest.ValuesOf(frames.Items()), []any{float64(1)})
-	nexttest.ExpectCollected(t, attemptAt(0))
+	expectCollectedEventually(t, attemptAt(0))
 	if attemptAt(1).Value() == nil {
 		t.Fatalf("the second attempt is gone")
 	}
@@ -1250,5 +1259,5 @@ func TestHostMemberSourceAnEndedObjectsMemberSourcesAreCollectedWithIt(t *testin
 		refs = append(refs, weak.Make(source.(*memberSource)))
 		must(t, s.Host.Close(background))
 	}()
-	nexttest.ExpectCollected(t, refs...)
+	expectCollectedEventually(t, refs...)
 }

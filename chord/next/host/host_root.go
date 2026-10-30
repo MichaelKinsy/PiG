@@ -45,12 +45,12 @@ type rootResult struct {
 
 // rootScopes are the open root scopes of a host, each sealed once; close seals the rest and rejects their callers.
 type rootScopes struct {
-	host callHost
+	host *chordHost
 	// open is each open scope in the order it opened.
 	open []*openScope
 }
 
-func newRootScopes(host callHost) *rootScopes { return &rootScopes{host: host} }
+func newRootScopes(host *chordHost) *rootScopes { return &rootScopes{host: host} }
 
 // settledReason is the abort reason of a scope whose `fn` settled.
 var settledReason = data.NewChordError(data.ChordErrorInit{

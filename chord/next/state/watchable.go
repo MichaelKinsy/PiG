@@ -217,10 +217,15 @@ func (s *Source) Unsubscribe(subscriber Subscriber) { s.subscribers.Delete(subsc
 // Deliver is the embedder's, which Source needs to list in the batch; see SourceImpl.
 func (s *Source) Deliver(ctx context.Context) error { return s.impl.Deliver(ctx) }
 
-// Changed records a change in the current batch: listed for a frame when watched, and every dependent marked dirty. Pi's
-// protected `changed`.
+// Changed records a change in the current batch: listed for a frame when watched (the embedder's `Watched` when it
+// overrides it, as Pi's `changed` reads the virtual `watched`), and every dependent marked dirty. Pi's protected
+// `changed`.
 func (s *Source) Changed() {
-	if s.Watched() {
+	watched := s.Watched()
+	if overriding, ok := s.impl.(interface{ Watched() bool }); ok {
+		watched = overriding.Watched()
+	}
+	if watched {
 		s.batch.Changed(s.impl)
 	}
 	for _, dependent := range s.dependents.Snapshot() {

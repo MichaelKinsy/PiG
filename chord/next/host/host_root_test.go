@@ -106,7 +106,7 @@ func TestHostRootSealsTheContextWhenFnSettles(t *testing.T) {
 	}, background, RootOptions{})
 	must(t, err)
 	info := value.(*Reference)
-	if state := info.State().Value(); state.Kind != RefStateEnded || state.Error.Code != data.CodeReleased {
+	if state := refStateOf(info); state.Kind != RefStateEnded || state.Error.Code != data.CodeReleased {
 		t.Fatalf("state = %+v, want ended released", state)
 	}
 	if kept.Err() == nil {

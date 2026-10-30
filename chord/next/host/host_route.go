@@ -17,8 +17,7 @@ import (
 // this.#resolve(routed)` is an owned task (Loop.Go): the call to `resolve` runs on it, off the loop, and everything Pi
 // writes after the `await` runs as one section (Loop.Run) on it, so a `resolve` whose holds were all released meanwhile
 // finishes and its result is handled as Pi's. `authorize` and `resolve` may throw in Pi: they return the error. The
-// `Path` and `HostLink` of `remote/` (D6), the host's `routeLink` and `AnyHost` are the seams routePath, routeLink and
-// routeHost (DESIGN-go-layout.md section 5); the path's constructor is injected as `newPath`. A `Link` of `link` and its
+// route calls the host's own `*path`, `*hostLink` and `*chordHost` directly, as Pi's classes do. A `Link` of `link` and its
 // `Codec` and `PartLimits` are the package's own.
 
 // RouteOptions is what `host.route` takes for a kind.
@@ -49,52 +48,10 @@ type routeLinkOptions struct {
 	limits    *link.PartLimits
 }
 
-// routedHolder is a holder of a path (Pi's `Upstream`, D6): a route hands them back for the host to end and never
-// inspects one.
-type routedHolder any
-
-// routeLink is a link of a route as the host made it (Pi's `HostLink`, D6): it is compared by identity.
-type routeLink interface {
-	// Open reports whether it is open (Pi's `open`).
-	Open() bool
-	// Greeted reports whether its peer's `hello` was handled (Pi's `greeted`).
-	Greeted() bool
-	// Role is its role, "parent" among others (Pi's `role`).
-	Role() string
-	Close()
-}
-
-// routePath is the path to one address (Pi's `Path`, D6): its link and holders.
-type routePath interface {
-	// Link is the current link while one is open, nil otherwise.
-	Link() routeLink
-	// Linked reports whether it had a link once (it may be down now: its holders wait for the next).
-	Linked() bool
-	// Held reports whether anything is held over this path.
-	Held() bool
-	// Holders is every holder, for the host's close.
-	Holders() []routedHolder
-	// Connected: link is the path's link now: every holder is held on it.
-	Connected(link routeLink)
-	// Disconnected: link closed (its sides ended their calls already): every holder goes loading until the next link.
-	Disconnected(link routeLink)
-}
-
-// routeHost is what a route asks of its host.
-type routeHost interface {
-	loop() sectionLoop
-	// Closing reports whether the host is closing.
-	Closing() bool
-	// Report reports to the host's `onError`.
-	Report(err HostError)
-	// RouteLink makes the host link of a link a route's resolve returned (Pi's `routeLink`).
-	RouteLink(made link.Link, options routeLinkOptions, ctx context.Context) routeLink
-}
-
 // routed is one address of a route: its path (link and holders) and whether its `resolve` runs.
 type routed struct {
 	address   contracts.Address
-	path      routePath
+	path      *path
 	resolving bool
 }
 
@@ -104,28 +61,27 @@ type route struct {
 	kind    string
 	params  *contracts.ParamsData
 	options RouteOptions
-	host    routeHost
+	host    *chordHost
 	// context is the route's context, cancelled when the host closes: every `resolve` and its links' work run under it.
 	context context.Context
-	newPath func(check func()) routePath
 	// keys and addresses are Pi's `Map<string, Routed>`, in insertion order.
 	keys      []string
 	addresses map[string]*routed
 	// links are the addresses' links, which tell their address when they open or close.
-	links map[routeLink]*routed
+	links map[*hostLink]*routed
 	// backoff is per address key, separate from objects' identities.
 	backoff *backoff
 }
 
 // newRoute makes the route of kind. It returns the error `kindParams` throws for a kind not declared by hostKind.
-func newRoute(kind *contracts.HostKind, options RouteOptions, host routeHost, ctx context.Context, newPath func(check func()) routePath) (*route, error) {
+func newRoute(kind *contracts.HostKind, options RouteOptions, host *chordHost, ctx context.Context) (*route, error) {
 	params, err := contracts.KindParams(kind)
 	if err != nil {
 		return nil, err
 	}
 	r := &route{
-		kind: kind.Kind, params: params, options: options, host: host, context: ctx, newPath: newPath,
-		addresses: map[string]*routed{}, links: map[routeLink]*routed{},
+		kind: kind.Kind, params: params, options: options, host: host, context: ctx,
+		addresses: map[string]*routed{}, links: map[*hostLink]*routed{},
 	}
 	r.backoff = newBackoff(host.loop(), r.due)
 	return r, nil
@@ -133,7 +89,7 @@ func newRoute(kind *contracts.HostKind, options RouteOptions, host routeHost, ct
 
 // path is the path to the address with params, for a hold acting as principal: the params checked against the kind
 // (`invalid/host_address`), then `authorize` (`forbidden` when it refuses; an error is the hold's failure).
-func (r *route) path(params any, principal data.Principal, ctx context.Context) (routePath, error) {
+func (r *route) path(params any, principal data.Principal, ctx context.Context) (*path, error) {
 	address, err := data.CheckAddress(r.kind, r.params, params, ctx)
 	if err != nil {
 		return nil, err
@@ -151,7 +107,7 @@ func (r *route) path(params any, principal data.Principal, ctx context.Context) 
 	existing := r.addresses[address.Key]
 	if existing == nil {
 		made := &routed{address: address}
-		made.path = r.newPath(func() { r.check(made) })
+		made.path = newPath(func() { r.check(made) })
 		existing = made
 		r.keys = append(r.keys, address.Key)
 		r.addresses[address.Key] = made
@@ -160,37 +116,37 @@ func (r *route) path(params any, principal data.Principal, ctx context.Context) 
 }
 
 // opened: one of this route's links completed its handshake: its address's backoff is over.
-func (r *route) opened(link routeLink) {
+func (r *route) opened(link *hostLink) {
 	if routed := r.links[link]; routed != nil {
 		r.backoff.delete(routed.address.Key)
 	}
 }
 
 // closed: one of this route's links closed: the address waits its backoff, then resolves again while it has holders.
-func (r *route) closed(link routeLink) bool {
+func (r *route) closed(link *hostLink) bool {
 	routed := r.links[link]
 	if routed == nil {
 		return false
 	}
 	delete(r.links, link)
-	if !r.host.Closing() {
+	if !r.host.closing() {
 		r.backoff.failed(routed.address.Key)
 	}
-	routed.path.Disconnected(link)
+	routed.path.disconnected(link)
 	return true
 }
 
 // close: the host closes: no address resolves again. It returns every holder of every path, for the host to end.
-func (r *route) close() []routedHolder {
+func (r *route) close() []upstream {
 	r.backoff.clear()
 	return r.holders()
 }
 
 // holders is every holder of every path of this route, linked or not (revocation ends a revoked principal's).
-func (r *route) holders() []routedHolder {
-	var holders []routedHolder
+func (r *route) holders() []upstream {
+	var holders []upstream
 	for _, key := range r.keys {
-		holders = append(holders, r.addresses[key].path.Holders()...)
+		holders = append(holders, r.addresses[key].path.holders()...)
 	}
 	return holders
 }
@@ -199,10 +155,10 @@ func (r *route) holders() []routedHolder {
 // backoff window; it is forgotten when it has neither holders, a link nor a running `resolve`.
 func (r *route) check(routed *routed) {
 	path, address := routed.path, routed.address
-	if path.Link() != nil || routed.resolving || r.host.Closing() {
+	if path.link() != nil || routed.resolving || r.host.closing() {
 		return
 	}
-	if !path.Held() {
+	if !path.held() {
 		r.forget(address.Key)
 		return
 	}
@@ -244,30 +200,30 @@ func (r *route) resolved(routed *routed, resolved ResolvedLink, err error) {
 	key := routed.address.Key
 	routed.resolving = false
 	if err != nil {
-		if r.host.Closing() {
+		if r.host.closing() {
 			return
 		}
-		r.host.Report(HostError{Kind: ErrResolveFailed, Address: key, Error: err})
+		r.host.report(HostError{Kind: ErrResolveFailed, Address: key, Error: err})
 		r.backoff.failed(key)
 		r.check(routed)
 		return
 	}
-	if r.host.Closing() {
+	if r.host.closing() {
 		resolved.Link.Close()
 		return
 	}
-	made := r.host.RouteLink(resolved.Link, routeLinkOptions{
+	made := r.host.routeLink(resolved.Link, routeLinkOptions{
 		principal: resolved.Principal, trusted: resolved.Trusted, codec: resolved.Codec, limits: resolved.Limits,
 	}, r.context)
-	if !made.Open() {
+	if !made.open() {
 		r.backoff.failed(key)
 		r.check(routed)
 		return
 	}
 	r.links[made] = routed
 	// A peer that greeted first had its `hello` handled while the link was made, before it was registered here.
-	if made.Greeted() {
+	if made.greeted() {
 		r.backoff.delete(key)
 	}
-	routed.path.Connected(made)
+	routed.path.connected(made)
 }

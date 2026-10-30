@@ -172,3 +172,27 @@ func TestDefineJobFingerprintsArgsResultAndState(t *testing.T) {
 		t.Fatal("a changed result schema kept the fingerprint")
 	}
 }
+
+// Names the mechanism that carries the type-level checks of the jobs tests (definition.test.ts `expectTypeOf(Shell)`,
+// job.test.ts `expectTypeOf(ctx)` and `Outcome<...>["args"]`): Pi's JobDefinition<A, R, S>, JobHandle<A, R, S>,
+// JobCtx<P, S> and Outcome<A, R, S> are generic over JSON shapes TypeScript checks at compile time; the Go types are one
+// concrete shape each (args, results and states are JSON values) and the compiler checks that the concrete types satisfy
+// the interfaces the layers share.
+func TestJobTypesAreOneConcreteShapeTheCompilerChecks(t *testing.T) {
+	var (
+		_ documents.JobHandle = (*job)(nil)
+		_ JobHandle           = (*job)(nil)
+		_ documents.Run       = (*runHandle)(nil)
+		_ JobCtx              = (*jobContext)(nil)
+		_ RunState            = (*runState)(nil)
+	)
+	// The JSON members are `any`: an Outcome holds whatever the run returned, its args and its state as JSON values.
+	outcome := Outcome{Args: textArgs("a"), State: jsonObject("output", ""), Result: "r"}
+	if textOf(outcome.Args) != "a" || outputOf(outcome.State) != "" || outcome.Result != "r" {
+		t.Fatalf("outcome = %+v", outcome)
+	}
+	// A job without a state has no `ctx.State()`: Pi's `JobCtx<P, undefined>` has no `state` member.
+	if (&jobContext{}).State() != nil {
+		t.Fatal("a job context without a state has a State")
+	}
+}

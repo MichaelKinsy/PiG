@@ -59,12 +59,7 @@ func rhEqual(t testing.TB, what string, got, want any) {
 	}
 }
 
-func rhCreate(t testing.TB, options HostOptions) Host {
-	t.Helper()
-	host, err := CreateHost(options)
-	must(t, err)
-	return host
-}
+func rhCreate(t testing.TB, options HostOptions) Host { return newHost(t, options) }
 
 func rhProp(name string, schema contracts.TSchema) contracts.Property {
 	return contracts.Prop(name, schema)
@@ -85,7 +80,7 @@ var rhCounter = func() *documents.StateDefinition {
 // rhRemote is `remote(name, { version: 1, params: {}, hostAddress: () => Server(), variants: { v: ... } })`.
 func rhRemote(name string, state []contracts.Property, methods ...contracts.MethodEntry) *contracts.Contract {
 	return mustContract(contracts.Remote(name, contracts.RemoteDeclaration{
-		Version: 1, HostAddress: exServerAddress,
+		Version: 1, Params: contracts.Params{}, HostAddress: exServerAddress,
 		Variants: []contracts.VariantEntry{contracts.Var("v", contracts.VariantDeclaration{State: state, Methods: methods})},
 	}))
 }
@@ -96,7 +91,7 @@ var rhHalves = rhRemote("app.halves",
 	contracts.Meth("set", contracts.NewMethod(contracts.Int())), contracts.Meth("wait", contracts.NewMethod()))
 
 func rhConst(value any) chord.Watchable[delta.JsonValue] {
-	return state.ConstantOf[delta.JsonValue](value)
+	return Expose(state.NewConstant(value))
 }
 
 func rhServeHalves(host FacetHost) error {
@@ -157,11 +152,6 @@ func rhHold(peer *RawPeer, id int, typ *contracts.Contract) {
 	})
 }
 
-// rhNamedBound is a bound entry's members by name as JSON.
-func rhNamedBound(t testing.TB, names wireIndexes, entry link.BoundEntry) string {
-	return rhJSON(t, names.NamedBound(t, entry.Members))
-}
-
 func rhNamedState(t testing.TB, names wireIndexes, entry link.StateEntry) map[string]any {
 	return names.NamedState(t, entry.Members)
 }
@@ -196,6 +186,10 @@ func rhHolds(host Host) []*hold {
 	})
 	return holds
 }
+
+// rhQuiesce waits until the host's loop has finished every task it owns (the teardown of an ended object runs on one), so
+// what a test checks for collection is not still held by a goroutine on its way out.
+func rhQuiesce(host Host) { host.(*chordHost).loop().(*Loop).Wait() }
 
 func rhObjects(host Host) []*chordObject {
 	var objects []*chordObject
@@ -370,6 +364,7 @@ func TestHoldFailedMembers(t *testing.T) {
 			_, err := halves.Call("set", float64(2), background)
 			must(t, err)
 			transported(hosts.Links[0], hosts.Links[1])
+			rhWaitCalls(t, calls, 1)
 			got := calls.Items()
 			if len(got) != 1 || got[0].Kind != chord.WatchCallFailed || !strings.Contains(got[0].Error.Error(), "half threw") {
 				t.Fatalf("calls = %v", got)
@@ -377,6 +372,7 @@ func TestHoldFailedMembers(t *testing.T) {
 			_, err = halves.Call("set", float64(6), background)
 			must(t, err)
 			transported(hosts.Links[0], hosts.Links[1])
+			rhWaitCalls(t, calls, 2)
 			value, err := halves.Member("half").Value()
 			must(t, err)
 			rhEqual(t, "half.value", value, 3)
@@ -465,9 +461,11 @@ func TestHoldGC(t *testing.T) {
 			if len(holdRefs)+len(objectRefs)+len(encoders) != 4 {
 				t.Fatalf("refs = %d holds, %d objects, %d encoders; want 1, 1, 2", len(holdRefs), len(objectRefs), len(encoders))
 			}
-			holds, objects = nil, nil
 			peer.Close()
 			transported(a, b)
+			// The object ends with its last hold: it leaves the host, then its teardown task finishes.
+			rhWaitFor(t, func() bool { return len(rhObjects(rig.Server)) == 0 })
+			rhQuiesce(rig.Server)
 			nexttest.ExpectCollected(t, holdRefs...)
 			nexttest.ExpectCollected(t, encoders...)
 			nexttest.ExpectCollected(t, objectRefs...)
@@ -512,7 +510,6 @@ func TestHoldGCPending(t *testing.T) {
 				t.Fatalf("made %d holds, want 1", len(made))
 			}
 			refs := rhWeak(made)
-			made, before = nil, nil
 			rig.Peer.Send(&link.ReleaseMessage{Hold: 1})
 			rhSync(t, rig.Peer)
 			nexttest.ExpectCollected(t, refs...)
@@ -535,7 +532,6 @@ func TestHoldGCPending(t *testing.T) {
 				}
 			}
 			refs := rhWeak(made)
-			made, before = nil, nil
 			peer.Close()
 			transported(a, b)
 			nexttest.ExpectCollected(t, refs...)
@@ -545,7 +541,7 @@ func TestHoldGCPending(t *testing.T) {
 
 		// hold.test.ts: GC › a hold released while waiting for load is not kept by the wait
 		t.Run("a hold released while waiting for load is not kept by the wait", func(t *testing.T) {
-			slow := mustContract(contracts.Local("app.slow", contracts.LocalDeclaration{
+			slow := mustContract(contracts.Local("app.slow", contracts.LocalDeclaration{Params: contracts.Params{},
 				Version: 1, Members: []contracts.LocalEntry{contracts.Mem("n", contracts.Int())},
 			}))
 			timeout := 2 * time.Second
@@ -586,7 +582,6 @@ func TestHoldGCPending(t *testing.T) {
 				t.Fatalf("made %d holds, want 1", len(made))
 			}
 			refs := rhWeak(made)
-			made, before = nil, nil
 			nexttest.ExpectCollected(t, refs...)
 			runtime.KeepAlive(server)
 			<-loadDone
@@ -631,7 +626,8 @@ func TestHoldNoticesOfAFailedObject(t *testing.T) {
 				t.Fatalf("second = %+v, want hold 1 retryIn 400", second)
 			}
 			virtual.advance(400)
-			rhSync(t, peer)
+			// The attempts run on tasks of the host's loop: wait until both failures arrived.
+			rhWaitFor(t, func() bool { return len(peer.Kinds()) >= 5 })
 			rhKindsAre(t, peer, "hello", "loading", "loading", "failed", "failed")
 			if got := peer.Next("failed").(*link.FailedMessage).RetryIn.Value; got != 2000 {
 				t.Fatalf("retryIn = %d, want 2000", got)
@@ -704,9 +700,13 @@ func TestHoldNoticesOfAFailedObject(t *testing.T) {
 
 func rhActivityReferences(t testing.TB, host Host) float64 {
 	t.Helper()
-	value, err := host.Activity().Value()
-	must(t, err)
-	return value.(*delta.JsonObject).Value("references").(float64)
+	var references float64
+	host.(*chordHost).loop().Run(func() {
+		value, err := host.Activity().Value()
+		must(t, err)
+		references = value.(*delta.JsonObject).Value("references").(float64)
+	})
+	return references
 }
 
 func TestHoldsThatBindToNothingYet(t *testing.T) {
@@ -741,7 +741,7 @@ func TestHoldsThatBindToNothingYet(t *testing.T) {
 
 		// hold.test.ts: holds that bind to nothing yet (dependency model §1, §3) › a hold on an object parked on a failed dependency is told each new cause, then loading, then bound
 		t.Run("a hold on an object parked on a failed dependency is told each new cause, then loading, then bound", func(t *testing.T) {
-			core := mustContract(contracts.Local("app.core", contracts.LocalDeclaration{
+			core := mustContract(contracts.Local("app.core", contracts.LocalDeclaration{Params: contracts.Params{},
 				Version: 1, Members: []contracts.LocalEntry{contracts.Mem("n", contracts.Int())},
 			}))
 			var mu sync.Mutex
@@ -861,13 +861,14 @@ func rhReconnect(t testing.TB, hosts *linkedHosts) {
 	t.Helper()
 	hosts.Links[0].Close()
 	transported(hosts.Links[0], hosts.Links[1])
+	rhParentDown(t, hosts.Client)
 	a, b := link.MemoryLinkPair()
 	must(t, hosts.Server.Accept(a, LinkOptions{Principal: ownerPrincipal(), Codec: testCodec()}, background))
 	must(t, hosts.Client.Connect(b, LinkOptions{Principal: serverPrincipal(), Codec: testCodec()}, background))
 	transported(a, b)
 }
 
-func rhRefKind(ref *Reference) RefStateKind { return ref.State().Value().Kind }
+func rhRefKind(ref *Reference) RefStateKind { return rhRefState(ref) }
 
 func rhNumber(t testing.TB, ref *Reference, member string) float64 {
 	t.Helper()
@@ -890,9 +891,7 @@ func TestHoldAReconnectingConsumer(t *testing.T) {
 			_, err = fresh.Call("bump", nil, background)
 			must(t, err)
 			rhReconnect(t, hosts)
-			if got := []RefStateKind{rhRefKind(tally), rhRefKind(fresh)}; got[0] != RefStateLive || got[1] != RefStateLive {
-				t.Fatalf("states = %v, want live, live", got)
-			}
+			rhWaitFor(t, func() bool { return rhRefKind(tally) == RefStateLive && rhRefKind(fresh) == RefStateLive })
 			if got := []float64{rhNumber(t, tally, "n"), rhNumber(t, fresh, "n")}; got[0] != 1 || got[1] != 0 {
 				t.Fatalf("n = %v, want [1 0]", got)
 			}
@@ -1180,12 +1179,13 @@ func TestHoldRetryOperationsQuiesceAcrossHosts(t *testing.T) {
 			workerKind := mustKind(contracts.NewHostKind("app.retry-worker"))
 			local := func(name string) *contracts.Contract {
 				return mustContract(contracts.Local(name, contracts.LocalDeclaration{
-					Version: 1, Members: []contracts.LocalEntry{contracts.Mem("n", contracts.Int())},
+					Version: 1, Params: contracts.Params{}, Members: []contracts.LocalEntry{contracts.Mem("n", contracts.Int())},
 				}))
 			}
 			reader := func(name string, kind *contracts.HostKind) *contracts.Contract {
 				return mustContract(contracts.Remote(name, contracts.RemoteDeclaration{
 					Version:     1,
+					Params:      contracts.Params{},
 					HostAddress: func(*delta.JsonObject) (contracts.Address, error) { return kind.Address(nil), nil },
 					Variants: []contracts.VariantEntry{contracts.Var("reader", contracts.VariantDeclaration{
 						State: []contracts.Property{rhProp("n", contracts.Int())},
@@ -1256,7 +1256,8 @@ func TestHoldRetryOperationsQuiesceAcrossHosts(t *testing.T) {
 			rhSettleLinks(down, up)
 			a, err := server.Hold(localA, jsonObject(), background, GetOptions{})
 			must(t, err)
-			if state := a.State().Value(); state.Kind != RefStateFailed || state.Cause.Kind != data.FailureWaiting {
+			rhWaitFor(t, func() bool { return rhRefState(a) == RefStateFailed })
+			if state := rhState(a); state.Kind != RefStateFailed || state.Cause.Kind != data.FailureWaiting {
 				t.Fatalf("state = %+v, want failed waiting", state)
 			}
 			// More at once than an object remembers ids: `through` stops each at the object it passed through already.

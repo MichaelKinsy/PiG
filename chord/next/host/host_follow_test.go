@@ -518,7 +518,7 @@ func TestFollowASourceItsRuntimeEndedIsStillDetachedAtTheObjectsEndThenCollected
 		expectEqual(t, "detached at the object's end", a.counts()[1], 1)
 		return weak.Make(left.source)
 	}()
-	nexttest.ExpectCollected(t, ref)
+	expectCollectedEventually(t, ref)
 }
 
 // Own test, mirrors follow.test.ts › GC › an ended object's followed sources are collected, and their observers
@@ -537,7 +537,7 @@ func TestFollowAnEndedObjectsFollowedSourcesAreCollectedAndTheirObserversDetache
 	var observers int
 	h.loop.Run(func() { observers = len(a.observers) })
 	expectEqual(t, "observers", observers, 0)
-	nexttest.ExpectCollected(t, ref)
+	expectCollectedEventually(t, ref)
 }
 
 // Own test, mirrors follow.ts `subscribe` and `deliver`: a member source over a followed source passes its frames on, its
@@ -964,7 +964,7 @@ func TestHostFollowGCASourceItsRuntimeEndedIsStillDetachedAtTheObjectsEndThenCol
 			t.Fatalf("detached after the object's end = %d, want 1", got)
 		}
 	}()
-	nexttest.ExpectCollected(t, refs...)
+	expectCollectedEventually(t, refs...)
 }
 
 // follow.test.ts › GC › an ended object's followed sources are collected, and their observers detached.
@@ -985,5 +985,5 @@ func TestHostFollowGCAnEndedObjectsFollowedSourcesAreCollectedAndTheirObserversD
 			t.Errorf("observers = %d, want 0", len(a.observers))
 		}
 	})
-	nexttest.ExpectCollected(t, refs...)
+	expectCollectedEventually(t, refs...)
 }

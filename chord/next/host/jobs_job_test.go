@@ -385,6 +385,11 @@ func TestJobStartWaitsByIDForUnsettledRunsOnlySettledAndUnknownIDsRejectGone(t *
 		outcome, err := job.Outcome(run.ID(), background)
 		waiting <- result{outcome, err}
 	}()
+	eventually(t, "the wait to register", func() bool {
+		var registered int
+		recordsOf(job).loop.Run(func() { registered = len(recordsOf(job).runs[run.ID()].waiters.waiting) })
+		return registered == 1
+	})
 	g.Open()
 	got := <-waiting
 	must(t, got.err)

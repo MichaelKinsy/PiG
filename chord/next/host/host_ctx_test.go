@@ -24,7 +24,7 @@ var (
 		Params:  contracts.Params{contracts.Prop("id", contracts.Int())},
 		Members: []contracts.LocalEntry{contracts.Mem("id", contracts.Int())},
 	}))
-	ctxDesk = mustContract(declareLocal("app.desk", contracts.LocalDeclaration{
+	ctxDesk = mustContract(declareLocal("app.desk", contracts.LocalDeclaration{Params: contracts.Params{},
 		Version: 1,
 		Members: []contracts.LocalEntry{
 			contracts.Mem("use", contracts.NewMethod(contracts.TSchema{}, contracts.Int())),
@@ -274,7 +274,7 @@ func TestCtxAGetStillWaitingWhenItsHandlerSettlesGivesUpItsReferenceIsReleasedAt
 		HostAddress: func(*delta.JsonObject) (contracts.Address, error) { return Server.Address(nil), nil },
 		Variants:    []contracts.VariantEntry{contracts.Var("v", contracts.VariantDeclaration{State: []contracts.Property{contracts.Prop("n", contracts.Int())}})},
 	}))
-	starter := mustContract(declareLocal("app.starter", contracts.LocalDeclaration{
+	starter := mustContract(declareLocal("app.starter", contracts.LocalDeclaration{Params: contracts.Params{},
 		Version: 1,
 		Members: []contracts.LocalEntry{contracts.Mem("start", contracts.NewMethod())},
 	}))
@@ -321,7 +321,7 @@ func TestCtxALocalHandlersPrincipalIsTheHostsItsIncarnationThisHosts(t *testing.
 
 // Mirrors "local handlers act as the host (§4, audit) › a local object called from a remote handler's ctx.get runs with this host's principal and incarnation".
 func TestLocalHandlersActAsTheHostALocalObjectCalledFromARemoteHandlersCtxGetRunsAsTheHost(t *testing.T) {
-	store := mustContract(declareLocal("app.local-store", contracts.LocalDeclaration{
+	store := mustContract(declareLocal("app.local-store", contracts.LocalDeclaration{Params: contracts.Params{},
 		Version: 1,
 		Members: []contracts.LocalEntry{contracts.Mem("who", contracts.NewMethod(contracts.TSchema{}, contracts.Str()))},
 	}))

@@ -1,8 +1,10 @@
 package host
 
 import (
+	"runtime"
 	"sync/atomic"
 	"testing"
+	"weak"
 
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/chord/next/contracts"
@@ -46,7 +48,9 @@ func valuesOfFrames(frames []nexttest.Frame[delta.JsonValue]) []any {
 // countOf is the number `host.activity.value[name]`.
 func countOf(t testing.TB, host Host, name string) float64 {
 	t.Helper()
-	value, err := host.Activity().Value()
+	var value delta.JsonValue
+	var err error
+	host.(*chordHost).loop().Run(func() { value, err = host.Activity().Value() })
 	must(t, err)
 	number, _ := value.(*delta.JsonObject).Value(name).(float64)
 	if float, ok := value.(*delta.JsonObject).Value(name).(int); ok {
@@ -67,7 +71,7 @@ type closingLink struct {
 
 func (c *closingLink) Send(message []byte) {
 	if c.drop.Load() {
-		c.Link.Close()
+		c.Close()
 		return
 	}
 	c.Link.Send(message)
@@ -107,4 +111,19 @@ func holdOf(typ *contracts.Contract, number int, params string) *link.HoldMessag
 		Hold: number, Type: typ.Name, Version: typ.Version, Fingerprint: typ.Fingerprint,
 		Params: link.Text(params), Address: serverWireAddress,
 	}
+}
+
+// expectCollectedEventually is nexttest.ExpectCollected for referents whose last holders go away on tasks of the host (a
+// closing host drains its tasks, a released hold ends in the background): the collection is polled until nothing holds them.
+func expectCollectedEventually[T any](t testing.TB, refs ...weak.Pointer[T]) {
+	t.Helper()
+	scopeEventually(t, "every referent is collected", func() bool {
+		runtime.GC()
+		for _, ref := range refs {
+			if ref.Value() != nil {
+				return false
+			}
+		}
+		return true
+	})
 }

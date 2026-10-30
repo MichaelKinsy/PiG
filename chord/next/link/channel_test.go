@@ -482,3 +482,59 @@ func expectCleanedUp(t *testing.T, cleaned <-chan struct{}) {
 		}
 	}
 }
+
+// sendOnDecode is a codec that sends a message through its channel while the channel decodes the peer's `hello`: the
+// handshake is under way (the channel has not opened yet) when the send happens.
+type sendOnDecode struct {
+	link.Codec
+	channel *link.Channel
+	once    sync.Once
+	message link.Message
+}
+
+func (c *sendOnDecode) Decode(bytes []byte) (link.Message, error) {
+	decoded, err := c.Codec.Decode(bytes)
+	if _, isHello := decoded.(*link.HelloMessage); isHello {
+		c.once.Do(func() { requireNoErrorValue(c.channel.Send(c.message)) })
+	}
+	return decoded, err
+}
+
+func requireNoErrorValue(err error) {
+	if err != nil {
+		panic(err)
+	}
+}
+
+// Regression: a message sent while the channel decodes the peer's `hello` (after the handshake read the queue, before it
+// opened the channel) was lost: the handshake flushed the queue it had read and then dropped it. It reaches the peer now,
+// after `hello`, in the order it was sent.
+func TestASendDuringTheHandshakeIsFlushedWithTheQueuedMessages(t *testing.T) {
+	eachCodec(t, func(t *testing.T, codec link.Codec) {
+		a, b := link.MemoryLinkPair()
+		sending := &sendOnDecode{Codec: codec, message: &link.ReleaseMessage{Hold: 2}}
+		handler := &recordingHandler{}
+		options := link.ChannelOptions{Codec: sending, Incarnation: incarnation, Calls: 256, Report: (&reports{}).add}
+		channel, err := link.NewChannel(a, handler, options, background)
+		requireNoError(t, err)
+		sending.channel = channel
+		channel.Start()
+		// Sent before the handshake: queued first.
+		requireNoError(t, channel.Send(&link.ReleaseMessage{Hold: 1}))
+		peer := newRawPeer(t, b, codec)
+		peer.hello()
+		transported(a, b)
+		if kinds := peer.kinds(); !slices.Equal(kinds, []string{"hello", "release", "release"}) {
+			t.Fatalf("the peer received %v, want [hello release release]", kinds)
+		}
+		var holds []int
+		for _, message := range peer.received {
+			if release, ok := message.(*link.ReleaseMessage); ok {
+				holds = append(holds, release.Hold)
+			}
+		}
+		if !slices.Equal(holds, []int{1, 2}) {
+			t.Fatalf("released holds = %v, want [1 2] in the order they were sent", holds)
+		}
+	})
+}

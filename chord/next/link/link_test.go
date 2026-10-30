@@ -152,3 +152,41 @@ func TestAMemoryLinkTransfersNoRacyState(t *testing.T) {
 		t.Fatalf("got %d messages", len(got.all()))
 	}
 }
+
+// fifoQueue is a microtask queue of the test's own: jobs run in the order queued, jobs queued meanwhile after the ones
+// queued before.
+type fifoQueue struct{ jobs []func() }
+
+func (q *fifoQueue) post(job func()) { q.jobs = append(q.jobs, job) }
+
+func (q *fifoQueue) run() {
+	for len(q.jobs) > 0 {
+		job := q.jobs[0]
+		q.jobs = q.jobs[1:]
+		job()
+	}
+}
+
+// A pair on a queue of the caller's delivers in that queue's order with its other jobs: what a listener queues while it
+// handles the first message runs after the second message, which was queued before it (Pi's memory link on the one
+// microtask queue).
+func TestMemoryLinkPairOnDeliversInTheOrderOfTheCallersQueue(t *testing.T) {
+	queue := &fifoQueue{}
+	a, b := link.MemoryLinkPairOn(queue.post, queue.run)
+	var order []string
+	b.OnMessage(func(message []byte) {
+		order = append(order, string(message))
+		if string(message) == "m1" {
+			queue.post(func() { order = append(order, "microtask of m1's handler") })
+		}
+	})
+	a.Send([]byte("m1"))
+	a.Send([]byte("m2"))
+	if len(order) != 0 {
+		t.Fatalf("delivered before the queue ran: %v", order)
+	}
+	a.Flushed()
+	if want := []string{"m1", "m2", "microtask of m1's handler"}; !slices.Equal(order, want) {
+		t.Fatalf("order = %v, want %v", order, want)
+	}
+}
