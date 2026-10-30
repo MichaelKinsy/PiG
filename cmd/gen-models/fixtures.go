@@ -15,6 +15,8 @@ import (
 	"path/filepath"
 	"strconv"
 	"sync"
+
+	_ "github.com/MichaelKinsy/PiG/internal/tlsdistrust" // hardens http.DefaultClient, which the generator's source fetches use (pig additive (D191))
 )
 
 // fixtureIndex is index.json of a fixture directory: the responses in the order they were recorded.
