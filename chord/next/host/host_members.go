@@ -7,6 +7,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/chord/next/contracts"
+	"github.com/MichaelKinsy/PiG/chord/next/documents"
 	"github.com/MichaelKinsy/PiG/chord/next/registries"
 	"github.com/MichaelKinsy/PiG/chord/next/state"
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
@@ -29,32 +30,6 @@ import (
 // object's own documents and derives freeze once its admitted commits adopted, so until then an own derive over
 // another object's member may still change. Holds over a link follow the live attempt's members and take a snapshot at
 // each binding.
-
-// watchableResolver is Pi's `resolveWatchable` (reference.ts), which the host injects: what Chord follows behind value
-// when it is a Chord JSON watchable (a source, a constant, a document handle, a reference member); nil with a nil error
-// is Pi's `undefined`, and the error is what its getter throws.
-type watchableResolver func(value any) (state.DeriveSource, error)
-
-// keyedResolver is Pi's `resolveKeyed` (reference.ts), which the host injects: the keyed binding behind value when it
-// is a keyed document handle or a reference's keyed member; nil with a nil error is Pi's `undefined`.
-type keyedResolver func(value any) (*keyedBinding, error)
-
-// keyedSlot is the slot of a keyed document handle (`documents.KeyedSlot`): its keys, pinned and loaded. Pin runs in a
-// section of the host's loop; Ensure blocks while the key loads and is called outside one.
-type keyedSlot interface {
-	// Pin pins key (it stays in memory until release, idempotent) and returns the release.
-	Pin(key string, ctx context.Context) (release func(), err error)
-	// Ensure loads key when it is not in memory.
-	Ensure(key string, ctx context.Context) error
-	// Source is the pinned key's source.
-	Source(key string) state.DeriveSource
-}
-
-// keyedProvider is another object's keyed member that an object re-exposes (Pi's `Binding`): PinKey pins key of that
-// member across the provider's attempts. It blocks while the key loads and is called outside a section.
-type keyedProvider interface {
-	PinKey(member, key string, ctx context.Context) (pinnedKey, error)
-}
 
 // members is a checked implementation, as Chord calls and follows it.
 type members struct {
@@ -81,8 +56,8 @@ const (
 // member re-exposed through a reference (kind reexposed, binding and member).
 type keyedBinding struct {
 	kind    keyedBindingKind
-	slot    keyedSlot
-	binding keyedProvider
+	slot    *documents.KeyedSlot
+	binding *binding
 	member  string
 }
 
@@ -118,8 +93,6 @@ type factoryResult struct {
 // `{ variant, members }` naming one of its current variants. Errors name the variant or member (the failure cause adds
 // the object). The returned variant is nil for a local contract.
 func checkImplementation(
-	resolveWatchable watchableResolver,
-	resolveKeyed keyedResolver,
 	contract *contracts.Contract,
 	result factoryResult,
 ) (variant *string, checked *members, err error) {
@@ -129,7 +102,7 @@ func checkImplementation(
 	}
 	if contract.Kind == contracts.KindLocal {
 		// The member check establishes the shape.
-		checked, err = checkMembers(resolveWatchable, resolveKeyed, variants.Value(contracts.LocalVariant), result.members)
+		checked, err = checkMembers(variants.Value(contracts.LocalVariant), result.members)
 		return nil, checked, err
 	}
 	var named *contracts.VariantData
@@ -144,7 +117,7 @@ func checkImplementation(
 		}
 		return nil, nil, fmt.Errorf("variant %s: not a variant of %s", name, contract.Name)
 	}
-	checked, err = checkMembers(resolveWatchable, resolveKeyed, named, result.members)
+	checked, err = checkMembers(named, result.members)
 	return result.variant, checked, err
 }
 
@@ -160,8 +133,6 @@ func jsStringify(text string) string {
 // checkMembers checks members against a variant's (exactly its members, methods being functions, state members JSON
 // watchables and keyed members keyed document handles); a method without arguments is called with the context alone.
 func checkMembers(
-	resolveWatchable watchableResolver,
-	resolveKeyed keyedResolver,
 	variant *contracts.VariantData,
 	given implementation,
 ) (*members, error) {
@@ -220,7 +191,6 @@ func asMethod(value any) (contracts.MethodFunction, bool) {
 // attachDerives resolves every derive's sources; errors name a derive by the member exposing it, else by its position.
 // report makes each derive's failure report, with the member exposing it when there is one (`derive_failed`).
 func attachDerives(
-	resolveWatchable watchableResolver,
 	derives []*state.Derive,
 	exposedState *contracts.NamedMap[state.DeriveSource],
 	report func(member string, exposed bool) func(error),
@@ -261,7 +231,6 @@ func attachDerives(
 // value, whatever methods it has (registries carry natives). Refused (`invalid/cycle`) when it is a registry's value
 // that closes a cycle of registries, through the tables and the contributor's `pending` edges.
 func contributionOf(
-	resolveWatchable watchableResolver,
 	record *registries.RegistryRecord,
 	contributor registries.Contributor,
 	version int,
@@ -273,7 +242,7 @@ func contributionOf(
 			return nil, err
 		}
 	}
-	content, err := contentOf(resolveWatchable, value)
+	content, err := contentOf(value)
 	if err != nil {
 		return nil, err
 	}
@@ -281,7 +250,7 @@ func contributionOf(
 }
 
 // contentOf is what Chord follows behind a contribution: its JSON or native source when it is a Chord watchable.
-func contentOf(resolveWatchable watchableResolver, value any) (registries.ContributionContent, error) {
+func contentOf(value any) (registries.ContributionContent, error) {
 	if native, ok := value.(state.NativeSourceHandle); ok {
 		return registries.ContributionContent{Kind: registries.ContributionNative, Native: native}, nil
 	}

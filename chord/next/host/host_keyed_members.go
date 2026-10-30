@@ -6,6 +6,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord"
 	"github.com/MichaelKinsy/PiG/chord/next/contracts"
 	"github.com/MichaelKinsy/PiG/chord/next/data"
+	"github.com/MichaelKinsy/PiG/chord/next/documents"
 	"github.com/MichaelKinsy/PiG/chord/next/state"
 )
 
@@ -405,7 +406,7 @@ func pinOn(loop sectionLoop, keyed *keyedBinding, key string, ctx context.Contex
 	if keyed.kind == keyedReexposed {
 		promise := newKeyedPromise[pinnedKey](loop)
 		loop.Go(func() {
-			pin, err := keyed.binding.PinKey(keyed.member, key, ctx)
+			pin, err := keyed.binding.pinKey(keyed.member, key, ctx)
 			loop.Run(func() { promise.settle(pin, err) })
 		})
 		return promise
@@ -414,7 +415,7 @@ func pinOn(loop sectionLoop, keyed *keyedBinding, key string, ctx context.Contex
 }
 
 // pinned pins key on slot and loads it when it is not in memory; a failed load releases the pin.
-func pinned(loop sectionLoop, slot keyedSlot, key string, ctx context.Context) *keyedPromise[pinnedKey] {
+func pinned(loop sectionLoop, slot *documents.KeyedSlot, key string, ctx context.Context) *keyedPromise[pinnedKey] {
 	promise := newKeyedPromise[pinnedKey](loop)
 	release, err := slot.Pin(key, ctx)
 	if err != nil {
@@ -429,7 +430,15 @@ func pinned(loop sectionLoop, slot keyedSlot, key string, ctx context.Context) *
 				promise.reject(err)
 				return
 			}
-			promise.resolve(pinnedKey{source: slot.Source(key), release: release})
+			source := slot.Source(key)
+			// The slot dropped its sources while the key loaded (its object ended): no key is pinned any more, as Pi's
+			// `ensure` would find it ended.
+			if source == nil {
+				release()
+				promise.reject(slot.Owner().Released())
+				return
+			}
+			promise.resolve(pinnedKey{source: source, release: release})
 		})
 	})
 	return promise

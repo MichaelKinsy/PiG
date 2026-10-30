@@ -1,302 +1,481 @@
 package host
 
 import (
-	"context"
+	"slices"
+	"sync/atomic"
 	"testing"
+	"time"
 	"weak"
 
 	"github.com/MichaelKinsy/PiG/chord"
-	chordctx "github.com/MichaelKinsy/PiG/chord/context"
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/chord/next/contracts"
+	"github.com/MichaelKinsy/PiG/chord/next/data"
 	"github.com/MichaelKinsy/PiG/chord/next/internal/nexttest"
+	"github.com/MichaelKinsy/PiG/chord/next/link"
 	"github.com/MichaelKinsy/PiG/chord/next/state"
 )
 
-// Own tests of host_presence.go (packages/chord/test/next/host/presence.test.ts). Every upstream case builds hosts and
-// links (`linked`, `relayed`, `createHost`, raw peers), whose objects and holds are later lanes: they are listed `missing`
-// in the lane's rows. These tests run References on a real state.Batch with fake objects and holders, and each names the
-// Pi case or doc comment whose behavior it carries; none replaces a `missing` case.
+// Ports packages/chord/test/next/host/presence.test.ts: presence (§19): `host.references(Type)`, its entries and
+// incarnations, its batches (a link drop as a departure, one discovered while a commit sends lands in the next batch),
+// derives over it, its cost and GC. Every case runs on whole hosts, as upstream does.
 
-type presenceFakeObject struct {
-	params any
-	kind   contracts.Kind
+func presenceServe(h FacetHost) error {
+	_, err := serveNotes(h, nil)
+	return err
 }
 
-func (o presenceFakeObject) Params() any                { return o.params }
-func (o presenceFakeObject) ServedKind() contracts.Kind { return o.kind }
-
-type presenceFakeHolder struct{ from caller }
-
-func (h *presenceFakeHolder) Caller() caller { return h.from }
-
-// presenceRig is a References over a batch whose watches deliver on a scheduler of its own.
-type presenceRig struct {
-	refs      *references
-	batch     *state.Batch
-	scheduler *chord.DeliveryScheduler
-}
-
-func newPresenceRig() *presenceRig {
-	scheduler := chord.NewDeliveryScheduler()
-	batch := state.NewBatch(func(state.BatchError) {}, nil).UseScheduler(scheduler)
-	return &presenceRig{refs: newReferences(batch), batch: batch, scheduler: scheduler}
-}
-
-func (r *presenceRig) frames(t testing.TB) *nexttest.Collector[nexttest.Frame[delta.JsonValue]] {
-	t.Helper()
-	watch, err := r.refs.Watch(chordctx.Background())
-	if err != nil {
-		t.Fatal(err)
+// presenceViewed is a remote type served by the test server with one `viewers` state member, as the race-9 cases use.
+func presenceViewed(members ...string) *contracts.Contract {
+	properties := make([]contracts.Property, len(members))
+	for i, member := range members {
+		properties[i] = contracts.Prop(member, contracts.Int())
 	}
-	return nexttest.FramesOf(watch)
+	return mustContract(contracts.Remote("app.viewed", contracts.RemoteDeclaration{
+		Version:     1,
+		Params:      contracts.Params{},
+		HostAddress: func(*delta.JsonObject) (contracts.Address, error) { return serverAddress(), nil },
+		Variants:    []contracts.VariantEntry{contracts.Var("v", contracts.VariantDeclaration{State: properties})},
+	}))
 }
 
-// batchSubscriber is a synchronous subscriber of the list (a hold over a link): it is fed once per batch that published,
-// inside the batch, so it sees what a watch would fold.
-type batchSubscriber struct {
-	frames *nexttest.Collector[nexttest.Frame[delta.JsonValue]]
-}
-
-func (s batchSubscriber) Advance(call chord.WatchCall[delta.JsonValue], _ context.Context) {
-	if call.Kind == chord.WatchCallValue {
-		s.frames.Append(nexttest.Frame[delta.JsonValue]{Value: call.Value, Ops: call.Ops})
-	}
-}
-func (batchSubscriber) End(chord.WatchEnd) {}
-func (batchSubscriber) EndAfterDelivery()  {}
-
-// batches follows the list as a subscriber does: after reading it, one frame per batch.
-func (r *presenceRig) batches(t testing.TB) *nexttest.Collector[nexttest.Frame[delta.JsonValue]] {
-	t.Helper()
-	if _, err := r.refs.Value(); err != nil {
-		t.Fatal(err)
-	}
-	frames := &nexttest.Collector[nexttest.Frame[delta.JsonValue]]{}
-	r.refs.Subscribe(batchSubscriber{frames: frames})
-	return frames
-}
-
-// entry is a presence entry as the list publishes it.
-func presenceEntry(params *delta.JsonObject, principal *delta.JsonObject, incarnation string) *delta.JsonObject {
-	object := delta.NewJsonObject(3)
-	object.Set("params", params)
+// presenceEntry is a presence entry as the list publishes it; principal nil has none.
+func presenceEntry(session string, principal data.Principal, incarnation string) *delta.JsonObject {
+	entry := jsonObject("params", jsonObject("session", session))
 	if principal != nil {
-		object.Set("principal", principal)
+		entry.Set("principal", principal)
 	}
-	object.Set("incarnation", incarnation)
-	return object
+	entry.Set("incarnation", incarnation)
+	return entry
 }
 
-func presenceSession(id string) *delta.JsonObject { return delta.JsonObjectOf("session", id) }
-
-func presenceOps(ops []delta.Op) []any {
-	out := make([]any, len(ops))
-	for i, op := range ops {
-		out[i] = op
-	}
-	return out
-}
-
-func presenceList(t testing.TB, refs *references) []any {
+func presenceList(t testing.TB, host Host, typ *contracts.Contract) []any {
 	t.Helper()
-	value, err := refs.Value()
-	if err != nil {
-		t.Fatal(err)
-	}
+	var value delta.JsonValue
+	var err error
+	host.(*chordHost).loop().Run(func() { value, err = host.References(typ).Value() })
+	must(t, err)
 	return value.([]any)
 }
 
-func presenceHolderOf(principal *delta.JsonObject, incarnation string) *presenceFakeHolder {
-	return &presenceFakeHolder{from: caller{principal: principal, incarnation: incarnation}}
+// presenceServer is a server host (address Server, principal server) loaded with setup.
+func presenceServer(t testing.TB, setup func(h FacetHost) error, options HostOptions) Host {
+	t.Helper()
+	options.Address = new(Server.Address(nil))
+	options.Principal = serverPrincipal()
+	if options.OnError == nil {
+		options.OnError = func(HostError) {}
+	}
+	server := newHost(t, options)
+	must(t, server.Load([]HostFacet{{Name: "@test/app", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error { return setup(h) })}}, background))
+	return server
 }
 
-var presenceBackground = chordctx.Background()
-
-// Mirrors "host.references › lists every reference with the object's params, its principal and its incarnation": a remote
-// type's entry has the holder's principal when it has one, a local type's none.
-func TestReferencesListsEveryReferenceWithTheObjectsParamsItsPrincipalAndItsIncarnation(t *testing.T) {
-	rig := newPresenceRig()
-	guest := delta.JsonObjectOf("kind", "guest", "session", "S1")
-	server := delta.JsonObjectOf("kind", "server")
-	remote := presenceFakeObject{params: presenceSession("S1"), kind: contracts.KindRemote}
-	rig.refs.add(remote, presenceHolderOf(guest, "client"), presenceBackground)
-	rig.refs.add(presenceFakeObject{params: presenceSession("S2"), kind: contracts.KindRemote}, presenceHolderOf(server, "server"), presenceBackground)
-	rig.refs.add(remote, presenceHolderOf(nil, "anonymous"), presenceBackground)
-	want := []any{
-		presenceEntry(presenceSession("S1"), guest, "client"),
-		presenceEntry(presenceSession("S2"), server, "server"),
-		presenceEntry(presenceSession("S1"), nil, "anonymous"),
-	}
-	nexttest.RequireJSONEqual(t, presenceList(t, rig.refs), want)
-
-	// A local type's entries have no principal.
-	local := newPresenceRig()
-	local.refs.add(presenceFakeObject{params: presenceSession("S1"), kind: contracts.KindLocal}, presenceHolderOf(server, "server"), presenceBackground)
-	nexttest.RequireJSONEqual(t, presenceList(t, local.refs), []any{presenceEntry(presenceSession("S1"), nil, "server")})
+// presenceTab is a client host connected to server as its child, stamped owner.
+func presenceTab(t testing.TB, server Host) (Host, *link.MemoryLink) {
+	t.Helper()
+	tab := newHost(t, HostOptions{OnError: func(HostError) {}})
+	must(t, tab.Load(nil, background))
+	a, b := link.MemoryLinkPair()
+	must(t, server.Accept(a, LinkOptions{Principal: ownerPrincipal(), Codec: testCodec()}, background))
+	must(t, tab.Connect(b, LinkOptions{Principal: serverPrincipal(), Codec: testCodec()}, background))
+	return tab, a
 }
 
-// Mirrors "host.references › changes in the batch where a reference binds or ends: a watch gets one splice per change".
-func TestReferencesChangeInTheBatchWhereAReferenceBindsOrEndsAWatchGetsOneSplicePerChange(t *testing.T) {
-	rig := newPresenceRig()
-	frames := rig.frames(t)
-	owner := delta.JsonObjectOf("kind", "owner")
-	object := func(id string) presenceFakeObject {
-		return presenceFakeObject{params: presenceSession(id), kind: contracts.KindRemote}
+// presence.test.ts › host.references › lists every reference with the object's params, its principal and its incarnation.
+func TestHostReferencesListsEveryReferenceWithTheObjectsParamsItsPrincipalAndItsIncarnation(t *testing.T) {
+	hosts := linked(t, presenceServe, linkedOptions{Child: guestPrincipal("S1")})
+	server, client := hosts.Server, hosts.Client
+	notes := server.References(Notes)
+	nexttest.RequireJSONEqual(t, presenceList(t, server, Notes), []any{})
+	_, err := client.Get(Notes, jsonObject("session", "S1"), background, GetOptions{})
+	must(t, err)
+	own, err := server.Get(Notes, jsonObject("session", "S2"), background, GetOptions{})
+	must(t, err)
+	nexttest.RequireJSONEqual(t, presenceList(t, server, Notes), []any{
+		presenceEntry("S1", guestPrincipal("S1"), incarnationOf(client)),
+		presenceEntry("S2", serverPrincipal(), incarnationOf(server)),
+	})
+	_ = notes
+	// A local type's entries have no principal: the store is referenced by both views.
+	nexttest.RequireJSONEqual(t, presenceList(t, server, NoteStore), []any{
+		presenceEntry("S1", nil, incarnationOf(server)),
+		presenceEntry("S2", nil, incarnationOf(server)),
+	})
+	own.Release()
+	if got := presenceList(t, server, Notes); len(got) != 1 {
+		t.Fatalf("references after the release = %d, want 1", len(got))
 	}
-	one, two := presenceHolderOf(owner, "client"), presenceHolderOf(owner, "client")
-	rig.refs.add(object("S1"), one, presenceBackground)
-	rig.scheduler.Wait()
-	rig.refs.add(object("S2"), two, presenceBackground)
-	rig.scheduler.Wait()
-	rig.refs.remove([]presenceHolder{one}, presenceBackground)
-	rig.scheduler.Wait()
-	s1, s2 := presenceEntry(presenceSession("S1"), owner, "client"), presenceEntry(presenceSession("S2"), owner, "client")
+}
+
+// presence.test.ts › host.references › is made for the first ask with the references that exist then, and kept.
+func TestHostReferencesIsMadeForTheFirstAskWithTheReferencesThatExistThenAndKept(t *testing.T) {
+	hosts := linked(t, presenceServe, linkedOptions{})
+	_, err := hosts.Client.Get(Notes, jsonObject("session", "S1"), background, GetOptions{})
+	must(t, err)
+	notes := hosts.Server.References(Notes)
+	if got := presenceList(t, hosts.Server, Notes); len(got) != 1 {
+		t.Fatalf("references = %d, want 1", len(got))
+	}
+	if hosts.Server.References(Notes) != notes {
+		t.Fatalf("the second ask made another list")
+	}
+}
+
+// presence.test.ts › host.references › changes in the batch where a reference binds or ends: a watch gets one splice per change.
+func TestHostReferencesChangesInTheBatchWhereAReferenceBindsOrEndsAWatchGetsOneSplicePerChange(t *testing.T) {
+	hosts := linked(t, presenceServe, linkedOptions{})
+	server, client := hosts.Server, hosts.Client
+	watch, err := server.References(Notes).Watch(background)
+	must(t, err)
+	frames := nexttest.FramesOf(watch)
+	one, err := client.Get(Notes, jsonObject("session", "S1"), background, GetOptions{})
+	must(t, err)
+	_, err = client.Get(Notes, jsonObject("session", "S2"), background, GetOptions{})
+	must(t, err)
+	one.Release()
+	transported(hosts.Links[0], hosts.Links[1])
+	deliveredOn(server, client)
+	incarnation := incarnationOf(client)
+	entry := func(session string) *delta.JsonObject { return presenceEntry(session, ownerPrincipal(), incarnation) }
 	got := frames.Items()
-	if len(got) != 3 {
-		t.Fatalf("frames = %d, want 3", len(got))
-	}
-	for i, ops := range [][]any{
-		{[]any{"p", []any{}, 0, 0, []any{s1}}},
-		{[]any{"p", []any{}, 1, 0, []any{s2}}},
-		{[]any{"p", []any{}, 0, 1, []any{}}},
-	} {
-		nexttest.RequireJSONEqual(t, presenceOps(got[i].Ops), ops)
-	}
-	nexttest.RequireJSONEqual(t, got[2].Value, []any{s2})
+	nexttest.RequireJSONEqual(t, opsOf(got), []any{
+		[]any{[]any{"p", []any{}, 0, 0, []any{entry("S1")}}},
+		[]any{[]any{"p", []any{}, 1, 0, []any{entry("S2")}}},
+		[]any{[]any{"p", []any{}, 0, 1, []any{}}},
+	})
+	nexttest.RequireJSONEqual(t, got[len(got)-1].Value, []any{entry("S2")})
 }
 
-// Mirrors "host.references › removes a bulk departure with one list and one splice op per entry, in one frame (a revoke of
-// many holds)".
-func TestReferencesRemovesABulkDepartureWithOneListAndOneSpliceOpPerEntryInOneFrame(t *testing.T) {
-	rig := newPresenceRig()
-	guest := delta.JsonObjectOf("kind", "guest", "session", "S1")
-	var holders []presenceHolder
-	for range 4 {
-		each := presenceHolderOf(guest, "client")
-		holders = append(holders, each)
-		rig.refs.add(presenceFakeObject{params: presenceSession("S1"), kind: contracts.KindRemote}, each, presenceBackground)
+// presence.test.ts › host.references › feeds derives in factories: viewers per session, a link drop a departure in its
+// batch (race 9). Go's links deliver their close on a goroutine of their own, so the departure is read once the link
+// flushed.
+func TestHostReferencesFeedsDerivesInFactoriesViewersPerSessionALinkDropADepartureInItsBatchRace9(t *testing.T) {
+	viewers := mustContract(contracts.Local("app.viewers", contracts.LocalDeclaration{
+		Version: 1,
+		Params:  contracts.Params{contracts.Prop("session", contracts.Str())},
+		Members: []contracts.LocalEntry{contracts.Mem("count", contracts.Int())},
+	}))
+	shown := mustContract(contracts.Remote("app.shown", contracts.RemoteDeclaration{
+		Version:     1,
+		Params:      contracts.Params{contracts.Prop("session", contracts.Str())},
+		HostAddress: func(*delta.JsonObject) (contracts.Address, error) { return serverAddress(), nil },
+		Variants: []contracts.VariantEntry{contracts.Var("v", contracts.VariantDeclaration{
+			State: []contracts.Property{contracts.Prop("here", contracts.Int())},
+		})},
+	}))
+	server := presenceServer(t, func(h FacetHost) error {
+		if err := h.Serve(shown, func(*delta.JsonObject, data.Principal, Self) (contracts.Implementation, error) {
+			return contracts.Implementation{Variant: "v", Members: contracts.VariantImplementation{
+				State: map[string]chord.Watchable[delta.JsonValue]{"here": Expose(state.NewConstant(float64(1)))},
+			}}, nil
+		}, ServeOptions{}); err != nil {
+			return err
+		}
+		return h.Serve(viewers, func(params *delta.JsonObject, self Self) (contracts.Implementation, error) {
+			session := params.Value("session")
+			count := self.Derive([]any{h.References(shown)}, func(values []any) (delta.JsonValue, error) {
+				matching := 0
+				for _, ref := range values[0].([]any) {
+					if ref.(*delta.JsonObject).Value("params").(*delta.JsonObject).Value("session") == session {
+						matching++
+					}
+				}
+				return float64(matching), nil
+			})
+			return contracts.Implementation{Members: contracts.VariantImplementation{
+				State: map[string]chord.Watchable[delta.JsonValue]{"count": count},
+			}}, nil
+		}, ServeOptions{})
+	}, HostOptions{})
+	view, err := server.Get(viewers, jsonObject("session", "S1"), background, GetOptions{})
+	must(t, err)
+	watch, err := view.Member("count").Watch(background)
+	must(t, err)
+	counts := nexttest.FramesOf(watch)
+	var tabs [2]Host
+	var links [2]*link.MemoryLink
+	for i := range tabs {
+		tabs[i], links[i] = presenceTab(t, server)
 	}
-	frames := rig.batches(t)
-	if len(presenceList(t, rig.refs)) != 4 {
-		t.Fatalf("list = %v, want four entries", presenceList(t, rig.refs))
+	for _, tab := range tabs {
+		_, err := tab.Get(shown, jsonObject("session", "S1"), background, GetOptions{})
+		must(t, err)
 	}
-	rig.refs.remove(holders, presenceBackground)
-	rig.scheduler.Wait()
+	_, err = tabs[0].Get(shown, jsonObject("session", "S2"), background, GetOptions{})
+	must(t, err)
+	count := func() any {
+		value, err := view.Member("count").Value()
+		must(t, err)
+		return value
+	}
+	nexttest.RequireJSONEqual(t, count(), float64(2))
+	links[1].Close()
+	transported(links[1])
+	// The departure is in the batch of the link's close: the derive has it.
+	nexttest.RequireJSONEqual(t, count(), float64(1))
+	deliveredOn(server)
+	got := counts.Items()
+	nexttest.RequireJSONEqual(t, got[len(got)-1].Value, float64(1))
+}
+
+// rawViewedTab is a raw tab on server holding Viewed with the owner principal; its server end closes while it sends once
+// drop (when given) is armed (a transport failing on send).
+func rawViewedTab(t testing.TB, server Host, viewed *contracts.Contract, drop *atomic.Bool, params string) (*RawPeer, *link.MemoryLink) {
+	t.Helper()
+	a, b := link.MemoryLinkPair()
+	var end link.Link = a
+	if drop != nil {
+		end = closingOnSend(a, drop)
+	}
+	must(t, server.Accept(end, LinkOptions{Principal: ownerPrincipal(), Codec: testCodec()}, background))
+	return newRawPeer(t, b, rawPeerOptions{}), a
+}
+
+// presence.test.ts › host.references › puts a departure discovered while a commit sends into the next batch: one state
+// message per commit (race 9).
+func TestHostReferencesPutsADepartureDiscoveredWhileACommitSendsIntoTheNextBatchOneStateMessagePerCommitRace9(t *testing.T) {
+	viewed := presenceViewed("count", "viewers")
+	server := presenceServer(t, func(h FacetHost) error {
+		if _, err := serveNotes(h, nil); err != nil {
+			return err
+		}
+		return h.Serve(viewed, func(params *delta.JsonObject, _ data.Principal, self Self) (contracts.Implementation, error) {
+			session := "S1"
+			store := self.Get(NoteStore, jsonObject("session", session))
+			count := self.Derive([]any{store.Member("list")}, func(values []any) (delta.JsonValue, error) {
+				return float64(len(values[0].([]any))), nil
+			})
+			viewers := self.Derive([]any{h.References(viewed)}, func(values []any) (delta.JsonValue, error) {
+				return float64(len(values[0].([]any))), nil
+			})
+			return contracts.Implementation{Variant: "v", Members: contracts.VariantImplementation{
+				State: map[string]chord.Watchable[delta.JsonValue]{"count": count, "viewers": viewers},
+			}}, nil
+		}, ServeOptions{})
+	}, HostOptions{})
+	names := wireNames(t, viewed, "v")
+	drop := &atomic.Bool{}
+	tab := func(armed *atomic.Bool) (*RawPeer, *link.MemoryLink) {
+		peer, end := rawViewedTab(t, server, viewed, armed, "{}")
+		peer.Send(holdOf(viewed, 0, "{}"))
+		return peer, end
+	}
+	// The dropped tab binds first, so its link sends (and fails) before the kept one's in the commit's flushes.
+	dropped, droppedLink := tab(drop)
+	dropped.Next("bound")
+	kept, keptLink := tab(nil)
+	kept.Next("bound")
+	transported(droppedLink, keptLink)
+	kept.takeReceived()
+	drop.Store(true)
+	addNote(t, server, "S1", "x")
+	transported(droppedLink, keptLink)
+	var changed [][]int
+	for _, message := range kept.Received() {
+		if states, ok := message.(*link.StateMessage); ok {
+			var members []int
+			for _, entry := range states.Holds {
+				for _, member := range entry.Members {
+					members = append(members, member.Member)
+				}
+			}
+			changed = append(changed, members)
+		}
+	}
+	// The commit's message carries the commit (the count); the departure is the next batch's (the viewers).
+	want := [][]int{{names.State["count"]}, {names.State["viewers"]}}
+	if len(changed) != 2 || !slices.Equal(changed[0], want[0]) || !slices.Equal(changed[1], want[1]) {
+		t.Fatalf("members of the state messages = %v, want %v", changed, want)
+	}
+	if !dropped.Closed() {
+		t.Fatalf("the dropped tab's link is open")
+	}
+}
+
+// presence.test.ts › host.references › completes a hold's bookkeeping before its presence entry publishes: a link closing
+// then leaks nothing.
+func TestHostReferencesCompletesAHoldsBookkeepingBeforeItsPresenceEntryPublishesALinkClosingThenLeaksNothing(t *testing.T) {
+	viewed := presenceViewed("viewers")
+	linger := 60 * time.Second
+	server := presenceServer(t, func(h FacetHost) error {
+		return h.Serve(viewed, func(_ *delta.JsonObject, _ data.Principal, self Self) (contracts.Implementation, error) {
+			viewers := self.Derive([]any{h.References(viewed)}, func(values []any) (delta.JsonValue, error) {
+				return float64(len(values[0].([]any))), nil
+			})
+			return contracts.Implementation{Variant: "v", Members: contracts.VariantImplementation{
+				State: map[string]chord.Watchable[delta.JsonValue]{"viewers": viewers},
+			}}, nil
+		}, ServeOptions{Linger: &linger})
+	}, HostOptions{})
+	drop := &atomic.Bool{}
+	peer, end := rawViewedTab(t, server, viewed, drop, "{}")
+	peer.Send(holdOf(viewed, 0, "{}"))
+	peer.Next("bound")
+	peer.Send(&link.AckMessage{})
+	transported(end)
+	// The second hold's presence entry changes the first's state: sending it closes the link.
+	drop.Store(true)
+	peer.Send(holdOf(viewed, 1, "{}"))
+	transported(end)
+	if !peer.Closed() {
+		t.Fatalf("the peer's link is open")
+	}
+	nexttest.RequireJSONEqual(t, presenceList(t, server, viewed), []any{})
+	if references, lingering := countOf(t, server, "references"), countOf(t, server, "lingering"); references != 0 || lingering != 1 {
+		t.Fatalf("activity = references %v lingering %v, want 0 and 1", references, lingering)
+	}
+	must(t, server.Close(background))
+}
+
+// presence.test.ts › host.references › completes a release's bookkeeping before its departure publishes: a link closing
+// then leaves no lingering. The 50 ms linger runs on the host's virtual timers.
+func TestHostReferencesCompletesAReleasesBookkeepingBeforeItsDeparturePublishesALinkClosingThenLeavesNoLingering(t *testing.T) {
+	viewed := presenceViewed("viewers")
+	linger := 50 * time.Millisecond
+	timers := newScopeLoop()
+	server := presenceServer(t, func(h FacetHost) error {
+		return h.Serve(viewed, func(_ *delta.JsonObject, _ data.Principal, self Self) (contracts.Implementation, error) {
+			viewers := self.Derive([]any{h.References(viewed)}, func(values []any) (delta.JsonValue, error) {
+				return float64(len(values[0].([]any))), nil
+			})
+			return contracts.Implementation{Variant: "v", Members: contracts.VariantImplementation{
+				State: map[string]chord.Watchable[delta.JsonValue]{"viewers": viewers},
+			}}, nil
+		}, ServeOptions{Linger: &linger})
+	}, HostOptions{loop: timers})
+	drop := &atomic.Bool{}
+	peer, end := rawViewedTab(t, server, viewed, drop, "{}")
+	for hold := range 2 {
+		peer.Send(holdOf(viewed, hold, "{}"))
+		peer.Next("bound")
+		peer.Send(&link.AckMessage{})
+	}
+	transported(end)
+	// The first release changes the second hold's state: sending it closes the link, which releases the second.
+	drop.Store(true)
+	peer.Send(&link.ReleaseMessage{Hold: 0})
+	transported(end)
+	if !peer.Closed() {
+		t.Fatalf("the peer's link is open")
+	}
+	if references, lingering := countOf(t, server, "references"), countOf(t, server, "lingering"); references != 0 || lingering != 1 {
+		t.Fatalf("activity = references %v lingering %v, want 0 and 1", references, lingering)
+	}
+	timers.AdvanceAsync(100)
+	timers.barrier()
+	nexttest.RequireJSONEqual(t, presenceList(t, server, viewed), []any{})
+	if references, lingering := countOf(t, server, "references"), countOf(t, server, "lingering"); references != 0 || lingering != 0 {
+		t.Fatalf("activity = references %v lingering %v, want 0 and 0", references, lingering)
+	}
+	must(t, server.Close(background))
+}
+
+// presence.test.ts › host.references › removes a bulk departure with one list and one splice op per entry, in one frame (a
+// revoke of many holds).
+func TestHostReferencesRemovesABulkDepartureWithOneListAndOneSpliceOpPerEntryInOneFrameARevokeOfManyHolds(t *testing.T) {
+	server := presenceServer(t, presenceServe, HostOptions{
+		RevokedBy: func(principal data.Principal) ([]delta.JsonValue, error) {
+			if principalKind(principal) == "guest" {
+				return []delta.JsonValue{jsonObject("session", principal.Value("session"))}, nil
+			}
+			return nil, nil
+		},
+	})
+	a, b := link.MemoryLinkPair()
+	must(t, server.Accept(a, LinkOptions{Principal: guestPrincipal("S1"), Codec: testCodec()}, background))
+	peer := newRawPeer(t, b, rawPeerOptions{})
+	for hold := range 4 {
+		peer.Send(holdOf(Notes, hold, `{"session":"S1"}`))
+	}
+	transported(a, b)
+	references := server.References(Notes)
+	watch, err := references.Watch(background)
+	must(t, err)
+	frames := nexttest.FramesOf(watch)
+	if got := presenceList(t, server, Notes); len(got) != 4 {
+		t.Fatalf("references = %d, want 4", len(got))
+	}
+	must(t, server.Revoke(jsonObject("session", "S1"), background))
+	deliveredOn(server)
 	got := frames.Items()
-	if len(got) != 1 {
-		t.Fatalf("frames = %d, want one", len(got))
-	}
-	removal := []any{"p", []any{}, 0, 1, []any{}}
-	nexttest.RequireJSONEqual(t, presenceOps(got[0].Ops), []any{removal, removal, removal, removal})
+	splice := []any{"p", []any{}, 0, 1, []any{}}
+	nexttest.RequireJSONEqual(t, opsOf(got), []any{[]any{splice, splice, splice, splice}})
 	nexttest.RequireJSONEqual(t, got[0].Value, []any{})
 }
 
-// Mirrors "host.references › puts a departure discovered while a commit sends into the next batch: one state message per
-// commit (race 9)": a removal made while a commit's flushes send lands in the next commit, so its frame is separate.
-func TestReferencesPutsADepartureDiscoveredWhileACommitSendsIntoTheNextBatch(t *testing.T) {
-	rig := newPresenceRig()
-	owner := delta.JsonObjectOf("kind", "owner")
-	object := presenceFakeObject{params: presenceSession("S1"), kind: contracts.KindRemote}
-	first, second := presenceHolderOf(owner, "client"), presenceHolderOf(owner, "client")
-	rig.refs.add(object, first, presenceBackground)
-	frames := rig.batches(t)
-	// One commit adds the second reference; while it sends, the first one's link closes.
-	err := rig.batch.Commit(func() error {
-		rig.refs.add(object, second, presenceBackground)
-		rig.batch.Flushing(func(context.Context) error {
-			rig.refs.remove([]presenceHolder{first}, presenceBackground)
-			return nil
-		})
-		return nil
-	}, presenceBackground)
-	if err != nil {
-		t.Fatal(err)
+// presence.test.ts › host.references › counts two tabs through a relay as two incarnations on the worker.
+func TestHostReferencesCountsTwoTabsThroughARelayAsTwoIncarnationsOnTheWorker(t *testing.T) {
+	relayed := relay(t, relayedOptions{})
+	second := newHost(t, HostOptions{OnError: func(HostError) {}})
+	must(t, second.Load(nil, background))
+	a, b := link.MemoryLinkPair()
+	must(t, relayed.Server.Accept(a, LinkOptions{Principal: ownerPrincipal(), Codec: testCodec()}, background))
+	must(t, second.Connect(b, LinkOptions{Principal: serverPrincipal(), Codec: testCodec()}, background))
+	_, err := relayed.Tab.Get(PlacedNotes, jsonObject("session", "S1"), background, GetOptions{})
+	must(t, err)
+	_, err = second.Get(PlacedNotes, jsonObject("session", "S1"), background, GetOptions{})
+	must(t, err)
+	worker := relayed.Worker("session|S1")
+	var incarnations []any
+	for _, entry := range presenceList(t, worker, PlacedNotes) {
+		incarnations = append(incarnations, entry.(*delta.JsonObject).Value("incarnation"))
 	}
-	rig.scheduler.Wait()
-	got := frames.Items()
-	if len(got) != 2 {
-		t.Fatalf("frames = %d, want the commit's and the departure's", len(got))
-	}
-	added := presenceEntry(presenceSession("S1"), owner, "client")
-	nexttest.RequireJSONEqual(t, presenceOps(got[0].Ops), []any{[]any{"p", []any{}, 1, 0, []any{added}}})
-	nexttest.RequireJSONEqual(t, presenceOps(got[1].Ops), []any{[]any{"p", []any{}, 0, 1, []any{}}})
+	nexttest.RequireJSONEqual(t, incarnations, []any{incarnationOf(relayed.Tab), incarnationOf(second)})
 }
 
-// Mirrors the doc comment of References: while nobody watches, a change drops the list and it is built on the next read,
-// in insertion order, a holder recorded again keeping its place.
-func TestReferencesBuildsTheListOnItsNextReadInInsertionOrderWhileUnwatched(t *testing.T) {
-	rig := newPresenceRig()
-	owner := delta.JsonObjectOf("kind", "owner")
-	holders := []*presenceFakeHolder{presenceHolderOf(owner, "a"), presenceHolderOf(owner, "b"), presenceHolderOf(owner, "c"), presenceHolderOf(owner, "d")}
-	object := presenceFakeObject{params: presenceSession("S1"), kind: contracts.KindLocal}
-	for _, each := range holders[:3] {
-		rig.refs.add(object, each, presenceBackground)
+// presence.test.ts › host.references › has no entries for lingering objects.
+func TestHostReferencesHasNoEntriesForLingeringObjects(t *testing.T) {
+	kept := mustContract(contracts.Remote("app.kept", contracts.RemoteDeclaration{
+		Version:     1,
+		Params:      contracts.Params{},
+		HostAddress: func(*delta.JsonObject) (contracts.Address, error) { return serverAddress(), nil },
+		Variants: []contracts.VariantEntry{contracts.Var("v", contracts.VariantDeclaration{
+			State: []contracts.Property{contracts.Prop("n", contracts.Int())},
+		})},
+	}))
+	linger := 60 * time.Second
+	hosts := linked(t, func(h FacetHost) error {
+		return h.Serve(kept, func(*delta.JsonObject, data.Principal, Self) (contracts.Implementation, error) {
+			return contracts.Implementation{Variant: "v", Members: contracts.VariantImplementation{
+				State: map[string]chord.Watchable[delta.JsonValue]{"n": Expose(state.NewConstant(float64(1)))},
+			}}, nil
+		}, ServeOptions{Linger: &linger})
+	}, linkedOptions{})
+	held, err := hosts.Client.Get(kept, jsonObject(), background, GetOptions{})
+	must(t, err)
+	if got := presenceList(t, hosts.Server, kept); len(got) != 1 {
+		t.Fatalf("references = %d, want 1", len(got))
 	}
-	nexttest.RequireJSONEqual(t, presenceList(t, rig.refs), []any{presenceEntry(presenceSession("S1"), nil, "a"), presenceEntry(presenceSession("S1"), nil, "b"), presenceEntry(presenceSession("S1"), nil, "c")})
-	rig.refs.remove([]presenceHolder{holders[1]}, presenceBackground)
-	rig.refs.add(object, holders[3], presenceBackground)
-	// A holder recorded again keeps its place, with its new entry.
-	rig.refs.record(object, holders[0])
-	nexttest.RequireJSONEqual(t, presenceList(t, rig.refs), []any{presenceEntry(presenceSession("S1"), nil, "a"), presenceEntry(presenceSession("S1"), nil, "c"), presenceEntry(presenceSession("S1"), nil, "d")})
+	held.Release()
+	transported(hosts.Links[0], hosts.Links[1])
+	nexttest.RequireJSONEqual(t, presenceList(t, hosts.Server, kept), []any{})
+	if got := countOf(t, hosts.Server, "lingering"); got != 1 {
+		t.Fatalf("lingering = %v, want 1", got)
+	}
+	must(t, hosts.Server.Close(background))
 }
 
-// Mirrors the doc comment of References: a holder added and removed in one batch is never published (its entry leaves
-// `#added` instead of becoming a removal).
-func TestReferencesAnEntryAddedAndRemovedInOneBatchPublishesNothing(t *testing.T) {
-	rig := newPresenceRig()
-	owner := delta.JsonObjectOf("kind", "owner")
-	object := presenceFakeObject{params: presenceSession("S1"), kind: contracts.KindRemote}
-	kept, gone := presenceHolderOf(owner, "kept"), presenceHolderOf(owner, "gone")
-	rig.refs.add(object, kept, presenceBackground)
-	frames := rig.batches(t)
-	err := rig.batch.Commit(func() error {
-		rig.refs.add(object, gone, presenceBackground)
-		rig.refs.remove([]presenceHolder{gone}, presenceBackground)
-		return nil
-	}, presenceBackground)
-	if err != nil {
-		t.Fatal(err)
+// presence.test.ts › host.references › keeps no released reference (GC).
+func TestHostReferencesKeepsNoReleasedReferenceGC(t *testing.T) {
+	hosts := linked(t, presenceServe, linkedOptions{})
+	server := hosts.Server
+	server.References(Notes)
+	notes, err := hosts.Client.Get(Notes, jsonObject("session", "S1"), background, GetOptions{})
+	must(t, err)
+	if got := presenceList(t, server, Notes); len(got) != 1 {
+		t.Fatalf("references = %d, want 1", len(got))
 	}
-	rig.scheduler.Wait()
-	if got := frames.Items(); len(got) != 0 {
-		t.Fatalf("frames = %d, want none", len(got))
+	var refs []weak.Pointer[hold]
+	for _, held := range serverHolds(server) {
+		refs = append(refs, weak.Make(held))
 	}
-	nexttest.RequireJSONEqual(t, presenceList(t, rig.refs), []any{presenceEntry(presenceSession("S1"), owner, "kept")})
-}
-
-// Mirrors "host.references › has no entries for lingering objects": a released reference's entry is gone at once.
-func TestReferencesHasNoEntryForAHolderThatEnded(t *testing.T) {
-	rig := newPresenceRig()
-	object := presenceFakeObject{params: presenceSession("S1"), kind: contracts.KindLocal}
-	one := presenceHolderOf(nil, "client")
-	rig.refs.add(object, one, presenceBackground)
-	if len(presenceList(t, rig.refs)) != 1 {
-		t.Fatal("no entry for a reference")
+	if len(refs) == 0 {
+		t.Fatalf("the server has no hold for the client's reference")
 	}
-	rig.refs.remove([]presenceHolder{one}, presenceBackground)
-	nexttest.RequireJSONEqual(t, presenceList(t, rig.refs), []any{})
-	// A holder that has no entry is skipped.
-	rig.refs.remove([]presenceHolder{one}, presenceBackground)
-	nexttest.RequireJSONEqual(t, presenceList(t, rig.refs), []any{})
-}
-
-// Mirrors "host.references › keeps no released reference (GC)": the entries hold no holder once it ended, watched or not.
-func TestReferencesKeepsNoReleasedReferenceGC(t *testing.T) {
-	for _, watched := range []bool{false, true} {
-		rig := newPresenceRig()
-		if watched {
-			rig.frames(t)
-		}
-		object := presenceFakeObject{params: presenceSession("S1"), kind: contracts.KindRemote}
-		ref := func() weak.Pointer[presenceFakeHolder] {
-			ended := presenceHolderOf(delta.JsonObjectOf("kind", "owner"), "client")
-			rig.refs.add(object, ended, presenceBackground)
-			rig.refs.remove([]presenceHolder{ended}, presenceBackground)
-			return weak.Make(ended)
-		}()
-		rig.scheduler.Wait()
-		nexttest.ExpectCollected(t, ref)
-		nexttest.RequireJSONEqual(t, presenceList(t, rig.refs), []any{})
-	}
+	notes.Release()
+	transported(hosts.Links[0], hosts.Links[1])
+	nexttest.RequireJSONEqual(t, presenceList(t, server, Notes), []any{})
+	expectCollectedEventually(t, refs...)
+	nexttest.RequireJSONEqual(t, presenceList(t, server, Notes), []any{})
 }

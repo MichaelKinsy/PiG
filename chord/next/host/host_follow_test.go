@@ -4,11 +4,15 @@ import (
 	"context"
 	"errors"
 	"reflect"
+	"strings"
+	"sync/atomic"
 	"testing"
+	"time"
 	"weak"
 
 	"github.com/MichaelKinsy/PiG/chord"
 	"github.com/MichaelKinsy/PiG/chord/delta"
+	"github.com/MichaelKinsy/PiG/chord/next/contracts"
 	"github.com/MichaelKinsy/PiG/chord/next/data"
 	"github.com/MichaelKinsy/PiG/chord/next/internal/nexttest"
 	"github.com/MichaelKinsy/PiG/chord/next/state"
@@ -22,7 +26,7 @@ import (
 // followRuntime is a runtime with synchronous observers, as Durable's views have them (follow.test.ts `Runtime`). Its
 // state belongs to the loop: every method but attach runs in a section; attach is what FollowSource.attach calls.
 type followRuntime struct {
-	loop      *Loop
+	loop      sectionLoop
 	value     *delta.JsonObject
 	observers []FollowObserver[any]
 	// attachments and detached count the attach calls and the detaches.
@@ -35,7 +39,7 @@ type followRuntime struct {
 	absent  bool
 }
 
-func newFollowRuntime(loop *Loop) *followRuntime {
+func newFollowRuntime(loop sectionLoop) *followRuntime {
 	return &followRuntime{loop: loop, value: memberCount(0), entered: make(chan struct{}, 16)}
 }
 
@@ -514,7 +518,7 @@ func TestFollowASourceItsRuntimeEndedIsStillDetachedAtTheObjectsEndThenCollected
 		expectEqual(t, "detached at the object's end", a.counts()[1], 1)
 		return weak.Make(left.source)
 	}()
-	nexttest.ExpectCollected(t, ref)
+	expectCollectedEventually(t, ref)
 }
 
 // Own test, mirrors follow.test.ts › GC › an ended object's followed sources are collected, and their observers
@@ -533,7 +537,7 @@ func TestFollowAnEndedObjectsFollowedSourcesAreCollectedAndTheirObserversDetache
 	var observers int
 	h.loop.Run(func() { observers = len(a.observers) })
 	expectEqual(t, "observers", observers, 0)
-	nexttest.ExpectCollected(t, ref)
+	expectCollectedEventually(t, ref)
 }
 
 // Own test, mirrors follow.ts `subscribe` and `deliver`: a member source over a followed source passes its frames on, its
@@ -594,4 +598,392 @@ func TestFollowCallsBeforeTheAttachmentResolvedMoveTheAttachmentsOlderValueOn(t 
 	}
 	expectEqual(t, "value", h.read(t, source), delta.JsonValue(memberCount(6)))
 	h.loop.Run(source.detach)
+}
+
+// --- follow.test.ts on whole hosts -----------------------------------------------------------------------------------
+
+var followView = mustContract(contracts.Local("app.view", contracts.LocalDeclaration{
+	Params:  contracts.Params{},
+	Version: 1, Members: []contracts.LocalEntry{contracts.Mem("a", kmSchema), contracts.Mem("sum", contracts.Int())},
+}))
+
+func followMs(n int) *time.Duration {
+	d := time.Duration(n) * time.Millisecond
+	return &d
+}
+
+// followServed is Pi's `served`: View following `a` and `b`, its `sum` a derive over both (its computes counted).
+type followServed struct {
+	Host     Host
+	Errors   *hostErrors
+	View     *Reference
+	A, B     *followRuntime
+	computes atomic.Int64
+	loaded   chan error
+}
+
+func followSetup(s *followServed) func(h FacetHost, _ FacetSelf) error {
+	return func(h FacetHost, _ FacetSelf) error {
+		return h.Serve(followView, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+			left := self.Follow(s.A.attach)
+			right := self.Follow(s.B.attach)
+			sum := self.Derive([]any{left, right}, func(values []any) (delta.JsonValue, error) {
+				s.computes.Add(1)
+				return values[0].(*delta.JsonObject).Value("n").(float64) + values[1].(*delta.JsonObject).Value("n").(float64), nil
+			})
+			return contracts.Implementation{Members: contracts.VariantImplementation{
+				State: map[string]chord.Watchable[delta.JsonValue]{"a": left, "sum": sum},
+			}}, nil
+		}, ServeOptions{})
+	}
+}
+
+// followRuntimes are the runtimes `a` and `b` on the loop the host will run on.
+func followRuntimes() (*followRuntime, *followRuntime, *Loop) {
+	loop := NewLoop()
+	return newFollowRuntime(loop), newFollowRuntime(loop), loop
+}
+
+// followServeOn serves on a host whose loop is loop (the runtimes' own).
+func followServeOn(t *testing.T, a, b *followRuntime, loop *Loop) *followServed {
+	t.Helper()
+	s := &followServed{A: a, B: b, loaded: make(chan error, 1)}
+	s.Errors = &hostErrors{}
+	s.Host = newHost(t, HostOptions{OnError: s.Errors.push, loop: loop})
+	go func() {
+		s.loaded <- s.Host.Load([]HostFacet{{Name: "@test/app", Facet: DefineFacet(followSetup(s))}}, background)
+	}()
+	return s
+}
+
+func followFinish(t *testing.T, s *followServed) {
+	t.Helper()
+	must(t, <-s.loaded)
+	var err error
+	s.View, err = s.Host.Get(followView, jsonObject(), background, GetOptions{})
+	must(t, err)
+}
+
+func followBatch(s *followServed) *state.Batch { return s.Host.(*chordHost).batch }
+
+func followCalls(calls []chord.WatchCall[delta.JsonValue]) []any { return msCalls(calls) }
+
+// follow.test.ts › calls › inside a running batch: one frame per commit, and a derive over two views computes once with
+// both.
+func TestHostFollowCallsInsideARunningBatchOneFramePerCommitAndADeriveOverTwoViewsComputesOnceWithBoth(t *testing.T) {
+	a, b, loop := followRuntimes()
+	s := followServeOn(t, a, b, loop)
+	followFinish(t, s)
+	calls := kmWatch(t, s.View.Member("a"))
+	sums := kmWatch(t, s.View.Member("sum"))
+	before := s.computes.Load()
+	loop.Run(func() {
+		must(t, followBatch(s).Commit(func() error {
+			a.set(1, false)
+			a.set(2, false)
+			b.set(10, false)
+			return nil
+		}, background))
+	})
+	deliveredOn(s.Host)
+	nexttest.RequireJSONEqual(t, followCalls(calls.Items()), []any{
+		[]any{"value", kmN(2), []any{[]any{"s", []any{"n"}, float64(1)}, []any{"s", []any{"n"}, float64(2)}}, false},
+	})
+	nexttest.RequireJSONEqual(t, nexttest.ValuesOf(sums.Items()), []any{float64(12)})
+	if got := s.computes.Load() - before; got != 1 {
+		t.Fatalf("computes = %d, want 1", got)
+	}
+}
+
+// follow.test.ts › calls › outside any batch: queued and applied in one batch on the next microtask.
+func TestHostFollowCallsOutsideAnyBatchQueuedAndAppliedInOneBatchOnTheNextMicrotask(t *testing.T) {
+	a, b, loop := followRuntimes()
+	s := followServeOn(t, a, b, loop)
+	followFinish(t, s)
+	sums := kmWatch(t, s.View.Member("sum"))
+	before := s.computes.Load()
+	var seen any
+	// One section: the calls are queued, the next microtask (the section's end) applies them.
+	loop.Run(func() {
+		a.set(1, false)
+		b.set(2, false)
+		seen = kmMember(t, s.View, "a")
+	})
+	nexttest.RequireJSONEqual(t, seen, kmN(0))
+	deliveredOn(s.Host)
+	nexttest.RequireJSONEqual(t, kmMember(t, s.View, "a"), kmN(1))
+	nexttest.RequireJSONEqual(t, nexttest.ValuesOf(sums.Items()), []any{float64(3)})
+	if got := s.computes.Load() - before; got != 1 {
+		t.Fatalf("computes = %d, want 1", got)
+	}
+}
+
+// follow.test.ts › calls › before the attachment resolved: applied in order on its value.
+func TestHostFollowCallsBeforeTheAttachmentResolvedAppliedInOrderOnItsValue(t *testing.T) {
+	a, b, loop := followRuntimes()
+	a.gate = make(chan struct{})
+	s := followServeOn(t, a, b, loop)
+	<-a.entered
+	a.set(5, false)
+	a.set(6, false)
+	close(a.gate)
+	followFinish(t, s)
+	nexttest.RequireJSONEqual(t, kmMember(t, s.View, "a"), kmN(6))
+}
+
+// follow.test.ts › activation › an absent address fails the activation transient; a failed activation detaches what
+// attached.
+func TestHostFollowActivationAnAbsentAddressFailsTheActivationTransientAFailedActivationDetachesWhatAttached(t *testing.T) {
+	a, b, loop := followRuntimes()
+	b.absent = true
+	s := followServeOn(t, a, b, loop)
+	<-s.loaded
+	_, err := s.Host.Get(followView, jsonObject(), background, GetOptions{ReadyTimeout: followMs(50)})
+	if err == nil || !strings.Contains(err.Error(), "followed address is absent") {
+		t.Fatalf("get = %v, want it to fail with followed address is absent", err)
+	}
+	var kinds []data.FailureKind
+	for _, each := range s.Errors.All() {
+		if each.Kind == ErrActivationFailed {
+			kinds = append(kinds, each.Failure.Kind)
+		}
+	}
+	if len(kinds) == 0 || kinds[0] != data.FailureTransient {
+		t.Fatalf("activation failures = %v, want a transient one", kinds)
+	}
+	deliveredOn(s.Host)
+	if counts := a.counts(); counts[0] != counts[1] {
+		t.Fatalf("attached %d, detached %d, want the same", counts[0], counts[1])
+	}
+	must(t, s.Host.Close(background))
+}
+
+// follow.test.ts › ends (R4) › failed: the live object fails transient once, reported, and its retry attaches again.
+func TestHostFollowEndsFailedTheLiveObjectFailsTransientOnceReportedAndItsRetryAttachesAgain(t *testing.T) {
+	a, b, loop := followRuntimes()
+	s := followServeOn(t, a, b, loop)
+	followFinish(t, s)
+	failedEnd := chord.WatchEnd{Kind: chord.WatchFailed, Error: data.NewChordError(data.ChordErrorInit{Code: data.CodeUnavailable, Message: "session failed"}, nil)}
+	a.end(failedEnd)
+	b.end(failedEnd)
+	got := s.View.State().Value()
+	if got.Kind != RefStateFailed || got.Cause.Kind != data.FailureTransient || got.RetryAt == nil || *got.RetryAt <= 0 {
+		t.Fatalf("state = %+v, want failed transient with a retryAt", got)
+	}
+	objectFailed := 0
+	for _, each := range s.Errors.All() {
+		if each.Kind == ErrObjectFailed {
+			objectFailed++
+		}
+	}
+	if objectFailed != 1 {
+		t.Fatalf("object_failed reports = %d, want 1", objectFailed)
+	}
+	nexttest.RequireJSONEqual(t, kmMember(t, s.View, "a"), kmN(0))
+	deliveredOn(s.Host)
+	s.View.Retry()
+	scopeEventually(t, "the view is live again", func() bool { return s.View.State().Value().Kind == RefStateLive })
+	if a, b := a.counts(), b.counts(); a != [2]int{2, 1} || b[0] != 2 {
+		t.Fatalf("attachments [a, a detached, b] = [%d %d %d], want [2 1 2]", a[0], a[1], b[0])
+	}
+	a.set(3, false)
+	deliveredOn(s.Host)
+	nexttest.RequireJSONEqual(t, kmMember(t, s.View, "a"), kmN(3))
+	must(t, s.Host.Close(background))
+}
+
+// follow.test.ts › ends (R4) › ended: final; a queued retirement reaches the watch first, the value stays, a new watch ends
+// at once.
+func TestHostFollowEndsEndedIsFinalAQueuedRetirementReachesTheWatchFirstTheValueStaysANewWatchEndsAtOnce(t *testing.T) {
+	a, b, loop := followRuntimes()
+	s := followServeOn(t, a, b, loop)
+	followFinish(t, s)
+	watch, err := s.View.Member("a").Watch(background)
+	must(t, err)
+	calls := nexttest.ChangesOf(watch)
+	loop.Run(func() {
+		a.set(4, true)
+		a.end(chord.WatchEnd{Kind: chord.WatchEnded})
+	})
+	<-watch.Closed()
+	if end := watch.End(); end.Kind != chord.WatchEnded {
+		t.Fatalf("end = %+v, want ended", end)
+	}
+	items := calls.Items()
+	if len(items) != 1 || items[0].Kind != chord.WatchCallValue || !items[0].Retired {
+		t.Fatalf("calls = %+v, want one retired value", items)
+	}
+	nexttest.RequireJSONEqual(t, items[0].Value, kmN(4))
+	nexttest.RequireJSONEqual(t, kmMember(t, s.View, "a"), kmN(4))
+	late, err := s.View.Member("a").Watch(background)
+	must(t, err)
+	nexttest.RequireJSONEqual(t, late.Value(), kmN(4))
+	<-late.Closed()
+	if end := late.End(); end.Kind != chord.WatchEnded {
+		t.Fatalf("late end = %+v, want ended", end)
+	}
+	if got := s.Errors.All(); len(got) != 0 {
+		t.Fatalf("errors = %v, want none", got)
+	}
+	if kind := s.View.State().Value().Kind; kind != RefStateLive {
+		t.Fatalf("view state = %s, want live", kind)
+	}
+	must(t, s.Host.Close(background))
+}
+
+// follow.test.ts › ends during activation and in one batch (review regressions) › an ended end before the attachment
+// resolved fails the activation transient / a failed end before the attachment resolved fails the activation transient.
+func TestHostFollowAnEndedOrFailedEndBeforeTheAttachmentResolvedFailsTheActivationTransient(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		end  chord.WatchEnd
+	}{
+		{"ended", chord.WatchEnd{Kind: chord.WatchEnded}},
+		{"failed", chord.WatchEnd{Kind: chord.WatchFailed, Error: errors.New("early failure")}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			a, b, loop := followRuntimes()
+			a.gate = make(chan struct{})
+			// Loading activates the object (local, empty params): its follow attaches meanwhile.
+			s := followServeOn(t, a, b, loop)
+			<-a.entered
+			a.end(tc.end)
+			close(a.gate)
+			must(t, <-s.loaded)
+			deliveredOn(s.Host)
+			var kinds []data.FailureKind
+			for _, each := range s.Errors.All() {
+				if each.Kind == ErrActivationFailed {
+					kinds = append(kinds, each.Failure.Kind)
+				}
+			}
+			if len(kinds) == 0 || kinds[0] != data.FailureTransient {
+				t.Fatalf("activation failures = %v, want a transient one", kinds)
+			}
+			must(t, s.Host.Close(background))
+			if counts := a.counts(); counts[1] != counts[0] {
+				t.Fatalf("attached %d, detached %d, want the same", counts[0], counts[1])
+			}
+		})
+	}
+}
+
+// follow.test.ts › ends during activation and in one batch (review regressions) › an end while the object activates (after
+// its sources attached) fails the activation transient.
+func TestHostFollowAnEndWhileTheObjectActivatesAfterItsSourcesAttachedFailsTheActivationTransient(t *testing.T) {
+	a, _, loop := followRuntimes()
+	var ended atomic.Bool
+	errs := &hostErrors{}
+	host := newHost(t, HostOptions{OnError: errs.push, loop: loop})
+	view := followView
+	must(t, host.Load([]HostFacet{{Name: "@test/app", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error {
+		return h.Serve(view, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+			left := self.Follow(a.attach)
+			// The activation computes the derives after the follows attached: the runtime ends then.
+			sum := self.Derive([]any{left}, func(values []any) (delta.JsonValue, error) {
+				if ended.CompareAndSwap(false, true) {
+					a.end(chord.WatchEnd{Kind: chord.WatchEnded})
+				}
+				return values[0].(*delta.JsonObject).Value("n"), nil
+			})
+			return contracts.Implementation{Members: contracts.VariantImplementation{
+				State: map[string]chord.Watchable[delta.JsonValue]{"a": left, "sum": sum},
+			}}, nil
+		}, ServeOptions{})
+	})}}, background))
+	if _, err := host.Get(view, jsonObject(), background, GetOptions{ReadyTimeout: followMs(50)}); err == nil {
+		t.Fatalf("get succeeded, want a rejection")
+	}
+	if !ended.Load() {
+		t.Fatalf("the runtime never ended")
+	}
+	var kinds []data.FailureKind
+	for _, each := range errs.All() {
+		if each.Kind == ErrActivationFailed {
+			kinds = append(kinds, each.Failure.Kind)
+		}
+	}
+	if len(kinds) == 0 || kinds[0] != data.FailureTransient {
+		t.Fatalf("activation failures = %v, want a transient one", kinds)
+	}
+	must(t, host.Close(background))
+}
+
+// follow.test.ts › ends during activation and in one batch (review regressions) › an end outside a batch after calls of two
+// views: the views of one commit are delivered together.
+func TestHostFollowAnEndOutsideABatchAfterCallsOfTwoViewsTheViewsOfOneCommitAreDeliveredTogether(t *testing.T) {
+	a, b, loop := followRuntimes()
+	s := followServeOn(t, a, b, loop)
+	followFinish(t, s)
+	sums := kmWatch(t, s.View.Member("sum"))
+	before := s.computes.Load()
+	loop.Run(func() {
+		a.set(1, true)
+		b.set(2, false)
+		a.end(chord.WatchEnd{Kind: chord.WatchEnded})
+	})
+	deliveredOn(s.Host)
+	nexttest.RequireJSONEqual(t, nexttest.ValuesOf(sums.Items()), []any{float64(3)})
+	if got := s.computes.Load() - before; got != 1 {
+		t.Fatalf("computes = %d, want 1", got)
+	}
+	must(t, s.Host.Close(background))
+}
+
+// sourcesOf is the followed sources the runtimes' observers stand for, weakly.
+func followSourcesOf(runtimes ...*followRuntime) []weak.Pointer[followSource] {
+	var out []weak.Pointer[followSource]
+	for _, runtime := range runtimes {
+		runtime.loop.Run(func() {
+			for _, observer := range runtime.observers {
+				out = append(out, weak.Make(observer.(followObserverOf).source))
+			}
+		})
+	}
+	return out
+}
+
+// follow.test.ts › GC › a source its runtime ended is still detached at the object's end, then collected.
+func TestHostFollowGCASourceItsRuntimeEndedIsStillDetachedAtTheObjectsEndThenCollected(t *testing.T) {
+	var refs []weak.Pointer[followSource]
+	var a *followRuntime
+	func() {
+		var b *followRuntime
+		var loop *Loop
+		a, b, loop = followRuntimes()
+		s := followServeOn(t, a, b, loop)
+		followFinish(t, s)
+		refs = followSourcesOf(a, b)
+		a.end(chord.WatchEnd{Kind: chord.WatchEnded})
+		deliveredOn(s.Host)
+		if got := a.counts()[1]; got != 0 {
+			t.Fatalf("detached before the object's end = %d, want 0", got)
+		}
+		must(t, s.Host.Close(background))
+		if got := a.counts()[1]; got != 1 {
+			t.Fatalf("detached after the object's end = %d, want 1", got)
+		}
+	}()
+	expectCollectedEventually(t, refs...)
+}
+
+// follow.test.ts › GC › an ended object's followed sources are collected, and their observers detached.
+func TestHostFollowGCAnEndedObjectsFollowedSourcesAreCollectedAndTheirObserversDetached(t *testing.T) {
+	var refs []weak.Pointer[followSource]
+	var a *followRuntime
+	func() {
+		var b *followRuntime
+		var loop *Loop
+		a, b, loop = followRuntimes()
+		s := followServeOn(t, a, b, loop)
+		followFinish(t, s)
+		refs = followSourcesOf(a, b)
+		must(t, s.Host.Close(background))
+	}()
+	a.loop.Run(func() {
+		if len(a.observers) != 0 {
+			t.Errorf("observers = %d, want 0", len(a.observers))
+		}
+	})
+	expectCollectedEventually(t, refs...)
 }

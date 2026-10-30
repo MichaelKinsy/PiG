@@ -5,6 +5,7 @@ package chordctx
 import (
 	"context"
 	"fmt"
+	"sync/atomic"
 	"time"
 
 	"github.com/MichaelKinsy/PiG/telemetry"
@@ -52,6 +53,38 @@ func (c *valueContext) String() string {
 type abortContext struct {
 	context.Context
 	parent context.Context
+	// signal is the other source of a WithAbortSignal context; nil otherwise.
+	signal context.Context
+	// order is the place of this context's own cancel in the order of aborts (see AbortOrder); 0 until it was cancelled.
+	order atomic.Uint64
+}
+
+// aborts numbers the aborts of the contexts WithCancel makes, in the order their cancel functions ran.
+var aborts atomic.Uint64
+
+// AbortOrder is when ctx was aborted relative to other contexts of this package: the number of the earliest abort that
+// ended it (its own cancel, or the one of a parent or signal it derives from), 0 for a context not aborted by this
+// package's cancel functions. AbortSignal.any takes the reason of the source that aborted first; a Go context derived from
+// two sources is cancelled by listeners on goroutines of their own, which may run in any order, so the one that decides the
+// reason compares AbortOrder of the sources instead.
+func AbortOrder(ctx context.Context) uint64 {
+	var earliest uint64
+	for ctx != nil {
+		c, ok := ctx.(*abortContext)
+		if !ok {
+			return earliest
+		}
+		if order := c.order.Load(); order != 0 && (earliest == 0 || order < earliest) {
+			earliest = order
+		}
+		if c.signal != nil {
+			if order := AbortOrder(c.signal); order != 0 && (earliest == 0 || order < earliest) {
+				earliest = order
+			}
+		}
+		ctx = c.parent
+	}
+	return earliest
 }
 
 func (c *abortContext) String() string { return fmt.Sprint(c.parent) + ".WithValue(chord.abortSignal)" }
@@ -94,11 +127,11 @@ func WithAbortSignal(parent, signal context.Context) context.Context {
 	derived, cancel := context.WithCancelCause(parent)
 	if signal.Err() != nil {
 		cancel(context.Cause(signal))
-		return &abortContext{Context: derived, parent: parent}
+		return &abortContext{Context: derived, parent: parent, signal: signal}
 	}
 	stop := context.AfterFunc(signal, func() { cancel(context.Cause(signal)) })
 	context.AfterFunc(derived, func() { stop() })
-	return &abortContext{Context: derived, parent: parent}
+	return &abortContext{Context: derived, parent: parent, signal: signal}
 }
 
 // WithoutAbortSignal derives a context that keeps every value but ignores caller cancellation. It is for mandatory cleanup only.
@@ -109,7 +142,11 @@ func WithoutAbortSignal(parent context.Context) context.Context {
 // WithCancel derives an independently cancellable child. cancel records cause, and a nil cause records context.Canceled.
 func WithCancel(parent context.Context) (ctx context.Context, cancel func(cause error)) {
 	derived, cancelCause := context.WithCancelCause(parent)
-	return &abortContext{Context: derived, parent: parent}, cancelCause
+	child := &abortContext{Context: derived, parent: parent}
+	return child, func(cause error) {
+		child.order.CompareAndSwap(0, aborts.Add(1))
+		cancelCause(cause)
+	}
 }
 
 // telemetryKey is Pi's TELEMETRY_CONTEXT_KEY: the key under which a context carries its telemetry parent. It prints as `.WithValue(chord.telemetry)`.

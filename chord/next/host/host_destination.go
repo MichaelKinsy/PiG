@@ -16,9 +16,8 @@ import (
 // that an object served here lives here.
 //
 // Forced Go differences. Every throw is a returned error (`reference` and `hold` return (placed, error); `misplaced`
-// returns the ChordError it hands back, and the error its `hostAddress` throws). `Placed` is a struct with a kind. The
-// `Path`, `HostLink` and `HoldRequest` of `remote/` (D6) are the seams routePath, routeLink and, for the request, its two
-// fields `address` and `type` taken as arguments of `hold`. An address's params are a *delta.JsonObject, the one params
+// returns the ChordError it hands back, and the error its `hostAddress` throws). `Placed` is a struct with a kind. A
+// `HoldRequest` of `remote/` is not named: its two fields `address` and `type` are the arguments of `hold`. An address's params are a *delta.JsonObject, the one params
 // type `contracts.HostAddress` takes and returns; a wire address's params are what a hold carried (a *delta.JsonObject or
 // a map[string]any).
 
@@ -33,7 +32,7 @@ const (
 // placed is where something is placed: here, or over a path (with the host address it was computed or named with).
 type placed struct {
 	kind    placedKind
-	path    routePath
+	path    *path
 	address link.WireAddress
 }
 
@@ -45,10 +44,10 @@ type destination struct {
 	// address is this host's address; nil for a host without one (Pi's `undefined`).
 	address *contracts.Address
 	routes  map[string]*route
-	parent  routePath
+	parent  *path
 }
 
-func newDestination(address *contracts.Address, routes map[string]*route, parent routePath) *destination {
+func newDestination(address *contracts.Address, routes map[string]*route, parent *path) *destination {
 	return &destination{address: address, routes: routes, parent: parent}
 }
 
@@ -82,7 +81,7 @@ func (d *destination) reference(typ *contracts.Contract, params *delta.JsonObjec
 // its `type` for the message): here when it is this host's (a relay never captures a hold for serving the same name); over
 // the route of its kind; else over the parent link (waiting for it while it is down), unless it came on the parent link
 // or this host never had one (`unavailable`). It returns what `reference` does.
-func (d *destination) hold(address link.WireAddress, requestType string, from routeLink, principal data.Principal, ctx context.Context) (placed, error) {
+func (d *destination) hold(address link.WireAddress, requestType string, from *hostLink, principal data.Principal, ctx context.Context) (placed, error) {
 	if d.isHere(address) {
 		return here, nil
 	}
@@ -93,7 +92,7 @@ func (d *destination) hold(address link.WireAddress, requestType string, from ro
 	if routedPath != nil {
 		return placed{kind: placedPath, path: routedPath, address: address}, nil
 	}
-	if from.Role() == "parent" || !d.parent.Linked() {
+	if from.role == linkRoleParent || !d.parent.linked() {
 		return placed{}, data.NewChordError(data.ChordErrorInit{Code: data.CodeUnavailable, Message: requestType + " is not served here"}, nil)
 	}
 	return placed{kind: placedPath, path: d.parent, address: address}, nil
@@ -117,7 +116,7 @@ func (d *destination) misplaced(typ *contracts.Contract, params *delta.JsonObjec
 
 // pathTo is the path to address when this host routes its kind (its params checked, `authorize` run for principal); nil
 // without a route for its kind.
-func (d *destination) pathTo(address link.WireAddress, principal data.Principal, ctx context.Context) (routePath, error) {
+func (d *destination) pathTo(address link.WireAddress, principal data.Principal, ctx context.Context) (*path, error) {
 	routed := d.routes[address.Kind]
 	if routed == nil {
 		return nil, nil

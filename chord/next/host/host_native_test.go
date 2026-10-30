@@ -6,10 +6,14 @@ import (
 	"fmt"
 	"reflect"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
+	"github.com/MichaelKinsy/PiG/chord"
 	chordctx "github.com/MichaelKinsy/PiG/chord/context"
+	"github.com/MichaelKinsy/PiG/chord/delta"
+	"github.com/MichaelKinsy/PiG/chord/next/contracts"
 	"github.com/MichaelKinsy/PiG/chord/next/data"
 	"github.com/MichaelKinsy/PiG/chord/next/internal/nexttest"
 )
@@ -438,5 +442,312 @@ func TestDrained(t *testing.T) {
 	running.settle(nil)
 	if result := drained(loop, []*nativeWork{done, running, failed}, time.Second); result != withinSettled {
 		t.Fatalf("drained once it settled = %v, want settled", result)
+	}
+}
+
+// --- upstream native.test.ts cases that run on hosts (loaded, host.get/hold/close, `self.open` in a served factory) ----
+
+var nativeRes = mustContract(declareLocal("app.res", contracts.LocalDeclaration{
+	Version: 1,
+	Params:  contracts.Params{contracts.Prop("id", contracts.Int())},
+	Members: []contracts.LocalEntry{contracts.Mem("n", contracts.Int())},
+}))
+
+// serveRes serves `Res` with factory, which declares its natives; `n` is constant(id).
+func serveRes(factory func(id float64, self Self)) func(h FacetHost, _ FacetSelf) error {
+	return func(h FacetHost, _ FacetSelf) error {
+		return h.Serve(nativeRes, func(params *delta.JsonObject, self Self) (contracts.Implementation, error) {
+			id := params.Value("id").(float64)
+			factory(id, self)
+			return contracts.Implementation{Members: contracts.VariantImplementation{
+				State: map[string]chord.Watchable[delta.JsonValue]{"n": constant(id)},
+			}}, nil
+		}, ServeOptions{})
+	}
+}
+
+// recorded is a mutex-guarded list of what handlers of other goroutines saw.
+type seenList[T any] struct {
+	mu   sync.Mutex
+	list []T
+}
+
+func (r *seenList[T]) add(item T) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.list = append(r.list, item)
+}
+
+func (r *seenList[T]) all() []T {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return append([]T(nil), r.list...)
+}
+
+func (r *seenList[T]) len() int { return len(r.all()) }
+
+// Mirrors native.test.ts "opening › opens one after another in declaration order; a later opener reads an earlier handle".
+func TestHostNativesOpenOneAfterAnotherInDeclarationOrderALaterOpenerReadsAnEarlierHandle(t *testing.T) {
+	var events seenList[string]
+	first := make(chan string)
+	host, _ := loaded(t, serveRes(func(_ float64, self Self) {
+		a := self.Open(func(context.Context) (any, error) {
+			events.add("open a")
+			return <-first, nil
+		}, func(any, NativeCloseReason, context.Context) error { return nil })
+		self.Open(func(context.Context) (any, error) {
+			value, err := a.Value()
+			events.add(fmt.Sprintf("open b with %v", value))
+			return "b", err
+		}, func(any, NativeCloseReason, context.Context) error { return nil })
+	}), loadedOptions{})
+	defer closeHosts(t, host)
+	got := make(chan error, 1)
+	go func() {
+		_, err := host.Get(nativeRes, jsonObject("id", float64(1)), background, GetOptions{})
+		got <- err
+	}()
+	scopeEventually(t, "open a", func() bool { return events.len() == 1 })
+	if !reflect.DeepEqual(events.all(), []string{"open a"}) {
+		t.Fatalf("events = %v, want [open a]", events.all())
+	}
+	first <- "a"
+	must(t, <-got)
+	if !reflect.DeepEqual(events.all(), []string{"open a", "open b with a"}) {
+		t.Fatalf("events = %v, want [open a, open b with a]", events.all())
+	}
+}
+
+// Mirrors "opening › opens nothing for an object ended before its first open started".
+func TestHostNativesOpenNothingForAnObjectEndedBeforeItsFirstOpenStarted(t *testing.T) {
+	var opens atomic.Int32
+	host, _ := loaded(t, serveRes(func(_ float64, self Self) {
+		self.Open(func(context.Context) (any, error) { opens.Add(1); return nil, nil }, func(any, NativeCloseReason, context.Context) error { return nil })
+	}), loadedOptions{})
+	// Held and released in one synchronous section: its attempt did not start its first open yet.
+	h := host.(*chordHost)
+	var err error
+	h.enter(func() {
+		var ref *Reference
+		ref, err = host.Hold(nativeRes, jsonObject("id", float64(1)), background, GetOptions{})
+		if err == nil {
+			ref.Release()
+		}
+	})
+	must(t, err)
+	turn(host)
+	must(t, host.Close(background))
+	if got := opens.Load(); got != 0 {
+		t.Fatalf("opens = %d, want 0", got)
+	}
+}
+
+// Mirrors "opening › throws not_ready before its open resolved and released once its close started".
+func TestHostNativesThrowNotReadyBeforeTheirOpenResolvedAndReleasedOnceTheirCloseStarted(t *testing.T) {
+	var reads seenList[any]
+	read := func(native Native[any]) {
+		value, err := native.Value()
+		if chordErr, ok := data.IsChordError(err); ok {
+			reads.add(chordErr.ToJSON())
+		} else if err != nil {
+			reads.add(err)
+		} else {
+			reads.add(value)
+		}
+	}
+	host, _ := loaded(t, serveRes(func(_ float64, self Self) {
+		var a, b Native[any]
+		a = self.Open(func(context.Context) (any, error) { read(b); return "a", nil },
+			func(any, NativeCloseReason, context.Context) error { read(a); return nil })
+		b = self.Open(func(context.Context) (any, error) { return "b", nil },
+			func(any, NativeCloseReason, context.Context) error { read(a); return nil })
+		read(a)
+	}), loadedOptions{})
+	defer closeHosts(t, host)
+	ref, err := host.Get(nativeRes, jsonObject("id", float64(1)), background, GetOptions{})
+	must(t, err)
+	ref.Release()
+	scopeEventually(t, "both closes ran", func() bool { return reads.len() == 4 })
+	notReady := func(n int) *delta.JsonObject {
+		return jsonObject("code", "not_ready", "message", fmt.Sprintf("app.res(1) native #%d: not open yet", n))
+	}
+	want := []any{
+		// In the factory, and b in a's opener.
+		notReady(1), notReady(2),
+		// a in b's close (b closes first), then in a's own close.
+		"a", jsonObject("code", "released", "reason", "closed", "message", "app.res(1) native #1: closed"),
+	}
+	nexttest.RequireJSONEqual(t, reads.all(), want)
+}
+
+// Mirrors "opening › a partly failed attempt closes what it opened, with reason end".
+func TestHostNativesAPartlyFailedAttemptClosesWhatItOpenedWithReasonEnd(t *testing.T) {
+	var closes seenList[string]
+	host, errs := loaded(t, serveRes(func(_ float64, self Self) {
+		self.Open(func(context.Context) (any, error) { return "a", nil },
+			func(value any, reason NativeCloseReason, _ context.Context) error {
+				closes.add(fmt.Sprintf("%v %s", value, reason.Kind))
+				return nil
+			})
+		self.Open(func(context.Context) (any, error) { return nil, errors.New("offline") },
+			func(any, NativeCloseReason, context.Context) error { closes.add("b"); return nil })
+	}), loadedOptions{})
+	defer closeHosts(t, host)
+	ready := 10 * time.Millisecond
+	_, err := host.Get(nativeRes, jsonObject("id", float64(1)), background, GetOptions{ReadyTimeout: &ready})
+	wantScopeError(t, err, data.CodeUnavailable, "", "app.res(1): offline")
+	scopeEventually(t, "a closed", func() bool { return closes.len() >= 1 })
+	if !reflect.DeepEqual(closes.all(), []string{"a end"}) {
+		t.Fatalf("closes = %v, want [a end]", closes.all())
+	}
+	if got := failures(errs.All()); !reflect.DeepEqual(got, []string{"app.res(1): transient"}) {
+		t.Fatalf("failures = %v, want [app.res(1): transient]", got)
+	}
+}
+
+// Mirrors "opening › aborts the opener's context when the object ends while opening; a late value is closed once (%s)".
+func TestHostNativesAbortTheOpenersContextWhenTheObjectEndsWhileOpeningALateValueIsClosedOnce(t *testing.T) {
+	for _, reason := range []string{"end", "close"} {
+		t.Run(reason, func(t *testing.T) {
+			opener := make(chan context.Context, 1)
+			late := make(chan string, 1)
+			var closes seenList[[3]any]
+			host, _ := loaded(t, serveRes(func(_ float64, self Self) {
+				self.Open(func(ctx context.Context) (any, error) { opener <- ctx; return <-late, nil },
+					// The close runs under the object's context, not under the opener's aborted one.
+					func(value any, why NativeCloseReason, ctx context.Context) error {
+						closes.add([3]any{value, string(why.Kind), ctx.Err() != nil})
+						return nil
+					})
+			}), loadedOptions{})
+			cancellable, cancel := chordctx.WithCancel(background)
+			got := make(chan error, 1)
+			go func() {
+				_, err := host.Get(nativeRes, jsonObject("id", float64(1)), cancellable, GetOptions{})
+				got <- err
+			}()
+			openContext := <-opener
+			want := "left"
+			if reason == "end" {
+				cancel(errors.New("left"))
+			} else {
+				want = "app.res(1): ended"
+				must(t, host.Close(background))
+			}
+			if err := <-got; err == nil || err.Error() != want {
+				t.Fatalf("get = %v, want %q", err, want)
+			}
+			if openContext.Err() == nil {
+				t.Fatal("the opener's context was not aborted")
+			}
+			late <- "value"
+			scopeEventually(t, "the late value closed", func() bool { return closes.len() == 1 })
+			must(t, host.Close(background))
+			if got, want := closes.all(), [][3]any{{"value", reason, false}}; !reflect.DeepEqual(got, want) {
+				t.Fatalf("closes = %v, want %v", got, want)
+			}
+		})
+	}
+}
+
+// Mirrors "closing › closes in reverse, with reason end when the object ends and close when the host closes".
+func TestHostNativesCloseInReverseWithReasonEndWhenTheObjectEndsAndCloseWhenTheHostCloses(t *testing.T) {
+	var closes seenList[string]
+	host, _ := loaded(t, serveRes(func(id float64, self Self) {
+		for _, name := range []string{"a", "b"} {
+			value := fmt.Sprintf("%v%s", id, name)
+			self.Open(func(context.Context) (any, error) { return value, nil },
+				func(value any, reason NativeCloseReason, _ context.Context) error {
+					closes.add(fmt.Sprintf("%v %s", value, reason.Kind))
+					return nil
+				})
+		}
+	}), loadedOptions{})
+	one, err := host.Get(nativeRes, jsonObject("id", float64(1)), background, GetOptions{})
+	must(t, err)
+	_, err = host.Get(nativeRes, jsonObject("id", float64(2)), background, GetOptions{})
+	must(t, err)
+	one.Release()
+	scopeEventually(t, "object 1 closed", func() bool { return closes.len() == 2 })
+	must(t, host.Close(background))
+	if want := []string{"1b end", "1a end", "2b close", "2a close"}; !reflect.DeepEqual(closes.all(), want) {
+		t.Fatalf("closes = %v, want %v", closes.all(), want)
+	}
+}
+
+// Mirrors "closing › collects every throwing close in host.close; an object ending in the background reports each".
+func TestHostNativesCollectEveryThrowingCloseInHostCloseAnObjectEndingInTheBackgroundReportsEach(t *testing.T) {
+	thrown := func(name string) error { return fmt.Errorf("close %s threw", name) }
+	host, errs := loaded(t, serveRes(func(id float64, self Self) {
+		for _, name := range []string{"a", "b"} {
+			label := fmt.Sprintf("%v%s", id, name)
+			self.Open(func(context.Context) (any, error) { return name, nil },
+				func(any, NativeCloseReason, context.Context) error { return thrown(label) })
+		}
+	}), loadedOptions{})
+	one, err := host.Get(nativeRes, jsonObject("id", float64(1)), background, GetOptions{})
+	must(t, err)
+	_, err = host.Get(nativeRes, jsonObject("id", float64(2)), background, GetOptions{})
+	must(t, err)
+	one.Release()
+	scopeEventually(t, "both closes reported", func() bool { return errs.Len() == 2 })
+	reported := errs.All()
+	for i, position := range []int{2, 1} {
+		got := reported[i]
+		want := fmt.Sprintf("close 1%s threw", []string{"b", "a"}[i])
+		if got.Kind != ErrCloseFailed || got.Object != "app.res(1)" || got.Native != (Position{Kind: PositionNative, Position: position}) || got.Error == nil || got.Error.Error() != want {
+			t.Fatalf("report %d = %+v, want close_failed app.res(1) native %d: %s", i, got, position, want)
+		}
+	}
+	closed := host.Close(background)
+	if closed == nil {
+		t.Fatal("close returned nil, want the collected closes")
+	}
+	joined, ok := errors.Unwrap(closed).(interface{ Unwrap() []error })
+	if !ok {
+		t.Fatalf("close error = %T, want a joined error", errors.Unwrap(closed))
+	}
+	var texts []string
+	for _, each := range joined.Unwrap() {
+		texts = append(texts, each.Error())
+	}
+	if want := []string{thrown("2b").Error(), thrown("2a").Error()}; !reflect.DeepEqual(texts, want) {
+		t.Fatalf("collected = %v, want %v", texts, want)
+	}
+}
+
+// Mirrors "closing › timeouts › report a close still running after its closeTimeout, abort its context then, and close the others".
+func TestHostNativesReportACloseStillRunningAfterItsCloseTimeoutAbortItsContextAndCloseTheOthers(t *testing.T) {
+	loop := newScopeLoop()
+	var events seenList[string]
+	var slow seenList[context.Context]
+	never := make(chan struct{})
+	defer close(never)
+	closeTimeout := 10 * time.Second
+	own := 500 * time.Millisecond
+	host, errs := loaded(t, serveRes(func(_ float64, self Self) {
+		self.Open(func(context.Context) (any, error) { return "a", nil },
+			func(any, NativeCloseReason, context.Context) error { events.add("close a"); return nil })
+		self.Open(func(context.Context) (any, error) { return "b", nil },
+			func(_ any, _ NativeCloseReason, ctx context.Context) error { slow.add(ctx); <-never; return nil },
+			NativeOptions{CloseTimeout: &own})
+	}), loadedOptions{CloseTimeout: &closeTimeout, Loop: loop})
+	defer closeHosts(t, host)
+	ref, err := host.Get(nativeRes, jsonObject("id", float64(1)), background, GetOptions{})
+	must(t, err)
+	ref.Release()
+	scopeEventually(t, "the slow close started", func() bool { return slow.len() == 1 })
+	loop.AdvanceAsync(499)
+	if events.len() != 0 || slow.all()[0].Err() != nil {
+		t.Fatalf("after 499 ms: events = %v, aborted = %v; want none and false", events.all(), slow.all()[0].Err() != nil)
+	}
+	loop.AdvanceAsync(1)
+	scopeEventually(t, "close a", func() bool { return events.len() == 1 })
+	if slow.all()[0].Err() == nil {
+		t.Fatal("the slow close's context was not aborted at its closeTimeout")
+	}
+	want := []HostError{{Kind: ErrCloseTimeout, Object: "app.res(1)", Native: Position{Kind: PositionNative, Position: 2}}}
+	if got := errs.All(); !reflect.DeepEqual(got, want) {
+		t.Fatalf("errors = %+v, want %+v", got, want)
 	}
 }

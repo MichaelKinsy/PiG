@@ -8,7 +8,6 @@ import (
 	"github.com/MichaelKinsy/PiG/chord"
 	chordctx "github.com/MichaelKinsy/PiG/chord/context"
 	"github.com/MichaelKinsy/PiG/chord/delta"
-	"github.com/MichaelKinsy/PiG/chord/next/contracts"
 	"github.com/MichaelKinsy/PiG/chord/next/state"
 )
 
@@ -119,10 +118,3 @@ func (d *memberDoc) set(t *testing.T, value delta.JsonValue) {
 
 // memberCount is the value {n: n} of the tests.
 func memberCount(n float64) *delta.JsonObject { return delta.JsonObjectOf("n", n) }
-
-// prepare is keys.prepare in a section of the loop: the object prepares its keys while its new attempt activates.
-func (h *memberHarness) prepare(keys *keyedMembers, members *contracts.NamedMap[*keyedBinding], ctx context.Context) *keyedPromise[struct{}] {
-	var preparing *keyedPromise[struct{}]
-	h.loop.Run(func() { preparing = keys.prepare(members, ctx) })
-	return preparing
-}

@@ -16,8 +16,7 @@ import (
 // Forced Go differences. `Presence<C, P>`'s type parameters are type-level (owner class a): Params is the object's
 // params as the host holds them (JSON). Pi's `Source` subclass is a struct embedding state.Source (state/doc.go). Its
 // entries are the JSON objects the list publishes, compared by identity as Pi's are (a `Set<Presence>`), and Pi's
-// `Map<Holder, Presence>` is an insertion-ordered map. `ChordObject` and `Holder` are the seams presenceObject and
-// presenceHolder (DESIGN-go-layout.md section 5).
+// `Map<Holder, Presence>` is an insertion-ordered map.
 
 // Presence is one reference to an object of a type: the object's params, the principal it acts as (for a remote type, nil
 // otherwise), and its incarnation: the host that made it as its caller sees it (a hold's caller over a link; two tabs are
@@ -29,22 +28,9 @@ type Presence struct {
 	Incarnation string
 }
 
-// presenceObject is the object a reference is to (Pi's `ChordObject`, D5a): its params and whether it serves a remote
-// type.
-type presenceObject interface {
-	Params() any
-	// ServedKind is `served.kind`: remote or local.
-	ServedKind() contracts.Kind
-}
-
-// presenceHolder is what holds a reference (Pi's `Holder`, D5a): its caller. It is compared by identity.
-type presenceHolder interface {
-	Caller() caller
-}
-
 // holderEntry is one entry of a references' map: the holder's entry in the order the holders were first recorded.
 type holderEntry struct {
-	holder     presenceHolder
+	holder     holder
 	entry      *delta.JsonObject
 	prev, next *holderEntry
 }
@@ -56,7 +42,7 @@ type holderEntry struct {
 type references struct {
 	state.Source
 	// entries is Pi's `Map<Holder, Presence>`, in insertion order.
-	byHolder    map[presenceHolder]*holderEntry
+	byHolder    map[holder]*holderEntry
 	first, last *holderEntry
 	// list is the list as last published or read; unset once it changed while nobody watched it.
 	list    []any
@@ -72,7 +58,7 @@ type references struct {
 var _ state.SourceImpl = (*references)(nil)
 
 func newReferences(batch *state.Batch) *references {
-	r := &references{byHolder: map[presenceHolder]*holderEntry{}, removed: map[*delta.JsonObject]struct{}{}}
+	r := &references{byHolder: map[holder]*holderEntry{}, removed: map[*delta.JsonObject]struct{}{}}
 	r.Init(batch, r)
 	return r
 }
@@ -84,7 +70,7 @@ func (r *references) Value() (delta.JsonValue, error) {
 }
 
 // add: holder references object, added in the batch running now or the next one.
-func (r *references) add(object presenceObject, holder presenceHolder, ctx context.Context) {
+func (r *references) add(object *chordObject, holder holder, ctx context.Context) {
 	// The adoption has no error to return: the commit's own failures are the batch's to report.
 	_ = r.Batch().Within(func() error {
 		entry := r.record(object, holder)
@@ -97,7 +83,7 @@ func (r *references) add(object presenceObject, holder presenceHolder, ctx conte
 }
 
 // remove: holders of object ended, removed in one batch.
-func (r *references) remove(holders []presenceHolder, ctx context.Context) {
+func (r *references) remove(holders []holder, ctx context.Context) {
 	_ = r.Batch().Within(func() error {
 		follows := r.follows()
 		for _, holder := range holders {
@@ -123,11 +109,11 @@ func (r *references) remove(holders []presenceHolder, ctx context.Context) {
 }
 
 // record records holder without a batch (the list being made) and returns its entry.
-func (r *references) record(object presenceObject, holder presenceHolder) *delta.JsonObject {
-	from := holder.Caller()
+func (r *references) record(object *chordObject, holder holder) *delta.JsonObject {
+	from := holder.caller()
 	entry := delta.NewJsonObject(3)
-	entry.Set("params", object.Params())
-	if object.ServedKind() == contracts.KindRemote && from.principal != nil {
+	entry.Set("params", object.params)
+	if object.served.contract.Kind == contracts.KindRemote && from.principal != nil {
 		entry.Set("principal", from.principal)
 	}
 	entry.Set("incarnation", from.incarnation)

@@ -3,6 +3,7 @@ package host
 import (
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/MichaelKinsy/PiG/chord/next/contracts"
 	"github.com/MichaelKinsy/PiG/chord/next/registries"
@@ -38,9 +39,9 @@ type FacetHost interface {
 
 // ServeOptions is what `host.serve` takes besides the type and the factory.
 type ServeOptions struct {
-	// Linger is how long, in milliseconds, a live object with params stays live after its last reference is released (0
-	// by default, nil): a reference within that time reuses it, with its documents and dependencies.
-	Linger *float64
+	// Linger is how long a live object with params stays live after its last reference is released (0 by default, nil):
+	// a reference within that time reuses it, with its documents and dependencies.
+	Linger *time.Duration
 }
 
 // FacetSelf is what a facet's setup declares with besides the host: its contributions to registries (R21).
@@ -51,20 +52,20 @@ type FacetSelf interface {
 	Contribute(R registries.Registry[any, any], value any) error
 }
 
-// servedKind tells what a servedEntry served.
-type servedKind string
+// servedEntryKind tells what a servedEntry served.
+type servedEntryKind string
 
 const (
 	// servedType is a served type: its contract, factory and options.
-	servedType servedKind = "type"
+	servedType servedEntryKind = "type"
 	// servedRegistry is a served registry: its provider.
-	servedRegistry servedKind = "registry"
+	servedRegistry servedEntryKind = "registry"
 )
 
 // servedEntry is what a setup served, by kind: a type (contract, factory and options), or a registry (registry and
 // provider).
 type servedEntry struct {
-	kind servedKind
+	kind servedEntryKind
 	// contract, factory and options are set for a type.
 	contract *contracts.Contract
 	// factory is the factory as the setup served it, of either kind (the host dispatches on its contract's kind).

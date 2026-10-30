@@ -3,6 +3,7 @@ package documents
 import (
 	"context"
 	"fmt"
+	"sync/atomic"
 
 	chordctx "github.com/MichaelKinsy/PiG/chord/context"
 	"github.com/MichaelKinsy/PiG/chord/delta"
@@ -97,7 +98,8 @@ type StateDefinition struct {
 	initial     func() *JsonObject
 	migrate     func(old *JsonObject, from int) (*JsonObject, error)
 	checkpoint  CheckpointWhen
-	checked     bool
+	// checked is set once the first initial() was checked: definitions are shared by every host of a process.
+	checked atomic.Bool
 }
 
 func newStateDefinition(name string, options StateOptions) (*StateDefinition, error) {
@@ -129,13 +131,13 @@ func (definition *StateDefinition) CheckpointWhen(value *JsonObject, ops []delta
 // Initial is a fresh `initial()` value; the first is checked against the schema (counted), later ones are not (R8).
 func (definition *StateDefinition) Initial(ctx context.Context) (*JsonObject, error) {
 	value := definition.initial()
-	if definition.checked {
+	if definition.checked.Load() {
 		return value, nil
 	}
 	if err := definition.check(value, "initial()", ctx); err != nil {
 		return nil, err
 	}
-	definition.checked = true
+	definition.checked.Store(true)
 	return value, nil
 }
 

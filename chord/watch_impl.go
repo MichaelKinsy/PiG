@@ -191,6 +191,13 @@ func NewDeliveryScheduler() *DeliveryScheduler { return &DeliveryScheduler{pendi
 // Wait blocks until no scheduled delivery is queued or running.
 func (s *DeliveryScheduler) Wait() { s.pending.wait() }
 
+// Busy reports whether a delivery is queued or running: what Wait would wait for.
+func (s *DeliveryScheduler) Busy() bool {
+	s.pending.mu.Lock()
+	defer s.pending.mu.Unlock()
+	return s.pending.count != 0
+}
+
 // Hold makes the deliveries that frames advanced from now on would start wait until the returned release runs, which
 // starts them in the order the watches were first advanced. Frames a watch is advanced with meanwhile fold into one call,
 // as the frames of one publication fold into the single microtask upstream queues for it. Holds nest; release is called

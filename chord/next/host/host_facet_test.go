@@ -3,6 +3,7 @@ package host
 import (
 	"reflect"
 	"testing"
+	"time"
 
 	"github.com/MichaelKinsy/PiG/chord/next/contracts"
 	"github.com/MichaelKinsy/PiG/chord/next/registries"
@@ -130,7 +131,7 @@ func TestSetUpReturnsServedEntriesAndContributionsInOrderByKind(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	linger := 60_000.0
+	linger := 60 * time.Second
 	references := 0
 	got, err := setUp("@test/app", DefineFacet(func(host FacetHost, self FacetSelf) error {
 		host.References(Info)
@@ -160,7 +161,7 @@ func TestSetUpReturnsServedEntriesAndContributionsInOrderByKind(t *testing.T) {
 		t.Fatalf("the host's references was asked %d times, want once", references)
 	}
 	if len(got.served) != 2 || got.served[0].kind != servedType || got.served[0].contract != Info ||
-		got.served[0].factory != "factory" || *got.served[0].options.Linger != 60_000 ||
+		got.served[0].factory != "factory" || *got.served[0].options.Linger != 60*time.Second ||
 		got.served[1].kind != servedRegistry || got.served[1].registry.Name != "app.names" || got.served[1].provider.Compose == nil {
 		t.Fatalf("served = %+v", got.served)
 	}
@@ -181,5 +182,33 @@ func TestSetUpRefusesWhatIsNeitherAContractNorARegistryAndKeepsTheSetupsError(t 
 	})
 	if err == nil {
 		t.Fatal("a registry served with something that is not its provider was accepted")
+	}
+}
+
+// Carries "native.test.ts › facets › cannot open natives" (`expectTypeOf<FacetHost>().not.toHaveProperty("open")`, a
+// type-level check upstream; owner class a). The mechanism is the method sets of the Go types: a facet's setup gets a
+// FacetHost and a FacetSelf, and neither declares Open (nor State, On, OnLive: a facet has no natives, documents or
+// routines), so a setup cannot open a native, and the one value its setup does reach, the facetScope behind them, has no
+// Open either; Open is a member of Self alone, the `self` of an object's factory, which is where natives live (opened
+// during an attempt's activation and closed when it ends).
+func TestFacetsCannotOpenNativesFacetHostDeclaresNoOpenMember(t *testing.T) {
+	has := func(of reflect.Type, name string) bool {
+		_, found := of.MethodByName(name)
+		return found
+	}
+	for _, of := range []reflect.Type{reflect.TypeFor[FacetHost](), reflect.TypeFor[FacetSelf](), reflect.TypeFor[*facetScope]()} {
+		for _, member := range []string{"Open", "State", "On", "OnLive"} {
+			if has(of, member) {
+				t.Errorf("%v has a %s member: a facet could declare it", of, member)
+			}
+		}
+	}
+	if !has(reflect.TypeFor[Self](), "Open") {
+		t.Error("Self has no Open: an object's factory could not open natives either")
+	}
+	// The setup the facet is given is typed by those two interfaces alone: it cannot reach Self's members.
+	setup, _ := reflect.TypeFor[Facet]().FieldByName("Setup")
+	if setup.Type != reflect.TypeFor[func(FacetHost, FacetSelf) error]() {
+		t.Fatalf("a facet's setup is %v, want func(FacetHost, FacetSelf) error", setup.Type)
 	}
 }

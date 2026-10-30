@@ -2,6 +2,7 @@ package host
 
 import (
 	"context"
+	"sync/atomic"
 	"time"
 
 	"github.com/MichaelKinsy/PiG/chord"
@@ -15,54 +16,107 @@ import (
 // again after a backoff.
 //
 // Forced Go differences.
-//   - A handler is a blocking Go function returning the error its Promise would reject with (`void | Promise<void>`):
-//     each call runs on an owned task (Loop.Go) of its own, started inside the section that makes the call and admitted to
-//     the owner's drain before it starts. Pi runs a handler's synchronous part inside that section; a Go handler runs
-//     concurrently with it, so the order of two handlers' first statements is not Pi's.
-//   - Everything else Pi awaits is a continuation inside a section, not a goroutine: `start`'s awaits are resolved by
-//     callbacks of the source's batch (`firstValue`) or never suspend (`watch`), `live`'s sleep is a loop timer, and a
-//     call's `.then` is a loop.Queue microtask. A Promise's resumption is one microtask later, as Pi's: the same section
-//     order, deterministic on a fake loop. `void watch.closed.then(...)` is the one owned task that waits on a channel
-//     (the watch has no callback form of Closed).
-//   - `on` has no overloads in Go: On follows a JSON source (a Watchable[delta.JsonValue], Chord's shared `Watch`), OnNative
-//     a native one (a NativeWatchable[any], Chord's shared `NativeWatch`); Pi decides by the class of the source's watch,
+//   - A handler is `void | Promise<void>`: it returns nil (its synchronous part was all of it) or a *Handled (an async
+//     handler's Promise: Threw for one that threw, Pending/Awaiting for one still running). Its synchronous part runs
+//     inside the section that makes the call, as Pi's does, and the call settles a microtask after, or after the Handled
+//     settled: the routines are continuations on the host's Loop (Queue is the microtask, a Handled's reaction is its
+//     promise's `then`), not tasks, so the order of two handlers' first statements, a handler's against a method call
+//     admitted in the same section, and a call's completion against a watch's frames is Pi's microtask order. A handler
+//     that has to block (a transaction, a store) does it in Awaiting, on an owned task that settles its Handled inside a
+//     section; where Pi's async function awaits across an `await`, the Go handler's code after the blocking step is that
+//     task's. Pi's extra microtask ticks of an async function that returns a Promise (thenable resolution) are not
+//     reproduced: the call settles one microtask after its Handled does.
+//   - `void watch.closed.then(...)` is the one owned task that waits on a channel (the watch has no callback form of
+//     Closed); everything else Pi awaits is a continuation inside a section: `start`'s awaits are resolved by callbacks of
+//     the source's batch (`firstValue`) or never suspend (`watch`), `live`'s sleep is a loop timer, and a call's `.then` is
+//     a loop.Queue microtask. A watch's frames are the watch's delivery tasks, which enter the loop with Run.
+//   - `on` has no overloads in Go: On follows a JSON source (anything with Chord's shared `Watch`: a document handle, a
+//     derive, a reference member; a Chord `Watchable` is one), OnNative a native one (Chord's shared `NativeWatch`); Pi decides by the class of the source's watch,
 //     which is the method's choice here. `declared instanceof NativeSource` is the declared source implementing
 //     state.NativeSourceHandle, and `declared.start().kind === "failed"` its CurrentAny failing. The ctx type parameter of
 //     the handlers is type-level (owner class a). `WatchValueCall<T>` is chord.WatchCall[T] with Kind value, `Position` is
-//     host_error.go's.
-
-// routineHost is what a routine asks of its host: its call context's host and the `onError` report.
-type routineHost interface {
-	callHost
-	// Report reports to the host's `onError`.
-	Report(err HostError)
-}
+//     host_error.go's. The declarations a factory makes throw outside the factory in Pi: the methods of RoutineDeclarations
+//     return that error; Routines' own `on`/`onLive` never throw.
 
 // routineOwner is where routines run: their owner's label (for reports), its host, whom their calls act for, and the
 // context of their calls, aborted when the owner ends. admit adds a running call to the owner's drain.
 type routineOwner struct {
 	label   string
-	host    routineHost
+	host    *chordHost
 	caller  caller
 	context context.Context
-	// admit adds a running call to the drain: done is closed when the call settled; cleanup (its bookkeeping) runs once,
-	// when it settles or when the attempt ends with it still running.
-	admit func(done <-chan struct{}, cleanup func())
+	// admit adds a running call to the drain; cleanup (its bookkeeping) runs once, a microtask after settle was called or
+	// when the attempt ends with the call still running. settle is called when the call settled. It runs inside a section.
+	admit func(cleanup func()) (settle func(err error))
 }
+
+// Handled is the Promise<void> an async routine handler returns; a handler that finished in its synchronous part
+// returns nil (Pi's `void`).
+type Handled struct {
+	// err is what a handler that threw rejected with (later is nil).
+	err error
+	// later is the promise of one still running; nil for one that threw.
+	later *keyedPromise[struct{}]
+}
+
+// Threw is the Promise an async handler that threw in its synchronous part returns: rejected with err.
+func Threw(err error) *Handled { return &Handled{err: err} }
+
+// Pending is the Promise of a handler that is still running; Resolve or Reject settles it, in a section.
+func Pending(loop sectionLoop) *Handled { return &Handled{later: newKeyedPromise[struct{}](loop)} }
+
+// Awaiting is a handler's blocking work (the awaits of Pi's async function): work runs on an owned task of the loop, off
+// the loop, and its error (nil: resolved) settles the returned Handled in a section. It runs inside a section.
+func Awaiting(loop sectionLoop, work func() error) *Handled {
+	handled := Pending(loop)
+	loop.Go(func() {
+		err := work()
+		loop.Run(func() {
+			if err != nil {
+				handled.Reject(err)
+				return
+			}
+			handled.Resolve()
+		})
+	})
+	return handled
+}
+
+// Resolve settles a Pending handler as resolved. It runs inside a section.
+func (h *Handled) Resolve() { h.later.resolve(struct{}{}) }
+
+// Reject settles a Pending handler as rejected with err. It runs inside a section.
+func (h *Handled) Reject(err error) { h.later.reject(err) }
 
 // OnHandler is a routine's handler of a JSON source: the value call (the value, the ops since the previous call, whether
 // the source's document was retired since then; Kind is always value) and the call's ctx. Failures are not calls of a
-// handler (design §11): the routine waits for the next value. The error is the handler's throw.
-type OnHandler[T any] func(call chord.WatchCall[T], ctx Ctx) error
+// handler (design §11): the routine waits for the next value. It returns nil when it finished in its synchronous part, or
+// the Handled of its async remainder (a rejection is the handler's throw).
+type OnHandler[T any] func(call chord.WatchCall[T], ctx Ctx) *Handled
 
 // OnNativeHandler is a routine's handler of a native source: the value call (the value; Kind is always value) and the
 // call's ctx.
-type OnNativeHandler[T any] func(call chord.NativeWatchCall[T], ctx Ctx) error
+type OnNativeHandler[T any] func(call chord.NativeWatchCall[T], ctx Ctx) *Handled
 
 // OnLiveHandler is an `onLive` routine: called once its owner is live.
-type OnLiveHandler func(ctx Ctx) error
+type OnLiveHandler func(ctx Ctx) *Handled
 
-// RoutineDeclarations is what the declarations of an owner (`on`, `onLive`) take; part of the factory's `self`.
+// JSONSource is a JSON source an `on` follows: whatever has Chord's shared `Watch` (a document handle, a derive, a
+// followed source, a reference member, any `chord.Watchable[delta.JsonValue]`). Pi's `Watchable<T>` is a type-level check;
+// the source's identity decides what Chord follows (`resolveWatchable`).
+type JSONSource interface {
+	Watch(ctx context.Context) (chord.WatchHandle[delta.JsonValue], error)
+}
+
+// NativeSource is a native source an `OnNative` follows: whatever has Chord's shared `NativeWatch` (a writable, a registry
+// value, `ref.state`, any `chord.NativeWatchable[any]`).
+type NativeSource interface {
+	Watch(ctx context.Context) (chord.NativeWatchHandle[any], error)
+}
+
+// RoutineDeclarations is what the declarations of an owner (`on`, `onLive`) take; part of the factory's `self`. Pi's
+// declarations throw outside the factory: the attempt's panic (the factory runs under tryPlugin, which returns it as
+// the activation's error).
 type RoutineDeclarations interface {
 	// On declares a routine over source: fn gets its current value first (ops [["r", value]]), then one call per change,
 	// never overlapping: changes during a call fold into one next call (the newest value, the ops since the previous call,
@@ -70,10 +124,10 @@ type RoutineDeclarations interface {
 	// value (`Retired` again if the call that threw had it) after a backoff (1 s doubling to 60 s), or at once on a change
 	// during the backoff. Ends with its source. A JSON watchable is one whose watch is Chord's shared `Watch` (every Chord
 	// and Durable source).
-	On(source chord.Watchable[delta.JsonValue], fn OnHandler[delta.JsonValue])
+	On(source JSONSource, fn OnHandler[delta.JsonValue])
 	// OnNative declares a routine over a native source (a registry value, `ref.state`): one whose watch is Chord's shared
 	// `NativeWatch`. As On without ops: after a busy call, one call with the newest value.
-	OnNative(source chord.NativeWatchable[any], fn OnNativeHandler[any])
+	OnNative(source NativeSource, fn OnNativeHandler[any])
 	// OnLive declares a routine called once its owner is live. Returning ends it; an error is reported and restarts it
 	// after a backoff (1 s doubling to 60 s, reset after a run of a minute); the owner's end aborts its ctx.
 	OnLive(fn OnLiveHandler)
@@ -85,9 +139,9 @@ type declaration struct {
 	kind PositionKind
 	at   Position
 	// json and onJSON are an `on` over a JSON source; native and onNative one over a native source.
-	json     chord.Watchable[delta.JsonValue]
+	json     JSONSource
 	onJSON   OnHandler[delta.JsonValue]
-	native   chord.NativeWatchable[any]
+	native   NativeSource
 	onNative OnNativeHandler[any]
 	// live is an `onLive`'s handler.
 	live OnLiveHandler
@@ -107,31 +161,22 @@ type routines struct {
 	declared []declaration
 	ons      int
 	lives    int
-	// resolveWatchable is reference.ts's: a value as the Chord source it is (a nil source is Pi's `undefined`); the error
-	// is what its getter throws.
-	resolveWatchable func(value any) (state.DeriveSource, error)
 }
 
-func newRoutines(resolveWatchable func(value any) (state.DeriveSource, error)) *routines {
-	return &routines{resolveWatchable: resolveWatchable}
-}
-
-var _ RoutineDeclarations = (*routines)(nil)
-
-// On declares `on(source, fn)` over a JSON source.
-func (r *routines) On(source chord.Watchable[delta.JsonValue], fn OnHandler[delta.JsonValue]) {
+// on declares `on(source, fn)` over a JSON source.
+func (r *routines) on(source JSONSource, fn OnHandler[delta.JsonValue]) {
 	r.ons++
 	r.declared = append(r.declared, declaration{kind: PositionOn, at: Position{Kind: PositionOn, Position: r.ons}, json: source, onJSON: fn})
 }
 
-// OnNative declares `on(source, fn)` over a native source.
-func (r *routines) OnNative(source chord.NativeWatchable[any], fn OnNativeHandler[any]) {
+// onNative declares `on(source, fn)` over a native source.
+func (r *routines) onNative(source NativeSource, fn OnNativeHandler[any]) {
 	r.ons++
 	r.declared = append(r.declared, declaration{kind: PositionOn, at: Position{Kind: PositionOn, Position: r.ons}, native: source, onNative: fn})
 }
 
-// OnLive declares `onLive(fn)`.
-func (r *routines) OnLive(fn OnLiveHandler) {
+// onLive declares `onLive(fn)`.
+func (r *routines) onLive(fn OnLiveHandler) {
 	r.lives++
 	r.declared = append(r.declared, declaration{kind: PositionOnLive, at: Position{Kind: PositionOnLive, Position: r.lives}, live: fn})
 }
@@ -145,7 +190,7 @@ func (r *routines) start(owner routineOwner) {
 			return
 		}
 		if declared.kind == PositionOn {
-			newOnRoutine(owner, declared, r.resolveWatchable).start()
+			newOnRoutine(owner, declared).start()
 		} else {
 			(&liveRoutine{owner: owner, declaration: declared}).run()
 		}
@@ -192,38 +237,48 @@ func (l *liveRoutine) sleep() {
 	var timer Timer
 	var stopAbort func() bool
 	timer = loop.AfterFunc(l.delay, func() {
-		stopAbort()
-		// The promise resolves in the timer's section; `live` resumes a microtask later.
-		loop.Queue(l.run)
+		owner.host.enter(func() {
+			stopAbort()
+			// The promise resolves in the timer's section; `live` resumes a microtask later.
+			loop.Queue(l.run)
+		})
 	})
 	stopAbort = context.AfterFunc(owner.context, func() {
-		loop.Run(func() { timer.Stop() })
+		owner.host.enter(func() { timer.Stop() })
 	})
 }
 
 // call runs one routine call under its own ctx (its `ctx.get` references released when it settles), admitted to the owner's
-// drain before the handler runs: a handler may end its own owner before its first await. after gets how it ended, a
-// microtask after it settled; it never fails. It runs inside a section; the handler runs on an owned task.
-func call(owner routineOwner, invoke func(ctx Ctx) error, after func(done called)) {
+// drain before the handler runs: a handler may end its own owner before its first await. The handler's synchronous part
+// runs here; after gets how it ended, a microtask after it settled; it never fails. It runs inside a section.
+func call(owner routineOwner, invoke func(ctx Ctx) *Handled, after func(done called)) {
 	loop := owner.host.loop()
 	ctx := newCallContext(owner.context, owner.caller, owner.host)
-	settled := make(chan struct{})
-	owner.admit(settled, ctx.settle)
-	// Plugin code: a panic becomes the rejection.
-	loop.Go(func() {
-		_, err := tryPlugin(func() (any, error) { return nil, invoke(ctx) })
-		done := called{failed: err != nil, err: err}
-		loop.Run(func() {
-			ctx.settle()
-			close(settled)
-			loop.Queue(func() { after(done) })
-		})
-	})
+	settle := owner.admit(ctx.settle)
+	finish := func(done called) {
+		ctx.settle()
+		settle(done.err)
+		loop.Queue(func() { after(done) })
+	}
+	// Plugin code: a panic in the synchronous part is the rejection.
+	result, err := tryPlugin(func() (any, error) { return invoke(ctx), nil })
+	handled, _ := result.(*Handled)
+	if err != nil {
+		handled = Threw(err)
+	}
+	switch {
+	case handled == nil:
+		loop.Queue(func() { finish(called{}) })
+	case handled.later == nil:
+		loop.Queue(func() { finish(called{failed: true, err: handled.err}) })
+	default:
+		handled.later.then(func(_ struct{}, err error) { finish(called{failed: err != nil, err: err}) })
+	}
 }
 
 // routineFailed reports a failed routine call or source (Pi's `failed`; renamed: `failed` is the reference state alias).
 func routineFailed(owner routineOwner, routine Position, err error) {
-	owner.host.Report(HostError{Kind: ErrRoutineFailed, Object: owner.label, Routine: routine, Error: err})
+	owner.host.report(HostError{Kind: ErrRoutineFailed, Object: owner.label, Routine: routine, Error: err})
 }
 
 // onStateKind is where an `on` routine stands. `starting`: taking its watch; `idle`: waiting for a change; `calling`: a
@@ -274,8 +329,10 @@ const (
 // openedWatch is a source's watch as an `on` routine uses it, erased over the watch's class: a JSON one (Watch) or a
 // native one (NativeWatch).
 type openedWatch struct {
-	value  any
-	start  func(listener func(call watchedCall))
+	value any
+	start func(listener func(call watchedCall))
+	// stop ends the watch (the owner ended); it runs inside a section.
+	stop   func()
 	closed <-chan struct{}
 	end    func() chord.WatchEnd
 }
@@ -292,10 +349,9 @@ type watchedCall struct {
 // waits: it keeps the newest frame, folding JSON ops, and the routine makes one call at a time from it, the first call and
 // the retries after a throw through the same pending frame. All of it runs inside sections.
 type onRoutine struct {
-	owner            routineOwner
-	declaration      declaration
-	resolveWatchable func(value any) (state.DeriveSource, error)
-	state            onState
+	owner       routineOwner
+	declaration declaration
+	state       onState
 	// native: a native source's watch yields values without ops; decided by the declaration's source class.
 	native bool
 	// pending is the newest value no call got yet.
@@ -313,9 +369,9 @@ type onRoutine struct {
 	failed bool
 }
 
-func newOnRoutine(owner routineOwner, declared declaration, resolveWatchable func(value any) (state.DeriveSource, error)) *onRoutine {
+func newOnRoutine(owner routineOwner, declared declaration) *onRoutine {
 	return &onRoutine{
-		owner: owner, declaration: declared, resolveWatchable: resolveWatchable,
+		owner: owner, declaration: declared,
 		state: onState{kind: stateStarting}, native: declared.native != nil,
 	}
 }
@@ -342,9 +398,11 @@ func (o *onRoutine) start() {
 	o.loop().Queue(func() { o.watching(failing, opened, err) })
 }
 
-// open is `source.watch(owner.context)`, erased.
+// open is `source.watch(owner.context)`, erased. The watch is not given the owner's abort to observe: its listener would
+// end it on a goroutine of its own, outside the section that aborts the owner; the routine stops it from a section
+// (`watching`).
 func (o *onRoutine) open() (openedWatch, error) {
-	ctx := o.owner.context
+	ctx := context.WithoutCancel(o.owner.context)
 	if o.native {
 		watch, err := o.declaration.native.Watch(ctx)
 		if err != nil {
@@ -358,6 +416,7 @@ func (o *onRoutine) open() (openedWatch, error) {
 					return nil
 				})
 			},
+			stop:   func() { _, _ = watch.Stop() },
 			closed: watch.Closed(),
 			end:    watch.End,
 		}, nil
@@ -374,6 +433,7 @@ func (o *onRoutine) open() (openedWatch, error) {
 				return nil
 			})
 		},
+		stop:   func() { _, _ = watch.Stop() },
 		closed: watch.Closed(),
 		end:    watch.End,
 	}, nil
@@ -389,15 +449,18 @@ func (o *onRoutine) watching(failing failingKind, opened openedWatch, err error)
 		}
 		return
 	}
+	// The owner's end ends the watch, from a section.
+	stopAbort := context.AfterFunc(o.owner.context, func() { o.owner.host.enter(opened.stop) })
 	// `void watch.closed.then((end) => this.#end(end))`: an owned task waits for the close.
 	loop.Go(func() {
 		<-opened.closed
-		loop.Run(func() { o.end(opened.end()) })
+		stopAbort()
+		o.owner.host.enter(func() { o.end(opened.end()) })
 	})
 	// Both listeners return at once: they enter the loop, keep the frame and return.
 	_, startErr := tryPlugin(func() (any, error) {
 		opened.start(func(call watchedCall) {
-			loop.Run(func() {
+			o.owner.host.enter(func() {
 				if call.failed {
 					o.failure()
 				} else {
@@ -434,7 +497,7 @@ func (o *onRoutine) failing() (failingKind, state.SourceHandle) {
 		}
 		return failingNone, nil
 	}
-	resolved, err := o.resolveWatchable(o.declaration.json)
+	resolved, err := resolveWatchable(unwrapMember(o.declaration.json))
 	if err != nil {
 		// Not bound or ended: the watch says so.
 		return failingNone, nil
@@ -490,7 +553,7 @@ func (o *onRoutine) firstValue(source state.SourceHandle, then func(got bool)) {
 	}
 	source.Subscribe(subscriber)
 	stopAbort = context.AfterFunc(ctx, func() {
-		loop.Run(func() { subscriber.done(false) })
+		o.owner.host.enter(func() { subscriber.done(false) })
 	})
 }
 
@@ -551,10 +614,10 @@ func (o *onRoutine) next() {
 
 // invocation is the handler's call with value: a native one with the value alone, a JSON one with the folded ops or the
 // whole value, and whether a retirement came since the last call.
-func (o *onRoutine) invocation(value any) func(ctx Ctx) error {
+func (o *onRoutine) invocation(value any) func(ctx Ctx) *Handled {
 	if o.native {
 		fn := o.declaration.onNative
-		return func(ctx Ctx) error {
+		return func(ctx Ctx) *Handled {
 			return fn(chord.NativeWatchCall[any]{Kind: chord.WatchCallValue, Value: value}, ctx)
 		}
 	}
@@ -570,7 +633,7 @@ func (o *onRoutine) invocation(value any) func(ctx Ctx) error {
 	retired := o.retired
 	o.retired = false
 	o.lastRetired = retired
-	return func(ctx Ctx) error {
+	return func(ctx Ctx) *Handled {
 		return fn(chord.WatchCall[delta.JsonValue]{Kind: chord.WatchCallValue, Value: value, Ops: ops, Retired: retired}, ctx)
 	}
 }
@@ -587,10 +650,15 @@ func (o *onRoutine) called(done called) {
 	if !done.failed {
 		o.basis = basisLast
 		o.delay = 0
-		if o.pending == nil {
+		switch {
+		case o.pending != nil:
+			o.state = onState{kind: stateSettling, timer: loop.AfterFunc(0, func() { o.owner.host.enter(o.next) })}
+		case o.owner.host.scheduler.Busy():
+			// Frames are on their way (Pi's watch replays them a microtask each, ahead of the one macrotask a call that saw
+			// changes waits): the next call waits for them, as it would for the macrotask.
+			o.state = onState{kind: stateSettling, timer: o.afterDeliveries()}
+		default:
 			o.state = onState{kind: stateIdle}
-		} else {
-			o.state = onState{kind: stateSettling, timer: loop.AfterFunc(0, o.next)}
 		}
 		return
 	}
@@ -610,12 +678,42 @@ func (o *onRoutine) called(done called) {
 		return
 	}
 	timer := loop.AfterFunc(o.delay, func() {
-		if o.pending == nil {
-			o.pending = &pendingFrame{value: o.last}
-		}
-		o.next()
+		o.owner.host.enter(func() {
+			if o.pending == nil {
+				o.pending = &pendingFrame{value: o.last}
+			}
+			o.next()
+		})
 	})
 	o.state = onState{kind: stateBackoff, timer: timer}
+}
+
+// settleTasksRunning counts the tasks of afterDeliveries still waiting: what a test that moves a fake clock waits for, as
+// Pi's `advanceTimersByTimeAsync` awaits the microtasks between timers.
+var settleTasksRunning atomic.Int64
+
+// deliveriesWait is the Timer of a routine that settles once the host's deliveries in flight entered: Stop cancels it.
+type deliveriesWait struct{ stopped atomic.Bool }
+
+// Stop implements Timer.
+func (d *deliveriesWait) Stop() bool { return !d.stopped.Swap(true) }
+
+// afterDeliveries makes the next call (or the idle state) wait for every delivery in flight: an owned task waits for the
+// host's scheduler, and the decision is a section after it.
+func (o *onRoutine) afterDeliveries() Timer {
+	wait := &deliveriesWait{}
+	host := o.owner.host
+	settleTasksRunning.Add(1)
+	host.loop().Go(func() {
+		defer settleTasksRunning.Add(-1)
+		host.scheduler.Wait()
+		host.enter(func() {
+			if !wait.stopped.Swap(true) {
+				o.next()
+			}
+		})
+	})
+	return wait
 }
 
 // end: the watch ended: the owner ended (aborted), or the source ended (no report) or failed (reported once).

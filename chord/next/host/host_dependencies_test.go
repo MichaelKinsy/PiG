@@ -1,176 +1,456 @@
 package host
 
 import (
-	"errors"
+	"context"
 	"reflect"
+	"slices"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/MichaelKinsy/PiG/chord"
+	"github.com/MichaelKinsy/PiG/chord/delta"
+	"github.com/MichaelKinsy/PiG/chord/next/contracts"
 	"github.com/MichaelKinsy/PiG/chord/next/data"
+	"github.com/MichaelKinsy/PiG/chord/next/link"
 	"github.com/MichaelKinsy/PiG/chord/next/registries"
 )
 
-// Ports packages/chord/test/next/host/dependencies.test.ts for the part that needs no host. Every case of upstream's file
-// runs a host (loaded/createHost with defineFacet, host.hold, raw parent peers, relayed hosts): "the dependency check" breaks
-// or parks a view object by what its Notes/Ping/Pong dependencies do, "parked_long" counts readyTimeout on a hold that is on
-// a link, and "a getter of a parked object" is host.get's. These are own tests of checkDependencies, waitingOn and
-// parkedLong with fakes of the seams (a binding and its target, an object and its host), each naming the case whose
-// behavior it checks; the host cases stay with the host core and the remote lane.
+// Ports packages/chord/test/next/host/dependencies.test.ts. Its cases run hosts (loaded/createHost with defineFacet,
+// host.hold, raw parent peers, relayed hosts): "the dependency check" breaks or parks a view object by what its
+// dependencies do, "parked_long" counts readyTimeout on a hold that is on a link, and "a getter of a parked object" is
+// host.get's. Two own tests of the registry dependencies and `waitingOn` follow the file's cases (no host needed).
 
-// fakeTarget is a binding's target.
-type fakeTarget struct {
-	blocksFirstPass bool
-	heldOnLink      bool
-	name            string
+var (
+	depView = mustContract(declareLocal("app.view", contracts.LocalDeclaration{
+		Version: 1,
+		Params:  contracts.Params{contracts.Prop("id", contracts.Int())},
+		Members: []contracts.LocalEntry{contracts.Mem("n", contracts.Int())},
+	}))
+	// depPing and depPong are local types with empty params and one member, `n`.
+	depPing = mustContract(declareLocal("app.ping", contracts.LocalDeclaration{Params: contracts.Params{}, Version: 1, Members: []contracts.LocalEntry{contracts.Mem("n", contracts.Int())}}))
+	depPong = mustContract(declareLocal("app.pong", contracts.LocalDeclaration{Params: contracts.Params{}, Version: 1, Members: []contracts.LocalEntry{contracts.Mem("n", contracts.Int())}}))
+)
+
+// readsN is `{ n: self.get(Type, params).n }`: a state member `n` following another reference's.
+func readsN(self Self, typ *contracts.Contract, params *delta.JsonObject, member string) contracts.Implementation {
+	return readsAs(self, typ, params, member, "n")
 }
 
-func (t *fakeTarget) BlocksFirstPass() bool { return t.blocksFirstPass }
-func (t *fakeTarget) HeldOnLink() bool      { return t.heldOnLink }
-func (t *fakeTarget) Label() string         { return t.name }
-
-// fakeBinding is a reference's binding: its state, its label and its target (none: nil).
-type fakeBinding struct {
-	state *RefState
-	name  string
-	to    dependencyTarget
+// readsAs is `{ [as]: self.get(Type, params)[member] }`.
+func readsAs(self Self, typ *contracts.Contract, params *delta.JsonObject, member, as string) contracts.Implementation {
+	n := self.Get(typ, params).Member(member)
+	return contracts.Implementation{Members: contracts.VariantImplementation{State: map[string]chord.Watchable[delta.JsonValue]{
+		as: self.Derive([]any{n}, func(values []any) (delta.JsonValue, error) { return values[0], nil }),
+	}}}
 }
 
-func (b *fakeBinding) refState() *RefState      { return b.state }
-func (b *fakeBinding) label() string            { return b.name }
-func (b *fakeBinding) target() dependencyTarget { return b.to }
-
-func referenceDependency(binding *fakeBinding) dependency {
-	return dependency{kind: dependencyReference, binding: binding}
+// serveViewOfNotes serves View reading Notes `S1`'s `count`.
+func serveViewOfNotes(h FacetHost, _ FacetSelf) error {
+	return h.Serve(depView, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		return readsN(self, Notes, jsonObject("session", "S1"), "count"), nil
+	}, ServeOptions{})
 }
 
-func dependencyErrorOf(code data.ChordErrorCode, reason data.ChordErrorReason, message string) *data.ChordError {
-	return data.NewChordError(data.ChordErrorInit{Code: code, Reason: reason, Message: message}, nil)
+// awaitRefState waits until pred holds of ref's state.
+func awaitRefState(t testing.TB, what string, ref *Reference, pred func(*RefState) bool) *RefState {
+	t.Helper()
+	var current *RefState
+	scopeEventually(t, what, func() bool {
+		current = refStateOf(ref)
+		return pred(current)
+	})
+	return current
 }
 
-func dependencyFailedWith(kind data.FailureKind, err *data.ChordError) *RefState {
-	return &RefState{Kind: RefStateFailed, Cause: data.FailureCause{Kind: kind, Error: err}}
+// wantBroken fails unless state is failed broken with an error of code (and reason when not empty).
+func wantBroken(t testing.TB, state *RefState, code data.ChordErrorCode, reason data.ChordErrorReason) {
+	t.Helper()
+	if state.Kind != RefStateFailed || state.Cause.Kind != data.FailureBroken || state.Cause.Error.Code != code || state.Cause.Error.Reason != reason {
+		t.Fatalf("state = %+v, want failed broken %s/%s", state, code, reason)
+	}
 }
 
-func dependencyEndedWith(err *data.ChordError) *RefState {
-	return &RefState{Kind: RefStateEnded, Error: err}
-}
-
-// Mirrors "the dependency check › breaks a dependent off a cycle with the cycle's error: it would wait on a ring that never
-// heals".
+// Mirrors "the dependency check › breaks a dependent off a cycle with the cycle's error: it would wait on a ring that never heals".
 func TestTheDependencyCheckBreaksADependentOffACycleWithTheCyclesError(t *testing.T) {
-	cycle := dependencyErrorOf(data.CodeInvalid, data.ReasonCycle, "app.ping and app.pong read each other")
-	got := checkDependencies([]dependency{
-		referenceDependency(&fakeBinding{state: refLive, name: "app.live"}),
-		referenceDependency(&fakeBinding{state: dependencyFailedWith(data.FailureBroken, cycle), name: "app.ping"}),
-		referenceDependency(&fakeBinding{state: refLoading, name: "app.later"}),
-	})
-	if got.kind != checkBroken || !errors.Is(got.err, cycle) {
-		t.Fatalf("check = %+v, want broken with the cycle's error", got)
+	host, errs := loaded(t, func(h FacetHost, _ FacetSelf) error {
+		for _, serve := range []func() error{
+			func() error {
+				return h.Serve(depPing, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+					return readsN(self, depPong, jsonObject(), "n"), nil
+				}, ServeOptions{})
+			},
+			func() error {
+				return h.Serve(depPong, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+					return readsN(self, depPing, jsonObject(), "n"), nil
+				}, ServeOptions{})
+			},
+			func() error {
+				return h.Serve(depView, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+					return readsN(self, depPing, jsonObject(), "n"), nil
+				}, ServeOptions{})
+			},
+		} {
+			if err := serve(); err != nil {
+				return err
+			}
+		}
+		return nil
+	}, loadedOptions{})
+	defer closeHosts(t, host)
+	view, err := host.Hold(depView, jsonObject("id", float64(1)), background, GetOptions{})
+	must(t, err)
+	state := awaitRefState(t, "view failed broken", view, func(s *RefState) bool { return s.Kind == RefStateFailed })
+	wantBroken(t, state, data.CodeInvalid, data.ReasonCycle)
+	if !contains(failures(errs.All()), "app.view(1): broken") {
+		t.Fatalf("failures = %v, want app.view(1): broken among them", failures(errs.All()))
 	}
+	view.Release()
 }
 
-// Mirrors "breaks a dependent whose dependency ended (gone): the request cannot come back": an ended dependency breaks, with
-// its error, also after a failed one.
-func TestTheDependencyCheckBreaksADependentWhoseDependencyEnded(t *testing.T) {
-	revoked := dependencyErrorOf(data.CodeForbidden, data.ReasonRevoked, "revoked")
-	got := checkDependencies([]dependency{
-		referenceDependency(&fakeBinding{state: dependencyFailedWith(data.FailureTransient, dependencyErrorOf(data.CodeUnavailable, "", "offline")), name: "app.first"}),
-		referenceDependency(&fakeBinding{state: dependencyEndedWith(revoked), name: "app.notes(S1)"}),
-	})
-	if got.kind != checkBroken || !errors.Is(got.err, revoked) {
-		t.Fatalf("check = %+v, want broken with the revoked error", got)
-	}
+// contains is slices.Contains for the file's strings.
+func contains(list []string, want string) bool {
+	return slices.Contains(list, want)
 }
 
-// Mirrors "breaks a dependent whose dependency a relay's authorize refused: forbidden heals only by retry()": a forbidden
-// failure (of any reason) is broken, an unauthorized one, not parked.
-func TestTheDependencyCheckBreaksADependentWhoseDependencyWasRefusedAuthority(t *testing.T) {
-	forbidden := dependencyErrorOf(data.CodeForbidden, "", "session|S1: not authorized")
-	got := checkDependencies([]dependency{referenceDependency(&fakeBinding{state: dependencyFailedWith(data.FailureBroken, forbidden), name: "app.notes(S1)"})})
-	if got.kind != checkBroken || !errors.Is(got.err, forbidden) {
-		t.Fatalf("check = %+v, want broken with the forbidden error", got)
+// depClient is a client host with errors collected, a raw parent peer and View (reading Notes S1's count) loaded.
+func depClient(t *testing.T, options HostOptions) (Host, *hostErrors, *RawPeer, [2]*link.MemoryLink) {
+	t.Helper()
+	errs := &hostErrors{}
+	options.OnError = errs.push
+	host := newHost(t, options)
+	peer, ends := rawParentLinks(t, host)
+	must(t, host.Load([]HostFacet{{Name: "@test/view", Facet: DefineFacet(serveViewOfNotes)}}, background))
+	return host, errs, peer, ends
+}
+
+// Mirrors "breaks a dependent whose dependency ended (gone): the request cannot come back".
+func TestTheDependencyCheckBreaksADependentWhoseDependencyEndedGone(t *testing.T) {
+	client, errs, peer, ends := depClient(t, HostOptions{})
+	defer closeHosts(t, client)
+	view, err := client.Hold(depView, jsonObject("id", float64(1)), background, GetOptions{})
+	must(t, err)
+	hold := peer.Next("hold").(*link.HoldMessage).Hold
+	peer.Send(&link.GoneMessage{Hold: hold, Error: revokedWire("revoked")})
+	transported(ends[0], ends[1])
+	state := awaitRefState(t, "view failed", view, func(s *RefState) bool { return s.Kind == RefStateFailed })
+	wantBroken(t, state, data.CodeForbidden, data.ReasonRevoked)
+	if got := failures(errs.All()); !reflect.DeepEqual(got, []string{"app.view(1): broken"}) {
+		t.Fatalf("failures = %v, want [app.view(1): broken]", got)
 	}
-	// Another invalid reason is no cycle: it parks.
-	args := dependencyErrorOf(data.CodeInvalid, data.ReasonArgs, "bad")
-	got = checkDependencies([]dependency{referenceDependency(&fakeBinding{state: dependencyFailedWith(data.FailureBroken, args), name: "app.notes(S1)"})})
-	if got.kind != checkParked {
-		t.Fatalf("check of an invalid/args failure = %+v, want parked", got)
-	}
+	view.Release()
 }
 
 // Mirrors "goes live once every dependency is: one parked on two, the second binding last".
 func TestTheDependencyCheckGoesLiveOnceEveryDependencyIs(t *testing.T) {
-	first := &fakeBinding{state: refLoading, name: "app.notes(S1)"}
-	second := &fakeBinding{state: refLoading, name: "app.notes(S2)"}
-	dependencies := []dependency{referenceDependency(first), referenceDependency(second)}
-	if got := checkDependencies(dependencies); got.kind != checkParked || got.shown != refLoading || !got.firstPass || got.remoteLoading != nil {
-		t.Fatalf("check with two loading = %+v, want parked loading", got)
-	}
-	first.state = refLive
-	if got := checkDependencies(dependencies); got.kind != checkParked || got.shown != refLoading {
-		t.Fatalf("check with the first live = %+v, want parked loading", got)
-	}
-	second.state = refLive
-	if got := checkDependencies(dependencies); got.kind != checkLive {
-		t.Fatalf("check with both live = %+v, want live", got)
-	}
-	if got := checkDependencies(nil); got.kind != checkLive {
-		t.Fatalf("check of no dependency = %+v, want live", got)
-	}
-}
-
-// Mirrors "settles a waiting ring across hosts after one round: the root cause kept" and "a getter of a parked object
-// rejects with the last parked cause": the first failed dependency in declaration order is the blocker named, as a waiting
-// cause of its label and its error; a failed one wins over a loading one.
-func TestTheDependencyCheckNamesTheFirstFailedBlocker(t *testing.T) {
-	unserved := dependencyErrorOf(data.CodeUnavailable, "", "app.x is not served here")
-	other := dependencyErrorOf(data.CodeUnavailable, "", "offline")
-	got := checkDependencies([]dependency{
-		referenceDependency(&fakeBinding{state: refLoading, name: "app.loading"}),
-		referenceDependency(&fakeBinding{state: dependencyFailedWith(data.FailureWaiting, unserved), name: "app.a"}),
-		referenceDependency(&fakeBinding{state: dependencyFailedWith(data.FailureTransient, other), name: "app.b"}),
+	client := newHost(t, HostOptions{OnError: func(HostError) {}})
+	defer closeHosts(t, client)
+	peer, ends := rawParentLinks(t, client)
+	facet := DefineFacet(func(h FacetHost, _ FacetSelf) error {
+		return h.Serve(depView, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+			a := self.Get(Notes, jsonObject("session", "S1")).Member("count")
+			b := self.Get(Notes, jsonObject("session", "S2")).Member("count")
+			return contracts.Implementation{Members: contracts.VariantImplementation{State: map[string]chord.Watchable[delta.JsonValue]{
+				"n": self.Derive([]any{a, b}, func(values []any) (delta.JsonValue, error) {
+					return values[0].(float64) + values[1].(float64), nil
+				}),
+			}}}, nil
+		}, ServeOptions{})
 	})
-	if got.kind != checkParked || got.shown.Kind != RefStateFailed || got.shown.RetryAt != nil {
-		t.Fatalf("check = %+v, want parked failed without retryAt", got)
+	must(t, client.Load([]HostFacet{{Name: "@test/view", Facet: facet}}, background))
+	view, err := client.Hold(depView, jsonObject("id", float64(1)), background, GetOptions{})
+	must(t, err)
+	first := peer.Next("hold").(*link.HoldMessage)
+	second := peer.Next("hold").(*link.HoldMessage)
+	bindHold(t, peer, first.Hold, jsonObject("text", "a"))
+	transported(ends[0], ends[1])
+	if kind := refStateOf(view).Kind; kind != RefStateLoading {
+		t.Fatalf("state = %s, want loading", kind)
 	}
-	want := waitingOn("app.a", unserved)
-	if got.shown.Cause.Kind != data.FailureWaiting || got.shown.Cause.Error.Message != want.Cause.Error.Message ||
-		got.shown.Cause.Error.Message != "waiting for app.a: app.x is not served here" {
-		t.Fatalf("shown cause = %+v, want waiting for app.a: app.x is not served here", got.shown.Cause)
+	bindHold(t, peer, second.Hold, jsonObject("text", "b"), jsonObject("text", "c"))
+	transported(ends[0], ends[1])
+	awaitRefState(t, "view live", view, func(s *RefState) bool { return s.Kind == RefStateLive })
+	n, err := view.Member("n").Value()
+	must(t, err)
+	if n != float64(3) {
+		t.Fatalf("n = %v, want 3", n)
 	}
+	view.Release()
 }
 
-// Mirrors the dependency check's `firstPass` and `remoteLoading` (parked_long's "is not reported for a local blocker" and
-// "is reported ... on a remote attempt only loading"): a blocker here still without its first outcome keeps the first pass
-// open, whether loading or failed; the first remote blocker that is only loading on a link is named.
-func TestTheDependencyCheckFirstPassAndRemoteLoading(t *testing.T) {
-	local := &fakeBinding{state: refLoading, name: "app.slow(1)", to: &fakeTarget{blocksFirstPass: true, name: "app.slow(1)"}}
-	got := checkDependencies([]dependency{referenceDependency(local)})
-	if got.kind != checkParked || got.firstPass || got.remoteLoading != nil {
-		t.Fatalf("local loading blocker = %+v, want parked, first pass open, no remote", got)
+// Mirrors "breaks a dependent whose dependency a relay's authorize refused: forbidden heals only by retry() (fix round 1, Fable)".
+func TestTheDependencyCheckBreaksADependentWhoseDependencyARelaysAuthorizeRefused(t *testing.T) {
+	client, errs, peer, ends := depClient(t, HostOptions{})
+	defer closeHosts(t, client)
+	view, err := client.Hold(depView, jsonObject("id", float64(1)), background, GetOptions{})
+	must(t, err)
+	hold := peer.Next("hold").(*link.HoldMessage).Hold
+	peer.Send(&link.FailedMessage{Hold: hold, Cause: link.WireCause{Kind: "broken", Error: jsonObject(
+		"kind", "chord", "error", jsonObject("code", "forbidden", "message", "session|S1: not authorized"))}})
+	transported(ends[0], ends[1])
+	state := awaitRefState(t, "view failed", view, func(s *RefState) bool { return s.Kind == RefStateFailed })
+	wantBroken(t, state, data.CodeForbidden, "")
+	if state.Cause.Error.Message != "session|S1: not authorized" {
+		t.Fatalf("message = %q, want session|S1: not authorized", state.Cause.Error.Message)
 	}
-	failedHere := &fakeBinding{state: dependencyFailedWith(data.FailureWaiting, dependencyErrorOf(data.CodeUnavailable, "", "x")), name: "app.f", to: &fakeTarget{blocksFirstPass: true}}
-	if got := checkDependencies([]dependency{referenceDependency(failedHere)}); got.firstPass {
-		t.Fatalf("failed blocker without a first outcome left the first pass over: %+v", got)
+	if got := failures(errs.All()); !reflect.DeepEqual(got, []string{"app.view(1): broken"}) {
+		t.Fatalf("failures = %v, want [app.view(1): broken]", got)
 	}
-	remote := &fakeBinding{state: refLoading, name: "app.notes(S1)", to: &fakeTarget{heldOnLink: true, name: "app.notes(S1)"}}
-	remote2 := &fakeBinding{state: refLoading, name: "app.notes(S2)", to: &fakeTarget{heldOnLink: true, name: "app.notes(S2)"}}
-	got = checkDependencies([]dependency{referenceDependency(remote), referenceDependency(remote2)})
-	if got.remoteLoading == nil || *got.remoteLoading != "app.notes(S1)" || !got.firstPass {
-		t.Fatalf("remote loading blockers = %+v, want the first, app.notes(S1), first pass over", got)
+	view.Release()
+}
+
+// Mirrors "settles a waiting ring across hosts after one round: the root cause kept (fix round 1, Opus F1)".
+func TestTheDependencyCheckSettlesAWaitingRingAcrossHostsAfterOneRound(t *testing.T) {
+	remoteN := func(name string, address func() contracts.Address) *contracts.Contract {
+		return mustContract(declareRemote(name, contracts.RemoteDeclaration{
+			Version:     1,
+			HostAddress: func(*delta.JsonObject) (contracts.Address, error) { return address(), nil },
+			Variants:    []contracts.VariantEntry{contracts.Var("v", contracts.VariantDeclaration{State: []contracts.Property{contracts.Prop("n", contracts.Int())}})},
+		}))
 	}
-	// A remote blocker whose hold is not on a link (the path has no link) is not named.
-	unlinked := &fakeBinding{state: refLoading, name: "app.notes(S1)", to: &fakeTarget{name: "app.notes(S1)"}}
-	if got := checkDependencies([]dependency{referenceDependency(unlinked)}); got.remoteLoading != nil {
-		t.Fatalf("a hold not on a link was named: %+v", got)
+	a := remoteN("app.a", func() contracts.Address { return Server.Address(nil) })
+	b := remoteN("app.b", func() contracts.Address { return Session.Address(jsonObject("id", "S1")) })
+	localN := func(name string) *contracts.Contract {
+		return mustContract(declareLocal(name, contracts.LocalDeclaration{Version: 1, Members: []contracts.LocalEntry{contracts.Mem("n", contracts.Int())}}))
 	}
-	// A remote blocker that failed is not named either: the parked attempt shows its cause.
-	failedRemote := &fakeBinding{state: dependencyFailedWith(data.FailureWaiting, dependencyErrorOf(data.CodeUnavailable, "", "app.notes is not served here")), name: "app.notes(S1)", to: &fakeTarget{heldOnLink: true, name: "app.notes(S1)"}}
-	got = checkDependencies([]dependency{referenceDependency(failedRemote)})
-	if got.kind != checkParked || got.remoteLoading != nil || got.shown.Kind != RefStateFailed {
-		t.Fatalf("failed remote blocker = %+v, want parked failed with no remote loading", got)
+	x, kick, front, back := localN("app.x"), localN("app.kick"), localN("app.front"), localN("app.back")
+	local := func(h FacetHost, typ *contracts.Contract, read *contracts.Contract) error {
+		return h.Serve(typ, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+			return readsN(self, read, jsonObject(), "n"), nil
+		}, ServeOptions{})
 	}
+	remoteImpl := func(h FacetHost, typ *contracts.Contract, deps ...*contracts.Contract) error {
+		return h.Serve(typ, func(_ *delta.JsonObject, _ data.Principal, self Self) (contracts.Implementation, error) {
+			implementation := readsN(self, deps[0], jsonObject(), "n")
+			for _, dep := range deps[1:] {
+				self.Get(dep, jsonObject())
+			}
+			implementation.Variant = "v"
+			return implementation, nil
+		}, ServeOptions{})
+	}
+	r := relay(t, relayedOptions{
+		Trusted: true,
+		Server: func(h FacetHost) error {
+			// The server's host object starts the worker; its A and the worker's B then start in the same turns, so the
+			// activation chains miss the ring (M§7's gap).
+			if err := local(h, kick, b); err != nil {
+				return err
+			}
+			return remoteImpl(h, a, b)
+		},
+		Worker: func(h FacetHost) error {
+			if err := local(h, front, a); err != nil {
+				return err
+			}
+			if err := local(h, back, b); err != nil {
+				return err
+			}
+			return remoteImpl(h, b, a, x)
+		},
+	})
+	defer closeHosts(t, r.Tab, r.Server)
+	scopeEventually(t, "the server's host object started the worker", func() bool { return r.Worker("session|S1") != nil })
+	r.Transported()
+	worker := r.Worker("session|S1")
+	held, err := worker.Hold(b, jsonObject(), background, GetOptions{})
+	must(t, err)
+	for range 50 {
+		r.Transported()
+	}
+	watch, err := inSection(worker, func() (chord.NativeWatchHandle[*RefState], error) { return held.State().Watch(background) })
+	must(t, err)
+	states := statesOf(t, watch)
+	for range 50 {
+		r.Transported()
+	}
+	if got := states.All(); len(got) != 0 {
+		t.Fatalf("states = %v, want none", got)
+	}
+	state := refStateOf(held)
+	if state.Kind != RefStateFailed || state.Cause.Kind != data.FailureWaiting || !strings.HasSuffix(state.Cause.Error.Message, ": app.x is not served here") {
+		t.Fatalf("state = %+v, want failed waiting ending in app.x is not served here", state)
+	}
+	held.Release()
+}
+
+// since is the report `parked_long` makes.
+func parkedLongOf(object, waitingFor string, since int64) HostError {
+	return HostError{Kind: ErrParkedLong, Object: object, WaitingFor: waitingFor, Since: since}
+}
+
+// parkedClient is a client host on a fake clock with readyTimeout 1000 ms and View loaded.
+func parkedClient(t *testing.T, loop *scopeLoop) (Host, *hostErrors) {
+	t.Helper()
+	errs := &hostErrors{}
+	ready := time.Second
+	host := newHost(t, HostOptions{ReadyTimeout: &ready, OnError: errs.push, loop: loop})
+	must(t, host.Load([]HostFacet{{Name: "@test/view", Facet: DefineFacet(serveViewOfNotes)}}, background))
+	return host, errs
+}
+
+// Mirrors "parked_long (dependency model §7) › starts its clock when the hold gets on a link: a late link is not reported at once (fix round 2, Opus F2)".
+func TestParkedLongStartsItsClockWhenTheHoldGetsOnALinkALateLinkIsNotReportedAtOnce(t *testing.T) {
+	loop := newScopeLoop()
+	client, errs := parkedClient(t, loop)
+	defer closeHosts(t, client)
+	view, err := client.Hold(depView, jsonObject("id", float64(1)), background, GetOptions{})
+	must(t, err)
+	loop.AdvanceAsync(5000)
+	peer, _ := rawParentLinks(t, client)
+	peer.Next("hold")
+	linkedAt := loop.Now()
+	loop.AdvanceAsync(10)
+	if errs.Len() != 0 {
+		t.Fatalf("errors = %v, want none", errs.All())
+	}
+	loop.AdvanceAsync(990)
+	if got, want := errs.All(), []HostError{parkedLongOf("app.view(1)", "app.notes(S1)", linkedAt)}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("errors = %+v, want %+v", got, want)
+	}
+	view.Release()
+}
+
+// Mirrors "is not reported while the path has no link: no remote attempt answers for it (fix round 1, Opus F2)".
+func TestParkedLongIsNotReportedWhileThePathHasNoLink(t *testing.T) {
+	loop := newScopeLoop()
+	client, errs := parkedClient(t, loop)
+	defer closeHosts(t, client)
+	view, err := client.Hold(depView, jsonObject("id", float64(1)), background, GetOptions{})
+	must(t, err)
+	loop.AdvanceAsync(5000)
+	if errs.Len() != 0 {
+		t.Fatalf("errors = %v, want none", errs.All())
+	}
+	if kind := refStateOf(view).Kind; kind != RefStateLoading {
+		t.Fatalf("state = %s, want loading", kind)
+	}
+	// Once a link holds it and the remote attempt is only loading, it is.
+	peer, _ := rawParentLinks(t, client)
+	peer.Next("hold")
+	loop.AdvanceAsync(5000)
+	var kinds []HostErrorKind
+	for _, err := range errs.All() {
+		kinds = append(kinds, err.Kind)
+	}
+	if !reflect.DeepEqual(kinds, []HostErrorKind{ErrParkedLong}) {
+		t.Fatalf("error kinds = %v, want [parked_long]", kinds)
+	}
+	view.Release()
+}
+
+// Mirrors "is reported once per parking episode, after readyTimeout on a remote attempt only loading; nothing fails".
+func TestParkedLongIsReportedOncePerParkingEpisodeAfterReadyTimeout(t *testing.T) {
+	loop := newScopeLoop()
+	errs := &hostErrors{}
+	ready := time.Second
+	client := newHost(t, HostOptions{ReadyTimeout: &ready, OnError: errs.push, loop: loop})
+	defer closeHosts(t, client)
+	peer, _ := rawParentLinks(t, client)
+	must(t, client.Load([]HostFacet{{Name: "@test/view", Facet: DefineFacet(serveViewOfNotes)}}, background))
+	view, err := client.Hold(depView, jsonObject("id", float64(1)), background, GetOptions{})
+	must(t, err)
+	peer.Next("hold")
+	loop.AdvanceAsync(999)
+	if errs.Len() != 0 {
+		t.Fatalf("errors = %v, want none", errs.All())
+	}
+	loop.AdvanceAsync(1)
+	if got, want := errs.All(), []HostError{parkedLongOf("app.view(1)", "app.notes(S1)", 0)}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("errors = %+v, want %+v", got, want)
+	}
+	loop.AdvanceAsync(60000)
+	if errs.Len() != 1 {
+		t.Fatalf("errors = %d, want 1", errs.Len())
+	}
+	if kind := refStateOf(view).Kind; kind != RefStateLoading {
+		t.Fatalf("state = %s, want loading", kind)
+	}
+	view.Release()
+}
+
+// Mirrors "is not reported for a remote blocker that failed: the parked attempt shows its cause instead".
+func TestParkedLongIsNotReportedForARemoteBlockerThatFailed(t *testing.T) {
+	loop := newScopeLoop()
+	errs := &hostErrors{}
+	ready := time.Second
+	client := newHost(t, HostOptions{ReadyTimeout: &ready, OnError: errs.push, loop: loop})
+	defer closeHosts(t, client)
+	peer, ends := rawParentLinks(t, client)
+	must(t, client.Load([]HostFacet{{Name: "@test/view", Facet: DefineFacet(serveViewOfNotes)}}, background))
+	view, err := client.Hold(depView, jsonObject("id", float64(1)), background, GetOptions{})
+	must(t, err)
+	hold := peer.Next("hold").(*link.HoldMessage).Hold
+	peer.Send(&link.FailedMessage{Hold: hold, Cause: link.WireCause{Kind: "waiting", Error: jsonObject(
+		"kind", "chord", "error", jsonObject("code", "unavailable", "message", "app.notes is not served here"))}})
+	transported(ends[0], ends[1])
+	loop.AdvanceAsync(60000)
+	if errs.Len() != 0 {
+		t.Fatalf("errors = %v, want none", errs.All())
+	}
+	state := awaitRefState(t, "the parked view shows its cause", view, func(s *RefState) bool { return s.Kind == RefStateFailed })
+	if state.Cause.Kind != data.FailureWaiting {
+		t.Fatalf("state = %+v, want failed waiting", state)
+	}
+	if got := loop.TimerCount(); got != 0 {
+		t.Fatalf("timers = %d, want 0", got)
+	}
+	view.Release()
+}
+
+// Mirrors "is not reported for a local blocker: its own deadline bounds it".
+func TestParkedLongIsNotReportedForALocalBlocker(t *testing.T) {
+	slow := mustContract(declareLocal("app.slow", contracts.LocalDeclaration{
+		Version: 1,
+		Params:  contracts.Params{contracts.Prop("id", contracts.Int())},
+		Members: []contracts.LocalEntry{contracts.Mem("n", contracts.Int())},
+	}))
+	loop := newScopeLoop()
+	ready := time.Second
+	host, errs := loaded(t, func(h FacetHost, _ FacetSelf) error {
+		if err := h.Serve(slow, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+			selfOpen(self, func(ctx context.Context) error { <-ctx.Done(); return nil }, func(NativeCloseReason) {})
+			return contracts.Implementation{Members: contracts.VariantImplementation{State: map[string]chord.Watchable[delta.JsonValue]{"n": constant(float64(1))}}}, nil
+		}, ServeOptions{}); err != nil {
+			return err
+		}
+		return h.Serve(depView, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+			return readsN(self, slow, jsonObject("id", float64(1)), "n"), nil
+		}, ServeOptions{})
+	}, loadedOptions{ReadyTimeout: &ready, Loop: loop})
+	defer closeHosts(t, host)
+	view, err := host.Hold(depView, jsonObject("id", float64(1)), background, GetOptions{})
+	must(t, err)
+	loop.AdvanceAsync(5000)
+	for _, err := range errs.All() {
+		if err.Kind == ErrParkedLong {
+			t.Fatalf("a parked_long was reported: %+v", err)
+		}
+	}
+	view.Release()
+}
+
+// Mirrors "a getter of a parked object (fix round 1, Astra 6) › rejects with the last parked cause after its dependency fell back to loading, the newest of several".
+func TestAGetterOfAParkedObjectRejectsWithTheLastParkedCauseAfterItsDependencyFellBackToLoading(t *testing.T) {
+	host := newHost(t, HostOptions{OnError: func(HostError) {}})
+	defer closeHosts(t, host)
+	peer, ends := rawParentLinks(t, host)
+	must(t, host.Load([]HostFacet{{Name: "@test/view", Facet: DefineFacet(serveViewOfNotes)}}, background))
+	ready := 80 * time.Millisecond
+	pending := make(chan error, 1)
+	go func() {
+		_, err := host.Get(depView, jsonObject("id", float64(1)), background, GetOptions{ReadyTimeout: &ready})
+		pending <- err
+	}()
+	hold := peer.Next("hold").(*link.HoldMessage).Hold
+	for _, message := range []string{"first absence", "specific provider absence"} {
+		peer.Send(&link.FailedMessage{Hold: hold, Cause: link.WireCause{Kind: "waiting", Error: jsonObject(
+			"kind", "chord", "error", jsonObject("code", "unavailable", "message", message))}})
+		transported(ends[0], ends[1])
+	}
+	peer.Send(&link.LoadingMessage{Hold: hold})
+	transported(ends[0], ends[1])
+	wantScopeError(t, <-pending, data.CodeUnavailable, "", "waiting for app.notes(S1): specific provider absence")
 }
 
 // Own test of the registry dependencies (`self.registry` values): one served and composed is live, also at its last good
@@ -199,150 +479,14 @@ func TestTheDependencyCheckOfRegistryValues(t *testing.T) {
 	if message := got.shown.Cause.Error.Message; !strings.HasPrefix(message, "waiting for registry app.absent: ") {
 		t.Fatalf("waiting message = %q, want it to name registry app.absent", message)
 	}
-	// A reference that failed before it keeps its place as the blocker named.
-	first := &fakeBinding{state: dependencyFailedWith(data.FailureTransient, dependencyErrorOf(data.CodeUnavailable, "", "offline")), name: "app.first"}
-	got = checkDependencies([]dependency{referenceDependency(first), {kind: dependencyRegistry, value: absent.Value(1)}})
-	if message := got.shown.Cause.Error.Message; message != "waiting for app.first: offline" {
-		t.Fatalf("waiting message = %q, want waiting for app.first: offline", message)
-	}
 }
 
 // Own test of `waitingOn`: a parked attempt's failed state, waiting, with no retry time, and a new object each time.
 func TestWaitingOnIsAFailedWaitingStateWithoutRetryAt(t *testing.T) {
-	err := dependencyErrorOf(data.CodeUnavailable, "", "offline")
+	err := data.NewChordError(data.ChordErrorInit{Code: data.CodeUnavailable, Message: "offline"}, nil)
 	got := waitingOn("app.notes(S1)", err)
 	want := data.WaitingFor("app.notes(S1)", err)
 	if got.Kind != RefStateFailed || got.RetryAt != nil || !reflect.DeepEqual(got.Cause, want) {
 		t.Fatalf("waitingOn = %+v, want failed waiting %+v", got, want)
-	}
-}
-
-// fakeParkedObject is the object whose attempt parks, and its host's timeouts.ready and report.
-type fakeParkedObject struct {
-	name    string
-	ready   time.Duration
-	reports []HostError
-}
-
-func (o *fakeParkedObject) label() string               { return o.name }
-func (o *fakeParkedObject) readyTimeout() time.Duration { return o.ready }
-func (o *fakeParkedObject) report(err HostError)        { o.reports = append(o.reports, err) }
-
-func parkedLongHarness() (*fakeLoop, *fakeParkedObject, *parkedLong) {
-	loop := newFakeLoop()
-	object := &fakeParkedObject{name: "app.view(1)", ready: time.Second}
-	return loop, object, newParkedLong(loop, object)
-}
-
-func parkedLongReport(waitingFor string, since int64) HostError {
-	return HostError{Kind: ErrParkedLong, Object: "app.view(1)", WaitingFor: waitingFor, Since: since}
-}
-
-// Mirrors "parked_long › is reported once per parking episode, after readyTimeout on a remote attempt only loading; nothing
-// fails".
-func TestParkedLongIsReportedOncePerParkingEpisodeAfterReadyTimeout(t *testing.T) {
-	loop, object, long := parkedLongHarness()
-	long.waitingOn(new("app.notes(S1)"))
-	loop.Advance(999)
-	if len(object.reports) != 0 {
-		t.Fatalf("reports before readyTimeout = %v", object.reports)
-	}
-	loop.Advance(1)
-	if want := []HostError{parkedLongReport("app.notes(S1)", 0)}; !reflect.DeepEqual(object.reports, want) {
-		t.Fatalf("reports = %v, want %v", object.reports, want)
-	}
-	loop.Advance(60_000)
-	// The check goes on finding the blocker: once reported, nothing more, and no timer.
-	long.waitingOn(new("app.notes(S1)"))
-	loop.Advance(60_000)
-	if len(object.reports) != 1 || loop.TimerCount() != 0 {
-		t.Fatalf("reports %d timers %d, want 1 0", len(object.reports), loop.TimerCount())
-	}
-}
-
-// Mirrors "starts its clock when the hold gets on a link: a late link is not reported at once".
-func TestParkedLongStartsItsClockWhenTheHoldGetsOnALink(t *testing.T) {
-	loop, object, long := parkedLongHarness()
-	long.waitingOn(nil)
-	loop.Advance(5_000)
-	long.waitingOn(new("app.notes(S1)"))
-	linked := loop.Now()
-	loop.Advance(10)
-	if len(object.reports) != 0 {
-		t.Fatalf("reports 10 ms after the link = %v, want none", object.reports)
-	}
-	loop.Advance(990)
-	if want := []HostError{parkedLongReport("app.notes(S1)", linked)}; !reflect.DeepEqual(object.reports, want) {
-		t.Fatalf("reports = %v, want %v", object.reports, want)
-	}
-}
-
-// Mirrors "is not reported while the path has no link: no remote attempt answers for it": with no remote blocker, nothing
-// runs, and the first one found starts the clock.
-func TestParkedLongIsNotReportedWhileNoRemoteBlockerIsOnALink(t *testing.T) {
-	loop, object, long := parkedLongHarness()
-	for range 5 {
-		long.waitingOn(nil)
-		loop.Advance(1_000)
-	}
-	if len(object.reports) != 0 || loop.TimerCount() != 0 {
-		t.Fatalf("reports %d timers %d, want 0 0", len(object.reports), loop.TimerCount())
-	}
-	long.waitingOn(new("app.notes(S1)"))
-	loop.Advance(5_000)
-	if len(object.reports) != 1 || object.reports[0].Kind != ErrParkedLong {
-		t.Fatalf("reports = %v, want one parked_long", object.reports)
-	}
-}
-
-// Mirrors "is not reported for a remote blocker that failed: the parked attempt shows its cause instead": the blocker
-// gone, the timer and the clock stop.
-func TestParkedLongStopsWhenTheBlockerIsGone(t *testing.T) {
-	loop, object, long := parkedLongHarness()
-	long.waitingOn(new("app.notes(S1)"))
-	loop.Advance(500)
-	long.waitingOn(nil)
-	loop.Advance(60_000)
-	if len(object.reports) != 0 || loop.TimerCount() != 0 {
-		t.Fatalf("reports %d timers %d, want 0 0", len(object.reports), loop.TimerCount())
-	}
-	// A blocker back starts the clock again, from then: only the time a remote attempt answered for the wait counts.
-	long.waitingOn(new("app.notes(S2)"))
-	back := loop.Now()
-	loop.Advance(999)
-	if len(object.reports) != 0 {
-		t.Fatalf("reports before the new clock ran out = %v", object.reports)
-	}
-	loop.Advance(1)
-	if want := []HostError{parkedLongReport("app.notes(S2)", back)}; !reflect.DeepEqual(object.reports, want) {
-		t.Fatalf("reports = %v, want %v", object.reports, want)
-	}
-}
-
-// Own test of "The remote blocker it would name now": its one timer is kept while the blocker changes, and the report names
-// the blocker of the moment.
-func TestParkedLongNamesTheBlockerOfTheMomentWithOneTimer(t *testing.T) {
-	loop, object, long := parkedLongHarness()
-	long.waitingOn(new("app.notes(S1)"))
-	loop.Advance(400)
-	long.waitingOn(new("app.notes(S2)"))
-	if loop.TimerCount() != 1 {
-		t.Fatalf("timers = %d, want 1", loop.TimerCount())
-	}
-	loop.Advance(600)
-	if want := []HostError{parkedLongReport("app.notes(S2)", 0)}; !reflect.DeepEqual(object.reports, want) {
-		t.Fatalf("reports = %v, want %v", object.reports, want)
-	}
-}
-
-// Own test of the timer's delay: the time left of readyTimeout from `since`, never negative (a timer of 0 runs at once, as
-// the loop's nodeDelay gives it 1 ms).
-func TestParkedLongDelayIsTheTimeLeft(t *testing.T) {
-	loop, object, long := parkedLongHarness()
-	object.ready = 0
-	long.waitingOn(new("app.notes(S1)"))
-	loop.Advance(1)
-	if len(object.reports) != 1 {
-		t.Fatalf("reports with readyTimeout 0 = %v, want one", object.reports)
 	}
 }

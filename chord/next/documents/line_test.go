@@ -78,3 +78,30 @@ func TestTheLineIgnoresASecondReleaseOfTheSameHolder(t *testing.T) {
 		t.Fatal("the third holder never took the line")
 	}
 }
+
+// WaitingHolders is what the host's tests read to know that a transaction took its place on the line (Pi's tests rely on
+// the order of promise calls): it counts the holders that asked and wait, and is zero once each was handed the line.
+func TestTheLineReportsItsWaitingHoldersToTheHostsTests(t *testing.T) {
+	line := NewLine()
+	if got := line.WaitingHolders(); got != 0 {
+		t.Fatalf("WaitingHolders of a free line = %d", got)
+	}
+	first := line.Acquire()
+	if got := line.WaitingHolders(); got != 0 {
+		t.Fatalf("WaitingHolders with the line held and nobody asking = %d", got)
+	}
+	handed := make(chan func(), 2)
+	for range 2 {
+		go func() { handed <- line.Acquire() }()
+	}
+	waitingIs(t, line, 2)
+	if got := line.WaitingHolders(); got != 2 {
+		t.Fatalf("WaitingHolders with two asking = %d, want 2", got)
+	}
+	first()
+	(<-handed)()
+	(<-handed)()
+	if got := line.WaitingHolders(); got != 0 {
+		t.Fatalf("WaitingHolders once every holder was handed the line = %d", got)
+	}
+}
