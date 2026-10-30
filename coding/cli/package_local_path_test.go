@@ -137,4 +137,14 @@ func TestInstallValidateOnlyWithoutSourceReportsConfiguredLocalPackages(t *testi
 	if code != 1 || !strings.Contains(stderr, gone) || !strings.Contains(stderr, `Run "`+codingagent.AppName+` remove `+gone+`"`) {
 		t.Fatalf("text mode code = %d stderr = %q, want 1 naming %s and its remove command", code, stderr, gone)
 	}
+
+	// JSON.stringify never escapes <, > or &, so a path holding them is written as it is.
+	special := filepath.Join(tmp, "pkgsrc", "a<b>&c")
+	if err := sm.SetPackages([]codingagent.PackageSource{{Source: special}}); err != nil {
+		t.Fatal(err)
+	}
+	stdout, stderr, code = captureStdoutStderr(t, func() int { return runPackageCommand([]string{"install", "--validate-only", "--json"}) })
+	if code != 1 || strings.Count(stdout, "a<b>&c") != 4 || strings.Contains(stdout, `\u003`) || !strings.HasSuffix(stdout, "\n}\n") {
+		t.Fatalf("code = %d, stdout = %q (stderr %q), want 1 with the path unescaped in source, path, error and remove and Pi's 2-space layout", code, stdout, stderr)
+	}
 }
