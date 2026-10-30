@@ -57,8 +57,12 @@ func readSatisfies(text string, out aliasTable, pkg string) {
 	}
 }
 
+// nextEntry is the entry of a package whose sources live under src/next/ (chord/next). Its declarations are read under the key
+// "<pkg>/next", apart from the package's root entry, which declares names of its own that the next entry repeats.
+const nextEntry = "next"
+
 // ctxImportKey holds, per package, whether the package's `Context` is the invocation Context of the chord package: a package that
-// imports Context only from "@earendil-works/chord" (and chord itself). A package that also imports Context from pi-ai, as
+// imports Context only from "@earendil-works/chord" or one of its subpath exports (and chord itself). A package that also imports Context from pi-ai, as
 // coding-agent does, is ambiguous per call and is left to the other rules.
 const ctxImportKey = "ctximport:"
 
@@ -120,6 +124,12 @@ func (t aliasTable) lookupKey(pkg, name string) (string, *string) {
 	if b, ok := t[pkg][name]; ok {
 		return pkg, b
 	}
+	if root, ok := strings.CutSuffix(pkg, "/"+nextEntry); ok {
+		// A name the next entry imports from its package's root entry.
+		if b, ok := t[root][name]; ok {
+			return root, b
+		}
+	}
 	for _, dep := range []string{"ai", "agent", "tui", "mcp", "codemode", "coding-agent"} {
 		if dep != pkg {
 			if b, ok := t[dep][name]; ok {
@@ -173,7 +183,10 @@ func tsAliases(root string) aliasTable {
 			return nil
 		}
 		text := string(data)
-		pkg, _, _ := strings.Cut(strings.TrimPrefix(filepath.ToSlash(path), filepath.ToSlash(base)+"/"), "/")
+		pkg, sub, _ := strings.Cut(strings.TrimPrefix(filepath.ToSlash(path), filepath.ToSlash(base)+"/"), "/")
+		if strings.HasPrefix(sub, "src/"+nextEntry+"/") {
+			pkg += "/" + nextEntry
+		}
 		for _, m := range uniqueSymbolRe.FindAllStringSubmatch(text, -1) {
 			if out[brandKey] == nil {
 				out[brandKey] = map[string]*string{}
@@ -204,8 +217,8 @@ func tsAliases(root string) aliasTable {
 			}
 			if contextWordRe.MatchString(m[1]) {
 				kind := "other"
-				if m[2] == "@earendil-works/chord" {
-					kind = "chord"
+				if m[2] == "@earendil-works/chord" || strings.HasPrefix(m[2], "@earendil-works/chord/") {
+					kind = "chord" // the root and its subpath exports (`@earendil-works/chord/context`) name the same Context
 				}
 				if out[ctxImportKey+pkg] == nil {
 					out[ctxImportKey+pkg] = map[string]*string{}
@@ -281,6 +294,11 @@ func tsAliases(root string) aliasTable {
 func (t aliasTable) iface(pkg, name string) *string {
 	if b, ok := t[ifacePrefix+pkg][name]; ok {
 		return b
+	}
+	if root, ok := strings.CutSuffix(pkg, "/"+nextEntry); ok {
+		if b, ok := t[ifacePrefix+root][name]; ok {
+			return b
+		}
 	}
 	var found *string
 	n := 0

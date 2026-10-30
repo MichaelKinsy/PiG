@@ -1,5 +1,5 @@
 // Ports packages/durable/test/harness-hook-reads.test.ts (Pi 65fba65b, #11141): entry reads for hooks and tasks. See
-// harness_tasks_test.go for the Go mappings that apply to every case. `api.entry(token, id)` is `token.As(api.Entry(id))`
+// harness_tasks_test.go for the Go mappings that apply to every case. `api.entry(token, id)` is HookEntry(ctx, api, token, id)
 // in Go.
 
 package harness
@@ -31,11 +31,7 @@ func TestEntryReadsForHooksAndTasks(t *testing.T) {
 				return nil, err
 			}
 			first := page.Items[0]
-			entry, err := api.Entry(ctx, first.Id)
-			if err != nil {
-				return nil, err
-			}
-			user, err := durable.UserEntry.As(entry)
+			user, err := HookEntry(ctx, api, durable.UserEntry, first.Id)
 			if err != nil {
 				return nil, err
 			}
@@ -45,7 +41,7 @@ func TestEntryReadsForHooksAndTasks(t *testing.T) {
 			}
 			seen.add(read)
 			// Another kind: nil.
-			other, err := durable.AssistantEntry.As(entry)
+			other, err := HookEntry(ctx, api, durable.AssistantEntry, first.Id)
 			if err != nil {
 				return nil, err
 			}

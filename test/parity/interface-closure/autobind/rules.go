@@ -65,7 +65,11 @@ type checker struct {
 	// plainContext reads an upstream chord Context parameter as an ordinary parameter (S1c fallback).
 	plainContext bool
 	pkg          string // upstream package of the row
-	bags         func(name string) bool
+	// srcPkg is the key of the row's declarations in the alias table when it is not pkg: the sources under a package's src/next/ declare
+	// a second set of names (chord's root and next entries both export ChordErrorCode, RegistryTable, ServeOptions), kept under
+	// "<pkg>/next" so that neither entry sees the other's declaration as a duplicate.
+	srcPkg string
+	bags   func(name string) bool
 	// resolve returns the Go type that an upstream interface, class or alias stands for under the name, rename and shape rules.
 	resolve func(name string) *types.TypeName
 	// propNames returns the property names of a named upstream interface or class.
@@ -99,13 +103,21 @@ type checker struct {
 	recv types.Type
 }
 
-func (c *checker) alias(name string) *string { return c.aliases.lookup(c.pkg, name) }
+func (c *checker) alias(name string) *string { return c.aliases.lookup(c.sourcePkg(), name) }
+
+// sourcePkg is the alias-table key of the sources the row's declarations are read from.
+func (c *checker) sourcePkg() string {
+	if c.srcPkg != "" {
+		return c.srcPkg
+	}
+	return c.pkg
+}
 
 func (c *checker) sameName(up, goName string) bool {
 	if nameRule(up, goName) != "" {
 		return true
 	}
-	if original := c.aliases[importAsKey+c.pkg][up]; original != nil && nameRule(*original, goName) != "" {
+	if original := c.aliases[importAsKey+c.sourcePkg()][up]; original != nil && nameRule(*original, goName) != "" {
 		return true // `import { Name as Local }`: Local is the imported Name
 	}
 	return c.renames[up] != "" && c.renames[up] == goName
@@ -387,7 +399,7 @@ func (c *checker) allNameKeys(members []string) bool {
 
 // mergeSlot reports whether name is an upstream interface the pinned sources declare with no members.
 func (c *checker) mergeSlot(name string) bool {
-	body := c.aliases.iface(c.pkg, name)
+	body := c.aliases.iface(c.sourcePkg(), name)
 	return body != nil && strings.Join(strings.Fields(stripTypeNoise(*body)), "") == "{}"
 }
 
@@ -919,7 +931,7 @@ func (c *checker) single(up string, t types.Type) verdict {
 			if v.ok == yes || c.instDepth >= maxInstDepth { // a generic alias judged by its unsubstituted body is a false verdict: instantiate first
 				return v
 			}
-			if body, ok := c.aliases.instantiate(c.pkg, name, g[2]); ok {
+			if body, ok := c.aliases.instantiate(c.sourcePkg(), name, g[2]); ok {
 				inner := *c
 				inner.instDepth++
 				return inner.agree(body, t) // A9: a generic alias instance is its body with the type arguments substituted
@@ -1975,7 +1987,7 @@ func (c *checker) named(name string, t types.Type) verdict {
 			return yesV() // T9a: the upstream type resolves, by documented rename or unique shape, to this Go type (or its underlying type)
 		}
 	}
-	if module := c.aliases[extImportKey+c.pkg][short]; module != nil && *module != "" {
+	if module := c.aliases[extImportKey+c.sourcePkg()][short]; module != nil && *module != "" {
 		if rep, ok := c.reps[*module+":"+short]; ok && rep == typeLabel(t) {
 			return yesV() // T9x: the package imports the name from an external module, whose type has a documented Go representation
 		}
@@ -2348,7 +2360,7 @@ func (c *checker) memberNames(m string, depth int, names *[]string, literals map
 		*names = append(*names, c.propNames(text)...)
 		return true
 	}
-	if body := c.aliases.iface(c.pkg, text); body != nil {
+	if body := c.aliases.iface(c.sourcePkg(), text); body != nil {
 		return c.memberNames(*body, depth+1, names, literals)
 	}
 	if body := c.alias(text); body != nil {

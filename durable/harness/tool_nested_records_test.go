@@ -100,12 +100,12 @@ func TestNestedCallsAndChildTasksOfACallerThatNeverResumesAreAbandonedOnRestart(
 					return durable.ToolExecutionResult{}, err
 				}
 				owned := durable.TaskOptions{Ownership: durable.TaskOwnership{Kind: durable.TaskOwnedByTask, TaskId: api.TaskId()}}
-				byDefault, err := api.CreateTaskErased(ctx, child.Erased(), durable.JsonValue(nil), owned)
+				byDefault, err := durable.ToolCreateTask(ctx, api, child, childInput{}, owned)
 				if err != nil {
 					return durable.ToolExecutionResult{}, err
 				}
 				owned.AbandonOnRestart = new(false)
-				explicit, err := api.CreateTaskErased(ctx, child.Erased(), durable.JsonValue(nil), owned)
+				explicit, err := durable.ToolCreateTask(ctx, api, child, childInput{}, owned)
 				if err != nil {
 					return durable.ToolExecutionResult{}, err
 				}
