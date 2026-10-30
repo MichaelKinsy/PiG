@@ -89,7 +89,7 @@ var (
 // (Pi's watches reach the batch's microtask queue through the batch itself).
 func newMemberSource(source state.DeriveSource, batch *state.Batch, scheduler *chord.DeliveryScheduler) *memberSource {
 	m := &memberSource{state: memberState{kind: memberBound, source: source}, scheduler: scheduler}
-	m.Source.Init(batch, m)
+	m.Init(batch, m)
 	m.hook(source)
 	return m
 }

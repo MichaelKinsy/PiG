@@ -88,7 +88,7 @@ var _ state.NativeHooks[*RefState] = (*referenceState)(nil)
 // process default).
 func newReferenceState(read func() *RefState, batch *state.Batch, scheduler *chord.DeliveryScheduler) *referenceState {
 	r := &referenceState{read: read, scheduler: scheduler}
-	r.NativeSource.Init(batch, r)
+	r.Init(batch, r)
 	r.last = read()
 	return r
 }

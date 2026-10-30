@@ -52,7 +52,7 @@ var _ state.SourceImpl = (*activity)(nil)
 // newActivity makes the counts of a host whose batch is batch and whose microtasks queue on loop.
 func newActivity(loop eventLoop, batch *state.Batch) *activity {
 	a := &activity{loop: loop}
-	a.Source.Init(batch, a)
+	a.Init(batch, a)
 	return a
 }
 

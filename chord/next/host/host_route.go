@@ -51,7 +51,7 @@ type routeLinkOptions struct {
 
 // routedHolder is a holder of a path (Pi's `Upstream`, D6): a route hands them back for the host to end and never
 // inspects one.
-type routedHolder interface{}
+type routedHolder any
 
 // routeLink is a link of a route as the host made it (Pi's `HostLink`, D6): it is compared by identity.
 type routeLink interface {

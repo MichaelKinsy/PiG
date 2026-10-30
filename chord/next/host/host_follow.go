@@ -111,7 +111,7 @@ var _ state.SourceHandle = (*followSource)(nil)
 // runs in one of its sections.
 func newFollowSource(attach FollowAttach[delta.JsonValue], owner followOwner, batch *state.Batch, loop sectionLoop) *followSource {
 	s := &followSource{attachFn: attach, owner: owner, loop: loop, state: followState{kind: followAttaching}}
-	s.Source.Init(batch, s)
+	s.Init(batch, s)
 	return s
 }
 

@@ -17,8 +17,8 @@ import (
 // are `missing` for the host core. The tests below are own tests of the member check and of the resolution behind
 // derives and contributions, driven directly; each names the upstream case whose behavior it mirrors.
 
-// membersGetterError is what the getter of a throwing value throws.
-var membersGetterError = errors.New("getter threw")
+// errMembersGetter is what the getter of a throwing value throws.
+var errMembersGetter = errors.New("getter threw")
 
 // membersThrowing is a value whose resolution throws (a reference member's getter).
 type membersThrowing struct{}
@@ -32,7 +32,7 @@ func membersResolver(value any) (state.DeriveSource, error) {
 	case *state.Constant:
 		return typed, nil
 	case membersThrowing:
-		return nil, membersGetterError
+		return nil, errMembersGetter
 	}
 	return nil, nil
 }
@@ -43,7 +43,7 @@ func membersKeyedResolver(value any) (*keyedBinding, error) {
 	case *keyedBinding:
 		return typed, nil
 	case membersThrowing:
-		return nil, membersGetterError
+		return nil, errMembersGetter
 	}
 	return nil, nil
 }
@@ -165,7 +165,7 @@ func TestAttachDerivesReportsUnderTheExposingMemberAcceptsNativeSourcesAndPropag
 	}
 	throwing := state.NewDerive([]any{membersThrowing{}}, failing, h.batch)
 	err := attachDerives(membersResolver, []*state.Derive{throwing}, contracts.NewNamedMap[state.DeriveSource](0), report)
-	if err != membersGetterError {
+	if err != errMembersGetter {
 		t.Fatalf("attach over a throwing getter = %v, want the getter's error", err)
 	}
 }
@@ -280,14 +280,14 @@ func TestContributionOfFollowsWatchablesAndNativesLeavesOtherValuesPlainAndRefus
 	if got, err := contentOf(membersResolver, membersPlainMethod); err != nil || got.Kind != registries.ContributionPlain || got.Value == nil {
 		t.Fatalf("content of a function = %#v, %v, want it as a plain value", got, err)
 	}
-	if _, err := contentOf(membersResolver, membersThrowing{}); err != membersGetterError {
+	if _, err := contentOf(membersResolver, membersThrowing{}); err != errMembersGetter {
 		t.Fatalf("content of a throwing getter = %v", err)
 	}
 	contribution, err := contributionOf(membersResolver, record, contributor, 1, "text", nil)
 	if err != nil || contribution.Record != record || contribution.Contributor != contributor || contribution.Version != 1 {
 		t.Fatalf("contribution = %#v, %v", contribution, err)
 	}
-	if _, err := contributionOf(membersResolver, record, contributor, 1, membersThrowing{}, nil); err != membersGetterError {
+	if _, err := contributionOf(membersResolver, record, contributor, 1, membersThrowing{}, nil); err != errMembersGetter {
 		t.Fatalf("contribution of a throwing getter = %v", err)
 	}
 	// A registry's own value contributed to it closes a cycle of one registry.

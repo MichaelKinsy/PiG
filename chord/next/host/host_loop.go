@@ -104,12 +104,8 @@ func (l *Loop) drain() {
 
 // Go runs fn as an owned background task (an intentionally unawaited Promise of Pi): Wait joins it.
 func (l *Loop) Go(fn func()) {
-	l.tasks.Add(1)
 	//portlint:allow golifetime joined by Loop.Wait through l.tasks; the host's close waits for its background tasks
-	go func() {
-		defer l.tasks.Done()
-		fn()
-	}()
+	l.tasks.Go(fn)
 }
 
 // Wait blocks until every task started with Go (and every timer job already running) has returned.

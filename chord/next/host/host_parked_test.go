@@ -193,7 +193,7 @@ func TestParkedCallsAreCheckedAgainstTheirDeadlineWhenSent(t *testing.T) {
 		t.Fatalf("first = %v, %v; want 1, nil", value, err)
 	}
 	_, err := parkedResultOf(t, second)
-	parkTimeoutOf(t, err)
+	_ = parkTimeoutOf(t, err)
 	if want := []string{"block"}; !reflect.DeepEqual(h.log, want) {
 		t.Fatalf("log = %v, want %v", h.log, want)
 	}
@@ -334,7 +334,7 @@ func TestParkedCallsStayQueuedWhileTheReferenceIsNotLive(t *testing.T) {
 	}
 	h.advance(1_000)
 	_, err := parkedResultOf(t, result)
-	parkTimeoutOf(t, err)
+	_ = parkTimeoutOf(t, err)
 }
 
 // Mirrors "calls on a loading remote reference › keep one deadline across reconnects; nothing is sent for them on either
@@ -349,7 +349,7 @@ func TestParkedCallsKeepOneDeadlineAcrossReconnects(t *testing.T) {
 	h.flush()
 	h.advance(400)
 	_, err := parkedResultOf(t, result)
-	parkTimeoutOf(t, err)
+	_ = parkTimeoutOf(t, err)
 	if len(h.log) != 0 {
 		t.Fatalf("sent = %v, want nothing", h.log)
 	}

@@ -131,7 +131,7 @@ func TestDestinationReferenceReturnsWhatAHostAddressThrows(t *testing.T) {
 	rig := newDestinationRig(t, true)
 	threw := errors.New("hostAddress threw")
 	notes := routeRemoteNotes(t, func(*delta.JsonObject) (contracts.Address, error) { return contracts.Address{}, threw })
-	if _, err := rig.destination.reference(notes, routeNotesParams("S1"), nil, chordctx.Background()); err != threw {
+	if _, err := rig.destination.reference(notes, routeNotesParams("S1"), nil, chordctx.Background()); !errors.Is(err, threw) {
 		t.Fatalf("err = %v, want the hostAddress's", err)
 	}
 }
@@ -196,7 +196,7 @@ func TestDestinationMisplacedIsNilWhenTheObjectLivesHereElseInvalidHostAddressNa
 	}
 	threw := errors.New("hostAddress threw")
 	failing := routeRemoteNotes(t, func(*delta.JsonObject) (contracts.Address, error) { return contracts.Address{}, threw })
-	if _, err := rig.destination.misplaced(failing, routeNotesParams("S1")); err != threw {
+	if _, err := rig.destination.misplaced(failing, routeNotesParams("S1")); !errors.Is(err, threw) {
 		t.Fatalf("err = %v, want the hostAddress's", err)
 	}
 }

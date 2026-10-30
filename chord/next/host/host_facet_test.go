@@ -50,8 +50,8 @@ func TestFacetsDeclareOnlyWhileTheirSetupRuns(t *testing.T) {
 func TestFacetsOnlyDeclareASetupTakesTheHostAndASelfThatOnlyContributes(t *testing.T) {
 	names := func(of reflect.Type) []string {
 		var got []string
-		for i := range of.NumMethod() {
-			got = append(got, of.Method(i).Name)
+		for method := range of.Methods() {
+			got = append(got, method.Name)
 		}
 		return got
 	}

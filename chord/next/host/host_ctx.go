@@ -99,7 +99,7 @@ func (c *callContext) Incarnation() string { return c.incarnation }
 func (c *callContext) String() string { return fmt.Sprint(c.Context) + ".Ctx" }
 
 // Get implements Ctx. The two sections around the acquire are Pi's synchronous parts of `get`.
-func (c *callContext) Get(Type *contracts.Contract, params any, options GetOptions) (any, error) {
+func (c *callContext) Get(typ *contracts.Contract, params any, options GetOptions) (any, error) {
 	loop := c.host.loop()
 	var scoped linkedAbort
 	var from caller
@@ -107,10 +107,10 @@ func (c *callContext) Get(Type *contracts.Contract, params any, options GetOptio
 	loop.Run(func() {
 		// A settled scope refuses `released` whatever aborted it; an aborted call creates nothing.
 		if c.settledOnce {
-			err = settledRefusal(Type)
+			err = settledRefusal(typ)
 			return
 		}
-		if c.Context.Err() != nil {
+		if c.Err() != nil {
 			err = context.Cause(c.Context)
 			return
 		}
@@ -124,13 +124,13 @@ func (c *callContext) Get(Type *contracts.Contract, params any, options GetOptio
 	if err != nil {
 		return nil, err
 	}
-	binding, acquireErr := c.host.Acquire(Type, params, from, scoped.context, options)
+	binding, acquireErr := c.host.Acquire(typ, params, from, scoped.context, options)
 	var reference any
 	loop.Run(func() {
 		scoped.release()
 		if acquireErr != nil {
 			if c.settledOnce {
-				err = settledRefusal(Type)
+				err = settledRefusal(typ)
 			} else {
 				err = acquireErr
 			}
@@ -139,7 +139,7 @@ func (c *callContext) Get(Type *contracts.Contract, params any, options GetOptio
 		// A get that finished in the turn its handler settled: nobody releases its reference later.
 		if c.settledOnce {
 			binding.Release()
-			err = settledRefusal(Type)
+			err = settledRefusal(typ)
 			return
 		}
 		c.references = append(c.references, binding)
@@ -166,11 +166,11 @@ func (c *callContext) settle() {
 }
 
 // settledRefusal is Pi's `settled(Type)`: what a ctx whose handler settled refuses a `get` with.
-func settledRefusal(Type *contracts.Contract) error {
+func settledRefusal(typ *contracts.Contract) error {
 	return data.NewChordError(data.ChordErrorInit{
 		Code:    data.CodeReleased,
 		Reason:  data.ReasonSettled,
-		Message: Type.Name + ": ctx.get after its call settled",
+		Message: typ.Name + ": ctx.get after its call settled",
 	}, nil)
 }
 

@@ -612,8 +612,8 @@ func TestOnTypesTheirHandlerByTheSourcesKindOpsAndRetiredForAJSONWatchableTheVal
 	}
 	declarations := reflect.TypeFor[RoutineDeclarations]()
 	var names []string
-	for i := range declarations.NumMethod() {
-		names = append(names, declarations.Method(i).Name)
+	for method := range declarations.Methods() {
+		names = append(names, method.Name)
 	}
 	if fmt.Sprint(names) != "[On OnLive OnNative]" {
 		t.Fatalf("RoutineDeclarations = %v", names)

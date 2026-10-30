@@ -233,8 +233,6 @@ func parkedLongHarness() (*fakeLoop, *fakeParkedObject, *parkedLong) {
 	return loop, object, newParkedLong(loop, object)
 }
 
-func dependencyBlocker(label string) *string { return &label }
-
 func parkedLongReport(waitingFor string, since int64) HostError {
 	return HostError{Kind: ErrParkedLong, Object: "app.view(1)", WaitingFor: waitingFor, Since: since}
 }
@@ -243,7 +241,7 @@ func parkedLongReport(waitingFor string, since int64) HostError {
 // fails".
 func TestParkedLongIsReportedOncePerParkingEpisodeAfterReadyTimeout(t *testing.T) {
 	loop, object, long := parkedLongHarness()
-	long.waitingOn(dependencyBlocker("app.notes(S1)"))
+	long.waitingOn(new("app.notes(S1)"))
 	loop.Advance(999)
 	if len(object.reports) != 0 {
 		t.Fatalf("reports before readyTimeout = %v", object.reports)
@@ -254,7 +252,7 @@ func TestParkedLongIsReportedOncePerParkingEpisodeAfterReadyTimeout(t *testing.T
 	}
 	loop.Advance(60_000)
 	// The check goes on finding the blocker: once reported, nothing more, and no timer.
-	long.waitingOn(dependencyBlocker("app.notes(S1)"))
+	long.waitingOn(new("app.notes(S1)"))
 	loop.Advance(60_000)
 	if len(object.reports) != 1 || loop.TimerCount() != 0 {
 		t.Fatalf("reports %d timers %d, want 1 0", len(object.reports), loop.TimerCount())
@@ -266,7 +264,7 @@ func TestParkedLongStartsItsClockWhenTheHoldGetsOnALink(t *testing.T) {
 	loop, object, long := parkedLongHarness()
 	long.waitingOn(nil)
 	loop.Advance(5_000)
-	long.waitingOn(dependencyBlocker("app.notes(S1)"))
+	long.waitingOn(new("app.notes(S1)"))
 	linked := loop.Now()
 	loop.Advance(10)
 	if len(object.reports) != 0 {
@@ -289,7 +287,7 @@ func TestParkedLongIsNotReportedWhileNoRemoteBlockerIsOnALink(t *testing.T) {
 	if len(object.reports) != 0 || loop.TimerCount() != 0 {
 		t.Fatalf("reports %d timers %d, want 0 0", len(object.reports), loop.TimerCount())
 	}
-	long.waitingOn(dependencyBlocker("app.notes(S1)"))
+	long.waitingOn(new("app.notes(S1)"))
 	loop.Advance(5_000)
 	if len(object.reports) != 1 || object.reports[0].Kind != ErrParkedLong {
 		t.Fatalf("reports = %v, want one parked_long", object.reports)
@@ -300,7 +298,7 @@ func TestParkedLongIsNotReportedWhileNoRemoteBlockerIsOnALink(t *testing.T) {
 // gone, the timer and the clock stop.
 func TestParkedLongStopsWhenTheBlockerIsGone(t *testing.T) {
 	loop, object, long := parkedLongHarness()
-	long.waitingOn(dependencyBlocker("app.notes(S1)"))
+	long.waitingOn(new("app.notes(S1)"))
 	loop.Advance(500)
 	long.waitingOn(nil)
 	loop.Advance(60_000)
@@ -308,7 +306,7 @@ func TestParkedLongStopsWhenTheBlockerIsGone(t *testing.T) {
 		t.Fatalf("reports %d timers %d, want 0 0", len(object.reports), loop.TimerCount())
 	}
 	// A blocker back starts the clock again, from then: only the time a remote attempt answered for the wait counts.
-	long.waitingOn(dependencyBlocker("app.notes(S2)"))
+	long.waitingOn(new("app.notes(S2)"))
 	back := loop.Now()
 	loop.Advance(999)
 	if len(object.reports) != 0 {
@@ -324,9 +322,9 @@ func TestParkedLongStopsWhenTheBlockerIsGone(t *testing.T) {
 // the blocker of the moment.
 func TestParkedLongNamesTheBlockerOfTheMomentWithOneTimer(t *testing.T) {
 	loop, object, long := parkedLongHarness()
-	long.waitingOn(dependencyBlocker("app.notes(S1)"))
+	long.waitingOn(new("app.notes(S1)"))
 	loop.Advance(400)
-	long.waitingOn(dependencyBlocker("app.notes(S2)"))
+	long.waitingOn(new("app.notes(S2)"))
 	if loop.TimerCount() != 1 {
 		t.Fatalf("timers = %d, want 1", loop.TimerCount())
 	}
@@ -341,7 +339,7 @@ func TestParkedLongNamesTheBlockerOfTheMomentWithOneTimer(t *testing.T) {
 func TestParkedLongDelayIsTheTimeLeft(t *testing.T) {
 	loop, object, long := parkedLongHarness()
 	object.ready = 0
-	long.waitingOn(dependencyBlocker("app.notes(S1)"))
+	long.waitingOn(new("app.notes(S1)"))
 	loop.Advance(1)
 	if len(object.reports) != 1 {
 		t.Fatalf("reports with readyTimeout 0 = %v, want one", object.reports)

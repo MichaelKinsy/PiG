@@ -2,6 +2,7 @@ package host
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	chordctx "github.com/MichaelKinsy/PiG/chord/context"
@@ -266,7 +267,7 @@ func TestCallContextGetErrorsAndString(t *testing.T) {
 	cc, host, loop := newScopeCtx(t, chordctx.Background())
 	boom := scopeReason("acquire failed")
 	host.acquire = func(scopeAcquire) (acquired, error) { return nil, boom }
-	if _, err := cc.Get(Item, delta.JsonObjectOf("id", 1.0), GetOptions{}); err != boom {
+	if _, err := cc.Get(Item, delta.JsonObjectOf("id", 1.0), GetOptions{}); !errors.Is(err, boom) {
 		t.Fatalf("err = %v, want the acquire's own", err)
 	}
 	loop.Run(cc.settle)

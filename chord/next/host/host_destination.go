@@ -57,11 +57,11 @@ func newDestination(address *contracts.Address, routes map[string]*route, parent
 // the route of its host address's kind, or over the parent link (the host address decides where an object lives: a worker
 // reaches another worker's object of a type it serves too). It returns `invalid/host_address` for a host address whose
 // params do not fit its kind, `forbidden` when the route refuses, and what a `hostAddress` or `authorize` returns.
-func (d *destination) reference(Type *contracts.Contract, params *delta.JsonObject, principal data.Principal, ctx context.Context) (placed, error) {
-	if Type.Kind == contracts.KindLocal {
+func (d *destination) reference(typ *contracts.Contract, params *delta.JsonObject, principal data.Principal, ctx context.Context) (placed, error) {
+	if typ.Kind == contracts.KindLocal {
 		return here, nil
 	}
-	address, err := hostAddressOf(Type, params)
+	address, err := hostAddressOf(typ, params)
 	if err != nil {
 		return placed{}, err
 	}
