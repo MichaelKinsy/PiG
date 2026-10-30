@@ -74,13 +74,12 @@ type gifStream struct {
 	global        []byte // the global colour table, nil when it is empty
 
 	// current is the frame the control extensions and the image descriptor fill (decoder.rs `current`).
-	current    *gifFrame
-	extLen     int
-	frame      gifFrame
-	minCode    byte
-	left       int // the bytes left of the current sub-block of image data
-	lzw        *gifLZW
-	pixelsDone bool
+	current *gifFrame
+	extLen  int
+	frame   gifFrame
+	minCode byte
+	left    int // the bytes left of the current sub-block of image data
+	lzw     *gifLZW
 }
 
 func (s *gifStream) byte() (byte, error) {
@@ -102,15 +101,6 @@ func (s *gifStream) u16() (uint16, error) {
 		return 0, err
 	}
 	return uint16(hi)<<8 | uint16(lo), nil
-}
-
-func (s *gifStream) skip(n int) error {
-	if len(s.data)-s.pos < n {
-		s.pos = len(s.data)
-		return errGIF
-	}
-	s.pos += n
-	return nil
 }
 
 // addFrame is `add_frame`.

@@ -538,3 +538,10 @@ commit = "eb562ce1a8ad6fb5b1316c74110981cd57de2ddf"
 class = "NOBEHAVIOR"
 cite = ""
 reason = "Piglet Binary overlays are PiG-original (a Piglet Binary has no Pi counterpart), so no Pi line governs the test. The commit replaces the opt-in build.allowOverlays with the opt-out build.closed (D202), so a Binary accepts overlays by default and the test's fixture, expected refusal text and accepting/refusing roles swap: the closed Binary now names build.closed, and the default Binary accepts what it refused."
+
+[[entry]]
+path = "internal/photonimage/decode_routing_test.go"
+commit = "6445df7c9d"
+class = "CITE"
+cite = "packages/coding-agent/src/utils/image-convert.ts:11"
+reason = "Pi decodes every PNG it reads with Photon's `PhotonImage.new_from_byteslice` (image-convert.ts:11, and image-resize-core.ts, clipboard-image.ts, the durable images/index.ts), whose png crate accepts and refuses other files than Go's image/png: PNG joins the formats whose Go decoder no production code may register or call (the banned list gains image/png, so the sample of the self-test has six uses: its blank png import and its blank webp import)."

@@ -174,10 +174,7 @@ func pngRawRowLengthFromWidth(colorType, depth byte, width uint32) int {
 
 // outputColorType is `Reader::output_color_type` (decoder/mod.rs:646-678) under EXPAND.
 func (i *pngInfo) outputColorType() (colorType, depth byte) {
-	depth = i.depth
-	if depth < 8 {
-		depth = 8
-	}
+	depth = max(i.depth, 8)
 	colorType = i.colorType
 	switch i.colorType {
 	case pngGray:

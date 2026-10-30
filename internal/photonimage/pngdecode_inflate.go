@@ -585,11 +585,12 @@ func (d *fdDecompressor) readCompressed(input *[]byte, output []byte, outputInde
 			distEntry := d.distTable[bitsv&0x1ff]
 			var distBase uint16
 			var distExtraBits, distCodeBits uint8
-			if distEntry&fdLiteralEntry != 0 {
+			switch {
+			case distEntry&fdLiteralEntry != 0:
 				distBase, distExtraBits, distCodeBits = uint16(distEntry>>16), uint8(distEntry>>8)&0xf, uint8(distEntry)
-			} else if distEntry>>8 == 0 {
+			case distEntry>>8 == 0:
 				return outputIndex, errFdInvalidDistanceCode
-			} else {
+			default:
 				index := distEntry>>16 + (uint32(bitsv>>9) & (distEntry & 0xff))
 				secondaryEntry := d.distSecondary[index]
 				distSymbol := int(secondaryEntry >> 4)
@@ -618,10 +619,11 @@ func (d *fdDecompressor) readCompressed(input *[]byte, output []byte, outputInde
 	}
 fastLoopDone:
 
+carefulLoop:
 	for d.state == fdCompressedData {
 		d.fillBuffer(input)
 		if outputIndex == len(output) {
-			break
+			break carefulLoop
 		}
 
 		bitsv := d.buffer
@@ -630,25 +632,26 @@ fastLoopDone:
 
 		if litlenEntry&fdLiteralEntry != 0 {
 			advance := int(litlenEntry&0xf00) >> 8
-			if d.nbits < litlenCodeBits {
-				break
-			} else if outputIndex+1 < len(output) {
+			switch {
+			case d.nbits < litlenCodeBits:
+				break carefulLoop
+			case outputIndex+1 < len(output):
 				output[outputIndex] = byte(litlenEntry >> 16)
 				output[outputIndex+1] = byte(litlenEntry >> 24)
 				outputIndex += advance
 				d.consumeBits(litlenCodeBits)
 				continue
-			} else if outputIndex+advance == len(output) {
+			case outputIndex+advance == len(output):
 				output[outputIndex] = byte(litlenEntry >> 16)
 				outputIndex++
 				d.consumeBits(litlenCodeBits)
-				break
+				break carefulLoop
 			}
 			output[outputIndex] = byte(litlenEntry >> 16)
 			d.queuedRLE, d.queuedRLEByte, d.queuedRLELen = true, byte(litlenEntry>>24), 1
 			outputIndex++
 			d.consumeBits(litlenCodeBits)
-			break
+			break carefulLoop
 		}
 
 		var lengthBase uint32
@@ -661,28 +664,29 @@ fastLoopDone:
 			secondaryEntry := d.secondary[index]
 			symbol := secondaryEntry >> 4
 			litlenCodeBits = uint8(secondaryEntry & 0xf)
-			if d.nbits < litlenCodeBits {
-				goto careful
-			} else if symbol < 256 {
+			switch {
+			case d.nbits < litlenCodeBits:
+				break carefulLoop
+			case symbol < 256:
 				d.consumeBits(litlenCodeBits)
 				output[outputIndex] = byte(symbol)
 				outputIndex++
 				continue
-			} else if symbol == 256 {
+			case symbol == 256:
 				d.consumeBits(litlenCodeBits)
 				d.state = d.afterBlock()
-				goto careful
+				break carefulLoop
 			}
 			lengthBase, lengthExtraBits = uint32(fdLenSymToLenBase[symbol-257]), fdLenSymToLenExtra[symbol-257]
 		case litlenCodeBits == 0:
 			return outputIndex, errFdInvalidLiteralLengthCode
 		default:
 			if d.nbits < litlenCodeBits {
-				goto careful
+				break carefulLoop
 			}
 			d.consumeBits(litlenCodeBits)
 			d.state = d.afterBlock()
-			goto careful
+			break carefulLoop
 		}
 		bitsv >>= litlenCodeBits
 
@@ -708,14 +712,14 @@ fastLoopDone:
 				}
 				distBase, distExtraBits, distCodeBits = fdDistSymToDistBase[distSymbol], fdDistSymToDistExtra[distSymbol], uint8(secondaryEntry&0xf)
 			} else {
-				break
+				break carefulLoop
 			}
 			bitsv >>= distCodeBits
 
 			dist := int(distBase) + int(bitsv&(1<<distExtraBits-1))
 			totalBits := litlenCodeBits + lengthExtraBits + distCodeBits + distExtraBits
 			if d.nbits < totalBits {
-				break
+				break carefulLoop
 			} else if dist > outputIndex {
 				return outputIndex, errFdDistanceTooFarBack
 			}
@@ -724,12 +728,9 @@ fastLoopDone:
 			var stop bool
 			outputIndex, stop = d.copyBackReference(output, outputIndex, length, dist)
 			if stop {
-				break
+				break carefulLoop
 			}
 		}
-		continue
-	careful:
-		break
 	}
 
 	if d.state == fdCompressedData && !d.queuedBack && !d.queuedRLE && d.nbits >= 15 && uint16(d.peekBits(15))&d.eofMask == d.eofCode {
