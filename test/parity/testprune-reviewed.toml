@@ -538,3 +538,10 @@ commit = "eb562ce1a8ad6fb5b1316c74110981cd57de2ddf"
 class = "NOBEHAVIOR"
 cite = ""
 reason = "Piglet Binary overlays are PiG-original (a Piglet Binary has no Pi counterpart), so no Pi line governs the test. The commit replaces the opt-in build.allowOverlays with the opt-out build.closed (D202), so a Binary accepts overlays by default and the test's fixture, expected refusal text and accepting/refusing roles swap: the closed Binary now names build.closed, and the default Binary accepts what it refused."
+
+[[entry]]
+path = "coding/cli/package_commands_test.go"
+commit = "7e160533d7ded8fa84cc825e12797e8b987ce6d6"
+class = "DIVERGENCE"
+cite = "D215"
+reason = "TestNormalizePackageSourceForSettings_UsesScopeBase pinned Pi's relative record for an absolute input (package-manager.ts normalizePackageSourceForSettings). D215 stores a path typed absolute as typed (#389), so the absolute cases now expect the typed path and the relative case keeps Pi's expectation."

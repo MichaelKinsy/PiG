@@ -76,7 +76,8 @@ func TestPackageManagerAddAndRemoveSourceInTheScopeSettings(t *testing.T) {
 		t.Fatalf("packages after a ref change = %+v, want the second entry replaced in place with its filter kept", packages)
 	}
 
-	// An equivalent local spelling is stored normalised relative to the settings directory.
+	// pig divergence (D215): adding an absolute spelling of a Package stored relative replaces the entry with the absolute path as typed, so it no longer
+	// depends on how the agent directory is spelled (#389).
 	localPkg := filepath.Join(t.TempDir(), "spelled")
 	rel, err := filepath.Rel(sm.AgentDir(), localPkg)
 	if err != nil {
@@ -88,8 +89,8 @@ func TestPackageManagerAddAndRemoveSourceInTheScopeSettings(t *testing.T) {
 	if added, err := pm.AddSourceToSettings(localPkg, false); err != nil || !added {
 		t.Fatalf("adding another spelling of a local package = %v, %v; want true", added, err)
 	}
-	if got := packageSources(sm, false); !slices.Equal(got, []string{filepath.Clean(rel)}) {
-		t.Fatalf("local package stored as %v, want the normalised relative path %q", got, filepath.Clean(rel))
+	if got := packageSources(sm, false); !slices.Equal(got, []string{localPkg}) {
+		t.Fatalf("local package stored as %v, want the absolute path as typed %q", got, localPkg)
 	}
 	if err := sm.SetPackages([]codingagent.PackageSource{{Source: "npm:left-pad"}, {Source: "git:github.com/u/other@v2", WasObject: true, Extensions: []string{"a.ts"}}}); err != nil {
 		t.Fatal(err)

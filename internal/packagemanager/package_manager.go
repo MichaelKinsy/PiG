@@ -13,6 +13,7 @@ import (
 	"github.com/MichaelKinsy/PiG/coding/packagecontent"
 	sourceref "github.com/MichaelKinsy/PiG/coding/source"
 	"github.com/MichaelKinsy/PiG/internal/codingagent"
+	"github.com/MichaelKinsy/PiG/internal/resolvepath"
 )
 
 // PackageManager is upstream's PackageManager interface and DefaultPackageManager class (package-manager.ts): it installs, removes and lists the packages named in the user and project settings. CWD is the project directory the sources resolve against.
@@ -202,7 +203,8 @@ func (m *PackageManager) RemoveSourceFromSettings(source string, local bool) (bo
 	return true, sm.SetPackages(next)
 }
 
-// NormalizeSourceForSettings stores local package paths relative to the settings directory, matching upstream.
+// NormalizeSourceForSettings stores a local package path typed relative (`./pkg`, `../pkg`) relative to the settings directory, matching upstream, and
+// one typed absolute (`/abs/pkg`, `~/pkg`, a file:// URL) as typed.
 func (m *PackageManager) NormalizeSourceForSettings(baseDir, source string) string {
 	kind := DetectSourceKind(source)
 	if kind == "npm" && !strings.HasPrefix(strings.TrimSpace(source), "npm:") {
@@ -210,6 +212,10 @@ func (m *PackageManager) NormalizeSourceForSettings(baseDir, source string) stri
 	}
 	if kind != "local" {
 		return source
+	}
+	// pig divergence (D215): Pi records an absolute path relative to the settings directory as spelled at install, which no longer resolves when PIG_HOME is reached through another spelling (#389).
+	if resolvepath.IsAbsolutePackagePath(source) {
+		return resolvepath.Trim(source)
 	}
 	resolved, _ := ResolveLocalPackageRoot(m.CWD, source)
 	rel, err := filepath.Rel(baseDir, resolved)
