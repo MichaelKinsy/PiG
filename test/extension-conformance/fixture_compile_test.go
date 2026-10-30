@@ -52,7 +52,7 @@ func buildRustFixtureBinary(ctx context.Context) (string, error) {
 	} else if !filepath.IsAbs(target) {
 		target = filepath.Join(src, target)
 	}
-	return buildFixtureCopy(ctx, target, filepath.Join(fixtureRoot, testExecutableName("rust-sdk-fixture")), func(ctx context.Context) error {
+	return buildFixtureCopy(ctx, target, "rust-sdk-fixture", filepath.Join(fixtureRoot, testExecutableName("rust-sdk-fixture")), func(ctx context.Context) error {
 		cmd := exec.CommandContext(ctx, "cargo", "build", "--release", "--quiet")
 		cmd.Dir = src
 		if out, err := cmd.CombinedOutput(); err != nil {
@@ -63,8 +63,8 @@ func buildRustFixtureBinary(ctx context.Context) (string, error) {
 }
 
 // buildFixtureCopy runs build with the Cargo target's fixture lock held, which every checkout's test run takes, and copies the program it left at
-// <target>/release/rust-sdk-fixture to dst. A build of another checkout that follows replaces the shared program and leaves the copy as it was.
-func buildFixtureCopy(ctx context.Context, target, dst string, build func(context.Context) error) (string, error) {
+// <target>/release/<program> to dst. A build of another checkout that follows replaces the shared program and leaves the copy as it was.
+func buildFixtureCopy(ctx context.Context, target, program, dst string, build func(context.Context) error) (string, error) {
 	if err := os.MkdirAll(target, 0o755); err != nil {
 		return "", fmt.Errorf("create the Cargo target: %w", err)
 	}
@@ -77,9 +77,9 @@ func buildFixtureCopy(ctx context.Context, target, dst string, build func(contex
 	if err := build(ctx); err != nil {
 		return "", err
 	}
-	built := filepath.Join(target, "release", testExecutableName("rust-sdk-fixture"))
+	built := filepath.Join(target, "release", testExecutableName(program))
 	if err := copyExecutable(built, dst); err != nil {
-		return "", fmt.Errorf("copy the built rust-sdk-fixture: %w", err)
+		return "", fmt.Errorf("copy the built %s: %w", program, err)
 	}
 	return dst, nil
 }
