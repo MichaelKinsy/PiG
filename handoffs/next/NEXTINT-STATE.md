@@ -18,7 +18,8 @@ known-gaps: store-storage.test.ts (D-store), harness-registry-reader.test.ts par
 
 ## Known issues found in the merge
 * `make test-expectation-lint TEST_EXPECT_BASE=2345dc3fcf`: 11 test files changed in the D5a feat commit 0b76ae5e5f without a Pi-Behavior-Change trailer or a `test/parity/testprune-reviewed.toml` entry (chord/next/host/{host_activity,host_attempt,host_examples,host_keyed_members,host_keyed_slot_host,host_object,host_reference,host_revocation,host_route,host_routines,remote_host_link}_test.go). Needs the D5a author to review (class CITE with a Pi line) or a trailer.
-* `make coverage` was failing on `test/parity/unit-evidence/follow-d5a.json` naming the untracked upstream `packages/chord/test/next/bench/jobs.ts` as `upstream`; changed to `packages/chord/src/next/jobs/job.ts` (the reference stays bench/jobs.ts).
+* `make coverage` fails on `test/parity/unit-evidence/follow-d5a.json:433-441`: the record for `packages/chord/test/next/bench/jobs.ts` (untracked upstream, "unknown upstream") names `BenchmarkJobsStart`, which coverage's `declaredTests` does not accept (Test* functions only). Routed to FollowD5a through Main: a real Test* with the mutation, or drop the record. Until then `coverage.md` cannot be regenerated, so it is not part of the integrator commits.
+* Everything else red on the merged head is expected (above). Green on `bfbf78ea36`+: interface-inventory-drift, interface-mapping-quality, ledger-check (exit 0; the proof-class ratchet is report-only), behavior-contracts, test-inventory, changelog-check, bug-ledger-check, divergence-quality/-consistency/-guard, go-fix-clean (after `style: apply go fix`), lint-changed.
 
 ## Ratchet
 See `ratchet-breakdown.md`.
