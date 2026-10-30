@@ -2,6 +2,7 @@ package host
 
 import (
 	"context"
+	"errors"
 	"reflect"
 	"testing"
 	"weak"
@@ -558,4 +559,39 @@ func TestFollowASubscriberOfAnEndedSourceEndsAtOnceAndAMemberSourceOverItEndsIts
 	subscriber := &recorded{}
 	h.loop.Run(func() { left.source.Subscribe(subscriber) })
 	expectEqual(t, "events", subscriber.events, []any{"ended"})
+}
+
+// Own test, mirrors follow.test.ts › calls › before the attachment resolved: applied in order on its value, for an
+// attachment whose value is older than the calls that came meanwhile (Durable's observation starts from the value at the
+// attach call; the test's Runtime reads its value after its gate): the calls move the attachment's value on, in order,
+// and calls of another kind are not applied.
+func TestFollowCallsBeforeTheAttachmentResolvedMoveTheAttachmentsOlderValueOn(t *testing.T) {
+	h := newMemberHarness(t)
+	var observer FollowObserver[any]
+	registered := make(chan struct{})
+	gate := make(chan struct{})
+	source := newFollowSource(
+		func(attached FollowObserver[any], _ context.Context) (*FollowAttachment[delta.JsonValue], error) {
+			observer = attached
+			registered <- struct{}{}
+			<-gate
+			return &FollowAttachment[delta.JsonValue]{Value: memberCount(0), Detach: func() {}}, nil
+		},
+		followOwner{label: "stale", ctx: memberBackground, ended: func(chord.WatchEnd) {}},
+		h.batch, h.loop,
+	)
+	attached := make(chan error, 1)
+	h.loop.Go(func() { attached <- source.attach(memberBackground) })
+	<-registered
+	h.loop.Run(func() {
+		observer.Advance(valueCall(memberCount(5), false, setOp(5)), memberBackground)
+		observer.Advance(chord.WatchCall[delta.JsonValue]{Kind: chord.WatchCallFailed, Error: errors.New("ignored")}, memberBackground)
+		observer.Advance(valueCall(memberCount(6), false, setOp(6)), memberBackground)
+	})
+	close(gate)
+	if err := <-attached; err != nil {
+		t.Fatalf("attach: %v", err)
+	}
+	expectEqual(t, "value", h.read(t, source), delta.JsonValue(memberCount(6)))
+	h.loop.Run(source.detach)
 }
