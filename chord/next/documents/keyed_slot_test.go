@@ -1081,7 +1081,7 @@ func TestKeyedSlotASealedHandleJoiningAColdLoadInFlightIsRefusedReleasedRule4(t 
 	p.current().Fail()
 	restarting := ksGo(func() (*JsonObject, error) { return nil, p.start() })
 	_, err := old.Get("b", background)
-	ksRequireCode(t, err, data.CodeReleased)
+	_ = ksRequireCode(t, err, data.CodeReleased)
 	gate.open()
 	res := ksRecv(t, first)
 	if res.err != nil {
@@ -1116,8 +1116,8 @@ func TestKeyedSlotColdReadsQueuedOnTheLineBeforeTheObjectsEndAreRefusedReleasedW
 	p.o.Do(func() { p.o.documents.Seal() })
 	closing := ksGo(func() (*JsonObject, error) { p.o.End(); return nil, nil })
 	gate.open()
-	ksRequireCode(t, ksRecv(t, get).err, data.CodeReleased)
-	ksRequireCode(t, ksRecv(t, watch).err, data.CodeReleased)
+	_ = ksRequireCode(t, ksRecv(t, get).err, data.CodeReleased)
+	_ = ksRequireCode(t, ksRecv(t, watch).err, data.CodeReleased)
 	// The load holding the line before the end finishes.
 	res := ksRecv(t, first)
 	if res.err != nil {
@@ -1161,9 +1161,9 @@ func TestKeyedSlotColdReadsQueuedBehindAnAdmittedStepAreRefusedReleasedWhenTheir
 	if res := ksRecv(t, change); res.err != nil {
 		t.Fatalf("change: %v", res.err)
 	}
-	ksRequireCode(t, ksRecv(t, get).err, data.CodeReleased)
-	ksRequireCode(t, ksRecv(t, watch).err, data.CodeReleased)
-	ksRequireCode(t, ksRecv(t, keys).err, data.CodeReleased)
+	_ = ksRequireCode(t, ksRecv(t, get).err, data.CodeReleased)
+	_ = ksRequireCode(t, ksRecv(t, watch).err, data.CodeReleased)
+	_ = ksRequireCode(t, ksRecv(t, keys).err, data.CodeReleased)
 	p.close()
 }
 
@@ -1193,7 +1193,7 @@ func TestKeyedSlotAStillValidWaiterSharingThatLoadGetsTheDocumentOnlyTheSealedHa
 	if res := ksRecv(t, change); res.err != nil {
 		t.Fatalf("change: %v", res.err)
 	}
-	ksRequireCode(t, ksRecv(t, sealed).err, data.CodeReleased)
+	_ = ksRequireCode(t, ksRecv(t, sealed).err, data.CodeReleased)
 	res := ksRecv(t, shared)
 	if res.err != nil {
 		t.Fatalf("shared: %v", res.err)
@@ -1228,7 +1228,7 @@ func TestKeyedSlotALoadCutByTheSealNeverInstallsASuccessorsRetirementStands(t *t
 		t.Fatalf("retire: %v", err)
 	}
 	gate.open()
-	ksRequireCode(t, ksRecv(t, cut).err, data.CodeReleased)
+	_ = ksRequireCode(t, ksRecv(t, cut).err, data.CodeReleased)
 	ksRequireAbsent(t, ksGet(t, p.notes(), "a"))
 	p.close()
 }
@@ -1265,7 +1265,7 @@ func TestKeyedSlotAKeyWhoseMigrateFailsFailsItsOwnerBrokenTheGetRejectsWithTheCa
 	var notes *Keyed
 	o, _ := activated(t, objectOptions{store: chordStore}, func(a *attempt) { notes = a.Keyed(v2) })
 	_, err := notes.Get("a", background)
-	ksRequireCode(t, err, data.CodeUnavailable)
+	_ = ksRequireCode(t, err, data.CodeUnavailable)
 	ksRequireMessage(t, err, "cannot migrate")
 	// Failed once, broken (the host's `object_failed` report and the reference's failed state: PENDING(host)).
 	if failures := o.Failures(); len(failures) != 1 || !strings.Contains(failures[0].Message, "cannot migrate") {
