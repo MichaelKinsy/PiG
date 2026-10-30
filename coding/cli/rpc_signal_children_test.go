@@ -23,9 +23,11 @@ const rpcSignalChildrenHelperEnv = "PIG_TEST_RPC_SIGNAL_CHILDREN"
 
 // Pi's rpc-mode.ts signal handler calls killTrackedDetachedChildren before shutdown(128+signum): a bash call's shell
 // runs in its own process group, and a SIGTERM shutdown neither flushes nor aborts the run, so without the kill the
-// command outlives the RPC process. The faux bash call runs `touch <marker>; sleep 45`. A helper process that is a
-// child subreaper adopts what is left of the call when PiG exits and reports how each adopted process ended: SIGKILL
-// when PiG killed it, a normal exit after 45 seconds when it outlived PiG.
+// command outlives the RPC process. The faux bash call runs `: > <marker>; sleep 45`: the shell creates the marker
+// itself, so every process of the call is the shell or its sleep, and each one is running when PiG kills it (a child
+// like touch could have exited by then, unreaped by the killed shell, and be adopted with status 0). A helper process
+// that is a child subreaper adopts what is left of the call when PiG exits and reports how each adopted process ended:
+// SIGKILL when PiG killed it, a normal exit after 45 seconds when it outlived PiG.
 func TestRPCSignalKillsTheShellOfARunningBashCall(t *testing.T) {
 	if name := os.Getenv(rpcSignalChildrenHelperEnv); name != "" {
 		rpcSignalChildrenHelper(t, name)
