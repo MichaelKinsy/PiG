@@ -26,6 +26,7 @@ fs.writeFileSync(file, JSON.stringify(pkg, null, 2));
 # Pig reads PIG_PACKAGE_DIR (config.ts getPackageDir), so Pi's PI_PACKAGE_DIR line is renamed and keeps its description column.
 # Pi lists its own app name as the third self-update target ('update [source|self|pi]'); pig accepts 'pig' there.
 # Pig's --tools has no +name/-name form yet (K1 in coding/cli/help_oracle_test.go), so those Pi lines are not printed.
+# pig divergence (D217): Pi 2a46c420 (#11532) rewords the five session flag lines (--continue, --resume, --session, --session-id, --fork) to say which working directory a session uses; Pi 1.4.0+b3a29f11 prints the old wording, so the sed below applies the new one.
 # pig divergence (D64): /share prints the PiG gateway's URL, so PI_SHARE_VIEWER_URL is unused.
 # The patched app name selects PIG_CODING_AGENT_DIR, not PI_CODING_AGENT_DIR.
 # Never load the invoking agent's state or let terminal color enter the artifact.
@@ -39,6 +40,11 @@ fs.writeFileSync(file, JSON.stringify(pkg, null, 2));
 grep -v 'PI_SHARE_VIEWER_URL' "$work/help.raw" \
   | sed -e 's/^  PI_PACKAGE_DIR /  PIG_PACKAGE_DIR/' \
     -e 's/^  pig update \[source|self|pi\]   Update pi, extensions, or model catalogs$/  pig update [source|self|pig]   Update pig, extensions, or model catalogs/' \
+    -e 's/^  --continue, -c                 Continue previous session$/  --continue, -c                 Continue the most recent session for the current directory/' \
+    -e 's/^  --resume, -r                   Select a session to resume$/  --resume, -r                   Pick a session to resume/' \
+    -e 's/^  --session <path|id>            Use specific session file or partial UUID$/  --session <path|id>            Open a session by file path or full\/partial ID/' \
+    -e 's/^  --session-id <id>              Use exact project session ID, creating it if missing$/  --session-id <id>              Use the current directory'\''s existing session with the ID, creating it otherwise/' \
+    -e 's/^  --fork <path|id>               Fork specific session file or partial UUID into a new session$/  --fork <path|id>               Fork a session by file path or full\/partial ID into the current directory/' \
   | awk '
       /^ +Only \+name\/-name entries add to or remove from the defaults$/ { next }
       /^  # Add codemode to the default tools$/ { skip = 1; next }

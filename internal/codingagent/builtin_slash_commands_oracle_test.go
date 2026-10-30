@@ -52,8 +52,34 @@ func TestBuiltinSlashCommandsMatchPi(t *testing.T) {
 			// Pi's description is `Quit ${APP_NAME}`; PiG's application name is AppName.
 			want.Description = "Quit " + AppName
 		}
+		// pig divergence (D217) allowance, Pi 2a46c420 (#11532): PiG describes /import and /resume with Pi's newer wording; TestBuiltinSlashCommandsCarryPi2a46c420Descriptions pins it.
+		switch want.Name {
+		case "import":
+			want.Description = "Import a JSONL session, preserving its ID and working directory"
+		case "resume":
+			want.Description = "Resume another session"
+		}
 		if command.Description != want.Description || command.ArgumentHint != want.ArgumentHint {
 			t.Errorf("/%s: PiG %q hint %q, Pi %q hint %q", want.Name, command.Description, command.ArgumentHint, want.Description, want.ArgumentHint)
 		}
+	}
+}
+
+// Pi 2a46c420 (#11532): /import keeps the session ID and working directory, /resume resumes another session. Pinned Pi still has "Import and resume a session from a JSONL file" and "Resume a different session"; TestBuiltinSlashCommandsMatchPi accepts the newer text under D217.
+func TestBuiltinSlashCommandsCarryPi2a46c420Descriptions(t *testing.T) {
+	want := map[string]string{
+		"import": "Import a JSONL session, preserving its ID and working directory",
+		"resume": "Resume another session",
+	}
+	for _, command := range BuiltinSlashCommands() {
+		if description, ok := want[command.Name]; ok {
+			if command.Description != description {
+				t.Errorf("/%s description = %q, want %q", command.Name, command.Description, description)
+			}
+			delete(want, command.Name)
+		}
+	}
+	for name := range want {
+		t.Errorf("/%s is not a built-in command", name)
 	}
 }

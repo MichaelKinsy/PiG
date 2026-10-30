@@ -414,6 +414,8 @@ func parseArgs(args []string) Args {
 	return flags
 }
 
+// pig divergence (D217): Pi 2a46c420 (#11532) rewords the --continue, --resume, --session, --session-id and --fork lines of the help to say which working directory a session uses; automation/gen/gen-help.sh applies the new wording to the pinned Pi's output.
+//
 //go:embed help_upstream.txt
 var upstreamHelp string
 

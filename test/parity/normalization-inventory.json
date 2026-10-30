@@ -96,6 +96,12 @@
       "scenario": "test/parity/scenarios/autocomplete/01-slash-popup.toml",
       "transforms": [
         {
+          "kind": "normalize_replace",
+          "pattern": "(?:Import and resume a session from a JSONL file|Import a JSONL session, preserving its ID and working directory)",
+          "with": "<import description>",
+          "reason": "D217: the pinned Pi describes /import as resuming a session, PiG carries Pi 2a46c420's wording; the description is the only text replaced."
+        },
+        {
           "kind": "terminal_crop",
           "configuration": {
             "capture_start": "/\n────────────────────────────────────────────────────────────────────────────────────────────────────",
@@ -117,7 +123,7 @@
           "kind": "terminal_crop",
           "configuration": {
             "capture_start": "/mo\n────────────────────────────────────────────────────────────────────────────────────────────────────",
-            "capture_end": "  import         Import and resume a session from a JSONL file"
+            "capture_end": "  import         Import "
           },
           "reason": "Owned visible surface: Typing '/mo' narrows the slash popup to the exact model-related subset.",
           "limitations": "No claim about output outside this crop or transient terminal bytes."
