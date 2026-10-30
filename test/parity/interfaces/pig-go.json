@@ -101998,6 +101998,17 @@
       "shapeHash": "sha256:ed2a5ddb00b218ada7132a3d7dea82449e5bead0ab06644cab7b3a800e77de47"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#workingDirectoryErrorMessage",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "workingDirectoryErrorMessage",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(err error) string"
+      },
+      "shapeHash": "sha256:5cb2efaf89a81029b44072e975bb5b8abbc10aeabeaef15a63648dc9e30bcf2e"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/cli#writeCLIError",
       "package": "github.com/MichaelKinsy/PiG/coding/cli",
       "name": "writeCLIError",
@@ -142905,6 +142916,17 @@
         "type": "func(cfg *ExtConfig)"
       },
       "shapeHash": "sha256:471421cd121af1eda24c305ed153c46f0a55f2cfbc3c9f8070ca8ee69e86ca81"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#finalSetOrigin",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "finalSetOrigin",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(cwd string, config ExtConfig) string"
+      },
+      "shapeHash": "sha256:a9cf436d399658182e4e51efdb3d9740aefa3e55cc2d33d66e049b23b80138bc"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#findGlobArgs",
@@ -240697,6 +240719,17 @@
       "shapeHash": "sha256:31cac5b359d9888bdbe3fe08c486b2e404a728edce6e0aaaa60e59ceafc92fb5"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#ExtensionSessionView.usesDefaultSessionDir",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "ExtensionSessionView.usesDefaultSessionDir",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func() bool"
+      },
+      "shapeHash": "sha256:f632619397f10a7f0e472ad47d2824ec7e080d15ac9eb0994e24800757b3fb96"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#ExtensionStackMetadata",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
       "name": "ExtensionStackMetadata",
@@ -256568,6 +256601,17 @@
         "type": "ResolvedResource"
       },
       "shapeHash": "sha256:60c6d9482d79ffeb9a088ff3776366b2213a5399256fd2a50655b5beba12a5da"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#ResourcePathKey",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "ResourcePathKey",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(path string) string"
+      },
+      "shapeHash": "sha256:864bd81dd802775a1a082d7f99fe261c8f3185dea2a3f45bbeae79e27ef91e07"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#ResourcePaths",
@@ -295158,6 +295202,17 @@
       "shapeHash": "sha256:994c479e95f100279eccb653c095f87d5caf593dece87d69d3492ac09348d743"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#shadowedContextFileOf",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "shadowedContextFileOf",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(commonGitDir string, worktreeRoot string, canonical func(string) string) string"
+      },
+      "shapeHash": "sha256:e83c2654618dc6632c1424025e8c95d56b0970635378f850f49b086b7f0451dd"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#shareEntry",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
       "name": "shareEntry",
@@ -299105,6 +299160,17 @@
         "type": "func(raw map[string]any) *github.com/MichaelKinsy/PiG/internal/codingagent/tools.TruncationResult"
       },
       "shapeHash": "sha256:1b66d53f23078d5af30b3ae52c74a0034f9049e2000c81e3d552e105e5b0ed64"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#trustFileKeys",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "trustFileKeys",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(data map[string]*bool, path string) []string"
+      },
+      "shapeHash": "sha256:3f81202c9c31984c7f925b6daf8dd7392a17bb475ef31101ab5af0145b80de29"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#trustHandler",
