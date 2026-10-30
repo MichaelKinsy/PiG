@@ -2764,7 +2764,7 @@
       ],
       "rationale": "All 41 upstream cases run in the evidence files (lane D5a); 1 type-level cases are designed out.",
       "designedOutCases": [
-        "the call path's cost › makes at most 19 promises per local call (a guard: the drain and the cleanups share one reaction): Pi counts promises with async_hooks, which Go has none of; the Go form carries the same guard on the cost a call has here, the microtasks it queues on the host's Loop (the drain's admission and the cleanup share one: at most two); Go test TestAttemptTheCallPathsCostAtMostTwoMicrotasksPerLocalCallTheDrainAndTheCleanupsShareOneReaction"
+        "the call path's cost › makes at most 19 promises per local call (a guard: the drain and the cleanups share one reaction)"
       ]
     },
     {
@@ -2812,8 +2812,8 @@
       ],
       "rationale": "All 2 upstream cases run in the evidence files (lane D5a); 2 type-level cases are designed out.",
       "designedOutCases": [
-        "facets › only declare: a setup takes the host and a self that only contributes; no documents, routines or natives: owner class (a) type-level check; Go mechanism: FacetHost/FacetSelf have only Serve, References and Contribute; Go test TestFacetsOnlyDeclareASetupTakesTheHostAndASelfThatOnlyContributes (reflect)",
-        "facets › are typed by exactly the app's principal type: owner class (a) type-level check; Go mechanism: there is no principal type parameter (principals are data.Principal) and Facet is exactly its setup function; Go test TestFacetsAreTypedByExactlyTheAppsPrincipalType"
+        "facets › only declare: a setup takes the host and a self that only contributes; no documents, routines or natives",
+        "facets › are typed by exactly the app's principal type"
       ]
     },
     {
@@ -2825,7 +2825,7 @@
       ],
       "rationale": "All 15 upstream cases run in the evidence files (lane D5a); 1 type-level cases are designed out.",
       "designedOutCases": [
-        "types › infers the value type from the attachment, without a type argument: type-level check (expectTypeOf); Go form: generic FollowAttach[T]/FollowAttachment[T], named by TestFollowAttachIsTypedByItsAttachment"
+        "types › infers the value type from the attachment, without a type argument"
       ]
     },
     {
@@ -2873,7 +2873,7 @@
       ],
       "rationale": "All 8 upstream cases run in the evidence files (lane D5a); 1 type-level cases are designed out.",
       "designedOutCases": [
-        "facets › cannot open natives: TypeScript type-level check (expectTypeOf\u003cFacetHost\u003e().not.toHaveProperty(\"open\")); the Go mechanism is the method sets of the Go types: neither FacetHost, FacetSelf nor the facetScope behind them declares Open, which is a member of Self alone; named by TestFacetsCannotOpenNativesFacetHostDeclaresNoOpenMember (host_facet_test.go)"
+        "facets › cannot open natives"
       ]
     },
     {
@@ -2895,7 +2895,7 @@
         "chord/next/host/host_parked_test.go"
       ],
       "missingCases": [
-        "calls on a loading local reference › stop being sent when one's handler releases the reference: the rest reject released (race 15): pending the owner's decision on first-suspension handoff (the same root as routines › start in the turn their object went live, next to a method call admitted in that turn): a Go method handler runs on its own goroutine, so its first statement is not ordered inside the sending section; the Go test TestHostParkedCallsStopBeingSentWhenOnesHandlerReleasesTheReference is NOT in this branch (it would be red) and lands red-to-green on fix/follow-d5a-handoff"
+        "calls on a loading local reference › stop being sent when one's handler releases the reference: the rest reject released (race 15)"
       ],
       "rationale": "10 of 11 upstream cases are ported (lane D5a); the 1 missing cases need the host, jobs, remote or store layers of later Chord v2 lanes and are listed in missingCases."
     },
@@ -2926,8 +2926,8 @@
       ],
       "rationale": "All 27 upstream cases run in the evidence files (lane D5a); 2 type-level cases are designed out.",
       "designedOutCases": [
-        "remote reference types › narrow on variant; RefIn picks variants: type-level check (expectTypeOf, RefIn); Go form: Reference.Variant() (variant, bound, err) names the variant a remote reference is bound to and none before the first binding, exercised by TestRemoteReferenceTypesNarrowOnVariantRefInPicksVariants",
-        "remote reference types › a held reference's variant may be undefined (before its first binding) and still narrows: type-level check (expectTypeOf, RefIn); Go form: Reference.Variant() (variant, bound, err) names the variant a remote reference is bound to and none before the first binding, exercised by TestRemoteReferenceTypesAHeldReferencesVariantMayBeUndefinedBeforeItsFirstBindingAndStillNarrows"
+        "remote reference types › narrow on variant; RefIn picks variants",
+        "remote reference types › a held reference's variant may be undefined (before its first binding) and still narrows"
       ]
     },
     {
@@ -2976,10 +2976,10 @@
       ],
       "rationale": "40 of 41 upstream cases are ported (lane D5a); the 1 missing cases need the host, jobs, remote or store layers of later Chord v2 lanes and are listed in missingCases.",
       "missingCases": [
-        "routines and the end › start in the turn their object went live, next to a method call admitted in that turn: the order is Pi's microtask order only if a handler's first synchronous section runs inside the section that admits its call (the first-suspension handoff decision): a method handler is a blocking Go function on an owned task, started in call order (attempt.call waits for the previous handler to enter), so its first statement is not ordered against `onLive` and the first `on` call, which are in-section continuations; no Go test is written for the case until the handoff is decided"
+        "routines and the end › start in the turn their object went live, next to a method call admitted in that turn"
       ],
       "designedOutCases": [
-        "routines and the end › type their handler by the source's kind: ops and retired for a JSON watchable, the value alone for a native one: owner class (a) type-level check; Go mechanism: OnHandler[delta.JsonValue] takes chord.WatchCall (Ops, Retired) and OnNativeHandler[any] takes chord.NativeWatchCall (the value alone); Go test TestOnTypesTheirHandlerByTheSourcesKindOpsAndRetiredForAJSONWatchableTheValueAloneForANativeOne (reflect on the handler types)"
+        "routines and the end › type their handler by the source's kind: ops and retired for a JSON watchable, the value alone for a native one"
       ]
     },
     {
