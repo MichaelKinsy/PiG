@@ -1276,10 +1276,10 @@ rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`coding/
 
 [[files]]
 path = "packages/coding-agent/src/core/exec.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited", "cancellable", "detached-owned", "ui-handoff", "microtask-ordering"]
+evidence = ["test:coding/extension/exec_oracle_test.go#TestExecCommandMatchesPi", "test:coding/extension/exec_max_buffer_test.go#TestExecCommandCapsCombinedOutputAtMaxBuffer", "test:coding/extension/exec_max_buffer_test.go#TestExecCommandCountsStdoutBeforeStderrWhenTheChildWroteItFirst", "test:coding/extension/exec_utf8_chunks_test.go#TestExecCommandDiscardsPendingUTF8WhenAStreamExceedsTheCap", "test:coding/extension/exec_tree_test.go#TestExecCommandForceKillsAChildThatIgnoresSIGTERMAfterFiveSeconds", "test:coding/extension/exec_signal_unix_test.go#TestExecCommandOptionsSignalEndsTheCommand", "test:coding/extension/exec_timeout_unix_test.go#TestExecCommandStartsTheTimeoutAfterTheSpawnAsPiDoes", "test:coding/extension/exec_drain_test.go#TestExecCommandKeepsTheOutputOfAChildThatExitedBeforeItsReadersRan", "test:coding/extension/exec_test.go#TestExecCommandReportsInitiationBeforeCompletion", "test:test/extension-conformance/exec_abort_test.go#TestExecAbortAcrossSDKs", "test:test/extension-conformance/exec_limits_test.go#TestExecLimitsAcrossSDKs"]
+rationale = "exec.ts at e7a0df27 is one awaited promise around a spawn: stream `data` listeners feed a byte cap that kills the child and destroys the pipes on overflow, an abort listener and a timeout timer share `killProcess` (SIGTERM, then SIGKILL after 5 s if the child has not exited), and `waitForChildProcess` settles the call once the child exited and its pipes ended or idled; Go keeps one blocking `ExecCommand` that owns a reader goroutine per pipe (childwait, stdout turn-ordered before stderr), a ctx watcher and a `time.AfterFunc` force-kill timer, all joined or stopped before it returns, with `CallInitiated` marking the end of the synchronous prefix for the host's ordered call lane."
 
 [[files]]
 path = "packages/coding-agent/src/core/export-html/index.ts"
