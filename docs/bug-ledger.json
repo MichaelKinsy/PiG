@@ -261,6 +261,25 @@
       ]
     },
     {
+      "id": "BF-03675ab",
+      "title": "fix(chord/next/store): report the recovered panic, bytes.Equal, allow jsonparse in the chord boundary",
+      "symptom": "fix(chord/next/store): report the recovered panic, bytes.Equal, allow jsonparse in the chord boundary",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Crash, hang or runaway process",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "03675abc9d",
+          "date": "2026-10-29"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-037b2e3",
       "title": "A session message whose members are in another order than Pi writes them, or that holds members PiG does not…",
       "symptom": "PiG rewrote such a message in its own member order and dropped unknown members.",
@@ -2834,6 +2853,31 @@
       ]
     },
     {
+      "id": "BF-1b9718b",
+      "title": "fix(photonimage): register the lossless decoders Decode falls back to and decode test sources with Photon",
+      "symptom": "fix(photonimage): register the lossless decoders Decode falls back to and decode test sources with Photon",
+      "rootCause": "photonimage.Decode sends JPEG and WebP to the ports of Photon's decoders and everything else to the standard library decoders, which it relied on its callers to register. It now registers PNG, GIF and BMP itself, and imageprocessing and durable/images no longer carry those blank imports. Go's JPEG and WebP decoders stay unregistered, as Pi decodes every one of these images with PhotonImage.new_from_byteslice.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "1b9718b659",
+          "date": "2026-10-29"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/clipboard_normalization_test.go::TestClipboardImageNormalization",
+        "internal/codingagent/image_convert_oracle_test.go::TestConvertToPngMatchesPiBytes",
+        "internal/codingagent/team_app_image_convert_test.go::TestImageConvertDecodedPixels",
+        "internal/photonimage/decode_routing_test.go::TestDecoderUsesFindsGoDecoderCalls",
+        "internal/photonimage/decode_routing_test.go::TestNoProductionCodeDecodesWithTheGoDecoders"
+      ]
+    },
+    {
       "id": "BF-1c1887a",
       "title": "Closing a Chord host no longer hangs when a hold arrives over a link that closes at the same time",
       "symptom": "Closing a Chord host no longer hangs when a hold arrives over a link that closes at the same time.",
@@ -5144,6 +5188,25 @@
       ]
     },
     {
+      "id": "BF-32017a5",
+      "title": "Fix in shipped code",
+      "symptom": "Fix in shipped code",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "32017a52c9",
+          "date": "2026-10-29"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-3270e5f",
       "title": "`llama-cpp-classify` answers match Pi bit for bit: the softmax uses `jsmath.Exp`, V8's fdlibm `Math.exp`…",
       "symptom": "`llama-cpp-classify` answers match Pi bit for bit: the softmax uses `jsmath.Exp`, V8's fdlibm `Math.exp` (Go's `math.Exp` differs in the last bit for some arguments on amd64).",
@@ -6582,6 +6645,25 @@
         {
           "hash": "3ba74f2827",
           "date": "2026-10-13"
+        }
+      ],
+      "tests": []
+    },
+    {
+      "id": "BF-3ca622b",
+      "title": "fix(durable/core): the tool round resumes one tick after runtime.outcomes, as Pi's #read does; drop the…",
+      "symptom": "fix(durable/core): the tool round resumes one tick after runtime.outcomes, as Pi's #read does; drop the experimental hop",
+      "rootCause": "Pi scheduler.ts outcomes goes through the async #read, which adds one tick on resume (generation.ts finishToolRound, compaction). F-ticks-tools-gate/node settle at Pi's 1728/1509 without an extra hop.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "3ca622b27a",
+          "date": "2026-10-29"
         }
       ],
       "tests": []
@@ -10068,7 +10150,6 @@
         "durable/harness/agent_model_tools_test.go::TestAgentResolutionSplitsModelToolsFromCallableTools",
         "durable/harness/harness_coding_tools_test.go::TestCodingTools",
         "durable/harness/tool_structured_output_test.go::TestStructuredOutputError",
-        "durable/harness/tool_task_v2_test.go::TestToolTaskIsVersion2",
         "durable/harness/tool_task_v2_test.go::TestToolTaskMigratesVersion1",
         "durable/harness/tool_task_v2_test.go::TestToolTaskUnionsSerializeLikePi",
         "durable/images/images_test.go::TestAFormatProvidersDoNotTakeInlineBecomesPNG",
@@ -11419,6 +11500,31 @@
       ],
       "tests": [
         "ai/anthropic_beta_override_test.go::TestAnthropicManagedEffortBodyFollowsTheBetasSent"
+      ]
+    },
+    {
+      "id": "BF-5e60e71",
+      "title": "fix(chord/next/store): outbox reads as JSON.parse, one commit API, no exported test seam, refusal by code",
+      "symptom": "fix(chord/next/store): outbox reads as JSON.parse, one commit API, no exported test seam, refusal by code",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "5e60e7124d",
+          "date": "2026-10-29"
+        }
+      ],
+      "tests": [
+        "chord/next/store/apply_batch_test.go::TestApplyBatch",
+        "chord/next/store/export_test.go::TestExportCommitQueue",
+        "chord/next/store/outbox_test.go::TestOutboxReadsStoredWritesAsJSONParse",
+        "chord/next/store/refusal_check_code_test.go::TestCheckFailureCode",
+        "chord/next/store/store_test.go::TestStore"
       ]
     },
     {
@@ -21148,6 +21254,26 @@
       ]
     },
     {
+      "id": "BF-9139ed8",
+      "title": "Reading a JPEG or a WebP image now decodes it with ports of the decoders Photon runs (jpeg-decoder 0.3.1 and…",
+      "symptom": "Reading a JPEG or a WebP image now decodes it with ports of the decoders Photon runs (jpeg-decoder 0.3.1 and the image 0.24.9 WebP decoder: baseline and progressive JPEG in every sampling, restart intervals, CMYK and YCCK; lossy, lossless, alpha and animated WebP), pixel for pixel and error for error, instead of Go's `image/jpeg` and `x/image/webp`.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Reading a JPEG or a WebP image now decodes it with ports of the decoders Photon runs (jpeg-decoder 0.3.1 and the image 0.24.9 WebP decoder: baseline and progressive JPEG in every sampling, restart intervals, CMYK and YCCK; lossy, lossless, alpha and animated WebP), pixel for pixel and error for error, instead of Go's `image/jpeg` and `x/image/webp`. A JPEG or WebP the model is sent after a resize, a rotation or a re-encode is therefore Pi's own bytes, and what depends on its pixels (sizes, the quality ladder, the choice of PNG or JPEG) is Pi's too; with this PiG's image pipeline writes the same bytes as Pi in every measured case.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "9139ed88f2",
+          "date": "2026-10-29"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-918f21c",
       "title": "`formatThousands` (`tui/compaction_summary.go`, compaction-summary-message.ts:40…",
       "symptom": "`formatThousands` (`tui/compaction_summary.go`, compaction-summary-message.ts:40 `tokensBefore.toLocaleString()`) wrote a negative count as `-,123` (the separator rule counted the minus sign as a digit); it now keeps the sign out of the grouping.",
@@ -23267,7 +23393,7 @@
       "platform": "All platforms",
       "class": "own",
       "fixedIn": "Unreleased",
-      "releaseNote": "An image the model receives is now JPEG-encoded with a port of Photon's encoder (image 0.24.9: the IJG integer DCT, the standard Huffman tables, the libjpeg quality scaling) instead of Go's `image/jpeg`, so for an image that decodes to the pixels Photon decodes (PNG, GIF, BMP) the bytes and sizes are Pi's, and with them every decision that depends on a size: which quality of the ladder fits the byte limit, how far the 3/4 shrink goes, and which of the PNG and the JPEG candidate of a resize is smaller (Pi #11577). The encoder is 1.9 times faster than Go's on a screenshot and 2.4 times faster on a 12 MP photo, with a dozen allocations in place of millions. D165 now covers only the JPEG and WebP decoders, whose pixels are still Go's.",
+      "releaseNote": "An image the model receives is now JPEG-encoded with a port of Photon's encoder (image 0.24.9: the IJG integer DCT, the standard Huffman tables, the libjpeg quality scaling) instead of Go's `image/jpeg`, so for an image that decodes to the pixels Photon decodes (PNG, GIF, BMP) the bytes and sizes are Pi's, and with them every decision that depends on a size: which quality of the ladder fits the byte limit, how far the 3/4 shrink goes, and which of the PNG and the JPEG candidate of a resize is smaller (Pi #11577). The encoder is 1.9 times faster than Go's on a screenshot and 2.4 times faster on a 12 MP photo, with a dozen allocations in place of millions.",
       "origin": "release note",
       "commits": [
         {
@@ -32177,7 +32303,6 @@
         "durable/harness/tool_nested_test.go::TestToolHookCallsCarryTheToolCallType",
         "durable/harness/tool_structured_output_test.go::TestModelIssuedCallLosesABrokenStructuredOutputAndTheHostLearnsOfIt",
         "durable/harness/tool_structured_output_test.go::TestStructuredOutputError",
-        "durable/harness/tool_task_v2_test.go::TestToolTaskIsVersion2",
         "durable/harness/tool_task_v2_test.go::TestToolTaskMigratesVersion1",
         "durable/harness/tool_task_v2_test.go::TestToolTaskUnionsSerializeLikePi",
         "durable/tools/read_differential_test.go::TestReadToolDetectsAnimatedPNGsWhoseAcTLChunkLiesFarBeyondTheHeader",
@@ -37059,6 +37184,25 @@
       ]
     },
     {
+      "id": "BF-f00bf6c",
+      "title": "fix(childwait): call PeekNamedPipe through kernel32",
+      "symptom": "fix(childwait): call PeekNamedPipe through kernel32",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "f00bf6c64c",
+          "date": "2026-10-29"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-f02269c",
       "title": "When an extension's `before_provider_request` handler replaces an Anthropic request, or a Codex WebSocket…",
       "symptom": "When an extension's `before_provider_request` handler replaces an Anthropic request, or a Codex WebSocket request carries raw JSON, nested values are written as Pi's `JSON.stringify` writes them after `JSON.parse`: `\\u00e9` becomes `é`, and a nested object's repeated key keeps its first place with its last value.",
@@ -41021,10 +41165,6 @@
     {
       "id": "D159",
       "title": "A single grapheme wider than the editor's wrap width stays one chunk instead of exhausting the stack"
-    },
-    {
-      "id": "D165",
-      "title": "The durable image processor is native Go, not Photon's WebAssembly"
     },
     {
       "id": "D167",

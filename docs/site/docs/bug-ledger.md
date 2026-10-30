@@ -29,6 +29,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-0225bbf](#bf-0225bbf) | Pressing Escape twice with only whitespace in the editor now opens the tree or fork selector, as in Pi, which… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-022d99f](#bf-022d99f) | fix(tui): the login dialog's input renders at every prompt position | PiG's own defect | All platforms | Unreleased |
 | [BF-02887e3](#bf-02887e3) | fix(release): carry main's PigVersion 0.5.3 and the post-bump goldens and pins | PiG's own defect | All platforms | Unreleased |
+| [BF-03675ab](#bf-03675ab) | fix(chord/next/store): report the recovered panic, bytes.Equal, allow jsonparse in the chord boundary | PiG's own defect | All platforms | Unreleased |
 | [BF-037b2e3](#bf-037b2e3) | A session message whose members are in another order than Pi writes them, or that holds members PiG does not… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-03ad544](#bf-03ad544) | fix(tui): card of an unregistered tool is Pi's formatToolExecution | PiG's own defect | All platforms | Unreleased |
 | [BF-040088e](#bf-040088e) | `ai.CloudflareStreams` drops the deferred fetch and cancel operations of the API it wraps, as Pi's… | PiG's own defect | All platforms | 0.5.0 |
@@ -111,6 +112,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-1a855cd](#bf-1a855cd) | The `/session` block now follows a later theme change and shows the cache-warming countdown as of each… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-1a893bc](#bf-1a893bc) | fix(durable/core): report task_interrupted from the runtime's commit path for every task (Pi scheduler.ts) | PiG's own defect | All platforms | Unreleased |
 | [BF-1b5540a](#bf-1b5540a) | `client.Client.Disconnect` takes the reason string as Pi's `Client.disconnect(reason)` does (it was an… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-1b9718b](#bf-1b9718b) | fix(photonimage): register the lossless decoders Decode falls back to and decode test sources with Photon | PiG's own defect | All platforms | Unreleased |
 | [BF-1c1887a](#bf-1c1887a) | Closing a Chord host no longer hangs when a hold arrives over a link that closes at the same time | PiG's own defect | Windows | Unreleased |
 | [BF-1c6b864](#bf-1c6b864) | A Session that an extension creates with `createAgentSession`, or that `coding.CreateAgentSession` returns… | PiG's own defect | All platforms | Unreleased |
 | [BF-1ca0e2f](#bf-1ca0e2f) | fix(codingagent): the terminal reader yields to the main loop it readied before it polls again | PiG's own defect | All platforms | Unreleased |
@@ -187,6 +189,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-31d09fa](#bf-31d09fa) | Fixed OpenRouter router models such as `openrouter/auto` showing a cost of -$1,000,000 per 1M tokens… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-31d85ab](#bf-31d85ab) | fix duplicate jsstring import in tui/text.go | PiG's own defect | All platforms | Unreleased |
 | [BF-31f4517](#bf-31f4517) | Radius gateway and OAuth authorization URLs are parsed and serialized with the WHATWG URL parser, as Node's… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-32017a5](#bf-32017a5) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
 | [BF-3270e5f](#bf-3270e5f) | `llama-cpp-classify` answers match Pi bit for bit: the softmax uses `jsmath.Exp`, V8's fdlibm `Math.exp`… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-3296eb9](#bf-3296eb9) | fix(durable/core): match the rejected step with errors.AsType | PiG's own defect | All platforms | Unreleased |
 | [BF-32ae04c](#bf-32ae04c) | Durable (Pi 89e5c2c0): a generation waiting on a blocking threshold compaction fails with `model_error`… | PiG's own defect | All platforms | 0.5.0 |
@@ -236,6 +239,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-3b3dba6](#bf-3b3dba6) | A streamed tool argument of `-0` is held as `0`, so the serialized arguments write `0` as Pi's… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-3b8aa66](#bf-3b8aa66) | A Piglet Binary that strips `bedrock-converse-stream` links the AWS SDK again: the Bedrock retry backoff… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-3ba74f2](#bf-3ba74f2) | fix(codingagent): wait for a read's rest on the route snapshot that found no modal | PiG's own defect | All platforms | Unreleased |
+| [BF-3ca622b](#bf-3ca622b) | fix(durable/core): the tool round resumes one tick after runtime.outcomes, as Pi's #read does; drop the… | PiG's own defect | All platforms | Unreleased |
 | [BF-3cb7131](#bf-3cb7131) | fix(sdk-py): stage pig_sdk.tui with the package, which pig_sdk imports at load; keep the pi-ai patterns… | PiG's own defect | All platforms | Unreleased |
 | [BF-3ce6bcb](#bf-3ce6bcb) | fix(changelog,source): /i scheme tests fold as JavaScript does, not as RE2's (?i) | PiG's own defect | All platforms | Unreleased |
 | [BF-3cf03c0](#bf-3cf03c0) | A faux provider error message that carries a response id writes `responseId` after `errorMessage` in session… | PiG's own defect | All platforms | 0.5.0 |
@@ -393,6 +397,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-5dbfed1](#bf-5dbfed1) | A scripted faux response can carry `DurationMs` | PiG's own defect | All platforms | 0.5.0 |
 | [BF-5e36d87](#bf-5e36d87) | The assistant-message frame encoder no longer re-parses and re-serializes a whole tool call's arguments for… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-5e3e346](#bf-5e3e346) | An explicit `anthropic-beta` header, from a model's `headers` or the request, no longer makes a… | A Pi defect that PiG fixed first | All platforms | 0.5.0 |
+| [BF-5e60e71](#bf-5e60e71) | fix(chord/next/store): outbox reads as JSON.parse, one commit API, no exported test seam, refusal by code | PiG's own defect | All platforms | Unreleased |
 | [BF-5eab79d](#bf-5eab79d) | `processImage` against live Pi: new `TestProcessImageMatchesPi`… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-5ec5204](#bf-5ec5204) | fix(durable/core): join split surrogates through jv.AppendConcat, not byte slices | PiG's own defect | All platforms | Unreleased |
 | [BF-5ec5f5f](#bf-5ec5f5f) | The built-in bash, read and list tool cards now show an image block that has no MIME type as `[Image… | PiG's own defect | All platforms | 0.5.0 |
@@ -731,6 +736,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-90c1f0f](#bf-90c1f0f) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
 | [BF-90f6908](#bf-90f6908) | Concurrent extension `select`, `confirm`, `input`, `editor` dialogs and inline `custom()` components in… | PiG's own defect | All platforms | 0.5.2 |
 | [BF-9101bc8](#bf-9101bc8) | Bedrock model matching follows Pi: separator runs in a model id or display name become a single `-` (so "Opus… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-9139ed8](#bf-9139ed8) | Reading a JPEG or a WebP image now decodes it with ports of the decoders Photon runs (jpeg-decoder 0.3.1 and… | PiG's own defect | All platforms | Unreleased |
 | [BF-918f21c](#bf-918f21c) | `formatThousands` (`tui/compaction_summary.go`, compaction-summary-message.ts:40… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-919575a](#bf-919575a) | A JSON syntax error reports what V8's `JSON.parse` reports in two cases it got wrong: a number or string… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-91e912a](#bf-91e912a) | Two PiG versions that share a config root (two installed versions, or PiG beside a Piglet Binary) no longer… | PiG's own defect | All platforms | 0.5.0 |
@@ -1252,6 +1258,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-edd287c](#bf-edd287c) | Migrating a version 1 session file that holds a line parsing to a number, string, array or `true` no longer… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-eeac307](#bf-eeac307) | Anthropic and Bedrock assistant messages write `providerThinkingLevel` after `model`, and write… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-ef0f95a](#bf-ef0f95a) | OpenCode Zen and OpenCode Go use the `opencode.ai/inference` endpoints, which fixes OpenCode Go Gemini models… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-f00bf6c](#bf-f00bf6c) | fix(childwait): call PeekNamedPipe through kernel32 | PiG's own defect | All platforms | Unreleased |
 | [BF-f02269c](#bf-f02269c) | When an extension's `before_provider_request` handler replaces an Anthropic request, or a Codex WebSocket… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-f06ab7e](#bf-f06ab7e) | A run that `sendMessage({ triggerTurn: true })` starts while idle emits `before_agent_start`, checks… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-f07d033](#bf-f07d033) | A response stream dropped mid-run now reports `terminated (cause: ...)` instead of a bare `terminated` (D144… | A Pi defect that PiG fixed first | All platforms | 0.5.0 |
@@ -1506,6 +1513,19 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `02887e3ea4` (2026-10-23)
 - **Tests:** `bench/k8s/cmd/k8sbench/pireference_test.go::TestCommittedPinHasAgentPins`, `internal/codingagent/changelog_test.go::TestParseChangelog_RealFile`
+
+### BF-03675ab
+
+**fix(chord/next/store): report the recovered panic, bytes.Equal, allow jsonparse in the chord boundary**
+
+- **Source:** PiG's own defect
+- **Symptom:** fix(chord/next/store): report the recovered panic, bytes.Equal, allow jsonparse in the chord boundary
+- **Root cause:** Not recorded.
+- **User impact:** Crash, hang or runaway process
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `03675abc9d` (2026-10-29)
+- **Tests:** None recorded.
 
 ### BF-037b2e3
 
@@ -2639,6 +2659,19 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** `durable/storage/jsonl/jsonl_storage_reads_test.go::TestJsonlStorageReadsCommittedRecordsRecoversThemAndFailsAfterClose`, `durable/tools/bash_input_test.go::TestBashToolInputIsTheBashSchemaArguments`
 - **Release note:** `client.Client.Disconnect` takes the reason string as Pi's `Client.disconnect(reason)` does (it was an `error`); the connection fails with a `DisconnectedError` carrying it.
 
+### BF-1b9718b
+
+**fix(photonimage): register the lossless decoders Decode falls back to and decode test sources with Photon**
+
+- **Source:** PiG's own defect
+- **Symptom:** fix(photonimage): register the lossless decoders Decode falls back to and decode test sources with Photon
+- **Root cause:** photonimage.Decode sends JPEG and WebP to the ports of Photon's decoders and everything else to the standard library decoders, which it relied on its callers to register. It now registers PNG, GIF and BMP itself, and imageprocessing and durable/images no longer carry those blank imports. Go's JPEG and WebP decoders stay unregistered, as Pi decodes every one of these images with PhotonImage.new_from_byteslice.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `1b9718b659` (2026-10-29)
+- **Tests:** `internal/codingagent/clipboard_normalization_test.go::TestClipboardImageNormalization`, `internal/codingagent/image_convert_oracle_test.go::TestConvertToPngMatchesPiBytes`, `internal/codingagent/team_app_image_convert_test.go::TestImageConvertDecodedPixels`, `internal/photonimage/decode_routing_test.go::TestDecoderUsesFindsGoDecoderCalls`, `internal/photonimage/decode_routing_test.go::TestNoProductionCodeDecodesWithTheGoDecoders`
+
 ### BF-1c1887a
 
 **Closing a Chord host no longer hangs when a hold arrives over a link that closes at the same time**
@@ -3688,6 +3721,19 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** `ai/authorization_input_oracle_test.go::TestAuthorizationInputParsersMatchPi`, `ai/error_body_oracle_test.go::TestErrorBodyHelpersMatchPiOnSeededProbes`, `ai/githubcopilot_oracle_test.go::TestGitHubCopilotHelpersMatchPi`, `ai/radius_config_oracle_test.go::TestRadiusConfigMatchesPiOnSeededProbes`, `ai/radius_urls_oracle_test.go::TestRadiusURLsMatchPiOnSeededProbes`, `ai/trusted_url_oracle_test.go::TestTrustedVerificationURLsMatchPi`, `internal/nodeurl/genericurl_oracle_test.go::TestParseURLMatchesNode`, `internal/nodeurl/url_oracle_test.go::TestParseMatchesNodeURL`
 - **Release note:** Radius gateway and OAuth authorization URLs are parsed and serialized with the WHATWG URL parser, as Node's `new URL` does. Hosts are lowercased and converted from IDN, IPv4 and IPv6 forms, userinfo is percent-encoded, a URL without a scheme or with a bad port is rejected, and an empty `search` keeps a `?`. Before, Go's `net/url` accepted or reshaped many of these.
 
+### BF-32017a5
+
+**Fix in shipped code**
+
+- **Source:** PiG's own defect
+- **Symptom:** Fix in shipped code
+- **Root cause:** Not recorded.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `32017a52c9` (2026-10-29)
+- **Tests:** None recorded.
+
 ### BF-3270e5f
 
 **`llama-cpp-classify` answers match Pi bit for bit: the softmax uses `jsmath.Exp`, V8's fdlibm `Math.exp`…**
@@ -4361,6 +4407,19 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Platform:** All platforms
 - **Fixed in:** Unreleased
 - **Fix commits:** `3ba74f2827` (2026-10-13)
+- **Tests:** None recorded.
+
+### BF-3ca622b
+
+**fix(durable/core): the tool round resumes one tick after runtime.outcomes, as Pi's #read does; drop the…**
+
+- **Source:** PiG's own defect
+- **Symptom:** fix(durable/core): the tool round resumes one tick after runtime.outcomes, as Pi's #read does; drop the experimental hop
+- **Root cause:** Pi scheduler.ts outcomes goes through the async #read, which adds one tick on resume (generation.ts finishToolRound, compaction). F-ticks-tools-gate/node settle at Pi's 1728/1509 without an extra hop.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `3ca622b27a` (2026-10-29)
 - **Tests:** None recorded.
 
 ### BF-3cb7131
@@ -5939,7 +5998,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Platform:** All platforms
 - **Fixed in:** 0.5.0
 - **Fix commits:** `433d232815` (2026-10-09), `86fe3dc28b` (2026-10-09), `f1d3eec6de` (2026-10-09), `014c014e74` (2026-10-10), `2de6fe21b8` (2026-10-10), `30ca7fcf7f` (2026-10-10), `5443b6c4d5` (2026-10-10), `691e3e1536` (2026-10-10), `76d1a85e45` (2026-10-10), `90b48897e1` (2026-10-10), `98c1299067` (2026-10-10), `af1289d2d7` (2026-10-10), `b7199a2ba1` (2026-10-10), `c87dea7287` (2026-10-10)
-- **Tests:** `agent/convert_custom_upstream_test.go::TestConvertToLLMCustomMessagesMatchUpstreamConvertToLlm`, `agent/convert_custom_upstream_test.go::TestConvertToLLMToolFlowMatchesUpstreamTransformOrder`, `agent/convert_custom_upstream_test.go::TestCustomMessagesReachProvidersAsUpstreamContentBlocks`, `agent/transform_custom_user_boundary_test.go::TestAnthropicRequestAfterBranchSummaryHasNoOrphanToolResult`, `agent/transform_custom_user_boundary_test.go::TestConvertToLLMCustomMessageWithoutWireOutputKeepsToolFlow`, `agent/transform_custom_user_boundary_test.go::TestConvertToLLMCustomUserMessageInterruptsToolFlow`, `agent/transform_custom_user_boundary_test.go::TestConvertToLLMHoldsSystemMessageUntilToolFlowCloses`, `ai/builtin_catalog_upstream_test.go::TestBuiltinCatalogsMatchPinnedProviderDataModules` and 71 more in docs/bug-ledger.json
+- **Tests:** `agent/convert_custom_upstream_test.go::TestConvertToLLMCustomMessagesMatchUpstreamConvertToLlm`, `agent/convert_custom_upstream_test.go::TestConvertToLLMToolFlowMatchesUpstreamTransformOrder`, `agent/convert_custom_upstream_test.go::TestCustomMessagesReachProvidersAsUpstreamContentBlocks`, `agent/transform_custom_user_boundary_test.go::TestAnthropicRequestAfterBranchSummaryHasNoOrphanToolResult`, `agent/transform_custom_user_boundary_test.go::TestConvertToLLMCustomMessageWithoutWireOutputKeepsToolFlow`, `agent/transform_custom_user_boundary_test.go::TestConvertToLLMCustomUserMessageInterruptsToolFlow`, `agent/transform_custom_user_boundary_test.go::TestConvertToLLMHoldsSystemMessageUntilToolFlowCloses`, `ai/builtin_catalog_upstream_test.go::TestBuiltinCatalogsMatchPinnedProviderDataModules` and 70 more in docs/bug-ledger.json
 - **Release note:** `durable/images` is the image processor of pi-durable: `images.CreatePhotonImages()` (also `images/node` and `images/cloudflare`) is a `tools.ImageProcessor` that turns an image upright by its EXIF orientation, scales it to the limits with a Lanczos3 filter, converts BMP to PNG, and re-encodes PNG or JPEG at falling qualities until it fits. `tools.CreateReadTool(&tools.ReadToolOptions{Images: p})` and `tools.CreateCodingTools(...)` pass it to `read`; `tools.CreateReadTool` now takes its options (nil for none), as `CreateBashTool` does.
 
 ### BF-54a5bf6
@@ -6522,6 +6581,19 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `5e3e346a69` (2026-10-10)
 - **Tests:** `ai/anthropic_beta_override_test.go::TestAnthropicManagedEffortBodyFollowsTheBetasSent`
 - **Release note:** An explicit `anthropic-beta` header, from a model's `headers` or the request, no longer makes a managed-effort Claude model (claude-opus-5, opus-5-5, sonnet-5-5, haiku-5-5, fable-5-1) fail with 400. The override still replaces the default betas. PiG now sends `thinking.block_binding` only with `thinking-binding-controls-2026-08-01`, and the mid-conversation effort markers only with `mid-conversation-output-config-2026-07-01`. Without the markers, the effort is sent as the top-level effort. Pi sends both regardless (Pi #10759, D130).
+
+### BF-5e60e71
+
+**fix(chord/next/store): outbox reads as JSON.parse, one commit API, no exported test seam, refusal by code**
+
+- **Source:** PiG's own defect
+- **Symptom:** fix(chord/next/store): outbox reads as JSON.parse, one commit API, no exported test seam, refusal by code
+- **Root cause:** Not recorded.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `5e60e7124d` (2026-10-29)
+- **Tests:** `chord/next/store/apply_batch_test.go::TestApplyBatch`, `chord/next/store/export_test.go::TestExportCommitQueue`, `chord/next/store/outbox_test.go::TestOutboxReadsStoredWritesAsJSONParse`, `chord/next/store/refusal_check_code_test.go::TestCheckFailureCode`, `chord/next/store/store_test.go::TestStore`
 
 ### BF-5eab79d
 
@@ -11214,6 +11286,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** `ai/githubcopilot_oracle_test.go::TestGitHubCopilotHelpersMatchPi`, `ai/overflow_oracle_test.go::TestContextOverflowMatchesPiOnSeededMessages`, `internal/evals/plan_oracle_test.go::TestPlanMatchesPiOnSeededProbes`
 - **Release note:** Bedrock model matching follows Pi: separator runs in a model id or display name become a single `-` (so "Opus 4.6" and "sonnet...5" match the adaptive-thinking and caching families), no-break spaces count as separators, and a model counts as Anthropic Claude only when its id carries an `anthropic.claude` or `anthropic/claude` prefix or its display name mentions claude.
 
+### BF-9139ed8
+
+**Reading a JPEG or a WebP image now decodes it with ports of the decoders Photon runs (jpeg-decoder 0.3.1 and…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Reading a JPEG or a WebP image now decodes it with ports of the decoders Photon runs (jpeg-decoder 0.3.1 and the image 0.24.9 WebP decoder: baseline and progressive JPEG in every sampling, restart intervals, CMYK and YCCK; lossy, lossless, alpha and animated WebP), pixel for pixel and error for error, instead of Go's `image/jpeg` and `x/image/webp`.
+- **Root cause:** Not recorded.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `9139ed88f2` (2026-10-29)
+- **Tests:** None recorded.
+- **Release note:** Reading a JPEG or a WebP image now decodes it with ports of the decoders Photon runs (jpeg-decoder 0.3.1 and the image 0.24.9 WebP decoder: baseline and progressive JPEG in every sampling, restart intervals, CMYK and YCCK; lossy, lossless, alpha and animated WebP), pixel for pixel and error for error, instead of Go's `image/jpeg` and `x/image/webp`. A JPEG or WebP the model is sent after a resize, a rotation or a re-encode is therefore Pi's own bytes, and what depends on its pixels (sizes, the quality ladder, the choice of PNG or JPEG) is Pi's too; with this PiG's image pipeline writes the same bytes as Pi in every measured case.
+
 ### BF-918f21c
 
 **`formatThousands` (`tui/compaction_summary.go`, compaction-summary-message.ts:40…**
@@ -12581,7 +12667,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `95de1de195` (2026-10-29)
 - **Tests:** None recorded.
-- **Release note:** An image the model receives is now JPEG-encoded with a port of Photon's encoder (image 0.24.9: the IJG integer DCT, the standard Huffman tables, the libjpeg quality scaling) instead of Go's `image/jpeg`, so for an image that decodes to the pixels Photon decodes (PNG, GIF, BMP) the bytes and sizes are Pi's, and with them every decision that depends on a size: which quality of the ladder fits the byte limit, how far the 3/4 shrink goes, and which of the PNG and the JPEG candidate of a resize is smaller (Pi #11577). The encoder is 1.9 times faster than Go's on a screenshot and 2.4 times faster on a 12 MP photo, with a dozen allocations in place of millions. D165 now covers only the JPEG and WebP decoders, whose pixels are still Go's.
+- **Release note:** An image the model receives is now JPEG-encoded with a port of Photon's encoder (image 0.24.9: the IJG integer DCT, the standard Huffman tables, the libjpeg quality scaling) instead of Go's `image/jpeg`, so for an image that decodes to the pixels Photon decodes (PNG, GIF, BMP) the bytes and sizes are Pi's, and with them every decision that depends on a size: which quality of the ladder fits the byte limit, how far the 3/4 shrink goes, and which of the PNG and the JPEG candidate of a resize is smaller (Pi #11577). The encoder is 1.9 times faster than Go's on a screenshot and 2.4 times faster on a 12 MP photo, with a dozen allocations in place of millions.
 
 ### BF-95eefe2
 
@@ -16526,7 +16612,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Platform:** All platforms
 - **Fixed in:** 0.5.0
 - **Fix commits:** `86fe3dc28b` (2026-10-09), `f1d3eec6de` (2026-10-09), `014c014e74` (2026-10-10), `0a25e09319` (2026-10-10), `2de6fe21b8` (2026-10-10), `69538c209e` (2026-10-10), `76d1a85e45` (2026-10-10), `90b48897e1` (2026-10-10), `b7199a2ba1` (2026-10-10), `c87dea7287` (2026-10-10), `d88dca723b` (2026-10-10)
-- **Tests:** `ai/validate_value_test.go::TestCheckSchemaValue`, `automation/pin/test_pin.py`, `durable/core/docs/addtools_test.go::TestAddToolsExtendsModelToolsAsWell`, `durable/core/driver/tool_structured_test.go::TestRetainedOutputIsTheOutputKeptSoFar`, `durable/core/driver/tool_structured_test.go::TestRetainedOutputReportsDroppedOutputAsTruncated`, `durable/core/turn/generation_test.go::TestToolThrowEndsFailedWithTheErrorInTheResult`, `durable/core/turn/tool_v2_test.go::TestToolTaskMigratesVersion1`, `durable/core/turn/tool_v2_test.go::TestToolTaskRecordIsAVersion2ModelCall` and 32 more in docs/bug-ledger.json
+- **Tests:** `ai/validate_value_test.go::TestCheckSchemaValue`, `automation/pin/test_pin.py`, `durable/core/docs/addtools_test.go::TestAddToolsExtendsModelToolsAsWell`, `durable/core/driver/tool_structured_test.go::TestRetainedOutputIsTheOutputKeptSoFar`, `durable/core/driver/tool_structured_test.go::TestRetainedOutputReportsDroppedOutputAsTruncated`, `durable/core/turn/generation_test.go::TestToolThrowEndsFailedWithTheErrorInTheResult`, `durable/core/turn/tool_v2_test.go::TestToolTaskMigratesVersion1`, `durable/core/turn/tool_v2_test.go::TestToolTaskRecordIsAVersion2ModelCall` and 31 more in docs/bug-ledger.json
 - **Release note:** `harness.ToolTaskInput.Kind` and `ToolTaskResult.Kind` are the named string type `harness.ToolTaskKind` with `ToolTaskModel` and `ToolTaskNested`, and `harness.ToolHookCall` carries `Type` ("toolCall") like Pi's `ToolHookCall`; build one with `harness.NewToolHookCall`.
 
 ### BF-d8bed22
@@ -18451,6 +18537,19 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** `ai/classifier_models_upstream_test.go::TestClassifierModelsUpstream`
 - **Release note:** OpenCode Zen and OpenCode Go use the `opencode.ai/inference` endpoints, which fixes OpenCode Go Gemini models failing with a 404; OpenCode Go MiniMax M2.7 uses the Anthropic Messages API, and OpenCode Go DeepSeek V4 Flash is no longer listed (carried Pi fix, Pi 195120a9).
 
+### BF-f00bf6c
+
+**fix(childwait): call PeekNamedPipe through kernel32**
+
+- **Source:** PiG's own defect
+- **Symptom:** fix(childwait): call PeekNamedPipe through kernel32
+- **Root cause:** Not recorded.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `f00bf6c64c` (2026-10-29)
+- **Tests:** None recorded.
+
 ### BF-f02269c
 
 **When an extension's `before_provider_request` handler replaces an Anthropic request, or a Codex WebSocket…**
@@ -20085,7 +20184,6 @@ Each divergence record is accounted for here. A divergence that fixes a Pi defec
 | D157 | PiG's startup additions stay quiet when the config root cannot be written | deliberate difference |
 | D158 | A setting of the wrong JSON type is ignored (Pi 1.4.0 throws) | deliberate difference |
 | D159 | A single grapheme wider than the editor's wrap width stays one chunk instead of exhausting the stack | deliberate difference |
-| D165 | The durable image processor is native Go, not Photon's WebAssembly | deliberate difference |
 | D167 | A history longer than the model's context window is summarized in chunks | [BF-85908ae](#bf-85908ae) |
 | D173 | Tool search matches Chinese, Japanese and Korean queries (Pi #10816) | [BF-b99457f](#bf-b99457f) |
 | D177 | The calls of a parallel durable tool round start in unspecified order | deliberate difference |
