@@ -100,6 +100,21 @@ Explicit `pig update` version checks retry transient transport failures and tran
 
 Each release tags the root module (`v0.5.0`) and the nested Go extension SDK module (`extensions/sdk/v0.5.0`) on the same commit; `go install` needs both.
 
+## Install with Nix
+
+The flake builds PiG from source in the Nix sandbox, with every input pinned by `flake.lock`:
+
+```bash
+nix run github:MichaelKinsy/PiG -- --version
+nix profile add github:MichaelKinsy/PiG
+```
+
+Nix before 2.30 and Lix spell the second command `nix profile install`.
+
+On NixOS or with Home Manager, add the flake as an input and install `inputs.pig.packages.${system}.default`, or apply `inputs.pig.overlays.default` and install `pkgs.pig`.
+
+The package wraps `pig` as Pi's flake does: `fd`, `ripgrep`, and the clipboard commands come first on `PATH`, and Node.js comes last so that `npm` is available for package installs. Extensions build and run as in any other installation, with the toolchains on your `PATH` and the SDKs PiG stages under `~/.pig`. `pig update` does not replace a Nix installation; update the flake input instead. The flake is verified on x86_64-linux; the other systems evaluate but are not yet verified natively.
+
 ## Start PiG
 
 Run PiG in the folder of the project you want it to work on:
