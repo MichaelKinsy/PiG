@@ -429,10 +429,10 @@ func gifCorpus() []formatCase {
 		w := 100
 		var codes []int
 		var indices []byte
-		for h := 60; ; h++ {
+		for h := 20; ; h++ {
 			indices = gifPattern("noise", w, h, 256, 77)
 			codes = gifEncode(minCode, indices, true)
-			if len(gifPackCodes(minCode, codes)) > 7250 {
+			if len(gifPackCodes(minCode, codes)) > 7170 {
 				break
 			}
 		}
