@@ -3582,7 +3582,7 @@ class Context:
         return self.extension._add_width_change_handler(handler)
 
     def on_theme_change(self, handler: "Callable[[Theme], Any]") -> "Callable[[], None]":
-        """Subscribe to changes of the host's theme: the user switching theme, a custom theme's file reloading, the terminal reporting new colors. ``handler(theme)`` receives :attr:`theme` after it took the new palette.
+        """Subscribe to changes of the host's theme: the user switching theme, a custom theme's file reloading, the terminal reporting new colors. ``handler(theme)`` receives the theme of the change it is delivered for: a snapshot of :attr:`theme` as it was when the palette came in, so a handler that runs after the host changed the theme again still sees the palette it was called for (:attr:`theme` itself stays live).
 
         Pi calls a widget component's ``invalidate()`` on a theme change, and the component reads ``ctx.ui.theme`` at its next render, so it never paints the colors of an old theme. A subprocess extension pushes rows that were colored when it built them, so it re-renders from this subscription. :meth:`set_widget_renderer` colors through the live theme at every render and needs no handler for it.
 
@@ -5454,13 +5454,14 @@ class Extension:
                         print(f"pig: width change handler failed:\n{traceback.format_exc()}", file=sys.stderr, end="")
 
     def _set_theme_palette(self, palette: dict[str, Any]) -> None:
-        """Install the host's palette and deliver it to the on_theme_change handlers when it differs from the one before. The caller holds the state lock."""
+        """Install the host's palette and deliver a snapshot of the theme to the on_theme_change handlers when it differs from the one before. The caller holds the state lock."""
         changed = self._theme_known and self._theme_palette != palette
         self._theme._set_palette(palette)
         self._theme_palette = palette
         self._theme_known = True
         if changed:
-            self._theme_feed.publish(self._theme)
+            # _set_palette binds new dicts and never mutates one in place: the shallow copy shares nothing that changes later, so a handler that runs after the next change still sees this one's theme.
+            self._theme_feed.publish(copy.copy(self._theme))
 
     def _apply_ui_state(self, state: dict[str, Any]) -> None:
         """Record the snapshot's replicated values: hasUI, theme, settings, MCP servers, the model and the session name. The ready state and every state_update pass through here. Caller holds _state_lock."""
