@@ -38,7 +38,15 @@ func assertAnthropicCatalogDenominator(t *testing.T, cases anthropicAcceptanceCa
 		}
 	}
 	slices.Sort(expected)
-	if !slices.Equal(cases.All, expected) {
+	// pig divergence (D217): Pi 44f6851b is carried past the pin; the fixture, Pi 1.2.0's list, lacks OpenRouter's ~anthropic/claude-*-latest aliases.
+	all := slices.Clone(cases.All)
+	for _, model := range ListModels("openrouter") {
+		if d217CarriedOpenRouterAnthropicLatest(model.Provider, model.ID) {
+			all = append(all, model.Provider+"/"+model.ID)
+		}
+	}
+	slices.Sort(all)
+	if !slices.Equal(all, expected) {
 		t.Fatal("Anthropic model denominator differs from the Pi 1.2.0 fixture; see testdata/port-wave-13/README.md")
 	}
 }

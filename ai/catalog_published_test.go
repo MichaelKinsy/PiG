@@ -7,6 +7,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"reflect"
+	"slices"
 	"testing"
 )
 
@@ -134,6 +135,13 @@ func TestGeneratedCatalogsMatchPublishedPackage(t *testing.T) {
 	}
 	for name, got := range map[string][]any{"chat": chat, "image": image, "classifier": classifier} {
 		want := published[name]
+		if name == "chat" {
+			// pig divergence (D217): Pi 44f6851b is carried past the pin; the published row is read with the carried edit applied.
+			want = slices.Clone(want)
+			for i, model := range want {
+				want[i] = d217CarriedPiModel(model)
+			}
+		}
 		if len(got) != len(want) {
 			t.Errorf("%s catalog has %d models, published %s has %d", name, len(got), UpstreamVersionString(), len(want))
 			continue

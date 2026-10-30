@@ -161,13 +161,17 @@ func TestModelCatalogTypes(t *testing.T) {
 	})
 }
 
-func TestOpenRouterCacheControlModels(t *testing.T) {
-	// .upstream/v0.87.1/packages/ai/test/openrouter-cache-control-models.test.ts:12
+// Pi 44f6851b (#9534; pig divergence (D217)) deleted packages/ai/test/openrouter-cache-control-models.test.ts, which kept these aliases on
+// Chat Completions with Anthropic cache control: they use the Anthropic Messages API with adaptive thinking, like the versioned Claude models.
+func TestOpenRouterAnthropicLatestAliasesUseMessages(t *testing.T) {
 	for _, id := range []string{"~anthropic/claude-fable-latest", "~anthropic/claude-haiku-latest", "~anthropic/claude-opus-latest", "~anthropic/claude-sonnet-latest"} {
-		t.Run("keeps completions cache control for "+id, func(t *testing.T) {
+		t.Run(id, func(t *testing.T) {
 			m := mustGeneratedModel(t, "openrouter", id)
-			if m.API != APIOpenAICompletions || m.Compat == nil || m.Compat.CacheControlFormat != "anthropic" {
+			if m.API != APIAnthropicMessages || m.BaseURL != "https://openrouter.ai/api" || m.Compat == nil || m.Compat.ForceAdaptiveThinking == nil || !*m.Compat.ForceAdaptiveThinking {
 				t.Fatalf("model = %+v", m)
+			}
+			if m.Compat.CacheControlFormat != "" || m.Compat.ThinkingFormat != "" {
+				t.Fatalf("the Chat Completions compat survived: %+v", m.Compat)
 			}
 		})
 	}

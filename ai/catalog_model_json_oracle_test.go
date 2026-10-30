@@ -46,10 +46,11 @@ import(url).then(({ MODELS }) => {
 		if err != nil || !ok {
 			t.Fatalf("%s: CatalogModelJSON ok=%t err=%v", key, ok, err)
 		}
-		if string(got) != want[key] {
+		// pig divergence (D217): Pi 44f6851b is carried past the pin; the oracle's row is read with the carried edit applied.
+		if string(got) != d217CarriedPiJSON(generated.Provider, generated.ID, want[key]) {
 			mismatches++
 			if mismatches <= 5 {
-				t.Errorf("%s:\n got %s\nwant %s", key, got, want[key])
+				t.Errorf("%s:\n got %s\nwant %s", key, got, d217CarriedPiJSON(generated.Provider, generated.ID, want[key]))
 			}
 		}
 	}
