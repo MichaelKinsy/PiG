@@ -3782,6 +3782,30 @@
       ]
     },
     {
+      "id": "BF-254fce4",
+      "title": "`Shift+Enter` inserts a newline instead of queueing a follow-up in Apple Terminal setups that send `ESC` +…",
+      "symptom": "`Shift+Enter` inserts a newline instead of queueing a follow-up in Apple Terminal setups that send `ESC` + Return.",
+      "rootCause": "Some Apple Terminal setups send ESC+CR for Shift+Enter, which parsed as alt+enter and queued a follow-up.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong output or ordering",
+      "platform": "Windows",
+      "class": "pi-port",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`Shift+Enter` inserts a newline instead of queueing a follow-up in Apple Terminal setups that send `ESC` + Return. Where native Shift detection is available (Apple Terminal, native Windows), `ESC` + Return with Shift held is `Shift+Enter`; without Shift it stays `Alt+Enter`. Carried forward from Pi 86dc686c (earendil-works/pi#11559), past the 1.4.0+b3a29f11 pin.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "254fce4ebe",
+          "date": "2026-10-30",
+          "pr": "11559"
+        }
+      ],
+      "tests": [
+        "tui/terminal_native_shift_enter_test.go::TestNormalizeNativeShiftEnterInputRewritesEscapeReturn",
+        "tui/terminal_native_shift_enter_test.go::TestNormalizeProcessInputSequenceForEscapeReturn"
+      ]
+    },
+    {
       "id": "BF-25a90ea",
       "title": "fix(tui): scroll regions only where the terminal is trusted with them (D205 approved)",
       "symptom": "fix(tui): scroll regions only where the terminal is trusted with them (D205 approved)",
@@ -3848,6 +3872,31 @@
         "internal/codingagent/assistant_markdown_transformers_cost_test.go::TestAssistantMarkdownTransformDoesNotRebuildItsTransformersPerRender",
         "test/extension-conformance/tool_renderer_resolvers_test.go::TestToolRendererRegisteredAfterLoadingAcrossSDKs",
         "test/extension-conformance/tool_renderer_resolvers_test.go::TestToolRendererResolversAcrossSDKs"
+      ]
+    },
+    {
+      "id": "BF-25aaf96",
+      "title": "Wrapped text no longer starts the next line with a space when a styled word ends exactly at the wrap width…",
+      "symptom": "Wrapped text no longer starts the next line with a space when a styled word ends exactly at the wrap width, and strikethrough no longer runs into the right padding of a wrapped line: the wrap closes `\\x1b[29m` at line end like underline and opens it again on the next line.",
+      "rootCause": "The code that closes a styled word attaches to the following space, so wrapping took that space for a word and moved it to the next line, and strikethrough ran into the padding of a wrapped line. A token is whitespace once its escape codes are skipped, a dropped space keeps its codes on the wrapped line, strikethrough is closed at line end like underline, and trailing spaces are trimmed before the line-end reset.",
+      "rootCauseSource": "commit",
+      "userImpact": "Lost or altered data",
+      "platform": "All platforms",
+      "class": "pi-port",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Wrapped text no longer starts the next line with a space when a styled word ends exactly at the wrap width, and strikethrough no longer runs into the right padding of a wrapped line: the wrap closes `\\x1b[29m` at line end like underline and opens it again on the next line. Carried forward from Pi 2ce9d527 (earendil-works/pi#10925), past the 1.4.0+b3a29f11 pin.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "25aaf9682c",
+          "date": "2026-10-30",
+          "pr": "10925"
+        }
+      ],
+      "tests": [
+        "tui/markdown_wrap_boundary_test.go::TestMarkdownStyledWordsAtTheWrapBoundaryPiCase",
+        "tui/widthx/wrap_boundary_test.go::TestLineEndResetClosesStrikethrough",
+        "tui/widthx/wrap_boundary_test.go::TestWrapTextWithAnsiStyledWordsAtTheWrapBoundaryPiCases"
       ]
     },
     {
@@ -4416,6 +4465,32 @@
       ],
       "tests": [
         "ai/google_convert_tools_upstream_test.go::TestGoogleSharedConvertToolsUpstream"
+      ]
+    },
+    {
+      "id": "BF-2b0c715",
+      "title": "Resizing an image sends the smaller of the PNG and the JPEG at the configured quality instead of the PNG…",
+      "symptom": "Resizing an image sends the smaller of the PNG and the JPEG at the configured quality instead of the PNG whenever it fit, so a photo that needs resizing no longer goes out as a multi-MB PNG that makes the request fail or time out.",
+      "rootCause": "A resize returned the PNG whenever it fit, even when the JPEG was many times smaller, so photos went out as multi-MB PNGs. Each size step now tries the smaller of the PNG and the JPEG at the configured quality first, then the other, then the lower JPEG qualities. TestResizePreservesAlpha no longer requires a PNG for a translucent image, as in Pi.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "pi-port",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Resizing an image sends the smaller of the PNG and the JPEG at the configured quality instead of the PNG whenever it fit, so a photo that needs resizing no longer goes out as a multi-MB PNG that makes the request fail or time out. Screenshots where the PNG is smaller still go out as PNG, and the lower JPEG qualities are tried only when neither fits. Carried forward from Pi e7a0df27 (earendil-works/pi#11551), past the 1.4.0+b3a29f11 pin.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "2b0c715070",
+          "date": "2026-10-30",
+          "pr": "11551"
+        }
+      ],
+      "tests": [
+        "internal/imageprocessing/image_processing_upstream_test.go::TestFirstFittingCandidatePrefersTheSmallerOfPNGAndJPEG",
+        "internal/imageprocessing/image_processing_upstream_test.go::TestResizeImagePicksJPEGOverLargerPNGForPhotos",
+        "internal/imageprocessing/images_test.go::TestPNGCandidateKeepsAlpha",
+        "internal/imageprocessing/images_test.go::TestResizePreservesAlpha"
       ]
     },
     {
@@ -18641,6 +18716,29 @@
       ]
     },
     {
+      "id": "BF-8027980",
+      "title": "Image components render inline in Orca terminals that advertise Kitty graphics (`TERM_PROGRAM=Orca` with…",
+      "symptom": "Image components render inline in Orca terminals that advertise Kitty graphics (`TERM_PROGRAM=Orca` with `ORCA_IMAGE_PROTOCOL=kitty`) instead of falling back to text.",
+      "rootCause": "TERM_PROGRAM=Orca with ORCA_IMAGE_PROTOCOL=kitty gets inline Kitty images, true color and hyperlinks; Orca without the advertisement keeps the text fallback, and the tmux and screen guards still win. Checked after Herdr and Rex and before the Kitty variables, as in Pi.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong display",
+      "platform": "All platforms",
+      "class": "pi-port",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Image components render inline in Orca terminals that advertise Kitty graphics (`TERM_PROGRAM=Orca` with `ORCA_IMAGE_PROTOCOL=kitty`) instead of falling back to text. Orca releases that do not advertise it keep the text fallback. Carried forward from Pi f09d01b8 (earendil-works/pi#9329), past the 1.4.0+b3a29f11 pin.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "8027980301",
+          "date": "2026-10-30",
+          "pr": "9329"
+        }
+      ],
+      "tests": [
+        "tui/terminal_image_orca_test.go::TestDetectCapabilitiesOrca"
+      ]
+    },
+    {
       "id": "BF-8048c85",
       "title": "Tool-call header argument preview no longer splits a character: `truncateArg` (`tui/tool_execution.go`) cut…",
       "symptom": "Tool-call header argument preview no longer splits a character: `truncateArg` (`tui/tool_execution.go`) cut to `max-1` bytes, so a non-ASCII argument longer than the budget ended in a half character that the JSON quoting turned into a visible U+FFFD before the ellipsis (`text:\"ééé…é�…\"`); it now backs up to the start of a character.",
@@ -19469,6 +19567,33 @@
       ],
       "tests": [
         "internal/codingagent/interactive_cache_miss_entries_test.go::TestRebuiltCacheMissNoticesScanEveryEntryInFileOrder"
+      ]
+    },
+    {
+      "id": "BF-85f21a9",
+      "title": "In fullscreen mode a focused selection list takes every viewport key, not only the page keys, so `Ctrl+Home`…",
+      "symptom": "In fullscreen mode a focused selection list takes every viewport key, not only the page keys, so `Ctrl+Home` in a model, session or tree selector no longer scrolls the transcript behind it.",
+      "rootCause": "D155 already pages every selection list and lets a focused list keep the page keys. Pi merged the change as and this brings the rest of PiG to that commit:",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "pi-port",
+      "fixedIn": "Unreleased",
+      "releaseNote": "In fullscreen mode a focused selection list takes every viewport key, not only the page keys, so `Ctrl+Home` in a model, session or tree selector no longer scrolls the transcript behind it. The `/mcp` manager takes them while a menu list is shown, a searchable settings submenu pages with `PageUp` and `PageDown` instead of sending them to its search box, and the session selector in rename mode and the tree selector while a label is edited give the keys back to their input. The public `tui` names now follow Pi: `GetSelectPageIndex` replaces `PageSelectionIndex`, and `ViewportInputCapturer`, `CapturesViewportInput` replace `SelectPageInputCapturer`, `CapturesSelectPageInput`. Carried forward from Pi 3bae8527 (earendil-works/pi#7629), past the 1.4.0+b3a29f11 pin.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "85f21a9d37",
+          "date": "2026-10-30",
+          "pr": "7629"
+        }
+      ],
+      "tests": [
+        "coding/mcpext/manager_test.go::TestMcpManagerViewMenuCapturesViewportInputOnlyWhileAListIsShown",
+        "internal/codingagent/select_page_keys_test.go::TestSessionSelectorStopsCapturingWhileRenaming",
+        "tui/select_page_keys_test.go::TestAltScreenDefersEveryViewportKeyToACapturingFocus",
+        "tui/select_page_keys_test.go::TestSelectSubmenuPagesASearchableList",
+        "tui/select_page_keys_test.go::TestTreeSelectorCapturesViewportInputExceptWhileEditingALabel"
       ]
     },
     {
@@ -20614,6 +20739,29 @@
       "tests": [
         "internal/codingagent/settings_key_order_test.go::TestSaveSettingsPatchKeepsTheFileKeyOrder",
         "internal/codingagent/settings_key_order_test.go::TestSaveSettingsPatchReplacesInPlace"
+      ]
+    },
+    {
+      "id": "BF-8d6fb83",
+      "title": "A bare URL in Markdown ends at CJK punctuation, so `https://example.com。后面的中文` links…",
+      "symptom": "A bare URL in Markdown ends at CJK punctuation, so `https://example.com。后面的中文` links `https://example.com` and keeps the rest as text.",
+      "rootCause": "A bare URL ends at the first CJK punctuation mark and the text after it stays plain text; explicit links, angle autolinks and CJK letters are unchanged. The tokenizer hunk is the one the Pi follow branch carries ().",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "pi-port",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A bare URL in Markdown ends at CJK punctuation, so `https://example.com。后面的中文` links `https://example.com` and keeps the rest as text. The URL took the punctuation and the text after it into the link. Carried forward from Pi fa168515 (earendil-works/pi#10933), past the 1.4.0+b3a29f11 pin.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "8d6fb83fb2",
+          "date": "2026-10-30",
+          "pr": "10933"
+        }
+      ],
+      "tests": [
+        "tui/markdown_cjk_url_test.go::TestMarkdownBareURLStopsAtCJKPunctuationPiCases"
       ]
     },
     {
@@ -36987,6 +37135,30 @@
         "internal/codingagent/startup_color_wait_render_test.go::TestRenderRequestedWhileStartupWaitsForTheTerminalColorsPaints",
         "internal/codingagent/startup_query_order_pty_test.go::TestStartupWritesTheTerminalColorQueryBeforeTheFirstFrame",
         "internal/codingagent/startup_query_order_pty_test.go::TestStartupWritesTheTerminalColorQueryBeforeTheFirstFrameChild"
+      ]
+    },
+    {
+      "id": "BF-f193c36",
+      "title": "The working status (OSC 7501) no longer disappears in Rex and iTerm2 during runs in regular TUI mode",
+      "symptom": "The working status (OSC 7501) no longer disappears in Rex and iTerm2 during runs in regular TUI mode.",
+      "rootCause": "Terminals that show OSC 7501 program status (Rex, iTerm2) read 133;A as a new shell prompt and drop the status, so the working indicator vanished during runs. The regular-mode renderer now strips the leading OSC 133 marks of every rendered line, as fullscreen mode already does. The hunks are the ones the Pi follow branch carries (). TestAssistantThinkingClicksThroughTerminal asserted that the marks reach the Main Screen terminal; it now asserts the component still produces them and the terminal does not receive them.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong display",
+      "platform": "All platforms",
+      "class": "pi-port",
+      "fixedIn": "Unreleased",
+      "releaseNote": "The working status (OSC 7501) no longer disappears in Rex and iTerm2 during runs in regular TUI mode. Rendered messages wrote OSC 133 prompt markers to the terminal, which those terminals read as a new shell prompt; the regular-mode renderer now drops them as fullscreen mode already did. Carried forward from Pi 19ce8059 (earendil-works/pi#11519), past the 1.4.0+b3a29f11 pin.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "f193c36df8",
+          "date": "2026-10-30",
+          "pr": "11519"
+        }
+      ],
+      "tests": [
+        "tui/assistant_mouse_upstream_test.go::TestAssistantThinkingClicksThroughTerminal",
+        "tui/tui_osc133_main_screen_test.go::TestMainScreenDropsOSC133PromptMarkers"
       ]
     },
     {
