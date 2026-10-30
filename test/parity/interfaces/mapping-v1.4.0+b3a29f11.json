@@ -200436,7 +200436,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:tui/assistant_message_block.go#AssistantMessageComponent.terminalErrorText"
+        "call:tui/assistant_message_block.go#AssistantMessageComponent.measureOwnedRuns"
       ],
       "evidence": [
         "test:coding/cli/max_thinking_upstream_test.go#TestMaxThinkingCodingAgentUpstream",
