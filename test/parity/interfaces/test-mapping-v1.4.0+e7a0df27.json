@@ -3131,143 +3131,277 @@
     },
     {
       "path": "packages/chord/test/next/store/allocator.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:338be5bc3e37db49d42951d7e14fec925033e617ac471475b174c372449c0dc2"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:338be5bc3e37db49d42951d7e14fec925033e617ac471475b174c372449c0dc2",
+      "evidence": [
+        "chord/next/store/allocator_test.go"
+      ],
+      "rationale": "All 2 upstream cases run in the evidence files (lane D3)."
     },
     {
       "path": "packages/chord/test/next/store/applier.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:c3234bf9df238f1747d13093b90149e5dde99b922fdc7fff51fc37bde5fc74f4"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:c3234bf9df238f1747d13093b90149e5dde99b922fdc7fff51fc37bde5fc74f4",
+      "evidence": [
+        "chord/next/store/applier_test.go"
+      ],
+      "rationale": "All 2 upstream cases run in the evidence files (lane D3)."
     },
     {
       "path": "packages/chord/test/next/store/apply-batch.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:f8b13983e25044f2a18147eab93a0d035c8c6cd11d5bbfa208ff83064aa31b85"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:f8b13983e25044f2a18147eab93a0d035c8c6cd11d5bbfa208ff83064aa31b85",
+      "evidence": [
+        "chord/next/store/apply_batch_test.go"
+      ],
+      "rationale": "All 10 upstream cases run in the evidence files (lane D3)."
     },
     {
       "path": "packages/chord/test/next/store/archive.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:a22648ceb17ab6ecee31cb3e26df2aaae6113f005147f260979902d6575e3908"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:a22648ceb17ab6ecee31cb3e26df2aaae6113f005147f260979902d6575e3908",
+      "evidence": [
+        "chord/next/store/archive_support_test.go",
+        "chord/next/store/archive_test.go"
+      ],
+      "rationale": "All 2 upstream cases run in the evidence files (lane D3)."
     },
     {
       "path": "packages/chord/test/next/store/catalog.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:735d735c5a666a28f05570796e7dadad9ba7847ce8a9eddd5497821ce0b1bd0c"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:735d735c5a666a28f05570796e7dadad9ba7847ce8a9eddd5497821ce0b1bd0c",
+      "evidence": [
+        "chord/next/store/catalog_test.go"
+      ],
+      "rationale": "All 2 upstream cases run in the evidence files (lane D3)."
     },
     {
       "path": "packages/chord/test/next/store/claims.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:beb7f18fda990afc9fdad0a8c8c62c8797ec1a5da452a87a9081183def8b40cd"
+      "disposition": "partial",
+      "upstreamTestHash": "sha256:beb7f18fda990afc9fdad0a8c8c62c8797ec1a5da452a87a9081183def8b40cd",
+      "evidence": [
+        "chord/next/store/claims_test.go"
+      ],
+      "missingCases": [
+        "claims › an object claims its tables and documents when it declares them, and releases them at its end"
+      ],
+      "rationale": "2 of 3 upstream cases are ported (lane D3); the 1 missing cases need the host, jobs, remote or store layers of later Chord v2 lanes and are listed in missingCases."
     },
     {
       "path": "packages/chord/test/next/store/columns.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:5f27d851df51ebfa1ab288b3a8cb74726df055c369a0033b1f421575de2cc1c7"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:5f27d851df51ebfa1ab288b3a8cb74726df055c369a0033b1f421575de2cc1c7",
+      "evidence": [
+        "chord/next/store/columns_test.go"
+      ],
+      "rationale": "All 3 upstream cases run in the evidence files (lane D3); 1 type-level cases are designed out.",
+      "designedOutCases": [
+        "row types › types rows with optional opt(...) fields and puts with optional defaulted fields"
+      ]
     },
     {
       "path": "packages/chord/test/next/store/engine.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:980fe64672b199d0bea82c5972cfaaf04819aa3ba03151f1be15d3d496e38fa2"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:980fe64672b199d0bea82c5972cfaaf04819aa3ba03151f1be15d3d496e38fa2",
+      "evidence": [
+        "chord/next/store/engine_test.go"
+      ],
+      "rationale": "All 10 upstream cases run in the evidence files (lane D3)."
     },
     {
       "path": "packages/chord/test/next/store/evaluate.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:a1d245998432479af562fa5c3e526b1a4043d3ba360ef35b62736511ef92b2aa"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:a1d245998432479af562fa5c3e526b1a4043d3ba360ef35b62736511ef92b2aa",
+      "evidence": [
+        "chord/next/store/evaluate_test.go"
+      ],
+      "rationale": "All 7 upstream cases run in the evidence files (lane D3)."
     },
     {
       "path": "packages/chord/test/next/store/export.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:eb64c6a9fb6d0ad1d9b7d804ef4665dc77f31c8535d1df74c852fb7aa554739c"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:eb64c6a9fb6d0ad1d9b7d804ef4665dc77f31c8535d1df74c852fb7aa554739c",
+      "evidence": [
+        "chord/next/store/export_test.go"
+      ],
+      "rationale": "All 12 upstream cases run in the evidence files (lane D3)."
     },
     {
       "path": "packages/chord/test/next/store/expression.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:82c91c6ed002f2556f007859750706c251546cc437e82e073803ebbecae2723f"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:82c91c6ed002f2556f007859750706c251546cc437e82e073803ebbecae2723f",
+      "evidence": [
+        "chord/next/store/expression_test.go"
+      ],
+      "rationale": "All 7 upstream cases run in the evidence files (lane D3)."
     },
     {
       "path": "packages/chord/test/next/store/import.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:dde1af5481e5814deec40858db12989f69e19a3d9427505173905c0b7222cc52"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:dde1af5481e5814deec40858db12989f69e19a3d9427505173905c0b7222cc52",
+      "evidence": [
+        "chord/next/store/import_test.go"
+      ],
+      "rationale": "All 8 upstream cases run in the evidence files (lane D3)."
     },
     {
       "path": "packages/chord/test/next/store/json-column.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:a41f32ef658b6e378a21e824e840077aec4ffc8eba72b9c9ec891e2e6f5a09b1"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:a41f32ef658b6e378a21e824e840077aec4ffc8eba72b9c9ec891e2e6f5a09b1",
+      "evidence": [
+        "chord/next/store/json_column_test.go"
+      ],
+      "rationale": "All 5 upstream cases run in the evidence files (lane D3)."
     },
     {
       "path": "packages/chord/test/next/store/jsonl.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:634045038d975df2e1f14be3cf14fb9a325b541d42a8ca742af82f9e7b025f77"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:634045038d975df2e1f14be3cf14fb9a325b541d42a8ca742af82f9e7b025f77",
+      "evidence": [
+        "chord/next/store/jsonl_test.go"
+      ],
+      "rationale": "All 4 upstream cases run in the evidence files (lane D3)."
     },
     {
       "path": "packages/chord/test/next/store/outbox.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:86898478ff3bf07899373c80c976d452e384d0d793e507e38e578a6ff7a7079a"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:86898478ff3bf07899373c80c976d452e384d0d793e507e38e578a6ff7a7079a",
+      "evidence": [
+        "chord/next/store/outbox_decode_test.go",
+        "chord/next/store/outbox_test.go"
+      ],
+      "rationale": "All 6 upstream cases run in the evidence files (lane D3)."
     },
     {
       "path": "packages/chord/test/next/store/query.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:142f16a07da9da7117fcd355681291b37ee4156775b2e39161c5b68224c7b9f7"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:142f16a07da9da7117fcd355681291b37ee4156775b2e39161c5b68224c7b9f7",
+      "evidence": [
+        "chord/next/store/query_test.go"
+      ],
+      "rationale": "All 5 upstream cases run in the evidence files (lane D3)."
     },
     {
       "path": "packages/chord/test/next/store/refusal.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:d005482e8e820a94d6733fd48cca8f841df5fc034eb503ed0b530c73d70bba50"
+      "disposition": "partial",
+      "upstreamTestHash": "sha256:d005482e8e820a94d6733fd48cca8f841df5fc034eb503ed0b530c73d70bba50",
+      "evidence": [
+        "chord/next/store/refusal_check_code_test.go",
+        "chord/next/store/refusal_test.go"
+      ],
+      "missingCases": [
+        "Chord's owners › an int out of range fails only its transaction; the object stays live"
+      ],
+      "rationale": "1 of 2 upstream cases are ported (lane D3); the 1 missing cases need the host, jobs, remote or store layers of later Chord v2 lanes and are listed in missingCases."
     },
     {
       "path": "packages/chord/test/next/store/rows.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:c1b8562ba1215a7772fef72ba7b82566b980cc91189671053c3f3d56a40f2319"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:c1b8562ba1215a7772fef72ba7b82566b980cc91189671053c3f3d56a40f2319",
+      "evidence": [
+        "chord/next/store/rows_test.go"
+      ],
+      "rationale": "All 7 upstream cases run in the evidence files (lane D3)."
     },
     {
       "path": "packages/chord/test/next/store/sql.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:694d30cf08b0b0e7901602c05c65bfeded310aed475e8a8344022dcc04d0f7cf"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:694d30cf08b0b0e7901602c05c65bfeded310aed475e8a8344022dcc04d0f7cf",
+      "evidence": [
+        "chord/next/store/sql_test.go"
+      ],
+      "rationale": "All 6 upstream cases run in the evidence files (lane D3)."
     },
     {
       "path": "packages/chord/test/next/store/store.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:d7b4ce7741092b1d9c6399d83ec3d49a06c884a8eacd8342d50f0e37d3e0a417"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:d7b4ce7741092b1d9c6399d83ec3d49a06c884a8eacd8342d50f0e37d3e0a417",
+      "evidence": [
+        "chord/next/store/store_test.go"
+      ],
+      "rationale": "All 16 upstream cases run in the evidence files (lane D3)."
     },
     {
       "path": "packages/chord/test/next/store/table-changes.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:9b0c5a2e3c1edfee215e4222164e8c878aefc1192c2dc81505571b18e13f0094"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:9b0c5a2e3c1edfee215e4222164e8c878aefc1192c2dc81505571b18e13f0094",
+      "evidence": [
+        "chord/next/store/table_changes_test.go"
+      ],
+      "rationale": "All 4 upstream cases run in the evidence files (lane D3)."
     },
     {
       "path": "packages/chord/test/next/store/table-evolve.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:973c2283b3426b2baa0d2d11b10b1c824f13369816251fd7f537c4a209be4c00"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:973c2283b3426b2baa0d2d11b10b1c824f13369816251fd7f537c4a209be4c00",
+      "evidence": [
+        "chord/next/store/table_evolve_test.go"
+      ],
+      "rationale": "All 8 upstream cases run in the evidence files (lane D3)."
     },
     {
       "path": "packages/chord/test/next/store/table-handle.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:57da2d05384fa095dbf2d69e43a253e39d4c342b98b3da1e2940d9ad2150069b"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:57da2d05384fa095dbf2d69e43a253e39d4c342b98b3da1e2940d9ad2150069b",
+      "evidence": [
+        "chord/next/store/table_handle_test.go"
+      ],
+      "rationale": "All 6 upstream cases run in the evidence files (lane D3)."
     },
     {
       "path": "packages/chord/test/next/store/table-history.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:88814ca2da369ec40dfe235eb499a6e3529ce183abaaa2a0900999c21b74f82f"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:88814ca2da369ec40dfe235eb499a6e3529ce183abaaa2a0900999c21b74f82f",
+      "evidence": [
+        "chord/next/store/table_history_test.go"
+      ],
+      "rationale": "All 3 upstream cases run in the evidence files (lane D3)."
     },
     {
       "path": "packages/chord/test/next/store/table-migration.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:ba79e414401d888351ad54d01e0fc00064015eea0b6b5993fa4ad7a8dce3ab1b"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:ba79e414401d888351ad54d01e0fc00064015eea0b6b5993fa4ad7a8dce3ab1b",
+      "evidence": [
+        "chord/next/store/table_migration_test.go"
+      ],
+      "rationale": "All 13 upstream cases run in the evidence files (lane D3); 2 type-level cases are designed out.",
+      "designedOutCases": [
+        "the chunk yield › yields between chunks without Node's setImmediate (Workers, browsers), through a message, not a timer",
+        "the chunk yield › yields between chunks without a timer (no 1 ms clamp), while timers due run in between (a latency guard)"
+      ]
     },
     {
       "path": "packages/chord/test/next/store/table-writes.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:b6a043f0292856aadfceb7be3fdf847ef6f4986c5213dd85dba134284831c680"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:b6a043f0292856aadfceb7be3fdf847ef6f4986c5213dd85dba134284831c680",
+      "evidence": [
+        "chord/next/store/table_writes_test.go"
+      ],
+      "rationale": "All 9 upstream cases run in the evidence files (lane D3)."
     },
     {
       "path": "packages/chord/test/next/store/table.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:a28d23325e9269d7f570689d89165c4ed55f158f90cd62ca2ea8f98b42fc938f"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:a28d23325e9269d7f570689d89165c4ed55f158f90cd62ca2ea8f98b42fc938f",
+      "evidence": [
+        "chord/next/store/table_changes_test.go",
+        "chord/next/store/table_evolve_test.go",
+        "chord/next/store/table_handle_test.go",
+        "chord/next/store/table_history_test.go",
+        "chord/next/store/table_migration_test.go",
+        "chord/next/store/table_test.go",
+        "chord/next/store/table_writes_test.go"
+      ],
+      "rationale": "All 3 upstream cases run in the evidence files (lane D3)."
     },
     {
       "path": "packages/chord/test/next/store/text.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:81ed0b4e4d47833a77d38458e34bc21248dc83dd56d1b0b8886293bb964245bf"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:81ed0b4e4d47833a77d38458e34bc21248dc83dd56d1b0b8886293bb964245bf",
+      "evidence": [
+        "chord/next/store/text_test.go"
+      ],
+      "rationale": "All 7 upstream cases run in the evidence files (lane D3)."
     },
     {
       "path": "packages/chord/test/output-skip.test.ts",

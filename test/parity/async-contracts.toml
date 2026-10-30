@@ -856,115 +856,115 @@ rationale = "Watchable.watch (watchable.ts:82, 193) resolves with the Watch of a
 
 [[files]]
 path = "packages/chord/src/next/store/adapter.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited"]
+evidence = ["test:chord/next/store/table_handle_test.go#TestTableHandle", "test:chord/next/store/table_migration_test.go#TestFreshTables", "test:chord/next/store/table_migration_test.go#TestEagerMigrations"]
+rationale = "`StoreOwnerTables` Prepare/Get/Select/Put are blocking calls that return once their database calls settled; Put runs inside the commit step. (lane D3)"
 
 [[files]]
 path = "packages/chord/src/next/store/applier.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited"]
+evidence = ["test:chord/next/store/applier_test.go#TestApplier"]
+rationale = "`applyWrite` is a blocking call returning `error`, statements in the step's order inside the transaction; no ctx (Pi takes none). (lane D3)"
 
 [[files]]
 path = "packages/chord/src/next/store/apply-batch.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited", "microtask-ordering", "cancellable"]
+evidence = ["test:chord/next/store/apply_batch_test.go#TestApplyBatch"]
+rationale = "`ApplyBatch`/`Replay` block until applied or refused; the place in the commit queue is taken at the call (FIFO ticket), claims/divergence checked at the call and again at the turn, as Pi's queue order; where Pi left an unawaited promise queued, tests start the call on a goroutine (`startBatch`/`startQueued`). Commits are checked before the queue is touched. (lane D3)"
 
 [[files]]
 path = "packages/chord/src/next/store/catalog.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited"]
+evidence = ["test:chord/next/store/catalog_test.go#TestCatalog"]
+rationale = "`ReadCatalog`/`WriteCatalog` are blocking calls run inside the commit step on the queue's goroutine; the in-memory catalog changes only after COMMIT returned (copy-on-write map). (lane D3)"
 
 [[files]]
 path = "packages/chord/src/next/store/engine.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited"]
+evidence = ["test:chord/next/store/engine_test.go#TestEngineDocuments", "test:chord/next/store/engine_test.go#TestEngineHistoryRules", "test:chord/next/store/engine_test.go#TestEngineCounters"]
+rationale = "Document reads/writes block on the step's transaction (or a guarded read) in call order on one goroutine; no lock needed inside a step. (lane D3)"
 
 [[files]]
 path = "packages/chord/src/next/store/export.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["detached-owned", "cancellable", "microtask-ordering", "awaited"]
+evidence = ["test:chord/next/store/export_test.go#TestExportCommitQueue", "test:chord/next/store/export_test.go#TestExportParts", "test:chord/next/store/export_test.go#TestExportRevisions"]
+rationale = "`StoreExport.Next`/`Close` is a pull iterator over an explicit state machine, one page held at a time; it takes the commit queue at the first `Next` and holds it until the export ends; `context.AfterFunc` (detached, owned by the export and stopped when it ends) releases the queue at once when ctx aborts while suspended; store close ends it `released`; an abort while waiting for the queue returns `aborted` and the take's release is given back when it settles. (lane D3)"
 
 [[files]]
 path = "packages/chord/src/next/store/import.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited", "cancellable", "detached-owned"]
+evidence = ["test:chord/next/store/import_test.go#TestImportRefusals", "test:chord/next/store/import_test.go#TestImportRoundTrips"]
+rationale = "`ImportStore` blocks until everything applied in one backend transaction; ctx is checked at the start and abandons a stalled source wait (each source `Next` runs on its own goroutine); the source is closed in the background, not awaited (detached-owned); the backend is closed on any failure. (lane D3)"
 
 [[files]]
 path = "packages/chord/src/next/store/jsonl.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited", "cancellable"]
+evidence = ["test:chord/next/store/jsonl_test.go#TestJsonl"]
+rationale = "Async generators are pull iterators (`Next(ctx)`): one source `Next` per chunk, no read-ahead, an error ends the iterator, `Close` closes the wrapped source; cancellation is the ctx passed to the source. (lane D3)"
 
 [[files]]
 path = "packages/chord/src/next/store/outbox.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["microtask-ordering", "awaited", "cancellable"]
+evidence = ["test:chord/next/store/outbox_test.go#TestOutbox"]
+rationale = "Pi's `#queued` promise chain is a FIFO ticket: Read/Trim run one at a time in arrival order, a settled entry never blocks the next; ctx is checked at the Trim call and guards the read. (lane D3)"
 
 [[files]]
 path = "packages/chord/src/next/store/schema.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited"]
+evidence = ["test:chord/next/store/store_test.go#TestStore"]
+rationale = "`applyStoreSchema` is a blocking call with Pi's statement order and returns its error as Pi rejects; no ctx. (lane D3)"
 
 [[files]]
 path = "packages/chord/src/next/store/step.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited"]
+evidence = ["test:chord/next/store/catalog_test.go#TestCatalog", "test:chord/next/store/store_test.go#TestStore"]
+rationale = "`Step.Run/RunCounted/Get/All` block in call order inside the step's transaction on one goroutine, no lock. (lane D3)"
 
 [[files]]
 path = "packages/chord/src/next/store/store.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited", "concurrent-joined", "microtask-ordering", "cancellable", "detached-owned"]
+evidence = ["test:chord/next/store/store_test.go#TestStore"]
+rationale = "`OpenStore` blocks, ctx checked once at entry; `Commit` takes a FIFO ticket at the call (Pi `#tail`) and blocks until its step settled, a refused step returns its own error, any other failure stops the store `storage_failed`; `Take` yields its release on a channel once earlier commits settled (end called on close); `Read`/`ReadTransaction`/`Maintain` run outside the queue on the caller's goroutine and are counted so `Close` waits; `Close` stops synchronously, then one goroutine waits for the running step and reads and closes the backend (joined by concurrent/idempotent callers, abandoned by a caller's ctx end), `Replay`/`Attach` per apply-batch. (lane D3)"
 
 [[files]]
 path = "packages/chord/src/next/store/table-changes.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited"]
+evidence = ["test:chord/next/store/table_changes_test.go#TestTableChanges"]
+rationale = "`Get` does one guarded committed read then replays the overlay in memory; staging is synchronous (returns error). (lane D3)"
 
 [[files]]
 path = "packages/chord/src/next/store/table-handle.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited", "cancellable"]
+evidence = ["test:chord/next/store/table_handle_test.go#TestTableHandle"]
+rationale = "`Get/Page/Count` block on one guarded store read (`Read`), cancellable by ctx; `Rows` is a pull iterator fetching the next page only after the previous was consumed. (lane D3)"
 
 [[files]]
 path = "packages/chord/src/next/store/table-migration.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited", "cancellable", "microtask-ordering"]
+evidence = ["test:chord/next/store/table_migration_test.go#TestMigrationResumption", "test:chord/next/store/table_migration_test.go#TestEagerMigrations", "test:chord/next/store/table_migration_test.go#TestFreshTables"]
+rationale = "`PrepareTables`/`MigrationChunk` run reads and commits sequentially in Pi's order; ctx is checked between chunks (`context.Cause`), commits run under `WithoutAbortSignal` so an admitted commit completes and a refused one fails `released`; the macrotask yield (`setImmediate`/MessageChannel) becomes `runtime.Gosched()`; its two JS-timer cases are designed out (no Go test). (lane D3)"
 
 [[files]]
 path = "packages/chord/src/next/store/table-writes.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited"]
+evidence = ["test:chord/next/store/table_writes_test.go#TestTableWrites"]
+rationale = "`Stage*`/`Apply*` run inside the commit step on its goroutine, statements in call order; staging is synchronous. (lane D3)"
 
 [[files]]
 path = "packages/chord/src/object.ts"
