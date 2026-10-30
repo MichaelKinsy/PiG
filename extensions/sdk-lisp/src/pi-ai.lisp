@@ -483,7 +483,9 @@ only the end of the text. Supported: literals, . [] [^] \\d \\w \\s \\S, (?:) ()
   (rx-compile (ai-join-alternatives
                "GoUsageLimitError" "FreeUsageLimitError" "Monthly usage limit reached" "available balance" "insufficient_quota" "out of budget"
                "quota exceeded" "billing" "subscription_sharing_usage_limit_exceeded"
-               "subscription_sharing_workplace_individual_usage_limit_exceeded")))
+               "subscription_sharing_workplace_individual_usage_limit_exceeded"
+               ;; pig divergence (D217): Pi c719d5b0 (#11537) Zhipu/Z.ai usage limit code 1308 (HTTP 429) resets after hours, so it is not retried.
+               "\"code\"\\s*:\\s*\"?1308(?![0-9])")))
 
 (defvar *ai-retryable-provider-error*
   (rx-compile (ai-join-alternatives

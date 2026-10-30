@@ -16,6 +16,10 @@ const q = (s) => "`" + s.replaceAll("`", "` + \"`\" + `") + "`";
 // Pi fixes that landed on Pi main after the pinned source and that this port carries forward (D217). Each pattern is appended
 // unless the source already lists it, so the generator is a no-op once the pin moves past the commit: delete the row then.
 const carried = {
+	nonRetryablePatterns: [
+		// pig divergence (D217): Pi c719d5b0 (#11537) Zhipu/Z.ai usage limit code 1308 (HTTP 429) resets after hours, so it is not retried
+		{ sha: "c719d5b0", issue: "#11537", pattern: String.raw`"code"\s*:\s*"?1308(?![0-9])`, note: "Zhipu/Z.ai usage limit code 1308 resets after hours and is not retried" },
+	],
 	overflowPatterns: [
 		// pig divergence (D217): Pi d3398f82 (#11492) LiteLLM's pre-call check ContextWindowExceededError is a context overflow
 		{ sha: "d3398f82", issue: "#11492", pattern: "context window exceeded", note: "LiteLLM pre-call check (ContextWindowExceededError) is a context overflow" },

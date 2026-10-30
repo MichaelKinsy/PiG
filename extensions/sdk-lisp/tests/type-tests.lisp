@@ -58,6 +58,13 @@
       (check (not (pig:context-overflow-p (message "stop" litellm))))
       (check (not (pig:context-overflow-p (message "error" "Throttling error: Context Window exceeded for given call")))))))
 
+;; Pi c719d5b0 (#11572, #11537, pig divergence (D217)): Zhipu/Z.ai usage limit code 1308 arrives as HTTP 429 and resets after hours, so it is not retried.
+(deftest zhipu-usage-limit-1308-is-not-retryable
+  (flet ((message (text) (pig:from-json (format nil "{\"role\":\"assistant\",\"stopReason\":\"error\",\"errorMessage\":~A}" (pig:to-json text)))))
+    (check (not (pig:retryable-assistant-error-p (message "429 {\"error\":{\"code\":\"1308\",\"message\":\"Usage limit reached for 5 hour.\"}}"))))
+    (check (not (pig:retryable-assistant-error-p (message "429 {\"error\":{\"code\":1308,\"message\":\"Usage limit reached\"}}"))))
+    (check (pig:retryable-assistant-error-p (message "429 {\"error\":{\"code\":\"13081\",\"message\":\"Too many requests\"}}")))))
+
 (deftest the-default-retry-delay-cap-is-pis
   (check-equal 60000 pig:+default-max-agent-retry-delay-ms+))
 

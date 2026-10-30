@@ -736,6 +736,8 @@ static NON_RETRYABLE_PROVIDER_LIMIT_ERROR_PATTERN: LazyLock<Pattern> = LazyLock:
         "subscription_sharing_usage_limit_exceeded",
         // Sign in with ChatGPT on a ChatGPT Business plan: a usage limit set by the workspace admin. Only the admin can raise it.
         "subscription_sharing_workplace_individual_usage_limit_exceeded",
+        // pig divergence (D217): Pi c719d5b0 (#11537) Zhipu/Z.ai usage limit code 1308 (HTTP 429) resets after hours, so it is not retried.
+        r#""code"\s*:\s*"?1308(?![0-9])"#,
     ])
 });
 static RETRYABLE_PROVIDER_ERROR_PATTERN: LazyLock<Pattern> = LazyLock::new(|| {
