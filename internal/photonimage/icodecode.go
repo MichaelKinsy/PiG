@@ -97,7 +97,7 @@ func (e icoDirEntry) matchesDimensions(width, height uint32) bool {
 // 0.24.9's IcoDecoder (codecs/ico/decoder.rs) over the entry with the highest (bits per pixel, area) (the last of equals), as `to_rgba8`
 // converts it. The type word of the directory is not read, only the entries up to the count.
 //
-// An entry that starts with the PNG signature is a PNG, decoded as the png crate does (icopng.go), which must be 8-bit RGBA after its EXPAND
+// An entry that starts with the PNG signature is a PNG, decoded as the png crate does (pngdecode.go), which must be 8-bit RGBA after its EXPAND
 // transformation (RGBA, or RGB or palette with a tRNS chunk) and the size the entry names (compared up to 256); anything else is a bitmap (BmpDecoder in ICO
 // format, bmpDecoder with noFileHeader and addAlpha), with an AND mask that makes pixels transparent when the entry's length leaves room for one. A bitmap of more than 2^29
 // bytes of RGBA (width * height / 2 * 4) or an empty image whose RGBA buffer length overflows wasm32's `usize` is an error, as is every
@@ -233,17 +233,17 @@ func icoReadEntry(r *icoCursor) (icoDirEntry, bool) {
 }
 
 // icoDecodePNG is the PNG arm of IcoDecoder (decoder.rs:307-332) over `PngDecoder::new` (codecs/png.rs:119-199): the png crate's reader
-// (icopng.go), whose output colour type under EXPAND has to be Rgba8.
+// (pngdecode.go) without a limit, whose output colour type under EXPAND has to be Rgba8.
 func icoDecodePNG(data []byte, entry icoDirEntry) (*image.NRGBA, error) {
-	p, err := icoPNGReadInfo(data)
+	r, err := pngOpen(data, pngUsizeMax)
 	if err != nil {
 		return nil, err
 	}
-	info := &p.info
+	info := r.info
 	if entry.imageLength < 8 || !entry.matchesDimensions(info.width, info.height) {
 		return nil, errICOEntry
 	}
-	if !info.outputRGBA() {
+	if color, depth := r.outputColorType(); color != pngRGBA || depth != 8 {
 		return nil, errors.New("photonimage: ico: the PNG is not in RGBA format")
 	}
 	// load_inner reserves the decoder's total_bytes before it decodes.
@@ -253,11 +253,9 @@ func icoDecodePNG(data []byte, entry icoDirEntry) (*image.NRGBA, error) {
 	if err := checkRGBAConversion(info.width, info.height, 4); err != nil {
 		return nil, err
 	}
-	pix, err := icoPNGDecode(data, p)
-	if err != nil {
+	out := newImageNRGBA(info.width, info.height)
+	if err := r.nextFrame(out.Pix); err != nil {
 		return nil, err
 	}
-	out := newImageNRGBA(0, 0)
-	out.Pix, out.Stride, out.Rect = pix, int(info.width)*4, image.Rect(0, 0, int(info.width), int(info.height))
 	return out, nil
 }
