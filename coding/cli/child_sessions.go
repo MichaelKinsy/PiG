@@ -152,8 +152,6 @@ func createChildSession(ctx context.Context, services *coding.AgentSessionServic
 		return nil, err
 	}
 	session := result.Session
-	// The wire's listeners are the only sinks: nothing reads Events.
-	session.DiscardEvents()
 	child := &childSession{session: session}
 	child.info = child.snapshotInfo()
 	child.info.ModelFallbackMessage = result.ModelFallbackMessage

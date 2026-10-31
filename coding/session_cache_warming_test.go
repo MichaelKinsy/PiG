@@ -91,8 +91,9 @@ func newWarmingSession(t *testing.T, mode string, options SessionOptions) (*Sess
 func sendAndSettle(t *testing.T, sess *Session) {
 	t.Helper()
 	settled := make(chan struct{})
+	eventsCh := sess.Events()
 	go func() {
-		for event := range sess.Events() {
+		for event := range eventsCh {
 			if _, ok := event.(agent.AgentSettledEvent); ok {
 				close(settled)
 				break
@@ -216,6 +217,7 @@ func TestReplaceInnerRetiresTheCacheWarmer(t *testing.T) {
 // duplicating a hand-rolled select/recover for.
 func TestEmitEntryAppendedGivesUpWhenContextEndsWithAFullChannel(t *testing.T) {
 	sess, _ := newWarmingSession(t, "idle", SessionOptions{NoSession: true, EventBufferSize: 1})
+	_ = sess.Events()
 	// Never drain sess.Events(): once the forwarder hands its second event to
 	// the now-full events channel it stalls there and stops draining
 	// rawEvents, giving genuine, persistent backpressure to test against

@@ -92,9 +92,10 @@ func TestNewAgentSessionDrivesTheSuppliedAgentAndChainsItsHooks(t *testing.T) {
 		t.Fatal(err)
 	}
 	done := make(chan struct{})
+	eventsCh := session.Events()
 	go func() {
 		defer close(done)
-		for event := range session.Events() {
+		for event := range eventsCh {
 			AcknowledgeEvent(event)
 		}
 	}()
@@ -165,9 +166,10 @@ func TestNewAgentSessionDrivesTheSuppliedCacheWarmer(t *testing.T) {
 	var mu sync.Mutex
 	var appended int
 	done := make(chan struct{})
+	eventsCh := session.Events()
 	go func() {
 		defer close(done)
-		for event := range session.Events() {
+		for event := range eventsCh {
 			if _, ok := event.(agent.EntryAppendedEvent); ok {
 				mu.Lock()
 				appended++
@@ -229,9 +231,10 @@ func TestNewAgentSessionDrivesTheSuppliedCacheWarmer(t *testing.T) {
 func acknowledgeSessionEvents(t *testing.T, session *Session) {
 	t.Helper()
 	done := make(chan struct{})
+	eventsCh := session.Events()
 	go func() {
 		defer close(done)
-		for event := range session.Events() {
+		for event := range eventsCh {
 			AcknowledgeEvent(event)
 		}
 	}()

@@ -25,9 +25,10 @@ func BenchmarkRuntimeNewSession(b *testing.B) {
 		}
 		done := make(chan struct{})
 		drained = done
+		eventsCh := session.Events()
 		go func() {
 			defer close(done)
-			for event := range session.Events() {
+			for event := range eventsCh {
 				AcknowledgeEvent(event)
 			}
 		}()

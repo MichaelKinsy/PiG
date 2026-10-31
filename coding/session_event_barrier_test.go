@@ -13,6 +13,7 @@ func TestSessionFlushEventsWaitsForConsumerAcknowledgement(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	_ = s.Events()
 	defer func() {
 		if err := s.Close(); err != nil {
 			t.Error(err)
@@ -52,6 +53,8 @@ func TestSessionFlushEventsReleasesWithoutConsumer(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
+		// A subscribed consumer that never reads: only cancellation or Close releases the flush.
+		_ = s.Events()
 		ctx, cancel := context.WithCancel(t.Context())
 		done := make(chan error, 1)
 		go func() { done <- s.FlushEvents(ctx) }()

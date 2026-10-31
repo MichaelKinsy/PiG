@@ -109,8 +109,11 @@ func main() {
 	defer func() { _ = sess.Close() }()
 
 	// 7. Send a single user prompt. Send is synchronous: it blocks
-	//    until the agent's tool-loop terminates. For streaming, use
-	//    sess.Events() in a separate goroutine BEFORE calling Send.
+	//    until the agent's tool-loop terminates. This program never
+	//    calls sess.Events(), so no events are delivered and nothing
+	//    waits on them. For streaming, call sess.Events() and read it
+	//    (passing each event to coding.AcknowledgeEvent) in a separate
+	//    goroutine BEFORE calling Send.
 	ctx := context.Background()
 	msgs, err := sess.Send(ctx, "What is 1 + 1? Reply in one short sentence.")
 	if err != nil {

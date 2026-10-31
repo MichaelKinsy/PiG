@@ -148,9 +148,10 @@ func newJevRouterRig(t *testing.T, complexity float64, tools []jevTool) *jevRout
 		t.Fatal(err)
 	}
 	done := make(chan struct{})
+	eventsCh := session.Events()
 	go func() {
 		defer close(done)
-		for event := range session.Events() {
+		for event := range eventsCh {
 			coding.AcknowledgeEvent(event)
 		}
 	}()
