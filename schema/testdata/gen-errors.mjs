@@ -84,6 +84,7 @@ const extras = [
 	{ schema: { type: "object", required: ["a", "b"], properties: { a: { type: "string" } }, additionalProperties: { type: "integer" } }, values: [{ a: 1, c: "x" }, { b: 1, d: 2.5 }] },
 	{ schema: { type: "object", required: ["a"], additionalProperties: false }, values: [{ b: 1 }, { a: 1 }] },
 	{ schema: { type: "integer", multipleOf: 0.0001, minimum: -5 }, values: [3, -6, 1e308, 1e-9] },
+	{ schema: { type: "object", properties: { a: { type: "integer" } }, patternProperties: { "^x-": { type: "string" } }, unevaluatedProperties: false }, values: [{ a: "s", "x-b": 1, c: true }, { a: 1, "x-b": "s", c: true }] },
 	{ schema: { minLength: 2, minimum: 3, minItems: 1, minProperties: 1, required: ["x"] }, values: ["a", 1, [], {}, null] },
 ];
 const formatsOnly = { ...formats };

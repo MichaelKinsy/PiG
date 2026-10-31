@@ -336,4 +336,32 @@ func TestSchemas(t *testing.T) {
 			}
 		}
 	})
+
+	t.Run("serves concurrent explanations", func(t *testing.T) {
+		v := mustCompile(t, mustDecode(t, `{
+			"type": "object",
+			"properties": { "a": { "type": "integer" } },
+			"patternProperties": { "^x-": { "type": "string" } },
+			"unevaluatedProperties": false
+		}`))
+		want := v.Errors(mustDecode(t, `{"a":1,"x-b":"s","c":true}`))
+		if len(want) != 1 || want[0].Path != "/c" || want[0].Keyword != "unevaluatedProperties" {
+			t.Fatalf("errors = %v", want)
+		}
+		done := make(chan bool, 8)
+		for range 8 {
+			go func() {
+				ok := true
+				for range 200 {
+					ok = ok && reflect.DeepEqual(v.Errors(mustDecode(t, `{"a":1,"x-b":"s","c":true}`)), want)
+				}
+				done <- ok
+			}()
+		}
+		for range 8 {
+			if !<-done {
+				t.Fatal("concurrent explanations disagree")
+			}
+		}
+	})
 }
