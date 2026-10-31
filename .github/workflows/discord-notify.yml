@@ -1,0 +1,95 @@
+# SPDX-License-Identifier: MIT
+name: Discord notifications
+
+# Posts to a Discord channel through a webhook: one message when a change lands on main, and one when a release is
+# published. Nothing else is announced, so a red CI run does not reach the channel.
+#
+# A push to main is the only moment a change is announced: ci.yml deliberately does not run on pushes to main (a change
+# lands on the tree that was tested), and the notification carries the commit, the pull request a squash title names,
+# and the compare link.
+#
+# The webhook URL is the repository secret DISCORD_WEBHOOK_URL. A repository without that secret posts nothing and the
+# run passes, so a fork is unaffected.
+on:
+  push:
+    branches: [main]
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.event.after || github.event.release.id }}
+  cancel-in-progress: false
+
+jobs:
+  notify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Post to Discord
+        env:
+          WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          EVENT_NAME: ${{ github.event_name }}
+          REPO: ${{ github.repository }}
+          PUSH_SUBJECT: ${{ github.event.head_commit.message }}
+          PUSH_AUTHOR: ${{ github.event.head_commit.author.name }}
+          PUSH_SHA: ${{ github.event.after }}
+          PUSH_COMPARE: ${{ github.event.compare }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          RELEASE_NAME: ${{ github.event.release.name }}
+          RELEASE_URL: ${{ github.event.release.html_url }}
+          RELEASE_BODY: ${{ github.event.release.body }}
+        run: |
+          set -euo pipefail
+          if [ -z "${WEBHOOK_URL}" ]; then
+            echo "DISCORD_WEBHOOK_URL is not set; nothing to post."
+            exit 0
+          fi
+
+          # jq builds the payload so that a commit subject or a release body cannot break the JSON, and so that a long
+          # release body stays inside Discord's 2000-character content limit.
+          if [ "${EVENT_NAME}" = "push" ]; then
+            # A squash merge titles the commit "… (#123)"; link that pull request when the title carries it.
+            subject=$(printf '%s' "${PUSH_SUBJECT}" | head -1)
+            if [ -z "${subject}" ]; then
+              echo "no commit subject (a branch delete or an empty push); nothing to post."
+              exit 0
+            fi
+            pr=$(printf '%s' "${subject}" | sed -nE 's/.*\(#([0-9]+)\)[[:space:]]*$/\1/p')
+            payload=$(jq -n \
+              --arg repo "${REPO}" \
+              --arg subject "${subject}" \
+              --arg author "${PUSH_AUTHOR}" \
+              --arg sha "$(printf '%s' "${PUSH_SHA}" | cut -c1-12)" \
+              --arg pr "${pr}" \
+              --arg url "${PUSH_COMPARE}" \
+              '{
+                username: "PiG",
+                content: ("**Landed on main** on `" + $repo + "`\n" + $subject
+                  + (if $pr == "" then "" else "\nhttps://github.com/" + $repo + "/pull/" + $pr end)
+                  + "\n`" + $sha + "` · by " + $author + "\n" + $url),
+                allowed_mentions: { parse: [] }
+              }')
+          else
+            payload=$(jq -n \
+              --arg repo "${REPO}" \
+              --arg tag "${RELEASE_TAG}" \
+              --arg name "${RELEASE_NAME}" \
+              --arg url "${RELEASE_URL}" \
+              --arg body "${RELEASE_BODY}" \
+              '{
+                username: "PiG",
+                content: ("**Release " + $tag + " published**" + (if $name == "" then "" else " — " + $name end)
+                  + " on `" + $repo + "`\n" + $url
+                  + (if $body == "" then "" else "\n\n" + ($body | .[0:1500]) end)),
+                allowed_mentions: { parse: [] }
+              }')
+          fi
+
+          curl -fsS --retry 3 --retry-delay 2 \
+            -H 'Content-Type: application/json' \
+            --data-binary "${payload}" \
+            "${WEBHOOK_URL}" > /dev/null
+          echo "posted ${EVENT_NAME} notification"
