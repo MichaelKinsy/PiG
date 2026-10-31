@@ -7,7 +7,7 @@
 // Usage: go run embed-bundle.go -pkg name -out file.go [-walk dir]... [-skip suffix]... [-gzip-over bytes] pattern...
 // Each pattern is a path or a glob relative to the working directory. Each -walk directory contributes every regular file under it. A file whose base name ends with a -skip suffix is left out.
 //
-// -gzip-over embeds a file of at least that many bytes as its gzip, <name>.gz, written beside it, and the stager writes the decompressed file back (coding/extension/pigsdk). The SDK sources are most of the weight the bundles add to every binary that links the stager, and source text is a fifth of its size compressed. A <name>.gz that holds the file's text is left alone, so a regeneration does not rewrite bytes another Go release would compress differently; any other is replaced. A matched file that is the gzip of another matched file is that file's copy, not a file of its own.
+// -gzip-over embeds a file of at least that many bytes as its gzip, .gz/<name>.gz, written under the working directory's .gz directory, and the stager writes the decompressed file back under <name> (coding/extension/pigsdk). The SDK sources are most of the weight the bundles add to every binary that links the stager, and source text is a fifth of its size compressed. The copies live in a directory of their own, which a walk of the source tree skips as hidden, not beside the sources: a copy beside each source doubled the entries that every build reading the tree in place lists, joins and filters. A .gz/<name>.gz that holds the file's text is left alone, so a regeneration does not rewrite bytes another Go release would compress differently; any other is replaced.
 package main
 
 import (
@@ -23,6 +23,9 @@ import (
 	"slices"
 	"strings"
 )
+
+// twinDir is the directory, under the bundle's root, that holds the compressed copy of each file the bundle embeds gzipped.
+const twinDir = ".gz"
 
 type list []string
 
@@ -74,9 +77,6 @@ func main() {
 	}
 	names := make([]string, 0, len(files))
 	for name := range files {
-		if strings.HasSuffix(name, ".gz") && files[strings.TrimSuffix(name, ".gz")] {
-			continue
-		}
 		if *gzipOver > 0 {
 			compressed, err := embeddedAsGzip(name, *gzipOver)
 			if err != nil {
@@ -84,7 +84,7 @@ func main() {
 				os.Exit(1)
 			}
 			if compressed {
-				name += ".gz"
+				name = twinDir + "/" + name + ".gz"
 			}
 		}
 		names = append(names, name)
@@ -102,7 +102,7 @@ func main() {
 	}
 }
 
-// embeddedAsGzip reports whether the file name is embedded as its gzip because it has at least limit bytes, and makes name+".gz" hold the file's text.
+// embeddedAsGzip reports whether the file name is embedded as its gzip because it has at least limit bytes, and makes twinDir/name.gz hold the file's text.
 func embeddedAsGzip(name string, limit int64) (bool, error) {
 	text, err := os.ReadFile(name)
 	if err != nil {
@@ -111,7 +111,8 @@ func embeddedAsGzip(name string, limit int64) (bool, error) {
 	if int64(len(text)) < limit || strings.HasSuffix(name, ".gz") {
 		return false, nil
 	}
-	if existing, err := os.ReadFile(name + ".gz"); err == nil {
+	twin := filepath.Join(twinDir, filepath.FromSlash(name)+".gz")
+	if existing, err := os.ReadFile(twin); err == nil {
 		if reader, err := gzip.NewReader(bytes.NewReader(existing)); err == nil {
 			if held, err := io.ReadAll(reader); err == nil && bytes.Equal(held, text) {
 				return true, nil
@@ -129,5 +130,8 @@ func embeddedAsGzip(name string, limit int64) (bool, error) {
 	if err := writer.Close(); err != nil {
 		return false, err
 	}
-	return true, os.WriteFile(name+".gz", packed.Bytes(), 0o644)
+	if err := os.MkdirAll(filepath.Dir(twin), 0o755); err != nil {
+		return false, err
+	}
+	return true, os.WriteFile(twin, packed.Bytes(), 0o644)
 }

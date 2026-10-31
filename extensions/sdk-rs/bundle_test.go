@@ -11,18 +11,26 @@ import (
 	"testing"
 )
 
-// embeddedName is the name the bundle embeds path under: path + ".gz" when a compressed copy of it sits beside it, which holds the same text, otherwise path.
+// embeddedName is the name the bundle embeds path under: .gz/path.gz when a compressed copy of it sits in the .gz directory, which holds the same text, otherwise path.
 func embeddedName(path string) string {
 	if hasCompressedCopy(path) {
-		return path + ".gz"
+		return ".gz/" + path + ".gz"
 	}
 	return path
 }
 
-// embeddedText is the file the stager writes for an embedded name: the text of a .gz name's gzip, the bytes of any other.
+// stagedPath is the name the stager writes an embedded name under: the name a .gz/ name holds the gzip of, the name itself for any other.
+func stagedPath(name string) string {
+	if rest, compressed := strings.CutPrefix(name, ".gz/"); compressed {
+		return strings.TrimSuffix(rest, ".gz")
+	}
+	return name
+}
+
+// embeddedText is the file the stager writes for an embedded name: the text of the gzip a name under .gz/ holds, the bytes of any other.
 func embeddedText(name string) ([]byte, error) {
 	data, err := Source.ReadFile(name)
-	if err != nil || !strings.HasSuffix(name, ".gz") {
+	if err != nil || stagedPath(name) == name {
 		return data, err
 	}
 	reader, err := gzip.NewReader(bytes.NewReader(data))
@@ -64,9 +72,7 @@ func TestBundledFilesIncludeEveryCrateSource(t *testing.T) {
 		if isTestModule(name) {
 			return nil
 		}
-		if hasCompressedCopy(name) {
-			name += ".gz"
-		}
+		name = embeddedName(name)
 		if !slices.Contains(BundledFiles(), name) {
 			t.Errorf("BundledFiles is missing crate source %s", name)
 		}
