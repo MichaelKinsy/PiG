@@ -7,6 +7,7 @@ import (
 
 	chorddelta "github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/durable"
+	"github.com/MichaelKinsy/PiG/durable/durabletest"
 	"github.com/MichaelKinsy/PiG/durable/storage/jsonl"
 )
 
@@ -86,7 +87,7 @@ func TestJsonlCommitNamesAFailedSidecarPathJoin(t *testing.T) {
 	createRoot(t, storage)
 	id := mint[durable.DocumentId](t, storage)
 	fileSystem.armed = true
-	_, err := storage.Commit(testContext, []durable.StorageWrite{durable.DocumentCreateWrite{Record: sessionDocument(id, "first"), Content: base(chorddelta.JsonObjectOf("count", 1))}}, func(durable.Seq) {})
+	_, err := durabletest.CommitWrites(testContext, storage, []durable.StorageWrite{durable.DocumentCreateWrite{Record: sessionDocument(id, "first"), Content: base(chorddelta.JsonObjectOf("count", 1))}})
 	if err == nil || err.Error() != "JSONL path join failed: injected join failure" {
 		t.Fatalf("commit error = %v, want JSONL path join failed: injected join failure", err)
 	}

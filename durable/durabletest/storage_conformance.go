@@ -53,46 +53,55 @@ func mint[I durable.Id](storage durable.Storage) I {
 	return durable.IdFromNumber[I](must(storage.MintId()))
 }
 
-// adopt is the adoption callback of storage-level commits, which have no in-memory owner to adopt them.
-func adopt(durable.Seq) {}
-
 func commit(storage durable.Storage, writes ...durable.StorageWrite) durable.Seq {
-	return must(storage.Commit(conformanceContext, writes, adopt))
+	return must(CommitWrites(conformanceContext, storage, writes))
+}
+
+// refusalText is the message of a refusal, nil when the commit stored every batch.
+func refusalText(refused error) any {
+	if refused == nil {
+		return nil
+	}
+	return refused.Error()
 }
 
 func commitErr(storage durable.Storage, writes ...durable.StorageWrite) error {
-	_, err := storage.Commit(conformanceContext, writes, adopt)
+	_, err := CommitWrites(conformanceContext, storage, writes)
 	return err
 }
 
-// adoptionChecked is storage with every commit checked against the adoption contract: adopt runs exactly once, with the
-// committed sequence, before the commit returns (so before the next commit starts), and never for a commit that fails.
-// The cases fail commits only before they are durable.
-type adoptionChecked struct {
+// receiptChecked is storage with every commit checked against the receipt contract: one receive per stored batch, in
+// order, with increasing seqs, all before the call returns.
+type receiptChecked struct {
 	durable.Storage
 	assertions StorageConformanceAssertions
 }
 
-func checkAdoption(storage durable.Storage, assertions StorageConformanceAssertions) durable.Storage {
-	return adoptionChecked{Storage: storage, assertions: assertions}
+func checkReceipts(storage durable.Storage, assertions StorageConformanceAssertions) durable.Storage {
+	return receiptChecked{Storage: storage, assertions: assertions}
 }
 
-func (checked adoptionChecked) Commit(ctx context.Context, writes []durable.StorageWrite, adopt func(durable.Seq)) (durable.Seq, error) {
-	var adopted []durable.Seq
+func (checked receiptChecked) Commit(
+	ctx context.Context, batches [][]durable.StorageWrite, receive func(index int, seq durable.Seq),
+) (durable.CommitResult, error) {
+	var seqs []durable.Seq
 	settled := false
-	recording := func(seq durable.Seq) {
-		checked.assertions.Ok(!settled, "Storage.commit() adopted after it settled")
-		adopted = append(adopted, seq)
-		adopt(seq)
+	recording := func(index int, seq durable.Seq) {
+		checked.assertions.Ok(!settled, "Storage.commit() received a batch after it settled")
+		checked.assertions.StrictEqual(index, len(seqs))
+		if len(seqs) > 0 {
+			checked.assertions.GreaterThan(float64(seq), float64(seqs[len(seqs)-1]))
+		}
+		seqs = append(seqs, seq)
+		receive(index, seq)
 	}
-	seq, err := checked.Storage.Commit(ctx, writes, recording)
+	result, err := checked.Storage.Commit(ctx, batches, recording)
 	settled = true
 	if err != nil {
-		checked.assertions.StrictEqual(len(adopted), 0)
-		return 0, err
+		return result, err
 	}
-	checked.assertions.DeepEqual(adopted, []durable.Seq{seq})
-	return seq, nil
+	checked.assertions.StrictEqual(len(seqs), result.Stored)
+	return result, nil
 }
 
 func createRoot(storage durable.Storage) durable.ConversationId {
@@ -254,7 +263,7 @@ func createCase(options StorageConformanceOptions, name string, test conformance
 			expect := func(actual any) expectation {
 				return expectation{assertions: options.Assertions, actual: actual}
 			}
-			test(checkAdoption(storage, options.Assertions), expect, options.Assertions.Rejects)
+			test(checkReceipts(storage, options.Assertions), expect, options.Assertions.Rejects)
 			return nil
 		})
 	}}
@@ -275,7 +284,7 @@ func CreateStorageConformance(options StorageConformanceOptions) []StorageConfor
 			)
 		}),
 
-		createCase(options, "adopts a durable commit once before resolving, and never a failed one", func(storage durable.Storage, expect func(any) expectation, rejects func(error, string)) {
+		createCase(options, "receives a durable commit once before resolving, and never a refused one", func(storage durable.Storage, expect func(any) expectation, rejects func(error, string)) {
 			rootId := createRoot(storage)
 			var events []any
 			entryId := mint[durable.EntryId](storage)
@@ -284,47 +293,34 @@ func CreateStorageConformance(options StorageConformanceOptions) []StorageConfor
 				err   error
 			}
 			read := make(chan entryRead, 1)
-			seq := must(storage.Commit(ctx, []durable.StorageWrite{entryWrite(entry(entryId, rootId, "message"))}, func(adopted durable.Seq) {
-				events = append(events, fmt.Sprintf("adopt %d", adopted))
-				// The batch is durable when it is adopted: a read started now observes it. It runs on its own goroutine, as
-				// upstream's read is a promise started inside adopt, since adopt runs inside the commit.
-				//portlint:allow asyncorder upstream starts the read inside adopt without awaiting it (storage-conformance.ts:157, `read = storage.entry(entryId, context)`) and awaits it only after the commit resolved (:166); adopt runs inside Commit, so a synchronous read would deadlock on the storage lock, and the channel read below is the join
+			var seq durable.Seq
+			result := must(storage.Commit(ctx, [][]durable.StorageWrite{{entryWrite(entry(entryId, rootId, "message"))}}, func(_ int, received durable.Seq) {
+				seq = received
+				events = append(events, fmt.Sprintf("receive %d", received))
+				// The batch is durable when it is received: a read started now observes it. It runs on its own goroutine, as
+				// upstream's read is a promise started inside receive, since receive runs inside the commit.
+				//portlint:allow asyncorder upstream starts the read inside receive without awaiting it (storage-conformance.ts, `read = storage.entry(entryId, context)`) and awaits it only after the commit resolved; receive runs inside Commit, so a synchronous read would deadlock on the storage lock, and the channel read below is the join
 				go func() {
 					found, err := storage.Entry(ctx, entryId)
 					read <- entryRead{found, err}
 				}()
 			}))
-			events = append(events, fmt.Sprintf("resolve %d", seq))
-			expect(events).toEqual([]any{fmt.Sprintf("adopt %d", seq), fmt.Sprintf("resolve %d", seq)})
-			// A storage that never adopted has failed the check above and started no read to wait for.
-			var started entryRead
-			select {
-			case started = <-read:
-			default:
-				if len(events) == 1 {
-					return
-				}
-				started = <-read
-			}
+			events = append(events, fmt.Sprintf("resolve %d", result.Stored))
+			expect(events).toEqual([]any{fmt.Sprintf("receive %d", seq), "resolve 1"})
+			// A storage that never received has failed the check above and started no read to wait for.
+			started := <-read
 			check(started.err)
 			expect(started.found.CommitSeq).toBe(seq)
 
 			events = nil
-			rejects(
-				func() error {
-					_, err := storage.Commit(ctx, []durable.StorageWrite{durable.ConversationWrite{Value: durable.ConversationRecord{Id: rootId}}}, func(adopted durable.Seq) {
-						events = append(events, fmt.Sprintf("adopt %d", adopted))
-					})
-					return err
-				}(),
-				fmt.Sprintf("ID %d already belongs to conversation", rootId),
-			)
+			refused := must(storage.Commit(ctx, [][]durable.StorageWrite{{durable.ConversationWrite{Value: durable.ConversationRecord{Id: rootId}}}}, func(_ int, received durable.Seq) {
+				events = append(events, fmt.Sprintf("receive %d", received))
+			}))
+			expect(refused.Stored).toBe(0)
+			expect(refusalText(refused.Refused)).toBe(fmt.Sprintf("ID %d already belongs to conversation", rootId))
 			expect(len(events)).toBe(0)
 
-			next := must(storage.Commit(ctx, []durable.StorageWrite{entryWrite(entry(mint[durable.EntryId](storage), rootId, "message"))}, func(adopted durable.Seq) {
-				events = append(events, fmt.Sprintf("adopt %d", adopted))
-			}))
-			expect(events).toEqual([]any{fmt.Sprintf("adopt %d", next)})
+			next := commit(storage, entryWrite(entry(mint[durable.EntryId](storage), rootId, "message")))
 			expect(next).toBeGreaterThan(float64(seq))
 		}),
 
@@ -1223,12 +1219,170 @@ func CreateStorageConformance(options StorageConformanceOptions) []StorageConfor
 			rejects(err, "ID space is exhausted")
 		}),
 
+		createCase(options, "commits batches in order, each with its seq, checked against the earlier ones", func(storage durable.Storage, expect func(any) expectation, _ func(error, string)) {
+			rootId := createRoot(storage)
+			firstId := mint[durable.EntryId](storage)
+			lastId := mint[durable.EntryId](storage)
+			documentId := mint[durable.DocumentId](storage)
+			type receipt struct {
+				index int
+				seq   durable.Seq
+			}
+			type entryRead struct {
+				found *durable.EntryAt
+				err   error
+			}
+			var receipts []receipt
+			var read chan entryRead
+			result := must(storage.Commit(ctx, [][]durable.StorageWrite{
+				{
+					entryWrite(entry(firstId, rootId, "message")),
+					durable.DocumentCreateWrite{
+						Record: durable.DocumentCreate{
+							Id: documentId, Kind: "batch.doc", Scope: conversationScope(rootId),
+							History: durable.HistoryLatest, Fork: durable.ForkInitial,
+						},
+						Content: base(1, chorddelta.JsonObjectOf("count", 1)),
+					},
+				},
+				// Changes the document the batch before created.
+				{durable.DocumentChangeWrite{Id: documentId, Content: delta(1, op("s", path("count"), 2))}},
+				{entryWrite(entry(lastId, rootId, "message"))},
+			}, func(index int, seq durable.Seq) {
+				receipts = append(receipts, receipt{index, seq})
+				// Receipts follow the last durable batch: a read started at the first observes it.
+				if read == nil {
+					read = make(chan entryRead, 1)
+					//portlint:allow asyncorder upstream starts the read inside receive without awaiting it (storage-conformance.ts, `read ??= storage.entry(lastId, context)`) and awaits it only after the commit resolved; receive runs inside Commit, so a synchronous read would deadlock on the storage lock, and the channel read below is the join
+					go func() {
+						found, err := storage.Entry(ctx, lastId)
+						read <- entryRead{found, err}
+					}()
+				}
+			}))
+			expect(result.Stored).toBe(3)
+			expect(result.Refused).toBeUndefined()
+			expect(len(receipts)).toBe(3)
+			expect([]int{receipts[0].index, receipts[1].index, receipts[2].index}).toEqual([]any{0, 1, 2})
+			first, second, last := receipts[0].seq, receipts[1].seq, receipts[2].seq
+			expect(second).toBeGreaterThan(float64(first))
+			expect(last).toBeGreaterThan(float64(second))
+			started := <-read
+			check(started.err)
+			expect(started.found.CommitSeq).toBe(last)
+			expect(must(storage.Entry(ctx, firstId)).CommitSeq).toBe(first)
+			expect(must(storage.Document(ctx, documentId, durable.CurrentPoint)).Value).toEqual(map[string]any{"count": 2})
+			next := commit(storage, entryWrite(entry(mint[durable.EntryId](storage), rootId, "message")))
+			expect(next).toBeGreaterThan(float64(last))
+		}),
+
+		createCase(options, "stores the batches before the first one refused, and none after it", func(storage durable.Storage, expect func(any) expectation, _ func(error, string)) {
+			rootId := createRoot(storage)
+			firstId := mint[durable.EntryId](storage)
+			afterId := mint[durable.EntryId](storage)
+			var receipts []any
+			result := must(storage.Commit(ctx, [][]durable.StorageWrite{
+				{entryWrite(entry(firstId, rootId, "message"))},
+				// Refused against the state the first batch left: the ID is taken now.
+				{
+					taskWrite(pendingTask(mint[durable.TaskId](storage), rootId, "ready")),
+					entryWrite(entry(firstId, rootId, "message")),
+				},
+				{entryWrite(entry(afterId, rootId, "message"))},
+			}, func(index int, _ durable.Seq) { receipts = append(receipts, index) }))
+			expect(result.Stored).toBe(1)
+			expect(refusalText(result.Refused)).toBe(fmt.Sprintf("ID %d already belongs to entry", firstId))
+			expect(receipts).toEqual([]any{0})
+			expect(must(storage.Entry(ctx, firstId))).toBeDefined()
+			expect(must(storage.Entry(ctx, afterId))).toBeUndefined()
+			expect(len(must(storage.ScanTasks(ctx, durable.TaskQuery{}, 10, nil)).Items)).toBe(0)
+
+			// A refused first batch stores nothing; the storage goes on.
+			refused := must(storage.Commit(ctx, [][]durable.StorageWrite{
+				{durable.ConversationWrite{Value: durable.ConversationRecord{Id: rootId}}},
+			}, func(index int, _ durable.Seq) { receipts = append(receipts, index) }))
+			expect(refused.Stored).toBe(0)
+			expect(refusalText(refused.Refused)).toBe(fmt.Sprintf("ID %d already belongs to conversation", rootId))
+			expect(receipts).toEqual([]any{0})
+			commit(storage, entryWrite(entry(afterId, rootId, "message")))
+			expect(must(storage.Entry(ctx, afterId))).toBeDefined()
+		}),
+
+		createCase(options, "refuses a later batch its own malformed actions fail, keeping the batches before it", func(storage durable.Storage, expect func(any) expectation, _ func(error, string)) {
+			rootId := createRoot(storage)
+			documentId := mint[durable.DocumentId](storage)
+			commit(storage, durable.DocumentCreateWrite{
+				Record:  durable.DocumentCreate{Id: documentId, Kind: "staged", Scope: sessionScope},
+				Content: base(1, chorddelta.JsonObjectOf("n", 1)),
+			})
+			firstId := mint[durable.EntryId](storage)
+			secondId := mint[durable.EntryId](storage)
+			afterId := mint[durable.EntryId](storage)
+			var receipts []any
+			result := must(storage.Commit(ctx, [][]durable.StorageWrite{
+				{entryWrite(entry(firstId, rootId, "message"))},
+				// Malformed in itself, whatever is stored: one document retired twice.
+				{
+					entryWrite(entry(secondId, rootId, "message")),
+					durable.DocumentRetireWrite{Id: documentId},
+					durable.DocumentRetireWrite{Id: documentId},
+				},
+				{entryWrite(entry(afterId, rootId, "message"))},
+			}, func(index int, _ durable.Seq) { receipts = append(receipts, index) }))
+			expect(result.Stored).toBe(1)
+			expect(result.Refused != nil).toBe(true)
+			expect(receipts).toEqual([]any{0})
+			expect(must(storage.Entry(ctx, firstId))).toBeDefined()
+			expect(must(storage.Entry(ctx, secondId))).toBeUndefined()
+			expect(must(storage.Entry(ctx, afterId))).toBeUndefined()
+			expect(must(storage.Document(ctx, documentId, durable.CurrentPoint)).Value).toEqual(map[string]any{"n": 1})
+		}),
+
+		createCase(options, "resolves a batched copy against the state the earlier batches left", func(storage durable.Storage, expect func(any) expectation, _ func(error, string)) {
+			rootId := createRoot(storage)
+			childId := mint[durable.ConversationId](storage)
+			sourceId := mint[durable.DocumentId](storage)
+			copyId := mint[durable.DocumentId](storage)
+			record := func(id durable.DocumentId, conversationId durable.ConversationId) durable.DocumentCreate {
+				return durable.DocumentCreate{
+					Id: id, Kind: "batch.copy", Scope: conversationScope(conversationId),
+					History: durable.HistoryRewindable, Fork: durable.ForkAsOf,
+				}
+			}
+			var seqs []durable.Seq
+			result := must(storage.Commit(ctx, [][]durable.StorageWrite{
+				{durable.DocumentCreateWrite{Record: record(sourceId, rootId), Content: base(1, chorddelta.JsonObjectOf("count", 1))}},
+				{durable.DocumentChangeWrite{Id: sourceId, Content: delta(1, op("s", path("count"), 2))}},
+				{
+					durable.ConversationWrite{Value: durable.ConversationRecord{Id: childId}},
+					durable.DocumentCopyWrite{Record: record(copyId, childId), Source: durable.DocumentCopySource{Id: sourceId, At: durable.CurrentPoint}},
+				},
+			}, func(_ int, seq durable.Seq) { seqs = append(seqs, seq) }))
+			expect(result.Stored).toBe(3)
+			expect(result.Refused).toBeUndefined()
+			expect(must(storage.Document(ctx, copyId, durable.CurrentPoint)).Value).toEqual(map[string]any{"count": 2})
+			expect(must(storage.Document(ctx, sourceId, durable.AtSeq(seqs[0]))).Value).toEqual(map[string]any{"count": 1})
+
+			// A copy whose source the same batch changes is refused before the batch writes anything.
+			laterId := mint[durable.ConversationId](storage)
+			laterCopyId := mint[durable.DocumentId](storage)
+			refused := must(storage.Commit(ctx, [][]durable.StorageWrite{{
+				durable.ConversationWrite{Value: durable.ConversationRecord{Id: laterId}},
+				durable.DocumentCopyWrite{Record: record(laterCopyId, laterId), Source: durable.DocumentCopySource{Id: sourceId, At: durable.CurrentPoint}},
+				durable.DocumentChangeWrite{Id: sourceId, Content: delta(1, op("s", path("count"), 3))},
+			}}, func(int, durable.Seq) {}))
+			expect(refused.Stored).toBe(0)
+			expect(refused.Refused != nil).toBe(true)
+			expect(must(storage.Conversation(ctx, laterId))).toBeUndefined()
+			expect(must(storage.Document(ctx, sourceId, durable.CurrentPoint)).Value).toEqual(map[string]any{"count": 2})
+		}),
+
 		createCase(options, "rejects every operation after close", func(storage durable.Storage, _ func(any) expectation, rejects func(error, string)) {
 			createRoot(storage)
 			check(storage.Close(ctx))
 			_, err := storage.Conversation(ctx, durable.ROOT_CONVERSATION_ID)
 			rejects(err, "closed")
-			rejects(commitErr(storage), "closed")
+			rejects(commitErr(storage, durable.ConversationWrite{Value: durable.ConversationRecord{Id: durable.ROOT_CONVERSATION_ID}}), "closed")
 			_, err = storage.MintId()
 			rejects(err, "closed")
 		}),
