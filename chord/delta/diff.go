@@ -168,12 +168,13 @@ func permutation(before, after []any) []any {
 // copyItems is a non-nil copy of a slice of elements: an empty batch of items must stay a JSON array.
 func copyItems(items []any) []any { return append(make([]any, 0, len(items)), items...) }
 
+// An append op owns its text (Pi f715a15c ownedSlice): a substring would keep all of after alive.
 func (d *diffState) emitString(before, after string, path NonEmptyPath) {
 	if before == after {
 		return
 	}
 	if len(after) > len(before) && strings.HasPrefix(after, before) {
-		d.emit(Op{"a", path, after[len(before):]})
+		d.emit(Op{"a", path, strings.Clone(after[len(before):])})
 		return
 	}
 	shared := Overlap(before, after, defaultOverlapScan)
@@ -183,7 +184,7 @@ func (d *diffState) emitString(before, after string, path NonEmptyPath) {
 	}
 	d.emit(Op{"t", path, utf16Len(before) - shared})
 	if utf16Len(after) > shared {
-		d.emit(Op{"a", path, utf16Suffix(after, shared)})
+		d.emit(Op{"a", path, strings.Clone(utf16Suffix(after, shared))})
 	}
 }
 
