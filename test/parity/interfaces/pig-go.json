@@ -91785,9 +91785,9 @@
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func(loader func() ([]github.com/MichaelKinsy/PiG/internal/codingagent.SessionInfo, error), id string) (resolvedSessionArgument, error)"
+        "type": "func(loader func() ([]github.com/MichaelKinsy/PiG/internal/codingagent.SessionInfo, error), id string, exactFirst bool) (resolvedSessionArgument, error)"
       },
-      "shapeHash": "sha256:d568c44ac4c08386312e93ff1628e556b3af453301d264e761af88c0df8f8db1"
+      "shapeHash": "sha256:f9d483aee243099443d2fa093e4e04245cb9361279d16e82612eb3875e27e4d1"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/cli#firstUnknownFlag",
