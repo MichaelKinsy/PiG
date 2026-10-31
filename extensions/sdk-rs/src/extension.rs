@@ -1524,6 +1524,7 @@ impl Extension {
                 match env.msg_type.as_str() {
                     "ping" => Self::pong(&conn, env)?,
                     "request" if env.request.as_ref().is_some_and(|req| req.method == "events.dispatch") => early_dispatches.push_back(env),
+                    "notify" if env.notify.as_ref().is_some_and(|notify| notify.method == "events.release") => bus.release(env.notify.as_ref().and_then(|notify| notify.args.as_ref())),
                     other => return Err(io::Error::new(io::ErrorKind::InvalidData, format!("expected an {method} result, got {other}"))),
                 }
             }
@@ -1558,12 +1559,13 @@ impl Extension {
             ..Default::default()
         })?;
 
-        // Wait for ready. A listener the Host dispatches to while the extension loads runs once the extension is ready, in dispatch order.
+        // Wait for ready. A listener the Host dispatches to while the extension loads runs once the extension is ready, in dispatch order. The release of a listener (the Host's events.release notify, sent once an unsubscribed listener's last dispatch ended) is served at once.
         let mut env = conn.read_envelope()?;
         loop {
             match env.msg_type.as_str() {
                 "ping" => Self::pong(&conn, env)?,
                 "request" if env.request.as_ref().is_some_and(|req| req.method == "events.dispatch") => early_dispatches.push_back(env),
+                "notify" if env.notify.as_ref().is_some_and(|notify| notify.method == "events.release") => bus.release(env.notify.as_ref().and_then(|notify| notify.args.as_ref())),
                 _ => break,
             }
             env = conn.read_envelope()?;

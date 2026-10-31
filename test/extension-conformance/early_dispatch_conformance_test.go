@@ -41,6 +41,18 @@ type earlyDispatchTarget struct {
 }
 
 func TestEarlyDispatchBeforeReadyAnswersEachRequestOnceUnderItsOwnID(t *testing.T) {
+	runEarlyDispatchTargets(t, false)
+}
+
+// A host can send an events.release notify between register and ready: a listener of the loading extension unsubscribed during its dispatch, and the dispatch ended before ready. Every SDK
+// serves it as it serves the dispatches before it, so the load goes on to ready and the listener the notify names, still subscribed, keeps answering. The script is the one above with
+// the notify written in the same burst, before ready.
+func TestReleaseBeforeReadyDoesNotFailTheLoad(t *testing.T) {
+	runEarlyDispatchTargets(t, true)
+}
+
+func runEarlyDispatchTargets(t *testing.T, release bool) {
+	t.Helper()
 	if testing.Short() {
 		t.Skip("starts SDK subprocesses")
 	}
@@ -101,7 +113,7 @@ func TestEarlyDispatchBeforeReadyAnswersEachRequestOnceUnderItsOwnID(t *testing.
 			if err := peer.SetDeadline(time.Now().Add(30 * time.Second)); err != nil {
 				t.Fatal(err)
 			}
-			runEarlyDispatchScript(t, peer, target.node)
+			runEarlyDispatchScript(t, peer, target.node, release)
 		})
 	}
 }
@@ -112,7 +124,7 @@ var earlyDispatchPayloads = map[string]map[string]any{
 	"d2": {"seq": float64(2), "tag": "second"},
 }
 
-func runEarlyDispatchScript(t *testing.T, peer net.Conn, node bool) {
+func runEarlyDispatchScript(t *testing.T, peer net.Conn, node, release bool) {
 	t.Helper()
 	// The factory's own host calls come first: the listener's events.on is made before the register frame. The script answers them and remembers the handler.
 	handlerID := ""
@@ -157,6 +169,14 @@ func runEarlyDispatchScript(t *testing.T, peer net.Conn, node bool) {
 			t.Fatal(err)
 		}
 		frames = append(frames, subprocess.Envelope{Type: subprocess.MsgRequest, ID: id, Request: &subprocess.RequestPayload{Method: "events.dispatch", Args: args}})
+	}
+	if release {
+		// The Host releases a listener once its last dispatch snapshot ends, and a load-time dispatch can end before ready. The listener here is still subscribed, which a release leaves alone.
+		args, err := json.Marshal(map[string]any{"handlerId": handlerID})
+		if err != nil {
+			t.Fatal(err)
+		}
+		frames = append(frames, subprocess.Envelope{Type: subprocess.MsgNotify, Notify: &subprocess.NotifyPayload{Method: "events.release", Args: args}})
 	}
 	frames = append(frames, subprocess.Envelope{Type: subprocess.MsgReady, Ready: &subprocess.ReadyPayload{Cwd: "/fixture", Width: 80, Height: 24, State: &subprocess.StatePayload{HasUI: true}}})
 	for _, frame := range frames {

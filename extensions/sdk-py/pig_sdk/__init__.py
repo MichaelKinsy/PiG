@@ -4522,7 +4522,7 @@ class Extension:
         return self._wait_call(call_id, event, method)
 
     def _read_during_load(self, waiting: threading.Event | None = None) -> dict[str, Any] | None:
-        """Read the next message while the extension loads. Pings, call results and listener dispatches are served as the main loop serves them, as a node runtime serves a dispatch during its factory; any other message is returned. With ``waiting`` given, return None once that call's result has arrived."""
+        """Read the next message while the extension loads. Pings, call results, listener dispatches and the release of a listener are served as the main loop serves them, as a node runtime serves a dispatch during its factory; any other message is returned. With ``waiting`` given, return None once that call's result has arrived."""
         while True:
             env = self._read()
             kind = env.get("type")
@@ -4534,6 +4534,9 @@ class Extension:
                     return None
             elif kind == "request" and (env.get("request") or {}).get("method") == "events.dispatch":
                 self._start_request(env)
+            elif kind == "notify" and (env.get("notify") or {}).get("method") == "events.release":
+                # A listener that a load-time dispatch unsubscribed is released as soon as its dispatch ends, which can precede ready.
+                self._handle_notify(env)
             else:
                 return env
 
