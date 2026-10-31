@@ -21,7 +21,6 @@ func BenchmarkNativeProviderStream(b *testing.B) {
 	host := subprocess.NewHostWithConfigRoot(dir, dir)
 	defer host.Shutdown("benchmark done")
 	host.SetProviderCallbacks(services.Registry().RegisterExtensionProvider, services.Registry().UnregisterProvider)
-	host.SetNativeProviderCallback(services.Registry().RegisterNativeProvider)
 	host.SetUIBridge(subprocess.NewUIBridge(nil))
 	path, err := filepath.Abs("../../../../test/parity/scenarios/testdata/extension-native-provider.mjs")
 	if err != nil {
@@ -30,6 +29,10 @@ func BenchmarkNativeProviderStream(b *testing.B) {
 	if _, err := host.Load(b.Context(), subprocess.ExtConfig{Name: "extension-native-provider", Source: path, Enabled: true}); err != nil {
 		b.Fatal(err)
 	}
+	// A registration made while the extension loads is queued until the registry is bound (upstream bindCore).
+	host.SetNativeProviderCallback(services.Registry().RegisterNativeProvider)
+	// Registering a native provider queues its catalog refresh; the model is in the catalog once that refresh has run.
+	services.Registry().YieldToRegistrationRefresh(b.Context())
 	model := services.ModelRuntime().GetModel("parity-native", "native-model")
 	if model == nil {
 		b.Fatal("native model absent")
