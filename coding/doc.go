@@ -31,6 +31,9 @@
 //
 //	msgs, err := sess.Send(context.Background(), "What is 2+2?")
 //
+// A failed model call is not a Send error (as in Pi): the last assistant
+// message has StopReason "error" and an ErrorMessage. See [Session.Send].
+//
 // # Architecture
 //
 // The package exposes three public types that compose into a working
