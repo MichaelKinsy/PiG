@@ -41,6 +41,20 @@ func TestMain(m *testing.M) {
 		fmt.Fprintln(os.Stderr, "intentional build failure")
 		os.Exit(2)
 	}
+	// The Rust cell builds compile the SDK's dependencies (serde, serde_json) once per machine into a persistent target keyed by the SDK lock, not once per test: a cold cargo build at CARGO_BUILD_JOBS=1 outlasted the 10-minute package timeout on a loaded 4-CPU runner (https://github.com/MichaelKinsy/PiG/actions/runs/40963676052). make test-warm fills the target and CI restores it.
+	if os.Getenv("CARGO_TARGET_DIR") == "" {
+		sdk, err := filepath.Abs(filepath.Join("..", "..", "..", "..", "extensions", "sdk-rs"))
+		if err == nil {
+			var target string
+			if target, err = testenv.SharedCargoTargetDir("runtimecell", filepath.Join(sdk, "Cargo.lock"), filepath.Join(sdk, "Cargo.toml")); err == nil {
+				err = os.Setenv("CARGO_TARGET_DIR", target)
+			}
+		}
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "set package Cargo target:", err)
+			os.Exit(2)
+		}
+	}
 	os.Exit(testenv.RunScoped(m, "pig-cell-"))
 }
 
