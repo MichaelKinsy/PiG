@@ -586,11 +586,47 @@ impl AnsiCodeTracker {
         if self.underline {
             result.push_str("\x1b[24m");
         }
+        if self.strikethrough {
+            result.push_str("\x1b[29m");
+        }
         if let Some(h) = &self.hyperlink {
             result.push_str(&format!("\x1b]8;;{}", h.terminator));
         }
         result
     }
+}
+
+fn extract_ansi_codes(s: &[char]) -> String {
+    let mut out = String::new();
+    let mut i = 0;
+    while i < s.len() {
+        let n = ansi_code_length(s, i);
+        if n > 0 {
+            out.push_str(&chars_to_string(&s[i..i + n]));
+            i += n;
+        } else {
+            i += 1;
+        }
+    }
+    out
+}
+
+fn is_whitespace_token(token: &[char]) -> bool {
+    let mut i = 0;
+    while i < token.len() {
+        if token[i] == '\x1b' {
+            let n = ansi_code_length(token, i);
+            if n == 0 {
+                return false;
+            }
+            i += n;
+        } else if is_js_space(token[i]) {
+            i += 1;
+        } else {
+            return false;
+        }
+    }
+    true
 }
 
 fn update_tracker(text: &[char], tracker: &mut AnsiCodeTracker) {
@@ -724,11 +760,14 @@ fn wrap_single_line(line: &[char], width: i64) -> Vec<String> {
     for token in split_into_tokens(line) {
         let token_chars: Vec<char> = token.chars().collect();
         let token_len = visible_width_chars(&token_chars);
-        let is_whitespace = token.trim_matches(is_js_space).is_empty();
+        // pig divergence (D217): Pi 2ce9d527 (#10925) the codes that close a styled word sit on the following space token, which is still whitespace.
+        let is_whitespace = is_whitespace_token(&token_chars);
         if token_len > width && !is_whitespace {
             if !current.is_empty() {
-                current.push_str(&tracker.line_end_reset());
-                wrapped.push(std::mem::take(&mut current));
+                let mut line = trim_end_string(&current);
+                line.push_str(&tracker.line_end_reset());
+                wrapped.push(line);
+                current.clear();
                 current_len = 0;
             }
             let mut broken = break_long_word(&token_chars, width, &mut tracker);
@@ -740,15 +779,21 @@ fn wrap_single_line(line: &[char], width: i64) -> Vec<String> {
         }
         if current_len + token_len > width && current_len > 0 {
             let mut to_wrap = trim_end_string(&current);
+            if is_whitespace {
+                to_wrap.push_str(&extract_ansi_codes(&token_chars));
+                update_tracker(&token_chars, &mut tracker);
+            }
             to_wrap.push_str(&tracker.line_end_reset());
             wrapped.push(to_wrap);
             if is_whitespace {
                 current = tracker.active_codes();
                 current_len = 0;
-            } else {
-                current = tracker.active_codes() + &token;
-                current_len = token_len;
+                continue;
             }
+            current = tracker.active_codes() + &token;
+            current_len = token_len;
+        } else if is_whitespace && current_len + token_len > width && token.contains('\x1b') {
+            current.push_str(&extract_ansi_codes(&token_chars));
         } else {
             current.push_str(&token);
             current_len += token_len;
