@@ -40,6 +40,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-058e7a0](#bf-058e7a0) | The Go, Rust and Python SDKs export Pi's compaction helpers `calculateContextTokens`, `shouldCompact`… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-0630078](#bf-0630078) | MCP tool calls no longer fail with "Invalid MCP tools/call structured content" when the server returns… | A fix Pi shipped that PiG ported | All platforms | 0.5.0 |
 | [BF-0631c73](#bf-0631c73) | Go, Python and Rust extensions now draw an overlay component (`ctx.custom` with `overlay: true`) at the… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-0636520](#bf-0636520) | fix(testenv): the shared Cargo target is keyed by the absolute path of the SDK as well as its lock | PiG's own defect | All platforms | Unreleased |
 | [BF-064181f](#bf-064181f) | fix(extension): hold the theme colors map the wire palette memo is keyed on | PiG's own defect | All platforms | Unreleased |
 | [BF-07151d0](#bf-07151d0) | In print and JSON mode, Node extensions in separate processes now keep Pi's order when a later extension's… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-0790d5e](#bf-0790d5e) | `String.prototype.trim` vs `strings.TrimSpace`: four Pi `.trim()` sites used Go's `strings.TrimSpace`, which… | PiG's own defect | All platforms | 0.5.0 |
@@ -89,6 +90,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-1268115](#bf-1268115) | fix(model runtime): a cancelled request to a caller-owned provider the runtime does not know is aborted, not… | PiG's own defect | All platforms | Unreleased |
 | [BF-1356aae](#bf-1356aae) | fix(train): load pig_sdk.tui with the package, run the TS queue check with no runtime, pin three fixture… | PiG's own defect | All platforms | Unreleased |
 | [BF-1364791](#bf-1364791) | Stopping a codemode script or reaching its deadline no longer waits up to half a second for a built-in that… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-136dab0](#bf-136dab0) | fix(chord/next/host): a route's Resolve calls carry their place in the order of the calls | PiG's own defect | All platforms | Unreleased |
 | [BF-1390c9d](#bf-1390c9d) | fix(ai): the Anthropic event reader matches the type member exactly | PiG's own defect | All platforms | Unreleased |
 | [BF-14886f9](#bf-14886f9) | A call to `Session.DeferUntilPublished` from a goroutine other than the publishing one (a Harness's wait for… | PiG's own defect | All platforms | Unreleased |
 | [BF-155d0f3](#bf-155d0f3) | In RPC mode, SIGTERM or SIGHUP during a tool call likewise stops the run while the `session_shutdown`… | PiG's own defect | All platforms | 0.5.0 |
@@ -1696,6 +1698,19 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** `coding/extension/host/subprocess/builder_node_entry_test.go::TestResolveNodeEntrypointImportsAnIndexMjsDirectoryAsJiti`, `extensions/sdk-py/tests/test_overlay_width.py`, `extensions/sdk/overlay_width_test.go::TestRemoteRenderWidthFollowsUpstreamOverlayLayout`, `test/extension-conformance/api_append_entry_test.go::TestConformance_ExtensionAPIAppendEntry`, `test/extension-conformance/overlay_width_conformance_test.go::TestConformance_OverlayRenderWidth`
 - **Release note:** Go, Python and Rust extensions now draw an overlay component (`ctx.custom` with `overlay: true`) at the overlay's width, 80 columns by default, as Pi and Node extensions do. They drew it at the full terminal width, so a full-width line was cut off at the overlay's edge.
 
+### BF-0636520
+
+**fix(testenv): the shared Cargo target is keyed by the absolute path of the SDK as well as its lock**
+
+- **Source:** PiG's own defect
+- **Symptom:** fix(testenv): the shared Cargo target is keyed by the absolute path of the SDK as well as its lock
+- **Root cause:** rustc bakes env!("CARGO_MANIFEST_DIR") into a test binary, and Cargo reuses a cached binary whenever the sources' mtimes are older than it, whatever the checkout's path. SharedCargoTargetDir hashed only the package name and the lock and manifest contents, so a second checkout (a copy, a worktree, a clone older than the cached build) took the first one's target and ran the binary that opens the first checkout's fixtures: Type.json not found once that checkout was deleted (TestTypeEngineVectorsThroughTheHost/rust). A copy of a checkout kept the deleted path baked in, reproduced with two paths and identical mtimes. The hash now includes the absolute path of each input.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `0636520b4d` (2026-10-31)
+- **Tests:** `internal/testenv/cargotarget_test.go::TestSharedCargoTargetDirIsKeyedByTheAbsoluteRootAsWellAsTheContents`, `internal/testenv/cargotarget_test.go::TestSharedCargoTargetDirResolvesARelativeRootToTheSameTarget`, `test/extension-conformance/type_engine_vectors_host_test.go::TestTypeEngineVectorsThroughTheHost`
+
 ### BF-064181f
 
 **fix(extension): hold the theme colors map the wire palette memo is keyed on**
@@ -2372,6 +2387,19 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Commit that wrote the release note (the fix commit is not identified):** `1364791228` (2026-10-13)
 - **Tests:** `codemode/job_poll_test.go::TestAMicrotaskSpinEndsAtTheJobPollNotTheHardStop`, `codemode/lifetime_test.go::TestCloseAbortsEveryRunningExecution`, `codemode/lifetime_test.go::TestEveryTerminalKindClosesItsVMWithoutHaltingTheInstance`, `codemode/worker_admission_test.go::TestAFailedModuleLoadAcquiresNoAdmission`, `codemode/worker_admission_test.go::TestAFailingOnWorkerStartedEndsTheWorker`, `codemode/worker_admission_test.go::TestAdmissionIsReleasedOnExitNotOnTheResult`, `codemode/worker_admission_test.go::TestDeniedAdmissionStartsNoWorker`, `codemode/worker_admission_test.go::TestReportsTheActualExitOfExecuteAndStartWorkers` and 3 more in docs/bug-ledger.json
 - **Release note:** Stopping a codemode script or reaching its deadline no longer waits up to half a second for a built-in that does not poll the interrupt flag ([#10748](https://github.com/earendil-works/pi/issues/10748)).
+
+### BF-136dab0
+
+**fix(chord/next/host): a route's Resolve calls carry their place in the order of the calls**
+
+- **Source:** PiG's own defect
+- **Symptom:** fix(chord/next/host): a route's Resolve calls carry their place in the order of the calls
+- **Root cause:** Pi calls `resolve` synchronously from the route's check (route.ts:120), so the calls of two addresses reach their first await in the order the holds arrived, and a test's `peers.push` is in that order. Here each address resolves on an owned task, so two tasks could start in either order: worker 0 was the second hold's in 347 of 400 runs of the downstream-drop test.
+- **User impact:** Wrong output or ordering
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `136dab0f05` (2026-10-31)
+- **Tests:** `chord/next/host/remote_relay_test.go::TestRelayDownstreamDrop`, `chord/next/host/remote_relay_test.go::TestRelayIDsAndOrigins`
 
 ### BF-1390c9d
 

@@ -608,6 +608,29 @@
       ]
     },
     {
+      "id": "BF-0636520",
+      "title": "fix(testenv): the shared Cargo target is keyed by the absolute path of the SDK as well as its lock",
+      "symptom": "fix(testenv): the shared Cargo target is keyed by the absolute path of the SDK as well as its lock",
+      "rootCause": "rustc bakes env!(\"CARGO_MANIFEST_DIR\") into a test binary, and Cargo reuses a cached binary whenever the sources' mtimes are older than it, whatever the checkout's path. SharedCargoTargetDir hashed only the package name and the lock and manifest contents, so a second checkout (a copy, a worktree, a clone older than the cached build) took the first one's target and ran the binary that opens the first checkout's fixtures: Type.json not found once that checkout was deleted (TestTypeEngineVectorsThroughTheHost/rust). A copy of a checkout kept the deleted path baked in, reproduced with two paths and identical mtimes. The hash now includes the absolute path of each input.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "0636520b4d",
+          "date": "2026-10-31"
+        }
+      ],
+      "tests": [
+        "internal/testenv/cargotarget_test.go::TestSharedCargoTargetDirIsKeyedByTheAbsoluteRootAsWellAsTheContents",
+        "internal/testenv/cargotarget_test.go::TestSharedCargoTargetDirResolvesARelativeRootToTheSameTarget",
+        "test/extension-conformance/type_engine_vectors_host_test.go::TestTypeEngineVectorsThroughTheHost"
+      ]
+    },
+    {
       "id": "BF-064181f",
       "title": "fix(extension): hold the theme colors map the wire palette memo is keyed on",
       "symptom": "fix(extension): hold the theme colors map the wire palette memo is keyed on",
@@ -1971,6 +1994,28 @@
         "codemode/worker_lifetime_test.go::TestCancellationSettlesWithoutWaitingForTheVMToExit",
         "coding/extension/builtin/codemode/worker_admission_test.go::TestCodemodeWorkerAdmissionBoundsSurvivingWorkers",
         "coding/extension/builtin/codemode/worker_admission_test.go::TestCodemodeWorkerHoldsItsSlotWhileRunning"
+      ]
+    },
+    {
+      "id": "BF-136dab0",
+      "title": "fix(chord/next/host): a route's Resolve calls carry their place in the order of the calls",
+      "symptom": "fix(chord/next/host): a route's Resolve calls carry their place in the order of the calls",
+      "rootCause": "Pi calls `resolve` synchronously from the route's check (route.ts:120), so the calls of two addresses reach their first await in the order the holds arrived, and a test's `peers.push` is in that order. Here each address resolves on an owned task, so two tasks could start in either order: worker 0 was the second hold's in 347 of 400 runs of the downstream-drop test.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "136dab0f05",
+          "date": "2026-10-31"
+        }
+      ],
+      "tests": [
+        "chord/next/host/remote_relay_test.go::TestRelayDownstreamDrop",
+        "chord/next/host/remote_relay_test.go::TestRelayIDsAndOrigins"
       ]
     },
     {
