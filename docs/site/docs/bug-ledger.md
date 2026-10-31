@@ -1226,6 +1226,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-df96b6a](#bf-df96b6a) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
 | [BF-dfa57b3](#bf-dfa57b3) | An OpenAI Responses request for a conversation with no messages sends `"input": []` instead of `"input": null` | PiG's own defect | All platforms | 0.5.0 |
 | [BF-e045fa5](#bf-e045fa5) | fix(durable/codemode): count image blocks in a generateImages result as Pi does, and compare the code mode… | PiG's own defect | All platforms | Unreleased |
+| [BF-e046dd9](#bf-e046dd9) | fix(rust): resolve every clippy warning in the Rust crates | PiG's own defect | All platforms | Unreleased |
 | [BF-e098463](#bf-e098463) | A Gemini stream chunk with a member of an unexpected type is read as Pi's JavaScript reads it instead of… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-e09d2bc](#bf-e09d2bc) | fix(durable/core): Session.fail, a failing store of held changes at close rejects close, observers see a… | PiG's own defect | All platforms | Unreleased |
 | [BF-e16cbba](#bf-e16cbba) | Tool search ranks a tool first when the query is its name, with `-` and other non-identifier characters read… | PiG's own defect | All platforms | Unreleased |
@@ -18146,6 +18147,19 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `e045fa5ed8` (2026-10-24)
 - **Tests:** `durable/codemode/codemode_helpers_pi_oracle_test.go::TestCodemodeHelpersMatchPi`, `durable/codemode/codemode_helpers_pi_oracle_test.go::TestNestedCallDetailsCutArgumentsAndErrorsToTheirPreviewLengths`, `durable/codemode/codemode_helpers_pi_oracle_test.go::TestTheHeaderShowsTheWallTimeFromTheHarnessClock`
+
+### BF-e046dd9
+
+**fix(rust): resolve every clippy warning in the Rust crates**
+
+- **Source:** PiG's own defect
+- **Symptom:** fix(rust): resolve every clippy warning in the Rust crates
+- **Root cause:** cargo clippy --all-targets -- -D warnings is clean for the SDK, the example, the conformance and parity fixtures and the benchmark extension. Public API and behaviour are unchanged: aliases replace complex callback types, the internal Rendered and remote-component event enums box their large variant, and long argument lists become parameter structs. No allow attributes.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `e046dd9a93` (2026-10-31)
+- **Tests:** None recorded.
 
 ### BF-e098463
 
