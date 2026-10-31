@@ -942,7 +942,8 @@ func BuildUserContent(text string, images []ai.ImageContent) ai.UserContentBlock
 // (ai.StopReasonAborted after Abort) with its ErrorMessage set.
 // Agent().ErrorMessage() reports the same text until the next run, and the
 // failure is also visible in the message_end and auto_retry_end events. Send
-// returns an error for preflight failures and when ctx is cancelled.
+// returns an error for preflight failures, and ctx.Err() when the caller
+// cancels ctx before the provider ends its stream.
 func (s *Session) Send(ctx context.Context, prompt string) ([]agent.AgentMessage, error) {
 	return s.SendContent(ctx, BuildUserContent(prompt, nil))
 }
