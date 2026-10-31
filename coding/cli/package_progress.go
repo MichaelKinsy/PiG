@@ -12,9 +12,14 @@ import (
 // Package CLI output prints starts; the command caller owns success and failure diagnostics.
 func packageProgressPrinter(writer io.Writer) packagemanager.ProgressCallback {
 	return func(event packagemanager.ProgressEvent) {
-		if event.Type == "start" && event.Message != nil {
+		switch {
+		case event.Type == "start" && event.Message != nil:
 			// upstream: package-manager-cli.ts progress callback process.stdout.write(chalk.dim(`${event.message}\n`)).
 			_, _ = fmt.Fprint(writer, chalkDim(*event.Message+"\n"))
+		case event.Type == "progress" && event.Message != nil && *event.Message != "":
+			// pig divergence (D217): Pi 0d23d534 (#11536) prints progress events (the unchanged-version warning) in yellow; pinned Pi printed only starts.
+			// upstream (0d23d534): `else if (event.type === "progress" && event.message)` prints chalk.yellow(`${event.message}\n`).
+			_, _ = fmt.Fprint(writer, chalkYellow(*event.Message+"\n"))
 		}
 	}
 }

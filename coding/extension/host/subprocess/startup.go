@@ -5,7 +5,21 @@ import (
 	"path/filepath"
 
 	"github.com/MichaelKinsy/PiG/coding/extension"
+	"github.com/MichaelKinsy/PiG/internal/resolvepath"
 )
+
+// finalSetOrigin is the key LoadFinalExtensionSet matches a preloaded and a final config by: the config's origin made absolute against cwd.
+func finalSetOrigin(cwd string, config ExtConfig) string {
+	path := extConfigOrigin(config)
+	if path == "<unknown>" {
+		return "fused:" + config.Name
+	}
+	if !filepath.IsAbs(path) {
+		path = filepath.Join(cwd, path)
+	}
+	// pig divergence (D217): Pi 1be312b4 (#10488) matches the preloaded and final paths by getResourcePathKey, which folds the case of a Windows path; Pi 1.4.0+b3a29f11 matched resolved strings.
+	return resolvepath.ComparisonKey(filepath.Clean(path))
+}
 
 // LoadFinalExtensionSet keeps extensions initialized for project_trust and loads
 // only paths not attempted in that phase. Failed preloads are not retried.
@@ -19,16 +33,7 @@ func (h *Host) LoadFinalExtensionSet(ctx context.Context, configs, preloaded []E
 	// paths, as LoadAll and Reload do.
 	configs = DisambiguateIdentities(configs)
 	preloaded = DisambiguateIdentities(preloaded)
-	origin := func(config ExtConfig) string {
-		path := extConfigOrigin(config)
-		if path == "<unknown>" {
-			return "fused:" + config.Name
-		}
-		if !filepath.IsAbs(path) {
-			path = filepath.Join(h.cwd, path)
-		}
-		return filepath.Clean(path)
-	}
+	origin := func(config ExtConfig) string { return finalSetOrigin(h.cwd, config) }
 	attempted := make(map[string]struct{}, len(preloaded))
 	loadedByPath := make(map[string]extension.Extension)
 	h.mu.Lock()
