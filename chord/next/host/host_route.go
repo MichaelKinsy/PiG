@@ -4,6 +4,7 @@ import (
 	"context"
 	"slices"
 
+	"github.com/MichaelKinsy/PiG/chord/internal/parking"
 	"github.com/MichaelKinsy/PiG/chord/next/contracts"
 	"github.com/MichaelKinsy/PiG/chord/next/data"
 	"github.com/MichaelKinsy/PiG/chord/next/link"
@@ -15,15 +16,14 @@ import (
 // (or a link closed before its handshake) fails its holders `failed { waiting }` until then, and a suspended address
 // resolves nothing while held.
 //
-// Forced Go differences. `resolve` is an awaited Promise, so it is a blocking call returning (link, error). `void
-// this.#resolve(routed)` is an owned task (Loop.Go): the call to `resolve` runs on it, off the loop, and everything Pi
-// writes after the `await` runs as one section (Loop.Run) on it, so a `resolve` whose holds were all released meanwhile
-// finishes and its result is handled as Pi's. Pi calls `resolve` synchronously from `changed`, so the calls reach their first
-// await in the order the holds arrived; `resolve` takes the call's place in that order, in the route's section, and the
-// `Resolve` task's context carries it (`resolveOrder`), for the effects a `Resolve` orders as Pi's calls are ordered, without
-// one address's slow `Resolve` holding up another's. `authorize` and `resolve` may throw in Pi: they return the error. The
-// route calls the host's own `*path`, `*hostLink` and `*chordHost` directly, as Pi's classes do. A `Link` of `link` and its
-// `Codec` and `PartLimits` are the package's own.
+// Forced Go differences. `resolve` is an awaited Promise, so it is a blocking call returning (link, error). Pi's `#resolve`
+// runs `options.resolve` synchronously, inside the section that triggered it, up to its first `await`, and handles the
+// result in a later microtask: the Go call is lent that section like a method handler (Loop.Lend, DESIGN-go-layout.md
+// section 10): its synchronous part runs inside the section, which goes on once `Resolve` returned or suspended
+// (`chordctx.Suspend(ctx)`, or a host primitive that waits), and everything Pi writes after the `await` runs as one section
+// (Loop.Run) afterwards, so a `resolve` whose holds were all released meanwhile finishes and its result is handled as Pi's.
+// `authorize` and `resolve` may throw in Pi: they return the error. The route calls the host's own `*path`, `*hostLink` and
+// `*chordHost` directly, as Pi's classes do. A `Link` of `link` and its `Codec` and `PartLimits` are the package's own.
 
 // RouteOptions is what `host.route` takes for a kind.
 type RouteOptions struct {
@@ -32,7 +32,9 @@ type RouteOptions struct {
 	Authorize func(principal data.Principal, address contracts.Address) (bool, error)
 	// Resolve makes the link to address: the principal is who the host at the other end is, Trusted skips the message
 	// check on it, Limits bound its parts (as `accept`'s). ctx is the route's, cancelled when this host closes. It runs at
-	// most once at a time per address; it blocks, off the host's loop.
+	// most once at a time per address. Its synchronous part runs inside the section that triggered it (a hold, a Retry), as
+	// Pi's does: it must call `chordctx.Suspend(ctx)` with its ctx before it waits for anything that is not a section of the
+	// host (a channel, a process, I/O), the same contract as a method handler's (DESIGN-go-layout.md section 10).
 	Resolve func(address contracts.Address, ctx context.Context) (ResolvedLink, error)
 }
 
@@ -56,8 +58,10 @@ type routeLinkOptions struct {
 // RouteHandle is what `host.route` returns: the app's controls of its addresses (D10b, R1).
 type RouteHandle struct {
 	// Retry resolves address again now if it has holders and no link: its failure and its suspension end (a Retry button);
-	// an address nobody holds resolves at its next hold.
-	Retry func(address contracts.Address)
+	// an address nobody holds resolves at its next hold. It reports whether it started a resolve (held, no link, none
+	// running): Pi's `retry` runs `resolve` synchronously, so its caller sees that at once; the Go `Resolve` runs on an
+	// owned task, so the answer is the one thing a caller cannot see otherwise.
+	Retry func(address contracts.Address) bool
 	// Suspend makes address resolve nothing while it has holders: they wait `failed { waiting }` ("suspended") once its
 	// link is gone; the suspension ends with its last holder or Retry.
 	Suspend func(address contracts.Address)
@@ -94,8 +98,6 @@ type route struct {
 	addresses map[string]*routed
 	// links are the addresses' links, which tell their address when they close, and whether each completed its handshake.
 	links map[*hostLink]*routeLinkEntry
-	// resolves counts the `Resolve` calls made: the next call's place in the route's order of calls.
-	resolves int
 }
 
 // newRoute makes the route of kind. It returns the error `kindParams` throws for a kind not declared by hostKind.
@@ -109,16 +111,6 @@ func newRoute(kind *contracts.HostKind, options RouteOptions, host *chordHost, c
 		addresses: map[string]*routed{}, links: map[*hostLink]*routeLinkEntry{},
 	}
 	return r, nil
-}
-
-// resolveOrderKey is the context key of a `Resolve` call's place in its route's order of calls.
-type resolveOrderKey struct{}
-
-// resolveOrder is the place of the `Resolve` call whose context is ctx among the calls of its route: 0 for the first call
-// `resolve` made, then 1, 2 and so on in the order of the calls (as the order in which Pi's synchronous calls ran).
-func resolveOrder(ctx context.Context) (int, bool) {
-	order, ok := ctx.Value(resolveOrderKey{}).(int)
-	return order, ok
 }
 
 // path is the path to the address with params, for a hold acting as principal: the params checked against the kind
@@ -150,14 +142,14 @@ func (r *route) path(params any, principal data.Principal, ctx context.Context) 
 }
 
 // retry is `RouteHandle.retry`: the address's failure and suspension end; it resolves now if held and unlinked.
-func (r *route) retry(key string) {
+func (r *route) retry(key string) bool {
 	routed := r.addresses[key]
 	if routed == nil {
-		return
+		return false
 	}
 	routed.failure = nil
 	routed.suspended = false
-	r.resolveIfHeld(routed)
+	return r.resolveIfHeld(routed)
 }
 
 // suspend is `RouteHandle.suspend`: a held address resolves nothing until `retry` or its last holder; unheld, nothing is kept.
@@ -246,26 +238,39 @@ func (r *route) forget(key string) {
 	}
 }
 
-// resolveIfHeld resolves the address if it has holders, no link, no running `resolve` and no suspension.
-func (r *route) resolveIfHeld(routed *routed) {
+// resolveIfHeld resolves the address if it has holders, no link, no running `resolve` and no suspension, and reports
+// whether it did.
+func (r *route) resolveIfHeld(routed *routed) bool {
 	if !routed.path.held() || routed.path.link() != nil || routed.resolving || r.host.closing() {
-		return
+		return false
 	}
 	r.resolve(routed)
+	return true
 }
 
-// resolve runs `resolve` once for the address, on an owned task, whose context carries the call's place in the route's
-// order of calls. A rejection, or a link closed already, fails its holders with the error until the next resolve; a link
-// returned after the host closed is closed at once.
+// resolve runs `resolve` once for the address: its synchronous part inside this section (lent to it), the rest as a
+// section of its own. A rejection, or a link closed already, fails its holders with the error until the next resolve; a
+// link returned after the host closed is closed at once.
 func (r *route) resolve(routed *routed) {
 	routed.resolving = true
-	ctx := context.WithValue(r.context, resolveOrderKey{}, r.resolves)
-	r.resolves++
 	loop := r.host.loop()
-	loop.Go(func() {
-		resolved, err := r.options.Resolve(routed.address, ctx)
+	signal := parking.New()
+	ctx := context.WithValue(r.context, parking.Key, signal)
+	loop.Lend(signal, func() {
+		resolved, err := resolvePlugin(r.options.Resolve, routed.address, ctx)
+		signal.Return()
 		loop.Run(func() { r.resolved(routed, resolved, err) })
 	})
+}
+
+// resolvePlugin calls the app's `resolve`: plugin code, so a panic is the rejection, as a `throw` is.
+func resolvePlugin(resolve func(contracts.Address, context.Context) (ResolvedLink, error), address contracts.Address, ctx context.Context) (resolved ResolvedLink, err error) {
+	defer func() {
+		if recovered := recover(); recovered != nil {
+			resolved, err = ResolvedLink{}, recoveredError(recovered)
+		}
+	}()
+	return resolve(address, ctx)
 }
 
 // resolved is what `#resolve` does once `resolve` settled, in one section.
