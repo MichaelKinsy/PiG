@@ -298,11 +298,11 @@ func positiveInf() float64 { var zero float64; return 1 / zero }
 // fakeWriterHost is the Session as a writer sees it: storage stored batches in one call, nothing is published through a scope,
 // and what fails the Session is recorded.
 type fakeWriterHost struct {
-	mu       sync.Mutex
-	nextSeq  durable.Seq
-	failure  error
-	fails    []fakeFail
-	reports  []error
+	mu        sync.Mutex
+	nextSeq   durable.Seq
+	failure   error
+	fails     []fakeFail
+	reports   []error
 	published []durable.Seq
 	// stored runs at each publication, right before the part's own publish; it may panic, as a failing cache write does.
 	stored func(call int)

@@ -15,6 +15,7 @@ package session_test
 import (
 	"context"
 	"errors"
+	"runtime"
 	"slices"
 	"sync"
 	"testing"
@@ -180,7 +181,9 @@ type scopedStorage struct {
 	scope func(ctx context.Context, publish func())
 }
 
-func (storage scopedStorage) Publishing(ctx context.Context, publish func()) { storage.scope(ctx, publish) }
+func (storage scopedStorage) Publishing(ctx context.Context, publish func()) {
+	storage.scope(ctx, publish)
+}
 
 // call is one Session call a test issued from its own goroutine.
 type call struct {
@@ -227,6 +230,15 @@ func (started *call) settled() bool {
 func quiesce(calls ...*call) {
 	for _, started := range calls {
 		started.enter()
+	}
+}
+
+// awaitQueued returns once n parts are admitted behind the call in flight, which is what upstream's callbacks have all run and
+// the three are admitted while the first call is in flight means. A job parked behind the line is not admitted yet, so entering
+// its goroutine does not say it.
+func (g *gc) awaitQueued(n int) {
+	for session.QueuedParts(g.session) < n {
+		runtime.Gosched()
 	}
 }
 

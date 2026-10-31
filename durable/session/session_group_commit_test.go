@@ -51,6 +51,7 @@ func TestGroupCommitBatching(t *testing.T) {
 		<-ran
 		<-ran
 		quiesce(second, third)
+		g.awaitQueued(2)
 		if g.published.len() != 0 {
 			t.Fatalf("%d commits published while the first call is in flight", g.published.len())
 		}
@@ -364,6 +365,8 @@ func TestGroupCommitGates(t *testing.T) {
 		}, deferredForever)
 		reader := g.bump(a)
 		quiesce(deferredCommit, reader)
+		// Only the deferred commit is admitted: the reader waits at the gate of the key it holds, with the line.
+		g.awaitQueued(1)
 		// Nothing is published while the first commit is in flight, the deferred one neither.
 		if g.published.len() != 1 {
 			t.Fatalf("%d commits published while the first call is in flight, want the 1 before it", g.published.len())
@@ -416,6 +419,7 @@ func TestGroupCommitOutcomes(t *testing.T) {
 			g.bumpNamed(&log, "deferred", b, deferredForever),
 		}
 		quiesce(calls...)
+		g.awaitQueued(1)
 		expectNames(t, log.snapshot())
 		held.Release()
 		for _, started := range calls {
@@ -446,6 +450,7 @@ func TestGroupCommitOutcomes(t *testing.T) {
 		})
 		// Every callback has run, so the three are admitted while the first call is in flight.
 		quiesce(stored, refused, after, read)
+		g.awaitQueued(3)
 		held.Release()
 		if value := mustBump(t, first); value != 0 {
 			t.Fatalf("first read %v, want 0", value)
@@ -491,6 +496,7 @@ func TestGroupCommitFailuresPerPart(t *testing.T) {
 		third := g.bump(c)
 		g.storage.setRejectCall(g.storage.callCount())
 		quiesce(second, third)
+		g.awaitQueued(2)
 		held.Release()
 		mustBump(t, first)
 		for _, started := range []*call{second, third} {
@@ -521,6 +527,7 @@ func TestGroupCommitFailuresPerPart(t *testing.T) {
 		between := g.commitAsync(func(durable.Tx) (any, error) { return "no write", nil })
 		after := g.commitAsync(appendChange(id, "d"))
 		quiesce(before, between, after)
+		g.awaitQueued(2)
 		g.storage.setRejectCall(g.storage.callCount())
 		held.Release()
 		if _, err := first.wait(); err != nil {
@@ -592,6 +599,7 @@ func TestGroupCommitFailuresPerPart(t *testing.T) {
 		<-held.Entered()
 		parts := []*call{g.bump(b), g.bump(c)}
 		quiesce(parts...)
+		g.awaitQueued(2)
 		rejection := errors.New("rejection value")
 		g.storage.mu.Lock()
 		g.storage.rejection = rejection
@@ -618,6 +626,7 @@ func TestGroupCommitFailuresPerPart(t *testing.T) {
 		refused := g.commitAsync(appendChange(b, "refuse"))
 		after := g.bump(c)
 		quiesce(refused, after)
+		g.awaitQueued(2)
 		refusal := errors.New("refusal value")
 		g.storage.mu.Lock()
 		g.storage.refusal = refusal
@@ -657,6 +666,7 @@ func TestGroupCommitDeferredCommits(t *testing.T) {
 		<-held.Entered()
 		later := g.bump(b, deferredForever)
 		quiesce(later)
+		g.awaitQueued(1)
 		if g.published.len() != 0 {
 			t.Fatalf("%d commits published while the call is in flight", g.published.len())
 		}
@@ -677,6 +687,7 @@ func TestGroupCommitDeferredCommits(t *testing.T) {
 		<-held.Entered()
 		later := g.bump(b, deferredForever)
 		quiesce(later)
+		g.awaitQueued(1)
 		g.storage.setRefuse(func(writes []durable.StorageWrite) bool {
 			for _, write := range writes {
 				if entry, ok := write.(durable.EntryWrite); ok && entry.Value.Kind == "refuse" {
@@ -716,6 +727,7 @@ func TestGroupCommitPublication(t *testing.T) {
 		})
 		third := g.bump(c)
 		quiesce(second, third)
+		g.awaitQueued(2)
 		held.Release()
 		mustBump(t, first)
 		mustBump(t, second)
@@ -800,6 +812,7 @@ func TestGroupCommitTheStoragesPublicationScope(t *testing.T) {
 		<-held.Entered()
 		rest := []*call{g.bump(b), g.bump(c)}
 		quiesce(rest...)
+		g.awaitQueued(2)
 		mu.Lock()
 		inside = nil
 		mu.Unlock()
@@ -873,6 +886,7 @@ func TestGroupCommitAFailureBetweenTwoPublications(t *testing.T) {
 		})
 		two := g.commitAsync(appendChange(id, "two"))
 		quiesce(one, two)
+		g.awaitQueued(2)
 		held.Release()
 		lead.wait()
 		_, err := one.wait()
@@ -901,6 +915,7 @@ func TestGroupCommitAFailureBetweenTwoPublications(t *testing.T) {
 		})
 		two := g.commitAsync(appendChange(id, "two"))
 		quiesce(one, two)
+		g.awaitQueued(2)
 		held.Release()
 		lead.wait()
 		one.wait()
@@ -928,6 +943,7 @@ func TestGroupCommitAFailureBetweenTwoPublications(t *testing.T) {
 		<-held.Entered()
 		one := g.commitAsync(appendChange(id, "one"))
 		quiesce(one)
+		g.awaitQueued(1)
 		held.Release()
 		lead.wait()
 		_, err := one.wait()
@@ -1011,6 +1027,7 @@ func TestGroupCommitUpkeepThroughTheWriter(t *testing.T) {
 		zero := 0.0
 		later := g.bump(b, durable.CommitOptions{Persistence: &durable.CommitPersistence{Kind: durable.CommitDeferred, WithinMs: &zero}})
 		quiesce(later)
+		g.awaitQueued(1)
 		calls := g.storage.callCount()
 		held.Release()
 		mustBump(t, first)
@@ -1033,6 +1050,7 @@ func TestGroupCommitUpkeepThroughTheWriter(t *testing.T) {
 		<-held.Entered()
 		later := g.bump(b, deferredForever)
 		quiesce(later)
+		g.awaitQueued(1)
 		closing := spawn(func() (any, error) { return nil, g.session.Close(ctx) })
 		held.Release()
 		mustBump(t, first)

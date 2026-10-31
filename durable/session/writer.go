@@ -223,6 +223,13 @@ func (writer *Writer) Unpublished() int {
 	return len(writer.unpublished)
 }
 
+// Queued is the number of admitted parts not yet sent, for tests that wait for what is admitted behind a call in flight.
+func (writer *Writer) Queued() int {
+	writer.mu.Lock()
+	defer writer.mu.Unlock()
+	return len(writer.queue)
+}
+
 // Wait returns once the writer's goroutine ended: nothing is queued or in flight.
 func (writer *Writer) Wait() { writer.running.Wait() }
 
@@ -405,9 +412,12 @@ func (writer *Writer) publish(parts []*Part, seqs []durable.Seq, received []bool
 			failing = append(failing, failingPart{part: part, outcome: failedOutcome{own: true, err: rejected}, published: true})
 			continue
 		}
-		// An own observer's panic: the commit stands; the Session fails after it.
+		// An own observer's panic: the commit stands; the Session fails after it. Upstream's failure is one microtask after
+		// the last publication, before the continuation of the commit that caused it, so the Session has failed, and its close
+		// listeners ran, when that commit's caller resumes: it fails here, before the part resolves.
 		if failure != nil {
 			stop = &publishStop{err: failure.Err, at: part.Index}
+			writer.host.Fail(failure.Err, part.Index, nil)
 		}
 		if failedMeanwhile := writer.host.Failure(); failedMeanwhile != nil && failure == nil {
 			part.settle(durable.NewSessionFailed(failedMeanwhile))

@@ -313,9 +313,11 @@ func NewSessionImpl(storage durable.Storage, hooks Hooks, now func() float64, do
 			}
 			return hooks.ConversationCreated(tx, record)
 		},
-		taskDocuments:    session.taskDocumentsOf,
-		latestEntryId:    session.LatestEntryId,
-		latestHeadMarker: func(ctx context.Context, conversationId durable.ConversationId) (*durable.EntryRecord, error) { return session.LatestHeadMarker(ctx, conversationId, nil) },
+		taskDocuments: session.taskDocumentsOf,
+		latestEntryId: session.LatestEntryId,
+		latestHeadMarker: func(ctx context.Context, conversationId durable.ConversationId) (*durable.EntryRecord, error) {
+			return session.LatestHeadMarker(ctx, conversationId, nil)
+		},
 	}
 	return session
 }
@@ -797,7 +799,9 @@ func (session *SessionImpl) report(ctx context.Context, err error, info durable.
 // now; they read the error from Failure. The Storage guard calls it; the Harness also calls it for an error in its
 // scheduler's own commits. The job on the line is the one whose outcome the failure is: later jobs' outcomes become
 // SessionFailed.
-func (session *SessionImpl) Fail(ctx context.Context, err error) { session.failFrom(ctx, err, nil, nil) }
+func (session *SessionImpl) Fail(ctx context.Context, err error) {
+	session.failFrom(ctx, err, nil, nil)
+}
 
 func (session *SessionImpl) fail(err error) { session.failFrom(unscoped, err, nil, nil) }
 

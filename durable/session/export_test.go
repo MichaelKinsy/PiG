@@ -20,3 +20,6 @@ func CloseSubscriptions(session *SessionImpl) int {
 	defer session.mu.Unlock()
 	return len(session.closeOrder)
 }
+
+// QueuedParts is the number of parts admitted behind the call in flight, not yet sent.
+func QueuedParts(session *SessionImpl) int { return session.writer.Queued() }
