@@ -247,8 +247,9 @@ const (
 	// nothing is sent on Events() and the agent loop never blocks on the
 	// channel. Callers with no live progress display (headless turns, test
 	// runs) select this. No durable data is lost — the transcript file holds
-	// the complete record, and Send's returned messages do too. Equivalent to
-	// calling DiscardEvents before the first run.
+	// the complete record when persistence is enabled, and Send's returned
+	// messages do too. Equivalent to calling DiscardEvents before the first
+	// run.
 	EventDrop
 )
 

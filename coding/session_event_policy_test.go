@@ -71,3 +71,56 @@ func TestSessionEventDropPolicyNeverBlocksSend(t *testing.T) {
 		t.Fatalf("transcript lost the turn: got %d chars, want 300", len(text))
 	}
 }
+
+// TestSessionCloneInheritsEventDrop proves the clone of a discarding session
+// keeps dropping: the clone serves the same caller, which reads no Events, so
+// defaulting back to EventBlock would deadlock it. The scripted provider
+// re-emits the same 300-event turn on every call, so the clone's turn is
+// oversized under either write path — policy or DiscardEvents.
+func TestSessionCloneInheritsEventDrop(t *testing.T) {
+	for name, dropAtRuntime := range map[string]bool{
+		"policy":          false,
+		"runtime-discard": true,
+	} {
+		t.Run(name, func(t *testing.T) {
+			opts := SessionOptions{Model: fakeModelWithProvider(staticProviderForSessionTests{events: eventPolicyTestEvents()})}
+			if !dropAtRuntime {
+				opts.EventPolicy = EventDrop
+			}
+			svcs := newTestServices(t)
+			sess, err := NewSession(svcs, opts)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer func() { _ = sess.Close() }()
+			if dropAtRuntime {
+				sess.DiscardEvents()
+			}
+			if _, err := sess.Send(t.Context(), "seed the transcript"); err != nil {
+				t.Fatal(err)
+			}
+
+			cloned, err := sess.Clone()
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer func() { _ = cloned.Close() }()
+
+			// The clone must complete an oversized turn with no Events
+			// consumer — exactly the condition that deadlocks EventBlock.
+			done := make(chan error, 1)
+			go func() {
+				_, e := cloned.Send(t.Context(), "clone turn")
+				done <- e
+			}()
+			select {
+			case e := <-done:
+				if e != nil {
+					t.Fatalf("clone Send returned error: %v", e)
+				}
+			case <-time.After(5 * time.Second):
+				t.Fatal("clone of a discarding session blocked without an Events() consumer")
+			}
+		})
+	}
+}
