@@ -315,6 +315,8 @@ func (c *workersComponent) resolve(address contracts.Address, routing context.Co
 	if immediate != nil {
 		return host.ResolvedLink{}, immediate
 	}
+	// The synchronous part is done: what follows waits for a worker, not for a section.
+	chordctx.Suspend(routing)
 	return started.wait()
 }
 
@@ -348,8 +350,8 @@ func (c *workersComponent) Retry(address contracts.Address, _ context.Context) e
 }
 
 func (c *workersComponent) Step(name string) plugins.RolloutStep {
-	return plugins.RolloutStep{Name: name, Kinds: []string{c.options.Kind}, Reload: func(_ *plugins.Built, ctx context.Context) (plugins.StepResult, error) {
-		hosts, err := c.rollout(ctx)
+	return plugins.RolloutStep{Name: name, Kinds: []string{c.options.Kind}, Reload: func(_ *plugins.Built, applied map[string][]plugins.PluginScript, ctx context.Context) (plugins.StepResult, error) {
+		hosts, err := c.rollout(applied[c.options.Kind], ctx)
 		return plugins.StepResult{Hosts: hosts}, err
 	}}
 }
@@ -817,25 +819,21 @@ func (c *workersComponent) idleFor() time.Duration {
 	return defaultIdle
 }
 
-// rollout is the rollout step (§4): the set as this rollout applied it, read now (before another rollout changes it); the
+// rollout is the rollout step (§4): scripts is the set as this rollout applied it (Pi reads `plugins.current(kind)` in the
+// same synchronous section as the rollout's ship; the component hands it over); the
 // failures recorded before it cleared and the held ones retried (listed once ready or failed); the set shipped to every
 // worker whose last applied set differs, in parallel. ctx's abort ends only this wait: the entries still waiting are listed
 // with its error.
-func (c *workersComponent) rollout(ctx context.Context) ([]plugins.RolloutHost, error) {
-	kind, source := c.options.Kind, c.options.Plugins
-	scripts, ok := source.Current(kind)
-	if !ok {
-		var err error
-		if scripts, err = source.Scripts(kind, ctx); err != nil {
-			return nil, err
-		}
-	}
+func (c *workersComponent) rollout(scripts []plugins.PluginScript, ctx context.Context) ([]plugins.RolloutHost, error) {
 	key := keyOf(scripts)
 	type entry struct {
 		host    string
 		promise *promise[plugins.RolloutHost]
 	}
 	var entries []entry
+	// The failures recorded before this rollout clear; the route is called outside the section, as a resolve it starts enters
+	// the component's loop itself.
+	var failed []*routed
 	c.loop.Run(func() {
 		for _, name := range slices.Clone(c.order) {
 			record := c.addresses[name]
@@ -844,12 +842,19 @@ func (c *workersComponent) rollout(ctx context.Context) ([]plugins.RolloutHost, 
 			}
 			record.failure = nil
 			c.state.refresh()
-			c.route.Retry(record.address)
-			started := record.starting
-			if started == nil {
-				c.forget(record)
-			} else {
+			failed = append(failed, record)
+		}
+	})
+	retried := make([]bool, len(failed))
+	for index, record := range failed {
+		retried[index] = c.route.Retry(record.address)
+	}
+	c.loop.Run(func() {
+		for index, record := range failed {
+			if started := record.starting; retried[index] && started != nil {
 				entries = append(entries, entry{record.address.Key, c.retried(record, started)})
+			} else {
+				c.forget(record)
 			}
 		}
 		for _, name := range c.order {
