@@ -1092,7 +1092,8 @@ type CreateConversationOptions struct {
 }
 
 // Tx is the transaction surface of one Session commit callback. Table reads and creation results are trusted
-// immutable values and may be shared with internal commit state.
+// immutable values and may be shared with internal commit state; the Session may freeze them (its caches and context
+// ranges keep them), so mutating one can throw.
 //
 // Upstream overloads doc, retireDoc, entry, appendEntry, and createTask by token type; Go methods cannot take type
 // parameters, so the methods take erased tokens and the generic helpers (TxDoc, TxEntry, TxAppendEntry, CreateTask)
@@ -1108,6 +1109,8 @@ type Tx interface {
 	ScanEntries(query EntryQuery, limit int, cursor Cursor) (Page[EntryRecord, Cursor], error)
 	// LatestHeadMarker returns the newest visible entry of the conversation that carries a Head; nil when none.
 	LatestHeadMarker(conversationId ConversationId) (*EntryRecord, error)
+	// LatestEntryId returns the ID of the newest entry visible from the conversation; nil when it has none.
+	LatestEntryId(conversationId ConversationId) (*EntryId, error)
 	ScanTasks(query TaskQuery, limit int, cursor Cursor) (Page[TaskRecord[JsonValue, JsonValue, JsonValue], Cursor], error)
 	// SubmissionByRequest returns the committed submission with a conversation-scoped request ID; nil when absent.
 	SubmissionByRequest(conversationId ConversationId, requestId string) (*SubmissionRecord, error)
@@ -1185,15 +1188,15 @@ type DocumentWatch[T any] = WatchHandle[T]
 // Observer is a synchronous observer of committed Durable state, for adapters such as a Chord source
 // (Session.ObserveDocErased, Harness.ObserveConversation, Harness.ObserveTaskGraph), with the shapes of Chord's watch:
 // Advance gets a WatchCall, End a WatchEnd. Advance gets every change, unfolded, as
-// memory adopts it: for a stored commit inside Storage's adopt, for a deferred one before it is stored. A view or the
-// graph gets at most one call per commit, a document observer one per change at its address (two for a commit that
-// retires and recreates it); the task graph also advances outside any commit and adopt, on the Session line, when a
-// registry change or a failed migration changes a blocked reason. Durable's failures are final, so every call is a value
+// memory adopts it: for a stored commit at its publication once Storage stored it, for a deferred one before it is
+// stored. A view or the graph gets at most one call per commit, a document observer one per change at its address (two
+// for a commit that retires and recreates it); the task graph also advances outside any commit's publication, on the
+// Session line, when a registry change or a failed migration changes a blocked reason. Durable's failures are final, so every call is a value
 // call; a failure ends the observer. Calls may come before the attaching call returns; their ops apply from
 // Observation.Value. Advance must only record the call, synchronously and quickly, never wait, call the Session, or
 // panic. A panic is reported as listener_error, detaches the observer, and ends it listener_error with the error. End is
 // called once: ended when the Session closes or the observed scope's owner ends (a task document's task, after its
-// retirement change, inside that commit's adopt), failed with the error that failed the Session; never after Detach.
+// retirement change, inside that commit's publication), failed with the error that failed the Session; never after Detach.
 type Observer[T any] interface {
 	Advance(ctx context.Context, call WatchCall[T])
 	End(end WatchEnd)
@@ -1308,16 +1311,16 @@ type Session interface {
 	// governs only the attachment: cancelled while attaching, the call fails and nothing stays attached. args are the
 	// owner ID and family key as for WatchDocErased. Typed observers use ObserveDoc.
 	ObserveDocErased(ctx context.Context, token AnyDocToken, observer Observer[JsonObject], args ...any) (Observation[JsonObject], error)
-	// Commit runs one atomic transaction on the Session mutation line. Inside the callback read only through tx: Snapshot, WatchDoc, GetTask and the other Session and runtime reads may queue on the line the callback holds, and then never return. At most one options value may follow; Persistence may defer storing it (CommitPersistence).
+	// Commit runs one atomic transaction on the Session mutation line. Inside the callback read only through tx: Snapshot, WatchDoc, GetTask and the other Session and runtime reads may queue on the line the callback holds, and then never return. At most one options value may follow; Persistence may defer storing it (CommitPersistence). The callback may run while an earlier commit is being stored: at its first read or write of what an unpublished commit wrote, it waits until that commit is stored and published; code before that runs early, so act on what it computes only once the commit returns. It returns once the commit is stored and published, after every earlier commit's outcome.
 	Commit(ctx context.Context, change func(tx Tx) (any, error), options ...CommitOptions) (any, error)
 	// Close seals admission, settles admitted commits, then closes storage.
 	Close(ctx context.Context) error
 	// ObserveCommits observes stored commits, each with exactly what it stored, except that a document the commit
 	// retires is published as its retirement only; a commit held in memory is published when it is stored
-	// (CommitPublication). Storage's adoption of the commit queues one dispatch, which runs once adopt returned (when the
-	// storage then waits, at once; otherwise when Storage.Commit returns, before the Session sees it resolve), before
-	// every wait the commit resolves and every abort it queues, and calls the observers attached by then; a commit
-	// adopted while none was attached has no dispatch. There is no order relative to watch listeners. Advance runs
+	// (CommitPublication). Commits are published in line order once Storage stored them, a macrotask apart; a
+	// publication queues one dispatch, which runs a microtask later, before every wait the commit resolves and every
+	// abort it queues, and calls the observers attached by then; a commit published while none was attached has no
+	// dispatch. There is no order relative to watch listeners. Advance runs
 	// synchronously and must not block or call Session APIs; a panic is reported as listener_error, detaches the
 	// observer, and ends it listener_error. End is called once, when the Session closes (ended, after its last
 	// publication) or fails (failed), never after Detach. It attaches synchronously; the observation has no value:
@@ -1354,18 +1357,38 @@ type EntryAt struct {
 	CommitSeq Seq
 }
 
+// CommitResult is what Storage.Commit stored: the number of durable batches, and why the next one was refused, if one
+// was.
+type CommitResult struct {
+	Stored  int
+	Refused error
+}
+
+// PublishingStorage is the optional Publishing capability of a Storage. Publishing runs publish, the Session's
+// publication of one stored or held commit (its cache write-through, adoption, and observers), inside this storage's own
+// scope, such as a store's attached host batch, so what the publication marks lands together. It calls publish exactly
+// once, now or soon after; the Session publishes the next commit only once it ran. Without it, the Session publishes
+// directly.
+type PublishingStorage interface {
+	Publishing(ctx context.Context, publish func())
+}
+
 // Storage is the atomic persistence boundary for Session records.
 //
 // Storage trusts the owning Session to supply semantically valid records, references, ancestry, and transitions.
 // Implementations enforce atomicity, global ID ownership, immutable conversation/entry creation, document record
 // consistency, and detached values; Session serializes commits.
 type Storage interface {
-	// Commit atomically persists one batch and returns its sequence. Once the batch is durable, call adopt(seq)
-	// exactly once, synchronously and before this storage's next commit starts, then return seq; a commit that fails
-	// before it is durable never calls adopt. adopt is the caller's in-memory adoption and publication of the batch, so
-	// memory and the Session's views always show a complete prefix of the log; it runs the Session's own observers, which
-	// call no Storage method, and never panics. Once it returns, later reads through this storage observe the batch.
-	Commit(ctx context.Context, writes []StorageWrite, adopt func(seq Seq)) (Seq, error)
+	// Commit persists batches in order, each as one ordinary atomic commit with its own seq, checked against the state
+	// the earlier ones left, in as few round trips as the backend can. Every batch has at least one write: a commit
+	// without writes never reaches Storage, so the Session never sends an empty batch. It stops at the first batch
+	// Durable's own checks refuse (global IDs, document actions, copy resolution): the batches before it are durable, it
+	// and the ones after are not. It calls receive(index, seq) once per durable batch, in order, synchronously, after all
+	// of them are durable and before the next commit starts. It returns the number of durable batches and the refusal, if
+	// any, and fails for an unknown outcome (connection lost, statement or commit failed); receive calls made before the
+	// failure still stand. receive is a durability receipt, not publication: the Session publishes later. Once it
+	// returned, later reads through this storage observe the stored batches.
+	Commit(ctx context.Context, batches [][]StorageWrite, receive func(index int, seq Seq)) (CommitResult, error)
 	// MintId returns a fresh candidate from the Session-global numeric ID namespace, greater than every ID minted since
 	// this storage was opened and every ID stored, also across reopen.
 	MintId() (int64, error)
