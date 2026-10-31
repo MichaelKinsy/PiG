@@ -107,6 +107,7 @@ func (htDriver) Run(ctx context.Context, t *testing.T, bin BinaryRef, sc *Scenar
 
 	// Build CLI args for the binary.
 	var binArgs []string
+	bin.Path, binArgs = bin.program()
 	if !sc.Env.OverrideBaseArgs {
 		binArgs = append(binArgs, bin.Args...)
 	}

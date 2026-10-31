@@ -408,7 +408,7 @@ func (s *HuggingFaceSearch) HandleInput(data string) {
 			s.updateResults()
 		}
 	case keys.Matches(data, tui.KBSelectPageUp) || keys.Matches(data, tui.KBSelectPageDown):
-		s.selectedIndex, _ = tui.PageSelectionIndex(keys, data, s.selectedIndex, len(s.filteredResults), searchPageSize)
+		s.selectedIndex, _ = tui.GetSelectPageIndex(keys, data, s.selectedIndex, len(s.filteredResults), searchPageSize)
 		s.updateResults()
 	case keys.Matches(data, tui.KBSelectConfirm):
 		selected := ""
@@ -460,7 +460,7 @@ func NewLlamaView(requestRender func()) *LlamaView {
 }
 
 // setContentLocked shows content. capturesSelectPage says the handler moves a selection with tui.select.pageUp and
-// tui.select.pageDown (ui.ts LlamaView.capturesSelectPageInput, Pi PR #7680).
+// tui.select.pageDown (ui.ts LlamaView.capturesViewportInput, Pi PR #7680).
 func (v *LlamaView) setContentLocked(content tui.Component, inputHandler func(string), capturesSelectPage bool) {
 	v.progressStop = nil
 	v.showingProgress = false
@@ -628,8 +628,8 @@ func (v *LlamaView) updateProgressLocked(state ProgressState) bool {
 	return true
 }
 
-// CapturesSelectPageInput reports that the current view handles tui.select.pageUp and tui.select.pageDown.
-func (v *LlamaView) CapturesSelectPageInput() bool {
+// CapturesViewportInput reports that the current view handles tui.select.pageUp and tui.select.pageDown.
+func (v *LlamaView) CapturesViewportInput() bool {
 	v.mu.Lock()
 	defer v.mu.Unlock()
 	return v.captures

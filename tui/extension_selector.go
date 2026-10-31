@@ -318,8 +318,8 @@ func (e *ExtensionSelectorComponent) SelectedValue() string {
 // pig divergence (D155): extensionSelectorPageSize is the rows a selection page key moves (PAGE_SIZE of Pi PR #7680's extension-selector.ts).
 const extensionSelectorPageSize = 8
 
-// CapturesSelectPageInput reports that the selector handles tui.select.pageUp and tui.select.pageDown.
-func (e *ExtensionSelectorComponent) CapturesSelectPageInput() bool { return true }
+// CapturesViewportInput reports that the selector handles tui.select.pageUp and tui.select.pageDown.
+func (e *ExtensionSelectorComponent) CapturesViewportInput() bool { return true }
 
 // HandleInput resolves expansion, navigation, confirmation and cancellation in that order. Empty options do not complete the selector.
 func (e *ExtensionSelectorComponent) HandleInput(data string) {
@@ -339,7 +339,7 @@ func (e *ExtensionSelectorComponent) HandleInput(data string) {
 		e.cursor = min(len(e.options)-1, e.cursor+1)
 		e.updateList()
 	case pageSelectionKey(kb, data):
-		e.cursor, _ = PageSelectionIndex(kb, data, e.cursor, len(e.options), extensionSelectorPageSize)
+		e.cursor, _ = GetSelectPageIndex(kb, data, e.cursor, len(e.options), extensionSelectorPageSize)
 		e.updateList()
 	case kb.Matches(data, KBSelectConfirm) || data == "\n":
 		if selected := e.SelectedValue(); selected != "" {

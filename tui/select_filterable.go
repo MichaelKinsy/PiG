@@ -388,8 +388,8 @@ func normalizeToSingleLine(s string) string {
 	return strings.TrimSpace(string(out))
 }
 
-// CapturesSelectPageInput reports that the list handles tui.select.pageUp and tui.select.pageDown.
-func (f *FilterableList) CapturesSelectPageInput() bool { return true }
+// CapturesViewportInput reports that the list handles tui.select.pageUp and tui.select.pageDown.
+func (f *FilterableList) CapturesViewportInput() bool { return true }
 
 // HandleInput updates the filter or moves the cursor.
 func (f *FilterableList) HandleInput(data string) {
@@ -443,7 +443,7 @@ func (f *FilterableList) HandleInput(data string) {
 	case !f.EnableSearch && pageSelectionKey(kb, data):
 		// A list without search stands for upstream's SelectList, which moves by one visible page and does not wrap (Pi PR #7680).
 		if len(f.filtered) > 0 {
-			f.cursor, _ = PageSelectionIndex(kb, data, f.cursor, len(f.filtered), f.MaxVisible)
+			f.cursor, _ = GetSelectPageIndex(kb, data, f.cursor, len(f.filtered), f.MaxVisible)
 			f.fixScroll()
 		}
 	case f.EnableSearch && kb.Matches(data, KBSelectPageUp):

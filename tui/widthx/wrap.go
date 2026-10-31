@@ -10,6 +10,7 @@ package widthx
 
 import (
 	"strings"
+	"unicode/utf8"
 )
 
 // WrapTextWithAnsi wraps text to `width` visible columns per line, preserving
@@ -65,15 +66,19 @@ func wrapSingleLine(line string, width int) []string {
 
 	for _, token := range tokens {
 		tokenWidth := VisibleWidth(token)
-		isWhitespace := JSTrim(token) == ""
+		// pig divergence (D217): Pi 2ce9d527 (#10925) the codes that close a styled word sit on the following space token, which is
+		// still whitespace.
+		isWhitespace := isWhitespaceToken(token)
 
 		// Token alone is longer than width: break by graphemes.
 		if tokenWidth > width && !isWhitespace {
 			if len(current) > 0 {
+				// Trim before adding the reset, which would otherwise block the final trim.
+				line := JSTrimEnd(string(current))
 				if r := tr.LineEndReset(); r != "" {
-					current = append(current, r...)
+					line += r
 				}
-				wrapped = append(wrapped, string(current))
+				wrapped = append(wrapped, line)
 			}
 			broken := breakLongWord(token, width, tr)
 			if len(broken) > 1 {
@@ -84,9 +89,16 @@ func wrapSingleLine(line string, width int) []string {
 			continue
 		}
 
-		if currentVisible+tokenWidth > width && currentVisible > 0 {
+		switch {
+		case currentVisible+tokenWidth > width && currentVisible > 0:
 			// Wrap. Trim trailing whitespace before wrapping.
 			toWrap := JSTrimEnd(string(current))
+			if isWhitespace {
+				// The dropped space may carry codes (e.g. closing a styled word). Keep them on the wrapped line so the style ends
+				// there and is not re-opened on the next line.
+				toWrap += extractAnsiCodes(token)
+				tr.UpdateFromText(token)
+			}
 			if r := tr.LineEndReset(); r != "" {
 				toWrap += r
 			}
@@ -95,12 +107,16 @@ func wrapSingleLine(line string, width int) []string {
 				// Don't start a new line with whitespace.
 				current = append(current[:0], tr.ActiveCodes()...)
 				currentVisible = 0
-			} else {
-				current = append(current[:0], tr.ActiveCodes()...)
-				current = append(current, token...)
-				currentVisible = tokenWidth
+				continue
 			}
-		} else {
+			current = append(current[:0], tr.ActiveCodes()...)
+			current = append(current, token...)
+			currentVisible = tokenWidth
+		case isWhitespace && currentVisible+tokenWidth > width && strings.Contains(token, "\x1b"):
+			// Whitespace wider than an empty line. Plain spaces are removed by the final trim, but codes after them (e.g. a trailing
+			// reset) would block that and leave the line wider than width. Keep only the codes.
+			current = append(current, extractAnsiCodes(token)...)
+		default:
 			current = append(current, token...)
 			currentVisible += tokenWidth
 		}
@@ -194,6 +210,41 @@ func splitIntoTokensWithAnsi(text string) []string {
 }
 
 func isCJKBreak(segment string) bool { return IsCJKBreak(segment) }
+
+// extractAnsiCodes is the concatenation of the escape sequences of str, in order (utils.ts extractAnsiCodes).
+func extractAnsiCodes(str string) string {
+	var out strings.Builder
+	for i := 0; i < len(str); {
+		if n := ExtractAnsi(str, i); n > 0 {
+			out.WriteString(str[i : i+n])
+			i += n
+			continue
+		}
+		i++
+	}
+	return out.String()
+}
+
+// isWhitespaceToken reports whether a token's visible text is only whitespace (utils.ts isWhitespaceToken). The codes that close a
+// styled word attach to the following space, e.g. "\x1b[22m ", so they are skipped; a lone ESC is visible text.
+func isWhitespaceToken(token string) bool {
+	for i := 0; i < len(token); {
+		if token[i] == 0x1b {
+			n := ExtractAnsi(token, i)
+			if n == 0 {
+				return false
+			}
+			i += n
+			continue
+		}
+		r, size := utf8.DecodeRuneInString(token[i:])
+		if !IsJSSpace(r) {
+			return false
+		}
+		i += size
+	}
+	return true
+}
 
 // breakLongWord breaks a single token that exceeds width into grapheme-level
 // chunks, preserving ANSI state across breaks via the provided tracker.

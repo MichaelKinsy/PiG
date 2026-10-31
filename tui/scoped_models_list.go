@@ -472,8 +472,8 @@ func (s *ScopedModelsList) NativeNode() (frontend.Node, bool) {
 	return node, true
 }
 
-// CapturesSelectPageInput reports that the list handles tui.select.pageUp and tui.select.pageDown.
-func (s *ScopedModelsList) CapturesSelectPageInput() bool { return true }
+// CapturesViewportInput reports that the list handles tui.select.pageUp and tui.select.pageDown.
+func (s *ScopedModelsList) CapturesViewportInput() bool { return true }
 
 // HandleInput processes a keystroke.
 func (s *ScopedModelsList) HandleInput(data string) {
@@ -510,7 +510,7 @@ func (s *ScopedModelsList) HandleInput(data string) {
 		s.Invalidate()
 
 	case pageSelectionKey(kb, data):
-		s.cursor, _ = PageSelectionIndex(kb, data, s.cursor, len(s.filteredItems), s.maxVisible)
+		s.cursor, _ = GetSelectPageIndex(kb, data, s.cursor, len(s.filteredItems), s.maxVisible)
 		s.fixScroll()
 		s.Invalidate()
 

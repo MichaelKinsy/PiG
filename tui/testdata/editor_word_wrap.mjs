@@ -1,4 +1,5 @@
 // Run the installed pi-tui wordWrapLine over seeded [line, width] pairs; a case Pi cannot wrap reports the thrown error's name.
+import "./pi-d217/register.mjs"; // D217: pin + carried Pi fixes in pi-tui utils.js
 import { readFileSync, realpathSync } from "node:fs";
 import { pathToFileURL } from "node:url";
 const root = realpathSync(new URL("../../extensions/sdk-ts/node_modules/@earendil-works/pi-coding-agent/", import.meta.url)) + "/";

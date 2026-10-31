@@ -140,8 +140,10 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-24872ab](#bf-24872ab) | Extensions receive each model (`ctx.model`, `model_select`, `ctx.modelRegistry` reads, scoped models… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-24a821d](#bf-24a821d) | The openai stream decoder follows openai 7.19.0, the version packages/ai declares: the stream ends at [DONE]… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-24a9b69](#bf-24a9b69) | fix(hljs): a resumed run counts the scan iterations before its checkpoint | PiG's own defect | All platforms | Unreleased |
+| [BF-254fce4](#bf-254fce4) | `Shift+Enter` inserts a newline instead of queueing a follow-up in Apple Terminal setups that send `ESC` +… | A fix Pi shipped that PiG ported | Windows | Unreleased |
 | [BF-25a90ea](#bf-25a90ea) | fix(tui): scroll regions only where the terminal is trusted with them (D205 approved) | PiG's own defect | All platforms | Unreleased |
 | [BF-25aa7fd](#bf-25aa7fd) | A subprocess extension's markdown transform that was busy past the five-second renderer inactivity boundary… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-25aaf96](#bf-25aaf96) | Wrapped text no longer starts the next line with a space when a styled word ends exactly at the wrap width… | A fix Pi shipped that PiG ported | All platforms | Unreleased |
 | [BF-25c854d](#bf-25c854d) | Session directories (the agent directory, `sessions` and each project's directory) are created owner-only… | A Pi defect that PiG fixed first | All platforms | 0.5.0 |
 | [BF-2699291](#bf-2699291) | The serializeConversation parity row records that Rust session entries still read an unpaired surrogate as… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-26b6705](#bf-26b6705) | The RPC test harness no longer races on its recorded output error (found by a `go test -race ./coding/...`… | PiG's own defect | All platforms | 0.5.0 |
@@ -162,6 +164,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-2ab79ce](#bf-2ab79ce) | An extension provider whose `streamSimple` hands its request to pi-ai's compat `streamSimple` (or `stream`)… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-2ab79ce-2](#bf-2ab79ce-2) | A provider registered with its own `streamSimple` runs that callback only for its models whose `api` is the… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-2ad7249](#bf-2ad7249) | fix(ledger): close the getJsonSchemaToolParameters and google convertTools rows | PiG's own defect | All platforms | Unreleased |
+| [BF-2b0c715](#bf-2b0c715) | Resizing an image sends the smaller of the PNG and the JPEG at the configured quality instead of the PNG… | A fix Pi shipped that PiG ported | All platforms | Unreleased |
 | [BF-2bc49c1](#bf-2bc49c1) | Node extensions read live `ctx.isIdle()` state, so background callbacks detect when a run finishes or starts | PiG's own defect | All platforms | Unreleased |
 | [BF-2be0883](#bf-2be0883) | fix(extensions): parallel Node runtime linking reports the walk-order first failure under every schedule | PiG's own defect | All platforms | Unreleased |
 | [BF-2c1959c](#bf-2c1959c) | A Mistral stream is no longer aborted mid-generation by the request timeout: the timeout now covers only the… | PiG's own defect | All platforms | 0.5.0 |
@@ -195,6 +198,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-333229c](#bf-333229c) | An HTTP 413 from any provider is treated as request-size overflow, so the agent compacts and retries instead… | PiG's own defect | All platforms | 0.5.2 |
 | [BF-334bb4b](#bf-334bb4b) | A Gemini or Mistral stream chunk with a member of an unexpected type no longer sorts the members of a tool… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-3351167](#bf-3351167) | The OAuth callback server reads an absolute-form request target with a scheme other than http or https, a… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-33558f6](#bf-33558f6) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
 | [BF-33dc8a0](#bf-33dc8a0) | fix(ai): keep a custom client identity's slash in Bedrock's user agent, as the JavaScript SDK does | PiG's own defect | All platforms | Unreleased |
 | [BF-33ea9e4](#bf-33ea9e4) | fix(sdk): name the Go ModelRegistry.Find change in the upgrade rules; Node adoption survives an unbound leaf… | PiG's own defect | All platforms | Unreleased |
 | [BF-33fe10d](#bf-33fe10d) | `ModelsError` appends the cause detail the way Pi does: an Error cause with an empty message contributes its… | PiG's own defect | All platforms | 0.5.0 |
@@ -377,6 +381,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-5bf0d4a-2](#bf-5bf0d4a-2) | An append op whose text starts with the low half of a surrogate pair joins the high half that ends the string… | PiG's own defect | All platforms | Unreleased |
 | [BF-5bf8461](#bf-5bf8461) | fix(durable/core): a phase span answer that is no uint32 handle names no span | PiG's own defect | All platforms | Unreleased |
 | [BF-5c4167a](#bf-5c4167a) | fix(extension): hold the theme colors map the wire palette memo is keyed on | PiG's own defect | All platforms | Unreleased |
+| [BF-5c76bc0](#bf-5c76bc0) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
 | [BF-5c9d23f](#bf-5c9d23f) | A provider object's OAuth login receives Pi's login options, as `oauth.login(interaction, options)` does in Pi | PiG's own defect | All platforms | 0.5.0 |
 | [BF-5cc630e](#bf-5cc630e) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
 | [BF-5d36a58](#bf-5d36a58) | fix(agent): end the tool flow at custom user messages and hold system messages mid-flow | PiG's own defect | All platforms | Unreleased |
@@ -655,6 +660,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-8001cc5](#bf-8001cc5) | `SettingsManager` collection getters (getPackages, getExtensionPaths, getSkillPaths, getPromptTemplatePaths… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-8001cc5-2](#bf-8001cc5-2) | `SettingsManager.getCompactionSettings` (+ `getCompactionReserveTokens`, `getCompactionKeepRecentTokens`)… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-801cadd](#bf-801cadd) | fix(codingagent): session files decode invalid UTF-8 as Node does | PiG's own defect | All platforms | Unreleased |
+| [BF-8027980](#bf-8027980) | Image components render inline in Orca terminals that advertise Kitty graphics (`TERM_PROGRAM=Orca` with… | A fix Pi shipped that PiG ported | All platforms | Unreleased |
 | [BF-8048c85](#bf-8048c85) | Tool-call header argument preview no longer splits a character: `truncateArg` (`tui/tool_execution.go`) cut… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-8070fcc](#bf-8070fcc) | OpenAI Codex and Azure OpenAI requests parse their URL as fetch does again: an upper-case scheme, a space or… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-8085dc0](#bf-8085dc0) | A legacy `oauth.json` or `settings.json` that starts with a byte order mark migrates to `auth.json`, as in Pi | PiG's own defect | All platforms | 0.5.0 |
@@ -683,6 +689,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-85a7b01](#bf-85a7b01) | A prompt now fails with Pi's error when the Session's history holds a system message whose `content` is a… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-85c98be](#bf-85c98be) | `durable/interop/bench.mjs` and `sqlhost-bench seed\|sample` report the process's own peak RSS on Linux… | PiG's own defect | Linux | 0.5.0 |
 | [BF-85ca0f5](#bf-85ca0f5) | Rebuilding the transcript (resume, `/tree`, display settings) now places cache-miss notices as Pi does in a… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-85f21a9](#bf-85f21a9) | In fullscreen mode a focused selection list takes every viewport key, not only the page keys, so `Ctrl+Home`… | A fix Pi shipped that PiG ported | All platforms | Unreleased |
 | [BF-860776a](#bf-860776a) | A Google provider built from a model id without catalog metadata now sends its own earlier thinking blocks as… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-8620e9e](#bf-8620e9e) | The SDK `DefaultResourceLoader` lists a tool or flag that two extensions register as an error of the… | PiG's own defect | All platforms | Unreleased |
 | [BF-862d453](#bf-862d453) | The Durable core conformance gate no longer writes the reference checkout from a vitest run: its cache lives… | PiG's own defect | All platforms | Unreleased |
@@ -718,6 +725,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-8cfd25f](#bf-8cfd25f) | A Rust extension that registers a flag after load (`Context::register_flag` from a handler) now reads its… | PiG's own defect | All platforms | Unreleased |
 | [BF-8d008eb](#bf-8d008eb) | fix(interactive): paint the requested first frame before the color wait returns | PiG's own defect | All platforms | Unreleased |
 | [BF-8d23cfc](#bf-8d23cfc) | Saving a setting keeps the key order of the existing `settings.json`, at the top level and inside a patched… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-8d6fb83](#bf-8d6fb83) | A bare URL in Markdown ends at CJK punctuation, so `https://example.com。后面的中文` links… | A fix Pi shipped that PiG ported | All platforms | Unreleased |
 | [BF-8e3613d](#bf-8e3613d) | Text typed over an extension's autocomplete provider and followed at once by Enter no longer skips the menu… | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-8eb1202](#bf-8eb1202) | An OpenAI Chat Completions chunk with a member of an unexpected type (a number for `delta.content`… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-8f45099](#bf-8f45099) | Compaction summaries, branch summaries and bug reports omit thinking blocks (Pi 15e7bdc1, Pi #9602): replayed… | PiG's own defect | All platforms | 0.5.0 |
@@ -1254,6 +1262,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-f06ab7e](#bf-f06ab7e) | A run that `sendMessage({ triggerTurn: true })` starts while idle emits `before_agent_start`, checks… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-f07d033](#bf-f07d033) | A response stream dropped mid-run now reports `terminated (cause: ...)` instead of a bare `terminated` (D144… | A Pi defect that PiG fixed first | All platforms | 0.5.0 |
 | [BF-f12896b](#bf-f12896b) | Interactive startup writes the terminal color query before its first frame, as Pi does: starting the renderer… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-f193c36](#bf-f193c36) | The working status (OSC 7501) no longer disappears in Rex and iTerm2 during runs in regular TUI mode | A fix Pi shipped that PiG ported | All platforms | Unreleased |
 | [BF-f19efb1](#bf-f19efb1) | A `session_compact` handler's passive custom message reaches the overflow retry (D138, Pi #9051) | A Pi defect that PiG fixed first | All platforms | 0.5.0 |
 | [BF-f1a59f9](#bf-f1a59f9) | An OpenAI Responses event's `output_index` matches an output item as a key of Pi's `Map` does: a string… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-f20cc08](#bf-f20cc08) | A Node extension that calls `pi.appendEntry` many times in one handler no longer slows down with the size of… | PiG's own defect | All platforms | 0.5.0 |
@@ -3034,6 +3043,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `24a9b69c2e` (2026-10-11)
 - **Tests:** `tui/highlight_resume_test.go::TestStreamedHighlightEqualsAWholeRun`, `tui/internal/hljs/resume_test.go::TestHighlightResumableEqualsAFreshRun`, `tui/internal/hljs/resume_test.go::TestHighlightResumableFollowsLaterText`, `tui/internal/hljs/resume_test.go::TestResumedRunCountsTheIterationsOfAWholeRun`
 
+### BF-254fce4
+
+**`Shift+Enter` inserts a newline instead of queueing a follow-up in Apple Terminal setups that send `ESC` +…**
+
+- **Source:** A fix Pi shipped that PiG ported
+- **Symptom:** `Shift+Enter` inserts a newline instead of queueing a follow-up in Apple Terminal setups that send `ESC` + Return.
+- **Root cause:** Some Apple Terminal setups send ESC+CR for Shift+Enter, which parsed as alt+enter and queued a follow-up.
+- **User impact:** Wrong output or ordering
+- **Platform:** Windows
+- **Fixed in:** Unreleased
+- **Fix commits:** `254fce4ebe` (2026-10-30, #11559)
+- **Tests:** `tui/terminal_native_shift_enter_test.go::TestNormalizeNativeShiftEnterInputRewritesEscapeReturn`, `tui/terminal_native_shift_enter_test.go::TestNormalizeProcessInputSequenceForEscapeReturn`
+- **Release note:** `Shift+Enter` inserts a newline instead of queueing a follow-up in Apple Terminal setups that send `ESC` + Return. Where native Shift detection is available (Apple Terminal, native Windows), `ESC` + Return with Shift held is `Shift+Enter`; without Shift it stays `Alt+Enter`. Carried forward from Pi 86dc686c (earendil-works/pi#11559), past the 1.4.0+b3a29f11 pin.
+
 ### BF-25a90ea
 
 **fix(tui): scroll regions only where the terminal is trusted with them (D205 approved)**
@@ -3060,6 +3083,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `84e70fc701` (2026-10-13), `25aa7fd80b` (2026-10-14), `5119ce3155` (2026-10-14), `d7855fd99b` (2026-10-14)
 - **Tests:** `coding/extension/host/subprocess/markdown_transform_retry_test.go::TestMarkdownTransformAsksTheRestartedExtensionForAnAbandonedTransform`, `coding/extension/host/subprocess/markdown_transform_retry_test.go::TestMarkdownTransformBacksOffFromATransformerThatAlwaysAnswersLate`, `coding/extension/host/subprocess/markdown_transform_retry_test.go::TestMarkdownTransformBacksOffFromAnExtensionThatNeverAnswers`, `coding/extension/host/subprocess/markdown_transform_retry_test.go::TestMarkdownTransformDropsARetryNoMessageTakes`, `coding/extension/host/subprocess/markdown_transform_retry_test.go::TestMarkdownTransformRendersAgainOnceTheExtensionAnswersAnAbandonedTransform`, `coding/extension/host/subprocess/markdown_transform_retry_test.go::TestMarkdownTransformRetriesEveryMessageWithTheSameText`, `coding/extension/host/subprocess/render_retry_backoff_test.go::TestRenderRetryBackoffDoublesUpToItsCap`, `coding/extension/host/subprocess/render_retry_test.go::TestRenderProxyBacksOffFromARendererThatAlwaysAnswersLate` and 6 more in docs/bug-ledger.json
 - **Release note:** A subprocess extension's markdown transform that was busy past the five-second renderer inactivity boundary no longer leaves the message untransformed until something else draws it again: the host asks again once the extension answers the abandoned transform, or after a backoff that starts at five seconds and doubles to one minute for an extension that keeps missing the boundary, and the message transforms again on its next frame.
+
+### BF-25aaf96
+
+**Wrapped text no longer starts the next line with a space when a styled word ends exactly at the wrap width…**
+
+- **Source:** A fix Pi shipped that PiG ported
+- **Symptom:** Wrapped text no longer starts the next line with a space when a styled word ends exactly at the wrap width, and strikethrough no longer runs into the right padding of a wrapped line: the wrap closes `\x1b[29m` at line end like underline and opens it again on the next line.
+- **Root cause:** The code that closes a styled word attaches to the following space, so wrapping took that space for a word and moved it to the next line, and strikethrough ran into the padding of a wrapped line. A token is whitespace once its escape codes are skipped, a dropped space keeps its codes on the wrapped line, strikethrough is closed at line end like underline, and trailing spaces are trimmed before the line-end reset.
+- **User impact:** Lost or altered data
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `25aaf9682c` (2026-10-30, #10925)
+- **Tests:** `tui/markdown_wrap_boundary_test.go::TestMarkdownStyledWordsAtTheWrapBoundaryPiCase`, `tui/widthx/wrap_boundary_test.go::TestLineEndResetClosesStrikethrough`, `tui/widthx/wrap_boundary_test.go::TestWrapTextWithAnsiStyledWordsAtTheWrapBoundaryPiCases`
+- **Release note:** Wrapped text no longer starts the next line with a space when a styled word ends exactly at the wrap width, and strikethrough no longer runs into the right padding of a wrapped line: the wrap closes `\x1b[29m` at line end like underline and opens it again on the next line. Carried forward from Pi 2ce9d527 (earendil-works/pi#10925), past the 1.4.0+b3a29f11 pin.
 
 ### BF-25c854d
 
@@ -3340,6 +3377,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `2ad72495fe` (2026-10-10)
 - **Tests:** `ai/google_convert_tools_upstream_test.go::TestGoogleSharedConvertToolsUpstream`
+
+### BF-2b0c715
+
+**Resizing an image sends the smaller of the PNG and the JPEG at the configured quality instead of the PNG…**
+
+- **Source:** A fix Pi shipped that PiG ported
+- **Symptom:** Resizing an image sends the smaller of the PNG and the JPEG at the configured quality instead of the PNG whenever it fit, so a photo that needs resizing no longer goes out as a multi-MB PNG that makes the request fail or time out.
+- **Root cause:** A resize returned the PNG whenever it fit, even when the JPEG was many times smaller, so photos went out as multi-MB PNGs. Each size step now tries the smaller of the PNG and the JPEG at the configured quality first, then the other, then the lower JPEG qualities. TestResizePreservesAlpha no longer requires a PNG for a translucent image, as in Pi.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `2b0c715070` (2026-10-30, #11551)
+- **Tests:** `internal/imageprocessing/image_processing_upstream_test.go::TestFirstFittingCandidatePrefersTheSmallerOfPNGAndJPEG`, `internal/imageprocessing/image_processing_upstream_test.go::TestResizeImagePicksJPEGOverLargerPNGForPhotos`, `internal/imageprocessing/images_test.go::TestPNGCandidateKeepsAlpha`, `internal/imageprocessing/images_test.go::TestResizePreservesAlpha`
+- **Release note:** Resizing an image sends the smaller of the PNG and the JPEG at the configured quality instead of the PNG whenever it fit, so a photo that needs resizing no longer goes out as a multi-MB PNG that makes the request fail or time out. Screenshots where the PNG is smaller still go out as PNG, and the lower JPEG qualities are tried only when neither fits. Carried forward from Pi e7a0df27 (earendil-works/pi#11551), past the 1.4.0+b3a29f11 pin.
 
 ### BF-2bc49c1
 
@@ -3797,6 +3848,19 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `2c04c1445a` (2026-10-09), `31f4517fbe` (2026-10-09), `335116710e` (2026-10-09), `d1cbde3321` (2026-10-09), `d80c1cd150` (2026-10-09), `da8a8704c6` (2026-10-09)
 - **Tests:** `ai/authorization_input_oracle_test.go::TestAuthorizationInputParsersMatchPi`, `ai/chatgpt_manual_input_oracle_test.go::TestChatGPTManualInputMatchesPiOnSeededProbes`, `ai/radius_urls_oracle_test.go::TestRadiusURLsMatchPiOnSeededProbes`, `ai/service_urls_oracle_test.go::TestProviderServiceURLsMatchPiOnSeededProbes`, `internal/nodeurl/genericurl_oracle_test.go::TestParseURLMatchesNode`, `internal/nodeurl/reference_test.go::TestResolveURLMatchesNodeURL`, `internal/nodeurl/resolve_request_oracle_test.go::TestResolveURLRequestTargetsMatchNode`, `internal/nodeurl/url_oracle_test.go::TestParseMatchesNodeURL`
 - **Release note:** The OAuth callback server reads an absolute-form request target with a scheme other than http or https, a relative reference against a base that has a path and query, and a `\` path the way Node's `new URL(request.url, base)` does, instead of falling back to Go's `net/url`.
+
+### BF-33558f6
+
+**Fix in shipped code**
+
+- **Source:** PiG's own defect
+- **Symptom:** Fix in shipped code
+- **Root cause:** wrap.go: the wrap branches as a switch (gocritic ifElseChain), and the SDK copy of it; the CJK URL test ranges over the string.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `33558f62b7` (2026-10-30)
+- **Tests:** `tui/markdown_cjk_url_test.go::TestMarkdownBareURLStopsAtCJKPunctuationPiCases`
 
 ### BF-33dc8a0
 
@@ -6297,6 +6361,19 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `5c4167aad9` (2026-10-11)
 - **Tests:** `internal/codingagent/ext_ui_theme_palette_test.go::TestActiveExtensionThemeWireHoldsTheColorsMapItIsKeyedOn`
+
+### BF-5c76bc0
+
+**Fix in shipped code**
+
+- **Source:** PiG's own defect
+- **Symptom:** Fix in shipped code
+- **Root cause:** wrap.go: the wrap branches as a switch (gocritic ifElseChain), and the SDK copy of it; the CJK URL test ranges over the string.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `5c76bc0f56` (2026-10-30)
+- **Tests:** `tui/markdown_cjk_url_test.go::TestMarkdownBareURLStopsAtCJKPunctuationPiCases`
 
 ### BF-5c9d23f
 
@@ -10159,6 +10236,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `801cadd5a9` (2026-10-10)
 - **Tests:** `internal/codingagent/session_load_oracle_test.go::TestLoadEntriesFromFileMatchesPiOnCorruptedFiles`
 
+### BF-8027980
+
+**Image components render inline in Orca terminals that advertise Kitty graphics (`TERM_PROGRAM=Orca` with…**
+
+- **Source:** A fix Pi shipped that PiG ported
+- **Symptom:** Image components render inline in Orca terminals that advertise Kitty graphics (`TERM_PROGRAM=Orca` with `ORCA_IMAGE_PROTOCOL=kitty`) instead of falling back to text.
+- **Root cause:** TERM_PROGRAM=Orca with ORCA_IMAGE_PROTOCOL=kitty gets inline Kitty images, true color and hyperlinks; Orca without the advertisement keeps the text fallback, and the tmux and screen guards still win. Checked after Herdr and Rex and before the Kitty variables, as in Pi.
+- **User impact:** Wrong display
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `8027980301` (2026-10-30, #9329)
+- **Tests:** `tui/terminal_image_orca_test.go::TestDetectCapabilitiesOrca`
+- **Release note:** Image components render inline in Orca terminals that advertise Kitty graphics (`TERM_PROGRAM=Orca` with `ORCA_IMAGE_PROTOCOL=kitty`) instead of falling back to text. Orca releases that do not advertise it keep the text fallback. Carried forward from Pi f09d01b8 (earendil-works/pi#9329), past the 1.4.0+b3a29f11 pin.
+
 ### BF-8048c85
 
 **Tool-call header argument preview no longer splits a character: `truncateArg` (`tui/tool_execution.go`) cut…**
@@ -10553,6 +10644,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `85ca0f547b` (2026-10-13)
 - **Tests:** `internal/codingagent/interactive_cache_miss_entries_test.go::TestRebuiltCacheMissNoticesScanEveryEntryInFileOrder`
 - **Release note:** Rebuilding the transcript (resume, `/tree`, display settings) now places cache-miss notices as Pi does in a session with branches: each response is compared with the request before it in the session file, as the live notice and `/session` do. PiG compared only within the shown branch.
+
+### BF-85f21a9
+
+**In fullscreen mode a focused selection list takes every viewport key, not only the page keys, so `Ctrl+Home`…**
+
+- **Source:** A fix Pi shipped that PiG ported
+- **Symptom:** In fullscreen mode a focused selection list takes every viewport key, not only the page keys, so `Ctrl+Home` in a model, session or tree selector no longer scrolls the transcript behind it.
+- **Root cause:** D155 already pages every selection list and lets a focused list keep the page keys. Pi merged the change as and this brings the rest of PiG to that commit:
+- **User impact:** Wrong output or ordering
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `85f21a9d37` (2026-10-30, #7629)
+- **Tests:** `coding/mcpext/manager_test.go::TestMcpManagerViewMenuCapturesViewportInputOnlyWhileAListIsShown`, `internal/codingagent/select_page_keys_test.go::TestSessionSelectorStopsCapturingWhileRenaming`, `tui/select_page_keys_test.go::TestAltScreenDefersEveryViewportKeyToACapturingFocus`, `tui/select_page_keys_test.go::TestSelectSubmenuPagesASearchableList`, `tui/select_page_keys_test.go::TestTreeSelectorCapturesViewportInputExceptWhileEditingALabel`
+- **Release note:** In fullscreen mode a focused selection list takes every viewport key, not only the page keys, so `Ctrl+Home` in a model, session or tree selector no longer scrolls the transcript behind it. The `/mcp` manager takes them while a menu list is shown, a searchable settings submenu pages with `PageUp` and `PageDown` instead of sending them to its search box, and the session selector in rename mode and the tree selector while a label is edited give the keys back to their input. The public `tui` names now follow Pi: `GetSelectPageIndex` replaces `PageSelectionIndex`, and `ViewportInputCapturer`, `CapturesViewportInput` replace `SelectPageInputCapturer`, `CapturesSelectPageInput`. Carried forward from Pi 3bae8527 (earendil-works/pi#7629), past the 1.4.0+b3a29f11 pin.
 
 ### BF-860776a
 
@@ -11034,6 +11139,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `8d23cfcee3` (2026-10-06)
 - **Tests:** `internal/codingagent/settings_key_order_test.go::TestSaveSettingsPatchKeepsTheFileKeyOrder`, `internal/codingagent/settings_key_order_test.go::TestSaveSettingsPatchReplacesInPlace`
 - **Release note:** Saving a setting keeps the key order of the existing `settings.json`, at the top level and inside a patched object, as Pi does. A replaced setting stays where it was and a new setting is added at the end; the file used to be rewritten with its top-level keys sorted.
+
+### BF-8d6fb83
+
+**A bare URL in Markdown ends at CJK punctuation, so `https://example.com。后面的中文` links…**
+
+- **Source:** A fix Pi shipped that PiG ported
+- **Symptom:** A bare URL in Markdown ends at CJK punctuation, so `https://example.com。后面的中文` links `https://example.com` and keeps the rest as text.
+- **Root cause:** A bare URL ends at the first CJK punctuation mark and the text after it stays plain text; explicit links, angle autolinks and CJK letters are unchanged. The tokenizer hunk is the one the Pi follow branch carries ().
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `8d6fb83fb2` (2026-10-30, #10933)
+- **Tests:** `tui/markdown_cjk_url_test.go::TestMarkdownBareURLStopsAtCJKPunctuationPiCases`
+- **Release note:** A bare URL in Markdown ends at CJK punctuation, so `https://example.com。后面的中文` links `https://example.com` and keeps the rest as text. The URL took the punctuation and the text after it into the link. Carried forward from Pi fa168515 (earendil-works/pi#10933), past the 1.4.0+b3a29f11 pin.
 
 ### BF-8e3613d
 
@@ -18488,6 +18607,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `f12896bcc6` (2026-10-13)
 - **Tests:** `internal/codingagent/interactive_init_state_pty_test.go::TestInitBuildsTheInteractiveStateBeforeTheSessionBindChild`, `internal/codingagent/startup_color_wait_render_test.go::TestRenderRequestedWhileStartupWaitsForTheTerminalColorsPaints`, `internal/codingagent/startup_query_order_pty_test.go::TestStartupWritesTheTerminalColorQueryBeforeTheFirstFrame`, `internal/codingagent/startup_query_order_pty_test.go::TestStartupWritesTheTerminalColorQueryBeforeTheFirstFrameChild`
 - **Release note:** Interactive startup writes the terminal color query before its first frame, as Pi does: starting the renderer only requests the first frame, which paints while startup waits for the terminal's colors. In fullscreen the alternate screen is still entered first. The color round trip is now under way when the editor first shows, so input typed at the first frame waits on the same startup work as in Pi.
+
+### BF-f193c36
+
+**The working status (OSC 7501) no longer disappears in Rex and iTerm2 during runs in regular TUI mode**
+
+- **Source:** A fix Pi shipped that PiG ported
+- **Symptom:** The working status (OSC 7501) no longer disappears in Rex and iTerm2 during runs in regular TUI mode.
+- **Root cause:** Terminals that show OSC 7501 program status (Rex, iTerm2) read 133;A as a new shell prompt and drop the status, so the working indicator vanished during runs. The regular-mode renderer now strips the leading OSC 133 marks of every rendered line, as fullscreen mode already does. The hunks are the ones the Pi follow branch carries (). TestAssistantThinkingClicksThroughTerminal asserted that the marks reach the Main Screen terminal; it now asserts the component still produces them and the terminal does not receive them.
+- **User impact:** Wrong display
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `f193c36df8` (2026-10-30, #11519)
+- **Tests:** `tui/assistant_mouse_upstream_test.go::TestAssistantThinkingClicksThroughTerminal`, `tui/tui_osc133_main_screen_test.go::TestMainScreenDropsOSC133PromptMarkers`
+- **Release note:** The working status (OSC 7501) no longer disappears in Rex and iTerm2 during runs in regular TUI mode. Rendered messages wrote OSC 133 prompt markers to the terminal, which those terminals read as a new shell prompt; the regular-mode renderer now drops them as fullscreen mode already did. Carried forward from Pi 19ce8059 (earendil-works/pi#11519), past the 1.4.0+b3a29f11 pin.
 
 ### BF-f19efb1
 

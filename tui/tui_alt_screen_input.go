@@ -133,11 +133,7 @@ func (t *TuiAltScreen) matchViewportAction(data string) (TUIKeybinding, bool) {
 			}
 		}
 	}
-	if t.shouldDeferViewportInputToOverlay() {
-		return "", false
-	}
-	// pig divergence (D155): a focused selection that handles the selection page keys keeps them, even when they are also bound to a viewport action (Pi #7629).
-	if (keybindings.Matches(data, KBSelectPageUp) || keybindings.Matches(data, KBSelectPageDown)) && CapturesSelectPageInput(t.GetFocusedComponent()) {
+	if t.shouldDeferViewportInput() {
 		return "", false
 	}
 	for _, action := range altScreenScrollActions {
@@ -190,10 +186,13 @@ func (t *TuiAltScreen) getPrimaryScrollViewLocked() *ScrollView {
 	return t.getPrimaryScrollView()
 }
 
-// shouldDeferViewportInputToOverlay reports whether a focused overlay other
-// than the search box owns the viewport keys. Mirrors upstream
-// shouldDeferViewportInputToOverlay.
-func (t *TuiAltScreen) shouldDeferViewportInputToOverlay() bool {
+// shouldDeferViewportInput reports whether the focused component, or a focused overlay other than the search box, owns the
+// viewport keys. Mirrors upstream shouldDeferViewportInput.
+// pig divergence (D217): Pi 3bae8527 (#7629) a focused component that captures viewport input receives every viewport key.
+func (t *TuiAltScreen) shouldDeferViewportInput() bool {
+	if CapturesViewportInput(t.GetFocusedComponent()) {
+		return true
+	}
 	return t.isOverlayFocused() && !t.IsSearchFocused()
 }
 

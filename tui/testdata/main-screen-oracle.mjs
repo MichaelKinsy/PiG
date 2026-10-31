@@ -3,6 +3,7 @@
 // A scenario is {cols, rows, parts, steps}. A step may set the lines of one or more components, resize the terminal, toggle
 // clear-on-shrink or the hardware cursor, force a full render, then renders once. The log holds the terminal bytes each step wrote
 // (cursor visibility and movement calls are spelled as ProcessTerminal writes them) and the lines each component returned.
+import "./pi-d217/register.mjs"; // D217: pin + carried Pi fixes in pi-tui utils.js
 import { pathToFileURL } from "node:url";
 import { runRequestedFrame } from "./frame-clock.mjs";
 const tui = await import(pathToFileURL(process.argv[2]).href);

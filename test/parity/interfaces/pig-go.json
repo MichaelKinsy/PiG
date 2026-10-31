@@ -153071,9 +153071,9 @@
       "shapeHash": "sha256:55afbb0fbe22547c94151a6939f7f32b2e54b4dee918b99e8b3c42c9723348b9"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#viewEditorComponent.CapturesSelectPageInput",
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#viewEditorComponent.CapturesViewportInput",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
-      "name": "viewEditorComponent.CapturesSelectPageInput",
+      "name": "viewEditorComponent.CapturesViewportInput",
       "kind": "function",
       "exported": true,
       "shape": {
@@ -155656,9 +155656,9 @@
       "shapeHash": "sha256:7cbc5c8c89799090e665542589d780a7bc411cfcff6fa80a70cc9f85daf1d9ce"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#viewScrollComponent.CapturesSelectPageInput",
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#viewScrollComponent.CapturesViewportInput",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
-      "name": "viewScrollComponent.CapturesSelectPageInput",
+      "name": "viewScrollComponent.CapturesViewportInput",
       "kind": "function",
       "exported": true,
       "shape": {
@@ -165754,6 +165754,17 @@
       "shapeHash": "sha256:48feda3aae08cb19607be92445e200297d1411a913070b5895f88b7aac1374cd"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext/mcptui#McpManagerView.CapturesViewportInput",
+      "package": "github.com/MichaelKinsy/PiG/coding/mcpext/mcptui",
+      "name": "McpManagerView.CapturesViewportInput",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() bool"
+      },
+      "shapeHash": "sha256:f632619397f10a7f0e472ad47d2824ec7e080d15ac9eb0994e24800757b3fb96"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext/mcptui#McpManagerView.Dispose",
       "package": "github.com/MichaelKinsy/PiG/coding/mcpext/mcptui",
       "name": "McpManagerView.Dispose",
@@ -165881,9 +165892,9 @@
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func(content *github.com/MichaelKinsy/PiG/tui.Container, inputHandler func(string), target interface{SetFocused(bool)})"
+        "type": "func(content *github.com/MichaelKinsy/PiG/tui.Container, inputHandler func(string), capturesViewportInput bool, target interface{SetFocused(bool)})"
       },
-      "shapeHash": "sha256:a0c8dc9ae85c99310492774be2cf6ed3155b99d2bf258a56f66b77b308eb7321"
+      "shapeHash": "sha256:c6693b99a822f8d8a998c3d7f2a47e17b8ee6ade06e2179b4f92d0e2f1d98752"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext/mcptui#NewMcpManagerView",
@@ -231094,6 +231105,17 @@
       "shapeHash": "sha256:79fd4d488967c39f945f630c812cc4fe789f2d4d5ecba75a0cebe4e1aa13ab4c"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx#extractAnsiCodes",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx",
+      "name": "extractAnsiCodes",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(str string) string"
+      },
+      "shapeHash": "sha256:f3f10dd71d6c4cac9204d60c54b77ea93dba0e929bd65411d85da86a8ec2a96f"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx#fakeCursorMarkerPrefix",
       "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx",
       "name": "fakeCursorMarkerPrefix",
@@ -231477,6 +231499,17 @@
         "type": "func(seg string) bool"
       },
       "shapeHash": "sha256:5f30c7fe1ebabdd0c2b32df4ba79d0751f9b3c00578de3ec60c4d42cdaffd1be"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx#isWhitespaceToken",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx",
+      "name": "isWhitespaceToken",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(token string) bool"
+      },
+      "shapeHash": "sha256:5adca53e0b38b99312fe7de2f6ce045a0e08387a1003cf9af14cae800f3307d9"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx#kittyImagePrefix",
@@ -236396,9 +236429,9 @@
       "shapeHash": "sha256:55afbb0fbe22547c94151a6939f7f32b2e54b4dee918b99e8b3c42c9723348b9"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#CustomEditor.CapturesSelectPageInput",
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#CustomEditor.CapturesViewportInput",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
-      "name": "CustomEditor.CapturesSelectPageInput",
+      "name": "CustomEditor.CapturesViewportInput",
       "kind": "function",
       "exported": true,
       "shape": {
@@ -237980,9 +238013,9 @@
       "shapeHash": "sha256:7cbc5c8c89799090e665542589d780a7bc411cfcff6fa80a70cc9f85daf1d9ce"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#CustomEntryComponent.CapturesSelectPageInput",
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#CustomEntryComponent.CapturesViewportInput",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
-      "name": "CustomEntryComponent.CapturesSelectPageInput",
+      "name": "CustomEntryComponent.CapturesViewportInput",
       "kind": "function",
       "exported": true,
       "shape": {
@@ -240059,9 +240092,9 @@
       "shapeHash": "sha256:7cbc5c8c89799090e665542589d780a7bc411cfcff6fa80a70cc9f85daf1d9ce"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#ExtensionEditorComponent.CapturesSelectPageInput",
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#ExtensionEditorComponent.CapturesViewportInput",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
-      "name": "ExtensionEditorComponent.CapturesSelectPageInput",
+      "name": "ExtensionEditorComponent.CapturesViewportInput",
       "kind": "function",
       "exported": true,
       "shape": {
@@ -240950,9 +240983,9 @@
       "shapeHash": "sha256:7cbc5c8c89799090e665542589d780a7bc411cfcff6fa80a70cc9f85daf1d9ce"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#FirstTimeSetupComponent.CapturesSelectPageInput",
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#FirstTimeSetupComponent.CapturesViewportInput",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
-      "name": "FirstTimeSetupComponent.CapturesSelectPageInput",
+      "name": "FirstTimeSetupComponent.CapturesViewportInput",
       "kind": "function",
       "exported": true,
       "shape": {
@@ -258924,9 +258957,9 @@
       "shapeHash": "sha256:f632619397f10a7f0e472ad47d2824ec7e080d15ac9eb0994e24800757b3fb96"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#SessionSelectorComponent.CapturesSelectPageInput",
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#SessionSelectorComponent.CapturesViewportInput",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
-      "name": "SessionSelectorComponent.CapturesSelectPageInput",
+      "name": "SessionSelectorComponent.CapturesViewportInput",
       "kind": "function",
       "exported": true,
       "shape": {
@@ -262081,9 +262114,9 @@
       "shapeHash": "sha256:7cbc5c8c89799090e665542589d780a7bc411cfcff6fa80a70cc9f85daf1d9ce"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#SettingsSelectorComponent.CapturesSelectPageInput",
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#SettingsSelectorComponent.CapturesViewportInput",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
-      "name": "SettingsSelectorComponent.CapturesSelectPageInput",
+      "name": "SettingsSelectorComponent.CapturesViewportInput",
       "kind": "function",
       "exported": true,
       "shape": {
@@ -263148,9 +263181,9 @@
       "shapeHash": "sha256:7cbc5c8c89799090e665542589d780a7bc411cfcff6fa80a70cc9f85daf1d9ce"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#SteppedSubmenu.CapturesSelectPageInput",
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#SteppedSubmenu.CapturesViewportInput",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
-      "name": "SteppedSubmenu.CapturesSelectPageInput",
+      "name": "SteppedSubmenu.CapturesViewportInput",
       "kind": "function",
       "exported": true,
       "shape": {
@@ -263940,9 +263973,9 @@
       "shapeHash": "sha256:7cbc5c8c89799090e665542589d780a7bc411cfcff6fa80a70cc9f85daf1d9ce"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#ThinkingSelectorComponent.CapturesSelectPageInput",
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#ThinkingSelectorComponent.CapturesViewportInput",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
-      "name": "ThinkingSelectorComponent.CapturesSelectPageInput",
+      "name": "ThinkingSelectorComponent.CapturesViewportInput",
       "kind": "function",
       "exported": true,
       "shape": {
@@ -264732,9 +264765,9 @@
       "shapeHash": "sha256:7cbc5c8c89799090e665542589d780a7bc411cfcff6fa80a70cc9f85daf1d9ce"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#TrustSelectorComponent.CapturesSelectPageInput",
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#TrustSelectorComponent.CapturesViewportInput",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
-      "name": "TrustSelectorComponent.CapturesSelectPageInput",
+      "name": "TrustSelectorComponent.CapturesViewportInput",
       "kind": "function",
       "exported": true,
       "shape": {
@@ -272399,9 +272432,9 @@
       "shapeHash": "sha256:7cbc5c8c89799090e665542589d780a7bc411cfcff6fa80a70cc9f85daf1d9ce"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#earendilAnnouncementComponent.CapturesSelectPageInput",
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#earendilAnnouncementComponent.CapturesViewportInput",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
-      "name": "earendilAnnouncementComponent.CapturesSelectPageInput",
+      "name": "earendilAnnouncementComponent.CapturesViewportInput",
       "kind": "function",
       "exported": true,
       "shape": {
@@ -274896,9 +274929,9 @@
       "shapeHash": "sha256:7cbc5c8c89799090e665542589d780a7bc411cfcff6fa80a70cc9f85daf1d9ce"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#firstTimeSetupStartup.CapturesSelectPageInput",
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#firstTimeSetupStartup.CapturesViewportInput",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
-      "name": "firstTimeSetupStartup.CapturesSelectPageInput",
+      "name": "firstTimeSetupStartup.CapturesViewportInput",
       "kind": "function",
       "exported": true,
       "shape": {
@@ -289658,9 +289691,9 @@
       "shapeHash": "sha256:f632619397f10a7f0e472ad47d2824ec7e080d15ac9eb0994e24800757b3fb96"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#radiusLoginMenu.CapturesSelectPageInput",
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#radiusLoginMenu.CapturesViewportInput",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
-      "name": "radiusLoginMenu.CapturesSelectPageInput",
+      "name": "radiusLoginMenu.CapturesViewportInput",
       "kind": "function",
       "exported": true,
       "shape": {
@@ -305080,9 +305113,9 @@
       "shapeHash": "sha256:be3677e5d9b505348c3a9d691ec6d8ff651ffe3a7bb4370ac3cd79fc3c80b329"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent/llama#LlamaView.CapturesSelectPageInput",
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent/llama#LlamaView.CapturesViewportInput",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent/llama",
-      "name": "LlamaView.CapturesSelectPageInput",
+      "name": "LlamaView.CapturesViewportInput",
       "kind": "function",
       "exported": true,
       "shape": {
@@ -314320,9 +314353,9 @@
       "shapeHash": "sha256:9fe955afca678896c9ce7f06920e4ed84a14ba56a3de3dd78566509bb9720fe3"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/tui#AssistantMessageComponent.CapturesSelectPageInput",
+      "id": "go:github.com/MichaelKinsy/PiG/tui#AssistantMessageComponent.CapturesViewportInput",
       "package": "github.com/MichaelKinsy/PiG/tui",
-      "name": "AssistantMessageComponent.CapturesSelectPageInput",
+      "name": "AssistantMessageComponent.CapturesViewportInput",
       "kind": "function",
       "exported": true,
       "shape": {
@@ -315200,9 +315233,9 @@
       "shapeHash": "sha256:9fe955afca678896c9ce7f06920e4ed84a14ba56a3de3dd78566509bb9720fe3"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/tui#AuthURL.CapturesSelectPageInput",
+      "id": "go:github.com/MichaelKinsy/PiG/tui#AuthURL.CapturesViewportInput",
       "package": "github.com/MichaelKinsy/PiG/tui",
-      "name": "AuthURL.CapturesSelectPageInput",
+      "name": "AuthURL.CapturesViewportInput",
       "kind": "function",
       "exported": true,
       "shape": {
@@ -315871,9 +315904,9 @@
       "shapeHash": "sha256:bde935d57098cf95379c4f707c8740950e976bc88e31f727502be2439591a36c"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/tui#BashExecutionComponent.CapturesSelectPageInput",
+      "id": "go:github.com/MichaelKinsy/PiG/tui#BashExecutionComponent.CapturesViewportInput",
       "package": "github.com/MichaelKinsy/PiG/tui",
-      "name": "BashExecutionComponent.CapturesSelectPageInput",
+      "name": "BashExecutionComponent.CapturesViewportInput",
       "kind": "function",
       "exported": true,
       "shape": {
@@ -316509,9 +316542,9 @@
       "shapeHash": "sha256:9d7fc437413ce2b8f3716cafc2d142bb9848964a618c1ad4260f68c9c2c285cc"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/tui#BorderedLoader.CapturesSelectPageInput",
+      "id": "go:github.com/MichaelKinsy/PiG/tui#BorderedLoader.CapturesViewportInput",
       "package": "github.com/MichaelKinsy/PiG/tui",
-      "name": "BorderedLoader.CapturesSelectPageInput",
+      "name": "BorderedLoader.CapturesViewportInput",
       "kind": "function",
       "exported": true,
       "shape": {
@@ -317774,9 +317807,9 @@
       "shapeHash": "sha256:57001319e85773f281ba9370e4796c490484b2d816b9bdc0a40eb58033c67d04"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/tui#CapturesSelectPageInput",
+      "id": "go:github.com/MichaelKinsy/PiG/tui#CapturesViewportInput",
       "package": "github.com/MichaelKinsy/PiG/tui",
-      "name": "CapturesSelectPageInput",
+      "name": "CapturesViewportInput",
       "kind": "function",
       "exported": true,
       "shape": {
@@ -318368,9 +318401,9 @@
       "shapeHash": "sha256:9fe955afca678896c9ce7f06920e4ed84a14ba56a3de3dd78566509bb9720fe3"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/tui#ConfigSelectorComponent.CapturesSelectPageInput",
+      "id": "go:github.com/MichaelKinsy/PiG/tui#ConfigSelectorComponent.CapturesViewportInput",
       "package": "github.com/MichaelKinsy/PiG/tui",
-      "name": "ConfigSelectorComponent.CapturesSelectPageInput",
+      "name": "ConfigSelectorComponent.CapturesViewportInput",
       "kind": "function",
       "exported": true,
       "shape": {
@@ -318907,9 +318940,9 @@
       "shapeHash": "sha256:9fe955afca678896c9ce7f06920e4ed84a14ba56a3de3dd78566509bb9720fe3"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/tui#Container.CapturesSelectPageInput",
+      "id": "go:github.com/MichaelKinsy/PiG/tui#Container.CapturesViewportInput",
       "package": "github.com/MichaelKinsy/PiG/tui",
-      "name": "Container.CapturesSelectPageInput",
+      "name": "Container.CapturesViewportInput",
       "kind": "function",
       "exported": true,
       "shape": {
@@ -319457,9 +319490,9 @@
       "shapeHash": "sha256:9fe955afca678896c9ce7f06920e4ed84a14ba56a3de3dd78566509bb9720fe3"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/tui#CustomMessageComponent.CapturesSelectPageInput",
+      "id": "go:github.com/MichaelKinsy/PiG/tui#CustomMessageComponent.CapturesViewportInput",
       "package": "github.com/MichaelKinsy/PiG/tui",
-      "name": "CustomMessageComponent.CapturesSelectPageInput",
+      "name": "CustomMessageComponent.CapturesViewportInput",
       "kind": "function",
       "exported": true,
       "shape": {
@@ -320469,9 +320502,9 @@
       "shapeHash": "sha256:755844cc6f68a4722bf90c0bee6af732e066df11a1d26f7e778062836cf31c78"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/tui#Editor.CapturesSelectPageInput",
+      "id": "go:github.com/MichaelKinsy/PiG/tui#Editor.CapturesViewportInput",
       "package": "github.com/MichaelKinsy/PiG/tui",
-      "name": "Editor.CapturesSelectPageInput",
+      "name": "Editor.CapturesViewportInput",
       "kind": "function",
       "exported": true,
       "shape": {
@@ -322273,9 +322306,9 @@
       "shapeHash": "sha256:f632619397f10a7f0e472ad47d2824ec7e080d15ac9eb0994e24800757b3fb96"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/tui#ExtensionInputComponent.CapturesSelectPageInput",
+      "id": "go:github.com/MichaelKinsy/PiG/tui#ExtensionInputComponent.CapturesViewportInput",
       "package": "github.com/MichaelKinsy/PiG/tui",
-      "name": "ExtensionInputComponent.CapturesSelectPageInput",
+      "name": "ExtensionInputComponent.CapturesViewportInput",
       "kind": "function",
       "exported": true,
       "shape": {
@@ -322878,9 +322911,9 @@
       "shapeHash": "sha256:f632619397f10a7f0e472ad47d2824ec7e080d15ac9eb0994e24800757b3fb96"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/tui#ExtensionSelectorComponent.CapturesSelectPageInput",
+      "id": "go:github.com/MichaelKinsy/PiG/tui#ExtensionSelectorComponent.CapturesViewportInput",
       "package": "github.com/MichaelKinsy/PiG/tui",
-      "name": "ExtensionSelectorComponent.CapturesSelectPageInput",
+      "name": "ExtensionSelectorComponent.CapturesViewportInput",
       "kind": "function",
       "exported": true,
       "shape": {
@@ -323538,9 +323571,9 @@
       "shapeHash": "sha256:f632619397f10a7f0e472ad47d2824ec7e080d15ac9eb0994e24800757b3fb96"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/tui#FilterableList.CapturesSelectPageInput",
+      "id": "go:github.com/MichaelKinsy/PiG/tui#FilterableList.CapturesViewportInput",
       "package": "github.com/MichaelKinsy/PiG/tui",
-      "name": "FilterableList.CapturesSelectPageInput",
+      "name": "FilterableList.CapturesViewportInput",
       "kind": "function",
       "exported": true,
       "shape": {
@@ -324396,6 +324429,17 @@
       "shapeHash": "sha256:11d38ce2414486cdaff9c7c5d7ff462cc966195685c5954debd9ad02413f0c90"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#GetSelectPageIndex",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "GetSelectPageIndex",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(kb *TUIKeybindingsManager, data string, selectedIndex int, itemCount int, pageSize int) (int, bool)"
+      },
+      "shapeHash": "sha256:b202f21bece8d633668e42316ee867759f7083555550379cd18e0f545c72ea44"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/tui#GetSettingsListTheme",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "GetSettingsListTheme",
@@ -324495,9 +324539,9 @@
       "shapeHash": "sha256:e211fea90f8ba28c4e2a07687b8be4fd93a0c1555f62689fceed4e71d20886e9"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/tui#HStack.CapturesSelectPageInput",
+      "id": "go:github.com/MichaelKinsy/PiG/tui#HStack.CapturesViewportInput",
       "package": "github.com/MichaelKinsy/PiG/tui",
-      "name": "HStack.CapturesSelectPageInput",
+      "name": "HStack.CapturesViewportInput",
       "kind": "function",
       "exported": true,
       "shape": {
@@ -327278,9 +327322,9 @@
       "shapeHash": "sha256:f632619397f10a7f0e472ad47d2824ec7e080d15ac9eb0994e24800757b3fb96"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/tui#LoginDialogComponent.CapturesSelectPageInput",
+      "id": "go:github.com/MichaelKinsy/PiG/tui#LoginDialogComponent.CapturesViewportInput",
       "package": "github.com/MichaelKinsy/PiG/tui",
-      "name": "LoginDialogComponent.CapturesSelectPageInput",
+      "name": "LoginDialogComponent.CapturesViewportInput",
       "kind": "function",
       "exported": true,
       "shape": {
@@ -328752,9 +328796,9 @@
       "shapeHash": "sha256:f632619397f10a7f0e472ad47d2824ec7e080d15ac9eb0994e24800757b3fb96"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/tui#ModelSelectorComponent.CapturesSelectPageInput",
+      "id": "go:github.com/MichaelKinsy/PiG/tui#ModelSelectorComponent.CapturesViewportInput",
       "package": "github.com/MichaelKinsy/PiG/tui",
-      "name": "ModelSelectorComponent.CapturesSelectPageInput",
+      "name": "ModelSelectorComponent.CapturesViewportInput",
       "kind": "function",
       "exported": true,
       "shape": {
@@ -330886,9 +330930,9 @@
       "shapeHash": "sha256:f632619397f10a7f0e472ad47d2824ec7e080d15ac9eb0994e24800757b3fb96"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/tui#OAuthSelectorComponent.CapturesSelectPageInput",
+      "id": "go:github.com/MichaelKinsy/PiG/tui#OAuthSelectorComponent.CapturesViewportInput",
       "package": "github.com/MichaelKinsy/PiG/tui",
-      "name": "OAuthSelectorComponent.CapturesSelectPageInput",
+      "name": "OAuthSelectorComponent.CapturesViewportInput",
       "kind": "function",
       "exported": true,
       "shape": {
@@ -331874,17 +331918,6 @@
         "type": "func() overlaySize"
       },
       "shapeHash": "sha256:b3dad44165b0710d528600c82770deed4eadeea8e10bbaa3654cfc14dbbb37a8"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/tui#PageSelectionIndex",
-      "package": "github.com/MichaelKinsy/PiG/tui",
-      "name": "PageSelectionIndex",
-      "kind": "function",
-      "exported": true,
-      "shape": {
-        "type": "func(kb *TUIKeybindingsManager, data string, selectedIndex int, itemCount int, pageSize int) (int, bool)"
-      },
-      "shapeHash": "sha256:b202f21bece8d633668e42316ee867759f7083555550379cd18e0f545c72ea44"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui#ParseAutoThemeSetting",
@@ -333251,9 +333284,9 @@
       "shapeHash": "sha256:9fe955afca678896c9ce7f06920e4ed84a14ba56a3de3dd78566509bb9720fe3"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/tui#ScopedModelsList.CapturesSelectPageInput",
+      "id": "go:github.com/MichaelKinsy/PiG/tui#ScopedModelsList.CapturesViewportInput",
       "package": "github.com/MichaelKinsy/PiG/tui",
-      "name": "ScopedModelsList.CapturesSelectPageInput",
+      "name": "ScopedModelsList.CapturesViewportInput",
       "kind": "function",
       "exported": true,
       "shape": {
@@ -333999,9 +334032,9 @@
       "shapeHash": "sha256:9fe955afca678896c9ce7f06920e4ed84a14ba56a3de3dd78566509bb9720fe3"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/tui#ScrollView.CapturesSelectPageInput",
+      "id": "go:github.com/MichaelKinsy/PiG/tui#ScrollView.CapturesViewportInput",
       "package": "github.com/MichaelKinsy/PiG/tui",
-      "name": "ScrollView.CapturesSelectPageInput",
+      "name": "ScrollView.CapturesViewportInput",
       "kind": "function",
       "exported": true,
       "shape": {
@@ -334824,9 +334857,9 @@
       "shapeHash": "sha256:b614b7040f3f4b74f5d0c1da9504dece7729bae275975b3c80c0930af61c28e1"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/tui#SelectList.CapturesSelectPageInput",
+      "id": "go:github.com/MichaelKinsy/PiG/tui#SelectList.CapturesViewportInput",
       "package": "github.com/MichaelKinsy/PiG/tui",
-      "name": "SelectList.CapturesSelectPageInput",
+      "name": "SelectList.CapturesViewportInput",
       "kind": "function",
       "exported": true,
       "shape": {
@@ -335121,17 +335154,6 @@
       "shapeHash": "sha256:6f33387dd4f3585fd474b1561c17cb4c3c332c103d8e3d92f0657199a662f159"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/tui#SelectPageInputCapturer",
-      "package": "github.com/MichaelKinsy/PiG/tui",
-      "name": "SelectPageInputCapturer",
-      "kind": "type",
-      "exported": true,
-      "shape": {
-        "type": "SelectPageInputCapturer"
-      },
-      "shapeHash": "sha256:960bdf617323d2c0fe446b1622e091c867db553e0609e68fad0825df4e726e9c"
-    },
-    {
       "id": "go:github.com/MichaelKinsy/PiG/tui#SelectSubmenuComponent",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "SelectSubmenuComponent",
@@ -335176,9 +335198,9 @@
       "shapeHash": "sha256:f632619397f10a7f0e472ad47d2824ec7e080d15ac9eb0994e24800757b3fb96"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/tui#SelectSubmenuComponent.CapturesSelectPageInput",
+      "id": "go:github.com/MichaelKinsy/PiG/tui#SelectSubmenuComponent.CapturesViewportInput",
       "package": "github.com/MichaelKinsy/PiG/tui",
-      "name": "SelectSubmenuComponent.CapturesSelectPageInput",
+      "name": "SelectSubmenuComponent.CapturesViewportInput",
       "kind": "function",
       "exported": true,
       "shape": {
@@ -335979,9 +336001,9 @@
       "shapeHash": "sha256:f632619397f10a7f0e472ad47d2824ec7e080d15ac9eb0994e24800757b3fb96"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/tui#SettingsList.CapturesSelectPageInput",
+      "id": "go:github.com/MichaelKinsy/PiG/tui#SettingsList.CapturesViewportInput",
       "package": "github.com/MichaelKinsy/PiG/tui",
-      "name": "SettingsList.CapturesSelectPageInput",
+      "name": "SettingsList.CapturesViewportInput",
       "kind": "function",
       "exported": true,
       "shape": {
@@ -336430,9 +336452,9 @@
       "shapeHash": "sha256:9fe955afca678896c9ce7f06920e4ed84a14ba56a3de3dd78566509bb9720fe3"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/tui#ShowImagesSelectorComponent.CapturesSelectPageInput",
+      "id": "go:github.com/MichaelKinsy/PiG/tui#ShowImagesSelectorComponent.CapturesViewportInput",
       "package": "github.com/MichaelKinsy/PiG/tui",
-      "name": "ShowImagesSelectorComponent.CapturesSelectPageInput",
+      "name": "ShowImagesSelectorComponent.CapturesViewportInput",
       "kind": "function",
       "exported": true,
       "shape": {
@@ -337277,9 +337299,9 @@
       "shapeHash": "sha256:e211fea90f8ba28c4e2a07687b8be4fd93a0c1555f62689fceed4e71d20886e9"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/tui#Stack.CapturesSelectPageInput",
+      "id": "go:github.com/MichaelKinsy/PiG/tui#Stack.CapturesViewportInput",
       "package": "github.com/MichaelKinsy/PiG/tui",
-      "name": "Stack.CapturesSelectPageInput",
+      "name": "Stack.CapturesViewportInput",
       "kind": "function",
       "exported": true,
       "shape": {
@@ -340907,9 +340929,9 @@
       "shapeHash": "sha256:9fe955afca678896c9ce7f06920e4ed84a14ba56a3de3dd78566509bb9720fe3"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/tui#ThemeSelectorComponent.CapturesSelectPageInput",
+      "id": "go:github.com/MichaelKinsy/PiG/tui#ThemeSelectorComponent.CapturesViewportInput",
       "package": "github.com/MichaelKinsy/PiG/tui",
-      "name": "ThemeSelectorComponent.CapturesSelectPageInput",
+      "name": "ThemeSelectorComponent.CapturesViewportInput",
       "kind": "function",
       "exported": true,
       "shape": {
@@ -341765,9 +341787,9 @@
       "shapeHash": "sha256:9fe955afca678896c9ce7f06920e4ed84a14ba56a3de3dd78566509bb9720fe3"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/tui#ToolExecutionComponent.CapturesSelectPageInput",
+      "id": "go:github.com/MichaelKinsy/PiG/tui#ToolExecutionComponent.CapturesViewportInput",
       "package": "github.com/MichaelKinsy/PiG/tui",
-      "name": "ToolExecutionComponent.CapturesSelectPageInput",
+      "name": "ToolExecutionComponent.CapturesViewportInput",
       "kind": "function",
       "exported": true,
       "shape": {
@@ -343008,9 +343030,9 @@
       "shapeHash": "sha256:f632619397f10a7f0e472ad47d2824ec7e080d15ac9eb0994e24800757b3fb96"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/tui#TreeList.CapturesSelectPageInput",
+      "id": "go:github.com/MichaelKinsy/PiG/tui#TreeList.CapturesViewportInput",
       "package": "github.com/MichaelKinsy/PiG/tui",
-      "name": "TreeList.CapturesSelectPageInput",
+      "name": "TreeList.CapturesViewportInput",
       "kind": "function",
       "exported": true,
       "shape": {
@@ -343451,6 +343473,17 @@
       "id": "go:github.com/MichaelKinsy/PiG/tui#TreeSelectorComponent.Cancelled",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "TreeSelectorComponent.Cancelled",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() bool"
+      },
+      "shapeHash": "sha256:f632619397f10a7f0e472ad47d2824ec7e080d15ac9eb0994e24800757b3fb96"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#TreeSelectorComponent.CapturesViewportInput",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "TreeSelectorComponent.CapturesViewportInput",
       "kind": "function",
       "exported": true,
       "shape": {
@@ -344471,9 +344504,9 @@
       "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/tui#TuiAltScreen.CapturesSelectPageInput",
+      "id": "go:github.com/MichaelKinsy/PiG/tui#TuiAltScreen.CapturesViewportInput",
       "package": "github.com/MichaelKinsy/PiG/tui",
-      "name": "TuiAltScreen.CapturesSelectPageInput",
+      "name": "TuiAltScreen.CapturesViewportInput",
       "kind": "function",
       "exported": true,
       "shape": {
@@ -346880,9 +346913,9 @@
       "shapeHash": "sha256:0e28d9f66dc002549169dfd47b8900451435fe47d87c51faf7bb574259a10d8c"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/tui#TuiAltScreen.shouldDeferViewportInputToOverlay",
+      "id": "go:github.com/MichaelKinsy/PiG/tui#TuiAltScreen.shouldDeferViewportInput",
       "package": "github.com/MichaelKinsy/PiG/tui",
-      "name": "TuiAltScreen.shouldDeferViewportInputToOverlay",
+      "name": "TuiAltScreen.shouldDeferViewportInput",
       "kind": "function",
       "exported": false,
       "shape": {
@@ -347199,9 +347232,9 @@
       "shapeHash": "sha256:8da4f80273b10bb8938049745cd8d770648a7fb1b20b3e706654af81b74eafac"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/tui#TuiMainScreen.CapturesSelectPageInput",
+      "id": "go:github.com/MichaelKinsy/PiG/tui#TuiMainScreen.CapturesViewportInput",
       "package": "github.com/MichaelKinsy/PiG/tui",
-      "name": "TuiMainScreen.CapturesSelectPageInput",
+      "name": "TuiMainScreen.CapturesViewportInput",
       "kind": "function",
       "exported": true,
       "shape": {
@@ -349080,9 +349113,9 @@
       "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/tui#TuiSurface.CapturesSelectPageInput",
+      "id": "go:github.com/MichaelKinsy/PiG/tui#TuiSurface.CapturesViewportInput",
       "package": "github.com/MichaelKinsy/PiG/tui",
-      "name": "TuiSurface.CapturesSelectPageInput",
+      "name": "TuiSurface.CapturesViewportInput",
       "kind": "function",
       "exported": true,
       "shape": {
@@ -351291,9 +351324,9 @@
       "shapeHash": "sha256:9fe955afca678896c9ce7f06920e4ed84a14ba56a3de3dd78566509bb9720fe3"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/tui#UserMessageComponent.CapturesSelectPageInput",
+      "id": "go:github.com/MichaelKinsy/PiG/tui#UserMessageComponent.CapturesViewportInput",
       "package": "github.com/MichaelKinsy/PiG/tui",
-      "name": "UserMessageComponent.CapturesSelectPageInput",
+      "name": "UserMessageComponent.CapturesViewportInput",
       "kind": "function",
       "exported": true,
       "shape": {
@@ -351841,9 +351874,9 @@
       "shapeHash": "sha256:84dd13a2c4a096513e5faee65d22840805afe879a4ec07ff3b3edb3d81df1b09"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/tui#UserMessageList.CapturesSelectPageInput",
+      "id": "go:github.com/MichaelKinsy/PiG/tui#UserMessageList.CapturesViewportInput",
       "package": "github.com/MichaelKinsy/PiG/tui",
-      "name": "UserMessageList.CapturesSelectPageInput",
+      "name": "UserMessageList.CapturesViewportInput",
       "kind": "function",
       "exported": true,
       "shape": {
@@ -351962,9 +351995,9 @@
       "shapeHash": "sha256:9fe955afca678896c9ce7f06920e4ed84a14ba56a3de3dd78566509bb9720fe3"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/tui#UserMessageSelectorComponent.CapturesSelectPageInput",
+      "id": "go:github.com/MichaelKinsy/PiG/tui#UserMessageSelectorComponent.CapturesViewportInput",
       "package": "github.com/MichaelKinsy/PiG/tui",
-      "name": "UserMessageSelectorComponent.CapturesSelectPageInput",
+      "name": "UserMessageSelectorComponent.CapturesViewportInput",
       "kind": "function",
       "exported": true,
       "shape": {
@@ -352457,9 +352490,9 @@
       "shapeHash": "sha256:e211fea90f8ba28c4e2a07687b8be4fd93a0c1555f62689fceed4e71d20886e9"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/tui#VStack.CapturesSelectPageInput",
+      "id": "go:github.com/MichaelKinsy/PiG/tui#VStack.CapturesViewportInput",
       "package": "github.com/MichaelKinsy/PiG/tui",
-      "name": "VStack.CapturesSelectPageInput",
+      "name": "VStack.CapturesViewportInput",
       "kind": "function",
       "exported": true,
       "shape": {
@@ -352928,6 +352961,17 @@
         "type": "ViewSource"
       },
       "shapeHash": "sha256:76950e5df290264435959871ed992adfde192ee87f7f54bcb37d9910cd7640d4"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#ViewportInputCapturer",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "ViewportInputCapturer",
+      "kind": "type",
+      "exported": true,
+      "shape": {
+        "type": "ViewportInputCapturer"
+      },
+      "shapeHash": "sha256:9f2d4b95804862e158a261ea2739944d0b79ca0b8f615e825bad706e121119b3"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui#ViewportTUI",
@@ -359057,6 +359101,17 @@
       "shapeHash": "sha256:a25ca2dde16f4c7d179d915d26f5bd6051f9838d4ab17973d556130a94b5407e"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#isNativeShiftEnterCandidate",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "isNativeShiftEnterCandidate",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(data string) bool"
+      },
+      "shapeHash": "sha256:a25ca2dde16f4c7d179d915d26f5bd6051f9838d4ab17973d556130a94b5407e"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/tui#isPasteMarker",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "isPasteMarker",
@@ -361480,6 +361535,17 @@
       "id": "go:github.com/MichaelKinsy/PiG/tui#markedAutolink",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "markedAutolink",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(src []rune) (markedToken, bool)"
+      },
+      "shapeHash": "sha256:1da83f4ba25380b47be8220d19f568ddb901727249a9527becf3593322c47960"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#markedBaseURL",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "markedBaseURL",
       "kind": "function",
       "exported": false,
       "shape": {
@@ -369265,6 +369331,17 @@
       "shapeHash": "sha256:79fd4d488967c39f945f630c812cc4fe789f2d4d5ecba75a0cebe4e1aa13ab4c"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#stripOsc133ZonePrefixes",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "stripOsc133ZonePrefixes",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(lines []string) []string"
+      },
+      "shapeHash": "sha256:2881a43f5ab7135c0fd1c04fd3076f54f3ed59dcdbe03e9e7ad143c38f9e89e9"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/tui#styled",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "styled",
@@ -371740,9 +371817,9 @@
       "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/tui#tuiBase.CapturesSelectPageInput",
+      "id": "go:github.com/MichaelKinsy/PiG/tui#tuiBase.CapturesViewportInput",
       "package": "github.com/MichaelKinsy/PiG/tui",
-      "name": "tuiBase.CapturesSelectPageInput",
+      "name": "tuiBase.CapturesViewportInput",
       "kind": "function",
       "exported": true,
       "shape": {
@@ -379165,6 +379242,17 @@
       "shapeHash": "sha256:79fd4d488967c39f945f630c812cc4fe789f2d4d5ecba75a0cebe4e1aa13ab4c"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/tui/widthx#extractAnsiCodes",
+      "package": "github.com/MichaelKinsy/PiG/tui/widthx",
+      "name": "extractAnsiCodes",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(str string) string"
+      },
+      "shapeHash": "sha256:f3f10dd71d6c4cac9204d60c54b77ea93dba0e929bd65411d85da86a8ec2a96f"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/tui/widthx#fakeCursorMarkerPrefix",
       "package": "github.com/MichaelKinsy/PiG/tui/widthx",
       "name": "fakeCursorMarkerPrefix",
@@ -379548,6 +379636,17 @@
         "type": "func(seg string) bool"
       },
       "shapeHash": "sha256:5f30c7fe1ebabdd0c2b32df4ba79d0751f9b3c00578de3ec60c4d42cdaffd1be"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui/widthx#isWhitespaceToken",
+      "package": "github.com/MichaelKinsy/PiG/tui/widthx",
+      "name": "isWhitespaceToken",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(token string) bool"
+      },
+      "shapeHash": "sha256:5adca53e0b38b99312fe7de2f6ce045a0e08387a1003cf9af14cae800f3307d9"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui/widthx#kittyImagePrefix",

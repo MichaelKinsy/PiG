@@ -1,6 +1,7 @@
 // Drive the installed Pi LlamaView.searchModels (HuggingFaceSearch in extensions/llama/ui.ts) on a virtual clock, never a translated oracle.
 // setTimeout and clearTimeout are replaced by a scheduler that only runs a timer when the scenario advances the clock to it, so the 500 ms debounce
 // and the fake search's delay take no real time and cannot be disturbed by load.
+import "../../../../tui/testdata/pi-d217/register.mjs"; // D217: the pin plus the Pi fixes 0.6.0 carries (tui/testdata/pi-d217)
 import { readFileSync, realpathSync } from "node:fs";
 import { pathToFileURL } from "node:url";
 const root = realpathSync(new URL("../../../../extensions/sdk-ts/node_modules/@earendil-works/pi-coding-agent/", import.meta.url)) + "/";

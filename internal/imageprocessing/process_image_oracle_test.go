@@ -32,12 +32,14 @@ type processImageOutcome struct {
 	MimeType string `json:"mimeType"`
 	Hints    string `json:"hints"`
 	Message  string `json:"message"`
+	// Sizes are Photon's PNG and JPEG candidates at the size of Pi's answer, measured by the oracle script; nil when not measured.
+	Sizes *candidateSizes `json:"sizes,omitempty"`
 }
 
 // TestProcessImageMatchesPi runs image-process.ts processImage and PiG's ProcessImage over 400 seeded inputs: PNG, JPEG, GIF, BMP, TIFF and WebP bytes (some larger than the resize
 // limits), garbage and empty bytes; declared types with parameters, case and spaces ("IMAGE/JPEG; q=1", " image/jpg "), unsupported types (image/bmp, image/tiff, image/x-icon, application/octet-stream,
 // the empty string) and types that do not match the bytes; automatic resizing on and off with small or default limits. Whether an image is returned, its mime type, the
-// conversion and dimension hints (in order) and the omission message must match. Not compared: the returned bytes (Photon's encoders differ from Go's).
+// conversion and dimension hints (in order) and the omission message must match. Not compared: the returned bytes (Photon's encoders differ from Go's). The format of a resized image may differ only as encoder_tie_test.go describes: each side returns the one Pi's e7a0df27 rule picks from its own PNG and JPEG sizes.
 func TestProcessImageMatchesPi(t *testing.T) {
 	rng := rand.New(rand.NewPCG(20261126, 9))
 	pick := func(xs ...string) string { return xs[rng.IntN(len(xs))] }
@@ -94,25 +96,54 @@ func TestProcessImageMatchesPi(t *testing.T) {
 	}
 
 	var want []processImageOutcome
-	pioracle.Run(t, `
+	pioracle.Run(t, piPhotonCandidatesJS+`
 const { processImage } = await load("pi-coding-agent/utils/image-process.js");
+const { convertImageBytesToPng } = await load("pi-coding-agent/utils/image-convert.js");
+const supported = ["image/png", "image/jpeg", "image/jpg", "image/gif", "image/webp"];
 const out = [];
 for (const c of input) {
 	const resizeOptions = {};
 	if (c.maxWidth) resizeOptions.maxWidth = c.maxWidth;
 	if (c.maxHeight) resizeOptions.maxHeight = c.maxHeight;
-	const r = await processImage(new Uint8Array(Buffer.from(c.data, "base64")), c.mimeType, { autoResizeImages: c.autoResize, resizeOptions });
-	out.push(r.ok ? { ok: true, mimeType: r.mimeType, hints: r.hints.join("\n"), message: "" } : { ok: false, mimeType: "", hints: "", message: r.message });
+	const bytes = new Uint8Array(Buffer.from(c.data, "base64"));
+	const r = await processImage(bytes, c.mimeType, { autoResizeImages: c.autoResize, resizeOptions });
+	if (!r.ok) {
+		out.push({ ok: false, mimeType: "", hints: "", message: r.message });
+		continue;
+	}
+	let sizes;
+	if (c.autoResize && (r.mimeType === "image/png" || r.mimeType === "image/jpeg")) {
+		// The candidates are those of the image resize saw: the bytes themselves, or their PNG conversion for a type that is converted first.
+		const source = supported.includes(c.mimeType.split(";")[0].trim().toLowerCase()) ? bytes : await convertImageBytesToPng(bytes);
+		const answer = photon.PhotonImage.new_from_byteslice(new Uint8Array(Buffer.from(r.data, "base64")));
+		try {
+			sizes = source ? candidateSizes(source, answer.get_width(), answer.get_height(), 80) : undefined;
+		} finally {
+			answer.free();
+		}
+	}
+	out.push({ ok: true, mimeType: r.mimeType, hints: r.hints.join("\n"), message: "", sizes });
 }
 emit(out);`, cases, &want)
 
-	failures := 0
+	failures, ties := 0, 0
 	for i, c := range cases {
 		raw, _ := base64.StdEncoding.DecodeString(c.Data)
-		_, mime, hints, err := ProcessImage(raw, c.MimeType, c.AutoResize, &ai.ModelImageResizeOptions{MaxWidth: c.MaxWidth, MaxHeight: c.MaxHeight})
+		data, mime, hints, err := ProcessImage(raw, c.MimeType, c.AutoResize, &ai.ModelImageResizeOptions{MaxWidth: c.MaxWidth, MaxHeight: c.MaxHeight})
 		got := processImageOutcome{OK: err == nil, MimeType: mime, Hints: hints}
 		if err != nil {
 			got.Message = err.Error()
+		}
+		// Pi picks the smaller of the PNG and the JPEG candidate (e7a0df27), each side by its own encoders' sizes (encoder_tie_test.go); the
+		// hint that names the format follows the format.
+		piSizes := want[i].Sizes
+		want[i].Sizes = nil
+		if err == nil && want[i].OK && c.AutoResize {
+			if width, height := outputSize(t, data); encoderTie(t, raw, width, height, JPEGQuality, piDefaultMaxBytes, got.MimeType, want[i].MimeType, piSizes) {
+				ties++
+				got.MimeType, got.Hints = want[i].MimeType, hintsWithoutFormat(got.Hints)
+				want[i].Hints = hintsWithoutFormat(want[i].Hints)
+			}
 		}
 		if !reflect.DeepEqual(got, want[i]) {
 			failures++
@@ -121,5 +152,5 @@ emit(out);`, cases, &want)
 			}
 		}
 	}
-	t.Logf("%d cases, %d failures", len(cases), failures)
+	t.Logf("%d cases, %d failures, %d PNG/JPEG encoder ties", len(cases), failures, ties)
 }

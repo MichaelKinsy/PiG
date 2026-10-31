@@ -1,5 +1,6 @@
 // Generates colors-oracle.json from upstream packages/tui/src/colors.ts (0.99.1).
 // Usage: node colors-oracle.mjs <path to packages/tui/src> > colors-oracle.json
+import "./pi-d217/register.mjs"; // D217: pin + carried Pi fixes in pi-tui utils.js
 import { pathToFileURL } from "node:url";
 import { join } from "node:path";
 

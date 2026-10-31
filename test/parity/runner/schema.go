@@ -206,6 +206,11 @@ type EnvOverrides struct {
 	PiArgs        []string `toml:"pi_args"`        // extra CLI args for pi
 	PigBin        string   `toml:"pig_bin"`        // override pig binary path for this scenario
 	PiBin         string   `toml:"pi_bin"`         // override upstream binary path for this scenario
+	// PiLaunch "bundled" runs the resolved pi's bundled bin (dist/bundle/cli.js) even while the D217 hook makes the runner start the unbundled entry
+	// (d217.go). Use it only for a scenario whose Pi side renders no code the hook swaps and asserts something the launch changes: process.argv[1] is
+	// the package bin only in the bundle. The scenario's own comment gives the reason and the measured difference. The runner rejects it together
+	// with pi_bin (a scenario that runs its own program is never launched through the hook) and any value but "bundled".
+	PiLaunch string `toml:"pi_launch"`
 	// OverrideBaseArgs, when true, suppresses the per-binary baseline
 	// args (BinaryRef.Args, e.g. pi's default `--no-extensions`). Use
 	// this only when the scenario must control the exact argv: e.g.
@@ -355,6 +360,12 @@ func validate(sc *Scenario) error {
 		if rule.Reason == "" {
 			return fmt.Errorf("normalize_replace %q requires a reason", rule.Pattern)
 		}
+	}
+	switch {
+	case sc.Env.PiLaunch != "" && sc.Env.PiLaunch != "bundled":
+		return fmt.Errorf("pi_launch %q must be \"bundled\"", sc.Env.PiLaunch)
+	case sc.Env.PiLaunch != "" && sc.Env.PiBin != "":
+		return fmt.Errorf("pi_launch applies to the resolved pi; the scenario runs its own pi_bin")
 	}
 	if sc.CLI.SnapshotCWD && sc.CLI.CWD == "" {
 		return fmt.Errorf("cli.snapshot_cwd requires cli.cwd")

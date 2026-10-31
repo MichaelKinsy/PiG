@@ -102,8 +102,8 @@ func (s *TrustSelectorComponent) updateList() {
 	s.Invalidate()
 }
 
-// CapturesSelectPageInput reports that the selector handles tui.select.pageUp and tui.select.pageDown.
-func (s *TrustSelectorComponent) CapturesSelectPageInput() bool { return true }
+// CapturesViewportInput reports that the selector handles tui.select.pageUp and tui.select.pageDown.
+func (s *TrustSelectorComponent) CapturesViewportInput() bool { return true }
 
 func (s *TrustSelectorComponent) HandleInput(data string) {
 	kb := tui.GetKeybindings()
@@ -115,7 +115,7 @@ func (s *TrustSelectorComponent) HandleInput(data string) {
 		s.selectedIndex = min(len(s.trustOptions)-1, s.selectedIndex+1)
 		s.updateList()
 	case kb.Matches(data, tui.KBSelectPageUp) || kb.Matches(data, tui.KBSelectPageDown):
-		s.selectedIndex, _ = tui.PageSelectionIndex(kb, data, s.selectedIndex, len(s.trustOptions), len(s.trustOptions))
+		s.selectedIndex, _ = tui.GetSelectPageIndex(kb, data, s.selectedIndex, len(s.trustOptions), len(s.trustOptions))
 		s.updateList()
 	case kb.Matches(data, tui.KBSelectConfirm) || data == "\n":
 		option := s.trustOptions[s.selectedIndex]

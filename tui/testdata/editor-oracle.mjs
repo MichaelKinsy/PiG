@@ -2,6 +2,7 @@
 // Usage: node editor-oracle.mjs <path to @earendil-works/pi-tui/dist/index.js> | gzip -9n > editor-oracle.json.gz
 // Each op is {keys}, {setText}, {history} or {render: width}. The log records text, expanded text, cursor, lines,
 // submit/change callbacks and, for render ops, the rendered lines (identity border color, focused editor).
+import "./pi-d217/register.mjs"; // D217: pin + carried Pi fixes in pi-tui utils.js
 import { pathToFileURL } from "node:url";
 const { Editor } = await import(pathToFileURL(process.argv[2]).href);
 

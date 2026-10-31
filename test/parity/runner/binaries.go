@@ -20,6 +20,32 @@ type BinaryRef struct {
 	Path  string   // absolute path
 	Args  []string // base args prepended to every scenario invocation
 	Env   []string // base env vars (KEY=value)
+	// Launch, when set, runs the binary's program instead of Path (see program).
+	Launch *Launch
+}
+
+// Launch is the command that runs a binary's program in place of the binary's own path: an interpreter with the options and the entry script
+// the program is started from. Its arguments come before the base Args and, unlike them, survive a scenario's override_base_args.
+type Launch struct {
+	Program string
+	Args    []string
+}
+
+// program returns what a driver executes and the arguments that start the binary's program: Path alone, or the Launch.
+func (b BinaryRef) program() (string, []string) {
+	if b.Launch == nil {
+		return b.Path, []string{}
+	}
+	return b.Launch.Program, append([]string{}, b.Launch.Args...)
+}
+
+// forScenario returns b as sc runs it. A scenario that names its own pi_bin runs that program, which no Launch of the resolved pi applies to, and a
+// scenario with pi_launch = "bundled" runs the resolved pi's own bin.
+func (b BinaryRef) forScenario(sc *Scenario) BinaryRef {
+	if b.Label == "pi" && (sc.Env.PiBin != "" || sc.Env.PiLaunch == "bundled") {
+		b.Launch = nil
+	}
+	return b
 }
 
 // upstreamPiInstallDirs lists the mise install directories we accept as
