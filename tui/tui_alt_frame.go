@@ -137,3 +137,27 @@ func (f AltScreenFrame) HandleMouse(event TuiMouseEvent) *TuiMouseDispatchResult
 
 // CancelPendingRender is TuiAltScreen.CancelPendingRender.
 func (f AltScreenFrame) CancelPendingRender() { f.t.cancelPendingRenderLocked() }
+
+// ViewportTop is TuiAltScreen.ViewportTop: the frame holds the lock that guards the layout the primary scroll view comes from.
+func (f AltScreenFrame) ViewportTop() int { return f.t.getPrimaryScrollView().ScrollTop() }
+
+// IsFollowingOutput is TuiAltScreen.IsFollowingOutput.
+func (f AltScreenFrame) IsFollowingOutput() bool { return f.t.getPrimaryScrollView().IsFollowingEnd() }
+
+// ScrollBy is TuiAltScreen.ScrollBy.
+func (f AltScreenFrame) ScrollBy(lines int) {
+	f.t.getPrimaryScrollView().ScrollBy(lines)
+	f.t.RequestRender()
+}
+
+// ScrollToTop is TuiAltScreen.ScrollToTop.
+func (f AltScreenFrame) ScrollToTop() {
+	f.t.getPrimaryScrollView().ScrollToStart()
+	f.t.RequestRender()
+}
+
+// ScrollToBottom is TuiAltScreen.ScrollToBottom.
+func (f AltScreenFrame) ScrollToBottom() {
+	f.t.getPrimaryScrollView().ScrollToEnd()
+	f.t.RequestRender()
+}

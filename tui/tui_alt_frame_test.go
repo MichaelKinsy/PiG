@@ -2,6 +2,7 @@ package tui
 
 import (
 	"bytes"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -238,5 +239,51 @@ func TestAltScreenFrameChangesTheChildrenFromALayoutRoot(t *testing.T) {
 	defer screen.StopWithOptions(StopOptions{PreserveScreen: true})
 	if children != 1 || len(screen.Children()) != 1 {
 		t.Fatalf("children in the render = %d, after = %d, want 1", children, len(screen.Children()))
+	}
+}
+
+// The viewport the screen reports and moves belongs to the layout the last frame installed, under the lock the frame holds. A render reads and moves it
+// through the frame, which must not take that lock again.
+func TestAltScreenFrameReadsAndMovesTheViewportAtOnce(t *testing.T) {
+	var out bytes.Buffer
+	screen := newFrameScreenForTest(&out, 20, 4)
+	lines := make([]string, 12)
+	for i := range lines {
+		lines[i] = "row " + strconv.Itoa(i+1)
+	}
+	var seen []string
+	armed := false
+	screen.Add(&framePart{render: func(int) []string {
+		if !armed {
+			return lines
+		}
+		armed = false
+		f, ok := screen.Frame()
+		if !ok {
+			t.Error("render is not the frame")
+			return lines
+		}
+		at := func(step string) {
+			seen = append(seen, step+"="+strconv.Itoa(f.ViewportTop())+"/"+boolText(f.IsFollowingOutput()))
+		}
+		at("start")
+		f.ScrollBy(-2)
+		at("by")
+		f.ScrollToTop()
+		at("top")
+		f.ScrollToBottom()
+		at("bottom")
+		return lines
+	}})
+	screen.Start()
+	armed = true
+	// Stop waits for the frame, so it follows the bounded wait: a frame that deadlocked fails the test instead of hanging its cleanup.
+	returnsWithin(t, "a render that reads and moves the viewport", screen.Render)
+	defer screen.StopWithOptions(StopOptions{PreserveScreen: true})
+	if got, want := strings.Join(seen, " "), "start=8/true by=6/false top=0/false bottom=8/true"; got != want {
+		t.Errorf("viewport read in the render = %q, want %q", got, want)
+	}
+	if top, following := screen.ViewportTop(), screen.IsFollowingOutput(); top != 8 || !following {
+		t.Errorf("viewport after the frame = %d/%t, want 8/true", top, following)
 	}
 }

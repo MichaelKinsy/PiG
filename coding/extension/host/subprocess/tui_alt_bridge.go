@@ -644,6 +644,11 @@ type tuiAltMembers interface {
 	Clear()
 	Children() []tui.Component
 	HandleMouse(event tui.TuiMouseEvent) *tui.TuiMouseDispatchResult
+	ViewportTop() int
+	IsFollowingOutput() bool
+	ScrollBy(lines int)
+	ScrollToTop()
+	ScrollToBottom()
 }
 
 // run applies call to the screen. inFrame says the call comes from a callback the goroutine that runs the frame waits for and runs on that goroutine, and m
@@ -708,13 +713,13 @@ func (s *tuiAltScreenState) run(call *tuiAltCall, m tuiAltMembers, inFrame bool)
 		if err := json.Unmarshal(call.Lines, &lines); err != nil {
 			return nil, errors.New("tui.alt: scrollBy lines is a number")
 		}
-		screen.ScrollBy(int(lines))
+		m.ScrollBy(int(lines))
 		return empty()
 	case "scrollToTop":
-		screen.ScrollToTop()
+		m.ScrollToTop()
 		return empty()
 	case "scrollToBottom":
-		screen.ScrollToBottom()
+		m.ScrollToBottom()
 		return empty()
 	case "flash":
 		screen.Flash(call.Message, call.DurationMs)
@@ -742,7 +747,7 @@ func (s *tuiAltScreenState) run(call *tuiAltCall, m tuiAltMembers, inFrame bool)
 		return tuiAltResult(map[string]any{"value": screen.CopyActiveSelectionToClipboard()})
 	case "state":
 		return tuiAltResult(map[string]any{
-			"viewportTop": screen.ViewportTop(), "isFollowingOutput": screen.IsFollowingOutput(), "fullRedraws": screen.FullRedraws(),
+			"viewportTop": m.ViewportTop(), "isFollowingOutput": m.IsFollowingOutput(), "fullRedraws": screen.FullRedraws(),
 			"hasOverlay": screen.HasVisibleOverlay(), "hasOverlayEntries": screen.HasOverlay(), "hasActiveSelection": m.HasActiveSelection(),
 			"copyOnSelect": m.GetCopyOnSelect(), "showHardwareCursor": m.GetShowHardwareCursor(), "clearOnShrink": m.GetClearOnShrink(),
 			"focusedKey": s.focusedKey(),
