@@ -2889,14 +2889,14 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 **A user message, a branch or compaction summary, a custom message, a skill invocation, the startup changelog…**
 
 - **Source:** PiG's own defect
-- **Symptom:** A user message, a branch or compaction summary, a custom message, a skill invocation, the startup changelog and an extension's Markdown view no longer keep the memos a streamed Markdown holds for its next delta.
+- **Symptom:** A user message, a branch or compaction summary, a custom message, a skill invocation, the startup changelog, the `/hotkeys` block, the text a slash command appends and an extension's Markdown view no longer keep the memos a streamed Markdown holds for its next delta.
 - **Root cause:** A user, summary, custom or skill message is complete when it is built, but its Markdown never called FinishStreaming, so the memos that only speed up the next streamed delta stayed for the life of the message. Each owner now finishes its Markdown at construction.
 - **User impact:** Wrong display
 - **Platform:** All platforms
 - **Fixed in:** Unreleased
-- **Fix commits:** `21c27bf578` (2026-10-30)
-- **Tests:** None recorded.
-- **Release note:** A user message, a branch or compaction summary, a custom message, a skill invocation, the startup changelog and an extension's Markdown view no longer keep the memos a streamed Markdown holds for its next delta. They arrive whole and never call `FinishStreaming`, so the wraps, inline renderings and resume point stayed for the life of the message: a 1.2 KB user message retained 17.5 KB, and a transcript of 10,000 of them about 175 MB. Each now finishes its Markdown when it builds it: a user message keeps 9.2 KB (its 6.1 KB of padded, colored rows are the rest) and a boxed message 16 to 18 KB instead of 21 to 23 KB. The rows are unchanged.
+- **Fix commits:** `21c27bf578` (2026-10-30), `1eb853b81b` (2026-10-31)
+- **Tests:** `internal/codingagent/interactive_whole_markdown_test.go::TestWholeMarkdownBlocksRenderBytes`
+- **Release note:** A user message, a branch or compaction summary, a custom message, a skill invocation, the startup changelog, the `/hotkeys` block, the text a slash command appends and an extension's Markdown view no longer keep the memos a streamed Markdown holds for its next delta. They arrive whole and never call `FinishStreaming`, so the wraps, inline renderings and resume point stayed for the life of the message: a 1.2 KB user message retained 17.5 KB, and a transcript of 10,000 of them about 175 MB. Each now finishes its Markdown when it builds it: a user message keeps 9.2 KB (its 6.1 KB of padded, colored rows are the rest) and a boxed message 16 to 18 KB instead of 21 to 23 KB. The rows are unchanged.
 
 ### BF-224dbd9
 
