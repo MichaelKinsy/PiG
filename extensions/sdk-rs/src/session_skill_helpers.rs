@@ -100,7 +100,7 @@ pub fn format_skills_for_prompt<S: Borrow<Value>>(skills: &[S], file_read_tool: 
     let mut lines = vec![
         "\n\nThe following skills provide specialized instructions for specific tasks.".to_string(),
         load.to_string(),
-        "When a skill file references a relative path, resolve it against the skill directory (parent of SKILL.md / dirname of the path) and use that absolute path in tool commands.".to_string(),
+        "Resolve relative paths against the skill's directory (parent of SKILL.md). Use absolute paths in tool calls.".to_string(),
         String::new(),
         "<available_skills>".to_string(),
     ];

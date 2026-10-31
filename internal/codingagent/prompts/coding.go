@@ -71,7 +71,7 @@ type Options struct {
 	AppendMode string
 }
 
-const preamble = "You are an expert coding assistant operating inside pig, a coding agent harness. You help users by reading files, executing commands, editing code, and writing new files."
+const preamble = "You are a coding assistant running inside pig, a coding agent harness. Help users inspect files, run commands, and modify code."
 
 type section struct{ name, content string }
 
@@ -115,7 +115,7 @@ func BuildSystemPromptSections(o Options) ai.OrderedSections {
 			list = strings.Join(tools, "\n")
 		}
 		sections = append(sections,
-			section{"tools", list + "\n\nIn addition to the tools above, you may have access to other custom tools depending on the project."},
+			section{"tools", list + "\n\nAdditional tools may be available."},
 			section{"rules", renderRules(declared, o.ToolGuidelines, o.PromptGuidelines)},
 		)
 		// pig additive (D92): the docs section is absent when docs are stripped; see docs_section.go.
@@ -243,7 +243,7 @@ func formatSkills(skills []Skill, readTool string) string {
 	lines := []string{
 		"\n\nThe following skills provide specialized instructions for specific tasks.",
 		load,
-		"When a skill file references a relative path, resolve it against the skill directory (parent of SKILL.md / dirname of the path) and use that absolute path in tool commands.",
+		"Resolve relative paths against the skill's directory (parent of SKILL.md). Use absolute paths in tool calls.",
 		"",
 		"<available_skills>",
 	}

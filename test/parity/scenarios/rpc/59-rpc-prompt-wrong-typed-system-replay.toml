@@ -82,8 +82,8 @@ reason = "D2/D22: compare Pi's package README/docs/examples destinations with Pi
 [[assert.json_aliases]]
 paths = ["/**/sections/preamble"]
 kind = "literal"
-pig = "operating inside pig,"
-pi = "operating inside pi,"
+pig = "running inside pig,"
+pi = "running inside pi,"
 reason = "D2: only the host command identity differs in the preamble; retain the rest of the complete sentence."
 
 [[assert.json_aliases]]
@@ -96,37 +96,9 @@ reason = "D2/D22: the documentation heading names the product; all usage conditi
 [[assert.json_aliases]]
 paths = ["/**/sections/docs"]
 kind = "literal"
-pig = "asks about pig itself,"
-pi = "asks about pi itself,"
-reason = "D2: this exact heading clause names the host command; no other words in the read-only condition are aliased."
-
-[[assert.json_aliases]]
-paths = ["/**/sections/docs"]
-kind = "literal"
 pig = "When reading pig docs or examples,"
 pi = "When reading pi docs or examples,"
 reason = "D2/D22: the path-resolution instruction names its product; retain its complete resolution rule and relative paths."
-
-[[assert.json_aliases]]
-paths = ["/**/sections/docs"]
-kind = "literal"
-pig = "pig packages (docs/packages.md)"
-pi = "pi packages (docs/packages.md)"
-reason = "D2: only the product name in the Package topic differs; the packages.md destination and every other topic remain literal."
-
-[[assert.json_aliases]]
-paths = ["/**/sections/docs"]
-kind = "literal"
-pig = "When working on pig topics,"
-pi = "When working on pi topics,"
-reason = "D2: this exact instruction prefix names the host product; retain its complete-read and cross-reference requirements."
-
-[[assert.json_aliases]]
-paths = ["/**/sections/docs"]
-kind = "literal"
-pig = "Always read pig .md files"
-pi = "Always read pi .md files"
-reason = "D2/D22: this exact instruction prefix names the product documentation; retain completely, link-following instructions, and the TUI example."
 
 [[assert.json_aliases]]
 paths = ["/**/durationMs"]
