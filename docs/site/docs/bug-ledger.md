@@ -121,6 +121,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-1ed43b3](#bf-1ed43b3) | fix(train): load pig_sdk.tui with the package, run the TS queue check with no runtime, pin three fixture… | PiG's own defect | All platforms | Unreleased |
 | [BF-1ee7dea](#bf-1ee7dea) | The Mistral request URL for a base URL with a non-special scheme or a host or port the WHATWG parser rejects… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-1f7fa2f](#bf-1f7fa2f) | In print and JSON mode, an extension in its own Node process no longer runs its callbacks with a stale ctx… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-1fabd48](#bf-1fabd48) | `pig -e npm:<pkg>` no longer stays on the version from the first download | A fix Pi shipped that PiG ported | All platforms | Unreleased |
 | [BF-1fbdabb](#bf-1fbdabb) | A CRLF that a proxy splits across two network chunks no longer aborts an Anthropic turn with `Could not parse… | A Pi defect that PiG fixed first | All platforms | 0.5.0 |
 | [BF-1fcf017](#bf-1fcf017) | `toUpperCase` ports use a shared JavaScript `jsstring.ToUpper` (matches Node over every code point).… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-2022c75](#bf-2022c75) | sdk-py: fix the ruff findings in the type engine, child session and type vector tests | PiG's own defect | All platforms | Unreleased |
@@ -151,6 +152,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-27a1650](#bf-27a1650) | The keybindings manager's key text and key matching now cover every keybinding the merged table defines… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-27ddc30](#bf-27ddc30) | A tool card shows the arguments of a tool call while they stream, as Pi does: a streamed write card shows its… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-27f3324](#bf-27f3324) | The npm release packer reads `npm pack --json` output from npm 12, which keys the result by package name, as… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-2843d60](#bf-2843d60) | Starting `pig` from a working directory that has been deleted now prints "Error: The current working… | A fix Pi shipped that PiG ported | All platforms | Unreleased |
 | [BF-286d303](#bf-286d303) | A native Provider object an extension registers (`registerNativeProvider`, `pi.registerProvider(provider)`)… | PiG's own defect | All platforms | Unreleased |
 | [BF-28b8425](#bf-28b8425) | Blank-key detection for compat API keys, the Vertex API key and the Vertex custom base URL trim whitespace… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-28f8b3b](#bf-28f8b3b) | fix(tui): editor wrap of a one-grapheme segment wider than the width no longer overflows the stack (D158) | PiG's own defect | All platforms | Unreleased |
@@ -693,6 +695,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-89d167f](#bf-89d167f) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
 | [BF-8a18a6b](#bf-8a18a6b) | A Node extension no longer keeps reading an entry the host refused | PiG's own defect | All platforms | 0.5.2 |
 | [BF-8a25539](#bf-8a25539) | `llama-cpp-classify` answers match Pi bit for bit: the softmax uses `jsmath.Exp`, V8's fdlibm `Math.exp`… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-8a38027](#bf-8a38027) | Windows paths are compared case-insensitively | A fix Pi shipped that PiG ported | Windows | Unreleased |
 | [BF-8a44836](#bf-8a44836) | Closing a session with an MCP server that signs in with OAuth no longer fails at random | PiG's own defect | All platforms | Unreleased |
 | [BF-8a88c34](#bf-8a88c34) | On Windows, a custom theme edited in a rapid burst of writes no longer stays on a stale version | PiG's own defect | Windows | Unreleased |
 | [BF-8a9bb40](#bf-8a9bb40) | fix(ai): Anthropic retry-delay message and Codex error body without an error member | PiG's own defect | All platforms | Unreleased |
@@ -814,6 +817,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-93c09d6-2](#bf-93c09d6-2) | `pig install --validate-only` on a Package root validates every extension the Package names in… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-93c5def](#bf-93c5def) | A built-in extension named with `-e builtin:<name>` loads before the extensions from settings and the… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-93f8b7c](#bf-93f8b7c) | fix(agent): a listener failure at agent_start ends the run as in Pi; failure messages carry the model's api | PiG's own defect | All platforms | Unreleased |
+| [BF-94284ac](#bf-94284ac) | `pig -e git:<repo>@<branch>` no longer stays on its first checkout | A fix Pi shipped that PiG ported | All platforms | Unreleased |
 | [BF-942bc6c](#bf-942bc6c) | fix(coding-agent): preserve pi.exec spawn errors (Pi) | PiG's own defect | All platforms | Unreleased |
 | [BF-94e3498](#bf-94e3498) | On Windows, PiG no longer searches `C:\etc\pig\piglets` or `C:\opt\pig\piglet.yaml` for a Piglet | PiG's own defect | Windows | 0.5.0 |
 | [BF-94e6796](#bf-94e6796) | A Durable Harness task that went to sleep for a short time, such as the 1 ms backoff before a generation… | PiG's own defect | All platforms | 0.5.2 |
@@ -1110,6 +1114,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-d983b74](#bf-d983b74) | Anthropic requests whose strict `prefer` tools exceed a strict tool limit ("The compiled grammar is too… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-d9886fe](#bf-d9886fe) | fix(hljs): no magic-literal hits for the resume and dispatch bounds | PiG's own defect | All platforms | Unreleased |
 | [BF-d991498](#bf-d991498) | Display math (`$$...$$`, `\[...\]`) wider than the Markdown content width renders as its raw LaTeX source… | PiG's own defect | All platforms | Unreleased |
+| [BF-da12a5a](#bf-da12a5a) | A saved "Do not trust" decision is no longer ignored for a project without trust-requiring resources, for… | A fix Pi shipped that PiG ported | All platforms | Unreleased |
 | [BF-da5d32b](#bf-da5d32b) | fix(extension): theme palette reports the theme's own sourcePath; conformance rows for the rest of… | PiG's own defect | All platforms | Unreleased |
 | [BF-da8a870](#bf-da8a870) | Pasting a ChatGPT sign-in callback URL with a `ws:`, `wss:` or `ftp:` scheme, a backslash path or an unusual… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-da907ca](#bf-da907ca) | The Go program in the SDK page now compiles | PiG's own defect | All platforms | 0.5.0 |
@@ -1237,6 +1242,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-ed9548a](#bf-ed9548a) | fix(durable/core): report task_interrupted from the runtime's commit path for every task (Pi scheduler.ts) | PiG's own defect | All platforms | Unreleased |
 | [BF-edb73db](#bf-edb73db) | fix(codingagent): one owner-overflow forwarder at a time; the drain test waits for it, not for the flag's… | PiG's own defect | All platforms | Unreleased |
 | [BF-edd287c](#bf-edd287c) | Migrating a version 1 session file that holds a line parsing to a number, string, array or `true` no longer… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-ededef9](#bf-ededef9) | `pig update` now warns when an npm package update leaves the installed version unchanged: shortly after a… | A fix Pi shipped that PiG ported | All platforms | Unreleased |
 | [BF-eeac307](#bf-eeac307) | Anthropic and Bedrock assistant messages write `providerThinkingLevel` after `model`, and write… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-ef0f95a](#bf-ef0f95a) | OpenCode Zen and OpenCode Go use the `opencode.ai/inference` endpoints, which fixes OpenCode Go Gemini models… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-f02269c](#bf-f02269c) | When an extension's `before_provider_request` handler replaces an Anthropic request, or a Codex WebSocket… | PiG's own defect | All platforms | 0.5.0 |
@@ -2760,6 +2766,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** `coding/cli/resource_loader_gaps_upstream_test.go::TestPrintModeInvalidDiscoveredFileURLFailsBind`, `coding/extension/host/inproc/upstream_scoped_models_test.go::TestContextThinkingLevelReadsTheBoundRuntimeLive`, `coding/extension/host/subprocess/runtime_node_loop_turn_test.go::TestNodeLoopTurnRunsQueuedImmediatesBeforeLaterFrames`, `coding/extension/host/subprocess/runtime_node_prompt_end_test.go::TestNodePromptEndWaitEndsWhenAnotherProcessTurnsTheLoop`, `coding/extension/widget_placement_test.go::TestPowerShellToolInputIsTheBashInputShape`, `coding/mcpext/extension_test.go::TestAgentSessionMCPHoldsTheFirstPromptForServersWithDirectToolsOnlyUpToTheStartupWait`, `coding/session_extend_resources_test.go::TestSessionExtendsItsLoaderAfterExtensionReplacement`, `coding/session_extend_resources_test.go::TestSessionExtendsItsLoaderFromResourcesDiscover` and 10 more in docs/bug-ledger.json
 - **Release note:** In print and JSON mode, an extension in its own Node process no longer runs its callbacks with a stale ctx when a later extension's handler awaits a timer or I/O. Pi runs every extension on one event loop, so the immediate or timer that one extension's `session_shutdown` or `agent_settled` handler queues runs while the next extension's handler waits, before the runner is invalidated. The Node runtime now reports such a wait with a `loop_turned` notification, which the host forwards to every other Node process as its next step. Packed extensions already shared one loop and behave as before; RPC and interactive mode are unchanged.
 
+### BF-1fabd48
+
+**`pig -e npm:<pkg>` no longer stays on the version from the first download**
+
+- **Source:** A fix Pi shipped that PiG ported
+- **Symptom:** `pig -e npm:<pkg>` no longer stays on the version from the first download.
+- **Root cause:** Temporary -e npm sources were installed once and reused forever. Like Pi, check the registry on load (unless offline) and reinstall name@latest, or the configured range, when a newer version exists; a failed refresh keeps the cached install.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `1fabd4893e` (2026-10-30, #11375)
+- **Tests:** `coding/cli/package_temporary_refresh_test.go::TestTemporaryNpmSourceDoesNotRefreshOffline`, `coding/cli/package_temporary_refresh_test.go::TestTemporaryNpmSourceDoesNotRefreshWhenUpToDateOrPinned`, `coding/cli/package_temporary_refresh_test.go::TestTemporaryNpmSourceRefreshesWhenANewerVersionExists`
+- **Release note:** `pig -e npm:<pkg>` no longer stays on the version from the first download. On each start and `/reload`, `pig` now reinstalls an `-e` npm package without an exact version (as `name@latest`, or its configured range) when the registry has a newer matching version; offline mode and a failed refresh keep the cached copy. Carried forward from Pi cd6a8f7f (earendil-works/pi#11375), past the 1.4.0+b3a29f11 pin.
+
 ### BF-1fbdabb
 
 **A CRLF that a proxy splits across two network chunks no longer aborts an Anthropic turn with `Could not parse…**
@@ -3177,6 +3197,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Commit that wrote the release note (the fix commit is not identified):** `27f33240ee` (2026-10-09)
 - **Tests:** `coding/cli/no_stdin_test.go::TestNoStdinStartsWithAnOpenInputPipe`, `coding/cli/no_stdin_test.go::TestParseArgsNoStdin`
 - **Release note:** The npm release packer reads `npm pack --json` output from npm 12, which keys the result by package name, as well as npm 11's array (Pi 6fb2e781).
+
+### BF-2843d60
+
+**Starting `pig` from a working directory that has been deleted now prints "Error: The current working…**
+
+- **Source:** A fix Pi shipped that PiG ported
+- **Symptom:** Starting `pig` from a working directory that has been deleted now prints "Error: The current working directory no longer exists.
+- **Root cause:** Starting from a deleted working directory printed "get cwd: no such file or directory"; Pi now names the cause and the remedy, and rethrows any other cwd error. The child-process test deletes its own cwd and runs --help.
+- **User impact:** Crash, hang or runaway process
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `2843d60cd9` (2026-10-30, #11509)
+- **Tests:** `coding/cli/deleted_cwd_test.go::TestStartupInADeletedWorkingDirectoryReportsItAndExits1`, `coding/cli/deleted_cwd_test.go::TestWorkingDirectoryErrorMessageNamesOnlyAMissingDirectory`
+- **Release note:** Starting `pig` from a working directory that has been deleted now prints "Error: The current working directory no longer exists. Change to an existing directory and try again." and exits 1, where it printed `get cwd:` with the operating system error. Carried forward from Pi 88ffcdc7 (earendil-works/pi#11509), past the 1.4.0+b3a29f11 pin.
 
 ### BF-286d303
 
@@ -10678,6 +10712,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** `test/docs-drift/changelog_fragments_test.go::TestChangelogFragmentsFollowTheRules`, `test/docs-drift/public_claims_test.go::TestPublicClaimsMatchTheEvidence`
 - **Release note:** `llama-cpp-classify` answers match Pi bit for bit: the softmax uses `jsmath.Exp`, V8's fdlibm `Math.exp` (Go's `math.Exp` differs in the last bit for some arguments on amd64). Its requests are written with their members in Pi's order, and a failed lookup no longer cancels the sibling requests of the same `Promise.all`, so the server receives what it receives from Pi.
 
+### BF-8a38027
+
+**Windows paths are compared case-insensitively**
+
+- **Source:** A fix Pi shipped that PiG ported
+- **Symptom:** Windows paths are compared case-insensitively.
+- **Root cause:** Adds resolvepath.ComparisonKey, PathsEqual and IsPathWithin (Pi getPathComparisonKey, pathsEqual, isPathWithin) and uses them where Pi did: the trust store and the user .agents/skills exclusion, resource path keys (ResourcePathKey is getResourcePathKey), skill scope and dedup, resource loader source matching and path merging, the loaded extension set, session cwd and default session directory matching, the session import self-check, worktree AGENTS.md shadowing and local package identity. Windows behavior is tested by a simulated platform (resolvepath.OverridePlatform).
+- **User impact:** Behavior differed from Pi
+- **Platform:** Windows
+- **Fixed in:** Unreleased
+- **Fix commits:** `8a38027ac9` (2026-10-30, #10488)
+- **Tests:** `coding/extension/host/subprocess/startup_origin_windows_paths_test.go::TestFinalSetOriginIgnoresPathCasingOnWindows`, `coding/pigletbuild/records_identity_stability_test.go::TestRecordSourceIdentityBytesDoNotChangeWhenThePlatformFoldsCase`, `coding/resource_loader_windows_paths_test.go::TestResourceLoaderPathMatchingIgnoresCaseOnWindows`, `coding/session_import_windows_paths_test.go::TestImportDestinationRecognizesAStoredSessionInOtherCasingOnWindows`, `coding/source/identity_stability_test.go::TestLocalIdentityKeepsItsSpellingWhateverThePlatformFoldsCase`, `internal/codingagent/context_files_windows_paths_test.go::TestShadowedContextFileOfComparesCaseInsensitivelyOnWindows`, `internal/codingagent/resource_path_key_case_test.go::TestLoadSkillsClassifiesAnExplicitPathUnderTheUserSkillsDirectoryRegardlessOfCasingOnWindows`, `internal/codingagent/resource_path_key_case_test.go::TestResourcePathKeyFoldsFilePathCasingOnWindowsButNotSyntheticIdentifiers` and 7 more in docs/bug-ledger.json
+- **Release note:** Windows paths are compared case-insensitively. `c:\Users\me` and `C:\Users\me` name one directory, but exact string comparison treated them as two: with a working directory and a home directory that differ only in casing, global skills loaded as project skills and every one was reported as a name collision, `~/.agents/skills` counted as a project resource that needs trust, saved trust decisions in `trust.json` were not found, `--continue` and resume by id hid sessions recorded under another casing of the working directory, and `pig remove` did not match a package configured under another casing. Resource, extension and skill path keys, source matching, local package identity, the session-import self-check and the worktree `AGENTS.md` shadowing now use one comparison key. Carried forward from Pi 1be312b4 (earendil-works/pi#10488), past the 1.4.0+b3a29f11 pin.
+
 ### BF-8a44836
 
 **Closing a session with an MCP server that signs in with OAuth no longer fails at random**
@@ -12367,6 +12415,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `93f8b7c250` (2026-10-10)
 - **Tests:** `agent/agent_class_pi_oracle_test.go::TestAgentClassMatchesPi`
+
+### BF-94284ac
+
+**`pig -e git:<repo>@<branch>` no longer stays on its first checkout**
+
+- **Source:** A fix Pi shipped that PiG ported
+- **Symptom:** `pig -e git:<repo>@<branch>` no longer stays on its first checkout.
+- **Root cause:** A temporary -e git source with a ref was treated as pinned and never refreshed, so git:host/repo@main stayed on its first checkout. Refresh refs too, skipping only a commit-hash ref that is already checked out.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `94284ac7cf` (2026-10-30, #11375)
+- **Tests:** `coding/cli/package_temporary_refresh_test.go::TestTemporaryGitSourcePinnedToAnotherCommitIsRefreshedUnlessOffline`, `coding/cli/package_temporary_refresh_test.go::TestTemporaryGitSourcePinnedToTheCheckedOutCommitIsNotRefreshed`, `coding/cli/package_temporary_refresh_test.go::TestTemporaryGitSourceWithABranchRefIsRefreshed`, `coding/cli/package_temporary_upstream_test.go::TestTemporaryGitCacheBoundaries`
+- **Release note:** `pig -e git:<repo>@<branch>` no longer stays on its first checkout. A temporary Git source with a ref is now fetched and reset to the ref on each start and `/reload`, as an unpinned source is; a commit-hash ref that is already checked out is not fetched. Offline mode and a failed refresh keep the cached checkout. Carried forward from Pi bec60c54 (earendil-works/pi#11375), past the 1.4.0+b3a29f11 pin.
 
 ### BF-942bc6c
 
@@ -16482,6 +16544,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** `tui/markdown_latex_table_test.go::TestMarkdownUnclosedDisplayMathBeforeTablesMatchesPi`, `tui/markdown_latex_width_test.go::TestMarkdownDisplayMathWiderThanTheContentWidthFallsBackToRawSource`, `tui/markdown_latex_width_test.go::TestMarkdownDisplayMathWidthFallbackMatchesPi`, `tui/markdown_unicode_space_oracle_test.go::TestMarkdownUnicodeSpaceLinesMatchPi`
 - **Release note:** Display math (`$$...$$`, `\[...\]`) wider than the Markdown content width renders as its raw LaTeX source, which wraps like text, instead of wrapping each row of the 2D layout on its own and splitting fractions and sums apart. Layouts that fit render as before. Ports Pi's `latexBlock` width check.
 
+### BF-da12a5a
+
+**A saved "Do not trust" decision is no longer ignored for a project without trust-requiring resources, for…**
+
+- **Source:** A fix Pi shipped that PiG ported
+- **Symptom:** A saved "Do not trust" decision is no longer ignored for a project without trust-requiring resources, for example a folder with only `AGENTS.md`.
+- **Root cause:** A saved Do not trust decision was ignored when the project held no trust-requiring resources (an AGENTS.md-only folder): resolveProjectTrusted and the startup build auto-trusted it. The saved decision now takes precedence over auto-trust in both, and pig status/diagnose report it. The D211 path (ContextFilesTrustedOnly) already reached the saved decision through the prompt path; a test pins it.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `da12a5a16b` (2026-10-30, #10947)
+- **Tests:** `coding/cli/introspection_truth_test.go::TestReportProjectTrustNamesTheDeciding`, `coding/cli/project_trust_saved_decision_test.go::TestResolveProjectTrustedHonorsASavedDecisionBeforeAutoTrust`, `coding/cli/project_trust_saved_decision_test.go::TestResolveProjectTrustedHonorsASavedDecisionWhenContextFilesNeedTrust`, `coding/cli/project_trust_saved_decision_test.go::TestStartupBuildHonorsASavedDecisionForAProjectWithoutTrustRequiringResources`, `internal/codingagent/reload_trust_models_test.go::TestImplicitProjectTrustAfterReload`
+- **Release note:** A saved "Do not trust" decision is no longer ignored for a project without trust-requiring resources, for example a folder with only `AGENTS.md`. `pig` auto-trusted such a project whatever `trust.json` held, so `ctx.isProjectTrusted()` returned true and the package commands treated it as trusted. A saved decision now takes precedence, and auto-trust applies only when none is saved; `pig status` and `pig diagnose` report the saved decision too. Carried forward from Pi 31ade0e0 (earendil-works/pi#10947), past the 1.4.0+b3a29f11 pin.
+
 ### BF-da5d32b
 
 **fix(extension): theme palette reports the theme's own sourcePath; conformance rows for the rest of…**
@@ -18237,6 +18313,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `34f7594aa5` (2026-10-11), `edd287c5d8` (2026-10-12)
 - **Tests:** `internal/codingagent/extension_ui_phase_shutdown_test.go::TestAwaitedExtensionPhaseWithoutShutdownReturnsItsResult`, `internal/codingagent/extension_ui_phase_shutdown_test.go::TestNewSessionEndedByShutdownIsNotAFatalRuntimeError`, `internal/codingagent/extension_ui_phase_shutdown_test.go::TestShutdownDuringAwaitedExtensionPhaseDoesNotWaitForAHandlerThatIgnoresCancellation`, `internal/codingagent/extension_ui_phase_shutdown_test.go::TestShutdownDuringAwaitedExtensionPhaseEndsThePhase`, `internal/codingagent/session_open_nonentry_oracle_test.go::TestMigrateSessionEntriesPassesOverRecordsThatAreNotObjectsWhenFindingTheHeader`, `internal/codingagent/session_open_nonentry_oracle_test.go::TestMigrateV1ToV2ChainsThroughAnArrayRecordAndRefusesAPrimitiveAsPiDoes`, `internal/codingagent/session_open_nonentry_oracle_test.go::TestSessionOpenKeepsRecordsThatAreNotEntriesAsPiDoes`, `test/parity/scenarios/extensions-runtime/73-shutdown-from-session-before-fork.toml` and 2 more in docs/bug-ledger.json
 - **Release note:** Migrating a version 1 session file that holds a line parsing to a number, string, array or `true` no longer fails while finding the header. Like Pi, an array record stays as written and still takes a place in the migration's id chain, and a number, string or boolean record stops the migration with the same `Cannot create property 'id'` error Pi throws.
+
+### BF-ededef9
+
+**`pig update` now warns when an npm package update leaves the installed version unchanged: shortly after a…**
+
+- **Source:** A fix Pi shipped that PiG ported
+- **Symptom:** `pig update` now warns when an npm package update leaves the installed version unchanged: shortly after a publish `npm view` can report the new version while `npm install` still resolves the old one, and `Updated packages` was printed with nothing updated.
+- **Root cause:** shouldUpdateNpmSource returns the installed and the registry version; after npm install each announced update is re-read and a yellow progress line is printed for a package that stayed at its installed version. Production hunks are lifted from fix/follow-pi-next (470678190).
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `ededef9928` (2026-10-30, #11536)
+- **Tests:** `coding/cli/package_batch_upstream_test.go::TestPackageBatchedConcurrentUpdatesOriginal`, `coding/cli/package_progress_warning_test.go::TestPackageProgressPrinterPrintsProgressEventsInYellow`, `internal/packagemanager/package_manager_ops_gaps_test.go::TestPackageManagerWarnsWhenAnNpmUpdateLeavesTheInstalledVersionUnchanged`
+- **Release note:** `pig update` now warns when an npm package update leaves the installed version unchanged: shortly after a publish `npm view` can report the new version while `npm install` still resolves the old one, and `Updated packages` was printed with nothing updated. The warning names the package, the installed and the registry version, and is printed in yellow. Carried forward from Pi 0d23d534 (earendil-works/pi#11536), past the 1.4.0+b3a29f11 pin.
 
 ### BF-eeac307
 

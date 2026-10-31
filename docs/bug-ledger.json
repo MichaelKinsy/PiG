@@ -3217,6 +3217,31 @@
       ]
     },
     {
+      "id": "BF-1fabd48",
+      "title": "`pig -e npm:\u003cpkg\u003e` no longer stays on the version from the first download",
+      "symptom": "`pig -e npm:\u003cpkg\u003e` no longer stays on the version from the first download.",
+      "rootCause": "Temporary -e npm sources were installed once and reused forever. Like Pi, check the registry on load (unless offline) and reinstall name@latest, or the configured range, when a newer version exists; a failed refresh keeps the cached install.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "pi-port",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`pig -e npm:\u003cpkg\u003e` no longer stays on the version from the first download. On each start and `/reload`, `pig` now reinstalls an `-e` npm package without an exact version (as `name@latest`, or its configured range) when the registry has a newer matching version; offline mode and a failed refresh keep the cached copy. Carried forward from Pi cd6a8f7f (earendil-works/pi#11375), past the 1.4.0+b3a29f11 pin.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "1fabd4893e",
+          "date": "2026-10-30",
+          "pr": "11375"
+        }
+      ],
+      "tests": [
+        "coding/cli/package_temporary_refresh_test.go::TestTemporaryNpmSourceDoesNotRefreshOffline",
+        "coding/cli/package_temporary_refresh_test.go::TestTemporaryNpmSourceDoesNotRefreshWhenUpToDateOrPinned",
+        "coding/cli/package_temporary_refresh_test.go::TestTemporaryNpmSourceRefreshesWhenANewerVersionExists"
+      ]
+    },
+    {
       "id": "BF-1fbdabb",
       "title": "A CRLF that a proxy splits across two network chunks no longer aborts an Anthropic turn with `Could not parse…",
       "symptom": "A CRLF that a proxy splits across two network chunks no longer aborts an Anthropic turn with `Could not parse Anthropic SSE event message_start` (D121, pi-mono #10390).",
@@ -4152,6 +4177,30 @@
       "tests": [
         "coding/cli/no_stdin_test.go::TestNoStdinStartsWithAnOpenInputPipe",
         "coding/cli/no_stdin_test.go::TestParseArgsNoStdin"
+      ]
+    },
+    {
+      "id": "BF-2843d60",
+      "title": "Starting `pig` from a working directory that has been deleted now prints \"Error: The current working…",
+      "symptom": "Starting `pig` from a working directory that has been deleted now prints \"Error: The current working directory no longer exists.",
+      "rootCause": "Starting from a deleted working directory printed \"get cwd: no such file or directory\"; Pi now names the cause and the remedy, and rethrows any other cwd error. The child-process test deletes its own cwd and runs --help.",
+      "rootCauseSource": "commit",
+      "userImpact": "Crash, hang or runaway process",
+      "platform": "All platforms",
+      "class": "pi-port",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Starting `pig` from a working directory that has been deleted now prints \"Error: The current working directory no longer exists. Change to an existing directory and try again.\" and exits 1, where it printed `get cwd:` with the operating system error. Carried forward from Pi 88ffcdc7 (earendil-works/pi#11509), past the 1.4.0+b3a29f11 pin.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "2843d60cd9",
+          "date": "2026-10-30",
+          "pr": "11509"
+        }
+      ],
+      "tests": [
+        "coding/cli/deleted_cwd_test.go::TestStartupInADeletedWorkingDirectoryReportsItAndExits1",
+        "coding/cli/deleted_cwd_test.go::TestWorkingDirectoryErrorMessageNamesOnlyAMissingDirectory"
       ]
     },
     {
@@ -19881,6 +19930,43 @@
       ]
     },
     {
+      "id": "BF-8a38027",
+      "title": "Windows paths are compared case-insensitively",
+      "symptom": "Windows paths are compared case-insensitively.",
+      "rootCause": "Adds resolvepath.ComparisonKey, PathsEqual and IsPathWithin (Pi getPathComparisonKey, pathsEqual, isPathWithin) and uses them where Pi did: the trust store and the user .agents/skills exclusion, resource path keys (ResourcePathKey is getResourcePathKey), skill scope and dedup, resource loader source matching and path merging, the loaded extension set, session cwd and default session directory matching, the session import self-check, worktree AGENTS.md shadowing and local package identity. Windows behavior is tested by a simulated platform (resolvepath.OverridePlatform).",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "Windows",
+      "class": "pi-port",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Windows paths are compared case-insensitively. `c:\\Users\\me` and `C:\\Users\\me` name one directory, but exact string comparison treated them as two: with a working directory and a home directory that differ only in casing, global skills loaded as project skills and every one was reported as a name collision, `~/.agents/skills` counted as a project resource that needs trust, saved trust decisions in `trust.json` were not found, `--continue` and resume by id hid sessions recorded under another casing of the working directory, and `pig remove` did not match a package configured under another casing. Resource, extension and skill path keys, source matching, local package identity, the session-import self-check and the worktree `AGENTS.md` shadowing now use one comparison key. Carried forward from Pi 1be312b4 (earendil-works/pi#10488), past the 1.4.0+b3a29f11 pin.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "8a38027ac9",
+          "date": "2026-10-30",
+          "pr": "10488"
+        }
+      ],
+      "tests": [
+        "coding/extension/host/subprocess/startup_origin_windows_paths_test.go::TestFinalSetOriginIgnoresPathCasingOnWindows",
+        "coding/pigletbuild/records_identity_stability_test.go::TestRecordSourceIdentityBytesDoNotChangeWhenThePlatformFoldsCase",
+        "coding/resource_loader_windows_paths_test.go::TestResourceLoaderPathMatchingIgnoresCaseOnWindows",
+        "coding/session_import_windows_paths_test.go::TestImportDestinationRecognizesAStoredSessionInOtherCasingOnWindows",
+        "coding/source/identity_stability_test.go::TestLocalIdentityKeepsItsSpellingWhateverThePlatformFoldsCase",
+        "internal/codingagent/context_files_windows_paths_test.go::TestShadowedContextFileOfComparesCaseInsensitivelyOnWindows",
+        "internal/codingagent/resource_path_key_case_test.go::TestLoadSkillsClassifiesAnExplicitPathUnderTheUserSkillsDirectoryRegardlessOfCasingOnWindows",
+        "internal/codingagent/resource_path_key_case_test.go::TestResourcePathKeyFoldsFilePathCasingOnWindowsButNotSyntheticIdentifiers",
+        "internal/codingagent/session_windows_paths_test.go::TestSessionCwdAndDefaultDirectoryComparisonsIgnoreCaseOnWindows",
+        "internal/codingagent/trust_manager_windows_paths_test.go::TestHasTrustRequiringProjectResourcesIgnoresTheUserSkillsDirWhenHomeDiffersOnlyByCaseOnWindows",
+        "internal/codingagent/trust_manager_windows_paths_test.go::TestProjectTrustStoreMatchesSavedDecisionsRegardlessOfCasingOnWindows",
+        "internal/packagemanager/package_identity_case_test.go::TestPackageSourcesMatchIgnoresLocalPathCasingOnWindows",
+        "internal/resolvepath/path_compare_test.go::TestIsPathWithinMatchesWholePathSegments",
+        "internal/resolvepath/path_compare_test.go::TestPathComparisonKeepsCasingOnCaseSensitivePlatforms",
+        "internal/resolvepath/path_compare_test.go::TestPathComparisonTreatsDriveLettersAndComponentsCaseInsensitivelyOnWindows"
+      ]
+    },
+    {
       "id": "BF-8a44836",
       "title": "Closing a session with an MCP server that signs in with OAuth no longer fails at random",
       "symptom": "Closing a session with an MCP server that signs in with OAuth no longer fails at random.",
@@ -23003,6 +23089,32 @@
       ],
       "tests": [
         "agent/agent_class_pi_oracle_test.go::TestAgentClassMatchesPi"
+      ]
+    },
+    {
+      "id": "BF-94284ac",
+      "title": "`pig -e git:\u003crepo\u003e@\u003cbranch\u003e` no longer stays on its first checkout",
+      "symptom": "`pig -e git:\u003crepo\u003e@\u003cbranch\u003e` no longer stays on its first checkout.",
+      "rootCause": "A temporary -e git source with a ref was treated as pinned and never refreshed, so git:host/repo@main stayed on its first checkout. Refresh refs too, skipping only a commit-hash ref that is already checked out.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "pi-port",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`pig -e git:\u003crepo\u003e@\u003cbranch\u003e` no longer stays on its first checkout. A temporary Git source with a ref is now fetched and reset to the ref on each start and `/reload`, as an unpinned source is; a commit-hash ref that is already checked out is not fetched. Offline mode and a failed refresh keep the cached checkout. Carried forward from Pi bec60c54 (earendil-works/pi#11375), past the 1.4.0+b3a29f11 pin.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "94284ac7cf",
+          "date": "2026-10-30",
+          "pr": "11375"
+        }
+      ],
+      "tests": [
+        "coding/cli/package_temporary_refresh_test.go::TestTemporaryGitSourcePinnedToAnotherCommitIsRefreshedUnlessOffline",
+        "coding/cli/package_temporary_refresh_test.go::TestTemporaryGitSourcePinnedToTheCheckedOutCommitIsNotRefreshed",
+        "coding/cli/package_temporary_refresh_test.go::TestTemporaryGitSourceWithABranchRefIsRefreshed",
+        "coding/cli/package_temporary_upstream_test.go::TestTemporaryGitCacheBoundaries"
       ]
     },
     {
@@ -32308,6 +32420,33 @@
       ]
     },
     {
+      "id": "BF-da12a5a",
+      "title": "A saved \"Do not trust\" decision is no longer ignored for a project without trust-requiring resources, for…",
+      "symptom": "A saved \"Do not trust\" decision is no longer ignored for a project without trust-requiring resources, for example a folder with only `AGENTS.md`.",
+      "rootCause": "A saved Do not trust decision was ignored when the project held no trust-requiring resources (an AGENTS.md-only folder): resolveProjectTrusted and the startup build auto-trusted it. The saved decision now takes precedence over auto-trust in both, and pig status/diagnose report it. The D211 path (ContextFilesTrustedOnly) already reached the saved decision through the prompt path; a test pins it.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "pi-port",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A saved \"Do not trust\" decision is no longer ignored for a project without trust-requiring resources, for example a folder with only `AGENTS.md`. `pig` auto-trusted such a project whatever `trust.json` held, so `ctx.isProjectTrusted()` returned true and the package commands treated it as trusted. A saved decision now takes precedence, and auto-trust applies only when none is saved; `pig status` and `pig diagnose` report the saved decision too. Carried forward from Pi 31ade0e0 (earendil-works/pi#10947), past the 1.4.0+b3a29f11 pin.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "da12a5a16b",
+          "date": "2026-10-30",
+          "pr": "10947"
+        }
+      ],
+      "tests": [
+        "coding/cli/introspection_truth_test.go::TestReportProjectTrustNamesTheDeciding",
+        "coding/cli/project_trust_saved_decision_test.go::TestResolveProjectTrustedHonorsASavedDecisionBeforeAutoTrust",
+        "coding/cli/project_trust_saved_decision_test.go::TestResolveProjectTrustedHonorsASavedDecisionWhenContextFilesNeedTrust",
+        "coding/cli/project_trust_saved_decision_test.go::TestStartupBuildHonorsASavedDecisionForAProjectWithoutTrustRequiringResources",
+        "internal/codingagent/reload_trust_models_test.go::TestImplicitProjectTrustAfterReload"
+      ]
+    },
+    {
       "id": "BF-da5d32b",
       "title": "fix(extension): theme palette reports the theme's own sourcePath; conformance rows for the rest of…",
       "symptom": "fix(extension): theme palette reports the theme's own sourcePath; conformance rows for the rest of ctx.ui.theme",
@@ -36836,6 +36975,31 @@
         "test/parity/scenarios/extensions-runtime/73-shutdown-from-session-before-fork.toml",
         "test/parity/scenarios/extensions-runtime/73-shutdown-from-session-before-switch.toml",
         "test/parity/scenarios/extensions-runtime/73-shutdown-from-session-start.toml"
+      ]
+    },
+    {
+      "id": "BF-ededef9",
+      "title": "`pig update` now warns when an npm package update leaves the installed version unchanged: shortly after a…",
+      "symptom": "`pig update` now warns when an npm package update leaves the installed version unchanged: shortly after a publish `npm view` can report the new version while `npm install` still resolves the old one, and `Updated packages` was printed with nothing updated.",
+      "rootCause": "shouldUpdateNpmSource returns the installed and the registry version; after npm install each announced update is re-read and a yellow progress line is printed for a package that stayed at its installed version. Production hunks are lifted from fix/follow-pi-next (470678190).",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "pi-port",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`pig update` now warns when an npm package update leaves the installed version unchanged: shortly after a publish `npm view` can report the new version while `npm install` still resolves the old one, and `Updated packages` was printed with nothing updated. The warning names the package, the installed and the registry version, and is printed in yellow. Carried forward from Pi 0d23d534 (earendil-works/pi#11536), past the 1.4.0+b3a29f11 pin.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "ededef9928",
+          "date": "2026-10-30",
+          "pr": "11536"
+        }
+      ],
+      "tests": [
+        "coding/cli/package_batch_upstream_test.go::TestPackageBatchedConcurrentUpdatesOriginal",
+        "coding/cli/package_progress_warning_test.go::TestPackageProgressPrinterPrintsProgressEventsInYellow",
+        "internal/packagemanager/package_manager_ops_gaps_test.go::TestPackageManagerWarnsWhenAnNpmUpdateLeavesTheInstalledVersionUnchanged"
       ]
     },
     {
