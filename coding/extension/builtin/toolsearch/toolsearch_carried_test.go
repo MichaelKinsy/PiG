@@ -5,7 +5,9 @@ package toolsearch_test
 import (
 	_ "embed"
 	"encoding/json"
+	"math"
 	"reflect"
+	"slices"
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/coding/extension"
@@ -84,8 +86,49 @@ func TestBm25RankerRanksAToolMatchingMoreQueryTermsFirst(t *testing.T) {
 //go:embed testdata/ranker_goldens.json
 var rankerGoldens []byte
 
-// The goldens are Pi's own ranking at 79006f06, the newest carried commit of tool.ts (testdata/gen_ranker_goldens.mjs, run with Node on linux/amd64: Math.log differs in the last digits on arm64) over random tool sets with namespaces, names that share words with the queries, words of other scripts and
-// limits: names, order and scores must match exactly. The pinned Pi's oracle (toolsearch_oracle_test.go) cannot supply them: it scores the name and the namespace as part
+// maxScoreULPs is how many units in the last place a score may be from Pi's golden. V8's Math.log, which gives the IDF, differs between platforms by up to one unit in the last place: Node's
+// arm64 build contracts the multiply-adds of fdlibm's log, its x64 build rounds every operation, and jsmath.Log reproduces each (it equals the Node of the same platform bit for bit,
+// 0 differences over 20,000 random rankings on arm64 and on amd64). The goldens are Node on linux/amd64. A score is a sum of at most a handful of IDFs times positive weights, so a one-unit difference in each IDF
+// moves it by at most the same relative amount plus the rounding of the few additions it goes through: 2 units over 78,000 scores of random rankings (433 differ, none by more), and 4 leaves room for a
+// longer query. The same inputs ranked on both platforms by Node itself never changed an order. Scores inside the bound are interchangeable, so tools whose goldens lie within it may swap places.
+const maxScoreULPs = 4
+
+func scoreULPs(a, b float64) uint64 {
+	x, y := math.Float64bits(a), math.Float64bits(b)
+	if x > y {
+		return x - y
+	}
+	return y - x
+}
+
+// sameRanking reports whether got is Pi's ranking up to maxScoreULPs: every score within the bound of the golden of the same name, and the names in the golden's order except between goldens that are
+// within the bound of each other.
+func sameRanking(got []toolsearch.Match, want []goldenMatch) bool {
+	if len(got) != len(want) {
+		return false
+	}
+	for k := range got {
+		if got[k].Name == want[k].Name {
+			if scoreULPs(got[k].Score, want[k].Score) > maxScoreULPs {
+				return false
+			}
+			continue
+		}
+		swapped := slices.IndexFunc(want, func(m goldenMatch) bool { return m.Name == got[k].Name })
+		if swapped < 0 || scoreULPs(want[k].Score, want[swapped].Score) > maxScoreULPs || scoreULPs(got[k].Score, want[swapped].Score) > maxScoreULPs {
+			return false
+		}
+	}
+	return true
+}
+
+type goldenMatch struct {
+	Name  string  `json:"name"`
+	Score float64 `json:"score"`
+}
+
+// The goldens are Pi's own ranking at 79006f06, the newest carried commit of tool.ts (testdata/gen_ranker_goldens.mjs, run with Node on linux/amd64) over random tool sets with namespaces, names that share words with the queries, words of other scripts and
+// limits: names and order must match, and scores within maxScoreULPs. The pinned Pi's oracle (toolsearch_oracle_test.go) cannot supply them: it scores the name and the namespace as part
 // of the text.
 func TestBm25RankerMatchesPiTheLatestCarriedRanker(t *testing.T) {
 	var probes []struct {
@@ -99,12 +142,9 @@ func TestBm25RankerMatchesPiTheLatestCarriedRanker(t *testing.T) {
 				Instructions string `json:"instructions"`
 			} `json:"namespace"`
 		} `json:"tools"`
-		Query  string `json:"query"`
-		Limit  int    `json:"limit"`
-		Ranked []struct {
-			Name  string  `json:"name"`
-			Score float64 `json:"score"`
-		} `json:"ranked"`
+		Query  string        `json:"query"`
+		Limit  int           `json:"limit"`
+		Ranked []goldenMatch `json:"ranked"`
 	}
 	if err := json.Unmarshal(rankerGoldens, &probes); err != nil {
 		t.Fatal(err)
@@ -134,18 +174,40 @@ func TestBm25RankerMatchesPiTheLatestCarriedRanker(t *testing.T) {
 		}
 		got := toolsearch.NewBm25Ranker().Rank(probe.Query, documents, probe.Limit)
 		ranked += len(got)
-		if len(got) != len(probe.Ranked) {
+		if !sameRanking(got, probe.Ranked) {
 			t.Errorf("probe %d %q limit %d: got %v, want %v", i, probe.Query, probe.Limit, got, probe.Ranked)
-			continue
-		}
-		for k := range got {
-			if got[k].Name != probe.Ranked[k].Name || got[k].Score != probe.Ranked[k].Score {
-				t.Errorf("probe %d %q limit %d: got %v, want %v", i, probe.Query, probe.Limit, got, probe.Ranked)
-				break
-			}
 		}
 	}
 	if ranked < 100 {
 		t.Fatalf("only %d matches over %d probes: the goldens do not exercise the ranker", ranked, len(probes))
+	}
+}
+
+// The comparison is strict outside the bound: a score further than maxScoreULPs from its golden fails, a tool may take another's place only when their goldens are within the bound, and no
+// tool may appear or vanish.
+func TestSameRankingKeepsTheOrderStrictOutsideTheScoreBound(t *testing.T) {
+	step := func(score float64, ulps int) float64 {
+		for range ulps {
+			score = math.Nextafter(score, math.Inf(1))
+		}
+		return score
+	}
+	want := []goldenMatch{{"a", 3}, {"b", step(3, 1)}, {"c", 2}}
+	for _, test := range []struct {
+		name string
+		got  []toolsearch.Match
+		ok   bool
+	}{
+		{"exact", []toolsearch.Match{{Name: "a", Score: 3}, {Name: "b", Score: step(3, 1)}, {Name: "c", Score: 2}}, true},
+		{"scores at the bound", []toolsearch.Match{{Name: "a", Score: step(3, maxScoreULPs)}, {Name: "b", Score: step(3, 1)}, {Name: "c", Score: 2}}, true},
+		{"a score past the bound", []toolsearch.Match{{Name: "a", Score: step(3, maxScoreULPs+1)}, {Name: "b", Score: step(3, 1)}, {Name: "c", Score: 2}}, false},
+		{"near-tied tools swapped", []toolsearch.Match{{Name: "b", Score: step(3, 1)}, {Name: "a", Score: 3}, {Name: "c", Score: 2}}, true},
+		{"tools swapped past the bound", []toolsearch.Match{{Name: "a", Score: 3}, {Name: "c", Score: 2}, {Name: "b", Score: step(3, 1)}}, false},
+		{"a tool replaced", []toolsearch.Match{{Name: "a", Score: 3}, {Name: "b", Score: step(3, 1)}, {Name: "d", Score: 2}}, false},
+		{"a tool missing", []toolsearch.Match{{Name: "a", Score: 3}, {Name: "b", Score: step(3, 1)}}, false},
+	} {
+		if got := sameRanking(test.got, want); got != test.ok {
+			t.Errorf("%s: sameRanking = %v, want %v", test.name, got, test.ok)
+		}
 	}
 }
