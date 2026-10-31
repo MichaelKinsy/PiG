@@ -183,38 +183,6 @@ cite = "packages/coding-agent/src/modes/interactive/components/user-message.ts:2
 reason = "Pi 64627838b (#11270) gives the user and assistant message components the trailing optional `messageId` and `timestamp` constructor parameters (user-message.ts:26-27, the assistant component likewise), undefined for a live message; the Go constructors take the two strings, empty for undefined, so the existing constructions pass \"\", \"\" and expect the same rendering."
 
 [[entry]]
-path = "durable/core/driver/harness_tasks_port2_core_test.go"
-commit = "830ecbc364e8fd29c17be6fed8970589576adf45"
-class = "CITE"
-cite = "packages/chord/src/watch.ts:157"
-reason = "Pi 92ab53602 names the end of a watch whose source closed `ended` (chord watch.ts:11, :157), where the Session closing used to end it `session_closed`; the expected end reason of the watch left open when the Session closes is `ended`."
-
-[[entry]]
-path = "durable/core/driver/watch_test.go"
-commit = "830ecbc364e8fd29c17be6fed8970589576adf45"
-class = "CITE"
-cite = "packages/chord/src/watch.ts:157"
-reason = "Pi 92ab53602 ends the watches a closing Session leaves open as `ended` (chord watch.ts:11, :157) instead of `session_closed`, and replaces Session.documentState, Conversation.ViewState and Harness.TaskGraph by watches (session.ts watchDoc, task-graph.ts watchTaskGraph): the tests that read a replicated state's Value and Dispose it read the watch's Value and Stop it, and the end reason expected is `ended`."
-
-[[entry]]
-path = "durable/harness/harness_listener_errors_test.go"
-commit = "830ecbc364e8fd29c17be6fed8970589576adf45"
-class = "CITE"
-cite = "packages/chord/src/watch.ts:157"
-reason = "Pi 92ab53602 ends the watch of a closing source `ended` (chord watch.ts:11, :157) instead of `session_closed`, and the task graph is observed through a watch with an explicit SourceEnded event instead of CloseSession; the expected end reasons change, and the case of the replicated states' observers is removed with the states themselves (Harness.TaskGraph and Conversation.ViewState no longer exist in Pi)."
-
-[[entry]]
-path = "durable/harness/harness_tasks_scheduling_test.go"
-commit = "830ecbc364e8fd29c17be6fed8970589576adf45"
-class = "CITE"
-cite = "packages/chord/src/watch.ts:157"
-reason = "Pi 92ab53602 names the end of a watch whose source closed `ended` (chord watch.ts:11, :157), where the Session closing used to end it `session_closed`; the expected end reason of the watch left open when the Session closes is `ended`."
-
-[[entry]]
-path = "durable/session/observation_internal_test.go"
-commit = "830ecbc364e8fd29c17be6fed8970589576adf45"
-class = "CITE"
-cite = "packages/durable/test/session-watches.test.ts:781"
 reason = "Pi 92ab53602 removes the replicated-state source attachments (the two attachment tests that isolate a listener failure and reset delivering are deleted with them) and gives the Session committed watches that end with an explicit source event and drop every reference into the Session once ended (session-watches.test.ts:781 \"retains neither its Session nor its listener once stopped, while still referenced\"; chord watch.ts:153-158 for the end). The added tests expect what the watch delivers and ends with on a null value, on retirement and when stopped (the retirement ending was superseded within this batch by the followed address of 8b0caefc, see the ledger entries of 832ba8ca17)."
 
 [[entry]]
