@@ -73,7 +73,10 @@ function run() {
   }
   const { higher, lower } = compare(JSON.parse(readFileSync(baselinePath, "utf8")), measured)
   for (const l of [...higher, ...lower]) console.error(`FAIL ${l}`)
-  if (higher.length + lower.length > 0) process.exit(1)
+  if (higher.length + lower.length > 0) {
+    process.exitCode = 1
+    return
+  }
   console.log(`allocs: ${total(measured)} sites in ${Object.keys(measured).length} packages, equal to allocs.json`)
 }
 

@@ -619,7 +619,7 @@ async function scene(m) {
   return JSON.stringify(out);
 }
 const want = await scene(pi), got = await scene(pig);
-if (want !== got) { console.log("pinned: " + want + "\npig:    " + got); process.exit(1); }
+if (want !== got) { await new Promise((done) => process.stdout.write("pinned: " + want + "\npig:    " + got + "\n", done)); process.exit(1); }
 `)
 }
 
@@ -680,7 +680,7 @@ async function scene(m) {
   return JSON.stringify(out);
 }
 const want = await scene(pi), got = await scene(pig);
-if (want !== got) { console.log("pinned: " + want + "\npig:    " + got); process.exit(1); }
+if (want !== got) { await new Promise((done) => process.stdout.write("pinned: " + want + "\npig:    " + got + "\n", done)); process.exit(1); }
 `)
 }
 

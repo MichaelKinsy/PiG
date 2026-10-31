@@ -78,4 +78,5 @@ for (const c of oracle.rpc) {
     for (const [got, count] of counts) if (got !== want) console.log(`  ${count}x ${got}\n  want ${want}`);
   }
 }
-process.exit(failed ? 1 : 0);
+// Exit once the pipe has taken every line: process.exit() right after console.log drops what it has not drained.
+process.stdout.write("", () => process.exit(failed ? 1 : 0));

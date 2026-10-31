@@ -124,4 +124,5 @@ for (const [moduleDir, name] of caseSources()) {
     writeFileSync(path, text);
   }
 }
-process.exit(stale ? 1 : 0);
+// Exit once the pipe has taken every line: process.exit() right after console.error drops what it has not drained.
+process.stderr.write("", () => process.exit(stale ? 1 : 0));

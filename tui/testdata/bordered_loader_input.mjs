@@ -29,5 +29,4 @@ const results = JSON.parse(input).map((test) => {
   loader.dispose();
   return { states };
 });
-process.stdout.write(JSON.stringify(results));
-process.exit(0);
+process.stdout.write(JSON.stringify(results), () => process.exit(0));

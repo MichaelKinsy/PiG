@@ -15,6 +15,7 @@ import { ensureBuilt, gate, vitestRun } from "../lib/gate.mjs"
 import { compareInterleavings, testTokens, tokens } from "../lib/interleave.mjs"
 import { resolveImpl } from "../lib/gate.mjs"
 import { readTrace } from "../lib/rowdiff.mjs"
+import { exitAfterFlush } from "../lib/exit.mjs"
 
 const DIR = join(dirname(fileURLToPath(import.meta.url)), "..", "traces")
 const [cmd, ...rest] = process.argv.slice(2)
@@ -48,7 +49,7 @@ async function vitestTraces() {
 		bad++
 		console.log(`FAIL    ${row}  "${test.slice(0, 50)}"  first difference at event ${d.index}\n          agreed:   ${d.before.join(" | ")}\n          expected: ${d.expected.join(" | ")}\n          got:      ${d.got.join(" | ")}`)
 	}
-	process.exit(bad ? 1 : 0)
+	await exitAfterFlush(bad ? 1 : 0)
 }
 
 const programRows = loadCorpus().scenario.filter(r => r.runner === "example" || r.runner === "interop").map(r => r.id)
@@ -84,4 +85,4 @@ for (const id of ids) {
 }
 if (cmd === "check" || cmd === "verify") console.log(`${good} of ${ids.length - skipped} rows match Pi's interleaving${skipped ? ` (${skipped} skipped)` : ""}`)
 void readdirSync
-process.exit(bad ? 1 : 0)
+await exitAfterFlush(bad ? 1 : 0)

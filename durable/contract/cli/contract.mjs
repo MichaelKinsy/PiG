@@ -21,6 +21,7 @@ import { join } from "node:path"
 import { driftedSources, loadCorpus, LANES, validateCorpus } from "../lib/corpus.mjs"
 import { describe, judge, loadBaseline, stale, validateBaseline } from "../lib/baseline.mjs"
 import { blocking, diffRows, ensureBuilt, gate, summarize } from "../lib/gate.mjs"
+import { exitAfterFlush } from "../lib/exit.mjs"
 
 /** The one-line totals of a build: the sums of its per-lane counts. */
 const totals = (impl, lanes) => {
@@ -41,7 +42,7 @@ if (cmd === "corpus") {
 		const problems = [...validateCorpus(corpus), ...validateBaseline(loadBaseline(), corpus), ...driftedSources(corpus).map(d => `${d.id}: source ${d.source} ${d.problem}`)]
 		for (const p of problems) console.log(p)
 		console.log(problems.length ? `${problems.length} problem(s)` : `${corpus.scenario.length} scenarios, sources match the pin`)
-		process.exit(problems.length ? 1 : 0)
+		await exitAfterFlush(problems.length ? 1 : 0)
 	}
 	for (const s of corpus.scenario) console.log(`${s.id.padEnd(22)} ${s.owner.padEnd(18)} ${(s.status ?? "").padEnd(8)} ${s.about ?? s.source ?? ""}`)
 } else if (cmd === "run") {
@@ -65,7 +66,7 @@ if (cmd === "corpus") {
 	const verdict = judge(impl, results)
 	for (const line of describe(impl, verdict)) console.log(line)
 	if (verdict.passing.length) console.log(`passing on ${impl} and listed in baseline.toml: ${verdict.passing.map(r => r.id).join(" ")} (delete the entry once it passes on every build)`)
-	process.exit(verdict.fresh.length || (strict && results.some(blocking)) ? 1 : 0)
+	await exitAfterFlush(verdict.fresh.length || (strict && results.some(blocking)) ? 1 : 0)
 } else if (cmd === "soak") {
 	const impl = opt(rest, "impl", "pi")
 	const range = opt(rest, "seeds", "1-64")
@@ -93,7 +94,7 @@ if (cmd === "corpus") {
 		}
 	}
 	console.log(`\nsoak ${impl}: ${results.length - failed.length} of ${results.length} seeds equal Pi${failed.length ? `; failed: ${failed.join(" ")}` : ""}`)
-	process.exit(verdict.fresh.length ? 1 : 0)
+	await exitAfterFlush(verdict.fresh.length ? 1 : 0)
 } else if (cmd === "all") {
 	// The make target: the control, then each candidate build (building it when its paths are missing), a per-lane report.
 	const picked = opt(rest, "impls", SHIPPED)
@@ -135,7 +136,7 @@ if (cmd === "corpus") {
 	if (fixed.length) console.log(`FIXED: ${fixed.join(" ")} pass on every build; delete them from baseline.toml`)
 	const failed = impls.some(i => verdicts[i].fresh.length)
 	const pendingRows = Object.values(all).some(a => a.results.some(blocking))
-	process.exit(failed || fixed.length || (strict && pendingRows) ? 1 : 0)
+	await exitAfterFlush(failed || fixed.length || (strict && pendingRows) ? 1 : 0)
 } else if (cmd === "diff") {
 	process.argv.splice(2, 1)
 	await import("./rowdiff.mjs")
