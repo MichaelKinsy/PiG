@@ -202,6 +202,7 @@ generate help-text: export FORCE_COLOR := 0
 generate: ## Regenerate committed inventories, coverage, catalogs, help, and docs mirrors
 	@$(MAKE) divergences
 	@$(MAKE) piglet-strip-ids
+	@$(MAKE) sdk-bundles
 	@$(MAKE) model-catalogs
 	@$(MAKE) node-runtime
 	@$(MAKE) highlight-grammars
@@ -255,7 +256,14 @@ piglet-strip-ids-drift: ## Fail when the Piglet strip ID table or the schema str
 piglet-strip-build: ## Vet every package and build cmd/pig with every Piglet strip build tag (D92)
 	@tags=$$(go run ./coding/piglet/internal/genstripids -print-tags) && go vet -tags "$$tags" ./... && CGO_ENABLED=0 go build -tags "$$tags" -o /dev/null ./cmd/pig
 
-.PHONY: generate divergences divergences-drift help-text highlight-grammars zone-names windows-zones piglet-strip-ids piglet-strip-ids-drift piglet-strip-build changelog-unreleased changelog-check changelog-fold
+# The compressed SDK copies are pure Go to regenerate (go generate runs automation/gen/embed-bundle.go and pack-lisp-sdk.go): the .gz of each SDK source, the bundle_embed.go lists, the Lisp sdk.tgz and bundle_pack.go. Each generator keeps an existing copy that already holds the source's text, so only a stale copy is rewritten.
+sdk-bundles: ## Regenerate the compressed SDK copies and embed lists of extensions/sdk, sdk-lisp, sdk-py and sdk-rs from their sources (go generate)
+	@for dir in extensions/sdk extensions/sdk-lisp extensions/sdk-py extensions/sdk-rs; do (cd $$dir && go generate .) || exit 1; done
+
+sdk-bundles-drift: ## Fail when a compressed SDK copy differs from its source (regenerate with make sdk-bundles)
+	@./automation/ci/sdk-bundles-drift.sh
+
+.PHONY: sdk-bundles sdk-bundles-drift generate divergences divergences-drift help-text highlight-grammars zone-names windows-zones piglet-strip-ids piglet-strip-ids-drift piglet-strip-build changelog-unreleased changelog-check changelog-fold
 
 ##@ Test and lint
 

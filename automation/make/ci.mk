@@ -7,7 +7,7 @@ autofix-check: ## Unit-test the derived-file autofix tool that the bookkeeping j
 	@python3 -B -m unittest discover -s automation/ci -p test_autofix.py
 
 # ci-bookkeeping is the fail-fast job every other job waits for: the committed derived files, ledgers and policy gates that need only Go, Python and the Pi source mirror (no oracle build, no npm install, no test binaries). A stale ledger or a missing sign-off stops the run in minutes instead of after the 30-minute shards. CI runs it with make -k -j, so one failing gate does not hide the others; automation/ci/autofix-gates.txt names the gates whose remedy is make generate.
-ci-bookkeeping: autofix-check divergences-drift piglet-strip-ids-drift known-gaps-drift custom-factory-ledger-drift lint-scenarios port-map-drift coverage-drift divergence-consistency divergence-quality divergence-guard source-hygiene test-provenance docs-drift bug-ledger-check race-coverage perf-scoreboard-check go-fix-clean
+ci-bookkeeping: autofix-check divergences-drift piglet-strip-ids-drift sdk-bundles-drift known-gaps-drift custom-factory-ledger-drift lint-scenarios port-map-drift coverage-drift divergence-consistency divergence-quality divergence-guard source-hygiene test-provenance docs-drift bug-ledger-check race-coverage perf-scoreboard-check go-fix-clean
 ci-startup: startup-proxies
 ci-build: module-publication lint
 # The light pull-request run (automation/ci/ci-tiers.txt) lints the whole changed files (CI sets LINT_BASE=origin/main); the full run keeps the repository-wide lint.
