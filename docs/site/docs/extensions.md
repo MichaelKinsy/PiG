@@ -4,6 +4,45 @@ Extensions add executable behavior to PiG. They can register tools, commands, ev
 
 PiG preserves the Pi extension model while using a process-oriented host that supports Go, Rust, Python, and Node. A compatible Go extension can also be compiled into a Piglet Binary.
 
+## Table of Contents
+
+- [Quick Start](#quick-start)
+- [Extension Locations](#extension-locations)
+- [Available Imports](#available-imports)
+- [Writing an Extension](#writing-an-extension)
+- [Why PiG uses this design](#why-pig-uses-this-design)
+- [Create an extension](#create-an-extension)
+- [Understand the runtime lifecycle](#understand-the-runtime-lifecycle)
+- [Events](#events)
+- [ExtensionContext](#extensioncontext)
+- [ExtensionCommandContext](#extensioncommandcontext)
+- [ExtensionAPI Methods](#extensionapi-methods)
+- [State Management](#state-management)
+- [Custom Tools](#custom-tools)
+- [MCP Servers](#mcp-servers)
+- [Custom UI](#custom-ui)
+- [Error Handling](#error-handling)
+- [Mode Behavior](#mode-behavior)
+- [SDKs](#sdks)
+- [Examples Reference](#examples-reference)
+- [Related documentation](#related-documentation)
+
+## Quick Start
+
+Scaffold an extension as described in [Create an extension](#create-an-extension), check it as described in [Validate without installing](#validate-without-installing), and run it for one session with an explicit path as described in [Select an extension](#select-an-extension). [Your first extension](/docs/latest/first-extension) walks through these steps with the output PiG prints.
+
+## Extension Locations
+
+Extensions run with your full system permissions and can execute arbitrary code. Install only from sources you trust. A project's `.pig/extensions` directory loads only after you trust the project ([Trust](/docs/latest/trust)); your global extensions live under `~/.pig/agent/extensions`. The `extensions` setting adds paths and turns built-in extensions on or off with `builtin:<name>` entries ([Settings](/docs/latest/settings)). A Package distributes extensions to other applications ([Packages](/docs/latest/packages)), and `-e <path>` loads one for a single run ([Select an extension](#select-an-extension)).
+
+## Available Imports
+
+A Node extension imports Pi's API from `@earendil-works/pi-coding-agent`, and PiG maps those imports to compatible runtime modules when it starts the extension subprocess. The declaration-only `extensions/sdk-ts` package pins the Pi version and declares the PiG-only calls ([SDKs](#sdks)). Go extensions import `github.com/MichaelKinsy/PiG/extensions/sdk`, and Rust and Python use `extensions/sdk-rs` and `extensions/sdk-py`. The runtime that runs TypeScript is chosen as described in [TypeScript extension runtimes](/docs/latest/typescript-runtimes).
+
+## Writing an Extension
+
+An extension is one conventional factory or one exact standalone, in Go, Rust, Python or Node, as listed in [Supported source forms](#supported-source-forms). The factory returns the extension's registrations; [Extension responsibilities](#extension-responsibilities) lists what it can contribute and [Understand the runtime lifecycle](#understand-the-runtime-lifecycle) explains when it runs. Prefer Go when the extension may become part of a Piglet Binary ([Fused Go realization](#fused-go-realization)). The execution placements are described in [Subprocess realization](#subprocess-realization) and [Packed subprocess cells](#packed-subprocess-cells).
+
 ## Why PiG uses this design
 
 Upstream Pi loads TypeScript extensions in process. PiG is a Go-native implementation and does not embed a JavaScript runtime or load dynamic Go plugins.
@@ -173,7 +212,45 @@ flowchart TD
 
 Use `agent_before_settle` when an extension must append entries or request one final continuation. Use `agent_settled` for notification-only work that should run after Pi has no automatic continuation remaining.
 
-<a id="extensionapi-methods"></a>
+## Events
+
+Extensions subscribe to lifecycle events with `pi.on` in Node and the matching registration in the Go, Rust and Python SDKs. [Understand the runtime lifecycle](#understand-the-runtime-lifecycle) gives the hook sequence for a prompt and for Session startup and replacement, and [Choose an event by intent](#choose-an-event-by-intent) maps each goal to an event. Handlers run in the extension's own process, so an event reaches the extension through the host; see [Connection and liveness model](#connection-and-liveness-model), [Cancellation](#cancellation) and [Session compaction events](#session-compaction-events). Exact payloads and result types follow Pi's `extensions/types.ts`.
+
+## ExtensionContext
+
+Every handler receives a context for the running Session: `cwd`, `mode`, `hasUI`, `model`, `ui` and the session reads. Go uses `sdk.Context`. In Go the context carries the request's cancellation through `Context.Done()`. A context that an extension retained across a reload or Session replacement raises Pi's stale message, and a retained callback context uses the live connection. See [Retained callback contexts](#retained-callback-contexts), [Session context](#session-context), [Session replacement](#session-replacement) and [Mode Behavior](#mode-behavior).
+
+## ExtensionCommandContext
+
+A command handler receives the same context plus the calls that replace or reload the Session: `ctx.newSession()`, `ctx.fork()`, `ctx.switchSession()` and `ctx.reload()`. PiG starts a fresh extension process for the replacement Session, and the extension that asked keeps its process until its command handler returns. See [Session replacement](#session-replacement) and [Reload behavior](#reload-behavior).
+
+## ExtensionAPI Methods
+
+The Node API object is `pi`, with Pi's methods such as `pi.on`, `pi.registerTool`, `pi.sendMessage`, `pi.appendEntry`, `pi.getAllTools` and `pi.registerMcpServer`. The Go, Rust and Python SDKs expose the same behavior under their own naming. A capability counts as supported only when every runtime offers it and the conformance suite can detect a broken implementation (see [SDKs](#sdks)). The symbol-by-symbol surface is generated into `docs/extension-sdk-surface.md` in the source tree, and `docs/extension-api-parity.md` lists every upstream interface and its PiG mapping. See also [Custom messages](#custom-messages), [Registration inputs](#registration-inputs) and [User bash operations](#user-bash-operations).
+
+## State Management
+
+An extension keeps its state in its own process and must rebuild it when PiG starts a fresh process after a reload or Session replacement; module-level state does not carry over (D70). Rebuild from Session history (see [Session context](#session-context)) and from entries it appended with `pi.appendEntry`. Store state that is not part of a Session below `~/.pig/state/<extension-id>/`. See [Extension-owned state](#extension-owned-state) and [Reload behavior](#reload-behavior).
+
+## Custom Tools
+
+An extension registers a model-callable tool in any supported language, and every tool must supply an object parameter schema ([Registration inputs](#registration-inputs)). Tool exposure, namespaces, `reachesTools`, `prepareLoadout` and calls to other tools through `ctx.executeTool()` are described in [MCP servers, virtual models and tool exposure](#mcp-servers-virtual-models-and-tool-exposure). Tool renderers are described in [Tool render context](#tool-render-context), and a hook can change a tool's final output as described in [Final tool-result content](#final-tool-result-content). The [Go SDK](/docs/latest/sdk) page covers the Go tool types and [Your first extension](/docs/latest/first-extension) registers one.
+
+## MCP Servers
+
+An extension in any supported language registers an MCP server for the current session with `registerMcpServer` (Node: `pi.registerMcpServer`), using the shape of an `mcpServers` entry. Registrations are not saved, so register on every load. See [MCP servers in extensions](/docs/latest/mcp#extensions) for connection, precedence and replacement of the built-in support, and [MCP servers, virtual models and tool exposure](#mcp-servers-virtual-models-and-tool-exposure) for exposure options.
+
+## Custom UI
+
+A subprocess extension draws custom UI through `ctx.ui`: dialogs, notifications, status, widgets, headers, focused components and a replacement editor. See [Focused UI](#focused-ui), [Replace the editor](#replace-the-editor), [Terminal strings](#terminal-strings) and [Tool render context](#tool-render-context). In RPC mode a smaller subset works through a request and response subprotocol, described in [RPC extension UI](/docs/latest/rpc-extension-ui). Keys are configured in [Keybindings](/docs/latest/keybindings).
+
+## Error Handling
+
+An extension error does not stop the agent; PiG reports it and continues, and Pi's rules for blocking `tool_call` and `user_bash` handlers apply. Cancellation, disconnect and reload each end the work of the affected handler; see [Cancellation](#cancellation), [Connection and liveness model](#connection-and-liveness-model) and [Why PiG does not replay interrupted operations](#why-pig-does-not-replay-interrupted-operations). For where extension errors appear when standard output is not a terminal, see [CLI integration](/docs/latest/cli-integration).
+
+## Mode Behavior
+
+`ctx.mode` is `"tui"`, `"rpc"`, `"json"` or `"print"`, as in Pi, and `ctx.hasUI` is `true` in interactive and RPC modes. Check `ctx.mode === "tui"` before a terminal-only method such as `custom()`. The Go SDK reports `print` when the host does not say otherwise. JSON mode does not emit extension UI requests; use [RPC mode](/docs/latest/rpc-extension-ui) for extension UI. See [JSON mode](/docs/latest/json) and [Custom messages](#custom-messages), which works in print, JSON and RPC modes.
 
 ## Validate without installing
 
@@ -624,6 +701,10 @@ Node extensions use Pi-compatible exports through the Node runtime bridge. The `
 Runnable examples for each language are in `examples/extensions/`: `go-factory`, `rust-factory`, `python-factory` and `node-factory`.
 
 All runtime bridges target the same current extension behavior. A new capability is incomplete until each supported runtime exposes equivalent behavior and the conformance suite can detect a broken implementation.
+
+## Examples Reference
+
+Runnable examples for each language are in `examples/extensions/`: `go-factory`, `rust-factory`, `python-factory`, `node-factory` and `plan-mode`. PiG does not copy Pi's TypeScript example set; see [Upstream Pi extensions](https://pi.dev/docs/latest/extensions) for it. [Your first extension](/docs/latest/first-extension) builds one extension step by step, and the [Go SDK](/docs/latest/sdk) page has a worked embedding example. The per-runtime symbol coverage is generated into `docs/extension-sdk-surface.md` in the source tree, and `docs/extension-api-parity.md` tracks each upstream interface.
 
 ## Related documentation
 
