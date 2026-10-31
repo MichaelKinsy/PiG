@@ -139,3 +139,20 @@ def test_truncate_to_visual_lines_matches_pi():
         got = pig_sdk.truncate_to_visual_lines(args[0], args[1], args[2], 0 if padding is None else padding, "end" if keep is None else keep)
         assert got.visual_lines == case["result"]["visualLines"], case["name"]
         assert got.skipped_count == case["result"]["skippedCount"], case["name"]
+
+
+def test_render_hints_read_the_host_keybindings(monkeypatch):
+    # pig divergence (D217): Pi 9376c8d1 (#4748) keyText and keyHint on the tool render context and the message and entry options.
+    case = _cases("keyHint")[0]
+    result = case["result"]
+    _install_palette(result["palette"])
+    _install_keybindings(result)
+    _on(monkeypatch, result["platform"])
+    context = pig_sdk.ToolRenderContext(args={}, tool_call_id="t", cwd="/", execution_started=True, args_complete=True, is_partial=False, expanded=False, show_images=False, is_error=False, output_pad=1, state={})
+    surfaces = [context, pig_sdk.MessageRenderOptions({"expanded": True, "outputPad": 1}), pig_sdk.EntryRenderOptions({"expanded": True})]
+    for surface in surfaces:
+        assert surface.key_hint(case["args"][4], case["args"][5]) == result["text"], type(surface).__name__
+        assert surface.key_text(case["args"][4]) == pig_sdk.key_text(case["args"][4]), type(surface).__name__
+        assert surface.key_text("x.missing.id") == ""
+    # The options stay the host's mapping.
+    assert surfaces[1]["outputPad"] == 1 and surfaces[2] == {"expanded": True}

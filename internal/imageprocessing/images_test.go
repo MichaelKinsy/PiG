@@ -298,9 +298,13 @@ func TestResizeReencodesIfOverThreshold(t *testing.T) {
 }
 
 func TestResizePreservesAlpha(t *testing.T) {
-	// 1000×1000 PNG with alpha: longest side fits, but force resize
-	// by making it 3000×3000. Output MUST be PNG (not JPEG) per
-	// chunk-d.md gotcha #610.
+	// 3000×3000 PNG with alpha: the longest side exceeds the limit, so it is
+	// resized. Pi picks the smaller of the PNG and the JPEG candidate
+	// (image-resize-core.ts, e7a0df27) and has no alpha rule, so a translucent
+	// image whose JPEG is smaller goes out as a JPEG, as it does in Pi. What
+	// holds in both cases: the result decodes, and a PNG result keeps its
+	// alpha channel (chunk-d.md gotcha #610); the PNG candidate itself keeps
+	// it, which TestPNGCandidateKeepsAlpha pins.
 	img := image.NewRGBA(image.Rect(0, 0, 3000, 3000))
 	// Half-transparent green.
 	for y := range 3000 {
@@ -318,16 +322,37 @@ func TestResizePreservesAlpha(t *testing.T) {
 	if err != nil {
 		t.Fatalf("resize: %v", err)
 	}
-	if mime != "image/png" {
-		t.Errorf("PNG-with-alpha must stay PNG; got %s", mime)
-	}
-	// Decode and check alpha is preserved.
-	decoded, err := png.Decode(bytes.NewReader(out))
+	decoded, _, err := image.Decode(bytes.NewReader(out))
 	if err != nil {
-		t.Fatalf("decode: %v", err)
+		t.Fatalf("decode %s: %v", mime, err)
 	}
-	if !imageHasAlpha(decoded) {
-		t.Errorf("alpha channel lost in re-encode")
+	if mime == "image/png" && !imageHasAlpha(decoded) {
+		t.Errorf("alpha channel lost in a PNG result")
+	}
+}
+
+func TestPNGCandidateKeepsAlpha(t *testing.T) {
+	img := image.NewNRGBA(image.Rect(0, 0, 8, 8))
+	for i := 0; i < len(img.Pix); i += 4 {
+		img.Pix[i], img.Pix[i+1], img.Pix[i+2], img.Pix[i+3] = 0, 255, 0, 128
+	}
+	candidate, fits, err := firstFittingCandidate(img, []int{JPEGQuality}, 1<<30)
+	if err != nil || !fits {
+		t.Fatalf("candidate: fits=%v err=%v", fits, err)
+	}
+	if candidate.MIME == "image/png" {
+		decoded, err := png.Decode(bytes.NewReader(candidate.Data))
+		if err != nil || !imageHasAlpha(decoded) {
+			t.Fatalf("the PNG candidate lost its alpha channel: %v", err)
+		}
+	}
+	data, err := encodePNG(img)
+	if err != nil {
+		t.Fatal(err)
+	}
+	decoded, err := png.Decode(bytes.NewReader(data))
+	if err != nil || !imageHasAlpha(decoded) {
+		t.Fatalf("encodePNG lost the alpha channel: %v", err)
 	}
 }
 

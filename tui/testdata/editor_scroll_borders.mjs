@@ -1,4 +1,5 @@
 // Drive the installed pi-tui Editor through a bracketed paste of N rows and some Up keys, then render: the scroll indicators of both borders, never a translated oracle.
+import "./pi-d217/register.mjs"; // D217: pin + carried Pi fixes in pi-tui utils.js
 import { readFileSync, realpathSync } from "node:fs";
 import { pathToFileURL } from "node:url";
 const root = realpathSync(new URL("../../extensions/sdk-ts/node_modules/@earendil-works/pi-coding-agent/", import.meta.url)) + "/";

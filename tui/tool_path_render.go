@@ -26,10 +26,8 @@ func shortenPath(path string) string {
 	if err != nil || home == "" {
 		return path
 	}
-	if strings.HasPrefix(path, home) {
-		return "~" + path[len(home):]
-	}
-	return path
+	// pig divergence (D217): Pi 1be312b4 (#10488) anchors the home prefix at a path segment (resolvepath.ShortenHomePath); Pi 1.4.0+b3a29f11 matched a bare string prefix.
+	return resolvepath.ShortenHomePath(path, home)
 }
 
 // linkPath wraps styledText in an OSC-8 hyperlink targeting the file://

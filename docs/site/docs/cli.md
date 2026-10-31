@@ -83,10 +83,10 @@ These options apply to `pig [options] [prompt]`. Run `pig --help` for the full l
 | `--thinking <level>` | Set the thinking level: `off`, `minimal`, `low`, `medium`, `high`, `xhigh`, or `max`. |
 | `--system-prompt <text>` | Replace the system prompt. |
 | `--append-system-prompt <text>` | Append text or a file's contents to the system prompt. Repeat it to append more. |
-| `--continue`, `-c` | Continue the previous session. |
-| `--resume`, `-r` | Select a session to resume. |
-| `--session <path\|id>` | Use a session file or a partial session UUID. |
-| `--fork <path\|id>` | Fork a session file or partial UUID into a new session. |
+| `--continue`, `-c` | Continue the most recent session for the current directory. |
+| `--resume`, `-r` | Pick a session to resume. |
+| `--session <path\|id>` | Open a session by file path or full/partial ID. |
+| `--fork <path\|id>` | Fork a session by file path or full/partial ID into the current directory. |
 | `--session-dir <dir>` | Directory for session storage and lookup. |
 | `--no-session` | Do not save the session. |
 | `--name`, `-n <name>` | Set the session display name. |

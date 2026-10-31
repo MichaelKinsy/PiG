@@ -1316,8 +1316,15 @@ func swapConnectorMiddle(prefix string, folded, foldable bool) string {
 	return string(runes)
 }
 
-// CapturesSelectPageInput reports that the list handles tui.select.pageUp and tui.select.pageDown.
-func (t *TreeList) CapturesSelectPageInput() bool { return true }
+// CapturesViewportInput is tree-selector.ts capturesViewportInput: the tree takes the fullscreen viewport keys unless its label
+// editor is open, where they belong to the label input.
+// pig divergence (D217): Pi 3bae8527 (#7629) the label editor gives the viewport keys back.
+func (t *TreeList) CapturesViewportInput() bool { return t.labelInput == nil }
+
+// CapturesViewportInput is the tree list's: the embedded Container would otherwise make the selector ambiguous.
+func (t *TreeSelectorComponent) CapturesViewportInput() bool {
+	return t.TreeList.CapturesViewportInput()
+}
 
 // HandleInput moves the cursor, commits the selection, or delegates label editing to the shared Input.
 //

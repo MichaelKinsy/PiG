@@ -24,9 +24,21 @@
     (declare (ignore ctx render width))
     (list (format nil "~A:~A:~A" prefix tool (pig:jget args "q")))))
 
+;; pig divergence (D217) test fixture: Pi 9376c8d1 (#4748) key-text and key-hint on the message and entry options and the tool render context.
+;; The content, data and q are the keybinding id.
+(defun pv-hints-line (key-text key-hint id)
+  (list (format nil "~A | ~A" (funcall key-text id) (funcall key-hint id "to expand"))))
+
 (defun pv-resolve-tool (tool next)
   (cond ((equal tool "conformance_tool_renderer")
          (pig:make-tool-renderers :render-call (pv-resolved-line "resolved" tool)))
+        ((equal tool "conformance_keyhints")
+         (pig:make-tool-renderers
+          :render-call (lambda (ctx args render width)
+                         (declare (ignore ctx width))
+                         (pv-hints-line (lambda (id) (pig:tool-render-context-key-text render id))
+                                        (lambda (id description) (pig:tool-render-context-key-hint render id description))
+                                        (pig:jget args "q")))))
         ((equal tool "conformance_no_renderer") nil)
         ((equal tool "conformance_fill")
          (or (funcall next) (pig:make-tool-renderers :render-call (pv-resolved-line "filled" tool))))
@@ -49,6 +61,20 @@
    (lambda (ctx entry options width)
      (declare (ignore ctx))
      (list (format nil "entryrenderer:~A:expanded=~A:width=~D" (let ((d (pig:jget entry "data"))) (if (stringp d) d "")) (pv-bool (pig:jget options "expanded")) width))))
+  (pig:message-renderer
+   ext "keyhints-message"
+   (lambda (ctx message options width)
+     (declare (ignore ctx width))
+     (pv-hints-line (lambda (id) (pig:message-render-options-key-text options id))
+                    (lambda (id description) (pig:message-render-options-key-hint options id description))
+                    (pig:jget message "content"))))
+  (pig:entry-renderer
+   ext "keyhints-entry"
+   (lambda (ctx entry options width)
+     (declare (ignore ctx width))
+     (pv-hints-line (lambda (id) (pig:entry-render-options-key-text options id))
+                    (lambda (id description) (pig:entry-render-options-key-hint options id description))
+                    (pig:jget entry "data"))))
   (pig:markdown-transformer ext #'pv-transform-markdown)
   (pig:tool-renderer ext #'pv-resolve-tool)
   (pig:command ext "late_tool_renderer" "Register a tool renderer resolver after loading"

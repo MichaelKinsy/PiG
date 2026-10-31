@@ -23,3 +23,4 @@ bfc03c667c see b1cea06458
 4935bcbfcc see 958e80d99f
 f3fd868442 see ab1d07097c
 33c8d77650 Follow-up to unreleased work: regenerates the embedded SDK copies of the unreleased ownThinkingRuns feature (D214) and extends the failed-factory probe, no product behaviour
+286c78da6d Repair of a merge between development branches: gofmt of a one-line accessor and a changelog sentence after a merge, no product behaviour

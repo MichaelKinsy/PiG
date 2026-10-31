@@ -1,4 +1,5 @@
 // Load theme files with the installed Pi's loadThemeFromPath (theme.ts) in both colour modes: the error message, or every foreground and background escape and the appearance.
+import "./pi-d217/register.mjs"; // D217: pin + carried Pi fixes in pi-tui utils.js
 import { readFileSync, readdirSync, realpathSync } from "node:fs";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";

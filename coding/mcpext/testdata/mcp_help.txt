@@ -3,8 +3,8 @@ Usage:
   pig mcp add <server> [options] --url <url>
   pig mcp remove <server> [-l]
   pig mcp list [--json]
-  pig mcp login <server> [--timeout <seconds>]
-  pig mcp logout <server>
+  pig mcp login <server> [-l] [--timeout <seconds>]
+  pig mcp logout <server> [-l]
 
 Configure and check MCP servers and sign in to OAuth servers without starting a session.
 Reads ~/.pig/agent/mcp.json and, in trusted projects, .pig/mcp.json.
@@ -16,7 +16,7 @@ Commands:
   login <server>          Sign in through the browser
   logout <server>         Delete the stored OAuth credentials
 
-Options for add and remove:
+Options for add, remove, login, and logout:
   -l, --local             Use .pig/mcp.json in the current project instead of the global file
 
 Options for add:

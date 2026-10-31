@@ -69,8 +69,9 @@ func TestSetActiveToolsByName(t *testing.T) {
 	}
 	defer func() { _ = sess.Close() }()
 	sess.SetActiveToolsByName([]string{"beta", "missing", "alpha"})
-	if got := sess.ActiveToolNames(); !slices.Equal(got, []string{"beta", "alpha"}) {
-		t.Fatalf("active tools = %v, want [beta alpha]", got)
+	// Pi b9e3eef6 (#11495): the tools that stay active keep their order, so the requested order does not reorder alpha and beta.
+	if got := sess.ActiveToolNames(); !slices.Equal(got, []string{"alpha", "beta"}) {
+		t.Fatalf("active tools = %v, want [alpha beta]", got)
 	}
 	sess.SetActiveToolsByName(nil)
 	if got := sess.ActiveToolNames(); len(got) != 0 {

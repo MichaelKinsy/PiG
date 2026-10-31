@@ -155,6 +155,7 @@
 
 (defun tt-line-end-reset (tracker)
   (tui-cat (if (tt-underline tracker) (tui-esc "[24m") "")
+           (if (tt-strikethrough tracker) (tui-esc "[29m") "")
            (if (tt-hyperlink tracker) (tui-cat (tui-esc "]8;;") (third (tt-hyperlink tracker))) "")))
 
 (defun tui-update-tracker (text tracker)
@@ -233,6 +234,29 @@
     (when (plusp (length current)) (push current lines))
     (or (nreverse lines) (list ""))))
 
+;; pi-tui's extractAnsiCodes: the escape sequences of TEXT, in order.
+(defun tui-extract-ansi-codes (text)
+  (let ((out "") (i (position +tui-esc+ text)))
+    (loop while i
+          do (let ((len (tui-ansi-length text i)))
+               (if (plusp len)
+                   (setf out (tui-cat out (subseq text i (+ i len))) i (+ i len))
+                   (incf i))
+               (setf i (position +tui-esc+ text :start i))))
+    out))
+
+;; pi-tui's isWhitespaceToken: only whitespace once escape codes are skipped; a lone ESC is visible text.
+(defun tui-whitespace-token-p (token)
+  (let ((i 0) (n (length token)))
+    (loop while (< i n)
+          do (if (char= (char token i) +tui-esc+)
+                 (let ((len (tui-ansi-length token i)))
+                   (when (zerop len) (return-from tui-whitespace-token-p nil))
+                   (incf i len))
+                 (progn (unless (tui-js-space-p (char token i)) (return-from tui-whitespace-token-p nil))
+                        (incf i))))
+    t))
+
 (defun tui-wrap-single-line (line width)
   (cond
     ((zerop (length line)) (list ""))
@@ -241,23 +265,33 @@
      (let ((wrapped '()) (tracker (make-tui-tracker)) (current "") (current-len 0))
        (dolist (token (tui-split-into-tokens line))
          (let* ((token-len (tui-visible-width token))
-                (whitespace (zerop (length (tui-trim-start (tui-trim-end token))))))
+                ;; pig divergence (D217): Pi 2ce9d527 (#10925) the codes that close a styled word sit on the following space token, which is still whitespace.
+                (whitespace (tui-whitespace-token-p token))
+                (wrapped-space nil))
            (cond
              ((and (> token-len width) (not whitespace))
               (when (plusp (length current))
-                (push (tui-cat current (tt-line-end-reset tracker)) wrapped)
+                (push (tui-cat (tui-trim-end current) (tt-line-end-reset tracker)) wrapped)
                 (setf current "" current-len 0))
               (let ((broken (tui-break-long-word token width tracker)))
                 (dolist (piece (butlast broken)) (push piece wrapped))
                 (setf current (car (last broken)) current-len (tui-visible-width current))))
              (t
-              (if (and (> (+ current-len token-len) width) (> current-len 0))
-                  (progn (push (tui-cat (tui-trim-end current) (tt-line-end-reset tracker)) wrapped)
-                         (if whitespace
-                             (setf current (tt-active-codes tracker) current-len 0)
-                             (setf current (tui-cat (tt-active-codes tracker) token) current-len token-len)))
-                  (setf current (tui-cat current token) current-len (+ current-len token-len)))
-              (tui-update-tracker token tracker)))))
+              (cond
+                ((and (> (+ current-len token-len) width) (> current-len 0))
+                 (let ((to-wrap (tui-trim-end current)))
+                   (when whitespace
+                     (setf wrapped-space t)
+                     (setf to-wrap (tui-cat to-wrap (tui-extract-ansi-codes token)))
+                     (tui-update-tracker token tracker))
+                   (push (tui-cat to-wrap (tt-line-end-reset tracker)) wrapped))
+                 (if whitespace
+                     (setf current (tt-active-codes tracker) current-len 0)
+                     (setf current (tui-cat (tt-active-codes tracker) token) current-len token-len)))
+                ((and whitespace (> (+ current-len token-len) width) (find +tui-esc+ token))
+                 (setf current (tui-cat current (tui-extract-ansi-codes token))))
+                (t (setf current (tui-cat current token) current-len (+ current-len token-len))))
+              (unless wrapped-space (tui-update-tracker token tracker))))))
        (when (plusp (length current)) (push current wrapped))
        (if wrapped (mapcar #'tui-trim-end (nreverse wrapped)) (list ""))))))
 

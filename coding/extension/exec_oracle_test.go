@@ -132,6 +132,12 @@ func TestExecCommandMatchesPi(t *testing.T) {
 		if err != nil {
 			got.Thrown = err.Error()
 		} else {
+			// D217 allowance: pinned Pi's execCommand has no maxBuffer and no truncated result, and sends no SIGKILL, so this comparison covers only
+			// inputs that Pi and PiG agree on: no scenario sets maxBuffer, none writes the 256 MiB default cap, and none outlives the five-second force-kill
+			// delay. Pi c466a359's behavior is pinned by exec_max_buffer_test.go, exec_utf8_chunks_test.go and exec_tree_test.go.
+			if result.Truncated {
+				t.Errorf("scenario %d: truncated a result that no cap applies to", i)
+			}
 			got = execOutcome{Stdout: result.Stdout, Stderr: result.Stderr, Code: result.Code, Killed: result.Killed}
 		}
 		raw, _ := json.Marshal(got)

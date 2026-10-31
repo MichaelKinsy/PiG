@@ -37,7 +37,7 @@ class: `session-` / `sm-` SessionManager, `settings-` SettingsManager, `registry
 | Area | Files |
 |---|---|
 | registration, events, tool results, tool options (exposure, loadout, prepare/refine arguments, constrained sampling, renderers), commands, flags | `extension`, `context`, `context-extra`, `dispatch`, `tool-schema`, `tool-order` |
-| the context: UI dialogs, status, widgets, footer/header, theme, working indicator, exec (with a signal), compact, session and model controls, nested tool calls | `context`, `context-extra`, `widgets`, `theme` |
+| the context: UI dialogs, status, widgets, footer/header, theme, working indicator, exec (with a signal and a `:max-buffer` that sets `exec-result-truncated`), compact, session and model controls, nested tool calls | `context`, `context-extra`, `widgets`, `theme` |
 | component kit, `ui.custom`, overlays, mouse | `kit`, `ui-custom`, `overlay` |
 | editor components, autocomplete providers, terminal input | `editor-component`, `autocomplete`, `terminal-input` |
 | the alternate-screen TUI: `TuiAltScreen` (`make-tui-alt-screen`, `tui-alt-screen-*`), the `tui-terminal` and `tui-component` it draws on and shows, `tui-alt-overlay-*` handles | `tui-alt-screen` |

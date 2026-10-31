@@ -1,4 +1,5 @@
 // Drive the installed pi-tui KeybindingsManager (the tui.* table) with seeded user keybinding configs: resolved bindings, definitions, keys, conflicts, user bindings, and which input matches which keybinding, before and after setUserBindings.
+import "./pi-d217/register.mjs"; // D217: pin + carried Pi fixes in pi-tui utils.js
 import { readFileSync, realpathSync } from "node:fs";
 import { pathToFileURL } from "node:url";
 const root = realpathSync(new URL("../../extensions/sdk-ts/node_modules/@earendil-works/pi-coding-agent/", import.meta.url)) + "/";

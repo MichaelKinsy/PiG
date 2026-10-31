@@ -100,9 +100,13 @@ func (s *SelectSubmenuComponent) HandleInput(data string) {
 	// A parent Container reuses this component's lines until it is invalidated.
 	defer s.Invalidate()
 	kb := GetTUIKeybindings()
-	if s.searchInput == nil || kb.Matches(data, KBSelectUp) || kb.Matches(data, KBSelectDown) || kb.Matches(data, KBSelectConfirm) || kb.Matches(data, KBSelectCancel) {
+	// pig divergence (D217): Pi 3bae8527 (#7629) the page keys reach the list of a searchable submenu instead of the search input.
+	isPage := kb.Matches(data, KBSelectPageUp) || kb.Matches(data, KBSelectPageDown)
+	if s.searchInput == nil || kb.Matches(data, KBSelectUp) || kb.Matches(data, KBSelectDown) || isPage || kb.Matches(data, KBSelectConfirm) || kb.Matches(data, KBSelectCancel) {
+		before := s.list.cursor
 		s.list.HandleInput(data)
-		if s.OnSelectionChange != nil && (kb.Matches(data, KBSelectUp) || kb.Matches(data, KBSelectDown)) {
+		moved := kb.Matches(data, KBSelectUp) || kb.Matches(data, KBSelectDown) || (isPage && s.list.cursor != before)
+		if s.OnSelectionChange != nil && moved {
 			if value := s.CurrentValue(); value != "" {
 				s.OnSelectionChange(value)
 			}

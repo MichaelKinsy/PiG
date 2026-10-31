@@ -1,4 +1,5 @@
 // The installed Pi's built-in dark.json and light.json, byte for byte.
+import "./pi-d217/register.mjs"; // D217: pin + carried Pi fixes in pi-tui utils.js
 import { readFileSync, realpathSync } from "node:fs";
 const root = realpathSync(new URL("../../extensions/sdk-ts/node_modules/@earendil-works/pi-coding-agent/", import.meta.url)) + "/";
 if (JSON.parse(readFileSync(root + "package.json", "utf8")).version !== process.argv[2]) throw new Error("Wrong Pi oracle version");

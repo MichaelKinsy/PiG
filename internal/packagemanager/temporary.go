@@ -11,6 +11,8 @@ import (
 
 	sourceref "github.com/MichaelKinsy/PiG/coding/source"
 	"github.com/MichaelKinsy/PiG/internal/codingagent"
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
+	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
 	"github.com/MichaelKinsy/PiG/internal/nodepath"
 )
 
@@ -32,7 +34,7 @@ func ResolveManagedPackagePath(root string, parts ...string) (string, error) {
 }
 
 // Ports packages/coding-agent/src/core/package-manager.ts (resolvePackageSources with the temporary scope).
-// ResolveTemporarySource resolves temporary Packages before loading their extensions. Offline sources that need installation contribute no resources. Cached unpinned Git sources refresh before discovery; a failed refresh retains the cache, while an initial installation failure is surfaced.
+// ResolveTemporarySource resolves temporary Packages before loading their extensions. Offline sources that need installation contribute no resources. Cached unpinned Git sources, and cached unpinned npm sources whose registry has a newer version, refresh before discovery; a failed refresh retains the cache, while an initial installation failure is surfaced.
 func ResolveTemporarySource(cwd, agentDir string, sm *codingagent.SettingsManager, source string, progress ProgressCallback) (string, error) {
 	kind := DetectSourceKind(source)
 	if kind == "local" {
@@ -55,25 +57,42 @@ func ResolveTemporarySource(cwd, agentDir string, sm *codingagent.SettingsManage
 		if IsOfflineModeEnabled() {
 			return "", nil
 		}
-		if err := EnsureManagedPackageRoot(root); err != nil {
-			return "", &InstallFailureError{Err: err}
-		}
-		command := DefaultNpmCommand(sm)
-		args := append([]string{}, command[1:]...)
-		manager, err := PackageManagerName(command)
-		if err != nil {
+		if err := installTemporaryNpm(sm, root, ref, ref.Locator); err != nil {
 			return "", err
 		}
-		realRoot, err := RealInstallRoot(root)
-		if err != nil {
-			return "", &InstallFailureError{Err: err}
+	} else if !isExactNpmVersion(ref.NPMVer) && !IsOfflineModeEnabled() && npmHasAvailableUpdate(cwd, sm, ref, packageRoot, false) {
+		// pig divergence (D217): Pi cd6a8f7f (#11375) refreshes an unpinned temporary npm source on load when the registry has a newer version; pinned Pi installed it once and reused it forever.
+		// Temporary (-e) sources have no `pig update` path. Like `pig update`, an unversioned spec installs name@latest because a bare `npm install name` keeps the range already saved in the temporary package.json.
+		spec := ref.Locator
+		if ref.NPMVer == "" {
+			spec = ref.NPMName + "@latest"
 		}
-		args = append(args, NpmInstallArgs(manager, ref.Locator, realRoot, ref.NPMRegistry)...)
-		if err := RunPackageProcess("", command[0], args...); err != nil {
-			return "", &InstallFailureError{Err: err}
-		}
+		// A failed refresh keeps the cached install.
+		_ = installTemporaryNpm(sm, root, ref, spec)
 	}
 	return packageRoot, nil
+}
+
+// installTemporaryNpm installs spec into the temporary npm root (package-manager.ts installNpm with temporary set). A failure of the install itself is an InstallFailureError; an unusable package manager command is reported as it is.
+func installTemporaryNpm(sm *codingagent.SettingsManager, root string, ref sourceref.Ref, spec string) error {
+	if err := EnsureManagedPackageRoot(root); err != nil {
+		return &InstallFailureError{Err: err}
+	}
+	command := DefaultNpmCommand(sm)
+	args := append([]string{}, command[1:]...)
+	manager, err := PackageManagerName(command)
+	if err != nil {
+		return err
+	}
+	realRoot, err := RealInstallRoot(root)
+	if err != nil {
+		return &InstallFailureError{Err: err}
+	}
+	args = append(args, NpmInstallArgs(manager, spec, realRoot, ref.NPMRegistry)...)
+	if err := RunPackageProcess("", command[0], args...); err != nil {
+		return &InstallFailureError{Err: err}
+	}
+	return nil
 }
 
 func NpmPackagePath(root string, source sourceref.Ref) string {
@@ -96,7 +115,7 @@ func TemporaryPackagePath(agentDir, prefix, suffix string) (string, error) {
 	return ResolveManagedPackagePath(root, fmt.Sprintf("%x", digest[:4]), filepath.FromSlash(suffix))
 }
 
-// resolveTemporaryGitSource waits for an unpinned cache refresh and its progress callbacks before discovering resources. Offline cache misses contribute no resources; refresh failures report an error event and retain the existing checkout.
+// resolveTemporaryGitSource waits for a cache refresh and its progress callbacks before discovering resources. Offline cache misses contribute no resources; refresh failures report an error event and retain the existing checkout.
 // Ports packages/coding-agent/src/core/package-manager.ts (resolvePackageSources, refreshTemporaryGitSource, getTemporaryDir).
 func resolveTemporaryGitSource(sm *codingagent.SettingsManager, source string, progress ProgressCallback) (string, error) {
 	ref, err := sourceref.Parse(source, sourceref.Options{Bare: sourceref.BareReject})
@@ -119,16 +138,35 @@ func resolveTemporaryGitSource(sm *codingagent.SettingsManager, source string, p
 		}
 	case statErr != nil:
 		return "", statErr
-	case ref.GitRef == "" && !IsOfflineModeEnabled():
-		// upstream: packages/coding-agent/src/core/package-manager.ts:refreshTemporaryGitSource
-		_ = WithProgress(progress, "pull", source, fmt.Sprintf("Refreshing %s...", source), func() error {
-			return InstallGitCheckout(sm, ref, checkout, packageRoot, "")
-		})
+	case !IsOfflineModeEnabled():
+		refreshTemporaryGitSource(sm, ref, source, checkout, packageRoot, progress)
 	}
 	if err := RequireGitSubdirectoryWithinCheckout(checkout, packageRoot); err != nil {
 		return "", err
 	}
 	return packageRoot, nil
+}
+
+// commitHashRef is a ref that spells a commit hash, abbreviated or not.
+var commitHashRef = lazyregexp.New(`^[0-9a-fA-F]{7,64}$`)
+
+// refreshTemporaryGitSource is package-manager.ts refreshTemporaryGitSource. Every failure keeps the cached checkout.
+// pig divergence (D217): Pi bec60c54 (#11375) refreshes a temporary Git source pinned to a ref too, because a ref can name a moving branch; pinned Pi refreshed unpinned sources only, so git:host/repo@main stayed on its first checkout.
+// The network call is skipped only when the ref is a commit hash that is already checked out.
+func refreshTemporaryGitSource(sm *codingagent.SettingsManager, ref sourceref.Ref, source, checkout, packageRoot string, progress ProgressCallback) {
+	if commitHashRef.MatchString(ref.GitRef) {
+		head, err := RunPackageCapture(checkout, "git", "rev-parse", "HEAD")
+		if err != nil {
+			return
+		}
+		if strings.HasPrefix(jsstring.ToLower(jsstring.Trim(head)), jsstring.ToLower(ref.GitRef)) {
+			return
+		}
+	}
+	// upstream: packages/coding-agent/src/core/package-manager.ts:refreshTemporaryGitSource
+	_ = WithProgress(progress, "pull", source, fmt.Sprintf("Refreshing %s...", source), func() error {
+		return InstallGitCheckout(sm, ref, checkout, packageRoot, "")
+	})
 }
 
 // TemporaryGitCheckoutPath is a temporary Git source's checkout below the agent temporary extension root; paths outside that root are refused.

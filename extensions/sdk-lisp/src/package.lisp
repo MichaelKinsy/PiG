@@ -18,7 +18,7 @@
    #:ctx-wait-cancelled #:ctx-signal #:ctx-tool-call-id #:ctx-request-id #:ctx-on-update
    #:ctx-notify #:ctx-set-status #:ctx-clear-status #:ctx-set-title
    #:ctx-select #:ctx-confirm #:ctx-input #:ctx-editor
-   #:ctx-exec #:exec-result #:exec-result-stdout #:exec-result-stderr #:exec-result-exit-code #:exec-result-killed
+   #:ctx-exec #:exec-result #:exec-result-stdout #:exec-result-stderr #:exec-result-exit-code #:exec-result-killed #:exec-result-truncated
    #:ctx-is-idle-p #:ctx-abort #:ctx-has-pending-messages-p #:ctx-shutdown #:ctx-compact #:ctx-reload
    #:ctx-get-flag #:ctx-get-system-prompt #:ctx-get-thinking-level #:ctx-get-all-tools #:ctx-get-active-tools
    #:ctx-send-message #:ctx-send-user-message #:ctx-append-entry #:ctx-set-session-name
@@ -326,7 +326,9 @@
    #:tool-render-context-args #:tool-render-context-tool-call-id #:tool-render-context-cwd #:tool-render-context-execution-started
    #:tool-render-context-args-complete #:tool-render-context-is-partial #:tool-render-context-expanded
    #:tool-render-context-show-images #:tool-render-context-is-error #:tool-render-context-output-pad
-   #:tool-render-context-duration-ms #:tool-render-context-state #:tool-render-context-invalidate #:login-definition
+   #:tool-render-context-duration-ms #:tool-render-context-state #:tool-render-context-invalidate
+   #:tool-render-context-key-text #:tool-render-context-key-hint #:message-render-options-key-text #:message-render-options-key-hint
+   #:entry-render-options-key-text #:entry-render-options-key-hint #:login-definition
    #:make-login-definition #:login-definition-p #:login-definition-brand #:login-definition-hero #:login-definition-mascot
    #:login-definition-palette #:login-definition-name #:login-definition-description #:login-definition-tagline
    #:sprite-definition #:make-sprite-definition #:sprite-definition-p #:sprite-definition-id #:sprite-definition-name

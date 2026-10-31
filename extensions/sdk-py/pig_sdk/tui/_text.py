@@ -501,9 +501,41 @@ class _AnsiCodeTracker:
         result = ""
         if self.underline:
             result += "\x1b[24m"
+        if self.strikethrough:
+            result += "\x1b[29m"
         if self.hyperlink:
             result += "\x1b]8;;" + self.hyperlink[2]
         return result
+
+
+def _extract_ansi_codes(s: str) -> str:
+    out = []
+    i = s.find("\x1b")
+    while i != -1:
+        length = _ansi_code_length(s, i)
+        if length > 0:
+            out.append(s[i : i + length])
+            i += length
+        else:
+            i += 1
+        i = s.find("\x1b", i)
+    return "".join(out)
+
+
+def _is_whitespace_token(token: str) -> bool:
+    i = 0
+    n = len(token)
+    while i < n:
+        if token[i] == "\x1b":
+            length = _ansi_code_length(token, i)
+            if length == 0:
+                return False
+            i += length
+        elif _is_js_space(token[i]):
+            i += 1
+        else:
+            return False
+    return True
 
 
 def _update_tracker(text: str, tracker: _AnsiCodeTracker) -> None:
@@ -609,10 +641,11 @@ def _wrap_single_line(line: str, width: int) -> list[str]:
     current_len = 0
     for token in _split_into_tokens(line):
         token_len = visible_width(token)
-        is_whitespace = _trim_start(_trim_end(token)) == ""
+        # pig divergence (D217): Pi 2ce9d527 (#10925) the codes that close a styled word sit on the following space token, which is still whitespace.
+        is_whitespace = _is_whitespace_token(token)
         if token_len > width and not is_whitespace:
             if current:
-                current += tracker.line_end_reset()
+                current = _trim_end(current) + tracker.line_end_reset()
                 wrapped.append(current)
                 current = ""
                 current_len = 0
@@ -622,14 +655,20 @@ def _wrap_single_line(line: str, width: int) -> list[str]:
             current_len = visible_width(current)
             continue
         if current_len + token_len > width and current_len > 0:
-            to_wrap = _trim_end(current) + tracker.line_end_reset()
+            to_wrap = _trim_end(current)
+            if is_whitespace:
+                to_wrap += _extract_ansi_codes(token)
+                _update_tracker(token, tracker)
+            to_wrap += tracker.line_end_reset()
             wrapped.append(to_wrap)
             if is_whitespace:
                 current = tracker.active_codes()
                 current_len = 0
-            else:
-                current = tracker.active_codes() + token
-                current_len = token_len
+                continue
+            current = tracker.active_codes() + token
+            current_len = token_len
+        elif is_whitespace and current_len + token_len > width and "\x1b" in token:
+            current += _extract_ansi_codes(token)
         else:
             current += token
             current_len += token_len

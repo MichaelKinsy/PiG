@@ -1196,9 +1196,11 @@ func (e *Extension) runWithConn(nc net.Conn, started *conn, sockPath string) err
 		}
 		if env.Type == msgRequest && env.Request != nil && env.Request.Method == methodEventsDispatch {
 			ctx, finish := e.armRequest(env.ID)
+			// env is the loop's: the next receive overwrites it while the handler runs.
+			dispatch := env
 			e.requestWG.Go(func() {
 				defer finish()
-				e.handleArmedRequest(env.ID, env.Request, ctx)
+				e.handleArmedRequest(dispatch.ID, dispatch.Request, ctx)
 			})
 			continue
 		}

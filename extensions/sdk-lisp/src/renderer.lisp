@@ -15,6 +15,35 @@ RENDER-SHELL is \"default\" or \"self\"."
   (args (obj)) (tool-call-id "") (cwd "") execution-started args-complete is-partial expanded show-images is-error (output-pad 0)
   duration-ms (state (obj)) invalidate)
 
+;;; pig divergence (D217): Pi 9376c8d1 (#4748) hands renderers the host's keyText and keyHint on the tool render context and the message and entry
+;;; options (KeybindingHints); pinned Pi has neither. The message and entry options are the host's JSON object, so each form takes it as its first
+;;; argument, as a method takes its receiver; every form delegates to KEY-TEXT and KEY-HINT, which read the host's keybindings.
+
+(defun tool-render-context-key-text (context keybinding)
+  "KeybindingHints.keyText of the tool render context CONTEXT: KEY-TEXT."
+  (declare (ignore context))
+  (key-text keybinding))
+(defun tool-render-context-key-hint (context keybinding description)
+  "KeybindingHints.keyHint of the tool render context CONTEXT: KEY-HINT."
+  (declare (ignore context))
+  (key-hint keybinding description))
+(defun message-render-options-key-text (options keybinding)
+  "KeybindingHints.keyText of the OPTIONS a message renderer receives: KEY-TEXT."
+  (declare (ignore options))
+  (key-text keybinding))
+(defun message-render-options-key-hint (options keybinding description)
+  "KeybindingHints.keyHint of the OPTIONS a message renderer receives: KEY-HINT."
+  (declare (ignore options))
+  (key-hint keybinding description))
+(defun entry-render-options-key-text (options keybinding)
+  "KeybindingHints.keyText of the OPTIONS an entry renderer receives: KEY-TEXT."
+  (declare (ignore options))
+  (key-text keybinding))
+(defun entry-render-options-key-hint (options keybinding description)
+  "KeybindingHints.keyHint of the OPTIONS an entry renderer receives: KEY-HINT."
+  (declare (ignore options))
+  (key-hint keybinding description))
+
 (defstruct (rd-state (:conc-name rd-))
   (message-declarations '()) (message-handlers (make-hash-table :test 'equal)) (message-views (make-hash-table :test 'equal))
   (entry-declarations '()) (entry-handlers (make-hash-table :test 'equal)) (entry-views (make-hash-table :test 'equal))

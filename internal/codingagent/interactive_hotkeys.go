@@ -102,7 +102,9 @@ func (m *InteractiveMode) extensionShortcutsForHotkeys() []extension.ExtensionSh
 
 func (m *InteractiveMode) handleHotkeysCommand() {
 	body := tui.NewPaddedBox(1, 1, nil)
-	body.AddChild(tui.NewMarkdownWithOptions(hotkeysMarkdown(m.extensionShortcutsForHotkeys()), 0, 0, m.markdownThemeWithSettings(), nil, nil))
+	hotkeys := tui.NewMarkdownWithOptions(hotkeysMarkdown(m.extensionShortcutsForHotkeys()), 0, 0, m.markdownThemeWithSettings(), nil, nil)
+	hotkeys.FinishStreaming()
+	body.AddChild(hotkeys)
 	m.appendChatBlock(tui.NewContainer(
 		tui.NewDynamicBorder(),
 		tui.NewPaddedText("\x1b[1m"+tui.ActiveTheme().Fg("accent", "Keyboard Shortcuts")+"\x1b[22m", 1, 0, nil),

@@ -33,5 +33,4 @@ results.codex.push(outcome(second));
 // A hook that returns null leaves {type: "response.create", ...null}; without a session no debug stats read the body first.
 const nullModel = { ...model, baseUrl: job.codex.nullBaseUrl };
 results.codex.push(outcome(await codex.stream(nullModel, normalizeContext({ messages: [{ role: "user", content: "one", timestamp: 1 }] }), { apiKey: job.codex.apiKey, transport: "websocket", onPayload: () => null }).result()));
-process.stdout.write(JSON.stringify(results));
-process.exit(0);
+process.stdout.write(JSON.stringify(results), () => process.exit(0));

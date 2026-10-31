@@ -3597,9 +3597,10 @@ impl Context {
     /// When `options.signal` is cancelled the host terminates the command, as Pi does: the command alone receives SIGTERM (the
     /// process is killed on Windows), no descendant is signalled, and the call returns the output written so far with `killed`
     /// set and `exit_code` 0, which is what a command that a signal ended reports. A signal that is cancelled before the call
-    /// starts the command and ends it at once. Nothing follows the SIGTERM, as upstream's: a command that ignores it keeps the
-    /// call waiting. Without a signal the command ends when the calling request is cancelled; a signal replaces that
-    /// cancellation, so cancelling the request then leaves the command running and the call waits for its result.
+    /// starts the command and ends it at once. SIGKILL follows the SIGTERM five seconds later if the command has not exited, for a
+    /// timeout and a `max_buffer` overflow too. Without a signal the command ends when the calling request is cancelled; a signal
+    /// replaces that cancellation, so cancelling the request then leaves the command running and the call waits for its result.
+    // pig divergence (D217): Pi c466a359 (#11360) force-kills a command that ignores SIGTERM and adds `max_buffer`; pinned Pi did neither.
     pub fn exec_with_options(
         &self,
         command: &str,
@@ -3612,6 +3613,13 @@ impl Context {
         }
         if let Some(cwd) = options.cwd.as_deref() {
             opts.insert("cwd".into(), serde_json::Value::String(cwd.to_string()));
+        }
+        // pig divergence (D217): Pi c466a359 (#11360) sends options.maxBuffer; NaN and the infinities cannot cross the wire, so they fail here.
+        if let Some(max_buffer) = options.max_buffer {
+            if !max_buffer.is_finite() {
+                return Err("maxBuffer must be an integer between 0 and the runtime string limit".to_string());
+            }
+            opts.insert("maxBuffer".into(), serde_json::Value::from(max_buffer));
         }
         let mut call = serde_json::json!({ "command": command, "args": args, "options": opts });
         let Some(signal) = options.signal.as_ref() else {
@@ -3667,6 +3675,11 @@ impl Context {
             exit_code: value.get("code").and_then(|v| v.as_i64()).unwrap_or(0) as i32,
             killed: value
                 .get("killed")
+                .and_then(|v| v.as_bool())
+                .unwrap_or(false),
+            // pig divergence (D217): Pi c466a359 (#11360) adds `truncated` to the result.
+            truncated: value
+                .get("truncated")
                 .and_then(|v| v.as_bool())
                 .unwrap_or(false),
         })
@@ -4121,9 +4134,13 @@ pub struct ExecResult {
     pub stderr: String,
     /// The host's `code`.
     pub exit_code: i32,
-    /// Whether the command was killed (timeout or cancellation).
+    /// Whether pi terminated the command (timeout, cancellation, or output over `max_buffer`).
     #[serde(default)]
     pub killed: bool,
+    // pig divergence (D217): Pi c466a359 (#11360) adds `truncated` to ExecResult; the pinned declaration has no cap.
+    /// Whether the output exceeded `max_buffer`: `stdout` and `stderr` are incomplete and `exit_code` is nonzero.
+    #[serde(default)]
+    pub truncated: bool,
 }
 
 /// Upstream `ExecOptions` for [`Context::exec_with_options`].
@@ -4133,6 +4150,9 @@ pub struct ExecOptions {
     pub timeout: Option<f64>,
     /// Working directory; the session's when unset.
     pub cwd: Option<String>,
+    // pig divergence (D217): Pi c466a359 (#11360) adds options.maxBuffer; the pinned ExecOptions has no cap.
+    /// Upstream's `maxBuffer`: the byte limit of stdout and stderr together. Output past it terminates the command and the result has `truncated` and `killed` set and a nonzero `exit_code`; a character the limit cuts is dropped whole. Unset: 256 MiB, capped by the runtime string limit. It is a JavaScript number that must be an integer from 0 to that limit: the host fails the call for a fraction, a negative value or one above it, and the call fails here for NaN or an infinity, which cannot cross the wire.
+    pub max_buffer: Option<f64>,
     /// Upstream's `signal`: cancelling it terminates the command (see [`Context::exec_with_options`]). Unset, the command ends when the calling request is cancelled.
     pub signal: Option<crate::ProviderSignal>,
 }
@@ -5600,6 +5620,7 @@ mod sdk_surface_call_tests {
                     &ExecOptions {
                         timeout: Some(250.0),
                         cwd: Some("/work".to_string()),
+                        max_buffer: None,
                         signal: None,
                     },
                 )
@@ -5618,6 +5639,19 @@ mod sdk_surface_call_tests {
         assert_eq!(result.stderr, "err");
         assert_eq!(result.exit_code, 137);
         assert!(result.killed);
+    }
+
+    // pig divergence (D217): Pi c466a359 (#11360) exec.ts rejects a maxBuffer that is not an integer; NaN and the infinities cannot cross the wire, so the call fails here and sends nothing.
+    #[test]
+    fn exec_with_a_non_finite_max_buffer_fails_without_a_call() {
+        let (ext_stream, _host_stream) = UnixStream::pair().unwrap();
+        let ctx = context(ext_stream, "req-1");
+        for value in [f64::NAN, f64::INFINITY, f64::NEG_INFINITY] {
+            let error = ctx
+                .exec_with_options("true", &[], &ExecOptions { max_buffer: Some(value), ..Default::default() })
+                .unwrap_err();
+            assert!(error.contains("maxBuffer must be an integer between 0 and"), "{value}: {error}");
+        }
     }
 
     #[test]

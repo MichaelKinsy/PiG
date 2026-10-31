@@ -12,7 +12,7 @@ type ExtensionEditorOptions struct {
 
 // ExtensionEditorComponent is the multi-line editor overlay of ctx.ui.editor() and the /tree summary prompt (extension-editor.ts ExtensionEditorComponent).
 //
-// Layout: DynamicBorder, Spacer(1), Text(accent title), [Spacer(1), Text(description)], Spacer(1), Editor, Spacer(1), Text(hint), Spacer(1), DynamicBorder.
+// Layout: DynamicBorder, Spacer(1), Text(accent title), [Spacer(1), Text(description)], Spacer(1), Editor, Text(external editor status, empty unless an external editor failed), Spacer(1), Text(hint), Spacer(1), DynamicBorder.
 //
 // Ports packages/coding-agent/src/modes/interactive/components/extension-editor.ts
 type ExtensionEditorComponent struct {
@@ -26,7 +26,9 @@ type ExtensionEditorComponent struct {
 	done        bool
 	// externalEditorCommand is the command the external-editor handoff runs (constructor argument externalEditorCommand, already defaulted by the caller).
 	externalEditorCommand string
-	externalEditor        func(command, content string, apply func(string))
+	externalEditor        func(command, content string, apply func(string), report func(message string))
+	// externalEditorStatus shows external editor failures; it renders nothing while empty (extension-editor.ts externalEditorStatus).
+	externalEditorStatus *tui.Text
 }
 
 // NewExtensionEditorComponent is extension-editor.ts constructor(tui, keybindings, title, prefill, onSubmit, onCancel, options, externalEditorCommand).
@@ -62,6 +64,9 @@ func NewExtensionEditorComponent(ui tui.TUI, keybindings *KeybindingsManager, ti
 		}
 	}
 	c.Add(c.editor)
+	// pig divergence (D217): Pi 6454d07e (#11592) shows external editor failures under the editor.
+	c.externalEditorStatus = tui.NewPaddedText("", 1, 0, nil)
+	c.Add(c.externalEditorStatus)
 	c.Add(tui.NewSpacer(1))
 	// keyHint resolves each action against the bindings of the moment (defaults: "enter", "shift+enter/ctrl+j", "escape/ctrl+c").
 	hint := tui.KeyHint(tui.ActionKeyText(tui.KBSelectConfirm), "submit") + "  " + tui.KeyHint(tui.ActionKeyText(tui.KBInputNewLine), "newline") + "  " + tui.KeyHint(tui.ActionKeyText(tui.KBSelectCancel), "cancel") +
@@ -84,7 +89,7 @@ func (c *ExtensionEditorComponent) SetFocused(focused bool) {
 // SetExternalEditor binds the terminal owner's asynchronous external-editor handoff, which hands the terminal to a child running command on content. A
 // successful completion calls apply, which replaces the editor's text without submitting the dialog. Upstream does the handoff inside the component
 // (ui.stop, editInExternalEditor, ui.start); the terminal owner here also owns raw mode and the input reader, so it runs the child.
-func (c *ExtensionEditorComponent) SetExternalEditor(open func(command, content string, apply func(string))) {
+func (c *ExtensionEditorComponent) SetExternalEditor(open func(command, content string, apply func(string), report func(message string))) {
 	c.externalEditor = open
 }
 
@@ -104,7 +109,14 @@ func (c *ExtensionEditorComponent) HandleInput(data string) {
 	if c.matchesExternalEditor(data) && c.externalEditor != nil {
 		c.externalEditor(c.externalEditorCommand, c.editor.Text(), func(text string) {
 			if !c.done {
+				c.externalEditorStatus.SetText("")
 				c.editor.SetText(text)
+				c.Invalidate()
+			}
+			c.ui.RequestRender(true)
+		}, func(message string) {
+			if !c.done {
+				c.externalEditorStatus.SetText(tui.ActiveTheme().Fg("warning", message))
 				c.Invalidate()
 			}
 			c.ui.RequestRender(true)

@@ -54,4 +54,4 @@ try {
 }
 if (process.argv.includes("--keep")) console.log(work)
 else rmSync(work, { recursive: true, force: true })
-process.exit(status)
+process.exitCode = status

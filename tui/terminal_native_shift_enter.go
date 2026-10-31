@@ -17,11 +17,18 @@ func isAppleTerminalSessionFor(goos, termProgram string) bool {
 	return goos == "darwin" && termProgram == "Apple_Terminal"
 }
 
+// isNativeShiftEnterCandidate mirrors terminal.ts isNativeShiftEnterCandidate: Return, or ESC+Return, which some Apple Terminal setups
+// send for Shift+Enter.
+// pig divergence (D217): Pi 86dc686c (#11559) ESC+Return is a candidate as well as a lone Return.
+func isNativeShiftEnterCandidate(data string) bool {
+	return data == "\r" || data == "\x1b\r"
+}
+
 // NormalizeNativeShiftEnterInput mirrors terminal.ts
-// normalizeNativeShiftEnterInput: a plain Return read while the native Shift
-// key is held becomes the enhanced Shift+Enter sequence.
+// normalizeNativeShiftEnterInput: a Return or ESC+Return read while the native
+// Shift key is held becomes the enhanced Shift+Enter sequence.
 func NormalizeNativeShiftEnterInput(data string, shouldDetectNativeShiftEnter, isShiftPressed bool) string {
-	if shouldDetectNativeShiftEnter && data == "\r" && isShiftPressed {
+	if shouldDetectNativeShiftEnter && isNativeShiftEnterCandidate(data) && isShiftPressed {
 		return nativeShiftEnterSequence
 	}
 	return data
@@ -43,7 +50,7 @@ func NormalizeProcessInputSequence(sequence string) string {
 }
 
 func normalizeProcessInputSequenceFor(sequence, goos, termProgram string, isModifierPressed func(ModifierKey) bool) string {
-	shouldDetectNativeShiftEnter := sequence == "\r" && (isAppleTerminalSessionFor(goos, termProgram) || goos == "windows")
+	shouldDetectNativeShiftEnter := isNativeShiftEnterCandidate(sequence) && (isAppleTerminalSessionFor(goos, termProgram) || goos == "windows")
 	return NormalizeNativeShiftEnterInput(
 		sequence,
 		shouldDetectNativeShiftEnter,

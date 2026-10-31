@@ -147,6 +147,9 @@ func TestReportProjectTrustNamesTheDeciding(t *testing.T) {
 		wantReason string
 	}{
 		{"nothing to trust", false, nil, "", projectTrustNotRequired, "no settings or resources"},
+		// Pi 31ade0e0 (#10947): a saved Do not trust decision beats auto-trust for a project without trust-requiring resources.
+		{"nothing to trust, saved untrusted", false, new(false), "always", projectTrustUntrusted, "saved decision"},
+		{"nothing to trust, saved trusted", false, new(true), "never", projectTrustTrusted, "saved decision"},
 		{"saved trusted", true, new(true), "never", projectTrustTrusted, "saved decision"},
 		{"saved untrusted beats always", true, new(false), "always", projectTrustUntrusted, "saved decision"},
 		{"default always", true, nil, "always", projectTrustTrusted, "defaultProjectTrust is always"},

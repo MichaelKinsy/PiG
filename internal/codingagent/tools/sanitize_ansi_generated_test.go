@@ -22,6 +22,8 @@ func TestStripANSIMatchesTheReferencePatternOnGeneratedInputs(t *testing.T) {
 		"a\x1b]funterminated", "a\x1bPabc\x1b\\z", "a\x1b^abc\x07z", "a\x1b_abc\u009cz", "a\u0090abc\u009cz", "a\u009dabc\u009cz",
 		"a\u009b31mred", "a\x1b(0x", "a\x1b*0x", "a\x1b+c", "a\x1b/0x", "a\x1bcok", "a\x1b\\ok",
 	}
+	// The alphabet has no '<', '=' or '>': Pi b5fc6dc8 (#11377, D217) strips them with their parameters after ESC [, which the
+	// pinned reference pattern does not; sanitize_private_csi_test.go pins that.
 	chars := []string{"a", "f", "0", "1", ";", ":", "[", "]", "(", ")", "#", "?", "m", "P", "_", `\`, "\x07", "\x1b", "\u009b", "\u009c", "\u0090", "\u009d"}
 	for _, char := range chars {
 		inputs = append(inputs, "x\x1b"+char+"y", "x\u009b"+char+"y")

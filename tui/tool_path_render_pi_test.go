@@ -8,8 +8,7 @@ import (
 )
 
 // TestRenderToolPathHonorsPiGeneratedExpectations pins renderToolPath, shortenPath and linkPath (render-utils.ts:10-23, 102-112). The
-// expectations were produced by the Pi 1.1.0 render-utils.js with HOME=/home/tester: shortenPath tests a bare string
-// prefix, so /home/testerx becomes ~x, and linkPath resolves the raw path against cwd (`~` expanded) before
+// expectations were produced by the Pi 1.1.0 render-utils.js with HOME=/home/tester: shortenPath anchors home at a path segment since Pi 1be312b4 (#10488; the 1.1.0 expectation was ~x for /home/testerx), and linkPath resolves the raw path against cwd (`~` expanded) before
 // pathToFileURL percent-encodes it.
 func TestRenderToolPathHonorsPiGeneratedExpectations(t *testing.T) {
 	th := ActiveTheme()
@@ -31,7 +30,8 @@ func TestRenderToolPathHonorsPiGeneratedExpectations(t *testing.T) {
 		{"empty path without a fallback", "", true, "", c(th.ToolOutput, "...")},
 		{"empty path uses the fallback", "", true, ".", c(th.Accent, ".")},
 		{"home prefix", "/home/tester/a.go", true, "", c(th.Accent, "~/a.go")},
-		{"bare string prefix of home", "/home/testerx/a.go", true, "", c(th.Accent, "~x/a.go")},
+		{"home is a path segment, not a string prefix", "/home/testerx/a.go", true, "", c(th.Accent, "/home/testerx/a.go")},
+		{"home with a trailing slash", "/home/tester/", true, "", c(th.Accent, "~")},
 		{"outside home", "/srv/a.go", true, "", c(th.Accent, "/srv/a.go")},
 	}
 	for _, tc := range cases {

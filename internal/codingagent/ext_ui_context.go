@@ -432,8 +432,8 @@ func (u *ExtUIContext) Editor(ctx context.Context, title, prefill string) (strin
 		func() { done, cancelled = true, true },
 		nil, u.m.externalEditorCommand())
 	ed.SetFocused(true)
-	ed.SetExternalEditor(func(command, content string, apply func(string)) {
-		u.m.openExternalEditorBuffer(ctx, command, content, apply)
+	ed.SetExternalEditor(func(command, content string, apply func(string), report func(string)) {
+		u.m.openExternalEditorBuffer(ctx, command, content, apply, report)
 	})
 	return u.runDialog(ctx, ed, ed.HandleInput, func() (string, bool, bool) {
 		return value, done, cancelled

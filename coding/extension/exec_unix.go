@@ -17,6 +17,10 @@ func terminate(process *os.Process) (noExitCode bool) {
 	return false
 }
 
+// pig divergence (D217): Pi c466a359 (#11360) force-kills a child that ignores SIGTERM; pinned Pi never sent the SIGKILL.
+// forceTerminate is proc.kill("SIGKILL"), which exec.ts sends execForceKillDelay after SIGTERM to a child that has not exited.
+func forceTerminate(process *os.Process) { _ = process.Signal(syscall.SIGKILL) }
+
 // A descendant can leave the child's process group (setsid) and still hold the output pipes, so no group tells Wait that none does; the pipes
 // themselves do (internal/childwait).
 func prepareChildGroup(*exec.Cmd)              {}

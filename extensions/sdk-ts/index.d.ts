@@ -110,6 +110,34 @@ declare module "@earendil-works/pi-coding-agent" {
     /** In a tool's `execute`: `JSON.stringify` of the call's arguments, members in the model's order. */
     readonly toolInput?: string;
   }
+  // pig divergence (D217): Pi c466a359 (#11360) adds ExecOptions.maxBuffer and ExecResult.truncated, merged after the pinned 1.4.0 declarations. PiG's
+  // host implements them, so the declarations are added here; the re-exported Pi declarations stay the pinned ones.
+  interface ExecOptions {
+    /**
+     * Combined stdout/stderr byte limit; exceeding it terminates the command with `truncated: true`.
+     * Nonnegative integer up to the runtime string limit. Default: 256 MiB, capped by that limit.
+     */
+    maxBuffer?: number;
+  }
+  interface ExecResult {
+    /** Output exceeded `maxBuffer`; stdout and stderr are incomplete and `code` is nonzero. */
+    truncated: boolean;
+  }
+  // pig divergence (D217): Pi 9376c8d1 (#4748) adds KeybindingHints to the tool render context and the message and entry renderer options, merged after
+  // the pinned 1.4.0 declarations. PiG's host passes them, so the declarations are added here; the re-exported Pi declarations stay the pinned ones.
+  /**
+   * Formats the host's configured keybindings for display.
+   * Use these instead of importing `keyText`/`keyHint`: an import may resolve to another copy of the package, which does not see the host's keybindings.
+   */
+  interface KeybindingHints {
+    /** Configured keys for a keybinding id, for example `"ctrl+o"`. Empty when the id has no keys. */
+    keyText(keybinding: import("@earendil-works/pi-tui").Keybinding): string;
+    /** Configured keys followed by a description, styled as a hint, for example `"ctrl+o to expand"`. */
+    keyHint(keybinding: import("@earendil-works/pi-tui").Keybinding, description: string): string;
+  }
+  interface ToolRenderContext<TState = any, TArgs = any> extends KeybindingHints {}
+  interface MessageRenderOptions extends KeybindingHints {}
+  interface EntryRenderOptions extends KeybindingHints {}
   interface ExtensionUIContext {
     /** Subscribe to changes of the host's theme; the handler receives `ui.theme` after it took the new palette. Returns the unsubscribe function. */
     onThemeChange(handler: (theme: Theme) => void): () => void;

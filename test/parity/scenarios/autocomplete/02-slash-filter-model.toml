@@ -33,11 +33,12 @@ ready_pattern_pig = "Warning: No models available."
 ready_pattern_pi = "Warning: No models available."
 ready_timeout_seconds = 25
 capture_start = "/mo\n────────────────────────────────────────────────────────────────────────────────────────────────────"
-capture_end = "  import         Import and resume a session from a JSONL file"
+# D217 (Pi 2a46c420, #11532): the pinned Pi describes /import as "Import and resume a session from a JSONL file" and PiG as "Import a JSONL session, preserving its ID and working directory", so the crop ends where both lines still agree, after "Import ". The description text is pinned by TestBuiltinSlashCommandsCarryPi2a46c420Descriptions.
+capture_end = "  import         Import "
 
 [[tmux.steps]]
 keys = ["/", "m", "o"]
-wait_contains = ["→ model", "  import         Import and resume a session from a JSONL file"]
+wait_contains = ["→ model", "  import         Import "]
 wait_timeout_seconds = 5
 settle_seconds = 1
 

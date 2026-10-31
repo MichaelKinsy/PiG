@@ -2,6 +2,7 @@ package imageprocessing
 
 import (
 	"bytes"
+	"cmp"
 	"encoding/base64"
 	"image"
 	"image/color"
@@ -34,6 +35,8 @@ type resizeStrategyResult struct {
 	Width          int    `json:"width"`
 	Height         int    `json:"height"`
 	WasResized     bool   `json:"wasResized"`
+	// Sizes are Photon's PNG and JPEG candidates at the size of a resized answer, measured by the oracle script; nil when not measured.
+	Sizes *candidateSizes `json:"sizes,omitempty"`
 }
 
 func decodeBase64(t *testing.T, s string) []byte {
@@ -48,7 +51,8 @@ func decodeBase64(t *testing.T, s string) []byte {
 // TestResizeImageDimensionStrategyMatchesPi runs image-resize-core.ts resizeImageInProcess (Photon) and PiG's ResizeImage over 200 seeded PNGs and option sets. Dimensions from 1 to
 // 2,600 (narrow strips, squares, images just over or under each limit), maxWidth and maxHeight from 1 to 3,000, the default and a very large maxBytes, a one-byte maxBytes that nothing
 // satisfies, and an unset or explicit mime type. The original and resulting size, whether the image was resized, whether Pi returns null, and the mime type must match, and the
-// returned image must decode to the size it reports. Not compared: the encoded bytes (Photon's PNG/JPEG encoders differ from Go's) and which candidate wins a tight maxBytes, and the 0.75 shrink steps (reached only when every candidate misses maxBytes), which depend on those encoders.
+// returned image must decode to the size it reports. Not compared: the encoded bytes (Photon's PNG/JPEG encoders differ from Go's), which candidate wins a tight maxBytes, and the 0.75 shrink steps (reached only when every candidate misses maxBytes), which depend on those encoders.
+// The format may differ only as encoder_tie_test.go describes: each side returns the one Pi's e7a0df27 rule picks from its own PNG and JPEG sizes.
 func TestResizeImageDimensionStrategyMatchesPi(t *testing.T) {
 	rng := rand.New(rand.NewPCG(20261125, 7))
 	pickInt := func(xs ...int) int { return xs[rng.IntN(len(xs))] }
@@ -100,14 +104,16 @@ func TestResizeImageDimensionStrategyMatchesPi(t *testing.T) {
 	}
 
 	var want []resizeStrategyResult
-	pioracle.Run(t, `
+	pioracle.Run(t, piPhotonCandidatesJS+`
 const { resizeImageInProcess } = await load("pi-coding-agent/utils/image-resize-core.js");
 const out = [];
 for (const c of input) {
 	const options = {};
 	for (const key of ["maxWidth", "maxHeight", "maxBytes", "jpegQuality"]) if (c[key]) options[key] = c[key];
-	const result = await resizeImageInProcess(new Uint8Array(Buffer.from(c.data, "base64")), c.mimeType, options);
-	out.push(result === null ? { null: true } : { null: false, ...result });
+	const bytes = new Uint8Array(Buffer.from(c.data, "base64"));
+	const result = await resizeImageInProcess(bytes, c.mimeType, options);
+	if (result === null) out.push({ null: true });
+	else out.push({ null: false, ...result, sizes: result.wasResized ? candidateSizes(bytes, result.width, result.height, c.jpegQuality || 80) : undefined });
 }
 emit(out);`, cases, &want)
 
@@ -132,7 +138,7 @@ emit(out);`, cases, &want)
 		})
 	}
 	wg.Wait()
-	failures := 0
+	failures, ties := 0, 0
 	for i, c := range cases {
 		got, err := outcomes[i].got, outcomes[i].err
 		gotResult := resizeStrategyResult{Null: err != nil}
@@ -149,6 +155,16 @@ emit(out);`, cases, &want)
 			}
 		}
 		expected.Data = ""
+		piSizes := expected.Sizes
+		expected.Sizes = nil
+		// Pi picks the smaller of the PNG and the JPEG candidate (e7a0df27), each side by its own encoders' sizes (encoder_tie_test.go).
+		if err == nil && !expected.Null {
+			maxBytes := cmp.Or(c.MaxBytes, piDefaultMaxBytes)
+			if encoderTie(t, decodeBase64(t, c.Data), gotResult.Width, gotResult.Height, jpegQualityOf(c.Quality), maxBytes, gotResult.MimeType, expected.MimeType, piSizes) {
+				ties++
+				gotResult.MimeType = expected.MimeType
+			}
+		}
 		if gotResult != expected {
 			failures++
 			if failures <= 8 {
@@ -156,5 +172,5 @@ emit(out);`, cases, &want)
 			}
 		}
 	}
-	t.Logf("%d cases, %d failures", len(cases), failures)
+	t.Logf("%d cases, %d failures, %d PNG/JPEG encoder ties", len(cases), failures, ties)
 }

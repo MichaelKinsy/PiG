@@ -9,6 +9,7 @@ import (
 	"regexp"
 	"slices"
 	"strings"
+	"sync"
 	"testing"
 	"testing/synctest"
 	"time"
@@ -598,7 +599,7 @@ func TestAltScreenGetScrollSelectionPointMapsContentRow(t *testing.T) {
 	t.Cleanup(sv.Dispose)
 	frame := RenderLayoutFrame(sv, 20, 6, noRender)
 	tui.currentLayout = &frame
-	tui.width, tui.height = 20, 6
+	tui.SetFixedSize(20, 6)
 
 	// Follow=end pins scrollTop to the bottom; a pointer at the top visible row
 	// maps to scrollTop + (row - rect.Y). With 20 lines of content in a height-6
@@ -1425,4 +1426,25 @@ func TestAltScreenResetTextSelectionDropsSelectionAndClickHistory(t *testing.T) 
 			t.Fatal("a click after ResetTextSelection counted as a double-click")
 		}
 	})
+}
+
+// A frame installs the layout the primary scroll view comes from; the viewport accessors an extension host call reaches (ViewportTop, IsFollowingOutput, ScrollBy, ScrollToTop, ScrollToBottom) read it from another goroutine.
+func TestAltScreenViewportAccessorsDoNotRaceWithAFrame(t *testing.T) {
+	renderer := newAltScreenForTest(&bytes.Buffer{}, 40, 6, TuiAltScreenOptions{})
+	renderer.Add(NewText(strings.Repeat("line\n", 30)))
+	renderer.Start()
+	defer renderer.StopWithOptions(StopOptions{PreserveScreen: true})
+
+	var wg sync.WaitGroup
+	for range 100 {
+		wg.Go(renderer.Render)
+		wg.Go(func() {
+			_ = renderer.ViewportTop()
+			_ = renderer.IsFollowingOutput()
+			renderer.ScrollBy(-1)
+			renderer.ScrollToTop()
+			renderer.ScrollToBottom()
+		})
+	}
+	wg.Wait()
 }

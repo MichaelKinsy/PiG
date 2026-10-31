@@ -42,7 +42,8 @@ func (l *DefaultResourceLoader) loadExtensionFiles(ctx context.Context, request 
 		if err != nil {
 			return LoadExtensionsResult{}, fmt.Errorf("coding: %w", err)
 		}
-		installFailures = append([][]packagemanager.PackageInstallFailure{resolved.InstallFailures}, installFailures...)
+		// pig additive (D216): a configured local Package whose directory does not exist warns after the failed installs; Pi skips it silently.
+		installFailures = append([][]packagemanager.PackageInstallFailure{resolved.InstallFailures, packagemanager.MissingLocalPackages(l.cwd, l.agentDir, l.settings)}, installFailures...)
 		enabled = append(append([]string{}, enabled...), enabledExtensionPaths(resolved.Extensions)...)
 		for _, resource := range resolved.Extensions {
 			packageRoots[resource.Path] = resource.Metadata.PackageRoot
@@ -170,22 +171,23 @@ func (l *DefaultResourceLoader) loadExtensionFiles(ctx context.Context, request 
 		}
 	}
 	// Extensions follow the order of the paths, built-ins in place, then the inline ones (:765-775).
+	// pig divergence (D217): Pi 1be312b4 (#10488) keys the loaded extensions by getResourcePathKey (getExtensionPathKey for a path), so Windows paths that differ in casing find one extension.
 	files := map[string]extension.Extension{}
 	for _, ext := range result.Extensions {
-		files[icodingagent.CanonicalizePath(ext.ResolvedPath)] = ext
+		files[icodingagent.ResourcePathKey(ext.ResolvedPath)] = ext
 	}
 	ordered := make([]extension.Extension, 0, len(result.Extensions)+len(preloaded)+len(inline))
 	used := map[string]bool{}
 	for _, path := range paths {
 		if ext, ok := preloaded[path]; ok {
 			ordered = append(ordered, ext)
-		} else if ext, ok := files[icodingagent.CanonicalizePath(path)]; ok {
+		} else if ext, ok := files[icodingagent.ResourcePathKey(path)]; ok {
 			ordered = append(ordered, ext)
-			used[icodingagent.CanonicalizePath(path)] = true
+			used[icodingagent.ResourcePathKey(path)] = true
 		}
 	}
 	for _, ext := range result.Extensions {
-		if !used[icodingagent.CanonicalizePath(ext.ResolvedPath)] {
+		if !used[icodingagent.ResourcePathKey(ext.ResolvedPath)] {
 			ordered = append(ordered, ext)
 		}
 	}

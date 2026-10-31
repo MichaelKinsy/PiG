@@ -2,6 +2,9 @@
 # system-prompt.ts:108-116,148-152 lists only active snippets and deduplicates
 # guideline bullets in active-tool order. A read override without a snippet
 # removes the built-in snippet, and a description never substitutes for it.
+# D217, Pi b9e3eef6 (#11495): setting the same tools again keeps the current active order, so PiG lists the read override's
+# bullet first. The pinned Pi (b3a29f11) still orders the rules by the requested names, so the two orders are asserted per
+# side in [diverge] and the rules block is replaced by one placeholder before output_equal compares the rest.
 name = "51-tool-prompt-contributions"
 description = "Registered tool snippets and guidelines follow active order and override built-in metadata"
 covers = ["packages/coding-agent/src/core/agent-session.ts", "packages/coding-agent/src/core/system-prompt.ts"]
@@ -23,6 +26,16 @@ timeout_seconds = 30
 [assert]
 exit_code = 0
 output_equal = true
-both_contain = ["- zeta: Zeta summary\n- alpha: Alpha summary", "- shared\n- zeta rule\n- override read\n- alpha rule\n- Be concise in your responses"]
+both_contain = ["- zeta: Zeta summary\n- alpha: Alpha summary", "- Be concise in your responses"]
 both_not_contain = ["- read:", "- hidden:", "This description must not become a snippet"]
 runs = 3
+
+[[assert.normalize_replace]]
+pattern = '- shared\n- zeta rule\n- override read\n- alpha rule|- override read\n- shared\n- zeta rule\n- alpha rule'
+with = "<D217 rule order>"
+reason = "D217 (Pi b9e3eef6): PiG keeps the active tool order (read first) while the pinned Pi follows the requested order; the bullets are the same and each side's own order is asserted in [diverge]."
+
+[diverge]
+pig_contains = ["- override read\n- shared\n- zeta rule\n- alpha rule\n- Be concise in your responses"]
+pi_contains = ["- shared\n- zeta rule\n- override read\n- alpha rule\n- Be concise in your responses"]
+reason = "D217 Pi b9e3eef6 (#11495): tools that stay active keep their current order and new ones are appended; the pinned Pi declares the requested order."

@@ -2027,12 +2027,6 @@ snippet = "go r.drainUIPromptEvents()"
 [[hit]]
 check = "golifetime"
 file = "coding/extension/host/subprocess/host.go"
-func = "Host.adoptConn"
-snippet = "go h.handleIncoming(me, conn)"
-
-[[hit]]
-check = "golifetime"
-file = "coding/extension/host/subprocess/host.go"
 func = "Host.handleIncoming"
 snippet = "go func() {"
 
@@ -2041,12 +2035,6 @@ check = "golifetime"
 file = "coding/extension/host/subprocess/host_calls.go"
 func = "callLanes.pushCall"
 snippet = "go l.drain(lane, current)"
-
-[[hit]]
-check = "golifetime"
-file = "coding/extension/host/subprocess/packed_go.go"
-func = "Host.acceptPackedExt"
-snippet = "go h.handleIncoming(me, conn)"
 
 [[hit]]
 check = "golifetime"
@@ -4899,24 +4887,6 @@ check = "utf16units"
 file = "codemode/source.go"
 func = "ParseCodemodeSource"
 snippet = "options, err := parseOptions(jsstring.Trim(trimmed[len(CodemodeOptionsPrefix):]))"
-
-[[hit]]
-check = "utf16units"
-file = "coding/extension/builtin/toolsearch/toolsearch.go"
-func = "stem"
-snippet = "case len(term) > 4 && strings.HasSuffix(term, \"ies\"):"
-
-[[hit]]
-check = "utf16units"
-file = "coding/extension/builtin/toolsearch/toolsearch.go"
-func = "stem"
-snippet = "case len(term) > 4 && pluralEnding.MatchString(term):"
-
-[[hit]]
-check = "utf16units"
-file = "coding/extension/builtin/toolsearch/toolsearch.go"
-func = "stem"
-snippet = "case len(term) > 3 && strings.HasSuffix(term, \"s\") && !strings.HasSuffix(term, \"ss\"):"
 
 [[hit]]
 check = "utf16units"

@@ -80,3 +80,42 @@ pub fn raw_key_hint(key: &str, description: &str) -> String {
     let theme = current_host_theme();
     theme.fg("dim", &format_key_text(key, KeyTextFormatOptions::default())) + &theme.fg("muted", &format!(" {description}"))
 }
+
+// pig divergence (D217): Pi 9376c8d1 (#4748) hands renderers the host's keyText and keyHint on the tool render context and the message and
+// entry options (KeybindingHints); pinned Pi has neither. Each method delegates to the module function, which reads the host's keybindings.
+
+impl crate::tool_render::ToolRenderContext {
+    /// `KeybindingHints.keyText` of the tool render context: [`key_text`].
+    pub fn key_text(&self, keybinding: &str) -> String {
+        key_text(keybinding)
+    }
+
+    /// `KeybindingHints.keyHint` of the tool render context: [`key_hint`].
+    pub fn key_hint(&self, keybinding: &str, description: &str) -> String {
+        key_hint(keybinding, description)
+    }
+}
+
+impl crate::extension::MessageRenderOptions {
+    /// `KeybindingHints.keyText` of the message render options: [`key_text`].
+    pub fn key_text(&self, keybinding: &str) -> String {
+        key_text(keybinding)
+    }
+
+    /// `KeybindingHints.keyHint` of the message render options: [`key_hint`].
+    pub fn key_hint(&self, keybinding: &str, description: &str) -> String {
+        key_hint(keybinding, description)
+    }
+}
+
+impl crate::extension::EntryRenderOptions {
+    /// `KeybindingHints.keyText` of the entry render options: [`key_text`].
+    pub fn key_text(&self, keybinding: &str) -> String {
+        key_text(keybinding)
+    }
+
+    /// `KeybindingHints.keyHint` of the entry render options: [`key_hint`].
+    pub fn key_hint(&self, keybinding: &str, description: &str) -> String {
+        key_hint(keybinding, description)
+    }
+}

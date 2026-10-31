@@ -66,8 +66,29 @@ func CreateReadTool(options *ReadToolOptions) *durable.ToolRegistration {
 	description := fmt.Sprintf("Read the contents of a file. Supports text files and images (%s). Images are sent as attachments. For text files, output is truncated to %d lines or %dKB (whichever is hit first). Use offset/limit for large files. When you need the full file, continue with offset until complete.", formats, durable.DEFAULT_MAX_LINES, durable.DEFAULT_MAX_BYTES/1024)
 	return &durable.ToolRegistration{
 		ToolSchema: toolSchema("read", description, readParameters),
+		// pig divergence (D217): Pi 04414839 (#11015) read declares what programs such as Code Mode scripts get, a text file's text or an image's block.
+		StructuredOutputSchema: readStructuredOutputSchema(),
 		Execute: func(ctx context.Context, args any, api durable.ToolExecutionApi) (durable.ToolExecutionResult, error) {
 			return executeRead(ctx, args, api, options.Images)
+		},
+	}
+}
+
+// readStructuredOutputSchema is what programs such as Code Mode scripts get from read: the text of a text file, or the
+// image block of an image, which Code Mode's image() shows (read.ts readStructuredOutputSchema).
+func readStructuredOutputSchema() map[string]any {
+	return map[string]any{
+		"anyOf": []any{
+			map[string]any{"type": "string"},
+			map[string]any{
+				"type":     "object",
+				"required": []any{"type", "data", "mimeType"},
+				"properties": map[string]any{
+					"type":     map[string]any{"const": "image", "type": "string"},
+					"data":     map[string]any{"type": "string"},
+					"mimeType": map[string]any{"type": "string"},
+				},
+			},
 		},
 	}
 }
@@ -321,7 +342,8 @@ func readText(ctx context.Context, reader env.BinaryReader, input ReadToolInput)
 		})
 	}
 
-	result := durable.ToolExecutionResult{Output: []ai.ToolResultMessageContent{}, Diagnostics: diagnostics}
+	// pig divergence (D217): Pi 04414839 (#11015) the shown text is also the structured output, "" when there is none.
+	result := durable.ToolExecutionResult{Output: []ai.ToolResultMessageContent{}, StructuredOutput: outputText, HasStructuredOutput: true, Diagnostics: diagnostics}
 	if outputText != "" {
 		result.Output = []ai.ToolResultMessageContent{ai.TextContent{Text: outputText}}
 	}

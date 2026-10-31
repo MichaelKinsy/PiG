@@ -42,7 +42,15 @@ func reportProjectTrust(cwd, agentDir string) projectTrustReport {
 	if err != nil {
 		return projectTrustReport{State: projectTrustUntrusted, Reason: "the trust decision could not be read", Error: err.Error()}
 	}
+	// pig divergence (D217): Pi 31ade0e0 (#10947) makes a saved decision beat auto-trust, so a project without trust-requiring resources is only "not required" when none is saved.
 	if !codingagent.HasTrustRequiringProjectResources(cwd) {
+		if decision, err := store.Get(cwd); err == nil && decision != nil {
+			state := projectTrustUntrusted
+			if trusted {
+				state = projectTrustTrusted
+			}
+			return projectTrustReport{State: state, Reason: "saved decision for this folder"}
+		}
 		return projectTrustReport{State: projectTrustNotRequired, Reason: "the project has no settings or resources that need trust"}
 	}
 	state := projectTrustUntrusted

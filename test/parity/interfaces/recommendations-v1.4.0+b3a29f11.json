@@ -274492,7 +274492,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "4 normalized-name Pig candidates are ambiguous."
+        "10 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -274502,8 +274502,14 @@
         "divergence"
       ],
       "pigCandidates": [
+        "go:github.com/MichaelKinsy/PiG/coding/extension#EntryRenderOptions.KeyHint",
+        "go:github.com/MichaelKinsy/PiG/coding/extension#MessageRenderOptions.KeyHint",
+        "go:github.com/MichaelKinsy/PiG/coding/extension#ToolRenderContext.KeyHint",
         "go:github.com/MichaelKinsy/PiG/coding/mcpext/mcptui#McpManagerView.keyHint",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#EntryRenderOptions.KeyHint",
         "go:github.com/MichaelKinsy/PiG/extensions/sdk#KeyHint",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#MessageRenderOptions.KeyHint",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#ToolRenderContext.KeyHint",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent/llama#keyHint",
         "go:github.com/MichaelKinsy/PiG/tui#KeyHint"
       ],
@@ -274553,7 +274559,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "2 normalized-name Pig candidates are ambiguous."
+        "8 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -274563,7 +274569,13 @@
         "divergence"
       ],
       "pigCandidates": [
+        "go:github.com/MichaelKinsy/PiG/coding/extension#EntryRenderOptions.KeyText",
+        "go:github.com/MichaelKinsy/PiG/coding/extension#MessageRenderOptions.KeyText",
+        "go:github.com/MichaelKinsy/PiG/coding/extension#ToolRenderContext.KeyText",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#EntryRenderOptions.KeyText",
         "go:github.com/MichaelKinsy/PiG/extensions/sdk#KeyText",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#MessageRenderOptions.KeyText",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#ToolRenderContext.KeyText",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent#KeybindingsManager.KeyText"
       ],
       "missingClosure": [

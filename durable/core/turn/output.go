@@ -3,7 +3,10 @@
 
 package turn
 
-import "strings"
+import (
+	"strings"
+	"unicode/utf8"
+)
 
 // Bounded tool output (src/harness/output.ts): the retention limits of one call, the exact slice of a text within them,
 // the sanitizer, and the running OutputBuffer a tool call reports into. Byte-level; a JavaScript string is its UTF-8 text.
@@ -31,8 +34,14 @@ type OutputSlice struct {
 	DroppedLines int
 }
 
-// SanitizeOutput removes control characters that break display and transcripts (U+0000-U+0008, U+000B-U+001F and
-// U+FFF9-U+FFFB); tabs and newlines stay.
+// SanitizeOutput removes escape sequences and control characters that break display and transcripts: whole 7-bit escape
+// sequences (strings up to BEL or ST, CSI, short ESC forms), U+0000-U+0008, U+000B-U+001F and U+FFF9-U+FFFB; tabs and newlines
+// stay. A sequence is matched on the text as it is, before any control character is removed, as Pi's ESCAPE_SEQUENCE is, and
+// a lone ESC goes with the other control characters.
+//
+//	\x1b[\]PX^_][^\x07\x1b]*(?:\x07|\x1b\\)  a string (OSC, DCS, SOS, PM, APC) up to BEL or ST
+//	\x1b\[[\x30-\x3f]*[\x20-\x2f]*[\x40-\x7e]  CSI
+//	\x1b[\x20-\x2f]*[\x30-\x7e]               a short ESC form
 func SanitizeOutput(text string) string {
 	clean := true
 	for _, r := range text {
@@ -45,12 +54,59 @@ func SanitizeOutput(text string) string {
 		return text
 	}
 	var b strings.Builder
-	for _, r := range text {
+	for i := 0; i < len(text); {
+		// pig divergence (D217): Pi 50d9f823 (#11604) removes whole ANSI escape sequences, not only their ESC bytes.
+		if text[i] == 0x1b {
+			i += max(escapeSequenceLength(text[i:]), 1)
+			continue
+		}
+		r, size := utf8.DecodeRuneInString(text[i:])
 		if !invalidOutput(r) {
 			b.WriteRune(r)
 		}
+		i += size
 	}
 	return b.String()
+}
+
+// escapeSequenceLength is the length of the escape sequence that text, which starts with ESC, begins with; 0 when none does.
+func escapeSequenceLength(text string) int {
+	if len(text) < 2 {
+		return 0
+	}
+	switch text[1] {
+	case ']', 'P', 'X', '^', '_':
+		for i := 2; i < len(text); i++ {
+			switch text[i] {
+			case 0x07:
+				return i + 1
+			case 0x1b:
+				if i+1 < len(text) && text[i+1] == '\\' {
+					return i + 2
+				}
+				i = len(text)
+			}
+		}
+	case '[':
+		i := 2
+		for i < len(text) && text[i] >= 0x30 && text[i] <= 0x3f {
+			i++
+		}
+		for i < len(text) && text[i] >= 0x20 && text[i] <= 0x2f {
+			i++
+		}
+		if i < len(text) && text[i] >= 0x40 && text[i] <= 0x7e {
+			return i + 1
+		}
+	}
+	i := 1
+	for i < len(text) && text[i] >= 0x20 && text[i] <= 0x2f {
+		i++
+	}
+	if i < len(text) && text[i] >= 0x30 && text[i] <= 0x7e {
+		return i + 1
+	}
+	return 0
 }
 
 func invalidOutput(r rune) bool {

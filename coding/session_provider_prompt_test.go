@@ -104,9 +104,11 @@ func TestRegisteredToolPromptContributions(t *testing.T) {
 					t.Fatalf("tools:\n%s\nrules:\n%s\nwant:\n%s\n%s", sections["tools"], sections["rules"], wantTools, wantRules)
 				}
 			}
-			check([]string{"zeta", "read", "alpha", "hidden", "zeta", "unknown"}, "- zeta: Zeta summary\n- alpha: Alpha summary", "- shared\n- zeta rule\n- override read\n- alpha rule\n")
-			check([]string{"alpha", "zeta"}, "- alpha: Alpha summary\n- zeta: Zeta summary", "- alpha rule\n- shared\n- zeta rule\n")
+			// D217, Pi b9e3eef6 (#11495): the tools that stay active keep their order (read first), new ones follow in the requested order.
+			check([]string{"zeta", "read", "alpha", "hidden", "zeta", "unknown"}, "- zeta: Zeta summary\n- alpha: Alpha summary", "- override read\n- shared\n- zeta rule\n- alpha rule\n")
+			check([]string{"alpha", "zeta"}, "- zeta: Zeta summary\n- alpha: Alpha summary", "- shared\n- zeta rule\n- alpha rule\n")
 			check([]string{}, "(none)", "")
+			check([]string{"alpha", "zeta"}, "- alpha: Alpha summary\n- zeta: Zeta summary", "- alpha rule\n- shared\n- zeta rule\n")
 			if structured && !strings.Contains(*session.baseSystemPrompt.Load(), "/probe") {
 				t.Fatal("resource sections lost")
 			}

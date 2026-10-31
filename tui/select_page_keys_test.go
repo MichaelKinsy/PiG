@@ -18,7 +18,7 @@ func pageTestItems(count int) []SelectItem {
 	return items
 }
 
-// Pi #7629, PR #7680 (packages/tui/src/selection-navigation.ts getPageSelectionIndex): the page keys move a selection
+// Pi #7629, PR #7680 (packages/tui/src/selection-navigation.ts getSelectPageIndex): the page keys move a selection
 // by one visible page and clamp at both ends, without the wraparound of tui.select.up and tui.select.down.
 func TestPageSelectionIndex(t *testing.T) {
 	kb := GetTUIKeybindings()
@@ -37,9 +37,9 @@ func TestPageSelectionIndex(t *testing.T) {
 		"another key":            {"j", 2, 30, 5, 0, false},
 		"up arrow is not a page": {"\x1b[A", 2, 30, 5, 0, false},
 	} {
-		got, ok := PageSelectionIndex(kb, tc.data, tc.selected, tc.count, tc.n)
+		got, ok := GetSelectPageIndex(kb, tc.data, tc.selected, tc.count, tc.n)
 		if got != tc.want || ok != tc.ok {
-			t.Errorf("%s: PageSelectionIndex = %d, %v; want %d, %v", name, got, ok, tc.want, tc.ok)
+			t.Errorf("%s: GetSelectPageIndex = %d, %v; want %d, %v", name, got, ok, tc.want, tc.ok)
 		}
 	}
 }
@@ -71,7 +71,7 @@ func TestSelectListPageKeysMoveByAPage(t *testing.T) {
 	if len(changed) == 0 || changed[0] != "v5" {
 		t.Fatalf("selection changes = %v, want the page jump reported", changed)
 	}
-	if !CapturesSelectPageInput(list) {
+	if !CapturesViewportInput(list) {
 		t.Fatal("a SelectList must capture the selection page keys")
 	}
 }
@@ -104,7 +104,7 @@ func TestSettingsListPageKeysMoveByAPage(t *testing.T) {
 	if list.SelectedIndex() != 7 {
 		t.Fatalf("page up: index = %d, want 7", list.SelectedIndex())
 	}
-	if !CapturesSelectPageInput(list) {
+	if !CapturesViewportInput(list) {
 		t.Fatal("a SettingsList must capture the selection page keys")
 	}
 }
@@ -117,11 +117,11 @@ func TestEditorAutocompletePageKeys(t *testing.T) {
 	}
 	editor := NewEditor()
 	editor.SetAutocomplete(NewSlashOnlyProvider(commands))
-	if CapturesSelectPageInput(editor) {
+	if CapturesViewportInput(editor) {
 		t.Fatal("an editor without an open autocomplete list must not capture the page keys")
 	}
 	editor.HandleInput("/")
-	if !CapturesSelectPageInput(editor) {
+	if !CapturesViewportInput(editor) {
 		t.Fatal("an editor with an open autocomplete list must capture the page keys")
 	}
 	page := editor.AutocompleteMaxVisible()
@@ -146,11 +146,11 @@ func TestEditorAutocompletePageKeys(t *testing.T) {
 func TestContainerCapturesSelectPageInputFromItsChildren(t *testing.T) {
 	container := NewContainer()
 	container.AddChild(NewText("static"))
-	if CapturesSelectPageInput(container) {
+	if CapturesViewportInput(container) {
 		t.Fatal("a container of plain children must not capture")
 	}
 	container.AddChild(NewSelectList(pageTestItems(3), 3, SelectListTheme{}))
-	if !CapturesSelectPageInput(container) {
+	if !CapturesViewportInput(container) {
 		t.Fatal("a container with a capturing child must capture")
 	}
 }
@@ -192,7 +192,7 @@ func TestAltScreenGivesSelectionPageKeysToACapturingFocus(t *testing.T) {
 	}
 }
 
-// Each selector of Pi PR #7680 moves its selection by its visible page (getPageSelectionIndex), clamped at both ends, and
+// Each selector of Pi PR #7680 moves its selection by its visible page (getSelectPageIndex), clamped at both ends, and
 // captures the selection page keys so fullscreen leaves them to it.
 func TestSelectorComponentsMoveByTheirPage(t *testing.T) {
 	models := make([]ModelSelectorItem, 25)
@@ -240,7 +240,7 @@ func TestSelectorComponentsMoveByTheirPage(t *testing.T) {
 		{"select list without search", filterable.HandleInput, func() int { return filterable.cursor }, 7, 29, filterable},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			if !CapturesSelectPageInput(tc.captor) {
+			if !CapturesViewportInput(tc.captor) {
 				t.Fatal("selector does not capture the selection page keys")
 			}
 			start := tc.cursor()
@@ -275,5 +275,63 @@ func TestSelectListFilterLowercasesAsJavaScriptDoes(t *testing.T) {
 	list.SetFilter("i\u0307s")
 	if len(list.filteredItems) != 1 || list.filteredItems[0].Value != "İstanbul" {
 		t.Fatalf("filter i+U+0307+s kept %+v, want only İstanbul", list.filteredItems)
+	}
+}
+
+// Pi 3bae8527 (#7629), packages/tui/test/tui-alt-screen.test.ts "defers viewport keys to a focused list instead of
+// scrolling the transcript": a focused list that captures viewport input takes every viewport key, not only the page
+// keys. PageDown moves the selection by a page and Ctrl+Home does not scroll the transcript to the top.
+func TestAltScreenDefersEveryViewportKeyToACapturingFocus(t *testing.T) {
+	useAltScreenBindings(t, nil)
+	h := newAltHarness(t, 20, 8, TuiAltScreenOptions{})
+	transcript := NewScrollView(NewText(numberedLines(40)), ScrollViewOptions{Follow: "end", Primary: true})
+	list := NewSelectList(pageTestItems(12), 3, SelectListTheme{})
+	h.tui.SetLayoutRoot(transcriptOverDock(transcript, list, new(5)))
+	h.tui.SetFocus(list)
+	h.start()
+	bottom := transcript.ScrollTop()
+	if bottom <= 0 {
+		t.Fatalf("bottom = %d, want > 0", bottom)
+	}
+	h.send(testPageDownKey)
+	h.send("\x1b[1;5H") // Ctrl+Home
+	if list.SelectedIndex() != 3 || transcript.ScrollTop() != bottom {
+		t.Fatalf("selection %d, transcript %d; want 3 and %d", list.SelectedIndex(), transcript.ScrollTop(), bottom)
+	}
+}
+
+// Pi 3bae8527 (#7629), packages/coding-agent/test/settings-selector.test.ts "pages a searchable submenu with selection page
+// keys": with the search box present, the page keys still reach the list.
+func TestSelectSubmenuPagesASearchableList(t *testing.T) {
+	items := make([]SelectItem, 20)
+	for i := range items {
+		items[i] = SelectItem{Value: fmt.Sprintf("theme-%d", i), Label: fmt.Sprintf("theme-%d", i)}
+	}
+	submenu := NewSelectSubmenu("Theme", "", items, "theme-0", SelectSubmenuOptions{Searchable: true})
+	var changed []string
+	submenu.OnSelectionChange = func(value string) { changed = append(changed, value) }
+	submenu.HandleInput(testPageDownKey)
+	submenu.HandleInput("\r")
+	if !submenu.Done() || submenu.SelectedValue() != "theme-10" {
+		t.Fatalf("done = %v, selected = %q; want theme-10 after PageDown and Enter", submenu.Done(), submenu.SelectedValue())
+	}
+	if len(changed) != 1 || changed[0] != "theme-10" {
+		t.Fatalf("selection changes = %v, want [theme-10]", changed)
+	}
+}
+
+// tree-selector.ts capturesViewportInput (Pi 3bae8527): the tree selector takes the viewport keys except while its label
+// editor is open, where they belong to the label input.
+func TestTreeSelectorCapturesViewportInputExceptWhileEditingALabel(t *testing.T) {
+	ts := newNativeTestTree(t)
+	if !CapturesViewportInput(ts) {
+		t.Fatal("the tree selector does not capture the viewport keys")
+	}
+	ts.HandleInput("L")
+	if ts.labelInput == nil {
+		t.Fatal("the label editor did not open")
+	}
+	if CapturesViewportInput(ts) {
+		t.Fatal("the tree selector captures the viewport keys while its label editor is open")
 	}
 }

@@ -43,7 +43,7 @@ func (m *InteractiveMode) consumeModalHostInputFor(focus tui.Component, data str
 	if m.altScreen == nil {
 		return false
 	}
-	if kb := tui.GetTUIKeybindings(); tui.CapturesSelectPageInput(focus) && (kb.Matches(data, tui.KBSelectPageUp) || kb.Matches(data, tui.KBSelectPageDown)) {
+	if kb := tui.GetTUIKeybindings(); tui.CapturesViewportInput(focus) && (kb.Matches(data, tui.KBSelectPageUp) || kb.Matches(data, tui.KBSelectPageDown)) {
 		return m.altScreen.HandleFocusedSearchInput(data)
 	}
 	return m.altScreen.HandleViewportInput(data) || m.altScreen.HandleFocusedSearchInput(data)

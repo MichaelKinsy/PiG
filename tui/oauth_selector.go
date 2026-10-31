@@ -244,8 +244,8 @@ func (s *OAuthSelectorComponent) confirm() {
 	}
 }
 
-// CapturesSelectPageInput reports that the selector handles tui.select.pageUp and tui.select.pageDown.
-func (s *OAuthSelectorComponent) CapturesSelectPageInput() bool { return true }
+// CapturesViewportInput reports that the selector handles tui.select.pageUp and tui.select.pageDown.
+func (s *OAuthSelectorComponent) CapturesViewportInput() bool { return true }
 
 // HandleInput processes navigation, select, and cancel keys.
 func (s *OAuthSelectorComponent) HandleInput(data string) {
@@ -263,7 +263,7 @@ func (s *OAuthSelectorComponent) HandleInput(data string) {
 			s.cursor++
 		}
 	case pageSelectionKey(kb, data):
-		s.cursor, _ = PageSelectionIndex(kb, data, s.cursor, len(s.filtered), authSelectorMaxVisible)
+		s.cursor, _ = GetSelectPageIndex(kb, data, s.cursor, len(s.filtered), authSelectorMaxVisible)
 	case kb.Matches(data, KBSelectConfirm):
 		s.confirm()
 	case kb.Matches(data, KBSelectCancel):

@@ -1396,6 +1396,27 @@ fn main() {
         }
         CommandResult::Ok
     });
+    ext.command("exec-limits-probe", "Run a command with a max_buffer and report the result", |ctx, args| {
+        let probe: Value = match serde_json::from_str(args) {
+            Ok(probe) => probe,
+            Err(err) => return CommandResult::Error(err.to_string()),
+        };
+        let command = probe["command"].as_str().unwrap_or_default().to_string();
+        let argv: Vec<String> = probe["args"].as_array().into_iter().flatten().filter_map(|arg| arg.as_str().map(str::to_string)).collect();
+        let argv: Vec<&str> = argv.iter().map(String::as_str).collect();
+        let options = pig_sdk::ExecOptions { max_buffer: probe["maxBuffer"].as_f64(), ..Default::default() };
+        match ctx.exec_with_options(&command, &argv, &options) {
+            Ok(result) => ctx.notify(
+                &format!(
+                    "exec-limits:truncated={};killed={};code={};stdout={};stderr={}",
+                    result.truncated, result.killed, result.exit_code, result.stdout.trim(), result.stderr.trim()
+                ),
+                "info",
+            ),
+            Err(err) => ctx.notify(&format!("rejected:{err}"), "info"),
+        }
+        CommandResult::Ok
+    });
     ext.command("thinking-model", "Read the thinking level and switch the model", |ctx, _| {
         let level = match ctx.get_thinking_level() {
             Ok(level) => level,
@@ -1560,6 +1581,15 @@ fn main() {
             options.expanded
         )])
     });
+    // pig divergence (D217) test fixture: Pi 9376c8d1 (#4748) key_text and key_hint on the message and entry options and the tool render context. The content, data and q are the keybinding id.
+    ext.message_renderer("keyhints-message", |_ctx, message, options, _width| {
+        let id = message.get("content").and_then(Value::as_str).unwrap_or("");
+        Ok(vec![format!("{} | {}", options.key_text(id), options.key_hint(id, "to expand"))])
+    });
+    ext.entry_renderer("keyhints-entry", |_ctx, entry, options, _width| {
+        let id = entry.get("data").and_then(Value::as_str).unwrap_or("");
+        Ok(vec![format!("{} | {}", options.key_text(id), options.key_hint(id, "to expand"))])
+    });
     ext.message_view_renderer("kit-message", |_ctx, _message, _options, _width| Ok(kit_probe_view()));
     ext.entry_view_renderer("kit-entry", |_ctx, _entry, _options, _width| Ok(kit_probe_view()));
     ext.markdown_transformer(|markdown, context| {
@@ -1602,6 +1632,10 @@ fn main() {
             set.result_view = Some(Arc::new(|_ctx, _result, _options, _render, _width| Ok(kit_probe_view())));
             Some(set)
         }
+        "conformance_keyhints" => Some(pig_sdk::ToolRendererSet::with_call(|_ctx, args, render, _width| {
+            let id = args.get("q").and_then(Value::as_str).unwrap_or("");
+            Ok(vec![format!("{} | {}", render.key_text(id), render.key_hint(id, "to expand"))])
+        })),
         "conformance_no_renderer" => None,
         "conformance_fill" => next().or_else(|| Some(resolved_line("filled", tool))),
         "conformance_wrap" => {

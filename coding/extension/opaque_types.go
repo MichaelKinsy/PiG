@@ -232,6 +232,9 @@ type ExecOptions struct {
 	Timeout float64 `json:"timeout,omitempty"`
 	// CWD overrides the working directory. Empty uses the extension's CWD.
 	CWD string `json:"cwd,omitempty"`
+	// pig divergence (D217): Pi c466a359 (#11360) adds options.maxBuffer to ExecOptions and `truncated` to ExecResult; the pinned declarations have neither.
+	// MaxBuffer is the byte limit of stdout and stderr together; exceeding it terminates the command with Truncated set. nil is undefined: the default, 256 MiB capped by the runtime string limit. Pi's maxBuffer is a JavaScript number that must be an integer from 0 to the runtime string limit, so a fraction, a negative value, NaN or an infinity fails the call (a RangeError upstream); the pointer keeps 0 distinct from undefined.
+	MaxBuffer *float64 `json:"maxBuffer,omitempty"`
 	// Signal is upstream's options.signal: when it is done the command ends as when ExecCommand's own context ends, with SIGTERM to the command alone. It does not cross the wire; a subprocess extension's signal reaches the host as the call's own cancellation.
 	Signal AbortSignal `json:"-"`
 }
@@ -243,7 +246,11 @@ type ExecResult struct {
 	Stdout string `json:"stdout"`
 	Stderr string `json:"stderr"`
 	Code   int    `json:"code"`
-	Killed bool   `json:"killed"`
+	// pig divergence (D217): Pi c466a359 (#11360) also reports a kill by the output cap in killed.
+	// Killed reports that pi terminated the command: timeout, abort, or output over MaxBuffer.
+	Killed bool `json:"killed"`
+	// Truncated reports that output exceeded MaxBuffer: Stdout and Stderr are incomplete and Code is nonzero.
+	Truncated bool `json:"truncated"`
 }
 
 // TreePreparation is types.ts TreePreparation: what a session_before_tree handler receives about the navigation. EntriesToSummarize

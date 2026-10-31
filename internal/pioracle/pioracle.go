@@ -4,6 +4,7 @@ package pioracle
 import (
 	"bytes"
 	"encoding/json"
+	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -16,20 +17,20 @@ const distRoot = "coding/extension/host/subprocess/runtime-node/shims/pi-dist"
 // Root returns the absolute path of the vendored Pi distribution.
 func Root(t testing.TB) string {
 	t.Helper()
-	dir, err := os.Getwd()
-	if err != nil {
-		t.Fatal(err)
+	return filepath.Join(repoRoot(t), filepath.FromSlash(distRoot))
+}
+
+// d217Register is the file URL of the D217 hook of tui/testdata/pi-d217, or "" once that directory is gone. The hook swaps the vendored
+// pi-tui utils.js and image-resize-core.js for the pin's sources with the Pi fixes 0.6.0 carries (D217), after checking that the module
+// it replaces is the pinned one, so an oracle compares what PiG ships. Delete this with the directory when the pin passes c2760d32.
+func d217Register(t testing.TB) string {
+	t.Helper()
+	root := repoRoot(t)
+	register := filepath.Join(root, "tui", "testdata", "pi-d217", "register.mjs")
+	if _, err := os.Stat(register); err != nil {
+		return ""
 	}
-	for {
-		if _, err := os.Stat(filepath.Join(dir, "go.mod")); err == nil {
-			return filepath.Join(dir, filepath.FromSlash(distRoot))
-		}
-		parent := filepath.Dir(dir)
-		if parent == dir {
-			t.Fatal("pioracle: go.mod not found above the test directory")
-		}
-		dir = parent
-	}
+	return (&url.URL{Scheme: "file", Path: filepath.ToSlash(register)}).String()
 }
 
 // Run executes an ES module body in Node with the Pi distribution root in `root`, the decoded `input` in scope, and returns the JSON the body passes to `emit`. The body is the async function body of the check. Environment extra entries (KEY=value) are added to the child environment. A missing Node is a failure: the Pig test suite requires it.
@@ -55,8 +56,12 @@ await (async () => {
 })();
 process.stdout.write(JSON.stringify(result));
 `
-	//nolint:gosec // G204 (class b): program is node from exec.LookPath; args are fixed --input-type=module -e with a constant script, and the input is on stdin.
-	cmd := exec.CommandContext(t.Context(), node, "--input-type=module", "-e", script)
+	args := []string{"--input-type=module", "-e", script}
+	if register := d217Register(t); register != "" {
+		args = append([]string{"--import", register}, args...)
+	}
+	//nolint:gosec // G204 (class b): program is node from exec.LookPath; args are fixed --input-type=module -e with a constant script (and the D217 hook import), and the input is on stdin.
+	cmd := exec.CommandContext(t.Context(), node, args...)
 	cmd.Stdin = bytes.NewReader(payload)
 	cmd.Env = append(os.Environ(), "PI_ORACLE_ROOT="+Root(t))
 	cmd.Env = append(cmd.Env, env...)

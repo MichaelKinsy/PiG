@@ -252,7 +252,7 @@ func (t *AnsiCodeTracker) HasActiveCodes() bool {
 }
 
 // LineEndReset returns the escape string needed at end-of-line to prevent
-// underline from bleeding into padding and to close any active OSC 8
+// underline and strikethrough from bleeding into padding and to close any active OSC 8
 // hyperlink. The hyperlink is re-opened at the start of the next line via
 // ActiveCodes(). Returns "" if no reset is needed.
 //
@@ -261,6 +261,10 @@ func (t *AnsiCodeTracker) LineEndReset() string {
 	var b strings.Builder
 	if t.underline {
 		b.WriteString("\x1b[24m")
+	}
+	// pig divergence (D217): Pi 2ce9d527 (#10925) strikethrough is closed at line end like underline and re-opened by ActiveCodes.
+	if t.strike {
+		b.WriteString("\x1b[29m")
 	}
 	if t.activeHyperlinkOpen != "" {
 		b.WriteString(t.activeHyperlinkClose)

@@ -4,9 +4,11 @@ import (
 	"math/rand"
 	"os"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 	"testing"
+	"unicode/utf16"
 
 	"github.com/MichaelKinsy/PiG/coding/mcpext"
 	"github.com/MichaelKinsy/PiG/internal/pioracle"
@@ -43,8 +45,24 @@ func TestMcpCommandMatchesPi(t *testing.T) {
 		`{"mcpServers":[]}`,
 		`[]`,
 	}
-	name := func() string {
-		return pick("srv", "old", "web", "parked", "a b", "a.b", "日本", "x-y_z", "", "__proto__", "constructor", "toString", "hasOwnProperty", "valueOf", "isPrototypeOf", "propertyIsEnumerable", "toLocaleString", "__defineGetter__", "__defineSetter__", "__lookupGetter__", "__lookupSetter__")
+	namePool := []string{"srv", "old", "web", "parked", "a b", "a.b", "日本", "x-y_z", "", "__proto__", "constructor", "toString", "hasOwnProperty", "valueOf", "isPrototypeOf", "propertyIsEnumerable", "toLocaleString", "__defineGetter__", "__defineSetter__", "__lookupGetter__", "__lookupSetter__"}
+	name := func() string { return pick(namePool...) }
+	// farName is a name that no server the probes can configure is a near miss of: every pool name and seed server other than the name itself is farther than edit distance 2, and the name is not empty (an empty name is a usage error). A probe may add any pool name before it logs in.
+	seedServers := []string{"old", "parked", "web", "a", "bad", "fixture", "broken"}
+	farName := func() string {
+		for {
+			candidate := name()
+			if candidate == "" {
+				continue
+			}
+			near := false
+			for _, server := range append(slices.Clone(namePool), seedServers...) {
+				near = near || (server != candidate && mcpEditDistance(server, candidate) <= 2)
+			}
+			if !near {
+				return candidate
+			}
+		}
 	}
 	envPair := func() string { return pick("K=V", "A=b=c", "=x", "noequals", "K=", "日本=語") }
 	add := func() []string {
@@ -130,23 +148,20 @@ func TestMcpCommandMatchesPi(t *testing.T) {
 			}
 			return args
 		case 7:
-			args := []string{pick("login", "logout")}
-			if rng.Intn(8) != 0 {
-				args = append(args, name())
-			}
+			// pig divergence (D217) allowance, Pi be15fe3c: PiG's login/logout usage text ends in " [-l]" and a mistyped name within edit distance 2 of a configured one gets a suggestion, so the probes always give exactly one name that no seed server is that close to. TestMcpCommandSuggestsAConfiguredServerForAMistypedName and TestMcpCommandReportsArgumentErrors pin PiG's text.
+			args := []string{pick("login", "logout"), farName()}
 			if rng.Intn(4) == 0 {
 				args = append(args, "--timeout", pick("0", "-1", "abc", "10", "", "1e400", " 5 ", "0x10"))
 			}
-			if rng.Intn(10) == 0 {
-				args = append(args, "extra")
-			}
 			return args
 		case 8:
-			return []string{pick("help", "bogus", "")}
+			// pig divergence (D217) allowance, Pi be15fe3c: the help text lists login/logout -l, so "help" is not probed; TestMcpCommandHelpIsPisHelpWithPiGsIdentity pins PiG's text.
+			return []string{pick("bogus", "")}
 		case 9:
-			return []string{"add", "--help"}
+			return []string{"add", "--bogus"}
 		default:
-			return []string{pick("remove", "login", "logout", "add")}
+			// pig divergence (D217) allowance, Pi be15fe3c: a bare login or logout prints PiG's usage text with " [-l]", so only remove and add run without a name.
+			return []string{pick("remove", "add")}
 		}
 	}
 	var probes []mcpCLIProbe
@@ -252,4 +267,26 @@ emit(out);
 	if bad > 5 {
 		t.Errorf("%d of %d probes differ", bad, len(probes))
 	}
+}
+
+// mcpEditDistance is the Levenshtein distance in UTF-16 code units, the measure of Pi's suggestion for a mistyped server name.
+func mcpEditDistance(a, b string) int {
+	ua, ub := utf16.Encode([]rune(a)), utf16.Encode([]rune(b))
+	previous := make([]int, len(ub)+1)
+	for j := range previous {
+		previous[j] = j
+	}
+	for i := 1; i <= len(ua); i++ {
+		current := make([]int, len(ub)+1)
+		current[0] = i
+		for j := 1; j <= len(ub); j++ {
+			cost := 1
+			if ua[i-1] == ub[j-1] {
+				cost = 0
+			}
+			current[j] = min(previous[j]+1, current[j-1]+1, previous[j-1]+cost)
+		}
+		previous = current
+	}
+	return previous[len(ub)]
 }
