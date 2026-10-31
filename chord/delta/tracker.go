@@ -4,6 +4,7 @@ import (
 	"errors"
 	"maps"
 	"slices"
+	"strings"
 	"sync"
 	"weak"
 )
@@ -985,7 +986,7 @@ func editsNearestArray(n *node) bool {
 	return false
 }
 
-// emitChangedValue is tracker.ts emitChangedValue: equal values emit nothing,
+// emitChangedValue is tracker.ts emitChangedValue (Pi f715a15c: the op text is its own copy, as ownedSlice makes it): equal values emit nothing,
 // a string extension emits an append, and anything else a set.
 func emitChangedValue(ops *[]Op, path []any, before any, present bool, after any) {
 	if present {
@@ -999,13 +1000,13 @@ func emitChangedValue(ops *[]Op, path []any, before any, present bool, after any
 		next, isString := after.(string)
 		if wasString && isString {
 			if len(next) > len(previous) && next[:len(previous)] == previous {
-				*ops = append(*ops, Op{"a", path, next[len(previous):]})
+				*ops = append(*ops, Op{"a", path, strings.Clone(next[len(previous):])})
 				return
 			}
 			if shared := Overlap(previous, next, 65_536); shared > 0 {
 				*ops = append(*ops, Op{"t", path, utf16Len(previous) - shared})
 				if rest := utf16Suffix(next, shared); rest != "" {
-					*ops = append(*ops, Op{"a", slices.Clone(path), rest})
+					*ops = append(*ops, Op{"a", slices.Clone(path), strings.Clone(rest)})
 				}
 				return
 			}
