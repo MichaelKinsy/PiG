@@ -50,34 +50,6 @@ func IsOpenRouterBase(provider, id string) bool {
 
 func isOpenRouterBase(m *GeneratedModel) bool { return IsOpenRouterBase(m.Provider, m.ID) }
 
-// bundledOpenRouterIDs is the set of the ids of the bundled OpenRouter models.
-var bundledOpenRouterIDs = sync.OnceValue(func() map[string]struct{} {
-	ids := map[string]struct{}{}
-	for i := range GeneratedModels {
-		if GeneratedModels[i].Provider == "openrouter" { //portlint:allow providerliteral the variants are OpenRouter's own routing suffixes
-			ids[GeneratedModels[i].ID] = struct{}{}
-		}
-	}
-	return ids
-})
-
-// OpenRouterRoutingVariantIDs lists the ids of the routing variants of the bundled OpenRouter model id that the bundled catalog does not
-// itself list, in OpenRouter's order, or nil when id is not a bundled OpenRouter model that takes variants. It is the id side of
-// WithOpenRouterRoutingVariants for a caller that builds no GeneratedModel.
-func OpenRouterRoutingVariantIDs(provider, id string) []string {
-	if !IsOpenRouterBase(provider, id) {
-		return nil
-	}
-	var ids []string
-	bundled := bundledOpenRouterIDs()
-	for _, variant := range OpenRouterRoutingVariants {
-		if _, listed := bundled[id+":"+variant]; !listed {
-			ids = append(ids, id+":"+variant)
-		}
-	}
-	return ids
-}
-
 // WithOpenRouterRoutingVariants lists each routing variant of every OpenRouter chat model of models right after the model, leaving
 // a variant the catalog already lists where it is. It returns models itself when it holds no OpenRouter model. A bundled model's variants are
 // derived once and held (derivedOpenRouterVariant), so a list costs a copy of each entry listed.
@@ -110,8 +82,10 @@ func WithOpenRouterRoutingVariants(models []GeneratedModel) []GeneratedModel {
 			continue
 		}
 		for _, variant := range OpenRouterRoutingVariants {
-			if _, exists := listed[models[i].ID+":"+variant]; hasVariant && exists {
-				continue
+			if hasVariant {
+				if _, exists := listed[models[i].ID+":"+variant]; exists {
+					continue
+				}
 			}
 			out = append(out, *derivedOpenRouterVariant(&models[i], variant))
 		}
@@ -158,8 +132,10 @@ func WithOpenRouterRoutingVariantModels(models []AnyModel) []AnyModel {
 			continue
 		}
 		for _, variant := range OpenRouterRoutingVariants {
-			if _, exists := listed[chat.ID+":"+variant]; exists {
-				continue
+			if hasVariant {
+				if _, exists := listed[chat.ID+":"+variant]; exists {
+					continue
+				}
 			}
 			out = append(out, chat.openRouterVariant(variant))
 		}
@@ -194,29 +170,50 @@ type derivedVariantKey struct{ base, variant string }
 // derivedVariant is a variant derived from a bundled base entry, with the name and record of the base it was derived from.
 type derivedVariant struct {
 	baseName, baseRecord string
-	entry                *GeneratedModel
+	entry                GeneratedModel
 }
 
 // derivedVariants holds the variants derived from the bundled OpenRouter models, each built once and never written: a listing copies the
-// entry and a lookup returns it. It holds at most one entry per variant of each bundled model, so it is bounded by the catalog.
-var derivedVariants sync.Map
+// entry and a lookup returns it. It holds at most one entry per variant of each bundled model, so it is bounded by the catalog. A plain map
+// under a lock, not a sync.Map: a listing reads it once per variant, and a sync.Map boxes its struct key on every read.
+var derivedVariants struct {
+	sync.RWMutex
+	byKey map[derivedVariantKey]*derivedVariant
+}
+
+// matches reports whether v was derived from base as it is now.
+func (v *derivedVariant) matches(base *GeneratedModel) bool {
+	return v.baseName == base.DisplayName && v.baseRecord == base.Record
+}
 
 // derivedOpenRouterVariant is base.OpenRouterVariant(variant), built once for a base that is a bundled model and derived afresh for any other.
 func derivedOpenRouterVariant(base *GeneratedModel, variant string) *GeneratedModel {
 	key := derivedVariantKey{base.ID, variant}
-	if cached, ok := derivedVariants.Load(key); ok {
-		if derived := cached.(*derivedVariant); derived.baseName == base.DisplayName && derived.baseRecord == base.Record {
-			return derived.entry
+	derivedVariants.RLock()
+	held := derivedVariants.byKey[key]
+	derivedVariants.RUnlock()
+	if held != nil {
+		if held.matches(base) {
+			return &held.entry
 		}
 		entry := base.OpenRouterVariant(variant)
 		return &entry
 	}
-	entry := base.OpenRouterVariant(variant)
-	actual, _ := derivedVariants.LoadOrStore(key, &derivedVariant{baseName: base.DisplayName, baseRecord: base.Record, entry: &entry})
-	if derived := actual.(*derivedVariant); derived.baseName == base.DisplayName && derived.baseRecord == base.Record {
-		return derived.entry
+	built := &derivedVariant{baseName: base.DisplayName, baseRecord: base.Record, entry: base.OpenRouterVariant(variant)}
+	derivedVariants.Lock()
+	actual := derivedVariants.byKey[key]
+	if actual == nil {
+		if derivedVariants.byKey == nil {
+			derivedVariants.byKey = map[derivedVariantKey]*derivedVariant{}
+		}
+		derivedVariants.byKey[key] = built
+		actual = built
 	}
-	return &entry
+	derivedVariants.Unlock()
+	if actual.matches(base) {
+		return &actual.entry
+	}
+	return &built.entry
 }
 
 // openRouterVariants holds the variant entries LookupModel and LookupModelExact have derived, by the spec they were asked for, so a
