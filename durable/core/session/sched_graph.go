@@ -147,6 +147,28 @@ func (s *Scheduler) belowCancelled(start up) bool {
 
 // loadChain loads the links above start that the walk lacks, from the store.
 func (s *Scheduler) loadChain(start up, o *overlay) error {
+	s.chainInstalled = false
+	passed, err := s.loadChainWalk(start, o)
+	// pig divergence (D217): Pi 35dfa757 idle counts a live task whose chain is not loaded as inside every scope it may be in: what this
+	// load resolved can make other scopes idle without a task change below them. The conversations above a task that became loaded
+	// are checked next; a load that stopped early owes a check of every scope.
+	everything := s.chainInstalled && s.hasLiveUnloaded()
+	for _, id := range passed {
+		if rec, live := s.live.get(id); live && !s.addScopesAbove(rec, s.idleDeferred, nil) {
+			everything = true
+		}
+	}
+	if everything {
+		s.unknownsChanged = true
+		// A waiter such a task held is checked again at the pass's end, also when this load was not a reconcile's.
+		s.scheduleReconcileAfterRead()
+	}
+	return err
+}
+
+// loadChainWalk is the walk of loadChain: it returns the tasks it passed, the unloaded ones deleted from unloaded unless it
+// stopped early.
+func (s *Scheduler) loadChainWalk(start up, o *overlay) ([]ID, error) {
 	var passed []ID
 	at := start
 	for {
@@ -166,14 +188,15 @@ func (s *Scheduler) loadChain(start up, o *overlay) error {
 				s.gateRead("task", at.id)
 				rec, err := s.sess.store.Task(at.id)
 				if err != nil {
-					return err
+					return passed, err
 				}
 				if rec == nil {
-					return nil
+					return passed, nil
 				}
 				n = nodeOf(rec)
 				if taskStatus(rec) == StatusTerminal {
 					s.settle(mustInt(rec, "id"), n)
+					s.chainInstalled = true
 				}
 				// A loaded node can reveal a cancelling owner: the next reconcile derives marks again.
 				s.scheduleReconcileAfterRead()
@@ -187,7 +210,7 @@ func (s *Scheduler) loadChain(start up, o *overlay) error {
 			s.gateRead("conversation", at.id)
 			rec, err := s.sess.store.Conversation(at.id)
 			if err != nil {
-				return err
+				return passed, err
 			}
 			owner = 0
 			if rec != nil {
@@ -196,6 +219,7 @@ func (s *Scheduler) loadChain(start up, o *overlay) error {
 				}
 			}
 			s.setEdge(at.id, owner)
+			s.chainInstalled = true
 			// A loaded node can reveal a cancelling owner: the next reconcile derives marks again.
 			s.scheduleReconcileAfterRead()
 		}
@@ -207,7 +231,7 @@ func (s *Scheduler) loadChain(start up, o *overlay) error {
 	for _, id := range passed {
 		s.unloaded.Delete(id)
 	}
-	return nil
+	return passed, nil
 }
 
 // loadScopes loads the chain of every live task and, with queued, of every
