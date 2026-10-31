@@ -1227,6 +1227,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-e16cbba](#bf-e16cbba) | Tool search ranks a tool first when the query is its name, with `-` and other non-identifier characters read… | PiG's own defect | All platforms | Unreleased |
 | [BF-e1764c3](#bf-e1764c3) | A live `/skill:` message renders as the collapsed `[skill] name` block instead of the raw `<skill>` XML | PiG's own defect | All platforms | 0.5.0 |
 | [BF-e1ad272](#bf-e1ad272) | The xAI, Kimi Code, Meta, Radius, OpenAI Codex, Sign in with ChatGPT and GitHub Copilot OAuth requests send… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-e231cc8](#bf-e231cc8) | A Node extension that fails to start or crashes no longer dies without saying why | PiG's own defect | All platforms | Unreleased |
 | [BF-e24487e](#bf-e24487e) | fix(cli): PIG_VERSION_FORMAT=pi prints the pinned Pi package version | PiG's own defect | All platforms | Unreleased |
 | [BF-e249b5c](#bf-e249b5c) | fix(coding): default the openai provider to gpt-6.1-sol (Pi) | PiG's own defect | All platforms | Unreleased |
 | [BF-e25a09f](#bf-e25a09f) | A tool argument or event payload with a number outside the double range (`1e400`), at any nesting depth, no… | PiG's own defect | All platforms | 0.5.0 |
@@ -18155,6 +18156,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `01b94a8249` (2026-10-09), `e1ad272ec4` (2026-10-09)
 - **Tests:** `ai/oauth_credential_members_test.go::TestOAuthBuildersWriteCredentialMembersInPiOrder`, `ai/oauth_form_order_openai_test.go::TestOpenAIAndCopilotOAuthFormBodiesKeepPiFieldOrderAndEncoding`, `ai/oauth_form_order_test.go::TestOAuthFormBodiesKeepPiFieldOrderAndEncoding`
 - **Release note:** The xAI, Kimi Code, Meta, Radius, OpenAI Codex, Sign in with ChatGPT and GitHub Copilot OAuth requests send their form fields in Pi's order and with Pi's encoding (`*` kept, `~` encoded as `%7E`) instead of in alphabetical order.
+
+### BF-e231cc8
+
+**A Node extension that fails to start or crashes no longer dies without saying why**
+
+- **Source:** PiG's own defect
+- **Symptom:** A Node extension that fails to start or crashes no longer dies without saying why.
+- **Root cause:** The runtime wrote its error to stderr and exited in the same turn, and because PiG reads that stderr through a pipe, Node could drop a long message (a stack trace past the pipe's 64 KiB buffer) before it was sent.
+- **User impact:** Crash, hang or runaway process
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `e231cc8441` (2026-10-31)
+- **Tests:** `coding/extension/host/subprocess/node_exit_stderr_test.go::TestNodeLauncherCrashReportSurvivesPipe`
+- **Release note:** A Node extension that fails to start or crashes no longer dies without saying why. The runtime wrote its error to stderr and exited in the same turn, and because PiG reads that stderr through a pipe, Node could drop a long message (a stack trace past the pipe's 64 KiB buffer) before it was sent. The runtime now exits once the message has been written.
 
 ### BF-e24487e
 

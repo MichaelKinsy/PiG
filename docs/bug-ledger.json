@@ -36334,6 +36334,28 @@
       ]
     },
     {
+      "id": "BF-e231cc8",
+      "title": "A Node extension that fails to start or crashes no longer dies without saying why",
+      "symptom": "A Node extension that fails to start or crashes no longer dies without saying why.",
+      "rootCause": "The runtime wrote its error to stderr and exited in the same turn, and because PiG reads that stderr through a pipe, Node could drop a long message (a stack trace past the pipe's 64 KiB buffer) before it was sent.",
+      "rootCauseSource": "release note",
+      "userImpact": "Crash, hang or runaway process",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A Node extension that fails to start or crashes no longer dies without saying why. The runtime wrote its error to stderr and exited in the same turn, and because PiG reads that stderr through a pipe, Node could drop a long message (a stack trace past the pipe's 64 KiB buffer) before it was sent. The runtime now exits once the message has been written.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "e231cc8441",
+          "date": "2026-10-31"
+        }
+      ],
+      "tests": [
+        "coding/extension/host/subprocess/node_exit_stderr_test.go::TestNodeLauncherCrashReportSurvivesPipe"
+      ]
+    },
+    {
       "id": "BF-e24487e",
       "title": "fix(cli): PIG_VERSION_FORMAT=pi prints the pinned Pi package version",
       "symptom": "fix(cli): PIG_VERSION_FORMAT=pi prints the pinned Pi package version",
