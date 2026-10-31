@@ -1,5 +1,6 @@
 // Generates composite-line-oracle.json: seeded random compositeTuiLine inputs run through Pi's tui.js.
 // Usage: node composite-line-oracle.mjs <path to @earendil-works/pi-tui/dist/index.js> > composite-line-oracle.json
+import "./pi-d217/register.mjs"; // D217: pin + carried Pi fixes in pi-tui utils.js
 import { pathToFileURL } from "node:url";
 const { compositeTuiLine } = await import(pathToFileURL(process.argv[2]).href);
 let seed = 0xc0ffee01;

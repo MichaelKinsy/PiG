@@ -1,6 +1,7 @@
 // Run Pi's packages/tui/src/wheel-scroll.ts WheelScrollAccelerator over scripts from stdin:
 // [{lines, accelerate, ops: [{set} | {dir, now}]}] -> [[number]], the result of each {dir, now} op. A lines value is "auto", a number, "NaN", "Infinity" or "-Infinity".
 // usage: node wheel_scroll.mjs <path to packages/tui/src/wheel-scroll.ts>
+import "./pi-d217/register.mjs"; // D217: pin + carried Pi fixes in pi-tui utils.js
 import { pathToFileURL } from "node:url";
 const { WheelScrollAccelerator } = await import(pathToFileURL(process.argv[2]).href);
 let input = "";

@@ -1,5 +1,6 @@
 // Drive the installed pi-tui TuiAltScreen.getWordSelection (tui-alt-screen.ts:1175-1210), never a translated oracle: Intl.Segmenter word segments, visibleWidth columns and the slash/hyphen joining.
 // Input: [{line, col}]; output: [[startCol, endCol] or null] for row 0.
+import "./pi-d217/register.mjs"; // D217: pin + carried Pi fixes in pi-tui utils.js
 import { readFileSync, realpathSync } from "node:fs";
 import { pathToFileURL } from "node:url";
 const root = realpathSync(new URL("../../extensions/sdk-ts/node_modules/@earendil-works/pi-coding-agent/", import.meta.url)) + "/";
