@@ -936,10 +936,13 @@ func TestObjectLingerAReuseCancelsTheExpiryTheHolderCountDecidesALaterReleaseSta
 
 func TestObjectLingerOnlyALiveObjectLingersAnActivatingOrFailedOneEndsWithItsLastReferenceRace9(t *testing.T) {
 	loop := newScopeLoop()
-	gate := newSignal()
-	host, _, closes := tallies(t, loop, 500*time.Millisecond, func(context.Context) error { <-gate; return nil })
+	gate, started := newSignal(), newSignal()
+	host, _, closes := tallies(t, loop, 500*time.Millisecond, func(context.Context) error { started.fire(); <-gate; return nil })
 	opening := mustHold(t, host, objTally, jsonObject("id", 1.0))
 	turn(host)
+	// Pi's `await flushed()` runs the activation as far as the open waiting for its gate. Here the activation goes on over
+	// tasks of the host, which `turn` does not wait for (the open blocks): wait for the open to have started.
+	started.wait(t)
 	opening.Release()
 	gate.fire()
 	// Its open's late value was closed at once.
