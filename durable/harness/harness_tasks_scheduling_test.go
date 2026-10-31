@@ -943,11 +943,11 @@ func TestTaskAbort(t *testing.T) {
 		// The reservation commit is in storage; the abort mark commit queues behind it before the release, as upstream's
 		// abortTask() enters the line synchronously.
 		aborting := make(chan tkAbortResult, 1)
-		queueOnLineIn(t, "TaskScheduler).Abort", func() <-chan struct{} {
+		queueOnLine(t, func(ctx context.Context) <-chan struct{} {
 			done := make(chan struct{})
 			go func() {
 				defer close(done)
-				result, err := opened.harness.AbortTask(testContext, id)
+				result, err := opened.harness.AbortTask(ctx, id)
 				aborting <- tkAbortResult{result: result, err: err}
 			}()
 			return done

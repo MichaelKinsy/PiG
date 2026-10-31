@@ -13,6 +13,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/durable"
+	"github.com/MichaelKinsy/PiG/internal/lineadmission"
 	"github.com/MichaelKinsy/PiG/telemetry"
 )
 
@@ -208,6 +209,23 @@ func waitingOnLine(operation string) int {
 	return goroutinesMatching(func(stack string) bool {
 		header, _, _ := strings.Cut(stack, "\n")
 		return strings.Contains(header, "[chan receive") && strings.Contains(stack, "durable/session.enqueue[") && strings.Contains(stack, operation)
+	})
+}
+
+// queueOnLine runs start with a context that reports when the Session line admits its call, and waits for that or for the
+// operation to settle: the call then holds its position behind the jobs ahead of it, as a TypeScript call that extended
+// the line's chain synchronously does (internal/lineadmission).
+func queueOnLine(t *testing.T, start func(ctx context.Context) <-chan struct{}) {
+	t.Helper()
+	admitted := make(chan struct{})
+	done := start(lineadmission.With(testContext, func() { close(admitted) }))
+	eventually(t, func() bool {
+		select {
+		case <-admitted:
+			return true
+		default:
+			return settled(done)
+		}
 	})
 }
 
