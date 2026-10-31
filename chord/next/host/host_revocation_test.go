@@ -397,6 +397,13 @@ func TestHostRevokeAbandonsAnActivationInProgress(t *testing.T) {
 		if text := nexttest.JSONText(t, gone.Error); !strings.Contains(text, `"code":"forbidden"`) {
 			t.Fatalf("gone error = %s, want forbidden", text)
 		}
+		// Pi's listener on the open's abort signal runs when the signal fires, before the `gone` is read; here the open waits for
+		// its context on a goroutine of its own, which the revoke wakes without being ordered before the `gone`.
+		scopeEventually(t, "the open to see its abort", func() bool {
+			mu.Lock()
+			defer mu.Unlock()
+			return len(aborted) > 0
+		})
 		mu.Lock()
 		reasons := append([]error(nil), aborted...)
 		mu.Unlock()
