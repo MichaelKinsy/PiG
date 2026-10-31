@@ -350,6 +350,11 @@ test-aot-conformance: ## Run the extension conformance suite on the compiled aot
 test-sdk-rs: ## Run the Rust extension SDK's unit tests
 	@cd extensions/sdk-rs && cargo test --quiet
 
+# Every tracked Rust crate (the SDK, the example, the conformance and parity fixtures, the benchmark extension) must be rustfmt-clean and clippy-clean with warnings denied.
+# Needs the rustfmt and clippy components: rustup component add rustfmt clippy
+lint-rust: ## cargo fmt --check and cargo clippy --all-targets -D warnings over every Rust crate
+	@./automation/ci/lint-rust.sh
+
 # The Python SDK's pytest suite, in a cached venv holding the hash-locked dev dependencies. Regenerate the lock after
 # changing the dev group in extensions/sdk-py/pyproject.toml with the command at the top of requirements-dev.txt.
 test-sdk-py: ## Run the Python extension SDK's pytest suite with its hash-locked dev dependencies
@@ -583,7 +588,7 @@ standard-check: ## Verify PiG Standard requires and resolves only fused extensio
 
 ##@ Gates
 
-check-core: startup-proxies build vet lint test test-go-modules test-sdk-rs test-sdk-py test-sdk-lisp test-sdk-ts test-term-engines typescript-extension-corpus examples-check test-race test-integration lint-scenarios port-map-drift coverage-drift standard-check go-fix-clean divergence-consistency divergence-quality divergence-guard divergences-drift autofix-check port-lint any-trap perf-lint race-coverage check-contracts-fast source-hygiene test-provenance docs-drift bug-ledger-check perf-scoreboard-check module-size ## All deterministic build, lint, unit, race, and drift gates
+check-core: startup-proxies build vet lint test test-go-modules lint-rust test-sdk-rs test-sdk-py test-sdk-lisp test-sdk-ts test-term-engines typescript-extension-corpus examples-check test-race test-integration lint-scenarios port-map-drift coverage-drift standard-check go-fix-clean divergence-consistency divergence-quality divergence-guard divergences-drift autofix-check port-lint any-trap perf-lint race-coverage check-contracts-fast source-hygiene test-provenance docs-drift bug-ledger-check perf-scoreboard-check module-size ## All deterministic build, lint, unit, race, and drift gates
 
 check: module-publication check-core parity-fast ## Pre-commit gate: published dependencies, check-core and parity-fast
 	@echo
