@@ -204,7 +204,7 @@ func TestConversationViewsMatchPi(t *testing.T) {
 	for i, program := range programs {
 		store := storage.NewMemoryStorage()
 		line := session.CreateSession(store)
-		views := NewConversationViews(line, store)
+		views := NewConversationViews(line)
 		var conversations [2]durable.ConversationId
 		started := false
 		var entries []durable.EntryId

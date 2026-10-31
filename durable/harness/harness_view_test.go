@@ -166,7 +166,7 @@ func replay(t *testing.T, initial ConversationView, frames []viewFrame) any {
 // drained lets watch callbacks, which run after the commit, catch up: a line job queued now runs after every commit already on the line has published, and the deliveries those publications scheduled then drain.
 func drained(harness Harness) {
 	impl := harness.(*harnessImpl)
-	_, _ = impl.ReadOnLine(func() (any, error) { return nil, nil })
+	_, _ = impl.ReadOnLine(func(durable.Storage) (any, error) { return nil, nil })
 	impl.WaitDeliveries()
 }
 
