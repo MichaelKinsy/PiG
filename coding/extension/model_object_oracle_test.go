@@ -50,6 +50,9 @@ func TestModelObjectsMatchPisModelObjects(t *testing.T) {
 	for _, ref := range d217CarriedDroppedChatRefs {
 		delete(want, ref)
 	}
+	for ref, raw := range want {
+		want[ref] = d217CarriedPiJSON(ref, raw)
+	}
 	models := make([]*ai.Model, len(ai.GeneratedModels))
 	for i := range ai.GeneratedModels {
 		models[i] = ai.GeneratedModels[i].ToModel()
