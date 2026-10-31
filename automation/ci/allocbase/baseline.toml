@@ -1381,7 +1381,7 @@ allocs = 45
 [[benchmark]]
 package = "./coding/cli"
 benchmark = "BenchmarkPackageInheritedOutput"
-allocs = 124
+allocs = 118
 
 [[benchmark]]
 package = "./coding/cli"
