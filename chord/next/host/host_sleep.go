@@ -4,6 +4,8 @@ import (
 	"context"
 	"sync"
 	"time"
+
+	"github.com/MichaelKinsy/PiG/chord/internal/parking"
 )
 
 // Ports packages/chord/src/next/host/sleep.ts. Waiting helpers for routines, jobs and handlers (§14): `sleep(ms, ctx)` and
@@ -54,6 +56,8 @@ func sleepOn(loop eventLoop, ms time.Duration, ctx context.Context) error {
 		})
 	}
 	wait(ms)
+	// The timer is made in the caller's synchronous part, as Pi's: what follows waits for it (or the abort).
+	parking.Park(ctx)
 	select {
 	case <-woke:
 		return nil
@@ -68,5 +72,6 @@ func sleepOn(loop eventLoop, ms time.Duration, ctx context.Context) error {
 // UntilAborted returns once ctx is aborted (never without an abort signal: a context with no Done channel blocks for
 // good, as Pi's promise never resolves); it leaves no listener behind.
 func UntilAborted(ctx context.Context) {
+	parking.Park(ctx)
 	<-ctx.Done()
 }

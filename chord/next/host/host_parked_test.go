@@ -11,6 +11,7 @@ import (
 
 	chordctx "github.com/MichaelKinsy/PiG/chord/context"
 	"github.com/MichaelKinsy/PiG/chord/delta"
+	"github.com/MichaelKinsy/PiG/chord/internal/parking"
 	"github.com/MichaelKinsy/PiG/chord/next/contracts"
 	"github.com/MichaelKinsy/PiG/chord/next/data"
 	"github.com/MichaelKinsy/PiG/chord/next/internal/nexttest"
@@ -39,9 +40,10 @@ func newParkedTestLoop() *parkedTestLoop {
 	return &parkedTestLoop{fakeLoop: newFakeLoop(), real: NewLoop()}
 }
 
-func (l *parkedTestLoop) Now() int64      { return l.fakeLoop.Now() + l.skew.Load() }
-func (l *parkedTestLoop) Run(work func()) { l.real.Run(work) }
-func (l *parkedTestLoop) Go(fn func())    { l.real.Go(fn) }
+func (l *parkedTestLoop) Now() int64                             { return l.fakeLoop.Now() + l.skew.Load() }
+func (l *parkedTestLoop) Run(work func())                        { l.real.Run(work) }
+func (l *parkedTestLoop) Go(fn func())                           { l.real.Go(fn) }
+func (l *parkedTestLoop) Lend(signal *parking.Signal, fn func()) { l.real.Lend(signal, fn) }
 
 // parkedHarness is the calls queued on a reference `app.gated(1)`.
 type parkedHarness struct {
@@ -112,7 +114,7 @@ func parkedResultOf(t *testing.T, result *parkedCallResult) (any, error) {
 	if !isSettled(result) {
 		t.Fatal("the call is not settled")
 	}
-	return result.wait()
+	return result.wait(background)
 }
 
 func parkTimeoutOf(t *testing.T, err error) *data.ChordError {
@@ -252,7 +254,7 @@ func TestParkedCallsRejectAtOnceWhenTheirCallerCancels(t *testing.T) {
 	kept := h.park("b", chordctx.Background())
 	reason := errors.New("user cancelled")
 	cancel(reason)
-	if _, err := cancelled.wait(); !errors.Is(err, reason) {
+	if _, err := cancelled.wait(background); !errors.Is(err, reason) {
 		t.Fatalf("cancelled call error = %v, want the user's reason", err)
 	}
 	h.in(func() {
@@ -380,7 +382,7 @@ func TestParkedCallsKeepTheirOrderAfterManyLeft(t *testing.T) {
 	}
 	for _, result := range cancelled {
 		cancels[result](errors.New("cancelled"))
-		if _, err := result.wait(); err == nil {
+		if _, err := result.wait(background); err == nil {
 			t.Fatal("a cancelled call was not rejected")
 		}
 	}
@@ -417,7 +419,7 @@ func TestParkedCallResultSettlesOnceAndThenRunsAsAMicrotask(t *testing.T) {
 	if want := []string{"then1", "then2"}; !reflect.DeepEqual(order, want) {
 		t.Fatalf("order = %v, want %v", order, want)
 	}
-	if value, err := result.wait(); err != nil || value != 1 {
+	if value, err := result.wait(background); err != nil || value != 1 {
 		t.Fatalf("result = %v, %v; want 1, nil", value, err)
 	}
 }
@@ -522,7 +524,7 @@ func TestHostParkedCallsOnALoadingLocalReferenceAreQueuedAndSentInTheOrderTheyWe
 	awaitRefState(t, "live", ref, func(s *RefState) bool { return s.Kind == RefStateLive })
 	third := startLog(t, ref, "c", background)
 	for i, result := range []*parkedCallResult{first, second, third} {
-		if got, err := result.wait(); err != nil || got != float64(i+1) {
+		if got, err := result.wait(background); err != nil || got != float64(i+1) {
 			t.Fatalf("call %d = %v, %v; want %d", i, got, err, i+1)
 		}
 	}
@@ -543,13 +545,33 @@ func TestHostParkedCallsKeepTheirOrderWhenAHandlerCallsTheReferenceWhileTheyAreS
 	calls := []*parkedCallResult{startLog(t, ref, "call", background), startLog(t, ref, "b", background)}
 	g.resolve()
 	for _, call := range calls {
-		if _, err := call.wait(); err != nil {
+		if _, err := call.wait(background); err != nil {
 			t.Fatal(err)
 		}
 	}
 	must(t, <-g.nested)
 	if got := g.logged(); !reflect.DeepEqual(got, []string{"call", "b", "from a handler"}) {
 		t.Fatalf("log = %v, want [call b from a handler]", got)
+	}
+}
+
+// Mirrors "stop being sent when one's handler releases the reference: the rest reject released (race 15)".
+func TestHostParkedCallsStopBeingSentWhenOnesHandlerReleasesTheReference(t *testing.T) {
+	g := gatedLocal(t)
+	defer closeHosts(t, g.Host)
+	ref, err := g.Host.Hold(parkedGated, jsonObject("id", float64(1)), background, GetOptions{})
+	must(t, err)
+	g.mu.Lock()
+	g.ref = ref
+	g.mu.Unlock()
+	first := startLog(t, ref, "release", background)
+	second := startLog(t, ref, "b", background)
+	g.resolve()
+	_, err = second.wait(background)
+	wantScopeError(t, err, data.CodeReleased, "", "app.gated: released")
+	_, _ = first.wait(background)
+	if got := g.logged(); !reflect.DeepEqual(got, []string{"release"}) {
+		t.Fatalf("log = %v, want [release]", got)
 	}
 }
 
@@ -569,7 +591,7 @@ func TestHostParkedCallsAreCheckedAgainstTheirDeadlineWhenSent(t *testing.T) {
 	g.Loop.skew.Add(30)
 	g.resolve()
 	awaitRefState(t, "live", ref, func(s *RefState) bool { return s.Kind == RefStateLive })
-	_, err = expired.wait()
+	_, err = expired.wait(background)
 	if chordErr, ok := data.IsChordError(err); !ok || chordErr.Code != data.CodeUnavailable || chordErr.Reason != data.ReasonParkTimeout {
 		t.Fatalf("call = %v, want unavailable/park_timeout", err)
 	}
@@ -589,10 +611,10 @@ func TestHostParkedCallsRejectAtTheReferencesReadyTimeoutMeasuredFromEachCall(t 
 	g.Loop.AdvanceAsync(60)
 	second := startLog(t, ref, "b", background)
 	g.Loop.AdvanceAsync(40)
-	_, err = first.wait()
+	_, err = first.wait(background)
 	wantScopeError(t, err, data.CodeUnavailable, data.ReasonParkTimeout, "app.gated(1): a call waited 100 ms for its reference to go live")
 	g.resolve()
-	if got, err := second.wait(); err != nil || got != float64(1) {
+	if got, err := second.wait(background); err != nil || got != float64(1) {
 		t.Fatalf("second = %v, %v; want 1", got, err)
 	}
 	if got := g.logged(); !reflect.DeepEqual(got, []string{"b"}) {
@@ -610,11 +632,11 @@ func TestHostParkedCallsRejectAtOnceWhenTheirCallerCancelsTheOthersStayQueued(t 
 	cancelled := startLog(t, ref, "a", cancellable)
 	kept := startLog(t, ref, "b", background)
 	cancel(errors.New("user cancelled"))
-	if _, err := cancelled.wait(); err == nil || err.Error() != "user cancelled" {
+	if _, err := cancelled.wait(background); err == nil || err.Error() != "user cancelled" {
 		t.Fatalf("cancelled call = %v, want user cancelled", err)
 	}
 	g.resolve()
-	if got, err := kept.wait(); err != nil || got != float64(1) {
+	if got, err := kept.wait(background); err != nil || got != float64(1) {
 		t.Fatalf("kept = %v, %v; want 1", got, err)
 	}
 	if got := g.logged(); !reflect.DeepEqual(got, []string{"b"}) {
@@ -630,7 +652,7 @@ func TestHostParkedCallsRejectReleasedWhenTheReferenceIsReleasedNothingRuns(t *t
 	must(t, err)
 	call := startLog(t, ref, "a", background)
 	ref.Release()
-	_, err = call.wait()
+	_, err = call.wait(background)
 	wantScopeError(t, err, data.CodeReleased, "", "app.gated: released")
 	g.resolve()
 	turn(g.Host)
@@ -647,7 +669,7 @@ func TestHostParkedCallsRejectWithTheCauseWhenTheObjectFails(t *testing.T) {
 	must(t, err)
 	call := startLog(t, ref, "a", background)
 	g.reject(errors.New("offline"))
-	_, err = call.wait()
+	_, err = call.wait(background)
 	wantScopeError(t, err, data.CodeUnavailable, "", "app.gated(1): offline")
 }
 
@@ -674,7 +696,7 @@ func TestHostParkedCallsOnALoadingRemoteReferenceKeepOneDeadlineAcrossReconnects
 		next.Next("hello")
 		next.Next("hold")
 		loop.AdvanceAsync(400)
-		_, err = call.wait()
+		_, err = call.wait(background)
 		if chordErr, ok := data.IsChordError(err); !ok || chordErr.Code != data.CodeUnavailable || chordErr.Reason != data.ReasonParkTimeout {
 			t.Fatalf("call = %v, want unavailable/park_timeout", err)
 		}
@@ -720,7 +742,7 @@ func TestHostParkedCallsOnALoadingRemoteReferenceAreResolvedAgainstTheBindingThe
 			Hold: hold, Variant: reader.Variant, Failed: []link.FailedMember{},
 			Members: []link.BoundMember{{Member: reader.State["notes"], Value: notesPart}, {Member: reader.State["count"], Value: countPart}},
 		}}})
-		_, err = add.wait()
+		_, err = add.wait(background)
 		wantScopeError(t, err, data.CodeInvalid, data.ReasonMember, `app.notes(S1) (variant reader) has no method "add"`)
 		sent := p.Peer.Next("call").(*link.CallMessage)
 		if sent.Method != reader.Methods["wait"] {
@@ -732,7 +754,7 @@ func TestHostParkedCallsOnALoadingRemoteReferenceAreResolvedAgainstTheBindingThe
 		resultPart, err := link.JsonPart(nil)
 		must(t, err)
 		p.Peer.Send(&link.ResultMessage{Call: sent.Call, Value: resultPart})
-		if got, err := wait.wait(); err != nil || got != nil {
+		if got, err := wait.wait(background); err != nil || got != nil {
 			t.Fatalf("wait = %v, %v; want null", got, err)
 		}
 	})
@@ -765,7 +787,7 @@ func TestHostParkedCallsOnAReferenceReleasedWhileLoadingWithoutALinkNothingIsSen
 		must(t, err)
 		call := startNotesCall(t, notes, "wait")
 		notes.Release()
-		_, err = call.wait()
+		_, err = call.wait(background)
 		wantScopeError(t, err, data.CodeReleased, "", "app.notes: released")
 		peer, ends := rawParentLinks(t, client)
 		held := peer.Next("hold").(*link.HoldMessage)

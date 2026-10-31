@@ -431,13 +431,13 @@
   "mutation": "chord/next/host/jobs_job.go: `handle.records.cut(run, err)` -> `_, _ = run, err` (TestRecordsARunCutOffByItsAttemptsSealEndsAbortedRestartAndIsFinishedOnTheNextLiveAttempt FAILS: jobs_records_test.go:83: timed out waiting for the run to wait finishing)"
  },
  {
- "upstream": "packages/chord/src/next/jobs/records.ts",
- "package": "./chord/next/host",
- "tests": [
-  "TestJobStartCompilesTheArgsCheckOncePerDefinition"
- ],
- "upstream_reference": "packages/chord/test/next/jobs/job.test.ts",
- "mutation": "chord/next/host/jobs_records.go: `data.Check(validator, args, data.ReasonArgs, ctx)` -> `data.Check(validator, float64(1), data.ReasonArgs, ctx)` (TestJobStartCompilesTheArgsCheckOncePerDefinition FAILS: jobs_job_test.go:70: args: must be object)"
+  "upstream": "packages/chord/src/next/jobs/records.ts",
+  "package": "./chord/next/host",
+  "tests": [
+   "TestJobStartCompilesTheArgsCheckOncePerDefinition"
+  ],
+  "upstream_reference": "packages/chord/test/next/jobs/job.test.ts",
+  "mutation": "chord/next/host/jobs_records.go: `data.Check(validator, args, data.ReasonArgs, ctx)` -> `data.Check(validator, float64(1), data.ReasonArgs, ctx)` (TestJobStartCompilesTheArgsCheckOncePerDefinition FAILS: jobs_job_test.go:70: args: must be object)"
  },
  {
   "upstream": "packages/chord/src/next/documents/line.ts",
@@ -817,5 +817,98 @@
   ],
   "upstream_reference": "packages/chord/test/next/examples/08-remote.ts",
   "mutation": "chord/next/host/host_next_support_test.go: `kind, _ := principal.Value(\"kind\").(string)` -> `kind, _ := principal.Value(\"kinds\").(string)` in principalKind (TestExample08Remote FAILS: host_examples_test.go:1127: guest variant = \"editor\", want reader; TestExample12Routes FAILS: host_examples_test.go:1644: session|S1: not authorized)"
+ },
+ {
+  "upstream": "packages/chord/src/next/host/parked.ts",
+  "package": "./chord/next/host",
+  "tests": [
+   "TestHostParkedCallsStopBeingSentWhenOnesHandlerReleasesTheReference"
+  ],
+  "upstream_reference": "packages/chord/test/next/host/parked.test.ts",
+  "mutation": "chord/next/host/host_loop_lend.go: `l.switchTo(c)` -> `go l.switchTo(c)` in Loop.Lend (the section no longer waits for the handler's first synchronous part) (TestHostParkedCallsStopBeingSentWhenOnesHandlerReleasesTheReference FAILS: the test binary panics `iter.Pull: next called again before yield` in Loop.finish: the rest of the handler starts while its first part still runs)"
+ },
+ {
+  "upstream": "packages/chord/src/next/host/routines.ts",
+  "package": "./chord/next/host",
+  "tests": [
+   "TestRoutinesStartInTheTurnTheirObjectWentLiveNextToAMethodCallAdmittedInThatTurn",
+   "TestLoopLendRunsAHandlersFirstPartInsideTheSectionAndGivesItBackWhenItParks",
+   "TestLoopLendGivesTheSectionBackWhenTheHandlerReturns",
+   "TestLoopLendOutsideASectionLendsNothing"
+  ],
+  "upstream_reference": "packages/chord/test/next/host/routines.test.ts",
+  "mutation": "chord/next/host/host_loop_lend.go: `l.switchTo(c)` -> `go l.switchTo(c)` in Loop.Lend (TestRoutinesStartInTheTurnTheirObjectWentLiveNextToAMethodCallAdmittedInThatTurn and TestLoopLendRunsAHandlersFirstPartInsideTheSectionAndGivesItBackWhenItParks FAIL: the test binary panics `iter.Pull: next called again before yield`; TestLoopLendGivesTheSectionBackWhenTheHandlerReturns FAILS: host_loop_test.go:202: order = [rest of the section], want [handler rest of the section]; TestLoopLendOutsideASectionLendsNothing FAILS: host_loop_test.go:218: order = [], want [handler's section])"
+ },
+ {
+  "upstream": "packages/chord/src/next/host/routines.ts",
+  "package": "./chord/next/host",
+  "tests": [
+   "TestStallABlockOnARawChannelBeforeTheFirstHostCallIsReported"
+  ],
+  "upstream_reference": "packages/chord/test/next/host/routines.test.ts",
+  "mutation": "chord/internal/parking/stall.go: `if w == nil {` -> `if w == nil || true {` in Guard (the stall report is never made) (TestStallABlockOnARawChannelBeforeTheFirstHostCallIsReported FAILS: host_stall_test.go:61: no stall report for a handler that blocks on a raw channel before its first host call; TestGuardReportsAHandlerThatHoldsTheSectionAndGoesOnWaiting FAILS: stall_test.go:29: no stall report)"
+ },
+ {
+  "upstream": "packages/chord/src/next/host/parked.ts",
+  "package": "./chord/next/host",
+  "tests": [
+   "TestLoopLendSettlesAHandlerThatReturnedBeforeTheSectionsRunReturns"
+  ],
+  "upstream_reference": "packages/chord/test/next/host/parked.test.ts",
+  "mutation": "chord/next/host/host_loop_lend.go: `inline: signal.Returned()` -> `inline: false` in Loop.Lend (what is left of a handler that returned runs on a goroutine of its own instead of on the goroutine that ended the section) (TestLoopLendSettlesAHandlerThatReturnedBeforeTheSectionsRunReturns FAILS: host_loop_test.go:244: order = [section handler rest of the section microtask], want [section handler rest of the section microtask settled])"
+ },
+ {
+  "upstream": "packages/chord/src/next/host/parked.ts",
+  "package": "./chord/next/host",
+  "tests": [
+   "TestLoopLendDoesNotHoldTheSectionsGoroutineForAHandlerThatParked"
+  ],
+  "upstream_reference": "packages/chord/test/next/host/parked.test.ts",
+  "mutation": "chord/next/host/host_loop_lend.go: `l.Go(func() { l.finish(each.c) })` -> `l.finish(each.c)` in Loop.resumeAfter (a handler that parked continues on the goroutine that ended the section) (TestLoopLendDoesNotHoldTheSectionsGoroutineForAHandlerThatParked FAILS: host_loop_test.go:271: the goroutine that ended the section waited for the handler that parked)"
+ },
+ {
+  "upstream": "packages/chord/src/next/host/routines.ts",
+  "package": "./chord/next/host",
+  "tests": [
+   "TestLoopLendReusesTheGoroutineOfAFinishedHandler"
+  ],
+  "upstream_reference": "packages/chord/test/next/host/routines.test.ts",
+  "mutation": "chord/next/host/host_loop_lend.go: `if !goroutineid.Proving() {` -> `if false {` in Loop.recycle (a finished handler's goroutine is never kept) (TestLoopLendReusesTheGoroutineOfAFinishedHandler FAILS: host_loop_test.go:299: handlers ran on goroutines [83 84 85], want one goroutine for all three)"
+ },
+ {
+  "upstream": "packages/chord/src/next/host/routines.ts",
+  "package": "./chord/next/host",
+  "tests": [
+   "TestLoopLendStopsTheIdleGoroutinesOfALoopThatIsGone"
+  ],
+  "upstream_reference": "packages/chord/test/next/host/routines.test.ts",
+  "mutation": "chord/next/host/host_loop_lend.go: `runtime.AddCleanup(c, func(stop func()) { stop() }, stop)` -> `runtime.AddCleanup(c, func(stop func()) {}, stop)` in newCoroutine (the cleanup of a dropped idle handler does not stop its goroutine) (TestLoopLendStopsTheIdleGoroutinesOfALoopThatIsGone FAILS: host_loop_test.go:327: 34 goroutines after the loops are gone, 2 before: their idle handlers were not stopped)"
+ },
+ {
+  "upstream": "packages/chord/src/next/host/parked.ts",
+  "package": "./chord/internal/parking",
+  "tests": [
+   "TestBoundSignalYieldsOnlyForARaiseOnItsGoroutine"
+  ],
+  "upstream_reference": "packages/chord/test/next/host/parked.test.ts",
+  "mutation": "chord/internal/parking/parking.go: `if s.yield != nil && goroutineid.Current() != s.gid {` -> `if s.yield != nil && goroutineid.Current() == 0 {` in Signal.raise (a goroutine the handler started can end its synchronous part) (TestBoundSignalYieldsOnlyForARaiseOnItsGoroutine FAILS: parking_test.go:78: a Raise on another goroutine counted: raised true, yielded 1, owner 3)"
+ },
+ {
+  "upstream": "packages/chord/src/next/host/parked.ts",
+  "package": "./chord/internal/parking",
+  "tests": [
+   "TestReturnTellsAHandlerThatFinishedFromOneThatParked"
+  ],
+  "upstream_reference": "packages/chord/test/next/host/parked.test.ts",
+  "mutation": "chord/internal/parking/parking.go: `s.returned.Store(returned)` -> `s.returned.Store(true)` in Signal.raise (every first raise counts as a return) (TestReturnTellsAHandlerThatFinishedFromOneThatParked FAILS: parking_test.go:101: a Return after a park counted: the handler parked first)"
+ },
+ {
+  "upstream": "packages/chord/src/next/host/routines.ts",
+  "package": "./internal/goroutineid",
+  "tests": [
+   "TestProvingEndsOnceDistinctGoroutinesHaveCalledCurrent"
+  ],
+  "upstream_reference": "packages/chord/test/next/host/routines.test.ts",
+  "mutation": "internal/goroutineid/fast_gc.go: `func proving() bool { return offsetState.Load() == 0 }` -> `func proving() bool { return true }` (Proving never ends) (TestProvingEndsOnceDistinctGoroutinesHaveCalledCurrent FAILS: goroutineid_test.go:87: Proving() is still true after 32 distinct goroutines called Current)"
  }
 ]

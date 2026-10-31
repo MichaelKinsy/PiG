@@ -502,7 +502,7 @@ func TestReleaseRejectsTheCallsMadeThroughTheReferenceWithReleasedAndAbortsTheir
 			return contracts.Implementation{Members: contracts.VariantImplementation{
 				Methods: map[string]contracts.MethodFunction{"wait": func(_ delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
 					entered <- struct{}{}
-					<-ctx.Done()
+					UntilAborted(ctx)
 					mu.Lock()
 					aborted = append(aborted, context.Cause(ctx))
 					mu.Unlock()

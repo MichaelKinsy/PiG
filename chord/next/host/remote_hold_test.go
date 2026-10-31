@@ -113,7 +113,7 @@ func rhServeHalves(host FacetHost) error {
 					return nil, n.Change(func(draft *delta.Object) { _ = draft.Set("n", args) }, ctx)
 				},
 				"wait": func(_ delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
-					<-ctx.Done()
+					UntilAborted(ctx)
 					return nil, nil
 				},
 			},

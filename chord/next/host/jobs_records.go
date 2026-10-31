@@ -7,6 +7,7 @@ import (
 
 	chordctx "github.com/MichaelKinsy/PiG/chord/context"
 	"github.com/MichaelKinsy/PiG/chord/delta"
+	"github.com/MichaelKinsy/PiG/chord/internal/parking"
 	"github.com/MichaelKinsy/PiG/chord/next/data"
 	"github.com/MichaelKinsy/PiG/chord/next/documents"
 	"github.com/MichaelKinsy/PiG/chord/next/store"
@@ -238,6 +239,8 @@ func (records *jobRecords) abort(id string, ctx context.Context) (AbortResult, e
 	if run == nil {
 		return AbortTerminal, nil
 	}
+	// What follows waits for a transaction of the object (under its own context): a handler that aborts suspends here.
+	parking.Park(ctx)
 	if blocked {
 		records.record(run, recordChange{kind: changeDrop, run: run})
 		return AbortMarked, nil

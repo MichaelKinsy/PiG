@@ -776,7 +776,8 @@ func exCtx(ctx context.Context) Ctx {
 // exBlocked is a method function that waits until its context is aborted, and then reports why through onAbort.
 func exBlocked(onAbort func(cause error)) contracts.MethodFunction {
 	return func(_ delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
-		<-ctx.Done()
+		// Pi: `await untilAborted(ctx)`.
+		UntilAborted(ctx)
 		if onAbort != nil {
 			onAbort(context.Cause(ctx))
 		}
@@ -2380,6 +2381,8 @@ func TestExample16PresenceAndActivity(t *testing.T) {
 			}, map[string]contracts.MethodFunction{
 				"think": func(_ delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
 					close(thinking)
+					// Pi: `await release.promise`, which an abort does not end.
+					chordctx.Suspend(ctx)
 					<-release
 					if principalKind(exCtx(ctx).Principal()) == "user" {
 						return float64(42), nil
@@ -3618,7 +3621,7 @@ func TestExample28PersistedJobs(t *testing.T) {
 					finish := behaviour.finish
 					behaviour.Unlock()
 					if !finish {
-						<-ctx.Done()
+						UntilAborted(ctx)
 						return nil, context.Cause(ctx)
 					}
 					return jsonObject("count", mustState(ctx).Value("done")), nil

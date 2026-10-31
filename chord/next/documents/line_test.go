@@ -1,6 +1,7 @@
 package documents
 
 import (
+	"context"
 	"testing"
 	"time"
 )
@@ -23,17 +24,17 @@ func waitingIs(t *testing.T, line *Line, n int) {
 func TestTheLineHandsItToEachHolderInTheOrderTheyAskedOnceThePreviousOneReleased(t *testing.T) {
 	line := NewLine()
 	var order []string
-	first := line.Acquire()
+	first := line.Acquire(context.Background())
 	released := make(chan func(), 2)
 	go func() {
-		release := line.Acquire()
+		release := line.Acquire(context.Background())
 		order = append(order, "second")
 		released <- release
 	}()
 	waitingIs(t, line, 1)
 	third := make(chan struct{})
 	go func() {
-		release := line.Acquire()
+		release := line.Acquire(context.Background())
 		order = append(order, "third")
 		release()
 		close(third)
@@ -53,13 +54,13 @@ func TestTheLineHandsItToEachHolderInTheOrderTheyAskedOnceThePreviousOneReleased
 
 func TestTheLineIgnoresASecondReleaseOfTheSameHolder(t *testing.T) {
 	line := NewLine()
-	first := line.Acquire()
+	first := line.Acquire(context.Background())
 	secondHeld := make(chan func(), 1)
-	go func() { secondHeld <- line.Acquire() }()
+	go func() { secondHeld <- line.Acquire(context.Background()) }()
 	waitingIs(t, line, 1)
 	thirdHeld := make(chan struct{})
 	go func() {
-		line.Acquire()
+		line.Acquire(context.Background())
 		close(thirdHeld)
 	}()
 	waitingIs(t, line, 2)
@@ -86,13 +87,13 @@ func TestTheLineReportsItsWaitingHoldersToTheHostsTests(t *testing.T) {
 	if got := line.WaitingHolders(); got != 0 {
 		t.Fatalf("WaitingHolders of a free line = %d", got)
 	}
-	first := line.Acquire()
+	first := line.Acquire(context.Background())
 	if got := line.WaitingHolders(); got != 0 {
 		t.Fatalf("WaitingHolders with the line held and nobody asking = %d", got)
 	}
 	handed := make(chan func(), 2)
 	for range 2 {
-		go func() { handed <- line.Acquire() }()
+		go func() { handed <- line.Acquire(context.Background()) }()
 	}
 	waitingIs(t, line, 2)
 	if got := line.WaitingHolders(); got != 2 {

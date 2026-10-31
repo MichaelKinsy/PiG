@@ -181,13 +181,11 @@
    "calls on a loading local reference › reject with the cause when the object fails (TestParkedCallsRejectedWithTheQueue, TestHostParkedCallsRejectWithTheCauseWhenTheObjectFails)",
    "calls on a loading remote reference › keep one deadline across reconnects; nothing is sent for them on either link (TestParkedCallsKeepOneDeadlineAcrossReconnects, TestHostParkedCallsOnALoadingRemoteReferenceKeepOneDeadlineAcrossReconnects)",
    "calls on a loading remote reference › are resolved against the binding they are sent on: indexes from the new variant, missing methods invalid (TestHostParkedCallsOnALoadingRemoteReferenceAreResolvedAgainstTheBindingTheyAreSentOn)",
-   "calls on a loading remote reference › on a reference released while loading without a link: nothing is sent, the next connect holds nothing (race 3) (TestHostParkedCallsOnAReferenceReleasedWhileLoadingWithoutALinkNothingIsSent)"
+   "calls on a loading remote reference › on a reference released while loading without a link: nothing is sent, the next connect holds nothing (race 3) (TestHostParkedCallsOnAReferenceReleasedWhileLoadingWithoutALinkNothingIsSent)",
+   "calls on a loading local reference › stop being sent when one's handler releases the reference: the rest reject released (race 15) (TestHostParkedCallsStopBeingSentWhenOnesHandlerReleasesTheReference): ported on fix/follow-d5a-handoff by the first-suspension handoff (chord/next/DESIGN-go-layout.md section 10): the handler's `ref.Release()` runs inline in the section that sends it, so the rest of the queue rejects `released` before the next send"
   ],
   "missing": [],
-  "designedOut": [],
-  "pendingOwner": [
-   "calls on a loading local reference › stop being sent when one's handler releases the reference: the rest reject released (race 15): pending the owner's decision on first-suspension handoff (the same root as routines › start in the turn their object went live, next to a method call admitted in that turn): a Go method handler runs on its own goroutine, so its first statement is not ordered inside the sending section; the Go test TestHostParkedCallsStopBeingSentWhenOnesHandlerReleasesTheReference is NOT in this branch (it would be red) and lands red-to-green on fix/follow-d5a-handoff"
-  ]
+  "designedOut": []
  },
  "packages/chord/test/next/host/native.test.ts": {
   "ported": [
@@ -378,47 +376,14 @@
    "routines and the end › act as a remote object's principal (TestRoutinesActAsTheOwnersCallerPrincipal)",
    "routines and the end › are aborted by host.close, which drains their running calls (bounded by closeTimeout) (TestRoutinesAreAbortedByHostCloseWhichDrainsTheirRunningCallsBoundedByCloseTimeout)",
    "routines and the end › leave nothing of an ended object: its routines' watches and contexts are collected (TestRoutinesLeaveNothingOfAnEndedObjectItsWatchesAndContextsAreCollected)",
-   "on › on a remote member failed since its binding (no value yet), waits for its first value (TestOnOnARemoteMemberFailedSinceItsBindingNoValueYetWaitsForItsFirstValue)"
+   "on › on a remote member failed since its binding (no value yet), waits for its first value (TestOnOnARemoteMemberFailedSinceItsBindingNoValueYetWaitsForItsFirstValue)",
+   "routines and the end › start in the turn their object went live, next to a method call admitted in that turn (TestRoutinesStartInTheTurnTheirObjectWentLiveNextToAMethodCallAdmittedInThatTurn): ported on fix/follow-d5a-handoff; `host.hold(...)` and `item.bump(context)` are one `enter` section as Pi's test body is one synchronous run, and the handler's first statement (\"bump\") runs inside the section that sends the parked call, before `onLive`"
   ],
   "missing": [],
   "designedOut": [
    "routines and the end › type their handler by the source's kind: ops and retired for a JSON watchable, the value alone for a native one: owner class (a) type-level check; Go mechanism: OnHandler[delta.JsonValue] takes chord.WatchCall (Ops, Retired) and OnNativeHandler[any] takes chord.NativeWatchCall (the value alone); Go test TestOnTypesTheirHandlerByTheSourcesKindOpsAndRetiredForAJSONWatchableTheValueAloneForANativeOne (reflect on the handler types)"
   ],
-  "pendingOwner": [
-   "routines and the end › start in the turn their object went live, next to a method call admitted in that turn: the order is Pi's microtask order only if a handler's first synchronous section runs inside the section that admits its call (the first-suspension handoff decision): a method handler is a blocking Go function on an owned task, started in call order (attempt.call waits for the previous handler to enter), so its first statement is not ordered against `onLive` and the first `on` call, which are in-section continuations; no Go test is written for the case until the handoff is decided"
-  ],
-  "note": [
-   "o",
-   "n",
-   "l",
-   "y",
-   " ",
-   "t",
-   "h",
-   "e",
-   "c",
-   "a",
-   "s",
-   "d",
-   "r",
-   "m",
-   "(",
-   "D",
-   "5",
-   "b",
-   "-",
-   "i",
-   "g",
-   ",",
-   ")",
-   ";",
-   "f",
-   "'",
-   "A",
-   "p",
-   "O",
-   "j"
-  ]
+  "note": "Every case of routines.test.ts is ported (41) or designed out (1, a type-level check named by its Go mechanism); none is missing, the D5b-missing cases of this file included. (The earlier note was stored as a list of single characters and its text did not survive; this one restates what the lists above show.)"
  },
  "packages/chord/test/next/host/facet.test.ts": {
   "ported": [

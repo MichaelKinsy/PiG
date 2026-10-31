@@ -46,7 +46,7 @@ func awaitReference(t testing.TB, got <-chan gotReference) *Reference {
 }
 
 // startCall is `reference.method(args, ctx)`: the call starts in the caller's section, as a Promise-returning call does,
-// and the result is awaited later (result.wait()).
+// and the result is awaited later (result.wait(background)).
 func startCall(t testing.TB, ref *Reference, method string, args delta.JsonValue, ctx context.Context) *parkedCallResult {
 	t.Helper()
 	var result *parkedCallResult
@@ -228,7 +228,7 @@ func TestConsumerReferencesOverALink(t *testing.T) {
 			call := startCall(t, notes, "wait", nil, cancellable)
 			waited := probe.AwaitWaits(t, 1)[0]
 			cancel(errors.New("user cancelled"))
-			if _, err := call.wait(); err == nil || err.Error() != "user cancelled" {
+			if _, err := call.wait(background); err == nil || err.Error() != "user cancelled" {
 				t.Fatalf("call error = %v, want user cancelled", err)
 			}
 			settleLinked(l)
@@ -250,7 +250,7 @@ func TestConsumerReferencesOverALink(t *testing.T) {
 			call := startCall(t, notes, "wait", nil, background)
 			waited := probe.AwaitWaits(t, 1)[0]
 			notes.Release()
-			_, err = call.wait()
+			_, err = call.wait(background)
 			if chordErr := requireChordError(t, err, data.CodeReleased, ""); chordErr.Message != "app.notes(S1): released" {
 				t.Fatalf("message = %q, want app.notes(S1): released", chordErr.Message)
 			}
@@ -276,7 +276,7 @@ func TestConsumerReferencesOverALink(t *testing.T) {
 			pending := asyncGet(p.Client, Notes, jsonObject("session", "S2"), background, GetOptions{ReadyTimeout: new(50 * time.Millisecond)})
 			p.Peer.Next("call")
 			p.Peer.Close()
-			_, err := call.wait()
+			_, err := call.wait(background)
 			if chordErr := requireChordError(t, err, data.CodeUnavailable, ""); chordErr.Message != "the link closed" {
 				t.Fatalf("message = %q, want the link closed", chordErr.Message)
 			}
@@ -330,7 +330,7 @@ func TestConsumerRaces(t *testing.T) {
 			call := startCall(t, notes, "wait", nil, cancellable)
 			id := p.Peer.Next("call").(*link.CallMessage).Call
 			cancel(errors.New("cancelled"))
-			if _, err := call.wait(); err == nil || err.Error() != "cancelled" {
+			if _, err := call.wait(background); err == nil || err.Error() != "cancelled" {
 				t.Fatalf("call error = %v, want cancelled", err)
 			}
 			p.Peer.Next("abort")
@@ -410,7 +410,7 @@ func TestConsumerProtocolErrors(t *testing.T) {
 				p.Peer.Next("call")
 				p.Peer.Send(each.reply)
 				// The text codec cannot even decode a result that is no JSON: the link closes and the call with it.
-				_, err := call.wait()
+				_, err := call.wait(background)
 				_ = requireChordError(t, err, data.CodeUnavailable, "")
 				settle(p.Peer)
 				if !p.Peer.Closed() {
@@ -734,7 +734,7 @@ func TestConsumerCallWindow(t *testing.T) {
 			}
 			n.One.Release()
 			for _, call := range []*parkedCallResult{sent, waiting} {
-				_, err := call.wait()
+				_, err := call.wait(background)
 				_ = requireChordError(t, err, data.CodeReleased, "")
 			}
 			settle(n.Peer)
@@ -754,7 +754,7 @@ func TestConsumerCallWindow(t *testing.T) {
 			settle(n.Peer)
 			n.Peer.Send(&link.GoneMessage{Hold: n.Holds[0], Error: jsonObject("kind", "chord", "error",
 				jsonObject("code", "unavailable", "message", "revoked"))})
-			_, err := sent.wait()
+			_, err := sent.wait(background)
 			if chordErr := chordOf(t, err); chordErr.Message != "revoked" {
 				t.Fatalf("message = %q, want revoked", chordErr.Message)
 			}
@@ -774,13 +774,13 @@ func TestConsumerCallWindow(t *testing.T) {
 			waiting := startCall(t, n.One, "wait", nil, background)
 			settle(n.Peer)
 			n.Peer.Send(&link.LoadingMessage{Hold: n.Holds[0]})
-			_, err := waiting.wait()
+			_, err := waiting.wait(background)
 			if chordErr := requireChordError(t, err, data.CodeUnavailable, ""); chordErr.Message != "hold "+formatNumber(float64(n.Holds[0]))+": rebinding" {
 				t.Fatalf("message = %q, want the rebinding message", chordErr.Message)
 			}
 			call := n.Peer.Next("call").(*link.CallMessage).Call
 			n.Peer.Send(&link.ResultMessage{Call: call})
-			result, err := sent.wait()
+			result, err := sent.wait(background)
 			must(t, err)
 			if result != nil {
 				t.Fatalf("result = %v, want null", result)
@@ -808,11 +808,11 @@ func TestConsumerLimitsPerPart(t *testing.T) {
 			added := startCall(t, notes, "add", jsonObject("text", "x"), background)
 			call := p.Peer.Next("call").(*link.CallMessage).Call
 			p.Peer.Send(&link.ResultMessage{Call: call, Value: mustJSONPart(t, string(repeatBytes('y', 60)))})
-			_, err = added.wait()
+			_, err = added.wait(background)
 			_ = requireChordError(t, err, data.CodeTooLarge, data.ReasonPart)
 			again := startCall(t, notes, "add", jsonObject("text", "x"), background)
 			p.Peer.Send(&link.ResultMessage{Call: p.Peer.Next("call").(*link.CallMessage).Call, Value: link.Text("2")})
-			result, err := again.wait()
+			result, err := again.wait(background)
 			must(t, err)
 			nexttest.RequireJSONEqual(t, result, 2.0)
 		})

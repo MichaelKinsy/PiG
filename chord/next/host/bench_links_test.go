@@ -540,7 +540,7 @@ func benchLinksRows(b *testing.B, codec link.Codec) {
 			}
 			values := make([]delta.JsonValue, len(results))
 			for n, result := range results {
-				value, err := result.wait()
+				value, err := result.wait(background)
 				must(b, err)
 				values[n] = value
 			}

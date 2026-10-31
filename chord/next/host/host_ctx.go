@@ -6,6 +6,7 @@ import (
 	"sync"
 
 	chordctx "github.com/MichaelKinsy/PiG/chord/context"
+	"github.com/MichaelKinsy/PiG/chord/internal/parking"
 	"github.com/MichaelKinsy/PiG/chord/next/contracts"
 	"github.com/MichaelKinsy/PiG/chord/next/data"
 )
@@ -28,6 +29,8 @@ type sectionLoop interface {
 	Run(work func())
 	// Go runs fn as an owned background task (Loop.Go).
 	Go(fn func())
+	// Lend runs fn as the synchronous part of an async function inside the running section (Loop.Lend).
+	Lend(signal *parking.Signal, fn func())
 }
 
 // Ctx is a handler's context.
@@ -63,12 +66,23 @@ type callContext struct {
 	// first.
 	settling       context.Context
 	settlingCancel func(cause error)
+	// signal is the "returned or parked" of the call this is the ctx of (nil for a scope that runs no handler). The ctx
+	// answers Value(parking.Key) with it.
+	signal *parking.Signal
 }
 
 var _ Ctx = (*callContext)(nil)
 
 func newCallContext(ctx context.Context, from caller, host *chordHost) *callContext {
 	return &callContext{Context: ctx, principal: from.principal, incarnation: from.incarnation, host: host}
+}
+
+// Value answers the call's parking signal under parking.Key and delegates every other key.
+func (c *callContext) Value(key any) any {
+	if key == parking.Key && c.signal != nil {
+		return c.signal
+	}
+	return c.Context.Value(key)
 }
 
 // Principal implements Ctx.
@@ -106,7 +120,7 @@ func (c *callContext) Get(typ *contracts.Contract, params any, options GetOption
 	if err != nil {
 		return nil, err
 	}
-	binding, acquireErr := c.host.acquire(typ, params, from, scoped.context, options)
+	binding, acquireErr := c.host.acquire(typ, params, from, scoped.context, c, options)
 	var reference *Reference
 	loop.Run(func() {
 		scoped.release()

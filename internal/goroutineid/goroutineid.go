@@ -20,6 +20,11 @@ import (
 // another goroutine's or a wrong ID. The header's cost grows with the depth of the stack.
 func Current() uint64 { return current() }
 
+// Proving reports whether Current is still proving where the goroutine ID lives: until the proof has seen its distinct goroutines
+// every call formats the stack header, whose cost grows with the depth of the stack. A caller that reuses a few goroutines keeps
+// it there, so such a caller waits for Proving to end before it reuses them. It is false where Current always formats the header.
+func Proving() bool { return proving() }
+
 // stackID parses the ID from the header line runtime.Stack writes for the calling goroutine.
 func stackID() uint64 {
 	var buf [64]byte

@@ -1036,7 +1036,7 @@ func serveNotes(host FacetHost, typ *contracts.Contract) (*notesProbe, error) {
 				probe.changed = nil
 			}
 			probe.mu.Unlock()
-			<-ctx.Done()
+			UntilAborted(ctx)
 			return nil, nil
 		}
 		members := map[string]chord.Watchable[delta.JsonValue]{"notes": notes, "count": count}

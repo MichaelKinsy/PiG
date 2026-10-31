@@ -42,6 +42,11 @@ type Loop struct {
 	scheduled bool
 
 	tasks sync.WaitGroup
+
+	// idle are the coroutines of finished handlers; pending the handlers that parked or returned in the running section,
+	// whose rest runs when it ends (host_loop_lend.go). idle is guarded by mu, pending by the section.
+	idle    []*coroutine
+	pending []resumption
 }
 
 // NewLoop returns an idle loop.
@@ -62,12 +67,20 @@ func (l *Loop) Run(work func()) {
 	}
 	l.exec.Lock()
 	l.owner.Store(id)
+	var buffer [2]resumption
+	var resumed []resumption
 	defer func() {
 		l.owner.Store(0)
 		l.exec.Unlock()
+		l.resumeAfter(resumed)
 	}()
 	work()
 	l.drain()
+	if len(l.pending) > 0 {
+		resumed = append(buffer[:0], l.pending...)
+		clear(l.pending)
+		l.pending = l.pending[:0]
+	}
 }
 
 // Queue is queueMicrotask: job runs after the running section, before the loop takes another, in queueing order. It is

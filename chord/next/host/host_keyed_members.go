@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/MichaelKinsy/PiG/chord"
+	"github.com/MichaelKinsy/PiG/chord/internal/parking"
 	"github.com/MichaelKinsy/PiG/chord/next/contracts"
 	"github.com/MichaelKinsy/PiG/chord/next/data"
 	"github.com/MichaelKinsy/PiG/chord/next/documents"
@@ -139,6 +140,7 @@ func (k *keyedMembers) pin(member, key string, keyed *keyedBinding, ctx context.
 			result <- pinResult{pin: pinnedKey{source: current.source, release: release}}
 		})
 	})
+	parking.Park(ctx)
 	settled := <-result
 	return settled.pin, settled.err
 }
@@ -528,8 +530,10 @@ func (p *keyedPromise[T]) thenWithContext(ctx context.Context, callback func(val
 	})
 }
 
-// await blocks until the promise settled: Pi's `await`. It is called outside a section.
-func (p *keyedPromise[T]) await() (T, error) {
+// await blocks until the promise settled: Pi's `await`. It is called outside a section. ctx is the waiter's: a handler that
+// waits parks (its call's section goes on) before it blocks.
+func (p *keyedPromise[T]) await(ctx context.Context) (T, error) {
+	parking.Park(ctx)
 	<-p.done
 	return p.value, p.err
 }

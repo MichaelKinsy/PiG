@@ -8,6 +8,7 @@ import (
 	"weak"
 
 	"github.com/MichaelKinsy/PiG/chord"
+	chordctx "github.com/MichaelKinsy/PiG/chord/context"
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/chord/next/contracts"
 )
@@ -117,6 +118,14 @@ func (s signal) fire() {
 func (s signal) wait(t testing.TB) {
 	t.Helper()
 	receive(t, (<-chan struct{})(s))
+}
+
+// await is `await promise` in a handler: the handler suspends (its call's section goes on) and waits until the signal fired,
+// whatever its context does.
+func (s signal) await(t testing.TB, ctx context.Context) {
+	t.Helper()
+	chordctx.Suspend(ctx)
+	s.wait(t)
 }
 
 // waitMain blocks the test's own goroutine until the signal fired.

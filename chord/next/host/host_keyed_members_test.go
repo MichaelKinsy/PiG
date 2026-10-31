@@ -788,7 +788,7 @@ func TestKeyedPromiseCallbacksRunAsMicrotasksInTheOrderTheyWereRegistered(t *tes
 		promise.then(func(value int, _ error) { order = append(order, value*10+3) })
 	})
 	expectEqual(t, "order", order, []int{70, 71, 72, 73})
-	value, err := promise.await()
+	value, err := promise.await(background)
 	expectEqual(t, "await", []any{value, err}, []any{7, nil})
 }
 

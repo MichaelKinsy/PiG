@@ -440,7 +440,12 @@ func TestHostActivitySchedulesNothingWhileNobodyWatchesOrDerivesFromIt(t *testin
 		return h.Serve(counter, func(*delta.JsonObject, Self) (contracts.Implementation, error) {
 			return contracts.Implementation{Members: contracts.VariantImplementation{Methods: map[string]contracts.MethodFunction{
 				"bump": func(delta.JsonValue, context.Context) (delta.JsonValue, error) { return nil, nil },
-				"wait": func(delta.JsonValue, context.Context) (delta.JsonValue, error) { <-gate; return nil, nil },
+				"wait": func(_ delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
+					// Pi: `await gate.promise`.
+					chordctx.Suspend(ctx)
+					<-gate
+					return nil, nil
+				},
 			}}}, nil
 		}, ServeOptions{})
 	}, loadedOptions{})

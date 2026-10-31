@@ -13,6 +13,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord"
 	chordctx "github.com/MichaelKinsy/PiG/chord/context"
 	"github.com/MichaelKinsy/PiG/chord/delta"
+	"github.com/MichaelKinsy/PiG/chord/internal/parking"
 	"github.com/MichaelKinsy/PiG/chord/next/contracts"
 	"github.com/MichaelKinsy/PiG/chord/next/data"
 	"github.com/MichaelKinsy/PiG/chord/next/link"
@@ -469,7 +470,7 @@ func (h *chordHost) Load(facets []HostFacet, ctx context.Context) error {
 		return failure
 	}
 	for _, outcome := range outcomes {
-		_, _ = outcome.await()
+		_, _ = outcome.await(ctx)
 	}
 	h.enter(func() {
 		if h.state == hostLoading {
@@ -487,7 +488,7 @@ func (h *chordHost) typeNames() []string { return slices.Clone(h.typeOrder) }
 
 // Get implements Host.
 func (h *chordHost) Get(typ *contracts.Contract, params any, ctx context.Context, options GetOptions) (*Reference, error) {
-	binding, err := h.acquire(typ, params, h.own(), ctx, options)
+	binding, err := h.acquire(typ, params, h.own(), ctx, ctx, options)
 	if err != nil {
 		return nil, err
 	}
@@ -696,6 +697,7 @@ func (h *chordHost) Registry(r registries.Registry[any, any], ctx context.Contex
 		})
 	}
 	defer finish()
+	parking.Park(ctx)
 	select {
 	case <-h.publication:
 	case <-waiting.context.Done():
@@ -803,7 +805,7 @@ func (h *chordHost) closing() bool { return h.state == hostClosed }
 // `ctx.get`): a hold, waited for up to the getter's one deadline, across reconnects and through `loading`, `failed
 // { transient }` and `failed { waiting }`; a broken failure returns at once, the deadline with the last failure's error. A
 // getter that gives up releases its reference. It blocks, off the loop (it enters it for each section).
-func (h *chordHost) acquire(typ *contracts.Contract, params any, from caller, ctx context.Context, options GetOptions) (*binding, error) {
+func (h *chordHost) acquire(typ *contracts.Contract, params any, from caller, ctx, waiter context.Context, options GetOptions) (*binding, error) {
 	var (
 		held    *binding
 		err     error
@@ -834,7 +836,7 @@ func (h *chordHost) acquire(typ *contracts.Contract, params any, from caller, ct
 	if err != nil {
 		return nil, err
 	}
-	_, liveErr := live.await()
+	_, liveErr := live.await(waiter)
 	h.enter(func() {
 		timer.Stop()
 		waiting.release()
@@ -1606,6 +1608,7 @@ func untilUsable(loop sectionLoop, value *registries.RegistryValueSource, usable
 		if err := ctx.Err(); err != nil {
 			return context.Cause(ctx)
 		}
+		parking.Park(ctx)
 		select {
 		case <-wake.changed:
 		case err := <-wake.closed:
