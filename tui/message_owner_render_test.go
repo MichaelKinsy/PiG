@@ -20,7 +20,10 @@ func retentionSource(i int) string {
 
 // The owners of a Markdown that never streams finish it when they build it, so it keeps no streaming memos. The rows
 // must be what they were with the memos: the hash of every owner's rows at several widths, themes and expansion states
-// was taken on the tree before the change.
+// was taken on the tree before the change. It was taken again on the tree that carries Pi 2ce9d527 (#10925), which
+// drops the space after a styled word at a wrap boundary (packages/tui/src/utils.ts:997): the rows that wrap after a
+// styled word changed, and the tree without the memos renders the same bytes as the tree with them on both sides of
+// that fix.
 func TestMessageOwnersRenderBytes(t *testing.T) {
 	prev := ActiveTheme()
 	t.Cleanup(func() { SetTheme(prev.Name) })
@@ -52,7 +55,7 @@ func TestMessageOwnersRenderBytes(t *testing.T) {
 			}
 		}
 	}
-	const want = "c409ce9d826528603ded2781f2fe6ce34861028309242375b64cfa3d07d3f103"
+	const want = "1a8c6dc28fc93ebb9f7219a438e45170285d029c6fc69f4578b6093e7fecd403"
 	if got := hex.EncodeToString(hash.Sum(nil)); got != want {
 		t.Errorf("owner rows hash %s, want %s", got, want)
 	}
