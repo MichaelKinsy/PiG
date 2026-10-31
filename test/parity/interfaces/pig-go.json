@@ -105705,6 +105705,17 @@
       "shapeHash": "sha256:5aeab4a4453d6078094dca673b530e4da23a9854f06e363aa8e8bd9aaf454bd7"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension#ExtensionRuntime.unlinkEventBusLocked",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension",
+      "name": "ExtensionRuntime.unlinkEventBusLocked",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(e *eventBusSubscription)"
+      },
+      "shapeHash": "sha256:4324dbb7b5dd0eafd5509cddf34551bd181c222f295d6564443a7cdf4ba15965"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension#ExtensionShortcut",
       "package": "github.com/MichaelKinsy/PiG/coding/extension",
       "name": "ExtensionShortcut",
