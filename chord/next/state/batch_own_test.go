@@ -262,11 +262,13 @@ func TestBatchCount(t *testing.T) {
 		h.batch.Count(state.CounterDeriveDiffs)
 		h.batch.Count(state.CounterRegistryComposes)
 		h.batch.Count(state.CounterRegistryAdapts)
+		h.batch.Count(state.CounterContractAdapts)
 		want := map[string]float64{
 			"chord.derive.computes":   2,
 			"chord.derive.diffs":      1,
 			"chord.registry.composes": 1,
 			"chord.registry.adapts":   1,
+			"chord.contract.adapts":   1,
 		}
 		got := meter.Counts()
 		if !reflect.DeepEqual(got, want) {

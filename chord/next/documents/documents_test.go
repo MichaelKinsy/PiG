@@ -163,3 +163,29 @@ func TestWhenTheOwnerEndsDocumentsAreDroppedEveryUseThrowsReleasedAndWatchesEnd(
 	_, err = list.Change(func(*delta.Object) (any, error) { return nil, nil }, background)
 	nexttest.RequireJSONEqual(t, rejection(t, err), released)
 }
+
+func TestDocumentsCheckChecksADeclarationAsDeclareWouldChangingNothing(t *testing.T) {
+	listDefinition, draftsDefinition := documentsDefinitions(t)
+	keyedList, err := DefineState("list", StateOptions{
+		Schema:  contracts.Obj(contracts.Prop("items", contracts.Arr(contracts.Str()))),
+		Version: 1,
+		Initial: func() *JsonObject { return obj("items", []any{}) },
+		Keyed:   true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	o, _ := activated(t, objectOptions{}, func(a *attempt) { a.Singleton(listDefinition) })
+	var same, other, clash error
+	o.Do(func() {
+		same = o.documents.Check(listDefinition)
+		other = o.documents.Check(draftsDefinition)
+		clash = o.documents.Check(keyedList)
+	})
+	if same != nil || other != nil {
+		t.Fatalf("a matching or an undeclared definition: %v, %v", same, other)
+	}
+	if clash == nil || clash.Error() != "list: declared keyed, its documents are not" {
+		t.Fatalf("a keyed declaration of a singleton slot = %v", clash)
+	}
+}

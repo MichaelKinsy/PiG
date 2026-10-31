@@ -40,7 +40,7 @@ func newModelsEnv(t *testing.T) *modelsEnv {
 	e := &modelsEnv{t: t}
 	e.batch = state.NewBatch(func(err state.BatchError) { t.Errorf("batch reported %s: %v", err.Kind, err.Error) }, nil)
 	e.record = registries.NewRegistryRecord("app.models", e.batch, func(registries.RegistryError) {})
-	err := e.record.Serve(1, registries.RegistryProvider[any, any]{
+	e.record.Serve(1, registries.RegistryProvider[any, any]{
 		Compose: func(table registries.RegistryTable[any], _ registries.ComposeContext) (any, error) {
 			sum := 0
 			for _, entry := range table {
@@ -52,9 +52,6 @@ func newModelsEnv(t *testing.T) *modelsEnv {
 			return sum, nil
 		},
 	})
-	if err != nil {
-		t.Fatalf("Serve: %v", err)
-	}
 	e.source = e.record.Value(1)
 	return e
 }

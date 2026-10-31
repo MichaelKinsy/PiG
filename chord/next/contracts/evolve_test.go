@@ -295,3 +295,58 @@ func TestEvolveLongHistories(t *testing.T) {
 		}
 	})
 }
+
+func TestEvolveKeyedEdits(t *testing.T) {
+	note := func() contracts.TSchema { return contracts.Obj(contracts.Prop("text", contracts.Str())) }
+	store := func(t testing.TB) *contracts.Contract {
+		return local(t, "store", 1, noParams(), contracts.Mem("notes", contracts.Keyed(note())), contracts.Mem("n", contracts.Int()))
+	}
+	noteTagged := func() contracts.TSchema {
+		return contracts.Obj(contracts.Prop("text", contracts.Str()), contracts.Prop("tag", contracts.Str()))
+	}
+
+	t.Run("changes, adds and removes a local contract's keyed members, each version fingerprinted", func(t *testing.T) {
+		base := store(t)
+		edit := func(e *contracts.LocalEditor) *contracts.LocalEditor {
+			return e.Keyed("notes", noteTagged()).AddKeyed("drafts", note())
+		}
+		v2 := must(evolveLocal(base, edit))
+		v3 := must(evolveLocal(v2, func(e *contracts.LocalEditor) *contracts.LocalEditor { return e.RemoveKeyed("drafts") }))
+		versions := dataOf(t, v3).Versions
+		var got [][]string
+		for _, version := range versions {
+			got = append(got, keys(version.Variants.Value(contracts.LocalVariant).Keyed))
+		}
+		if want := [][]string{{"notes"}, {"notes", "drafts"}, {"notes"}}; !reflect.DeepEqual(got, want) {
+			t.Fatalf("keyed members = %v, want %v", got, want)
+		}
+		wantChanges := []contracts.Change{
+			{Variant: "members", Member: "notes", Side: contracts.SideKeyed},
+			{Variant: "members", Member: "drafts", Side: contracts.SideKeyed},
+		}
+		if !reflect.DeepEqual(versions[1].Changes, wantChanges) {
+			t.Fatalf("changes = %v", versions[1].Changes)
+		}
+		prints := map[string]bool{}
+		for _, version := range versions {
+			prints[version.Fingerprint] = true
+		}
+		if len(prints) != 3 {
+			t.Fatalf("%d distinct fingerprints, want 3", len(prints))
+		}
+		// The same edits elsewhere give the same fingerprint (an old plugin's copy).
+		again := must(evolveLocal(store(t), edit))
+		if dataOf(t, again).Versions[1].Fingerprint != versions[1].Fingerprint {
+			t.Fatal("the same edits gave another fingerprint")
+		}
+	})
+
+	t.Run("refuses an unknown keyed member, one declared already, and a kind change", func(t *testing.T) {
+		_, err := evolveLocal(store(t), func(e *contracts.LocalEditor) *contracts.LocalEditor { return e.Keyed("missing", note()) })
+		wantError(t, err, "no such keyed member")
+		_, err = evolveLocal(store(t), func(e *contracts.LocalEditor) *contracts.LocalEditor { return e.AddKeyed("n", note()) })
+		wantError(t, err, "already declared")
+		_, err = evolveLocal(store(t), func(e *contracts.LocalEditor) *contracts.LocalEditor { return e.RemoveKeyed("missing") })
+		wantError(t, err, "no such keyed member")
+	})
+}

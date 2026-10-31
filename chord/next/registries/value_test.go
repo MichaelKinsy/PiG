@@ -499,3 +499,26 @@ func TestRegistryValue(t *testing.T) {
 		}
 	})
 }
+
+func TestAReloadsNewValueAdapter(t *testing.T) {
+	t.Run("uses a new value adapter even when compose returns the same primitive (fix round 1)", func(t *testing.T) {
+		R := mustDefine[int, int](t, "astra.registry", 2)
+		Old := mustDefine[int, int](t, "astra.registry", 1)
+		provider := func(factor int) registries.RegistryProvider[int, int] {
+			return registries.RegistryProvider[int, int]{
+				Compose: func(registries.RegistryTable[int], registries.ComposeContext) (int, error) { return 7, nil },
+				Accepts: registries.RegistryAccepts[int, int]{1: {Value: func(n int) (any, error) { return n * factor, nil }}},
+			}
+		}
+		e := newEnv(t)
+		record := serve(e, R, provider(2))
+		old := record.Value(Old.Version)
+		if got := old.Value(); got != 14 {
+			t.Fatalf("old = %v, want 14", got)
+		}
+		e.change(func() { record.Serve(R.Version, provider(3).Erase()) })
+		if got := old.Value(); got != 21 {
+			t.Fatalf("old after the reload = %v, want 21", got)
+		}
+	})
+}

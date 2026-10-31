@@ -193,6 +193,30 @@ func TestBindProvider(t *testing.T) {
 	})
 }
 
+func TestBinds(t *testing.T) {
+	fixture := newArgsFixture(t)
+	provider := fixture.provider
+	if provider.Accepts == nil || len(provider.Accepts) != len(fixture.accepts) {
+		t.Fatalf("Accepts = %+v", provider.Accepts)
+	}
+	for _, c := range []struct {
+		version     int
+		fingerprint string
+		want        bool
+	}{
+		{fixture.notesV3.Version, fixture.notesV3.Fingerprint, true},
+		{fixture.notesV3.Version, fixture.notesV1.Fingerprint, false},
+		{1, fixture.notesV1.Fingerprint, true},
+		{2, fixture.notesV2.Fingerprint, true},
+		{1, fixture.notesV2.Fingerprint, false},
+		{9, fixture.notesV1.Fingerprint, false},
+	} {
+		if got := data.Binds(provider, c.version, c.fingerprint); got != c.want {
+			t.Errorf("Binds(%d, %.8s) = %v, want %v", c.version, c.fingerprint, got, c.want)
+		}
+	}
+}
+
 func TestCheckArgs(t *testing.T) {
 	fixture := newArgsFixture(t)
 	provider := fixture.provider
