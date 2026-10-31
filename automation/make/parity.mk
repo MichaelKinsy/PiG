@@ -186,7 +186,7 @@ custom-factory-ledger-drift: ## Validate the checked-in internal draft
 	@go test $(GO_TEST_CI_COUNT) ./test/parity/cmd/customfactoryledger
 	@go run ./test/parity/cmd/customfactoryledger -check
 
-check-contracts-fast: closure-check correspondence-check porter-check interface-inventory interface-inventory-test interface-go-drift interface-recommendations-drift interface-mapping-quality interface-delta interface-gaps portmap-check behavior-contracts test-inventory-drift test-inventory test-porting-release known-gaps-drift format-version-inventory custom-factory-ledger-drift sdk-surface-drift sdk-apidiff piglet-strip-ids-drift piglet-strip-build ## Local generated contract validation and drift gates
+check-contracts-fast: closure-check correspondence-check porter-check interface-inventory interface-inventory-test interface-go-drift interface-recommendations-drift interface-mapping-quality interface-delta interface-gaps portmap-check behavior-contracts test-inventory-drift test-inventory test-porting-release known-gaps-drift format-version-inventory custom-factory-ledger-drift sdk-surface-drift sdk-apidiff piglet-strip-ids-drift sdk-bundles-drift piglet-strip-build ## Local generated contract validation and drift gates
 
 check-contracts: check-contracts-fast interface-inventory-drift ## Fast contracts + exact published-package inventory regeneration
 
