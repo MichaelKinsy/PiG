@@ -11091,6 +11091,27 @@
       ]
     },
     {
+      "id": "BF-5c76bc0",
+      "title": "Fix in shipped code",
+      "symptom": "Fix in shipped code",
+      "rootCause": "wrap.go: the wrap branches as a switch (gocritic ifElseChain), and the SDK copy of it; the CJK URL test ranges over the string.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "5c76bc0f56",
+          "date": "2026-10-30"
+        }
+      ],
+      "tests": [
+        "tui/markdown_cjk_url_test.go::TestMarkdownBareURLStopsAtCJKPunctuationPiCases"
+      ]
+    },
+    {
       "id": "BF-5c9d23f",
       "title": "A provider object's OAuth login receives Pi's login options, as `oauth.login(interaction, options)` does in Pi",
       "symptom": "A provider object's flow got no options, so a flow that needs the device ID could not get it.",
