@@ -399,6 +399,9 @@ func generationRequestHandler(ctx context.Context, task durable.RunningTask[Gene
 	if options.SessionID, err = ensureProviderSessionId(ctx, runtime); err != nil {
 		return err
 	}
+	options.OnPayload = func(payload any, model *ai.Model) (any, error) {
+		return providerPayload(ctx, runtime, model, payload)
+	}
 	message, err := streamResponse(ctx, runtime, model, messages, shared, options, checkpoint.Attempt)
 	if err != nil {
 		return err
@@ -904,6 +907,28 @@ func ConvertPartial(tx durable.Tx, live *delta.Object, conversationId durable.Co
 	message.StopReason = ai.StopReasonAborted
 	_, err = appendAssistant(tx, conversationId, message)
 	return err
+}
+
+// providerPayload is the beforeProviderRequest replacement chain over one provider request body: it runs each time pi-ai
+// builds a body, and a hook's nil result keeps the body it was given.
+func providerPayload(ctx context.Context, runtime generationRuntime, model *ai.Model, payload any) (any, error) {
+	current := payload
+	if err := runtime.Hooks().Each("beforeProviderRequest", func(hooks *GenerationHooks) error {
+		if hooks == nil || hooks.BeforeProviderRequest == nil {
+			return nil
+		}
+		replaced, err := hooks.BeforeProviderRequest(ctx, ProviderRequest{Model: model, Payload: current}, runtime)
+		if err != nil {
+			return err
+		}
+		if replaced != nil {
+			current = replaced.Payload
+		}
+		return nil
+	}); err != nil {
+		return nil, err
+	}
+	return current, nil
 }
 
 // streamResponse streams one request and returns the terminal message (generation.ts:354-405). Partials commit as

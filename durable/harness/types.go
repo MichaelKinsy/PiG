@@ -46,6 +46,18 @@ type GenerationRequest struct {
 	Messages []ai.Message
 }
 
+// ProviderRequest is what a beforeProviderRequest hook sees: the model of the request and its provider request body, in
+// the format of the model's API (Model.ProviderMeta.API).
+type ProviderRequest struct {
+	Model   *ai.Model
+	Payload any
+}
+
+// ProviderPayload is the beforeProviderRequest result that replaces the provider request body.
+type ProviderPayload struct {
+	Payload any
+}
+
 // YieldContinue is the onYield result that appends a user message and continues the run.
 type YieldContinue struct {
 	Continue durable.UserInput
@@ -55,6 +67,10 @@ type YieldContinue struct {
 type GenerationHooks struct {
 	// BeforeRequest runs before every request attempt, including recovery; a non-nil result is used for that request only.
 	BeforeRequest func(ctx context.Context, request GenerationRequest, api HookApi) (*GenerationRequest, error)
+	// BeforeProviderRequest runs after pi-ai builds the provider request body, before it is sent; a non-nil result replaces
+	// the body for that request only. It runs again whenever pi-ai rebuilds the body, such as a retry within one attempt.
+	// The body is in the provider API's own format (request.Model.ProviderMeta.API), so a hook checks the API before changing it.
+	BeforeProviderRequest func(ctx context.Context, request ProviderRequest, api HookApi) (*ProviderPayload, error)
 	// AfterResponse sees every terminal provider message, before classification.
 	AfterResponse func(ctx context.Context, message ai.AssistantMessage, api HookApi) error
 	// OnYield sees a final answer; the first non-nil result appends a user message and continues the run.
