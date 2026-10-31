@@ -503,9 +503,7 @@ func TestGC100AddressesStartedAndStoppedLeaveNoStateNoRecordNoSuspension(t *test
 	for batch := range 5 {
 		var group sync.WaitGroup
 		for index := range 20 {
-			group.Add(1)
-			go func() {
-				defer group.Done()
+			group.Go(func() {
 				id := fmt.Sprintf("R%d", batch*20+index)
 				notes, err := f.server.Get(fixtureNotes, delta.JsonObjectOf("id", id), background, host.GetOptions{})
 				if err != nil {
@@ -516,7 +514,7 @@ func TestGC100AddressesStartedAndStoppedLeaveNoStateNoRecordNoSuspension(t *test
 				if err := f.workers.Stop(session(id), background); err != nil {
 					t.Error(err)
 				}
-			}()
+			})
 		}
 		group.Wait()
 	}

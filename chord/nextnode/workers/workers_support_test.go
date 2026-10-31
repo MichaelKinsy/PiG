@@ -1,13 +1,13 @@
 package workers
 
 import (
-	"github.com/MichaelKinsy/PiG/chord/next/host"
 	"runtime"
 	"testing"
 	"time"
 	"weak"
 
 	"github.com/MichaelKinsy/PiG/chord/delta"
+	"github.com/MichaelKinsy/PiG/chord/next/host"
 )
 
 func jsonObject(pairs ...any) *delta.JsonObject { return delta.JsonObjectOf(pairs...) }

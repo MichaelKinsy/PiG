@@ -261,12 +261,10 @@ func (w *worker) runStart(fn func(start WorkerStart, ctx context.Context) (*Work
 	w.idle, w.idleSent = w.isIdleLocked(), true
 	w.sendLocked(FromWorker{Kind: FromWorkerReady, Idle: w.idle, Report: &loaded})
 	w.mu.Unlock()
-	w.tasks.Add(1)
 	//portlint:allow golifetime the reload loop returns when the reloads are applied or the worker stops; shutdown exits the process
-	go func() {
-		defer w.tasks.Done()
+	w.tasks.Go(func() {
 		w.applyReloads()
-	}()
+	})
 	return nil
 }
 
@@ -385,12 +383,10 @@ func (w *worker) message(message ToWorker) {
 		ready := w.ready
 		w.mu.Unlock()
 		if ready {
-			w.tasks.Add(1)
 			//portlint:allow golifetime the reload loop returns when the reloads are applied or the worker stops; shutdown exits the process
-			go func() {
-				defer w.tasks.Done()
+			w.tasks.Go(func() {
 				w.applyReloads()
-			}()
+			})
 		}
 	}
 }

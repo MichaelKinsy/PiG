@@ -3,9 +3,12 @@ package workers
 import (
 	"encoding/json"
 	"errors"
+	"reflect"
 	"testing"
 
+	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/chord/next/data"
+	"github.com/MichaelKinsy/PiG/chord/next/host"
 )
 
 // Ports packages/chord/test/next-node/workers/control.test.ts: the control channel's crossings: errors cross as
@@ -47,5 +50,48 @@ func TestEnvelopesTellControlMessagesFromAnythingElseOnTheChannel(t *testing.T) 
 	}
 	if _, ok := controlOf[FromWorker](json.RawMessage(`{"kind":"started"}`)); ok {
 		t.Fatal("an object without the envelope is a control message")
+	}
+}
+
+func TestErrorsCrossAReportsFailuresAndParkedCausesAndBack(t *testing.T) {
+	report := crossedReport(host.ReloadReport{
+		Plugins: host.PluginChanges{Added: []string{"@a/x"}, Changed: []string{}, Removed: []string{}},
+		Failed:  []host.PluginFailure{{Plugin: "@a/y", Error: errors.New("broken")}},
+		Objects: []host.ReloadedObject{
+			{Object: "a.one", Kind: host.ReloadSwapped},
+			{
+				Object: "a.two", Kind: host.ReloadParked,
+				Cause: data.FailureCause{Kind: data.FailureWaiting, Error: data.NewChordError(data.ChordErrorInit{Code: data.CodeUnavailable, Message: "w"}, nil)},
+			},
+		},
+	})
+	// It is plain JSON: it comes back from its text as it was.
+	text, err := json.Marshal(report.json())
+	if err != nil {
+		t.Fatal(err)
+	}
+	decoded, err := delta.DecodeJson(text)
+	if err != nil {
+		t.Fatal(err)
+	}
+	again, err := crossedReportFromJSON(decoded)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(*again, report) {
+		t.Fatalf("report after its JSON = %+v, want %+v", *again, report)
+	}
+	back := uncrossedReport(report)
+	if back.Failed[0].Error == nil || back.Failed[0].Error.Error() != "broken" {
+		t.Fatalf("failed[0].error = %v", back.Failed[0].Error)
+	}
+	parked := back.Objects[1]
+	if parked.Kind != host.ReloadParked || parked.Cause.Kind != data.FailureWaiting || parked.Cause.Error == nil || parked.Cause.Error.Code != data.CodeUnavailable {
+		t.Fatalf("objects[1] = %+v", parked)
+	}
+	// A parked object's cause is a ChordError on the worker; one that crossed without a code is wrapped as one.
+	plain := uncrossedReport(CrossedReport{Objects: []CrossedObject{{Object: "a.three", Kind: "parked", Cause: &CrossedCause{Kind: "waiting", Error: CrossedError{Message: "plain"}}}}})
+	if cause := plain.Objects[0].Cause; cause.Error == nil || cause.Error.Code != data.CodeUnavailable || cause.Error.Message != "plain" {
+		t.Fatalf("wrapped cause = %+v", cause.Error)
 	}
 }

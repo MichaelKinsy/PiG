@@ -66,5 +66,5 @@ func exitOf(state *os.ProcessState) Exit {
 	if state == nil {
 		return Exit{}
 	}
-	return Exit{Code: intPointer(state.ExitCode())}
+	return Exit{Code: new(state.ExitCode())}
 }

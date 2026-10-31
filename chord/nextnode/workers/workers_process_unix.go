@@ -38,7 +38,7 @@ func exitOf(state *os.ProcessState) Exit {
 		return Exit{}
 	}
 	if status, ok := state.Sys().(syscall.WaitStatus); ok && status.Signaled() {
-		return Exit{Signal: signalName(unix.SignalName(status.Signal()))}
+		return Exit{Signal: new(unix.SignalName(status.Signal()))}
 	}
-	return Exit{Code: intPointer(state.ExitCode())}
+	return Exit{Code: new(state.ExitCode())}
 }

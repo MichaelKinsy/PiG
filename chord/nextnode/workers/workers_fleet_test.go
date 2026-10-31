@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"sync"
 	"testing"
 	"time"
@@ -260,8 +261,8 @@ func (f *fleet) firstFailure() (WorkerFailedError, bool) {
 // lastFailure is the last `worker_failed` the workers reported.
 func (f *fleet) lastFailure() (WorkerFailedError, bool) {
 	all := f.errors.all()
-	for index := len(all) - 1; index >= 0; index-- {
-		if failed, ok := all[index].(WorkerFailedError); ok {
+	for _, a := range slices.Backward(all) {
+		if failed, ok := a.(WorkerFailedError); ok {
 			return failed, true
 		}
 	}

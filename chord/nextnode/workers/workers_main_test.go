@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"slices"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -52,12 +53,7 @@ func (w *startedWorker) exited() *Exit {
 }
 
 func (w *startedWorker) has(kind FromWorkerKind) bool {
-	for _, each := range w.controlKinds() {
-		if each == kind {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(w.controlKinds(), kind)
 }
 
 func started(t *testing.T, behaviour workerBehaviour) *startedWorker {

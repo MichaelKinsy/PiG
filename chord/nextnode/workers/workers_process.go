@@ -40,10 +40,6 @@ type Exit struct {
 	Signal *string
 }
 
-func intPointer(value int) *int { return &value }
-
-func signalName(name string) *string { return &name }
-
 // ProcessEvents is what a worker process tells as it happens.
 type ProcessEvents struct {
 	Control func(message FromWorker)

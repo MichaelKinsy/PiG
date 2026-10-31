@@ -62,11 +62,9 @@ func TestProcessLockStopsWaitingWhenTheWaitersContextAborts(t *testing.T) {
 	abort, cancel := chordctx.WithCancel(chordctx.Background())
 	var waiting sync.WaitGroup
 	var failure error
-	waiting.Add(1)
-	go func() {
-		defer waiting.Done()
+	waiting.Go(func() {
 		_, failure = ProcessLock(name, abort)
-	}()
+	})
 	cancel(errors.New("gave up"))
 	waiting.Wait()
 	if failure == nil || failure.Error() != "gave up" {
