@@ -604,11 +604,23 @@ func TestExample04Watches(t *testing.T) {
 		}
 		return nil
 	})
+	// Pi's awaits and timers (`setTimeout` 0, then 50 ms) let a listener that keeps up take each commit before the next, and let
+	// the slow listener's call finish before the reset. Here the watches deliver on goroutines of their own, so each commit
+	// waits for the listeners that keep up to have taken it, and the reset for the slow listener's folded call.
+	caughtUp := func(n int) {
+		scopeEventually(t, fmt.Sprintf("the listeners that keep up took commit %d", n), func() bool {
+			return len(countFrames.all()) == n && len(doubleFrames.all()) == n && len(halfFrames.all()) == n
+		})
+	}
 	exCall(t, counterRef, "bump", nil)
 	<-slowStarted
+	caughtUp(1)
 	exCall(t, counterRef, "bump", nil)
+	caughtUp(2)
 	exCall(t, counterRef, "bump", nil)
+	caughtUp(3)
 	close(slowRelease)
+	scopeEventually(t, "the slow listener's folded call", func() bool { return len(slowFrames.all()) >= 2 })
 	// Retiring the singleton resets it to initial(): watches get a root replacement.
 	exCall(t, counterRef, "reset", nil)
 	scopeEventually(t, "the frames of the three bumps and the reset", func() bool {
