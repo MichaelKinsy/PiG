@@ -744,7 +744,9 @@ func (h *chordHost) Root(fn func(ctx Ctx) (any, error), ctx context.Context, opt
 		return nil, err
 	}
 	principal := options.Principal
-	if principal == nil {
+	if options.Anonymous {
+		principal = nil
+	} else if principal == nil {
 		principal = h.principal
 	}
 	// The scope's ctx acts as principal.

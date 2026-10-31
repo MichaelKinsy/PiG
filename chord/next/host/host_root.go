@@ -27,6 +27,9 @@ type RootOptions struct {
 	// Principal is whom the scope acts as: the host's principal by default (nil); a trusted same-host caller's choice
 	// (base code).
 	Principal data.Principal
+	// Anonymous runs the scope with no principal (`ctx.Principal()` nil), Pi's explicit `principal: undefined`; Principal is
+	// ignored then.
+	Anonymous bool
 }
 
 // openScope is an open root scope: its seal, and the rejection its caller gets when the host closes.
