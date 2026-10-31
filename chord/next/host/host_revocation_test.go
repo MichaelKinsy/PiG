@@ -496,7 +496,8 @@ func TestHostRevokeEndsARelayedHoldStillWaitingForItsRoutesLink(t *testing.T) {
 		var routed []*RawPeer
 		mustRoute(t)(host.Route(Session, RouteOptions{
 			Authorize: func(data.Principal, contracts.Address) (bool, error) { return true, nil },
-			Resolve: func(contracts.Address, context.Context) (ResolvedLink, error) {
+			Resolve: func(_ contracts.Address, ctx context.Context) (ResolvedLink, error) {
+				chordctx.Suspend(ctx)
 				<-resolving
 				a, b := link.MemoryLinkPair()
 				mu.Lock()
@@ -792,6 +793,7 @@ func TestHostRevokeEndsAGuestsCtxGetWaitingForItsRouteBeforeAnyLinkExists(t *tes
 	mustRoute(t)(host.Route(thereKind, RouteOptions{
 		Authorize: func(data.Principal, contracts.Address) (bool, error) { return true, nil },
 		Resolve: func(_ contracts.Address, ctx context.Context) (ResolvedLink, error) {
+			chordctx.Suspend(ctx)
 			<-stuck
 			return ResolvedLink{}, context.Cause(ctx)
 		},
@@ -840,7 +842,10 @@ func TestHostRevokeNeverLetsTheRevokedRequestBindOnTheRoutesLaterLink(t *testing
 	gate := make(chan ResolvedLink)
 	mustRoute(t)(host.Route(thereKind, RouteOptions{
 		Authorize: func(data.Principal, contracts.Address) (bool, error) { return true, nil },
-		Resolve:   func(contracts.Address, context.Context) (ResolvedLink, error) { return <-gate, nil },
+		Resolve: func(_ contracts.Address, ctx context.Context) (ResolvedLink, error) {
+			chordctx.Suspend(ctx)
+			return <-gate, nil
+		},
 	}, background))
 	mustLoad(t)(host.Load(nil, background))
 	pending := make(chan error, 1)
@@ -890,11 +895,12 @@ func TestHostRevokeEndsAGuestsReferenceOverARouteLinkThatDroppedAndNothingHoldsI
 	host := newHost(t, HostOptions{Principal: jsonObject("kind", "owner"), RevokedBy: grantRevokedBy, OnError: func(HostError) {}})
 	mustRoute(t)(host.Route(thereKind, RouteOptions{
 		Authorize: func(data.Principal, contracts.Address) (bool, error) { return true, nil },
-		Resolve: func(contracts.Address, context.Context) (ResolvedLink, error) {
+		Resolve: func(_ contracts.Address, ctx context.Context) (ResolvedLink, error) {
 			mu.Lock()
 			made := len(routed)
 			mu.Unlock()
 			if made > 0 {
+				chordctx.Suspend(ctx)
 				<-revoked
 			}
 			a, b := link.MemoryLinkPair()

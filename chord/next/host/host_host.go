@@ -717,7 +717,11 @@ func (h *chordHost) Route(kind *contracts.HostKind, options RouteOptions, ctx co
 		h.routes[kind.Kind] = made
 		h.routeKinds = append(h.routeKinds, kind.Kind)
 		handle = RouteHandle{
-			Retry:   func(address contracts.Address) { h.enter(func() { made.retry(address.Key) }) },
+			Retry: func(address contracts.Address) bool {
+				started := false
+				h.enter(func() { started = made.retry(address.Key) })
+				return started
+			},
 			Suspend: func(address contracts.Address) { h.enter(func() { made.suspend(address.Key) }) },
 		}
 	})

@@ -120,8 +120,11 @@ type StepResult struct {
 type RolloutStep struct {
 	Name  string
 	Kinds []string
-	// Reload applies built to the step's hosts and returns once they did.
-	Reload func(built *Built, ctx context.Context) (StepResult, error)
+	// Reload applies built to the step's hosts and returns once they did. applied is the current set of each of the step's
+	// kinds as THIS rollout left it (Pi's step reads `plugins.current(kind)` in the synchronous part that follows its
+	// `ship`, before another rollout can change it: no await lies between them there; a Go step cannot read it atomically
+	// with the ship, so it is handed over).
+	Reload func(built *Built, applied map[string][]PluginScript, ctx context.Context) (StepResult, error)
 }
 
 // RolloutStepResult is one step's hosts, in a RolloutResult.
@@ -434,7 +437,7 @@ func (c *pluginsComponent) Step(name string, h host.Host) (RolloutStep, error) {
 	return RolloutStep{
 		Name:  name,
 		Kinds: []string{kind},
-		Reload: func(built *Built, ctx context.Context) (StepResult, error) {
+		Reload: func(built *Built, _ map[string][]PluginScript, ctx context.Context) (StepResult, error) {
 			report, err := c.Reload(h, built, ctx)
 			if err != nil {
 				return StepResult{}, err
@@ -489,16 +492,25 @@ func (c *pluginsComponent) Rollout(steps []RolloutStep, built *Built, ctx contex
 	return RolloutResult{Steps: done}, nil
 }
 
-// rollStep applies built to the current set of step's kinds, then runs step: an error from either stops the rollout.
+// rollStep applies built to the current set of step's kinds (all of them in one section, with no wait between the ship and
+// the step), then runs step with the sets it applied: an error from either stops the rollout.
 func (c *pluginsComponent) rollStep(step RolloutStep, built *Built, ctx context.Context) (StepResult, error) {
+	sets := make(map[string]*scriptSet, len(step.Kinds))
 	for _, kind := range step.Kinds {
 		set, err := c.set(kind, ctx)
 		if err != nil {
 			return StepResult{}, err
 		}
-		c.section(func() { ship(set, kind, built) })
+		sets[kind] = set
 	}
-	return step.Reload(built, ctx)
+	applied := make(map[string][]PluginScript, len(step.Kinds))
+	c.section(func() {
+		for _, kind := range step.Kinds {
+			ship(sets[kind], kind, built)
+			applied[kind] = sets[kind].values()
+		}
+	})
+	return step.Reload(built, applied, ctx)
 }
 
 func (c *pluginsComponent) InstallDependencies(name string, ctx context.Context) error {
