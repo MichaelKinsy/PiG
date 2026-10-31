@@ -4650,6 +4650,7 @@ func (me *managedExt) makeEventHandler(event string, handlerID int) extension.Ha
 // goHandleIncoming starts handleIncoming for conn on its own goroutine and records the loop on the connection before it runs, so Shutdown can wait for it (Conn.awaitIncomingEnded).
 func (h *Host) goHandleIncoming(me *managedExt, conn *Conn) {
 	conn.incoming.Store(&incomingLoop{ended: make(chan struct{})})
+	//portlint:allow golifetime the loop ends with its connection, which the host closes before it stops the extension, and Shutdown waits for the loop through Conn.awaitIncomingEnded
 	go func() {
 		defer conn.endIncoming()
 		h.handleIncoming(me, conn)
