@@ -66,6 +66,7 @@ from .branch_summary import (
 )
 from .child_session import AgentSession as AgentSession, CreateAgentSessionOptions as CreateAgentSessionOptions, ResourceOptions as ResourceOptions, SessionStartEvent as SessionStartEvent, _ChildSessions, create_agent_session as _create_agent_session
 from .tui_alt_screen import (
+    Component as Component,
     OverlayBounds as OverlayBounds,
     ProgramStatus as ProgramStatus,
     RgbColor as RgbColor,
@@ -79,7 +80,6 @@ from .tui_alt_screen import (
     TuiOverlayOptions as TuiOverlayOptions,
     _TuiAltScreens,
 )
-from .tui_alt_screen import Component as TuiAltComponent
 from .agent_session_services import (
     AgentSessionServices as AgentSessionServices,
     CreateAgentSessionFromServicesOptions as CreateAgentSessionFromServicesOptions,

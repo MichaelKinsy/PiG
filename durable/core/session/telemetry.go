@@ -237,8 +237,8 @@ func (s *Scheduler) reportAt(err error, info *jv.Object, span uint32) {
 	s.reportSpan = 0
 }
 
-// movedCheckpoint is the phase a running state moves the task's checkpoint to, empty when the state is not a running one or
-// keeps the phase (scheduler.ts runtime.commit).
+// movedCheckpoint is the checkpoint phase that a running state moves the task to, empty when the state is not a running one or
+// leaves the checkpoint phase unchanged (scheduler.ts runtime.commit).
 func movedCheckpoint(current, next *jv.Object) string {
 	if status, _ := getStr(next, "status"); status != StatusRunning {
 		return ""

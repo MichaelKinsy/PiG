@@ -21,6 +21,8 @@ if (!existsSync(join(durable, "src", "index.ts"))) { console.error(`reference ch
 const work = mkdtempSync(join(tmpdir(), "durable-examples-types-"))
 cpSync(join(durable, "src"), join(work, "src"), { recursive: true })
 cpSync(join(durable, "test", "examples"), join(work, "test", "examples"), { recursive: true })
+// The mirror is read-only (mirror-upstream.sh chmod -R u-w) and cpSync keeps its modes; the temporary tree is ours to rewrite.
+execFileSync("chmod", ["-R", "u+w", work])
 renameSync(join(work, "src", "index.ts"), join(work, "src", "ref-index.ts"))
 const marks = { "@@FACADE@@": join(cf, "src", "facade"), "@@HOST@@": join(cf, "src") }
 const fill = text => Object.entries(marks).reduce((t, [k, v]) => t.replaceAll(k, v), text)
