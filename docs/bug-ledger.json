@@ -11944,6 +11944,30 @@
       ]
     },
     {
+      "id": "BF-62743f9",
+      "title": "A streamed OpenRouter-style `reasoning_details` no longer costs more with every delta",
+      "symptom": "A streamed OpenRouter-style `reasoning_details` no longer costs more with every delta.",
+      "rootCause": "reasoning_details are replay metadata. Each delta merged into the entry list and marshalled the whole signature again, quadratic in the number of deltas. Keep the entries in memory, merge text and summary content into one builder, and write the signature when the thinking block ends or the stream fails, as Pi does.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A streamed OpenRouter-style `reasoning_details` no longer costs more with every delta. Each delta merged into the entry list and then wrote the whole thinking signature again, so a reasoning stream of 10000 deltas took seconds and gigabytes (10000 discrete `reasoning.encrypted` entries: 94 s and 51 GB; 10000 merged text deltas: 5.5 s and 6.4 GB). The details now accumulate in memory and the signature is written once, when the thinking block ends or the stream fails, as in Pi; 10000 merged text deltas take 87 ms and 25 MB, and the signature is byte for byte what it was.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "62743f96f8",
+          "date": "2026-10-30"
+        }
+      ],
+      "tests": [
+        "ai/openai_reasoning_details_scaling_norace_test.go::TestScalingOpenAIReasoningDetailsPerDelta",
+        "ai/openai_reasoning_details_signature_test.go::TestParseSSE_ReasoningDetailsSignatureBytes",
+        "ai/openai_reasoning_details_signature_test.go::TestParseSSE_ReasoningDetailsSignatureSetAtThinkingEndAndOnError"
+      ]
+    },
+    {
       "id": "BF-62a1c87",
       "title": "The `ExtensionSelector` and `ExtensionInput` oracles also run with the Kitty keyboard protocol active (CSI-u…",
       "symptom": "The `ExtensionSelector` and `ExtensionInput` oracles also run with the Kitty keyboard protocol active (CSI-u enter, escape, ctrl+j, ctrl+c, shift+enter, letters, modified arrows) in Pi and Pig; no difference.",
