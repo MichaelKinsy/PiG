@@ -141,7 +141,7 @@ func TestMCPOAuthCIMDRegistersDynamicallyByDefaultWithAClientName(t *testing.T) 
 	}
 }
 
-// pig divergence rule inherited from Pi (oauth.ts offersClientMetadataDocument): a build whose application is not pi
+// pig divergence (D2): inherited from Pi (oauth.ts offersClientMetadataDocument): a build whose application is not pi
 // would show up as pi, so `auto` registers instead, and only `cimd` identifies with pi's document.
 func TestMCPOAuthCIMDRegistersDynamicallyByDefaultAsAnotherApplication(t *testing.T) {
 	h := startCimdServer(t, oauthMcpServerOptions{Cimd: true, IssParameter: true})
