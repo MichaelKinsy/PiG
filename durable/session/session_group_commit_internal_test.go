@@ -191,7 +191,7 @@ func TestGroupCommitLeavesThePartsAfterOneWhoseAdoptionFailsUnpublished(t *testi
 		t.Fatalf("the commit whose adoption failed got SessionFailed %v, want its adoption error", err)
 	}
 	_, afterErr := after.wait()
-	if cause, ok := isFailed(afterErr); !ok || cause != err {
+	if cause, ok := isFailed(afterErr); !ok || !errors.Is(cause, err) {
 		t.Fatalf("the part after it got %v, want SessionFailed caused by %v", afterErr, err)
 	}
 	publishedMu.Lock()
@@ -298,12 +298,11 @@ func positiveInf() float64 { var zero float64; return 1 / zero }
 // fakeWriterHost is the Session as a writer sees it: storage stored batches in one call, nothing is published through a scope,
 // and what fails the Session is recorded.
 type fakeWriterHost struct {
-	mu        sync.Mutex
-	nextSeq   durable.Seq
-	failure   error
-	fails     []fakeFail
-	reports   []error
-	published []durable.Seq
+	mu      sync.Mutex
+	nextSeq durable.Seq
+	failure error
+	fails   []fakeFail
+	reports []error
 	// stored runs at each publication, right before the part's own publish; it may panic, as a failing cache write does.
 	stored func(call int)
 	calls  int

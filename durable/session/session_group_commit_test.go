@@ -423,7 +423,7 @@ func TestGroupCommitOutcomes(t *testing.T) {
 		expectNames(t, log.snapshot())
 		held.Release()
 		for _, started := range calls {
-			started.wait()
+			_, _ = started.wait()
 		}
 		// A callback's own error affects only its job.
 		expectNames(t, log.snapshot(), "first", "read", "none", "error!", "deferred")
@@ -878,7 +878,7 @@ func TestGroupCommitAFailureBetweenTwoPublications(t *testing.T) {
 			if err == nil {
 				_, err = g.session.CommitWith(ctx, func(tx *session.Transaction) (any, error) { return tx.Task(999) }, session.TransactionScope{})
 				if err != read {
-					return value, fmt.Errorf("the continuation's read got %v, want %v", err, read)
+					return value, fmt.Errorf("the continuation's read got %w, want %v", err, read)
 				}
 				err = nil
 			}
@@ -888,7 +888,7 @@ func TestGroupCommitAFailureBetweenTwoPublications(t *testing.T) {
 		quiesce(one, two)
 		g.awaitQueued(2)
 		held.Release()
-		lead.wait()
+		_, _ = lead.wait()
 		_, err := one.wait()
 		must(t, err)
 		_, err = two.wait()
@@ -917,8 +917,8 @@ func TestGroupCommitAFailureBetweenTwoPublications(t *testing.T) {
 		quiesce(one, two)
 		g.awaitQueued(2)
 		held.Release()
-		lead.wait()
-		one.wait()
+		_, _ = lead.wait()
+		_, _ = one.wait()
 		_, err := two.wait()
 		if _, failed := isSessionFailed(err); !failed {
 			t.Fatalf("the part after the failure got %v, want SessionFailed", err)
@@ -945,7 +945,7 @@ func TestGroupCommitAFailureBetweenTwoPublications(t *testing.T) {
 		quiesce(one)
 		g.awaitQueued(1)
 		held.Release()
-		lead.wait()
+		_, _ = lead.wait()
 		_, err := one.wait()
 		if _, failed := isSessionFailed(err); !failed {
 			t.Fatalf("the second part got %v, want SessionFailed", err)
@@ -1193,7 +1193,7 @@ func TestGroupCommitRandomizedInterleavings(t *testing.T) {
 				outcomes = append(outcomes, outcome)
 				switch pause := next(); {
 				case pause < 0.3:
-					outcome.wait()
+					_, _ = outcome.wait()
 				case pause < 0.5:
 					quiesce(outcomes...)
 				}
