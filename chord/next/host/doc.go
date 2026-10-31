@@ -13,9 +13,10 @@
 // # Writing a method handler
 //
 // Pi runs an async method handler synchronously up to its first `await`, inside the section that admits its call. A
-// contracts.MethodFunction is blocking code on a goroutine of its own, and the section waits for it until it returns or
-// suspends (Loop.Lend): the handler's calls into the host (Reference.Release, the admission of Reference.Call, document
-// reads, Ctx.Get's first part) run inline in that section, and everything it does after it suspended runs outside it.
+// contracts.MethodFunction is blocking code that runs as a coroutine of that section (Loop.Lend), which waits for it until
+// it returns or suspends: the handler's calls into the host (Reference.Release, the admission of Reference.Call, document
+// reads, Ctx.Get's first part) run inline in that section, and everything it does after it suspended runs after the section
+// is over.
 //
 // A handler suspends where it first waits for something that is not a section of the host: the host's blocking primitives
 // do it themselves when they are given the handler's ctx (or a context derived from it): Ctx.Get, Reference.Call and the

@@ -667,7 +667,7 @@ func (a *attempt) call(method string, args any, ctx context.Context, from caller
 	loop.Lend(signal, func() {
 		// Plugin code, not type-checked: a panic becomes the rejection.
 		value, err := tryPlugin(func() (any, error) { return handler(checked.Args, handlerCtx) })
-		signal.Raise()
+		signal.Return()
 		loop.Run(func() {
 			stopWait()
 			settle(err)

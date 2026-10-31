@@ -6,17 +6,21 @@ import (
 	"time"
 )
 
-// A wait that outlasts the Watch duration is reported with the stacks, once, and goes on waiting: the section is never
-// given back by the report.
-func TestWaitReportsAHandlerThatHoldsTheSectionAndGoesOnWaiting(t *testing.T) {
+// A guarded wait that outlasts the Watch duration is reported with the stacks, once, and the wait goes on: the report gives
+// nothing back.
+func TestGuardReportsAHandlerThatHoldsTheSectionAndGoesOnWaiting(t *testing.T) {
 	reported := make(chan string, 2)
 	defer Watch(time.Millisecond, func(text string) { reported <- text })()
 	signal := New()
 	waited := make(chan struct{})
+	armed := make(chan struct{})
 	go func() {
+		defer Guard().Disarm()
+		close(armed)
 		signal.Wait()
 		close(waited)
 	}()
+	<-armed
 	var text string
 	select {
 	case text = <-reported:
@@ -24,7 +28,7 @@ func TestWaitReportsAHandlerThatHoldsTheSectionAndGoesOnWaiting(t *testing.T) {
 		signal.Raise()
 		t.Fatal("no stall report")
 	}
-	if !strings.Contains(text, "held the section") || !strings.Contains(text, "parking.(*Signal).wait") {
+	if !strings.Contains(text, "held the section") || !strings.Contains(text, "parking.(*Signal).Wait") {
 		t.Fatalf("report = %q, want the stalled wait and the stacks", text)
 	}
 	select {
@@ -39,19 +43,24 @@ func TestWaitReportsAHandlerThatHoldsTheSectionAndGoesOnWaiting(t *testing.T) {
 	}
 }
 
-// Without Watch (the default) a Wait neither reports nor starts a timer: the report hook is not installed.
-func TestWaitWithoutWatchHasNoReport(t *testing.T) {
+// A guard disarmed before the Watch duration passed reports nothing.
+func TestGuardDisarmedInTimeReportsNothing(t *testing.T) {
+	reported := make(chan string, 1)
+	defer Watch(time.Hour, func(text string) { reported <- text })()
+	Guard().Disarm()
+	if len(reported) != 0 {
+		t.Fatal("a report for a guard that did not outlast the duration")
+	}
+}
+
+// Without Watch (the default) a Guard arms nothing: the report hook is not installed.
+func TestGuardWithoutWatchHasNoReport(t *testing.T) {
 	if watching.Load() != nil {
 		t.Fatal("a stall report is installed by default")
 	}
-	signal := New()
-	waited := make(chan struct{})
-	go func() {
-		signal.Wait()
-		close(waited)
-	}()
-	signal.Raise()
-	<-waited
+	if allocations := testing.AllocsPerRun(100, func() { Guard().Disarm() }); allocations != 0 {
+		t.Fatalf("Guard without Watch allocates %v times, want 0", allocations)
+	}
 }
 
 // Restoring puts back what Watch replaced.

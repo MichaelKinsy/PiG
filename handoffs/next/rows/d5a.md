@@ -536,21 +536,22 @@ None to production or other agents' files. For private builds only: `chord/watch
 
 # First-suspension handoff of method handlers (branch `fix/follow-d5a-handoff`)
 
-Decision record for `chord/next/DESIGN-go-layout.md` section 10. Pi runs an async method handler synchronously up to its first `await` inside the section that admits its call; `attempt.call` now lends that section to the handler (`Loop.Lend`) and waits until the handler returns or suspends.
+Decision record for `chord/next/DESIGN-go-layout.md` section 10. Pi runs an async method handler synchronously up to its first `await` inside the section that admits its call; `attempt.call` now lends that section to the handler (`Loop.Lend`), which runs as a coroutine of the section's goroutine (`iter.Pull`) until it returns or suspends. The first form of the handoff (the handler on a goroutine started per call, the section waiting on a channel) was 25 % slower than the baseline `4e17c734f5` through a watched derive; the coroutine form is the speed-round result (section "Handoff speed" below).
 
 ## (a) files
 
 | path | change |
 |---|---|
-| chord/internal/parking/parking.go, stall.go, parking_test.go, stall_test.go; chord/next/host/host_stall_test.go | Go only: the once-only "returned or parked" `Signal`, `Park(ctx)` (the signal rides the handler's ctx under `Key`), the owner hand-back, and `parking.Watch`, the stall report that no production code installs (one nil atomic load, no timer); the host package's `TestMain` installs it with 2 s and a panicking reporter, so a handler that blocks on a raw channel or lock before its first host call fails the test binary with the stacks (TestStallABlockOnARawChannelBeforeTheFirstHostCallIsReported) |
+| chord/internal/parking/parking.go, stall.go, parking_test.go, stall_test.go; chord/next/host/host_stall_test.go | Go only: the once-only "returned or parked" `Signal` (`Raise`, `Return`, bound to the handler's coroutine by `Bind`: only a raise on the handler's own goroutine yields it), `Park(ctx)` (the signal rides the handler's ctx under `Key`), the owner hand-back, and `parking.Watch` with `parking.Guard`, the stall report that no production code installs (one nil atomic load, no timer); the host package's `TestMain` installs it with 2 s and a panicking reporter, so a handler that blocks on a raw channel or lock before its first host call fails the test binary with the stacks (TestStallABlockOnARawChannelBeforeTheFirstHostCallIsReported) |
 | chord/context/chordctx.go, suspend_test.go | `Suspend(ctx)`, `Receive(ctx, ch)` and `Await` park the handler before they block (Pi's `awaitWithContext`) |
-| chord/next/host/host_loop.go, host_ctx.go, host_attempt.go | `Loop.Lend`, `sectionLoop.Lend`, `callContext.Value(parking.Key)`, `attempt.call` lends the section; `lastStart`/`handlerStart` and the `internal/entered` polling are gone |
+| chord/next/host/host_loop.go, host_loop_lend.go, host_ctx.go, host_attempt.go | `Loop.Lend` (the handler as a pooled `iter.Pull` coroutine; the rest of a handler that returned or parked runs after the section: `resumption`, `Loop.resumeAfter`), `sectionLoop.Lend`, `callContext.Value(parking.Key)`, `attempt.call` lends the section and ends the handler with `signal.Return()`; `lastStart`/`handlerStart` and the `internal/entered` polling are gone |
+| internal/goroutineid/goroutineid.go, fast_gc.go, slow_other.go, goroutineid_test.go | `Proving()`: the loop reuses a handler's goroutine only once `Current` has proved where the goroutine ID lives (until then each `Current` formats the stack header, and a few reused goroutines would keep it there) |
 | chord/next/host/host_reference.go, host_parked.go, host_keyed_members.go, host_sleep.go, host_host.go, host_root.go, jobs_run.go, jobs_records.go | the blocking primitives take the waiter's ctx and park: `parkedCallResult.wait(ctx)`, `keyedPromise.await(ctx)`, `acquire(..., waiter, ...)`, `pin`, `Sleep`, `UntilAborted`, `Registry`, `untilUsable`, `Root`, `waiters.wait`, `joins.wait`, `jobRecords.abort` |
 | chord/next/documents/line.go, documents.go, keyed_slot.go | `Line.Acquire(ctx)` parks after taking its place; `Documents.OnLine(ctx, ...)`; `loadShared` parks |
 
 ## (c) tests
 
-`parked.test.ts` and `routines.test.ts` lose their `pendingOwner` cases: TestHostParkedCallsStopBeingSentWhenOnesHandlerReleasesTheReference and TestRoutinesStartInTheTurnTheirObjectWentLiveNextToAMethodCallAdmittedInThatTurn (red on the phase-1 head, green here; see the report). Go tests of the mechanism: host_loop_test.go#TestLoopLendRunsAHandlersFirstPartInsideTheSectionAndGivesItBackWhenItParks, TestLoopLendGivesTheSectionBackWhenTheHandlerReturns, TestLoopLendOutsideASectionLendsNothing; chord/internal/parking and chord/context/suspend_test.go. Handlers that waited on a raw channel before any host call were rewritten as faithful ports of `await`: `chordctx.Suspend(ctx)` then the receive, `UntilAborted(ctx)`, or `signal.await(t, ctx)` (host_attempt_support_test.go): attempt (slow, the drain), activity (`wait`), ctx, examples (`exBlocked`, `think`), host_next_support_test.go (`wait`), reference, remote hold.
+`parked.test.ts` and `routines.test.ts` lose their `pendingOwner` cases: TestHostParkedCallsStopBeingSentWhenOnesHandlerReleasesTheReference and TestRoutinesStartInTheTurnTheirObjectWentLiveNextToAMethodCallAdmittedInThatTurn (red on the phase-1 head, green here; see the report). Go tests of the mechanism: host_loop_test.go#TestLoopLendRunsAHandlersFirstPartInsideTheSectionAndGivesItBackWhenItParks, TestLoopLendGivesTheSectionBackWhenTheHandlerReturns, TestLoopLendOutsideASectionLendsNothing, TestLoopLendSettlesAHandlerThatReturnedBeforeTheSectionsRunReturns, TestLoopLendDoesNotHoldTheSectionsGoroutineForAHandlerThatParked, TestLoopLendReusesTheGoroutineOfAFinishedHandler, TestLoopLendStopsTheIdleGoroutinesOfALoopThatIsGone; chord/internal/parking (TestBoundSignalYieldsOnlyForARaiseOnItsGoroutine, TestReturnTellsAHandlerThatFinishedFromOneThatParked, TestGuard*) and chord/context/suspend_test.go; internal/goroutineid (TestProvingEndsOnceDistinctGoroutinesHaveCalledCurrent). Handlers that waited on a raw channel before any host call were rewritten as faithful ports of `await`: `chordctx.Suspend(ctx)` then the receive, `UntilAborted(ctx)`, or `signal.await(t, ctx)` (host_attempt_support_test.go): attempt (slow, the drain), activity (`wait`), ctx, examples (`exBlocked`, `think`), host_next_support_test.go (`wait`), reference, remote hold.
 
 ## (d) async contracts
 
@@ -565,3 +566,41 @@ See d5a-async.md, "method handlers".
 - A handler that waits on something that is not a host primitive without `Suspend`/`Await`/`Receive` holds the section (a deadlock when what it waits for needs the host). Pi has no such case (every wait is an `await`).
 - A ctx that is not derived from the handler's does not suspend the handler (a primitive given `context.Background()`).
 - The survey found no method handler outside tests in the repository (see the report).
+- A goroutine the handler started cannot suspend it: its `Park` of the handler's ctx is ignored (the section's goroutine is blocked until the coroutine yields, so the section cannot be given back from elsewhere); the handler's own next wait suspends it (DESIGN section 10, item 5).
+- `runtime.Goexit` in a handler (a test's `t.FailNow`) ends the goroutine that drives the coroutine, because `iter.Pull` raises it in the goroutine that switched to it: the section's goroutine, the one that ended the section, or the goroutine a parked handler continues on. Pi has no such case.
+- While `goroutineid` is still proving the offset of the goroutine ID (until 17 distinct goroutines called `Current`), each call of a handler starts a goroutine and stops it, as the baseline does; the loop keeps up to 8 idle handler goroutines afterwards.
+- Found while profiling, not changed (outside this row): `withLinkedAbortSignal` for a caller whose ctx has no `Done` registers a `context.AfterFunc` on the attempt's opening context per call and nothing removes it before the object ends (`release` is a no-op, nobody aborts the child): the mutex profile of every row ends in thousands of those listeners contending for the opening context at `Close`.
+
+## Handoff speed (speed round, branch `fix/follow-d5a-handoff-perf`)
+
+Owner rule: adopt the handoff if the derive-commit row's slowdown against the baseline `4e17c734f5` is at most 5 % (`BenchmarkCalls`, benchstat, pooled n=20 per side, quiet container, same method; p<0.05 for any claimed difference), otherwise stop and report.
+
+Measured on rivendell (Intel Xeon E5-2699 v3, `docker run --init --cpus 16`, go1.27.3, `go test -c` binaries run back to back: two rounds of `-test.bench BenchmarkCalls -test.count 10` per binary, base, handoff head `501b835f86` and this branch interleaved; the load average was 1.6 to 6.8 from other tenants' containers). The test binary has the stall watcher installed (TestMain), so both handoff binaries arm a timer per lend (`Guard`, the handoff head's `Signal.wait`) and the baseline has none.
+
+| row (benchstat, n=20 per side) | baseline `4e17c734f5` | handoff head `501b835f86` | this branch |
+|---|---|---|---|
+| local method call, time | 30.49 µs ± 8 % | 36.82 µs ± 8 % (+20.78 %, p=0.000) | 12.97 µs ± 11 % (-57.45 %, p=0.000) |
+| local method call, B/op, allocs/op | 4.150 KiB, 66 | 4.050 KiB (-2.40 %, p=0.017), 66 | 3.909 KiB (-5.81 %, p=0.000), 62 (-6.06 %) |
+| commit through a watched derive, time | 63.79 µs ± 5 % | 95.15 µs ± 3 % (+49.16 %, p=0.000) | 54.19 µs ± 8 % (-15.04 %, p=0.000) |
+| commit through a watched derive, B/op, allocs/op | 8.376 KiB, 170 | 8.323 KiB (-0.64 %, p=0.003), 170 | 8.198 KiB (-2.13 %, p=0.001), 168 (-1.18 %) |
+| activation churn, time | 114.5 µs ± 5 % | 109.5 µs ± 5 % (~, p=0.059) | 121.9 µs ± 7 % (~, p=0.071) |
+| activation churn, B/op, allocs/op | 13.40 KiB, 239 | 13.52 KiB (+0.88 %, p=0.005), 239 | 13.29 KiB (-0.89 %, p=0.000), 239 |
+
+**Rule outcome: adopt.** The derive-commit row is 15.04 % faster than the baseline (p=0.000), not slower; no row is slower with p<0.05; the local call's allocs/op fell from 66 to 62 (the constraint was at most the 63 of the brief). The churn row is no different from the baseline at this n (its median is 6.5 % higher, p=0.071; the same sample put the handoff head 4.4 % lower, p=0.059).
+
+What the profiles showed on the handoff head (4 s of the derive row, `-test.cpuprofile`, `-test.mutexprofile -test.mutexprofilefraction 1`): the section handed to the handler cost two goroutine switches through the scheduler per call (the section woken by the handler's `Raise`, the handler woken by the section's unlock) and each handler goroutine regrew its stack (`runtime.newstack`, 8.6 %). An execution trace of 3000 operations put a median 12.1 µs between the `Raise` that woke the section and the handler goroutine blocking on the loop's mutex, and a timing probe put the end of the handler's mutex wait 2.0 µs after the section's unlock.
+
+| derive row, 4 s | baseline | handoff head | this branch |
+|---|---|---|---|
+| ns/op in the profiled run | 72,416 | 91,647 | 62,303 |
+| cpu samples / wall | 9.89 s / 5.24 s | 8.80 s / 5.15 s | 9.79 s / 4.89 s |
+| `runtime.newstack` (cum) | 0.66 s (6.7 %) | 0.76 s (8.6 %) | not in the profile |
+| `internal/sync.runtime_SemacquireMutex` (cum) | 0.10 s (1.0 %) | 0.66 s (7.5 %) | 0.08 s (0.8 %) |
+| `Loop.Lend` (cum) | none | 0.43 s (4.9 %), its goroutine `Lend.func1` 3.31 s | 0.11 s (1.1 %) |
+| `runtime.coroswitch_m` (cum) | none | none | 0.05 s (0.5 %) |
+| `runtime.futex` (flat) | 0.96 s (9.7 %) | 0.70 s (8.0 %) | 1.12 s (11.4 %) |
+| mutex delay at the loop's unlock (`Loop.Run`), `Close` ignored | 0.0007 s | 0.63 s | 0.0002 s |
+
+The fix is `Loop.Lend` as a coroutine (`host_loop_lend.go`, `iter.Pull`): the section's goroutine switches to the handler's directly and back at its first park (no goroutine woken, no mutex handed over), the handler's goroutine is reused by the next call (no regrown stack), and what is left of a handler that returned (its settlement) is run by the goroutine that ended the section, so a call that does not park wakes no goroutine at all. A handler that parked continues on a goroutine of its own after the section, in the order of Pi's microtasks. Tried before: a pool of handler goroutines behind a channel (commit row 80 µs against 74 µs on the baseline in the same interleaved run, local call 5 times slower because `goroutineid.Current` stayed on its stack-header path with so few goroutines: hence `goroutineid.Proving`).
+
+Mutations and the Pi tests: the two Pi tests and the Lend tests pass 300/300 under `-race`, the `go test -race -count=3 -p 2 ./chord/next/... ./chord/context/...` suite passes (exit codes per package in the report), and each mutation of `follow-d5a.json` is red (the handoff's `signal.Wait()` mutation is now `l.switchTo(c)` -> `go l.switchTo(c)`).

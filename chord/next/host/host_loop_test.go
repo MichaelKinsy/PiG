@@ -2,11 +2,13 @@ package host
 
 import (
 	"reflect"
+	"runtime"
 	"sync"
 	"testing"
 	"time"
 
 	"github.com/MichaelKinsy/PiG/chord/internal/parking"
+	"github.com/MichaelKinsy/PiG/internal/goroutineid"
 )
 
 func TestLoopRunsSectionsOneAtATimeAndNestsInline(t *testing.T) {
@@ -219,4 +221,108 @@ func TestLoopLendOutsideASectionLendsNothing(t *testing.T) {
 		t.Fatal("the caller owns the loop outside a section")
 	}
 	loop.Wait()
+}
+
+// A handler that returns without parking has only its settlement left: it is over, with the microtasks the section queued
+// before it, when the section's Run returns, whatever goroutine it ran on: no goroutine is woken to settle it.
+func TestLoopLendSettlesAHandlerThatReturnedBeforeTheSectionsRunReturns(t *testing.T) {
+	loop := NewLoop()
+	var log lendLog
+	loop.Run(func() {
+		log.add("section")
+		signal := parking.New()
+		loop.Lend(signal, func() {
+			log.add("handler")
+			loop.Queue(func() { log.add("microtask") })
+			signal.Return()
+			log.add("settled")
+		})
+		log.add("rest of the section")
+	})
+	want := []string{"section", "handler", "rest of the section", "microtask", "settled"}
+	if got := log.all(); !reflect.DeepEqual(got, want) {
+		t.Fatalf("order = %v, want %v", got, want)
+	}
+	loop.Wait()
+}
+
+// What is left of a handler that parked runs on a goroutine of its own: the goroutine that ended the section does not wait for
+// a handler that waits.
+func TestLoopLendDoesNotHoldTheSectionsGoroutineForAHandlerThatParked(t *testing.T) {
+	loop := NewLoop()
+	release := make(chan struct{})
+	resumed := make(chan struct{})
+	ended := make(chan struct{})
+	go func() {
+		defer close(ended)
+		loop.Run(func() {
+			signal := parking.New()
+			loop.Lend(signal, func() {
+				signal.Raise()
+				<-release
+				close(resumed)
+			})
+		})
+	}()
+	select {
+	case <-ended:
+	case <-time.After(10 * time.Second):
+		close(release)
+		t.Fatal("the goroutine that ended the section waited for the handler that parked")
+	}
+	close(release)
+	<-resumed
+	loop.Wait()
+}
+
+// The goroutine of a finished handler serves the next call once goroutineid has proved the offset of the goroutine ID (until
+// then every section takes its goroutine's ID by formatting the stack header, and a loop that reuses a goroutine would never
+// end that).
+func TestLoopLendReusesTheGoroutineOfAFinishedHandler(t *testing.T) {
+	for range 32 {
+		var done sync.WaitGroup
+		done.Go(func() { goroutineid.Current() })
+		done.Wait()
+	}
+	loop := NewLoop()
+	var ids []uint64
+	for range 3 {
+		loop.Run(func() {
+			signal := parking.New()
+			loop.Lend(signal, func() {
+				ids = append(ids, goroutineid.Current())
+				signal.Return()
+			})
+		})
+	}
+	if len(ids) != 3 || ids[0] != ids[1] || ids[1] != ids[2] {
+		t.Fatalf("handlers ran on goroutines %v, want one goroutine for all three", ids)
+	}
+	loop.Wait()
+}
+
+// The goroutine of an idle handler does not outlive its loop: the loop drops it with the loop, and its cleanup stops it.
+func TestLoopLendStopsTheIdleGoroutinesOfALoopThatIsGone(t *testing.T) {
+	for range 32 {
+		var done sync.WaitGroup
+		done.Go(func() { goroutineid.Current() })
+		done.Wait()
+	}
+	before := runtime.NumGoroutine()
+	for range 32 {
+		loop := NewLoop()
+		loop.Run(func() {
+			signal := parking.New()
+			loop.Lend(signal, func() { signal.Return() })
+		})
+		loop.Wait()
+	}
+	for range 200 {
+		runtime.GC()
+		if runtime.NumGoroutine() <= before+2 {
+			return
+		}
+		runtime.Gosched()
+	}
+	t.Fatalf("%d goroutines after the loops are gone, %d before: their idle handlers were not stopped", runtime.NumGoroutine(), before)
 }
