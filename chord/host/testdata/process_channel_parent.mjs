@@ -16,6 +16,5 @@ child.on("message", (message) => {
 });
 child.send({ chord2control: { type: "init", value: { greeting: "hi" } } });
 child.on("exit", (code, signal) => {
-	console.log(JSON.stringify({ received, code, signal }));
-	process.exit(0);
+	process.stdout.write(JSON.stringify({ received, code, signal }) + "\n", () => process.exit(0));
 });

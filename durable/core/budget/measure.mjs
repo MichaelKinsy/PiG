@@ -102,5 +102,5 @@ console.log(lines.join("\n"))
 if (value("json")) writeFileSync(value("json"), JSON.stringify(report, null, 2) + "\n")
 if (report.failures.length) {
   console.error(`\n${report.failures.length} budget failure(s):\n- ${report.failures.join("\n- ")}`)
-  if (flag("check")) process.exit(1)
+  if (flag("check")) process.exitCode = 1
 }
