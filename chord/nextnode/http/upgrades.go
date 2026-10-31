@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	nethttp "net/http"
+	"slices"
 	"sync"
 	"time"
 
@@ -141,13 +142,7 @@ func (u *Upgrades) revoke(router *Router) {
 	for _, each := range u.snapshot() {
 		relayLeft := false
 		if each.relay != nil {
-			relayLeft = true
-			for _, relay := range router.Relays {
-				if relay == each.relay {
-					relayLeft = false
-					break
-				}
-			}
+			relayLeft = !slices.Contains(router.Relays, each.relay)
 		}
 		gone := (each.allowed != "" && !router.Hosts.Has(each.allowed)) || relayLeft
 		if each.handler != nil {

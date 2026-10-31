@@ -206,12 +206,11 @@ func tryVerify(relay *HttpRelay, request Incoming) (verified *RelayVerified, err
 // isOrigin is whether text is exactly an origin (`https://host[:port]`): what the URL parser serializes it to.
 func isOrigin(text string) bool {
 	var scheme, rest string
-	switch {
-	case strings.HasPrefix(text, "https://"):
-		scheme, rest = "https", text[len("https://"):]
-	case strings.HasPrefix(text, "http://"):
-		scheme, rest = "http", text[len("http://"):]
-	default:
+	if after, ok := strings.CutPrefix(text, "https://"); ok {
+		scheme, rest = "https", after
+	} else if after, ok := strings.CutPrefix(text, "http://"); ok {
+		scheme, rest = "http", after
+	} else {
 		return false
 	}
 	if rest == "" || strings.ContainsAny(rest, "/?#\\@ \t\r\n") {
@@ -249,6 +248,7 @@ func isOrigin(text string) bool {
 		}
 	}
 	if port != "" {
+		//portlint:allow numbers a port: the canonical-text check after it rejects what Number would read differently
 		value, err := strconv.Atoi(port)
 		if err != nil || value < 0 || value > 65535 || strconv.Itoa(value) != port {
 			return false

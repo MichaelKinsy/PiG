@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	maps0 "maps"
 	nethttp "net/http"
 	"reflect"
 	"regexp"
@@ -70,9 +71,7 @@ func httpAsync[T any](f func() T) <-chan T {
 func httpMerge(maps ...map[string]string) map[string]string {
 	merged := map[string]string{}
 	for _, each := range maps {
-		for name, value := range each {
-			merged[name] = value
-		}
+		maps0.Copy(merged, each)
 	}
 	return merged
 }
@@ -97,6 +96,13 @@ func httpAborted() context.Context {
 // httpFetch is fetch of a loopback request, as a mounted server makes it.
 func httpFetch(server *testServer, path string, mutate ...func(*nethttp.Request)) *nethttp.Response {
 	return server.http.Fetch(loopback(path, mutate...), loopbackConnection)
+}
+
+// httpStatus is the status Fetch answers path with, its body closed.
+func httpStatus(server *testServer, path string, mutate ...func(*nethttp.Request)) int {
+	response := httpFetch(server, path, mutate...)
+	_ = response.Body.Close()
+	return response.StatusCode
 }
 
 // httpFailingBody is a body of "{}" that then errors.
@@ -140,12 +146,12 @@ func TestStartupFetchWaitsForThePublicationThenServesTheRegistriesAreResolvedOnc
 	early := httpAsync(func() *nethttp.Response { return httpFetch(server, "/whoami") })
 	time.Sleep(50 * time.Millisecond)
 	server.load()
-	if got := fetchText(t, receive(t, early, "the early answer")); got != "null" {
+	if got := fetchText(t, receive(t, early, "the early answer")); got != "null" { //nolint:bodyclose // fetchText closes the body
 		t.Fatalf("early answer = %q, want null", got)
 	}
 	calls := server.registryCalls.count()
 	for range 3 {
-		httpFetch(server, "/whoami").Body.Close()
+		_ = httpFetch(server, "/whoami").Body.Close()
 	}
 	if got := server.registryCalls.count(); got != calls {
 		t.Fatalf("registry calls = %d, want %d", got, calls)
@@ -155,11 +161,11 @@ func TestStartupFetchWaitsForThePublicationThenServesTheRegistriesAreResolvedOnc
 
 func TestStartupAnswers503ToARequestWaitingPastTheHostsReadyTimeout(t *testing.T) {
 	server := serving(t, nil, servedOptions{noLoad: true, readyTimeout: 50 * time.Millisecond})
-	if got := httpFetch(server, "/x").StatusCode; got != 503 {
+	if got := httpStatus(server, "/x"); got != 503 {
 		t.Fatalf("status = %d, want 503", got)
 	}
 	server.load()
-	if got := httpFetch(server, "/x").StatusCode; got != 404 {
+	if got := httpStatus(server, "/x"); got != 404 {
 		t.Fatalf("status = %d, want 404", got)
 	}
 	server.close()
@@ -181,7 +187,7 @@ func TestStartupListensOncePublishedWhereItsListenSettingSaysWithoutItNoListener
 		}
 		return "listening"
 	})
-	if got := httpFetch(mounted, "/whoami").StatusCode; got != 200 {
+	if got := httpStatus(mounted, "/whoami"); got != 200 {
 		t.Fatalf("status = %d, want 200", got)
 	}
 	mounted.close()
@@ -542,7 +548,7 @@ func TestReloadsAndCloseRefusesNewRequests503WaitsForRunningOnesUpToCloseTimeout
 	if late.StatusCode != 503 {
 		t.Fatalf("a request while closing: %d, want 503", late.StatusCode)
 	}
-	late.Body.Close()
+	_ = late.Body.Close()
 	if got := receive(t, quick, "the quick answer"); got.err != nil || got.answer.text() != "done" {
 		t.Fatalf("quick = %q, %v", got.answer.text(), got.err)
 	}
@@ -584,6 +590,7 @@ func TestReloadsAndCloseNeverRunsARouteForARequestStillAuthenticatingWhenCloseSe
 	server.http.Close(background)
 	release.resolve()
 	response := receive(t, answered, "the answer")
+	_ = response.Body.Close()
 	if response.StatusCode != 503 || calls.Load() != 0 {
 		t.Fatalf("status = %d, calls = %d, want 503, 0", response.StatusCode, calls.Load())
 	}
@@ -592,7 +599,9 @@ func TestReloadsAndCloseNeverRunsARouteForARequestStillAuthenticatingWhenCloseSe
 
 func TestMountingWithoutAConnectionARequestIsNeverLocal(t *testing.T) {
 	server := serving(t, []plugin{{"@app/who", httpWhoami}}, servedOptions{noListen: true})
-	if got := server.http.Fetch(loopback("/whoami"), Connection{}).StatusCode; got != 403 {
+	mounted := server.http.Fetch(loopback("/whoami"), Connection{})
+	_ = mounted.Body.Close()
+	if got := mounted.StatusCode; got != 403 {
 		t.Fatalf("status = %d, want 403", got)
 	}
 	server.close()
@@ -623,7 +632,9 @@ func TestCancellationStartsNoFurtherAuthenticatorOnceCloseSealedTheRequest(t *te
 	answered := httpAsync(func() *nethttp.Response { return httpFetch(server, "/") })
 	receive(t, entered.done(), "the authenticator")
 	server.http.Close(background)
-	if got := receive(t, answered, "the answer").StatusCode; got != 503 {
+	late := receive(t, answered, "the answer")
+	_ = late.Body.Close()
+	if got := late.StatusCode; got != 503 {
 		t.Fatalf("status = %d, want 503", got)
 	}
 	release.resolve()
@@ -645,7 +656,7 @@ func TestCancellationAsksNoAuthenticatorForARequestAbortedBeforeItArrived(t *tes
 			return nil, nil
 		},
 	})
-	httpFetch(server, "/", httpWithContext(httpAborted())).Body.Close()
+	_ = httpFetch(server, "/", httpWithContext(httpAborted())).Body.Close()
 	if got := calls.Load(); got != 0 {
 		t.Fatalf("calls = %d, want 0", got)
 	}
@@ -680,7 +691,7 @@ func TestCancellationEndsARequestWhoseBytesResponseWasBornSealed(t *testing.T) {
 					}}, nil
 				}),
 			}})}}, servedOptions{noListen: true, closeTimeout: time.Second})
-			answered := httpAsync(func() *nethttp.Response { return httpFetch(server, "/", httpWithContext(ctx)) })
+			answered := httpAsync(func() int { return httpStatus(server, "/", httpWithContext(ctx)) })
 			receive(t, entered.done(), "the route")
 			if when == "after the route returned" {
 				abort(errors.New("client gone"))
@@ -707,7 +718,7 @@ func TestCancellationEndsARequestWhoseBytesResponseWasAbortedAndDroppedWithoutAn
 		}),
 	}})}}, servedOptions{noListen: true, closeTimeout: time.Second})
 	ctx, abort := httpAbortable()
-	httpFetch(server, "/", httpWithContext(ctx))
+	_ = httpStatus(server, "/", httpWithContext(ctx))
 	abort(errors.New("client gone"))
 	time.Sleep(10 * time.Millisecond)
 	started := time.Now()
@@ -721,10 +732,10 @@ func TestCancellationEndsARequestWhoseBytesResponseWasAbortedAndDroppedWithoutAn
 // Astra's recheck R4, Sol's N1: a close before the first resolution started a stopped watch; its throw ended the process.
 func TestCancellationACloseBeforeThePublicationLeavesNothingRunningTheWaitingRequestAnswers503(t *testing.T) {
 	server := serving(t, nil, servedOptions{noLoad: true, noListen: true})
-	waiting := httpAsync(func() *nethttp.Response { return httpFetch(server, "/x") })
+	waiting := httpAsync(func() int { return httpStatus(server, "/x") })
 	server.http.Close(httpAborted())
 	server.load()
-	if got := receive(t, waiting, "the waiting request").StatusCode; got != 503 {
+	if got := receive(t, waiting, "the waiting request"); got != 503 {
 		t.Fatalf("status = %d, want 503", got)
 	}
 	time.Sleep(50 * time.Millisecond)
@@ -733,11 +744,11 @@ func TestCancellationACloseBeforeThePublicationLeavesNothingRunningTheWaitingReq
 
 func TestCancellationACloseWhileTheFirstRequestResolvesTheRegistriesStartsNoFollow(t *testing.T) {
 	server := serving(t, []plugin{{"@app/who", httpWhoami}}, servedOptions{noListen: true, closeTimeout: 10 * time.Millisecond})
-	pending := httpAsync(func() *nethttp.Response { return httpFetch(server, "/whoami") })
+	pending := httpAsync(func() int { return httpStatus(server, "/whoami") })
 	timeout, cancel := context.WithTimeout(background, 20*time.Millisecond)
 	defer cancel()
 	server.http.Close(timeout)
-	if got := receive(t, pending, "the pending request").StatusCode; got != 200 && got != 503 {
+	if got := receive(t, pending, "the pending request"); got != 200 && got != 503 {
 		t.Fatalf("status = %d, want 200 or 503", got)
 	}
 	time.Sleep(50 * time.Millisecond)
@@ -755,7 +766,7 @@ func TestCancellationACloseWhoseContextIsAbortedAlreadyDoesNotWait(t *testing.T)
 			return htmlOf("done"), nil
 		}),
 	}})}}, servedOptions{noListen: true, closeTimeout: time.Second})
-	answered := httpAsync(func() *nethttp.Response { return httpFetch(server, "/wait") })
+	answered := httpAsync(func() int { return httpStatus(server, "/wait") })
 	receive(t, entered.done(), "the route")
 	started := time.Now()
 	server.http.Close(httpAborted())
@@ -782,13 +793,13 @@ func TestCancellationCloseSettlesARequestWhoseAuthenticatorIgnoresItsSignal503(t
 			return principalOwner(), nil
 		},
 	})
-	answered := httpAsync(func() *nethttp.Response { return httpFetch(server, "/") })
+	answered := httpAsync(func() int { return httpStatus(server, "/") })
 	receive(t, entered.done(), "the authenticator")
 	server.http.Close(background)
 	settled := -1
 	select {
-	case response := <-answered:
-		settled = response.StatusCode
+	case status := <-answered:
+		settled = status
 	case <-time.After(30 * time.Millisecond):
 	}
 	if settled != 503 {
@@ -817,6 +828,7 @@ func TestCancellationReadsNoBytesAfter(t *testing.T) {
 				}),
 			}})}}, servedOptions{noListen: true, closeTimeout: 10 * time.Millisecond})
 			response := httpFetch(server, "/stream", httpWithContext(ctx))
+			defer func() { _ = response.Body.Close() }()
 			buffer := make([]byte, 64)
 			if _, err := response.Body.Read(buffer); err != nil {
 				t.Fatal(err)
@@ -859,7 +871,7 @@ func TestCancellationABodyThatErrorsAfterValidJSONFailsTheRequest400TheRoutesSid
 	if response.StatusCode != 400 || writes.Load() != 0 {
 		t.Fatalf("status = %d, writes = %d, want 400, 0", response.StatusCode, writes.Load())
 	}
-	response.Body.Close()
+	_ = response.Body.Close()
 	server.close()
 }
 
@@ -873,6 +885,7 @@ func TestAnswersAnswersWithoutABody(t *testing.T) {
 				}),
 			}})}}, servedOptions{noListen: true})
 			response := httpFetch(server, "/")
+			_ = response.Body.Close()
 			if _, has := response.Header["Content-Length"]; response.StatusCode != status || response.Body != nethttp.NoBody || has {
 				t.Fatalf("status = %d, body = %v, has content-length = %v", response.StatusCode, response.Body, has)
 			}
@@ -888,7 +901,7 @@ func TestAnswersAForbiddenEscapingARoute403Unreported(t *testing.T) {
 			return HttpResponse{}, data.NewChordError(data.ChordErrorInit{Code: data.CodeForbidden, Message: "no"}, nil)
 		}),
 	}})}}, servedOptions{noListen: true})
-	if got := httpFetch(server, "/").StatusCode; got != 403 {
+	if got := httpStatus(server, "/"); got != 403 {
 		t.Fatalf("status = %d, want 403", got)
 	}
 	if errs := server.errors.all(); len(errs) != 0 {
@@ -917,7 +930,7 @@ func TestAnswersSendsSeveralSetCookieHeaders(t *testing.T) {
 	if got := fetched.Header.Values("Set-Cookie"); !reflect.DeepEqual(got, want) {
 		t.Fatalf("fetched set-cookie = %v, want %v", got, want)
 	}
-	fetched.Body.Close()
+	_ = fetched.Body.Close()
 	server.close()
 }
 
@@ -935,7 +948,7 @@ func TestGCCollectsTheScopesOfAbortedBytesResponsesDroppedWithoutAnotherRead(t *
 	// In a function of its own: the test's frame keeps no last response.
 	fetchAborted := func() {
 		ctx, abort := httpAbortable()
-		httpFetch(server, "/", httpWithContext(ctx))
+		_ = httpStatus(server, "/", httpWithContext(ctx))
 		abort(errors.New("client gone"))
 	}
 	for range 8 {
@@ -968,7 +981,7 @@ func TestGCCollectsTheScopesOfBytesResponsesBornSealedAbortedWhileTheRouteReturn
 		mu.Lock()
 		aborts = append(aborts, abort)
 		mu.Unlock()
-		httpFetch(server, "/", httpWithContext(ctx))
+		_ = httpStatus(server, "/", httpWithContext(ctx))
 	}
 	for range 8 {
 		fetchAborted()

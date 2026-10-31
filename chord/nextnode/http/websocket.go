@@ -84,6 +84,7 @@ func newWebSocket(conn *websocket.Conn) *WebSocket {
 	socket := &WebSocket{conn: conn, state: WebSocketOpenState}
 	conn.SetPingHandler(func(payload string) error {
 		// The pong first, then the event, as `ws` does.
+		//portlint:allow clock a write deadline of the connection: wall-clock I/O, not behavior a test drives
 		err := conn.WriteControl(websocket.PongMessage, []byte(payload), time.Now().Add(time.Second))
 		socket.emit(WebSocketPing, []byte(payload))
 		if errors.Is(err, websocket.ErrCloseSent) {
@@ -198,7 +199,7 @@ func (s *WebSocket) Terminate() {
 	}
 	s.state = WebSocketClosedState
 	s.mu.Unlock()
-	s.conn.UnderlyingConn().Close()
+	_ = s.conn.UnderlyingConn().Close()
 	s.closed(CloseEvent{Code: 1006})
 }
 
@@ -208,6 +209,7 @@ func (s *WebSocket) Ping() {
 	open := s.state == WebSocketOpenState
 	s.mu.Unlock()
 	if open {
+		//portlint:allow clock a write deadline of the connection: wall-clock I/O, not behavior a test drives
 		_ = s.conn.WriteControl(websocket.PingMessage, nil, time.Now().Add(time.Second))
 	}
 }
@@ -221,6 +223,7 @@ func (s *WebSocket) Start() {
 	}
 	s.started = true
 	s.mu.Unlock()
+	//portlint:allow golifetime ends when the connection ends: a read error closes the socket
 	go s.read()
 }
 
@@ -261,7 +264,7 @@ func (s *WebSocket) finish(event CloseEvent) {
 	s.state = WebSocketClosedState
 	s.mu.Unlock()
 	if !already {
-		s.conn.Close()
+		_ = s.conn.Close()
 	}
 	s.closed(event)
 }
@@ -310,6 +313,7 @@ func (s *WebSocket) enqueueLocked(job queued) bool {
 	s.writing = true
 	s.mu.Unlock()
 	if start {
+		//portlint:allow golifetime ends when the queue is empty or the connection fails
 		go s.write()
 	}
 	return true
@@ -333,6 +337,7 @@ func (s *WebSocket) write() {
 			if job.hasCode {
 				payload = websocket.FormatCloseMessage(job.code, job.reason)
 			}
+			//portlint:allow clock a write deadline of the connection: wall-clock I/O, not behavior a test drives
 			err = s.conn.WriteControl(websocket.CloseMessage, payload, time.Now().Add(5*time.Second))
 		} else {
 			err = s.conn.WriteMessage(job.frame, job.data)

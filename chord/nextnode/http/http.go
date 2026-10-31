@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	nethttp "net/http"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -212,6 +213,7 @@ func newComponent(h host.Host, options HttpOptions, ctx context.Context, after a
 		listening: &listeningPromise{done: make(chan struct{})},
 	}
 	c.upgrades.after = after
+	//portlint:allow ctxmapping the component's own `#closing` AbortController, aborted by close
 	c.closing, c.closingCancel = context.WithCancel(context.Background())
 	listen := options.Listen
 	c.facet = host.DefineFacet(func(facet host.FacetHost, _ host.FacetSelf) error {
@@ -315,6 +317,7 @@ func (c *component) isClosing() bool { return c.closing.Err() != nil }
 // Serve serves request: its answer, and what its consumer calls once the body is written or abandoned. It never fails:
 // whatever fails answers (503 before the publication or while closing, 403, 404, 500 reported).
 func (c *component) Serve(request Incoming, connection Connection) Served {
+	//portlint:allow ctxbackground an AbortController: the request's own root, ended by its client or by close
 	controller, cancel := context.WithCancelCause(context.Background())
 	finished := make(chan struct{})
 	var once sync.Once
@@ -325,19 +328,20 @@ func (c *component) Serve(request Incoming, connection Connection) Served {
 	c.mu.Unlock()
 	request.Cancelled(func(reason error) { cancel(reason) })
 	var answer Answer
-	func() {
-		defer func() {
-			if recovered := recover(); recovered != nil {
-				answer = c.refusal(500, nil, nil, false)
-			}
-		}()
+	// Whatever fails answers 500 (Pi's `catch`: nothing is reported).
+	failure := func() (err error) {
+		defer recoverAs(&err)
 		served := c.serveSteps(request, connection, controller, finished, current)
 		answer = served.answer
 		// The request is over once its consumer finished and its scope (if it got one) ended.
 		if served.scope != nil {
 			current.setDone(joined(finished, served.scope))
 		}
+		return nil
 	}()
+	if failure != nil {
+		answer = c.refusal(500, nil, nil, false)
+	}
 	go func() {
 		<-current.doneChan()
 		c.mu.Lock()
@@ -466,8 +470,7 @@ func (c *component) failure(err error, match *RouteMatch) HttpResponse {
 	if !errors.As(err, &by) {
 		by = &thrown{route: true, plugin: match.Plugin, cause: err}
 	}
-	var failure *HttpFailure
-	if errors.As(by.cause, &failure) {
+	if failure, ok := errors.AsType[*HttpFailure](by.cause); ok {
 		return HttpResponse{Kind: KindError, Status: failure.Status}
 	}
 	// Chord refused the caller (an anonymous scope's remote object, a route's `authorize`): no failure of the route.
@@ -514,6 +517,7 @@ func (c *component) registriesNow() (*registrySet, error) {
 	if current == nil {
 		current = &resolution{done: make(chan struct{})}
 		c.resolving = current
+		//portlint:allow golifetime ends when the resolution settles; waiters block on current.done
 		go c.resolve(current)
 	}
 	c.mu.Unlock()
@@ -551,6 +555,7 @@ func (c *component) follow(router *Router) {
 	}
 	c.revoking = true
 	c.mu.Unlock()
+	//portlint:allow golifetime one revoking task at a time; it ends when no newer router is waiting
 	go func() {
 		for {
 			c.mu.Lock()
@@ -569,6 +574,7 @@ func (c *component) follow(router *Router) {
 
 // Upgrade is one upgrade, tracked from its arrival: refused while closing, else admitted and checked, then handed out.
 func (c *component) Upgrade(w nethttp.ResponseWriter, request *nethttp.Request) {
+	//portlint:allow ctxmapping an AbortController: the upgrade's own root, ended by its client
 	controller, cancel := context.WithCancelCause(context.Background())
 	// A client gone while its upgrade authenticates aborts that work (a clean disconnect, a reset).
 	cancelledBy(request.Context(), func(error) { cancel(errors.New("http: the client disconnected")) })
@@ -671,12 +677,7 @@ func (c *component) upgradeSteps(w nethttp.ResponseWriter, r *nethttp.Request, s
 }
 
 func containsRelay(relays []*HttpRelay, relay *HttpRelay) bool {
-	for _, each := range relays {
-		if each == relay {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(relays, relay)
 }
 
 func tryLinkOptions(options func(HttpRequest, data.Principal) (LinkOptions, error), request HttpRequest, principal data.Principal) (result LinkOptions, err error) {
@@ -784,8 +785,8 @@ func (t *thrown) Unwrap() error { return t.cause }
 // chainOf is the route of match inside its wraps (outermost first), each throw tagged with who threw it.
 func chainOf(match *RouteMatch, ctx host.Ctx) func(HttpRequest) (HttpResponse, error) {
 	next := tagged(match.Handler, match.Plugin, ctx)
-	for index := len(match.Wraps) - 1; index >= 0; index-- {
-		wrap, plugin := match.Wraps[index].Wrap, match.Wraps[index].Plugin
+	for _, v := range slices.Backward(match.Wraps) {
+		wrap, plugin := v.Wrap, v.Plugin
 		inner := next
 		next = func(request HttpRequest) (response HttpResponse, err error) {
 			defer func() {
@@ -795,8 +796,7 @@ func chainOf(match *RouteMatch, ctx host.Ctx) func(HttpRequest) (HttpResponse, e
 			}()
 			response, err = wrap.Wrap(request, inner, ctx)
 			if err != nil {
-				var already *thrown
-				if !errors.As(err, &already) {
+				if _, ok := errors.AsType[*thrown](err); !ok {
 					err = &thrown{name: wrap.Name, plugin: plugin, cause: err}
 				}
 			}

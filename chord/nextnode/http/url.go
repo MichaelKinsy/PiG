@@ -152,8 +152,8 @@ func validAuthority(authority string) bool {
 		if _, err := netip.ParseAddr(host[1 : len(host)-1]); err != nil {
 			return false
 		}
-	} else if at := strings.IndexByte(authority, ':'); at >= 0 {
-		host, port = authority[:at], authority[at+1:]
+	} else if before, after, ok := strings.Cut(authority, ":"); ok {
+		host, port = before, after
 	}
 	if port != "" {
 		value, err := strconv.Atoi(port)

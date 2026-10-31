@@ -59,10 +59,7 @@ func bytesOf(data []byte, extra func(*HttpResponse)) (HttpResponse, *reads) {
 		Kind: KindBytes, Mime: "application/octet-stream", Size: &size,
 		Read: func(offset int64, length int, _ host.Ctx) ([]byte, error) {
 			recorded.add(offset, int64(length))
-			end := offset + int64(length)
-			if end > int64(len(data)) {
-				end = int64(len(data))
-			}
+			end := min(offset+int64(length), int64(len(data)))
 			return data[offset:end], nil
 		},
 	}
@@ -84,7 +81,7 @@ func TestDescriptionsWriteJSONHTMLRedirectAndErrorTheDefaultHeadersFirstTheRespo
 		{HttpResponse{Kind: KindHTML, Body: "<p>x</p>", Status: 201, Headers: []ResponseHeader{HeaderOf("content-security-policy", "own")}}, 201, "<p>x</p>", "text/html; charset=utf-8"},
 		{HttpResponse{Kind: KindRedirect, To: "/next", Status: 303}, 303, "", ""},
 		{HttpResponse{Kind: KindError, Status: 418}, 418, "I'm a Teapot", "text/plain; charset=utf-8"},
-		{HttpResponse{Kind: KindError, Status: 409, Message: ptr("taken")}, 409, "taken", "text/plain; charset=utf-8"},
+		{HttpResponse{Kind: KindError, Status: 409, Message: new("taken")}, 409, "taken", "text/plain; charset=utf-8"},
 	}
 	for _, each := range cases {
 		server := answering(t, each.response)
@@ -109,8 +106,7 @@ func TestDescriptionsWriteJSONHTMLRedirectAndErrorTheDefaultHeadersFirstTheRespo
 	}
 }
 
-func ptr[T any](value T) *T { return &value }
-
+//go:fix inline
 func TestDescriptionsAnswer500ForAHeaderWithACROrLFAndAValueThatIsNoJSONReportedResponseFailed(t *testing.T) {
 	server := serving(t, []plugin{{"@app/r", contributing(HttpContribution{Routes: []HttpRouteEntry{
 		RouteFunc("GET /header", func(HttpRequest, host.Ctx) (HttpResponse, error) {
@@ -274,7 +270,7 @@ func TestBytesWithoutASizeAreSentChunked(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 	_, _ = conn.Write([]byte("GET /r HTTP/1.1\r\nHost: 127.0.0.1:" + strconv.Itoa(server.port) + "\r\nConnection: close\r\n\r\n"))
 	_ = conn.SetReadDeadline(time.Now().Add(within))
 	var out bytes.Buffer
@@ -286,7 +282,7 @@ func TestBytesWithoutASizeAreSentChunked(t *testing.T) {
 			break
 		}
 	}
-	if !regexp.MustCompile(`(?i)\r\ntransfer-encoding: chunked\r\n`).Match(out.Bytes()) {
+	if !strings.Contains(strings.ToLower(out.String()), "\r\ntransfer-encoding: chunked\r\n") {
 		t.Fatalf("response = %q", out.String())
 	}
 }
@@ -342,7 +338,7 @@ func TestBytesStopReadingWhenTheClientDisconnectsTheReadsContextIsAborted(t *tes
 	if _, err := conn.Read(make([]byte, 100)); err != nil {
 		t.Fatal(err)
 	}
-	conn.Close()
+	_ = conn.Close()
 	time.Sleep(100 * time.Millisecond)
 	mu.Lock()
 	after := count

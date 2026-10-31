@@ -291,6 +291,7 @@ func (b *PulledBody) finishLocked(err error) {
 	if b.stop != nil {
 		b.stop()
 	}
+	//portlint:allow doubleclose finishLocked closes it once: b.err is set first, under the lock
 	close(b.closed)
 }
 
@@ -430,21 +431,27 @@ func rangeOf(header string, present bool, size int64) (byteRange, rangeKind) {
 		return byteRange{}, rangeNone
 	}
 	if from == "" {
+		//portlint:allow numbers digits only: the pattern admits nothing else
 		suffix, _ := strconv.ParseFloat(to, 64)
 		if suffix == 0 || size == 0 {
 			return byteRange{}, rangeUnsatisfiable
 		}
+		//portlint:allow numbers bounded by size first
 		length := int64(math.Min(suffix, float64(size)))
 		return byteRange{start: size - length, length: length}, rangeSingle
 	}
+	//portlint:allow numbers digits only: the pattern admits nothing else
 	startValue, _ := strconv.ParseFloat(from, 64)
 	if startValue >= float64(size) {
 		return byteRange{}, rangeUnsatisfiable
 	}
+	//portlint:allow numbers below size here (an unsatisfiable start returned before)
 	start := int64(startValue)
 	last := size - 1
 	if to != "" {
+		//portlint:allow numbers digits only: the pattern admits nothing else
 		toValue, _ := strconv.ParseFloat(to, 64)
+		//portlint:allow numbers bounded by size-1 first
 		last = int64(math.Min(toValue, float64(size-1)))
 	}
 	if last < start {

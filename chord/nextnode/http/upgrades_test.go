@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"io"
+	"maps"
 	"net"
 	"reflect"
 	"runtime"
@@ -12,7 +13,6 @@ import (
 	"sync"
 	"testing"
 	"time"
-	"unsafe"
 	"weak"
 
 	"github.com/MichaelKinsy/PiG/chord/delta"
@@ -101,12 +101,8 @@ var owner = map[string]string{"x-principal": "owner"}
 
 func withHeaders(base map[string]string, extra map[string]string) map[string]string {
 	merged := map[string]string{}
-	for name, value := range base {
-		merged[name] = value
-	}
-	for name, value := range extra {
-		merged[name] = value
-	}
+	maps.Copy(merged, base)
+	maps.Copy(merged, extra)
 	return merged
 }
 
@@ -139,7 +135,7 @@ func TestTheLinksEndpointAcceptsALinkAsTheAuthenticatedPrincipalWithTheOptionsLi
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer tab.Close(background)
+	defer func() { _ = tab.Close(background) }()
 	if err := tab.Load(nil, background); err != nil {
 		t.Fatal(err)
 	}
@@ -471,9 +467,9 @@ func TestRevocationARawPeerWhoseHostOrContributionLeftCanSendNothingMoreToTheHan
 	tunnelPlugin.facet = newTunnel("app.tunnel", []string{"t.example"}, func(hosts []string) HttpContribution { return HttpContribution{Hosts: hosts} }).facet
 	server := serving(t, []plugin{{"@app/sockets", sockets.facet}, {"@app/tunnel", tunnelPlugin.facet}}, servedOptions{})
 	throughHost := rawSocket(t, server.port, "t.example", "/echo")
-	defer throughHost.Close()
+	defer func() { _ = throughHost.Close() }()
 	local := rawSocket(t, server.port, "localhost:"+strconv.Itoa(server.port), "/echo")
-	defer local.Close()
+	defer func() { _ = local.Close() }()
 	// A router change reaches the connections off the host's sections (Pi's reload returns after its watch listener ran): the
 	// peer is cut when the server ends its connection, and only then does it write.
 	tunnelPlugin.name(t, server)
@@ -534,7 +530,7 @@ func TestCancellationAbortsAnUpgradesAuthenticationWhenItsClient(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			defer conn.Close()
+			defer func() { _ = conn.Close() }()
 			_, err = io.WriteString(conn, "GET /s HTTP/1.1\r\nHost: 127.0.0.1:"+strconv.Itoa(server.port)+"\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Version: 13\r\nSec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\n\r\n")
 			if err != nil {
 				t.Fatal(err)
@@ -544,7 +540,7 @@ func TestCancellationAbortsAnUpgradesAuthenticationWhenItsClient(t *testing.T) {
 				_ = conn.(*net.TCPConn).CloseWrite()
 			} else {
 				_ = conn.(*net.TCPConn).SetLinger(0)
-				conn.Close()
+				_ = conn.Close()
 			}
 			receive(t, ctx.Done(), "the abort")
 		})
@@ -606,7 +602,7 @@ func TestHeartbeatPingsAPluginSocketAfter15sOfSilenceAndTerminatesIt15sLaterWith
 func TestCloseTerminatesASocketThatNeverAcknowledgesItsCloseAtCloseTimeout(t *testing.T) {
 	server := serving(t, []plugin{{"@app/s", contributing(HttpContribution{Sockets: []HttpSocketEntry{{Pattern: "/s", Handler: noopSocket()}}})}}, servedOptions{closeTimeout: 20 * time.Millisecond})
 	raw := rawSocket(t, server.port, "127.0.0.1:"+strconv.Itoa(server.port), "/s")
-	defer raw.Close()
+	defer func() { _ = raw.Close() }()
 	started := time.Now()
 	server.http.Close(background)
 	if took := time.Since(started); took >= 500*time.Millisecond {
@@ -616,7 +612,7 @@ func TestCloseTerminatesASocketThatNeverAcknowledgesItsCloseAtCloseTimeout(t *te
 
 // weakOf is a weak pointer to whatever pointer v holds, for objects seen only through an interface.
 func weakOf(v any) weak.Pointer[byte] {
-	return weak.Make((*byte)(unsafe.Pointer(reflect.ValueOf(v).Pointer())))
+	return weak.Make((*byte)(reflect.ValueOf(v).UnsafePointer()))
 }
 
 func TestGCKeepsNothingOfAClosedPluginSocket(t *testing.T) {
@@ -641,7 +637,7 @@ func TestGCKeepsNothingOfAClosedPluginSocket(t *testing.T) {
 	if len(refs) != 3 {
 		t.Fatalf("recorded %d objects", len(refs))
 	}
-	for i := 0; i < 100; i++ {
+	for range 100 {
 		runtime.GC()
 		alive := 0
 		for _, ref := range refs {

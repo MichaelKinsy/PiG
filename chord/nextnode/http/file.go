@@ -115,10 +115,10 @@ func opened(path string, ctx context.Context) (*os.File, error) {
 		return nil, err
 	}
 	if ctx.Done() == nil {
-		file.Close()
+		_ = file.Close()
 		return nil, fmt.Errorf("fileResponse(%s): read outside a request's scope", filepath.Base(path))
 	}
-	context.AfterFunc(ctx, func() { file.Close() })
+	context.AfterFunc(ctx, func() { _ = file.Close() })
 	return file, nil
 }
 

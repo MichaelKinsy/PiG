@@ -3,7 +3,6 @@ package http
 import (
 	"bytes"
 	"context"
-	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -287,7 +286,7 @@ func send(t testing.TB, port int, method, path string, options sendOptions) (ans
 	if err != nil {
 		return answer{}, err
 	}
-	defer response.Body.Close()
+	defer func() { _ = response.Body.Close() }()
 	text, err := io.ReadAll(response.Body)
 	if err != nil {
 		return answer{}, err
@@ -320,7 +319,7 @@ func dialSocket(port int, path string, headers map[string]string, maxPayload int
 		header.Set(name, value)
 	}
 	dialer := websocket.Dialer{HandshakeTimeout: within}
-	conn, response, err := dialer.Dial("ws://127.0.0.1:"+strconv.Itoa(port)+path, header)
+	conn, response, err := dialer.Dial("ws://127.0.0.1:"+strconv.Itoa(port)+path, header) //nolint:bodyclose // the dialer documents its handshake response body as needing no close
 	if err != nil {
 		if response != nil {
 			return nil, fmt.Errorf("refused %d", response.StatusCode)
@@ -369,17 +368,6 @@ func nextMessage(t testing.TB, socket *clientSocket) string {
 		t.Fatal("no message")
 		return ""
 	}
-}
-
-// closeOf is the close code and reason of socket's close.
-func closeOf(socket *WebSocket) <-chan CloseEvent {
-	result := make(chan CloseEvent, 1)
-	if socket.ReadyState() == WebSocketClosedState {
-		result <- CloseEvent{Code: 1006}
-		return result
-	}
-	socket.Once(link.WebSocketClose, func(data any) { result <- data.(CloseEvent) })
-	return result
 }
 
 // receive is the value from ch, failing the test when none comes.
@@ -452,7 +440,7 @@ func fetchText(t testing.TB, response *nethttp.Response) string {
 	if err != nil {
 		t.Fatal(err)
 	}
-	response.Body.Close()
+	_ = response.Body.Close()
 	return string(text)
 }
 
@@ -469,7 +457,7 @@ func rawExchange(t testing.TB, port int, text string) (status, body string) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 	if _, err := conn.Write([]byte(text)); err != nil {
 		t.Fatal(err)
 	}
@@ -546,5 +534,3 @@ func (c *fakeClock) advance(d time.Duration) {
 		next.f()
 	}
 }
-
-var errTest = errors.New("test error")

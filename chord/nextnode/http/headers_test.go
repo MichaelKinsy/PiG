@@ -2,6 +2,7 @@ package http
 
 import (
 	"encoding/base64"
+	"errors"
 	"net/http"
 	"reflect"
 	"runtime"
@@ -88,7 +89,7 @@ func TestDefaultHeaders(t *testing.T) {
 		}
 		nonces := NewNonces()
 		made := map[string]bool{}
-		for i := 0; i < 1_000; i++ {
+		for range 1_000 {
 			made[nonces.Next()] = true
 		}
 		if len(made) != 1_000 {
@@ -129,7 +130,7 @@ func TestDefaultHeaders(t *testing.T) {
 		} {
 			if err := headers.Set(c.name, c.values...); err == nil {
 				t.Errorf("Set(%q, %q) accepted, want *HeaderError", c.name, c.values)
-			} else if _, ok := err.(*HeaderError); !ok {
+			} else if headerErr := new(*HeaderError); !errors.As(err, headerErr) {
 				t.Errorf("Set(%q, %q) = %T, want *HeaderError", c.name, c.values, err)
 			}
 		}

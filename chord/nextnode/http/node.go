@@ -2,6 +2,7 @@ package http
 
 import (
 	"context"
+	"errors"
 	"io"
 	"math"
 	"net"
@@ -97,7 +98,7 @@ func ListenNode(handler Handler, listen ListenAddress, ctx context.Context) (*No
 		_ = l.server.Serve(listener)
 	}()
 	if ctx.Err() != nil {
-		l.server.Close()
+		_ = l.server.Close()
 		<-l.served
 		return nil, context.Cause(ctx)
 	}
@@ -111,7 +112,7 @@ func ListenNode(handler Handler, listen ListenAddress, ctx context.Context) (*No
 
 // Stop stops accepting connections and closes the idle ones (the component's close runs next).
 func (l *NodeListener) Stop() {
-	l.listener.Close()
+	_ = l.listener.Close()
 	l.mu.Lock()
 	idle := make([]net.Conn, 0, len(l.idle))
 	for conn := range l.idle {
@@ -119,13 +120,13 @@ func (l *NodeListener) Stop() {
 	}
 	l.mu.Unlock()
 	for _, conn := range idle {
-		conn.Close()
+		_ = conn.Close()
 	}
 }
 
 // Closed closes every connection still open and returns once the server closed.
 func (l *NodeListener) Closed() {
-	l.server.Close()
+	_ = l.server.Close()
 	<-l.served
 }
 
@@ -153,7 +154,7 @@ func isUpgrade(r *nethttp.Request) bool {
 		return false
 	}
 	for _, value := range r.Header.Values("Connection") {
-		for _, token := range strings.Split(value, ",") {
+		for token := range strings.SplitSeq(value, ",") {
 			if strings.EqualFold(strings.TrimSpace(token), "upgrade") {
 				return true
 			}
@@ -307,7 +308,7 @@ func (b *trackedBody) complete() bool {
 
 // pump writes stream to w as the socket drains; a body that fails (reported by the component) destroys the connection.
 func pump(stream *PulledBody, w nethttp.ResponseWriter) {
-	defer stream.Close()
+	defer func() { _ = stream.Close() }()
 	flusher, _ := w.(nethttp.Flusher)
 	buffer := make([]byte, 32*1024)
 	for {
@@ -320,7 +321,7 @@ func pump(stream *PulledBody, w nethttp.ResponseWriter) {
 				flusher.Flush()
 			}
 		}
-		if err == io.EOF {
+		if errors.Is(err, io.EOF) {
 			return
 		}
 		if err != nil {

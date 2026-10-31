@@ -180,6 +180,7 @@ func parseNumber(text string) (float64, bool) {
 	if text == "" {
 		return 0, true
 	}
+	//portlint:allow numbers a Content-Length compared with a limit: an unparsable one is NaN, which no comparison passes
 	value, err := strconv.ParseFloat(text, 64)
 	return value, err == nil
 }

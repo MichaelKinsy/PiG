@@ -283,6 +283,6 @@ func csp(admitted *Admitted, router *Router) [2]string {
 		parts[i] = each.name + " " + strings.Join(each.sources, " ")
 	}
 	text := strings.Join(parts, "; ")
-	at := strings.Index(text, nonceMark)
-	return [2]string{text[:at] + "'nonce-", "'" + text[at+len(nonceMark):]}
+	before, after, _ := strings.Cut(text, nonceMark)
+	return [2]string{before + "'nonce-", "'" + after}
 }

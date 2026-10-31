@@ -59,7 +59,7 @@ func TestCookiesAreHttpOnlyPathSameSiteStrictByDefaultSecureOnARemoteOriginLaxAn
 
 func TestCookiesReadBackOnlyWithTheirSignatureNameAndSecret(t *testing.T) {
 	set := Cookie("session", "owner:1", CookieOptions{Secret: "s", Request: cookiesRequestWith("")})
-	value := strings.Split(set, ";")[0]
+	value, _, _ := strings.Cut(set, ";")
 	if got, ok := cookiesRead(t, cookiesRequestWith("other=1; "+value), "session", "s"); !ok || got != "owner:1" {
 		t.Fatalf("ReadCookie = %q, %v, want owner:1", got, ok)
 	}
@@ -79,7 +79,7 @@ func TestCookiesRefuseACookiePastItsSignedExpiryAndOneWhoseExpiryWasChanged(t *t
 
 	maxAge := 60.0
 	set := Cookie("session", "a.b", CookieOptions{Secret: "s", Request: cookiesRequestWith(""), MaxAge: &maxAge})
-	value := strings.Split(set, ";")[0]
+	value, _, _ := strings.Cut(set, ";")
 	if got, ok := cookiesRead(t, cookiesRequestWith(value), "session", "s"); !ok || got != "a.b" {
 		t.Fatalf("ReadCookie = %q, %v, want a.b", got, ok)
 	}

@@ -108,7 +108,7 @@ func TestBodiesAnswer413BeforeAChunkedUploadPastTheLimitHasEnded(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 	text := strings.Repeat("x", 40)
 	chunk := `"` + text
 	_, err = io.WriteString(conn, "POST /json HTTP/1.1\r\nHost: 127.0.0.1:"+strconv.Itoa(server.port)+"\r\nTransfer-Encoding: chunked\r\n\r\n"+strconv.FormatInt(int64(len(chunk)), 16)+"\r\n"+chunk+"\r\n")
@@ -150,7 +150,7 @@ func TestBodiesDrainASmallBodyNobodyReadAndKeepTheConnectionALargeOneClosesIt(t 
 			t.Fatal(err)
 		}
 		_, _ = io.Copy(io.Discard, response.Body)
-		response.Body.Close()
+		_ = response.Body.Close()
 		return posted{connection: response.Header.Get("Connection"), closed: response.Close, reused: reused}
 	}
 	first := post(strings.Repeat("x", 1000))

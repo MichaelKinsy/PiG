@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/MichaelKinsy/PiG/chord/next/host"
+	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
 // Tests of file responses (slice 10 §2): the type by extension (no active types), a `root` refusing a file whose real path
@@ -82,9 +83,7 @@ func TestFileResponseWithARootRefusesAFileWhoseRealPathLiesOutsideIt403ServesOne
 	if err := os.WriteFile(filepath.Join(root, "a.txt"), []byte("a"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.Symlink(secret, filepath.Join(root, "link.txt")); err != nil {
-		t.Fatal(err)
-	}
+	testenv.Symlink(t, secret, filepath.Join(root, "link.txt"))
 	inside, err := FileResponse(filepath.Join(root, "a.txt"), FileResponseOptions{Root: root})
 	if err != nil || inside.Size == nil || *inside.Size != 1 {
 		t.Fatalf("inside = %+v, %v", inside, err)
@@ -173,6 +172,6 @@ func TestFileResponseClosesItsHandleOnEveryPathOpensNoneWhenNothingIsWritten(t *
 	if got := openedOn(path); got != 1 {
 		t.Fatalf("opened while reading = %d, want 1", got)
 	}
-	conn.Close()
+	_ = conn.Close()
 	closed("a disconnect")
 }

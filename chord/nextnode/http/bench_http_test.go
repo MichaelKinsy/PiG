@@ -30,7 +30,7 @@ func getAll(b *testing.B, client *nethttp.Client, url string) int64 {
 		b.Fatal(err)
 	}
 	length, err := io.Copy(io.Discard, response.Body)
-	response.Body.Close()
+	_ = response.Body.Close()
 	if err != nil {
 		b.Fatal(err)
 	}
@@ -51,7 +51,7 @@ func benchServer(b *testing.B) (plain *httptest.Server, port int, file string) {
 				w.WriteHeader(500)
 				return
 			}
-			defer opened.Close()
+			defer func() { _ = opened.Close() }()
 			w.Header().Set("Content-Type", "application/octet-stream")
 			w.Header().Set("Content-Length", strconv.Itoa(benchFile))
 			_, _ = io.Copy(w, opened)
@@ -100,7 +100,7 @@ func BenchmarkHTTPRequestRoundTrip(b *testing.B) {
 		b.Run(each.name, func(b *testing.B) {
 			client := &nethttp.Client{Transport: &nethttp.Transport{MaxConnsPerHost: 1}}
 			defer client.CloseIdleConnections()
-			for i := 0; i < 200; i++ {
+			for range 200 {
 				getAll(b, client, each.url)
 			}
 			b.ResetTimer()

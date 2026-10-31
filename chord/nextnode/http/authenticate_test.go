@@ -66,7 +66,7 @@ func TestAuthenticatorsAreAskedInContributorOrderTheFirstPrincipalWinsAThrowingO
 	if want := []string{"a", "b", "c"}; !reflect.DeepEqual(asked, want) {
 		t.Fatalf("asked = %v, want %v", asked, want)
 	}
-	if len(failed) != 1 || failed[0].plugin != "@app/b" || failed[0].err != broken {
+	if len(failed) != 1 || failed[0].plugin != "@app/b" || !errors.Is(failed[0].err, broken) {
 		t.Fatalf("failed = %v, want [@app/b broken]", failed)
 	}
 }

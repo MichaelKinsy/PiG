@@ -140,7 +140,6 @@ func TestAdmissionProvenance(t *testing.T) {
 			{Origin: "https://a.example", Framer: &javascript},
 			{Origin: "https://a.example/path"},
 		} {
-			bad := bad
 			lying := &HttpRelay{Name: "lying", Verify: func(*http.Request) (*RelayVerified, error) { return bad, nil }}
 			refused := admissionRefused(t, admitted([]admissionHeader{host, forwarded}, admissionLoopback, []*HttpRelay{lying}))
 			if refused.Failed == nil || refused.Failed.Relay != "lying" {

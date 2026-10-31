@@ -85,7 +85,9 @@ func TestFetchRefusesTwoHostHeaders(t *testing.T) {
 	request := loopback("/who", func(r *nethttp.Request) {
 		r.Header["Host"] = []string{"127.0.0.1:8788", "evil.example"}
 	})
-	if got := server.http.Fetch(request, loopbackConnection).StatusCode; got != 403 {
+	response := server.http.Fetch(request, loopbackConnection)
+	_ = response.Body.Close()
+	if got := response.StatusCode; got != 403 {
 		t.Fatalf("two Hosts = %d, want 403", got)
 	}
 }
@@ -120,7 +122,7 @@ func TestMountingConvertsWithTheListenersChecksNeverPanickingBadTargetsUserinfoT
 		}
 		w.WriteHeader(response.StatusCode)
 		_, _ = io.Copy(w, response.Body)
-		response.Body.Close()
+		_ = response.Body.Close()
 	}))
 	defer own.Close()
 	port := own.Listener.Addr().(*net.TCPAddr).Port
@@ -166,7 +168,7 @@ func TestTheRequestsScopeLastsUntilTheResponseIsFlushedCloseWaitsForIt(t *testin
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer response.Body.Close()
+	defer func() { _ = response.Body.Close() }()
 	ctx := receive(t, scope, "the route")
 	time.Sleep(20 * time.Millisecond)
 	sealedBeforeFlush := ctx.Err() != nil
@@ -201,7 +203,7 @@ func TestTheRequestsScopeIsAbortedWhenTheClientDisconnects(t *testing.T) {
 	}
 	_, _ = conn.Write([]byte("GET /slow HTTP/1.1\r\nHost: 127.0.0.1:" + strconv.Itoa(server.port) + "\r\n\r\n"))
 	ctx := receive(t, entered, "the route")
-	conn.Close()
+	_ = conn.Close()
 	receive(t, ctx.Done(), "the abort")
 	if ctx.Err() == nil {
 		t.Fatal("the scope is not aborted")

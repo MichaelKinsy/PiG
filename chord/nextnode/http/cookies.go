@@ -65,7 +65,7 @@ func Cookie(name, value string, options CookieOptions) string {
 // passed; false otherwise.
 func ReadCookie(request HttpRequest, name, secret string) (string, bool) {
 	header, _ := HeaderGet(request.Headers(), "Cookie")
-	for _, pair := range strings.Split(header, ";") {
+	for pair := range strings.SplitSeq(header, ";") {
 		equals := strings.IndexByte(pair, '=')
 		if equals < 0 || strings.TrimSpace(pair[:equals]) != name {
 			continue
@@ -88,6 +88,7 @@ func ReadCookie(request HttpRequest, name, secret string) (string, bool) {
 		}
 		expires := payload[expiresAt+1:]
 		if expires != "" {
+			//portlint:allow numbers the signed expiry the component itself wrote: digits only
 			seconds, err := strconv.ParseFloat(expires, 64)
 			if err != nil || seconds*1000 <= float64(now().UnixMilli()) {
 				return "", false
