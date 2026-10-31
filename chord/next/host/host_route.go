@@ -16,10 +16,10 @@ import (
 // Forced Go differences. `resolve` is an awaited Promise, so it is a blocking call returning (link, error). `void
 // this.#resolve(routed)` is an owned task (Loop.Go): the call to `resolve` runs on it, off the loop, and everything Pi
 // writes after the `await` runs as one section (Loop.Run) on it, so a `resolve` whose holds were all released meanwhile
-// finishes and its result is handled as Pi's. Pi calls `resolve` synchronously from `check`, so what two addresses' `resolve`
-// calls do before their first await happens in the order the holds arrived; here each address resolves on a task of its own
-// and what two `resolve` calls do is in no order (one at a time, a slow address's `resolve` would hold up every other, which
-// Pi's concurrent resolves do not). `authorize` and `resolve` may throw in Pi: they return the error. The
+// finishes and its result is handled as Pi's. Pi calls `resolve` synchronously from `check`, so the calls reach their first
+// await in the order the holds arrived; `check` takes the call's place in that order, in the route's section, and the
+// `Resolve` task's context carries it (`resolveOrder`), for the effects a `Resolve` orders as Pi's calls are ordered, without
+// one address's slow `Resolve` holding up another's. `authorize` and `resolve` may throw in Pi: they return the error. The
 // route calls the host's own `*path`, `*hostLink` and `*chordHost` directly, as Pi's classes do. A `Link` of `link` and its
 // `Codec` and `PartLimits` are the package's own.
 
@@ -74,6 +74,8 @@ type route struct {
 	links map[*hostLink]*routed
 	// backoff is per address key, separate from objects' identities.
 	backoff *backoff
+	// resolves counts the `Resolve` calls `check` has made: the next call's place in the route's order of calls.
+	resolves int
 }
 
 // newRoute makes the route of kind. It returns the error `kindParams` throws for a kind not declared by hostKind.
@@ -88,6 +90,16 @@ func newRoute(kind *contracts.HostKind, options RouteOptions, host *chordHost, c
 	}
 	r.backoff = newBackoff(host.loop(), r.due)
 	return r, nil
+}
+
+// resolveOrderKey is the context key of a `Resolve` call's place in its route's order of calls.
+type resolveOrderKey struct{}
+
+// resolveOrder is the place of the `Resolve` call whose context is ctx among the calls of its route: 0 for the first call
+// `check` made, then 1, 2 and so on in the order of the calls (as the order in which Pi's synchronous calls ran).
+func resolveOrder(ctx context.Context) (int, bool) {
+	order, ok := ctx.Value(resolveOrderKey{}).(int)
+	return order, ok
 }
 
 // path is the path to the address with params, for a hold acting as principal: the params checked against the kind
@@ -187,13 +199,16 @@ func (r *route) due(key string) {
 	}
 }
 
-// resolve runs `resolve` once for the address, on an owned task. A rejection, or a link closed already, starts the
-// address's backoff; a link returned after the host closed is closed at once.
+// resolve runs `resolve` once for the address, on an owned task, whose context carries the call's place in the route's
+// order of calls. A rejection, or a link closed already, starts the address's backoff; a link returned after the host
+// closed is closed at once.
 func (r *route) resolve(routed *routed) {
 	routed.resolving = true
+	ctx := context.WithValue(r.context, resolveOrderKey{}, r.resolves)
+	r.resolves++
 	loop := r.host.loop()
 	loop.Go(func() {
-		resolved, err := r.options.Resolve(routed.address, r.context)
+		resolved, err := r.options.Resolve(routed.address, ctx)
 		loop.Run(func() { r.resolved(routed, resolved, err) })
 	})
 }

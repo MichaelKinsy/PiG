@@ -212,12 +212,9 @@ func TestRelayIDsAndOrigins(t *testing.T) {
 		t.Run("drop entries, notices and replies for holds of the origin relayed over another link", func(t *testing.T) {
 			r := rawRelay(t, rawRelayOptions{})
 			holdPlaced(t, r.Raw, 0, "S1")
-			// Pi calls `resolve` for an address synchronously when its first hold arrives, so its workers come in the order of the
-			// holds. Here each address resolves on an owned task of its own (`Resolve` blocks): the second hold waits for the first
-			// worker, whose index is then the hold's.
+			holdPlaced(t, r.Raw, 1, "S2")
 			one := r.Workers.At(t, 0)
 			x := nextHeld(one)
-			holdPlaced(t, r.Raw, 1, "S2")
 			two := r.Workers.At(t, 1)
 			y := nextHeld(two)
 			if x.origin != link.Some(1) || y.origin != link.Some(1) {
@@ -733,11 +730,9 @@ func TestRelayDownstreamDrop(t *testing.T) {
 		t.Run("closes its origin upstream: one closed per worker, no release or cancel (race 15)", func(t *testing.T) {
 			r := rawRelay(t, rawRelayOptions{})
 			holdPlaced(t, r.Raw, 0, "S1")
-			// As in "drop entries, notices and replies": the second hold waits for the first address's worker (Go resolves
-			// each address on a task of its own, so the order of the workers is not the order of the holds otherwise).
+			holdPlaced(t, r.Raw, 1, "S2")
 			one := r.Workers.At(t, 0)
 			held := nextHeld(one)
-			holdPlaced(t, r.Raw, 1, "S2")
 			two := r.Workers.At(t, 1)
 			two.Next("hold")
 			bindEditor(t, one, held)
