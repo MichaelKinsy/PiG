@@ -591,7 +591,13 @@ func TestLinksADeadLinkIsClosedAndReleasesEverythingHeld(t *testing.T) {
 	// Pi uses a 40 ms ping timeout. In a loaded Go test process a 40 ms gap in pong delivery closes the link before the first
 	// call, and the client's ref then waits for a reconnect that never comes (detached, remote.ts:276-286), so the test hangs.
 	// One second keeps the link up until Sever, and the dead link is still found well within waitFor's deadline.
-	interval, timeout := 10*time.Millisecond, time.Second
+	// Pi pings every 10 ms (link.test.ts:338, `pingInterval: 10, pingTimeout: 40`), which a V8 microtask queue carries. Here every
+	// ping and pong crosses the one process-wide delivery queue (memoryDeliveries), and a timer queues a ping whether or not the
+	// queue has drained: under -race a frame costs more than the 10 ms between two, the backlog grows without bound, the pongs
+	// that would mark the link alive and the close that follows Sever never reach their turn within waitFor's 5 s, and the
+	// backlog then outlives the test (its cleanup flushes the queue for over a minute) and fails the tests after it. 50 ms keeps
+	// the interval a small fraction of the timeout and the queue drained under -race.
+	interval, timeout := 50*time.Millisecond, time.Second
 	c := cluster(t, LinkOptions{PingInterval: &interval, PingTimeout: &timeout})
 	browser := c.browser(map[string]any{"guest": "g1"}, nil)
 	mustCall(t, mustGetSession(t, browser.host, "S1", "a"), "add", float64(1), nil)
