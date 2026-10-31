@@ -581,6 +581,14 @@ func TestKeyedMembersAKeyWhoseFirstPinStillLoadsTheObjectEndsMeanwhileTheConsume
 	<-c.Gate.entered
 	closing := make(chan error, 1)
 	go func() { closing <- c.Host.Close(background) }()
+	// Pi's `host.close()` ends the object in its own synchronous part, before `gate.release()` runs. Here Close runs on a
+	// goroutine of its own: wait for that section (the host closed, its objects ended) before the pin is released.
+	scopeEventually(t, "the host to close its objects", func() bool {
+		host := c.Host.(*chordHost)
+		var closed bool
+		host.enter(func() { closed = host.closing() })
+		return closed
+	})
 	c.Gate.Release()
 	if got := <-loading; got.err == nil {
 		t.Fatalf("the get of the viewer = %v, want a rejection", got.ref)
