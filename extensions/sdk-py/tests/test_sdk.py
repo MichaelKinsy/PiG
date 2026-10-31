@@ -693,12 +693,45 @@ def _register_payload_for(configure) -> dict:
     try:
         reg = _read_frame(conn)
         assert reg["type"] == "register"
+        # The handshake completes before the shutdown: a host that shuts down before ready ends the run with an error (the run raises in its thread).
+        _write_frame(conn, {"type": "ready", "ready": {"cwd": tmp, "width": 80}})
         return reg["register"]
     finally:
         _write_frame(conn, {"type": "shutdown", "shutdown": {"reason": "test"}})
         conn.close()
         listener.close()
         thread.join(timeout=2)
+        assert not thread.is_alive()
+
+
+def test_shutdown_before_ready_fails_the_run() -> None:
+    """A host that shuts the extension down after register and before ready ends the run with an error and closes the connection: the Go SDK's Run returns "expected ready message, got shutdown" and the Rust SDK's run_with_socket returns an error."""
+    tmp = tempfile.mkdtemp()
+    sock_path = os.path.join(tmp, "ext.sock")
+    listener = _start_fake_host(sock_path)
+    ext = pig_sdk.Extension("py-shutdown-before-ready")
+    failures: list[Exception] = []
+
+    def run() -> None:
+        try:
+            ext.run_with_socket(sock_path)
+        except Exception as exc:
+            failures.append(exc)
+
+    thread = threading.Thread(target=run, daemon=True)
+    thread.start()
+    conn, _ = listener.accept()
+    conn.settimeout(10)
+    try:
+        assert _read_frame(conn)["type"] == "register"
+        _write_frame(conn, {"type": "shutdown", "shutdown": {"reason": "test"}})
+        thread.join(timeout=5)
+        assert not thread.is_alive()
+        assert [(type(exc), str(exc)) for exc in failures] == [(RuntimeError, "expected ready, got shutdown")]
+        assert conn.recv(1) == b""
+    finally:
+        conn.close()
+        listener.close()
 
 
 def test_own_thinking_runs_register_payload() -> None:
