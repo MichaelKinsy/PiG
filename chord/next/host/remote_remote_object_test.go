@@ -997,6 +997,9 @@ func TestRemoteObjectReHoldsAfterADrop(t *testing.T) {
 			one.Retry()
 			rhWaitState(t, one, RefStateLive)
 			rhWaitState(t, two, RefStateLive)
+			// Pi's `await transported()` (twice) lets the watch deliver what it saw. Here the watch delivers each state on its
+			// own goroutine, after the reference is live: wait for the third entry (the failure shown first, then loading and live).
+			rhWaitFor(t, func() bool { statesMu.Lock(); defer statesMu.Unlock(); return len(states) >= 3 })
 			statesMu.Lock()
 			wait := called
 			got := slices.Clone(states)
@@ -1006,12 +1009,6 @@ func TestRemoteObjectReHoldsAfterADrop(t *testing.T) {
 			}
 			if result := wait.must(t); result != "ok" {
 				t.Fatalf("call = %s, want ok", result)
-			}
-			if !slices.Equal(got, []string{"failed", "loading", "live"}) {
-				rhWaitFor(t, func() bool { statesMu.Lock(); defer statesMu.Unlock(); return len(states) >= 3 })
-				statesMu.Lock()
-				got = slices.Clone(states)
-				statesMu.Unlock()
 			}
 			if !slices.Equal(got, []string{"failed", "loading", "live"}) {
 				t.Fatalf("states = %v, want [failed loading live]", got)
