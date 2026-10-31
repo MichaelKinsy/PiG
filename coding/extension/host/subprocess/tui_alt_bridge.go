@@ -80,6 +80,12 @@ type tuiAltScreenState struct {
 	screen *tui.TuiAltScreen
 	term   *tuiAltTerminal
 
+	// ctx is the context of every request the screen makes (callback); end, called by disposeTuiAlt, ends it. The goroutine that runs a frame holds the frame
+	// lock while it waits for the extension to answer, and disposing the screen takes that lock, so the host must be able to end the wait of an extension that
+	// never answers.
+	ctx context.Context
+	end context.CancelFunc
+
 	// waits holds the callbacks the goroutine that runs the renderer's frame is waiting on, by request id: see callback.
 	waitMu sync.Mutex
 	waits  map[string]*tuiAltWait
@@ -90,7 +96,6 @@ type tuiAltScreenState struct {
 	layoutRoot tui.Component
 	overlays   map[string]*tui.OverlayHandle
 	listeners  map[string]*tui.TuiInputListener
-	disposed   bool
 }
 
 type tuiAltRegistry struct {
@@ -130,8 +135,7 @@ type tuiAltWait struct {
 func (s *tuiAltScreenState) callback(kind string, fields map[string]any, result any) error {
 	args := map[string]any{"id": s.id, "kind": kind}
 	maps.Copy(args, fields)
-	//portlint:allow ctxbackground the screen outlives the call that built it; a callback ends with the connection (Request returns when it closes)
-	ctx := context.Background()
+	ctx := s.ctx
 	frame, inFrame := s.screen.Frame()
 	if !inFrame {
 		return autocompleteRequest(ctx, s.conn, RequestTuiAltCallback, args, result)
@@ -407,10 +411,9 @@ func (b *UIBridge) disposeTuiAlt(owner *Conn, all bool) {
 	}
 	registry.mu.Unlock()
 	for _, s := range screens {
-		s.mu.Lock()
-		s.disposed = true
-		s.mu.Unlock()
-		// The connection is gone, so a stop could not reach the extension's terminal; end the renderer's own timers only.
+		s.end()
+		// Ending the screen's callbacks lets a frame that waits on the extension finish and release the lock CancelPendingRender takes; the connection is
+		// still open (a shutdown disposes before it closes the extension), so the extension is not told to stop its terminal: end the renderer's own timers only.
 		s.screen.CancelPendingRender()
 	}
 }
@@ -522,6 +525,8 @@ func (b *UIBridge) tuiAltCreate(owner *Conn, call *tuiAltCall) (*CallResultPaylo
 		}
 		s.bindCallbacks(&options, o.Callbacks)
 	}
+	//portlint:allow ctxbackground the screen outlives the call that built it; its callbacks end when disposeTuiAlt ends it or the connection closes (Request returns when it closes)
+	s.ctx, s.end = context.WithCancel(context.Background())
 	s.screen = tui.NewTuiAltScreen(s.term, call.ShowHardwareCursor, call.LogDirectory, options)
 	// The components are the extension's: their render calls back into the screen, from the goroutine that runs the frame (callback).
 	s.screen.EnableFrameAccess()
