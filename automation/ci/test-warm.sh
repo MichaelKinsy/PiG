@@ -21,12 +21,17 @@ if ! command -v cargo >/dev/null 2>&1; then
   exit 0
 fi
 sdk="$ROOT/extensions/sdk-rs"
-# One target per package that builds Rust cells; the names match the SharedCargoTargetDir calls in each package's TestMain.
+# One target per package that builds Rust cells (runtimecell below); the names match the SharedCargoTargetDir calls in each package's TestMain.
 for pkg in subprocess cli conformance; do
   target=$(go run ./automation/ci/cargotarget "$pkg" "$sdk")
   echo "[test-warm] Rust SDK dependencies -> $target"
   (cd "$sdk" && CARGO_TARGET_DIR="$target" cargo build --release --locked --quiet)
 done
+
+# coding/extension/host/runtimecell builds its cell with pig-sdk as a path dependency of the generated crate, and no cargo build in the SDK directory seeds that unit: with the loop's build in place the test still took 85 s against 102 s cold (measured), nearly all of it pig-sdk at CARGO_BUILD_JOBS=1. So the test itself fills the target, here under its own 30-minute bound. Left to the fast pool of test-fast, with 12 packages sharing 4 CPUs, the same build ended at that pool's 10-minute package timeout (https://github.com/MichaelKinsy/PiG/actions/runs/40963676052).
+target=$(go run ./automation/ci/cargotarget runtimecell "$sdk")
+echo "[test-warm] Rust cell build -> $target"
+CARGO_TARGET_DIR="$target" go test -count=1 -timeout 30m -run '^TestBuildRustPackedCellBuildsCachedRunner$' ./coding/extension/host/runtimecell/
 
 daemon="$ROOT/.upstream/current/packages/env/daemon"
 if [[ -f "$daemon/Cargo.toml" ]]; then

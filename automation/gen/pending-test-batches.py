@@ -7,6 +7,10 @@ import hashlib
 import json
 from pathlib import Path
 import subprocess
+import sys
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "pin"))
+import pinlib  # noqa: E402
 
 
 def group_for(path, area):
@@ -103,7 +107,7 @@ def baseline_mapping(commit, mapping_path):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--baseline-commit", required=True)
-    parser.add_argument("--version", default="0.87.1")
+    parser.add_argument("--version", default=pinlib.committed().version)
     parser.add_argument("--out", default="docs/parity/pending-tests-batches.md")
     args = parser.parse_args()
     mapping_path = f"test/parity/interfaces/test-mapping-v{args.version}.json"
@@ -143,7 +147,7 @@ def main():
         "# Upstream test porting batches", "", "## Dispatch contract", "",
         f"Baseline: `{args.baseline_commit}`, Pi {args.version}. This document partitions every baseline pending and partial test file exactly once: **{disposition_counts['pending']} pending + {disposition_counts['partial']} partial = {len(obligations)} files**, across **{len(batches)} batches**. Counts come from `upstream-tests-v{args.version}.json`; they are case sites, not expanded `it.each` matrices or a count of cases still missing in partial files.", "",
         "Hot-path batches come first. Target Go packages combine existing evidence locations with the owning production area; they are navigation targets, not proof of closure. New harness execution/runtime packages need their separate API and production callers, not substitutions from the older agent loop. Read the mapping rationale to enumerate missing cases before changing a partial entry.", "",
-        "Assign one owner per upstream test file. Do not dispatch the validation batch to this slice: `fix-tool-arg-coercion` owns it. The six tool-regression files already closed here remain in their original batches with current disposition `ported`, so no baseline obligation disappears. Dispatch only rows still pending or partial. Test-file assignments do not authorize simultaneous edits to shared Go packages, SDK protocols, or generated ledgers; the lead coordinates those collisions and serializes integration and shared inventory updates.", "",
+        "Assign one owner per upstream test file. Keep closed files in their original batches so no baseline obligation disappears. Dispatch only rows still pending or partial. Test-file assignments do not authorize simultaneous edits to shared Go packages, SDK protocols, or generated ledgers; the lead coordinates those collisions and serializes integration and shared inventory updates.", "",
         f"Current mapping SHA-256: `{hashlib.sha256(current_bytes).hexdigest()}`. Current dispositions below are a generated snapshot; the JSON mapping remains authoritative.", "",
         "Regenerate after integration:", "", "```bash",
         f"python3 automation/gen/pending-test-batches.py --baseline-commit {args.baseline_commit} --version {args.version}",
