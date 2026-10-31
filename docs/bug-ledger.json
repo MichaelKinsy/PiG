@@ -18837,6 +18837,29 @@
       "tests": []
     },
     {
+      "id": "BF-7db4e68",
+      "title": "The alternate screen's viewport accessors (`ViewportTop`, `IsFollowingOutput`, `ScrollBy`, `ScrollToTop`…",
+      "symptom": "The alternate screen's viewport accessors (`ViewportTop`, `IsFollowingOutput`, `ScrollBy`, `ScrollToTop`, `ScrollToBottom`) read the layout of the last frame under the renderer's lock.",
+      "rootCause": "ViewportTop, IsFollowingOutput, ScrollBy, ScrollToTop and ScrollToBottom read currentLayout through getPrimaryScrollView without t.mu, while a frame (doRender) stores a new layout under t.mu. An extension's tuiAlt host call reaches IsFollowingOutput on its own goroutine, so TestTuiAltScreenAcrossSDKs/ subprocess-python reported a data race between tui_alt_screen.go:1055 (frame write) and :400 (read) in the gate's confrace1 run. made the width and height an atomic snapshot but left the layout pointer unsynchronised.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong display",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "The alternate screen's viewport accessors (`ViewportTop`, `IsFollowingOutput`, `ScrollBy`, `ScrollToTop`, `ScrollToBottom`) read the layout of the last frame under the renderer's lock. An extension's `tuiAlt` host call reads them from its own goroutine while a frame stores a new layout, and the race detector reported the Python SDK's conformance row.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "7db4e68fc4",
+          "date": "2026-10-31"
+        }
+      ],
+      "tests": [
+        "test/extension-conformance/tui_alt_screen_test.go::TestTuiAltScreenAcrossSDKs",
+        "tui/tui_alt_screen_test.go::TestAltScreenViewportAccessorsDoNotRaceWithAFrame"
+      ]
+    },
+    {
       "id": "BF-7dc9b09",
       "title": "`-e \u003clocal Package\u003e` now contributes its prompts, skills and themes, loaded before the project, user and…",
       "symptom": "`-e \u003clocal Package\u003e` now contributes its prompts, skills and themes, loaded before the project, user and Package resources, so they win same-name collisions as in Pi.",
@@ -39021,6 +39044,34 @@
         "internal/codingagent/tools/read_directory_test.go::TestReadDirectoryReportsNodeEISDIR",
         "internal/ignorerules/ignore_oracle_test.go::TestIgnoredMatchesPiIgnorePackage",
         "internal/ignorerules/ignorerules_test.go::TestIgnoreRulesFollowTheIgnorePackage"
+      ]
+    },
+    {
+      "id": "BF-f4a8f71",
+      "title": "A program that embeds PiG and never reads session events no longer hangs",
+      "symptom": "A program that embeds PiG and never reads session events no longer hangs.",
+      "rootCause": "A Session delivered every event to its Events channel from the start, so a program that never read Events (the quick start in the package doc, the SDK example) hung in Send once a turn emitted more events than the channel buffers hold. Pi has no such wait: AgentSession._emit notifies only the listeners it has, and with none, nothing is buffered and nothing blocks.",
+      "rootCauseSource": "commit",
+      "userImpact": "Crash, hang or runaway process",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A program that embeds PiG and never reads session events no longer hangs. A `Session` sent every event to its `Events()` channel from the start, so `Send` stopped once a reply produced more events than the channel's buffer holds (about 128), and the quick start in the `coding` package documentation and `examples/sdk` did exactly that. Events now go to the channel only after `Events()` is first called, as Pi notifies only the listeners it has: before that call nothing is buffered and nothing waits. A program that reads events calls `Events()` before `Send` and passes each event to `coding.AcknowledgeEvent`, and it still receives every event in order; an event sent before the call is not replayed, and a slow reader still slows the turn. A session made by `Clone` starts without a reader, like a forked Pi session, and `DiscardEvents()` stops delivery for a reader that quits.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "f4a8f71a23",
+          "date": "2026-10-31"
+        }
+      ],
+      "tests": [
+        "coding/session_events_subscription_test.go::TestCloneEventsAreSubscribedSeparately",
+        "coding/session_events_subscription_test.go::TestDiscardEventsAfterEventsStopsDelivery",
+        "coding/session_events_subscription_test.go::TestEventsBeforeSendDeliversEveryEventInOrder",
+        "coding/session_events_subscription_test.go::TestEventsCalledDuringTurnDeliversSuffixInOrder",
+        "coding/session_events_subscription_test.go::TestEventsCalledLateMissesEarlierEventsOnly",
+        "coding/session_events_subscription_test.go::TestRuntimeSessionWithoutEventsReaderSendReturns",
+        "coding/session_test.go::TestSendBlocksWhenEventsConsumerStopsReadingThenUnblocks"
       ]
     },
     {
