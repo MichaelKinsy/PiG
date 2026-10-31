@@ -908,6 +908,12 @@ func linesNode(state *surfaceComponent, lines []string, click *frontend.Area, vi
 // "<id>.e", so a part keeps its node while later parts stream in. partIDs,
 // if set, keeps the part ids from one build to the next.
 func (b *AssistantMessageComponent) appendFrontendNodes(entries []surfaceEntry, id string, partIDs *[]string, width int, streaming bool) []surfaceEntry {
+	// The walk reads b.segments, the visibility overrides, b.hidden and the
+	// terminal state, which mutators write under b.mu; hasTerminalError and
+	// terminalErrorText only read block fields, so the whole build holds the
+	// one lock (see the mu field comment for the lock order).
+	b.mu.Lock()
+	defer b.mu.Unlock()
 	run := 0
 	for i, seg := range b.segments {
 		var partID string
