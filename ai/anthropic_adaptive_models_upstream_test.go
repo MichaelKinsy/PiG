@@ -25,7 +25,9 @@ func TestAnthropicUpstreamAdaptiveThinkingModels(t *testing.T) {
 		id := model.Provider + "/" + model.ID
 		flagged = append(flagged, id)
 		// #11121: MiniMax models with catalog effort levels require adaptive thinking.
-		if !strings.HasPrefix(id, "fireworks/") && !strings.HasPrefix(id, "minimax/") && !strings.HasPrefix(id, "minimax-cn/") && !allowed.MatchString(id) {
+		// pig divergence (D217): Pi 44f6851b is carried past the pin; OpenRouter's ~anthropic/claude-*-latest aliases are adaptive (and, through D199, their routing variants).
+		carried := d217CarriedOpenRouterAnthropicLatest(model.Provider, strings.TrimSuffix(strings.TrimSuffix(model.ID, ":nitro"), ":floor"))
+		if !strings.HasPrefix(id, "fireworks/") && !strings.HasPrefix(id, "minimax/") && !strings.HasPrefix(id, "minimax-cn/") && !allowed.MatchString(id) && !carried {
 			t.Errorf("unexpected adaptive model %s", id)
 		}
 	}

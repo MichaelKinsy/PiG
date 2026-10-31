@@ -16,6 +16,7 @@ var nonRetryablePatterns = []string{
 	`billing`,
 	`subscription_sharing_usage_limit_exceeded`,
 	`subscription_sharing_workplace_individual_usage_limit_exceeded`,
+	`"code"\s*:\s*"?1308(?![0-9])`, // pig divergence (D217): Pi c719d5b0 (#11537) Zhipu/Z.ai usage limit code 1308 resets after hours and is not retried
 }
 
 // Read-only: assigned once at initialization.
@@ -100,6 +101,7 @@ var overflowPatterns = []string{
 	`too many tokens`,
 	`token limit exceeded`,
 	`^(?:[\w -]+ API error \(413\):|413(?:\s|:|$))`,
+	`context window exceeded`, // pig divergence (D217): Pi d3398f82 (#11492) LiteLLM pre-call check (ContextWindowExceededError) is a context overflow
 }
 
 // Read-only: assigned once at initialization.
