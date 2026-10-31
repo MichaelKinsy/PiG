@@ -318,10 +318,10 @@ func (t *TuiAltScreen) Mode() TuiMode { return TuiModeFullscreen }
 func (t *TuiAltScreen) FullRedraws() int { return int(t.fullRedrawCount.Load()) }
 
 // ViewportTop returns the primary scroll view's current scroll offset.
-func (t *TuiAltScreen) ViewportTop() int { return t.getPrimaryScrollView().ScrollTop() }
+func (t *TuiAltScreen) ViewportTop() int { return t.getPrimaryScrollViewLocked().ScrollTop() }
 
 // IsFollowingOutput reports whether the primary scroll view is pinned to the end.
-func (t *TuiAltScreen) IsFollowingOutput() bool { return t.getPrimaryScrollView().IsFollowingEnd() }
+func (t *TuiAltScreen) IsFollowingOutput() bool { return t.getPrimaryScrollViewLocked().IsFollowingEnd() }
 
 // GetCopyOnSelect reports whether a completed selection is copied automatically.
 func (t *TuiAltScreen) GetCopyOnSelect() bool {
@@ -677,19 +677,19 @@ func (t *TuiAltScreen) rootComponent() Component {
 
 // ScrollBy scrolls the primary scroll view by the given number of lines.
 func (t *TuiAltScreen) ScrollBy(lines int) {
-	t.getPrimaryScrollView().ScrollBy(lines)
+	t.getPrimaryScrollViewLocked().ScrollBy(lines)
 	t.RequestRender()
 }
 
 // ScrollToTop scrolls the primary scroll view to its start.
 func (t *TuiAltScreen) ScrollToTop() {
-	t.getPrimaryScrollView().ScrollToStart()
+	t.getPrimaryScrollViewLocked().ScrollToStart()
 	t.RequestRender()
 }
 
 // ScrollToBottom scrolls the primary scroll view to its end.
 func (t *TuiAltScreen) ScrollToBottom() {
-	t.getPrimaryScrollView().ScrollToEnd()
+	t.getPrimaryScrollViewLocked().ScrollToEnd()
 	t.RequestRender()
 }
 
