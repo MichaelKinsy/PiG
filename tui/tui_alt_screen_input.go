@@ -505,7 +505,8 @@ type searchHighlightRange struct {
 // clipped to the transcript box and left of its scrollbar.
 func (t *TuiAltScreen) searchHighlightRanges(search *altActiveSearch, box *LayoutBox, scrollView *ScrollView, screenRows int) map[int][]searchHighlightRange {
 	rangesByRow := map[int][]searchHighlightRange{}
-	maxColumn := min(t.width, box.Rect.X+box.Rect.Width, box.Clip.X+box.Clip.Width)
+	columns, _ := t.size()
+	maxColumn := min(columns, box.Rect.X+box.Rect.Width, box.Clip.X+box.Clip.Width)
 	if geometry := GetScrollbarGeometry(box); geometry != nil {
 		maxColumn = min(maxColumn, geometry.Column)
 	}

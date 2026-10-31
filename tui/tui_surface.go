@@ -180,7 +180,7 @@ func NewTuiSurface(session frontend.Session, onApplyError func(error)) *TuiSurfa
 func NewTuiSurfaceWithSize(session frontend.Session, cols, rows int, onApplyError func(error)) *TuiSurface {
 	t := newTuiSurface(io.Discard, session, onApplyError)
 	t.fixedSize = true
-	t.setFixedDimensionsLocked(cols, rows)
+	t.setSize(cols, rows)
 	t.statusTerminal.Terminal = t.tuiBase.Terminal()
 	return t
 }
@@ -444,7 +444,8 @@ func (t *TuiSurface) doRender() {
 	}
 	t.lastRenderAt = t.now()
 	t.updateSize()
-	width, height := max(1, t.width), max(1, t.height)
+	columns, rows := t.size()
+	width, height := max(1, columns), max(1, rows)
 	widthChanged := t.hasRendered && t.prevWidth != width
 	heightChanged := t.hasRendered && t.prevHeight != height
 

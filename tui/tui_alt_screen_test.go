@@ -598,7 +598,7 @@ func TestAltScreenGetScrollSelectionPointMapsContentRow(t *testing.T) {
 	t.Cleanup(sv.Dispose)
 	frame := RenderLayoutFrame(sv, 20, 6, noRender)
 	tui.currentLayout = &frame
-	tui.width, tui.height = 20, 6
+	tui.SetFixedSize(20, 6)
 
 	// Follow=end pins scrollTop to the bottom; a pointer at the top visible row
 	// maps to scrollTop + (row - rect.Y). With 20 lines of content in a height-6
