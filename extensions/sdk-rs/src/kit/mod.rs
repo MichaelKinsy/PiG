@@ -60,8 +60,25 @@ macro_rules! node_from {
     )*};
 }
 node_from!(
-    Container, Box, Text, TruncatedText, Markdown, Spacer, DynamicBorder, SelectList, SettingsList,
-    Image, Loader, HStack, VStack, Lines, UserMessage, AssistantMessage, ToolExecution, BashExecution, Diff
+    Container,
+    Box,
+    Text,
+    TruncatedText,
+    Markdown,
+    Spacer,
+    DynamicBorder,
+    SelectList,
+    SettingsList,
+    Image,
+    Loader,
+    HStack,
+    VStack,
+    Lines,
+    UserMessage,
+    AssistantMessage,
+    ToolExecution,
+    BashExecution,
+    Diff
 );
 
 /// Upstream `Container`: its children one after another.
@@ -105,7 +122,12 @@ impl Default for Box {
 
 impl Box {
     pub fn new(padding_x: u32, padding_y: u32) -> Self {
-        Self { padding_x, padding_y, bg: None, children: Vec::new() }
+        Self {
+            padding_x,
+            padding_y,
+            bg: None,
+            children: Vec::new(),
+        }
     }
 
     /// The background token (upstream `bgFn`, `theme.bg(token, ...)`).
@@ -137,7 +159,12 @@ pub struct Text {
 
 impl Text {
     pub fn new(text: impl Into<String>, padding_x: u32, padding_y: u32) -> Self {
-        Self { text: text.into(), padding_x, padding_y, bg: None }
+        Self {
+            text: text.into(),
+            padding_x,
+            padding_y,
+            bg: None,
+        }
     }
 
     /// The background token (upstream `customBgFn`).
@@ -157,7 +184,11 @@ pub struct TruncatedText {
 
 impl TruncatedText {
     pub fn new(text: impl Into<String>, padding_x: u32, padding_y: u32) -> Self {
-        Self { text: text.into(), padding_x, padding_y }
+        Self {
+            text: text.into(),
+            padding_x,
+            padding_y,
+        }
     }
 }
 
@@ -242,7 +273,9 @@ impl Default for DynamicBorder {
 
 impl DynamicBorder {
     pub fn new(color: impl Into<String>) -> Self {
-        Self { color: color.into() }
+        Self {
+            color: color.into(),
+        }
     }
 }
 
@@ -256,7 +289,11 @@ pub struct SelectItem {
 
 impl SelectItem {
     pub fn new(value: impl Into<String>, label: impl Into<String>) -> Self {
-        Self { value: value.into(), label: label.into(), description: None }
+        Self {
+            value: value.into(),
+            label: label.into(),
+            description: None,
+        }
     }
 
     pub fn description(mut self, description: impl Into<String>) -> Self {
@@ -418,7 +455,11 @@ struct ImageData {
 impl ImageData {
     fn new(data: impl Into<Vec<u8>>, mime_type: impl Into<String>) -> Self {
         let data: Arc<[u8]> = data.into().into();
-        Self { reference: digest::sha256_hex(&data), mime_type: mime_type.into(), data }
+        Self {
+            reference: digest::sha256_hex(&data),
+            mime_type: mime_type.into(),
+            data,
+        }
     }
 }
 
@@ -684,7 +725,10 @@ pub struct List {
 
 impl Lines {
     pub fn new(content: Vec<String>) -> Self {
-        Self { content, ..Self::default() }
+        Self {
+            content,
+            ..Self::default()
+        }
     }
 
     /// Frontend-only: the rows depict this image (for example a half-block
@@ -731,7 +775,10 @@ pub struct UserMessage {
 impl UserMessage {
     /// A user message with upstream's outputPad 1.
     pub fn new(text: impl Into<String>) -> Self {
-        Self { text: text.into(), output_pad: 1 }
+        Self {
+            text: text.into(),
+            output_pad: 1,
+        }
     }
 
     /// Upstream `setOutputPad` (0 or 1, the values of Pi's outputPad setting).
@@ -855,13 +902,19 @@ pub struct ToolResultContent {
 
 impl ToolResultContent {
     pub fn text(text: impl Into<String>) -> Self {
-        Self { text: text.into(), image: None }
+        Self {
+            text: text.into(),
+            image: None,
+        }
     }
 
     /// An image block given the decoded bytes. The SDK sends them as other
     /// kit images, once per connection.
     pub fn image(data: impl Into<Vec<u8>>, mime_type: impl Into<String>) -> Self {
-        Self { text: String::new(), image: Some(ImageData::new(data, mime_type)) }
+        Self {
+            text: String::new(),
+            image: Some(ImageData::new(data, mime_type)),
+        }
     }
 }
 
@@ -1042,7 +1095,12 @@ impl BashExecution {
         truncated: bool,
         full_output_path: impl Into<String>,
     ) {
-        self.complete = Some(BashComplete { exit_code, cancelled, truncated, full_output_path: full_output_path.into() });
+        self.complete = Some(BashComplete {
+            exit_code,
+            cancelled,
+            truncated,
+            full_output_path: full_output_path.into(),
+        });
     }
 
     /// Upstream `setExpanded`.
@@ -1071,7 +1129,12 @@ pub struct Diff {
 impl Diff {
     /// A diff without padding.
     pub fn new(diff: impl Into<String>) -> Self {
-        Self { diff: diff.into(), file_path: String::new(), padding_x: 0, padding_y: 0 }
+        Self {
+            diff: diff.into(),
+            file_path: String::new(),
+            padding_x: 0,
+            padding_y: 0,
+        }
     }
 
     /// Upstream `filePath`.
@@ -1098,7 +1161,11 @@ pub struct View {
 
 impl View {
     pub fn new(root: impl Into<Node>) -> Self {
-        Self { root: root.into(), focus: None, theme: Vec::new() }
+        Self {
+            root: root.into(),
+            focus: None,
+            theme: Vec::new(),
+        }
     }
 
     /// The id of the select-list, settings-list, input, editor,
@@ -1128,7 +1195,10 @@ impl View {
     /// frontend-only `lines` annotations. A tree deeper than the host's bound
     /// is an error, as in the Go SDK.
     pub(crate) fn encode(&self, frontend: bool) -> Result<Encoded, String> {
-        let mut encoder = Encoder { frontend, images: Vec::new() };
+        let mut encoder = Encoder {
+            frontend,
+            images: Vec::new(),
+        };
         let mut view = Map::new();
         view.insert("root".into(), encoder.node(&self.root, 0)?);
         if let Some(focus) = &self.focus {
@@ -1142,7 +1212,10 @@ impl View {
                 .collect();
             view.insert("theme".into(), Value::Object(theme));
         }
-        Ok(Encoded { body: Value::Object(view), images: encoder.images })
+        Ok(Encoded {
+            body: Value::Object(view),
+            images: encoder.images,
+        })
     }
 }
 
@@ -1158,11 +1231,16 @@ pub(crate) struct Encoded {
 
 impl Encoded {
     pub(crate) fn references(&self, refs: &HashSet<String>) -> bool {
-        self.images.iter().any(|image| refs.contains(&image.reference))
+        self.images
+            .iter()
+            .any(|image| refs.contains(&image.reference))
     }
 
     pub(crate) fn refs(&self) -> Vec<String> {
-        self.images.iter().map(|image| image.reference.clone()).collect()
+        self.images
+            .iter()
+            .map(|image| image.reference.clone())
+            .collect()
     }
 }
 
@@ -1189,13 +1267,21 @@ struct Encoder {
 
 impl Encoder {
     fn add_image(&mut self, image: &ImageData) {
-        if !self.images.iter().any(|known| known.reference == image.reference) {
+        if !self
+            .images
+            .iter()
+            .any(|known| known.reference == image.reference)
+        {
             self.images.push(image.clone());
         }
     }
 
     fn children(&mut self, children: &[Node], depth: usize) -> Result<Value, String> {
-        children.iter().map(|child| self.node(child, depth + 1)).collect::<Result<Vec<_>, _>>().map(Value::Array)
+        children
+            .iter()
+            .map(|child| self.node(child, depth + 1))
+            .collect::<Result<Vec<_>, _>>()
+            .map(Value::Array)
     }
 
     fn node(&mut self, node: &Node, depth: usize) -> Result<Value, String> {
@@ -1292,11 +1378,23 @@ impl Encoder {
                 put(&mut map, "maxVisible", n.max_visible);
                 if let Some(layout) = &n.layout {
                     let mut l = Map::new();
-                    put_opt(&mut l, "minPrimaryColumnWidth", &layout.min_primary_column_width);
-                    put_opt(&mut l, "maxPrimaryColumnWidth", &layout.max_primary_column_width);
+                    put_opt(
+                        &mut l,
+                        "minPrimaryColumnWidth",
+                        &layout.min_primary_column_width,
+                    );
+                    put_opt(
+                        &mut l,
+                        "maxPrimaryColumnWidth",
+                        &layout.max_primary_column_width,
+                    );
                     put(&mut map, "layout", Value::Object(l));
                 }
-                put_opt(&mut map, "selectedIndex", &n.selected_index.map(|i| i as u64));
+                put_opt(
+                    &mut map,
+                    "selectedIndex",
+                    &n.selected_index.map(|i| i as u64),
+                );
                 put_opt(&mut map, "filter", &n.filter);
             }
             Node::SettingsList(n) => {
@@ -1319,7 +1417,11 @@ impl Encoder {
                 if n.enable_search {
                     put(&mut map, "enableSearch", true);
                 }
-                put_opt(&mut map, "selectedIndex", &n.selected_index.map(|i| i as u64));
+                put_opt(
+                    &mut map,
+                    "selectedIndex",
+                    &n.selected_index.map(|i| i as u64),
+                );
                 put_opt(&mut map, "filter", &n.filter);
             }
             Node::Image(n) => {
@@ -1349,7 +1451,10 @@ impl Encoder {
                     for (child, entry) in &stack.children {
                         let mut child = self.node(child, depth + 1)?;
                         // Default entry options travel as no options, as upstream's addChild records none.
-                        if let (Some(entry), Value::Object(child)) = (entry.filter(|entry| *entry != StackEntry::default()), &mut child) {
+                        if let (Some(entry), Value::Object(child)) = (
+                            entry.filter(|entry| *entry != StackEntry::default()),
+                            &mut child,
+                        ) {
                             let mut e = Map::new();
                             put_opt(&mut e, "basis", &entry.basis);
                             put_opt(&mut e, "grow", &entry.grow);
@@ -1369,11 +1474,19 @@ impl Encoder {
                 put(&mut map, "content", n.content.clone());
                 if self.frontend {
                     if let Some(image) = &n.image {
-                        put(&mut map, "image", serde_json::json!({"ref": image.reference}));
+                        put(
+                            &mut map,
+                            "image",
+                            serde_json::json!({"ref": image.reference}),
+                        );
                         self.add_image(image);
                     }
                     if let Some((value, max)) = n.progress {
-                        put(&mut map, "progress", serde_json::json!({"value": value, "max": max}));
+                        put(
+                            &mut map,
+                            "progress",
+                            serde_json::json!({"value": value, "max": max}),
+                        );
                     }
                     if let Some(list) = &n.list {
                         let items: Vec<Value> = list
@@ -1388,7 +1501,11 @@ impl Encoder {
                             })
                             .collect();
                         let selected = list.selected.map_or(-1, |index| index as i64);
-                        put(&mut map, "list", serde_json::json!({"items": items, "selectedIndex": selected}));
+                        put(
+                            &mut map,
+                            "list",
+                            serde_json::json!({"items": items, "selectedIndex": selected}),
+                        );
                     }
                 }
             }
@@ -1430,7 +1547,11 @@ impl Encoder {
                 }
                 // Upstream's default label travels as none.
                 if n.hidden_thinking_label != "Thinking..." {
-                    put(&mut map, "hiddenThinkingLabel", n.hidden_thinking_label.as_str());
+                    put(
+                        &mut map,
+                        "hiddenThinkingLabel",
+                        n.hidden_thinking_label.as_str(),
+                    );
                 }
                 if n.is_streaming {
                     put(&mut map, "isStreaming", true);
@@ -1484,7 +1605,11 @@ impl Encoder {
         }
         put_nonempty(map, "toolName", &n.tool_name);
         put_nonempty(map, "toolCallId", &n.tool_call_id);
-        let args = if n.args.is_null() { Value::Object(Map::new()) } else { n.args.clone() };
+        let args = if n.args.is_null() {
+            Value::Object(Map::new())
+        } else {
+            n.args.clone()
+        };
         put(map, "args", args);
         if n.tool_definition == ToolDefinition::Empty {
             put(map, "toolDefinition", "empty");
@@ -1584,7 +1709,12 @@ impl Event {
     /// Decodes a `ui.view.event` argument into its overlay key and event.
     /// An unknown type is not an event this SDK can deliver.
     pub(crate) fn from_wire(args: &Value) -> Option<(String, Event)> {
-        let text = |key: &str| args.get(key).and_then(Value::as_str).unwrap_or("").to_string();
+        let text = |key: &str| {
+            args.get(key)
+                .and_then(Value::as_str)
+                .unwrap_or("")
+                .to_string()
+        };
         let kind = match args.get("type").and_then(Value::as_str)? {
             "select" => EventKind::Select,
             "cancel" => EventKind::Cancel,
@@ -1596,14 +1726,25 @@ impl Event {
             "mouse" => EventKind::Mouse,
             _ => return None,
         };
-        let item = args.get("item").filter(|item| item.is_object()).map(|item| {
-            let field = |key: &str| item.get(key).and_then(Value::as_str).unwrap_or("").to_string();
-            SelectItem {
-                value: field("value"),
-                label: field("label"),
-                description: item.get("description").and_then(Value::as_str).map(str::to_string),
-            }
-        });
+        let item = args
+            .get("item")
+            .filter(|item| item.is_object())
+            .map(|item| {
+                let field = |key: &str| {
+                    item.get(key)
+                        .and_then(Value::as_str)
+                        .unwrap_or("")
+                        .to_string()
+                };
+                SelectItem {
+                    value: field("value"),
+                    label: field("label"),
+                    description: item
+                        .get("description")
+                        .and_then(Value::as_str)
+                        .map(str::to_string),
+                }
+            });
         let event = Event {
             node: text("node"),
             kind,
@@ -1635,7 +1776,10 @@ impl ViewLedger {
     /// Applies a state snapshot (ready or `state_update`, both whole
     /// snapshots): `frontend` is true only while a frontend draws.
     pub(crate) fn apply_state(&self, state: &Map<String, Value>) {
-        let frontend = state.get("frontend").and_then(Value::as_bool).unwrap_or(false);
+        let frontend = state
+            .get("frontend")
+            .and_then(Value::as_bool)
+            .unwrap_or(false);
         self.frontend.store(frontend, Ordering::Release);
     }
 
@@ -1646,7 +1790,10 @@ impl ViewLedger {
     /// Whether the frame references an image the host may lack.
     pub(crate) fn has_unsent(&self, encoded: &Encoded) -> bool {
         let sent = self.sent.lock().unwrap();
-        encoded.images.iter().any(|image| !sent.contains(&image.reference))
+        encoded
+            .images
+            .iter()
+            .any(|image| !sent.contains(&image.reference))
     }
 
     /// The wire view: the body with the data of every image not sent on
@@ -1666,33 +1813,42 @@ impl ViewLedger {
                 })
             })
             .collect();
-        if !unsent.is_empty() {
-            if let Value::Object(body) = &mut body {
-                body.insert("images".into(), Value::Array(unsent));
-            }
+        if !unsent.is_empty()
+            && let Value::Object(body) = &mut body
+        {
+            body.insert("images".into(), Value::Array(unsent));
         }
         body
     }
 
     /// Forgets refs the host dropped (`ui.view.evicted`).
     pub(crate) fn forget(&self, refs: &HashSet<String>) {
-        self.sent.lock().unwrap().retain(|reference| !refs.contains(reference));
+        self.sent
+            .lock()
+            .unwrap()
+            .retain(|reference| !refs.contains(reference));
     }
 }
 
 /// A renderer's output: lines, or an authoritative view the host renders.
 pub(crate) enum Rendered {
     Lines(Vec<String>),
-    View(View),
+    View(std::boxed::Box<View>),
 }
 
 impl Rendered {
+    pub(crate) fn view(view: View) -> Self {
+        Rendered::View(std::boxed::Box::new(view))
+    }
+
     /// The wire `RenderResult`: `{lines}`, or `{view}` with lines absent. A
     /// view that cannot be encoded is the renderer's error.
     pub(crate) fn into_result(self, ledger: &ViewLedger) -> Result<Value, String> {
         match self {
             Rendered::Lines(lines) => Ok(serde_json::json!({ "lines": lines })),
-            Rendered::View(view) => Ok(serde_json::json!({ "view": ledger.wire(&ledger.encode(&view)?) })),
+            Rendered::View(view) => {
+                Ok(serde_json::json!({ "view": ledger.wire(&ledger.encode(&view)?) }))
+            }
         }
     }
 }

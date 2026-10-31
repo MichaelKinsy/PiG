@@ -376,7 +376,7 @@ func TestLightPullRequestRunKeepsTheFastGatesUnderTheSameNames(t *testing.T) {
 		gates      []string
 		viaLeaf    map[string]string
 	}{
-		"sdk-vectors-changed": {"ci-toolchains", []string{"test-sdk-go", "test-sdk-rs", "test-sdk-py", "test-sdk-lisp"}, map[string]string{"test-sdk-go": "test-go-modules"}},
+		"sdk-vectors-changed": {"ci-toolchains", []string{"test-sdk-go", "lint-rust", "test-sdk-rs", "test-sdk-py", "test-sdk-lisp"}, map[string]string{"test-sdk-go": "test-go-modules"}},
 	}
 	makeSources := readMakeSources(t, repoRoot(t))
 	leaves := gateLeaves(t)

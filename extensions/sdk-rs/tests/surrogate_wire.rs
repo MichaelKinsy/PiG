@@ -95,7 +95,9 @@ impl Host {
         let runner = thread::spawn(move || ext.run_with_socket(socket.to_str().unwrap()));
         let (stream, _) = listener.accept().unwrap();
         // A missing frame fails the test after 10 s instead of hanging it.
-        stream.set_read_timeout(Some(std::time::Duration::from_secs(10))).unwrap();
+        stream
+            .set_read_timeout(Some(std::time::Duration::from_secs(10)))
+            .unwrap();
         Self {
             stream,
             runner: Some(runner),
@@ -390,22 +392,28 @@ fn no_result_response_omits_result_after_typed_editor_calls() {
 #[test]
 fn run_with_socket_closes_its_connection_while_a_context_is_retained() {
     // A retained runtime process outlives this generation, and the host's Retire waits for the SDK to close its socket; a Context kept in module state must not hold it open (Go's RunWithConn closes on return).
-    isolated("run_with_socket_closes_its_connection_while_a_context_is_retained", || {
-        static KEPT: std::sync::Mutex<Vec<pig_sdk::Context>> = std::sync::Mutex::new(Vec::new());
-        let mut ext = Extension::new("retained-context");
-        ext.tool("keep", "Keep the context", empty_schema(), |ctx, _| {
-            KEPT.lock().unwrap().push(ctx.clone());
-            ToolResult::json(json!({"kept": true}))
-        });
-        let mut host = Host::start(ext);
-        let register: Value = serde_json::from_str(&host.read()).unwrap();
-        assert_eq!(register["type"], "register");
-        host.send(r#"{"type":"ready","ready":{"mode":"tui","state":{"hasUI":true}}}"#);
-        host.request("keep", "tool_call", "keep");
-        host.response("keep", json!({"result": {"kept": true}}));
-        // A socket left open fails the read with a timeout instead of hanging the test.
-        host.stream.set_read_timeout(Some(std::time::Duration::from_secs(5))).unwrap();
-        host.shutdown();
-        assert_eq!(KEPT.lock().unwrap().len(), 1);
-    });
+    isolated(
+        "run_with_socket_closes_its_connection_while_a_context_is_retained",
+        || {
+            static KEPT: std::sync::Mutex<Vec<pig_sdk::Context>> =
+                std::sync::Mutex::new(Vec::new());
+            let mut ext = Extension::new("retained-context");
+            ext.tool("keep", "Keep the context", empty_schema(), |ctx, _| {
+                KEPT.lock().unwrap().push(ctx.clone());
+                ToolResult::json(json!({"kept": true}))
+            });
+            let mut host = Host::start(ext);
+            let register: Value = serde_json::from_str(&host.read()).unwrap();
+            assert_eq!(register["type"], "register");
+            host.send(r#"{"type":"ready","ready":{"mode":"tui","state":{"hasUI":true}}}"#);
+            host.request("keep", "tool_call", "keep");
+            host.response("keep", json!({"result": {"kept": true}}));
+            // A socket left open fails the read with a timeout instead of hanging the test.
+            host.stream
+                .set_read_timeout(Some(std::time::Duration::from_secs(5)))
+                .unwrap();
+            host.shutdown();
+            assert_eq!(KEPT.lock().unwrap().len(), 1);
+        },
+    );
 }

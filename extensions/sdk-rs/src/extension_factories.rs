@@ -3,7 +3,7 @@
 //! Pi's functions return an ExtensionFactory, a function its DefaultResourceLoader runs in its own process. A function cannot cross the process boundary, so these return a reference to the compiled-in extension of that name:
 //! pass it in `DefaultResourceLoaderOptions::extension_factories` and the host runs its own factory of that name, with the same options, for the extensions the loader loads.
 
-use serde_json::{json, Map, Value};
+use serde_json::{Map, Value, json};
 
 /// A factory of an inline extension. Not supported: it would run in this process but the child session's extensions load in the host.
 pub type InlineExtensionFactory = Box<dyn Fn(&mut crate::Extension) + Send + Sync>;
@@ -11,7 +11,11 @@ pub type InlineExtensionFactory = Box<dyn Fn(&mut crate::Extension) + Send + Syn
 /// An entry of `DefaultResourceLoaderOptions::extension_factories`: a reference to a compiled-in extension of the host (what the `create_*_extension` functions return), or an inline function of this process, which the loader refuses.
 pub enum ExtensionFactory {
     /// `mcp` holds the function options of `create_mcp_extension`, which are named to the host when a loader is built.
-    Builtin { name: &'static str, options: Value, mcp: Option<crate::mcp_options::McpFunctionOptions> },
+    Builtin {
+        name: &'static str,
+        options: Value,
+        mcp: Option<crate::mcp_options::McpFunctionOptions>,
+    },
     Inline(InlineExtensionFactory),
 }
 
@@ -38,12 +42,20 @@ pub fn create_codemode_extension(options: CodemodeExtensionOptions) -> Extension
     if let Some(models) = options.models {
         wire.insert("models".into(), json!(models));
     }
-    ExtensionFactory::Builtin { name: "codemode", options: Value::Object(wire), mcp: None }
+    ExtensionFactory::Builtin {
+        name: "codemode",
+        options: Value::Object(wire),
+        mcp: None,
+    }
 }
 
 /// `createToolSearchExtension()`: the `tool_search` tool, registered inactive.
 pub fn create_tool_search_extension() -> ExtensionFactory {
-    ExtensionFactory::Builtin { name: "tool-search", options: json!({}), mcp: None }
+    ExtensionFactory::Builtin {
+        name: "tool-search",
+        options: json!({}),
+        mcp: None,
+    }
 }
 
 /// Pi's `McpExtensionOptions`. `None` is Pi's undefined. The functions run in this process (see [`crate::mcp_options`]).
@@ -74,6 +86,16 @@ pub fn create_mcp_extension(options: McpExtensionOptions) -> ExtensionFactory {
     if let Some(wait) = options.startup_wait_ms {
         wire.insert("startupWaitMs".into(), json!(wait));
     }
-    let functions = crate::mcp_options::McpFunctionOptions { load_config: options.load_config, create_transport: options.create_transport, credentials: options.credentials, open_url: options.open_url, update_config: options.update_config };
-    ExtensionFactory::Builtin { name: "mcp", options: Value::Object(wire), mcp: (!functions.is_empty()).then_some(functions) }
+    let functions = crate::mcp_options::McpFunctionOptions {
+        load_config: options.load_config,
+        create_transport: options.create_transport,
+        credentials: options.credentials,
+        open_url: options.open_url,
+        update_config: options.update_config,
+    };
+    ExtensionFactory::Builtin {
+        name: "mcp",
+        options: Value::Object(wire),
+        mcp: (!functions.is_empty()).then_some(functions),
+    }
 }

@@ -10,13 +10,16 @@ use serde_json::{Map, Number, Value, json};
 use std::collections::BTreeMap;
 use std::sync::Arc;
 
+type RefineCheck = Arc<dyn Fn(&Value) -> Result<bool, String> + Send + Sync>;
+pub(crate) type RefineError = dyn Fn(&Value) -> Result<String, String> + Send + Sync;
+
 /// One entry of a schema's hidden `~refine` list (TypeBox's `{check, error}`): `check` decides whether a value passes and `error` words the failure (`None` is TypeBox's
 /// "Refine Error"). Pi runs them while it validates a tool call's arguments; an extension tool's refinements run in this process when the host asks for them. An `Err` is what a
 /// thrown JavaScript error is: it ends the validation and the tool call fails with its message.
 #[derive(Clone)]
 pub struct Refinement {
-    pub check: Arc<dyn Fn(&Value) -> Result<bool, String> + Send + Sync>,
-    pub error: Option<Arc<dyn Fn(&Value) -> Result<String, String> + Send + Sync>>,
+    pub check: RefineCheck,
+    pub error: Option<Arc<RefineError>>,
 }
 
 impl std::fmt::Debug for Refinement {
@@ -61,7 +64,13 @@ impl BigInt {
         }
         let trimmed = magnitude.trim_start_matches('0');
         let trimmed = if trimmed.is_empty() { "0" } else { trimmed };
-        Ok(BigInt { digits: if negative && trimmed != "0" { format!("-{trimmed}") } else { trimmed.to_string() } })
+        Ok(BigInt {
+            digits: if negative && trimmed != "0" {
+                format!("-{trimmed}")
+            } else {
+                trimmed.to_string()
+            },
+        })
     }
 
     /// The decimal digits, with a leading `-` for a negative bigint.
@@ -77,17 +86,23 @@ impl std::fmt::Display for BigInt {
 }
 impl From<i64> for BigInt {
     fn from(number: i64) -> Self {
-        BigInt { digits: number.to_string() }
+        BigInt {
+            digits: number.to_string(),
+        }
     }
 }
 impl From<i128> for BigInt {
     fn from(number: i128) -> Self {
-        BigInt { digits: number.to_string() }
+        BigInt {
+            digits: number.to_string(),
+        }
     }
 }
 impl From<u64> for BigInt {
     fn from(number: u64) -> Self {
-        BigInt { digits: number.to_string() }
+        BigInt {
+            digits: number.to_string(),
+        }
     }
 }
 
@@ -136,7 +151,8 @@ impl TValue {
     /// The member as JSON: the enumerable members of a schema, nested, in order. A [`BigInt`] has no JSON form: this is `JSON.stringify` of it, which throws "Do not know how to
     /// serialize a BigInt", so it panics with that message ([`TValue::try_to_value`] returns it as an error).
     pub fn to_value(&self) -> Value {
-        self.try_to_value().unwrap_or_else(|message| panic!("{message}"))
+        self.try_to_value()
+            .unwrap_or_else(|message| panic!("{message}"))
     }
 
     /// The member as JSON, or the message `JSON.stringify` throws when a [`BigInt`] is inside it.
@@ -144,8 +160,18 @@ impl TValue {
         Ok(match self {
             TValue::Json(value) => value.clone(),
             TValue::Schema(schema) => schema.try_to_value()?,
-            TValue::List(items) => Value::Array(items.iter().map(TValue::try_to_value).collect::<Result<_, _>>()?),
-            TValue::Object(pairs) => Value::Object(pairs.iter().map(|(key, value)| Ok((key.clone(), value.try_to_value()?))).collect::<Result<_, String>>()?),
+            TValue::List(items) => Value::Array(
+                items
+                    .iter()
+                    .map(TValue::try_to_value)
+                    .collect::<Result<_, _>>()?,
+            ),
+            TValue::Object(pairs) => Value::Object(
+                pairs
+                    .iter()
+                    .map(|(key, value)| Ok((key.clone(), value.try_to_value()?)))
+                    .collect::<Result<_, String>>()?,
+            ),
             TValue::BigInt(_) => return Err(BIGINT_STRINGIFY_ERROR.to_string()),
         })
     }
@@ -160,9 +186,18 @@ impl TValue {
 
     pub(crate) fn member(&self, name: &str) -> Option<TValue> {
         match self {
-            TValue::Schema(schema) => schema.hidden.get(name).map(|value| TValue::Json(value.clone())).or_else(|| schema.get(name).cloned()),
-            TValue::Json(Value::Object(map)) => map.get(name).map(|value| TValue::Json(value.clone())),
-            TValue::Object(pairs) => pairs.iter().find(|(key, _)| key == name).map(|(_, value)| value.clone()),
+            TValue::Schema(schema) => schema
+                .hidden
+                .get(name)
+                .map(|value| TValue::Json(value.clone()))
+                .or_else(|| schema.get(name).cloned()),
+            TValue::Json(Value::Object(map)) => {
+                map.get(name).map(|value| TValue::Json(value.clone()))
+            }
+            TValue::Object(pairs) => pairs
+                .iter()
+                .find(|(key, _)| key == name)
+                .map(|(_, value)| value.clone()),
             _ => None,
         }
     }
@@ -181,7 +216,9 @@ pub struct TSchema {
 
 impl Serialize for TSchema {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        self.try_to_value().map_err(serde::ser::Error::custom)?.serialize(serializer)
+        self.try_to_value()
+            .map_err(serde::ser::Error::custom)?
+            .serialize(serializer)
     }
 }
 
@@ -189,15 +226,26 @@ impl TSchema {
     /// The enumerable members as a JSON object, in order, with every nested schema as JSON too. Panics, as `JSON.stringify` throws, when a [`BigInt`] is a member
     /// ([`TSchema::try_to_value`] returns the message as an error).
     pub fn to_value(&self) -> Value {
-        self.try_to_value().unwrap_or_else(|message| panic!("{message}"))
+        self.try_to_value()
+            .unwrap_or_else(|message| panic!("{message}"))
     }
 
     /// The enumerable members as JSON, or "Do not know how to serialize a BigInt" when a [`BigInt`] is a member, as `JSON.stringify` throws.
     pub fn try_to_value(&self) -> Result<Value, String> {
         if let Some(items) = &self.items {
-            return Ok(Value::Array(items.iter().map(TValue::try_to_value).collect::<Result<_, _>>()?));
+            return Ok(Value::Array(
+                items
+                    .iter()
+                    .map(TValue::try_to_value)
+                    .collect::<Result<_, _>>()?,
+            ));
         }
-        Ok(Value::Object(self.fields.iter().map(|(key, value)| Ok((key.clone(), value.try_to_value()?))).collect::<Result<_, String>>()?))
+        Ok(Value::Object(
+            self.fields
+                .iter()
+                .map(|(key, value)| Ok((key.clone(), value.try_to_value()?)))
+                .collect::<Result<_, String>>()?,
+        ))
     }
 
     /// The schema as the host validates arguments with it: the JSON with TypeBox's `~kind` appended to every node that has one (the Node runtime sends the same form as
@@ -207,7 +255,12 @@ impl TSchema {
             match value {
                 TValue::Schema(schema) => schema.to_validation_value(),
                 TValue::List(items) => Value::Array(items.iter().map(convert).collect()),
-                TValue::Object(pairs) => Value::Object(pairs.iter().map(|(key, member)| (key.clone(), convert(member))).collect()),
+                TValue::Object(pairs) => Value::Object(
+                    pairs
+                        .iter()
+                        .map(|(key, member)| (key.clone(), convert(member)))
+                        .collect(),
+                ),
                 TValue::Json(value) => value.clone(),
                 TValue::BigInt(_) => panic!("{BIGINT_STRINGIFY_ERROR}"),
             }
@@ -215,7 +268,11 @@ impl TSchema {
         if let Some(items) = &self.items {
             return Value::Array(items.iter().map(convert).collect());
         }
-        let mut object: Map<String, Value> = self.fields.iter().map(|(key, value)| (key.clone(), convert(value))).collect();
+        let mut object: Map<String, Value> = self
+            .fields
+            .iter()
+            .map(|(key, value)| (key.clone(), convert(value)))
+            .collect();
         if let Some(kind) = self.hidden.get("~kind") {
             object.insert("~kind".into(), kind.clone());
         }
@@ -226,7 +283,8 @@ impl TSchema {
     /// number formatter, and only the escapes JSON.stringify writes.
     /// Panics with "Do not know how to serialize a BigInt" when a [`BigInt`] is a member, as `JSON.stringify` throws ([`TSchema::try_to_json`] returns the message as an error).
     pub fn to_json(&self) -> String {
-        self.try_to_json().unwrap_or_else(|message| panic!("{message}"))
+        self.try_to_json()
+            .unwrap_or_else(|message| panic!("{message}"))
     }
 
     /// [`TSchema::to_json`], with the message of the throw as the error.
@@ -238,7 +296,10 @@ impl TSchema {
 
     /// The enumerable member `key`.
     pub fn get(&self, key: &str) -> Option<&TValue> {
-        self.fields.iter().find(|(name, _)| name == key).map(|(_, value)| value)
+        self.fields
+            .iter()
+            .find(|(name, _)| name == key)
+            .map(|(_, value)| value)
     }
 
     /// The enumerable keys in order.
@@ -266,7 +327,13 @@ impl TSchema {
                 TValue::Json(_) | TValue::BigInt(_) => 0,
             }
         }
-        self.refine.len() + self.fields.iter().map(|(_, value)| count_value(value)).sum::<usize>() + self.items.iter().flatten().map(count_value).sum::<usize>()
+        self.refine.len()
+            + self
+                .fields
+                .iter()
+                .map(|(_, value)| count_value(value))
+                .sum::<usize>()
+            + self.items.iter().flatten().map(count_value).sum::<usize>()
     }
 
     /// The nodes of the schema that carry refinements, in the order they are found, with the path of each.
@@ -283,7 +350,10 @@ impl TSchema {
 
     /// The value of `~kind`, or "" for a value without one.
     pub fn kind(&self) -> &str {
-        self.hidden.get("~kind").and_then(Value::as_str).unwrap_or("")
+        self.hidden
+            .get("~kind")
+            .and_then(Value::as_str)
+            .unwrap_or("")
     }
 }
 
@@ -324,10 +394,16 @@ fn write_js_json(value: &Value, out: &mut String) {
 
 /// An array index a JavaScript object orders before every other key, ascending.
 fn index_key(key: &str) -> Option<u64> {
-    if key.is_empty() || key.len() > 10 || !key.bytes().all(|byte| byte.is_ascii_digit()) || (key.len() > 1 && key.starts_with('0')) {
+    if key.is_empty()
+        || key.len() > 10
+        || !key.bytes().all(|byte| byte.is_ascii_digit())
+        || (key.len() > 1 && key.starts_with('0'))
+    {
         return None;
     }
-    key.parse::<u64>().ok().filter(|number| *number < (1 << 32) - 1)
+    key.parse::<u64>()
+        .ok()
+        .filter(|number| *number < (1 << 32) - 1)
 }
 
 fn js_order(mut pairs: Vec<(String, TValue)>) -> Vec<(String, TValue)> {
@@ -346,7 +422,11 @@ fn set(pairs: &mut Vec<(String, TValue)>, key: &str, value: TValue) {
 }
 
 /// TypeBox's `Memory.Create(hidden, enumerable, options)`: `{...enumerable, ...options}` with the hidden members attached.
-fn create(kind: &str, enumerable: Vec<(&str, TValue)>, options: Option<&Map<String, Value>>) -> TSchema {
+fn create(
+    kind: &str,
+    enumerable: Vec<(&str, TValue)>,
+    options: Option<&Map<String, Value>>,
+) -> TSchema {
     let mut fields: Vec<(String, TValue)> = Vec::new();
     for (key, value) in enumerable {
         set(&mut fields, key, value);
@@ -354,14 +434,25 @@ fn create(kind: &str, enumerable: Vec<(&str, TValue)>, options: Option<&Map<Stri
     for (key, value) in options.into_iter().flatten() {
         set(&mut fields, key, TValue::Json(value.clone()));
     }
-    TSchema { fields: js_order(fields), hidden: BTreeMap::from([("~kind".to_string(), json!(kind))]), items: None, refine: Vec::new() }
+    TSchema {
+        fields: js_order(fields),
+        hidden: BTreeMap::from([("~kind".to_string(), json!(kind))]),
+        items: None,
+        refine: Vec::new(),
+    }
 }
 
 /// TypeBox's `Memory.Update`: a copy of `current` with the hidden members set and the enumerable ones assigned (replaced in place, or appended).
-fn update(current: &TValue, hidden: &[(&str, Value)], enumerable: Option<&Map<String, Value>>) -> Result<TSchema, String> {
+fn update(
+    current: &TValue,
+    hidden: &[(&str, Value)],
+    enumerable: Option<&Map<String, Value>>,
+) -> Result<TSchema, String> {
     if let Some(items) = match current {
         TValue::List(items) => Some(items.clone()),
-        TValue::Json(Value::Array(items)) => Some(items.iter().cloned().map(TValue::Json).collect()),
+        TValue::Json(Value::Array(items)) => {
+            Some(items.iter().cloned().map(TValue::Json).collect())
+        }
         TValue::Schema(schema) if schema.items.is_some() => schema.items.clone(),
         _ => None,
     } {
@@ -372,7 +463,12 @@ fn update(current: &TValue, hidden: &[(&str, Value)], enumerable: Option<&Map<St
         for (name, value) in hidden.iter().filter(|(name, _)| *name == "~unsafe") {
             kept.insert((*name).to_string(), value.clone());
         }
-        return Ok(TSchema { fields: Vec::new(), hidden: kept, items: Some(items), refine: Vec::new() });
+        return Ok(TSchema {
+            fields: Vec::new(),
+            hidden: kept,
+            items: Some(items),
+            refine: Vec::new(),
+        });
     }
     let refine = match current {
         TValue::Schema(schema) => schema.refine.clone(),
@@ -380,7 +476,12 @@ fn update(current: &TValue, hidden: &[(&str, Value)], enumerable: Option<&Map<St
     };
     let (mut fields, mut kept) = match current {
         TValue::Schema(schema) => (schema.fields.clone(), schema.hidden.clone()),
-        TValue::Json(Value::Object(map)) => (map.iter().map(|(key, value)| (key.clone(), TValue::Json(value.clone()))).collect(), BTreeMap::new()),
+        TValue::Json(Value::Object(map)) => (
+            map.iter()
+                .map(|(key, value)| (key.clone(), TValue::Json(value.clone())))
+                .collect(),
+            BTreeMap::new(),
+        ),
         TValue::Object(pairs) => (pairs.clone(), BTreeMap::new()),
         _ => return Err("TypeError: a schema is an object".to_string()),
     };
@@ -390,13 +491,21 @@ fn update(current: &TValue, hidden: &[(&str, Value)], enumerable: Option<&Map<St
     for (key, value) in enumerable.into_iter().flatten() {
         set(&mut fields, key, TValue::Json(value.clone()));
     }
-    Ok(TSchema { fields: js_order(fields), hidden: kept, items: None, refine })
+    Ok(TSchema {
+        fields: js_order(fields),
+        hidden: kept,
+        items: None,
+        refine,
+    })
 }
 
 fn mark(mut schema: TSchema, name: &str) -> TSchema {
     if schema.items.is_some() {
         // A list schema loses the marker to the second clone TypeBox makes (see `update`).
-        schema.hidden = BTreeMap::from([("length".to_string(), json!(schema.items.as_ref().map_or(0, Vec::len)))]);
+        schema.hidden = BTreeMap::from([(
+            "length".to_string(),
+            json!(schema.items.as_ref().map_or(0, Vec::len)),
+        )]);
         return schema;
     }
     schema.hidden.insert(name.to_string(), json!(true));
@@ -411,7 +520,10 @@ fn mark_value(value: TValue, name: &str) -> Result<TSchema, String> {
 }
 
 fn is_schema(value: &TValue) -> bool {
-    !matches!(value, TValue::Json(Value::Null | Value::Bool(_) | Value::Number(_) | Value::String(_)))
+    !matches!(
+        value,
+        TValue::Json(Value::Null | Value::Bool(_) | Value::Number(_) | Value::String(_))
+    )
 }
 
 /// A JavaScript number as the JSON value it writes: an integral number is an integer (`2.0` is `2`).
@@ -437,8 +549,17 @@ fn is_nan_string(key: &str) -> bool {
         return false;
     }
     let unsigned = trimmed.strip_prefix(['+', '-']).unwrap_or(trimmed);
-    let radix = |prefixes: [&str; 2], radix: u32| prefixes.iter().find_map(|prefix| trimmed.strip_prefix(prefix)).is_some_and(|digits| !digits.is_empty() && digits.chars().all(|c| c.is_digit(radix)));
-    if radix(["0x", "0X"], 16) || radix(["0o", "0O"], 8) || radix(["0b", "0B"], 2) || unsigned == "Infinity" {
+    let radix = |prefixes: [&str; 2], radix: u32| {
+        prefixes
+            .iter()
+            .find_map(|prefix| trimmed.strip_prefix(prefix))
+            .is_some_and(|digits| !digits.is_empty() && digits.chars().all(|c| c.is_digit(radix)))
+    };
+    if radix(["0x", "0X"], 16)
+        || radix(["0o", "0O"], 8)
+        || radix(["0b", "0B"], 2)
+        || unsigned == "Infinity"
+    {
         return false;
     }
     let (mantissa, exponent) = match unsigned.find(['e', 'E']) {
@@ -447,7 +568,9 @@ fn is_nan_string(key: &str) -> bool {
     };
     let digits_ok = |text: &str| text.bytes().all(|byte| byte.is_ascii_digit());
     let mantissa_ok = match mantissa.split_once('.') {
-        Some((whole, fraction)) => digits_ok(whole) && digits_ok(fraction) && !(whole.is_empty() && fraction.is_empty()),
+        Some((whole, fraction)) => {
+            digits_ok(whole) && digits_ok(fraction) && !(whole.is_empty() && fraction.is_empty())
+        }
         None => !mantissa.is_empty() && digits_ok(mantissa),
     };
     let exponent_ok = exponent.is_none_or(|text| {
@@ -458,16 +581,49 @@ fn is_nan_string(key: &str) -> bool {
 }
 
 fn create_record(pattern: &str, value: TValue) -> TSchema {
-    create("Record", vec![("type", "object".into()), ("patternProperties", TValue::Object(vec![(pattern.to_string(), value)]))], None)
+    create(
+        "Record",
+        vec![
+            ("type", "object".into()),
+            (
+                "patternProperties",
+                TValue::Object(vec![(pattern.to_string(), value)]),
+            ),
+        ],
+        None,
+    )
 }
 
-fn deferred(action: &str, parameters: Vec<TValue>, options: Option<&Map<String, Value>>) -> TSchema {
-    let options = TValue::Object(options.map(|map| map.iter().map(|(key, value)| (key.clone(), TValue::Json(value.clone()))).collect()).unwrap_or_default());
-    create("Deferred", vec![("type", "deferred".into()), ("action", action.into()), ("parameters", TValue::List(parameters)), ("options", options)], None)
+fn deferred(
+    action: &str,
+    parameters: Vec<TValue>,
+    options: Option<&Map<String, Value>>,
+) -> TSchema {
+    let options = TValue::Object(
+        options
+            .map(|map| {
+                map.iter()
+                    .map(|(key, value)| (key.clone(), TValue::Json(value.clone())))
+                    .collect()
+            })
+            .unwrap_or_default(),
+    );
+    create(
+        "Deferred",
+        vec![
+            ("type", "deferred".into()),
+            ("action", action.into()),
+            ("parameters", TValue::List(parameters)),
+            ("options", options),
+        ],
+        None,
+    )
 }
 
 fn flatten_union(any_of: Option<TValue>) -> Vec<TValue> {
-    let Some(TValue::List(members)) = any_of else { return Vec::new() };
+    let Some(TValue::List(members)) = any_of else {
+        return Vec::new();
+    };
     let mut out = Vec::new();
     for member in members {
         if Type::is_union(member.clone()) {
@@ -479,8 +635,27 @@ fn flatten_union(any_of: Option<TValue>) -> Vec<TValue> {
     out
 }
 
-const KEYWORDS_WITH_CHILD: [&str; 11] = ["additionalProperties", "additionalItems", "contains", "propertyNames", "not", "if", "then", "else", "items", "unevaluatedItems", "unevaluatedProperties"];
-const KEYWORDS_WITH_MEMBERS: [&str; 6] = ["properties", "patternProperties", "dependentSchemas", "dependencies", "$defs", "definitions"];
+const KEYWORDS_WITH_CHILD: [&str; 11] = [
+    "additionalProperties",
+    "additionalItems",
+    "contains",
+    "propertyNames",
+    "not",
+    "if",
+    "then",
+    "else",
+    "items",
+    "unevaluatedItems",
+    "unevaluatedProperties",
+];
+const KEYWORDS_WITH_MEMBERS: [&str; 6] = [
+    "properties",
+    "patternProperties",
+    "dependentSchemas",
+    "dependencies",
+    "$defs",
+    "definitions",
+];
 const KEYWORDS_WITH_LIST: [&str; 5] = ["allOf", "anyOf", "oneOf", "prefixItems", "items"];
 
 fn pointer_segment(key: &str) -> String {
@@ -489,7 +664,10 @@ fn pointer_segment(key: &str) -> String {
 
 fn visit_refinements(schema: &TSchema, path: &str, sites: &mut Vec<RefinementSite>) {
     if !schema.refine.is_empty() {
-        sites.push(RefinementSite { path: path.to_string(), refinements: schema.refine.clone() });
+        sites.push(RefinementSite {
+            path: path.to_string(),
+            refinements: schema.refine.clone(),
+        });
     }
     for (key, value) in &schema.fields {
         let key = key.as_str();
@@ -497,7 +675,11 @@ fn visit_refinements(schema: &TSchema, path: &str, sites: &mut Vec<RefinementSit
             TValue::Object(members) if KEYWORDS_WITH_MEMBERS.contains(&key) => {
                 for (name, member) in members {
                     if let TValue::Schema(child) = member {
-                        visit_refinements(child, &format!("{path}/{key}/{}", pointer_segment(name)), sites);
+                        visit_refinements(
+                            child,
+                            &format!("{path}/{key}/{}", pointer_segment(name)),
+                            sites,
+                        );
                     }
                 }
             }
@@ -508,7 +690,9 @@ fn visit_refinements(schema: &TSchema, path: &str, sites: &mut Vec<RefinementSit
                     }
                 }
             }
-            TValue::Schema(child) if KEYWORDS_WITH_CHILD.contains(&key) => visit_refinements(child, &format!("{path}/{key}"), sites),
+            TValue::Schema(child) if KEYWORDS_WITH_CHILD.contains(&key) => {
+                visit_refinements(child, &format!("{path}/{key}"), sites)
+            }
             _ => {}
         }
     }
@@ -579,7 +763,10 @@ impl Type {
 
     pub fn is_kind(value: impl Into<TValue>, kind: &str) -> bool {
         let value = value.into();
-        is_schema(&value) && value.member("~kind").is_some_and(|have| have == TValue::Json(json!(kind)))
+        is_schema(&value)
+            && value
+                .member("~kind")
+                .is_some_and(|have| have == TValue::Json(json!(kind)))
     }
 
     pub fn is_optional(value: impl Into<TValue>) -> bool {
@@ -600,7 +787,9 @@ impl Type {
     /// An object (not a list) whose `~unsafe` is null.
     pub fn is_unsafe(value: impl Into<TValue>) -> bool {
         let value = value.into();
-        !matches!(&value, TValue::List(_) | TValue::Json(Value::Array(_))) && !matches!(&value, TValue::Schema(schema) if schema.items.is_some()) && value.member("~unsafe") == Some(TValue::Json(Value::Null))
+        !matches!(&value, TValue::List(_) | TValue::Json(Value::Array(_)))
+            && !matches!(&value, TValue::Schema(schema) if schema.items.is_some())
+            && value.member("~unsafe") == Some(TValue::Json(Value::Null))
     }
 
     /// A string or a finite number.
@@ -649,24 +838,55 @@ impl Type {
         create("Ref", vec![("$ref", reference.into())], options)
     }
     pub fn array(items: impl Into<TValue>, options: Options) -> TSchema {
-        create("Array", vec![("type", "array".into()), ("items", items.into())], options)
+        create(
+            "Array",
+            vec![("type", "array".into()), ("items", items.into())],
+            options,
+        )
     }
-    pub fn union<T: Into<TValue>>(any_of: impl IntoIterator<Item = T>, options: Options) -> TSchema {
-        create("Union", vec![("anyOf", TValue::List(any_of.into_iter().map(Into::into).collect()))], options)
+    pub fn union<T: Into<TValue>>(
+        any_of: impl IntoIterator<Item = T>,
+        options: Options,
+    ) -> TSchema {
+        create(
+            "Union",
+            vec![(
+                "anyOf",
+                TValue::List(any_of.into_iter().map(Into::into).collect()),
+            )],
+            options,
+        )
     }
-    pub fn intersect<T: Into<TValue>>(types: impl IntoIterator<Item = T>, options: Options) -> TSchema {
-        create("Intersect", vec![("allOf", TValue::List(types.into_iter().map(Into::into).collect()))], options)
+    pub fn intersect<T: Into<TValue>>(
+        types: impl IntoIterator<Item = T>,
+        options: Options,
+    ) -> TSchema {
+        create(
+            "Intersect",
+            vec![(
+                "allOf",
+                TValue::List(types.into_iter().map(Into::into).collect()),
+            )],
+            options,
+        )
     }
 
     /// `Type.Object(properties, options)`: `required` lists, in the key order, the properties that are not `~optional` and is left out when there are none. Keys that are array
     /// indexes come first and ascending, as in a JavaScript object.
-    pub fn object<K: Into<String>, V: Into<TValue>>(properties: impl IntoIterator<Item = (K, V)>, options: Options) -> TSchema {
+    pub fn object<K: Into<String>, V: Into<TValue>>(
+        properties: impl IntoIterator<Item = (K, V)>,
+        options: Options,
+    ) -> TSchema {
         let mut pairs: Vec<(String, TValue)> = Vec::new();
         for (key, value) in properties {
             set(&mut pairs, &key.into(), value.into());
         }
         let properties = js_order(pairs);
-        let required: Vec<TValue> = properties.iter().filter(|(_, value)| !Type::is_optional(value.clone())).map(|(key, _)| TValue::Json(json!(key))).collect();
+        let required: Vec<TValue> = properties
+            .iter()
+            .filter(|(_, value)| !Type::is_optional(value.clone()))
+            .map(|(key, _)| TValue::Json(json!(key)))
+            .collect();
         let mut enumerable: Vec<(&str, TValue)> = vec![("type", "object".into())];
         if !required.is_empty() {
             enumerable.push(("required", TValue::List(required)));
@@ -693,10 +913,13 @@ impl Type {
     pub fn refine(
         schema: impl Into<TSchema>,
         check: impl Fn(&Value) -> Result<bool, String> + Send + Sync + 'static,
-        error: Option<Box<dyn Fn(&Value) -> Result<String, String> + Send + Sync>>,
+        error: Option<Box<RefineError>>,
     ) -> TSchema {
         let mut schema: TSchema = schema.into();
-        schema.refine.push(Refinement { check: Arc::new(check), error: error.map(|error| Arc::from(error) as Arc<dyn Fn(&Value) -> Result<String, String> + Send + Sync>) });
+        schema.refine.push(Refinement {
+            check: Arc::new(check),
+            error: error.map(|error| Arc::from(error) as Arc<RefineError>),
+        });
         schema
     }
 
@@ -704,13 +927,16 @@ impl Type {
     pub fn refine_value(
         value: impl Into<TValue>,
         check: impl Fn(&Value) -> Result<bool, String> + Send + Sync + 'static,
-        error: Option<Box<dyn Fn(&Value) -> Result<String, String> + Send + Sync>>,
+        error: Option<Box<RefineError>>,
     ) -> Result<TSchema, String> {
         let mut schema = match value.into() {
             TValue::Schema(schema) => schema,
             other => update(&other, &[], None)?,
         };
-        schema.refine.push(Refinement { check: Arc::new(check), error: error.map(|error| Arc::from(error) as Arc<dyn Fn(&Value) -> Result<String, String> + Send + Sync>) });
+        schema.refine.push(Refinement {
+            check: Arc::new(check),
+            error: error.map(|error| Arc::from(error) as Arc<RefineError>),
+        });
         Ok(schema)
     }
 
@@ -740,7 +966,9 @@ impl Type {
     pub fn with(schema: impl Into<TValue>, options: Options) -> Result<TSchema, String> {
         let schema = schema.into();
         if Type::is_ref(schema.clone()) {
-            let options_value = options.map_or(TValue::Json(Value::Null), |map| TValue::Json(Value::Object(map.clone())));
+            let options_value = options.map_or(TValue::Json(Value::Null), |map| {
+                TValue::Json(Value::Object(map.clone()))
+            });
             return Ok(deferred("With", vec![schema, options_value], None));
         }
         update(&schema, &[], options)
@@ -752,11 +980,17 @@ impl Type {
         let (name, constant) = match value.into() {
             LiteralValue::String(text) => ("string", TValue::Json(json!(text))),
             LiteralValue::Bool(flag) => ("boolean", TValue::Json(json!(flag))),
-            LiteralValue::Number(number) if number.is_finite() => ("number", TValue::Json(js_number(number))),
+            LiteralValue::Number(number) if number.is_finite() => {
+                ("number", TValue::Json(js_number(number)))
+            }
             LiteralValue::Number(_) => return Err("Invalid Literal value".to_string()),
             LiteralValue::BigInt(value) => ("bigint", TValue::BigInt(value)),
         };
-        Ok(create("Literal", vec![("type", name.into()), ("const", constant)], options))
+        Ok(create(
+            "Literal",
+            vec![("type", name.into()), ("const", constant)],
+            options,
+        ))
     }
 
     /// `Type.Enum(value, options)`: `{"enum": values}`. `value` is a JSON array of values, or an object in the manner of a TypeScript enum, whose values for the keys that are not
@@ -765,18 +999,33 @@ impl Type {
         let values: Vec<TValue> = match value {
             Value::Array(items) => items.iter().cloned().map(TValue::Json).collect(),
             Value::Object(map) => {
-                let pairs: Vec<(String, TValue)> = map.iter().map(|(key, value)| (key.clone(), TValue::Json(value.clone()))).collect();
-                js_order(pairs).into_iter().filter(|(key, _)| is_nan_string(key)).map(|(_, value)| value).collect()
+                let pairs: Vec<(String, TValue)> = map
+                    .iter()
+                    .map(|(key, value)| (key.clone(), TValue::Json(value.clone())))
+                    .collect();
+                js_order(pairs)
+                    .into_iter()
+                    .filter(|(key, _)| is_nan_string(key))
+                    .map(|(_, value)| value)
+                    .collect()
             }
             _ => return Err("Type.enum_ takes an array or an object".to_string()),
         };
-        Ok(create("Enum", vec![("enum", TValue::List(values))], options))
+        Ok(create(
+            "Enum",
+            vec![("enum", TValue::List(values))],
+            options,
+        ))
     }
 
     /// `Type.Record(key, value, options)`: for a string, number or integer key `{"type":"object","patternProperties":{<pattern>: value}}`; for a literal, boolean or
     /// union-of-literals key the object with those properties. A key Pi evaluates through a part of TypeBox this SDK has not ported (an enum, an intersection or a template
     /// literal) is evaluated by the host's type engine.
-    pub fn record(key: impl Into<TValue>, value: impl Into<TValue>, options: Options) -> Result<TSchema, String> {
+    pub fn record(
+        key: impl Into<TValue>,
+        value: impl Into<TValue>,
+        options: Options,
+    ) -> Result<TSchema, String> {
         let (key, value) = (key.into(), value.into());
         if Type::is_ref(key.clone()) {
             return Ok(deferred("Record", vec![key, value], options));
@@ -803,7 +1052,14 @@ guards!(
 
 /// The value an Extends answer is: `{inferred}` with the hidden kind (see `ExtendsResult`).
 pub(crate) fn outcome(kind: &str, inferred: Option<TValue>) -> TSchema {
-    create(kind, inferred.into_iter().map(|inferred| ("inferred", inferred)).collect(), None)
+    create(
+        kind,
+        inferred
+            .into_iter()
+            .map(|inferred| ("inferred", inferred))
+            .collect(),
+        None,
+    )
 }
 
 fn literal_number(constant: &TValue) -> Option<f64> {
@@ -818,14 +1074,24 @@ fn record_from_key(key: &TValue, value: TValue) -> Result<TSchema, String> {
         return Ok(create_record(STRING_KEY, value));
     }
     if Type::is_boolean(key.clone()) {
-        return Ok(Type::object([("true", value.clone()), ("false", value)], None));
+        return Ok(Type::object(
+            [("true", value.clone()), ("false", value)],
+            None,
+        ));
     }
-    if Type::is_enum(key.clone()) || Type::is_intersect(key.clone()) || Type::is_kind(key.clone(), "TemplateLiteral") {
+    if Type::is_enum(key.clone())
+        || Type::is_intersect(key.clone())
+        || Type::is_kind(key.clone(), "TemplateLiteral")
+    {
         // The key kinds TypeBox evaluates with its type engine, which the host runs.
-        return crate::type_engine::engine_call("Record", vec![key.clone(), value]).and_then(|schema| match schema {
-            TValue::Schema(schema) => Ok(schema),
-            other => Err(format!("TypeError: the engine answered {other:?}, not a schema")),
-        });
+        return crate::type_engine::engine_call("Record", vec![key.clone(), value]).and_then(
+            |schema| match schema {
+                TValue::Schema(schema) => Ok(schema),
+                other => Err(format!(
+                    "TypeError: the engine answered {other:?}, not a schema"
+                )),
+            },
+        );
     }
     if Type::is_integer(key.clone()) {
         return Ok(create_record(INTEGER_KEY, value));
@@ -834,7 +1100,9 @@ fn record_from_key(key: &TValue, value: TValue) -> Result<TSchema, String> {
         let constant = key.member("const");
         return Ok(match &constant {
             Some(TValue::Json(Value::String(text))) => Type::object([(text.clone(), value)], None),
-            Some(TValue::Json(Value::Bool(flag))) => Type::object([(flag.to_string(), value)], None),
+            Some(TValue::Json(Value::Bool(flag))) => {
+                Type::object([(flag.to_string(), value)], None)
+            }
             Some(other) => match literal_number(other) {
                 Some(number) => Type::object([(js_number_key(number), value)], None),
                 None => Type::object(Vec::<(String, TValue)>::new(), None),
@@ -847,7 +1115,11 @@ fn record_from_key(key: &TValue, value: TValue) -> Result<TSchema, String> {
     }
     if Type::is_union(key.clone()) {
         let members = flatten_union(key.member("anyOf"));
-        if members.iter().any(|member| Type::is_string(member.clone()) || Type::is_number(member.clone()) || Type::is_integer(member.clone())) {
+        if members.iter().any(|member| {
+            Type::is_string(member.clone())
+                || Type::is_number(member.clone())
+                || Type::is_integer(member.clone())
+        }) {
             return Ok(create_record(STRING_KEY, value));
         }
         let mut properties: Vec<(String, TValue)> = Vec::new();
@@ -856,7 +1128,9 @@ fn record_from_key(key: &TValue, value: TValue) -> Result<TSchema, String> {
                 continue;
             }
             match member.member("const") {
-                Some(TValue::Json(Value::String(text))) => set(&mut properties, &text, value.clone()),
+                Some(TValue::Json(Value::String(text))) => {
+                    set(&mut properties, &text, value.clone())
+                }
                 Some(other) => {
                     if let Some(number) = literal_number(&other) {
                         set(&mut properties, &js_number_key(number), value.clone());

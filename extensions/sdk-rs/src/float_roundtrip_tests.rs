@@ -21,7 +21,11 @@ fn frame_numbers_decode_to_the_nearest_double() {
     ] {
         let value: serde_json::Value = from_json_str(text).unwrap();
         let want: f64 = text.parse().unwrap();
-        assert_eq!(value.as_f64().map(f64::to_bits), Some(want.to_bits()), "{text}");
+        assert_eq!(
+            value.as_f64().map(f64::to_bits),
+            Some(want.to_bits()),
+            "{text}"
+        );
     }
 }
 
@@ -30,8 +34,12 @@ fn frame_numbers_decode_to_the_nearest_double() {
 // number that underflows is 0.
 #[test]
 fn a_number_outside_the_double_range_is_null_not_a_refused_frame() {
-    let value: serde_json::Value = from_json_str(r#"{"v":1e400,"w":[-1e999,1e-400,"1e400",2.5,{"k":1E+309}]}"#).unwrap();
-    assert_eq!(value, serde_json::json!({"v": null, "w": [null, 0.0, "1e400", 2.5, {"k": null}]}));
+    let value: serde_json::Value =
+        from_json_str(r#"{"v":1e400,"w":[-1e999,1e-400,"1e400",2.5,{"k":1E+309}]}"#).unwrap();
+    assert_eq!(
+        value,
+        serde_json::json!({"v": null, "w": [null, 0.0, "1e400", 2.5, {"k": null}]})
+    );
     assert!(from_json_str::<serde_json::Value>(r#"{"v":1e400"#).is_err());
 }
 
@@ -46,6 +54,10 @@ fn a_number_outside_the_double_range_is_null_past_the_recursion_limit() {
         inner = &inner[0];
     }
     assert_eq!(inner, &serde_json::json!([null]));
-    let shallow_first = format!(r#"{{"v":1e400,"w":{}0{}}}"#, "[".repeat(200), "]".repeat(200));
+    let shallow_first = format!(
+        r#"{{"v":1e400,"w":{}0{}}}"#,
+        "[".repeat(200),
+        "]".repeat(200)
+    );
     assert!(from_json_str::<serde_json::Value>(&shallow_first).is_ok());
 }

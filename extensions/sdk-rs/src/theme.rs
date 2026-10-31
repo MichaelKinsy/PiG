@@ -132,7 +132,9 @@ impl Theme {
                 .and_then(Value::as_str)
                 .filter(|path| !path.is_empty())
                 .map(str::to_string),
-            source_info: palette.get("sourceInfo").and_then(|info| serde_json::from_value(info.clone()).ok()),
+            source_info: palette
+                .get("sourceInfo")
+                .and_then(|info| serde_json::from_value(info.clone()).ok()),
             foregrounds: string_map(palette.get("foregrounds")),
             backgrounds: string_map(palette.get("backgrounds")),
             modifiers: palette.get("modifiers") != Some(&Value::Bool(false)),
@@ -295,7 +297,12 @@ impl Theme {
             Some(ThemeSlot::Color(color)) => background_ansi(*color, self.color_mode()),
             None => String::new(),
         };
-        Ok(style_text_with_ansi(text, Some(&fg_ansi), Some(&bg_ansi), attributes))
+        Ok(style_text_with_ansi(
+            text,
+            Some(&fg_ansi),
+            Some(&bg_ansi),
+            attributes,
+        ))
     }
 
     /// `"truecolor"` or `"256color"`.
@@ -304,7 +311,11 @@ impl Theme {
     }
 
     fn color_mode(&self) -> TerminalColorMode {
-        if self.mode == "truecolor" { TerminalColorMode::TrueColor } else { TerminalColorMode::Color256 }
+        if self.mode == "truecolor" {
+            TerminalColorMode::TrueColor
+        } else {
+            TerminalColorMode::Color256
+        }
     }
 
     /// The border color for a thinking level (`off`, `minimal`, `low`,
@@ -356,7 +367,10 @@ impl Default for UiState {
 impl UiState {
     /// Applies a state snapshot (the ready state or a `state_update`): its
     /// `hasUI` when a boolean and its `theme` when an object.
-    pub(crate) fn apply_state(&mut self, state: &serde_json::Map<String, Value>) -> crate::host_subscriptions::UiChange {
+    pub(crate) fn apply_state(
+        &mut self,
+        state: &serde_json::Map<String, Value>,
+    ) -> crate::host_subscriptions::UiChange {
         let mut change = crate::host_subscriptions::UiChange::default();
         if let Some(has_ui) = state.get("hasUI").and_then(Value::as_bool) {
             self.has_ui = has_ui;
@@ -376,7 +390,10 @@ impl UiState {
 
     /// Installs a palette; returns the new theme when it differs from the palette before.
     fn set_palette(&mut self, palette: &Value) -> Option<Theme> {
-        let changed = self.palette.as_ref().is_some_and(|before| before != palette);
+        let changed = self
+            .palette
+            .as_ref()
+            .is_some_and(|before| before != palette);
         self.theme = Theme::from_palette(palette);
         self.palette = Some(palette.clone());
         changed.then(|| self.theme.clone())
@@ -385,7 +402,10 @@ impl UiState {
     /// Applies a `theme_change` notify's palette. A palette sent as a JSON
     /// string is decoded, and one that is not an object clears the palette,
     /// as the Node runtime does.
-    pub(crate) fn apply_theme_change(&mut self, args: Option<&Value>) -> crate::host_subscriptions::UiChange {
+    pub(crate) fn apply_theme_change(
+        &mut self,
+        args: Option<&Value>,
+    ) -> crate::host_subscriptions::UiChange {
         let decoded;
         let palette = match args {
             Some(Value::String(raw)) => {
@@ -395,10 +415,37 @@ impl UiState {
             Some(value) => value,
             None => &Value::Null,
         };
-        let change = crate::host_subscriptions::UiChange { theme: self.set_palette(palette), tools_expanded: None };
+        let change = crate::host_subscriptions::UiChange {
+            theme: self.set_palette(palette),
+            tools_expanded: None,
+        };
         crate::tui::set_host_theme(palette);
         change
     }
+}
+
+/// chalk's stringEncaseCRLFWithFirstIndex: `prefix` before and `postfix` after every `\n`, a preceding `\r` staying with it.
+fn encase_line_breaks(text: &str, prefix: &str, postfix: &str) -> String {
+    let mut out = String::with_capacity(
+        text.len() + text.matches('\n').count() * (prefix.len() + postfix.len()),
+    );
+    let mut end = 0;
+    while let Some(offset) = text[end..].find('\n') {
+        let index = end + offset;
+        if index > 0 && text.as_bytes()[index - 1] == b'\r' {
+            out.push_str(&text[end..index - 1]);
+            out.push_str(prefix);
+            out.push_str("\r\n");
+        } else {
+            out.push_str(&text[end..index]);
+            out.push_str(prefix);
+            out.push('\n');
+        }
+        out.push_str(postfix);
+        end = index + 1;
+    }
+    out.push_str(&text[end..]);
+    out
 }
 
 #[cfg(test)]
@@ -630,14 +677,29 @@ mod tests {
             "modifiers": true,
             "mode": "256color"
         }));
-        for (slot, token) in [("fg", "notAToken"), ("fg", "toolSuccessBg"), ("bg", "notAToken"), ("bg", "success")] {
+        for (slot, token) in [
+            ("fg", "notAToken"),
+            ("fg", "toolSuccessBg"),
+            ("bg", "notAToken"),
+            ("bg", "success"),
+        ] {
             let caught = std::panic::catch_unwind(|| {
-                if slot == "fg" { theme.fg(token, "x") } else { theme.bg(token, "x") }
+                if slot == "fg" {
+                    theme.fg(token, "x")
+                } else {
+                    theme.bg(token, "x")
+                }
             });
-            let message = caught.expect_err("an unknown token panics").downcast::<String>().expect("a formatted message");
+            let message = caught
+                .expect_err("an unknown token panics")
+                .downcast::<String>()
+                .expect("a formatted message");
             assert_eq!(*message, format!("Unknown theme color: {token}"));
         }
-        assert_eq!(theme.get_bg_ansi("notAToken"), Err("Unknown theme color: notAToken".to_string()));
+        assert_eq!(
+            theme.get_bg_ansi("notAToken"),
+            Err("Unknown theme color: notAToken".to_string())
+        );
         assert_eq!(Theme::default().fg("accent", "x"), "x");
     }
 
@@ -667,28 +729,4 @@ mod tests {
             "\x1b[38;5;2mx\x1b[39m"
         );
     }
-}
-
-/// chalk's stringEncaseCRLFWithFirstIndex: `prefix` before and `postfix` after every `\n`, a preceding `\r` staying with it.
-fn encase_line_breaks(text: &str, prefix: &str, postfix: &str) -> String {
-    let mut out = String::with_capacity(
-        text.len() + text.matches('\n').count() * (prefix.len() + postfix.len()),
-    );
-    let mut end = 0;
-    while let Some(offset) = text[end..].find('\n') {
-        let index = end + offset;
-        if index > 0 && text.as_bytes()[index - 1] == b'\r' {
-            out.push_str(&text[end..index - 1]);
-            out.push_str(prefix);
-            out.push_str("\r\n");
-        } else {
-            out.push_str(&text[end..index]);
-            out.push_str(prefix);
-            out.push('\n');
-        }
-        out.push_str(postfix);
-        end = index + 1;
-    }
-    out.push_str(&text[end..]);
-    out
 }

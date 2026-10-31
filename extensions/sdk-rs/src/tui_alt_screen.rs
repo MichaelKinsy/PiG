@@ -26,6 +26,11 @@ use std::io;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex, Weak};
 
+type CopySelectionFn = Arc<dyn Fn(&str) -> CopySelectionOutcome + Send + Sync>;
+type OpenUrlFn = Arc<dyn Fn(&str) + Send + Sync>;
+type StyleFn = Arc<dyn Fn(&str) -> String + Send + Sync>;
+type NavigationStyleFn = Arc<dyn Fn(&str, bool) -> String + Send + Sync>;
+
 /// What a terminal calls with the data of one input event; it returns after the host handled the event.
 pub type TerminalInputFn = Arc<dyn Fn(&str) -> io::Result<()> + Send + Sync>;
 /// What a terminal calls when its dimensions changed; it returns after the host handled the resize.
@@ -166,7 +171,11 @@ fn rgb_to_value(color: &RgbColor) -> Value {
 }
 
 fn rgb_from_value(value: &Value) -> Option<RgbColor> {
-    Some(RgbColor { r: value.get("r")?.as_f64()?, g: value.get("g")?.as_f64()?, b: value.get("b")?.as_f64()? })
+    Some(RgbColor {
+        r: value.get("r")?.as_f64()?,
+        g: value.get("g")?.as_f64()?,
+        b: value.get("b")?.as_f64()?,
+    })
 }
 
 impl TerminalColors {
@@ -180,7 +189,10 @@ impl TerminalColors {
             object.insert("background".into(), rgb_to_value(color));
         }
         if let Some(palette) = &self.palette {
-            object.insert("palette".into(), Value::Array(palette.iter().map(rgb_to_value).collect()));
+            object.insert(
+                "palette".into(),
+                Value::Array(palette.iter().map(rgb_to_value).collect()),
+            );
         }
         Value::Object(object)
     }
@@ -189,7 +201,10 @@ impl TerminalColors {
         Self {
             foreground: value.get("foreground").and_then(rgb_from_value),
             background: value.get("background").and_then(rgb_from_value),
-            palette: value.get("palette").and_then(Value::as_array).map(|palette| palette.iter().filter_map(rgb_from_value).collect()),
+            palette: value
+                .get("palette")
+                .and_then(Value::as_array)
+                .map(|palette| palette.iter().filter_map(rgb_from_value).collect()),
         }
     }
 }
@@ -276,12 +291,12 @@ pub struct TuiAltScreenOptions {
     /// Copies a completed text selection; the default is true.
     pub copy_on_select: Option<bool>,
     /// Writes selected text to the clipboard; the host's OSC 52 copy runs when absent.
-    pub copy_selection: Option<Arc<dyn Fn(&str) -> CopySelectionOutcome + Send + Sync>>,
+    pub copy_selection: Option<CopySelectionFn>,
     /// Activates an OSC 8 hyperlink on primary-button click.
-    pub open_url: Option<Arc<dyn Fn(&str) + Send + Sync>>,
-    pub search_match_style: Option<Arc<dyn Fn(&str) -> String + Send + Sync>>,
-    pub search_current_match_style: Option<Arc<dyn Fn(&str) -> String + Send + Sync>>,
-    pub search_navigation_button_style: Option<Arc<dyn Fn(&str, bool) -> String + Send + Sync>>,
+    pub open_url: Option<OpenUrlFn>,
+    pub search_match_style: Option<StyleFn>,
+    pub search_current_match_style: Option<StyleFn>,
+    pub search_navigation_button_style: Option<NavigationStyleFn>,
     pub scroll_to_end_indicator: Option<Arc<dyn Fn() -> String + Send + Sync>>,
     pub on_right_click_paste: Option<Arc<dyn Fn() + Send + Sync>>,
 }
@@ -302,9 +317,18 @@ impl TuiAltScreenOptions {
             ("copySelection", self.copy_selection.is_some()),
             ("openUrl", self.open_url.is_some()),
             ("searchMatchStyle", self.search_match_style.is_some()),
-            ("searchCurrentMatchStyle", self.search_current_match_style.is_some()),
-            ("searchNavigationButtonStyle", self.search_navigation_button_style.is_some()),
-            ("scrollToEndIndicator", self.scroll_to_end_indicator.is_some()),
+            (
+                "searchCurrentMatchStyle",
+                self.search_current_match_style.is_some(),
+            ),
+            (
+                "searchNavigationButtonStyle",
+                self.search_navigation_button_style.is_some(),
+            ),
+            (
+                "scrollToEndIndicator",
+                self.scroll_to_end_indicator.is_some(),
+            ),
             ("onRightClickPaste", self.on_right_click_paste.is_some()),
         ]
         .into_iter()
@@ -404,7 +428,13 @@ impl TuiAltRegistry {
 
 impl Drop for Inner {
     fn drop(&mut self) {
-        self.ctx.conn.tui_alt.screens.lock().unwrap().remove(&self.id);
+        self.ctx
+            .conn
+            .tui_alt
+            .screens
+            .lock()
+            .unwrap()
+            .remove(&self.id);
         if self.created.load(Ordering::Acquire) {
             // Nothing can call back into a screen that no longer exists: the host forgets it. A closed connection has already.
             let _ = self.call("dispose", Value::Null);
@@ -430,7 +460,9 @@ impl Inner {
         }
         let scoped = CALLBACK_CTX.with_borrow(Clone::clone);
         let ctx = scoped.as_ref().unwrap_or(&self.ctx);
-        Ok(ctx.call_host("tui.alt", Some(Value::Object(args)))?.unwrap_or(Value::Null))
+        Ok(ctx
+            .call_host("tui.alt", Some(Value::Object(args)))?
+            .unwrap_or(Value::Null))
     }
 
     fn state(&self) -> io::Result<Value> {
@@ -439,7 +471,10 @@ impl Inner {
 
     fn state_field<T>(&self, name: &str, read: impl FnOnce(&Value) -> Option<T>) -> io::Result<T> {
         let state = self.state()?;
-        state.get(name).and_then(read).ok_or_else(|| invalid(format!("host reply to tui.alt state has no {name:?}")))
+        state
+            .get(name)
+            .and_then(read)
+            .ok_or_else(|| invalid(format!("host reply to tui.alt state has no {name:?}")))
     }
 
     fn component_key(&self, component: &ComponentRef) -> String {
@@ -456,11 +491,22 @@ impl Inner {
     }
 
     fn held_component_key(&self, component: &ComponentRef) -> Option<String> {
-        self.components.lock().unwrap().by_ptr.get(&thin(Arc::as_ptr(component))).cloned()
+        self.components
+            .lock()
+            .unwrap()
+            .by_ptr
+            .get(&thin(Arc::as_ptr(component)))
+            .cloned()
     }
 
     fn component(&self, key: &str) -> Result<ComponentRef, String> {
-        self.components.lock().unwrap().by_key.get(key).cloned().ok_or_else(|| format!("unknown component {key:?}"))
+        self.components
+            .lock()
+            .unwrap()
+            .by_key
+            .get(key)
+            .cloned()
+            .ok_or_else(|| format!("unknown component {key:?}"))
     }
 
     /// The `key` and `caps` fields that name a component.
@@ -474,7 +520,12 @@ impl Inner {
         (self.component_key(component), caps)
     }
 
-    fn named_call(&self, op: &str, component: Option<&ComponentRef>, extra: Value) -> io::Result<Value> {
+    fn named_call(
+        &self,
+        op: &str,
+        component: Option<&ComponentRef>,
+        extra: Value,
+    ) -> io::Result<Value> {
         let mut fields = match extra {
             Value::Object(fields) => fields,
             _ => Map::new(),
@@ -496,7 +547,12 @@ impl Inner {
         reply
             .get("lines")
             .and_then(Value::as_array)
-            .and_then(|lines| lines.iter().map(|line| line.as_str().map(str::to_string)).collect::<Option<Vec<_>>>())
+            .and_then(|lines| {
+                lines
+                    .iter()
+                    .map(|line| line.as_str().map(str::to_string))
+                    .collect::<Option<Vec<_>>>()
+            })
             .ok_or_else(|| invalid("host reply to tui.alt has no \"lines\" of strings"))
     }
 
@@ -509,7 +565,8 @@ impl Inner {
             listeners.by_id.remove(&id);
             id
         };
-        self.call("removeInputListener", json!({"listenerId": id})).map(|_| ())
+        self.call("removeInputListener", json!({"listenerId": id}))
+            .map(|_| ())
     }
 
     fn overlay(&self, key: &str, action: &str, extra: Value) -> io::Result<OverlayState> {
@@ -519,7 +576,9 @@ impl Inner {
         };
         fields.insert("key".into(), Value::from(key));
         fields.insert("action".into(), Value::from(action));
-        Ok(OverlayState::from_wire(&self.call("overlay", Value::Object(fields))?))
+        Ok(OverlayState::from_wire(
+            &self.call("overlay", Value::Object(fields))?,
+        ))
     }
 
     // ─── host -> extension: tui.alt.cb ───────────────────────────────────
@@ -527,7 +586,11 @@ impl Inner {
     fn terminal_callback(self: &Arc<Self>, args: &Value) -> Result<Value, String> {
         let method = args.get("method").and_then(Value::as_str).unwrap_or("");
         let text = |name: &str| args.get(name).and_then(Value::as_str).unwrap_or("");
-        let count = |name: &str, default: u64| args.get(name).and_then(Value::as_f64).map_or(default, |value| value.max(0.0) as u64);
+        let count = |name: &str, default: u64| {
+            args.get(name)
+                .and_then(Value::as_f64)
+                .map_or(default, |value| value.max(0.0) as u64)
+        };
         let terminal = &self.terminal;
         match method {
             "start" => {
@@ -547,17 +610,22 @@ impl Inner {
             }
             "stop" => terminal.stop(),
             "write" => terminal.write(text("data")),
-            "moveBy" => terminal.move_by(args.get("lines").and_then(Value::as_i64).unwrap_or(0) as i32),
+            "moveBy" => {
+                terminal.move_by(args.get("lines").and_then(Value::as_i64).unwrap_or(0) as i32)
+            }
             "hideCursor" => terminal.hide_cursor(),
             "showCursor" => terminal.show_cursor(),
             "clearLine" => terminal.clear_line(),
             "clearFromCursor" => terminal.clear_from_cursor(),
             "clearScreen" => terminal.clear_screen(),
             "setTitle" => terminal.set_title(text("title")),
-            "setProgress" => terminal.set_progress(args.get("active").and_then(Value::as_bool).unwrap_or(false)),
+            "setProgress" => {
+                terminal.set_progress(args.get("active").and_then(Value::as_bool).unwrap_or(false))
+            }
             "setProgramStatus" => {
                 let status = args.get("status").cloned().unwrap_or(Value::Null);
-                let status: ProgramStatus = serde_json::from_value(status).map_err(|err| format!("setProgramStatus: {err}"))?;
+                let status: ProgramStatus = serde_json::from_value(status)
+                    .map_err(|err| format!("setProgramStatus: {err}"))?;
                 terminal.set_program_status(&status);
             }
             "restoreOnExit" => terminal.restore_on_exit(text("before"), text("after")),
@@ -569,27 +637,47 @@ impl Inner {
 
     fn option_callback(&self, args: &Value) -> Result<Value, String> {
         let name = args.get("name").and_then(Value::as_str).unwrap_or("");
-        let positional = args.get("args").and_then(Value::as_array).map(Vec::as_slice).unwrap_or_default();
+        let positional = args
+            .get("args")
+            .and_then(Value::as_array)
+            .map(Vec::as_slice)
+            .unwrap_or_default();
         let text = |index: usize| positional.get(index).and_then(Value::as_str).unwrap_or("");
         let options = &self.options;
         let missing = || format!("option callback {name:?} is not set");
         let value = match name {
-            "copySelection" => match (options.copy_selection.as_ref().ok_or_else(missing)?)(text(0)) {
-                CopySelectionOutcome::Copied => Value::Bool(true),
-                CopySelectionOutcome::Failed => Value::Bool(false),
-                CopySelectionOutcome::Message(message) => Value::from(message),
-            },
+            "copySelection" => {
+                match (options.copy_selection.as_ref().ok_or_else(missing)?)(text(0)) {
+                    CopySelectionOutcome::Copied => Value::Bool(true),
+                    CopySelectionOutcome::Failed => Value::Bool(false),
+                    CopySelectionOutcome::Message(message) => Value::from(message),
+                }
+            }
             "openUrl" => {
                 (options.open_url.as_ref().ok_or_else(missing)?)(text(0));
                 Value::Null
             }
-            "searchMatchStyle" => Value::from((options.search_match_style.as_ref().ok_or_else(missing)?)(text(0))),
-            "searchCurrentMatchStyle" => Value::from((options.search_current_match_style.as_ref().ok_or_else(missing)?)(text(0))),
+            "searchMatchStyle" => Value::from((options
+                .search_match_style
+                .as_ref()
+                .ok_or_else(missing)?)(text(0))),
+            "searchCurrentMatchStyle" => {
+                Value::from((options
+                    .search_current_match_style
+                    .as_ref()
+                    .ok_or_else(missing)?)(text(0)))
+            }
             "searchNavigationButtonStyle" => {
                 let hovered = positional.get(1).and_then(Value::as_bool).unwrap_or(false);
-                Value::from((options.search_navigation_button_style.as_ref().ok_or_else(missing)?)(text(0), hovered))
+                Value::from((options
+                    .search_navigation_button_style
+                    .as_ref()
+                    .ok_or_else(missing)?)(text(0), hovered))
             }
-            "scrollToEndIndicator" => Value::from((options.scroll_to_end_indicator.as_ref().ok_or_else(missing)?)()),
+            "scrollToEndIndicator" => Value::from((options
+                .scroll_to_end_indicator
+                .as_ref()
+                .ok_or_else(missing)?)()),
             "onRightClickPaste" => {
                 (options.on_right_click_paste.as_ref().ok_or_else(missing)?)();
                 Value::Null
@@ -610,16 +698,25 @@ impl Inner {
                 Ok(json!({"lines": component.render(width)}))
             }
             "input" => {
-                self.component(key)?.handle_input(args.get("data").and_then(Value::as_str).unwrap_or(""));
+                self.component(key)?
+                    .handle_input(args.get("data").and_then(Value::as_str).unwrap_or(""));
                 Ok(json!({}))
             }
             "mouse" => {
-                let event: MouseEvent = serde_json::from_value(args.get("event").cloned().unwrap_or(Value::Null)).map_err(|err| format!("mouse event: {err}"))?;
+                let event: MouseEvent =
+                    serde_json::from_value(args.get("event").cloned().unwrap_or(Value::Null))
+                        .map_err(|err| format!("mouse event: {err}"))?;
                 let result = self.component(key)?.handle_mouse(&event);
-                Ok(json!({"result": result.map(|result| serde_json::to_value(result).unwrap_or(Value::Null))}))
+                Ok(
+                    json!({"result": result.map(|result| serde_json::to_value(result).unwrap_or(Value::Null))}),
+                )
             }
             "focus" => {
-                self.component(key)?.set_focused(args.get("focused").and_then(Value::as_bool).unwrap_or(false));
+                self.component(key)?.set_focused(
+                    args.get("focused")
+                        .and_then(Value::as_bool)
+                        .unwrap_or(false),
+                );
                 Ok(json!({}))
             }
             "invalidate" => {
@@ -630,7 +727,9 @@ impl Inner {
                 let id = args.get("listenerId").and_then(Value::as_str).unwrap_or("");
                 // A listener removed while the host's callback was on its way sees nothing, as one Pi removed.
                 let listener = self.listeners.lock().unwrap().by_id.get(id).cloned();
-                let result = listener.and_then(|listener| listener(args.get("data").and_then(Value::as_str).unwrap_or("")));
+                let result = listener.and_then(|listener| {
+                    listener(args.get("data").and_then(Value::as_str).unwrap_or(""))
+                });
                 let mut response = Map::new();
                 if let Some(result) = result {
                     if result.consume {
@@ -655,7 +754,14 @@ impl Inner {
                     Some("light") => TerminalColorScheme::Light,
                     other => return Err(format!("unknown color scheme {other:?}")),
                 };
-                let listeners: Vec<SchemeFn> = self.schemes.lock().unwrap().1.iter().map(|(_, listener)| listener.clone()).collect();
+                let listeners: Vec<SchemeFn> = self
+                    .schemes
+                    .lock()
+                    .unwrap()
+                    .1
+                    .iter()
+                    .map(|(_, listener)| listener.clone())
+                    .collect();
                 for listener in listeners {
                     listener(scheme);
                 }
@@ -665,14 +771,18 @@ impl Inner {
                 let query = args.get("queryId").and_then(Value::as_str).unwrap_or("");
                 let callback = self.late_colors.lock().unwrap().get(query).cloned();
                 if let Some(callback) = callback {
-                    callback(TerminalColors::from_value(args.get("colors").unwrap_or(&Value::Null)));
+                    callback(TerminalColors::from_value(
+                        args.get("colors").unwrap_or(&Value::Null),
+                    ));
                 }
                 Ok(json!({}))
             }
             "visible" => {
                 let size = |name: &str| args.get(name).and_then(Value::as_u64).unwrap_or(0) as u32;
                 let visible = self.visible.lock().unwrap().get(key).cloned();
-                Ok(json!({"value": visible.is_none_or(|visible| visible(size("termWidth"), size("termHeight")))}))
+                Ok(
+                    json!({"value": visible.is_none_or(|visible| visible(size("termWidth"), size("termHeight")))}),
+                )
             }
             "option" => self.option_callback(args),
             other => Err(format!("unknown tui.alt callback kind {other:?}")),
@@ -686,9 +796,15 @@ fn screen_gone() -> io::Error {
 
 /// The host's `tui.alt.cb` request: runs a terminal, component, listener or option callback of the screen it names. `request` is the request's
 /// own context: the host calls the callback's user code makes belong to it.
-pub(crate) fn dispatch_callback(registry: &TuiAltRegistry, request: &Context, args: &Value) -> Result<Value, String> {
+pub(crate) fn dispatch_callback(
+    registry: &TuiAltRegistry,
+    request: &Context,
+    args: &Value,
+) -> Result<Value, String> {
     let id = args.get("id").and_then(Value::as_str).unwrap_or("");
-    let screen = registry.get(id).ok_or_else(|| format!("unknown TuiAltScreen {id:?}"))?;
+    let screen = registry
+        .get(id)
+        .ok_or_else(|| format!("unknown TuiAltScreen {id:?}"))?;
     let _callback = InCallback::enter(request.clone());
     screen.callback(args)
 }
@@ -700,7 +816,11 @@ pub struct TuiAltScreen {
 
 impl TuiAltScreen {
     /// Creates a screen in the host that draws on `terminal`. `ctx` carries the connection and is kept for the screen's lifetime.
-    pub fn new(ctx: &Context, terminal: Arc<dyn Terminal>, options: TuiAltScreenOptions) -> io::Result<Self> {
+    pub fn new(
+        ctx: &Context,
+        terminal: Arc<dyn Terminal>,
+        options: TuiAltScreenOptions,
+    ) -> io::Result<Self> {
         let registry = &ctx.conn.tui_alt;
         let id = format!("t{}", registry.next.fetch_add(1, Ordering::Relaxed) + 1);
         let inner = Arc::new(Inner {
@@ -718,7 +838,11 @@ impl TuiAltScreen {
             visible: Mutex::default(),
             query_seq: AtomicU64::new(0),
         });
-        registry.screens.lock().unwrap().insert(id, Arc::downgrade(&inner));
+        registry
+            .screens
+            .lock()
+            .unwrap()
+            .insert(id, Arc::downgrade(&inner));
         let mut fields = Map::new();
         if let Some(show) = inner.options.show_hardware_cursor {
             fields.insert("showHardwareCursor".into(), Value::Bool(show));
@@ -798,7 +922,10 @@ impl TuiAltScreen {
     /// The component that has keyboard focus, when it is one this screen was given: a component of the host's own (the search box) is `None`.
     pub fn get_focused_component(&self) -> io::Result<Option<ComponentRef>> {
         let state = self.inner.state()?;
-        Ok(state.get("focusedKey").and_then(Value::as_str).and_then(|key| self.inner.component(key).ok()))
+        Ok(state
+            .get("focusedKey")
+            .and_then(Value::as_str)
+            .and_then(|key| self.inner.component(key).ok()))
     }
 
     /// The lines of the last frame drawn on the screen.
@@ -818,16 +945,38 @@ impl TuiAltScreen {
 
     /// Stops the terminal and leaves the alternate screen.
     pub fn stop(&self, options: TuiStopOptions) -> io::Result<()> {
-        let fields = if options.preserve_screen { json!({"preserveScreen": true}) } else { Value::Null };
+        let fields = if options.preserve_screen {
+            json!({"preserveScreen": true})
+        } else {
+            Value::Null
+        };
         self.inner.call("stop", fields).map(|_| ())
     }
 
     pub fn render_now(&self, force: bool) -> io::Result<()> {
-        self.inner.call("renderNow", if force { json!({"force": true}) } else { Value::Null }).map(|_| ())
+        self.inner
+            .call(
+                "renderNow",
+                if force {
+                    json!({"force": true})
+                } else {
+                    Value::Null
+                },
+            )
+            .map(|_| ())
     }
 
     pub fn request_render(&self, force: bool) -> io::Result<()> {
-        self.inner.call("requestRender", if force { json!({"force": true}) } else { Value::Null }).map(|_| ())
+        self.inner
+            .call(
+                "requestRender",
+                if force {
+                    json!({"force": true})
+                } else {
+                    Value::Null
+                },
+            )
+            .map(|_| ())
     }
 
     pub fn invalidate(&self) -> io::Result<()> {
@@ -835,7 +984,9 @@ impl TuiAltScreen {
     }
 
     pub fn scroll_by(&self, lines: i64) -> io::Result<()> {
-        self.inner.call("scrollBy", json!({"lines": lines})).map(|_| ())
+        self.inner
+            .call("scrollBy", json!({"lines": lines}))
+            .map(|_| ())
     }
 
     pub fn scroll_to_top(&self) -> io::Result<()> {
@@ -847,7 +998,9 @@ impl TuiAltScreen {
     }
 
     pub fn reset_text_selection(&self) -> io::Result<()> {
-        self.inner.call("resetTextSelection", Value::Null).map(|_| ())
+        self.inner
+            .call("resetTextSelection", Value::Null)
+            .map(|_| ())
     }
 
     /// Shows `message` on the screen for `duration_ms` (Pi's default when `None`).
@@ -860,29 +1013,42 @@ impl TuiAltScreen {
     }
 
     pub fn set_wheel_scroll_lines(&self, lines: WheelScrollLines) -> io::Result<()> {
-        self.inner.call("setWheelScrollLines", json!({"lines": lines.to_value()})).map(|_| ())
+        self.inner
+            .call("setWheelScrollLines", json!({"lines": lines.to_value()}))
+            .map(|_| ())
     }
 
     pub fn set_copy_on_select(&self, enabled: bool) -> io::Result<()> {
-        self.inner.call("setCopyOnSelect", json!({"enabled": enabled})).map(|_| ())
+        self.inner
+            .call("setCopyOnSelect", json!({"enabled": enabled}))
+            .map(|_| ())
     }
 
     pub fn set_show_hardware_cursor(&self, enabled: bool) -> io::Result<()> {
-        self.inner.call("setShowHardwareCursor", json!({"enabled": enabled})).map(|_| ())
+        self.inner
+            .call("setShowHardwareCursor", json!({"enabled": enabled}))
+            .map(|_| ())
     }
 
     pub fn set_clear_on_shrink(&self, enabled: bool) -> io::Result<()> {
-        self.inner.call("setClearOnShrink", json!({"enabled": enabled})).map(|_| ())
+        self.inner
+            .call("setClearOnShrink", json!({"enabled": enabled}))
+            .map(|_| ())
     }
 
     /// Copies the active text selection; false when there is none or the copy failed. Blocks until the copy settled.
     pub fn copy_active_selection_to_clipboard(&self) -> io::Result<bool> {
-        let reply = self.inner.call("copyActiveSelectionToClipboard", Value::Null)?;
-        reply.get("value").and_then(Value::as_bool).ok_or_else(|| invalid("host reply to tui.alt copyActiveSelectionToClipboard has no \"value\""))
+        let reply = self
+            .inner
+            .call("copyActiveSelectionToClipboard", Value::Null)?;
+        reply.get("value").and_then(Value::as_bool).ok_or_else(|| {
+            invalid("host reply to tui.alt copyActiveSelectionToClipboard has no \"value\"")
+        })
     }
 
     pub fn add_child(&self, component: &ComponentRef) -> io::Result<()> {
-        self.inner.named_call("addChild", Some(component), Value::Null)?;
+        self.inner
+            .named_call("addChild", Some(component), Value::Null)?;
         self.inner.children.lock().unwrap().push(component.clone());
         Ok(())
     }
@@ -894,7 +1060,10 @@ impl TuiAltScreen {
         };
         self.inner.call("removeChild", json!({"key": key}))?;
         let mut children = self.inner.children.lock().unwrap();
-        if let Some(index) = children.iter().position(|child| thin(Arc::as_ptr(child)) == thin(Arc::as_ptr(component))) {
+        if let Some(index) = children
+            .iter()
+            .position(|child| thin(Arc::as_ptr(child)) == thin(Arc::as_ptr(component)))
+        {
             children.remove(index);
         }
         Ok(())
@@ -909,16 +1078,24 @@ impl TuiAltScreen {
 
     /// Lays the screen out with `component` as the document instead of the children; `None` returns to the children.
     pub fn set_layout_root(&self, component: Option<&ComponentRef>) -> io::Result<()> {
-        self.inner.named_call("setLayoutRoot", component, Value::Null).map(|_| ())
+        self.inner
+            .named_call("setLayoutRoot", component, Value::Null)
+            .map(|_| ())
     }
 
     /// Gives keyboard focus to `component`, or to nothing.
     pub fn set_focus(&self, component: Option<&ComponentRef>) -> io::Result<()> {
-        self.inner.named_call("setFocus", component, Value::Null).map(|_| ())
+        self.inner
+            .named_call("setFocus", component, Value::Null)
+            .map(|_| ())
     }
 
     /// Shows `component` as an overlay; `None` options are Pi's defaults.
-    pub fn show_overlay(&self, component: &ComponentRef, options: Option<TuiOverlayOptions>) -> io::Result<AltScreenOverlayHandle> {
+    pub fn show_overlay(
+        &self,
+        component: &ComponentRef,
+        options: Option<TuiOverlayOptions>,
+    ) -> io::Result<AltScreenOverlayHandle> {
         let inner = &self.inner;
         let options = options.unwrap_or_default();
         let (key, caps) = inner.component_fields(component);
@@ -939,7 +1116,10 @@ impl TuiAltScreen {
             }
         }
         inner.call("showOverlay", Value::Object(fields))?;
-        Ok(AltScreenOverlayHandle { inner: self.inner.clone(), key })
+        Ok(AltScreenOverlayHandle {
+            inner: self.inner.clone(),
+            key,
+        })
     }
 
     /// Hides the topmost overlay.
@@ -964,13 +1144,13 @@ impl TuiAltScreen {
                 Some(id)
             }
         };
-        if let Some(id) = added {
-            if let Err(err) = inner.call("addInputListener", json!({"listenerId": id})) {
-                let mut listeners = inner.listeners.lock().unwrap();
-                listeners.by_id.remove(&id);
-                listeners.by_ptr.remove(&pointer);
-                return Err(err);
-            }
+        if let Some(id) = added
+            && let Err(err) = inner.call("addInputListener", json!({"listenerId": id}))
+        {
+            let mut listeners = inner.listeners.lock().unwrap();
+            listeners.by_id.remove(&id);
+            listeners.by_ptr.remove(&pointer);
+            return Err(err);
         }
         let weak = Arc::downgrade(inner);
         Ok(Box::new(move || match weak.upgrade() {
@@ -987,11 +1167,16 @@ impl TuiAltScreen {
     pub fn set_on_debug(&self, callback: Option<Arc<dyn Fn() + Send + Sync>>) -> io::Result<()> {
         let enabled = callback.is_some();
         *self.inner.debug.lock().unwrap() = callback;
-        self.inner.call("setOnDebug", json!({"enabled": enabled})).map(|_| ())
+        self.inner
+            .call("setOnDebug", json!({"enabled": enabled}))
+            .map(|_| ())
     }
 
     /// Subscribes to the terminal's color scheme changes, delivered while [`Self::set_terminal_color_scheme_notifications`] is on.
-    pub fn on_terminal_color_scheme_change(&self, listener: impl Fn(TerminalColorScheme) + Send + Sync + 'static) -> Unsubscribe {
+    pub fn on_terminal_color_scheme_change(
+        &self,
+        listener: impl Fn(TerminalColorScheme) + Send + Sync + 'static,
+    ) -> Unsubscribe {
         let id = {
             let mut schemes = self.inner.schemes.lock().unwrap();
             schemes.0 += 1;
@@ -1002,18 +1187,31 @@ impl TuiAltScreen {
         let weak = Arc::downgrade(&self.inner);
         Box::new(move || {
             if let Some(inner) = weak.upgrade() {
-                inner.schemes.lock().unwrap().1.retain(|(entry, _)| *entry != id);
+                inner
+                    .schemes
+                    .lock()
+                    .unwrap()
+                    .1
+                    .retain(|(entry, _)| *entry != id);
             }
             Ok(())
         })
     }
 
     pub fn set_terminal_color_scheme_notifications(&self, enabled: bool) -> io::Result<()> {
-        self.inner.call("setTerminalColorSchemeNotifications", json!({"enabled": enabled})).map(|_| ())
+        self.inner
+            .call(
+                "setTerminalColorSchemeNotifications",
+                json!({"enabled": enabled}),
+            )
+            .map(|_| ())
     }
 
     /// Asks the terminal for its colors; blocks until its device attributes reply or the timeout.
-    pub fn query_terminal_colors(&self, options: QueryTerminalColorsOptions) -> io::Result<TerminalColors> {
+    pub fn query_terminal_colors(
+        &self,
+        options: QueryTerminalColorsOptions,
+    ) -> io::Result<TerminalColors> {
         let inner = &self.inner;
         let mut fields = json!({"timeoutMs": number(options.timeout_ms), "onLateReply": options.on_late_reply.is_some()});
         let mut query = None;
@@ -1024,7 +1222,9 @@ impl TuiAltScreen {
             query = Some(id);
         }
         match inner.call("queryTerminalColors", fields) {
-            Ok(reply) => Ok(TerminalColors::from_value(reply.get("colors").unwrap_or(&Value::Null))),
+            Ok(reply) => Ok(TerminalColors::from_value(
+                reply.get("colors").unwrap_or(&Value::Null),
+            )),
             Err(err) => {
                 if let Some(id) = query {
                     inner.late_colors.lock().unwrap().remove(&id);
@@ -1040,7 +1240,9 @@ impl TuiAltScreen {
         let reply = self.inner.call("handleMouse", json!({"event": event}))?;
         match reply.get("result") {
             None | Some(Value::Null) => Ok(None),
-            Some(result) => serde_json::from_value(result.clone()).map(Some).map_err(|err| invalid(format!("host reply to tui.alt handleMouse: {err}"))),
+            Some(result) => serde_json::from_value(result.clone())
+                .map(Some)
+                .map_err(|err| invalid(format!("host reply to tui.alt handleMouse: {err}"))),
         }
     }
 }
@@ -1055,11 +1257,15 @@ pub struct AltScreenOverlayHandle {
 impl AltScreenOverlayHandle {
     /// Removes the overlay.
     pub fn hide(&self) -> io::Result<()> {
-        self.inner.overlay(&self.key, "hide", Value::Null).map(|_| ())
+        self.inner
+            .overlay(&self.key, "hide", Value::Null)
+            .map(|_| ())
     }
 
     pub fn set_hidden(&self, hidden: bool) -> io::Result<()> {
-        self.inner.overlay(&self.key, "setHidden", json!({"hidden": hidden})).map(|_| ())
+        self.inner
+            .overlay(&self.key, "setHidden", json!({"hidden": hidden}))
+            .map(|_| ())
     }
 
     pub fn is_hidden(&self) -> io::Result<bool> {
@@ -1067,7 +1273,9 @@ impl AltScreenOverlayHandle {
     }
 
     pub fn focus(&self) -> io::Result<()> {
-        self.inner.overlay(&self.key, "focus", Value::Null).map(|_| ())
+        self.inner
+            .overlay(&self.key, "focus", Value::Null)
+            .map(|_| ())
     }
 
     /// Takes keyboard focus from the overlay: with `None` to where Pi's default release puts it, else exactly `target`.
@@ -1076,10 +1284,12 @@ impl AltScreenOverlayHandle {
             None => Value::Null,
             Some(OverlayUnfocusTarget::Nothing) => json!({"target": null}),
             Some(OverlayUnfocusTarget::Component(component)) => {
-                let key = self
-                    .inner
-                    .held_component_key(&component)
-                    .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidInput, "unfocus target is not a component this screen holds"))?;
+                let key = self.inner.held_component_key(&component).ok_or_else(|| {
+                    io::Error::new(
+                        io::ErrorKind::InvalidInput,
+                        "unfocus target is not a component this screen holds",
+                    )
+                })?;
                 json!({"target": {"key": key}})
             }
         };

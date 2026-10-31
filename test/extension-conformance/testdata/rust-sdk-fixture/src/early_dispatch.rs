@@ -4,7 +4,11 @@ use pig_sdk::Extension;
 fn main() {
     let ext = Extension::new("early-dispatch");
     ext.events()
-        .on("early:ch", |ctx, data| ctx.events().emit("early:echo", data.clone()).map_err(|err| err.to_string()))
+        .on("early:ch", |ctx, data| {
+            ctx.events()
+                .emit("early:echo", data.clone())
+                .map_err(|err| err.to_string())
+        })
         .unwrap();
     ext.run().unwrap();
 }
