@@ -147,7 +147,6 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-254fce4](#bf-254fce4) | `Shift+Enter` inserts a newline instead of queueing a follow-up in Apple Terminal setups that send `ESC` +… | A fix Pi shipped that PiG ported | Windows | Unreleased |
 | [BF-25a90ea](#bf-25a90ea) | fix(tui): scroll regions only where the terminal is trusted with them (D205 approved) | PiG's own defect | All platforms | Unreleased |
 | [BF-25aa7fd](#bf-25aa7fd) | A subprocess extension's markdown transform that was busy past the five-second renderer inactivity boundary… | PiG's own defect | All platforms | 0.5.0 |
-| [BF-25aaf96](#bf-25aaf96) | Wrapped text no longer starts the next line with a space when a styled word ends exactly at the wrap width… | A fix Pi shipped that PiG ported | All platforms | Unreleased |
 | [BF-25c854d](#bf-25c854d) | Session directories (the agent directory, `sessions` and each project's directory) are created owner-only… | A Pi defect that PiG fixed first | All platforms | 0.5.0 |
 | [BF-261fecd](#bf-261fecd) | `tool_search` and codemode `searchTools()` (the coding agent's and durable's) find tools by words in any… | A fix Pi shipped that PiG ported | All platforms | Unreleased |
 | [BF-264127b](#bf-264127b) | `tool_search` and codemode `searchTools()` no longer rank a tool below tools that only mention its name in… | A fix Pi shipped that PiG ported | All platforms | Unreleased |
@@ -661,6 +660,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-7c848e3](#bf-7c848e3) | A Zhipu/Z.ai usage limit (HTTP 429 with error code `1308`, which resets after hours) is no longer retried, in… | A fix Pi shipped that PiG ported | All platforms | Unreleased |
 | [BF-7cca5ee](#bf-7cca5ee) | A Node extension can default-import TypeBox (`import Type from "typebox"`, and likewise `typebox/value`… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-7d0621f](#bf-7d0621f) | fix(extension): keep Pi's three-parameter EmitBeforeAgentStart (prompt, images, options); a custom run's… | PiG's own defect | All platforms | Unreleased |
+| [BF-7db4e68](#bf-7db4e68) | The alternate screen's viewport accessors (`ViewportTop`, `IsFollowingOutput`, `ScrollBy`, `ScrollToTop`… | PiG's own defect | All platforms | Unreleased |
 | [BF-7dc9b09](#bf-7dc9b09) | `-e <local Package>` now contributes its prompts, skills and themes, loaded before the project, user and… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-7dc9b09-2](#bf-7dc9b09-2) | `--prompt-template` and `--theme` paths are now merged after the project, user and Package resources, as in… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-7e09ec0](#bf-7e09ec0) | fix(codingagent): the idle collection runs one forced GC cycle (D172) | PiG's own defect | All platforms | Unreleased |
@@ -1059,6 +1059,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-c625bb4](#bf-c625bb4) | The durable `powershell` tool fails with "No command to run" when its program list is empty, instead of… | PiG's own defect | Windows | 0.5.0 |
 | [BF-c6c2cf3](#bf-c6c2cf3) | An `env` request whose context is already cancelled is now always sent to the daemon and then cancelled, as… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-c6cad39](#bf-c6cad39) | fix(session): fork writes the header and entries through one file (Pi,) | PiG's own defect | All platforms | Unreleased |
+| [BF-c6f6953](#bf-c6f6953) | Wrapped text no longer starts the next line with a space when a styled word ends exactly at the wrap width… | A fix Pi shipped that PiG ported | All platforms | Unreleased |
 | [BF-c7ebb23](#bf-c7ebb23) | A cancelled prompt in a `config.oauth` login now rejects with Pi's `Login cancelled` in every SDK (it was… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-c7ebb23-2](#bf-c7ebb23-2) | A `config.oauth` login's `onManualCodeInput` asks "Paste the authorization code", as Pi does, and a provider… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-c8a90a6](#bf-c8a90a6) | Pressing the login dialog's cancel key again cancels again, and Enter after a cancelled prompt leaves the… | PiG's own defect | All platforms | 0.5.0 |
@@ -3167,20 +3168,6 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `84e70fc701` (2026-10-13), `25aa7fd80b` (2026-10-14), `5119ce3155` (2026-10-14), `d7855fd99b` (2026-10-14)
 - **Tests:** `coding/extension/host/subprocess/markdown_transform_retry_test.go::TestMarkdownTransformAsksTheRestartedExtensionForAnAbandonedTransform`, `coding/extension/host/subprocess/markdown_transform_retry_test.go::TestMarkdownTransformBacksOffFromATransformerThatAlwaysAnswersLate`, `coding/extension/host/subprocess/markdown_transform_retry_test.go::TestMarkdownTransformBacksOffFromAnExtensionThatNeverAnswers`, `coding/extension/host/subprocess/markdown_transform_retry_test.go::TestMarkdownTransformDropsARetryNoMessageTakes`, `coding/extension/host/subprocess/markdown_transform_retry_test.go::TestMarkdownTransformRendersAgainOnceTheExtensionAnswersAnAbandonedTransform`, `coding/extension/host/subprocess/markdown_transform_retry_test.go::TestMarkdownTransformRetriesEveryMessageWithTheSameText`, `coding/extension/host/subprocess/render_retry_backoff_test.go::TestRenderRetryBackoffDoublesUpToItsCap`, `coding/extension/host/subprocess/render_retry_test.go::TestRenderProxyBacksOffFromARendererThatAlwaysAnswersLate` and 6 more in docs/bug-ledger.json
 - **Release note:** A subprocess extension's markdown transform that was busy past the five-second renderer inactivity boundary no longer leaves the message untransformed until something else draws it again: the host asks again once the extension answers the abandoned transform, or after a backoff that starts at five seconds and doubles to one minute for an extension that keeps missing the boundary, and the message transforms again on its next frame.
-
-### BF-25aaf96
-
-**Wrapped text no longer starts the next line with a space when a styled word ends exactly at the wrap width…**
-
-- **Source:** A fix Pi shipped that PiG ported
-- **Symptom:** Wrapped text no longer starts the next line with a space when a styled word ends exactly at the wrap width, and strikethrough no longer runs into the right padding of a wrapped line: the wrap closes `\x1b[29m` at line end like underline and opens it again on the next line.
-- **Root cause:** The code that closes a styled word attaches to the following space, so wrapping took that space for a word and moved it to the next line, and strikethrough ran into the padding of a wrapped line. A token is whitespace once its escape codes are skipped, a dropped space keeps its codes on the wrapped line, strikethrough is closed at line end like underline, and trailing spaces are trimmed before the line-end reset.
-- **User impact:** Lost or altered data
-- **Platform:** All platforms
-- **Fixed in:** Unreleased
-- **Fix commits:** `25aaf9682c` (2026-10-30, #10925)
-- **Tests:** `tui/markdown_wrap_boundary_test.go::TestMarkdownStyledWordsAtTheWrapBoundaryPiCase`, `tui/widthx/wrap_boundary_test.go::TestLineEndResetClosesStrikethrough`, `tui/widthx/wrap_boundary_test.go::TestWrapTextWithAnsiStyledWordsAtTheWrapBoundaryPiCases`
-- **Release note:** Wrapped text no longer starts the next line with a space when a styled word ends exactly at the wrap width, and strikethrough no longer runs into the right padding of a wrapped line: the wrap closes `\x1b[29m` at line end like underline and opens it again on the next line. Carried forward from Pi 2ce9d527 (earendil-works/pi#10925), past the 1.4.0+b3a29f11 pin.
 
 ### BF-25c854d
 
@@ -10280,6 +10267,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `7d0621f995` (2026-10-09)
 - **Tests:** None recorded.
 
+### BF-7db4e68
+
+**The alternate screen's viewport accessors (`ViewportTop`, `IsFollowingOutput`, `ScrollBy`, `ScrollToTop`…**
+
+- **Source:** PiG's own defect
+- **Symptom:** The alternate screen's viewport accessors (`ViewportTop`, `IsFollowingOutput`, `ScrollBy`, `ScrollToTop`, `ScrollToBottom`) read the layout of the last frame under the renderer's lock.
+- **Root cause:** ViewportTop, IsFollowingOutput, ScrollBy, ScrollToTop and ScrollToBottom read currentLayout through getPrimaryScrollView without t.mu, while a frame (doRender) stores a new layout under t.mu. An extension's tuiAlt host call reaches IsFollowingOutput on its own goroutine, so TestTuiAltScreenAcrossSDKs/ subprocess-python reported a data race between tui_alt_screen.go:1055 (frame write) and :400 (read) in the gate's confrace1 run. made the width and height an atomic snapshot but left the layout pointer unsynchronised.
+- **User impact:** Wrong display
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `7db4e68fc4` (2026-10-31)
+- **Tests:** `test/extension-conformance/tui_alt_screen_test.go::TestTuiAltScreenAcrossSDKs`, `tui/tui_alt_screen_test.go::TestAltScreenViewportAccessorsDoNotRaceWithAFrame`
+- **Release note:** The alternate screen's viewport accessors (`ViewportTop`, `IsFollowingOutput`, `ScrollBy`, `ScrollToTop`, `ScrollToBottom`) read the layout of the last frame under the renderer's lock. An extension's `tuiAlt` host call reads them from its own goroutine while a frame stores a new layout, and the race detector reported the Python SDK's conformance row.
+
 ### BF-7dc9b09
 
 **`-e <local Package>` now contributes its prompts, skills and themes, loaded before the project, user and…**
@@ -15820,6 +15821,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `c6cad39de5` (2026-10-23)
 - **Tests:** `internal/codingagent/session_manager_test.go::TestSessionManagerForkFromFile_CopiesAllEntriesUnchangedIntoTheForkedSession`
+
+### BF-c6f6953
+
+**Wrapped text no longer starts the next line with a space when a styled word ends exactly at the wrap width…**
+
+- **Source:** A fix Pi shipped that PiG ported
+- **Symptom:** Wrapped text no longer starts the next line with a space when a styled word ends exactly at the wrap width, and strikethrough no longer runs into the right padding of a wrapped line: the wrap closes `\x1b[29m` at line end like underline and opens it again on the next line.
+- **Root cause:** The code that closes a styled word attaches to the following space, so wrapping took that space for a word and moved it to the next line, and strikethrough ran into the padding of a wrapped line. A token is whitespace once its escape codes are skipped, a dropped space keeps its codes on the wrapped line, strikethrough is closed at line end like underline, and trailing spaces are trimmed before the line-end reset.
+- **User impact:** Lost or altered data
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `c6f6953367` (2026-10-30, #10925)
+- **Tests:** `tui/markdown_wrap_boundary_test.go::TestMarkdownStyledWordsAtTheWrapBoundaryPiCase`, `tui/widthx/wrap_boundary_test.go::TestLineEndResetClosesStrikethrough`, `tui/widthx/wrap_boundary_test.go::TestWrapTextWithAnsiStyledWordsAtTheWrapBoundaryPiCases`
+- **Release note:** Wrapped text no longer starts the next line with a space when a styled word ends exactly at the wrap width, and strikethrough no longer runs into the right padding of a wrapped line: the wrap closes `\x1b[29m` at line end like underline and opens it again on the next line. The text-wrapping helpers in the Go, Rust, Python and Lisp extension SDKs wrap the same way. Carried forward from Pi 2ce9d527 (earendil-works/pi#10925), past the 1.4.0+b3a29f11 pin.
 
 ### BF-c7ebb23
 

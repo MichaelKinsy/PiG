@@ -321,7 +321,9 @@ func (t *TuiAltScreen) FullRedraws() int { return int(t.fullRedrawCount.Load()) 
 func (t *TuiAltScreen) ViewportTop() int { return t.getPrimaryScrollViewLocked().ScrollTop() }
 
 // IsFollowingOutput reports whether the primary scroll view is pinned to the end.
-func (t *TuiAltScreen) IsFollowingOutput() bool { return t.getPrimaryScrollViewLocked().IsFollowingEnd() }
+func (t *TuiAltScreen) IsFollowingOutput() bool {
+	return t.getPrimaryScrollViewLocked().IsFollowingEnd()
+}
 
 // GetCopyOnSelect reports whether a completed selection is copied automatically.
 func (t *TuiAltScreen) GetCopyOnSelect() bool {

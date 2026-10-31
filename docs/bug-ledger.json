@@ -4005,31 +4005,6 @@
       ]
     },
     {
-      "id": "BF-25aaf96",
-      "title": "Wrapped text no longer starts the next line with a space when a styled word ends exactly at the wrap width…",
-      "symptom": "Wrapped text no longer starts the next line with a space when a styled word ends exactly at the wrap width, and strikethrough no longer runs into the right padding of a wrapped line: the wrap closes `\\x1b[29m` at line end like underline and opens it again on the next line.",
-      "rootCause": "The code that closes a styled word attaches to the following space, so wrapping took that space for a word and moved it to the next line, and strikethrough ran into the padding of a wrapped line. A token is whitespace once its escape codes are skipped, a dropped space keeps its codes on the wrapped line, strikethrough is closed at line end like underline, and trailing spaces are trimmed before the line-end reset.",
-      "rootCauseSource": "commit",
-      "userImpact": "Lost or altered data",
-      "platform": "All platforms",
-      "class": "pi-port",
-      "fixedIn": "Unreleased",
-      "releaseNote": "Wrapped text no longer starts the next line with a space when a styled word ends exactly at the wrap width, and strikethrough no longer runs into the right padding of a wrapped line: the wrap closes `\\x1b[29m` at line end like underline and opens it again on the next line. Carried forward from Pi 2ce9d527 (earendil-works/pi#10925), past the 1.4.0+b3a29f11 pin.",
-      "origin": "release note",
-      "commits": [
-        {
-          "hash": "25aaf9682c",
-          "date": "2026-10-30",
-          "pr": "10925"
-        }
-      ],
-      "tests": [
-        "tui/markdown_wrap_boundary_test.go::TestMarkdownStyledWordsAtTheWrapBoundaryPiCase",
-        "tui/widthx/wrap_boundary_test.go::TestLineEndResetClosesStrikethrough",
-        "tui/widthx/wrap_boundary_test.go::TestWrapTextWithAnsiStyledWordsAtTheWrapBoundaryPiCases"
-      ]
-    },
-    {
       "id": "BF-25c854d",
       "title": "Session directories (the agent directory, `sessions` and each project's directory) are created owner-only…",
       "symptom": "Session directories (the agent directory, `sessions` and each project's directory) are created owner-only (0700) instead of world-readable (D132, pi-mono #10770).",
@@ -18837,6 +18812,29 @@
       "tests": []
     },
     {
+      "id": "BF-7db4e68",
+      "title": "The alternate screen's viewport accessors (`ViewportTop`, `IsFollowingOutput`, `ScrollBy`, `ScrollToTop`…",
+      "symptom": "The alternate screen's viewport accessors (`ViewportTop`, `IsFollowingOutput`, `ScrollBy`, `ScrollToTop`, `ScrollToBottom`) read the layout of the last frame under the renderer's lock.",
+      "rootCause": "ViewportTop, IsFollowingOutput, ScrollBy, ScrollToTop and ScrollToBottom read currentLayout through getPrimaryScrollView without t.mu, while a frame (doRender) stores a new layout under t.mu. An extension's tuiAlt host call reaches IsFollowingOutput on its own goroutine, so TestTuiAltScreenAcrossSDKs/ subprocess-python reported a data race between tui_alt_screen.go:1055 (frame write) and :400 (read) in the gate's confrace1 run. made the width and height an atomic snapshot but left the layout pointer unsynchronised.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong display",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "The alternate screen's viewport accessors (`ViewportTop`, `IsFollowingOutput`, `ScrollBy`, `ScrollToTop`, `ScrollToBottom`) read the layout of the last frame under the renderer's lock. An extension's `tuiAlt` host call reads them from its own goroutine while a frame stores a new layout, and the race detector reported the Python SDK's conformance row.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "7db4e68fc4",
+          "date": "2026-10-31"
+        }
+      ],
+      "tests": [
+        "test/extension-conformance/tui_alt_screen_test.go::TestTuiAltScreenAcrossSDKs",
+        "tui/tui_alt_screen_test.go::TestAltScreenViewportAccessorsDoNotRaceWithAFrame"
+      ]
+    },
+    {
       "id": "BF-7dc9b09",
       "title": "`-e \u003clocal Package\u003e` now contributes its prompts, skills and themes, loaded before the project, user and…",
       "symptom": "`-e \u003clocal Package\u003e` now contributes its prompts, skills and themes, loaded before the project, user and Package resources, so they win same-name collisions as in Pi.",
@@ -30332,6 +30330,31 @@
       ],
       "tests": [
         "internal/codingagent/session_manager_test.go::TestSessionManagerForkFromFile_CopiesAllEntriesUnchangedIntoTheForkedSession"
+      ]
+    },
+    {
+      "id": "BF-c6f6953",
+      "title": "Wrapped text no longer starts the next line with a space when a styled word ends exactly at the wrap width…",
+      "symptom": "Wrapped text no longer starts the next line with a space when a styled word ends exactly at the wrap width, and strikethrough no longer runs into the right padding of a wrapped line: the wrap closes `\\x1b[29m` at line end like underline and opens it again on the next line.",
+      "rootCause": "The code that closes a styled word attaches to the following space, so wrapping took that space for a word and moved it to the next line, and strikethrough ran into the padding of a wrapped line. A token is whitespace once its escape codes are skipped, a dropped space keeps its codes on the wrapped line, strikethrough is closed at line end like underline, and trailing spaces are trimmed before the line-end reset.",
+      "rootCauseSource": "commit",
+      "userImpact": "Lost or altered data",
+      "platform": "All platforms",
+      "class": "pi-port",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Wrapped text no longer starts the next line with a space when a styled word ends exactly at the wrap width, and strikethrough no longer runs into the right padding of a wrapped line: the wrap closes `\\x1b[29m` at line end like underline and opens it again on the next line. The text-wrapping helpers in the Go, Rust, Python and Lisp extension SDKs wrap the same way. Carried forward from Pi 2ce9d527 (earendil-works/pi#10925), past the 1.4.0+b3a29f11 pin.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "c6f6953367",
+          "date": "2026-10-30",
+          "pr": "10925"
+        }
+      ],
+      "tests": [
+        "tui/markdown_wrap_boundary_test.go::TestMarkdownStyledWordsAtTheWrapBoundaryPiCase",
+        "tui/widthx/wrap_boundary_test.go::TestLineEndResetClosesStrikethrough",
+        "tui/widthx/wrap_boundary_test.go::TestWrapTextWithAnsiStyledWordsAtTheWrapBoundaryPiCases"
       ]
     },
     {
