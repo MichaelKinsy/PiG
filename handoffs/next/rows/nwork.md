@@ -1,0 +1,61 @@
+# Rows of lane N-WORK (Chord v2 slice 10 workers, Pi `6d4b7443`) for the integrator
+
+Branch `fix/follow-nwork` on `fix/follow-pi-next` `65411f70dd`, with KFold's route commit (`6902afe773`) and plugin seams (`c01defa69c`) merged. Delete this file (and `nwork-tests.json`) after transcribing. One Go package `chord/nextnode/workers` (files `workers_<stem>.go`; `index.ts` is the package's exported names). Red commits: `d5a696b90a` (control, lock, process tests: `undefined: crossed, CrossedError, ...`), `479ecc3ebc` (main, workers tests, fixture worker, benchmarks: `undefined: processPort ...`).
+
+**Status: PENDING 8 upstream tests** (the rollout step and the four "fix round 1" cases that ship a build): they need N-PLUG's `Plugins` component (`Build`, `Rollout`, `State().dirty`) and the host's `Reload`, which KFold has not landed. The component side (`workers.step`, `#rollout`, `#reload`, `#retried`, the per-child reload queue) is ported and only exercised through the worker's side now; the exact missing cases are in `nwork-tests.json` `missing`. Commit `f37bf319ee` is a **stand-in to drop on merge** (`chord/nextnode/plugins/zz_wip_plugins.go`: `PluginScript`, `Built`, `RuntimeLoad`, `PluginRuntime`, `NewPluginRuntime`, `Plugins`, `RolloutStep`, `RolloutHost`; `chord/next/host/zz_wip_reload.go`: `PluginFailure`, `LoadReport`, `ReloadReport`, `ReloadedObject`...), written with the exact names and shapes KFold sent; `workers_workers.go`, `workers_main.go`, `workers_control.go` and `workers_support_test.go` (`loadHost`) name them.
+
+## Design record: goroutine or child process (owner review)
+
+A worker is a **child process**. The observable contract (`workers.ts` header, slice 10 §3) is isolation: a crash is contained and reported by its exit code or signal (`worker exited (code 7)`, `(SIGKILL)`), a worker that answers nothing is killed with everything it spawned (process group; job object on Windows), one live worker per address is a kernel lock across processes, its stdout and stderr are its own. A goroutine has none of these (a panic ends the whole Go process; it cannot be killed; no exit code). So the Go form keeps Pi's: `fork` becomes `os/exec` of the app's own executable (`Entry`, `ExecArgv`, `Env`; a test starts its own binary again, `TestMain` + `CHORD_WORKERS_FIXTURE`), detached in its own process group, stdout/stderr piped.
+
+| Pi (Node) | Go | why |
+|---|---|---|
+| `fork` with V8 `serialization: "advanced"` IPC | a socketpair on fd 3 (Unix) / a named pipe named by `CHORD_WORKERS_CHANNEL` (Windows); records `kind byte, uint32 length, payload` (frame or JSON control message) | no Node channel in Go; one ordered stream keeps frame/control ordering; sends never block (unbounded queue, one writer goroutine) |
+| `process.on("message"/"disconnect")`, `process.send` | `link.IpcPort` implemented by `channel`; the worker's `process` is `openProcessChannel()` | Pi's `ipcLink` is reused unchanged |
+| `workerMain` returns, the event loop keeps the process | `WorkerMain` blocks (`select{}`), ends through `exitProcess` | a Go program ends when `main` returns |
+| `process.once("exit", removeFile)` | `atExit` hooks run by `exitProcess` | Go has no exit event; a SIGKILLed holder leaves a stale socket file and the lock fails closed, as in Pi |
+| `uncaughtException`/`unhandledRejection` -> `fatal` | a panic in `fn` or the reload loop is recovered into `fatal`; a panic in an app goroutine ends the process (exit 2), which the server reports as a crash | a Go panic in a goroutine cannot be caught elsewhere; containment is the process boundary |
+| `new Promise` queue per address, `queue.then(op)` | chain of `done` channels, one owned goroutine per operation | order and the bookkeeping-before-awaiter order are kept (`workersComponent.enqueue`) |
+| the JS thread | a `host.Loop` of the component; every synchronous part of a Pi function is `loop.Run` | same as D5b (`DESIGN-go-layout.md` §3) |
+| a blocked event loop (busy loop) | the whole worker process stopped (`SIGSTOP`, resumed by a helper process) in the fixture | a Go worker has no single thread to block; stopping the process leaves nothing running (no heartbeat, no shutdown handler, no timer), the observable of Pi's busy loop |
+| `entry` module + `execArgv` | `Entry` executable + `ExecArgv` | a worker is a program |
+| esbuild, `vm.Script`, `createPluginRuntime` | KFold's `Builder`/`Evaluator` seams and `plugins.NewPluginRuntime(Evaluator)` (`WorkerMainOptions.Evaluator`, `HostPackages`) | designed out by N-PLUG (no JS in Go) |
+
+Windows: the channel, process tree (job object), `lock` (named pipe) compile (`GOOS=windows go vet`); they have no runtime test here (no Windows host). The tests that stop a worker process (`freeze`, SIGTERM) are Unix-only.
+
+## (a) Upstream files
+
+| path | disposition | PiG files | evidence | rationale |
+|---|---|---|---|---|
+| packages/chord/src/next-node/workers/control.ts | ported | chord/nextnode/workers/workers_control.go | test:chord/nextnode/workers/workers_control_test.go#TestErrorsCrossAsMessageCodeAndReasonNeverAStackOrCauseComeBackAsChordErrorsWhenTheyHadACode | `ToWorker`/`FromWorker` unions are one struct each tagged by `Kind`, each writing and reading its own JSON in Pi's key order; `controlOf[M]` is generic and takes what the channel delivers (`[]byte` frame, `json.RawMessage` control); `crossed(err any)`; the report's `ReloadReport` is `host.ReloadReport` (`ReloadedObject.Cause` is a value there) |
+| packages/chord/src/next-node/workers/index.ts | designed-out | none | none | re-export barrel; the exported set is the package's (`CrossedError`, `ProcessLock`, `WorkerMain`, `WorkerStart`, `WorkerPlugins`, `WorkerResult`, `WorkerMainOptions`, `CreateWorkers`, `WorkerState`, `Workers`, `WorkersError`, `WorkersOptions`) |
+| packages/chord/src/next-node/workers/lock.ts | ported | chord/nextnode/workers/workers_lock.go, workers_lock_unix.go, workers_lock_windows.go | test:chord/nextnode/workers/workers_lock_test.go#TestProcessLockMakesASecondTakerWaitUntilTheHolderReleasesThenTakesIt | `processLock` is `ProcessLock(name, ctx)` returning `ProcessLockHandle` (Go cannot give the function and the type one name); waiters are connections the holder keeps open and never answers, joined by `Release`; ctx abort returns `context.Cause`; abstract socket (`@chord-lock-`), socket file, named pipe |
+| packages/chord/src/next-node/workers/main.ts | ported | chord/nextnode/workers/workers_main.go | test:chord/nextnode/workers/workers_main_test.go#TestTheWorkersSideShutsDownDuringItsStartupAbortsItRunsTheClosersRegisteredSoFarInReverseOrderExits0 | see the design record; the worker's state is a mutex (every message, signal and watch listener enters through it; sends never block); `fn` and closers return errors; reloads run on an owned task |
+| packages/chord/src/next-node/workers/process.ts | ported | chord/nextnode/workers/workers_process.go, workers_process_unix.go, workers_process_windows.go, workers_channel*.go | test:chord/nextnode/workers/workers_process_test.go#TestAWorkerProcessPipesItsOutputKeepsItsStderrTailQueuesAnEarlyFrameOnItsLinkTellsControlMessages | `exited` is a closed channel + `Exit()`; the `Exited` handler runs before waiters resume; a fork that fails to start is a process of pid -1 whose exit {null, null} is told, as Node's `error` event; stderr tail is the last 4096 UTF-16 units |
+| packages/chord/src/next-node/workers/workers.ts | ported (8 tests pending) | chord/nextnode/workers/workers_workers.go, workers_promise.go | test:chord/nextnode/workers/workers_workers_test.go#TestFailuresStayACrashAfterReadyStaysFailedWorkerExitedWorkerFailedNothingRestarts | `Workers.State()` is a `state.SourceHandle`; `WorkersError` is a sealed interface (`BatchWorkersError` wraps `state.BatchError`); `Workers<K>` kind parameter type-level; `IdleMs` is a `time.Duration`; a `clock` seam (unexported option) drives the timers with vitest-style fake timers; the component joins its own goroutines in `Close`; the call into the app's `Start` is not joined (it may never return) |
+| packages/chord/test/next/bench/workers.ts | ported | chord/nextnode/workers/workers_bench_test.go | test:chord/nextnode/workers/workers_bench_test.go#BenchmarkWorkerColdStart | Go benchmarks run by hand (`go test -run '^$' -bench . ./chord/nextnode/workers`): cold start to `started` and `ready` (median), server heap per idle worker (20) |
+
+Go-only files (no Pi file): `workers_channel.go` (+`_unix`, `_windows`: the IPC channel), `workers_exit.go` (exit hooks), `workers_promise.go` (once-settled promise, task group).
+
+## (b) PORT_MAP rows to add
+
+| source | PiG | status |
+|---|---|---|
+| `packages/chord/src/next-node/workers/{control,lock,main,process,workers}.ts` | `chord/nextnode/workers` (`workers_<stem>.go`; `index.ts` is the package's exported names) | 🟡 partial until the 8 rollout tests are ported, then ✅ |
+
+## (c) Tests: see `nwork-tests.json` (per upstream test file: ported / missing / designedOut)
+
+`control.test.ts`, `lock.test.ts`, `process.test.ts`, `main.test.ts` fully ported (`main.test.ts`'s SIGTERM+disconnect `it` is two Go tests; the SIGTERM one is Unix-only). `workers.test.ts`: 23 of 31 ported with Pi's inputs and expectations; "a link lost while its child lives" and "reaps a worker that closed its own IPC channel" are Unix-only (`freeze`). Adaptations of the fixture worker (`workers_fixture_worker_test.go`): `Control.fatal` is not ported (an uncaught throw from a timer is a panic in an app goroutine, a process crash in Go; no test calls it); the plugin `@test/notes` is a Go facet (`fixtureEvaluator`) whose label is its script's text; `GORACE=atexit_sleep_ms=0` is set in the fixture workers' environment (a `-race` binary sleeps a second at exit, which Node does not, and the keep-alive test is about when a worker stops). A bug the tests found: the child's channel left descriptor 3 open after `Disconnect` (`net.FileConn` duplicates it), so the server never saw a child-side close (`TestFixRound1Reaps...`).
+
+## (d) Async contracts: see `nwork-async.md`
+
+## (e) New public Go API (interface IDs for the integrator)
+
+`chord/nextnode/workers`: `CrossedError`, `CrossedReport`, `CrossedFailure`, `CrossedCause`, `CrossedObject`, `ReloadedPlugins`, `ToWorker`, `ToWorkerKind` (`ToWorkerStart`, `ToWorkerShutdown`, `ToWorkerReload`), `FromWorker`, `FromWorkerKind` (`FromWorkerStarted`, `FromWorkerReady`, `FromWorkerIdle`, `FromWorkerFatal`, `FromWorkerReloaded`); `ProcessLock`, `ProcessLockHandle`; `ForkOptions`, `Exit`, `ProcessEvents`, `WorkerProcess` (`NewWorkerProcess`, `Exited`, `Exit`, `StderrTail`, `Send`, `Kill`, `Pid`, `StartedAt`, `Link`); `WorkerMain`, `WorkerStart`, `WorkerLoad`, `WorkerPlugins`, `BusyWatchable`, `WorkerResult`, `WorkerMainOptions`; `CreateWorkers`, `WorkersOptions`, `WorkerStatus` (`WorkerStarting`, `WorkerRunning`, `WorkerStopping`, `WorkerFailed`), `WorkerState`, `WorkersError`, `WorkerFailedError`, `AuthorizeFailedError`, `WorkerExitedError`, `BatchWorkersError`, `Workers`. No SDK or CLI surface.
+
+## Open points for the integrator
+
+- **Owner review of the mapping** (design record above): process, not goroutine; the decision is conservative (it preserves every observable of Pi's slice 10 §3).
+- Drop `f37bf319ee` when KFold's runtime and host reload types land; the stand-ins have the shapes KFold sent, so only `workers_control.go`'s `crossedReport`/`uncrossedReport` (object kinds and cause), `workers_main.go` (`runtime`/`LoadReport` use) and `workers_support_test.go` (`loadHost`: `Host.Load` returns `(LoadReport, error)` there) may need small edits.
+- `make generate` stops at `interface-proposals` on a clone without `.upstream/current` (the pin mirror is the integrator's); no other generate step ran.
+- Windows has no runtime test (compile and vet only).
