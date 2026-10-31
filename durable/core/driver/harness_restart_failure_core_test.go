@@ -19,6 +19,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/durable"
+	"github.com/MichaelKinsy/PiG/durable/durabletest"
 	"github.com/MichaelKinsy/PiG/durable/harness"
 	sqlitenode "github.com/MichaelKinsy/PiG/durable/storage/sqlite/node"
 )
@@ -136,7 +137,7 @@ func (rig *restartRig) setRestarts(id durable.TaskId, restarts int) {
 		rig.t.Fatalf("task %d: %v, %v", id, record, err)
 	}
 	record.Restarts = restarts
-	if _, err := store.Commit(rig.t.Context(), []durable.StorageWrite{durable.TaskWrite{Value: *record}}, func(durable.Seq) {}); err != nil {
+	if _, err := durabletest.CommitWrites(rig.t.Context(), store, []durable.StorageWrite{durable.TaskWrite{Value: *record}}); err != nil {
 		rig.t.Fatal(err)
 	}
 	if err := store.Close(rig.t.Context()); err != nil {
