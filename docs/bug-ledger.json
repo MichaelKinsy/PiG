@@ -28445,6 +28445,27 @@
       ]
     },
     {
+      "id": "BF-b85fd68",
+      "title": "fix(chord/host): compile the frame schema once, not for every frame a link carries",
+      "symptom": "fix(chord/host): compile the frame schema once, not for every frame a link carries",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "b85fd6826a",
+          "date": "2026-10-30"
+        }
+      ],
+      "tests": [
+        "chord/host/wire_test.go::TestIsFrameChecksWithoutRecompilingTheFrameSchema"
+      ]
+    },
+    {
       "id": "BF-b88044f",
       "title": "A login flow's text prompt accepts an empty answer, as Pi's does, instead of failing with \"\u003cprompt\u003e is…",
       "symptom": "A login flow's text prompt accepts an empty answer, as Pi's does, instead of failing with \"\u003cprompt\u003e is required\".",

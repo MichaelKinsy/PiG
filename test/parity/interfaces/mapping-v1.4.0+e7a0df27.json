@@ -111959,7 +111959,8 @@
       ],
       "evidence": [
         "test:chord/context/chordctx_upstream_test.go#TestContextStopsWaitingWhenTheInvocationIsCancelled",
-        "test:chord/context/chordctx_upstream_test.go#TestContextWithAnAlreadyCancelledSignalIsCancelledOnReturn"
+        "test:chord/context/chordctx_upstream_test.go#TestContextWithAnAlreadyCancelledSignalIsCancelledOnReturn",
+        "test:chord/context/suspend_test.go#TestAwaitAndReceiveSuspendTheHandlerBeforeTheyBlock"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -111981,7 +111982,8 @@
       ],
       "evidence": [
         "test:chord/context/chordctx_upstream_test.go#TestContextStopsWaitingWhenTheInvocationIsCancelled",
-        "test:chord/context/chordctx_upstream_test.go#TestContextWithAnAlreadyCancelledSignalIsCancelledOnReturn"
+        "test:chord/context/chordctx_upstream_test.go#TestContextWithAnAlreadyCancelledSignalIsCancelledOnReturn",
+        "test:chord/context/suspend_test.go#TestAwaitAndReceiveSuspendTheHandlerBeforeTheyBlock"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -124220,9 +124222,9 @@
         "call:chord/next/host/host_sleep.go#UntilAborted"
       ],
       "evidence": [
-        "test:chord/next/host/host_sleep_test.go#TestUntilAbortedResolvesOnceItsContextIsAbortedAtOnceWhenItAlreadyIs",
-        "test:chord/next/host/jobs_job_runs_test.go#TestKeepAliveKeepsAnObjectWithoutHoldersWhileRunsRunAndEndsItAfterTheLastOneAndItsLinger",
-        "test:chord/next/host/jobs_job_end_test.go#TestGCAnEndedObjectReleasesItsRunsTheirDocumentsAndWaiters"
+        "test:chord/next/host/host_ctx_test.go#TestCtxGetOfAHandlerWhoseCallWasAbortedChecksTheSignalFirstNothingIsCreated",
+        "test:chord/next/host/host_examples_test.go#TestExample28PersistedJobs",
+        "test:chord/next/host/host_reference_test.go#TestReleaseRejectsTheCallsMadeThroughTheReferenceWithReleasedAndAbortsTheirHandlersContexts"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -124243,9 +124245,9 @@
         "call:chord/next/host/host_sleep.go#UntilAborted"
       ],
       "evidence": [
-        "test:chord/next/host/host_sleep_test.go#TestUntilAbortedResolvesOnceItsContextIsAbortedAtOnceWhenItAlreadyIs",
-        "test:chord/next/host/jobs_job_runs_test.go#TestKeepAliveKeepsAnObjectWithoutHoldersWhileRunsRunAndEndsItAfterTheLastOneAndItsLinger",
-        "test:chord/next/host/jobs_job_end_test.go#TestGCAnEndedObjectReleasesItsRunsTheirDocumentsAndWaiters"
+        "test:chord/next/host/host_ctx_test.go#TestCtxGetOfAHandlerWhoseCallWasAbortedChecksTheSignalFirstNothingIsCreated",
+        "test:chord/next/host/host_examples_test.go#TestExample28PersistedJobs",
+        "test:chord/next/host/host_reference_test.go#TestReleaseRejectsTheCallsMadeThroughTheReferenceWithReleasedAndAbortsTheirHandlersContexts"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
