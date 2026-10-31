@@ -27,7 +27,7 @@ Checks that started passing are reported. Update the baseline to lock them in.
 `baseline.json` is identical to Pi 1.0.4's. The known failures are the same:
 
 - `elicitation-sep1034-client-defaults`: PiG does not support elicitation.
-- `auth/basic-cimd`: PiG registers clients dynamically instead of using a Client ID Metadata Document.
+- `auth/basic-cimd`: PiG's `auto` registration uses pi's Client ID Metadata Document on pi.dev only as the application `pi`, and never the suite's `https://conformance-test.local/client-metadata.json`; PiG registers clients dynamically.
 - `auth/scope-retry-limit`: `pi-client` fails by design; the server never accepts the granted scope.
 
 2026-07-28 is not covered: it is a stateless protocol PiG does not implement.
