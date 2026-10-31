@@ -166,6 +166,7 @@ A setting wins over the matching `PI_HYPERLINKS`, `PI_IMAGE_PROTOCOL` or `PI_TRU
 | `shellCommandPrefix` | string |  | Prefix applied to every shell command. |
 | `externalEditor` | string | `$VISUAL`, `$EDITOR`, then the platform default | Editor opened by `app.editor.external`. |
 | `npmCommand` | string[] | `["npm"]` | Command and arguments used to run npm for package lookup and installation. |
+| `selfUpdateCommand` | string[] | none | Command and arguments `pig update` runs to update PiG itself, with `{packageName}`, `{version}` and `{installSpec}` placeholders. `PI_SELF_UPDATE_COMMAND` takes precedence. **Can only be set in agent-directory settings.** See [Custom update command](cli.md#custom-update-command). |
 
 ## Tools
 
