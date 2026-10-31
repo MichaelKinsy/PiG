@@ -9,6 +9,7 @@ import (
 	"regexp"
 	"slices"
 	"strings"
+	"sync"
 	"testing"
 	"testing/synctest"
 	"time"
@@ -1425,4 +1426,25 @@ func TestAltScreenResetTextSelectionDropsSelectionAndClickHistory(t *testing.T) 
 			t.Fatal("a click after ResetTextSelection counted as a double-click")
 		}
 	})
+}
+
+// A frame installs the layout the primary scroll view comes from; the viewport accessors an extension host call reaches (ViewportTop, IsFollowingOutput, ScrollBy, ScrollToTop, ScrollToBottom) read it from another goroutine.
+func TestAltScreenViewportAccessorsDoNotRaceWithAFrame(t *testing.T) {
+	renderer := newAltScreenForTest(&bytes.Buffer{}, 40, 6, TuiAltScreenOptions{})
+	renderer.Add(NewText(strings.Repeat("line\n", 30)))
+	renderer.Start()
+	defer renderer.StopWithOptions(StopOptions{PreserveScreen: true})
+
+	var wg sync.WaitGroup
+	for range 100 {
+		wg.Go(renderer.Render)
+		wg.Go(func() {
+			_ = renderer.ViewportTop()
+			_ = renderer.IsFollowingOutput()
+			renderer.ScrollBy(-1)
+			renderer.ScrollToTop()
+			renderer.ScrollToBottom()
+		})
+	}
+	wg.Wait()
 }
