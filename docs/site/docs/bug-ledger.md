@@ -436,7 +436,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-633152d](#bf-633152d) | Starting a Go extension no longer fails with `hash <dir> after its build: open …/release/deps/rmeta…: no… | PiG's own defect | All platforms | Unreleased |
 | [BF-63b4fc8](#bf-63b4fc8) | `NodeExecutionEnv.Watch` gives a directory replaced at the same path a new watcher, reports changes to the… | A fix Pi shipped that PiG ported | macOS | 0.5.0 |
 | [BF-63bb0b7](#bf-63bb0b7) | `pig extension upgrade` now rewrites a `Context` getter call that is the only argument of a variadic call… | PiG's own defect | All platforms | 0.5.0 |
-| [BF-6445df7](#bf-6445df7) | PNG images are now decoded the way Pi decodes them, byte for byte, where PiG used to use Go's `image/png` | PiG's own defect | All platforms | Unreleased |
+| [BF-6445df7](#bf-6445df7) | PNG images are now decoded the way Pi decodes them, pixel for pixel and error for error on every file of the… | PiG's own defect | All platforms | Unreleased |
 | [BF-644a9f2](#bf-644a9f2) | Changelog link rewriting and `git` source parsing match a URL scheme case-insensitively as Pi's regex with… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-644a9f2-2](#bf-644a9f2-2) | A Node extension's `ctx.ui.custom` factory can call `tui.showOverlay`, `tui.hideOverlay` and `tui.setFocus`… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-644b3e0](#bf-644b3e0) | A codemode script that calls `text()` tens of thousands of times no longer blocks the process: adjacent text… | PiG's own defect | All platforms | 0.5.0 |
@@ -621,6 +621,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-72e7ab2-6](#bf-72e7ab2-6) | `TestSummaryAndSkillMessageComponentsMatchPi` probes the compaction, branch summary and skill messages under… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-731474b](#bf-731474b) | `coding.DefineTool` returns the tool definition it is given, as Pi's `defineTool` does | PiG's own defect | All platforms | 0.5.0 |
 | [BF-731474b-2](#bf-731474b-2) | `codemode.CodemodeJsonSchema` names the raw JSON of a tool's JSON Schema document, as Pi's… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-735e4a2](#bf-735e4a2) | fix(chord/next/host): a native closed before its open began opens nothing | PiG's own defect | All platforms | Unreleased |
 | [BF-7375fe4](#bf-7375fe4) | After `pig piglet update` installs a new release of a pulled Piglet Binary, `pig piglet list` shows the… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-73a09eb](#bf-73a09eb) | fix: the ANSI renderer that replaces a frontend surface draws on the options terminal, not the surface's… | PiG's own defect | All platforms | Unreleased |
 | [BF-73a6c8c](#bf-73a6c8c) | OpenAI-compatible chat completions requests keep the tool-call ids of the same model's earlier calls as they… | PiG's own defect | All platforms | 0.5.0 |
@@ -1079,7 +1080,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-cb20ec0](#bf-cb20ec0) | After `pig update --models`, OpenRouter's `:nitro` and `:floor` routing variants no longer disappear from… | PiG's own defect | All platforms | Unreleased |
 | [BF-cb21ee0](#bf-cb21ee0) | Markdown resolves link reference definitions as Pi does: `[text][label]`, `[label][]` and `[label]` link to a… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-cb3eb3b](#bf-cb3eb3b) | fix(durable/core): memory-held commits record no telemetry events | PiG's own defect | All platforms | Unreleased |
-| [BF-cbc986b](#bf-cbc986b) | BMP and GIF images are now decoded the way Pi decodes them, byte for byte, where PiG used to use Go's decoders | PiG's own defect | All platforms | Unreleased |
+| [BF-cbc986b](#bf-cbc986b) | BMP and GIF images are now decoded the way Pi decodes them, pixel for pixel and error for error on every file… | PiG's own defect | All platforms | Unreleased |
 | [BF-cc9370b](#bf-cc9370b) | A Node extension's `setWidget`, `setHeader` and `setFooter` factories receive the same `tui` as a… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-ccaade2](#bf-ccaade2) | The `/thinking` selector edits its search like Pi's input, selects with the input's submit key, and no longer… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-cd7fa1c](#bf-cd7fa1c) | A read-only config root no longer prints warnings at every start | PiG's own defect | All platforms | 0.5.0 |
@@ -1382,7 +1383,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-fac4703](#bf-fac4703) | The extension editor dialog (`ctx.ui.editor()`, `/tree` summary prompt) shows the hint keys the user bound… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-fac4703-2](#bf-fac4703-2) | `TestSettingsSelectorMatchesPi` walks every row under rebound, multi-key and unbound `app.message.followUp` /… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-fac4703-3](#bf-fac4703-3) | `TestSelectListInputMatchesPi` also runs under the Kitty keyboard protocol (CSI-u enter, escape, ctrl+j… | PiG's own defect | All platforms | 0.5.0 |
-| [BF-facd278](#bf-facd278) | A TIFF image is now decoded the way Pi decodes it (Photon links the `tiff` 0.9.1 crate under `image` 0.24.9) | PiG's own defect | All platforms | Unreleased |
+| [BF-facd278](#bf-facd278) | A TIFF image is now decoded the way Pi decodes it (Photon links the `tiff` 0.9.1 crate under `image` 0.24.9)… | PiG's own defect | All platforms | Unreleased |
 | [BF-fba9b47](#bf-fba9b47) | fix(extension): hold the theme colors map the wire palette memo is keyed on | PiG's own defect | All platforms | Unreleased |
 | [BF-fbd3640](#bf-fbd3640) | The legacy credential migration writes `auth.json` and the rewritten `settings.json` with the key order Pi… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-fc5baaf](#bf-fc5baaf) | `pi.exec`'s `timeout` starts once the command has been spawned, as in Pi, so time spent finding and starting… | PiG's own defect | All platforms | 0.5.0 |
@@ -7146,17 +7147,17 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 
 ### BF-6445df7
 
-**PNG images are now decoded the way Pi decodes them, byte for byte, where PiG used to use Go's `image/png`**
+**PNG images are now decoded the way Pi decodes them, pixel for pixel and error for error on every file of the…**
 
 - **Source:** PiG's own defect
-- **Symptom:** PNG images are now decoded the way Pi decodes them, byte for byte, where PiG used to use Go's `image/png`.
+- **Symptom:** PNG images are now decoded the way Pi decodes them, pixel for pixel and error for error on every file of the oracle corpus, where PiG used to use Go's `image/png`.
 - **Root cause:** DecodePNG ports png 0.17.14's streaming decoder and reader and fdeflate 0.3.6's inflater as image 0.24.9's PngDecoder drives them: every EXPAND output type, Adam7, palette and tRNS, the 16-bit conversion of to_rgba8, the default image of an APNG, the crate's limits in wasm32's usize, the critical and ancillary checksum rules, and the chunk header that has to follow the image data. It replaces the ICO-only reader (icopng.go), which ICO entries now share. Decode routes the PNG signature to it; image/png is no longer registered by photonimage and the routing test bans it.
 - **User impact:** An operation failed or was rejected
 - **Platform:** All platforms
 - **Fixed in:** Unreleased
 - **Fix commits:** `6445df7c9d` (2026-10-30)
 - **Tests:** `internal/photonimage/pngdecode_oracle_test.go::TestDecodePNGMatchesPhoton`
-- **Release note:** PNG images are now decoded the way Pi decodes them, byte for byte, where PiG used to use Go's `image/png`. A PNG is read as Photon's png crate reads it: every colour type and bit depth with its transparency chunk (a grayscale or RGB tRNS chunk longer than its colour, one shorter than the palette), Adam7 interlacing, 16-bit samples converted the way Photon converts them, the first image of an animated PNG, ancillary chunks with a wrong checksum skipped and critical ones refused, a file that stops right after its image data, the memory limit of the crate, and a zlib stream read by its own inflater (which refuses and accepts other streams than zlib's). A clipboard image, an attachment, a tool-result image, an ICO entry and a file handed to the terminal image conversion or to the durable `read` tool are converted or resized as Pi converts or resizes them, and a damaged PNG is accepted or refused as Pi accepts or refuses it. PiG no longer registers Go's PNG decoder for its own use.
+- **Release note:** PNG images are now decoded the way Pi decodes them, pixel for pixel and error for error on every file of the oracle corpus, where PiG used to use Go's `image/png`. A PNG is read as Photon's png crate reads it: every colour type and bit depth with its transparency chunk (a grayscale or RGB tRNS chunk longer than its colour, one shorter than the palette), Adam7 interlacing, 16-bit samples converted the way Photon converts them, the first image of an animated PNG, ancillary chunks with a wrong checksum skipped and critical ones refused, a file that stops right after its image data, the memory limit of the crate, and a zlib stream read by its own inflater (which refuses and accepts other streams than zlib's). A clipboard image, an attachment, a tool-result image, an ICO entry and a file handed to the terminal image conversion or to the durable `read` tool are converted or resized as Pi converts or resizes them, and a damaged PNG is accepted or refused as Pi accepts or refuses it. PiG no longer registers Go's PNG decoder for its own use.
 
 ### BF-644a9f2
 
@@ -9724,6 +9725,19 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `731474b0eb` (2026-10-10)
 - **Tests:** `coding/define_tool_test.go::TestDefineToolReturnsTheDefinitionUnchanged`
 - **Release note:** `codemode.CodemodeJsonSchema` names the raw JSON of a tool's JSON Schema document, as Pi's `CodemodeJsonSchema` does.
+
+### BF-735e4a2
+
+**fix(chord/next/host): a native closed before its open began opens nothing**
+
+- **Source:** PiG's own defect
+- **Symptom:** fix(chord/next/host): a native closed before its open began opens nothing
+- **Root cause:** Pi checks that an attempt was abandoned and starts the next native's open in one section (attempt.ts #ownSteps, native.ts open), so no close comes between. Here the open starts on an owned task (awaitTask) after the section that checked, and the attempt may close its natives in between: a native closed while still unopened was then set to opening, opened, and its value never closed. open now refuses a native that was closed first, with released/closed, and the opener is not called.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `735e4a2a50` (2026-10-30)
+- **Tests:** `chord/next/host/host_native_test.go::TestNativeAnOpenThatStartsAfterItsCloseOpensNothing`
 
 ### BF-7375fe4
 
@@ -15206,14 +15220,14 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 **Images in the formats Photon decodes beyond PNG, JPEG, GIF, WebP, BMP and TIFF are now decoded the way Pi…**
 
 - **Source:** PiG's own defect
-- **Symptom:** A clipboard target such as `image/x-icon`, an image the model is sent under any declared type, an attachment, and a file handed to the terminal image conversion or to the durable `read` tool are converted to PNG or resized exactly as Pi does, byte for byte, where PiG used to say it could not convert them.
+- **Symptom:** A clipboard target such as `image/x-icon`, an image the model is sent under any declared type, an attachment, and a file handed to the terminal image conversion or to the durable `read` tool are converted to PNG or resized as Pi does, to the same bytes in every case measured against Pi's own code, where PiG used to say it could not convert them.
 - **Root cause:** Not recorded.
 - **User impact:** An operation failed or was rejected
 - **Platform:** All platforms
 - **Fixed in:** Unreleased
 - **Fix commits:** `bba3679802` (2026-10-29)
 - **Tests:** `internal/photonimage/icodecode_test.go::TestDecodeICOBitmapPixelsAndMask`, `internal/photonimage/icodecode_test.go::TestDecodeICOPNGEntry`, `internal/photonimage/icodecode_test.go::TestDecodeICOPalettesAndRLE`, `internal/photonimage/icodecode_test.go::TestDecodeICOPicksTheBestEntry`, `internal/photonimage/icodecode_test.go::TestDecodeICORefuses`, `internal/photonimage/icodecode_test.go::TestDecodeRoutesICO`
-- **Release note:** Images in the formats Photon decodes beyond PNG, JPEG, GIF, WebP, BMP and TIFF are now decoded the way Pi decodes them: ICO (a bitmap or PNG entry, with its AND mask), PNM (PBM, PGM and PPM in plain and raw form, and PAM), DDS (DXT1, DXT3 and DXT5, also through the DX10 header), Radiance HDR and farbfeld. A clipboard target such as `image/x-icon`, an image the model is sent under any declared type, an attachment, and a file handed to the terminal image conversion or to the durable `read` tool are converted to PNG or resized exactly as Pi does, byte for byte, where PiG used to say it could not convert them. Files Photon refuses are refused, an image of more than 512 MiB decoded is refused, and an image with no pixels is no longer encoded (Pi's PNG encoder throws on it). TGA, AVIF, OpenEXR and QOI stay unsupported, as in Pi (TGA has no signature, the others are not built into Photon).
+- **Release note:** Images in the formats Photon decodes beyond PNG, JPEG, GIF, WebP, BMP and TIFF are now decoded the way Pi decodes them, pixel for pixel and error for error on every file of the oracle corpus: ICO (a bitmap or PNG entry, with its AND mask), PNM (PBM, PGM and PPM in plain and raw form, and PAM), DDS (DXT1, DXT3 and DXT5, also through the DX10 header), Radiance HDR and farbfeld. A clipboard target such as `image/x-icon`, an image the model is sent under any declared type, an attachment, and a file handed to the terminal image conversion or to the durable `read` tool are converted to PNG or resized as Pi does, to the same bytes in every case measured against Pi's own code, where PiG used to say it could not convert them. Files Photon refuses are refused, an image of more than 512 MiB decoded is refused, and an image with no pixels is no longer encoded (Pi's PNG encoder throws on it). TGA, AVIF, OpenEXR and QOI stay unsupported, as in Pi (TGA has no signature, the others are not built into Photon).
 
 ### BF-bc24321
 
@@ -16087,17 +16101,17 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 
 ### BF-cbc986b
 
-**BMP and GIF images are now decoded the way Pi decodes them, byte for byte, where PiG used to use Go's decoders**
+**BMP and GIF images are now decoded the way Pi decodes them, pixel for pixel and error for error on every file…**
 
 - **Source:** PiG's own defect
-- **Symptom:** BMP and GIF images are now decoded the way Pi decodes them, byte for byte, where PiG used to use Go's decoders.
+- **Symptom:** BMP and GIF images are now decoded the way Pi decodes them, pixel for pixel and error for error on every file of the oracle corpus, where PiG used to use Go's decoders.
 - **Root cause:** BMP is decoded by DecodeBMP, the BmpDecoder of image 0.24.9 that the ICO decoder already ported, with its file header and RGB output: it accepts every layout the crate accepts (non-zero reserved bytes, every header version, 16 and 32 bits, bitfields, RLE, top-down, a pixel array offset inside the headers) and refuses the rest. GIF is decoded by DecodeGIF, the first frame of image 0.24.9's GifDecoder over the gif crate 0.13.1 with the LZW decoder of weezl 0.1.8. Decode routes both by guess_format's signatures; golang.org/x/image/bmp and image/gif are no longer registered and the routing test bans them. decodeBitfieldBMP is deleted: the port subsumes it, and the test of its malformed inputs…
 - **User impact:** An operation failed or was rejected
 - **Platform:** All platforms
 - **Fixed in:** Unreleased
 - **Fix commits:** `cbc986b4ca` (2026-10-30)
 - **Tests:** `internal/imageprocessing/decode_image_test.go::TestDecodeImageMatchesPhotonBitfieldBMP`, `internal/imageprocessing/decode_image_test.go::TestDecodeImageMatchesPhotonOnMalformedBitfieldBMP`, `internal/imageprocessing/decode_image_test.go::TestNormalizeToolResultImagesConvertsBitfieldBMP`
-- **Release note:** BMP and GIF images are now decoded the way Pi decodes them, byte for byte, where PiG used to use Go's decoders. A BMP with non-zero reserved bytes in its file header, an OS/2 core header, any header version, a 16-bit or bitfield layout, RLE4 or RLE8 data, a pixel array offset inside the headers or a top-down height decodes as Photon decodes it (and the ones Photon refuses are refused), and a GIF is read as its first frame placed on the logical screen, with Photon's rules for local and global palettes, transparency, interlacing, frames that do not fit the screen and damaged LZW data. A clipboard bitmap, an attachment, a tool-result image and a file handed to the terminal image conversion or to the durable `read` tool are converted or resized as Pi converts them.
+- **Release note:** BMP and GIF images are now decoded the way Pi decodes them, pixel for pixel and error for error on every file of the oracle corpus, where PiG used to use Go's decoders. A BMP with non-zero reserved bytes in its file header, an OS/2 core header, any header version, a 16-bit or bitfield layout, RLE4 or RLE8 data, a pixel array offset inside the headers or a top-down height decodes as Photon decodes it (and the ones Photon refuses are refused), and a GIF is read as its first frame placed on the logical screen, with Photon's rules for local and global palettes, transparency, interlacing, frames that do not fit the screen and damaged LZW data. A clipboard bitmap, an attachment, a tool-result image and a file handed to the terminal image conversion or to the durable `read` tool are converted or resized as Pi converts them.
 
 ### BF-cc9370b
 
@@ -20301,17 +20315,17 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 
 ### BF-facd278
 
-**A TIFF image is now decoded the way Pi decodes it (Photon links the `tiff` 0.9.1 crate under `image` 0.24.9)**
+**A TIFF image is now decoded the way Pi decodes it (Photon links the `tiff` 0.9.1 crate under `image` 0.24.9)…**
 
 - **Source:** PiG's own defect
-- **Symptom:** A TIFF on the X11 or Wayland clipboard (`image/tiff`), an image the model is sent under any declared type, and a TIFF handed to the terminal image conversion or to the durable `read` tool are converted to PNG or resized exactly as Pi does, byte for byte, where PiG used to answer that it could not convert them.
+- **Symptom:** A TIFF on the X11 or Wayland clipboard (`image/tiff`), an image the model is sent under any declared type, and a TIFF handed to the terminal image conversion or to the durable `read` tool are converted to PNG or resized as Pi does, to the same bytes in every case measured against Pi's own code, where PiG used to answer that it could not convert them.
 - **Root cause:** Decode now sends "II*\0" and "MM\0*" to DecodeTIFF, the port of tiff 0.9.1 under image 0.24.9's TiffDecoder that Photon runs, so every PiG path that decodes with Photon in Pi accepts TIFF the way Pi does: the clipboard's image/tiff targets, processImage and the durable image processor (whatever the declared type), and the terminal image conversion. golang.org/x/image/tiff stays unregistered: it accepts palettes and bilevel images that tiff refuses, does not read JPEG strips, and gives other pixels in places, so it joins the decoders production code must not use.
 - **User impact:** An operation failed or was rejected
 - **Platform:** All platforms
 - **Fixed in:** Unreleased
 - **Fix commits:** `facd278025` (2026-10-29)
 - **Tests:** None recorded.
-- **Release note:** A TIFF image is now decoded the way Pi decodes it (Photon links the `tiff` 0.9.1 crate under `image` 0.24.9). A TIFF on the X11 or Wayland clipboard (`image/tiff`), an image the model is sent under any declared type, and a TIFF handed to the terminal image conversion or to the durable `read` tool are converted to PNG or resized exactly as Pi does, byte for byte, where PiG used to answer that it could not convert them. Accepted: 8- and 16-bit gray (BlackIsZero and WhiteIsZero), RGB, RGBA and 8-bit CMYK, strips and tiles, chunky or planar, big- or little-endian, uncompressed, LZW, PackBits, Deflate and JPEG, with or without the horizontal predictor. Refused, as in Pi: palette, bilevel, 1- to 7-bit, 12-bit, 32-bit and floating point images, YCbCr, the floating point predictor, Fax and old-style JPEG, BigTIFF, damaged files, and images of more than 512 MiB decoded.
+- **Release note:** A TIFF image is now decoded the way Pi decodes it (Photon links the `tiff` 0.9.1 crate under `image` 0.24.9), pixel for pixel and error for error on every file of the oracle corpus. A TIFF on the X11 or Wayland clipboard (`image/tiff`), an image the model is sent under any declared type, and a TIFF handed to the terminal image conversion or to the durable `read` tool are converted to PNG or resized as Pi does, to the same bytes in every case measured against Pi's own code, where PiG used to answer that it could not convert them. Accepted: 8- and 16-bit gray (BlackIsZero and WhiteIsZero), RGB, RGBA and 8-bit CMYK, strips and tiles, chunky or planar, big- or little-endian, uncompressed, LZW, PackBits, Deflate and JPEG, with or without the horizontal predictor. Refused, as in Pi: palette, bilevel, 1- to 7-bit, 12-bit, 32-bit and floating point images, YCbCr, the floating point predictor, Fax and old-style JPEG, BigTIFF, damaged files, and images of more than 512 MiB decoded.
 
 ### BF-fba9b47
 
