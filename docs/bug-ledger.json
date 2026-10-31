@@ -4413,25 +4413,6 @@
       ]
     },
     {
-      "id": "BF-286c78d",
-      "title": "fix(tui): goimports and regenerate the bug ledger",
-      "symptom": "fix(tui): goimports and regenerate the bug ledger",
-      "rootCause": "Format the IsFollowingOutput accessor, add the Rust, Python and Lisp SDK wrap ports to the changelog fragment, and regenerate the bug ledger for the GateRace fragment.",
-      "rootCauseSource": "commit",
-      "userImpact": "Behavior differed from Pi",
-      "platform": "All platforms",
-      "class": "own",
-      "fixedIn": "Unreleased",
-      "origin": "commit",
-      "commits": [
-        {
-          "hash": "286c78da6d",
-          "date": "2026-10-31"
-        }
-      ],
-      "tests": []
-    },
-    {
       "id": "BF-286d303",
       "title": "A native Provider object an extension registers (`registerNativeProvider`, `pi.registerProvider(provider)`)…",
       "symptom": "Such a provider never composed (no models, its name replaced by its id, every stream an error), and a provider-level `baseUrl` was copied onto its models, which Pi does not do (it is only the context of `refreshModels`).",
@@ -42237,7 +42218,7 @@
     "Failure found by the integration build of unreleased work": 2,
     "Fix reverted before release": 1,
     "Follow-up to unreleased work": 1,
-    "Repair of a merge between development branches": 8,
+    "Repair of a merge between development branches": 9,
     "Review follow-up to unreleased work": 3,
     "test-only": 1
   }

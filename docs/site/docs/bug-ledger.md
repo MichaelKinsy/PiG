@@ -161,7 +161,6 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-27ddc30](#bf-27ddc30) | A tool card shows the arguments of a tool call while they stream, as Pi does: a streamed write card shows its… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-27f3324](#bf-27f3324) | The npm release packer reads `npm pack --json` output from npm 12, which keys the result by package name, as… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-2843d60](#bf-2843d60) | Starting `pig` from a working directory that has been deleted now prints "Error: The current working… | A fix Pi shipped that PiG ported | All platforms | Unreleased |
-| [BF-286c78d](#bf-286c78d) | fix(tui): goimports and regenerate the bug ledger | PiG's own defect | All platforms | Unreleased |
 | [BF-286d303](#bf-286d303) | A native Provider object an extension registers (`registerNativeProvider`, `pi.registerProvider(provider)`)… | PiG's own defect | All platforms | Unreleased |
 | [BF-28b8425](#bf-28b8425) | Blank-key detection for compat API keys, the Vertex API key and the Vertex custom base URL trim whitespace… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-28f8b3b](#bf-28f8b3b) | fix(tui): editor wrap of a one-grapheme segment wider than the width no longer overflows the stack (D158) | PiG's own defect | All platforms | Unreleased |
@@ -3367,19 +3366,6 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `2843d60cd9` (2026-10-30, #11509)
 - **Tests:** `coding/cli/deleted_cwd_test.go::TestStartupInADeletedWorkingDirectoryReportsItAndExits1`, `coding/cli/deleted_cwd_test.go::TestWorkingDirectoryErrorMessageNamesOnlyAMissingDirectory`
 - **Release note:** Starting `pig` from a working directory that has been deleted now prints "Error: The current working directory no longer exists. Change to an existing directory and try again." and exits 1, where it printed `get cwd:` with the operating system error. Carried forward from Pi 88ffcdc7 (earendil-works/pi#11509), past the 1.4.0+b3a29f11 pin.
-
-### BF-286c78d
-
-**fix(tui): goimports and regenerate the bug ledger**
-
-- **Source:** PiG's own defect
-- **Symptom:** fix(tui): goimports and regenerate the bug ledger
-- **Root cause:** Format the IsFollowingOutput accessor, add the Rust, Python and Lisp SDK wrap ports to the changelog fragment, and regenerate the bug ledger for the GateRace fragment.
-- **User impact:** Behavior differed from Pi
-- **Platform:** All platforms
-- **Fixed in:** Unreleased
-- **Fix commits:** `286c78da6d` (2026-10-31)
-- **Tests:** None recorded.
 
 ### BF-286d303
 
@@ -20641,6 +20627,6 @@ Each divergence record is accounted for here. A divergence that fixes a Pi defec
 - Failure found by the integration build of unreleased work: 2
 - Fix reverted before release: 1
 - Follow-up to unreleased work: 1
-- Repair of a merge between development branches: 8
+- Repair of a merge between development branches: 9
 - Review follow-up to unreleased work: 3
 - test-only: 1
