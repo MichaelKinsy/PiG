@@ -1536,6 +1536,8 @@ func TestExample11LingerAndRetry(t *testing.T) {
 	held.Retry()
 	scopeEventually(t, "the mirror is live", func() bool { return exStateNow(t, held) == "live" })
 	exEqual(t, "status", exValue(t, held, "status"), "mirroring")
+	// Pi's `await wait(10)` lets the `live` frame reach the state watch before the reference is released.
+	deliveredOn(host)
 	held.Retry()
 	held.Release()
 	<-watch.Closed()
