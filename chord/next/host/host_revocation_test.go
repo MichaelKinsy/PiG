@@ -491,7 +491,7 @@ func TestHostRevokeEndsARelayedHoldStillWaitingForItsRoutesLink(t *testing.T) {
 		resolving := make(chan struct{})
 		var mu sync.Mutex
 		var routed []*RawPeer
-		must(t, host.Route(Session, RouteOptions{
+		mustRoute(t, host.Route(Session, RouteOptions{
 			Authorize: func(data.Principal, contracts.Address) (bool, error) { return true, nil },
 			Resolve: func(contracts.Address, context.Context) (ResolvedLink, error) {
 				<-resolving
@@ -786,7 +786,7 @@ func TestHostRevokeEndsAGuestsCtxGetWaitingForItsRouteBeforeAnyLinkExists(t *tes
 	host := newHost(t, HostOptions{Principal: jsonObject("kind", "owner"), RevokedBy: grantRevokedBy, OnError: func(HostError) {}})
 	stuck := make(chan struct{})
 	defer close(stuck)
-	must(t, host.Route(thereKind, RouteOptions{
+	mustRoute(t, host.Route(thereKind, RouteOptions{
 		Authorize: func(data.Principal, contracts.Address) (bool, error) { return true, nil },
 		Resolve: func(_ contracts.Address, ctx context.Context) (ResolvedLink, error) {
 			<-stuck
@@ -835,7 +835,7 @@ func awaitUnbound(t testing.TB, host Host) {
 func TestHostRevokeNeverLetsTheRevokedRequestBindOnTheRoutesLaterLink(t *testing.T) {
 	host := newHost(t, HostOptions{Principal: jsonObject("kind", "owner"), RevokedBy: grantRevokedBy, OnError: func(HostError) {}})
 	gate := make(chan ResolvedLink)
-	must(t, host.Route(thereKind, RouteOptions{
+	mustRoute(t, host.Route(thereKind, RouteOptions{
 		Authorize: func(data.Principal, contracts.Address) (bool, error) { return true, nil },
 		Resolve:   func(contracts.Address, context.Context) (ResolvedLink, error) { return <-gate, nil },
 	}, background))
@@ -881,7 +881,7 @@ func TestHostRevokeEndsAGuestsReferenceOverARouteLinkThatDroppedAndNothingHoldsI
 	var routed []*RawPeer
 	var ends []*link.MemoryLink
 	host := newHost(t, HostOptions{Principal: jsonObject("kind", "owner"), RevokedBy: grantRevokedBy, OnError: func(HostError) {}})
-	must(t, host.Route(thereKind, RouteOptions{
+	mustRoute(t, host.Route(thereKind, RouteOptions{
 		Authorize: func(data.Principal, contracts.Address) (bool, error) { return true, nil },
 		Resolve: func(contracts.Address, context.Context) (ResolvedLink, error) {
 			a, b := link.MemoryLinkPair()

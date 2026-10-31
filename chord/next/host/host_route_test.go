@@ -36,18 +36,6 @@ func routeElapse(r *relayed, timers *scopeLoop, ms int64) {
 	}
 }
 
-// waitBackoff waits until the server's route has a backoff window for key (its link closed: the close is an event of a
-// task of the link, which Pi's `transported()` settles and the fake clock does not wait for).
-func waitBackoff(t *testing.T, r *relayed, key string) {
-	t.Helper()
-	h := r.Server.(*chordHost)
-	scopeEventually(t, "the route has a backoff for "+key, func() bool {
-		waiting := false
-		h.loop().Run(func() { waiting = h.destination.routes["session"].backoff.waiting(key) })
-		return waiting
-	})
-}
-
 // waitServerLinks waits until the server host has n open links (the route's resolve made one): the fake clock must not move
 // before, since a link's silence is counted from its creation.
 func waitServerLinks(t *testing.T, r *relayed, n int) {
@@ -57,6 +45,16 @@ func waitServerLinks(t *testing.T, r *relayed, n int) {
 		got := 0
 		h.loop().Run(func() { got = len(h.links) })
 		return got == n
+	})
+}
+
+// wantRouteWaiting waits until ref is `failed { waiting }` with an `unavailable` error of message.
+func wantRouteWaiting(t *testing.T, ref *Reference, message string) {
+	t.Helper()
+	scopeEventually(t, "the reference failed waiting: "+message, func() bool {
+		got := routeState(ref)
+		return got.Kind == RefStateFailed && got.Cause.Kind == data.FailureWaiting && got.Cause.Error.Code == data.CodeUnavailable &&
+			got.Cause.Error.Message == message
 	})
 }
 
@@ -242,58 +240,99 @@ func TestRouteAdmissionFailsAHoldBrokenInvalidHostAddressForAnAddressWhoseParams
 	})
 }
 
-// route.test.ts › resolve failures and re-resolves › a rejected resolve leaves the holds loading, is reported, and
-// resolves again after the address's backoff (race 2).
-func TestResolveFailuresAndReResolvesARejectedResolveLeavesTheHoldsLoadingIsReportedAndResolvesAgainAfterTheAddressesBackoffRace2(t *testing.T) {
+// route.test.ts › resolve failures and re-resolves (no timer, slice 10 R2) › a rejected resolve fails its holders waiting
+// with its error, is reported, and runs no timer (race 2).
+func TestResolveFailuresAndReResolvesARejectedResolveFailsItsHoldersWaitingWithItsErrorIsReportedAndRunsNoTimerRace2(t *testing.T) {
 	forEachCodec(t, func(t *testing.T) {
 		timers := newScopeLoop()
-		var failures atomic.Int32
-		failures.Store(2)
-		r := relay(t, relayedOptions{Loop: timers, Resolve: func(_ contracts.Address, worker func() resolved, _ context.Context) (resolved, error) {
-			if failures.Add(-1) >= 0 {
-				return resolved{}, errors.New("no worker yet")
+		var attempts atomic.Int32
+		r := relay(t, relayedOptions{Loop: timers, Resolve: func(contracts.Address, func() resolved, context.Context) (resolved, error) {
+			attempts.Add(1)
+			return resolved{}, errors.New("no worker")
+		}})
+		// One relayed from the tab, one the server's own.
+		notes, err := r.Tab.Hold(PlacedNotes, routeS("S1"), background, GetOptions{})
+		must(t, err)
+		own, err := r.Server.Hold(PlacedNotes, routeS("S1"), background, GetOptions{})
+		must(t, err)
+		r.Transported()
+		for _, ref := range []*Reference{notes, own} {
+			wantRouteWaiting(t, ref, "session|S1: no worker")
+		}
+		scopeEventually(t, "the server reported the resolve failure", func() bool { return len(r.Errors.Server.All()) == 1 })
+		errs := r.Errors.Server.All()
+		if errs[0].Kind != ErrResolveFailed || errs[0].Address != "session|S1" {
+			t.Fatalf("error = %+v, want resolve_failed session|S1", errs[0])
+		}
+		routeElapse(r, timers, 120_000)
+		if got := attempts.Load(); got != 1 {
+			t.Fatalf("attempts = %d, want 1", got)
+		}
+	})
+}
+
+// route.test.ts › resolve failures and re-resolves (no timer, slice 10 R2) › a new hold resolves a failed address again;
+// the earlier holders bind on its link without a re-hold (Q1).
+func TestResolveFailuresAndReResolvesANewHoldResolvesAFailedAddressAgainTheEarlierHoldersBindOnItsLinkWithoutAReHoldQ1(t *testing.T) {
+	forEachCodec(t, func(t *testing.T) {
+		var fail atomic.Bool
+		fail.Store(true)
+		r := relay(t, relayedOptions{Resolve: func(_ contracts.Address, worker func() resolved, _ context.Context) (resolved, error) {
+			if fail.Load() {
+				return resolved{}, errors.New("no worker")
+			}
+			return worker(), nil
+		}})
+		first, err := r.Tab.Hold(PlacedNotes, routeS("S1"), background, GetOptions{})
+		must(t, err)
+		r.Transported()
+		wantRouteFailed(t, first, data.FailureWaiting, data.CodeUnavailable)
+		fail.Store(false)
+		second, err := r.Tab.Hold(PlacedNotes, routeS("S1"), background, GetOptions{})
+		must(t, err)
+		r.Transported()
+		wantResolves(t, r, "session|S1")
+		wantRouteState(t, first, RefStateLive)
+		wantRouteState(t, second, RefStateLive)
+	})
+}
+
+// route.test.ts › resolve failures and re-resolves (no timer, slice 10 R2) › RouteHandle.retry resolves a failed address
+// now; a retry of an address nobody holds keeps nothing.
+func TestResolveFailuresAndReResolvesRouteHandleRetryResolvesAFailedAddressNowARetryOfAnAddressNobodyHoldsKeepsNothing(t *testing.T) {
+	forEachCodec(t, func(t *testing.T) {
+		var fail atomic.Bool
+		fail.Store(true)
+		r := relay(t, relayedOptions{Resolve: func(_ contracts.Address, worker func() resolved, _ context.Context) (resolved, error) {
+			if fail.Load() {
+				return resolved{}, errors.New("no worker")
 			}
 			return worker(), nil
 		}})
 		notes, err := r.Tab.Hold(PlacedNotes, routeS("S1"), background, GetOptions{})
 		must(t, err)
 		r.Transported()
-		wantRouteState(t, notes, RefStateLoading)
-		resolveFailed := func(want int) {
-			t.Helper()
-			scopeEventually(t, "the server reported the resolve failures", func() bool { return len(r.Errors.Server.All()) == want })
-			errs := r.Errors.Server.All()
-			for _, err := range errs {
-				if err.Kind != ErrResolveFailed || err.Address != "session|S1" {
-					t.Fatalf("error = %+v, want resolve_failed session|S1", err)
-				}
-			}
-		}
-		resolveFailed(1)
-		routeElapse(r, timers, 999)
-		resolveFailed(1)
-		routeElapse(r, timers, 1)
-		// The second failure doubles the window.
-		resolveFailed(2)
-		routeElapse(r, timers, 1999)
-		wantRouteState(t, notes, RefStateLoading)
-		routeElapse(r, timers, 1)
-		wantResolves(t, r, "session|S1")
+		wantRouteFailed(t, notes, data.FailureWaiting, data.CodeUnavailable)
+		fail.Store(false)
+		r.Route.Retry(Session.Address(jsonObject("id", "S1")))
+		r.Route.Retry(Session.Address(jsonObject("id", "S9")))
+		r.Transported()
 		wantRouteState(t, notes, RefStateLive)
+		wantResolves(t, r, "session|S1")
+		h := r.Server.(*chordHost)
+		var kept int
+		h.loop().Run(func() { kept = len(h.routes["session"].addresses) })
+		if kept != 1 {
+			t.Fatalf("route addresses = %d, want 1 (S9 keeps nothing)", kept)
+		}
 	})
 }
 
-// route.test.ts › resolve failures and re-resolves › a returned link that is closed already starts the backoff.
-func TestResolveFailuresAndReResolvesAReturnedLinkThatIsClosedAlreadyStartsTheBackoff(t *testing.T) {
+// route.test.ts › resolve failures and re-resolves (no timer, slice 10 R2) › a returned link closed already fails the
+// holders.
+func TestResolveFailuresAndReResolvesAReturnedLinkClosedAlreadyFailsTheHolders(t *testing.T) {
 	forEachCodec(t, func(t *testing.T) {
-		timers := newScopeLoop()
-		var closed atomic.Bool
-		closed.Store(true)
-		r := relay(t, relayedOptions{Loop: timers, Resolve: func(address contracts.Address, worker func() resolved, _ context.Context) (resolved, error) {
-			if !closed.Load() {
-				return worker(), nil
-			}
-			closed.Store(false)
+		r := relay(t, relayedOptions{Resolve: func(address contracts.Address, _ func() resolved, _ context.Context) (resolved, error) {
 			a, b := link.MemoryLinkPair()
 			b.Close()
 			transported(a, b)
@@ -302,17 +341,39 @@ func TestResolveFailuresAndReResolvesAReturnedLinkThatIsClosedAlreadyStartsTheBa
 		notes, err := r.Tab.Hold(PlacedNotes, routeS("S1"), background, GetOptions{})
 		must(t, err)
 		r.Transported()
-		wantRouteState(t, notes, RefStateLoading)
-		waitBackoff(t, r, "session|S1")
-		routeElapse(r, timers, 1000)
-		wantResolves(t, r, "session|S1")
-		wantRouteState(t, notes, RefStateLive)
+		wantRouteWaiting(t, notes, "session|S1: the link closed before its handshake")
 	})
 }
 
-// route.test.ts › resolve failures and re-resolves › a dropped link resolves again while held: references go loading, then
-// live on a fresh worker (race 6).
-func TestResolveFailuresAndReResolvesADroppedLinkResolvesAgainWhileHeldReferencesGoLoadingThenLiveOnAFreshWorkerRace6(t *testing.T) {
+// route.test.ts › resolve failures and re-resolves (no timer, slice 10 R2) › a link closing before its handshake fails its
+// holders: no re-resolve loop over a worker dying at start.
+func TestResolveFailuresAndReResolvesALinkClosingBeforeItsHandshakeFailsItsHoldersNoReResolveLoopOverAWorkerDyingAtStart(t *testing.T) {
+	forEachCodec(t, func(t *testing.T) {
+		timers := newScopeLoop()
+		var attempts atomic.Int32
+		var made atomic.Bool
+		r := relay(t, relayedOptions{Loop: timers, Resolve: func(address contracts.Address, _ func() resolved, _ context.Context) (resolved, error) {
+			attempts.Add(1)
+			a, b := link.MemoryLinkPair()
+			timers.AfterFunc(10*time.Millisecond, b.Close)
+			made.Store(true)
+			return resolved{Link: a, Principal: workerPrincipal(address.Params.Value("id").(string))}, nil
+		}})
+		notes, err := r.Tab.Hold(PlacedNotes, routeS("S1"), background, GetOptions{})
+		must(t, err)
+		scopeEventually(t, "the link was made", made.Load)
+		routeElapse(r, timers, 10)
+		wantRouteFailed(t, notes, data.FailureWaiting, data.CodeUnavailable)
+		routeElapse(r, timers, 120_000)
+		if got := attempts.Load(); got != 1 {
+			t.Fatalf("attempts = %d, want 1", got)
+		}
+	})
+}
+
+// route.test.ts › resolve failures and re-resolves (no timer, slice 10 R2) › a dropped link that completed its handshake
+// resolves again at once, once (race 6).
+func TestResolveFailuresAndReResolvesADroppedLinkThatCompletedItsHandshakeResolvesAgainAtOnceOnceRace6(t *testing.T) {
 	forEachCodec(t, func(t *testing.T) {
 		timers := newScopeLoop()
 		r := relay(t, relayedOptions{Loop: timers})
@@ -321,9 +382,6 @@ func TestResolveFailuresAndReResolvesADroppedLinkResolvesAgainWhileHeldReference
 		first := r.Worker("session|S1")
 		r.RouteLinks()[0].Close()
 		r.Transported()
-		wantRouteState(t, notes, RefStateLoading)
-		waitBackoff(t, r, "session|S1")
-		routeElapse(r, timers, 1000)
 		wantResolves(t, r, "session|S1", "session|S1")
 		scopeEventually(t, "a fresh worker", func() bool { return r.Worker("session|S1") != first })
 		wantRouteState(t, notes, RefStateLive)
@@ -335,61 +393,15 @@ func TestResolveFailuresAndReResolvesADroppedLinkResolvesAgainWhileHeldReference
 	})
 }
 
-// route.test.ts › resolve failures and re-resolves › only a link that completed its handshake resets the backoff.
-func TestResolveFailuresAndReResolvesOnlyALinkThatCompletedItsHandshakeResetsTheBackoff(t *testing.T) {
-	forEachCodec(t, func(t *testing.T) {
-		timers := newScopeLoop()
-		var silent atomic.Int32
-		var timed atomic.Bool
-		r := relay(t, relayedOptions{Loop: timers, Resolve: func(address contracts.Address, worker func() resolved, _ context.Context) (resolved, error) {
-			if silent.Add(-1) < 0 {
-				return worker(), nil
-			}
-			// A link whose other end never greets and closes.
-			a, b := link.MemoryLinkPair()
-			timers.AfterFunc(10*time.Millisecond, b.Close)
-			timed.Store(true)
-			return resolved{Link: a, Principal: workerPrincipal(address.Params.Value("id").(string))}, nil
-		}})
-		notes, err := r.Tab.Get(PlacedNotes, routeS("S1"), background, GetOptions{})
-		must(t, err)
-		silent.Store(1)
-		r.RouteLinks()[0].Close()
-		waitBackoff(t, r, "session|S1")
-		routeElapse(r, timers, 1000)
-		scopeEventually(t, "the silent link was made", timed.Load)
-		// The silent link closed before its handshake: the window doubles.
-		routeElapse(r, timers, 10)
-		waitBackoff(t, r, "session|S1")
-		routeElapse(r, timers, 1999)
-		wantResolves(t, r, "session|S1")
-		routeElapse(r, timers, 1)
-		wantResolves(t, r, "session|S1", "session|S1")
-		wantRouteState(t, notes, RefStateLive)
-		// That link greeted: the next drop starts again at 1 s.
-		links := r.RouteLinks()
-		links[len(links)-1].Close()
-		waitBackoff(t, r, "session|S1")
-		routeElapse(r, timers, 1000)
-		scopeEventually(t, "a third resolve ran", func() bool { return len(r.Resolves()) == 3 })
-		// Its worker is made on a task of the route: the test ends once the reference is live on it.
-		wantRouteState(t, notes, RefStateLive)
-	})
-}
-
-// route.test.ts › resolve failures and re-resolves › a link whose peer never greets closes after 30 s of silence; the
-// address backs off, then resolves again while held.
-func TestResolveFailuresAndReResolvesALinkWhosePeerNeverGreetsClosesAfter30sOfSilenceTheAddressBacksOffThenResolvesAgainWhileHeld(t *testing.T) {
+// route.test.ts › resolve failures and re-resolves (no timer, slice 10 R2) › a link whose peer never greets closes after 30 s
+// of silence and fails its holders.
+func TestResolveFailuresAndReResolvesALinkWhosePeerNeverGreetsClosesAfter30sOfSilenceAndFailsItsHolders(t *testing.T) {
 	forEachCodec(t, func(t *testing.T) {
 		// The heartbeat's timer too (Pi: `toFake` adds setInterval), before the hosts start it.
 		timers := newScopeLoop().fakeIntervals()
-		var silent atomic.Bool
-		silent.Store(true)
-		r := relay(t, relayedOptions{Loop: timers, Resolve: func(address contracts.Address, worker func() resolved, _ context.Context) (resolved, error) {
-			if !silent.Load() {
-				return worker(), nil
-			}
-			silent.Store(false)
+		var attempts atomic.Int32
+		r := relay(t, relayedOptions{Loop: timers, Resolve: func(address contracts.Address, _ func() resolved, _ context.Context) (resolved, error) {
+			attempts.Add(1)
 			// Its other end is never read: no hello, no close.
 			a, _ := link.MemoryLinkPair()
 			return resolved{Link: a, Principal: workerPrincipal(address.Params.Value("id").(string))}, nil
@@ -398,14 +410,14 @@ func TestResolveFailuresAndReResolvesALinkWhosePeerNeverGreetsClosesAfter30sOfSi
 		must(t, err)
 		waitServerLinks(t, r, 2)
 		routeElapse(r, timers, 29_000)
-		wantResolves(t, r)
 		wantRouteState(t, notes, RefStateLoading)
-		// The heartbeat checks every 1.5 s: the silent link closes within it, then its address waits 1 s.
+		// The heartbeat checks every 1.5 s: the silent link closes within it.
 		routeElapse(r, timers, 2_500)
-		routeElapse(r, timers, 1_000)
-		wantResolves(t, r, "session|S1")
-		r.Transported()
-		wantRouteState(t, notes, RefStateLive)
+		wantRouteFailed(t, notes, data.FailureWaiting, data.CodeUnavailable)
+		routeElapse(r, timers, 120_000)
+		if got := attempts.Load(); got != 1 {
+			t.Fatalf("attempts = %d, want 1", got)
+		}
 	})
 }
 
@@ -460,6 +472,52 @@ func TestResolveFailuresAndReResolvesAResolveWhoseHoldsWereAllReleasedMeanwhileF
 		if !watchedLink.Load().closed.Load() {
 			t.Fatalf("the link is open after host.close")
 		}
+	})
+}
+
+// route.test.ts › RouteHandle.suspend (R1, Q3) › resolves nothing while held: the holders fail waiting suspended once the
+// link is gone; retry lifts it.
+func TestRouteHandleSuspendResolvesNothingWhileHeldTheHoldersFailWaitingSuspendedOnceTheLinkIsGoneRetryLiftsIt(t *testing.T) {
+	forEachCodec(t, func(t *testing.T) {
+		r := relay(t, relayedOptions{})
+		address := Session.Address(jsonObject("id", "S1"))
+		notes, err := r.Tab.Get(PlacedNotes, routeS("S1"), background, GetOptions{})
+		must(t, err)
+		r.Route.Suspend(address)
+		wantRouteState(t, notes, RefStateLive)
+		r.RouteLinks()[0].Close()
+		r.Transported()
+		wantRouteWaiting(t, notes, "session|S1: suspended")
+		another, err := r.Tab.Hold(PlacedNotes, routeS("S1"), background, GetOptions{})
+		must(t, err)
+		r.Transported()
+		wantRouteFailed(t, another, data.FailureWaiting, data.CodeUnavailable)
+		wantResolves(t, r, "session|S1")
+		r.Route.Retry(address)
+		r.Transported()
+		wantResolves(t, r, "session|S1", "session|S1")
+		wantRouteState(t, notes, RefStateLive)
+		wantRouteState(t, another, RefStateLive)
+	})
+}
+
+// route.test.ts › RouteHandle.suspend (R1, Q3) › goes with the last holder: a later hold resolves on demand; an unheld
+// address is never suspended.
+func TestRouteHandleSuspendGoesWithTheLastHolderALaterHoldResolvesOnDemandAnUnheldAddressIsNeverSuspended(t *testing.T) {
+	forEachCodec(t, func(t *testing.T) {
+		r := relay(t, relayedOptions{})
+		address := Session.Address(jsonObject("id", "S1"))
+		notes, err := r.Tab.Get(PlacedNotes, routeS("S1"), background, GetOptions{})
+		must(t, err)
+		r.Route.Suspend(address)
+		r.RouteLinks()[0].Close()
+		r.Transported()
+		notes.Release()
+		r.Transported()
+		r.Route.Suspend(address)
+		_, err = r.Tab.Get(PlacedNotes, routeS("S1"), background, GetOptions{})
+		must(t, err)
+		wantResolves(t, r, "session|S1", "session|S1")
 	})
 }
 
@@ -598,6 +656,34 @@ func TestARoutesContextIsTheParentOfItsResolvesAndOfTheWorkArrivingOnItsLinks(t 
 			t.Fatalf("resolved by %v, want [the app's]", resolvedBy)
 		}
 		mu.Unlock()
+	})
+}
+
+// route.test.ts › GC › a failed or suspended address keeps no route state once its holders are released.
+func TestRouteGCAFailedOrSuspendedAddressKeepsNoRouteStateOnceItsHoldersAreReleased(t *testing.T) {
+	forEachCodec(t, func(t *testing.T) {
+		r := relay(t, relayedOptions{Resolve: func(address contracts.Address, worker func() resolved, _ context.Context) (resolved, error) {
+			if address.Params.Value("id") == "failed" {
+				return resolved{}, errors.New("no worker")
+			}
+			return worker(), nil
+		}})
+		failed, err := r.Tab.Hold(PlacedNotes, routeS("failed"), background, GetOptions{})
+		must(t, err)
+		held, err := r.Tab.Get(PlacedNotes, routeS("held"), background, GetOptions{})
+		must(t, err)
+		r.Route.Suspend(Session.Address(jsonObject("id", "held")))
+		r.RouteLinks()[0].Close()
+		r.Transported()
+		failed.Release()
+		held.Release()
+		r.Transported()
+		h := r.Server.(*chordHost)
+		scopeEventually(t, "the route keeps no address", func() bool {
+			kept := -1
+			h.loop().Run(func() { kept = len(h.routes["session"].addresses) + len(h.routes["session"].keys) + len(h.routes["session"].links) })
+			return kept == 0
+		})
 	})
 }
 

@@ -325,7 +325,7 @@ func benchRelayServerOf(b testing.TB, kind relayWorkerKind, entries string) *ben
 		Address: new(Server.Address(nil)), Principal: serverPrincipal(),
 		OnError: func(err HostError) { b.Errorf("onError %s", err.Kind) },
 	})
-	must(b, server.host.Route(Session, RouteOptions{
+	mustRoute(b, server.host.Route(Session, RouteOptions{
 		Authorize: func(data.Principal, contracts.Address) (bool, error) { return true, nil },
 		Resolve: func(address contracts.Address, _ context.Context) (ResolvedLink, error) {
 			start := relayStart{id: address.Params.Value("id").(string), entries: entries}

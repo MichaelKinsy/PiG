@@ -61,7 +61,7 @@ func newDestinationRig(t testing.TB, own, parent bool) *destinationRig {
 		options.Principal = serverPrincipal()
 	}
 	host := newHost(t, options)
-	must(t, host.Route(Session, RouteOptions{
+	mustRoute(t, host.Route(Session, RouteOptions{
 		Authorize: func(data.Principal, contracts.Address) (bool, error) { return rig.admit.Load(), nil },
 		Resolve: func(_ contracts.Address, ctx context.Context) (ResolvedLink, error) {
 			<-ctx.Done()

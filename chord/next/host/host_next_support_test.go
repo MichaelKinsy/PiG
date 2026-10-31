@@ -107,6 +107,13 @@ func must(t testing.TB, err error) {
 	}
 }
 
+// mustRoute is must for a `host.route` call: it fails the test when err is not nil and returns the route's handle.
+func mustRoute(t testing.TB, handle RouteHandle, err error) RouteHandle {
+	t.Helper()
+	must(t, err)
+	return handle
+}
+
 // jsonObject is the object of the key/value pairs, as an object literal.
 func jsonObject(pairs ...any) *delta.JsonObject { return delta.JsonObjectOf(pairs...) }
 
@@ -1314,6 +1321,8 @@ type relayErrors struct{ Tab, Server, Worker *hostErrors }
 // relayed is what `relayed` builds: the hosts, the links the server holds, the resolves it ran and the errors per host.
 type relayed struct {
 	Tab, Server Host
+	// Route is the handle of the server's route of `Session`.
+	Route RouteHandle
 	// Workers is the worker of each resolved session address, the latest one per key.
 	Workers sync.Map
 	mu      sync.Mutex
@@ -1463,7 +1472,7 @@ func relay(t testing.TB, options relayedOptions) *relayed {
 			return made(), nil
 		}
 	}
-	must(t, server.Route(Session, RouteOptions{
+	result.Route = mustRoute(t, server.Route(Session, RouteOptions{
 		Authorize: authorize,
 		Resolve: func(address contracts.Address, routing context.Context) (ResolvedLink, error) {
 			r, err := resolve(address, func() resolved { return worker(address) }, routing)
