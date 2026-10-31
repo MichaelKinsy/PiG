@@ -186,6 +186,8 @@ func TestBuiltinToolCardsProbeDump(t *testing.T) {
 
 // TestBuiltinToolCardsParity prints Pig's rows, one JSON line per probe, for the tools/24 parity scenario.
 func TestBuiltinToolCardsParity(t *testing.T) {
+	// The Pi side of the scenario (builtin_tool_cards.mjs) loads every highlight.js language before it draws, as compareToolCards does for the Go oracle tests.
+	tui.LoadAllHighlightLanguages()
 	probes, _ := builtinToolCardProbes(t)
 	for _, rows := range renderBuiltinToolCards(t, probes) {
 		var line strings.Builder
