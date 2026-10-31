@@ -368,10 +368,12 @@ func (h *rpcHost) forward(session *coding.Session) *atomic.Bool {
 	h.mu.Lock()
 	h.unsubscribeEvents = append(h.unsubscribeEvents, gateBefore, unsubscribe, gateAfter, backpressure)
 	h.mu.Unlock()
+	// Events starts delivery, so it is called here, before the Session runs anything, not when the forwarder goroutine first runs.
+	events := session.Events()
 	h.forwarding.Add(1)
 	h.forwarders.Go(func() {
 		defer h.forwarding.Add(-1)
-		for ev := range session.Events() {
+		for ev := range events {
 			if coding.AcknowledgeEvent(ev) || h.detached.Load() {
 				continue
 			}

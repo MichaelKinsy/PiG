@@ -90,19 +90,31 @@
 //
 // # Streaming events
 //
-// Session.Events returns a buffered channel of [agent.AgentEvent]
-// values. Subscribe BEFORE calling Send; events fire during the
-// agent's tool-loop and include text deltas, tool calls, tool
-// results, and end-of-turn markers:
+// A Session delivers events to its Events channel only after Events has
+// been called, as a Pi session notifies only the listeners it has. A program
+// that never calls Events, such as the quick start above, is never slowed by
+// event delivery, however long the turn. To stream, call Events BEFORE Send:
+// an event emitted earlier is not buffered or replayed. The channel is
+// buffered and carries every event of the turn in order, including text
+// deltas, tool calls, tool results and end-of-turn markers; a reader that
+// falls behind makes the turn wait for it. Pass each event to
+// [AcknowledgeEvent] first, so Send's end-of-turn flush is answered:
 //
+//	events := sess.Events()
 //	go func() {
-//	    for ev := range sess.Events() {
-//	        switch ev.Type {
-//	        case agent.EventTextDelta:
-//	            fmt.Print(ev.TextDelta)
+//	    for ev := range events {
+//	        if coding.AcknowledgeEvent(ev) {
+//	            continue
+//	        }
+//	        if update, ok := ev.(agent.MessageUpdateEvent); ok {
+//	            if delta, ok := update.AssistantMessageEvent.(ai.TextDeltaEvent); ok {
+//	                fmt.Print(delta.Delta)
+//	            }
 //	        }
 //	    }
 //	}()
+//
+// A consumer that stops reading calls Session.DiscardEvents.
 //
 // # See also
 //

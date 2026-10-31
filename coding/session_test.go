@@ -656,27 +656,18 @@ func fakeModelWithProvider(prov ai.Provider) *ai.Model {
 	}
 }
 
-// TestSendDeadlocksWithoutEventDrainThenUnblocks reproduces the print-mode
-// deadlock: a turn that emits more events than the rawEvents+events buffers hold
-// (2×64) fills forwardAgentEvents' outbound channel; with no Events() consumer it
-// blocks, the agent's emit() blocks, and Send() never returns. Print mode hit this
-// on long findings output. Draining Events() (as print mode now does) unblocks it.
-func TestSendDeadlocksWithoutEventDrainThenUnblocks(t *testing.T) {
-	partial := sessionTestMessage("fake", "", ai.StopReasonPending, "")
-	evs := []ai.AssistantMessageEvent{ai.StartEvent{Partial: partial}}
-	for index := range 300 {
-		partial = sessionTestMessage("fake", strings.Repeat("x", index+1), ai.StopReasonPending, "")
-		evs = append(evs, ai.TextDeltaEvent{ContentIndex: 0, Delta: "x", Partial: partial})
-	}
-	final := sessionTestMessage("fake", strings.Repeat("x", 300), ai.StopReasonStop, "")
-	evs = append(evs, ai.DoneEvent{Reason: ai.StopReasonStop, Message: final})
-	prov := staticProviderForSessionTests{events: evs}
+// TestSendBlocksWhenEventsConsumerStopsReadingThenUnblocks pins the backpressure a subscribed consumer keeps: once Events was called, a turn that emits
+// more events than the rawEvents+events buffers hold (2×64) blocks Send until the consumer reads, as a slow synchronous Pi listener does. A Session whose
+// Events was never called does not block (TestRuntimeSessionWithoutEventsReaderSendReturns).
+func TestSendBlocksWhenEventsConsumerStopsReadingThenUnblocks(t *testing.T) {
+	prov := longTurnProvider(300)
 	svcs := newTestServices(t)
 	sess, err := NewSession(svcs, SessionOptions{Model: fakeModelWithProvider(prov)})
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer func() { _ = sess.Close() }()
+	events := sess.Events()
 
 	ctx := t.Context()
 
@@ -686,16 +677,16 @@ func TestSendDeadlocksWithoutEventDrainThenUnblocks(t *testing.T) {
 		done <- e
 	}()
 
-	// Without a drainer, Send must block: this is the deadlock condition.
+	// A subscribed consumer that reads nothing makes Send wait.
 	select {
 	case <-done:
-		t.Fatal("Send completed without draining events; the deadlock scenario was not reproduced")
+		t.Fatal("Send completed although the Events consumer read nothing")
 	case <-time.After(500 * time.Millisecond):
 	}
 
-	// Draining Events() must unblock Send and let the turn finish.
+	// Reading Events must unblock Send and let the turn finish.
 	go func() {
-		for range sess.Events() { //nolint:revive // intentional drain
+		for range events { //nolint:revive // intentional drain
 		}
 	}()
 	select {
