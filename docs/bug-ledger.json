@@ -1953,6 +1953,34 @@
       "tests": []
     },
     {
+      "id": "BF-13f7697",
+      "title": "The model catalog no longer offers models.dev's realtime and image models as chat models: `gpt-realtime-2.1`…",
+      "symptom": "The model catalog no longer offers models.dev's realtime and image models as chat models: `gpt-realtime-2.1` (Azure and OpenAI), `gemini-3.1-flash-live-preview` and `gemini-3.1-flash-lite-image` (Google and Google Vertex).",
+      "rootCause": "Pi refactors the provider definitions and, with them, stops offering models that models.dev types as realtime or image models (gpt-realtime-2.1, gemini-3.1-flash-live-preview, gemini-3.1-flash-lite-image) as chat models. Only that row removal is carried: cmd/gen-models/carried_fixes.go gets a row that is a no-op on a source that already lacks them, and ai/models_generated.go is regenerated. Tests that compare the catalog with the pinned Pi read its rows through the carried edit (D217).",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "pi-port",
+      "fixedIn": "Unreleased",
+      "releaseNote": "The model catalog no longer offers models.dev's realtime and image models as chat models: `gpt-realtime-2.1` (Azure and OpenAI), `gemini-3.1-flash-live-preview` and `gemini-3.1-flash-lite-image` (Google and Google Vertex). Carried forward, as the row removal only, from Pi 2e0f175b (earendil-works/pi#11368), past the 1.4.0+b3a29f11 pin.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "13f7697f6c",
+          "date": "2026-10-30",
+          "pr": "11368"
+        }
+      ],
+      "tests": [
+        "ai/builtin_catalog_upstream_test.go::TestBuiltinCatalogsMatchPinnedProviderDataModules",
+        "ai/catalog_options_upstream_test.go::TestRealtimeAndImageModelsAreNotChatModels",
+        "ai/catalog_published_test.go::TestGeneratedCatalogsMatchPublishedPackage",
+        "ai/provider_catalogs_test.go::TestProviderCatalogExportsMatchPinnedData",
+        "ai/registry_test.go::TestRegistryHasModels",
+        "cmd/gen-models/carried_fixes_test.go::TestCarriedRealtimeAndImageRowsAreNotChatModels"
+      ]
+    },
+    {
       "id": "BF-155d0f3",
       "title": "In RPC mode, SIGTERM or SIGHUP during a tool call likewise stops the run while the `session_shutdown`…",
       "symptom": "In RPC mode, SIGTERM or SIGHUP during a tool call likewise stops the run while the `session_shutdown` handlers finish without waiting, as Pi does: a handler that throws no longer lets the run persist the tool result and send another provider request before the exit.",
@@ -2473,6 +2501,32 @@
       "tests": [
         "internal/codingagent/idle_collect_cost_test.go::TestIdleCollectionFreesPoolVictims",
         "test/perfgate/memory_rows_test.go::TestTmuxIdleMemoryGate"
+      ]
+    },
+    {
+      "id": "BF-16d0758",
+      "title": "A LiteLLM pre-call context check (`litellm.ContextWindowExceededError: ... Context Window exceeded for given…",
+      "symptom": "A LiteLLM pre-call context check (`litellm.ContextWindowExceededError: ... Context Window exceeded for given call`) is now recognised as a context overflow, so the turn compacts instead of failing, in `ai.IsContextOverflow`, the durable turn classifier and the Go, Rust, Python and Lisp extension SDKs.",
+      "rootCause": "Pi added /context window exceeded/i to OVERFLOW_PATTERNS. Recorded under D217.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "pi-port",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A LiteLLM pre-call context check (`litellm.ContextWindowExceededError: ... Context Window exceeded for given call`) is now recognised as a context overflow, so the turn compacts instead of failing, in `ai.IsContextOverflow`, the durable turn classifier and the Go, Rust, Python and Lisp extension SDKs. Carried forward from Pi d3398f82 (earendil-works/pi#11492), past the 1.4.0+b3a29f11 pin.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "16d0758710",
+          "date": "2026-10-30",
+          "pr": "11492"
+        }
+      ],
+      "tests": [
+        "ai/overflow_upstream_test.go::TestOverflowUpstream",
+        "ai/utils_exports_upstream_test.go::TestGetOverflowPatternsMatchesUpstreamList",
+        "durable/core/turn/classify_carried_test.go::TestLiteLLMContextWindowExceededIsOverflow",
+        "extensions/sdk/pi_ai_helpers_test.go::TestLiteLLMContextWindowExceededIsOverflow"
       ]
     },
     {
@@ -3747,6 +3801,31 @@
       ]
     },
     {
+      "id": "BF-234664c",
+      "title": "With `codemode.mode: \"on\"`, a tool whose output schema is a union of objects or any other multi-line type no…",
+      "symptom": "With `codemode.mode: \"on\"`, a tool whose output schema is a union of objects or any other multi-line type no longer puts its whole rendered output type, with its comments run together, into every request.",
+      "rootCause": "With codemode.mode on, a tool whose output schema was a union fell back to the whole rendered type, collapsed onto one line, in every request. Unions of objects list the field names of each variant, const fields show their value, and other multi-line types point to describeTool(). Single-line types are unchanged.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong display",
+      "platform": "All platforms",
+      "class": "pi-port",
+      "fixedIn": "Unreleased",
+      "releaseNote": "With `codemode.mode: \"on\"`, a tool whose output schema is a union of objects or any other multi-line type no longer puts its whole rendered output type, with its comments run together, into every request. The description now lists the field names of each variant of a union of objects (`{ action: \"start\", process } | { action: \"list\", processes, truncated? }`), shows the value of `const` fields, and points a longer type to `await describeTool(\"name\")`. Carried forward from Pi f6ee9ce9 (earendil-works/pi#11501), past the 1.4.0+b3a29f11 pin.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "234664cc42",
+          "date": "2026-10-30",
+          "pr": "11501"
+        }
+      ],
+      "tests": [
+        "coding/codemode_output_summary_test.go::TestCodemodeSummarizesUnionAndMultiLineOutputTypesInsteadOfInliningThem",
+        "coding/extension/builtin/codemode/reach_describe_test.go::TestDescribeOutputDescribesTheFieldsOfObjectFieldsOneLevelDeep",
+        "coding/extension/builtin/codemode/reach_describe_test.go::TestDescribeOutputSummarizesUnionsConstFieldsAndMultiLineTypes"
+      ]
+    },
+    {
       "id": "BF-24872ab",
       "title": "Extensions receive each model (`ctx.model`, `model_select`, `ctx.modelRegistry` reads, scoped models…",
       "symptom": "Extensions receive each model (`ctx.model`, `model_select`, `ctx.modelRegistry` reads, scoped models, virtual-model routes and provider-object calls) as Pi's model object, with its members in Pi's order, instead of sorted by member name with `null` for members the model does not set.",
@@ -3976,6 +4055,60 @@
       ]
     },
     {
+      "id": "BF-261fecd",
+      "title": "`tool_search` and codemode `searchTools()` (the coding agent's and durable's) find tools by words in any…",
+      "symptom": "`tool_search` and codemode `searchTools()` (the coding agent's and durable's) find tools by words in any script, not only ASCII letters and digits.",
+      "rootCause": "Goldens generated from Pi's own tokenizers at (4,854 texts over every script class, ICU 78.3) and from its ranker pin the carried behaviour; the ranker goldens run Node on linux/amd64, where Math.log is the one jsmath.Log reproduces.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "pi-port",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`tool_search` and codemode `searchTools()` (the coding agent's and durable's) find tools by words in any script, not only ASCII letters and digits. The text is NFC-normalized and split into words with Unicode word segmentation (the ICU dictionaries split Chinese, Japanese, Thai, Lao, Khmer and Myanmar text without spaces, such as `搜索记录`, into words), so `café` and `cafe\\u0301` match and `Поиск документов`, `البحث عن الملفات` and `फ़ाइल खोजें` are searchable. This replaces PiG's earlier one-term-per-character matching of Chinese, Japanese and Korean (D173), and a Piglet Binary built without the word dictionaries (D92) keeps such a run as one term. Carried forward from Pi 79006f06 (earendil-works/pi#10816, #11037), past the 1.4.0+b3a29f11 pin.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "261fecd504",
+          "date": "2026-10-30",
+          "pr": "11037"
+        }
+      ],
+      "tests": [
+        "coding/extension/builtin/toolsearch/toolsearch_unicode_test.go::TestBm25RankerMatchesUnicodeQueries",
+        "coding/extension/builtin/toolsearch/toolsearch_unicode_test.go::TestTokenizeKeepsDictionaryScriptRunsWholeWithoutDictionaries",
+        "coding/extension/builtin/toolsearch/toolsearch_unicode_test.go::TestTokenizeMatchesPiOnEveryScriptClass",
+        "coding/extension/builtin/toolsearch/toolsearch_unicode_test.go::TestTokenizeSegmentsUnicodeWords",
+        "durable/internal/search/search_carried_test.go::TestRankDocumentsMatchesUnicodeQueries",
+        "durable/internal/search/search_carried_test.go::TestTokenizeMatchesPiOnEveryScriptClass"
+      ]
+    },
+    {
+      "id": "BF-264127b",
+      "title": "`tool_search` and codemode `searchTools()` no longer rank a tool below tools that only mention its name in…",
+      "symptom": "`tool_search` and codemode `searchTools()` no longer rank a tool below tools that only mention its name in their descriptions, for example `peekaboo app` ranking `mcp__peekaboo__app` 14th.",
+      "rootCause": "Bm25Ranker scores three fields: the name (3x the IDF of a matching term), the description and schema text (BM25, length-normalized on this field only) and the namespace (0.5x the IDF, no length normalization). A tool whose whole local name is in the query gets a bonus of one more match of every query term. Applies to tool_search and codemode searchTools().",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "pi-port",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`tool_search` and codemode `searchTools()` no longer rank a tool below tools that only mention its name in their descriptions, for example `peekaboo app` ranking `mcp__peekaboo__app` 14th. A query word in a tool's name now scores more than any number of mentions in its description, a tool whose whole name is in the query gets a large bonus, and long server instructions no longer lower the scores of that server's tools. Carried forward from Pi cc44fa21 (earendil-works/pi#11331), past the 1.4.0+b3a29f11 pin.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "264127b95e",
+          "date": "2026-10-30",
+          "pr": "11331"
+        }
+      ],
+      "tests": [
+        "coding/extension/builtin/toolsearch/toolsearch_carried_test.go::TestBm25RankerRanksANameMatchAboveMentionsInDescriptions",
+        "coding/extension/builtin/toolsearch/toolsearch_carried_test.go::TestBm25RankerRanksAToolFirstWhenTheQueryContainsItsWholeName",
+        "coding/extension/builtin/toolsearch/toolsearch_oracle_test.go::TestToolSearchMatchesPi",
+        "coding/extension/builtin/toolsearch/toolsearch_reference_test.go::TestBm25ScoresMatchUpstream"
+      ]
+    },
+    {
       "id": "BF-2699291",
       "title": "The serializeConversation parity row records that Rust session entries still read an unpaired surrogate as…",
       "symptom": "The serializeConversation parity row records that Rust session entries still read an unpaired surrogate as U+FFFD, and is partial until that is decided.",
@@ -4194,6 +4327,32 @@
       ],
       "tests": [
         "internal/codingagent/keybindings_user_oracle_test.go::TestUserKeybindingsMatchPi"
+      ]
+    },
+    {
+      "id": "BF-27b7a4e",
+      "title": "Clipboard image paste, copy through `powershell.exe` and opening the browser for sign-in no longer fail…",
+      "symptom": "Clipboard image paste, copy through `powershell.exe` and opening the browser for sign-in no longer fail silently on WSL when the working directory is deep: the helpers now start from `/`, because WSL cannot start Windows programs from a working directory whose `\\\\wsl.localhost\\...` path exceeds MAX_PATH.",
+      "rootCause": "Clipboard helpers and the browser launcher now start from /, because WSL cannot start Windows programs from a working directory whose \\\\wsl.localhost\\... path exceeds MAX_PATH. The external editor keeps the working directory on purpose.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "Windows, WSL",
+      "class": "pi-port",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Clipboard image paste, copy through `powershell.exe` and opening the browser for sign-in no longer fail silently on WSL when the working directory is deep: the helpers now start from `/`, because WSL cannot start Windows programs from a working directory whose `\\\\wsl.localhost\\...` path exceeds MAX_PATH. The external editor keeps the working directory on purpose. An external editor that fails now says so (`Failed to launch external editor: \u003ccommand\u003e`, `External editor exited with code N; prompt unchanged`, or the signal name) in the status line, and inline in the extension editor dialog, instead of being redrawn over silently. Carried forward from Pi 6454d07e (earendil-works/pi#11592), past the 1.4.0+b3a29f11 pin.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "27b7a4ee65",
+          "date": "2026-10-30",
+          "pr": "11592"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/helper_dir_test.go::TestBrowserLauncherRunsFromTheRoot",
+        "internal/codingagent/helper_dir_test.go::TestClipboardCommandRunsFromTheRoot",
+        "internal/codingagent/helper_dir_test.go::TestExtensionEditorShowsExternalEditorFailures",
+        "internal/codingagent/helper_dir_test.go::TestOpenExternalEditorReportsFailures"
       ]
     },
     {
@@ -4569,6 +4728,31 @@
       ]
     },
     {
+      "id": "BF-2b97688",
+      "title": "The `env` daemon reports a watch `change` whose path list would not fit in a frame (16 MiB less 64 KiB) as an…",
+      "symptom": "An oversized list used to make the frame writer fail and end the daemon's only output writer, leaving every request hanging until the client's 30 s silence limit.",
+      "rootCause": "A change event whose paths would encode above MaxPayload is sent as {\"kind\":\"change\",\"overflow\":true} instead of failing in WriteFrame, which ended the daemon's output writer.",
+      "rootCauseSource": "commit",
+      "userImpact": "Crash, hang or runaway process",
+      "platform": "All platforms",
+      "class": "pi-port",
+      "fixedIn": "Unreleased",
+      "releaseNote": "The `env` daemon reports a watch `change` whose path list would not fit in a frame (16 MiB less 64 KiB) as an overflow event, which clients read as \"rescan\". An oversized list used to make the frame writer fail and end the daemon's only output writer, leaving every request hanging until the client's 30 s silence limit. Carried forward from Pi 102d1287 (earendil-works/pi#10516), past the 1.4.0+b3a29f11 pin.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "2b9768807c",
+          "date": "2026-10-30",
+          "pr": "10516"
+        }
+      ],
+      "tests": [
+        "env/daemon/watch_event_test.go::TestChangeEventListsPathsThatFit",
+        "env/daemon/watch_event_test.go::TestChangeEventMeasuresTheEncodedSize",
+        "env/daemon/watch_event_test.go::TestChangeEventOverflowsWhenPathsDoNotFitInAFrame"
+      ]
+    },
+    {
       "id": "BF-2bc49c1",
       "title": "Node extensions read live `ctx.isIdle()` state, so background callbacks detect when a run finishes or starts",
       "symptom": "Node extensions read live `ctx.isIdle()` state, so background callbacks detect when a run finishes or starts.",
@@ -4668,16 +4852,15 @@
     },
     {
       "id": "BF-2c5d240",
-      "title": "On Windows, the host reports the load error of a Node extension that exits right after it sends the error",
-      "symptom": "The host could report `process_exited` and lose the error.",
-      "rootCause": "The pipe driver sets the event that the host tested for a client later than the client's open returns, so a client whose event was not yet set was not counted.",
-      "rootCauseSource": "release note",
-      "userImpact": "Lost or altered data",
-      "platform": "Windows",
+      "title": "fix(extension): take a Node client whose pipe connect event has not been set",
+      "symptom": "fix(extension): take a Node client whose pipe connect event has not been set",
+      "rootCause": "A Node extension that reports its load error connects to its named pipe, writes the frame, closes and exits. The host's awaitConnection interrupts its Accept when the process exits, and pipeListener asked whether a client had connected by testing the connect's event. The pipe driver sets that event from the open's completion, which runs on the thread that issued the connect, so it can trail a client whose open has already returned. An interrupted Accept that found the event unset reported no client, and the host reported process_exited for an extension that had said why it failed.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
       "class": "own",
       "fixedIn": "Unreleased",
-      "releaseNote": "On Windows, the host reports the load error of a Node extension that exits right after it sends the error. A Node extension whose factory fails connects to its named pipe, writes the error, closes and exits, and the host looks at the pipe only after the exit. Before this fix, the host could report `process_exited` and lose the error. The pipe driver sets the event that the host tested for a client later than the client's open returns, so a client whose event was not yet set was not counted. The host now asks the pipe's own state, which the open changes before it returns.",
-      "origin": "release note",
+      "origin": "commit",
       "commits": [
         {
           "hash": "2c5d2400ff",
@@ -4800,6 +4983,32 @@
         "cmd/gen-models/main_test.go::TestAllowedFallbackModelsLiteralKeepsTiersPresence",
         "coding/cli/rpc_model_cost_tiers_test.go::TestRPCModelValueKeepsCostTiersPresence",
         "coding/model_object_cost_tiers_test.go::TestModelObjectKeepsAnAuthoredEmptyCostTiers"
+      ]
+    },
+    {
+      "id": "BF-2d23c91",
+      "title": "A redundant system prompt update (tools, rules) no longer follows an extension setting the same active tools…",
+      "symptom": "A redundant system prompt update (tools, rules) no longer follows an extension setting the same active tools in a different order, for example a reversed `pi.setActiveTools()` list.",
+      "rootCause": "The requested tool names are a set: tools that stay active keep their current order and newly activated tools are appended, so reordering the same names no longer changes the prompt's tools and rules sections.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "pi-port",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A redundant system prompt update (tools, rules) no longer follows an extension setting the same active tools in a different order, for example a reversed `pi.setActiveTools()` list. Tools that stay active keep their order and newly activated tools are appended. Carried forward from Pi b9e3eef6 (earendil-works/pi#11495), past the 1.4.0+b3a29f11 pin.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "2d23c915ee",
+          "date": "2026-10-30",
+          "pr": "11495"
+        }
+      ],
+      "tests": [
+        "coding/session_active_tools_order_test.go::TestReorderedActiveToolsDoNotPatchThePrompt",
+        "coding/session_active_tools_order_test.go::TestSetActiveToolsKeepsActiveOrderAndAppendsNewTools",
+        "coding/session_provider_prompt_test.go::TestRegisteredToolPromptContributions",
+        "coding/session_tools_restore_test.go::TestSetActiveToolsByName"
       ]
     },
     {
@@ -11498,6 +11707,30 @@
       ]
     },
     {
+      "id": "BF-5eb8bb9",
+      "title": "`tool_search` and codemode `searchTools()` rank a tool that matches more of the query's distinct terms, in…",
+      "symptom": "`tool_search` and codemode `searchTools()` rank a tool that matches more of the query's distinct terms, in any field (name, description and schema, namespace), above one that matches fewer, whatever their scores.",
+      "rootCause": "The goldens that pin the carried ranker are regenerated from Pi at, because its coverage-first order makes the goldens stale.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "pi-port",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`tool_search` and codemode `searchTools()` rank a tool that matches more of the query's distinct terms, in any field (name, description and schema, namespace), above one that matches fewer, whatever their scores. The name weighting of the previous ranking change put `peekaboo__window` above `peekaboo__image` for `screenshot window` and `peekaboo__app` above `peekaboo__see` for `describe app`. A query that is exactly a tool's name still ranks that tool first. Carried forward from Pi e033f255 (earendil-works/pi#11331), past the 1.4.0+b3a29f11 pin.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "5eb8bb963a",
+          "date": "2026-10-30",
+          "pr": "11632"
+        }
+      ],
+      "tests": [
+        "coding/extension/builtin/toolsearch/toolsearch_carried_test.go::TestBm25RankerMatchesPiTheLatestCarriedRanker",
+        "coding/extension/builtin/toolsearch/toolsearch_carried_test.go::TestBm25RankerRanksAToolMatchingMoreQueryTermsFirst"
+      ]
+    },
+    {
       "id": "BF-5ec5204",
       "title": "fix(durable/core): join split surrogates through jv.AppendConcat, not byte slices",
       "symptom": "fix(durable/core): join split surrogates through jv.AppendConcat, not byte slices",
@@ -15367,6 +15600,32 @@
       ]
     },
     {
+      "id": "BF-66beda3",
+      "title": "`pig mcp login -l` and `pig mcp logout -l` no longer fail with `Unknown option --local.`, as `pig mcp add`…",
+      "symptom": "`pig mcp login -l` and `pig mcp logout -l` no longer fail with `Unknown option --local.`, as `pig mcp add` and `pig mcp remove` already accept `-l`; with `-l` they require the server to be a project server.",
+      "rootCause": "`mcp login` and `mcp logout` take -l/--local, which requires the server to be defined in the project's mcp.json. Unknown options are reported as typed (-l, not --local), the usage lines end in [-l], and a mistyped server name within edit distance 2 of a configured one gets a \"Did you mean\" suggestion. The help text lists the new option.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "pi-port",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`pig mcp login -l` and `pig mcp logout -l` no longer fail with `Unknown option --local.`, as `pig mcp add` and `pig mcp remove` already accept `-l`; with `-l` they require the server to be a project server. Unknown options are reported as typed, and a mistyped server name gets a suggestion, for example `Did you mean \"fixture\"?`. Carried forward from Pi be15fe3c (a Pi commit without an issue number), past the 1.4.0+b3a29f11 pin.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "66beda378e",
+          "date": "2026-10-30"
+        }
+      ],
+      "tests": [
+        "coding/mcpext/cli_carry_test.go::TestMcpCommandReportsOptionsAsTyped",
+        "coding/mcpext/cli_carry_test.go::TestMcpCommandRestrictsLoginAndLogoutToProjectServersWithLocal",
+        "coding/mcpext/cli_carry_test.go::TestMcpCommandSuggestsAConfiguredServerForAMistypedName",
+        "coding/mcpext/cli_oracle_test.go::TestMcpCommandMatchesPi",
+        "coding/mcpext/cli_test.go::TestMcpCommandReportsArgumentErrors"
+      ]
+    },
+    {
       "id": "BF-66db311",
       "title": "The login dialog now holds TUI focus while it is shown, so the prompt cursor appears in the right place for…",
       "symptom": "The login dialog now holds TUI focus while it is shown, so the prompt cursor appears in the right place for IME input.",
@@ -16235,6 +16494,32 @@
       ],
       "tests": [
         "durable/core/session/telemetry_test.go::TestCreateTaskTraceAndLinks"
+      ]
+    },
+    {
+      "id": "BF-6b584ff",
+      "title": "The `--help` text and the `/resume` and `/import` descriptions now say which working directory a resumed…",
+      "symptom": "The `--help` text and the `/resume` and `/import` descriptions now say which working directory a resumed session runs in (`--continue` the current directory, `--resume` and `--session` the session's own, `--fork` the current directory), and `/import` says it preserves the session ID and working directory.",
+      "rootCause": "The help text now says which working directory each session flag uses (--continue the current directory, --resume and --session the session's own, --session-id the current directory's session, --fork the current directory), and /resume and /import carry Pi's new descriptions. gen-help.sh applies the new wording to the pinned Pi's help so make help-text stays reproducible. Scenarios autocomplete/01 and /02 stop asserting the old /import description on both sides.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "pi-port",
+      "fixedIn": "Unreleased",
+      "releaseNote": "The `--help` text and the `/resume` and `/import` descriptions now say which working directory a resumed session runs in (`--continue` the current directory, `--resume` and `--session` the session's own, `--fork` the current directory), and `/import` says it preserves the session ID and working directory. Carried forward from Pi 2a46c420 (earendil-works/pi#11532), past the 1.4.0+b3a29f11 pin.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "6b584ff75f",
+          "date": "2026-10-30",
+          "pr": "11532"
+        }
+      ],
+      "tests": [
+        "coding/cli/help_oracle_test.go::TestHelpCarriesPi2a46c420SessionFlagWording",
+        "coding/cli/help_oracle_test.go::TestHelpMatchesPi",
+        "internal/codingagent/builtin_slash_commands_oracle_test.go::TestBuiltinSlashCommandsCarryPi2a46c420Descriptions",
+        "internal/codingagent/builtin_slash_commands_oracle_test.go::TestBuiltinSlashCommandsMatchPi"
       ]
     },
     {
@@ -18385,6 +18670,31 @@
       ]
     },
     {
+      "id": "BF-7c848e3",
+      "title": "A Zhipu/Z.ai usage limit (HTTP 429 with error code `1308`, which resets after hours) is no longer retried, in…",
+      "symptom": "A Zhipu/Z.ai usage limit (HTTP 429 with error code `1308`, which resets after hours) is no longer retried, in `ai.IsRetryableAssistantError`, the durable turn classifier and the Go, Rust, Python and Lisp extension SDKs.",
+      "rootCause": "Pi added the \"code\":1308 pattern to NON_RETRYABLE_PROVIDER_LIMIT_ERROR_PATTERN (#11572). Recorded under D217.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "pi-port",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A Zhipu/Z.ai usage limit (HTTP 429 with error code `1308`, which resets after hours) is no longer retried, in `ai.IsRetryableAssistantError`, the durable turn classifier and the Go, Rust, Python and Lisp extension SDKs. Carried forward from Pi c719d5b0 (earendil-works/pi#11537), past the 1.4.0+b3a29f11 pin.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "7c848e3186",
+          "date": "2026-10-30",
+          "pr": "11537"
+        }
+      ],
+      "tests": [
+        "ai/assistant_retry_test.go::TestIsRetryableAssistantErrorClassification",
+        "durable/core/turn/classify_carried_test.go::TestZhipuUsageLimit1308IsNotRetryable",
+        "extensions/sdk/pi_ai_helpers_test.go::TestZhipuUsageLimit1308IsNotRetryable"
+      ]
+    },
+    {
       "id": "BF-7cca5ee",
       "title": "A Node extension can default-import TypeBox (`import Type from \"typebox\"`, and likewise `typebox/value`…",
       "symptom": "A Node extension can default-import TypeBox (`import Type from \"typebox\"`, and likewise `typebox/value`, `typebox/compile` and `@sinclair/typebox*`), as it can in Pi.",
@@ -20102,6 +20412,33 @@
         "internal/yaml12/surrogate_escape_test.go::TestDoubleQuotedSurrogateEscapesJoinIntoOneCharacter",
         "test/extension-conformance/compaction_usage_test.go::TestConformance_CompactionUsageHelpersAgreeAcrossSDKs",
         "test/extension-conformance/host_parser_helpers_test.go::TestConformance_HostParserHelpersAgreeAcrossSDKs"
+      ]
+    },
+    {
+      "id": "BF-8897a1b",
+      "title": "Interactive startup lists skill diagnostics under `[Skill warnings]` instead of `[Skill conflicts]`; most of…",
+      "symptom": "Interactive startup lists skill diagnostics under `[Skill warnings]` instead of `[Skill conflicts]`; most of them are validation warnings for skills that still load, not name collisions.",
+      "rootCause": "Interactive startup listed every skill diagnostic under `[Skill conflicts]`, though most are validation warnings for skills that still load. The heading is now `[Skill warnings]`; prompt and theme headings are unchanged. Scenario startup/09 asserted the old heading on both sides; it now asserts each side's own spelling and normalizes only that heading (D217).",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "pi-port",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Interactive startup lists skill diagnostics under `[Skill warnings]` instead of `[Skill conflicts]`; most of them are validation warnings for skills that still load, not name collisions. Carried forward from Pi f14813e9 (earendil-works/pi#11521), past the 1.4.0+b3a29f11 pin.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "8897a1b41f",
+          "date": "2026-10-30",
+          "pr": "11566"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/interactive_resource_test.go::TestResourceCollisionDiagnostics_SkillIncludesSourceInfo",
+        "internal/codingagent/loaded_resources_diagnostics_test.go::TestShowLoadedResourcesListingThenDiagnostics",
+        "internal/codingagent/loaded_resources_quiet_upstream_test.go::TestLoadedResourcesQuietReloadUpstream",
+        "internal/codingagent/skill_collision_test.go::TestShowLoadedResourcesSkillConflicts",
+        "internal/codingagent/skill_file_metadata_test.go::TestSkillFileMetadataRetainsCollisionDiagnostics"
       ]
     },
     {
@@ -23918,6 +24255,31 @@
       ]
     },
     {
+      "id": "BF-98a21df",
+      "title": "Tool output bounded by `chord/output`, the durable core and the Cloudflare host now loses whole ANSI escape…",
+      "symptom": "Tool output bounded by `chord/output`, the durable core and the Cloudflare host now loses whole ANSI escape sequences (strings up to BEL or ST, CSI, short `ESC x` forms), not only their ESC bytes, which left `[31m` in transcripts; a sequence split across chunks goes too.",
+      "rootCause": "SanitizeOutput (chord/output, durable/core/turn) and sanitizeOutput (durable/core/host/cf) delete whole 7-bit escape sequences before the control characters, as Pi's ESCAPE_SEQUENCE does.",
+      "rootCauseSource": "commit",
+      "userImpact": "Lost or altered data",
+      "platform": "All platforms",
+      "class": "pi-port",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Tool output bounded by `chord/output`, the durable core and the Cloudflare host now loses whole ANSI escape sequences (strings up to BEL or ST, CSI, short `ESC x` forms), not only their ESC bytes, which left `[31m` in transcripts; a sequence split across chunks goes too. Carried forward from Pi 50d9f823 (earendil-works/pi#11604), past the 1.4.0+b3a29f11 pin.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "98a21dfb02",
+          "date": "2026-10-30",
+          "pr": "11604"
+        }
+      ],
+      "tests": [
+        "chord/output/output_test.go::TestToolOutputBounds",
+        "durable/core/host/cf/test/output-sanitize.test.ts",
+        "durable/core/turn/output_test.go::TestSanitizeOutputRemovesWholeEscapeSequences"
+      ]
+    },
+    {
       "id": "BF-992f3cb",
       "title": "A `before_provider_request` replacement that is not an object leaves Anthropic Messages as Pi's `{ ...value…",
       "symptom": "A `before_provider_request` replacement that is not an object leaves Anthropic Messages as Pi's `{ ...value, stream: true }` (`null`, a number or a boolean send `{\"stream\":true}`, an array or string its index members), `\"betas\": null` sends no `anthropic-beta` header, array-index keys lead a replacement body as in JavaScript, and a Codex WebSocket body's own `type` keeps the first position; a Codex payload hook that returns `null` no longer crashes PiG.",
@@ -25873,6 +26235,31 @@
       ]
     },
     {
+      "id": "BF-a4e084f",
+      "title": "Fullscreen mode no longer leaves the `Model scope: …` startup notice in the shell after exit; it shows in…",
+      "symptom": "Fullscreen mode no longer leaves the `Model scope: …` startup notice in the shell after exit; it shows in the header instead.",
+      "rootCause": "Fullscreen renders on the alternate screen, so the startup `Model scope: ...` notice printed to stdout stayed in the shell after exit. Fullscreen now adds it to the header container (themed text plus a spacer); the main-screen renderer still prints it before the UI starts. modelScopeLine becomes getModelScopeNotice, as in Pi. Production hunks lifted from follow-pi-next.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "pi-port",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Fullscreen mode no longer leaves the `Model scope: …` startup notice in the shell after exit; it shows in the header instead. Carried forward from Pi 7391dbb0 (earendil-works/pi#11508), past the 1.4.0+b3a29f11 pin.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "a4e084f8da",
+          "date": "2026-10-30",
+          "pr": "11508"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/startup_hints_test.go::TestFullscreenModelScopeNoticeHiddenWithStartupDetails",
+        "internal/codingagent/startup_hints_test.go::TestFullscreenModelScopeNoticeRendersInHeader",
+        "internal/codingagent/startup_hints_test.go::TestModelScopeLineMatchesPiInit"
+      ]
+    },
+    {
       "id": "BF-a4e2637",
       "title": "fix(durable/core): revert the settings notice (ABI 12); the core resolves the settings from the snapshot the…",
       "symptom": "fix(durable/core): revert the settings notice (ABI 12); the core resolves the settings from the snapshot the host sends (D206)",
@@ -26667,6 +27054,31 @@
       ]
     },
     {
+      "id": "BF-ab8e9e4",
+      "title": "Tool output and `!` command output no longer show the parameters of control sequences with a `\u003c`, `=` or `\u003e`…",
+      "symptom": "Tool output and `!` command output no longer show the parameters of control sequences with a `\u003c`, `=` or `\u003e` prefix as text, for example `35;59;1M` from a mouse report `ESC[\u003c35;59;1M` or `0;276;0c` from a terminal reply `ESC[\u003e0;276;0c`.",
+      "rootCause": "A \u003c, = or \u003e prefix counts as part of a CSI only directly after ESC [ or the 8-bit CSI, so ESC[\u003c35;59;1M is removed whole while ESC = and ESC \u003e keep the digits that follow. Same pattern for the unfinished-sequence suffix check. Production hunks lifted from next.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "pi-port",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Tool output and `!` command output no longer show the parameters of control sequences with a `\u003c`, `=` or `\u003e` prefix as text, for example `35;59;1M` from a mouse report `ESC[\u003c35;59;1M` or `0;276;0c` from a terminal reply `ESC[\u003e0;276;0c`. Text after the keypad-mode sequences `ESC=` and `ESC\u003e` is still kept. Carried forward from Pi b5fc6dc8 (earendil-works/pi#11377), past the 1.4.0+b3a29f11 pin.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "ab8e9e46fd",
+          "date": "2026-10-30",
+          "pr": "11377"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/tools/sanitize_ansi_generated_test.go::TestStripANSIMatchesTheReferencePatternOnGeneratedInputs",
+        "internal/codingagent/tools/sanitize_private_csi_test.go::TestSplitIncompleteAnsiSuffixPrivateParameterCSI",
+        "internal/codingagent/tools/sanitize_private_csi_test.go::TestStripANSIPrivateParameterCSI"
+      ]
+    },
+    {
       "id": "BF-abe0137",
       "title": "fix(durable/core): deliver the extra hops of Pi without closures",
       "symptom": "fix(durable/core): deliver the extra hops of Pi without closures",
@@ -26815,6 +27227,39 @@
       "tests": [
         "coding/cli/status_command_test.go::TestStatusStillFailsOnDuplicateNonExtensionResourceIdentity",
         "coding/cli/status_command_test.go::TestStatusWarnsOnDuplicatePackageExtensionIdentity"
+      ]
+    },
+    {
+      "id": "BF-ad6d659",
+      "title": "The durable scheduler's per-commit work no longer grows with the number of conversations: after a commit it…",
+      "symptom": "Every commit re-walked every conversation read in the last `contextRetentionMs`.",
+      "rootCause": "After a commit that changed a task, the scheduler re-checked every conversation with a kept context range by walking its subtree, scanned them again for the next expiry, and wake() scanned every live task. A commit now settles only the conversations above the tasks that became live or ended, kept ranges expire from an index ordered by idleSince (re-sorted when the clock goes back; zero retention drops every idle one), and wake() reads the sleeping tasks and scans live ones only while nothing runs. The Harness (durable/harness) and the core (durable/core/session) both change; the core's wake() already did.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "pi-port",
+      "fixedIn": "Unreleased",
+      "releaseNote": "The durable scheduler's per-commit work no longer grows with the number of conversations: after a commit it re-checks idleness only for the conversations above the tasks that became live or ended (a task whose chain is not loaded yet is settled when the chain loads), expires idle context ranges from an index ordered by `idleSince`, and `wake()` takes the earliest sleep from the sleeping tasks and scans the live tasks only while nothing runs. Before, every commit re-walked every conversation read in the last `contextRetentionMs`. A task run with 4,000 conversations keeping a context range took 3.2 ms and 8,800 allocations in the Harness, and about 4.2 ms in the core; it now costs what it does with 100. Carried forward from Pi 35dfa757, past the 1.4.0+b3a29f11 pin.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "ad6d659c09",
+          "date": "2026-10-30"
+        }
+      ],
+      "tests": [
+        "durable/core/session/sched_idle_scopes_test.go::TestAKeptContextGoesBusyWithWorkBelowItAndIdleAgainWhenItEnds",
+        "durable/core/session/sched_idle_scopes_test.go::TestAKeptContextKeepsItsExpiryWhenReadAgain",
+        "durable/core/session/sched_idle_scopes_test.go::TestATaskChangeSettlesTheConversationsAboveItWithoutACheckOfEveryScope",
+        "durable/core/session/sched_idle_scopes_test.go::TestEndingATaskCostsTheSameAtAnyNumberOfKeptContexts",
+        "durable/core/session/sched_idle_scopes_test.go::TestKeptContextsAreAllDroppedWhenRetentionBecomesZero",
+        "durable/core/session/sched_idle_scopes_test.go::TestKeptContextsExpireInIdleOrderWhenTheClockGoesBack",
+        "durable/harness/harness_tasks_test.go::TestPublicationAtAdoption",
+        "durable/harness/scheduler_idle_scaling_bench_test.go::TestWakeWhileATaskRunsCostsTheSameAtAnyNumberOfLiveTasks",
+        "durable/harness/scheduler_idle_scopes_test.go::TestIdleWaitersByScope",
+        "durable/harness/scheduler_idle_scopes_test.go::TestIncrementalIdleStateEqualsAFullRecomputeAfterEveryStepOfRandomNestedWork",
+        "durable/harness/scheduler_idle_scopes_test.go::TestKeptContextRanges",
+        "durable/harness/scheduler_idle_scopes_test.go::TestWakeReadsSleepingTasksAndScansLiveOnesOnlyWhileNothingRuns"
       ]
     },
     {
@@ -28287,10 +28732,7 @@
       "rootCauseSource": "divergence record",
       "userImpact": "Lost or altered data",
       "platform": "All platforms",
-      "class": "ahead-of-pi",
-      "divergence": "D173",
-      "piIssue": "https://github.com/earendil-works/pi/issues/10816",
-      "removeWhen": "Pi's tokenizer keeps Chinese, Japanese and Korean characters.",
+      "class": "own",
       "fixedIn": "0.5.0",
       "releaseNote": "`tool_search` and codemode tool search match Chinese, Japanese and Korean queries: each such character is a search term, where Pi's tokenizer dropped them (earendil-works/pi#10816; D173). Text in other scripts tokenizes as before.",
       "origin": "release note",
@@ -28301,8 +28743,6 @@
         }
       ],
       "tests": [
-        "coding/extension/builtin/toolsearch/toolsearch_cjk_test.go::TestBm25RankerFindsAChineseQueryInChineseToolMetadata",
-        "coding/extension/builtin/toolsearch/toolsearch_cjk_test.go::TestTokenizeKeepsCJKCharactersAsTerms",
         "coding/extension/builtin/toolsearch/toolsearch_oracle_test.go::TestToolSearchMatchesPi"
       ]
     },
@@ -30831,6 +31271,31 @@
         "coding/extension/host/subprocess/host_test.go::TestHost_BuildExtension_Tools",
         "coding/extension/host/subprocess/host_test.go::TestProtocol_RegisterRoundTrip",
         "coding/extension/host/subprocess/registration_fields_wiring_test.go::TestRegistrationDeclarationsKeepEveryField"
+      ]
+    },
+    {
+      "id": "BF-cf6c634",
+      "title": "The `env` daemon kills the commands it started when it receives `SIGTERM`, `SIGINT` or `SIGHUP`, then exits…",
+      "symptom": "`Connection.Close()` sends `SIGTERM`, which used to end the daemon before its kill-all ran and left running commands, and the processes they started, behind as orphans.",
+      "rootCause": "The daemon takes SIGTERM, SIGINT and SIGHUP, kills every command and terminal it started, and exits with 128 + the signal, as Pi's sys::on_exit_signal does. Connection.Close() sends SIGTERM, which used to end the daemon before the kill-all ran. Production hunks and the signal tests are lifted from next; a test with a real process tree (a shell and two background sleeps) shows that the children die too.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "Windows",
+      "class": "pi-port",
+      "fixedIn": "Unreleased",
+      "releaseNote": "The `env` daemon kills the commands it started when it receives `SIGTERM`, `SIGINT` or `SIGHUP`, then exits with status 128 plus the signal. `Connection.Close()` sends `SIGTERM`, which used to end the daemon before its kill-all ran and left running commands, and the processes they started, behind as orphans. On Windows nothing changes: the daemon cannot catch `TerminateProcess`. Carried forward from Pi b6d5c2ec, past the 1.4.0+b3a29f11 pin.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "cf6c63454e",
+          "date": "2026-10-30"
+        }
+      ],
+      "tests": [
+        "env/daemon/sys_windows_test.go::TestWindowsDaemonHandlesNoExitSignal",
+        "env/remote_daemon_signal_test.go::TestConnectionCloseKillsRunningCommands",
+        "env/remote_daemon_signal_test.go::TestDaemonKillsItsCommandsOnTerminationSignals",
+        "env/remote_daemon_signal_test.go::TestDaemonTerminationKillsTheWholeProcessTreeOfACommand"
       ]
     },
     {
@@ -35963,6 +36428,33 @@
       ]
     },
     {
+      "id": "BF-e4f8e35",
+      "title": "OpenRouter's `~anthropic/claude-*-latest` aliases (`~anthropic/claude-fable-latest`, `-haiku-`, `-opus-` and…",
+      "symptom": "OpenRouter's `~anthropic/claude-*-latest` aliases (`~anthropic/claude-fable-latest`, `-haiku-`, `-opus-` and `-sonnet-latest`) no longer lose Claude's earlier thinking after each tool call.",
+      "rootCause": "Pi sends the ~anthropic/claude-*-latest aliases through the Anthropic Messages API with adaptive thinking (generate-models.ts isAnthropicAdaptiveThinkingModel, openrouter-catalog.ts). The published catalog the generator reads predates it, so cmd/gen-models/carried_fixes.go gets a row that is a no-op on a source that already has the fix, and ai/models_generated.go is regenerated. Tests that compare the catalog with the pinned Pi read its row through the carried edit (D217); Pi deleted openrouter-cache-control-models.test.ts, so its Go port now pins the new behaviour.",
+      "rootCauseSource": "commit",
+      "userImpact": "Lost or altered data",
+      "platform": "All platforms",
+      "class": "pi-port",
+      "fixedIn": "Unreleased",
+      "releaseNote": "OpenRouter's `~anthropic/claude-*-latest` aliases (`~anthropic/claude-fable-latest`, `-haiku-`, `-opus-` and `-sonnet-latest`) no longer lose Claude's earlier thinking after each tool call. They used the Chat Completions API, where the thinking signature was dropped and OpenRouter then ignored the unsigned thinking; they now use the Anthropic Messages API with adaptive thinking, like the versioned Claude models. Carried forward from Pi 44f6851b (earendil-works/pi#9534), past the 1.4.0+b3a29f11 pin.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "e4f8e35773",
+          "date": "2026-10-30",
+          "pr": "9534"
+        }
+      ],
+      "tests": [
+        "ai/anthropic_adaptive_models_upstream_test.go::TestAnthropicUpstreamAdaptiveThinkingModels",
+        "ai/builtin_catalog_upstream_test.go::TestBuiltinCatalogsMatchPinnedProviderDataModules",
+        "ai/catalog_options_upstream_test.go::TestOpenRouterCacheControlModels",
+        "ai/catalog_published_test.go::TestGeneratedCatalogsMatchPublishedPackage",
+        "cmd/gen-models/carried_fixes_test.go::TestCarriedOpenRouterAnthropicLatestMessages"
+      ]
+    },
+    {
       "id": "BF-e51bb37",
       "title": "OpenAI Responses streams follow Pi's `processResponsesStream` on malformed and edge events, checked against…",
       "symptom": "OpenAI Responses streams follow Pi's `processResponsesStream` on malformed and edge events, checked against the pinned Pi in a new oracle test: a failed response records only its status (no usage or response id), `end_turn` is recorded only for Codex, an `error` event without a code or message reads `Error Code undefined: undefined`, a `response.created` or terminal event without a response reports Pi's TypeError text, and a reasoning signature backfilled with `encrypted_content` keeps its original key order.",
@@ -36498,6 +36990,33 @@
         "tui/markdown_streaming_reuse_test.go::TestStreamedMarkdownWithAForeignThemeCallsItsStylesAgain",
         "tui/markdown_streaming_reuse_test.go::TestStreamedMarkdownWrapsOnlyChangedLines",
         "tui/windowed_render_test.go::TestWindowedFramesEqualWholeFrames"
+      ]
+    },
+    {
+      "id": "BF-e90f6c8-2",
+      "title": "Paths under a directory whose name merely starts with the home directory's (`/users/bob2/x` with home…",
+      "symptom": "Paths under a directory whose name merely starts with the home directory's (`/users/bob2/x` with home `/users/bob`) are no longer shown as `~2/x` in tool calls, the loaded-resource listing, the session selector and the tree selector; only a leading home directory, on a path-segment boundary, shortens to `~`.",
+      "rootCause": "Part (a) of Pi's commit. A new resolvepath.ShortenHomePath replaces only a leading home directory on a segment boundary (equal paths give ~, relative paths and an empty home come back unchanged), and the tool-call renderer, the loaded-resource listing, the session selector, the tree selector and the startup banner use it. The config selector's formatBaseDir was already anchored.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "pi-port",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Paths under a directory whose name merely starts with the home directory's (`/users/bob2/x` with home `/users/bob`) are no longer shown as `~2/x` in tool calls, the loaded-resource listing, the session selector and the tree selector; only a leading home directory, on a path-segment boundary, shortens to `~`. Carried forward from Pi 1be312b4 (earendil-works/pi#10488), past the 1.4.0+b3a29f11 pin.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "e90f6c8f9c",
+          "date": "2026-10-30",
+          "pr": "10488"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/home_shorten_test.go::TestHomeShorteningAnchorsAtAPathSegment",
+        "internal/codingagent/loaded_resources_oracle_test.go::TestLoadedResourcesFormattingMatchesPi",
+        "internal/resolvepath/shorten_home_test.go::TestShortenHomePathIgnoresCaseOnWindows",
+        "internal/resolvepath/shorten_home_test.go::TestShortenHomePathReplacesOnlyALeadingHomeDirectory",
+        "tui/tool_path_render_pi_test.go::TestRenderToolPathHonorsPiGeneratedExpectations"
       ]
     },
     {
@@ -37254,6 +37773,33 @@
       "tests": []
     },
     {
+      "id": "BF-ed99f42",
+      "title": "The built-in `read` tool no longer resolves to `\"\"` for an image in Code Mode scripts, so `image(await…",
+      "symptom": "The built-in `read` tool no longer resolves to `\"\"` for an image in Code Mode scripts, so `image(await tools.read(...))` works: `read` declares a structured output, a text file's text or an image's block.",
+      "rootCause": "`read` now declares a structuredOutputSchema (a text file's text or an image's block) and returns it as structuredOutput, so `image(await tools.read(...))` in a Code Mode script gets the image instead of \"\".",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "pi-port",
+      "fixedIn": "Unreleased",
+      "releaseNote": "The built-in `read` tool no longer resolves to `\"\"` for an image in Code Mode scripts, so `image(await tools.read(...))` works: `read` declares a structured output, a text file's text or an image's block. Carried forward from Pi 04414839 (earendil-works/pi#11015), past the 1.4.0+b3a29f11 pin.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "ed99f429d6",
+          "date": "2026-10-30",
+          "pr": "11015"
+        }
+      ],
+      "tests": [
+        "durable/codemode/output_tool_test.go::TestDurableCodeModeOutputAndToolSearch",
+        "durable/tools/coding_tools_run_pi_oracle_test.go::TestCodingToolsRunLikePi",
+        "durable/tools/read_structured_output_test.go::TestReadDeclaresTheTextOrImageStructuredOutputSchema",
+        "durable/tools/read_structured_output_test.go::TestReadReturnsAnImageBlockAsStructuredOutput",
+        "durable/tools/read_structured_output_test.go::TestReadReturnsTheShownTextAsStructuredOutput"
+      ]
+    },
+    {
       "id": "BF-edb73db",
       "title": "fix(codingagent): one owner-overflow forwarder at a time; the drain test waits for it, not for the flag's…",
       "symptom": "fix(codingagent): one owner-overflow forwarder at a time; the drain test waits for it, not for the flag's early read",
@@ -37333,6 +37879,28 @@
         "coding/cli/package_batch_upstream_test.go::TestPackageBatchedConcurrentUpdatesOriginal",
         "coding/cli/package_progress_warning_test.go::TestPackageProgressPrinterPrintsProgressEventsInYellow",
         "internal/packagemanager/package_manager_ops_gaps_test.go::TestPackageManagerWarnsWhenAnNpmUpdateLeavesTheInstalledVersionUnchanged"
+      ]
+    },
+    {
+      "id": "BF-ee96daf",
+      "title": "Unsubscribing an extension's event-bus subscription is now constant time, as deleting from Pi's `Set` of…",
+      "symptom": "The factory API also kept every subscription an extension had made, unsubscribed or not, until the extension reloaded; it now keeps only the live ones.",
+      "rootCause": "The runtime kept its tracked subscriptions in a slice and removed one with slices.DeleteFunc, so n single unsubscribes cost O(n^2): 10000 took 142 ms. Pi retains them in a Set, where deleting one closure is constant time. Keep them in an insertion-ordered linked list: Invalidate still runs the retained ones once, in subscription order, and each subscription is its own member even for the same handler. The factory API also never dropped an unsubscribed subscription from the list its reload walks, so a long-lived extension that subscribed and unsubscribed kept every closure; it now keeps only the live ones.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Unsubscribing an extension's event-bus subscription is now constant time, as deleting from Pi's `Set` of tracked unsubscribes is. The runtime removed each one from a slice, so unsubscribing 10,000 subscriptions one at a time took 142 ms and the cost grew with the square of their number; it now takes under 1 ms. The factory API also kept every subscription an extension had made, unsubscribed or not, until the extension reloaded; it now keeps only the live ones.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "ee96daf3e7",
+          "date": "2026-10-30"
+        }
+      ],
+      "tests": [
+        "coding/extension/host/subprocess/event_bus_conn_test.go::TestHostEventBusClosedConnectionForgetsRetainedSubscriptions"
       ]
     },
     {
@@ -40506,6 +41074,37 @@
       ]
     },
     {
+      "id": "BF-fc1703f",
+      "title": "Durable's `tool_search` and Code Mode `searchTools()` rank like the coding agent's tool search: a query that…",
+      "symptom": "Durable's `tool_search` and Code Mode `searchTools()` rank like the coding agent's tool search: a query that is exactly a tool's name ranks it first, a tool matching more of the query's distinct terms ranks above one matching fewer, a query term in the name outweighs any number of mentions in the description, and a tool whose whole name is in the query gets a large bonus.",
+      "rootCause": "durable/internal/search ranks the way the coding agent's Bm25Ranker does: the name is a field of its own (three times its IDF per term), the namespace text a second field (half its IDF, not length-normalized), a tool whose whole local name is in the query gets a bonus worth one more match of every query term, a query that is exactly a tool's name ranks it first, and a tool matching more of the query's distinct terms ranks above one matching fewer.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "pi-port",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Durable's `tool_search` and Code Mode `searchTools()` rank like the coding agent's tool search: a query that is exactly a tool's name ranks it first, a tool matching more of the query's distinct terms ranks above one matching fewer, a query term in the name outweighs any number of mentions in the description, and a tool whose whole name is in the query gets a large bonus. `thread_read` with a limit of 1 no longer loads `queue_read`, and `peekaboo app` finds `mcp__peekaboo__app`. `searchTools()` also searches the namespace instructions, as a low-weight field that does not lower the scores of the namespace's tools. Carried forward from Pi c7372af4 (earendil-works/pi#11631), past the 1.4.0+b3a29f11 pin.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "fc1703f003",
+          "date": "2026-10-30",
+          "pr": "11631"
+        }
+      ],
+      "tests": [
+        "durable/codemode/search_limit_test.go::TestSearchToolsSearchesNamespaceInstructions",
+        "durable/internal/search/search_carried_test.go::TestRankDocumentsMatchesPiTheLatestCarriedRanker",
+        "durable/internal/search/search_pi_oracle_test.go::TestTokenizeAndRankDocumentsMatchPiOnSeededInputs",
+        "durable/internal/search/search_test.go::TestRankDocumentsMatchesPi",
+        "durable/internal/search/search_test.go::TestRankDocumentsNormalizesByDocumentLength",
+        "durable/internal/search/search_test.go::TestRankDocumentsRoundsEveryOperationLikeJavaScript",
+        "durable/toolsearch/toolsearch_carried_test.go::TestToolSearchMatchesPiTheLatestCarriedRanking",
+        "durable/toolsearch/toolsearch_carried_test.go::TestToolSearchRanksAToolByItsName",
+        "durable/toolsearch/toolsearch_pi_oracle_test.go::TestToolSearchMatchesPiOnSeededDeferredTools"
+      ]
+    },
+    {
       "id": "BF-fc5baaf",
       "title": "`pi.exec`'s `timeout` starts once the command has been spawned, as in Pi, so time spent finding and starting…",
       "symptom": "`pi.exec`'s `timeout` starts once the command has been spawned, as in Pi, so time spent finding and starting the program no longer counts against it.",
@@ -41343,11 +41942,6 @@
       "entry": "BF-85908ae"
     },
     {
-      "id": "D173",
-      "title": "Tool search matches Chinese, Japanese and Korean queries (Pi #10816)",
-      "entry": "BF-b99457f"
-    },
-    {
       "id": "D177",
       "title": "The calls of a parallel durable tool round start in unspecified order"
     },
@@ -41465,7 +42059,7 @@
     },
     {
       "id": "D217",
-      "title": "Pi bug fixes after the pin that 0.6.0 carries (Pi b3a29f11..c2760d32)"
+      "title": "Pi bug fixes after the pin that 0.6.0 carries (Pi b3a29f11..35dfa757)"
     }
   ],
   "exemptCommits": {
