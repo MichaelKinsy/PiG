@@ -2,12 +2,12 @@
 
 package idna
 
+import "slices"
+
 // exceedsMaxALabelLength reports whether the A-label of a label with non-ASCII characters is longer than 63 octets (RFC 5890 Section 2.3.2.1). A label of ASCII only has no A-label form.
 func exceedsMaxALabelLength(codePoints []rune) bool {
-	for _, r := range codePoints {
-		if ReNonAscii(r) {
-			return len(encode(codePoints))+4 > 63
-		}
+	if slices.ContainsFunc(codePoints, ReNonAscii) {
+		return len(encode(codePoints))+4 > 63
 	}
 	return false
 }

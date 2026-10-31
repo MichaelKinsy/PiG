@@ -621,9 +621,7 @@ func TestConcurrentMatch(t *testing.T) {
 		}
 		var wg sync.WaitGroup
 		for worker := range 16 {
-			wg.Add(1)
-			go func() {
-				defer wg.Done()
+			wg.Go(func() {
 				for i := range 300 {
 					input := strings.Repeat("a", 1+(worker+i)%7)
 					if re.MatchString(input + "1-" + input) {
@@ -635,7 +633,7 @@ func TestConcurrentMatch(t *testing.T) {
 						return
 					}
 				}
-			}()
+			})
 		}
 		wg.Wait()
 	}

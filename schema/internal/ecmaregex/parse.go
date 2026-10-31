@@ -2,6 +2,7 @@ package ecmaregex
 
 import (
 	"math"
+	"slices"
 	"strings"
 	"sync"
 )
@@ -360,8 +361,8 @@ func (p *parser) conflicts(earlier, index int, body nameScope) bool {
 	if earlier > index {
 		return earlier > body.altStart
 	}
-	for i := len(p.scopes) - 1; i >= 0; i-- {
-		scope := p.scopes[i]
+	for _, scope := range slices.Backward(p.scopes) {
+
 		if earlier > scope.altStart {
 			return true
 		}

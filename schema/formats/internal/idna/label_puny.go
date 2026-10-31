@@ -2,6 +2,8 @@
 
 package idna
 
+import "slices"
+
 import "strings"
 
 // IsPunyLabel reports whether value is an "xn--" label whose payload decodes to a valid Unicode label.
@@ -22,13 +24,7 @@ func IsPunyLabel(value string) bool {
 		return false
 	}
 	// RFC 5890 Section 2.3.2.1: a U-label must contain at least one non-ASCII character.
-	hasNonAscii := false
-	for _, r := range decoded {
-		if ReNonAscii(r) {
-			hasNonAscii = true
-			break
-		}
-	}
+	hasNonAscii := slices.ContainsFunc(decoded, ReNonAscii)
 	if !hasNonAscii {
 		return false
 	}

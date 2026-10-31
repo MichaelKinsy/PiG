@@ -308,8 +308,8 @@ func resolveHierarchical(ref, base string) (string, bool) {
 
 // documentOf is uri without its fragment.
 func documentOf(uri string) string {
-	if hash := strings.IndexByte(uri, '#'); hash >= 0 {
-		return uri[:hash]
+	if before, _, ok := strings.Cut(uri, "#"); ok {
+		return before
 	}
 	return uri
 }

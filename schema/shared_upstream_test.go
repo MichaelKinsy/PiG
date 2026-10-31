@@ -14,7 +14,7 @@ import (
 // collectUntil collects garbage until done reports true. The collector and the cleanup goroutines run asynchronously, so each round yields after a collection.
 func collectUntil(t *testing.T, done func() bool) {
 	t.Helper()
-	for round := 0; round < 200; round++ {
+	for range 200 {
 		runtime.GC()
 		runtime.Gosched()
 		time.Sleep(time.Millisecond)

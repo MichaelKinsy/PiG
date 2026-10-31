@@ -3,6 +3,7 @@
 package idna
 
 import (
+	"slices"
 	"strings"
 
 	"golang.org/x/text/unicode/norm"
@@ -42,13 +43,7 @@ func IsIdnHostname(value string) bool {
 		return false
 	}
 	labels := strings.Split(normalized, ".")
-	hasBidiChars := false
-	for _, label := range labels {
-		if HasBidiChars(label) {
-			hasBidiChars = true
-			break
-		}
-	}
+	hasBidiChars := slices.ContainsFunc(labels, HasBidiChars)
 	for _, label := range labels {
 		if !isIdnHostnameLabel(label) || hasBidiChars && !SatisfiesBidiRule(label) {
 			return false
