@@ -443,8 +443,8 @@ func crossedReport(report host.ReloadReport) CrossedReport {
 }
 
 // uncrossedReport is a crossed report as a report again.
-func uncrossedReport(report CrossedReport) *host.ReloadReport {
-	result := &host.ReloadReport{Failed: make([]host.PluginFailure, len(report.Failed)), Objects: make([]host.ReloadedObject, len(report.Objects))}
+func uncrossedReport(report CrossedReport) host.ReloadReport {
+	result := host.ReloadReport{Failed: make([]host.PluginFailure, len(report.Failed)), Objects: make([]host.ReloadedObject, len(report.Objects))}
 	result.Plugins.Added, result.Plugins.Changed, result.Plugins.Removed = report.Plugins.Added, report.Plugins.Changed, report.Plugins.Removed
 	for index, each := range report.Failed {
 		result.Failed[index] = host.PluginFailure{Plugin: each.Plugin, Error: uncrossed(each.Error)}

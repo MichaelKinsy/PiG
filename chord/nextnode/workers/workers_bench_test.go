@@ -24,8 +24,7 @@ func median(values []float64) float64 {
 }
 
 func BenchmarkWorkerColdStart(b *testing.B) {
-	plugins := newTestPlugins(b, b.TempDir())
-	scripts, err := plugins.Scripts("worker", background)
+	scripts, err := newPlugins(b, b.TempDir()).Scripts("worker", background)
 	if err != nil {
 		b.Fatal(err)
 	}

@@ -53,7 +53,7 @@ func expectCollected[T any](t testing.TB, refs ...weak.Pointer[T]) {
 // loadHost is `await host.load([], context)`: it fails the test when the load fails.
 func loadHost(t testing.TB, h host.Host) {
 	t.Helper()
-	if err := h.Load(nil, background); err != nil {
+	if _, err := h.Load(nil, background); err != nil {
 		t.Fatal(err)
 	}
 }

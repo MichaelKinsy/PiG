@@ -63,7 +63,7 @@ type fleet struct {
 	t       testing.TB
 	server  host.Host
 	workers Workers
-	plugins *testPlugins
+	plugins plugins.Plugins
 	// root is the copy of the fixture plugins.
 	root       string
 	errors     *collector[WorkersError]
@@ -102,7 +102,7 @@ func newFleet(t testing.TB, options fleetOptions) *fleet {
 		t: t, root: root, errors: &collector[WorkersError]{}, hostErrors: &collector[host.HostError]{}, starts: &collector[string]{},
 		output: &collector[string]{}, behaviours: &behaviours{byID: map[string]workerBehaviour{}}, clock: &switchClock{},
 	}
-	f.plugins = newTestPlugins(t, root)
+	f.plugins = newPlugins(t, root)
 	serverAddress := fixtureServer.Address(nil)
 	serverOptions := host.HostOptions{Address: &serverAddress, Principal: delta.JsonObjectOf("kind", "server"), OnError: f.hostErrors.add}
 	if options.heartbeat != nil {
@@ -158,6 +158,10 @@ func newFleet(t testing.TB, options fleetOptions) *fleet {
 	}
 	f.workers = workers
 	loadHost(t, server)
+	// The worker kind's set made now (discovery, builds): the watcher marks edits from then on.
+	if _, err := f.plugins.Scripts("worker", background); err != nil {
+		t.Fatal(err)
+	}
 	t.Cleanup(func() {
 		_ = workers.Close(background)
 		_ = server.Close(background)
@@ -373,22 +377,44 @@ func (c *switchClock) useFakeTimers() (*fakeClock, func()) {
 	}
 }
 
-// testPlugins is the plugins component of the fleet: the fixture plugin `@test/notes` copied into root, its worker facet's
-// source the text of `notes/label.ts` (the build of the label.ts fixture).
-type testPlugins struct {
-	root string
+// fixtureBuilder is the plugins component's Builder of the fleet (esbuild's bundle of `worker.ts` and the `label.ts` it
+// imports): a script whose source is `label.ts`, digested with the facet file, whose inputs are both files.
+type fixtureBuilder struct{}
+
+var _ plugins.Builder = fixtureBuilder{}
+
+func (fixtureBuilder) Build(plugin plugins.Plugin, kind string, _ plugins.BuildOptions, _ context.Context) (plugins.BuiltFacet, error) {
+	entry := plugin.Facets[kind]
+	label := filepath.Join(plugin.Dir, "label.ts")
+	facet, err := os.ReadFile(entry)
+	if err != nil {
+		return plugins.BuiltFacet{}, err
+	}
+	source, err := os.ReadFile(label)
+	if err != nil {
+		return plugins.BuiltFacet{}, err
+	}
+	hash := func(bytes []byte) string {
+		sum := sha256.Sum256(bytes)
+		return hex.EncodeToString(sum[:])
+	}
+	return plugins.BuiltFacet{
+		Kind: plugins.BuiltFacetScript, Plugin: plugin.Name, Facet: kind,
+		Source: string(source), Digest: hash(append(append([]byte{}, facet...), source...)),
+		Inputs: []plugins.BuildInput{{File: entry, Hash: hash(facet)}, {File: label, Hash: hash(source)}},
+		Copied: []string{}, Assets: []plugins.Asset{},
+	}, nil
 }
 
-var _ plugins.Plugins = (*testPlugins)(nil)
-
-func newTestPlugins(t testing.TB, root string) *testPlugins {
+// newPlugins makes the fleet's plugins component over a copy of the fixture plugin in root.
+func newPlugins(t testing.TB, root string) plugins.Plugins {
 	t.Helper()
 	dir := filepath.Join(root, "notes")
 	if err := os.MkdirAll(dir, 0o700); err != nil {
 		t.Fatal(err)
 	}
-	// The fixture plugin (test/next-node/fixtures/workers/plugins/notes): its package, its worker facet (the facet's own file
-	// is a stand-in: the label is what the fixture evaluator serves) and the label file the rollout tests edit.
+	// The fixture plugin (test/next-node/fixtures/workers/plugins/notes): its package, its worker facet (a stand-in: the
+	// label is what the fixture evaluator serves) and the label file the rollout tests edit.
 	files := map[string]string{
 		"package.json": `{"name": "@test/notes", "private": true, "type": "module"}` + "\n",
 		"worker.ts":    "// Fixture plugin (slice 10): the worker facet, serving `Notes` at the worker's address with the label of `label.ts`.\n",
@@ -398,35 +424,52 @@ func newTestPlugins(t testing.TB, root string) *testPlugins {
 			t.Fatal(err)
 		}
 	}
-	p := &testPlugins{root: root}
-	if err := p.writeLabel("v1"); err != nil {
+	if err := writeLabel(root, "v1"); err != nil {
 		t.Fatal(err)
 	}
-	return p
+	component, err := plugins.CreatePlugins(plugins.PluginsOptions{
+		Roots:     []string{root},
+		Kinds:     []plugins.KindDefinition{{Name: "worker", Platform: plugins.PlatformNode}},
+		OnError:   func(plugins.PluginsError) {},
+		Builder:   fixtureBuilder{},
+		Evaluator: fixtureEvaluator{},
+	}, background)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(component.Close)
+	return component
 }
 
 // writeLabel writes label into the copy's notes plugin (`label.ts`).
-func (p *testPlugins) writeLabel(label string) error {
+func writeLabel(root, label string) error {
 	text, err := json.Marshal(label)
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(filepath.Join(p.root, "notes", "label.ts"), []byte("export const label = "+string(text)+";\n"), 0o600)
+	return os.WriteFile(filepath.Join(root, "notes", "label.ts"), []byte("export const label = "+string(text)+";\n"), 0o600)
 }
 
-func (p *testPlugins) Scripts(_ string, _ context.Context) ([]plugins.PluginScript, error) {
-	source, err := os.ReadFile(filepath.Join(p.root, "notes", "label.ts"))
-	if err != nil {
-		return nil, err
+// label writes label into the copy's notes plugin.
+func (f *fleet) label(label string) {
+	f.t.Helper()
+	if err := writeLabel(f.root, label); err != nil {
+		f.t.Fatal(err)
 	}
-	digest := sha256.Sum256(source)
-	return []plugins.PluginScript{{
-		Plugin: plugins.Plugin{Name: "@test/notes", Dir: filepath.Join(p.root, "notes")},
-		Built:  plugins.BuiltFacet{Kind: plugins.BuiltFacetScript, Plugin: "@test/notes", Facet: "worker", Source: string(source), Digest: hex.EncodeToString(digest[:])},
-	}}, nil
 }
 
-func (p *testPlugins) Current(string) ([]plugins.PluginScript, bool) { return nil, false }
+// dirty is `plugins.state.value.dirty`.
+func (f *fleet) dirty() []string { return f.plugins.Marks().Dirty }
+
+// build is `plugins.build(plugins.state.value.dirty, context)`.
+func (f *fleet) build(names []string) *plugins.Built {
+	f.t.Helper()
+	built, err := f.plugins.Build(names, background)
+	if err != nil {
+		f.t.Fatal(err)
+	}
+	return built
+}
 
 // childStarted reports whether the child of session `id` has told `started` (a look into the component, under its loop).
 func (f *fleet) childStarted(id string) bool {

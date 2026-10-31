@@ -110,7 +110,7 @@ func serve(port processPort, fn func(start WorkerStart, ctx context.Context) (*W
 
 type loadedHost struct {
 	host    host.Host
-	runtime plugins.PluginRuntime
+	runtime *plugins.PluginRuntime
 }
 
 type worker struct {
@@ -272,7 +272,7 @@ func (w *worker) runStart(fn func(start WorkerStart, ctx context.Context) (*Work
 type loadingPlugins struct {
 	worker  *worker
 	message ToWorker
-	runtime plugins.PluginRuntime
+	runtime *plugins.PluginRuntime
 	report  *host.LoadReport
 }
 
