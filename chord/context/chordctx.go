@@ -8,6 +8,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/MichaelKinsy/PiG/chord/internal/parking"
 	"github.com/MichaelKinsy/PiG/telemetry"
 )
 
@@ -181,7 +182,11 @@ type Settled[T any] struct {
 	Err   error
 }
 
+// Suspend is the first suspension of a method handler: Pi runs an async handler synchronously, inside the section that admits its call, up to its first `await`, and the rest of that section waits for it. A Go handler is blocking code that runs as a coroutine of the section's goroutine, and the section waits until it returns or suspends. The host primitives that wait (Get, Call, Sleep, UntilAborted, transactions, Await, Receive) suspend the handler themselves; call Suspend with the handler's ctx, or a context derived from it, right before waiting for anything else (a channel, a condition, I/O that another goroutine of the host's section must not outwait). Code that waits without suspending is a synchronous block of the section, as a synchronous loop is in Pi: the host's other work does not run until it ends. Suspend of a context that carries no handler does nothing, and a second call does nothing. Only the handler's own goroutine suspends it: a goroutine the handler started leaves the handler's synchronous part to the handler's own next wait.
+func Suspend(ctx context.Context) { parking.Park(ctx) }
+
 // Await observes work until it settles or the invocation is cancelled. Cancellation returns the cancellation cause from this waiter only; it does not cancel the work, which may still settle later. A nil ctx waits for the work alone.
+// A method handler's ctx parks the handler where it starts to wait: Pi runs an async handler synchronously up to its first `await` inside the section that admits its call, and the Go handler is blocking code that parks at the first wait of a host primitive or of Await or Receive. Code that waits for something else (a raw channel receive, a mutex) is a synchronous block of the section, as a synchronous loop is in Pi.
 func Await[T any](ctx context.Context, work <-chan Settled[T]) (T, error) {
 	var zero T
 	if ctx == nil {
@@ -191,9 +196,28 @@ func Await[T any](ctx context.Context, work <-chan Settled[T]) (T, error) {
 	if err := ctx.Err(); err != nil {
 		return zero, context.Cause(ctx)
 	}
+	parking.Park(ctx)
 	select {
 	case outcome := <-work:
 		return outcome.Value, outcome.Err
+	case <-ctx.Done():
+		return zero, context.Cause(ctx)
+	}
+}
+
+// Receive is Await for a plain channel: `await promise` of work that cannot reject, as a gate a test resolves. It returns the received value, or the cancellation cause of ctx from this waiter only. A closed channel yields the zero value, as a resolved promise of nothing. A nil ctx waits for the channel alone.
+func Receive[T any](ctx context.Context, work <-chan T) (T, error) {
+	var zero T
+	if ctx == nil {
+		return <-work, nil
+	}
+	if err := ctx.Err(); err != nil {
+		return zero, context.Cause(ctx)
+	}
+	parking.Park(ctx)
+	select {
+	case value := <-work:
+		return value, nil
 	case <-ctx.Done():
 		return zero, context.Cause(ctx)
 	}

@@ -7,6 +7,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/MichaelKinsy/PiG/chord/internal/parking"
 	"github.com/MichaelKinsy/PiG/chord/next/data"
 )
 
@@ -50,8 +51,10 @@ func (r *parkedCallResult) settle(value any, err error) {
 	}
 }
 
-// wait blocks until the result is settled: Pi's `await`. Call it outside the host's sections.
-func (r *parkedCallResult) wait() (any, error) {
+// wait blocks until the result is settled: Pi's `await`. Call it outside the host's sections. ctx is the caller's: a handler
+// that waits parks (its call's section goes on) before it blocks.
+func (r *parkedCallResult) wait(ctx context.Context) (any, error) {
+	parking.Park(ctx)
 	<-r.done
 	return r.value, r.err
 }

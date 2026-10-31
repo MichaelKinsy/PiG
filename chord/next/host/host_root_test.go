@@ -149,7 +149,7 @@ func TestHostRootAnAbortRejectsAtOnceAndSeals(t *testing.T) {
 	if err := <-running; err == nil || err.Error() != "stop" {
 		t.Fatalf("root = %v, want stop", err)
 	}
-	if _, err := call[0].wait(); err == nil {
+	if _, err := call[0].wait(background); err == nil {
 		t.Fatal("the running call did not reject")
 	} else {
 		wantRejection(t, err, data.CodeReleased)

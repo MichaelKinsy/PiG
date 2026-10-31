@@ -54,7 +54,7 @@ func (r *Reference) Call(method string, args delta.JsonValue, ctx context.Contex
 	if err != nil {
 		return nil, err
 	}
-	return result.wait()
+	return result.wait(ctx)
 }
 
 // Member is the state member `name`, nil when the contract has none.
@@ -487,7 +487,7 @@ func (b *binding) hydrated(ctx context.Context) *keyedPromise[struct{}] {
 func (b *binding) awaitHydrated(ctx context.Context) error {
 	var wait *keyedPromise[struct{}]
 	b.loop.Run(func() { wait = b.hydrated(ctx) })
-	_, err := wait.await()
+	_, err := wait.await(ctx)
 	return err
 }
 

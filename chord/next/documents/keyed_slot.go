@@ -6,6 +6,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/chord"
 	"github.com/MichaelKinsy/PiG/chord/delta"
+	"github.com/MichaelKinsy/PiG/chord/internal/parking"
 	"github.com/MichaelKinsy/PiG/chord/next/data"
 	"github.com/MichaelKinsy/PiG/chord/next/state"
 	"github.com/MichaelKinsy/PiG/chord/next/store"
@@ -187,7 +188,7 @@ func (it *KeyIterator) Next(ctx context.Context) (key string, ok bool, err error
 			return "", false, nil
 		}
 		var page []string
-		err := slot.owner.OnLine(func() error {
+		err := slot.owner.OnLine(it.ctx, func() error {
 			var err error
 			page, err = slot.persistence.Keys(it.after, keysPage, it.ctx)
 			return err
@@ -309,7 +310,7 @@ func (slot *KeyedSlot) Ensure(raw string, ctx context.Context) error {
 	if !pending {
 		return nil
 	}
-	return slot.owner.OnLine(func() error { return slot.Load(key, ctx, nil) }, nil)
+	return slot.owner.OnLine(ctx, func() error { return slot.Load(key, ctx, nil) }, nil)
 }
 
 // Source is the source of pinned key.
@@ -548,6 +549,7 @@ func (slot *KeyedSlot) loadShared(key string, token *SealToken, ctx context.Cont
 	if failure != nil {
 		return nil, failure
 	}
+	parking.Park(ctx)
 	select {
 	case <-load.done:
 	case <-ctx.Done():
@@ -569,7 +571,7 @@ func (slot *KeyedSlot) startLoad(key string) *sharedLoad {
 	load := &sharedLoad{done: make(chan struct{}), tokens: map[*SealToken]struct{}{}}
 	slot.loads[key] = load
 	go func() {
-		err := slot.owner.OnLine(func() error {
+		err := slot.owner.OnLine(slot.owner.Context(), func() error {
 			var failure error
 			slot.owner.Do(func() {
 				refused := map[*SealToken]struct{}{}

@@ -1,6 +1,11 @@
 package documents
 
-import "sync"
+import (
+	"context"
+	"sync"
+
+	"github.com/MichaelKinsy/PiG/chord/internal/parking"
+)
 
 // Ports packages/chord/src/next/documents/line.ts
 //
@@ -23,14 +28,17 @@ func NewLine() *Line {
 	return &Line{tail: free}
 }
 
-// Acquire blocks until every earlier holder released and returns this holder's release; releasing twice is harmless.
-func (line *Line) Acquire() (release func()) {
+// Acquire blocks until every earlier holder released and returns this holder's release; releasing twice is harmless. A
+// handler's ctx parks the handler once its place is taken (Pi's `await line.acquire()` takes the place in the section that
+// calls it and resumes after it): ctx is the caller's; context.Background() for a caller that is no handler.
+func (line *Line) Acquire(ctx context.Context) (release func()) {
 	done := make(chan struct{})
 	line.mu.Lock()
 	previous := line.tail
 	line.tail = done
 	line.waiting++
 	line.mu.Unlock()
+	parking.Park(ctx)
 	<-previous
 	line.mu.Lock()
 	line.waiting--
