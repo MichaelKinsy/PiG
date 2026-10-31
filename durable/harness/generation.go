@@ -910,9 +910,10 @@ func ConvertPartial(tx durable.Tx, live *delta.Object, conversationId durable.Co
 }
 
 // providerPayload is the beforeProviderRequest replacement chain over one provider request body: it runs each time pi-ai
-// builds a body, and a hook's nil result keeps the body it was given.
+// builds a body, and a hook's nil result keeps the body it was given. Nil is returned when no hook replaced the body,
+// which is what ai.StreamOptions.OnPayload takes as "keep the provider's own".
 func providerPayload(ctx context.Context, runtime generationRuntime, model *ai.Model, payload any) (any, error) {
-	current := payload
+	current, replacedAny := payload, false
 	if err := runtime.Hooks().Each("beforeProviderRequest", func(hooks *GenerationHooks) error {
 		if hooks == nil || hooks.BeforeProviderRequest == nil {
 			return nil
@@ -922,11 +923,14 @@ func providerPayload(ctx context.Context, runtime generationRuntime, model *ai.M
 			return err
 		}
 		if replaced != nil {
-			current = replaced.Payload
+			current, replacedAny = replaced.Payload, true
 		}
 		return nil
 	}); err != nil {
 		return nil, err
+	}
+	if !replacedAny {
+		return nil, nil
 	}
 	return current, nil
 }
