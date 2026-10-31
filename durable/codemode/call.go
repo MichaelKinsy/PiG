@@ -1604,12 +1604,12 @@ func (c *call) discover(hostCall cm.HostCall) (json.RawMessage, error) {
 		if restricted && (own == nil || !matchesNamespace(own, wanted)) {
 			continue
 		}
-		ownName, ownDescription := "", ""
+		// pig divergence (D217): Pi c7372af4 (#11631) the text is the tool's sample (its description) alone and the namespace name, description and instructions are a field of their own; pinned Pi joins the name, the name with `_` as spaces, the description and the namespace name and description.
+		namespaceText := ""
 		if own != nil {
-			ownName, ownDescription = own.Name, own.Description
+			namespaceText = strings.Join([]string{own.Name, own.Description, own.Instructions}, " ")
 		}
-		text := strings.Join([]string{tool.Name, strings.ReplaceAll(tool.Name, "_", " "), tool.Description, ownName, ownDescription}, " ")
-		documents = append(documents, search.Document{Name: tool.Name, Text: text})
+		documents = append(documents, search.Document{Name: tool.Name, Text: tool.Description, NamespaceText: namespaceText})
 	}
 	type found struct {
 		Name        string `json:"name"`

@@ -10,6 +10,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"reflect"
+	"slices"
 	"strings"
 	"testing"
 
@@ -24,6 +25,11 @@ import (
 // result text branch on: parameters with descriptions at every level (properties, items, anyOf, oneOf, allOf), blank and
 // multi-line descriptions, names with underscores, and queries that match one, several or none of them. The tool's own
 // declaration (name, description, parameters, callers, replay mode) is compared too.
+//
+// D217 (Pi c7372af4, #11631): the pinned Pi searches the name as part of the text and ranks by score alone, PiG weighs the name as a field of its own and ranks a tool matching more of the
+// query's distinct terms first. The two agree where the name holds no term, so the tools are named with stop words only, and where the query has one distinct term, so every match covers it:
+// those results compare in full. For a query of several distinct terms the two agree on which tools load, compared as a set when the limit keeps them all.
+// TestToolSearchMatchesPiTheLatestCarriedRanking pins the carried ranking with Pi's own answers.
 
 type toolSearchCase struct {
 	Deferred []json.RawMessage `json:"deferred"`
@@ -41,6 +47,8 @@ type toolSearchAnswer struct {
 		Control map[string]any `json:"control"`
 	} `json:"result"`
 	Error *string `json:"error"`
+	// Terms is the number of distinct terms of the query, by Pi's tokenizer.
+	Terms int `json:"terms"`
 }
 
 var toolSearchWords = []string{"github", "issue", "issues", "repo", "repos", "list", "get", "create", "search", "file", "files", "path", "query", "number", "user", "label", "labels", "comment", "pull", "request", "branch", "commit"}
@@ -102,13 +110,15 @@ func toolSearchObject(rng *rand.Rand, depth int) string {
 	return out + `}`
 }
 
+var toolSearchStopWords = []string{"a", "an", "and", "are", "as", "at", "be", "by", "for", "from", "in", "is", "it", "of", "on", "or", "that", "the", "this", "to", "with"}
+
 func toolSearchTools(rng *rand.Rand, count int) []json.RawMessage {
 	tools := []json.RawMessage{}
 	used := map[string]bool{}
 	for range count {
-		name := toolSearchWords[rng.IntN(len(toolSearchWords))] + "_" + toolSearchWords[rng.IntN(len(toolSearchWords))]
+		name := toolSearchStopWords[rng.IntN(len(toolSearchStopWords))] + "_" + toolSearchStopWords[rng.IntN(len(toolSearchStopWords))]
 		if rng.IntN(4) == 0 {
-			name += "_" + toolSearchWords[rng.IntN(len(toolSearchWords))]
+			name += "_" + toolSearchStopWords[rng.IntN(len(toolSearchStopWords))]
 		}
 		if used[name] {
 			continue
@@ -231,6 +241,29 @@ func TestToolSearchMatchesPiOnSeededDeferredTools(t *testing.T) {
 			}
 		case err != nil:
 			t.Errorf("%s: PiG fails with %q, Pi returns %+v", label(), err, want.Result)
+		case want.Terms > 1:
+			// Several distinct terms: the order differs; the loaded set agrees when the limit keeps every match.
+			limit := float64(DefaultLimit)
+			if c.Limit != nil {
+				limit = *c.Limit
+			}
+			wantLoaded, _ := want.Result.Details["loaded"].([]any)
+			if float64(len(wantLoaded)) >= limit {
+				continue
+			}
+			var gotLoaded []string
+			if got.Control != nil {
+				gotLoaded = slices.Clone(got.Control.AddTools)
+			}
+			var wantNames []string
+			for _, name := range wantLoaded {
+				wantNames = append(wantNames, name.(string))
+			}
+			slices.Sort(gotLoaded)
+			slices.Sort(wantNames)
+			if !slices.Equal(gotLoaded, wantNames) {
+				t.Errorf("%s: loads %q, Pi %q", label(), gotLoaded, wantNames)
+			}
 		default:
 			if len(got.Output) != len(want.Result.Output) || len(got.Output) != 1 {
 				t.Errorf("%s: %d output items, Pi %d", label(), len(got.Output), len(want.Result.Output))
@@ -264,7 +297,7 @@ func TestToolSearchMatchesPiOnSeededDeferredTools(t *testing.T) {
 			}
 		}
 	}
-	if loadedSome < 100 || none < 50 || failed < 50 {
+	if loadedSome < 50 || none < 50 || failed < 50 {
 		t.Errorf("the corpus reached %d loads, %d empty results and %d failures", loadedSome, none, failed)
 	}
 }
