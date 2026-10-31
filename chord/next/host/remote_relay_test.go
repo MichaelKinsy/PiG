@@ -844,7 +844,9 @@ func TestRelayGC(t *testing.T) {
 	})
 }
 
-// listeningLink is a link end that records every message it receives, weakly (the Go form of Pi's received buffers).
+// listeningLink is a link end that records every message it receives, weakly (the Go form of Pi's received buffers). A buffer
+// under 16 bytes (an `ack`) comes from the allocator's tiny blocks, which hold several objects and are freed only when every
+// one of them is: its weak pointer says nothing of who retains the message, so only larger buffers are recorded.
 type listeningLink struct {
 	link.Link
 	mu      sync.Mutex
@@ -853,7 +855,7 @@ type listeningLink struct {
 
 func (l *listeningLink) OnMessage(listener func(message []byte)) {
 	l.Link.OnMessage(func(message []byte) {
-		if len(message) > 0 {
+		if len(message) >= 16 {
 			l.mu.Lock()
 			l.buffers = append(l.buffers, weak.Make(&message[0]))
 			l.mu.Unlock()
