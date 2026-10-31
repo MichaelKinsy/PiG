@@ -16,7 +16,10 @@ import (
 // Forced Go differences. `resolve` is an awaited Promise, so it is a blocking call returning (link, error). `void
 // this.#resolve(routed)` is an owned task (Loop.Go): the call to `resolve` runs on it, off the loop, and everything Pi
 // writes after the `await` runs as one section (Loop.Run) on it, so a `resolve` whose holds were all released meanwhile
-// finishes and its result is handled as Pi's. `authorize` and `resolve` may throw in Pi: they return the error. The
+// finishes and its result is handled as Pi's. Pi calls `resolve` synchronously from `check`, so what two addresses' `resolve`
+// calls do before their first await happens in the order the holds arrived; here each address resolves on a task of its own
+// and what two `resolve` calls do is in no order (one at a time, a slow address's `resolve` would hold up every other, which
+// Pi's concurrent resolves do not). `authorize` and `resolve` may throw in Pi: they return the error. The
 // route calls the host's own `*path`, `*hostLink` and `*chordHost` directly, as Pi's classes do. A `Link` of `link` and its
 // `Codec` and `PartLimits` are the package's own.
 
