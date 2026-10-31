@@ -22,7 +22,12 @@ ci-test-fast-sharded: test-fast-sharded
 # The light pull-request run's test-fast shard (automation/ci/ci-tiers.txt): the fast-parallel packages the change affects (TEST_BASE names the pull request's base), no -race so it runs what the full run does, and the whole ci-test-fast when the change touches go.mod, go.sum, go.work or go.work.sum or a file no package test reads.
 ci-test-changed: export TEST_CHANGED_FOR := fast-parallel
 ci-test-changed: export TEST_CHANGED_RACE := none
-ci-test-changed: test-changed
+ci-test-changed: test-changed sdk-vectors-changed
+# The SDK modules are not packages of the main module, so test-changed never runs their Pi vector suites. When the change touches the shared tui engine, an SDK or a vector file (automation/ci/sdk-vectors-changed.sh), run the vector check and each SDK's own suite.
+sdk-vectors-changed:
+	@if [ "$$(automation/ci/sdk-vectors-changed.sh)" = true ]; then \
+		node automation/gen/generate-sdk-vectors.mjs --check && $(MAKE) -s test-sdk-go test-sdk-rs test-sdk-py test-sdk-lisp; \
+	else echo "sdk-vectors-changed: no path the SDK vector suites read changed"; fi
 ci-test-cli-1: test-cli-1
 ci-test-cli-2: test-cli-2
 ci-test-subprocess: test-subprocess
@@ -114,4 +119,4 @@ test-expectation-lint: ## Fail on test expectations edited with their code and n
 
 TEST_EXPECT_BASE ?= main
 
-.PHONY: ci-durable-contract test-provenance test-expectation-lint ci-preflight ci-test-changed ci-bookkeeping autofix-check ci-startup ci-build ci-build-pr ci-checks ci-checks-pr ci-toolchains ci-test-fast ci-test-fast-sharded ci-test-cli-1 ci-test-cli-2 ci-test-subprocess ci-test-conformance ci-sdk ci-extensions ci-race ci-term-engines ci-integration ci-parity ci-parity-1 ci-parity-2 parity-fast-1 parity-fast-2 ci-drift ci-drift-pr ci-contracts ci-portmap-1 ci-portmap-2 ci-portmap-3 portmap-check-1 portmap-check-2 portmap-check-3 ci-closure test-fast test-fast-parallel test-fast-sharded test-cli test-cli-1 test-cli-2 test-subprocess test-conformance
+.PHONY: sdk-vectors-changed ci-durable-contract test-provenance test-expectation-lint ci-preflight ci-test-changed ci-bookkeeping autofix-check ci-startup ci-build ci-build-pr ci-checks ci-checks-pr ci-toolchains ci-test-fast ci-test-fast-sharded ci-test-cli-1 ci-test-cli-2 ci-test-subprocess ci-test-conformance ci-sdk ci-extensions ci-race ci-term-engines ci-integration ci-parity ci-parity-1 ci-parity-2 parity-fast-1 parity-fast-2 ci-drift ci-drift-pr ci-contracts ci-portmap-1 ci-portmap-2 ci-portmap-3 portmap-check-1 portmap-check-2 portmap-check-3 ci-closure test-fast test-fast-parallel test-fast-sharded test-cli test-cli-1 test-cli-2 test-subprocess test-conformance
