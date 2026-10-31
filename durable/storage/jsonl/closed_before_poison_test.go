@@ -5,6 +5,7 @@ import (
 
 	chorddelta "github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/durable"
+	"github.com/MichaelKinsy/PiG/durable/durabletest"
 	"github.com/MichaelKinsy/PiG/durable/storage/jsonl"
 )
 
@@ -17,9 +18,9 @@ func TestJsonlClosedErrorWinsOverThePoison(t *testing.T) {
 	createRoot(t, storage)
 	id := mint[durable.DocumentId](t, storage)
 	instrumented.fail(failure{operation: "append", call: 1, mode: "before"})
-	if _, err := storage.Commit(testContext, []durable.StorageWrite{
+	if _, err := durabletest.CommitWrites(testContext, storage, []durable.StorageWrite{
 		durable.DocumentCreateWrite{Record: sessionDocument(id, "first"), Content: base(chorddelta.JsonObjectOf("text", "a"))},
-	}, func(durable.Seq) {}); err == nil {
+	}); err == nil {
 		t.Fatal("the failing commit succeeded, so the storage was not poisoned")
 	}
 	if err := storage.Close(testContext); err != nil {
