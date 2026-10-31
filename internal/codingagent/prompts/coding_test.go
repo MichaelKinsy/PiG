@@ -17,7 +17,7 @@ func TestToolsWithoutSnippetsAreNotListed(t *testing.T) {
 	if strings.Contains(got, "- custom") || !strings.Contains(got, "<tools>\n- read: Read file contents\n\n") {
 		t.Fatalf("tools section:\n%s", got)
 	}
-	if none := BuildDefaultPrompt(Options{}); !strings.Contains(none, "<tools>\n(none)\n\nIn addition") {
+	if none := BuildDefaultPrompt(Options{}); !strings.Contains(none, "<tools>\n(none)\n\nAdditional tools") {
 		t.Fatalf("empty tools section:\n%s", none)
 	}
 }

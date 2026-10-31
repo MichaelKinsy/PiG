@@ -600,7 +600,8 @@ func ContainerRemediation(exePath string) string {
 func UnsupportedRemediation(exePath string) string {
 	return fmt.Sprintf(
 		"%s cannot self-update this installation. Executable: %s. "+
-			"Reinstall it with the package manager, wrapper, or source checkout that provided it, or download a new %s binary from your provider's releases.",
+			"Reinstall it with the package manager, wrapper, or source checkout that provided it, or download a new %s binary from your provider's releases. "+
+			"To use your own update command, set PI_SELF_UPDATE_COMMAND or the selfUpdateCommand setting.",
 		AppName, exePath, AppName)
 }
 
