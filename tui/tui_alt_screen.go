@@ -307,7 +307,7 @@ func NewTuiAltScreen(terminal Terminal, showHardwareCursor *bool, logDirectory s
 func NewTuiAltScreenWithOutput(out io.Writer, cols, rows int, options TuiAltScreenOptions) *TuiAltScreen {
 	t := newTuiAltScreen(out, os.Getenv("PI_HARDWARE_CURSOR") == "1", options)
 	t.fixedSize = true
-	t.setFixedDimensionsLocked(cols, rows)
+	t.setSize(cols, rows)
 	return t
 }
 
@@ -562,7 +562,8 @@ func (t *TuiAltScreen) StopWithOptions(options StopOptions) {
 		restore = t.savedCapabilities
 		t.savedCapabilities = nil
 	}
-	width := max(1, t.width)
+	columns, _ := t.size()
+	width := max(1, columns)
 	// Pi pops in terminal.stop() before afterTerminalStop leaves the alternate
 	// screen. An outstanding push belongs to the alternate screen; return it to
 	// the main screen so the driver's DrainInput or restore pops the active
@@ -880,8 +881,9 @@ func (t *TuiAltScreen) doRender() {
 	}
 	t.lastRenderAt = t.now()
 	t.updateSize()
-	width := max(1, t.width)
-	height := max(1, t.height)
+	columns, screenRows := t.size()
+	width := max(1, columns)
+	height := max(1, screenRows)
 
 	root := t.rootComponent()
 	nextLayout := RenderLayoutFrame(root, width, height, t.requestRenderFromLayout)

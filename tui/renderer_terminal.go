@@ -33,18 +33,12 @@ func (t *tuiBase) Terminal() Terminal {
 	return *t.derivedTerminal.Load()
 }
 
-// setFixedDimensionsLocked sets the size of a fixed-size renderer and publishes it to lock-free readers. The caller holds t.mu or owns t exclusively during construction.
-func (t *tuiBase) setFixedDimensionsLocked(columns, rows int) {
-	t.width, t.height = columns, rows
-	t.publishSize()
+// setSize records the renderer's size, the one place it is stored. The frame that holds t.mu, SetFixedSize with t.mu, or the constructor calls it.
+func (t *tuiBase) setSize(columns, rows int) {
+	t.sizeSnapshot.Store(uint64(uint32(columns))<<32 | uint64(uint32(rows)))
 }
 
-// publishSize publishes t.width and t.height to the lock-free readers of size. The writer of the fields owns them: the frame that holds t.mu, or the constructor.
-func (t *tuiBase) publishSize() {
-	t.sizeSnapshot.Store(uint64(uint32(t.width))<<32 | uint64(uint32(t.height)))
-}
-
-// size is the last size publishSize published, readable from any goroutine and during a frame.
+// size is the renderer's current size, readable from any goroutine and during a frame. Every reader uses it, so a frame that updates the size on its goroutine never races with an input, overlay or extension-host goroutine.
 func (t *tuiBase) size() (columns, rows int) {
 	packed := t.sizeSnapshot.Load()
 	return int(int32(packed >> 32)), int(int32(packed))

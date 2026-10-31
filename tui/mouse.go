@@ -261,7 +261,7 @@ func (b *Box) HandleMouse(event TuiMouseEvent) *TuiMouseDispatchResult {
 // isOverlayFocused reports whether the focused component is a visible
 // overlay. Mirrors upstream TuiBase.isOverlayFocused.
 func (t *tuiBase) isOverlayFocused() bool {
-	t.refreshOverlayVisibility(t.width, t.height)
+	t.refreshOverlayVisibility(t.size())
 	t.overlayMu.Lock()
 	defer t.overlayMu.Unlock()
 	focused := t.overlayModel.focusedComponent()
