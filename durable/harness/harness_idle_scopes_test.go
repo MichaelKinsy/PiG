@@ -357,8 +357,8 @@ func TestIdleWaitersByScope(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		// P and D stay live in storage; the first Harness never ran them and is closed.
-		mustClose(t, first.harness)
+		// P and D stay live in storage, as a crash leaves them; the first Harness never ran them and is not used again
+		// (closing a Harness closes its MemoryStorage here, where Pi reopens a ControlledStorage).
 		// Reopened, no chain is loaded: P and D count as inside every scope until the reconcile pass loads theirs.
 		second := &idleEnv{t: t, gates: gates, scan: &scanCount{}}
 		second.work = idleWork(gates)
@@ -423,7 +423,7 @@ func TestIdleWaitersByScope(t *testing.T) {
 	})
 }
 
-func TestKeptContextRanges(t *testing.T) {
+func TestIdleKeptContextRanges(t *testing.T) {
 	t.Run("settles a run end whose sweep drops the chain without a check of every scope", func(t *testing.T) {
 		env := openIdle(t, idleEnvOptions{})
 		type tree struct {
