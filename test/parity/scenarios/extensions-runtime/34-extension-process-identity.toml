@@ -20,6 +20,11 @@
 # "stdout":"0.99.2"}}. PiG's extension process was titled "node", its
 # argv[1] was the runtime's cell.mjs, and the re-launch ran that script.
 #
+# pi_launch = "bundled": this scenario asserts Pi's launch identity (binIsEntry: process.argv[1] is the package bin), which the unbundled
+# entry the runner starts while the D217 hook is active changes. Measured 2026-10-31 with the unbundled launch and an empty manifest: Pi reports
+# "binIsEntry":false (argv[1] is dist/cli.js) and its re-launch prints 1.4.0, so the scenario fails with a launch that is not the one it
+# describes. The Pi side renders none of the code the hook swaps, so the bundled bin is the faithful oracle here.
+#
 # D26: Pi exports AI_AGENT=pi so tools can name the launching agent; PiG
 # exports AI_AGENT=pig. The regex accepts either name and the [diverge]
 # block pins each binary to its own; every other field is Pi's.
@@ -47,6 +52,7 @@ pig_extensions = ["testdata/process-identity/identity.ts"]
 pi = ["PI_OFFLINE=1", "PI_SKIP_VERSION_CHECK=1"]
 pi_extensions = ["../../testdata/test-faux-provider.ts", "testdata/process-identity/identity.ts"]
 pi_args = ["--model", "test-faux/faux-1", "--no-session"]
+pi_launch = "bundled"
 
 [assert]
 exit_code = 0

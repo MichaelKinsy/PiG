@@ -4,15 +4,21 @@ PiG 0.6.0 carries Pi bug fixes that landed after the pin (1.4.0+b3a29f11). The G
 load the pinned Pi's modules, which do not. A Node module hook swaps the modules listed in `manifest.json` for the generated ones of this
 directory; the comparators stay exact and no probe is skipped. Three load paths use it:
 
-- `tui/testdata/*.mjs` (15 scripts) and the scenario Pi programs import `register.mjs` first (`--import {{REPO}}/tui/testdata/pi-d217/register.mjs`
-  in a scenario's `pi_args` or `NODE_OPTIONS`); they load the built pi-tui.
+- The parity runner starts the real pi as `node --import <repo>/tui/testdata/pi-d217/register.mjs <pin>/dist/cli.js <args>` instead of the pin's bundled
+  `dist/bundle/cli.js` (which inlines pi-tui, so the hook cannot reach it), for every scenario that runs the resolved pi, while `manifest.json` is
+  not empty (`d217Launch` in `test/parity/runner/d217.go`; the base args and the scenario's `pi_args` and `-e` flags follow as for the bundle). A scenario
+  that names its own `pi_bin` (a script such as `node ./test/parity/testdata/x-pi.mjs`) is not launched through it; see the next item. With `manifest.json` set to
+  `[]` the bundle runs and nothing is imported.
+- An oracle script that loads the built pi-tui (the 15 `tui/testdata/*.mjs`, and the scripts of a `pi_bin` scenario or of a Go test that render text through it)
+  imports `register.mjs` first (`import "../../tui/testdata/pi-d217/register.mjs"`, relative to the script). The import goes in the script, not in the
+  environment: `NODE_OPTIONS` would reach every Node process the script starts, and an oracle that reads a child's output through a pipe
+  (`test/parity/testdata/codemode-declarations-pi.mjs`) then loses its tail.
 - `internal/pioracle.Run` passes `--import register.mjs` while this directory exists; the vendored `shims/pi-dist` it loads has pi-tui's
   `utils.js` (external to the pi-tui bundle) and `image-resize-core.js` as separate modules.
 
 | file | replaces (URL suffix) | carried |
 |---|---|---|
-| `utils.js` | `/@earendil-works/pi-tui/dist/utils.js` (built oracle) | `2ce9d527` (earendil-works/pi#10925) |
-| `utils.js` | `/packages/tui/dist/utils.js` (the pin build's own workspace path, where the real `pi` binary of a scenario loads it) | `2ce9d527` |
+| `utils.js` | `/@earendil-works/pi-tui/dist/utils.js` (the built oracle, the real pi's and the scripts') | `2ce9d527` (earendil-works/pi#10925) |
 | `utils.vendored.js` | `/pi-dist/pi-tui/utils.js` (vendored), the same file with vendor-pi-dist.sh's one import rewrite | `2ce9d527` |
 | `image-resize-core.js` | `/pi-dist/pi-coding-agent/utils/image-resize-core.js` (vendored) | `e7a0df27` (earendil-works/pi#11551) |
 
@@ -25,5 +31,5 @@ directory; the comparators stay exact and no probe is skipped. Three load paths 
 
 A later carry that changes another module adds its patch and file to `gen.sh`; it does not add another mechanism.
 
-Remove when the pin is at or past `c2760d32`: delete this directory, `d217Register` in `internal/pioracle/pioracle.go`, the `import
-"./pi-d217/register.mjs"` line of each script, and the `--import`/`NODE_OPTIONS` of the scenarios.
+Remove when the pin is at or past `c2760d32`: delete this directory, `test/parity/runner/d217.go` (and its call in `TestParity`, `Launch` and `forScenario` in `binaries.go`), `d217Register` in
+`internal/pioracle/pioracle.go`, and the `import "./pi-d217/register.mjs"` line of each script.

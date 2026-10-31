@@ -72,7 +72,6 @@ sha() { sha256sum "$1" | cut -d' ' -f1; }
 cat >"$here/manifest.json" <<JSON
 [
   { "suffix": "/@earendil-works/pi-tui/dist/utils.js", "pinnedSha256": "$(sha "$built_tui")", "file": "utils.js" },
-  { "suffix": "/packages/tui/dist/utils.js", "pinnedSha256": "$(sha "$built_tui")", "file": "utils.js" },
   { "suffix": "/pi-dist/pi-tui/utils.js", "pinnedSha256": "$(sha "$vendored_tui")", "file": "utils.vendored.js" },
   { "suffix": "/pi-dist/pi-coding-agent/utils/image-resize-core.js", "pinnedSha256": "$(sha "$vendored_img")", "file": "image-resize-core.js" }
 ]
