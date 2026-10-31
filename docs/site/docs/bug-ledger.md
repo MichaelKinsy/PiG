@@ -295,6 +295,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-4599fab](#bf-4599fab) | fix(ai): an iteration's shared cancellation does not compare contexts | PiG's own defect | All platforms | Unreleased |
 | [BF-45ec149](#bf-45ec149) | Read-only credential storage reports an unreadable or malformed `auth.json` as Pi does: `Failed to read… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-4610c9f](#bf-4610c9f) | A `!` or `!!` command's block draws the bytes Pi's `BashExecutionComponent` draws: its rows are padded to the… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-462b96e](#bf-462b96e) | A Python or Rust extension no longer fails to load when the host releases one of its listeners between… | PiG's own defect | All platforms | Unreleased |
 | [BF-4649166](#bf-4649166) | fix(sdk): place the arrival-order start in the request scope so a tool_call round trip keeps its 68… | PiG's own defect | All platforms | Unreleased |
 | [BF-46abed3](#bf-46abed3) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
 | [BF-471c46e](#bf-471c46e) | An MCP tool or resource link with an explicit empty `title` keeps it, as Pi does, instead of falling back to… | PiG's own defect | All platforms | 0.5.0 |
@@ -5213,6 +5214,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `a4753ec61e` (2026-10-06, #170), `ba9c37b247` (2026-10-06, #171), `165cf5884d` (2026-10-07, #180), `3499c2bea7` (2026-10-07, #181), `9b63b2bc4e` (2026-10-07, #176), `4610c9f4a1` (2026-10-08, #189), `50e81255de` (2026-10-08, #174)
 - **Tests:** `coding/cli/rpc_initial_tools_test.go::TestRPCFreshPromptDeclaresStructuredSystemOnce`, `coding/extension/host/runtimecell/cache_lifecycle_busy_test.go::TestCacheLifecycleBusyEntriesAreSkippedNotErrors`, `coding/extension/host/runtimecell/cache_lifecycle_busy_test.go::TestCacheLifecycleCancelledBeforeStartTouchesNothing`, `coding/extension/host/runtimecell/cache_lifecycle_busy_test.go::TestCacheLifecycleCancelledDuringTheLastEntryReportsTheCancellation`, `coding/extension/host/runtimecell/cache_lifecycle_busy_test.go::TestCacheLifecycleEntryLeasedAfterClassificationIsSkippedNotAnError`, `coding/extension/host/runtimecell/cache_lifecycle_busy_test.go::TestCacheLifecycleOtherErrorsStayErrors`, `coding/extension/host/runtimecell/cache_lifecycle_busy_test.go::TestCacheLifecycleStopsWhenItsContextIsCancelled`, `coding/extension/host/runtimecell/cache_lifecycle_busy_test.go::TestIsBusyErrorLooksThroughWrappedJoins` and 57 more in docs/bug-ledger.json
 - **Release note:** A `!` or `!!` command's block draws the bytes Pi's `BashExecutionComponent` draws: its rows are padded to the terminal width, the exit status, cancelled and truncation lines use the theme's error and warning colors instead of fixed red and yellow, the collapse hint uses the theme's key hint with the configured expand key, the spinner names the configured cancel keys (`escape/ctrl+c` by default) instead of `Esc`, no blank row follows the bottom border, the output Pi would cut for the model's context (the last 2000 lines or 50 KB) is cut the same way, and ANSI escapes and carriage returns in the output are cleaned as Pi cleans them.
+
+### BF-462b96e
+
+**A Python or Rust extension no longer fails to load when the host releases one of its listeners between…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A Python or Rust extension no longer fails to load when the host releases one of its listeners between registering it and marking it ready (`expected ready, got notify`).
+- **Root cause:** The Host sends events.release for a listener once it was unsubscribed and its last dispatch snapshot ended (event_bus.go finish and removeBusListener). A listener of a loading extension can be dispatched between register and ready, so that notify can reach the extension before ready. The Go SDK serves it while it waits for ready (extension.go runWithConn); the Python SDK (_read_during_load) and the Rust SDK (the two load loops of run_with_socket) returned it as the answer to the wait and failed the load with "expected ready, got notify".
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `462b96e762` (2026-10-31)
+- **Tests:** `extensions/sdk/event_bus_test.go::TestEventBusReleaseDuringLoadIsServed`, `test/extension-conformance/early_dispatch_conformance_test.go::TestEarlyDispatchBeforeReadyAnswersEachRequestOnceUnderItsOwnID`, `test/extension-conformance/early_dispatch_conformance_test.go::TestReleaseBeforeReadyDoesNotFailTheLoad`
+- **Release note:** A Python or Rust extension no longer fails to load when the host releases one of its listeners between registering it and marking it ready (`expected ready, got notify`). A listener that unsubscribes itself while the host dispatches to it during the load is released by an `events.release` notice once that dispatch ends, which can come before `ready`; the Go SDK already served it, and the Python and Rust SDKs now do the same.
 
 ### BF-4649166
 

@@ -8437,6 +8437,30 @@
       ]
     },
     {
+      "id": "BF-462b96e",
+      "title": "A Python or Rust extension no longer fails to load when the host releases one of its listeners between…",
+      "symptom": "A Python or Rust extension no longer fails to load when the host releases one of its listeners between registering it and marking it ready (`expected ready, got notify`).",
+      "rootCause": "The Host sends events.release for a listener once it was unsubscribed and its last dispatch snapshot ended (event_bus.go finish and removeBusListener). A listener of a loading extension can be dispatched between register and ready, so that notify can reach the extension before ready. The Go SDK serves it while it waits for ready (extension.go runWithConn); the Python SDK (_read_during_load) and the Rust SDK (the two load loops of run_with_socket) returned it as the answer to the wait and failed the load with \"expected ready, got notify\".",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A Python or Rust extension no longer fails to load when the host releases one of its listeners between registering it and marking it ready (`expected ready, got notify`). A listener that unsubscribes itself while the host dispatches to it during the load is released by an `events.release` notice once that dispatch ends, which can come before `ready`; the Go SDK already served it, and the Python and Rust SDKs now do the same.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "462b96e762",
+          "date": "2026-10-31"
+        }
+      ],
+      "tests": [
+        "extensions/sdk/event_bus_test.go::TestEventBusReleaseDuringLoadIsServed",
+        "test/extension-conformance/early_dispatch_conformance_test.go::TestEarlyDispatchBeforeReadyAnswersEachRequestOnceUnderItsOwnID",
+        "test/extension-conformance/early_dispatch_conformance_test.go::TestReleaseBeforeReadyDoesNotFailTheLoad"
+      ]
+    },
+    {
       "id": "BF-4649166",
       "title": "fix(sdk): place the arrival-order start in the request scope so a tool_call round trip keeps its 68…",
       "symptom": "fix(sdk): place the arrival-order start in the request scope so a tool_call round trip keeps its 68 allocations; test the emptydrop claims; keep an empty operations list",
