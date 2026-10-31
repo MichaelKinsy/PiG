@@ -42,16 +42,19 @@ func sameError(a, b error) bool {
 // composition was built from (kept only while all are in the table, decision 5); hasContributions is false when it was
 // not built from a good composition record.
 type mapping struct {
-	from             any
+	from any
+	// adapter is the one it was made with: a reload's provider brings another, which maps again.
+	adapter          func(current any) (any, error)
 	value            any
 	contributions    []*RegistryContribution
 	hasContributions bool
 }
 
-// mapFailure is a failed mapping of composition from, until another composition maps.
+// mapFailure is a failed mapping of composition from by adapter, until another composition or adapter maps.
 type mapFailure struct {
-	from any
-	err  error
+	from    any
+	adapter func(current any) (any, error)
+	err     error
 }
 
 // told is what a value's waiters were last told: usable (a value, or a failure with a last good one), or the error it
@@ -95,9 +98,6 @@ func NewRegistryValueSource(record *RegistryRecord, version int, batch *state.Ba
 	source.Init(batch, source)
 	return source
 }
-
-// Record is its registry's record while the host is open; nil once it closed.
-func (v *RegistryValueSource) Record() *RegistryRecord { return v.record }
 
 // Value is the composition (or its mapping) at its last good value. Upstream's getter throws the failure when there is
 // none: Go panics with that error, the form a getter without an error result has.
@@ -296,19 +296,19 @@ func (v *RegistryValueSource) mappedStart(record *RegistryRecord, current state.
 		v.mapped = nil
 	}
 	mapped, failure := v.mapped, v.failure
-	if mapped != nil && state.Identical(mapped.from, from) {
+	if mapped != nil && state.Identical(mapped.from, from) && sameFunc(mapped.adapter, mapValue) {
 		v.failure = nil
-	} else if failure == nil || !state.Identical(failure.from, from) {
+	} else if failure == nil || !state.Identical(failure.from, from) || !sameFunc(failure.adapter, mapValue) {
 		value, err := record.Adapt(func() (any, error) { return mapValue(from) })
 		if err == nil {
 			contributions, ok := record.ComposedFrom()
-			v.mapped = &mapping{from: from, value: value, contributions: contributions, hasContributions: ok}
+			v.mapped = &mapping{from: from, adapter: mapValue, value: value, contributions: contributions, hasContributions: ok}
 			v.failure = nil
 		} else {
 			if failure == nil {
 				record.Failed(err)
 			}
-			v.failure = &mapFailure{from: from, err: err}
+			v.failure = &mapFailure{from: from, adapter: mapValue, err: err}
 		}
 	}
 	start := state.NativeStart[any]{}

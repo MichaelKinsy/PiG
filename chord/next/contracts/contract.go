@@ -123,6 +123,21 @@ func CurrentVariants(contract *Contract) (*NamedMap[*VariantData], error) {
 	return data.Versions[len(data.Versions)-1].Variants, nil
 }
 
+// VariantsAt is the variants of version version of a contract's history (an older consumer's binding, Q10). Callers
+// name a version the provider binds: its history has it; an unknown version is an error.
+func VariantsAt(contract *Contract, version int) (*NamedMap[*VariantData], error) {
+	data, err := ContractDataOf(contract)
+	if err != nil {
+		return nil, err
+	}
+	for _, versionData := range data.Versions {
+		if versionData.Version == version {
+			return versionData.Variants, nil
+		}
+	}
+	return nil, fail("%s: no version %d", data.Name, version)
+}
+
 // VariantNames is a variant's names as links index them (2b): its state members and its methods, each sorted.
 type VariantNames struct {
 	State   []string

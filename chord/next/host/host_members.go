@@ -228,20 +228,13 @@ func attachDerives(
 
 // contributionOf is a contribution of contributor at version to record, as Chord follows it: a Chord watchable (a
 // source, a constant, a document handle, a reference member, a native source) is followed, anything else is a plain
-// value, whatever methods it has (registries carry natives). Refused (`invalid/cycle`) when it is a registry's value
-// that closes a cycle of registries, through the tables and the contributor's `pending` edges.
+// value, whatever methods it has (registries carry natives).
 func contributionOf(
 	record *registries.RegistryRecord,
 	contributor registries.Contributor,
 	version int,
 	value any,
-	pending []registries.RegistryEdge,
 ) (*registries.RegistryContribution, error) {
-	if source, ok := value.(*registries.RegistryValueSource); ok {
-		if err := record.AssertNoCycle(source, pending); err != nil {
-			return nil, err
-		}
-	}
 	content, err := contentOf(value)
 	if err != nil {
 		return nil, err

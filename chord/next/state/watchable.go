@@ -21,7 +21,7 @@ const (
 	StartFailed StartKind = "failed"
 )
 
-// Subscriber is a synchronous subscriber of a source (a hold over a link, a member source): fed the source's call inside
+// Subscriber is a synchronous subscriber of a source (a hold over a link, a reference's member): fed the source's call inside
 // the batch that made it, before the batch ends, so everything one commit changed can leave in one message. The watch's
 // own sink shape (Watch.Advance, Watch.EndWith). A Subscriber must be comparable (a pointer): a source tells them apart.
 type Subscriber interface {
@@ -52,7 +52,7 @@ type WatchStart struct {
 // Go error keeps no frames, so it is returned as it is.
 func HandedOut(err error) error { return err }
 
-// Dependent is what reads a source and is marked by its changes: a derive, or a member source forwarding to derives
+// Dependent is what reads a source and is marked by its changes: a derive, or a reference's member forwarding to derives
 // (Source.dependents). A Dependent must be comparable (a pointer).
 type Dependent interface {
 	// Invalidate is the source changed in the current batch: flags only, no compute.
@@ -133,7 +133,7 @@ type Source struct {
 	impl SourceImpl
 	// batch is the host's batch.
 	batch *Batch
-	// dependents is the derives reading this source (and member sources forwarding to some).
+	// dependents is the derives reading this source (and references' members forwarding to some).
 	dependents  DependentSet
 	watches     orderedSet[*chord.Watch[delta.JsonValue]]
 	subscribers orderedSet[Subscriber]
@@ -148,7 +148,7 @@ func (s *Source) Init(batch *Batch, impl SourceImpl) {
 // Batch is the host's batch.
 func (s *Source) Batch() *Batch { return s.batch }
 
-// DependentSet is the derives reading this source (and member sources forwarding to some); each removes itself when it
+// DependentSet is the derives reading this source (and references' members forwarding to some); each removes itself when it
 // stops.
 func (s *Source) DependentSet() *DependentSet { return &s.dependents }
 
@@ -252,7 +252,7 @@ func (s *Source) Publish(value delta.JsonValue, ops []delta.Op, retired bool, ct
 	s.Forward(chord.WatchCall[delta.JsonValue]{Kind: chord.WatchCallValue, Value: value, Ops: ops, Retired: retired}, ctx)
 }
 
-// Forward queues call on every watch and feeds it to every subscriber, as it is (a member source passes one on).
+// Forward queues call on every watch and feeds it to every subscriber, as it is (a reference's member passes one on).
 func (s *Source) Forward(call chord.WatchCall[delta.JsonValue], ctx context.Context) {
 	for _, watch := range s.watches.Snapshot() {
 		watch.Advance(ctx, call)

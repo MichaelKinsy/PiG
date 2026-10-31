@@ -43,10 +43,12 @@ type CheckedArgs struct {
 	Call contracts.CallFunc
 }
 
-// Provider is a provider's binding of a contract with the older versions it accepts.
+// Provider is a provider's binding of a contract with the older versions it accepts and their mappings (the table as
+// checked, for the state mappings of an older consumer's binding).
 type Provider struct {
 	Contract *contracts.Contract
 	Accepted []contracts.AcceptedVersion
+	Accepts  contracts.AcceptsTable
 	table    dispatch
 }
 
@@ -80,7 +82,22 @@ func BindProvider(contract *contracts.Contract, accepts contracts.AcceptsTable) 
 		}
 		table[accepted.Version] = dispatchEntries(*data, mappings)
 	}
-	return &Provider{Contract: contract, Accepted: checked.Versions, table: table}, nil
+	return &Provider{Contract: contract, Accepted: checked.Versions, Accepts: accepts, table: table}, nil
+}
+
+// Binds reports whether provider binds a consumer of version with fingerprint: its current version and fingerprint, or
+// a version it accepts with the fingerprint its own history computes (R6, Q10).
+func Binds(provider *Provider, version int, fingerprint string) bool {
+	contract := provider.Contract
+	if version == contract.Version {
+		return fingerprint == contract.Fingerprint
+	}
+	for _, accepted := range provider.Accepted {
+		if accepted.Version == version && accepted.Fingerprint == fingerprint {
+			return true
+		}
+	}
+	return false
 }
 
 // dispatch is accepted version -> method -> entry.

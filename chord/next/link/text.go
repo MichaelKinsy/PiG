@@ -188,14 +188,7 @@ func ownTuple(message Message) string {
 	case *RevokeMessage:
 		return jsonText([]any{"V", typed.Revocation})
 	case *RetryMessage:
-		// `through` travels only with an `operation` (Chord sends both).
-		if typed.Operation == "" {
-			return jsonText([]any{"T", float64(typed.Hold)})
-		}
-		if typed.Through == nil {
-			return jsonText([]any{"T", float64(typed.Hold), typed.Operation})
-		}
-		return jsonText([]any{"T", float64(typed.Hold), typed.Operation, idList(typed.Through)})
+		return jsonText([]any{"T", float64(typed.Hold), float64(typed.Hops)})
 	case *LoadingMessage:
 		return jsonText([]any{"l", float64(typed.Hold)})
 	case *AckMessage:
@@ -460,15 +453,8 @@ func fromFields(fields []any, rest []byte) Message {
 		arity(1)
 		return &RevokeMessage{Revocation: f[0]}
 	case "T":
-		arity(1, 2, 3)
-		message := &RetryMessage{Hold: asInt(f[0])}
-		if len(f) >= 2 {
-			message.Operation = asString(f[1])
-		}
-		if len(f) == 3 {
-			message.Through = asIDs(f[2])
-		}
-		return message
+		arity(2)
+		return &RetryMessage{Hold: asInt(f[0]), Hops: asInt(f[1])}
 	case "l":
 		arity(1)
 		return &LoadingMessage{Hold: asInt(f[0])}

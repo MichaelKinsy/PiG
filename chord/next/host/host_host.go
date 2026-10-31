@@ -1460,14 +1460,21 @@ func (h *chordHost) setUpFacets(facets []HostFacet) ([]*registries.RegistryContr
 
 // contribution is a facet's contribution, checked: in its registry's table while the host lives (its plugin stays loaded).
 func (h *chordHost) contribution(plugin string, each facetContribution) (*registries.RegistryContribution, error) {
-	// A facet contributes no registry's value (it reads none): no edges of its own.
 	record := h.registryRecord(each.registry.Name)
-	return contributionOf(record, registries.Contributor{Plugin: plugin}, each.registry.Version, each.value, nil)
+	return contributionOf(record, registries.Contributor{Plugin: plugin}, each.registry.Version, each.value)
 }
 
 func (h *chordHost) serveEntry(plugin string, entry servedEntry) error {
 	if entry.kind == servedRegistry {
-		return h.registryRecord(entry.registry.Name).Serve(entry.registry.Version, entry.provider)
+		record := h.registryRecord(entry.registry.Name)
+		if _, served := record.ProvidedVersion(); served {
+			return fmt.Errorf("registry %s is served twice", entry.registry.Name)
+		}
+		if err := registries.CheckProvider(entry.registry.Name, entry.provider); err != nil {
+			return err
+		}
+		record.Serve(entry.registry.Version, entry.provider)
+		return nil
 	}
 	contract := entry.contract
 	if _, ok := h.types[contract.Name]; ok {

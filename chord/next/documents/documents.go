@@ -139,6 +139,15 @@ func (d *Documents) Declare(definition AnyDefinition, token *SealToken, declarer
 	return NewSingleton(slot.(*SingletonSlot), token, definition.Version), nil
 }
 
+// Check checks a declaration of definition as Declare would, changing nothing (a reload's staging: a recording factory
+// declares against the documents the object has).
+func (d *Documents) Check(definition AnyDefinition) error {
+	if slot := d.slots[definition.Name]; slot != nil {
+		return slot.Definition().Check(definition)
+	}
+	return nil
+}
+
 // Hydrate takes an attempt's declarations once its factory returned: its `at(key)` pins replace the previous factory's,
 // the slots it no longer declares are dropped (their watches end; persisted ones load again when declared again),
 // every declared one hydrated (`initial()`, migrations; a failure fails the activation). declared is in declaration

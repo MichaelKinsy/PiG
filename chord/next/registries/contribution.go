@@ -47,10 +47,11 @@ const (
 	outRefused
 )
 
-// adaptation is the last adaptation of an older contribution: the value it was made from and its result.
+// adaptation is the last adaptation of an older contribution: the value and adapter it was made from, and its result.
 type adaptation struct {
-	from  any
-	value any
+	from    any
+	adapter func(old any) (any, error)
+	value   any
 }
 
 // RegistryContribution is one contributor's contribution to a registry: a plain value, or a Chord source it follows
@@ -94,18 +95,6 @@ func (c *RegistryContribution) Unfollow() {
 	if dependents := c.followed(); dependents != nil {
 		dependents.Delete(c)
 	}
-}
-
-// Reads is the registry whose value it is, when it is one (its edge in the cycle check, while it is in the table);
-// nil otherwise.
-func (c *RegistryContribution) Reads() *RegistryRecord {
-	if c.content.Kind != ContributionNative {
-		return nil
-	}
-	if value, ok := c.content.Native.(*RegistryValueSource); ok {
-		return value.Record()
-	}
-	return nil
 }
 
 // followed is the dependents of its source when it changes (a constant never does); nil when there is none.
@@ -174,14 +163,14 @@ func (c *RegistryContribution) raw() (any, error) {
 }
 
 func (c *RegistryContribution) adapt(raw any, adapter func(old any) (any, error)) (any, error) {
-	if adapted := c.adapted; adapted != nil && state.Identical(adapted.from, raw) {
+	if adapted := c.adapted; adapted != nil && state.Identical(adapted.from, raw) && sameFunc(adapted.adapter, adapter) {
 		return adapted.value, nil
 	}
 	value, err := c.Record.Adapt(func() (any, error) { return adapter(raw) })
 	if err != nil {
 		return nil, err
 	}
-	c.adapted = &adaptation{from: raw, value: value}
+	c.adapted = &adaptation{from: raw, adapter: adapter, value: value}
 	return value, nil
 }
 

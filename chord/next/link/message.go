@@ -15,8 +15,8 @@ import (
 //
 // The schema's optional fields: an absent part is a nil Part, an absent segments list a nil slice, an absent
 // incarnation "" (the schema's pattern refuses the empty string, so no value is lost), an absent principal a nil
-// object, and an absent origin, limit or retryIn a zero Optional. `chain` and `through` are absent when nil and a
-// present empty list when non-nil.
+// object, and an absent origin, limit or retryIn a zero Optional. `chain` is absent when nil and a present empty
+// list when non-nil.
 
 // Optional is an optional number: its zero value is absent.
 type Optional[T any] struct {
@@ -68,6 +68,10 @@ type ConsumerMessage interface {
 
 // CHAIN is the longest activation chain a hold carries (Q5): a longer one keeps its last entries.
 const CHAIN = 32
+
+// RETRY_HOPS is a `retry`'s hop budget as the first host sends it (dependency model §3.7, audit A5): one less per host
+// after it.
+const RETRY_HOPS = 16
 
 // CauseKinds are the kinds of a `failed` message's cause, in their codes' order (the binary codec's byte, the text
 // codec's letter).
@@ -174,14 +178,13 @@ type AbortMessage struct {
 	Call   int
 }
 
-// RetryMessage asks the provider for an attempt of a failed hold's object now (`ref.retry()`); Operation names the one
-// retry it belongs to (a uuidv7) and Through the instance ids of the objects it passed through (with Operation only),
-// so an object it reaches twice (a diamond, a ring) handles it once. Relays forward both.
+// RetryMessage asks the provider for an attempt of a failed hold's object now (`ref.retry()`); Hops is its budget: the
+// host there passes it on to its remote dependencies with one less, never at 0, so a waiting ring of hosts stops.
+// Relays forward it as it is.
 type RetryMessage struct {
-	Origin    Optional[int]
-	Hold      int
-	Operation string
-	Through   []string
+	Origin Optional[int]
+	Hold   int
+	Hops   int
 }
 
 // BoundMessage binds several holds at once (first bindings, re-holds), applied in one batch.
@@ -420,7 +423,7 @@ func conforms(message Message) bool {
 	case *AbortMessage:
 		return validOrigin(typed.Origin) && typed.Call >= 0
 	case *RetryMessage:
-		return validOrigin(typed.Origin) && typed.Hold >= 0 && (typed.Operation == "" || isUUID(typed.Operation)) && validIDs(typed.Through)
+		return validOrigin(typed.Origin) && typed.Hold >= 0 && typed.Hops >= 1 && typed.Hops <= RETRY_HOPS
 	case *BoundMessage:
 		if !validOrigin(typed.Origin) {
 			return false

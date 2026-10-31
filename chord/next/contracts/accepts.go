@@ -39,6 +39,13 @@ type MethodMapping struct {
 	Call   CallFunc
 }
 
+// KeyedMapping is a keyed member's mapping (slice 7b): a function mapping each document of the current version back
+// (a changed member), or "refuse" (a changed or a removed member: no document maps from the whole state).
+type KeyedMapping struct {
+	Func   Mapping
+	Refuse bool
+}
+
 // VersionMappings is the mappings of one accepted older version.
 type VersionMappings struct {
 	// State maps a local contract's state members by member.
@@ -47,6 +54,8 @@ type VersionMappings struct {
 	VariantState []Entry[[]Entry[StateMapping]]
 	// Methods maps methods by member.
 	Methods []Entry[MethodMapping]
+	// Keyed maps a local contract's keyed members by member.
+	Keyed []Entry[KeyedMapping]
 }
 
 // AcceptsTable holds, per accepted older version (by its number as text), exactly the mappings its later edits require
@@ -110,6 +119,8 @@ type needs struct {
 	// state is per variant, per state member.
 	state   *NamedMap[*NamedMap[stateNeed]]
 	methods *NamedMap[methodNeed]
+	// keyed is per keyed member (local contracts).
+	keyed *NamedMap[stateNeed]
 }
 
 func needsOf(data *ContractData, index int) needs {
@@ -123,8 +134,16 @@ func needsOf(data *ContractData, index int) needs {
 	}
 	state := NewNamedMap[*NamedMap[stateNeed]](0)
 	collected := NewNamedMap[methodNeed](0)
+	keyed := NewNamedMap[stateNeed](0)
 	for variant, oldVariant := range old.Variants.All() {
 		now := current.Variants.Value(variant)
+		for member := range oldVariant.Keyed.All() {
+			if !now.Keyed.Has(member) {
+				keyed.Set(member, stateRemoved)
+			} else if changes[Change{variant, member, SideKeyed}] {
+				keyed.Set(member, stateChanged)
+			}
+		}
 		variantNeeds := NewNamedMap[stateNeed](0)
 		for member := range oldVariant.State.All() {
 			if !now.State.Has(member) {
@@ -150,7 +169,7 @@ func needsOf(data *ContractData, index int) needs {
 			methods.Set(member, need)
 		}
 	}
-	return needs{state: state, methods: methods}
+	return needs{state: state, methods: methods, keyed: keyed}
 }
 
 func checkMappings(mappings VersionMappings, needs needs, kind Kind, path string) error {
@@ -173,7 +192,10 @@ func checkMappings(mappings VersionMappings, needs needs, kind Kind, path string
 			return err
 		}
 	}
-	return checkSection(mappings.Methods, needs.methods, path+".methods", checkMethodMapping)
+	if err := checkSection(mappings.Methods, needs.methods, path+".methods", checkMethodMapping); err != nil {
+		return err
+	}
+	return checkSection(mappings.Keyed, needs.keyed, path+".keyed", checkKeyedMapping)
 }
 
 // checkSection checks exactly the needed keys: no missing and no unnecessary mapping; the section may be absent only
@@ -208,6 +230,16 @@ func checkStateMapping(mapping StateMapping, need stateNeed, path string) error 
 		return fail(`%s: expected a function or "refuse"`, path)
 	}
 	return fail("%s: expected a function", path)
+}
+
+func checkKeyedMapping(mapping KeyedMapping, need stateNeed, path string) error {
+	if mapping.Refuse || need == stateChanged && mapping.Func != nil {
+		return nil
+	}
+	if need == stateChanged {
+		return fail(`%s: expected a function or "refuse"`, path)
+	}
+	return fail(`%s: expected "refuse"`, path)
 }
 
 func checkMethodMapping(mapping MethodMapping, need methodNeed, path string) error {

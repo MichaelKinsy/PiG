@@ -9,7 +9,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/state"
 )
 
-// Ports packages/chord/src/next/registries/record.ts (a registry on a host, slice 8 §1: its provider, its
+// Ports packages/chord/src/next/registries/record.ts (a registry on a host, slice 8 §1: its provider (replaced or removed by a reload, slice 7b §3), its
 // contributions in table order, the table and its lazy composition, the reports of conflicts and failures, and the
 // values its readers follow by version), in its dependency-model final state.
 
@@ -42,12 +42,6 @@ type RegistryError struct {
 	Type     string
 	Version  int
 	Error    error
-}
-
-// RegistryEdge is one registry's value contributed to another: From's table reads To.
-type RegistryEdge struct {
-	From *RegistryRecord
-	To   *RegistryRecord
 }
 
 // provided is the provider as served: the defining plugin's version, `compose` and adapters.
@@ -101,9 +95,6 @@ type RegistryRecord struct {
 	// conflicts are the keys of the conflicts the last good composition reported: a conflict is reported once per
 	// episode.
 	conflicts map[string]struct{}
-	// reads are the registries whose values are contributions in this one's table, each with how many: a contribution
-	// that would close a cycle of them is refused. An edge lives as long as its contribution is in the table.
-	reads map[*RegistryRecord]int
 	// values are the values readers follow, by version, in the order their versions were first read.
 	values        map[int]*RegistryValueSource
 	valueVersions []int
@@ -117,7 +108,6 @@ func NewRegistryRecord(name string, batch *state.Batch, report func(RegistryErro
 		batch:  batch,
 		report: report,
 		dirty:  true,
-		reads:  map[*RegistryRecord]int{},
 		values: map[int]*RegistryValueSource{},
 	}
 }
@@ -141,41 +131,40 @@ func (r *RegistryRecord) Value(version int) *RegistryValueSource {
 	return value
 }
 
-// Serve serves the registry with provider at version (the defining plugin's facet); a second serve is refused.
-func (r *RegistryRecord) Serve(version int, provider RegistryProvider[any, any]) error {
-	if r.provider != nil {
-		return fmt.Errorf("registry %s is served twice", r.Name)
-	}
-	// Declaration policy: plugin code is bundled without type checks.
+// CheckProvider checks a registry provider as a setup served it (declaration policy: plugin code is bundled without
+// type checks): `compose` is a function.
+func CheckProvider(name string, provider RegistryProvider[any, any]) error {
 	if provider.Compose == nil {
-		return fmt.Errorf("registry %s: compose is a function", r.Name)
+		return fmt.Errorf("registry %s: compose is a function", name)
 	}
-	r.provider = &provided{version: version, provider: provider}
 	return nil
 }
 
-// ComposeServed is the first composition, at the end of `load`'s setups, inside one batch for every served registry.
+// Serve serves the registry with provider at version (the defining plugin's facet, checked by CheckProvider when its
+// setup ran), replacing the provider a reload changed, inside a batch: the table composes again (lazily).
+func (r *RegistryRecord) Serve(version int, provider RegistryProvider[any, any]) {
+	r.provider = &provided{version: version, provider: provider}
+	r.table = nil
+	r.invalidate()
+}
+
+// Unserve is a reload removing the defining plugin, inside a batch: no provider serves it; its readers' values fail
+// `unavailable/undeclared` (a reader parked on it waits `not_served`), its contributions stay in the table.
+func (r *RegistryRecord) Unserve() {
+	r.provider = nil
+	r.table = nil
+	r.composition = nil
+	r.invalidate()
+}
+
+// ComposeServed is the first composition of a served registry, at `load`'s publication or a reload's commit, inside
+// its batch.
 func (r *RegistryRecord) ComposeServed() error {
 	if r.provider == nil {
 		return nil
 	}
-	r.invalidate()
 	_, err := r.Start()
 	return err
-}
-
-// AssertNoCycle refuses a contribution that is source's value when it would close a cycle (declaration policy, at
-// `contribute`): through the registries in the tables now and the edges pending (the contributing attempt's earlier
-// declarations, which enter the tables only once it is live).
-func (r *RegistryRecord) AssertNoCycle(source *RegistryValueSource, pending []RegistryEdge) error {
-	record := source.Record()
-	if record == nil {
-		return nil
-	}
-	if record.reaches(r, map[*RegistryRecord]struct{}{}, pending) {
-		return data.Invalid(data.ReasonCycle, fmt.Sprintf("registries %s and %s read each other", r.Name, record.Name))
-	}
-	return nil
 }
 
 // Add adds a live contributor's contribution, inside a batch: the table changes.
@@ -188,9 +177,6 @@ func (r *RegistryRecord) Add(contribution *RegistryContribution) {
 	}
 	// A new list per change (contributors come and go rarely): a composition keeps the one it was built from.
 	r.contributions = slices.Insert(slices.Clone(r.contributions), at, contribution)
-	if reads := contribution.Reads(); reads != nil {
-		r.reads[reads]++
-	}
 	contribution.Follow()
 	r.invalidate()
 }
@@ -202,13 +188,6 @@ func (r *RegistryRecord) Remove(contribution *RegistryContribution) {
 		return
 	}
 	r.contributions = slices.Concat(r.contributions[:at], r.contributions[at+1:])
-	if reads := contribution.Reads(); reads != nil {
-		if left := r.reads[reads] - 1; left == 0 {
-			delete(r.reads, reads)
-		} else {
-			r.reads[reads] = left
-		}
-	}
 	contribution.Unfollow()
 	r.invalidate()
 }
@@ -315,7 +294,6 @@ func (r *RegistryRecord) Close() {
 		contribution.Unfollow()
 	}
 	r.contributions = nil
-	clear(r.reads)
 	r.table = nil
 	r.dirty = false
 	values := r.valueVersions
@@ -414,28 +392,6 @@ func (r *RegistryRecord) build(version int, provider RegistryProvider[any, any])
 		return previous, true
 	}
 	return table, false
-}
-
-// reaches is whether target is reached from here through the tables' edges and pending.
-func (r *RegistryRecord) reaches(target *RegistryRecord, visited map[*RegistryRecord]struct{}, pending []RegistryEdge) bool {
-	if r == target {
-		return true
-	}
-	visited[r] = struct{}{}
-	for next := range r.reads {
-		if _, seen := visited[next]; !seen && next.reaches(target, visited, pending) {
-			return true
-		}
-	}
-	for _, edge := range pending {
-		if edge.From != r {
-			continue
-		}
-		if _, seen := visited[edge.To]; !seen && edge.To.reaches(target, visited, pending) {
-			return true
-		}
-	}
-	return false
 }
 
 // compareContributors is table order: by plugin name, then type, a facet (no type) first; never load order. Names and

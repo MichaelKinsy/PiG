@@ -37,6 +37,7 @@ const (
 	CounterDeriveDiffs      BatchCounter = "chord.derive.diffs"
 	CounterRegistryComposes BatchCounter = "chord.registry.composes"
 	CounterRegistryAdapts   BatchCounter = "chord.registry.adapts"
+	CounterContractAdapts   BatchCounter = "chord.contract.adapts"
 )
 
 // Delivered is what a commit lists to get its frame delivered: a watched source it changed (JSON or native).

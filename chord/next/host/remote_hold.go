@@ -259,17 +259,13 @@ func (h *hold) moved() {
 	}
 }
 
-// retry handles a `retry` message, of its retry operation (a new one when it names none) through the objects it names: the
+// retry handles a `retry` message, as a new retry operation (the wire names none; the host lane ports its hop budget): the
 // object is asked for an attempt now (it ignores this unless failed, or when the operation reached it before; parked, it
 // passes it on); a refused hold is started again (a route's `authorize` may admit it now).
 func (h *hold) retry(message *link.RetryMessage) {
 	if h.state.kind != holdRefused {
 		if h.object != nil {
-			if message.Operation == "" {
-				h.object.retry(newRetryOperation())
-			} else {
-				h.object.retry(&retryOperation{id: message.Operation, through: message.Through})
-			}
+			h.object.retry(newRetryOperation())
 		}
 		return
 	}

@@ -167,8 +167,25 @@ func (e *LocalEditor) RemoveMethod(member string) *LocalEditor {
 	return e
 }
 
-// draft is the next version under construction. Every edit is checked as it is made; keyed members are carried over
-// unchanged (their versions are slice 7's).
+// Keyed changes keyed member member's schema (slice 7b: an older consumer reads each key mapped, or is refused).
+func (e *LocalEditor) Keyed(member string, schema TSchema) *LocalEditor {
+	e.d.run(func() error { return e.d.keyed(LocalVariant, member, schema) })
+	return e
+}
+
+// AddKeyed adds a keyed member.
+func (e *LocalEditor) AddKeyed(member string, schema TSchema) *LocalEditor {
+	e.d.run(func() error { return e.d.addKeyed(LocalVariant, member, schema) })
+	return e
+}
+
+// RemoveKeyed removes a keyed member.
+func (e *LocalEditor) RemoveKeyed(member string) *LocalEditor {
+	e.d.run(func() error { return e.d.removeKeyed(LocalVariant, member) })
+	return e
+}
+
+// draft is the next version under construction. Every edit is checked as it is made.
 type draft struct {
 	kind     Kind
 	path     string
@@ -184,7 +201,7 @@ func newDraft(data *ContractData) *draft {
 	current := data.Versions[len(data.Versions)-1]
 	variants := NewNamedMap[*VariantData](current.Variants.Len())
 	for name, variant := range current.Variants.All() {
-		variants.Set(name, &VariantData{State: variant.State.Clone(), Methods: variant.Methods.Clone(), Keyed: variant.Keyed})
+		variants.Set(name, &VariantData{State: variant.State.Clone(), Methods: variant.Methods.Clone(), Keyed: variant.Keyed.Clone()})
 	}
 	version := current.Version + 1
 	return &draft{
@@ -259,6 +276,35 @@ func (d *draft) addMethod(variant, member string, args, result TSchema) error {
 	return d.checked()
 }
 
+func (d *draft) keyed(variant, member string, schema TSchema) error {
+	found, err := d.variant(variant)
+	if err != nil {
+		return err
+	}
+	if !found.Keyed.Has(member) {
+		return fail("%s: no such keyed member", d.memberPath(variant, member, MemberKindKeyed))
+	}
+	return d.putKeyed(variant, member, schema)
+}
+
+func (d *draft) addKeyed(variant, member string, schema TSchema) error {
+	if err := d.refuseDeclared(variant, member, MemberKindKeyed); err != nil {
+		return err
+	}
+	return d.putKeyed(variant, member, schema)
+}
+
+func (d *draft) removeKeyed(variant, member string) error {
+	found, err := d.variant(variant)
+	if err != nil {
+		return err
+	}
+	if !found.Keyed.Delete(member) {
+		return fail("%s: no such keyed member", d.memberPath(variant, member, MemberKindKeyed))
+	}
+	return nil
+}
+
 func (d *draft) removeMethod(member string) error {
 	variants, err := d.variantsWith(member)
 	if err != nil {
@@ -279,6 +325,17 @@ func (d *draft) putState(variant, member string, schema TSchema) error {
 	found, _ := d.variant(variant)
 	found.State.Set(member, snapshot)
 	d.changes = append(d.changes, Change{variant, member, SideState})
+	return d.checked()
+}
+
+func (d *draft) putKeyed(variant, member string, schema TSchema) error {
+	snapshot, err := SnapshotSchema(schema, d.memberPath(variant, member, MemberKindKeyed))
+	if err != nil {
+		return err
+	}
+	found, _ := d.variant(variant)
+	found.Keyed.Set(member, snapshot)
+	d.changes = append(d.changes, Change{variant, member, SideKeyed})
 	return d.checked()
 }
 
@@ -338,7 +395,7 @@ func (d *draft) refuseDeclared(variant, member string, kind MemberKind) error {
 	if err != nil {
 		return err
 	}
-	if found.State.Has(member) || found.Methods.Has(member) {
+	if found.State.Has(member) || found.Methods.Has(member) || found.Keyed.Has(member) {
 		return fail("%s: already declared", d.memberPath(variant, member, kind))
 	}
 	return nil
