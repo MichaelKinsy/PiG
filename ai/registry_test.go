@@ -37,7 +37,12 @@ func TestImageCatalogPin(t *testing.T) {
 }
 
 func TestRegistryHasModels(t *testing.T) {
-	want := len(loadPublishedCatalog(t)["chat"]) // Count of the exact published @earendil-works/pi-ai MODELS export.
+	want := 0 // Count of the exact published @earendil-works/pi-ai MODELS export, less the rows D217 carries out (Pi 2e0f175b).
+	for _, model := range loadPublishedCatalog(t)["chat"] {
+		if provider, _ := model["provider"].(string); !d217CarriedDroppedChatRow(provider, model["id"].(string)) {
+			want++
+		}
+	}
 	if got := len(GeneratedModels); got != want {
 		t.Fatalf("catalog size = %d want %d", got, want)
 	}

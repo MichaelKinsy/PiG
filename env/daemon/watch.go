@@ -84,13 +84,42 @@ func watchFailure(err error) *Failure {
 func watchEvent(change durableenv.FileChange) Object {
 	switch typed := change.(type) {
 	case durableenv.FileChangePaths:
-		return Object{"kind": "change", "paths": typed.Paths}
+		return changeEvent(typed.Paths)
 	case durableenv.FileChangeOverflow:
 		return Object{"kind": "change", "overflow": true, "mode": "polling"}
 	case durableenv.FileChangeFailed:
 		return Object{"kind": "error", "code": string(typed.Error.Code), "message": typed.Error.Message}
 	}
 	return nil
+}
+
+// changeEvent is a `change` event listing paths, or an `overflow` one when the list would not fit in a frame: a frame that is too
+// large would end the connection's output (watch.rs change_event).
+// pig divergence (D217): Pi 102d1287 (#10516) reports overflow where the list would exceed the frame limit.
+func changeEvent(paths []string) Object {
+	event := Object{"kind": "change", "paths": paths}
+	if !changeFitsFrame(event, paths) {
+		return Object{"kind": "change", "overflow": true}
+	}
+	return event
+}
+
+// changeFitsFrame reports whether the event encodes within MaxPayload bytes. Encoded, a path takes at least its length and at most
+// six times it (a \u00XX escape per byte) plus its quotes and comma; only a list between the two bounds is encoded to measure it.
+func changeFitsFrame(event Object, paths []string) bool {
+	const envelope = len(`{"kind":"change","paths":[]}`)
+	size := envelope
+	for _, path := range paths {
+		size += len(path) + 3
+	}
+	if size > MaxPayload {
+		return false
+	}
+	if envelope+(size-envelope)*6 <= MaxPayload {
+		return true
+	}
+	encoded, err := encodeJSON(event)
+	return err == nil && len(encoded) <= MaxPayload
 }
 
 // runWatch watches until cancelled: a `ready` event once coverage is established, then `change` events, or an `error`

@@ -34,3 +34,21 @@ func TestSearchToolsReturnsEightMatchesWithoutALimit(t *testing.T) {
 		t.Errorf("got %v, want %v", got, want)
 	}
 }
+
+// Pi c7372af4 (#11631): searchTools() searches a namespace's instructions, as a field of the tool's namespace text.
+func TestSearchToolsSearchesNamespaceInstructions(t *testing.T) {
+	chat := codemodeChatWith(t, ToolOptions{Namespaces: []Namespace{{Name: "x", Description: "X server", Instructions: "Kubernetes cluster tools", Prefix: "mcp__x__"}}})
+	for _, name := range []string{"mcp__x__run", "other"} {
+		addTool(t, chat.setup.registry, tool(name, func(context.Context, toolArgs, durable.ToolExecutionApi) (durable.ToolExecutionResult, error) {
+			return durable.ToolExecutionResult{}, nil
+		}, durable.ReplayUnsafe))
+	}
+	run := runScript(t, `return (await searchTools("kubernetes")).map((tool) => tool.name);`, chat)
+	var got []string
+	if err := json.Unmarshal([]byte(scriptHeader.ReplaceAllString(run.text, "")), &got); err != nil {
+		t.Fatalf("%q: %v", run.text, err)
+	}
+	if want := []string{"mcp__x__run"}; fmt.Sprint(got) != fmt.Sprint(want) {
+		t.Errorf("got %v, want %v", got, want)
+	}
+}

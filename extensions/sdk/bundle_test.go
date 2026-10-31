@@ -19,15 +19,15 @@ import (
 // write a `package sdk` that does not compile, silently breaking every
 // out-of-tree Go extension build. bundle.go itself is excluded by design.
 //
-// A bundled file is embedded as its gzip, so the set it must equal is the
-// module's files named for what the bundle embeds: path + ".gz".
+// A bundled file is embedded as its gzip under .gz/, so the set it must equal
+// is the module's files named for what the bundle embeds: .gz/path.gz.
 func TestBundledFilesCoversModule(t *testing.T) {
 	var want []string
 	err := filepath.WalkDir(".", func(path string, entry fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
-		if entry.IsDir() && entry.Name() == "testdata" {
+		if entry.IsDir() && (entry.Name() == "testdata" || entry.Name() == ".gz") {
 			return filepath.SkipDir
 		}
 		if entry.IsDir() || path == "bundle.go" || path == "bundle_embed.go" || strings.HasSuffix(path, "_test.go") || strings.HasSuffix(path, ".gz") {
@@ -50,24 +50,24 @@ func TestBundledFilesCoversModule(t *testing.T) {
 	}
 }
 
-// embeddedName is the name the bundle embeds path under: path + ".gz" when a compressed copy of it sits beside it, which holds the same text, otherwise path.
+// embeddedName is the name the bundle embeds path under: .gz/path.gz when a compressed copy of it sits in the .gz directory, which holds the same text, otherwise path.
 func embeddedName(path string) string {
 	if hasCompressedCopy(path) {
-		return path + ".gz"
+		return ".gz/" + path + ".gz"
 	}
 	return path
 }
 
-// hasCompressedCopy reports whether the bundle embeds a file as its gzip, path + ".gz", which holds the same text.
+// hasCompressedCopy reports whether the bundle embeds a file as its gzip, .gz/path.gz, which holds the same text.
 func hasCompressedCopy(path string) bool {
-	_, err := os.Stat(path + ".gz")
+	_, err := os.Stat(".gz/" + path + ".gz")
 	return err == nil
 }
 
-// embeddedText is the file the stager writes for an embedded name: the text of a .gz name's gzip, the bytes of any other.
+// embeddedText is the file the stager writes for an embedded name: the text of the gzip a name under .gz/ holds, the bytes of any other.
 func embeddedText(name string) ([]byte, error) {
 	data, err := Source.ReadFile(name)
-	if err != nil || !strings.HasSuffix(name, ".gz") {
+	if err != nil || !strings.HasPrefix(name, ".gz/") {
 		return data, err
 	}
 	reader, err := gzip.NewReader(bytes.NewReader(data))
@@ -77,7 +77,7 @@ func embeddedText(name string) ([]byte, error) {
 	return io.ReadAll(reader)
 }
 
-// A compressed copy is the file it stands for: staging writes the decompressed text under the name without .gz. Run go generate in extensions/sdk after
+// A compressed copy is the file it stands for: staging writes the decompressed text under the name without .gz/ and .gz. Run go generate in extensions/sdk after
 // editing a file the bundle embeds compressed.
 func TestCompressedCopiesHoldTheirFilesText(t *testing.T) {
 	found := 0
@@ -85,7 +85,7 @@ func TestCompressedCopiesHoldTheirFilesText(t *testing.T) {
 		if err != nil {
 			return err
 		}
-		if entry.IsDir() && entry.Name() == "testdata" {
+		if entry.IsDir() && (entry.Name() == "testdata" || entry.Name() == ".gz") {
 			return filepath.SkipDir
 		}
 		if entry.IsDir() || !hasCompressedCopy(path) {
@@ -96,12 +96,12 @@ func TestCompressedCopiesHoldTheirFilesText(t *testing.T) {
 		if err != nil {
 			return err
 		}
-		text, err := embeddedText(filepath.ToSlash(path) + ".gz")
+		text, err := embeddedText(embeddedName(filepath.ToSlash(path)))
 		if err != nil {
 			return err
 		}
 		if !bytes.Equal(text, source) {
-			t.Errorf("embedded %s.gz differs from %s; run go generate in extensions/sdk", path, path)
+			t.Errorf("embedded .gz/%s.gz differs from %s; run go generate in extensions/sdk", path, path)
 		}
 		return nil
 	})
@@ -124,7 +124,7 @@ func TestSourceReadable(t *testing.T) {
 		if len(data) == 0 {
 			t.Fatalf("embedded %s is empty", name)
 		}
-		if strings.TrimSuffix(name, ".gz") == "go.mod" && !strings.Contains(string(data), "module github.com/MichaelKinsy/PiG/extensions/sdk") {
+		if name == embeddedName("go.mod") && !strings.Contains(string(data), "module github.com/MichaelKinsy/PiG/extensions/sdk") {
 			t.Fatalf("embedded go.mod is not the SDK module: %q", filepath.Base(name))
 		}
 	}

@@ -5,6 +5,7 @@
 #
 # group   path   [reason, for exempt]
 ai    ./ai
+ai    ./ai/providers/bedrock
 rest  ./agent
 rest  ./tui
 rest  ./internal/codingagent
@@ -58,4 +59,5 @@ libs  ./piglets/aot
 libs  ./piglets/porter/extensions/pig-porter
 libs  ./piglets/standard
 libs  ./durable/images
+libs  ./internal/nodefs
 libs  ./internal/nativeplatform

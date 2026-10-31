@@ -336,3 +336,15 @@
     (check= 0 (pig:tui-get-select-page-index manager page-down 0 0 5) "an empty list answers 0 for a page key")
     (check= 0 (pig:tui-get-select-page-index manager page-up 0 0 5))
     (check (null (pig:tui-get-select-page-index manager "x" 2 20 3)) "not a page key")))
+
+;; pig divergence (D217): Pi 9376c8d1 (#4748) key-text and key-hint on the tool render context and the message and entry options.
+(deftest render-hints-read-the-host-keybindings
+  (pig::ts-apply-host-state (tv-state "ctrl+y" "ctrl+j" "iterm2"))
+  (let ((context (pig:make-tool-render-context)) (options (pig:obj "expanded" t)))
+    (check= "ctrl+y" (pig:tool-render-context-key-text context "tui.input.submit") "the host's table, not Pi's default")
+    (check= "ctrl+y" (pig:message-render-options-key-text options "tui.input.submit"))
+    (check= "ctrl+y" (pig:entry-render-options-key-text options "tui.input.submit"))
+    (check= "" (pig:entry-render-options-key-text options "x.probe.missing"))
+    (check= (pig:key-hint "tui.input.submit" "to go") (pig:tool-render-context-key-hint context "tui.input.submit" "to go"))
+    (check= (pig:key-hint "tui.input.submit" "to go") (pig:message-render-options-key-hint options "tui.input.submit" "to go"))
+    (check= (pig:key-hint "tui.input.submit" "to go") (pig:entry-render-options-key-hint options "tui.input.submit" "to go"))))

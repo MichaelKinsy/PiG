@@ -277,7 +277,7 @@ collect(upstream);
 if (names.size < 8) { console.log("parsed only " + names.size + " upstream exports"); process.exit(2); }
 const mod = await import(spec);
 const missing = [...names].filter((n) => !(n in mod)).sort();
-if (missing.length) { console.log(missing.join(" ")); process.exit(1); }`
+if (missing.length) { await new Promise((done) => process.stdout.write(missing.join(" ") + "\n", done)); process.exit(1); }`
 		command := exec.Command(node, "--import", registerLoaderURL(t, runtimeRoot), "--input-type=module", "--eval", script, spec, upstream)
 		if output, err := command.CombinedOutput(); err != nil {
 			t.Errorf("%s is missing upstream exports: %v\n%s", spec, err, output)

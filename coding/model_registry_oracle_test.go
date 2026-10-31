@@ -803,6 +803,10 @@ func TestModelRegistryMatchesPi(t *testing.T) {
 	if err := json.Unmarshal(output, &expected); err != nil {
 		t.Fatal(err)
 	}
+	// pig divergence (D217): Pi 2e0f175b is carried past the pin; the pinned Pi still lists the realtime and image rows the carried fix removes from the chat catalog.
+	for i := range expected {
+		expected[i] = d217PiWithoutDroppedChatRows(expected[i]).([]any)
+	}
 	failures := 0
 	for i, scenario := range scenarios {
 		if only := os.Getenv("ORACLE_ONLY"); only != "" && only != fmt.Sprint(i) {

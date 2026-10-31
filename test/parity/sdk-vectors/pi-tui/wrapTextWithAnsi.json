@@ -97,10 +97,10 @@
     "—a\u001b]8;;unterminated👍🏽  \u001b[H\u001b]1337;File=inline=1:AAAA\u0007\u001b[?25lᄀ가helloThe quick brown fox\u001b]8;id=1;https://e.com/\u001b]8;;\u0007",
     "\u001b]8;;unterminated👍🏽  \u001b[H\u001b]1337;File=inline=1:AAAA\u0007p?q\u001b]8;;\u0007",
     "\u001b]8;;unterminated👍🏽  \u001b[H\u001b]1337;File=inline=1:AAAA\u0007=1\u001b\\\u001b]8;;\u0007",
-    "\u001b]8;;unterminated👍🏽  \u001b[H\u001b]1337;File=inline=1:AAAA\u0007|\u001b]8;id=1;https://e.com/p?q=1\u001b\\\u001b[H\u001b[9m\u001b[7m\u001b[3m🫱🏻‍🫲🏿\u001b_pi:c\u0007\u001b]8;;\u001b\\",
-    "\u001b[3;7;9m\u001b]8;id=1;https://e.com/p?q=1\u001b\\123\u001b]8;;\u001b\\",
-    "\u001b[3;7;9m\u001b]8;id=1;https://e.com/p?q=1\u001b\\45\u001b[200~。漢字 -\u001b]8;;\u001b\\\u001b[1mé\u001b]8;;\u001b\\",
-    "\u001b[1;3;7;9m\u001b]8;id=1;https://e.com/p?q=1\u001b\\↔️\u001b]8;;\u001b\\",
+    "\u001b]8;;unterminated👍🏽  \u001b[H\u001b]1337;File=inline=1:AAAA\u0007|\u001b]8;id=1;https://e.com/p?q=1\u001b\\\u001b[H\u001b[9m\u001b[7m\u001b[3m🫱🏻‍🫲🏿\u001b_pi:c\u0007\u001b[29m\u001b]8;;\u001b\\",
+    "\u001b[3;7;9m\u001b]8;id=1;https://e.com/p?q=1\u001b\\123\u001b[29m\u001b]8;;\u001b\\",
+    "\u001b[3;7;9m\u001b]8;id=1;https://e.com/p?q=1\u001b\\45\u001b[200~。漢字 -\u001b]8;;\u001b\\\u001b[1mé\u001b[29m\u001b]8;;\u001b\\",
+    "\u001b[1;3;7;9m\u001b]8;id=1;https://e.com/p?q=1\u001b\\↔️\u001b[29m\u001b]8;;\u001b\\",
     "\u001b[1;3;7;9m\u001b]8;id=1;https://e.com/p?q=1\u001b\\ক্ষ"
    ]
   },
@@ -187,8 +187,8 @@
     35
    ],
    "result": [
-    "path/to/file.ts\u001b[2K「🫱🏻‍🫲🏿path/to/file.ts",
-    "\u001b[58;5;1m\u001b[49m  ßéä\u001b[58;5;1ma\u001b>ähello❤#️⃣かな|☺️↔️ aä"
+    "path/to/file.ts\u001b[2K「🫱🏻‍🫲🏿path/to/file.ts\u001b[58;5;1m\u001b[49m",
+    "\u001b[1;5mßéä\u001b[58;5;1ma\u001b>ähello❤#️⃣かな|☺️↔️ aä"
    ]
   },
   {
@@ -332,11 +332,11 @@
    "result": [
     "🔥😀カナ",
     "ન્ન\u001b[7m\u001b[Hpath/to/file.tsxx̀\u001b[m",
-    "\t🫱🏻‍🫲🏿foo-bar—İกำ \u001b[9m",
-    "\u001b[9m~/srcpath/to/file.ts",
-    "\u001b[9m1️⃣foo-bar\u001b[5n\u001b[1;5A\u001b^pm\u001b\\\u001b7​The quick",
-    "\u001b[9mbrown fox\u001b[1;38;5;196ma\u001b[?25l日本語",
-    "\u001b[1;9;38;5;196mのテキスト",
+    "\t🫱🏻‍🫲🏿foo-bar—İกำ \u001b[9m\u001b[29m",
+    "\u001b[9m~/srcpath/to/file.ts\u001b[29m",
+    "\u001b[9m1️⃣foo-bar\u001b[5n\u001b[1;5A\u001b^pm\u001b\\\u001b7​The quick\u001b[29m",
+    "\u001b[9mbrown fox\u001b[1;38;5;196ma\u001b[?25l日本語\u001b[29m",
+    "\u001b[1;9;38;5;196mのテキスト\u001b[29m",
     "\u001b[1;9;38;5;196m⬜️ＡＢＣx12345\u001b]133;A\u0007‍"
    ]
   },
@@ -359,7 +359,7 @@
     32
    ],
    "result": [
-    " ລຳfoo-bar☺️\u001b[200~\u001b8ßİ\u001b(B✔\u001b[23mำ각​—hello\u001b[9m🇬🇧🇫🇷\u001b[31m",
+    " ລຳfoo-bar☺️\u001b[200~\u001b8ßİ\u001b(B✔\u001b[23mำ각​—hello\u001b[9m🇬🇧🇫🇷\u001b[31m\u001b[29m",
     "\u001b[9;31m\thello foo-bar"
    ]
   },
@@ -390,7 +390,7 @@
     32
    ],
    "result": [
-    "ßé©️ั⚠a\u001b[?25l🇺🇸İ\u001b_pi:c\u0007xfoo-bar\u001b[22m\t\u001bP1$r\u001b\\ำ\u001b[9m/\u001b]133;B\u001b\\~/src\u001b[31\u001b_Gf=100,a=T;AA",
+    "ßé©️ั⚠a\u001b[?25l🇺🇸İ\u001b_pi:c\u0007xfoo-bar\u001b[22m\t\u001bP1$r\u001b\\ำ\u001b[9m/\u001b]133;B\u001b\\~/src\u001b[31\u001b_Gf=100,a=T;AA\u001b[29m",
     "\u001b[9mAA\u001b\\\u001b[38:2::1:2:3m\u001b~/srchello"
    ]
   },
@@ -635,10 +635,10 @@
    ],
    "result": [
     "。…​a~/srcx\u001b_pi:c\u0007\u001b]8;;unterminated\u001b]8;;\u0007\u001b]1337;File=inline=1:AAAA\u0007ᄀ가\u001b]8;;\u0007",
-    "\u001b]8;;unterminated\u001b]8;;\u0007~/src\u001b[9m\u001b[5n\u001b[39mThe quick\u001b]8;;\u0007",
-    "\u001b[9m\u001b]8;;unterminated\u001b]8;;\u0007brown fox—\u001b[4mThe\u001b[24m\u001b]8;;\u0007",
-    "\u001b[4;9m\u001b]8;;unterminated\u001b]8;;\u0007quick brown\u001b[24m\u001b]8;;\u0007",
-    "\u001b[4;9m\u001b]8;;unterminated\u001b]8;;\u0007fox12345カナั\u001b[24m\u001b]8;;\u0007",
+    "\u001b]8;;unterminated\u001b]8;;\u0007~/src\u001b[9m\u001b[5n\u001b[39mThe quick\u001b[29m\u001b]8;;\u0007",
+    "\u001b[9m\u001b]8;;unterminated\u001b]8;;\u0007brown fox—\u001b[4mThe\u001b[24m\u001b[29m\u001b]8;;\u0007",
+    "\u001b[4;9m\u001b]8;;unterminated\u001b]8;;\u0007quick brown\u001b[24m\u001b[29m\u001b]8;;\u0007",
+    "\u001b[4;9m\u001b]8;;unterminated\u001b]8;;\u0007fox12345カナั\u001b[24m\u001b[29m\u001b]8;;\u0007",
     "\u001b[4;9m\u001b]8;;unterminated\u001b]8;;\u0007\u001b8\u001b[39mক্ষ​👩‍💻12345각ß12345\u001b]8;;\u0007"
    ]
   },
@@ -862,7 +862,7 @@
    ],
    "result": [
     "©️🧑🏾‍🦰a\u001b⚠\u001b[4:3m©️/\u001b]8;;\u001b\\\u001b[49m한국어",
-    "foo-bar⭐\u001b^pm\u001b\\\t\u001b[9m﻿ß👨‍👩‍👧‍👦a…",
+    "foo-bar⭐\u001b^pm\u001b\\\t\u001b[9m﻿ß👨‍👩‍👧‍👦a…\u001b[29m",
     "\u001b[9m、👍🏽\u001b[49m \u001b_Gf=100,a=T;AAAA\u001b\\x…\u001b[3mhello🫱🏻‍🫲🏿12345\u001b[49m」\u001b[31mß"
    ]
   },
@@ -943,8 +943,8 @@
     32
    ],
    "result": [
-    "é漢字\u001b[9m…\u001b>hello|ન્ન\u001b[31m\u001b[49m  \u001b[\u001b[49m\u001bX sos\u001b\\world👨‍👩‍👧‍👦\u001b[1;38;5;196m🏳️‍🌈",
-    "\u001b[1;9;38;5;196m\u001b[49m \u001b[39m  \u001b]133;B\u001b\\‍\u001b[22m⭐"
+    "é漢字\u001b[9m…\u001b>hello|ન્ન\u001b[31m\u001b[49m  \u001b[\u001b[49m\u001bX sos\u001b\\world👨‍👩‍👧‍👦\u001b[1;38;5;196m🏳️‍🌈\u001b[49m\u001b[39m\u001b[29m",
+    "\u001b[1;9m\u001b]133;B\u001b\\‍\u001b[22m⭐"
    ]
   },
   {
@@ -1021,7 +1021,7 @@
     48
    ],
    "result": [
-    "\u001b7The quick brown fox\u001b[2K」❤x\u001b[39m\u001b^pm\u001b\\ ﻿ßworld\u001b[9m \u001b]133;B\u001b\\Z̴̢̛̗͓ ©️x😀かな",
+    "\u001b7The quick brown fox\u001b[2K」❤x\u001b[39m\u001b^pm\u001b\\ ﻿ßworld\u001b[9m \u001b]133;B\u001b\\Z̴̢̛̗͓ ©️x😀かな\u001b[29m",
     "\u001b[9mß🧑🏾‍🦰ລຳİ—"
    ]
   },
@@ -1034,7 +1034,7 @@
    "result": [
     "​\u001b[48;2;1;2;3m-",
     "\u001b[48;2;1;2;3m1️⃣\u001b]8;;http://x.test/a\u0007\u001b[24mİfoo-bar\u001b_pi:c\u0007w\u001b]8;;\u0007",
-    "\u001b[48;2;1;2;3m\u001b]8;;http://x.test/a\u0007orld🔥  \u001b]8;;\u0007",
+    "\u001b[48;2;1;2;3m\u001b]8;;http://x.test/a\u0007orld🔥\u001b]8;;\u0007",
     "\u001b[48;2;1;2;3m\u001b]8;;http://x.test/a\u0007\u001b8…\u001b_pi:c\u0007👍🏽x\u001b]133;B\u001b\\\u001b>\u001b[Hİ\u001b[38:2::1:2:3m🏳️‍🌈\u001b]8;;\u0007",
     "\u001b[48;2;1;2;3m\u001b]8;;http://x.test/a\u0007स्त्र~/srcwor\u001b]8;;\u0007",
     "\u001b[48;2;1;2;3m\u001b]8;;http://x.test/a\u0007ld‍🧑🏾‍🦰\u001b[4m12345\u001b[2K\u001b[24mລຳ\u001b]8;;\u0007",
@@ -1048,8 +1048,8 @@
     40
    ],
    "result": [
-    "\u001b[-\u001b>   hello❤ 🏳️‍🌈| \u001b[9mß\u001b[23mZ̴̢̛̗͓é\u001b]8;id=1;https://e.com/p?q=1\u001b\\\u001b[58;5;1m \u001b]8;;\u001b\\",
-    "\u001b[1;5;9m\u001b]8;id=1;https://e.com/p?q=1\u001b\\path/to/file.ts1️⃣path/to/file.tsa©️path/\u001b]8;;\u001b\\",
+    "\u001b[-\u001b>   hello❤ 🏳️‍🌈| \u001b[9mß\u001b[23mZ̴̢̛̗͓é\u001b]8;id=1;https://e.com/p?q=1\u001b\\\u001b[58;5;1m\u001b[29m\u001b]8;;\u001b\\",
+    "\u001b[1;5;9m\u001b]8;id=1;https://e.com/p?q=1\u001b\\path/to/file.ts1️⃣path/to/file.tsa©️path/\u001b[29m\u001b]8;;\u001b\\",
     "\u001b[1;5;9m\u001b]8;id=1;https://e.com/p?q=1\u001b\\to/file.ts"
    ]
   },
@@ -1147,7 +1147,7 @@
    ],
    "result": [
     "\u001b]133;B\u001b\\",
-    "👩‍💻🧑🏾‍🦰Z̴̢̛̗͓\u001b[9m\u001b8ＡＢＣworldक्ष🏴‍☠️✓foo-bar|\u001b[1;5Aİัpath/to/file.tspath/to/file.ts﻿|#️⃣-\u001b[1m🏳️‍🌈\u001b",
+    "👩‍💻🧑🏾‍🦰Z̴̢̛̗͓\u001b[9m\u001b8ＡＢＣworldक्ष🏴‍☠️✓foo-bar|\u001b[1;5Aİัpath/to/file.tspath/to/file.ts﻿|#️⃣-\u001b[1m🏳️‍🌈\u001b\u001b[29m",
     "\u001b[1;9m^pm\u001b\\かなä」path/to/file.ts"
    ]
   },
@@ -1272,7 +1272,7 @@
    ],
    "result": [
     "❤️\u001b[27m­",
-    " 1️⃣épath/to/file.ts\u001b[49m\u001b[9mक्‍ष—©️̀\u001b_pi:c\u0007— ＡＢＣ~/src12345🇬🇧🇫🇷✓",
+    " 1️⃣épath/to/file.ts\u001b[49m\u001b[9mक्‍ष—©️̀\u001b_pi:c\u0007— ＡＢＣ~/src12345🇬🇧🇫🇷✓\u001b[29m",
     "\u001b[9mfoo-bar",
     "\u001b[9m1️⃣    \u001b[27m©️"
    ]
@@ -1542,7 +1542,7 @@
     29
    ],
    "result": [
-    "ß\u001b[38:2::1:2:3mfoo-bar̀﻿\u001b[9m\u001b[1;38;5;196méa bZ̴̢̛̗͓\u001b]8;;\u0007\u001bP1$r\u001b\\👍🏽日本語の",
+    "ß\u001b[38:2::1:2:3mfoo-bar̀﻿\u001b[9m\u001b[1;38;5;196méa bZ̴̢̛̗͓\u001b]8;;\u0007\u001bP1$r\u001b\\👍🏽日本語の\u001b[29m",
     "\u001b[1;9;38;5;196mテキスト漢字a|foo-bar👍🏽\u001b>"
    ]
   },
@@ -1746,7 +1746,7 @@
    "result": [
     "​👩‍💻path/to/file.ts̀İ☺️hel",
     "lo…~/srcéx…—­\u001b=ＡＢＣ。",
-    "↔️\u001b(B\u001b[9m\u001b[2mຳZ̴̢̛̗͓‍|| \u001b[22m\u001b[5n🧑🏾‍🦰̀world\u001b[1m The quick",
+    "↔️\u001b(B\u001b[9m\u001b[2mຳZ̴̢̛̗͓‍|| \u001b[22m\u001b[5n🧑🏾‍🦰̀world\u001b[1m The quick\u001b[29m",
     "\u001b[1;9mbrown foxéİＡＢＣ각\u001b[24m"
    ]
   },
@@ -1770,25 +1770,25 @@
    ],
    "result": [
     "…✓\u001b[9m",
-    "\u001b[9mThe",
-    "\u001b[9mquic",
-    "\u001b[9mk",
-    "\u001b[9mbrow",
-    "\u001b[9mn",
-    "\u001b[9mfoxß\u001b[31  \u001b]0;title\u0007각foo-barß\u001b[4:3m",
-    "\u001b[9mäwor",
-    "\u001b[9mld🏴‍☠️",
-    "\u001b[9maß👨‍👩‍👧‍👦⁠",
-    "\u001b[9m…~/s",
-    "\u001b[9mrc\u001b]8;;\u0007\u001b]133;A\u0007",
-    "\u001b[9m🧑🏾‍🦰你",
-    "\u001b[9m好，",
-    "\u001b[9m世界",
-    "\u001b[9mpath",
-    "\u001b[9m/to/",
-    "\u001b[9mfile",
-    "\u001b[9m.ts",
-    "\u001b[9mfoo-",
+    "\u001b[9mThe\u001b[29m",
+    "\u001b[9mquic\u001b[29m",
+    "\u001b[9mk\u001b[29m",
+    "\u001b[9mbrow\u001b[29m",
+    "\u001b[9mn\u001b[29m",
+    "\u001b[9mfoxß\u001b[31  \u001b]0;title\u0007각foo-barß\u001b[4:3m\u001b[29m",
+    "\u001b[9mäwor\u001b[29m",
+    "\u001b[9mld🏴‍☠️\u001b[29m",
+    "\u001b[9maß👨‍👩‍👧‍👦⁠\u001b[29m",
+    "\u001b[9m…~/s\u001b[29m",
+    "\u001b[9mrc\u001b]8;;\u0007\u001b]133;A\u0007\u001b[29m",
+    "\u001b[9m🧑🏾‍🦰你\u001b[29m",
+    "\u001b[9m好，\u001b[29m",
+    "\u001b[9m世界\u001b[29m",
+    "\u001b[9mpath\u001b[29m",
+    "\u001b[9m/to/\u001b[29m",
+    "\u001b[9mfile\u001b[29m",
+    "\u001b[9m.ts\u001b[29m",
+    "\u001b[9mfoo-\u001b[29m",
     "\u001b[9mbar"
    ]
   },
@@ -1829,8 +1829,8 @@
     42
    ],
    "result": [
-    "日本語のテキスト  ＡＢＣ|path/to/file.tsx\u001b[—|hello~/src⁠ＡＢＣ「İ…क्ष\u001b[38;2;10;20;30m﻿İ",
-    "\u001b[38;2;10;20;30m\u001b]1337;File=inline=1:AAAA\u0007  ⁠~/src\u001b]8;;unterminated\u001b]8;;\u001b\\a❤️é\u001b]8;;\u0007\u001b_pi:c\u0007\u001b]8;;\u0007「a b­\u001b[7mß\u001b[1m\u001b[38;2;10;20;30m\u001bP1$r\u001b\\"
+    "日本語のテキスト  ＡＢＣ|path/to/file.tsx\u001b[—|hello~/src⁠ＡＢＣ「İ…क्ष\u001b[38;2;10;20;30m﻿İ\u001b]1337;File=inline=1:AAAA\u0007",
+    "\u001b[38;2;10;20;30m⁠~/src\u001b]8;;unterminated\u001b]8;;\u001b\\a❤️é\u001b]8;;\u0007\u001b_pi:c\u0007\u001b]8;;\u0007「a b­\u001b[7mß\u001b[1m\u001b[38;2;10;20;30m\u001bP1$r\u001b\\"
    ]
   },
   {
@@ -1866,9 +1866,9 @@
     6
    ],
    "result": [
-    "\u001b[9mfoo-ba",
-    "\u001b[9mr|❤\u001b[9m、",
-    "\u001b[9mfoo-ba",
+    "\u001b[9mfoo-ba\u001b[29m",
+    "\u001b[9mr|❤\u001b[9m、\u001b[29m",
+    "\u001b[9mfoo-ba\u001b[29m",
     "\u001b[9mr\u001b[29m\u001b]8;;\u001b\\world",
     "🇺🇸ß❤ન્ન",
     "🤝ำ©️İ\u001b",
@@ -1971,10 +1971,10 @@
     34
    ],
    "result": [
-    "  path/to/file.ts\u001b[4:3m🇺🇸é \u001b]133;A\u0007…\u001b[9mworld。—你好",
-    "\u001b[9m，世界ß🏴‍☠️🇺🇸、😀ᄀ가「",
-    "\u001b[9m—12345a\u001b[1;38;5;196m⭐éZ̴̢̛̗͓क्‍षß\u001b[3m\u001b[22m↔️",
-    "\u001b[3;9;38;5;196mpath/to/file.ts\u001b[31The quick brown",
+    "  path/to/file.ts\u001b[4:3m🇺🇸é \u001b]133;A\u0007…\u001b[9mworld。—你好\u001b[29m",
+    "\u001b[9m，世界ß🏴‍☠️🇺🇸、😀ᄀ가「\u001b[29m",
+    "\u001b[9m—12345a\u001b[1;38;5;196m⭐éZ̴̢̛̗͓क्‍षß\u001b[3m\u001b[22m↔️\u001b[29m",
+    "\u001b[3;9;38;5;196mpath/to/file.ts\u001b[31The quick brown\u001b[29m",
     "\u001b[3;9;38;5;196mfox­­The quick brown fox。"
    ]
   },
@@ -2204,7 +2204,7 @@
    ],
    "result": [
     "🇺🇸©️a bxİ\u001b]8;id=1;https://e.com/p?q=1\u001b\\\u001b]8;;\u001b\\",
-    "\u001b]8;id=1;https://e.com/p?q=1\u001b\\éworld\u001b[23m…\u001b[1m \u001b]8;;\u001b\\",
+    "\u001b]8;id=1;https://e.com/p?q=1\u001b\\éworld\u001b[23m…\u001b[1m\u001b]8;;\u001b\\",
     "\u001b[1m\u001b]8;id=1;https://e.com/p?q=1\u001b\\\u001b[38:2::1:2:3m12345‍⚠️world\u001b]8;;\u001b\\",
     "\u001b[1m\u001b]8;id=1;https://e.com/p?q=1\u001b\\x\u001b_Gf=100,a=T;AAAA\u001b\\ ❤…\u001bX\u001b]8;;\u001b\\",
     "\u001b[1m\u001b]8;id=1;https://e.com/p?q=1\u001b\\sos\u001b\\İ‌🤝"
@@ -2310,36 +2310,34 @@
     "e",
     "l",
     "l",
-    "o\u001b[9m",
-    "\u001b[9m⚠️",
-    "\u001b[9m\u001b]8;;http://x.test/a\u0007 \u001b]8;;\u0007",
-    "\u001b[9m\u001b]8;;http://x.test/a\u0007\u001b]8;;\u0007",
-    "\u001b[9m\u001b]8;;http://x.test/a\u0007—\u001b]8;;\u0007",
-    "\u001b[9m\u001b]8;;http://x.test/a\u0007\u001b]8;;\u0007",
-    "\u001b[9m\u001b]8;;http://x.test/a\u0007ᄀ가\u001b]8;;\u0007",
-    "\u001b[9m\u001b]8;;http://x.test/a\u0007x\u001b]8;;\u0007",
-    "\u001b[9m\u001b]8;;http://x.test/a\u0007⭐\u001b]8;;\u0007",
-    "\u001b[9m\u001b]8;;http://x.test/a\u0007\u001b]\u001b]8;;\u0007",
-    "\u001b[9m\u001b]8;;http://x.test/a\u00078\u001b]8;;\u0007",
-    "\u001b[9m\u001b]8;;http://x.test/a\u0007;\u001b]8;;\u0007",
-    "\u001b[9m\u001b]8;;http://x.test/a\u0007;\u001b]8;;\u0007",
-    "\u001b[9m\u001b]8;;http://x.test/a\u0007u\u001b]8;;\u0007",
-    "\u001b[9m\u001b]8;;http://x.test/a\u0007n\u001b]8;;\u0007",
-    "\u001b[9m\u001b]8;;http://x.test/a\u0007t\u001b]8;;\u0007",
-    "\u001b[9m\u001b]8;;http://x.test/a\u0007e\u001b]8;;\u0007",
-    "\u001b[9m\u001b]8;;http://x.test/a\u0007r\u001b]8;;\u0007",
-    "\u001b[9m\u001b]8;;http://x.test/a\u0007m\u001b]8;;\u0007",
-    "\u001b[9m\u001b]8;;http://x.test/a\u0007i\u001b]8;;\u0007",
-    "\u001b[9m\u001b]8;;http://x.test/a\u0007n\u001b]8;;\u0007",
-    "\u001b[9m\u001b]8;;http://x.test/a\u0007a\u001b]8;;\u0007",
-    "\u001b[9m\u001b]8;;http://x.test/a\u0007t\u001b]8;;\u0007",
-    "\u001b[9m\u001b]8;;http://x.test/a\u0007e\u001b]8;;\u0007",
-    "\u001b[9m\u001b]8;;http://x.test/a\u0007d\u001b]8;;\u0007",
-    "\u001b[9m\u001b]8;;http://x.test/a\u0007✓\u001b]8;;\u0007",
-    "\u001b[9m\u001b]8;;http://x.test/a\u0007~\u001b]8;;\u0007",
-    "\u001b[9m\u001b]8;;http://x.test/a\u0007/\u001b]8;;\u0007",
-    "\u001b[9m\u001b]8;;http://x.test/a\u0007s\u001b]8;;\u0007",
-    "\u001b[9m\u001b]8;;http://x.test/a\u0007r\u001b]8;;\u0007",
+    "o\u001b[9m\u001b[29m",
+    "\u001b[9m⚠️\u001b]8;;http://x.test/a\u0007\u001b[29m\u001b]8;;\u0007",
+    "\u001b[9m\u001b]8;;http://x.test/a\u0007—\u001b[29m\u001b]8;;\u0007",
+    "\u001b[9m\u001b]8;;http://x.test/a\u0007\u001b[29m\u001b]8;;\u0007",
+    "\u001b[9m\u001b]8;;http://x.test/a\u0007ᄀ가\u001b[29m\u001b]8;;\u0007",
+    "\u001b[9m\u001b]8;;http://x.test/a\u0007x\u001b[29m\u001b]8;;\u0007",
+    "\u001b[9m\u001b]8;;http://x.test/a\u0007⭐\u001b[29m\u001b]8;;\u0007",
+    "\u001b[9m\u001b]8;;http://x.test/a\u0007\u001b]\u001b[29m\u001b]8;;\u0007",
+    "\u001b[9m\u001b]8;;http://x.test/a\u00078\u001b[29m\u001b]8;;\u0007",
+    "\u001b[9m\u001b]8;;http://x.test/a\u0007;\u001b[29m\u001b]8;;\u0007",
+    "\u001b[9m\u001b]8;;http://x.test/a\u0007;\u001b[29m\u001b]8;;\u0007",
+    "\u001b[9m\u001b]8;;http://x.test/a\u0007u\u001b[29m\u001b]8;;\u0007",
+    "\u001b[9m\u001b]8;;http://x.test/a\u0007n\u001b[29m\u001b]8;;\u0007",
+    "\u001b[9m\u001b]8;;http://x.test/a\u0007t\u001b[29m\u001b]8;;\u0007",
+    "\u001b[9m\u001b]8;;http://x.test/a\u0007e\u001b[29m\u001b]8;;\u0007",
+    "\u001b[9m\u001b]8;;http://x.test/a\u0007r\u001b[29m\u001b]8;;\u0007",
+    "\u001b[9m\u001b]8;;http://x.test/a\u0007m\u001b[29m\u001b]8;;\u0007",
+    "\u001b[9m\u001b]8;;http://x.test/a\u0007i\u001b[29m\u001b]8;;\u0007",
+    "\u001b[9m\u001b]8;;http://x.test/a\u0007n\u001b[29m\u001b]8;;\u0007",
+    "\u001b[9m\u001b]8;;http://x.test/a\u0007a\u001b[29m\u001b]8;;\u0007",
+    "\u001b[9m\u001b]8;;http://x.test/a\u0007t\u001b[29m\u001b]8;;\u0007",
+    "\u001b[9m\u001b]8;;http://x.test/a\u0007e\u001b[29m\u001b]8;;\u0007",
+    "\u001b[9m\u001b]8;;http://x.test/a\u0007d\u001b[29m\u001b]8;;\u0007",
+    "\u001b[9m\u001b]8;;http://x.test/a\u0007✓\u001b[29m\u001b]8;;\u0007",
+    "\u001b[9m\u001b]8;;http://x.test/a\u0007~\u001b[29m\u001b]8;;\u0007",
+    "\u001b[9m\u001b]8;;http://x.test/a\u0007/\u001b[29m\u001b]8;;\u0007",
+    "\u001b[9m\u001b]8;;http://x.test/a\u0007s\u001b[29m\u001b]8;;\u0007",
+    "\u001b[9m\u001b]8;;http://x.test/a\u0007r\u001b[29m\u001b]8;;\u0007",
     "\u001b[9m\u001b]8;;http://x.test/a\u0007c\u001b[23m"
    ]
   },
@@ -2400,8 +2398,8 @@
    ],
    "result": [
     "é\u001b[48;2;1;2;3m\u001b[1;5Apath/to/file.ts​1️⃣İ\u001b[200~⁠  ❤  ＡＢＣ|\u001b>|✔👍🏽\u001b[4mx」\u001b[24m",
-    "\u001b[4;48;2;1;2;3mক্ষ12345\u001b[9m12345a \u001b[24m",
-    "\u001b[4;9;48;2;1;2;3mb\u001b[38:2::1:2:3m⬜️🇺🇸\u001b[1mapath/to/\u001b[24m",
+    "\u001b[4;48;2;1;2;3mক্ষ12345\u001b[9m12345a\u001b[24m\u001b[29m",
+    "\u001b[4;9;48;2;1;2;3mb\u001b[38:2::1:2:3m⬜️🇺🇸\u001b[1mapath/to/\u001b[24m\u001b[29m",
     "\u001b[1;4;9;48;2;1;2;3mfile.ts"
    ]
   },
@@ -2451,7 +2449,7 @@
     "\u001b[3mfoxé12345\u001b]8;id=1;https://e.com/p?q=1\u001b\\­a—fo\u001b]8;;\u001b\\",
     "\u001b[3m\u001b]8;id=1;https://e.com/p?q=1\u001b\\o-barＡＢＣTh\u001b]8;;\u001b\\",
     "\u001b[3m\u001b]8;id=1;https://e.com/p?q=1\u001b\\e quick brown\u001b]8;;\u001b\\",
-    "\u001b[3m\u001b]8;id=1;https://e.com/p?q=1\u001b\\fox \u001b[27m\u001b12345、 \u001b]8;;\u001b\\",
+    "\u001b[3m\u001b]8;id=1;https://e.com/p?q=1\u001b\\fox \u001b[27m\u001b12345、\u001b]8;;\u001b\\",
     "\u001b[3m\u001b]8;id=1;https://e.com/p?q=1\u001b\\\u001b(B—👩‍💻path/to/\u001b]8;;\u001b\\",
     "\u001b[3m\u001b]8;id=1;https://e.com/p?q=1\u001b\\file.ts⚠️\u001b8\u001bc\u001b[31」\u001b]133;B\u001b\\hello12345\u001b[|The quick brown fox \u001b]1337;File=inline=1:AAAA\u0007\u001b[7m"
    ]
@@ -2519,7 +2517,7 @@
    ],
    "result": [
     "\u001b(Bhello",
-    "\u001b[9mxक्‍षhello❤日本語",
+    "\u001b[9mxक्‍षhello❤日本語\u001b[29m",
     "\u001b[9mのテキストa#️⃣\u001b[39m\u001b_pi:c\u0007"
    ]
   },
@@ -3022,7 +3020,7 @@
    "result": [
     "|a b\u001b(B、hello🇺🇸ન્નำᄀ가hellofoo-bar1️⃣\u001bX",
     "sos\u001b\\स्त्र\u001b[9m",
-    "\u001b[9m\u001b[7m…helloक्‍षक्‍ष\u001b[22m日本語のテキスト",
+    "\u001b[9m\u001b[7m…helloक्‍षक्‍ष\u001b[22m日本語のテキスト\u001b[29m",
     "\u001b[7;9m🏴‍☠️👍🏽world\u001b[H\u001b[1;5Aस्त्र\u001bc\u001b[é\u001b[23m👩‍💻\u001b[39mั"
    ]
   },
@@ -3095,7 +3093,7 @@
    "result": [
     "world\u001b[27mThe quick brown",
     "foxİ­x\u001b[31m\u001b[58;5;1mຳ\u001b[hello\u001b[4m‍…你好，世界\u001b[24m",
-    "\u001b[1;4;5;31m\u001b[9mक्ष\u001b[4:3m…12345😀x̀a」🔥\u001b[24m",
+    "\u001b[1;4;5;31m\u001b[9mक्ष\u001b[4:3m…12345😀x̀a」🔥\u001b[24m\u001b[29m",
     "\u001b[1;4;5;9;31m\u001b=1234512345\u001b[?25la bİ"
    ]
   },
@@ -3153,7 +3151,7 @@
     "  …」",
     "❤⭐ä✓foo-b",
     "ar⚠\u001b[39mhello~/",
-    "src\u001b[200~\u001b[23m\u001b]8;id=1;https://e.com/p?q=1\u001b\\\u001b7 \u001b]8;;\u001b\\",
+    "src\u001b[200~\u001b[23m\u001b]8;id=1;https://e.com/p?q=1\u001b\\\u001b7\u001b]8;;\u001b\\",
     "\u001b]8;id=1;https://e.com/p?q=1\u001b\\foo-bar⁠\u001b]8;;unterminatedİéx\u001b]8;;http://x.test/a\u0007\u001b7…\u001b]8;;\u0007",
     "\u001b]8;;unterminatedİéx\u001b]8;;http://x.test/a\u0007क्ष\u001b]1337;File=inline=1:AAAA\u0007"
    ]
@@ -3292,10 +3290,10 @@
    ],
    "result": [
     "\u001b[2KThe quick brown",
-    "foxfoo-barßa\u001b[23mZ̴̢̛̗͓~/src\u001b[9m",
-    "\u001b[9mfoo-barfoo-barำé\u001bX sos\u001b\\The",
-    "\u001b[9mquick brown fox  a",
-    "\u001b[9mbั\u001b[24m\u001b]0;title\u0007world🇬🇧🇫🇷-\u001b[1;38;5;196m\u001b]8;;http://x.test/a\u0007worldpath/to/file\u001b]8;;\u0007",
+    "foxfoo-barßa\u001b[23mZ̴̢̛̗͓~/src\u001b[9m\u001b[29m",
+    "\u001b[9mfoo-barfoo-barำé\u001bX sos\u001b\\The\u001b[29m",
+    "\u001b[9mquick brown fox  a\u001b[29m",
+    "\u001b[9mbั\u001b[24m\u001b]0;title\u0007world🇬🇧🇫🇷-\u001b[1;38;5;196m\u001b]8;;http://x.test/a\u0007worldpath/to/file\u001b[29m\u001b]8;;\u0007",
     "\u001b[1;9;38;5;196m\u001b]8;;http://x.test/a\u0007.tsxfoo-bar⌚\u001b[31x\u001b[9m…"
    ]
   },
@@ -3427,8 +3425,7 @@
     "e",
     "l",
     "l",
-    "o",
-    "\u001b[999999999m\u001b]133;B\u001b\\",
+    "o\u001b[999999999m\u001b]133;B\u001b\\",
     "\u001b[58;5;1mຳ",
     "\u001b[1;5mक्ष",
     "\u001b[1;5m↔️",
@@ -3841,8 +3838,8 @@
    ],
    "result": [
     "\u001b[4mThe quick\u001b[24m",
-    "\u001b[4mbrown fox\u001b[9m한국\u001b[24m",
-    "\u001b[4;9m어✔\u001b[200~—🇬🇧🇫🇷かな🏳️‍🌈The quick brown foxক্ষ\u001bP1$r\u001b\\ 👍🏽foo-bar↔️a  \u001b[48;2;1;2;3m\u001b]0;title\u0007​\u001b[5n‌ßस्त्र\u001bP1$r\u001b\\\u001b8\u001bX sos\u001b\\\u001b^pm\u001b\\­\u001b[1;5Aworld\u001b[24m",
+    "\u001b[4mbrown fox\u001b[9m한국\u001b[24m\u001b[29m",
+    "\u001b[4;9m어✔\u001b[200~—🇬🇧🇫🇷かな🏳️‍🌈The quick brown foxক্ষ\u001bP1$r\u001b\\ 👍🏽foo-bar↔️a  \u001b[48;2;1;2;3m\u001b]0;title\u0007​\u001b[5n‌ßस्त्र\u001bP1$r\u001b\\\u001b8\u001bX sos\u001b\\\u001b^pm\u001b\\­\u001b[1;5Aworld\u001b[24m\u001b[29m",
     "\u001b[4;9;48;2;1;2;3mfoo-bar☺️ßß"
    ]
   },
@@ -3934,7 +3931,7 @@
     "ำ\u001b]1337;File=inline=1:AAAA\u0007한국어カナa",
     "bßa",
     "bpath/to/file",
-    ".ts\u001b^pm\u001b\\x\u001b]8;;http://x.test/a\u0007a b‍ \u001b]8;;\u0007",
+    ".ts\u001b^pm\u001b\\x\u001b]8;;http://x.test/a\u0007a b‍\u001b]8;;\u0007",
     "\u001b]8;;http://x.test/a\u0007 ‍😀⚠️world\u001b[7m🇬🇧\u001b]8;;\u0007",
     "\u001b[7m\u001b]8;;http://x.test/a\u0007🇫🇷İ\u001b[?25l🔥 漢\u001b]8;;\u0007",
     "\u001b[7m\u001b]8;;http://x.test/a\u0007字\u001b]8;;\u0007",

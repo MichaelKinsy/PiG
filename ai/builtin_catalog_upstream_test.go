@@ -51,7 +51,10 @@ func TestBuiltinCatalogsMatchPinnedProviderDataModules(t *testing.T) {
 					}
 					switch kind {
 					case "chat":
-						wantChat[id] = model
+						if d217CarriedDroppedChatRow(provider[1], id) {
+							continue // pig divergence (D217): Pi 2e0f175b is carried past the pin
+						}
+						wantChat[id] = d217CarriedPiModel(model) // pig divergence (D217): Pi 44f6851b is carried past the pin
 					case "image":
 						wantImage[id] = model
 					case "classifier":

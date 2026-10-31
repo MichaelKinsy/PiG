@@ -3410,6 +3410,31 @@
       ]
     },
     {
+      "id": "BF-1fabd48",
+      "title": "`pig -e npm:\u003cpkg\u003e` no longer stays on the version from the first download",
+      "symptom": "`pig -e npm:\u003cpkg\u003e` no longer stays on the version from the first download.",
+      "rootCause": "Temporary -e npm sources were installed once and reused forever. Like Pi, check the registry on load (unless offline) and reinstall name@latest, or the configured range, when a newer version exists; a failed refresh keeps the cached install.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "pi-port",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`pig -e npm:\u003cpkg\u003e` no longer stays on the version from the first download. On each start and `/reload`, `pig` now reinstalls an `-e` npm package without an exact version (as `name@latest`, or its configured range) when the registry has a newer matching version; offline mode and a failed refresh keep the cached copy. Carried forward from Pi cd6a8f7f (earendil-works/pi#11375), past the 1.4.0+b3a29f11 pin.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "1fabd4893e",
+          "date": "2026-10-30",
+          "pr": "11375"
+        }
+      ],
+      "tests": [
+        "coding/cli/package_temporary_refresh_test.go::TestTemporaryNpmSourceDoesNotRefreshOffline",
+        "coding/cli/package_temporary_refresh_test.go::TestTemporaryNpmSourceDoesNotRefreshWhenUpToDateOrPinned",
+        "coding/cli/package_temporary_refresh_test.go::TestTemporaryNpmSourceRefreshesWhenANewerVersionExists"
+      ]
+    },
+    {
       "id": "BF-1fbdabb",
       "title": "A CRLF that a proxy splits across two network chunks no longer aborts an Anthropic turn with `Could not parse…",
       "symptom": "A CRLF that a proxy splits across two network chunks no longer aborts an Anthropic turn with `Could not parse Anthropic SSE event message_start` (D121, pi-mono #10390).",
@@ -3697,6 +3722,32 @@
       ]
     },
     {
+      "id": "BF-21c27bf",
+      "title": "A user message, a branch or compaction summary, a custom message, a skill invocation, the startup changelog…",
+      "symptom": "A user message, a branch or compaction summary, a custom message, a skill invocation, the startup changelog, the `/hotkeys` block, the text a slash command appends and an extension's Markdown view no longer keep the memos a streamed Markdown holds for its next delta.",
+      "rootCause": "A user, summary, custom or skill message is complete when it is built, but its Markdown never called FinishStreaming, so the memos that only speed up the next streamed delta stayed for the life of the message. Each owner now finishes its Markdown at construction.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong display",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A user message, a branch or compaction summary, a custom message, a skill invocation, the startup changelog, the `/hotkeys` block, the text a slash command appends and an extension's Markdown view no longer keep the memos a streamed Markdown holds for its next delta. They arrive whole and never call `FinishStreaming`, so the wraps, inline renderings and resume point stayed for the life of the message: a 1.2 KB user message retained 17.5 KB, and a transcript of 10,000 of them about 175 MB. Each now finishes its Markdown when it builds it: a user message keeps 9.2 KB (its 6.1 KB of padded, colored rows are the rest) and a boxed message 16 to 18 KB instead of 21 to 23 KB. The rows are unchanged.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "21c27bf578",
+          "date": "2026-10-30"
+        },
+        {
+          "hash": "1eb853b81b",
+          "date": "2026-10-31"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/interactive_whole_markdown_test.go::TestWholeMarkdownBlocksRenderBytes"
+      ]
+    },
+    {
       "id": "BF-224dbd9",
       "title": "On Linux and macOS, the bash tool, a `!` command and an extension's `exec` no longer report no output for a…",
       "symptom": "On Linux and macOS, the bash tool, a `!` command and an extension's `exec` no longer report no output for a command that printed, when the machine is too busy to run PiG's pipe reader within 100 ms of the command's exit.",
@@ -3889,6 +3940,31 @@
       ]
     },
     {
+      "id": "BF-234664c",
+      "title": "With `codemode.mode: \"on\"`, a tool whose output schema is a union of objects or any other multi-line type no…",
+      "symptom": "With `codemode.mode: \"on\"`, a tool whose output schema is a union of objects or any other multi-line type no longer puts its whole rendered output type, with its comments run together, into every request.",
+      "rootCause": "With codemode.mode on, a tool whose output schema was a union fell back to the whole rendered type, collapsed onto one line, in every request. Unions of objects list the field names of each variant, const fields show their value, and other multi-line types point to describeTool(). Single-line types are unchanged.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong display",
+      "platform": "All platforms",
+      "class": "pi-port",
+      "fixedIn": "Unreleased",
+      "releaseNote": "With `codemode.mode: \"on\"`, a tool whose output schema is a union of objects or any other multi-line type no longer puts its whole rendered output type, with its comments run together, into every request. The description now lists the field names of each variant of a union of objects (`{ action: \"start\", process } | { action: \"list\", processes, truncated? }`), shows the value of `const` fields, and points a longer type to `await describeTool(\"name\")`. Carried forward from Pi f6ee9ce9 (earendil-works/pi#11501), past the 1.4.0+b3a29f11 pin.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "234664cc42",
+          "date": "2026-10-30",
+          "pr": "11501"
+        }
+      ],
+      "tests": [
+        "coding/codemode_output_summary_test.go::TestCodemodeSummarizesUnionAndMultiLineOutputTypesInsteadOfInliningThem",
+        "coding/extension/builtin/codemode/reach_describe_test.go::TestDescribeOutputDescribesTheFieldsOfObjectFieldsOneLevelDeep",
+        "coding/extension/builtin/codemode/reach_describe_test.go::TestDescribeOutputSummarizesUnionsConstFieldsAndMultiLineTypes"
+      ]
+    },
+    {
       "id": "BF-24872ab",
       "title": "Extensions receive each model (`ctx.model`, `model_select`, `ctx.modelRegistry` reads, scoped models…",
       "symptom": "Extensions receive each model (`ctx.model`, `model_select`, `ctx.modelRegistry` reads, scoped models, virtual-model routes and provider-object calls) as Pi's model object, with its members in Pi's order, instead of sorted by member name with `null` for members the model does not set.",
@@ -3972,6 +4048,30 @@
         "tui/internal/hljs/resume_test.go::TestHighlightResumableEqualsAFreshRun",
         "tui/internal/hljs/resume_test.go::TestHighlightResumableFollowsLaterText",
         "tui/internal/hljs/resume_test.go::TestResumedRunCountsTheIterationsOfAWholeRun"
+      ]
+    },
+    {
+      "id": "BF-254fce4",
+      "title": "`Shift+Enter` inserts a newline instead of queueing a follow-up in Apple Terminal setups that send `ESC` +…",
+      "symptom": "`Shift+Enter` inserts a newline instead of queueing a follow-up in Apple Terminal setups that send `ESC` + Return.",
+      "rootCause": "Some Apple Terminal setups send ESC+CR for Shift+Enter, which parsed as alt+enter and queued a follow-up.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong output or ordering",
+      "platform": "Windows",
+      "class": "pi-port",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`Shift+Enter` inserts a newline instead of queueing a follow-up in Apple Terminal setups that send `ESC` + Return. Where native Shift detection is available (Apple Terminal, native Windows), `ESC` + Return with Shift held is `Shift+Enter`; without Shift it stays `Alt+Enter`. Carried forward from Pi 86dc686c (earendil-works/pi#11559), past the 1.4.0+b3a29f11 pin.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "254fce4ebe",
+          "date": "2026-10-30",
+          "pr": "11559"
+        }
+      ],
+      "tests": [
+        "tui/terminal_native_shift_enter_test.go::TestNormalizeNativeShiftEnterInputRewritesEscapeReturn",
+        "tui/terminal_native_shift_enter_test.go::TestNormalizeProcessInputSequenceForEscapeReturn"
       ]
     },
     {
@@ -4066,6 +4166,60 @@
       ],
       "tests": [
         "internal/codingagent/session_dir_mode_test.go::TestSessionDirectoriesAreCreatedOwnerOnly"
+      ]
+    },
+    {
+      "id": "BF-261fecd",
+      "title": "`tool_search` and codemode `searchTools()` (the coding agent's and durable's) find tools by words in any…",
+      "symptom": "`tool_search` and codemode `searchTools()` (the coding agent's and durable's) find tools by words in any script, not only ASCII letters and digits.",
+      "rootCause": "Goldens generated from Pi's own tokenizers at (4,854 texts over every script class, ICU 78.3) and from its ranker pin the carried behaviour; the ranker goldens run Node on linux/amd64, where Math.log is the one jsmath.Log reproduces.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "pi-port",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`tool_search` and codemode `searchTools()` (the coding agent's and durable's) find tools by words in any script, not only ASCII letters and digits. The text is NFC-normalized and split into words with Unicode word segmentation (the ICU dictionaries split Chinese, Japanese, Thai, Lao, Khmer and Myanmar text without spaces, such as `搜索记录`, into words), so `café` and `cafe\\u0301` match and `Поиск документов`, `البحث عن الملفات` and `फ़ाइल खोजें` are searchable. This replaces PiG's earlier one-term-per-character matching of Chinese, Japanese and Korean (D173), and a Piglet Binary built without the word dictionaries (D92) keeps such a run as one term. Carried forward from Pi 79006f06 (earendil-works/pi#10816, #11037), past the 1.4.0+b3a29f11 pin.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "261fecd504",
+          "date": "2026-10-30",
+          "pr": "11037"
+        }
+      ],
+      "tests": [
+        "coding/extension/builtin/toolsearch/toolsearch_unicode_test.go::TestBm25RankerMatchesUnicodeQueries",
+        "coding/extension/builtin/toolsearch/toolsearch_unicode_test.go::TestTokenizeKeepsDictionaryScriptRunsWholeWithoutDictionaries",
+        "coding/extension/builtin/toolsearch/toolsearch_unicode_test.go::TestTokenizeMatchesPiOnEveryScriptClass",
+        "coding/extension/builtin/toolsearch/toolsearch_unicode_test.go::TestTokenizeSegmentsUnicodeWords",
+        "durable/internal/search/search_carried_test.go::TestRankDocumentsMatchesUnicodeQueries",
+        "durable/internal/search/search_carried_test.go::TestTokenizeMatchesPiOnEveryScriptClass"
+      ]
+    },
+    {
+      "id": "BF-264127b",
+      "title": "`tool_search` and codemode `searchTools()` no longer rank a tool below tools that only mention its name in…",
+      "symptom": "`tool_search` and codemode `searchTools()` no longer rank a tool below tools that only mention its name in their descriptions, for example `peekaboo app` ranking `mcp__peekaboo__app` 14th.",
+      "rootCause": "Bm25Ranker scores three fields: the name (3x the IDF of a matching term), the description and schema text (BM25, length-normalized on this field only) and the namespace (0.5x the IDF, no length normalization). A tool whose whole local name is in the query gets a bonus of one more match of every query term. Applies to tool_search and codemode searchTools().",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "pi-port",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`tool_search` and codemode `searchTools()` no longer rank a tool below tools that only mention its name in their descriptions, for example `peekaboo app` ranking `mcp__peekaboo__app` 14th. A query word in a tool's name now scores more than any number of mentions in its description, a tool whose whole name is in the query gets a large bonus, and long server instructions no longer lower the scores of that server's tools. Carried forward from Pi cc44fa21 (earendil-works/pi#11331), past the 1.4.0+b3a29f11 pin.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "264127b95e",
+          "date": "2026-10-30",
+          "pr": "11331"
+        }
+      ],
+      "tests": [
+        "coding/extension/builtin/toolsearch/toolsearch_carried_test.go::TestBm25RankerRanksANameMatchAboveMentionsInDescriptions",
+        "coding/extension/builtin/toolsearch/toolsearch_carried_test.go::TestBm25RankerRanksAToolFirstWhenTheQueryContainsItsWholeName",
+        "coding/extension/builtin/toolsearch/toolsearch_oracle_test.go::TestToolSearchMatchesPi",
+        "coding/extension/builtin/toolsearch/toolsearch_reference_test.go::TestBm25ScoresMatchUpstream"
       ]
     },
     {
@@ -4287,6 +4441,32 @@
       ],
       "tests": [
         "internal/codingagent/keybindings_user_oracle_test.go::TestUserKeybindingsMatchPi"
+      ]
+    },
+    {
+      "id": "BF-27b7a4e",
+      "title": "Clipboard image paste, copy through `powershell.exe` and opening the browser for sign-in no longer fail…",
+      "symptom": "Clipboard image paste, copy through `powershell.exe` and opening the browser for sign-in no longer fail silently on WSL when the working directory is deep: the helpers now start from `/`, because WSL cannot start Windows programs from a working directory whose `\\\\wsl.localhost\\...` path exceeds MAX_PATH.",
+      "rootCause": "Clipboard helpers and the browser launcher now start from /, because WSL cannot start Windows programs from a working directory whose \\\\wsl.localhost\\... path exceeds MAX_PATH. The external editor keeps the working directory on purpose.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "Windows, WSL",
+      "class": "pi-port",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Clipboard image paste, copy through `powershell.exe` and opening the browser for sign-in no longer fail silently on WSL when the working directory is deep: the helpers now start from `/`, because WSL cannot start Windows programs from a working directory whose `\\\\wsl.localhost\\...` path exceeds MAX_PATH. The external editor keeps the working directory on purpose. An external editor that fails now says so (`Failed to launch external editor: \u003ccommand\u003e`, `External editor exited with code N; prompt unchanged`, or the signal name) in the status line, and inline in the extension editor dialog, instead of being redrawn over silently. Carried forward from Pi 6454d07e (earendil-works/pi#11592), past the 1.4.0+b3a29f11 pin.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "27b7a4ee65",
+          "date": "2026-10-30",
+          "pr": "11592"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/helper_dir_test.go::TestBrowserLauncherRunsFromTheRoot",
+        "internal/codingagent/helper_dir_test.go::TestClipboardCommandRunsFromTheRoot",
+        "internal/codingagent/helper_dir_test.go::TestExtensionEditorShowsExternalEditorFailures",
+        "internal/codingagent/helper_dir_test.go::TestOpenExternalEditorReportsFailures"
       ]
     },
     {
@@ -4653,6 +4833,57 @@
       ]
     },
     {
+      "id": "BF-2b0c715",
+      "title": "Resizing an image sends the smaller of the PNG and the JPEG at the configured quality instead of the PNG…",
+      "symptom": "Resizing an image sends the smaller of the PNG and the JPEG at the configured quality instead of the PNG whenever it fit, so a photo that needs resizing no longer goes out as a multi-MB PNG that makes the request fail or time out.",
+      "rootCause": "A resize returned the PNG whenever it fit, even when the JPEG was many times smaller, so photos went out as multi-MB PNGs. Each size step now tries the smaller of the PNG and the JPEG at the configured quality first, then the other, then the lower JPEG qualities. TestResizePreservesAlpha no longer requires a PNG for a translucent image, as in Pi.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "pi-port",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Resizing an image sends the smaller of the PNG and the JPEG at the configured quality instead of the PNG whenever it fit, so a photo that needs resizing no longer goes out as a multi-MB PNG that makes the request fail or time out. Screenshots where the PNG is smaller still go out as PNG, and the lower JPEG qualities are tried only when neither fits. Carried forward from Pi e7a0df27 (earendil-works/pi#11551), past the 1.4.0+b3a29f11 pin.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "2b0c715070",
+          "date": "2026-10-30",
+          "pr": "11551"
+        }
+      ],
+      "tests": [
+        "internal/imageprocessing/image_processing_upstream_test.go::TestFirstFittingCandidatePrefersTheSmallerOfPNGAndJPEG",
+        "internal/imageprocessing/image_processing_upstream_test.go::TestResizeImagePicksJPEGOverLargerPNGForPhotos",
+        "internal/imageprocessing/images_test.go::TestPNGCandidateKeepsAlpha",
+        "internal/imageprocessing/images_test.go::TestResizePreservesAlpha"
+      ]
+    },
+    {
+      "id": "BF-2b97688",
+      "title": "The `env` daemon reports a watch `change` whose path list would not fit in a frame (16 MiB less 64 KiB) as an…",
+      "symptom": "An oversized list used to make the frame writer fail and end the daemon's only output writer, leaving every request hanging until the client's 30 s silence limit.",
+      "rootCause": "A change event whose paths would encode above MaxPayload is sent as {\"kind\":\"change\",\"overflow\":true} instead of failing in WriteFrame, which ended the daemon's output writer.",
+      "rootCauseSource": "commit",
+      "userImpact": "Crash, hang or runaway process",
+      "platform": "All platforms",
+      "class": "pi-port",
+      "fixedIn": "Unreleased",
+      "releaseNote": "The `env` daemon reports a watch `change` whose path list would not fit in a frame (16 MiB less 64 KiB) as an overflow event, which clients read as \"rescan\". An oversized list used to make the frame writer fail and end the daemon's only output writer, leaving every request hanging until the client's 30 s silence limit. Carried forward from Pi 102d1287 (earendil-works/pi#10516), past the 1.4.0+b3a29f11 pin.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "2b9768807c",
+          "date": "2026-10-30",
+          "pr": "10516"
+        }
+      ],
+      "tests": [
+        "env/daemon/watch_event_test.go::TestChangeEventListsPathsThatFit",
+        "env/daemon/watch_event_test.go::TestChangeEventMeasuresTheEncodedSize",
+        "env/daemon/watch_event_test.go::TestChangeEventOverflowsWhenPathsDoNotFitInAFrame"
+      ]
+    },
+    {
       "id": "BF-2bc49c1",
       "title": "Node extensions read live `ctx.isIdle()` state, so background callbacks detect when a run finishes or starts",
       "symptom": "Node extensions read live `ctx.isIdle()` state, so background callbacks detect when a run finishes or starts.",
@@ -4748,6 +4979,29 @@
       ],
       "tests": [
         "test/extension-conformance/host_surface_test.go::TestOnThemeChangeDeliversEachChangesOwnThemeAcrossSDKs"
+      ]
+    },
+    {
+      "id": "BF-2c5d240",
+      "title": "fix(extension): take a Node client whose pipe connect event has not been set",
+      "symptom": "fix(extension): take a Node client whose pipe connect event has not been set",
+      "rootCause": "A Node extension that reports its load error connects to its named pipe, writes the frame, closes and exits. The host's awaitConnection interrupts its Accept when the process exits, and pipeListener asked whether a client had connected by testing the connect's event. The pipe driver sets that event from the open's completion, which runs on the thread that issued the connect, so it can trail a client whose open has already returned. An interrupted Accept that found the event unset reported no client, and the host reported process_exited for an extension that had said why it failed.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "2c5d2400ff",
+          "date": "2026-10-30"
+        }
+      ],
+      "tests": [
+        "coding/extension/host/subprocess/accept_client_test.go::TestAwaitConnectionHonorsAConnectionMadeBeforeTheExit",
+        "coding/extension/host/subprocess/accept_client_windows_test.go::TestAwaitConnectionHonorsAClientBeforeItsConnectEventIsSet",
+        "coding/extension/host/subprocess/accept_client_windows_test.go::TestPipeListenerInterruptKeepsAClientBeforeItsConnectEventIsSet"
       ]
     },
     {
@@ -5653,6 +5907,27 @@
         "internal/nodeurl/reference_test.go::TestResolveURLMatchesNodeURL",
         "internal/nodeurl/resolve_request_oracle_test.go::TestResolveURLRequestTargetsMatchNode",
         "internal/nodeurl/url_oracle_test.go::TestParseMatchesNodeURL"
+      ]
+    },
+    {
+      "id": "BF-33558f6",
+      "title": "Fix in shipped code",
+      "symptom": "Fix in shipped code",
+      "rootCause": "wrap.go: the wrap branches as a switch (gocritic ifElseChain), and the SDK copy of it; the CJK URL test ranges over the string.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "33558f62b7",
+          "date": "2026-10-30"
+        }
+      ],
+      "tests": [
+        "tui/markdown_cjk_url_test.go::TestMarkdownBareURLStopsAtCJKPunctuationPiCases"
       ]
     },
     {
@@ -7245,6 +7520,29 @@
       ]
     },
     {
+      "id": "BF-3fd2500",
+      "title": "`pi update` no longer stops with `git clean -fdx failed with code 1` when a Git package has files that cannot…",
+      "symptom": "`pi update` no longer stops with `git clean -fdx failed with code 1` when a Git package has files that cannot be deleted, for example a native module another pi session still has open on Windows. pi now warns that files may be in use by another pi session, installs the dependencies anyway, and retries the clean on the next update.",
+      "rootCause": "Carries Pi (earendil-works/pi#11648, fixes #11597). A failed `git clean -fdx` no longer aborts the update: CleanAndInstallGitDependencies emits Pi's progress warning (\"Could not remove all untracked files in \u003cdir\u003e (\u003creason\u003e). Files may be in use by another pi session; close it and run the update again.\"), still runs the dependency install, and keeps the .pi-update-incomplete marker so the next update retries the clean. The progress callback reaches the Git install through WithProgressReporter from install, update and temporary-source refresh.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "Windows",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`pi update` no longer stops with `git clean -fdx failed with code 1` when a Git package has files that cannot be deleted, for example a native module another pi session still has open on Windows. pi now warns that files may be in use by another pi session, installs the dependencies anyway, and retries the clean on the next update. Carried forward from Pi e3da248e (earendil-works/pi#11648), past the 1.4.0+b3a29f11 pin.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "3fd25004c9",
+          "date": "2026-10-31"
+        }
+      ],
+      "tests": [
+        "coding/cli/git_update_upstream_test.go::TestGitUpdatesUpstream",
+        "coding/cli/package_git_dependencies_upstream_test.go::TestPackageGitDependenciesOriginal"
+      ]
+    },
+    {
       "id": "BF-4027b34",
       "title": "A finished code-mode execution no longer keeps its closed VM reachable through its stopped halt-grace timer…",
       "symptom": "A finished code-mode execution no longer keeps its closed VM reachable through its stopped halt-grace timer, which stays in an idle scheduler's timer heap until that scheduler next runs.",
@@ -8363,6 +8661,30 @@
         "tui/extension_selector_test.go::TestExtensionSelectorPreviewDrawsAfterTheOptionRows",
         "tui/extension_selector_test.go::TestExtensionSelectorPreviewDropsWhenTheBodyWouldSqueeze",
         "tui/extension_selector_test.go::TestExtensionSelectorWithoutPreviewKeepsFullWidthRows"
+      ]
+    },
+    {
+      "id": "BF-462b96e",
+      "title": "A Python or Rust extension no longer fails to load when the host releases one of its listeners between…",
+      "symptom": "A Python or Rust extension no longer fails to load when the host releases one of its listeners between registering it and marking it ready (`expected ready, got notify`).",
+      "rootCause": "The Host sends events.release for a listener once it was unsubscribed and its last dispatch snapshot ended (event_bus.go finish and removeBusListener). A listener of a loading extension can be dispatched between register and ready, so that notify can reach the extension before ready. The Go SDK serves it while it waits for ready (extension.go runWithConn); the Python SDK (_read_during_load) and the Rust SDK (the two load loops of run_with_socket) returned it as the answer to the wait and failed the load with \"expected ready, got notify\".",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A Python or Rust extension no longer fails to load when the host releases one of its listeners between registering it and marking it ready (`expected ready, got notify`). A listener that unsubscribes itself while the host dispatches to it during the load is released by an `events.release` notice once that dispatch ends, which can come before `ready`; the Go SDK already served it, and the Python and Rust SDKs now do the same.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "462b96e762",
+          "date": "2026-10-31"
+        }
+      ],
+      "tests": [
+        "extensions/sdk/event_bus_test.go::TestEventBusReleaseDuringLoadIsServed",
+        "test/extension-conformance/early_dispatch_conformance_test.go::TestEarlyDispatchBeforeReadyAnswersEachRequestOnceUnderItsOwnID",
+        "test/extension-conformance/early_dispatch_conformance_test.go::TestReleaseBeforeReadyDoesNotFailTheLoad"
       ]
     },
     {
@@ -10170,6 +10492,82 @@
       "tests": []
     },
     {
+      "id": "BF-53312d8",
+      "title": "`pi.exec()` no longer buffers a command's output without limit, which exhausted memory when a command printed…",
+      "symptom": "`pi.exec()` no longer buffers a command's output without limit, which exhausted memory when a command printed too much.",
+      "rootCause": "Pi's merged fix, carried by 0.6.0 past the 1.4.0+ pin (D217).",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "pi-port",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`pi.exec()` no longer buffers a command's output without limit, which exhausted memory when a command printed too much. The default cap is 256 MiB, counted over stdout and stderr together; past the cap the command is terminated, a character the cap cuts is dropped whole, and the result has `truncated: true`, `killed: true` and a nonzero code. Carried forward from Pi c466a359 (earendil-works/pi#11360), past the 1.4.0+b3a29f11 pin.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "53312d8cdc",
+          "date": "2026-10-30",
+          "pr": "11360"
+        }
+      ],
+      "tests": [
+        "coding/extension/exec_max_buffer_test.go::TestExecCommandAcceptsTheMaxBufferBoundaries",
+        "coding/extension/exec_max_buffer_test.go::TestExecCommandCapsCombinedOutputAtMaxBuffer",
+        "coding/extension/exec_max_buffer_test.go::TestExecCommandDefaultCapFollowsTheRuntimeStringLimit",
+        "coding/extension/exec_max_buffer_test.go::TestExecCommandDefaultCapIs256MiB",
+        "coding/extension/exec_max_buffer_test.go::TestExecCommandFlushesIncompleteUTF8AtEOFWithoutATruncation",
+        "coding/extension/exec_max_buffer_test.go::TestExecCommandKeepsCompleteUTF8CharactersUnderTheCap",
+        "coding/extension/exec_max_buffer_test.go::TestExecCommandLeavesOutputUpToMaxBufferUnchanged",
+        "coding/extension/exec_max_buffer_test.go::TestExecCommandRejectsAnInvalidMaxBuffer",
+        "coding/extension/exec_max_buffer_test.go::TestExecCommandResultsAreNotTruncatedWithoutACap",
+        "coding/extension/exec_max_buffer_test.go::TestExecCommandTruncatesAllOutputWhenMaxBufferIsZero",
+        "coding/extension/exec_oracle_test.go::TestExecCommandMatchesPi",
+        "coding/extension/exec_tree_test.go::TestExecCommandForceKillsAChildThatIgnoresSIGTERMAfterFiveSeconds",
+        "coding/extension/exec_utf8_chunks_test.go::TestExecCommandDiscardsPendingUTF8WhenAStreamExceedsTheCap",
+        "extensions/sdk/surface_parity_test.go::TestExecWithMaxBufferSendsTheOptionAndDecodesTruncated",
+        "test/extension-conformance/exec_limits_test.go::TestExecLimitsAcrossSDKs",
+        "test/extension-conformance/exec_limits_test.go::TestExecLimitsHelperProcess"
+      ]
+    },
+    {
+      "id": "BF-53312d8-2",
+      "title": "`pi.exec()` no longer waits forever for a command that ignores SIGTERM after a timeout, an abort or the…",
+      "symptom": "`pi.exec()` no longer waits forever for a command that ignores SIGTERM after a timeout, an abort or the output cap: the host sends SIGKILL 5 seconds later if the command has not exited, as Pi intended.",
+      "rootCause": "Pi's merged fix, carried by 0.6.0 past the 1.4.0+ pin (D217).",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "pi-port",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`pi.exec()` no longer waits forever for a command that ignores SIGTERM after a timeout, an abort or the output cap: the host sends SIGKILL 5 seconds later if the command has not exited, as Pi intended. Carried forward from Pi c466a359 (earendil-works/pi#11360), past the 1.4.0+b3a29f11 pin.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "53312d8cdc",
+          "date": "2026-10-30",
+          "pr": "11360"
+        }
+      ],
+      "tests": [
+        "coding/extension/exec_max_buffer_test.go::TestExecCommandAcceptsTheMaxBufferBoundaries",
+        "coding/extension/exec_max_buffer_test.go::TestExecCommandCapsCombinedOutputAtMaxBuffer",
+        "coding/extension/exec_max_buffer_test.go::TestExecCommandDefaultCapFollowsTheRuntimeStringLimit",
+        "coding/extension/exec_max_buffer_test.go::TestExecCommandDefaultCapIs256MiB",
+        "coding/extension/exec_max_buffer_test.go::TestExecCommandFlushesIncompleteUTF8AtEOFWithoutATruncation",
+        "coding/extension/exec_max_buffer_test.go::TestExecCommandKeepsCompleteUTF8CharactersUnderTheCap",
+        "coding/extension/exec_max_buffer_test.go::TestExecCommandLeavesOutputUpToMaxBufferUnchanged",
+        "coding/extension/exec_max_buffer_test.go::TestExecCommandRejectsAnInvalidMaxBuffer",
+        "coding/extension/exec_max_buffer_test.go::TestExecCommandResultsAreNotTruncatedWithoutACap",
+        "coding/extension/exec_max_buffer_test.go::TestExecCommandTruncatesAllOutputWhenMaxBufferIsZero",
+        "coding/extension/exec_oracle_test.go::TestExecCommandMatchesPi",
+        "coding/extension/exec_tree_test.go::TestExecCommandForceKillsAChildThatIgnoresSIGTERMAfterFiveSeconds",
+        "coding/extension/exec_utf8_chunks_test.go::TestExecCommandDiscardsPendingUTF8WhenAStreamExceedsTheCap",
+        "extensions/sdk/surface_parity_test.go::TestExecWithMaxBufferSendsTheOptionAndDecodesTruncated",
+        "test/extension-conformance/exec_limits_test.go::TestExecLimitsAcrossSDKs",
+        "test/extension-conformance/exec_limits_test.go::TestExecLimitsHelperProcess"
+      ]
+    },
+    {
       "id": "BF-53385a3",
       "title": "Registering a large MCP catalog, building a CodeMode sandbox from one, and CodeMode tool discovery were…",
       "symptom": "Registering a large MCP catalog, building a CodeMode sandbox from one, and CodeMode tool discovery were quadratic in the number of tools, so a 100,000-tool server took tens of seconds to register after its last `tools/list` page, `NewSandbox` took 27 seconds, and every `searchTools()` or `describeNamespace()` call rescanned the whole host catalog once per tool.",
@@ -11497,6 +11895,27 @@
       ]
     },
     {
+      "id": "BF-5c76bc0",
+      "title": "Fix in shipped code",
+      "symptom": "Fix in shipped code",
+      "rootCause": "wrap.go: the wrap branches as a switch (gocritic ifElseChain), and the SDK copy of it; the CJK URL test ranges over the string.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "5c76bc0f56",
+          "date": "2026-10-30"
+        }
+      ],
+      "tests": [
+        "tui/markdown_cjk_url_test.go::TestMarkdownBareURLStopsAtCJKPunctuationPiCases"
+      ]
+    },
+    {
       "id": "BF-5c9d23f",
       "title": "A provider object's OAuth login receives Pi's login options, as `oauth.login(interaction, options)` does in Pi",
       "symptom": "A provider object's flow got no options, so a flow that needs the device ID could not get it.",
@@ -11806,6 +12225,30 @@
         "tui/extension_dialog_bindings_test.go::TestExtensionDialogCountdownMatchesPi",
         "tui/extension_dialog_bindings_test.go::TestExtensionDialogsMatchPiBindingsAndPalette",
         "tui/markdown_streaming_reuse_test.go::TestStreamedMarkdownRendersAgainAfterHyperlinksOrColorChange"
+      ]
+    },
+    {
+      "id": "BF-5eb8bb9",
+      "title": "`tool_search` and codemode `searchTools()` rank a tool that matches more of the query's distinct terms, in…",
+      "symptom": "`tool_search` and codemode `searchTools()` rank a tool that matches more of the query's distinct terms, in any field (name, description and schema, namespace), above one that matches fewer, whatever their scores.",
+      "rootCause": "The goldens that pin the carried ranker are regenerated from Pi at, because its coverage-first order makes the goldens stale.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "pi-port",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`tool_search` and codemode `searchTools()` rank a tool that matches more of the query's distinct terms, in any field (name, description and schema, namespace), above one that matches fewer, whatever their scores. The name weighting of the previous ranking change put `peekaboo__window` above `peekaboo__image` for `screenshot window` and `peekaboo__app` above `peekaboo__see` for `describe app`. A query that is exactly a tool's name still ranks that tool first. Carried forward from Pi e033f255 (earendil-works/pi#11331), past the 1.4.0+b3a29f11 pin.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "5eb8bb963a",
+          "date": "2026-10-30",
+          "pr": "11632"
+        }
+      ],
+      "tests": [
+        "coding/extension/builtin/toolsearch/toolsearch_carried_test.go::TestBm25RankerMatchesPiTheLatestCarriedRanker",
+        "coding/extension/builtin/toolsearch/toolsearch_carried_test.go::TestBm25RankerRanksAToolMatchingMoreQueryTermsFirst"
       ]
     },
     {
@@ -12492,6 +12935,30 @@
         "ai/openai_completions_chat_template_values_test.go::TestOpenAICompletionsChatTemplateEffortFollowsTheThinkingLevelMap",
         "ai/openai_completions_chat_template_values_test.go::TestOpenAICompletionsChatTemplateValuesResolveTheSameForKwargsAndArgs",
         "ai/thinking_level_map_clamp_test.go::TestThinkingLevelMapDecidesSupportedAndClampedLevels"
+      ]
+    },
+    {
+      "id": "BF-62743f9",
+      "title": "A streamed OpenRouter-style `reasoning_details` no longer costs more with every delta",
+      "symptom": "A streamed OpenRouter-style `reasoning_details` no longer costs more with every delta.",
+      "rootCause": "reasoning_details are replay metadata. Each delta merged into the entry list and marshalled the whole signature again, quadratic in the number of deltas. Keep the entries in memory, merge text and summary content into one builder, and write the signature when the thinking block ends or the stream fails, as Pi does.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A streamed OpenRouter-style `reasoning_details` no longer costs more with every delta. Each delta merged into the entry list and then wrote the whole thinking signature again, so a reasoning stream of 10000 deltas took seconds and gigabytes (10000 discrete `reasoning.encrypted` entries: 94 s and 51 GB; 10000 merged text deltas: 5.5 s and 6.4 GB). The details now accumulate in memory and the signature is written once, when the thinking block ends or the stream fails, as in Pi; 10000 merged text deltas take 87 ms and 25 MB, and the signature is unchanged.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "62743f96f8",
+          "date": "2026-10-30"
+        }
+      ],
+      "tests": [
+        "ai/openai_reasoning_details_scaling_norace_test.go::TestScalingOpenAIReasoningDetailsPerDelta",
+        "ai/openai_reasoning_details_signature_test.go::TestParseSSE_ReasoningDetailsSignatureBytes",
+        "ai/openai_reasoning_details_signature_test.go::TestParseSSE_ReasoningDetailsSignatureSetAtThinkingEndAndOnError"
       ]
     },
     {
@@ -15131,6 +15598,30 @@
       ]
     },
     {
+      "id": "BF-65ba6b5",
+      "title": "A renderer that imported `keyText` or `keyHint` from its own copy of the extension package rendered hints…",
+      "symptom": "A renderer that imported `keyText` or `keyHint` from its own copy of the extension package rendered hints without the key, because that copy did not see the host's keybindings.",
+      "rootCause": "A renderer that imported `keyText` or `keyHint` from its own copy of the extension package rendered hints without the key, because that copy did not see the host's keybindings.",
+      "rootCauseSource": "release note",
+      "userImpact": "Wrong display",
+      "platform": "All platforms",
+      "class": "pi-port",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A renderer that imported `keyText` or `keyHint` from its own copy of the extension package rendered hints without the key, because that copy did not see the host's keybindings. The hints on the render context and options read the host's keybindings. Carried forward from Pi 9376c8d1 (earendil-works/pi#4748), past the 1.4.0+b3a29f11 pin.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "65ba6b5bec",
+          "date": "2026-10-30",
+          "pr": "11630"
+        }
+      ],
+      "tests": [
+        "extensions/sdk/keybinding_hints_test.go::TestRenderHintsReadTheHostKeybindings",
+        "test/extension-conformance/keybinding_hints_test.go::TestKeybindingHintsAcrossSDKs"
+      ]
+    },
+    {
       "id": "BF-663e84b",
       "title": "The built-in models page lists the real thinking levels (off, minimal, low, medium, high, xhigh, max) instead…",
       "symptom": "The built-in models page lists the real thinking levels (off, minimal, low, medium, high, xhigh, max) instead of a five-step ladder that started at none.",
@@ -15700,6 +16191,32 @@
       ]
     },
     {
+      "id": "BF-66beda3",
+      "title": "`pig mcp login -l` and `pig mcp logout -l` no longer fail with `Unknown option --local.`, as `pig mcp add`…",
+      "symptom": "`pig mcp login -l` and `pig mcp logout -l` no longer fail with `Unknown option --local.`, as `pig mcp add` and `pig mcp remove` already accept `-l`; with `-l` they require the server to be a project server.",
+      "rootCause": "`mcp login` and `mcp logout` take -l/--local, which requires the server to be defined in the project's mcp.json. Unknown options are reported as typed (-l, not --local), the usage lines end in [-l], and a mistyped server name within edit distance 2 of a configured one gets a \"Did you mean\" suggestion. The help text lists the new option.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "pi-port",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`pig mcp login -l` and `pig mcp logout -l` no longer fail with `Unknown option --local.`, as `pig mcp add` and `pig mcp remove` already accept `-l`; with `-l` they require the server to be a project server. Unknown options are reported as typed, and a mistyped server name gets a suggestion, for example `Did you mean \"fixture\"?`. Carried forward from Pi be15fe3c (a Pi commit without an issue number), past the 1.4.0+b3a29f11 pin.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "66beda378e",
+          "date": "2026-10-30"
+        }
+      ],
+      "tests": [
+        "coding/mcpext/cli_carry_test.go::TestMcpCommandReportsOptionsAsTyped",
+        "coding/mcpext/cli_carry_test.go::TestMcpCommandRestrictsLoginAndLogoutToProjectServersWithLocal",
+        "coding/mcpext/cli_carry_test.go::TestMcpCommandSuggestsAConfiguredServerForAMistypedName",
+        "coding/mcpext/cli_oracle_test.go::TestMcpCommandMatchesPi",
+        "coding/mcpext/cli_test.go::TestMcpCommandReportsArgumentErrors"
+      ]
+    },
+    {
       "id": "BF-66db311",
       "title": "The login dialog now holds TUI focus while it is shown, so the prompt cursor appears in the right place for…",
       "symptom": "The login dialog now holds TUI focus while it is shown, so the prompt cursor appears in the right place for IME input.",
@@ -15780,6 +16297,33 @@
       ],
       "tests": [
         "tui/markdown_quote_lazy_oracle_test.go::TestMarkdownQuoteIndentedLazyLineAfterABlockMatchesPi"
+      ]
+    },
+    {
+      "id": "BF-67eccd7",
+      "title": "Opening the model selector no longer composes the whole model catalog, OpenRouter's `:nitro` and `:floor`…",
+      "symptom": "Opening the model selector no longer composes the whole model catalog, OpenRouter's `:nitro` and `:floor` variants included, to read each scoped model, and the registry no longer derives those variants for a provider it lists no model of.",
+      "rootCause": "An earlier change (the OpenRouter routing-variant divergence) lists :nitro and :floor beside each of the 398 bundled OpenRouter models (796 entries). Its derivation had per-variant cost where nothing needed a variant:",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Opening the model selector no longer composes the whole model catalog, OpenRouter's `:nitro` and `:floor` variants included, to read each scoped model, and the registry no longer derives those variants for a provider it lists no model of.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "67eccd768a",
+          "date": "2026-10-31"
+        }
+      ],
+      "tests": [
+        "ai/openrouter_variants_allocs_norace_test.go::TestDerivingOpenRouterRoutingVariantsAllocatesOnlyTheEntries",
+        "ai/openrouter_variants_allocs_norace_test.go::TestListingOpenRouterRoutingVariantsAllocatesNothingPerVariant",
+        "ai/openrouter_variants_test.go::TestDerivedOpenRouterVariantsAreBuiltOnce",
+        "internal/codingagent/model_registry_available_variants_test.go::TestAvailableModelDataDerivesRoutingVariantsOnlyForAConfiguredOpenRouter",
+        "internal/codingagent/model_registry_variants_allocs_norace_test.go::TestRuntimeModelsAllocatesNothingPerRoutingVariant",
+        "internal/codingagent/model_registry_variants_allocs_norace_test.go::TestSelectorModelLookupBuildsOnlyTheModelRead"
       ]
     },
     {
@@ -16586,6 +17130,32 @@
       ],
       "tests": [
         "durable/core/session/telemetry_test.go::TestCreateTaskTraceAndLinks"
+      ]
+    },
+    {
+      "id": "BF-6b584ff",
+      "title": "The `--help` text and the `/resume` and `/import` descriptions now say which working directory a resumed…",
+      "symptom": "The `--help` text and the `/resume` and `/import` descriptions now say which working directory a resumed session runs in (`--continue` the current directory, `--resume` and `--session` the session's own, `--fork` the current directory), and `/import` says it preserves the session ID and working directory.",
+      "rootCause": "The help text now says which working directory each session flag uses (--continue the current directory, --resume and --session the session's own, --session-id the current directory's session, --fork the current directory), and /resume and /import carry Pi's new descriptions. gen-help.sh applies the new wording to the pinned Pi's help so make help-text stays reproducible. Scenarios autocomplete/01 and /02 stop asserting the old /import description on both sides.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "pi-port",
+      "fixedIn": "Unreleased",
+      "releaseNote": "The `--help` text and the `/resume` and `/import` descriptions now say which working directory a resumed session runs in (`--continue` the current directory, `--resume` and `--session` the session's own, `--fork` the current directory), and `/import` says it preserves the session ID and working directory. Carried forward from Pi 2a46c420 (earendil-works/pi#11532), past the 1.4.0+b3a29f11 pin.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "6b584ff75f",
+          "date": "2026-10-30",
+          "pr": "11532"
+        }
+      ],
+      "tests": [
+        "coding/cli/help_oracle_test.go::TestHelpCarriesPi2a46c420SessionFlagWording",
+        "coding/cli/help_oracle_test.go::TestHelpMatchesPi",
+        "internal/codingagent/builtin_slash_commands_oracle_test.go::TestBuiltinSlashCommandsCarryPi2a46c420Descriptions",
+        "internal/codingagent/builtin_slash_commands_oracle_test.go::TestBuiltinSlashCommandsMatchPi"
       ]
     },
     {
@@ -17886,6 +18456,28 @@
       ]
     },
     {
+      "id": "BF-7475a64",
+      "title": "A Go extension that is sent an `events.dispatch` request while it loads, before the host's `ready`, no longer…",
+      "symptom": "A Go extension that is sent an `events.dispatch` request while it loads, before the host's `ready`, no longer answers it under another frame's ID with another frame's payload.",
+      "rootCause": "runWithConn's wait for ready serves events.dispatch requests that arrive while the extension loads. The handler goroutine captured the loop's env variable, which the next receive overwrites, so it could read the ID and request of the following frame (the next dispatch, or ready itself) and answer under the wrong ID with the wrong payload; go test -race reports the read against the receive's write.",
+      "rootCauseSource": "commit",
+      "userImpact": "Lost or altered data",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A Go extension that is sent an `events.dispatch` request while it loads, before the host's `ready`, no longer answers it under another frame's ID with another frame's payload. The listener's goroutine shared the receive loop's envelope variable, which the next received frame (a second dispatch, or `ready`) overwrote while the listener ran; `go test -race` flagged the read and the write. Each listener now keeps the request that started it.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "7475a64e35",
+          "date": "2026-10-30"
+        }
+      ],
+      "tests": [
+        "extensions/sdk/preready_dispatch_race_test.go::TestPreReadyDispatchHandlersKeepTheirOwnRequest"
+      ]
+    },
+    {
       "id": "BF-7489735",
       "title": "`pig -e \u003cdirectory\u003e` now loads a Node extension whose entry file is `index.mjs` and that has no…",
       "symptom": "`pig -e \u003cdirectory\u003e` now loads a Node extension whose entry file is `index.mjs` and that has no `package.json`, `index.ts` or `index.js`, as Pi does.",
@@ -18779,6 +19371,31 @@
       ]
     },
     {
+      "id": "BF-7c848e3",
+      "title": "A Zhipu/Z.ai usage limit (HTTP 429 with error code `1308`, which resets after hours) is no longer retried, in…",
+      "symptom": "A Zhipu/Z.ai usage limit (HTTP 429 with error code `1308`, which resets after hours) is no longer retried, in `ai.IsRetryableAssistantError`, the durable turn classifier and the Go, Rust, Python and Lisp extension SDKs.",
+      "rootCause": "Pi added the \"code\":1308 pattern to NON_RETRYABLE_PROVIDER_LIMIT_ERROR_PATTERN (#11572). Recorded under D217.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "pi-port",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A Zhipu/Z.ai usage limit (HTTP 429 with error code `1308`, which resets after hours) is no longer retried, in `ai.IsRetryableAssistantError`, the durable turn classifier and the Go, Rust, Python and Lisp extension SDKs. Carried forward from Pi c719d5b0 (earendil-works/pi#11537), past the 1.4.0+b3a29f11 pin.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "7c848e3186",
+          "date": "2026-10-30",
+          "pr": "11537"
+        }
+      ],
+      "tests": [
+        "ai/assistant_retry_test.go::TestIsRetryableAssistantErrorClassification",
+        "durable/core/turn/classify_carried_test.go::TestZhipuUsageLimit1308IsNotRetryable",
+        "extensions/sdk/pi_ai_helpers_test.go::TestZhipuUsageLimit1308IsNotRetryable"
+      ]
+    },
+    {
       "id": "BF-7cca5ee",
       "title": "A Node extension can default-import TypeBox (`import Type from \"typebox\"`, and likewise `typebox/value`…",
       "symptom": "A Node extension can default-import TypeBox (`import Type from \"typebox\"`, and likewise `typebox/value`, `typebox/compile` and `@sinclair/typebox*`), as it can in Pi.",
@@ -18819,6 +19436,52 @@
         }
       ],
       "tests": []
+    },
+    {
+      "id": "BF-7d798ce",
+      "title": "fix(testenv): the shared Cargo target is keyed by the absolute path of the SDK as well as its lock",
+      "symptom": "fix(testenv): the shared Cargo target is keyed by the absolute path of the SDK as well as its lock",
+      "rootCause": "rustc bakes env!(\"CARGO_MANIFEST_DIR\") into a test binary, and Cargo reuses a cached binary whenever the sources' mtimes are older than it, whatever the checkout's path. SharedCargoTargetDir hashed only the package name and the lock and manifest contents, so a second checkout (a copy, a worktree, a clone older than the cached build) took the first one's target and ran the binary that opens the first checkout's fixtures: Type.json not found once that checkout was deleted (TestTypeEngineVectorsThroughTheHost/rust). A copy of a checkout kept the deleted path baked in, reproduced with two paths and identical mtimes. The hash now includes the absolute path of each input.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "7d798ced1d",
+          "date": "2026-10-31"
+        }
+      ],
+      "tests": [
+        "internal/testenv/cargotarget_test.go::TestSharedCargoTargetDirIsKeyedByTheAbsoluteRootAsWellAsTheContents",
+        "internal/testenv/cargotarget_test.go::TestSharedCargoTargetDirResolvesARelativeRootToTheSameTarget",
+        "test/extension-conformance/type_engine_vectors_host_test.go::TestTypeEngineVectorsThroughTheHost"
+      ]
+    },
+    {
+      "id": "BF-7db4e68",
+      "title": "The alternate screen's viewport accessors (`ViewportTop`, `IsFollowingOutput`, `ScrollBy`, `ScrollToTop`…",
+      "symptom": "The alternate screen's viewport accessors (`ViewportTop`, `IsFollowingOutput`, `ScrollBy`, `ScrollToTop`, `ScrollToBottom`) read the layout of the last frame under the renderer's lock.",
+      "rootCause": "ViewportTop, IsFollowingOutput, ScrollBy, ScrollToTop and ScrollToBottom read currentLayout through getPrimaryScrollView without t.mu, while a frame (doRender) stores a new layout under t.mu. An extension's tuiAlt host call reaches IsFollowingOutput on its own goroutine, so TestTuiAltScreenAcrossSDKs/ subprocess-python reported a data race between tui_alt_screen.go:1055 (frame write) and :400 (read) in the gate's confrace1 run. made the width and height an atomic snapshot but left the layout pointer unsynchronised.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong display",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "The alternate screen's viewport accessors (`ViewportTop`, `IsFollowingOutput`, `ScrollBy`, `ScrollToTop`, `ScrollToBottom`) read the layout of the last frame under the renderer's lock. An extension's `tuiAlt` host call reads them from its own goroutine while a frame stores a new layout, and the race detector reported the Python SDK's conformance row.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "7db4e68fc4",
+          "date": "2026-10-31"
+        }
+      ],
+      "tests": [
+        "test/extension-conformance/tui_alt_screen_test.go::TestTuiAltScreenAcrossSDKs",
+        "tui/tui_alt_screen_test.go::TestAltScreenViewportAccessorsDoNotRaceWithAFrame"
+      ]
     },
     {
       "id": "BF-7dc9b09",
@@ -18923,26 +19586,31 @@
     },
     {
       "id": "BF-7e16053-2",
-      "title": "A configured local Package whose directory does not exist is now a startup warning in the session, with the…",
-      "symptom": "A configured local Package whose directory does not exist is now a startup warning in the session, with the path it resolved to and the `pig remove` command that drops it, instead of a `[pig] Could not install ... (run pig update when online)` line on stderr (D215, #389).",
+      "title": "A configured local Package whose directory does not exist is now a startup warning in the session, and an…",
+      "symptom": "A configured local Package whose directory does not exist is now a startup warning in the session, and an extension warning for programs that embed PiG, with the path it resolved to and the `pig remove` command that drops it, instead of a `[pig] Could not install ... (run pig update when online)` line on stderr (D215, #389).",
       "rootCause": "pig install recorded every local Package relative to the agent directory as spelled at install, as Pi does. An install through a symlinked PIG_HOME wrote ../../../../../../pkgsrc/my-pkg, and a start through another spelling at another depth resolved it to nothing: the Package's tools vanished with one stderr line.",
       "rootCauseSource": "commit",
       "userImpact": "An operation failed or was rejected",
       "platform": "All platforms",
       "class": "own",
       "fixedIn": "Unreleased",
-      "releaseNote": "A configured local Package whose directory does not exist is now a startup warning in the session, with the path it resolved to and the `pig remove` command that drops it, instead of a `[pig] Could not install ... (run pig update when online)` line on stderr (D215, #389).",
+      "releaseNote": "A configured local Package whose directory does not exist is now a startup warning in the session, and an extension warning for programs that embed PiG, with the path it resolved to and the `pig remove` command that drops it, instead of a `[pig] Could not install ... (run pig update when online)` line on stderr (D215, #389).",
       "origin": "release note",
       "commits": [
         {
           "hash": "7e160533d7",
           "date": "2026-10-29"
+        },
+        {
+          "hash": "9a388567fd",
+          "date": "2026-10-30"
         }
       ],
       "tests": [
         "coding/cli/package_commands_test.go::TestNormalizePackageSourceForSettings_UsesScopeBase",
         "coding/cli/package_local_path_test.go::TestInstalledAbsoluteLocalPackageResolvesThroughAnotherAgentDirSpelling",
-        "coding/cli/package_local_path_test.go::TestStartupWarnsAboutAConfiguredLocalPackageThatDoesNotExist"
+        "coding/cli/package_local_path_test.go::TestStartupWarnsAboutAConfiguredLocalPackageThatDoesNotExist",
+        "coding/resource_loader_extension_files_test.go::TestDefaultResourceLoaderWarnsAboutAConfiguredLocalPackageThatDoesNotExist"
       ]
     },
     {
@@ -19294,6 +19962,29 @@
       ],
       "tests": [
         "internal/codingagent/session_load_oracle_test.go::TestLoadEntriesFromFileMatchesPiOnCorruptedFiles"
+      ]
+    },
+    {
+      "id": "BF-8027980",
+      "title": "Image components render inline in Orca terminals that advertise Kitty graphics (`TERM_PROGRAM=Orca` with…",
+      "symptom": "Image components render inline in Orca terminals that advertise Kitty graphics (`TERM_PROGRAM=Orca` with `ORCA_IMAGE_PROTOCOL=kitty`) instead of falling back to text.",
+      "rootCause": "TERM_PROGRAM=Orca with ORCA_IMAGE_PROTOCOL=kitty gets inline Kitty images, true color and hyperlinks; Orca without the advertisement keeps the text fallback, and the tmux and screen guards still win. Checked after Herdr and Rex and before the Kitty variables, as in Pi.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong display",
+      "platform": "All platforms",
+      "class": "pi-port",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Image components render inline in Orca terminals that advertise Kitty graphics (`TERM_PROGRAM=Orca` with `ORCA_IMAGE_PROTOCOL=kitty`) instead of falling back to text. Orca releases that do not advertise it keep the text fallback. Carried forward from Pi f09d01b8 (earendil-works/pi#9329), past the 1.4.0+b3a29f11 pin.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "8027980301",
+          "date": "2026-10-30",
+          "pr": "9329"
+        }
+      ],
+      "tests": [
+        "tui/terminal_image_orca_test.go::TestDetectCapabilitiesOrca"
       ]
     },
     {
@@ -19732,6 +20423,30 @@
       ]
     },
     {
+      "id": "BF-82ca8da",
+      "title": "On Windows, the host reports the load error of a Node extension that exits right after it sends the error",
+      "symptom": "The host could report `process_exited` and lose the error.",
+      "rootCause": "The pipe driver sets the event that the host tested for a client later than the client's open returns, so a client whose event was not yet set was not counted.",
+      "rootCauseSource": "release note",
+      "userImpact": "Lost or altered data",
+      "platform": "Windows",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "On Windows, the host reports the load error of a Node extension that exits right after it sends the error. A Node extension whose factory fails connects to its named pipe, writes the error, closes and exits, and the host looks at the pipe only after the exit. Before this fix, the host could report `process_exited` and lose the error. The pipe driver sets the event that the host tested for a client later than the client's open returns, so a client whose event was not yet set was not counted. The host now asks the pipe's own state, which the open changes before it returns.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "82ca8da822",
+          "date": "2026-10-30"
+        }
+      ],
+      "tests": [
+        "coding/extension/host/subprocess/accept_client_test.go::TestAwaitConnectionHonorsAConnectionMadeBeforeTheExit",
+        "coding/extension/host/subprocess/accept_client_windows_test.go::TestAwaitConnectionHonorsAClientBeforeItsConnectEventIsSet",
+        "coding/extension/host/subprocess/accept_client_windows_test.go::TestPipeListenerInterruptKeepsAClientBeforeItsConnectEventIsSet"
+      ]
+    },
+    {
       "id": "BF-82d1808",
       "title": "Subprocess extensions no longer slow down each streamed token in long sessions: the state sent before each…",
       "symptom": "Subprocess extensions no longer slow down each streamed token in long sessions: the state sent before each event reuses the context usage estimate and the session name until the session changes.",
@@ -20128,6 +20843,33 @@
       ]
     },
     {
+      "id": "BF-85f21a9",
+      "title": "In fullscreen mode a focused selection list takes every viewport key, not only the page keys, so `Ctrl+Home`…",
+      "symptom": "In fullscreen mode a focused selection list takes every viewport key, not only the page keys, so `Ctrl+Home` in a model, session or tree selector no longer scrolls the transcript behind it.",
+      "rootCause": "D155 already pages every selection list and lets a focused list keep the page keys. Pi merged the change as and this brings the rest of PiG to that commit:",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "pi-port",
+      "fixedIn": "Unreleased",
+      "releaseNote": "In fullscreen mode a focused selection list takes every viewport key, not only the page keys, so `Ctrl+Home` in a model, session or tree selector no longer scrolls the transcript behind it. The `/mcp` manager takes them while a menu list is shown, a searchable settings submenu pages with `PageUp` and `PageDown` instead of sending them to its search box, and the session selector in rename mode and the tree selector while a label is edited give the keys back to their input. The public `tui` names now follow Pi: `GetSelectPageIndex` replaces `PageSelectionIndex`, and `ViewportInputCapturer`, `CapturesViewportInput` replace `SelectPageInputCapturer`, `CapturesSelectPageInput`. Carried forward from Pi 3bae8527 (earendil-works/pi#7629), past the 1.4.0+b3a29f11 pin.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "85f21a9d37",
+          "date": "2026-10-30",
+          "pr": "7629"
+        }
+      ],
+      "tests": [
+        "coding/mcpext/manager_test.go::TestMcpManagerViewMenuCapturesViewportInputOnlyWhileAListIsShown",
+        "internal/codingagent/select_page_keys_test.go::TestSessionSelectorStopsCapturingWhileRenaming",
+        "tui/select_page_keys_test.go::TestAltScreenDefersEveryViewportKeyToACapturingFocus",
+        "tui/select_page_keys_test.go::TestSelectSubmenuPagesASearchableList",
+        "tui/select_page_keys_test.go::TestTreeSelectorCapturesViewportInputExceptWhileEditingALabel"
+      ]
+    },
+    {
       "id": "BF-860776a",
       "title": "A Google provider built from a model id without catalog metadata now sends its own earlier thinking blocks as…",
       "symptom": "The missing API made every earlier turn look like another model and the signature was dropped (found by the provider-wire parity scenario against the pinned Pi).",
@@ -20425,6 +21167,33 @@
       ]
     },
     {
+      "id": "BF-8897a1b",
+      "title": "Interactive startup lists skill diagnostics under `[Skill warnings]` instead of `[Skill conflicts]`; most of…",
+      "symptom": "Interactive startup lists skill diagnostics under `[Skill warnings]` instead of `[Skill conflicts]`; most of them are validation warnings for skills that still load, not name collisions.",
+      "rootCause": "Interactive startup listed every skill diagnostic under `[Skill conflicts]`, though most are validation warnings for skills that still load. The heading is now `[Skill warnings]`; prompt and theme headings are unchanged. Scenario startup/09 asserted the old heading on both sides; it now asserts each side's own spelling and normalizes only that heading (D217).",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "pi-port",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Interactive startup lists skill diagnostics under `[Skill warnings]` instead of `[Skill conflicts]`; most of them are validation warnings for skills that still load, not name collisions. Carried forward from Pi f14813e9 (earendil-works/pi#11521), past the 1.4.0+b3a29f11 pin.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "8897a1b41f",
+          "date": "2026-10-30",
+          "pr": "11566"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/interactive_resource_test.go::TestResourceCollisionDiagnostics_SkillIncludesSourceInfo",
+        "internal/codingagent/loaded_resources_diagnostics_test.go::TestShowLoadedResourcesListingThenDiagnostics",
+        "internal/codingagent/loaded_resources_quiet_upstream_test.go::TestLoadedResourcesQuietReloadUpstream",
+        "internal/codingagent/skill_collision_test.go::TestShowLoadedResourcesSkillConflicts",
+        "internal/codingagent/skill_file_metadata_test.go::TestSkillFileMetadataRetainsCollisionDiagnostics"
+      ]
+    },
+    {
       "id": "BF-893ff97",
       "title": "A `read` call whose `offset` or `limit` arrives as a string shows the right line range (`:25-37`, not…",
       "symptom": "A `read` call whose `offset` or `limit` arrives as a string shows the right line range (`:25-37`, not `:25-2512`) in the TUI and in exported HTML (Pi #9887).",
@@ -20512,6 +21281,43 @@
       "tests": [
         "test/docs-drift/changelog_fragments_test.go::TestChangelogFragmentsFollowTheRules",
         "test/docs-drift/public_claims_test.go::TestPublicClaimsMatchTheEvidence"
+      ]
+    },
+    {
+      "id": "BF-8a38027",
+      "title": "Windows paths are compared case-insensitively",
+      "symptom": "Windows paths are compared case-insensitively.",
+      "rootCause": "Adds resolvepath.ComparisonKey, PathsEqual and IsPathWithin (Pi getPathComparisonKey, pathsEqual, isPathWithin) and uses them where Pi did: the trust store and the user .agents/skills exclusion, resource path keys (ResourcePathKey is getResourcePathKey), skill scope and dedup, resource loader source matching and path merging, the loaded extension set, session cwd and default session directory matching, the session import self-check, worktree AGENTS.md shadowing and local package identity. Windows behavior is tested by a simulated platform (resolvepath.OverridePlatform).",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "Windows",
+      "class": "pi-port",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Windows paths are compared case-insensitively. `c:\\Users\\me` and `C:\\Users\\me` name one directory, but exact string comparison treated them as two: with a working directory and a home directory that differ only in casing, global skills loaded as project skills and every one was reported as a name collision, `~/.agents/skills` counted as a project resource that needs trust, saved trust decisions in `trust.json` were not found, `--continue` and resume by id hid sessions recorded under another casing of the working directory, and `pig remove` did not match a package configured under another casing. Resource, extension and skill path keys, source matching, local package identity, the session-import self-check and the worktree `AGENTS.md` shadowing now use one comparison key. Carried forward from Pi 1be312b4 (earendil-works/pi#10488), past the 1.4.0+b3a29f11 pin.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "8a38027ac9",
+          "date": "2026-10-30",
+          "pr": "10488"
+        }
+      ],
+      "tests": [
+        "coding/extension/host/subprocess/startup_origin_windows_paths_test.go::TestFinalSetOriginIgnoresPathCasingOnWindows",
+        "coding/pigletbuild/records_identity_stability_test.go::TestRecordSourceIdentityBytesDoNotChangeWhenThePlatformFoldsCase",
+        "coding/resource_loader_windows_paths_test.go::TestResourceLoaderPathMatchingIgnoresCaseOnWindows",
+        "coding/session_import_windows_paths_test.go::TestImportDestinationRecognizesAStoredSessionInOtherCasingOnWindows",
+        "coding/source/identity_stability_test.go::TestLocalIdentityKeepsItsSpellingWhateverThePlatformFoldsCase",
+        "internal/codingagent/context_files_windows_paths_test.go::TestShadowedContextFileOfComparesCaseInsensitivelyOnWindows",
+        "internal/codingagent/resource_path_key_case_test.go::TestLoadSkillsClassifiesAnExplicitPathUnderTheUserSkillsDirectoryRegardlessOfCasingOnWindows",
+        "internal/codingagent/resource_path_key_case_test.go::TestResourcePathKeyFoldsFilePathCasingOnWindowsButNotSyntheticIdentifiers",
+        "internal/codingagent/session_windows_paths_test.go::TestSessionCwdAndDefaultDirectoryComparisonsIgnoreCaseOnWindows",
+        "internal/codingagent/trust_manager_windows_paths_test.go::TestHasTrustRequiringProjectResourcesIgnoresTheUserSkillsDirWhenHomeDiffersOnlyByCaseOnWindows",
+        "internal/codingagent/trust_manager_windows_paths_test.go::TestProjectTrustStoreMatchesSavedDecisionsRegardlessOfCasingOnWindows",
+        "internal/packagemanager/package_identity_case_test.go::TestPackageSourcesMatchIgnoresLocalPathCasingOnWindows",
+        "internal/resolvepath/path_compare_test.go::TestIsPathWithinMatchesWholePathSegments",
+        "internal/resolvepath/path_compare_test.go::TestPathComparisonKeepsCasingOnCaseSensitivePlatforms",
+        "internal/resolvepath/path_compare_test.go::TestPathComparisonTreatsDriveLettersAndComponentsCaseInsensitivelyOnWindows"
       ]
     },
     {
@@ -21270,6 +22076,29 @@
       "tests": [
         "internal/codingagent/settings_key_order_test.go::TestSaveSettingsPatchKeepsTheFileKeyOrder",
         "internal/codingagent/settings_key_order_test.go::TestSaveSettingsPatchReplacesInPlace"
+      ]
+    },
+    {
+      "id": "BF-8d6fb83",
+      "title": "A bare URL in Markdown ends at CJK punctuation, so `https://example.com。后面的中文` links…",
+      "symptom": "A bare URL in Markdown ends at CJK punctuation, so `https://example.com。后面的中文` links `https://example.com` and keeps the rest as text.",
+      "rootCause": "A bare URL ends at the first CJK punctuation mark and the text after it stays plain text; explicit links, angle autolinks and CJK letters are unchanged. The tokenizer hunk is the one the Pi follow branch carries ().",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "pi-port",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A bare URL in Markdown ends at CJK punctuation, so `https://example.com。后面的中文` links `https://example.com` and keeps the rest as text. The URL took the punctuation and the text after it into the link. Carried forward from Pi fa168515 (earendil-works/pi#10933), past the 1.4.0+b3a29f11 pin.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "8d6fb83fb2",
+          "date": "2026-10-30",
+          "pr": "10933"
+        }
+      ],
+      "tests": [
+        "tui/markdown_cjk_url_test.go::TestMarkdownBareURLStopsAtCJKPunctuationPiCases"
       ]
     },
     {
@@ -23679,6 +24508,32 @@
       ]
     },
     {
+      "id": "BF-94284ac",
+      "title": "`pig -e git:\u003crepo\u003e@\u003cbranch\u003e` no longer stays on its first checkout",
+      "symptom": "`pig -e git:\u003crepo\u003e@\u003cbranch\u003e` no longer stays on its first checkout.",
+      "rootCause": "A temporary -e git source with a ref was treated as pinned and never refreshed, so git:host/repo@main stayed on its first checkout. Refresh refs too, skipping only a commit-hash ref that is already checked out.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "pi-port",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`pig -e git:\u003crepo\u003e@\u003cbranch\u003e` no longer stays on its first checkout. A temporary Git source with a ref is now fetched and reset to the ref on each start and `/reload`, as an unpinned source is; a commit-hash ref that is already checked out is not fetched. Offline mode and a failed refresh keep the cached checkout. Carried forward from Pi bec60c54 (earendil-works/pi#11375), past the 1.4.0+b3a29f11 pin.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "94284ac7cf",
+          "date": "2026-10-30",
+          "pr": "11375"
+        }
+      ],
+      "tests": [
+        "coding/cli/package_temporary_refresh_test.go::TestTemporaryGitSourcePinnedToAnotherCommitIsRefreshedUnlessOffline",
+        "coding/cli/package_temporary_refresh_test.go::TestTemporaryGitSourcePinnedToTheCheckedOutCommitIsNotRefreshed",
+        "coding/cli/package_temporary_refresh_test.go::TestTemporaryGitSourceWithABranchRefIsRefreshed",
+        "coding/cli/package_temporary_upstream_test.go::TestTemporaryGitCacheBoundaries"
+      ]
+    },
+    {
       "id": "BF-942bc6c",
       "title": "fix(coding-agent): preserve pi.exec spawn errors (Pi)",
       "symptom": "fix(coding-agent): preserve pi.exec spawn errors (Pi)",
@@ -24208,6 +25063,31 @@
       ],
       "tests": [
         "durable/core/driver/harness_read_only_core_test.go::TestReadOnlyHarnessCore"
+      ]
+    },
+    {
+      "id": "BF-98a21df",
+      "title": "Tool output bounded by `chord/output`, the durable core and the Cloudflare host now loses whole ANSI escape…",
+      "symptom": "Tool output bounded by `chord/output`, the durable core and the Cloudflare host now loses whole ANSI escape sequences (strings up to BEL or ST, CSI, short `ESC x` forms), not only their ESC bytes, which left `[31m` in transcripts; a sequence split across chunks goes too.",
+      "rootCause": "SanitizeOutput (chord/output, durable/core/turn) and sanitizeOutput (durable/core/host/cf) delete whole 7-bit escape sequences before the control characters, as Pi's ESCAPE_SEQUENCE does.",
+      "rootCauseSource": "commit",
+      "userImpact": "Lost or altered data",
+      "platform": "All platforms",
+      "class": "pi-port",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Tool output bounded by `chord/output`, the durable core and the Cloudflare host now loses whole ANSI escape sequences (strings up to BEL or ST, CSI, short `ESC x` forms), not only their ESC bytes, which left `[31m` in transcripts; a sequence split across chunks goes too. Carried forward from Pi 50d9f823 (earendil-works/pi#11604), past the 1.4.0+b3a29f11 pin.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "98a21dfb02",
+          "date": "2026-10-30",
+          "pr": "11604"
+        }
+      ],
+      "tests": [
+        "chord/output/output_test.go::TestToolOutputBounds",
+        "durable/core/host/cf/test/output-sanitize.test.ts",
+        "durable/core/turn/output_test.go::TestSanitizeOutputRemovesWholeEscapeSequences"
       ]
     },
     {
@@ -24980,6 +25860,29 @@
         }
       ],
       "tests": []
+    },
+    {
+      "id": "BF-9df8c5c",
+      "title": "`--session \u003cid\u003e` and `--fork \u003cid\u003e` with an exact session ID now read only the session headers of the…",
+      "symptom": "`--session \u003cid\u003e` and `--fork \u003cid\u003e` with an exact session ID now read only the session headers of the project's session directory, as Pi does, and list sessions only to match an ID prefix or to search other projects.",
+      "rootCause": "resolveSessionArgument listed and fully decoded every session before matching an exact ID. It now tries the header-only FindByID first, as Pi's main.ts resolveSessionPath does, and lists sessions only for prefix matches and the cross-project search.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`--session \u003cid\u003e` and `--fork \u003cid\u003e` with an exact session ID now read only the session headers of the project's session directory, as Pi does, and list sessions only to match an ID prefix or to search other projects. Resolving an exact ID no longer decodes every session first: with 20 sessions of 1000 messages it allocated 21.7 MB, growing with the sessions, and it now allocates a size-independent amount.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "9df8c5c8f5",
+          "date": "2026-10-30"
+        }
+      ],
+      "tests": [
+        "coding/cli/startup_session_exact_id_norace_test.go::TestScalingResolveExactSessionIDWithSessionSize",
+        "coding/cli/startup_session_exact_id_test.go::TestResolveSessionArgumentRows"
+      ]
     },
     {
       "id": "BF-9eda512",
@@ -26165,6 +27068,31 @@
       ]
     },
     {
+      "id": "BF-a4e084f",
+      "title": "Fullscreen mode no longer leaves the `Model scope: …` startup notice in the shell after exit; it shows in…",
+      "symptom": "Fullscreen mode no longer leaves the `Model scope: …` startup notice in the shell after exit; it shows in the header instead.",
+      "rootCause": "Fullscreen renders on the alternate screen, so the startup `Model scope: ...` notice printed to stdout stayed in the shell after exit. Fullscreen now adds it to the header container (themed text plus a spacer); the main-screen renderer still prints it before the UI starts. modelScopeLine becomes getModelScopeNotice, as in Pi. Production hunks lifted from follow-pi-next.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "pi-port",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Fullscreen mode no longer leaves the `Model scope: …` startup notice in the shell after exit; it shows in the header instead. Carried forward from Pi 7391dbb0 (earendil-works/pi#11508), past the 1.4.0+b3a29f11 pin.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "a4e084f8da",
+          "date": "2026-10-30",
+          "pr": "11508"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/startup_hints_test.go::TestFullscreenModelScopeNoticeHiddenWithStartupDetails",
+        "internal/codingagent/startup_hints_test.go::TestFullscreenModelScopeNoticeRendersInHeader",
+        "internal/codingagent/startup_hints_test.go::TestModelScopeLineMatchesPiInit"
+      ]
+    },
+    {
       "id": "BF-a4e2637",
       "title": "fix(durable/core): revert the settings notice (ABI 12); the core resolves the settings from the snapshot the…",
       "symptom": "fix(durable/core): revert the settings notice (ABI 12); the core resolves the settings from the snapshot the host sends (D206)",
@@ -27168,6 +28096,39 @@
       "tests": [
         "coding/cli/status_command_test.go::TestStatusStillFailsOnDuplicateNonExtensionResourceIdentity",
         "coding/cli/status_command_test.go::TestStatusWarnsOnDuplicatePackageExtensionIdentity"
+      ]
+    },
+    {
+      "id": "BF-ad6d659",
+      "title": "The durable scheduler's per-commit work no longer grows with the number of conversations: after a commit it…",
+      "symptom": "Every commit re-walked every conversation read in the last `contextRetentionMs`.",
+      "rootCause": "After a commit that changed a task, the scheduler re-checked every conversation with a kept context range by walking its subtree, scanned them again for the next expiry, and wake() scanned every live task. A commit now settles only the conversations above the tasks that became live or ended, kept ranges expire from an index ordered by idleSince (re-sorted when the clock goes back; zero retention drops every idle one), and wake() reads the sleeping tasks and scans live ones only while nothing runs. The Harness (durable/harness) and the core (durable/core/session) both change; the core's wake() already did.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "pi-port",
+      "fixedIn": "Unreleased",
+      "releaseNote": "The durable scheduler's per-commit work no longer grows with the number of conversations: after a commit it re-checks idleness only for the conversations above the tasks that became live or ended (a task whose chain is not loaded yet is settled when the chain loads), expires idle context ranges from an index ordered by `idleSince`, and `wake()` takes the earliest sleep from the sleeping tasks and scans the live tasks only while nothing runs. Before, every commit re-walked every conversation read in the last `contextRetentionMs`. A task run with 4,000 conversations keeping a context range took 3.2 ms and 8,800 allocations in the Harness, and about 4.2 ms in the core; it now costs what it does with 100. Carried forward from Pi 35dfa757, past the 1.4.0+b3a29f11 pin.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "ad6d659c09",
+          "date": "2026-10-30"
+        }
+      ],
+      "tests": [
+        "durable/core/session/sched_idle_scopes_test.go::TestAKeptContextGoesBusyWithWorkBelowItAndIdleAgainWhenItEnds",
+        "durable/core/session/sched_idle_scopes_test.go::TestAKeptContextKeepsItsExpiryWhenReadAgain",
+        "durable/core/session/sched_idle_scopes_test.go::TestATaskChangeSettlesTheConversationsAboveItWithoutACheckOfEveryScope",
+        "durable/core/session/sched_idle_scopes_test.go::TestEndingATaskCostsTheSameAtAnyNumberOfKeptContexts",
+        "durable/core/session/sched_idle_scopes_test.go::TestKeptContextsAreAllDroppedWhenRetentionBecomesZero",
+        "durable/core/session/sched_idle_scopes_test.go::TestKeptContextsExpireInIdleOrderWhenTheClockGoesBack",
+        "durable/harness/harness_tasks_test.go::TestPublicationAtAdoption",
+        "durable/harness/scheduler_idle_scaling_bench_test.go::TestWakeWhileATaskRunsCostsTheSameAtAnyNumberOfLiveTasks",
+        "durable/harness/scheduler_idle_scopes_test.go::TestIdleWaitersByScope",
+        "durable/harness/scheduler_idle_scopes_test.go::TestIncrementalIdleStateEqualsAFullRecomputeAfterEveryStepOfRandomNestedWork",
+        "durable/harness/scheduler_idle_scopes_test.go::TestKeptContextRanges",
+        "durable/harness/scheduler_idle_scopes_test.go::TestWakeReadsSleepingTasksAndScansLiveOnesOnlyWhileNothingRuns"
       ]
     },
     {
@@ -28680,10 +29641,7 @@
       "rootCauseSource": "divergence record",
       "userImpact": "Lost or altered data",
       "platform": "All platforms",
-      "class": "ahead-of-pi",
-      "divergence": "D173",
-      "piIssue": "https://github.com/earendil-works/pi/issues/10816",
-      "removeWhen": "Pi's tokenizer keeps Chinese, Japanese and Korean characters.",
+      "class": "own",
       "fixedIn": "0.5.0",
       "releaseNote": "`tool_search` and codemode tool search match Chinese, Japanese and Korean queries: each such character is a search term, where Pi's tokenizer dropped them (earendil-works/pi#10816; D173). Text in other scripts tokenizes as before.",
       "origin": "release note",
@@ -28694,8 +29652,6 @@
         }
       ],
       "tests": [
-        "coding/extension/builtin/toolsearch/toolsearch_cjk_test.go::TestBm25RankerFindsAChineseQueryInChineseToolMetadata",
-        "coding/extension/builtin/toolsearch/toolsearch_cjk_test.go::TestTokenizeKeepsCJKCharactersAsTerms",
         "coding/extension/builtin/toolsearch/toolsearch_oracle_test.go::TestToolSearchMatchesPi"
       ]
     },
@@ -29327,6 +30283,28 @@
       ],
       "tests": [
         "durable/core/jv/append_concat_test.go::TestAppendConcatJoinsSurrogatesAtTheBoundary"
+      ]
+    },
+    {
+      "id": "BF-bf9911e",
+      "title": "Append ops from the Chord delta tracker and `DiffRevisions` own their text, as under Pi, instead of holding a…",
+      "symptom": "Append ops from the Chord delta tracker and `DiffRevisions` own their text, as under Pi, instead of holding a cut of the whole string they were taken from.",
+      "rootCause": "An append op held a Go substring of the whole string it was cut from, so ops from 10,000 commits of 8-byte appends to a growing text retained 430 MB for 80 KB of payload. emitChangedValue and DiffRevisions.emitString now clone the text, as Pi's ownedSlice does. Retention at 10,000 commits drops to 1.8 MB.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Append ops from the Chord delta tracker and `DiffRevisions` own their text, as under Pi, instead of holding a cut of the whole string they were taken from. A delta chain, watch backlog or replica built from appends to a growing text no longer keeps one copy of the text per commit alive (10,000 commits of 8-byte appends retained 430 MB for 80 KB of payload).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "bf9911e77c",
+          "date": "2026-10-30"
+        }
+      ],
+      "tests": [
+        "chord/delta/op_text_retention_norace_test.go::TestAppendOpsDoNotRetainTheirSourceText"
       ]
     },
     {
@@ -30256,6 +31234,31 @@
       ],
       "tests": [
         "internal/codingagent/session_manager_test.go::TestSessionManagerForkFromFile_CopiesAllEntriesUnchangedIntoTheForkedSession"
+      ]
+    },
+    {
+      "id": "BF-c6f6953",
+      "title": "Wrapped text no longer starts the next line with a space when a styled word ends exactly at the wrap width…",
+      "symptom": "Wrapped text no longer starts the next line with a space when a styled word ends exactly at the wrap width, and strikethrough no longer runs into the right padding of a wrapped line: the wrap closes `\\x1b[29m` at line end like underline and opens it again on the next line.",
+      "rootCause": "The code that closes a styled word attaches to the following space, so wrapping took that space for a word and moved it to the next line, and strikethrough ran into the padding of a wrapped line. A token is whitespace once its escape codes are skipped, a dropped space keeps its codes on the wrapped line, strikethrough is closed at line end like underline, and trailing spaces are trimmed before the line-end reset.",
+      "rootCauseSource": "commit",
+      "userImpact": "Lost or altered data",
+      "platform": "All platforms",
+      "class": "pi-port",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Wrapped text no longer starts the next line with a space when a styled word ends exactly at the wrap width, and strikethrough no longer runs into the right padding of a wrapped line: the wrap closes `\\x1b[29m` at line end like underline and opens it again on the next line. The text-wrapping helpers in the Go, Rust, Python and Lisp extension SDKs wrap the same way. Carried forward from Pi 2ce9d527 (earendil-works/pi#10925), past the 1.4.0+b3a29f11 pin.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "c6f6953367",
+          "date": "2026-10-30",
+          "pr": "10925"
+        }
+      ],
+      "tests": [
+        "tui/markdown_wrap_boundary_test.go::TestMarkdownStyledWordsAtTheWrapBoundaryPiCase",
+        "tui/widthx/wrap_boundary_test.go::TestLineEndResetClosesStrikethrough",
+        "tui/widthx/wrap_boundary_test.go::TestWrapTextWithAnsiStyledWordsAtTheWrapBoundaryPiCases"
       ]
     },
     {
@@ -31344,6 +32347,31 @@
         "coding/extension/host/subprocess/host_test.go::TestHost_BuildExtension_Tools",
         "coding/extension/host/subprocess/host_test.go::TestProtocol_RegisterRoundTrip",
         "coding/extension/host/subprocess/registration_fields_wiring_test.go::TestRegistrationDeclarationsKeepEveryField"
+      ]
+    },
+    {
+      "id": "BF-cf6c634",
+      "title": "The `env` daemon kills the commands it started when it receives `SIGTERM`, `SIGINT` or `SIGHUP`, then exits…",
+      "symptom": "`Connection.Close()` sends `SIGTERM`, which used to end the daemon before its kill-all ran and left running commands, and the processes they started, behind as orphans.",
+      "rootCause": "The daemon takes SIGTERM, SIGINT and SIGHUP, kills every command and terminal it started, and exits with 128 + the signal, as Pi's sys::on_exit_signal does. Connection.Close() sends SIGTERM, which used to end the daemon before the kill-all ran. Production hunks and the signal tests are lifted from next; a test with a real process tree (a shell and two background sleeps) shows that the children die too.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "Windows",
+      "class": "pi-port",
+      "fixedIn": "Unreleased",
+      "releaseNote": "The `env` daemon kills the commands it started when it receives `SIGTERM`, `SIGINT` or `SIGHUP`, then exits with status 128 plus the signal. `Connection.Close()` sends `SIGTERM`, which used to end the daemon before its kill-all ran and left running commands, and the processes they started, behind as orphans. On Windows nothing changes: the daemon cannot catch `TerminateProcess`. Carried forward from Pi b6d5c2ec, past the 1.4.0+b3a29f11 pin.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "cf6c63454e",
+          "date": "2026-10-30"
+        }
+      ],
+      "tests": [
+        "env/daemon/sys_windows_test.go::TestWindowsDaemonHandlesNoExitSignal",
+        "env/remote_daemon_signal_test.go::TestConnectionCloseKillsRunningCommands",
+        "env/remote_daemon_signal_test.go::TestDaemonKillsItsCommandsOnTerminationSignals",
+        "env/remote_daemon_signal_test.go::TestDaemonTerminationKillsTheWholeProcessTreeOfACommand"
       ]
     },
     {
@@ -33261,6 +34289,33 @@
         "tui/markdown_latex_width_test.go::TestMarkdownDisplayMathWiderThanTheContentWidthFallsBackToRawSource",
         "tui/markdown_latex_width_test.go::TestMarkdownDisplayMathWidthFallbackMatchesPi",
         "tui/markdown_unicode_space_oracle_test.go::TestMarkdownUnicodeSpaceLinesMatchPi"
+      ]
+    },
+    {
+      "id": "BF-da12a5a",
+      "title": "A saved \"Do not trust\" decision is no longer ignored for a project without trust-requiring resources, for…",
+      "symptom": "A saved \"Do not trust\" decision is no longer ignored for a project without trust-requiring resources, for example a folder with only `AGENTS.md`.",
+      "rootCause": "A saved Do not trust decision was ignored when the project held no trust-requiring resources (an AGENTS.md-only folder): resolveProjectTrusted and the startup build auto-trusted it. The saved decision now takes precedence over auto-trust in both, and pig status/diagnose report it. The D211 path (ContextFilesTrustedOnly) already reached the saved decision through the prompt path; a test pins it.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "pi-port",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A saved \"Do not trust\" decision is no longer ignored for a project without trust-requiring resources, for example a folder with only `AGENTS.md`. `pig` auto-trusted such a project whatever `trust.json` held, so `ctx.isProjectTrusted()` returned true and the package commands treated it as trusted. A saved decision now takes precedence, and auto-trust applies only when none is saved; `pig status` and `pig diagnose` report the saved decision too. Carried forward from Pi 31ade0e0 (earendil-works/pi#10947), past the 1.4.0+b3a29f11 pin.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "da12a5a16b",
+          "date": "2026-10-30",
+          "pr": "10947"
+        }
+      ],
+      "tests": [
+        "coding/cli/introspection_truth_test.go::TestReportProjectTrustNamesTheDeciding",
+        "coding/cli/project_trust_saved_decision_test.go::TestResolveProjectTrustedHonorsASavedDecisionBeforeAutoTrust",
+        "coding/cli/project_trust_saved_decision_test.go::TestResolveProjectTrustedHonorsASavedDecisionWhenContextFilesNeedTrust",
+        "coding/cli/project_trust_saved_decision_test.go::TestStartupBuildHonorsASavedDecisionForAProjectWithoutTrustRequiringResources",
+        "internal/codingagent/reload_trust_models_test.go::TestImplicitProjectTrustAfterReload"
       ]
     },
     {
@@ -36241,6 +37296,28 @@
       ]
     },
     {
+      "id": "BF-e231cc8",
+      "title": "A Node extension that fails to start or crashes no longer dies without saying why",
+      "symptom": "A Node extension that fails to start or crashes no longer dies without saying why.",
+      "rootCause": "The runtime wrote its error to stderr and exited in the same turn, and because PiG reads that stderr through a pipe, Node could drop a long message (a stack trace past the pipe's 64 KiB buffer) before it was sent.",
+      "rootCauseSource": "release note",
+      "userImpact": "Crash, hang or runaway process",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A Node extension that fails to start or crashes no longer dies without saying why. The runtime wrote its error to stderr and exited in the same turn, and because PiG reads that stderr through a pipe, Node could drop a long message (a stack trace past the pipe's 64 KiB buffer) before it was sent. The runtime now exits once the message has been written.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "e231cc8441",
+          "date": "2026-10-31"
+        }
+      ],
+      "tests": [
+        "coding/extension/host/subprocess/node_exit_stderr_test.go::TestNodeLauncherCrashReportSurvivesPipe"
+      ]
+    },
+    {
       "id": "BF-e24487e",
       "title": "fix(cli): PIG_VERSION_FORMAT=pi prints the pinned Pi package version",
       "symptom": "fix(cli): PIG_VERSION_FORMAT=pi prints the pinned Pi package version",
@@ -36487,6 +37564,33 @@
       ]
     },
     {
+      "id": "BF-e4f8e35",
+      "title": "OpenRouter's `~anthropic/claude-*-latest` aliases (`~anthropic/claude-fable-latest`, `-haiku-`, `-opus-` and…",
+      "symptom": "OpenRouter's `~anthropic/claude-*-latest` aliases (`~anthropic/claude-fable-latest`, `-haiku-`, `-opus-` and `-sonnet-latest`) no longer lose Claude's earlier thinking after each tool call.",
+      "rootCause": "Pi sends the ~anthropic/claude-*-latest aliases through the Anthropic Messages API with adaptive thinking (generate-models.ts isAnthropicAdaptiveThinkingModel, openrouter-catalog.ts). The published catalog the generator reads predates it, so cmd/gen-models/carried_fixes.go gets a row that is a no-op on a source that already has the fix, and ai/models_generated.go is regenerated. Tests that compare the catalog with the pinned Pi read its row through the carried edit (D217); Pi deleted openrouter-cache-control-models.test.ts, so its Go port now pins the new behaviour.",
+      "rootCauseSource": "commit",
+      "userImpact": "Lost or altered data",
+      "platform": "All platforms",
+      "class": "pi-port",
+      "fixedIn": "Unreleased",
+      "releaseNote": "OpenRouter's `~anthropic/claude-*-latest` aliases (`~anthropic/claude-fable-latest`, `-haiku-`, `-opus-` and `-sonnet-latest`) no longer lose Claude's earlier thinking after each tool call. They used the Chat Completions API, where the thinking signature was dropped and OpenRouter then ignored the unsigned thinking; they now use the Anthropic Messages API with adaptive thinking, like the versioned Claude models. Carried forward from Pi 44f6851b (earendil-works/pi#9534), past the 1.4.0+b3a29f11 pin.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "e4f8e35773",
+          "date": "2026-10-30",
+          "pr": "9534"
+        }
+      ],
+      "tests": [
+        "ai/anthropic_adaptive_models_upstream_test.go::TestAnthropicUpstreamAdaptiveThinkingModels",
+        "ai/builtin_catalog_upstream_test.go::TestBuiltinCatalogsMatchPinnedProviderDataModules",
+        "ai/catalog_options_upstream_test.go::TestOpenRouterCacheControlModels",
+        "ai/catalog_published_test.go::TestGeneratedCatalogsMatchPublishedPackage",
+        "cmd/gen-models/carried_fixes_test.go::TestCarriedOpenRouterAnthropicLatestMessages"
+      ]
+    },
+    {
       "id": "BF-e51bb37",
       "title": "OpenAI Responses streams follow Pi's `processResponsesStream` on malformed and edge events, checked against…",
       "symptom": "OpenAI Responses streams follow Pi's `processResponsesStream` on malformed and edge events, checked against the pinned Pi in a new oracle test: a failed response records only its status (no usage or response id), `end_turn` is recorded only for Codex, an `error` event without a code or message reads `Error Code undefined: undefined`, a `response.created` or terminal event without a response reports Pi's TypeError text, and a reasoning signature backfilled with `encrypted_content` keeps its original key order.",
@@ -36585,11 +37689,7 @@
           "date": "2026-10-21"
         }
       ],
-      "tests": [
-        "durable/core/driver/schema_backup_core_test.go::TestOpenHarnessCopiesAnOlderSchemaBeforeUpgrading",
-        "durable/storage/sqlite/node/schema_backup_test.go::TestOpenNodeSqliteStorageCopiesAnOlderSchemaBeforeUpgrading",
-        "durable/storage/sqlite/node/schema_backup_test.go::TestOpenNodeSqliteStorageDoesNotCopyANewOrCurrentStore"
-      ]
+      "tests": []
     },
     {
       "id": "BF-e55cdc2",
@@ -37044,6 +38144,33 @@
         "tui/markdown_streaming_reuse_test.go::TestStreamedMarkdownWithAForeignThemeCallsItsStylesAgain",
         "tui/markdown_streaming_reuse_test.go::TestStreamedMarkdownWrapsOnlyChangedLines",
         "tui/windowed_render_test.go::TestWindowedFramesEqualWholeFrames"
+      ]
+    },
+    {
+      "id": "BF-e90f6c8-2",
+      "title": "Paths under a directory whose name merely starts with the home directory's (`/users/bob2/x` with home…",
+      "symptom": "Paths under a directory whose name merely starts with the home directory's (`/users/bob2/x` with home `/users/bob`) are no longer shown as `~2/x` in tool calls, the loaded-resource listing, the session selector and the tree selector; only a leading home directory, on a path-segment boundary, shortens to `~`.",
+      "rootCause": "Part (a) of Pi's commit. A new resolvepath.ShortenHomePath replaces only a leading home directory on a segment boundary (equal paths give ~, relative paths and an empty home come back unchanged), and the tool-call renderer, the loaded-resource listing, the session selector, the tree selector and the startup banner use it. The config selector's formatBaseDir was already anchored.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "pi-port",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Paths under a directory whose name merely starts with the home directory's (`/users/bob2/x` with home `/users/bob`) are no longer shown as `~2/x` in tool calls, the loaded-resource listing, the session selector and the tree selector; only a leading home directory, on a path-segment boundary, shortens to `~`. Carried forward from Pi 1be312b4 (earendil-works/pi#10488), past the 1.4.0+b3a29f11 pin.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "e90f6c8f9c",
+          "date": "2026-10-30",
+          "pr": "10488"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/home_shorten_test.go::TestHomeShorteningAnchorsAtAPathSegment",
+        "internal/codingagent/loaded_resources_oracle_test.go::TestLoadedResourcesFormattingMatchesPi",
+        "internal/resolvepath/shorten_home_test.go::TestShortenHomePathIgnoresCaseOnWindows",
+        "internal/resolvepath/shorten_home_test.go::TestShortenHomePathReplacesOnlyALeadingHomeDirectory",
+        "tui/tool_path_render_pi_test.go::TestRenderToolPathHonorsPiGeneratedExpectations"
       ]
     },
     {
@@ -37792,6 +38919,33 @@
       "tests": []
     },
     {
+      "id": "BF-ed99f42",
+      "title": "The built-in `read` tool no longer resolves to `\"\"` for an image in Code Mode scripts, so `image(await…",
+      "symptom": "The built-in `read` tool no longer resolves to `\"\"` for an image in Code Mode scripts, so `image(await tools.read(...))` works: `read` declares a structured output, a text file's text or an image's block.",
+      "rootCause": "`read` now declares a structuredOutputSchema (a text file's text or an image's block) and returns it as structuredOutput, so `image(await tools.read(...))` in a Code Mode script gets the image instead of \"\".",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "pi-port",
+      "fixedIn": "Unreleased",
+      "releaseNote": "The built-in `read` tool no longer resolves to `\"\"` for an image in Code Mode scripts, so `image(await tools.read(...))` works: `read` declares a structured output, a text file's text or an image's block. Carried forward from Pi 04414839 (earendil-works/pi#11015), past the 1.4.0+b3a29f11 pin.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "ed99f429d6",
+          "date": "2026-10-30",
+          "pr": "11015"
+        }
+      ],
+      "tests": [
+        "durable/codemode/output_tool_test.go::TestDurableCodeModeOutputAndToolSearch",
+        "durable/tools/coding_tools_run_pi_oracle_test.go::TestCodingToolsRunLikePi",
+        "durable/tools/read_structured_output_test.go::TestReadDeclaresTheTextOrImageStructuredOutputSchema",
+        "durable/tools/read_structured_output_test.go::TestReadReturnsAnImageBlockAsStructuredOutput",
+        "durable/tools/read_structured_output_test.go::TestReadReturnsTheShownTextAsStructuredOutput"
+      ]
+    },
+    {
       "id": "BF-edb73db",
       "title": "fix(codingagent): one owner-overflow forwarder at a time; the drain test waits for it, not for the flag's…",
       "symptom": "fix(codingagent): one owner-overflow forwarder at a time; the drain test waits for it, not for the flag's early read",
@@ -37846,6 +39000,53 @@
         "test/parity/scenarios/extensions-runtime/73-shutdown-from-session-before-fork.toml",
         "test/parity/scenarios/extensions-runtime/73-shutdown-from-session-before-switch.toml",
         "test/parity/scenarios/extensions-runtime/73-shutdown-from-session-start.toml"
+      ]
+    },
+    {
+      "id": "BF-ededef9",
+      "title": "`pig update` now warns when an npm package update leaves the installed version unchanged: shortly after a…",
+      "symptom": "`pig update` now warns when an npm package update leaves the installed version unchanged: shortly after a publish `npm view` can report the new version while `npm install` still resolves the old one, and `Updated packages` was printed with nothing updated.",
+      "rootCause": "shouldUpdateNpmSource returns the installed and the registry version; after npm install each announced update is re-read and a yellow progress line is printed for a package that stayed at its installed version. Production hunks are lifted from fix/follow-pi-next (470678190).",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "pi-port",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`pig update` now warns when an npm package update leaves the installed version unchanged: shortly after a publish `npm view` can report the new version while `npm install` still resolves the old one, and `Updated packages` was printed with nothing updated. The warning names the package, the installed and the registry version, and is printed in yellow. Carried forward from Pi 0d23d534 (earendil-works/pi#11536), past the 1.4.0+b3a29f11 pin.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "ededef9928",
+          "date": "2026-10-30",
+          "pr": "11536"
+        }
+      ],
+      "tests": [
+        "coding/cli/package_batch_upstream_test.go::TestPackageBatchedConcurrentUpdatesOriginal",
+        "coding/cli/package_progress_warning_test.go::TestPackageProgressPrinterPrintsProgressEventsInYellow",
+        "internal/packagemanager/package_manager_ops_gaps_test.go::TestPackageManagerWarnsWhenAnNpmUpdateLeavesTheInstalledVersionUnchanged"
+      ]
+    },
+    {
+      "id": "BF-ee96daf",
+      "title": "Unsubscribing an extension's event-bus subscription is now constant time, as deleting from Pi's `Set` of…",
+      "symptom": "The factory API also kept every subscription an extension had made, unsubscribed or not, until the extension reloaded; it now keeps only the live ones.",
+      "rootCause": "The runtime kept its tracked subscriptions in a slice and removed one with slices.DeleteFunc, so n single unsubscribes cost O(n^2): 10000 took 142 ms. Pi retains them in a Set, where deleting one closure is constant time. Keep them in an insertion-ordered linked list: Invalidate still runs the retained ones once, in subscription order, and each subscription is its own member even for the same handler. The factory API also never dropped an unsubscribed subscription from the list its reload walks, so a long-lived extension that subscribed and unsubscribed kept every closure; it now keeps only the live ones.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Unsubscribing an extension's event-bus subscription is now constant time, as deleting from Pi's `Set` of tracked unsubscribes is. The runtime removed each one from a slice, so unsubscribing 10,000 subscriptions one at a time took 142 ms and the cost grew with the square of their number; it now takes under 1 ms. The factory API also kept every subscription an extension had made, unsubscribed or not, until the extension reloaded; it now keeps only the live ones.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "ee96daf3e7",
+          "date": "2026-10-30"
+        }
+      ],
+      "tests": [
+        "coding/extension/host/subprocess/event_bus_conn_test.go::TestHostEventBusClosedConnectionForgetsRetainedSubscriptions"
       ]
     },
     {
@@ -38037,6 +39238,30 @@
         "internal/codingagent/startup_color_wait_render_test.go::TestRenderRequestedWhileStartupWaitsForTheTerminalColorsPaints",
         "internal/codingagent/startup_query_order_pty_test.go::TestStartupWritesTheTerminalColorQueryBeforeTheFirstFrame",
         "internal/codingagent/startup_query_order_pty_test.go::TestStartupWritesTheTerminalColorQueryBeforeTheFirstFrameChild"
+      ]
+    },
+    {
+      "id": "BF-f193c36",
+      "title": "The working status (OSC 7501) no longer disappears in Rex and iTerm2 during runs in regular TUI mode",
+      "symptom": "The working status (OSC 7501) no longer disappears in Rex and iTerm2 during runs in regular TUI mode.",
+      "rootCause": "Terminals that show OSC 7501 program status (Rex, iTerm2) read 133;A as a new shell prompt and drop the status, so the working indicator vanished during runs. The regular-mode renderer now strips the leading OSC 133 marks of every rendered line, as fullscreen mode already does. The hunks are the ones the Pi follow branch carries (). TestAssistantThinkingClicksThroughTerminal asserted that the marks reach the Main Screen terminal; it now asserts the component still produces them and the terminal does not receive them.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong display",
+      "platform": "All platforms",
+      "class": "pi-port",
+      "fixedIn": "Unreleased",
+      "releaseNote": "The working status (OSC 7501) no longer disappears in Rex and iTerm2 during runs in regular TUI mode. Rendered messages wrote OSC 133 prompt markers to the terminal, which those terminals read as a new shell prompt; the regular-mode renderer now drops them as fullscreen mode already did. Carried forward from Pi 19ce8059 (earendil-works/pi#11519), past the 1.4.0+b3a29f11 pin.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "f193c36df8",
+          "date": "2026-10-30",
+          "pr": "11519"
+        }
+      ],
+      "tests": [
+        "tui/assistant_mouse_upstream_test.go::TestAssistantThinkingClicksThroughTerminal",
+        "tui/tui_osc133_main_screen_test.go::TestMainScreenDropsOSC133PromptMarkers"
       ]
     },
     {
@@ -40068,6 +41293,26 @@
       ]
     },
     {
+      "id": "BF-fa0eadb",
+      "title": "A Lisp extension no longer ignores an `events.dispatch` request that the host sends after registration and…",
+      "symptom": "A Lisp extension no longer ignores an `events.dispatch` request that the host sends after registration and before `ready`: the request was read and dropped, so the host waited for an answer that never came.",
+      "rootCause": "serve's wait for ready read and discarded every frame but ready and ping, so an events.dispatch request the host sent between the register frame and ready was never answered and the host waited on it. The Go, Rust, Python and Node SDKs serve such a request: it is a listener of the extension, and a host can dispatch to it while the extension loads.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A Lisp extension no longer ignores an `events.dispatch` request that the host sends after registration and before `ready`: the request was read and dropped, so the host waited for an answer that never came. The Lisp SDK now answers it once, under its own request ID, with its own payload, as the Go, Rust, Python and Node SDKs do.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "fa0eadbe18",
+          "date": "2026-10-30"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-fa3da97",
       "title": "A wake the scheduler took at a change is still delivered to `OnWake` when the Session fails and seals before…",
       "symptom": "A wake the scheduler took at a change is still delivered to `OnWake` when the Session fails and seals before the goroutine publishing it runs, as Pi's microtask ran first; a failing recovery pass no longer loses the host's active wake.",
@@ -41111,6 +42356,37 @@
       ]
     },
     {
+      "id": "BF-fc1703f",
+      "title": "Durable's `tool_search` and Code Mode `searchTools()` rank like the coding agent's tool search: a query that…",
+      "symptom": "Durable's `tool_search` and Code Mode `searchTools()` rank like the coding agent's tool search: a query that is exactly a tool's name ranks it first, a tool matching more of the query's distinct terms ranks above one matching fewer, a query term in the name outweighs any number of mentions in the description, and a tool whose whole name is in the query gets a large bonus.",
+      "rootCause": "durable/internal/search ranks the way the coding agent's Bm25Ranker does: the name is a field of its own (three times its IDF per term), the namespace text a second field (half its IDF, not length-normalized), a tool whose whole local name is in the query gets a bonus worth one more match of every query term, a query that is exactly a tool's name ranks it first, and a tool matching more of the query's distinct terms ranks above one matching fewer.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "pi-port",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Durable's `tool_search` and Code Mode `searchTools()` rank like the coding agent's tool search: a query that is exactly a tool's name ranks it first, a tool matching more of the query's distinct terms ranks above one matching fewer, a query term in the name outweighs any number of mentions in the description, and a tool whose whole name is in the query gets a large bonus. `thread_read` with a limit of 1 no longer loads `queue_read`, and `peekaboo app` finds `mcp__peekaboo__app`. `searchTools()` also searches the namespace instructions, as a low-weight field that does not lower the scores of the namespace's tools. Carried forward from Pi c7372af4 (earendil-works/pi#11631), past the 1.4.0+b3a29f11 pin.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "fc1703f003",
+          "date": "2026-10-30",
+          "pr": "11631"
+        }
+      ],
+      "tests": [
+        "durable/codemode/search_limit_test.go::TestSearchToolsSearchesNamespaceInstructions",
+        "durable/internal/search/search_carried_test.go::TestRankDocumentsMatchesPiTheLatestCarriedRanker",
+        "durable/internal/search/search_pi_oracle_test.go::TestTokenizeAndRankDocumentsMatchPiOnSeededInputs",
+        "durable/internal/search/search_test.go::TestRankDocumentsMatchesPi",
+        "durable/internal/search/search_test.go::TestRankDocumentsNormalizesByDocumentLength",
+        "durable/internal/search/search_test.go::TestRankDocumentsRoundsEveryOperationLikeJavaScript",
+        "durable/toolsearch/toolsearch_carried_test.go::TestToolSearchMatchesPiTheLatestCarriedRanking",
+        "durable/toolsearch/toolsearch_carried_test.go::TestToolSearchRanksAToolByItsName",
+        "durable/toolsearch/toolsearch_pi_oracle_test.go::TestToolSearchMatchesPiOnSeededDeferredTools"
+      ]
+    },
+    {
       "id": "BF-fc5baaf",
       "title": "`pi.exec`'s `timeout` starts once the command has been spawned, as in Pi, so time spent finding and starting…",
       "symptom": "`pi.exec`'s `timeout` starts once the command has been spawned, as in Pi, so time spent finding and starting the program no longer counts against it.",
@@ -41939,11 +43215,6 @@
       "entry": "BF-85908ae"
     },
     {
-      "id": "D173",
-      "title": "Tool search matches Chinese, Japanese and Korean queries (Pi #10816)",
-      "entry": "BF-b99457f"
-    },
-    {
       "id": "D177",
       "title": "The calls of a parallel durable tool round start in unspecified order"
     },
@@ -41982,10 +43253,6 @@
     {
       "id": "D187",
       "title": "A native SDK holds a batch's first host calls and responses in call and answer order, where Pi's single…"
-    },
-    {
-      "id": "D188",
-      "title": "Opening a store at an older Durable schema version keeps a copy of it first, where Pi upgrades it in place"
     },
     {
       "id": "D190",
@@ -42058,13 +43325,17 @@
       "id": "D215",
       "title": "A local Package typed by absolute path is stored as typed",
       "entry": "BF-7e16053"
+    },
+    {
+      "id": "D217",
+      "title": "Pi bug fixes after the pin that 0.6.0 carries (Pi b3a29f11..e3da248e)"
     }
   ],
   "exemptCommits": {
     "Failure found by the integration build of unreleased work": 2,
     "Fix reverted before release": 1,
     "Follow-up to unreleased work": 1,
-    "Repair of a merge between development branches": 8,
+    "Repair of a merge between development branches": 9,
     "Review follow-up to unreleased work": 3,
     "test-only": 1
   }

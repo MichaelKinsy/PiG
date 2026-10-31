@@ -16,7 +16,7 @@ The crate documentation (`cargo doc`; `cargo test --doc` runs the truncation exa
 
 ## Breaking changes in 0.3.0
 
-Host-backed `Context` getters return `io::Result` and never an empty value or default; Pi's `undefined` is `Option::None` (`get_session_name`, `get_session_file`, `get_leaf_id`, `get_flag`, `get_context_usage`, `get_model_info`). `get_branch` and `get_entries` return the session-log subscription failure. `ExecOptions.timeout` and `DialogOptions.timeout` are `Option<f64>`, and `ToolDefinition.constrained_sampling` is `Option<ToolConstrainedSampling>`. See the migration tables in `docs/site/docs/extensions.md`.
+Host-backed `Context` getters return `io::Result` and never an empty value or default; Pi's `undefined` is `Option::None` (`get_session_name`, `get_session_file`, `get_leaf_id`, `get_flag`, `get_context_usage`, `get_model_info`). `get_branch` and `get_entries` return the session-log subscription failure. `ExecOptions.timeout`, `ExecOptions.max_buffer` and `DialogOptions.timeout` are `Option<f64>` (`max_buffer` caps stdout and stderr together; past it the command is terminated and `ExecResult.truncated` is set), a command that ignores SIGTERM is killed five seconds later, and `ToolDefinition.constrained_sampling` is `Option<ToolConstrainedSampling>`. See the migration tables in `docs/site/docs/extensions.md`.
 
 ## Upstream 0.99.1 extension API
 

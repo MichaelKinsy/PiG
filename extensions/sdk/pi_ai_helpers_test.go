@@ -262,6 +262,37 @@ func runGoldenCase(t *testing.T, c goldenCase) string {
 }
 
 // envApiKeyAuth resolves and logs in as Pi's does.
+// Pi d3398f82 (#11492, pig divergence (D217)): LiteLLM's pre-call check ContextWindowExceededError is a context overflow. The pinned
+// vectors cannot gain a case, so the carried pattern is pinned by hand.
+func TestLiteLLMContextWindowExceededIsOverflow(t *testing.T) {
+	message := func(stop, text string) map[string]any {
+		return map[string]any{"role": "assistant", "stopReason": stop, "errorMessage": text}
+	}
+	const litellm = "400: litellm.ContextWindowExceededError: litellm.BadRequestError: litellm._pre_call_checks: Context Window exceeded for given call."
+	if !IsContextOverflow(message("error", litellm), 0) {
+		t.Error("the LiteLLM pre-call ContextWindowExceededError is not a context overflow")
+	}
+	if IsContextOverflow(message("stop", litellm), 0) {
+		t.Error("a message that did not fail is not an overflow")
+	}
+	if IsContextOverflow(message("error", "Throttling error: Context Window exceeded for given call"), 0) {
+		t.Error("the Bedrock throttling prefix still excludes the overflow patterns")
+	}
+}
+
+// Pi c719d5b0 (#11572, #11537, pig divergence (D217)): Zhipu/Z.ai usage limit code 1308 arrives as HTTP 429 and resets after hours, so it is not retried.
+func TestZhipuUsageLimit1308IsNotRetryable(t *testing.T) {
+	for text, want := range map[string]bool{
+		`429 {"error":{"code":"1308","message":"Usage limit reached for 5 hour."}}`: false,
+		`429 {"error":{"code":1308,"message":"Usage limit reached"}}`:               false,
+		`429 {"error":{"code":"13081","message":"Too many requests"}}`:              true,
+	} {
+		if got := IsRetryableAssistantError(map[string]any{"role": "assistant", "stopReason": "error", "errorMessage": text}); got != want {
+			t.Errorf("IsRetryableAssistantError(%q) = %v, want %v", text, got, want)
+		}
+	}
+}
+
 func TestEnvAPIKeyAuthMatchesThePinnedPackage(t *testing.T) {
 	_, golden := loadGolden(t)
 	for _, c := range golden.Cases {

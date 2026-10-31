@@ -912,6 +912,10 @@ func convertCompletionsMessages(messages []Message, options completionsConvertOp
 type openAIReasoningDetail struct {
 	fields []openAIReasoningDetailField
 	typ    string
+	// Once a later delta merges into a text or summary entry, the entry's content lives in mergedContent and the
+	// field named mergedField holds only the position; marshalling writes the content once.
+	mergedField   string
+	mergedContent strings.Builder
 }
 
 type openAIReasoningDetailField struct {
@@ -1050,10 +1054,6 @@ func marshalOpenAIJSONString(value string) json.RawMessage {
 	return bytes.TrimSuffix(encoded.Bytes(), []byte{'\n'})
 }
 
-func (detail *openAIReasoningDetail) setString(name, value string) {
-	detail.setField(name, marshalOpenAIJSONString(value))
-}
-
 func (detail *openAIReasoningDetail) nullishField(name string) bool {
 	value, ok := detail.field(name)
 	return !ok || bytes.Equal(value, []byte("null"))
@@ -1072,7 +1072,11 @@ func appendOpenAIReasoningDetail(details []*openAIReasoningDetail, raw json.RawM
 	if detail.typ == "reasoning.summary" {
 		contentField = "summary"
 	}
-	last.setString(contentField, last.stringField(contentField)+detail.stringField(contentField))
+	if last.mergedField == "" {
+		last.mergedField = contentField
+		last.mergedContent.WriteString(last.stringField(contentField))
+	}
+	last.mergedContent.WriteString(detail.stringField(contentField))
 	if detail.typ == "reasoning.text" && last.stringField("signature") == "" {
 		if value, exists := detail.field("signature"); exists {
 			last.setField("signature", value)
@@ -1103,6 +1107,10 @@ func marshalOpenAIReasoningDetails(details []*openAIReasoningDetail) string {
 			}
 			encoded.Write(marshalOpenAIJSONString(field.name))
 			encoded.WriteByte(':')
+			if detail.mergedField == field.name {
+				encoded.Write(marshalOpenAIJSONString(detail.mergedContent.String()))
+				continue
+			}
 			_ = json.Compact(&encoded, field.value)
 		}
 		encoded.WriteByte('}')
@@ -1898,8 +1906,16 @@ func (p *openAIProvider) parseSSE(ctx context.Context, r io.Reader, builder *ass
 		}
 		return thinkingContentIndex
 	}
+	// reasoning_details are replay metadata: they accumulate in memory and are serialized once, when the thinking
+	// block ends or the stream fails (openai-completions.ts applyStreamedReasoningDetails).
+	applyStreamedReasoningDetails := func() {
+		if streamedReasoningDetails != nil && thinkingContentIndex >= 0 {
+			builder.thinkingBlockSignature(thinkingContentIndex, marshalOpenAIReasoningDetails(streamedReasoningDetails))
+		}
+	}
 	finishStreamedBlocks := func() {
 		builder.activeText = textContentIndex
+		applyStreamedReasoningDetails()
 		if thinkingContentIndex >= 0 {
 			builder.finishBlocksWithThinking(thinkingContentIndex)
 		} else {
@@ -1909,6 +1925,7 @@ func (p *openAIProvider) parseSSE(ctx context.Context, r io.Reader, builder *ass
 		thinkingContentIndex = -1
 	}
 	fail := func(reason StopReason, err error) {
+		applyStreamedReasoningDetails()
 		builder.failUnfinished(reason, err)
 	}
 	done := func(reason StopReason) {
@@ -2035,8 +2052,7 @@ func (p *openAIProvider) parseSSE(ctx context.Context, r io.Reader, builder *ass
 				if !appended {
 					continue
 				}
-				contentIndex := ensureThinkingBlock("")
-				builder.thinkingBlockSignature(contentIndex, marshalOpenAIReasoningDetails(streamedReasoningDetails))
+				ensureThinkingBlock("")
 				builder.touch()
 			}
 			if delta.Content != "" {

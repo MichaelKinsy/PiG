@@ -5667,6 +5667,19 @@ mod sdk_surface_call_tests {
         assert!(result.killed);
     }
 
+    // exec.ts rejects a maxBuffer that is not an integer; NaN and the infinities cannot cross the wire, so the call fails here and sends nothing.
+    #[test]
+    fn exec_with_a_non_finite_max_buffer_fails_without_a_call() {
+        let (ext_stream, _host_stream) = UnixStream::pair().unwrap();
+        let ctx = context(ext_stream, "req-1");
+        for value in [f64::NAN, f64::INFINITY, f64::NEG_INFINITY] {
+            let error = ctx
+                .exec_with_options("true", &[], &ExecOptions { max_buffer: Some(value), ..Default::default() })
+                .unwrap_err();
+            assert!(error.contains("maxBuffer must be an integer between 0 and"), "{value}: {error}");
+        }
+    }
+
     #[test]
     fn dialogs_with_options_send_the_timeout() {
         let opts = DialogOptions {

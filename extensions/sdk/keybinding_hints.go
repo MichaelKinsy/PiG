@@ -94,6 +94,33 @@ func RawKeyHint(key, description string) string {
 	return theme.Fg("dim", FormatKeyText(key)) + theme.Fg("muted", " "+description)
 }
 
+// pig divergence (D217): Pi 9376c8d1 (#4748) hands renderers the host's keyText and keyHint on the tool render context and the message and
+// entry options (KeybindingHints); pinned Pi has neither. Each method delegates to the package function, which reads the host's keybindings.
+
+// KeyText is KeybindingHints.keyText of the tool render context: [KeyText].
+func (ToolRenderContext) KeyText(keybinding string) string { return KeyText(keybinding) }
+
+// KeyHint is KeybindingHints.keyHint of the tool render context: [KeyHint].
+func (ToolRenderContext) KeyHint(keybinding, description string) string {
+	return KeyHint(keybinding, description)
+}
+
+// KeyText is KeybindingHints.keyText of the message render options: [KeyText].
+func (MessageRenderOptions) KeyText(keybinding string) string { return KeyText(keybinding) }
+
+// KeyHint is KeybindingHints.keyHint of the message render options: [KeyHint].
+func (MessageRenderOptions) KeyHint(keybinding, description string) string {
+	return KeyHint(keybinding, description)
+}
+
+// KeyText is KeybindingHints.keyText of the entry render options: [KeyText].
+func (EntryRenderOptions) KeyText(keybinding string) string { return KeyText(keybinding) }
+
+// KeyHint is KeybindingHints.keyHint of the entry render options: [KeyHint].
+func (EntryRenderOptions) KeyHint(keybinding, description string) string {
+	return KeyHint(keybinding, description)
+}
+
 // fullUppercase are the characters whose String.prototype.toUpperCase is several letters (SpecialCasing.txt), which Go's one-to-one
 // mapping leaves unchanged.
 var fullUppercase = map[rune]string{

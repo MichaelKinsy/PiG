@@ -82,3 +82,34 @@ func TestKeyHintsMatchPi(t *testing.T) {
 		}
 	}
 }
+
+// pig divergence (D217): Pi 9376c8d1 (#4748) hands renderers the host's keyText and keyHint on the tool render context and the message and entry
+// options. Each answers as the package function does, from the host's keybindings, with Pi's strings for a bound, an unbound and a multi-key id.
+func TestRenderHintsReadTheHostKeybindings(t *testing.T) {
+	previous := tui.GetKeybindings()
+	t.Cleanup(func() { tui.SetKeybindings(previous) })
+	defs := tui.KeybindingDefinitions{
+		"app.tools.expand":   {DefaultKeys: []string{"ctrl+o"}},
+		"app.session.rename": {DefaultKeys: []string{"ctrl+r"}},
+		"tui.select.cancel":  {DefaultKeys: []string{"escape", "ctrl+c"}},
+	}
+	tui.SetKeybindings(tui.NewKeybindingsManager(defs, tui.KeybindingsConfig{"app.tools.expand": {"ctrl+e"}, "app.session.rename": {}}))
+	hints := []struct {
+		keyText func(string) string
+		keyHint func(string, string) string
+	}{
+		{ToolRenderContext{}.KeyText, ToolRenderContext{}.KeyHint},
+		{MessageRenderOptions{}.KeyText, MessageRenderOptions{}.KeyHint},
+		{EntryRenderOptions{}.KeyText, EntryRenderOptions{}.KeyHint},
+	}
+	for i, h := range hints {
+		for id, want := range map[string]string{"app.tools.expand": "ctrl+e", "app.session.rename": "", "tui.select.cancel": "escape/ctrl+c"} {
+			if got := h.keyText(id); got != want {
+				t.Errorf("surface %d KeyText(%q) = %q, want %q", i, id, got, want)
+			}
+			if got, want := h.keyHint(id, "to expand"), KeyHint(id, "to expand"); got != want {
+				t.Errorf("surface %d KeyHint(%q) = %q, want %q", i, id, got, want)
+			}
+		}
+	}
+}

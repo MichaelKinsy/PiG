@@ -2,6 +2,7 @@
 // Usage: node stdin-buffer-oracle.mjs <path to @earendil-works/pi-tui/dist/index.js or packages/tui/src/stdin-buffer.ts> > stdin-buffer-oracle.json
 // An op is {chunk} (process), {flush} (public flush(), returns its sequences), {wait} (let the flush timer fire) or {clear}.
 // The log lists, per op, the data/paste events emitted and what flush() returned.
+import "./pi-d217/register.mjs"; // D217: pin + carried Pi fixes in pi-tui utils.js
 import { pathToFileURL } from "node:url";
 const { StdinBuffer } = await import(pathToFileURL(process.argv[2]).href);
 

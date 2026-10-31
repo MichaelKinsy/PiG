@@ -20,6 +20,8 @@ type orderedSet[K comparable] struct {
 	slots int // the slots in use, live or dead
 	n     int // the keys in the set
 	dead  int
+	// front is a slot before which none is live, so First does not pass the slots of deleted keys again.
+	front int
 	// ranging counts the iterations in progress; a slot is reclaimed only while none is.
 	ranging int
 }
@@ -135,7 +137,7 @@ func (set *orderedSet[K]) Delete(key K) {
 func (set *orderedSet[K]) compact() {
 	old := set.chunks
 	indexed := set.index != nil
-	set.chunks, set.index, set.slots, set.dead = nil, nil, 0, 0
+	set.chunks, set.index, set.slots, set.dead, set.front = nil, nil, 0, 0, 0
 	for _, chunk := range old {
 		for _, item := range chunk {
 			if item.live {
@@ -168,12 +170,24 @@ func (set *orderedSet[K]) reset() {
 	set.index = nil
 	set.slots = 0
 	set.dead = 0
+	set.front = 0
 }
 
 // Clear removes every key.
 func (set *orderedSet[K]) Clear() {
 	set.reset()
 	set.n = 0
+}
+
+// First returns the oldest key, the first of Values, in amortized constant time.
+func (set *orderedSet[K]) First() (key K, ok bool) {
+	for set.front < set.slots && !set.item(set.front).live {
+		set.front++
+	}
+	if set.front == set.slots {
+		return key, false
+	}
+	return set.item(set.front).key, true
 }
 
 // Values returns the keys in insertion order.

@@ -77,3 +77,14 @@ both_contain = [
 output_equal = true
 runtime_ratio_max = 2.0
 runs = 3
+
+# normalize-rationale: Pi 2e0f175b (D217) is carried past the pin, so PiG's catalog has no realtime or image chat models. The pinned Pi still lists these rows; every other row is still compared.
+[[assert.normalize_replace]]
+pattern = '(?m)^(?:azure|openai) +gpt-realtime-2\.1 .*\n'
+with = ""
+reason = "D217: Pi 2e0f175b is carried past the pin; gpt-realtime-2.1 is no longer a chat model."
+
+[[assert.normalize_replace]]
+pattern = '(?m)^(?:google|google-vertex) +gemini-3\.1-flash-(?:lite-image|live-preview) .*\n'
+with = ""
+reason = "D217: Pi 2e0f175b is carried past the pin; gemini-3.1-flash-lite-image and gemini-3.1-flash-live-preview are no longer chat models."

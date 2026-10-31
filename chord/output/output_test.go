@@ -108,6 +108,30 @@ func TestToolOutputBounds(t *testing.T) {
 		}
 	})
 
+	// Pi main 50d9f823 (#11604) packages/chord/test/output.test.ts "removes whole ANSI escape sequences, not only their ESC bytes"
+	t.Run("removes whole ANSI escape sequences, not only their ESC bytes", func(t *testing.T) {
+		for input, want := range map[string]string{
+			"\x1b[31mERROR\x1b[0m\n":                                      "ERROR\n",
+			"\x1b[1;38;5;208mx\x1b[?25l\x1b[2K\x1b(By\x1b7z":              "xyz",
+			"\x1b]8;;https://pi.dev\alink\x1b]8;;\x1b\\ \x1b]0;title\aok": "link ok",
+			// An unterminated string loses its introducer only; a lone ESC goes with the other controls.
+			"a\x1b]no end": "ano end",
+			"a\x1b":        "a",
+			"\x1b\x1b[1mb": "b",
+		} {
+			if got := SanitizeOutput(input); got != want {
+				t.Errorf("SanitizeOutput(%q) = %q, want %q", input, got, want)
+			}
+		}
+		buffer := NewOutputBuffer(OutputLimits{Retain: "tail", MaxBytes: 1024, MaxLines: 100})
+		buffer.PushString("\x1b[3")
+		buffer.PushString("1mERROR\x1b[0")
+		buffer.PushString("m\n")
+		if got := buffer.Snapshot().Text; got != "ERROR\n" {
+			t.Errorf("snapshot text = %q, want ERROR\\n", got)
+		}
+	})
+
 	t.Run("keeps output within the limits unchanged", func(t *testing.T) {
 		expectBound(t, bound("a\nb\n", headLimits(2)), boundResult{"a\nb\n", 0, 0})
 		expectBound(t, bound("a\nb", tailLimits(2)), boundResult{"a\nb", 0, 0})

@@ -1,5 +1,6 @@
 // Run Pi's packages/tui/src/fuzzy.ts over probes from stdin: {op: "match", query, text} -> {matches, score} and {op: "filter", items, query} -> [item].
 // usage: node fuzzy.mjs <path to packages/tui/src/fuzzy.ts>
+import "./pi-d217/register.mjs"; // D217: pin + carried Pi fixes in pi-tui utils.js
 import { pathToFileURL } from "node:url";
 const { fuzzyMatch, fuzzyFilter } = await import(pathToFileURL(process.argv[2]).href);
 let input = "";

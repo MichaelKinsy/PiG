@@ -123,7 +123,7 @@ func updateConfiguredSources(cwd string, sm *codingagent.SettingsManager, packag
 						if j > 0 {
 							start(pkg)
 						}
-						err := FinishPackageProgress(report, "update", pkg.Source.Source, InstallManagedGit(cwd, sm.AgentDir(), sm, pkg.Source.Source, pkg.Scope == "project"))
+						err := FinishPackageProgress(report, "update", pkg.Source.Source, InstallManagedGit(cwd, sm.AgentDir(), sm, pkg.Source.Source, pkg.Scope == "project", WithProgressReporter(report)))
 						if err != nil && first == nil {
 							first = err
 						}

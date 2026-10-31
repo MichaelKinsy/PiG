@@ -569,6 +569,15 @@ func Extension() *sdk.Extension {
 		}
 		return []string{fmt.Sprintf("renderer:%v:expanded=%t:width=%d", message["content"], options.Expanded, width)}, nil
 	})
+	// pig divergence (D217) test fixture: Pi 9376c8d1 (#4748) KeyText and KeyHint on the message and entry options and the tool render context. The content, data and q are the keybinding id.
+	ext.MessageRenderer("keyhints-message", func(_ sdk.Context, message map[string]any, options sdk.MessageRenderOptions, _ int) ([]string, error) {
+		id, _ := message["content"].(string)
+		return []string{options.KeyText(id) + " | " + options.KeyHint(id, "to expand")}, nil
+	})
+	ext.EntryRenderer("keyhints-entry", func(_ sdk.Context, entry map[string]any, options sdk.EntryRenderOptions, _ int) ([]string, error) {
+		id, _ := entry["data"].(string)
+		return []string{options.KeyText(id) + " | " + options.KeyHint(id, "to expand")}, nil
+	})
 	ext.MessageViewRenderer("kit-message", func(sdk.Context, map[string]any, sdk.MessageRenderOptions, int) (kit.View, error) {
 		return (&kitProbe{}).View(0), nil
 	})
@@ -600,6 +609,11 @@ func Extension() *sdk.Extension {
 				return (&kitProbe{}).View(0), nil
 			}
 			return &renderers
+		case "conformance_keyhints":
+			return &sdk.ToolRenderers{Call: func(_ sdk.Context, args map[string]any, render sdk.ToolRenderContext, _ int) ([]string, error) {
+				id, _ := args["q"].(string)
+				return []string{render.KeyText(id) + " | " + render.KeyHint(id, "to expand")}, nil
+			}}
 		case "conformance_no_renderer":
 			return nil
 		case "conformance_fill":

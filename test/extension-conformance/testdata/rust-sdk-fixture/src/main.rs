@@ -1649,6 +1649,15 @@ fn main() {
             options.expanded
         )])
     });
+    // pig divergence (D217) test fixture: Pi 9376c8d1 (#4748) key_text and key_hint on the message and entry options and the tool render context. The content, data and q are the keybinding id.
+    ext.message_renderer("keyhints-message", |_ctx, message, options, _width| {
+        let id = message.get("content").and_then(Value::as_str).unwrap_or("");
+        Ok(vec![format!("{} | {}", options.key_text(id), options.key_hint(id, "to expand"))])
+    });
+    ext.entry_renderer("keyhints-entry", |_ctx, entry, options, _width| {
+        let id = entry.get("data").and_then(Value::as_str).unwrap_or("");
+        Ok(vec![format!("{} | {}", options.key_text(id), options.key_hint(id, "to expand"))])
+    });
     ext.message_view_renderer("kit-message", |_ctx, _message, _options, _width| Ok(kit_probe_view()));
     ext.entry_view_renderer("kit-entry", |_ctx, _entry, _options, _width| Ok(kit_probe_view()));
     ext.markdown_transformer(|markdown, context| {
@@ -1691,6 +1700,10 @@ fn main() {
             set.result_view = Some(Arc::new(|_ctx, _result, _options, _render, _width| Ok(kit_probe_view())));
             Some(set)
         }
+        "conformance_keyhints" => Some(pig_sdk::ToolRendererSet::with_call(|_ctx, args, render, _width| {
+            let id = args.get("q").and_then(Value::as_str).unwrap_or("");
+            Ok(vec![format!("{} | {}", render.key_text(id), render.key_hint(id, "to expand"))])
+        })),
         "conformance_no_renderer" => None,
         "conformance_fill" => next().or_else(|| Some(resolved_line("filled", tool))),
         "conformance_wrap" => {

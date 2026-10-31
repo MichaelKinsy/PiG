@@ -17,17 +17,17 @@
     },
     {
       "source": "test/parity/runner/driver_ht.go",
-      "sha256": "69a91a07c9bc69269eca4ae4325da959194a5689037ff44f122d6995eb7416cf",
+      "sha256": "c8980e3ffd6d83345c6ad2b1efea0d1089ed43b44defe8d3dc30614f96a224f1",
       "reason": "Headless terminal state capture compares the declared visible surface, not transient bytes. Tool stderr is diagnostic transport noise, not product stderr."
     },
     {
       "source": "test/parity/runner/driver_rpc.go",
-      "sha256": "9e1aec0393b4e3185b23766f31cd4ad623a5770684b79c4cd46b3b997e9f481a",
+      "sha256": "2190e15eace424866a908660f68b6a26234c64f8efac4058976e18d07f654c8b",
       "reason": "canonical_json sorts JSON object keys only and preserves terminal framing. Raw stdout and stderr are retained. wait_contains/wait_event are new-output barriers, not acceptance assertions. A poll_until step resends one read-only query until its response holds the awaited state and then leaves every response to that query out of the compared and raw output, because their count follows timing; every other record, including the commands that prove the settled state, is compared."
     },
     {
       "source": "test/parity/runner/driver_tmux.go",
-      "sha256": "b76c6974a5eaad47d77e42e17c9d4f5d6ae73bd6fc8b2150bd0a6806d2aa5305",
+      "sha256": "60dc3418aafb44dfe5ba4c600556aaaf1dc5658277ef359f0550fd016cb17391",
       "reason": "Terminal state capture is not a byte-stream assertion. A scenario explicitly selects viewport or retained history and its crop. History capture uses session-local maximum retention without changing pane size or shared defaults; required anchors and source-derived assertions reject incomplete history. Readiness and new-output barriers are synchronization, not behavioral coverage."
     },
     {
@@ -96,6 +96,12 @@
       "scenario": "test/parity/scenarios/autocomplete/01-slash-popup.toml",
       "transforms": [
         {
+          "kind": "normalize_replace",
+          "pattern": "(?:Import and resume a session from a JSONL file|Import a JSONL session, preserving its ID and working directory)",
+          "with": "<import description>",
+          "reason": "D217: the pinned Pi describes /import as resuming a session, PiG carries Pi 2a46c420's wording; the description is the only text replaced."
+        },
+        {
           "kind": "terminal_crop",
           "configuration": {
             "capture_start": "/\n────────────────────────────────────────────────────────────────────────────────────────────────────",
@@ -117,7 +123,7 @@
           "kind": "terminal_crop",
           "configuration": {
             "capture_start": "/mo\n────────────────────────────────────────────────────────────────────────────────────────────────────",
-            "capture_end": "  import         Import and resume a session from a JSONL file"
+            "capture_end": "  import         Import "
           },
           "reason": "Owned visible surface: Typing '/mo' narrows the slash popup to the exact model-related subset.",
           "limitations": "No claim about output outside this crop or transient terminal bytes."
@@ -10040,6 +10046,12 @@
           "pattern": "/[^\\s\\x1b]*/parity-snap-(?:PIG|PI)_CODING_AGENT_DIR-[0-9]+",
           "with": "<agent>",
           "reason": "D2: only the independently allocated agent-root prefix differs. Keep the complete skipped skill path and warning."
+        },
+        {
+          "kind": "normalize_replace",
+          "pattern": "\\[Skill (?:conflicts|warnings)\\]",
+          "with": "[Skill diagnostics]",
+          "reason": "D217: the pinned Pi prints [Skill conflicts], PiG carries Pi f14813e9 and prints [Skill warnings]; pi_contains and pig_contains assert each side's own heading."
         },
         {
           "kind": "terminal_crop",

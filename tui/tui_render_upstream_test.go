@@ -202,7 +202,7 @@ func TestUpstreamTUIResize(t *testing.T) {
 		h := newUpstreamRenderHarness(t, 40, 10)
 		lines := upstreamNumberedLines("Line", 3)
 		h.render(lines)
-		h.ui.height = 15
+		h.ui.SetFixedSize(h.ui.Width(), 15)
 		h.vt.resize(40, 15)
 		writes := h.render(lines)
 		upstreamContains(t, writes, "\x1b[2J")
@@ -215,7 +215,7 @@ func TestUpstreamTUIResize(t *testing.T) {
 		lines := upstreamNumberedLines("Line", 20)
 		h.render(lines)
 		for _, height := range []int{15, 8, 14, 11} {
-			h.ui.height = height
+			h.ui.SetFixedSize(h.ui.Width(), height)
 			h.vt.resize(40, height)
 			writes := h.render(lines)
 			upstreamExcludes(t, writes, "\x1b[2J")
@@ -228,7 +228,7 @@ func TestUpstreamTUIResize(t *testing.T) {
 		h := newUpstreamRenderHarness(t, 40, 10)
 		lines := upstreamNumberedLines("Line", 3)
 		h.render(lines)
-		h.ui.width = 60
+		h.ui.SetFixedSize(60, h.ui.Height())
 		h.vt.resize(60, 10)
 		upstreamContains(t, h.render(lines), "\x1b[2J")
 	})

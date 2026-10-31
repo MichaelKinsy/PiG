@@ -19,6 +19,7 @@
 // state a global helper reads (pi-tui's keybindings, the coding-agent theme): `const tui = await this.load("pi-tui")`.
 // chalk, which draws the theme's bold and italic, decides its level when it is first imported, so the level is fixed here, not by the terminal
 // the generator runs in.
+import "../../tui/testdata/pi-d217/register.mjs"; // D217: pin + carried Pi fixes in pi-tui utils.js
 import { readFileSync, readdirSync, writeFileSync, mkdirSync, existsSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -124,4 +125,5 @@ for (const [moduleDir, name] of caseSources()) {
     writeFileSync(path, text);
   }
 }
-process.exit(stale ? 1 : 0);
+// Exit once the pipe has taken every line: process.exit() right after console.error drops what it has not drained.
+process.stderr.write("", () => process.exit(stale ? 1 : 0));

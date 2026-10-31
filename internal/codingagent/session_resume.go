@@ -36,6 +36,7 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/nodefs"
 	"github.com/MichaelKinsy/PiG/internal/nodepath"
 	"github.com/MichaelKinsy/PiG/internal/procpolicy"
+	"github.com/MichaelKinsy/PiG/internal/resolvepath"
 )
 
 // SessionInfo is the picker-display summary of a session JSONL.
@@ -827,7 +828,8 @@ func (sm *SessionManager) FindMostRecentForContinue() string {
 // might be shared across cwds and does. Mirrors upstream's
 // `dir !== getDefaultSessionDirPath(cwd)` test inverted.
 func (sm *SessionManager) sessionDirIsCwdScoped() bool {
-	return absCleanDir(sm.sessionDir) == absCleanDir(defaultSessionDir(sm.cwd))
+	// pig divergence (D217): Pi 1be312b4 (#10488) pathsEqual; Pi 1.4.0+b3a29f11 compared the strings, so on Windows a session directory spelled with other casing counted as a custom one.
+	return resolvepath.PathsEqual(absCleanDir(sm.sessionDir), absCleanDir(defaultSessionDir(sm.cwd)))
 }
 
 // sessionCwdMatches reports whether a session header cwd refers to the
@@ -840,7 +842,8 @@ func sessionCwdMatches(sessionCwd, runtimeCwd string) bool {
 	if strings.TrimSpace(sessionCwd) == "" {
 		return false
 	}
-	return canonicalDir(sessionCwd) == canonicalDir(runtimeCwd)
+	// pig divergence (D217): Pi 1be312b4 (#10488) pathsEqual(resolvePath(cwd), resolvedCwd); on Windows a header cwd that differs from the working directory in casing still matches.
+	return resolvepath.PathsEqual(canonicalDir(sessionCwd), canonicalDir(runtimeCwd))
 }
 
 // canonicalDir resolves p to an absolute, symlink-free directory path for

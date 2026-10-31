@@ -176,9 +176,8 @@ func decodeMouseButton(button int) TuiMouseButton {
 // createMouseEvent builds a screen-level event. Mirrors upstream
 // createMouseEvent.
 func (t *TuiAltScreen) createMouseEvent(eventType TuiMouseEventType, button, x, y, wheelDelta, clickCount int) TuiMouseEvent {
-	t.mu.Lock()
-	width, height := max(1, t.width), max(1, t.height)
-	t.mu.Unlock()
+	columns, rows := t.size()
+	width, height := max(1, columns), max(1, rows)
 	decoded := decodeMouseButton(button)
 	if eventType == MouseWheel {
 		decoded = MouseButtonNone

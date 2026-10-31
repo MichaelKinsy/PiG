@@ -1,5 +1,6 @@
 // Generates colors-parse-oracle.json: parseColor/okhslColor/oklchColor accept and reject sets, run through Pi's colors.js.
 // Usage: node colors-parse-oracle.mjs <path to @earendil-works/pi-tui/dist/index.js> > colors-parse-oracle.json
+import "./pi-d217/register.mjs"; // D217: pin + carried Pi fixes in pi-tui utils.js
 import { pathToFileURL } from "node:url";
 const tui = await import(pathToFileURL(process.argv[2]).href);
 const nbsp = "\u00a0", ls = "\u2028", bom = "\ufeff", ideo = "\u3000", nel = "\u0085", vt = "\u000b";

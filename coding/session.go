@@ -939,11 +939,18 @@ func BuildUserContent(text string, images []ai.ImageContent) ai.UserContentBlock
 // Send appends a text prompt to the session, runs the agent loop until the LLM
 // stops calling tools or until ctx cancels, and returns the full message slice
 // produced this turn.
+//
+// Like Pi's prompt(), a failed model call is not returned as an error: Send
+// returns nil and the last assistant message has StopReason ai.StopReasonError
+// (ai.StopReasonAborted after Abort) with its ErrorMessage set.
+// Agent().ErrorMessage() reports the same text until the next run, and the
+// failure is also visible in the message_end and auto_retry_end events. Send
+// returns an error for preflight failures and when ctx is cancelled.
 func (s *Session) Send(ctx context.Context, prompt string) ([]agent.AgentMessage, error) {
 	return s.SendContent(ctx, BuildUserContent(prompt, nil))
 }
 
-// SendContent dispatches extension commands before ordinary structured-content turns. Modes that already process commands and input use SendContentWithPreflight instead.
+// SendContent dispatches extension commands before ordinary structured-content turns. Modes that already process commands and input use SendContentWithPreflight instead. Model failures are reported as for Send.
 func (s *Session) SendContent(ctx context.Context, content []ai.UserContentBlock) ([]agent.AgentMessage, error) {
 	if len(content) > 0 {
 		if text, ok := content[0].(ai.TextContent); ok && strings.HasPrefix(text.Text, "/") {

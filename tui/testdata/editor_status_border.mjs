@@ -1,4 +1,5 @@
 // Drive the installed Pi CustomEditor with an embedded working status indicator through a bracketed paste, some Up keys and ticks, then render: its top border carries the status and the overflow label, never a translated oracle.
+import "./pi-d217/register.mjs"; // D217: pin + carried Pi fixes in pi-tui utils.js
 import { readFileSync, realpathSync } from "node:fs";
 import { pathToFileURL } from "node:url";
 const root = realpathSync(new URL("../../extensions/sdk-ts/node_modules/@earendil-works/pi-coding-agent/", import.meta.url)) + "/";

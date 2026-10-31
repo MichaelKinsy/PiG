@@ -567,8 +567,18 @@
  "packages/durable/src/search.ts": [
   {
    "file": "durable/internal/search/search.go",
-   "old": "return term[:len(term)-3] + \"y\"",
-   "new": "return term[:len(term)-3] + \"i\""
+   "old": "score += fullNameBonus",
+   "new": "score += 0"
+  },
+  {
+   "file": "durable/internal/search/search.go",
+   "old": "nameWeight = 3",
+   "new": "nameWeight = 2"
+  },
+  {
+   "file": "durable/internal/search/search.go",
+   "old": "return matches[a].covered > matches[c].covered",
+   "new": "return matches[a].covered < matches[c].covered"
   }
  ],
  "packages/durable/src/storage/sqlite/schema.ts": [

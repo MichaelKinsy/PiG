@@ -93,3 +93,64 @@ func TestDaemonKillsItsCommandsOnTerminationSignals(t *testing.T) {
 		})
 	}
 }
+
+// startTree runs a shell through the daemon that starts two background sleeps of its own, and returns the pids of the daemon,
+// the shell and the two sleeps, which are in the shell's process group.
+func startTree(t *testing.T, environment *RemoteExecutionEnv) (daemonPid int, tree []int, finished <-chan error) {
+	t.Helper()
+	pids := make(chan []int, 1)
+	done := make(chan error, 1)
+	go func() {
+		_, err := environment.Exec(background, []string{"sh", "-c", "sleep 30 & first=$!; sleep 31 & second=$!; echo $PPID $$ $first $second; wait"}, &durableenv.ShellExecOptions{
+			OnOutput: func(_ context.Context, text string, _ durableenv.ShellOutputInfo) {
+				fields := strings.Fields(text)
+				if len(fields) != 4 {
+					return
+				}
+				found := make([]int, len(fields))
+				for i, field := range fields {
+					found[i], _ = strconv.Atoi(field)
+				}
+				select {
+				case pids <- found:
+				default:
+				}
+			},
+		})
+		done <- err
+	}()
+	select {
+	case found := <-pids:
+		return found[0], found[1:], done
+	case err := <-done:
+		t.Fatalf("the command ended before it printed its pids: %v", err)
+	case <-time.After(20 * time.Second):
+		t.Fatal("the command printed no pids")
+	}
+	return 0, nil, nil
+}
+
+// b6d5c2ec with a process tree: after SIGTERM to the daemon, the shell a command started and the children that shell started
+// are all gone, not only the process the daemon spawned.
+// mutation-checked: dropping the daemon's SIGTERM handler leaves the shell and both sleeps running.
+func TestDaemonTerminationKillsTheWholeProcessTreeOfACommand(t *testing.T) {
+	environment, _ := remoteEnvironment(t)
+	daemonPid, tree, finished := startTree(t, environment)
+	for _, pid := range tree {
+		if !processAlive(pid) {
+			t.Fatalf("pid %d of the tree is not running before the signal", pid)
+		}
+	}
+	if err := syscall.Kill(daemonPid, syscall.SIGTERM); err != nil {
+		t.Fatal(err)
+	}
+	for i, pid := range tree {
+		waitProcessGone(t, fmt.Sprintf("process %d of the tree", i), pid)
+	}
+	waitProcessGone(t, "the daemon", daemonPid)
+	select {
+	case <-finished:
+	case <-time.After(20 * time.Second):
+		t.Fatal("the exec never settled after the daemon ended")
+	}
+}

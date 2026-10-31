@@ -190,12 +190,24 @@ func TestGetOverflowPatternsMatchesUpstreamList(t *testing.T) {
 		}
 	}
 	patterns := GetOverflowPatterns()
+	// pig divergence (D217): the patterns of Pi fixes past the pin are not in the pinned list; each is checked below instead.
+	carried := map[string]string{lazyregexp.NewJSIgnoreCase(`context window exceeded`).Regexp().String(): "d3398f82"}
 	var got []string
+	seenCarried := map[string]bool{}
 	for _, pattern := range patterns {
+		if _, ok := carried[pattern.String()]; ok {
+			seenCarried[pattern.String()] = true
+			continue
+		}
 		got = append(got, pattern.String())
 	}
 	if !slices.Equal(got, want) {
 		t.Errorf("patterns differ:\n got %q\nwant %q", got, want)
+	}
+	for source, sha := range carried {
+		if !seenCarried[source] {
+			t.Errorf("the pattern carried from Pi %s is missing: %s", sha, source)
+		}
 	}
 	patterns[0] = nil
 	if GetOverflowPatterns()[0] == nil {

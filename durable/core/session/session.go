@@ -364,7 +364,7 @@ func (s *Session) commitWrites(tx *Tx, writes []Write) (*Publication, error) {
 	}
 	tables := len(changes)
 	changes = append(changes, docs...)
-	pub := new(Publication{Seq: seq, Changes: changes, Span: tx.scope.Span})
+	pub := Publication{Seq: seq, Changes: changes, Span: tx.scope.Span}
 	if storedDocs != nil {
 		pub.Stored = append(append([]Change(nil), changes[:tables]...), storedDocs...)
 		docs = storedDocs
@@ -372,13 +372,21 @@ func (s *Session) commitWrites(tx *Tx, writes []Write) (*Publication, error) {
 	for _, change := range docs {
 		s.touchDocument(addressID(recordAddress(change.Record)))
 	}
+	published := s.emitPublication(pub)
+	s.sweepDocuments()
+	return published, nil
+}
+
+// emitPublication is the one place a Publication is allocated: it keeps the publication while HoldPublications is on and publishes
+// it otherwise. The one allocation site is what budget/allocs.json counts; a per-caller copy would add a site for each.
+func (s *Session) emitPublication(p Publication) *Publication {
+	pub := &p
 	if s.holdPubs {
 		s.heldPubs = append(s.heldPubs, pub)
 	} else {
 		s.publish(pub)
 	}
-	s.sweepDocuments()
-	return pub, nil
+	return pub
 }
 
 // InJob reports whether a Loop line job body is running.

@@ -2189,7 +2189,7 @@ path = "packages/durable/src/storage/sqlite/node.ts"
 disposition = "translated"
 contracts = ["awaited"]
 evidence = ["test:durable/storage/sqlite/sqlite_storage_test.go#TestPicoSqliteStorage", "test:durable/storage/sqlite/node/sqlite_facade_test.go#TestDurableReExportsTheChordDriver"]
-rationale = "openNodeSqliteStorage validates a given prefix before it awaits anything (the returned Promise rejects without creating the file), then awaits openNodeSqliteDatabase and SqliteStorage.open in that order. Go OpenNodeSqliteStorage (durable/storage/sqlite/node/node.go:56) creates the schema from the prefix first, then opens the database, then opens the storage, blocking in the same order and returning the first error; D188's pre-upgrade schema backup sits between the prefix check and the open. The 'rejects an invalid prefix before creating the database' subtest of TestPicoSqliteStorage asserts the error and that the directory was never created."
+rationale = "openNodeSqliteStorage validates a given prefix before it awaits anything (the returned Promise rejects without creating the file), then awaits openNodeSqliteDatabase and SqliteStorage.open in that order. Go OpenNodeSqliteStorage (durable/storage/sqlite/node/node.go:52) creates the schema from the prefix first, then opens the database, then opens the storage, blocking in the same order and returning the first error. The 'rejects an invalid prefix before creating the database' subtest of TestPicoSqliteStorage asserts the error and that the directory was never created."
 
 [[files]]
 path = "packages/durable/src/storage/sqlite/storage.ts"

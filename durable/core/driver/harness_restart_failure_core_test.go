@@ -1198,8 +1198,11 @@ func TestCoreTheRestartLimitOnTheNormalPath(t *testing.T) {
 	for round := 0; round < rounds; round++ {
 		submit("round")
 	}
-	pollUntil(t, "the rounds to settle", func() bool { return restartLive(t, opened.h, root).Run == nil })
-	if got := calls.Load(); got != callsPerRound*rounds {
+	// Each settle poll is a snapshot read: the host sends it as an API event and calls the settings source once before it, a call of the
+	// test's own that belongs to no round. The count of polls is exact, so the rounds' calls are the total less the polls.
+	polls := int64(0)
+	pollUntil(t, "the rounds to settle", func() bool { polls++; return restartLive(t, opened.h, root).Run == nil })
+	if got := calls.Load() - polls; got != callsPerRound*rounds {
 		t.Fatalf("the settings source was called %v times a round, want %d (D206: Pi resolves it 49 times)", float64(got)/rounds, callsPerRound)
 	}
 }

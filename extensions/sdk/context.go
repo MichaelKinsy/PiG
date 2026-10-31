@@ -1729,6 +1729,11 @@ func (c Context) Exec(command string, args []string) (*ExecResult, error) {
 
 // ExecWithOptions is [Context.Exec] with upstream's exec options.
 func (c Context) ExecWithOptions(command string, args []string, opts ExecOptions) (*ExecResult, error) {
+	// Upstream rejects a maxBuffer that is not an integer before it spawns. NaN and the infinities cross the wire as null, which the host reads as
+	// undefined, so the call fails here instead.
+	if opts.MaxBuffer != nil && (math.IsNaN(*opts.MaxBuffer) || math.IsInf(*opts.MaxBuffer, 0)) {
+		return nil, errors.New("maxBuffer must be an integer between 0 and the runtime string limit")
+	}
 	payload := map[string]any{"command": command, "args": args, "options": opts}
 	if opts.Signal == nil {
 		return c.exec(payload)

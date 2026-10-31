@@ -77,7 +77,7 @@ func InstallPackageArtifacts(cwd, agentDir string, sm *codingagent.SettingsManag
 		case "npm":
 			return InstallManagedNPM(cwd, agentDir, sm, pkg.Source, local)
 		case "git":
-			return InstallManagedGit(cwd, agentDir, sm, pkg.Source, local)
+			return InstallManagedGit(cwd, agentDir, sm, pkg.Source, local, WithProgressReporter(progress))
 		default:
 			return fmt.Errorf("unsupported package source: %s", pkg.Source)
 		}
@@ -340,6 +340,10 @@ func PackageSourceIdentityChecked(baseDir, raw string) (string, error) {
 			return "", urlErr
 		}
 		return "unsupported:" + strings.TrimSpace(raw), nil
+	}
+	// pig divergence (D217): Pi 1be312b4 (#10488) getPackageIdentity and getSourceMatchKey* key a local source by getPathComparisonKey, so on Windows `C:\pkg` and `c:\PKG` are one package; Pi 1.4.0+b3a29f11 compared the resolved strings.
+	if path, local := strings.CutPrefix(identity, "local:"); local && ref.Kind == sourceref.KindLocal && resolvepath.FoldsCase() {
+		identity = "local:" + resolvepath.ComparisonKey(path)
 	}
 	return identity, nil
 }

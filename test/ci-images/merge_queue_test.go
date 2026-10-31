@@ -304,6 +304,34 @@ func TestMergeGroupRunsTheFullPlan(t *testing.T) {
 	}
 }
 
+// prerequisitesOf returns the prerequisites on the rule line of target.
+func prerequisitesOf(makeSources, target string) []string {
+	for line := range strings.SplitSeq(makeSources, "\n") {
+		line, _, _ = strings.Cut(line, "#")
+		if name, deps, ok := strings.Cut(line, ":"); ok && name == target {
+			return strings.Fields(deps)
+		}
+	}
+	return nil
+}
+
+// recipeOf returns the recipe lines (those that start with a tab) of the rule that defines target, joined by newlines.
+func recipeOf(makeSources, target string) string {
+	var recipe []string
+	inRule := false
+	for line := range strings.SplitSeq(makeSources, "\n") {
+		if strings.HasPrefix(line, "\t") {
+			if inRule {
+				recipe = append(recipe, line)
+			}
+			continue
+		}
+		name, _, ok := strings.Cut(line, ":")
+		inRule = ok && name == target
+	}
+	return strings.Join(recipe, "\n")
+}
+
 // The light run keeps the pr rows under the same check names as the full run and never invents a shard the full run lacks.
 func TestLightPullRequestRunKeepsTheFastGatesUnderTheSameNames(t *testing.T) {
 	rows := tierRows(t)
@@ -339,6 +367,18 @@ func TestLightPullRequestRunKeepsTheFastGatesUnderTheSameNames(t *testing.T) {
 
 	// A light target runs a subset of its full-run shard: every gate is a gate of the shard, or lint-changed for lint, or test-changed for test-fast-parallel (the changed packages of it, or all of it).
 	substitute := map[string]string{"lint-changed": "lint", "test-changed": "test-fast-parallel"}
+	// A light gate may also run gates the full run keeps in another named shard when the change calls for them. sdk-vectors-changed runs the SDK suites (the SDKs are not packages of the main module,
+	// so test-changed never reaches them) only when automation/ci/sdk-vectors-changed.sh sees a changed path they read; the full run runs the same suites in the toolchains shard. Each must be a gate of
+	// that full-run shard and be named by the light gate's recipe, so dropping one from ci-toolchains or from the recipe fails here instead of leaving the light run with a check the full run lacks.
+	// test-sdk-go is a prerequisite of test-go-modules, the leaf ci-toolchains runs, so it is checked through that rule.
+	runsElsewhere := map[string]struct {
+		fullTarget string
+		gates      []string
+		viaLeaf    map[string]string
+	}{
+		"sdk-vectors-changed": {"ci-toolchains", []string{"test-sdk-go", "test-sdk-rs", "test-sdk-py", "test-sdk-lisp"}, map[string]string{"test-sdk-go": "test-go-modules"}},
+	}
+	makeSources := readMakeSources(t, repoRoot(t))
 	leaves := gateLeaves(t)
 	fullTargets := map[string]string{}
 	for _, entry := range full.Matrix["linux"] {
@@ -351,6 +391,28 @@ func TestLightPullRequestRunKeepsTheFastGatesUnderTheSameNames(t *testing.T) {
 			t.Errorf("light shard %s runs %s, which runs no gate", entry.Shard, entry.Target)
 		}
 		for _, gate := range lightGates {
+			if elsewhere, ok := runsElsewhere[gate]; ok {
+				recipe := recipeOf(makeSources, gate)
+				if !strings.Contains(recipe, "automation/gen/generate-sdk-vectors.mjs --check") {
+					t.Errorf("light gate %s no longer runs the generated vector check", gate)
+				}
+				for _, inner := range elsewhere.gates {
+					if !strings.Contains(recipe, inner) {
+						t.Errorf("light gate %s does not run %s", gate, inner)
+					}
+					fullLeaf := inner
+					if via, ok := elsewhere.viaLeaf[inner]; ok {
+						fullLeaf = via
+						if !slices.Contains(prerequisitesOf(makeSources, via), inner) {
+							t.Errorf("light gate %s runs %s, which %s no longer depends on", gate, inner, via)
+						}
+					}
+					if !slices.Contains(leaves(elsewhere.fullTarget), fullLeaf) {
+						t.Errorf("light gate %s runs %s, which the full run's %s does not", gate, inner, elsewhere.fullTarget)
+					}
+				}
+				continue
+			}
 			if replaced, ok := substitute[gate]; ok {
 				gate = replaced
 			}

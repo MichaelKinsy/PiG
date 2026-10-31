@@ -35,3 +35,9 @@ both_contain = ["[google]", "Model catalogs refreshed.", "all enabled"]
 both_not_contain = ["No authenticated models", "panic:"]
 output_equal = true
 runs = 3
+
+# normalize-rationale: Pi 2e0f175b (D217) is carried past the pin, so PiG's catalog has no realtime or image chat models: gemini-3.1-flash-lite-image and gemini-3.1-flash-live-preview. Only the selector's total is rewritten to PiG's; the listed rows are still compared.
+[[assert.normalize_replace]]
+pattern = '\(1/24\)'
+with = "(1/22)"
+reason = "D217: Pi 2e0f175b is carried past the pin; the pinned Pi still counts the 2 realtime and image rows it lists as chat models."

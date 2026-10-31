@@ -60,8 +60,9 @@ func TestSessionExtensionActionsBindActiveTools(t *testing.T) {
 	// The requested names are a set: a tool that stays active keeps its place (_applyToolLoadout, b9e3eef6, #11495).
 	call("setActiveTools", map[string]any{"tools": []string{}})
 	call("setActiveTools", map[string]any{"tools": []string{"bash", "read"}})
-	if got := active(); !slices.Equal(got, []string{"bash", "read"}) {
-		t.Fatalf("getActiveTools after setActiveTools = %v, want [bash read]", got)
+	// D217, Pi b9e3eef6 (#11495): tools that stay active keep their order, so the default read-before-bash order survives.
+	if got := active(); !slices.Equal(got, []string{"read", "bash"}) {
+		t.Fatalf("getActiveTools after setActiveTools = %v, want [read bash]", got)
 	}
 	call("setActiveTools", map[string]any{"tools": []string{"read", "bash"}})
 	if got := active(); !slices.Equal(got, []string{"bash", "read"}) {

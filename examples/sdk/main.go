@@ -117,6 +117,12 @@ func main() {
 		log.Fatalf("sess.Send: %v", err)
 	}
 
+	// A failed model call is not a Send error (as in Pi): it is recorded on
+	// the last assistant message.
+	if last := lastAssistant(msgs); last != nil && last.StopReason == ai.StopReasonError {
+		log.Fatalf("model call failed: %s", last.ErrorMessage)
+	}
+
 	// 8. Pull out the last assistant text and print it.
 	reply := lastAssistantText(msgs)
 	fmt.Println("ASSISTANT:", reply)
@@ -124,6 +130,16 @@ func main() {
 	fmt.Printf("Session JSONL: %s\n", sess.Path())
 	fmt.Printf("Session id:    %s\n", sess.ID())
 	fmt.Printf("Working dir:   %s\n", filepath.Clean(cwd))
+}
+
+// lastAssistant returns the most recent assistant message, or nil.
+func lastAssistant(msgs []agent.AgentMessage) *agent.AssistantMessage {
+	for _, msg := range slices.Backward(msgs) {
+		if msg.Assistant != nil {
+			return msg.Assistant
+		}
+	}
+	return nil
 }
 
 // lastAssistantText extracts the most recent assistant message's

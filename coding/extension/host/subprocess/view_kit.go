@@ -846,7 +846,9 @@ func (b *viewBuilder) build(n *ViewNode, out *frontend.ViewNode) (tui.Component,
 			out.TextStyle = &frontend.ViewTextStyle{Color: s.Color, BgColor: s.BgColor, Bold: s.Bold, Italic: s.Italic, Strikethrough: s.Strikethrough, Underline: s.Underline}
 			style = &tui.DefaultTextStyle{Color: b.fgFn(s.Color), BgColor: b.bgFn(s.BgColor), Bold: s.Bold, Italic: s.Italic, Strikethrough: s.Strikethrough, Underline: s.Underline}
 		}
-		c = tui.NewMarkdownWithOptions(n.Text, out.PaddingX, out.PaddingY, &theme, style, &tui.MarkdownOptions{RenderLatex: n.RenderLatex})
+		markdown := tui.NewMarkdownWithOptions(n.Text, out.PaddingX, out.PaddingY, &theme, style, &tui.MarkdownOptions{RenderLatex: n.RenderLatex})
+		markdown.FinishStreaming()
+		c = markdown
 	case ViewKindSpacer:
 		out.Rows = intOr(n.Lines, 1)
 		c = tui.NewSpacer(out.Rows)

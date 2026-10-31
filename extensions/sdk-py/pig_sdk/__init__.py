@@ -66,6 +66,7 @@ from .branch_summary import (
 )
 from .child_session import AgentSession as AgentSession, CreateAgentSessionOptions as CreateAgentSessionOptions, ResourceOptions as ResourceOptions, SessionStartEvent as SessionStartEvent, _ChildSessions, create_agent_session as _create_agent_session
 from .tui_alt_screen import (
+    Component as Component,
     OverlayBounds as OverlayBounds,
     ProgramStatus as ProgramStatus,
     RgbColor as RgbColor,
@@ -80,7 +81,6 @@ from .tui_alt_screen import (
     _TuiAltScreens,
     captures_viewport_input as _captures_viewport_input,
 )
-from .tui_alt_screen import Component as TuiAltComponent
 from .agent_session_services import (
     AgentSessionServices as AgentSessionServices,
     CreateAgentSessionFromServicesOptions as CreateAgentSessionFromServicesOptions,
@@ -433,6 +433,33 @@ class ToolRenderContext:
 
     def invalidate(self) -> None:
         self._invalidate()
+
+    # pig divergence (D217): Pi 9376c8d1 (#4748) hands renderers the host's keyText and keyHint on the tool render context and the message and entry options (KeybindingHints); pinned Pi has neither.
+    def key_text(self, keybinding: str) -> str:
+        """``KeybindingHints.keyText``: the keys of a keybinding as the host's configured keybindings show them, empty when it has none."""
+        return key_text(keybinding)
+
+    def key_hint(self, keybinding: str, description: str) -> str:
+        """``KeybindingHints.keyHint``: the keys followed by ``description``, styled as a hint."""
+        return key_hint(keybinding, description)
+
+
+class MessageRenderOptions(dict[str, Any]):
+    """The options a custom-message renderer receives: the host's ``{"expanded", "outputPad"}`` mapping plus the host's
+    keybinding hints (pig divergence D217: Pi 9376c8d1 #4748)."""
+
+    def key_text(self, keybinding: str) -> str:
+        """``KeybindingHints.keyText``: the keys of a keybinding as the host's configured keybindings show them, empty when it has none."""
+        return key_text(keybinding)
+
+    def key_hint(self, keybinding: str, description: str) -> str:
+        """``KeybindingHints.keyHint``: the keys followed by ``description``, styled as a hint."""
+        return key_hint(keybinding, description)
+
+
+class EntryRenderOptions(MessageRenderOptions):
+    """The options a custom-entry renderer receives: the host's ``{"expanded"}`` mapping plus the host's keybinding hints
+    (pig divergence D217: Pi 9376c8d1 #4748)."""
 
 
 # A call renderer: (ctx, args, render context, width) -> lines.
@@ -4502,7 +4529,7 @@ class Extension:
         return self._wait_call(call_id, event, method)
 
     def _read_during_load(self, waiting: threading.Event | None = None) -> dict[str, Any] | None:
-        """Read the next message while the extension loads. Pings, call results and listener dispatches are served as the main loop serves them, as a node runtime serves a dispatch during its factory; any other message is returned. With ``waiting`` given, return None once that call's result has arrived."""
+        """Read the next message while the extension loads. Pings, call results, listener dispatches and the release of a listener are served as the main loop serves them, as a node runtime serves a dispatch during its factory; any other message is returned. With ``waiting`` given, return None once that call's result has arrived."""
         while True:
             env = self._read()
             kind = env.get("type")
@@ -4514,6 +4541,9 @@ class Extension:
                     return None
             elif kind == "request" and (env.get("request") or {}).get("method") == "events.dispatch":
                 self._start_request(env)
+            elif kind == "notify" and (env.get("notify") or {}).get("method") == "events.release":
+                # A listener that a load-time dispatch unsubscribed is released as soon as its dispatch ends, which can precede ready.
+                self._handle_notify(env)
             else:
                 return env
 
@@ -5821,7 +5851,7 @@ class Extension:
                 args = req.get("args") or {}
                 view_handler = self._message_view_renderers.get(custom_type)
                 handler = view_handler or self._renderer_handlers[custom_type]
-                value = handler(ctx, args.get("message") or {}, args.get("options") or {}, int(args.get("width") or 0))
+                value = handler(ctx, args.get("message") or {}, MessageRenderOptions(args.get("options") or {}), int(args.get("width") or 0))
                 self._respond(req_id, self._views.result(value, view_handler is not None), None)
             elif method == "render_tool":
                 value, is_view = self._render_tool(ctx, req.get("tool", ""), req.get("args") or {})
@@ -5843,7 +5873,7 @@ class Extension:
                 args = req.get("args") or {}
                 view_handler = self._entry_view_renderers.get(custom_type)
                 handler = view_handler or self._entry_renderer_handlers[custom_type]
-                value = handler(ctx, args.get("entry") or {}, args.get("options") or {}, int(args.get("width") or 0))
+                value = handler(ctx, args.get("entry") or {}, EntryRenderOptions(args.get("options") or {}), int(args.get("width") or 0))
                 self._respond(req_id, self._views.result(value, view_handler is not None), None)
             elif method in _OAUTH_METHODS:
                 self._dispatch_oauth(req_id, req)

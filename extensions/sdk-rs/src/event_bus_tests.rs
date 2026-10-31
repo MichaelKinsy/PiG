@@ -243,6 +243,30 @@ fn dispatch_during_load_is_served_after_ready() {
     host.stop();
 }
 
+// The Host's events.release notify can arrive between register and ready: a listener of the loading extension unsubscribed during its dispatch, and the dispatch ended before ready. It is served as the dispatches around it are, so the load goes on to ready and the listener the notify names, still subscribed, keeps answering. The Go SDK's test is TestEventBusReleaseDuringLoadIsServed.
+#[test]
+fn release_during_load_does_not_fail_the_load() {
+    let _no_host = without_host();
+    let seen = Arc::new(Mutex::new(Vec::new()));
+    let ext = Extension::new("bus");
+    let sink = seen.clone();
+    ext.events().on("ch", move |_, data| { sink.lock().unwrap().push(data.clone()); Ok(()) }).unwrap();
+    let host = Host::start("release-early", ext);
+    let (on, _) = host.call("events.on", None);
+    while host.next().msg_type != "register" {}
+    host.conn
+        .write_envelope(&Envelope { msg_type: "notify".into(), notify: Some(serde_json::from_value(json!({"method": "events.release", "args": {"handlerId": on["handlerId"]}})).unwrap()), ..Default::default() })
+        .unwrap();
+    host.conn
+        .write_envelope(&Envelope { msg_type: "ready".into(), ready: Some(serde_json::from_value(json!({"cwd": "/tmp", "mode": "print", "width": 80})).unwrap()), ..Default::default() })
+        .unwrap();
+    host.request("d1", "events.dispatch", None, Some(json!({"handlerId": on["handlerId"], "channel": "ch", "json": "after"})));
+    let (id, error) = host.response();
+    assert_eq!((id.as_str(), error), ("d1", None));
+    assert_eq!(*seen.lock().unwrap(), vec![json!("after")]);
+    host.stop();
+}
+
 // A listener a factory subscribes joins Pi's shared emitter at once (event-bus.ts:13-34), so it hears an emit another extension makes while the factory runs,
 // and a factory's emit is delivered by the Host to every listener in order. The SDK has no connection while the factory runs, so the first factory-time bus call
 // dials the host (as parse_frontmatter does), run takes that connection, and a factory-time call answers the host's events.dispatch requests on it while it

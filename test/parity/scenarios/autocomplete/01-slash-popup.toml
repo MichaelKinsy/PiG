@@ -61,3 +61,9 @@ both_not_contain = ["unknown command", "panic:", "goroutine "]
 output_equal = true
 runtime_ratio_max = 1.5
 runs = 1
+
+# normalize-rationale: Pi 2a46c420 (#11532), carried by PiG under D217 ahead of the pin, rewords the /import description Pi 1.4.0+b3a29f11 prints as "Import and resume a session from a JSONL file". Only that description text is replaced, by one token on both sides; the command column, the popup frame and every other line stay compared. TestBuiltinSlashCommandsCarryPi2a46c420Descriptions pins PiG's text.
+[[assert.normalize_replace]]
+pattern = '(?:Import and resume a session from a JSONL file|Import a JSONL session, preserving its ID and working directory)'
+with = '<import description>'
+reason = "D217: the pinned Pi describes /import as resuming a session, PiG carries Pi 2a46c420's wording; the description is the only text replaced."

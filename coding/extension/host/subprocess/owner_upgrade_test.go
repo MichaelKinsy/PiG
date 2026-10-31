@@ -25,8 +25,8 @@ func TestLegacyStandaloneBuildsStagedSDKSubpackages(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		// An embedded name ending in .gz holds the gzip of the file under the name without it.
-		if stripped, compressed := strings.CutSuffix(name, ".gz"); compressed {
+		// An embedded name under .gz/ holds the gzip of the file under the rest of the name, without .gz.
+		if stripped, compressed := strings.CutPrefix(name, ".gz/"); compressed {
 			reader, err := gzip.NewReader(bytes.NewReader(data))
 			if err != nil {
 				t.Fatal(err)
@@ -34,7 +34,7 @@ func TestLegacyStandaloneBuildsStagedSDKSubpackages(t *testing.T) {
 			if data, err = io.ReadAll(reader); err != nil {
 				t.Fatal(err)
 			}
-			name = stripped
+			name = strings.TrimSuffix(stripped, ".gz")
 		}
 		path := filepath.Join(sdkDir, name)
 		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {

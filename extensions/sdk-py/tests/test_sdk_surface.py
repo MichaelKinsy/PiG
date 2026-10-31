@@ -470,3 +470,21 @@ def test_select_page_index_follows_the_page_keys() -> None:
     assert tui.get_select_page_index(keys, page_down, 0, 0, 5) == 0
     assert tui.get_select_page_index(keys, page_up, 0, 0, 5) == 0
     assert tui.get_select_page_index(keys, "x", 3, 20, 5) is None
+
+
+def test_exec_result_without_truncated_reads_false_and_a_non_finite_max_buffer_sends_no_call() -> None:
+    results: list[pig_sdk.ExecResult] = []
+    errors: list[BaseException] = []
+
+    def handler(ctx: pig_sdk.Context) -> None:
+        results.append(ctx.exec("true", []))
+        for value in (float("nan"), float("inf"), float("-inf")):
+            try:
+                ctx.exec("true", [], max_buffer=value)
+            except ValueError as error:
+                errors.append(error)
+
+    calls, _ = _run_command(handler, {"exec": {"stdout": "", "stderr": "", "code": 0, "killed": False}})
+    assert len(calls) == 1, "only the exec without a cap reached the host"
+    assert results == [pig_sdk.ExecResult()]
+    assert len(errors) == 3 and all("maxBuffer must be an integer" in str(error) for error in errors)

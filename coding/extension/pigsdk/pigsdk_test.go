@@ -99,7 +99,7 @@ func TestSyncStagesAllLanguages(t *testing.T) {
 	}
 }
 
-// Each bundle embeds its source files gzipped (the generator's -gzip-over); the staged SDK holds the text the Go toolchain, the interpreter and cargo read, under the name without .gz.
+// Each bundle embeds its source files gzipped under .gz/ (the generator's -gzip-over); the staged SDK holds the text the Go toolchain, the interpreter and cargo read, under the file's own name.
 func TestSyncExpandsTheCompressedFiles(t *testing.T) {
 	root := t.TempDir()
 	if _, _, err := Sync(root, false); err != nil {
@@ -110,9 +110,9 @@ func TestSyncExpandsTheCompressedFiles(t *testing.T) {
 		files        func() []string
 		compressed   string
 	}{
-		{"go", "../../../extensions/sdk", sdk.BundledFiles, "tui/internal/widthx/unicode_tables.go.gz"},
-		{"python", "../../../extensions/sdk-py", pysdk.BundledFiles, "pig_sdk/tui/_tables.py.gz"},
-		{"rust", "../../../extensions/sdk-rs", rssdk.BundledFiles, "src/tui/tables.rs.gz"},
+		{"go", "../../../extensions/sdk", sdk.BundledFiles, ".gz/tui/internal/widthx/unicode_tables.go.gz"},
+		{"python", "../../../extensions/sdk-py", pysdk.BundledFiles, ".gz/pig_sdk/tui/_tables.py.gz"},
+		{"rust", "../../../extensions/sdk-rs", rssdk.BundledFiles, ".gz/src/tui/tables.rs.gz"},
 	} {
 		dir, err := SDKDirFor(root, bundle.lang)
 		if err != nil {

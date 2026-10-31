@@ -321,6 +321,8 @@ func TestAReplaySafeCallerReattachesByDefaultAndExplicitKeysAndARerunThatCallsDi
 			}
 
 			harness, root = openChat(t, openSqlite(t, path), setup)
+			// The restarted Harness owns its SQLite store; without a Close the store's database/sql opener goroutine outlives the test.
+			t.Cleanup(func() { mustClose(t, harness) })
 			harness.Resume()
 			waiting, cancel := context.WithTimeout(testContext, 30*time.Second)
 			defer cancel()

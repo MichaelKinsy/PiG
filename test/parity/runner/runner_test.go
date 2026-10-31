@@ -119,11 +119,14 @@ func TestParity(t *testing.T) {
 		t.Fatal(err)
 	}
 	pig := ResolvePigBin(t)
-	pi := pinPiPackageDir(t, ResolveUpstreamPiBin(t))
+	pi := d217Launch(t, repoRoot, pinPiPackageDir(t, ResolveUpstreamPiBin(t)))
 	freshness := requireFreshPig(t, repoRoot, pig, *flagAllowStale)
 
 	t.Logf("comparing pig (%s) vs pi (%s; upstream %s)",
 		pig.Path, pi.Path, UpstreamVersion(pi))
+	if pi.Launch != nil {
+		t.Logf("pi launch (D217 hook): %s %s", pi.Launch.Program, strings.Join(pi.Launch.Args, " "))
+	}
 	t.Logf("pig freshness: binary=%s newest_source=%s fresh=%t",
 		freshness.BinaryModTime.Format("2006-01-02T15:04:05Z07:00"), freshness.NewestPath, freshness.Fresh)
 	t.Logf("schedule: %s", formatScheduleSummary(scenarios, groupLimits))

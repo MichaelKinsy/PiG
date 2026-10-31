@@ -3,6 +3,7 @@ package packagemanager
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -111,17 +112,22 @@ func RepairMissingGitDependencies(packageRoot string, sm *codingagent.SettingsMa
 	return nil
 }
 
+// CleanAndInstallGitDependencies is cleanAndInstallGitDependencies.
+// pig divergence (D217): Pi e3da248e (#11648, fixes #11597) no longer aborts the update when `git clean -fdx` fails (on Windows a file another pi session holds open cannot be deleted). It warns through the progress callback, still installs the dependencies and keeps the update marker so the next update retries the clean; pinned Pi returned the clean error.
 func CleanAndInstallGitDependencies(checkout, packageRoot, marker string, sm *codingagent.SettingsManager, opts ...InstallOption) error {
+	cleaned := true
 	if err := RunPackageProcess(checkout, "git", "clean", "-fdx"); err != nil {
-		// upstream: packages/coding-agent/src/core/package-manager.ts:cleanAndInstallGitDependencies
-		_ = RepairMissingGitDependencies(packageRoot, sm, opts...)
-		return err
+		cleaned = false
+		EmitProgress(resolveInstallOptions(opts).progress, ProgressEvent{Type: "progress", Action: "update", Source: checkout, Message: new(fmt.Sprintf("Could not remove all untracked files in %s (%s). Files may be in use by another pi session; close it and run the update again.", checkout, err.Error()))})
 	}
 	if err := RequireGitSubdirectoryWithinCheckout(checkout, packageRoot); err != nil {
 		return err
 	}
 	if err := InstallGitDependencies(packageRoot, sm, opts...); err != nil {
 		return err
+	}
+	if !cleaned {
+		return nil
 	}
 	return RemoveGitUpdateMarker(marker)
 }

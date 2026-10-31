@@ -67,7 +67,7 @@ func TestRegularModeSelectorPageKeyMovesItsSelection(t *testing.T) {
 // listener order to a subprocess extension's ui.custom component: in the
 // editor slot PageDown scrolls the transcript and never reaches the extension,
 // while other keys still do. A focused overlay keeps PageDown, because the
-// viewport defers to it (shouldDeferViewportInputToOverlay).
+// viewport defers to it (shouldDeferViewportInput).
 func TestFullscreenViewportKeysPrecedeEditorSlotExtensionUI(t *testing.T) {
 	t.Run("editor slot", func(t *testing.T) { checkFullscreenExtensionUIFirstInput(t, false, "k") })
 	t.Run("overlay", func(t *testing.T) { checkFullscreenExtensionUIFirstInput(t, true, pageDownKey) })
