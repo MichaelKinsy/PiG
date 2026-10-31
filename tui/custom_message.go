@@ -111,6 +111,7 @@ func (c *CustomMessageComponent) rebuild() {
 	markdown := NewMarkdownWithOptions(CustomMessageText(c.message), 0, 0, c.markdownTheme, &DefaultTextStyle{
 		Color: func(text string) string { return ActiveTheme().Fg("customMessageText", text) },
 	}, nil)
+	markdown.FinishStreaming()
 	c.box.AddChild(markdown)
 }
 
