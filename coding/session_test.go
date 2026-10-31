@@ -596,6 +596,7 @@ func TestSessionAgentEndEventIncludesWillRetry(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	_ = sess.Events()
 	defer func() { _ = sess.Close() }()
 
 	ctx, cancel := context.WithCancel(context.Background())
