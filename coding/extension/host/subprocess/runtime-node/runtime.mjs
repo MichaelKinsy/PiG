@@ -310,6 +310,10 @@ function piSession() {
 function piProviderComposer() {
   return requireModule("./shims/pi-dist/pi-coding-agent/core/provider-composer.js");
 }
+// pig divergence (D217): Pi 9376c8d1 (#4748) hands renderers the host's keyText and keyHint on the tool render context and the message and entry options; pinned Pi has neither. They load with the first render, not at startup: the module draws in pi-tui's bundle.
+function piKeybindingHints() {
+  return requireModule("./shims/pi-dist/pi-coding-agent/modes/interactive/components/keybinding-hints.js");
+}
 function piVirtualModels() {
   return requireModule("./shims/pi-dist/pi-coding-agent/core/virtual-models.js");
 }
@@ -5145,7 +5149,9 @@ export class Runtime {
           const handler = this.renderers.get(request.tool);
           if (!handler) throw new Error(`unknown renderer: ${request.tool}`);
           const payload = request.args || {};
-          const component = await handler(payload.message, payload.options, this.ui.theme);
+          // pig divergence (D217): Pi 9376c8d1 (#4748) hands renderers the host's keyText and keyHint on the tool render context and the message and entry options; pinned Pi has neither.
+          const { keyText, keyHint } = piKeybindingHints();
+          const component = await handler(payload.message, { ...payload.options, keyText, keyHint }, this.ui.theme);
           await this.respond(id, this.withSurfaceTheme(component, () => {
             const lines = Array.isArray(component) ? component : component?.render?.(payload.width);
             return this.rendererResult(component, Array.isArray(lines) ? lines : [], payload.width);
@@ -5171,7 +5177,9 @@ export class Runtime {
           const handler = this.entryRenderers.get(request.tool);
           if (!handler) throw new Error(`unknown entry renderer: ${request.tool}`);
           const payload = request.args || {};
-          const component = await handler(payload.entry, payload.options, this.ui.theme);
+          // pig divergence (D217): Pi 9376c8d1 (#4748) hands renderers the host's keyText and keyHint on the tool render context and the message and entry options; pinned Pi has neither.
+          const { keyText, keyHint } = piKeybindingHints();
+          const component = await handler(payload.entry, { ...payload.options, keyText, keyHint }, this.ui.theme);
           await this.respond(id, this.withSurfaceTheme(component, () => {
             const lines = Array.isArray(component) ? component : component?.render?.(payload.width);
             return this.rendererResult(component, Array.isArray(lines) ? lines : [], payload.width);
@@ -5196,12 +5204,16 @@ export class Runtime {
           const phase = isResult ? "result" : "call";
           let component = card[phase];
           if (payload.rerender || component === undefined) {
+            const { keyText, keyHint } = piKeybindingHints();
             const context = {
               ...(payload.context || {}),
               args: payload.args,
               invalidate: () => this.notify("tool_render_invalidate", { card: payload.card }),
               lastComponent: component,
               state: card.state,
+              // pig divergence (D217): Pi 9376c8d1 (#4748) hands renderers the host's keyText and keyHint; pinned Pi has neither.
+              keyText,
+              keyHint,
             };
             try {
               component = isResult

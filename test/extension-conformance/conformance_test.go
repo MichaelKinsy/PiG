@@ -1200,6 +1200,11 @@ func makeInprocFixture(ui extension.UIContext, actions *[]string) extension.Exte
 		Path:         "inproc-conformance-fixture",
 		ResolvedPath: "inproc-conformance-fixture",
 		MessageRenderers: map[string]extension.MessageRenderer{
+			// pig divergence (D217) test fixture: Pi 9376c8d1 (#4748) KeyText and KeyHint on the message options. The content is the keybinding id.
+			"keyhints-message": func(message extension.CustomMessage, options extension.MessageRenderOptions, _ extension.Theme) extension.Component {
+				id, _ := message.Content.(string)
+				return &conformanceLinesComponent{lines: []string{options.KeyText(id) + " | " + options.KeyHint(id, "to expand")}}
+			},
 			"conformance-message": func(message extension.CustomMessage, options extension.MessageRenderOptions, _ extension.Theme) extension.Component {
 				custom := message
 				if custom.Content == "padding-options" {
@@ -1210,6 +1215,11 @@ func makeInprocFixture(ui extension.UIContext, actions *[]string) extension.Exte
 			},
 		},
 		EntryRenderers: map[string]extension.EntryRenderer{
+			// pig divergence (D217) test fixture: Pi 9376c8d1 (#4748) KeyText and KeyHint on the entry options. The data is the keybinding id.
+			"keyhints-entry": func(entry extension.CustomEntry, options extension.EntryRenderOptions, _ extension.Theme) extension.Component {
+				id, _ := entry.Data.(string)
+				return &conformanceLinesComponent{lines: []string{options.KeyText(id) + " | " + options.KeyHint(id, "to expand")}}
+			},
 			"conformance-entry": func(entry extension.CustomEntry, options extension.EntryRenderOptions, _ extension.Theme) extension.Component {
 				return &conformanceLinesComponent{lines: []string{fmt.Sprintf("entryrenderer:%v:expanded=%t:width=72", entry.Data, options.Expanded)}}
 			},
@@ -1228,6 +1238,13 @@ func makeInprocFixture(ui extension.UIContext, actions *[]string) extension.Exte
 			switch tool {
 			case "conformance_tool_renderer":
 				return &extension.ToolRenderers{RenderCall: line("resolved")}
+			case "conformance_keyhints":
+				return &extension.ToolRenderers{RenderCall: func(args json.RawMessage, _ extension.Theme, render extension.ToolRenderContext) extension.Component {
+					var parsed map[string]any
+					_ = json.Unmarshal(args, &parsed)
+					id, _ := parsed["q"].(string)
+					return &conformanceLinesComponent{lines: []string{render.KeyText(id) + " | " + render.KeyHint(id, "to expand")}}
+				}}
 			case "conformance_no_renderer":
 				return nil
 			case "conformance_fill":

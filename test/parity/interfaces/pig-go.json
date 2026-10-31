@@ -104594,6 +104594,28 @@
       "shapeHash": "sha256:f8dbf5ac7c330d8686a275bfcdeeae444593e5b4aaf425e793ed453c2386b9a6"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension#EntryRenderOptions.KeyHint",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension",
+      "name": "EntryRenderOptions.KeyHint",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(keybinding string, description string) string"
+      },
+      "shapeHash": "sha256:fd2e7da0897f1787e009b4210b5596394f622b09ee9f88c1b4543a86e4f70ad1"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension#EntryRenderOptions.KeyText",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension",
+      "name": "EntryRenderOptions.KeyText",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(keybinding string) string"
+      },
+      "shapeHash": "sha256:0e2247c7fc3f3f1846e389fbec9bbc2ccc3908f5cef8793cfcb2fafccda8b95b"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension#EntryRenderer",
       "package": "github.com/MichaelKinsy/PiG/coding/extension",
       "name": "EntryRenderer",
@@ -107111,6 +107133,28 @@
         "type": "MessageRenderOptions"
       },
       "shapeHash": "sha256:ccddb40c0363d86aa515e619df4040569304c19359c6ae9a0026deaf5738cc0e"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension#MessageRenderOptions.KeyHint",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension",
+      "name": "MessageRenderOptions.KeyHint",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(keybinding string, description string) string"
+      },
+      "shapeHash": "sha256:fd2e7da0897f1787e009b4210b5596394f622b09ee9f88c1b4543a86e4f70ad1"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension#MessageRenderOptions.KeyText",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension",
+      "name": "MessageRenderOptions.KeyText",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(keybinding string) string"
+      },
+      "shapeHash": "sha256:0e2247c7fc3f3f1846e389fbec9bbc2ccc3908f5cef8793cfcb2fafccda8b95b"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension#MessageRenderer",
@@ -111357,6 +111401,28 @@
         "type": "ToolRenderContext"
       },
       "shapeHash": "sha256:dfacb11c369e07099c67f45367474bc9c5bcf8e97926760ffef8d3cf4068c103"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension#ToolRenderContext.KeyHint",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension",
+      "name": "ToolRenderContext.KeyHint",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(keybinding string, description string) string"
+      },
+      "shapeHash": "sha256:fd2e7da0897f1787e009b4210b5596394f622b09ee9f88c1b4543a86e4f70ad1"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension#ToolRenderContext.KeyText",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension",
+      "name": "ToolRenderContext.KeyText",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(keybinding string) string"
+      },
+      "shapeHash": "sha256:0e2247c7fc3f3f1846e389fbec9bbc2ccc3908f5cef8793cfcb2fafccda8b95b"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension#ToolRenderResultFunc",
@@ -189855,6 +189921,28 @@
       "shapeHash": "sha256:f8dbf5ac7c330d8686a275bfcdeeae444593e5b4aaf425e793ed453c2386b9a6"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#EntryRenderOptions.KeyHint",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
+      "name": "EntryRenderOptions.KeyHint",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(keybinding string, description string) string"
+      },
+      "shapeHash": "sha256:fd2e7da0897f1787e009b4210b5596394f622b09ee9f88c1b4543a86e4f70ad1"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#EntryRenderOptions.KeyText",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
+      "name": "EntryRenderOptions.KeyText",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(keybinding string) string"
+      },
+      "shapeHash": "sha256:0e2247c7fc3f3f1846e389fbec9bbc2ccc3908f5cef8793cfcb2fafccda8b95b"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#EntryRendererFunc",
       "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
       "name": "EntryRendererFunc",
@@ -194858,6 +194946,28 @@
         "type": "MessageRenderOptions"
       },
       "shapeHash": "sha256:ccddb40c0363d86aa515e619df4040569304c19359c6ae9a0026deaf5738cc0e"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#MessageRenderOptions.KeyHint",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
+      "name": "MessageRenderOptions.KeyHint",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(keybinding string, description string) string"
+      },
+      "shapeHash": "sha256:fd2e7da0897f1787e009b4210b5596394f622b09ee9f88c1b4543a86e4f70ad1"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#MessageRenderOptions.KeyText",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
+      "name": "MessageRenderOptions.KeyText",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(keybinding string) string"
+      },
+      "shapeHash": "sha256:0e2247c7fc3f3f1846e389fbec9bbc2ccc3908f5cef8793cfcb2fafccda8b95b"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#MessageRole",
@@ -203878,6 +203988,28 @@
         "type": "ToolRenderContext"
       },
       "shapeHash": "sha256:dfacb11c369e07099c67f45367474bc9c5bcf8e97926760ffef8d3cf4068c103"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#ToolRenderContext.KeyHint",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
+      "name": "ToolRenderContext.KeyHint",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(keybinding string, description string) string"
+      },
+      "shapeHash": "sha256:fd2e7da0897f1787e009b4210b5596394f622b09ee9f88c1b4543a86e4f70ad1"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#ToolRenderContext.KeyText",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
+      "name": "ToolRenderContext.KeyText",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(keybinding string) string"
+      },
+      "shapeHash": "sha256:0e2247c7fc3f3f1846e389fbec9bbc2ccc3908f5cef8793cfcb2fafccda8b95b"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#ToolRenderResult",

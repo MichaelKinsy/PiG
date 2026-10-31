@@ -205,12 +205,17 @@ export default function (pi) {
     render(width) { return [`entryrenderer:${entry.data}:expanded=${Boolean(options.expanded)}:width=${width}`]; },
     invalidate() {},
   }));
+  // pig divergence (D217) test fixture: Pi 9376c8d1 (#4748) keyText and keyHint on the message and entry options and the tool render context. The content, data and q are the keybinding id.
+  const hintsOf = (hints, id) => `${hints.keyText(id)} | ${hints.keyHint(id, "to expand")}`;
+  pi.registerMessageRenderer("keyhints-message", (message, options) => ({ render: () => [hintsOf(options, message.content)], invalidate() {} }));
+  pi.registerEntryRenderer("keyhints-entry", (entry, options) => ({ render: () => [hintsOf(options, entry.data)], invalidate() {} }));
   pi.registerMarkdownTransformer((markdown, context) =>
     `md:${markdown}:${context.messageType}:streaming=${context.isStreaming}:width=${context.availableWidth}`);
   const resolvedLine = (prefix, toolName) => (args) => ({ render: () => [`${prefix}:${toolName}:${args?.q}`], invalidate: () => {} });
   pi.registerToolRenderer((toolName, next) => {
     switch (toolName) {
       case "conformance_tool_renderer": return { renderCall: resolvedLine("resolved", toolName) };
+      case "conformance_keyhints": return { renderCall: (args, _theme, context) => ({ render: () => [hintsOf(context, args.q)], invalidate() {} }) };
       case "conformance_no_renderer": return undefined;
       case "conformance_fill": return next() ?? { renderCall: resolvedLine("filled", toolName) };
       case "conformance_wrap": return { ...next(), renderCall: resolvedLine("wrapped", toolName) };

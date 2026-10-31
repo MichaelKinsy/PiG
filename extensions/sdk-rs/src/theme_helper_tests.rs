@@ -180,3 +180,23 @@ fn truncate_to_visual_lines_matches_pi() {
         assert_eq!(got.skipped_count as i64, result["skippedCount"].as_i64().unwrap(), "{name}");
     }
 }
+
+// pig divergence (D217): Pi 9376c8d1 (#4748) key_text and key_hint on the message and entry render options (the tool render context is built only by the
+// request path, which the conformance row exercises); each answers as the module function does.
+#[test]
+fn render_options_hints_read_the_host_keybindings() {
+    let _guard = STATE.lock().unwrap_or_else(|e| e.into_inner());
+    let case = &pi_cases("keyHint")[0];
+    let (result, a) = (&case["result"], case["args"].as_array().unwrap());
+    install_palette(&result["palette"]);
+    install_keybindings(result);
+    let (id, description) = (a[4].as_str().unwrap(), a[5].as_str().unwrap());
+    on_platform(result["platform"].as_str().unwrap(), || {
+        let message = crate::extension::MessageRenderOptions::default();
+        let entry = crate::extension::EntryRenderOptions::default();
+        assert_eq!(message.key_hint(id, description), result["text"].as_str().unwrap());
+        assert_eq!(entry.key_hint(id, description), result["text"].as_str().unwrap());
+        assert_eq!(message.key_text(id), key_text(id));
+        assert_eq!(entry.key_text("x.missing.id"), "");
+    });
+}

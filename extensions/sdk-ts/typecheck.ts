@@ -6,7 +6,10 @@ import type {
   ExtensionVirtualModel,
   InlineExtension,
   McpServerConfig,
+  EntryRenderOptions,
+  KeybindingHints,
   McpServersChangeEvent,
+  MessageRenderOptions,
   ModelRegistry,
   ProviderConfig,
   ProviderStreamEvent,
@@ -17,6 +20,7 @@ import type {
   ToolLoadout,
   ToolLoadoutChanges,
   ToolNamespace,
+  ToolRenderContext,
 } from "@earendil-works/pi-coding-agent";
 import { clampThinkingLevel } from "@earendil-works/pi-ai/models";
 import type { Component, Container } from "@earendil-works/pi-tui";
@@ -116,6 +120,24 @@ export function toolDefinitionFields(): ToolDefinition {
       return { content: [], details: undefined, structuredContent: { ok: true } };
     },
   };
+}
+
+// pig divergence (D217): Pi 9376c8d1 (#4748) keyText and keyHint on the tool render context and the message and entry options, declared by the PiG augmentation (the pinned declarations have none).
+export function keybindingHints(pi: ExtensionAPI): void {
+  const hints = (hint: KeybindingHints): string => `${hint.keyText("app.tools.expand")} ${hint.keyHint("app.tools.expand", "to expand")}`;
+  pi.registerMessageRenderer("hints", (_message, options: MessageRenderOptions) => {
+    void hints(options);
+    return undefined;
+  });
+  pi.registerEntryRenderer("hints", (_entry, options: EntryRenderOptions) => {
+    void hints(options);
+    return undefined;
+  });
+  const renderCall = (_args: unknown, _theme: unknown, context: ToolRenderContext): undefined => {
+    void hints(context);
+    return undefined;
+  };
+  void renderCall;
 }
 
 export function apiAdditions(pi: ExtensionAPI): void {

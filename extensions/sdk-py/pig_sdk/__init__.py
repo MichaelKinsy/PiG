@@ -433,6 +433,33 @@ class ToolRenderContext:
     def invalidate(self) -> None:
         self._invalidate()
 
+    # pig divergence (D217): Pi 9376c8d1 (#4748) hands renderers the host's keyText and keyHint on the tool render context and the message and entry options (KeybindingHints); pinned Pi has neither.
+    def key_text(self, keybinding: str) -> str:
+        """``KeybindingHints.keyText``: the keys of a keybinding as the host's configured keybindings show them, empty when it has none."""
+        return key_text(keybinding)
+
+    def key_hint(self, keybinding: str, description: str) -> str:
+        """``KeybindingHints.keyHint``: the keys followed by ``description``, styled as a hint."""
+        return key_hint(keybinding, description)
+
+
+class MessageRenderOptions(dict[str, Any]):
+    """The options a custom-message renderer receives: the host's ``{"expanded", "outputPad"}`` mapping plus the host's
+    keybinding hints (pig divergence D217: Pi 9376c8d1 #4748)."""
+
+    def key_text(self, keybinding: str) -> str:
+        """``KeybindingHints.keyText``: the keys of a keybinding as the host's configured keybindings show them, empty when it has none."""
+        return key_text(keybinding)
+
+    def key_hint(self, keybinding: str, description: str) -> str:
+        """``KeybindingHints.keyHint``: the keys followed by ``description``, styled as a hint."""
+        return key_hint(keybinding, description)
+
+
+class EntryRenderOptions(MessageRenderOptions):
+    """The options a custom-entry renderer receives: the host's ``{"expanded"}`` mapping plus the host's keybinding hints
+    (pig divergence D217: Pi 9376c8d1 #4748)."""
+
 
 # A call renderer: (ctx, args, render context, width) -> lines.
 ToolRenderCallHandler: TypeAlias = Callable[["Context", dict[str, Any], ToolRenderContext, int], list[str]]
@@ -5814,7 +5841,7 @@ class Extension:
                 args = req.get("args") or {}
                 view_handler = self._message_view_renderers.get(custom_type)
                 handler = view_handler or self._renderer_handlers[custom_type]
-                value = handler(ctx, args.get("message") or {}, args.get("options") or {}, int(args.get("width") or 0))
+                value = handler(ctx, args.get("message") or {}, MessageRenderOptions(args.get("options") or {}), int(args.get("width") or 0))
                 self._respond(req_id, self._views.result(value, view_handler is not None), None)
             elif method == "render_tool":
                 value, is_view = self._render_tool(ctx, req.get("tool", ""), req.get("args") or {})
@@ -5836,7 +5863,7 @@ class Extension:
                 args = req.get("args") or {}
                 view_handler = self._entry_view_renderers.get(custom_type)
                 handler = view_handler or self._entry_renderer_handlers[custom_type]
-                value = handler(ctx, args.get("entry") or {}, args.get("options") or {}, int(args.get("width") or 0))
+                value = handler(ctx, args.get("entry") or {}, EntryRenderOptions(args.get("options") or {}), int(args.get("width") or 0))
                 self._respond(req_id, self._views.result(value, view_handler is not None), None)
             elif method in _OAUTH_METHODS:
                 self._dispatch_oauth(req_id, req)
