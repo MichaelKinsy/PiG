@@ -20,8 +20,8 @@ func TestPisRestartOracleDeliversItsWholeReportThroughAOnePagePipe(t *testing.T)
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer reader.Close()
-	defer writer.Close()
+	t.Cleanup(func() { _ = reader.Close() })
+	t.Cleanup(func() { _ = writer.Close() })
 	raw, err := writer.SyscallConn()
 	if err != nil {
 		t.Fatal(err)
@@ -47,7 +47,10 @@ func TestPisRestartOracleDeliversItsWholeReportThroughAOnePagePipe(t *testing.T)
 	if err := cmd.Start(); err != nil {
 		t.Fatal(err)
 	}
-	writer.Close()
+	// The child holds the write end now; the parent's copy must go for the reader to see end of file.
+	if err := writer.Close(); err != nil {
+		t.Fatal(err)
+	}
 	output, readErr := io.ReadAll(reader)
 	if err := cmd.Wait(); err != nil {
 		t.Fatalf("Pi's restart oracle: %v\n%s", err, stderr.String())
