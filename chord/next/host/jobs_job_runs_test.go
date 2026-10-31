@@ -685,6 +685,14 @@ func TestFinishDoesNotRunWhenItsObjectEndsWhileTheOutcomeAndFinishWaitForTheLine
 	})
 	closing := make(chan error, 1)
 	go func() { closing <- fixture.Host.Close(background) }()
+	// Pi's `host.close()` ends the object in its own synchronous part, before `line.resolve()` runs. Here Close runs on a
+	// goroutine of its own: wait for that section (the host closed, its objects ended) before the line is released.
+	eventually(t, "the host to close its objects", func() bool {
+		host := fixture.Host.(*chordHost)
+		var closed bool
+		host.enter(func() { closed = host.closing() })
+		return closed
+	})
 	line.Open()
 	<-holding
 	must(t, <-closing)
