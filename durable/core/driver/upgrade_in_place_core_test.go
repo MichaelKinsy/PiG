@@ -1,6 +1,7 @@
 package driver_test
 
 import (
+	"os"
 	"path/filepath"
 	"testing"
 
@@ -12,10 +13,10 @@ import (
 	durablesqlite "github.com/MichaelKinsy/PiG/durable/storage/sqlite"
 )
 
-// D188: the core keeps a copy of a store an older Pi release wrote (pi-durable 1.3.0, schema version 1), which that
-// release can still open, before it upgrades the store.
-func TestOpenHarnessCopiesAnOlderSchemaBeforeUpgrading(t *testing.T) {
-	path := filepath.Join(t.TempDir(), "store.db")
+// The core upgrades a version 1 store (pi-durable 1.3.0) in place, as Pi does, and writes no other file beside it.
+func TestOpenHarnessUpgradesAVersionOneStoreInPlace(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "store.db")
 	database, err := chordnode.OpenNodeSqliteDatabase(path, chordnode.NodeSqliteDatabaseOptions{})
 	if err != nil {
 		t.Fatal(err)
@@ -35,23 +36,23 @@ func TestOpenHarnessCopiesAnOlderSchemaBeforeUpgrading(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	version := func(path string) int64 {
-		t.Helper()
-		database, err := chordnode.OpenNodeSqliteDatabase(path, chordnode.NodeSqliteDatabaseOptions{})
-		if err != nil {
-			t.Fatal(err)
-		}
-		defer func() { _ = database.Close() }()
-		row, err := database.Get("SELECT version FROM durable_schema WHERE singleton = 1")
-		if err != nil {
-			t.Fatal(err)
-		}
-		return row["version"].(int64)
+	database, err = chordnode.OpenNodeSqliteDatabase(path, chordnode.NodeSqliteDatabaseOptions{})
+	if err != nil {
+		t.Fatal(err)
 	}
-	if got := version(path + ".schema-1.bak"); got != 1 {
-		t.Fatalf("backup is schema version %d, want 1", got)
+	defer func() { _ = database.Close() }()
+	row, err := database.Get("SELECT version FROM durable_schema WHERE singleton = 1")
+	if err != nil {
+		t.Fatal(err)
 	}
-	if got := version(path); got != store.SupportedSchemaVersion {
+	if got := row["version"].(int64); got != store.SupportedSchemaVersion {
 		t.Fatalf("store is schema version %d, want %d", got, store.SupportedSchemaVersion)
+	}
+	matches, err := filepath.Glob(filepath.Join(dir, "*.bak"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(path + ".schema-1.bak"); len(matches) != 0 || !os.IsNotExist(err) {
+		t.Fatalf("opening a version 1 store left copies beside it: %v", matches)
 	}
 }
