@@ -1318,6 +1318,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-f2c8b02](#bf-f2c8b02) | After `await ctx.reload()`, a command's captured `pi` and `ctx` now throw Pi's stale message for every… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-f34b545](#bf-f34b545) | Durable: resolving harness settings no longer shares the default retry policy's max agent delay between… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-f3b4045](#bf-f3b4045) | `.gitignore`, `.ignore` and `.fdignore` rules that skills, packages and extension entry discovery read now… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-f4a8f71](#bf-f4a8f71) | A program that embeds PiG and never reads session events no longer hangs | PiG's own defect | All platforms | Unreleased |
 | [BF-f4d85f8](#bf-f4d85f8) | A large file written through a tool call no longer slows down as it streams: each streamed piece of the… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-f5ecdc2](#bf-f5ecdc2) | Settings and `models.json` compat objects keep the members PiG does not model, as Pi 1.2.0 does | PiG's own defect | All platforms | 0.5.0 |
 | [BF-f6305d9](#bf-f6305d9) | A `new_session`, `fork`, `clone` or `switch_session` in the same RPC batch as a `compact` aborts the… | PiG's own defect | All platforms | 0.5.0 |
@@ -19425,6 +19426,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `2b3403045b` (2026-10-09), `4333619e20` (2026-10-09), `5cec6423ef` (2026-10-09), `794d676720` (2026-10-09), `7cfdcb77b3` (2026-10-09), `ea72139272` (2026-10-09), `f3b4045e8a` (2026-10-10)
 - **Tests:** `ai/anthropic_messages_payload_oracle_test.go::TestAnthropicMessagesPayloadMatchesPi`, `ai/anthropic_oauth_test.go::TestAnthropicHistoryToolNames`, `ai/auth_file_bytes_oracle_test.go::TestAuthFileBytesMatchPi`, `ai/google_generative_ai_payload_oracle_test.go::TestGoogleGenerativeAIPayloadMatchesPi`, `ai/google_generative_ai_payload_oracle_test.go::TestGoogleVertexPayloadMatchesPi`, `ai/mistral_payload_oracle_test.go::TestMistralPayloadModeAndEffortMatchPi`, `ai/oauth_credential_members_test.go::TestOAuthBuildersWriteCredentialMembersInPiOrder`, `ai/openai_responses_payload_oracle_test.go::TestOpenAICodexResponsesPayloadMatchesPi` and 7 more in docs/bug-ledger.json
 - **Release note:** `.gitignore`, `.ignore` and `.fdignore` rules that skills, packages and extension entry discovery read now follow the `ignore` package Pi uses: a pattern ending in a slash ignores directories only (a file named `build` survives `build/`), patterns match case-insensitively, a path inside an ignored directory stays ignored, a pattern with a slash before its end is anchored, `[a-c]` and `[!a]` bracket expressions work, and `**/x`, `x/**` and `x/**/y` follow Pi's forms. A leading space in a pattern is kept, as in Pi.
+
+### BF-f4a8f71
+
+**A program that embeds PiG and never reads session events no longer hangs**
+
+- **Source:** PiG's own defect
+- **Symptom:** A program that embeds PiG and never reads session events no longer hangs.
+- **Root cause:** A Session delivered every event to its Events channel from the start, so a program that never read Events (the quick start in the package doc, the SDK example) hung in Send once a turn emitted more events than the channel buffers hold. Pi has no such wait: AgentSession._emit notifies only the listeners it has, and with none, nothing is buffered and nothing blocks.
+- **User impact:** Crash, hang or runaway process
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `f4a8f71a23` (2026-10-31)
+- **Tests:** `coding/session_events_subscription_test.go::TestCloneEventsAreSubscribedSeparately`, `coding/session_events_subscription_test.go::TestDiscardEventsAfterEventsStopsDelivery`, `coding/session_events_subscription_test.go::TestEventsBeforeSendDeliversEveryEventInOrder`, `coding/session_events_subscription_test.go::TestEventsCalledDuringTurnDeliversSuffixInOrder`, `coding/session_events_subscription_test.go::TestEventsCalledLateMissesEarlierEventsOnly`, `coding/session_events_subscription_test.go::TestRuntimeSessionWithoutEventsReaderSendReturns`, `coding/session_test.go::TestSendBlocksWhenEventsConsumerStopsReadingThenUnblocks`
+- **Release note:** A program that embeds PiG and never reads session events no longer hangs. A `Session` sent every event to its `Events()` channel from the start, so `Send` stopped once a reply produced more events than the channel's buffer holds (about 128), and the quick start in the `coding` package documentation and `examples/sdk` did exactly that. Events now go to the channel only after `Events()` is first called, as Pi notifies only the listeners it has: before that call nothing is buffered and nothing waits. A program that reads events calls `Events()` before `Send` and passes each event to `coding.AcknowledgeEvent`, and it still receives every event in order; an event sent before the call is not replayed, and a slow reader still slows the turn. A session made by `Clone` starts without a reader, like a forked Pi session, and `DiscardEvents()` stops delivery for a reader that quits.
 
 ### BF-f4d85f8
 
