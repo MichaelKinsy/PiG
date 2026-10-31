@@ -717,7 +717,9 @@ impl Inner {
                     json!({"result": result.map(|result| serde_json::to_value(result).unwrap_or(Value::Null))}),
                 )
             }
-            "capturesViewportInput" => Ok(json!({"captures": self.component(key)?.captures_viewport_input()})),
+            "capturesViewportInput" => {
+                Ok(json!({"captures": self.component(key)?.captures_viewport_input()}))
+            }
             "focus" => {
                 self.component(key)?.set_focused(
                     args.get("focused")

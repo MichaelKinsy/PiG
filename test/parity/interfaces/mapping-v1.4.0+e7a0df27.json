@@ -149166,8 +149166,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/themed_notices_upstream_test.go#TestChatNoticesFollowThemeChangesUpstream",
-        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty",
-        "test:tui/container_cache_test.go#TestCustomMessageComponentIsRedrawnWhenItsRendererComponentChanges"
+        "test:internal/codingagent/interactive_whole_markdown_test.go#TestWholeMarkdownBlocksRenderBytes",
+        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty"
       ]
     },
     {
@@ -149188,8 +149188,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/themed_notices_upstream_test.go#TestChatNoticesFollowThemeChangesUpstream",
-        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty",
-        "test:tui/container_cache_test.go#TestCustomMessageComponentIsRedrawnWhenItsRendererComponentChanges"
+        "test:internal/codingagent/interactive_whole_markdown_test.go#TestWholeMarkdownBlocksRenderBytes",
+        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty"
       ]
     },
     {
@@ -157279,8 +157279,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/themed_notices_upstream_test.go#TestChatNoticesFollowThemeChangesUpstream",
-        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty",
-        "test:tui/container_cache_test.go#TestCustomMessageComponentIsRedrawnWhenItsRendererComponentChanges"
+        "test:internal/codingagent/interactive_whole_markdown_test.go#TestWholeMarkdownBlocksRenderBytes",
+        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty"
       ]
     },
     {
@@ -157301,8 +157301,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/themed_notices_upstream_test.go#TestChatNoticesFollowThemeChangesUpstream",
-        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty",
-        "test:tui/container_cache_test.go#TestCustomMessageComponentIsRedrawnWhenItsRendererComponentChanges"
+        "test:internal/codingagent/interactive_whole_markdown_test.go#TestWholeMarkdownBlocksRenderBytes",
+        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty"
       ]
     },
     {
@@ -160461,8 +160461,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/themed_notices_upstream_test.go#TestChatNoticesFollowThemeChangesUpstream",
-        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty",
-        "test:tui/container_cache_test.go#TestCustomMessageComponentIsRedrawnWhenItsRendererComponentChanges"
+        "test:internal/codingagent/interactive_whole_markdown_test.go#TestWholeMarkdownBlocksRenderBytes",
+        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty"
       ]
     },
     {
@@ -160483,8 +160483,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/themed_notices_upstream_test.go#TestChatNoticesFollowThemeChangesUpstream",
-        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty",
-        "test:tui/container_cache_test.go#TestCustomMessageComponentIsRedrawnWhenItsRendererComponentChanges"
+        "test:internal/codingagent/interactive_whole_markdown_test.go#TestWholeMarkdownBlocksRenderBytes",
+        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty"
       ]
     },
     {
@@ -168117,8 +168117,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/themed_notices_upstream_test.go#TestChatNoticesFollowThemeChangesUpstream",
-        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty",
-        "test:tui/container_cache_test.go#TestCustomMessageComponentIsRedrawnWhenItsRendererComponentChanges"
+        "test:internal/codingagent/interactive_whole_markdown_test.go#TestWholeMarkdownBlocksRenderBytes",
+        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty"
       ]
     },
     {
@@ -168139,8 +168139,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/themed_notices_upstream_test.go#TestChatNoticesFollowThemeChangesUpstream",
-        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty",
-        "test:tui/container_cache_test.go#TestCustomMessageComponentIsRedrawnWhenItsRendererComponentChanges"
+        "test:internal/codingagent/interactive_whole_markdown_test.go#TestWholeMarkdownBlocksRenderBytes",
+        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty"
       ]
     },
     {
@@ -168896,8 +168896,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/themed_notices_upstream_test.go#TestChatNoticesFollowThemeChangesUpstream",
-        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty",
-        "test:tui/container_cache_test.go#TestCustomMessageComponentIsRedrawnWhenItsRendererComponentChanges"
+        "test:internal/codingagent/interactive_whole_markdown_test.go#TestWholeMarkdownBlocksRenderBytes",
+        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty"
       ]
     },
     {
@@ -168918,8 +168918,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/themed_notices_upstream_test.go#TestChatNoticesFollowThemeChangesUpstream",
-        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty",
-        "test:tui/container_cache_test.go#TestCustomMessageComponentIsRedrawnWhenItsRendererComponentChanges"
+        "test:internal/codingagent/interactive_whole_markdown_test.go#TestWholeMarkdownBlocksRenderBytes",
+        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty"
       ]
     },
     {
@@ -172060,7 +172060,8 @@
       ],
       "evidence": [
         "test:coding/extension/track_event_bus_upstream_test.go#TestExtensionRuntimeInvalidateSkipsUnsubscribedSubscription",
-        "test:coding/extension/track_event_bus_upstream_test.go#TestExtensionRuntimeTrackEventBusSubscriptionUpstream"
+        "test:coding/extension/track_event_bus_upstream_test.go#TestExtensionRuntimeTrackEventBusSubscriptionUpstream",
+        "test:coding/extension/runtime_state_unsubscribe_test.go#TestExtensionRuntimeInvalidateOrderAfterUnsubscribes"
       ]
     },
     {
@@ -172081,7 +172082,8 @@
       ],
       "evidence": [
         "test:coding/extension/track_event_bus_upstream_test.go#TestExtensionRuntimeInvalidateSkipsUnsubscribedSubscription",
-        "test:coding/extension/track_event_bus_upstream_test.go#TestExtensionRuntimeTrackEventBusSubscriptionUpstream"
+        "test:coding/extension/track_event_bus_upstream_test.go#TestExtensionRuntimeTrackEventBusSubscriptionUpstream",
+        "test:coding/extension/runtime_state_unsubscribe_test.go#TestExtensionRuntimeInvalidateOrderAfterUnsubscribes"
       ]
     },
     {
@@ -172480,8 +172482,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/themed_notices_upstream_test.go#TestChatNoticesFollowThemeChangesUpstream",
-        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty",
-        "test:tui/container_cache_test.go#TestCustomMessageComponentIsRedrawnWhenItsRendererComponentChanges"
+        "test:internal/codingagent/interactive_whole_markdown_test.go#TestWholeMarkdownBlocksRenderBytes",
+        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty"
       ]
     },
     {
@@ -172502,8 +172504,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/themed_notices_upstream_test.go#TestChatNoticesFollowThemeChangesUpstream",
-        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty",
-        "test:tui/container_cache_test.go#TestCustomMessageComponentIsRedrawnWhenItsRendererComponentChanges"
+        "test:internal/codingagent/interactive_whole_markdown_test.go#TestWholeMarkdownBlocksRenderBytes",
+        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty"
       ]
     },
     {
@@ -175583,8 +175585,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/themed_notices_upstream_test.go#TestChatNoticesFollowThemeChangesUpstream",
-        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty",
-        "test:tui/container_cache_test.go#TestCustomMessageComponentIsRedrawnWhenItsRendererComponentChanges"
+        "test:internal/codingagent/interactive_whole_markdown_test.go#TestWholeMarkdownBlocksRenderBytes",
+        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty"
       ]
     },
     {
@@ -175605,8 +175607,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/themed_notices_upstream_test.go#TestChatNoticesFollowThemeChangesUpstream",
-        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty",
-        "test:tui/container_cache_test.go#TestCustomMessageComponentIsRedrawnWhenItsRendererComponentChanges"
+        "test:internal/codingagent/interactive_whole_markdown_test.go#TestWholeMarkdownBlocksRenderBytes",
+        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty"
       ]
     },
     {
@@ -180351,8 +180353,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/themed_notices_upstream_test.go#TestChatNoticesFollowThemeChangesUpstream",
-        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty",
-        "test:tui/container_cache_test.go#TestCustomMessageComponentIsRedrawnWhenItsRendererComponentChanges"
+        "test:internal/codingagent/interactive_whole_markdown_test.go#TestWholeMarkdownBlocksRenderBytes",
+        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty"
       ]
     },
     {
@@ -180373,8 +180375,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/themed_notices_upstream_test.go#TestChatNoticesFollowThemeChangesUpstream",
-        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty",
-        "test:tui/container_cache_test.go#TestCustomMessageComponentIsRedrawnWhenItsRendererComponentChanges"
+        "test:internal/codingagent/interactive_whole_markdown_test.go#TestWholeMarkdownBlocksRenderBytes",
+        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty"
       ]
     },
     {
@@ -182167,9 +182169,9 @@
         "call:coding/extension/host/subprocess/render_proxy.go#newEntryRenderProxyComponent"
       ],
       "evidence": [
+        "test:test/extension-conformance/keybinding_hints_test.go#TestKeybindingHintsAcrossSDKs",
         "test:coding/extension/host/subprocess/render_proxy_test.go#TestRenderProxyExpandedStateRefreshesOffLoop",
-        "test:internal/codingagent/custom_message_renderer_test.go#TestCustomMessageUsesRegisteredProductionRenderer",
-        "test:test/extension-conformance/autocomplete_test.go#TestAutocompleteFactoriesAcrossSDKs"
+        "test:internal/codingagent/custom_message_renderer_test.go#TestCustomMessageUsesRegisteredProductionRenderer"
       ]
     },
     {
@@ -182189,6 +182191,7 @@
         "call:coding/extension/host/subprocess/render_proxy.go#renderProxyComponent.SetOutputPad"
       ],
       "evidence": [
+        "test:test/extension-conformance/keybinding_hints_test.go#TestKeybindingHintsAcrossSDKs",
         "test:coding/extension/host/subprocess/message_padding_packed_test.go#TestPackedMessageOutputPadAcrossSDKs",
         "test:internal/codingagent/custom_message_padding_test.go#TestCustomMessageOutputPadProduction"
       ]
@@ -187014,8 +187017,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/themed_notices_upstream_test.go#TestChatNoticesFollowThemeChangesUpstream",
-        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty",
-        "test:tui/container_cache_test.go#TestCustomMessageComponentIsRedrawnWhenItsRendererComponentChanges"
+        "test:internal/codingagent/interactive_whole_markdown_test.go#TestWholeMarkdownBlocksRenderBytes",
+        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty"
       ]
     },
     {
@@ -187036,8 +187039,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/themed_notices_upstream_test.go#TestChatNoticesFollowThemeChangesUpstream",
-        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty",
-        "test:tui/container_cache_test.go#TestCustomMessageComponentIsRedrawnWhenItsRendererComponentChanges"
+        "test:internal/codingagent/interactive_whole_markdown_test.go#TestWholeMarkdownBlocksRenderBytes",
+        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty"
       ]
     },
     {
@@ -187538,8 +187541,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/themed_notices_upstream_test.go#TestChatNoticesFollowThemeChangesUpstream",
-        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty",
-        "test:tui/container_cache_test.go#TestCustomMessageComponentIsRedrawnWhenItsRendererComponentChanges"
+        "test:internal/codingagent/interactive_whole_markdown_test.go#TestWholeMarkdownBlocksRenderBytes",
+        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty"
       ]
     },
     {
@@ -187560,8 +187563,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/themed_notices_upstream_test.go#TestChatNoticesFollowThemeChangesUpstream",
-        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty",
-        "test:tui/container_cache_test.go#TestCustomMessageComponentIsRedrawnWhenItsRendererComponentChanges"
+        "test:internal/codingagent/interactive_whole_markdown_test.go#TestWholeMarkdownBlocksRenderBytes",
+        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty"
       ]
     },
     {
@@ -189260,7 +189263,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:internal/packagemanager/manager.go#InstallPackageArtifacts"
+        "call:internal/packagemanager/install_options.go#WithProgressReporter"
       ],
       "evidence": [
         "test:internal/packagemanager/progress_events_pi_test.go#TestWithProgressEmitsStartThenCompleteOrErrorAndReturnsTheFailure"
@@ -189280,7 +189283,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:internal/packagemanager/manager.go#InstallPackageArtifacts"
+        "call:internal/packagemanager/install_options.go#WithProgressReporter"
       ],
       "evidence": [
         "test:internal/packagemanager/progress_events_pi_test.go#TestWithProgressEmitsStartThenCompleteOrErrorAndReturnsTheFailure"
@@ -200214,8 +200217,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/themed_notices_upstream_test.go#TestChatNoticesFollowThemeChangesUpstream",
-        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty",
-        "test:tui/container_cache_test.go#TestCustomMessageComponentIsRedrawnWhenItsRendererComponentChanges"
+        "test:internal/codingagent/interactive_whole_markdown_test.go#TestWholeMarkdownBlocksRenderBytes",
+        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty"
       ]
     },
     {
@@ -200236,8 +200239,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/themed_notices_upstream_test.go#TestChatNoticesFollowThemeChangesUpstream",
-        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty",
-        "test:tui/container_cache_test.go#TestCustomMessageComponentIsRedrawnWhenItsRendererComponentChanges"
+        "test:internal/codingagent/interactive_whole_markdown_test.go#TestWholeMarkdownBlocksRenderBytes",
+        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty"
       ]
     },
     {
@@ -209624,8 +209627,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/themed_notices_upstream_test.go#TestChatNoticesFollowThemeChangesUpstream",
-        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty",
-        "test:tui/container_cache_test.go#TestCustomMessageComponentIsRedrawnWhenItsRendererComponentChanges"
+        "test:internal/codingagent/interactive_whole_markdown_test.go#TestWholeMarkdownBlocksRenderBytes",
+        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty"
       ]
     },
     {
@@ -209646,8 +209649,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/themed_notices_upstream_test.go#TestChatNoticesFollowThemeChangesUpstream",
-        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty",
-        "test:tui/container_cache_test.go#TestCustomMessageComponentIsRedrawnWhenItsRendererComponentChanges"
+        "test:internal/codingagent/interactive_whole_markdown_test.go#TestWholeMarkdownBlocksRenderBytes",
+        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty"
       ]
     },
     {
@@ -210034,8 +210037,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/themed_notices_upstream_test.go#TestChatNoticesFollowThemeChangesUpstream",
-        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty",
-        "test:tui/container_cache_test.go#TestCustomMessageComponentIsRedrawnWhenItsRendererComponentChanges"
+        "test:internal/codingagent/interactive_whole_markdown_test.go#TestWholeMarkdownBlocksRenderBytes",
+        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty"
       ]
     },
     {
@@ -210056,8 +210059,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/themed_notices_upstream_test.go#TestChatNoticesFollowThemeChangesUpstream",
-        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty",
-        "test:tui/container_cache_test.go#TestCustomMessageComponentIsRedrawnWhenItsRendererComponentChanges"
+        "test:internal/codingagent/interactive_whole_markdown_test.go#TestWholeMarkdownBlocksRenderBytes",
+        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty"
       ]
     },
     {
@@ -210759,8 +210762,8 @@
       ],
       "evidence": [
         "test:tui/message_components_oracle_test.go#TestSummaryAndSkillMessageComponentsMatchPi",
-        "test:tui/skill_invocation_expand_test.go#TestSkillInvocationMessageIsABoxAndUsesTheInjectedMarkdownTheme",
-        "test:tui/skill_invocation_expand_test.go#TestSkillInvocationSetExpandedSwitchesTheDisplay"
+        "test:tui/message_owner_render_test.go#TestMessageOwnersRenderBytes",
+        "test:tui/message_retention_norace_test.go#TestWholeMessageRetention"
       ]
     },
     {
@@ -210781,8 +210784,8 @@
       ],
       "evidence": [
         "test:tui/message_components_oracle_test.go#TestSummaryAndSkillMessageComponentsMatchPi",
-        "test:tui/skill_invocation_expand_test.go#TestSkillInvocationMessageIsABoxAndUsesTheInjectedMarkdownTheme",
-        "test:tui/skill_invocation_expand_test.go#TestSkillInvocationSetExpandedSwitchesTheDisplay"
+        "test:tui/message_owner_render_test.go#TestMessageOwnersRenderBytes",
+        "test:tui/message_retention_norace_test.go#TestWholeMessageRetention"
       ]
     },
     {
@@ -212281,8 +212284,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/themed_notices_upstream_test.go#TestChatNoticesFollowThemeChangesUpstream",
-        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty",
-        "test:tui/container_cache_test.go#TestCustomMessageComponentIsRedrawnWhenItsRendererComponentChanges"
+        "test:internal/codingagent/interactive_whole_markdown_test.go#TestWholeMarkdownBlocksRenderBytes",
+        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty"
       ]
     },
     {
@@ -212303,8 +212306,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/themed_notices_upstream_test.go#TestChatNoticesFollowThemeChangesUpstream",
-        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty",
-        "test:tui/container_cache_test.go#TestCustomMessageComponentIsRedrawnWhenItsRendererComponentChanges"
+        "test:internal/codingagent/interactive_whole_markdown_test.go#TestWholeMarkdownBlocksRenderBytes",
+        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty"
       ]
     },
     {
@@ -213143,8 +213146,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/themed_notices_upstream_test.go#TestChatNoticesFollowThemeChangesUpstream",
-        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty",
-        "test:tui/container_cache_test.go#TestCustomMessageComponentIsRedrawnWhenItsRendererComponentChanges"
+        "test:internal/codingagent/interactive_whole_markdown_test.go#TestWholeMarkdownBlocksRenderBytes",
+        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty"
       ]
     },
     {
@@ -213165,8 +213168,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/themed_notices_upstream_test.go#TestChatNoticesFollowThemeChangesUpstream",
-        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty",
-        "test:tui/container_cache_test.go#TestCustomMessageComponentIsRedrawnWhenItsRendererComponentChanges"
+        "test:internal/codingagent/interactive_whole_markdown_test.go#TestWholeMarkdownBlocksRenderBytes",
+        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty"
       ]
     },
     {
@@ -215658,8 +215661,8 @@
       ],
       "evidence": [
         "test:test/extension-conformance/component_kit_test.go#TestConformance_ComponentKitResolverDrawsCallAndResultViews",
-        "test:coding/extension/host/inproc/upstream_tool_renderers_test.go#TestUpstreamRunnerResolvesToolRenderersInExtensionLoadOrderEachAbleToDeferToTheNext",
-        "test:coding/extension/host/inproc/upstream_tool_renderers_test.go#TestUpstreamRunnerToolRendererResolversThatClaimTheSameToolAreWonByTheFirstLoaded"
+        "test:test/extension-conformance/keybinding_hints_test.go#TestKeybindingHintsAcrossSDKs",
+        "test:coding/extension/host/inproc/upstream_tool_renderers_test.go#TestUpstreamRunnerResolvesToolRenderersInExtensionLoadOrderEachAbleToDeferToTheNext"
       ]
     },
     {
@@ -218396,8 +218399,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/themed_notices_upstream_test.go#TestChatNoticesFollowThemeChangesUpstream",
-        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty",
-        "test:tui/container_cache_test.go#TestCustomMessageComponentIsRedrawnWhenItsRendererComponentChanges"
+        "test:internal/codingagent/interactive_whole_markdown_test.go#TestWholeMarkdownBlocksRenderBytes",
+        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty"
       ]
     },
     {
@@ -218418,8 +218421,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/themed_notices_upstream_test.go#TestChatNoticesFollowThemeChangesUpstream",
-        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty",
-        "test:tui/container_cache_test.go#TestCustomMessageComponentIsRedrawnWhenItsRendererComponentChanges"
+        "test:internal/codingagent/interactive_whole_markdown_test.go#TestWholeMarkdownBlocksRenderBytes",
+        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty"
       ]
     },
     {
@@ -231373,9 +231376,9 @@
         "call:durable/harness/generation.go#finishToolRound"
       ],
       "evidence": [
+        "test:durable/toolsearch/toolsearch_pi_oracle_test.go#TestToolSearchMatchesPiOnSeededDeferredTools",
         "test:durable/core/driver/harness_inbox_core_test.go#TestInboxHandoff",
-        "test:durable/examples/agent_examples_test.go#TestExample26PlanMode",
-        "test:durable/harness/agent_callers_e2e_test.go#TestAddToolsAppliesToModelToolsSoTheModelIsOfferedTheAddedTools"
+        "test:durable/examples/agent_examples_test.go#TestExample26PlanMode"
       ]
     },
     {
@@ -245196,9 +245199,9 @@
         "call:durable/storage/sqlite/migrations.go#ApplySqliteMigrations"
       ],
       "evidence": [
-        "test:durable/core/driver/schema_backup_core_test.go#TestOpenHarnessCopiesAnOlderSchemaBeforeUpgrading",
+        "test:durable/core/driver/upgrade_in_place_core_test.go#TestOpenHarnessUpgradesAVersionOneStoreInPlace",
         "test:durable/storage/sqlite/sqlite_migrations_test.go#TestDurableSQLiteMigrations",
-        "test:durable/storage/sqlite/node/schema_backup_test.go#TestOpenNodeSqliteStorageCopiesAnOlderSchemaBeforeUpgrading"
+        "test:durable/storage/sqlite/node/upgrade_in_place_test.go#TestOpenNodeSqliteStorageUpgradesAVersionOneStoreInPlace"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -245219,9 +245222,9 @@
         "call:durable/storage/sqlite/migrations.go#ApplySqliteMigrations"
       ],
       "evidence": [
-        "test:durable/core/driver/schema_backup_core_test.go#TestOpenHarnessCopiesAnOlderSchemaBeforeUpgrading",
+        "test:durable/core/driver/upgrade_in_place_core_test.go#TestOpenHarnessUpgradesAVersionOneStoreInPlace",
         "test:durable/storage/sqlite/sqlite_migrations_test.go#TestDurableSQLiteMigrations",
-        "test:durable/storage/sqlite/node/schema_backup_test.go#TestOpenNodeSqliteStorageCopiesAnOlderSchemaBeforeUpgrading"
+        "test:durable/storage/sqlite/node/upgrade_in_place_test.go#TestOpenNodeSqliteStorageUpgradesAVersionOneStoreInPlace"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -245235,14 +245238,14 @@
       ],
       "layers": {
         "behavior": "complete",
-        "production": "complete",
+        "production": "public-api-tested",
         "shape": "complete"
       },
       "production": [
-        "call:durable/storage/sqlite/node/node.go#OpenNodeSqliteStorage"
+        "public-api:durable/storage/sqlite/migrations.go#CurrentSqliteSchemaVersion"
       ],
       "evidence": [
-        "test:durable/storage/sqlite/node/schema_backup_test.go#TestOpenNodeSqliteStorageCopiesAnOlderSchemaBeforeUpgrading",
+        "test:durable/storage/sqlite/node/upgrade_in_place_test.go#TestOpenNodeSqliteStorageUpgradesAVersionOneStoreInPlace",
         "test:durable/storage/sqlite/sqlite_migrations_test.go#TestDurableSQLiteMigrations"
       ]
     },
@@ -245263,9 +245266,9 @@
         "call:durable/storage/sqlite/migrations.go#ApplySqliteMigrations"
       ],
       "evidence": [
-        "test:durable/core/driver/schema_backup_core_test.go#TestOpenHarnessCopiesAnOlderSchemaBeforeUpgrading",
+        "test:durable/core/driver/upgrade_in_place_core_test.go#TestOpenHarnessUpgradesAVersionOneStoreInPlace",
         "test:durable/storage/sqlite/sqlite_migrations_test.go#TestDurableSQLiteMigrations",
-        "test:durable/storage/sqlite/node/schema_backup_test.go#TestOpenNodeSqliteStorageCopiesAnOlderSchemaBeforeUpgrading"
+        "test:durable/storage/sqlite/node/upgrade_in_place_test.go#TestOpenNodeSqliteStorageUpgradesAVersionOneStoreInPlace"
       ]
     },
     {
@@ -248369,7 +248372,8 @@
       ],
       "evidence": [
         "test:durable/toolsearch/toolsearch_pi_oracle_test.go#TestToolSearchMatchesPiOnSeededDeferredTools",
-        "test:durable/toolsearch/toolsearch_test.go#TestToolSearchToolDeclarationMatchesPi"
+        "test:durable/toolsearch/toolsearch_carried_test.go#TestToolSearchMatchesPiTheLatestCarriedRanking",
+        "test:durable/toolsearch/toolsearch_carried_test.go#TestToolSearchRanksAToolByItsName"
       ]
     },
     {
@@ -248390,7 +248394,8 @@
       ],
       "evidence": [
         "test:durable/toolsearch/toolsearch_pi_oracle_test.go#TestToolSearchMatchesPiOnSeededDeferredTools",
-        "test:durable/toolsearch/toolsearch_test.go#TestToolSearchToolDeclarationMatchesPi"
+        "test:durable/toolsearch/toolsearch_carried_test.go#TestToolSearchMatchesPiTheLatestCarriedRanking",
+        "test:durable/toolsearch/toolsearch_carried_test.go#TestToolSearchRanksAToolByItsName"
       ]
     },
     {
@@ -274927,7 +274932,7 @@
       "evidence": [
         "test:tui/basic_components_oracle_test.go#TestBasicComponentsRenderLikePi",
         "test:tui/exit_layout_test.go#TestCustomMessageBackgroundTracksTheme",
-        "test:tui/render_frame_reentry_test.go#TestAltScreenImplicitDocumentInvalidateDuringAFrameDoesNotBlock"
+        "test:tui/message_owner_render_test.go#TestMessageOwnersRenderBytes"
       ]
     },
     {
@@ -274949,7 +274954,7 @@
       "evidence": [
         "test:tui/basic_components_oracle_test.go#TestBasicComponentsRenderLikePi",
         "test:tui/exit_layout_test.go#TestCustomMessageBackgroundTracksTheme",
-        "test:tui/render_frame_reentry_test.go#TestAltScreenImplicitDocumentInvalidateDuringAFrameDoesNotBlock"
+        "test:tui/message_owner_render_test.go#TestMessageOwnersRenderBytes"
       ]
     },
     {
@@ -275268,8 +275273,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/themed_notices_upstream_test.go#TestChatNoticesFollowThemeChangesUpstream",
-        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty",
-        "test:tui/container_cache_test.go#TestCustomMessageComponentIsRedrawnWhenItsRendererComponentChanges"
+        "test:internal/codingagent/interactive_whole_markdown_test.go#TestWholeMarkdownBlocksRenderBytes",
+        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty"
       ]
     },
     {
@@ -275290,8 +275295,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/themed_notices_upstream_test.go#TestChatNoticesFollowThemeChangesUpstream",
-        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty",
-        "test:tui/container_cache_test.go#TestCustomMessageComponentIsRedrawnWhenItsRendererComponentChanges"
+        "test:internal/codingagent/interactive_whole_markdown_test.go#TestWholeMarkdownBlocksRenderBytes",
+        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty"
       ]
     },
     {
@@ -275483,7 +275488,8 @@
         "call:tui/markdown.go#Markdown.renderDocument"
       ],
       "evidence": [
-        "test:tui/markdown_port_regressions_test.go#TestMarkdownBackgroundCallbackOrder"
+        "test:tui/markdown_port_regressions_test.go#TestMarkdownBackgroundCallbackOrder",
+        "test:tui/markdown_wrap_boundary_test.go#TestMarkdownStyledWordsAtTheWrapBoundaryPiCase"
       ]
     },
     {
@@ -276330,8 +276336,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/themed_notices_upstream_test.go#TestChatNoticesFollowThemeChangesUpstream",
-        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty",
-        "test:tui/container_cache_test.go#TestCustomMessageComponentIsRedrawnWhenItsRendererComponentChanges"
+        "test:internal/codingagent/interactive_whole_markdown_test.go#TestWholeMarkdownBlocksRenderBytes",
+        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty"
       ]
     },
     {
@@ -276352,8 +276358,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/themed_notices_upstream_test.go#TestChatNoticesFollowThemeChangesUpstream",
-        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty",
-        "test:tui/container_cache_test.go#TestCustomMessageComponentIsRedrawnWhenItsRendererComponentChanges"
+        "test:internal/codingagent/interactive_whole_markdown_test.go#TestWholeMarkdownBlocksRenderBytes",
+        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty"
       ]
     },
     {
@@ -276909,7 +276915,7 @@
       "evidence": [
         "test:tui/basic_components_oracle_test.go#TestBasicComponentsRenderLikePi",
         "test:tui/exit_layout_test.go#TestCustomMessageBackgroundTracksTheme",
-        "test:tui/render_frame_reentry_test.go#TestAltScreenImplicitDocumentInvalidateDuringAFrameDoesNotBlock"
+        "test:tui/message_owner_render_test.go#TestMessageOwnersRenderBytes"
       ]
     },
     {
@@ -276931,7 +276937,7 @@
       "evidence": [
         "test:tui/basic_components_oracle_test.go#TestBasicComponentsRenderLikePi",
         "test:tui/exit_layout_test.go#TestCustomMessageBackgroundTracksTheme",
-        "test:tui/render_frame_reentry_test.go#TestAltScreenImplicitDocumentInvalidateDuringAFrameDoesNotBlock"
+        "test:tui/message_owner_render_test.go#TestMessageOwnersRenderBytes"
       ]
     },
     {
@@ -278401,8 +278407,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/themed_notices_upstream_test.go#TestChatNoticesFollowThemeChangesUpstream",
-        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty",
-        "test:tui/container_cache_test.go#TestCustomMessageComponentIsRedrawnWhenItsRendererComponentChanges"
+        "test:internal/codingagent/interactive_whole_markdown_test.go#TestWholeMarkdownBlocksRenderBytes",
+        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty"
       ]
     },
     {
@@ -278423,8 +278429,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/themed_notices_upstream_test.go#TestChatNoticesFollowThemeChangesUpstream",
-        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty",
-        "test:tui/container_cache_test.go#TestCustomMessageComponentIsRedrawnWhenItsRendererComponentChanges"
+        "test:internal/codingagent/interactive_whole_markdown_test.go#TestWholeMarkdownBlocksRenderBytes",
+        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty"
       ]
     },
     {
@@ -279502,8 +279508,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/themed_notices_upstream_test.go#TestChatNoticesFollowThemeChangesUpstream",
-        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty",
-        "test:tui/container_cache_test.go#TestCustomMessageComponentIsRedrawnWhenItsRendererComponentChanges"
+        "test:internal/codingagent/interactive_whole_markdown_test.go#TestWholeMarkdownBlocksRenderBytes",
+        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty"
       ]
     },
     {
@@ -279524,8 +279530,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/themed_notices_upstream_test.go#TestChatNoticesFollowThemeChangesUpstream",
-        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty",
-        "test:tui/container_cache_test.go#TestCustomMessageComponentIsRedrawnWhenItsRendererComponentChanges"
+        "test:internal/codingagent/interactive_whole_markdown_test.go#TestWholeMarkdownBlocksRenderBytes",
+        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty"
       ]
     },
     {
@@ -286455,8 +286461,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/themed_notices_upstream_test.go#TestChatNoticesFollowThemeChangesUpstream",
-        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty",
-        "test:tui/container_cache_test.go#TestCustomMessageComponentIsRedrawnWhenItsRendererComponentChanges"
+        "test:internal/codingagent/interactive_whole_markdown_test.go#TestWholeMarkdownBlocksRenderBytes",
+        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty"
       ]
     },
     {
@@ -286477,8 +286483,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/themed_notices_upstream_test.go#TestChatNoticesFollowThemeChangesUpstream",
-        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty",
-        "test:tui/container_cache_test.go#TestCustomMessageComponentIsRedrawnWhenItsRendererComponentChanges"
+        "test:internal/codingagent/interactive_whole_markdown_test.go#TestWholeMarkdownBlocksRenderBytes",
+        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty"
       ]
     },
     {
@@ -287673,8 +287679,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/themed_notices_upstream_test.go#TestChatNoticesFollowThemeChangesUpstream",
-        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty",
-        "test:tui/container_cache_test.go#TestCustomMessageComponentIsRedrawnWhenItsRendererComponentChanges"
+        "test:internal/codingagent/interactive_whole_markdown_test.go#TestWholeMarkdownBlocksRenderBytes",
+        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty"
       ]
     },
     {
@@ -287695,8 +287701,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/themed_notices_upstream_test.go#TestChatNoticesFollowThemeChangesUpstream",
-        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty",
-        "test:tui/container_cache_test.go#TestCustomMessageComponentIsRedrawnWhenItsRendererComponentChanges"
+        "test:internal/codingagent/interactive_whole_markdown_test.go#TestWholeMarkdownBlocksRenderBytes",
+        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty"
       ]
     },
     {
@@ -288920,8 +288926,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/themed_notices_upstream_test.go#TestChatNoticesFollowThemeChangesUpstream",
-        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty",
-        "test:tui/container_cache_test.go#TestCustomMessageComponentIsRedrawnWhenItsRendererComponentChanges"
+        "test:internal/codingagent/interactive_whole_markdown_test.go#TestWholeMarkdownBlocksRenderBytes",
+        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty"
       ]
     },
     {
@@ -288942,8 +288948,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/themed_notices_upstream_test.go#TestChatNoticesFollowThemeChangesUpstream",
-        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty",
-        "test:tui/container_cache_test.go#TestCustomMessageComponentIsRedrawnWhenItsRendererComponentChanges"
+        "test:internal/codingagent/interactive_whole_markdown_test.go#TestWholeMarkdownBlocksRenderBytes",
+        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty"
       ]
     },
     {
@@ -289525,8 +289531,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/themed_notices_upstream_test.go#TestChatNoticesFollowThemeChangesUpstream",
-        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty",
-        "test:tui/container_cache_test.go#TestCustomMessageComponentIsRedrawnWhenItsRendererComponentChanges"
+        "test:internal/codingagent/interactive_whole_markdown_test.go#TestWholeMarkdownBlocksRenderBytes",
+        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty"
       ]
     },
     {
@@ -289547,8 +289553,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/themed_notices_upstream_test.go#TestChatNoticesFollowThemeChangesUpstream",
-        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty",
-        "test:tui/container_cache_test.go#TestCustomMessageComponentIsRedrawnWhenItsRendererComponentChanges"
+        "test:internal/codingagent/interactive_whole_markdown_test.go#TestWholeMarkdownBlocksRenderBytes",
+        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty"
       ]
     },
     {
@@ -292565,8 +292571,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/themed_notices_upstream_test.go#TestChatNoticesFollowThemeChangesUpstream",
-        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty",
-        "test:tui/container_cache_test.go#TestCustomMessageComponentIsRedrawnWhenItsRendererComponentChanges"
+        "test:internal/codingagent/interactive_whole_markdown_test.go#TestWholeMarkdownBlocksRenderBytes",
+        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty"
       ]
     },
     {
@@ -292587,8 +292593,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/themed_notices_upstream_test.go#TestChatNoticesFollowThemeChangesUpstream",
-        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty",
-        "test:tui/container_cache_test.go#TestCustomMessageComponentIsRedrawnWhenItsRendererComponentChanges"
+        "test:internal/codingagent/interactive_whole_markdown_test.go#TestWholeMarkdownBlocksRenderBytes",
+        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty"
       ]
     },
     {
@@ -294583,8 +294589,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/themed_notices_upstream_test.go#TestChatNoticesFollowThemeChangesUpstream",
-        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty",
-        "test:tui/container_cache_test.go#TestCustomMessageComponentIsRedrawnWhenItsRendererComponentChanges"
+        "test:internal/codingagent/interactive_whole_markdown_test.go#TestWholeMarkdownBlocksRenderBytes",
+        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty"
       ]
     },
     {
@@ -294605,8 +294611,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/themed_notices_upstream_test.go#TestChatNoticesFollowThemeChangesUpstream",
-        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty",
-        "test:tui/container_cache_test.go#TestCustomMessageComponentIsRedrawnWhenItsRendererComponentChanges"
+        "test:internal/codingagent/interactive_whole_markdown_test.go#TestWholeMarkdownBlocksRenderBytes",
+        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty"
       ]
     },
     {
@@ -296494,8 +296500,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/themed_notices_upstream_test.go#TestChatNoticesFollowThemeChangesUpstream",
-        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty",
-        "test:tui/container_cache_test.go#TestCustomMessageComponentIsRedrawnWhenItsRendererComponentChanges"
+        "test:internal/codingagent/interactive_whole_markdown_test.go#TestWholeMarkdownBlocksRenderBytes",
+        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty"
       ]
     },
     {
@@ -296516,8 +296522,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/themed_notices_upstream_test.go#TestChatNoticesFollowThemeChangesUpstream",
-        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty",
-        "test:tui/container_cache_test.go#TestCustomMessageComponentIsRedrawnWhenItsRendererComponentChanges"
+        "test:internal/codingagent/interactive_whole_markdown_test.go#TestWholeMarkdownBlocksRenderBytes",
+        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty"
       ]
     },
     {
@@ -299405,8 +299411,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/themed_notices_upstream_test.go#TestChatNoticesFollowThemeChangesUpstream",
-        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty",
-        "test:tui/container_cache_test.go#TestCustomMessageComponentIsRedrawnWhenItsRendererComponentChanges"
+        "test:internal/codingagent/interactive_whole_markdown_test.go#TestWholeMarkdownBlocksRenderBytes",
+        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty"
       ]
     },
     {
@@ -299427,8 +299433,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/themed_notices_upstream_test.go#TestChatNoticesFollowThemeChangesUpstream",
-        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty",
-        "test:tui/container_cache_test.go#TestCustomMessageComponentIsRedrawnWhenItsRendererComponentChanges"
+        "test:internal/codingagent/interactive_whole_markdown_test.go#TestWholeMarkdownBlocksRenderBytes",
+        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty"
       ]
     },
     {
@@ -299600,8 +299606,8 @@
       ],
       "evidence": [
         "test:coding/cli/config_command_test.go#TestRunConfigCommandFlagsMatchPi",
-        "test:coding/cli/help_oracle_test.go#TestHelpMatchesPi",
-        "test:coding/cli/args_diagnostics_test.go#TestHelpIsPisHelpWithPiGCommandsAfterPisCommands"
+        "test:coding/cli/help_oracle_test.go#TestHelpCarriesPi2a46c420SessionFlagWording",
+        "test:coding/cli/help_oracle_test.go#TestHelpMatchesPi"
       ]
     },
     {
@@ -299625,8 +299631,8 @@
       ],
       "evidence": [
         "test:coding/cli/config_command_test.go#TestRunConfigCommandFlagsMatchPi",
-        "test:coding/cli/help_oracle_test.go#TestHelpMatchesPi",
-        "test:coding/cli/args_diagnostics_test.go#TestHelpIsPisHelpWithPiGCommandsAfterPisCommands"
+        "test:coding/cli/help_oracle_test.go#TestHelpCarriesPi2a46c420SessionFlagWording",
+        "test:coding/cli/help_oracle_test.go#TestHelpMatchesPi"
       ]
     },
     {
@@ -299676,8 +299682,8 @@
       "evidence": [
         "test:coding/cli/config_command_test.go#TestRunConfigCommandFlagsMatchPi",
         "test:coding/cli/config_command_test.go#TestRunConfigCommandLocalRequiresTrustedProject",
-        "test:coding/cli/help_oracle_test.go#TestHelpMatchesPi",
-        "test:coding/cli/args_diagnostics_test.go#TestHelpIsPisHelpWithPiGCommandsAfterPisCommands"
+        "test:coding/cli/help_oracle_test.go#TestHelpCarriesPi2a46c420SessionFlagWording",
+        "test:coding/cli/help_oracle_test.go#TestHelpMatchesPi"
       ]
     },
     {
@@ -299700,8 +299706,8 @@
         "call:coding/cli/package_commands.go#parsePackageCommand"
       ],
       "evidence": [
-        "test:coding/cli/help_oracle_test.go#TestHelpMatchesPi",
-        "test:coding/cli/args_diagnostics_test.go#TestHelpIsPisHelpWithPiGCommandsAfterPisCommands"
+        "test:coding/cli/help_oracle_test.go#TestHelpCarriesPi2a46c420SessionFlagWording",
+        "test:coding/cli/help_oracle_test.go#TestHelpMatchesPi"
       ]
     },
     {
@@ -299725,8 +299731,8 @@
       ],
       "evidence": [
         "test:coding/cli/package_commands_test.go#TestRunPackageCommand_HelpIncludesUpstreamExamples",
-        "test:coding/cli/help_oracle_test.go#TestHelpMatchesPi",
-        "test:coding/cli/args_diagnostics_test.go#TestHelpIsPisHelpWithPiGCommandsAfterPisCommands"
+        "test:coding/cli/help_oracle_test.go#TestHelpCarriesPi2a46c420SessionFlagWording",
+        "test:coding/cli/help_oracle_test.go#TestHelpMatchesPi"
       ]
     },
     {
@@ -299773,8 +299779,8 @@
         "call:coding/cli/package_commands.go#parsePackageCommand"
       ],
       "evidence": [
-        "test:coding/cli/help_oracle_test.go#TestHelpMatchesPi",
-        "test:coding/cli/args_diagnostics_test.go#TestHelpIsPisHelpWithPiGCommandsAfterPisCommands"
+        "test:coding/cli/help_oracle_test.go#TestHelpCarriesPi2a46c420SessionFlagWording",
+        "test:coding/cli/help_oracle_test.go#TestHelpMatchesPi"
       ]
     },
     {
@@ -299797,8 +299803,8 @@
         "call:coding/cli/package_commands.go#parsePackageCommand"
       ],
       "evidence": [
-        "test:coding/cli/help_oracle_test.go#TestHelpMatchesPi",
-        "test:coding/cli/args_diagnostics_test.go#TestHelpIsPisHelpWithPiGCommandsAfterPisCommands"
+        "test:coding/cli/help_oracle_test.go#TestHelpCarriesPi2a46c420SessionFlagWording",
+        "test:coding/cli/help_oracle_test.go#TestHelpMatchesPi"
       ]
     },
     {
@@ -299821,8 +299827,8 @@
         "call:coding/cli/package_commands.go#parsePackageCommand"
       ],
       "evidence": [
-        "test:coding/cli/help_oracle_test.go#TestHelpMatchesPi",
-        "test:coding/cli/args_diagnostics_test.go#TestHelpIsPisHelpWithPiGCommandsAfterPisCommands"
+        "test:coding/cli/help_oracle_test.go#TestHelpCarriesPi2a46c420SessionFlagWording",
+        "test:coding/cli/help_oracle_test.go#TestHelpMatchesPi"
       ]
     },
     {
@@ -299845,8 +299851,8 @@
         "call:coding/cli/package_commands.go#parsePackageCommand"
       ],
       "evidence": [
-        "test:coding/cli/help_oracle_test.go#TestHelpMatchesPi",
-        "test:coding/cli/args_diagnostics_test.go#TestHelpIsPisHelpWithPiGCommandsAfterPisCommands"
+        "test:coding/cli/help_oracle_test.go#TestHelpCarriesPi2a46c420SessionFlagWording",
+        "test:coding/cli/help_oracle_test.go#TestHelpMatchesPi"
       ]
     },
     {
@@ -299869,8 +299875,8 @@
         "call:coding/cli/package_commands.go#parsePackageCommand"
       ],
       "evidence": [
-        "test:coding/cli/help_oracle_test.go#TestHelpMatchesPi",
-        "test:coding/cli/args_diagnostics_test.go#TestHelpIsPisHelpWithPiGCommandsAfterPisCommands"
+        "test:coding/cli/help_oracle_test.go#TestHelpCarriesPi2a46c420SessionFlagWording",
+        "test:coding/cli/help_oracle_test.go#TestHelpMatchesPi"
       ]
     },
     {
@@ -299894,8 +299900,8 @@
       ],
       "evidence": [
         "test:coding/cli/package_commands_test.go#TestParsePackageCommand_UninstallAlias",
-        "test:coding/cli/help_oracle_test.go#TestHelpMatchesPi",
-        "test:coding/cli/args_diagnostics_test.go#TestHelpIsPisHelpWithPiGCommandsAfterPisCommands"
+        "test:coding/cli/help_oracle_test.go#TestHelpCarriesPi2a46c420SessionFlagWording",
+        "test:coding/cli/help_oracle_test.go#TestHelpMatchesPi"
       ]
     },
     {
@@ -299942,8 +299948,8 @@
         "call:coding/cli/package_commands.go#parsePackageCommand"
       ],
       "evidence": [
-        "test:coding/cli/help_oracle_test.go#TestHelpMatchesPi",
-        "test:coding/cli/args_diagnostics_test.go#TestHelpIsPisHelpWithPiGCommandsAfterPisCommands"
+        "test:coding/cli/help_oracle_test.go#TestHelpCarriesPi2a46c420SessionFlagWording",
+        "test:coding/cli/help_oracle_test.go#TestHelpMatchesPi"
       ]
     },
     {
@@ -299992,8 +299998,8 @@
         "call:coding/cli/package_commands.go#parsePackageCommand"
       ],
       "evidence": [
-        "test:coding/cli/help_oracle_test.go#TestHelpMatchesPi",
-        "test:coding/cli/args_diagnostics_test.go#TestHelpIsPisHelpWithPiGCommandsAfterPisCommands"
+        "test:coding/cli/help_oracle_test.go#TestHelpCarriesPi2a46c420SessionFlagWording",
+        "test:coding/cli/help_oracle_test.go#TestHelpMatchesPi"
       ]
     },
     {
@@ -300019,8 +300025,8 @@
         "test:coding/cli/package_commands_test.go#TestAC1UpdateExtensionAndForceFlags",
         "test:coding/cli/package_commands_test.go#TestAC1UpdateRoutingMatchesPi",
         "test:coding/cli/package_commands_test.go#TestAC1UpdateRoutingRejectsConflicts",
-        "test:coding/cli/help_oracle_test.go#TestHelpMatchesPi",
-        "test:coding/cli/args_diagnostics_test.go#TestHelpIsPisHelpWithPiGCommandsAfterPisCommands"
+        "test:coding/cli/help_oracle_test.go#TestHelpCarriesPi2a46c420SessionFlagWording",
+        "test:coding/cli/help_oracle_test.go#TestHelpMatchesPi"
       ]
     },
     {
@@ -300096,8 +300102,8 @@
         "call:coding/cli/package_commands.go#parsePackageCommand"
       ],
       "evidence": [
-        "test:coding/cli/help_oracle_test.go#TestHelpMatchesPi",
-        "test:coding/cli/args_diagnostics_test.go#TestHelpIsPisHelpWithPiGCommandsAfterPisCommands"
+        "test:coding/cli/help_oracle_test.go#TestHelpCarriesPi2a46c420SessionFlagWording",
+        "test:coding/cli/help_oracle_test.go#TestHelpMatchesPi"
       ]
     },
     {
@@ -300120,8 +300126,8 @@
         "call:coding/cli/package_commands.go#parsePackageCommand"
       ],
       "evidence": [
-        "test:coding/cli/help_oracle_test.go#TestHelpMatchesPi",
-        "test:coding/cli/args_diagnostics_test.go#TestHelpIsPisHelpWithPiGCommandsAfterPisCommands"
+        "test:coding/cli/help_oracle_test.go#TestHelpCarriesPi2a46c420SessionFlagWording",
+        "test:coding/cli/help_oracle_test.go#TestHelpMatchesPi"
       ]
     },
     {
@@ -300144,8 +300150,8 @@
         "call:coding/cli/package_commands.go#parsePackageCommand"
       ],
       "evidence": [
-        "test:coding/cli/help_oracle_test.go#TestHelpMatchesPi",
-        "test:coding/cli/args_diagnostics_test.go#TestHelpIsPisHelpWithPiGCommandsAfterPisCommands"
+        "test:coding/cli/help_oracle_test.go#TestHelpCarriesPi2a46c420SessionFlagWording",
+        "test:coding/cli/help_oracle_test.go#TestHelpMatchesPi"
       ]
     },
     {
@@ -300196,8 +300202,8 @@
       ],
       "evidence": [
         "test:coding/cli/args_upstream_test.go#TestArgsUpstream",
-        "test:coding/cli/help_oracle_test.go#TestHelpMatchesPi",
-        "test:coding/cli/args_diagnostics_test.go#TestHelpIsPisHelpWithPiGCommandsAfterPisCommands"
+        "test:coding/cli/help_oracle_test.go#TestHelpCarriesPi2a46c420SessionFlagWording",
+        "test:coding/cli/help_oracle_test.go#TestHelpMatchesPi"
       ]
     },
     {
@@ -300222,8 +300228,8 @@
       "evidence": [
         "test:coding/cli/args_test.go#TestParseFlags_UpstreamParity",
         "test:coding/cli/args_upstream_test.go#TestArgsUpstream",
-        "test:coding/cli/help_oracle_test.go#TestHelpMatchesPi",
-        "test:coding/cli/args_diagnostics_test.go#TestHelpIsPisHelpWithPiGCommandsAfterPisCommands"
+        "test:coding/cli/help_oracle_test.go#TestHelpCarriesPi2a46c420SessionFlagWording",
+        "test:coding/cli/help_oracle_test.go#TestHelpMatchesPi"
       ]
     },
     {
@@ -300247,8 +300253,8 @@
       ],
       "evidence": [
         "test:coding/cli/args_upstream_test.go#TestArgsUpstream",
-        "test:coding/cli/help_oracle_test.go#TestHelpMatchesPi",
-        "test:coding/cli/args_diagnostics_test.go#TestHelpIsPisHelpWithPiGCommandsAfterPisCommands"
+        "test:coding/cli/help_oracle_test.go#TestHelpCarriesPi2a46c420SessionFlagWording",
+        "test:coding/cli/help_oracle_test.go#TestHelpMatchesPi"
       ]
     },
     {
@@ -300273,8 +300279,8 @@
       "evidence": [
         "test:coding/cli/args_test.go#TestParseFlags",
         "test:coding/cli/args_upstream_test.go#TestArgsUpstream",
-        "test:coding/cli/help_oracle_test.go#TestHelpMatchesPi",
-        "test:coding/cli/args_diagnostics_test.go#TestHelpIsPisHelpWithPiGCommandsAfterPisCommands"
+        "test:coding/cli/help_oracle_test.go#TestHelpCarriesPi2a46c420SessionFlagWording",
+        "test:coding/cli/help_oracle_test.go#TestHelpMatchesPi"
       ]
     },
     {
@@ -300299,8 +300305,8 @@
       "evidence": [
         "test:coding/cli/args_tool_lists_test.go#TestParseToolListFlagsLikePi",
         "test:coding/cli/args_upstream_test.go#TestArgsUpstream",
-        "test:coding/cli/help_oracle_test.go#TestHelpMatchesPi",
-        "test:coding/cli/args_diagnostics_test.go#TestHelpIsPisHelpWithPiGCommandsAfterPisCommands"
+        "test:coding/cli/help_oracle_test.go#TestHelpCarriesPi2a46c420SessionFlagWording",
+        "test:coding/cli/help_oracle_test.go#TestHelpMatchesPi"
       ]
     },
     {
@@ -300325,8 +300331,8 @@
       "evidence": [
         "test:coding/cli/args_test.go#TestParseFlags",
         "test:coding/cli/args_upstream_test.go#TestArgsUpstream",
-        "test:coding/cli/help_oracle_test.go#TestHelpMatchesPi",
-        "test:coding/cli/args_diagnostics_test.go#TestHelpIsPisHelpWithPiGCommandsAfterPisCommands"
+        "test:coding/cli/help_oracle_test.go#TestHelpCarriesPi2a46c420SessionFlagWording",
+        "test:coding/cli/help_oracle_test.go#TestHelpMatchesPi"
       ]
     },
     {
@@ -300351,8 +300357,8 @@
       "evidence": [
         "test:coding/cli/args_test.go#TestParseFlags_UpstreamParity",
         "test:coding/cli/args_upstream_test.go#TestArgsUpstream",
-        "test:coding/cli/help_oracle_test.go#TestHelpMatchesPi",
-        "test:coding/cli/args_diagnostics_test.go#TestHelpIsPisHelpWithPiGCommandsAfterPisCommands"
+        "test:coding/cli/help_oracle_test.go#TestHelpCarriesPi2a46c420SessionFlagWording",
+        "test:coding/cli/help_oracle_test.go#TestHelpMatchesPi"
       ]
     },
     {
@@ -300378,8 +300384,8 @@
         "test:coding/cli/args_name_upstream_test.go#TestCLISelectsSessionBeforeNameValidation",
         "test:coding/cli/args_test.go#TestParseFlags_UpstreamParity",
         "test:coding/cli/args_upstream_test.go#TestArgsUpstream",
-        "test:coding/cli/help_oracle_test.go#TestHelpMatchesPi",
-        "test:coding/cli/args_diagnostics_test.go#TestHelpIsPisHelpWithPiGCommandsAfterPisCommands"
+        "test:coding/cli/help_oracle_test.go#TestHelpCarriesPi2a46c420SessionFlagWording",
+        "test:coding/cli/help_oracle_test.go#TestHelpMatchesPi"
       ]
     },
     {
@@ -300405,8 +300411,8 @@
         "test:coding/cli/args_diagnostics_test.go#TestHelpListsOnlyOptionsPiGParses",
         "test:coding/cli/args_name_upstream_test.go#TestCLISelectsSessionBeforeNameValidation",
         "test:coding/cli/args_test.go#TestParseFlags",
-        "test:coding/cli/help_oracle_test.go#TestHelpMatchesPi",
-        "test:coding/cli/args_diagnostics_test.go#TestHelpIsPisHelpWithPiGCommandsAfterPisCommands"
+        "test:coding/cli/help_oracle_test.go#TestHelpCarriesPi2a46c420SessionFlagWording",
+        "test:coding/cli/help_oracle_test.go#TestHelpMatchesPi"
       ]
     },
     {
@@ -300432,8 +300438,8 @@
         "test:coding/cli/args_name_upstream_test.go#TestCLISelectsSessionBeforeNameValidation",
         "test:coding/cli/args_test.go#TestParseFlags_UpstreamParity",
         "test:coding/cli/args_upstream_test.go#TestArgsUpstream",
-        "test:coding/cli/help_oracle_test.go#TestHelpMatchesPi",
-        "test:coding/cli/args_diagnostics_test.go#TestHelpIsPisHelpWithPiGCommandsAfterPisCommands"
+        "test:coding/cli/help_oracle_test.go#TestHelpCarriesPi2a46c420SessionFlagWording",
+        "test:coding/cli/help_oracle_test.go#TestHelpMatchesPi"
       ]
     },
     {
@@ -300459,8 +300465,8 @@
         "test:coding/cli/args_diagnostics_test.go#TestHelpListsOnlyOptionsPiGParses",
         "test:coding/cli/args_diagnostics_test.go#TestParseFlagsDiagnosticsMatchPi",
         "test:coding/cli/args_name_upstream_test.go#TestCLISelectsSessionBeforeNameValidation",
-        "test:coding/cli/help_oracle_test.go#TestHelpMatchesPi",
-        "test:coding/cli/args_diagnostics_test.go#TestHelpIsPisHelpWithPiGCommandsAfterPisCommands"
+        "test:coding/cli/help_oracle_test.go#TestHelpCarriesPi2a46c420SessionFlagWording",
+        "test:coding/cli/help_oracle_test.go#TestHelpMatchesPi"
       ]
     },
     {
@@ -300486,8 +300492,8 @@
         "test:coding/cli/args_name_upstream_test.go#TestCLINormalizesSessionNameUpstream",
         "test:coding/cli/args_test.go#TestParseFlags",
         "test:coding/cli/args_upstream_test.go#TestArgsUpstream",
-        "test:coding/cli/help_oracle_test.go#TestHelpMatchesPi",
-        "test:coding/cli/args_diagnostics_test.go#TestHelpIsPisHelpWithPiGCommandsAfterPisCommands"
+        "test:coding/cli/help_oracle_test.go#TestHelpCarriesPi2a46c420SessionFlagWording",
+        "test:coding/cli/help_oracle_test.go#TestHelpMatchesPi"
       ]
     },
     {
@@ -300512,8 +300518,8 @@
       "evidence": [
         "test:coding/cli/args_test.go#TestParseFlags_UpstreamParity",
         "test:coding/cli/args_upstream_test.go#TestArgsUpstream",
-        "test:coding/cli/help_oracle_test.go#TestHelpMatchesPi",
-        "test:coding/cli/args_diagnostics_test.go#TestHelpIsPisHelpWithPiGCommandsAfterPisCommands"
+        "test:coding/cli/help_oracle_test.go#TestHelpCarriesPi2a46c420SessionFlagWording",
+        "test:coding/cli/help_oracle_test.go#TestHelpMatchesPi"
       ]
     },
     {
@@ -300539,8 +300545,8 @@
         "test:coding/cli/args_diagnostics_test.go#TestParseFlagsDiagnosticsMatchPi",
         "test:coding/cli/args_name_upstream_test.go#TestCLINormalizesSessionNameUpstream",
         "test:coding/cli/args_name_upstream_test.go#TestCLIRejectsEmptySessionNameUpstream",
-        "test:coding/cli/help_oracle_test.go#TestHelpMatchesPi",
-        "test:coding/cli/args_diagnostics_test.go#TestHelpIsPisHelpWithPiGCommandsAfterPisCommands"
+        "test:coding/cli/help_oracle_test.go#TestHelpCarriesPi2a46c420SessionFlagWording",
+        "test:coding/cli/help_oracle_test.go#TestHelpMatchesPi"
       ]
     },
     {
@@ -300564,8 +300570,8 @@
       ],
       "evidence": [
         "test:coding/cli/args_upstream_test.go#TestArgsUpstream",
-        "test:coding/cli/help_oracle_test.go#TestHelpMatchesPi",
-        "test:coding/cli/args_diagnostics_test.go#TestHelpIsPisHelpWithPiGCommandsAfterPisCommands"
+        "test:coding/cli/help_oracle_test.go#TestHelpCarriesPi2a46c420SessionFlagWording",
+        "test:coding/cli/help_oracle_test.go#TestHelpMatchesPi"
       ]
     },
     {
@@ -300591,8 +300597,8 @@
         "test:coding/cli/args_test.go#TestParseFlags_UpstreamParity",
         "test:coding/cli/args_tool_lists_test.go#TestToolRegistryFiltersKeepExplicitEmptyAllowlist",
         "test:coding/cli/args_upstream_test.go#TestArgsUpstream",
-        "test:coding/cli/help_oracle_test.go#TestHelpMatchesPi",
-        "test:coding/cli/args_diagnostics_test.go#TestHelpIsPisHelpWithPiGCommandsAfterPisCommands"
+        "test:coding/cli/help_oracle_test.go#TestHelpCarriesPi2a46c420SessionFlagWording",
+        "test:coding/cli/help_oracle_test.go#TestHelpMatchesPi"
       ]
     },
     {
@@ -300616,8 +300622,8 @@
       ],
       "evidence": [
         "test:coding/cli/args_upstream_test.go#TestArgsUpstream",
-        "test:coding/cli/help_oracle_test.go#TestHelpMatchesPi",
-        "test:coding/cli/args_diagnostics_test.go#TestHelpIsPisHelpWithPiGCommandsAfterPisCommands"
+        "test:coding/cli/help_oracle_test.go#TestHelpCarriesPi2a46c420SessionFlagWording",
+        "test:coding/cli/help_oracle_test.go#TestHelpMatchesPi"
       ]
     },
     {
@@ -300643,8 +300649,8 @@
         "test:coding/cli/args_name_upstream_test.go#TestCLINormalizesSessionNameUpstream",
         "test:coding/cli/args_name_upstream_test.go#TestCLIRejectsEmptySessionNameUpstream",
         "test:coding/cli/args_name_upstream_test.go#TestCLISelectsSessionBeforeNameValidation",
-        "test:coding/cli/help_oracle_test.go#TestHelpMatchesPi",
-        "test:coding/cli/args_diagnostics_test.go#TestHelpIsPisHelpWithPiGCommandsAfterPisCommands"
+        "test:coding/cli/help_oracle_test.go#TestHelpCarriesPi2a46c420SessionFlagWording",
+        "test:coding/cli/help_oracle_test.go#TestHelpMatchesPi"
       ]
     },
     {
@@ -300668,8 +300674,8 @@
       ],
       "evidence": [
         "test:coding/cli/args_upstream_test.go#TestArgsUpstream",
-        "test:coding/cli/help_oracle_test.go#TestHelpMatchesPi",
-        "test:coding/cli/args_diagnostics_test.go#TestHelpIsPisHelpWithPiGCommandsAfterPisCommands"
+        "test:coding/cli/help_oracle_test.go#TestHelpCarriesPi2a46c420SessionFlagWording",
+        "test:coding/cli/help_oracle_test.go#TestHelpMatchesPi"
       ]
     },
     {
@@ -300693,8 +300699,8 @@
       ],
       "evidence": [
         "test:coding/cli/args_upstream_test.go#TestArgsUpstream",
-        "test:coding/cli/help_oracle_test.go#TestHelpMatchesPi",
-        "test:coding/cli/args_diagnostics_test.go#TestHelpIsPisHelpWithPiGCommandsAfterPisCommands"
+        "test:coding/cli/help_oracle_test.go#TestHelpCarriesPi2a46c420SessionFlagWording",
+        "test:coding/cli/help_oracle_test.go#TestHelpMatchesPi"
       ]
     },
     {
@@ -300720,8 +300726,8 @@
         "test:coding/cli/args_end_options_upstream_test.go#TestCLIEndOfOptionsUpstream",
         "test:coding/cli/args_name_upstream_test.go#TestCLIRejectsEmptySessionNameUpstream",
         "test:coding/cli/args_name_upstream_test.go#TestCLISelectsSessionBeforeNameValidation",
-        "test:coding/cli/help_oracle_test.go#TestHelpMatchesPi",
-        "test:coding/cli/args_diagnostics_test.go#TestHelpIsPisHelpWithPiGCommandsAfterPisCommands"
+        "test:coding/cli/help_oracle_test.go#TestHelpCarriesPi2a46c420SessionFlagWording",
+        "test:coding/cli/help_oracle_test.go#TestHelpMatchesPi"
       ]
     },
     {
@@ -300745,8 +300751,8 @@
       ],
       "evidence": [
         "test:coding/cli/args_upstream_test.go#TestArgsUpstream",
-        "test:coding/cli/help_oracle_test.go#TestHelpMatchesPi",
-        "test:coding/cli/args_diagnostics_test.go#TestHelpIsPisHelpWithPiGCommandsAfterPisCommands"
+        "test:coding/cli/help_oracle_test.go#TestHelpCarriesPi2a46c420SessionFlagWording",
+        "test:coding/cli/help_oracle_test.go#TestHelpMatchesPi"
       ]
     },
     {
@@ -300770,8 +300776,8 @@
       ],
       "evidence": [
         "test:coding/cli/args_upstream_test.go#TestArgsUpstream",
-        "test:coding/cli/help_oracle_test.go#TestHelpMatchesPi",
-        "test:coding/cli/args_diagnostics_test.go#TestHelpIsPisHelpWithPiGCommandsAfterPisCommands"
+        "test:coding/cli/help_oracle_test.go#TestHelpCarriesPi2a46c420SessionFlagWording",
+        "test:coding/cli/help_oracle_test.go#TestHelpMatchesPi"
       ]
     },
     {
@@ -300796,8 +300802,8 @@
       "evidence": [
         "test:coding/cli/args_test.go#TestParseFlags_UpstreamParity",
         "test:coding/cli/args_upstream_test.go#TestArgsUpstream",
-        "test:coding/cli/help_oracle_test.go#TestHelpMatchesPi",
-        "test:coding/cli/args_diagnostics_test.go#TestHelpIsPisHelpWithPiGCommandsAfterPisCommands"
+        "test:coding/cli/help_oracle_test.go#TestHelpCarriesPi2a46c420SessionFlagWording",
+        "test:coding/cli/help_oracle_test.go#TestHelpMatchesPi"
       ]
     },
     {
@@ -300823,8 +300829,8 @@
         "test:coding/cli/args_name_upstream_test.go#TestCLINormalizesSessionNameUpstream",
         "test:coding/cli/args_name_upstream_test.go#TestCLIRejectsEmptySessionNameUpstream",
         "test:coding/cli/args_name_upstream_test.go#TestCLISelectsSessionBeforeNameValidation",
-        "test:coding/cli/help_oracle_test.go#TestHelpMatchesPi",
-        "test:coding/cli/args_diagnostics_test.go#TestHelpIsPisHelpWithPiGCommandsAfterPisCommands"
+        "test:coding/cli/help_oracle_test.go#TestHelpCarriesPi2a46c420SessionFlagWording",
+        "test:coding/cli/help_oracle_test.go#TestHelpMatchesPi"
       ]
     },
     {
@@ -300850,8 +300856,8 @@
         "test:coding/cli/args_diagnostics_test.go#TestParseFlagsDiagnosticsMatchPi",
         "test:coding/cli/args_test.go#TestParseFlags",
         "test:coding/cli/args_upstream_test.go#TestArgsUpstream",
-        "test:coding/cli/help_oracle_test.go#TestHelpMatchesPi",
-        "test:coding/cli/args_diagnostics_test.go#TestHelpIsPisHelpWithPiGCommandsAfterPisCommands"
+        "test:coding/cli/help_oracle_test.go#TestHelpCarriesPi2a46c420SessionFlagWording",
+        "test:coding/cli/help_oracle_test.go#TestHelpMatchesPi"
       ]
     },
     {
@@ -300875,8 +300881,8 @@
       ],
       "evidence": [
         "test:coding/cli/args_upstream_test.go#TestArgsUpstream",
-        "test:coding/cli/help_oracle_test.go#TestHelpMatchesPi",
-        "test:coding/cli/args_diagnostics_test.go#TestHelpIsPisHelpWithPiGCommandsAfterPisCommands"
+        "test:coding/cli/help_oracle_test.go#TestHelpCarriesPi2a46c420SessionFlagWording",
+        "test:coding/cli/help_oracle_test.go#TestHelpMatchesPi"
       ]
     },
     {
@@ -300902,8 +300908,8 @@
         "test:coding/cli/args_end_options_upstream_test.go#TestCLIEndOfOptionsUpstream",
         "test:coding/cli/args_test.go#TestParseFlags_UpstreamParity",
         "test:coding/cli/args_upstream_test.go#TestArgsUpstream",
-        "test:coding/cli/help_oracle_test.go#TestHelpMatchesPi",
-        "test:coding/cli/args_diagnostics_test.go#TestHelpIsPisHelpWithPiGCommandsAfterPisCommands"
+        "test:coding/cli/help_oracle_test.go#TestHelpCarriesPi2a46c420SessionFlagWording",
+        "test:coding/cli/help_oracle_test.go#TestHelpMatchesPi"
       ]
     },
     {
@@ -300929,8 +300935,8 @@
         "test:coding/cli/args_name_upstream_test.go#TestCLISelectsSessionBeforeNameValidation",
         "test:coding/cli/args_test.go#TestParseFlags",
         "test:coding/cli/args_upstream_test.go#TestArgsUpstream",
-        "test:coding/cli/help_oracle_test.go#TestHelpMatchesPi",
-        "test:coding/cli/args_diagnostics_test.go#TestHelpIsPisHelpWithPiGCommandsAfterPisCommands"
+        "test:coding/cli/help_oracle_test.go#TestHelpCarriesPi2a46c420SessionFlagWording",
+        "test:coding/cli/help_oracle_test.go#TestHelpMatchesPi"
       ]
     },
     {
@@ -300956,8 +300962,8 @@
         "test:coding/cli/args_name_upstream_test.go#TestCLISelectsSessionBeforeNameValidation",
         "test:coding/cli/args_test.go#TestParseFlags_UpstreamParity",
         "test:coding/cli/args_upstream_test.go#TestArgsUpstream",
-        "test:coding/cli/help_oracle_test.go#TestHelpMatchesPi",
-        "test:coding/cli/args_diagnostics_test.go#TestHelpIsPisHelpWithPiGCommandsAfterPisCommands"
+        "test:coding/cli/help_oracle_test.go#TestHelpCarriesPi2a46c420SessionFlagWording",
+        "test:coding/cli/help_oracle_test.go#TestHelpMatchesPi"
       ]
     },
     {
@@ -300983,8 +300989,8 @@
         "test:coding/cli/args_name_upstream_test.go#TestCLINormalizesSessionNameUpstream",
         "test:coding/cli/args_name_upstream_test.go#TestCLISelectsSessionBeforeNameValidation",
         "test:coding/cli/args_session_dir_upstream_test.go#TestParseFlagsSessionDir",
-        "test:coding/cli/help_oracle_test.go#TestHelpMatchesPi",
-        "test:coding/cli/args_diagnostics_test.go#TestHelpIsPisHelpWithPiGCommandsAfterPisCommands"
+        "test:coding/cli/help_oracle_test.go#TestHelpCarriesPi2a46c420SessionFlagWording",
+        "test:coding/cli/help_oracle_test.go#TestHelpMatchesPi"
       ]
     },
     {
@@ -301010,8 +301016,8 @@
         "test:coding/cli/args_name_upstream_test.go#TestCLISelectsSessionBeforeNameValidation",
         "test:coding/cli/args_name_upstream_test.go#TestCLIVersionPrecedesSessionValidationUpstream",
         "test:coding/cli/args_upstream_test.go#TestArgsUpstream",
-        "test:coding/cli/help_oracle_test.go#TestHelpMatchesPi",
-        "test:coding/cli/args_diagnostics_test.go#TestHelpIsPisHelpWithPiGCommandsAfterPisCommands"
+        "test:coding/cli/help_oracle_test.go#TestHelpCarriesPi2a46c420SessionFlagWording",
+        "test:coding/cli/help_oracle_test.go#TestHelpMatchesPi"
       ]
     },
     {
@@ -301036,8 +301042,8 @@
       "evidence": [
         "test:coding/cli/args_test.go#TestParseFlags",
         "test:coding/cli/args_upstream_test.go#TestArgsUpstream",
-        "test:coding/cli/help_oracle_test.go#TestHelpMatchesPi",
-        "test:coding/cli/args_diagnostics_test.go#TestHelpIsPisHelpWithPiGCommandsAfterPisCommands"
+        "test:coding/cli/help_oracle_test.go#TestHelpCarriesPi2a46c420SessionFlagWording",
+        "test:coding/cli/help_oracle_test.go#TestHelpMatchesPi"
       ]
     },
     {
@@ -301062,8 +301068,8 @@
       "evidence": [
         "test:coding/cli/args_test.go#TestParseFlags_UpstreamParity",
         "test:coding/cli/args_upstream_test.go#TestArgsUpstream",
-        "test:coding/cli/help_oracle_test.go#TestHelpMatchesPi",
-        "test:coding/cli/args_diagnostics_test.go#TestHelpIsPisHelpWithPiGCommandsAfterPisCommands"
+        "test:coding/cli/help_oracle_test.go#TestHelpCarriesPi2a46c420SessionFlagWording",
+        "test:coding/cli/help_oracle_test.go#TestHelpMatchesPi"
       ]
     },
     {
@@ -301087,8 +301093,8 @@
       ],
       "evidence": [
         "test:coding/cli/args_upstream_test.go#TestArgsUpstream",
-        "test:coding/cli/help_oracle_test.go#TestHelpMatchesPi",
-        "test:coding/cli/args_diagnostics_test.go#TestHelpIsPisHelpWithPiGCommandsAfterPisCommands"
+        "test:coding/cli/help_oracle_test.go#TestHelpCarriesPi2a46c420SessionFlagWording",
+        "test:coding/cli/help_oracle_test.go#TestHelpMatchesPi"
       ]
     },
     {
@@ -301114,8 +301120,8 @@
         "test:coding/cli/args_diagnostics_test.go#TestHelpListsOnlyOptionsPiGParses",
         "test:coding/cli/args_diagnostics_test.go#TestParseFlagsDiagnosticsMatchPi",
         "test:coding/cli/args_test.go#TestParseFlags_UpstreamParity",
-        "test:coding/cli/help_oracle_test.go#TestHelpMatchesPi",
-        "test:coding/cli/args_diagnostics_test.go#TestHelpIsPisHelpWithPiGCommandsAfterPisCommands"
+        "test:coding/cli/help_oracle_test.go#TestHelpCarriesPi2a46c420SessionFlagWording",
+        "test:coding/cli/help_oracle_test.go#TestHelpMatchesPi"
       ]
     },
     {
@@ -301141,8 +301147,8 @@
         "test:coding/cli/args_test.go#TestParseFlags_UpstreamParity",
         "test:coding/cli/args_tool_lists_test.go#TestParseToolListFlagsLikePi",
         "test:coding/cli/args_tool_lists_test.go#TestToolRegistryFiltersKeepExplicitEmptyAllowlist",
-        "test:coding/cli/help_oracle_test.go#TestHelpMatchesPi",
-        "test:coding/cli/args_diagnostics_test.go#TestHelpIsPisHelpWithPiGCommandsAfterPisCommands"
+        "test:coding/cli/help_oracle_test.go#TestHelpCarriesPi2a46c420SessionFlagWording",
+        "test:coding/cli/help_oracle_test.go#TestHelpMatchesPi"
       ]
     },
     {
@@ -301168,8 +301174,8 @@
         "test:coding/cli/args_diagnostics_test.go#TestHelpListsOnlyOptionsPiGParses",
         "test:coding/cli/args_diagnostics_test.go#TestParseFlagsDiagnosticsMatchPi",
         "test:coding/cli/args_diagnostics_test.go#TestTuiModeAndUseThemeParseForThisRun",
-        "test:coding/cli/help_oracle_test.go#TestHelpMatchesPi",
-        "test:coding/cli/args_diagnostics_test.go#TestHelpIsPisHelpWithPiGCommandsAfterPisCommands"
+        "test:coding/cli/help_oracle_test.go#TestHelpCarriesPi2a46c420SessionFlagWording",
+        "test:coding/cli/help_oracle_test.go#TestHelpMatchesPi"
       ]
     },
     {
@@ -301195,8 +301201,8 @@
         "test:coding/cli/args_diagnostics_test.go#TestParseFlagsDiagnosticsMatchPi",
         "test:coding/cli/args_diagnostics_test.go#TestTuiModeAndUseThemeParseForThisRun",
         "test:coding/cli/args_diagnostics_test.go#TestUseThemeExplicitEmptyIsNotOmitted",
-        "test:coding/cli/help_oracle_test.go#TestHelpMatchesPi",
-        "test:coding/cli/args_diagnostics_test.go#TestHelpIsPisHelpWithPiGCommandsAfterPisCommands"
+        "test:coding/cli/help_oracle_test.go#TestHelpCarriesPi2a46c420SessionFlagWording",
+        "test:coding/cli/help_oracle_test.go#TestHelpMatchesPi"
       ]
     },
     {
@@ -301221,8 +301227,8 @@
       "evidence": [
         "test:coding/cli/args_test.go#TestParseFlags",
         "test:coding/cli/args_upstream_test.go#TestArgsUpstream",
-        "test:coding/cli/help_oracle_test.go#TestHelpMatchesPi",
-        "test:coding/cli/args_diagnostics_test.go#TestHelpIsPisHelpWithPiGCommandsAfterPisCommands"
+        "test:coding/cli/help_oracle_test.go#TestHelpCarriesPi2a46c420SessionFlagWording",
+        "test:coding/cli/help_oracle_test.go#TestHelpMatchesPi"
       ]
     },
     {
@@ -301248,8 +301254,8 @@
         "test:coding/cli/args_diagnostics_test.go#TestHelpListsOnlyOptionsPiGParses",
         "test:coding/cli/args_name_upstream_test.go#TestCLIVersionPrecedesSessionValidationUpstream",
         "test:coding/cli/args_test.go#TestParseFlags",
-        "test:coding/cli/help_oracle_test.go#TestHelpMatchesPi",
-        "test:coding/cli/args_diagnostics_test.go#TestHelpIsPisHelpWithPiGCommandsAfterPisCommands"
+        "test:coding/cli/help_oracle_test.go#TestHelpCarriesPi2a46c420SessionFlagWording",
+        "test:coding/cli/help_oracle_test.go#TestHelpMatchesPi"
       ]
     }
   ]

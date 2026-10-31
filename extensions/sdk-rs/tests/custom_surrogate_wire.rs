@@ -186,17 +186,31 @@ fn custom_frame_carries_captures_viewport_input_and_resends_when_only_it_changed
     let socket = root.join("sock");
     let listener = UnixListener::bind(&socket).unwrap();
     let mut ext = Extension::new("custom-viewport");
-    ext.tool("custom", "Viewport", empty_schema(), |ctx, _| match ctx.custom_component(Viewport { captures: true }, json!({})) {
-        Ok(value) => ToolResult::json(value.unwrap_or(Value::Null)),
-        Err(err) => ToolResult::Error(err.to_string()),
+    ext.tool("custom", "Viewport", empty_schema(), |ctx, _| {
+        match ctx.custom_component(Viewport { captures: true }, json!({})) {
+            Ok(value) => ToolResult::json(value.unwrap_or(Value::Null)),
+            Err(err) => ToolResult::Error(err.to_string()),
+        }
     });
     let thread = std::thread::spawn(move || ext.run_with_socket(socket.to_str().unwrap()));
     let (stream, _) = listener.accept().unwrap();
-    stream.set_read_timeout(Some(std::time::Duration::from_secs(10))).unwrap();
-    let mut runtime = Runtime { stream, thread: Some(thread), root };
+    stream
+        .set_read_timeout(Some(std::time::Duration::from_secs(10)))
+        .unwrap();
+    let mut runtime = Runtime {
+        stream,
+        thread: Some(thread),
+        root,
+    };
     assert_eq!(read(&mut runtime.stream)["type"], "register");
-    send(&mut runtime.stream, r#"{"type":"ready","ready":{"state":{"hasUI":true},"width":80}}"#);
-    send(&mut runtime.stream, r#"{"type":"request","id":"v","request":{"method":"tool_call","tool":"custom","args":{}}}"#);
+    send(
+        &mut runtime.stream,
+        r#"{"type":"ready","ready":{"state":{"hasUI":true},"width":80}}"#,
+    );
+    send(
+        &mut runtime.stream,
+        r#"{"type":"request","id":"v","request":{"method":"tool_call","tool":"custom","args":{}}}"#,
+    );
     let call = loop {
         let frame = read(&mut runtime.stream);
         if frame["type"] == "call" {
@@ -220,7 +234,10 @@ fn custom_frame_carries_captures_viewport_input_and_resends_when_only_it_changed
     input(&mut runtime.stream, "t");
     let second = next_render(&mut runtime.stream);
     assert_eq!(second["lines"], json!(["viewport probe"]));
-    assert!(second.get("capturesViewportInput").is_none(), "false is omitted: {second}");
+    assert!(
+        second.get("capturesViewportInput").is_none(),
+        "false is omitted: {second}"
+    );
     input(&mut runtime.stream, "q");
     loop {
         let frame = read(&mut runtime.stream);
@@ -230,6 +247,9 @@ fn custom_frame_carries_captures_viewport_input_and_resends_when_only_it_changed
         }
     }
     send(&mut runtime.stream, &json!({"type":"call_result","id":call["id"],"call_result":{"result":{"ok":true,"result":"viewport=done"}}}).to_string());
-    send(&mut runtime.stream, r#"{"type":"shutdown","shutdown":{"reason":"done"}}"#);
+    send(
+        &mut runtime.stream,
+        r#"{"type":"shutdown","shutdown":{"reason":"done"}}"#,
+    );
     runtime.thread.take().unwrap().join().unwrap().unwrap();
 }
