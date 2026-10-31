@@ -1639,7 +1639,7 @@ func TestExample12Routes(t *testing.T) {
 	var resolves int
 	var resolveMu sync.Mutex
 	var workerLink *link.MemoryLink
-	mustRoute(t, server.Route(Session, RouteOptions{
+	mustRoute(t)(server.Route(Session, RouteOptions{
 		Authorize: func(principal data.Principal, address contracts.Address) (bool, error) {
 			id, _ := address.Params.Value("id").(string)
 			return principalKind(principal) == "owner" || (principalKind(principal) == "guest" && principal.Value("session") == id), nil
@@ -1965,7 +1965,7 @@ func TestExample13Relay(t *testing.T) {
 	var children []*exec.Cmd
 	var childrenMu sync.Mutex
 	// 3. A route forks a worker per session and returns the IPC link at once.
-	mustRoute(t, server.Route(Session, RouteOptions{
+	mustRoute(t)(server.Route(Session, RouteOptions{
 		Authorize: func(principal data.Principal, _ contracts.Address) (bool, error) {
 			return principalKind(principal) == "owner", nil
 		},
@@ -2181,7 +2181,7 @@ func TestExample14FlowControl(t *testing.T) {
 	var w2 Host
 	var w2Ends [2]*link.MemoryLink
 	var w2Mu sync.Mutex
-	mustRoute(t, server.Route(Session, RouteOptions{
+	mustRoute(t)(server.Route(Session, RouteOptions{
 		Authorize: func(data.Principal, contracts.Address) (bool, error) { return true, nil },
 		Resolve: func(address contracts.Address, _ context.Context) (ResolvedLink, error) {
 			a, b := link.MemoryLinkPair()
@@ -2301,7 +2301,7 @@ func TestExample15Revocation(t *testing.T) {
 	server := newHost(t, HostOptions{Address: new(Server.Address(nil)), Principal: serverPrincipal(), RevokedBy: revokedBy, OnError: errs.push})
 	var workers []Host
 	var workersMu sync.Mutex
-	mustRoute(t, server.Route(Session, RouteOptions{
+	mustRoute(t)(server.Route(Session, RouteOptions{
 		Authorize: func(principal data.Principal, address contracts.Address) (bool, error) {
 			id, _ := address.Params.Value("id").(string)
 			return principalKind(principal) == "owner" || (principalKind(principal) == "guest" && principal.Value("session") == id), nil
@@ -4197,7 +4197,7 @@ func TestExample32Startup(t *testing.T) {
 	// No readyTimeout is needed to break anything: a long one shows nothing waits for it.
 	readyTimeout := 600 * time.Second
 	server := newHost(t, HostOptions{Address: new(Server.Address(nil)), Principal: serverPrincipal(), ReadyTimeout: &readyTimeout, OnError: errs.push})
-	mustRoute(t, server.Route(Session, RouteOptions{
+	mustRoute(t)(server.Route(Session, RouteOptions{
 		Authorize: func(data.Principal, contracts.Address) (bool, error) { return true, nil },
 		Resolve: func(address contracts.Address, _ context.Context) (ResolvedLink, error) {
 			id, _ := address.Params.Value("id").(string)

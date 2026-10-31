@@ -1199,7 +1199,7 @@ func TestHoldRetryOperationsQuiesceAcrossHosts(t *testing.T) {
 			down, up := link.MemoryLinkPair()
 			server := rhCreate(t, HostOptions{Address: new(serverKind.Address(nil)), Principal: serverPrincipal(), OnError: func(HostError) {}})
 			worker := rhCreate(t, HostOptions{Address: new(workerKind.Address(nil)), Principal: workerPrincipal("1"), OnError: func(HostError) {}})
-			mustRoute(t, server.Route(workerKind, RouteOptions{
+			mustRoute(t)(server.Route(workerKind, RouteOptions{
 				Authorize: func(data.Principal, contracts.Address) (bool, error) { return true, nil },
 				Resolve: func(contracts.Address, context.Context) (ResolvedLink, error) {
 					return ResolvedLink{Link: &rhCountingLink{Link: down, retries: retries}, Principal: workerPrincipal("1"), Trusted: true, Codec: testCodec()}, nil

@@ -246,8 +246,12 @@ func TestResolveFailuresAndReResolvesARejectedResolveFailsItsHoldersWaitingWithI
 	forEachCodec(t, func(t *testing.T) {
 		timers := newScopeLoop()
 		var attempts atomic.Int32
+		// Pi's rejection settles in a microtask, after both holds attached; the Go resolve runs on a task of its own, so
+		// it waits until they did.
+		attached := make(chan struct{})
 		r := relay(t, relayedOptions{Loop: timers, Resolve: func(contracts.Address, func() resolved, context.Context) (resolved, error) {
 			attempts.Add(1)
+			<-attached
 			return resolved{}, errors.New("no worker")
 		}})
 		// One relayed from the tab, one the server's own.
@@ -256,6 +260,7 @@ func TestResolveFailuresAndReResolvesARejectedResolveFailsItsHoldersWaitingWithI
 		own, err := r.Server.Hold(PlacedNotes, routeS("S1"), background, GetOptions{})
 		must(t, err)
 		r.Transported()
+		close(attached)
 		for _, ref := range []*Reference{notes, own} {
 			wantRouteWaiting(t, ref, "session|S1: no worker")
 		}
@@ -568,12 +573,12 @@ func TestDeclaringRoutesIsDoneBeforeLoadOncePerKind(t *testing.T) {
 				return ResolvedLink{}, context.Cause(ctx)
 			},
 		}
-		must(t, host.Route(Session, options, background))
-		if err := host.Route(Session, options, background); err == nil || err.Error() != "route: session is routed already" {
+		mustRoute(t)(host.Route(Session, options, background))
+		if _, err := host.Route(Session, options, background); err == nil || err.Error() != "route: session is routed already" {
 			t.Fatalf("second route = %v, want route: session is routed already", err)
 		}
 		must(t, host.Load(nil, background))
-		if err := host.Route(mustKind(contracts.NewHostKind("other")), options, background); err == nil || err.Error() != "route: routes are declared before load" {
+		if _, err := host.Route(mustKind(contracts.NewHostKind("other")), options, background); err == nil || err.Error() != "route: routes are declared before load" {
 			t.Fatalf("route after load = %v, want route: routes are declared before load", err)
 		}
 	})
@@ -595,7 +600,7 @@ func TestARoutesContextIsTheParentOfItsResolvesAndOfTheWorkArrivingOnItsLinks(t 
 		var resolvedBy []string
 		var worker Host
 		server := newHost(t, HostOptions{Address: new(Server.Address(nil)), Principal: serverPrincipal(), OnError: func(HostError) {}})
-		must(t, server.Route(Session, RouteOptions{
+		mustRoute(t)(server.Route(Session, RouteOptions{
 			Authorize: func(data.Principal, contracts.Address) (bool, error) { return true, nil },
 			Resolve: func(address contracts.Address, routing context.Context) (ResolvedLink, error) {
 				value, _ := chordctx.Value(routing, app)
