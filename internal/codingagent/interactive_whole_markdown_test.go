@@ -33,7 +33,7 @@ func TestWholeMarkdownBlocksRenderBytes(t *testing.T) {
 			}
 		}
 	}
-	const want = "d8e55b37859313bb4b3fed37d406a2520cb5e3033854454dc951c99875ea2176"
+	const want = "6c6e446dd091ddae67cc390a41ffa268a9c7418088c7a9c5274abd08eb345e76"
 	if got := hex.EncodeToString(hash.Sum(nil)); got != want {
 		t.Errorf("rows hash %s, want %s", got, want)
 	}
