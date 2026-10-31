@@ -47,6 +47,9 @@ func TestModelObjectsMatchPisModelObjects(t *testing.T) {
 		}
 		want[key.Provider+"/"+key.ID] = scanner.Text()
 	}
+	for _, ref := range d217CarriedDroppedChatRefs {
+		delete(want, ref)
+	}
 	models := make([]*ai.Model, len(ai.GeneratedModels))
 	for i := range ai.GeneratedModels {
 		models[i] = ai.GeneratedModels[i].ToModel()
