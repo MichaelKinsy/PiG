@@ -159,6 +159,13 @@ func TestObjectEndRevocationR11RunsSignalsFireWithTheEndsErrorTheDrainWaitsForTh
 	started.Wait()
 	must(t, server.Revoke(jsonObject("session", "S1"), background))
 	expectChordError(t, runOutcomeErr(t, run, background), data.CodeForbidden, data.ReasonRevoked)
+	// Pi's `await flushed()` lets the run's continuation after `await untilAborted(ctx)` set `reason`. The end aborts the run's
+	// signal; the run wakes on a goroutine of its own, and the outcome is recorded on another: neither is ordered before the other.
+	eventually(t, "the run to see the end's error", func() bool {
+		mu.Lock()
+		defer mu.Unlock()
+		return reason != nil
+	})
 	mu.Lock()
 	expectChordError(t, reason, data.CodeForbidden, data.ReasonRevoked)
 	mu.Unlock()
