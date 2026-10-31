@@ -1590,7 +1590,7 @@ func (s *TaskScheduler) planRoundLocked(ids []durable.TaskId, staged *overlay, f
 	done := func(id durable.TaskId) bool { return round[id] || finalized[id] }
 	type ended struct {
 		finalizedTask
-		previous anyTaskRecord
+		previous  anyTaskRecord
 		wasStaged bool
 	}
 	var plan []ended
