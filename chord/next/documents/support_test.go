@@ -37,14 +37,16 @@ type loop struct {
 	// scheduler is the delivery scheduler of the object's watches: an outermost section holds it, as Pi's microtask
 	// cannot run inside one synchronous commit (frames advanced inside a section fold into one delivery).
 	scheduler *chord.DeliveryScheduler
-	// stall, when set, parks every section its goroutine enters from outside one until release closes: a test forces
-	// the interleaving of a waiter's resumption against other goroutines' sections.
+	// stall, when set, parks every section its goroutine enters from outside one (and that its `when`, if any, accepts at
+	// the entry) until release closes: a test forces the interleaving of a waiter's resumption against other goroutines'
+	// sections.
 	stall atomic.Pointer[loopStall]
 }
 
 type loopStall struct {
 	id      uint64
 	release chan struct{}
+	when    func() bool
 }
 
 func goroutineID() uint64 {
@@ -67,7 +69,7 @@ func (l *loop) do(work func()) {
 		work()
 		return
 	}
-	if stall := l.stall.Load(); stall != nil && stall.id == id {
+	if stall := l.stall.Load(); stall != nil && stall.id == id && (stall.when == nil || stall.when()) {
 		<-stall.release
 	}
 	l.mu.Lock()

@@ -244,15 +244,20 @@ func (d *Documents) Tx(fn func(tx *Transaction) (any, error), token *SealToken, 
 	release := d.line.Acquire(ctx)
 	var tx *Transaction
 	defer func() {
+		// Pi's `finally { holder = undefined; release(); tx.settle(); }` is one synchronous section: no other transaction
+		// takes the line, and nothing else of the object runs, between the line's release and the staged changes hearing
+		// of the commit. A job start's `committed` queues the run's invocation (`need`); an abort of that run whose
+		// marking transaction waited on the line must not commit ahead of it, or the run ends `aborted` without ever
+		// being invoked.
 		d.Do(func() {
 			if d.holder == tx {
 				d.holder = nil
 			}
+			release()
+			if tx != nil {
+				tx.Settle()
+			}
 		})
-		release()
-		if tx != nil {
-			d.Do(tx.Settle)
-		}
 	}()
 	d.Do(func() {
 		tx = NewTransaction(d, token, release, ctx, commitPersistence)

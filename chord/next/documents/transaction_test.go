@@ -652,6 +652,63 @@ func TestStagedChangesAdoptWithoutAnyDocumentChangeAndHearOfADiscardInsteadWhenT
 	}
 }
 
+// A transaction releases the line and tells its staged changes of the commit in one section (Pi's `finally { holder =
+// undefined; release(); tx.settle(); }` is one synchronous section): a transaction queued on the line runs only after
+// `committed`. A job's start queues its run's invocation in `committed`; an abort of that run, marked by a transaction
+// that waited on the line behind the start's, must not commit ahead of it. The first transaction's goroutine is parked
+// where it enters a section after its release, if it does: the second must still run after `committed`.
+func TestStagedChangesHearOfTheCommitInTheSectionThatReleasesTheLineBeforeAQueuedTransactionRuns(t *testing.T) {
+	one, _ := objects(t, nil)
+	var mu sync.Mutex
+	var events []string
+	log := &recorder{&mu, &events, one.o, one.a}
+	type holding struct {
+		goroutine uint64
+		released  <-chan struct{}
+	}
+	entered := make(chan holding, 1)
+	proceed := make(chan struct{})
+	first := ksGo(func() (*JsonObject, error) {
+		_, err := one.attempt.Tx(func(tx *Transaction) (any, error) {
+			line := one.o.documents.Line()
+			line.mu.Lock()
+			released := line.tail
+			line.mu.Unlock()
+			stage(t, one.o, tx, new(int), func() Staged { return log })
+			entered <- holding{goroutineID(), released}
+			<-proceed
+			return nil, nil
+		}, background)
+		return nil, err
+	})
+	held := ksRecv(t, entered)
+	// From the first's release on, its goroutine parks where it enters a section from outside one.
+	stall := &loopStall{id: held.goroutine, release: make(chan struct{}), when: func() bool {
+		select {
+		case <-held.released:
+			return true
+		default:
+			return false
+		}
+	}}
+	one.o.loop.stall.Store(stall)
+	second := ksGo(func() (*JsonObject, error) {
+		_, err := one.attempt.Tx(func(*Transaction) (any, error) {
+			log.log("second transaction")
+			return nil, nil
+		}, background)
+		return nil, err
+	})
+	ksWaiting(t, one.o, 1)
+	close(proceed)
+	requireNoError(t, ksRecv(t, second).err)
+	close(stall.release)
+	requireNoError(t, ksRecv(t, first).err)
+	if want := []string{"adopt sees 0", "committed", "second transaction"}; !reflect.DeepEqual(events, want) {
+		t.Fatalf("events = %v, want %v", events, want)
+	}
+}
+
 // --- the seal fence ---
 
 const restartableLabel = "app.restartable(1)"
