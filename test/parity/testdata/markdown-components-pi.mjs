@@ -1,3 +1,4 @@
+import "../../../tui/testdata/pi-d217/register.mjs"; // D217: the pin plus the Pi fixes 0.6.0 carries (tui/testdata/pi-d217)
 import { PI_PACKAGE_VERSION } from "./pi-version.mjs";
 import assert from 'node:assert/strict';
 import {readFileSync,realpathSync} from 'node:fs';

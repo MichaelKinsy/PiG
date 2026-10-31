@@ -21,7 +21,7 @@ pi_bin = "/usr/bin/env"
 pig = ["FORCE_COLOR=3"]
 pi = ["FORCE_COLOR=3"]
 pig_args = ["node", "./test/parity/testdata/markdown-components-pig.mjs"]
-pi_args = ["node", "--import", "{{REPO}}/tui/testdata/pi-d217/register.mjs", "./test/parity/testdata/markdown-components-pi.mjs"]
+pi_args = ["node", "./test/parity/testdata/markdown-components-pi.mjs"]
 
 [cli]
 cwd = "../../../.."
