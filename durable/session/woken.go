@@ -17,9 +17,33 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/goroutineid"
 )
 
+// maxOrderedGoroutines bounds the number of goroutines up to which the Session orders continuations by `entered`. Every wait
+// for a goroutine to enter reads a dump of all goroutines, whose cost grows with their number; a process with thousands of
+// goroutines (a Harness with as many running tasks) would spend its time in dumps. Above the bound the order of the continuations
+// of what one publication resolved is best effort: the woken goroutines are given the processor once (Gosched), not waited for.
+const maxOrderedGoroutines = 128
+
+// orderingAffordable reports whether the number of goroutines allows to order continuations by dumps.
+func orderingAffordable() bool { return runtime.NumGoroutine() <= maxOrderedGoroutines }
+
+// awaitEntered returns once goroutine id has entered (parked in a wait, blocked on a lock, or exited) when ordering is
+// affordable; else it only yields the processor.
+func awaitEntered(ctx context.Context, id uint64) {
+	if !orderingAffordable() {
+		runtime.Gosched()
+		return
+	}
+	_ = entered.AwaitBlocked(ctx, id, nil)
+}
+
 // wakeAndEnter runs wake, then returns once every goroutine that was parked before it and was readied by it has entered: it is
 // parked in a wait again (or blocked on a lock) or has exited. It returns early when ctx ends.
 func wakeAndEnter(ctx context.Context, wake func()) {
+	if !orderingAffordable() {
+		wake()
+		runtime.Gosched()
+		return
+	}
 	before, buffer := parkedGoroutines(nil)
 	wake()
 	after, _ := parkedGoroutines(buffer)

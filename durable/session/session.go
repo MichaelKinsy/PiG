@@ -40,7 +40,6 @@ import (
 	chordctx "github.com/MichaelKinsy/PiG/chord/context"
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/durable"
-	"github.com/MichaelKinsy/PiG/internal/entered"
 	"github.com/MichaelKinsy/PiG/internal/goroutineid"
 	"github.com/MichaelKinsy/PiG/internal/lineadmission"
 	"github.com/MichaelKinsy/PiG/telemetry"
@@ -584,7 +583,7 @@ func (session *SessionImpl) deliverLoop() {
 		close(next.released)
 		if caller != 0 {
 			// The caller's goroutine may hold a lock the next delivery's does not need; one blocked on a lock has entered.
-			_ = entered.AwaitBlocked(session.lifetime, caller, nil)
+			awaitEntered(session.lifetime, caller)
 		}
 	}
 }
