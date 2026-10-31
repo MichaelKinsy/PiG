@@ -10090,6 +10090,82 @@
       "tests": []
     },
     {
+      "id": "BF-53312d8",
+      "title": "`pi.exec()` no longer buffers a command's output without limit, which exhausted memory when a command printed…",
+      "symptom": "`pi.exec()` no longer buffers a command's output without limit, which exhausted memory when a command printed too much.",
+      "rootCause": "Pi's merged fix, carried by 0.6.0 past the 1.4.0+ pin (D217).",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "pi-port",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`pi.exec()` no longer buffers a command's output without limit, which exhausted memory when a command printed too much. The default cap is 256 MiB, counted over stdout and stderr together; past the cap the command is terminated, a character the cap cuts is dropped whole, and the result has `truncated: true`, `killed: true` and a nonzero code. Carried forward from Pi c466a359 (earendil-works/pi#11360), past the 1.4.0+b3a29f11 pin.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "53312d8cdc",
+          "date": "2026-10-30",
+          "pr": "11360"
+        }
+      ],
+      "tests": [
+        "coding/extension/exec_max_buffer_test.go::TestExecCommandAcceptsTheMaxBufferBoundaries",
+        "coding/extension/exec_max_buffer_test.go::TestExecCommandCapsCombinedOutputAtMaxBuffer",
+        "coding/extension/exec_max_buffer_test.go::TestExecCommandDefaultCapFollowsTheRuntimeStringLimit",
+        "coding/extension/exec_max_buffer_test.go::TestExecCommandDefaultCapIs256MiB",
+        "coding/extension/exec_max_buffer_test.go::TestExecCommandFlushesIncompleteUTF8AtEOFWithoutATruncation",
+        "coding/extension/exec_max_buffer_test.go::TestExecCommandKeepsCompleteUTF8CharactersUnderTheCap",
+        "coding/extension/exec_max_buffer_test.go::TestExecCommandLeavesOutputUpToMaxBufferUnchanged",
+        "coding/extension/exec_max_buffer_test.go::TestExecCommandRejectsAnInvalidMaxBuffer",
+        "coding/extension/exec_max_buffer_test.go::TestExecCommandResultsAreNotTruncatedWithoutACap",
+        "coding/extension/exec_max_buffer_test.go::TestExecCommandTruncatesAllOutputWhenMaxBufferIsZero",
+        "coding/extension/exec_oracle_test.go::TestExecCommandMatchesPi",
+        "coding/extension/exec_tree_test.go::TestExecCommandForceKillsAChildThatIgnoresSIGTERMAfterFiveSeconds",
+        "coding/extension/exec_utf8_chunks_test.go::TestExecCommandDiscardsPendingUTF8WhenAStreamExceedsTheCap",
+        "extensions/sdk/surface_parity_test.go::TestExecWithMaxBufferSendsTheOptionAndDecodesTruncated",
+        "test/extension-conformance/exec_limits_test.go::TestExecLimitsAcrossSDKs",
+        "test/extension-conformance/exec_limits_test.go::TestExecLimitsHelperProcess"
+      ]
+    },
+    {
+      "id": "BF-53312d8-2",
+      "title": "`pi.exec()` no longer waits forever for a command that ignores SIGTERM after a timeout, an abort or the…",
+      "symptom": "`pi.exec()` no longer waits forever for a command that ignores SIGTERM after a timeout, an abort or the output cap: the host sends SIGKILL 5 seconds later if the command has not exited, as Pi intended.",
+      "rootCause": "Pi's merged fix, carried by 0.6.0 past the 1.4.0+ pin (D217).",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "pi-port",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`pi.exec()` no longer waits forever for a command that ignores SIGTERM after a timeout, an abort or the output cap: the host sends SIGKILL 5 seconds later if the command has not exited, as Pi intended. Carried forward from Pi c466a359 (earendil-works/pi#11360), past the 1.4.0+b3a29f11 pin.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "53312d8cdc",
+          "date": "2026-10-30",
+          "pr": "11360"
+        }
+      ],
+      "tests": [
+        "coding/extension/exec_max_buffer_test.go::TestExecCommandAcceptsTheMaxBufferBoundaries",
+        "coding/extension/exec_max_buffer_test.go::TestExecCommandCapsCombinedOutputAtMaxBuffer",
+        "coding/extension/exec_max_buffer_test.go::TestExecCommandDefaultCapFollowsTheRuntimeStringLimit",
+        "coding/extension/exec_max_buffer_test.go::TestExecCommandDefaultCapIs256MiB",
+        "coding/extension/exec_max_buffer_test.go::TestExecCommandFlushesIncompleteUTF8AtEOFWithoutATruncation",
+        "coding/extension/exec_max_buffer_test.go::TestExecCommandKeepsCompleteUTF8CharactersUnderTheCap",
+        "coding/extension/exec_max_buffer_test.go::TestExecCommandLeavesOutputUpToMaxBufferUnchanged",
+        "coding/extension/exec_max_buffer_test.go::TestExecCommandRejectsAnInvalidMaxBuffer",
+        "coding/extension/exec_max_buffer_test.go::TestExecCommandResultsAreNotTruncatedWithoutACap",
+        "coding/extension/exec_max_buffer_test.go::TestExecCommandTruncatesAllOutputWhenMaxBufferIsZero",
+        "coding/extension/exec_oracle_test.go::TestExecCommandMatchesPi",
+        "coding/extension/exec_tree_test.go::TestExecCommandForceKillsAChildThatIgnoresSIGTERMAfterFiveSeconds",
+        "coding/extension/exec_utf8_chunks_test.go::TestExecCommandDiscardsPendingUTF8WhenAStreamExceedsTheCap",
+        "extensions/sdk/surface_parity_test.go::TestExecWithMaxBufferSendsTheOptionAndDecodesTruncated",
+        "test/extension-conformance/exec_limits_test.go::TestExecLimitsAcrossSDKs",
+        "test/extension-conformance/exec_limits_test.go::TestExecLimitsHelperProcess"
+      ]
+    },
+    {
       "id": "BF-53385a3",
       "title": "Registering a large MCP catalog, building a CodeMode sandbox from one, and CodeMode tool discovery were…",
       "symptom": "Registering a large MCP catalog, building a CodeMode sandbox from one, and CodeMode tool discovery were quadratic in the number of tools, so a 100,000-tool server took tens of seconds to register after its last `tools/list` page, `NewSandbox` took 27 seconds, and every `searchTools()` or `describeNamespace()` call rescanned the whole host catalog once per tool.",
@@ -15028,6 +15104,30 @@
         "internal/jsloop/turns_test.go::TestTurnsRunATickAfterItsToolCallsEndWhicheverArrivesFirst",
         "internal/jsloop/turns_test.go::TestTurnsRunTicksAtTheTickBoundaryBeforeTimers",
         "test/extension-conformance/timer_calls_test.go::TestNodeTimerCallbackNotificationsWaitForTheEndOfTheRun"
+      ]
+    },
+    {
+      "id": "BF-65ba6b5",
+      "title": "A renderer that imported `keyText` or `keyHint` from its own copy of the extension package rendered hints…",
+      "symptom": "A renderer that imported `keyText` or `keyHint` from its own copy of the extension package rendered hints without the key, because that copy did not see the host's keybindings.",
+      "rootCause": "A renderer that imported `keyText` or `keyHint` from its own copy of the extension package rendered hints without the key, because that copy did not see the host's keybindings.",
+      "rootCauseSource": "release note",
+      "userImpact": "Wrong display",
+      "platform": "All platforms",
+      "class": "pi-port",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A renderer that imported `keyText` or `keyHint` from its own copy of the extension package rendered hints without the key, because that copy did not see the host's keybindings. The hints on the render context and options read the host's keybindings. Carried forward from Pi 9376c8d1 (earendil-works/pi#4748), past the 1.4.0+b3a29f11 pin.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "65ba6b5bec",
+          "date": "2026-10-30",
+          "pr": "11630"
+        }
+      ],
+      "tests": [
+        "extensions/sdk/keybinding_hints_test.go::TestRenderHintsReadTheHostKeybindings",
+        "test/extension-conformance/keybinding_hints_test.go::TestKeybindingHintsAcrossSDKs"
       ]
     },
     {
@@ -30399,6 +30499,30 @@
         "tui/settings_list_input_test.go::TestSettingsListSubmenuReceivesEveryKeyIncludingCancel",
         "tui/settings_list_input_test.go::TestSettingsListWithoutSearchIgnoresOtherKeysAndKeepsSelection",
         "tui/settings_list_keys_test.go::TestSettingsListPageAndHomeEndKeysFollowSearchState"
+      ]
+    },
+    {
+      "id": "BF-c98be55",
+      "title": "The renderer's width and height are read through one atomic snapshot",
+      "symptom": "The renderer's width and height are read through one atomic snapshot.",
+      "rootCause": "A frame stores the terminal's size in tuiBase.width and height (updateSize) while it holds t.mu, and published a copy in sizeSnapshot for Width, Height and a fixed-size renderer's Terminal. Every other reader took the plain fields: the overlay entry points (ShowOverlay's visibility evaluation, OverlayHandle.apply, HideOverlay, ActiveOverlay, hasOverlay, isOverlayFocused), which an extension's overlay control call and an input event reach from their own goroutines, and the frame-side helpers of the alt screen, the surface and the selection code.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong display",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "The renderer's width and height are read through one atomic snapshot. An overlay's visibility callback, an overlay control call and a mouse event on the alt screen read the two numbers from their own goroutines while a frame stored a new terminal size, so during a resize they could see the width of one size and the height of another, and the race detector reported the conformance rows of the alt screen.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "c98be55c62",
+          "date": "2026-10-31"
+        }
+      ],
+      "tests": [
+        "test/extension-conformance/tui_alt_screen_test.go::TestTuiAltScreenAcrossSDKs",
+        "test/extension-conformance/tui_alt_screen_test.go::TestTuiAltScreenFrameReadsAcrossSDKs",
+        "tui/renderer_size_race_test.go::TestOverlayAndInputReadersDoNotRaceWithTheFrameSize"
       ]
     },
     {

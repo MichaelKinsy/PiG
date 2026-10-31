@@ -346781,17 +346781,6 @@
       "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/tui#TuiAltScreen.publishSize",
-      "package": "github.com/MichaelKinsy/PiG/tui",
-      "name": "TuiAltScreen.publishSize",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func()"
-      },
-      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
-    },
-    {
       "id": "go:github.com/MichaelKinsy/PiG/tui#TuiAltScreen.queryTerminalColors",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "TuiAltScreen.queryTerminalColors",
@@ -347122,17 +347111,6 @@
       "shapeHash": "sha256:44147070798ee90e1e20203253ee9fa8243639e89f329b079c7ddc3859e1b9c1"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/tui#TuiAltScreen.setFixedDimensionsLocked",
-      "package": "github.com/MichaelKinsy/PiG/tui",
-      "name": "TuiAltScreen.setFixedDimensionsLocked",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func(columns int, rows int)"
-      },
-      "shapeHash": "sha256:fe6e9c26a549b27691de355fc1d45828da93fd4410b7e5521d0a32578a34f094"
-    },
-    {
       "id": "go:github.com/MichaelKinsy/PiG/tui#TuiAltScreen.setFocus",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "TuiAltScreen.setFocus",
@@ -347186,6 +347164,17 @@
         "type": "func(enabled bool) (changed bool, hasRendered bool)"
       },
       "shapeHash": "sha256:0e28d9f66dc002549169dfd47b8900451435fe47d87c51faf7bb574259a10d8c"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#TuiAltScreen.setSize",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "TuiAltScreen.setSize",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(columns int, rows int)"
+      },
+      "shapeHash": "sha256:fe6e9c26a549b27691de355fc1d45828da93fd4410b7e5521d0a32578a34f094"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui#TuiAltScreen.shouldDeferViewportInput",
@@ -348849,17 +348838,6 @@
       "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/tui#TuiMainScreen.publishSize",
-      "package": "github.com/MichaelKinsy/PiG/tui",
-      "name": "TuiMainScreen.publishSize",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func()"
-      },
-      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
-    },
-    {
       "id": "go:github.com/MichaelKinsy/PiG/tui#TuiMainScreen.queryTerminalColors",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "TuiMainScreen.queryTerminalColors",
@@ -349080,17 +349058,6 @@
       "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/tui#TuiMainScreen.setFixedDimensionsLocked",
-      "package": "github.com/MichaelKinsy/PiG/tui",
-      "name": "TuiMainScreen.setFixedDimensionsLocked",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func(columns int, rows int)"
-      },
-      "shapeHash": "sha256:fe6e9c26a549b27691de355fc1d45828da93fd4410b7e5521d0a32578a34f094"
-    },
-    {
       "id": "go:github.com/MichaelKinsy/PiG/tui#TuiMainScreen.setFocus",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "TuiMainScreen.setFocus",
@@ -349111,6 +349078,17 @@
         "type": "func(wake func(due time.Time))"
       },
       "shapeHash": "sha256:ef38abfc22feca6c11a1c8e5ad2ab6c09e26ab4f4ae5e8f3cee4637f06f2b599"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#TuiMainScreen.setSize",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "TuiMainScreen.setSize",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(columns int, rows int)"
+      },
+      "shapeHash": "sha256:fe6e9c26a549b27691de355fc1d45828da93fd4410b7e5521d0a32578a34f094"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui#TuiMainScreen.size",
@@ -350983,17 +350961,6 @@
       "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/tui#TuiSurface.publishSize",
-      "package": "github.com/MichaelKinsy/PiG/tui",
-      "name": "TuiSurface.publishSize",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func()"
-      },
-      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
-    },
-    {
       "id": "go:github.com/MichaelKinsy/PiG/tui#TuiSurface.queryTerminalColors",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "TuiSurface.queryTerminalColors",
@@ -351269,17 +351236,6 @@
       "shapeHash": "sha256:f4d6ca3ad3968827f2b86473afa8b57b68af82041c1fc375631011214c56416e"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/tui#TuiSurface.setFixedDimensionsLocked",
-      "package": "github.com/MichaelKinsy/PiG/tui",
-      "name": "TuiSurface.setFixedDimensionsLocked",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func(columns int, rows int)"
-      },
-      "shapeHash": "sha256:fe6e9c26a549b27691de355fc1d45828da93fd4410b7e5521d0a32578a34f094"
-    },
-    {
       "id": "go:github.com/MichaelKinsy/PiG/tui#TuiSurface.setFocus",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "TuiSurface.setFocus",
@@ -351300,6 +351256,17 @@
         "type": "func(wake func(due time.Time))"
       },
       "shapeHash": "sha256:ef38abfc22feca6c11a1c8e5ad2ab6c09e26ab4f4ae5e8f3cee4637f06f2b599"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#TuiSurface.setSize",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "TuiSurface.setSize",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(columns int, rows int)"
+      },
+      "shapeHash": "sha256:fe6e9c26a549b27691de355fc1d45828da93fd4410b7e5521d0a32578a34f094"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui#TuiSurface.size",
@@ -373181,17 +373148,6 @@
       "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/tui#tuiBase.publishSize",
-      "package": "github.com/MichaelKinsy/PiG/tui",
-      "name": "tuiBase.publishSize",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func()"
-      },
-      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
-    },
-    {
       "id": "go:github.com/MichaelKinsy/PiG/tui#tuiBase.queryTerminalColors",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "tuiBase.queryTerminalColors",
@@ -373412,17 +373368,6 @@
       "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/tui#tuiBase.setFixedDimensionsLocked",
-      "package": "github.com/MichaelKinsy/PiG/tui",
-      "name": "tuiBase.setFixedDimensionsLocked",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func(columns int, rows int)"
-      },
-      "shapeHash": "sha256:fe6e9c26a549b27691de355fc1d45828da93fd4410b7e5521d0a32578a34f094"
-    },
-    {
       "id": "go:github.com/MichaelKinsy/PiG/tui#tuiBase.setFocus",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "tuiBase.setFocus",
@@ -373443,6 +373388,17 @@
         "type": "func(wake func(due time.Time))"
       },
       "shapeHash": "sha256:ef38abfc22feca6c11a1c8e5ad2ab6c09e26ab4f4ae5e8f3cee4637f06f2b599"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#tuiBase.setSize",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "tuiBase.setSize",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(columns int, rows int)"
+      },
+      "shapeHash": "sha256:fe6e9c26a549b27691de355fc1d45828da93fd4410b7e5521d0a32578a34f094"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui#tuiBase.size",

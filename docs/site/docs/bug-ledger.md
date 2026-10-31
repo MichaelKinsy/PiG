@@ -351,6 +351,8 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-5260e5c](#bf-5260e5c) | The Rust SDK's `get_model_info()` reads Pi's `maxTokens` and `cost` (it reported 0 for the output limit and… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-52858aa](#bf-52858aa) | `setWorkingMessage` with no message restores the default working label and an empty string shows an empty… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-530bf3e](#bf-530bf3e) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
+| [BF-53312d8](#bf-53312d8) | `pi.exec()` no longer buffers a command's output without limit, which exhausted memory when a command printed… | A fix Pi shipped that PiG ported | All platforms | Unreleased |
+| [BF-53312d8-2](#bf-53312d8-2) | `pi.exec()` no longer waits forever for a command that ignores SIGTERM after a timeout, an abort or the… | A fix Pi shipped that PiG ported | All platforms | Unreleased |
 | [BF-53385a3](#bf-53385a3) | Registering a large MCP catalog, building a CodeMode sandbox from one, and CodeMode tool discovery were… | PiG's own defect | All platforms | 0.5.2 |
 | [BF-5380e0a](#bf-5380e0a) | fix(extension): load failure shows the extension's own cause; registration edge-case rows | PiG's own defect | All platforms | Unreleased |
 | [BF-54283ce](#bf-54283ce) | fix(extension): Shutdown closes live child sessions and releases the objects they hold | PiG's own defect | All platforms | Unreleased |
@@ -541,6 +543,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-65426f3](#bf-65426f3) | fix(rpc): pipelined set_models apply in input order, after the batch's synchronous responses | PiG's own defect | All platforms | Unreleased |
 | [BF-65932e6](#bf-65932e6) | fix(extensions): run a tick call after the tool_execution_end of the tool call that queued its callback… | PiG's own defect | All platforms | Unreleased |
 | [BF-65932e6-2](#bf-65932e6-2) | A notification, status or message that an extension queued with `setImmediate` or `setTimeout` from a tool… | PiG's own defect | All platforms | 0.5.2 |
+| [BF-65ba6b5](#bf-65ba6b5) | A renderer that imported `keyText` or `keyHint` from its own copy of the extension package rendered hints… | A fix Pi shipped that PiG ported | All platforms | Unreleased |
 | [BF-663e84b](#bf-663e84b) | The built-in models page lists the real thinking levels (off, minimal, low, medium, high, xhigh, max) instead… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-663e84b-2](#bf-663e84b-2) | The built-in models page documents the `models.json` provider and model fields (`models[]`, `contextWindow`… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-663e84b-3](#bf-663e84b-3) | The built-in docs gain the compaction summary format, branch summaries and extension hooks, the RPC, JSON… | PiG's own defect | All platforms | 0.5.0 |
@@ -1060,6 +1063,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-c7ebb23-2](#bf-c7ebb23-2) | A `config.oauth` login's `onManualCodeInput` asks "Paste the authorization code", as Pi does, and a provider… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-c8a90a6](#bf-c8a90a6) | Pressing the login dialog's cancel key again cancels again, and Enter after a cancelled prompt leaves the… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-c8e3d86](#bf-c8e3d86) | Settings submenus: the type-to-filter box no longer shows a hardware cursor marker (Pi never focuses it), and… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-c98be55](#bf-c98be55) | The renderer's width and height are read through one atomic snapshot | PiG's own defect | All platforms | Unreleased |
 | [BF-c98e9f9](#bf-c98e9f9) | Without `HOME` set, the project trust check takes the home directory from the user database, as Pi's… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-c9acbea](#bf-c9acbea) | A Session listener that queues more messages than the Session's event buffer holds (64 by default), while it… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-c9acbea-2](#bf-c9acbea-2) | A goroutine that waits to run Session events, such as the Session's event goroutine while a producer runs a… | PiG's own defect | All platforms | 0.5.0 |
@@ -5975,6 +5979,34 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `530bf3e26f` (2026-10-23)
 - **Tests:** None recorded.
 
+### BF-53312d8
+
+**`pi.exec()` no longer buffers a command's output without limit, which exhausted memory when a command printed…**
+
+- **Source:** A fix Pi shipped that PiG ported
+- **Symptom:** `pi.exec()` no longer buffers a command's output without limit, which exhausted memory when a command printed too much.
+- **Root cause:** Pi's merged fix, carried by 0.6.0 past the 1.4.0+ pin (D217).
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `53312d8cdc` (2026-10-30, #11360)
+- **Tests:** `coding/extension/exec_max_buffer_test.go::TestExecCommandAcceptsTheMaxBufferBoundaries`, `coding/extension/exec_max_buffer_test.go::TestExecCommandCapsCombinedOutputAtMaxBuffer`, `coding/extension/exec_max_buffer_test.go::TestExecCommandDefaultCapFollowsTheRuntimeStringLimit`, `coding/extension/exec_max_buffer_test.go::TestExecCommandDefaultCapIs256MiB`, `coding/extension/exec_max_buffer_test.go::TestExecCommandFlushesIncompleteUTF8AtEOFWithoutATruncation`, `coding/extension/exec_max_buffer_test.go::TestExecCommandKeepsCompleteUTF8CharactersUnderTheCap`, `coding/extension/exec_max_buffer_test.go::TestExecCommandLeavesOutputUpToMaxBufferUnchanged`, `coding/extension/exec_max_buffer_test.go::TestExecCommandRejectsAnInvalidMaxBuffer` and 8 more in docs/bug-ledger.json
+- **Release note:** `pi.exec()` no longer buffers a command's output without limit, which exhausted memory when a command printed too much. The default cap is 256 MiB, counted over stdout and stderr together; past the cap the command is terminated, a character the cap cuts is dropped whole, and the result has `truncated: true`, `killed: true` and a nonzero code. Carried forward from Pi c466a359 (earendil-works/pi#11360), past the 1.4.0+b3a29f11 pin.
+
+### BF-53312d8-2
+
+**`pi.exec()` no longer waits forever for a command that ignores SIGTERM after a timeout, an abort or the…**
+
+- **Source:** A fix Pi shipped that PiG ported
+- **Symptom:** `pi.exec()` no longer waits forever for a command that ignores SIGTERM after a timeout, an abort or the output cap: the host sends SIGKILL 5 seconds later if the command has not exited, as Pi intended.
+- **Root cause:** Pi's merged fix, carried by 0.6.0 past the 1.4.0+ pin (D217).
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `53312d8cdc` (2026-10-30, #11360)
+- **Tests:** `coding/extension/exec_max_buffer_test.go::TestExecCommandAcceptsTheMaxBufferBoundaries`, `coding/extension/exec_max_buffer_test.go::TestExecCommandCapsCombinedOutputAtMaxBuffer`, `coding/extension/exec_max_buffer_test.go::TestExecCommandDefaultCapFollowsTheRuntimeStringLimit`, `coding/extension/exec_max_buffer_test.go::TestExecCommandDefaultCapIs256MiB`, `coding/extension/exec_max_buffer_test.go::TestExecCommandFlushesIncompleteUTF8AtEOFWithoutATruncation`, `coding/extension/exec_max_buffer_test.go::TestExecCommandKeepsCompleteUTF8CharactersUnderTheCap`, `coding/extension/exec_max_buffer_test.go::TestExecCommandLeavesOutputUpToMaxBufferUnchanged`, `coding/extension/exec_max_buffer_test.go::TestExecCommandRejectsAnInvalidMaxBuffer` and 8 more in docs/bug-ledger.json
+- **Release note:** `pi.exec()` no longer waits forever for a command that ignores SIGTERM after a timeout, an abort or the output cap: the host sends SIGKILL 5 seconds later if the command has not exited, as Pi intended. Carried forward from Pi c466a359 (earendil-works/pi#11360), past the 1.4.0+b3a29f11 pin.
+
 ### BF-53385a3
 
 **Registering a large MCP catalog, building a CodeMode sandbox from one, and CodeMode tool discovery were…**
@@ -8616,6 +8648,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `4ac21c86c4` (2026-10-21), `65932e6efb` (2026-10-21)
 - **Tests:** `coding/extension/host/subprocess/callpayload_shape_test.go::TestCallPayloadKeepsUnkeyedLiteralShape`, `coding/extension/host/subprocess/timer_turns_test.go::TestNodeTickCallsOfAToolRunAfterItsEndWhenTheyArriveLate`, `coding/extension/host/subprocess/timer_turns_test.go::TestNodeTimerCallbackCallsWaitForTheLoopTurn`, `internal/jsloop/turns_test.go::TestTurnsForgetATickBoundaryWhenTheToolCallStartsAgain`, `internal/jsloop/turns_test.go::TestTurnsRunALateTickAtOnceWhileNoWaitIsOpen`, `internal/jsloop/turns_test.go::TestTurnsRunATickAfterItsToolCallsEndWhicheverArrivesFirst`, `internal/jsloop/turns_test.go::TestTurnsRunTicksAtTheTickBoundaryBeforeTimers`, `test/extension-conformance/timer_calls_test.go::TestNodeTimerCallbackNotificationsWaitForTheEndOfTheRun`
 - **Release note:** A notification, status or message that an extension queued with `setImmediate` or `setTimeout` from a tool that returned while a sibling tool in the same batch still awaited reached an RPC client behind the sibling's own output in up to two runs in five, where Pi writes it right after the first tool's `tool_execution_end`. The Node runtime is another process: it wrote the callback's host call a few hundred microseconds after the tool's answer, and the host passed that tool's `tool_execution_end` in about the same time, so a call that arrived after it waited for the next `tool_execution_end` of any tool. The call now says which tool call queued its callback (`origin_tool_call_id`). The host runs it behind that call's `tool_execution_end` when it arrives before the event, and at once when it arrives after, where the runtime says a sibling tool still runs and the loop turns.
+
+### BF-65ba6b5
+
+**A renderer that imported `keyText` or `keyHint` from its own copy of the extension package rendered hints…**
+
+- **Source:** A fix Pi shipped that PiG ported
+- **Symptom:** A renderer that imported `keyText` or `keyHint` from its own copy of the extension package rendered hints without the key, because that copy did not see the host's keybindings.
+- **Root cause:** A renderer that imported `keyText` or `keyHint` from its own copy of the extension package rendered hints without the key, because that copy did not see the host's keybindings.
+- **User impact:** Wrong display
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `65ba6b5bec` (2026-10-30, #11630)
+- **Tests:** `extensions/sdk/keybinding_hints_test.go::TestRenderHintsReadTheHostKeybindings`, `test/extension-conformance/keybinding_hints_test.go::TestKeybindingHintsAcrossSDKs`
+- **Release note:** A renderer that imported `keyText` or `keyHint` from its own copy of the extension package rendered hints without the key, because that copy did not see the host's keybindings. The hints on the render context and options read the host's keybindings. Carried forward from Pi 9376c8d1 (earendil-works/pi#4748), past the 1.4.0+b3a29f11 pin.
 
 ### BF-663e84b
 
@@ -15830,6 +15876,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `d1f258f335` (2026-10-06), `56a0400b9c` (2026-10-07), `c8e3d86378` (2026-10-07), `ccaade27af` (2026-10-07), `f2a2b3409b` (2026-10-07)
 - **Tests:** `internal/codingagent/settings_submenu_oracle_test.go::TestSettingsSubmenusMatchPi`, `internal/codingagent/thinking_selector_oracle_test.go::TestThinkingSelectorInputMatchesPi`, `internal/codingagent/tree_row_format_test.go::TestFormatTreeRow_AllEntryTypes`, `internal/codingagent/tree_selector_oracle_test.go::TestTreeSelectorInputMatchesPi`, `test/parity/scenarios/settings/06-thinking-selector-search-editing.toml`, `test/parity/scenarios/settings/08-settings-search-editing.toml`, `tui/editor_bindings_oracle_test.go::TestEditorRebindingsMatchPi`, `tui/input_oracle_test.go::TestInputHandleInputMatchesPi` and 10 more in docs/bug-ledger.json
 - **Release note:** Settings submenus: the type-to-filter box no longer shows a hardware cursor marker (Pi never focuses it), and the highlight callback (theme preview) now fires on every up/down like Pi's SelectList, including when the highlight stays on the same item.
+
+### BF-c98be55
+
+**The renderer's width and height are read through one atomic snapshot**
+
+- **Source:** PiG's own defect
+- **Symptom:** The renderer's width and height are read through one atomic snapshot.
+- **Root cause:** A frame stores the terminal's size in tuiBase.width and height (updateSize) while it holds t.mu, and published a copy in sizeSnapshot for Width, Height and a fixed-size renderer's Terminal. Every other reader took the plain fields: the overlay entry points (ShowOverlay's visibility evaluation, OverlayHandle.apply, HideOverlay, ActiveOverlay, hasOverlay, isOverlayFocused), which an extension's overlay control call and an input event reach from their own goroutines, and the frame-side helpers of the alt screen, the surface and the selection code.
+- **User impact:** Wrong display
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `c98be55c62` (2026-10-31)
+- **Tests:** `test/extension-conformance/tui_alt_screen_test.go::TestTuiAltScreenAcrossSDKs`, `test/extension-conformance/tui_alt_screen_test.go::TestTuiAltScreenFrameReadsAcrossSDKs`, `tui/renderer_size_race_test.go::TestOverlayAndInputReadersDoNotRaceWithTheFrameSize`
+- **Release note:** The renderer's width and height are read through one atomic snapshot. An overlay's visibility callback, an overlay control call and a mouse event on the alt screen read the two numbers from their own goroutines while a frame stored a new terminal size, so during a resize they could see the width of one size and the height of another, and the race detector reported the conformance rows of the alt screen.
 
 ### BF-c98e9f9
 
