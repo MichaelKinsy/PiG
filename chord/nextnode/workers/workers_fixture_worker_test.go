@@ -2,6 +2,7 @@ package workers
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -188,13 +189,32 @@ func (p *countingPort) sendControlThen(payload []byte, then func()) {
 // source carries. A source that begins `throw` is a script whose evaluation fails.
 type fixtureEvaluator struct{}
 
-var throwing = regexp.MustCompile(`^throw `)
+var (
+	throwing   = regexp.MustCompile(`^throw `)
+	labelConst = regexp.MustCompile(`export const label = ("(?:[^"\\]|\\.)*");`)
+)
+
+// labelOfSource is the label the fixture plugin's `label.ts` declares.
+func labelOfSource(source string) (string, error) {
+	match := labelConst.FindStringSubmatch(source)
+	if match == nil {
+		return "", errors.New("evaluation failed: no label")
+	}
+	var label string
+	if err := json.Unmarshal([]byte(match[1]), &label); err != nil {
+		return "", err
+	}
+	return label, nil
+}
 
 func (fixtureEvaluator) EvaluateFacet(built plugins.BuiltFacet, options plugins.EvaluateOptions) (host.Facet, error) {
 	if throwing.MatchString(built.Source) {
 		return host.Facet{}, errors.New("evaluation failed")
 	}
-	label := built.Source
+	label, err := labelOfSource(built.Source)
+	if err != nil {
+		return host.Facet{}, err
+	}
 	return host.DefineFacet(func(h host.FacetHost, _ host.FacetSelf) error {
 		return h.Serve(fixtureNotes, func(params *delta.JsonObject, _ data.Principal, _ host.Self) (contracts.Implementation, error) {
 			id, _ := params.Value("id").(string)

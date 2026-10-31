@@ -194,7 +194,6 @@ type child struct {
 	ready *promise[CrossedReport]
 	// idleSince is since when it is idle (from `ready`); zero while busy or before `ready`.
 	idleSince int64
-	idle      bool
 	// idleStop: an idle stop is queued (checked again when it runs).
 	idleStop bool
 	// shipped is the set its start message or its last reload that applied without failures carried.
@@ -599,7 +598,6 @@ func (c *workersComponent) control(record *routed, child *child, message FromWor
 		child.started.resolve(struct{}{})
 	case FromWorkerReady:
 		child.status = WorkerRunning
-		child.idle = message.Idle
 		child.idleSince = 0
 		if message.Idle {
 			child.idleSince = c.clock.Now()
@@ -609,7 +607,6 @@ func (c *workersComponent) control(record *routed, child *child, message FromWor
 			c.state.refresh()
 		}
 	case FromWorkerIdle:
-		child.idle = message.Idle
 		if message.Idle {
 			if child.idleSince == 0 {
 				child.idleSince = c.clock.Now()

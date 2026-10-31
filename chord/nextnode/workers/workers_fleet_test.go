@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -12,6 +13,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/MichaelKinsy/PiG/chord"
 	chordctx "github.com/MichaelKinsy/PiG/chord/context"
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/chord/next/contracts"
@@ -372,7 +374,7 @@ func (c *switchClock) useFakeTimers() (*fakeClock, func()) {
 }
 
 // testPlugins is the plugins component of the fleet: the fixture plugin `@test/notes` copied into root, its worker facet's
-// source the text of `notes/label` (the build of the label.ts fixture).
+// source the text of `notes/label.ts` (the build of the label.ts fixture).
 type testPlugins struct {
 	root string
 }
@@ -381,8 +383,20 @@ var _ plugins.Plugins = (*testPlugins)(nil)
 
 func newTestPlugins(t testing.TB, root string) *testPlugins {
 	t.Helper()
-	if err := os.MkdirAll(filepath.Join(root, "notes"), 0o700); err != nil {
+	dir := filepath.Join(root, "notes")
+	if err := os.MkdirAll(dir, 0o700); err != nil {
 		t.Fatal(err)
+	}
+	// The fixture plugin (test/next-node/fixtures/workers/plugins/notes): its package, its worker facet (the facet's own file
+	// is a stand-in: the label is what the fixture evaluator serves) and the label file the rollout tests edit.
+	files := map[string]string{
+		"package.json": `{"name": "@test/notes", "private": true, "type": "module"}` + "\n",
+		"worker.ts":    "// Fixture plugin (slice 10): the worker facet, serving `Notes` at the worker's address with the label of `label.ts`.\n",
+	}
+	for name, text := range files {
+		if err := os.WriteFile(filepath.Join(dir, name), []byte(text), 0o600); err != nil {
+			t.Fatal(err)
+		}
 	}
 	p := &testPlugins{root: root}
 	if err := p.writeLabel("v1"); err != nil {
@@ -391,12 +405,17 @@ func newTestPlugins(t testing.TB, root string) *testPlugins {
 	return p
 }
 
+// writeLabel writes label into the copy's notes plugin (`label.ts`).
 func (p *testPlugins) writeLabel(label string) error {
-	return os.WriteFile(filepath.Join(p.root, "notes", "label"), []byte(label), 0o600)
+	text, err := json.Marshal(label)
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(filepath.Join(p.root, "notes", "label.ts"), []byte("export const label = "+string(text)+";\n"), 0o600)
 }
 
 func (p *testPlugins) Scripts(_ string, _ context.Context) ([]plugins.PluginScript, error) {
-	source, err := os.ReadFile(filepath.Join(p.root, "notes", "label"))
+	source, err := os.ReadFile(filepath.Join(p.root, "notes", "label.ts"))
 	if err != nil {
 		return nil, err
 	}
@@ -419,4 +438,28 @@ func (f *fleet) childStarted(id string) bool {
 		}
 	})
 	return started
+}
+
+// watchStatuses records the status of session `id` in each frame of the workers' state, as it changes.
+func (f *fleet) watchStatuses(id string) *collector[WorkerStatus] {
+	statuses := &collector[WorkerStatus]{}
+	watch, err := f.workers.State().Watch(background)
+	if err != nil {
+		f.t.Fatal(err)
+	}
+	var last WorkerStatus
+	watch.Start(func(_ context.Context, call chord.WatchCall[delta.JsonValue]) error {
+		object, _ := call.Value.(*delta.JsonObject)
+		entry, ok := object.Value("session|" + id).(*delta.JsonObject)
+		if !ok {
+			return nil
+		}
+		if status := WorkerStatus(entry.Value("status").(string)); status != last {
+			last = status
+			statuses.add(status)
+		}
+		return nil
+	})
+	f.t.Cleanup(func() { _, _ = watch.Stop() })
+	return statuses
 }

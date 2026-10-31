@@ -47,11 +47,14 @@ func failedCause(t *testing.T, reference *host.Reference) data.FailureCause {
 
 func TestStartsOnDemandStartsAWorkerForTheFirstHoldStartingThenRunningItsLinkBindsTheHolder(t *testing.T) {
 	f := newFleet(t, fleetOptions{})
+	// A worker of this speed may be running before a poll sees it: the state's own frames are what tells starting first.
+	statuses := f.watchStatuses("S1")
 	notes := f.hold(fixtureNotes, "S1")
 	defer notes.Release()
 	until(t, func() bool { return f.stateOf("S1") != nil })
-	if status := f.stateOf("S1").Status; status != WorkerStarting {
-		t.Fatalf("status = %s, want starting", status)
+	until(t, func() bool { return len(statuses.all()) > 0 })
+	if first := statuses.all()[0]; first != WorkerStarting {
+		t.Fatalf("first status = %s, want starting", first)
 	}
 	until(t, func() bool { return refKind(notes) == host.RefStateLive })
 	if label := labelOf(t, notes); label != "S1 v1" {
