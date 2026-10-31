@@ -77,6 +77,19 @@ func (d *destination) reference(typ *contracts.Contract, params *delta.JsonObjec
 	return placed{kind: placedPath, path: path, address: address}, nil
 }
 
+// placedHere reports whether a reference to typ with params goes here: a local type, or a remote one whose host address is
+// this host's. A `hostAddress` that fails returns its error.
+func (d *destination) placedHere(typ *contracts.Contract, params *delta.JsonObject) (bool, error) {
+	if typ.Kind == contracts.KindLocal {
+		return true, nil
+	}
+	address, err := hostAddressOf(typ, params)
+	if err != nil {
+		return false, err
+	}
+	return d.isHere(address), nil
+}
+
 // hold is where a hold arriving on from acting as principal goes, by the address it names (a request's `address`, and
 // its `type` for the message): here when it is this host's (a relay never captures a hold for serving the same name); over
 // the route of its kind; else over the parent link (waiting for it while it is down), unless it came on the parent link

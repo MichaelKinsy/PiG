@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"slices"
 
+	chordctx "github.com/MichaelKinsy/PiG/chord/context"
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/chord/next/contracts"
 	"github.com/MichaelKinsy/PiG/chord/next/data"
@@ -106,9 +107,6 @@ func (r *remoteObject) label() string { return r.name }
 
 func (r *remoteObject) state() *RefState { return r.refState }
 
-// heldOnLink is whether its hold is on a link now (a remote attempt answers for it), not while its path has no link.
-func (r *remoteObject) heldOnLink() bool { return r.held != nil }
-
 // blocksFirstPass: an object over a link is no blocker of this host's first pass.
 func (*remoteObject) blocksFirstPass() bool { return false }
 
@@ -146,10 +144,6 @@ func (r *remoteObject) attach(l *hostLink) {
 		chain = r.dependent.activationChain()
 	}
 	r.held = &remoteHold{side: l.consumer, id: l.consumer.attach(r, chain)}
-	// Held on a link now: a parked dependent checks again (`parked_long` counts a hold on a link only).
-	if r.dependent != nil {
-		r.dependent.dependencyMoved()
-	}
 }
 
 // unreachable: its path's address cannot be reached for now (a route's `resolve` failed, a suspension): `failed { waiting }`
@@ -165,14 +159,11 @@ func (r *remoteObject) unreachable(err *data.ChordError) {
 func (r *remoteObject) dropped(*data.ChordError) {
 	r.held = nil
 	r.startOver()
-	if r.dependent != nil {
-		r.dependent.dependencyMoved()
-	}
 }
 
 // call calls a method of the bound variant over the link; one outside it fails `invalid/member`. Only a live object is
 // called: bound on an open link. The result settles as the call over the link does.
-func (r *remoteObject) call(method string, args any, ctx context.Context, _ caller) *parkedCallResult {
+func (r *remoteObject) call(method string, args any, ctx context.Context, _ caller, _ int) *parkedCallResult {
 	result := newParkedCallResult()
 	bound, held := r.bound, r.held
 	methodData, ok := bound.methods.Get(method)
@@ -199,11 +190,57 @@ func (r *remoteObject) member(member string) (state.DeriveSource, error) {
 	return found, nil
 }
 
-// lastValues: a failed remote object's members are not read: its failure is the reads' error (see `Target.lastValues`).
-func (*remoteObject) lastValues() bool { return false }
+// followed is what its reference follows of member (a consumer over a link binds at its own version, mapped at the
+// provider): the replica while live, a member the bound variant lacks (`invalid/member`); while loading or failed
+// nothing, the replica (kept until the next binding) giving its last value (rule 5).
+func (r *remoteObject) followed(member string, _ int) followed {
+	bound := r.bound
+	var replica *replica
+	if bound != nil {
+		replica = bound.replicas.byName[member]
+	}
+	var last state.DeriveSource
+	if replica != nil {
+		last = replica
+	}
+	switch r.refState.Kind {
+	case RefStateLive:
+		if replica != nil {
+			return followed{kind: followedLive, source: replica, instance: bound}
+		}
+		variant := ""
+		if bound != nil {
+			variant = bound.variant
+		}
+		return followed{kind: followedLacking, err: memberInvalid(fmt.Sprintf("%s (variant %s) has no state member %q", r.name, variant, member))}
+	case RefStateFailed:
+		return followed{kind: followedFailed, err: r.refState.Cause.Error, last: last, instance: bound}
+	}
+	return followed{kind: followedLoading, last: last, instance: bound}
+}
+
+// attachedVariant makes a binding an `attachable`: the variant its replicas are of.
+func (b *boundVariant) attachedVariant() string { return b.variant }
+
+// attachable is its binding while live (its replicas change); nil while loading or failed.
+func (r *remoteObject) attachable() attachable {
+	if r.refState.Kind == RefStateLive && r.bound != nil {
+		return r.bound
+	}
+	return nil
+}
+
+// instance: keyed members are only in local contracts: no instance to pin a key on.
+func (*remoteObject) instance() any { return nil }
+
+// keyedMapping: keyed members are only in local contracts (keyedMember).
+func (r *remoteObject) keyedMapping(member string, _ int) (contracts.Mapping, error) {
+	_, err := r.keyedMember(member)
+	return nil, err
+}
 
 // pinKey: keyed members are only in local contracts (keyedMember).
-func (r *remoteObject) pinKey(member, _ string, _ context.Context) (pinnedKey, error) {
+func (r *remoteObject) pinKey(member, _ string, _ int, _ context.Context) (pinnedKey, error) {
 	_, err := r.keyedMember(member)
 	return pinnedKey{}, err
 }
@@ -219,10 +256,11 @@ func (*remoteObject) activationId() string { return "" }
 // pathTo: an object over a link waits for nothing on this host: no chain of waits (its holds carry the chain, Q5).
 func (*remoteObject) pathTo(*chordObject, map[target]struct{}) []*chordObject { return nil }
 
-// retry is `ref.retry()`: a failed object's provider is asked for an attempt (a hold it refused is started there again; a
-// parked object there passes it on as an operation of its own host). One that failed for a part past the link's limits is
-// placed anew and held with a new id, now or on its path's next link (a `hostAddress` that throws fails it broken again).
-func (r *remoteObject) retry(operation *retryOperation) {
+// retry is `ref.retry()`, as a step of walk: a failed object's provider is asked for an attempt with the walk's hop
+// budget, none left: nothing is sent (a hold it refused is started there again; a parked object there passes it on with
+// one hop less). One that failed for a part past the link's limits is placed anew and held with a new id, now or on its
+// path's next link (a `hostAddress` that throws fails it broken again).
+func (r *remoteObject) retry(walk *retryWalk) {
 	if r.refState.Kind != RefStateFailed {
 		return
 	}
@@ -230,8 +268,8 @@ func (r *remoteObject) retry(operation *retryOperation) {
 		r.place()
 		return
 	}
-	if r.held != nil {
-		r.held.side.retry(r.held.id, operation)
+	if r.held != nil && walk.hops > 0 {
+		r.held.side.retry(r.held.id, walk.hops)
 	}
 }
 
@@ -374,11 +412,9 @@ func (r *remoteObject) wentLive() {
 
 // failed is a `failed` message: the provider's object failed and no attempt runs (RetryIn: the rest of its backoff
 // window), or the hold is unbound there or its object parked on a failed dependency (`waiting`), each new cause a new
-// message. Ignored once live (only a pending hold is told). It fails on an error that is no wire error (a protocol error).
+// message. On a bound hold it unbinds it (slice 7b, model §5): the members keep their last values until the next
+// `bound`. It fails on an error that is no wire error (a protocol error).
 func (r *remoteObject) failed(message *link.FailedMessage) error {
-	if r.refState.Kind == RefStateLive {
-		return nil
-	}
 	// A plugin's error a provider failed with is this object's failure, as a ChordError.
 	received, err := link.ErrorFromWire(message.Cause.Error)
 	if err != nil {
@@ -542,12 +578,19 @@ func (r *remoteObject) startOver() {
 	}
 }
 
-// move moves to next and tells the reference.
+// move moves to next and tells the reference: its members follow what it shows now (in a batch), then its state.
 func (r *remoteObject) move(next *RefState) {
 	r.refState = next
-	if r.binding != nil {
-		r.binding.moved()
+	binding := r.binding
+	if binding == nil {
+		return
 	}
+	if binding.following() {
+		_ = r.host.batch.Within(func() error { binding.retarget(); return nil }, chordctx.Background())
+	} else {
+		binding.retarget()
+	}
+	binding.moved()
 }
 
 // memberInvalid is the `invalid/member` error.

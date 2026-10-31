@@ -27,6 +27,9 @@ type RootOptions struct {
 	// Principal is whom the scope acts as: the host's principal by default (nil); a trusted same-host caller's choice
 	// (base code).
 	Principal data.Principal
+	// Anonymous runs the scope with no principal (`ctx.Principal()` nil), Pi's explicit `principal: undefined`; Principal is
+	// ignored then.
+	Anonymous bool
 }
 
 // openScope is an open root scope: its seal, and the rejection its caller gets when the host closes.
@@ -73,9 +76,9 @@ func (r *rootScopes) run(fn func(ctx Ctx) (any, error), principal data.Principal
 	var open *openScope
 	var results chan rootResult
 	loop.Run(func() {
-		controller, abort := chordctx.WithCancel(chordctx.Background())
-		linked := withLinkedAbortSignal(controller, ctx)
-		scope := linked.context
+		// The scope's own signal, aborted by its seal; the caller's abort seals it (one listener, no linked signal: a
+		// request's scope is made per HTTP request).
+		scope, abort := chordctx.WithCancel(chordctx.WithoutAbortSignal(ctx))
 		call := newCallContext(scope, caller{principal: principal, incarnation: host.Incarnation()}, host)
 		open = &openScope{closed: make(chan struct{})}
 		var stopAborted func() bool
@@ -89,14 +92,11 @@ func (r *rootScopes) run(fn func(ctx Ctx) (any, error), principal data.Principal
 			stopAborted()
 			// References first: a `get` still waiting gives up with `released`, not with the abort's reason.
 			call.settle()
-			// While still linked, so the scope's own signal (a caller's context has one) aborts too.
 			abort(reason)
-			linked.abort(reason)
-			linked.release()
 		}
 		r.open = append(r.open, open)
-		stopAborted = context.AfterFunc(scope, func() {
-			loop.Run(func() { self.seal(context.Cause(scope)) })
+		stopAborted = context.AfterFunc(ctx, func() {
+			loop.Run(func() { self.seal(context.Cause(ctx)) })
 		})
 		results = make(chan rootResult, 1)
 		// Plugin code: a panic becomes the rejection. The scope is sealed before the caller is told, as Pi's `running.then`

@@ -76,6 +76,8 @@ type watcherOptions struct {
 	// Failed is called when the watcher cannot watch (the system's limit): reported once, after which the app builds on
 	// demand. It runs in a section of the host.
 	Failed func(error)
+	// newWatcher makes the fsnotify watcher (nil: fsnotify.NewWatcher); a test makes one fail.
+	newWatcher func() (*fsnotify.Watcher, error)
 }
 
 // ignored are the directories never watched, and changes under them never marked.
@@ -107,9 +109,8 @@ type pluginWatcher struct {
 	// the goroutine that reads its events.
 	fs      *fsnotify.Watcher
 	running sync.WaitGroup
-	// reported is set once a failure to watch was reported; closed once the watcher was closed.
+	// reported is set once a failure to watch was reported.
 	reported bool
-	closed   bool
 	// generation is the one the next change gets: every mark records a newer one than any before it.
 	generation int
 	// dirty is each dirty plugin's latest change, by generation.
@@ -307,7 +308,6 @@ func (w *pluginWatcher) mark(path string) {
 
 // close stops watching. It does not wait for the goroutine that reads the events (join does).
 func (w *pluginWatcher) close() {
-	w.closed = true
 	if w.fs != nil {
 		watcher := w.fs
 		w.fs = nil
@@ -375,7 +375,7 @@ func (w *pluginWatcher) unwatchTree(dir string) {
 
 // watchDirs watches dir and, walking down, every directory under it but ignored ones (each not watched yet).
 func (w *pluginWatcher) watchDirs(dir string) {
-	if _, ok := w.watched[dir]; ok || w.reported || w.closed {
+	if _, ok := w.watched[dir]; ok || w.reported {
 		return
 	}
 	if err := w.addWatch(dir); err != nil {
@@ -400,7 +400,11 @@ func (w *pluginWatcher) watchDirs(dir string) {
 // addWatch puts a watch on dir, starting the watcher and the goroutine that reads its events with the first.
 func (w *pluginWatcher) addWatch(dir string) error {
 	if w.fs == nil {
-		watcher, err := fsnotify.NewWatcher()
+		newWatcher := w.options.newWatcher
+		if newWatcher == nil {
+			newWatcher = fsnotify.NewWatcher
+		}
+		watcher, err := newWatcher()
 		if err != nil {
 			return err
 		}
@@ -433,12 +437,20 @@ func (w *pluginWatcher) readEvents(watcher *fsnotify.Watcher) {
 	}
 }
 
-// event handles an event of the watch on watcher's directories, unless the watcher was closed since.
+// event handles an event of the watch on watcher's directories, unless the watcher was closed since (close sets fs nil).
 func (w *pluginWatcher) event(watcher *fsnotify.Watcher, event fsnotify.Event) {
 	if w.fs != watcher {
 		return
 	}
-	w.changedIn(event.Name)
+	path := event.Name
+	// An event of a tree's own directory (removed, moved, its attributes changed) names it by its own base name under it,
+	// as `fs.watch` reports an event of a watch with no file name; unless a watch of its parent tells it by its name.
+	if _, tree := w.trees[path]; tree {
+		if _, parent := w.watched[filepath.Dir(path)]; !parent {
+			path = filepath.Join(path, filepath.Base(path))
+		}
+	}
+	w.changedIn(path)
 }
 
 // changedIn handles an event for path in a watched directory: a new directory gets its watches, a removed one loses them;

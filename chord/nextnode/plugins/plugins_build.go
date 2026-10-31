@@ -125,7 +125,12 @@ func relative(from, to string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return filepath.Rel(absoluteFrom, absoluteTo)
+	rest, err := filepath.Rel(absoluteFrom, absoluteTo)
+	if rest == "." {
+		// Node's is empty for the same path.
+		rest = ""
+	}
+	return rest, err
 }
 
 func hasDotDotPrefix(path string) bool { return strings.HasPrefix(path, "..") }

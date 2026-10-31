@@ -75,6 +75,8 @@ const (
 	changeBlock
 	changeDelete
 	changeDrop
+	// changeUnblock is a blocked run retried (a reload): back to `phase`.
+	changeUnblock
 	// changeRestore is a loaded run taken into memory as stored.
 	changeRestore
 )
@@ -87,6 +89,8 @@ type recordChange struct {
 	fields  runFields
 	outcome AnyOutcome
 	reason  BlockedReason
+	// phase is the phase a changeUnblock returns the run to (finishing with its outcome, or to be invoked).
+	phase Phase
 }
 
 // staging is one transaction's changes of one job: the runs it started (dedupe, concurrency) and whose finish it is.
@@ -103,6 +107,7 @@ var _ documents.Staged = (*staging)(nil)
 
 var (
 	restart = jobEnded{kind: OutcomeFailed, err: JobError{Kind: JobAborted, Reason: AbortedByRestart}}
+	reload  = jobEnded{kind: OutcomeFailed, err: JobError{Kind: JobAborted, Reason: AbortedByReload}}
 	aborted = jobEnded{kind: OutcomeFailed, err: JobError{Kind: JobAborted, Reason: AbortedByAbort}}
 )
 
@@ -159,11 +164,14 @@ func (set *runSet) snapshot() []*jobRun {
 // jobRecords are the records of one job name on one object. The live attempt's `job` invokes and finishes its runs;
 // between live attempts, committed runs not yet invoked and runs whose outcome is recorded wait for the next one.
 type jobRecords struct {
+	// definition is the latest declaration's: a reload's new attempt redefines it; each run keeps its own version.
 	definition *JobDefinition
 	running    *running
 	owner      jobRecordsOwner
 	loop       sectionLoop
 	states     *runStates
+	// statePersistence is the store side of a persisted job's state documents; nil in memory.
+	statePersistence *documents.Persistence
 	// persisted is the store side of a persisted job's runs; nil in memory.
 	persisted *persistedRuns
 	runs      map[string]*jobRun
@@ -183,28 +191,263 @@ type jobRecords struct {
 	loaded bool
 	// ended is the object's end error, once it ended.
 	ended *data.ChordError
+	// declared is whether the latest live attempt declares the job: its runs are blocked `version` while it does not.
+	declared bool
 }
 
 func newJobRecords(definition *JobDefinition, owner jobRecordsOwner) *jobRecords {
 	records := &jobRecords{
 		definition: definition, owner: owner, loop: jobSections{owner.host.loop(), owner.host}, runs: map[string]*jobRun{}, order: newRunSet(),
-		keys: map[string]*jobRun{}, waiting: newRunSet(), stopped: newRunSet(),
+		keys: map[string]*jobRun{}, waiting: newRunSet(), stopped: newRunSet(), declared: true,
 	}
 	var states *documents.Persistence
 	if definition.Persist != nil {
 		states = documents.NewPersistence(owner.store, owner.storeOwner, "chord.job-states", definition.Name)
 		records.persisted = newPersistedRuns(records.loop, documents.NewPersistence(owner.store, owner.storeOwner, "chord.jobs", definition.Name), states)
 	}
+	records.statePersistence = states
 	if definition.State != nil {
-		owned := runStatesOwner{
-			documents: owner.documents,
-			changed:   records.stateChanged,
-			held:      owner.held,
-		}
-		records.states = newRunStates(records.loop, definition.State, owned, states)
+		records.states = records.runStates(definition.State)
 	}
 	records.running = newRunning(owner.documents.Batch(), records.name())
 	return records
+}
+
+// runStates are the run state documents of state, reporting their changes to `running` and their held deadlines.
+func (records *jobRecords) runStates(state *documents.StateDefinition) *runStates {
+	owned := runStatesOwner{
+		documents: records.owner.documents,
+		changed:   records.stateChanged,
+		held:      records.owner.held,
+	}
+	return newRunStates(records.loop, state, owned, records.statePersistence)
+}
+
+// check refuses a declaration of this job that its records cannot take (slice 7b section 8): the same version with
+// another fingerprint (its args, result or state schema changed without a version bump), or a state document
+// definition the run documents refuse (`SlotDefinition.Check`). A reload's staging checks it too.
+func (records *jobRecords) check(definition *JobDefinition) error {
+	current := records.definition
+	if definition.Version == current.Version && definition.Fingerprint != current.Fingerprint {
+		return fmt.Errorf("%s: its schema changed without a version bump (version %d)", records.name(), definition.Version)
+	}
+	state, states := definition.State, records.states
+	if state != nil && states != nil && state != states.definition.Current() {
+		return states.definition.Check(state)
+	}
+	return nil
+}
+
+// redefine takes a new attempt's declaration (another version after a reload, `chordObject.checkJob` refused the same
+// version with another fingerprint): new runs are of its version; the runs of others keep theirs, their `running`
+// entries show their args mapped forwards (or blocked); their state documents keep their version until their run
+// settles or moves to the new code.
+func (records *jobRecords) redefine(definition *JobDefinition) error {
+	records.declared = true
+	if definition == records.definition {
+		return nil
+	}
+	records.definition = definition
+	if state := definition.State; state != nil {
+		if records.states == nil {
+			records.states = records.runStates(state)
+		} else if err := records.states.redefine(state); err != nil {
+			return err
+		}
+	}
+	if len(records.runs) == 0 {
+		return nil
+	}
+	_ = records.owner.documents.Batch().Within(func() error {
+		for _, run := range records.order.snapshot() {
+			if run.entry != nil {
+				records.replaceEntry(run)
+			}
+		}
+		return nil
+	}, records.owner.context)
+	return nil
+}
+
+// undeclare is: the latest live attempt does not declare the job (slice 7b section 8): its runs not invoked and its
+// finishing runs are blocked `version` (kept, not invoked) until a reload declares it again or they are aborted; a
+// running invocation finishes and is blocked then.
+func (records *jobRecords) undeclare() {
+	if !records.declared || records.ended != nil {
+		return
+	}
+	records.declared = false
+	records.job = nil
+	waiting := records.waiting.snapshot()
+	records.waiting.clear()
+	for _, run := range waiting {
+		records.loop.Go(func() { records.record(run, recordChange{kind: changeBlock, run: run, reason: BlockedVersion}) })
+	}
+}
+
+// retryBlocked is: a reload brought new code (its attempt is live): blocked runs are retried, once: a `finish_failed`
+// one finishes again, a `version` one whose version the code now takes (its own, or an older one with an adapter) is
+// invoked or finished; the others stay blocked. A persisted run blocked at its load has its state document read first.
+// It blocks (the store's reads, the commit).
+func (records *jobRecords) retryBlocked(ctx context.Context) {
+	var retried []*jobRun
+	records.loop.Run(func() {
+		if !records.declared || records.ended != nil {
+			return
+		}
+		for _, run := range records.order.snapshot() {
+			if run.phase == phaseBlocked && (*run.blocked == BlockedFinishFailed || records.takes(run)) {
+				retried = append(retried, run)
+			}
+		}
+	})
+	if len(retried) == 0 {
+		return
+	}
+	for _, run := range retried {
+		var blockedPhase bool
+		records.loop.Run(func() { blockedPhase = run.blockedPhase != nil })
+		if blockedPhase {
+			// Its state document cannot be read: it stays blocked (the next reload tries again).
+			if records.readBlockedState(run, ctx) != nil {
+				return
+			}
+		}
+	}
+	documentsOf := records.owner.documents
+	// The object ended.
+	_, _ = documentsOf.Tx(func(tx *documents.Transaction) (any, error) {
+		var err error
+		documentsOf.Do(func() {
+			for _, run := range retried {
+				if records.runs[run.id] != run || run.phase != phaseBlocked {
+					continue
+				}
+				phase := phaseRunning
+				switch {
+				case run.outcome != nil:
+					phase = phaseFinishing
+				case records.persisted != nil:
+					phase = phasePending
+				}
+				if err = records.change(tx, recordChange{kind: changeUnblock, run: run, phase: phase}); err != nil {
+					return
+				}
+			}
+		})
+		return nil, err
+	}, documentsOf.Own(), records.owner.context)
+}
+
+// readBlockedState reads and decodes the state document of a persisted run blocked at its load, now that the code takes
+// it. It blocks (the store's read).
+func (records *jobRecords) readBlockedState(run *jobRun, ctx context.Context) error {
+	states := records.states
+	records.loop.Run(func() { records.persisted.forgetBlockedState(run.id) })
+	if states == nil {
+		return nil
+	}
+	document, err := states.persistence.Read(run.id, ctx)
+	if err != nil || document == nil {
+		return err
+	}
+	var failure error
+	records.loop.Run(func() {
+		var decoded documents.Loaded
+		if decoded, failure = states.persistence.Decode(document, states.definition.Current(), ctx); failure != nil {
+			return
+		}
+		states.create(run.id, decoded.Value, &decoded.Stored)
+		if run.outcome != nil {
+			outcome := *run.outcome
+			outcome.State = decoded.Value
+			run.outcome = &outcome
+		}
+	})
+	return failure
+}
+
+// takes is whether the current code takes `run`: of its version and fingerprint, or of an older version its `accepts`
+// maps forwards; a newer one (a rollback) or an older one without an adapter is not (`blocked { version }`).
+func (records *jobRecords) takes(run *jobRun) bool {
+	definition := records.definition
+	if run.version == definition.Version {
+		return run.fingerprint == definition.Fingerprint
+	}
+	_, found := definition.Accepts[run.version]
+	return run.version < definition.Version && found
+}
+
+// adapterOf is the adapter of `definition` that maps `run`'s version forwards.
+func adapterOf(run *jobRun, definition *JobDefinition) (JobAdapter, error) {
+	adapter, found := definition.Accepts[run.version]
+	if !found {
+		return JobAdapter{}, fmt.Errorf("job %s: no adapter from version %d to %d", definition.Name, run.version, definition.Version)
+	}
+	return adapter, nil
+}
+
+// argsOf is `run`'s args as the code of `definition` takes them (the current code's, or an invoking attempt's own):
+// mapped forwards once per run and version when older.
+func (records *jobRecords) argsOf(run *jobRun, definition *JobDefinition) (delta.JsonValue, error) {
+	if run.version == definition.Version {
+		return run.args, nil
+	}
+	if mapped := run.mapped; mapped != nil && mapped.version == definition.Version {
+		return mapped.args, nil
+	}
+	// `takes` found the adapter; its result is the current args (the provider's mapping, not validated).
+	adapter, err := adapterOf(run, definition)
+	if err != nil {
+		return nil, err
+	}
+	args, err := adapter.Args(run.args)
+	if err != nil {
+		return nil, err
+	}
+	run.mapped = &mappedRun{version: definition.Version, args: args}
+	return args, nil
+}
+
+// outcomeOf is `run`'s outcome as the current code's `finish` gets it: an older run's args and result mapped forwards
+// (once per run), its state document migrated to the current state definition.
+func (records *jobRecords) outcomeOf(run *jobRun, ctx context.Context) (AnyOutcome, error) {
+	outcome := *run.outcome
+	definition := records.definition
+	if run.version == definition.Version {
+		return outcome, nil
+	}
+	args, err := records.argsOf(run, definition)
+	if err != nil {
+		return AnyOutcome{}, err
+	}
+	mapped := run.mapped
+	if mapped.outcome != nil {
+		return *mapped.outcome, nil
+	}
+	adapter, err := adapterOf(run, definition)
+	if err != nil {
+		return AnyOutcome{}, err
+	}
+	var result any
+	if outcome.Kind == OutcomeDone {
+		if result, err = adapter.Result(outcome.Result); err != nil {
+			return AnyOutcome{}, err
+		}
+	}
+	state := outcome.State
+	if records.states != nil {
+		migrated, err := records.states.migrated(run.id, ctx)
+		if err != nil {
+			return AnyOutcome{}, err
+		}
+		if migrated != nil {
+			state = migrated
+		}
+	}
+	mappedOutcome := AnyOutcome{ID: outcome.ID, Args: args, State: state, Kind: outcome.Kind, Result: result, Error: outcome.Error}
+	mapped.outcome = &mappedOutcome
+	return mappedOutcome, nil
 }
 
 // name is the job in errors: its object and its name.
@@ -318,7 +561,7 @@ func (records *jobRecords) stage(tx *documents.Transaction, args any, ctx contex
 		phase = phasePending
 	}
 	// Checked above: the args are JSON (the definition refuses bytes).
-	run := newJobRun(records.loop, uuidv7(), definition.Version, options.Key, args, phase, trace)
+	run := newJobRun(records.loop, uuidv7(), definition.Version, definition.Fingerprint, options.Key, args, phase, trace)
 	each, err := records.staging(tx)
 	if err != nil {
 		return nil, err
@@ -365,7 +608,7 @@ func (records *jobRecords) change(tx *documents.Transaction, change recordChange
 		each.adopts = append(each.adopts, persisted.stageRetire(run.id, writes))
 		return nil
 	}
-	adopt, err := persisted.stage(run.id, storedRun(run, records.definition.Fingerprint, recordFields(change)), writes)
+	adopt, err := persisted.stage(run.id, storedRun(run, recordFields(change)), writes)
 	if err != nil {
 		return err
 	}
@@ -555,10 +798,10 @@ func (records *jobRecords) settled(run *jobRun, ended jobEnded) {
 }
 
 // cut is: a running run whose attempt was sealed: its signal fires with err, its invocation is fenced (later state
-// changes refused, the open one discarded, its settling ignored). In memory it ends `failed { aborted, reason:
-// "restart" }`, finished on the next live attempt; persisted it is stopped (R3), written back by the close writer and
+// changes refused, the open one discarded, its settling ignored). In memory it ends `failed { aborted }` with `reason`
+// (`reload` for a native restart, slice 7b section 8), finished on the next live attempt; persisted it is stopped (R3), written back by the close writer and
 // resumed by the next live attempt as after a clean close.
-func (records *jobRecords) cut(run *jobRun, err *data.ChordError) {
+func (records *jobRecords) cut(run *jobRun, err *data.ChordError, reason cutReason) {
 	// Only an invoked run is cut: its current invocation is the one the seal stops.
 	current := run.invocation
 	current.settle()
@@ -575,7 +818,11 @@ func (records *jobRecords) cut(run *jobRun, err *data.ChordError) {
 		return
 	}
 	if records.ended == nil {
-		records.loop.Go(func() { records.recordOutcome(run, restart) })
+		ended := restart
+		if reason == cutReload {
+			ended = reload
+		}
+		records.loop.Go(func() { records.recordOutcome(run, ended) })
 	}
 }
 
@@ -607,7 +854,7 @@ func (records *jobRecords) writeAtClose(ctx context.Context) {
 	var adopts []func()
 	records.loop.Run(func() {
 		for _, run := range records.stopped.snapshot() {
-			adopt, err := persisted.stage(run.id, storedRun(run, records.definition.Fingerprint, storedFields{}), &writes)
+			adopt, err := persisted.stage(run.id, storedRun(run, storedFields{}), &writes)
 			if err == nil {
 				adopts = append(adopts, adopt)
 			}
@@ -769,7 +1016,7 @@ func (records *jobRecords) report(err HostError) {
 func (records *jobRecords) restored(loaded loadedRecord, ctx context.Context) (restored, error) {
 	id, record := loaded.id, loaded.record
 	definition := records.definition
-	run := newJobRun(records.loop, id, record.Version, record.Key, record.Args, record.Phase, record.Trace)
+	run := newJobRun(records.loop, id, record.Version, record.Fingerprint, record.Key, record.Args, record.Phase, record.Trace)
 	run.restarts = record.Restarts
 	run.finishFailures = record.FinishFailures
 	run.abortMarked = record.Abort
@@ -777,6 +1024,16 @@ func (records *jobRecords) restored(loaded loadedRecord, ctx context.Context) (r
 		run.phase = phaseBlocked
 		reason := BlockedVersion
 		run.blocked = &reason
+		// What the record says, for the reload that brings its version (`retryBlocked`).
+		blockedPhase := record.Phase
+		run.blockedPhase = &blockedPhase
+		if record.outcome != nil {
+			outcome, err := outcomeOf(*record.outcome, id, record.Args, nil)
+			if err != nil {
+				return restored{}, err
+			}
+			run.outcome = &outcome
+		}
 		// What is stored of its state (also when this version declares none), so an abort drops it with the record.
 		if err := records.persisted.findBlockedState(id, ctx); err != nil {
 			return restored{}, err
@@ -888,6 +1145,13 @@ func (records *jobRecords) need(run *jobRun) {
 	if records.ended != nil || records.runs[run.id] != run {
 		return
 	}
+	// A job the code no longer declares: blocked `version`, kept (slice 7b section 8).
+	if !records.declared {
+		if run.phase != phaseBlocked {
+			records.loop.Go(func() { records.record(run, recordChange{kind: changeBlock, run: run, reason: BlockedVersion}) })
+		}
+		return
+	}
 	if records.job == nil {
 		records.waiting.add(run)
 		return
@@ -899,14 +1163,19 @@ func (records *jobRecords) need(run *jobRun) {
 // is invoked, unless it is marked aborted (it ends `aborted` without `run`) or resumes abandoned (`failed { aborted,
 // reason: "restart" }`).
 func (records *jobRecords) dispatch(run *jobRun, target *job) {
-	if records.runs[run.id] != run {
+	if records.runs[run.id] != run || run.phase == phaseBlocked {
+		return
+	}
+	// Not of a version the code takes: blocked `version` until a reload brings matching code.
+	if !records.takes(run) {
+		records.loop.Go(func() { records.record(run, recordChange{kind: changeBlock, run: run, reason: BlockedVersion}) })
 		return
 	}
 	if run.phase == phaseFinishing {
 		target.finish(run)
 		return
 	}
-	if run.phase == phaseBlocked || run.invoked() {
+	if run.invoked() {
 		return
 	}
 	if run.abortMarked {
@@ -937,7 +1206,7 @@ func (records *jobRecords) adopt(change recordChange) {
 			records.active++
 			records.owner.countRuns(1)
 		}
-		run.entry = run.entryFor(records.stateOf(run.id))
+		run.entry = records.entryOf(run)
 		records.running.add(run.entry)
 	case changeUpdate:
 		fields := change.fields
@@ -958,6 +1227,18 @@ func (records *jobRecords) adopt(change recordChange) {
 		outcome := change.outcome
 		run.outcome = &outcome
 		run.phase = phaseFinishing
+		records.replaceEntry(run)
+	case changeUnblock:
+		run.phase = change.phase
+		run.blocked = nil
+		run.blockedPhase = nil
+		run.finishFailures = 0
+		// A persisted run to be invoked again resumes per its job's `resume`, as after a stop.
+		if change.phase == phasePending {
+			run.resuming = true
+		}
+		records.active++
+		records.owner.countRuns(1)
 		records.replaceEntry(run)
 	case changeBlock:
 		run.phase = phaseBlocked
@@ -992,6 +1273,8 @@ func (records *jobRecords) committed(change recordChange) {
 		run.resolve(*run.outcome)
 	case changeBlock:
 		records.owner.countRuns(-1)
+	case changeUnblock:
+		records.need(run)
 	case changeDrop:
 		records.report(HostError{Kind: ErrJobDropped, ID: run.id})
 		run.reject(data.NewChordError(data.ChordErrorInit{Code: data.CodeAborted, Message: fmt.Sprintf("%s: run %s dropped", records.name(), run.id)}, nil))
@@ -1007,15 +1290,28 @@ func (records *jobRecords) stateChanged(id string, ops []delta.Op) {
 		return
 	}
 	before := run.entry
-	run.entry = run.entryFor(records.stateOf(id))
+	run.entry = records.entryOf(run)
 	records.running.stateChanged(before, run.entry, ops)
 }
 
 // replaceEntry is: a run's record changed, inside the commit step: its entry is replaced.
 func (records *jobRecords) replaceEntry(run *jobRun) {
 	before := run.entry
-	run.entry = run.entryFor(records.stateOf(run.id))
+	run.entry = records.entryOf(run)
 	records.running.replace(before, run.entry)
+}
+
+// entryOf is `run`'s `running` entry: blocked, or with its state and its args as the current code takes them (an older
+// run's mapped; one the code does not take, or whose mapping fails, shows its own).
+func (records *jobRecords) entryOf(run *jobRun) *delta.JsonObject {
+	args := run.args
+	if run.phase != phaseBlocked && run.version != records.definition.Version && records.takes(run) {
+		// The provider's mapping failing: its own args (its finish meets the same failure and is retried).
+		if mapped, err := records.argsOf(run, records.definition); err == nil {
+			args = mapped
+		}
+	}
+	return run.entryFor(records.stateOf(run.id), args)
 }
 
 func (records *jobRecords) discarded() error {
@@ -1037,6 +1333,9 @@ func recordFields(change recordChange) storedFields {
 		phase := phaseBlocked
 		reason := change.reason
 		return storedFields{phase: &phase, blocked: &reason}
+	case changeUnblock:
+		phase, failures := change.phase, 0
+		return storedFields{phase: &phase, finishFailures: &failures, clearBlocked: true}
 	}
 	return storedFields{}
 }

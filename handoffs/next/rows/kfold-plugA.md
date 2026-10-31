@@ -1,4 +1,4 @@
-# kfold-plugA: `chord/nextnode/plugins` (Pi slice 7c plugins component, host-independent part)
+# kfold-plugA: `chord/nextnode/plugins` (Pi slice 7c plugins component)
 
 Package `github.com/MichaelKinsy/PiG/chord/nextnode/plugins` (`chord/nextnode/plugins/`, files `plugins_<stem>.go`, in-package tests). Pi `6d4b7443`, `packages/chord/src/next-node/plugins/`.
 Not written (lead): `plugins.ts` (component), `runtime.ts`, `index.ts`. Design decision (lead): esbuild build, `vm.Script` evaluation and JS source-map stack mapping are the consumer-owned seams `Builder` / `Evaluator`.
@@ -13,7 +13,9 @@ next-node/plugins/watcher.ts | ported | plugins_watcher.go (+ plugins_watcher_li
 next-node/plugins/build.ts | designed-out (esbuild) / ported (data) | plugins_build.go | test:chord/nextnode/plugins/plugins_build_test.go#TestBuildingAFacetReturnsASyntaxErrorAndAMissingFacetAsFailedResultsNeverAThrow | the esbuild build, `ImportRules`, `freeGlobals`, `describe` are the `Builder` seam (Go cannot run esbuild in process). Ported: `BuildOptions`, `BuildInput`, `BuiltFacet` (plain data), `BuildFacet` (missing-facet failed result, abort, delegate), `inside`
 next-node/plugins/evaluate.ts | designed-out (`vm.Script`) / ported (identity) | plugins_evaluate.go | test:chord/nextnode/plugins/plugins_evaluate_test.go#TestEvaluatingAFacetRunsAScriptUnderAStableFilenamePerPluginKindAndDigest | `require`, `interop`, `registerScript`, `evaluateFacet` are the `Evaluator` seam (the default-export-is-a-facet check is the evaluator's error). Ported: `HostPackages`, `EvaluateOptions`, `ScriptFilename` (stable filename per plugin/kind/digest), `PluginFile` (= `fileOf`: path in the plugin's directory, `..` out refused). `PLUGINS_SPECIFIER`, `packageName`, the exported throwing `pluginFile` stub are JS-evaluation/esbuild internals: designed-out (no Go caller)
 next-node/plugins/stack.ts | designed-out | none | n/a | `mapStack`/`registerScript`/`inlineSourceMap` map V8 stack positions through esbuild's inline source maps of `vm.Script` scripts; there is no JS script in Go
-next-node/plugins/plugins.ts, runtime.ts, index.ts | not mine | n/a | n/a | lead (needs host `Load/Reload/...`)
+next-node/plugins/runtime.ts | ported | plugins_runtime.go | test:chord/nextnode/plugins/plugins_runtime_test.go#TestLoadingAndReloadingWithCompleteSetsReloadsACompleteSetSameDigestsUnchangedAChangedOneAppliedALoadedOneNotShippedRemoved | `NewPluginRuntime(evaluator)`, `PluginRuntime.Load/Reload`, `PluginScript`, `RuntimeLoad`; V8 compilation-cache switch designed out; per-host reload queue in call order (`queue`/`run`); `Forget(host)` replaces the WeakMap
+next-node/plugins/plugins.ts | ported | plugins_plugins.go | test:chord/nextnode/plugins/plugins_plugins_test.go, plugins_endtoend_test.go, plugins_examples_test.go | `CreatePlugins`, `Plugins`, `PluginsOptions`, `KindDefinition`, `Built`, `RolloutStep/Host/Result`, `PluginsError`; state/watcher touched only in sections of the component's own `host.Loop`
+next-node/plugins/index.ts | designed-out | none | n/a | barrel: Go imports the package
 next-node/plugins/README.md | read | n/a | n/a | package doc in doc.go summarizes the seam split
 
 ## (c) Upstream test cases
@@ -61,7 +63,7 @@ evaluate.test.ts › runs a computed import() through the facet's require | desi
 evaluate.test.ts › ESM host packages' wrappers › wraps a namespace once, and keeps no namespace nobody else holds | designed-out | JS module namespaces, WeakRef/GC
 stack.test.ts › mapStack › maps a plugin script's positions ...; lets a script's source map go with its facet | designed-out | stack.ts is JS source-map mapping
 stack.test.ts › mapStack, fix round 1 › maps an import-time throw / maps a throw while its default export is read / keeps a script's map while any evaluation of it lives | designed-out | stack.ts
-plugins.test.ts, runtime.test.ts, test/next/examples/35-39 | not mine | lead's component/runtime (need `host.Load/Reload`); `fixtures/plugins/{contracts,notes}` are copied to `chord/nextnode/plugins/testdata/plugins/` (`files` is only used by evaluate/plugins tests; copy it from `/tmp/kfold/pi/.../fixtures/plugins/files` when the component tests need it)
+`fixtures/plugins/{contracts,notes}` are copied to `chord/nextnode/plugins/testdata/plugins/` (used by discover and watcher tests); `files` is only used by evaluate/plugins cases that are JavaScript (the `PluginFile` case builds its own plugins)
 
 ## (d) Async contracts
 
@@ -98,3 +100,66 @@ Go forced differences: `BuiltFacet` is a struct with `Kind` (`BuiltFacetScript`/
 6. A `Builder` is trusted to return `BuiltFacet{Plugin, Facet}` set to the plugin and kind it built; `BuildFacet` does not rewrite them.
 7. fsnotify v1.5.4 on macOS (kqueue) opens a descriptor per file of a watched directory; Linux (inotify, the CI container) is one watch per directory as upstream. The `node_modules`/`.git` exclusion keeps the large trees out on both.
 8. foundA/state: nothing needed; only `state.Source`, `Batch.Section`, `Batch.Soon`, `Source.Publish/Changed/Watched/DependentSet` are used.
+
+## Second round: runtime.ts, plugins.ts, plugins.test.ts, runtime.test.ts, examples
+
+Plugins, hosts and edits of these tests are written in a small facet language (plugins_seam_test.go, documented there) read by `referenceBuilder` and `dslEvaluator`, instead of TypeScript; upstream's layouts, edits, plugin names and expectations are kept. Contract names are `test.<dir>` (plugins.test) and `example.*` (examples) as upstream's.
+
+upstream test file › case | disposition | PiG test
+--- | --- | ---
+runtime.test.ts › loads a set and leaves out a plugin whose build or evaluation failed, reported with the host's report | ported | plugins_runtime_test.go#TestLoadingAndReloadingWithCompleteSetsLoadsASetAndLeavesOut...
+runtime.test.ts › reloads a complete set: same digests unchanged, a changed one applied, a loaded one not shipped removed | ported | ...#TestLoadingAndReloadingWithCompleteSetsReloadsACompleteSet...
+runtime.test.ts › keeps the loaded facet of a plugin whose new build or evaluation failed; an added failing one is left out | ported | ...#TestLoadingAndReloadingWithCompleteSetsKeepsTheLoadedFacet...
+runtime.test.ts › the runtime's imports › loads no esbuild | designed-out | an import hook run in a Node process; a PluginRuntime takes an Evaluator and has no Builder
+(own) reload of a host the runtime did not load fails | added | ...#TestPluginRuntimeReloadOfAHostItDidNotLoadFails
+plugins.test.ts › per plugin at startup › leaves out a plugin whose build fails, whose evaluation throws or whose setup throws; loads the others and core | ported | plugins_plugins_test.go#TestPerPluginAtStartupLeavesOut...
+plugins.test.ts › per plugin at reload › rebuilds one plugin of three | ported | ...#TestPerPluginAtReloadRebuildsOnePluginOfThree...
+plugins.test.ts › ... › keeps the loaded facet of a plugin whose build fails or whose evaluation throws | ported | ...#TestPerPluginAtReloadKeepsTheLoadedFacet...
+plugins.test.ts › ... › adds a plugin discovered since, removes one no longer there | ported | ...#TestPerPluginAtReloadAddsAPluginDiscoveredSince...
+plugins.test.ts › ... › keeps a consumer edited together with a provider whose new build fails (the closure rule through builds) | ported | ...#TestPerPluginAtReloadKeepsAConsumerEditedTogetherWithAProvider...
+plugins.test.ts › rollout › runs the steps in order ... / counts a host's error ... (D12) / keeps dirty a plugin whose built kind no step shipped / stops at a step that rejects | ported (4 cases) | ...#TestRollout...
+plugins.test.ts › current sets › scripts(kind): built on first use ... | ported | ...#TestCurrentSetsScriptsKind...
+plugins.test.ts › installs through the component | ported (fake npm is the sh script of install_test) | ...#TestInstallsThroughTheComponent...
+plugins.test.ts › GC › collects old facets over 200 reloads; the heap stays flat after warm-up | ported: `runtime.ReadMemStats` heap after GCs (< 2 MiB growth) and weak pointers for the made states | ...#TestGCCollectsOldFacetsOver200Reloads...
+plugins.test.ts › end to end: a server and a worker | ported (real memory link, remote `Notes`, a count document) | plugins_endtoend_test.go#TestEndToEndAServerAndAWorker...
+plugins.test.ts › fix round 1 › serializes reloads of one host | ported (two goroutines; each report keeps both changes whichever runs first) | plugins_plugins_test.go#TestFixRound1SerializesReloadsOfOneHost...
+plugins.test.ts › fix round 1 › applies the removals of the build it was given | ported | ...#TestFixRound1AppliesTheRemovals...
+plugins.test.ts › fix round 1 › adopts what a reload committed when its wait aborts after the commit | adapted: upstream spies `batch.commit` of the host; the Go host has no such hook, so the runtime's half (adopt of `details.committed`) is tested with a fake host returning the `aborted` error (plugins_runtime_test.go#TestRuntimeAdoptsWhatAReloadCommitted...), and the real host's abort after its commit is exercised by example 36 part 4 | both
+plugins.test.ts › fix round 1 › leaves a plugin out of a host whose kind its rebuilt facets no longer have | ported | plugins_plugins_test.go#TestFixRound1LeavesAPluginOut...
+plugins.test.ts › fix round 1 › reloads a structured clone of a build as the build itself | ported: a copy of the `Built` struct (`clone := *built`) | ...#TestFixRound1ReloadsACopyOfABuild...
+plugins.test.ts › fix round 1 › reads a changed package.json again at the next build | ported (the new package in `node_modules` is esbuild's resolution and is not written) | ...#TestFixRound1ReadsAChangedPackageJSONAgain...
+plugins.test.ts › the reload queues and garbage collection › lets a rejected new facet go once its report is dropped | ported (weak pointers) | ...#TestTheReloadQueuesAndGarbageCollection...
+examples/35-plugins | ported | plugins_examples_test.go#TestExample35PluginsLoadEditMarkBuildRollOut
+examples/36-plugin-failures | ported (mapped JavaScript stacks, `mapStack`, are designed-out: failures asserted by message; §4's abort window is a microtask race in Pi (attempt.ts settles the swap's first check at the first parked check; host.ts awaits exactly it), which a Go watch on its own goroutine cannot order: the test asserts what holds either way (commit stands, `aborted` names it when returned, a later reload keeps it), the abort branch is the fake-host runtime test) | ...#TestExample36PluginFailures
+examples/37-plugin-imports | designed-out | esbuild's import rules and refusals, `?url` assets, JSON imports, native and CommonJS packages, `fake-npm.mjs` (the Builder seam); the install through the component is covered by TestInstallsThroughTheComponent...
+examples/38-watch-and-rollout | ported | ...#TestExample38WatchAndRollout
+examples/39-browser-build | designed-out | esbuild's browser build: stylesheet and assets (`CSS`, `Asset` are the data a Builder fills)
+
+Expected values of examples 35/36/38 are derived from Pi's code (`watcher.ts`, `plugins.ts`, `runtime.ts`): Pi's examples could not be run (Node on macOS only; FSEvents' events differ from Linux's inotify, and the output of the unmodified script on this machine was not the example's). Example 38 reproduces: marks after each edit, the three-step rollout reports, the stopped rollout, the failed plugin staying dirty, the edit during a build keeping its mark.
+
+Test helpers that Go forces: file edits of the examples go through a temporary file and a rename and wait for the watcher's events (`edit`/`quiet`), because a write in place is several events and exact marks cannot be asserted after the first one; Pi's examples print the marks after the first event and are racy by design (`until`).
+
+### Component notes (Go forms)
+
+- `CreatePlugins(options, ctx) (Plugins, error)`; `Plugins` methods: `State() chord.Watchable[delta.JsonValue]`, `Marks() PluginsState`, `Discovery()`, `Build`, `Scripts`, `Current`, `Load`, `Reload`, `Step`, `Rollout`, `InstallDependencies`, `Forget(host)`, `Close()`. `Rollout` returns `(RolloutResult, error)` with the stopped step in `Stopped` (a rejecting step is a result, as upstream); the error is for the component's own failures (a Go forced channel).
+- `Built` returned by `Build` is a `*Built`; its unexported `self` pointer and `snapshot` replace upstream's `WeakMap<Built, MarkSnapshot>`: a copy of the struct has another address and clears no marks.
+- `PluginsOptions.Kinds` is a slice of `KindDefinition{Name, Platform, HostPackages}` (upstream's record keeps its order; a Go map does not). Facet files per plugin are `Plugin.Facets[kind]`; iterate the kinds in the options' order.
+- Concurrency (AGENTS.md async parity): `Build` runs one build per facet concurrently (`Promise.all`: owned, joined, results by index, the first error by index, a Builder panic is a failed result) and calls the Builder from several goroutines; `Reload` of one host are serialized in the order their sets were decided (a ticket taken in the same section that applies the build and reads the set); everything else of the component is touched in sections of its own loop.
+- `Forget(host)` (Plugins and PluginRuntime): Go has no weak table keyed by a host; a closed host is forgotten by its owner.
+- New exported identifiers of the second round: `PluginScript`, `RuntimeLoad`, `PluginRuntime`, `NewPluginRuntime`, `KindDefinition`, `PluginsErrorKind` (+ `PluginsListenerError`, `PluginsDeliveryFailed`, `PluginsWatchFailed`), `PluginsError`, `PluginsOptions`, `Built`, `RolloutHostKind` (+ `RolloutReported`, `RolloutStopped`, `RolloutErrored`), `RolloutHost`, `StepResult`, `RolloutStep`, `RolloutStepResult`, `StoppedStep`, `RolloutResult`, `PluginsLoad`, `Plugins`, `CreatePlugins`.
+
+### Async contracts (second round)
+
+item | contract | evidence
+--- | --- | ---
+`PluginRuntime.reload` queue (`state.reloading.then`) | blocking `Reload`; queued in call order per host by a ticket (`queue`), the ticket's turn waits for the previous reload to end (not for ctx); a rejected reload does not break the chain | TestFixRound1SerializesReloadsOfOneHost..., mutation: no wait on the previous turn fails it
+`plugins.reload` (`ship` + `runtime.reload` in one tick) | `ship`, the set's copy and the ticket are one section | same
+`plugins.build` `Promise.all` | `buildAll`: one goroutine per facet in a `sync.WaitGroup`, results by index | every build test
+`plugins.rollout` | steps run in order, each after shipping its kinds; a step's error stops it (result, not error); marks applied once after the last step, from the snapshot of the built pointer | TestRollout..., TestExample38...
+`committed` after an aborted reload | the runtime adopts `details.committed.failed` of the host's `aborted` error | TestRuntimeAdopts..., TestExample36 part 4 (real host)
+
+### Open questions (second round)
+
+1. Pi reports the plugin left out at startup (example 36's weather, whose setup throws) failed again by every reload, since the runtime passes its script again and the host stages its throwing setup again; the Go port does the same (asserted in example 36). Confirm this is what Pi does (it follows from `runtime.ts` `reload`: loaded has no entry for it, so it is `prepare`d and passed as an added plugin).
+2. `Plugins.State()` is a `chord.Watchable[delta.JsonValue]` of the component's own loop; its `Watch` opens the watch in a section. The typed reader is `Marks()`.
+3. Tests that need the host were run against a snapshot of the working tree's host with one line of `host_reference.go` (`ReferenceKeyed.Get`, line 1171) patched locally, because the worktree's host did not compile (the patched copy is /tmp/kfold/plugA-live; the worktree is untouched).

@@ -39,6 +39,10 @@ type FacetHost interface {
 
 // ServeOptions is what `host.serve` takes besides the type and the factory.
 type ServeOptions struct {
+	// Accepts are the older versions of the type this provider still binds, with the mappings their edits need (Q10,
+	// `checkAccepts`): an older consumer's state members mapped per binding, its calls' arguments and results mapped. Checked
+	// at declaration: a declaration error fails the load or the reload of its plugin.
+	Accepts contracts.AcceptsTable
 	// Linger is how long a live object with params stays live after its last reference is released (0 by default, nil):
 	// a reference within that time reuses it, with its documents and dependencies.
 	Linger *time.Duration
@@ -83,14 +87,29 @@ type facetContribution struct {
 }
 
 // Facet is a plugin's facet for hosts of the app's principal type (type only: nothing is checked at runtime).
+//
+// A reload compares facets by identity (Pi's `loaded.facet === facet`: the same facet object is unchanged, another one is
+// changed, even with the same code): a Facet made by DefineFacet carries the identity every copy of it shares. A Facet
+// literal has none and is never the same as another.
 type Facet struct {
 	// Setup declares the facet's types, registries and contributions; its error is its throw.
 	Setup func(host FacetHost, self FacetSelf) error
+
+	// identity is what DefineFacet makes once per facet; copies share it.
+	identity *facetIdentity
 }
+
+// facetIdentity is a facet's identity (one allocation per DefineFacet; non-zero size so two never share an address).
+type facetIdentity struct{ _ byte }
 
 // DefineFacet defines a facet; base code binds the principal type once, next to its principal type (type-level in Pi).
 func DefineFacet(setup func(host FacetHost, self FacetSelf) error) Facet {
-	return Facet{Setup: setup}
+	return Facet{Setup: setup, identity: &facetIdentity{}}
+}
+
+// same is Pi's `facet === other`: both are one DefineFacet's.
+func (f Facet) same(other Facet) bool {
+	return f.identity != nil && f.identity == other.identity
 }
 
 // facetSetUp is what setUp returns: the types and registries a facet served, and its contributions, in order.

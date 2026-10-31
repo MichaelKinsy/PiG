@@ -130,7 +130,7 @@ func (h *relayedHold) abort(id int) {
 	}
 }
 
-// retry forwards a downstream `retry` with its operation and the objects it passed through.
+// retry forwards a downstream `retry` with its hop budget as it is (a relay visits no object).
 func (h *relayedHold) retry(message *link.RetryMessage) {
 	if upstream := h.upstream; upstream != nil {
 		upstream.link.send(link.WithOrigin(message, link.Some(upstream.origin)))

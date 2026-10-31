@@ -6,13 +6,13 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
-	"regexp"
 	"slices"
 	"strconv"
 	"strings"
 	"unicode/utf16"
 
 	"github.com/MichaelKinsy/PiG/chord/delta"
+	"github.com/MichaelKinsy/PiG/chord/next/host"
 	"github.com/MichaelKinsy/PiG/internal/chord/chordjson"
 )
 
@@ -144,12 +144,6 @@ func realpath(path string) (string, error) {
 // facetExtensions are the facet files' extensions, in no order of preference: two files of one kind are reported.
 var facetExtensions = []string{".ts", ".tsx", ".js", ".mjs"}
 
-// pluginNamePattern is an npm package name, scoped or not: upstream's `isPluginName` of host/staging.ts.
-var pluginNamePattern = regexp.MustCompile(`^(?:@[a-z0-9~-][a-z0-9._~-]*/)?[a-z0-9~-][a-z0-9._~-]*$`)
-
-// isPluginName reports whether name is a valid plugin name.
-func isPluginName(name string) bool { return pluginNamePattern.MatchString(name) }
-
 // pluginAt is the plugin in dir (its real path), or the problem that is none (a non-empty text).
 func pluginAt(dir string, kinds []string) (Plugin, string, error) {
 	text, err := os.ReadFile(filepath.Join(dir, "package.json"))
@@ -173,7 +167,7 @@ func pluginAt(dir string, kinds []string) (Plugin, string, error) {
 	}
 	name, hasName := member(object, "name")
 	nameText, isText := name.(string)
-	if !isText || !isPluginName(nameText) {
+	if !isText || !host.IsPluginName(nameText) {
 		return Plugin{}, "package.json: " + stringify(name, hasName) + " is not a valid plugin name", nil
 	}
 	chord, _ := member(object, "chord")

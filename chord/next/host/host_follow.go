@@ -196,7 +196,7 @@ func (s *followSource) OpenWatch(ctx context.Context) (*chord.Watch[delta.JsonVa
 	return watch, nil
 }
 
-// Subscribe is a subscriber of an ended source (a reference's watch through its member source): it ends `ended` at once.
+// Subscribe is a subscriber of an ended source (a reference's watch through its member): it ends `ended` at once.
 func (s *followSource) Subscribe(subscriber state.Subscriber) {
 	if s.over() {
 		subscriber.End(followEndedWatch)

@@ -2,6 +2,7 @@ package host
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/MichaelKinsy/PiG/chord/next/data"
@@ -60,8 +61,9 @@ type hostLink struct {
 	// context is the parent of the work arriving on this link.
 	context  context.Context
 	consumer *consumerSide
-	// providers is the provider side of each origin the peer sent holds for, made by its first; `origin` is honoured on
-	// every link (decision "Relay flow control per origin").
+	// providers is the provider side of each origin the peer sent holds for, made by its first and dropped once it holds
+	// nothing; `origin` is honoured only on parent and route links, where a relay's messages arrive (decision "Origins
+	// only from relays").
 	providers orderedTable[int, *providerSide]
 	channel   *link.Channel
 	// closing is cancelled when the link closes: stops its asynchronous inflates at once.
@@ -186,7 +188,14 @@ func (l *hostLink) inflate(parts []inflatePart, handle func() error) *link.Handl
 func (l *hostLink) Message(message link.Message) (*link.Handling, error) {
 	var handling *link.Handling
 	var err error
-	l.host.loop().Run(func() { handling, err = l.dispatch(message) })
+	l.host.loop().Run(func() {
+		// A child (a tab, a TUI) relays nothing: its origins would each get their own call window and record.
+		if l.role == linkRoleChild && link.OriginOf(message).Ok {
+			err = fmt.Errorf("%s: an origin on a child link", message.Kind())
+			return
+		}
+		handling, err = l.dispatch(message)
+	})
 	return handling, err
 }
 
@@ -216,6 +225,15 @@ func (l *hostLink) dispatch(message link.Message) (*link.Handling, error) {
 	}
 	// `hello`, `ping` and `pong` are the channel's.
 	return nil, nil
+}
+
+// drop: provider holds nothing any more: it goes (its relay's upstream links are told `closed`).
+func (l *hostLink) drop(provider *providerSide) {
+	if current, ok := l.providers.get(provider.origin); !ok || current != provider {
+		return
+	}
+	l.providers.delete(provider.origin)
+	provider.closed()
 }
 
 // revokeUnbound ends the holds on this link that hold nothing and act for a principal revoked names (§4).
