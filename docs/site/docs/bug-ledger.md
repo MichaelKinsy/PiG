@@ -20678,7 +20678,7 @@ Each divergence record is accounted for here. A divergence that fixes a Pi defec
 | D212 | `/llama` explains a 404 from llama-swap's missing load and unload endpoints, where Pi shows "llama.cpp… | [BF-3f46dee](#bf-3f46dee) |
 | D213 | A crashed or exited extension runtime releases the read the host holds for an autocomplete provider chain | [BF-8e3613d](#bf-8e3613d) |
 | D215 | A local Package typed by absolute path is stored as typed | [BF-7e16053](#bf-7e16053) |
-| D217 | Pi bug fixes after the pin that 0.6.0 carries (Pi b3a29f11..35dfa757) | deliberate difference |
+| D217 | Pi bug fixes after the pin that 0.6.0 carries (Pi b3a29f11..e3da248e) | deliberate difference |
 
 ## Fix-titled commits that are not bugs in a release
 
