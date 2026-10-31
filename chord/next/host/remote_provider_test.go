@@ -1005,8 +1005,10 @@ func TestProviderOrigins(t *testing.T) {
 			s.Peer.Next("bound")
 			for _, text := range []string{"a", "b", "c", "d"} {
 				addNote(t, s.Server, "S1", text)
-				// Only origin 0 acknowledges.
+				// Only origin 0 acknowledges. Pi's link delivers the `ack` a microtask later, ahead of the next commit (which needs
+				// microtasks of its own); here a commit is a call from this goroutine, so the `ack` has to arrive before it.
 				s.Peer.Ack(link.Optional[int]{})
+				settle(s.Peer)
 			}
 			settle(s.Peer)
 			countOrigin := func(origin link.Optional[int]) int {
