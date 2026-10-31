@@ -32,12 +32,12 @@ import (
 // outboxSeqs is the store's outbox commits, by seq.
 func outboxSeqs(t *testing.T, store *chordstore.ChordStore) []int64 {
 	t.Helper()
-	rows := value(t, chordstore.Read(store, func(executor sqlite.SqliteExecutor) ([]sqlite.SqliteRow, error) {
+	rows := value(chordstore.Read(store, func(executor sqlite.SqliteExecutor) ([]sqlite.SqliteRow, error) {
 		return executor.All("SELECT seq FROM chord_outbox")
 	}, background))
 	seqs := []int64{}
 	for _, row := range rows {
-		seqs = append(seqs, value(t, sqlite.RowInt(row, "seq")))
+		seqs = append(seqs, value(sqlite.RowInt(row, "seq")))
 	}
 	return seqs
 }
@@ -83,11 +83,11 @@ func TestStoreStorageOneTransactionPerCall(t *testing.T) {
 			t.Fatalf("receipts = %v, want %v", receipts, want)
 		}
 		for index, id := range ids {
-			if found := value(t, made.storage.Entry(background, id)); found == nil || int64(found.CommitSeq) != last+1+int64(index) {
+			if found := value(made.storage.Entry(background, id)); found == nil || int64(found.CommitSeq) != last+1+int64(index) {
 				t.Fatalf("entry %d at %+v", id, found)
 			}
 		}
-		rows := value(t, chordstore.Read(made.store, func(executor sqlite.SqliteExecutor) ([]sqlite.SqliteRow, error) {
+		rows := value(chordstore.Read(made.store, func(executor sqlite.SqliteExecutor) ([]sqlite.SqliteRow, error) {
 			return executor.All("SELECT seq FROM chord_outbox WHERE seq > ?", last)
 		}, background))
 		if len(rows) != 3 {
@@ -143,16 +143,16 @@ func TestStoreStorageRefusals(t *testing.T) {
 		if !reflect.DeepEqual(receipts, []int{0}) {
 			t.Fatalf("receipts = %v, want [0]", receipts)
 		}
-		if found := value(t, made.storage.Entry(background, first)); found == nil || found.Entry.Kind != "m" {
+		if found := value(made.storage.Entry(background, first)); found == nil || found.Entry.Kind != "m" {
 			t.Fatalf("first = %+v", found)
 		}
-		if found := value(t, made.storage.Entry(background, after)); found != nil {
+		if found := value(made.storage.Entry(background, after)); found != nil {
 			t.Fatalf("after = %+v, want none", found)
 		}
 		if made.store.LastSeq() != last+1 {
 			t.Fatalf("lastSeq = %d, want %d", made.store.LastSeq(), last+1)
 		}
-		if seq := value(t, commitWrites(made.storage, entryWrite(after))); int64(seq) != last+2 {
+		if seq := value(commitWrites(made.storage, entryWrite(after))); int64(seq) != last+2 {
 			t.Fatalf("next seq = %d, want %d", seq, last+2)
 		}
 		must(t, made.store.Close(background))
@@ -175,7 +175,7 @@ func TestStoreStorageRefusals(t *testing.T) {
 		if !reflect.DeepEqual(receipts, []int{0}) {
 			t.Fatalf("receipts = %v, want [0]", receipts)
 		}
-		if value(t, made.storage.Entry(background, entry)) == nil {
+		if value(made.storage.Entry(background, entry)) == nil {
 			t.Fatal("the entry of the first batch is not stored")
 		}
 		must(t, made.store.Close(background))
@@ -207,7 +207,7 @@ func TestStoreStorageRefusals(t *testing.T) {
 				receipts := []int{}
 				result, err := storage.Commit(background, batches, func(index int, _ durable.Seq) { receipts = append(receipts, index) })
 				must(t, err)
-				found := value(t, storage.Conversation(background, 100))
+				found := value(storage.Conversation(background, 100))
 				outcomes = append(outcomes, outcome{result.Stored, fmt.Sprint(result.Refused), receipts, found})
 				must(t, storage.Close(background))
 			}
@@ -245,7 +245,7 @@ func TestStoreStorageRefusals(t *testing.T) {
 		t.Run("refuses "+refusal.name+" against the state the batches before it left", func(t *testing.T) {
 			made := counted(t, ":memory:")
 			document := durable.DocumentId(200)
-			value(t, commitWrites(made.storage, durable.DocumentCreateWrite{
+			value(commitWrites(made.storage, durable.DocumentCreateWrite{
 				Record:  durable.DocumentCreate{Id: document, Kind: "n", Scope: durable.DocumentRecordScope{Kind: durable.ScopeSession}},
 				Content: base(1),
 			}))
@@ -290,7 +290,7 @@ func TestStoreStorageRefusals(t *testing.T) {
 		if result.Stored != 3 || result.Refused != nil {
 			t.Fatalf("result = %+v, want stored 3", result)
 		}
-		if found := value(t, made.storage.Document(background, copied, durable.CurrentPoint)); found == nil || jsonOf(t, found.Value) != `{"n":2}` {
+		if found := value(made.storage.Document(background, copied, durable.CurrentPoint)); found == nil || jsonOf(t, found.Value) != `{"n":2}` {
 			t.Fatalf("copy = %+v", found)
 		}
 		must(t, made.store.Close(background))
@@ -328,10 +328,10 @@ func TestStoreStorageFailures(t *testing.T) {
 		if len(receipts) != 0 || made.store.LastSeq() != last {
 			t.Fatalf("[receipts, lastSeq] = [%v, %d], want [[], %d]", receipts, made.store.LastSeq(), last)
 		}
-		if found := value(t, made.storage.Entry(background, first)); found != nil {
+		if found := value(made.storage.Entry(background, first)); found != nil {
 			t.Fatalf("entry = %+v, want none", found)
 		}
-		if seq := value(t, commitWrites(made.storage, entryWrite(first))); int64(seq) != last+1 {
+		if seq := value(commitWrites(made.storage, entryWrite(first))); int64(seq) != last+1 {
 			t.Fatalf("next seq = %d, want %d", seq, last+1)
 		}
 		must(t, made.store.Close(background))
@@ -353,10 +353,10 @@ func TestStoreStorageFailures(t *testing.T) {
 		storageFailed(t, err)
 		must(t, made.store.Close(background))
 		store, storage := reopen(t, path)
-		if found := value(t, storage.Entry(background, ids[0])); found != nil {
+		if found := value(storage.Entry(background, ids[0])); found != nil {
 			t.Fatalf("entry after reopen = %+v, want none", found)
 		}
-		if seq := value(t, commitWrites(storage, entryWrite(ids[1]))); int64(seq) != last+1 {
+		if seq := value(commitWrites(storage, entryWrite(ids[1]))); int64(seq) != last+1 {
 			t.Fatalf("next seq = %d, want %d", seq, last+1)
 		}
 		must(t, store.Close(background))
@@ -395,20 +395,20 @@ func TestStoreStorageFailures(t *testing.T) {
 	stateOf := func(storage durable.Storage) string {
 		var entries []any
 		for _, id := range []durable.EntryId{101, 103, 104} {
-			if found := value(t, storage.Entry(background, id)); found != nil {
+			if found := value(storage.Entry(background, id)); found != nil {
 				entries = append(entries, found.Entry.Kind)
 			} else {
 				entries = append(entries, nil)
 			}
 		}
 		documentValue := func(id durable.DocumentId) any {
-			if found := value(t, storage.Document(background, id, durable.CurrentPoint)); found != nil {
+			if found := value(storage.Document(background, id, durable.CurrentPoint)); found != nil {
 				return found.Value
 			}
 			return nil
 		}
 		var child any
-		if found := value(t, storage.Conversation(background, 105)); found != nil {
+		if found := value(storage.Conversation(background, 105)); found != nil {
 			child = found
 		}
 		return jsonOf(t, map[string]any{"entries": entries, "source": documentValue(100), "copy": documentValue(102), "child": child})
@@ -426,8 +426,8 @@ func TestStoreStorageFailures(t *testing.T) {
 		t.Run("rolls a 3-batch call back at a failure of any of its statements, as at a failed COMMIT, and reopens before it (third "+third+")", func(t *testing.T) {
 			// What MemoryStorage makes of the call: the outcome every retry must reach.
 			memory := dstorage.NewMemoryStorage()
-			value(t, commitWrites(memory, rootWrite()))
-			value(t, commitWrites(memory, seed))
+			value(commitWrites(memory, rootWrite()))
+			value(commitWrites(memory, seed))
 			expectedStored, expectedRefused, expectedSeqs, expectedState := outcomeOf(memory, third, 2)
 			wantStored, wantSeqs := 3, []int64{1, 2, 3}
 			if third == "refused" {
@@ -438,7 +438,7 @@ func TestStoreStorageFailures(t *testing.T) {
 			}
 			// The statements of the call's transaction (a read transaction after it would count its own).
 			probe := counted(t, ":memory:")
-			value(t, commitWrites(probe.storage, seed))
+			value(commitWrites(probe.storage, seed))
 			result, err := probe.storage.Commit(background, batches(third), func(int, durable.Seq) {})
 			must(t, err)
 			_, total := probe.counts.snapshot()
@@ -461,7 +461,7 @@ func TestStoreStorageFailures(t *testing.T) {
 			for at := 1; at <= total+1; at++ {
 				path := filepath.Join(t.TempDir(), fmt.Sprintf("store-%d.sqlite", at))
 				opened := counted(t, path)
-				value(t, commitWrites(opened.storage, seed))
+				value(commitWrites(opened.storage, seed))
 				last := opened.store.LastSeq()
 				outbox := outboxSeqs(t, opened.store)
 				before := stateOf(opened.storage)
@@ -492,7 +492,7 @@ func TestStoreStorageFailures(t *testing.T) {
 				if again.LastSeq() != last || !reflect.DeepEqual(outboxSeqs(t, again), outbox) || stateOf(againStorage) != before {
 					t.Fatalf("at %d: reopened [lastSeq, outbox, state] = [%d, %v, %s]", at, again.LastSeq(), outboxSeqs(t, again), stateOf(againStorage))
 				}
-				if minted := value(t, againStorage.MintId()); minted <= 100 {
+				if minted := value(againStorage.MintId()); minted <= 100 {
 					t.Fatalf("at %d: MintId = %d, want above 100", at, minted)
 				}
 				// A retry reaches MemoryStorage's outcome.
@@ -571,7 +571,7 @@ func TestStoreStorageFailures(t *testing.T) {
 		}
 		must(t, <-closing)
 		store, storage := reopen(t, path)
-		if value(t, storage.Entry(background, first)) == nil || value(t, storage.Entry(background, second)) != nil {
+		if value(storage.Entry(background, first)) == nil || value(storage.Entry(background, second)) != nil {
 			t.Fatal("after reopen the running call is not stored alone")
 		}
 		must(t, store.Close(background))
@@ -625,19 +625,19 @@ func TestStoreStorageDurability(t *testing.T) {
 		minted := mintID[durable.EntryId](t, made.storage)
 		// A crash: the store is never closed; another process opens the file.
 		other, reopened := reopen(t, path)
-		if found := value(t, reopened.Entry(background, entry)); found == nil || found.CommitSeq != seqs[0] {
+		if found := value(reopened.Entry(background, entry)); found == nil || found.CommitSeq != seqs[0] {
 			t.Fatalf("entry = %+v, want seq %d", found, seqs[0])
 		}
-		if found := value(t, reopened.Document(background, document, durable.AtSeq(seqs[1]))); found == nil || jsonOf(t, found.Value) != `{"n":1}` {
+		if found := value(reopened.Document(background, document, durable.AtSeq(seqs[1]))); found == nil || jsonOf(t, found.Value) != `{"n":1}` {
 			t.Fatalf("document at %d = %+v", seqs[1], found)
 		}
-		if found := value(t, reopened.Document(background, document, durable.CurrentPoint)); found == nil || jsonOf(t, found.Value) != `{"n":2}` {
+		if found := value(reopened.Document(background, document, durable.CurrentPoint)); found == nil || jsonOf(t, found.Value) != `{"n":2}` {
 			t.Fatalf("document now = %+v", found)
 		}
-		if id := value(t, reopened.MintId()); id <= int64(document) {
+		if id := value(reopened.MintId()); id <= int64(document) {
 			t.Fatalf("MintId = %d, want above %d", id, document)
 		}
-		if seq := value(t, commitWrites(reopened, entryWrite(minted))); seq != seqs[2]+1 {
+		if seq := value(commitWrites(reopened, entryWrite(minted))); seq != seqs[2]+1 {
 			t.Fatalf("next seq = %d, want %d", seq, seqs[2]+1)
 		}
 		must(t, other.Close(background))
@@ -648,7 +648,7 @@ func TestStoreStorageDurability(t *testing.T) {
 func TestStoreStorageOtherUsersOfTheStore(t *testing.T) {
 	t.Run("another owner's call waits for a series in its transaction; the series' receipts come first", func(t *testing.T) {
 		made := counted(t, ":memory:")
-		other := value(t, Open(background, made.store, "other"))
+		other := value(Open(background, made.store, "other"))
 		first, second := mintID[durable.EntryId](t, made.storage), mintID[durable.EntryId](t, made.storage)
 		entered, release := make(chan struct{}), make(chan struct{})
 		made.db.setFaults(faults{hold: func(_ string, index int) {

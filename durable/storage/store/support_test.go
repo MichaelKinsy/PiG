@@ -51,9 +51,11 @@ func must(t testing.TB, err error) {
 	}
 }
 
-func value[T any](t testing.TB, got T, err error) T {
-	t.Helper()
-	must(t, err)
+// value is got, or a panic with err: the setup calls that must succeed (a panic fails the run with the error).
+func value[T any](got T, err error) T {
+	if err != nil {
+		panic(err)
+	}
 	return got
 }
 

@@ -16,7 +16,9 @@ import (
 	"path/filepath"
 	"reflect"
 	"strings"
+	"sync"
 	"testing"
+	"time"
 
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/chord/next/data"
@@ -29,69 +31,107 @@ import (
 )
 
 // reopeningStorage is a storage that closes and reopens its store file after every commit (Durable's reopen
-// harness).
+// harness). Pi's reads run synchronously on the storage current at the call; here a read holds the read lock for its
+// whole call, so a read started inside a receipt (on its own goroutine) runs on the old storage before it closes, or on
+// the reopened one, never on a closed one.
 type reopeningStorage struct {
 	t       *testing.T
+	mu      sync.RWMutex
 	current *ownedStorage
 	path    string
 	closed  bool
 }
 
-func (storage *reopeningStorage) Commit(ctx context.Context, batches [][]durable.StorageWrite, receive func(index int, seq durable.Seq)) (durable.CommitResult, error) {
-	if storage.closed {
-		return storage.current.Commit(ctx, batches, receive)
-	}
-	result, err := storage.current.Commit(ctx, batches, receive)
-	must(storage.t, storage.current.Close(background))
-	storage.current = openStoreStorage(storage.t, storage.path)
-	return result, err
+// via runs call on the current storage, which stays open until call returns.
+func via[T any](storage *reopeningStorage, call func(*ownedStorage) (T, error)) (T, error) {
+	storage.mu.RLock()
+	defer storage.mu.RUnlock()
+	return call(storage.current)
 }
 
-func (storage *reopeningStorage) MintId() (int64, error) { return storage.current.MintId() }
+func (storage *reopeningStorage) Commit(ctx context.Context, batches [][]durable.StorageWrite, receive func(index int, seq durable.Seq)) (durable.CommitResult, error) {
+	storage.mu.RLock()
+	current, closed := storage.current, storage.closed
+	storage.mu.RUnlock()
+	if closed {
+		return current.Commit(ctx, batches, receive)
+	}
+	defer func() {
+		storage.mu.Lock()
+		defer storage.mu.Unlock()
+		must(storage.t, storage.current.Close(background))
+		storage.current = openStoreStorage(storage.t, storage.path)
+	}()
+	return current.Commit(ctx, batches, receive)
+}
+
+func (storage *reopeningStorage) MintId() (int64, error) {
+	return via(storage, func(current *ownedStorage) (int64, error) { return current.MintId() })
+}
 func (storage *reopeningStorage) Conversation(ctx context.Context, id durable.ConversationId) (*durable.ConversationRecord, error) {
-	return storage.current.Conversation(ctx, id)
+	return via(storage, func(current *ownedStorage) (*durable.ConversationRecord, error) { return current.Conversation(ctx, id) })
 }
 func (storage *reopeningStorage) ScanConversations(ctx context.Context, query durable.ConversationQuery, limit int, cursor durable.Cursor) (durable.Page[durable.ConversationRecord, durable.Cursor], error) {
-	return storage.current.ScanConversations(ctx, query, limit, cursor)
+	return via(storage, func(current *ownedStorage) (durable.Page[durable.ConversationRecord, durable.Cursor], error) {
+		return current.ScanConversations(ctx, query, limit, cursor)
+	})
 }
 func (storage *reopeningStorage) Entry(ctx context.Context, id durable.EntryId) (*durable.EntryAt, error) {
-	return storage.current.Entry(ctx, id)
+	return via(storage, func(current *ownedStorage) (*durable.EntryAt, error) { return current.Entry(ctx, id) })
 }
 func (storage *reopeningStorage) VisibleEntry(ctx context.Context, conversationID durable.ConversationId, id durable.EntryId) (*durable.EntryAt, error) {
-	return storage.current.VisibleEntry(ctx, conversationID, id)
+	return via(storage, func(current *ownedStorage) (*durable.EntryAt, error) {
+		return current.VisibleEntry(ctx, conversationID, id)
+	})
 }
 func (storage *reopeningStorage) FindLatestHeadMarker(ctx context.Context, conversationID durable.ConversationId, at *durable.EntryId) (*durable.EntryRecord, error) {
-	return storage.current.FindLatestHeadMarker(ctx, conversationID, at)
+	return via(storage, func(current *ownedStorage) (*durable.EntryRecord, error) {
+		return current.FindLatestHeadMarker(ctx, conversationID, at)
+	})
 }
 func (storage *reopeningStorage) ScanEntries(ctx context.Context, query durable.EntryQuery, limit int, cursor durable.Cursor) (durable.Page[durable.EntryRecord, durable.Cursor], error) {
-	return storage.current.ScanEntries(ctx, query, limit, cursor)
+	return via(storage, func(current *ownedStorage) (durable.Page[durable.EntryRecord, durable.Cursor], error) {
+		return current.ScanEntries(ctx, query, limit, cursor)
+	})
 }
 func (storage *reopeningStorage) Task(ctx context.Context, id durable.TaskId) (*storedTask, error) {
-	return storage.current.Task(ctx, id)
+	return via(storage, func(current *ownedStorage) (*storedTask, error) { return current.Task(ctx, id) })
 }
 func (storage *reopeningStorage) ScanTasks(ctx context.Context, query durable.TaskQuery, limit int, cursor durable.Cursor) (durable.Page[storedTask, durable.Cursor], error) {
-	return storage.current.ScanTasks(ctx, query, limit, cursor)
+	return via(storage, func(current *ownedStorage) (durable.Page[storedTask, durable.Cursor], error) {
+		return current.ScanTasks(ctx, query, limit, cursor)
+	})
 }
 func (storage *reopeningStorage) Submission(ctx context.Context, id durable.SubmissionId) (*durable.SubmissionRecord, error) {
-	return storage.current.Submission(ctx, id)
+	return via(storage, func(current *ownedStorage) (*durable.SubmissionRecord, error) { return current.Submission(ctx, id) })
 }
 func (storage *reopeningStorage) ScanSubmissions(ctx context.Context, query durable.SubmissionQuery, limit int, cursor durable.Cursor) (durable.Page[durable.SubmissionRecord, durable.Cursor], error) {
-	return storage.current.ScanSubmissions(ctx, query, limit, cursor)
+	return via(storage, func(current *ownedStorage) (durable.Page[durable.SubmissionRecord, durable.Cursor], error) {
+		return current.ScanSubmissions(ctx, query, limit, cursor)
+	})
 }
 func (storage *reopeningStorage) SubmissionByRequest(ctx context.Context, conversationID durable.ConversationId, requestID string) (*durable.SubmissionRecord, error) {
-	return storage.current.SubmissionByRequest(ctx, conversationID, requestID)
+	return via(storage, func(current *ownedStorage) (*durable.SubmissionRecord, error) {
+		return current.SubmissionByRequest(ctx, conversationID, requestID)
+	})
 }
 func (storage *reopeningStorage) FindDocument(ctx context.Context, address durable.DocumentAddress, at durable.DocumentPoint) (*durable.DocumentRecord, error) {
-	return storage.current.FindDocument(ctx, address, at)
+	return via(storage, func(current *ownedStorage) (*durable.DocumentRecord, error) {
+		return current.FindDocument(ctx, address, at)
+	})
 }
 func (storage *reopeningStorage) Document(ctx context.Context, id durable.DocumentId, at durable.DocumentPoint) (*durable.StoredDocument, error) {
-	return storage.current.Document(ctx, id, at)
+	return via(storage, func(current *ownedStorage) (*durable.StoredDocument, error) { return current.Document(ctx, id, at) })
 }
 func (storage *reopeningStorage) ScanDocuments(ctx context.Context, query durable.DocumentQuery, limit int, cursor durable.Cursor) (durable.Page[durable.DocumentRecord, durable.Cursor], error) {
-	return storage.current.ScanDocuments(ctx, query, limit, cursor)
+	return via(storage, func(current *ownedStorage) (durable.Page[durable.DocumentRecord, durable.Cursor], error) {
+		return current.ScanDocuments(ctx, query, limit, cursor)
+	})
 }
 
 func (storage *reopeningStorage) Close(ctx context.Context) error {
+	storage.mu.Lock()
+	defer storage.mu.Unlock()
 	if storage.closed {
 		return nil
 	}
@@ -128,20 +168,20 @@ func rootWrite() durable.StorageWrite {
 func TestStoreStorageClaimsAndClose(t *testing.T) {
 	t.Run("refuse a second StoreStorage on one owner until the first closed; two owners share a store", func(t *testing.T) {
 		store := memoryStore(t)
-		first := value(t, Open(background, store, "harness"))
+		first := value(Open(background, store, "harness"))
 		_, err := Open(background, store, "harness")
 		rejectedArgs(t, err)
-		other := value(t, Open(background, store, "other"))
-		value(t, commitWrites(first, rootWrite()))
-		if found := value(t, other.Conversation(background, durable.ROOT_CONVERSATION_ID)); found != nil {
+		other := value(Open(background, store, "other"))
+		value(commitWrites(first, rootWrite()))
+		if found := value(other.Conversation(background, durable.ROOT_CONVERSATION_ID)); found != nil {
 			t.Fatalf("another owner sees %+v", found)
 		}
 		must(t, first.Close(background))
 		if _, err := first.Conversation(background, durable.ROOT_CONVERSATION_ID); err == nil || !strings.Contains(err.Error(), "StoreStorage is closed") {
 			t.Fatalf("read on a closed storage = %v", err)
 		}
-		reopened := value(t, Open(background, store, "harness"))
-		found := value(t, reopened.Conversation(background, durable.ROOT_CONVERSATION_ID))
+		reopened := value(Open(background, store, "harness"))
+		found := value(reopened.Conversation(background, durable.ROOT_CONVERSATION_ID))
 		if found == nil || found.Id != durable.ROOT_CONVERSATION_ID {
 			t.Fatalf("reopened sees %+v", found)
 		}
@@ -149,33 +189,49 @@ func TestStoreStorageClaimsAndClose(t *testing.T) {
 	})
 
 	t.Run("waits at close for its calls underway, then releases its claims", func(t *testing.T) {
-		store := memoryStore(t)
-		storage := value(t, Open(background, store, "harness"))
+		made := counted(t, ":memory:")
+		entered, release := make(chan struct{}), make(chan struct{})
+		made.db.setFaults(faults{hold: func(_ string, index int) {
+			if index == 1 {
+				close(entered)
+				<-release
+			}
+		}})
 		committed := make(chan error, 1)
 		go func() {
-			_, err := commitWrites(storage, rootWrite())
+			_, err := commitWrites(made.storage, entryWrite(mintID[durable.EntryId](t, made.storage)))
 			committed <- err
 		}()
+		<-entered
 		closing := make(chan error, 1)
-		go func() { closing <- storage.Close(background) }()
+		go func() { closing <- made.storage.Close(background) }()
+		select {
+		case err := <-closing:
+			t.Fatalf("Close returned with a commit underway: %v", err)
+		case <-time.After(50 * time.Millisecond):
+		}
+		if _, err := Open(background, made.store, "harness"); err == nil {
+			t.Fatal("the claims were released while a commit was underway")
+		}
+		close(release)
 		must(t, <-committed)
 		must(t, <-closing)
-		value(t, Open(background, store, "harness"))
-		must(t, store.Close(background))
+		value(Open(background, made.store, "harness"))
+		must(t, made.store.Close(background))
 	})
 }
 
 func TestStoreStorageSemantics(t *testing.T) {
 	t.Run("a refused Durable commit rejects with Durable's message and keeps the store usable", func(t *testing.T) {
 		store := memoryStore(t)
-		storage := value(t, Open(background, store, "harness"))
-		value(t, commitWrites(storage, rootWrite()))
+		storage := value(Open(background, store, "harness"))
+		value(commitWrites(storage, rootWrite()))
 		if _, err := commitWrites(storage, rootWrite()); err == nil || !strings.Contains(err.Error(), "ID 1 already belongs to conversation") {
 			t.Fatalf("second root = %v", err)
 		}
 		entry := durable.EntryRecord{Id: mintID[durable.EntryId](t, storage), ConversationId: durable.ROOT_CONVERSATION_ID, Kind: "m"}
-		value(t, commitWrites(storage, durable.EntryWrite{Value: entry}))
-		found := value(t, storage.Entry(background, entry.Id))
+		value(commitWrites(storage, durable.EntryWrite{Value: entry}))
+		found := value(storage.Entry(background, entry.Id))
 		if found == nil || !reflect.DeepEqual(found.Entry, entry) {
 			t.Fatalf("entry = %+v, want %+v", found, entry)
 		}
@@ -184,10 +240,10 @@ func TestStoreStorageSemantics(t *testing.T) {
 
 	t.Run("raises the allocator above every id it holds when it opens (a store built by import)", func(t *testing.T) {
 		store := memoryStore(t)
-		storage := value(t, Open(background, store, "harness"))
+		storage := value(Open(background, store, "harness"))
 		entry := durable.EntryRecord{Id: 500, ConversationId: durable.ROOT_CONVERSATION_ID, Kind: "m"}
-		value(t, commitWrites(storage, rootWrite(), durable.EntryWrite{Value: entry}))
-		if id := value(t, storage.MintId()); id != 501 {
+		value(commitWrites(storage, rootWrite(), durable.EntryWrite{Value: entry}))
+		if id := value(storage.MintId()); id != 501 {
 			t.Fatalf("MintId = %d, want 501", id)
 		}
 		must(t, store.Close(background))
@@ -202,8 +258,8 @@ func recorded(t *testing.T) (*chordstore.ChordStore, *StoreStorage) {
 	outbox := true
 	opened, err := chordstore.OpenStore(chordstore.SqliteBackend(db), background, chordstore.StoreOptions{Outbox: &outbox})
 	must(t, err)
-	storage := value(t, Open(background, opened, "harness"))
-	value(t, commitWrites(storage, rootWrite()))
+	storage := value(Open(background, opened, "harness"))
+	value(commitWrites(storage, rootWrite()))
 	return opened.(*chordstore.ChordStore), storage
 }
 
@@ -223,12 +279,12 @@ func history(t *testing.T, storage durable.Storage) (rewindable durable.Document
 	rewindable = mintID[durable.DocumentId](t, storage)
 	latest := mintID[durable.DocumentId](t, storage)
 	empty := mintID[durable.DocumentId](t, storage)
-	seqs = append(seqs, value(t, commitWrites(storage,
+	seqs = append(seqs, value(commitWrites(storage,
 		durable.DocumentCreateWrite{Record: durable.DocumentCreate{Id: rewindable, Kind: "r", Scope: rootScope, History: durable.HistoryRewindable, Fork: durable.ForkAsOf}, Content: base(0)},
 		durable.DocumentCreateWrite{Record: durable.DocumentCreate{Id: latest, Kind: "l", Scope: rootScope, History: durable.HistoryLatest, Fork: durable.ForkCurrent}, Content: base(0)},
 	)))
-	seqs = append(seqs, value(t, commitWrites(storage, durable.DocumentChangeWrite{Id: rewindable, Content: deltaTo(1)})))
-	seqs = append(seqs, value(t, commitWrites(storage,
+	seqs = append(seqs, value(commitWrites(storage, durable.DocumentChangeWrite{Id: rewindable, Content: deltaTo(1)})))
+	seqs = append(seqs, value(commitWrites(storage,
 		durable.DocumentChangeWrite{Id: latest, Content: deltaTo(2)},
 		durable.DocumentRetireWrite{Id: latest},
 		durable.DocumentCreateWrite{Record: durable.DocumentCreate{Id: empty, Kind: "e", Scope: durable.DocumentRecordScope{Kind: durable.ScopeSession}}, Content: base(3)},
@@ -289,17 +345,17 @@ func TestStoreStorageArchives(t *testing.T) {
 		}
 		copied, err := chordstore.ImportStore(chordstore.SqliteBackend(newMemoryDatabase(t)), chordstore.SlicePartSource(parts), background, chordstore.StoreOptions{})
 		must(t, err)
-		imported := value(t, Open(background, copied, "harness"))
+		imported := value(Open(background, copied, "harness"))
 		for _, at := range []durable.DocumentPoint{durable.AtSeq(seqs[0]), durable.AtSeq(seqs[1]), durable.CurrentPoint} {
-			want := value(t, storage.Document(background, rewindable, at))
-			got := value(t, imported.Document(background, rewindable, at))
+			want := value(storage.Document(background, rewindable, at))
+			got := value(imported.Document(background, rewindable, at))
 			if jsonOf(t, got) != jsonOf(t, want) {
 				t.Fatalf("document at %+v = %s, want %s", at, jsonOf(t, got), jsonOf(t, want))
 			}
 		}
 		query := durable.DocumentQuery{Scope: rootScope, At: durable.AtSeq(seqs[1])}
-		wantPage := value(t, storage.ScanDocuments(background, query, 10, nil))
-		gotPage := value(t, imported.ScanDocuments(background, query, 10, nil))
+		wantPage := value(storage.ScanDocuments(background, query, 10, nil))
+		gotPage := value(imported.ScanDocuments(background, query, 10, nil))
 		if jsonOf(t, gotPage) != jsonOf(t, wantPage) {
 			t.Fatalf("scan = %s, want %s", jsonOf(t, gotPage), jsonOf(t, wantPage))
 		}
@@ -307,7 +363,7 @@ func TestStoreStorageArchives(t *testing.T) {
 		if jsonOf(t, again) != jsonOf(t, parts) {
 			t.Fatal("the imported store exports another archive")
 		}
-		if got, want := value(t, imported.MintId()), value(t, storage.MintId()); got != want {
+		if got, want := value(imported.MintId()), value(storage.MintId()); got != want {
 			t.Fatalf("MintId = %d, want %d", got, want)
 		}
 		must(t, copied.Close(background))
@@ -342,11 +398,11 @@ func TestStoreStorageHeadMarkers(t *testing.T) {
 			return opened.(*chordstore.ChordStore)
 		}
 		store := open()
-		storage := value(t, Open(background, store, "harness"))
-		value(t, commitWrites(storage, rootWrite()))
+		storage := value(Open(background, store, "harness"))
+		value(commitWrites(storage, rootWrite()))
 		entry := func(head *durable.EntryId) durable.EntryId {
 			id := mintID[durable.EntryId](t, storage)
-			value(t, commitWrites(storage, durable.EntryWrite{Value: durable.EntryRecord{Id: id, ConversationId: durable.ROOT_CONVERSATION_ID, Kind: "k", Data: delta.JsonObjectOf(), Head: head}}))
+			value(commitWrites(storage, durable.EntryWrite{Value: durable.EntryRecord{Id: id, ConversationId: durable.ROOT_CONVERSATION_ID, Kind: "k", Data: delta.JsonObjectOf(), Head: head}}))
 			return id
 		}
 		first := entry(nil)
@@ -355,10 +411,10 @@ func TestStoreStorageHeadMarkers(t *testing.T) {
 		// heads is the newest head marker, and the one at or before the first entry (none).
 		heads := func(of durable.Storage) [2]durable.EntryId {
 			var found [2]durable.EntryId
-			if newest := value(t, of.FindLatestHeadMarker(background, durable.ROOT_CONVERSATION_ID, nil)); newest != nil {
+			if newest := value(of.FindLatestHeadMarker(background, durable.ROOT_CONVERSATION_ID, nil)); newest != nil {
 				found[0] = newest.Id
 			}
-			if bounded := value(t, of.FindLatestHeadMarker(background, durable.ROOT_CONVERSATION_ID, &first)); bounded != nil {
+			if bounded := value(of.FindLatestHeadMarker(background, durable.ROOT_CONVERSATION_ID, &first)); bounded != nil {
 				found[1] = bounded.Id
 			}
 			return found
@@ -370,7 +426,7 @@ func TestStoreStorageHeadMarkers(t *testing.T) {
 		must(t, storage.Close(background))
 		must(t, store.Close(background))
 		store = open()
-		storage = value(t, Open(background, store, "harness"))
+		storage = value(Open(background, store, "harness"))
 		if got := heads(storage); got != want {
 			t.Fatalf("heads after reopen = %v, want %v", got, want)
 		}
@@ -386,7 +442,7 @@ func TestStoreStorageHeadMarkers(t *testing.T) {
 		}
 		copied, err := chordstore.ImportStore(chordstore.SqliteBackend(newMemoryDatabase(t)), chordstore.SlicePartSource(parts), background, chordstore.StoreOptions{})
 		must(t, err)
-		if got := heads(value(t, Open(background, copied, "harness"))); got != want {
+		if got := heads(value(Open(background, copied, "harness"))); got != want {
 			t.Fatalf("heads in the imported archive = %v, want %v", got, want)
 		}
 		replica, err := chordstore.OpenStore(chordstore.SqliteBackend(newMemoryDatabase(t)), background, chordstore.StoreOptions{})
@@ -394,7 +450,7 @@ func TestStoreStorageHeadMarkers(t *testing.T) {
 		commits, err := store.Outbox().Read(0, 1000, background)
 		must(t, err)
 		must(t, chordstore.ApplyBatch(replica.(*chordstore.ChordStore), commits, background))
-		if got := heads(value(t, Open(background, replica, "harness"))); got != want {
+		if got := heads(value(Open(background, replica, "harness"))); got != want {
 			t.Fatalf("heads in the replayed outbox = %v, want %v", got, want)
 		}
 		for _, each := range []chordstore.Store{copied, replica, store} {
@@ -411,10 +467,10 @@ func TestStoreStorageReads(t *testing.T) {
 		if !errors.As(err, &request) {
 			t.Fatalf("ScanEntries = %v, want a StorageRequestError", err)
 		}
-		if found := value(t, storage.Document(background, 999, durable.CurrentPoint)); found != nil {
+		if found := value(storage.Document(background, 999, durable.CurrentPoint)); found != nil {
 			t.Fatalf("Document = %+v, want none", found)
 		}
-		if found := value(t, storage.Conversation(background, durable.ROOT_CONVERSATION_ID)); found == nil || found.Id != durable.ROOT_CONVERSATION_ID {
+		if found := value(storage.Conversation(background, durable.ROOT_CONVERSATION_ID)); found == nil || found.Id != durable.ROOT_CONVERSATION_ID {
 			t.Fatalf("Conversation = %+v", found)
 		}
 		must(t, store.Close(background))
@@ -424,7 +480,7 @@ func TestStoreStorageReads(t *testing.T) {
 func TestStoreStorageCommits(t *testing.T) {
 	t.Run("publishes inside the attached host's batch, and plainly without a host", func(t *testing.T) {
 		store := memoryStore(t).(*chordstore.ChordStore)
-		storage := value(t, Open(background, store, "harness"))
+		storage := value(Open(background, store, "harness"))
 		var plain []bool
 		storage.Publishing(background, func() { plain = append(plain, store.Batch() == nil) })
 		if !reflect.DeepEqual(plain, []bool{true}) {
@@ -445,15 +501,15 @@ func TestStoreStorageCommits(t *testing.T) {
 		meter := newMeter(t)
 		store := memoryStore(t).(*chordstore.ChordStore)
 		must(t, store.Attach(chordstore.Attachment{Failed: func(error) {}, Batch: state.NewBatch(func(state.BatchError) {}, nil)}))
-		storage := value(t, Open(background, store, "harness"))
-		value(t, commitWrites(storage, rootWrite()))
+		storage := value(Open(background, store, "harness"))
+		value(commitWrites(storage, rootWrite()))
 		entry := durable.EntryRecord{Id: mintID[durable.EntryId](t, storage), ConversationId: durable.ROOT_CONVERSATION_ID, Kind: "m"}
 		before := meter.statements()
 		_, err := storage.Commit(meter.ctx, [][]durable.StorageWrite{{durable.EntryWrite{Value: entry}}}, func(int, durable.Seq) {})
 		must(t, err)
 		appended := meter.statements() - before
 		id := mintID[durable.DocumentId](t, storage)
-		value(t, commitWrites(storage, durable.DocumentCreateWrite{Record: durable.DocumentCreate{Id: id, Kind: "s", Scope: durable.DocumentRecordScope{Kind: durable.ScopeSession}}, Content: base(0)}))
+		value(commitWrites(storage, durable.DocumentCreateWrite{Record: durable.DocumentCreate{Id: id, Kind: "s", Scope: durable.DocumentRecordScope{Kind: durable.ScopeSession}}, Content: base(0)}))
 		changed := meter.statements()
 		_, err = storage.Commit(meter.ctx, [][]durable.StorageWrite{{durable.DocumentChangeWrite{Id: id, Content: deltaTo(1)}}}, func(int, durable.Seq) {})
 		must(t, err)
@@ -467,17 +523,17 @@ func TestStoreStorageCommits(t *testing.T) {
 func TestStoreStorageReviewRegressions(t *testing.T) {
 	t.Run(`a head-marker entry whose kind is "refused" is returned, not taken for a request error`, func(t *testing.T) {
 		storage := openStoreStorage(t, ":memory:")
-		value(t, commitWrites(storage, rootWrite()))
+		value(commitWrites(storage, rootWrite()))
 		first := mintID[durable.EntryId](t, storage)
 		marker := mintID[durable.EntryId](t, storage)
-		value(t, commitWrites(storage,
+		value(commitWrites(storage,
 			durable.EntryWrite{Value: durable.EntryRecord{Id: first, ConversationId: durable.ROOT_CONVERSATION_ID, Kind: "message"}},
 			durable.EntryWrite{Value: durable.EntryRecord{Id: marker, ConversationId: durable.ROOT_CONVERSATION_ID, Kind: "refused", Head: &first}},
 		))
-		if found := value(t, storage.FindLatestHeadMarker(background, durable.ROOT_CONVERSATION_ID, nil)); found == nil || found.Id != marker {
+		if found := value(storage.FindLatestHeadMarker(background, durable.ROOT_CONVERSATION_ID, nil)); found == nil || found.Id != marker {
 			t.Fatalf("FindLatestHeadMarker = %+v, want %d", found, marker)
 		}
-		page := value(t, storage.ScanEntries(background, durable.EntryQuery{ConversationId: durable.ROOT_CONVERSATION_ID}, 10, nil))
+		page := value(storage.ScanEntries(background, durable.EntryQuery{ConversationId: durable.ROOT_CONVERSATION_ID}, 10, nil))
 		var kinds []string
 		for _, item := range page.Items {
 			kinds = append(kinds, item.Kind)
