@@ -669,6 +669,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-81e584b](#bf-81e584b) | anthropic-messages payload now matches Pi for four cases found by the new live-Pi oracle… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-81e584b-2](#bf-81e584b-2) | Live-Pi oracle `TestMistralMessagesPayloadMatchesPi` (`ai/mistral_messages_payload_oracle_test.go`… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-8241433](#bf-8241433) | A Mistral stream chunk with a member of an unexpected type is read as Pi's JavaScript reads it instead of… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-82ca8da](#bf-82ca8da) | On Windows, the host reports the load error of a Node extension that exits right after it sends the error | PiG's own defect | Windows | Unreleased |
 | [BF-82d1808](#bf-82d1808) | Subprocess extensions no longer slow down each streamed token in long sessions: the state sent before each… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-83d5488](#bf-83d5488) | `pig install <dir>` of a local directory with no package manifest and no `extensions/`, `skills/`, `prompts/`… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-83fea11](#bf-83fea11) | On Windows, a refused connection reads as Node's `connect ECONNREFUSED` and is not retried, as in Pi; it was… | PiG's own defect | Windows | 0.5.0 |
@@ -10357,6 +10358,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `5078f73100` (2026-10-11), `5932542c21` (2026-10-11), `71e9d13eb9` (2026-10-11), `82414338e7` (2026-10-11), `8eb1202528` (2026-10-11), `b6afa7be1a` (2026-10-11)
 - **Tests:** `ai/anthropic_event_member_type_oracle_test.go::TestAnthropicEventMistypedMembersMatchPi`, `ai/google_chunk_member_type_oracle_test.go::TestGoogleChunkMistypedMembersMatchPi`, `ai/mistral_chunk_member_type_oracle_test.go::TestMistralChunkMistypedMembersMatchPi`, `ai/openai_responses_member_type_oracle_test.go::TestOpenAIResponsesMistypedMembersMatchPi`
 - **Release note:** A Mistral stream chunk with a member of an unexpected type is read as Pi's JavaScript reads it instead of ending the turn with a JSON decode error: a finish reason that is not a string ends the turn with `Provider stopped with: <its string form>`, a content item's non-string text ends it with Pi's `text.replace is not a function`, a content item that is not an object is skipped, a `tool_calls` value that is not an array ends it with `toolCalls is not iterable` (a string with Pi's error for its first character), a usage that is not an object reads as zeros, a prompt count sent as a string counts as its number, and a cached-token count that is not a number reads as 0.
+
+### BF-82ca8da
+
+**On Windows, the host reports the load error of a Node extension that exits right after it sends the error**
+
+- **Source:** PiG's own defect
+- **Symptom:** The host could report `process_exited` and lose the error.
+- **Root cause:** The pipe driver sets the event that the host tested for a client later than the client's open returns, so a client whose event was not yet set was not counted.
+- **User impact:** Lost or altered data
+- **Platform:** Windows
+- **Fixed in:** Unreleased
+- **Fix commits:** `82ca8da822` (2026-10-30)
+- **Tests:** `coding/extension/host/subprocess/accept_client_test.go::TestAwaitConnectionHonorsAConnectionMadeBeforeTheExit`, `coding/extension/host/subprocess/accept_client_windows_test.go::TestAwaitConnectionHonorsAClientBeforeItsConnectEventIsSet`, `coding/extension/host/subprocess/accept_client_windows_test.go::TestPipeListenerInterruptKeepsAClientBeforeItsConnectEventIsSet`
+- **Release note:** On Windows, the host reports the load error of a Node extension that exits right after it sends the error. A Node extension whose factory fails connects to its named pipe, writes the error, closes and exits, and the host looks at the pipe only after the exit. Before this fix, the host could report `process_exited` and lose the error. The pipe driver sets the event that the host tested for a client later than the client's open returns, so a client whose event was not yet set was not counted. The host now asks the pipe's own state, which the open changes before it returns.
 
 ### BF-82d1808
 

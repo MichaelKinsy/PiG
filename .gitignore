@@ -181,3 +181,10 @@ internal/evals/.eval/
 /durable/core/contracttest/cmd/*/scprovider
 /result
 /result-*
+
+# pin.py sync keeps only the active pin and reviewed baseline eligible for tracking.
+# BEGIN PINNED INTERFACE SNAPSHOTS
+/test/parity/interfaces/*-v*.json
+!/test/parity/interfaces/*-v1.4.0+6c384aa3.json
+!/test/parity/interfaces/*-v0.84.0.json
+# END PINNED INTERFACE SNAPSHOTS

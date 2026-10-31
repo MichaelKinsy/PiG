@@ -19195,6 +19195,30 @@
       ]
     },
     {
+      "id": "BF-82ca8da",
+      "title": "On Windows, the host reports the load error of a Node extension that exits right after it sends the error",
+      "symptom": "The host could report `process_exited` and lose the error.",
+      "rootCause": "The pipe driver sets the event that the host tested for a client later than the client's open returns, so a client whose event was not yet set was not counted.",
+      "rootCauseSource": "release note",
+      "userImpact": "Lost or altered data",
+      "platform": "Windows",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "On Windows, the host reports the load error of a Node extension that exits right after it sends the error. A Node extension whose factory fails connects to its named pipe, writes the error, closes and exits, and the host looks at the pipe only after the exit. Before this fix, the host could report `process_exited` and lose the error. The pipe driver sets the event that the host tested for a client later than the client's open returns, so a client whose event was not yet set was not counted. The host now asks the pipe's own state, which the open changes before it returns.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "82ca8da822",
+          "date": "2026-10-30"
+        }
+      ],
+      "tests": [
+        "coding/extension/host/subprocess/accept_client_test.go::TestAwaitConnectionHonorsAConnectionMadeBeforeTheExit",
+        "coding/extension/host/subprocess/accept_client_windows_test.go::TestAwaitConnectionHonorsAClientBeforeItsConnectEventIsSet",
+        "coding/extension/host/subprocess/accept_client_windows_test.go::TestPipeListenerInterruptKeepsAClientBeforeItsConnectEventIsSet"
+      ]
+    },
+    {
       "id": "BF-82d1808",
       "title": "Subprocess extensions no longer slow down each streamed token in long sessions: the state sent before each…",
       "symptom": "Subprocess extensions no longer slow down each streamed token in long sessions: the state sent before each event reuses the context usage estimate and the session name until the session changes.",
