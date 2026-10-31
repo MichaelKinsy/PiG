@@ -928,7 +928,7 @@ func TestRemoteObjectReHoldsAfterADrop(t *testing.T) {
 			}
 			notes.Retry()
 			retry := rig.Peer.Next("retry").(*link.RetryMessage)
-			if retry.Hold != hold || retry.Operation == "" {
+			if retry.Hold != hold || retry.Hops != link.RETRY_HOPS {
 				t.Fatalf("retry = %+v", retry)
 			}
 			bindHold(t, rig.Peer, hold)

@@ -58,9 +58,10 @@ func (e *env) change(work func()) {
 func serve[C, V any](e *env, reg registries.Registry[C, V], provider registries.RegistryProvider[C, V]) *registries.RegistryRecord {
 	e.t.Helper()
 	record := e.record(reg.Name)
-	if err := record.Serve(reg.Version, provider.Erase()); err != nil {
+	if err := registries.CheckProvider(reg.Name, provider.Erase()); err != nil {
 		e.t.Fatalf("serve %s: %v", reg.Name, err)
 	}
+	e.change(func() { record.Serve(reg.Version, provider.Erase()) })
 	return record
 }
 

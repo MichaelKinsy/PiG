@@ -283,15 +283,15 @@ func TestContributionOfFollowsWatchablesAndNativesLeavesOtherValuesPlainAndRefus
 	throwing := membersHeld(t).Member("n")
 	_, err := contentOf(throwing)
 	wantMembersNotServed(t, err)
-	contribution, err := contributionOf(record, contributor, 1, "text", nil)
+	contribution, err := contributionOf(record, contributor, 1, "text")
 	if err != nil || contribution.Record != record || contribution.Contributor != contributor || contribution.Version != 1 {
 		t.Fatalf("contribution = %#v, %v", contribution, err)
 	}
-	_, err = contributionOf(record, contributor, 1, throwing, nil)
+	_, err = contributionOf(record, contributor, 1, throwing)
 	wantMembersNotServed(t, err)
 	// A registry's own value contributed to it closes a cycle of one registry.
 	own := registries.NewRegistryValueSource(record, 1, h.batch)
-	_, err = contributionOf(record, contributor, 1, own, nil)
+	_, err = contributionOf(record, contributor, 1, own)
 	if chordErr, ok := data.IsChordErrorCode(err, data.CodeInvalid); !ok || chordErr.Reason != data.ReasonCycle {
 		t.Fatalf("a registry contributing its own value = %v, want invalid/cycle", err)
 	}

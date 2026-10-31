@@ -181,10 +181,10 @@ func TestRelayIDsAndOrigins(t *testing.T) {
 			if result.Call != 5 || result.Origin.Ok {
 				t.Fatalf("result = %+v, want call 5 without origin", result)
 			}
-			r.Raw.Send(&link.RetryMessage{Hold: 7})
+			r.Raw.Send(&link.RetryMessage{Hold: 7, Hops: 16})
 			retry := worker.Next("retry").(*link.RetryMessage)
-			if retry.Origin != link.Some(1) || retry.Hold != 7 || retry.Operation != "" || retry.Through != nil {
-				t.Fatalf("forwarded retry = %+v, want a bare retry of hold 7 under 1", retry)
+			if retry.Origin != link.Some(1) || retry.Hold != 7 || retry.Hops != 16 {
+				t.Fatalf("forwarded retry = %+v, want a retry of hold 7 with 16 hops under 1", retry)
 			}
 		})
 

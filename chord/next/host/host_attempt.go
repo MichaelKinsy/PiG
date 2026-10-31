@@ -418,13 +418,6 @@ func (a *attempt) Contribute(registry registries.Registry[any, any], value any) 
 		}
 	}
 	value = unwrapMember(value)
-	// Refused at `contribute` (declaration policy), also a cycle within this factory's own declarations; the edges live
-	// with the contributions in the tables, from live on.
-	if source, ok := value.(*registries.RegistryValueSource); ok {
-		if err := object.host.registryRecord(registry.Name).AssertNoCycle(source, a.pendingEdges()); err != nil {
-			panic(err)
-		}
-	}
 	declarations.declared = append(declarations.declared, declaredContribution{registry: registry, value: value})
 }
 
@@ -1250,11 +1243,10 @@ func (a *attempt) checkOwn(implementation factoryResult) (*members, error) {
 func (a *attempt) resolveContributions(declarations *registryDeclarations) ([]*registries.RegistryContribution, error) {
 	object := a.object
 	contributor := registries.Contributor{Plugin: object.served.plugin, Type: object.served.contract.Name}
-	pending := a.pendingEdges()
 	resolved := make([]*registries.RegistryContribution, 0, len(declarations.declared))
 	for _, each := range declarations.declared {
 		record := object.host.registryRecord(each.registry.Name)
-		contribution, err := contributionOf(record, contributor, each.registry.Version, each.value, pending)
+		contribution, err := contributionOf(record, contributor, each.registry.Version, each.value)
 		if err != nil {
 			return nil, err
 		}
@@ -1412,21 +1404,6 @@ func (a *attempt) broken(err error) activation {
 		return *a.abandoned
 	}
 	return activation{kind: activationFailed, cause: data.FailureCause{Kind: data.FailureBroken, Error: data.AsChordError(err, a.object.text)}}
-}
-
-// pendingEdges are the registry edges its declared contributions would add (another registry's value contributed).
-func (a *attempt) pendingEdges() []registries.RegistryEdge {
-	var edges []registries.RegistryEdge
-	if a.registry == nil {
-		return edges
-	}
-	host := a.object.host
-	for _, each := range a.registry.declared {
-		if source, ok := each.value.(*registries.RegistryValueSource); ok && source.Record() != nil {
-			edges = append(edges, registries.RegistryEdge{From: host.registryRecord(each.registry.Name), To: source.Record()})
-		}
-	}
-	return edges
 }
 
 func (a *attempt) declarations() *registryDeclarations {

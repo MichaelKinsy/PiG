@@ -9,11 +9,12 @@ package contracts
 // ChangeSide is the side of a member an edit changed.
 type ChangeSide string
 
-// The sides of an edit.
+// The sides of an edit; SideKeyed is a local contract's keyed member (slice 7b).
 const (
 	SideState  ChangeSide = "state"
 	SideArgs   ChangeSide = "args"
 	SideResult ChangeSide = "result"
+	SideKeyed  ChangeSide = "keyed"
 )
 
 // Change is what one edit changed: one side of one member in one variant. An edit that changed several variants

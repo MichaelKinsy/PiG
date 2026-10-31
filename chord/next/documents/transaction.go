@@ -726,6 +726,9 @@ func (tx *Transaction) handle(table *store.TableHandle) (*store.TableHandle, err
 	if table == nil || table.Owner.Scope() != any(tx.documents) {
 		return nil, fmt.Errorf("%s: a transaction writes only its own object's tables", tx.documents.Label())
 	}
+	if err := table.AssertVersion(); err != nil {
+		return nil, err
+	}
 	return table, nil
 }
 

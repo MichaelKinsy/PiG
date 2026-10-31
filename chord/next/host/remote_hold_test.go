@@ -652,7 +652,7 @@ func TestHoldNoticesOfAFailedObject(t *testing.T) {
 					t.Fatalf("a broken failure names a retryIn: %+v", failed)
 				}
 			}
-			peer.Send(&link.RetryMessage{Hold: 0})
+			peer.Send(&link.RetryMessage{Hold: 0, Hops: 16})
 			for _, consumer := range []*RawPeer{peer, other} {
 				if loading := consumer.Next("loading").(*link.LoadingMessage); loading.Hold != 0 {
 					t.Fatalf("loading = %+v", loading)
@@ -685,7 +685,7 @@ func TestHoldNoticesOfAFailedObject(t *testing.T) {
 			_, peer, _ := virtual.rawServer(t, rhServeFlaky(&rhFailing{left: 0}))
 			rhHold(peer, 0, rhFlaky)
 			peer.Next("bound")
-			peer.Send(&link.RetryMessage{Hold: 0})
+			peer.Send(&link.RetryMessage{Hold: 0, Hops: 16})
 			peer.Send(&link.RetryMessage{Hold: 9})
 			rhSync(t, peer)
 			rhKindsAre(t, peer, "hello")
@@ -728,7 +728,7 @@ func TestHoldsThatBindToNothingYet(t *testing.T) {
 			refs, err := rig.Server.References(rhHalves).Value()
 			must(t, err)
 			rhEqual(t, "references(Halves)", refs, []any{})
-			peer.Send(&link.RetryMessage{Hold: 0})
+			peer.Send(&link.RetryMessage{Hold: 0, Hops: 16})
 			if loading := peer.Next("loading").(*link.LoadingMessage); loading.Hold != 0 {
 				t.Fatalf("loading = %+v", loading)
 			}
@@ -794,9 +794,9 @@ func TestHoldsThatBindToNothingYet(t *testing.T) {
 			check(peer.Next("failed"), "waiting for app.core: app.core: bug 1")
 			// A retry passes on through the parked object to its broken dependency (one host's retry operation). (Its new
 			// attempt failed within the batch of changes the parked object checks once: no loading between.)
-			peer.Send(&link.RetryMessage{Hold: 0})
+			peer.Send(&link.RetryMessage{Hold: 0, Hops: 16})
 			check(peer.Next("failed"), "waiting for app.core: app.core: bug 2")
-			peer.Send(&link.RetryMessage{Hold: 0})
+			peer.Send(&link.RetryMessage{Hold: 0, Hops: 16})
 			peer.Next("loading")
 			if bound := peer.Next("bound").(*link.BoundMessage); bound.Holds[0].Hold != 0 {
 				t.Fatalf("bound = %+v", bound)

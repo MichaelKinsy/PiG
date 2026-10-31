@@ -144,11 +144,8 @@ func (c *consumerSide) release(hold int, err *data.ChordError) {
 
 // retry is `ref.retry()` on a failed hold, as retry operation: the provider is asked for an attempt now.
 func (c *consumerSide) retry(hold int, operation *retryOperation) {
-	message := &link.RetryMessage{Hold: hold, Operation: operation.id}
-	if len(operation.through) != 0 {
-		message.Through = operation.through
-	}
-	c.link.send(message)
+	// The wire carries a hop budget, not the operation (the host lane ports its propagation).
+	c.link.send(&link.RetryMessage{Hold: hold, Hops: link.RETRY_HOPS})
 }
 
 // forget drops hold from the tables; its calls, in flight and waiting, fail with err and free their slots.
