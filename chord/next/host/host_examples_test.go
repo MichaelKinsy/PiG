@@ -2165,6 +2165,7 @@ func TestExample14FlowControl(t *testing.T) {
 	serverErrors := &hostErrors{}
 	server := newHost(t, HostOptions{Address: new(Server.Address(nil)), Principal: serverPrincipal(), OnError: serverErrors.push})
 	var w2 Host
+	var w2Ends [2]*link.MemoryLink
 	var w2Mu sync.Mutex
 	must(t, server.Route(Session, RouteOptions{
 		Authorize: func(data.Principal, contracts.Address) (bool, error) { return true, nil },
@@ -2174,7 +2175,7 @@ func TestExample14FlowControl(t *testing.T) {
 			made := worker(id)
 			must(t, made.Connect(b, LinkOptions{Principal: serverPrincipal(), Trusted: true}, background))
 			w2Mu.Lock()
-			w2 = made
+			w2, w2Ends = made, [2]*link.MemoryLink{a, b}
 			w2Mu.Unlock()
 			return ResolvedLink{Link: a, Principal: workerPrincipal(id), Trusted: true}, nil
 		},
@@ -2191,12 +2192,16 @@ func TestExample14FlowControl(t *testing.T) {
 	view3 := exGet(t, t3, view, jsonObject("session", "S2"))
 	watch, fast := exWatch(t, background, view3.Member("reply"))
 	w2Mu.Lock()
-	provider := w2
+	provider, workerLink := w2, w2Ends
 	w2Mu.Unlock()
 	reply2 := exGet(t, provider, reply, jsonObject())
 	slow2.pause()
 	for i := range 5 {
 		exCall(t, reply2, "append", fmt.Sprintf(" t%d", i))
+		// A relay forwards at once and returns each `ack` to the worker, so a fast tab frees its slot before the next commit
+		// and receives every one. In Pi the hops are microtasks the next commit's own microtasks follow; here a commit is a call
+		// from this goroutine, so wait for the `state` to reach the fast tab and its `ack` the worker before the next one.
+		transported(up2, down2, up3, down3, workerLink[0], workerLink[1])
 	}
 	transported(up2, down2, up3, down3)
 	exEqual(t, "the worker has", exValue(t, reply2, "reply"), exJSON(t, `{"text":" t0 t1 t2 t3 t4"}`))
