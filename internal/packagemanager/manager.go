@@ -77,7 +77,7 @@ func InstallPackageArtifacts(cwd, agentDir string, sm *codingagent.SettingsManag
 		case "npm":
 			return InstallManagedNPM(cwd, agentDir, sm, pkg.Source, local)
 		case "git":
-			return InstallManagedGit(cwd, agentDir, sm, pkg.Source, local)
+			return InstallManagedGit(cwd, agentDir, sm, pkg.Source, local, WithProgressReporter(progress))
 		default:
 			return fmt.Errorf("unsupported package source: %s", pkg.Source)
 		}
