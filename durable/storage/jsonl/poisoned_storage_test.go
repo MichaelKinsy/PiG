@@ -6,6 +6,7 @@ import (
 
 	chorddelta "github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/durable"
+	"github.com/MichaelKinsy/PiG/durable/durabletest"
 	"github.com/MichaelKinsy/PiG/durable/storage/jsonl"
 )
 
@@ -20,9 +21,9 @@ func TestJsonlStoragePoisonsWithOneCausedErrorForEveryLaterCall(t *testing.T) {
 	firstId := mint[durable.DocumentId](t, storage)
 	laterId := mint[durable.EntryId](t, storage)
 	instrumented.fail(failure{operation: "append", call: 1, mode: "before"})
-	_, commitErr := storage.Commit(testContext, []durable.StorageWrite{
+	_, commitErr := durabletest.CommitWrites(testContext, storage, []durable.StorageWrite{
 		durable.DocumentCreateWrite{Record: sessionDocument(firstId, "first"), Content: base(chorddelta.JsonObjectOf("text", "α"))},
-	}, func(durable.Seq) {})
+	})
 	poisoned, ok := errors.AsType[*jsonl.JsonlStoragePoisonedError](commitErr)
 	if !ok {
 		t.Fatalf("commit error = %v (%T), want *JsonlStoragePoisonedError", commitErr, commitErr)
@@ -33,9 +34,9 @@ func TestJsonlStoragePoisonsWithOneCausedErrorForEveryLaterCall(t *testing.T) {
 
 	_, readErr := storage.Document(testContext, firstId, durable.CurrentPoint)
 	_, mintErr := storage.MintId()
-	_, laterCommitErr := storage.Commit(testContext, []durable.StorageWrite{
+	_, laterCommitErr := durabletest.CommitWrites(testContext, storage, []durable.StorageWrite{
 		durable.EntryWrite{Value: durable.EntryRecord{Id: laterId, ConversationId: durable.ROOT_CONVERSATION_ID, Kind: "later"}},
-	}, func(durable.Seq) {})
+	})
 	for name, err := range map[string]error{"read": readErr, "mint": mintErr, "commit": laterCommitErr} {
 		if err != error(poisoned) { //nolint:errorlint // the check is identity: every later call returns the same error instance
 			t.Errorf("%s after poisoning returned %v (%T), want the same *JsonlStoragePoisonedError as the failed commit", name, err, err)
