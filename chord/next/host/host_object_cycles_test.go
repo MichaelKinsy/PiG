@@ -63,12 +63,22 @@ func cycImpl(member any) contracts.Implementation {
 }
 
 // cyclic is a tab, a server and its workers over trusted route links (Far holds back).
-func cyclic(t *testing.T, back string) *relayed {
+func cyclic(t *testing.T, back string) *relayed { return cyclicAttempting(t, back, nil) }
+
+// cyclicAttempting is cyclic, with attempted told of the object of every Near and Far activation as its factory runs
+// (Pi's `instancesOf(ChordObject, "attempt")` sees every object made, whichever host it is on and however briefly it lives).
+func cyclicAttempting(t *testing.T, back string, attempted func(Self)) *relayed {
 	t.Helper()
+	attempt := func(self Self) {
+		if attempted != nil {
+			attempted(self)
+		}
+	}
 	return relay(t, relayedOptions{
 		Trusted: true,
 		Server: func(h FacetHost) error {
 			if err := h.Serve(cycNear, func(params *delta.JsonObject, _ data.Principal, self Self) (contracts.Implementation, error) {
+				attempt(self)
 				return cycImpl(self.Get(cycFar, jsonObject("session", params.Value("session"))).Member("n")), nil
 			}, ServeOptions{}); err != nil {
 				return err
@@ -86,6 +96,7 @@ func cyclic(t *testing.T, back string) *relayed {
 		},
 		Worker: func(h FacetHost) error {
 			if err := h.Serve(cycFar, func(params *delta.JsonObject, _ data.Principal, self Self) (contracts.Implementation, error) {
+				attempt(self)
 				target := cycNear
 				if back == "middle" {
 					target = cycMiddle
@@ -259,48 +270,34 @@ func TestObjectCyclesAcrossHostsMissACycleEnteringAnActivationThatStartedAlready
 func TestObjectCyclesAcrossHostsKeepNoObjectAndSoNoChainOnceReleasedGC(t *testing.T) {
 	// As Pi's IIFE: only the weak references leave the function; the hosts are unreachable once closed.
 	refs := func() []weak.Pointer[chordObject] {
-		r := cyclic(t, "near")
-		hosts := []Host{r.Server}
-		r.Workers.Range(func(_, worker any) bool {
-			hosts = append(hosts, worker.(Host))
-			return true
-		})
-		// Every object attempted meanwhile, weakly (Pi's `attempted`): they may be gone from the hosts when the get ends.
+		// Every object attempted meanwhile, weakly (Pi's `attempted`): they may be gone from the hosts when the get ends, and
+		// the worker's host does not exist before the get reaches the server, so each activation reports its own object.
+		var mu sync.Mutex
 		seen := map[weak.Pointer[chordObject]]struct{}{}
-		done := make(chan struct{})
-		collected := make(chan struct{})
-		go func() {
-			defer close(collected)
-			for {
-				for _, host := range hosts {
-					h := host.(*chordHost)
-					h.enter(func() {
-						for _, object := range h.objectList() {
-							seen[weak.Make(object)] = struct{}{}
-						}
-					})
-				}
-				select {
-				case <-done:
-					return
-				default:
-				}
-			}
-		}()
+		r := cyclicAttempting(t, "near", func(self Self) {
+			mu.Lock()
+			seen[weak.Make(self.(*attempt).object)] = struct{}{}
+			mu.Unlock()
+		})
 		_, err := r.Tab.Get(cycNear, jsonObject("session", "S1"), background, GetOptions{})
-		close(done)
-		<-collected
 		if err == nil {
 			t.Fatal("the cycle was not refused")
 		}
+		mu.Lock()
 		var refs []weak.Pointer[chordObject]
 		for ref := range seen {
 			refs = append(refs, ref)
 		}
+		mu.Unlock()
 		if len(refs) < 2 {
 			t.Fatalf("objects = %d, want at least 2 on the server and the worker", len(refs))
 		}
-		closeHosts(t, append([]Host{r.Tab}, hosts...)...)
+		hosts := []Host{r.Tab, r.Server}
+		r.Workers.Range(func(_, worker any) bool {
+			hosts = append(hosts, worker.(Host))
+			return true
+		})
+		closeHosts(t, hosts...)
 		return refs
 	}()
 	expectCollected(t, refs...)
