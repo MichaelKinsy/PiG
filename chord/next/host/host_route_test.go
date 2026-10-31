@@ -249,8 +249,9 @@ func TestResolveFailuresAndReResolvesARejectedResolveFailsItsHoldersWaitingWithI
 		// Pi's rejection settles in a microtask, after both holds attached; the Go resolve runs on a task of its own, so
 		// it waits until they did.
 		attached := make(chan struct{})
-		r := relay(t, relayedOptions{Loop: timers, Resolve: func(contracts.Address, func() resolved, context.Context) (resolved, error) {
+		r := relay(t, relayedOptions{Loop: timers, Resolve: func(_ contracts.Address, _ func() resolved, ctx context.Context) (resolved, error) {
 			attempts.Add(1)
+			chordctx.Suspend(ctx)
 			<-attached
 			return resolved{}, errors.New("no worker")
 		}})
@@ -448,7 +449,8 @@ func TestResolveFailuresAndReResolvesAResolveWhoseHoldsWereAllReleasedMeanwhileF
 		timers := newScopeLoop()
 		finish := make(chan struct{})
 		var watchedLink atomic.Pointer[closeWatched]
-		r := relay(t, relayedOptions{Loop: timers, Resolve: func(_ contracts.Address, worker func() resolved, _ context.Context) (resolved, error) {
+		r := relay(t, relayedOptions{Loop: timers, Resolve: func(_ contracts.Address, worker func() resolved, ctx context.Context) (resolved, error) {
+			chordctx.Suspend(ctx)
 			<-finish
 			made := worker()
 			watching := &closeWatched{Link: made.Link}
@@ -477,6 +479,43 @@ func TestResolveFailuresAndReResolvesAResolveWhoseHoldsWereAllReleasedMeanwhileF
 		if !watchedLink.Load().closed.Load() {
 			t.Fatalf("the link is open after host.close")
 		}
+	})
+}
+
+// route.ts › Pi's `#resolve` runs `options.resolve` synchronously, inside the section that triggered it (a hold, `retry`): its
+// synchronous part has run when `host.hold` and `RouteHandle.retry` return (the plugins component's workers read what
+// their `resolve` recorded right after `retry`).
+func TestRouteResolveRunsItsSynchronousPartInsideTheSectionThatTriggeredIt(t *testing.T) {
+	forEachCodec(t, func(t *testing.T) {
+		var entered atomic.Int32
+		var fail atomic.Bool
+		fail.Store(true)
+		r := relay(t, relayedOptions{Resolve: func(_ contracts.Address, worker func() resolved, ctx context.Context) (resolved, error) {
+			entered.Add(1)
+			// The synchronous part ends where Resolve first waits for something that is not a section of the host.
+			chordctx.Suspend(ctx)
+			if fail.Load() {
+				return resolved{}, errors.New("no worker")
+			}
+			return worker(), nil
+		}})
+		notes, err := r.Server.Hold(PlacedNotes, routeS("S1"), background, GetOptions{})
+		must(t, err)
+		if got := entered.Load(); got != 1 {
+			t.Fatalf("resolve entered %d times when host.hold returned, want 1", got)
+		}
+		wantRouteFailed(t, notes, data.FailureWaiting, data.CodeUnavailable)
+		fail.Store(false)
+		if !r.Route.Retry(Session.Address(jsonObject("id", "S1"))) {
+			t.Fatal("Retry of a held failed address reported no resolve")
+		}
+		if got := entered.Load(); got != 2 {
+			t.Fatalf("resolve entered %d times when Retry returned, want 2", got)
+		}
+		if r.Route.Retry(Session.Address(jsonObject("id", "S9"))) {
+			t.Fatal("Retry of an address nobody holds reported a resolve")
+		}
+		wantRouteState(t, notes, RefStateLive)
 	})
 }
 
@@ -534,6 +573,7 @@ func TestHostCloseDuringAResolveRace7AbortsTheResolvesContextAndClosesALinkRetur
 		var watchedLink atomic.Pointer[closeWatched]
 		r := relay(t, relayedOptions{Resolve: func(_ contracts.Address, worker func() resolved, ctx context.Context) (resolved, error) {
 			routing.Store(ctx)
+			chordctx.Suspend(ctx)
 			<-finish
 			made := worker()
 			watching := &closeWatched{Link: made.Link}
@@ -569,6 +609,7 @@ func TestDeclaringRoutesIsDoneBeforeLoadOncePerKind(t *testing.T) {
 		options := RouteOptions{
 			Authorize: func(data.Principal, contracts.Address) (bool, error) { return true, nil },
 			Resolve: func(_ contracts.Address, ctx context.Context) (ResolvedLink, error) {
+				chordctx.Suspend(ctx)
 				<-ctx.Done()
 				return ResolvedLink{}, context.Cause(ctx)
 			},
@@ -735,6 +776,7 @@ func TestRouteGCHoldsReleasedWhileTheirResolveNeverSettlesAreNotKept(t *testing.
 		var server Host
 		func() {
 			r := relay(t, relayedOptions{Resolve: func(_ contracts.Address, _ func() resolved, ctx context.Context) (resolved, error) {
+				chordctx.Suspend(ctx)
 				<-ctx.Done()
 				return resolved{}, context.Cause(ctx)
 			}})

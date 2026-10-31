@@ -630,6 +630,7 @@ func TestRelayUpstreamDrop(t *testing.T) {
 						return workers.Resolve(address, made, ctx)
 					}
 					// Never settles, until the test ends.
+					chordctx.Suspend(ctx)
 					select {
 					case <-never:
 					case <-ctx.Done():
@@ -672,10 +673,11 @@ func TestRelayParentLinkThatIsDown(t *testing.T) {
 			close(gate)
 			mustRoute(t)(server.Route(Session, RouteOptions{
 				Authorize: func(data.Principal, contracts.Address) (bool, error) { return true, nil },
-				Resolve: func(contracts.Address, context.Context) (ResolvedLink, error) {
+				Resolve: func(_ contracts.Address, ctx context.Context) (ResolvedLink, error) {
 					mu.Lock()
 					waiting := gate
 					mu.Unlock()
+					chordctx.Suspend(ctx)
 					<-waiting
 					a, b := link.MemoryLinkPair()
 					must(t, middle.Connect(b, LinkOptions{Principal: serverPrincipal(), Codec: testCodec()}, background))
@@ -742,6 +744,7 @@ func TestRelayDownstreamRelease(t *testing.T) {
 			workers := newRawWorkers(t, rawWorkerOptions{})
 			rel := relay(t, relayedOptions{
 				Resolve: func(address contracts.Address, made func() resolved, ctx context.Context) (resolved, error) {
+					chordctx.Suspend(ctx)
 					<-finish
 					return workers.Resolve(address, made, ctx)
 				},

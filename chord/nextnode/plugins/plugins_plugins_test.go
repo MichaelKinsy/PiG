@@ -281,7 +281,7 @@ func step(name string, order *orderLog, outcome stepOutcome, kinds ...string) Ro
 	if kinds == nil {
 		kinds = []string{"worker"}
 	}
-	return RolloutStep{Name: name, Kinds: kinds, Reload: func(*Built, context.Context) (StepResult, error) {
+	return RolloutStep{Name: name, Kinds: kinds, Reload: func(*Built, map[string][]PluginScript, context.Context) (StepResult, error) {
 		order.add(name)
 		if outcome.err != nil {
 			return StepResult{}, outcome.err
@@ -459,10 +459,10 @@ func TestCurrentSetsScriptsKindBuiltOnFirstUseABuildChangesNoSetARolloutAppliesI
 	if got := digests(); !reflect.DeepEqual(got, first) {
 		t.Fatalf("after a build = %v, want %v", got, first)
 	}
-	rejecting := RolloutStep{Name: "server", Kinds: []string{"server"}, Reload: func(*Built, context.Context) (StepResult, error) {
+	rejecting := RolloutStep{Name: "server", Kinds: []string{"server"}, Reload: func(*Built, map[string][]PluginScript, context.Context) (StepResult, error) {
 		return StepResult{}, errors.New("closed")
 	}}
-	shippedStep := RolloutStep{Name: "workers", Kinds: []string{"worker"}, Reload: func(*Built, context.Context) (StepResult, error) {
+	shippedStep := RolloutStep{Name: "workers", Kinds: []string{"worker"}, Reload: func(*Built, map[string][]PluginScript, context.Context) (StepResult, error) {
 		return StepResult{Hosts: []RolloutHost{}}, nil
 	}}
 	rollout(t, plugins, []RolloutStep{rejecting, shippedStep}, built)
@@ -705,5 +705,73 @@ func TestFixRound1ReadsAChangedPackageJSONAgainAtTheNextBuildANewDependencyIsAcc
 	}
 	if got := plugins.Discovery().Plugins[0].Dependencies; !slices.Equal(got, []string{"new-dep"}) {
 		t.Fatalf("dependencies = %v", got)
+	}
+}
+
+// plugins.test.ts / workers.test.ts 'two rollouts started together each ship their own build': a step reads the set ITS rollout
+// applied (Pi: no await lies between the `ship` and the step's synchronous part, so `plugins.current(kind)` is the rollout's
+// own there; the Go step is handed the applied sets).
+func TestRolloutHandsEachStepTheSetItsOwnRolloutApplied(t *testing.T) {
+	root := tempRoot(t)
+	itemPlugin(t, root, "a", "a1")
+	itemPlugin(t, root, "b", "b1")
+	plugins := component(t, root)
+	h := newTestHost(t)
+	loadWorker(t, plugins, h)
+	itemPlugin(t, root, "a", "a2")
+	builtA := build(t, plugins, "@test/a")
+	itemPlugin(t, root, "b", "b2")
+	builtB := build(t, plugins, "@test/b")
+	digestOf := func(scripts []PluginScript, name string) string {
+		for _, script := range scripts {
+			if script.Plugin.Name == name {
+				return script.Built.Digest
+			}
+		}
+		return ""
+	}
+	firstShipped := make(chan struct{})
+	secondShipped := make(chan struct{})
+	var seenByA, seenByB map[string][]PluginScript
+	stepA := RolloutStep{Name: "a", Kinds: []string{"worker"}, Reload: func(_ *Built, applied map[string][]PluginScript, _ context.Context) (StepResult, error) {
+		seenByA = applied
+		close(firstShipped)
+		// The other rollout ships its build while this step still runs.
+		<-secondShipped
+		return StepResult{}, nil
+	}}
+	stepB := RolloutStep{Name: "b", Kinds: []string{"worker"}, Reload: func(_ *Built, applied map[string][]PluginScript, _ context.Context) (StepResult, error) {
+		seenByB = applied
+		close(secondShipped)
+		return StepResult{}, nil
+	}}
+	var group sync.WaitGroup
+	group.Go(func() {
+		if _, err := plugins.Rollout([]RolloutStep{stepA}, builtA, background); err != nil {
+			t.Error(err)
+		}
+	})
+	<-firstShipped
+	if _, err := plugins.Rollout([]RolloutStep{stepB}, builtB, background); err != nil {
+		t.Fatal(err)
+	}
+	group.Wait()
+	facetDigest := func(built *Built, plugin string) string {
+		for _, facet := range built.Facets {
+			if facet.Plugin == plugin && facet.Facet == "worker" {
+				return facet.Digest
+			}
+		}
+		return ""
+	}
+	wantA, wantB := facetDigest(builtA, "@test/a"), facetDigest(builtB, "@test/b")
+	if got := digestOf(seenByA["worker"], "@test/a"); got != wantA {
+		t.Fatalf("A's applied set has a = %q, want its own build %q", got, wantA)
+	}
+	if got := digestOf(seenByA["worker"], "@test/b"); got == wantB {
+		t.Fatalf("A's applied set already holds B's build of b")
+	}
+	if got := digestOf(seenByB["worker"], "@test/b"); got != wantB {
+		t.Fatalf("B's applied set has b = %q, want its own build %q", got, wantB)
 	}
 }

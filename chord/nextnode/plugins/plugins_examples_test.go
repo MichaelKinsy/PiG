@@ -347,7 +347,7 @@ func TestExample38WatchAndRollout(t *testing.T) {
 
 	// 4. A rollout stops at a step that rejects (a host the app cannot reach): the steps after it do not run, and the marks
 	// stay (the plugin was not applied everywhere). The next rollout clears them.
-	unreachable := RolloutStep{Name: "edge", Kinds: []string{"server"}, Reload: func(*Built, context.Context) (StepResult, error) {
+	unreachable := RolloutStep{Name: "edge", Kinds: []string{"server"}, Reload: func(*Built, map[string][]PluginScript, context.Context) (StepResult, error) {
 		return StepResult{}, errors.New("the edge host is unreachable")
 	}}
 	edit(t, plugins, filepath.Join(root, "notes"), "label.ts", "label notes v3")

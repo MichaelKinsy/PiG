@@ -1566,13 +1566,12 @@ type rawWorkerOptions struct {
 
 // rawWorkers is a `resolve` for `relay` whose workers are raw peers playing the provider, collected in peers in order
 // (read it with its Peers method); their links trusted when Trusted. Pi's `peers.push` runs synchronously in the route's
-// call to `resolve`, so the peers are in the order of the calls; Resolve here runs on a task of its own, and takes its
-// peer's place from the call's place in the route's order of calls (`resolveOrder`).
+// call to `resolve`; so does Resolve here (the route lends its section to it), so the peers are in the order of the calls.
 type rawWorkers struct {
 	t       testing.TB
 	options rawWorkerOptions
 	mu      sync.Mutex
-	// peers are the raw peers by the place of the call that made them: nil until that call has.
+	// peers are the raw peers in the order of the calls that made them.
 	peers []*RawPeer
 	// made is closed (and replaced) whenever Resolve makes a peer.
 	made chan struct{}
@@ -1584,7 +1583,7 @@ func (w *rawWorkers) At(t testing.TB, index int) *RawPeer {
 	t.Helper()
 	for {
 		w.mu.Lock()
-		if index < len(w.peers) && w.peers[index] != nil {
+		if index < len(w.peers) {
 			peer := w.peers[index]
 			w.mu.Unlock()
 			return peer
@@ -1607,30 +1606,19 @@ func newRawWorkers(t testing.TB, options rawWorkerOptions) *rawWorkers {
 	return &rawWorkers{t: t, options: options}
 }
 
-// Peers is a copy of the raw peers made so far, in the order of the calls, up to the first call that has not made its peer.
+// Peers is a copy of the raw peers made so far, in the order of the calls.
 func (w *rawWorkers) Peers() []*RawPeer {
 	w.mu.Lock()
 	defer w.mu.Unlock()
-	made := 0
-	for made < len(w.peers) && w.peers[made] != nil {
-		made++
-	}
-	return append([]*RawPeer(nil), w.peers[:made]...)
+	return append([]*RawPeer(nil), w.peers...)
 }
 
 // Resolve is the `resolve` of relayedOptions: it makes a raw peer for the address.
-func (w *rawWorkers) Resolve(address contracts.Address, _ func() resolved, ctx context.Context) (resolved, error) {
-	order, ok := resolveOrder(ctx)
-	if !ok {
-		return resolved{}, errors.New("rawWorkers.Resolve: the context carries no place in the route's order of calls")
-	}
+func (w *rawWorkers) Resolve(address contracts.Address, _ func() resolved, _ context.Context) (resolved, error) {
 	a, b := link.MemoryLinkPair()
 	peer := newRawPeer(w.t, b, rawPeerOptions{Calls: w.options.Calls, NoAck: w.options.NoAck})
 	w.mu.Lock()
-	for len(w.peers) <= order {
-		w.peers = append(w.peers, nil)
-	}
-	w.peers[order] = peer
+	w.peers = append(w.peers, peer)
 	if w.made != nil {
 		close(w.made)
 		w.made = nil
