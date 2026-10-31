@@ -259,6 +259,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-3f46dee](#bf-3f46dee) | `/llama` pointed at llama-swap no longer ends in a bare "llama.cpp returned HTTP 404" when you load or unload… | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-3fa6e63](#bf-3fa6e63) | MCP servers with resources registered no tools until every resource was listed, so a slow listing (a large… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-3fbdfd2](#bf-3fbdfd2) | A configured number in settings text prints as JavaScript's `String(number)`: `-0` is `0`, and a magnitude of… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-3fd2500](#bf-3fd2500) | `pi update` no longer stops with `git clean -fdx failed with code 1` when a Git package has files that cannot… | PiG's own defect | Windows | Unreleased |
 | [BF-4027b34](#bf-4027b34) | A finished code-mode execution no longer keeps its closed VM reachable through its stopped halt-grace timer… | PiG's own defect | Linux | 0.5.0 |
 | [BF-4058f34](#bf-4058f34) | The /fork message picker checks its keys in Pi's order (up, down, confirm, cancel) when bindings overlap | PiG's own defect | All platforms | 0.5.0 |
 | [BF-40b5a89](#bf-40b5a89) | Assistant messages in session files and RPC output list `responseId` before `responseModel`, Codex's… | PiG's own defect | All platforms | 0.5.0 |
@@ -4719,6 +4720,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `3fbdfd2140` (2026-10-10), `6a6fffa638` (2026-10-10), `bc4cd62404` (2026-10-10)
 - **Tests:** `agent/message_json_number_spelling_test.go::TestAgentMessageDecodeKeepsANonNumberWhereAnIntegerIsExpected`, `agent/message_json_test.go::TestAgentMessageJSONRejectsInvalidUnion`, `agent/message_type_mismatch_test.go::TestDecodedMessageKeepsMembersOfAnyType`, `agent/provider_content_block_decode_test.go::TestUnknownContentBlockCostsOnlyThatBlock`, `internal/codingagent/session_context_settings_test.go::TestGetSessionContextSettingsBoundaries`, `internal/codingagent/session_messagefor_cache_test.go::TestMessageForReportsAnUnparseableEntryWithoutParsingItAgain`, `internal/codingagent/settings_number_text_test.go::TestSettingsNumberTextIsString`, `internal/jsstring/toprecision_oracle_test.go::TestToPrecisionAgainstNodeCorpus` and 3 more in docs/bug-ledger.json
 - **Release note:** A configured number in settings text prints as JavaScript's `String(number)`: `-0` is `0`, and a magnitude of `1e21` or more, or below `1e-6`, gets an exponent (the fullscreen wheel scroll lines label and choices, and the invalid compaction token setting message).
+
+### BF-3fd2500
+
+**`pi update` no longer stops with `git clean -fdx failed with code 1` when a Git package has files that cannot…**
+
+- **Source:** PiG's own defect
+- **Symptom:** `pi update` no longer stops with `git clean -fdx failed with code 1` when a Git package has files that cannot be deleted, for example a native module another pi session still has open on Windows. pi now warns that files may be in use by another pi session, installs the dependencies anyway, and retries the clean on the next update.
+- **Root cause:** Carries Pi (earendil-works/pi#11648, fixes #11597). A failed `git clean -fdx` no longer aborts the update: CleanAndInstallGitDependencies emits Pi's progress warning ("Could not remove all untracked files in <dir> (<reason>). Files may be in use by another pi session; close it and run the update again."), still runs the dependency install, and keeps the .pi-update-incomplete marker so the next update retries the clean. The progress callback reaches the Git install through WithProgressReporter from install, update and temporary-source refresh.
+- **User impact:** An operation failed or was rejected
+- **Platform:** Windows
+- **Fixed in:** Unreleased
+- **Fix commits:** `3fd25004c9` (2026-10-31)
+- **Tests:** `coding/cli/git_update_upstream_test.go::TestGitUpdatesUpstream`, `coding/cli/package_git_dependencies_upstream_test.go::TestPackageGitDependenciesOriginal`
+- **Release note:** `pi update` no longer stops with `git clean -fdx failed with code 1` when a Git package has files that cannot be deleted, for example a native module another pi session still has open on Windows. pi now warns that files may be in use by another pi session, installs the dependencies anyway, and retries the clean on the next update. Carried forward from Pi e3da248e (earendil-works/pi#11648), past the 1.4.0+b3a29f11 pin.
 
 ### BF-4027b34
 

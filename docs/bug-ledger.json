@@ -7316,6 +7316,29 @@
       ]
     },
     {
+      "id": "BF-3fd2500",
+      "title": "`pi update` no longer stops with `git clean -fdx failed with code 1` when a Git package has files that cannot…",
+      "symptom": "`pi update` no longer stops with `git clean -fdx failed with code 1` when a Git package has files that cannot be deleted, for example a native module another pi session still has open on Windows. pi now warns that files may be in use by another pi session, installs the dependencies anyway, and retries the clean on the next update.",
+      "rootCause": "Carries Pi (earendil-works/pi#11648, fixes #11597). A failed `git clean -fdx` no longer aborts the update: CleanAndInstallGitDependencies emits Pi's progress warning (\"Could not remove all untracked files in \u003cdir\u003e (\u003creason\u003e). Files may be in use by another pi session; close it and run the update again.\"), still runs the dependency install, and keeps the .pi-update-incomplete marker so the next update retries the clean. The progress callback reaches the Git install through WithProgressReporter from install, update and temporary-source refresh.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "Windows",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`pi update` no longer stops with `git clean -fdx failed with code 1` when a Git package has files that cannot be deleted, for example a native module another pi session still has open on Windows. pi now warns that files may be in use by another pi session, installs the dependencies anyway, and retries the clean on the next update. Carried forward from Pi e3da248e (earendil-works/pi#11648), past the 1.4.0+b3a29f11 pin.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "3fd25004c9",
+          "date": "2026-10-31"
+        }
+      ],
+      "tests": [
+        "coding/cli/git_update_upstream_test.go::TestGitUpdatesUpstream",
+        "coding/cli/package_git_dependencies_upstream_test.go::TestPackageGitDependenciesOriginal"
+      ]
+    },
+    {
       "id": "BF-4027b34",
       "title": "A finished code-mode execution no longer keeps its closed VM reachable through its stopped halt-grace timer…",
       "symptom": "A finished code-mode execution no longer keeps its closed VM reachable through its stopped halt-grace timer, which stays in an idle scheduler's timer heap until that scheduler next runs.",

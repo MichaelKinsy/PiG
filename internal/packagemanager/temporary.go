@@ -133,7 +133,7 @@ func resolveTemporaryGitSource(sm *codingagent.SettingsManager, source string, p
 		if IsOfflineModeEnabled() {
 			return "", nil
 		}
-		if err := InstallGitCheckout(sm, ref, checkout, packageRoot, ""); err != nil {
+		if err := InstallGitCheckout(sm, ref, checkout, packageRoot, "", WithProgressReporter(progress)); err != nil {
 			return "", &InstallFailureError{Err: err}
 		}
 	case statErr != nil:
@@ -165,7 +165,7 @@ func refreshTemporaryGitSource(sm *codingagent.SettingsManager, ref sourceref.Re
 	}
 	// upstream: packages/coding-agent/src/core/package-manager.ts:refreshTemporaryGitSource
 	_ = WithProgress(progress, "pull", source, fmt.Sprintf("Refreshing %s...", source), func() error {
-		return InstallGitCheckout(sm, ref, checkout, packageRoot, "")
+		return InstallGitCheckout(sm, ref, checkout, packageRoot, "", WithProgressReporter(progress))
 	})
 }
 
