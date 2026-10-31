@@ -10,7 +10,9 @@ use std::time::Duration;
 
 /// Holds the environment lock with no host named: a listener subscribed before `run` connects to the host `PIG_EXT_SOCKET` names, so a test that subscribes without one must not run while another test sets it.
 fn without_host() -> std::sync::MutexGuard<'static, ()> {
-    let guard = crate::extension::registration_tests::env_lock().lock().unwrap_or_else(|poisoned| poisoned.into_inner());
+    let guard = crate::extension::registration_tests::env_lock()
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner());
     unsafe { std::env::remove_var("PIG_EXT_SOCKET") };
     unsafe { std::env::remove_var("GOPI_EXT_SOCKET") };
     guard
@@ -26,7 +28,8 @@ mod tempfile_dir {
     pub struct Dir(pub std::path::PathBuf);
     impl Dir {
         pub fn new(tag: &str) -> Self {
-            let path = std::env::temp_dir().join(format!("pig-sdk-rs-{tag}-{}", std::process::id()));
+            let path =
+                std::env::temp_dir().join(format!("pig-sdk-rs-{tag}-{}", std::process::id()));
             let _ = std::fs::remove_dir_all(&path);
             std::fs::create_dir_all(&path).unwrap();
             Self(path)
@@ -47,8 +50,14 @@ impl Host {
         let path = path.to_str().unwrap().to_string();
         let thread = thread::spawn(move || ext.run_with_socket(&path));
         let (stream, _) = listener.accept().unwrap();
-        stream.set_read_timeout(Some(Duration::from_secs(5))).unwrap();
-        Self { conn: Connection::new(stream), thread: Some(thread), _dir: dir }
+        stream
+            .set_read_timeout(Some(Duration::from_secs(5)))
+            .unwrap();
+        Self {
+            conn: Connection::new(stream),
+            thread: Some(thread),
+            _dir: dir,
+        }
     }
 
     fn next(&self) -> Envelope<Box<serde_json::value::RawValue>> {
@@ -73,7 +82,10 @@ impl Host {
                 .write_envelope(&Envelope {
                     msg_type: "call_result".into(),
                     id: env.id,
-                    call_result: Some(CallResultMsg { result, error: None }),
+                    call_result: Some(CallResultMsg {
+                        result,
+                        error: None,
+                    }),
                     ..Default::default()
                 })
                 .unwrap();
@@ -84,7 +96,14 @@ impl Host {
     fn ready(&self) {
         while self.next().msg_type != "register" {}
         self.conn
-            .write_envelope(&Envelope { msg_type: "ready".into(), ready: Some(serde_json::from_value(json!({"cwd": "/tmp", "mode": "print", "width": 80})).unwrap()), ..Default::default() })
+            .write_envelope(&Envelope {
+                msg_type: "ready".into(),
+                ready: Some(
+                    serde_json::from_value(json!({"cwd": "/tmp", "mode": "print", "width": 80}))
+                        .unwrap(),
+                ),
+                ..Default::default()
+            })
             .unwrap();
     }
 
@@ -93,7 +112,22 @@ impl Host {
             .write_envelope(&Envelope {
                 msg_type: "request".into(),
                 id: Some(id.into()),
-                request: Some(RequestMsg { refine: None, method: method.into(), tool: tool.map(str::to_string), event: None, handler_id: 0, tool_call_id: None, batch: None, args, child_session: None, terminal_input: None, stream: None, stream_error: None, tool_call_index: None, args_raw: None }),
+                request: Some(RequestMsg {
+                    refine: None,
+                    method: method.into(),
+                    tool: tool.map(str::to_string),
+                    event: None,
+                    handler_id: 0,
+                    tool_call_id: None,
+                    batch: None,
+                    args,
+                    child_session: None,
+                    terminal_input: None,
+                    stream: None,
+                    stream_error: None,
+                    tool_call_index: None,
+                    args_raw: None,
+                }),
                 ..Default::default()
             })
             .unwrap();
@@ -103,13 +137,22 @@ impl Host {
         loop {
             let env = self.next();
             if env.msg_type == "response" {
-                return (env.id.unwrap(), env.response.unwrap().error.map(|error| error.message));
+                return (
+                    env.id.unwrap(),
+                    env.response.unwrap().error.map(|error| error.message),
+                );
             }
         }
     }
 
     fn stop(mut self) {
-        self.conn.write_envelope(&Envelope { msg_type: "shutdown".into(), shutdown: Some(serde_json::from_value(json!({"reason": "test"})).unwrap()), ..Default::default() }).unwrap();
+        self.conn
+            .write_envelope(&Envelope {
+                msg_type: "shutdown".into(),
+                shutdown: Some(serde_json::from_value(json!({"reason": "test"})).unwrap()),
+                ..Default::default()
+            })
+            .unwrap();
         self.thread.take().unwrap().join().unwrap().unwrap();
     }
 }
@@ -137,14 +180,28 @@ fn dispatch_runs_handler_then_answers() {
     let seen = Arc::new(Mutex::new(Vec::new()));
     let ext = Extension::new("bus");
     let sink = seen.clone();
-    ext.events().on("ch", move |_, data| { sink.lock().unwrap().push(data.clone()); Ok(()) }).unwrap();
+    ext.events()
+        .on("ch", move |_, data| {
+            sink.lock().unwrap().push(data.clone());
+            Ok(())
+        })
+        .unwrap();
     let host = Host::start("dispatch", ext);
     let (on, _) = host.call("events.on", None);
     host.ready();
-    host.request("d1", "events.dispatch", None, Some(json!({"handlerId": on["handlerId"], "channel": "ch", "json": {"a": [1, 2]}})));
+    host.request(
+        "d1",
+        "events.dispatch",
+        None,
+        Some(json!({"handlerId": on["handlerId"], "channel": "ch", "json": {"a": [1, 2]}})),
+    );
     let (id, error) = host.response();
     assert_eq!((id.as_str(), error), ("d1", None));
-    assert_eq!(*seen.lock().unwrap(), vec![json!({"a": [1, 2]})], "the response arrived before the handler ran");
+    assert_eq!(
+        *seen.lock().unwrap(),
+        vec![json!({"a": [1, 2]})],
+        "the response arrived before the handler ran"
+    );
     host.stop();
 }
 
@@ -153,18 +210,37 @@ fn dispatch_runs_handler_then_answers() {
 fn handler_error_and_panic_fail_only_their_dispatch() {
     let _no_host = without_host();
     let ext = Extension::new("bus");
-    ext.events().on("fail", |_, _| Err("listener-failed".to_string())).unwrap();
-    ext.events().on("panic", |_, _| panic!("listener-panicked")).unwrap();
+    ext.events()
+        .on("fail", |_, _| Err("listener-failed".to_string()))
+        .unwrap();
+    ext.events()
+        .on("panic", |_, _| panic!("listener-panicked"))
+        .unwrap();
     ext.events().on("ok", |_, _| Ok(())).unwrap();
     let host = Host::start("failure", ext);
     let mut ids = std::collections::HashMap::new();
     for _ in 0..3 {
         let (on, _) = host.call("events.on", None);
-        ids.insert(on["channel"].as_str().unwrap().to_string(), on["handlerId"].clone());
+        ids.insert(
+            on["channel"].as_str().unwrap().to_string(),
+            on["handlerId"].clone(),
+        );
     }
     host.ready();
-    for (i, (channel, want)) in [("fail", "listener-failed"), ("panic", "listener-panicked"), ("ok", "")].into_iter().enumerate() {
-        host.request(&format!("d{i}"), "events.dispatch", None, Some(json!({"handlerId": ids[channel], "channel": channel, "json": null})));
+    for (i, (channel, want)) in [
+        ("fail", "listener-failed"),
+        ("panic", "listener-panicked"),
+        ("ok", ""),
+    ]
+    .into_iter()
+    .enumerate()
+    {
+        host.request(
+            &format!("d{i}"),
+            "events.dispatch",
+            None,
+            Some(json!({"handlerId": ids[channel], "channel": channel, "json": null})),
+        );
         let (_, error) = host.response();
         let message = error.unwrap_or_default();
         assert_eq!(want.is_empty(), message.is_empty(), "{channel}: {message}");
@@ -181,7 +257,12 @@ fn emit_carries_payload_and_parent() {
     let outcomes = Mutex::new(outcomes);
     ext.command("go", "", move |ctx, _| {
         ctx.events().emit("ch", json!({"a": 1})).unwrap();
-        let error = ctx.events().emit("error", json!("boom")).err().map(|error| error.to_string()).unwrap_or_default();
+        let error = ctx
+            .events()
+            .emit("error", json!("boom"))
+            .err()
+            .map(|error| error.to_string())
+            .unwrap_or_default();
         outcomes.lock().unwrap().send(error).unwrap();
         CommandResult::Ok
     });
@@ -189,11 +270,19 @@ fn emit_carries_payload_and_parent() {
     host.ready();
     host.request("cmd1", "command", Some("go"), None);
     let (args, parent) = host.call("events.emit", None);
-    assert_eq!(args, json!({"channel": "ch", "value": true, "json": {"a": 1}}));
+    assert_eq!(
+        args,
+        json!({"channel": "ch", "value": true, "json": {"a": 1}})
+    );
     assert_eq!(parent.as_deref(), Some("cmd1"));
     host.call("events.emit", Some(json!({"unhandledError": true})));
     assert_eq!(host.response().0, "cmd1");
-    assert!(results.recv_timeout(Duration::from_secs(5)).unwrap().contains("unhandled error"));
+    assert!(
+        results
+            .recv_timeout(Duration::from_secs(5))
+            .unwrap()
+            .contains("unhandled error")
+    );
     host.stop();
 }
 
@@ -217,10 +306,11 @@ fn unsubscribe_sends_one_off() {
     assert_eq!(parent.as_deref(), Some("cmd1"));
     let (off, _) = host.call("events.off", None);
     assert_eq!(off["handlerId"], on["handlerId"]);
-    finished.recv_timeout(Duration::from_secs(5)).expect("the second unsubscribe waited for a host call it should not send");
+    finished
+        .recv_timeout(Duration::from_secs(5))
+        .expect("the second unsubscribe waited for a host call it should not send");
     host.stop();
 }
-
 
 // A listener the Host dispatches to while the extension is still loading (after register, before ready) is answered once the extension is ready, in dispatch order; the emitter waits either way.
 #[test]
@@ -229,13 +319,30 @@ fn dispatch_during_load_is_served_after_ready() {
     let seen = Arc::new(Mutex::new(Vec::new()));
     let ext = Extension::new("bus");
     let sink = seen.clone();
-    ext.events().on("ch", move |_, data| { sink.lock().unwrap().push(data.clone()); Ok(()) }).unwrap();
+    ext.events()
+        .on("ch", move |_, data| {
+            sink.lock().unwrap().push(data.clone());
+            Ok(())
+        })
+        .unwrap();
     let host = Host::start("early", ext);
     let (on, _) = host.call("events.on", None);
     while host.next().msg_type != "register" {}
-    host.request("d1", "events.dispatch", None, Some(json!({"handlerId": on["handlerId"], "channel": "ch", "json": "early"})));
+    host.request(
+        "d1",
+        "events.dispatch",
+        None,
+        Some(json!({"handlerId": on["handlerId"], "channel": "ch", "json": "early"})),
+    );
     host.conn
-        .write_envelope(&Envelope { msg_type: "ready".into(), ready: Some(serde_json::from_value(json!({"cwd": "/tmp", "mode": "print", "width": 80})).unwrap()), ..Default::default() })
+        .write_envelope(&Envelope {
+            msg_type: "ready".into(),
+            ready: Some(
+                serde_json::from_value(json!({"cwd": "/tmp", "mode": "print", "width": 80}))
+                    .unwrap(),
+            ),
+            ..Default::default()
+        })
         .unwrap();
     let (id, error) = host.response();
     assert_eq!((id.as_str(), error), ("d1", None));
@@ -250,17 +357,43 @@ fn release_during_load_does_not_fail_the_load() {
     let seen = Arc::new(Mutex::new(Vec::new()));
     let ext = Extension::new("bus");
     let sink = seen.clone();
-    ext.events().on("ch", move |_, data| { sink.lock().unwrap().push(data.clone()); Ok(()) }).unwrap();
+    ext.events()
+        .on("ch", move |_, data| {
+            sink.lock().unwrap().push(data.clone());
+            Ok(())
+        })
+        .unwrap();
     let host = Host::start("release-early", ext);
     let (on, _) = host.call("events.on", None);
     while host.next().msg_type != "register" {}
     host.conn
-        .write_envelope(&Envelope { msg_type: "notify".into(), notify: Some(serde_json::from_value(json!({"method": "events.release", "args": {"handlerId": on["handlerId"]}})).unwrap()), ..Default::default() })
+        .write_envelope(&Envelope {
+            msg_type: "notify".into(),
+            notify: Some(
+                serde_json::from_value(
+                    json!({"method": "events.release", "args": {"handlerId": on["handlerId"]}}),
+                )
+                .unwrap(),
+            ),
+            ..Default::default()
+        })
         .unwrap();
     host.conn
-        .write_envelope(&Envelope { msg_type: "ready".into(), ready: Some(serde_json::from_value(json!({"cwd": "/tmp", "mode": "print", "width": 80})).unwrap()), ..Default::default() })
+        .write_envelope(&Envelope {
+            msg_type: "ready".into(),
+            ready: Some(
+                serde_json::from_value(json!({"cwd": "/tmp", "mode": "print", "width": 80}))
+                    .unwrap(),
+            ),
+            ..Default::default()
+        })
         .unwrap();
-    host.request("d1", "events.dispatch", None, Some(json!({"handlerId": on["handlerId"], "channel": "ch", "json": "after"})));
+    host.request(
+        "d1",
+        "events.dispatch",
+        None,
+        Some(json!({"handlerId": on["handlerId"], "channel": "ch", "json": "after"})),
+    );
     let (id, error) = host.response();
     assert_eq!((id.as_str(), error), ("d1", None));
     assert_eq!(*seen.lock().unwrap(), vec![json!("after")]);
@@ -303,7 +436,17 @@ mod factory_emit {
         }
 
         fn reply(&self, call: &Envelope<Box<serde_json::value::RawValue>>, result: Option<Value>) {
-            self.conn.write_envelope(&Envelope { msg_type: "call_result".into(), id: call.id.clone(), call_result: Some(CallResultMsg { result, error: None }), ..Default::default() }).unwrap();
+            self.conn
+                .write_envelope(&Envelope {
+                    msg_type: "call_result".into(),
+                    id: call.id.clone(),
+                    call_result: Some(CallResultMsg {
+                        result,
+                        error: None,
+                    }),
+                    ..Default::default()
+                })
+                .unwrap();
         }
 
         /// Answers the next call with `result`.
@@ -314,7 +457,13 @@ mod factory_emit {
         }
 
         /// Sends the host's events.dispatch request and returns the error message the extension answers with, serving any call the listener makes meanwhile.
-        fn dispatch(&mut self, id: &str, handler_id: &str, channel: &str, payload: Value) -> Option<String> {
+        fn dispatch(
+            &mut self,
+            id: &str,
+            handler_id: &str,
+            channel: &str,
+            payload: Value,
+        ) -> Option<String> {
             self.conn
                 .write_envelope(&Envelope {
                     msg_type: "request".into(),
@@ -328,10 +477,15 @@ mod factory_emit {
                 match env.msg_type.as_str() {
                     "call" => {
                         let call = env.call.as_ref().unwrap();
-                        self.calls.push((call.method.clone(), call.args.clone().unwrap_or(Value::Null)));
+                        self.calls.push((
+                            call.method.clone(),
+                            call.args.clone().unwrap_or(Value::Null),
+                        ));
                         self.reply(&env, None);
                     }
-                    "response" if env.id.as_deref() == Some(id) => return env.response.unwrap().error.map(|error| error.message),
+                    "response" if env.id.as_deref() == Some(id) => {
+                        return env.response.unwrap().error.map(|error| error.message);
+                    }
                     _ => {}
                 }
             }
@@ -340,22 +494,37 @@ mod factory_emit {
 
     impl FactoryHost {
         fn new(tag: &str) -> Self {
-            let guard = crate::extension::registration_tests::env_lock().lock().unwrap_or_else(|poisoned| poisoned.into_inner());
+            let guard = crate::extension::registration_tests::env_lock()
+                .lock()
+                .unwrap_or_else(|poisoned| poisoned.into_inner());
             let dir = tempfile_dir::Dir::new(tag);
             let path = dir.0.join("ext.sock");
             let listener = UnixListener::bind(&path).unwrap();
             let path = path.to_str().unwrap().to_string();
             unsafe { std::env::set_var("PIG_EXT_SOCKET", &path) };
-            Self { _guard: guard, _dir: dir, path, listener }
+            Self {
+                _guard: guard,
+                _dir: dir,
+                path,
+                listener,
+            }
         }
 
         /// Accepts the connection the factory dials and runs `script` on it on a thread; the thread returns what the script saw and the peer.
-        fn serve<F: FnOnce(&mut Peer) + Send + 'static>(&self, script: F) -> thread::JoinHandle<Peer> {
+        fn serve<F: FnOnce(&mut Peer) + Send + 'static>(
+            &self,
+            script: F,
+        ) -> thread::JoinHandle<Peer> {
             let listener = self.listener.try_clone().unwrap();
             thread::spawn(move || {
                 let (stream, _) = listener.accept().unwrap();
-                stream.set_read_timeout(Some(Duration::from_secs(5))).unwrap();
-                let mut peer = Peer { conn: Connection::new(stream), calls: Vec::new() };
+                stream
+                    .set_read_timeout(Some(Duration::from_secs(5)))
+                    .unwrap();
+                let mut peer = Peer {
+                    conn: Connection::new(stream),
+                    calls: Vec::new(),
+                };
                 script(&mut peer);
                 peer
             })
@@ -380,8 +549,14 @@ mod factory_emit {
         let peer = served.join().unwrap();
         let (method, args) = &peer.calls[0];
         assert_eq!(method, "events.on");
-        assert_eq!((args["channel"].as_str(), args["value"].as_bool()), (Some("ch"), Some(true)));
-        assert!(args["handlerId"].as_str().is_some_and(|id| !id.is_empty()), "{args}");
+        assert_eq!(
+            (args["channel"].as_str(), args["value"].as_bool()),
+            (Some("ch"), Some(true))
+        );
+        assert!(
+            args["handlerId"].as_str().is_some_and(|id| !id.is_empty()),
+            "{args}"
+        );
     }
 
     /// The reply to a factory's own emit: the host dispatches the second emit's listener, the factory's, on the factory's connection while the first emit's call is in flight, and the thread that is blocked in emit serves it.
@@ -398,10 +573,21 @@ mod factory_emit {
             assert_eq!(peer.dispatch("d1", &handler_id, "ack", json!("pong")), None);
             peer.reply(&cross, None);
         });
-        ext.events().on("ack", move |_, data| { sink.lock().unwrap().push(data.clone()); Ok(()) }).unwrap();
+        ext.events()
+            .on("ack", move |_, data| {
+                sink.lock().unwrap().push(data.clone());
+                Ok(())
+            })
+            .unwrap();
         ext.events().emit("cross", json!("ping")).unwrap();
         let peer = served.join().unwrap();
-        assert_eq!(peer.calls.iter().map(|(method, _)| method.as_str()).collect::<Vec<_>>(), vec!["events.on", "events.emit"]);
+        assert_eq!(
+            peer.calls
+                .iter()
+                .map(|(method, _)| method.as_str())
+                .collect::<Vec<_>>(),
+            vec!["events.on", "events.emit"]
+        );
         assert_eq!(*heard.lock().unwrap(), vec![json!("pong")]);
     }
 
@@ -413,9 +599,20 @@ mod factory_emit {
         let failures = Arc::new(Mutex::new(Vec::new()));
         let sink = failures.clone();
         let served = host.serve(move |peer| {
-            let ids: Vec<String> = (0..3).map(|_| peer.answer(None).1["handlerId"].as_str().unwrap().to_string()).collect();
+            let ids: Vec<String> = (0..3)
+                .map(|_| {
+                    peer.answer(None).1["handlerId"]
+                        .as_str()
+                        .unwrap()
+                        .to_string()
+                })
+                .collect();
             let emit = peer.next_call();
-            let outcomes = vec![peer.dispatch("d1", &ids[0], "fail", Value::Null), peer.dispatch("d2", &ids[1], "panic", Value::Null), peer.dispatch("d3", &ids[2], "ok", Value::Null)];
+            let outcomes = vec![
+                peer.dispatch("d1", &ids[0], "fail", Value::Null),
+                peer.dispatch("d2", &ids[1], "panic", Value::Null),
+                peer.dispatch("d3", &ids[2], "ok", Value::Null),
+            ];
             *sink.lock().unwrap() = outcomes;
             peer.reply(&emit, None);
         });
@@ -425,7 +622,10 @@ mod factory_emit {
         bus.on("ok", |_, _| Ok(())).unwrap();
         bus.emit("x", Value::Null).unwrap();
         served.join().unwrap();
-        assert_eq!(*failures.lock().unwrap(), vec![Some("boom".to_string()), Some("kaboom".to_string()), None]);
+        assert_eq!(
+            *failures.lock().unwrap(),
+            vec![Some("boom".to_string()), Some("kaboom".to_string()), None]
+        );
     }
 
     /// An unsubscribe before run reaches the host over the factory's connection.
@@ -439,7 +639,13 @@ mod factory_emit {
         });
         ext.events().on("ch", |_, _| Ok(())).unwrap().unsubscribe();
         let peer = served.join().unwrap();
-        assert_eq!(peer.calls.iter().map(|(method, _)| method.as_str()).collect::<Vec<_>>(), vec!["events.on", "events.off"]);
+        assert_eq!(
+            peer.calls
+                .iter()
+                .map(|(method, _)| method.as_str())
+                .collect::<Vec<_>>(),
+            vec!["events.on", "events.off"]
+        );
         assert_eq!(peer.calls[0].1["handlerId"], peer.calls[1].1["handlerId"]);
     }
 
@@ -458,7 +664,9 @@ mod factory_emit {
 
     #[test]
     fn without_a_host_a_factory_emit_fails_and_a_listener_waits_for_run() {
-        let _guard = crate::extension::registration_tests::env_lock().lock().unwrap_or_else(|poisoned| poisoned.into_inner());
+        let _guard = crate::extension::registration_tests::env_lock()
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
         unsafe { std::env::remove_var("PIG_EXT_SOCKET") };
         unsafe { std::env::remove_var("GOPI_EXT_SOCKET") };
         let ext = Extension::new("bus");
@@ -483,15 +691,31 @@ mod factory_emit {
         });
         ext.events()
             .on("outer", move |ctx, _| {
-                ctx.events().emit("inner", Value::Null).map_err(|err| err.to_string())?;
+                ctx.events()
+                    .emit("inner", Value::Null)
+                    .map_err(|err| err.to_string())?;
                 *slot.lock().unwrap() = ctx.get_tools_expanded().err().map(|err| err.to_string());
                 Ok(())
             })
             .unwrap();
         ext.events().emit("x", Value::Null).unwrap();
         let peer = served.join().unwrap();
-        assert_eq!(peer.calls.iter().map(|(_, args)| args["channel"].clone()).collect::<Vec<_>>()[1..], [json!("x"), json!("inner")]);
-        assert!(failure.lock().unwrap().as_deref().is_some_and(|message| message.contains("not registered")), "{:?}", failure.lock().unwrap());
+        assert_eq!(
+            peer.calls
+                .iter()
+                .map(|(_, args)| args["channel"].clone())
+                .collect::<Vec<_>>()[1..],
+            [json!("x"), json!("inner")]
+        );
+        assert!(
+            failure
+                .lock()
+                .unwrap()
+                .as_deref()
+                .is_some_and(|message| message.contains("not registered")),
+            "{:?}",
+            failure.lock().unwrap()
+        );
     }
 
     /// run takes the connection the factory's first call dialled, and the listener the factory registered is not registered a second time: the first frame run sends is the register frame.
@@ -512,6 +736,9 @@ mod factory_emit {
         served.join().unwrap();
         // One connection served the subscription and the run.
         host.listener.set_nonblocking(true).unwrap();
-        assert!(host.listener.accept().is_err(), "run dialled a second connection");
+        assert!(
+            host.listener.accept().is_err(),
+            "run dialled a second connection"
+        );
     }
 }

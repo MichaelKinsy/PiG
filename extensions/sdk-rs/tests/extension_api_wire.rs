@@ -5,8 +5,8 @@
 
 use pig_sdk::{
     AgentToolResult, ExecuteToolOptions, Extension, ModelRoute, ProviderSignal, ToolAnnotations,
-    ToolDefinition, ToolExposure, ToolLoadoutChanges, ToolNamespace, ToolReach, ToolResult, VirtualModel,
-    empty_schema,
+    ToolDefinition, ToolExposure, ToolLoadoutChanges, ToolNamespace, ToolReach, ToolResult,
+    VirtualModel, empty_schema,
 };
 use serde_json::{Value, json};
 use std::io::{Read, Write};
@@ -52,11 +52,21 @@ impl Host {
         let listener = UnixListener::bind(&socket).unwrap();
         let thread = std::thread::spawn(move || ext.run_with_socket(socket.to_str().unwrap()));
         let (mut stream, _) = listener.accept().unwrap();
-        stream.set_read_timeout(Some(Duration::from_secs(10))).unwrap();
+        stream
+            .set_read_timeout(Some(Duration::from_secs(10)))
+            .unwrap();
         let register = read(&mut stream);
         assert_eq!(register["type"], "register");
-        send(&mut stream, &json!({"type":"ready","ready":{"state":state,"width":80,"mode":"tui"}}));
-        Host { stream, thread: Some(thread), root, register }
+        send(
+            &mut stream,
+            &json!({"type":"ready","ready":{"state":state,"width":80,"mode":"tui"}}),
+        );
+        Host {
+            stream,
+            thread: Some(thread),
+            root,
+            register,
+        }
     }
 
     /// The next frame that is not a request_state.
@@ -77,7 +87,10 @@ impl Host {
     }
 
     fn reply(&mut self, call: &Value, result: Value) {
-        send(&mut self.stream, &json!({"type":"call_result","id":call["id"],"call_result":{"result":result}}));
+        send(
+            &mut self.stream,
+            &json!({"type":"call_result","id":call["id"],"call_result":{"result":result}}),
+        );
     }
 
     fn reply_error(&mut self, call: &Value, message: &str) {
@@ -88,15 +101,24 @@ impl Host {
     }
 
     fn request(&mut self, id: &str, request: Value) {
-        send(&mut self.stream, &json!({"type":"request","id":id,"request":request}));
+        send(
+            &mut self.stream,
+            &json!({"type":"request","id":id,"request":request}),
+        );
     }
 
     fn tool_call(&mut self, id: &str, tool: &str, tool_call_id: &str, args: Value) {
-        self.request(id, json!({"method":"tool_call","tool":tool,"tool_call_id":tool_call_id,"args":args}));
+        self.request(
+            id,
+            json!({"method":"tool_call","tool":tool,"tool_call_id":tool_call_id,"args":args}),
+        );
     }
 
     fn notify(&mut self, method: &str, args: Value) {
-        send(&mut self.stream, &json!({"type":"notify","notify":{"method":method,"args":args}}));
+        send(
+            &mut self.stream,
+            &json!({"type":"notify","notify":{"method":method,"args":args}}),
+        );
     }
 
     fn response(&mut self, id: &str) -> Value {
@@ -107,7 +129,10 @@ impl Host {
     }
 
     fn finish(mut self) {
-        send(&mut self.stream, &json!({"type":"shutdown","shutdown":{"reason":"done"}}));
+        send(
+            &mut self.stream,
+            &json!({"type":"shutdown","shutdown":{"reason":"done"}}),
+        );
         self.thread.take().unwrap().join().unwrap().unwrap();
     }
 }
@@ -132,20 +157,42 @@ fn tool(name: &str) -> Value {
 #[test]
 fn register_frame_carries_the_tool_definition_fields_and_load_time_registrations() {
     let mut ext = Extension::new("api");
-    let mut lookup = ToolDefinition::new("lookup", "Lookup", "Look a thing up", empty_schema(), |_, _| {
-        ToolResult::text("ok")
-    });
+    let mut lookup = ToolDefinition::new(
+        "lookup",
+        "Lookup",
+        "Look a thing up",
+        empty_schema(),
+        |_, _| ToolResult::text("ok"),
+    );
     lookup.output_schema = Some(json!({"type":"object","properties":{"hits":{"type":"number"}}}));
     lookup.exposure = Some(ToolExposure::Codemode);
-    lookup.namespace = Some(ToolNamespace { name: "mcp__docs".into(), aliases: vec!["docs".into()], description: Some("Documentation tools".into()), instructions: Some("Search before reading.".into()) });
-    lookup.annotations = Some(ToolAnnotations { read_only_hint: Some(true), open_world_hint: Some(false), ..Default::default() });
+    lookup.namespace = Some(ToolNamespace {
+        name: "mcp__docs".into(),
+        aliases: vec!["docs".into()],
+        description: Some("Documentation tools".into()),
+        instructions: Some("Search before reading.".into()),
+    });
+    lookup.annotations = Some(ToolAnnotations {
+        read_only_hint: Some(true),
+        open_world_hint: Some(false),
+        ..Default::default()
+    });
     lookup.default_active = Some(false);
     lookup.prepare_loadout = Some(Box::new(|_| None));
     ext.register_tool(lookup);
-    ext.register_tool(ToolDefinition::new("plain", "Plain", "Plain", empty_schema(), |_, _| ToolResult::text("ok")));
+    ext.register_tool(ToolDefinition::new(
+        "plain",
+        "Plain",
+        "Plain",
+        empty_schema(),
+        |_, _| ToolResult::text("ok"),
+    ));
     ext.register_mcp_server("docs", json!({"url":"https://mcp.example.com/docs"}));
     ext.register_mcp_server("local", json!({"command":"mcp-local","args":["--stdio"]}));
-    ext.register_mcp_server("docs", json!({"url":"https://mcp.example.com/docs-v2","exposure":"direct"}));
+    ext.register_mcp_server(
+        "docs",
+        json!({"url":"https://mcp.example.com/docs-v2","exposure":"direct"}),
+    );
     ext.register_virtual_model({
         let mut model = VirtualModel::new("router", "auto", "Auto", |_, _| Err("unused".into()));
         model.thinking_levels = Some(vec!["off".into(), "high".into()]);
@@ -158,15 +205,34 @@ fn register_frame_carries_the_tool_definition_fields_and_load_time_registrations
     let register = &host.register["register"];
     let tools = register["tools"].as_array().unwrap();
     let lookup = tools.iter().find(|t| t["name"] == "lookup").unwrap();
-    assert_eq!(lookup["output_schema"], json!({"type":"object","properties":{"hits":{"type":"number"}}}));
+    assert_eq!(
+        lookup["output_schema"],
+        json!({"type":"object","properties":{"hits":{"type":"number"}}})
+    );
     assert_eq!(lookup["exposure"], "codemode");
-    assert_eq!(lookup["namespace"], json!({"name":"mcp__docs","aliases":["docs"],"description":"Documentation tools","instructions":"Search before reading."}));
-    assert_eq!(lookup["annotations"], json!({"readOnlyHint":true,"openWorldHint":false}));
+    assert_eq!(
+        lookup["namespace"],
+        json!({"name":"mcp__docs","aliases":["docs"],"description":"Documentation tools","instructions":"Search before reading."})
+    );
+    assert_eq!(
+        lookup["annotations"],
+        json!({"readOnlyHint":true,"openWorldHint":false})
+    );
     assert_eq!(lookup["default_active"], false);
     assert_eq!(lookup["prepares_loadout"], true);
     let plain = tools.iter().find(|t| t["name"] == "plain").unwrap();
-    for absent in ["output_schema", "exposure", "namespace", "annotations", "default_active", "prepares_loadout"] {
-        assert!(plain.get(absent).is_none(), "{absent} must be omitted: {plain}");
+    for absent in [
+        "output_schema",
+        "exposure",
+        "namespace",
+        "annotations",
+        "default_active",
+        "prepares_loadout",
+    ] {
+        assert!(
+            plain.get(absent).is_none(),
+            "{absent} must be omitted: {plain}"
+        );
     }
     assert_eq!(
         register["mcp_servers"],
@@ -208,8 +274,14 @@ fn getters_answer_from_the_replicated_state() {
     host.reply(&call, json!({"tools": [tool("read")]}));
     let response = host.response("r1");
     let details = &response["result"]["details"];
-    assert_eq!(details["settings"], json!({"defaultTools":["+read"],"fullscreenWheelScrollLines":7}));
-    assert_eq!(details["servers"], json!([{"name":"docs","config":{"url":"https://mcp.example.com"},"extensionPath":"/ext/a"}]));
+    assert_eq!(
+        details["settings"],
+        json!({"defaultTools":["+read"],"fullscreenWheelScrollLines":7})
+    );
+    assert_eq!(
+        details["servers"],
+        json!([{"name":"docs","config":{"url":"https://mcp.example.com"},"extensionPath":"/ext/a"}])
+    );
     assert_eq!(details["tools"], json!([tool("read")]));
 
     host.notify(
@@ -227,7 +299,10 @@ fn getters_answer_from_the_replicated_state() {
     assert_eq!(details["settings"], json!({"defaultTools":["-bash"]}));
     assert_eq!(details["servers"], json!([]));
     assert_eq!(details["tools"][0]["name"], "grep");
-    assert_eq!(details["tools"][0]["outputSchema"], json!({"type":"object"}));
+    assert_eq!(
+        details["tools"][0]["outputSchema"],
+        json!({"type":"object"})
+    );
     host.finish();
 }
 
@@ -236,9 +311,11 @@ fn getters_answer_from_the_replicated_state() {
 #[test]
 fn get_settings_without_host_settings_and_tools_outside_a_tool_fail() {
     let mut ext = Extension::new("api");
-    ext.tool("probe", "Probe", empty_schema(), |ctx, _| match ctx.get_settings() {
-        Ok(settings) => ToolResult::json(json!({"content": "probe", "details": settings})),
-        Err(err) => ToolResult::Error(err.to_string()),
+    ext.tool("probe", "Probe", empty_schema(), |ctx, _| {
+        match ctx.get_settings() {
+            Ok(settings) => ToolResult::json(json!({"content": "probe", "details": settings})),
+            Err(err) => ToolResult::Error(err.to_string()),
+        }
     });
     ext.command("list", "List", |ctx, _| match ctx.tools() {
         Ok(tools) => pig_sdk::CommandResult::Error(format!("tools outside a tool call: {tools:?}")),
@@ -247,13 +324,25 @@ fn get_settings_without_host_settings_and_tools_outside_a_tool_fail() {
     let mut host = Host::start(ext, json!({"callableTools": [tool("read")]}));
     host.tool_call("r1", "probe", "call-1", json!({}));
     let response = host.response("r1");
-    assert_eq!(response["error"]["message"], "the host sent no settings", "{response}");
+    assert_eq!(
+        response["error"]["message"], "the host sent no settings",
+        "{response}"
+    );
     host.request("c1", json!({"method":"command","tool":"list","args":""}));
     let response = host.response("c1");
-    assert_eq!(response["error"]["message"], "tools is only available while a tool runs", "{response}");
-    host.notify("state_update", json!({"state":{"settings": {"theme": "dark"}}}));
+    assert_eq!(
+        response["error"]["message"], "tools is only available while a tool runs",
+        "{response}"
+    );
+    host.notify(
+        "state_update",
+        json!({"state":{"settings": {"theme": "dark"}}}),
+    );
     host.tool_call("r2", "probe", "call-2", json!({}));
-    assert_eq!(host.response("r2")["result"]["details"], json!({"theme": "dark"}));
+    assert_eq!(
+        host.response("r2")["result"]["details"],
+        json!({"theme": "dark"})
+    );
     host.finish();
 }
 
@@ -263,14 +352,22 @@ fn get_settings_without_host_settings_and_tools_outside_a_tool_fail() {
 #[test]
 fn loop_turned_notify_changes_nothing() {
     let mut ext = Extension::new("api");
-    ext.tool("probe", "Probe", empty_schema(), |ctx, _| match ctx.get_settings() {
-        Ok(settings) => ToolResult::json(json!({"content": "probe", "details": settings})),
-        Err(err) => ToolResult::Error(err.to_string()),
+    ext.tool("probe", "Probe", empty_schema(), |ctx, _| {
+        match ctx.get_settings() {
+            Ok(settings) => ToolResult::json(json!({"content": "probe", "details": settings})),
+            Err(err) => ToolResult::Error(err.to_string()),
+        }
     });
     let mut host = Host::start(ext, json!({"settings": {"theme": "dark"}}));
-    send(&mut host.stream, &json!({"type":"notify","notify":{"method":"loop_turned"}}));
+    send(
+        &mut host.stream,
+        &json!({"type":"notify","notify":{"method":"loop_turned"}}),
+    );
     host.tool_call("r1", "probe", "call-1", json!({}));
-    assert_eq!(host.response("r1")["result"]["details"], json!({"theme": "dark"}));
+    assert_eq!(
+        host.response("r1")["result"]["details"],
+        json!({"theme": "dark"})
+    );
     host.finish();
 }
 
@@ -280,23 +377,39 @@ fn loop_turned_notify_changes_nothing() {
 #[test]
 fn post_load_mcp_registration_is_a_host_call_and_refreshes_the_replica() {
     let mut ext = Extension::new("api");
-    ext.tool("register", "Register", empty_schema(), |ctx, args| {
-        match ctx.register_mcp_server(args["name"].as_str().unwrap(), args["config"].clone()) {
+    ext.tool(
+        "register",
+        "Register",
+        empty_schema(),
+        |ctx, args| match ctx
+            .register_mcp_server(args["name"].as_str().unwrap(), args["config"].clone())
+        {
             Ok(()) => ToolResult::json(json!({"content":"ok","details":ctx.get_mcp_servers()})),
             Err(err) => ToolResult::Error(err.to_string()),
-        }
-    });
-    ext.tool("unregister", "Unregister", empty_schema(), |ctx, args| {
-        match ctx.unregister_mcp_server(args["name"].as_str().unwrap()) {
+        },
+    );
+    ext.tool(
+        "unregister",
+        "Unregister",
+        empty_schema(),
+        |ctx, args| match ctx.unregister_mcp_server(args["name"].as_str().unwrap()) {
             Ok(()) => ToolResult::json(json!({"content":"ok","details":ctx.get_mcp_servers()})),
             Err(err) => ToolResult::Error(err.to_string()),
-        }
-    });
+        },
+    );
     let mut host = Host::start(ext, json!({"mcpServers": []}));
 
-    host.tool_call("r1", "register", "c1", json!({"name":"jira","config":{"url":"https://mcp.example.com/jira"}}));
+    host.tool_call(
+        "r1",
+        "register",
+        "c1",
+        json!({"name":"jira","config":{"url":"https://mcp.example.com/jira"}}),
+    );
     let call = host.expect_call("registerMcpServer");
-    assert_eq!(call["call"]["args"], json!({"name":"jira","config":{"url":"https://mcp.example.com/jira"}}));
+    assert_eq!(
+        call["call"]["args"],
+        json!({"name":"jira","config":{"url":"https://mcp.example.com/jira"}})
+    );
     let servers = json!({"servers":[
         {"name":"other","config":{"command":"x"},"extensionPath":"/ext/b"},
         {"name":"jira","config":{"url":"https://mcp.example.com/jira"},"extensionPath":"/ext/a"},
@@ -307,18 +420,29 @@ fn post_load_mcp_registration_is_a_host_call_and_refreshes_the_replica() {
     host.tool_call("r2", "unregister", "c2", json!({"name":"jira"}));
     let call = host.expect_call("unregisterMcpServer");
     assert_eq!(call["call"]["args"], json!({"name":"jira"}));
-    host.reply(&call, json!({"servers":[{"name":"other","config":{"command":"x"},"extensionPath":"/ext/b"}]}));
+    host.reply(
+        &call,
+        json!({"servers":[{"name":"other","config":{"command":"x"},"extensionPath":"/ext/b"}]}),
+    );
     assert_eq!(
         host.response("r2")["result"]["details"],
         json!([{"name":"other","config":{"command":"x"},"extensionPath":"/ext/b"}])
     );
 
-    host.tool_call("r3", "register", "c3", json!({"name":"bad name","config":{}}));
+    host.tool_call(
+        "r3",
+        "register",
+        "c3",
+        json!({"name":"bad name","config":{}}),
+    );
     let call = host.expect_call("registerMcpServer");
     host.reply_error(&call, r#"Invalid MCP server registered by extension "/ext/a": invalid server name "bad name" (use letters, digits, "_" and "-")"#);
     let response = host.response("r3");
     assert!(
-        response["error"]["message"].as_str().unwrap().contains(r#"invalid server name "bad name""#),
+        response["error"]["message"]
+            .as_str()
+            .unwrap()
+            .contains(r#"invalid server name "bad name""#),
         "the host's error must reach the extension: {response}"
     );
     host.finish();
@@ -364,12 +488,21 @@ fn virtual_model_route_request_runs_the_extensions_router() {
 
     host.request("route-2", json!({"method":"virtual_model_route","args":{"provider":"router","id":"missing","request":{"reason":"user","messages":[]}}}));
     let response = host.response("route-2");
-    assert!(response["error"]["message"].as_str().unwrap().contains("router/missing"), "{response}");
+    assert!(
+        response["error"]["message"]
+            .as_str()
+            .unwrap()
+            .contains("router/missing"),
+        "{response}"
+    );
 
     host.request("route-3", json!({"method":"virtual_model_route","args":{"provider":"router","id":"auto","request":{"reason":"direct","messages":[]}}}));
     let response = host.response("route-3");
     assert_eq!(response["error"]["message"], "no direct routing");
-    assert_eq!(*seen.lock().unwrap(), vec![("user".to_string(), false), ("direct".to_string(), false)]);
+    assert_eq!(
+        *seen.lock().unwrap(),
+        vec![("user".to_string(), false), ("direct".to_string(), false)]
+    );
     host.finish();
 }
 
@@ -380,7 +513,11 @@ fn post_load_virtual_model_registration_and_unregistration() {
     let mut ext = Extension::new("api");
     ext.tool("add", "Add", empty_schema(), |ctx, _| {
         let mut model = VirtualModel::new("router", "late", "Late", |_, _| {
-            Ok(ModelRoute { model: json!({"provider":"p","id":"m"}), thinking_level: "off".into(), state: None })
+            Ok(ModelRoute {
+                model: json!({"provider":"p","id":"m"}),
+                thinking_level: "off".into(),
+                state: None,
+            })
         });
         model.thinking_levels = Some(vec!["off".into()]);
         match ctx.register_virtual_model(model) {
@@ -388,29 +525,45 @@ fn post_load_virtual_model_registration_and_unregistration() {
             Err(err) => ToolResult::Error(err.to_string()),
         }
     });
-    ext.tool("remove", "Remove", empty_schema(), |ctx, _| match ctx.unregister_virtual_model("router", "late") {
-        Ok(()) => ToolResult::text("removed"),
-        Err(err) => ToolResult::Error(err.to_string()),
+    ext.tool("remove", "Remove", empty_schema(), |ctx, _| {
+        match ctx.unregister_virtual_model("router", "late") {
+            Ok(()) => ToolResult::text("removed"),
+            Err(err) => ToolResult::Error(err.to_string()),
+        }
     });
     let mut host = Host::start(ext, json!({}));
     host.tool_call("a", "add", "c", json!({}));
     let call = host.expect_call("registerVirtualModel");
-    assert_eq!(call["call"]["args"], json!({"provider":"router","id":"late","name":"Late","thinkingLevels":["off"]}));
+    assert_eq!(
+        call["call"]["args"],
+        json!({"provider":"router","id":"late","name":"Late","thinkingLevels":["off"]})
+    );
     host.reply(&call, json!({}));
     assert_eq!(host.response("a")["result"]["content"], "added");
 
     let route = json!({"method":"virtual_model_route","args":{"provider":"router","id":"late","request":{"reason":"user","messages":[]}}});
     host.request("route-a", route.clone());
-    assert_eq!(host.response("route-a")["result"], json!({"model":{"provider":"p","id":"m"},"thinkingLevel":"off"}));
+    assert_eq!(
+        host.response("route-a")["result"],
+        json!({"model":{"provider":"p","id":"m"},"thinkingLevel":"off"})
+    );
 
     host.tool_call("b", "remove", "c", json!({}));
     let call = host.expect_call("unregisterVirtualModel");
-    assert_eq!(call["call"]["args"], json!({"provider":"router","id":"late"}));
+    assert_eq!(
+        call["call"]["args"],
+        json!({"provider":"router","id":"late"})
+    );
     host.reply(&call, json!({}));
     assert_eq!(host.response("b")["result"]["content"], "removed");
 
     host.request("route-b", route);
-    assert!(host.response("route-b")["error"]["message"].as_str().unwrap().contains("router/late"));
+    assert!(
+        host.response("route-b")["error"]["message"]
+            .as_str()
+            .unwrap()
+            .contains("router/late")
+    );
     host.finish();
 }
 
@@ -419,7 +572,13 @@ fn post_load_virtual_model_registration_and_unregistration() {
 #[test]
 fn prepare_loadout_request_runs_the_tools_hook() {
     let mut ext = Extension::new("api");
-    let mut orchestrate = ToolDefinition::new("orchestrate", "Orchestrate", "Runs tools", empty_schema(), |_, _| ToolResult::text("x"));
+    let mut orchestrate = ToolDefinition::new(
+        "orchestrate",
+        "Orchestrate",
+        "Runs tools",
+        empty_schema(),
+        |_, _| ToolResult::text("x"),
+    );
     orchestrate.prepare_loadout = Some(Box::new(|loadout| {
         let names: Vec<_> = loadout.callable.iter().map(|t| t.name.clone()).collect();
         if names.is_empty() {
@@ -441,7 +600,14 @@ fn prepare_loadout_request_runs_the_tools_hook() {
                 )]
                 .into(),
             ),
-            hidden_declarations: Some(loadout.declared.iter().skip(1).map(|t| t.name.clone()).collect()),
+            hidden_declarations: Some(
+                loadout
+                    .declared
+                    .iter()
+                    .skip(1)
+                    .map(|t| t.name.clone())
+                    .collect(),
+            ),
         })
     }));
     ext.register_tool(orchestrate);
@@ -454,16 +620,25 @@ fn prepare_loadout_request_runs_the_tools_hook() {
         "namespaces":{"mcp_search":{"name":"mcp__docs"}},
         "promptGuidelines":{"read":["Use read to examine files.","Quote paths."]},
     });
-    host.request("l1", json!({"method":"tool_prepare_loadout","tool":"orchestrate","args":payload}));
+    host.request(
+        "l1",
+        json!({"method":"tool_prepare_loadout","tool":"orchestrate","args":payload}),
+    );
     assert_eq!(
         host.response("l1")["result"],
         json!({"descriptions":{"orchestrate":"Runs read (deferred, direct, Some(\"mcp__docs\"), [\"Use read to examine files.\", \"Quote paths.\"], [])"},"hiddenDeclarations":["read"]})
     );
 
     let empty = json!({"declared":[],"callable":[],"registered":[],"exposures":{}});
-    host.request("l2", json!({"method":"tool_prepare_loadout","tool":"orchestrate","args":empty}));
+    host.request(
+        "l2",
+        json!({"method":"tool_prepare_loadout","tool":"orchestrate","args":empty}),
+    );
     let response = host.response("l2");
-    assert!(response.get("result").is_none_or(Value::is_null), "no changes is null: {response}");
+    assert!(
+        response.get("result").is_none_or(Value::is_null),
+        "no changes is null: {response}"
+    );
     assert!(response.get("error").is_none(), "{response}");
     host.finish();
 }
@@ -473,7 +648,10 @@ fn prepare_loadout_request_runs_the_tools_hook() {
 #[test]
 fn reaches_tools_request_runs_the_tools_hook() {
     let mut ext = Extension::new("api");
-    let mut finder = ToolDefinition::new("finder", "Finder", "Finds tools", empty_schema(), |_, _| ToolResult::text("x"));
+    let mut finder =
+        ToolDefinition::new("finder", "Finder", "Finds tools", empty_schema(), |_, _| {
+            ToolResult::text("x")
+        });
     finder.reaches_tools = Some(Box::new(|input| {
         if input["all"] == true {
             return ToolReach::All;
@@ -481,40 +659,106 @@ fn reaches_tools_request_runs_the_tools_hook() {
         if input["panic"] == true {
             panic!("reach exploded");
         }
-        ToolReach::Words(input["words"].as_array().map(|words| words.iter().filter_map(|w| w.as_str().map(String::from)).collect()).unwrap_or_default())
+        ToolReach::Words(
+            input["words"]
+                .as_array()
+                .map(|words| {
+                    words
+                        .iter()
+                        .filter_map(|w| w.as_str().map(String::from))
+                        .collect()
+                })
+                .unwrap_or_default(),
+        )
     }));
     ext.register_tool(finder);
-    ext.register_tool(ToolDefinition::new("plain", "Plain", "Plain", empty_schema(), |_, _| ToolResult::text("ok")));
+    ext.register_tool(ToolDefinition::new(
+        "plain",
+        "Plain",
+        "Plain",
+        empty_schema(),
+        |_, _| ToolResult::text("ok"),
+    ));
     ext.tool("late", "Late", empty_schema(), |ctx, _| {
-        let mut added = ToolDefinition::new("added", "Added", "Added later", empty_schema(), |_, _| ToolResult::text("x"));
+        let mut added =
+            ToolDefinition::new("added", "Added", "Added later", empty_schema(), |_, _| {
+                ToolResult::text("x")
+            });
         added.reaches_tools = Some(Box::new(|_| ToolReach::Words(vec!["late".into()])));
         ctx.register_tool(added);
         ToolResult::text("registered")
     });
     let mut host = Host::start(ext, json!({}));
-    let tools = host.register["register"]["tools"].as_array().unwrap().clone();
-    assert_eq!(tools.iter().find(|t| t["name"] == "finder").unwrap()["reaches_tools"], true);
-    assert!(tools.iter().find(|t| t["name"] == "plain").unwrap().get("reaches_tools").is_none());
+    let tools = host.register["register"]["tools"]
+        .as_array()
+        .unwrap()
+        .clone();
+    assert_eq!(
+        tools.iter().find(|t| t["name"] == "finder").unwrap()["reaches_tools"],
+        true
+    );
+    assert!(
+        tools
+            .iter()
+            .find(|t| t["name"] == "plain")
+            .unwrap()
+            .get("reaches_tools")
+            .is_none()
+    );
 
-    host.request("r1", json!({"method":"tool_reaches_tools","tool":"finder","args":{"words":["docs","search"]}}));
+    host.request(
+        "r1",
+        json!({"method":"tool_reaches_tools","tool":"finder","args":{"words":["docs","search"]}}),
+    );
     assert_eq!(host.response("r1")["result"], json!(["docs", "search"]));
-    host.request("r2", json!({"method":"tool_reaches_tools","tool":"finder","args":{"all":true}}));
+    host.request(
+        "r2",
+        json!({"method":"tool_reaches_tools","tool":"finder","args":{"all":true}}),
+    );
     assert_eq!(host.response("r2")["result"], json!("all"));
-    host.request("r3", json!({"method":"tool_reaches_tools","tool":"finder","args":{}}));
+    host.request(
+        "r3",
+        json!({"method":"tool_reaches_tools","tool":"finder","args":{}}),
+    );
     assert_eq!(host.response("r3")["result"], json!([]));
-    host.request("r4", json!({"method":"tool_reaches_tools","tool":"finder","args":{"panic":true}}));
-    assert!(host.response("r4")["error"]["message"].as_str().unwrap().contains("reachesTools of finder panicked"));
-    host.request("r5", json!({"method":"tool_reaches_tools","tool":"plain","args":{}}));
-    assert!(host.response("r5").get("error").is_some_and(|e| !e.is_null()));
-    host.request("r6", json!({"method":"tool_reaches_tools","tool":"missing","args":{}}));
-    assert!(host.response("r6").get("error").is_some_and(|e| !e.is_null()));
+    host.request(
+        "r4",
+        json!({"method":"tool_reaches_tools","tool":"finder","args":{"panic":true}}),
+    );
+    assert!(
+        host.response("r4")["error"]["message"]
+            .as_str()
+            .unwrap()
+            .contains("reachesTools of finder panicked")
+    );
+    host.request(
+        "r5",
+        json!({"method":"tool_reaches_tools","tool":"plain","args":{}}),
+    );
+    assert!(
+        host.response("r5")
+            .get("error")
+            .is_some_and(|e| !e.is_null())
+    );
+    host.request(
+        "r6",
+        json!({"method":"tool_reaches_tools","tool":"missing","args":{}}),
+    );
+    assert!(
+        host.response("r6")
+            .get("error")
+            .is_some_and(|e| !e.is_null())
+    );
     // A tool registered after load declares the hook and answers it too.
     host.tool_call("r7", "late", "c", json!({}));
     let call = host.expect_call("registerTool");
     assert_eq!(call["call"]["args"]["reaches_tools"], true);
     host.reply(&call, json!({}));
     assert_eq!(host.response("r7")["result"]["content"], "registered");
-    host.request("r8", json!({"method":"tool_reaches_tools","tool":"added","args":{}}));
+    host.request(
+        "r8",
+        json!({"method":"tool_reaches_tools","tool":"added","args":{}}),
+    );
     assert_eq!(host.response("r8")["result"], json!(["late"]));
     host.finish();
 }
@@ -525,14 +769,28 @@ fn reaches_tools_request_runs_the_tools_hook() {
 fn post_load_register_tool_carries_the_new_fields_and_its_loadout_hook() {
     let mut ext = Extension::new("api");
     ext.tool("late", "Late", empty_schema(), |ctx, _| {
-        let mut late = ToolDefinition::new("added", "Added", "Added later", empty_schema(), |_, _| ToolResult::text("x"));
+        let mut late =
+            ToolDefinition::new("added", "Added", "Added later", empty_schema(), |_, _| {
+                ToolResult::text("x")
+            });
         late.output_schema = Some(json!({"type":"string"}));
         late.exposure = Some(ToolExposure::Deferred);
-        late.namespace = Some(ToolNamespace { name: "mcp__late".into(), aliases: Vec::new(), description: None, instructions: None });
-        late.annotations = Some(ToolAnnotations { destructive_hint: Some(true), ..Default::default() });
+        late.namespace = Some(ToolNamespace {
+            name: "mcp__late".into(),
+            aliases: Vec::new(),
+            description: None,
+            instructions: None,
+        });
+        late.annotations = Some(ToolAnnotations {
+            destructive_hint: Some(true),
+            ..Default::default()
+        });
         late.default_active = Some(true);
         late.prepare_loadout = Some(Box::new(|loadout| {
-            Some(ToolLoadoutChanges { hidden_declarations: Some(vec![format!("saw-{}", loadout.declared.len())]), ..Default::default() })
+            Some(ToolLoadoutChanges {
+                hidden_declarations: Some(vec![format!("saw-{}", loadout.declared.len())]),
+                ..Default::default()
+            })
         }));
         match ctx.register_tool(late) {
             Ok(()) => ToolResult::text("registered"),
@@ -552,7 +810,10 @@ fn post_load_register_tool_carries_the_new_fields_and_its_loadout_hook() {
     host.reply(&call, json!({}));
     assert_eq!(host.response("r1")["result"]["content"], "registered");
     host.request("l1", json!({"method":"tool_prepare_loadout","tool":"added","args":{"declared":[tool("a"), tool("b")],"callable":[],"registered":[],"exposures":{}}}));
-    assert_eq!(host.response("l1")["result"], json!({"hiddenDeclarations":["saw-2"]}));
+    assert_eq!(
+        host.response("l1")["result"],
+        json!({"hiddenDeclarations":["saw-2"]})
+    );
     host.finish();
 }
 
@@ -574,7 +835,10 @@ fn execute_tool_runs_a_nested_call_and_delivers_updates_in_order() {
                     on_update: Some(Arc::new(move |partial: AgentToolResult| {
                         // A slow callback: an implementation that returns before the updates are delivered loses the later ones.
                         std::thread::sleep(Duration::from_millis(30));
-                        recorded.lock().unwrap().push(partial.content[0]["text"].as_str().unwrap().to_string());
+                        recorded
+                            .lock()
+                            .unwrap()
+                            .push(partial.content[0]["text"].as_str().unwrap().to_string());
                     })),
                 },
             )
@@ -584,7 +848,10 @@ fn execute_tool_runs_a_nested_call_and_delivers_updates_in_order() {
     let mut host = Host::start(ext, json!({}));
     host.tool_call("r1", "caller", "call-7", json!({}));
     let call = host.expect_call("executeTool");
-    assert_eq!(call["call"]["parent_request_id"], "r1", "the calling request cancels the nested call by default: {call}");
+    assert_eq!(
+        call["call"]["parent_request_id"], "r1",
+        "the calling request cancels the nested call by default: {call}"
+    );
     let args = &call["call"]["args"];
     assert_eq!(args["callerId"], "call-7");
     assert_eq!(args["name"], "target");
@@ -628,8 +895,17 @@ fn execute_tool_marks_an_explicit_signal() {
     let mut ext = Extension::new("api");
     ext.tool("caller", "Caller", empty_schema(), |ctx, _| {
         let own = ProviderSignal::new();
-        ctx.execute_tool("inner", json!({}), ExecuteToolOptions::default()).unwrap();
-        ctx.execute_tool("inner", json!({}), ExecuteToolOptions { signal: Some(own), on_update: None }).unwrap();
+        ctx.execute_tool("inner", json!({}), ExecuteToolOptions::default())
+            .unwrap();
+        ctx.execute_tool(
+            "inner",
+            json!({}),
+            ExecuteToolOptions {
+                signal: Some(own),
+                on_update: None,
+            },
+        )
+        .unwrap();
         ToolResult::json(json!({"content":"done"}))
     });
     let mut host = Host::start(ext, json!({}));
@@ -640,10 +916,16 @@ fn execute_tool_marks_an_explicit_signal() {
         "isError":false,
     });
     let first = host.expect_call("executeTool");
-    assert!(first["call"]["args"].get("ownSignal").is_none(), "no signal option, no ownSignal: {first}");
+    assert!(
+        first["call"]["args"].get("ownSignal").is_none(),
+        "no signal option, no ownSignal: {first}"
+    );
     host.reply(&first, outcome.clone());
     let second = host.expect_call("executeTool");
-    assert_eq!(second["call"]["args"]["ownSignal"], true, "an explicit signal is marked: {second}");
+    assert_eq!(
+        second["call"]["args"]["ownSignal"], true,
+        "an explicit signal is marked: {second}"
+    );
     host.reply(&second, outcome);
     host.response("r1");
     host.finish();
@@ -675,7 +957,10 @@ fn execute_tool_failure_is_an_outcome_not_an_error() {
     let response = host.response("r1");
     assert_eq!(response["result"]["content"], "ran");
     assert_eq!(response["result"]["details"]["isError"], true);
-    assert_eq!(response["result"]["details"]["result"]["content"][0]["text"], "Tool missing not found");
+    assert_eq!(
+        response["result"]["details"]["result"]["content"][0]["text"],
+        "Tool missing not found"
+    );
     host.finish();
 }
 
@@ -691,7 +976,14 @@ fn execute_tool_signal_cancels_the_nested_call() {
     ext.tool("caller", "Caller", empty_schema(), move |ctx, _| {
         started_tx.lock().unwrap().send(()).unwrap();
         let outcome = ctx
-            .execute_tool("slow", json!({}), ExecuteToolOptions { signal: Some(tool_signal.clone()), on_update: None })
+            .execute_tool(
+                "slow",
+                json!({}),
+                ExecuteToolOptions {
+                    signal: Some(tool_signal.clone()),
+                    on_update: None,
+                },
+            )
             .unwrap();
         ToolResult::json(json!({"content":"returned","details":outcome}))
     });
@@ -699,7 +991,10 @@ fn execute_tool_signal_cancels_the_nested_call() {
     host.tool_call("r1", "caller", "call-1", json!({}));
     started_rx.recv_timeout(Duration::from_secs(10)).unwrap();
     let call = host.expect_call("executeTool");
-    let execute_id = call["call"]["args"]["executeId"].as_str().unwrap().to_string();
+    let execute_id = call["call"]["args"]["executeId"]
+        .as_str()
+        .unwrap()
+        .to_string();
     signal.cancel();
     let cancel = host.expect_call("executeTool.cancel");
     assert_eq!(cancel["call"]["args"], json!({"executeId":execute_id}));
@@ -737,14 +1032,26 @@ fn exec_signal_cancels_the_command() {
     started_rx.recv_timeout(Duration::from_secs(10)).unwrap();
     let call = host.expect_call("exec");
     let exec_id = call["call"]["args"]["execId"].as_str().unwrap().to_string();
-    assert_eq!(call["call"]["args"], json!({"command":"sleep","args":["30"],"options":{"timeout":5000.0},"execId":exec_id,"ownSignal":true}));
-    assert!(call["call"].get("parent_request_id").is_none(), "an exec with a signal is not tied to the calling request: {call}");
+    assert_eq!(
+        call["call"]["args"],
+        json!({"command":"sleep","args":["30"],"options":{"timeout":5000.0},"execId":exec_id,"ownSignal":true})
+    );
+    assert!(
+        call["call"].get("parent_request_id").is_none(),
+        "an exec with a signal is not tied to the calling request: {call}"
+    );
     signal.cancel();
     let cancel = host.expect_call("exec.cancel");
     assert_eq!(cancel["call"]["args"], json!({"execId":exec_id}));
     host.reply(&cancel, json!({}));
-    host.reply(&call, json!({"stdout":"so far","stderr":"","code":0,"killed":true}));
-    assert_eq!(host.response("r1")["result"]["details"], json!({"stdout":"so far","code":0,"killed":true}));
+    host.reply(
+        &call,
+        json!({"stdout":"so far","stderr":"","code":0,"killed":true}),
+    );
+    assert_eq!(
+        host.response("r1")["result"]["details"],
+        json!({"stdout":"so far","code":0,"killed":true})
+    );
     host.finish();
 }
 
@@ -760,8 +1067,14 @@ fn exec_max_buffer_goes_out_as_an_option_and_truncated_comes_back() {
     host.tool_call("r1", "caller", "call-1", json!({}));
     let call = host.expect_call("exec");
     assert_eq!(call["call"]["args"]["options"], json!({"maxBuffer":8.0}));
-    host.reply(&call, json!({"stdout":"y\ny\ny\ny\n","stderr":"","code":1,"killed":true,"truncated":true}));
-    assert_eq!(host.response("r1")["result"]["details"], json!({"stdout":"y\ny\ny\ny\n","truncated":true,"killed":true,"code":1}));
+    host.reply(
+        &call,
+        json!({"stdout":"y\ny\ny\ny\n","stderr":"","code":1,"killed":true,"truncated":true}),
+    );
+    assert_eq!(
+        host.response("r1")["result"]["details"],
+        json!({"stdout":"y\ny\ny\ny\n","truncated":true,"killed":true,"code":1})
+    );
     host.finish();
 }
 
@@ -772,16 +1085,31 @@ fn exec_with_a_cancelled_signal_sends_the_cancel_behind_the_call() {
     signal.cancel();
     let mut ext = Extension::new("api");
     ext.tool("caller", "Caller", empty_schema(), move |ctx, _| {
-        let result = ctx.exec_with_options("sleep", &["30"], &pig_sdk::ExecOptions { signal: Some(signal.clone()), ..Default::default() }).unwrap();
+        let result = ctx
+            .exec_with_options(
+                "sleep",
+                &["30"],
+                &pig_sdk::ExecOptions {
+                    signal: Some(signal.clone()),
+                    ..Default::default()
+                },
+            )
+            .unwrap();
         ToolResult::json(json!({"content":"returned","details":{"killed":result.killed}}))
     });
     let mut host = Host::start(ext, json!({}));
     host.tool_call("r1", "caller", "call-1", json!({}));
     let call = host.expect_call("exec");
     let cancel = host.expect_call("exec.cancel");
-    assert_eq!(cancel["call"]["args"]["execId"], call["call"]["args"]["execId"]);
+    assert_eq!(
+        cancel["call"]["args"]["execId"],
+        call["call"]["args"]["execId"]
+    );
     host.reply(&cancel, json!({}));
-    host.reply(&call, json!({"stdout":"","stderr":"","code":0,"killed":true}));
+    host.reply(
+        &call,
+        json!({"stdout":"","stderr":"","code":0,"killed":true}),
+    );
     assert_eq!(host.response("r1")["result"]["details"]["killed"], true);
     host.finish();
 }
@@ -790,14 +1118,22 @@ fn exec_with_a_cancelled_signal_sends_the_cancel_behind_the_call() {
 #[test]
 fn execute_tool_outside_a_tool_call_is_an_error() {
     let mut ext = Extension::new("api");
-    ext.command("nested", "Nested", |ctx, _| match ctx.execute_tool("read", json!({}), ExecuteToolOptions::default()) {
-        Ok(_) => pig_sdk::CommandResult::Ok,
-        Err(err) => pig_sdk::CommandResult::Error(err.to_string()),
+    ext.command("nested", "Nested", |ctx, _| {
+        match ctx.execute_tool("read", json!({}), ExecuteToolOptions::default()) {
+            Ok(_) => pig_sdk::CommandResult::Ok,
+            Err(err) => pig_sdk::CommandResult::Error(err.to_string()),
+        }
     });
     let mut host = Host::start(ext, json!({}));
     host.request("c1", json!({"method":"command","tool":"nested","args":""}));
     let response = host.response("c1");
-    assert!(response["error"]["message"].as_str().unwrap().contains("only available while a tool runs"), "{response}");
+    assert!(
+        response["error"]["message"]
+            .as_str()
+            .unwrap()
+            .contains("only available while a tool runs"),
+        "{response}"
+    );
     host.finish();
 }
 
@@ -820,14 +1156,20 @@ fn tool_result_carries_structured_content_and_is_error() {
     });
     let mut host = Host::start(ext, json!({}));
     host.tool_call("s", "structured", "c", json!({}));
-    assert_eq!(host.response("s")["result"], json!({"content":"3 hits","structured_content":{"hits":3}}));
+    assert_eq!(
+        host.response("s")["result"],
+        json!({"content":"3 hits","structured_content":{"hits":3}})
+    );
     host.tool_call("f", "failing", "c", json!({}));
     assert_eq!(
         host.response("f")["result"],
         json!({"content":"upstream said no","details":{"status":503},"structured_content":{"ok":false},"is_error":true})
     );
     host.tool_call("j", "json", "c", json!({}));
-    assert_eq!(host.response("j")["result"], json!({"content":"j","structured_content":[1, 2]}));
+    assert_eq!(
+        host.response("j")["result"],
+        json!({"content":"j","structured_content":[1, 2]})
+    );
     host.finish();
 }
 
@@ -856,8 +1198,14 @@ fn get_all_tools_reports_exposure_namespace_and_annotations() {
         ]}),
     );
     let details = host.response("r1")["result"]["details"].clone();
-    assert_eq!(details[0], json!({"name":"search","exposure":"deferred","namespace":{"name":"mcp__docs","description":"Docs"},"annotations":{"readOnlyHint":true}}));
-    assert_eq!(details[1], json!({"name":"read","exposure":"direct","namespace":null,"annotations":null}));
+    assert_eq!(
+        details[0],
+        json!({"name":"search","exposure":"deferred","namespace":{"name":"mcp__docs","description":"Docs"},"annotations":{"readOnlyHint":true}})
+    );
+    assert_eq!(
+        details[1],
+        json!({"name":"read","exposure":"direct","namespace":null,"annotations":null})
+    );
     host.finish();
 }
 
@@ -869,7 +1217,10 @@ fn get_all_tools_reaches_tools_runs_the_hook_through_the_host() {
     let mut ext = Extension::new("api");
     ext.tool("list", "List", empty_schema(), |ctx, _| {
         let tools = ctx.get_all_tools().unwrap();
-        let finder = tools[0].reaches_tools.as_ref().expect("finder has reaches_tools");
+        let finder = tools[0]
+            .reaches_tools
+            .as_ref()
+            .expect("finder has reaches_tools");
         let words = finder.call(&json!({"q":1})).unwrap();
         let all = finder.call(&json!({"all":true})).unwrap();
         let failed = finder.call(&json!({"fail":true})).unwrap_err().to_string();
@@ -891,10 +1242,16 @@ fn get_all_tools_reaches_tools_runs_the_hook_through_the_host() {
         ]}),
     );
     let call = host.expect_call("tool.reachesTools");
-    assert_eq!(call["call"]["args"], json!({"tool":"finder","input":{"q":1}}));
+    assert_eq!(
+        call["call"]["args"],
+        json!({"tool":"finder","input":{"q":1}})
+    );
     host.reply(&call, json!(["docs", "search"]));
     let call = host.expect_call("tool.reachesTools");
-    assert_eq!(call["call"]["args"], json!({"tool":"finder","input":{"all":true}}));
+    assert_eq!(
+        call["call"]["args"],
+        json!({"tool":"finder","input":{"all":true}})
+    );
     host.reply(&call, json!("all"));
     let call = host.expect_call("tool.reachesTools");
     host.reply_error(&call, "reach exploded");
@@ -902,7 +1259,13 @@ fn get_all_tools_reaches_tools_runs_the_hook_through_the_host() {
     assert_eq!(details["plain"], false);
     assert_eq!(details["words"], true);
     assert_eq!(details["all"], true);
-    assert!(details["failed"].as_str().unwrap().contains("reach exploded"), "{details}");
+    assert!(
+        details["failed"]
+            .as_str()
+            .unwrap()
+            .contains("reach exploded"),
+        "{details}"
+    );
     host.finish();
 }
 
@@ -915,7 +1278,10 @@ fn mcp_servers_change_and_provider_stream_event_reach_handlers() {
     ext.on_event(pig_sdk::EVENT_MCP_SERVERS_CHANGE, move |ctx, data| {
         // loader.ts:473-476: getMcpServers answers the live registry, which the host replicates before it delivers the event, not the
         // event's snapshot (runner.ts:458 emits without awaiting, so a later change can precede the handler).
-        recorded.lock().unwrap().push(json!({"event": data.clone(), "getMcpServers": ctx.get_mcp_servers()}));
+        recorded
+            .lock()
+            .unwrap()
+            .push(json!({"event": data.clone(), "getMcpServers": ctx.get_mcp_servers()}));
         None
     });
     let recorded = seen.clone();
@@ -961,12 +1327,19 @@ fn own_thinking_runs_reaches_the_register_frame_and_the_runtime_call() {
     let mut ext = Extension::new("api");
     ext.own_thinking_runs(false);
     ext.own_thinking_runs(true);
-    ext.command("own_off", "Off", |ctx, _| match ctx.own_thinking_runs(false) {
-        Ok(()) => pig_sdk::CommandResult::Ok,
-        Err(err) => pig_sdk::CommandResult::Error(err.to_string()),
+    ext.command("own_off", "Off", |ctx, _| {
+        match ctx.own_thinking_runs(false) {
+            Ok(()) => pig_sdk::CommandResult::Ok,
+            Err(err) => pig_sdk::CommandResult::Error(err.to_string()),
+        }
     });
     let mut host = Host::start(ext, json!({}));
-    assert_eq!(host.register["register"]["owns_thinking_runs"], json!(true), "register: {}", host.register);
+    assert_eq!(
+        host.register["register"]["owns_thinking_runs"],
+        json!(true),
+        "register: {}",
+        host.register
+    );
     host.request("c1", json!({"method":"command","tool":"own_off","args":""}));
     let call = host.expect_call("ownThinkingRuns");
     assert_eq!(call["call"]["args"], json!({"enabled": false}));
@@ -978,10 +1351,22 @@ fn own_thinking_runs_reaches_the_register_frame_and_the_runtime_call() {
     ext.own_thinking_runs(true);
     ext.own_thinking_runs(false);
     let host = Host::start(ext, json!({}));
-    assert!(host.register["register"].get("owns_thinking_runs").is_none(), "register: {}", host.register);
+    assert!(
+        host.register["register"]
+            .get("owns_thinking_runs")
+            .is_none(),
+        "register: {}",
+        host.register
+    );
     host.finish();
 
     let host = Host::start(Extension::new("api"), json!({}));
-    assert!(host.register["register"].get("owns_thinking_runs").is_none(), "register: {}", host.register);
+    assert!(
+        host.register["register"]
+            .get("owns_thinking_runs")
+            .is_none(),
+        "register: {}",
+        host.register
+    );
     host.finish();
 }

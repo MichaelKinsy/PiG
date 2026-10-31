@@ -25,7 +25,9 @@ enum IdKey<'a> {
 fn key(value: &Value) -> Option<IdKey<'_>> {
     match value {
         Value::String(text) => Some(IdKey::Text(text)),
-        Value::Number(number) => number.as_f64().map(|n| IdKey::Number(if n == 0.0 { 0 } else { n.to_bits() })),
+        Value::Number(number) => number
+            .as_f64()
+            .map(|n| IdKey::Number(if n == 0.0 { 0 } else { n.to_bits() })),
         Value::Bool(flag) => Some(IdKey::Bool(*flag)),
         _ => None,
     }
@@ -58,7 +60,11 @@ fn invalid(message: &str) -> io::Error {
     io::Error::new(io::ErrorKind::InvalidData, message.to_string())
 }
 
-fn entry_path<'a>(entries: &'a [Value], leaf: SessionLeaf<'_>, by_id: Option<&'a Map<String, Value>>) -> Vec<&'a Value> {
+fn entry_path<'a>(
+    entries: &'a [Value],
+    leaf: SessionLeaf<'_>,
+    by_id: Option<&'a Map<String, Value>>,
+) -> Vec<&'a Value> {
     if leaf == SessionLeaf::None {
         return Vec::new();
     }
@@ -91,7 +97,11 @@ fn entry_path<'a>(entries: &'a [Value], leaf: SessionLeaf<'_>, by_id: Option<&'a
             break;
         }
         path.push(entry);
-        current = if truthy(entry.get("parentId")) { entry.get("parentId").and_then(&lookup) } else { None };
+        current = if truthy(entry.get("parentId")) {
+            entry.get("parentId").and_then(&lookup)
+        } else {
+            None
+        };
     }
     path.reverse();
     path
@@ -100,8 +110,12 @@ fn entry_path<'a>(entries: &'a [Value], leaf: SessionLeaf<'_>, by_id: Option<&'a
 /// `entry.message.role`: Pi's `TypeError` for a null or missing message, no role for one that is not an object.
 fn role(entry: &Value) -> io::Result<Option<&str>> {
     match entry.get("message") {
-        None => Err(invalid("TypeError: Cannot read properties of undefined (reading 'role')")),
-        Some(Value::Null) => Err(invalid("TypeError: Cannot read properties of null (reading 'role')")),
+        None => Err(invalid(
+            "TypeError: Cannot read properties of undefined (reading 'role')",
+        )),
+        Some(Value::Null) => Err(invalid(
+            "TypeError: Cannot read properties of null (reading 'role')",
+        )),
         Some(message) => Ok(message.get("role").and_then(Value::as_str)),
     }
 }
@@ -118,15 +132,32 @@ fn members(source: &Value, names: [(&str, &str); 2]) -> Value {
 }
 
 fn context_entries<'a>(path: Vec<&'a Value>) -> Vec<&'a Value> {
-    let Some(compaction) = path.iter().rev().find(|entry| entry_type(entry) == Some("compaction")).copied() else { return path };
-    let Some(compaction_index) = path.iter().position(|entry| same(entry, "id", compaction, "id")) else { return path };
+    let Some(compaction) = path
+        .iter()
+        .rev()
+        .find(|entry| entry_type(entry) == Some("compaction"))
+        .copied()
+    else {
+        return path;
+    };
+    let Some(compaction_index) = path
+        .iter()
+        .position(|entry| same(entry, "id", compaction, "id"))
+    else {
+        return path;
+    };
     let mut context = vec![compaction];
     let mut found_first_kept = false;
     for entry in &path[..compaction_index] {
         if same(entry, "id", compaction, "firstKeptEntryId") {
             found_first_kept = true;
         }
-        let system = entry_type(entry) == Some("message") && entry.get("message").and_then(|m| m.get("role")).and_then(Value::as_str) == Some("system");
+        let system = entry_type(entry) == Some("message")
+            && entry
+                .get("message")
+                .and_then(|m| m.get("role"))
+                .and_then(Value::as_str)
+                == Some("system");
         if found_first_kept && !system {
             context.push(entry);
         }
@@ -142,18 +173,32 @@ fn apply_edit(messages: Vec<Value>, edit: &Value) -> io::Result<Vec<Value>> {
     }
     let mut out = Vec::with_capacity(messages.len());
     for message in messages {
-        let message_role = message.get("role").and_then(Value::as_str).map(str::to_string);
+        let message_role = message
+            .get("role")
+            .and_then(Value::as_str)
+            .map(str::to_string);
         let message_role = message_role.as_deref();
-        if !matches!(message_role, Some("user" | "assistant" | "toolResult" | "custom")) {
+        if !matches!(
+            message_role,
+            Some("user" | "assistant" | "toolResult" | "custom")
+        ) {
             out.push(message);
             continue;
         }
-        let Some(replacement) = replacement else { return Err(invalid("TypeError: Cannot read properties of undefined (reading 'content')")) };
+        let Some(replacement) = replacement else {
+            return Err(invalid(
+                "TypeError: Cannot read properties of undefined (reading 'content')",
+            ));
+        };
         let content = replacement.get("content");
         let mut copied = message;
-        let object = copied.as_object_mut().expect("a message with a role is an object");
+        let object = copied
+            .as_object_mut()
+            .expect("a message with a role is an object");
         match content {
-            Some(Value::String(text)) if matches!(message_role, Some("assistant" | "toolResult")) => {
+            Some(Value::String(text))
+                if matches!(message_role, Some("assistant" | "toolResult")) =>
+            {
                 object.insert("content".into(), json!([{"type": "text", "text": text}]));
             }
             Some(content) => {
@@ -173,15 +218,26 @@ fn apply_edit(messages: Vec<Value>, edit: &Value) -> io::Result<Vec<Value>> {
 /// `thinking_level_change` on the path, `"off"` without one) and `model` (the last `model_change` or assistant message's `{provider, modelId}`, null without one). `by_id`
 /// is an index of the entries by id that the walk reads instead of building one from `entries`. A message entry with a null or missing message is Pi's `TypeError`, an
 /// `InvalidData` error here.
-pub fn build_session_context(entries: &[Value], leaf: SessionLeaf<'_>, by_id: Option<&Map<String, Value>>) -> io::Result<Value> {
+pub fn build_session_context(
+    entries: &[Value],
+    leaf: SessionLeaf<'_>,
+    by_id: Option<&Map<String, Value>>,
+) -> io::Result<Value> {
     let path = entry_path(entries, leaf, by_id);
     let mut thinking = Some(json!("off"));
     let mut model = Value::Null;
     for entry in &path {
         match entry_type(entry) {
             Some("thinking_level_change") => thinking = entry.get("thinkingLevel").cloned(),
-            Some("model_change") => model = members(entry, [("provider", "provider"), ("modelId", "modelId")]),
-            Some("message") if role(entry)? == Some("assistant") => model = members(&entry["message"], [("provider", "provider"), ("modelId", "model")]),
+            Some("model_change") => {
+                model = members(entry, [("provider", "provider"), ("modelId", "modelId")])
+            }
+            Some("message") if role(entry)? == Some("assistant") => {
+                model = members(
+                    &entry["message"],
+                    [("provider", "provider"), ("modelId", "model")],
+                )
+            }
             _ => {}
         }
     }

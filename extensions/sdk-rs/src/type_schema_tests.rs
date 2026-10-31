@@ -7,16 +7,31 @@ use serde_json::{Map, Value, json};
 /// A resolved argument: JSON, or a schema that a `$call` node returned.
 fn resolve(node: &Value) -> Result<TValue, String> {
     match node {
-        Value::Array(items) => Ok(TValue::List(items.iter().map(resolve).collect::<Result<_, _>>()?)),
+        Value::Array(items) => Ok(TValue::List(
+            items.iter().map(resolve).collect::<Result<_, _>>()?,
+        )),
         Value::Object(map) => {
             if map.get("$").and_then(Value::as_str) == Some("bigint") {
-                return Ok(TValue::BigInt(BigInt::parse(map.get("value").and_then(Value::as_str).ok_or("a bigint without digits")?)?));
+                return Ok(TValue::BigInt(BigInt::parse(
+                    map.get("value")
+                        .and_then(Value::as_str)
+                        .ok_or("a bigint without digits")?,
+                )?));
             }
             if let Some(Value::String(name)) = map.get("$call") {
-                let args: Vec<TValue> = map["args"].as_array().ok_or("no args")?.iter().map(resolve).collect::<Result<_, _>>()?;
+                let args: Vec<TValue> = map["args"]
+                    .as_array()
+                    .ok_or("no args")?
+                    .iter()
+                    .map(resolve)
+                    .collect::<Result<_, _>>()?;
                 return call(name, &args);
             }
-            Ok(TValue::Object(map.iter().map(|(key, value)| Ok((key.clone(), resolve(value)?))).collect::<Result<_, String>>()?))
+            Ok(TValue::Object(
+                map.iter()
+                    .map(|(key, value)| Ok((key.clone(), resolve(value)?)))
+                    .collect::<Result<_, String>>()?,
+            ))
         }
         other => Ok(TValue::Json(other.clone())),
     }
@@ -24,7 +39,12 @@ fn resolve(node: &Value) -> Result<TValue, String> {
 
 fn options(args: &[TValue], index: usize) -> Option<Map<String, Value>> {
     match args.get(index) {
-        Some(TValue::Object(pairs)) => Some(pairs.iter().map(|(key, value)| (key.clone(), value.to_value())).collect()),
+        Some(TValue::Object(pairs)) => Some(
+            pairs
+                .iter()
+                .map(|(key, value)| (key.clone(), value.to_value()))
+                .collect(),
+        ),
         _ => None,
     }
 }
@@ -41,7 +61,10 @@ fn literal_of(value: &TValue) -> Result<crate::LiteralValue, String> {
     match value {
         TValue::Json(Value::String(text)) => Ok(text.as_str().into()),
         TValue::Json(Value::Bool(flag)) => Ok((*flag).into()),
-        TValue::Json(Value::Number(number)) => number.as_f64().map(Into::into).ok_or_else(|| "Invalid Literal value".to_string()),
+        TValue::Json(Value::Number(number)) => number
+            .as_f64()
+            .map(Into::into)
+            .ok_or_else(|| "Invalid Literal value".to_string()),
         TValue::BigInt(value) => Ok(value.clone().into()),
         _ => Err("Invalid Literal value".to_string()),
     }
@@ -51,7 +74,10 @@ fn literal_of(value: &TValue) -> Result<crate::LiteralValue, String> {
 fn pairs(value: &TValue) -> Vec<(String, TValue)> {
     match value {
         TValue::Object(pairs) => pairs.clone(),
-        TValue::Json(Value::Object(map)) => map.iter().map(|(key, value)| (key.clone(), TValue::Json(value.clone()))).collect(),
+        TValue::Json(Value::Object(map)) => map
+            .iter()
+            .map(|(key, value)| (key.clone(), TValue::Json(value.clone())))
+            .collect(),
         _ => Vec::new(),
     }
 }
@@ -69,13 +95,17 @@ fn number(spec: &Map<String, Value>, key: &str) -> f64 {
 }
 
 /// The predicate a case names (the generator's `predicateFor` builds the same from the same spec).
-fn check_of(spec: Map<String, Value>) -> impl Fn(&Value) -> Result<bool, String> + Send + Sync + 'static {
+fn check_of(
+    spec: Map<String, Value>,
+) -> impl Fn(&Value) -> Result<bool, String> + Send + Sync + 'static {
     move |value| {
         let name = spec["$fn"].as_str().unwrap_or("");
         match name {
             "always" => Ok(true),
             "never" => Ok(false),
-            "lengthAtLeast" => Ok(value.as_str().map_or(0, |text| text.len()) as f64 >= number(&spec, "n")),
+            "lengthAtLeast" => {
+                Ok(value.as_str().map_or(0, |text| text.len()) as f64 >= number(&spec, "n"))
+            }
             "equals" => Ok(*value == spec["value"]),
             "even" => Ok(value.as_f64().is_some_and(|n| n % 2.0 == 0.0)),
             "greaterThan" => Ok(value.as_f64().is_some_and(|n| n > number(&spec, "n"))),
@@ -85,10 +115,18 @@ fn check_of(spec: Map<String, Value>) -> impl Fn(&Value) -> Result<bool, String>
     }
 }
 
-fn message_of(spec: Map<String, Value>) -> Box<dyn Fn(&Value) -> Result<String, String> + Send + Sync> {
+fn message_of(
+    spec: Map<String, Value>,
+) -> Box<dyn Fn(&Value) -> Result<String, String> + Send + Sync> {
     Box::new(move |value| match spec["$fn"].as_str().unwrap_or("") {
         "text" => Ok(spec["text"].as_str().unwrap_or("").to_string()),
-        "textWithValue" => Ok(format!("{}{}", spec["prefix"].as_str().unwrap_or(""), value.as_str().map_or_else(|| value.to_string(), str::to_string))),
+        "textWithValue" => Ok(format!(
+            "{}{}",
+            spec["prefix"].as_str().unwrap_or(""),
+            value
+                .as_str()
+                .map_or_else(|| value.to_string(), str::to_string)
+        )),
         "errorThrows" => Err(spec["message"].as_str().unwrap_or("").to_string()),
         other => Err(format!("no message function {other}")),
     })
@@ -110,7 +148,10 @@ fn call(name: &str, a: &[TValue]) -> Result<TValue, String> {
         "Void" => schema(Ok(Type::void(opts(0).as_ref()))),
         "Symbol" => schema(Ok(Type::symbol(opts(0).as_ref()))),
         "BigInt" => schema(Ok(Type::big_int(opts(0).as_ref()))),
-        "Ref" => schema(Ok(Type::ref_(first().to_value().as_str().ok_or("ref is not a string")?, opts(1).as_ref()))),
+        "Ref" => schema(Ok(Type::ref_(
+            first().to_value().as_str().ok_or("ref is not a string")?,
+            opts(1).as_ref(),
+        ))),
         "Array" => schema(Ok(Type::array(first(), opts(1).as_ref()))),
         "Union" => schema(Ok(Type::union(list(&first()), opts(1).as_ref()))),
         "Intersect" => schema(Ok(Type::intersect(list(&first()), opts(1).as_ref()))),
@@ -131,7 +172,10 @@ fn call(name: &str, a: &[TValue]) -> Result<TValue, String> {
         "Unsafe" => schema(Type::unsafe_(first())),
         "With" => schema(Type::with(first(), opts(1).as_ref())),
         "Record" => schema(Type::record(first(), a[1].clone(), opts(2).as_ref())),
-        "IsKind" => flag(Type::is_kind(first(), a[1].to_value().as_str().ok_or("kind is not a string")?)),
+        "IsKind" => flag(Type::is_kind(
+            first(),
+            a[1].to_value().as_str().ok_or("kind is not a string")?,
+        )),
         "IsSchema" => flag(Type::is_schema(first())),
         "IsOptional" => flag(Type::is_optional(first())),
         "IsReadonly" => flag(Type::is_readonly(first())),
@@ -171,7 +215,9 @@ fn engine_member(name: &str, a: &[TValue]) -> Result<TValue, String> {
     let text = |index: usize| -> Result<String, String> {
         match a.get(index) {
             Some(TValue::Json(Value::String(text))) => Ok(text.clone()),
-            other => Err(format!("{name}: argument {index} is {other:?}, not a string")),
+            other => Err(format!(
+                "{name}: argument {index} is {other:?}, not a string"
+            )),
         }
     };
     match name {
@@ -180,7 +226,13 @@ fn engine_member(name: &str, a: &[TValue]) -> Result<TValue, String> {
         "Lowercase" => schema(Type::lowercase(first(), opts(1).as_ref())),
         "Uncapitalize" => schema(Type::uncapitalize(first(), opts(1).as_ref())),
         "Uppercase" => schema(Type::uppercase(first(), opts(1).as_ref())),
-        "Conditional" => schema(Type::conditional(arg(0), arg(1), arg(2), arg(3), opts(4).as_ref())),
+        "Conditional" => schema(Type::conditional(
+            arg(0),
+            arg(1),
+            arg(2),
+            arg(3),
+            opts(4).as_ref(),
+        )),
         "Constructor" => schema(Type::constructor(arg(0), arg(1), opts(2).as_ref())),
         "ConstructorParameters" => schema(Type::constructor_parameters(first(), opts(1).as_ref())),
         "Parameters" => schema(Type::parameters(first(), opts(1).as_ref())),
@@ -200,18 +252,30 @@ fn engine_member(name: &str, a: &[TValue]) -> Result<TValue, String> {
         "Instantiate" => schema(Type::instantiate(arg(0), arg(1))),
         "Interface" => schema(Type::interface(arg(0), arg(1), opts(2).as_ref())),
         "KeyOf" => schema(Type::key_of(first(), opts(1).as_ref())),
-        "Mapped" => schema(Type::mapped(arg(0), arg(1), arg(2), arg(3), opts(4).as_ref())),
+        "Mapped" => schema(Type::mapped(
+            arg(0),
+            arg(1),
+            arg(2),
+            arg(3),
+            opts(4).as_ref(),
+        )),
         "Module" => schema(Type::module(first(), opts(1).as_ref())),
         "NonNullable" => schema(Type::non_nullable(first(), opts(1).as_ref())),
         "Omit" => schema(Type::omit(arg(0), arg(1), opts(2).as_ref())),
         "Pick" => schema(Type::pick(arg(0), arg(1), opts(2).as_ref())),
-        "Parameter" => schema(Type::parameter(&text(0)?, a.get(1).cloned(), a.get(2).cloned())),
+        "Parameter" => schema(Type::parameter(
+            &text(0)?,
+            a.get(1).cloned(),
+            a.get(2).cloned(),
+        )),
         "Partial" => schema(Type::partial(first(), opts(1).as_ref())),
         "Required" => schema(Type::required(first(), opts(1).as_ref())),
         "ReadonlyObject" => schema(Type::readonly_object(first(), opts(1).as_ref())),
         "ReadonlyType" => schema(Type::readonly_type(first(), opts(1).as_ref())),
         "RecordKey" => schema(Type::record_key(first())),
-        "RecordPattern" => Type::record_pattern(first()).map(|pattern| TValue::Json(Value::String(pattern))),
+        "RecordPattern" => {
+            Type::record_pattern(first()).map(|pattern| TValue::Json(Value::String(pattern)))
+        }
         "RecordValue" => schema(Type::record_value(first())),
         "Rest" => schema(Type::rest(first())),
         "Script" => schema(Type::script(a.to_vec())),
@@ -231,8 +295,12 @@ fn list(value: &TValue) -> Vec<TValue> {
 }
 
 fn vector_cases() -> Vec<Value> {
-    let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../test/parity/sdk-vectors/pi-ai/Type.json");
-    let file: Value = serde_json::from_slice(&std::fs::read(path).expect("test/parity/sdk-vectors/pi-ai/Type.json")).expect("valid JSON");
+    let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../test/parity/sdk-vectors/pi-ai/Type.json");
+    let file: Value = serde_json::from_slice(
+        &std::fs::read(path).expect("test/parity/sdk-vectors/pi-ai/Type.json"),
+    )
+    .expect("valid JSON");
     let cases = file["cases"].as_array().expect("cases").clone();
     assert!(!cases.is_empty(), "Type.json has no cases");
     cases
@@ -241,8 +309,16 @@ fn vector_cases() -> Vec<Value> {
 /// Whether the host's type engine answers the case: a call of one of its members, a Record whose key TypeBox evaluates with it, or the tool whose parameters have one property per member.
 fn needs_host(case: &Value) -> bool {
     let name = case["name"].as_str().unwrap_or("?");
-    let record_with_engine_key = case["args"][0]["$call"] == "Record" && matches!(case["args"][0]["args"][0]["$call"].as_str(), Some("Enum" | "Intersect" | "TemplateLiteral"));
-    record_with_engine_key || name == "conformance engine tool parameters" || case["args"][0]["$call"].as_str().is_some_and(|member| ENGINE_MEMBERS.contains(&member))
+    let record_with_engine_key = case["args"][0]["$call"] == "Record"
+        && matches!(
+            case["args"][0]["args"][0]["$call"].as_str(),
+            Some("Enum" | "Intersect" | "TemplateLiteral")
+        );
+    record_with_engine_key
+        || name == "conformance engine tool parameters"
+        || case["args"][0]["$call"]
+            .as_str()
+            .is_some_and(|member| ENGINE_MEMBERS.contains(&member))
 }
 
 /// What the SDK answers for one case against Pi's: the thrown message, the schema's JSON text and hidden members (or the message writing it as JSON fails with, for a schema that
@@ -268,18 +344,27 @@ fn check_case(case: &Value) -> Option<String> {
                 (Err(message), _, Some(throws)) if message == throws => {}
                 (outcome, json, throws) => failures.push(format!("{name}: writing the schema as JSON gave {outcome:?}; Pi {json:?}, throws {throws:?}")),
             }
-            let hidden: Map<String, Value> = want["hidden"].as_object().cloned().unwrap_or_default();
-            let mut have: Map<String, Value> = schema.hidden_members().iter().map(|(key, value)| (key.clone(), value.clone())).collect();
+            let hidden: Map<String, Value> =
+                want["hidden"].as_object().cloned().unwrap_or_default();
+            let mut have: Map<String, Value> = schema
+                .hidden_members()
+                .iter()
+                .map(|(key, value)| (key.clone(), value.clone()))
+                .collect();
             if !schema.refinements().is_empty() {
                 // Functions have no JSON form: the vector records how many there are.
-                have.insert("~refine".into(), json!({"count": schema.refinements().len()}));
+                have.insert(
+                    "~refine".into(),
+                    json!({"count": schema.refinements().len()}),
+                );
             }
             if have != hidden {
                 failures.push(format!("{name}: hidden members {have:?}, Pi {hidden:?}"));
             }
             (!failures.is_empty()).then(|| failures.join("\n"))
         }
-        Ok(other) => (other.to_value() != *want).then(|| format!("{name}: {:?}, Pi {want}", other.to_value())),
+        Ok(other) => (other.to_value() != *want)
+            .then(|| format!("{name}: {:?}, Pi {want}", other.to_value())),
     }
 }
 
@@ -298,7 +383,13 @@ fn type_matches_pi() {
         }
         failures.extend(check_case(case));
     }
-    assert!(failures.is_empty(), "{} of {} cases differ from Pi:\n{}", failures.len(), cases.len(), failures.join("\n"));
+    assert!(
+        failures.is_empty(),
+        "{} of {} cases differ from Pi:\n{}",
+        failures.len(),
+        cases.len(),
+        failures.join("\n")
+    );
     assert!(engine_cases > 0 && engine_cases < cases.len());
 }
 
@@ -313,16 +404,61 @@ fn engine_cases_through_the_host() {
     let cases: Vec<Value> = vector_cases().into_iter().filter(needs_host).collect();
     assert!(cases.len() > 350, "only {} engine cases", cases.len());
     let failures: Vec<String> = cases.iter().filter_map(check_case).collect();
-    assert!(failures.is_empty(), "{} of {} engine cases differ from Pi:\n{}", failures.len(), cases.len(), failures.join("\n"));
+    assert!(
+        failures.is_empty(),
+        "{} of {} engine cases differ from Pi:\n{}",
+        failures.len(),
+        cases.len(),
+        failures.join("\n")
+    );
     println!("ENGINE_CASES_RUN={}", cases.len());
 }
 
 /// The members of `Type` the host's type engine serves (type_engine.rs): calling one needs a host.
 const ENGINE_MEMBERS: &[&str] = &[
-    "Call", "Capitalize", "Conditional", "Constructor", "ConstructorParameters", "Cyclic", "Dependent", "Evaluate", "Exclude", "Extends", "Extract", "Function", "Generic",
-    "Identifier", "Index", "Infer", "InstanceType", "Instantiate", "Interface", "KeyOf", "Lowercase", "Mapped", "Module", "NonNullable", "Omit", "Parameter", "Parameters",
-    "Partial", "Pick", "ReadonlyObject", "ReadonlyType", "RecordKey", "RecordPattern", "RecordValue", "Required", "Rest", "ReturnType", "Script", "TemplateLiteral", "This",
-    "Tuple", "Uncapitalize", "Uppercase",
+    "Call",
+    "Capitalize",
+    "Conditional",
+    "Constructor",
+    "ConstructorParameters",
+    "Cyclic",
+    "Dependent",
+    "Evaluate",
+    "Exclude",
+    "Extends",
+    "Extract",
+    "Function",
+    "Generic",
+    "Identifier",
+    "Index",
+    "Infer",
+    "InstanceType",
+    "Instantiate",
+    "Interface",
+    "KeyOf",
+    "Lowercase",
+    "Mapped",
+    "Module",
+    "NonNullable",
+    "Omit",
+    "Parameter",
+    "Parameters",
+    "Partial",
+    "Pick",
+    "ReadonlyObject",
+    "ReadonlyType",
+    "RecordKey",
+    "RecordPattern",
+    "RecordValue",
+    "Required",
+    "Rest",
+    "ReturnType",
+    "Script",
+    "TemplateLiteral",
+    "This",
+    "Tuple",
+    "Uncapitalize",
+    "Uppercase",
 ];
 
 /// The wire text TypeBox's own value has (the "wire" of every case the host's type engine answers) read through the SDK's decoder makes Pi's schema (the JSON text and the hidden
@@ -330,26 +466,42 @@ const ENGINE_MEMBERS: &[&str] = &[
 /// checked against the same vectors in internal/typebox/engine.
 #[test]
 fn engine_wire_round_trip() {
-    let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../test/parity/sdk-vectors/pi-ai/Type.json");
-    let file: Value = serde_json::from_slice(&std::fs::read(path).expect("Type.json")).expect("valid JSON");
+    let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../test/parity/sdk-vectors/pi-ai/Type.json");
+    let file: Value =
+        serde_json::from_slice(&std::fs::read(path).expect("Type.json")).expect("valid JSON");
     let mut checked = 0;
     for case in file["cases"].as_array().expect("cases") {
         let name = case["name"].as_str().unwrap_or("?");
-        let Some(text) = case["result"]["wire"].as_str() else { continue };
+        let Some(text) = case["result"]["wire"].as_str() else {
+            continue;
+        };
         if case["result"]["hidden"].get("~refine").is_some() {
             continue; // the vector holds functions as undefined: the refinements are checked by their own rows
         }
         let wire: Value = serde_json::from_str(text).expect("wire JSON");
-        let value = crate::type_engine::decode_wire(&wire, &[]).unwrap_or_else(|error| panic!("{name}: {error}"));
+        let value = crate::type_engine::decode_wire(&wire, &[])
+            .unwrap_or_else(|error| panic!("{name}: {error}"));
         let TValue::Schema(schema) = value else {
             if let TValue::Object(fields) = &value {
-                assert_eq!(TValue::Object(fields.clone()).to_value().to_string().len() > 0, true);
+                assert_eq!(
+                    TValue::Object(fields.clone()).to_value().to_string().len() > 0,
+                    true
+                );
             }
             continue; // a plain object (Module's answer) or a list (a schema made of a JavaScript array)
         };
         match case["result"]["stringifyThrows"].as_str() {
-            Some(throws) => assert_eq!(schema.try_to_json(), Err(throws.to_string()), "{name}: a schema that holds a bigint"),
-            None => assert_eq!(Some(schema.to_json().as_str()), case["result"]["json"].as_str(), "{name}"),
+            Some(throws) => assert_eq!(
+                schema.try_to_json(),
+                Err(throws.to_string()),
+                "{name}: a schema that holds a bigint"
+            ),
+            None => assert_eq!(
+                Some(schema.to_json().as_str()),
+                case["result"]["json"].as_str(),
+                "{name}"
+            ),
         }
         for (hidden, want) in case["result"]["hidden"].as_object().into_iter().flatten() {
             if hidden != "~refine" {
@@ -357,8 +509,13 @@ fn engine_wire_round_trip() {
             }
         }
         let written = crate::type_engine::encode_wire(&TValue::Schema(schema.clone()));
-        let again = crate::type_engine::decode_wire(&written, &[]).unwrap_or_else(|error| panic!("{name}: {error}"));
-        assert_eq!(again, TValue::Schema(schema), "{name}: the schema the writer's text reads back as differs");
+        let again = crate::type_engine::decode_wire(&written, &[])
+            .unwrap_or_else(|error| panic!("{name}: {error}"));
+        assert_eq!(
+            again,
+            TValue::Schema(schema),
+            "{name}: the schema the writer's text reads back as differs"
+        );
         checked += 1;
     }
     assert!(checked > 300, "only {checked} cases carry wire text");
@@ -367,21 +524,55 @@ fn engine_wire_round_trip() {
 /// Pi's value holds a bigint (`Type.Literal(1n)`, a `Type.Script("1n")` result); `JSON.stringify` of it throws "Do not know how to serialize a BigInt".
 #[test]
 fn a_schema_holds_a_bigint_and_only_writing_it_as_json_fails() {
-    let literal = Type::literal(BigInt::parse("123456789012345678901234567890").unwrap(), None).unwrap();
-    assert!(Type::is_literal(&literal) && literal.get("type") == Some(&TValue::Json(json!("bigint"))));
-    assert_eq!(literal.get("const"), Some(&TValue::BigInt(BigInt::parse("0123456789012345678901234567890").unwrap())));
+    let literal = Type::literal(
+        BigInt::parse("123456789012345678901234567890").unwrap(),
+        None,
+    )
+    .unwrap();
+    assert!(
+        Type::is_literal(&literal) && literal.get("type") == Some(&TValue::Json(json!("bigint")))
+    );
+    assert_eq!(
+        literal.get("const"),
+        Some(&TValue::BigInt(
+            BigInt::parse("0123456789012345678901234567890").unwrap()
+        ))
+    );
     assert_eq!(BigInt::parse("-0").unwrap().digits(), "0");
-    assert!(BigInt::parse("1.5").is_err() && BigInt::parse("").is_err() && BigInt::parse("-").is_err());
-    assert_eq!(literal.try_to_json(), Err("Do not know how to serialize a BigInt".to_string()));
-    let nested = Type::object(vec![("a".to_string(), TValue::Schema(literal.clone()))], None);
-    assert_eq!(nested.try_to_json(), Err(crate::type_schema::BIGINT_STRINGIFY_ERROR.to_string()));
-    assert_eq!(nested.try_to_value(), Err(crate::type_schema::BIGINT_STRINGIFY_ERROR.to_string()));
-    assert_eq!(serde_json::to_string(&nested).unwrap_err().to_string(), "Do not know how to serialize a BigInt");
+    assert!(
+        BigInt::parse("1.5").is_err() && BigInt::parse("").is_err() && BigInt::parse("-").is_err()
+    );
+    assert_eq!(
+        literal.try_to_json(),
+        Err("Do not know how to serialize a BigInt".to_string())
+    );
+    let nested = Type::object(
+        vec![("a".to_string(), TValue::Schema(literal.clone()))],
+        None,
+    );
+    assert_eq!(
+        nested.try_to_json(),
+        Err(crate::type_schema::BIGINT_STRINGIFY_ERROR.to_string())
+    );
+    assert_eq!(
+        nested.try_to_value(),
+        Err(crate::type_schema::BIGINT_STRINGIFY_ERROR.to_string())
+    );
+    assert_eq!(
+        serde_json::to_string(&nested).unwrap_err().to_string(),
+        "Do not know how to serialize a BigInt"
+    );
     assert!(std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| nested.to_json())).is_err());
     // The wire carries it as Pi writes it and reads back as the same schema.
     let wire = crate::type_engine::encode_wire(&TValue::Schema(literal.clone()));
-    assert_eq!(wire["e"]["const"], json!({"\u{0}": "n", "v": "123456789012345678901234567890"}));
-    assert_eq!(crate::type_engine::decode_wire(&wire, &[]).unwrap(), TValue::Schema(literal));
+    assert_eq!(
+        wire["e"]["const"],
+        json!({"\u{0}": "n", "v": "123456789012345678901234567890"})
+    );
+    assert_eq!(
+        crate::type_engine::decode_wire(&wire, &[]).unwrap(),
+        TValue::Schema(literal)
+    );
 }
 
 /// Time of `Type::pick` through a host (the socket PIG_EXT_SOCKET names); run by TestTypePickRoundTripReport: `cargo test --lib engine_pick_round_trip -- --ignored --nocapture`.
@@ -394,7 +585,10 @@ fn engine_pick_round_trip() {
             ("id".to_string(), TValue::Schema(s.clone())),
             ("name".to_string(), TValue::Schema(Type::optional(&s))),
             ("n".to_string(), TValue::Schema(Type::integer(None))),
-            ("tags".to_string(), TValue::Schema(Type::array(s.clone(), None))),
+            (
+                "tags".to_string(),
+                TValue::Schema(Type::array(s.clone(), None)),
+            ),
         ],
         None,
     );
@@ -406,5 +600,8 @@ fn engine_pick_round_trip() {
     for _ in 0..n {
         Type::pick(base.clone(), ["id", "name"], None).unwrap();
     }
-    println!("US_PER_CALL={:.1}", start.elapsed().as_secs_f64() / f64::from(n) * 1e6);
+    println!(
+        "US_PER_CALL={:.1}",
+        start.elapsed().as_secs_f64() / f64::from(n) * 1e6
+    );
 }

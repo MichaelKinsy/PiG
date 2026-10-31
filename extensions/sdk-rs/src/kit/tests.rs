@@ -13,7 +13,11 @@ fn wire_view(ledger: &ViewLedger, view: &View) -> Value {
 fn every_kind_encodes_its_upstream_fields() {
     let tree = Container::new()
         .child(DynamicBorder::new("accent"))
-        .child(Box::new(2, 0).bg("selectedBg").child(Text::new("in box", 1, 1)))
+        .child(
+            Box::new(2, 0)
+                .bg("selectedBg")
+                .child(Text::new("in box", 1, 1)),
+        )
         .child(Text::new("Pick", 2, 0).bg("customMessageBg"))
         .child(TruncatedText::new("cut", 0, 0))
         .child(
@@ -30,10 +34,16 @@ fn every_kind_encodes_its_upstream_fields() {
         .child(
             SelectList::new(
                 "tracks",
-                vec![SelectItem::new("t1", "One").description("first"), SelectItem::new("t2", "Two")],
+                vec![
+                    SelectItem::new("t1", "One").description("first"),
+                    SelectItem::new("t2", "Two"),
+                ],
                 3,
             )
-            .layout(SelectLayout { min_primary_column_width: Some(4), max_primary_column_width: None })
+            .layout(SelectLayout {
+                min_primary_column_width: Some(4),
+                max_primary_column_width: None,
+            })
             .selected_index(1)
             .filter("o"),
         )
@@ -41,10 +51,15 @@ fn every_kind_encodes_its_upstream_fields() {
             SettingsList::new(
                 "prefs",
                 vec![
-                    SettingItem::new("mode", "Mode", "fast").values(vec!["fast".into(), "slow".into()]),
+                    SettingItem::new("mode", "Mode", "fast")
+                        .values(vec!["fast".into(), "slow".into()]),
                     SettingItem::new("theme", "Theme", "dark")
                         .description("colors")
-                        .submenu(SelectList::new("themes", vec![SelectItem::new("dark", "Dark")], 5)),
+                        .submenu(SelectList::new(
+                            "themes",
+                            vec![SelectItem::new("dark", "Dark")],
+                            5,
+                        )),
                 ],
                 4,
             )
@@ -56,7 +71,10 @@ fn every_kind_encodes_its_upstream_fields() {
             Loader::new("Working")
                 .spinner_color("accent")
                 .message_color("muted")
-                .indicator(LoaderIndicator { frames: Some(vec!["a".into(), "b".into()]), interval_ms: Some(120) })
+                .indicator(LoaderIndicator {
+                    frames: Some(vec!["a".into(), "b".into()]),
+                    interval_ms: Some(120),
+                })
                 .frame(1),
         )
         .child(
@@ -64,7 +82,11 @@ fn every_kind_encodes_its_upstream_fields() {
                 .child(TruncatedText::new("left", 0, 0))
                 .child_with(
                     TruncatedText::new("right", 0, 0),
-                    StackEntry { grow: Some(1), basis: Some(3), ..StackEntry::default() },
+                    StackEntry {
+                        grow: Some(1),
+                        basis: Some(3),
+                        ..StackEntry::default()
+                    },
                 )
                 .child_with(TruncatedText::new("plain", 0, 0), StackEntry::default())
                 .gap(1)
@@ -145,8 +167,14 @@ fn theme_override_replaces_an_earlier_value_for_the_token() {
         .encode(false)
         .unwrap()
         .body;
-    assert_eq!(body["theme"], json!({"accent": "#d75f00", "muted": "#111111"}));
-    assert_eq!(serde_json::to_string(&body["theme"]).unwrap(), r##"{"accent":"#d75f00","muted":"#111111"}"##);
+    assert_eq!(
+        body["theme"],
+        json!({"accent": "#d75f00", "muted": "#111111"})
+    );
+    assert_eq!(
+        serde_json::to_string(&body["theme"]).unwrap(),
+        r##"{"accent":"#d75f00","muted":"#111111"}"##
+    );
 }
 
 #[test]
@@ -169,11 +197,19 @@ fn image_ref_is_the_sha256_of_its_bytes() {
 #[test]
 fn lines_annotations_travel_only_with_a_frontend() {
     let view = View::new(
-        Lines::new(vec!["▀▀".into()]).image(b"cover".to_vec(), "image/jpeg").progress(30.0, 120.0),
+        Lines::new(vec!["▀▀".into()])
+            .image(b"cover".to_vec(), "image/jpeg")
+            .progress(30.0, 120.0),
     );
     let without = view.encode(false).unwrap();
-    assert_eq!(without.body["root"], json!({"kind": "lines", "content": ["▀▀"]}));
-    assert!(without.images.is_empty(), "no image bytes without a frontend");
+    assert_eq!(
+        without.body["root"],
+        json!({"kind": "lines", "content": ["▀▀"]})
+    );
+    assert!(
+        without.images.is_empty(),
+        "no image bytes without a frontend"
+    );
 
     let with = view.encode(true).unwrap();
     assert_eq!(
@@ -188,20 +224,37 @@ fn lines_annotations_travel_only_with_a_frontend() {
 fn list_annotation_travels_only_with_a_frontend() {
     let list = List {
         items: vec![
-            ListItem { label: "Blue in Green".into(), detail: Some("Miles Davis".into()), columns: Some(vec!["5:37".into()]) },
-            ListItem { label: "So What".into(), ..ListItem::default() },
+            ListItem {
+                label: "Blue in Green".into(),
+                detail: Some("Miles Davis".into()),
+                columns: Some(vec!["5:37".into()]),
+            },
+            ListItem {
+                label: "So What".into(),
+                ..ListItem::default()
+            },
         ],
         selected: Some(1),
     };
     let view = View::new(Lines::new(vec!["a".into(), "b".into()]).list(list));
-    assert_eq!(view.encode(false).unwrap().body["root"], json!({"kind": "lines", "content": ["a", "b"]}));
+    assert_eq!(
+        view.encode(false).unwrap().body["root"],
+        json!({"kind": "lines", "content": ["a", "b"]})
+    );
     assert_eq!(
         view.encode(true).unwrap().body["root"]["list"],
         json!({"items": [{"label": "Blue in Green", "detail": "Miles Davis", "columns": ["5:37"]}, {"label": "So What"}],
                "selectedIndex": 1})
     );
-    let none = View::new(Lines::new(vec!["a".into()]).list(List { items: vec![ListItem::default()], selected: None }));
-    assert_eq!(none.encode(true).unwrap().body["root"]["list"]["selectedIndex"], -1, "no selection is -1");
+    let none = View::new(Lines::new(vec!["a".into()]).list(List {
+        items: vec![ListItem::default()],
+        selected: None,
+    }));
+    assert_eq!(
+        none.encode(true).unwrap().body["root"]["list"]["selectedIndex"],
+        -1,
+        "no selection is -1"
+    );
 }
 
 #[test]
@@ -220,14 +273,21 @@ fn ledger_sends_image_bytes_once_per_connection_until_evicted() {
     );
     let encoded = ledger.encode(&view).unwrap();
     assert!(!ledger.has_unsent(&encoded));
-    assert!(ledger.wire(&encoded).get("images").is_none(), "the second frame names the ref only");
+    assert!(
+        ledger.wire(&encoded).get("images").is_none(),
+        "the second frame names the ref only"
+    );
 
     let refs: HashSet<String> = [sha(b"abc")].into();
     assert!(encoded.references(&refs));
     assert_eq!(encoded.refs(), vec![sha(b"abc")]);
     ledger.forget(&refs);
     assert!(ledger.has_unsent(&encoded));
-    assert_eq!(wire_view(&ledger, &view)["images"][0]["data"], "YWJj", "evicted bytes are sent again");
+    assert_eq!(
+        wire_view(&ledger, &view)["images"][0]["data"],
+        "YWJj",
+        "evicted bytes are sent again"
+    );
 }
 
 #[test]
@@ -236,9 +296,15 @@ fn a_view_deeper_than_the_host_bound_is_an_error() {
     for _ in 0..63 {
         node = Container::new().child(node).into();
     }
-    assert!(View::new(node.clone()).encode(false).is_ok(), "64 levels are within the bound");
+    assert!(
+        View::new(node.clone()).encode(false).is_ok(),
+        "64 levels are within the bound"
+    );
     let deeper = View::new(Container::new().child(node));
-    assert_eq!(deeper.encode(false).unwrap_err(), "kit: view deeper than 64 nodes");
+    assert_eq!(
+        deeper.encode(false).unwrap_err(),
+        "kit: view deeper than 64 nodes"
+    );
     let rendered = Rendered::View(deeper).into_result(&ViewLedger::default());
     assert_eq!(rendered.unwrap_err(), "kit: view deeper than 64 nodes");
 }
@@ -249,7 +315,10 @@ fn ledger_follows_the_frontend_flag_of_each_snapshot() {
     let view = View::new(Lines::new(vec![]).progress(1.0, 2.0));
     assert!(wire_view(&ledger, &view)["root"].get("progress").is_none());
     ledger.apply_state(json!({"frontend": true}).as_object().unwrap());
-    assert_eq!(wire_view(&ledger, &view)["root"]["progress"], json!({"value": 1.0, "max": 2.0}));
+    assert_eq!(
+        wire_view(&ledger, &view)["root"]["progress"],
+        json!({"value": 1.0, "max": 2.0})
+    );
     // state_update snapshots omit a false flag.
     ledger.apply_state(json!({"hasUI": true}).as_object().unwrap());
     assert!(wire_view(&ledger, &view)["root"].get("progress").is_none());
@@ -258,18 +327,29 @@ fn ledger_follows_the_frontend_flag_of_each_snapshot() {
 #[test]
 fn input_encodes_its_fields() {
     let ledger = ViewLedger::default();
-    let node = Input::new("i").value("v").prompt("").placeholder("p").placeholder_color("dim");
+    let node = Input::new("i")
+        .value("v")
+        .prompt("")
+        .placeholder("p")
+        .placeholder_color("dim");
     assert_eq!(
         wire_view(&ledger, &View::new(node))["root"],
         json!({"kind": "input", "id": "i", "value": "v", "prompt": "", "placeholder": "p", "placeholderColor": "dim"})
     );
-    assert_eq!(wire_view(&ledger, &View::new(Input::new("i")))["root"], json!({"kind": "input", "id": "i"}));
+    assert_eq!(
+        wire_view(&ledger, &View::new(Input::new("i")))["root"],
+        json!({"kind": "input", "id": "i"})
+    );
 }
 
 #[test]
 fn editor_encodes_its_fields_and_omits_the_defaults() {
     let ledger = ViewLedger::default();
-    let commands = Autocomplete::new([SlashCommand::new("help").description("Show help"), SlashCommand::new("model").argument_hint("<name>")]).base_path("/work");
+    let commands = Autocomplete::new([
+        SlashCommand::new("help").description("Show help"),
+        SlashCommand::new("model").argument_hint("<name>"),
+    ])
+    .base_path("/work");
     let editor = Editor::new("e")
         .value("one\ntwo")
         .padding_x(2)
@@ -286,7 +366,10 @@ fn editor_encodes_its_fields_and_omits_the_defaults() {
             "autocomplete": {"commands": [{"name": "help", "description": "Show help"}, {"name": "model", "argumentHint": "<name>"}], "basePath": "/work"},
         })
     );
-    assert_eq!(wire_view(&ledger, &View::new(Editor::new("e")))["root"], json!({"kind": "editor", "id": "e"}));
+    assert_eq!(
+        wire_view(&ledger, &View::new(Editor::new("e")))["root"],
+        json!({"kind": "editor", "id": "e"})
+    );
 }
 
 #[test]
@@ -314,7 +397,12 @@ fn scroll_view_encodes_its_child_and_options() {
 #[test]
 fn mouse_region_encodes_its_handler_as_a_description() {
     let ledger = ViewLedger::default();
-    let region = MouseRegion::new("m", Spacer::new(1)).types(["click"]).handled(false).capture(true).focus(true).render(false);
+    let region = MouseRegion::new("m", Spacer::new(1))
+        .types(["click"])
+        .handled(false)
+        .capture(true)
+        .focus(true)
+        .render(false);
     assert_eq!(
         wire_view(&ledger, &View::new(region))["root"],
         json!({
@@ -322,7 +410,10 @@ fn mouse_region_encodes_its_handler_as_a_description() {
             "region": {"types": ["click"], "handled": false, "capture": true, "focus": true, "render": false},
         })
     );
-    assert_eq!(wire_view(&ledger, &View::new(MouseRegion::new("m", Spacer::new(1))))["root"]["region"], json!({}));
+    assert_eq!(
+        wire_view(&ledger, &View::new(MouseRegion::new("m", Spacer::new(1))))["root"]["region"],
+        json!({})
+    );
 }
 
 #[test]
@@ -349,9 +440,26 @@ fn events_decode_each_upstream_callback() {
     let (_, change) =
         Event::from_wire(&json!({"key": "k", "node": "prefs", "type": "change", "index": 0, "id": "mode", "value": "slow"}))
             .unwrap();
-    assert_eq!((change.kind, change.id.as_str(), change.value.as_str(), change.item), (EventKind::Change, "mode", "slow", None));
-    for (wire, kind) in [("cancel", EventKind::Cancel), ("selectionChange", EventKind::SelectionChange)] {
-        assert_eq!(Event::from_wire(&json!({"key": "k", "node": "n", "type": wire})).unwrap().1.kind, kind);
+    assert_eq!(
+        (
+            change.kind,
+            change.id.as_str(),
+            change.value.as_str(),
+            change.item
+        ),
+        (EventKind::Change, "mode", "slow", None)
+    );
+    for (wire, kind) in [
+        ("cancel", EventKind::Cancel),
+        ("selectionChange", EventKind::SelectionChange),
+    ] {
+        assert_eq!(
+            Event::from_wire(&json!({"key": "k", "node": "n", "type": wire}))
+                .unwrap()
+                .1
+                .kind,
+            kind
+        );
     }
     assert!(Event::from_wire(&json!({"key": "k", "node": "n", "type": "hover"})).is_none());
 }
@@ -359,9 +467,19 @@ fn events_decode_each_upstream_callback() {
 #[test]
 fn rendered_results_carry_lines_or_a_view_never_both() {
     let ledger = ViewLedger::default();
-    assert_eq!(Rendered::Lines(vec!["a".into()]).into_result(&ledger).unwrap(), json!({"lines": ["a"]}));
-    let view = Rendered::View(View::new(Spacer::new(1))).into_result(&ledger).unwrap();
-    assert_eq!(view, json!({"view": {"root": {"kind": "spacer", "lines": 1}}}));
+    assert_eq!(
+        Rendered::Lines(vec!["a".into()])
+            .into_result(&ledger)
+            .unwrap(),
+        json!({"lines": ["a"]})
+    );
+    let view = Rendered::View(View::new(Spacer::new(1)))
+        .into_result(&ledger)
+        .unwrap();
+    assert_eq!(
+        view,
+        json!({"view": {"root": {"kind": "spacer", "lines": 1}}})
+    );
 }
 
 #[test]
@@ -371,7 +489,11 @@ fn conversation_kinds_encode_as_the_go_sdk() {
     let mut assistant = AssistantMessage::new(None).id("a1");
     assistant.update_content(
         Message {
-            content: vec![ContentBlock::thinking("plan"), ContentBlock::text("done"), ContentBlock::tool_call()],
+            content: vec![
+                ContentBlock::thinking("plan"),
+                ContentBlock::text("done"),
+                ContentBlock::tool_call(),
+            ],
             stop_reason: "toolUse".into(),
             ..Message::default()
         },
@@ -385,12 +507,16 @@ fn conversation_kinds_encode_as_the_go_sdk() {
     hidden.set_hide_thinking_block(true);
     hidden.set_hidden_thinking_label("Pondering...");
     hidden.set_output_pad(0);
-    let mut tool = ToolExecution::new("read", "call-1", json!({"path": "a.txt"}), "/work").id("call-1");
+    let mut tool =
+        ToolExecution::new("read", "call-1", json!({"path": "a.txt"}), "/work").id("call-1");
     tool.set_args_complete();
     tool.mark_execution_started();
     tool.update_result(
         ToolResult {
-            content: vec![ToolResultContent::text("hi"), ToolResultContent::image(image.clone(), "image/png")],
+            content: vec![
+                ToolResultContent::text("hi"),
+                ToolResultContent::image(image.clone(), "image/png"),
+            ],
             is_error: true,
             details: Some(json!({"n": 1})),
             duration_ms: Some(1234),
@@ -399,7 +525,8 @@ fn conversation_kinds_encode_as_the_go_sdk() {
     );
     tool.set_expanded(true);
     tool.set_output_pad(3);
-    let mut empty = ToolExecution::new("kit_tool", "", Value::Null, "").tool_definition(ToolDefinition::Empty);
+    let mut empty =
+        ToolExecution::new("kit_tool", "", Value::Null, "").tool_definition(ToolDefinition::Empty);
     empty.set_show_images(false);
     empty.set_image_width_cells(30);
     let mut bash = BashExecution::new("ls", true).id("b");

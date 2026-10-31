@@ -32,7 +32,8 @@ pub struct BashExecOptions {
 }
 
 /// The exec function of Pi's `BashOperations`: runs `command` in `cwd` and returns the exit code, or `None` for a failed command (report a signal termination as 128 plus the signal number). An `Err` rejects, as Pi's exec rejects; return `"aborted"` when the signal was set.
-pub type BashExecFn = Arc<dyn Fn(&str, &str, BashExecOptions) -> Result<Option<i64>, String> + Send + Sync>;
+pub type BashExecFn =
+    Arc<dyn Fn(&str, &str, BashExecOptions) -> Result<Option<i64>, String> + Send + Sync>;
 
 /// Pi's `BashOperations`: pluggable command execution, local by default and remote (for example SSH) when a `user_bash` handler returns it from [`crate::Context::bash_operations`].
 #[derive(Clone)]
@@ -56,7 +57,11 @@ impl BashOperationsTable {
     }
 
     pub(crate) fn register_as(&self, handle: &str, operations: BashOperations) {
-        self.inner.lock().unwrap().1.insert(handle.to_string(), operations.exec);
+        self.inner
+            .lock()
+            .unwrap()
+            .1
+            .insert(handle.to_string(), operations.exec);
     }
 
     pub(crate) fn get(&self, handle: &str) -> Option<BashExecFn> {
@@ -76,7 +81,9 @@ pub(crate) fn run_user_bash_exec(
     notify: impl Fn(Value) + Send + Sync + 'static,
 ) -> Result<Value, String> {
     let handle = req.tool.as_deref().unwrap_or("");
-    let exec = table.get(handle).ok_or_else(|| format!("unknown bash operations: {handle}"))?;
+    let exec = table
+        .get(handle)
+        .ok_or_else(|| format!("unknown bash operations: {handle}"))?;
     let args = req.args.clone().unwrap_or(Value::Null);
     let finished = Arc::new(std::sync::atomic::AtomicBool::new(false));
     let live = finished.clone();
@@ -86,10 +93,26 @@ pub(crate) fn run_user_bash_exec(
         }
     });
     let env = args.get("env").and_then(Value::as_object).map(|object| {
-        object.iter().filter_map(|(name, value)| value.as_str().map(|value| (name.clone(), value.to_string()))).collect()
+        object
+            .iter()
+            .filter_map(|(name, value)| {
+                value
+                    .as_str()
+                    .map(|value| (name.clone(), value.to_string()))
+            })
+            .collect()
     });
-    let options = BashExecOptions { on_data, signal, timeout: args.get("timeout").and_then(Value::as_f64), env };
-    let result = exec(args["command"].as_str().unwrap_or(""), args["cwd"].as_str().unwrap_or(""), options);
+    let options = BashExecOptions {
+        on_data,
+        signal,
+        timeout: args.get("timeout").and_then(Value::as_f64),
+        env,
+    };
+    let result = exec(
+        args["command"].as_str().unwrap_or(""),
+        args["cwd"].as_str().unwrap_or(""),
+        options,
+    );
     finished.store(true, std::sync::atomic::Ordering::SeqCst);
     result.map(|exit_code| json!({ "exitCode": exit_code }))
 }
@@ -98,11 +121,21 @@ pub(crate) fn base64(data: &[u8]) -> String {
     const ALPHABET: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
     let mut out = String::with_capacity(data.len().div_ceil(3) * 4);
     for chunk in data.chunks(3) {
-        let n = (u32::from(chunk[0]) << 16) | (u32::from(*chunk.get(1).unwrap_or(&0)) << 8) | u32::from(*chunk.get(2).unwrap_or(&0));
+        let n = (u32::from(chunk[0]) << 16)
+            | (u32::from(*chunk.get(1).unwrap_or(&0)) << 8)
+            | u32::from(*chunk.get(2).unwrap_or(&0));
         out.push(ALPHABET[(n >> 18) as usize & 63] as char);
         out.push(ALPHABET[(n >> 12) as usize & 63] as char);
-        out.push(if chunk.len() > 1 { ALPHABET[(n >> 6) as usize & 63] as char } else { '=' });
-        out.push(if chunk.len() > 2 { ALPHABET[n as usize & 63] as char } else { '=' });
+        out.push(if chunk.len() > 1 {
+            ALPHABET[(n >> 6) as usize & 63] as char
+        } else {
+            '='
+        });
+        out.push(if chunk.len() > 2 {
+            ALPHABET[n as usize & 63] as char
+        } else {
+            '='
+        });
     }
     out
 }

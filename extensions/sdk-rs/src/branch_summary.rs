@@ -60,14 +60,26 @@ fn id_of(entry: &Value) -> Option<&str> {
 
 /// Pi's `collectEntriesForBranchSummary`: the entries from `old_leaf_id` back to its common ancestor with `target_id`, oldest first. A compaction on the way is
 /// included, not a boundary. With no old position there is nothing to summarize.
-pub fn collect_entries_for_branch_summary(session: &impl SessionReader, old_leaf_id: Option<&str>, target_id: &str) -> io::Result<CollectEntriesResult> {
+pub fn collect_entries_for_branch_summary(
+    session: &impl SessionReader,
+    old_leaf_id: Option<&str>,
+    target_id: &str,
+) -> io::Result<CollectEntriesResult> {
     let Some(old_leaf_id) = old_leaf_id.filter(|id| !id.is_empty()) else {
-        return Ok(CollectEntriesResult { entries: Vec::new(), common_ancestor_id: None });
+        return Ok(CollectEntriesResult {
+            entries: Vec::new(),
+            common_ancestor_id: None,
+        });
     };
     let old_branch = entries_of(session.get_branch(Some(old_leaf_id))?);
     let old_path: Vec<&str> = old_branch.iter().filter_map(id_of).collect();
     let target_path = entries_of(session.get_branch(Some(target_id))?);
-    let common_ancestor_id = target_path.iter().rev().filter_map(id_of).find(|id| old_path.contains(id)).map(str::to_string);
+    let common_ancestor_id = target_path
+        .iter()
+        .rev()
+        .filter_map(id_of)
+        .find(|id| old_path.contains(id))
+        .map(str::to_string);
     let mut entries = Vec::new();
     let mut current = old_leaf_id.to_string();
     while !current.is_empty() && Some(&current) != common_ancestor_id.as_ref() {
@@ -75,11 +87,18 @@ pub fn collect_entries_for_branch_summary(session: &impl SessionReader, old_leaf
         if !entry.is_object() {
             break;
         }
-        current = entry.get("parentId").and_then(Value::as_str).unwrap_or("").to_string();
+        current = entry
+            .get("parentId")
+            .and_then(Value::as_str)
+            .unwrap_or("")
+            .to_string();
         entries.push(entry);
     }
     entries.reverse();
-    Ok(CollectEntriesResult { entries, common_ancestor_id })
+    Ok(CollectEntriesResult {
+        entries,
+        common_ancestor_id,
+    })
 }
 
 fn truthy(value: Option<&Value>) -> bool {
@@ -96,31 +115,49 @@ fn truthy(value: Option<&Value>) -> bool {
 /// file operations of every entry, including those that did not fit. A branch summary Pi wrote (not one an extension did) contributes the files it recorded. An
 /// entry the budget stops at is dropped, unless it is a compaction or a branch summary and the messages so far use under 90% of the budget. Timestamps are
 /// `new Date(timestamp).getTime()`, which the host's date parser answers ([`parse_date`]).
-pub fn prepare_branch_entries(entries: &[Value], token_budget: i64) -> io::Result<BranchPreparation> {
+pub fn prepare_branch_entries(
+    entries: &[Value],
+    token_budget: i64,
+) -> io::Result<BranchPreparation> {
     prepare(entries, token_budget, &[])
 }
 
-fn prepare(entries: &[Value], token_budget: i64, stand_ins: &[char]) -> io::Result<BranchPreparation> {
+fn prepare(
+    entries: &[Value],
+    token_budget: i64,
+    stand_ins: &[char],
+) -> io::Result<BranchPreparation> {
     let mut newest_first: Vec<Value> = Vec::new();
     let mut file_ops = FileOperations::default();
     let mut total_tokens = 0i64;
     for entry in entries {
-        if entry.get("type").and_then(Value::as_str) == Some("branch_summary") && !truthy(entry.get("fromHook")) && truthy(entry.get("details")) {
+        if entry.get("type").and_then(Value::as_str) == Some("branch_summary")
+            && !truthy(entry.get("fromHook"))
+            && truthy(entry.get("details"))
+        {
             let details = &entry["details"];
             if let Some(read) = details.get("readFiles").and_then(Value::as_array) {
                 read.iter().for_each(|file| add(&mut file_ops.read, file));
             }
             if let Some(modified) = details.get("modifiedFiles").and_then(Value::as_array) {
-                modified.iter().for_each(|file| add(&mut file_ops.edited, file));
+                modified
+                    .iter()
+                    .for_each(|file| add(&mut file_ops.edited, file));
             }
         }
     }
     for entry in entries.iter().rev() {
-        let Some(message) = message_from_entry(entry)? else { continue };
+        let Some(message) = message_from_entry(entry)? else {
+            continue;
+        };
         extract_file_ops(&message, &mut file_ops);
         let tokens = estimate_tokens_with(&message, stand_ins);
         if token_budget > 0 && total_tokens + tokens > token_budget {
-            if matches!(entry.get("type").and_then(Value::as_str), Some("compaction" | "branch_summary")) && (total_tokens as f64) < token_budget as f64 * 0.9 {
+            if matches!(
+                entry.get("type").and_then(Value::as_str),
+                Some("compaction" | "branch_summary")
+            ) && (total_tokens as f64) < token_budget as f64 * 0.9
+            {
                 newest_first.push(message);
                 total_tokens += tokens;
             }
@@ -130,7 +167,11 @@ fn prepare(entries: &[Value], token_budget: i64, stand_ins: &[char]) -> io::Resu
         total_tokens += tokens;
     }
     newest_first.reverse();
-    Ok(BranchPreparation { messages: newest_first, file_ops, total_tokens })
+    Ok(BranchPreparation {
+        messages: newest_first,
+        file_ops,
+        total_tokens,
+    })
 }
 
 /// [`prepare_branch_entries`] over the JSON text of the entries (an array, oldest first) that answers with JSON text, `{"messages":[...],"fileOps":{"read":[],"written":[],
@@ -140,7 +181,12 @@ pub fn prepare_branch_entries_json(entries_json: &str, token_budget: i64) -> io:
     let (text, protected) = crate::lossless_json::protect(entries_json);
     let entries: Vec<Value> = match serde_json::from_str(&text) {
         Ok(entries) => entries,
-        Err(err) => return Err(io::Error::new(io::ErrorKind::InvalidData, format!("the entries are not a JSON array: {err}"))),
+        Err(err) => {
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidData,
+                format!("the entries are not a JSON array: {err}"),
+            ));
+        }
     };
     let prepared = prepare(&entries, token_budget, &protected.stand_in_chars())?;
     let file_ops = serde_json::json!({"read": prepared.file_ops.read, "written": prepared.file_ops.written, "edited": prepared.file_ops.edited});
@@ -153,14 +199,32 @@ pub fn prepare_branch_entries_json(entries_json: &str, token_budget: i64) -> io:
 fn message_from_entry(entry: &Value) -> io::Result<Option<Value>> {
     Ok(match entry.get("type").and_then(Value::as_str) {
         Some("message") => match entry.get("message") {
-            Some(message) if message.is_object() => (message.get("role").and_then(Value::as_str) != Some("toolResult")).then(|| message.clone()),
-            Some(Value::Null) => return Err(type_error("Cannot read properties of null (reading 'role')")),
-            None => return Err(type_error("Cannot read properties of undefined (reading 'role')")),
+            Some(message) if message.is_object() => (message.get("role").and_then(Value::as_str)
+                != Some("toolResult"))
+            .then(|| message.clone()),
+            Some(Value::Null) => {
+                return Err(type_error(
+                    "Cannot read properties of null (reading 'role')",
+                ));
+            }
+            None => {
+                return Err(type_error(
+                    "Cannot read properties of undefined (reading 'role')",
+                ));
+            }
             Some(_) => return Err(type_error("a session entry's message is not an object")),
         },
-        Some("custom_message") => Some(created("custom", entry, &["customType", "content", "display", "details"])),
+        Some("custom_message") => Some(created(
+            "custom",
+            entry,
+            &["customType", "content", "display", "details"],
+        )),
         Some("branch_summary") => Some(created("branchSummary", entry, &["summary", "fromId"])),
-        Some("compaction") => Some(created("compactionSummary", entry, &["summary", "tokensBefore"])),
+        Some("compaction") => Some(created(
+            "compactionSummary",
+            entry,
+            &["summary", "tokensBefore"],
+        )),
         _ => None,
     })
 }
@@ -185,10 +249,22 @@ fn created(role: &str, entry: &Value, names: &[&str]) -> Value {
 /// `new Date(entry.timestamp).getTime()`: a string is parsed by the host, a number is clipped to the time range, `null` is the epoch and anything else,
 /// including an absent timestamp, is NaN (`null` on the wire).
 fn date_time(entry: &Value) -> Value {
-    let milliseconds = |ms: f64| if ms.fract() == 0.0 && ms.abs() < 9.0e15 { Value::from(ms as i64) } else { serde_json::Number::from_f64(ms).map_or(Value::Null, Value::Number) };
+    let milliseconds = |ms: f64| {
+        if ms.fract() == 0.0 && ms.abs() < 9.0e15 {
+            Value::from(ms as i64)
+        } else {
+            serde_json::Number::from_f64(ms).map_or(Value::Null, Value::Number)
+        }
+    };
     match entry.get("timestamp") {
-        Some(Value::String(text)) => parse_date(text).ok().flatten().map_or(Value::Null, milliseconds),
-        Some(Value::Number(number)) => number.as_f64().filter(|n| n.abs() <= 8.64e15).map_or(Value::Null, |n| milliseconds(n.trunc() + 0.0)),
+        Some(Value::String(text)) => parse_date(text)
+            .ok()
+            .flatten()
+            .map_or(Value::Null, milliseconds),
+        Some(Value::Number(number)) => number
+            .as_f64()
+            .filter(|n| n.abs() <= 8.64e15)
+            .map_or(Value::Null, |n| milliseconds(n.trunc() + 0.0)),
         Some(Value::Bool(flag)) => Value::from(i64::from(*flag)),
         Some(Value::Null) => Value::from(0),
         _ => Value::Null,
@@ -199,8 +275,16 @@ fn date_time(entry: &Value) -> Value {
 fn extract_file_ops(message: &Value, file_ops: &mut FileOperations) {
     match message.get("role").and_then(Value::as_str) {
         Some("assistant") => {
-            for block in message.get("content").and_then(Value::as_array).into_iter().flatten() {
-                if block.get("type").and_then(Value::as_str) == Some("toolCall") && block.get("arguments").is_some() && block.get("name").is_some() {
+            for block in message
+                .get("content")
+                .and_then(Value::as_array)
+                .into_iter()
+                .flatten()
+            {
+                if block.get("type").and_then(Value::as_str) == Some("toolCall")
+                    && block.get("arguments").is_some()
+                    && block.get("name").is_some()
+                {
                     add_file_op(block.get("name"), block.get("arguments"), file_ops);
                 }
             }
@@ -209,8 +293,18 @@ fn extract_file_ops(message: &Value, file_ops: &mut FileOperations) {
     }
 }
 
-fn add_file_op(tool_name: Option<&Value>, arguments: Option<&Value>, file_ops: &mut FileOperations) {
-    let Some(path) = arguments.and_then(|arguments| arguments.get("path")).and_then(Value::as_str).filter(|path| !path.is_empty()) else { return };
+fn add_file_op(
+    tool_name: Option<&Value>,
+    arguments: Option<&Value>,
+    file_ops: &mut FileOperations,
+) {
+    let Some(path) = arguments
+        .and_then(|arguments| arguments.get("path"))
+        .and_then(Value::as_str)
+        .filter(|path| !path.is_empty())
+    else {
+        return;
+    };
     let path = Value::from(path);
     match tool_name.and_then(Value::as_str) {
         Some("read") => add(&mut file_ops.read, &path),

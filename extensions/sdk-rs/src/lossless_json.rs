@@ -16,25 +16,38 @@ pub(crate) struct Protected {
 /// the Basic Multilingual Plane and 2,048 surrogate units, so a text that holds some of the characters still has one left for each unit it needs.
 pub(crate) fn protect(text: &str) -> (String, Protected) {
     // A private-use character the text holds, written out or as an escape (an over-count is harmless), is one the text's own value must keep.
-    let mut used: HashSet<char> = text.chars().filter(|c| ('\u{e000}'..='\u{f8ff}').contains(c)).collect();
+    let mut used: HashSet<char> = text
+        .chars()
+        .filter(|c| ('\u{e000}'..='\u{f8ff}').contains(c))
+        .collect();
     for (at, _) in text.match_indices("\\u") {
-        if let Some(c) = text.get(at + 2..at + 6).and_then(|hex| u32::from_str_radix(hex, 16).ok()).and_then(char::from_u32) {
+        if let Some(c) = text
+            .get(at + 2..at + 6)
+            .and_then(|hex| u32::from_str_radix(hex, 16).ok())
+            .and_then(char::from_u32)
+        {
             used.insert(c);
         }
     }
     let mut free = ('\u{e000}'..='\u{f8ff}').filter(|c| !used.contains(c));
     let mut stands_for: Vec<(char, u16)> = Vec::new();
     let rewritten = rewrite_unpaired_surrogate_escapes(text.as_bytes(), |unit| {
-        let found = stands_for.iter().find(|(_, known)| *known == unit).map(|(c, _)| *c);
+        let found = stands_for
+            .iter()
+            .find(|(_, known)| *known == unit)
+            .map(|(c, _)| *c);
         let c = found.unwrap_or_else(|| {
-            let c = free.next().expect("6,400 private-use characters are more than the 2,048 surrogate units");
+            let c = free
+                .next()
+                .expect("6,400 private-use characters are more than the 2,048 surrogate units");
             stands_for.push((c, unit));
             c
         });
         c.to_string().into_bytes()
     });
     let text = match rewritten {
-        Some(bytes) => String::from_utf8(bytes).expect("the rewrite replaces ASCII escapes with whole characters"),
+        Some(bytes) => String::from_utf8(bytes)
+            .expect("the rewrite replaces ASCII escapes with whole characters"),
         None => text.to_string(),
     };
     (text, Protected { stands_for })
@@ -72,7 +85,13 @@ mod tests {
         let (protected, stands) = protect(text);
         let value: serde_json::Value = serde_json::from_str(&protected).unwrap();
         let back = stands.restore(&serde_json::to_string(&value).unwrap());
-        assert_eq!(back, format!(r#"{{"a":"x\ud83dy","\udc00":["\ud83d","😀","\\ud83d"],"p":"{}"}}"#, '\u{e000}'));
+        assert_eq!(
+            back,
+            format!(
+                r#"{{"a":"x\ud83dy","\udc00":["\ud83d","😀","\\ud83d"],"p":"{}"}}"#,
+                '\u{e000}'
+            )
+        );
     }
 
     #[test]
@@ -81,7 +100,10 @@ mod tests {
         let value: serde_json::Value = serde_json::from_str(&protected).unwrap();
         assert_eq!(value[1], "\u{e000}");
         assert_eq!(value[2], "\u{e001}");
-        assert_eq!(stands.restore(&serde_json::to_string(&value).unwrap()), format!(r#"["\ud83d","{}","{}"]"#, '\u{e000}', '\u{e001}'));
+        assert_eq!(
+            stands.restore(&serde_json::to_string(&value).unwrap()),
+            format!(r#"["\ud83d","{}","{}"]"#, '\u{e000}', '\u{e001}')
+        );
     }
 
     #[test]
@@ -99,6 +121,9 @@ mod tests {
         assert!(stands.stands_for.iter().all(|(c, _)| *c != '\u{e000}'));
         let value: serde_json::Value = serde_json::from_str(&protected).unwrap();
         assert_eq!(value[0], "\u{e000}");
-        assert_eq!(stands.restore(&serde_json::to_string(&value).unwrap()), format!(r#"["{}","\ud83d","\udc00"]"#, '\u{e000}'));
+        assert_eq!(
+            stands.restore(&serde_json::to_string(&value).unwrap()),
+            format!(r#"["{}","\ud83d","\udc00"]"#, '\u{e000}')
+        );
     }
 }

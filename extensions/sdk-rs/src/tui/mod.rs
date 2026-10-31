@@ -13,25 +13,30 @@ mod keys;
 mod lower;
 mod tables;
 mod terminal;
-mod tui_keybindings;
-mod text;
 #[cfg(test)]
 mod tests;
+mod text;
+mod tui_keybindings;
 
-pub(crate) use host::{apply_host_state, install_theme, installed_theme_palette, set_host_theme};
-pub use host::current_host_theme;
 pub use colors::*;
 pub use fuzzy::{FuzzyMatch, fuzzy_filter, fuzzy_match};
-pub use keybindings::{KeybindingConflict, KeybindingDefinition, KeybindingsManager, get_keybindings, set_keybindings, tui_keybindings};
+pub use host::current_host_theme;
+pub(crate) use host::{apply_host_state, install_theme, installed_theme_palette, set_host_theme};
+pub use keybindings::{
+    KeybindingConflict, KeybindingDefinition, KeybindingsManager, get_keybindings, set_keybindings,
+    tui_keybindings,
+};
 pub use keys::{
-    Key, decode_kitty_printable, decode_printable_key, is_key_release, is_key_repeat, is_kitty_protocol_active, matches_key, parse_key,
-    set_kitty_protocol_active,
+    Key, decode_kitty_printable, decode_printable_key, is_key_release, is_key_repeat,
+    is_kitty_protocol_active, matches_key, parse_key, set_kitty_protocol_active,
 };
 pub use terminal::{
-    CapabilityOverrides, ImageProtocol, TerminalCapabilities, detect_capabilities, get_capabilities, get_terminal_color_mode, hyperlink,
-    reset_capabilities_cache, set_capabilities, set_capability_overrides,
+    CapabilityOverrides, ImageProtocol, TerminalCapabilities, detect_capabilities,
+    get_capabilities, get_terminal_color_mode, hyperlink, reset_capabilities_cache,
+    set_capabilities, set_capability_overrides,
 };
 pub use text::{
-    CURSOR_MARKER, Segments, SliceResult, extract_segments, get_active_background_ansi, get_osc8_link_at_column, slice_by_column,
-    slice_with_width, strip_terminal_sequences, truncate_to_width, visible_width, wrap_text_with_ansi,
+    CURSOR_MARKER, Segments, SliceResult, extract_segments, get_active_background_ansi,
+    get_osc8_link_at_column, slice_by_column, slice_with_width, strip_terminal_sequences,
+    truncate_to_width, visible_width, wrap_text_with_ansi,
 };

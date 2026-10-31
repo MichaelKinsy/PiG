@@ -9,10 +9,11 @@
 use crate::context::Context;
 use crate::graph::call_static;
 use crate::{
-    AgentSession, CreateAgentSessionOptions, DefaultResourceLoader, DefaultResourceLoaderOptions, ModelRuntime, ModelRuntimeCreateOptions, SessionManager, SessionStartEvent, SettingsManager,
+    AgentSession, CreateAgentSessionOptions, DefaultResourceLoader, DefaultResourceLoaderOptions,
+    ModelRuntime, ModelRuntimeCreateOptions, SessionManager, SessionStartEvent, SettingsManager,
     ToolDefinition,
 };
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use std::io;
 use std::path::Path;
 use std::sync::Arc;
@@ -52,33 +53,65 @@ fn join(dir: &str, name: &str) -> String {
 }
 
 /// `createAgentSessionServices(options)`: cwd-bound services plus the diagnostics found while creating them. It does not create an AgentSession.
-pub fn create_agent_session_services(context: &Context, options: CreateAgentSessionServicesOptions) -> io::Result<AgentSessionServices> {
-    let paths = call_static(context, "AgentSessionServices", "resolve", vec![json!(options.cwd), json!(options.agent_dir)])?;
+pub fn create_agent_session_services(
+    context: &Context,
+    options: CreateAgentSessionServicesOptions,
+) -> io::Result<AgentSessionServices> {
+    let paths = call_static(
+        context,
+        "AgentSessionServices",
+        "resolve",
+        vec![json!(options.cwd), json!(options.agent_dir)],
+    )?;
     let text = |key: &str| paths[key].as_str().unwrap_or("").to_string();
     let (cwd, agent_dir) = (text("cwd"), text("agentDir"));
     let model_runtime = match options.model_runtime {
         Some(runtime) => runtime,
         None => Arc::new(ModelRuntime::create(
             context,
-            ModelRuntimeCreateOptions { auth_path: Some(join(&agent_dir, "auth.json")), models_path: Some(join(&agent_dir, "models.json")), ..Default::default() },
+            ModelRuntimeCreateOptions {
+                auth_path: Some(join(&agent_dir, "auth.json")),
+                models_path: Some(join(&agent_dir, "models.json")),
+                ..Default::default()
+            },
         )?),
     };
     let settings_manager = match options.settings_manager {
         Some(settings) => settings,
-        None => Arc::new(SettingsManager::create(context, &cwd, Some(&agent_dir), None)?),
+        None => Arc::new(SettingsManager::create(
+            context,
+            &cwd,
+            Some(&agent_dir),
+            None,
+        )?),
     };
     let mut loader_options = options.resource_loader_options.unwrap_or_default();
     loader_options.cwd = cwd.clone();
     loader_options.agent_dir = agent_dir.clone();
     loader_options.settings_manager = Some(&settings_manager);
     let resource_loader = DefaultResourceLoader::new(context, loader_options)?;
-    resource_loader.reload(options.resource_loader_reload_options.and_then(|reload| reload.resolve_project_trust))?;
-    let flags: Vec<Value> = options.extension_flag_values.into_iter().map(|(name, value)| json!([name, value])).collect();
+    resource_loader.reload(
+        options
+            .resource_loader_reload_options
+            .and_then(|reload| reload.resolve_project_trust),
+    )?;
+    let flags: Vec<Value> = options
+        .extension_flag_values
+        .into_iter()
+        .map(|(name, value)| json!([name, value]))
+        .collect();
     let diagnostics = call_static(
         context,
         "AgentSessionServices",
         "apply",
-        vec![json!(model_runtime.handle()), json!(settings_manager.handle()), json!(resource_loader.handle()), json!(cwd), json!(agent_dir), Value::Array(flags)],
+        vec![
+            json!(model_runtime.handle()),
+            json!(settings_manager.handle()),
+            json!(resource_loader.handle()),
+            json!(cwd),
+            json!(agent_dir),
+            Value::Array(flags),
+        ],
     )?;
     Ok(AgentSessionServices {
         cwd,
@@ -106,7 +139,10 @@ pub struct CreateAgentSessionFromServicesOptions<'a> {
 
 /// `createAgentSessionFromServices(options)`: an AgentSession over previously created services, which keeps session creation separate so the caller can resolve the model, thinking level and tools against the
 /// target cwd first.
-pub fn create_agent_session_from_services(context: &Context, options: CreateAgentSessionFromServicesOptions) -> io::Result<AgentSession> {
+pub fn create_agent_session_from_services(
+    context: &Context,
+    options: CreateAgentSessionFromServicesOptions,
+) -> io::Result<AgentSession> {
     let services = options.services;
     context.create_agent_session(CreateAgentSessionOptions {
         cwd: Some(services.cwd.clone()),

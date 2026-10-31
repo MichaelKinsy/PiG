@@ -35,17 +35,31 @@ struct Host {
 
 impl Host {
     fn start(ext: Extension) -> Host {
-        let root = std::env::temp_dir().join(format!("pig-dispatch-{}-{}", std::process::id(), NEXT.fetch_add(1, Ordering::Relaxed)));
+        let root = std::env::temp_dir().join(format!(
+            "pig-dispatch-{}-{}",
+            std::process::id(),
+            NEXT.fetch_add(1, Ordering::Relaxed)
+        ));
         std::fs::create_dir(&root).unwrap();
         let socket = root.join("sock");
         let listener = UnixListener::bind(&socket).unwrap();
         let thread = std::thread::spawn(move || ext.run_with_socket(socket.to_str().unwrap()));
         let (mut stream, _) = listener.accept().unwrap();
-        stream.set_read_timeout(Some(Duration::from_secs(10))).unwrap();
+        stream
+            .set_read_timeout(Some(Duration::from_secs(10)))
+            .unwrap();
         let register = read(&mut stream);
         assert_eq!(register["type"], "register");
-        send(&mut stream, &json!({"type":"ready","ready":{"state":{},"width":80,"mode":"tui"}}));
-        Host { stream, thread: Some(thread), root, register }
+        send(
+            &mut stream,
+            &json!({"type":"ready","ready":{"state":{},"width":80,"mode":"tui"}}),
+        );
+        Host {
+            stream,
+            thread: Some(thread),
+            root,
+            register,
+        }
     }
 
     fn next(&mut self) -> Value {
@@ -80,7 +94,10 @@ impl Host {
     }
 
     fn finish(mut self) {
-        send(&mut self.stream, &json!({"type":"shutdown","shutdown":{"reason":"done"}}));
+        send(
+            &mut self.stream,
+            &json!({"type":"shutdown","shutdown":{"reason":"done"}}),
+        );
         self.thread.take().unwrap().join().unwrap().unwrap();
     }
 }
@@ -102,10 +119,16 @@ fn prepare_arguments_runs_for_the_host_and_tool_call_does_not_repeat_it() {
     let mut ext = Extension::new("dispatch");
     let handled: Arc<Mutex<Vec<Value>>> = Arc::new(Mutex::new(Vec::new()));
     let recorded = handled.clone();
-    let mut legacy = ToolDefinition::new("legacy", "Legacy", "Echo", json!({"type":"object","required":["text"]}), move |_, params| {
-        recorded.lock().unwrap().push(params);
-        ToolResult::text("ok")
-    });
+    let mut legacy = ToolDefinition::new(
+        "legacy",
+        "Legacy",
+        "Echo",
+        json!({"type":"object","required":["text"]}),
+        move |_, params| {
+            recorded.lock().unwrap().push(params);
+            ToolResult::text("ok")
+        },
+    );
     legacy.prepare_arguments = Some(Box::new(|params| {
         if params["fail"] == true {
             return Err("prepare exploded".to_string());
@@ -113,24 +136,55 @@ fn prepare_arguments_runs_for_the_host_and_tool_call_does_not_repeat_it() {
         Ok(json!({"text": params["legacy"]}))
     }));
     ext.register_tool(legacy);
-    ext.tool("plain", "Plain", empty_schema(), |_, _| ToolResult::text("ok"));
+    ext.tool("plain", "Plain", empty_schema(), |_, _| {
+        ToolResult::text("ok")
+    });
     let mut host = Host::start(ext);
-    let tools = host.register["register"]["tools"].as_array().unwrap().clone();
+    let tools = host.register["register"]["tools"]
+        .as_array()
+        .unwrap()
+        .clone();
     assert_eq!(tools[0]["prepares_arguments"], true, "{tools:?}");
     assert!(tools[1].get("prepares_arguments").is_none(), "{tools:?}");
 
-    host.request("p1", "tool_prepare_arguments", "legacy", json!({"legacy":"hello"}));
+    host.request(
+        "p1",
+        "tool_prepare_arguments",
+        "legacy",
+        json!({"legacy":"hello"}),
+    );
     assert_eq!(host.response("p1")["result"], json!({"text":"hello"}));
-    host.request("p2", "tool_prepare_arguments", "legacy", json!({"fail":true}));
+    host.request(
+        "p2",
+        "tool_prepare_arguments",
+        "legacy",
+        json!({"fail":true}),
+    );
     assert_eq!(host.response("p2")["error"]["message"], "prepare exploded");
     host.request("p3", "tool_prepare_arguments", "missing", json!({}));
-    assert!(host.response("p3").get("error").is_some_and(|error| !error.is_null()));
+    assert!(
+        host.response("p3")
+            .get("error")
+            .is_some_and(|error| !error.is_null())
+    );
     host.request("p4", "tool_prepare_arguments", "plain", json!({}));
-    assert!(host.response("p4").get("error").is_some_and(|error| !error.is_null()));
+    assert!(
+        host.response("p4")
+            .get("error")
+            .is_some_and(|error| !error.is_null())
+    );
 
-    host.request("c1", "tool_call", "legacy", json!({"text":"prepared","legacy":"raw"}));
+    host.request(
+        "c1",
+        "tool_call",
+        "legacy",
+        json!({"text":"prepared","legacy":"raw"}),
+    );
     assert!(host.response("c1").get("error").is_none_or(Value::is_null));
-    assert_eq!(*handled.lock().unwrap(), vec![json!({"text":"prepared","legacy":"raw"})]);
+    assert_eq!(
+        *handled.lock().unwrap(),
+        vec![json!({"text":"prepared","legacy":"raw"})]
+    );
     host.finish();
 }
 
@@ -139,13 +193,23 @@ fn prepare_arguments_runs_for_the_host_and_tool_call_does_not_repeat_it() {
 #[test]
 fn a_tool_call_that_ends_before_its_handler_hands_on_its_place() {
     let mut ext = Extension::new("dispatch");
-    ext.tool("probe", "Probe", empty_schema(), |_, _| ToolResult::text("ok"));
+    ext.tool("probe", "Probe", empty_schema(), |_, _| {
+        ToolResult::text("ok")
+    });
     let mut host = Host::start(ext);
     for round in 0..8 {
         host.request(&format!("m{round}"), "tool_call", "missing", json!({}));
-        assert!(host.response(&format!("m{round}")).get("error").is_some_and(|error| !error.is_null()));
+        assert!(
+            host.response(&format!("m{round}"))
+                .get("error")
+                .is_some_and(|error| !error.is_null())
+        );
         host.request(&format!("p{round}"), "tool_call", "probe", json!({}));
-        assert!(host.response(&format!("p{round}")).get("error").is_none_or(Value::is_null));
+        assert!(
+            host.response(&format!("p{round}"))
+                .get("error")
+                .is_none_or(Value::is_null)
+        );
     }
     host.finish();
 }
@@ -182,13 +246,22 @@ fn select_calls(host: &mut Host, count: usize) -> Vec<(String, String)> {
             let frame = host.next();
             assert_eq!(frame["type"], "call", "frame: {frame}");
             assert_eq!(frame["call"]["method"], "ui.select", "frame: {frame}");
-            (frame["id"].as_str().unwrap().to_string(), frame["call"]["parent_request_id"].as_str().unwrap().to_string())
+            (
+                frame["id"].as_str().unwrap().to_string(),
+                frame["call"]["parent_request_id"]
+                    .as_str()
+                    .unwrap()
+                    .to_string(),
+            )
         })
         .collect()
 }
 
 fn answer(host: &mut Host, call_id: &str) {
-    send(&mut host.stream, &json!({"type":"call_result","id":call_id,"call_result":{"result":{"selected":"a","ok":true}}}));
+    send(
+        &mut host.stream,
+        &json!({"type":"call_result","id":call_id,"call_result":{"result":{"selected":"a","ok":true}}}),
+    );
 }
 
 // agent-loop.ts:586-647 and rpc-mode.ts:91-130, 771-777: the calls of one parallel batch start in source order and each reaches its first await, here a select
@@ -202,11 +275,19 @@ fn a_batch_opens_its_dialogs_in_call_order_and_responds_in_answer_order() {
     for round in 0..9 {
         let ids: Vec<String> = (0..BATCH).map(|i| format!("d{round}-{i}")).collect();
         for (i, id) in ids.iter().enumerate() {
-            host.batch_request(&format!("batch-{round}"), id, "dialog_order", json!({"title": format!("T{i}")}));
+            host.batch_request(
+                &format!("batch-{round}"),
+                id,
+                "dialog_order",
+                json!({"title": format!("T{i}")}),
+            );
         }
         let calls = select_calls(&mut host, BATCH);
         let parents: Vec<&str> = calls.iter().map(|(_, parent)| parent.as_str()).collect();
-        assert_eq!(parents, ids, "round {round}: the dialogs did not open in call order");
+        assert_eq!(
+            parents, ids,
+            "round {round}: the dialogs did not open in call order"
+        );
         // Forward, reversed and rotated answers, written back to back.
         let answers: Vec<usize> = (0..BATCH)
             .map(|i| match round % 3 {
@@ -226,7 +307,11 @@ fn a_batch_opens_its_dialogs_in_call_order_and_responds_in_answer_order() {
             })
             .collect();
         let want: Vec<&String> = answers.iter().map(|&call| &ids[call]).collect();
-        assert_eq!(responded.iter().collect::<Vec<_>>(), want, "round {round}: the responses did not follow the answers");
+        assert_eq!(
+            responded.iter().collect::<Vec<_>>(),
+            want,
+            "round {round}: the responses did not follow the answers"
+        );
     }
     host.finish();
 }
@@ -237,7 +322,12 @@ fn a_batch_opens_its_dialogs_in_call_order_and_responds_in_answer_order() {
 fn a_handler_that_reached_its_next_host_call_lets_the_ones_behind_it_respond() {
     let mut host = Host::start(dialog_order_extension());
     host.batch_request("batch", "first", "dialog_order", json!({"title": "T0"}));
-    host.batch_request("batch", "second", "dialog_order", json!({"title": "T1", "then": "host_call"}));
+    host.batch_request(
+        "batch",
+        "second",
+        "dialog_order",
+        json!({"title": "T1", "then": "host_call"}),
+    );
     let calls = select_calls(&mut host, 2);
     assert_eq!(calls[0].1, "first");
     assert_eq!(calls[1].1, "second");
@@ -259,7 +349,10 @@ fn a_handler_that_reached_its_next_host_call_lets_the_ones_behind_it_respond() {
             other => panic!("unexpected frame {other:?}: {frame}"),
         }
     }
-    send(&mut host.stream, &json!({"type":"call_result","id":title_call.unwrap(),"call_result":{}}));
+    send(
+        &mut host.stream,
+        &json!({"type":"call_result","id":title_call.unwrap(),"call_result":{}}),
+    );
     assert_eq!(host.response("second")["result"]["content"], "dialog:T1=a");
     host.finish();
 }
@@ -284,8 +377,16 @@ fn a_long_call_of_one_batch_does_not_hold_the_dialogs_of_another_batch() {
     host.request("none", "tool_call", "dialog_order", json!({"title": "N"}));
     let calls = select_calls(&mut host, 3);
     let mut parents: Vec<&str> = calls.iter().map(|(_, parent)| parent.as_str()).collect();
-    let position = |parents: &[&str], id: &str| parents.iter().position(|parent| *parent == id).unwrap_or_else(|| panic!("no dialog of {id}: {parents:?}"));
-    assert!(position(&parents, "b0") < position(&parents, "b1"), "the dialogs of batch B did not open in call order: {parents:?}");
+    let position = |parents: &[&str], id: &str| {
+        parents
+            .iter()
+            .position(|parent| *parent == id)
+            .unwrap_or_else(|| panic!("no dialog of {id}: {parents:?}"))
+    };
+    assert!(
+        position(&parents, "b0") < position(&parents, "b1"),
+        "the dialogs of batch B did not open in call order: {parents:?}"
+    );
     parents.sort_unstable();
     assert_eq!(parents, ["b0", "b1", "none"]);
     // The answers of batch B come in reverse order, the call outside a batch last.
@@ -300,8 +401,16 @@ fn a_long_call_of_one_batch_does_not_hold_the_dialogs_of_another_batch() {
             frame["id"].as_str().unwrap().to_string()
         })
         .collect();
-    let at = |id: &str| responded.iter().position(|responded| responded == id).unwrap_or_else(|| panic!("no response of {id}: {responded:?}"));
-    assert!(at("b1") < at("b0"), "the responses of batch B did not follow the answers: {responded:?}");
+    let at = |id: &str| {
+        responded
+            .iter()
+            .position(|responded| responded == id)
+            .unwrap_or_else(|| panic!("no response of {id}: {responded:?}"))
+    };
+    assert!(
+        at("b1") < at("b0"),
+        "the responses of batch B did not follow the answers: {responded:?}"
+    );
     assert!(responded.contains(&"none".to_string()), "{responded:?}");
     release.send(()).unwrap();
     assert_eq!(host.response("long")["result"]["content"], "long done");
@@ -322,14 +431,26 @@ fn an_event_or_command_that_ends_before_its_handler_hands_on_its_place() {
             &mut host.stream,
             &json!({"type":"request","id":format!("e{round}"),"request":{"method":"event","event":"tool_result","handler_id":99,"args":{}}}),
         );
-        assert!(host.response(&format!("e{round}")).get("error").is_some_and(|error| !error.is_null()));
+        assert!(
+            host.response(&format!("e{round}"))
+                .get("error")
+                .is_some_and(|error| !error.is_null())
+        );
         host.request(&format!("m{round}"), "command", "missing", json!(""));
-        assert!(host.response(&format!("m{round}")).get("error").is_some_and(|error| !error.is_null()));
+        assert!(
+            host.response(&format!("m{round}"))
+                .get("error")
+                .is_some_and(|error| !error.is_null())
+        );
         send(
             &mut host.stream,
             &json!({"type":"request","id":format!("ok{round}"),"request":{"method":"event","event":"tool_result","handler_id":1,"args":{}}}),
         );
-        assert!(host.response(&format!("ok{round}")).get("error").is_none_or(Value::is_null));
+        assert!(
+            host.response(&format!("ok{round}"))
+                .get("error")
+                .is_none_or(Value::is_null)
+        );
     }
     host.finish();
 }

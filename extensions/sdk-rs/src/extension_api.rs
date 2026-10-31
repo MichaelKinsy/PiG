@@ -53,13 +53,29 @@ impl ToolExposure {
 /// Upstream `ToolAnnotations` (`types.ts:515`): unverified hints about what a tool does, with the meaning of MCP tool annotations.
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct ToolAnnotations {
-    #[serde(default, rename = "readOnlyHint", skip_serializing_if = "Option::is_none")]
+    #[serde(
+        default,
+        rename = "readOnlyHint",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub read_only_hint: Option<bool>,
-    #[serde(default, rename = "destructiveHint", skip_serializing_if = "Option::is_none")]
+    #[serde(
+        default,
+        rename = "destructiveHint",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub destructive_hint: Option<bool>,
-    #[serde(default, rename = "idempotentHint", skip_serializing_if = "Option::is_none")]
+    #[serde(
+        default,
+        rename = "idempotentHint",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub idempotent_hint: Option<bool>,
-    #[serde(default, rename = "openWorldHint", skip_serializing_if = "Option::is_none")]
+    #[serde(
+        default,
+        rename = "openWorldHint",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub open_world_hint: Option<bool>,
 }
 
@@ -91,11 +107,23 @@ pub struct AgentTool {
     pub description: String,
     #[serde(default)]
     pub parameters: Value,
-    #[serde(default, rename = "outputSchema", skip_serializing_if = "Option::is_none")]
+    #[serde(
+        default,
+        rename = "outputSchema",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub output_schema: Option<Value>,
-    #[serde(default, rename = "constrainedSampling", skip_serializing_if = "Option::is_none")]
+    #[serde(
+        default,
+        rename = "constrainedSampling",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub constrained_sampling: Option<Value>,
-    #[serde(default, rename = "executionMode", skip_serializing_if = "Option::is_none")]
+    #[serde(
+        default,
+        rename = "executionMode",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub execution_mode: Option<String>,
 }
 
@@ -123,7 +151,14 @@ impl ToolLoadout {
         namespaces: HashMap<String, ToolNamespace>,
         prompt_guidelines: HashMap<String, Vec<String>>,
     ) -> Self {
-        Self { declared, callable, registered, exposures, namespaces, prompt_guidelines }
+        Self {
+            declared,
+            callable,
+            registered,
+            exposures,
+            namespaces,
+            prompt_guidelines,
+        }
     }
 
     /// Upstream `getExposure`: a tool the host does not list is `direct`, as `_getToolExposure` defaults (`agent-session.ts:1481`).
@@ -139,7 +174,10 @@ impl ToolLoadout {
     /// Upstream `getPromptGuidelines`: a tool's `promptGuidelines` as the system prompt has them (trimmed, without
     /// duplicates); empty for a tool without any. Hidden declarations leave them out of the system prompt.
     pub fn get_prompt_guidelines(&self, name: &str) -> &[String] {
-        self.prompt_guidelines.get(name).map(Vec::as_slice).unwrap_or_default()
+        self.prompt_guidelines
+            .get(name)
+            .map(Vec::as_slice)
+            .unwrap_or_default()
     }
 }
 
@@ -150,7 +188,11 @@ pub struct ToolLoadoutChanges {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub descriptions: Option<HashMap<String, String>>,
     /// Declared tools whose declarations requests leave out. They stay active and callable.
-    #[serde(default, rename = "hiddenDeclarations", skip_serializing_if = "Option::is_none")]
+    #[serde(
+        default,
+        rename = "hiddenDeclarations",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub hidden_declarations: Option<Vec<String>>,
 }
 
@@ -188,7 +230,11 @@ pub struct AgentToolResult {
     #[serde(default)]
     pub details: Value,
     /// Machine-readable result matching the tool's `outputSchema`.
-    #[serde(default, rename = "structuredContent", skip_serializing_if = "Option::is_none")]
+    #[serde(
+        default,
+        rename = "structuredContent",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub structured_content: Option<Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub usage: Option<Value>,
@@ -274,7 +320,8 @@ pub struct ModelRoute {
 }
 
 /// Upstream `ExtensionVirtualModel.route` (`types.ts:1866`).
-pub type ModelRouteFn = Box<dyn Fn(&Context, ModelRouteRequest) -> Result<ModelRoute, String> + Send + Sync>;
+pub type ModelRouteFn =
+    Box<dyn Fn(&Context, ModelRouteRequest) -> Result<ModelRoute, String> + Send + Sync>;
 
 /// Upstream `ExtensionVirtualModel`: a selectable catalog entry that routes each request to a physical model.
 pub struct VirtualModel {
@@ -299,7 +346,10 @@ impl VirtualModel {
         provider: impl Into<String>,
         id: impl Into<String>,
         name: impl Into<String>,
-        route: impl Fn(&Context, ModelRouteRequest) -> Result<ModelRoute, String> + Send + Sync + 'static,
+        route: impl Fn(&Context, ModelRouteRequest) -> Result<ModelRoute, String>
+        + Send
+        + Sync
+        + 'static,
     ) -> Self {
         Self {
             provider: provider.into(),
@@ -340,7 +390,10 @@ pub(crate) struct ApiState {
 impl ApiState {
     /// Applies a state snapshot (the ready state or a `state_update`): each field present replaces the replica. The host encodes an empty Go slice as `null`, which is an empty list; a field that does not decode leaves the replica as it was.
     pub(crate) fn apply_state(&mut self, state: &serde_json::Map<String, Value>) {
-        if let Some(settings) = state.get("settings").filter(|settings| settings.is_object()) {
+        if let Some(settings) = state
+            .get("settings")
+            .filter(|settings| settings.is_object())
+        {
             self.settings = Some(settings.clone());
         }
         if let Some(servers) = decode_list(state.get("mcpServers")) {
@@ -398,7 +451,14 @@ pub(crate) struct ToolLoadoutPayload {
 
 impl From<ToolLoadoutPayload> for ToolLoadout {
     fn from(payload: ToolLoadoutPayload) -> Self {
-        ToolLoadout::new(payload.declared, payload.callable, payload.registered, payload.exposures, payload.namespaces, payload.prompt_guidelines)
+        ToolLoadout::new(
+            payload.declared,
+            payload.callable,
+            payload.registered,
+            payload.exposures,
+            payload.namespaces,
+            payload.prompt_guidelines,
+        )
     }
 }
 

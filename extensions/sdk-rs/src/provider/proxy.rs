@@ -508,9 +508,11 @@ impl ProviderObjects {
                             })?))
                         }),
                     );
-                    let mut params=json!({"credential":input.credential,"stored":input.stored,"allowNetwork":input.allow_network,"force":input.force});
-                    if let Some(base_url)=&input.base_url{params["baseUrl"]=json!(base_url);}
-                    proxy.invoke("refreshModels",params,callbacks,input.signal)?;
+                    let mut params = json!({"credential":input.credential,"stored":input.stored,"allowNetwork":input.allow_network,"force":input.force});
+                    if let Some(base_url) = &input.base_url {
+                        params["baseUrl"] = json!(base_url);
+                    }
+                    proxy.invoke("refreshModels", params, callbacks, input.signal)?;
                     Ok(())
                 }))
             } else {

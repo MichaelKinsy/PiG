@@ -4,8 +4,9 @@
 
 use pig_sdk::tui;
 use pig_sdk::{
-    APIKeyAuth, AuthResult, Color, Extension, ModelRoute, Provider, ProviderAuth, ProviderOperationFn, ProviderOperations,
-    TextAttributes, ThemeAppearance, Theme, ThemeSlot, ThemeStyle, ToolResult, VirtualModel, empty_schema,
+    APIKeyAuth, AuthResult, Color, Extension, ModelRoute, Provider, ProviderAuth,
+    ProviderOperationFn, ProviderOperations, TextAttributes, Theme, ThemeAppearance, ThemeSlot,
+    ThemeStyle, ToolResult, VirtualModel, empty_schema,
 };
 use serde_json::{Value, json};
 use std::sync::Arc;
@@ -14,15 +15,33 @@ use std::sync::atomic::{AtomicI64, Ordering};
 static CANCELLED: AtomicI64 = AtomicI64::new(0);
 
 fn strings_of(value: &Value) -> Vec<String> {
-    value.as_array().map(|items| items.iter().map(|item| item.as_str().unwrap_or_default().to_string()).collect()).unwrap_or_default()
+    value
+        .as_array()
+        .map(|items| {
+            items
+                .iter()
+                .map(|item| item.as_str().unwrap_or_default().to_string())
+                .collect()
+        })
+        .unwrap_or_default()
 }
 
 fn apply_all(style: &pig_sdk::StyleFn, samples: &[String]) -> Value {
-    json!(samples.iter().map(|sample| style(sample)).collect::<Vec<_>>())
+    json!(
+        samples
+            .iter()
+            .map(|sample| style(sample))
+            .collect::<Vec<_>>()
+    )
 }
 
 fn apply_pairs(style: &pig_sdk::SelectedStyleFn, samples: &[String]) -> Value {
-    json!(samples.iter().map(|sample| [style(sample, false), style(sample, true)]).collect::<Vec<_>>())
+    json!(
+        samples
+            .iter()
+            .map(|sample| [style(sample, false), style(sample, true)])
+            .collect::<Vec<_>>()
+    )
 }
 
 /// pi-coding-agent's theme helpers and key hints over the host's theme and keybindings (tui_theme_probe): the styles of each on the samples the test passes, and
@@ -39,10 +58,18 @@ fn tui_theme_probe(args: &Value) -> ToolResult {
                 "listBullet": apply_all(&theme.list_bullet, &samples), "bold": apply_all(&theme.bold, &samples), "italic": apply_all(&theme.italic, &samples),
                 "underline": apply_all(&theme.underline, &samples), "strikethrough": apply_all(&theme.strikethrough, &samples),
             });
-            let highlight: Vec<Value> = args["highlight"].as_array().map(|pairs| pairs.iter().map(|pair| {
-                let code = pair[0].as_str().unwrap_or_default();
-                json!((theme.highlight_code)(code, pair[1].as_str()))
-            }).collect()).unwrap_or_default();
+            let highlight: Vec<Value> = args["highlight"]
+                .as_array()
+                .map(|pairs| {
+                    pairs
+                        .iter()
+                        .map(|pair| {
+                            let code = pair[0].as_str().unwrap_or_default();
+                            json!((theme.highlight_code)(code, pair[1].as_str()))
+                        })
+                        .collect()
+                })
+                .unwrap_or_default();
             json!({"styles": styles, "highlight": highlight})
         }
         "select" => {
@@ -78,13 +105,19 @@ fn tui_theme_probe(args: &Value) -> ToolResult {
             let id = args["id"].as_str().unwrap_or_default();
             json!({"keyHint": pig_sdk::key_hint(id, args["description"].as_str().unwrap_or_default()), "keyText": pig_sdk::key_text(id)})
         }
-        "raw_key_hint" => json!({"rawKeyHint": pig_sdk::raw_key_hint(args["key"].as_str().unwrap_or_default(), args["description"].as_str().unwrap_or_default())}),
+        "raw_key_hint" => {
+            json!({"rawKeyHint": pig_sdk::raw_key_hint(args["key"].as_str().unwrap_or_default(), args["description"].as_str().unwrap_or_default())})
+        }
         other => return ToolResult::Error(format!("unknown op {other}")),
     };
     ToolResult::text(result.to_string())
 }
 
-fn image_impl(model: Arc<Value>, request: Value, options: pig_sdk::ProviderOperationOptions) -> Result<Value, String> {
+fn image_impl(
+    model: Arc<Value>,
+    request: Value,
+    options: pig_sdk::ProviderOperationOptions,
+) -> Result<Value, String> {
     let prompt = request["input"][0]["text"].as_str().unwrap_or_default();
     if prompt == "fail" {
         return Err("image failed".into());
@@ -96,7 +129,11 @@ fn image_impl(model: Arc<Value>, request: Value, options: pig_sdk::ProviderOpera
     }))
 }
 
-fn classify_impl(model: Arc<Value>, request: Value, options: pig_sdk::ProviderOperationOptions) -> Result<Value, String> {
+fn classify_impl(
+    model: Arc<Value>,
+    request: Value,
+    options: pig_sdk::ProviderOperationOptions,
+) -> Result<Value, String> {
     let state = request["state"]["text"].as_str().unwrap_or_default();
     match state {
         "fail" => return Err("classifier failed".into()),
@@ -107,12 +144,24 @@ fn classify_impl(model: Arc<Value>, request: Value, options: pig_sdk::ProviderOp
         }
         _ => {}
     }
-    let images = request["images"].as_array().map(|images| images.len()).unwrap_or(0);
+    let images = request["images"]
+        .as_array()
+        .map(|images| images.len())
+        .unwrap_or(0);
     let mut answers = serde_json::Map::new();
-    for key in request["questions"].as_object().map(|q| q.keys().rev().cloned().collect::<Vec<_>>()).unwrap_or_default() {
-        answers.insert(key, json!({"type": "bool", "probability": (state.len() + 10 * images) as f64 / 100.0}));
+    for key in request["questions"]
+        .as_object()
+        .map(|q| q.keys().rev().cloned().collect::<Vec<_>>())
+        .unwrap_or_default()
+    {
+        answers.insert(
+            key,
+            json!({"type": "bool", "probability": (state.len() + 10 * images) as f64 / 100.0}),
+        );
     }
-    Ok(json!({"api": model["api"], "provider": model["provider"], "model": model["id"], "answers": answers, "stopReason": "stop", "timestamp": 2}))
+    Ok(
+        json!({"api": model["api"], "provider": model["provider"], "model": model["id"], "answers": answers, "stopReason": "stop", "timestamp": 2}),
+    )
 }
 
 fn approval_context(state: &str) -> Value {
@@ -126,14 +175,31 @@ fn approval_context(state: &str) -> Value {
 }
 
 fn ids(models: &Value) -> Vec<String> {
-    models.as_array().map(|list| list.iter().map(|m| format!("{}/{}", m["provider"].as_str().unwrap_or_default(), m["id"].as_str().unwrap_or_default())).collect()).unwrap_or_default()
+    models
+        .as_array()
+        .map(|list| {
+            list.iter()
+                .map(|m| {
+                    format!(
+                        "{}/{}",
+                        m["provider"].as_str().unwrap_or_default(),
+                        m["id"].as_str().unwrap_or_default()
+                    )
+                })
+                .collect()
+        })
+        .unwrap_or_default()
 }
 
 fn pixels() -> Provider {
     let cost = json!({"input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0});
     let models = vec![
-        Arc::new(json!({"id": "flux", "name": "Flux", "type": "image", "api": "test-images", "input": ["text"], "output": ["image"], "cost": cost, "baseUrl": "https://pixels.test/v1"})),
-        Arc::new(json!({"id": "cls", "name": "Cls", "type": "classifier", "api": "test-classifier", "input": ["text"], "contextWindow": 1000, "cost": cost, "baseUrl": "https://pixels.test/v1"})),
+        Arc::new(
+            json!({"id": "flux", "name": "Flux", "type": "image", "api": "test-images", "input": ["text"], "output": ["image"], "cost": cost, "baseUrl": "https://pixels.test/v1"}),
+        ),
+        Arc::new(
+            json!({"id": "cls", "name": "Cls", "type": "classifier", "api": "test-classifier", "input": ["text"], "contextWindow": 1000, "cost": cost, "baseUrl": "https://pixels.test/v1"}),
+        ),
     ];
     let unused: pig_sdk::ProviderStreamFn = Arc::new(|_, _, _| Err("unused".into()));
     let generate: ProviderOperationFn = Arc::new(image_impl);
@@ -144,7 +210,18 @@ fn pixels() -> Provider {
         base_url: None,
         headers: None,
         auth: ProviderAuth {
-            api_key: Some(APIKeyAuth { name: "Pixels key".into(), check: None, resolve: Arc::new(|_| Ok(Some(AuthResult { auth: json!({"apiKey": "pixels-key"}), env: None, source: None }))), login: None }),
+            api_key: Some(APIKeyAuth {
+                name: "Pixels key".into(),
+                check: None,
+                resolve: Arc::new(|_| {
+                    Ok(Some(AuthResult {
+                        auth: json!({"apiKey": "pixels-key"}),
+                        env: None,
+                        source: None,
+                    }))
+                }),
+                login: None,
+            }),
             oauth: None,
         },
         get_models: Arc::new(move || Ok(models.clone())),
@@ -165,8 +242,16 @@ fn color_from(value: &Value) -> Option<Color> {
     let number = |key: &str| value[key].as_f64().unwrap_or_default();
     match value["kind"].as_str()? {
         "indexed" => Some(Color::Indexed(number("index") as u8)),
-        "rgb" => Some(Color::Rgb { r: number("r"), g: number("g"), b: number("b") }),
-        "oklch" => Some(Color::Oklch { l: number("l"), c: number("c"), h: number("h") }),
+        "rgb" => Some(Color::Rgb {
+            r: number("r"),
+            g: number("g"),
+            b: number("b"),
+        }),
+        "oklch" => Some(Color::Oklch {
+            l: number("l"),
+            c: number("c"),
+            h: number("h"),
+        }),
         _ => None,
     }
 }
@@ -190,7 +275,14 @@ fn slot_from(value: &Value) -> Option<ThemeSlot> {
 fn theme_style_from(options: &Value) -> ThemeStyle {
     let flag = |key: &str| options[key].as_bool().unwrap_or(false);
     ThemeStyle {
-        attributes: TextAttributes { bold: flag("bold"), dim: flag("dim"), italic: flag("italic"), underline: flag("underline"), inverse: flag("inverse"), strikethrough: flag("strikethrough") },
+        attributes: TextAttributes {
+            bold: flag("bold"),
+            dim: flag("dim"),
+            italic: flag("italic"),
+            underline: flag("underline"),
+            inverse: flag("inverse"),
+            strikethrough: flag("strikethrough"),
+        },
         fg: slot_from(&options["fg"]),
         bg: slot_from(&options["bg"]),
     }
@@ -303,8 +395,18 @@ pub fn new_extension() -> Extension {
         let appearance = theme.appearance().map(|value| match value { ThemeAppearance::Light => "light", ThemeAppearance::Dark => "dark" });
         ToolResult::text(json!({"appearance": appearance, "colors": tokens, "styles": styles, "fgs": fgs, "queries": theme_queries(&theme, &args)}).to_string())
     });
-    ext.tool("tui_theme_probe", "Runs pi-coding-agent's theme and key hint helpers.", empty_schema(), |_, args| tui_theme_probe(&args));
-    ext.tool("tui_probe", "Reads pi-tui's keybindings and terminal capabilities.", empty_schema(), |_, args| ToolResult::text(tui_probe(&args).to_string()));
+    ext.tool(
+        "tui_theme_probe",
+        "Runs pi-coding-agent's theme and key hint helpers.",
+        empty_schema(),
+        |_, args| tui_theme_probe(&args),
+    );
+    ext.tool(
+        "tui_probe",
+        "Reads pi-tui's keybindings and terminal capabilities.",
+        empty_schema(),
+        |_, args| ToolResult::text(tui_probe(&args).to_string()),
+    );
     ext.tool("late_provider", "Registers a provider with operations after the factory finished.", empty_schema(), |ctx, args| {
         let registry = ctx.model_registry();
         let cost = json!({"input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0});
@@ -342,9 +444,12 @@ pub fn new_extension() -> Extension {
             Err(error) => ToolResult::Error(error.to_string()),
         }
     });
-    ext.tool("ops_status", "Reports what the host's provider requests did in the extension.", empty_schema(), |_, _| {
-        ToolResult::text(json!({"cancelled": CANCELLED.load(Ordering::SeqCst)}).to_string())
-    });
+    ext.tool(
+        "ops_status",
+        "Reports what the host's provider requests did in the extension.",
+        empty_schema(),
+        |_, _| ToolResult::text(json!({"cancelled": CANCELLED.load(Ordering::SeqCst)}).to_string()),
+    );
     register_host_surface(&mut ext);
     ext
 }
@@ -356,7 +461,11 @@ fn attempt(f: impl FnOnce() -> Result<String, String> + std::panic::UnwindSafe) 
         Ok(Ok(value)) => value,
         Ok(Err(message)) => format!("throw:{message}"),
         Err(payload) => {
-            let message = payload.downcast_ref::<String>().cloned().or_else(|| payload.downcast_ref::<&str>().map(|text| text.to_string())).unwrap_or_default();
+            let message = payload
+                .downcast_ref::<String>()
+                .cloned()
+                .or_else(|| payload.downcast_ref::<&str>().map(|text| text.to_string()))
+                .unwrap_or_default();
             format!("throw:{message}")
         }
     }
@@ -367,21 +476,41 @@ fn theme_queries(theme: &Theme, args: &Value) -> Value {
     if args["queries"] != json!(true) {
         return Value::Null;
     }
-    let strings = |key: &str| -> Vec<String> { args[key].as_array().map(|items| items.iter().filter_map(Value::as_str).map(String::from).collect()).unwrap_or_default() };
+    let strings = |key: &str| -> Vec<String> {
+        args[key]
+            .as_array()
+            .map(|items| {
+                items
+                    .iter()
+                    .filter_map(Value::as_str)
+                    .map(String::from)
+                    .collect()
+            })
+            .unwrap_or_default()
+    };
     let tokens = strings("ansiTokens");
     let texts = strings("modifierTexts");
-    let by_token = |f: &dyn Fn(&Theme, &str) -> Result<String, String>| -> serde_json::Map<String, Value> {
-        tokens.iter().map(|token| {
-            let theme = theme.clone();
-            let name = token.clone();
-            let value = attempt(std::panic::AssertUnwindSafe(|| f(&theme, &name)));
-            (token.clone(), Value::String(value))
-        }).collect()
-    };
-    let thinking: serde_json::Map<String, Value> = strings("levels").into_iter().map(|level| {
-        let value = attempt(std::panic::AssertUnwindSafe(|| Ok(theme.get_thinking_border_color(&level)("x"))));
-        (level, Value::String(value))
-    }).collect();
+    let by_token =
+        |f: &dyn Fn(&Theme, &str) -> Result<String, String>| -> serde_json::Map<String, Value> {
+            tokens
+                .iter()
+                .map(|token| {
+                    let theme = theme.clone();
+                    let name = token.clone();
+                    let value = attempt(std::panic::AssertUnwindSafe(|| f(&theme, &name)));
+                    (token.clone(), Value::String(value))
+                })
+                .collect()
+        };
+    let thinking: serde_json::Map<String, Value> = strings("levels")
+        .into_iter()
+        .map(|level| {
+            let value = attempt(std::panic::AssertUnwindSafe(|| {
+                Ok(theme.get_thinking_border_color(&level)("x"))
+            }));
+            (level, Value::String(value))
+        })
+        .collect();
     json!({
         "modifiers": {"bold": theme.bold("x"), "italic": theme.italic("x"), "underline": theme.underline("x"), "inverse": theme.inverse("x"), "strikethrough": theme.strikethrough("x")},
         "modifierTexts": {
@@ -403,38 +532,105 @@ fn theme_queries(theme: &Theme, args: &Value) -> Value {
 }
 
 fn theme_fg(theme: &Theme, token: &str) -> String {
-    std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| theme.fg(token, "x"))).unwrap_or_else(|payload| {
-        let message = payload.downcast_ref::<String>().cloned().or_else(|| payload.downcast_ref::<&str>().map(|text| text.to_string())).unwrap_or_default();
-        format!("throw:{message}")
-    })
+    std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| theme.fg(token, "x"))).unwrap_or_else(
+        |payload| {
+            let message = payload
+                .downcast_ref::<String>()
+                .cloned()
+                .or_else(|| payload.downcast_ref::<&str>().map(|text| text.to_string()))
+                .unwrap_or_default();
+            format!("throw:{message}")
+        },
+    )
 }
 
 fn strings(value: &Value) -> Vec<String> {
-    value.as_array().map(|items| items.iter().filter_map(Value::as_str).map(String::from).collect()).unwrap_or_default()
+    value
+        .as_array()
+        .map(|items| {
+            items
+                .iter()
+                .filter_map(Value::as_str)
+                .map(String::from)
+                .collect()
+        })
+        .unwrap_or_default()
 }
 
 fn tui_caps(caps: tui::TerminalCapabilities) -> Value {
-    let images = caps.images.map(|protocol| match protocol { tui::ImageProtocol::Kitty => "kitty", tui::ImageProtocol::ITerm2 => "iterm2" });
+    let images = caps.images.map(|protocol| match protocol {
+        tui::ImageProtocol::Kitty => "kitty",
+        tui::ImageProtocol::ITerm2 => "iterm2",
+    });
     json!({"images": images, "trueColor": caps.true_color, "hyperlinks": caps.hyperlinks})
 }
 
 fn color_mode(mode: tui::TerminalColorMode) -> &'static str {
-    match mode { tui::TerminalColorMode::TrueColor => "truecolor", tui::TerminalColorMode::Color256 => "256color" }
+    match mode {
+        tui::TerminalColorMode::TrueColor => "truecolor",
+        tui::TerminalColorMode::Color256 => "256color",
+    }
 }
 
 /// tui_probe: what pi-tui's keybindings and capabilities answer once the host published its state (the Go, Node and Python fixtures carry the same tool).
 fn tui_probe(args: &Value) -> Value {
     let ids = strings(&args["ids"]);
     let keybindings = tui::get_keybindings();
-    let keys: serde_json::Map<String, Value> = ids.iter().map(|id| (id.clone(), json!(keybindings.get_keys(id)))).collect();
-    let definitions: serde_json::Map<String, Value> = ids.iter().map(|id| (id.clone(), keybindings.get_definition(id).and_then(|d| d.description.clone()).map(Value::String).unwrap_or(Value::Null))).collect();
-    let matches: Vec<Value> = args["inputs"].as_array().map(|inputs| inputs.iter().map(|input| json!(keybindings.matches(input["data"].as_str().unwrap_or_default(), input["id"].as_str().unwrap_or_default()))).collect()).unwrap_or_default();
-    let user: serde_json::Map<String, Value> = keybindings.get_user_bindings().into_iter().map(|(id, bound)| (id, json!(bound))).collect();
-    let conflicts: Vec<Value> = keybindings.get_conflicts().into_iter().map(|c| json!({"key": c.key, "keybindings": c.keybindings})).collect();
-    let mut resolved_ids: Vec<String> = keybindings.get_resolved_bindings().into_iter().map(|(id, _)| id).collect();
+    let keys: serde_json::Map<String, Value> = ids
+        .iter()
+        .map(|id| (id.clone(), json!(keybindings.get_keys(id))))
+        .collect();
+    let definitions: serde_json::Map<String, Value> = ids
+        .iter()
+        .map(|id| {
+            (
+                id.clone(),
+                keybindings
+                    .get_definition(id)
+                    .and_then(|d| d.description.clone())
+                    .map(Value::String)
+                    .unwrap_or(Value::Null),
+            )
+        })
+        .collect();
+    let matches: Vec<Value> = args["inputs"]
+        .as_array()
+        .map(|inputs| {
+            inputs
+                .iter()
+                .map(|input| {
+                    json!(keybindings.matches(
+                        input["data"].as_str().unwrap_or_default(),
+                        input["id"].as_str().unwrap_or_default()
+                    ))
+                })
+                .collect()
+        })
+        .unwrap_or_default();
+    let user: serde_json::Map<String, Value> = keybindings
+        .get_user_bindings()
+        .into_iter()
+        .map(|(id, bound)| (id, json!(bound)))
+        .collect();
+    let conflicts: Vec<Value> = keybindings
+        .get_conflicts()
+        .into_iter()
+        .map(|c| json!({"key": c.key, "keybindings": c.keybindings}))
+        .collect();
+    let mut resolved_ids: Vec<String> = keybindings
+        .get_resolved_bindings()
+        .into_iter()
+        .map(|(id, _)| id)
+        .collect();
     resolved_ids.sort();
     let defaults_table = tui::tui_keybindings();
-    let default_keys = |id: &str| -> Vec<String> { defaults_table.iter().find(|(key, _)| key == id).map(|(_, d)| d.default_keys.clone()).unwrap_or_default() };
+    let default_keys = |id: &str| -> Vec<String> {
+        defaults_table
+            .iter()
+            .find(|(key, _)| key == id)
+            .map(|(_, d)| d.default_keys.clone())
+            .unwrap_or_default()
+    };
     let caps = tui::get_capabilities();
     let mut report = json!({
         "keys": keys, "matches": matches, "definitions": definitions, "user": user, "conflicts": conflicts, "resolvedIds": resolved_ids,
@@ -445,9 +641,27 @@ fn tui_probe(args: &Value) -> Value {
 
     // Install, then put back what the host published.
     let original = (*keybindings).clone();
-    tui::set_keybindings(tui::KeybindingsManager::new(vec![("x.probe".to_string(), tui::KeybindingDefinition { default_keys: vec!["ctrl+q".to_string()], description: None })], Vec::new()));
+    tui::set_keybindings(tui::KeybindingsManager::new(
+        vec![(
+            "x.probe".to_string(),
+            tui::KeybindingDefinition {
+                default_keys: vec!["ctrl+q".to_string()],
+                description: None,
+            },
+        )],
+        Vec::new(),
+    ));
     let mut installed = json!({"keys": tui::get_keybindings().get_keys("x.probe"), "hostKeys": tui::get_keybindings().get_keys("tui.input.submit")});
-    let mut rebound = tui::KeybindingsManager::new(vec![("x.probe".to_string(), tui::KeybindingDefinition { default_keys: vec!["ctrl+q".to_string()], description: None })], Vec::new());
+    let mut rebound = tui::KeybindingsManager::new(
+        vec![(
+            "x.probe".to_string(),
+            tui::KeybindingDefinition {
+                default_keys: vec!["ctrl+q".to_string()],
+                description: None,
+            },
+        )],
+        Vec::new(),
+    );
     rebound.set_user_bindings(vec![("x.probe".to_string(), vec!["ctrl+w".to_string()])]);
     tui::set_keybindings(rebound);
     let rebound_keys = tui::get_keybindings().get_keys("x.probe");
@@ -456,9 +670,16 @@ fn tui_probe(args: &Value) -> Value {
     installed["restored"] = json!(tui::get_keybindings().get_keys("tui.input.submit"));
     report["installed"] = installed;
 
-    tui::set_capabilities(tui::TerminalCapabilities { images: Some(tui::ImageProtocol::Kitty), true_color: false, hyperlinks: false });
+    tui::set_capabilities(tui::TerminalCapabilities {
+        images: Some(tui::ImageProtocol::Kitty),
+        true_color: false,
+        hyperlinks: false,
+    });
     let mut swapped = json!({"capabilities": tui_caps(tui::get_capabilities()), "colorMode": color_mode(tui::get_terminal_color_mode(None))});
-    tui::set_capability_overrides(tui::CapabilityOverrides { hyperlinks: Some(true), ..Default::default() });
+    tui::set_capability_overrides(tui::CapabilityOverrides {
+        hyperlinks: Some(true),
+        ..Default::default()
+    });
     swapped["overridden"] = json!(tui::get_capabilities().hyperlinks);
     tui::set_capability_overrides(tui::CapabilityOverrides::default());
     tui::reset_capabilities_cache();
@@ -495,7 +716,10 @@ fn register_host_surface(ext: &mut Extension) {
     static ACK_HEARD: Mutex<Vec<Value>> = Mutex::new(Vec::new());
     static ACK_AT_CROSS: Mutex<Option<usize>> = Mutex::new(None);
     fn now_ms() -> u128 {
-        std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_millis()
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_millis()
     }
     static LOADED: Mutex<Option<Value>> = Mutex::new(None);
     static THEME_SUB: Mutex<Option<HostSubscription>> = Mutex::new(None);
@@ -503,7 +727,8 @@ fn register_host_surface(ext: &mut Extension) {
     // The theme gate: a handler that holds its delivery until c3_theme_gate_release, and whether it took one.
     static GATE_SUB: Mutex<Option<HostSubscription>> = Mutex::new(None);
     static GATE_ENTERED: Mutex<bool> = Mutex::new(false);
-    static GATE_OPEN: (Mutex<bool>, std::sync::Condvar) = (Mutex::new(false), std::sync::Condvar::new());
+    static GATE_OPEN: (Mutex<bool>, std::sync::Condvar) =
+        (Mutex::new(false), std::sync::Condvar::new());
 
     ext.events()
         .on("c3:factory", |_, data| {
@@ -511,10 +736,16 @@ fn register_host_surface(ext: &mut Extension) {
             Ok(())
         })
         .expect("subscribe c3:factory");
-    ext.events().emit("c3:factory", json!({"n": 1, "from": "factory"})).expect("emit c3:factory");
+    ext.events()
+        .emit("c3:factory", json!({"n": 1, "from": "factory"}))
+        .expect("emit c3:factory");
     // Pi's emit is synchronous: the listener has run when emit returns, and an emit on "error" that nobody hears throws in the factory.
     *HEARD_AT_EMIT.lock().unwrap() = Some(FACTORY_HEARD.lock().unwrap().len());
-    *ERROR_EMIT_FAILED.lock().unwrap() = Some(ext.events().emit("error", json!({"from": "factory"})).is_err());
+    *ERROR_EMIT_FAILED.lock().unwrap() = Some(
+        ext.events()
+            .emit("error", json!({"from": "factory"}))
+            .is_err(),
+    );
     ext.events()
         .on("c3:ack", |_, data| {
             ACK_HEARD.lock().unwrap().push(data.clone());
@@ -527,7 +758,9 @@ fn register_host_surface(ext: &mut Extension) {
             Ok(())
         })
         .expect("subscribe c3:cross");
-    ext.events().emit("c3:cross", json!({"from": "factory"})).expect("emit c3:cross");
+    ext.events()
+        .emit("c3:cross", json!({"from": "factory"}))
+        .expect("emit c3:cross");
     *CROSS_RETURNED_AT.lock().unwrap() = Some(now_ms());
     *ACK_AT_CROSS.lock().unwrap() = Some(ACK_HEARD.lock().unwrap().len());
     // The handler takes its time; a request that ran before it finished would read null.
@@ -545,57 +778,110 @@ fn register_host_surface(ext: &mut Extension) {
         *THEME_SUB.lock().unwrap() = Some(subscription);
         ToolResult::text(json!({"ok": true}).to_string())
     });
-    ext.tool("c3_theme_disarm", "c3_theme_disarm", empty_schema(), |_, _| {
-        THEME_SUB.lock().unwrap().take();
-        ToolResult::text(json!({"ok": true}).to_string())
+    ext.tool(
+        "c3_theme_disarm",
+        "c3_theme_disarm",
+        empty_schema(),
+        |_, _| {
+            THEME_SUB.lock().unwrap().take();
+            ToolResult::text(json!({"ok": true}).to_string())
+        },
+    );
+    ext.tool("c3_theme_log", "c3_theme_log", empty_schema(), |_, _| {
+        ToolResult::text(json!({"log": *THEME_LOG.lock().unwrap()}).to_string())
     });
-    ext.tool("c3_theme_log", "c3_theme_log", empty_schema(), |_, _| ToolResult::text(json!({"log": *THEME_LOG.lock().unwrap()}).to_string()));
     // Armed before c3_theme_arm the gate runs ahead of the logger in every delivery, so the logger receives a change after the host changed the theme again: each handler must still get the theme of its own change.
-    ext.tool("c3_theme_gate_arm", "c3_theme_gate_arm", empty_schema(), |ctx, _| {
-        let subscription = ctx.on_theme_change(|_| {
-            *GATE_ENTERED.lock().unwrap() = true;
+    ext.tool(
+        "c3_theme_gate_arm",
+        "c3_theme_gate_arm",
+        empty_schema(),
+        |ctx, _| {
+            let subscription = ctx.on_theme_change(|_| {
+                *GATE_ENTERED.lock().unwrap() = true;
+                let (open, opened) = &GATE_OPEN;
+                let mut open = open.lock().unwrap();
+                while !*open {
+                    open = opened.wait(open).unwrap();
+                }
+            });
+            *GATE_SUB.lock().unwrap() = Some(subscription);
+            ToolResult::text(json!({"ok": true}).to_string())
+        },
+    );
+    ext.tool(
+        "c3_theme_gate_state",
+        "c3_theme_gate_state",
+        empty_schema(),
+        |ctx, _| {
+            ToolResult::text(
+                json!({"entered": *GATE_ENTERED.lock().unwrap(), "live": ctx.theme().name})
+                    .to_string(),
+            )
+        },
+    );
+    ext.tool(
+        "c3_theme_gate_release",
+        "c3_theme_gate_release",
+        empty_schema(),
+        |_, _| {
             let (open, opened) = &GATE_OPEN;
-            let mut open = open.lock().unwrap();
-            while !*open {
-                open = opened.wait(open).unwrap();
+            *open.lock().unwrap() = true;
+            opened.notify_all();
+            ToolResult::text(json!({"ok": true}).to_string())
+        },
+    );
+    ext.tool(
+        "c3_expanded_arm",
+        "c3_expanded_arm",
+        empty_schema(),
+        |ctx, _| {
+            let subscription = ctx
+                .on_tools_expanded_change(|expanded| EXPANDED_LOG.lock().unwrap().push(expanded));
+            *EXPANDED_SUB.lock().unwrap() = Some(subscription);
+            ToolResult::text(json!({"ok": true}).to_string())
+        },
+    );
+    ext.tool(
+        "c3_expanded_disarm",
+        "c3_expanded_disarm",
+        empty_schema(),
+        |_, _| {
+            EXPANDED_SUB.lock().unwrap().take();
+            ToolResult::text(json!({"ok": true}).to_string())
+        },
+    );
+    ext.tool(
+        "c3_expanded_log",
+        "c3_expanded_log",
+        empty_schema(),
+        |_, _| ToolResult::text(json!({"log": *EXPANDED_LOG.lock().unwrap()}).to_string()),
+    );
+    ext.tool(
+        "c3_widget_arm",
+        "c3_widget_arm",
+        empty_schema(),
+        |ctx, args| {
+            let placement = args["placement"].as_str().unwrap_or_default().to_string();
+            let live = ctx.clone();
+            match ctx.set_widget_renderer(
+                "c3w",
+                Some(move |width| vec![format!("w={width}|{}", live.theme().name)]),
+                Some(json!({"placement": placement})),
+            ) {
+                Ok(()) => ToolResult::text(json!({"ok": true}).to_string()),
+                Err(error) => ToolResult::Error(error.to_string()),
             }
-        });
-        *GATE_SUB.lock().unwrap() = Some(subscription);
-        ToolResult::text(json!({"ok": true}).to_string())
-    });
-    ext.tool("c3_theme_gate_state", "c3_theme_gate_state", empty_schema(), |ctx, _| {
-        ToolResult::text(json!({"entered": *GATE_ENTERED.lock().unwrap(), "live": ctx.theme().name}).to_string())
-    });
-    ext.tool("c3_theme_gate_release", "c3_theme_gate_release", empty_schema(), |_, _| {
-        let (open, opened) = &GATE_OPEN;
-        *open.lock().unwrap() = true;
-        opened.notify_all();
-        ToolResult::text(json!({"ok": true}).to_string())
-    });
-    ext.tool("c3_expanded_arm", "c3_expanded_arm", empty_schema(), |ctx, _| {
-        let subscription = ctx.on_tools_expanded_change(|expanded| EXPANDED_LOG.lock().unwrap().push(expanded));
-        *EXPANDED_SUB.lock().unwrap() = Some(subscription);
-        ToolResult::text(json!({"ok": true}).to_string())
-    });
-    ext.tool("c3_expanded_disarm", "c3_expanded_disarm", empty_schema(), |_, _| {
-        EXPANDED_SUB.lock().unwrap().take();
-        ToolResult::text(json!({"ok": true}).to_string())
-    });
-    ext.tool("c3_expanded_log", "c3_expanded_log", empty_schema(), |_, _| ToolResult::text(json!({"log": *EXPANDED_LOG.lock().unwrap()}).to_string()));
-    ext.tool("c3_widget_arm", "c3_widget_arm", empty_schema(), |ctx, args| {
-        let placement = args["placement"].as_str().unwrap_or_default().to_string();
-        let live = ctx.clone();
-        match ctx.set_widget_renderer("c3w", Some(move |width| vec![format!("w={width}|{}", live.theme().name)]), Some(json!({"placement": placement}))) {
+        },
+    );
+    ext.tool(
+        "c3_widget_clear",
+        "c3_widget_clear",
+        empty_schema(),
+        |ctx, _| match ctx.set_widget_renderer("c3w", None::<fn(u32) -> Vec<String>>, None) {
             Ok(()) => ToolResult::text(json!({"ok": true}).to_string()),
             Err(error) => ToolResult::Error(error.to_string()),
-        }
-    });
-    ext.tool("c3_widget_clear", "c3_widget_clear", empty_schema(), |ctx, _| {
-        match ctx.set_widget_renderer("c3w", None::<fn(u32) -> Vec<String>>, None) {
-            Ok(()) => ToolResult::text(json!({"ok": true}).to_string()),
-            Err(error) => ToolResult::Error(error.to_string()),
-        }
-    });
+        },
+    );
     ext.tool("c3_bell", "c3_bell", empty_schema(), |ctx, _| {
         let outcome = match ctx.bell() {
             Ok(()) => "<nil>".to_string(),
@@ -609,7 +895,9 @@ fn register_host_surface(ext: &mut Extension) {
         let meta = params.as_ref().and_then(|params| params.get("meta")).map(|meta| meta.to_string());
         ToolResult::text(json!({"index": ctx.tool_call_index(), "input": ctx.tool_input(), "keys": keys, "meta": meta}).to_string())
     });
-    ext.tool("c3_source", "c3_source", empty_schema(), |ctx, _| ToolResult::text(json!({"info": ctx.extension_source_info()}).to_string()));
+    ext.tool("c3_source", "c3_source", empty_schema(), |ctx, _| {
+        ToolResult::text(json!({"info": ctx.extension_source_info()}).to_string())
+    });
     ext.tool("c3_loaded", "c3_loaded", empty_schema(), |_, _| {
         ToolResult::text(json!({"loaded": *LOADED.lock().unwrap(), "factoryHeard": *FACTORY_HEARD.lock().unwrap(), "heardAtEmit": *HEARD_AT_EMIT.lock().unwrap(), "errorEmitFailed": *ERROR_EMIT_FAILED.lock().unwrap(), "crossOwnAt": (*CROSS_OWN_AT.lock().unwrap()).map(|ms| ms as u64), "crossReturnedAt": (*CROSS_RETURNED_AT.lock().unwrap()).map(|ms| ms as u64), "ackHeard": *ACK_HEARD.lock().unwrap(), "ackAtCross": *ACK_AT_CROSS.lock().unwrap()}).to_string())
     });

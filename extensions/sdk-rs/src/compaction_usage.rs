@@ -14,18 +14,29 @@ pub struct CompactionSettings {
 }
 
 /// Pi's `DEFAULT_COMPACTION_SETTINGS`.
-pub const DEFAULT_COMPACTION_SETTINGS: CompactionSettings = CompactionSettings { enabled: true, reserve_tokens: 16384, keep_recent_tokens: 20000 };
+pub const DEFAULT_COMPACTION_SETTINGS: CompactionSettings = CompactionSettings {
+    enabled: true,
+    reserve_tokens: 16384,
+    keep_recent_tokens: 20000,
+};
 
 /// Pi's `calculateContextTokens`: the native total when it is non-zero, else the sum of the components.
 pub fn calculate_context_tokens(usage: &UsageInfo) -> i64 {
     if usage.total_tokens != 0 {
         return i64::from(usage.total_tokens);
     }
-    i64::from(usage.input) + i64::from(usage.output) + i64::from(usage.cache_read) + i64::from(usage.cache_write)
+    i64::from(usage.input)
+        + i64::from(usage.output)
+        + i64::from(usage.cache_read)
+        + i64::from(usage.cache_write)
 }
 
 /// Pi's `shouldCompact`: compaction triggers when the context exceeds the window less the reserve.
-pub fn should_compact(context_tokens: i64, context_window: i64, settings: &CompactionSettings) -> bool {
+pub fn should_compact(
+    context_tokens: i64,
+    context_window: i64,
+    settings: &CompactionSettings,
+) -> bool {
     settings.enabled && context_tokens > context_window - settings.reserve_tokens
 }
 
@@ -35,7 +46,11 @@ fn js_number(value: Option<&Value>) -> f64 {
 
 /// A token count as JavaScript's `+` reads it: null is 0, and a missing (undefined) or non-numeric count is NaN.
 fn usage_addend(value: Option<&Value>) -> f64 {
-    if value.is_some_and(Value::is_null) { 0.0 } else { js_number(value) }
+    if value.is_some_and(Value::is_null) {
+        0.0
+    } else {
+        js_number(value)
+    }
 }
 
 fn token_count(value: Option<&Value>) -> i32 {
@@ -56,13 +71,21 @@ pub fn get_last_assistant_usage<E: Borrow<Value>>(entries: &[E]) -> Option<Usage
         if message.get("role").and_then(Value::as_str) != Some("assistant") {
             continue;
         }
-        if matches!(message.get("stopReason").and_then(Value::as_str), Some("aborted" | "error")) {
+        if matches!(
+            message.get("stopReason").and_then(Value::as_str),
+            Some("aborted" | "error")
+        ) {
             continue;
         }
-        let Some(usage) = message.get("usage").filter(|usage| usage.is_object()) else { continue };
+        let Some(usage) = message.get("usage").filter(|usage| usage.is_object()) else {
+            continue;
+        };
         let mut total = js_number(usage.get("totalTokens"));
         if total == 0.0 || total.is_nan() {
-            total = ["input", "output", "cacheRead", "cacheWrite"].iter().map(|key| usage_addend(usage.get(*key))).sum();
+            total = ["input", "output", "cacheRead", "cacheWrite"]
+                .iter()
+                .map(|key| usage_addend(usage.get(*key)))
+                .sum();
         }
         if !(total > 0.0) {
             continue;

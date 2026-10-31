@@ -18,7 +18,10 @@ pub(crate) fn apply_host_state(state: &Map<String, Value>) {
     if let Some(palette) = state.get("theme").filter(|theme| theme.is_object()) {
         set_host_theme(palette);
     }
-    if let Some(table) = state.get("keybindings").filter(|t| t.get("definitions").is_some_and(Value::is_object)) {
+    if let Some(table) = state
+        .get("keybindings")
+        .filter(|t| t.get("definitions").is_some_and(Value::is_object))
+    {
         let mut installed = INSTALLED_TABLE.lock().unwrap_or_else(|e| e.into_inner());
         if installed.as_ref() != Some(table) {
             *installed = Some(table.clone());
@@ -58,10 +61,17 @@ fn locked<T>(mutex: &Mutex<T>) -> std::sync::MutexGuard<'_, T> {
 /// Record the palette the host published. A palette that differs from the last one the host published ends what `init_theme` installed; the same palette, which
 /// every state snapshot repeats, leaves it. A value that is not an object is the empty palette (the Node runtime's `ThemeShim.setPalette`).
 pub(crate) fn set_host_theme(palette: &Value) {
-    let raw = if palette.is_object() { palette.clone() } else { Value::Null };
+    let raw = if palette.is_object() {
+        palette.clone()
+    } else {
+        Value::Null
+    };
     let mut host = locked(&HOST_THEME);
     let changed = host.as_ref().is_some_and(|previous| previous.raw != raw);
-    *host = Some(GlobalTheme { theme: Theme::from_palette(&raw), raw });
+    *host = Some(GlobalTheme {
+        theme: Theme::from_palette(&raw),
+        raw,
+    });
     if changed {
         *locked(&INSTALLED_THEME) = None;
     }
@@ -72,15 +82,23 @@ pub fn current_host_theme() -> Theme {
     if let Some(installed) = locked(&INSTALLED_THEME).as_ref() {
         return installed.theme.clone();
     }
-    locked(&HOST_THEME).as_ref().map(|host| host.theme.clone()).unwrap_or_default()
+    locked(&HOST_THEME)
+        .as_ref()
+        .map(|host| host.theme.clone())
+        .unwrap_or_default()
 }
 
 /// The palette of the theme `init_theme` installed, `None` while the global theme is the host's.
 pub(crate) fn installed_theme_palette() -> Option<Value> {
-    locked(&INSTALLED_THEME).as_ref().map(|installed| installed.raw.clone())
+    locked(&INSTALLED_THEME)
+        .as_ref()
+        .map(|installed| installed.raw.clone())
 }
 
 /// Make the palette the global theme until the host's theme changes.
 pub(crate) fn install_theme(palette: Value) {
-    *locked(&INSTALLED_THEME) = Some(GlobalTheme { theme: Theme::from_palette(&palette), raw: palette });
+    *locked(&INSTALLED_THEME) = Some(GlobalTheme {
+        theme: Theme::from_palette(&palette),
+        raw: palette,
+    });
 }

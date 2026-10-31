@@ -20,7 +20,9 @@ pub struct EventReplicas {
 impl EventReplicas {
     /// Replaces the request's args with the full payload its stream member produces, or records why it could not.
     pub fn apply(&mut self, req: &mut RequestMsg) {
-        let Some(stream) = req.stream.clone() else { return };
+        let Some(stream) = req.stream.clone() else {
+            return;
+        };
         let name = req.event.clone().unwrap_or_default();
         let id = (name.clone(), stream.key.clone());
         let produced = match req.args.take() {
@@ -31,13 +33,22 @@ impl EventReplicas {
                     let ops = stream.ops.clone().unwrap_or(Value::Null);
                     apply_ops(&mut root, &ops).map(|()| root)
                 }
-                _ => Err(format!("{name} delta applies to payload {}, the replica holds a different one", stream.base)),
+                _ => Err(format!(
+                    "{name} delta applies to payload {}, the replica holds a different one",
+                    stream.base
+                )),
             },
         };
         match produced {
             Ok(root) => {
                 req.args = Some(root.clone());
-                self.replicas.insert(id, Replica { seq: stream.seq, root });
+                self.replicas.insert(
+                    id,
+                    Replica {
+                        seq: stream.seq,
+                        root,
+                    },
+                );
             }
             Err(message) => {
                 self.replicas.remove(&id);
@@ -53,8 +64,14 @@ impl EventReplicas {
 pub(crate) fn apply_ops(root: &mut Value, ops: &Value) -> Result<(), String> {
     let list = ops.as_array().ok_or("event stream: ops are not an array")?;
     for op in list {
-        let name = op.get("op").and_then(Value::as_str).ok_or("event stream: operation without a name")?;
-        let path = op.get("path").and_then(Value::as_array).ok_or("event stream: bad path")?;
+        let name = op
+            .get("op")
+            .and_then(Value::as_str)
+            .ok_or("event stream: operation without a name")?;
+        let path = op
+            .get("path")
+            .and_then(Value::as_array)
+            .ok_or("event stream: bad path")?;
         let value = op.get("value").cloned().unwrap_or(Value::Null);
         apply_op(root, path, name, value)?;
     }
@@ -137,8 +154,15 @@ mod tests {
             tool_call_id: None,
             batch: None,
             args,
-            child_session: None, terminal_input: None,
-            stream: Some(EventStream { seq, base, ops, key: String::new(), evict: Vec::new() }),
+            child_session: None,
+            terminal_input: None,
+            stream: Some(EventStream {
+                seq,
+                base,
+                ops,
+                key: String::new(),
+                evict: Vec::new(),
+            }),
             stream_error: None,
             tool_call_index: None,
             args_raw: None,
@@ -148,7 +172,12 @@ mod tests {
     #[test]
     fn a_delta_applies_to_the_last_payload_and_the_handler_gets_its_own_copy() {
         let mut replicas = EventReplicas::default();
-        let mut first = request(1, 0, Some(json!({"text": "ab", "list": [1], "nested": {"k": "v"}})), None);
+        let mut first = request(
+            1,
+            0,
+            Some(json!({"text": "ab", "list": [1], "nested": {"k": "v"}})),
+            None,
+        );
         replicas.apply(&mut first);
         assert!(first.stream_error.is_none());
         // A handler edits its copy; the next delta must not see it.
@@ -162,35 +191,77 @@ mod tests {
         let mut second = request(2, 1, None, Some(ops));
         replicas.apply(&mut second);
         assert!(second.stream_error.is_none(), "{:?}", second.stream_error);
-        assert_eq!(second.args, Some(json!({"text": "abcd", "list": [1, 2], "nested": {"k": "v", "new": null}, "added": {"x": [true]}})));
+        assert_eq!(
+            second.args,
+            Some(
+                json!({"text": "abcd", "list": [1, 2], "nested": {"k": "v", "new": null}, "added": {"x": [true]}})
+            )
+        );
     }
 
     #[test]
     fn a_delta_for_another_payload_is_an_error_and_drops_the_replica() {
         let cases = [
             ("wrong base", 1, 7, json!([]), "delta applies to payload 7"),
-            ("append to a number", 1, 1, json!([{"op": "append", "path": ["list", 0], "value": "x"}]), "append to a non-string"),
-            ("missing member", 1, 1, json!([{"op": "set", "path": ["no", "where"], "value": 1}]), "bad path"),
-            ("array past the end", 1, 1, json!([{"op": "set", "path": ["list", 9], "value": 1}]), "bad path"),
-            ("unknown operation", 1, 1, json!([{"op": "del", "path": ["text"], "value": 1}]), "unknown operation"),
+            (
+                "append to a number",
+                1,
+                1,
+                json!([{"op": "append", "path": ["list", 0], "value": "x"}]),
+                "append to a non-string",
+            ),
+            (
+                "missing member",
+                1,
+                1,
+                json!([{"op": "set", "path": ["no", "where"], "value": 1}]),
+                "bad path",
+            ),
+            (
+                "array past the end",
+                1,
+                1,
+                json!([{"op": "set", "path": ["list", 9], "value": 1}]),
+                "bad path",
+            ),
+            (
+                "unknown operation",
+                1,
+                1,
+                json!([{"op": "del", "path": ["text"], "value": 1}]),
+                "unknown operation",
+            ),
             ("ops not a list", 1, 1, json!({}), "ops are not an array"),
         ];
         for (name, _, base, ops, want) in cases {
             let mut replicas = EventReplicas::default();
-            replicas.apply(&mut request(1, 0, Some(json!({"text": "x", "list": [1]})), None));
+            replicas.apply(&mut request(
+                1,
+                0,
+                Some(json!({"text": "x", "list": [1]})),
+                None,
+            ));
             let mut bad = request(2, base, None, Some(ops));
             replicas.apply(&mut bad);
             let message = bad.stream_error.unwrap_or_default();
             assert!(message.contains(want), "{name}: {message}");
             let mut after = request(3, 1, None, Some(json!([])));
             replicas.apply(&mut after);
-            assert!(after.stream_error.is_some(), "{name}: the replica was kept after a failure");
+            assert!(
+                after.stream_error.is_some(),
+                "{name}: the replica was kept after a failure"
+            );
         }
     }
 
     #[test]
     fn keys_are_independent_and_evicted() {
-        let keyed = |key: &str, seq: u64, base: u64, args: Option<Value>, ops: Option<Value>, evict: &[&str]| {
+        let keyed = |key: &str,
+                     seq: u64,
+                     base: u64,
+                     args: Option<Value>,
+                     ops: Option<Value>,
+                     evict: &[&str]| {
             let mut req = request(seq, base, args, ops);
             req.event = Some("tool_execution_update".into());
             let stream = req.stream.as_mut().unwrap();
@@ -209,10 +280,22 @@ mod tests {
         let mut a1 = keyed("a", 2, 1, None, Some(append.clone()), &[]);
         replicas.apply(&mut a1);
         assert_eq!(a1.args, Some(json!({"text": "a+"})));
-        replicas.apply(&mut keyed("c", 1, 0, Some(json!({"text": "c"})), None, &["a"]));
+        replicas.apply(&mut keyed(
+            "c",
+            1,
+            0,
+            Some(json!({"text": "c"})),
+            None,
+            &["a"],
+        ));
         let mut stale = keyed("a", 3, 2, None, Some(append.clone()), &[]);
         replicas.apply(&mut stale);
-        assert!(stale.stream_error.unwrap_or_default().contains("delta applies to payload 2"));
+        assert!(
+            stale
+                .stream_error
+                .unwrap_or_default()
+                .contains("delta applies to payload 2")
+        );
         let mut b2 = keyed("b", 3, 2, None, Some(append), &[]);
         replicas.apply(&mut b2);
         assert_eq!(b2.args, Some(json!({"text": "b++"})));
@@ -229,7 +312,11 @@ mod tests {
             };
         }
         let slot = match last {
-            Value::String(key) => parent.as_object_mut().unwrap().entry(key.clone()).or_insert(Value::Null),
+            Value::String(key) => parent
+                .as_object_mut()
+                .unwrap()
+                .entry(key.clone())
+                .or_insert(Value::Null),
             index => {
                 let items = parent.as_array_mut().unwrap();
                 let index = index.as_u64().unwrap() as usize;
@@ -240,14 +327,20 @@ mod tests {
             }
         };
         *slot = match op {
-            "append" => Value::String(format!("{}{}", slot.as_str().unwrap(), value.as_str().unwrap())),
+            "append" => Value::String(format!(
+                "{}{}",
+                slot.as_str().unwrap(),
+                value.as_str().unwrap()
+            )),
             _ => value,
         };
     }
 
     #[test]
     fn random_deltas_match_concatenation() {
-        let source: Vec<char> = "héllo wörld ✓ 日本語テキスト 🙂🚀 ascii tail ".chars().collect();
+        let source: Vec<char> = "héllo wörld ✓ 日本語テキスト 🙂🚀 ascii tail "
+            .chars()
+            .collect();
         let paths = [
             json!(["message", "content", 0, "text"]),
             json!(["message", "content", 1, "arguments", "content"]),
@@ -284,11 +377,20 @@ mod tests {
                     });
                 }
                 for op in &ops {
-                    reference_op(&mut reference, op["path"].as_array().unwrap(), op["op"].as_str().unwrap(), op["value"].clone());
+                    reference_op(
+                        &mut reference,
+                        op["path"].as_array().unwrap(),
+                        op["op"].as_str().unwrap(),
+                        op["value"].clone(),
+                    );
                 }
                 let mut req = request(seq, seq - 1, None, Some(Value::Array(ops)));
                 replicas.apply(&mut req);
-                assert!(req.stream_error.is_none(), "seed {seed} seq {seq}: {:?}", req.stream_error);
+                assert!(
+                    req.stream_error.is_none(),
+                    "seed {seed} seq {seq}: {:?}",
+                    req.stream_error
+                );
                 let mut delivered = req.args.take().unwrap();
                 assert_eq!(delivered, reference, "seed {seed} seq {seq}");
                 // A handler that edits its payload does not change what the next delta applies to.

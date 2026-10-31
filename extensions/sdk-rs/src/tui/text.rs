@@ -101,7 +101,11 @@ fn graphemes(text: &[char]) -> Vec<&[char]> {
                 false
             } else if matches!(prev, GB_LVT | GB_T) && cur == GB_T {
                 false
-            } else if cur == GB_EXTEND || cur == GB_ZWJ || cur == GB_SPACING_MARK || prev == GB_PREPEND {
+            } else if cur == GB_EXTEND
+                || cur == GB_ZWJ
+                || cur == GB_SPACING_MARK
+                || prev == GB_PREPEND
+            {
                 false
             } else if incb_state == 2 && incb(q) == INCB_CONSONANT {
                 false
@@ -285,7 +289,11 @@ fn visible_width_chars(text: &[char]) -> i64 {
     let mut stripped: Vec<char> = Vec::with_capacity(clean.len());
     let mut i = 0;
     while i < clean.len() {
-        let length = if clean[i] == '\x1b' { ansi_code_length(&clean, i) } else { 0 };
+        let length = if clean[i] == '\x1b' {
+            ansi_code_length(&clean, i)
+        } else {
+            0
+        };
         if length > 0 {
             i += length;
         } else {
@@ -347,7 +355,11 @@ pub fn get_osc8_link_at_column(line: &str, column: i64) -> Option<String> {
         }
         let end = text_end(&line, i);
         for seg in graphemes(&line[i..end]) {
-            let width = if seg == ['\t'] { 3 } else { grapheme_width(seg) };
+            let width = if seg == ['\t'] {
+                3
+            } else {
+                grapheme_width(seg)
+            };
             if column >= current && column < current + width {
                 return active;
             }
@@ -366,7 +378,10 @@ fn osc8_link_url(code: &[char]) -> Option<String> {
         return None;
     }
     let tail = &rest[sep + 1..];
-    let url_len = tail.iter().position(|&c| c == '\x07' || c == '\x1b').unwrap_or(tail.len());
+    let url_len = tail
+        .iter()
+        .position(|&c| c == '\x07' || c == '\x1b')
+        .unwrap_or(tail.len());
     let terminator = &tail[url_len..];
     if terminator == ['\x07'] || terminator == ['\x1b', '\\'] {
         Some(chars_to_string(&tail[..url_len]))
@@ -391,13 +406,24 @@ enum Osc8 {
 fn parse_osc8(code: &[char]) -> Option<Osc8> {
     let code = chars_to_string(code);
     let rest = code.strip_prefix("\x1b]8;")?;
-    let (terminator, body) = if let Some(b) = rest.strip_suffix('\x07') { ("\x07", b) } else { ("\x1b\\", rest.get(..rest.len().saturating_sub(2)).unwrap_or("")) };
+    let (terminator, body) = if let Some(b) = rest.strip_suffix('\x07') {
+        ("\x07", b)
+    } else {
+        (
+            "\x1b\\",
+            rest.get(..rest.len().saturating_sub(2)).unwrap_or(""),
+        )
+    };
     let sep = body.find(';')?;
     let (params, url) = (&body[..sep], &body[sep + 1..]);
     if url.is_empty() {
         return Some(Osc8::Close);
     }
-    Some(Osc8::Open(Hyperlink { params: params.to_string(), url: url.to_string(), terminator }))
+    Some(Osc8::Open(Hyperlink {
+        params: params.to_string(),
+        url: url.to_string(),
+        terminator,
+    }))
 }
 
 fn active_osc8_close(prefix: &[char]) -> String {
@@ -508,13 +534,21 @@ impl AnsiCodeTracker {
             if code == Some(38) || code == Some(48) {
                 if parts.get(i + 1) == Some(&"5") && i + 2 < parts.len() {
                     let color = format!("{};{};{}", parts[i], parts[i + 1], parts[i + 2]);
-                    if code == Some(38) { self.fg = Some(color) } else { self.bg = Some(color) }
+                    if code == Some(38) {
+                        self.fg = Some(color)
+                    } else {
+                        self.bg = Some(color)
+                    }
                     i += 3;
                     continue;
                 }
                 if parts.get(i + 1) == Some(&"2") && i + 4 < parts.len() {
                     let color = parts[i..i + 5].join(";");
-                    if code == Some(38) { self.fg = Some(color) } else { self.bg = Some(color) }
+                    if code == Some(38) {
+                        self.fg = Some(color)
+                    } else {
+                        self.bg = Some(color)
+                    }
                     i += 5;
                     continue;
                 }
@@ -557,17 +591,41 @@ impl AnsiCodeTracker {
 
     fn active_codes(&self) -> String {
         let mut codes: Vec<&str> = Vec::new();
-        if self.bold { codes.push("1") }
-        if self.dim { codes.push("2") }
-        if self.italic { codes.push("3") }
-        if self.underline { codes.push("4") }
-        if self.blink { codes.push("5") }
-        if self.inverse { codes.push("7") }
-        if self.hidden { codes.push("8") }
-        if self.strikethrough { codes.push("9") }
-        if let Some(fg) = self.fg.as_deref().filter(|s| !s.is_empty()) { codes.push(fg) }
-        if let Some(bg) = self.bg.as_deref().filter(|s| !s.is_empty()) { codes.push(bg) }
-        let mut result = if codes.is_empty() { String::new() } else { format!("\x1b[{}m", codes.join(";")) };
+        if self.bold {
+            codes.push("1")
+        }
+        if self.dim {
+            codes.push("2")
+        }
+        if self.italic {
+            codes.push("3")
+        }
+        if self.underline {
+            codes.push("4")
+        }
+        if self.blink {
+            codes.push("5")
+        }
+        if self.inverse {
+            codes.push("7")
+        }
+        if self.hidden {
+            codes.push("8")
+        }
+        if self.strikethrough {
+            codes.push("9")
+        }
+        if let Some(fg) = self.fg.as_deref().filter(|s| !s.is_empty()) {
+            codes.push(fg)
+        }
+        if let Some(bg) = self.bg.as_deref().filter(|s| !s.is_empty()) {
+            codes.push(bg)
+        }
+        let mut result = if codes.is_empty() {
+            String::new()
+        } else {
+            format!("\x1b[{}m", codes.join(";"))
+        };
         if let Some(h) = &self.hyperlink {
             result.push_str(&format!("\x1b]8;{};{}{}", h.params, h.url, h.terminator));
         }
@@ -670,10 +728,16 @@ fn split_into_tokens(text: &[char]) -> Vec<String> {
             i += length;
             continue;
         }
-        let end = (i + 1..text.len()).find(|&j| text[j] == '\x1b' && ansi_code_length(text, j) > 0).unwrap_or(text.len());
+        let end = (i + 1..text.len())
+            .find(|&j| text[j] == '\x1b' && ansi_code_length(text, j) > 0)
+            .unwrap_or(text.len());
         let chunk = &text[i..end];
         let ascii_chunk = is_printable_ascii(chunk);
-        let segments: Vec<&[char]> = if ascii_chunk { (0..chunk.len()).map(|k| &chunk[k..k + 1]).collect() } else { graphemes(chunk) };
+        let segments: Vec<&[char]> = if ascii_chunk {
+            (0..chunk.len()).map(|k| &chunk[k..k + 1]).collect()
+        } else {
+            graphemes(chunk)
+        };
         for segment in segments {
             let is_space = segment == [' '];
             if !ascii_chunk && !is_space && is_cjk_break(segment) {
@@ -736,13 +800,21 @@ pub fn wrap_text_with_ansi(text: &str, width: i64) -> Vec<String> {
     }
     lines.push(&chars[start..]);
     for input_line in lines {
-        let prefix = if result.is_empty() { String::new() } else { tracker.active_codes() };
+        let prefix = if result.is_empty() {
+            String::new()
+        } else {
+            tracker.active_codes()
+        };
         let mut line: Vec<char> = prefix.chars().collect();
         line.extend_from_slice(input_line);
         result.extend(wrap_single_line(&line, width));
         update_tracker(input_line, &mut tracker);
     }
-    if result.is_empty() { vec![String::new()] } else { result }
+    if result.is_empty() {
+        vec![String::new()]
+    } else {
+        result
+    }
 }
 
 #[allow(unused_assignments)]
@@ -803,7 +875,11 @@ fn wrap_single_line(line: &[char], width: i64) -> Vec<String> {
     if !current.is_empty() {
         wrapped.push(current);
     }
-    if wrapped.is_empty() { vec![String::new()] } else { wrapped.iter().map(|l| trim_end_string(l)).collect() }
+    if wrapped.is_empty() {
+        vec![String::new()]
+    } else {
+        wrapped.iter().map(|l| trim_end_string(l)).collect()
+    }
 }
 
 fn break_long_word(word: &[char], width: i64, tracker: &mut AnsiCodeTracker) -> Vec<String> {
@@ -847,7 +923,11 @@ fn break_long_word(word: &[char], width: i64, tracker: &mut AnsiCodeTracker) -> 
     if !current.is_empty() {
         lines.push(current);
     }
-    if lines.is_empty() { vec![String::new()] } else { lines }
+    if lines.is_empty() {
+        vec![String::new()]
+    } else {
+        lines
+    }
 }
 
 fn truncate_fragment(text: &[char], max_width: i64) -> (String, i64) {
@@ -912,12 +992,23 @@ fn truncate_fragment(text: &[char], max_width: i64) -> (String, i64) {
     (result, width)
 }
 
-fn finalize_truncated(prefix: &str, prefix_width: i64, ellipsis: &str, ellipsis_width: i64, max_width: i64, pad: bool) -> String {
+fn finalize_truncated(
+    prefix: &str,
+    prefix_width: i64,
+    ellipsis: &str,
+    ellipsis_width: i64,
+    max_width: i64,
+    pad: bool,
+) -> String {
     let reset = "\x1b[0m";
     let prefix_chars: Vec<char> = prefix.chars().collect();
     let close = active_osc8_close(&prefix_chars);
     let visible = prefix_width + ellipsis_width;
-    let mut result = if ellipsis.is_empty() { format!("{prefix}{close}{reset}") } else { format!("{prefix}{close}{reset}{ellipsis}{reset}") };
+    let mut result = if ellipsis.is_empty() {
+        format!("{prefix}{close}{reset}")
+    } else {
+        format!("{prefix}{close}{reset}{ellipsis}{reset}")
+    };
     if pad {
         result.push_str(&" ".repeat((max_width - visible).max(0) as usize));
     }
@@ -931,7 +1022,11 @@ pub fn truncate_to_width(text: &str, max_width: i64, ellipsis: &str, pad: bool) 
         return String::new();
     }
     if text.is_empty() {
-        return if pad { " ".repeat(max_width as usize) } else { String::new() };
+        return if pad {
+            " ".repeat(max_width as usize)
+        } else {
+            String::new()
+        };
     }
     let text_chars: Vec<char> = text.chars().collect();
     let ellipsis_chars: Vec<char> = ellipsis.chars().collect();
@@ -939,20 +1034,42 @@ pub fn truncate_to_width(text: &str, max_width: i64, ellipsis: &str, pad: bool) 
     if ellipsis_width >= max_width {
         let text_width = visible_width_chars(&text_chars);
         if text_width <= max_width {
-            return if pad { format!("{text}{}", " ".repeat((max_width - text_width) as usize)) } else { text.to_string() };
+            return if pad {
+                format!("{text}{}", " ".repeat((max_width - text_width) as usize))
+            } else {
+                text.to_string()
+            };
         }
         let (clipped, clipped_width) = truncate_fragment(&ellipsis_chars, max_width);
         if clipped_width == 0 {
-            return if pad { " ".repeat(max_width as usize) } else { String::new() };
+            return if pad {
+                " ".repeat(max_width as usize)
+            } else {
+                String::new()
+            };
         }
         return finalize_truncated("", 0, &clipped, clipped_width, max_width, pad);
     }
     if is_printable_ascii(&text_chars) {
         if text_chars.len() as i64 <= max_width {
-            return if pad { format!("{text}{}", " ".repeat((max_width - text_chars.len() as i64) as usize)) } else { text.to_string() };
+            return if pad {
+                format!(
+                    "{text}{}",
+                    " ".repeat((max_width - text_chars.len() as i64) as usize)
+                )
+            } else {
+                text.to_string()
+            };
         }
         let target = max_width - ellipsis_width;
-        return finalize_truncated(&text[..target as usize], target, ellipsis, ellipsis_width, max_width, pad);
+        return finalize_truncated(
+            &text[..target as usize],
+            target,
+            ellipsis,
+            ellipsis_width,
+            max_width,
+            pad,
+        );
     }
     let target = max_width - ellipsis_width;
     let mut result = String::new();
@@ -1008,7 +1125,10 @@ pub fn truncate_to_width(text: &str, max_width: i64, ellipsis: &str, pad: bool) 
                 continue;
             }
             let mut end = i;
-            while end < text_chars.len() && text_chars[end] != '\t' && ansi_code_length(&text_chars, end) == 0 {
+            while end < text_chars.len()
+                && text_chars[end] != '\t'
+                && ansi_code_length(&text_chars, end) == 0
+            {
                 end += 1;
             }
             for seg in graphemes(&text_chars[i..end]) {
@@ -1033,7 +1153,14 @@ pub fn truncate_to_width(text: &str, max_width: i64, ellipsis: &str, pad: bool) 
         exhausted = i >= text_chars.len();
     }
     if !overflowed && exhausted {
-        return if pad { format!("{text}{}", " ".repeat((max_width - visible_so_far).max(0) as usize)) } else { text.to_string() };
+        return if pad {
+            format!(
+                "{text}{}",
+                " ".repeat((max_width - visible_so_far).max(0) as usize)
+            )
+        } else {
+            text.to_string()
+        };
     }
     finalize_truncated(&result, kept, ellipsis, ellipsis_width, max_width, pad)
 }
@@ -1048,7 +1175,10 @@ pub struct SliceResult {
 /// The visible columns `[start_col, start_col + length)` of `line` with their width (pi-tui's `sliceWithWidth`).
 pub fn slice_with_width(line: &str, start_col: i64, length: i64, strict: bool) -> SliceResult {
     if length <= 0 {
-        return SliceResult { text: String::new(), width: 0 };
+        return SliceResult {
+            text: String::new(),
+            width: 0,
+        };
     }
     let line: Vec<char> = line.chars().collect();
     let end_col = start_col + length;
@@ -1092,7 +1222,10 @@ pub fn slice_with_width(line: &str, start_col: i64, length: i64, strict: bool) -
             break;
         }
     }
-    SliceResult { text: result, width: result_width }
+    SliceResult {
+        text: result,
+        width: result_width,
+    }
 }
 
 /// The visible columns `[start_col, start_col + length)` of `line` with ANSI codes preserved (pi-tui's `sliceByColumn`).
@@ -1110,7 +1243,13 @@ pub struct Segments {
 }
 
 /// The columns before `before_end` and the `after_len` columns from `after_start` in one pass (pi-tui's `extractSegments`).
-pub fn extract_segments(line: &str, before_end: i64, after_start: i64, after_len: i64, strict_after: bool) -> Segments {
+pub fn extract_segments(
+    line: &str,
+    before_end: i64,
+    after_start: i64,
+    after_len: i64,
+    strict_after: bool,
+) -> Segments {
     let line: Vec<char> = line.chars().collect();
     let mut before = String::new();
     let mut before_width: i64 = 0;
@@ -1123,7 +1262,13 @@ pub fn extract_segments(line: &str, before_end: i64, after_start: i64, after_len
     let after_end = after_start + after_len;
     let mut tracker = AnsiCodeTracker::default();
     tracker.clear();
-    let done = |current: i64| if after_len <= 0 { current >= before_end } else { current >= after_end };
+    let done = |current: i64| {
+        if after_len <= 0 {
+            current >= before_end
+        } else {
+            current >= after_end
+        }
+    };
     while i < line.len() {
         let code_len = ansi_code_length(&line, i);
         if code_len > 0 {
@@ -1131,7 +1276,10 @@ pub fn extract_segments(line: &str, before_end: i64, after_start: i64, after_len
             tracker.process(code);
             if current < before_end {
                 pending_before.push_str(&chars_to_string(code));
-            } else if current >= after_start && current < after_end && (after_started || code.starts_with(&['\x1b', '_'])) {
+            } else if current >= after_start
+                && current < after_end
+                && (after_started || code.starts_with(&['\x1b', '_']))
+            {
                 after.push_str(&chars_to_string(code));
             }
             i += code_len;
@@ -1166,5 +1314,10 @@ pub fn extract_segments(line: &str, before_end: i64, after_start: i64, after_len
             break;
         }
     }
-    Segments { before, before_width, after, after_width }
+    Segments {
+        before,
+        before_width,
+        after,
+        after_width,
+    }
 }

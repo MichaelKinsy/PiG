@@ -131,7 +131,8 @@ pub struct FindGlobOptions {
 #[derive(Clone)]
 pub struct FindOperations {
     pub exists: PathOperation<bool>,
-    pub glob: Arc<dyn Fn(&str, &str, FindGlobOptions) -> OperationResult<Vec<String>> + Send + Sync>,
+    pub glob:
+        Arc<dyn Fn(&str, &str, FindGlobOptions) -> OperationResult<Vec<String>> + Send + Sync>,
 }
 
 /// Pi's `FindToolOptions`.
@@ -169,7 +170,8 @@ pub struct BashSpawnContext {
 }
 
 /// Pi's `BashSpawnHook`: it receives the context the command is about to run in and returns the context to run. An `Err` is the hook's throw: the tool call fails with it.
-pub type BashSpawnHook = Arc<dyn Fn(BashSpawnContext) -> OperationResult<BashSpawnContext> + Send + Sync>;
+pub type BashSpawnHook =
+    Arc<dyn Fn(BashSpawnContext) -> OperationResult<BashSpawnContext> + Send + Sync>;
 
 /// Pi's `BashToolOptions`. `operations` `None` is the local shell.
 #[derive(Clone, Default)]
@@ -218,14 +220,24 @@ struct Spec {
 
 impl Spec {
     fn new(name: &'static str, cwd: &str) -> Self {
-        Self { name, cwd: cwd.to_string(), options: Map::new(), callbacks: HashMap::new(), bash: None }
+        Self {
+            name,
+            cwd: cwd.to_string(),
+            options: Map::new(),
+            callbacks: HashMap::new(),
+            bash: None,
+        }
     }
 
     fn operations(&mut self, names: &[&str]) {
         self.options.insert("operations".into(), json!(names));
     }
 
-    fn callback(&mut self, member: &'static str, function: impl Fn(&Value) -> Result<Value, String> + Send + Sync + 'static) {
+    fn callback(
+        &mut self,
+        member: &'static str,
+        function: impl Fn(&Value) -> Result<Value, String> + Send + Sync + 'static,
+    ) {
         self.callbacks.insert(member, Arc::new(function));
     }
 }
@@ -238,11 +250,16 @@ fn encoded(data: Vec<u8>) -> Value {
     Value::String(base64(&data))
 }
 
-fn path_callback<R: 'static>(function: PathOperation<R>, wire: impl Fn(R) -> Value + Send + Sync + 'static) -> impl Fn(&Value) -> Result<Value, String> + Send + Sync + 'static {
+fn path_callback<R: 'static>(
+    function: PathOperation<R>,
+    wire: impl Fn(R) -> Value + Send + Sync + 'static,
+) -> impl Fn(&Value) -> Result<Value, String> + Send + Sync + 'static {
     move |args| function(text_of(args, "path")).map(&wire)
 }
 
-fn write_callback(function: WriteOperation) -> impl Fn(&Value) -> Result<Value, String> + Send + Sync + 'static {
+fn write_callback(
+    function: WriteOperation,
+) -> impl Fn(&Value) -> Result<Value, String> + Send + Sync + 'static {
     move |args| function(text_of(args, "path"), text_of(args, "content")).map(|()| Value::Null)
 }
 
@@ -253,15 +270,27 @@ fn read_spec(cwd: &str, options: Option<ReadToolOptions>) -> Spec {
         spec.options.insert("autoResizeImages".into(), json!(auto));
     }
     if let Some(resize) = options.resize_options {
-        spec.options.insert("resizeOptions".into(), serde_json::to_value(resize).unwrap_or(Value::Null));
+        spec.options.insert(
+            "resizeOptions".into(),
+            serde_json::to_value(resize).unwrap_or(Value::Null),
+        );
     }
     if let Some(ops) = options.operations {
         let mut names = vec!["readFile", "access"];
-        spec.callback("operations.readFile", path_callback(ops.read_file.clone(), encoded));
-        spec.callback("operations.access", path_callback(ops.access.clone(), |()| Value::Null));
+        spec.callback(
+            "operations.readFile",
+            path_callback(ops.read_file.clone(), encoded),
+        );
+        spec.callback(
+            "operations.access",
+            path_callback(ops.access.clone(), |()| Value::Null),
+        );
         if let Some(detect) = ops.detect_image_mime_type.clone() {
             names.push("detectImageMimeType");
-            spec.callback("operations.detectImageMimeType", path_callback(detect, |mime| mime.map_or(Value::Null, Value::String)));
+            spec.callback(
+                "operations.detectImageMimeType",
+                path_callback(detect, |mime| mime.map_or(Value::Null, Value::String)),
+            );
         }
         spec.operations(&names);
     }
@@ -271,8 +300,14 @@ fn read_spec(cwd: &str, options: Option<ReadToolOptions>) -> Spec {
 fn write_spec(cwd: &str, options: Option<WriteToolOptions>) -> Spec {
     let mut spec = Spec::new("write", cwd);
     if let Some(ops) = options.and_then(|options| options.operations) {
-        spec.callback("operations.writeFile", write_callback(ops.write_file.clone()));
-        spec.callback("operations.mkdir", path_callback(ops.mkdir.clone(), |()| Value::Null));
+        spec.callback(
+            "operations.writeFile",
+            write_callback(ops.write_file.clone()),
+        );
+        spec.callback(
+            "operations.mkdir",
+            path_callback(ops.mkdir.clone(), |()| Value::Null),
+        );
         spec.operations(&["writeFile", "mkdir"]);
     }
     spec
@@ -281,9 +316,18 @@ fn write_spec(cwd: &str, options: Option<WriteToolOptions>) -> Spec {
 fn edit_spec(cwd: &str, options: Option<EditToolOptions>) -> Spec {
     let mut spec = Spec::new("edit", cwd);
     if let Some(ops) = options.and_then(|options| options.operations) {
-        spec.callback("operations.readFile", path_callback(ops.read_file.clone(), encoded));
-        spec.callback("operations.writeFile", write_callback(ops.write_file.clone()));
-        spec.callback("operations.access", path_callback(ops.access.clone(), |()| Value::Null));
+        spec.callback(
+            "operations.readFile",
+            path_callback(ops.read_file.clone(), encoded),
+        );
+        spec.callback(
+            "operations.writeFile",
+            write_callback(ops.write_file.clone()),
+        );
+        spec.callback(
+            "operations.access",
+            path_callback(ops.access.clone(), |()| Value::Null),
+        );
         spec.operations(&["readFile", "writeFile", "access"]);
     }
     spec
@@ -292,11 +336,17 @@ fn edit_spec(cwd: &str, options: Option<EditToolOptions>) -> Spec {
 fn grep_spec(cwd: &str, options: Option<GrepToolOptions>) -> Spec {
     let mut spec = Spec::new("grep", cwd);
     if let Some(ops) = options.and_then(|options| options.operations) {
-        spec.callback("operations.isDirectory", path_callback(ops.is_directory.clone(), Value::Bool));
+        spec.callback(
+            "operations.isDirectory",
+            path_callback(ops.is_directory.clone(), Value::Bool),
+        );
         let mut names = vec!["isDirectory"];
         if let Some(read_file) = ops.read_file.clone() {
             names.push("readFile");
-            spec.callback("operations.readFile", path_callback(read_file, Value::String));
+            spec.callback(
+                "operations.readFile",
+                path_callback(read_file, Value::String),
+            );
         }
         spec.operations(&names);
     }
@@ -306,15 +356,26 @@ fn grep_spec(cwd: &str, options: Option<GrepToolOptions>) -> Spec {
 fn find_spec(cwd: &str, options: Option<FindToolOptions>) -> Spec {
     let mut spec = Spec::new("find", cwd);
     if let Some(ops) = options.and_then(|options| options.operations) {
-        spec.callback("operations.exists", path_callback(ops.exists.clone(), Value::Bool));
+        spec.callback(
+            "operations.exists",
+            path_callback(ops.exists.clone(), Value::Bool),
+        );
         let glob = ops.glob.clone();
         spec.callback("operations.glob", move |args| {
             let ignore = args
                 .get("ignore")
                 .and_then(Value::as_array)
-                .map(|items| items.iter().filter_map(|item| item.as_str().map(str::to_string)).collect())
+                .map(|items| {
+                    items
+                        .iter()
+                        .filter_map(|item| item.as_str().map(str::to_string))
+                        .collect()
+                })
                 .unwrap_or_default();
-            let options = FindGlobOptions { ignore, limit: args.get("limit").and_then(Value::as_f64).unwrap_or(0.0) };
+            let options = FindGlobOptions {
+                ignore,
+                limit: args.get("limit").and_then(Value::as_f64).unwrap_or(0.0),
+            };
             glob(text_of(args, "pattern"), text_of(args, "cwd"), options).map(|paths| json!(paths))
         });
         spec.operations(&["exists", "glob"]);
@@ -325,18 +386,37 @@ fn find_spec(cwd: &str, options: Option<FindToolOptions>) -> Spec {
 fn ls_spec(cwd: &str, options: Option<LsToolOptions>) -> Spec {
     let mut spec = Spec::new("ls", cwd);
     if let Some(ops) = options.and_then(|options| options.operations) {
-        spec.callback("operations.exists", path_callback(ops.exists.clone(), Value::Bool));
-        spec.callback("operations.stat", path_callback(ops.stat.clone(), |stat| json!({"isDirectory": stat.is_directory})));
-        spec.callback("operations.readdir", path_callback(ops.readdir.clone(), |names| json!(names)));
+        spec.callback(
+            "operations.exists",
+            path_callback(ops.exists.clone(), Value::Bool),
+        );
+        spec.callback(
+            "operations.stat",
+            path_callback(
+                ops.stat.clone(),
+                |stat| json!({"isDirectory": stat.is_directory}),
+            ),
+        );
+        spec.callback(
+            "operations.readdir",
+            path_callback(ops.readdir.clone(), |names| json!(names)),
+        );
         spec.operations(&["exists", "stat", "readdir"]);
     }
     spec
 }
 
-fn shell_spec(name: &'static str, cwd: &str, operations: Option<BashOperations>, hook: Option<BashSpawnHook>, expose: Option<bool>) -> Spec {
+fn shell_spec(
+    name: &'static str,
+    cwd: &str,
+    operations: Option<BashOperations>,
+    hook: Option<BashSpawnHook>,
+    expose: Option<bool>,
+) -> Spec {
     let mut spec = Spec::new(name, cwd);
     if let Some(expose) = expose {
-        spec.options.insert("exposeSessionEnvironment".into(), json!(expose));
+        spec.options
+            .insert("exposeSessionEnvironment".into(), json!(expose));
     }
     if let Some(operations) = operations {
         spec.operations(&["exec"]);
@@ -345,7 +425,8 @@ fn shell_spec(name: &'static str, cwd: &str, operations: Option<BashOperations>,
     if let Some(hook) = hook {
         spec.options.insert("spawnHook".into(), json!(true));
         spec.callback("spawnHook", move |args| {
-            let context: BashSpawnContext = serde_json::from_value(args.clone()).map_err(|error| format!("decode spawnHook context: {error}"))?;
+            let context: BashSpawnContext = serde_json::from_value(args.clone())
+                .map_err(|error| format!("decode spawnHook context: {error}"))?;
             hook(context).map(|context| serde_json::to_value(context).unwrap_or(Value::Null))
         });
     }
@@ -353,8 +434,16 @@ fn shell_spec(name: &'static str, cwd: &str, operations: Option<BashOperations>,
 }
 
 fn bash_spec(cwd: &str, options: Option<BashToolOptions>) -> Spec {
-    let Some(options) = options else { return Spec::new("bash", cwd) };
-    let mut spec = shell_spec("bash", cwd, options.operations, options.spawn_hook, options.expose_session_environment);
+    let Some(options) = options else {
+        return Spec::new("bash", cwd);
+    };
+    let mut spec = shell_spec(
+        "bash",
+        cwd,
+        options.operations,
+        options.spawn_hook,
+        options.expose_session_environment,
+    );
     if let Some(prefix) = options.command_prefix.filter(|prefix| !prefix.is_empty()) {
         spec.options.insert("commandPrefix".into(), json!(prefix));
     }
@@ -365,8 +454,16 @@ fn bash_spec(cwd: &str, options: Option<BashToolOptions>) -> Spec {
 }
 
 fn powershell_spec(cwd: &str, options: Option<PowerShellToolOptions>) -> Spec {
-    let Some(options) = options else { return Spec::new("powershell", cwd) };
-    shell_spec("powershell", cwd, options.operations, options.spawn_hook, options.expose_session_environment)
+    let Some(options) = options else {
+        return Spec::new("powershell", cwd);
+    };
+    shell_spec(
+        "powershell",
+        cwd,
+        options.operations,
+        options.spawn_hook,
+        options.expose_session_environment,
+    )
 }
 
 type ExecDataSink = Arc<dyn Fn(&[u8]) -> Result<(), String> + Send + Sync>;
@@ -384,7 +481,9 @@ static REGISTRY: Mutex<Option<Registry>> = Mutex::new(None);
 
 /// The guard of a lock whose holder panicked: the tables here stay consistent across a callback's panic, which is caught.
 fn locked<T>(mutex: &Mutex<T>) -> std::sync::MutexGuard<'_, T> {
-    mutex.lock().unwrap_or_else(|poisoned| poisoned.into_inner())
+    mutex
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
 }
 
 fn registry<T>(use_registry: impl FnOnce(&mut Registry) -> T) -> T {
@@ -447,7 +546,9 @@ pub struct BuiltinToolExecutor {
 impl BuiltinToolDefinition {
     /// The handle that runs the built-in, for a wrapping `execute` to call.
     pub fn executor(&self) -> BuiltinToolExecutor {
-        BuiltinToolExecutor { spec: self.spec.clone() }
+        BuiltinToolExecutor {
+            spec: self.spec.clone(),
+        }
     }
 }
 
@@ -455,17 +556,27 @@ impl BuiltinToolExecutor {
     /// Pi's `definition.execute(...args)` of a tool handler: the tool call id, the calling request's cancellation as the signal, the request's update sink as
     /// `onUpdate` and the extension's context are the handler's own.
     pub fn execute(&self, ctx: &Context, params: Value) -> io::Result<AgentToolResult> {
-        let forward: Option<ExecuteToolUpdate> = if ctx.tool_call_id.is_some() && !ctx.request_id.is_empty() {
-            let ctx = ctx.clone();
-            Some(Arc::new(move |partial: AgentToolResult| {
-                if let Err(error) = ctx.on_update(partial.into_tool_result()) {
-                    panic!("{error}");
-                }
-            }))
-        } else {
-            None
-        };
-        execute(&ctx.conn, Some(ctx), &self.spec, ctx.tool_call_id.as_deref().unwrap_or(""), params, None, true, forward)
+        let forward: Option<ExecuteToolUpdate> =
+            if ctx.tool_call_id.is_some() && !ctx.request_id.is_empty() {
+                let ctx = ctx.clone();
+                Some(Arc::new(move |partial: AgentToolResult| {
+                    if let Err(error) = ctx.on_update(partial.into_tool_result()) {
+                        panic!("{error}");
+                    }
+                }))
+            } else {
+                None
+            };
+        execute(
+            &ctx.conn,
+            Some(ctx),
+            &self.spec,
+            ctx.tool_call_id.as_deref().unwrap_or(""),
+            params,
+            None,
+            true,
+            forward,
+        )
     }
 
     /// Pi's `definition.execute(toolCallId, params, signal, onUpdate, ctx)`. A `None` signal is Pi's undefined: only the call itself ends it. `on_update`
@@ -480,7 +591,16 @@ impl BuiltinToolExecutor {
         signal: Option<&ProviderSignal>,
         on_update: Option<ExecuteToolUpdate>,
     ) -> io::Result<AgentToolResult> {
-        execute(&ctx.conn, Some(ctx), &self.spec, tool_call_id, params, signal, false, on_update)
+        execute(
+            &ctx.conn,
+            Some(ctx),
+            &self.spec,
+            tool_call_id,
+            params,
+            signal,
+            false,
+            on_update,
+        )
     }
 }
 
@@ -503,9 +623,24 @@ pub struct BuiltinTool {
 impl BuiltinTool {
     /// Pi's `tool.execute(toolCallId, params, signal, onUpdate)`. It runs over the connection of the running extension, so it needs [`crate::Extension::run`] to
     /// have started: a call before that is an error. A `None` signal is Pi's undefined.
-    pub fn execute(&self, tool_call_id: &str, params: Value, signal: Option<&ProviderSignal>, on_update: Option<ExecuteToolUpdate>) -> io::Result<AgentToolResult> {
+    pub fn execute(
+        &self,
+        tool_call_id: &str,
+        params: Value,
+        signal: Option<&ProviderSignal>,
+        on_update: Option<ExecuteToolUpdate>,
+    ) -> io::Result<AgentToolResult> {
         let conn = host_helpers::running_connection()?;
-        execute(&conn, None, &self.spec, tool_call_id, params, signal, false, on_update)
+        execute(
+            &conn,
+            None,
+            &self.spec,
+            tool_call_id,
+            params,
+            signal,
+            false,
+            on_update,
+        )
     }
 }
 
@@ -514,7 +649,12 @@ fn definition_reply(spec: &Spec) -> io::Result<Value> {
     if !spec.options.is_empty() {
         args["options"] = Value::Object(spec.options.clone());
     }
-    host_helpers::helper_call(CALL_DEFINITION, args)?.ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "host returned no result for builtinTool.definition"))
+    host_helpers::helper_call(CALL_DEFINITION, args)?.ok_or_else(|| {
+        io::Error::new(
+            io::ErrorKind::InvalidData,
+            "host returned no result for builtinTool.definition",
+        )
+    })
 }
 
 /// `prepareArguments(args)` of a built-in tool's definition, which the host runs: edit's accepts `edits` as a JSON string or as a single edit and the legacy
@@ -538,7 +678,12 @@ fn present(reply: &Value, field: &str) -> Option<Value> {
 }
 
 fn strings(reply: &Value, field: &str) -> Option<Vec<String>> {
-    reply.get(field).and_then(Value::as_array).map(|items| items.iter().filter_map(|item| item.as_str().map(str::to_string)).collect())
+    reply.get(field).and_then(Value::as_array).map(|items| {
+        items
+            .iter()
+            .filter_map(|item| item.as_str().map(str::to_string))
+            .collect()
+    })
 }
 
 fn create_definition(spec: Spec) -> io::Result<BuiltinToolDefinition> {
@@ -566,10 +711,14 @@ fn create_definition(spec: Spec) -> io::Result<BuiltinToolDefinition> {
         definition.render_shell = crate::ToolRenderShell::SelfShell;
     }
     if reply.get("preparesArguments").and_then(Value::as_bool) == Some(true) {
-        definition.prepare_arguments = Some(Box::new(move |params| prepare_arguments(&preparer, params)));
+        definition.prepare_arguments =
+            Some(Box::new(move |params| prepare_arguments(&preparer, params)));
     }
     if let Some(sampling) = present(&reply, "constrainedSampling") {
-        definition.constrained_sampling = serde_json::from_value::<crate::ConstrainedSampling>(sampling).ok().map(crate::ToolConstrainedSampling::Config);
+        definition.constrained_sampling =
+            serde_json::from_value::<crate::ConstrainedSampling>(sampling)
+                .ok()
+                .map(crate::ToolConstrainedSampling::Config);
     }
     Ok(BuiltinToolDefinition { definition, spec })
 }
@@ -587,7 +736,11 @@ fn create_tool(spec: Spec) -> io::Result<BuiltinTool> {
         constrained_sampling: present(&reply, "constrainedSampling"),
         execution_mode: Some(text_field(&reply, "executionMode")).filter(|mode| !mode.is_empty()),
         prompt_snippet: (shell && !snippet.is_empty()).then_some(snippet),
-        prompt_guidelines: if shell { strings(&reply, "promptGuidelines") } else { None },
+        prompt_guidelines: if shell {
+            strings(&reply, "promptGuidelines")
+        } else {
+            None
+        },
         spec: Arc::new(spec),
     })
 }
@@ -614,7 +767,10 @@ fn execute(
         let callback = callback.clone();
         std::thread::spawn(move || {
             for (update, answer) in receiver {
-                let failure = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| callback(update))).err().map(|payload| crate::context::panic_message(payload.as_ref()));
+                let failure =
+                    std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| callback(update)))
+                        .err()
+                        .map(|payload| crate::context::panic_message(payload.as_ref()));
                 let _ = answer.send(failure);
             }
         })
@@ -624,7 +780,9 @@ fn execute(
         handle = registry(|registry| {
             registry.seq += 1;
             let handle = format!("builtin-{}", registry.seq);
-            registry.callbacks.insert(handle.clone(), spec.callbacks.clone());
+            registry
+                .callbacks
+                .insert(handle.clone(), spec.callbacks.clone());
             handle
         });
         if let Some(bash) = &spec.bash {
@@ -648,7 +806,15 @@ fn execute(
     if signal.is_some_and(ProviderSignal::is_cancelled) {
         args["aborted"] = Value::Bool(true);
     }
-    let outcome = run_call(conn, ctx, CALL_EXECUTE, args, &execute_id, signal, forward_signal);
+    let outcome = run_call(
+        conn,
+        ctx,
+        CALL_EXECUTE,
+        args,
+        &execute_id,
+        signal,
+        forward_signal,
+    );
     locked(&conn.execute_updates).remove(&execute_id);
     if let Some(dispatcher) = dispatcher {
         let _ = dispatcher.join();
@@ -658,24 +824,52 @@ fn execute(
         conn.bash_operations.release(&handle);
     }
     let result = outcome?;
-    serde_json::from_value(result).map_err(|error| io::Error::new(io::ErrorKind::InvalidData, format!("host reply to builtinTool.execute: {error}")))
+    serde_json::from_value(result).map_err(|error| {
+        io::Error::new(
+            io::ErrorKind::InvalidData,
+            format!("host reply to builtinTool.execute: {error}"),
+        )
+    })
 }
 
 /// Sends one call and waits for its result. A call under `ctx` with `forward_signal` is scoped to the calling request; any other call is detached from it, and an
 /// explicit `signal` aborts it through a second call, sent after the call's frame.
-fn run_call(conn: &Arc<Connection>, ctx: Option<&Context>, method: &str, args: Value, execute_id: &str, signal: Option<&ProviderSignal>, forward_signal: bool) -> io::Result<Value> {
+fn run_call(
+    conn: &Arc<Connection>,
+    ctx: Option<&Context>,
+    method: &str,
+    args: Value,
+    execute_id: &str,
+    signal: Option<&ProviderSignal>,
+    forward_signal: bool,
+) -> io::Result<Value> {
     if let Some(ctx) = ctx {
-        let _ = conn.request_state_for(ctx.request_parent.as_deref(), &ctx.request_id, "blocked", Some("host_call"));
+        let _ = conn.request_state_for(
+            ctx.request_parent.as_deref(),
+            &ctx.request_id,
+            "blocked",
+            Some("host_call"),
+        );
     }
     let pending = match ctx {
-        Some(ctx) if forward_signal => conn.begin_call_with_scope(ctx.request_parent.as_deref(), Some(&ctx.request_id), method, Some(args)),
+        Some(ctx) if forward_signal => conn.begin_call_with_scope(
+            ctx.request_parent.as_deref(),
+            Some(&ctx.request_id),
+            method,
+            Some(args),
+        ),
         _ => conn.begin_call_with_scope::<Value>(None, None, method, Some(args)),
     };
     let pending = match pending {
         Ok(pending) => pending,
         Err(error) => {
             if let Some(ctx) = ctx {
-                let _ = conn.request_state_for(ctx.request_parent.as_deref(), &ctx.request_id, "progress", None);
+                let _ = conn.request_state_for(
+                    ctx.request_parent.as_deref(),
+                    &ctx.request_id,
+                    "progress",
+                    None,
+                );
             }
             return Err(error);
         }
@@ -684,28 +878,48 @@ fn run_call(conn: &Arc<Connection>, ctx: Option<&Context>, method: &str, args: V
         let conn = conn.clone();
         let execute_id = execute_id.to_string();
         signal.subscribe(Arc::new(move || {
-            let _ = conn.begin_call_for(None, "executeTool.cancel", Some(json!({"executeId": execute_id})));
+            let _ = conn.begin_call_for(
+                None,
+                "executeTool.cancel",
+                Some(json!({"executeId": execute_id})),
+            );
         }))
     });
     let reply = conn.wait_call_typed::<Value>(pending);
     if let Some(ctx) = ctx {
-        let _ = conn.request_state_for(ctx.request_parent.as_deref(), &ctx.request_id, "progress", None);
+        let _ = conn.request_state_for(
+            ctx.request_parent.as_deref(),
+            &ctx.request_id,
+            "progress",
+            None,
+        );
     }
     let reply = reply?;
     if let Some(error) = reply.error {
         return Err(io::Error::other(host_error_message(error)));
     }
-    reply.result.ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, format!("host reply to {method} has no result")))
+    reply.result.ok_or_else(|| {
+        io::Error::new(
+            io::ErrorKind::InvalidData,
+            format!("host reply to {method} has no result"),
+        )
+    })
 }
 
 /// Runs one function of a call's options for the host's `builtin_tool_callback`. An `Err` is the callback's throw.
 pub(crate) fn dispatch_callback(args: &Value) -> Result<Value, String> {
     let handle = text_of(args, "handle");
     let member = text_of(args, "member");
-    let function = registry(|registry| registry.callbacks.get(handle).and_then(|callbacks| callbacks.get(member).cloned()));
+    let function = registry(|registry| {
+        registry
+            .callbacks
+            .get(handle)
+            .and_then(|callbacks| callbacks.get(member).cloned())
+    });
     let function = function.ok_or_else(|| format!("no built-in tool callback {member}"))?;
     let arguments = args.get("args").cloned().unwrap_or(Value::Null);
-    std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| function(&arguments))).map_err(|payload| crate::context::panic_message(payload.as_ref()))?
+    std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| function(&arguments)))
+        .map_err(|payload| crate::context::panic_message(payload.as_ref()))?
 }
 
 /// Delivers one output chunk of a local execution to its `on_data`, and returns what the host waits for: `Ok`, or `on_data`'s throw.
@@ -739,15 +953,17 @@ fn local_exec(shell: &'static str, shell_path: Option<String>) -> BashOperations
                         if let Some(message) = locked(&sink_failure).clone() {
                             return Err(message);
                         }
-                        std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| on_data(data))).map_err(|payload| {
-                            let message = crate::context::panic_message(payload.as_ref());
-                            *locked(&sink_failure) = Some(message.clone());
-                            message
-                        })
+                        std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| on_data(data)))
+                            .map_err(|payload| {
+                                let message = crate::context::panic_message(payload.as_ref());
+                                *locked(&sink_failure) = Some(message.clone());
+                                message
+                            })
                     }),
                 );
             });
-            let mut args = json!({"shell": shell, "command": command, "cwd": cwd, "executeId": execute_id});
+            let mut args =
+                json!({"shell": shell, "command": command, "cwd": cwd, "executeId": execute_id});
             if let Some(path) = &shell_path {
                 args["shellPath"] = json!(path);
             }
@@ -760,7 +976,15 @@ fn local_exec(shell: &'static str, shell_path: Option<String>) -> BashOperations
             if options.signal.is_cancelled() {
                 args["aborted"] = Value::Bool(true);
             }
-            let outcome = run_call(&conn, None, CALL_LOCAL_EXEC, args, &execute_id, Some(&options.signal), false);
+            let outcome = run_call(
+                &conn,
+                None,
+                CALL_LOCAL_EXEC,
+                args,
+                &execute_id,
+                Some(&options.signal),
+                false,
+            );
             registry(|registry| registry.exec_data.remove(&execute_id));
             if let Some(message) = locked(&failure).clone() {
                 return Err(message);
@@ -786,42 +1010,66 @@ pub fn create_local_powershell_operations() -> BashOperations {
 
 /// Pi's `createReadToolDefinition(cwd, options)`. Like every `create_*_tool_definition` it asks the host for the built-in tool's definition, so it may be called
 /// while the factory runs, before [`crate::Extension::run`].
-pub fn create_read_tool_definition(cwd: &str, options: Option<ReadToolOptions>) -> io::Result<BuiltinToolDefinition> {
+pub fn create_read_tool_definition(
+    cwd: &str,
+    options: Option<ReadToolOptions>,
+) -> io::Result<BuiltinToolDefinition> {
     create_definition(read_spec(cwd, options))
 }
 
 /// Pi's `createWriteToolDefinition(cwd, options)`.
-pub fn create_write_tool_definition(cwd: &str, options: Option<WriteToolOptions>) -> io::Result<BuiltinToolDefinition> {
+pub fn create_write_tool_definition(
+    cwd: &str,
+    options: Option<WriteToolOptions>,
+) -> io::Result<BuiltinToolDefinition> {
     create_definition(write_spec(cwd, options))
 }
 
 /// Pi's `createEditToolDefinition(cwd, options)`.
-pub fn create_edit_tool_definition(cwd: &str, options: Option<EditToolOptions>) -> io::Result<BuiltinToolDefinition> {
+pub fn create_edit_tool_definition(
+    cwd: &str,
+    options: Option<EditToolOptions>,
+) -> io::Result<BuiltinToolDefinition> {
     create_definition(edit_spec(cwd, options))
 }
 
 /// Pi's `createBashToolDefinition(cwd, options)`.
-pub fn create_bash_tool_definition(cwd: &str, options: Option<BashToolOptions>) -> io::Result<BuiltinToolDefinition> {
+pub fn create_bash_tool_definition(
+    cwd: &str,
+    options: Option<BashToolOptions>,
+) -> io::Result<BuiltinToolDefinition> {
     create_definition(bash_spec(cwd, options))
 }
 
 /// Pi's `createGrepToolDefinition(cwd, options)`.
-pub fn create_grep_tool_definition(cwd: &str, options: Option<GrepToolOptions>) -> io::Result<BuiltinToolDefinition> {
+pub fn create_grep_tool_definition(
+    cwd: &str,
+    options: Option<GrepToolOptions>,
+) -> io::Result<BuiltinToolDefinition> {
     create_definition(grep_spec(cwd, options))
 }
 
 /// Pi's `createFindToolDefinition(cwd, options)`.
-pub fn create_find_tool_definition(cwd: &str, options: Option<FindToolOptions>) -> io::Result<BuiltinToolDefinition> {
+pub fn create_find_tool_definition(
+    cwd: &str,
+    options: Option<FindToolOptions>,
+) -> io::Result<BuiltinToolDefinition> {
     create_definition(find_spec(cwd, options))
 }
 
 /// Pi's `createLsToolDefinition(cwd, options)`.
-pub fn create_ls_tool_definition(cwd: &str, options: Option<LsToolOptions>) -> io::Result<BuiltinToolDefinition> {
+pub fn create_ls_tool_definition(
+    cwd: &str,
+    options: Option<LsToolOptions>,
+) -> io::Result<BuiltinToolDefinition> {
     create_definition(ls_spec(cwd, options))
 }
 
 /// Pi's `createPowerShellToolDefinition(cwd, options)`.
-pub fn create_powershell_tool_definition(cwd: &str, options: Option<PowerShellToolOptions>) -> io::Result<BuiltinToolDefinition> {
+pub fn create_powershell_tool_definition(
+    cwd: &str,
+    options: Option<PowerShellToolOptions>,
+) -> io::Result<BuiltinToolDefinition> {
     create_definition(powershell_spec(cwd, options))
 }
 
@@ -861,12 +1109,18 @@ pub fn create_ls_tool(cwd: &str, options: Option<LsToolOptions>) -> io::Result<B
 }
 
 /// Pi's `createPowerShellTool(cwd, options)`.
-pub fn create_powershell_tool(cwd: &str, options: Option<PowerShellToolOptions>) -> io::Result<BuiltinTool> {
+pub fn create_powershell_tool(
+    cwd: &str,
+    options: Option<PowerShellToolOptions>,
+) -> io::Result<BuiltinTool> {
     create_tool(powershell_spec(cwd, options))
 }
 
 /// Pi's `createCodingTools(cwd, options)`: read, bash, edit and write.
-pub fn create_coding_tools(cwd: &str, options: Option<ToolsOptions>) -> io::Result<Vec<BuiltinTool>> {
+pub fn create_coding_tools(
+    cwd: &str,
+    options: Option<ToolsOptions>,
+) -> io::Result<Vec<BuiltinTool>> {
     let options = options.unwrap_or_default();
     Ok(vec![
         create_read_tool(cwd, options.read)?,
@@ -877,7 +1131,10 @@ pub fn create_coding_tools(cwd: &str, options: Option<ToolsOptions>) -> io::Resu
 }
 
 /// Pi's `createReadOnlyTools(cwd, options)`: read, grep, find and ls.
-pub fn create_read_only_tools(cwd: &str, options: Option<ToolsOptions>) -> io::Result<Vec<BuiltinTool>> {
+pub fn create_read_only_tools(
+    cwd: &str,
+    options: Option<ToolsOptions>,
+) -> io::Result<Vec<BuiltinTool>> {
     let options = options.unwrap_or_default();
     Ok(vec![
         create_read_tool(cwd, options.read)?,
@@ -900,7 +1157,10 @@ mod tests {
             "/c",
             Some(ReadToolOptions {
                 auto_resize_images: Some(false),
-                resize_options: Some(ModelImageResizeOptions { max_width: Some(5), ..Default::default() }),
+                resize_options: Some(ModelImageResizeOptions {
+                    max_width: Some(5),
+                    ..Default::default()
+                }),
                 operations: Some(ReadOperations {
                     read_file: Arc::new(|path| Ok(format!("bytes of {path}").into_bytes())),
                     access: Arc::new(|path| Err(format!("denied: {path}"))),
@@ -908,27 +1168,58 @@ mod tests {
                 }),
             }),
         );
-        assert_eq!(Value::Object(spec.options.clone()), json!({"autoResizeImages": false, "resizeOptions": {"maxWidth": 5}, "operations": ["readFile", "access"]}));
+        assert_eq!(
+            Value::Object(spec.options.clone()),
+            json!({"autoResizeImages": false, "resizeOptions": {"maxWidth": 5}, "operations": ["readFile", "access"]})
+        );
         let read_file = spec.callbacks["operations.readFile"].clone();
-        assert_eq!(read_file(&json!({"path": "/a b"})).unwrap(), Value::String(base64(b"bytes of /a b")));
+        assert_eq!(
+            read_file(&json!({"path": "/a b"})).unwrap(),
+            Value::String(base64(b"bytes of /a b"))
+        );
         let access = spec.callbacks["operations.access"].clone();
         assert_eq!(access(&json!({"path": "/x"})).unwrap_err(), "denied: /x");
         let handle = registry(|registry| {
-            registry.callbacks.insert("test-handle".into(), spec.callbacks.clone());
+            registry
+                .callbacks
+                .insert("test-handle".into(), spec.callbacks.clone());
             "test-handle"
         });
-        assert_eq!(dispatch_callback(&json!({"handle": handle, "member": "operations.access", "args": {"path": "/y"}})), Err("denied: /y".to_string()));
+        assert_eq!(
+            dispatch_callback(
+                &json!({"handle": handle, "member": "operations.access", "args": {"path": "/y"}})
+            ),
+            Err("denied: /y".to_string())
+        );
         registry(|registry| registry.callbacks.remove(handle));
-        assert!(dispatch_callback(&json!({"handle": handle, "member": "operations.access", "args": {"path": "/y"}})).is_err());
+        assert!(
+            dispatch_callback(
+                &json!({"handle": handle, "member": "operations.access", "args": {"path": "/y"}})
+            )
+            .is_err()
+        );
     }
 
     #[test]
     fn optional_members_are_announced_only_when_given() {
         let grep = |read_file: Option<PathOperation<String>>| {
-            grep_spec("/c", Some(GrepToolOptions { operations: Some(GrepOperations { is_directory: Arc::new(|_| Ok(true)), read_file }) })).options["operations"].clone()
+            grep_spec(
+                "/c",
+                Some(GrepToolOptions {
+                    operations: Some(GrepOperations {
+                        is_directory: Arc::new(|_| Ok(true)),
+                        read_file,
+                    }),
+                }),
+            )
+            .options["operations"]
+                .clone()
         };
         assert_eq!(grep(None), json!(["isDirectory"]));
-        assert_eq!(grep(Some(Arc::new(|_| Ok(String::new())))), json!(["isDirectory", "readFile"]));
+        assert_eq!(
+            grep(Some(Arc::new(|_| Ok(String::new())))),
+            json!(["isDirectory", "readFile"])
+        );
     }
 
     #[test]
@@ -936,9 +1227,17 @@ mod tests {
         let hook: BashSpawnHook = Arc::new(Ok);
         let spec = bash_spec(
             "/c",
-            Some(BashToolOptions { command_prefix: Some("set -e".into()), expose_session_environment: Some(false), spawn_hook: Some(hook), ..Default::default() }),
+            Some(BashToolOptions {
+                command_prefix: Some("set -e".into()),
+                expose_session_environment: Some(false),
+                spawn_hook: Some(hook),
+                ..Default::default()
+            }),
         );
-        assert_eq!(Value::Object(spec.options.clone()), json!({"exposeSessionEnvironment": false, "spawnHook": true, "commandPrefix": "set -e"}));
+        assert_eq!(
+            Value::Object(spec.options.clone()),
+            json!({"exposeSessionEnvironment": false, "spawnHook": true, "commandPrefix": "set -e"})
+        );
         let context = json!({"command": "echo", "cwd": "/w", "env": {"A": "1"}});
         assert_eq!(spec.callbacks["spawnHook"](&context).unwrap(), context);
     }
@@ -950,8 +1249,16 @@ mod tests {
         }))
         .unwrap();
         assert_eq!(result.text(), "");
-        let ToolResult::Json(wire) = result.into_tool_result() else { panic!("not a JSON result") };
-        assert_eq!(wire, json!({"content": [{"type": "text", "text": ""}], "details": {"a": 1}, "structured_content": {"exit_code": 0}, "is_error": true}));
-        assert_eq!(wire.as_object().unwrap().keys().collect::<Vec<_>>(), ["content", "details", "structured_content", "is_error"]);
+        let ToolResult::Json(wire) = result.into_tool_result() else {
+            panic!("not a JSON result")
+        };
+        assert_eq!(
+            wire,
+            json!({"content": [{"type": "text", "text": ""}], "details": {"a": 1}, "structured_content": {"exit_code": 0}, "is_error": true})
+        );
+        assert_eq!(
+            wire.as_object().unwrap().keys().collect::<Vec<_>>(),
+            ["content", "details", "structured_content", "is_error"]
+        );
     }
 }

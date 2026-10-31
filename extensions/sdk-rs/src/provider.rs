@@ -25,7 +25,9 @@ pub type ProviderOperationFn = Arc<
 >;
 /// The legacy `streamSimple` of a provider config: it runs in the extension with the request's context and returns the provider's event stream.
 pub type ProviderStreamSimpleFn = Arc<
-    dyn Fn(&crate::Context, Value, Value, Value) -> ProviderResult<Arc<ModelEventStream>> + Send + Sync,
+    dyn Fn(&crate::Context, Value, Value, Value) -> ProviderResult<Arc<ModelEventStream>>
+        + Send
+        + Sync,
 >;
 pub type ProviderFilterFn = Arc<
     dyn Fn(&[ProviderModel], Option<Value>) -> ProviderResult<Vec<ProviderModel>> + Send + Sync,
@@ -51,7 +53,9 @@ impl PartialEq for ProviderSignal {
 }
 impl std::fmt::Debug for ProviderSignal {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("ProviderSignal").field("cancelled", &self.is_cancelled()).finish()
+        f.debug_struct("ProviderSignal")
+            .field("cancelled", &self.is_cancelled())
+            .finish()
     }
 }
 pub struct ProviderSignalSubscription {
@@ -217,17 +221,37 @@ impl ProviderOperations {
         Self::default()
     }
     /// Adds the implementation of one image API.
-    pub fn images(mut self, api: impl Into<String>, generate: impl Fn(ProviderModel, Value, ProviderOperationOptions) -> ProviderResult<Value> + Send + Sync + 'static) -> Self {
+    pub fn images(
+        mut self,
+        api: impl Into<String>,
+        generate: impl Fn(ProviderModel, Value, ProviderOperationOptions) -> ProviderResult<Value>
+        + Send
+        + Sync
+        + 'static,
+    ) -> Self {
         self.images.push((api.into(), Arc::new(generate)));
         self
     }
     /// Sets the config's `streamSimple`.
-    pub fn stream_simple(mut self, handler: impl Fn(&crate::Context, Value, Value, Value) -> ProviderResult<Arc<ModelEventStream>> + Send + Sync + 'static) -> Self {
+    pub fn stream_simple(
+        mut self,
+        handler: impl Fn(&crate::Context, Value, Value, Value) -> ProviderResult<Arc<ModelEventStream>>
+        + Send
+        + Sync
+        + 'static,
+    ) -> Self {
         self.stream_simple = Some(Arc::new(handler));
         self
     }
     /// Adds the implementation of one classifier API.
-    pub fn classifier(mut self, api: impl Into<String>, classify: impl Fn(ProviderModel, Value, ProviderOperationOptions) -> ProviderResult<Value> + Send + Sync + 'static) -> Self {
+    pub fn classifier(
+        mut self,
+        api: impl Into<String>,
+        classify: impl Fn(ProviderModel, Value, ProviderOperationOptions) -> ProviderResult<Value>
+        + Send
+        + Sync
+        + 'static,
+    ) -> Self {
         self.classifiers.push((api.into(), Arc::new(classify)));
         self
     }
@@ -240,9 +264,22 @@ pub(crate) struct ProviderCallbacks {
 
 impl ProviderCallbacks {
     /// Keeps the implementations of a registration and returns the declaration the host receives. A re-registration replaces only the kinds it defines, as registerProvider merges defined values (model-runtime.ts registerProvider) and the host keeps the APIs it wired.
-    pub(crate) fn declare(&self, name: String, config: Value, operations: ProviderOperations) -> ProviderDef {
-        let mut image_apis: Vec<String> = operations.images.iter().map(|(api, _)| api.clone()).collect();
-        let mut classifier_apis: Vec<String> = operations.classifiers.iter().map(|(api, _)| api.clone()).collect();
+    pub(crate) fn declare(
+        &self,
+        name: String,
+        config: Value,
+        operations: ProviderOperations,
+    ) -> ProviderDef {
+        let mut image_apis: Vec<String> = operations
+            .images
+            .iter()
+            .map(|(api, _)| api.clone())
+            .collect();
+        let mut classifier_apis: Vec<String> = operations
+            .classifiers
+            .iter()
+            .map(|(api, _)| api.clone())
+            .collect();
         image_apis.sort();
         image_apis.dedup();
         classifier_apis.sort();
@@ -261,7 +298,14 @@ impl ProviderCallbacks {
                 kept.stream_simple = operations.stream_simple;
             }
         }
-        ProviderDef { name, config, native: None, stream_simple, image_apis, classifier_apis }
+        ProviderDef {
+            name,
+            config,
+            native: None,
+            stream_simple,
+            image_apis,
+            classifier_apis,
+        }
     }
 
     /// What the extension holds for a provider, to restore it when the host refuses a registration.
@@ -282,16 +326,34 @@ impl ProviderCallbacks {
         }
     }
 
-    pub(crate) fn operation(&self, provider: &str, images: bool, api: &str) -> Option<ProviderOperationFn> {
+    pub(crate) fn operation(
+        &self,
+        provider: &str,
+        images: bool,
+        api: &str,
+    ) -> Option<ProviderOperationFn> {
         let held = self.held.lock().unwrap();
         let operations = held.get(provider)?;
-        let implementations = if images { &operations.images } else { &operations.classifiers };
+        let implementations = if images {
+            &operations.images
+        } else {
+            &operations.classifiers
+        };
         // A later implementation of the same API replaces an earlier one, as a repeated key of Pi's `images`/`classifiers` object does.
-        implementations.iter().rev().find(|(name, _)| name == api).map(|(_, callback)| callback.clone())
+        implementations
+            .iter()
+            .rev()
+            .find(|(name, _)| name == api)
+            .map(|(_, callback)| callback.clone())
     }
 
     pub(crate) fn stream_simple(&self, provider: &str) -> Option<ProviderStreamSimpleFn> {
-        self.held.lock().unwrap().get(provider)?.stream_simple.clone()
+        self.held
+            .lock()
+            .unwrap()
+            .get(provider)?
+            .stream_simple
+            .clone()
     }
 }
 
@@ -318,8 +380,7 @@ pub struct Provider {
     pub get_models: Arc<dyn Fn() -> ProviderResult<Vec<ProviderModel>> + Send + Sync>,
     pub filter_models: Option<ProviderFilterFn>,
     /// Lists the models of every type; without it `get_models` does. Pi `Provider.getAllModels`.
-    pub get_all_models:
-        Option<Arc<dyn Fn() -> ProviderResult<Vec<ProviderModel>> + Send + Sync>>,
+    pub get_all_models: Option<Arc<dyn Fn() -> ProviderResult<Vec<ProviderModel>> + Send + Sync>>,
     /// Filters the models of every type by credential; without it `filter_models` filters the chat models. Pi `Provider.filterAllModels`.
     pub filter_all_models: Option<ProviderFilterFn>,
     pub refresh_models:
@@ -539,10 +600,13 @@ impl ProviderObjects {
                     .collect::<Vec<_>>()
             )),
             "getAllModels" => Ok(json!(
-                provider.get_all_models.as_ref().ok_or("getAllModels absent")?()?
-                    .iter()
-                    .map(|m| m.as_ref())
-                    .collect::<Vec<_>>()
+                provider
+                    .get_all_models
+                    .as_ref()
+                    .ok_or("getAllModels absent")?()?
+                .iter()
+                .map(|m| m.as_ref())
+                .collect::<Vec<_>>()
             )),
             "filterModels" | "filterAllModels" => {
                 let models = params["models"]
@@ -558,7 +622,8 @@ impl ProviderObjects {
                     &provider.filter_models
                 };
                 let result = filter.as_ref().ok_or("filter absent")?(
-                    &models, optional(&params["credential"])
+                    &models,
+                    optional(&params["credential"]),
                 )?;
                 let indices = result
                     .iter()
@@ -609,7 +674,8 @@ impl ProviderObjects {
                         Arc::new(move || {
                             serde_json::from_value(callback("getDeviceId", json!({}))?)
                                 .map_err(|e| e.to_string())
-                        }) as Arc<dyn Fn() -> ProviderResult<String> + Send + Sync>
+                        })
+                            as Arc<dyn Fn() -> ProviderResult<String> + Send + Sync>
                     }),
                     agent_name: wire["agentName"].as_str().map(str::to_owned),
                 };
@@ -724,12 +790,19 @@ impl ProviderObjects {
                 Ok(Value::Null)
             }
             "generateImages" | "classify" => {
-                let implementation = if method == "generateImages" { provider.generate_images.as_ref() } else { provider.classify.as_ref() }
-                    .ok_or_else(|| format!("Provider has no {method}"))?;
+                let implementation = if method == "generateImages" {
+                    provider.generate_images.as_ref()
+                } else {
+                    provider.classify.as_ref()
+                }
+                .ok_or_else(|| format!("Provider has no {method}"))?;
                 implementation(
                     Arc::new(params["model"].clone()),
                     params["context"].clone(),
-                    ProviderOperationOptions { signal, values: params["options"].clone() },
+                    ProviderOperationOptions {
+                        signal,
+                        values: params["options"].clone(),
+                    },
                 )
             }
             _ => Err(format!("Unknown Provider method {method}")),

@@ -21,7 +21,13 @@ fn locked<T>(lock: &Mutex<T>) -> MutexGuard<'_, T> {
     lock.lock().unwrap_or_else(PoisonError::into_inner)
 }
 
-fn request(id: &str, method: &str, tool: Option<&str>, event: Option<&str>, handler_id: u32) -> Envelope {
+fn request(
+    id: &str,
+    method: &str,
+    tool: Option<&str>,
+    event: Option<&str>,
+    handler_id: u32,
+) -> Envelope {
     Envelope {
         msg_type: "request".into(),
         id: Some(id.into()),
@@ -47,14 +53,26 @@ fn request(id: &str, method: &str, tool: Option<&str>, event: Option<&str>, hand
 
 /// An extension whose tool `probe`, command `probe` and `tool_result` handler record which of them started. It returns the handler id of the event
 /// handler, the log, and the registry handle.
-fn recording_extension(name: &str) -> (Extension, u32, Arc<Mutex<Vec<&'static str>>>, super::EventSubscriber) {
+fn recording_extension(
+    name: &str,
+) -> (
+    Extension,
+    u32,
+    Arc<Mutex<Vec<&'static str>>>,
+    super::EventSubscriber,
+) {
     let started: Arc<Mutex<Vec<&'static str>>> = Arc::default();
     let mut ext = Extension::new(name);
     let log = started.clone();
-    ext.tool("probe", "Record the start order", empty_schema(), move |_, _| {
-        locked(&log).push("tool_call");
-        ToolResult::text("ok")
-    });
+    ext.tool(
+        "probe",
+        "Record the start order",
+        empty_schema(),
+        move |_, _| {
+            locked(&log).push("tool_call");
+            ToolResult::text("ok")
+        },
+    );
     let log = started.clone();
     ext.command("probe", "Record the start order", move |_, _| {
         locked(&log).push("command");
@@ -74,13 +92,28 @@ fn recording_extension(name: &str) -> (Extension, u32, Arc<Mutex<Vec<&'static st
 // the earlier request's thread runs. The first request is an event; the other two are a command and a tool call, in each order.
 #[test]
 fn a_late_request_thread_does_not_let_a_later_handler_start_first() {
-    for (round, kinds) in [["command", "tool_call"], ["tool_call", "command"], ["command", "tool_call"], ["tool_call", "command"]].into_iter().enumerate() {
-        let (ext, handler_id, started, registry) = recording_extension(&format!("late-thread-{round}"));
+    for (round, kinds) in [
+        ["command", "tool_call"],
+        ["tool_call", "command"],
+        ["command", "tool_call"],
+        ["tool_call", "command"],
+    ]
+    .into_iter()
+    .enumerate()
+    {
+        let (ext, handler_id, started, registry) =
+            recording_extension(&format!("late-thread-{round}"));
         let mut host = Host::connect(ext);
         let late = format!("late{round}-0");
         let later: Vec<String> = (1..=2).map(|n| format!("late{round}-{n}")).collect();
         let hold = locked(&registry.state);
-        host.send(request(&late, "event", None, Some("tool_result"), handler_id));
+        host.send(request(
+            &late,
+            "event",
+            None,
+            Some("tool_result"),
+            handler_id,
+        ));
         for (id, kind) in later.iter().zip(kinds) {
             host.send(match kind {
                 "command" => request(id, "command", Some("probe"), None, 0),
@@ -90,24 +123,44 @@ fn a_late_request_thread_does_not_let_a_later_handler_start_first() {
         // Both later threads run while the first is held. A thread that parks in begin() has taken its place behind the first; a handler that started
         // instead overtook it.
         let deadline = Instant::now() + WAIT;
-        while !later.iter().all(|id| crate::request_start_order::parked::contains(&format!("pig-request-{id}"))) {
+        while !later
+            .iter()
+            .all(|id| crate::request_start_order::parked::contains(&format!("pig-request-{id}")))
+        {
             let overtaken = locked(&started).clone();
-            assert!(overtaken.is_empty(), "round {round}: {overtaken:?} started before the first request's handler, whose thread had not begun");
-            assert!(Instant::now() < deadline, "round {round}: the later requests' threads never parked behind the first");
+            assert!(
+                overtaken.is_empty(),
+                "round {round}: {overtaken:?} started before the first request's handler, whose thread had not begun"
+            );
+            assert!(
+                Instant::now() < deadline,
+                "round {round}: the later requests' threads never parked behind the first"
+            );
             std::thread::sleep(Duration::from_millis(2));
         }
-        assert!(locked(&started).is_empty(), "round {round}: a handler started before the first request's");
+        assert!(
+            locked(&started).is_empty(),
+            "round {round}: a handler started before the first request's"
+        );
         drop(hold);
         for _ in 0..3 {
             let response = host.read_until("response").response.unwrap();
-            assert!(response.error.is_none(), "round {round}: {:?}", response.error);
+            assert!(
+                response.error.is_none(),
+                "round {round}: {:?}",
+                response.error
+            );
         }
         // The handlers all ran. Their order after the first request began is not asserted: a thread is handed on by begin() and runs its handler a moment later, and a thread
         // the operating system preempts in between can be overtaken (D187), which no test can pin. What the places guarantee, and the assertions above pin, is that no
         // handler started while the first request's thread had not begun.
         let mut ran = locked(&started).clone();
         ran.sort_unstable();
-        assert_eq!(ran, ["command", "event", "tool_call"], "round {round}: every handler ran");
+        assert_eq!(
+            ran,
+            ["command", "event", "tool_call"],
+            "round {round}: every handler ran"
+        );
         host.stop();
     }
 }

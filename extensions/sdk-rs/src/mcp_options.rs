@@ -3,8 +3,8 @@
 //! They stay in this process. The reference [`crate::create_mcp_extension`] returns names them to the host as session graph callbacks when [`crate::DefaultResourceLoader`] is built, and the host runs them with JSON arguments over the connection (the wire of the loader's override options; no request kind is added). Entries, configurations, tokens, states and messages are Pi's JSON shapes as `serde_json::Value`.
 
 use crate::context::Context;
-use crate::graph::{add_callback, remove_callback, GraphCallback};
-use serde_json::{json, Map, Value};
+use crate::graph::{GraphCallback, add_callback, remove_callback};
+use serde_json::{Map, Value, json};
 use std::collections::{BTreeMap, HashMap};
 use std::io;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
@@ -28,17 +28,29 @@ pub struct McpAuthProvider {
 impl McpAuthProvider {
     /// `token()`: the current access token, `None` for none.
     pub fn token(&self) -> io::Result<Option<String>> {
-        let value = self.context.call_host("sessionGraph.call", Some(json!({"handle": self.handle, "method": "token", "args": []})))?;
+        let value = self.context.call_host(
+            "sessionGraph.call",
+            Some(json!({"handle": self.handle, "method": "token", "args": []})),
+        )?;
         Ok(value.as_ref().and_then(Value::as_str).map(str::to_string))
     }
 
     /// `onUnauthorized(context)`: the host refreshes the credentials after the response (its `status` and ordered `headers`; Pi's `fetch` and the body stay in the host) a request of the transport got; the transport retries the request once with what the provider holds then.
-    pub fn on_unauthorized(&self, status: u16, headers: &[(String, String)], server_url: &str, token: Option<&str>) -> io::Result<()> {
+    pub fn on_unauthorized(
+        &self,
+        status: u16,
+        headers: &[(String, String)],
+        server_url: &str,
+        token: Option<&str>,
+    ) -> io::Result<()> {
         let mut wire = json!({"status": status, "headers": headers.iter().map(|(name, value)| json!([name, value])).collect::<Vec<_>>(), "serverUrl": server_url});
         if let Some(token) = token.filter(|token| !token.is_empty()) {
             wire["token"] = json!(token);
         }
-        self.context.call_host("sessionGraph.call", Some(json!({"handle": self.handle, "method": "onUnauthorized", "args": [wire]})))?;
+        self.context.call_host(
+            "sessionGraph.call",
+            Some(json!({"handle": self.handle, "method": "onUnauthorized", "args": [wire]})),
+        )?;
         Ok(())
     }
 }
@@ -69,7 +81,10 @@ struct EventsInner {
 pub struct McpTransportEvents(Arc<Mutex<EventsInner>>);
 
 impl McpTransportEvents {
-    pub fn on_message(&self, listener: Box<dyn Fn(Value) + Send + Sync>) -> Box<dyn FnOnce() + Send> {
+    pub fn on_message(
+        &self,
+        listener: Box<dyn Fn(Value) + Send + Sync>,
+    ) -> Box<dyn FnOnce() + Send> {
         let mut inner = self.0.lock().unwrap();
         inner.next += 1;
         let id = inner.next;
@@ -80,7 +95,10 @@ impl McpTransportEvents {
         })
     }
 
-    pub fn on_error(&self, listener: Box<dyn Fn(String) + Send + Sync>) -> Box<dyn FnOnce() + Send> {
+    pub fn on_error(
+        &self,
+        listener: Box<dyn Fn(String) + Send + Sync>,
+    ) -> Box<dyn FnOnce() + Send> {
         let mut inner = self.0.lock().unwrap();
         inner.next += 1;
         let id = inner.next;
@@ -138,7 +156,12 @@ impl McpTransportEvents {
 pub trait McpTransport: Send + Sync {
     fn start(&self) -> Result<(), String>;
     fn send(&self, message: Value, signal: &McpSendSignal) -> Result<(), String>;
-    fn send_ordered(&self, message: Value, signal: &McpSendSignal, placed: &dyn Fn()) -> Result<(), String> {
+    fn send_ordered(
+        &self,
+        message: Value,
+        signal: &McpSendSignal,
+        placed: &dyn Fn(),
+    ) -> Result<(), String> {
         placed();
         self.send(message, signal)
     }
@@ -167,7 +190,11 @@ pub trait McpOAuthServerStore: Send + Sync {
 /// What the MCP extension asks of its `credentials` option (Pi's `McpOAuthCredentialStore`: per-server OAuth state in `mcp-auth.json` by default).
 pub trait McpOAuthCredentialStore: Send + Sync {
     /// The store of the server with the given name and URL.
-    fn for_server(&self, name: &str, server_url: &str) -> Result<Arc<dyn McpOAuthServerStore>, String>;
+    fn for_server(
+        &self,
+        name: &str,
+        server_url: &str,
+    ) -> Result<Arc<dyn McpOAuthServerStore>, String>;
     /// The stored tokens of the server (an `OAuthTokens` object), `None` when there are none.
     fn tokens(&self, name: &str, server_url: &str) -> Result<Option<Value>, String>;
     /// Deletes the stored state of the server and returns whether credentials were stored for it.
@@ -177,7 +204,11 @@ pub trait McpOAuthCredentialStore: Send + Sync {
 /// `loadConfig`: runs when a session starts; an error is the throw of Pi's `loadConfig`. Returns Pi's `LoadedMcpConfig` (`{servers, autoEnableCodemode?, errors, projectConfig?}`).
 pub type McpLoadConfig = Arc<dyn Fn(McpLoadConfigContext) -> Result<Value, String> + Send + Sync>;
 /// `createTransport`: creates the transport of a server entry (Pi's `McpServerEntry` as JSON). The auth provider is `None` for a server without OAuth and lives until the transport closes.
-pub type McpTransportFactory = Arc<dyn Fn(Value, &str, Option<McpAuthProvider>) -> Result<Arc<dyn McpTransport>, String> + Send + Sync>;
+pub type McpTransportFactory = Arc<
+    dyn Fn(Value, &str, Option<McpAuthProvider>) -> Result<Arc<dyn McpTransport>, String>
+        + Send
+        + Sync,
+>;
 /// `openUrl`: opens the OAuth authorization URL.
 pub type McpOpenUrl = Arc<dyn Fn(&str) + Send + Sync>;
 /// `updateConfig`: saves `/mcp` changes (`{enabled?, exposure?}`) to the server's config file; an error is the throw of Pi's `updateConfig`.
@@ -195,7 +226,11 @@ pub struct McpFunctionOptions {
 
 impl McpFunctionOptions {
     pub(crate) fn is_empty(&self) -> bool {
-        self.load_config.is_none() && self.create_transport.is_none() && self.credentials.is_none() && self.open_url.is_none() && self.update_config.is_none()
+        self.load_config.is_none()
+            && self.create_transport.is_none()
+            && self.credentials.is_none()
+            && self.open_url.is_none()
+            && self.update_config.is_none()
     }
 
     /// Names each function to the host in `wire`, the option object of the reference.
@@ -203,7 +238,10 @@ impl McpFunctionOptions {
         if let Some(load_config) = self.load_config.clone() {
             let callback: GraphCallback = Arc::new(move |args| {
                 let ctx = args.first().cloned().unwrap_or(Value::Null);
-                load_config(McpLoadConfigContext { cwd: ctx["cwd"].as_str().unwrap_or_default().to_string(), is_project_trusted: ctx["isProjectTrusted"].as_bool().unwrap_or(false) })
+                load_config(McpLoadConfigContext {
+                    cwd: ctx["cwd"].as_str().unwrap_or_default().to_string(),
+                    is_project_trusted: ctx["isProjectTrusted"].as_bool().unwrap_or(false),
+                })
             });
             wire.insert("loadConfig".into(), json!(add_callback(context, callback)));
         }
@@ -216,27 +254,53 @@ impl McpFunctionOptions {
         }
         if let Some(update_config) = self.update_config.clone() {
             let callback: GraphCallback = Arc::new(move |args| {
-                update_config(args.first().cloned().unwrap_or(Value::Null), args.get(1).cloned().unwrap_or(Value::Null))?;
+                update_config(
+                    args.first().cloned().unwrap_or(Value::Null),
+                    args.get(1).cloned().unwrap_or(Value::Null),
+                )?;
                 Ok(Value::Null)
             });
-            wire.insert("updateConfig".into(), json!(add_callback(context, callback)));
+            wire.insert(
+                "updateConfig".into(),
+                json!(add_callback(context, callback)),
+            );
         }
         if let Some(create_transport) = self.create_transport.clone() {
             let owner = context.clone();
             let callback: GraphCallback = Arc::new(move |args| {
                 let entry = args.first().cloned().unwrap_or(Value::Null);
-                let cwd = args.get(1).and_then(Value::as_str).unwrap_or_default().to_string();
-                let handle = args.get(2).and_then(Value::as_str).unwrap_or_default().to_string();
-                let provider = (!handle.is_empty()).then(|| McpAuthProvider { context: owner.clone(), handle });
+                let cwd = args
+                    .get(1)
+                    .and_then(Value::as_str)
+                    .unwrap_or_default()
+                    .to_string();
+                let handle = args
+                    .get(2)
+                    .and_then(Value::as_str)
+                    .unwrap_or_default()
+                    .to_string();
+                let provider = (!handle.is_empty()).then(|| McpAuthProvider {
+                    context: owner.clone(),
+                    handle,
+                });
                 let transport = create_transport(entry, &cwd, provider)?;
                 let sets_version = transport.sets_protocol_version();
                 let shim = TransportShim::new(&owner, transport);
-                Ok(json!({"transport": shim.id.lock().unwrap().clone(), "setsProtocolVersion": sets_version}))
+                Ok(
+                    json!({"transport": shim.id.lock().unwrap().clone(), "setsProtocolVersion": sets_version}),
+                )
             });
-            wire.insert("createTransport".into(), json!(add_callback(context, callback)));
+            wire.insert(
+                "createTransport".into(),
+                json!(add_callback(context, callback)),
+            );
         }
         if let Some(credentials) = self.credentials.clone() {
-            let shim = Arc::new(CredentialsShim { store: credentials, state: Mutex::new(CredentialState::default()), next: AtomicU64::new(0) });
+            let shim = Arc::new(CredentialsShim {
+                store: credentials,
+                state: Mutex::new(CredentialState::default()),
+                next: AtomicU64::new(0),
+            });
             let callback: GraphCallback = Arc::new(move |args| shim.serve(&args));
             wire.insert("credentials".into(), json!(add_callback(context, callback)));
         }
@@ -261,10 +325,20 @@ struct TransportShim {
 
 impl TransportShim {
     fn new(context: &Context, transport: Arc<dyn McpTransport>) -> Arc<TransportShim> {
-        let shim = Arc::new(TransportShim { id: Mutex::new(String::new()), context: context.clone(), transport: transport.clone(), state: Mutex::new(ShimState::default()), changed: Condvar::new() });
+        let shim = Arc::new(TransportShim {
+            id: Mutex::new(String::new()),
+            context: context.clone(),
+            transport: transport.clone(),
+            state: Mutex::new(ShimState::default()),
+            changed: Condvar::new(),
+        });
         let (on_message, on_error, on_close) = (shim.clone(), shim.clone(), shim.clone());
-        let _ = transport.on_message(Box::new(move |message| on_message.push(json!({"type": "message", "message": message}))));
-        let _ = transport.on_error(Box::new(move |error| on_error.push(json!({"type": "error", "error": error}))));
+        let _ = transport.on_message(Box::new(move |message| {
+            on_message.push(json!({"type": "message", "message": message}))
+        }));
+        let _ = transport.on_error(Box::new(move |error| {
+            on_error.push(json!({"type": "error", "error": error}))
+        }));
         let _ = transport.on_close(Box::new(move || on_close.push_close()));
         let served = shim.clone();
         let callback: GraphCallback = Arc::new(move |args| served.serve(&args));
@@ -295,7 +369,9 @@ impl TransportShim {
             "start" => self.transport.start().map(|()| Value::Null),
             "setProtocolVersion" => {
                 if self.transport.sets_protocol_version() {
-                    self.transport.set_protocol_version(args.get(1).and_then(Value::as_str).unwrap_or_default());
+                    self.transport.set_protocol_version(
+                        args.get(1).and_then(Value::as_str).unwrap_or_default(),
+                    );
                 }
                 Ok(Value::Null)
             }
@@ -335,11 +411,21 @@ impl TransportShim {
     }
 
     fn send(&self, args: &[Value]) -> Result<(), String> {
-        let seq = args.get(1).and_then(Value::as_u64).ok_or("send takes a sequence number, a message and the ordered flag")?;
-        let message = args.get(2).cloned().ok_or("send takes a sequence number, a message and the ordered flag")?;
+        let seq = args
+            .get(1)
+            .and_then(Value::as_u64)
+            .ok_or("send takes a sequence number, a message and the ordered flag")?;
+        let message = args
+            .get(2)
+            .cloned()
+            .ok_or("send takes a sequence number, a message and the ordered flag")?;
         let ordered = args.get(3).and_then(Value::as_bool).unwrap_or(false);
         let signal = McpSendSignal::default();
-        self.state.lock().unwrap().aborts.insert(seq, signal.clone());
+        self.state
+            .lock()
+            .unwrap()
+            .aborts
+            .insert(seq, signal.clone());
         let placed_once = AtomicBool::new(false);
         let placed = || {
             if !placed_once.swap(true, Ordering::SeqCst) && ordered {
@@ -358,7 +444,13 @@ impl TransportShim {
 #[derive(Default)]
 struct CredentialState {
     stores: HashMap<String, Arc<dyn McpOAuthServerStore>>,
-    locks: HashMap<String, (mpsc::Sender<Option<String>>, mpsc::Receiver<Result<(), String>>)>,
+    locks: HashMap<
+        String,
+        (
+            mpsc::Sender<Option<String>>,
+            mpsc::Receiver<Result<(), String>>,
+        ),
+    >,
 }
 
 /// Serves the caller's credential store: the host's ops arrive as one callback.
@@ -370,7 +462,12 @@ struct CredentialsShim {
 
 impl CredentialsShim {
     fn serve(&self, args: &[Value]) -> Result<Value, String> {
-        let text = |index: usize| args.get(index).and_then(Value::as_str).unwrap_or_default().to_string();
+        let text = |index: usize| {
+            args.get(index)
+                .and_then(Value::as_str)
+                .unwrap_or_default()
+                .to_string()
+        };
         let op = text(0);
         match op.as_str() {
             "forServer" => {
@@ -379,7 +476,12 @@ impl CredentialsShim {
                 self.state.lock().unwrap().stores.insert(id.clone(), store);
                 return Ok(json!({"store": id}));
             }
-            "tokens" => return self.store.tokens(&text(1), &text(2)).map(|tokens| tokens.unwrap_or(Value::Null)),
+            "tokens" => {
+                return self
+                    .store
+                    .tokens(&text(1), &text(2))
+                    .map(|tokens| tokens.unwrap_or(Value::Null));
+            }
             "remove" => return self.store.remove(&text(1), &text(2)).map(Value::Bool),
             _ => {}
         }
@@ -389,12 +491,25 @@ impl CredentialsShim {
             return Ok(Value::Null);
         }
         if op == "unlock" {
-            return self.unlock(&text(2), args.get(3).and_then(Value::as_str).unwrap_or_default(), args.get(4).and_then(Value::as_bool).unwrap_or(false));
+            return self.unlock(
+                &text(2),
+                args.get(3).and_then(Value::as_str).unwrap_or_default(),
+                args.get(4).and_then(Value::as_bool).unwrap_or(false),
+            );
         }
-        let store = self.state.lock().unwrap().stores.get(&id).cloned().ok_or_else(|| format!("unknown credential store {id}"))?;
+        let store = self
+            .state
+            .lock()
+            .unwrap()
+            .stores
+            .get(&id)
+            .cloned()
+            .ok_or_else(|| format!("unknown credential store {id}"))?;
         match op.as_str() {
             "load" => store.load().map(|state| state.unwrap_or(Value::Null)),
-            "save" => store.save(args.get(2).cloned().unwrap_or(Value::Null)).map(|()| Value::Null),
+            "save" => store
+                .save(args.get(2).cloned().unwrap_or(Value::Null))
+                .map(|()| Value::Null),
             "lock" => self.lock(&id, store),
             other => Err(format!("a credential store has no operation {other}")),
         }
@@ -423,15 +538,30 @@ impl CredentialsShim {
                 _ => Err("with_refresh_lock returned without running its function".to_string()),
             };
         }
-        let lock_id = format!("{store_id}.{}", self.next.fetch_add(1, Ordering::Relaxed) + 1);
-        self.state.lock().unwrap().locks.insert(lock_id.clone(), (unlock_tx, done_rx));
+        let lock_id = format!(
+            "{store_id}.{}",
+            self.next.fetch_add(1, Ordering::Relaxed) + 1
+        );
+        self.state
+            .lock()
+            .unwrap()
+            .locks
+            .insert(lock_id.clone(), (unlock_tx, done_rx));
         Ok(json!({"lock": lock_id}))
     }
 
     fn unlock(&self, lock_id: &str, failure: &str, failed: bool) -> Result<Value, String> {
-        let (unlock, done) = self.state.lock().unwrap().locks.remove(lock_id).ok_or_else(|| format!("unknown refresh lock {lock_id}"))?;
+        let (unlock, done) = self
+            .state
+            .lock()
+            .unwrap()
+            .locks
+            .remove(lock_id)
+            .ok_or_else(|| format!("unknown refresh lock {lock_id}"))?;
         let _ = unlock.send(failed.then(|| failure.to_string()));
-        done.recv().map_err(|_| "the refresh lock's function vanished".to_string())?.map(|()| Value::Null)
+        done.recv()
+            .map_err(|_| "the refresh lock's function vanished".to_string())?
+            .map(|()| Value::Null)
     }
 }
 
@@ -446,9 +576,15 @@ mod tests {
         let first = seen.clone();
         let second = seen.clone();
         let closes = seen.clone();
-        let dispose = events.on_message(Box::new(move |message| first.lock().unwrap().push(format!("a{message}"))));
-        let _ = events.on_message(Box::new(move |message| second.lock().unwrap().push(format!("b{message}"))));
-        let _ = events.on_close(Box::new(move || closes.lock().unwrap().push("close".into())));
+        let dispose = events.on_message(Box::new(move |message| {
+            first.lock().unwrap().push(format!("a{message}"))
+        }));
+        let _ = events.on_message(Box::new(move |message| {
+            second.lock().unwrap().push(format!("b{message}"))
+        }));
+        let _ = events.on_close(Box::new(move || {
+            closes.lock().unwrap().push("close".into())
+        }));
         events.emit_message(json!(1));
         dispose();
         events.emit_message(json!(2));
@@ -468,7 +604,10 @@ mod tests {
         fn save(&self, _state: Value) -> Result<(), String> {
             Ok(())
         }
-        fn with_refresh_lock(&self, f: &mut dyn FnMut() -> Result<(), String>) -> Result<(), String> {
+        fn with_refresh_lock(
+            &self,
+            f: &mut dyn FnMut() -> Result<(), String>,
+        ) -> Result<(), String> {
             self.held.store(true, Ordering::SeqCst);
             let result = f();
             self.held.store(false, Ordering::SeqCst);
@@ -481,8 +620,14 @@ mod tests {
     }
 
     impl McpOAuthCredentialStore for Credentials {
-        fn for_server(&self, _name: &str, _server_url: &str) -> Result<Arc<dyn McpOAuthServerStore>, String> {
-            Ok(Arc::new(Store { held: self.held.clone() }))
+        fn for_server(
+            &self,
+            _name: &str,
+            _server_url: &str,
+        ) -> Result<Arc<dyn McpOAuthServerStore>, String> {
+            Ok(Arc::new(Store {
+                held: self.held.clone(),
+            }))
         }
         fn tokens(&self, _name: &str, _server_url: &str) -> Result<Option<Value>, String> {
             Ok(None)
@@ -496,15 +641,47 @@ mod tests {
     #[test]
     fn refresh_lock_is_held_until_the_host_unlocks() {
         let held = Arc::new(AtomicBool::new(false));
-        let shim = CredentialsShim { store: Arc::new(Credentials { held: held.clone() }), state: Mutex::new(CredentialState::default()), next: AtomicU64::new(0) };
-        let made = shim.serve(&[json!("forServer"), json!("demo"), json!("https://x.example")]).unwrap();
+        let shim = CredentialsShim {
+            store: Arc::new(Credentials { held: held.clone() }),
+            state: Mutex::new(CredentialState::default()),
+            next: AtomicU64::new(0),
+        };
+        let made = shim
+            .serve(&[
+                json!("forServer"),
+                json!("demo"),
+                json!("https://x.example"),
+            ])
+            .unwrap();
         let store = made["store"].as_str().unwrap().to_string();
         let locked = shim.serve(&[json!("lock"), json!(store)]).unwrap();
-        assert!(held.load(Ordering::SeqCst), "lock answered outside the store's with_refresh_lock");
+        assert!(
+            held.load(Ordering::SeqCst),
+            "lock answered outside the store's with_refresh_lock"
+        );
         let lock = locked["lock"].as_str().unwrap().to_string();
-        let failure = shim.serve(&[json!("unlock"), json!(store), json!(lock), json!("refresh failed"), json!(true)]);
+        let failure = shim.serve(&[
+            json!("unlock"),
+            json!(store),
+            json!(lock),
+            json!("refresh failed"),
+            json!(true),
+        ]);
         assert_eq!(failure, Err("refresh failed".to_string()));
-        assert!(!held.load(Ordering::SeqCst), "the store still holds the lock after unlock");
-        assert!(shim.serve(&[json!("unlock"), json!(store), json!(lock), json!(""), json!(false)]).is_err(), "a second unlock of the same lock succeeded");
+        assert!(
+            !held.load(Ordering::SeqCst),
+            "the store still holds the lock after unlock"
+        );
+        assert!(
+            shim.serve(&[
+                json!("unlock"),
+                json!(store),
+                json!(lock),
+                json!(""),
+                json!(false)
+            ])
+            .is_err(),
+            "a second unlock of the same lock succeeded"
+        );
     }
 }
