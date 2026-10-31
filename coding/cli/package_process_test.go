@@ -71,7 +71,7 @@ func TestPackageSourceReplacementPreservesFilters(t *testing.T) {
 	}
 }
 
-// The child emits 4 MiB; the parent inherits a file descriptor instead of accumulating child output.
+// The child emits 4 MiB; the parent inherits a file descriptor instead of accumulating child output. One install runs before the measured loop: the first spawn of a process pays one-time initialisation (about 140 allocations, and how much of it an earlier benchmark of the package already paid varies), which at -benchtime=5x moved allocs/op between 115 and 142 in steps of 9; the loop measures what each install allocates. The child's environment is copied and de-duplicated on every start, one allocation per variable, so the benchmark runs with PATH alone: allocs/op no longer depends on how many variables the shell, make or go test hand it.
 func BenchmarkPackageInheritedOutput(b *testing.B) {
 	root := b.TempDir()
 	script := filepath.Join(root, "npm.cjs")
@@ -82,6 +82,20 @@ func BenchmarkPackageInheritedOutput(b *testing.B) {
 	if err := sm.SetNpmCommand([]string{"node", script}); err != nil {
 		b.Fatal(err)
 	}
+	environ := os.Environ()
+	path := os.Getenv("PATH")
+	os.Clearenv()
+	if err := os.Setenv("PATH", path); err != nil {
+		b.Fatal(err)
+	}
+	defer func() {
+		os.Clearenv()
+		for _, entry := range environ {
+			if key, value, ok := strings.Cut(entry, "="); ok && key != "" {
+				_ = os.Setenv(key, value)
+			}
+		}
+	}()
 	discard, err := os.OpenFile(os.DevNull, os.O_WRONLY, 0)
 	if err != nil {
 		b.Fatal(err)
@@ -89,6 +103,9 @@ func BenchmarkPackageInheritedOutput(b *testing.B) {
 	previous := os.Stdout
 	os.Stdout = discard
 	defer func() { os.Stdout = previous; _ = discard.Close() }()
+	if err := packagemanager.InstallManagedNPM(root, sm.AgentDir(), sm, "npm:fixture", false); err != nil {
+		b.Fatal(err)
+	}
 	b.ReportAllocs()
 	b.SetBytes(4 * 1024 * 1024)
 	for b.Loop() {
